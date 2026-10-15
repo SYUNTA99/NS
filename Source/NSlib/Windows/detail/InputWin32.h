@@ -4,11 +4,12 @@
 
 #include <windows.h>
 
-namespace NS::OS
+namespace NS
 {
+    namespace OS
+    {
+        class Input;
 
-    class Input;
-
-    void DispatchWin32MessageToInput(Input& input, UINT msg, WPARAM wparam, LPARAM lparam) noexcept;
-
-} // namespace NS::OS
+        void DispatchWin32MessageToInput(Input& input, UINT msg, WPARAM wparam, LPARAM lparam) noexcept;
+    } // namespace OS
+} // namespace NS

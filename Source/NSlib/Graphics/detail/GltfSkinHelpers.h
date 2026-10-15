@@ -12,101 +12,121 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Gfx::detail
+namespace NS
 {
-    //! joint weights を合計 1 へ正規化する。合計が極小なら joints[0]=0, weights={1,0,0,0} にする
-    inline void NormalizeJointWeights(std::array<NS::uint32, 4>& joints, std::array<float, 4>& weights) noexcept
+    namespace Gfx
     {
-        const float sum = weights[0] + weights[1] + weights[2] + weights[3];
-        if (sum < 1e-8f)
+        namespace detail
         {
-            joints = {0u, 0u, 0u, 0u};
-            weights = {1.0f, 0.0f, 0.0f, 0.0f};
-            return;
-        }
-        const float inv = 1.0f / sum;
-        for (float& weight : weights)
-        {
-            weight *= inv;
-        }
-    }
-
-    //! position / translation を Z 反転で右手系から左手系へ変換する
-    [[nodiscard]] inline NS::Vector3 MirrorZ(const NS::Vector3& v) noexcept
-    {
-        return NS::Vector3{v.x, v.y, -v.z};
-    }
-
-    //! 回転クォータニオンを右手系から左手系へ変換する。Z 反転の相似変換では (x,y,z,w) → (-x,-y,z,w)
-    [[nodiscard]] inline NS::Quaternion MirrorQuaternionZ(const NS::Quaternion& q) noexcept
-    {
-        return NS::Quaternion{-q.x, -q.y, q.z, q.w};
-    }
-
-    //! cgltf 列優先 16 float を行ベクトル Matrix に読む。列優先 M == 行優先 Mᵀ なので順序そのままでよく、translation は
-    //! _41/_42/_43 に入る
-    [[nodiscard]] inline NS::Matrix ReadColumnMajorMatrix(const float m[16]) noexcept
-    {
-        return NS::Matrix{
-            m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]};
-    }
-
-    //! inverseBind を Z 反転で右手系から左手系へ変換する。S = diag(1,1,-1) として S * M * S
-    [[nodiscard]] inline NS::Matrix ConjugateZMatrix(const NS::Matrix& m) noexcept
-    {
-        const NS::Matrix s = NS::Matrix::CreateScale(1.0f, 1.0f, -1.0f);
-        return s * m * s;
-    }
-
-    //! bones を親が子より前に来る順へ並べ替え、old→new index の remap を返す
-    //! 出力 bones の parentIndex は new index に張り替え済。呼出側は remap で頂点 joint index を変換する
-    [[nodiscard]] inline std::vector<NS::uint32> TopologicalSortBones(std::vector<Bone>& bones) noexcept
-    {
-        const std::size_t boneCount = bones.size();
-        std::vector<NS::uint32> oldToNew(boneCount, 0u);
-        std::vector<bool> emitted(boneCount, false);
-        std::vector<Bone> sorted;
-        sorted.reserve(boneCount);
-
-        bool progress = true;
-        while (sorted.size() < boneCount && progress)
-        {
-            progress = false;
-            for (std::size_t i = 0; i < boneCount; ++i)
+            //! joint weights を合計 1 へ正規化する。合計が極小なら joints[0]=0, weights={1,0,0,0} にする
+            inline void NormalizeJointWeights(std::array<NS::uint32, 4>& joints, std::array<float, 4>& weights) noexcept
             {
-                if (emitted[i])
+                const float sum = weights[0] + weights[1] + weights[2] + weights[3];
+                if (sum < 1e-8f)
                 {
-                    continue;
+                    joints = {0u, 0u, 0u, 0u};
+                    weights = {1.0f, 0.0f, 0.0f, 0.0f};
+                    return;
                 }
-                const int parent = bones[i].parentIndex;
-                if (parent < 0 || emitted[static_cast<std::size_t>(parent)])
+                const float inv = 1.0f / sum;
+                for (float& weight : weights)
                 {
-                    oldToNew[i] = static_cast<NS::uint32>(sorted.size());
-                    sorted.push_back(bones[i]);
-                    emitted[i] = true;
-                    progress = true;
+                    weight *= inv;
                 }
             }
-        }
 
-        // 循環など未処理が残っても取りこぼさず末尾に積む。健全な skin では発生しない
-        for (std::size_t i = 0; i < boneCount; ++i)
-        {
-            if (!emitted[i])
+            //! position / translation を Z 反転で右手系から左手系へ変換する
+            [[nodiscard]] inline NS::Vector3 MirrorZ(const NS::Vector3& v) noexcept
             {
-                oldToNew[i] = static_cast<NS::uint32>(sorted.size());
-                sorted.push_back(bones[i]);
+                return NS::Vector3{v.x, v.y, -v.z};
             }
-        }
 
-        for (Bone& bone : sorted)
-        {
-            if (bone.parentIndex >= 0)
+            //! 回転クォータニオンを右手系から左手系へ変換する。Z 反転の相似変換では (x,y,z,w) → (-x,-y,z,w)
+            [[nodiscard]] inline NS::Quaternion MirrorQuaternionZ(const NS::Quaternion& q) noexcept
             {
-                bone.parentIndex = static_cast<int>(oldToNew[static_cast<std::size_t>(bone.parentIndex)]);
+                return NS::Quaternion{-q.x, -q.y, q.z, q.w};
             }
-        }
-        bones = std::move(sorted);
-        return oldToNew;
-    }
-} // namespace NS::Gfx::detail
+
+            //! cgltf 列優先 16 float を行ベクトル Matrix に読む。列優先 M == 行優先 Mᵀ
+            //! なので順序そのままでよく、translation は _41/_42/_43 に入る
+            [[nodiscard]] inline NS::Matrix ReadColumnMajorMatrix(const float m[16]) noexcept
+            {
+                return NS::Matrix{m[0],
+                                  m[1],
+                                  m[2],
+                                  m[3],
+                                  m[4],
+                                  m[5],
+                                  m[6],
+                                  m[7],
+                                  m[8],
+                                  m[9],
+                                  m[10],
+                                  m[11],
+                                  m[12],
+                                  m[13],
+                                  m[14],
+                                  m[15]};
+            }
+
+            //! inverseBind を Z 反転で右手系から左手系へ変換する。S = diag(1,1,-1) として S * M * S
+            [[nodiscard]] inline NS::Matrix ConjugateZMatrix(const NS::Matrix& m) noexcept
+            {
+                const NS::Matrix s = NS::Matrix::CreateScale(1.0f, 1.0f, -1.0f);
+                return s * m * s;
+            }
+
+            //! bones を親が子より前に来る順へ並べ替え、old→new index の remap を返す
+            //! 出力 bones の parentIndex は new index に張り替え済。呼出側は remap で頂点 joint index を変換する
+            [[nodiscard]] inline std::vector<NS::uint32> TopologicalSortBones(std::vector<Bone>& bones) noexcept
+            {
+                const std::size_t boneCount = bones.size();
+                std::vector<NS::uint32> oldToNew(boneCount, 0u);
+                std::vector<bool> emitted(boneCount, false);
+                std::vector<Bone> sorted;
+                sorted.reserve(boneCount);
+
+                bool progress = true;
+                while (sorted.size() < boneCount && progress)
+                {
+                    progress = false;
+                    for (std::size_t i = 0; i < boneCount; ++i)
+                    {
+                        if (emitted[i])
+                        {
+                            continue;
+                        }
+                        const int parent = bones[i].parentIndex;
+                        if (parent < 0 || emitted[static_cast<std::size_t>(parent)])
+                        {
+                            oldToNew[i] = static_cast<NS::uint32>(sorted.size());
+                            sorted.push_back(bones[i]);
+                            emitted[i] = true;
+                            progress = true;
+                        }
+                    }
+                }
+
+                // 循環など未処理が残っても取りこぼさず末尾に積む。健全な skin では発生しない
+                for (std::size_t i = 0; i < boneCount; ++i)
+                {
+                    if (!emitted[i])
+                    {
+                        oldToNew[i] = static_cast<NS::uint32>(sorted.size());
+                        sorted.push_back(bones[i]);
+                    }
+                }
+
+                for (Bone& bone : sorted)
+                {
+                    if (bone.parentIndex >= 0)
+                    {
+                        bone.parentIndex = static_cast<int>(oldToNew[static_cast<std::size_t>(bone.parentIndex)]);
+                    }
+                }
+                bones = std::move(sorted);
+                return oldToNew;
+            }
+        } // namespace detail
+    } // namespace Gfx
+} // namespace NS

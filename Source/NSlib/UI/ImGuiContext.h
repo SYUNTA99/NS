@@ -5,54 +5,64 @@
 #include "NSlib/Core/Types.h"
 #include <memory>
 
-namespace NS::OS
+namespace NS
 {
-    class Window;
-}
-
-namespace NS::Gfx
-{
-    class Renderer;
-}
-
-namespace NS::UI
-{
-
-    //! ウィンドウと Renderer に対応する開発用 ImGui。無効な構成では何もしない
-    class ImGuiContext : public NS::NonCopyable
+    namespace OS
     {
-    public:
-        struct Impl;
+        class Window;
+    } // namespace OS
+} // namespace NS
 
-        //! 指定されたウィンドウと描画システムを用いてUIコンテキストを初期化する
-        ImGuiContext(NS::OS::Window& window, NS::Gfx::Renderer& renderer) noexcept;
-        ~ImGuiContext() noexcept;
+namespace NS
+{
+    namespace Gfx
+    {
+        class Renderer;
+    } // namespace Gfx
+} // namespace NS
 
-        [[nodiscard]] bool IsValid() const noexcept;
+namespace NS
+{
+    namespace UI
+    {
+        //! ウィンドウと Renderer に対応する開発用 ImGui。無効な構成では何もしない
+        class ImGuiContext : public NS::NonCopyable
+        {
+        public:
+            struct Impl;
 
-        //! リリースビルドか初期化失敗でスタブになっている場合 true、それ以外の場合は false
-        [[nodiscard]] bool IsUsingFallback() const noexcept;
+            //! 指定されたウィンドウと描画システムを用いてUIコンテキストを初期化する
+            ImGuiContext(NS::OS::Window& window, NS::Gfx::Renderer& renderer) noexcept;
+            ~ImGuiContext() noexcept;
 
-        //! @brief 新しいUIフレームの構築を開始する
-        //! @note Renderer::BeginFrame の直後に呼ぶこと
-        void BeginFrame() noexcept;
+            [[nodiscard]] bool IsValid() const noexcept;
 
-        //! @brief UIの構築を終了し、描画コマンドを発行する
-        //! @note Renderer::EndFrame の直前に呼ぶこと
-        void EndFrame() noexcept;
+            //! リリースビルドか初期化失敗でスタブになっている場合 true、それ以外の場合は false
+            [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        //! @brief OSからのウィンドウメッセージをUI側へ転送して処理する
-        //! @return UI がメッセージを消費した場合 true、それ以外の場合は false。true ならゲーム側は入力を無視する
-        [[nodiscard]] bool ForwardWndProc(void* hwnd, NS::uint32 msg, NS::uintptr wParam, NS::intptr lParam) noexcept;
+            //! @brief 新しいUIフレームの構築を開始する
+            //! @note Renderer::BeginFrame の直後に呼ぶこと
+            void BeginFrame() noexcept;
 
-        //! UI ウィンドウを操作中などで、UI がマウス入力を要求しているかを返す
-        [[nodiscard]] bool WantCaptureMouse() const noexcept;
+            //! @brief UIの構築を終了し、描画コマンドを発行する
+            //! @note Renderer::EndFrame の直前に呼ぶこと
+            void EndFrame() noexcept;
 
-        //! テキストボックスへの入力中などで、UI がキーボード入力を要求しているかを返す
-        [[nodiscard]] bool WantCaptureKeyboard() const noexcept;
+            //! @brief OSからのウィンドウメッセージをUI側へ転送して処理する
+            //! @return UI がメッセージを消費した場合 true、それ以外の場合は false。true ならゲーム側は入力を無視する
+            [[nodiscard]] bool ForwardWndProc(void* hwnd,
+                                              NS::uint32 msg,
+                                              NS::uintptr wParam,
+                                              NS::intptr lParam) noexcept;
 
-    private:
-        std::unique_ptr<Impl> m_pImpl;
-    };
+            //! UI ウィンドウを操作中などで、UI がマウス入力を要求しているかを返す
+            [[nodiscard]] bool WantCaptureMouse() const noexcept;
 
-} // namespace NS::UI
+            //! テキストボックスへの入力中などで、UI がキーボード入力を要求しているかを返す
+            [[nodiscard]] bool WantCaptureKeyboard() const noexcept;
+
+        private:
+            std::unique_ptr<Impl> m_pImpl;
+        };
+    } // namespace UI
+} // namespace NS

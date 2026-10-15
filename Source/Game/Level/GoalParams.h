@@ -1,38 +1,41 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/SubObject.h"
+#include "NSlib/CoreObject/SubObject.h"
 
-namespace GL::Level
+namespace GL
 {
-    class GoalParams : public NS::Obj::SubObject
+    namespace Level
     {
-    public:
-        [[nodiscard]] float FadeOutSeconds() const noexcept
+        class GoalParams : public NS::SubObject
         {
-            if (!NS::IsNonNegativeFinite(m_fadeOutSeconds))
+        public:
+            [[nodiscard]] float FadeOutSeconds() const noexcept
             {
-                return 0.0f;
+                if (!NS::IsNonNegativeFinite(m_fadeOutSeconds))
+                {
+                    return 0.0f;
+                }
+                return m_fadeOutSeconds;
             }
-            return m_fadeOutSeconds;
-        }
 
-        [[nodiscard]] float FadeInSeconds() const noexcept
-        {
-            if (!NS::IsNonNegativeFinite(m_fadeInSeconds))
+            [[nodiscard]] float FadeInSeconds() const noexcept
             {
-                return 0.0f;
+                if (!NS::IsNonNegativeFinite(m_fadeInSeconds))
+                {
+                    return 0.0f;
+                }
+                return m_fadeInSeconds;
             }
-            return m_fadeInSeconds;
-        }
 
-        NS_REFLECT_BEGIN(GoalParams, NS::Obj::SubObject)
-        NS_REFLECT_FIELD(m_fadeOutSeconds, "クリアの暗転秒")
-        NS_REFLECT_FIELD(m_fadeInSeconds, "クリアの明転秒")
-        NS_REFLECT_END()
+            NS_REFLECT_BEGIN(GoalParams, NS::SubObject)
+            NS_REFLECT_FIELD(m_fadeOutSeconds, "クリアの暗転秒")
+            NS_REFLECT_FIELD(m_fadeInSeconds, "クリアの明転秒")
+            NS_REFLECT_END()
 
-    private:
-        float m_fadeOutSeconds = 0.4f;
-        float m_fadeInSeconds = 0.4f;
-    };
-} // namespace GL::Level
+        private:
+            float m_fadeOutSeconds = 0.4f;
+            float m_fadeInSeconds = 0.4f;
+        };
+    } // namespace Level
+} // namespace GL

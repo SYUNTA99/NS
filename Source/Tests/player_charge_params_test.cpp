@@ -1,12 +1,12 @@
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Reflection/SubObjectEntry.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/FileSystem.h"
 
@@ -20,11 +20,11 @@
 
 TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
-    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
+    const nlohmann::json fields = NS::SerializeSubObjectFields(*params);
     const nlohmann::json expected = {
         {"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}, {"チャージ減速率", 0.7f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -33,7 +33,7 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
     // 構えの縮みは体の形を描く PlayerAppearance の欄
-    const nlohmann::json appearance = NS::Obj::SerializeSubObjectFields(player.Appearance());
+    const nlohmann::json appearance = NS::SerializeSubObjectFields(player.Appearance());
     const nlohmann::json squash = {{"構えの縮み", 0.95f}, {"押しの構えの縮み", 0.97f}};
     for (nlohmann::json::const_iterator it = squash.begin(); it != squash.end(); ++it)
     {
@@ -55,14 +55,14 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 // 溜めの倍率と溜め中の減速は欄の持ち主 PlayerParams が答える。裁定役と自機の溜めは同じ答えを読む
 TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 1.5f);
 
     ASSERT_EQ(
-        NS::Obj::ApplyJsonFields(
+        NS::ApplyJsonFields(
             *params, {{"チャージ減速率", 0.4f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}),
         0u);
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 2.0f);
@@ -73,27 +73,27 @@ TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
     EXPECT_NEAR(params->ChargingSpeedScale(), 0.6f, 0.00001f);
 
     // 減速率は 0..1 の外でも倍率が 0..1 に収まる
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージ減速率", 1.5f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージ減速率", 1.5f}}), 0u);
     EXPECT_FLOAT_EQ(params->ChargingSpeedScale(), 0.0f);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージ減速率", -0.5f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージ減速率", -0.5f}}), 0u);
     EXPECT_FLOAT_EQ(params->ChargingSpeedScale(), 1.0f);
 
     // Inspector で点を全部消すとカーブは 0 を返す。威力が消えないよう 1 とみなす
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"チャージ倍率カーブ", {{"curve", nlohmann::json::array()}}}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージ倍率カーブ", {{"curve", nlohmann::json::array()}}}}), 0u);
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 1.0f);
 }
 
 TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
+    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params,
-                                       {{"チャージ減速率", 0.4f},
-                                        {"チャージしきい値秒", 0.1f},
-                                        {"チャージ満タン秒", 0.5f},
-                                        {"チャージ倍率カーブ", {{"curve", {{0.0f, 2.0f}, {1.0f, 4.0f}}}}}}),
+    ASSERT_EQ(NS::ApplyJsonFields(*params,
+                                  {{"チャージ減速率", 0.4f},
+                                   {"チャージしきい値秒", 0.1f},
+                                   {"チャージ満タン秒", 0.5f},
+                                   {"チャージ倍率カーブ", {{"curve", {{0.0f, 2.0f}, {1.0f, 4.0f}}}}}}),
               0u);
     player.Update(false);
     EXPECT_EQ(player.ChargeJudge().chargeThresholdSteps,
@@ -104,14 +104,14 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 
 TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
 {
-    NS::Obj::Scene scene;
-    nlohmann::json doc = NS::Obj::MakeSceneJson();
-    nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-    NS::Obj::SetObjectJsonId(entry, 1);
+    NS::Scene scene;
+    nlohmann::json doc = NS::MakeSceneJson();
+    nlohmann::json entry = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonId(entry, 1);
     entry["subObjects"] = {
         {"Params", {{"チャージ減速率", 0.25f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}}};
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+    NS::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
     scene.ResetFromJson(scene.ToJson());
     const PlayerActor* player = static_cast<const PlayerActor*>(scene.Objects().FindByObjectId(1));
@@ -124,13 +124,13 @@ TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
 TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 {
     const std::vector<std::string_view> removed{"突進位置係数カーブ", "中心近くの境目"};
-    const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("PlayerActor");
+    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
     ASSERT_NE(archetype, nullptr);
-    const nlohmann::json* archetypeFields = NS::Obj::SubObjFields(*archetype, "Params");
+    const nlohmann::json* archetypeFields = NS::SubObjFields(*archetype, "Params");
     ASSERT_NE(archetypeFields, nullptr);
     for (const std::string_view key : removed)
     {
-        EXPECT_FALSE(NS::Obj::HasField(*archetypeFields, key)) << key;
+        EXPECT_FALSE(NS::HasField(*archetypeFields, key)) << key;
     }
 
     for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
@@ -140,17 +140,17 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
                                         "Scenes"),
             sceneName);
         nlohmann::json doc;
-        ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;
-        for (const nlohmann::json& entry : NS::Obj::SceneJsonObjects(doc))
+        ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
+        for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
-            const nlohmann::json* fields = NS::Obj::SubObjFields(entry, "Params");
-            if (NS::Obj::ObjectJsonClass(entry) != "PlayerActor" || fields == nullptr)
+            const nlohmann::json* fields = NS::SubObjFields(entry, "Params");
+            if (NS::ObjectJsonClass(entry) != "PlayerActor" || fields == nullptr)
             {
                 continue;
             }
             for (const std::string_view key : removed)
             {
-                EXPECT_FALSE(NS::Obj::HasField(*fields, key)) << sceneName << " " << key;
+                EXPECT_FALSE(NS::HasField(*fields, key)) << sceneName << " " << key;
             }
         }
     }
@@ -159,12 +159,12 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 // クラスに無い部品の鍵が同梱の種類の既定値と場面に残ると、読むたびに読み飛ばしの警告が出る
 TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("PlayerActor");
+    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
     ASSERT_NE(archetype, nullptr);
-    for (nlohmann::json::const_iterator it = NS::Obj::ObjectJsonSubObjs(*archetype).begin();
-         it != NS::Obj::ObjectJsonSubObjs(*archetype).end();
+    for (nlohmann::json::const_iterator it = NS::ObjectJsonSubObjs(*archetype).begin();
+         it != NS::ObjectJsonSubObjs(*archetype).end();
          ++it)
     {
         EXPECT_NE(player.FindSubObj(it.key()), nullptr) << "PlayerActor.json " << it.key();
@@ -177,14 +177,14 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
                                         "Scenes"),
             sceneName);
         nlohmann::json doc;
-        ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;
-        for (const nlohmann::json& entry : NS::Obj::SceneJsonObjects(doc))
+        ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
+        for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
-            if (NS::Obj::ObjectJsonClass(entry) != "PlayerActor")
+            if (NS::ObjectJsonClass(entry) != "PlayerActor")
             {
                 continue;
             }
-            const nlohmann::json& parts = NS::Obj::ObjectJsonSubObjs(entry);
+            const nlohmann::json& parts = NS::ObjectJsonSubObjs(entry);
             for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
             {
                 EXPECT_NE(player.FindSubObj(it.key()), nullptr) << sceneName << " " << it.key();

@@ -4,11 +4,14 @@
 
 class PlayerActor;
 
-namespace GL::Player
+namespace GL
 {
-    class BodySlamPlayerState final : public PlayerState<BodySlamPlayerState>
+    namespace Player
     {
-    public:
-        void OnStep(::PlayerActor& player, float dt) override;
-    };
-} // namespace GL::Player
+        class BodySlamPlayerState final : public PlayerState<BodySlamPlayerState>
+        {
+        public:
+            void OnStep(::PlayerActor& player, float dt) override;
+        };
+    } // namespace Player
+} // namespace GL

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // Graphics 層の公開ヘッダーをまとめる共通ヘッダー
 

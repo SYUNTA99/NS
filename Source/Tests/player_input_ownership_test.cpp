@@ -1,17 +1,17 @@
 #include "Game/PlayerActor.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/PlayerInput.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
 #include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>
 
 TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
+    NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
-    NS::Obj::Body& movement = player.Body();
+    NS::Body& movement = player.Body();
     input->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     movement.SetGrounded(true);
     player.AccelerateToInputDirection(0.1f);
@@ -23,16 +23,16 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
     input->SetClimbMove(2.0f, -2.0f);
     EXPECT_FLOAT_EQ(player.ClimbRight(), 1.0f);
     EXPECT_FLOAT_EQ(player.ClimbForward(), -1.0f);
-    EXPECT_EQ(player.Phase(), NS::Obj::UpdatePhase::Player);
+    EXPECT_EQ(player.Phase(), NS::UpdatePhase::Player);
 }
 
 TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
+    NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
-    NS::Obj::Body& movement = player.Body();
+    NS::Body& movement = player.Body();
     movement.SetGrounded(true);
     player.SyncGroundState();
     input->SetJumpPressed();
@@ -53,11 +53,11 @@ TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 
 TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
+    NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
-    NS::Obj::Body& movement = player.Body();
+    NS::Body& movement = player.Body();
     input->SetJumpHeld(true);
     player.Update();
     movement.SetVerticalVelocity(10.0f);
@@ -79,9 +79,9 @@ TEST(PlayerInputOwnership, SlamTappedBetweenPlayerStepsIsSeenOnce)
 {
     // 遅い世界では入力の段だけが毎歩回る。自機が読まない歩に押して放した突進を、次に読む歩で 1 回押したと見せる
     NS::OS::Input& platform = NS::OS::Input::Get();
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
+    NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     platform.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
     input->Update();

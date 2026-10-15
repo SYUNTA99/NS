@@ -1,7 +1,7 @@
 #include "Editor/GizmoEditor.h"
 #include "Editor/GridMath.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>
@@ -54,7 +54,7 @@ TEST(EditorGizmo, DeactivatingEndsTheDrag)
     const std::optional<NS::Vector2> handle = FindMoveHandle(viewProjection, view);
     ASSERT_TRUE(handle.has_value());
 
-    NS::Obj::Transform target;
+    NS::Transform target;
     NS::Editor::GizmoEditor gizmo;
     gizmo.SetInput(&input);
     gizmo.SetActive(true);

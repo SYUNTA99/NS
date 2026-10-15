@@ -1,5 +1,5 @@
 #include "Game/Level/PropActor.h"
-#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 
 #include <gtest/gtest.h>
 
@@ -10,9 +10,9 @@
 // 保存・Inspector・種類の既定は、この並びで欄を書き読みする。基底の枠を先に、置物の部品を後に並べる
 TEST(ReflectedSubObjs, ListsBaseFramePartsBeforeTheClassPartsWithTheirSaveKeys)
 {
-    const std::unique_ptr<GL::Level::PropActor> actor = NS::Obj::CreateActor<GL::Level::PropActor>();
+    const std::unique_ptr<GL::Level::PropActor> actor = NS::CreateActor<GL::Level::PropActor>();
     std::vector<std::string> keys;
-    NS::Obj::ForEachReflectedSubObj(*actor, [&](const NS::Obj::SubObjectDesc& field, NS::Obj::SubObject* part) {
+    NS::ForEachReflectedSubObj(*actor, [&](const NS::SubObjectDesc& field, NS::SubObject* part) {
         EXPECT_EQ(part->Owner(), actor.get());
         EXPECT_EQ(actor->FindSubObj(field.key), part);
         keys.emplace_back(field.key);

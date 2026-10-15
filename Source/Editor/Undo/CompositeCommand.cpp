@@ -1,47 +1,49 @@
 #include "Editor/Undo/CompositeCommand.h"
 
-namespace NS::Editor
+namespace NS
 {
-
-    CompositeCommand::CompositeCommand(std::vector<std::unique_ptr<ICommand>> commands) noexcept
-        : m_commands(std::move(commands))
-    {}
-
-    void CompositeCommand::Do(IObjectSnapshotApplier& target) noexcept
+    namespace Editor
     {
-        for (std::unique_ptr<ICommand>& command : m_commands)
+        CompositeCommand::CompositeCommand(std::vector<std::unique_ptr<ICommand>> commands) noexcept
+            : m_commands(std::move(commands))
+        {}
+
+        void CompositeCommand::Do(IObjectSnapshotApplier& target) noexcept
         {
-            if (command)
+            for (std::unique_ptr<ICommand>& command : m_commands)
             {
-                command->Do(target);
+                if (command)
+                {
+                    command->Do(target);
+                }
             }
         }
-    }
 
-    void CompositeCommand::Undo(IObjectSnapshotApplier& target) noexcept
-    {
-        // 後から効かせた分を先に戻さないと、依存のある編集が食い違う
-        for (std::vector<std::unique_ptr<ICommand>>::reverse_iterator it = m_commands.rbegin(); it != m_commands.rend();
-             ++it)
+        void CompositeCommand::Undo(IObjectSnapshotApplier& target) noexcept
         {
-            if (*it)
+            // 後から効かせた分を先に戻さないと、依存のある編集が食い違う
+            for (std::vector<std::unique_ptr<ICommand>>::reverse_iterator it = m_commands.rbegin();
+                 it != m_commands.rend();
+                 ++it)
             {
-                (*it)->Undo(target);
+                if (*it)
+                {
+                    (*it)->Undo(target);
+                }
             }
         }
-    }
 
-    std::size_t CompositeCommand::EstimatedBytes() const noexcept
-    {
-        std::size_t bytes = sizeof(CompositeCommand);
-        for (const std::unique_ptr<ICommand>& command : m_commands)
+        std::size_t CompositeCommand::EstimatedBytes() const noexcept
         {
-            if (command)
+            std::size_t bytes = sizeof(CompositeCommand);
+            for (const std::unique_ptr<ICommand>& command : m_commands)
             {
-                bytes += command->EstimatedBytes();
+                if (command)
+                {
+                    bytes += command->EstimatedBytes();
+                }
             }
+            return bytes;
         }
-        return bytes;
-    }
-
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

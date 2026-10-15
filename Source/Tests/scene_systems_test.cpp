@@ -1,23 +1,23 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/Message/Message.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/System/CameraManager.h"
+#include "NSlib/CoreObject/System/HitScreenDirector.h"
+#include "NSlib/CoreObject/System/HitSensorDirector.h"
+#include "NSlib/CoreObject/System/PadRumbleDirector.h"
+#include "NSlib/CoreObject/System/PhysicsDirector.h"
+#include "NSlib/CoreObject/System/SceneRenderer.h"
+#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/CoreObject/System/ScreenFadeDirector.h"
+#include "NSlib/CoreObject/System/UIDirector.h"
+#include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Graphics/DebugDraw.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/IUse/IUseSceneSystem.h"
-#include "NSlib/Object/Message/Message.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/SubObject.h"
-#include "NSlib/Object/System/CameraManager.h"
-#include "NSlib/Object/System/HitScreenDirector.h"
-#include "NSlib/Object/System/HitSensorDirector.h"
-#include "NSlib/Object/System/PadRumbleDirector.h"
-#include "NSlib/Object/System/PhysicsDirector.h"
-#include "NSlib/Object/System/SceneRenderer.h"
-#include "NSlib/Object/System/SceneSystem.h"
-#include "NSlib/Object/System/ScreenFadeDirector.h"
-#include "NSlib/Object/System/UIDirector.h"
-#include "NSlib/Object/UIActor.h"
 
 #include <gtest/gtest.h>
 
@@ -29,44 +29,43 @@
 // シーンに 1 つの物の置き場、画面に出す物 (UIActor)、部品でない物の更新の登録口を縛る
 
 // シーンの管理役は全部 SceneSystem の派生
-static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::SceneRenderer>);
-static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::HitSensorDirector>);
-static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::CameraManager>);
-static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::HitScreenDirector>);
-static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::PadRumbleDirector>);
-static_assert(std::is_base_of_v<NS::Obj::SceneSystem, GL::Level::CourseDirector>);
-static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::UIDirector>);
-static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::PhysicsDirector>);
-static_assert(std::is_base_of_v<NS::Obj::SceneSystem, NS::Obj::ScreenFadeDirector>);
+static_assert(std::is_base_of_v<NS::SceneSystem, NS::SceneRenderer>);
+static_assert(std::is_base_of_v<NS::SceneSystem, NS::HitSensorDirector>);
+static_assert(std::is_base_of_v<NS::SceneSystem, NS::CameraManager>);
+static_assert(std::is_base_of_v<NS::SceneSystem, NS::HitScreenDirector>);
+static_assert(std::is_base_of_v<NS::SceneSystem, NS::PadRumbleDirector>);
+static_assert(std::is_base_of_v<NS::SceneSystem, GL::Level::CourseDirector>);
+static_assert(std::is_base_of_v<NS::SceneSystem, NS::UIDirector>);
+static_assert(std::is_base_of_v<NS::SceneSystem, NS::PhysicsDirector>);
+static_assert(std::is_base_of_v<NS::SceneSystem, NS::ScreenFadeDirector>);
 
 // 更新の登録の口は Scene の 1 つで、SceneSystem の派生だけを受ける
 template <class T>
 concept CanAddSystemTick =
-    requires(NS::Obj::Scene& scene, T& system) { scene.AddSystemTick(system, NS::Obj::UpdatePhase::Triggers); };
-static_assert(CanAddSystemTick<NS::Obj::UIDirector>);
-static_assert(!CanAddSystemTick<NS::Obj::SceneActor>);
-static_assert(!CanAddSystemTick<NS::Obj::UIActor>);
+    requires(NS::Scene& scene, T& system) { scene.AddSystemTick(system, NS::UpdatePhase::Triggers); };
+static_assert(CanAddSystemTick<NS::UIDirector>);
+static_assert(!CanAddSystemTick<NS::SceneActor>);
+static_assert(!CanAddSystemTick<NS::UIActor>);
 
 // 段を回す口も Scene の 1 つ。配置物の一覧を直に回すと、同じ段の管理役が呼ばれない
 template <class T>
-concept CanExecutePhase = requires(T& target) { target.ExecutePhase(NS::Obj::UpdatePhase::Triggers); };
-static_assert(CanExecutePhase<NS::Obj::Scene>);
-static_assert(!CanExecutePhase<NS::Obj::ActorList>);
+concept CanExecutePhase = requires(T& target) { target.ExecutePhase(NS::UpdatePhase::Triggers); };
+static_assert(CanExecutePhase<NS::Scene>);
+static_assert(!CanExecutePhase<NS::ActorList>);
 
 // 知らせを受ける口は送る関数だけが呼べる
 template <class T>
-concept CanReceiveMsgDirectly =
-    requires(T& actor, const NS::Obj::Message& msg) { actor.ReceiveMsg(msg, nullptr, nullptr); };
-static_assert(!CanReceiveMsgDirectly<NS::Obj::SceneActor>);
+concept CanReceiveMsgDirectly = requires(T& actor, const NS::Message& msg) { actor.ReceiveMsg(msg, nullptr, nullptr); };
+static_assert(!CanReceiveMsgDirectly<NS::SceneActor>);
 static_assert(!CanReceiveMsgDirectly<PlayerActor>);
 static_assert(!CanReceiveMsgDirectly<GL::Level::PropActor>);
 
 namespace
 {
-    class CountedSceneObj final : public NS::Obj::SceneSystem
+    class CountedSceneObj final : public NS::SceneSystem
     {
     public:
-        explicit CountedSceneObj(NS::Obj::Scene& scene) noexcept
+        explicit CountedSceneObj(NS::Scene& scene) noexcept
         {
             (void)scene;
             ++s_alive;
@@ -76,18 +75,15 @@ namespace
     };
 
     // 作られた時に更新へ登録し、解除を自分では書かない管理役
-    class SelfRegisteringSystem final : public NS::Obj::SceneSystem
+    class SelfRegisteringSystem final : public NS::SceneSystem
     {
     public:
-        explicit SelfRegisteringSystem(NS::Obj::Scene& scene)
-        {
-            scene.AddSystemTick(*this, NS::Obj::UpdatePhase::Triggers);
-        }
+        explicit SelfRegisteringSystem(NS::Scene& scene) { scene.AddSystemTick(*this, NS::UpdatePhase::Triggers); }
         void OnTick() override { ++s_ticks; }
         static inline int s_ticks = 0;
     };
 
-    class CountingUI final : public NS::Obj::UIActor
+    class CountingUI final : public NS::UIActor
     {
     public:
         void OnTick() override { ++updates; }
@@ -101,7 +97,7 @@ namespace
         std::vector<std::string> order;
     };
 
-    class LoggingTicker final : public NS::Obj::SceneSystem
+    class LoggingTicker final : public NS::SceneSystem
     {
     public:
         explicit LoggingTicker(TickLog& log) noexcept : m_log(log) {}
@@ -111,10 +107,10 @@ namespace
         TickLog& m_log;
     };
 
-    class LoggingSubObject final : public NS::Obj::SubObject
+    class LoggingSubObject final : public NS::SubObject
     {
     public:
-        explicit LoggingSubObject(TickLog* log = nullptr) noexcept : NS::Obj::SubObject(), m_log(log) {}
+        explicit LoggingSubObject(TickLog* log = nullptr) noexcept : NS::SubObject(), m_log(log) {}
         void Log()
         {
             if (m_log != nullptr)
@@ -122,16 +118,16 @@ namespace
                 m_log->order.push_back("component");
             }
         }
-        NS_REFLECT_NONE(LoggingSubObject, NS::Obj::SubObject)
+        NS_REFLECT_NONE(LoggingSubObject, NS::SubObject)
 
     private:
         TickLog* m_log = nullptr;
     };
 
-    class LoggingActor final : public NS::Obj::SceneActor
+    class LoggingActor final : public NS::SceneActor
     {
     public:
-        NS_REFLECT_BEGIN(LoggingActor, NS::Obj::SceneActor)
+        NS_REFLECT_BEGIN(LoggingActor, NS::SceneActor)
         NS_REFLECT_SUBOBJ(m_part, "Logging")
         NS_REFLECT_END()
 
@@ -153,47 +149,47 @@ namespace
 
 TEST(SceneSystemHolder, OneInstancePerTypeAndClearDestroys)
 {
-    NS::Obj::Scene scene;
-    CountedSceneObj* first = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(&scene);
-    CountedSceneObj* second = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(&scene);
+    NS::Scene scene;
+    CountedSceneObj* first = NS::GetOrCreateSceneSystem<CountedSceneObj>(&scene);
+    CountedSceneObj* second = NS::GetOrCreateSceneSystem<CountedSceneObj>(&scene);
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(first, second);
-    EXPECT_EQ(NS::Obj::FindSceneSystem<CountedSceneObj>(&scene), first);
+    EXPECT_EQ(NS::FindSceneSystem<CountedSceneObj>(&scene), first);
     EXPECT_EQ(CountedSceneObj::s_alive, 1);
 
     // 配置物を組み直すと最初の状態から作り直させる
-    scene.ResetFromJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::MakeSceneJson());
     EXPECT_EQ(CountedSceneObj::s_alive, 0);
-    EXPECT_EQ(NS::Obj::FindSceneSystem<CountedSceneObj>(&scene), nullptr);
+    EXPECT_EQ(NS::FindSceneSystem<CountedSceneObj>(&scene), nullptr);
 }
 
 // 保持体は捨てる前に更新から外す。管理役はデストラクタに解除を書かなくてよい
 TEST(SceneSystemHolder, ClearRemovesTheSystemFromTheUpdate)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     SelfRegisteringSystem::s_ticks = 0;
-    ASSERT_NE(NS::Obj::GetOrCreateSceneSystem<SelfRegisteringSystem>(&scene), nullptr);
+    ASSERT_NE(NS::GetOrCreateSceneSystem<SelfRegisteringSystem>(&scene), nullptr);
     scene.OnUpdate();
     EXPECT_EQ(SelfRegisteringSystem::s_ticks, 1);
 
-    scene.ResetFromJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::MakeSceneJson());
     scene.OnUpdate();
     EXPECT_EQ(SelfRegisteringSystem::s_ticks, 1);
 }
 
 TEST(SceneSystemHolder, ActorReachesSceneObjectsThroughWindow)
 {
-    NS::Obj::Scene scene;
-    NS::Obj::SceneActor* actor = scene.SpawnTransient<NS::Obj::SceneActor>();
-    CountedSceneObj* made = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(actor);
-    EXPECT_EQ(made, NS::Obj::FindSceneSystem<CountedSceneObj>(&scene));
-    NS::Obj::SceneActor loose;
-    EXPECT_EQ(NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(&loose), nullptr);
+    NS::Scene scene;
+    NS::SceneActor* actor = scene.SpawnTransient<NS::SceneActor>();
+    CountedSceneObj* made = NS::GetOrCreateSceneSystem<CountedSceneObj>(actor);
+    EXPECT_EQ(made, NS::FindSceneSystem<CountedSceneObj>(&scene));
+    NS::SceneActor loose;
+    EXPECT_EQ(NS::GetOrCreateSceneSystem<CountedSceneObj>(&loose), nullptr);
 }
 
 TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     CountingUI ui;
     ui.Open(scene);
     EXPECT_TRUE(ui.IsOpen());
@@ -209,13 +205,13 @@ TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
 
 TEST(ActorListTicker, TickerRunsAfterSubObjectsOfSameBand)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     TickLog log;
     scene.SpawnTransient<LoggingActor>(log);
     LoggingTicker ticker(log);
-    scene.AddSystemTick(ticker, NS::Obj::UpdatePhase::Triggers);
+    scene.AddSystemTick(ticker, NS::UpdatePhase::Triggers);
 
-    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::UpdatePhase::Triggers);
     ASSERT_EQ(log.order.size(), 3u);
     EXPECT_EQ(log.order[0], "actor");
     EXPECT_EQ(log.order[1], "component");
@@ -223,7 +219,7 @@ TEST(ActorListTicker, TickerRunsAfterSubObjectsOfSameBand)
 
     scene.RemoveSystemTick(ticker);
     log.order.clear();
-    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::UpdatePhase::Triggers);
     ASSERT_EQ(log.order.size(), 2u);
     EXPECT_EQ(log.order[0], "actor");
     EXPECT_EQ(log.order[1], "component");
@@ -231,7 +227,7 @@ TEST(ActorListTicker, TickerRunsAfterSubObjectsOfSameBand)
 
 TEST(ActorListTicker, ActorTickFollowsBands)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     TickLog log;
     scene.SpawnTransient<LoggingActor>(log);
 
@@ -245,7 +241,7 @@ TEST(ActorListTicker, ActorTickFollowsBands)
 TEST(SceneStepShapes, RebuildingTheWorldDropsTheStepShapes)
 {
     namespace DD = NS::Gfx::DebugDraw;
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     DD::Clear();
     DD::Line(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
     DD::Triangle(NS::Vector3{0.0f, 0.0f, 0.0f},
@@ -253,7 +249,7 @@ TEST(SceneStepShapes, RebuildingTheWorldDropsTheStepShapes)
                  NS::Vector3{0.0f, 1.0f, 0.0f},
                  NS::Color{1.0f, 1.0f, 1.0f, 0.5f});
 
-    scene.ResetFromJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::MakeSceneJson());
 
     EXPECT_EQ(DD::VertexCount(), std::size_t{0});
     EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
@@ -264,7 +260,7 @@ TEST(SceneStepShapes, RebuildingTheWorldDropsTheStepShapes)
 TEST(SceneStepShapes, ShutdownDropsTheStepShapes)
 {
     namespace DD = NS::Gfx::DebugDraw;
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     DD::Clear();
     DD::Line(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
 

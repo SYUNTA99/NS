@@ -1,13 +1,13 @@
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Object/IUse/IUseState.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/ObjectBuilder.h"
-#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/StateMachineOf.h"
-#include "NSlib/Object/SubObjects/StateMachine.h"
+#include "NSlib/CoreObject/IUse/IUseState.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/StateMachineOf.h"
+#include "NSlib/CoreObject/SubObjects/StateMachine.h"
 
 #include <gtest/gtest.h>
 
@@ -18,10 +18,10 @@
 
 namespace
 {
-    int CountSubObjKey(const NS::Obj::SceneActor& actor, std::string_view key)
+    int CountSubObjKey(const NS::SceneActor& actor, std::string_view key)
     {
         int count = 0;
-        NS::Obj::ForEachReflectedSubObj(actor, [&](const NS::Obj::SubObjectDesc& field, const NS::Obj::SubObject*) {
+        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::SubObject*) {
             if (std::string_view(field.key) == key)
             {
                 ++count;
@@ -32,7 +32,7 @@ namespace
 
     void ExpectNoStateMachineFields(const nlohmann::json& object)
     {
-        const nlohmann::json* fields = NS::Obj::SubObjFields(object, "StateMachine");
+        const nlohmann::json* fields = NS::SubObjFields(object, "StateMachine");
         if (fields != nullptr)
         {
             EXPECT_TRUE(fields->empty()) << fields->dump();
@@ -41,7 +41,7 @@ namespace
 
     void ExpectOnlyEnabledField(const nlohmann::json& object)
     {
-        const nlohmann::json* fields = NS::Obj::SubObjFields(object, "StateMachine");
+        const nlohmann::json* fields = NS::SubObjFields(object, "StateMachine");
         if (fields == nullptr)
         {
             return;
@@ -52,20 +52,20 @@ namespace
         }
     }
 
-    class OwnedState final : public NS::Obj::StateOf<OwnedState, NS::Obj::SceneActor>
+    class OwnedState final : public NS::StateOf<OwnedState, NS::SceneActor>
     {
     public:
-        void OnStep(NS::Obj::SceneActor&, float) override {}
+        void OnStep(NS::SceneActor&, float) override {}
     };
 
     // BuildStateMachine は派生が自分の組み立ての中で呼ぶ口なので、試しの派生が開ける
-    class MachineActor final : public NS::Obj::SceneActor
+    class MachineActor final : public NS::SceneActor
     {
     public:
-        NS::Obj::StateMachineOf<NS::Obj::SceneActor>* BuildOwned()
+        NS::StateMachineOf<NS::SceneActor>* BuildOwned()
         {
-            NS::Obj::StateMachineOf<NS::Obj::SceneActor>* machine = nullptr;
-            (void)BuildStateMachine<NS::Obj::SceneActor, OwnedState>(*this, machine);
+            NS::StateMachineOf<NS::SceneActor>* machine = nullptr;
+            (void)BuildStateMachine<NS::SceneActor, OwnedState>(*this, machine);
             return machine;
         }
     };
@@ -73,26 +73,26 @@ namespace
     class ProbeActor;
 
     // 先頭の OnEnter で、持ち主が預かった型付きの状態機械を引けるかを控える
-    class ProbeState final : public NS::Obj::StateOf<ProbeState, ProbeActor>
+    class ProbeState final : public NS::StateOf<ProbeState, ProbeActor>
     {
     public:
         void OnEnter(ProbeActor& owner) override;
         void OnStep(ProbeActor&, float) override {}
     };
 
-    class SecondProbeState final : public NS::Obj::StateOf<SecondProbeState, ProbeActor>
+    class SecondProbeState final : public NS::StateOf<SecondProbeState, ProbeActor>
     {
     public:
         void OnStep(ProbeActor&, float) override {}
     };
 
-    class ProbeActor final : public NS::Obj::SceneActor
+    class ProbeActor final : public NS::SceneActor
     {
     public:
         bool BuildProbe() { return BuildStateMachine<ProbeActor, ProbeState>(*this, machine); }
         bool BuildSecond() { return BuildStateMachine<ProbeActor, SecondProbeState>(*this, machine); }
-        NS::Obj::StateMachineOf<ProbeActor>* machine = nullptr;
-        NS::Obj::StateMachineOf<ProbeActor>* machineSeenInEnter = nullptr;
+        NS::StateMachineOf<ProbeActor>* machine = nullptr;
+        NS::StateMachineOf<ProbeActor>* machineSeenInEnter = nullptr;
     };
 
     void ProbeState::OnEnter(ProbeActor& owner)
@@ -101,20 +101,20 @@ namespace
     }
 
     // 段のメンバーの中から、歩数の問いを修飾なしで呼ぶ
-    class StepReadingActor final : public NS::Obj::SceneActor
+    class StepReadingActor final : public NS::SceneActor
     {
     public:
         void BuildOwned()
         {
-            NS::Obj::StateMachineOf<NS::Obj::SceneActor>* machine = nullptr;
-            (void)BuildStateMachine<NS::Obj::SceneActor, OwnedState>(*this, machine);
+            NS::StateMachineOf<NS::SceneActor>* machine = nullptr;
+            (void)BuildStateMachine<NS::SceneActor, OwnedState>(*this, machine);
         }
         NS::uint32 stepsSeenInVisual = 0;
 
     protected:
         void VisualStep() override
         {
-            NS::Obj::SceneActor::VisualStep();
+            NS::SceneActor::VisualStep();
             stepsSeenInVisual = StepsInState(this);
         }
     };
@@ -122,27 +122,27 @@ namespace
 
 TEST(ActorStateMachine, ActorWithoutMachineUpdatesQuietly)
 {
-    NS::Obj::SceneActor actor;
+    NS::SceneActor actor;
     EXPECT_EQ(actor.GetStates(), nullptr);
     actor.Update();
     EXPECT_EQ(actor.GetStates(), nullptr);
-    EXPECT_FALSE(NS::Obj::IsState<OwnedState>(&actor));
+    EXPECT_FALSE(NS::IsState<OwnedState>(&actor));
 }
 
 TEST(ActorStateMachine, BaseOwnsTheMachineAndUpdateStepsIt)
 {
     MachineActor actor;
-    NS::Obj::StateMachineOf<NS::Obj::SceneActor>* machine = actor.BuildOwned();
+    NS::StateMachineOf<NS::SceneActor>* machine = actor.BuildOwned();
 
     ASSERT_NE(actor.GetStates(), nullptr);
     EXPECT_EQ(actor.GetStates(), machine);
-    EXPECT_TRUE(NS::Obj::IsState<OwnedState>(&actor));
-    EXPECT_TRUE(NS::Obj::IsFirstStep(&actor));
+    EXPECT_TRUE(NS::IsState<OwnedState>(&actor));
+    EXPECT_TRUE(NS::IsFirstStep(&actor));
     actor.Update();
-    EXPECT_EQ(NS::Obj::StepsInState(&actor), 1u);
+    EXPECT_EQ(NS::StepsInState(&actor), 1u);
     actor.Update();
-    EXPECT_EQ(NS::Obj::StepsInState(&actor), 2u);
-    EXPECT_TRUE(NS::Obj::SetState<OwnedState>(&actor));
+    EXPECT_EQ(NS::StepsInState(&actor), 2u);
+    EXPECT_TRUE(NS::SetState<OwnedState>(&actor));
 }
 
 TEST(ActorStateMachine, StepsInStateIsReachableUnqualifiedInsideAnActor)
@@ -168,16 +168,16 @@ TEST(ActorStateMachine, TypedPointerIsReadableFromFirstStateOnEnter)
 
 TEST(ActorStateMachine, MachineIsListedAsTheStateMachineSubObject)
 {
-    const std::unique_ptr<PlayerActor> player = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
     EXPECT_EQ(CountSubObjKey(*player, "StateMachine"), 1);
-    const NS::Obj::StateMachine* playerPart = NS::Obj::Cast<NS::Obj::StateMachine>(player->FindSubObj("StateMachine"));
+    const NS::StateMachine* playerPart = NS::Cast<NS::StateMachine>(player->FindSubObj("StateMachine"));
     ASSERT_NE(playerPart, nullptr);
     ASSERT_NE(player->GetStates(), nullptr);
     EXPECT_EQ(playerPart->Machine(), player->GetStates());
 
-    const std::unique_ptr<GL::Level::PropActor> prop = NS::Obj::CreateActor<GL::Level::PropActor>();
+    const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
     EXPECT_EQ(CountSubObjKey(*prop, "StateMachine"), 1);
-    const NS::Obj::StateMachine* propPart = NS::Obj::Cast<NS::Obj::StateMachine>(prop->FindSubObj("StateMachine"));
+    const NS::StateMachine* propPart = NS::Cast<NS::StateMachine>(prop->FindSubObj("StateMachine"));
     ASSERT_NE(propPart, nullptr);
     ASSERT_NE(prop->GetStates(), nullptr);
     EXPECT_EQ(propPart->Machine(), prop->GetStates());
@@ -185,24 +185,24 @@ TEST(ActorStateMachine, MachineIsListedAsTheStateMachineSubObject)
 
 TEST(ActorStateMachine, SavedJsonGainsNoStateMachineFields)
 {
-    const std::unique_ptr<PlayerActor> player = NS::Obj::CreateActor<PlayerActor>();
-    ExpectNoStateMachineFields(NS::Obj::ObjectToJson(*player));
-    ExpectOnlyEnabledField(NS::Obj::ExpandObjectJson(NS::Obj::MakePrototypeJson<PlayerActor>()));
+    const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
+    ExpectNoStateMachineFields(NS::ObjectToJson(*player));
+    ExpectOnlyEnabledField(NS::ExpandObjectJson(NS::MakePrototypeJson<PlayerActor>()));
 
-    const std::unique_ptr<GL::Level::PropActor> prop = NS::Obj::CreateActor<GL::Level::PropActor>();
-    ExpectNoStateMachineFields(NS::Obj::ObjectToJson(*prop));
-    ExpectOnlyEnabledField(NS::Obj::ExpandObjectJson(NS::Obj::MakePrototypeJson<GL::Level::PropActor>()));
+    const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
+    ExpectNoStateMachineFields(NS::ObjectToJson(*prop));
+    ExpectOnlyEnabledField(NS::ExpandObjectJson(NS::MakePrototypeJson<GL::Level::PropActor>()));
 }
 
 TEST(ActorStateMachine, SecondBuildFailsAndKeepsTheFirstMachine)
 {
     ProbeActor actor;
     ASSERT_TRUE(actor.BuildProbe());
-    NS::Obj::StateMachineOf<ProbeActor>* first = actor.machine;
+    NS::StateMachineOf<ProbeActor>* first = actor.machine;
 
     EXPECT_FALSE(actor.BuildSecond());
 
     EXPECT_EQ(actor.machine, first);
     EXPECT_EQ(actor.GetStates(), first);
-    EXPECT_TRUE(NS::Obj::IsState<ProbeState>(&actor));
+    EXPECT_TRUE(NS::IsState<ProbeState>(&actor));
 }

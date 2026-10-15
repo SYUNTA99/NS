@@ -1,6 +1,6 @@
 #include "NSlib/Core/Coroutine.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Object/StateMachineOf.h"
+#include "NSlib/CoreObject/StateMachineOf.h"
 
 #include <gtest/gtest.h>
 
@@ -15,8 +15,8 @@ namespace
 
     struct StateOwner
     {
-        NS::Obj::StateMachineOf<StateOwner>* machine = nullptr;
-        NS::Obj::SubStateMachine<StateOwner>* child = nullptr;
+        NS::StateMachineOf<StateOwner>* machine = nullptr;
+        NS::SubStateMachine<StateOwner>* child = nullptr;
         std::vector<int> calls;
         bool change = false;
         bool coroutineChangesState = false;
@@ -52,7 +52,7 @@ namespace
         ++owner.resumed;
     }
 
-    class IdleState final : public NS::Obj::StateOf<IdleState, StateOwner>
+    class IdleState final : public NS::StateOf<IdleState, StateOwner>
     {
     public:
         void OnEnter(StateOwner& owner) override
@@ -89,7 +89,7 @@ namespace
         }
     };
 
-    class ActiveState final : public NS::Obj::StateOf<ActiveState, StateOwner>
+    class ActiveState final : public NS::StateOf<ActiveState, StateOwner>
     {
     public:
         void OnEnter(StateOwner& owner) override
@@ -112,7 +112,7 @@ namespace
         }
     };
 
-    class ChildState final : public NS::Obj::StateOf<ChildState, StateOwner>
+    class ChildState final : public NS::StateOf<ChildState, StateOwner>
     {
     public:
         void OnEnter(StateOwner& owner) override { StartCoroutine(ResumeChildLater(owner)); }
@@ -123,7 +123,7 @@ namespace
         }
     };
 
-    class DeltaState final : public NS::Obj::StateOf<DeltaState, StateOwner>
+    class DeltaState final : public NS::StateOf<DeltaState, StateOwner>
     {
     public:
         void OnEnter(StateOwner& owner) override { StartCoroutine(Run(owner)); }
@@ -145,7 +145,7 @@ namespace
 TEST(StateMachineOf, TransitionOrderAndFirstStep)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     EXPECT_TRUE(machine.IsFirstStep());
@@ -169,7 +169,7 @@ TEST(StateMachineOf, TransitionOrderAndFirstStep)
 TEST(StateMachineOf, OwnerComesFromBuildOnly)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
@@ -181,7 +181,7 @@ TEST(StateMachineOf, OwnerComesFromBuildOnly)
 TEST(StateMachineOf, LeavingStateCancelsItsCoroutine)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
@@ -192,7 +192,7 @@ TEST(StateMachineOf, LeavingStateCancelsItsCoroutine)
 TEST(StateMachineOf, CoroutineCanLeaveItsStateWhileResuming)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.coroutineChangesState = true;
     machine.Build<IdleState, ActiveState>(owner);
@@ -205,7 +205,7 @@ TEST(StateMachineOf, CoroutineCanLeaveItsStateWhileResuming)
 TEST(StateMachineOf, ChildFinishStopsStepsAndCancelsCoroutine)
 {
     StateOwner owner;
-    NS::Obj::SubStateMachine<StateOwner> child;
+    NS::SubStateMachine<StateOwner> child;
     owner.child = &child;
     child.Build<ChildState>(owner);
     EXPECT_FALSE(child.IsDead());
@@ -221,7 +221,7 @@ TEST(StateMachineOf, ChildFinishStopsStepsAndCancelsCoroutine)
 TEST(StateMachineOf, CoroutineReadsTheCurrentStepDelta)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     machine.Build<DeltaState>(owner);
     EXPECT_TRUE(owner.deltas.empty());
     machine.Step(0.1f);
@@ -232,7 +232,7 @@ TEST(StateMachineOf, CoroutineReadsTheCurrentStepDelta)
 TEST(StateMachineOf, ExternalRequestDefersEntryUntilTheNextStepBoundary)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
@@ -249,7 +249,7 @@ TEST(StateMachineOf, ExternalRequestDefersEntryUntilTheNextStepBoundary)
 TEST(StateMachineOf, EntryDoesNotInterruptThePreviousStep)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.change = true;
     owner.recordAfterChange = true;
@@ -263,7 +263,7 @@ TEST(StateMachineOf, EntryDoesNotInterruptThePreviousStep)
 TEST(StateMachineOf, LastValidRequestWinsWithoutExitingTwice)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState, DeltaState>(owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
@@ -279,7 +279,7 @@ TEST(StateMachineOf, LastValidRequestWinsWithoutExitingTwice)
 TEST(StateMachineOf, ResetDiscardsAPendingEntry)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     machine.Change<ActiveState>();
@@ -293,7 +293,7 @@ TEST(StateMachineOf, ResetDiscardsAPendingEntry)
 TEST(StateMachineOf, ChildFinishDiscardsAnEntryRequestedDuringItsStep)
 {
     StateOwner owner;
-    NS::Obj::SubStateMachine<StateOwner> child;
+    NS::SubStateMachine<StateOwner> child;
     owner.child = &child;
     owner.machine = &child.Machine();
     owner.change = true;
@@ -310,7 +310,7 @@ TEST(StateMachineOf, ChildFinishDiscardsAnEntryRequestedDuringItsStep)
 TEST(StateMachineOf, ReturningToTheExitedStateReentersAtTheBoundary)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     machine.Change<ActiveState>();
@@ -323,7 +323,7 @@ TEST(StateMachineOf, ReturningToTheExitedStateReentersAtTheBoundary)
 TEST(StateMachineOf, RequestingTheCurrentStateDoesNotResetItsStep)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     machine.Step(0.1f);
@@ -335,7 +335,7 @@ TEST(StateMachineOf, RequestingTheCurrentStateDoesNotResetItsStep)
 TEST(StateMachineOf, EntryRequestAtTheOpeningBoundaryDoesNotStepTheExitedState)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.entryChangesState = true;
     machine.Build<IdleState, ActiveState, DeltaState>(owner);
@@ -352,7 +352,7 @@ TEST(StateMachineOf, EntryRequestAtTheOpeningBoundaryDoesNotStepTheExitedState)
 TEST(StateMachineOf, EntryRequestAtTheClosingBoundaryWaitsUntilTheNextStep)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.entryChangesState = true;
     owner.change = true;
@@ -370,7 +370,7 @@ TEST(StateMachineOf, EntryRequestAtTheClosingBoundaryWaitsUntilTheNextStep)
 TEST(StateMachineOf, ExitCanReplaceThePendingTargetWithoutRecursiveExit)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.exitChangesState = true;
     machine.Build<IdleState, ActiveState, DeltaState>(owner);
@@ -385,7 +385,7 @@ TEST(StateMachineOf, ExitCanReplaceThePendingTargetWithoutRecursiveExit)
 TEST(StateMachineOf, RebuildDiscardsThePreviousPendingEntry)
 {
     StateOwner owner;
-    NS::Obj::StateMachineOf<StateOwner> machine;
+    NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     machine.Build<IdleState, ActiveState>(owner);
     machine.Change<ActiveState>();
@@ -399,7 +399,7 @@ TEST(StateMachineOf, RebuildDiscardsThePreviousPendingEntry)
 TEST(StateMachineOf, ChildFinishDuringCoroutineStopsTheRemainingStateStep)
 {
     StateOwner owner;
-    NS::Obj::SubStateMachine<StateOwner> child;
+    NS::SubStateMachine<StateOwner> child;
     owner.child = &child;
     owner.machine = &child.Machine();
     owner.coroutineChangesState = true;
@@ -417,7 +417,7 @@ TEST(StateMachineOf, ChildFinishDuringCoroutineStopsTheRemainingStateStep)
 TEST(StateMachineOf, ChildFinishDuringEntryStopsTheFirstStateStep)
 {
     StateOwner owner;
-    NS::Obj::SubStateMachine<StateOwner> child;
+    NS::SubStateMachine<StateOwner> child;
     owner.child = &child;
     owner.machine = &child.Machine();
     owner.finishOnEntry = true;

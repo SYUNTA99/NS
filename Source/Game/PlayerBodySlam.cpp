@@ -10,9 +10,9 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/PlayerInput.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/Collider.h"
+#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
 
 #include <cmath>
 
@@ -28,7 +28,6 @@ namespace
         return turns * 360.0f / seconds;
     }
 } // namespace
-
 
 bool PlayerActor::AcceptsBodySlamRequest() const noexcept
 {
@@ -63,9 +62,9 @@ void PlayerActor::RequestBodySlam(float charge01, float overcharge01) noexcept
 }
 
 void PlayerActor::RequestBodySlam(float charge01,
-                             const NS::Vector3& aimDirection,
-                             float launchVerticalSpeed,
-                             float overcharge01) noexcept
+                                  const NS::Vector3& aimDirection,
+                                  float launchVerticalSpeed,
+                                  float overcharge01) noexcept
 {
     if (!AcceptsBodySlamRequest())
     {
@@ -101,7 +100,7 @@ float PlayerActor::BodySlamSpeed() const noexcept
 
 NS::Vector3 PlayerActor::BodySlamVelocity() const noexcept
 {
-    const NS::Obj::Body& body = *m_body;
+    const NS::Body& body = *m_body;
     if (!IsBodySlamming())
     {
         return body.Velocity();
@@ -130,7 +129,7 @@ void PlayerActor::CancelBodySlam() noexcept
 
 void PlayerActor::EndBodySlam() noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     m_slam.m_travelled = 0.0f;
     m_slam.m_distanceTarget = 0.0f;
 
@@ -180,14 +179,14 @@ void PlayerActor::AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept
 
 NS::Vector3 PlayerActor::AimDirection() const noexcept
 {
-    const NS::Obj::Body& body = *m_body;
+    const NS::Body& body = *m_body;
     NS::Vector3 dir{DesiredDirection().x, 0.0f, DesiredDirection().z};
     float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
 
     // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
     if (length < NS::k_Epsilon && GetCameraManager() != nullptr)
     {
-        const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(this);
+        const NS::Vector3 forward = NS::CameraForwardHorizontal(this);
         dir = NS::Vector3{forward.x, 0.0f, forward.z};
         length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
     }
@@ -230,7 +229,7 @@ float PlayerActor::BodySlamAimBlend01() const noexcept
 
 bool PlayerActor::BodySlam() noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     // 速度を書く前に読む。発動のフレームはまだ前のフレームの接地のまま
     const bool launchedInAir = !body.IsGrounded();
     NS::Vector3 dir = AimDirection();
@@ -373,7 +372,7 @@ void PlayerActor::SetCurled(bool curled) noexcept
 
 void PlayerActor::ChangeCurled(bool curled) noexcept
 {
-    NS::Obj::Collider& collider = *m_collider;
+    NS::Collider& collider = *m_collider;
     if (curled == m_curled)
     {
         return;
@@ -398,7 +397,7 @@ NS::Sphere PlayerActor::SlamBallAt(const NS::Vector3& rootPosition) const noexce
 
 void PlayerActor::UncurlWhenSettled() noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     if (!m_curled)
     {
         return;

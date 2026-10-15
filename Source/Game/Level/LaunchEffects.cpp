@@ -1,163 +1,167 @@
 #include "Game/Level/LaunchEffects.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/IUse/IUseEffect.h"
-#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/IUse/IUseEffect.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/SceneActor.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 
-namespace GL::Level
+namespace GL
 {
-    namespace
+    namespace Level
     {
-        using NS::Quaternion;
-        using NS::Vector3;
-        // 尾の絵 launch.trail の、段の色の節を出す動的入力の番号。段ごとに 1 行の表で、段を足したら行を足す
-        [[nodiscard]] std::size_t TrailColorInputFor(HitTier tier) noexcept
+        namespace
         {
-            switch (tier)
+            using NS::Quaternion;
+            using NS::Vector3;
+            // 尾の絵 launch.trail の、段の色の節を出す動的入力の番号。段ごとに 1 行の表で、段を足したら行を足す
+            [[nodiscard]] std::size_t TrailColorInputFor(HitTier tier) noexcept
             {
-            case HitTier::Center:
-                return 0;
-            case HitTier::Wide:
+                switch (tier)
+                {
+                case HitTier::Center:
+                    return 0;
+                case HitTier::Wide:
+                    return 1;
+                }
+                // 番号から作った段の外の値は、中心近くの色を出さない
                 return 1;
             }
-            // 番号から作った段の外の値は、中心近くの色を出さない
-            return 1;
-        }
 
-        [[nodiscard]] Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
-        {
-            const float length = v.Length();
-            if (!(length > NS::k_Epsilon))
+            [[nodiscard]] Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
             {
-                return fallback;
+                const float length = v.Length();
+                if (!(length > NS::k_Epsilon))
+                {
+                    return fallback;
+                }
+                return v / length;
             }
-            return v / length;
+
+            // 絵の +Y を向きへ回す回転
+            [[nodiscard]] Quaternion TurnUpTo(const Vector3& direction) noexcept
+            {
+                return Quaternion::FromToRotation(Vector3{0.0f, 1.0f, 0.0f}, direction);
+            }
+
+            [[nodiscard]] NS::Gfx::EffectPlayDesc PlayAt(const Vector3& position,
+                                                         const Quaternion& rotation,
+                                                         const Vector3& scale) noexcept
+            {
+                NS::Gfx::EffectPlayDesc desc;
+                desc.position = position;
+                desc.rotation = rotation;
+                desc.scale = scale;
+                return desc;
+            }
+
+            [[nodiscard]] Vector3 Uniform(float value) noexcept
+            {
+                return Vector3{value, value, value};
+            }
+        } // namespace
+
+        LaunchEffects::LaunchEffects() noexcept : NS::SubObject() {}
+
+        void LaunchEffects::Preload()
+        {
+            NS::PreloadEffects(Owner(), {m_launchTrailAsset, m_launchLandDustAsset});
         }
 
-        // 絵の +Y を向きへ回す回転
-        [[nodiscard]] Quaternion TurnUpTo(const Vector3& direction) noexcept
+        void LaunchEffects::BeginTrail(const TackleReleaseDesc& release,
+                                       const PropFlight& flight,
+                                       const MapObjParams* params,
+                                       const NS::SphereCollision* sphere)
         {
-            return Quaternion::FromToRotation(Vector3{0.0f, 1.0f, 0.0f}, direction);
+            NS_ASSERT(Game, params != nullptr && sphere != nullptr, "置物の調整値か当たりの球が渡されていない");
+            // 尾は 1 本ずつ持つ。前の尾が残っていればここで消す
+            if (m_trail != 0)
+            {
+                NS::StopEffect(Owner(), m_trail);
+                m_trail = 0;
+            }
+            if (!flight.arc)
+            {
+                return; // 壊れた物 (破片になって飛ばない) には付けない
+            }
+
+            // 軽い物ほど遠くへ速く飛ぶので、尾も長く残す。重い物は短い
+            const float trailFrames =
+                static_cast<float>(m_trailFramesBase) + m_trailFramesPerLaunch * std::max(release.launchScale, 0.0f);
+            m_trailFrames = std::max(1, static_cast<int>(std::lround(trailFrames)));
+            // 威力 1 で質量だけの大きさ。強く飛ばした物ほど高く上がって強く落ちるので威力でも伸ばす
+            const float mass = params->Mass();
+            const float powerGrowth =
+                std::max(0.0f, 1.0f + m_landDustPerPower * (std::max(release.power, 0.0f) - 1.0f));
+            m_landDustScale = (m_landDustBase + m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) * powerGrowth;
+
+            // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ。物理への登録に依らず、変換と欄から作る
+            m_trailScale = 2.0f * sphere->WorldSphere().radius;
+            const Vector3& launchDir = release.arc.direction;
+            m_launchDir = NormalizedOr(Vector3{launchDir.x, 0.0f, launchDir.z}, Vector3{1.0f, 0.0f, 0.0f});
+
+            // 置物が自分を動かす Triggers の段より前に走るので、帯の頭は放した時の速度で 1 フレーム先へ置く
+            // 帯の点の +Y を飛ぶ向きへ回す。揃えないと、横から見た時に幅が道に沿って潰れる
+            const Vector3 head = flight.position + flight.velocity * BodyDelta();
+            NS::Gfx::EffectPlayDesc desc =
+                PlayAt(head, TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)), Uniform(m_trailScale));
+            // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
+            desc.dynamicInputs[0] = 0.0f;
+            desc.dynamicInputs[1] = 0.0f;
+            desc.dynamicInputs[TrailColorInputFor(release.tier)] = 1.0f;
+            desc.dynamicInputs[2] = static_cast<float>(m_trailFrames);
+            desc.dynamicInputs[3] = 0.0f;
+            m_trail = NS::PlayEffect(Owner(), m_launchTrailAsset, desc);
+            NS::SetEffectAmount(Owner(), m_trail, static_cast<float>(m_trailFrames));
+            m_trailStartStep = NS::EffectStep(Owner());
         }
 
-        [[nodiscard]] NS::Gfx::EffectPlayDesc PlayAt(const Vector3& position,
-                                                     const Quaternion& rotation,
-                                                     const Vector3& scale) noexcept
+        void LaunchEffects::Update(const PropFlight& flight)
         {
-            NS::Gfx::EffectPlayDesc desc;
-            desc.position = position;
-            desc.rotation = rotation;
-            desc.scale = scale;
-            return desc;
+            if (m_trail == 0 || NS::EffectStep(Owner()) == m_trailStartStep)
+            {
+                return;
+            }
+            if (flight.arc)
+            {
+                NS::SetEffectTransform(Owner(),
+                                       m_trail,
+                                       flight.position,
+                                       TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)),
+                                       Uniform(m_trailScale));
+                return;
+            }
+            EndTrail();
         }
 
-        [[nodiscard]] Vector3 Uniform(float value) noexcept
+        void LaunchEffects::EndTrail()
         {
-            return Vector3{value, value, value};
-        }
-    } // namespace
-
-    LaunchEffects::LaunchEffects() noexcept : NS::Obj::SubObject() {}
-
-    void LaunchEffects::Preload()
-    {
-        NS::Obj::PreloadEffects(Owner(), {m_launchTrailAsset, m_launchLandDustAsset});
-    }
-
-    void LaunchEffects::BeginTrail(const TackleReleaseDesc& release,
-                                   const PropFlight& flight,
-                                   const MapObjParams* params,
-                                   const NS::Obj::SphereCollision* sphere)
-    {
-        NS_ASSERT(Game, params != nullptr && sphere != nullptr, "置物の調整値か当たりの球が渡されていない");
-        // 尾は 1 本ずつ持つ。前の尾が残っていればここで消す
-        if (m_trail != 0)
-        {
-            NS::Obj::StopEffect(Owner(), m_trail);
+            // 帯と輪はここで消す。点は世界に残るので、通った道が柱のように残る
+            NS::StopEffect(Owner(), m_trail);
             m_trail = 0;
         }
-        if (!flight.arc)
+
+        void LaunchEffects::CancelTrail()
         {
-            return; // 壊れた物 (破片になって飛ばない) には付けない
+            EndTrail();
         }
 
-        // 軽い物ほど遠くへ速く飛ぶので、尾も長く残す。重い物は短い
-        const float trailFrames =
-            static_cast<float>(m_trailFramesBase) + m_trailFramesPerLaunch * std::max(release.launchScale, 0.0f);
-        m_trailFrames = std::max(1, static_cast<int>(std::lround(trailFrames)));
-        // 威力 1 で質量だけの大きさ。強く飛ばした物ほど高く上がって強く落ちるので威力でも伸ばす
-        const float mass = params->Mass();
-        const float powerGrowth =
-            std::max(0.0f, 1.0f + m_landDustPerPower * (std::max(release.power, 0.0f) - 1.0f));
-        m_landDustScale = (m_landDustBase + m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) * powerGrowth;
-
-        // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ。物理への登録に依らず、変換と欄から作る
-        m_trailScale = 2.0f * sphere->WorldSphere().radius;
-        const Vector3& launchDir = release.arc.direction;
-        m_launchDir = NormalizedOr(Vector3{launchDir.x, 0.0f, launchDir.z}, Vector3{1.0f, 0.0f, 0.0f});
-
-        // 置物が自分を動かす Triggers の段より前に走るので、帯の頭は放した時の速度で 1 フレーム先へ置く
-        // 帯の点の +Y を飛ぶ向きへ回す。揃えないと、横から見た時に幅が道に沿って潰れる
-        const Vector3 head = flight.position + flight.velocity * BodyDelta();
-        NS::Gfx::EffectPlayDesc desc =
-            PlayAt(head, TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)), Uniform(m_trailScale));
-        // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
-        desc.dynamicInputs[0] = 0.0f;
-        desc.dynamicInputs[1] = 0.0f;
-        desc.dynamicInputs[TrailColorInputFor(release.tier)] = 1.0f;
-        desc.dynamicInputs[2] = static_cast<float>(m_trailFrames);
-        desc.dynamicInputs[3] = 0.0f;
-        m_trail = NS::Obj::PlayEffect(Owner(), m_launchTrailAsset, desc);
-        NS::Obj::SetEffectAmount(Owner(), m_trail, static_cast<float>(m_trailFrames));
-        m_trailStartStep = NS::Obj::EffectStep(Owner());
-    }
-
-    void LaunchEffects::Update(const PropFlight& flight)
-    {
-        if (m_trail == 0 || NS::Obj::EffectStep(Owner()) == m_trailStartStep)
+        void LaunchEffects::NotifyLanding(const Vector3& position, const Vector3& normal)
         {
-            return;
+            EndTrail();
+            const Vector3 at = position + normal * m_dustRingLift;
+            const NS::uint32 dust = NS::PlayEffect(
+                Owner(),
+                m_launchLandDustAsset,
+                PlayAt(
+                    at, TurnUpTo(normal), Uniform(m_landDustScale / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
+            NS::SetEffectAmount(Owner(), dust, m_landDustScale);
+            NS::StopEffectAfter(Owner(), dust, std::max(m_landDustLife, 1));
         }
-        if (flight.arc)
-        {
-            NS::Obj::SetEffectTransform(Owner(),
-                                        m_trail,
-                                        flight.position,
-                                        TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)),
-                                        Uniform(m_trailScale));
-            return;
-        }
-        EndTrail();
-    }
 
-    void LaunchEffects::EndTrail()
-    {
-        // 帯と輪はここで消す。点は世界に残るので、通った道が柱のように残る
-        NS::Obj::StopEffect(Owner(), m_trail);
-        m_trail = 0;
-    }
-
-    void LaunchEffects::CancelTrail()
-    {
-        EndTrail();
-    }
-
-    void LaunchEffects::NotifyLanding(const Vector3& position, const Vector3& normal)
-    {
-        EndTrail();
-        const Vector3 at = position + normal * m_dustRingLift;
-        const NS::uint32 dust = NS::Obj::PlayEffect(
-            Owner(),
-            m_launchLandDustAsset,
-            PlayAt(at, TurnUpTo(normal), Uniform(m_landDustScale / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
-        NS::Obj::SetEffectAmount(Owner(), dust, m_landDustScale);
-        NS::Obj::StopEffectAfter(Owner(), dust, std::max(m_landDustLife, 1));
-    }
-
-    NS_CLASS(LaunchEffects)
-} // namespace GL::Level
+        NS_CLASS(LaunchEffects)
+    } // namespace Level
+} // namespace GL

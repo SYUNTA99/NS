@@ -1,19 +1,20 @@
 #include "NSlib/UI/UICanvas.h"
 
-namespace NS::UI
+namespace NS
 {
-
-    UICanvas MakeUICanvas(float viewportWidth, float viewportHeight) noexcept
+    namespace UI
     {
-        if (viewportWidth <= 0.0f || viewportHeight <= 0.0f)
+        UICanvas MakeUICanvas(float viewportWidth, float viewportHeight) noexcept
         {
-            return UICanvas{};
+            if (viewportWidth <= 0.0f || viewportHeight <= 0.0f)
+            {
+                return UICanvas{};
+            }
+
+            UICanvas canvas;
+            canvas.scale = viewportHeight / UICanvas::k_ReferenceHeight;
+            canvas.rect = WidgetRect{0.0f, 0.0f, viewportWidth / canvas.scale, UICanvas::k_ReferenceHeight};
+            return canvas;
         }
-
-        UICanvas canvas;
-        canvas.scale = viewportHeight / UICanvas::k_ReferenceHeight;
-        canvas.rect = WidgetRect{0.0f, 0.0f, viewportWidth / canvas.scale, UICanvas::k_ReferenceHeight};
-        return canvas;
-    }
-
-} // namespace NS::UI
+    } // namespace UI
+} // namespace NS

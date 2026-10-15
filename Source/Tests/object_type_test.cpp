@@ -1,7 +1,7 @@
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/UIActor.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/Model.h"
+#include "NSlib/CoreObject/UIActor.h"
 
 #include <type_traits>
 
@@ -11,51 +11,51 @@ template <class T> constexpr bool k_HasPersistentId = requires(const T& object) 
 template <class T> constexpr bool k_HasObjectName = requires(const T& object) { object.Name(); };
 template <class T>
 constexpr bool k_CanCreateTypedSubObjFromOutside =
-    requires(T& actor) { actor.template CreateSubObj<NS::Obj::Model>("Model"); };
+    requires(T& actor) { actor.template CreateSubObj<NS::Model>("Model"); };
 template <class T>
-constexpr bool k_HasPartTypeSearch = requires(T& actor) { actor.template FindSubObject<NS::Obj::Model>(); };
-static_assert(!k_HasPersistentId<NS::Obj::Object>);
-static_assert(!k_HasObjectName<NS::Obj::Object>);
-static_assert(k_HasPersistentId<NS::Obj::SceneActor>);
-static_assert(k_HasObjectName<NS::Obj::SceneActor>);
+constexpr bool k_HasPartTypeSearch = requires(T& actor) { actor.template FindSubObject<NS::Model>(); };
+static_assert(!k_HasPersistentId<NS::Object>);
+static_assert(!k_HasObjectName<NS::Object>);
+static_assert(k_HasPersistentId<NS::SceneActor>);
+static_assert(k_HasObjectName<NS::SceneActor>);
 // 世界に置く物と画面は Object から別々に派生し、画面はシーンへの問いの口を継がない
-static_assert(std::is_base_of_v<NS::Obj::Object, NS::Obj::SceneActor>);
-static_assert(std::is_base_of_v<NS::Obj::Object, NS::Obj::UIActor>);
-static_assert(!std::is_base_of_v<NS::Obj::SceneActor, NS::Obj::UIActor>);
-static_assert(!std::is_base_of_v<NS::Obj::UIActor, NS::Obj::SceneActor>);
-static_assert(!std::is_base_of_v<NS::Obj::IUseCamera, NS::Obj::UIActor>);
-static_assert(!std::is_base_of_v<NS::Obj::IUseSceneSystem, NS::Obj::UIActor>);
+static_assert(std::is_base_of_v<NS::Object, NS::SceneActor>);
+static_assert(std::is_base_of_v<NS::Object, NS::UIActor>);
+static_assert(!std::is_base_of_v<NS::SceneActor, NS::UIActor>);
+static_assert(!std::is_base_of_v<NS::UIActor, NS::SceneActor>);
+static_assert(!std::is_base_of_v<NS::IUseCamera, NS::UIActor>);
+static_assert(!std::is_base_of_v<NS::IUseSceneSystem, NS::UIActor>);
 // エフェクトの窓口は保持役の枠を持つ個体だけが継ぐ。シーンは出す先の EffectScene を持つだけで継がない
-static_assert(std::is_base_of_v<NS::Obj::IUseEffect, NS::Obj::SceneActor>);
-static_assert(!std::is_base_of_v<NS::Obj::IUseEffect, NS::Obj::Scene>);
-static_assert(!std::is_base_of_v<NS::Obj::IUseEffect, NS::Obj::UIActor>);
-static_assert(!k_HasObjectName<NS::Obj::UIActor>);
-static_assert(!k_HasPersistentId<NS::Obj::SubObject>);
-static_assert(!k_HasObjectName<NS::Obj::SubObject>);
-static_assert(!k_CanCreateTypedSubObjFromOutside<NS::Obj::SceneActor>);
-static_assert(!k_HasPartTypeSearch<NS::Obj::SceneActor>);
+static_assert(std::is_base_of_v<NS::IUseEffect, NS::SceneActor>);
+static_assert(!std::is_base_of_v<NS::IUseEffect, NS::Scene>);
+static_assert(!std::is_base_of_v<NS::IUseEffect, NS::UIActor>);
+static_assert(!k_HasObjectName<NS::UIActor>);
+static_assert(!k_HasPersistentId<NS::SubObject>);
+static_assert(!k_HasObjectName<NS::SubObject>);
+static_assert(!k_CanCreateTypedSubObjFromOutside<NS::SceneActor>);
+static_assert(!k_HasPartTypeSearch<NS::SceneActor>);
 
 namespace
 {
-    class ReflectedActor final : public NS::Obj::SceneActor
+    class ReflectedActor final : public NS::SceneActor
     {
     public:
-        NS_REFLECT_NONE(ReflectedActor, NS::Obj::SceneActor)
+        NS_REFLECT_NONE(ReflectedActor, NS::SceneActor)
     };
 } // namespace
 
 TEST(ObjectType, ActorAndPartsShareTheReflectionCastWithoutRtti)
 {
     ReflectedActor actor;
-    NS::Obj::Object* object = &actor;
-    EXPECT_EQ(NS::Obj::Cast<ReflectedActor>(object), &actor);
-    EXPECT_EQ(NS::Obj::Cast<NS::Obj::SceneActor>(object), &actor);
-    EXPECT_EQ(NS::Obj::Cast<NS::Obj::Model>(object), nullptr);
+    NS::Object* object = &actor;
+    EXPECT_EQ(NS::Cast<ReflectedActor>(object), &actor);
+    EXPECT_EQ(NS::Cast<NS::SceneActor>(object), &actor);
+    EXPECT_EQ(NS::Cast<NS::Model>(object), nullptr);
     EXPECT_STREQ(object->ClassName(), "ReflectedActor");
-    const NS::Obj::Object* constant = object;
-    EXPECT_EQ(NS::Obj::Cast<ReflectedActor>(constant), &actor);
-    EXPECT_EQ(NS::Obj::Cast<ReflectedActor>(static_cast<NS::Obj::Object*>(nullptr)), nullptr);
-    NS::Obj::Model mesh;
-    EXPECT_EQ(NS::Obj::Cast<NS::Obj::SubObject>(&mesh), &mesh);
-    EXPECT_EQ(NS::Obj::Cast<NS::Obj::SceneActor>(&mesh), nullptr);
+    const NS::Object* constant = object;
+    EXPECT_EQ(NS::Cast<ReflectedActor>(constant), &actor);
+    EXPECT_EQ(NS::Cast<ReflectedActor>(static_cast<NS::Object*>(nullptr)), nullptr);
+    NS::Model mesh;
+    EXPECT_EQ(NS::Cast<NS::SubObject>(&mesh), &mesh);
+    EXPECT_EQ(NS::Cast<NS::SceneActor>(&mesh), nullptr);
 }

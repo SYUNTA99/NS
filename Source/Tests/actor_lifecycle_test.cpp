@@ -1,13 +1,13 @@
 #include "Game/Level/PropActor.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/UIActor.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/UIActor.h"
 
 #include <gtest/gtest.h>
 
 namespace
 {
-    class LifeProbeActor final : public NS::Obj::SceneActor
+    class LifeProbeActor final : public NS::SceneActor
     {
     public:
         int updates = 0;
@@ -16,7 +16,7 @@ namespace
         void StateStep() override { ++updates; }
     };
 
-    class LifeUI final : public NS::Obj::UIActor
+    class LifeUI final : public NS::UIActor
     {
     public:
         void OnTick() override { ++updates; }
@@ -28,57 +28,40 @@ namespace
 // 置物は模型の本体と残像・影の 3 つを描く物に、体のセンサー 1 つをセンサーに入れる
 TEST(ActorLifecycle, StartRegistersEachPartOnce)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     const std::size_t renderables = scene.RenderableCount();
     (void)scene.SpawnTransient<GL::Level::PropActor>();
     EXPECT_EQ(scene.RenderableCount(), renderables + 3);
     EXPECT_EQ(scene.HitSensors().Sensors().size(), 1u);
 }
 
-TEST(ActorLifecycle, ReparentingKeepsRegistrationWhileActivityIsUnchanged)
-{
-    NS::Obj::Scene scene;
-    LifeProbeActor* parent = scene.SpawnTransient<LifeProbeActor>();
-    GL::Level::PropActor* child = scene.SpawnTransient<GL::Level::PropActor>();
-    const std::size_t renderables = scene.RenderableCount();
-    child->SetParent(parent);
-    child->SetParent(nullptr);
-    EXPECT_EQ(scene.RenderableCount(), renderables);
-    EXPECT_EQ(scene.HitSensors().Sensors().size(), 1u);
-
-    // 消えている親の下へ入れると外れ、出ている所へ戻すと登録し直す
-    child->SetParent(parent);
-    parent->Disappear();
-    EXPECT_EQ(scene.RenderableCount(), renderables - 3);
-    EXPECT_TRUE(scene.HitSensors().Sensors().empty());
-    child->SetParent(nullptr);
-    EXPECT_EQ(scene.RenderableCount(), renderables);
-    EXPECT_EQ(scene.HitSensors().Sensors().size(), 1u);
-}
-
 TEST(ActorLifecycle, DisappearStopsUpdatesAndAppearResumesOnce)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     LifeProbeActor* actor = scene.SpawnTransient<LifeProbeActor>();
+    LifeProbeActor* other = scene.SpawnTransient<LifeProbeActor>();
     EXPECT_TRUE(actor->IsAppeared());
-    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::UpdatePhase::Triggers);
     EXPECT_EQ(actor->updates, 1);
+    EXPECT_EQ(other->updates, 1);
     actor->Disappear();
     actor->Disappear();
     EXPECT_FALSE(actor->IsAppeared());
-    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::UpdatePhase::Triggers);
     EXPECT_EQ(actor->updates, 1);
+    EXPECT_EQ(other->updates, 2);
     actor->Appear();
     actor->Appear();
-    scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::UpdatePhase::Triggers);
     EXPECT_EQ(actor->updates, 2);
+    EXPECT_EQ(other->updates, 3);
 }
 
 TEST(ActorLifecycle, DestroyedPlacedActorLeavesAfterTheStep)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     const std::size_t before = scene.Objects().ObjectCount();
-    NS::Obj::SceneActor* actor = scene.SpawnObject<LifeProbeActor>("Probe");
+    NS::SceneActor* actor = scene.SpawnObject<LifeProbeActor>("Probe");
     actor->Destroy();
     EXPECT_FALSE(actor->IsAppeared());
     // 段を回している途中の呼び手がまだ指しているので、その場では解放しない
@@ -89,7 +72,7 @@ TEST(ActorLifecycle, DestroyedPlacedActorLeavesAfterTheStep)
 
 TEST(ActorLifecycle, DisappearedTransientStaysAfterTheStep)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     const std::size_t before = scene.Objects().ObjectCount();
     LifeProbeActor* actor = scene.SpawnTransient<LifeProbeActor>();
     actor->Disappear();
@@ -101,16 +84,16 @@ TEST(ActorLifecycle, DisappearedTransientStaysAfterTheStep)
 
 TEST(ActorLifecycle, RebuildingFromJsonDropsTransients)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     (void)scene.SpawnTransient<LifeProbeActor>();
     ASSERT_EQ(scene.Objects().ObjectCount(), 1u);
-    scene.ResetFromJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::MakeSceneJson());
     EXPECT_EQ(scene.Objects().ObjectCount(), 0u);
 }
 
 TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     GL::Level::PropActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
     scene.SyncPhysics();
     const std::size_t sensors = scene.HitSensors().Sensors().size();
@@ -127,9 +110,35 @@ TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
     EXPECT_TRUE(scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance));
 }
 
+TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
+{
+    NS::Scene scene;
+    GL::Level::PropActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
+    GL::Level::PropActor* other = scene.SpawnTransient<GL::Level::PropActor>();
+    other->Root().SetPosition({10.0f, 0.0f, 0.0f});
+    scene.SyncPhysics();
+    const std::size_t renderables = scene.RenderableCount();
+    const std::size_t sensors = scene.HitSensors().Sensors().size();
+    const NS::uint bodies = scene.Physics().BodyCount();
+
+    actor->Disappear();
+    EXPECT_TRUE(other->IsAppeared());
+    EXPECT_EQ(scene.RenderableCount(), renderables - 3);
+    EXPECT_EQ(scene.HitSensors().Sensors().size(), sensors - 1);
+    EXPECT_EQ(scene.Physics().BodyCount(), bodies - 1);
+    float distance = 0.0f;
+    EXPECT_FALSE(scene.Physics().Raycast({0.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
+    EXPECT_TRUE(scene.Physics().Raycast({10.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
+
+    actor->Appear();
+    EXPECT_EQ(scene.RenderableCount(), renderables);
+    EXPECT_EQ(scene.HitSensors().Sensors().size(), sensors);
+    EXPECT_EQ(scene.Physics().BodyCount(), bodies);
+}
+
 TEST(ActorLifecycle, UICloseStopsTheUpdateAndOpenResumesIt)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     LifeUI ui;
     ui.Open(scene);
     scene.OnUpdate();
@@ -145,21 +154,4 @@ TEST(ActorLifecycle, UICloseStopsTheUpdateAndOpenResumesIt)
     EXPECT_EQ(ui.updates, 2);
     ui.Close();
     EXPECT_EQ(ui.OwningScene(), nullptr);
-}
-
-TEST(ActorLifecycle, ParentDisappearRemovesChildPhysicsWithoutChangingChildState)
-{
-    NS::Obj::Scene scene;
-    LifeProbeActor* parent = scene.SpawnTransient<LifeProbeActor>();
-    GL::Level::PropActor* child = scene.SpawnTransient<GL::Level::PropActor>();
-    child->SetParent(parent);
-    scene.SyncPhysics();
-    parent->Disappear();
-    EXPECT_TRUE(child->IsAppeared());
-    EXPECT_TRUE(scene.HitSensors().Sensors().empty());
-    float distance = 0.0f;
-    EXPECT_FALSE(scene.Physics().Raycast(NS::Vector3{0.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
-    parent->Appear();
-    EXPECT_FALSE(scene.HitSensors().Sensors().empty());
-    EXPECT_TRUE(scene.Physics().Raycast(NS::Vector3{0.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
 }

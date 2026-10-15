@@ -1,11 +1,11 @@
-﻿#include "Editor/Editor.h"
+#include "Editor/Editor.h"
 
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlayControls.h"
 #include "Game/Game.h"
 #include "NSlib/App/Application.h"
-#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Gamepad.h"
 #include "NSlib/Windows/Input.h"
@@ -156,8 +156,9 @@ void Editor::OnRender()
 
         if (!m_dock.IsMaximized())
         {
-            // Hierarchy / Inspector はプレイ中も出す。PlayerActor / Camera を選んで操作感をライブ調整できるようにするため
-            // DockSpace も両モードで毎フレーム置き、edit で組んだドッキングがプレイ移行で崩れないようにする
+            // 個体一覧と Inspector はプレイ中も出す。PlayerActor / Camera
+            // を選んで操作感をライブ調整できるようにするため DockSpace も両モードで毎フレーム置き、edit
+            // で組んだドッキングがプレイ移行で崩れないようにする
             m_dock.RenderDockSpaceHost(toolbarHeight);
             m_sceneView.Render(editor);
             m_gameView.Render(editor);
@@ -166,7 +167,7 @@ void Editor::OnRender()
                 m_toolMode.Render(editor);
             }
 
-            m_hierarchy.Render(editor);
+            m_actorList.Render(editor);
             m_inspector.Render(editor);
             m_hitTimeline.Render(editor);
 
@@ -234,13 +235,13 @@ void Editor::OnRender()
     // 次フレームの描画先を決める。SRV 参照 (ImGui 実描画) が終わった直後の安全な位置で切り替える
     if (m_uiVisible)
     {
-        std::vector<NS::Obj::SceneView> views;
-        if (std::optional<NS::Obj::SceneView> sceneView = m_sceneView.CollectView(editor))
+        std::vector<NS::SceneView> views;
+        if (std::optional<NS::SceneView> sceneView = m_sceneView.CollectView(editor))
         {
             views.push_back(*sceneView);
         }
         // 下見の間も描画先の寸法を合わせるために呼ぶ。下見の絵は RenderPreview が描くので、ビューは積まない
-        if (std::optional<NS::Obj::SceneView> gameView = m_gameView.CollectView(editor))
+        if (std::optional<NS::SceneView> gameView = m_gameView.CollectView(editor))
         {
             if (preview == nullptr)
             {
@@ -552,9 +553,9 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
     // 中央以外は映像を持たないので、前面の矩形を無効化してから対象パネルを描く
     m_sceneView.Suppress(editor);
     m_gameView.Suppress(editor);
-    if (name == NS::Editor::k_PanelHierarchy)
+    if (name == NS::Editor::k_PanelActorList)
     {
-        m_hierarchy.Render(editor);
+        m_actorList.Render(editor);
     }
     else if (name == NS::Editor::k_PanelInspector)
     {

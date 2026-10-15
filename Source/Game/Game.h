@@ -1,15 +1,15 @@
 #pragma once
 
 #include "NSlib/App/Layer.h"
-#include "NSlib/Object/Scene/SceneManager.h"
+#include "NSlib/CoreObject/Scene/SceneManager.h"
 
 #include <string>
 #include <string_view>
 
-namespace NS::Obj
+namespace NS
 {
     class Scene;
-} // namespace NS::Obj
+} // namespace NS
 
 //! @brief シーンの更新・描画をアプリから呼ぶゲームレイヤー
 class Game : public NS::Layer
@@ -40,7 +40,7 @@ public:
     [[nodiscard]] bool StartSceneLoaded() const noexcept { return m_startSceneLoaded; }
 
     //! シーン未ロードなら nullptr
-    [[nodiscard]] NS::Obj::Scene* CurrentScene() noexcept;
+    [[nodiscard]] NS::Scene* CurrentScene() noexcept;
 
     [[nodiscard]] static Game* Get() noexcept { return s_instance; }
 
@@ -51,7 +51,7 @@ private:
     std::string m_startScenePath;
     bool m_startSceneLoaded = false;
 
-    NS::Obj::SceneManager m_scenes;
+    NS::SceneManager m_scenes;
 
     static Game* s_instance;
 };

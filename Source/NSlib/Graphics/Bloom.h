@@ -7,83 +7,84 @@
 #include <memory>
 #include <vector>
 
-namespace NS::Gfx
+namespace NS
 {
-
-    class Buffer;
-    class CommandList;
-    class Pipeline;
-    class Renderer;
-    class Shader;
-    class Texture;
-
-    //! @brief 光のにじみの設定
-    //! @details 物の絵は S 字で 1 以下に書くので、閾値 1 なら 1 を超えて書いたエフェクトだけがにじむ
-    struct BloomDesc
+    namespace Gfx
     {
-        //! これを超えた分の明るさだけをにじませる。色の成分ごとに引く
-        float threshold = 1.0f;
-        //! 各ぼかし段から加算する光の強さ
-        float intensity = 0.2f;
-        //! 縮める段の数。1 段目は描画先の半分の大きさ。1 未満は 1 として扱う
-        int levels = 5;
-    };
+        class Buffer;
+        class CommandList;
+        class Pipeline;
+        class Renderer;
+        class Shader;
+        class Texture;
 
-    //! @brief HDR の明るい部分をぼかして元の描画先へ加算する
-    //! @details BeginWorld と EndWorld で描画先を切り替える。深度は元の描画先を共有する
-    //! @warning Renderer より先に破棄すること
-    class Bloom : public NS::NonCopyable
-    {
-    public:
-        //! @brief シェーダ・パイプライン・定数バッファを作る
-        //! @param[in] desc 閾値・足す強さ・段の数
-        explicit Bloom(const BloomDesc& desc) noexcept;
-        ~Bloom();
+        //! @brief 光のにじみの設定
+        //! @details 物の絵は S 字で 1 以下に書くので、閾値 1 なら 1 を超えて書いたエフェクトだけがにじむ
+        struct BloomDesc
+        {
+            //! これを超えた分の明るさだけをにじませる。色の成分ごとに引く
+            float threshold = 1.0f;
+            //! 各ぼかし段から加算する光の強さ
+            float intensity = 0.2f;
+            //! 縮める段の数。1 段目は描画先の半分の大きさ。1 未満は 1 として扱う
+            int levels = 5;
+        };
 
-        //! 構築に成功した場合 true、それ以外の場合は false
-        [[nodiscard]] bool IsValid() const noexcept;
+        //! @brief HDR の明るい部分をぼかして元の描画先へ加算する
+        //! @details BeginWorld と EndWorld で描画先を切り替える。深度は元の描画先を共有する
+        //! @warning Renderer より先に破棄すること
+        class Bloom : public NS::NonCopyable
+        {
+        public:
+            //! @brief シェーダ・パイプライン・定数バッファを作る
+            //! @param[in] desc 閾値・足す強さ・段の数
+            explicit Bloom(const BloomDesc& desc) noexcept;
+            ~Bloom();
 
-        //! HDR 描画へ切り替える。準備に失敗した場合は元の描画先で続ける
-        //! 深度は共有し、clearColor で背景を塗る
-        void BeginWorld(Renderer& renderer, const NS::Color& clearColor) noexcept;
+            //! 構築に成功した場合 true、それ以外の場合は false
+            [[nodiscard]] bool IsValid() const noexcept;
 
-        //! にじみを加算し、元の描画先とビューポートへ戻す。BeginWorld と同じ Renderer を渡す
-        void EndWorld(Renderer& renderer) noexcept;
+            //! HDR 描画へ切り替える。準備に失敗した場合は元の描画先で続ける
+            //! 深度は共有し、clearColor で背景を塗る
+            void BeginWorld(Renderer& renderer, const NS::Color& clearColor) noexcept;
 
-    private:
-        // 描画先の大きさと段の数に合わせて浮動小数の描画先を揃える。作れなければ false
-        [[nodiscard]] bool EnsureTargets(NS::Size2D size) noexcept;
+            //! にじみを加算し、元の描画先とビューポートへ戻す。BeginWorld と同じ Renderer を渡す
+            void EndWorld(Renderer& renderer) noexcept;
 
-        // 全画面を 1 回描く。source を t0、scene を t1 に差して destination へ書く。scene は無ければ差さない
-        void DrawPass(CommandList& cmd,
-                      const Shader& pixelShader,
-                      const Pipeline& pipeline,
-                      const Texture& source,
-                      const Texture* scene,
-                      ID3D11RenderTargetView* destination,
-                      NS::Size2D destinationSize) noexcept;
+        private:
+            // 描画先の大きさと段の数に合わせて浮動小数の描画先を揃える。作れなければ false
+            [[nodiscard]] bool EnsureTargets(NS::Size2D size) noexcept;
 
-        BloomDesc m_desc{};
+            // 全画面を 1 回描く。source を t0、scene を t1 に差して destination へ書く。scene は無ければ差さない
+            void DrawPass(CommandList& cmd,
+                          const Shader& pixelShader,
+                          const Pipeline& pipeline,
+                          const Texture& source,
+                          const Texture* scene,
+                          ID3D11RenderTargetView* destination,
+                          NS::Size2D destinationSize) noexcept;
 
-        std::unique_ptr<Shader> m_vs;              // 全画面三角形
-        std::unique_ptr<Shader> m_thresholdPs;     // 閾値を超えた分だけを残す
-        std::unique_ptr<Shader> m_downPs;          // 13 点で拾って半分に縮める
-        std::unique_ptr<Shader> m_upPs;            // 3×3 の山形で拾って 1 段大きい方へ足す
-        std::unique_ptr<Shader> m_compositePs;     // 元の絵ににじみを足して 1 へ丸める
-        std::unique_ptr<Pipeline> m_writePipeline; // 書き込み先を置き換える
-        std::unique_ptr<Pipeline> m_addPipeline;   // 書き込み先へ足す
-        std::unique_ptr<Buffer> m_cb;
+            BloomDesc m_desc{};
 
-        NS::Size2D m_size{0, 0};                        // 浮動小数の描画先の大きさ。0 なら未作成
-        std::unique_ptr<Texture> m_scene;               // 世界を描く浮動小数の描画先
-        std::unique_ptr<Texture> m_bright;              // 閾値を超えた分。世界と同じ大きさ
-        std::vector<std::unique_ptr<Texture>> m_levels; // 縮めた段。先頭が半分の大きさ
+            std::unique_ptr<Shader> m_vs;              // 全画面三角形
+            std::unique_ptr<Shader> m_thresholdPs;     // 閾値を超えた分だけを残す
+            std::unique_ptr<Shader> m_downPs;          // 13 点で拾って半分に縮める
+            std::unique_ptr<Shader> m_upPs;            // 3×3 の山形で拾って 1 段大きい方へ足す
+            std::unique_ptr<Shader> m_compositePs;     // 元の絵ににじみを足して 1 へ丸める
+            std::unique_ptr<Pipeline> m_writePipeline; // 書き込み先を置き換える
+            std::unique_ptr<Pipeline> m_addPipeline;   // 書き込み先へ足す
+            std::unique_ptr<Buffer> m_cb;
 
-        ComPtr<ID3D11RenderTargetView> m_savedTarget; // BeginWorld で控えた描画先
-        ComPtr<ID3D11DepthStencilView> m_savedDepth;  // BeginWorld で控えた深度
-        D3D11_VIEWPORT m_savedViewport{};
-        bool m_active = false; // BeginWorld が差し替えて EndWorld を待っているか
-        bool m_valid = false;
-    };
+            NS::Size2D m_size{0, 0};                        // 浮動小数の描画先の大きさ。0 なら未作成
+            std::unique_ptr<Texture> m_scene;               // 世界を描く浮動小数の描画先
+            std::unique_ptr<Texture> m_bright;              // 閾値を超えた分。世界と同じ大きさ
+            std::vector<std::unique_ptr<Texture>> m_levels; // 縮めた段。先頭が半分の大きさ
 
-} // namespace NS::Gfx
+            ComPtr<ID3D11RenderTargetView> m_savedTarget; // BeginWorld で控えた描画先
+            ComPtr<ID3D11DepthStencilView> m_savedDepth;  // BeginWorld で控えた深度
+            D3D11_VIEWPORT m_savedViewport{};
+            bool m_active = false; // BeginWorld が差し替えて EndWorld を待っているか
+            bool m_valid = false;
+        };
+    } // namespace Gfx
+} // namespace NS

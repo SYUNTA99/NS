@@ -2,19 +2,19 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
-#include "Game/PlayerActor.h"
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/Collider.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "Tests/TestViewCamera.h"
@@ -27,39 +27,39 @@
 #include <string_view>
 #include <type_traits>
 
-static_assert(!std::is_base_of_v<NS::Obj::SubObject, GL::Level::Health>);
+static_assert(!std::is_base_of_v<NS::SubObject, GL::Level::Health>);
 
 TEST(PlayerParams, MaxHealthBelongsToPlayer)
 {
-    NS::Obj::Scene scene;
-    nlohmann::json doc = NS::Obj::MakeSceneJson();
-    nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-    NS::Obj::SetObjectJsonId(entry, 1);
+    NS::Scene scene;
+    nlohmann::json doc = NS::MakeSceneJson();
+    nlohmann::json entry = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonId(entry, 1);
     entry["subObjects"] = {{"Params", {{"体力", 5}}}};
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+    NS::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
     PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    ASSERT_NE(NS::Obj::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params")), nullptr);
+    ASSERT_NE(NS::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params")), nullptr);
     EXPECT_EQ(player->Health(), 5);
-    ASSERT_NE(NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement")), nullptr);
+    ASSERT_NE(NS::Cast<NS::Body>(player->FindSubObj("Movement")), nullptr);
     player->ApplyDamage(2);
     EXPECT_EQ(player->Health(), 3);
     player->ResetHealth();
     EXPECT_EQ(player->Health(), 5);
 
     // エディタで体力を書き換えてから再生すると、満タンは書き換えた値になる
-    GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params"));
+    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, nlohmann::json{{"体力", 3}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(*params, nlohmann::json{{"体力", 3}}), 0u);
     player->ResetHealth();
     EXPECT_EQ(player->Health(), 3);
 }
 
 TEST(PlayerParams, DeactivatingPlayerKeepsHealth)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     player.ResetHealth();
     const int full = player.Health();
@@ -78,11 +78,11 @@ TEST(PlayerParams, DeactivatingPlayerKeepsHealth)
 
 TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
+    const GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
-    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
+    const nlohmann::json fields = NS::SerializeSubObjectFields(*params);
     const nlohmann::json expected = {{"ジャンプ初速", 12.0f},
                                      {"上昇重力", -25.0f},
                                      {"下降重力", -35.0f},
@@ -124,13 +124,13 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
     // 左右の寄せは消した。鍵が戻ると、保存した場面に効かない角度が載る
     EXPECT_FALSE(fields.contains("寄せる角度の上限"));
     EXPECT_FALSE(fields.contains("1 フレームの向きの変化の上限"));
-    const NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement"));
+    const NS::Body* movement = NS::Cast<NS::Body>(player.FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     // 身体は欄を持たない。動きの調整値は Params、当たりの寸法は Collider に居る
-    EXPECT_TRUE(NS::Obj::SerializeSubObjectFields(*movement).empty());
-    const NS::Obj::Collider* collider = NS::Obj::Cast<NS::Obj::Collider>(player.FindSubObj("Collider"));
+    EXPECT_TRUE(NS::SerializeSubObjectFields(*movement).empty());
+    const NS::Collider* collider = NS::Cast<NS::Collider>(player.FindSubObj("Collider"));
     ASSERT_NE(collider, nullptr);
-    const nlohmann::json colliderFields = NS::Obj::SerializeSubObjectFields(*collider);
+    const nlohmann::json colliderFields = NS::SerializeSubObjectFields(*collider);
     EXPECT_EQ(colliderFields.size(), 2u);
     EXPECT_TRUE(colliderFields.contains("半径"));
     EXPECT_TRUE(colliderFields.contains("半分の高さ"));
@@ -138,13 +138,13 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 
 TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement"));
+    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
+    NS::Body* movement = NS::Cast<NS::Body>(player.FindSubObj("Movement"));
     ASSERT_NE(params, nullptr);
     ASSERT_NE(movement, nullptr);
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(*params, {{"走行速度", 10.0f}, {"加速度", 7.0f}, {"上昇重力", -15.0f}}), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(*params, {{"走行速度", 10.0f}, {"加速度", 7.0f}, {"上昇重力", -15.0f}}), 0u);
     EXPECT_FLOAT_EQ(player.RunSpeed(), 10.0f);
     movement->SetGrounded(true);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -153,42 +153,42 @@ TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
     movement->SetVerticalVelocity(2.0f);
     player.Gravity(0.1f);
     EXPECT_NEAR(movement->VerticalVelocity(), 0.5f, 0.00001f);
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(*params, {{"走行速度", 11.0f}}), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(*params, {{"走行速度", 11.0f}}), 0u);
     EXPECT_FLOAT_EQ(player.RunSpeed(), 11.0f);
 }
 
 TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
 {
-    NS::Obj::Scene scene;
-    nlohmann::json doc = NS::Obj::MakeSceneJson();
-    nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-    NS::Obj::SetObjectJsonId(entry, 1);
+    NS::Scene scene;
+    nlohmann::json doc = NS::MakeSceneJson();
+    nlohmann::json entry = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonId(entry, 1);
     entry["subObjects"] = {
         {"Params",
          {{"走行速度", 9.0f}, {"チャージ突進の距離", 14.0f}, {"上昇重力", -21.0f}, {"下降重力", -39.0f}, {"体力", 6}}}};
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+    NS::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
     const nlohmann::json saved = scene.ToJson();
     scene.ResetFromJson(saved);
     const PlayerActor* player = static_cast<const PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    const NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
+    const NS::Body* movement = NS::Cast<NS::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     EXPECT_FLOAT_EQ(player->RunSpeed(), 9.0f);
     EXPECT_FLOAT_EQ(player->BodySlamDistance(), 14.0f);
     EXPECT_EQ(player->Health(), 6);
-    const GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params"));
+    const GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
-    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
+    const nlohmann::json fields = NS::SerializeSubObjectFields(*params);
     EXPECT_FLOAT_EQ(fields["上昇重力"].get<float>(), -21.0f);
     EXPECT_FLOAT_EQ(fields["下降重力"].get<float>(), -39.0f);
 }
 
 // part の欄に expected の名前が全部あり、値も同じことを確かめる
-static void ExpectSubObjFields(const NS::Obj::SubObject& part, const nlohmann::json& expected)
+static void ExpectSubObjFields(const NS::SubObject& part, const nlohmann::json& expected)
 {
-    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(part);
+    const nlohmann::json fields = NS::SerializeSubObjectFields(part);
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
@@ -199,7 +199,7 @@ static void ExpectSubObjFields(const NS::Obj::SubObject& part, const nlohmann::j
 // 調整値の部品に expected の名前が 1 つも無いことを確かめる。演出の欄は描く部品が持ち、遊びの欄と並ばない
 static void ExpectNotInParams(const PlayerActor& player, const nlohmann::json& expected)
 {
-    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(player.Params());
+    const nlohmann::json fields = NS::SerializeSubObjectFields(player.Params());
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
         EXPECT_FALSE(fields.contains(it.key())) << it.key();
@@ -208,7 +208,7 @@ static void ExpectNotInParams(const PlayerActor& player, const nlohmann::json& e
 
 TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     const nlohmann::json appearance = {{"立ち姿のメッシュ", ""},
                                        {"玉のメッシュ", ""},
@@ -241,10 +241,10 @@ TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem
 
 TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(player.ChargeVisuals(),
-                                       {{"通常突進の弾けの大きさ", 0.5f}, {"溜めきりで足す弾けの大きさ", 0.4f}}),
+    EXPECT_EQ(NS::ApplyJsonFields(player.ChargeVisuals(),
+                                  {{"通常突進の弾けの大きさ", 0.5f}, {"溜めきりで足す弾けの大きさ", 0.4f}}),
               0u);
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(0.5f), 0.7f);
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(-1.0f), 0.5f);
@@ -255,9 +255,9 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
 
 TEST(PlayerParams, ImpactDefaultsKeepAllFortyTwoDisplayNamesAndValues)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(player.Params());
+    const nlohmann::json fields = NS::SerializeSubObjectFields(player.Params());
     const nlohmann::json play = {{"反動の高さ", 1.15f},
                                  {"反動の距離", 0.575f},
                                  {"中心近くの当たりの反動の距離の倍率", 4.5f},
@@ -342,21 +342,21 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortyTwoDisplayNamesAndValues)
     {
         EXPECT_FALSE(fields.contains(removed)) << removed;
     }
-    EXPECT_TRUE(NS::Obj::SerializeSubObjectFields(player.Resolver()).empty());
+    EXPECT_TRUE(NS::SerializeSubObjectFields(player.Resolver()).empty());
 }
 
 TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(player.ImpactVisuals(),
-                                       {{"核の直径の基準", 0.4f},
-                                        {"核の直径の威力あたり", 0.3f},
-                                        {"核の直径の上限", 2.0f},
-                                        {"光条の長さの基準", 3.0f},
-                                        {"光条の長さの威力あたり", 4.0f},
-                                        {"着地の粉の半径の基準", 2.0f},
-                                        {"着地の粉の半径の落ちる速さあたり", 0.1f}}),
+    EXPECT_EQ(NS::ApplyJsonFields(player.ImpactVisuals(),
+                                  {{"核の直径の基準", 0.4f},
+                                   {"核の直径の威力あたり", 0.3f},
+                                   {"核の直径の上限", 2.0f},
+                                   {"光条の長さの基準", 3.0f},
+                                   {"光条の長さの威力あたり", 4.0f},
+                                   {"着地の粉の半径の基準", 2.0f},
+                                   {"着地の粉の半径の落ちる速さあたり", 0.1f}}),
               0u);
     GL::Level::ImpactRecord impact{};
     impact.tier = GL::Level::HitTier::Center;
@@ -375,10 +375,10 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     using GL::Player::CoreHoldMotion;
     using GL::Player::ImpactShape;
     using GL::Player::SparkHeading;
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(
+    ASSERT_EQ(NS::ApplyJsonFields(
                   player.ImpactVisuals(),
                   {{"弾かれ線の本数", 9}, {"大きな外れの弾かれ線の本数", 4}, {"大きな外れの火花の大きさ", 2.5f}}),
               0u);
@@ -428,27 +428,27 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
 
 TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
 {
-    NS::Obj::Scene scene;
-    nlohmann::json doc = NS::Obj::MakeSceneJson();
-    nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-    NS::Obj::SetObjectJsonId(entry, 1);
-    NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "PropActor");
-    NS::Obj::SetObjectJsonId(rock, 2);
+    NS::Scene scene;
+    nlohmann::json doc = NS::MakeSceneJson();
+    nlohmann::json entry = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonId(entry, 1);
+    NS::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
+    NS::SceneJsonObjects(doc).push_back(std::move(entry));
+    nlohmann::json rock = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonId(rock, 2);
     // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
-    NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
+    NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
     // 位置は部品の件 Transform に入っているので、件ごと置き換えずに足す
     // 飛び方の高さは相手の欄に書く
-    NS::Obj::ObjectJsonSubObjs(rock)["Params"] = {{"質量", 1.0f}, {"押し飛ばしの高さ", 3.0f}};
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+    NS::ObjectJsonSubObjs(rock)["Params"] = {{"質量", 1.0f}, {"押し飛ばしの高さ", 3.0f}};
+    NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    PlayerActor* player = NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    EXPECT_FALSE(NS::Obj::SerializeSubObjectFields(player->Params()).contains("押し飛ばしの高さ"));
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(
+    EXPECT_FALSE(NS::SerializeSubObjectFields(player->Params()).contains("押し飛ばしの高さ"));
+    EXPECT_EQ(NS::ApplyJsonFields(
                   player->Params(),
                   {{"押し飛ばしの距離", 8.0f}, {"反動の高さ", 2.0f}, {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
               0u);
@@ -464,7 +464,7 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
 
 TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     const GL::Level::TargetMarkerDesc marker{};
     const GL::Level::SlamArrowDesc arrow{};
@@ -519,27 +519,27 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
 
 TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
 {
-    NS::Obj::Scene scene;
-    nlohmann::json doc = NS::Obj::MakeSceneJson();
-    nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-    NS::Obj::SetObjectJsonId(entry, 1);
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "PropActor");
-    NS::Obj::SetObjectJsonId(rock, 2);
-    NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+    NS::Scene scene;
+    nlohmann::json doc = NS::MakeSceneJson();
+    nlohmann::json entry = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonId(entry, 1);
+    NS::SceneJsonObjects(doc).push_back(std::move(entry));
+    nlohmann::json rock = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonId(rock, 2);
+    NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
+    NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    PlayerActor* player = NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     const NS::Vector3 eye{0.0f, 0.0f, -6.0f};
     const NS::Vector3 lookAt{0.0f, 0.0f, 4.0f};
     ASSERT_NE(PlaceViewCamera(scene, eye, lookAt), nullptr);
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(player->TargetIndicator(), {{"印の太さ", 7.0f}}), 0u);
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(player->SlamIndicator(),
-                                       {{"溜めの前半の色", {0.2f, 0.3f, 0.4f}}, {"矢印が伸びるフレーム数", 1}}),
+    EXPECT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(player->TargetIndicator(), {{"印の太さ", 7.0f}}), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(player->SlamIndicator(),
+                                  {{"溜めの前半の色", {0.2f, 0.3f, 0.4f}}, {"矢印が伸びるフレーム数", 1}}),
               0u);
     // しきい値のフレームまで押して溜めに入れる
     const int threshold = static_cast<int>(std::lround(0.2f / NS::OS::FrameTimer::FixedDelta()));
@@ -567,18 +567,18 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
 TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
 {
     const auto expectEveryFieldRead = [](const nlohmann::json& entry, std::string_view source) {
-        const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+        const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
         PlayerActor& player = *playerOwned;
-        const nlohmann::json& parts = NS::Obj::ObjectJsonSubObjs(entry);
+        const nlohmann::json& parts = NS::ObjectJsonSubObjs(entry);
         for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
         {
-            NS::Obj::SubObject* part = player.FindSubObj(it.key());
+            NS::SubObject* part = player.FindSubObj(it.key());
             ASSERT_NE(part, nullptr) << source << " " << it.key();
-            EXPECT_EQ(NS::Obj::ApplyJsonFields(*part, it.value()), 0u) << source << " " << it.key();
+            EXPECT_EQ(NS::ApplyJsonFields(*part, it.value()), 0u) << source << " " << it.key();
         }
     };
-    NS::Obj::ArchetypeLibrary::Get().Reload();
-    const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("PlayerActor");
+    NS::ArchetypeLibrary::Get().Reload();
+    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
     ASSERT_NE(archetype, nullptr);
     expectEveryFieldRead(*archetype, "PlayerActor.json");
 
@@ -589,10 +589,10 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
                                         "Scenes"),
             sceneName);
         nlohmann::json doc;
-        ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;
-        for (const nlohmann::json& entry : NS::Obj::SceneJsonObjects(doc))
+        ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
+        for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
-            if (NS::Obj::ObjectJsonClass(entry) == "PlayerActor")
+            if (NS::ObjectJsonClass(entry) == "PlayerActor")
             {
                 expectEveryFieldRead(entry, sceneName);
             }

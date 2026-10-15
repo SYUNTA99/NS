@@ -3,64 +3,66 @@
 
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 
-namespace NS::Editor
+namespace NS
 {
-    namespace
+    namespace Editor
     {
-        //! JSON 木の heap 量を概算する。要素そのものと文字列の確保分を数える
-        std::size_t EstimatedJsonBytes(const nlohmann::json& value) noexcept
+        namespace
         {
-            if (value.is_string())
+            //! JSON 木の heap 量を概算する。要素そのものと文字列の確保分を数える
+            std::size_t EstimatedJsonBytes(const nlohmann::json& value) noexcept
             {
-                return value.get_ref<const std::string&>().size();
-            }
-            std::size_t bytes = 0;
-            if (value.is_object())
-            {
-                for (nlohmann::json::const_iterator it = value.begin(); it != value.end(); ++it)
+                if (value.is_string())
                 {
-                    bytes += sizeof(nlohmann::json) + it.key().size() + EstimatedJsonBytes(it.value());
+                    return value.get_ref<const std::string&>().size();
                 }
-            }
-            else if (value.is_array())
-            {
-                for (const nlohmann::json& element : value)
+                std::size_t bytes = 0;
+                if (value.is_object())
                 {
-                    bytes += sizeof(nlohmann::json) + EstimatedJsonBytes(element);
+                    for (nlohmann::json::const_iterator it = value.begin(); it != value.end(); ++it)
+                    {
+                        bytes += sizeof(nlohmann::json) + it.key().size() + EstimatedJsonBytes(it.value());
+                    }
                 }
+                else if (value.is_array())
+                {
+                    for (const nlohmann::json& element : value)
+                    {
+                        bytes += sizeof(nlohmann::json) + EstimatedJsonBytes(element);
+                    }
+                }
+                return bytes;
+            }
+        } // namespace
+
+        ObjectSnapshotCommand::ObjectSnapshotCommand(NS::uint32 id,
+                                                     std::optional<nlohmann::json> before,
+                                                     std::optional<nlohmann::json> after) noexcept
+            : m_id(id), m_before(std::move(before)), m_after(std::move(after))
+        {}
+
+        void ObjectSnapshotCommand::Do(IObjectSnapshotApplier& target) noexcept
+        {
+            target.ApplyObjectSnapshot(m_id, m_after);
+        }
+
+        void ObjectSnapshotCommand::Undo(IObjectSnapshotApplier& target) noexcept
+        {
+            target.ApplyObjectSnapshot(m_id, m_before);
+        }
+
+        std::size_t ObjectSnapshotCommand::EstimatedBytes() const noexcept
+        {
+            std::size_t bytes = sizeof(ObjectSnapshotCommand);
+            if (m_before)
+            {
+                bytes += EstimatedJsonBytes(*m_before);
+            }
+            if (m_after)
+            {
+                bytes += EstimatedJsonBytes(*m_after);
             }
             return bytes;
         }
-    } // namespace
-
-    ObjectSnapshotCommand::ObjectSnapshotCommand(NS::uint32 id,
-                                                 std::optional<nlohmann::json> before,
-                                                 std::optional<nlohmann::json> after) noexcept
-        : m_id(id), m_before(std::move(before)), m_after(std::move(after))
-    {}
-
-    void ObjectSnapshotCommand::Do(IObjectSnapshotApplier& target) noexcept
-    {
-        target.ApplyObjectSnapshot(m_id, m_after);
-    }
-
-    void ObjectSnapshotCommand::Undo(IObjectSnapshotApplier& target) noexcept
-    {
-        target.ApplyObjectSnapshot(m_id, m_before);
-    }
-
-    std::size_t ObjectSnapshotCommand::EstimatedBytes() const noexcept
-    {
-        std::size_t bytes = sizeof(ObjectSnapshotCommand);
-        if (m_before)
-        {
-            bytes += EstimatedJsonBytes(*m_before);
-        }
-        if (m_after)
-        {
-            bytes += EstimatedJsonBytes(*m_after);
-        }
-        return bytes;
-    }
-
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

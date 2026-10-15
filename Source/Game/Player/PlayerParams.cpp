@@ -3,64 +3,67 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
 #include <cmath>
 
-namespace GL::Player
+namespace GL
 {
-    PlayerParams::PlayerParams() noexcept
+    namespace Player
     {
-        m_chargeFactorCurve.count = 2;
-        m_chargeFactorCurve.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
-        m_chargeFactorCurve.keys[1] = NS::Obj::Curve::Key{1.0f, 2.0f};
-    }
-
-    float PlayerParams::ChargeFactorFor(float charge01) const noexcept
-    {
-        if (!std::isfinite(charge01))
+        PlayerParams::PlayerParams() noexcept
         {
-            return 1.0f;
+            m_chargeFactorCurve.count = 2;
+            m_chargeFactorCurve.keys[0] = NS::Curve::Key{0.0f, 1.0f};
+            m_chargeFactorCurve.keys[1] = NS::Curve::Key{1.0f, 2.0f};
         }
-        const float clamped = NS::Clamp(charge01, 0.0f, 1.0f);
-        const float factor = m_chargeFactorCurve.Evaluate(clamped);
-        // Inspector で点を全部消すと Evaluate が 0 を返して威力が消えるため、0 以下は 1 とみなす
-        if (!(factor > 0.0f))
+
+        float PlayerParams::ChargeFactorFor(float charge01) const noexcept
         {
-            return 1.0f;
+            if (!std::isfinite(charge01))
+            {
+                return 1.0f;
+            }
+            const float clamped = NS::Clamp(charge01, 0.0f, 1.0f);
+            const float factor = m_chargeFactorCurve.Evaluate(clamped);
+            // Inspector で点を全部消すと Evaluate が 0 を返して威力が消えるため、0 以下は 1 とみなす
+            if (!(factor > 0.0f))
+            {
+                return 1.0f;
+            }
+            return factor;
         }
-        return factor;
-    }
 
-    float PlayerParams::ChargeFactorFor(float charge01, float overcharge01) const noexcept
-    {
-        float depth = 0.0f;
-        if (std::isfinite(overcharge01))
+        float PlayerParams::ChargeFactorFor(float charge01, float overcharge01) const noexcept
         {
-            depth = NS::Clamp(overcharge01, 0.0f, 1.0f);
+            float depth = 0.0f;
+            if (std::isfinite(overcharge01))
+            {
+                depth = NS::Clamp(overcharge01, 0.0f, 1.0f);
+            }
+            return ChargeFactorFor(charge01) * (1.0f + (m_overchargePowerMax - 1.0f) * depth);
         }
-        return ChargeFactorFor(charge01) * (1.0f + (m_overchargePowerMax - 1.0f) * depth);
-    }
 
-    float PlayerParams::ChargingSpeedScale() const noexcept
-    {
-        // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる
-        return NS::Clamp(1.0f - m_chargeSlowRate, 0.0f, 1.0f);
-    }
+        float PlayerParams::ChargingSpeedScale() const noexcept
+        {
+            // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる
+            return NS::Clamp(1.0f - m_chargeSlowRate, 0.0f, 1.0f);
+        }
 
-    GL::Level::LaunchArc PlayerParams::ReboundLaunchArc(const ReboundArc& arc) const noexcept
-    {
-        // LaunchArc には正の上昇重力と下降倍率を渡す
-        const PlayerGravity gravity = ReboundGravity();
-        const float riseGravity = -gravity.rise;
-        return GL::Level::LaunchArc{.direction = arc.direction,
-                                    .distance = arc.distance,
-                                    .apexHeight = arc.apexHeight,
-                                    .riseGravity = riseGravity,
-                                    .fallGravityScale = -gravity.fall / riseGravity,
-                                    .apexBandSpeed = gravity.apexSpeed,
-                                    .apexBandGravityScale = gravity.apexScale};
-    }
+        GL::Level::LaunchArc PlayerParams::ReboundLaunchArc(const ReboundArc& arc) const noexcept
+        {
+            // LaunchArc には正の上昇重力と下降倍率を渡す
+            const PlayerGravity gravity = ReboundGravity();
+            const float riseGravity = -gravity.rise;
+            return GL::Level::LaunchArc{.direction = arc.direction,
+                                        .distance = arc.distance,
+                                        .apexHeight = arc.apexHeight,
+                                        .riseGravity = riseGravity,
+                                        .fallGravityScale = -gravity.fall / riseGravity,
+                                        .apexBandSpeed = gravity.apexSpeed,
+                                        .apexBandGravityScale = gravity.apexScale};
+        }
 
-    NS_CLASS(PlayerParams)
-} // namespace GL::Player
+        NS_CLASS(PlayerParams)
+    } // namespace Player
+} // namespace GL

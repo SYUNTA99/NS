@@ -1,4 +1,4 @@
-﻿#include "Editor/AssetsPanel.h"
+#include "Editor/AssetsPanel.h"
 
 #include "Editor/DragTypes.h"
 #include "Editor/LevelEditorController.h"
@@ -11,94 +11,97 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
-    void AssetsPanel::Render(LevelEditorController& editor) noexcept
+    namespace Editor
     {
-#if NS_EDITOR_ENABLED
-        if (ImGui::Begin(k_PanelAssets))
+        void AssetsPanel::Render(LevelEditorController& editor) noexcept
         {
-            // 適用にはギズモ選択が要るので枠は Object モード時だけ出す
-            if (editor.ObjectToolActive())
+#if NS_EDITOR_ENABLED
+            if (ImGui::Begin(k_PanelAssets))
             {
-                const bool hasSelection = editor.HasGizmoSelection();
-                const char* selectionLabel = "オブジェクトが未選択。クリックで選ぶ";
-                if (hasSelection)
+                // 適用にはギズモ選択が要るので枠は Object モード時だけ出す
+                if (editor.ObjectToolActive())
                 {
-                    selectionLabel = "オブジェクトを選択中";
+                    const bool hasSelection = editor.HasGizmoSelection();
+                    const char* selectionLabel = "オブジェクトが未選択。クリックで選ぶ";
+                    if (hasSelection)
+                    {
+                        selectionLabel = "オブジェクトを選択中";
+                    }
+                    ImGui::TextUnformatted(selectionLabel);
+
+                    ImGui::Separator();
                 }
-                ImGui::TextUnformatted(selectionLabel);
 
-                ImGui::Separator();
+                RenderTree(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), editor);
             }
-
-            RenderTree(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), editor);
-        }
-        ImGui::End();
+            ImGui::End();
 #else
-        (void)editor;
+            (void)editor;
 #endif
-    }
-
-    void AssetsPanel::RenderTree(std::string_view dir, LevelEditorController& editor) noexcept
-    {
-#if NS_EDITOR_ENABLED
-        const bool hasSelection = editor.HasGizmoSelection();
-
-        // 開いた時だけ中身を走査する
-        for (const std::string& sub : NS::OS::FileSystem::ListDirectories(dir))
-        {
-            const std::string label = NS::OS::FileSystem::FileName(sub);
-            if (ImGui::TreeNode(label.c_str()))
-            {
-                RenderTree(sub, editor);
-                ImGui::TreePop();
-            }
         }
 
-        for (const std::string& file : NS::OS::FileSystem::ListFiles(dir))
+        void AssetsPanel::RenderTree(std::string_view dir, LevelEditorController& editor) noexcept
         {
-            const std::string name = NS::OS::FileSystem::FileName(file);
-            const std::string extension = NS::OS::FileSystem::Extension(file);
-            // ドラッグで渡すのは資産のファイルのパス全体
-            const auto dragSource = [&](const char* type) {
-                if (ImGui::BeginDragDropSource())
-                {
-                    ImGui::SetDragDropPayload(type, file.c_str(), file.size() + 1);
-                    ImGui::TextUnformatted(name.c_str());
-                    ImGui::EndDragDropSource();
-                }
-            };
+#if NS_EDITOR_ENABLED
+            const bool hasSelection = editor.HasGizmoSelection();
 
-            if (extension == ".gltf" || extension == ".glb")
+            // 開いた時だけ中身を走査する
+            for (const std::string& sub : NS::OS::FileSystem::ListDirectories(dir))
             {
+                const std::string label = NS::OS::FileSystem::FileName(sub);
+                if (ImGui::TreeNode(label.c_str()))
+                {
+                    RenderTree(sub, editor);
+                    ImGui::TreePop();
+                }
+            }
+
+            for (const std::string& file : NS::OS::FileSystem::ListFiles(dir))
+            {
+                const std::string name = NS::OS::FileSystem::FileName(file);
+                const std::string extension = NS::OS::FileSystem::Extension(file);
+                // ドラッグで渡すのは資産のファイルのパス全体
+                const auto dragSource = [&](const char* type) {
+                    if (ImGui::BeginDragDropSource())
+                    {
+                        ImGui::SetDragDropPayload(type, file.c_str(), file.size() + 1);
+                        ImGui::TextUnformatted(name.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+                };
+
+                if (extension == ".gltf" || extension == ".glb")
+                {
+                    ImGui::PushID(name.c_str());
+                    ImGui::Selectable(name.c_str());
+                    dragSource(k_MeshDragType);
+                    if (ImGui::IsItemHovered())
+                    {
+                        ImGui::SetTooltip("Scene ビューへドラッグすると置ける");
+                    }
+                    ImGui::PopID();
+                    continue;
+                }
+
+                if (extension != ".mat")
+                {
+                    ImGui::TextDisabled("%s", name.c_str());
+                    continue;
+                }
                 ImGui::PushID(name.c_str());
-                ImGui::Selectable(name.c_str());
-                dragSource(k_MeshDragType);
-                if (ImGui::IsItemHovered())
+                if (ImGui::Selectable(name.c_str()) && hasSelection)
                 {
-                    ImGui::SetTooltip("Scene ビューへドラッグすると置ける");
+                    editor.ApplyMaterialToSelected(file);
                 }
+                dragSource(k_MaterialDragType);
                 ImGui::PopID();
-                continue;
             }
-
-            if (extension != ".mat")
-            {
-                ImGui::TextDisabled("%s", name.c_str());
-                continue;
-            }
-            ImGui::PushID(name.c_str());
-            if (ImGui::Selectable(name.c_str()) && hasSelection)
-            {
-                editor.ApplyMaterialToSelected(file);
-            }
-            dragSource(k_MaterialDragType);
-            ImGui::PopID();
-        }
 #else
-        (void)dir;
-        (void)editor;
+            (void)dir;
+            (void)editor;
 #endif
-    }
-} // namespace NS::Editor
+        }
+    } // namespace Editor
+} // namespace NS

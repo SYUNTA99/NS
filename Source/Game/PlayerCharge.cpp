@@ -4,14 +4,13 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/Collider.h"
 #include "NSlib/Graphics/DebugDraw.h"
-#include "NSlib/Object/IUse/IUseCamera.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
 
 #include <algorithm>
 #include <cmath>
-
 
 namespace
 {
@@ -104,7 +103,7 @@ void PlayerActor::ObserveCharge(bool held)
     {
         return;
     }
-    const NS::Vector3 direction = NS::Obj::CameraForwardHorizontal(this);
+    const NS::Vector3 direction = NS::CameraForwardHorizontal(this);
     if (!std::isfinite(direction.x) || !std::isfinite(direction.z))
     {
         return;
@@ -154,7 +153,8 @@ void PlayerActor::AdvanceCharge(float dt)
     const auto requestCharged = [this](float charge01, float overcharge01) {
         if (m_charge.m_hasAimLine)
         {
-            RequestBodySlam(charge01, m_charge.m_aimLine.direction, m_charge.m_aimLine.launchVerticalSpeed, overcharge01);
+            RequestBodySlam(
+                charge01, m_charge.m_aimLine.direction, m_charge.m_aimLine.launchVerticalSpeed, overcharge01);
         }
         else
         {
@@ -270,12 +270,8 @@ void PlayerActor::ApplyChargeSway(float dt)
     }
     // 上下の角度は揺れていない線の相手へ合わせた縦の速さのまま。揺れは左右だけ
     m_charge.m_aimLine.direction = swayed;
-    m_charge.m_hasLineTarget = m_resolver->FindSlamLineTarget(swayed,
-                                                              m_charge.m_aimLine.length,
-                                                              m_params.get(),
-                                                              m_body.get(),
-                                                              m_collider.get(),
-                                                              m_charge.m_lineTarget);
+    m_charge.m_hasLineTarget = m_resolver->FindSlamLineTarget(
+        swayed, m_charge.m_aimLine.length, m_params.get(), m_body.get(), m_collider.get(), m_charge.m_lineTarget);
     if (m_charge.m_hasLineTarget)
     {
         m_charge.m_lineTarget.origin = Root().Position();

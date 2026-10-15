@@ -1,33 +1,36 @@
 #include "Game/Player/States/IdlePlayerState.h"
 
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
-#include "NSlib/Object/SubObjects/Body.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
 
-namespace GL::Player
+namespace GL
 {
-    void IdlePlayerState::OnStep(::PlayerActor& player, float dt)
+    namespace Player
     {
-        player.TickTimers(dt);
-        player.ApplyFriction(dt);
-        player.Jump(dt);
-        player.CutJumpRelease();
-        player.Gravity(dt);
+        void IdlePlayerState::OnStep(::PlayerActor& player, float dt)
+        {
+            player.TickTimers(dt);
+            player.ApplyFriction(dt);
+            player.Jump(dt);
+            player.CutJumpRelease();
+            player.Gravity(dt);
 
-        const NS::Obj::Body& body = player.Body();
-        if (PlayerJudgeFall::Judge(body.IsGrounded()))
-        {
-            player.States().Change<FallPlayerState>();
+            const NS::Body& body = player.Body();
+            if (PlayerJudgeFall::Judge(body.IsGrounded()))
+            {
+                player.States().Change<FallPlayerState>();
+            }
+            else if (PlayerJudgeWalk::Judge(
+                         body.IsGrounded(),
+                         PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), player.Params().StickDeadzone()),
+                         PlayerJudgeStopped::Judge(body.LateralVelocity())))
+            {
+                player.States().Change<WalkPlayerState>();
+            }
         }
-        else if (PlayerJudgeWalk::Judge(
-                     body.IsGrounded(),
-                     PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), player.Params().StickDeadzone()),
-                     PlayerJudgeStopped::Judge(body.LateralVelocity())))
-        {
-            player.States().Change<WalkPlayerState>();
-        }
-    }
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

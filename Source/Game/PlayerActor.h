@@ -9,44 +9,50 @@
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/StateMachineOf.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/StateMachineOf.h"
 
 #include "NSlib/Core/Types.h"
 #include <optional>
 #include <string>
 #include <string_view>
 
-namespace NS::Obj
+namespace NS
 {
     class Body;
     class Collider;
     class ActorList;
     class PlayerInput;
-} // namespace NS::Obj
+} // namespace NS
 
-namespace GL::Player
+namespace GL
 {
-    class PlayerParams;
-    class PlayerClips;
-    class PlayerAppearance;
-    class ChargeEffects;
-    class ImpactEffects;
-} // namespace GL::Player
+    namespace Player
+    {
+        class PlayerParams;
+        class PlayerClips;
+        class PlayerAppearance;
+        class ChargeEffects;
+        class ImpactEffects;
+    } // namespace Player
+} // namespace GL
 
-namespace GL::Level
+namespace GL
 {
-    class ImpactResolver;
-    class TargetMarker;
-    class SlamArrow;
-    struct BodySlamMotion;
-    struct ImpactAnswer;
-} // namespace GL::Level
+    namespace Level
+    {
+        class ImpactResolver;
+        class TargetMarker;
+        class SlamArrow;
+        struct BodySlamMotion;
+        struct ImpactAnswer;
+    } // namespace Level
+} // namespace GL
 
 //! @brief 固定の部品を OnInit で組むプレイヤー
 //! @details 衝突の観測・裁定を身体の移動より先に行う。死とゴールは Scene の CourseDirector に通知する
-class PlayerActor : public NS::Obj::SceneActor
+class PlayerActor : public NS::SceneActor
 {
 public:
     PlayerActor() noexcept;
@@ -59,15 +65,15 @@ public:
 
     NS_REFLECT_DECLARE()
     //! 基底が所有する自機の状態機械。OnInit が組むので、Init の後から立ちの状態に居る
-    [[nodiscard]] NS::Obj::StateMachineOf<PlayerActor>& States() noexcept { return *m_states; }
-    [[nodiscard]] const NS::Obj::StateMachineOf<PlayerActor>& States() const noexcept { return *m_states; }
-    [[nodiscard]] NS::Obj::PlayerInput& Input() noexcept { return *m_input; }
-    [[nodiscard]] const NS::Obj::PlayerInput& Input() const noexcept { return *m_input; }
+    [[nodiscard]] NS::StateMachineOf<PlayerActor>& States() noexcept { return *m_states; }
+    [[nodiscard]] const NS::StateMachineOf<PlayerActor>& States() const noexcept { return *m_states; }
+    [[nodiscard]] NS::PlayerInput& Input() noexcept { return *m_input; }
+    [[nodiscard]] const NS::PlayerInput& Input() const noexcept { return *m_input; }
     //! 速度・接地を持つ身体の部品。部品名は保存の鍵なので "Movement" のまま
-    [[nodiscard]] NS::Obj::Body& Body() noexcept { return *m_body; }
-    [[nodiscard]] const NS::Obj::Body& Body() const noexcept { return *m_body; }
-    [[nodiscard]] NS::Obj::Collider& Collider() noexcept { return *m_collider; }
-    [[nodiscard]] const NS::Obj::Collider& Collider() const noexcept { return *m_collider; }
+    [[nodiscard]] NS::Body& Body() noexcept { return *m_body; }
+    [[nodiscard]] const NS::Body& Body() const noexcept { return *m_body; }
+    [[nodiscard]] NS::Collider& Collider() noexcept { return *m_collider; }
+    [[nodiscard]] const NS::Collider& Collider() const noexcept { return *m_collider; }
     [[nodiscard]] GL::Player::PlayerParams& Params() noexcept { return *m_params; }
     [[nodiscard]] const GL::Player::PlayerParams& Params() const noexcept { return *m_params; }
     [[nodiscard]] const GL::Level::ImpactInputJudge& ChargeJudge() const noexcept;
@@ -98,9 +104,9 @@ public:
     [[nodiscard]] GL::Player::ChargeEffects& ChargeVisuals() noexcept { return *m_chargeEffects; }
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
 
-    [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Player; }
+    [[nodiscard]] NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Player; }
     void ReadInput() override;
-    using NS::Obj::SceneActor::Update;
+    using NS::SceneActor::Update;
     //! 入力の段を通さず chargeHeld を差し込み、1 固定ステップ進める
     void Update(bool chargeHeld);
     //! @brief 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
@@ -297,7 +303,7 @@ public:
 protected:
     //! @brief 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
     //! @details 操作の停止は PlayerInput の止め (SetLocked) へ写し、止める時は CancelCharge で溜めを捨てる
-    bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
+    bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
     void OnInit() override;
     //! ロックオンの枠と突進の矢印を重ね描きへ入れる。消えている間は描く側が IsOverlayVisible で飛ばす
@@ -409,16 +415,16 @@ private:
     std::unique_ptr<GL::Player::PlayerParams> m_params;
     std::unique_ptr<GL::Player::PlayerClips> m_clips;
     std::string m_appliedClip{};
-    std::unique_ptr<NS::Obj::PlayerInput> m_input;
-    std::unique_ptr<NS::Obj::Body> m_body;
-    std::unique_ptr<NS::Obj::Collider> m_collider;
+    std::unique_ptr<NS::PlayerInput> m_input;
+    std::unique_ptr<NS::Body> m_body;
+    std::unique_ptr<NS::Collider> m_collider;
     std::unique_ptr<GL::Player::PlayerAppearance> m_appearance;
     std::unique_ptr<GL::Level::ImpactResolver> m_resolver;
     std::unique_ptr<GL::Level::TargetMarker> m_targetMarker;
     std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
     std::unique_ptr<GL::Player::ChargeEffects> m_chargeEffects;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
-    NS::Obj::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
+    NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
     GL::Level::Health m_health;
 
     bool m_prevJumpHeld = false;
@@ -453,4 +459,4 @@ private:
 
 //! 実体の配置物からプレイヤーを引く。無ければ nullptr
 //! @param[in,out] objects 探す先の配置物。返した PlayerActor* から中身が書き換わる
-[[nodiscard]] PlayerActor* FindPlayer(NS::Obj::ActorList& objects) noexcept;
+[[nodiscard]] PlayerActor* FindPlayer(NS::ActorList& objects) noexcept;

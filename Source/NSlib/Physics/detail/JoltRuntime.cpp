@@ -1,4 +1,4 @@
-﻿#include "NSlib/Physics/detail/JoltRuntime.h"
+#include "NSlib/Physics/detail/JoltRuntime.h"
 
 #include <Jolt/Jolt.h>
 
@@ -7,34 +7,40 @@
 
 #include <memory>
 
-namespace NS::Phys::detail
+namespace NS
 {
-    namespace
+    namespace Phys
     {
-        class JoltRuntime
+        namespace detail
         {
-        public:
-            JoltRuntime()
+            namespace
             {
-                JPH::RegisterDefaultAllocator();
-                m_factory = std::make_unique<JPH::Factory>();
-                JPH::Factory::sInstance = m_factory.get();
-                JPH::RegisterTypes();
-            }
+                class JoltRuntime
+                {
+                public:
+                    JoltRuntime()
+                    {
+                        JPH::RegisterDefaultAllocator();
+                        m_factory = std::make_unique<JPH::Factory>();
+                        JPH::Factory::sInstance = m_factory.get();
+                        JPH::RegisterTypes();
+                    }
 
-            ~JoltRuntime()
+                    ~JoltRuntime()
+                    {
+                        JPH::UnregisterTypes();
+                        JPH::Factory::sInstance = nullptr;
+                    }
+
+                private:
+                    std::unique_ptr<JPH::Factory> m_factory;
+                };
+            } // namespace
+
+            void InitJoltRuntime()
             {
-                JPH::UnregisterTypes();
-                JPH::Factory::sInstance = nullptr;
+                static JoltRuntime runtime;
             }
-
-        private:
-            std::unique_ptr<JPH::Factory> m_factory;
-        };
-    } // namespace
-
-    void InitJoltRuntime()
-    {
-        static JoltRuntime runtime;
-    }
-} // namespace NS::Phys::detail
+        } // namespace detail
+    } // namespace Phys
+} // namespace NS

@@ -4,9 +4,9 @@
 #include "Editor/EditorObjects.h"
 #include "Editor/GridMath.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Graphics/RenderContext.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
@@ -18,969 +18,954 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
-    namespace
+    namespace Editor
     {
-        constexpr float k_MoveSnapStep = 0.5f;
-
-        // 回転スナップの刻み幅 (15度)
-        constexpr float k_RotateSnapStep = NS::k_Pi / 12.0f;
-
-        constexpr float k_ScaleSnapStep = 0.25f;
-        constexpr float k_ScaleSensitivity = 0.01f;
-
-        constexpr float k_ScaleMin = 0.01f;
-
-        // ワールド空間におけるギズモハンドルの基本長
-        constexpr float k_HandleLength = 1.0f;
-
-        // 掴んだと見なす画面上の許容半径 (ピクセル)
-        constexpr float k_PickThresholdPixels = 12.0f;
-
-        // 画面でこれより短い矢印は掴めない (ピクセル)
-        constexpr float k_MinHandlePixels = 8.0f;
-
-        // この差に収まる矢印は同じ近さとみなす (ピクセル)
-        constexpr float k_PickTieMarginPixels = 3.0f;
-
-        // 視線と操作軸が平行とみなす閾値
-        constexpr float k_AxisViewParallelEpsilon = 0.999f;
-
-        // レイと平面が平行とみなす閾値
-        constexpr float k_PlaneParallelEpsilon = 1e-6f;
-
-        // 回転操作を無視する、原点からの最小距離の二乗
-        constexpr float k_RingGrabRadiusEpsilonSq = 1e-6f;
-
-        // AABB交差判定時の平行閾値
-        constexpr float k_RayAABBParallelEpsilon = 1e-8f;
-
-        [[nodiscard]] float SnapTo(float value, float step) noexcept
+        namespace
         {
-            if (step <= 0.0f)
+            constexpr float k_MoveSnapStep = 0.5f;
+
+            // 回転スナップの刻み幅 (15度)
+            constexpr float k_RotateSnapStep = NS::k_Pi / 12.0f;
+
+            constexpr float k_ScaleSnapStep = 0.25f;
+            constexpr float k_ScaleSensitivity = 0.01f;
+
+            constexpr float k_ScaleMin = 0.01f;
+
+            // ワールド空間におけるギズモハンドルの基本長
+            constexpr float k_HandleLength = 1.0f;
+
+            // 掴んだと見なす画面上の許容半径 (ピクセル)
+            constexpr float k_PickThresholdPixels = 12.0f;
+
+            // 画面でこれより短い矢印は掴めない (ピクセル)
+            constexpr float k_MinHandlePixels = 8.0f;
+
+            // この差に収まる矢印は同じ近さとみなす (ピクセル)
+            constexpr float k_PickTieMarginPixels = 3.0f;
+
+            // 視線と操作軸が平行とみなす閾値
+            constexpr float k_AxisViewParallelEpsilon = 0.999f;
+
+            // レイと平面が平行とみなす閾値
+            constexpr float k_PlaneParallelEpsilon = 1e-6f;
+
+            // 回転操作を無視する、原点からの最小距離の二乗
+            constexpr float k_RingGrabRadiusEpsilonSq = 1e-6f;
+
+            // AABB交差判定時の平行閾値
+            constexpr float k_RayAABBParallelEpsilon = 1e-8f;
+
+            [[nodiscard]] float SnapTo(float value, float step) noexcept
             {
-                return value;
-            }
-            return std::round(value / step) * step;
-        }
-
-        [[nodiscard]] NS::Vector3 AxisVector(GizmoAxis axis) noexcept
-        {
-            switch (axis)
-            {
-            case GizmoAxis::X:
-                return {1.0f, 0.0f, 0.0f};
-            case GizmoAxis::Y:
-                return {0.0f, 1.0f, 0.0f};
-            case GizmoAxis::Z:
-                return {0.0f, 0.0f, 1.0f};
-            default:
-                return {0.0f, 0.0f, 0.0f};
-            }
-        }
-
-        [[nodiscard]] NS::Vector3 OrientedAxis(GizmoAxis axis, const NS::Quaternion& rotation) noexcept
-        {
-            return NS::Vector3::Transform(AxisVector(axis), rotation);
-        }
-
-        [[nodiscard]] NS::Quaternion EffectiveAxisOrientation(GizmoTool tool,
-                                                              GizmoSpace space,
-                                                              const NS::Quaternion& objectRotation) noexcept
-        {
-            if (tool != GizmoTool::Scale && space == GizmoSpace::World)
-            {
-                return NS::Quaternion::Identity;
-            }
-            return objectRotation;
-        }
-
-        [[nodiscard]] bool IntersectRayWithPlane(const NS::Ray& ray,
-                                                 const NS::Vector3& planePoint,
-                                                 const NS::Vector3& planeNormal,
-                                                 NS::Vector3& outPoint) noexcept
-        {
-            const float denom = ray.direction.Dot(planeNormal);
-            if (std::fabs(denom) < k_PlaneParallelEpsilon)
-            {
-                return false;
-            }
-            const float t = (planePoint - ray.position).Dot(planeNormal) / denom;
-            outPoint = ray.position + ray.direction * t;
-            return true;
-        }
-
-        [[nodiscard]] bool IntersectRayCenteredAABB(const NS::Vector3& origin,
-                                                    const NS::Vector3& direction,
-                                                    const NS::Vector3& halfExtents,
-                                                    float& outT) noexcept
-        {
-            const float o[3] = {origin.x, origin.y, origin.z};
-            const float d[3] = {direction.x, direction.y, direction.z};
-            const float he[3] = {halfExtents.x, halfExtents.y, halfExtents.z};
-
-            float tMin = -std::numeric_limits<float>::infinity();
-            float tMax = std::numeric_limits<float>::infinity();
-            for (int axis = 0; axis < 3; ++axis)
-            {
-                if (std::fabs(d[axis]) < k_RayAABBParallelEpsilon)
+                if (step <= 0.0f)
                 {
-                    if (o[axis] < -he[axis] || o[axis] > he[axis])
-                    {
-                        return false;
-                    }
-                    continue;
+                    return value;
                 }
-                const float invD = 1.0f / d[axis];
-                float t1 = (-he[axis] - o[axis]) * invD;
-                float t2 = (he[axis] - o[axis]) * invD;
-                if (t1 > t2)
+                return std::round(value / step) * step;
+            }
+
+            [[nodiscard]] NS::Vector3 AxisVector(GizmoAxis axis) noexcept
+            {
+                switch (axis)
                 {
-                    std::swap(t1, t2);
+                case GizmoAxis::X:
+                    return {1.0f, 0.0f, 0.0f};
+                case GizmoAxis::Y:
+                    return {0.0f, 1.0f, 0.0f};
+                case GizmoAxis::Z:
+                    return {0.0f, 0.0f, 1.0f};
+                default:
+                    return {0.0f, 0.0f, 0.0f};
                 }
-                tMin = std::max(t1, tMin);
-                tMax = std::min(t2, tMax);
-                if (tMin > tMax)
+            }
+
+            [[nodiscard]] NS::Vector3 OrientedAxis(GizmoAxis axis, const NS::Quaternion& rotation) noexcept
+            {
+                return NS::Vector3::Transform(AxisVector(axis), rotation);
+            }
+
+            [[nodiscard]] NS::Quaternion EffectiveAxisOrientation(GizmoTool tool,
+                                                                  GizmoSpace space,
+                                                                  const NS::Quaternion& objectRotation) noexcept
+            {
+                if (tool != GizmoTool::Scale && space == GizmoSpace::World)
+                {
+                    return NS::Quaternion::Identity;
+                }
+                return objectRotation;
+            }
+
+            [[nodiscard]] bool IntersectRayWithPlane(const NS::Ray& ray,
+                                                     const NS::Vector3& planePoint,
+                                                     const NS::Vector3& planeNormal,
+                                                     NS::Vector3& outPoint) noexcept
+            {
+                const float denom = ray.direction.Dot(planeNormal);
+                if (std::fabs(denom) < k_PlaneParallelEpsilon)
                 {
                     return false;
                 }
-            }
-            if (tMax < 0.0f)
-            {
-                return false;
+                const float t = (planePoint - ray.position).Dot(planeNormal) / denom;
+                outPoint = ray.position + ray.direction * t;
+                return true;
             }
 
-            if (tMin >= 0.0f)
+            [[nodiscard]] bool IntersectRayCenteredAABB(const NS::Vector3& origin,
+                                                        const NS::Vector3& direction,
+                                                        const NS::Vector3& halfExtents,
+                                                        float& outT) noexcept
             {
-                outT = tMin;
-            }
-            else
-            {
-                outT = tMax;
-            }
-            return true;
-        }
+                const float o[3] = {origin.x, origin.y, origin.z};
+                const float d[3] = {direction.x, direction.y, direction.z};
+                const float he[3] = {halfExtents.x, halfExtents.y, halfExtents.z};
 
-        [[nodiscard]] bool ProjectToScreen(const NS::Vector3& world,
-                                           const NS::Matrix& vp,
-                                           NS::Size2D viewport,
-                                           NS::Vector2& outScreen) noexcept
-        {
-            float w = 0.0f;
-            return NS::Gfx::TryProjectToPixels(
-                vp, world, static_cast<float>(viewport.width), static_cast<float>(viewport.height), outScreen, w);
-        }
+                float tMin = -std::numeric_limits<float>::infinity();
+                float tMax = std::numeric_limits<float>::infinity();
+                for (int axis = 0; axis < 3; ++axis)
+                {
+                    if (std::fabs(d[axis]) < k_RayAABBParallelEpsilon)
+                    {
+                        if (o[axis] < -he[axis] || o[axis] > he[axis])
+                        {
+                            return false;
+                        }
+                        continue;
+                    }
+                    const float invD = 1.0f / d[axis];
+                    float t1 = (-he[axis] - o[axis]) * invD;
+                    float t2 = (he[axis] - o[axis]) * invD;
+                    if (t1 > t2)
+                    {
+                        std::swap(t1, t2);
+                    }
+                    tMin = std::max(t1, tMin);
+                    tMax = std::min(t2, tMax);
+                    if (tMin > tMax)
+                    {
+                        return false;
+                    }
+                }
+                if (tMax < 0.0f)
+                {
+                    return false;
+                }
 
-        // 画面上での見かけの大きさを一定に保つための、ハンドルのワールド空間での長さを算出する
-        [[nodiscard]] float HandleWorldLength(const NS::Vector3& origin, const NS::Matrix& vp) noexcept
-        {
-            return k_HandleLength * ScreenConstantScale(origin, vp);
-        }
+                if (tMin >= 0.0f)
+                {
+                    outT = tMin;
+                }
+                else
+                {
+                    outT = tMax;
+                }
+                return true;
+            }
 
-        [[nodiscard]] float DistancePointToSegment(NS::Vector2 p, NS::Vector2 a, NS::Vector2 b) noexcept
-        {
-            const float abx = b.x - a.x;
-            const float aby = b.y - a.y;
-            const float apx = p.x - a.x;
-            const float apy = p.y - a.y;
-            const float lenSq = abx * abx + aby * aby;
-            float t = 0.0f;
-            if (lenSq > 1e-12f)
+            [[nodiscard]] bool ProjectToScreen(const NS::Vector3& world,
+                                               const NS::Matrix& vp,
+                                               NS::Size2D viewport,
+                                               NS::Vector2& outScreen) noexcept
             {
-                t = (apx * abx + apy * aby) / lenSq;
+                float w = 0.0f;
+                return NS::Gfx::TryProjectToPixels(
+                    vp, world, static_cast<float>(viewport.width), static_cast<float>(viewport.height), outScreen, w);
             }
-            if (t < 0.0f)
-            {
-                t = 0.0f;
-            }
-            else if (t > 1.0f)
-            {
-                t = 1.0f;
-            }
-            const float cx = a.x + abx * t;
-            const float cy = a.y + aby * t;
-            const float dx = p.x - cx;
-            const float dy = p.y - cy;
-            return std::sqrt(dx * dx + dy * dy);
-        }
 
-        // ギズモは世界の空間で動かす
-        [[nodiscard]] TransformState WorldState(const NS::Obj::Transform& target) noexcept
-        {
-            // 親が無ければ持つ値が世界の値。分解を通すと誤差が載り、触っていない欄まで書き換わる
-            if (target.Parent() == nullptr)
+            // 画面上での見かけの大きさを一定に保つための、ハンドルのワールド空間での長さを算出する
+            [[nodiscard]] float HandleWorldLength(const NS::Vector3& origin, const NS::Matrix& vp) noexcept
+            {
+                return k_HandleLength * ScreenConstantScale(origin, vp);
+            }
+
+            [[nodiscard]] float DistancePointToSegment(NS::Vector2 p, NS::Vector2 a, NS::Vector2 b) noexcept
+            {
+                const float abx = b.x - a.x;
+                const float aby = b.y - a.y;
+                const float apx = p.x - a.x;
+                const float apy = p.y - a.y;
+                const float lenSq = abx * abx + aby * aby;
+                float t = 0.0f;
+                if (lenSq > 1e-12f)
+                {
+                    t = (apx * abx + apy * aby) / lenSq;
+                }
+                if (t < 0.0f)
+                {
+                    t = 0.0f;
+                }
+                else if (t > 1.0f)
+                {
+                    t = 1.0f;
+                }
+                const float cx = a.x + abx * t;
+                const float cy = a.y + aby * t;
+                const float dx = p.x - cx;
+                const float dy = p.y - cy;
+                return std::sqrt(dx * dx + dy * dy);
+            }
+
+            // ギズモは世界の空間で動かす
+            [[nodiscard]] TransformState WorldState(const NS::Transform& target) noexcept
             {
                 return TransformState{target.Position(), target.Rotation(), target.Scale()};
             }
-            const NS::AffineDecomposition world = NS::DecomposeAffine(target.WorldMatrix());
-            return TransformState{world.translation, world.rotation, world.scale};
-        }
 
-        // 世界の値を親の空間へ戻して書く。Transform が持つのは親の空間の値
-        void ApplyState(NS::Obj::Transform& target, const TransformState& state) noexcept
-        {
-            const NS::Obj::Transform* parent = target.Parent();
-            if (parent == nullptr)
+            void ApplyState(NS::Transform& target, const TransformState& state) noexcept
             {
                 target.SetPosition(state.position);
                 target.SetRotation(state.rotation);
                 target.SetScale(state.scale);
-                return;
             }
 
-            NS::Matrix local = NS::Matrix::CreateScale(state.scale) * NS::Matrix::CreateFromQuaternion(state.rotation) *
-                               NS::Matrix::CreateTranslation(state.position) * parent->WorldMatrix().Invert();
-            NS::Vector3 scale{};
-            NS::Quaternion rotation{};
-            NS::Vector3 position{};
-            if (!local.Decompose(scale, rotation, position))
+            [[nodiscard]] TransformState ComputeDragResult(const TransformState& before,
+                                                           GizmoTool tool,
+                                                           GizmoSpace space,
+                                                           GizmoAxis axis,
+                                                           const NS::Matrix& viewProjection,
+                                                           NS::Size2D viewport,
+                                                           NS::Vector2 screenStart,
+                                                           NS::Vector2 screenEnd,
+                                                           bool snap) noexcept
             {
-                return;
-            }
-            target.SetPosition(position);
-            target.SetRotation(rotation);
-            target.SetScale(scale);
-        }
-
-        [[nodiscard]] TransformState ComputeDragResult(const TransformState& before,
-                                                       GizmoTool tool,
-                                                       GizmoSpace space,
-                                                       GizmoAxis axis,
-                                                       const NS::Matrix& viewProjection,
-                                                       NS::Size2D viewport,
-                                                       NS::Vector2 screenStart,
-                                                       NS::Vector2 screenEnd,
-                                                       bool snap) noexcept
-        {
-            TransformState after = before;
-            const NS::Quaternion axisOrient = EffectiveAxisOrientation(tool, space, before.rotation);
-            switch (tool)
-            {
-            case GizmoTool::Move:
-            {
-                const NS::Ray rayStart = NS::Editor::ScreenToWorldRay(
-                    viewProjection, viewport, static_cast<int>(screenStart.x), static_cast<int>(screenStart.y));
-                const NS::Ray rayNow = NS::Editor::ScreenToWorldRay(
-                    viewProjection, viewport, static_cast<int>(screenEnd.x), static_cast<int>(screenEnd.y));
-                after.position =
-                    GizmoEditor::ComputeAxisMove(before.position, axis, axisOrient, rayStart, rayNow, snap);
-                break;
-            }
-            case GizmoTool::Rotate:
-            {
-                const float angle = GizmoEditor::WorldDragToAngle(
-                    before.position, axis, axisOrient, viewProjection, viewport, screenStart, screenEnd);
-                after.rotation =
-                    GizmoEditor::ComputeAxisRotate(before.rotation, axis, angle, snap, space == GizmoSpace::World);
-                break;
-            }
-            case GizmoTool::Scale:
-            {
-                NS::Vector2 axisDir2d{};
-                if (axis != GizmoAxis::Uniform)
+                TransformState after = before;
+                const NS::Quaternion axisOrient = EffectiveAxisOrientation(tool, space, before.rotation);
+                switch (tool)
                 {
-                    NS::Vector2 origin2d{};
-                    NS::Vector2 end2d{};
-                    const NS::Vector3 axisEnd = before.position + OrientedAxis(axis, axisOrient) * k_HandleLength;
-                    if (ProjectToScreen(before.position, viewProjection, viewport, origin2d) &&
-                        ProjectToScreen(axisEnd, viewProjection, viewport, end2d))
+                case GizmoTool::Move:
+                {
+                    const NS::Ray rayStart = NS::Editor::ScreenToWorldRay(
+                        viewProjection, viewport, static_cast<int>(screenStart.x), static_cast<int>(screenStart.y));
+                    const NS::Ray rayNow = NS::Editor::ScreenToWorldRay(
+                        viewProjection, viewport, static_cast<int>(screenEnd.x), static_cast<int>(screenEnd.y));
+                    after.position =
+                        GizmoEditor::ComputeAxisMove(before.position, axis, axisOrient, rayStart, rayNow, snap);
+                    break;
+                }
+                case GizmoTool::Rotate:
+                {
+                    const float angle = GizmoEditor::WorldDragToAngle(
+                        before.position, axis, axisOrient, viewProjection, viewport, screenStart, screenEnd);
+                    after.rotation =
+                        GizmoEditor::ComputeAxisRotate(before.rotation, axis, angle, snap, space == GizmoSpace::World);
+                    break;
+                }
+                case GizmoTool::Scale:
+                {
+                    NS::Vector2 axisDir2d{};
+                    if (axis != GizmoAxis::Uniform)
                     {
-                        axisDir2d = end2d - origin2d;
+                        NS::Vector2 origin2d{};
+                        NS::Vector2 end2d{};
+                        const NS::Vector3 axisEnd = before.position + OrientedAxis(axis, axisOrient) * k_HandleLength;
+                        if (ProjectToScreen(before.position, viewProjection, viewport, origin2d) &&
+                            ProjectToScreen(axisEnd, viewProjection, viewport, end2d))
+                        {
+                            axisDir2d = end2d - origin2d;
+                        }
                     }
+                    const NS::Vector2 dragPixels = screenEnd - screenStart;
+                    const float amount = GizmoEditor::ScreenDragToScaleAmount(axisDir2d, dragPixels);
+                    after.scale = GizmoEditor::ComputeScale(before.scale, axis, amount, snap);
+                    break;
                 }
-                const NS::Vector2 dragPixels = screenEnd - screenStart;
-                const float amount = GizmoEditor::ScreenDragToScaleAmount(axisDir2d, dragPixels);
-                after.scale = GizmoEditor::ComputeScale(before.scale, axis, amount, snap);
-                break;
+                case GizmoTool::Select:
+                default:
+                    break;
+                }
+                return after;
             }
-            case GizmoTool::Select:
-            default:
-                break;
-            }
-            return after;
-        }
 
-        // 指定軸に直交するリング上の座標
-        [[nodiscard]] NS::Vector3 RingPoint(
-            GizmoAxis axis, const NS::Vector3& center, float t, const NS::Quaternion& rotation, float radius) noexcept
-        {
-            NS::Vector3 u{};
-            NS::Vector3 v{};
-            switch (axis)
+            // 指定軸に直交するリング上の座標
+            [[nodiscard]] NS::Vector3 RingPoint(GizmoAxis axis,
+                                                const NS::Vector3& center,
+                                                float t,
+                                                const NS::Quaternion& rotation,
+                                                float radius) noexcept
             {
-            case GizmoAxis::X:
-                u = NS::Vector3{0.0f, 1.0f, 0.0f};
-                v = NS::Vector3{0.0f, 0.0f, 1.0f};
-                break;
-            case GizmoAxis::Y:
-                u = NS::Vector3{1.0f, 0.0f, 0.0f};
-                v = NS::Vector3{0.0f, 0.0f, 1.0f};
-                break;
-            case GizmoAxis::Z:
-                u = NS::Vector3{1.0f, 0.0f, 0.0f};
-                v = NS::Vector3{0.0f, 1.0f, 0.0f};
-                break;
-            default:
-                return center;
-            }
-            u = NS::Vector3::Transform(u, rotation);
-            v = NS::Vector3::Transform(v, rotation);
-            const float c = std::cos(t) * radius;
-            const float s = std::sin(t) * radius;
-            return center + u * c + v * s;
-        }
-
-        [[nodiscard]] float DistanceToRing(GizmoAxis axis,
-                                           const NS::Vector3& center,
-                                           const NS::Quaternion& rotation,
-                                           const NS::Matrix& vp,
-                                           NS::Size2D viewport,
-                                           NS::Vector2 mouse2d) noexcept
-        {
-            constexpr int k_Segments = 32;
-            const float radius = HandleWorldLength(center, vp);
-            float best = 1.0e30f;
-            NS::Vector2 prev{};
-            bool prevValid = false;
-            for (int i = 0; i <= k_Segments; ++i)
-            {
-                const float t = (2.0f * NS::k_Pi * static_cast<float>(i)) / static_cast<float>(k_Segments);
-                NS::Vector2 screen{};
-                const bool ok = ProjectToScreen(RingPoint(axis, center, t, rotation, radius), vp, viewport, screen);
-                if (ok && prevValid)
+                NS::Vector3 u{};
+                NS::Vector3 v{};
+                switch (axis)
                 {
-                    const float d = DistancePointToSegment(mouse2d, prev, screen);
-                    if (d < best)
-                    {
-                        best = d;
-                    }
+                case GizmoAxis::X:
+                    u = NS::Vector3{0.0f, 1.0f, 0.0f};
+                    v = NS::Vector3{0.0f, 0.0f, 1.0f};
+                    break;
+                case GizmoAxis::Y:
+                    u = NS::Vector3{1.0f, 0.0f, 0.0f};
+                    v = NS::Vector3{0.0f, 0.0f, 1.0f};
+                    break;
+                case GizmoAxis::Z:
+                    u = NS::Vector3{1.0f, 0.0f, 0.0f};
+                    v = NS::Vector3{0.0f, 1.0f, 0.0f};
+                    break;
+                default:
+                    return center;
                 }
-                prev = screen;
-                prevValid = ok;
+                u = NS::Vector3::Transform(u, rotation);
+                v = NS::Vector3::Transform(v, rotation);
+                const float c = std::cos(t) * radius;
+                const float s = std::sin(t) * radius;
+                return center + u * c + v * s;
             }
-            return best;
-        }
 
-        //! パネルローカル座標に原点を加算し、drawlist へ渡す画面座標にする
-        struct PanelToScreenPx
-        {
-            float panelX = 0.0f; // パネル左上の X
-            float panelY = 0.0f; // パネル左上の Y
-
-            ImVec2 operator()(NS::Vector2 local) const noexcept { return ImVec2{panelX + local.x, panelY + local.y}; }
-        };
-    } // namespace
-
-    void GizmoEditor::SetSelectableObjects(std::span<NS::Obj::SceneActor* const> objects,
-                                           std::span<const NS::uint8> pickable) noexcept
-    {
-        m_objects = objects;
-        m_pickable = pickable;
-    }
-
-    void GizmoEditor::Tick(const NS::Matrix& viewProjection, const ViewRect& view, bool viewHovered) noexcept
-    {
-        if (!m_active || m_input == nullptr)
-        {
-            return;
-        }
-
-        NS::OS::Keyboard& kb = m_input->Keyboard();
-        NS::OS::Mouse& mouse = m_input->Mouse();
-
-        const bool imguiWantsKeyboard = (m_imgui != nullptr) && m_imgui->WantCaptureKeyboard();
-
-        // 右ドラッグ中の W/A/S/D/Q/E は編集カメラの移動なので、ツール切替に食われないようにする
-        const bool cameraFlying = mouse.IsHeld(NS::OS::MouseButton::Right);
-
-        // Q/W/E/R でツール、X で局所座標系と世界座標系を切り替える
-        if (!imguiWantsKeyboard && !m_dragging && !cameraFlying)
-        {
-            for (const NS::OS::Key key : {NS::OS::Key::Q, NS::OS::Key::W, NS::OS::Key::E, NS::OS::Key::R})
+            [[nodiscard]] float DistanceToRing(GizmoAxis axis,
+                                               const NS::Vector3& center,
+                                               const NS::Quaternion& rotation,
+                                               const NS::Matrix& vp,
+                                               NS::Size2D viewport,
+                                               NS::Vector2 mouse2d) noexcept
             {
-                if (kb.IsPressed(key))
-                {
-                    m_tool = ToolForKey(m_tool, key);
-                }
-            }
-            if (kb.IsPressed(NS::OS::Key::X))
-            {
-                ToggleSpace();
-            }
-        }
-
-        // マウスはパネル基準のローカル座標で扱う。継続中のドラッグは矩形外でも動かす
-        const NS::Size2D viewport = ViewRectSize(view);
-        int viewMouseX = 0;
-        int viewMouseY = 0;
-        WindowMouseToViewSpace(mouse.GetX(), mouse.GetY(), viewMouseX, viewMouseY);
-        int localX = 0;
-        int localY = 0;
-        ViewRectToLocal(view, viewMouseX, viewMouseY, localX, localY);
-        const NS::Vector2 mouse2d{static_cast<float>(localX), static_cast<float>(localY)};
-        const bool snap = kb.IsHeld(NS::OS::Key::Ctrl);
-
-        if (m_dragging)
-        {
-            if (m_selected != nullptr && mouse.IsHeld(NS::OS::MouseButton::Left))
-            {
-                const TransformState preview = ComputeDragResult(m_dragBefore,
-                                                                 m_tool,
-                                                                 m_space,
-                                                                 m_dragAxis,
-                                                                 viewProjection,
-                                                                 viewport,
-                                                                 m_dragStartScreen,
-                                                                 mouse2d,
-                                                                 snap);
-                ApplyState(*m_selected, preview);
-            }
-            else
-            {
-                m_dragging = false;
-                m_dragAxis = GizmoAxis::None;
-            }
-            return;
-        }
-
-        if (!mouse.IsPressed(NS::OS::MouseButton::Left))
-        {
-            return;
-        }
-
-        // クリック開始はパネル上でだけ受ける。Game 窓の上では ImGui が常にマウスを要求するため、
-        // UI との取り合いは他窓が上に無いことと矩形内かで判定する
-        if (!viewHovered || !ViewRectContains(view, viewMouseX, viewMouseY))
-        {
-            return;
-        }
-
-        // 先にギズモのハンドルを拾う
-        if (m_selected != nullptr && m_tool != GizmoTool::Select)
-        {
-            const TransformState world = WorldState(*m_selected);
-            const GizmoAxis axis = ToolHandlePick(world.position,
-                                                  EffectiveAxisOrientation(m_tool, m_space, world.rotation),
-                                                  m_tool,
-                                                  mouse2d,
-                                                  viewProjection,
-                                                  viewport);
-            if (axis != GizmoAxis::None)
-            {
-                m_dragging = true;
-                m_dragAxis = axis;
-                m_dragStartScreen = mouse2d;
-                m_dragBefore = world;
-                return;
-            }
-        }
-
-        // ハンドルに当たらなければ配置物を拾う
-        const NS::Ray ray = NS::Editor::ScreenToWorldRay(viewProjection, viewport, localX, localY);
-        std::vector<NS::Matrix> worldMatrices;
-        std::vector<NS::AABB> localBounds;
-        worldMatrices.reserve(m_objects.size());
-        localBounds.reserve(m_objects.size());
-        // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大した配置物の箱が
-        // 拡縮の 2 乗に膨らみ、近くのクリックを先に取る
-        for (const NS::Obj::SceneActor* obj : m_objects)
-        {
-            worldMatrices.push_back(obj->Root().WorldMatrix());
-            localBounds.push_back(PickLocalBounds(*obj));
-        }
-
-        // 可視オブジェクトを優先して判定し、ヒットしなければ不可視オブジェクトも含めて再判定する
-        int hit = PickNearestOBB(ray, worldMatrices, localBounds, m_pickable);
-        if (hit < 0)
-        {
-            hit = PickNearestOBB(ray, worldMatrices, localBounds);
-        }
-
-        if (hit >= 0)
-        {
-            m_selected = &m_objects[static_cast<std::size_t>(hit)]->Root();
-        }
-        else
-        {
-            m_selected = nullptr;
-        }
-    }
-
-    void GizmoEditor::Render(const NS::Matrix& viewProjection, const ViewRect& view) noexcept
-    {
-#if NS_EDITOR_ENABLED
-        if (!m_active || m_selected == nullptr)
-        {
-            return;
-        }
-        if (view.width <= 0 || view.height <= 0)
-        {
-            return;
-        }
-
-        // 中央に Game 窓が立つため背景 drawlist では窓の裏に隠れる。前面へ描き、パネル外はクリップで漏らさない
-        ImDrawList* dl = ImGui::GetForegroundDrawList();
-        if (dl == nullptr)
-        {
-            return;
-        }
-
-        const NS::Size2D viewport = ViewRectSize(view);
-        const float panelX = static_cast<float>(view.x);
-        const float panelY = static_cast<float>(view.y);
-        // ProjectToScreen はパネルローカルを返すので、drawlist へ渡す直前に原点を加算する
-        const PanelToScreenPx toPx{panelX, panelY};
-
-        // 選択ツールは何も出さない。掴む物が無い状態で印だけ置いても操作の手がかりにならない
-        if (m_tool == GizmoTool::Select)
-        {
-            return;
-        }
-
-        const TransformState world = WorldState(*m_selected);
-        const NS::Vector3 origin = world.position;
-        const NS::Quaternion rotation = EffectiveAxisOrientation(m_tool, m_space, world.rotation);
-        NS::Vector2 origin2d{};
-        if (!ProjectToScreen(origin, viewProjection, viewport, origin2d))
-        {
-            return;
-        }
-
-        dl->PushClipRect(ImVec2{panelX, panelY},
-                         ImVec2{panelX + static_cast<float>(view.width), panelY + static_cast<float>(view.height)},
-                         true);
-
-        const ImVec2 originPx = toPx(origin2d);
-
-        const bool worldEffective = (m_tool != GizmoTool::Scale) && (m_space == GizmoSpace::World);
-        const char* spaceLabel = "Local";
-        if (worldEffective)
-        {
-            spaceLabel = "World";
-        }
-        dl->AddText(ImVec2{originPx.x + 12.0f, originPx.y + 8.0f}, IM_COL32(235, 235, 235, 255), spaceLabel);
-
-        const ImU32 axisColors[3] = {
-            IM_COL32(230, 70, 70, 255),
-            IM_COL32(70, 220, 90, 255),
-            IM_COL32(90, 140, 255, 255),
-        };
-        const GizmoAxis axes[3] = {GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z};
-
-        const float handleLength = HandleWorldLength(origin, viewProjection);
-
-        if (m_tool == GizmoTool::Rotate)
-        {
-            constexpr int k_Segments = 48;
-            for (int a = 0; a < 3; ++a)
-            {
-                ImVec2 prev{};
+                constexpr int k_Segments = 32;
+                const float radius = HandleWorldLength(center, vp);
+                float best = 1.0e30f;
+                NS::Vector2 prev{};
                 bool prevValid = false;
                 for (int i = 0; i <= k_Segments; ++i)
                 {
                     const float t = (2.0f * NS::k_Pi * static_cast<float>(i)) / static_cast<float>(k_Segments);
                     NS::Vector2 screen{};
-                    const bool ok = ProjectToScreen(
-                        RingPoint(axes[a], origin, t, rotation, handleLength), viewProjection, viewport, screen);
-                    const ImVec2 cur = toPx(screen);
+                    const bool ok = ProjectToScreen(RingPoint(axis, center, t, rotation, radius), vp, viewport, screen);
                     if (ok && prevValid)
                     {
-                        dl->AddLine(prev, cur, axisColors[a], 2.0f);
+                        const float d = DistancePointToSegment(mouse2d, prev, screen);
+                        if (d < best)
+                        {
+                            best = d;
+                        }
                     }
-                    prev = cur;
+                    prev = screen;
                     prevValid = ok;
                 }
+                return best;
+            }
+
+            //! パネルローカル座標に原点を加算し、drawlist へ渡す画面座標にする
+            struct PanelToScreenPx
+            {
+                float panelX = 0.0f; // パネル左上の X
+                float panelY = 0.0f; // パネル左上の Y
+
+                ImVec2 operator()(NS::Vector2 local) const noexcept
+                {
+                    return ImVec2{panelX + local.x, panelY + local.y};
+                }
+            };
+        } // namespace
+
+        void GizmoEditor::SetSelectableObjects(std::span<NS::SceneActor* const> objects,
+                                               std::span<const NS::uint8> pickable) noexcept
+        {
+            m_objects = objects;
+            m_pickable = pickable;
+        }
+
+        void GizmoEditor::Tick(const NS::Matrix& viewProjection, const ViewRect& view, bool viewHovered) noexcept
+        {
+            if (!m_active || m_input == nullptr)
+            {
+                return;
+            }
+
+            NS::OS::Keyboard& kb = m_input->Keyboard();
+            NS::OS::Mouse& mouse = m_input->Mouse();
+
+            const bool imguiWantsKeyboard = (m_imgui != nullptr) && m_imgui->WantCaptureKeyboard();
+
+            // 右ドラッグ中の W/A/S/D/Q/E は編集カメラの移動なので、ツール切替に食われないようにする
+            const bool cameraFlying = mouse.IsHeld(NS::OS::MouseButton::Right);
+
+            // Q/W/E/R でツール、X で局所座標系と世界座標系を切り替える
+            if (!imguiWantsKeyboard && !m_dragging && !cameraFlying)
+            {
+                for (const NS::OS::Key key : {NS::OS::Key::Q, NS::OS::Key::W, NS::OS::Key::E, NS::OS::Key::R})
+                {
+                    if (kb.IsPressed(key))
+                    {
+                        m_tool = ToolForKey(m_tool, key);
+                    }
+                }
+                if (kb.IsPressed(NS::OS::Key::X))
+                {
+                    ToggleSpace();
+                }
+            }
+
+            // マウスはパネル基準のローカル座標で扱う。継続中のドラッグは矩形外でも動かす
+            const NS::Size2D viewport = ViewRectSize(view);
+            int viewMouseX = 0;
+            int viewMouseY = 0;
+            WindowMouseToViewSpace(mouse.GetX(), mouse.GetY(), viewMouseX, viewMouseY);
+            int localX = 0;
+            int localY = 0;
+            ViewRectToLocal(view, viewMouseX, viewMouseY, localX, localY);
+            const NS::Vector2 mouse2d{static_cast<float>(localX), static_cast<float>(localY)};
+            const bool snap = kb.IsHeld(NS::OS::Key::Ctrl);
+
+            if (m_dragging)
+            {
+                if (m_selected != nullptr && mouse.IsHeld(NS::OS::MouseButton::Left))
+                {
+                    const TransformState preview = ComputeDragResult(m_dragBefore,
+                                                                     m_tool,
+                                                                     m_space,
+                                                                     m_dragAxis,
+                                                                     viewProjection,
+                                                                     viewport,
+                                                                     m_dragStartScreen,
+                                                                     mouse2d,
+                                                                     snap);
+                    ApplyState(*m_selected, preview);
+                }
+                else
+                {
+                    m_dragging = false;
+                    m_dragAxis = GizmoAxis::None;
+                }
+                return;
+            }
+
+            if (!mouse.IsPressed(NS::OS::MouseButton::Left))
+            {
+                return;
+            }
+
+            // クリック開始はパネル上でだけ受ける。Game 窓の上では ImGui が常にマウスを要求するため、
+            // UI との取り合いは他窓が上に無いことと矩形内かで判定する
+            if (!viewHovered || !ViewRectContains(view, viewMouseX, viewMouseY))
+            {
+                return;
+            }
+
+            // 先にギズモのハンドルを拾う
+            if (m_selected != nullptr && m_tool != GizmoTool::Select)
+            {
+                const TransformState world = WorldState(*m_selected);
+                const GizmoAxis axis = ToolHandlePick(world.position,
+                                                      EffectiveAxisOrientation(m_tool, m_space, world.rotation),
+                                                      m_tool,
+                                                      mouse2d,
+                                                      viewProjection,
+                                                      viewport);
+                if (axis != GizmoAxis::None)
+                {
+                    m_dragging = true;
+                    m_dragAxis = axis;
+                    m_dragStartScreen = mouse2d;
+                    m_dragBefore = world;
+                    return;
+                }
+            }
+
+            // ハンドルに当たらなければ配置物を拾う
+            const NS::Ray ray = NS::Editor::ScreenToWorldRay(viewProjection, viewport, localX, localY);
+            std::vector<NS::Matrix> worldMatrices;
+            std::vector<NS::AABB> localBounds;
+            worldMatrices.reserve(m_objects.size());
+            localBounds.reserve(m_objects.size());
+            // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大した配置物の箱が
+            // 拡縮の 2 乗に膨らみ、近くのクリックを先に取る
+            for (const NS::SceneActor* obj : m_objects)
+            {
+                worldMatrices.push_back(obj->Root().WorldMatrix());
+                localBounds.push_back(PickLocalBounds(*obj));
+            }
+
+            // 可視オブジェクトを優先して判定し、ヒットしなければ不可視オブジェクトも含めて再判定する
+            int hit = PickNearestOBB(ray, worldMatrices, localBounds, m_pickable);
+            if (hit < 0)
+            {
+                hit = PickNearestOBB(ray, worldMatrices, localBounds);
+            }
+
+            if (hit >= 0)
+            {
+                m_selected = &m_objects[static_cast<std::size_t>(hit)]->Root();
+            }
+            else
+            {
+                m_selected = nullptr;
             }
         }
-        else
+
+        void GizmoEditor::Render(const NS::Matrix& viewProjection, const ViewRect& view) noexcept
         {
+#if NS_EDITOR_ENABLED
+            if (!m_active || m_selected == nullptr)
+            {
+                return;
+            }
+            if (view.width <= 0 || view.height <= 0)
+            {
+                return;
+            }
+
+            // 中央に Game 窓が立つため背景 drawlist では窓の裏に隠れる。前面へ描き、パネル外はクリップで漏らさない
+            ImDrawList* dl = ImGui::GetForegroundDrawList();
+            if (dl == nullptr)
+            {
+                return;
+            }
+
+            const NS::Size2D viewport = ViewRectSize(view);
+            const float panelX = static_cast<float>(view.x);
+            const float panelY = static_cast<float>(view.y);
+            // ProjectToScreen はパネルローカルを返すので、drawlist へ渡す直前に原点を加算する
+            const PanelToScreenPx toPx{panelX, panelY};
+
+            // 選択ツールは何も出さない。掴む物が無い状態で印だけ置いても操作の手がかりにならない
+            if (m_tool == GizmoTool::Select)
+            {
+                return;
+            }
+
+            const TransformState world = WorldState(*m_selected);
+            const NS::Vector3 origin = world.position;
+            const NS::Quaternion rotation = EffectiveAxisOrientation(m_tool, m_space, world.rotation);
+            NS::Vector2 origin2d{};
+            if (!ProjectToScreen(origin, viewProjection, viewport, origin2d))
+            {
+                return;
+            }
+
+            dl->PushClipRect(ImVec2{panelX, panelY},
+                             ImVec2{panelX + static_cast<float>(view.width), panelY + static_cast<float>(view.height)},
+                             true);
+
+            const ImVec2 originPx = toPx(origin2d);
+
+            const bool worldEffective = (m_tool != GizmoTool::Scale) && (m_space == GizmoSpace::World);
+            const char* spaceLabel = "Local";
+            if (worldEffective)
+            {
+                spaceLabel = "World";
+            }
+            dl->AddText(ImVec2{originPx.x + 12.0f, originPx.y + 8.0f}, IM_COL32(235, 235, 235, 255), spaceLabel);
+
+            const ImU32 axisColors[3] = {
+                IM_COL32(230, 70, 70, 255),
+                IM_COL32(70, 220, 90, 255),
+                IM_COL32(90, 140, 255, 255),
+            };
+            const GizmoAxis axes[3] = {GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z};
+
+            const float handleLength = HandleWorldLength(origin, viewProjection);
+
+            if (m_tool == GizmoTool::Rotate)
+            {
+                constexpr int k_Segments = 48;
+                for (int a = 0; a < 3; ++a)
+                {
+                    ImVec2 prev{};
+                    bool prevValid = false;
+                    for (int i = 0; i <= k_Segments; ++i)
+                    {
+                        const float t = (2.0f * NS::k_Pi * static_cast<float>(i)) / static_cast<float>(k_Segments);
+                        NS::Vector2 screen{};
+                        const bool ok = ProjectToScreen(
+                            RingPoint(axes[a], origin, t, rotation, handleLength), viewProjection, viewport, screen);
+                        const ImVec2 cur = toPx(screen);
+                        if (ok && prevValid)
+                        {
+                            dl->AddLine(prev, cur, axisColors[a], 2.0f);
+                        }
+                        prev = cur;
+                        prevValid = ok;
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < 3; ++i)
+                {
+                    const NS::Vector3 dir = OrientedAxis(axes[i], rotation);
+                    const NS::Vector3 endWorld{
+                        origin.x + dir.x * handleLength,
+                        origin.y + dir.y * handleLength,
+                        origin.z + dir.z * handleLength,
+                    };
+                    NS::Vector2 end2d{};
+                    if (!ProjectToScreen(endWorld, viewProjection, viewport, end2d))
+                    {
+                        continue;
+                    }
+
+                    const ImVec2 endPx = toPx(end2d);
+                    dl->AddLine(originPx, endPx, axisColors[i], 2.5f);
+
+                    if (m_tool == GizmoTool::Scale)
+                    {
+                        constexpr float k_BoxHalf = 4.0f;
+                        dl->AddRectFilled(ImVec2{endPx.x - k_BoxHalf, endPx.y - k_BoxHalf},
+                                          ImVec2{endPx.x + k_BoxHalf, endPx.y + k_BoxHalf},
+                                          axisColors[i]);
+                    }
+                    else
+                    {
+                        const float dx = endPx.x - originPx.x;
+                        const float dy = endPx.y - originPx.y;
+                        const float len = std::sqrt(dx * dx + dy * dy);
+                        if (len > 1.0e-3f)
+                        {
+                            constexpr float k_HeadLength = 13.0f;
+                            constexpr float k_HeadHalfWidth = 5.0f;
+                            const float ux = dx / len;
+                            const float uy = dy / len;
+                            const ImVec2 baseLeft{endPx.x - ux * k_HeadLength - uy * k_HeadHalfWidth,
+                                                  endPx.y - uy * k_HeadLength + ux * k_HeadHalfWidth};
+                            const ImVec2 baseRight{endPx.x - ux * k_HeadLength + uy * k_HeadHalfWidth,
+                                                   endPx.y - uy * k_HeadLength - ux * k_HeadHalfWidth};
+                            dl->AddTriangleFilled(endPx, baseLeft, baseRight, axisColors[i]);
+                        }
+                        else
+                        {
+                            // 軸が視線と平行な場合は円として描画する
+                            dl->AddCircleFilled(endPx, 5.0f, axisColors[i]);
+                        }
+                    }
+                }
+
+                if (m_tool == GizmoTool::Scale)
+                {
+                    constexpr float k_CenterHalf = 5.0f;
+                    dl->AddRectFilled(ImVec2{originPx.x - k_CenterHalf, originPx.y - k_CenterHalf},
+                                      ImVec2{originPx.x + k_CenterHalf, originPx.y + k_CenterHalf},
+                                      IM_COL32(235, 235, 235, 255));
+                }
+            }
+
+            dl->PopClipRect();
+#else
+            (void)viewProjection;
+            (void)view;
+#endif
+        }
+
+        GizmoTool GizmoEditor::ToolForKey(GizmoTool current, NS::OS::Key key) noexcept
+        {
+            switch (key)
+            {
+            case NS::OS::Key::Q:
+                return GizmoTool::Select;
+            case NS::OS::Key::W:
+                return GizmoTool::Move;
+            case NS::OS::Key::E:
+                return GizmoTool::Rotate;
+            case NS::OS::Key::R:
+                return GizmoTool::Scale;
+            default:
+                return current;
+            }
+        }
+
+        int GizmoEditor::PickNearestOBB(const NS::Ray& ray,
+                                        std::span<const NS::Matrix> worldMatrices,
+                                        std::span<const NS::AABB> localBounds,
+                                        std::span<const NS::uint8> pickMask) noexcept
+        {
+            const std::size_t count = std::min(worldMatrices.size(), localBounds.size());
+            int best = -1;
+            float bestT = 0.0f;
+            for (std::size_t i = 0; i < count; ++i)
+            {
+                if (!pickMask.empty() && (i >= pickMask.size() || pickMask[i] == 0))
+                {
+                    continue;
+                }
+
+                const NS::Matrix inv = worldMatrices[i].Invert();
+                const NS::Vector3 boxCenter{localBounds[i].Center};
+                const NS::Vector3 localOrigin = NS::Vector3::Transform(ray.position, inv) - boxCenter;
+                const NS::Vector3 localDir = NS::Vector3::TransformNormal(ray.direction, inv);
+                float t = 0.0f;
+                const NS::Vector3 halfExtents{localBounds[i].Extents};
+                if (IntersectRayCenteredAABB(localOrigin, localDir, halfExtents, t) && (best < 0 || t < bestT))
+                {
+                    best = static_cast<int>(i);
+                    bestT = t;
+                }
+            }
+            return best;
+        }
+
+        NS::Vector3 GizmoEditor::ComputeAxisMove(const NS::Vector3& startPos,
+                                                 GizmoAxis axis,
+                                                 const NS::Quaternion& rotation,
+                                                 const NS::Ray& rayStart,
+                                                 const NS::Ray& rayNow,
+                                                 bool snap) noexcept
+        {
+            if (axis != GizmoAxis::X && axis != GizmoAxis::Y && axis != GizmoAxis::Z)
+            {
+                return startPos;
+            }
+
+            const NS::Vector3 a = OrientedAxis(axis, rotation);
+
+            // 視線と操作軸が平行に近い場合は移動をキャンセルする
+            NS::Vector3 viewDir = rayNow.direction;
+            viewDir.Normalize();
+            if (std::fabs(a.Dot(viewDir)) >= k_AxisViewParallelEpsilon)
+            {
+                return startPos;
+            }
+
+            // 軸を含み、視線に最も正対する平面の法線を算出する
+            NS::Vector3 normal = a.Cross(viewDir.Cross(a));
+            if (normal.LengthSquared() < k_PlaneParallelEpsilon)
+            {
+                return startPos;
+            }
+            normal.Normalize();
+
+            NS::Vector3 p0{};
+            NS::Vector3 p1{};
+            if (!IntersectRayWithPlane(rayStart, startPos, normal, p0) ||
+                !IntersectRayWithPlane(rayNow, startPos, normal, p1))
+            {
+                return startPos;
+            }
+
+            float delta = (p1 - p0).Dot(a);
+
+            if (snap)
+            {
+                delta = SnapTo(delta, k_MoveSnapStep);
+            }
+            return startPos + a * delta;
+        }
+
+        float GizmoEditor::WorldDragToAngle(const NS::Vector3& origin,
+                                            GizmoAxis axis,
+                                            const NS::Quaternion& rotation,
+                                            const NS::Matrix& viewProjection,
+                                            NS::Size2D viewport,
+                                            NS::Vector2 screenStart,
+                                            NS::Vector2 screenEnd) noexcept
+        {
+            const NS::Vector3 n = OrientedAxis(axis, rotation);
+            if (n.LengthSquared() < 0.5f)
+            {
+                return 0.0f;
+            }
+
+            const NS::Ray rayStart = NS::Editor::ScreenToWorldRay(
+                viewProjection, viewport, static_cast<int>(screenStart.x), static_cast<int>(screenStart.y));
+            const NS::Ray rayNow = NS::Editor::ScreenToWorldRay(
+                viewProjection, viewport, static_cast<int>(screenEnd.x), static_cast<int>(screenEnd.y));
+
+            NS::Vector3 hitStart{};
+            NS::Vector3 hitNow{};
+            if (!IntersectRayWithPlane(rayStart, origin, n, hitStart) ||
+                !IntersectRayWithPlane(rayNow, origin, n, hitNow))
+            {
+                return 0.0f;
+            }
+
+            const NS::Vector3 v0 = hitStart - origin;
+            const NS::Vector3 v1 = hitNow - origin;
+            if (v0.LengthSquared() < k_RingGrabRadiusEpsilonSq || v1.LengthSquared() < k_RingGrabRadiusEpsilonSq)
+            {
+                return 0.0f;
+            }
+
+            const float sinComponent = v0.Cross(v1).Dot(n);
+            const float cosComponent = v0.Dot(v1);
+            return std::atan2(sinComponent, cosComponent);
+        }
+
+        NS::Quaternion GizmoEditor::ComputeAxisRotate(
+            const NS::Quaternion& startRot, GizmoAxis axis, float angleRad, bool snap, bool worldSpace) noexcept
+        {
+            if (axis != GizmoAxis::X && axis != GizmoAxis::Y && axis != GizmoAxis::Z)
+            {
+                return startRot;
+            }
+
+            float angle = angleRad;
+            if (snap)
+            {
+                angle = SnapTo(angleRad, k_RotateSnapStep);
+            }
+
+            NS::Vector3 n = AxisVector(axis);
+            if (!worldSpace)
+            {
+                n = OrientedAxis(axis, startRot);
+            }
+
+            const NS::Quaternion delta = NS::Quaternion::CreateFromAxisAngle(n, angle);
+
+            return startRot * delta;
+        }
+
+        float GizmoEditor::ScreenDragToScaleAmount(NS::Vector2 axisDir2d, NS::Vector2 dragPixels) noexcept
+        {
+            // 操作軸が視線と平行な場合は、スクリーンのX軸移動量を基準にフォールバックする
+            const float axisLen = axisDir2d.Length();
+            if (axisLen <= 1.0e-6f)
+            {
+                float sign = 1.0f;
+                if (dragPixels.x < 0.0f)
+                {
+                    sign = -1.0f;
+                }
+                return dragPixels.Length() * k_ScaleSensitivity * sign;
+            }
+
+            const NS::Vector2 axisUnit{axisDir2d.x / axisLen, axisDir2d.y / axisLen};
+            return dragPixels.Dot(axisUnit) * k_ScaleSensitivity;
+        }
+
+        NS::Vector3 GizmoEditor::ComputeScale(const NS::Vector3& startScale,
+                                              GizmoAxis axis,
+                                              float amount,
+                                              bool snap) noexcept
+        {
+            NS::Vector3 result = startScale;
+            switch (axis)
+            {
+            case GizmoAxis::X:
+                result.x = startScale.x + amount;
+                break;
+            case GizmoAxis::Y:
+                result.y = startScale.y + amount;
+                break;
+            case GizmoAxis::Z:
+                result.z = startScale.z + amount;
+                break;
+            case GizmoAxis::Uniform:
+                result.x = startScale.x + amount;
+                result.y = startScale.y + amount;
+                result.z = startScale.z + amount;
+                break;
+            case GizmoAxis::None:
+            default:
+                return startScale;
+            }
+
+            if (snap)
+            {
+                result.x = SnapTo(result.x, k_ScaleSnapStep);
+                result.y = SnapTo(result.y, k_ScaleSnapStep);
+                result.z = SnapTo(result.z, k_ScaleSnapStep);
+            }
+
+            result.x = std::max(result.x, k_ScaleMin);
+            result.y = std::max(result.y, k_ScaleMin);
+            result.z = std::max(result.z, k_ScaleMin);
+            return result;
+        }
+
+        GizmoAxis GizmoEditor::ToolHandlePick(const NS::Vector3& gizmoOrigin,
+                                              const NS::Quaternion& rotation,
+                                              GizmoTool tool,
+                                              NS::Vector2 mouse2d,
+                                              const NS::Matrix& viewProjection,
+                                              NS::Size2D viewport) noexcept
+        {
+            if (tool == GizmoTool::Select)
+            {
+                return GizmoAxis::None;
+            }
+            if (viewport.width <= 0 || viewport.height <= 0)
+            {
+                return GizmoAxis::None;
+            }
+
+            NS::Vector2 origin2d{};
+            if (!ProjectToScreen(gizmoOrigin, viewProjection, viewport, origin2d))
+            {
+                return GizmoAxis::None;
+            }
+
+            if (tool == GizmoTool::Rotate)
+            {
+                const GizmoAxis ringAxes[3] = {GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z};
+                GizmoAxis bestRing = GizmoAxis::None;
+                float bestRingDistance = k_PickThresholdPixels;
+                for (int i = 0; i < 3; ++i)
+                {
+                    const float d =
+                        DistanceToRing(ringAxes[i], gizmoOrigin, rotation, viewProjection, viewport, mouse2d);
+                    if (d < bestRingDistance)
+                    {
+                        bestRingDistance = d;
+                        bestRing = ringAxes[i];
+                    }
+                }
+                return bestRing;
+            }
+
+            // 中央の Uniform ハンドルは軸より先に見る
+            if (tool == GizmoTool::Scale)
+            {
+                const float dx = mouse2d.x - origin2d.x;
+                const float dy = mouse2d.y - origin2d.y;
+                if (std::sqrt(dx * dx + dy * dy) < k_PickThresholdPixels)
+                {
+                    return GizmoAxis::Uniform;
+                }
+            }
+
+            const float handleLength = HandleWorldLength(gizmoOrigin, viewProjection);
+            const GizmoAxis axisEnum[3] = {GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z};
+
+            GizmoAxis best = GizmoAxis::None;
+            float bestDistance = k_PickThresholdPixels;
+            float bestPixels = 0.0f;
             for (int i = 0; i < 3; ++i)
             {
-                const NS::Vector3 dir = OrientedAxis(axes[i], rotation);
+                const NS::Vector3 dir = OrientedAxis(axisEnum[i], rotation);
                 const NS::Vector3 endWorld{
-                    origin.x + dir.x * handleLength,
-                    origin.y + dir.y * handleLength,
-                    origin.z + dir.z * handleLength,
+                    gizmoOrigin.x + dir.x * handleLength,
+                    gizmoOrigin.y + dir.y * handleLength,
+                    gizmoOrigin.z + dir.z * handleLength,
                 };
                 NS::Vector2 end2d{};
+
+                // 背面にある軸をスキップする
                 if (!ProjectToScreen(endWorld, viewProjection, viewport, end2d))
                 {
                     continue;
                 }
 
-                const ImVec2 endPx = toPx(end2d);
-                dl->AddLine(originPx, endPx, axisColors[i], 2.5f);
-
-                if (m_tool == GizmoTool::Scale)
+                // 視線と重なって画面で潰れた矢印は掴めても引けないので候補から外す
+                const float ax = end2d.x - origin2d.x;
+                const float ay = end2d.y - origin2d.y;
+                const float pixels = std::sqrt(ax * ax + ay * ay);
+                if (pixels < k_MinHandlePixels)
                 {
-                    constexpr float k_BoxHalf = 4.0f;
-                    dl->AddRectFilled(ImVec2{endPx.x - k_BoxHalf, endPx.y - k_BoxHalf},
-                                      ImVec2{endPx.x + k_BoxHalf, endPx.y + k_BoxHalf},
-                                      axisColors[i]);
+                    continue;
                 }
-                else
+
+                const float dist = DistancePointToSegment(mouse2d, origin2d, end2d);
+                if (dist >= k_PickThresholdPixels)
                 {
-                    const float dx = endPx.x - originPx.x;
-                    const float dy = endPx.y - originPx.y;
-                    const float len = std::sqrt(dx * dx + dy * dy);
-                    if (len > 1.0e-3f)
-                    {
-                        constexpr float k_HeadLength = 13.0f;
-                        constexpr float k_HeadHalfWidth = 5.0f;
-                        const float ux = dx / len;
-                        const float uy = dy / len;
-                        const ImVec2 baseLeft{endPx.x - ux * k_HeadLength - uy * k_HeadHalfWidth,
-                                              endPx.y - uy * k_HeadLength + ux * k_HeadHalfWidth};
-                        const ImVec2 baseRight{endPx.x - ux * k_HeadLength + uy * k_HeadHalfWidth,
-                                               endPx.y - uy * k_HeadLength - ux * k_HeadHalfWidth};
-                        dl->AddTriangleFilled(endPx, baseLeft, baseRight, axisColors[i]);
-                    }
-                    else
-                    {
-                        // 軸が視線と平行な場合は円として描画する
-                        dl->AddCircleFilled(endPx, 5.0f, axisColors[i]);
-                    }
+                    continue;
+                }
+                if (best == GizmoAxis::None)
+                {
+                    best = axisEnum[i];
+                    bestDistance = dist;
+                    bestPixels = pixels;
+                    continue;
+                }
+
+                // 重なった矢印は短い方を採る。長い方は短い方の先端より外で掴めるので両方に手が届く
+                const bool closer = dist < bestDistance - k_PickTieMarginPixels;
+                const bool tied = std::fabs(dist - bestDistance) <= k_PickTieMarginPixels;
+                if (closer || (tied && pixels < bestPixels))
+                {
+                    best = axisEnum[i];
+                    bestDistance = std::min(dist, bestDistance);
+                    bestPixels = pixels;
                 }
             }
 
-            if (m_tool == GizmoTool::Scale)
-            {
-                constexpr float k_CenterHalf = 5.0f;
-                dl->AddRectFilled(ImVec2{originPx.x - k_CenterHalf, originPx.y - k_CenterHalf},
-                                  ImVec2{originPx.x + k_CenterHalf, originPx.y + k_CenterHalf},
-                                  IM_COL32(235, 235, 235, 255));
-            }
+            return best;
         }
-
-        dl->PopClipRect();
-#else
-        (void)viewProjection;
-        (void)view;
-#endif
-    }
-
-    GizmoTool GizmoEditor::ToolForKey(GizmoTool current, NS::OS::Key key) noexcept
-    {
-        switch (key)
-        {
-        case NS::OS::Key::Q:
-            return GizmoTool::Select;
-        case NS::OS::Key::W:
-            return GizmoTool::Move;
-        case NS::OS::Key::E:
-            return GizmoTool::Rotate;
-        case NS::OS::Key::R:
-            return GizmoTool::Scale;
-        default:
-            return current;
-        }
-    }
-
-    int GizmoEditor::PickNearestOBB(const NS::Ray& ray,
-                                    std::span<const NS::Matrix> worldMatrices,
-                                    std::span<const NS::AABB> localBounds,
-                                    std::span<const NS::uint8> pickMask) noexcept
-    {
-        const std::size_t count = std::min(worldMatrices.size(), localBounds.size());
-        int best = -1;
-        float bestT = 0.0f;
-        for (std::size_t i = 0; i < count; ++i)
-        {
-            if (!pickMask.empty() && (i >= pickMask.size() || pickMask[i] == 0))
-            {
-                continue;
-            }
-
-            const NS::Matrix inv = worldMatrices[i].Invert();
-            const NS::Vector3 boxCenter{localBounds[i].Center};
-            const NS::Vector3 localOrigin = NS::Vector3::Transform(ray.position, inv) - boxCenter;
-            const NS::Vector3 localDir = NS::Vector3::TransformNormal(ray.direction, inv);
-            float t = 0.0f;
-            const NS::Vector3 halfExtents{localBounds[i].Extents};
-            if (IntersectRayCenteredAABB(localOrigin, localDir, halfExtents, t) && (best < 0 || t < bestT))
-            {
-                best = static_cast<int>(i);
-                bestT = t;
-            }
-        }
-        return best;
-    }
-
-    NS::Vector3 GizmoEditor::ComputeAxisMove(const NS::Vector3& startPos,
-                                             GizmoAxis axis,
-                                             const NS::Quaternion& rotation,
-                                             const NS::Ray& rayStart,
-                                             const NS::Ray& rayNow,
-                                             bool snap) noexcept
-    {
-        if (axis != GizmoAxis::X && axis != GizmoAxis::Y && axis != GizmoAxis::Z)
-        {
-            return startPos;
-        }
-
-        const NS::Vector3 a = OrientedAxis(axis, rotation);
-
-        // 視線と操作軸が平行に近い場合は移動をキャンセルする
-        NS::Vector3 viewDir = rayNow.direction;
-        viewDir.Normalize();
-        if (std::fabs(a.Dot(viewDir)) >= k_AxisViewParallelEpsilon)
-        {
-            return startPos;
-        }
-
-        // 軸を含み、視線に最も正対する平面の法線を算出する
-        NS::Vector3 normal = a.Cross(viewDir.Cross(a));
-        if (normal.LengthSquared() < k_PlaneParallelEpsilon)
-        {
-            return startPos;
-        }
-        normal.Normalize();
-
-        NS::Vector3 p0{};
-        NS::Vector3 p1{};
-        if (!IntersectRayWithPlane(rayStart, startPos, normal, p0) ||
-            !IntersectRayWithPlane(rayNow, startPos, normal, p1))
-        {
-            return startPos;
-        }
-
-        float delta = (p1 - p0).Dot(a);
-
-        if (snap)
-        {
-            delta = SnapTo(delta, k_MoveSnapStep);
-        }
-        return startPos + a * delta;
-    }
-
-    float GizmoEditor::WorldDragToAngle(const NS::Vector3& origin,
-                                        GizmoAxis axis,
-                                        const NS::Quaternion& rotation,
-                                        const NS::Matrix& viewProjection,
-                                        NS::Size2D viewport,
-                                        NS::Vector2 screenStart,
-                                        NS::Vector2 screenEnd) noexcept
-    {
-        const NS::Vector3 n = OrientedAxis(axis, rotation);
-        if (n.LengthSquared() < 0.5f)
-        {
-            return 0.0f;
-        }
-
-        const NS::Ray rayStart = NS::Editor::ScreenToWorldRay(
-            viewProjection, viewport, static_cast<int>(screenStart.x), static_cast<int>(screenStart.y));
-        const NS::Ray rayNow = NS::Editor::ScreenToWorldRay(
-            viewProjection, viewport, static_cast<int>(screenEnd.x), static_cast<int>(screenEnd.y));
-
-        NS::Vector3 hitStart{};
-        NS::Vector3 hitNow{};
-        if (!IntersectRayWithPlane(rayStart, origin, n, hitStart) || !IntersectRayWithPlane(rayNow, origin, n, hitNow))
-        {
-            return 0.0f;
-        }
-
-        const NS::Vector3 v0 = hitStart - origin;
-        const NS::Vector3 v1 = hitNow - origin;
-        if (v0.LengthSquared() < k_RingGrabRadiusEpsilonSq || v1.LengthSquared() < k_RingGrabRadiusEpsilonSq)
-        {
-            return 0.0f;
-        }
-
-        const float sinComponent = v0.Cross(v1).Dot(n);
-        const float cosComponent = v0.Dot(v1);
-        return std::atan2(sinComponent, cosComponent);
-    }
-
-    NS::Quaternion GizmoEditor::ComputeAxisRotate(
-        const NS::Quaternion& startRot, GizmoAxis axis, float angleRad, bool snap, bool worldSpace) noexcept
-    {
-        if (axis != GizmoAxis::X && axis != GizmoAxis::Y && axis != GizmoAxis::Z)
-        {
-            return startRot;
-        }
-
-        float angle = angleRad;
-        if (snap)
-        {
-            angle = SnapTo(angleRad, k_RotateSnapStep);
-        }
-
-        NS::Vector3 n = AxisVector(axis);
-        if (!worldSpace)
-        {
-            n = OrientedAxis(axis, startRot);
-        }
-
-        const NS::Quaternion delta = NS::Quaternion::CreateFromAxisAngle(n, angle);
-
-        return startRot * delta;
-    }
-
-    float GizmoEditor::ScreenDragToScaleAmount(NS::Vector2 axisDir2d, NS::Vector2 dragPixels) noexcept
-    {
-        // 操作軸が視線と平行な場合は、スクリーンのX軸移動量を基準にフォールバックする
-        const float axisLen = axisDir2d.Length();
-        if (axisLen <= 1.0e-6f)
-        {
-            float sign = 1.0f;
-            if (dragPixels.x < 0.0f)
-            {
-                sign = -1.0f;
-            }
-            return dragPixels.Length() * k_ScaleSensitivity * sign;
-        }
-
-        const NS::Vector2 axisUnit{axisDir2d.x / axisLen, axisDir2d.y / axisLen};
-        return dragPixels.Dot(axisUnit) * k_ScaleSensitivity;
-    }
-
-    NS::Vector3 GizmoEditor::ComputeScale(const NS::Vector3& startScale,
-                                          GizmoAxis axis,
-                                          float amount,
-                                          bool snap) noexcept
-    {
-        NS::Vector3 result = startScale;
-        switch (axis)
-        {
-        case GizmoAxis::X:
-            result.x = startScale.x + amount;
-            break;
-        case GizmoAxis::Y:
-            result.y = startScale.y + amount;
-            break;
-        case GizmoAxis::Z:
-            result.z = startScale.z + amount;
-            break;
-        case GizmoAxis::Uniform:
-            result.x = startScale.x + amount;
-            result.y = startScale.y + amount;
-            result.z = startScale.z + amount;
-            break;
-        case GizmoAxis::None:
-        default:
-            return startScale;
-        }
-
-        if (snap)
-        {
-            result.x = SnapTo(result.x, k_ScaleSnapStep);
-            result.y = SnapTo(result.y, k_ScaleSnapStep);
-            result.z = SnapTo(result.z, k_ScaleSnapStep);
-        }
-
-        result.x = std::max(result.x, k_ScaleMin);
-        result.y = std::max(result.y, k_ScaleMin);
-        result.z = std::max(result.z, k_ScaleMin);
-        return result;
-    }
-
-    GizmoAxis GizmoEditor::ToolHandlePick(const NS::Vector3& gizmoOrigin,
-                                          const NS::Quaternion& rotation,
-                                          GizmoTool tool,
-                                          NS::Vector2 mouse2d,
-                                          const NS::Matrix& viewProjection,
-                                          NS::Size2D viewport) noexcept
-    {
-        if (tool == GizmoTool::Select)
-        {
-            return GizmoAxis::None;
-        }
-        if (viewport.width <= 0 || viewport.height <= 0)
-        {
-            return GizmoAxis::None;
-        }
-
-        NS::Vector2 origin2d{};
-        if (!ProjectToScreen(gizmoOrigin, viewProjection, viewport, origin2d))
-        {
-            return GizmoAxis::None;
-        }
-
-        if (tool == GizmoTool::Rotate)
-        {
-            const GizmoAxis ringAxes[3] = {GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z};
-            GizmoAxis bestRing = GizmoAxis::None;
-            float bestRingDistance = k_PickThresholdPixels;
-            for (int i = 0; i < 3; ++i)
-            {
-                const float d = DistanceToRing(ringAxes[i], gizmoOrigin, rotation, viewProjection, viewport, mouse2d);
-                if (d < bestRingDistance)
-                {
-                    bestRingDistance = d;
-                    bestRing = ringAxes[i];
-                }
-            }
-            return bestRing;
-        }
-
-        // 中央の Uniform ハンドルは軸より先に見る
-        if (tool == GizmoTool::Scale)
-        {
-            const float dx = mouse2d.x - origin2d.x;
-            const float dy = mouse2d.y - origin2d.y;
-            if (std::sqrt(dx * dx + dy * dy) < k_PickThresholdPixels)
-            {
-                return GizmoAxis::Uniform;
-            }
-        }
-
-        const float handleLength = HandleWorldLength(gizmoOrigin, viewProjection);
-        const GizmoAxis axisEnum[3] = {GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z};
-
-        GizmoAxis best = GizmoAxis::None;
-        float bestDistance = k_PickThresholdPixels;
-        float bestPixels = 0.0f;
-        for (int i = 0; i < 3; ++i)
-        {
-            const NS::Vector3 dir = OrientedAxis(axisEnum[i], rotation);
-            const NS::Vector3 endWorld{
-                gizmoOrigin.x + dir.x * handleLength,
-                gizmoOrigin.y + dir.y * handleLength,
-                gizmoOrigin.z + dir.z * handleLength,
-            };
-            NS::Vector2 end2d{};
-
-            // 背面にある軸をスキップする
-            if (!ProjectToScreen(endWorld, viewProjection, viewport, end2d))
-            {
-                continue;
-            }
-
-            // 視線と重なって画面で潰れた矢印は掴めても引けないので候補から外す
-            const float ax = end2d.x - origin2d.x;
-            const float ay = end2d.y - origin2d.y;
-            const float pixels = std::sqrt(ax * ax + ay * ay);
-            if (pixels < k_MinHandlePixels)
-            {
-                continue;
-            }
-
-            const float dist = DistancePointToSegment(mouse2d, origin2d, end2d);
-            if (dist >= k_PickThresholdPixels)
-            {
-                continue;
-            }
-            if (best == GizmoAxis::None)
-            {
-                best = axisEnum[i];
-                bestDistance = dist;
-                bestPixels = pixels;
-                continue;
-            }
-
-            // 重なった矢印は短い方を採る。長い方は短い方の先端より外で掴めるので両方に手が届く
-            const bool closer = dist < bestDistance - k_PickTieMarginPixels;
-            const bool tied = std::fabs(dist - bestDistance) <= k_PickTieMarginPixels;
-            if (closer || (tied && pixels < bestPixels))
-            {
-                best = axisEnum[i];
-                bestDistance = std::min(dist, bestDistance);
-                bestPixels = pixels;
-            }
-        }
-
-        return best;
-    }
-
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

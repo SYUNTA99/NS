@@ -1,27 +1,27 @@
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
-#include "Game/PlayerActor.h"
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Object/IUse/IUseCamera.h"
-#include "NSlib/Object/IUse/IUseSceneSystem.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/CameraModifier.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/EffectKeeper.h"
-#include "NSlib/Object/SubObjects/HitReaction.h"
-#include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/SubObjects/Transform.h"
-#include "NSlib/Object/System/CameraManager.h"
-#include "NSlib/Object/System/HitScreenDirector.h"
-#include "NSlib/Object/System/PadRumbleDirector.h"
-#include "NSlib/Object/System/SceneSystem.h"
-#include "NSlib/Object/UpdatePhase.h"
+#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/CameraModifier.h"
+#include "NSlib/CoreObject/SubObjects/Collider.h"
+#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
+#include "NSlib/CoreObject/SubObjects/HitReaction.h"
+#include "NSlib/CoreObject/SubObjects/Model.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
+#include "NSlib/CoreObject/System/CameraManager.h"
+#include "NSlib/CoreObject/System/HitScreenDirector.h"
+#include "NSlib/CoreObject/System/PadRumbleDirector.h"
+#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/CoreObject/UpdatePhase.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Input.h"
 #include "Tests/TestHitTimelines.h"
@@ -46,11 +46,11 @@ namespace
     // は描く支度の段で進む。自機と相手を手で回す試しは、回した後にこれを呼んで同じ順にする
     void TickHitDirectors(PlayerActor& player)
     {
-        if (NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(&player))
+        if (NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(&player))
         {
             screen->OnTick();
         }
-        if (NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(&player))
+        if (NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(&player))
         {
             pad->OnTick();
         }
@@ -58,7 +58,7 @@ namespace
 
     int FlashRemaining(const PlayerActor& player)
     {
-        const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(&player);
+        const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(&player);
         if (screen == nullptr)
         {
             return 0;
@@ -67,27 +67,27 @@ namespace
     }
 
     PlayerActor* PlaceClockScene(
-        NS::Obj::Scene& scene, float rockX, float rockZ, float mass, std::string_view hitTimeline = {})
+        NS::Scene& scene, float rockX, float rockZ, float mass, std::string_view hitTimeline = {})
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
-        NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "PropActor");
-        NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, rockZ});
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonId(rock, 2);
+        NS::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, rockZ});
         if (mass > 0.0f)
         {
-            NS::Obj::ObjectJsonSubObjs(rock)["Params"]["質量"] = mass;
+            NS::ObjectJsonSubObjs(rock)["Params"]["質量"] = mass;
         }
         if (!hitTimeline.empty())
         {
-            NS::Obj::ObjectJsonSubObjs(rock)["Params"]["当たりのタイムライン"] = std::string{hitTimeline};
+            NS::ObjectJsonSubObjs(rock)["Params"]["当たりのタイムライン"] = std::string{hitTimeline};
         }
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+        NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -96,12 +96,12 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
-    PropActor* RockOf(NS::Obj::Scene& scene)
+    PropActor* RockOf(NS::Scene& scene)
     {
-        return NS::Obj::Cast<PropActor>(scene.Objects().FindByObjectId(2));
+        return NS::Cast<PropActor>(scene.Objects().FindByObjectId(2));
     }
 
     // 検知のフレームを 0 にした 1 フレームの姿
@@ -128,7 +128,7 @@ namespace
     int CountLayers(PlayerActor& player, std::string_view name)
     {
         int count = 0;
-        for (const NS::Obj::EffectRecord& record : player.GetEffectKeeper()->Records())
+        for (const NS::EffectRecord& record : player.GetEffectKeeper()->Records())
         {
             if (record.name == name)
             {
@@ -139,7 +139,8 @@ namespace
     }
 
     // 突進を出して当たりまで回し、検知のフレームから frames フレームぶんの姿を並べる。当たらなければ空
-    std::vector<ClockFrame> RunHit(PlayerActor& player, PropActor& rock, float charge01, int frames, float overcharge01 = 0.0f)
+    std::vector<ClockFrame> RunHit(
+        PlayerActor& player, PropActor& rock, float charge01, int frames, float overcharge01 = 0.0f)
     {
         std::vector<ClockFrame> trace;
         player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f}, 0.0f, overcharge01);
@@ -167,9 +168,9 @@ namespace
             now.shapeAnimating = player.Resolver().Answer().shapeAnimating;
             now.flashRemaining = FlashRemaining(player);
             now.padLeft = NS::OS::Input::Get().Gamepad().Vibration().left;
-            if (const NS::Obj::CameraManager* cameras = player.GetCameraManager())
+            if (const NS::CameraManager* cameras = player.GetCameraManager())
             {
-                now.shaking = cameras->FindModifier<NS::Obj::CameraShakeModifier>() != nullptr;
+                now.shaking = cameras->FindModifier<NS::CameraShakeModifier>() != nullptr;
                 now.zoom = cameras->ZoomRoll().zoom;
             }
             now.hitLayers = CountLayers(player, "impact.core");
@@ -210,7 +211,7 @@ TEST(ImpactTimelineClock, EventsStartTheStopReleaseAndReboundOnTheirFrames)
 {
     const ScopedHitTimelineDirectory directory("Clock");
     ScopedHitTimelineDirectory::SetBothTiers(MakeSplitReleaseTimeline());
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 10);
@@ -239,7 +240,7 @@ TEST(ImpactTimelineClock, TheStopIsAsLongAsTheTimelineSays)
         SCOPED_TRACE(steps);
         const ScopedHitTimelineDirectory directory("StopLength");
         ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(steps));
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, steps + 4);
@@ -259,7 +260,7 @@ TEST(ImpactTimelineClock, TheStopIgnoresChargeAndMass)
             SCOPED_TRACE(mass);
             const ScopedHitTimelineDirectory directory("StopFixed");
             ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(12));
-            NS::Obj::Scene scene;
+            NS::Scene scene;
             PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, mass);
             ASSERT_NE(player, nullptr);
             const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), charge, 16);
@@ -273,7 +274,7 @@ TEST(ImpactTimelineClock, TheStopIgnoresChargeAndMass)
 TEST(ImpactTimelineClock, AMissingTimelineReleasesOnTheDetectionFrame)
 {
     const ScopedHitTimelineDirectory directory("Missing");
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 4);
@@ -311,7 +312,7 @@ TEST(ImpactTimelineClock, EventsOnTheSameFrameRunInFileOrder)
         }
         const ScopedHitTimelineDirectory directory("Order");
         ScopedHitTimelineDirectory::SetBothTiers(timeline);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 4);
@@ -328,18 +329,18 @@ TEST(ImpactTimelineClock, TheShapeFollowsItsCurvesForItsLength)
     HitTimeline timeline;
     ShapeEvent shape;
     shape.along.count = 1;
-    shape.along.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+    shape.along.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     shape.height.count = 2;
-    shape.height.keys[0] = NS::Obj::Curve::Key{0.0f, 2.0f};
-    shape.height.keys[1] = NS::Obj::Curve::Key{3.0f, 1.25f};
+    shape.height.keys[0] = NS::Curve::Key{0.0f, 2.0f};
+    shape.height.keys[1] = NS::Curve::Key{3.0f, 1.25f};
     shape.side.count = 1;
-    shape.side.keys[0] = NS::Obj::Curve::Key{0.0f, 1.5f};
+    shape.side.keys[0] = NS::Curve::Key{0.0f, 1.5f};
     timeline.events = {{HitStopEvent{}, 1, 2, HitDirection::Any},
                        {shape, 1, 4, HitDirection::Any},
                        {ReboundEvent{}, 3, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("Shape");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 7);
@@ -375,7 +376,7 @@ TEST(ImpactTimelineClock, DirectedEventsRunOnlyForTheirDirection)
     {
         const ScopedHitTimelineDirectory directory("Direction");
         ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 1).empty());
@@ -398,7 +399,7 @@ TEST(ImpactTimelineClock, DirectedEventsRunOnlyForTheirDirection)
         timeline.events = {{TargetLaunchEvent{}, 1, 1, rowDirection}, {ReboundEvent{}, 1, 1, HitDirection::Any}};
         const ScopedHitTimelineDirectory directory("Direction");
         ScopedHitTimelineDirectory::SetBothTiers(timeline);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 3);
@@ -413,16 +414,16 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
     HitTimeline timeline;
     ShapeEvent shape;
     shape.along.count = 1;
-    shape.along.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+    shape.along.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     shape.height.count = 1;
-    shape.height.keys[0] = NS::Obj::Curve::Key{0.0f, 2.0f};
+    shape.height.keys[0] = NS::Curve::Key{0.0f, 2.0f};
     timeline.events = {{HitStopEvent{}, 1, 1, HitDirection::Any},
                        {shape, 1, 50, HitDirection::Any},
                        {FlashEvent{}, 1, 50, HitDirection::Any},
                        {TargetLaunchEvent{}, 2, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("Abort");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -471,7 +472,7 @@ TEST(ImpactTimelineClock, GradualReleaseSlowsTheWorldFromItsFrame)
     timeline.events.push_back({release, 6, 1, HitDirection::Any});
     const ScopedHitTimelineDirectory directory("GradualRelease");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -501,7 +502,7 @@ TEST(ImpactTimelineClock, PurpleOnlyGradualReleaseSkipsTheRedHit)
     for (int purple = 0; purple < 2; ++purple)
     {
         SCOPED_TRACE(purple);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         PropActor* rock = RockOf(scene);
@@ -534,7 +535,7 @@ TEST(ImpactTimelineClock, TheRecordNamesOnlyTheStopsTheTimelineUsed)
     timeline.events = {{TargetLaunchEvent{}, 1, 1, HitDirection::Any}, {ReboundEvent{}, 1, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("NoStop");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 2).empty());
@@ -555,13 +556,13 @@ TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
                        {TargetLaunchEvent{}, 2, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("Trauma");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     // 正面の当たりにする。外れは相手を脇へ押し、置き直した後も脇へ飛び続ける相手は 2 回目の突進の道から外れる
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
     ASSERT_EQ(RunHit(*player, *rock, 1.0f, 4).size(), 4u);
-    const NS::Obj::CameraManager* cameras = player->GetCameraManager();
+    const NS::CameraManager* cameras = player->GetCameraManager();
     ASSERT_NE(cameras, nullptr);
     const float added = player->Resolver().Answer().lastImpact.cameraTrauma;
     EXPECT_GT(added, 0.0f);
@@ -593,8 +594,8 @@ TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
     flash.alpha = 0.5f;
     PadVibrationEvent pad;
     pad.left.count = 2;
-    pad.left.keys[0] = NS::Obj::Curve::Key{0.0f, 0.8f};
-    pad.left.keys[1] = NS::Obj::Curve::Key{4.0f, 0.0f};
+    pad.left.keys[0] = NS::Curve::Key{0.0f, 0.8f};
+    pad.left.keys[1] = NS::Curve::Key{4.0f, 0.0f};
     ZoomRollEvent zoom;
     zoom.zoom = 1.2f;
     zoom.returnFrames = 2;
@@ -614,7 +615,7 @@ TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
     const ScopedHitTimelineDirectory directory("Returns");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     (void)NS::OS::Input::Get().Gamepad().SetVibration(0.0f, 0.0f);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 10);
@@ -668,7 +669,7 @@ TEST(ImpactTimelineClock, AMissShowsNoReboundTrailOrRecoilLines)
     };
     const ScopedHitTimelineDirectory directory("MissFlight");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 20);
@@ -687,9 +688,9 @@ TEST(ImpactTimelineClock, AMissShowsNoReboundTrailOrRecoilLines)
 // 外れのカメラ: つんのめりは突進の水平の向きのまま押し、反動の揺れは反動の水平の向きをカメラから見た向きへ写す
 TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
 {
-    NS::Obj::Curve distance;
+    NS::Curve distance;
     distance.count = 1;
-    distance.keys[0] = NS::Obj::Curve::Key{0.0f, 0.3f};
+    distance.keys[0] = NS::Curve::Key{0.0f, 0.3f};
     for (const bool sway : {false, true})
     {
         SCOPED_TRACE(sway);
@@ -712,15 +713,15 @@ TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
         }
         const ScopedHitTimelineDirectory directory("MissCamera");
         ScopedHitTimelineDirectory::SetBothTiers(timeline);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         ASSERT_EQ(RunHit(*player, *RockOf(scene), 1.0f, 6).size(), 6u);
         ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, HitTier::Wide);
-        const NS::Obj::CameraManager* cameras = player->GetCameraManager();
+        const NS::CameraManager* cameras = player->GetCameraManager();
         ASSERT_NE(cameras, nullptr);
-        const NS::Obj::CameraNudgeModifier* nudge =
-            cameras->FindModifier<NS::Obj::CameraNudgeModifier>(NS::Obj::CameraNudgeModifier::KindFor(sway));
+        const NS::CameraNudgeModifier* nudge =
+            cameras->FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(sway));
         ASSERT_NE(nudge, nullptr);
         EXPECT_EQ(nudge->Desc().onScreen, sway);
         NS::Vector3 expected{0.0f, 0.0f, 1.0f};
@@ -763,16 +764,16 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
                        {ReboundEvent{}, 5, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("MissCore");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(RunHit(*player, *RockOf(scene), 1.0f, 8).size(), 8u);
     const ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     ASSERT_EQ(impact.tier, HitTier::Wide);
 
-    const NS::Obj::EffectRecord* core = nullptr;
-    const NS::Obj::EffectRecord* sparks = nullptr;
-    for (const NS::Obj::EffectRecord& record : player->GetEffectKeeper()->Records())
+    const NS::EffectRecord* core = nullptr;
+    const NS::EffectRecord* sparks = nullptr;
+    for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
     {
         if (record.name == "impact.core")
         {
@@ -800,7 +801,7 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
 namespace
 {
     // 高さ 720 画素の画面の上の pixels 画素を、カメラから見た at の奥行きでの世界の長さへ直す
-    float MetersForPixels(const NS::Obj::CameraPose& pose, const NS::Vector3& at, float pixels)
+    float MetersForPixels(const NS::CameraPose& pose, const NS::Vector3& at, float pixels)
     {
         NS::Vector3 forward = pose.target - pose.position;
         forward.Normalize();
@@ -816,7 +817,7 @@ namespace
     // 置物の当たりの球の半径。置物の当たりは球で作る
     float RockRadius(const PropActor& rock)
     {
-        return static_cast<const NS::Obj::SphereCollision*>(rock.CollisionSubObj())->WorldSphere().radius;
+        return static_cast<const NS::SphereCollision*>(rock.CollisionSubObj())->WorldSphere().radius;
     }
 } // namespace
 
@@ -836,7 +837,7 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
                        {tremor, 7, 10, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("Tremor");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -867,7 +868,7 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
             EXPECT_FLOAT_EQ(other.amplitude, 0.0f);
             continue;
         }
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(player);
+        const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         NS::Vector3 forward = pose->target - pose->position;
         forward.Normalize();
@@ -922,7 +923,7 @@ TEST(ImpactTimelineClock, TargetTremorRatioKeepsTheSameShareOfTheBody)
                        {tremor, 7, 10, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("TremorRatio");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -946,7 +947,7 @@ TEST(ImpactTimelineClock, TargetTremorRatioKeepsTheSameShareOfTheBody)
         {
             continue;
         }
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(player);
+        const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(rock->ModelSubObj()->Tremor().amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
         EXPECT_NEAR(player->ModelSubObj()->Tremor().amplitude,
@@ -972,7 +973,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
                        {tremor, 7, 10, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("TremorPixelReference");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -988,7 +989,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
         {
             continue;
         }
-        const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(player);
+        const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(selfAmplitude, MetersForPixels(*pose, player->Root().Position(), 3.0f) * 0.5f, 0.00001f);
         EXPECT_NEAR(rock->ModelSubObj()->Tremor().amplitude,
@@ -1013,7 +1014,7 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
                        {lines, 1, 3, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("ShakeLines");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1032,7 +1033,7 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Obj::HitScreenDirector& reaction = *NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+        const NS::HitScreenDirector& reaction = *NS::FindSceneSystem<NS::HitScreenDirector>(player);
         if (clock < 1 || clock > 6)
         {
             EXPECT_EQ(reaction.ShakeLinesFramesRemaining(), 0);
@@ -1043,7 +1044,7 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
         {
             const NS::AABB bounds = rock->ModelSubObj()->WorldBounds();
             const NS::AABB self = player->ModelSubObj()->WorldBounds();
-            const NS::Obj::HitShakeLinesDesc& shown = reaction.ShakeLines();
+            const NS::HitShakeLinesDesc& shown = reaction.ShakeLines();
             EXPECT_NEAR(shown.center.x, bounds.Center.x, 1.0e-5f);
             EXPECT_NEAR(shown.center.y, bounds.Center.y, 1.0e-5f);
             EXPECT_NEAR(shown.center.z, bounds.Center.z, 1.0e-5f);
@@ -1065,10 +1066,10 @@ TEST(ImpactTimelineClock, GroundWaveSpreadsFromTheContactForItsLength)
 {
     GroundWaveEvent wave;
     wave.radius.count = 2;
-    wave.radius.keys[0] = NS::Obj::Curve::Key{0.0f, 0.0f};
-    wave.radius.keys[1] = NS::Obj::Curve::Key{8.0f, 4.0f};
+    wave.radius.keys[0] = NS::Curve::Key{0.0f, 0.0f};
+    wave.radius.keys[1] = NS::Curve::Key{8.0f, 4.0f};
     wave.strength.count = 1;
-    wave.strength.keys[0] = NS::Obj::Curve::Key{0.0f, 0.8f};
+    wave.strength.keys[0] = NS::Curve::Key{0.0f, 0.8f};
     HitTimeline timeline;
     timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
                        {TargetFreezeEvent{}, 1, 6, HitDirection::Any},
@@ -1077,7 +1078,7 @@ TEST(ImpactTimelineClock, GroundWaveSpreadsFromTheContactForItsLength)
                        {wave, 1, 8, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("GroundWave");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1126,10 +1127,10 @@ TEST(ImpactTimelineClock, DistortionRingSpreadsFromTheContactForItsLength)
 {
     DistortionRingEvent ring;
     ring.radius.count = 2;
-    ring.radius.keys[0] = NS::Obj::Curve::Key{0.0f, 0.0f};
-    ring.radius.keys[1] = NS::Obj::Curve::Key{6.0f, 0.6f};
+    ring.radius.keys[0] = NS::Curve::Key{0.0f, 0.0f};
+    ring.radius.keys[1] = NS::Curve::Key{6.0f, 0.6f};
     ring.push.count = 1;
-    ring.push.keys[0] = NS::Obj::Curve::Key{0.0f, 0.04f};
+    ring.push.keys[0] = NS::Curve::Key{0.0f, 0.04f};
     ring.halfWidth = 0.05f;
     HitTimeline timeline;
     timeline.events = {{HitStopEvent{}, 1, 6, HitDirection::Any},
@@ -1139,7 +1140,7 @@ TEST(ImpactTimelineClock, DistortionRingSpreadsFromTheContactForItsLength)
                        {ring, 2, 6, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("DistortionRing");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1189,12 +1190,12 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
                        {ReboundEvent{}, 7, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("BodyShake");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
-    const NS::Obj::CameraManager* cameras = player->GetCameraManager();
+    const NS::CameraManager* cameras = player->GetCameraManager();
     ASSERT_NE(cameras, nullptr);
     const NS::Vector3 forward = cameras->ForwardHorizontal();
 
@@ -1267,7 +1268,7 @@ TEST(ImpactTimelineClock, DepthShakePushesEachBodyAlongTheForceItTook)
                        {ReboundEvent{}, 7, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("DepthShake");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1327,7 +1328,7 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
                        {ReboundEvent{}, 7, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("Ghost");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1351,11 +1352,11 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Obj::Model& self = *player->ModelSubObj();
-        const NS::Obj::Model& other = *rock->ModelSubObj();
+        const NS::Model& self = *player->ModelSubObj();
+        const NS::Model& other = *rock->ModelSubObj();
         if (clock == 1)
         {
-            const std::optional<NS::Obj::CameraPose> pose = NS::Obj::CameraViewPose(player);
+            const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
             ASSERT_TRUE(pose.has_value());
             selfSpread = MetersForPixels(*pose, player->Root().Position(), 35.0f);
             otherSpread = MetersForPixels(*pose, rock->Root().Position(), 112.5f);
@@ -1363,7 +1364,7 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
         if (clock >= 1 && clock <= 5)
         {
             const float left = 1.0f - static_cast<float>(clock) / 6.0f;
-            for (const NS::Obj::Model* each : {&self, &other})
+            for (const NS::Model* each : {&self, &other})
             {
                 EXPECT_NEAR(each->GhostSpread().Dot(forward), 0.0f, 1.0e-5f);
                 EXPECT_NEAR(each->GhostSpread().y, 0.0f, 1.0e-6f);
@@ -1416,7 +1417,7 @@ TEST(ImpactTimelineClock, TheShakeIsItsStrengthScaledByTheHit)
         timeline.events.push_back({shake, 1, 2, HitDirection::Any});
         const ScopedHitTimelineDirectory directory("Shake");
         ScopedHitTimelineDirectory::SetBothTiers(timeline);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 2.0f);
         ASSERT_NE(player, nullptr);
         ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 1).empty());
@@ -1435,9 +1436,9 @@ namespace
     {
         ShapeEvent shrink;
         shrink.along.count = 1;
-        shrink.along.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+        shrink.along.keys[0] = NS::Curve::Key{0.0f, 1.0f};
         shrink.height.count = 1;
-        shrink.height.keys[0] = NS::Obj::Curve::Key{0.0f, 0.5f};
+        shrink.height.keys[0] = NS::Curve::Key{0.0f, 0.5f};
         HitTimeline timeline;
         timeline.events = {{shrink, -3, 5, HitDirection::Any},
                            {HitStopEvent{}, 1, 2, HitDirection::Any},
@@ -1452,7 +1453,7 @@ TEST(ImpactTimelineClock, NegativeEventsStartBeforeContact)
 {
     const ScopedHitTimelineDirectory directory("BeforeContact");
     ScopedHitTimelineDirectory::SetBothTiers(MakeBeforeContactTimeline());
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1493,7 +1494,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsWhenTheBeforeContactClockStarts)
 {
     const ScopedHitTimelineDirectory directory("BeforeContactBurst");
     ScopedHitTimelineDirectory::SetBothTiers(MakeBeforeContactTimeline());
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1510,8 +1511,8 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsWhenTheBeforeContactClockStarts)
         }
     }
     ASSERT_GE(beforeContactStep, 0);
-    const NS::Obj::EffectRecord* burst = nullptr;
-    for (const NS::Obj::EffectRecord& record : player->GetEffectKeeper()->Records())
+    const NS::EffectRecord* burst = nullptr;
+    for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
     {
         if (record.name == "release.burst")
         {
@@ -1528,7 +1529,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsOnTheContactFrameWithoutBeforeContactE
 {
     const ScopedHitTimelineDirectory directory("ContactBurst");
     ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1545,8 +1546,8 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsOnTheContactFrameWithoutBeforeContactE
         }
     }
     ASSERT_GE(contactStep, 0);
-    const NS::Obj::EffectRecord* burst = nullptr;
-    for (const NS::Obj::EffectRecord& record : player->GetEffectKeeper()->Records())
+    const NS::EffectRecord* burst = nullptr;
+    for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
     {
         if (record.name == "release.burst")
         {
@@ -1564,14 +1565,14 @@ TEST(ImpactTimelineClock, FramesToPredictedContactCountDownToTheDetection)
     // 触れる前は 1 フレームだけの形。予測を回すのに、どこかの段にマイナスの事象が要る
     ShapeEvent shrink;
     shrink.along.count = 1;
-    shrink.along.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+    shrink.along.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     shrink.height.count = 1;
-    shrink.height.keys[0] = NS::Obj::Curve::Key{0.0f, 0.5f};
+    shrink.height.keys[0] = NS::Curve::Key{0.0f, 0.5f};
     HitTimeline timeline = MakeLegacyHitTimeline(2);
     timeline.events.push_back({shrink, -1, 2, HitDirection::Any});
     const ScopedHitTimelineDirectory directory("PredictedFrames");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1597,14 +1598,14 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
 {
     ShapeEvent shrink;
     shrink.along.count = 1;
-    shrink.along.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+    shrink.along.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     shrink.height.count = 1;
-    shrink.height.keys[0] = NS::Obj::Curve::Key{0.0f, 0.5f};
+    shrink.height.keys[0] = NS::Curve::Key{0.0f, 0.5f};
     HitTimeline timeline = MakeLegacyHitTimeline(2);
     timeline.events.push_back({shrink, -1, 2, HitDirection::Any});
     const ScopedHitTimelineDirectory directory("PredictedBurst");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1621,8 +1622,8 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
         }
     }
     ASSERT_GE(contactStep, 0);
-    const NS::Obj::EffectRecord* burst = nullptr;
-    for (const NS::Obj::EffectRecord& record : player->GetEffectKeeper()->Records())
+    const NS::EffectRecord* burst = nullptr;
+    for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
     {
         if (record.name == "release.burst")
         {
@@ -1639,7 +1640,7 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
 {
     const ScopedHitTimelineDirectory directory("BeforeContactMiss");
     ScopedHitTimelineDirectory::SetBothTiers(MakeBeforeContactTimeline());
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1667,7 +1668,7 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
 namespace
 {
     // 自機以外の段で回った歩を数える
-    class CountingTicker final : public NS::Obj::SceneSystem
+    class CountingTicker final : public NS::SceneSystem
     {
     public:
         void OnTick() override { ++ticks; }
@@ -1679,7 +1680,7 @@ namespace
     {
         ShapeEvent shrink;
         shrink.along.count = 1;
-        shrink.along.keys[0] = NS::Obj::Curve::Key{0.0f, 0.9f};
+        shrink.along.keys[0] = NS::Curve::Key{0.0f, 0.9f};
         HitTimeline timeline;
         timeline.events = {{shrink, -4, 8, HitDirection::Any},
                            {OthersStopEvent{}, -2, 2, HitDirection::Any},
@@ -1696,7 +1697,7 @@ namespace
         float playerAdvance = 0.0f;
     };
 
-    std::vector<OthersStep> RunUntilDetection(NS::Obj::Scene& scene, PlayerActor& player, CountingTicker& others)
+    std::vector<OthersStep> RunUntilDetection(NS::Scene& scene, PlayerActor& player, CountingTicker& others)
     {
         std::vector<OthersStep> steps;
         player.RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -1717,11 +1718,11 @@ TEST(ImpactTimelineClock, OthersStopHoldsTheWorldButNotThePlayerBeforeContact)
 {
     const ScopedHitTimelineDirectory directory("OthersStop");
     ScopedHitTimelineDirectory::SetBothTiers(MakeOthersStopTimeline());
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 6.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     CountingTicker others;
-    scene.AddSystemTick(others, NS::Obj::UpdatePhase::Triggers);
+    scene.AddSystemTick(others, NS::UpdatePhase::Triggers);
     for (int frame = 0; frame < 30; ++frame)
     {
         scene.OnUpdate();
@@ -1751,11 +1752,11 @@ TEST(ImpactTimelineClock, OthersStopDoesNotRunForAMissPrediction)
     const ScopedHitTimelineDirectory directory("OthersStopMiss");
     HitTimelineLibrary::Get().Set("center", MakeOthersStopTimeline());
     HitTimelineLibrary::Get().Set("miss", MakeLegacyHitTimeline(4));
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.75f, 6.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     CountingTicker others;
-    scene.AddSystemTick(others, NS::Obj::UpdatePhase::Triggers);
+    scene.AddSystemTick(others, NS::UpdatePhase::Triggers);
     for (int frame = 0; frame < 30; ++frame)
     {
         scene.OnUpdate();
@@ -1775,7 +1776,7 @@ TEST(ImpactTimelineClock, AMissedPredictionReleasesTheOthers)
 {
     const ScopedHitTimelineDirectory directory("OthersStopDrop");
     ScopedHitTimelineDirectory::SetBothTiers(MakeOthersStopTimeline());
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 6.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1809,7 +1810,7 @@ TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
                        {TargetLaunchEvent{}, 13, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("SinkShake");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);
@@ -1822,16 +1823,16 @@ TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
         rock->Update();
         TickHitDirectors(*player);
         // カメラの効果はカメラの段で 1 フレーム進む
-        scene.ExecutePhase(NS::Obj::UpdatePhase::Camera);
+        scene.ExecutePhase(NS::UpdatePhase::Camera);
         detected = detected || player->Resolver().Answer().lastImpact.sequence != 0;
         if (!detected)
         {
             continue;
         }
         float now = 0.0f;
-        if (const NS::Obj::CameraManager* cameras = player->GetCameraManager())
+        if (const NS::CameraManager* cameras = player->GetCameraManager())
         {
-            if (const NS::Obj::CameraSinkModifier* modifier = cameras->FindModifier<NS::Obj::CameraSinkModifier>())
+            if (const NS::CameraSinkModifier* modifier = cameras->FindModifier<NS::CameraSinkModifier>())
             {
                 now = modifier->Pixels();
             }
@@ -1860,7 +1861,7 @@ TEST(ImpactTimelineClock, ShippedCenterAndMissReboundOnTheReleaseFrame)
     for (const float rockX : {0.0f, 0.75f})
     {
         SCOPED_TRACE(rockX);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceClockScene(scene, rockX, 4.0f, 0.0f);
         ASSERT_NE(player, nullptr);
         PropActor* rock = RockOf(scene);
@@ -1954,7 +1955,7 @@ TEST(ImpactTimelineClock, DirectedPadVibrationsAreBlendedByTheFacePosition)
     const auto constantLeft = [](float value) {
         PadVibrationEvent pad;
         pad.left.count = 1;
-        pad.left.keys[0] = NS::Obj::Curve::Key{0.0f, value};
+        pad.left.keys[0] = NS::Curve::Key{0.0f, value};
         return pad;
     };
     HitTimeline timeline;
@@ -1966,7 +1967,7 @@ TEST(ImpactTimelineClock, DirectedPadVibrationsAreBlendedByTheFacePosition)
                        {ReboundEvent{}, 5, 1, HitDirection::Any}};
     const ScopedHitTimelineDirectory directory("BlendedPad");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     // 横と上へずらした相手。面の上の位置が斜めになる
     PlayerActor* player = PlaceClockScene(scene, 0.6f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
@@ -2003,7 +2004,7 @@ TEST(ImpactTimelineClock, TheTargetsNamedTimelineDecidesTheHit)
     for (const std::string_view name : {std::string_view{"barrel"}, std::string_view{}})
     {
         SCOPED_TRACE(name);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f, name);
         ASSERT_NE(player, nullptr);
         ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 2).empty());
@@ -2027,7 +2028,7 @@ TEST(ImpactTimelineClock, BeforeContactUsesThePredictedTargetsTimeline)
     ScopedHitTimelineDirectory::SetBothTiers(MakeSplitReleaseTimeline());
     HitTimelineLibrary::Get().Set("barrel.center", MakeBeforeContactTimeline());
     HitTimelineLibrary::Get().Set("barrel.miss", MakeBeforeContactTimeline());
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f, "barrel");
     ASSERT_NE(player, nullptr);
     PropActor* rock = RockOf(scene);

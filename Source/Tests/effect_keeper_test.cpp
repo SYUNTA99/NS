@@ -1,7 +1,7 @@
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
-#include "NSlib/Object/SubObjects/EffectKeeper.h"
-#include "NSlib/Object/SubObjects/HitReaction.h"
+#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
+#include "NSlib/CoreObject/SubObjects/HitReaction.h"
 #include "TestEffectActor.h"
 
 #include <gtest/gtest.h>
@@ -24,8 +24,8 @@ namespace
         }
     };
 
-    using NS::Obj::EffectKeeper;
-    using NS::Obj::EffectRecord;
+    using NS::EffectKeeper;
+    using NS::EffectRecord;
 } // namespace
 
 TEST(EffectKeeperTest, PlayWithoutAnOwnerLeavesOneRecord)
@@ -108,7 +108,7 @@ TEST(EffectKeeperTest, AmountAndRotationAreWrittenToTheRecord)
 
 TEST(EffectKeeperTest, ActorUpdateAdvancesTheSlotKeeperOnce)
 {
-    const std::unique_ptr<TestEffectActor> owned = NS::Obj::CreateActor<TestEffectActor>();
+    const std::unique_ptr<TestEffectActor> owned = NS::CreateActor<TestEffectActor>();
     TestEffectActor& actor = *owned;
     EffectKeeper* keeper = actor.GetEffectKeeper();
     ASSERT_NE(keeper, nullptr);
@@ -124,17 +124,15 @@ TEST(EffectKeeperTest, ActorUpdateAdvancesTheSlotKeeperOnce)
 
 TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
 {
-    const std::unique_ptr<ReactionEffectActor> owned = NS::Obj::CreateActor<ReactionEffectActor>();
+    const std::unique_ptr<ReactionEffectActor> owned = NS::CreateActor<ReactionEffectActor>();
     ReactionEffectActor& actor = *owned;
-    NS::Obj::SubObject* keeper = actor.GetEffectKeeper();
-    NS::Obj::SubObject* reaction = actor.HitReactionSubObj();
+    NS::SubObject* keeper = actor.GetEffectKeeper();
+    NS::SubObject* reaction = actor.HitReactionSubObj();
     ASSERT_NE(keeper, nullptr);
     ASSERT_NE(reaction, nullptr);
 
-    std::vector<NS::Obj::SubObject*> parts;
-    NS::Obj::ForEachReflectedSubObj(actor, [&](const NS::Obj::SubObjectDesc&, NS::Obj::SubObject* part) {
-        parts.push_back(part);
-    });
+    std::vector<NS::SubObject*> parts;
+    NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc&, NS::SubObject* part) { parts.push_back(part); });
     ASSERT_EQ(parts.size(), 3u);
     EXPECT_EQ(parts[1], reaction);
     EXPECT_EQ(parts[2], keeper);

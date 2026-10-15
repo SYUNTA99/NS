@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Graphics/D3dCommon.h"
@@ -13,38 +13,39 @@ namespace DirectX
     }
 } // namespace DirectX
 
-namespace NS::Gfx
+namespace NS
 {
-
-    class Renderer;
-
-    //! Renderer が所有する DirectXTK の共通描画ステート
-    class CommonStates : public NS::NonCopyable
+    namespace Gfx
     {
-    public:
-        ~CommonStates();
+        class Renderer;
 
-        [[nodiscard]] bool IsValid() const noexcept;
+        //! Renderer が所有する DirectXTK の共通描画ステート
+        class CommonStates : public NS::NonCopyable
+        {
+        public:
+            ~CommonStates();
 
-        [[nodiscard]] ID3D11BlendState* Opaque() const noexcept;     //!< 不透明
-        [[nodiscard]] ID3D11BlendState* AlphaBlend() const noexcept; //!< アルファブレンド
+            [[nodiscard]] bool IsValid() const noexcept;
 
-        [[nodiscard]] ID3D11DepthStencilState* DepthDefault() const noexcept; //!< 深度テスト＋書き込みあり
-        [[nodiscard]] ID3D11DepthStencilState* DepthNone() const noexcept;    //!< 深度テスト＋書き込みなし
+            [[nodiscard]] ID3D11BlendState* Opaque() const noexcept;     //!< 不透明
+            [[nodiscard]] ID3D11BlendState* AlphaBlend() const noexcept; //!< アルファブレンド
 
-        [[nodiscard]] ID3D11RasterizerState* CullCounterClockwise() const noexcept; //!< 反時計回りの面をカリング
-        [[nodiscard]] ID3D11RasterizerState* CullClockwise() const noexcept;        //!< 時計回りの面をカリング
+            [[nodiscard]] ID3D11DepthStencilState* DepthDefault() const noexcept; //!< 深度テスト＋書き込みあり
+            [[nodiscard]] ID3D11DepthStencilState* DepthNone() const noexcept;    //!< 深度テスト＋書き込みなし
 
-        [[nodiscard]] ID3D11SamplerState* LinearWrap() const noexcept;  //!< 線形補間＋UV繰り返し
-        [[nodiscard]] ID3D11SamplerState* LinearClamp() const noexcept; //!< 線形補間＋端で固定
-        [[nodiscard]] ID3D11SamplerState* PointWrap() const noexcept;   //!< 点サンプリング＋UV繰り返し
-        [[nodiscard]] ID3D11SamplerState* PointClamp() const noexcept;  //!< 点サンプリング＋端で固定
+            [[nodiscard]] ID3D11RasterizerState* CullCounterClockwise() const noexcept; //!< 反時計回りの面をカリング
+            [[nodiscard]] ID3D11RasterizerState* CullClockwise() const noexcept;        //!< 時計回りの面をカリング
 
-    private:
-        std::unique_ptr<DirectX::CommonStates> m_states;
+            [[nodiscard]] ID3D11SamplerState* LinearWrap() const noexcept;  //!< 線形補間＋UV繰り返し
+            [[nodiscard]] ID3D11SamplerState* LinearClamp() const noexcept; //!< 線形補間＋端で固定
+            [[nodiscard]] ID3D11SamplerState* PointWrap() const noexcept;   //!< 点サンプリング＋UV繰り返し
+            [[nodiscard]] ID3D11SamplerState* PointClamp() const noexcept;  //!< 点サンプリング＋端で固定
 
-        friend class Renderer;
-        explicit CommonStates(ID3D11Device* device) noexcept;
-    };
+        private:
+            std::unique_ptr<DirectX::CommonStates> m_states;
 
-} // namespace NS::Gfx
+            friend class Renderer;
+            explicit CommonStates(ID3D11Device* device) noexcept;
+        };
+    } // namespace Gfx
+} // namespace NS

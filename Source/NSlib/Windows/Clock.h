@@ -8,162 +8,163 @@
 #include <string>
 #include <utility>
 
-namespace NS::OS
+namespace NS
 {
-
-    //! @brief アプリケーション起動時からの経過時間を計測する
-    //! @details OS のシステム時刻変更の影響を受けず、<windows.h> にも依存しない
-    class Clock
+    namespace OS
     {
-    public:
-        Clock() = delete;
-
-        [[nodiscard]] static std::chrono::steady_clock::time_point Now() noexcept
+        //! @brief アプリケーション起動時からの経過時間を計測する
+        //! @details OS のシステム時刻変更の影響を受けず、<windows.h> にも依存しない
+        class Clock
         {
-            return std::chrono::steady_clock::now();
-        }
+        public:
+            Clock() = delete;
 
-        //! 長時間起動による精度の低下を防ぐため、戻り値に double を採用している
-        [[nodiscard]] static double ElapsedSeconds() noexcept
+            [[nodiscard]] static std::chrono::steady_clock::time_point Now() noexcept
+            {
+                return std::chrono::steady_clock::now();
+            }
+
+            //! 長時間起動による精度の低下を防ぐため、戻り値に double を採用している
+            [[nodiscard]] static double ElapsedSeconds() noexcept
+            {
+                return std::chrono::duration<double>(Now() - StartTime()).count();
+            }
+
+        private:
+            static const std::chrono::steady_clock::time_point& StartTime() noexcept
+            {
+                static const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+                return start;
+            }
+        };
+
+        //! 1 フレームに回す固定更新の上限。超えた分は世界の時間から捨てる
+        inline constexpr int k_MaxFixedStepsPerFrame = 5;
+
+        //! 1 フレームの経過を固定更新へ刻んだ結果
+        struct FixedStepAdvance
         {
-            return std::chrono::duration<double>(Now() - StartTime()).count();
-        }
+            int steps = 0;            //!< このフレームで回す固定更新の回数
+            float accumulator = 0.0f; //!< 刻んだ残りの秒
+        };
 
-    private:
-        static const std::chrono::steady_clock::time_point& StartTime() noexcept
+        //! @brief 貯めに経過秒を足し、固定更新の回数と残りを返す
+        //! @pre fixedDelta は 0 より大きい
+        [[nodiscard]] inline FixedStepAdvance AdvanceFixedSteps(float accumulator, float dt, float fixedDelta) noexcept
         {
-            static const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-            return start;
-        }
-    };
-
-    //! 1 フレームに回す固定更新の上限。超えた分は世界の時間から捨てる
-    inline constexpr int k_MaxFixedStepsPerFrame = 5;
-
-    //! 1 フレームの経過を固定更新へ刻んだ結果
-    struct FixedStepAdvance
-    {
-        int steps = 0;            //!< このフレームで回す固定更新の回数
-        float accumulator = 0.0f; //!< 刻んだ残りの秒
-    };
-
-    //! @brief 貯めに経過秒を足し、固定更新の回数と残りを返す
-    //! @pre fixedDelta は 0 より大きい
-    [[nodiscard]] inline FixedStepAdvance AdvanceFixedSteps(float accumulator, float dt, float fixedDelta) noexcept
-    {
-        FixedStepAdvance advance;
-        advance.accumulator = accumulator + dt;
-        advance.steps = static_cast<int>(advance.accumulator / fixedDelta);
-        if (advance.steps > k_MaxFixedStepsPerFrame)
-        {
-            // 詰まりの後にまとめて回すと世界が早送りに見え、重い更新は次の詰まりを生む
-            advance.steps = k_MaxFixedStepsPerFrame;
-            advance.accumulator = 0.0f;
+            FixedStepAdvance advance;
+            advance.accumulator = accumulator + dt;
+            advance.steps = static_cast<int>(advance.accumulator / fixedDelta);
+            if (advance.steps > k_MaxFixedStepsPerFrame)
+            {
+                // 詰まりの後にまとめて回すと世界が早送りに見え、重い更新は次の詰まりを生む
+                advance.steps = k_MaxFixedStepsPerFrame;
+                advance.accumulator = 0.0f;
+                return advance;
+            }
+            advance.accumulator -= static_cast<float>(advance.steps) * fixedDelta;
             return advance;
         }
-        advance.accumulator -= static_cast<float>(advance.steps) * fixedDelta;
-        return advance;
-    }
 
-    //! @brief デルタタイムと固定タイムステップを管理する静的クラス
-    //! @details 毎フレームの経過時間を蓄積し、固定時間ぶんだけ処理ステップを回す
-    class FrameTimer
-    {
-    public:
-        FrameTimer() = delete;
-
-        //! 毎フレームの冒頭で呼び出すこと
-        static void Tick() noexcept
+        //! @brief デルタタイムと固定タイムステップを管理する静的クラス
+        //! @details 毎フレームの経過時間を蓄積し、固定時間ぶんだけ処理ステップを回す
+        class FrameTimer
         {
-            const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-            const float dt = std::chrono::duration<float>(now - s_lastTime).count();
-            s_lastTime = now;
-            s_delta = dt;
-            s_total += static_cast<double>(dt);
-            ++s_frame;
+        public:
+            FrameTimer() = delete;
 
-            const FixedStepAdvance advance = AdvanceFixedSteps(s_accumulator, dt, s_fixedDelta);
-            s_fixedSteps = advance.steps;
-            s_accumulator = advance.accumulator;
-        }
-
-        //! 状態を初期化
-        static void Reset() noexcept
-        {
-            s_lastTime = std::chrono::steady_clock::now();
-            s_delta = 0.0f;
-            s_total = 0.0;
-            s_frame = 0;
-            s_accumulator = 0.0f;
-            s_fixedSteps = 0;
-        }
-
-        //! 前フレームからの経過秒
-        [[nodiscard]] static float DeltaSeconds() noexcept { return s_delta; }
-        //! 起動からの累計秒
-        [[nodiscard]] static double TotalSeconds() noexcept { return s_total; }
-        //! 累計フレーム数
-        [[nodiscard]] static NS::uint64 FrameNumber() noexcept { return s_frame; }
-
-        //! デフォルトは毎秒 60 回の固定更新
-        static constexpr float k_DefaultFixedDelta = 1.0f / 60.0f;
-
-        //! 固定タイムステップを設定し、0以下は無視。0 だと除算結果を int へ変換する箇所が未定義動作になる
-        static void SetFixedDelta(float fixed) noexcept
-        {
-            if (fixed > 0.0f)
+            //! 毎フレームの冒頭で呼び出すこと
+            static void Tick() noexcept
             {
-                s_fixedDelta = fixed;
+                const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+                const float dt = std::chrono::duration<float>(now - s_lastTime).count();
+                s_lastTime = now;
+                s_delta = dt;
+                s_total += static_cast<double>(dt);
+                ++s_frame;
+
+                const FixedStepAdvance advance = AdvanceFixedSteps(s_accumulator, dt, s_fixedDelta);
+                s_fixedSteps = advance.steps;
+                s_accumulator = advance.accumulator;
             }
-        }
-        //! 固定更新の間隔（秒）
-        [[nodiscard]] static float FixedDelta() noexcept { return s_fixedDelta; }
-        //! このフレームで固定更新処理を実行すべき回数
-        [[nodiscard]] static int FixedStepsThisFrame() noexcept { return s_fixedSteps; }
-        //! 描画のガクツキを防ぐための補間用ブレンド率（0.0～1.0）
-        [[nodiscard]] static float Alpha() noexcept { return s_accumulator / s_fixedDelta; }
 
-    private:
-        static inline std::chrono::steady_clock::time_point s_lastTime{std::chrono::steady_clock::now()};
-        static inline float s_delta = 0.0f;                     //!< 前フレームからの経過秒
-        static inline double s_total = 0.0;                     //!< 起動からの累計秒
-        static inline NS::uint64 s_frame = 0;                   //!< 累計フレーム数
-        static inline float s_fixedDelta = k_DefaultFixedDelta; //!< 固定更新の間隔（秒）
-        static inline float s_accumulator = 0.0f;               //!< 未消化の経過時間。固定ステップを刻んだ残り
-        static inline int s_fixedSteps = 0;                     //!< 今フレームで固定更新を回す回数
-    };
+            //! 状態を初期化
+            static void Reset() noexcept
+            {
+                s_lastTime = std::chrono::steady_clock::now();
+                s_delta = 0.0f;
+                s_total = 0.0;
+                s_frame = 0;
+                s_accumulator = 0.0f;
+                s_fixedSteps = 0;
+            }
 
-    //! @brief スコープを抜ける際に、そこまでの処理にかかった時間をデバッグログに出力する
-    //! @details 直接インスタンス化せず、NS_SCOPED_TIMER マクロを経由して使用すること
-    class ScopedTimer
-    {
-    public:
-        ScopedTimer(::NS::LogType logType, std::string label)
-            : m_logType(logType), m_label(std::move(label)), m_startTime(std::chrono::steady_clock::now())
-        {}
+            //! 前フレームからの経過秒
+            [[nodiscard]] static float DeltaSeconds() noexcept { return s_delta; }
+            //! 起動からの累計秒
+            [[nodiscard]] static double TotalSeconds() noexcept { return s_total; }
+            //! 累計フレーム数
+            [[nodiscard]] static NS::uint64 FrameNumber() noexcept { return s_frame; }
 
-        ~ScopedTimer()
+            //! デフォルトは毎秒 60 回の固定更新
+            static constexpr float k_DefaultFixedDelta = 1.0f / 60.0f;
+
+            //! 固定タイムステップを設定し、0以下は無視。0 だと除算結果を int へ変換する箇所が未定義動作になる
+            static void SetFixedDelta(float fixed) noexcept
+            {
+                if (fixed > 0.0f)
+                {
+                    s_fixedDelta = fixed;
+                }
+            }
+            //! 固定更新の間隔（秒）
+            [[nodiscard]] static float FixedDelta() noexcept { return s_fixedDelta; }
+            //! このフレームで固定更新処理を実行すべき回数
+            [[nodiscard]] static int FixedStepsThisFrame() noexcept { return s_fixedSteps; }
+            //! 描画のガクツキを防ぐための補間用ブレンド率（0.0～1.0）
+            [[nodiscard]] static float Alpha() noexcept { return s_accumulator / s_fixedDelta; }
+
+        private:
+            static inline std::chrono::steady_clock::time_point s_lastTime{std::chrono::steady_clock::now()};
+            static inline float s_delta = 0.0f;                     //!< 前フレームからの経過秒
+            static inline double s_total = 0.0;                     //!< 起動からの累計秒
+            static inline NS::uint64 s_frame = 0;                   //!< 累計フレーム数
+            static inline float s_fixedDelta = k_DefaultFixedDelta; //!< 固定更新の間隔（秒）
+            static inline float s_accumulator = 0.0f;               //!< 未消化の経過時間。固定ステップを刻んだ残り
+            static inline int s_fixedSteps = 0;                     //!< 今フレームで固定更新を回す回数
+        };
+
+        //! @brief スコープを抜ける際に、そこまでの処理にかかった時間をデバッグログに出力する
+        //! @details 直接インスタンス化せず、NS_SCOPED_TIMER マクロを経由して使用すること
+        class ScopedTimer
         {
-            const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            const double ms = std::chrono::duration<double, std::milli>(end - m_startTime).count();
-            ::NS::Logger::LogImpl(::NS::LogLevel::Debug,
-                                  ::magic_enum::enum_name(m_logType),
-                                  __FILE__,
-                                  __LINE__,
-                                  __func__,
-                                  ::std::format("{}: {:.3f}ms", m_label, ms));
-        }
+        public:
+            ScopedTimer(::NS::LogType logType, std::string label)
+                : m_logType(logType), m_label(std::move(label)), m_startTime(std::chrono::steady_clock::now())
+            {}
 
-        ScopedTimer(const ScopedTimer&) = delete;
-        ScopedTimer& operator=(const ScopedTimer&) = delete;
+            ~ScopedTimer()
+            {
+                const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                const double ms = std::chrono::duration<double, std::milli>(end - m_startTime).count();
+                ::NS::Logger::LogImpl(::NS::LogLevel::Debug,
+                                      ::magic_enum::enum_name(m_logType),
+                                      __FILE__,
+                                      __LINE__,
+                                      __func__,
+                                      ::std::format("{}: {:.3f}ms", m_label, ms));
+            }
 
-    private:
-        ::NS::LogType m_logType;
-        std::string m_label;
-        std::chrono::steady_clock::time_point m_startTime;
-    };
+            ScopedTimer(const ScopedTimer&) = delete;
+            ScopedTimer& operator=(const ScopedTimer&) = delete;
 
-} // namespace NS::OS
+        private:
+            ::NS::LogType m_logType;
+            std::string m_label;
+            std::chrono::steady_clock::time_point m_startTime;
+        };
+    } // namespace OS
+} // namespace NS
 
 #define NS_CLOCK_PASTE_IMPL(a, b) a##b
 #define NS_CLOCK_PASTE(a, b) NS_CLOCK_PASTE_IMPL(a, b)

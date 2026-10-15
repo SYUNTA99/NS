@@ -1,19 +1,22 @@
 #pragma once
 
-#include "NSlib/Object/SceneActor.h"
+#include "NSlib/CoreObject/SceneActor.h"
 
-namespace GL::Level
+namespace GL
 {
-    //! @brief 重なったプレイヤーへ即死を通知する範囲
-    //! @details 上面に着地させないため、地形の当たりは持たない
-    class DeathZoneActor : public NS::Obj::SceneActor
+    namespace Level
     {
-    public:
-        NS_REFLECT_NONE(DeathZoneActor, NS::Obj::SceneActor)
+        //! @brief 重なったプレイヤーへ即死を通知する範囲
+        //! @details 上面に着地させないため、地形の当たりは持たない
+        class DeathZoneActor : public NS::SceneActor
+        {
+        public:
+            NS_REFLECT_NONE(DeathZoneActor, NS::SceneActor)
 
-        void AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other) override;
+            void AttackSensor(NS::HitSensor& self, NS::HitSensor& other) override;
 
-    protected:
-        void OnInit() override;
-    };
-} // namespace GL::Level
+        protected:
+            void OnInit() override;
+        };
+    } // namespace Level
+} // namespace GL

@@ -1,29 +1,32 @@
 #pragma once
 
-namespace GL::Level
+namespace GL
 {
-    //! @brief 残りの命を 0〜最大値で管理する値
-    class Health
+    namespace Level
     {
-    public:
-        Health() noexcept = default;
-        //! @brief 最大の命を差し替え、残量が上回っていれば最大まで削る
-        //! @param[in] value 新しい最大。0 以下なら何も変えない
-        void SetMaxHealth(int value) noexcept;
+        //! @brief 残りの命を 0〜最大値で管理する値
+        class Health
+        {
+        public:
+            Health() noexcept = default;
+            //! @brief 最大の命を差し替え、残量が上回っていれば最大まで削る
+            //! @param[in] value 新しい最大。0 以下なら何も変えない
+            void SetMaxHealth(int value) noexcept;
 
-        //! amount だけ削る。下限 0。既に 0 か amount が 0 以下なら何もしない
-        void ApplyDamage(int amount) noexcept;
+            //! amount だけ削る。下限 0。既に 0 か amount が 0 以下なら何もしない
+            void ApplyDamage(int amount) noexcept;
 
-        void Deplete() noexcept { m_current = 0; }
+            void Deplete() noexcept { m_current = 0; }
 
-        //! 満タンへ戻す。プレイ突入とリスタートで呼ぶ
-        void Reset() noexcept { m_current = m_maxHealth; }
+            //! 満タンへ戻す。プレイ突入とリスタートで呼ぶ
+            void Reset() noexcept { m_current = m_maxHealth; }
 
-        [[nodiscard]] bool IsDead() const noexcept { return m_current <= 0; }
-        [[nodiscard]] int Current() const noexcept { return m_current; }
+            [[nodiscard]] bool IsDead() const noexcept { return m_current <= 0; }
+            [[nodiscard]] int Current() const noexcept { return m_current; }
 
-    private:
-        int m_maxHealth = 8;
-        int m_current = 8;   // プレイ中の残量。保存せず、プレイ突入とリスタートで満タンに戻る
-    };
-} // namespace GL::Level
+        private:
+            int m_maxHealth = 8;
+            int m_current = 8; // プレイ中の残量。保存せず、プレイ突入とリスタートで満タンに戻る
+        };
+    } // namespace Level
+} // namespace GL

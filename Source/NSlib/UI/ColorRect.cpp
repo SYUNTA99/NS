@@ -1,23 +1,24 @@
-﻿#include "NSlib/UI/ColorRect.h"
+#include "NSlib/UI/ColorRect.h"
 
 #include "NSlib/Graphics/Renderer.h"
 
-namespace NS::UI
+namespace NS
 {
-
-    void ColorRect::OnDraw(NS::Gfx::Renderer& renderer, const WidgetRect& rectPx, float alpha)
+    namespace UI
     {
-        const float effective = m_color.A() * alpha;
-        if (effective <= 0.0f)
+        void ColorRect::OnDraw(NS::Gfx::Renderer& renderer, const WidgetRect& rectPx, float alpha)
         {
-            return;
+            const float effective = m_color.A() * alpha;
+            if (effective <= 0.0f)
+            {
+                return;
+            }
+
+            renderer.DrawScreenRect(rectPx.x,
+                                    rectPx.y,
+                                    rectPx.width,
+                                    rectPx.height,
+                                    NS::Color{m_color.R(), m_color.G(), m_color.B(), effective});
         }
-
-        renderer.DrawScreenRect(rectPx.x,
-                                rectPx.y,
-                                rectPx.width,
-                                rectPx.height,
-                                NS::Color{m_color.R(), m_color.G(), m_color.B(), effective});
-    }
-
-} // namespace NS::UI
+    } // namespace UI
+} // namespace NS

@@ -2,25 +2,28 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
-#include "NSlib/Object/Reflection/TypeRegistry.h"
-#include "NSlib/Object/SubObjects/HitSensor.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/SubObjects/HitSensor.h"
 
-namespace GL::Level
+namespace GL
 {
-    void DeathZoneActor::OnInit()
+    namespace Level
     {
-        NS::Obj::ShapeHitSensor* area = CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor);
-        SetSensorKind(*area, SensorKind::Area);
-        area->SetBox(NS::Vector3{1000.0f, 5.0f, 1000.0f});
-    }
-
-    void DeathZoneActor::AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other)
-    {
-        if (IsSensorKind(other, SensorKind::PlayerBody))
+        void DeathZoneActor::OnInit()
         {
-            (void)SendMsgInstantDeath(other, self);
+            NS::ShapeHitSensor* area = CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor);
+            SetSensorKind(*area, SensorKind::Area);
+            area->SetBox(NS::Vector3{1000.0f, 5.0f, 1000.0f});
         }
-    }
 
-    NS_PLACEABLE(DeathZoneActor, "落下死の範囲")
-} // namespace GL::Level
+        void DeathZoneActor::AttackSensor(NS::HitSensor& self, NS::HitSensor& other)
+        {
+            if (IsSensorKind(other, SensorKind::PlayerBody))
+            {
+                (void)SendMsgInstantDeath(other, self);
+            }
+        }
+
+        NS_PLACEABLE(DeathZoneActor, "落下死の範囲")
+    } // namespace Level
+} // namespace GL

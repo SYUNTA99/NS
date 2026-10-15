@@ -7,82 +7,84 @@
 #include "NSlib/Core/Types.h"
 #include <vector>
 
-namespace NS::Gfx
+namespace NS
 {
-    struct RenderContext;
-
-    //! @brief 描画オブジェクトを一意に識別するための登録ハンドル
-    struct RenderHandle
+    namespace Gfx
     {
-        static constexpr NS::uint32 k_InvalidSlot = 0xffffffffu;
+        struct RenderContext;
 
-        NS::uint32 slot = k_InvalidSlot;
-        NS::uint32 generation = 0;
-
-        [[nodiscard]] bool IsValid() const noexcept { return slot != k_InvalidSlot; }
-    };
-
-    //! @brief 描画オブジェクトの登録に必要な情報をまとめた記述子
-    struct RenderProxyDesc
-    {
-        //! カリング判定に用いるワールド空間のAABB
-        NS::AABB bounds{};
-
-        //! 深度ソート用の中心座標
-        NS::Vector3 sortCenter{};
-
-        //! ソート優先度。半透明の並べ替えで距離が同じときだけ効き、小さい方から先に描く
-        int sortPriority = 0;
-
-        //! 半透明オブジェクトとして扱う場合はtrue
-        bool transparent = false;
-
-        //! @brief 見えると判定された時に呼ばれ、DrawItem を out へ積むコールバック
-        void (*collect)(void* owner, const RenderContext& context, std::vector<DrawItem>& out) = nullptr;
-
-        //! collect の第 1 引数へそのまま渡す登録元
-        void* owner = nullptr;
-    };
-
-    //! @brief 描画物の登録簿。視錐台で絞った物から DrawItem を集めて描く
-    class RenderProxyList
-    {
-    public:
-        //! @brief 描画オブジェクトを登録し、識別用のハンドルを返す
-        [[nodiscard]] RenderHandle Register(const RenderProxyDesc& desc);
-
-        //! @brief 指定されたハンドルの登録を解除する。無効なハンドルの場合は無視される
-        void Unregister(RenderHandle handle) noexcept;
-
-        //! @brief 登録済みの境界とソート情報を差し替える
-        void Update(RenderHandle handle,
-                    const NS::AABB& bounds,
-                    const NS::Vector3& sortCenter,
-                    int sortPriority,
-                    bool transparent) noexcept;
-
-        //! @brief 視錐台の外を捨て、残った描画物を描く
-        //! @param[in] context 描画コンテキスト
-        //! @param[in] transparent true なら半透明、false なら不透明を描く
-        void DrawBucket(const RenderContext& context, bool transparent);
-
-        //! @brief 現在登録されている有効なオブジェクトの総数を返す
-        [[nodiscard]] std::size_t Count() const noexcept;
-
-    private:
-        struct Proxy
+        //! @brief 描画オブジェクトを一意に識別するための登録ハンドル
+        struct RenderHandle
         {
-            RenderProxyDesc desc{};
+            static constexpr NS::uint32 k_InvalidSlot = 0xffffffffu;
+
+            NS::uint32 slot = k_InvalidSlot;
             NS::uint32 generation = 0;
-            bool alive = false;
+
+            [[nodiscard]] bool IsValid() const noexcept { return slot != k_InvalidSlot; }
         };
 
-        [[nodiscard]] bool IsLive(RenderHandle handle) const noexcept;
+        //! @brief 描画オブジェクトの登録に必要な情報をまとめた記述子
+        struct RenderProxyDesc
+        {
+            //! カリング判定に用いるワールド空間のAABB
+            NS::AABB bounds{};
 
-        std::vector<Proxy> m_proxies;
-        std::vector<NS::uint32> m_freeSlots;
-        std::vector<NS::uint32> m_visibleScratch;
-        std::vector<DrawItem> m_drawScratch;
-    };
+            //! 深度ソート用の中心座標
+            NS::Vector3 sortCenter{};
 
-} // namespace NS::Gfx
+            //! ソート優先度。半透明の並べ替えで距離が同じときだけ効き、小さい方から先に描く
+            int sortPriority = 0;
+
+            //! 半透明オブジェクトとして扱う場合はtrue
+            bool transparent = false;
+
+            //! @brief 見えると判定された時に呼ばれ、DrawItem を out へ積むコールバック
+            void (*collect)(void* owner, const RenderContext& context, std::vector<DrawItem>& out) = nullptr;
+
+            //! collect の第 1 引数へそのまま渡す登録元
+            void* owner = nullptr;
+        };
+
+        //! @brief 描画物の登録簿。視錐台で絞った物から DrawItem を集めて描く
+        class RenderProxyList
+        {
+        public:
+            //! @brief 描画オブジェクトを登録し、識別用のハンドルを返す
+            [[nodiscard]] RenderHandle Register(const RenderProxyDesc& desc);
+
+            //! @brief 指定されたハンドルの登録を解除する。無効なハンドルの場合は無視される
+            void Unregister(RenderHandle handle) noexcept;
+
+            //! @brief 登録済みの境界とソート情報を差し替える
+            void Update(RenderHandle handle,
+                        const NS::AABB& bounds,
+                        const NS::Vector3& sortCenter,
+                        int sortPriority,
+                        bool transparent) noexcept;
+
+            //! @brief 視錐台の外を捨て、残った描画物を描く
+            //! @param[in] context 描画コンテキスト
+            //! @param[in] transparent true なら半透明、false なら不透明を描く
+            void DrawBucket(const RenderContext& context, bool transparent);
+
+            //! @brief 現在登録されている有効なオブジェクトの総数を返す
+            [[nodiscard]] std::size_t Count() const noexcept;
+
+        private:
+            struct Proxy
+            {
+                RenderProxyDesc desc{};
+                NS::uint32 generation = 0;
+                bool alive = false;
+            };
+
+            [[nodiscard]] bool IsLive(RenderHandle handle) const noexcept;
+
+            std::vector<Proxy> m_proxies;
+            std::vector<NS::uint32> m_freeSlots;
+            std::vector<NS::uint32> m_visibleScratch;
+            std::vector<DrawItem> m_drawScratch;
+        };
+    } // namespace Gfx
+} // namespace NS

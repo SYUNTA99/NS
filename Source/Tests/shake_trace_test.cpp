@@ -3,12 +3,12 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/CameraModifier.h"
-#include "NSlib/Object/SubObjects/Transform.h"
-#include "NSlib/Object/System/CameraManager.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/CameraModifier.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
+#include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "Tests/TestViewCamera.h"
 
@@ -35,19 +35,19 @@ namespace
     constexpr int k_ChargeFrames = 60; // 溜めの揺れを書き出すフレーム数
 
     // 自機 (id 1) と、その前の置物 (id 2)。rockX を横へずらすと外れになる
-    PlayerActor* PlaceShakeScene(NS::Obj::Scene& scene, float rockX)
+    PlayerActor* PlaceShakeScene(NS::Scene& scene, float rockX)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
-        NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "PropActor");
-        NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonId(rock, 2);
+        NS::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
+        NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -56,7 +56,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
     // 当たりの揺れ。平行移動の揺れのずれ (x が右、y が上、m)・トラウマの揺れの角度 (横・縦・傾き、度)・
@@ -73,7 +73,7 @@ namespace
     HitShakeTrace RecordHitShake(float rockX)
     {
         HitShakeTrace trace;
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceShakeScene(scene, rockX);
         if (player == nullptr)
         {
@@ -91,20 +91,20 @@ namespace
             NS::Vector3 offset{};
             NS::Vector3 angles{};
             NS::Vector3 sink{};
-            const NS::Obj::CameraManager* cameras = player->GetCameraManager();
+            const NS::CameraManager* cameras = player->GetCameraManager();
             if (cameras != nullptr)
             {
-                const NS::Obj::CameraShakeModifier* shake = cameras->FindModifier<NS::Obj::CameraShakeModifier>();
+                const NS::CameraShakeModifier* shake = cameras->FindModifier<NS::CameraShakeModifier>();
                 if (shake != nullptr)
                 {
                     offset = NS::Vector3{shake->Offset().x, shake->Offset().y, 0.0f};
                 }
-                const NS::Obj::CameraTraumaModifier* trauma = cameras->FindModifier<NS::Obj::CameraTraumaModifier>();
+                const NS::CameraTraumaModifier* trauma = cameras->FindModifier<NS::CameraTraumaModifier>();
                 if (trauma != nullptr)
                 {
                     angles = trauma->Angles();
                 }
-                const NS::Obj::CameraSinkModifier* sinking = cameras->FindModifier<NS::Obj::CameraSinkModifier>();
+                const NS::CameraSinkModifier* sinking = cameras->FindModifier<NS::CameraSinkModifier>();
                 if (sinking != nullptr)
                 {
                     sink = NS::Vector3{0.0f, sinking->Pixels(), 0.0f};
@@ -118,14 +118,14 @@ namespace
     }
 
     // 溜めの量が 1 秒で 1 まで上がり、そのまま押し続ける相手
-    class ChargingTargetActor final : public NS::Obj::SceneActor
+    class ChargingTargetActor final : public NS::SceneActor
     {
     public:
         // 接地と溜めを仮想カメラの口へ渡す
-        void Feed(NS::Obj::ThirdPersonFollow& vcam) const
+        void Feed(NS::ThirdPersonFollow& vcam) const
         {
             vcam.SetFollowMotion(true, NS::Vector3{});
-            NS::Obj::FollowChargeDesc charge{};
+            NS::FollowChargeDesc charge{};
             charge.held = true;
             charge.charge01 = std::min(static_cast<float>(frame) / 60.0f, 1.0f);
             (void)vcam.SetFollowCharge(charge);
@@ -137,25 +137,25 @@ namespace
     std::vector<NS::Vector3> RecordChargeShake()
     {
         std::vector<NS::Vector3> offsets;
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         ChargingTargetActor* target = scene.SpawnObject<ChargingTargetActor>("target");
         GL::Level::FollowCameraActor* actor = scene.SpawnTransient<GL::Level::FollowCameraActor>();
         if (target == nullptr || actor == nullptr)
         {
             return offsets;
         }
-        NS::Obj::ThirdPersonFollow& vcam = actor->Vcam();
-        NS::Obj::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
+        NS::ThirdPersonFollow& vcam = actor->Vcam();
+        NS::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
         for (int frame = 0; frame < k_ChargeFrames; ++frame)
         {
             target->frame = frame;
             target->Feed(vcam);
             scene.OnUpdate();
             NS::Vector3 angles{};
-            const NS::Obj::CameraManager* cameras = scene.GetCameraManager();
+            const NS::CameraManager* cameras = scene.GetCameraManager();
             if (cameras != nullptr)
             {
-                const NS::Obj::CameraTraumaModifier* trauma = cameras->FindModifier<NS::Obj::CameraTraumaModifier>();
+                const NS::CameraTraumaModifier* trauma = cameras->FindModifier<NS::CameraTraumaModifier>();
                 if (trauma != nullptr)
                 {
                     angles = trauma->Angles();

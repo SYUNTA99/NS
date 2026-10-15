@@ -1,31 +1,34 @@
 #pragma once
 
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
 
-namespace GL::Level
+namespace GL
 {
-    class FollowCameraActor : public NS::Obj::SceneActor
+    namespace Level
     {
-    public:
-        NS_REFLECT_BEGIN(FollowCameraActor, NS::Obj::SceneActor)
-        NS_REFLECT_SUBOBJ(m_vcam, "Vcam")
-        NS_REFLECT_END()
-        [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Camera; }
-        [[nodiscard]] NS::Obj::ThirdPersonFollow& Vcam() noexcept { return *m_vcam; }
-        [[nodiscard]] const NS::Obj::ThirdPersonFollow& Vcam() const noexcept { return *m_vcam; }
-        void OnEndPlay() override;
+        class FollowCameraActor : public NS::SceneActor
+        {
+        public:
+            NS_REFLECT_BEGIN(FollowCameraActor, NS::SceneActor)
+            NS_REFLECT_SUBOBJ(m_vcam, "Vcam")
+            NS_REFLECT_END()
+            [[nodiscard]] NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Camera; }
+            [[nodiscard]] NS::ThirdPersonFollow& Vcam() noexcept { return *m_vcam; }
+            [[nodiscard]] const NS::ThirdPersonFollow& Vcam() const noexcept { return *m_vcam; }
+            void OnEndPlay() override;
 
-    protected:
-        void OnInit() override;
-        //! 仮想カメラを登録し、置いた向きへ戻す
-        void OnStart() override;
-        //! 追う相手の状態を読んで仮想カメラへ渡す
-        void ObserveStep() override;
-        void BodyStep() override;
-        void OnDisappear() noexcept override;
+        protected:
+            void OnInit() override;
+            //! 仮想カメラを登録し、置いた向きへ戻す
+            void OnStart() override;
+            //! 追う相手の状態を読んで仮想カメラへ渡す
+            void ObserveStep() override;
+            void BodyStep() override;
+            void OnDisappear() noexcept override;
 
-    private:
-        std::unique_ptr<NS::Obj::ThirdPersonFollow> m_vcam;
-    };
-} // namespace GL::Level
+        private:
+            std::unique_ptr<NS::ThirdPersonFollow> m_vcam;
+        };
+    } // namespace Level
+} // namespace GL

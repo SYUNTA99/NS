@@ -1,11 +1,11 @@
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerClips.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/SubObjects/Animation.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
 #include "NSlib/Graphics/Animation.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/SubObjects/Animation.h"
-#include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Windows/Clock.h"
 #include "TestAnimatedPlayerActor.h"
 
@@ -17,9 +17,9 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 {
     const std::vector<NS::Gfx::AnimationClip> clips = {
         {.name = "idle", .duration = 10.0f}, {.name = "run", .duration = 10.0f}, {.name = "walk", .duration = 10.0f}};
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<TestAnimatedPlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::Obj::Animation* animation = player.AnimationSubObj();
+    NS::Animation* animation = player.AnimationSubObj();
     animation->AddClips(clips);
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
@@ -42,12 +42,12 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 // アニメの欄はアニメの欄だけの部品 Clips が持ち、遊びの欄と並ばない
 TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<TestAnimatedPlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
-    const GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
+    const GL::Player::PlayerClips* clipParts = NS::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
     ASSERT_NE(clipParts, nullptr);
-    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*clipParts);
-    const nlohmann::json paramFields = NS::Obj::SerializeSubObjectFields(player.Params());
+    const nlohmann::json fields = NS::SerializeSubObjectFields(*clipParts);
+    const nlohmann::json paramFields = NS::SerializeSubObjectFields(player.Params());
     const nlohmann::json expected = {{"立ちのクリップ", "idle"},
                                      {"歩きのクリップ", "walk"},
                                      {"走りのクリップ", "run"},
@@ -71,15 +71,15 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
                                                        {.name = "jump", .duration = 10.0f},
                                                        {.name = "fall", .duration = 10.0f},
                                                        {.name = "hang", .duration = 10.0f}};
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<TestAnimatedPlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::Obj::Animation* animation = player.AnimationSubObj();
+    NS::Animation* animation = player.AnimationSubObj();
     animation->AddClips(clips);
-    GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
+    GL::Player::PlayerClips* clipParts = NS::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
     ASSERT_NE(clipParts, nullptr);
     const nlohmann::json airborne = {
         {"跳ぶクリップ", "jump"}, {"落ちるクリップ", "fall"}, {"ぶら下がりのクリップ", "hang"}};
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(*clipParts, airborne), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(*clipParts, airborne), 0u);
     player.Body().SetGrounded(false);
     player.Body().SetVerticalVelocity(2.0f);
     player.UpdateAnimation();
@@ -96,18 +96,18 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
 {
     const std::vector<NS::Gfx::AnimationClip> clips = {{.name = "idle", .duration = 10.0f},
                                                        {.name = "walk", .duration = 10.0f}};
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<TestAnimatedPlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::Obj::Animation* animation = player.AnimationSubObj();
+    NS::Animation* animation = player.AnimationSubObj();
     animation->AddClips(clips);
-    GL::Player::PlayerClips* clipParts = NS::Obj::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
+    GL::Player::PlayerClips* clipParts = NS::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
     ASSERT_NE(clipParts, nullptr);
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
     EXPECT_EQ(animation->CurrentClip(), 0u);
     player.Body().SetLateralVelocity(NS::Vector3{1.0f, 0.0f, 0.0f});
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(*clipParts, {{"再生速度の下限", 0.75f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(*clipParts, {{"再生速度の下限", 0.75f}}), 0u);
     player.UpdateAnimation();
     ASSERT_EQ(animation->CurrentClip(), 1u);
     animation->Update();

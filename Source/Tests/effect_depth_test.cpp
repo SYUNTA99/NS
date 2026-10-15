@@ -1,10 +1,10 @@
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Graphics/Texture.h"
-#include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Window.h"
 #include "TestEffectFiles.h"
 
@@ -151,7 +151,7 @@ TEST(EffectLifecycle, RebuildingThePausedSceneClearsPixelsBeforeAnotherStep)
     NS::OS::Window window(NS::OS::WindowDesc{.title = "エフェクト終了の試し", .size = {32, 32}, .visible = false});
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     scene.SetEffectRoot("Assets/Effects");
     scene.SetRenderer(&renderer);
     NS::Gfx::EffectScene* effects = scene.GetEffectScene();

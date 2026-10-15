@@ -1,8 +1,11 @@
 #include "Game/Player/PlayerClips.h"
 
-#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
-namespace GL::Player
+namespace GL
 {
-    NS_CLASS(PlayerClips)
-} // namespace GL::Player
+    namespace Player
+    {
+        NS_CLASS(PlayerClips)
+    } // namespace Player
+} // namespace GL

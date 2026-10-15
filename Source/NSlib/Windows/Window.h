@@ -10,105 +10,107 @@
 #include <string>
 #include <string_view>
 
-namespace NS::OS
+namespace NS
 {
-    class Input;
-
-    //! @brief ウィンドウ作成時の初期パラメータ
-    struct WindowDesc
+    namespace OS
     {
-        std::string title = "NS";
+        class Input;
 
-        //! クライアント領域のサイズ
-        NS::Size2D size{1920, 1080};
+        //! @brief ウィンドウ作成時の初期パラメータ
+        struct WindowDesc
+        {
+            std::string title = "NS";
 
-        bool visible = true;
-    };
+            //! クライアント領域のサイズ
+            NS::Size2D size{1920, 1080};
 
-    //! @brief OS ウィンドウ
-    //! @details 単一インスタンス。二重に作ると致命ログを出す
-    class Window : public NS::NonCopyable
-    {
-    public:
-        //! @brief OS のメッセージをそのまま受け取るコールバック型
-        //! @note ImGui へのイベント転送に使う
-        using MessageHook = std::function<void(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)>;
+            bool visible = true;
+        };
 
-        explicit Window(const WindowDesc& desc);
-        ~Window();
+        //! @brief OS ウィンドウ
+        //! @details 単一インスタンス。二重に作ると致命ログを出す
+        class Window : public NS::NonCopyable
+        {
+        public:
+            //! @brief OS のメッセージをそのまま受け取るコールバック型
+            //! @note ImGui へのイベント転送に使う
+            using MessageHook = std::function<void(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)>;
 
-        //! @brief ウィンドウの構築が成功したかどうかを返す
-        [[nodiscard]] bool IsValid() const noexcept;
+            explicit Window(const WindowDesc& desc);
+            ~Window();
 
-        //! @brief 毎フレーム呼び出し、OSのメッセージイベントを処理する
-        void PollMessages() noexcept;
+            //! @brief ウィンドウの構築が成功したかどうかを返す
+            [[nodiscard]] bool IsValid() const noexcept;
 
-        //! @brief ウィンドウを閉じる要求が出ているかを返す
-        [[nodiscard]] bool ShouldClose() const noexcept;
+            //! @brief 毎フレーム呼び出し、OSのメッセージイベントを処理する
+            void PollMessages() noexcept;
 
-        //! @brief 現在のクライアント領域のサイズを取得する
-        [[nodiscard]] NS::Size2D Size() const noexcept;
+            //! @brief ウィンドウを閉じる要求が出ているかを返す
+            [[nodiscard]] bool ShouldClose() const noexcept;
 
-        //! @brief ウィンドウハンドルを返す。構築に失敗した時は nullptr
-        [[nodiscard]] HWND NativeHandle() const noexcept;
+            //! @brief 現在のクライアント領域のサイズを取得する
+            [[nodiscard]] NS::Size2D Size() const noexcept;
 
-        void SetTitle(std::string_view utf8Title) noexcept;
+            //! @brief ウィンドウハンドルを返す。構築に失敗した時は nullptr
+            [[nodiscard]] HWND NativeHandle() const noexcept;
 
-        //! @brief クライアント領域におけるマウスカーソルの表示・非表示を切り替える
-        void SetCursorVisible(bool visible) noexcept;
+            void SetTitle(std::string_view utf8Title) noexcept;
 
-        [[nodiscard]] bool IsCursorVisible() const noexcept;
+            //! @brief クライアント領域におけるマウスカーソルの表示・非表示を切り替える
+            void SetCursorVisible(bool visible) noexcept;
 
-        //! @brief カーソルの固定を切り替える
-        //! @note 固定中は PollMessages が毎フレームカーソルを固定点へ戻す。フォーカスを失っている間は戻さない
-        void SetCursorLocked(bool locked) noexcept;
+            [[nodiscard]] bool IsCursorVisible() const noexcept;
 
-        [[nodiscard]] bool IsCursorLocked() const noexcept;
+            //! @brief カーソルの固定を切り替える
+            //! @note 固定中は PollMessages が毎フレームカーソルを固定点へ戻す。フォーカスを失っている間は戻さない
+            void SetCursorLocked(bool locked) noexcept;
 
-        //! @brief カーソル固定の戻し先をクライアント座標で設定する
-        //! @note 未設定の間はクライアント領域の中央へ戻す
-        void SetCursorLockPoint(int clientX, int clientY) noexcept;
+            [[nodiscard]] bool IsCursorLocked() const noexcept;
 
-        //! @brief プログラム側からウィンドウを閉じる要求を発行する
-        void RequestClose() noexcept;
+            //! @brief カーソル固定の戻し先をクライアント座標で設定する
+            //! @note 未設定の間はクライアント領域の中央へ戻す
+            void SetCursorLockPoint(int clientX, int clientY) noexcept;
 
-        //! @brief リサイズ時に呼び出されるコールバックを設定する
-        //! @note 最小化時はコールバックの呼び出しがスキップされる
-        void SetResizeCallback(std::function<void(NS::Size2D)> cb);
+            //! @brief プログラム側からウィンドウを閉じる要求を発行する
+            void RequestClose() noexcept;
 
-        //! @brief ウィンドウの閉じる要求を受け取った際のコールバックを設定する
-        //! @note 独自の終了処理や、終了をキャンセルする処理をここで挟むことができる
-        void SetCloseCallback(std::function<void()> cb);
+            //! @brief リサイズ時に呼び出されるコールバックを設定する
+            //! @note 最小化時はコールバックの呼び出しがスキップされる
+            void SetResizeCallback(std::function<void(NS::Size2D)> cb);
 
-        //! @brief ウィンドウへの入力イベントの転送先を設定する
-        void AttachInput(Input* input) noexcept;
+            //! @brief ウィンドウの閉じる要求を受け取った際のコールバックを設定する
+            //! @note 独自の終了処理や、終了をキャンセルする処理をここで挟むことができる
+            void SetCloseCallback(std::function<void()> cb);
 
-        //! @brief ネイティブメッセージのフックコールバックを設定する
-        void SetMessageHook(MessageHook hook);
+            //! @brief ウィンドウへの入力イベントの転送先を設定する
+            void AttachInput(Input* input) noexcept;
 
-    private:
-        static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+            //! @brief ネイティブメッセージのフックコールバックを設定する
+            void SetMessageHook(MessageHook hook);
 
-        HWND m_hwnd = nullptr;
-        ATOM m_classAtom = 0;
-        HINSTANCE m_hInstance = nullptr;
+        private:
+            static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
-        NS::Size2D m_size{0, 0};
-        bool m_shouldClose = false; //!< WM_QUIT を受けたか
+            HWND m_hwnd = nullptr;
+            ATOM m_classAtom = 0;
+            HINSTANCE m_hInstance = nullptr;
 
-        std::function<void(NS::Size2D)> m_onResize;
-        std::function<void()> m_onClose;
+            NS::Size2D m_size{0, 0};
+            bool m_shouldClose = false; //!< WM_QUIT を受けたか
 
-        Input* m_input = nullptr; //!< 入力の転送先。持ち主ではない
-        MessageHook m_messageHook;
+            std::function<void(NS::Size2D)> m_onResize;
+            std::function<void()> m_onClose;
 
-        // false の間はクライアント領域のカーソルを消す。WM_SETCURSOR がこの値を見て適用する
-        bool m_cursorVisible = true;
+            Input* m_input = nullptr; //!< 入力の転送先。持ち主ではない
+            MessageHook m_messageHook;
 
-        bool m_cursorLocked = false;
-        // 一度も前に出ない窓には WM_SETFOCUS が来ない。作成時に実際の状態を書く
-        bool m_hasFocus = false;
-        std::optional<POINT> m_lockPoint; //!< 無い時はクライアント領域の中央
-    };
+            // false の間はクライアント領域のカーソルを消す。WM_SETCURSOR がこの値を見て適用する
+            bool m_cursorVisible = true;
 
-} // namespace NS::OS
+            bool m_cursorLocked = false;
+            // 一度も前に出ない窓には WM_SETFOCUS が来ない。作成時に実際の状態を書く
+            bool m_hasFocus = false;
+            std::optional<POINT> m_lockPoint; //!< 無い時はクライアント領域の中央
+        };
+    } // namespace OS
+} // namespace NS

@@ -1,8 +1,11 @@
 #include "Game/Level/GoalParams.h"
 
-#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
-namespace GL::Level
+namespace GL
 {
-    NS_CLASS(GoalParams)
-}
+    namespace Level
+    {
+        NS_CLASS(GoalParams)
+    } // namespace Level
+} // namespace GL

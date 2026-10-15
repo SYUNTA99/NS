@@ -1,10 +1,10 @@
 #include "Game/PlayerActor.h"
-#include "NSlib/Object/IUse/IUseSceneSystem.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/System/PadRumbleDirector.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/HitReaction.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/HitReaction.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
+#include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>
@@ -13,16 +13,16 @@
 
 namespace
 {
-    PlayerActor* PlacePlayer(NS::Obj::Scene& scene)
+    PlayerActor* PlacePlayer(NS::Scene& scene)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json entry = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-        NS::Obj::SetObjectJsonId(entry, 1);
-        NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json entry = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(entry, "PlayerActor");
+        NS::SetObjectJsonId(entry, 1);
+        NS::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(entry));
         scene.ResetFromJson(doc);
-        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
     float PadLeft()
@@ -30,12 +30,12 @@ namespace
         return NS::OS::Input::Get().Gamepad().Vibration().left;
     }
 
-    NS::Obj::HitPadVibration FadingLeft(float start, int frames)
+    NS::HitPadVibration FadingLeft(float start, int frames)
     {
-        NS::Obj::HitPadVibration pad;
+        NS::HitPadVibration pad;
         pad.left.count = 2;
-        pad.left.keys[0] = NS::Obj::Curve::Key{0.0f, start};
-        pad.left.keys[1] = NS::Obj::Curve::Key{static_cast<float>(frames), 0.0f};
+        pad.left.keys[0] = NS::Curve::Key{0.0f, start};
+        pad.left.keys[1] = NS::Curve::Key{static_cast<float>(frames), 0.0f};
         pad.frames = frames;
         return pad;
     }
@@ -44,14 +44,14 @@ namespace
 // 頼んだフレームに曲線の始めを書き、次の更新から曲線どおりに進む。重ねた振動は足し、それぞれの長さで終わる
 TEST(PadRumbleDirector, BlendedVibrationsAddAndEndOnTheirOwnLength)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(player);
+    NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
     ASSERT_NE(pad, nullptr);
 
-    const NS::Obj::HitPadVibration first = FadingLeft(0.5f, 4);
-    const NS::Obj::HitPadVibration second = FadingLeft(0.25f, 2);
+    const NS::HitPadVibration first = FadingLeft(0.5f, 4);
+    const NS::HitPadVibration second = FadingLeft(0.25f, 2);
     pad->Start(*player, first);
     pad->Blend(*player, second);
     EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
@@ -76,10 +76,10 @@ TEST(PadRumbleDirector, BlendedVibrationsAddAndEndOnTheirOwnLength)
 
 TEST(PadRumbleDirector, HitReactionStopWritesZero)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
+    NS::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
     reaction->StartPadVibration(FadingLeft(1.0f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
@@ -90,10 +90,10 @@ TEST(PadRumbleDirector, HitReactionStopWritesZero)
 // PadRumbleDirector を捨てる時に 0 を書く。振動の途中で場面を捨てても、パッドが震え続けない
 TEST(PadRumbleDirector, DiscardingTheDirectorWritesZero)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(player);
+    NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
     ASSERT_NE(pad, nullptr);
     pad->Start(*player, FadingLeft(1.0f, 30));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);

@@ -2,15 +2,15 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/Transform.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/Collider.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
@@ -29,31 +29,31 @@ namespace
     using NS::Vector3;
 
     // 床の上面 y = 0 に自機と、+z の先に相手を置く。カメラは +z を向く
-    PlayerActor* PlaceOnFloor(NS::Obj::Scene& scene,
-                         const Vector3& playerPosition,
-                         bool withTarget,
-                         float targetScale,
-                         const Vector3& targetPosition,
-                         const nlohmann::json& targetParts = nlohmann::json::object())
+    PlayerActor* PlaceOnFloor(NS::Scene& scene,
+                              const Vector3& playerPosition,
+                              bool withTarget,
+                              float targetScale,
+                              const Vector3& targetPosition,
+                              const nlohmann::json& targetParts = nlohmann::json::object())
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
-        NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, playerPosition);
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SetObjectPosition(player, playerPosition);
+        NS::SceneJsonObjects(doc).push_back(std::move(player));
         if (withTarget)
         {
-            nlohmann::json rock = NS::Obj::MakeObjectJson();
-            NS::Obj::SetObjectJsonClass(rock, "PropActor");
-            NS::Obj::SetObjectJsonId(rock, 2);
-            NS::Obj::SetObjectPosition(rock, targetPosition);
-            NS::Obj::SetObjectScale(rock, Vector3{targetScale, targetScale, targetScale});
+            nlohmann::json rock = NS::MakeObjectJson();
+            NS::SetObjectJsonClass(rock, "PropActor");
+            NS::SetObjectJsonId(rock, 2);
+            NS::SetObjectPosition(rock, targetPosition);
+            NS::SetObjectScale(rock, Vector3{targetScale, targetScale, targetScale});
             for (nlohmann::json::const_iterator it = targetParts.begin(); it != targetParts.end(); ++it)
             {
-                NS::Obj::ObjectJsonSubObjs(rock)[it.key()] = it.value();
+                NS::ObjectJsonSubObjs(rock)[it.key()] = it.value();
             }
-            NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+            NS::SceneJsonObjects(doc).push_back(std::move(rock));
         }
         scene.ResetFromJson(doc);
         NS::OBB floor{};
@@ -63,7 +63,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, Vector3{0.0f, playerPosition.y, -1.0f}, Vector3{0.0f, playerPosition.y, 1.0f});
-        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
     // 線に沿った距離 along での帯の高さ。板の中は近い端から遠い端へ直線で上がる
@@ -88,7 +88,7 @@ namespace
 // 背の高い相手へ地上から放つと上向きの弧で出る。矢印はその弧を玉の一番下の点の高さでなぞる
 TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, true, 3.0f, Vector3{0.0f, 1.5f, 8.0f});
     ASSERT_NE(player, nullptr);
     for (int frame = 0; frame < k_ChargeFrames; ++frame)
@@ -148,7 +148,7 @@ TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
 // 枠は矢印より後に重ね、枠が矢印の下に隠れない
 TEST(SlamArrowTest, ArrowIsOverlaidBeforeTheLockOnFrame)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, false, 1.0f, Vector3{});
     ASSERT_NE(player, nullptr);
     EXPECT_LT(player->SlamIndicator().OverlayOrder(), player->TargetIndicator().OverlayOrder());
@@ -158,7 +158,7 @@ TEST(SlamArrowTest, ArrowIsOverlaidBeforeTheLockOnFrame)
 // 赤を上へずらした背の高い相手は、今の玉の高さの線では外れでも、弧で赤に着くので真ん中
 TEST(SlamArrowTest, PredictedTierUsesTheArcHeightAtContact)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     const nlohmann::json raised{{"HitZones", {{"上下の位置", 0.5f}, {"縦の幅", 0.2f}}}};
     PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, true, 3.0f, Vector3{0.0f, 1.5f, 8.0f}, raised);
     ASSERT_NE(player, nullptr);
@@ -176,7 +176,7 @@ TEST(SlamArrowTest, PredictedTierUsesTheArcHeightAtContact)
 // 相手が無くても矢印を出す。地上では今と同じく床に沿うまっすぐな形で、突進が止まる所まで伸びる
 TEST(SlamArrowTest, GroundArrowWithoutTargetLiesOnTheFloor)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, false, 1.0f, Vector3{});
     ASSERT_NE(player, nullptr);
     for (int frame = 0; frame < k_ChargeFrames; ++frame)
@@ -200,7 +200,7 @@ TEST(SlamArrowTest, GroundArrowWithoutTargetLiesOnTheFloor)
 // 上がっている途中に放しても、放った瞬間の縦の速さは 0 から
 TEST(SlamArrowTest, AirArrowWithoutTargetFallsAndTheReleaseStartsLevel)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 6.0f, 0.0f}, false, 1.0f, Vector3{});
     ASSERT_NE(player, nullptr);
     player->Body().SetVerticalVelocity(10.0f);
@@ -218,9 +218,8 @@ TEST(SlamArrowTest, AirArrowWithoutTargetFallsAndTheReleaseStartsLevel)
     player->Update(false);
     ASSERT_TRUE(player->IsBodySlamming());
     const float dt = NS::OS::FrameTimer::FixedDelta();
-    EXPECT_NEAR(player->Body().VerticalVelocity(),
-                GL::Player::ChooseGravity(player->Params().Gravity(), 0.0f) * dt,
-                0.0001f);
+    EXPECT_NEAR(
+        player->Body().VerticalVelocity(), GL::Player::ChooseGravity(player->Params().Gravity(), 0.0f) * dt, 0.0001f);
 }
 
 // 溜めきりの後は、溜めすぎの深さで溜めきりの赤から溜めすぎの紫へ移る。赤のうちと溜めきる前は今の色のまま

@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
+#include "Editor/ActorListPanel.h"
 #include "Editor/AssetsPanel.h"
 #include "Editor/ConsolePanel.h"
 #include "Editor/DockController.h"
 #include "Editor/GameViewPanel.h"
-#include "Editor/HierarchyPanel.h"
 #include "Editor/HitTimelinePanel.h"
 #include "Editor/InspectorPanel.h"
 #include "Editor/QuitModal.h"
@@ -14,10 +14,13 @@
 
 #include <memory>
 
-namespace NS::UI
+namespace NS
 {
-    class ImGuiContext;
-}
+    namespace UI
+    {
+        class ImGuiContext;
+    }
+} // namespace NS
 
 class LevelEditorController;
 
@@ -57,7 +60,7 @@ private:
     std::unique_ptr<NS::UI::ImGuiContext> m_imgui;
     std::unique_ptr<LevelEditorController> m_controller;
 
-    NS::Editor::HierarchyPanel m_hierarchy;
+    NS::Editor::ActorListPanel m_actorList;
     NS::Editor::InspectorPanel m_inspector;
     NS::Editor::ConsolePanel m_console;
     NS::Editor::ToolModePanel m_toolMode;

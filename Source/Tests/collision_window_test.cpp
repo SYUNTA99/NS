@@ -1,10 +1,10 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/IUse/IUseCollision.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/SphereCollision.h"
+#include "NSlib/CoreObject/IUse/IUseCollision.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/Collider.h"
+#include "NSlib/CoreObject/SubObjects/SphereCollision.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
 #include <gtest/gtest.h>
@@ -14,16 +14,16 @@
 namespace
 {
     // 動く体の当たりと置く当たりを 1 つずつ持つ SceneActor。根は原点で、球の半径は 0.5
-    class CollisionProbeActor final : public NS::Obj::SceneActor
+    class CollisionProbeActor final : public NS::SceneActor
     {
     public:
-        NS_REFLECT_BEGIN(CollisionProbeActor, NS::Obj::SceneActor)
+        NS_REFLECT_BEGIN(CollisionProbeActor, NS::SceneActor)
         NS_REFLECT_SUBOBJ(collider, "Collider")
         NS_REFLECT_SUBOBJ(sphere, "Sphere")
         NS_REFLECT_END()
 
-        std::unique_ptr<NS::Obj::Collider> collider;
-        std::unique_ptr<NS::Obj::SphereCollision> sphere;
+        std::unique_ptr<NS::Collider> collider;
+        std::unique_ptr<NS::SphereCollision> sphere;
 
     protected:
         void OnInit() override
@@ -34,7 +34,7 @@ namespace
     };
 
     // 上面が y = 0 の床
-    void AddFloor(NS::Obj::Scene& scene)
+    void AddFloor(NS::Scene& scene)
     {
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -53,7 +53,7 @@ namespace
         return region;
     }
 
-    bool HitsDownFrom(const NS::Obj::Scene& scene, const NS::Vector3& from)
+    bool HitsDownFrom(const NS::Scene& scene, const NS::Vector3& from)
     {
         float distance = 0.0f;
         return scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance);
@@ -62,19 +62,19 @@ namespace
 
 TEST(CollisionWindow, OverlapBoxIsEmptyOutsideAScene)
 {
-    const std::unique_ptr<CollisionProbeActor> looseOwned = NS::Obj::CreateActor<CollisionProbeActor>();
+    const std::unique_ptr<CollisionProbeActor> looseOwned = NS::CreateActor<CollisionProbeActor>();
     CollisionProbeActor& loose = *looseOwned;
-    EXPECT_TRUE(NS::Obj::OverlapBoxCollision(&loose, BandAcrossFloorTop()).empty());
+    EXPECT_TRUE(NS::OverlapBoxCollision(&loose, BandAcrossFloorTop()).empty());
 }
 
 TEST(CollisionWindow, OverlapBoxAnswersLikeThePhysicsScene)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     AddFloor(scene);
     CollisionProbeActor* placed = scene.SpawnTransient<CollisionProbeActor>();
 
     const std::vector<NS::AABB> expected = scene.Physics().OverlapBox(BandAcrossFloorTop());
-    const std::vector<NS::AABB> actual = NS::Obj::OverlapBoxCollision(placed, BandAcrossFloorTop());
+    const std::vector<NS::AABB> actual = NS::OverlapBoxCollision(placed, BandAcrossFloorTop());
     ASSERT_FALSE(expected.empty());
     ASSERT_EQ(actual.size(), expected.size());
     for (std::size_t i = 0; i < expected.size(); ++i)
@@ -90,29 +90,29 @@ TEST(CollisionWindow, OverlapBoxAnswersLikeThePhysicsScene)
 
 TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
 {
-    NS::Obj::Collider bare;
-    const NS::Obj::IUseCollision& bareWindow = bare;
+    NS::Collider bare;
+    const NS::IUseCollision& bareWindow = bare;
     EXPECT_EQ(bareWindow.GetPhysicsScene(), nullptr);
 
-    const std::unique_ptr<CollisionProbeActor> looseOwned = NS::Obj::CreateActor<CollisionProbeActor>();
+    const std::unique_ptr<CollisionProbeActor> looseOwned = NS::CreateActor<CollisionProbeActor>();
     CollisionProbeActor& loose = *looseOwned;
-    const NS::Obj::IUseCollision& looseWindow = *loose.collider;
+    const NS::IUseCollision& looseWindow = *loose.collider;
     EXPECT_EQ(looseWindow.GetPhysicsScene(), nullptr);
 
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     CollisionProbeActor* placed = scene.SpawnTransient<CollisionProbeActor>();
-    const NS::Obj::IUseCollision& placedWindow = *placed->collider;
+    const NS::IUseCollision& placedWindow = *placed->collider;
     EXPECT_EQ(placedWindow.GetPhysicsScene(), &scene.Physics());
 }
 
 TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
 {
-    const std::unique_ptr<CollisionProbeActor> looseOwned = NS::Obj::CreateActor<CollisionProbeActor>();
+    const std::unique_ptr<CollisionProbeActor> looseOwned = NS::CreateActor<CollisionProbeActor>();
     CollisionProbeActor& loose = *looseOwned;
     loose.sphere->SyncToPhysics();
     EXPECT_TRUE(loose.sphere->BodyId().IsInvalid());
 
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     CollisionProbeActor* placed = scene.SpawnTransient<CollisionProbeActor>();
     const NS::Vector3 above{0.0f, 2.0f, 0.0f};
     placed->sphere->RemoveFromPhysics();

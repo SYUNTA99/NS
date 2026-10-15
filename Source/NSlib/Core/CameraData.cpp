@@ -4,9 +4,7 @@ namespace NS
 {
     namespace
     {
-        NS::Matrix MakeViewLH(const NS::Vector3& position,
-                                    const NS::Vector3& target,
-                                    const NS::Vector3& up) noexcept
+        NS::Matrix MakeViewLH(const NS::Vector3& position, const NS::Vector3& target, const NS::Vector3& up) noexcept
         {
             const DirectX::XMVECTOR eye = DirectX::XMLoadFloat3(&position);
             const DirectX::XMVECTOR tgt = DirectX::XMLoadFloat3(&target);

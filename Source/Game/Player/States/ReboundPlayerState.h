@@ -4,15 +4,18 @@
 
 class PlayerActor;
 
-namespace GL::Player
+namespace GL
 {
-    class ReboundPlayerState final : public PlayerState<ReboundPlayerState>
+    namespace Player
     {
-    public:
-        void OnEnter(::PlayerActor& player) override;
-        void OnStep(::PlayerActor&, float) override {}
+        class ReboundPlayerState final : public PlayerState<ReboundPlayerState>
+        {
+        public:
+            void OnEnter(::PlayerActor& player) override;
+            void OnStep(::PlayerActor&, float) override {}
 
-    private:
-        NS::Coroutine Run(::PlayerActor& player);
-    };
-} // namespace GL::Player
+        private:
+            NS::Coroutine Run(::PlayerActor& player);
+        };
+    } // namespace Player
+} // namespace GL

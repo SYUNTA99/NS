@@ -1,8 +1,8 @@
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/Reflection/Reflection.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/SubObjects/Model.h"
+#include "NSlib/CoreObject/Reflection/Reflection.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/Model.h"
 
 #include <gtest/gtest.h>
 
@@ -10,14 +10,14 @@
 
 namespace
 {
-    class MixedReflectionActor final : public NS::Obj::SceneActor
+    class MixedReflectionActor final : public NS::SceneActor
     {
     public:
-        std::unique_ptr<NS::Obj::Model> part;
-        std::unique_ptr<NS::Obj::Model> absentPart;
+        std::unique_ptr<NS::Model> part;
+        std::unique_ptr<NS::Model> absentPart;
         float value = 2.0f;
         int count = 3;
-        NS_REFLECT_BEGIN(MixedReflectionActor, NS::Obj::SceneActor)
+        NS_REFLECT_BEGIN(MixedReflectionActor, NS::SceneActor)
         NS_REFLECT_SUBOBJ(part, "Part")
         NS_REFLECT_FIELD(value, "値")
         NS_REFLECT_GROUP("数")
@@ -51,8 +51,8 @@ namespace
 
 TEST(ReflectionGroup, OwnedPartsDoNotBecomeValueFieldsOrChangeGroupOffsets)
 {
-    const std::unique_ptr<MixedReflectionActor> actor = NS::Obj::CreateActor<MixedReflectionActor>();
-    const NS::Obj::ReflectionInfo* info = actor->GetReflection();
+    const std::unique_ptr<MixedReflectionActor> actor = NS::CreateActor<MixedReflectionActor>();
+    const NS::ReflectionInfo* info = actor->GetReflection();
     ASSERT_EQ(info->fieldCount, 2u);
     ASSERT_EQ(info->subObjectCount, 2u);
     ASSERT_EQ(info->groupCount, 1u);
@@ -60,13 +60,13 @@ TEST(ReflectionGroup, OwnedPartsDoNotBecomeValueFieldsOrChangeGroupOffsets)
     EXPECT_EQ(info->subObjects[0].get(actor.get()), actor->part.get());
     EXPECT_EQ(info->subObjects[0].member(actor.get()), &actor->part);
     EXPECT_EQ(info->subObjects[1].get(actor.get()), nullptr);
-    EXPECT_EQ(NS::Obj::SerializeReflectedFields(actor.get(), *info), (nlohmann::json{{"値", 2.0f}, {"個数", 3}}));
+    EXPECT_EQ(NS::SerializeReflectedFields(actor.get(), *info), (nlohmann::json{{"値", 2.0f}, {"個数", 3}}));
 }
 
 // 欄の配列には見出しが混ざらない。保存と読み込みは欄の配列だけを回すので、見出しが保存の鍵にならない
 TEST(ReflectionGroup, FieldsExcludeGroups)
 {
-    const NS::Obj::ReflectionInfo* info = GroupedValue::StaticReflection();
+    const NS::ReflectionInfo* info = GroupedValue::StaticReflection();
     ASSERT_EQ(info->fieldCount, 4u);
     EXPECT_EQ(std::string_view{info->fields[0].name}, "見出しの前の欄");
     EXPECT_EQ(std::string_view{info->fields[1].name}, "跳ぶ速さ");
@@ -77,7 +77,7 @@ TEST(ReflectionGroup, FieldsExcludeGroups)
 // 見出しは宣言の並びのまま、次に来る欄の番号から始まる。欄を持たない見出しも並びに残る
 TEST(ReflectionGroup, GroupsStartAtTheFollowingField)
 {
-    const NS::Obj::ReflectionInfo* info = GroupedValue::StaticReflection();
+    const NS::ReflectionInfo* info = GroupedValue::StaticReflection();
     ASSERT_EQ(info->groupCount, 3u);
     EXPECT_EQ(std::string_view{info->groups[0].name}, "ジャンプ");
     EXPECT_EQ(info->groups[0].firstField, 1u);
@@ -90,10 +90,10 @@ TEST(ReflectionGroup, GroupsStartAtTheFollowingField)
 // 見出しの名前では欄を引けず、欄は見出しを挟んでも名前で引けて読み書きできる
 TEST(ReflectionGroup, FindFieldSeesOnlyFields)
 {
-    const NS::Obj::ReflectionInfo* info = GroupedValue::StaticReflection();
-    EXPECT_EQ(NS::Obj::FindField(info, "ジャンプ"), nullptr);
+    const NS::ReflectionInfo* info = GroupedValue::StaticReflection();
+    EXPECT_EQ(NS::FindField(info, "ジャンプ"), nullptr);
 
-    const NS::Obj::FieldDesc* field = NS::Obj::FindField(info, "走る速さ");
+    const NS::FieldDesc* field = NS::FindField(info, "走る速さ");
     ASSERT_NE(field, nullptr);
     GroupedValue value;
     int read = 0;
@@ -107,7 +107,7 @@ TEST(ReflectionGroup, FindFieldSeesOnlyFields)
 // 自機の調整値は先頭の欄から見出しの下にあり、どの見出しも欄を 1 つ以上持つ
 TEST(ReflectionGroup, PlayerParamsFieldsAllSitUnderAGroup)
 {
-    const NS::Obj::ReflectionInfo* info = GL::Player::PlayerParams::StaticReflection();
+    const NS::ReflectionInfo* info = GL::Player::PlayerParams::StaticReflection();
     ASSERT_GE(info->groupCount, 2u);
     EXPECT_EQ(info->groups[0].firstField, 0u);
     for (std::size_t i = 0; i < info->groupCount; ++i)

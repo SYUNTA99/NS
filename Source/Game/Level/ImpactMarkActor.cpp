@@ -1,71 +1,74 @@
-﻿#include "Game/Level/ImpactMarkActor.h"
+#include "Game/Level/ImpactMarkActor.h"
 
-#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <cmath>
 
-namespace GL::Level
+namespace GL
 {
-    ImpactMarkActor::ImpactMarkActor() noexcept
+    namespace Level
     {
-        Root().SetScale(NS::Vector3{m_diameter, 1.0f, m_diameter});
-    }
-
-    void ImpactMarkActor::OnInit()
-    {
-        NS::Obj::Model* model = CreateSubObj(m_model);
-        model->SetMeshRef("shadowQuad");
-        model->SetMaterialRef("shadow");
-    }
-
-    NS::Obj::SceneActor* ImpactMarkActor::SpawnAt(NS::Obj::Scene* scene, const NS::Vector3& position)
-    {
-        if (scene == nullptr)
+        ImpactMarkActor::ImpactMarkActor() noexcept
         {
-            return nullptr;
+            Root().SetScale(NS::Vector3{m_diameter, 1.0f, m_diameter});
         }
 
-        ImpactMarkActor* mark = scene->SpawnTransient<ImpactMarkActor>();
-        mark->Root().SetPosition(position);
-        return mark;
-    }
+        void ImpactMarkActor::OnInit()
+        {
+            NS::Model* model = CreateSubObj(m_model);
+            model->SetMeshRef("shadowQuad");
+            model->SetMaterialRef("shadow");
+        }
 
-    void ImpactMarkActor::SetDiameter(float diameter) noexcept
-    {
-        if (std::isfinite(diameter) && diameter > 0.0f)
+        NS::SceneActor* ImpactMarkActor::SpawnAt(NS::Scene* scene, const NS::Vector3& position)
         {
-            m_diameter = diameter;
-            Root().SetScale(NS::Vector3{diameter, 1.0f, diameter});
-        }
-    }
+            if (scene == nullptr)
+            {
+                return nullptr;
+            }
 
-    void ImpactMarkActor::SetLifeSeconds(float seconds) noexcept
-    {
-        if (std::isfinite(seconds) && seconds >= 0.0f)
-        {
-            m_lifeSeconds = seconds;
+            ImpactMarkActor* mark = scene->SpawnTransient<ImpactMarkActor>();
+            mark->Root().SetPosition(position);
+            return mark;
         }
-    }
 
-    void ImpactMarkActor::VisualStep()
-    {
-        NS::Obj::SceneActor::VisualStep();
-        if (m_age >= m_lifeSeconds)
+        void ImpactMarkActor::SetDiameter(float diameter) noexcept
         {
-            return;
+            if (std::isfinite(diameter) && diameter > 0.0f)
+            {
+                m_diameter = diameter;
+                Root().SetScale(NS::Vector3{diameter, 1.0f, diameter});
+            }
         }
-        m_age += NS::OS::FrameTimer::FixedDelta();
-        float t = 1.0f;
-        if (m_lifeSeconds > 0.0f)
+
+        void ImpactMarkActor::SetLifeSeconds(float seconds) noexcept
         {
-            t = NS::Clamp(m_age / m_lifeSeconds, 0.0f, 1.0f);
+            if (std::isfinite(seconds) && seconds >= 0.0f)
+            {
+                m_lifeSeconds = seconds;
+            }
         }
-        const float size = m_diameter * (1.0f - t);
-        Root().SetScale(NS::Vector3{size, 1.0f, size});
-        if (t >= 1.0f)
+
+        void ImpactMarkActor::VisualStep()
         {
-            Destroy();
+            NS::SceneActor::VisualStep();
+            if (m_age >= m_lifeSeconds)
+            {
+                return;
+            }
+            m_age += NS::OS::FrameTimer::FixedDelta();
+            float t = 1.0f;
+            if (m_lifeSeconds > 0.0f)
+            {
+                t = NS::Clamp(m_age / m_lifeSeconds, 0.0f, 1.0f);
+            }
+            const float size = m_diameter * (1.0f - t);
+            Root().SetScale(NS::Vector3{size, 1.0f, size});
+            if (t >= 1.0f)
+            {
+                Destroy();
+            }
         }
-    }
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

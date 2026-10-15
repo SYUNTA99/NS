@@ -1,5 +1,5 @@
 #include "Game/Level/HitTimeline.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "Tests/TestHitTimelines.h"
 
@@ -24,10 +24,10 @@ namespace
         HitTimeline timeline;
         GL::Level::ShapeEvent shape;
         shape.along.count = 2;
-        shape.along.keys[0] = NS::Obj::Curve::Key{0.0f, 0.7f};
-        shape.along.keys[1] = NS::Obj::Curve::Key{11.0f, 0.7f};
+        shape.along.keys[0] = NS::Curve::Key{0.0f, 0.7f};
+        shape.along.keys[1] = NS::Curve::Key{11.0f, 0.7f};
         shape.height.count = 1;
-        shape.height.keys[0] = NS::Obj::Curve::Key{0.0f, 1.1f};
+        shape.height.keys[0] = NS::Curve::Key{0.0f, 1.1f};
         GL::Level::TargetFreezeEvent freeze;
         freeze.pushInDistance = 0.1f;
         GL::Level::CameraShakeEvent shake;
@@ -37,26 +37,26 @@ namespace
         zoom.zoom = 1.3f;
         GL::Level::PadVibrationEvent pad;
         pad.right.count = 2;
-        pad.right.keys[0] = NS::Obj::Curve::Key{0.0f, 0.6f};
-        pad.right.keys[1] = NS::Obj::Curve::Key{16.0f, 0.0f};
+        pad.right.keys[0] = NS::Curve::Key{0.0f, 0.6f};
+        pad.right.keys[1] = NS::Curve::Key{16.0f, 0.0f};
         GL::Level::FlashEvent flash;
         flash.alpha = 0.25f;
         GL::Level::CameraLurchEvent lurch;
         lurch.distance.count = 2;
-        lurch.distance.keys[0] = NS::Obj::Curve::Key{0.0f, 0.3f};
-        lurch.distance.keys[1] = NS::Obj::Curve::Key{8.0f, 0.0f};
+        lurch.distance.keys[0] = NS::Curve::Key{0.0f, 0.3f};
+        lurch.distance.keys[1] = NS::Curve::Key{8.0f, 0.0f};
         GL::Level::GroundWaveEvent wave;
         wave.radius.count = 2;
-        wave.radius.keys[0] = NS::Obj::Curve::Key{0.0f, 0.5f};
-        wave.radius.keys[1] = NS::Obj::Curve::Key{10.0f, 6.0f};
+        wave.radius.keys[0] = NS::Curve::Key{0.0f, 0.5f};
+        wave.radius.keys[1] = NS::Curve::Key{10.0f, 6.0f};
         GL::Level::DistortionRingEvent ring;
         ring.halfWidth = 0.07f;
         GL::Level::ShakeLinesEvent lines;
         lines.gapPixels = 20.0f;
         GL::Level::CameraReboundSwayEvent sway;
         sway.distance.count = 2;
-        sway.distance.keys[0] = NS::Obj::Curve::Key{0.0f, -0.5f};
-        sway.distance.keys[1] = NS::Obj::Curve::Key{12.0f, 0.8f};
+        sway.distance.keys[0] = NS::Curve::Key{0.0f, -0.5f};
+        sway.distance.keys[1] = NS::Curve::Key{12.0f, 0.8f};
         timeline.events = {
             {GL::Level::HitStopEvent{}, 1, 12, GL::Level::HitDirection::Any},
             {shape, -6, 18, GL::Level::HitDirection::Any},
@@ -92,13 +92,13 @@ TEST(HitTimeline, ValueTypeFieldsRoundTripThroughJson)
     GL::Level::CameraShakeEvent shake;
     shake.strength = 0.2f;
     shake.longestFlipFrames = 4;
-    const NS::Obj::ReflectionInfo& info = *GL::Level::CameraShakeEvent::StaticReflection();
-    const nlohmann::json fields = NS::Obj::SerializeReflectedFields(&shake, info);
+    const NS::ReflectionInfo& info = *GL::Level::CameraShakeEvent::StaticReflection();
+    const nlohmann::json fields = NS::SerializeReflectedFields(&shake, info);
     EXPECT_FLOAT_EQ(fields["強さ"].get<float>(), 0.2f);
     EXPECT_EQ(fields["入れ替わりの最長フレーム数"].get<int>(), 4);
 
     GL::Level::CameraShakeEvent read;
-    EXPECT_EQ(NS::Obj::ApplyReflectedFields(&read, info, fields), 0u);
+    EXPECT_EQ(NS::ApplyReflectedFields(&read, info, fields), 0u);
     EXPECT_FLOAT_EQ(read.strength, 0.2f);
     EXPECT_EQ(read.longestFlipFrames, 4);
 }
@@ -320,7 +320,7 @@ TEST(HitTimeline, ShippedCenterShrinksBeforeContactAndMissDoesNot)
     EXPECT_EQ(shape->start, -6);
     EXPECT_EQ(othersStop->start, -2);
     EXPECT_EQ(othersStop->length, 2);
-    const NS::Obj::Curve& along = std::get<GL::Level::ShapeEvent>(shape->value).along;
+    const NS::Curve& along = std::get<GL::Level::ShapeEvent>(shape->value).along;
     // 横軸は形の始まり (-6) からのフレーム数
     const float atStart = along.Evaluate(0.0f);
     const float halfway = along.Evaluate(3.0f);

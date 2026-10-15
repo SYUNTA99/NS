@@ -1,4 +1,4 @@
-﻿#include "NSlib/App/Application.h"
+#include "NSlib/App/Application.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Windows/Filesystem.h"

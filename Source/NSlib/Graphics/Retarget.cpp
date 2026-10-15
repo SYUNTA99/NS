@@ -7,87 +7,91 @@
 #include <unordered_map>
 #include <utility>
 
-namespace NS::Gfx
+namespace NS
 {
-    std::string NormalizeBoneName(std::string_view raw)
+    namespace Gfx
     {
-        // 最後の : / | より後ろが素の骨名
-        const std::size_t separator = raw.find_last_of(":|");
-        if (separator != std::string_view::npos)
+        std::string NormalizeBoneName(std::string_view raw)
         {
-            raw = raw.substr(separator + 1);
-        }
-
-        while (!raw.empty() && std::isspace(static_cast<NS::uint8>(raw.front())) != 0)
-        {
-            raw.remove_prefix(1);
-        }
-        while (!raw.empty() && std::isspace(static_cast<NS::uint8>(raw.back())) != 0)
-        {
-            raw.remove_suffix(1);
-        }
-
-        std::string normalized;
-        normalized.reserve(raw.size());
-        for (const char c : raw)
-        {
-            normalized.push_back(static_cast<char>(std::tolower(static_cast<NS::uint8>(c))));
-        }
-        return normalized;
-    }
-
-    std::vector<AnimationClip> BindClipsByName(const std::vector<AnimationClip>& sourceClips,
-                                               const Skeleton& sourceSkeleton,
-                                               const Skeleton& targetSkeleton)
-    {
-        // target の正規化名 → 骨 index
-        std::unordered_map<std::string, int> targetIndexByName;
-        const std::vector<Bone>& targetBones = targetSkeleton.Bones();
-        for (std::size_t i = 0; i < targetBones.size(); ++i)
-        {
-            const bool inserted =
-                targetIndexByName.try_emplace(NormalizeBoneName(targetBones[i].name), static_cast<int>(i)).second;
-            if (!inserted)
+            // 最後の : / | より後ろが素の骨名
+            const std::size_t separator = raw.find_last_of(":|");
+            if (separator != std::string_view::npos)
             {
-                NS_LOG_WARN(Graphics, "BindClipsByName: 正規化後の骨名が重複、 先の骨へ張る: {}", targetBones[i].name);
+                raw = raw.substr(separator + 1);
             }
+
+            while (!raw.empty() && std::isspace(static_cast<NS::uint8>(raw.front())) != 0)
+            {
+                raw.remove_prefix(1);
+            }
+            while (!raw.empty() && std::isspace(static_cast<NS::uint8>(raw.back())) != 0)
+            {
+                raw.remove_suffix(1);
+            }
+
+            std::string normalized;
+            normalized.reserve(raw.size());
+            for (const char c : raw)
+            {
+                normalized.push_back(static_cast<char>(std::tolower(static_cast<NS::uint8>(c))));
+            }
+            return normalized;
         }
 
-        const std::vector<Bone>& sourceBones = sourceSkeleton.Bones();
-        std::vector<AnimationClip> bound;
-        bound.reserve(sourceClips.size());
-        for (const AnimationClip& clip : sourceClips)
+        std::vector<AnimationClip> BindClipsByName(const std::vector<AnimationClip>& sourceClips,
+                                                   const Skeleton& sourceSkeleton,
+                                                   const Skeleton& targetSkeleton)
         {
-            AnimationClip remappedClip;
-            remappedClip.name = clip.name;
-            remappedClip.duration = clip.duration;
-            for (const BoneTrack& track : clip.tracks)
+            // target の正規化名 → 骨 index
+            std::unordered_map<std::string, int> targetIndexByName;
+            const std::vector<Bone>& targetBones = targetSkeleton.Bones();
+            for (std::size_t i = 0; i < targetBones.size(); ++i)
             {
-                if (track.boneIndex < 0 || static_cast<std::size_t>(track.boneIndex) >= sourceBones.size())
+                const bool inserted =
+                    targetIndexByName.try_emplace(NormalizeBoneName(targetBones[i].name), static_cast<int>(i)).second;
+                if (!inserted)
                 {
-                    NS_LOG_WARN(Graphics, "BindClipsByName: 無効な骨番号のトラックを skip: {}", track.boneIndex);
+                    NS_LOG_WARN(
+                        Graphics, "BindClipsByName: 正規化後の骨名が重複、 先の骨へ張る: {}", targetBones[i].name);
+                }
+            }
+
+            const std::vector<Bone>& sourceBones = sourceSkeleton.Bones();
+            std::vector<AnimationClip> bound;
+            bound.reserve(sourceClips.size());
+            for (const AnimationClip& clip : sourceClips)
+            {
+                AnimationClip remappedClip;
+                remappedClip.name = clip.name;
+                remappedClip.duration = clip.duration;
+                for (const BoneTrack& track : clip.tracks)
+                {
+                    if (track.boneIndex < 0 || static_cast<std::size_t>(track.boneIndex) >= sourceBones.size())
+                    {
+                        NS_LOG_WARN(Graphics, "BindClipsByName: 無効な骨番号のトラックを skip: {}", track.boneIndex);
+                        continue;
+                    }
+                    const std::string& sourceName = sourceBones[static_cast<std::size_t>(track.boneIndex)].name;
+                    const std::unordered_map<std::string, int>::iterator found =
+                        targetIndexByName.find(NormalizeBoneName(sourceName));
+                    if (found == targetIndexByName.end())
+                    {
+                        continue;
+                    }
+                    BoneTrack remappedTrack = track;
+                    remappedTrack.boneIndex = found->second;
+                    remappedClip.tracks.push_back(std::move(remappedTrack));
+                }
+
+                // 1 本も結合できないクリップは残しても bind ポーズしか出せず、添字選択をずらすだけなので除外する
+                if (remappedClip.tracks.empty())
+                {
+                    NS_LOG_WARN(Graphics, "BindClipsByName: 一致する骨が無いためクリップを除外: {}", clip.name);
                     continue;
                 }
-                const std::string& sourceName = sourceBones[static_cast<std::size_t>(track.boneIndex)].name;
-                const std::unordered_map<std::string, int>::iterator found =
-                    targetIndexByName.find(NormalizeBoneName(sourceName));
-                if (found == targetIndexByName.end())
-                {
-                    continue;
-                }
-                BoneTrack remappedTrack = track;
-                remappedTrack.boneIndex = found->second;
-                remappedClip.tracks.push_back(std::move(remappedTrack));
+                bound.push_back(std::move(remappedClip));
             }
-
-            // 1 本も結合できないクリップは残しても bind ポーズしか出せず、添字選択をずらすだけなので除外する
-            if (remappedClip.tracks.empty())
-            {
-                NS_LOG_WARN(Graphics, "BindClipsByName: 一致する骨が無いためクリップを除外: {}", clip.name);
-                continue;
-            }
-            bound.push_back(std::move(remappedClip));
+            return bound;
         }
-        return bound;
-    }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

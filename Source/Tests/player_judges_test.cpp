@@ -24,13 +24,11 @@ TEST(PlayerJudges, GroundedWalkAndIdleAreExclusive)
 TEST(PlayerJudges, BrakeUsesHorizontalInputAndStrictThreshold)
 {
     const NS::Vector3 desired{2.0f, 8.0f, 0.0f};
-    EXPECT_FALSE(
-        GL::Player::PlayerJudgeBrake::Judge(false, desired, NS::Vector3{-1.0f, 0.0f, 0.0f}, -0.8f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeBrake::Judge(false, desired, NS::Vector3{-1.0f, 0.0f, 0.0f}, -0.8f));
     EXPECT_FALSE(GL::Player::PlayerJudgeBrake::Judge(
         true, NS::Vector3{0.0f, 1.0f, 0.0f}, NS::Vector3{-1.0f, 0.0f, 0.0f}, -0.8f));
     EXPECT_FALSE(GL::Player::PlayerJudgeBrake::Judge(true, desired, NS::Vector3{-0.8f, 0.0f, 0.0f}, -0.8f));
-    EXPECT_TRUE(
-        GL::Player::PlayerJudgeBrake::Judge(true, desired, NS::Vector3{-0.81f, 10.0f, 0.0f}, -0.8f));
+    EXPECT_TRUE(GL::Player::PlayerJudgeBrake::Judge(true, desired, NS::Vector3{-0.81f, 10.0f, 0.0f}, -0.8f));
 }
 
 TEST(PlayerJudges, UpwardReboundCannotLandOnStaleGroundFlag)
@@ -50,8 +48,7 @@ TEST(PlayerJudges, JumpKeepsCoyoteBufferAndRemainingCountBoundaries)
     EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(true, 1.0f, 0, true, 1.0f));
     EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(true, 1.0f, -1, true, 1.0f));
     EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(true, 0.0f, 1, false, 0.0f));
-    EXPECT_FALSE(
-        GL::Player::PlayerJudgeJump::Judge(false, std::numeric_limits<float>::quiet_NaN(), 1, true, 0.0f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(false, std::numeric_limits<float>::quiet_NaN(), 1, true, 0.0f));
 }
 
 TEST(PlayerJudges, BodySlamRequiresFreshReservationAndLocomotion)
@@ -69,8 +66,7 @@ TEST(PlayerJudges, BodySlamRequiresFreshReservationAndLocomotion)
     }
     EXPECT_FALSE(GL::Player::PlayerJudgeBodySlam::Judge(0.0f, false, false, true));
     EXPECT_FALSE(GL::Player::PlayerJudgeBodySlam::Judge(-0.001f, false, false, true));
-    EXPECT_FALSE(
-        GL::Player::PlayerJudgeBodySlam::Judge(std::numeric_limits<float>::quiet_NaN(), false, false, true));
+    EXPECT_FALSE(GL::Player::PlayerJudgeBodySlam::Judge(std::numeric_limits<float>::quiet_NaN(), false, false, true));
 }
 
 TEST(PlayerJudges, LedgeEligibilityPreservesGroundUpwardAndRecentImpactExclusions)
@@ -89,12 +85,9 @@ TEST(PlayerJudges, LedgeBandIncludesItsEdgesWithoutPhysicsOrState)
     EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{-1.0f, 2.0f, 1.0f}, box, 0.5f, 0.25f));
     EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{1.0f, 2.5f, -1.0f}, box, 0.5f, 0.25f));
     EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 1.75f, 0.0f}, box, 0.5f, 0.25f));
-    EXPECT_FALSE(
-        GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{1.001f, 2.0f, 0.0f}, box, 0.5f, 0.25f));
-    EXPECT_FALSE(
-        GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 2.501f, 0.0f}, box, 0.5f, 0.25f));
-    EXPECT_FALSE(
-        GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 1.749f, 0.0f}, box, 0.5f, 0.25f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{1.001f, 2.0f, 0.0f}, box, 0.5f, 0.25f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 2.501f, 0.0f}, box, 0.5f, 0.25f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 1.749f, 0.0f}, box, 0.5f, 0.25f));
 }
 
 TEST(PlayerJudges, MoveInputIncludesTheDeadzoneEdgeAndStoppedNeedsExactZero)

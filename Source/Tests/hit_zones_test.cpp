@@ -6,15 +6,15 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/Archetype.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Reflection/SubObjectEntry.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/SubObjects/HitSensor.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/HitSensor.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Physics/Capsule.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -37,8 +37,8 @@ namespace
     using GL::Level::HitTier;
     using GL::Level::HitZones;
     using GL::Level::JudgeHitFace;
-    using NS::Obj::HitSensorShape;
-    using NS::Obj::SensorVolume;
+    using NS::HitSensorShape;
+    using NS::SensorVolume;
 
     // 同梱の場面の自機の半径
     constexpr float k_PlayerRadius = 0.65f;
@@ -72,55 +72,55 @@ namespace
         return result;
     }
 
-    NS::Obj::SceneActor* PlaceRocks(NS::Obj::Scene& scene, const nlohmann::json& overriddenParts)
+    NS::SceneActor* PlaceRocks(NS::Scene& scene, const nlohmann::json& overriddenParts)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
+        nlohmann::json doc = NS::MakeSceneJson();
         for (NS::uint32 id = 1; id <= 2; ++id)
         {
-            nlohmann::json rock = NS::Obj::MakeObjectJson();
-            NS::Obj::SetObjectJsonClass(rock, "PropActor");
-            NS::Obj::SetObjectJsonId(rock, id);
-            NS::Obj::SetObjectPosition(rock, Vector3{static_cast<float>(id) * 4.0f, 1.0f, 0.0f});
+            nlohmann::json rock = NS::MakeObjectJson();
+            NS::SetObjectJsonClass(rock, "PropActor");
+            NS::SetObjectJsonId(rock, id);
+            NS::SetObjectPosition(rock, Vector3{static_cast<float>(id) * 4.0f, 1.0f, 0.0f});
             if (id == 2)
             {
                 // 位置は Transform の件に入っているので、件ごと置き換えずに足す
                 for (nlohmann::json::const_iterator it = overriddenParts.begin(); it != overriddenParts.end(); ++it)
                 {
-                    NS::Obj::ObjectJsonSubObjs(rock)[it.key()] = it.value();
+                    NS::ObjectJsonSubObjs(rock)[it.key()] = it.value();
                 }
             }
-            NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+            NS::SceneJsonObjects(doc).push_back(std::move(rock));
         }
         scene.ResetFromJson(doc);
         return scene.Objects().FindByObjectId(2);
     }
 
-    const HitZones* HitZonesOf(const NS::Obj::SceneActor& actor)
+    const HitZones* HitZonesOf(const NS::SceneActor& actor)
     {
-        return NS::Obj::Cast<HitZones>(actor.FindSubObj("HitZones"));
+        return NS::Cast<HitZones>(actor.FindSubObj("HitZones"));
     }
 
     // 自機を根 (0, 1, 0) に、半径 0.5 m の置物を 1 m 先の高さ rockHeight に置く
     // 既定の 0.5 m は自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さで、+z へ進む線は面の真ん中を通る
-    PlayerActor* PlaceSlamTarget(NS::Obj::Scene& scene, const nlohmann::json& rockParts, float rockHeight = 0.5f)
+    PlayerActor* PlaceSlamTarget(NS::Scene& scene, const nlohmann::json& rockParts, float rockHeight = 0.5f)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json entry = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-        NS::Obj::SetObjectJsonId(entry, 1);
-        NS::Obj::SetObjectPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-        nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "PropActor");
-        NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, Vector3{0.0f, rockHeight, 1.0f});
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json entry = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(entry, "PlayerActor");
+        NS::SetObjectJsonId(entry, 1);
+        NS::SetObjectPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(entry));
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonId(rock, 2);
+        NS::SetObjectPosition(rock, Vector3{0.0f, rockHeight, 1.0f});
         for (nlohmann::json::const_iterator it = rockParts.begin(); it != rockParts.end(); ++it)
         {
-            NS::Obj::ObjectJsonSubObjs(rock)[it.key()] = it.value();
+            NS::ObjectJsonSubObjs(rock)[it.key()] = it.value();
         }
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+        NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
-        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
     // 溜め 0 で +z へ突進させ、本番の 1 フレームを 1 回回す。裁定は決定の段で身体が動く前に記録される
@@ -481,7 +481,7 @@ TEST(HitZonesTest, LinePointIsTheCenterDroppedOntoTheLineAtTheCenterHeight)
 TEST(HitZonesTest, FieldDefaultsAreARoundRedOfPoint43)
 {
     const HitZones zones;
-    const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(zones);
+    const nlohmann::json fields = NS::SerializeSubObjectFields(zones);
     EXPECT_EQ(fields["丸"], true);
     EXPECT_FLOAT_EQ(fields["横幅"].get<float>(), 0.43f);
     EXPECT_FLOAT_EQ(fields["縦の幅"].get<float>(), 0.43f);
@@ -497,13 +497,13 @@ TEST(HitZonesTest, FieldsAreClamped)
 {
     HitZones zones;
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    EXPECT_EQ(NS::Obj::ApplyJsonFields(zones,
-                                       {{"横幅", 1.5f},
-                                        {"縦の幅", -0.5f},
-                                        {"左右の位置", -2.0f},
-                                        {"上下の位置", 3.0f},
-                                        {"威力の倍率", -1.0f},
-                                        {"残りの威力の倍率", 1.5f}}),
+    EXPECT_EQ(NS::ApplyJsonFields(zones,
+                                  {{"横幅", 1.5f},
+                                   {"縦の幅", -0.5f},
+                                   {"左右の位置", -2.0f},
+                                   {"上下の位置", 3.0f},
+                                   {"威力の倍率", -1.0f},
+                                   {"残りの威力の倍率", 1.5f}}),
               0u);
     EXPECT_FLOAT_EQ(zones.Face().width, 1.0f);
     EXPECT_FLOAT_EQ(zones.Face().height, 0.0f);
@@ -523,24 +523,24 @@ TEST(HitZonesTest, FieldsAreClamped)
 // 種類の既定値 PropActor.json が全部の置物の赤の既定を書く
 TEST(HitZonesTest, MapObjArchetypeWritesTheRedDefaults)
 {
-    const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("PropActor");
+    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PropActor");
     ASSERT_NE(archetype, nullptr);
-    const nlohmann::json* fields = NS::Obj::SubObjFields(*archetype, "HitZones");
+    const nlohmann::json* fields = NS::SubObjFields(*archetype, "HitZones");
     ASSERT_NE(fields, nullptr);
     EXPECT_EQ((*fields)["丸"], true);
-    EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*fields, "横幅", -1.0f), 0.43f);
-    EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*fields, "縦の幅", -1.0f), 0.43f);
-    EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*fields, "左右の位置", -1.0f), 0.0f);
-    EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*fields, "上下の位置", -1.0f), 0.0f);
-    EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*fields, "威力の倍率", -1.0f), 1.0f);
-    EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*fields, "残りの威力の倍率", -1.0f), 0.7f);
+    EXPECT_FLOAT_EQ(NS::FieldFloat(*fields, "横幅", -1.0f), 0.43f);
+    EXPECT_FLOAT_EQ(NS::FieldFloat(*fields, "縦の幅", -1.0f), 0.43f);
+    EXPECT_FLOAT_EQ(NS::FieldFloat(*fields, "左右の位置", -1.0f), 0.0f);
+    EXPECT_FLOAT_EQ(NS::FieldFloat(*fields, "上下の位置", -1.0f), 0.0f);
+    EXPECT_FLOAT_EQ(NS::FieldFloat(*fields, "威力の倍率", -1.0f), 1.0f);
+    EXPECT_FLOAT_EQ(NS::FieldFloat(*fields, "残りの威力の倍率", -1.0f), 0.7f);
 }
 
 // 置物は部品 HitZones をコードで持ち、名前 "HitZones" で出す。体当たりの答えに赤の欄の写しと体の世界の形が載る
 TEST(HitZonesTest, MapObjAnswersWithItsFaceAndBody)
 {
-    NS::Obj::Scene scene;
-    NS::Obj::SceneActor* rock = PlaceRocks(scene, {{"HitZones", {{"左右の位置", 0.25f}, {"威力の倍率", 1.1f}}}});
+    NS::Scene scene;
+    NS::SceneActor* rock = PlaceRocks(scene, {{"HitZones", {{"左右の位置", 0.25f}, {"威力の倍率", 1.1f}}}});
     ASSERT_NE(rock, nullptr);
     const HitZones* zones = HitZonesOf(*rock);
     ASSERT_NE(zones, nullptr);
@@ -564,13 +564,13 @@ TEST(HitZonesTest, MapObjAnswersWithItsFaceAndBody)
 // 個体で赤の位置を上書きすると、同じ線でもその相手だけ段が変わる
 TEST(HitZonesTest, InstanceOverrideChangesOnlyThatTarget)
 {
-    NS::Obj::Scene scene;
-    NS::Obj::SceneActor* moved = PlaceRocks(scene, {{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}}}});
+    NS::Scene scene;
+    NS::SceneActor* moved = PlaceRocks(scene, {{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}}}});
     ASSERT_NE(moved, nullptr);
-    NS::Obj::SceneActor* plain = scene.Objects().FindByObjectId(1);
+    NS::SceneActor* plain = scene.Objects().FindByObjectId(1);
     ASSERT_NE(plain, nullptr);
 
-    const auto judgeThroughCenter = [&](NS::Obj::SceneActor& target) {
+    const auto judgeThroughCenter = [&](NS::SceneActor& target) {
         GL::Level::TackleTargetAnswer answer{};
         EXPECT_TRUE(GL::Level::SendMsgAskTackleTarget(*target.BodySensorSubObj(), answer));
         const Vector3 center = answer.body.Center();
@@ -592,35 +592,33 @@ TEST(HitZonesTest, InstanceOverrideSurvivesSaveAndLoad)
 {
     nlohmann::json saved;
     {
-        NS::Obj::Scene scene;
-        NS::Obj::SceneActor* rock = PlaceRocks(scene, {{"HitZones", {{"丸", false}, {"上下の位置", 0.3f}}}});
+        NS::Scene scene;
+        NS::SceneActor* rock = PlaceRocks(scene, {{"HitZones", {{"丸", false}, {"上下の位置", 0.3f}}}});
         ASSERT_NE(rock, nullptr);
         saved = scene.ToJson();
     }
-    const nlohmann::json& objects = NS::Obj::SceneJsonObjects(saved);
-    const nlohmann::json* plainFields =
-        NS::Obj::SubObjFields(objects[NS::Obj::FindObjectIndexById(saved, 1)], "HitZones");
+    const nlohmann::json& objects = NS::SceneJsonObjects(saved);
+    const nlohmann::json* plainFields = NS::SubObjFields(objects[NS::FindObjectIndexById(saved, 1)], "HitZones");
     if (plainFields != nullptr)
     {
-        EXPECT_FALSE(NS::Obj::HasField(*plainFields, "上下の位置"));
-        EXPECT_FALSE(NS::Obj::HasField(*plainFields, "丸"));
+        EXPECT_FALSE(NS::HasField(*plainFields, "上下の位置"));
+        EXPECT_FALSE(NS::HasField(*plainFields, "丸"));
     }
-    const nlohmann::json* overriddenFields =
-        NS::Obj::SubObjFields(objects[NS::Obj::FindObjectIndexById(saved, 2)], "HitZones");
+    const nlohmann::json* overriddenFields = NS::SubObjFields(objects[NS::FindObjectIndexById(saved, 2)], "HitZones");
     ASSERT_NE(overriddenFields, nullptr);
-    EXPECT_FLOAT_EQ(NS::Obj::FieldFloat(*overriddenFields, "上下の位置", 0.0f), 0.3f);
-    EXPECT_FALSE(NS::Obj::HasField(*overriddenFields, "横幅"));
+    EXPECT_FLOAT_EQ(NS::FieldFloat(*overriddenFields, "上下の位置", 0.0f), 0.3f);
+    EXPECT_FALSE(NS::HasField(*overriddenFields, "横幅"));
 
-    NS::Obj::Scene reloaded;
+    NS::Scene reloaded;
     reloaded.ResetFromJson(saved);
-    const NS::Obj::SceneActor* rock = reloaded.Objects().FindByObjectId(2);
+    const NS::SceneActor* rock = reloaded.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
     const HitZones* zones = HitZonesOf(*rock);
     ASSERT_NE(zones, nullptr);
     EXPECT_FALSE(zones->Face().round);
     EXPECT_FLOAT_EQ(zones->Face().centerV, 0.3f);
     EXPECT_FLOAT_EQ(zones->Face().width, 0.43f);
-    const NS::Obj::SceneActor* plain = reloaded.Objects().FindByObjectId(1);
+    const NS::SceneActor* plain = reloaded.Objects().FindByObjectId(1);
     ASSERT_NE(plain, nullptr);
     ASSERT_NE(HitZonesOf(*plain), nullptr);
     EXPECT_TRUE(HitZonesOf(*plain)->Face().round);
@@ -763,22 +761,22 @@ TEST(HitZonesTest, RedOutlineAgreesWithTheJudgement)
 // 直近の当たりの記録に、自機の玉が相手の表面に触れた点が載る。エディタはこの点に印を描く
 TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
 {
-    NS::Obj::Scene scene;
-    nlohmann::json doc = NS::Obj::MakeSceneJson();
-    nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-    NS::Obj::SetObjectJsonId(entry, 1);
-    NS::Obj::SetObjectPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "PropActor");
-    NS::Obj::SetObjectJsonId(rock, 2);
-    NS::Obj::SetObjectPosition(rock, Vector3{0.0f, 1.0f, 1.0f});
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+    NS::Scene scene;
+    nlohmann::json doc = NS::MakeSceneJson();
+    nlohmann::json entry = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonId(entry, 1);
+    NS::SetObjectPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
+    NS::SceneJsonObjects(doc).push_back(std::move(entry));
+    nlohmann::json rock = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonId(rock, 2);
+    NS::SetObjectPosition(rock, Vector3{0.0f, 1.0f, 1.0f});
+    NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    PlayerActor* player = NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    const NS::Obj::SceneActor* target = scene.Objects().FindByObjectId(2);
+    const NS::SceneActor* target = scene.Objects().FindByObjectId(2);
     ASSERT_NE(target, nullptr);
     const SensorVolume body = target->BodySensorSubObj()->WorldVolume();
 
@@ -833,8 +831,9 @@ TEST(HitZonesTest, BodyThatIsNoShapeFallsToWideWithTheRemainderPower)
 // 赤の位置を個体で上書きすると、同じ線でもその相手だけ外れになる
 TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
 {
-    NS::Obj::Scene plainScene;
-    PlayerActor* plain = PlaceSlamTarget(plainScene, {{"HitZones", {{"威力の倍率", 1.1f}, {"残りの威力の倍率", 0.6f}}}});
+    NS::Scene plainScene;
+    PlayerActor* plain =
+        PlaceSlamTarget(plainScene, {{"HitZones", {{"威力の倍率", 1.1f}, {"残りの威力の倍率", 0.6f}}}});
     ASSERT_NE(plain, nullptr);
     const GL::Level::ImpactRecord& centered = SlamOnce(*plain);
     ASSERT_EQ(centered.sequence, 1u);
@@ -843,7 +842,7 @@ TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
     EXPECT_FLOAT_EQ(centered.power, 1.1f);
     EXPECT_TRUE(centered.centerHit);
 
-    NS::Obj::Scene movedScene;
+    NS::Scene movedScene;
     PlayerActor* moved = PlaceSlamTarget(
         movedScene, {{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}, {"残りの威力の倍率", 0.6f}}}});
     ASSERT_NE(moved, nullptr);
@@ -859,7 +858,7 @@ TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
 // 溜め 0 の通常突進は上向きの初速で 1 ステップぶん上がって赤へ入るので、縦の速さ 0 を添えた溜めた突進で見る
 TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
@@ -877,7 +876,7 @@ TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
 // 今の玉の中心は相手より 0.5 m 低く赤の外。1 ステップで 0.15 m 上がる速さなら 0.35 ÷ 1.15 ≒ 0.30 で赤の中
 TEST(HitZonesTest, VerdictJudgesTheBallWhereThisStepMovesIt)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
     ASSERT_NE(player, nullptr);
     const float riseSpeed = 0.15f / NS::OS::FrameTimer::FixedDelta();
@@ -898,7 +897,7 @@ TEST(HitZonesTest, AimPredictionGivesTheSameTierAsTheVerdict)
                                                                 {raised, HitTier::Wide}};
     for (const std::pair<nlohmann::json, HitTier>& entry : cases)
     {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceSlamTarget(scene, entry.first);
         ASSERT_NE(player, nullptr);
         GL::Level::SlamLineTarget predicted{};
@@ -944,7 +943,7 @@ TEST(HitZonesTest, AimHeightIsTheRedCenterOnTheFace)
 // 体当たりの相手は置物の体だけ。1 ステップ先の自機に岩より近く重なるゴールの範囲は相手にしない
 TEST(ImpactResolver, TackleSkipsANearerAreaSensor)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object());
     ASSERT_NE(player, nullptr);
     GL::Level::GoalActor* goal = scene.SpawnTransient<GL::Level::GoalActor>();
@@ -958,10 +957,10 @@ TEST(ImpactResolver, TackleSkipsANearerAreaSensor)
 // 狙いの線も同じ相手を選ぶ。岩より手前の線の上にゴールの範囲があっても、最初に触れる相手は岩
 TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object());
     ASSERT_NE(player, nullptr);
-    NS::Obj::SceneActor* rock = scene.Objects().FindByObjectId(2);
+    NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(Vector3{0.0f, 0.5f, 3.0f});
     GL::Level::GoalActor* goal = scene.SpawnTransient<GL::Level::GoalActor>();
@@ -975,12 +974,12 @@ TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
 namespace
 {
     // 種類を付けない体のセンサーだけを持つ。センサーは開始で登録するので、OnInit で組む
-    class UnsetKindSensorActor final : public NS::Obj::SceneActor
+    class UnsetKindSensorActor final : public NS::SceneActor
     {
     protected:
         void OnInit() override
         {
-            NS::Obj::ShapeHitSensor* sensor = CreateSubObj<NS::Obj::HitSensor, NS::Obj::ShapeHitSensor>(m_bodySensor);
+            NS::ShapeHitSensor* sensor = CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor);
             sensor->SetSphere(0.5f);
         }
     };
@@ -989,11 +988,11 @@ namespace
 // 種類を付けていないセンサーは体当たりの相手にならない。付け忘れが黙って相手になる道は無い
 TEST(HitSensor, UnsetKindIsNotATackleTarget)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object());
     ASSERT_NE(player, nullptr);
     // 岩は線の後ろへ退ける
-    NS::Obj::SceneActor* rock = scene.Objects().FindByObjectId(2);
+    NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(Vector3{0.0f, 0.5f, -5.0f});
     UnsetKindSensorActor* unset = scene.SpawnTransient<UnsetKindSensorActor>();

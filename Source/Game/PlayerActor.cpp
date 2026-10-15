@@ -23,24 +23,24 @@
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/ActorList.h"
-#include "NSlib/Object/IUse/IUseSceneSystem.h"
-#include "NSlib/Object/Reflection/TypeRegistry.h"
-#include "NSlib/Object/SubObjects/Animation.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/EffectKeeper.h"
-#include "NSlib/Object/SubObjects/HitReaction.h"
-#include "NSlib/Object/SubObjects/HitSensor.h"
-#include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/SubObjects/PlayerInput.h"
-#include "NSlib/Object/SubObjects/Shadow.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/SubObjects/Animation.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/Collider.h"
+#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
+#include "NSlib/CoreObject/SubObjects/HitReaction.h"
+#include "NSlib/CoreObject/SubObjects/HitSensor.h"
+#include "NSlib/CoreObject/SubObjects/Model.h"
+#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
+#include "NSlib/CoreObject/SubObjects/Shadow.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <algorithm>
 #include <cmath>
 
-NS_REFLECT_BEGIN_IMPL(PlayerActor, NS::Obj::SceneActor)
+NS_REFLECT_BEGIN_IMPL(PlayerActor, NS::SceneActor)
 NS_REFLECT_SUBOBJ(m_appearance, "Appearance")
 NS_REFLECT_SUBOBJ(m_body, "Movement")
 NS_REFLECT_SUBOBJ(m_collider, "Collider")
@@ -61,7 +61,7 @@ PlayerActor::PlayerActor() noexcept = default;
 PlayerActor::~PlayerActor() = default;
 void PlayerActor::OnInit()
 {
-    NS::Obj::Model* model = CreateSubObj(m_model);
+    NS::Model* model = CreateSubObj(m_model);
     model->SetMaterialRef("player");
     model->SetBaseColor(NS::Vector3{0.5f, 0.5f, 0.5f});
     CreateSubObj(m_appearance);
@@ -72,10 +72,8 @@ void PlayerActor::OnInit()
     CreateSubObj(m_clips);
     CreateSubObj(m_shadow);
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
-    NS::Obj::FollowHitSensor* bodySensor =
-        CreateSubObj<NS::Obj::HitSensor, NS::Obj::FollowHitSensor>(m_bodySensor, [collider = m_collider.get()] {
-            return NS::Obj::SensorVolume::Capsule(collider->WorldCapsule());
-        });
+    NS::FollowHitSensor* bodySensor = CreateSubObj<NS::HitSensor, NS::FollowHitSensor>(
+        m_bodySensor, [collider = m_collider.get()] { return NS::SensorVolume::Capsule(collider->WorldCapsule()); });
     GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
     CreateSubObj(m_resolver);
     CreateSubObj(m_hitReaction);
@@ -108,7 +106,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     // 体当たりから止めの明けまで、カメラは距離と溜めの締めを保つ。当たる瞬間に画面が引かない
     state.framingHeld = IsBodySlamming() || m_resolver->Answer().holdingPlayer;
     state.hasRebound = true;
-    state.rebound = NS::Obj::FollowReboundDesc{
+    state.rebound = NS::FollowReboundDesc{
         .rebounding = IsRebounding(),
         .forcedSlamming = IsBodySlamming() && m_slam.m_forced,
         .slamDirection = BodySlamDirection(),
@@ -124,7 +122,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     }
     if (IsRebounding() && impact.tier == GL::Level::HitTier::Center && OwningScene() != nullptr)
     {
-        if (const NS::Obj::SceneActor* partner = OwningScene()->Objects().FindByObjectId(impact.targetId))
+        if (const NS::SceneActor* partner = OwningScene()->Objects().FindByObjectId(impact.targetId))
         {
             state.rebound.partnerPosition = partner->Root().Position();
         }
@@ -150,7 +148,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
 
 void PlayerActor::UpdateAnimation()
 {
-    NS::Obj::Animation* animation = AnimationSubObj();
+    NS::Animation* animation = AnimationSubObj();
     if (animation == nullptr)
     {
         return;
@@ -184,19 +182,19 @@ void PlayerActor::ReadInput()
 void PlayerActor::Update(bool chargeHeld)
 {
     m_input->SetSlamHeld(chargeHeld);
-    NS::Obj::SceneActor::Update();
+    NS::SceneActor::Update();
 }
 
 void PlayerActor::ObserveStep()
 {
-    NS::Obj::SceneActor::ObserveStep();
+    NS::SceneActor::ObserveStep();
     // 当たりの途中は受け付けない。相手だけが戻ると、走っている当たりのタイムラインが戻った相手を飛ばす
     // 押しは同じ歩の状態の段で消費されるので、当たりの途中の押しは持ち越さない
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     const bool inImpact = impact.hitStopping || impact.awaitingRebound;
     if (m_input->RespawnPressed() && !inImpact)
     {
-        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
+        if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
         {
             director->RequestRespawnObjects();
         }
@@ -355,8 +353,8 @@ float PlayerActor::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed
 
 void PlayerActor::OnStart()
 {
-    NS::Obj::SceneActor::OnStart();
-    if (NS::Obj::Scene* scene = OwningScene())
+    NS::SceneActor::OnStart();
+    if (NS::Scene* scene = OwningScene())
     {
         scene->RegisterOverlay(m_targetMarker.get());
         scene->RegisterOverlay(m_slamArrow.get());
@@ -369,12 +367,12 @@ void PlayerActor::OnEndPlay()
 {
     m_states->Reset();
     m_appliedClip.clear();
-    NS::Obj::SceneActor::OnEndPlay();
+    NS::SceneActor::OnEndPlay();
     // 走っている当たりのタイムラインを捨てる。プレイの途中で外れても止めが次のプレイへ残らない
     m_resolver->CancelImpact(ModelSubObj(), HitReactionSubObj());
     m_appearance->ResetDrawScale();
     m_chargeEffects->Clear();
-    if (NS::Obj::Scene* scene = OwningScene())
+    if (NS::Scene* scene = OwningScene())
     {
         scene->UnregisterOverlay(m_targetMarker.get());
         scene->UnregisterOverlay(m_slamArrow.get());
@@ -386,36 +384,36 @@ void PlayerActor::InitAfterPlacement()
 {
     ResetHealth();
     // 死とゴールを伝える先。先に作っておくと、最初の知らせの段で流れが進む
-    (void)NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this);
+    (void)NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this);
 }
 
-bool PlayerActor::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver)
+bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver)
 {
     (void)sender;
     (void)receiver;
     if (GL::Level::IsMsgInstantDeath(msg))
     {
         Die();
-        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
+        if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
         {
             director->NotifyPlayerDead();
         }
         return true;
     }
-    if (const GL::Level::MsgGoal* goal = NS::Obj::MsgCast<GL::Level::MsgGoal>(msg))
+    if (const GL::Level::MsgGoal* goal = NS::MsgCast<GL::Level::MsgGoal>(msg))
     {
-        if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
+        if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
         {
             director->NotifyGoal(goal->FadeOutSeconds(), goal->FadeInSeconds());
         }
         return true;
     }
-    if (const GL::Level::MsgCourseRestart* restart = NS::Obj::MsgCast<GL::Level::MsgCourseRestart>(msg))
+    if (const GL::Level::MsgCourseRestart* restart = NS::MsgCast<GL::Level::MsgCourseRestart>(msg))
     {
         RestartFrom(restart->Baseline());
         return true;
     }
-    if (const GL::Level::MsgInputLock* lock = NS::Obj::MsgCast<GL::Level::MsgInputLock>(msg))
+    if (const GL::Level::MsgInputLock* lock = NS::MsgCast<GL::Level::MsgInputLock>(msg))
     {
         m_input->SetLocked(lock->Locked());
         // 押しが偽になった歩を放したと読むと、溜めた突進が出る。止める時は放させずに溜めを捨てる
@@ -433,10 +431,10 @@ void PlayerActor::RestartFrom(const nlohmann::json& baseline) noexcept
     // 出現位置は配置したプレイヤーのカプセル中心の世界座標
     // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで補う位置へ戻す
     NS::Vector3 spawn = DefaultSpawnPosition();
-    const std::size_t index = NS::Obj::FindObjectIndexById(baseline, Id());
-    if (index != NS::Obj::k_NoObjectIndex)
+    const std::size_t index = NS::FindObjectIndexById(baseline, Id());
+    if (index != NS::k_NoObjectIndex)
     {
-        spawn = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(baseline)[index]);
+        spawn = NS::ObjectPosition(NS::SceneJsonObjects(baseline)[index]);
     }
 
     Root().SetPosition(spawn);
@@ -680,11 +678,11 @@ void PlayerActor::FinishStateStep(float dt)
     }
 }
 
-PlayerActor* FindPlayer(NS::Obj::ActorList& objects) noexcept
+PlayerActor* FindPlayer(NS::ActorList& objects) noexcept
 {
-    for (NS::Obj::SceneActor* obj : objects)
+    for (NS::SceneActor* obj : objects)
     {
-        if (PlayerActor* player = NS::Obj::Cast<PlayerActor>(obj))
+        if (PlayerActor* player = NS::Cast<PlayerActor>(obj))
         {
             return player;
         }

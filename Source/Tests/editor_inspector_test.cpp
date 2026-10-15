@@ -1,6 +1,6 @@
 #include "Editor/InspectorReflection.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -23,7 +23,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     int height = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-    NS::Obj::ThirdPersonFollow follow;
+    NS::ThirdPersonFollow follow;
     const std::vector<NS::Editor::ObjectRefOption> options{{7u, "相手"}};
     ImVec2 tableMin{};
     float tableWidth = 0.0f;

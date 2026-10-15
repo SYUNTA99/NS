@@ -1,7 +1,7 @@
 #include "Editor/ViewportSurface.h"
 
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Graphics/RenderTarget.h"
-#include "NSlib/Object/Scene/Scene.h"
 
 #include "NSlib/Core/Types.h"
 
@@ -9,113 +9,118 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
-    ViewportSurface::ViewportSurface() = default;
-    ViewportSurface::~ViewportSurface() = default;
-
-    bool ViewportSurface::BeginView(const char* windowName, ImVec2& outMin, ImVec2& outMax, bool& outHovered) noexcept
+    namespace Editor
     {
-#if NS_EDITOR_ENABLED
-        outHovered = false;
-        outMin = ImVec2{0.0f, 0.0f};
-        outMax = ImVec2{0.0f, 0.0f};
+        ViewportSurface::ViewportSurface() = default;
+        ViewportSurface::~ViewportSurface() = default;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0.0f, 0.0f});
-        constexpr ImGuiWindowFlags k_PanelFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-        const bool open = ImGui::Begin(windowName, nullptr, k_PanelFlags);
-
-        bool imaged = false;
-        m_visible = false;
-        m_focused = false;
-        if (open)
+        bool ViewportSurface::BeginView(const char* windowName,
+                                        ImVec2& outMin,
+                                        ImVec2& outMax,
+                                        bool& outHovered) noexcept
         {
-            m_focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-            const ImVec2 avail = ImGui::GetContentRegionAvail();
-            if (avail.x >= 1.0f && avail.y >= 1.0f)
+#if NS_EDITOR_ENABLED
+            outHovered = false;
+            outMin = ImVec2{0.0f, 0.0f};
+            outMax = ImVec2{0.0f, 0.0f};
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0.0f, 0.0f});
+            constexpr ImGuiWindowFlags k_PanelFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+            const bool open = ImGui::Begin(windowName, nullptr, k_PanelFlags);
+
+            bool imaged = false;
+            m_visible = false;
+            m_focused = false;
+            if (open)
             {
-                // 縦横比の指定があれば収まる最大の大きさへ縮める。余った分は貼らずに残し黒帯にする
-                ImVec2 draw = avail;
-                if (m_fixedAspect > 0.0f)
+                m_focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+                const ImVec2 avail = ImGui::GetContentRegionAvail();
+                if (avail.x >= 1.0f && avail.y >= 1.0f)
                 {
-                    if (avail.x > avail.y * m_fixedAspect)
+                    // 縦横比の指定があれば収まる最大の大きさへ縮める。余った分は貼らずに残し黒帯にする
+                    ImVec2 draw = avail;
+                    if (m_fixedAspect > 0.0f)
                     {
-                        draw = ImVec2{avail.y * m_fixedAspect, avail.y};
+                        if (avail.x > avail.y * m_fixedAspect)
+                        {
+                            draw = ImVec2{avail.y * m_fixedAspect, avail.y};
+                        }
+                        else
+                        {
+                            draw = ImVec2{avail.x, avail.x / m_fixedAspect};
+                        }
                     }
-                    else
+
+                    // 可視なら次フレームの描画先サイズを立てる。描画先未生成でも記録する
+                    m_visible = true;
+                    m_size = NS::Size2D{static_cast<int>(draw.x), static_cast<int>(draw.y)};
+
+                    if (m_target != nullptr && m_target->IsValid())
                     {
-                        draw = ImVec2{avail.x, avail.x / m_fixedAspect};
+                        // 黒帯を左右上下へ均等に割るため、貼る直前に中央へ寄せる
+                        const ImVec2 cursor = ImGui::GetCursorPos();
+                        ImGui::SetCursorPos(
+                            ImVec2{cursor.x + (avail.x - draw.x) * 0.5f, cursor.y + (avail.y - draw.y) * 0.5f});
+                        ImGui::Image(
+                            static_cast<ImTextureID>(reinterpret_cast<NS::uintptr>(m_target->UiTextureHandle())), draw);
+                        outHovered = ImGui::IsItemHovered();
+                        outMin = ImGui::GetItemRectMin();
+                        outMax = ImGui::GetItemRectMax();
+                        imaged = true;
                     }
-                }
-
-                // 可視なら次フレームの描画先サイズを立てる。描画先未生成でも記録する
-                m_visible = true;
-                m_size = NS::Size2D{static_cast<int>(draw.x), static_cast<int>(draw.y)};
-
-                if (m_target != nullptr && m_target->IsValid())
-                {
-                    // 黒帯を左右上下へ均等に割るため、貼る直前に中央へ寄せる
-                    const ImVec2 cursor = ImGui::GetCursorPos();
-                    ImGui::SetCursorPos(
-                        ImVec2{cursor.x + (avail.x - draw.x) * 0.5f, cursor.y + (avail.y - draw.y) * 0.5f});
-                    ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<NS::uintptr>(m_target->UiTextureHandle())),
-                                 draw);
-                    outHovered = ImGui::IsItemHovered();
-                    outMin = ImGui::GetItemRectMin();
-                    outMax = ImGui::GetItemRectMax();
-                    imaged = true;
                 }
             }
-        }
-        return imaged;
+            return imaged;
 #else
-        (void)windowName;
-        (void)outMin;
-        (void)outMax;
-        (void)outHovered;
-        return false;
+            (void)windowName;
+            (void)outMin;
+            (void)outMax;
+            (void)outHovered;
+            return false;
 #endif
-    }
+        }
 
-    void ViewportSurface::EndView() noexcept
-    {
+        void ViewportSurface::EndView() noexcept
+        {
 #if NS_EDITOR_ENABLED
-        ImGui::End();
-        ImGui::PopStyleVar();
+            ImGui::End();
+            ImGui::PopStyleVar();
 #endif
-    }
-
-    std::optional<NS::Obj::SceneView> ViewportSurface::CollectView(std::optional<NS::Obj::CameraPose> pose) noexcept
-    {
-        if (!m_visible || m_size.width < 8 || m_size.height < 8)
-        {
-            return std::nullopt;
         }
 
-        if (!m_target)
+        std::optional<NS::SceneView> ViewportSurface::CollectView(std::optional<NS::CameraPose> pose) noexcept
         {
-            m_target = NS::Gfx::RenderTarget::Create(m_size);
-        }
-        else
-        {
-            m_target->Resize(m_size);
+            if (!m_visible || m_size.width < 8 || m_size.height < 8)
+            {
+                return std::nullopt;
+            }
+
+            if (!m_target)
+            {
+                m_target = NS::Gfx::RenderTarget::Create(m_size);
+            }
+            else
+            {
+                m_target->Resize(m_size);
+            }
+
+            return NS::SceneView{m_target.get(), pose};
         }
 
-        return NS::Obj::SceneView{m_target.get(), pose};
-    }
-
-    std::optional<NS::Obj::SceneView> ViewportSurface::CurrentView(
-        std::optional<NS::Obj::CameraPose> pose) const noexcept
-    {
-        if (!m_visible || m_target == nullptr || !m_target->IsValid())
+        std::optional<NS::SceneView> ViewportSurface::CurrentView(std::optional<NS::CameraPose> pose) const noexcept
         {
-            return std::nullopt;
+            if (!m_visible || m_target == nullptr || !m_target->IsValid())
+            {
+                return std::nullopt;
+            }
+            return NS::SceneView{m_target.get(), pose};
         }
-        return NS::Obj::SceneView{m_target.get(), pose};
-    }
 
-    void ViewportSurface::Release() noexcept
-    {
-        m_target.reset();
-    }
-} // namespace NS::Editor
+        void ViewportSurface::Release() noexcept
+        {
+            m_target.reset();
+        }
+    } // namespace Editor
+} // namespace NS

@@ -2,23 +2,26 @@
 
 #include "Game/PlayerActor.h"
 
-namespace GL::Player
+namespace GL
 {
-    void LedgeClimbingPlayerState::OnEnter(::PlayerActor& player)
+    namespace Player
     {
-        StartCoroutine(Run(player));
-    }
-
-    NS::Coroutine LedgeClimbingPlayerState::Run(::PlayerActor& player)
-    {
-        while (true)
+        void LedgeClimbingPlayerState::OnEnter(::PlayerActor& player)
         {
-            co_await NS::NextFrame{};
-            player.UpdateLedgeClimb(StepDelta());
-            if (!player.States().IsCurrent<LedgeClimbingPlayerState>())
+            StartCoroutine(Run(player));
+        }
+
+        NS::Coroutine LedgeClimbingPlayerState::Run(::PlayerActor& player)
+        {
+            while (true)
             {
-                co_return;
+                co_await NS::NextFrame{};
+                player.UpdateLedgeClimb(StepDelta());
+                if (!player.States().IsCurrent<LedgeClimbingPlayerState>())
+                {
+                    co_return;
+                }
             }
         }
-    }
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

@@ -1,10 +1,10 @@
 #include "Game/PlayerActor.h"
-#include "NSlib/Object/IUse/IUseSceneSystem.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/System/HitScreenDirector.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/HitReaction.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/HitReaction.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
+#include "NSlib/CoreObject/System/HitScreenDirector.h"
 
 #include <gtest/gtest.h>
 
@@ -15,31 +15,31 @@
 namespace
 {
     // 置物は、自機でない頼み手として使う
-    PlayerActor* PlaceTwo(NS::Obj::Scene& scene)
+    PlayerActor* PlaceTwo(NS::Scene& scene)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json entry = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-        NS::Obj::SetObjectJsonId(entry, 1);
-        NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-        nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "PropActor");
-        NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 5.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json entry = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(entry, "PlayerActor");
+        NS::SetObjectJsonId(entry, 1);
+        NS::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(entry));
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonId(rock, 2);
+        NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 5.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
-        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 } // namespace
 
 // 頼んだフレームは始めの濃さのまま。次の更新から、残りのフレーム数に比例して薄れる
 TEST(HitScreenDirector, FlashStartsAtFullAlphaAndFadesFromTheNextTick)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
 
     screen->StartFlash(*player, 3, 0.9f);
@@ -60,12 +60,12 @@ TEST(HitScreenDirector, FlashStartsAtFullAlphaAndFadesFromTheNextTick)
 // 震えの線は始めたフレームの姿のまま出し、次の更新から数えて決めたフレーム数で消える
 TEST(HitScreenDirector, ShakeLinesRunForTheirFrames)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
-    screen->StartShakeLines(*player, NS::Obj::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
+    screen->StartShakeLines(*player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 3);
     screen->OnTick();
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 3);
@@ -73,23 +73,23 @@ TEST(HitScreenDirector, ShakeLinesRunForTheirFrames)
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 2);
     EXPECT_FLOAT_EQ(screen->ShakeLines().radius, 0.5f);
     // 半径が 0 以下・フレーム数 0 以下は出さない
-    screen->StartShakeLines(*player, NS::Obj::HitShakeLinesDesc{.radius = 0.0f, .frames = 3});
+    screen->StartShakeLines(*player, NS::HitShakeLinesDesc{.radius = 0.0f, .frames = 3});
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 0);
 }
 
 // 止めると、止めた物が頼んだ白と線だけが消える。ほかの物が頼んだ物は残る
 TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::SceneActor* rock = scene.Objects().FindByObjectId(2);
+    NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
 
     screen->StartFlash(*rock, 3, 1.0f);
-    screen->StartShakeLines(*player, NS::Obj::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
+    screen->StartShakeLines(*player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
     screen->Stop(*player);
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 0);
@@ -100,15 +100,15 @@ TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
 // 当たりの演出の部品は HitScreenDirector へ頼む。部品を止めると白と線が消える
 TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
+    NS::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     reaction->StartFlash(4, 1.0f);
-    reaction->StartShakeLines(NS::Obj::HitShakeLinesDesc{.radius = 0.5f, .frames = 4});
+    reaction->StartShakeLines(NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 4});
     EXPECT_EQ(screen->FlashFramesRemaining(), 4);
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 4);
     reaction->Stop();
@@ -119,10 +119,10 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
 // 描く支度の段で進むので、自機以外を止めている間も薄れる
 TEST(HitScreenDirector, FlashKeepsFadingWhileOthersAreHeld)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     scene.HoldOthers(10);
     screen->StartFlash(*player, 3, 1.0f);
@@ -135,12 +135,12 @@ TEST(HitScreenDirector, FlashKeepsFadingWhileOthersAreHeld)
 // 震えの線は挟む物の輪郭の外の左右に 3 本ずつ。入れ替えのフレーム数ごとに、外と内へ交互にずれる
 TEST(HitScreenDirector, ShakeLinesSitOutsideTheOutlineAndJitterByTheFlipFrames)
 {
-    const NS::Obj::HitShakeLinesDesc desc{.radius = 0.5f, .frames = 12, .flipFrames = 2};
-    const NS::Obj::HitShakeLineSpan span{.left = 540.0f, .right = 760.0f, .centerY = 360.0f};
-    const std::array<NS::Obj::HitShakeLineRect, 6> first = NS::Obj::ShakeLineRects(desc, 0, span, 1.0f);
+    const NS::HitShakeLinesDesc desc{.radius = 0.5f, .frames = 12, .flipFrames = 2};
+    const NS::HitShakeLineSpan span{.left = 540.0f, .right = 760.0f, .centerY = 360.0f};
+    const std::array<NS::HitShakeLineRect, 6> first = NS::ShakeLineRects(desc, 0, span, 1.0f);
     int left = 0;
     int right = 0;
-    for (const NS::Obj::HitShakeLineRect& rect : first)
+    for (const NS::HitShakeLineRect& rect : first)
     {
         EXPECT_GT(rect.width, 0.0f);
         EXPECT_GT(rect.height, rect.width);
@@ -156,8 +156,8 @@ TEST(HitScreenDirector, ShakeLinesSitOutsideTheOutlineAndJitterByTheFlipFrames)
     }
     EXPECT_EQ(left, 3);
     EXPECT_EQ(right, 3);
-    const std::array<NS::Obj::HitShakeLineRect, 6> same = NS::Obj::ShakeLineRects(desc, 1, span, 1.0f);
-    const std::array<NS::Obj::HitShakeLineRect, 6> flipped = NS::Obj::ShakeLineRects(desc, 2, span, 1.0f);
+    const std::array<NS::HitShakeLineRect, 6> same = NS::ShakeLineRects(desc, 1, span, 1.0f);
+    const std::array<NS::HitShakeLineRect, 6> flipped = NS::ShakeLineRects(desc, 2, span, 1.0f);
     for (std::size_t i = 0; i < first.size(); ++i)
     {
         SCOPED_TRACE(i);
@@ -168,18 +168,18 @@ TEST(HitScreenDirector, ShakeLinesSitOutsideTheOutlineAndJitterByTheFlipFrames)
 
 TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
-    NS::Obj::HitDistortionRingDesc desc;
+    NS::HitDistortionRingDesc desc;
     desc.center = NS::Vector3{1.0f, 2.0f, 3.0f};
     desc.radius.count = 2;
-    desc.radius.keys[0] = NS::Obj::Curve::Key{0.0f, 0.0f};
-    desc.radius.keys[1] = NS::Obj::Curve::Key{4.0f, 0.4f};
+    desc.radius.keys[0] = NS::Curve::Key{0.0f, 0.0f};
+    desc.radius.keys[1] = NS::Curve::Key{4.0f, 0.4f};
     desc.push.count = 1;
-    desc.push.keys[0] = NS::Obj::Curve::Key{0.0f, 0.03f};
+    desc.push.keys[0] = NS::Curve::Key{0.0f, 0.03f};
     desc.halfWidth = 0.05f;
     desc.frames = 3;
 
@@ -210,18 +210,18 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
 // 歪みの輪は、頼んだ物が止めた時だけ消える
 TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::SceneActor* rock = scene.Objects().FindByObjectId(2);
+    NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
-    NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
+    NS::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
-    NS::Obj::HitDistortionRingDesc desc;
+    NS::HitDistortionRingDesc desc;
     desc.push.count = 1;
-    desc.push.keys[0] = NS::Obj::Curve::Key{0.0f, 0.03f};
+    desc.push.keys[0] = NS::Curve::Key{0.0f, 0.03f};
     desc.frames = 10;
 
     reaction->StartDistortionRing(desc);

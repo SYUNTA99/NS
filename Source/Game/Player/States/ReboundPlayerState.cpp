@@ -1,45 +1,48 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/SkidPlayerState.h"
-#include "NSlib/Object/SubObjects/Body.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
 
-namespace GL::Player
+namespace GL
 {
-    void ReboundPlayerState::OnEnter(::PlayerActor& player)
+    namespace Player
     {
-        StartCoroutine(Run(player));
-    }
-
-    NS::Coroutine ReboundPlayerState::Run(::PlayerActor& player)
-    {
-        while (true)
+        void ReboundPlayerState::OnEnter(::PlayerActor& player)
         {
-            co_await NS::NextFrame{};
-            const float dt = StepDelta();
-            player.TickTimers(dt);
-            player.AccelerateDuringRebound(dt);
-            player.ReboundGravity(dt);
-            if (player.LedgeGrab())
-            {
-                co_return;
-            }
+            StartCoroutine(Run(player));
+        }
 
-            if (PlayerJudgeLand::Judge(player.Body().IsGrounded(), player.Body().VerticalVelocity()))
+        NS::Coroutine ReboundPlayerState::Run(::PlayerActor& player)
+        {
+            while (true)
             {
-                // 外れは着いた後もこすって止まるまで操作が戻らない。真ん中は着いたフレームに立ちへ戻る
-                if (player.SkidsOnLanding())
+                co_await NS::NextFrame{};
+                const float dt = StepDelta();
+                player.TickTimers(dt);
+                player.AccelerateDuringRebound(dt);
+                player.ReboundGravity(dt);
+                if (player.LedgeGrab())
                 {
-                    player.States().Change<SkidPlayerState>();
+                    co_return;
                 }
-                else
+
+                if (PlayerJudgeLand::Judge(player.Body().IsGrounded(), player.Body().VerticalVelocity()))
                 {
-                    player.States().Change<IdlePlayerState>();
+                    // 外れは着いた後もこすって止まるまで操作が戻らない。真ん中は着いたフレームに立ちへ戻る
+                    if (player.SkidsOnLanding())
+                    {
+                        player.States().Change<SkidPlayerState>();
+                    }
+                    else
+                    {
+                        player.States().Change<IdlePlayerState>();
+                    }
+                    co_return;
                 }
-                co_return;
             }
         }
-    }
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

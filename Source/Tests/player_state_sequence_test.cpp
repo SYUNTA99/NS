@@ -1,46 +1,46 @@
 #include "Game/Level/ImpactResolver.h"
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Object/IUse/IUseSceneSystem.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/Transform.h"
-#include "NSlib/Object/System/HitScreenDirector.h"
+#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/Collider.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
+#include "NSlib/CoreObject/System/HitScreenDirector.h"
 
 #include <gtest/gtest.h>
 
 #include <type_traits>
 #include <utility>
 
-static_assert(std::is_base_of_v<NS::Obj::StateOf<GL::Player::IdlePlayerState, ::PlayerActor>, GL::Player::IdlePlayerState>);
+static_assert(std::is_base_of_v<NS::StateOf<GL::Player::IdlePlayerState, ::PlayerActor>, GL::Player::IdlePlayerState>);
 
 namespace
 {
-    class ObservePlayerEffectsState final : public NS::Obj::StateOf<ObservePlayerEffectsState, ::PlayerActor>
+    class ObservePlayerEffectsState final : public NS::StateOf<ObservePlayerEffectsState, ::PlayerActor>
     {
     public:
         void OnStep(::PlayerActor& player, float) override
         {
-            EXPECT_EQ(NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(&player)->FlashFramesRemaining(), 3);
+            EXPECT_EQ(NS::FindSceneSystem<NS::HitScreenDirector>(&player)->FlashFramesRemaining(), 3);
         }
     };
 
-    PlayerActor* PlaceSequencePlayer(NS::Obj::Scene& scene)
+    PlayerActor* PlaceSequencePlayer(NS::Scene& scene)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json entry = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-        NS::Obj::SetObjectJsonId(entry, 1);
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json entry = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(entry, "PlayerActor");
+        NS::SetObjectJsonId(entry, 1);
+        NS::SceneJsonObjects(doc).push_back(std::move(entry));
         scene.ResetFromJson(doc);
         return static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     }
@@ -48,10 +48,10 @@ namespace
 
 TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
+    NS::Body* movement = NS::Cast<NS::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     player->Root().SetPosition(NS::Vector3{});
     player->ClimbLedge();
@@ -69,10 +69,10 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
 
 TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
+    NS::Body* movement = NS::Cast<NS::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     player->ClimbLedge();
     player->States().Step(0.0625f);
@@ -84,7 +84,7 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
 
 TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
     player->Body().SetGrounded(true);
@@ -97,7 +97,7 @@ TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)
 
 TEST(PlayerStateSequence, InactiveMovementStopsTheActorStateStep)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
     player->Body().SetGrounded(true);
@@ -108,10 +108,10 @@ TEST(PlayerStateSequence, InactiveMovementStopsTheActorStateStep)
 
 TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(*player, 3, 1.0f);
     screen->OnTick();
@@ -126,18 +126,18 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
 // 止めは本物の当たりで作る。止めの間は状態の歩が進まず、当たりの演出は薄れていく
 TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
 {
-    nlohmann::json doc = NS::Obj::MakeSceneJson();
-    nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-    NS::Obj::SetObjectJsonId(entry, 1);
-    NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "PropActor");
-    NS::Obj::SetObjectJsonId(rock, 2);
-    NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
-    NS::Obj::Scene scene;
+    nlohmann::json doc = NS::MakeSceneJson();
+    nlohmann::json entry = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonId(entry, 1);
+    NS::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
+    NS::SceneJsonObjects(doc).push_back(std::move(entry));
+    nlohmann::json rock = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonId(rock, 2);
+    NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
+    NS::SceneJsonObjects(doc).push_back(std::move(rock));
+    NS::Scene scene;
     scene.ResetFromJson(doc);
     NS::OBB floor{};
     floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -154,7 +154,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
         player->Update();
     }
     ASSERT_TRUE(player->Resolver().Answer().freezeBegan);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(*player, 3, 1.0f);
     screen->OnTick();
@@ -167,10 +167,10 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
 
 TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
+    NS::Body* movement = NS::Cast<NS::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     movement->SetGrounded(true);
     const GL::Player::ReboundArc arc{.apexHeight = 1.0f, .distance = 5.0f};
@@ -192,10 +192,10 @@ TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
 // 頂点の帯 (縦の速さの大きさが頂点滞空 Vy 未満) を反動でも同じ式で見るので、1 と -1 の場合が帯を外すと割れる
 TEST(PlayerStateSequence, ReboundGravityIsTheChoiceWithTheReboundRise)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"頂点滞空 Vy", 3.0f}, {"頂点滞空倍率", 0.3f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"頂点滞空 Vy", 3.0f}, {"頂点滞空倍率", 0.3f}}), 0u);
     constexpr float k_Dt = 1.0f / 60.0f;
     const GL::Player::PlayerGravity gravity = player->Params().ReboundGravity();
     for (const float vertical : {5.0f, 1.0f, -1.0f, -5.0f})
@@ -212,7 +212,7 @@ TEST(PlayerStateSequence, ReboundGravityIsTheChoiceWithTheReboundRise)
 // と玉の中心の決まりが結ばれている 下げ幅を変えると、判定・矢印・エディタの面が読む玉だけが黙ってずれる
 TEST(PlayerStateSequence, SlamBallStaysPutWhenCurling)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
     player->Root().SetPosition(NS::Vector3{1.0f, 2.0f, 3.0f});
@@ -233,10 +233,10 @@ TEST(PlayerStateSequence, SlamBallStaysPutWhenCurling)
 
 TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
+    NS::Body* movement = NS::Cast<NS::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
     player->ClimbLedge();
     player->States().Step(0.0625f);
@@ -248,19 +248,19 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
 
 TEST(PlayerStateSequence, TheBaseOwnsTheMachineFromInit)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     ASSERT_NE(player.GetStates(), nullptr);
-    EXPECT_EQ(player.GetStates()->CurrentId(), NS::Obj::StateIdOf<GL::Player::IdlePlayerState>());
-    EXPECT_TRUE(NS::Obj::IsState<GL::Player::IdlePlayerState>(&player));
+    EXPECT_EQ(player.GetStates()->CurrentId(), NS::StateIdOf<GL::Player::IdlePlayerState>());
+    EXPECT_TRUE(NS::IsState<GL::Player::IdlePlayerState>(&player));
 }
 
 TEST(PlayerStateSequence, ReboundAndBodySlamAreNeverBothTrue)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Body& movement = player->Body();
+    NS::Body& movement = player->Body();
     movement.SetGrounded(true);
     ASSERT_TRUE(player->BeginRebound(GL::Player::ReboundArc{.apexHeight = 1.0f, .distance = 5.0f}));
     EXPECT_TRUE(player->IsRebounding());

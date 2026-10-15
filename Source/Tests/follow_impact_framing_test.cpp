@@ -1,10 +1,10 @@
 #include "Game/Level/FollowCameraActor.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
 
@@ -16,15 +16,15 @@
 namespace
 {
     // 溜め・突進・明けの状態を試しが書く追われる物。動かない
-    class FramingTargetProbeActor final : public NS::Obj::SceneActor
+    class FramingTargetProbeActor final : public NS::SceneActor
     {
     public:
         // 接地・溜め・保つかを仮想カメラの口へ渡す
-        void Feed(NS::Obj::ThirdPersonFollow& vcam) const
+        void Feed(NS::ThirdPersonFollow& vcam) const
         {
             vcam.SetFollowMotion(grounded, NS::Vector3{});
             vcam.SetFollowFramingHeld(framingHeld);
-            NS::Obj::FollowChargeDesc charge{};
+            NS::FollowChargeDesc charge{};
             charge.held = held;
             charge.charge01 = charge01;
             charge.hasAimTarget = hasAim;
@@ -43,7 +43,7 @@ namespace
 
     struct FramingScene
     {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         FramingTargetProbeActor* target = nullptr;
         GL::Level::FollowCameraActor* camera = nullptr;
 
@@ -51,8 +51,7 @@ namespace
         {
             target = scene.SpawnObject<FramingTargetProbeActor>("target");
             camera = scene.SpawnTransient<GL::Level::FollowCameraActor>();
-            NS::Obj::ApplyJsonFields(camera->Vcam(),
-                                     nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
+            NS::ApplyJsonFields(camera->Vcam(), nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
         }
 
         void Run(int frames)
@@ -71,7 +70,7 @@ TEST(FollowImpactFraming, HeldFramingKeepsDistanceAndNarrowUntilTheRelease)
 {
     FramingScene world;
     world.Run(120);
-    const NS::Obj::ThirdPersonFollow& vcam = world.camera->Vcam();
+    const NS::ThirdPersonFollow& vcam = world.camera->Vcam();
     const float narrow = vcam.ChargeNarrowDegrees();
     const float distance = vcam.Distance();
     ASSERT_GT(narrow, 0.0f);
@@ -102,13 +101,13 @@ TEST(FollowImpactFraming, ChargeWithATargetCentersThePairVertically)
 {
     FramingScene alone;
     alone.Run(120);
-    const NS::Obj::CameraPose alonePose = alone.camera->Vcam().EvaluatePose(1.0f);
+    const NS::CameraPose alonePose = alone.camera->Vcam().EvaluatePose(1.0f);
 
     FramingScene world;
     world.target->hasAim = true;
     world.target->aim = NS::Vector3{0.0f, 0.2f, 3.0f};
     world.Run(120);
-    const NS::Obj::CameraPose pose = world.camera->Vcam().EvaluatePose(1.0f);
+    const NS::CameraPose pose = world.camera->Vcam().EvaluatePose(1.0f);
     EXPECT_NEAR(pose.position.y, alonePose.position.y, 1.0e-4f);
     EXPECT_LT(pose.target.y, alonePose.target.y);
     NS::Vector3 forward = pose.target - pose.position;
@@ -150,11 +149,11 @@ TEST(FollowImpactFraming, NarrowSpeedsUpTowardTheFullCharge)
     world.target->charge01 = 0.5f;
     world.Run(2);
     EXPECT_FLOAT_EQ(world.camera->Vcam().ChargeNarrowDegrees(), 15.0f * 0.25f);
-    NS::Obj::ApplyJsonFields(world.camera->Vcam(), nlohmann::json{{"溜めの寄りの効き方の指数", 1.0f}});
+    NS::ApplyJsonFields(world.camera->Vcam(), nlohmann::json{{"溜めの寄りの効き方の指数", 1.0f}});
     world.Run(1);
     EXPECT_FLOAT_EQ(world.camera->Vcam().ChargeNarrowDegrees(), 15.0f * 0.5f);
     world.target->charge01 = 1.0f;
-    NS::Obj::ApplyJsonFields(world.camera->Vcam(), nlohmann::json{{"溜めの寄りの効き方の指数", 2.0f}});
+    NS::ApplyJsonFields(world.camera->Vcam(), nlohmann::json{{"溜めの寄りの効き方の指数", 2.0f}});
     world.Run(1);
     EXPECT_FLOAT_EQ(world.camera->Vcam().ChargeNarrowDegrees(), 15.0f);
 }

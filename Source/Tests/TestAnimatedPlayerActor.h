@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game/PlayerActor.h"
-#include "NSlib/Object/SubObjects/Animation.h"
+#include "NSlib/CoreObject/SubObjects/Animation.h"
 
 class TestAnimatedPlayerActor final : public PlayerActor
 {

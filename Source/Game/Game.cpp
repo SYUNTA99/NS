@@ -2,9 +2,9 @@
 
 #include "Game/Level/CourseDirector.h"
 #include "NSlib/App/Application.h"
-#include "NSlib/Object/IUse/IUseSceneSystem.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
+#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <optional>
@@ -44,7 +44,7 @@ void Game::OnAttach()
     if (!LoadStartScene())
     {
         NS_LOG_ERROR(Game, "起動シーンを読めなかった。 空のシーンで立ち上げる");
-        (void)m_scenes.LoadScene(NS::Obj::MakeSceneJson());
+        (void)m_scenes.LoadScene(NS::MakeSceneJson());
         StartLoadedScene();
     }
 }
@@ -88,7 +88,7 @@ bool Game::LoadScene(std::string_view scenePath)
     }
 
     nlohmann::json data;
-    if (!NS::Obj::LoadSceneFromJsonFile(data, *path))
+    if (!NS::LoadSceneFromJsonFile(data, *path))
     {
         return false;
     }
@@ -101,20 +101,20 @@ bool Game::LoadScene(std::string_view scenePath)
 
 void Game::StartLoadedScene()
 {
-    NS::Obj::Scene* scene = m_scenes.Current();
+    NS::Scene* scene = m_scenes.Current();
     if (scene == nullptr)
     {
         NS_LOG_ERROR(Game, "StartLoadedScene: シーンが立っていない");
         return;
     }
     // 自機の居ないシーンでも CourseDirector を作って凍結を取る。読み直しの後に前のシーンの凍結が残らない
-    if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(scene))
+    if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(scene))
     {
         director->StartCourse();
     }
 }
 
-NS::Obj::Scene* Game::CurrentScene() noexcept
+NS::Scene* Game::CurrentScene() noexcept
 {
     return m_scenes.Current();
 }

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/App/Layers.h"
 #include "NSlib/Core/NonCopyable.h"
@@ -15,12 +15,15 @@ namespace NS
     class Layer;
 }
 
-namespace NS::OS
+namespace NS
 {
-    class Input;
-}
+    namespace OS
+    {
+        class Input;
+    }
+} // namespace NS
 
-namespace NS::Obj
+namespace NS
 {
     class AssetManager;
 }
@@ -66,8 +69,8 @@ namespace NS
         [[nodiscard]] const NS::OS::Input& Input() const noexcept;
 
         //! アプリの寿命に紐づくアセットキャッシュ
-        [[nodiscard]] NS::Obj::AssetManager& Assets() noexcept;
-        [[nodiscard]] const NS::Obj::AssetManager& Assets() const noexcept;
+        [[nodiscard]] NS::AssetManager& Assets() noexcept;
+        [[nodiscard]] const NS::AssetManager& Assets() const noexcept;
 
         //! 表示・固定・相対モードをまとめて切り替える。captured が true ならカーソルを隠す
         //! 固定点の設定は変更しない
@@ -94,7 +97,7 @@ namespace NS
         std::unique_ptr<NS::OS::Window> m_window;
         std::unique_ptr<NS::Gfx::Renderer> m_renderer;
         // 下から順番に破棄されるから、アセットを Renderer より先に解放させるためにここに書く
-        std::unique_ptr<NS::Obj::AssetManager> m_assets;
+        std::unique_ptr<NS::AssetManager> m_assets;
         Layers m_layers;
         bool m_valid = false;
         bool m_quitRequested = false;

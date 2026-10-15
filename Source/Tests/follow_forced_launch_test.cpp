@@ -1,8 +1,8 @@
 #include "Game/Level/FollowCameraActor.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
@@ -13,14 +13,14 @@
 namespace
 {
     // 状態を試しが書く追われる物。勝手に出た突進の最中か・反動の状態かを毎フレーム渡す
-    class LaunchTargetProbeActor final : public NS::Obj::SceneActor
+    class LaunchTargetProbeActor final : public NS::SceneActor
     {
     public:
         // 接地と反動の状態を仮想カメラの口へ渡す
-        void Feed(NS::Obj::ThirdPersonFollow& vcam) const
+        void Feed(NS::ThirdPersonFollow& vcam) const
         {
             vcam.SetFollowMotion(true, NS::Vector3{});
-            NS::Obj::FollowReboundDesc rebound{};
+            NS::FollowReboundDesc rebound{};
             rebound.rebounding = rebounding;
             rebound.forcedSlamming = forcedSlamming;
             rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
@@ -32,9 +32,9 @@ namespace
     };
 
     // 頭から注視点までの水平の遅れ (m)
-    float HorizontalLag(const NS::Obj::ThirdPersonFollow& vcam, const NS::Obj::SceneActor& target)
+    float HorizontalLag(const NS::ThirdPersonFollow& vcam, const NS::SceneActor& target)
     {
-        const NS::Obj::CameraPose pose = vcam.EvaluatePose(1.0f);
+        const NS::CameraPose pose = vcam.EvaluatePose(1.0f);
         const NS::Vector3 root = target.Root().Position();
         const float dx = pose.target.x - root.x;
         const float dz = pose.target.z - root.z;
@@ -43,7 +43,7 @@ namespace
 
     struct LaunchScene
     {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         LaunchTargetProbeActor* target = nullptr;
         GL::Level::FollowCameraActor* camera = nullptr;
 
@@ -51,10 +51,10 @@ namespace
         {
             target = scene.SpawnObject<LaunchTargetProbeActor>("target");
             camera = scene.SpawnTransient<GL::Level::FollowCameraActor>();
-            NS::Obj::ApplyJsonFields(camera->Vcam(),
-                                     nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
-                                                    {"強制発射の追う速さ", 4.0f},
-                                                    {"強制発射の遅れの上限", 3.0f}});
+            NS::ApplyJsonFields(camera->Vcam(),
+                                nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
+                                               {"強制発射の追う速さ", 4.0f},
+                                               {"強制発射の遅れの上限", 3.0f}});
             // 止まった所から始める
             for (int frame = 0; frame < 30; ++frame)
             {
@@ -86,7 +86,7 @@ TEST(FollowForcedLaunch, LookIsLeftBehindThenPulledWithinTheCap)
     s.target->forcedSlamming = true;
     s.Step();
     s.Step();
-    const NS::Obj::ThirdPersonFollow& vcam = s.camera->Vcam();
+    const NS::ThirdPersonFollow& vcam = s.camera->Vcam();
     // バネは止まった所から動き出すので、出た最初のフレームはほぼ取り残される
     EXPECT_GT(HorizontalLag(vcam, *s.target), 0.5f);
     float maxLag = 0.0f;
@@ -121,7 +121,7 @@ TEST(FollowForcedLaunch, ReboundStartsFromTheLaggedLookWithoutAJump)
     {
         s.Step();
     }
-    const NS::Obj::ThirdPersonFollow& vcam = s.camera->Vcam();
+    const NS::ThirdPersonFollow& vcam = s.camera->Vcam();
     const NS::Vector3 before = vcam.EvaluatePose(1.0f).target;
     s.target->forcedSlamming = false;
     s.target->rebounding = true;

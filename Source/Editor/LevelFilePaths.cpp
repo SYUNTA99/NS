@@ -8,173 +8,176 @@
 #include <array>
 #include <cctype>
 
-namespace NS::Editor
+namespace NS
 {
-    namespace
+    namespace Editor
     {
-        constexpr std::size_t k_MinNameLen = 1;
-        constexpr std::size_t k_MaxNameLen = 200;
-
-        constexpr std::array<std::string_view, 22> k_ReservedNames = {
-            "CON",  "PRN",  "AUX",  "NUL",  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
-            "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
-
-        [[nodiscard]] bool IsReservedName(std::string_view name) noexcept
+        namespace
         {
-            std::string upper;
-            upper.reserve(name.size());
-            for (char c : name)
+            constexpr std::size_t k_MinNameLen = 1;
+            constexpr std::size_t k_MaxNameLen = 200;
+
+            constexpr std::array<std::string_view, 22> k_ReservedNames = {
+                "CON",  "PRN",  "AUX",  "NUL",  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
+                "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
+
+            [[nodiscard]] bool IsReservedName(std::string_view name) noexcept
             {
-                upper.push_back(static_cast<char>(std::toupper(static_cast<NS::uint8>(c))));
-            }
-            for (const std::string_view& r : k_ReservedNames)
-            {
-                if (upper == r)
+                std::string upper;
+                upper.reserve(name.size());
+                for (char c : name)
                 {
-                    return true;
+                    upper.push_back(static_cast<char>(std::toupper(static_cast<NS::uint8>(c))));
                 }
+                for (const std::string_view& r : k_ReservedNames)
+                {
+                    if (upper == r)
+                    {
+                        return true;
+                    }
+                }
+                return false;
             }
-            return false;
-        }
 
-        std::string SanitizeLevelName(std::string_view name) noexcept
-        {
-            if (name.size() < k_MinNameLen || name.size() > k_MaxNameLen)
+            std::string SanitizeLevelName(std::string_view name) noexcept
             {
-                return "";
-            }
-            for (char c : name)
-            {
-                const bool isAlnum = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
-                const bool isAllowedPunct = (c == '_' || c == '-' || c == ' ');
-                if (!isAlnum && !isAllowedPunct)
+                if (name.size() < k_MinNameLen || name.size() > k_MaxNameLen)
                 {
                     return "";
                 }
+                for (char c : name)
+                {
+                    const bool isAlnum = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+                    const bool isAllowedPunct = (c == '_' || c == '-' || c == ' ');
+                    if (!isAlnum && !isAllowedPunct)
+                    {
+                        return "";
+                    }
+                }
+                if (name.find("..") != std::string_view::npos)
+                {
+                    return "";
+                }
+                if (name.front() == ' ' || name.back() == ' ')
+                {
+                    return "";
+                }
+                if (IsReservedName(name))
+                {
+                    return "";
+                }
+                return std::string{name};
             }
-            if (name.find("..") != std::string_view::npos)
+
+            std::string GetScenesDirectory() noexcept
+            {
+                return NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Scenes");
+            }
+        } // namespace
+
+        std::string SanitizeLevelPath(std::string_view relativePath) noexcept
+        {
+            if (relativePath.empty())
             {
                 return "";
             }
-            if (name.front() == ' ' || name.back() == ' ')
+
+            std::string result;
+            std::size_t start = 0;
+            for (;;)
             {
-                return "";
+                const std::size_t slash = relativePath.find('/', start);
+                // 末尾セグメントは区切りが無いので文字列末尾まで
+                const std::size_t end = std::min(slash, relativePath.size());
+                const std::string_view segment = relativePath.substr(start, end - start);
+                if (SanitizeLevelName(segment).empty())
+                {
+                    return "";
+                }
+                if (!result.empty())
+                {
+                    result.push_back('/');
+                }
+                result.append(segment);
+                if (slash == std::string_view::npos)
+                {
+                    break;
+                }
+                start = slash + 1;
             }
-            if (IsReservedName(name))
-            {
-                return "";
-            }
-            return std::string{name};
-        }
-
-        std::string GetScenesDirectory() noexcept
-        {
-            return NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Scenes");
-        }
-    } // namespace
-
-    std::string SanitizeLevelPath(std::string_view relativePath) noexcept
-    {
-        if (relativePath.empty())
-        {
-            return "";
-        }
-
-        std::string result;
-        std::size_t start = 0;
-        for (;;)
-        {
-            const std::size_t slash = relativePath.find('/', start);
-            // 末尾セグメントは区切りが無いので文字列末尾まで
-            const std::size_t end = std::min(slash, relativePath.size());
-            const std::string_view segment = relativePath.substr(start, end - start);
-            if (SanitizeLevelName(segment).empty())
-            {
-                return "";
-            }
-            if (!result.empty())
-            {
-                result.push_back('/');
-            }
-            result.append(segment);
-            if (slash == std::string_view::npos)
-            {
-                break;
-            }
-            start = slash + 1;
-        }
-        return result;
-    }
-
-    std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept
-    {
-        if (sanitizedPath.empty() || sanitizedPath.find('/') != std::string_view::npos)
-        {
-            return std::string{sanitizedPath};
-        }
-        return "Scenes/" + std::string{sanitizedPath};
-    }
-
-    std::optional<std::string> BuildLevelPath(std::string_view name) noexcept
-    {
-        const std::string safe = SanitizeLevelPath(name);
-        if (safe.empty())
-        {
-            return std::nullopt;
-        }
-        return NS::OS::FileSystem::ResolveUnder(
-            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"),
-            QualifyLevelPath(safe) + ".scene");
-    }
-
-    bool EnsureScenesDirectoryExists() noexcept
-    {
-        const std::string dir = GetScenesDirectory();
-        if (NS::OS::FileSystem::Exists(dir))
-        {
-            return true;
-        }
-        if (!NS::OS::FileSystem::CreateDirectories(dir))
-        {
-            NS_LOG_ERROR(App, "Scenes/ ディレクトリ作成失敗");
-            return false;
-        }
-        return true;
-    }
-
-    std::vector<std::string> EnumerateLevelFiles() noexcept
-    {
-        std::vector<std::string> result;
-        const std::string assetsDir = NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets");
-        if (!NS::OS::FileSystem::Exists(assetsDir))
-        {
             return result;
         }
 
-        for (const std::string& path : NS::OS::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
+        std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept
         {
-            // ListFilesRecursive は assetsDir を Combine で頭に付けて返すので、先頭 + 区切り 1 文字を削ると相対になる
-            std::string relStr = path.substr(assetsDir.size() + 1);
-            const std::string extension = NS::OS::FileSystem::Extension(relStr);
-            relStr.resize(relStr.size() - extension.size());
-            const std::string safe = SanitizeLevelPath(relStr);
+            if (sanitizedPath.empty() || sanitizedPath.find('/') != std::string_view::npos)
+            {
+                return std::string{sanitizedPath};
+            }
+            return "Scenes/" + std::string{sanitizedPath};
+        }
+
+        std::optional<std::string> BuildLevelPath(std::string_view name) noexcept
+        {
+            const std::string safe = SanitizeLevelPath(name);
             if (safe.empty())
             {
-                // 黙って落とすとレベル消失に見える。除外したことをログに残す
-                NS_LOG_WARN(App, "レベル一覧から除外: {} (パスに使えない文字か長さ超過)", relStr);
+                return std::nullopt;
             }
-            else if (safe.find('/') == std::string::npos)
-            {
-                // フォルダの無い名前は Scenes/ の下で開くので、Assets 直下は開けない
-                NS_LOG_WARN(App, "レベル一覧から除外: {} (Assets 直下の .scene は開けない)", relStr);
-            }
-            else
-            {
-                result.push_back(std::move(relStr));
-            }
+            return NS::OS::FileSystem::ResolveUnder(
+                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"),
+                QualifyLevelPath(safe) + ".scene");
         }
-        std::sort(result.begin(), result.end());
-        return result;
-    }
 
-} // namespace NS::Editor
+        bool EnsureScenesDirectoryExists() noexcept
+        {
+            const std::string dir = GetScenesDirectory();
+            if (NS::OS::FileSystem::Exists(dir))
+            {
+                return true;
+            }
+            if (!NS::OS::FileSystem::CreateDirectories(dir))
+            {
+                NS_LOG_ERROR(App, "Scenes/ ディレクトリ作成失敗");
+                return false;
+            }
+            return true;
+        }
+
+        std::vector<std::string> EnumerateLevelFiles() noexcept
+        {
+            std::vector<std::string> result;
+            const std::string assetsDir = NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets");
+            if (!NS::OS::FileSystem::Exists(assetsDir))
+            {
+                return result;
+            }
+
+            for (const std::string& path : NS::OS::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
+            {
+                // ListFilesRecursive は assetsDir を Combine で頭に付けて返すので、先頭 + 区切り 1
+                // 文字を削ると相対になる
+                std::string relStr = path.substr(assetsDir.size() + 1);
+                const std::string extension = NS::OS::FileSystem::Extension(relStr);
+                relStr.resize(relStr.size() - extension.size());
+                const std::string safe = SanitizeLevelPath(relStr);
+                if (safe.empty())
+                {
+                    // 黙って落とすとレベル消失に見える。除外したことをログに残す
+                    NS_LOG_WARN(App, "レベル一覧から除外: {} (パスに使えない文字か長さ超過)", relStr);
+                }
+                else if (safe.find('/') == std::string::npos)
+                {
+                    // フォルダの無い名前は Scenes/ の下で開くので、Assets 直下は開けない
+                    NS_LOG_WARN(App, "レベル一覧から除外: {} (Assets 直下の .scene は開けない)", relStr);
+                }
+                else
+                {
+                    result.push_back(std::move(relStr));
+                }
+            }
+            std::sort(result.begin(), result.end());
+            return result;
+        }
+    } // namespace Editor
+} // namespace NS

@@ -1,34 +1,34 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/HitSensor.h"
 #include "NSlib/Graphics/ScreenFade.h"
-#include "NSlib/Object/Reflection/ObjectBuilder.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/HitSensor.h"
 
 #include <gtest/gtest.h>
 
 TEST(GameTuning, GoalFadeUsesTheSavedGoalFields)
 {
-    NS::Obj::Scene scene;
-    nlohmann::json doc = NS::Obj::MakeSceneJson();
-    nlohmann::json playerDoc = NS::Obj::MakePrototypeJson<PlayerActor>();
-    NS::Obj::SetObjectJsonId(playerDoc, 1);
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(playerDoc));
-    nlohmann::json goalDoc = NS::Obj::MakePrototypeJson<GL::Level::GoalActor>();
-    NS::Obj::SetObjectJsonId(goalDoc, 2);
-    NS::Obj::SceneJsonObjects(doc).push_back(std::move(goalDoc));
+    NS::Scene scene;
+    nlohmann::json doc = NS::MakeSceneJson();
+    nlohmann::json playerDoc = NS::MakePrototypeJson<PlayerActor>();
+    NS::SetObjectJsonId(playerDoc, 1);
+    NS::SceneJsonObjects(doc).push_back(std::move(playerDoc));
+    nlohmann::json goalDoc = NS::MakePrototypeJson<GL::Level::GoalActor>();
+    NS::SetObjectJsonId(goalDoc, 2);
+    NS::SceneJsonObjects(doc).push_back(std::move(goalDoc));
     scene.ResetFromJson(std::move(doc));
-    NS::Obj::SceneActor* goal = scene.Objects().FindByObjectId(2);
+    NS::SceneActor* goal = scene.Objects().FindByObjectId(2);
     ASSERT_NE(goal, nullptr);
-    NS::Obj::SubObject* params = goal->FindSubObj("Params");
+    NS::SubObject* params = goal->FindSubObj("Params");
     ASSERT_NE(params, nullptr);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(*params, {{"クリアの暗転秒", 0.1f}, {"クリアの明転秒", 0.2f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(*params, {{"クリアの暗転秒", 0.1f}, {"クリアの明転秒", 0.2f}}), 0u);
     const nlohmann::json saved = scene.ToJson();
     scene.ResetFromJson(saved);
     (void)scene.BeginPlayBaseline();
-    GL::Level::CourseDirector* director = NS::Obj::FindSceneSystem<GL::Level::CourseDirector>(&scene);
+    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
     scene.HitSensors().OnTick();
     director->OnTick();

@@ -68,15 +68,15 @@ inline GL::Level::HitTimeline MakeLegacyHitTimeline(int stopSteps)
     const float n = static_cast<float>(stopSteps);
     ShapeEvent shape;
     shape.along.count = 3;
-    shape.along.keys[0] = NS::Obj::Curve::Key{0.0f, 0.7f};
-    shape.along.keys[1] = NS::Obj::Curve::Key{n - 1.0f, 0.7f};
-    shape.along.keys[2] = NS::Obj::Curve::Key{n, 1.0f};
+    shape.along.keys[0] = NS::Curve::Key{0.0f, 0.7f};
+    shape.along.keys[1] = NS::Curve::Key{n - 1.0f, 0.7f};
+    shape.along.keys[2] = NS::Curve::Key{n, 1.0f};
     shape.height.count = 5;
-    shape.height.keys[0] = NS::Obj::Curve::Key{0.0f, 1.1f};
-    shape.height.keys[1] = NS::Obj::Curve::Key{n - 1.0f, 1.1f};
-    shape.height.keys[2] = NS::Obj::Curve::Key{n, 1.2f};
-    shape.height.keys[3] = NS::Obj::Curve::Key{n + 3.0f, 0.9f};
-    shape.height.keys[4] = NS::Obj::Curve::Key{n + 6.0f, 1.0f};
+    shape.height.keys[0] = NS::Curve::Key{0.0f, 1.1f};
+    shape.height.keys[1] = NS::Curve::Key{n - 1.0f, 1.1f};
+    shape.height.keys[2] = NS::Curve::Key{n, 1.2f};
+    shape.height.keys[3] = NS::Curve::Key{n + 3.0f, 0.9f};
+    shape.height.keys[4] = NS::Curve::Key{n + 6.0f, 1.0f};
     HitTimeline timeline;
     timeline.events = {
         {HitStopEvent{}, 1, stopSteps, HitDirection::Any},

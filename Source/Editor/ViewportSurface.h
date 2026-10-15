@@ -8,71 +8,79 @@
 
 struct ImVec2;
 
-namespace NS::Gfx
+namespace NS
 {
-    class RenderTarget;
-}
+    namespace Gfx
+    {
+        class RenderTarget;
+    }
+} // namespace NS
 
-namespace NS::Obj
+namespace NS
 {
     struct SceneView;
     struct CameraPose;
-} // namespace NS::Obj
+} // namespace NS
 
-namespace NS::Editor
+namespace NS
 {
-    //! パネルに貼るオフスクリーン描画先。画像表示後に次フレームのサイズへ合わせる
-    class ViewportSurface : public NS::NonCopyable
+    namespace Editor
     {
-    public:
-// RenderTarget の完全型が必要なため、構築と破棄は .cpp で定義する
-        ViewportSurface();
-        ~ViewportSurface();
-
-        //! 描画先の初期目標サイズを窓サイズに合わせ、初回フレームから映せるようにする
-        void SetInitialSize(const NS::Size2D& size) noexcept { m_size = size; }
-
-        //! 映像の縦横比を固定する。0 以下ならパネルの形に追従する
-        void SetFixedAspect(float aspect) noexcept { m_fixedAspect = aspect; }
-
-        //! フレーム先頭で可視状態と焦点を false にする。このフレームに BeginView されなければ不可視のままになる
-        void ResetVisibility() noexcept
+        //! パネルに貼るオフスクリーン描画先。画像表示後に次フレームのサイズへ合わせる
+        class ViewportSurface : public NS::NonCopyable
         {
-            m_visible = false;
-            m_focused = false;
-        }
+        public:
+            // RenderTarget の完全型が必要なため、構築と破棄は .cpp で定義する
+            ViewportSurface();
+            ~ViewportSurface();
 
-        //! パネルに画像を貼れた時だけ矩形とカーソルの重なりを更新し、true を返す
-        //! 戻り値に関わらず EndView を呼ぶ
-        [[nodiscard]] bool BeginView(const char* windowName, ImVec2& outMin, ImVec2& outMax, bool& outHovered) noexcept;
+            //! 描画先の初期目標サイズを窓サイズに合わせ、初回フレームから映せるようにする
+            void SetInitialSize(const NS::Size2D& size) noexcept { m_size = size; }
 
-        //! BeginView と対で必ず呼ぶ。Begin した窓を閉じ、積んだスタイルを戻す
-        void EndView() noexcept;
+            //! 映像の縦横比を固定する。0 以下ならパネルの形に追従する
+            void SetFixedAspect(float aspect) noexcept { m_fixedAspect = aspect; }
 
-        //! @brief 目標サイズに追従して描画先を用意し、pose とセットのビューを返す
-        //! @return 可視だったフレームは {描画先, pose}。不可視やサイズ不足なら nullopt
-        [[nodiscard]] std::optional<NS::Obj::SceneView> CollectView(std::optional<NS::Obj::CameraPose> pose) noexcept;
+            //! フレーム先頭で可視状態と焦点を false にする。このフレームに BeginView されなければ不可視のままになる
+            void ResetVisibility() noexcept
+            {
+                m_visible = false;
+                m_focused = false;
+            }
 
-        //! @brief 貼り付け中の描画先をリサイズせず、pose とセットで返す
-        //! @details 画像の実描画前に使い、CollectView の前に使い終える
-        //! @return 可視かつ描画先が有効ならビュー、それ以外なら nullopt
-        [[nodiscard]] std::optional<NS::Obj::SceneView> CurrentView(
-            std::optional<NS::Obj::CameraPose> pose) const noexcept;
+            //! パネルに画像を貼れた時だけ矩形とカーソルの重なりを更新し、true を返す
+            //! 戻り値に関わらず EndView を呼ぶ
+            [[nodiscard]] bool BeginView(const char* windowName,
+                                         ImVec2& outMin,
+                                         ImVec2& outMax,
+                                         bool& outHovered) noexcept;
 
-        //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
-        void Release() noexcept;
+            //! BeginView と対で必ず呼ぶ。Begin した窓を閉じ、積んだスタイルを戻す
+            void EndView() noexcept;
 
-        //! このフレームにパネルが可視 (サイズを持つ) だったか
-        [[nodiscard]] bool IsVisible() const noexcept { return m_visible; }
+            //! @brief 目標サイズに追従して描画先を用意し、pose とセットのビューを返す
+            //! @return 可視だったフレームは {描画先, pose}。不可視やサイズ不足なら nullopt
+            [[nodiscard]] std::optional<NS::SceneView> CollectView(std::optional<NS::CameraPose> pose) noexcept;
 
-        //! このフレームにパネルへ焦点があったか。プレイ中のキーボードをゲームへ渡す条件に使う
-        [[nodiscard]] bool IsFocused() const noexcept { return m_focused; }
+            //! @brief 貼り付け中の描画先をリサイズせず、pose とセットで返す
+            //! @details 画像の実描画前に使い、CollectView の前に使い終える
+            //! @return 可視かつ描画先が有効ならビュー、それ以外なら nullopt
+            [[nodiscard]] std::optional<NS::SceneView> CurrentView(std::optional<NS::CameraPose> pose) const noexcept;
 
-    private:
-        std::unique_ptr<NS::Gfx::RenderTarget> m_target;
-        NS::Size2D m_size{0, 0};    // content 領域。次フレームの描画先サイズ
-        float m_fixedAspect = 0.0f;
-        bool m_visible = false;
-        bool m_focused = false;
-    };
-} // namespace NS::Editor
+            //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
+            void Release() noexcept;
+
+            //! このフレームにパネルが可視 (サイズを持つ) だったか
+            [[nodiscard]] bool IsVisible() const noexcept { return m_visible; }
+
+            //! このフレームにパネルへ焦点があったか。プレイ中のキーボードをゲームへ渡す条件に使う
+            [[nodiscard]] bool IsFocused() const noexcept { return m_focused; }
+
+        private:
+            std::unique_ptr<NS::Gfx::RenderTarget> m_target;
+            NS::Size2D m_size{0, 0}; // content 領域。次フレームの描画先サイズ
+            float m_fixedAspect = 0.0f;
+            bool m_visible = false;
+            bool m_focused = false;
+        };
+    } // namespace Editor
+} // namespace NS

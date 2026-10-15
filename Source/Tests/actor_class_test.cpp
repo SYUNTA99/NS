@@ -7,19 +7,19 @@
 #include "Game/Level/PropActor.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Object/Actors/LightActor.h"
-#include "NSlib/Object/Actors/MapPartsActor.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/BoxCollision.h"
-#include "NSlib/Object/SubObjects/DirectionalLight.h"
-#include "NSlib/Object/SubObjects/HitReaction.h"
-#include "NSlib/Object/SubObjects/HitSensor.h"
-#include "NSlib/Object/SubObjects/MeshCollision.h"
-#include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/SubObjects/PlayerInput.h"
-#include "NSlib/Object/SubObjects/Shadow.h"
-#include "NSlib/Object/SubObjects/SphereCollision.h"
-#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/Actors/LightActor.h"
+#include "NSlib/CoreObject/Actors/MapPartsActor.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/BoxCollision.h"
+#include "NSlib/CoreObject/SubObjects/DirectionalLight.h"
+#include "NSlib/CoreObject/SubObjects/HitReaction.h"
+#include "NSlib/CoreObject/SubObjects/HitSensor.h"
+#include "NSlib/CoreObject/SubObjects/MeshCollision.h"
+#include "NSlib/CoreObject/SubObjects/Model.h"
+#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
+#include "NSlib/CoreObject/SubObjects/Shadow.h"
+#include "NSlib/CoreObject/SubObjects/SphereCollision.h"
+#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
 
 #include <gtest/gtest.h>
 
@@ -27,80 +27,79 @@
 
 TEST(ActorClass, MapPartsCollidesWithItsMesh)
 {
-    const std::unique_ptr<NS::Obj::MapPartsActor> partsOwned = NS::Obj::CreateActor<NS::Obj::MapPartsActor>();
-    NS::Obj::MapPartsActor& parts = *partsOwned;
-    const NS::Obj::Model* mesh = parts.ModelSubObj();
+    const std::unique_ptr<NS::MapPartsActor> partsOwned = NS::CreateActor<NS::MapPartsActor>();
+    NS::MapPartsActor& parts = *partsOwned;
+    const NS::Model* mesh = parts.ModelSubObj();
     ASSERT_NE(mesh, nullptr);
     EXPECT_EQ(mesh->MeshRef(), "cube");
     // 当たりは見た目のメッシュの三角形。箱や球の当たりは持たない
-    EXPECT_NE(NS::Obj::Cast<NS::Obj::MeshCollision>(parts.FindSubObj("Collision")), nullptr);
-    EXPECT_EQ(NS::Obj::Cast<NS::Obj::BoxCollision>(parts.FindSubObj("Collision")), nullptr);
-    EXPECT_EQ(NS::Obj::Cast<NS::Obj::SphereCollision>(parts.FindSubObj("Collision")), nullptr);
+    EXPECT_NE(NS::Cast<NS::MeshCollision>(parts.FindSubObj("Collision")), nullptr);
+    EXPECT_EQ(NS::Cast<NS::BoxCollision>(parts.FindSubObj("Collision")), nullptr);
+    EXPECT_EQ(NS::Cast<NS::SphereCollision>(parts.FindSubObj("Collision")), nullptr);
 }
 
 TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
 {
-    const std::unique_ptr<GL::Level::PropActor> objOwned = NS::Obj::CreateActor<GL::Level::PropActor>();
+    const std::unique_ptr<GL::Level::PropActor> objOwned = NS::CreateActor<GL::Level::PropActor>();
     GL::Level::PropActor& obj = *objOwned;
     EXPECT_NE(obj.ModelSubObj(), nullptr);
-    EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(obj.FindSubObj("Collision")), nullptr);
+    EXPECT_NE(NS::Cast<NS::SphereCollision>(obj.FindSubObj("Collision")), nullptr);
     EXPECT_EQ(obj.FindSubObj("Breakable"), nullptr);
     EXPECT_EQ(obj.FindSubObj("LaunchedBody"), nullptr);
     EXPECT_NE(obj.ShadowSubObj(), nullptr);
     // 体当たりは物の体のセンサーで調べられ、受け方と尾は自分で持つ
-    const NS::Obj::HitSensor* sensor = obj.BodySensorSubObj();
+    const NS::HitSensor* sensor = obj.BodySensorSubObj();
     ASSERT_NE(sensor, nullptr);
     EXPECT_TRUE(GL::Level::IsSensorKind(*sensor, GL::Level::SensorKind::MapObjBody));
     EXPECT_EQ(obj.FindSubObj("TackleReaction"), nullptr);
-    EXPECT_NE(NS::Obj::Cast<GL::Level::LaunchEffects>(obj.FindSubObj("LaunchEffects")), nullptr);
+    EXPECT_NE(NS::Cast<GL::Level::LaunchEffects>(obj.FindSubObj("LaunchEffects")), nullptr);
     EXPECT_NE(obj.GetStates(), nullptr);
     EXPECT_FALSE(obj.IsFlying());
 }
 
 TEST(ActorClass, GoalHasMarkerAndArea)
 {
-    const std::unique_ptr<GL::Level::GoalActor> goalOwned = NS::Obj::CreateActor<GL::Level::GoalActor>();
+    const std::unique_ptr<GL::Level::GoalActor> goalOwned = NS::CreateActor<GL::Level::GoalActor>();
     GL::Level::GoalActor& goal = *goalOwned;
     EXPECT_NE(goal.ModelSubObj(), nullptr);
-    const NS::Obj::HitSensor* area = goal.BodySensorSubObj();
+    const NS::HitSensor* area = goal.BodySensorSubObj();
     ASSERT_NE(area, nullptr);
     EXPECT_TRUE(GL::Level::IsSensorKind(*area, GL::Level::SensorKind::Area));
 }
 
 TEST(ActorClass, DeathZoneIsBoxAreaWithoutTerrainCollision)
 {
-    const std::unique_ptr<GL::Level::DeathZoneActor> zoneOwned = NS::Obj::CreateActor<GL::Level::DeathZoneActor>();
+    const std::unique_ptr<GL::Level::DeathZoneActor> zoneOwned = NS::CreateActor<GL::Level::DeathZoneActor>();
     GL::Level::DeathZoneActor& zone = *zoneOwned;
-    const NS::Obj::ShapeHitSensor* area = NS::Obj::Cast<NS::Obj::ShapeHitSensor>(zone.BodySensorSubObj());
+    const NS::ShapeHitSensor* area = NS::Cast<NS::ShapeHitSensor>(zone.BodySensorSubObj());
     ASSERT_NE(area, nullptr);
     EXPECT_TRUE(GL::Level::IsSensorKind(*area, GL::Level::SensorKind::Area));
-    EXPECT_EQ(area->Shape(), NS::Obj::HitSensorShape::Box);
+    EXPECT_EQ(area->Shape(), NS::HitSensorShape::Box);
     EXPECT_GE(area->BoxHalfExtents().x, 100.0f);
     // 地形の当たりを持つと、落ちてきたプレイヤーが上面に着地してしまう
-    EXPECT_EQ(NS::Obj::Cast<NS::Obj::BoxCollision>(zone.FindSubObj("Collision")), nullptr);
+    EXPECT_EQ(NS::Cast<NS::BoxCollision>(zone.FindSubObj("Collision")), nullptr);
 }
 
 TEST(ActorClass, FollowCameraHasFollowAndFeed)
 {
-    const std::unique_ptr<GL::Level::FollowCameraActor> cameraOwned = NS::Obj::CreateActor<GL::Level::FollowCameraActor>();
+    const std::unique_ptr<GL::Level::FollowCameraActor> cameraOwned = NS::CreateActor<GL::Level::FollowCameraActor>();
     GL::Level::FollowCameraActor& camera = *cameraOwned;
-    EXPECT_NE(NS::Obj::Cast<NS::Obj::ThirdPersonFollow>(camera.FindSubObj("Vcam")), nullptr);
-    EXPECT_EQ(NS::Obj::Cast<NS::Obj::ThirdPersonFollow>(camera.FindSubObj("Vcam")), &camera.Vcam());
+    EXPECT_NE(NS::Cast<NS::ThirdPersonFollow>(camera.FindSubObj("Vcam")), nullptr);
+    EXPECT_EQ(NS::Cast<NS::ThirdPersonFollow>(camera.FindSubObj("Vcam")), &camera.Vcam());
 }
 
 TEST(ActorClass, LightHasDirectionalLight)
 {
-    const std::unique_ptr<NS::Obj::LightActor> lightOwned = NS::Obj::CreateActor<NS::Obj::LightActor>();
-    NS::Obj::LightActor& light = *lightOwned;
-    EXPECT_NE(NS::Obj::Cast<NS::Obj::DirectionalLight>(light.FindSubObj("DirectionalLight")), nullptr);
+    const std::unique_ptr<NS::LightActor> lightOwned = NS::CreateActor<NS::LightActor>();
+    NS::LightActor& light = *lightOwned;
+    EXPECT_NE(NS::Cast<NS::DirectionalLight>(light.FindSubObj("DirectionalLight")), nullptr);
 }
 
 TEST(ActorClass, LightShinesAlongItsRotation)
 {
-    const std::unique_ptr<NS::Obj::LightActor> lightOwned = NS::Obj::CreateActor<NS::Obj::LightActor>();
-    NS::Obj::LightActor& light = *lightOwned;
-    const NS::Obj::DirectionalLight* sun =
-        NS::Obj::Cast<NS::Obj::DirectionalLight>(light.FindSubObj("DirectionalLight"));
+    const std::unique_ptr<NS::LightActor> lightOwned = NS::CreateActor<NS::LightActor>();
+    NS::LightActor& light = *lightOwned;
+    const NS::DirectionalLight* sun = NS::Cast<NS::DirectionalLight>(light.FindSubObj("DirectionalLight"));
     ASSERT_NE(sun, nullptr);
 
     NS::Vector3 initial{-0.3f, -1.0f, -0.2f};
@@ -120,18 +119,18 @@ TEST(ActorClass, LightShinesAlongItsRotation)
 TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
 {
     // 以前はシーンのデータが足していた体当たりと当たりの部品も、クラスが組み立てる
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    EXPECT_NE(NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement")), nullptr);
-    EXPECT_NE(NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input")), nullptr);
+    EXPECT_NE(NS::Cast<NS::Body>(player.FindSubObj("Movement")), nullptr);
+    EXPECT_NE(NS::Cast<NS::PlayerInput>(player.FindSubObj("Input")), nullptr);
     EXPECT_EQ(player.FindSubObj("PlayerInputRelay"), nullptr);
     EXPECT_NE(player.GetStates(), nullptr);
-    EXPECT_EQ(player.Phase(), NS::Obj::UpdatePhase::Player);
-    EXPECT_EQ(&player.Input(), NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input")));
-    EXPECT_EQ(&player.Body(), NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement")));
-    EXPECT_NE(NS::Obj::Cast<GL::Level::ImpactResolver>(player.FindSubObj("ImpactResolver")), nullptr);
+    EXPECT_EQ(player.Phase(), NS::UpdatePhase::Player);
+    EXPECT_EQ(&player.Input(), NS::Cast<NS::PlayerInput>(player.FindSubObj("Input")));
+    EXPECT_EQ(&player.Body(), NS::Cast<NS::Body>(player.FindSubObj("Movement")));
+    EXPECT_NE(NS::Cast<GL::Level::ImpactResolver>(player.FindSubObj("ImpactResolver")), nullptr);
     EXPECT_NE(player.HitReactionSubObj(), nullptr);
-    const NS::Obj::HitSensor* body = player.BodySensorSubObj();
+    const NS::HitSensor* body = player.BodySensorSubObj();
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(GL::Level::IsSensorKind(*body, GL::Level::SensorKind::PlayerBody));
 }
@@ -139,7 +138,7 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
 TEST(SensorKinds, SetKindIsSeenByIsKindOnlyForThatKind)
 {
     // 付けた種類にだけ真で、他の種類と未設定には偽
-    NS::Obj::ShapeHitSensor sensor;
+    NS::ShapeHitSensor sensor;
     const GL::Level::SensorKind kinds[] = {
         GL::Level::SensorKind::PlayerBody, GL::Level::SensorKind::MapObjBody, GL::Level::SensorKind::Area};
     for (const GL::Level::SensorKind set : kinds)
@@ -156,7 +155,7 @@ TEST(SensorKinds, SetKindIsSeenByIsKindOnlyForThatKind)
 TEST(SensorKinds, NewSensorIsUnsetAndUnsetCanBeWrittenBack)
 {
     // 作ったばかりのセンサーはどの種類でもない。付け忘れたセンサーが黙って体当たりの相手にならない
-    NS::Obj::ShapeHitSensor sensor;
+    NS::ShapeHitSensor sensor;
     EXPECT_EQ(sensor.Kind(), 0u);
     EXPECT_FALSE(GL::Level::IsSensorKind(sensor, GL::Level::SensorKind::MapObjBody));
     // 未設定を書くと未設定へ戻る

@@ -1,8 +1,11 @@
 #include "Game/Level/MapObjParams.h"
 
-#include "NSlib/Object/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
-namespace GL::Level
+namespace GL
 {
-    NS_CLASS(MapObjParams)
-}
+    namespace Level
+    {
+        NS_CLASS(MapObjParams)
+    } // namespace Level
+} // namespace GL

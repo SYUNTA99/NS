@@ -1,49 +1,52 @@
 #include "Game/Player/States/WalkPlayerState.h"
 
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
-#include "NSlib/Object/SubObjects/Body.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
 
-namespace GL::Player
+namespace GL
 {
-    void WalkPlayerState::OnStep(::PlayerActor& player, float dt)
+    namespace Player
     {
-        player.TickTimers(dt);
-        const NS::Obj::Body& body = player.Body();
-        const PlayerParams& params = player.Params();
-        const bool hasInput = PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), params.StickDeadzone());
-        const bool brake = PlayerJudgeBrake::Judge(
-            hasInput, player.DesiredDirection(), body.LateralVelocity(), params.BrakeThreshold());
-        if (!brake && hasInput)
+        void WalkPlayerState::OnStep(::PlayerActor& player, float dt)
         {
-            player.AccelerateToInputDirection(dt);
-        }
-        else if (!brake)
-        {
-            player.ApplyFriction(dt);
-        }
-        player.Jump(dt);
-        player.CutJumpRelease();
-        player.Gravity(dt);
+            player.TickTimers(dt);
+            const NS::Body& body = player.Body();
+            const PlayerParams& params = player.Params();
+            const bool hasInput = PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), params.StickDeadzone());
+            const bool brake = PlayerJudgeBrake::Judge(
+                hasInput, player.DesiredDirection(), body.LateralVelocity(), params.BrakeThreshold());
+            if (!brake && hasInput)
+            {
+                player.AccelerateToInputDirection(dt);
+            }
+            else if (!brake)
+            {
+                player.ApplyFriction(dt);
+            }
+            player.Jump(dt);
+            player.CutJumpRelease();
+            player.Gravity(dt);
 
-        if (PlayerJudgeFall::Judge(body.IsGrounded()))
-        {
-            player.States().Change<FallPlayerState>();
+            if (PlayerJudgeFall::Judge(body.IsGrounded()))
+            {
+                player.States().Change<FallPlayerState>();
+            }
+            else if (brake)
+            {
+                player.States().Change<BrakePlayerState>();
+            }
+            else if (PlayerJudgeIdle::Judge(body.IsGrounded(),
+                                            PlayerJudgeWalk::Judge(body.IsGrounded(),
+                                                                   hasInput,
+                                                                   PlayerJudgeStopped::Judge(body.LateralVelocity()))))
+            {
+                player.States().Change<IdlePlayerState>();
+            }
         }
-        else if (brake)
-        {
-            player.States().Change<BrakePlayerState>();
-        }
-        else if (PlayerJudgeIdle::Judge(body.IsGrounded(),
-                                        PlayerJudgeWalk::Judge(body.IsGrounded(),
-                                                               hasInput,
-                                                               PlayerJudgeStopped::Judge(body.LateralVelocity()))))
-        {
-            player.States().Change<IdlePlayerState>();
-        }
-    }
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

@@ -8,9 +8,9 @@
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/PlayerInput.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/Collider.h"
+#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
 
 #include <algorithm>
 #include <cmath>
@@ -47,7 +47,6 @@ namespace
         return RotateHorizontal(from, step);
     }
 } // namespace
-
 
 void PlayerActor::MoveBody(float dt) noexcept
 {
@@ -93,7 +92,7 @@ void PlayerActor::SyncGroundState() noexcept
 
 void PlayerActor::TickTimers(float dt) noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     m_bufferTimer -= dt;
     if (m_input->JumpPressed())
     {
@@ -120,7 +119,7 @@ bool PlayerActor::TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) co
 
 void PlayerActor::AccelerateToInputDirection(float dt) noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     NS::Vector3 direction{};
     float topSpeed = 0.0f;
     if (!TryMoveInput(direction, topSpeed))
@@ -148,7 +147,7 @@ void PlayerActor::ApplyBrake(float dt) noexcept
 
 void PlayerActor::Jump(float) noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     if (GL::Player::PlayerJudgeJump::Judge(
             body.IsGrounded(), m_coyoteTimer, m_jumpsRemaining, m_input->JumpPressed(), m_bufferTimer))
     {
@@ -162,7 +161,7 @@ void PlayerActor::Jump(float) noexcept
 
 void PlayerActor::CutJumpRelease() noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     if (m_prevJumpHeld && !m_input->JumpHeld() && body.VerticalVelocity() > 0.0f)
     {
         body.SetVerticalVelocity(body.VerticalVelocity() * m_params->m_jumpReleaseScale);
@@ -172,7 +171,7 @@ void PlayerActor::CutJumpRelease() noexcept
 void PlayerActor::Gravity(float dt) noexcept
 {
     // 強さの選び方は LaunchPitch と同じ関数。写すと欄を変えた時に放つ角度の予測と実際の落ち方が割れる
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     body.Gravity(GL::Player::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
 }
 
@@ -201,13 +200,13 @@ void PlayerActor::TapSlamGravity(float dt) noexcept
 void PlayerActor::ReboundGravity(float dt) noexcept
 {
     // 上りだけ倍率付きの組を PlayerParams が持つ。選び方は普段の重力と同じ ChooseGravity 1 つ
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     body.Gravity(GL::Player::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
 }
 
 void PlayerActor::AccelerateDuringRebound(float dt) noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     NS::Vector3 direction{};
     float topSpeed = 0.0f;
     if (!TryMoveInput(direction, topSpeed))
@@ -240,7 +239,7 @@ bool PlayerActor::AdvanceSkid() noexcept
 
 void PlayerActor::UpdateBodySlam(float dt) noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
     // 書き手はここだけで、壁に押し付けられて潰れた水平も次のフレームで戻る
     if (!m_slam.m_isTap)
@@ -258,11 +257,10 @@ void PlayerActor::UpdateBodySlam(float dt) noexcept
     }
 }
 
-
 namespace
 {
     // 掴まりの走査で見る AABB 群。体が Scene に居なければ空で、掴めないだけ
-    [[nodiscard]] std::vector<NS::AABB> BoxesTouchingBand(const NS::Obj::IUseCollision& collider,
+    [[nodiscard]] std::vector<NS::AABB> BoxesTouchingBand(const NS::IUseCollision& collider,
                                                           const NS::Vector3& probe,
                                                           float below,
                                                           float above)
@@ -270,15 +268,15 @@ namespace
         NS::AABB region;
         region.Center = NS::Vector3{probe.x, probe.y + 0.5f * (above - below), probe.z};
         region.Extents = NS::Vector3{0.0f, 0.5f * (above + below), 0.0f};
-        return NS::Obj::OverlapBoxCollision(&collider, region);
+        return NS::OverlapBoxCollision(&collider, region);
     }
 
-    [[nodiscard]] std::vector<NS::AABB> BoxesAtPoint(const NS::Obj::IUseCollision& collider, const NS::Vector3& point)
+    [[nodiscard]] std::vector<NS::AABB> BoxesAtPoint(const NS::IUseCollision& collider, const NS::Vector3& point)
     {
         NS::AABB region;
         region.Center = point;
         region.Extents = NS::Vector3{0.0f, 0.0f, 0.0f};
-        return NS::Obj::OverlapBoxCollision(&collider, region);
+        return NS::OverlapBoxCollision(&collider, region);
     }
 
     [[nodiscard]] bool AABBContainsPoint(const NS::AABB& box, const NS::Vector3& p) noexcept
@@ -288,7 +286,7 @@ namespace
                p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
     }
 
-    [[nodiscard]] bool IsBlockedAt(const NS::Obj::IUseCollision& collider, const NS::Vector3& point)
+    [[nodiscard]] bool IsBlockedAt(const NS::IUseCollision& collider, const NS::Vector3& point)
     {
         for (const NS::AABB& box : BoxesAtPoint(collider, point))
         {
@@ -303,7 +301,7 @@ namespace
 
 bool PlayerActor::LedgeGrab() noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     if (!GL::Player::PlayerJudgeLedgeGrab::Judge(body.IsGrounded(), body.VerticalVelocity(), m_slam.m_wasSlamming))
     {
         return false;
@@ -316,7 +314,7 @@ bool PlayerActor::LedgeGrab() noexcept
     }
 
     // 縁は立ち姿の手の高さで測る。玉の寸法では低すぎる所を探し、落下中に掴めない
-    const NS::Obj::Collider& collider = *m_collider;
+    const NS::Collider& collider = *m_collider;
     const float halfHeight = collider.StandingHalfHeight();
     NS::Vector3 pos = Root().Position();
     pos.y += halfHeight - collider.CapsuleHalfHeight();
@@ -394,7 +392,7 @@ bool PlayerActor::LedgeGrab() noexcept
 
 bool PlayerActor::HoldLedge() noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     float top = 0.0f;
     if (!FindLedgeTopAt(Root().Position(), top))
     {
@@ -417,7 +415,7 @@ bool PlayerActor::LedgeJump() noexcept
         return false;
     }
 
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     body.SetVerticalVelocity(m_params->m_jumpImpulse);
     body.SetGrounded(false);
     (void)m_states->Change<GL::Player::FallPlayerState>();
@@ -427,8 +425,8 @@ bool PlayerActor::LedgeJump() noexcept
 
 void PlayerActor::ClimbLedge() noexcept
 {
-    NS::Obj::Body& body = *m_body;
-    const NS::Obj::Collider& collider = *m_collider;
+    NS::Body& body = *m_body;
+    const NS::Collider& collider = *m_collider;
     const NS::Vector3 pos = Root().Position();
     // ぶら下がりの中心は面から半径ぶん外。直径ぶん奥へ進めると中心が縁から半径ぶん内側に入り、体が上面に乗る
     const float mantleStep = 2.0f * collider.CapsuleRadius();
@@ -446,7 +444,7 @@ void PlayerActor::ClimbLedge() noexcept
 
 void PlayerActor::DropLedge() noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     (void)m_states->Change<GL::Player::FallPlayerState>();
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     body.SetGrounded(false);
@@ -475,7 +473,7 @@ void PlayerActor::Shimmy(float dt) noexcept
 
 void PlayerActor::UpdateLedgeClimb(float dt) noexcept
 {
-    NS::Obj::Body& body = *m_body;
+    NS::Body& body = *m_body;
     m_ledgeMantleTimer += dt;
     float t = 1.0f;
     if (m_params->m_ledgeClimbDuration > 0.0f)
@@ -514,7 +512,7 @@ void PlayerActor::UpdateLedgeClimb(float dt) noexcept
 
 bool PlayerActor::FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept
 {
-    const NS::Obj::Collider& collider = *m_collider;
+    const NS::Collider& collider = *m_collider;
     const NS::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
     const float handY = hangPos.y + collider.CapsuleHalfHeight();
     const NS::Vector3 probe{

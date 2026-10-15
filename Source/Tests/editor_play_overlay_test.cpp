@@ -1,7 +1,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Graphics/DebugDraw.h"
-#include "NSlib/Object/Scene/Scene.h"
 
 #include <gtest/gtest.h>
 
@@ -28,7 +28,7 @@ namespace
 // 世界が 1 歩も進まない間 (プレイに入った直後と一時停止中) も、描くたびに当たり線と正面の面が出る
 TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     LevelEditorController editor(&scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
     editor.EnterPlay();
@@ -57,7 +57,7 @@ TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
 // 編集中は世界が進まず歩の頭で捨てる者が居ない。描くたびに作って捨てるので何度描いても溜まらない
 TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     LevelEditorController editor(&scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
     DD::Clear();
@@ -80,7 +80,7 @@ TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
 // 枠は主対象以外の選択物にだけ出る。主対象はギズモで見えるので枠を重ねない
 TEST(EditorSceneViewShapes, SelectionOutlinesLeaveOutThePrimary)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     LevelEditorController editor(&scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
     const NS::uint32 first = editor.SelectedObjectId();
@@ -88,7 +88,7 @@ TEST(EditorSceneViewShapes, SelectionOutlinesLeaveOutThePrimary)
     const NS::uint32 second = editor.SelectedObjectId();
 
     const auto countLines = [&editor](std::vector<NS::uint32> ids) {
-        editor.SelectObjects(std::move(ids), NS::Obj::k_NoObjectId);
+        editor.SelectObjects(std::move(ids), NS::k_NoObjectId);
         NS::Gfx::DebugShapes shapes;
         editor.DrawSceneViewShapes(shapes, NS::Matrix::Identity);
         return shapes.VertexCount();

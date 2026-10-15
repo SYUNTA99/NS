@@ -4,11 +4,11 @@
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Object/AssetManager.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/PlayerInput.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "NSlib/Windows/Input.h"
 #include "Tests/TestHitTimelines.h"
@@ -32,7 +32,7 @@ namespace
     // 床の当たりは組み込みの立方体のメッシュから作るので、資産の置き場を差す。描き手は要らない
     struct PreviewAssets
     {
-        NS::Obj::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+        NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
         NS::Editor::HitPreviewWorld World() { return NS::Editor::HitPreviewWorld{.assets = &assets}; }
     };
 
@@ -40,24 +40,24 @@ namespace
     // 置物は半径 1.5 m の球で、床に乗った自機の玉が面の真ん中より下まで届く大きさにする
     nlohmann::json MakePreviewSceneJson()
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json floor = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(floor, "MapPartsActor");
-        NS::Obj::SetObjectJsonId(floor, 100);
-        NS::Obj::SetObjectPosition(floor, NS::Vector3{0.0f, -0.5f, 0.0f});
-        NS::Obj::SetObjectScale(floor, NS::Vector3{60.0f, 1.0f, 60.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(floor));
-        nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
-        NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "PropActor");
-        NS::Obj::SetObjectJsonId(rock, k_RockId);
-        NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 1.5f, 7.0f});
-        NS::Obj::SetObjectScale(rock, NS::Vector3{3.0f, 3.0f, 3.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json floor = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(floor, "MapPartsActor");
+        NS::SetObjectJsonId(floor, 100);
+        NS::SetObjectPosition(floor, NS::Vector3{0.0f, -0.5f, 0.0f});
+        NS::SetObjectScale(floor, NS::Vector3{60.0f, 1.0f, 60.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(floor));
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonId(rock, k_RockId);
+        NS::SetObjectPosition(rock, NS::Vector3{0.0f, 1.5f, 7.0f});
+        NS::SetObjectScale(rock, NS::Vector3{3.0f, 3.0f, 3.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(rock));
         return doc;
     }
 
@@ -66,9 +66,9 @@ namespace
     {
         ShapeEvent shrink;
         shrink.along.count = 1;
-        shrink.along.keys[0] = NS::Obj::Curve::Key{0.0f, 0.8f};
+        shrink.along.keys[0] = NS::Curve::Key{0.0f, 0.8f};
         shrink.height.count = 1;
-        shrink.height.keys[0] = NS::Obj::Curve::Key{0.0f, 1.0f};
+        shrink.height.keys[0] = NS::Curve::Key{0.0f, 1.0f};
         HitTimeline timeline;
         timeline.events = {{shrink, 0, 4, HitDirection::Any},
                            {HitStopEvent{}, 1, 2, HitDirection::Any},
@@ -174,7 +174,7 @@ TEST(EditorHitPreview, LeavesTheEditedSceneAloneAndRepeats)
 {
     const ScopedHitTimelineDirectory directory("EditorHitPreviewRepeat");
     ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
-    NS::Obj::Scene edited;
+    NS::Scene edited;
     edited.ResetFromJson(MakePreviewSceneJson());
     edited.SetSimulationEnabled(false);
     const nlohmann::json before = edited.ToJson();
@@ -212,7 +212,7 @@ TEST(EditorHitPreview, HoldsPadVibrationInTheRecord)
     HitTimeline timeline = MakePreviewTimeline();
     PadVibrationEvent pad;
     pad.left.count = 1;
-    pad.left.keys[0] = NS::Obj::Curve::Key{0.0f, 0.7f};
+    pad.left.keys[0] = NS::Curve::Key{0.0f, 0.7f};
     timeline.events.push_back({pad, 0, 4, HitDirection::Any});
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::OS::Input& input = NS::OS::Input::Get();
@@ -266,9 +266,9 @@ TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
 
     nlohmann::json placed = snapshot;
     const std::size_t playerIndex = NS::Editor::FindPlayerObjectIndex(placed);
-    ASSERT_NE(playerIndex, NS::Obj::k_NoObjectIndex);
-    NS::Obj::SetObjectPosition(NS::Obj::SceneJsonObjects(placed)[playerIndex], preview.playerStart);
-    NS::Obj::Scene scene;
+    ASSERT_NE(playerIndex, NS::k_NoObjectIndex);
+    NS::SetObjectPosition(NS::SceneJsonObjects(placed)[playerIndex], preview.playerStart);
+    NS::Scene scene;
     scene.SetAssets(&assets.assets);
     scene.ResetFromJson(placed);
     PlayerActor* player = FindPlayer(scene.Objects());
@@ -302,11 +302,11 @@ TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
     const ScopedHitTimelineDirectory directory("EditorHitPreviewNearest");
     ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
     nlohmann::json snapshot = MakePreviewSceneJson();
-    nlohmann::json distant = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(distant, "PropActor");
-    NS::Obj::SetObjectJsonId(distant, 3);
-    NS::Obj::SetObjectPosition(distant, NS::Vector3{0.0f, 0.5f, 25.0f});
-    NS::Obj::SceneJsonObjects(snapshot).push_back(std::move(distant));
+    nlohmann::json distant = NS::MakeObjectJson();
+    NS::SetObjectJsonClass(distant, "PropActor");
+    NS::SetObjectJsonId(distant, 3);
+    NS::SetObjectPosition(distant, NS::Vector3{0.0f, 0.5f, 25.0f});
+    NS::SceneJsonObjects(snapshot).push_back(std::move(distant));
     PreviewAssets assets;
     NS::Editor::HitPreviewDesc desc = MakeDesc(0.0f, 0.0f);
     desc.targetId = 0;
@@ -354,7 +354,7 @@ TEST(EditorHitPreview, PlaybackEvaluatesTheSceneAtTheRecordedFrameAndCanRewind)
     for (const int index : indexes)
     {
         SCOPED_TRACE(index);
-        NS::Obj::Scene* scene = playback.Seek(index - result.detectionIndex);
+        NS::Scene* scene = playback.Seek(index - result.detectionIndex);
         ASSERT_NE(scene, nullptr);
         PlayerActor* player = FindPlayer(scene->Objects());
         ASSERT_NE(player, nullptr);

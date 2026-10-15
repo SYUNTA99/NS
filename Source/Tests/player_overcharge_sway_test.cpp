@@ -1,7 +1,7 @@
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
@@ -26,25 +26,25 @@ namespace
     // カメラが z を向いた場面に自機を 1 体置く。狙う相手はいないので、揺れは欄「相手がいない時に直す距離」で角度に直る
     struct SwayScene
     {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = nullptr;
 
         void Load()
         {
-            nlohmann::json doc = NS::Obj::MakeSceneJson();
-            nlohmann::json entry = NS::Obj::MakeObjectJson();
-            NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-            NS::Obj::SetObjectJsonId(entry, 1);
-            NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+            nlohmann::json doc = NS::MakeSceneJson();
+            nlohmann::json entry = NS::MakeObjectJson();
+            NS::SetObjectJsonClass(entry, "PlayerActor");
+            NS::SetObjectJsonId(entry, 1);
+            NS::SceneJsonObjects(doc).push_back(std::move(entry));
             scene.ResetFromJson(doc);
             player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
             ASSERT_NE(player, nullptr);
-            ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
-                                               {{"チャージしきい値秒", 0.2f},
-                                                {"チャージ満タン秒", 1.0f},
-                                                {"溜めすぎの秒数", 1.0f},
-                                                {"紫の揺れの最大のずれ", 2.0f},
-                                                {"相手がいない時に直す距離", 10.0f}}),
+            ASSERT_EQ(NS::ApplyJsonFields(player->Params(),
+                                          {{"チャージしきい値秒", 0.2f},
+                                           {"チャージ満タン秒", 1.0f},
+                                           {"溜めすぎの秒数", 1.0f},
+                                           {"紫の揺れの最大のずれ", 2.0f},
+                                           {"相手がいない時に直す距離", 10.0f}}),
                       0u);
             ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f}), nullptr);
         }
@@ -133,9 +133,9 @@ TEST(PlayerOverchargeSway, ForcedLaunchLeavesAtAnEdgeThatAlternates)
 // 紫の威力は溜めきりの倍率に、紫の深さで 1 から欄「紫の威力の上限」まで上がる倍率を掛ける
 TEST(PlayerOverchargeSway, PurplePowerRisesToTheCapFromTheFullCharge)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"紫の威力の上限", 1.5f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(player.Params(), {{"紫の威力の上限", 1.5f}}), 0u);
     const GL::Player::PlayerParams& params = player.Params();
     const float full = params.ChargeFactorFor(1.0f);
     EXPECT_FLOAT_EQ(params.ChargeFactorFor(1.0f, 0.0f), full);
@@ -150,7 +150,7 @@ TEST(PlayerOverchargeSway, EdgeBeatsCountDownToTheForcedLaunch)
     SwayScene s;
     s.Load();
     PlayerActor& player = *s.player;
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(
+    ASSERT_EQ(NS::ApplyJsonFields(
                   player.Params(),
                   {{"溜めすぎの秒数", 3.0f}, {"紫の揺れの始めの速さ", 0.8f}, {"紫の揺れの終わりの速さ", 2.6f}}),
               0u);

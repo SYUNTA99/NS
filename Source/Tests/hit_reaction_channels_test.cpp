@@ -1,11 +1,11 @@
 #include "Game/PlayerActor.h"
-#include "NSlib/Object/IUse/IUseSceneSystem.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/System/HitScreenDirector.h"
-#include "NSlib/Object/System/PadRumbleDirector.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/HitReaction.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/HitReaction.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
+#include "NSlib/CoreObject/System/HitScreenDirector.h"
+#include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>
@@ -14,16 +14,16 @@
 
 namespace
 {
-    PlayerActor* PlacePlayer(NS::Obj::Scene& scene)
+    PlayerActor* PlacePlayer(NS::Scene& scene)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json entry = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
-        NS::Obj::SetObjectJsonId(entry, 1);
-        NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json entry = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(entry, "PlayerActor");
+        NS::SetObjectJsonId(entry, 1);
+        NS::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(entry));
         scene.ResetFromJson(doc);
-        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
     float PadLeft()
@@ -32,12 +32,12 @@ namespace
     }
 
     // 左のモーターを start から frames フレームで 0 へ下げる振動
-    NS::Obj::HitPadVibration FadingLeft(float start, int frames)
+    NS::HitPadVibration FadingLeft(float start, int frames)
     {
-        NS::Obj::HitPadVibration pad;
+        NS::HitPadVibration pad;
         pad.left.count = 2;
-        pad.left.keys[0] = NS::Obj::Curve::Key{0.0f, start};
-        pad.left.keys[1] = NS::Obj::Curve::Key{static_cast<float>(frames), 0.0f};
+        pad.left.keys[0] = NS::Curve::Key{0.0f, start};
+        pad.left.keys[1] = NS::Curve::Key{static_cast<float>(frames), 0.0f};
         pad.frames = frames;
         return pad;
     }
@@ -46,13 +46,13 @@ namespace
 // 白を頼んでも書いている振動は続き、振動を頼んでも薄れている白は続く
 TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
+    NS::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
-    NS::Obj::PadRumbleDirector* pad = NS::Obj::FindSceneSystem<NS::Obj::PadRumbleDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
     ASSERT_NE(screen, nullptr);
     ASSERT_NE(pad, nullptr);
     const auto tick = [&]() {
@@ -88,15 +88,15 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
 // 揺れと寄りは、頼んだ物だけがカメラの効果に積まれる
 TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
+    NS::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
-    NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
-    EXPECT_TRUE(reaction->StartShake(NS::Obj::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 4}));
+    EXPECT_TRUE(reaction->StartShake(NS::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 4}));
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
-    EXPECT_TRUE(reaction->StartZoomRoll(NS::Obj::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 2, .returnFrames = 2}));
-    EXPECT_FALSE(reaction->StartShake(NS::Obj::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 61}));
+    EXPECT_TRUE(reaction->StartZoomRoll(NS::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 2, .returnFrames = 2}));
+    EXPECT_FALSE(reaction->StartShake(NS::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 61}));
 }

@@ -1,24 +1,26 @@
-﻿#pragma once
+#pragma once
 
-#include "NSlib/Object/ObjectJson.h"
+#include "NSlib/CoreObject/ObjectJson.h"
 
 #include <array>
 
-namespace NS::Editor
+namespace NS
 {
-    //! @brief 配置用オブジェクトのテンプレート情報
-    struct PaletteTemplate
+    namespace Editor
     {
-        const char* name = nullptr;
+        //! @brief 配置用オブジェクトのテンプレート情報
+        struct PaletteTemplate
+        {
+            const char* name = nullptr;
 
-        bool rotatable = false;
+            bool rotatable = false;
 
-        //! 配置時に複製して使うひな形の JSON
-        nlohmann::json prototype;
-    };
+            //! 配置時に複製して使うひな形の JSON
+            nlohmann::json prototype;
+        };
 
-    inline constexpr std::size_t k_PaletteSlotCount = 3;
+        inline constexpr std::size_t k_PaletteSlotCount = 3;
 
-    [[nodiscard]] const std::array<PaletteTemplate, k_PaletteSlotCount>& PaletteTemplateSlots() noexcept;
-
-} // namespace NS::Editor
+        [[nodiscard]] const std::array<PaletteTemplate, k_PaletteSlotCount>& PaletteTemplateSlots() noexcept;
+    } // namespace Editor
+} // namespace NS

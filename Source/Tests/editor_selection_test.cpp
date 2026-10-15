@@ -8,10 +8,10 @@
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Object/ActorList.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -38,7 +38,7 @@ namespace
         std::function<void()> m_check;
     };
 
-    std::optional<NS::Vector2> FindMoveHandle(const NS::Obj::SceneActor& target,
+    std::optional<NS::Vector2> FindMoveHandle(const NS::SceneActor& target,
                                               const NS::Matrix& viewProjection,
                                               const NS::Editor::ViewRect& view)
     {
@@ -91,12 +91,12 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         LevelEditorController editor(&scene);
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
-        ASSERT_NE(editor.SelectedObjectId(), NS::Obj::k_NoObjectId);
+        ASSERT_NE(editor.SelectedObjectId(), NS::k_NoObjectId);
         NS::OS::Keyboard& keyboard = app.Input().Keyboard();
         keyboard.ClearState();
         keyboard.Update();
@@ -107,7 +107,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
         keyboard.OnKeyUp(NS::OS::Key::Escape);
         keyboard.Update();
         editor.Tick();
-        EXPECT_EQ(editor.SelectedObjectId(), NS::Obj::k_NoObjectId);
+        EXPECT_EQ(editor.SelectedObjectId(), NS::k_NoObjectId);
         EXPECT_TRUE(editor.SelectedObjectIds().empty());
     }));
     EXPECT_EQ(app.Run(), 0);
@@ -123,7 +123,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<SelectionTestLayer>([] {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         LevelEditorController editor(&scene);
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
@@ -153,7 +153,7 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<SelectionTestLayer>([] {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         LevelEditorController editor(&scene);
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
@@ -167,12 +167,12 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
         editor.SetSelectedFreeScale(NS::Vector3{2.0f, 2.0f, 2.0f});
 
         const nlohmann::json& baseline = scene.PlayBaseline();
-        const std::size_t index = NS::Obj::FindObjectIndexById(baseline, id);
-        ASSERT_NE(index, NS::Obj::k_NoObjectIndex);
-        const nlohmann::json& object = NS::Obj::SceneJsonObjects(baseline)[index];
-        EXPECT_FLOAT_EQ(NS::Obj::ObjectPosition(object).x, 5.0f);
-        EXPECT_FLOAT_EQ(NS::Obj::ObjectRotation(object).y, rotation.y);
-        EXPECT_FLOAT_EQ(NS::Obj::ObjectScale(object).x, 2.0f);
+        const std::size_t index = NS::FindObjectIndexById(baseline, id);
+        ASSERT_NE(index, NS::k_NoObjectIndex);
+        const nlohmann::json& object = NS::SceneJsonObjects(baseline)[index];
+        EXPECT_FLOAT_EQ(NS::ObjectPosition(object).x, 5.0f);
+        EXPECT_FLOAT_EQ(NS::ObjectRotation(object).y, rotation.y);
+        EXPECT_FLOAT_EQ(NS::ObjectScale(object).x, 2.0f);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
@@ -188,7 +188,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("追従カメラ");
@@ -205,7 +205,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
         editor.FocusSelectedInView();
         editor.Tick();
 
-        const NS::Obj::SceneActor* camera = editor.SelectedObjectActor();
+        const NS::SceneActor* camera = editor.SelectedObjectActor();
         ASSERT_NE(camera, nullptr);
         const std::optional<NS::Vector2> handle =
             FindMoveHandle(*camera, scene.GetCameraManager()->ViewProjection(), view);
@@ -225,28 +225,25 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// 親子を一緒に選んで子を引いても、親は動かない
-// 親も追従させると子が親ごと進み、毎フレーム差が膨らむ
-TEST(EditorSelection, DraggingAChildLeavesTheSelectedParent)
+TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
 {
     NS::ApplicationDesc desc;
-    desc.window.title = "親子の引きの試し";
+    desc.window.title = "複数選択の移動の試し";
     desc.window.size = {320, 200};
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
-        const NS::uint32 parentId = editor.SelectedObjectId();
+        const NS::uint32 otherId = editor.SelectedObjectId();
         editor.PlaceItem(*item);
-        const NS::uint32 childId = editor.SelectedObjectId();
-        ASSERT_TRUE(editor.SetObjectParent(childId, parentId));
-        editor.SelectObjects({parentId, childId}, childId);
+        const NS::uint32 actorId = editor.SelectedObjectId();
+        editor.SelectObjects({otherId, actorId}, actorId);
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Mouse& mouse = app.Input().Mouse();
@@ -261,17 +258,18 @@ TEST(EditorSelection, DraggingAChildLeavesTheSelectedParent)
         const auto worldPosition = [&scene](NS::uint32 id) {
             return scene.Objects().FindByObjectId(id)->Root().WorldMatrix().Translation();
         };
-        const NS::Obj::SceneActor* child = scene.Objects().FindByObjectId(childId);
-        ASSERT_NE(child, nullptr);
+        const NS::SceneActor* actor = scene.Objects().FindByObjectId(actorId);
+        ASSERT_NE(actor, nullptr);
         const std::optional<NS::Vector2> handle =
-            FindMoveHandle(*child, scene.GetCameraManager()->ViewProjection(), view);
+            FindMoveHandle(*actor, scene.GetCameraManager()->ViewProjection(), view);
         ASSERT_TRUE(handle.has_value());
 
-        const NS::Vector3 parentBefore = worldPosition(parentId);
-        const NS::Vector3 childBefore = worldPosition(childId);
+        const NS::Vector3 otherBefore = worldPosition(otherId);
+        const NS::Vector3 actorBefore = worldPosition(actorId);
         DragHandle(editor, mouse, *handle);
-        EXPECT_NE(worldPosition(childId), childBefore);
-        EXPECT_EQ(worldPosition(parentId), parentBefore);
+        EXPECT_NE(worldPosition(actorId), actorBefore);
+        EXPECT_NE(worldPosition(otherId), otherBefore);
+        EXPECT_LT(((worldPosition(otherId) - otherBefore) - (worldPosition(actorId) - actorBefore)).Length(), 0.001f);
 
         // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
         mouse.OnMove(startX, startY);
@@ -281,29 +279,24 @@ TEST(EditorSelection, DraggingAChildLeavesTheSelectedParent)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// ずれた親の下の物も、世界の位置に出たギズモで引ける
-TEST(EditorSelection, GizmoFollowsAChildUnderAnOffsetParent)
+TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
 {
     NS::ApplicationDesc desc;
-    desc.window.title = "親の下のギズモの試し";
+    desc.window.title = "独立した個体のギズモの試し";
     desc.window.size = {320, 200};
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
-        const NS::uint32 parentId = editor.SelectedObjectId();
-        const NS::Vector3 placed = scene.Objects().FindByObjectId(parentId)->Root().Position();
+        const NS::uint32 actorId = editor.SelectedObjectId();
+        const NS::Vector3 placed = scene.Objects().FindByObjectId(actorId)->Root().Position();
         editor.SetSelectedFreePosition(placed + NS::Vector3{3.0f, 0.0f, 0.0f});
-        editor.PlaceItem(*item);
-        const NS::uint32 childId = editor.SelectedObjectId();
-        ASSERT_TRUE(editor.SetObjectParent(childId, parentId));
-        editor.SelectObjectById(childId);
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Mouse& mouse = app.Input().Mouse();
@@ -315,16 +308,16 @@ TEST(EditorSelection, GizmoFollowsAChildUnderAnOffsetParent)
         editor.FocusSelectedInView();
         editor.Tick();
 
-        const NS::Obj::SceneActor* child = scene.Objects().FindByObjectId(childId);
-        ASSERT_NE(child, nullptr);
-        ASSERT_NE(child->Root().Position(), child->Root().WorldMatrix().Translation());
+        const NS::SceneActor* actor = scene.Objects().FindByObjectId(actorId);
+        ASSERT_NE(actor, nullptr);
+        ASSERT_EQ(actor->Root().Position(), actor->Root().WorldMatrix().Translation());
         const std::optional<NS::Vector2> handle =
-            FindMoveHandle(*child, scene.GetCameraManager()->ViewProjection(), view);
+            FindMoveHandle(*actor, scene.GetCameraManager()->ViewProjection(), view);
         ASSERT_TRUE(handle.has_value());
 
-        const NS::Vector3 before = child->Root().WorldMatrix().Translation();
+        const NS::Vector3 before = actor->Root().WorldMatrix().Translation();
         DragHandle(editor, mouse, *handle);
-        const NS::Vector3 after = scene.Objects().FindByObjectId(childId)->Root().WorldMatrix().Translation();
+        const NS::Vector3 after = scene.Objects().FindByObjectId(actorId)->Root().WorldMatrix().Translation();
         EXPECT_NE(after, before);
 
         // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
@@ -345,7 +338,7 @@ TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<SelectionTestLayer>([] {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
         editor.Editor().Palette().SetActiveSlot(2);
@@ -368,7 +361,7 @@ TEST(EditorBrush, RotateKeepsTheTilt)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<SelectionTestLayer>([] {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
         editor.Editor().Palette().SetActiveSlot(0);
@@ -401,7 +394,7 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
     int height = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     LevelEditorController editor(&scene);
     const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
     ASSERT_NE(item, nullptr);

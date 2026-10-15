@@ -1,10 +1,10 @@
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/System/UIDirector.h"
+#include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/Scene/SceneJson.h"
-#include "NSlib/Object/System/UIDirector.h"
-#include "NSlib/Object/UIActor.h"
 #include "NSlib/UI/ColorRect.h"
 #include "NSlib/UI/UICanvas.h"
 #include "NSlib/Windows/Window.h"
@@ -18,7 +18,7 @@
 namespace
 {
     // 進んだ順を控え、描く順を外から決める画面の物
-    class OrderedUI final : public NS::Obj::UIActor
+    class OrderedUI final : public NS::UIActor
     {
     public:
         OrderedUI(std::vector<std::string>& log, std::string name, int drawOrder) noexcept
@@ -34,10 +34,10 @@ namespace
     };
 
     // 自分の番で、ほかの画面を開くか閉じる画面の物
-    class TogglingUI final : public NS::Obj::UIActor
+    class TogglingUI final : public NS::UIActor
     {
     public:
-        TogglingUI(NS::Obj::Scene& scene, NS::Obj::UIActor& target, bool opens) noexcept
+        TogglingUI(NS::Scene& scene, NS::UIActor& target, bool opens) noexcept
             : m_scene(scene), m_target(target), m_opens(opens)
         {}
         void OnTick() override
@@ -53,8 +53,8 @@ namespace
         }
 
     private:
-        NS::Obj::Scene& m_scene;
-        NS::Obj::UIActor& m_target;
+        NS::Scene& m_scene;
+        NS::UIActor& m_target;
         bool m_opens = false;
     };
 } // namespace
@@ -70,27 +70,27 @@ concept HasPhaseHooks = requires(T& actor) {
 template <class T>
 concept HasAnyPhaseHook = requires(T& actor) { actor.Phase(); } || requires(T& actor) { actor.ReadInput(); } ||
                           requires(T& actor) { actor.Update(); } || requires(T& actor) { actor.PrepareRender(); };
-static_assert(HasPhaseHooks<NS::Obj::SceneActor>);
-static_assert(!HasAnyPhaseHook<NS::Obj::UIActor>);
+static_assert(HasPhaseHooks<NS::SceneActor>);
+static_assert(!HasAnyPhaseHook<NS::UIActor>);
 
 // 更新の順は開いた順で、描く順とは別の一覧になる
 TEST(UIActorWidgets, OpenScreensTickInOpenOrderOnTheUIPhase)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     std::vector<std::string> log;
     OrderedUI front(log, "front", 1);
     OrderedUI back(log, "back", 0);
     front.Open(scene);
     back.Open(scene);
 
-    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::UpdatePhase::UI);
     ASSERT_EQ(log.size(), 2u);
     EXPECT_EQ(log[0], "front");
     EXPECT_EQ(log[1], "back");
 
     front.Close();
     log.clear();
-    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::UpdatePhase::UI);
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], "back");
     back.Close();
@@ -99,7 +99,7 @@ TEST(UIActorWidgets, OpenScreensTickInOpenOrderOnTheUIPhase)
 // 描く順は DrawOrder の昇順で、同じ値は開いた順
 TEST(UIActorWidgets, OpenScreensDrawInAscendingDrawOrder)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     std::vector<std::string> log;
     OrderedUI front(log, "front", 1);
     OrderedUI back(log, "back", 0);
@@ -108,7 +108,7 @@ TEST(UIActorWidgets, OpenScreensDrawInAscendingDrawOrder)
     back.Open(scene);
     frontLater.Open(scene);
 
-    const std::vector<NS::Obj::UIActor*> order = scene.UI().DrawOrdered();
+    const std::vector<NS::UIActor*> order = scene.UI().DrawOrdered();
     ASSERT_EQ(order.size(), 3u);
     EXPECT_EQ(order[0], &back);
     EXPECT_EQ(order[1], &front);
@@ -118,15 +118,15 @@ TEST(UIActorWidgets, OpenScreensDrawInAscendingDrawOrder)
 // 配置物を組み直しても、開いている画面は開いたまま動く
 TEST(UIActorWidgets, OpenScreenKeepsTickingAfterTheWorldIsRebuilt)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     std::vector<std::string> log;
     OrderedUI ui(log, "ui", 0);
     ui.Open(scene);
 
-    scene.ResetFromJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::MakeSceneJson());
 
     EXPECT_TRUE(ui.IsOpen());
-    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::UpdatePhase::UI);
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], "ui");
 }
@@ -134,17 +134,17 @@ TEST(UIActorWidgets, OpenScreenKeepsTickingAfterTheWorldIsRebuilt)
 // UI の段の最中に開いた画面は、その歩では動かない
 TEST(UIActorWidgets, ScreenOpenedDuringTheUIPhaseWaitsForTheNextStep)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     std::vector<std::string> log;
     OrderedUI late(log, "late", 0);
     TogglingUI opener(scene, late, true);
     opener.Open(scene);
 
-    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::UpdatePhase::UI);
     EXPECT_TRUE(late.IsOpen());
     EXPECT_TRUE(log.empty());
 
-    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::UpdatePhase::UI);
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], "late");
 }
@@ -152,14 +152,14 @@ TEST(UIActorWidgets, ScreenOpenedDuringTheUIPhaseWaitsForTheNextStep)
 // UI の段の最中に閉じた画面は、その歩の残りで動かない
 TEST(UIActorWidgets, ScreenClosedDuringTheUIPhaseIsSkipped)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     std::vector<std::string> log;
     OrderedUI victim(log, "victim", 0);
     TogglingUI closer(scene, victim, false);
     closer.Open(scene);
     victim.Open(scene);
 
-    scene.ExecutePhase(NS::Obj::UpdatePhase::UI);
+    scene.ExecutePhase(NS::UpdatePhase::UI);
 
     EXPECT_FALSE(victim.IsOpen());
     EXPECT_TRUE(log.empty());
@@ -167,8 +167,8 @@ TEST(UIActorWidgets, ScreenClosedDuringTheUIPhaseIsSkipped)
 
 TEST(UIActorWidgets, WidgetsStretchToTheViewport)
 {
-    NS::Obj::Scene scene;
-    NS::Obj::UIActor ui;
+    NS::Scene scene;
+    NS::UIActor ui;
     ui.Widgets()->Root().AddChild<NS::UI::ColorRect>()->SetStretch(true);
     ui.Open(scene);
     ui.Widgets()->Layout(NS::UI::MakeUICanvas(1600.0f, 900.0f));
@@ -196,9 +196,9 @@ TEST(UIActorWidgets, DirectorLaysOutEveryOpenScreenWithOneCanvas)
     NS::OS::Window window(NS::OS::WindowDesc{.title = "画面の拡縮の試し", .size = {64, 36}, .visible = false});
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
-    NS::Obj::Scene scene;
-    NS::Obj::UIActor first;
-    NS::Obj::UIActor second;
+    NS::Scene scene;
+    NS::UIActor first;
+    NS::UIActor second;
     first.Widgets()->Root().AddChild<NS::UI::ColorRect>()->SetStretch(true);
     second.Widgets()->Root().AddChild<NS::UI::ColorRect>()->SetStretch(true);
     first.Open(scene);

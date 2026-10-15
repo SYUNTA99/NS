@@ -3,12 +3,12 @@
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -23,14 +23,14 @@
 namespace
 {
     // 反動の状態と、画面に残す相手を試しが書く追われる物。動かない
-    class PartnerTargetProbeActor final : public NS::Obj::SceneActor
+    class PartnerTargetProbeActor final : public NS::SceneActor
     {
     public:
         // 空中と反動の状態を仮想カメラの口へ渡す
-        void Feed(NS::Obj::ThirdPersonFollow& vcam) const
+        void Feed(NS::ThirdPersonFollow& vcam) const
         {
             vcam.SetFollowMotion(false, NS::Vector3{});
-            NS::Obj::FollowReboundDesc rebound{};
+            NS::FollowReboundDesc rebound{};
             rebound.rebounding = true;
             rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
             rebound.partnerPosition = partner;
@@ -44,7 +44,7 @@ namespace
 
     struct PartnerScene
     {
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PartnerTargetProbeActor* target = nullptr;
         GL::Level::FollowCameraActor* camera = nullptr;
 
@@ -54,14 +54,14 @@ namespace
             target->partner = partner;
             target->pullBack = pullBack;
             camera = scene.SpawnTransient<GL::Level::FollowCameraActor>();
-            NS::Obj::ApplyJsonFields(camera->Vcam(),
-                                     nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
-                                                    {"反動の間に相手を収める重み", 0.3f},
-                                                    {"相手を見送る距離", 30.0f},
-                                                    {"引き始めの二人の距離", 3.0f},
-                                                    {"二人の距離 1 m あたりに引く距離", 0.3f},
-                                                    {"相手を収める引きの上限", 4.0f},
-                                                    {"相手を収めるばねの半分の秒", 0.15f}});
+            NS::ApplyJsonFields(camera->Vcam(),
+                                nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
+                                               {"反動の間に相手を収める重み", 0.3f},
+                                               {"相手を見送る距離", 30.0f},
+                                               {"引き始めの二人の距離", 3.0f},
+                                               {"二人の距離 1 m あたりに引く距離", 0.3f},
+                                               {"相手を収める引きの上限", 4.0f},
+                                               {"相手を収めるばねの半分の秒", 0.15f}});
             // 反動の間は遅れて追う形のまま 3 秒回し、ばねを落ち着かせる
             for (int frame = 0; frame < 180; ++frame)
             {
@@ -70,10 +70,10 @@ namespace
             }
         }
 
-        [[nodiscard]] NS::Obj::CameraPose Pose() const { return camera->Vcam().EvaluatePose(1.0f); }
+        [[nodiscard]] NS::CameraPose Pose() const { return camera->Vcam().EvaluatePose(1.0f); }
     };
 
-    float DistanceOf(const NS::Obj::CameraPose& pose)
+    float DistanceOf(const NS::CameraPose& pose)
     {
         return (pose.position - pose.target).Length();
     }
@@ -84,10 +84,10 @@ namespace
 TEST(FollowReboundPartner, LookLeansTowardThePartnerAndPullsBack)
 {
     const PartnerScene alone(std::nullopt);
-    const NS::Obj::CameraPose without = alone.Pose();
+    const NS::CameraPose without = alone.Pose();
     const NS::Vector3 partner = without.target + NS::Vector3{10.0f, 0.0f, 0.0f};
     const PartnerScene with(partner);
-    const NS::Obj::CameraPose pose = with.Pose();
+    const NS::CameraPose pose = with.Pose();
 
     const NS::Vector3 lean = pose.target - without.target;
     EXPECT_NEAR(lean.x, 2.0f, 0.01f);
@@ -100,7 +100,7 @@ TEST(FollowReboundPartner, LookLeansTowardThePartnerAndPullsBack)
 TEST(FollowReboundPartner, PullBackStopsAtTheCap)
 {
     const PartnerScene alone(std::nullopt);
-    const NS::Obj::CameraPose without = alone.Pose();
+    const NS::CameraPose without = alone.Pose();
     const PartnerScene with(without.target + NS::Vector3{0.0f, 0.0f, 25.0f});
     EXPECT_NEAR(DistanceOf(with.Pose()) - DistanceOf(without), 4.0f, 0.01f);
 }
@@ -109,9 +109,9 @@ TEST(FollowReboundPartner, PullBackStopsAtTheCap)
 TEST(FollowReboundPartner, PartnerBeyondTheReleaseDistanceIsLetGo)
 {
     const PartnerScene alone(std::nullopt);
-    const NS::Obj::CameraPose without = alone.Pose();
+    const NS::CameraPose without = alone.Pose();
     const PartnerScene with(without.target + NS::Vector3{0.0f, 0.0f, 40.0f});
-    const NS::Obj::CameraPose pose = with.Pose();
+    const NS::CameraPose pose = with.Pose();
     EXPECT_NEAR((pose.target - without.target).Length(), 0.0f, 0.001f);
     EXPECT_NEAR(DistanceOf(pose), DistanceOf(without), 0.001f);
 }
@@ -127,19 +127,19 @@ TEST(FollowReboundPartner, ReboundWithoutPullBackKeepsTheDistance)
 namespace
 {
     // 床の上に自機 (id 1) と、その前に置物 (id 2) を置く
-    PlayerActor* PlacePartnerScene(NS::Obj::Scene& scene, float rockX)
+    PlayerActor* PlacePartnerScene(NS::Scene& scene, float rockX)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
-        NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "PropActor");
-        NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonId(rock, 2);
+        NS::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
+        NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -148,7 +148,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 } // namespace
 
@@ -158,10 +158,10 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
     for (const float rockX : {0.0f, 0.75f})
     {
         SCOPED_TRACE(rockX);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlacePartnerScene(scene, rockX);
         ASSERT_NE(player, nullptr);
-        GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         int checked = 0;

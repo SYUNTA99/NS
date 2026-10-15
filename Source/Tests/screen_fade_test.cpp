@@ -1,15 +1,15 @@
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/System/SceneRenderer.h"
+#include "NSlib/CoreObject/System/ScreenFadeDirector.h"
+#include "NSlib/CoreObject/System/UIDirector.h"
+#include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/RenderTarget.h"
 #include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Graphics/ScreenFade.h"
 #include "NSlib/Graphics/Texture.h"
-#include "NSlib/Object/Object.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/System/SceneRenderer.h"
-#include "NSlib/Object/System/ScreenFadeDirector.h"
-#include "NSlib/Object/System/UIDirector.h"
-#include "NSlib/Object/UIActor.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
@@ -19,7 +19,7 @@
 
 namespace
 {
-    class WhiteScreen final : public NS::Obj::UIActor
+    class WhiteScreen final : public NS::UIActor
     {
     public:
         int DrawOrder() const noexcept override { return 10000; }
@@ -64,7 +64,7 @@ namespace
     }
 } // namespace
 
-static_assert(!std::is_base_of_v<NS::Obj::Object, NS::Gfx::ScreenFade>);
+static_assert(!std::is_base_of_v<NS::Object, NS::Gfx::ScreenFade>);
 
 TEST(ScreenFade, HoldsBlackUntilFadeInAndCanCancel)
 {
@@ -122,7 +122,7 @@ TEST(ScreenFade, RepeatedRequestsDoNotRestartTheTransition)
 
 TEST(ScreenFade, SceneAdvancesOncePerStepWithoutWorldTimeOrAnActor)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     scene.SetWorldSpeed(0.0f);
     scene.HoldOthers(10);
     scene.Fade().BeginOut(NS::OS::FrameTimer::FixedDelta() * 4.0f);
@@ -132,14 +132,14 @@ TEST(ScreenFade, SceneAdvancesOncePerStepWithoutWorldTimeOrAnActor)
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.5f);
     EXPECT_EQ(scene.Objects().ObjectCount(), 0u);
 
-    NS::Obj::ScreenFadeDirector director;
+    NS::ScreenFadeDirector director;
     director.Fade().BeginOut(0.0f);
     EXPECT_TRUE(director.Fade().IsBlack());
 }
 
 TEST(ScreenFade, ScenePauseAndDisabledSimulationFreezeTheFade)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     scene.Fade().BeginOut(NS::OS::FrameTimer::FixedDelta() * 4.0f);
     scene.OnUpdate();
     scene.SetSimulationPaused(true);
@@ -160,15 +160,15 @@ TEST(ScreenFade, ScenePauseAndDisabledSimulationFreezeTheFade)
 
 TEST(ScreenFade, SceneReloadAndShutdownCancelTheFade)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     scene.Fade().BeginOut(0.0f);
-    scene.ResetFromJson(NS::Obj::MakeSceneJson());
+    scene.ResetFromJson(NS::MakeSceneJson());
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.0f);
     scene.Fade().BeginOut(0.0f);
     scene.OnShutdown();
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.0f);
 
-    NS::Obj::Scene other;
+    NS::Scene other;
     other.Fade().BeginOut(0.0f);
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.0f);
     EXPECT_TRUE(other.Fade().IsBlack());
@@ -181,10 +181,10 @@ TEST(ScreenFade, FullscreenDrawCoversUIAndTheResizedTarget)
     ASSERT_TRUE(renderer.IsValid());
     const std::unique_ptr<NS::Gfx::RenderTarget> target = NS::Gfx::RenderTarget::Create({64, 36});
     ASSERT_TRUE(target->IsValid());
-    NS::Obj::SceneRenderer sceneRenderer;
+    NS::SceneRenderer sceneRenderer;
     NS::Gfx::ScreenFade fade;
     WhiteScreen ui;
-    NS::Obj::UIDirector screens;
+    NS::UIDirector screens;
     screens.Add(ui);
     NS::Gfx::RenderContext context;
     context.renderer = &renderer;

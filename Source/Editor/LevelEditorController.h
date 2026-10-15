@@ -8,7 +8,7 @@
 #include "Editor/PlayControls.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/Object/SubObjects/VirtualCamera.h"
+#include "NSlib/CoreObject/SubObjects/VirtualCamera.h"
 
 #include "NSlib/Core/Types.h"
 #include <memory>
@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Obj
+namespace NS
 {
     class SceneActor;
     class Transform;
@@ -28,23 +28,29 @@ namespace NS::Obj
     class ThirdPersonFollow;
     class Scene;
     struct SceneView;
-} // namespace NS::Obj
+} // namespace NS
 
-namespace NS::UI
+namespace NS
 {
-    class ImGuiContext;
-}
+    namespace UI
+    {
+        class ImGuiContext;
+    }
+} // namespace NS
 
-namespace NS::Gfx
+namespace NS
 {
-    class DebugShapes;
-}
+    namespace Gfx
+    {
+        class DebugShapes;
+    }
+} // namespace NS
 
 //! シーンの編集操作と編集・プレイの切替を管理する
 class LevelEditorController : public NS::NonCopyable
 {
 public:
-    explicit LevelEditorController(NS::Obj::Scene* scene) noexcept;
+    explicit LevelEditorController(NS::Scene* scene) noexcept;
     ~LevelEditorController();
 
     //! scene の OnStart 完了後に呼ぶ。自由視点カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
@@ -97,11 +103,11 @@ public:
     void TickPlaySceneView(const NS::Editor::EditorCameraInput& input) noexcept;
 
     //! @brief Scene パネルに映す視点。プレイ中は自由視点を上書き、編集中は CameraManager 任せ (nullopt)
-    [[nodiscard]] std::optional<NS::Obj::CameraPose> SceneViewPose() noexcept;
+    [[nodiscard]] std::optional<NS::CameraPose> SceneViewPose() noexcept;
     //! @brief Game パネルに映す視点。編集中はゲームカメラを上書き、プレイ中は CameraManager 任せ (nullopt)
-    [[nodiscard]] std::optional<NS::Obj::CameraPose> GameViewPose() noexcept;
+    [[nodiscard]] std::optional<NS::CameraPose> GameViewPose() noexcept;
     //! @brief 可視な中央ビュー列を Scene へ流す。空なら現描画先へ 1 回だけ描く
-    void SetSceneViews(std::vector<NS::Obj::SceneView> views);
+    void SetSceneViews(std::vector<NS::SceneView> views);
 
     //! @brief 編集中の場面の写し (Scene::ToJson)。当たりの下見が写しから別の場面を組むのに読む
     //! @return 写し。場面が無ければ空の場面の文書
@@ -120,7 +126,7 @@ public:
     void RecaptureCursorOnGameClick(bool gameImageClicked) noexcept;
 
     //! 編集対象の ActorList。一覧と参照候補はここから直接取得する
-    [[nodiscard]] const NS::Obj::ActorList& Objects() const noexcept;
+    [[nodiscard]] const NS::ActorList& Objects() const noexcept;
 
     [[nodiscard]] bool ObjectToolActive() const noexcept { return m_objectToolActive; }
     //! 配置ツールを Build / Object 切替える。Build へ戻す時はギズモ選択を解除する
@@ -159,11 +165,11 @@ public:
 
     //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
     //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
-    void MirrorPlayEditToBaseline(const NS::Obj::SubObject& comp, std::string_view fieldName);
+    void MirrorPlayEditToBaseline(const NS::SubObject& comp, std::string_view fieldName);
 
     //! 種類の既定値と未上書きの個体を更新する。変更できた場合 true、参照・姿勢など対象外の欄は false
     //! ファイル保存に失敗してもメモリ上の変更は残し、警告する。Undo の対象外
-    bool PromoteFieldToArchetype(NS::Obj::SubObject& comp, std::string_view fieldName);
+    bool PromoteFieldToArchetype(NS::SubObject& comp, std::string_view fieldName);
 
     //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);
@@ -173,25 +179,21 @@ public:
     void AddMeshParts(std::string_view meshPath);
 
     //! 選択中の配置物に対応する runtime SceneActor。未選択 / 未構築は nullptr
-    [[nodiscard]] NS::Obj::SceneActor* SelectedObjectActor() noexcept;
+    [[nodiscard]] NS::SceneActor* SelectedObjectActor() noexcept;
     //! 選択中の配置物がプレイヤー実体か
     [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
 
     //! 改名して Undo 履歴へ追加する。不在なら何もしない。重複には番号を付け、空名は Object にする
     void RenameObject(NS::uint32 id, std::string_view name);
 
-    //! 親を変更して Undo 履歴へ追加する。parentId が 0 なら根。循環・不在・変更なしは false
-    //! 世界姿勢を保つよう局所姿勢を再計算する。分解に失敗した場合は親だけを変更し、警告する
-    bool SetObjectParent(NS::uint32 id, NS::uint32 parentId);
-
     //! 部品の保存される有効値を切り替える。プレイヤーの入力と根の姿勢は変更しない
-    void SetSubObjectEnabledOnSelected(NS::Obj::SubObject& comp, bool enabled);
+    void SetSubObjectEnabledOnSelected(NS::SubObject& comp, bool enabled);
 
     //! 選択中の配置物を新しい永続 id で複製して undo へ積む。プレイヤーは複製の対象から外す
     void DuplicateSelectedObject();
 
-    //! @brief 選択中の配置物を子孫ごと削除して undo へ 1 単位で積む
-    //! @details プレイヤーが対象または子孫に含まれる場合は何もしない
+    //! @brief 選択中の配置物を削除して取り消しの履歴へ 1 単位で積む
+    //! @details プレイヤーを含む選択の場合は何もしない
     void DeleteSelectedObject();
 
     //! 編集カメラの注視点を選択中の配置物へ寄せる。広がりに応じて距離も取り直す
@@ -220,7 +222,7 @@ private:
     void PushCreateObject(nlohmann::json object);
 
     //! 選んだ配置物の Root を書いた後、その欄をプレイ中の凍結へも写す
-    void MirrorRootEditToBaseline(NS::Obj::SceneActor& actor, std::string_view fieldName);
+    void MirrorRootEditToBaseline(NS::SceneActor& actor, std::string_view fieldName);
 
     void RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
                             const NS::Matrix& viewProjection,
@@ -245,15 +247,15 @@ private:
     //! 主対象がドラッグで動いた分を、控えた残りの選択へ同じだけ効かせる
     void ApplyDragToFollowers() noexcept;
 
-    [[nodiscard]] NS::Obj::ThirdPersonFollow* SelectedFollowCamera() noexcept;
+    [[nodiscard]] NS::ThirdPersonFollow* SelectedFollowCamera() noexcept;
     void SyncFollowCameraPoses();
     void ApplyFollowCameraGizmoDrag();
     void CaptureSelectionFromGizmo() noexcept;
 
-    [[nodiscard]] NS::Obj::CameraManager* Cameras() const noexcept;
-    [[nodiscard]] NS::Obj::SceneCamera* MainCamera() const noexcept;
+    [[nodiscard]] NS::CameraManager* Cameras() const noexcept;
+    [[nodiscard]] NS::SceneCamera* MainCamera() const noexcept;
 
-    NS::Obj::Scene* m_scene = nullptr;           // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
+    NS::Scene* m_scene = nullptr;                // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
     NS::Editor::ObjectSnapshotApplier m_applier; // 履歴の操作を実体へ適用する
 
     // 前面のパネルの表示矩形。未設定時は CurrentViewRect が全画面の予備矩形を返す
@@ -265,7 +267,7 @@ private:
     NS::Editor::EditorCamera m_editorCamera;
 
     // 編集復帰時にプレイ視点から自由視点へ繋ぐブレンド。TickEdit が進める
-    NS::Obj::CameraPose m_editBlendFrom{};
+    NS::CameraPose m_editBlendFrom{};
     float m_editBlendElapsed = 0.0f;
     bool m_editBlending = false;
 
@@ -276,12 +278,12 @@ private:
 
     NS::Editor::GizmoEditor m_gizmo{};
 
-    std::vector<NS::Obj::SceneActor*> m_selectablePtrs;
+    std::vector<NS::SceneActor*> m_selectablePtrs;
     std::vector<NS::uint8> m_selectablePickable; // 1 は Model を持つ配置物。ギズモが先に選ぶ
 
-    NS::uint32 m_selectedObjectId = NS::Obj::k_NoObjectId; // 主対象の永続 id。選択の一次情報
-    std::vector<NS::uint32> m_selectionIds;                // 選択中の全配置物。主対象も含む
-    NS::Obj::Transform* m_lastGizmoSelected = nullptr;     // 前フレームの選択対象
+    NS::uint32 m_selectedObjectId = NS::k_NoObjectId; // 主対象の永続 id。選択の一次情報
+    std::vector<NS::uint32> m_selectionIds;           // 選択中の全配置物。主対象も含む
+    NS::Transform* m_lastGizmoSelected = nullptr;     // 前フレームの選択対象
 
     //! ドラッグ開始時点の姿。主対象の動きを同じだけ他へ流すための控え
     struct DragFollower
@@ -299,6 +301,6 @@ private:
     std::vector<std::pair<NS::uint32, nlohmann::json>> m_editBaselines;
 
     bool m_subObjectEditing = false;
-    NS::uint32 m_subObjectEditBaselineId = NS::Obj::k_NoObjectId; // 編集開始時の対象 id
-    nlohmann::json m_subObjectEditBaseline;                       // 編集開始時の状態スナップショット
+    NS::uint32 m_subObjectEditBaselineId = NS::k_NoObjectId; // 編集開始時の対象 id
+    nlohmann::json m_subObjectEditBaseline;                  // 編集開始時の状態スナップショット
 };

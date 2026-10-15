@@ -2,10 +2,10 @@
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Transform.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -18,21 +18,21 @@ namespace
     const NS::Vector3 k_Forward{0.0f, 0.0f, 1.0f};
 
     // 自機 (id 1) を高さ height に置く。withRock なら前に置物 (id 2) を置く
-    PlayerActor* PlacePressScene(NS::Obj::Scene& scene, bool withRock, float height)
+    PlayerActor* PlacePressScene(NS::Scene& scene, bool withRock, float height)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
-        NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, height, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SetObjectPosition(player, NS::Vector3{0.0f, height, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(player));
         if (withRock)
         {
-            nlohmann::json rock = NS::Obj::MakeObjectJson();
-            NS::Obj::SetObjectJsonClass(rock, "PropActor");
-            NS::Obj::SetObjectJsonId(rock, 2);
-            NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
-            NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+            nlohmann::json rock = NS::MakeObjectJson();
+            NS::SetObjectJsonClass(rock, "PropActor");
+            NS::SetObjectJsonId(rock, 2);
+            NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
+            NS::SceneJsonObjects(doc).push_back(std::move(rock));
         }
         scene.ResetFromJson(doc);
         NS::OBB floor{};
@@ -42,12 +42,12 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, k_Forward);
-        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
-    GL::Level::PropActor* RockOf(NS::Obj::Scene& scene)
+    GL::Level::PropActor* RockOf(NS::Scene& scene)
     {
-        return NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+        return NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     }
 
     // 接地するまで回す
@@ -75,7 +75,7 @@ namespace
 // 突進中に押しても、空振りで突進が終わった後に突進が出ない
 TEST(PlayerSlamPress, PressDuringASlamDoesNotFireAfterTheMiss)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePressScene(scene, false, 1.0f);
     ASSERT_NE(player, nullptr);
     Settle(*player);
@@ -104,7 +104,7 @@ TEST(PlayerSlamPress, PressDuringASlamDoesNotFireAfterTheMiss)
 // 当たった後の止めの間に押しても、明けに突進が出ない
 TEST(PlayerSlamPress, PressDuringTheHitStopDoesNotFireOnTheRelease)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePressScene(scene, true, 1.0f);
     ASSERT_NE(player, nullptr);
     GL::Level::PropActor* rock = RockOf(scene);
@@ -135,7 +135,7 @@ TEST(PlayerSlamPress, PressDuringTheReboundOfAGroundSlamFiresTheAirShot)
     for (const float charge01 : {0.0f, 1.0f})
     {
         SCOPED_TRACE(charge01);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlacePressScene(scene, true, 1.0f);
         ASSERT_NE(player, nullptr);
         GL::Level::PropActor* rock = RockOf(scene);
@@ -176,7 +176,7 @@ TEST(PlayerSlamPress, PressDuringTheReboundOfAGroundSlamFiresTheAirShot)
 // 空中で出した突進の後は、着地するまで次の突進が出ない
 TEST(PlayerSlamPress, AnAirLaunchedSlamBlocksTheNextUntilLanding)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePressScene(scene, false, 8.0f);
     ASSERT_NE(player, nullptr);
     player->Update(false);

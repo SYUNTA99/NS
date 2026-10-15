@@ -1,8 +1,7 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Level/MapObjParams.h"
-#include "Game/PlayerActor.h"
+#include "Game/Level/PropActor.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
@@ -10,17 +9,18 @@
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Object/IUse/IUseSceneSystem.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Collider.h"
-#include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/SubObjects/PlayerInput.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/Collider.h"
+#include "NSlib/CoreObject/SubObjects/Model.h"
+#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
@@ -48,19 +48,19 @@ namespace
                                     player.HitReactionSubObj());
     }
 
-    PlayerActor* PlacePipelinePlayer(NS::Obj::Scene& scene, float targetX = 0.0f, float targetZ = 3.0f)
+    PlayerActor* PlacePipelinePlayer(NS::Scene& scene, float targetX = 0.0f, float targetZ = 3.0f)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
-        NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "PropActor");
-        NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Vector3{targetX, 0.5f, targetZ});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonId(rock, 2);
+        NS::SetObjectPosition(rock, NS::Vector3{targetX, 0.5f, targetZ});
+        NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -69,7 +69,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
     // 見本の列に書く状態の綴り。表に無い状態は Other
@@ -134,7 +134,7 @@ namespace
 
 TEST(PlayerUpdatePipeline, ImpactObservationDoesNotJudgeOrMoveThePlayer)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
     player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
@@ -149,7 +149,7 @@ TEST(PlayerUpdatePipeline, ImpactObservationDoesNotJudgeOrMoveThePlayer)
 // 左右の寄せは消した。脇の相手へ向きを曲げると、放った後に矢印とずれて当て所が見えない所で動く
 TEST(PlayerUpdatePipeline, SlamHeadingStaysOnTheAimBesideAnOffAxisTarget)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -169,7 +169,7 @@ TEST(PlayerUpdatePipeline, SlamHeadingStaysOnTheAimBesideAnOffAxisTarget)
 // に潰れても、次のフレームに発動時の向きと速さへ戻る
 TEST(PlayerUpdatePipeline, SquashedSlamRegainsItsHeadingFromTheState)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 40.0f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -185,7 +185,7 @@ TEST(PlayerUpdatePipeline, SquashedSlamRegainsItsHeadingFromTheState)
 
 TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -205,7 +205,7 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
 
 TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -221,10 +221,10 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
 // 止めの持ち主は裁定役の数え。身体の部品は外さず、止めの間は位置も状態の歩も進まない
 TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     EXPECT_TRUE(player->Body().IsActive());
@@ -254,10 +254,10 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
 // 身体の部品を外したのは試しで、止めの明けはそれを上書きしない
 TEST(PlayerUpdatePipeline, ReleasingTheHitStopLeavesASwitchedOffBodyAlone)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     player->Body().SetActive(false);
@@ -281,15 +281,15 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
     for (const bool waitForFreeze : {true, false})
     {
         SCOPED_TRACE(waitForFreeze);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
         ASSERT_NE(player, nullptr);
         (void)scene.BeginPlayBaseline();
-        GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         const NS::Vector3 rockHome = rock->Root().Position();
         ASSERT_TRUE(SlamIntoTheRock(*player, *rock, waitForFreeze));
-        GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
+        GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
         ASSERT_NE(director, nullptr);
         director->RestartCourse();
         for (int frame = 0; frame < 20; ++frame)
@@ -310,10 +310,10 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
 // 止めの途中でプレイを終えると、潰れた形のまま残らず止めも消える
 TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     ASSERT_TRUE(player->Resolver().Answer().shapeAnimating);
@@ -327,7 +327,7 @@ TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
 // 溜めの構えは描く形の倍率に出る
 TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
     for (int frame = 0; frame < 120 && !player->ChargeJudge().IsCharging(); ++frame)
@@ -342,10 +342,10 @@ TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
 // 止めの途中で、衝撃が背中に着いたフレームに横と高さを 1.3 倍へ一度膨らませ、5 フレームで潰れの形へ戻す
 TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     ASSERT_FALSE(player->Resolver().Answer().lastImpact.broke);
@@ -400,10 +400,10 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
 // 接地して当てた明けの伸びは描く形の下端の真ん中を中心に掛かり、玉の下端が床の下へ出ない
 TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 2.5f);
     ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     for (int frame = 0; frame < 60; ++frame)
     {
@@ -422,7 +422,7 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     ASSERT_TRUE(released);
     ASSERT_FALSE(player->Resolver().Answer().lastImpact.broke);
     ASSERT_TRUE(player->Resolver().Answer().shapeAnimating);
-    NS::Obj::Model* model = player->ModelSubObj();
+    NS::Model* model = player->ModelSubObj();
     // 試しには mesh が無いので、玉の局所の境界を差し、回転を外して形の伸びだけを測る
     const float radius = player->Collider().CapsuleRadius();
     NS::AABB local{};
@@ -440,10 +440,10 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
 // Inspector で裁定役を外すと、走っている当たりのタイムラインを捨てる。入れ直しても遅れて弾かれない
 TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     player->Resolver().SetEnabled(false);
@@ -463,7 +463,7 @@ TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
 
 TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -482,7 +482,7 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl
 // 編集の休止の持ち主は世界の駆動だけ。身体と入力の部品を起こしたままでも、止めた世界では自機が動かない
 TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
     ASSERT_TRUE(player->Body().IsActive());
@@ -577,7 +577,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             legacyStopSteps = 12;
         }
         ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(legacyStopSteps));
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         float targetX = 0.0f;
         float targetZ = 3.0f;
         int frames = 90;
@@ -596,22 +596,22 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
         // 止めの間の置物の位置は、根を往復させていた頃から食い込みの距離だけの値へ直した
         // 溜めは 1.5 秒押して紫に入ってから放す
         // 見るのは状態の移り方なので、欄の既定を触っても基準を取り直さずに済むよう留める
-        EXPECT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
-                                           nlohmann::json{{"通常突進の初速", 10.0f},
-                                                          {"紫の揺れの最大のずれ", 0.0f},
-                                                          {"紫の威力の上限", 1.0f},
-                                                          {"外れの反動の高さの割合", 1.0f},
-                                                          {"外れの反動の距離の倍率", 1.0f},
-                                                          {"叩きつけた時の跳ね", 1.0f},
-                                                          {"外れのこすって止まるまでのフレーム数", 0},
-                                                          {"中心近くの当たりの反動の距離の倍率", 2.0f},
-                                                          {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
+        EXPECT_EQ(NS::ApplyJsonFields(player->Params(),
+                                      nlohmann::json{{"通常突進の初速", 10.0f},
+                                                     {"紫の揺れの最大のずれ", 0.0f},
+                                                     {"紫の威力の上限", 1.0f},
+                                                     {"外れの反動の高さの割合", 1.0f},
+                                                     {"外れの反動の距離の倍率", 1.0f},
+                                                     {"叩きつけた時の跳ね", 1.0f},
+                                                     {"外れのこすって止まるまでのフレーム数", 0},
+                                                     {"中心近くの当たりの反動の距離の倍率", 2.0f},
+                                                     {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
                   0u);
-        GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
-        GL::Level::MapObjParams* rockParams = NS::Obj::Cast<GL::Level::MapObjParams>(rock->FindSubObj("Params"));
+        GL::Level::MapObjParams* rockParams = NS::Cast<GL::Level::MapObjParams>(rock->FindSubObj("Params"));
         ASSERT_NE(rockParams, nullptr);
-        EXPECT_EQ(NS::Obj::ApplyJsonFields(*rockParams, nlohmann::json{{"外れで飛ばす相手の距離の割合", 1.0f}}), 0u);
+        EXPECT_EQ(NS::ApplyJsonFields(*rockParams, nlohmann::json{{"外れで飛ばす相手の距離の割合", 1.0f}}), 0u);
         int impact = -1;
         int freeze = -1;
         int release = -1;

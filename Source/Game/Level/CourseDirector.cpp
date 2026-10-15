@@ -2,116 +2,118 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/ActorList.h"
-#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <vector>
 
-namespace GL::Level
+namespace GL
 {
-    CourseDirector::CourseDirector(NS::Obj::Scene& scene)
-        : m_scene(scene)
+    namespace Level
     {
-        m_scene.AddSystemTick(*this, NS::Obj::UpdatePhase::Course);
-    }
-
-    CourseDirector::~CourseDirector() noexcept
-    {
-        // 進行中のクリア演出も取り消す
-        if (m_sequences.IsRunning())
+        CourseDirector::CourseDirector(NS::Scene& scene) : m_scene(scene)
         {
-            m_scene.Fade().Cancel();
+            m_scene.AddSystemTick(*this, NS::UpdatePhase::Course);
         }
-        m_sequences.CancelAll();
-    }
 
-    void CourseDirector::OnTick()
-    {
-        if (m_sequences.IsRunning())
+        CourseDirector::~CourseDirector() noexcept
         {
-            m_sequences.Tick(NS::OS::FrameTimer::FixedDelta());
-        }
-        else if (m_goalReached)
-        {
-            m_sequences.Start(ClearSequence());
-        }
-        // ゴールに触れている間は毎フレーム知らせが来る。流れの最中の知らせは捨てる
-        m_goalReached = false;
-
-        if (m_playerDead)
-        {
-            m_playerDead = false;
-            m_respawnPending = false;
-            RestartCourse();
-        }
-        if (m_respawnPending)
-        {
-            m_respawnPending = false;
-            RespawnObjects();
-        }
-    }
-
-    void CourseDirector::StartCourse()
-    {
-        // 凍結がやり直しの戻り先なので、取ってからやり直す
-        (void)m_scene.BeginPlayBaseline();
-        RestartCourse();
-    }
-
-    void CourseDirector::RestartCourse()
-    {
-        SendRestart(nullptr);
-    }
-
-    void CourseDirector::RespawnObjects()
-    {
-        SendRestart(FindPlayer(m_scene.Objects()));
-    }
-
-    void CourseDirector::SendRestart(const NS::Obj::SceneActor* skip)
-    {
-        // 送る先は控えた並びで回す。受け手が戻る間に配置物の並びが変わっても崩れない
-        // 一時オブジェクト (破片・跡) は凍結に無いので送らない
-        const nlohmann::json& baseline = m_scene.PlayBaseline();
-        std::vector<NS::Obj::SceneActor*> receivers;
-        receivers.reserve(m_scene.Objects().ObjectCount());
-        for (NS::Obj::SceneActor* actor : m_scene.Objects())
-        {
-            if (!actor->IsTransient() && actor != skip)
+            // 進行中のクリア演出も取り消す
+            if (m_sequences.IsRunning())
             {
-                receivers.push_back(actor);
+                m_scene.Fade().Cancel();
+            }
+            m_sequences.CancelAll();
+        }
+
+        void CourseDirector::OnTick()
+        {
+            if (m_sequences.IsRunning())
+            {
+                m_sequences.Tick(NS::OS::FrameTimer::FixedDelta());
+            }
+            else if (m_goalReached)
+            {
+                m_sequences.Start(ClearSequence());
+            }
+            // ゴールに触れている間は毎フレーム知らせが来る。流れの最中の知らせは捨てる
+            m_goalReached = false;
+
+            if (m_playerDead)
+            {
+                m_playerDead = false;
+                m_respawnPending = false;
+                RestartCourse();
+            }
+            if (m_respawnPending)
+            {
+                m_respawnPending = false;
+                RespawnObjects();
             }
         }
-        for (NS::Obj::SceneActor* actor : receivers)
+
+        void CourseDirector::StartCourse()
         {
-            (void)SendMsgCourseRestart(*actor, baseline);
+            // 凍結がやり直しの戻り先なので、取ってからやり直す
+            (void)m_scene.BeginPlayBaseline();
+            RestartCourse();
         }
-    }
 
-    void CourseDirector::SendInputLock(bool locked)
-    {
-        if (::PlayerActor* player = FindPlayer(m_scene.Objects()))
+        void CourseDirector::RestartCourse()
         {
-            (void)SendMsgInputLock(*player, locked);
+            SendRestart(nullptr);
         }
-    }
 
-    NS::Coroutine CourseDirector::ClearSequence()
-    {
-        // 世界は止めず操作だけ止める。暗転の間も重力とカメラは動いたまま
-        SendInputLock(true);
+        void CourseDirector::RespawnObjects()
+        {
+            SendRestart(FindPlayer(m_scene.Objects()));
+        }
 
-        m_scene.Fade().BeginOut(m_fadeOutSeconds);
-        co_await NS::WaitUntil{[this] { return m_scene.Fade().IsBlack(); }};
+        void CourseDirector::SendRestart(const NS::SceneActor* skip)
+        {
+            // 送る先は控えた並びで回す。受け手が戻る間に配置物の並びが変わっても崩れない
+            // 一時オブジェクト (破片・跡) は凍結に無いので送らない
+            const nlohmann::json& baseline = m_scene.PlayBaseline();
+            std::vector<NS::SceneActor*> receivers;
+            receivers.reserve(m_scene.Objects().ObjectCount());
+            for (NS::SceneActor* actor : m_scene.Objects())
+            {
+                if (!actor->IsTransient() && actor != skip)
+                {
+                    receivers.push_back(actor);
+                }
+            }
+            for (NS::SceneActor* actor : receivers)
+            {
+                (void)SendMsgCourseRestart(*actor, baseline);
+            }
+        }
 
-        // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる
-        RestartCourse();
+        void CourseDirector::SendInputLock(bool locked)
+        {
+            if (::PlayerActor* player = FindPlayer(m_scene.Objects()))
+            {
+                (void)SendMsgInputLock(*player, locked);
+            }
+        }
 
-        m_scene.Fade().BeginIn(m_fadeInSeconds);
-        co_await NS::WaitUntil{[this] { return !m_scene.Fade().IsFading(); }};
+        NS::Coroutine CourseDirector::ClearSequence()
+        {
+            // 世界は止めず操作だけ止める。暗転の間も重力とカメラは動いたまま
+            SendInputLock(true);
 
-        SendInputLock(false);
-    }
-} // namespace GL::Level
+            m_scene.Fade().BeginOut(m_fadeOutSeconds);
+            co_await NS::WaitUntil{[this] { return m_scene.Fade().IsBlack(); }};
+
+            // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる
+            RestartCourse();
+
+            m_scene.Fade().BeginIn(m_fadeInSeconds);
+            co_await NS::WaitUntil{[this] { return !m_scene.Fade().IsFading(); }};
+
+            SendInputLock(false);
+        }
+    } // namespace Level
+} // namespace GL

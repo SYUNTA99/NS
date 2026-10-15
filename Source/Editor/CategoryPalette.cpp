@@ -1,12 +1,12 @@
-﻿#include "Editor/CategoryPalette.h"
+#include "Editor/CategoryPalette.h"
 
 #include "Editor/PaletteTemplates.h"
 #include "Editor/PlacementCatalog.h"
-#include "NSlib/Object/Reflection/SubObjectEntry.h"
+#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
+#include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Gamepad.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
-#include "NSlib/UI/ImGuiContext.h"
 
 #include <algorithm>
 
@@ -14,144 +14,147 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
-    void CategoryPalette::SetActiveSlot(std::size_t slot) noexcept
+    namespace Editor
     {
-        if (slot < k_PaletteSlotCount)
+        void CategoryPalette::SetActiveSlot(std::size_t slot) noexcept
         {
-            m_activeSlot = slot;
-        }
-    }
-
-    float CategoryPalette::CurrentSlopeAngleDegrees() const noexcept
-    {
-        // 坂かどうかと角度はブラシの見た目のメッシュが決める。当たりはメッシュに付いて来る
-        return PartsSlopeAngleDegrees(PaletteTemplateSlots()[m_activeSlot].prototype);
-    }
-
-    void CategoryPalette::TickInput(NS::OS::Input* input, NS::UI::ImGuiContext* imgui) noexcept
-    {
-        if (input == nullptr)
-        {
-            return;
-        }
-
-        NS::OS::Gamepad& gp = input->Gamepad();
-        if (gp.IsConnected())
-        {
-            if (gp.IsPressed(NS::OS::GamepadButton::LeftShoulder))
+            if (slot < k_PaletteSlotCount)
             {
-                SetActiveSlot((m_activeSlot + k_PaletteSlotCount - 1) % k_PaletteSlotCount);
-            }
-
-            if (gp.IsPressed(NS::OS::GamepadButton::RightShoulder))
-            {
-                SetActiveSlot((m_activeSlot + 1) % k_PaletteSlotCount);
+                m_activeSlot = slot;
             }
         }
 
-        const bool wantKeyboard = imgui != nullptr && imgui->WantCaptureKeyboard();
-        if (wantKeyboard)
+        float CategoryPalette::CurrentSlopeAngleDegrees() const noexcept
         {
-            return;
+            // 坂かどうかと角度はブラシの見た目のメッシュが決める。当たりはメッシュに付いて来る
+            return PartsSlopeAngleDegrees(PaletteTemplateSlots()[m_activeSlot].prototype);
         }
 
-        NS::OS::Keyboard& kb = input->Keyboard();
-        for (std::size_t i = 0; i < k_PaletteSlotCount; ++i)
+        void CategoryPalette::TickInput(NS::OS::Input* input, NS::UI::ImGuiContext* imgui) noexcept
         {
-            const NS::OS::Key code =
-                static_cast<NS::OS::Key>(static_cast<int>(NS::OS::Key::Num1) + static_cast<int>(i));
-            if (kb.IsPressed(code))
+            if (input == nullptr)
             {
-                SetActiveSlot(i);
+                return;
             }
-        }
-    }
 
-    void CategoryPalette::Render(const NS::Editor::ViewRect& viewRect) noexcept
-    {
-#if NS_EDITOR_ENABLED
-        constexpr float k_DesiredWidth = 640.0f;
-        constexpr float k_Height = 56.0f;
-        constexpr float k_TopMargin = 20.0f;
-        const float width = std::min(k_DesiredWidth, static_cast<float>(viewRect.width));
-
-        // 枠は Begin 時点の位置で描かれるため、先に Scene ビュー内へ位置を収める
-        if (!m_toolbarPlaced)
-        {
-            m_toolbarX = static_cast<float>(viewRect.x) + (static_cast<float>(viewRect.width) - width) * 0.5f;
-            m_toolbarY = static_cast<float>(viewRect.y) + k_TopMargin;
-            m_toolbarPlaced = true;
-        }
-        const float minX = static_cast<float>(viewRect.x);
-        const float minY = static_cast<float>(viewRect.y);
-        const float maxX = std::max(minX, static_cast<float>(viewRect.x + viewRect.width) - width);
-        const float maxY = std::max(minY, static_cast<float>(viewRect.y + viewRect.height) - k_Height);
-        m_toolbarX = std::clamp(m_toolbarX, minX, maxX);
-        m_toolbarY = std::clamp(m_toolbarY, minY, maxY);
-
-        ImGui::SetNextWindowPos(ImVec2(m_toolbarX, m_toolbarY), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(width, k_Height), ImGuiCond_Always);
-
-        // NoMove。移動は下の余白ドラッグで自前に行う。ドックへ吸われると枠が外へ出るため NoDocking
-        constexpr ImGuiWindowFlags k_ToolbarFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
-                                                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-        // End は Begin の戻り値に依らず必ず呼ぶ。中身を描くのは開いている間だけ
-        if (ImGui::Begin("Toolbar", nullptr, k_ToolbarFlags))
-        {
-            // 余白からのドラッグだけを受け、ボタン操作と区別する
-            if (!m_toolbarDragging && ImGui::IsWindowHovered() && !ImGui::IsAnyItemHovered() &&
-                ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            NS::OS::Gamepad& gp = input->Gamepad();
+            if (gp.IsConnected())
             {
-                m_toolbarDragging = true;
-            }
-            if (m_toolbarDragging)
-            {
-                if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+                if (gp.IsPressed(NS::OS::GamepadButton::LeftShoulder))
                 {
-                    const ImVec2 delta = ImGui::GetIO().MouseDelta;
-                    m_toolbarX = std::clamp(m_toolbarX + delta.x, minX, maxX);
-                    m_toolbarY = std::clamp(m_toolbarY + delta.y, minY, maxY);
+                    SetActiveSlot((m_activeSlot + k_PaletteSlotCount - 1) % k_PaletteSlotCount);
                 }
-                else
+
+                if (gp.IsPressed(NS::OS::GamepadButton::RightShoulder))
                 {
-                    m_toolbarDragging = false;
+                    SetActiveSlot((m_activeSlot + 1) % k_PaletteSlotCount);
                 }
             }
 
+            const bool wantKeyboard = imgui != nullptr && imgui->WantCaptureKeyboard();
+            if (wantKeyboard)
+            {
+                return;
+            }
+
+            NS::OS::Keyboard& kb = input->Keyboard();
             for (std::size_t i = 0; i < k_PaletteSlotCount; ++i)
             {
-                if (i > 0)
-                {
-                    ImGui::SameLine();
-                }
-
-                ImGui::PushID(static_cast<int>(i));
-
-                const char* label = PaletteTemplateSlots()[i].name;
-                const bool isActive = (i == m_activeSlot);
-
-                if (isActive)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.80f, 0.50f, 0.30f, 1.0f));
-                }
-
-                if (ImGui::Button(label, ImVec2(64.0f, 32.0f)))
+                const NS::OS::Key code =
+                    static_cast<NS::OS::Key>(static_cast<int>(NS::OS::Key::Num1) + static_cast<int>(i));
+                if (kb.IsPressed(code))
                 {
                     SetActiveSlot(i);
                 }
-
-                if (isActive)
-                {
-                    ImGui::PopStyleColor();
-                }
-
-                ImGui::PopID();
             }
         }
-        ImGui::End();
+
+        void CategoryPalette::Render(const NS::Editor::ViewRect& viewRect) noexcept
+        {
+#if NS_EDITOR_ENABLED
+            constexpr float k_DesiredWidth = 640.0f;
+            constexpr float k_Height = 56.0f;
+            constexpr float k_TopMargin = 20.0f;
+            const float width = std::min(k_DesiredWidth, static_cast<float>(viewRect.width));
+
+            // 枠は Begin 時点の位置で描かれるため、先に Scene ビュー内へ位置を収める
+            if (!m_toolbarPlaced)
+            {
+                m_toolbarX = static_cast<float>(viewRect.x) + (static_cast<float>(viewRect.width) - width) * 0.5f;
+                m_toolbarY = static_cast<float>(viewRect.y) + k_TopMargin;
+                m_toolbarPlaced = true;
+            }
+            const float minX = static_cast<float>(viewRect.x);
+            const float minY = static_cast<float>(viewRect.y);
+            const float maxX = std::max(minX, static_cast<float>(viewRect.x + viewRect.width) - width);
+            const float maxY = std::max(minY, static_cast<float>(viewRect.y + viewRect.height) - k_Height);
+            m_toolbarX = std::clamp(m_toolbarX, minX, maxX);
+            m_toolbarY = std::clamp(m_toolbarY, minY, maxY);
+
+            ImGui::SetNextWindowPos(ImVec2(m_toolbarX, m_toolbarY), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(width, k_Height), ImGuiCond_Always);
+
+            // NoMove。移動は下の余白ドラッグで自前に行う。ドックへ吸われると枠が外へ出るため NoDocking
+            constexpr ImGuiWindowFlags k_ToolbarFlags =
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+            // End は Begin の戻り値に依らず必ず呼ぶ。中身を描くのは開いている間だけ
+            if (ImGui::Begin("Toolbar", nullptr, k_ToolbarFlags))
+            {
+                // 余白からのドラッグだけを受け、ボタン操作と区別する
+                if (!m_toolbarDragging && ImGui::IsWindowHovered() && !ImGui::IsAnyItemHovered() &&
+                    ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                {
+                    m_toolbarDragging = true;
+                }
+                if (m_toolbarDragging)
+                {
+                    if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+                    {
+                        const ImVec2 delta = ImGui::GetIO().MouseDelta;
+                        m_toolbarX = std::clamp(m_toolbarX + delta.x, minX, maxX);
+                        m_toolbarY = std::clamp(m_toolbarY + delta.y, minY, maxY);
+                    }
+                    else
+                    {
+                        m_toolbarDragging = false;
+                    }
+                }
+
+                for (std::size_t i = 0; i < k_PaletteSlotCount; ++i)
+                {
+                    if (i > 0)
+                    {
+                        ImGui::SameLine();
+                    }
+
+                    ImGui::PushID(static_cast<int>(i));
+
+                    const char* label = PaletteTemplateSlots()[i].name;
+                    const bool isActive = (i == m_activeSlot);
+
+                    if (isActive)
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.80f, 0.50f, 0.30f, 1.0f));
+                    }
+
+                    if (ImGui::Button(label, ImVec2(64.0f, 32.0f)))
+                    {
+                        SetActiveSlot(i);
+                    }
+
+                    if (isActive)
+                    {
+                        ImGui::PopStyleColor();
+                    }
+
+                    ImGui::PopID();
+                }
+            }
+            ImGui::End();
 #endif
-    }
-} // namespace NS::Editor
+        }
+    } // namespace Editor
+} // namespace NS

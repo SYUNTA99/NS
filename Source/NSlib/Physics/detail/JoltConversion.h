@@ -8,37 +8,40 @@
 #include <Jolt/Math/Vec3.h>
 #include <Jolt/Physics/Collision/Shape/Shape.h>
 
-namespace NS::Phys
+namespace NS
 {
-    //! 軸と符号はそのまま変換する。三角形の巻き方は双方とも CCW
-    [[nodiscard]] inline JPH::Vec3 ToJolt(const NS::Vector3& value) noexcept
+    namespace Phys
     {
-        return JPH::Vec3{value.x, value.y, value.z};
-    }
-
-    [[nodiscard]] inline NS::Vector3 FromJolt(JPH::Vec3Arg value) noexcept
-    {
-        return NS::Vector3{value.GetX(), value.GetY(), value.GetZ()};
-    }
-
-    //! @brief NS::Quaternion を JPH::Quat へ変換する
-    [[nodiscard]] inline JPH::Quat ToJolt(const NS::Quaternion& value) noexcept
-    {
-        return JPH::Quat{value.x, value.y, value.z, value.w};
-    }
-
-    //! @brief JPH::Quat を NS::Quaternion へ変換する
-    [[nodiscard]] inline NS::Quaternion FromJolt(JPH::QuatArg value) noexcept
-    {
-        return NS::Quaternion{value.GetX(), value.GetY(), value.GetZ(), value.GetW()};
-    }
-
-    [[nodiscard]] inline JPH::ShapeRefC ShapeOrNull(const JPH::ShapeSettings::ShapeResult& result)
-    {
-        if (result.HasError())
+        //! 軸と符号はそのまま変換する。三角形の巻き方は双方とも CCW
+        [[nodiscard]] inline JPH::Vec3 ToJolt(const NS::Vector3& value) noexcept
         {
-            return nullptr;
+            return JPH::Vec3{value.x, value.y, value.z};
         }
-        return result.Get();
-    }
-} // namespace NS::Phys
+
+        [[nodiscard]] inline NS::Vector3 FromJolt(JPH::Vec3Arg value) noexcept
+        {
+            return NS::Vector3{value.GetX(), value.GetY(), value.GetZ()};
+        }
+
+        //! @brief NS::Quaternion を JPH::Quat へ変換する
+        [[nodiscard]] inline JPH::Quat ToJolt(const NS::Quaternion& value) noexcept
+        {
+            return JPH::Quat{value.x, value.y, value.z, value.w};
+        }
+
+        //! @brief JPH::Quat を NS::Quaternion へ変換する
+        [[nodiscard]] inline NS::Quaternion FromJolt(JPH::QuatArg value) noexcept
+        {
+            return NS::Quaternion{value.GetX(), value.GetY(), value.GetZ(), value.GetW()};
+        }
+
+        [[nodiscard]] inline JPH::ShapeRefC ShapeOrNull(const JPH::ShapeSettings::ShapeResult& result)
+        {
+            if (result.HasError())
+            {
+                return nullptr;
+            }
+            return result.Get();
+        }
+    } // namespace Phys
+} // namespace NS

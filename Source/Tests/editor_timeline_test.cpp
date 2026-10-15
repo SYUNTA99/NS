@@ -7,16 +7,16 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
+#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/Model.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/RenderTarget.h"
 #include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Graphics/Texture.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/AssetManager.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 #include "Tests/TestHitTimelines.h"
@@ -54,12 +54,12 @@ namespace
         ImGuiContext* m_context = nullptr;
     };
 
-    class TimelineMovingActor : public NS::Obj::SceneActor
+    class TimelineMovingActor : public NS::SceneActor
     {
     protected:
         void OnInit() override
         {
-            NS::Obj::Model* model = CreateSubObj(m_model);
+            NS::Model* model = CreateSubObj(m_model);
             model->SetMeshRef("cube");
             model->SetMaterialRef("player");
         }
@@ -155,15 +155,15 @@ TEST(EditorTimelinePreview, RewindsTheEntireSceneAndDoesNotStepWhilePaused)
     preview.Reset(
         [&builds] {
             ++builds;
-            std::unique_ptr<NS::Obj::Scene> scene = std::make_unique<NS::Obj::Scene>();
+            std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
             scene->SpawnTransient<TimelineMovingActor>();
             return scene;
         },
         {-2, 10});
-    NS::Obj::Scene* scene = preview.Seek(-2);
+    NS::Scene* scene = preview.Seek(-2);
     ASSERT_NE(scene, nullptr);
     EXPECT_TRUE(scene->IsSimulationPaused());
-    NS::Obj::SceneActor* actor = *scene->Objects().begin();
+    NS::SceneActor* actor = *scene->Objects().begin();
     EXPECT_NEAR(actor->Root().Position().x, 0.1f, 1.0e-6f);
     scene = preview.Seek(8);
     ASSERT_NE(scene, nullptr);
@@ -190,7 +190,7 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     NS::OS::Window window(NS::OS::WindowDesc{.title = "タイムライン描画の試し", .size = {160, 90}, .visible = false});
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
-    NS::Obj::AssetManager assets(NS::OS::FileSystem::ContentRoot());
+    NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     assets.RegisterBuiltins();
     assets.RegisterSharedMaterials();
     std::unique_ptr<NS::Gfx::RenderTarget> target = NS::Gfx::RenderTarget::Create({160, 90});
@@ -198,17 +198,17 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     NS::Editor::TimelinePreview preview;
     preview.Reset(
         [&assets, &renderer] {
-            std::unique_ptr<NS::Obj::Scene> scene = std::make_unique<NS::Obj::Scene>();
+            std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
             scene->SetAssets(&assets);
             scene->SetRenderer(&renderer);
             scene->SpawnTransient<TimelineMovingActor>();
             return scene;
         },
         {0, 20});
-    NS::Obj::CameraPose pose;
+    NS::CameraPose pose;
     pose.position = NS::Vector3{0.0f, 2.0f, -5.0f};
     pose.target = NS::Vector3{0.0f, 0.0f, 0.0f};
-    const NS::Obj::SceneView view{target.get(), pose};
+    const NS::SceneView view{target.get(), pose};
     renderer.BeginFrame();
     ASSERT_NE(preview.Seek(0), nullptr);
     ASSERT_TRUE(preview.RenderView(view));
@@ -283,19 +283,19 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     NS::OS::Window window(NS::OS::WindowDesc{.title = "Game 下見の試し", .size = {160, 90}, .visible = false});
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
-    NS::Obj::AssetManager assets(NS::OS::FileSystem::ContentRoot());
+    NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     assets.RegisterBuiltins();
     assets.RegisterSharedMaterials();
-    NS::Obj::Scene original;
+    NS::Scene original;
     LevelEditorController editor(&original);
     NS::Editor::GameViewPanel game;
     NS::Editor::TimelinePreview preview;
-    NS::Obj::CameraPose pose;
+    NS::CameraPose pose;
     pose.position = NS::Vector3{0.0f, 2.0f, -5.0f};
     pose.target = NS::Vector3{0.0f, 0.0f, 0.0f};
     preview.Reset(
         [&assets, &renderer, pose] {
-            std::unique_ptr<NS::Obj::Scene> scene = std::make_unique<NS::Obj::Scene>();
+            std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
             scene->SetAssets(&assets);
             scene->SetRenderer(&renderer);
             scene->MainCamera()->ApplyPose(pose);
@@ -311,7 +311,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     };
     show();
     ImGui::EndFrame();
-    const std::optional<NS::Obj::SceneView> view = game.CollectView(editor);
+    const std::optional<NS::SceneView> view = game.CollectView(editor);
     ASSERT_TRUE(view.has_value());
     ASSERT_TRUE(view->target->IsValid());
     show();
@@ -326,7 +326,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     EXPECT_TRUE(game.RenderPreview(preview));
     EXPECT_EQ(first, ReadPixels(*view->target));
     ImGui::EndFrame();
-    EXPECT_EQ(original.ToJson(), NS::Obj::MakeSceneJson());
+    EXPECT_EQ(original.ToJson(), NS::MakeSceneJson());
     game.ResetVisibility();
     EXPECT_FALSE(game.RenderPreview(preview));
     renderer.SetSceneTarget(nullptr);
@@ -345,27 +345,27 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TimelinePanelTestLayer>([&app] {
         TimelineGui gui;
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         scene.SetAssets(&app.Assets());
         scene.SetRenderer(&app.Renderer());
-        nlohmann::json snapshot = NS::Obj::MakeSceneJson();
-        nlohmann::json floor = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(floor, "MapPartsActor");
-        NS::Obj::SetObjectJsonId(floor, 100);
-        NS::Obj::SetObjectPosition(floor, {0.0f, -0.5f, 0.0f});
-        NS::Obj::SetObjectScale(floor, {60.0f, 1.0f, 60.0f});
-        NS::Obj::SceneJsonObjects(snapshot).push_back(std::move(floor));
-        nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
-        NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, {0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(snapshot).push_back(std::move(player));
-        nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "PropActor");
-        NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
-        NS::Obj::SetObjectScale(rock, {3.0f, 3.0f, 3.0f});
-        NS::Obj::SceneJsonObjects(snapshot).push_back(std::move(rock));
+        nlohmann::json snapshot = NS::MakeSceneJson();
+        nlohmann::json floor = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(floor, "MapPartsActor");
+        NS::SetObjectJsonId(floor, 100);
+        NS::SetObjectPosition(floor, {0.0f, -0.5f, 0.0f});
+        NS::SetObjectScale(floor, {60.0f, 1.0f, 60.0f});
+        NS::SceneJsonObjects(snapshot).push_back(std::move(floor));
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SetObjectPosition(player, {0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(snapshot).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonId(rock, 2);
+        NS::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
+        NS::SetObjectScale(rock, {3.0f, 3.0f, 3.0f});
+        NS::SceneJsonObjects(snapshot).push_back(std::move(rock));
         scene.ResetFromJson(std::move(snapshot));
         scene.SetSimulationEnabled(false);
         LevelEditorController editor(&scene);
@@ -398,7 +398,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         begin();
         drawPanel();
         ImGui::EndFrame();
-        const std::optional<NS::Obj::SceneView> view = game.CollectView(editor);
+        const std::optional<NS::SceneView> view = game.CollectView(editor);
         ASSERT_TRUE(view.has_value());
         begin();
         EXPECT_EQ(timeline.Preview(editor), nullptr);
@@ -436,14 +436,14 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         begin();
         drawPanelCollapsed();
         ImGui::EndFrame();
-        NS::Obj::SceneActor* target = scene.Objects().FindByObjectId(2);
+        NS::SceneActor* target = scene.Objects().FindByObjectId(2);
         ASSERT_NE(target, nullptr);
         target->Root().SetPosition({2.0f, 1.5f, 7.0f});
         scene.SyncPhysics();
         begin();
         preview = timeline.Preview(editor);
         ASSERT_NE(preview, nullptr);
-        NS::Obj::Scene* updated = preview->Seek(0);
+        NS::Scene* updated = preview->Seek(0);
         ASSERT_NE(updated, nullptr);
         ASSERT_NE(updated->Objects().FindByObjectId(2), nullptr);
         EXPECT_NEAR(updated->Objects().FindByObjectId(2)->Root().Position().x, 2.0f, 0.01f);
@@ -485,7 +485,7 @@ TEST(EditorHitTimelinePanel, SaveWritesEveryTier)
     ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
     GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
     TimelineGui gui;
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     LevelEditorController editor(&scene);
     NS::Editor::HitTimelinePanel timeline;
     // パネルは真ん中の段を開いている。外れの段は置き場にだけ変更がある

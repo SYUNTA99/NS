@@ -11,199 +11,203 @@
 
 #include <span>
 
-namespace NS::Gfx
+namespace NS
 {
-
-    namespace
+    namespace Gfx
     {
-        [[nodiscard]] DXGI_FORMAT ToDxgiFormat(InputElementFormat fmt) noexcept
+        namespace
         {
-            switch (fmt)
+            [[nodiscard]] DXGI_FORMAT ToDxgiFormat(InputElementFormat fmt) noexcept
             {
-            case InputElementFormat::Float2:
-                return DXGI_FORMAT_R32G32_FLOAT;
-            case InputElementFormat::Float3:
-                return DXGI_FORMAT_R32G32B32_FLOAT;
-            case InputElementFormat::Float4:
-                return DXGI_FORMAT_R32G32B32A32_FLOAT;
-            case InputElementFormat::UInt32:
-                return DXGI_FORMAT_R32_UINT;
-            case InputElementFormat::UInt4:
-                return DXGI_FORMAT_R32G32B32A32_UINT;
+                switch (fmt)
+                {
+                case InputElementFormat::Float2:
+                    return DXGI_FORMAT_R32G32_FLOAT;
+                case InputElementFormat::Float3:
+                    return DXGI_FORMAT_R32G32B32_FLOAT;
+                case InputElementFormat::Float4:
+                    return DXGI_FORMAT_R32G32B32A32_FLOAT;
+                case InputElementFormat::UInt32:
+                    return DXGI_FORMAT_R32_UINT;
+                case InputElementFormat::UInt4:
+                    return DXGI_FORMAT_R32G32B32A32_UINT;
+                }
+                return DXGI_FORMAT_UNKNOWN;
             }
-            return DXGI_FORMAT_UNKNOWN;
-        }
 
-        bool CreateInputLayoutFromDesc(ID3D11Device* device,
-                                       const void* vsBytecode,
-                                       std::size_t vsBytecodeSize,
-                                       const std::vector<InputElement>& elements,
-                                       ComPtr<ID3D11InputLayout>& outLayout) noexcept
+            bool CreateInputLayoutFromDesc(ID3D11Device* device,
+                                           const void* vsBytecode,
+                                           std::size_t vsBytecodeSize,
+                                           const std::vector<InputElement>& elements,
+                                           ComPtr<ID3D11InputLayout>& outLayout) noexcept
+            {
+                if (device == nullptr || vsBytecode == nullptr || vsBytecodeSize == 0u || elements.empty())
+                {
+                    NS_LOG_ERROR(Graphics,
+                                 "Mesh::CreateInputLayout: 引数不正 (device={}, vsBytecode={}, vsSize={}, elements={})",
+                                 static_cast<const void*>(device),
+                                 vsBytecode,
+                                 vsBytecodeSize,
+                                 elements.size());
+                    return false;
+                }
+                // InputElement を D3D11_INPUT_ELEMENT_DESC へ詰め替える
+                std::vector<D3D11_INPUT_ELEMENT_DESC> descs;
+                descs.reserve(elements.size());
+                for (const InputElement& e : elements)
+                {
+                    D3D11_INPUT_ELEMENT_DESC d{};
+                    d.SemanticName = e.semanticName.c_str();
+                    d.SemanticIndex = 0u;
+                    d.Format = ToDxgiFormat(e.format);
+                    d.InputSlot = 0u;
+                    d.AlignedByteOffset = e.byteOffset;
+                    d.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+                    d.InstanceDataStepRate = 0u;
+                    descs.push_back(d);
+                }
+                const HRESULT hr = device->CreateInputLayout(descs.data(),
+                                                             static_cast<UINT>(descs.size()),
+                                                             vsBytecode,
+                                                             vsBytecodeSize,
+                                                             outLayout.GetAddressOf());
+                if (FAILED(hr))
+                {
+                    NS_LOG_ERROR(Graphics,
+                                 "Mesh::CreateInputLayout: CreateInputLayout 失敗 (hr=0x{:X}, elements={})",
+                                 static_cast<NS::uint>(hr),
+                                 elements.size());
+                    return false;
+                }
+                return true;
+            }
+        } // namespace
+
+        Mesh::Mesh() = default;
+        Mesh::~Mesh() = default;
+
+        bool Mesh::BuildGeometry(const void* vertices,
+                                 std::size_t vertexCount,
+                                 std::size_t stride,
+                                 const NS::uint32* indices,
+                                 std::size_t indexCount,
+                                 bool usingFallback) noexcept
         {
-            if (device == nullptr || vsBytecode == nullptr || vsBytecodeSize == 0u || elements.empty())
+            std::unique_ptr<Buffer> vb = Buffer::Create(MakeVertexBufferDesc(vertices, vertexCount, stride));
+            if (!vb->IsValid())
             {
-                NS_LOG_ERROR(Graphics,
-                             "Mesh::CreateInputLayout: 引数不正 (device={}, vsBytecode={}, vsSize={}, elements={})",
-                             static_cast<const void*>(device),
-                             vsBytecode,
-                             vsBytecodeSize,
-                             elements.size());
                 return false;
             }
-            // InputElement を D3D11_INPUT_ELEMENT_DESC へ詰め替える
-            std::vector<D3D11_INPUT_ELEMENT_DESC> descs;
-            descs.reserve(elements.size());
-            for (const InputElement& e : elements)
+            std::unique_ptr<Buffer> ib = Buffer::Create(MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT));
+            if (!ib->IsValid())
             {
-                D3D11_INPUT_ELEMENT_DESC d{};
-                d.SemanticName = e.semanticName.c_str();
-                d.SemanticIndex = 0u;
-                d.Format = ToDxgiFormat(e.format);
-                d.InputSlot = 0u;
-                d.AlignedByteOffset = e.byteOffset;
-                d.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-                d.InstanceDataStepRate = 0u;
-                descs.push_back(d);
-            }
-            const HRESULT hr = device->CreateInputLayout(
-                descs.data(), static_cast<UINT>(descs.size()), vsBytecode, vsBytecodeSize, outLayout.GetAddressOf());
-            if (FAILED(hr))
-            {
-                NS_LOG_ERROR(Graphics,
-                             "Mesh::CreateInputLayout: CreateInputLayout 失敗 (hr=0x{:X}, elements={})",
-                             static_cast<NS::uint>(hr),
-                             elements.size());
                 return false;
             }
+            m_vb = std::move(vb);
+            m_ib = std::move(ib);
+            m_vertexCount = vertexCount;
+            m_indexCount = indexCount;
+            m_usingFallback = usingFallback;
+            m_valid = (m_vb != nullptr && m_ib != nullptr && Gpu().device != nullptr);
             return true;
         }
-    } // namespace
 
-    Mesh::Mesh() = default;
-    Mesh::~Mesh() = default;
-
-    bool Mesh::BuildGeometry(const void* vertices,
-                             std::size_t vertexCount,
-                             std::size_t stride,
-                             const NS::uint32* indices,
-                             std::size_t indexCount,
-                             bool usingFallback) noexcept
-    {
-        std::unique_ptr<Buffer> vb = Buffer::Create(MakeVertexBufferDesc(vertices, vertexCount, stride));
-        if (!vb->IsValid())
+        void Mesh::SetVertexLayout(std::vector<InputElement> elements) noexcept
         {
-            return false;
-        }
-        std::unique_ptr<Buffer> ib = Buffer::Create(MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT));
-        if (!ib->IsValid())
-        {
-            return false;
-        }
-        m_vb = std::move(vb);
-        m_ib = std::move(ib);
-        m_vertexCount = vertexCount;
-        m_indexCount = indexCount;
-        m_usingFallback = usingFallback;
-        m_valid = (m_vb != nullptr && m_ib != nullptr && Gpu().device != nullptr);
-        return true;
-    }
-
-    void Mesh::SetVertexLayout(std::vector<InputElement> elements) noexcept
-    {
-        m_layoutElements = std::move(elements);
-    }
-
-    void Mesh::SetTopology(Topology topology) noexcept
-    {
-        m_topology = topology;
-    }
-
-    void Mesh::CreateInputLayout(const Shader& vertexShader) noexcept
-    {
-        if (m_inputLayout)
-        {
-            return;
-        }
-        ID3D11Device* device = Gpu().device;
-        if (device == nullptr || m_layoutElements.empty())
-        {
-            NS_LOG_ERROR(Graphics, "Mesh::CreateInputLayout: device が無効か、レイアウト要素が空");
-            return;
+            m_layoutElements = std::move(elements);
         }
 
-        const std::span<const std::byte> bytecode = vertexShader.VertexShaderBytecode();
-        if (bytecode.empty())
+        void Mesh::SetTopology(Topology topology) noexcept
         {
-            NS_LOG_ERROR(Graphics, "Mesh::CreateInputLayout: VS バイトコードが空");
-            return;
+            m_topology = topology;
         }
 
-        ComPtr<ID3D11InputLayout> layout;
-        if (CreateInputLayoutFromDesc(device, bytecode.data(), bytecode.size(), m_layoutElements, layout))
+        void Mesh::CreateInputLayout(const Shader& vertexShader) noexcept
         {
-            m_inputLayout = std::move(layout);
-        }
-    }
+            if (m_inputLayout)
+            {
+                return;
+            }
+            ID3D11Device* device = Gpu().device;
+            if (device == nullptr || m_layoutElements.empty())
+            {
+                NS_LOG_ERROR(Graphics, "Mesh::CreateInputLayout: device が無効か、レイアウト要素が空");
+                return;
+            }
 
-    bool Mesh::IsValid() const noexcept
-    {
-        return m_valid;
-    }
-    bool Mesh::IsUsingFallback() const noexcept
-    {
-        return m_usingFallback;
-    }
-    std::size_t Mesh::VertexCount() const noexcept
-    {
-        return m_vertexCount;
-    }
-    std::size_t Mesh::IndexCount() const noexcept
-    {
-        return m_indexCount;
-    }
+            const std::span<const std::byte> bytecode = vertexShader.VertexShaderBytecode();
+            if (bytecode.empty())
+            {
+                NS_LOG_ERROR(Graphics, "Mesh::CreateInputLayout: VS バイトコードが空");
+                return;
+            }
 
-    const NS::AABB& Mesh::LocalBounds() const noexcept
-    {
-        return m_localBounds;
-    }
-
-    void Mesh::SetLocalBounds(const NS::AABB& bounds) noexcept
-    {
-        m_localBounds = bounds;
-    }
-
-    Topology Mesh::GetTopology() const noexcept
-    {
-        return m_topology;
-    }
-
-    void DrawMesh(CommandList& commands, const Mesh& mesh) noexcept
-    {
-        if (!mesh.IsValid())
-        {
-            return;
+            ComPtr<ID3D11InputLayout> layout;
+            if (CreateInputLayoutFromDesc(device, bytecode.data(), bytecode.size(), m_layoutElements, layout))
+            {
+                m_inputLayout = std::move(layout);
+            }
         }
 
-        commands.SetInputLayout(mesh.InputLayout());
-        commands.SetVertexBuffer(*mesh.VertexBuffer(), 0);
-        commands.SetIndexBuffer(*mesh.IndexBuffer());
-        commands.SetTopology(mesh.GetTopology());
-        commands.DrawIndexed(static_cast<NS::uint>(mesh.IndexCount()));
-    }
+        bool Mesh::IsValid() const noexcept
+        {
+            return m_valid;
+        }
+        bool Mesh::IsUsingFallback() const noexcept
+        {
+            return m_usingFallback;
+        }
+        std::size_t Mesh::VertexCount() const noexcept
+        {
+            return m_vertexCount;
+        }
+        std::size_t Mesh::IndexCount() const noexcept
+        {
+            return m_indexCount;
+        }
 
-    const Buffer* Mesh::VertexBuffer() const noexcept
-    {
-        return m_vb.get();
-    }
+        const NS::AABB& Mesh::LocalBounds() const noexcept
+        {
+            return m_localBounds;
+        }
 
-    const Buffer* Mesh::IndexBuffer() const noexcept
-    {
-        return m_ib.get();
-    }
+        void Mesh::SetLocalBounds(const NS::AABB& bounds) noexcept
+        {
+            m_localBounds = bounds;
+        }
 
-    ID3D11InputLayout* Mesh::InputLayout() const noexcept
-    {
-        return m_inputLayout.Get();
-    }
+        Topology Mesh::GetTopology() const noexcept
+        {
+            return m_topology;
+        }
 
-} // namespace NS::Gfx
+        void DrawMesh(CommandList& commands, const Mesh& mesh) noexcept
+        {
+            if (!mesh.IsValid())
+            {
+                return;
+            }
+
+            commands.SetInputLayout(mesh.InputLayout());
+            commands.SetVertexBuffer(*mesh.VertexBuffer(), 0);
+            commands.SetIndexBuffer(*mesh.IndexBuffer());
+            commands.SetTopology(mesh.GetTopology());
+            commands.DrawIndexed(static_cast<NS::uint>(mesh.IndexCount()));
+        }
+
+        const Buffer* Mesh::VertexBuffer() const noexcept
+        {
+            return m_vb.get();
+        }
+
+        const Buffer* Mesh::IndexBuffer() const noexcept
+        {
+            return m_ib.get();
+        }
+
+        ID3D11InputLayout* Mesh::InputLayout() const noexcept
+        {
+            return m_inputLayout.Get();
+        }
+    } // namespace Gfx
+} // namespace NS

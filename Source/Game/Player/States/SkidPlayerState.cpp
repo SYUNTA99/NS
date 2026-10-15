@@ -1,31 +1,34 @@
 #include "Game/Player/States/SkidPlayerState.h"
 
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
-#include "NSlib/Object/SubObjects/Body.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
 
-namespace GL::Player
+namespace GL
 {
-    void SkidPlayerState::OnEnter(::PlayerActor& player)
+    namespace Player
     {
-        player.BeginSkid();
-    }
-
-    void SkidPlayerState::OnStep(::PlayerActor& player, float dt)
-    {
-        player.TickTimers(dt);
-        const bool stopped = player.AdvanceSkid();
-        player.Gravity(dt);
-
-        if (PlayerJudgeFall::Judge(player.Body().IsGrounded()))
+        void SkidPlayerState::OnEnter(::PlayerActor& player)
         {
-            player.States().Change<FallPlayerState>();
+            player.BeginSkid();
         }
-        else if (stopped)
+
+        void SkidPlayerState::OnStep(::PlayerActor& player, float dt)
         {
-            player.States().Change<IdlePlayerState>();
+            player.TickTimers(dt);
+            const bool stopped = player.AdvanceSkid();
+            player.Gravity(dt);
+
+            if (PlayerJudgeFall::Judge(player.Body().IsGrounded()))
+            {
+                player.States().Change<FallPlayerState>();
+            }
+            else if (stopped)
+            {
+                player.States().Change<IdlePlayerState>();
+            }
         }
-    }
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

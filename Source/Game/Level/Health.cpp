@@ -1,31 +1,33 @@
-﻿#include "Game/Level/Health.h"
+#include "Game/Level/Health.h"
 
-namespace GL::Level
+namespace GL
 {
-    void Health::SetMaxHealth(int value) noexcept
+    namespace Level
     {
-        if (value > 0)
+        void Health::SetMaxHealth(int value) noexcept
         {
-            m_maxHealth = value;
-            if (m_current > value)
+            if (value > 0)
             {
-                m_current = value;
+                m_maxHealth = value;
+                if (m_current > value)
+                {
+                    m_current = value;
+                }
             }
         }
-    }
 
-    void Health::ApplyDamage(int amount) noexcept
-    {
-        if (m_current <= 0 || amount <= 0)
+        void Health::ApplyDamage(int amount) noexcept
         {
-            return;
-        }
+            if (m_current <= 0 || amount <= 0)
+            {
+                return;
+            }
 
-        m_current -= amount;
-        if (m_current < 0)
-        {
-            m_current = 0;
+            m_current -= amount;
+            if (m_current < 0)
+            {
+                m_current = 0;
+            }
         }
-    }
-
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

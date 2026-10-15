@@ -4,16 +4,19 @@
 
 class PlayerActor;
 
-namespace GL::Player
+namespace GL
 {
-    //! よじ登り。登り切ったフレームに立ちへ移る
-    class LedgeClimbingPlayerState final : public PlayerState<LedgeClimbingPlayerState>
+    namespace Player
     {
-    public:
-        void OnEnter(::PlayerActor& player) override;
-        void OnStep(::PlayerActor&, float) override {}
+        //! よじ登り。登り切ったフレームに立ちへ移る
+        class LedgeClimbingPlayerState final : public PlayerState<LedgeClimbingPlayerState>
+        {
+        public:
+            void OnEnter(::PlayerActor& player) override;
+            void OnStep(::PlayerActor&, float) override {}
 
-    private:
-        NS::Coroutine Run(::PlayerActor& player);
-    };
-} // namespace GL::Player
+        private:
+            NS::Coroutine Run(::PlayerActor& player);
+        };
+    } // namespace Player
+} // namespace GL

@@ -1,8 +1,8 @@
 #include "NSlib/Core/CameraData.h"
-#include "NSlib/Object/System/CameraManager.h"
-#include "NSlib/Object/SubObjects/CameraModifier.h"
-#include "NSlib/Object/IUse/IUseCamera.h"
-#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/CameraModifier.h"
+#include "NSlib/CoreObject/System/CameraManager.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -18,9 +18,9 @@ namespace
 {
     constexpr float k_PixelToScreen = 2.0f / 1080.0f; // 高さ 1080 の画面の 1 画素の、画面の座標 (縦 -1〜1) での幅
 
-    NS::Obj::CameraSinkDesc SinkOf()
+    NS::CameraSinkDesc SinkOf()
     {
-        NS::Obj::CameraSinkDesc desc;
+        NS::CameraSinkDesc desc;
         desc.bottomPixels = 8.0f;
         desc.sinkFrames = 2;
         desc.tremblePixels = 5.0f;
@@ -66,46 +66,46 @@ TEST(CameraSink, ScreenOffsetShiftsEveryDepthByTheSameAmount)
 // 沈む: 2 フレーム目で底に届く。震える: 底を中心に揺れて弱まる。こらえる: 跳ね返りの頭まで底のまま
 TEST(CameraSink, SinksTremblesAndHoldsAtTheBottom)
 {
-    const NS::Obj::CameraSinkDesc desc = SinkOf();
+    const NS::CameraSinkDesc desc = SinkOf();
     const float bottom = -desc.bottomPixels;
-    EXPECT_NEAR(NS::Obj::CameraSinkPixelsAt(desc, 0), bottom * std::sin(std::numbers::pi_v<float> * 0.25f), 1.0e-4f);
-    EXPECT_FLOAT_EQ(NS::Obj::CameraSinkPixelsAt(desc, 1), bottom);
-    EXPECT_FLOAT_EQ(NS::Obj::CameraSinkPixelsAt(desc, 2), bottom + desc.tremblePixels);
-    EXPECT_NEAR(NS::Obj::CameraSinkPixelsAt(desc, 3), bottom - desc.tremblePixels * 5.0f / 6.0f, 1.0e-4f);
+    EXPECT_NEAR(NS::CameraSinkPixelsAt(desc, 0), bottom * std::sin(std::numbers::pi_v<float> * 0.25f), 1.0e-4f);
+    EXPECT_FLOAT_EQ(NS::CameraSinkPixelsAt(desc, 1), bottom);
+    EXPECT_FLOAT_EQ(NS::CameraSinkPixelsAt(desc, 2), bottom + desc.tremblePixels);
+    EXPECT_NEAR(NS::CameraSinkPixelsAt(desc, 3), bottom - desc.tremblePixels * 5.0f / 6.0f, 1.0e-4f);
     for (int frame = desc.sinkFrames + desc.trembleFrames; frame <= desc.bounceStartFrame; ++frame)
     {
         SCOPED_TRACE(frame);
-        EXPECT_FLOAT_EQ(NS::Obj::CameraSinkPixelsAt(desc, frame), bottom);
+        EXPECT_FLOAT_EQ(NS::CameraSinkPixelsAt(desc, frame), bottom);
     }
 }
 
 // 跳ね返る: 跳ね返りの頭から上へ戻り、半周期で行き過ぎの割合だけ上へ出て、収まる。描き終えたら 0
 TEST(CameraSink, BouncesPastZeroByTheOvershootRatio)
 {
-    const NS::Obj::CameraSinkDesc desc = SinkOf();
+    const NS::CameraSinkDesc desc = SinkOf();
     const int peak = desc.bounceStartFrame + desc.bouncePeriodFrames / 2;
-    EXPECT_GT(NS::Obj::CameraSinkPixelsAt(desc, desc.bounceStartFrame + 1), -desc.bottomPixels);
-    EXPECT_NEAR(NS::Obj::CameraSinkPixelsAt(desc, peak), desc.bottomPixels * desc.overshootRatio, 1.0e-3f);
-    EXPECT_LT(std::abs(NS::Obj::CameraSinkPixelsAt(desc, desc.frames - 1)), desc.bottomPixels * 0.1f);
-    EXPECT_FLOAT_EQ(NS::Obj::CameraSinkPixelsAt(desc, desc.frames), 0.0f);
+    EXPECT_GT(NS::CameraSinkPixelsAt(desc, desc.bounceStartFrame + 1), -desc.bottomPixels);
+    EXPECT_NEAR(NS::CameraSinkPixelsAt(desc, peak), desc.bottomPixels * desc.overshootRatio, 1.0e-3f);
+    EXPECT_LT(std::abs(NS::CameraSinkPixelsAt(desc, desc.frames - 1)), desc.bottomPixels * 0.1f);
+    EXPECT_FLOAT_EQ(NS::CameraSinkPixelsAt(desc, desc.frames), 0.0f);
 }
 
 // 揺れは描く姿の画面のずれだけを動かし、位置・注視点・遊びが読む前の向きは変えない。設定の倍率も掛かる
 TEST(CameraSink, ShiftsTheDrawnScreenOnlyAndScalesBySetting)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
-    NS::Obj::CameraManager* cameras = scene.GetCameraManager();
+    NS::CameraManager* cameras = scene.GetCameraManager();
     ASSERT_NE(cameras, nullptr);
-    scene.ExecutePhase(NS::Obj::UpdatePhase::Camera);
+    scene.ExecutePhase(NS::UpdatePhase::Camera);
     const NS::Vector3 forwardBefore = cameras->ForwardHorizontal();
-    const std::optional<NS::Obj::CameraPose> calm = cameras->ComposePose(1.0f);
+    const std::optional<NS::CameraPose> calm = cameras->ComposePose(1.0f);
     ASSERT_TRUE(calm.has_value());
 
-    NS::Obj::CameraSinkDesc desc = SinkOf();
+    NS::CameraSinkDesc desc = SinkOf();
     desc.sinkFrames = 1;
-    ASSERT_TRUE(cameras->AddModifier(NS::Obj::CameraSinkModifier::Create(desc)));
-    const std::optional<NS::Obj::CameraPose> shaken = cameras->ComposePose(1.0f);
+    ASSERT_TRUE(cameras->AddModifier(NS::CameraSinkModifier::Create(desc)));
+    const std::optional<NS::CameraPose> shaken = cameras->ComposePose(1.0f);
     ASSERT_TRUE(shaken.has_value());
     EXPECT_EQ(shaken->position, calm->position);
     EXPECT_EQ(shaken->target, calm->target);
@@ -114,25 +114,25 @@ TEST(CameraSink, ShiftsTheDrawnScreenOnlyAndScalesBySetting)
     EXPECT_EQ(cameras->ForwardHorizontal(), forwardBefore);
 
     cameras->SetShakeScale(0.5f);
-    const std::optional<NS::Obj::CameraPose> half = cameras->ComposePose(1.0f);
+    const std::optional<NS::CameraPose> half = cameras->ComposePose(1.0f);
     ASSERT_TRUE(half.has_value());
     EXPECT_NEAR(half->screenOffset.y, -desc.bottomPixels * k_PixelToScreen * 0.5f, 1.0e-6f);
 
     // 当たりの演出を止めると外れる
-    NS::Obj::StopCameraHitEffects(&scene);
-    EXPECT_EQ(cameras->FindModifier<NS::Obj::CameraSinkModifier>(), nullptr);
+    NS::StopCameraHitEffects(&scene);
+    EXPECT_EQ(cameras->FindModifier<NS::CameraSinkModifier>(), nullptr);
 }
 
 // 壊れた設定は積まない
 TEST(CameraSink, BrokenSettingsAreRefused)
 {
-    NS::Obj::CameraSinkDesc desc = SinkOf();
+    NS::CameraSinkDesc desc = SinkOf();
     desc.overshootRatio = 1.0f;
-    EXPECT_EQ(NS::Obj::CameraSinkModifier::Create(desc), nullptr);
+    EXPECT_EQ(NS::CameraSinkModifier::Create(desc), nullptr);
     desc = SinkOf();
     desc.frames = 0;
-    EXPECT_EQ(NS::Obj::CameraSinkModifier::Create(desc), nullptr);
+    EXPECT_EQ(NS::CameraSinkModifier::Create(desc), nullptr);
     desc = SinkOf();
     desc.bottomPixels = std::nanf("");
-    EXPECT_EQ(NS::Obj::CameraSinkModifier::Create(desc), nullptr);
+    EXPECT_EQ(NS::CameraSinkModifier::Create(desc), nullptr);
 }

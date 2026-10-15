@@ -1,9 +1,9 @@
-﻿#include "NSlib/App/Application.h"
+#include "NSlib/App/Application.h"
 
 #include "NSlib/App/Layer.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/AssetManager.h"
+#include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Input.h"
@@ -123,13 +123,13 @@ namespace NS
         NS::OS::Input::Get().Mouse().SetRelativeMode(captured);
     }
 
-    NS::Obj::AssetManager& Application::Assets() noexcept
+    NS::AssetManager& Application::Assets() noexcept
     {
         NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
         return *m_assets;
     }
 
-    const NS::Obj::AssetManager& Application::Assets() const noexcept
+    const NS::AssetManager& Application::Assets() const noexcept
     {
         NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
         return *m_assets;
@@ -169,7 +169,7 @@ namespace NS
         DrainPendingQuit();
         NS::OS::FrameTimer::Reset();
 
-        m_assets = std::make_unique<NS::Obj::AssetManager>(NS::OS::FileSystem::ContentRoot());
+        m_assets = std::make_unique<NS::AssetManager>(NS::OS::FileSystem::ContentRoot());
         m_assets->RegisterBuiltins();
         m_assets->RegisterSharedMaterials();
 

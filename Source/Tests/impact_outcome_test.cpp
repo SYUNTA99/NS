@@ -200,7 +200,7 @@ TEST(ImpactOutcome, DefaultTuningAtMassOneAndPowerOne)
 namespace
 {
     // +Z へ進む突進の外れ。面の右は +X
-    ImpactInput MissAlongZ(float u, float v, NS::Obj::HitSensorShape shape)
+    ImpactInput MissAlongZ(float u, float v, NS::HitSensorShape shape)
     {
         ImpactInput input = BaseInput();
         input.slamVelocity = NS::Vector3{0.0f, 0.0f, 8.0f};
@@ -236,7 +236,7 @@ TEST(ImpactOutcome, MissSurfaceNormalReadsTheFacePositionByShape)
 TEST(ImpactOutcome, MissDeflectsTowardTheSideItSlidesOff)
 {
     const ImpactTuning tuning = DefaultTuning();
-    const ImpactOutcome right = ComputeImpactOutcome(MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere), tuning);
+    const ImpactOutcome right = ComputeImpactOutcome(MissAlongZ(0.8f, 0.0f, NS::HitSensorShape::Sphere), tuning);
     // 面の向き n = 0.8 右 + 0.6 手前。来た向きを n で鏡に映すと 0.96 右 + 0.28 前
     EXPECT_NEAR(right.reboundArc.direction.x, 0.96f, 0.001f);
     EXPECT_NEAR(right.reboundArc.direction.z, 0.28f, 0.001f);
@@ -244,10 +244,10 @@ TEST(ImpactOutcome, MissDeflectsTowardTheSideItSlidesOff)
     EXPECT_NEAR(right.launchArc.direction.x, -0.8f, 0.001f);
     EXPECT_NEAR(right.launchArc.direction.z, 0.6f, 0.001f);
 
-    const ImpactOutcome left = ComputeImpactOutcome(MissAlongZ(-0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere), tuning);
+    const ImpactOutcome left = ComputeImpactOutcome(MissAlongZ(-0.8f, 0.0f, NS::HitSensorShape::Sphere), tuning);
     EXPECT_NEAR(left.reboundArc.direction.x, -0.96f, 0.001f);
 
-    ImpactInput center = MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere);
+    ImpactInput center = MissAlongZ(0.8f, 0.0f, NS::HitSensorShape::Sphere);
     center.tier = HitTier::Center;
     const ImpactOutcome centerOutcome = ComputeImpactOutcome(center, tuning);
     EXPECT_FLOAT_EQ(centerOutcome.reboundArc.direction.z, -1.0f);
@@ -259,12 +259,12 @@ TEST(ImpactOutcome, MissLaunchShrinksWithTheSquareOfThePushAndStaysLow)
 {
     const ImpactTuning tuning = DefaultTuning();
     // 面の向き n = 0.8 右 + 0.6 手前。押し込む成分は 0.6
-    const ImpactInput missInput = MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere);
+    const ImpactInput missInput = MissAlongZ(0.8f, 0.0f, NS::HitSensorShape::Sphere);
     const ImpactOutcome miss = ComputeImpactOutcome(missInput, tuning);
     EXPECT_NEAR(miss.launchArc.distance, 29.0f * 0.36f * missInput.launch.missDistanceRatio, 0.001f);
     EXPECT_NEAR(miss.launchArc.apexHeight, 2.0f * 0.36f * missInput.launch.missHeightRatio, 0.001f);
 
-    ImpactInput center = MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere);
+    ImpactInput center = MissAlongZ(0.8f, 0.0f, NS::HitSensorShape::Sphere);
     center.tier = HitTier::Center;
     const ImpactOutcome centerOutcome = ComputeImpactOutcome(center, tuning);
     EXPECT_FLOAT_EQ(centerOutcome.launchArc.distance, 29.0f);
@@ -276,11 +276,11 @@ TEST(ImpactOutcome, MissOffTheBottomBouncesLowerAndTheTopDoesNotFloat)
 {
     const ImpactTuning tuning = DefaultTuning();
     const float plain =
-        ComputeImpactOutcome(MissAlongZ(0.0f, 0.0f, NS::Obj::HitSensorShape::Sphere), tuning).reboundArc.apexHeight;
+        ComputeImpactOutcome(MissAlongZ(0.0f, 0.0f, NS::HitSensorShape::Sphere), tuning).reboundArc.apexHeight;
     const float bottom =
-        ComputeImpactOutcome(MissAlongZ(0.0f, -0.8f, NS::Obj::HitSensorShape::Sphere), tuning).reboundArc.apexHeight;
+        ComputeImpactOutcome(MissAlongZ(0.0f, -0.8f, NS::HitSensorShape::Sphere), tuning).reboundArc.apexHeight;
     const float top =
-        ComputeImpactOutcome(MissAlongZ(0.0f, 0.8f, NS::Obj::HitSensorShape::Sphere), tuning).reboundArc.apexHeight;
+        ComputeImpactOutcome(MissAlongZ(0.0f, 0.8f, NS::HitSensorShape::Sphere), tuning).reboundArc.apexHeight;
     // 真下を向く分 0.8 だけ、跳ねの割合 0.4 へ寄せる
     EXPECT_NEAR(bottom, plain * (1.0f - (1.0f - tuning.missSlamBounce) * 0.8f), 0.0001f);
     EXPECT_FLOAT_EQ(top, plain);
@@ -291,21 +291,21 @@ TEST(ImpactOutcome, MissTwistsAroundTheSurfaceNormalCrossTheSlide)
 {
     const ImpactTuning tuning = DefaultTuning();
     // 右の縁は相手の側が引きずられ、上から見て反時計回り (下向きの軸) に相手の方へ巻き込まれる
-    const ImpactOutcome right = ComputeImpactOutcome(MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere), tuning);
+    const ImpactOutcome right = ComputeImpactOutcome(MissAlongZ(0.8f, 0.0f, NS::HitSensorShape::Sphere), tuning);
     ASSERT_TRUE(right.reboundArc.missTumble.has_value());
     EXPECT_NEAR(right.reboundArc.missTumble->twist.y, -0.8f, 0.001f);
     EXPECT_NEAR(right.reboundArc.missTumble->twist.x, 0.0f, 0.001f);
     EXPECT_NEAR(right.reboundArc.missTumble->twist.z, 0.0f, 0.001f);
     EXPECT_FLOAT_EQ(right.reboundArc.missTumble->power, BaseInput().power);
     // 上の縁は前へつんのめる回転 (上面が進む向きへ倒れる +X の軸)、下の縁は逆回転
-    const ImpactOutcome top = ComputeImpactOutcome(MissAlongZ(0.0f, 0.8f, NS::Obj::HitSensorShape::Sphere), tuning);
+    const ImpactOutcome top = ComputeImpactOutcome(MissAlongZ(0.0f, 0.8f, NS::HitSensorShape::Sphere), tuning);
     ASSERT_TRUE(top.reboundArc.missTumble.has_value());
     EXPECT_NEAR(top.reboundArc.missTumble->twist.x, 0.8f, 0.001f);
-    const ImpactOutcome bottom = ComputeImpactOutcome(MissAlongZ(0.0f, -0.8f, NS::Obj::HitSensorShape::Sphere), tuning);
+    const ImpactOutcome bottom = ComputeImpactOutcome(MissAlongZ(0.0f, -0.8f, NS::HitSensorShape::Sphere), tuning);
     ASSERT_TRUE(bottom.reboundArc.missTumble.has_value());
     EXPECT_NEAR(bottom.reboundArc.missTumble->twist.x, -0.8f, 0.001f);
 
-    ImpactInput center = MissAlongZ(0.8f, 0.0f, NS::Obj::HitSensorShape::Sphere);
+    ImpactInput center = MissAlongZ(0.8f, 0.0f, NS::HitSensorShape::Sphere);
     center.tier = HitTier::Center;
     EXPECT_FALSE(ComputeImpactOutcome(center, tuning).reboundArc.missTumble.has_value());
 }

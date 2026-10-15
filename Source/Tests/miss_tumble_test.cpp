@@ -1,13 +1,13 @@
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/ReboundArc.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/SubObjects/Body.h"
-#include "NSlib/Object/SubObjects/Transform.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Reflection/ReflectionJson.h"
-#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -22,14 +22,14 @@ namespace
     constexpr float k_FrameSeconds = 1.0f / 60.0f;
 
     // 床の上に自機 (id 1) を置き、接地させてから丸める
-    PlayerActor* PlaceTumblePlayer(NS::Obj::Scene& scene)
+    PlayerActor* PlaceTumblePlayer(NS::Scene& scene)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
-        NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(player));
         scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -38,7 +38,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        PlayerActor* placed = NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        PlayerActor* placed = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
         if (placed == nullptr)
         {
             return nullptr;
@@ -74,12 +74,12 @@ TEST(MissTumble, MissReboundSkidsToAStopInTheSkidFrames)
     for (const float distance : {0.8f, 3.0f})
     {
         SCOPED_TRACE(distance);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceTumblePlayer(scene);
         ASSERT_NE(player, nullptr);
         ASSERT_EQ(
-            NS::Obj::ApplyJsonFields(
-                player->Params(), {{"外れのこすって止まるまでのフレーム数", 10}, {"外れのこすって止まる減り方", 2.0f}}),
+            NS::ApplyJsonFields(player->Params(),
+                                {{"外れのこすって止まるまでのフレーム数", 10}, {"外れのこすって止まる減り方", 2.0f}}),
             0u);
         ASSERT_TRUE(player->BeginRebound(MissArc(distance)));
         bool landed = false;
@@ -120,13 +120,13 @@ TEST(MissTumble, CenterReboundAndZeroSkidFramesLandWithoutSkidding)
     for (const bool miss : {false, true})
     {
         SCOPED_TRACE(miss);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceTumblePlayer(scene);
         ASSERT_NE(player, nullptr);
         GL::Player::ReboundArc arc = MissArc(3.0f);
         if (miss)
         {
-            ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"外れのこすって止まるまでのフレーム数", 0}}), 0u);
+            ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"外れのこすって止まるまでのフレーム数", 0}}), 0u);
         }
         else
         {
@@ -151,14 +151,14 @@ TEST(MissTumble, TumbleBlendsIntoTheTwistAndTiltsByTheWobble)
     for (const float wobble : {0.0f, 30.0f})
     {
         SCOPED_TRACE(wobble);
-        NS::Obj::Scene scene;
+        NS::Scene scene;
         PlayerActor* player = PlaceTumblePlayer(scene);
         ASSERT_NE(player, nullptr);
-        ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Appearance(),
-                                           {{"外れの縁でのねじれの回転数", 2.0f},
-                                            {"外れで当たる前の回転を引き継ぐ割合", 0.0f},
-                                            {"外れの回転を寄せるフレーム数", 4},
-                                            {"外れの軸のぶれの角度", wobble}}),
+        ASSERT_EQ(NS::ApplyJsonFields(player->Appearance(),
+                                      {{"外れの縁でのねじれの回転数", 2.0f},
+                                       {"外れで当たる前の回転を引き継ぐ割合", 0.0f},
+                                       {"外れの回転を寄せるフレーム数", 4},
+                                       {"外れの軸のぶれの角度", wobble}}),
                   0u);
         ASSERT_TRUE(player->BeginRebound(MissArc(3.0f)));
         std::vector<float> degrees;
@@ -181,14 +181,14 @@ TEST(MissTumble, TumbleBlendsIntoTheTwistAndTiltsByTheWobble)
 // 溜めて外したほど大きく振り回される。突進の回転を欄の割合だけ引き継ぎ、ねじれに足す
 TEST(MissTumble, TumbleCarriesTheSlamSpin)
 {
-    NS::Obj::Scene scene;
+    NS::Scene scene;
     PlayerActor* player = PlaceTumblePlayer(scene);
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Appearance(),
-                                       {{"外れの縁でのねじれの回転数", 0.0f},
-                                        {"外れで当たる前の回転を引き継ぐ割合", 0.5f},
-                                        {"外れの回転を寄せるフレーム数", 1},
-                                        {"外れの軸のぶれの角度", 0.0f}}),
+    ASSERT_EQ(NS::ApplyJsonFields(player->Appearance(),
+                                  {{"外れの縁でのねじれの回転数", 0.0f},
+                                   {"外れで当たる前の回転を引き継ぐ割合", 0.5f},
+                                   {"外れの回転を寄せるフレーム数", 1},
+                                   {"外れの軸のぶれの角度", 0.0f}}),
               0u);
     player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     player->Update(false);

@@ -1,0 +1,22 @@
+#pragma once
+
+#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/Physics/PhysicsScene.h"
+
+namespace NS
+{
+    //! @brief シーンの PhysicsScene を持ち、物理の段で固定フレーム 1 回分進める
+    //! @details Collision は OnEndPlay で body を PhysicsScene から外すので、Scene
+    //! は個体の一覧より先に宣言して後に破棄する
+    class PhysicsDirector final : public SceneSystem
+    {
+    public:
+        [[nodiscard]] NS::Phys::PhysicsScene& Physics() noexcept { return m_physicsScene; }
+        [[nodiscard]] const NS::Phys::PhysicsScene& Physics() const noexcept { return m_physicsScene; }
+
+        void OnTick() override;
+
+    private:
+        NS::Phys::PhysicsScene m_physicsScene;
+    };
+} // namespace NS

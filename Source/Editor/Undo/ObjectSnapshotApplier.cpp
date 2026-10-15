@@ -1,48 +1,52 @@
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/ActorList.h"
-#include "NSlib/Object/Reflection/ObjectBuilder.h"
-#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
 
-namespace NS::Editor
+namespace NS
 {
-    std::optional<nlohmann::json> ObjectSnapshotApplier::CaptureObject(NS::uint32 objectId) const
+    namespace Editor
     {
-        if (m_scene == nullptr)
+        std::optional<nlohmann::json> ObjectSnapshotApplier::CaptureObject(NS::uint32 objectId) const
         {
-            return std::nullopt;
+            if (m_scene == nullptr)
+            {
+                return std::nullopt;
+            }
+
+            const NS::SceneActor* obj = m_scene->Objects().FindByObjectId(objectId);
+            if (obj == nullptr)
+            {
+                return std::nullopt;
+            }
+            // undo は編集値ごと戻すため、配置物が自分を全 SubObject 値まで忠実に書き出す
+            return NS::ObjectToJson(*obj);
         }
 
-        const NS::Obj::SceneActor* obj = m_scene->Objects().FindByObjectId(objectId);
-        if (obj == nullptr)
+        void ObjectSnapshotApplier::ApplyObjectSnapshot(NS::uint32 objectId,
+                                                        const std::optional<nlohmann::json>& desired)
         {
-            return std::nullopt;
-        }
-        // undo は編集値ごと戻すため、配置物が自分を全 SubObject 値まで忠実に書き出す
-        return NS::Obj::ObjectToJson(*obj);
-    }
+            if (m_scene == nullptr)
+            {
+                return;
+            }
 
-    void ObjectSnapshotApplier::ApplyObjectSnapshot(NS::uint32 objectId, const std::optional<nlohmann::json>& desired)
-    {
-        if (m_scene == nullptr)
-        {
-            return;
+            // 対象 1 体へ姿を書き戻す。構成が同じなら実体は残し、SubObject が増減した時だけ作り直す
+            if (desired)
+            {
+                nlohmann::json entry = *desired;
+                NS::SetObjectJsonId(entry, objectId);
+                (void)m_scene->ApplyFromJson(entry);
+            }
+            else
+            {
+                m_scene->DestroyObject(objectId);
+            }
+            // 作り直した 1 体の当たりを張り直し、参照を引き直す側へ知らせる
+            m_scene->SyncPhysics();
         }
-
-        // 対象 1 体へ姿を書き戻す。構成が同じなら実体は残し、SubObject が増減した時だけ作り直す
-        if (desired)
-        {
-            nlohmann::json entry = *desired;
-            NS::Obj::SetObjectJsonId(entry, objectId);
-            (void)m_scene->ApplyFromJson(entry);
-        }
-        else
-        {
-            m_scene->DestroyObject(objectId);
-        }
-        // 作り直した 1 体の当たりを張り直し、参照を引き直す側へ知らせる
-        m_scene->SyncPhysics();
-    }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

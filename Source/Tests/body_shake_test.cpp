@@ -1,9 +1,9 @@
 #include "Game/Level/ImpactOutcome.h"
-#include "NSlib/Object/SceneActor.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Scene/Scene.h"
-#include "NSlib/Object/SubObjects/Model.h"
-#include "NSlib/Object/SubObjects/Transform.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/SubObjects/Model.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
 
@@ -15,14 +15,14 @@
 
 namespace
 {
-    NS::Obj::SceneActor* PlaceRock(NS::Obj::Scene& scene)
+    NS::SceneActor* PlaceRock(NS::Scene& scene)
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "PropActor");
-        NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonId(rock, 2);
+        NS::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         return scene.Objects().FindByObjectId(2);
     }
@@ -72,10 +72,10 @@ TEST(BodyShake, OffsetHoldsEachSideForTheFlipFramesAndFallsLinearly)
 // 描く箱へ足す分は、試しの世界にメッシュが無いので見ない
 TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
 {
-    NS::Obj::Scene scene;
-    NS::Obj::SceneActor* rock = PlaceRock(scene);
+    NS::Scene scene;
+    NS::SceneActor* rock = PlaceRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Obj::Model* model = rock->ModelSubObj();
+    NS::Model* model = rock->ModelSubObj();
     ASSERT_NE(model, nullptr);
     const NS::Matrix before = model->DrawWorldMatrix(1.0f);
 
@@ -97,10 +97,10 @@ TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
 // 根を挟んで左右に残る。有限でない離れは書かない
 TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
 {
-    NS::Obj::Scene scene;
-    NS::Obj::SceneActor* rock = PlaceRock(scene);
+    NS::Scene scene;
+    NS::SceneActor* rock = PlaceRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Obj::Model* model = rock->ModelSubObj();
+    NS::Model* model = rock->ModelSubObj();
     ASSERT_NE(model, nullptr);
     const NS::Matrix root = model->DrawWorldMatrix(1.0f);
     ASSERT_TRUE(model->SetDrawOffset(NS::Vector3{0.1f, 0.0f, 0.0f}));

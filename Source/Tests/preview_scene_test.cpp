@@ -1,10 +1,10 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/SubObjects/PlayerInput.h"
-#include "NSlib/Object/SubObjects/Transform.h"
-#include "NSlib/Object/ObjectJson.h"
-#include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
+#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -14,22 +14,22 @@ namespace
     // 自機 (id 1) と、その前の置物 (id 2) だけの場面の文書
     nlohmann::json MakeSlamSceneJson()
     {
-        nlohmann::json doc = NS::Obj::MakeSceneJson();
-        nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
-        NS::Obj::SetObjectJsonId(player, 1);
-        NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "PropActor");
-        NS::Obj::SetObjectJsonId(rock, 2);
-        NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 3.0f});
-        NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonId(rock, 2);
+        NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 3.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(rock));
         return doc;
     }
 
     // 床は文書に載らない当たりなので、場面ごとに足す
-    void AddFloor(NS::Obj::Scene& scene)
+    void AddFloor(NS::Scene& scene)
     {
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -49,11 +49,11 @@ namespace
     PreviewResult RunPreview(const nlohmann::json& snapshot)
     {
         PreviewResult result;
-        NS::Obj::Scene preview;
+        NS::Scene preview;
         preview.ResetFromJson(snapshot);
         AddFloor(preview);
         PlaceViewCamera(preview, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        PlayerActor* player = NS::Obj::Cast<PlayerActor>(preview.Objects().FindByObjectId(1));
+        PlayerActor* player = NS::Cast<PlayerActor>(preview.Objects().FindByObjectId(1));
         if (player == nullptr)
         {
             return result;
@@ -78,11 +78,11 @@ namespace
 // 同じ写しから 2 回立てると同じ当たりになる
 TEST(PreviewScene, CopiedSceneReachesTheImpactWithoutTouchingTheEditedScene)
 {
-    NS::Obj::Scene edited;
+    NS::Scene edited;
     edited.ResetFromJson(MakeSlamSceneJson());
     AddFloor(edited);
     edited.SetSimulationEnabled(false);
-    PlayerActor* editedPlayer = NS::Obj::Cast<PlayerActor>(edited.Objects().FindByObjectId(1));
+    PlayerActor* editedPlayer = NS::Cast<PlayerActor>(edited.Objects().FindByObjectId(1));
     ASSERT_NE(editedPlayer, nullptr);
     const NS::Vector3 editedPosition = editedPlayer->Root().Position();
     const nlohmann::json snapshot = edited.ToJson();

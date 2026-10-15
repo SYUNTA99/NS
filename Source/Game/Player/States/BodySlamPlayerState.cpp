@@ -2,10 +2,13 @@
 
 #include "Game/PlayerActor.h"
 
-namespace GL::Player
+namespace GL
 {
-    void BodySlamPlayerState::OnStep(::PlayerActor& player, float dt)
+    namespace Player
     {
-        player.UpdateBodySlam(dt);
-    }
-} // namespace GL::Player
+        void BodySlamPlayerState::OnStep(::PlayerActor& player, float dt)
+        {
+            player.UpdateBodySlam(dt);
+        }
+    } // namespace Player
+} // namespace GL
