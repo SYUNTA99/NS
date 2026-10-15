@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerAppearance.h"
@@ -55,12 +55,12 @@ namespace
     }
 } // namespace
 
-const GL::Level::ImpactInputJudge& Player::ChargeJudge() const noexcept
+const GL::Level::ImpactInputJudge& PlayerActor::ChargeJudge() const noexcept
 {
     return m_charge.judge;
 }
 
-bool Player::TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
+bool PlayerActor::TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
 {
     if (!m_charge.hasAimLine)
     {
@@ -70,7 +70,7 @@ bool Player::TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
     return true;
 }
 
-bool Player::TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
+bool PlayerActor::TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
 {
     if (!m_charge.hasAimTarget)
     {
@@ -80,7 +80,7 @@ bool Player::TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcep
     return true;
 }
 
-bool Player::TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
+bool PlayerActor::TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
 {
     if (!m_charge.hasLineTarget)
     {
@@ -90,7 +90,7 @@ bool Player::TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const noexce
     return true;
 }
 
-float Player::StanceHeight() const noexcept
+float PlayerActor::StanceHeight() const noexcept
 {
     if (!m_charge.judge.IsHoldingCharge())
     {
@@ -103,7 +103,7 @@ float Player::StanceHeight() const noexcept
     return m_appearance->PressSquashScale();
 }
 
-void Player::ObserveCharge(bool held)
+void PlayerActor::ObserveCharge(bool held)
 {
     m_charge.observedHeld = held;
     m_charge.observedHasAimTarget = false;
@@ -137,7 +137,7 @@ void Player::ObserveCharge(bool held)
     }
 }
 
-void Player::AdvanceCharge(float dt)
+void PlayerActor::AdvanceCharge(float dt)
 {
     GL::Level::ImpactInputJudge& judge = m_charge.judge;
     judge.chargeThresholdSteps = SecondsToSteps(m_params->m_chargeThresholdSeconds, dt);
@@ -217,7 +217,7 @@ void Player::AdvanceCharge(float dt)
     ApplyChargeSway(dt);
 }
 
-void Player::ApplyChargeSway(float dt)
+void PlayerActor::ApplyChargeSway(float dt)
 {
     const GL::Level::ImpactInputJudge& judge = m_charge.judge;
     const int steps = judge.OverchargedSteps();
@@ -286,7 +286,7 @@ void Player::ApplyChargeSway(float dt)
     }
 }
 
-void Player::CancelCharge() noexcept
+void PlayerActor::CancelCharge() noexcept
 {
     // 判定のしきい値の歩数は AdvanceCharge が毎回入れ直すので失われない
     m_charge = ChargeRecord{};
@@ -295,7 +295,7 @@ void Player::CancelCharge() noexcept
     SetMaxSpeedScale(1.0f);
 }
 
-void Player::EndCharge() noexcept
+void PlayerActor::EndCharge() noexcept
 {
     CancelCharge();
     // 外れた後は着地で丸まりを解く歩が来ないので、ここで解く。ResetState は速度と状態機械まで戻すので呼ばない
@@ -303,7 +303,7 @@ void Player::EndCharge() noexcept
 }
 
 #if !defined(NS_SHIPPING)
-void Player::DrawChargeRing() const
+void PlayerActor::DrawChargeRing() const
 {
     if (!m_charge.judge.IsCharging())
     {

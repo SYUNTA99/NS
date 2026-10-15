@@ -1,4 +1,4 @@
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseState.h"
 #include "NSlib/Object/StateMachineOf.h"
 
@@ -8,20 +8,20 @@
 
 namespace
 {
-    class OwnedState final : public NS::Obj::StateOf<OwnedState, NS::Obj::Actor>
+    class OwnedState final : public NS::Obj::StateOf<OwnedState, NS::Obj::SceneActor>
     {
     public:
-        void OnStep(NS::Obj::Actor&, float) override {}
+        void OnStep(NS::Obj::SceneActor&, float) override {}
     };
 
     // BuildStateMachine は派生が自分の組み立ての中で呼ぶ口なので、試しの派生が開ける
-    class MachineActor final : public NS::Obj::Actor
+    class MachineActor final : public NS::Obj::SceneActor
     {
     public:
-        NS::Obj::StateMachineOf<NS::Obj::Actor>* BuildOwned()
+        NS::Obj::StateMachineOf<NS::Obj::SceneActor>* BuildOwned()
         {
-            NS::Obj::StateMachineOf<NS::Obj::Actor>* machine = nullptr;
-            (void)BuildStateMachine<NS::Obj::Actor, OwnedState>(*this, machine);
+            NS::Obj::StateMachineOf<NS::Obj::SceneActor>* machine = nullptr;
+            (void)BuildStateMachine<NS::Obj::SceneActor, OwnedState>(*this, machine);
             return machine;
         }
     };
@@ -42,7 +42,7 @@ namespace
         void OnStep(ProbeActor&, float) override {}
     };
 
-    class ProbeActor final : public NS::Obj::Actor
+    class ProbeActor final : public NS::Obj::SceneActor
     {
     public:
         bool BuildProbe() { return BuildStateMachine<ProbeActor, ProbeState>(*this, machine); }
@@ -57,20 +57,20 @@ namespace
     }
 
     // 段のメンバーの中から、歩数の問いを修飾なしで呼ぶ
-    class StepReadingActor final : public NS::Obj::Actor
+    class StepReadingActor final : public NS::Obj::SceneActor
     {
     public:
         void BuildOwned()
         {
-            NS::Obj::StateMachineOf<NS::Obj::Actor>* machine = nullptr;
-            (void)BuildStateMachine<NS::Obj::Actor, OwnedState>(*this, machine);
+            NS::Obj::StateMachineOf<NS::Obj::SceneActor>* machine = nullptr;
+            (void)BuildStateMachine<NS::Obj::SceneActor, OwnedState>(*this, machine);
         }
         NS::uint32 stepsSeenInVisual = 0;
 
     protected:
         void VisualStep() override
         {
-            NS::Obj::Actor::VisualStep();
+            NS::Obj::SceneActor::VisualStep();
             stepsSeenInVisual = StepsInState(this);
         }
     };
@@ -78,7 +78,7 @@ namespace
 
 TEST(ActorStateMachine, ActorWithoutMachineUpdatesQuietly)
 {
-    NS::Obj::Actor actor;
+    NS::Obj::SceneActor actor;
     EXPECT_EQ(actor.GetStates(), nullptr);
     actor.Update();
     EXPECT_EQ(actor.GetStates(), nullptr);
@@ -88,7 +88,7 @@ TEST(ActorStateMachine, ActorWithoutMachineUpdatesQuietly)
 TEST(ActorStateMachine, BaseOwnsTheMachineAndUpdateStepsIt)
 {
     MachineActor actor;
-    NS::Obj::StateMachineOf<NS::Obj::Actor>* machine = actor.BuildOwned();
+    NS::Obj::StateMachineOf<NS::Obj::SceneActor>* machine = actor.BuildOwned();
 
     ASSERT_NE(actor.GetStates(), nullptr);
     EXPECT_EQ(actor.GetStates(), machine);

@@ -156,7 +156,7 @@ void Editor::OnRender()
 
         if (!m_dock.IsMaximized())
         {
-            // Hierarchy / Inspector はプレイ中も出す。Player / Camera を選んで操作感をライブ調整できるようにするため
+            // Hierarchy / Inspector はプレイ中も出す。PlayerActor / Camera を選んで操作感をライブ調整できるようにするため
             // DockSpace も両モードで毎フレーム置き、edit で組んだドッキングがプレイ移行で崩れないようにする
             m_dock.RenderDockSpaceHost(toolbarHeight);
             m_sceneView.Render(editor);

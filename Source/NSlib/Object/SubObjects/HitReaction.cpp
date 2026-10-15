@@ -1,7 +1,7 @@
 #include "NSlib/Object/SubObjects/HitReaction.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
@@ -15,7 +15,7 @@ namespace NS::Obj
         constexpr int k_MaxShakeFrames = 60;
 
         // 上限を超えた長さは警告して断る。カメラの無い場面は黙って断る
-        bool CanStartCameraMotion(const Actor* owner, int frames)
+        bool CanStartCameraMotion(const SceneActor* owner, int frames)
         {
             if (frames > k_MaxShakeFrames)
             {
@@ -28,7 +28,7 @@ namespace NS::Obj
 
         // 持ち主が nullptr の間は引かない。FindSceneSystem に nullptr を渡すと NS_ASSERT
         // で止まり、出荷版では検査されない
-        template <class T> T* FindDirector(Actor* owner)
+        template <class T> T* FindDirector(SceneActor* owner)
         {
             if (owner == nullptr)
             {

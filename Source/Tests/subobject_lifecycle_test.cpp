@@ -1,9 +1,9 @@
-#include "Game/Level/FollowCamera.h"
-#include "Game/Level/MapObj.h"
+#include "Game/Level/FollowCameraActor.h"
+#include "Game/Level/PropActor.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
-#include "Game/Player.h"
-#include "NSlib/Object/Actors/Light.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/Object/Actors/LightActor.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/System/CameraManager.h"
 #include "NSlib/Physics/PhysicsScene.h"
@@ -38,7 +38,7 @@ namespace
 
     // 出ている間と消えている間の差を返す。部品が作るシーンに 1 つの管理役 (当たりの画面の係など) は
     // 持ち主が消えても残るので、空のシーンとは比べない。返る時、actor は消えている
-    Registrations RegisteredWhileAppeared(NS::Obj::Scene& scene, NS::Obj::Actor& actor)
+    Registrations RegisteredWhileAppeared(NS::Obj::Scene& scene, NS::Obj::SceneActor& actor)
     {
         const Registrations appeared = Count(scene);
         actor.Disappear();
@@ -59,7 +59,7 @@ namespace
 TEST(SubObjectLifecycle, BaseFramePartsRegisterOnlyWhileAppeared)
 {
     NS::Obj::Scene scene;
-    GL::Level::MapObj* actor = scene.SpawnTransient<GL::Level::MapObj>();
+    GL::Level::PropActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
     // 模型は本体と残像の 2 つ、影は 1 つを描く物に入れる
     EXPECT_EQ(RegisteredWhileAppeared(scene, *actor), (Registrations{.renderables = 3, .sensors = 1, .bodies = 1}));
 }
@@ -70,7 +70,7 @@ TEST(SubObjectLifecycle, BaseFramePartsRegisterOnlyWhileAppeared)
 TEST(SubObjectLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
 {
     NS::Obj::Scene scene;
-    Player* player = scene.SpawnTransient<Player>();
+    PlayerActor* player = scene.SpawnTransient<PlayerActor>();
     EXPECT_EQ(RegisteredWhileAppeared(scene, *player), (Registrations{.renderables = 3, .sensors = 1}));
     EXPECT_FALSE(player->TargetIndicator().IsOverlayVisible());
     EXPECT_FALSE(player->SlamIndicator().IsOverlayVisible());
@@ -88,7 +88,7 @@ TEST(SubObjectLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
 TEST(SubObjectLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Light* light = scene.SpawnTransient<NS::Obj::Light>();
+    NS::Obj::LightActor* light = scene.SpawnTransient<NS::Obj::LightActor>();
     const NS::Obj::SubObject* sun = light->FindSubObj("DirectionalLight");
     ASSERT_NE(sun, nullptr);
     EXPECT_EQ(RegisteredWhileAppeared(scene, *light), Registrations{});
@@ -102,7 +102,7 @@ TEST(SubObjectLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
 TEST(SubObjectLifecycle, FollowCameraStaysRegisteredAndIsSkippedWhileDisappeared)
 {
     NS::Obj::Scene scene;
-    GL::Level::FollowCamera* camera = scene.SpawnTransient<GL::Level::FollowCamera>();
+    GL::Level::FollowCameraActor* camera = scene.SpawnTransient<GL::Level::FollowCameraActor>();
     const NS::Obj::CameraManager* cameras = scene.GetCameraManager();
     EXPECT_EQ(RegisteredWhileAppeared(scene, *camera), Registrations{});
     EXPECT_EQ(cameras->VirtualCameraCount(), 1u);

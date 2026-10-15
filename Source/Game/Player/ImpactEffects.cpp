@@ -3,10 +3,10 @@
 
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "NSlib/Core/AABB.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -77,12 +77,12 @@ namespace GL::Player
 
     void ImpactEffects::OnStart()
     {
-        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        if (::PlayerActor* ownerPlayer = NS::Obj::Cast<::PlayerActor>(Owner()))
         {
             m_resolver = &ownerPlayer->Resolver();
             m_player = ownerPlayer;
         }
-        if (const NS::Obj::Actor* owner = Owner())
+        if (const NS::Obj::SceneActor* owner = Owner())
         {
             NS::Obj::PreloadEffects(owner,
                                     {m_coreAsset,

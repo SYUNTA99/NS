@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Player/PlayerGravity.h"
@@ -49,7 +49,7 @@ namespace
 } // namespace
 
 
-void Player::MoveBody(float dt) noexcept
+void PlayerActor::MoveBody(float dt) noexcept
 {
     // 壁に当たった後の速度からは面へ向かう分が抜ける。掴む向きに使うので、抜ける前の向きを覚える
     NS::Vector3 target{};
@@ -76,7 +76,7 @@ void Player::MoveBody(float dt) noexcept
     m_slam.wasSlamming = IsBodySlamming();
 }
 
-void Player::SyncGroundState() noexcept
+void PlayerActor::SyncGroundState() noexcept
 {
     if (!m_body->WasGrounded() && m_body->IsGrounded())
     {
@@ -91,7 +91,7 @@ void Player::SyncGroundState() noexcept
     }
 }
 
-void Player::TickTimers(float dt) noexcept
+void PlayerActor::TickTimers(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     m_bufferTimer -= dt;
@@ -107,7 +107,7 @@ void Player::TickTimers(float dt) noexcept
     }
 }
 
-bool Player::TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept
+bool PlayerActor::TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept
 {
     if (!GL::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) ||
         !NS::TryNormalizeHorizontal(DesiredDirection(), outDirection))
@@ -118,7 +118,7 @@ bool Player::TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const n
     return true;
 }
 
-void Player::AccelerateToInputDirection(float dt) noexcept
+void PlayerActor::AccelerateToInputDirection(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     NS::Vector3 direction{};
@@ -136,17 +136,17 @@ void Player::AccelerateToInputDirection(float dt) noexcept
     body.Accelerate(direction, m_params->m_turningDrag, acceleration, topSpeed, dt);
 }
 
-void Player::ApplyFriction(float dt) noexcept
+void PlayerActor::ApplyFriction(float dt) noexcept
 {
     m_body->Decelerate(m_params->m_friction, dt);
 }
 
-void Player::ApplyBrake(float dt) noexcept
+void PlayerActor::ApplyBrake(float dt) noexcept
 {
     m_body->Decelerate(m_params->m_deceleration, dt);
 }
 
-void Player::Jump(float) noexcept
+void PlayerActor::Jump(float) noexcept
 {
     NS::Obj::Body& body = *m_body;
     if (GL::Player::PlayerJudgeJump::Judge(
@@ -160,7 +160,7 @@ void Player::Jump(float) noexcept
     }
 }
 
-void Player::CutJumpRelease() noexcept
+void PlayerActor::CutJumpRelease() noexcept
 {
     NS::Obj::Body& body = *m_body;
     if (m_prevJumpHeld && !m_input->JumpHeld() && body.VerticalVelocity() > 0.0f)
@@ -169,14 +169,14 @@ void Player::CutJumpRelease() noexcept
     }
 }
 
-void Player::Gravity(float dt) noexcept
+void PlayerActor::Gravity(float dt) noexcept
 {
     // 強さの選び方は LaunchPitch と同じ関数。写すと欄を変えた時に放つ角度の予測と実際の落ち方が割れる
     NS::Obj::Body& body = *m_body;
     body.Gravity(GL::Player::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
 }
 
-void Player::TapSlamGravity(float dt) noexcept
+void PlayerActor::TapSlamGravity(float dt) noexcept
 {
     // 進み切る前に着地すると残りを地面の上で滑り、走っていないのに動いて見える
     // 滞空秒を踏み込みの秒へ合わせ、進み切った所で足が着くようにする
@@ -198,14 +198,14 @@ void Player::TapSlamGravity(float dt) noexcept
     m_body->Gravity(g, dt);
 }
 
-void Player::ReboundGravity(float dt) noexcept
+void PlayerActor::ReboundGravity(float dt) noexcept
 {
     // 上りだけ倍率付きの組を PlayerParams が持つ。選び方は普段の重力と同じ ChooseGravity 1 つ
     NS::Obj::Body& body = *m_body;
     body.Gravity(GL::Player::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
 }
 
-void Player::AccelerateDuringRebound(float dt) noexcept
+void PlayerActor::AccelerateDuringRebound(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     NS::Vector3 direction{};
@@ -221,13 +221,13 @@ void Player::AccelerateDuringRebound(float dt) noexcept
     body.Accelerate(direction, turningDrag, m_params->m_reboundAirAcceleration, topSpeed, dt);
 }
 
-void Player::BeginSkid() noexcept
+void PlayerActor::BeginSkid() noexcept
 {
     m_skid.landingVelocity = m_body->LateralVelocity();
     m_skid.elapsedSteps = 0;
 }
 
-bool Player::AdvanceSkid() noexcept
+bool PlayerActor::AdvanceSkid() noexcept
 {
     ++m_skid.elapsedSteps;
     // 着いた速さに依らず同じフレーム数で止まりきり、操作が戻る
@@ -237,7 +237,7 @@ bool Player::AdvanceSkid() noexcept
     return m_skid.elapsedSteps >= m_params->m_missSkidSteps;
 }
 
-void Player::UpdateBodySlam(float dt) noexcept
+void PlayerActor::UpdateBodySlam(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
@@ -300,7 +300,7 @@ namespace
     }
 } // namespace
 
-bool Player::LedgeGrab() noexcept
+bool PlayerActor::LedgeGrab() noexcept
 {
     NS::Obj::Body& body = *m_body;
     if (!GL::Player::PlayerJudgeLedgeGrab::Judge(body.IsGrounded(), body.VerticalVelocity(), m_slam.wasSlamming))
@@ -391,7 +391,7 @@ bool Player::LedgeGrab() noexcept
     return false;
 }
 
-bool Player::HoldLedge() noexcept
+bool PlayerActor::HoldLedge() noexcept
 {
     NS::Obj::Body& body = *m_body;
     float top = 0.0f;
@@ -409,7 +409,7 @@ bool Player::HoldLedge() noexcept
     return true;
 }
 
-bool Player::LedgeJump() noexcept
+bool PlayerActor::LedgeJump() noexcept
 {
     if (!m_input->JumpPressed())
     {
@@ -424,7 +424,7 @@ bool Player::LedgeJump() noexcept
     return true;
 }
 
-void Player::ClimbLedge() noexcept
+void PlayerActor::ClimbLedge() noexcept
 {
     NS::Obj::Body& body = *m_body;
     const NS::Obj::Collider& collider = *m_collider;
@@ -443,7 +443,7 @@ void Player::ClimbLedge() noexcept
     m_playerEvents.onLedgeClimbing.Invoke();
 }
 
-void Player::DropLedge() noexcept
+void PlayerActor::DropLedge() noexcept
 {
     NS::Obj::Body& body = *m_body;
     (void)m_states->Change<GL::Player::FallPlayerState>();
@@ -453,7 +453,7 @@ void Player::DropLedge() noexcept
     m_facingDir = m_ledgeFaceNormal;
 }
 
-void Player::Shimmy(float dt) noexcept
+void PlayerActor::Shimmy(float dt) noexcept
 {
     if (ClimbRight() != 0.0f)
     {
@@ -472,7 +472,7 @@ void Player::Shimmy(float dt) noexcept
     }
 }
 
-void Player::UpdateLedgeClimb(float dt) noexcept
+void PlayerActor::UpdateLedgeClimb(float dt) noexcept
 {
     NS::Obj::Body& body = *m_body;
     m_ledgeMantleTimer += dt;
@@ -511,7 +511,7 @@ void Player::UpdateLedgeClimb(float dt) noexcept
     }
 }
 
-bool Player::FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept
+bool PlayerActor::FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept
 {
     const NS::Obj::Collider& collider = *m_collider;
     const NS::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};

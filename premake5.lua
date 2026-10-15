@@ -320,7 +320,7 @@ project "NSlib"
 --============================================================================
 --============================================================================
 -- Game (StaticLib) — ゲーム本体 (content / logic)
---   Player / Block / LevelPlayScene / Level / Theme 等。
+--   PlayerActor / Block / LevelPlayScene / Level / Theme 等。
 --   editor を一切知らない (依存の向きは Editor → Game の一方向)。 出荷を含む全構成でビルド。
 --   合成 Layer ::Game もここに置き、 editor から Game::Get() で参照できるようにする。
 --============================================================================
@@ -608,10 +608,10 @@ project "Tests"
     files {
         "Source/Tests/**.h",
         "Source/Tests/**.cpp",
-        -- Game 側 Actor 派生 (Player) は Application 依存を持たないので
+        -- Game 側 SceneActor 派生 (PlayerActor) は Application 依存を持たないので
         -- Tests から直接コンパイルしてリンクする。
-        -- Source/Game/Player/ 配下とは別物。Actor 派生の Player 本体
-        "Source/Game/Player.cpp",
+        -- Source/Game/Player/ 配下とは別物。SceneActor 派生の PlayerActor 本体
+        "Source/Game/PlayerActor.cpp",
         "Source/Game/PlayerMovement.cpp",
         "Source/Game/PlayerBodySlam.cpp",
         "Source/Game/PlayerCharge.cpp",
@@ -628,7 +628,7 @@ project "Tests"
         -- Level 配下と Undo Command は Application 非依存の純粋ロジックなので
         -- Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
-        -- Player 配下は状態の自己登録 (NS_STATE) が無名 namespace の静的初期化に載る。
+        -- PlayerActor 配下は状態の自己登録 (NS_STATE) が無名 namespace の静的初期化に載る。
         -- Tests が自分でコンパイルした obj はリンカが必ず取り込むので、ここへ足せば /WHOLEARCHIVE は要らない
         "Source/Game/Player/**.cpp",
         "Source/Editor/Undo/**.cpp",

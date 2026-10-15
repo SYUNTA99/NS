@@ -1,8 +1,8 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/MapObj.h"
+#include "Game/Level/PropActor.h"
 #include "Game/Level/MapObjParams.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
@@ -32,16 +32,16 @@
 
 namespace
 {
-    Player* PlacePipelinePlayer(NS::Obj::Scene& scene, float targetX = 0.0f, float targetZ = 3.0f)
+    PlayerActor* PlacePipelinePlayer(NS::Obj::Scene& scene, float targetX = 0.0f, float targetZ = 3.0f)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "Player");
+        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
         NS::Obj::SetObjectJsonId(player, 1);
         NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "MapObj");
+        NS::Obj::SetObjectJsonClass(rock, "PropActor");
         NS::Obj::SetObjectJsonId(rock, 2);
         NS::Obj::SetObjectPosition(rock, NS::Vector3{targetX, 0.5f, targetZ});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -53,11 +53,11 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
     // 見本の列に書く状態の綴り。表に無い状態は Other
-    std::string_view StateName(const Player& player)
+    std::string_view StateName(const PlayerActor& player)
     {
         if (player.States().IsCurrent<GL::Player::IdlePlayerState>())
         {
@@ -96,7 +96,7 @@ namespace
     // 手前の置物へ溜めた突進を出し、止めの頭まで回す。届いた場合 true
     // waitForFreeze が偽なら、止めの頭を待つ検知のフレームで止める
     // 突進は 1 フレームの入口から出す。BodySlam を直に呼ぶと先行入力が残り、止めが明けた後にもう 1 度出る
-    bool SlamIntoTheRock(Player& player, GL::Level::MapObj& rock, bool waitForFreeze)
+    bool SlamIntoTheRock(PlayerActor& player, GL::Level::PropActor& rock, bool waitForFreeze)
     {
         player.RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         for (int frame = 0; frame < 10; ++frame)
@@ -119,7 +119,7 @@ namespace
 TEST(PlayerUpdatePipeline, ImpactObservationDoesNotJudgeOrMoveThePlayer)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene);
+    PlayerActor* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
     player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
     const NS::Vector3 position = player->Root().Position();
@@ -134,7 +134,7 @@ TEST(PlayerUpdatePipeline, ImpactObservationDoesNotJudgeOrMoveThePlayer)
 TEST(PlayerUpdatePipeline, SlamHeadingStaysOnTheAimBesideAnOffAxisTarget)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -154,7 +154,7 @@ TEST(PlayerUpdatePipeline, SlamHeadingStaysOnTheAimBesideAnOffAxisTarget)
 TEST(PlayerUpdatePipeline, SquashedSlamRegainsItsHeadingFromTheState)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.0f, 40.0f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 40.0f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -170,7 +170,7 @@ TEST(PlayerUpdatePipeline, SquashedSlamRegainsItsHeadingFromTheState)
 TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -187,11 +187,11 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
     EXPECT_TRUE(player->Resolver().IsHitStopping());
 }
 
-// 1 フレームを進める入口は Player::Update だけ。裁定の部品を単独で回しても、観測も裁定も走らない
+// 1 フレームを進める入口は PlayerActor::Update だけ。裁定の部品を単独で回しても、観測も裁定も走らない
 TEST(PlayerUpdatePipeline, TickingTheResolverPartAloneDoesNotJudge)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -204,7 +204,7 @@ TEST(PlayerUpdatePipeline, TickingTheResolverPartAloneDoesNotJudge)
 TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -220,9 +220,9 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
 TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     EXPECT_TRUE(player->Body().IsActive());
@@ -253,9 +253,9 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
 TEST(PlayerUpdatePipeline, ReleasingTheHitStopLeavesASwitchedOffBodyAlone)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     player->Body().SetActive(false);
@@ -280,10 +280,10 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
     {
         SCOPED_TRACE(waitForFreeze);
         NS::Obj::Scene scene;
-        Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+        PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
         ASSERT_NE(player, nullptr);
         (void)scene.BeginPlayBaseline();
-        GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
+        GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         const NS::Vector3 rockHome = rock->Root().Position();
         ASSERT_TRUE(SlamIntoTheRock(*player, *rock, waitForFreeze));
@@ -309,9 +309,9 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
 TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     ASSERT_TRUE(player->Resolver().IsShapeAnimating());
@@ -326,7 +326,7 @@ TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
 TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene);
+    PlayerActor* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
     for (int frame = 0; frame < 120 && !player->ChargeJudge().IsCharging(); ++frame)
     {
@@ -341,9 +341,9 @@ TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
 TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     ASSERT_FALSE(player->Resolver().LastImpact().broke);
@@ -399,9 +399,9 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
 TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.0f, 2.5f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 2.5f);
     ASSERT_NE(player, nullptr);
-    GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     for (int frame = 0; frame < 60; ++frame)
     {
@@ -439,9 +439,9 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
 TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     player->Resolver().SetEnabled(false);
@@ -462,7 +462,7 @@ TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
 TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
+    PlayerActor* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -481,7 +481,7 @@ TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl
 TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePipelinePlayer(scene);
+    PlayerActor* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
     ASSERT_TRUE(player->Body().IsActive());
     ASSERT_TRUE(player->Input().IsActive());
@@ -587,7 +587,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             frames = 190;
             holdFrames = 90;
         }
-        Player* player = PlacePipelinePlayer(scene, targetX, targetZ);
+        PlayerActor* player = PlacePipelinePlayer(scene, targetX, targetZ);
         ASSERT_NE(player, nullptr);
         // 基準は通常突進の初速 10 で、紫の揺れと紫の威力が無い時に採った
         // 外れの反動は真ん中と同じ高さと距離で、着いた後にこすらない。外れの相手は押し込む成分だけで飛ぶ距離を縮める
@@ -605,7 +605,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                                                           {"中心近くの当たりの反動の距離の倍率", 2.0f},
                                                           {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
                   0u);
-        GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
+        GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         GL::Level::MapObjParams* rockParams = NS::Obj::Cast<GL::Level::MapObjParams>(rock->FindSubObj("Params"));
         ASSERT_NE(rockParams, nullptr);

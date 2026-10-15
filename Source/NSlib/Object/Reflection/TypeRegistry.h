@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ObjectJson.h"
 
 #include <memory>
@@ -11,12 +11,12 @@
 
 namespace NS::Obj
 {
-    //! Actor 派生を生成する関数
-    using ActorCreateFn = std::unique_ptr<Actor> (*)();
+    //! SceneActor 派生を生成する関数
+    using ActorCreateFn = std::unique_ptr<SceneActor> (*)();
 
     using SubObjectDefaultFn = std::unique_ptr<SubObject> (*)();
 
-    //! NS_CLASS で登録した Actor と部品をクラス名から生成する
+    //! NS_CLASS で登録した SceneActor と部品をクラス名から生成する
     //! 静的ライブラリでは自己登録の翻訳単位がリンク時に除去されないようにする
     class TypeRegistry
     {
@@ -26,12 +26,12 @@ namespace NS::Obj
         struct Entry
         {
             const char* className;            // 保存形式に書くクラス名
-            ActorCreateFn create;             // Actor 側の生成関数。SubObject 側の登録は nullptr
-            SubObjectDefaultFn createDefault; // SubObject 側の生成関数。Actor 側の登録は nullptr
-            const char* label;                // エディタで置ける Actor の表示名。置けない型は nullptr
+            ActorCreateFn create;             // SceneActor 側の生成関数。SubObject 側の登録は nullptr
+            SubObjectDefaultFn createDefault; // SubObject 側の生成関数。SceneActor 側の登録は nullptr
+            const char* label;                // エディタで置ける SceneActor の表示名。置けない型は nullptr
         };
 
-        //! label はエディタで置ける Actor にだけ渡す。同名の二重登録は先勝ちで拒否し debug では assert で落とす
+        //! label はエディタで置ける SceneActor にだけ渡す。同名の二重登録は先勝ちで拒否し debug では assert で落とす
         void Register(const char* className,
                       ActorCreateFn create,
                       SubObjectDefaultFn attach,
@@ -47,21 +47,21 @@ namespace NS::Obj
         std::vector<Entry> m_entries; // 登録順のまま持つ。型の種類は少数なので線形照合で足りる
     };
 
-    //! クラス名から Actor をコードの既定値で作り、Init を済ませて返す。未登録のクラスと空の名前は素の Actor
-    [[nodiscard]] std::unique_ptr<Actor> CreateActorOfClass(std::string_view className);
+    //! クラス名から SceneActor をコードの既定値で作り、Init を済ませて返す。未登録のクラスと空の名前は素の SceneActor
+    [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
 
-    //! object の Actor を作る。className 一致の登録があればその生成関数、該当しなければ素の Actor を返す
-    [[nodiscard]] std::unique_ptr<Actor> CreateRegisteredObject(const nlohmann::json& object);
+    //! object の SceneActor を作る。className 一致の登録があればその生成関数、該当しなければ素の SceneActor を返す
+    [[nodiscard]] std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object);
 
-    //! 型名から部品をコードの既定値で作る。持ち主と名前は付かない。未登録の型名と Actor の型名は nullptr
+    //! 型名から部品をコードの既定値で作る。持ち主と名前は付かない。未登録の型名と SceneActor の型名は nullptr
     [[nodiscard]] std::unique_ptr<SubObject> CreateSubObjOfType(std::string_view typeName);
 
-    //! @brief エディタで置ける Actor の登録の一覧。表示名の順で安定
+    //! @brief エディタで置ける SceneActor の登録の一覧。表示名の順で安定
     //! @details ヒエラルキーの追加メニューとパレットが、置ける種類の列挙に使う
     [[nodiscard]] const std::vector<const TypeRegistry::Entry*>& PlaceableEntries();
 
-    //! NS_CLASS / NS_PLACEABLE の実体。T の継承で Actor 側か SubObject 側かを見分けて登録する
-    //! label を渡すのはエディタで置ける Actor だけ
+    //! NS_CLASS / NS_PLACEABLE の実体。T の継承で SceneActor 側か SubObject 側かを見分けて登録する
+    //! label を渡すのはエディタで置ける SceneActor だけ
     template <class T> void RegisterClass(const char* className, const char* label = nullptr)
     {
         if constexpr (std::is_base_of_v<SubObject, T>)
@@ -71,9 +71,9 @@ namespace NS::Obj
         }
         else
         {
-            static_assert(std::is_base_of_v<Actor, T>, "NS_CLASS は Actor か SubObject の派生に書く");
+            static_assert(std::is_base_of_v<SceneActor, T>, "NS_CLASS は SceneActor か SubObject の派生に書く");
             TypeRegistry::Get().Register(
-                className, +[]() -> std::unique_ptr<Actor> { return std::make_unique<T>(); }, nullptr, label);
+                className, +[]() -> std::unique_ptr<SceneActor> { return std::make_unique<T>(); }, nullptr, label);
         }
     }
 } // namespace NS::Obj
@@ -89,7 +89,7 @@ namespace NS::Obj
         }();                                                                                                           \
     }
 
-//! エディタで置ける Actor をクラス名と表示名で自己登録する。NS_CLASS の代わりに、その型の .cpp で 1 度だけ書く
+//! エディタで置ける SceneActor をクラス名と表示名で自己登録する。NS_CLASS の代わりに、その型の .cpp で 1 度だけ書く
 //! 表示名はヒエラルキーの追加メニューとパレットに出る
 #define NS_PLACEABLE(Type, Label)                                                                                      \
     namespace                                                                                                          \

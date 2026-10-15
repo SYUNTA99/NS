@@ -20,12 +20,12 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonClass(rock, "PropActor");
     NS::Obj::SetObjectJsonId(rock, 1);
     rock["subObjects"] = {{"Params", {{"質量", 2.0f}, {"耐久", 3.0f}}}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
+    NS::Obj::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     const GL::Level::MapObjParams* params = NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -45,7 +45,7 @@ TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
     for (const NS::uint32 id : {1u, 2u})
     {
         nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "MapObj");
+        NS::Obj::SetObjectJsonClass(rock, "PropActor");
         NS::Obj::SetObjectJsonId(rock, id);
         NS::Obj::SetObjectPosition(rock, NS::Vector3{static_cast<float>(id) * 5.0f, 0.5f, 0.0f});
         if (id == 2)
@@ -63,7 +63,7 @@ TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
         {
             expected = "barrel";
         }
-        NS::Obj::Actor* actor = scene.Objects().FindByObjectId(id);
+        NS::Obj::SceneActor* actor = scene.Objects().FindByObjectId(id);
         ASSERT_NE(actor, nullptr);
         const GL::Level::MapObjParams* params = NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
         ASSERT_NE(params, nullptr);
@@ -90,11 +90,11 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
         std::vector<float> toughnesses;
         for (const nlohmann::json& entry : NS::Obj::SceneJsonObjects(doc))
         {
-            if (NS::Obj::ObjectJsonClass(entry) != "MapObj")
+            if (NS::Obj::ObjectJsonClass(entry) != "PropActor")
             {
                 continue;
             }
-            const NS::Obj::Actor* rock = scene.Objects().FindByObjectId(NS::Obj::ObjectJsonId(entry));
+            const NS::Obj::SceneActor* rock = scene.Objects().FindByObjectId(NS::Obj::ObjectJsonId(entry));
             ASSERT_NE(rock, nullptr);
             const GL::Level::MapObjParams* params = NS::Obj::Cast<GL::Level::MapObjParams>(rock->FindSubObj("Params"));
             ASSERT_NE(params, nullptr);
@@ -121,12 +121,12 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonClass(rock, "PropActor");
     NS::Obj::SetObjectJsonId(rock, 1);
     rock["subObjects"] = {{"Params", {{"質量", -2.0f}, {"耐久", -3.0f}, {"摩擦", -1.0f}, {"跳ね返り", -1.0f}}}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    const NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
+    const NS::Obj::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     const GL::Level::MapObjParams* params = NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -168,12 +168,12 @@ TEST(MapObjParams, TackleAnswerCarriesTheLaunchShape)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonClass(rock, "PropActor");
     NS::Obj::SetObjectJsonId(rock, 1);
     rock["subObjects"] = {{"Params", {{"押し飛ばしの高さ", 3.0f}, {"外れで飛ばす相手の距離の割合", 0.5f}}}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
+    NS::Obj::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     GL::Level::TackleTargetAnswer answer;
     ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorSubObj(), answer));
@@ -207,11 +207,11 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonClass(rock, "PropActor");
     NS::Obj::SetObjectJsonId(rock, 1);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
+    NS::Obj::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     GL::Level::MapObjParams* params = NS::Obj::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
     GL::Level::LaunchEffects* effects = NS::Obj::Cast<GL::Level::LaunchEffects>(actor->FindSubObj("LaunchEffects"));

@@ -1,6 +1,6 @@
 #include "NSlib/Object/SubObjects/Collider.h"
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Physics/JoltCharacter.h"
 

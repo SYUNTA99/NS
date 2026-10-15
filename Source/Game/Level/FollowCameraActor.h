@@ -1,14 +1,14 @@
 #pragma once
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 
 namespace GL::Level
 {
-    class FollowCamera : public NS::Obj::Actor
+    class FollowCameraActor : public NS::Obj::SceneActor
     {
     public:
-        NS_REFLECT_BEGIN(FollowCamera, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(FollowCameraActor, NS::Obj::SceneActor)
         NS_REFLECT_SUBOBJ(m_vcam, "Vcam")
         NS_REFLECT_END()
         [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Camera; }

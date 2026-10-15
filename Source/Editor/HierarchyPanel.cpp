@@ -5,7 +5,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ActorList.h"
 
 #include "NSlib/Core/Types.h"
@@ -65,7 +65,7 @@ namespace NS::Editor
             ImGui::Separator();
 
             std::size_t shownCount = 0;
-            for (const NS::Obj::Actor* obj : editor.Objects())
+            for (const NS::Obj::SceneActor* obj : editor.Objects())
             {
                 if (!obj->IsTransient())
                 {
@@ -90,16 +90,16 @@ namespace NS::Editor
 
             if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_F2))
             {
-                if (NS::Obj::Actor* target = editor.SelectedObjectActor())
+                if (NS::Obj::SceneActor* target = editor.SelectedObjectActor())
                 {
                     BeginRename(*target);
                 }
             }
 
             // 検索中は木を畳んで、一致した物だけを親子に関係なく並べる
-            for (NS::Obj::Actor* objPtr : editor.Objects())
+            for (NS::Obj::SceneActor* objPtr : editor.Objects())
             {
-                NS::Obj::Actor& object = *objPtr;
+                NS::Obj::SceneActor& object = *objPtr;
                 // 一時オブジェクトは配置物でないので一覧に出さない
                 if (object.IsTransient())
                 {
@@ -221,7 +221,7 @@ namespace NS::Editor
 #endif
     }
 
-    void HierarchyPanel::RenderNode(LevelEditorController& editor, NS::Obj::Actor& object, bool withChildren) noexcept
+    void HierarchyPanel::RenderNode(LevelEditorController& editor, NS::Obj::SceneActor& object, bool withChildren) noexcept
     {
 #if NS_EDITOR_ENABLED
         const NS::uint32 id = object.Id();
@@ -229,7 +229,7 @@ namespace NS::Editor
         bool hasChildren = false;
         if (withChildren)
         {
-            for (const NS::Obj::Actor* child : object.Children())
+            for (const NS::Obj::SceneActor* child : object.Children())
             {
                 if (child != nullptr && !child->IsTransient())
                 {
@@ -365,7 +365,7 @@ namespace NS::Editor
 
         if (open && hasChildren)
         {
-            for (NS::Obj::Actor* child : object.Children())
+            for (NS::Obj::SceneActor* child : object.Children())
             {
                 if (child != nullptr && !child->IsTransient())
                 {
@@ -382,7 +382,7 @@ namespace NS::Editor
 #endif
     }
 
-    void HierarchyPanel::BeginRename(NS::Obj::Actor& object) noexcept
+    void HierarchyPanel::BeginRename(NS::Obj::SceneActor& object) noexcept
     {
 #if NS_EDITOR_ENABLED
         m_renamingObjectId = object.Id();

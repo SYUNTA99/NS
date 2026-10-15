@@ -1,5 +1,5 @@
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/SubObjects/Model.h"
@@ -10,14 +10,14 @@
 
 namespace
 {
-    class MixedReflectionActor final : public NS::Obj::Actor
+    class MixedReflectionActor final : public NS::Obj::SceneActor
     {
     public:
         std::unique_ptr<NS::Obj::Model> part;
         std::unique_ptr<NS::Obj::Model> absentPart;
         float value = 2.0f;
         int count = 3;
-        NS_REFLECT_BEGIN(MixedReflectionActor, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(MixedReflectionActor, NS::Obj::SceneActor)
         NS_REFLECT_SUBOBJ(part, "Part")
         NS_REFLECT_FIELD(value, "値")
         NS_REFLECT_GROUP("数")

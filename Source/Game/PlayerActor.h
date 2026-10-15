@@ -8,7 +8,7 @@
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/StateMachineOf.h"
 
@@ -43,21 +43,21 @@ namespace GL::Level
 
 //! @brief 固定の部品を OnInit で組むプレイヤー
 //! @details 衝突の観測・裁定を身体の移動より先に行う。死とゴールは Scene の CourseDirector に通知する
-class Player : public NS::Obj::Actor
+class PlayerActor : public NS::Obj::SceneActor
 {
 public:
-    Player() noexcept;
-    ~Player() override;
+    PlayerActor() noexcept;
+    ~PlayerActor() override;
 
-    Player(const Player&) = delete;
-    Player& operator=(const Player&) = delete;
-    Player(Player&&) = delete;
-    Player& operator=(Player&&) = delete;
+    PlayerActor(const PlayerActor&) = delete;
+    PlayerActor& operator=(const PlayerActor&) = delete;
+    PlayerActor(PlayerActor&&) = delete;
+    PlayerActor& operator=(PlayerActor&&) = delete;
 
     NS_REFLECT_DECLARE()
     //! 基底が所有する自機の状態機械。OnInit が組むので、Init の後から立ちの状態に居る
-    [[nodiscard]] NS::Obj::StateMachineOf<Player>& States() noexcept { return *m_states; }
-    [[nodiscard]] const NS::Obj::StateMachineOf<Player>& States() const noexcept { return *m_states; }
+    [[nodiscard]] NS::Obj::StateMachineOf<PlayerActor>& States() noexcept { return *m_states; }
+    [[nodiscard]] const NS::Obj::StateMachineOf<PlayerActor>& States() const noexcept { return *m_states; }
     [[nodiscard]] NS::Obj::PlayerInput& Input() noexcept { return *m_input; }
     [[nodiscard]] const NS::Obj::PlayerInput& Input() const noexcept { return *m_input; }
     //! 速度・接地を持つ身体の部品。部品名は保存の鍵なので "Movement" のまま
@@ -97,7 +97,7 @@ public:
 
     [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Player; }
     void ReadInput() override;
-    using NS::Obj::Actor::Update;
+    using NS::Obj::SceneActor::Update;
     //! 入力の段を通さず chargeHeld を差し込み、1 固定ステップ進める
     void Update(bool chargeHeld);
     //! @brief 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
@@ -399,7 +399,7 @@ private:
     void ChangeCurled(bool curled) noexcept;
     //! @brief 丸まりを解く
     //! @details 押されていない・突進中でない・直前のフレームを突進中で終えていない・突進の予約が無い・
-    //! 接地している・上向きの速度が無い、が揃ったフレームに解く。縁を掴んだ時に解くのは Player::LedgeGrab
+    //! 接地している・上向きの速度が無い、が揃ったフレームに解く。縁を掴んだ時に解くのは PlayerActor::LedgeGrab
     void UncurlWhenSettled() noexcept;
     //! 走行速度に掛ける倍率を渡す。非有限値は無視して直前の値を残す
     void SetMaxSpeedScale(float scale) noexcept;
@@ -449,7 +449,7 @@ private:
     std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
     std::unique_ptr<GL::Player::ChargeEffects> m_chargeEffects;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
-    NS::Obj::StateMachineOf<Player>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
+    NS::Obj::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
     GL::Level::Health m_health;
 
     bool m_prevJumpHeld = false;
@@ -482,5 +482,5 @@ private:
 };
 
 //! 実体の配置物からプレイヤーを引く。無ければ nullptr
-//! @param[in,out] objects 探す先の配置物。返した Player* から中身が書き換わる
-[[nodiscard]] Player* FindPlayer(NS::Obj::ActorList& objects) noexcept;
+//! @param[in,out] objects 探す先の配置物。返した PlayerActor* から中身が書き換わる
+[[nodiscard]] PlayerActor* FindPlayer(NS::Obj::ActorList& objects) noexcept;

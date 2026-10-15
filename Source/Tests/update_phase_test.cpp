@@ -1,4 +1,4 @@
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Model.h"
@@ -16,7 +16,7 @@
 
 namespace
 {
-    class PhaseActor final : public NS::Obj::Actor
+    class PhaseActor final : public NS::Obj::SceneActor
     {
     public:
         PhaseActor(NS::Obj::UpdatePhase phase, std::vector<std::string>& log, std::string label)
@@ -48,7 +48,7 @@ namespace
     };
 
     // 1 フレームの 5 つの段をどれも上書きして、呼ばれた順を控える
-    class StepOrderActor final : public NS::Obj::Actor
+    class StepOrderActor final : public NS::Obj::SceneActor
     {
     public:
         explicit StepOrderActor(std::vector<std::string>& log) : m_log(log) {}
@@ -65,7 +65,7 @@ namespace
     };
 
     // 自分の段の中で、控えた id の配置物をシーンから消しに行く
-    class DestroyerActor final : public NS::Obj::Actor
+    class DestroyerActor final : public NS::Obj::SceneActor
     {
     public:
         explicit DestroyerActor(NS::Obj::Scene& scene) : m_scene(scene) {}
@@ -80,7 +80,7 @@ namespace
         NS::uint32 m_target = NS::Obj::k_NoObjectId;
     };
 
-    class CountingActor final : public NS::Obj::Actor
+    class CountingActor final : public NS::Obj::SceneActor
     {
     public:
         NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Triggers; }
@@ -90,14 +90,14 @@ namespace
         void StateStep() override { ++updates; }
     };
 
-    class DrawModelActor final : public NS::Obj::Actor
+    class DrawModelActor final : public NS::Obj::SceneActor
     {
     protected:
         void OnInit() override { (void)CreateSubObj(m_model); }
     };
 
-    // Player の段で、別の Actor の Model の描く倍率を書く
-    class DrawScaleWriterActor final : public NS::Obj::Actor
+    // PlayerActor の段で、別の SceneActor の Model の描く倍率を書く
+    class DrawScaleWriterActor final : public NS::Obj::SceneActor
     {
     public:
         explicit DrawScaleWriterActor(NS::Obj::Model& target) : m_target(target) {}
@@ -129,7 +129,7 @@ namespace
     };
 
     // 自分の段の中で、渡された管理役を同じ段へ登録する
-    class LateRegisterActor final : public NS::Obj::Actor
+    class LateRegisterActor final : public NS::Obj::SceneActor
     {
     public:
         LateRegisterActor(NS::Obj::Scene& scene, NS::Obj::SceneSystem& system) : m_scene(scene), m_system(system) {}
@@ -159,7 +159,7 @@ namespace
 
 TEST(UpdatePhase, SystemAddedDuringItsPhaseWaitsForTheNextFrame)
 {
-    // 段で呼ぶ物は段の始まりに決める。段の Actor が足した管理役をその段で呼ぶと、登録の時期で呼ぶ回数が変わる
+    // 段で呼ぶ物は段の始まりに決める。段の SceneActor が足した管理役をその段で呼ぶと、登録の時期で呼ぶ回数が変わる
     NS::Obj::Scene scene;
     CountingTicker late;
     scene.SpawnTransient<LateRegisterActor>(scene, late);
@@ -234,7 +234,7 @@ TEST(UpdatePhase, StableActorOrderAndRemovedTickerArePreserved)
     PhaseTicker ticker(log, "ticker");
     scene.AddSystemTick(ticker, NS::Obj::UpdatePhase::Triggers);
     scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
-    // 登録物は段の Actor が出した物を受けてまとめる役なので、同じ段の Actor の後に動く
+    // 登録物は段の SceneActor が出した物を受けてまとめる役なので、同じ段の SceneActor の後に動く
     EXPECT_EQ(log, (std::vector<std::string>{"first", "second", "ticker"}));
     scene.RemoveSystemTick(ticker);
     log.clear();
@@ -261,7 +261,7 @@ TEST(InterpolationSnapshot, ModelWrittenByAnEarlierPhaseStartsFromTheValueBefore
 {
     // 前の値を書き手より後の段で控えると、先の段で書いた倍率が始点にもなり補間されずに飛ぶ
     NS::Obj::Scene scene;
-    NS::Obj::Actor* drawn = scene.SpawnTransient<DrawModelActor>();
+    NS::Obj::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
     ASSERT_NE(drawn->ModelSubObj(), nullptr);
     NS::Obj::Model* model = drawn->ModelSubObj();
     scene.SpawnTransient<DrawScaleWriterActor>(*model);
@@ -276,7 +276,7 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
 {
     // 止めている間は段が回らない。前の値の控えも段に置くと、止める前に書いた倍率から補間し続けて絵が揺れる
     NS::Obj::Scene scene;
-    NS::Obj::Actor* drawn = scene.SpawnTransient<DrawModelActor>();
+    NS::Obj::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
     ASSERT_NE(drawn->ModelSubObj(), nullptr);
     NS::Obj::Model* model = drawn->ModelSubObj();
     scene.SetSimulationPaused(true);
@@ -337,7 +337,7 @@ TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
 {
     // 世界を進めない歩に前の値を控えると補間が止まる。割合は前に世界を進めてからの溜めで出す
     NS::Obj::Scene scene;
-    NS::Obj::Actor* drawn = scene.SpawnTransient<DrawModelActor>();
+    NS::Obj::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
     ASSERT_NE(drawn->ModelSubObj(), nullptr);
     NS::Obj::Model* model = drawn->ModelSubObj();
     scene.SpawnTransient<DrawScaleWriterActor>(*model);

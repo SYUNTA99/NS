@@ -1,5 +1,5 @@
-#include "Game/Level/FollowCamera.h"
-#include "NSlib/Object/Actor.h"
+#include "Game/Level/FollowCameraActor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
@@ -13,7 +13,7 @@
 namespace
 {
     // 状態を試しが書く追われる物。勝手に出た突進の最中か・反動の状態かを毎フレーム渡す
-    class LaunchTargetProbe final : public NS::Obj::Actor
+    class LaunchTargetProbeActor final : public NS::Obj::SceneActor
     {
     public:
         // 接地と反動の状態を仮想カメラの口へ渡す
@@ -32,7 +32,7 @@ namespace
     };
 
     // 頭から注視点までの水平の遅れ (m)
-    float HorizontalLag(const NS::Obj::ThirdPersonFollow& vcam, const NS::Obj::Actor& target)
+    float HorizontalLag(const NS::Obj::ThirdPersonFollow& vcam, const NS::Obj::SceneActor& target)
     {
         const NS::Obj::CameraPose pose = vcam.EvaluatePose(1.0f);
         const NS::Vector3 root = target.Root().Position();
@@ -44,13 +44,13 @@ namespace
     struct LaunchScene
     {
         NS::Obj::Scene scene;
-        LaunchTargetProbe* target = nullptr;
-        GL::Level::FollowCamera* camera = nullptr;
+        LaunchTargetProbeActor* target = nullptr;
+        GL::Level::FollowCameraActor* camera = nullptr;
 
         void Load()
         {
-            target = scene.SpawnObject<LaunchTargetProbe>("target");
-            camera = scene.SpawnTransient<GL::Level::FollowCamera>();
+            target = scene.SpawnObject<LaunchTargetProbeActor>("target");
+            camera = scene.SpawnTransient<GL::Level::FollowCameraActor>();
             NS::Obj::ApplyJsonFields(camera->Vcam(),
                                      nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
                                                     {"強制発射の追う速さ", 4.0f},

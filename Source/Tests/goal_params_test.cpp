@@ -1,6 +1,6 @@
 #include "Game/Level/CourseDirector.h"
-#include "Game/Level/Goal.h"
-#include "Game/Player.h"
+#include "Game/Level/GoalActor.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Graphics/ScreenFade.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
@@ -13,14 +13,14 @@ TEST(GameTuning, GoalFadeUsesTheSavedGoalFields)
 {
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
-    nlohmann::json playerDoc = NS::Obj::MakePrototypeJson<Player>();
+    nlohmann::json playerDoc = NS::Obj::MakePrototypeJson<PlayerActor>();
     NS::Obj::SetObjectJsonId(playerDoc, 1);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(playerDoc));
-    nlohmann::json goalDoc = NS::Obj::MakePrototypeJson<GL::Level::Goal>();
+    nlohmann::json goalDoc = NS::Obj::MakePrototypeJson<GL::Level::GoalActor>();
     NS::Obj::SetObjectJsonId(goalDoc, 2);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(goalDoc));
     scene.ResetFromJson(std::move(doc));
-    NS::Obj::Actor* goal = scene.Objects().FindByObjectId(2);
+    NS::Obj::SceneActor* goal = scene.Objects().FindByObjectId(2);
     ASSERT_NE(goal, nullptr);
     NS::Obj::SubObject* params = goal->FindSubObj("Params");
     ASSERT_NE(params, nullptr);

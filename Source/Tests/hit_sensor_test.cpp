@@ -1,9 +1,9 @@
-#include "Game/Level/DeathZone.h"
-#include "Game/Level/Goal.h"
+#include "Game/Level/DeathZoneActor.h"
+#include "Game/Level/GoalActor.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Message/Message.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
@@ -23,11 +23,11 @@ namespace
     using NS::Vector3;
     using GL::Level::SensorKind;
 
-    // 重なった相手を控える試しの Actor
-    class SensorProbe final : public NS::Obj::Actor
+    // 重なった相手を控える試しの SceneActor
+    class SensorProbeActor final : public NS::Obj::SceneActor
     {
     public:
-        SensorProbe(SensorKind kind, float radius) : m_kind(kind), m_radius(radius) {}
+        SensorProbeActor(SensorKind kind, float radius) : m_kind(kind), m_radius(radius) {}
 
         void AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other) override
         {
@@ -129,8 +129,8 @@ TEST(MakeScaledCapsule, RadiusTakesTheLargerSideScale)
 
 TEST(HitSensor, WorldVolumeFollowsRootScale)
 {
-    const std::unique_ptr<SensorProbe> owned = NS::Obj::CreateActor<SensorProbe>(SensorKind::Area, 0.5f);
-    SensorProbe& actor = *owned;
+    const std::unique_ptr<SensorProbeActor> owned = NS::Obj::CreateActor<SensorProbeActor>(SensorKind::Area, 0.5f);
+    SensorProbeActor& actor = *owned;
     NS::Obj::ShapeHitSensor* sensor = actor.m_sensor;
     ASSERT_NE(sensor, nullptr);
     sensor->SetSphere(0.5f);
@@ -144,8 +144,8 @@ TEST(HitSensor, WorldVolumeFollowsRootScale)
 TEST(HitSensor, ShapeSensorKeepsItsFourSavedFieldLabels)
 {
     // 欄の表示名は保存の鍵。ゴールと落下死の範囲の保存済みの値がこの 4 つで読まれる
-    const std::unique_ptr<SensorProbe> owned = NS::Obj::CreateActor<SensorProbe>(SensorKind::Area, 0.5f);
-    SensorProbe& actor = *owned;
+    const std::unique_ptr<SensorProbeActor> owned = NS::Obj::CreateActor<SensorProbeActor>(SensorKind::Area, 0.5f);
+    SensorProbeActor& actor = *owned;
     NS::Obj::SubObject* sensor = actor.m_sensor;
     ASSERT_NE(sensor, nullptr);
     const NS::Obj::ReflectionInfo* info = sensor->GetReflection();
@@ -165,9 +165,9 @@ TEST(HitSensor, BaseSensorHoldsNoFields)
 TEST(HitSensorDirector, TickCallsAttackSensorForEveryOverlappingPairWhateverTheKinds)
 {
     NS::Obj::Scene scene;
-    SensorProbe* area = scene.SpawnTransient<SensorProbe>(SensorKind::Area, 1.0f);
-    SensorProbe* body = scene.SpawnTransient<SensorProbe>(SensorKind::PlayerBody, 0.5f);
-    SensorProbe* rock = scene.SpawnTransient<SensorProbe>(SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* area = scene.SpawnTransient<SensorProbeActor>(SensorKind::Area, 1.0f);
+    SensorProbeActor* body = scene.SpawnTransient<SensorProbeActor>(SensorKind::PlayerBody, 0.5f);
+    SensorProbeActor* rock = scene.SpawnTransient<SensorProbeActor>(SensorKind::MapObjBody, 0.5f);
     body->Root().SetPosition(Vector3{1.0f, 0.0f, 0.0f});
     rock->Root().SetPosition(Vector3{0.5f, 0.0f, 0.0f});
 
@@ -192,8 +192,8 @@ TEST(HitSensorDirector, TickCallsAttackSensorForEveryOverlappingPairWhateverTheK
 TEST(HitSensorDirector, InvalidSensorIsNotChecked)
 {
     NS::Obj::Scene scene;
-    SensorProbe* area = scene.SpawnTransient<SensorProbe>(SensorKind::Area, 1.0f);
-    SensorProbe* body = scene.SpawnTransient<SensorProbe>(SensorKind::PlayerBody, 0.5f);
+    SensorProbeActor* area = scene.SpawnTransient<SensorProbeActor>(SensorKind::Area, 1.0f);
+    SensorProbeActor* body = scene.SpawnTransient<SensorProbeActor>(SensorKind::PlayerBody, 0.5f);
     body->m_sensor->Invalidate();
     scene.HitSensors().OnTick();
     EXPECT_TRUE(area->touched.empty());
@@ -204,8 +204,8 @@ TEST(HitSensorDirector, InvalidSensorIsNotChecked)
 TEST(HitSensorDirector, BothOwnersHearAnOverlap)
 {
     NS::Obj::Scene scene;
-    SensorProbe* area = scene.SpawnTransient<SensorProbe>(SensorKind::Area, 1.0f);
-    SensorProbe* body = scene.SpawnTransient<SensorProbe>(SensorKind::PlayerBody, 0.5f);
+    SensorProbeActor* area = scene.SpawnTransient<SensorProbeActor>(SensorKind::Area, 1.0f);
+    SensorProbeActor* body = scene.SpawnTransient<SensorProbeActor>(SensorKind::PlayerBody, 0.5f);
     body->Root().SetPosition(Vector3{1.0f, 0.0f, 0.0f});
 
     scene.HitSensors().OnTick();
@@ -219,12 +219,12 @@ TEST(HitSensorDirector, BothOwnersHearAnOverlap)
 }
 
 // ゴールは自機の体にだけ知らせる。岩の体が範囲に重なっても知らせは出ない
-TEST(Goal, IgnoresARockBody)
+TEST(GoalActor, IgnoresARockBody)
 {
     NS::Obj::Scene scene;
-    (void)scene.SpawnTransient<GL::Level::Goal>();
-    SensorProbe* rock = scene.SpawnTransient<SensorProbe>(SensorKind::MapObjBody, 0.5f);
-    SensorProbe* body = scene.SpawnTransient<SensorProbe>(SensorKind::PlayerBody, 0.5f);
+    (void)scene.SpawnTransient<GL::Level::GoalActor>();
+    SensorProbeActor* rock = scene.SpawnTransient<SensorProbeActor>(SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* body = scene.SpawnTransient<SensorProbeActor>(SensorKind::PlayerBody, 0.5f);
 
     scene.HitSensors().OnTick();
 
@@ -235,12 +235,12 @@ TEST(Goal, IgnoresARockBody)
 }
 
 // 落下死の範囲も自機の体にだけ知らせる
-TEST(DeathZone, IgnoresARockBody)
+TEST(DeathZoneActor, IgnoresARockBody)
 {
     NS::Obj::Scene scene;
-    (void)scene.SpawnTransient<GL::Level::DeathZone>();
-    SensorProbe* rock = scene.SpawnTransient<SensorProbe>(SensorKind::MapObjBody, 0.5f);
-    SensorProbe* body = scene.SpawnTransient<SensorProbe>(SensorKind::PlayerBody, 0.5f);
+    (void)scene.SpawnTransient<GL::Level::DeathZoneActor>();
+    SensorProbeActor* rock = scene.SpawnTransient<SensorProbeActor>(SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* body = scene.SpawnTransient<SensorProbeActor>(SensorKind::PlayerBody, 0.5f);
 
     scene.HitSensors().OnTick();
 
@@ -253,8 +253,8 @@ TEST(DeathZone, IgnoresARockBody)
 TEST(HitSensorDirector, FindOverlapsReturnsValidSensorsAndSkipsTheIgnoredOwner)
 {
     NS::Obj::Scene scene;
-    SensorProbe* rock = scene.SpawnTransient<SensorProbe>(SensorKind::MapObjBody, 0.5f);
-    SensorProbe* area = scene.SpawnTransient<SensorProbe>(SensorKind::Area, 0.5f);
+    SensorProbeActor* rock = scene.SpawnTransient<SensorProbeActor>(SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* area = scene.SpawnTransient<SensorProbeActor>(SensorKind::Area, 0.5f);
     const NS::Obj::SensorVolume probe = NS::Obj::SensorVolume::Sphere(Vector3{0.0f, 0.0f, 0.0f}, 0.5f);
 
     EXPECT_EQ(scene.HitSensors().FindOverlaps(probe, nullptr),
@@ -268,7 +268,7 @@ TEST(HitSensorDirector, SensorLeavesDirectorWhenDestroyed)
 {
     NS::Obj::Scene scene;
     const std::size_t before = scene.HitSensors().Sensors().size();
-    SensorProbe* rock = scene.SpawnTransient<SensorProbe>(SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* rock = scene.SpawnTransient<SensorProbeActor>(SensorKind::MapObjBody, 0.5f);
     EXPECT_EQ(scene.HitSensors().Sensors().size(), before + 1);
     rock->OnEndPlay();
     EXPECT_EQ(scene.HitSensors().Sensors().size(), before);
@@ -287,8 +287,8 @@ TEST(Message, KindsAreDistinctPerType)
 TEST(Message, SendReachesReceiverOwnerAndReturnsItsAnswer)
 {
     NS::Obj::Scene scene;
-    SensorProbe* sender = scene.SpawnTransient<SensorProbe>(SensorKind::Area, 1.0f);
-    SensorProbe* receiver = scene.SpawnTransient<SensorProbe>(SensorKind::PlayerBody, 0.5f);
+    SensorProbeActor* sender = scene.SpawnTransient<SensorProbeActor>(SensorKind::Area, 1.0f);
+    SensorProbeActor* receiver = scene.SpawnTransient<SensorProbeActor>(SensorKind::PlayerBody, 0.5f);
 
     EXPECT_TRUE(NS::Obj::SendMsg(MsgPing{}, *receiver->m_sensor, sender->m_sensor));
     ASSERT_EQ(receiver->received.size(), 1u);

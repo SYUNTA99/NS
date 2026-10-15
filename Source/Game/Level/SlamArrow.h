@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-class Player;
+class PlayerActor;
 
 namespace NS::Gfx
 {
@@ -136,9 +136,9 @@ namespace GL::Level
     public:
         SlamArrow() noexcept;
 
-        //! 矢印を組む元の Player と、その移動の当たり。持ち主の Player が OnInit で渡す。
+        //! 矢印を組む元の PlayerActor と、その移動の当たり。持ち主の PlayerActor が OnInit で渡す。
         //! 渡されなければ何も組まない
-        void SetPlayer(::Player& player) noexcept;
+        void SetPlayer(::PlayerActor& player) noexcept;
 
         void ResolveAssets(NS::Obj::AssetManager& assets) override;
 
@@ -203,7 +203,7 @@ namespace GL::Level
         SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
         int m_framesSinceShown = -1;                   // 矢印を出していない間は負
-        const ::Player* m_player = nullptr;            // 溜めと狙いの問い先。非所有
+        const ::PlayerActor* m_player = nullptr;            // 溜めと狙いの問い先。非所有
         const NS::Obj::Collider* m_collider = nullptr; // 玉の半径と床の問い先。非所有
         NS::Gfx::StaticMesh* m_mesh = nullptr;         // 共有の上向きの板 (非所有)
         NS::Gfx::Material* m_bandMaterial = nullptr;   // 帯のマテリアル (非所有)

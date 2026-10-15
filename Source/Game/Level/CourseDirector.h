@@ -6,7 +6,7 @@
 
 namespace NS::Obj
 {
-    class Actor;
+    class SceneActor;
     class Scene;
 } // namespace NS::Obj
 
@@ -59,7 +59,7 @@ namespace GL::Level
         void SendInputLock(bool locked);
 
         //! skip の他の、一時オブジェクトでない配置物へ MsgCourseRestart を送る。skip が nullptr なら全員へ
-        void SendRestart(const NS::Obj::Actor* skip);
+        void SendRestart(const NS::Obj::SceneActor* skip);
 
         float m_fadeOutSeconds = 0.0f;
         float m_fadeInSeconds = 0.0f;

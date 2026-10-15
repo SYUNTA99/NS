@@ -1,6 +1,6 @@
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/MapObj.h"
-#include "Game/Player.h"
+#include "Game/Level/PropActor.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Core/OBB.h"
@@ -23,18 +23,18 @@ namespace
     constexpr float k_FrameSeconds = 1.0f / 60.0f;
 
     // 自機 (id 1) を置く。withRock なら前に置物 (id 2) を置く
-    Player* PlaceSpinScene(NS::Obj::Scene& scene, bool withRock)
+    PlayerActor* PlaceSpinScene(NS::Obj::Scene& scene, bool withRock)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "Player");
+        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
         NS::Obj::SetObjectJsonId(player, 1);
         NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         if (withRock)
         {
             nlohmann::json rock = NS::Obj::MakeObjectJson();
-            NS::Obj::SetObjectJsonClass(rock, "MapObj");
+            NS::Obj::SetObjectJsonClass(rock, "PropActor");
             NS::Obj::SetObjectJsonId(rock, 2);
             NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
             NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -47,16 +47,16 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
-    float FieldOf(Player& player, const char* name)
+    float FieldOf(PlayerActor& player, const char* name)
     {
         return NS::Obj::SerializeSubObjectFields(player.Params())[name].get<float>();
     }
 
     // 突進を出して、突進の間に回った角度の和 (度) を返す
-    float SpinWhileSlamming(Player& player, float charge01)
+    float SpinWhileSlamming(PlayerActor& player, float charge01)
     {
         player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
         float degrees = 0.0f;
@@ -78,7 +78,7 @@ namespace
     }
 
     // 置物に当てて、反動の始まりから着地までに回った角度の和 (度) を返す。反動しなければ負
-    float SpinWhileRebounding(Player& player, GL::Level::MapObj& rock, float charge01)
+    float SpinWhileRebounding(PlayerActor& player, GL::Level::PropActor& rock, float charge01)
     {
         player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
         float degrees = 0.0f;
@@ -105,7 +105,7 @@ namespace
 TEST(PlayerSpinCount, TapLeavesAtItsFieldSpeed)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceSpinScene(scene, false);
+    PlayerActor* player = PlaceSpinScene(scene, false);
     ASSERT_NE(player, nullptr);
     EXPECT_FLOAT_EQ(FieldOf(*player, "通常突進の初速"), 15.0f);
     player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -124,7 +124,7 @@ TEST(PlayerSpinCount, TapTurnsItsCountWhateverTheSpeedAndDistance)
         {
             SCOPED_TRACE(std::to_string(speed) + " " + std::to_string(distance));
             NS::Obj::Scene scene;
-            Player* player = PlaceSpinScene(scene, false);
+            PlayerActor* player = PlaceSpinScene(scene, false);
             ASSERT_NE(player, nullptr);
             NS::Obj::ApplyJsonFields(player->Params(),
                                      nlohmann::json{{"通常突進の初速", speed}, {"通常突進の距離", distance}});
@@ -139,7 +139,7 @@ TEST(PlayerSpinCount, TapTurnsItsCountWhateverTheSpeedAndDistance)
 TEST(PlayerSpinCount, ChargedSlamTurnsItsOwnCount)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceSpinScene(scene, false);
+    PlayerActor* player = PlaceSpinScene(scene, false);
     ASSERT_NE(player, nullptr);
     const float turns = FieldOf(*player, "溜めた突進の届くまでの回転数");
     EXPECT_GE(turns - FieldOf(*player, "通常突進の届くまでの回転数"), 2.0f);
@@ -155,9 +155,9 @@ TEST(PlayerSpinCount, ReboundTurnsTheCountOfTheSlamThatHit)
     {
         SCOPED_TRACE(charge01);
         NS::Obj::Scene scene;
-        Player* player = PlaceSpinScene(scene, true);
+        PlayerActor* player = PlaceSpinScene(scene, true);
         ASSERT_NE(player, nullptr);
-        GL::Level::MapObj* rock = NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
+        GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         const char* field = "溜めて当てた反動の回転数";
         if (charge01 <= 0.0f)

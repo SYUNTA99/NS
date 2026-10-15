@@ -16,7 +16,7 @@ namespace NS::Obj
     inline constexpr const char* k_ScaleFieldName = "スケール";
 
     //! @brief 個体の根の姿勢を持つ部品。非所有の親子関係を持ち、Snapshot で控えた固定更新間の姿勢を描画時に補間する
-    //! @details Actor::Root() はこの部品を返す。持ち主なしでも作れる
+    //! @details SceneActor::Root() はこの部品を返す。持ち主なしでも作れる
     class Transform : public SubObject
     {
     public:

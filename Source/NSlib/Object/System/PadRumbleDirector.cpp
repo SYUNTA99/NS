@@ -22,7 +22,7 @@ namespace NS::Obj
         }
     }
 
-    void PadRumbleDirector::Start(const Actor& requester, const HitPadVibration& pad)
+    void PadRumbleDirector::Start(const SceneActor& requester, const HitPadVibration& pad)
     {
         m_layers.clear();
         m_layers.push_back(Layer{.pad = pad, .startElapsed = 0, .requester = &requester});
@@ -32,7 +32,7 @@ namespace NS::Obj
         Write();
     }
 
-    void PadRumbleDirector::Blend(const Actor& requester, const HitPadVibration& pad)
+    void PadRumbleDirector::Blend(const SceneActor& requester, const HitPadVibration& pad)
     {
         if (!m_running)
         {
@@ -43,7 +43,7 @@ namespace NS::Obj
         Write();
     }
 
-    void PadRumbleDirector::Stop(const Actor& requester)
+    void PadRumbleDirector::Stop(const SceneActor& requester)
     {
         std::erase_if(m_layers, [&requester](const Layer& layer) { return layer.requester == &requester; });
         if (!m_layers.empty())

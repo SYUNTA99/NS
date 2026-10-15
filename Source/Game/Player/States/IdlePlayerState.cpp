@@ -1,6 +1,6 @@
 #include "Game/Player/States/IdlePlayerState.h"
 
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -9,7 +9,7 @@
 
 namespace GL::Player
 {
-    void IdlePlayerState::OnStep(::Player& player, float dt)
+    void IdlePlayerState::OnStep(::PlayerActor& player, float dt)
     {
         player.TickTimers(dt);
         player.ApplyFriction(dt);

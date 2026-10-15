@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
@@ -28,7 +28,7 @@ namespace
         return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
     }
 
-    const NS::Obj::EffectRecord* LiveEffect(const Player& player, std::string_view name)
+    const NS::Obj::EffectRecord* LiveEffect(const PlayerActor& player, std::string_view name)
     {
         for (const NS::Obj::EffectRecord& record : player.GetEffectKeeper()->Records())
         {
@@ -47,11 +47,11 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "Player");
+    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
     NS::Obj::SetObjectJsonId(entry, 1);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
-    Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     TestViewCamera* camera = PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});

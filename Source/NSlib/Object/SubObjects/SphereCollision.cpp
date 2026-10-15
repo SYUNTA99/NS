@@ -2,7 +2,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Sphere.h"
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Physics/PhysicsScene.h"
@@ -36,7 +36,7 @@ namespace NS::Obj
 
     NS::Sphere SphereCollision::WorldSphere() const noexcept
     {
-        const Actor* owner = Owner();
+        const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             return NS::Sphere{ m_centerOffset, m_radius };

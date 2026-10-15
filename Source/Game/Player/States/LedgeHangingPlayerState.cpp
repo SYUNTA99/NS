@@ -1,13 +1,13 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/PlayerInput.h"
 
 namespace GL::Player
 {
-    void LedgeHangingPlayerState::OnStep(::Player& player, float dt)
+    void LedgeHangingPlayerState::OnStep(::PlayerActor& player, float dt)
     {
         if (!player.HoldLedge())
         {

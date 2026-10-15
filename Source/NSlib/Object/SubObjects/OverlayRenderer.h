@@ -10,7 +10,7 @@ namespace NS::Gfx
 namespace NS::Obj
 {
     //! @brief シーンを描き終えた画面へ重ねて描く物。重ね描きの登録簿が受け取る型
-    //! @details 部品は OverlayRenderer を継ぎ、持ち主の Actor が OnStart で登録簿へ入れて OnEndPlay で外す。
+    //! @details 部品は OverlayRenderer を継ぎ、持ち主の SceneActor が OnStart で登録簿へ入れて OnEndPlay で外す。
     //! 部品でない物はこれを直に継ぎ、自分で登録簿へ出し入れする
     class IOverlay
     {

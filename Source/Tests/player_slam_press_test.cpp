@@ -1,6 +1,6 @@
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/MapObj.h"
-#include "Game/Player.h"
+#include "Game/Level/PropActor.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/SubObjects/Body.h"
 #include "NSlib/Object/SubObjects/Transform.h"
@@ -18,18 +18,18 @@ namespace
     const NS::Vector3 k_Forward{0.0f, 0.0f, 1.0f};
 
     // 自機 (id 1) を高さ height に置く。withRock なら前に置物 (id 2) を置く
-    Player* PlacePressScene(NS::Obj::Scene& scene, bool withRock, float height)
+    PlayerActor* PlacePressScene(NS::Obj::Scene& scene, bool withRock, float height)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "Player");
+        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
         NS::Obj::SetObjectJsonId(player, 1);
         NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, height, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         if (withRock)
         {
             nlohmann::json rock = NS::Obj::MakeObjectJson();
-            NS::Obj::SetObjectJsonClass(rock, "MapObj");
+            NS::Obj::SetObjectJsonClass(rock, "PropActor");
             NS::Obj::SetObjectJsonId(rock, 2);
             NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
             NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -42,16 +42,16 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, k_Forward);
-        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
-    GL::Level::MapObj* RockOf(NS::Obj::Scene& scene)
+    GL::Level::PropActor* RockOf(NS::Obj::Scene& scene)
     {
-        return NS::Obj::Cast<GL::Level::MapObj>(scene.Objects().FindByObjectId(2));
+        return NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     }
 
     // 接地するまで回す
-    void Settle(Player& player)
+    void Settle(PlayerActor& player)
     {
         for (int frame = 0; frame < 60 && !player.Body().IsGrounded(); ++frame)
         {
@@ -60,7 +60,7 @@ namespace
     }
 
     // 1 フレーム進め、そのフレームに突進が始まった場合 true を返す
-    bool StepAndSeeSlamStart(Player& player, GL::Level::MapObj* rock)
+    bool StepAndSeeSlamStart(PlayerActor& player, GL::Level::PropActor* rock)
     {
         const bool before = player.IsBodySlamming();
         player.Update(false);
@@ -76,7 +76,7 @@ namespace
 TEST(PlayerSlamPress, PressDuringASlamDoesNotFireAfterTheMiss)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePressScene(scene, false, 1.0f);
+    PlayerActor* player = PlacePressScene(scene, false, 1.0f);
     ASSERT_NE(player, nullptr);
     Settle(*player);
     ASSERT_TRUE(player->Body().IsGrounded());
@@ -105,9 +105,9 @@ TEST(PlayerSlamPress, PressDuringASlamDoesNotFireAfterTheMiss)
 TEST(PlayerSlamPress, PressDuringTheHitStopDoesNotFireOnTheRelease)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePressScene(scene, true, 1.0f);
+    PlayerActor* player = PlacePressScene(scene, true, 1.0f);
     ASSERT_NE(player, nullptr);
-    GL::Level::MapObj* rock = RockOf(scene);
+    GL::Level::PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
     Settle(*player);
     player->RequestBodySlam(1.0f, k_Forward);
@@ -136,9 +136,9 @@ TEST(PlayerSlamPress, PressDuringTheReboundOfAGroundSlamFiresTheAirShot)
     {
         SCOPED_TRACE(charge01);
         NS::Obj::Scene scene;
-        Player* player = PlacePressScene(scene, true, 1.0f);
+        PlayerActor* player = PlacePressScene(scene, true, 1.0f);
         ASSERT_NE(player, nullptr);
-        GL::Level::MapObj* rock = RockOf(scene);
+        GL::Level::PropActor* rock = RockOf(scene);
         ASSERT_NE(rock, nullptr);
         Settle(*player);
         ASSERT_TRUE(player->Body().IsGrounded());
@@ -177,7 +177,7 @@ TEST(PlayerSlamPress, PressDuringTheReboundOfAGroundSlamFiresTheAirShot)
 TEST(PlayerSlamPress, AnAirLaunchedSlamBlocksTheNextUntilLanding)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePressScene(scene, false, 8.0f);
+    PlayerActor* player = PlacePressScene(scene, false, 8.0f);
     ASSERT_NE(player, nullptr);
     player->Update(false);
     ASSERT_FALSE(player->Body().IsGrounded());

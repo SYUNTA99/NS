@@ -1,4 +1,4 @@
-#include "Game/Level/Goal.h"
+#include "Game/Level/GoalActor.h"
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
@@ -8,7 +8,7 @@
 
 namespace GL::Level
 {
-    void Goal::OnInit()
+    void GoalActor::OnInit()
     {
         (void)CreateSubObj(m_params);
         NS::Obj::Model* mesh = CreateSubObj(m_model);
@@ -20,7 +20,7 @@ namespace GL::Level
         area->SetSphere(0.9f);
     }
 
-    void Goal::AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other)
+    void GoalActor::AttackSensor(NS::Obj::HitSensor& self, NS::Obj::HitSensor& other)
     {
         // 触れている間は毎フレーム送る。流れの最中の知らせは進行役が捨てる
         if (IsSensorKind(other, SensorKind::PlayerBody))
@@ -29,5 +29,5 @@ namespace GL::Level
         }
     }
 
-    NS_PLACEABLE(Goal, "ゴール")
+    NS_PLACEABLE(GoalActor, "ゴール")
 } // namespace GL::Level

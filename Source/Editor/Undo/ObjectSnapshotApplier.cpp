@@ -1,7 +1,7 @@
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -15,7 +15,7 @@ namespace NS::Editor
             return std::nullopt;
         }
 
-        const NS::Obj::Actor* obj = m_scene->Objects().FindByObjectId(objectId);
+        const NS::Obj::SceneActor* obj = m_scene->Objects().FindByObjectId(objectId);
         if (obj == nullptr)
         {
             return std::nullopt;

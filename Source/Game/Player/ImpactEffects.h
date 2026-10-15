@@ -12,7 +12,7 @@
 #include <optional>
 #include <vector>
 
-class Player;
+class PlayerActor;
 
 namespace GL::Level
 {
@@ -263,7 +263,7 @@ namespace GL::Player
         [[nodiscard]] std::optional<NS::Vector3> CameraPosition() const;
 
         GL::Level::ImpactResolver* m_resolver = nullptr;
-        ::Player* m_player = nullptr;
+        ::PlayerActor* m_player = nullptr;
         HitPlan m_plan;
         Flight m_flight;
         float m_lastVerticalVelocity = 0.0f; // 前のフレームの自機の縦の速さ (m/s)。着地のフレームは既に 0

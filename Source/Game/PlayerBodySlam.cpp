@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/PlayerParams.h"
@@ -43,12 +43,12 @@ namespace
 } // namespace
 
 
-bool Player::AcceptsBodySlamRequest() const noexcept
+bool PlayerActor::AcceptsBodySlamRequest() const noexcept
 {
     return !IsBodySlamming() && CanMoveBody();
 }
 
-void Player::RequestBodySlam(float charge01, float overcharge01) noexcept
+void PlayerActor::RequestBodySlam(float charge01, float overcharge01) noexcept
 {
     if (!AcceptsBodySlamRequest())
     {
@@ -75,7 +75,7 @@ void Player::RequestBodySlam(float charge01, float overcharge01) noexcept
     m_request.verticalSpeed = 0.0f;
 }
 
-void Player::RequestBodySlam(float charge01,
+void PlayerActor::RequestBodySlam(float charge01,
                              const NS::Vector3& aimDirection,
                              float launchVerticalSpeed,
                              float overcharge01) noexcept
@@ -103,7 +103,7 @@ void Player::RequestBodySlam(float charge01,
     }
 }
 
-float Player::BodySlamSpeed() const noexcept
+float PlayerActor::BodySlamSpeed() const noexcept
 {
     if (m_slam.isTap)
     {
@@ -112,7 +112,7 @@ float Player::BodySlamSpeed() const noexcept
     return m_params->m_bodySlamSpeed;
 }
 
-float Player::BodySlamSpinSpeed() const noexcept
+float PlayerActor::BodySlamSpinSpeed() const noexcept
 {
     float turns = m_params->m_chargedSlamTurns;
     if (m_slam.isTap)
@@ -122,7 +122,7 @@ float Player::BodySlamSpinSpeed() const noexcept
     return SpinSpeedFor(turns, m_slam.distanceTarget / BodySlamSpeed());
 }
 
-NS::Vector3 Player::BodySlamVelocity() const noexcept
+NS::Vector3 PlayerActor::BodySlamVelocity() const noexcept
 {
     const NS::Obj::Body& body = *m_body;
     if (!IsBodySlamming())
@@ -134,7 +134,7 @@ NS::Vector3 Player::BodySlamVelocity() const noexcept
     return NS::Vector3{m_slam.dir.x * speed, body.VerticalVelocity(), m_slam.dir.z * speed};
 }
 
-void Player::CancelBodySlam() noexcept
+void PlayerActor::CancelBodySlam() noexcept
 {
     if (!IsBodySlamming())
     {
@@ -143,7 +143,7 @@ void Player::CancelBodySlam() noexcept
     EndBodySlam();
 }
 
-void Player::EndBodySlam() noexcept
+void PlayerActor::EndBodySlam() noexcept
 {
     NS::Obj::Body& body = *m_body;
     m_slam.travelled = 0.0f;
@@ -170,7 +170,7 @@ void Player::EndBodySlam() noexcept
     m_playerEvents.onBodySlamEnded.Invoke();
 }
 
-void Player::AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept
+void PlayerActor::AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept
 {
     if (!IsBodySlamming())
     {
@@ -193,7 +193,7 @@ void Player::AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept
     }
 }
 
-NS::Vector3 Player::AimDirection() const noexcept
+NS::Vector3 PlayerActor::AimDirection() const noexcept
 {
     const NS::Obj::Body& body = *m_body;
     NS::Vector3 dir{DesiredDirection().x, 0.0f, DesiredDirection().z};
@@ -220,13 +220,13 @@ NS::Vector3 Player::AimDirection() const noexcept
     return NS::Vector3{dir.x / length, 0.0f, dir.z / length};
 }
 
-void Player::MarkBodySlamAim() noexcept
+void PlayerActor::MarkBodySlamAim() noexcept
 {
     m_request.aimDir = AimDirection();
     m_request.aimAge = 0.0f;
 }
 
-float Player::BodySlamAimBlend01() const noexcept
+float PlayerActor::BodySlamAimBlend01() const noexcept
 {
     const float hold = m_params->m_slamAimHoldTime;
     const float fade = m_params->m_slamAimFadeTime;
@@ -243,7 +243,7 @@ float Player::BodySlamAimBlend01() const noexcept
     return (fade - age) / (fade - hold);
 }
 
-bool Player::BodySlam() noexcept
+bool PlayerActor::BodySlam() noexcept
 {
     NS::Obj::Body& body = *m_body;
     // 速度を書く前に読む。発動のフレームはまだ前のフレームの接地のまま
@@ -333,7 +333,7 @@ bool Player::BodySlam() noexcept
     return true;
 }
 
-bool Player::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
+bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
 {
     // 曲線にならない反動で移すと、弾かれないまま速度が 0 に消える。移さずに偽を返し、速度は呼び手に任せる
     const NS::Vector3 velocity = ReboundVelocityFor(arc);
@@ -362,12 +362,12 @@ bool Player::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
     return true;
 }
 
-NS::Vector3 Player::ReboundVelocityFor(const GL::Player::ReboundArc& arc) const noexcept
+NS::Vector3 PlayerActor::ReboundVelocityFor(const GL::Player::ReboundArc& arc) const noexcept
 {
     return GL::Level::LaunchArcInitialVelocity(ReboundLaunchArc(*m_params, arc));
 }
 
-void Player::SetCurled(bool curled) noexcept
+void PlayerActor::SetCurled(bool curled) noexcept
 {
     // 掴まりからは突進が出ない。玉のままぶら下がると、押しても突進が出ないのに玉の見た目だけが残る
     // 掴まっている間に玉にすると縁を測り直す手の高さが下がり、押したフレームに縁を放して 0.5 m 落ちた
@@ -379,7 +379,7 @@ void Player::SetCurled(bool curled) noexcept
     ChangeCurled(curled);
 }
 
-void Player::ChangeCurled(bool curled) noexcept
+void PlayerActor::ChangeCurled(bool curled) noexcept
 {
     NS::Obj::Collider& collider = *m_collider;
     if (curled == m_curled)
@@ -399,14 +399,14 @@ void Player::ChangeCurled(bool curled) noexcept
     Root().ShiftPosition(NS::Vector3{0.0f, rise, 0.0f});
 }
 
-NS::Sphere Player::SlamBallAt(const NS::Vector3& rootPosition) const noexcept
+NS::Sphere PlayerActor::SlamBallAt(const NS::Vector3& rootPosition) const noexcept
 {
     // 立ち姿の下の球が、丸まった後の玉の中心。ChangeCurled が下端を揃えて根を下げるので、この式が成り立つ
     const NS::Phys::Capsule capsule = m_collider->CapsuleAt(rootPosition);
     return NS::Sphere{capsule.center - capsule.axis * capsule.halfHeight, capsule.radius};
 }
 
-void Player::UncurlWhenSettled() noexcept
+void PlayerActor::UncurlWhenSettled() noexcept
 {
     NS::Obj::Body& body = *m_body;
     if (!m_curled)

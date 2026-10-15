@@ -41,7 +41,7 @@ namespace NS::Obj
     void StopEffectRoot(const IUseEffect* user, NS::uint32 id) noexcept;
 
     //! @brief 今から steps フレーム後に、子も含めて消す。EffectKeeper が無ければ何もしない
-    //! @param[in] steps 持ち主の Actor::Update の回数。0 以下なら次の回で消す
+    //! @param[in] steps 持ち主の SceneActor::Update の回数。0 以下なら次の回で消す
     void StopEffectAfter(const IUseEffect* user, NS::uint32 id, int steps);
 
     //! @brief 位置・向き・大きさを置き直す。無い番号と EffectKeeper が無い時は何もしない
@@ -63,9 +63,9 @@ namespace NS::Obj
     void SetEffectRotation(const IUseEffect* user, NS::uint32 id, const NS::Quaternion& rotation) noexcept;
 
     //! @brief 番号の記録を返す
-    //! @return 記録。無い番号・捨てた後・EffectKeeper が無い時は nullptr。次の Actor::Update をまたいで持たない
+    //! @return 記録。無い番号・捨てた後・EffectKeeper が無い時は nullptr。次の SceneActor::Update をまたいで持たない
     [[nodiscard]] const EffectRecord* FindEffect(const IUseEffect* user, NS::uint32 id) noexcept;
 
-    //! 今のフレームの番号。Actor::Update の回数。EffectKeeper が無い時は 0
+    //! 今のフレームの番号。SceneActor::Update の回数。EffectKeeper が無い時は 0
     [[nodiscard]] int EffectStep(const IUseEffect* user) noexcept;
 } // namespace NS::Obj

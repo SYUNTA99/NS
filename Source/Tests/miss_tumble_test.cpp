@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/ReboundArc.h"
@@ -22,11 +22,11 @@ namespace
     constexpr float k_FrameSeconds = 1.0f / 60.0f;
 
     // 床の上に自機 (id 1) を置き、接地させてから丸める
-    Player* PlaceTumblePlayer(NS::Obj::Scene& scene)
+    PlayerActor* PlaceTumblePlayer(NS::Obj::Scene& scene)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "Player");
+        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
         NS::Obj::SetObjectJsonId(player, 1);
         NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
@@ -38,7 +38,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        Player* placed = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+        PlayerActor* placed = NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
         if (placed == nullptr)
         {
             return nullptr;
@@ -61,7 +61,7 @@ namespace
             .missTumble = GL::Player::MissTumble{.twist = NS::Vector3{0.0f, -0.8f, 0.0f}, .power = 1.0f}};
     }
 
-    float LateralSpeed(const Player& player)
+    float LateralSpeed(const PlayerActor& player)
     {
         return player.Body().LateralVelocity().Length();
     }
@@ -75,7 +75,7 @@ TEST(MissTumble, MissReboundSkidsToAStopInTheSkidFrames)
     {
         SCOPED_TRACE(distance);
         NS::Obj::Scene scene;
-        Player* player = PlaceTumblePlayer(scene);
+        PlayerActor* player = PlaceTumblePlayer(scene);
         ASSERT_NE(player, nullptr);
         ASSERT_EQ(
             NS::Obj::ApplyJsonFields(
@@ -121,7 +121,7 @@ TEST(MissTumble, CenterReboundAndZeroSkidFramesLandWithoutSkidding)
     {
         SCOPED_TRACE(miss);
         NS::Obj::Scene scene;
-        Player* player = PlaceTumblePlayer(scene);
+        PlayerActor* player = PlaceTumblePlayer(scene);
         ASSERT_NE(player, nullptr);
         GL::Player::ReboundArc arc = MissArc(3.0f);
         if (miss)
@@ -152,7 +152,7 @@ TEST(MissTumble, TumbleBlendsIntoTheTwistAndTiltsByTheWobble)
     {
         SCOPED_TRACE(wobble);
         NS::Obj::Scene scene;
-        Player* player = PlaceTumblePlayer(scene);
+        PlayerActor* player = PlaceTumblePlayer(scene);
         ASSERT_NE(player, nullptr);
         ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Appearance(),
                                            {{"外れの縁でのねじれの回転数", 2.0f},
@@ -182,7 +182,7 @@ TEST(MissTumble, TumbleBlendsIntoTheTwistAndTiltsByTheWobble)
 TEST(MissTumble, TumbleCarriesTheSlamSpin)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceTumblePlayer(scene);
+    PlayerActor* player = PlaceTumblePlayer(scene);
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Appearance(),
                                        {{"外れの縁でのねじれの回転数", 0.0f},

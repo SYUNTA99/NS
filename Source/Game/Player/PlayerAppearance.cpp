@@ -3,11 +3,11 @@
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamAim.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/StaticMesh.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/Body.h"
@@ -80,7 +80,7 @@ namespace GL::Player
 
     void PlayerAppearance::OnStart()
     {
-        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        if (::PlayerActor* ownerPlayer = NS::Obj::Cast<::PlayerActor>(Owner()))
         {
             m_body = &ownerPlayer->Body();
             m_actor = ownerPlayer;
@@ -351,7 +351,7 @@ namespace GL::Player
         const NS::Obj::Collider* collider = nullptr;
         if (Owner() != nullptr)
         {
-            if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+            if (::PlayerActor* ownerPlayer = NS::Obj::Cast<::PlayerActor>(Owner()))
             {
                 collider = &ownerPlayer->Collider();
             }

@@ -38,7 +38,7 @@ namespace NS::Obj
         AddSystemTick(m_hitSensors, UpdatePhase::Sensors);
         // 管理役は vcam を動かす追従カメラの後で選び直す
         AddSystemTick(m_cameraManager, UpdatePhase::Camera);
-        // エフェクトの世界は同じ歩の Actor が出した演出を受けてから進む
+        // エフェクトの世界は同じ歩の SceneActor が出した演出を受けてから進む
         AddSystemTick(m_sceneRenderer, UpdatePhase::Effects);
         AddSystemTick(m_ui, UpdatePhase::UI);
         // 暗転は UI の後に進める。UI の段は実時間なので、ヒットストップと遅い世界でも同じ速さで進む
@@ -63,7 +63,7 @@ namespace NS::Obj
         SetSceneJsonGravityDirection(scene, m_gravityDirection);
         SetSceneJsonNextObjectId(scene, m_objects.NextObjectId());
         nlohmann::json& objects = SceneJsonObjects(scene);
-        for (const Actor* obj : m_objects)
+        for (const SceneActor* obj : m_objects)
         {
             // 一時オブジェクトは保存にも凍結にも写さない
             if (obj->IsTransient())
@@ -96,7 +96,7 @@ namespace NS::Obj
 
     void Scene::WritePlayBaselineField(const SubObject& comp, std::string_view fieldName)
     {
-        const Actor* owner = comp.Owner();
+        const SceneActor* owner = comp.Owner();
         if (owner == nullptr)
         {
             return;
@@ -227,7 +227,7 @@ namespace NS::Obj
         return true;
     }
 
-    Actor* Scene::AdoptTransient(std::unique_ptr<Actor> obj)
+    SceneActor* Scene::AdoptTransient(std::unique_ptr<SceneActor> obj)
     {
         if (!obj)
         {
@@ -236,7 +236,7 @@ namespace NS::Obj
 
         obj->SetTransient(true);
         obj->AttachScene(this);
-        Actor* raw = m_objects.Append(std::move(obj));
+        SceneActor* raw = m_objects.Append(std::move(obj));
         if (raw == nullptr)
         {
             return nullptr;
@@ -245,7 +245,7 @@ namespace NS::Obj
         return raw;
     }
 
-    Actor* Scene::AdoptObject(std::unique_ptr<Actor> obj, std::string name)
+    SceneActor* Scene::AdoptObject(std::unique_ptr<SceneActor> obj, std::string name)
     {
         if (!obj)
         {
@@ -253,7 +253,7 @@ namespace NS::Obj
         }
 
         obj->AttachScene(this);
-        Actor* raw = m_objects.AppendWithNewId(std::move(obj), std::move(name));
+        SceneActor* raw = m_objects.AppendWithNewId(std::move(obj), std::move(name));
         if (raw == nullptr)
         {
             return nullptr;
@@ -262,7 +262,7 @@ namespace NS::Obj
         return raw;
     }
 
-    void Scene::StartSpawned(Actor& obj)
+    void Scene::StartSpawned(SceneActor& obj)
     {
         // データ由来の配置物は ObjectBuilder が引き当てる。後から入る物はここで引き当てる
         // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
@@ -276,21 +276,21 @@ namespace NS::Obj
         obj.InitAfterPlacement();
     }
 
-    Actor* Scene::SpawnFromJson(const nlohmann::json& object)
+    SceneActor* Scene::SpawnFromJson(const nlohmann::json& object)
     {
         // 資産の引き当ては開始の直前に StartSpawned がまとめて行う
-        std::unique_ptr<Actor> built = ObjectFromJson(object, nullptr);
+        std::unique_ptr<SceneActor> built = ObjectFromJson(object, nullptr);
         if (!built)
         {
             return nullptr;
         }
         built->AttachScene(this);
-        Actor* raw = m_objects.InsertFromJson(std::move(built), object, m_objects.ObjectCount());
+        SceneActor* raw = m_objects.InsertFromJson(std::move(built), object, m_objects.ObjectCount());
         if (raw == nullptr)
         {
             return nullptr;
         }
-        if (Actor* parent = m_objects.FindByObjectId(ObjectJsonParent(object)); parent != nullptr && parent != raw)
+        if (SceneActor* parent = m_objects.FindByObjectId(ObjectJsonParent(object)); parent != nullptr && parent != raw)
         {
             raw->SetParent(parent);
         }
@@ -298,17 +298,17 @@ namespace NS::Obj
         return raw;
     }
 
-    Actor* Scene::ReplaceFromJson(const nlohmann::json& object)
+    SceneActor* Scene::ReplaceFromJson(const nlohmann::json& object)
     {
         const NS::uint32 id = ObjectJsonId(object);
         const std::size_t index = m_objects.IndexOfObjectId(id);
-        Actor* old = m_objects.FindByObjectId(id);
+        SceneActor* old = m_objects.FindByObjectId(id);
         if (old == nullptr)
         {
             return SpawnFromJson(object);
         }
 
-        std::unique_ptr<Actor> built = ObjectFromJson(object, nullptr);
+        std::unique_ptr<SceneActor> built = ObjectFromJson(object, nullptr);
         if (!built)
         {
             // 組める SubObject が無い姿は、居ない姿として扱う
@@ -319,25 +319,25 @@ namespace NS::Obj
         // 子は古い方の破棄で根に落ちるので、先に控えて新しい方へ付け直す。局所の姿はそのまま残る
         std::vector<NS::uint32> childIds;
         childIds.reserve(old->Children().size());
-        for (const Actor* child : old->Children())
+        for (const SceneActor* child : old->Children())
         {
             childIds.push_back(child->Id());
         }
 
         DestroyObject(id);
         built->AttachScene(this);
-        Actor* raw = m_objects.InsertFromJson(std::move(built), object, index);
+        SceneActor* raw = m_objects.InsertFromJson(std::move(built), object, index);
         if (raw == nullptr)
         {
             return nullptr;
         }
-        if (Actor* parent = m_objects.FindByObjectId(ObjectJsonParent(object)); parent != nullptr && parent != raw)
+        if (SceneActor* parent = m_objects.FindByObjectId(ObjectJsonParent(object)); parent != nullptr && parent != raw)
         {
             raw->SetParent(parent);
         }
         for (const NS::uint32 childId : childIds)
         {
-            if (Actor* child = m_objects.FindByObjectId(childId))
+            if (SceneActor* child = m_objects.FindByObjectId(childId))
             {
                 child->SetParent(raw);
             }
@@ -346,9 +346,9 @@ namespace NS::Obj
         return raw;
     }
 
-    Actor* Scene::ApplyFromJson(const nlohmann::json& snapshot)
+    SceneActor* Scene::ApplyFromJson(const nlohmann::json& snapshot)
     {
-        Actor* obj = m_objects.FindByObjectId(ObjectJsonId(snapshot));
+        SceneActor* obj = m_objects.FindByObjectId(ObjectJsonId(snapshot));
         if (obj == nullptr)
         {
             return SpawnFromJson(snapshot);
@@ -381,7 +381,7 @@ namespace NS::Obj
         {
             obj->Disappear();
         }
-        Actor* parent = m_objects.FindByObjectId(ObjectJsonParent(object));
+        SceneActor* parent = m_objects.FindByObjectId(ObjectJsonParent(object));
         if (parent == obj)
         {
             parent = nullptr;
@@ -427,8 +427,8 @@ namespace NS::Obj
         // シーンに 1 つの物 (進行役など) は最初の状態から作り直させる。組み直した配置物の開始が必要な物を作る
         m_sceneObjs.Clear();
         Fade().Cancel();
-        // Actor の型選択は登録一覧、参照の実体化は各 SubObject の ResolveAssets が行う
-        // 仮想カメラの付け外しは、持ち主の Actor が OnStart / OnEndPlay で行う
+        // SceneActor の型選択は登録一覧、参照の実体化は各 SubObject の ResolveAssets が行う
+        // 仮想カメラの付け外しは、持ち主の SceneActor が OnStart / OnEndPlay で行う
         m_objects.RebuildFromJson(
             scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
         m_objects.SyncPhysics(m_physics.Physics());
@@ -591,7 +591,7 @@ namespace NS::Obj
     void Scene::ExecutePhase(UpdatePhase phase)
     {
         m_objects.BeginPhase();
-        // 段で呼ぶ管理役は Actor を回す前に決める。段の Actor が足した管理役はこの段では呼ばない
+        // 段で呼ぶ管理役は SceneActor を回す前に決める。段の SceneActor が足した管理役はこの段では呼ばない
         m_scheduledSystems.clear();
         for (const SystemEntry& entry : m_systems)
         {
@@ -601,7 +601,7 @@ namespace NS::Obj
             }
         }
         m_objects.ExecutePhase(phase);
-        // 管理役は段の Actor が出した物を受けてまとめるので、Actor の後に回す
+        // 管理役は段の SceneActor が出した物を受けてまとめるので、SceneActor の後に回す
         for (SceneSystem* system : m_scheduledSystems)
         {
             // 段の途中で外した物と、段を替えた物は呼ばない

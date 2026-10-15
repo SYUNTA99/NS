@@ -35,9 +35,9 @@ namespace NS::Obj
     class Message;
     class Scene;
 
-    //! @brief 世界に置く物の基底。Transform と部品を持ち、MapParts / MapObj / Player などが派生する
+    //! @brief 世界に置く物の基底。Transform と部品を持ち、MapPartsActor / PropActor / PlayerActor などが派生する
     //! @details 所属シーンを持ち、IUse〜 の問いを居るシーンへ繋ぐ。シーンに居ない間の問いは nullptr を返す
-    class Actor : public Object,
+    class SceneActor : public Object,
                   public IUseCamera,
                   public IUseSceneSystem,
                   public IUseCollision,
@@ -46,8 +46,8 @@ namespace NS::Obj
                   public IUseTime
     {
     public:
-        Actor() noexcept;
-        virtual ~Actor() noexcept;
+        SceneActor() noexcept;
+        virtual ~SceneActor() noexcept;
         [[nodiscard]] NS::uint32 Id() const noexcept { return m_id; }
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
         NS_REFLECT_DECLARE()
@@ -101,7 +101,7 @@ namespace NS::Obj
         // 基底の部品を先に、派生の固定メンバーを後に渡す。所有は移さない
         void ForEachSubObj(const SubObjVisitor& visit) const;
         void ForEachSubObj(const SubObjFieldVisitor& visit) const;
-        // 登録情報の保存キー。この Actor の部品でなければ空
+        // 登録情報の保存キー。この SceneActor の部品でなければ空
         [[nodiscard]] std::string_view SubObjKey(const SubObject& part) const;
         // 保存キーに対応する部品。作っていなければ nullptr
         [[nodiscard]] SubObject* FindSubObj(std::string_view name) const;
@@ -148,10 +148,10 @@ namespace NS::Obj
             (void)other;
         }
 
-        [[nodiscard]] Actor* Parent() const noexcept { return m_parent; }
+        [[nodiscard]] SceneActor* Parent() const noexcept { return m_parent; }
         //! parent==nullptr で root 化。Transform の親子関係も同期更新する
-        void SetParent(Actor* parent) noexcept;
-        [[nodiscard]] const std::vector<Actor*>& Children() const noexcept { return m_children; }
+        void SetParent(SceneActor* parent) noexcept;
+        [[nodiscard]] const std::vector<SceneActor*>& Children() const noexcept { return m_children; }
 
         //! 配下 SubObject の OnStart を伝播
         virtual void OnStart();
@@ -237,10 +237,10 @@ namespace NS::Obj
         template <typename TOwner, typename... TStates>
         bool BuildStateMachine(TOwner& owner, StateMachineOf<TOwner>*& outMachine)
         {
-            static_assert(std::is_base_of_v<Actor, TOwner>, "持ち主は Actor の派生");
+            static_assert(std::is_base_of_v<SceneActor, TOwner>, "持ち主は SceneActor の派生");
             NS_ASSERT(Scene,
-                      static_cast<const Actor*>(&owner) == this,
-                      "Actor::BuildStateMachine: 持ち主に自分以外の Actor を渡している");
+                      static_cast<const SceneActor*>(&owner) == this,
+                      "SceneActor::BuildStateMachine: 持ち主に自分以外の SceneActor を渡している");
             std::unique_ptr<StateMachineOf<TOwner>> machine = std::make_unique<StateMachineOf<TOwner>>();
             StateMachineOf<TOwner>* built = machine.get();
             if (!AdoptStateMachine(std::move(machine)))
@@ -257,13 +257,13 @@ namespace NS::Obj
     private:
         friend class ActorList;
         friend bool SendMsg(const Message& msg, HitSensor& receiver, HitSensor* sender);
-        friend bool SendMsgToActor(const Message& msg, Actor& receiver);
+        friend bool SendMsgToActor(const Message& msg, SceneActor& receiver);
         template <class T, class... TArgs> friend std::unique_ptr<T> CreateActor(TArgs&&... args);
-        friend std::unique_ptr<Actor> CreateActorOfClass(std::string_view className);
+        friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
         // 呼ぶのは作る関数 2 つだけで、作った直後に 1 回。private にして 2 回目を起こさない
         void Init() { OnInit(); }
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
-        //! @details ActorList::SnapshotObjects が固定ステップの頭で全ての Actor に呼ぶ。世界を止めている間も呼ばれる
+        //! @details ActorList::SnapshotObjects が固定ステップの頭で全ての SceneActor に呼ぶ。世界を止めている間も呼ばれる
         void SnapshotForInterpolation() noexcept;
         //! 状態機械を預かる。既に持っていれば NS_LOG_ERROR を出して machine を捨て、false を返す
         [[nodiscard]] bool AdoptStateMachine(std::unique_ptr<IStateMachine> machine);
@@ -296,8 +296,8 @@ namespace NS::Obj
 
     private:
         std::unique_ptr<IStateMachine> m_stateMachine; // BuildStateMachine が 1 回だけ預かる。持たない種類は nullptr
-        std::vector<Actor*> m_children;                // 子 Actor、非所有
-        Actor* m_parent = nullptr;                     // 親 Actor、root なら nullptr
+        std::vector<SceneActor*> m_children;                // 子 SceneActor、非所有
+        SceneActor* m_parent = nullptr;                     // 親 SceneActor、root なら nullptr
         bool m_transient = false;                      // 一時オブジェクトの印。保存・凍結に写らない
         float m_bodyTimeScale = 1.0f;
 
@@ -309,9 +309,9 @@ namespace NS::Obj
     //! Scene に入れずに部品を触る試しは、この関数で作る
     template <class T, class... TArgs> [[nodiscard]] std::unique_ptr<T> CreateActor(TArgs&&... args)
     {
-        static_assert(std::derived_from<T, Actor>, "T は Actor の派生でなければならない");
+        static_assert(std::derived_from<T, SceneActor>, "T は SceneActor の派生でなければならない");
         std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
-        Actor& base = *actor;
+        SceneActor& base = *actor;
         base.Init();
         return actor;
     }

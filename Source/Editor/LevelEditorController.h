@@ -19,7 +19,7 @@
 
 namespace NS::Obj
 {
-    class Actor;
+    class SceneActor;
     class Transform;
     class CameraManager;
     class SceneCamera;
@@ -172,8 +172,8 @@ public:
     //! @param[in] meshPath 資産ファイルの絶対パス。参照は ContentRoot 相対へ直して持つ
     void AddMeshParts(std::string_view meshPath);
 
-    //! 選択中の配置物に対応する runtime Actor。未選択 / 未構築は nullptr
-    [[nodiscard]] NS::Obj::Actor* SelectedObjectActor() noexcept;
+    //! 選択中の配置物に対応する runtime SceneActor。未選択 / 未構築は nullptr
+    [[nodiscard]] NS::Obj::SceneActor* SelectedObjectActor() noexcept;
     //! 選択中の配置物がプレイヤー実体か
     [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
 
@@ -220,7 +220,7 @@ private:
     void PushCreateObject(nlohmann::json object);
 
     //! 選んだ配置物の Root を書いた後、その欄をプレイ中の凍結へも写す
-    void MirrorRootEditToBaseline(NS::Obj::Actor& actor, std::string_view fieldName);
+    void MirrorRootEditToBaseline(NS::Obj::SceneActor& actor, std::string_view fieldName);
 
     void RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
                             const NS::Matrix& viewProjection,
@@ -276,7 +276,7 @@ private:
 
     NS::Editor::GizmoEditor m_gizmo{};
 
-    std::vector<NS::Obj::Actor*> m_selectablePtrs;
+    std::vector<NS::Obj::SceneActor*> m_selectablePtrs;
     std::vector<NS::uint8> m_selectablePickable; // 1 は Model を持つ配置物。ギズモが先に選ぶ
 
     NS::uint32 m_selectedObjectId = NS::Obj::k_NoObjectId; // 主対象の永続 id。選択の一次情報

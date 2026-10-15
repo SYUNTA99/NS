@@ -38,7 +38,7 @@ namespace
         std::function<void()> m_check;
     };
 
-    std::optional<NS::Vector2> FindMoveHandle(const NS::Obj::Actor& target,
+    std::optional<NS::Vector2> FindMoveHandle(const NS::Obj::SceneActor& target,
                                               const NS::Matrix& viewProjection,
                                               const NS::Editor::ViewRect& view)
     {
@@ -205,7 +205,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
         editor.FocusSelectedInView();
         editor.Tick();
 
-        const NS::Obj::Actor* camera = editor.SelectedObjectActor();
+        const NS::Obj::SceneActor* camera = editor.SelectedObjectActor();
         ASSERT_NE(camera, nullptr);
         const std::optional<NS::Vector2> handle =
             FindMoveHandle(*camera, scene.GetCameraManager()->ViewProjection(), view);
@@ -261,7 +261,7 @@ TEST(EditorSelection, DraggingAChildLeavesTheSelectedParent)
         const auto worldPosition = [&scene](NS::uint32 id) {
             return scene.Objects().FindByObjectId(id)->Root().WorldMatrix().Translation();
         };
-        const NS::Obj::Actor* child = scene.Objects().FindByObjectId(childId);
+        const NS::Obj::SceneActor* child = scene.Objects().FindByObjectId(childId);
         ASSERT_NE(child, nullptr);
         const std::optional<NS::Vector2> handle =
             FindMoveHandle(*child, scene.GetCameraManager()->ViewProjection(), view);
@@ -315,7 +315,7 @@ TEST(EditorSelection, GizmoFollowsAChildUnderAnOffsetParent)
         editor.FocusSelectedInView();
         editor.Tick();
 
-        const NS::Obj::Actor* child = scene.Objects().FindByObjectId(childId);
+        const NS::Obj::SceneActor* child = scene.Objects().FindByObjectId(childId);
         ASSERT_NE(child, nullptr);
         ASSERT_NE(child->Root().Position(), child->Root().WorldMatrix().Translation());
         const std::optional<NS::Vector2> handle =

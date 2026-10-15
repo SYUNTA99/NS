@@ -1,8 +1,8 @@
 #include "Game/Level/CourseDirector.h"
 
 #include "Game/Level/LevelMessages.h"
-#include "Game/Player.h"
-#include "NSlib/Object/Actor.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
@@ -70,21 +70,21 @@ namespace GL::Level
         SendRestart(FindPlayer(m_scene.Objects()));
     }
 
-    void CourseDirector::SendRestart(const NS::Obj::Actor* skip)
+    void CourseDirector::SendRestart(const NS::Obj::SceneActor* skip)
     {
         // 送る先は控えた並びで回す。受け手が戻る間に配置物の並びが変わっても崩れない
         // 一時オブジェクト (破片・跡) は凍結に無いので送らない
         const nlohmann::json& baseline = m_scene.PlayBaseline();
-        std::vector<NS::Obj::Actor*> receivers;
+        std::vector<NS::Obj::SceneActor*> receivers;
         receivers.reserve(m_scene.Objects().ObjectCount());
-        for (NS::Obj::Actor* actor : m_scene.Objects())
+        for (NS::Obj::SceneActor* actor : m_scene.Objects())
         {
             if (!actor->IsTransient() && actor != skip)
             {
                 receivers.push_back(actor);
             }
         }
-        for (NS::Obj::Actor* actor : receivers)
+        for (NS::Obj::SceneActor* actor : receivers)
         {
             (void)SendMsgCourseRestart(*actor, baseline);
         }
@@ -92,7 +92,7 @@ namespace GL::Level
 
     void CourseDirector::SendInputLock(bool locked)
     {
-        if (::Player* player = FindPlayer(m_scene.Objects()))
+        if (::PlayerActor* player = FindPlayer(m_scene.Objects()))
         {
             (void)SendMsgInputLock(*player, locked);
         }

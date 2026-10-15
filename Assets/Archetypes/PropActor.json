@@ -1,5 +1,5 @@
 {
-  "class": "MapObj",
+  "class": "PropActor",
   "subObjects": {
     "Collision": {
       "中心オフセット": [

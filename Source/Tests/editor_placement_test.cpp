@@ -2,7 +2,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/MeshCollision.h"
 #include "NSlib/Object/SubObjects/Model.h"
@@ -13,7 +13,7 @@
 #include "NSlib/Core/Types.h"
 #include <string_view>
 
-// エディタの配置 (ヒエラルキーの追加メニュー・メッシュの投げ込み) が、Actor のクラスごと置くことを縛る
+// エディタの配置 (ヒエラルキーの追加メニュー・メッシュの投げ込み) が、SceneActor のクラスごと置くことを縛る
 
 TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 {
@@ -26,9 +26,9 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 
     const NS::uint32 id = editor.SelectedObjectId();
     ASSERT_NE(id, NS::Obj::k_NoObjectId);
-    NS::Obj::Actor* placed = scene.Objects().FindByObjectId(id);
+    NS::Obj::SceneActor* placed = scene.Objects().FindByObjectId(id);
     ASSERT_NE(placed, nullptr);
-    EXPECT_EQ(std::string_view{placed->ClassName()}, "MapObj");
+    EXPECT_EQ(std::string_view{placed->ClassName()}, "PropActor");
 }
 
 TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
@@ -40,9 +40,9 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
 
     editor.PlaceItem(*item);
 
-    NS::Obj::Actor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
+    NS::Obj::SceneActor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placed, nullptr);
-    EXPECT_EQ(std::string_view{placed->ClassName()}, "MapParts");
+    EXPECT_EQ(std::string_view{placed->ClassName()}, "MapPartsActor");
     const NS::Obj::Model* renderer = placed->ModelSubObj();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "wedge45");
@@ -67,9 +67,9 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
 
     // やり直すと同じ id・同じクラスで戻る
     ASSERT_TRUE(editor.Editor().Undo().Redo(applier));
-    NS::Obj::Actor* again = scene.Objects().FindByObjectId(id);
+    NS::Obj::SceneActor* again = scene.Objects().FindByObjectId(id);
     ASSERT_NE(again, nullptr);
-    EXPECT_EQ(std::string_view{again->ClassName()}, "Goal");
+    EXPECT_EQ(std::string_view{again->ClassName()}, "GoalActor");
 }
 
 // 参照の実体化は AssetManager を差した Scene だけが行う。この試しは差していないので実在しない file で足りる
@@ -82,9 +82,9 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Models"),
         "__ns_missing_terrain__.glb"));
 
-    NS::Obj::Actor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
+    NS::Obj::SceneActor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placed, nullptr);
-    EXPECT_EQ(std::string_view{placed->ClassName()}, "MapParts");
+    EXPECT_EQ(std::string_view{placed->ClassName()}, "MapPartsActor");
     const NS::Obj::Model* renderer = placed->ModelSubObj();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "Assets/Models/__ns_missing_terrain__.glb");
@@ -101,12 +101,12 @@ TEST(EditorPlacement, OnlyTheBuiltInPartsCountAsCells)
     const NS::Editor::PlacementItem* cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
     ASSERT_NE(cube, nullptr);
     editor.PlaceItem(*cube);
-    const NS::Obj::Actor* placedCube = scene.Objects().FindByObjectId(editor.SelectedObjectId());
+    const NS::Obj::SceneActor* placedCube = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placedCube, nullptr);
     editor.AddMeshParts(NS::OS::FileSystem::Combine(
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Models"),
         "__ns_missing_terrain__.glb"));
-    const NS::Obj::Actor* dropped = scene.Objects().FindByObjectId(editor.SelectedObjectId());
+    const NS::Obj::SceneActor* dropped = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(dropped, nullptr);
 
     EXPECT_TRUE(NS::Editor::IsCellBrushObject(*placedCube));

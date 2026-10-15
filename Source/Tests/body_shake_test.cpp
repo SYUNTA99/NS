@@ -1,5 +1,5 @@
 #include "Game/Level/ImpactOutcome.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Model.h"
@@ -15,11 +15,11 @@
 
 namespace
 {
-    NS::Obj::Actor* PlaceRock(NS::Obj::Scene& scene)
+    NS::Obj::SceneActor* PlaceRock(NS::Obj::Scene& scene)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "MapObj");
+        NS::Obj::SetObjectJsonClass(rock, "PropActor");
         NS::Obj::SetObjectJsonId(rock, 2);
         NS::Obj::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -73,7 +73,7 @@ TEST(BodyShake, OffsetHoldsEachSideForTheFlipFramesAndFallsLinearly)
 TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* rock = PlaceRock(scene);
+    NS::Obj::SceneActor* rock = PlaceRock(scene);
     ASSERT_NE(rock, nullptr);
     NS::Obj::Model* model = rock->ModelSubObj();
     ASSERT_NE(model, nullptr);
@@ -98,7 +98,7 @@ TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
 TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* rock = PlaceRock(scene);
+    NS::Obj::SceneActor* rock = PlaceRock(scene);
     ASSERT_NE(rock, nullptr);
     NS::Obj::Model* model = rock->ModelSubObj();
     ASSERT_NE(model, nullptr);

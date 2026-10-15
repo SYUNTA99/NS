@@ -1,5 +1,5 @@
 {
-  "class": "Light",
+  "class": "LightActor",
   "subObjects": {
     "DirectionalLight": {
       "地面環境光": [

@@ -55,7 +55,7 @@ namespace NS::Obj
         [[nodiscard]] const std::string& MaterialRef() const noexcept { return m_materialRef; }
         void SetMaterialRef(std::string ref) noexcept { m_materialRef = std::move(ref); }
 
-        //! 個体ごとの頂点シェーダーの定数を設定する。同じ Actor の Animation がプレイの始まりに設定する
+        //! 個体ごとの頂点シェーダーの定数を設定する。同じ SceneActor の Animation がプレイの始まりに設定する
         //! cpuData があれば、描画側が毎回バッファーへ転送してから設定する
         void SetPerObjectVsConstant(const NS::Gfx::Buffer* cb,
                                     const void* cpuData,

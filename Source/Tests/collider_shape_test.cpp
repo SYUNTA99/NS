@@ -1,7 +1,7 @@
-#include "Game/Level/DeathZone.h"
-#include "Game/Level/Goal.h"
-#include "Game/Level/MapObj.h"
-#include "Game/Player.h"
+#include "Game/Level/DeathZoneActor.h"
+#include "Game/Level/GoalActor.h"
+#include "Game/Level/PropActor.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -20,12 +20,12 @@
 
 namespace
 {
-    // Player を 1 体だけ置いた場面を読む。parts は個体の上書き
+    // PlayerActor を 1 体だけ置いた場面を読む。parts は個体の上書き
     void LoadPlayerScene(NS::Obj::Scene& scene, const nlohmann::json& parts)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json entry = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(entry, "Player");
+        NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
         NS::Obj::SetObjectJsonId(entry, 1);
         entry["subObjects"] = parts;
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
@@ -34,7 +34,7 @@ namespace
 
     const NS::Obj::Collider* PlayerCollider(NS::Obj::Scene& scene)
     {
-        const Player* player = static_cast<const Player*>(scene.Objects().FindByObjectId(1));
+        const PlayerActor* player = static_cast<const PlayerActor*>(scene.Objects().FindByObjectId(1));
         if (player == nullptr)
         {
             return nullptr;
@@ -101,16 +101,16 @@ TEST(ColliderShape, ShapeFieldsRejectNegativeAndNonFinite)
 
 TEST(ColliderShape, PlayerOwnsAFixedColliderPart)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     EXPECT_EQ(player.FindSubObj("Collider"), &player.Collider());
 }
 
 TEST(ColliderShape, BodyHasNoShapeFields)
 {
     // 寸法の正は Collider 1 つ。Movement に欄が残ると、同じ値の置き場が 2 つに割れる
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     const NS::Obj::SubObject* movement = player.FindSubObj("Movement");
     ASSERT_NE(movement, nullptr);
     ASSERT_NE(movement->GetReflection(), nullptr);
@@ -132,7 +132,7 @@ TEST(ColliderShape, PlayerBodySensorFollowsARadiusEditWithoutRestart)
     // インスペクタで寸法を変えたその場で、体のセンサーは移動と同じ形を返す。開始し直しを待たない
     NS::Obj::Scene scene;
     LoadPlayerScene(scene, nlohmann::json::object());
-    Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     NS::Obj::SubObject* collider = player->FindSubObj("Collider");
     ASSERT_NE(collider, nullptr);
@@ -147,7 +147,7 @@ TEST(ColliderShape, ScaledPlayerRootDoesNotScaleTheBodySensor)
     // 移動の当たりは根のスケールに依らない。範囲が照合する体も同じ寸法のまま
     NS::Obj::Scene scene;
     LoadPlayerScene(scene, nlohmann::json::object());
-    Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
 
     player->Root().SetScale(NS::Vector3{1.2f, 1.2f, 1.2f});
@@ -164,12 +164,12 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonClass(rock, "PropActor");
     NS::Obj::SetObjectJsonId(rock, 1);
     NS::Obj::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    NS::Obj::Actor* placed = scene.Objects().FindByObjectId(1);
+    NS::Obj::SceneActor* placed = scene.Objects().FindByObjectId(1);
     ASSERT_NE(placed, nullptr);
     const NS::Obj::SphereCollision* collision =
         NS::Obj::Cast<NS::Obj::SphereCollision>(placed->FindSubObj("Collision"));
@@ -190,10 +190,10 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
 TEST(ColliderShape, FollowingBodySensorsShowNoFields)
 {
     // 形の正は Collider と Collision。映すだけのセンサーに効かない欄を出さない
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
-    const std::unique_ptr<GL::Level::MapObj> objOwned = NS::Obj::CreateActor<GL::Level::MapObj>();
-    GL::Level::MapObj& obj = *objOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
+    const std::unique_ptr<GL::Level::PropActor> objOwned = NS::Obj::CreateActor<GL::Level::PropActor>();
+    GL::Level::PropActor& obj = *objOwned;
     ASSERT_NE(player.BodySensorSubObj(), nullptr);
     ASSERT_NE(obj.BodySensorSubObj(), nullptr);
     EXPECT_EQ(player.BodySensorSubObj()->GetReflection()->fieldCount, 0u);
@@ -203,10 +203,10 @@ TEST(ColliderShape, FollowingBodySensorsShowNoFields)
 TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
 {
     // ゴールと落下死の範囲は形を自分で持つ。保存済みの欄の表示名がそのまま読める
-    const std::unique_ptr<GL::Level::Goal> goalOwned = NS::Obj::CreateActor<GL::Level::Goal>();
-    GL::Level::Goal& goal = *goalOwned;
-    const std::unique_ptr<GL::Level::DeathZone> zoneOwned = NS::Obj::CreateActor<GL::Level::DeathZone>();
-    GL::Level::DeathZone& zone = *zoneOwned;
+    const std::unique_ptr<GL::Level::GoalActor> goalOwned = NS::Obj::CreateActor<GL::Level::GoalActor>();
+    GL::Level::GoalActor& goal = *goalOwned;
+    const std::unique_ptr<GL::Level::DeathZoneActor> zoneOwned = NS::Obj::CreateActor<GL::Level::DeathZoneActor>();
+    GL::Level::DeathZoneActor& zone = *zoneOwned;
     ASSERT_NE(goal.BodySensorSubObj(), nullptr);
     ASSERT_NE(zone.BodySensorSubObj(), nullptr);
     EXPECT_EQ(NS::Obj::ApplyJsonFields(*goal.BodySensorSubObj(), {{"半径", 0.9f}}), 0u);

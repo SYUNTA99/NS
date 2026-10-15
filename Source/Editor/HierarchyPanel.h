@@ -7,7 +7,7 @@
 
 namespace NS::Obj
 {
-    class Actor;
+    class SceneActor;
 }
 
 class LevelEditorController;
@@ -23,10 +23,10 @@ namespace NS::Editor
 
     private:
         //! 検索中は withChildren を false にし、一致する配置物だけを平らに並べる
-        void RenderNode(LevelEditorController& editor, NS::Obj::Actor& object, bool withChildren) noexcept;
+        void RenderNode(LevelEditorController& editor, NS::Obj::SceneActor& object, bool withChildren) noexcept;
 
         //! 対象を改名待ちにして、入力欄へ現在の表示名を入れる
-        void BeginRename(NS::Obj::Actor& object) noexcept;
+        void BeginRename(NS::Obj::SceneActor& object) noexcept;
 
         NS::uint32 m_renamingObjectId = 0; // 改名中の配置物の永続 id、0 なら改名していない
         char m_renameBuffer[64]{};         // 改名の入力欄

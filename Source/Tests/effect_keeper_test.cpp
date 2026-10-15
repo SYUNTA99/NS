@@ -1,4 +1,4 @@
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "TestEffectActor.h"

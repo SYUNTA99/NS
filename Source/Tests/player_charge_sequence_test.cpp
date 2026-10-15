@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Object/SubObjects/Body.h"
@@ -15,7 +15,7 @@
 
 namespace
 {
-    // 欄の秒を固定ステップのフレーム数にする。Player::AdvanceCharge と同じ丸め
+    // 欄の秒を固定ステップのフレーム数にする。PlayerActor::AdvanceCharge と同じ丸め
     int FramesFor(float seconds)
     {
         return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
@@ -25,8 +25,8 @@ namespace
 // 押したフレームに丸まり、しきい値のフレームに減速して横を止め、放したフレームに発動する
 TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}),
               0u);
     const int threshold = FramesFor(0.2f);
@@ -82,8 +82,8 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 
 TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const int threshold = FramesFor(0.2f);
     player.Update(true);
@@ -108,8 +108,8 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 
 TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     GL::Player::PlayerParams* params =
         NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -135,8 +135,8 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
 
 TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     GL::Player::PlayerParams* params =
         NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
@@ -168,8 +168,8 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
 // 構えは縦の倍率を答えるだけで、根のスケールは押しても溜めても放しても配置の値のまま
 TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const NS::Vector3 one{1.0f, 1.0f, 1.0f};
     player.Update(true);
@@ -190,8 +190,8 @@ TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 
 TEST(PlayerChargeSequence, EndPlayWhileHeldRestoresStanceAndUncurls)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     player.Appearance().OnStart();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
@@ -210,11 +210,11 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "Player");
+    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
     NS::Obj::SetObjectJsonId(entry, 1);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
-    Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     TestViewCamera* camera = PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -241,11 +241,11 @@ TEST(PlayerChargeSequence, AimLineFollowsTheViewCameraNotTheDrawnCamera)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "Player");
+    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
     NS::Obj::SetObjectJsonId(entry, 1);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
-    Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{-5.0f, 0.0f, 0.0f}, NS::Vector3{}), nullptr);

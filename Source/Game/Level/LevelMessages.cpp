@@ -1,7 +1,7 @@
 #include "Game/Level/LevelMessages.h"
 
 #include "Game/Level/ImpactOutcome.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Model.h"
 
@@ -30,7 +30,7 @@ namespace GL::Level
         return NS::Obj::IsMsg<MsgGoal>(msg);
     }
 
-    bool SendMsgCourseRestart(NS::Obj::Actor& receiver, const nlohmann::json& baseline)
+    bool SendMsgCourseRestart(NS::Obj::SceneActor& receiver, const nlohmann::json& baseline)
     {
         return NS::Obj::SendMsgToActor(MsgCourseRestart{baseline}, receiver);
     }
@@ -40,7 +40,7 @@ namespace GL::Level
         return NS::Obj::IsMsg<MsgCourseRestart>(msg);
     }
 
-    bool SendMsgInputLock(NS::Obj::Actor& receiver, bool locked)
+    bool SendMsgInputLock(NS::Obj::SceneActor& receiver, bool locked)
     {
         return NS::Obj::SendMsgToActor(MsgInputLock{locked}, receiver);
     }
@@ -60,7 +60,7 @@ namespace GL::Level
         return NS::Obj::IsMsg<MsgAskTackleTarget>(msg);
     }
 
-    bool SendMsgTackleFreeze(NS::Obj::Actor& receiver, const TackleFreezeDesc& desc)
+    bool SendMsgTackleFreeze(NS::Obj::SceneActor& receiver, const TackleFreezeDesc& desc)
     {
         return NS::Obj::SendMsgToActor(MsgTackleFreeze{desc}, receiver);
     }
@@ -70,7 +70,7 @@ namespace GL::Level
         return NS::Obj::IsMsg<MsgTackleFreeze>(msg);
     }
 
-    bool SendMsgTackleShake(NS::Obj::Actor& receiver, const TackleShakeDesc& desc)
+    bool SendMsgTackleShake(NS::Obj::SceneActor& receiver, const TackleShakeDesc& desc)
     {
         return NS::Obj::SendMsgToActor(MsgTackleShake{desc}, receiver);
     }
@@ -107,7 +107,7 @@ namespace GL::Level
         return true;
     }
 
-    bool SendMsgTackleGhost(NS::Obj::Actor& receiver, const TackleGhostDesc& desc)
+    bool SendMsgTackleGhost(NS::Obj::SceneActor& receiver, const TackleGhostDesc& desc)
     {
         return NS::Obj::SendMsgToActor(MsgTackleGhost{desc}, receiver);
     }
@@ -117,7 +117,7 @@ namespace GL::Level
         return NS::Obj::IsMsg<MsgTackleGhost>(msg);
     }
 
-    bool SendMsgTackleTremor(NS::Obj::Actor& receiver, const TackleTremorDesc& desc)
+    bool SendMsgTackleTremor(NS::Obj::SceneActor& receiver, const TackleTremorDesc& desc)
     {
         return NS::Obj::SendMsgToActor(MsgTackleTremor{desc}, receiver);
     }
@@ -127,7 +127,7 @@ namespace GL::Level
         return NS::Obj::IsMsg<MsgTackleTremor>(msg);
     }
 
-    bool SendMsgTackleRelease(NS::Obj::Actor& receiver, const TackleReleaseDesc& desc)
+    bool SendMsgTackleRelease(NS::Obj::SceneActor& receiver, const TackleReleaseDesc& desc)
     {
         return NS::Obj::SendMsgToActor(MsgTackleRelease{desc}, receiver);
     }

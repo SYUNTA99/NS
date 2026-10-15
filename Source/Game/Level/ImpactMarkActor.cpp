@@ -1,4 +1,4 @@
-﻿#include "Game/Level/ImpactMark.h"
+﻿#include "Game/Level/ImpactMarkActor.h"
 
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
@@ -7,31 +7,31 @@
 
 namespace GL::Level
 {
-    ImpactMark::ImpactMark() noexcept
+    ImpactMarkActor::ImpactMarkActor() noexcept
     {
         Root().SetScale(NS::Vector3{m_diameter, 1.0f, m_diameter});
     }
 
-    void ImpactMark::OnInit()
+    void ImpactMarkActor::OnInit()
     {
         NS::Obj::Model* model = CreateSubObj(m_model);
         model->SetMeshRef("shadowQuad");
         model->SetMaterialRef("shadow");
     }
 
-    NS::Obj::Actor* ImpactMark::SpawnAt(NS::Obj::Scene* scene, const NS::Vector3& position)
+    NS::Obj::SceneActor* ImpactMarkActor::SpawnAt(NS::Obj::Scene* scene, const NS::Vector3& position)
     {
         if (scene == nullptr)
         {
             return nullptr;
         }
 
-        ImpactMark* mark = scene->SpawnTransient<ImpactMark>();
+        ImpactMarkActor* mark = scene->SpawnTransient<ImpactMarkActor>();
         mark->Root().SetPosition(position);
         return mark;
     }
 
-    void ImpactMark::SetDiameter(float diameter) noexcept
+    void ImpactMarkActor::SetDiameter(float diameter) noexcept
     {
         if (std::isfinite(diameter) && diameter > 0.0f)
         {
@@ -40,7 +40,7 @@ namespace GL::Level
         }
     }
 
-    void ImpactMark::SetLifeSeconds(float seconds) noexcept
+    void ImpactMarkActor::SetLifeSeconds(float seconds) noexcept
     {
         if (std::isfinite(seconds) && seconds >= 0.0f)
         {
@@ -48,9 +48,9 @@ namespace GL::Level
         }
     }
 
-    void ImpactMark::VisualStep()
+    void ImpactMarkActor::VisualStep()
     {
-        NS::Obj::Actor::VisualStep();
+        NS::Obj::SceneActor::VisualStep();
         if (m_age >= m_lifeSeconds)
         {
             return;

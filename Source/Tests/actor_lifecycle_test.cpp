@@ -1,4 +1,4 @@
-#include "Game/Level/MapObj.h"
+#include "Game/Level/PropActor.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/UIActor.h"
@@ -7,7 +7,7 @@
 
 namespace
 {
-    class LifeProbe final : public NS::Obj::Actor
+    class LifeProbeActor final : public NS::Obj::SceneActor
     {
     public:
         int updates = 0;
@@ -34,10 +34,10 @@ namespace
         int unregisters = 0;
     };
 
-    class CountedActor final : public NS::Obj::Actor
+    class CountedActor final : public NS::Obj::SceneActor
     {
     public:
-        NS_REFLECT_BEGIN(CountedActor, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(CountedActor, NS::Obj::SceneActor)
         NS_REFLECT_SUBOBJ(part, "Counted")
         NS_REFLECT_END()
 
@@ -59,7 +59,7 @@ TEST(ActorLifecycle, StartRegistersEachPartOnce)
 TEST(ActorLifecycle, ReparentingKeepsRegistrationWhileActivityIsUnchanged)
 {
     NS::Obj::Scene scene;
-    LifeProbe* parent = scene.SpawnTransient<LifeProbe>();
+    LifeProbeActor* parent = scene.SpawnTransient<LifeProbeActor>();
     CountedActor* child = scene.SpawnTransient<CountedActor>();
     child->SetParent(parent);
     child->SetParent(nullptr);
@@ -77,7 +77,7 @@ TEST(ActorLifecycle, ReparentingKeepsRegistrationWhileActivityIsUnchanged)
 TEST(ActorLifecycle, DisappearStopsUpdatesAndAppearResumesOnce)
 {
     NS::Obj::Scene scene;
-    LifeProbe* actor = scene.SpawnTransient<LifeProbe>();
+    LifeProbeActor* actor = scene.SpawnTransient<LifeProbeActor>();
     EXPECT_TRUE(actor->IsAppeared());
     scene.ExecutePhase(NS::Obj::UpdatePhase::Triggers);
     EXPECT_EQ(actor->updates, 1);
@@ -96,7 +96,7 @@ TEST(ActorLifecycle, DestroyedPlacedActorLeavesAfterTheStep)
 {
     NS::Obj::Scene scene;
     const std::size_t before = scene.Objects().ObjectCount();
-    NS::Obj::Actor* actor = scene.SpawnObject<LifeProbe>("Probe");
+    NS::Obj::SceneActor* actor = scene.SpawnObject<LifeProbeActor>("Probe");
     actor->Destroy();
     EXPECT_FALSE(actor->IsAppeared());
     // 段を回している途中の呼び手がまだ指しているので、その場では解放しない
@@ -109,7 +109,7 @@ TEST(ActorLifecycle, DisappearedTransientStaysAfterTheStep)
 {
     NS::Obj::Scene scene;
     const std::size_t before = scene.Objects().ObjectCount();
-    LifeProbe* actor = scene.SpawnTransient<LifeProbe>();
+    LifeProbeActor* actor = scene.SpawnTransient<LifeProbeActor>();
     actor->Disappear();
     scene.OnUpdate();
     ASSERT_EQ(scene.Objects().ObjectCount(), before + 1);
@@ -120,7 +120,7 @@ TEST(ActorLifecycle, DisappearedTransientStaysAfterTheStep)
 TEST(ActorLifecycle, RebuildingFromJsonDropsTransients)
 {
     NS::Obj::Scene scene;
-    (void)scene.SpawnTransient<LifeProbe>();
+    (void)scene.SpawnTransient<LifeProbeActor>();
     ASSERT_EQ(scene.Objects().ObjectCount(), 1u);
     scene.ResetFromJson(NS::Obj::MakeSceneJson());
     EXPECT_EQ(scene.Objects().ObjectCount(), 0u);
@@ -129,7 +129,7 @@ TEST(ActorLifecycle, RebuildingFromJsonDropsTransients)
 TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
 {
     NS::Obj::Scene scene;
-    GL::Level::MapObj* actor = scene.SpawnTransient<GL::Level::MapObj>();
+    GL::Level::PropActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
     scene.SyncPhysics();
     const std::size_t sensors = scene.HitSensors().Sensors().size();
     ASSERT_GT(sensors, 0u);
@@ -168,8 +168,8 @@ TEST(ActorLifecycle, UICloseStopsTheUpdateAndOpenResumesIt)
 TEST(ActorLifecycle, ParentDisappearRemovesChildPhysicsWithoutChangingChildState)
 {
     NS::Obj::Scene scene;
-    LifeProbe* parent = scene.SpawnTransient<LifeProbe>();
-    GL::Level::MapObj* child = scene.SpawnTransient<GL::Level::MapObj>();
+    LifeProbeActor* parent = scene.SpawnTransient<LifeProbeActor>();
+    GL::Level::PropActor* child = scene.SpawnTransient<GL::Level::PropActor>();
     child->SetParent(parent);
     scene.SyncPhysics();
     parent->Disappear();

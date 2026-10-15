@@ -1,7 +1,7 @@
 #include "Editor/EditorObjects.h"
-#include "Game/Level/DeathZone.h"
-#include "Game/Player.h"
-#include "NSlib/Object/Actor.h"
+#include "Game/Level/DeathZoneActor.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -19,7 +19,7 @@
 #include <string>
 #include <string_view>
 
-// シーンの保存と読込が Actor のクラスを保つことを縛る
+// シーンの保存と読込が SceneActor のクラスを保つことを縛る
 // 部品の構成はクラスが決め、データは値だけを運ぶ
 
 namespace
@@ -36,18 +36,18 @@ namespace
     // 開始の手前で止まる ActorList の口を外から呼べるか。テンプレートにして、呼べない時を偽として受ける
     template <class List>
     concept CanAppendFromOutside =
-        requires(List& list, std::unique_ptr<NS::Obj::Actor> obj) { list.Append(std::move(obj)); };
+        requires(List& list, std::unique_ptr<NS::Obj::SceneActor> obj) { list.Append(std::move(obj)); };
     template <class List>
-    concept CanAppendWithNewIdFromOutside = requires(List& list, std::unique_ptr<NS::Obj::Actor> obj) {
+    concept CanAppendWithNewIdFromOutside = requires(List& list, std::unique_ptr<NS::Obj::SceneActor> obj) {
         list.AppendWithNewId(std::move(obj), std::string{});
     };
     template <class List>
     concept CanInsertFromJsonFromOutside =
-        requires(List& list, std::unique_ptr<NS::Obj::Actor> obj, const nlohmann::json& entry) {
+        requires(List& list, std::unique_ptr<NS::Obj::SceneActor> obj, const nlohmann::json& entry) {
             list.InsertFromJson(std::move(obj), entry, std::size_t{0});
         };
     template <class List>
-    concept CanSpawnFromOutside = requires(List& list) { list.template Spawn<NS::Obj::Actor>(); };
+    concept CanSpawnFromOutside = requires(List& list) { list.template Spawn<NS::Obj::SceneActor>(); };
 } // namespace
 
 TEST(SceneActor, SpawningGoesThroughTheSceneOnly)
@@ -63,25 +63,25 @@ TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
 {
     // 部品の一覧を持たないデータでも、クラスの OnInit が部品を全て積む
     nlohmann::json doc = NS::Obj::MakeSceneJson();
-    AddClassObject(doc, "MapObj", 1);
+    AddClassObject(doc, "PropActor", 1);
 
     NS::Obj::Scene scene;
     scene.ResetFromJson(doc);
 
-    NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
+    NS::Obj::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(std::string_view{actor->ClassName()}, "MapObj");
+    EXPECT_EQ(std::string_view{actor->ClassName()}, "PropActor");
     EXPECT_NE(NS::Obj::Cast<NS::Obj::SphereCollision>(actor->FindSubObj("Collision")), nullptr);
 }
 
 TEST(SceneActor, ToJsonKeepsClassAndValues)
 {
     nlohmann::json doc = NS::Obj::MakeSceneJson();
-    AddClassObject(doc, "MapObj", 1);
+    AddClassObject(doc, "PropActor", 1);
 
     NS::Obj::Scene scene;
     scene.ResetFromJson(doc);
-    NS::Obj::Actor* actor = scene.Objects().FindByObjectId(1);
+    NS::Obj::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     NS::Obj::SphereCollision* sphere = NS::Obj::Cast<NS::Obj::SphereCollision>(actor->FindSubObj("Collision"));
     ASSERT_NE(sphere, nullptr);
@@ -91,14 +91,14 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     const nlohmann::json saved = scene.ToJson();
     const nlohmann::json& objects = NS::Obj::SceneJsonObjects(saved);
     ASSERT_EQ(objects.size(), 1u);
-    EXPECT_EQ(NS::Obj::ObjectJsonClass(objects[0]), "MapObj");
+    EXPECT_EQ(NS::Obj::ObjectJsonClass(objects[0]), "PropActor");
 
     // 読み直すと同じクラスで組まれ、変えた値が戻る
     NS::Obj::Scene reloaded;
     reloaded.ResetFromJson(saved);
-    NS::Obj::Actor* again = reloaded.Objects().FindByObjectId(1);
+    NS::Obj::SceneActor* again = reloaded.Objects().FindByObjectId(1);
     ASSERT_NE(again, nullptr);
-    EXPECT_EQ(std::string_view{again->ClassName()}, "MapObj");
+    EXPECT_EQ(std::string_view{again->ClassName()}, "PropActor");
     const NS::Obj::SphereCollision* sphereAgain =
         NS::Obj::Cast<NS::Obj::SphereCollision>(again->FindSubObj("Collision"));
     ASSERT_NE(sphereAgain, nullptr);
@@ -111,8 +111,8 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
 TEST(SceneActor, FileTextRoundTripKeepsClass)
 {
     nlohmann::json doc = NS::Obj::MakeSceneJson();
-    AddClassObject(doc, "MapParts", 1);
-    AddClassObject(doc, "Goal", 2);
+    AddClassObject(doc, "MapPartsActor", 1);
+    AddClassObject(doc, "GoalActor", 2);
 
     const std::string text = NS::Obj::SerializeSceneToJson(doc);
     nlohmann::json back;
@@ -120,8 +120,8 @@ TEST(SceneActor, FileTextRoundTripKeepsClass)
 
     const nlohmann::json& objects = NS::Obj::SceneJsonObjects(back);
     ASSERT_EQ(objects.size(), 2u);
-    EXPECT_EQ(NS::Obj::ObjectJsonClass(objects[NS::Obj::FindObjectIndexById(back, 1)]), "MapParts");
-    EXPECT_EQ(NS::Obj::ObjectJsonClass(objects[NS::Obj::FindObjectIndexById(back, 2)]), "Goal");
+    EXPECT_EQ(NS::Obj::ObjectJsonClass(objects[NS::Obj::FindObjectIndexById(back, 1)]), "MapPartsActor");
+    EXPECT_EQ(NS::Obj::ObjectJsonClass(objects[NS::Obj::FindObjectIndexById(back, 2)]), "GoalActor");
 }
 
 TEST(SceneActor, GravityDirectionRoundTripsThroughFileAndScene)
@@ -160,7 +160,7 @@ TEST(SceneActor, PhysicsSettingsIsNotAPlaceableSubObject)
 
 TEST(SceneActor, ShippedSceneUsesRegisteredClasses)
 {
-    // 出荷シーンの配置物はどれも登録済みのクラスを持つ。素の Actor で組まれる物が無い
+    // 出荷シーンの配置物はどれも登録済みのクラスを持つ。素の SceneActor で組まれる物が無い
     const std::string path = NS::OS::FileSystem::Combine(
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
         "new_scene.scene");
@@ -192,11 +192,11 @@ TEST(SceneActor, NewLevelGetsOnePlayerAndOneDeathZone)
     int zones = 0;
     for (const nlohmann::json& object : NS::Obj::SceneJsonObjects(doc))
     {
-        if (NS::Obj::ObjectJsonClass(object) == "Player")
+        if (NS::Obj::ObjectJsonClass(object) == "PlayerActor")
         {
             ++players;
         }
-        if (NS::Obj::ObjectJsonClass(object) == "DeathZone")
+        if (NS::Obj::ObjectJsonClass(object) == "DeathZoneActor")
         {
             ++zones;
         }
@@ -208,29 +208,29 @@ TEST(SceneActor, NewLevelGetsOnePlayerAndOneDeathZone)
 
 namespace
 {
-    // Player の種類の既定を試しの間だけ差し替え、終わったら元へ戻す
+    // PlayerActor の種類の既定を試しの間だけ差し替え、終わったら元へ戻す
     class ScopedPlayerArchetype
     {
     public:
         explicit ScopedPlayerArchetype(nlohmann::json archetype)
         {
-            const nlohmann::json* current = NS::Obj::ArchetypeLibrary::Get().Find("Player");
+            const nlohmann::json* current = NS::Obj::ArchetypeLibrary::Get().Find("PlayerActor");
             if (current != nullptr)
             {
                 m_previous = *current;
             }
-            NS::Obj::ArchetypeLibrary::Get().Set("Player", std::move(archetype));
+            NS::Obj::ArchetypeLibrary::Get().Set("PlayerActor", std::move(archetype));
         }
 
         ~ScopedPlayerArchetype()
         {
             if (m_previous.has_value())
             {
-                NS::Obj::ArchetypeLibrary::Get().Set("Player", std::move(*m_previous));
+                NS::Obj::ArchetypeLibrary::Get().Set("PlayerActor", std::move(*m_previous));
             }
             else
             {
-                NS::Obj::ArchetypeLibrary::Get().Erase("Player");
+                NS::Obj::ArchetypeLibrary::Get().Erase("PlayerActor");
             }
         }
 
@@ -247,7 +247,7 @@ TEST(SceneActor, EnsuredPlayerStandsOnTheAssumedFloorForItsCapsule)
     // 補う自機の高さはカプセルの寸法から出す。床の上面 0.5 + 半分の高さ + 半径 + 余白 1cm
     // 種類の既定の半径を変えても、足元が床の 1cm 上に出る
     const ScopedPlayerArchetype archetype{
-        nlohmann::json{{"class", "Player"}, {"subObjects", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
+        nlohmann::json{{"class", "PlayerActor"}, {"subObjects", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     EXPECT_TRUE(NS::Editor::EnsurePlayerObject(doc));
 
@@ -260,14 +260,14 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
 {
     // 補う位置とやり直しの落ち先は同じ DefaultSpawnPosition から出る。数字の写しが戻ると片方だけずれる
     const ScopedPlayerArchetype archetype{
-        nlohmann::json{{"class", "Player"}, {"subObjects", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
+        nlohmann::json{{"class", "PlayerActor"}, {"subObjects", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     ASSERT_TRUE(NS::Editor::EnsurePlayerObject(doc));
     const NS::Vector3 ensured = NS::Obj::ObjectPosition(NS::Obj::SceneJsonObjects(doc)[0]);
 
     NS::Obj::Scene scene;
     scene.ResetFromJson(doc);
-    Player* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     const NS::Vector3 fallback = player->DefaultSpawnPosition();
     EXPECT_FLOAT_EQ(ensured.y, fallback.y);
@@ -282,7 +282,7 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
 
 TEST(SceneLoad, CourseSceneHasOneDeathZoneAndNoUnregisteredActor)
 {
-    // 同梱の course.scene は落下死の範囲 (DeathZone) をちょうど 1 体持ち、未登録のクラスで素の Actor へ落ちる物が無い
+    // 同梱の course.scene は落下死の範囲 (DeathZoneActor) をちょうど 1 体持ち、未登録のクラスで素の SceneActor へ落ちる物が無い
     // クラス名は保存の鍵なので、クラスを改名してこのシーンを書き換え忘れるとここが赤になる
     const std::string path = NS::OS::FileSystem::Combine(
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
@@ -295,7 +295,7 @@ TEST(SceneLoad, CourseSceneHasOneDeathZoneAndNoUnregisteredActor)
     {
         const std::string_view className = NS::Obj::ObjectJsonClass(object);
         EXPECT_NE(NS::Obj::TypeRegistry::Get().Find(className), nullptr) << className;
-        if (className == "DeathZone")
+        if (className == "DeathZoneActor")
         {
             ++deathZones;
         }

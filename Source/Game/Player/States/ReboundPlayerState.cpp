@@ -1,6 +1,6 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/SkidPlayerState.h"
@@ -8,12 +8,12 @@
 
 namespace GL::Player
 {
-    void ReboundPlayerState::OnEnter(::Player& player)
+    void ReboundPlayerState::OnEnter(::PlayerActor& player)
     {
         StartCoroutine(Run(player));
     }
 
-    NS::Coroutine ReboundPlayerState::Run(::Player& player)
+    NS::Coroutine ReboundPlayerState::Run(::PlayerActor& player)
     {
         while (true)
         {

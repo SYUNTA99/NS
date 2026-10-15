@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/VirtualCamera.h"
 
@@ -35,11 +35,11 @@ private:
 
 //! @brief 試し用の仮想カメラの持ち主
 //! @details シーンへ湧かすと開始の時に仮想カメラが管理役へ登録される。シーンの外で使う時は管理役へ直に登録する
-//! 依存: NS::Obj::Actor, TestViewCamera
-class TestViewCameraHost final : public NS::Obj::Actor
+//! 依存: NS::Obj::SceneActor, TestViewCamera
+class TestViewCameraHostActor final : public NS::Obj::SceneActor
 {
 public:
-    NS_REFLECT_BEGIN(TestViewCameraHost, NS::Obj::Actor)
+    NS_REFLECT_BEGIN(TestViewCameraHostActor, NS::Obj::SceneActor)
     NS_REFLECT_SUBOBJ(m_vcam, "Vcam")
     NS_REFLECT_END()
 
@@ -47,7 +47,7 @@ public:
     [[nodiscard]] TestViewCamera& Vcam() noexcept { return *m_vcam; }
     void OnEndPlay() override
     {
-        NS::Obj::Actor::OnEndPlay();
+        NS::Obj::SceneActor::OnEndPlay();
         NS::Obj::UnregisterVirtualCamera(this, m_vcam.get());
     }
 
@@ -55,7 +55,7 @@ protected:
     void OnInit() override { (void)CreateSubObj(m_vcam); }
     void OnStart() override
     {
-        NS::Obj::Actor::OnStart();
+        NS::Obj::SceneActor::OnStart();
         NS::Obj::RegisterVirtualCamera(this, m_vcam.get());
     }
 
@@ -70,7 +70,7 @@ private:
 //! @return 湧かした仮想カメラ。湧かせなかった場合は nullptr
 inline TestViewCamera* PlaceViewCamera(NS::Obj::Scene& scene, const NS::Vector3& position, const NS::Vector3& target)
 {
-    TestViewCameraHost* host = scene.SpawnTransient<TestViewCameraHost>();
+    TestViewCameraHostActor* host = scene.SpawnTransient<TestViewCameraHostActor>();
     if (host == nullptr)
     {
         return nullptr;

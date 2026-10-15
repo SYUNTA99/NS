@@ -3,7 +3,7 @@
 #include "Editor/TimelinePreview.h"
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -42,18 +42,18 @@ namespace
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json floor = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(floor, "MapParts");
+        NS::Obj::SetObjectJsonClass(floor, "MapPartsActor");
         NS::Obj::SetObjectJsonId(floor, 100);
         NS::Obj::SetObjectPosition(floor, NS::Vector3{0.0f, -0.5f, 0.0f});
         NS::Obj::SetObjectScale(floor, NS::Vector3{60.0f, 1.0f, 60.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(floor));
         nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "Player");
+        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
         NS::Obj::SetObjectJsonId(player, 1);
         NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "MapObj");
+        NS::Obj::SetObjectJsonClass(rock, "PropActor");
         NS::Obj::SetObjectJsonId(rock, k_RockId);
         NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 1.5f, 7.0f});
         NS::Obj::SetObjectScale(rock, NS::Vector3{3.0f, 3.0f, 3.0f});
@@ -271,7 +271,7 @@ TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
     NS::Obj::Scene scene;
     scene.SetAssets(&assets.assets);
     scene.ResetFromJson(placed);
-    Player* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     player->Input().SetLocked(true);
     player->RequestBodySlam(preview.desc.charge01, preview.direction);
@@ -303,7 +303,7 @@ TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
     ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
     nlohmann::json snapshot = MakePreviewSceneJson();
     nlohmann::json distant = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(distant, "MapObj");
+    NS::Obj::SetObjectJsonClass(distant, "PropActor");
     NS::Obj::SetObjectJsonId(distant, 3);
     NS::Obj::SetObjectPosition(distant, NS::Vector3{0.0f, 0.5f, 25.0f});
     NS::Obj::SceneJsonObjects(snapshot).push_back(std::move(distant));
@@ -356,7 +356,7 @@ TEST(EditorHitPreview, PlaybackEvaluatesTheSceneAtTheRecordedFrameAndCanRewind)
         SCOPED_TRACE(index);
         NS::Obj::Scene* scene = playback.Seek(index - result.detectionIndex);
         ASSERT_NE(scene, nullptr);
-        Player* player = FindPlayer(scene->Objects());
+        PlayerActor* player = FindPlayer(scene->Objects());
         ASSERT_NE(player, nullptr);
         const NS::Editor::HitPreviewFrame& frame = result.frames[static_cast<std::size_t>(index)];
         EXPECT_TRUE(player->Root().Position() == frame.playerPosition);

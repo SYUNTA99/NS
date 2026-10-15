@@ -1,10 +1,10 @@
 #include "Game/Level/TargetMarker.h"
 
 #include "Game/Level/ImpactInputJudge.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <algorithm>

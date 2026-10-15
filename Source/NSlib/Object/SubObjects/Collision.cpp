@@ -1,14 +1,14 @@
 ﻿#include "NSlib/Object/SubObjects/Collision.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Physics/PhysicsScene.h"
 
 namespace
 {
     // 持ち主の Scene の PhysicsScene。持ち主が無いか Scene に居なければ nullptr
-    [[nodiscard]] NS::Phys::PhysicsScene* OwnerPhysics(const NS::Obj::Actor* owner) noexcept
+    [[nodiscard]] NS::Phys::PhysicsScene* OwnerPhysics(const NS::Obj::SceneActor* owner) noexcept
     {
         if (owner == nullptr)
         {
@@ -25,7 +25,7 @@ namespace NS::Obj
     {
         const NS::Matrix local =
             NS::Matrix::CreateFromQuaternion(localRotation) * NS::Matrix::CreateTranslation(centerOffset);
-        const Actor* owner = Owner();
+        const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             return local;

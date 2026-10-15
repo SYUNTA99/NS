@@ -12,7 +12,7 @@
 
 // Object 層は一括ヘッダを持たないため、層の公開ヘッダを直接並べる
 #include "NSlib/Graphics/RenderContext.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/SubObject.h"
 #include "NSlib/Object/SubObjects/Animation.h"

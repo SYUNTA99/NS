@@ -10,7 +10,7 @@
   "nextObjectId": 94,
   "objects": [
     {
-      "class": "MapParts",
+      "class": "MapPartsActor",
       "id": 1,
       "name": "Object",
       "subObjects": {
@@ -38,7 +38,7 @@
       }
     },
     {
-      "class": "Player",
+      "class": "PlayerActor",
       "id": 2,
       "name": "Object_1",
       "subObjects": {
@@ -79,7 +79,7 @@
       }
     },
     {
-      "class": "FollowCamera",
+      "class": "FollowCameraActor",
       "id": 3,
       "name": "Player Camera",
       "subObjects": {
@@ -110,7 +110,7 @@
       }
     },
     {
-      "class": "Light",
+      "class": "LightActor",
       "id": 4,
       "name": "Object_2",
       "subObjects": {
@@ -137,7 +137,7 @@
       }
     },
     {
-      "class": "MapObj",
+      "class": "PropActor",
       "id": 35,
       "name": "Object_3",
       "subObjects": {
@@ -175,7 +175,7 @@
       }
     },
     {
-      "class": "MapObj",
+      "class": "PropActor",
       "id": 41,
       "name": "Object_4",
       "subObjects": {
@@ -216,7 +216,7 @@
       }
     },
     {
-      "class": "MapObj",
+      "class": "PropActor",
       "id": 47,
       "name": "Object_5",
       "subObjects": {
@@ -260,7 +260,7 @@
       }
     },
     {
-      "class": "MapObj",
+      "class": "PropActor",
       "id": 53,
       "name": "Object_6",
       "subObjects": {

@@ -39,7 +39,7 @@ namespace NS::Obj
     class UIActor;
 
     //! @brief 配置物と共有システムを所有し、固定更新と描画を行うシーン
-    //! @details JSON は保存・凍結・編集履歴に使い、実行中の状態は Actor と部品が持つ
+    //! @details JSON は保存・凍結・編集履歴に使い、実行中の状態は SceneActor と部品が持つ
     class Scene : public NS::NonCopyable, public IUseCamera, public IUseSceneSystem, public IUseCollision
     {
     public:
@@ -56,16 +56,16 @@ namespace NS::Obj
         //! IRenderable SubObject の自己解除。Model 等が OnEndPlay で呼ぶ
         void UnregisterRenderable(IRenderable* renderable);
 
-        //! 重ね描きの登録。部品は持ち主の Actor が OnStart で 1 回呼ぶ。二重登録は無視する
+        //! 重ね描きの登録。部品は持ち主の SceneActor が OnStart で 1 回呼ぶ。二重登録は無視する
         //! 並びは OverlayOrder 昇順に保たれ、同値なら後から登録した方が後ろになる
         void RegisterOverlay(IOverlay* overlay);
-        //! 重ね描きの解除。部品は持ち主の Actor が OnEndPlay で呼ぶ
+        //! 重ね描きの解除。部品は持ち主の SceneActor が OnEndPlay で呼ぶ
         void UnregisterOverlay(IOverlay* overlay);
 
-        //! 平行光の登録。持ち主の Light が OnStart で 1 回呼ぶ。二重登録は無視する
+        //! 平行光の登録。持ち主の LightActor が OnStart で 1 回呼ぶ。二重登録は無視する
         //! 並びは登録順。ResolveSceneSettings はこの順に読み、IsActive が偽の光は飛ばす
         void RegisterLight(DirectionalLight* light);
-        //! 平行光の解除。持ち主の Light が OnEndPlay で呼ぶ
+        //! 平行光の解除。持ち主の LightActor が OnEndPlay で呼ぶ
         void UnregisterLight(DirectionalLight* light);
 
         //! 描く物・重ね描き・平行光の登録簿に入っている数
@@ -94,7 +94,7 @@ namespace NS::Obj
         [[nodiscard]] const NS::Gfx::ScreenFade& Fade() const noexcept { return m_fade.Fade(); }
 
         //! @brief 管理役を段 phase の更新へ登録する。登録済みなら段だけを差し替える
-        //! @details 同じ段の Actor の後に登録順で OnTick が呼ばれる
+        //! @details 同じ段の SceneActor の後に登録順で OnTick が呼ばれる
         //! 更新の最中に登録した物は、その歩の残りでは呼ばれない
         void AddSystemTick(SceneSystem& system, UpdatePhase phase);
         //! 管理役を更新から外す。更新の最中に外した物は、その歩の残りでは呼ばれない
@@ -243,26 +243,26 @@ namespace NS::Obj
         //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! @details 名前は既存と重なれば番号を付ける。親の id があれば親へぶら下げ、資産を引き当ててから開始する
         //! undo の作り直しと複製が通る。当たりは呼出側が SyncPhysics で張り直す
-        Actor* SpawnFromJson(const nlohmann::json& object);
+        SceneActor* SpawnFromJson(const nlohmann::json& object);
 
         //! @brief 同じ id の配置物を JSON の姿へ作り直す。並びの位置と子の親子は保つ。居なければ SpawnFromJson と同じ
         //! @details 部品の増減も含めて姿を丸ごと入れ替える。当たりは呼出側が SyncPhysics で張り直す
-        Actor* ReplaceFromJson(const nlohmann::json& object);
+        SceneActor* ReplaceFromJson(const nlohmann::json& object);
 
         //! 同じ id の個体へ JSON を適用する。構成が同じなら実体を保ち、違えば再構築する
         //! 未配置なら生成する。衝突の再同期は呼び手が SyncPhysics で行う
-        Actor* ApplyFromJson(const nlohmann::json& object);
+        SceneActor* ApplyFromJson(const nlohmann::json& object);
 
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
         //! 子は根として残る。まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
         void DestroyObject(NS::uint32 objectId);
 
-        //! 固定更新の段を順に実行する。同じ段では Actor の後にシステムを更新する
+        //! 固定更新の段を順に実行する。同じ段では SceneActor の後にシステムを更新する
         void OnUpdate();
 
         //! @brief 段 phase を 1 回だけ回す。OnUpdate が段ごとに呼ぶ
-        //! @details 有効な Actor を配置順に、続いてその段に登録した管理役を登録順に更新する
+        //! @details 有効な SceneActor を配置順に、続いてその段に登録した管理役を登録順に更新する
         //! 回している間は配置物を解放する口を断る。再入は禁止
         void ExecutePhase(UpdatePhase phase);
 
@@ -283,11 +283,11 @@ namespace NS::Obj
         void RebuildSceneFrom(const nlohmann::json& scene);
 
         // SpawnTransient と SpawnObject の中身。外から個体を受けると、OnInit を通っていない個体が入る
-        Actor* AdoptTransient(std::unique_ptr<Actor> obj);
-        Actor* AdoptObject(std::unique_ptr<Actor> obj, std::string name);
+        SceneActor* AdoptTransient(std::unique_ptr<SceneActor> obj);
+        SceneActor* AdoptObject(std::unique_ptr<SceneActor> obj, std::string name);
 
         //! 実行時に入れた配置物の資産を引き当ててから開始する
-        void StartSpawned(Actor& obj);
+        void StartSpawned(SceneActor& obj);
 
         SceneRenderer m_sceneRenderer;
         // m_sceneObjs が持つ CourseDirector が破棄で暗転を取り消すので、m_sceneObjs より先に宣言して後に破棄する

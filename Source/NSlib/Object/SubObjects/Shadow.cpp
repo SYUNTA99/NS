@@ -4,7 +4,7 @@
 #include "NSlib/Graphics/Material.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/StaticMesh.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -40,7 +40,7 @@ namespace NS::Obj
 
     NS::Vector3 Shadow::SortCenter() const noexcept
     {
-        const Actor* owner = Owner();
+        const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             return {};
@@ -50,7 +50,7 @@ namespace NS::Obj
 
     NS::AABB Shadow::WorldBounds() const noexcept
     {
-        const Actor* owner = Owner();
+        const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             return {};
@@ -74,7 +74,7 @@ namespace NS::Obj
 
     void Shadow::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
-        Actor* owner = Owner();
+        SceneActor* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
         {
             return;

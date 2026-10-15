@@ -3,13 +3,13 @@
 namespace NS::Obj
 {
     //! @brief 1 固定ステップの更新の段。Scene::OnUpdate が書いた順に回す
-    //! @details Actor は Actor::Phase で自分の段を答え、管理役は Scene::AddSystemTick で段を決める
+    //! @details SceneActor は SceneActor::Phase で自分の段を答え、管理役は Scene::AddSystemTick で段を決める
     enum class UpdatePhase
     {
         Input,
         Player,
         Enemy,
-        Physics, //!< 管理役が Jolt を進める段。この段の Actor は Jolt の前に回る
+        Physics, //!< 管理役が Jolt を進める段。この段の SceneActor は Jolt の前に回る
         Sensors,
         Triggers,
         Course,

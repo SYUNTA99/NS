@@ -1,6 +1,6 @@
 #include "NSlib/Object/SubObjects/DirectionalLight.h"
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Obj

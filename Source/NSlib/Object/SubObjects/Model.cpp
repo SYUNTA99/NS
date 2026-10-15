@@ -6,7 +6,7 @@
 #include "NSlib/Graphics/Mesh.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/StaticMesh.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -195,7 +195,7 @@ namespace NS::Obj
     {
         const NS::Quaternion local = NS::Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
         const NS::Matrix localMatrix = NS::Matrix::CreateFromQuaternion(local);
-        const Actor* owner = Owner();
+        const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             return localMatrix;
@@ -244,7 +244,7 @@ namespace NS::Obj
 
     void Model::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
-        Actor* owner = Owner();
+        SceneActor* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
         {
             return;
@@ -347,7 +347,7 @@ namespace NS::Obj
 
     NS::Vector3 Model::SortCenter() const noexcept
     {
-        const Actor* owner = Owner();
+        const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             return {};
@@ -366,7 +366,7 @@ namespace NS::Obj
 
     NS::AABB Model::WorldBounds() const noexcept
     {
-        const Actor* owner = Owner();
+        const SceneActor* owner = Owner();
         if (m_mesh == nullptr || owner == nullptr)
         {
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない

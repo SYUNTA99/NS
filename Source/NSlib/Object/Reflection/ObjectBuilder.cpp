@@ -2,7 +2,7 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
@@ -15,14 +15,14 @@ namespace NS::Obj
 {
     namespace
     {
-        nlohmann::json MakeObjectHeaderJson(const Actor& obj, NS::uint32 id)
+        nlohmann::json MakeObjectHeaderJson(const SceneActor& obj, NS::uint32 id)
         {
             nlohmann::json object = nlohmann::json::object();
             SetObjectJsonId(object, id);
             SetObjectJsonClass(object, obj.ClassName());
             SetObjectJsonName(object, obj.Name());
             SetObjectJsonActive(object, obj.IsAppeared());
-            if (const Actor* parent = obj.Parent())
+            if (const SceneActor* parent = obj.Parent())
             {
                 SetObjectJsonParent(object, parent->Id());
             }
@@ -30,7 +30,7 @@ namespace NS::Obj
         }
     } // namespace
 
-    void ApplyObjectSubObjs(Actor& obj, const nlohmann::json& object)
+    void ApplyObjectSubObjs(SceneActor& obj, const nlohmann::json& object)
     {
         const nlohmann::json& parts = ObjectJsonSubObjs(object);
         for (nlohmann::json::const_iterator entry = parts.begin(); entry != parts.end(); ++entry)
@@ -45,7 +45,7 @@ namespace NS::Obj
         }
     }
 
-    std::unique_ptr<Actor> ObjectFromJson(const nlohmann::json& object, AssetManager* assets)
+    std::unique_ptr<SceneActor> ObjectFromJson(const nlohmann::json& object, AssetManager* assets)
     {
         // 部品構成はクラスの OnInit で決まる。クラスの無い JSON は配置物でない
         if (ObjectJsonClass(object).empty())
@@ -54,7 +54,7 @@ namespace NS::Obj
         }
 
         // コードの既定値 < 種類の既定値 < 個体の上書き の順に重ねる
-        std::unique_ptr<Actor> obj = CreateRegisteredObject(object);
+        std::unique_ptr<SceneActor> obj = CreateRegisteredObject(object);
         ApplyArchetype(*obj);
         ApplyObjectSubObjs(*obj, object);
 
@@ -66,7 +66,7 @@ namespace NS::Obj
         return obj;
     }
 
-    nlohmann::json MakePrototypeJson(const Actor& obj)
+    nlohmann::json MakePrototypeJson(const SceneActor& obj)
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, 0u);
         nlohmann::json& parts = ObjectJsonSubObjs(object);
@@ -77,7 +77,7 @@ namespace NS::Obj
         return object;
     }
 
-    nlohmann::json ObjectToJson(const Actor& obj)
+    nlohmann::json ObjectToJson(const SceneActor& obj)
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonSubObjs(object);

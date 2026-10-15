@@ -1,7 +1,7 @@
 ﻿#include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ObjectJson.h"
 
 #include <algorithm>
@@ -39,7 +39,7 @@ namespace NS::Obj
         {
             return;
         }
-        // 置けるのは Actor だけ。SubObject に表示名を付けても一覧には出さない
+        // 置けるのは SceneActor だけ。SubObject に表示名を付けても一覧には出さない
         const char* placeableLabel = nullptr;
         if (create != nullptr)
         {
@@ -65,7 +65,7 @@ namespace NS::Obj
         return nullptr;
     }
 
-    std::unique_ptr<Actor> CreateRegisteredObject(const nlohmann::json& object)
+    std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object)
     {
         // class が正。一致登録があればその型で作る
         const std::string_view className = ObjectJsonClass(object);
@@ -74,15 +74,15 @@ namespace NS::Obj
             const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
             if (entry == nullptr || entry->create == nullptr)
             {
-                NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の Actor で組む", className);
+                NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の SceneActor で組む", className);
             }
         }
         return CreateActorOfClass(className);
     }
 
-    std::unique_ptr<Actor> CreateActorOfClass(std::string_view className)
+    std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className)
     {
-        std::unique_ptr<Actor> actor;
+        std::unique_ptr<SceneActor> actor;
         const TypeRegistry::Entry* entry = nullptr;
         if (!className.empty())
         {
@@ -94,7 +94,7 @@ namespace NS::Obj
         }
         else
         {
-            actor = std::make_unique<Actor>();
+            actor = std::make_unique<SceneActor>();
         }
         // 部品を作ってから返す。データの読み込みは返った部品へ欄を流し込む
         actor->Init();

@@ -11,7 +11,7 @@ namespace NS::Obj
     public:
         virtual ~SceneSystem() noexcept = default;
 
-        //! 登録した段の Actor の後に登録順で呼ぶ。シミュレーション停止中は呼ばない
+        //! 登録した段の SceneActor の後に登録順で呼ぶ。シミュレーション停止中は呼ばない
         virtual void OnTick() {}
     };
 } // namespace NS::Obj

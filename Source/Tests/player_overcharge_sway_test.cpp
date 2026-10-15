@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -11,7 +11,7 @@
 
 namespace
 {
-    // 欄の秒を固定ステップのフレーム数にする。Player::AdvanceCharge と同じ丸め
+    // 欄の秒を固定ステップのフレーム数にする。PlayerActor::AdvanceCharge と同じ丸め
     int FramesFor(float seconds)
     {
         return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
@@ -27,17 +27,17 @@ namespace
     struct SwayScene
     {
         NS::Obj::Scene scene;
-        Player* player = nullptr;
+        PlayerActor* player = nullptr;
 
         void Load()
         {
             nlohmann::json doc = NS::Obj::MakeSceneJson();
             nlohmann::json entry = NS::Obj::MakeObjectJson();
-            NS::Obj::SetObjectJsonClass(entry, "Player");
+            NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
             NS::Obj::SetObjectJsonId(entry, 1);
             NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
             scene.ResetFromJson(doc);
-            player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+            player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
             ASSERT_NE(player, nullptr);
             ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(),
                                                {{"チャージしきい値秒", 0.2f},
@@ -56,7 +56,7 @@ TEST(PlayerOverchargeSway, RedHoldsStillAndPurpleReleaseFollowsTheSwayedLine)
 {
     SwayScene s;
     s.Load();
-    Player& player = *s.player;
+    PlayerActor& player = *s.player;
     const int full = FramesFor(1.0f);
     for (int held = 0; held < full; ++held)
     {
@@ -103,7 +103,7 @@ TEST(PlayerOverchargeSway, ForcedLaunchLeavesAtAnEdgeThatAlternates)
 {
     SwayScene s;
     s.Load();
-    Player& player = *s.player;
+    PlayerActor& player = *s.player;
     const float edge = std::atan2(2.0f, 10.0f);
     const int forced = FramesFor(1.0f) + FramesFor(1.0f);
     float sides[2] = {0.0f, 0.0f};
@@ -133,8 +133,8 @@ TEST(PlayerOverchargeSway, ForcedLaunchLeavesAtAnEdgeThatAlternates)
 // 紫の威力は溜めきりの倍率に、紫の深さで 1 から欄「紫の威力の上限」まで上がる倍率を掛ける
 TEST(PlayerOverchargeSway, PurplePowerRisesToTheCapFromTheFullCharge)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"紫の威力の上限", 1.5f}}), 0u);
     const GL::Player::PlayerParams& params = player.Params();
     const float full = params.ChargeFactorFor(1.0f);
@@ -149,7 +149,7 @@ TEST(PlayerOverchargeSway, EdgeBeatsCountDownToTheForcedLaunch)
 {
     SwayScene s;
     s.Load();
-    Player& player = *s.player;
+    PlayerActor& player = *s.player;
     ASSERT_EQ(NS::Obj::ApplyJsonFields(
                   player.Params(),
                   {{"溜めすぎの秒数", 3.0f}, {"紫の揺れの始めの速さ", 0.8f}, {"紫の揺れの終わりの速さ", 2.6f}}),

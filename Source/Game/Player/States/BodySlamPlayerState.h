@@ -2,13 +2,13 @@
 
 #include "Game/Player/PlayerState.h"
 
-class Player;
+class PlayerActor;
 
 namespace GL::Player
 {
     class BodySlamPlayerState final : public PlayerState<BodySlamPlayerState>
     {
     public:
-        void OnStep(::Player& player, float dt) override;
+        void OnStep(::PlayerActor& player, float dt) override;
     };
 } // namespace GL::Player

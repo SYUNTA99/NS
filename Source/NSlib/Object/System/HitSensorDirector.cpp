@@ -1,6 +1,6 @@
 #include "NSlib/Object/System/HitSensorDirector.h"
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 
 #include <algorithm>
 
@@ -59,14 +59,14 @@ namespace NS::Obj
             {
                 continue;
             }
-            if (Actor* owner = pair.first->Owner())
+            if (SceneActor* owner = pair.first->Owner())
             {
                 owner->AttackSensor(*pair.first, *pair.second);
             }
         }
     }
 
-    std::vector<HitSensor*> HitSensorDirector::FindOverlaps(const SensorVolume& volume, const Actor* ignore) const
+    std::vector<HitSensor*> HitSensorDirector::FindOverlaps(const SensorVolume& volume, const SceneActor* ignore) const
     {
         // TODO: 総当たりで見ている。センサーが数十を超えたら格子で絞る
         std::vector<HitSensor*> found;

@@ -1,7 +1,7 @@
 #include "NSlib/Object/Reflection/Archetype.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/Reflection.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
@@ -200,23 +200,23 @@ namespace NS::Obj
         return true;
     }
 
-    const Actor& ArchetypeLibrary::Baseline(std::string_view className)
+    const SceneActor& ArchetypeLibrary::Baseline(std::string_view className)
     {
         EnsureLoaded();
-        const std::map<std::string, std::unique_ptr<Actor>, std::less<>>::const_iterator it =
+        const std::map<std::string, std::unique_ptr<SceneActor>, std::less<>>::const_iterator it =
             m_baselines.find(className);
         if (it != m_baselines.end())
         {
             return *it->second;
         }
-        std::unique_ptr<Actor> actor = CreateActorOfClass(className);
+        std::unique_ptr<SceneActor> actor = CreateActorOfClass(className);
         ApplyArchetype(*actor);
-        const Actor& result = *actor;
+        const SceneActor& result = *actor;
         m_baselines.emplace(std::string{className}, std::move(actor));
         return result;
     }
 
-    void ApplyArchetype(Actor& actor)
+    void ApplyArchetype(SceneActor& actor)
     {
         const nlohmann::json* archetype = ArchetypeLibrary::Get().Find(actor.ClassName());
         if (archetype == nullptr)
@@ -228,7 +228,7 @@ namespace NS::Obj
 
     nlohmann::json ExpandObjectJson(const nlohmann::json& object)
     {
-        const Actor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
+        const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json full = object;
         nlohmann::json& target = ObjectJsonSubObjs(full);
         target = nlohmann::json::object();
@@ -245,7 +245,7 @@ namespace NS::Obj
 
     nlohmann::json DiffObjectJson(const nlohmann::json& object)
     {
-        const Actor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
+        const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
         baseline.ForEachSubObj([&](const SubObjectDesc& member, const SubObject* subObject) {
             if (IsInstanceOnlySubObj(member.key))
@@ -276,12 +276,12 @@ namespace NS::Obj
 
     const SubObject* FindBaselineSubObj(const SubObject& comp)
     {
-        const Actor* owner = comp.Owner();
+        const SceneActor* owner = comp.Owner();
         if (owner == nullptr)
         {
             return nullptr;
         }
-        const Actor& baseline = ArchetypeLibrary::Get().Baseline(owner->ClassName());
+        const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(owner->ClassName());
         const SubObject* found = baseline.FindSubObj(owner->SubObjKey(comp));
         if (found != nullptr && std::string_view{found->ClassName()} == comp.ClassName())
         {
@@ -317,7 +317,7 @@ namespace NS::Obj
 
     bool WriteFieldToArchetype(const SubObject& comp, std::string_view fieldName)
     {
-        const Actor* owner = comp.Owner();
+        const SceneActor* owner = comp.Owner();
         if (owner == nullptr || !IsArchetypeField(comp, fieldName))
         {
             return false;

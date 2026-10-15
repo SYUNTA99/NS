@@ -3,10 +3,10 @@
 
 #include "Editor/EditorObjects.h"
 #include "Editor/HitTimelineEdit.h"
-#include "Game/Level/FollowCamera.h"
+#include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/HitZones.h"
-#include "Game/Player.h"
-#include "NSlib/Object/Actor.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/CameraModifier.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
@@ -70,7 +70,7 @@ namespace NS::Editor
         std::unique_ptr<NS::Obj::Scene> StartRun(const nlohmann::json& snapshot,
                                                  const HitPreviewResult& placement,
                                                  const HitPreviewWorld& world,
-                                                 Player*& outPlayer)
+                                                 PlayerActor*& outPlayer)
         {
             std::unique_ptr<NS::Obj::Scene> scene = MakeScene(PlacePlayer(snapshot, placement.playerStart), world);
             outPlayer = FindPlayer(scene->Objects());
@@ -80,9 +80,9 @@ namespace NS::Editor
                 // 自機の後ろ上へ置き直す。当たりの動きはカメラを読まないので、記録は変わらない
                 const NS::Vector3 behind = placement.playerStart - placement.direction * k_CameraBehindDistance +
                                            NS::Vector3{0.0f, k_CameraHeight, 0.0f};
-                for (NS::Obj::Actor* object : scene->Objects())
+                for (NS::Obj::SceneActor* object : scene->Objects())
                 {
-                    if (GL::Level::FollowCamera* camera = NS::Obj::Cast<GL::Level::FollowCamera>(object))
+                    if (GL::Level::FollowCameraActor* camera = NS::Obj::Cast<GL::Level::FollowCameraActor>(object))
                     {
                         camera->Vcam().SetInitialPoseFromCameraPosition(behind);
                     }
@@ -104,7 +104,7 @@ namespace NS::Editor
             // 手元の機器を読まず、振動を手元のパッドへ送らない。組む前から入れる (配置物が組む時に機器を読んでも中立)
             const NS::OS::ScopedNeutralInput neutral;
             NS::OS::Gamepad& pad = NS::OS::Input::Get().Gamepad();
-            Player* player = nullptr;
+            PlayerActor* player = nullptr;
             std::unique_ptr<NS::Obj::Scene> scene = StartRun(snapshot, result, world, player);
             if (player == nullptr)
             {
@@ -187,7 +187,7 @@ namespace NS::Editor
         }
 
         // 突進が当たる体と面を持つ配置物か。下見の相手になれる
-        bool IsHitTarget(NS::Obj::Actor& object)
+        bool IsHitTarget(NS::Obj::SceneActor& object)
         {
             const NS::Obj::HitSensor* bodySensor = object.BodySensorSubObj();
             return bodySensor != nullptr && bodySensor->IsValid() &&
@@ -195,12 +195,12 @@ namespace NS::Editor
         }
 
         // 自機の根に一番近い、下見の相手になれる配置物の id。居なければ 0
-        NS::uint32 FindNearestTarget(NS::Obj::Scene& scene, const Player& player)
+        NS::uint32 FindNearestTarget(NS::Obj::Scene& scene, const PlayerActor& player)
         {
             const NS::Vector3 from = player.Root().Position();
             NS::uint32 nearest = 0;
             float nearestDistance = 0.0f;
-            for (NS::Obj::Actor* object : scene.Objects())
+            for (NS::Obj::SceneActor* object : scene.Objects())
             {
                 if (object == &player || !object->IsActiveInHierarchy() || !IsHitTarget(*object))
                 {
@@ -241,7 +241,7 @@ namespace NS::Editor
         const NS::OS::ScopedNeutralInput neutral;
         // 置き直しの前の自機と相手を、写しをそのまま組んだ場面から読む
         std::unique_ptr<NS::Obj::Scene> original = MakeScene(snapshot, world);
-        Player* player = FindPlayer(original->Objects());
+        PlayerActor* player = FindPlayer(original->Objects());
         if (player == nullptr)
         {
             result.error = "場面に自機が居ない";
@@ -256,7 +256,7 @@ namespace NS::Editor
                 return result;
             }
         }
-        NS::Obj::Actor* target = original->Objects().FindByObjectId(result.desc.targetId);
+        NS::Obj::SceneActor* target = original->Objects().FindByObjectId(result.desc.targetId);
         if (target == nullptr)
         {
             result.error = std::format("id {} の配置物が場面に無い", result.desc.targetId);
@@ -333,7 +333,7 @@ namespace NS::Editor
             return nullptr;
         }
         const NS::OS::ScopedNeutralInput neutral;
-        Player* player = nullptr;
+        PlayerActor* player = nullptr;
         return StartRun(snapshot, result, world, player);
     }
 

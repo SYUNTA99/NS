@@ -1,9 +1,9 @@
 #include "Game/Level/LaunchEffects.h"
 #include "NSlib/Core/Types.h"
 
-#include "Game/Level/MapObj.h"
+#include "Game/Level/PropActor.h"
 #include "NSlib/Core/AABB.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/SphereCollision.h"
@@ -65,7 +65,7 @@ namespace GL::Level
         }
 
         // 物理への登録に依らず、持ち主の変換と欄から作る
-        [[nodiscard]] bool TryGetCollisionBounds(const NS::Obj::Actor& object, NS::AABB& outBounds) noexcept
+        [[nodiscard]] bool TryGetCollisionBounds(const NS::Obj::SceneActor& object, NS::AABB& outBounds) noexcept
         {
             if (const NS::Obj::SphereCollision* sphere =
                     NS::Obj::Cast<NS::Obj::SphereCollision>(object.CollisionSubObj()))
@@ -81,7 +81,7 @@ namespace GL::Level
 
     void LaunchEffects::OnStart()
     {
-        m_body = NS::Obj::Cast<MapObj>(Owner());
+        m_body = NS::Obj::Cast<PropActor>(Owner());
         if (m_body != nullptr)
         {
             NS::Obj::PreloadEffects(m_body, {m_launchTrailAsset, m_launchLandDustAsset});

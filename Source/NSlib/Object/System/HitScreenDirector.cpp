@@ -58,7 +58,7 @@ namespace NS::Obj
         m_scene.UnregisterOverlay(this);
     }
 
-    void HitScreenDirector::StartFlash(const Actor& requester, int frames, float alpha) noexcept
+    void HitScreenDirector::StartFlash(const SceneActor& requester, int frames, float alpha) noexcept
     {
         m_flashRequester = &requester;
         m_flashRemaining = std::max(frames, 0);
@@ -67,7 +67,7 @@ namespace NS::Obj
         m_flashJustStarted = true;
     }
 
-    void HitScreenDirector::StartShakeLines(const Actor& requester, const HitShakeLinesDesc& desc) noexcept
+    void HitScreenDirector::StartShakeLines(const SceneActor& requester, const HitShakeLinesDesc& desc) noexcept
     {
         if (!(desc.radius > 0.0f) || desc.frames <= 0)
         {
@@ -81,7 +81,7 @@ namespace NS::Obj
         m_linesJustStarted = true;
     }
 
-    void HitScreenDirector::Stop(const Actor& requester) noexcept
+    void HitScreenDirector::Stop(const SceneActor& requester) noexcept
     {
         if (m_flashRequester == &requester)
         {
@@ -97,7 +97,7 @@ namespace NS::Obj
         }
     }
 
-    void HitScreenDirector::StartDistortionRing(const Actor& requester, const HitDistortionRingDesc& desc) noexcept
+    void HitScreenDirector::StartDistortionRing(const SceneActor& requester, const HitDistortionRingDesc& desc) noexcept
     {
         EndDistortionRing();
         if (desc.frames <= 0)
@@ -112,7 +112,7 @@ namespace NS::Obj
         WriteDistortionRing();
     }
 
-    void HitScreenDirector::StopDistortionRing(const Actor& requester) noexcept
+    void HitScreenDirector::StopDistortionRing(const SceneActor& requester) noexcept
     {
         if (m_ringRequester == &requester)
         {

@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-class Player;
+class PlayerActor;
 
 namespace GL::Player
 {
@@ -192,7 +192,7 @@ namespace GL::Player
         float m_tapSlamTurns = 2.0f;     // 通常突進が届くまでに回る回転数
         float m_chargedReboundTurns = 3.0f; // 溜めて当てた反動が着地までに回る回転数
         float m_tapReboundTurns = 1.0f;     // 通常突進で当てた反動が着地までに回る回転数
-        friend class ::Player;
+        friend class ::PlayerActor;
         float m_chargeThresholdSeconds = 0.2f;
         float m_chargeFullSeconds = 1.0f;
         // 溜めきりから自動発動までの秒

@@ -1,6 +1,6 @@
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/Scene/SceneJson.h"
 #include "NSlib/Object/System/UIDirector.h"
@@ -59,7 +59,7 @@ namespace
     };
 } // namespace
 
-// 段で回る口は Actor だけが持ち、UIActor には無い
+// 段で回る口は SceneActor だけが持ち、UIActor には無い
 template <class T>
 concept HasPhaseHooks = requires(T& actor) {
     actor.Phase();
@@ -70,7 +70,7 @@ concept HasPhaseHooks = requires(T& actor) {
 template <class T>
 concept HasAnyPhaseHook = requires(T& actor) { actor.Phase(); } || requires(T& actor) { actor.ReadInput(); } ||
                           requires(T& actor) { actor.Update(); } || requires(T& actor) { actor.PrepareRender(); };
-static_assert(HasPhaseHooks<NS::Obj::Actor>);
+static_assert(HasPhaseHooks<NS::Obj::SceneActor>);
 static_assert(!HasAnyPhaseHook<NS::Obj::UIActor>);
 
 // 更新の順は開いた順で、描く順とは別の一覧になる

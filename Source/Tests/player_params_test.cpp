@@ -2,7 +2,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
@@ -34,12 +34,12 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "Player");
+    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
     NS::Obj::SetObjectJsonId(entry, 1);
     entry["subObjects"] = {{"Params", {{"体力", 5}}}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
-    Player* player = static_cast<Player*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_NE(NS::Obj::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params")), nullptr);
     EXPECT_EQ(player->Health(), 5);
@@ -59,8 +59,8 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
 
 TEST(PlayerParams, DeactivatingPlayerKeepsHealth)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     player.ResetHealth();
     const int full = player.Health();
 
@@ -78,8 +78,8 @@ TEST(PlayerParams, DeactivatingPlayerKeepsHealth)
 
 TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     const GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     ASSERT_NE(params, nullptr);
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(*params);
@@ -138,8 +138,8 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 
 TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     GL::Player::PlayerParams* params = NS::Obj::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
     NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player.FindSubObj("Movement"));
     ASSERT_NE(params, nullptr);
@@ -162,7 +162,7 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "Player");
+    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
     NS::Obj::SetObjectJsonId(entry, 1);
     entry["subObjects"] = {
         {"Params",
@@ -171,7 +171,7 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     scene.ResetFromJson(doc);
     const nlohmann::json saved = scene.ToJson();
     scene.ResetFromJson(saved);
-    const Player* player = static_cast<const Player*>(scene.Objects().FindByObjectId(1));
+    const PlayerActor* player = static_cast<const PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     const NS::Obj::Body* movement = NS::Obj::Cast<NS::Obj::Body>(player->FindSubObj("Movement"));
     ASSERT_NE(movement, nullptr);
@@ -197,7 +197,7 @@ static void ExpectSubObjFields(const NS::Obj::SubObject& part, const nlohmann::j
 }
 
 // 調整値の部品に expected の名前が 1 つも無いことを確かめる。演出の欄は描く部品が持ち、遊びの欄と並ばない
-static void ExpectNotInParams(const Player& player, const nlohmann::json& expected)
+static void ExpectNotInParams(const PlayerActor& player, const nlohmann::json& expected)
 {
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(player.Params());
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -208,8 +208,8 @@ static void ExpectNotInParams(const Player& player, const nlohmann::json& expect
 
 TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     const nlohmann::json appearance = {{"立ち姿のメッシュ", ""},
                                        {"玉のメッシュ", ""},
                                        {"溜め 0 の回る速さ", 360.0f},
@@ -227,7 +227,7 @@ TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem
                                    {"紫の火花の数の終わり", 14},
                                    {"紫の火花の速さの始め", 2.5f},
                                    {"紫の火花の速さの終わり", 5.0f}};
-    // 回転数は Player が突進と反動の回る速さを出すのに読むので、調整値の部品に残る
+    // 回転数は PlayerActor が突進と反動の回る速さを出すのに読むので、調整値の部品に残る
     const nlohmann::json spin = {{"溜めた突進の届くまでの回転数", 5.0f},
                                  {"通常突進の届くまでの回転数", 2.0f},
                                  {"溜めて当てた反動の回転数", 3.0f},
@@ -241,8 +241,8 @@ TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem
 
 TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player.ChargeVisuals(),
                                        {{"通常突進の弾けの大きさ", 0.5f}, {"溜めきりで足す弾けの大きさ", 0.4f}}),
               0u);
@@ -255,8 +255,8 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
 
 TEST(PlayerParams, ImpactDefaultsKeepAllFortyTwoDisplayNamesAndValues)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     const nlohmann::json fields = NS::Obj::SerializeSubObjectFields(player.Params());
     const nlohmann::json play = {{"反動の高さ", 1.15f},
                                  {"反動の距離", 0.575f},
@@ -347,8 +347,8 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortyTwoDisplayNamesAndValues)
 
 TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     EXPECT_EQ(NS::Obj::ApplyJsonFields(player.ImpactVisuals(),
                                        {{"核の直径の基準", 0.4f},
                                         {"核の直径の威力あたり", 0.3f},
@@ -375,8 +375,8 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     using GL::Player::CoreHoldMotion;
     using GL::Player::ImpactShape;
     using GL::Player::SparkHeading;
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
     ASSERT_EQ(NS::Obj::ApplyJsonFields(
                   player.ImpactVisuals(),
@@ -431,12 +431,12 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "Player");
+    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
     NS::Obj::SetObjectJsonId(entry, 1);
     NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
     nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonClass(rock, "PropActor");
     NS::Obj::SetObjectJsonId(rock, 2);
     // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
     NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
@@ -445,7 +445,7 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     NS::Obj::ObjectJsonSubObjs(rock)["Params"] = {{"質量", 1.0f}, {"押し飛ばしの高さ", 3.0f}};
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     EXPECT_FALSE(NS::Obj::SerializeSubObjectFields(player->Params()).contains("押し飛ばしの高さ"));
     EXPECT_EQ(NS::Obj::ApplyJsonFields(
@@ -464,8 +464,8 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
 
 TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     const GL::Level::TargetMarkerDesc marker{};
     const GL::Level::SlamArrowDesc arrow{};
     const nlohmann::json markerFields = {
@@ -522,16 +522,16 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     NS::Obj::Scene scene;
     nlohmann::json doc = NS::Obj::MakeSceneJson();
     nlohmann::json entry = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(entry, "Player");
+    NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
     NS::Obj::SetObjectJsonId(entry, 1);
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
     nlohmann::json rock = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(rock, "MapObj");
+    NS::Obj::SetObjectJsonClass(rock, "PropActor");
     NS::Obj::SetObjectJsonId(rock, 2);
     NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
     NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    Player* player = NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     const NS::Vector3 eye{0.0f, 0.0f, -6.0f};
     const NS::Vector3 lookAt{0.0f, 0.0f, 4.0f};
@@ -567,8 +567,8 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
 TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
 {
     const auto expectEveryFieldRead = [](const nlohmann::json& entry, std::string_view source) {
-        const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-        Player& player = *playerOwned;
+        const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+        PlayerActor& player = *playerOwned;
         const nlohmann::json& parts = NS::Obj::ObjectJsonSubObjs(entry);
         for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
         {
@@ -578,9 +578,9 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
         }
     };
     NS::Obj::ArchetypeLibrary::Get().Reload();
-    const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("Player");
+    const nlohmann::json* archetype = NS::Obj::ArchetypeLibrary::Get().Find("PlayerActor");
     ASSERT_NE(archetype, nullptr);
-    expectEveryFieldRead(*archetype, "Player.json");
+    expectEveryFieldRead(*archetype, "PlayerActor.json");
 
     for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
     {
@@ -592,7 +592,7 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
         ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path)) << sceneName;
         for (const nlohmann::json& entry : NS::Obj::SceneJsonObjects(doc))
         {
-            if (NS::Obj::ObjectJsonClass(entry) == "Player")
+            if (NS::Obj::ObjectJsonClass(entry) == "PlayerActor")
             {
                 expectEveryFieldRead(entry, sceneName);
             }

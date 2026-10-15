@@ -2,14 +2,14 @@
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Graphics/FrameConstants.h"
 #include "NSlib/Graphics/Material.h"
 #include "NSlib/Graphics/Pipeline.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/StaticMesh.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -514,7 +514,7 @@ namespace GL::Level
 
     SlamArrow::SlamArrow() noexcept : NS::Obj::OverlayRenderer() {}
 
-    void SlamArrow::SetPlayer(::Player& player) noexcept
+    void SlamArrow::SetPlayer(::PlayerActor& player) noexcept
     {
         m_player = &player;
         m_collider = &player.Collider();

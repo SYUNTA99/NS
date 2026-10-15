@@ -2,7 +2,7 @@
 
 #include "Game/Player/PlayerState.h"
 
-class Player;
+class PlayerActor;
 
 namespace GL::Player
 {
@@ -10,6 +10,6 @@ namespace GL::Player
     class BrakePlayerState final : public PlayerState<BrakePlayerState>
     {
     public:
-        void OnStep(::Player& player, float dt) override;
+        void OnStep(::PlayerActor& player, float dt) override;
     };
 } // namespace GL::Player

@@ -1,8 +1,8 @@
 #include "Game/Level/CourseDirector.h"
-#include "Game/Level/MapObj.h"
-#include "Game/Player.h"
+#include "Game/Level/PropActor.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Graphics/DebugDraw.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Message/Message.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -44,7 +44,7 @@ template <class T>
 concept CanAddSystemTick =
     requires(NS::Obj::Scene& scene, T& system) { scene.AddSystemTick(system, NS::Obj::UpdatePhase::Triggers); };
 static_assert(CanAddSystemTick<NS::Obj::UIDirector>);
-static_assert(!CanAddSystemTick<NS::Obj::Actor>);
+static_assert(!CanAddSystemTick<NS::Obj::SceneActor>);
 static_assert(!CanAddSystemTick<NS::Obj::UIActor>);
 
 // 段を回す口も Scene の 1 つ。配置物の一覧を直に回すと、同じ段の管理役が呼ばれない
@@ -57,9 +57,9 @@ static_assert(!CanExecutePhase<NS::Obj::ActorList>);
 template <class T>
 concept CanReceiveMsgDirectly =
     requires(T& actor, const NS::Obj::Message& msg) { actor.ReceiveMsg(msg, nullptr, nullptr); };
-static_assert(!CanReceiveMsgDirectly<NS::Obj::Actor>);
-static_assert(!CanReceiveMsgDirectly<Player>);
-static_assert(!CanReceiveMsgDirectly<GL::Level::MapObj>);
+static_assert(!CanReceiveMsgDirectly<NS::Obj::SceneActor>);
+static_assert(!CanReceiveMsgDirectly<PlayerActor>);
+static_assert(!CanReceiveMsgDirectly<GL::Level::PropActor>);
 
 namespace
 {
@@ -128,10 +128,10 @@ namespace
         TickLog* m_log = nullptr;
     };
 
-    class LoggingActor final : public NS::Obj::Actor
+    class LoggingActor final : public NS::Obj::SceneActor
     {
     public:
-        NS_REFLECT_BEGIN(LoggingActor, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(LoggingActor, NS::Obj::SceneActor)
         NS_REFLECT_SUBOBJ(m_part, "Logging")
         NS_REFLECT_END()
 
@@ -184,10 +184,10 @@ TEST(SceneSystemHolder, ClearRemovesTheSystemFromTheUpdate)
 TEST(SceneSystemHolder, ActorReachesSceneObjectsThroughWindow)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
+    NS::Obj::SceneActor* actor = scene.SpawnTransient<NS::Obj::SceneActor>();
     CountedSceneObj* made = NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(actor);
     EXPECT_EQ(made, NS::Obj::FindSceneSystem<CountedSceneObj>(&scene));
-    NS::Obj::Actor loose;
+    NS::Obj::SceneActor loose;
     EXPECT_EQ(NS::Obj::GetOrCreateSceneSystem<CountedSceneObj>(&loose), nullptr);
 }
 

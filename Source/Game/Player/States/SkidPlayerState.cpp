@@ -1,6 +1,6 @@
 #include "Game/Player/States/SkidPlayerState.h"
 
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
@@ -8,12 +8,12 @@
 
 namespace GL::Player
 {
-    void SkidPlayerState::OnEnter(::Player& player)
+    void SkidPlayerState::OnEnter(::PlayerActor& player)
     {
         player.BeginSkid();
     }
 
-    void SkidPlayerState::OnStep(::Player& player, float dt)
+    void SkidPlayerState::OnStep(::PlayerActor& player, float dt)
     {
         player.TickTimers(dt);
         const bool stopped = player.AdvanceSkid();

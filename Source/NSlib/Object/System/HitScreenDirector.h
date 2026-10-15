@@ -9,7 +9,7 @@
 
 namespace NS::Obj
 {
-    class Actor;
+    class SceneActor;
     class Scene;
 
     //! 対象の輪郭の左右へ出す震えの線。寸法は高さ 720 基準の画素
@@ -71,23 +71,23 @@ namespace NS::Obj
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
         //! @param[in] frames 白の光のフレーム数。0 以下なら光らない
         //! @param[in] alpha 始めの濃さ。残りのフレーム数に比例して薄くなる
-        void StartFlash(const Actor& requester, int frames, float alpha) noexcept;
+        void StartFlash(const SceneActor& requester, int frames, float alpha) noexcept;
 
         //! @brief 震えの線を始める。前の線が残っていても始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
         //! @param[in] desc 震えの線の設定。半径かフレーム数が 0 以下なら出さない
-        void StartShakeLines(const Actor& requester, const HitShakeLinesDesc& desc) noexcept;
+        void StartShakeLines(const SceneActor& requester, const HitShakeLinesDesc& desc) noexcept;
 
         //! requester が頼んだ白と震えの線を消す。ほかの物が頼んだ物は残す
-        void Stop(const Actor& requester) noexcept;
+        void Stop(const SceneActor& requester) noexcept;
 
         //! @brief 歪みの輪を始め、始まりの姿を場面へ書く。前の輪が残っていても始め直す
         //! @param[in] requester 頼んだ物。StopDistortionRing で同じ物を渡すと消える
         //! @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない
-        void StartDistortionRing(const Actor& requester, const HitDistortionRingDesc& desc) noexcept;
+        void StartDistortionRing(const SceneActor& requester, const HitDistortionRingDesc& desc) noexcept;
 
         //! requester が頼んだ歪みの輪を消す。ほかの物が頼んだ輪と、白と震えの線は残す
-        void StopDistortionRing(const Actor& requester) noexcept;
+        void StopDistortionRing(const SceneActor& requester) noexcept;
 
         //! 白の残りフレーム数。出していない場合 0
         [[nodiscard]] int FlashFramesRemaining() const noexcept { return m_flashRemaining; }
@@ -113,16 +113,16 @@ namespace NS::Obj
 
         Scene& m_scene;
         // 頼んだ物は見分けるだけで、指す先は読まない
-        const Actor* m_flashRequester = nullptr;
+        const SceneActor* m_flashRequester = nullptr;
         int m_flashRemaining = 0;
         int m_flashFrames = 0; // 薄める割合の分母
         float m_flashAlpha = 0.0f;
         bool m_flashJustStarted = false;
-        const Actor* m_linesRequester = nullptr;
+        const SceneActor* m_linesRequester = nullptr;
         HitShakeLinesDesc m_lines{};
         int m_linesRemaining = 0;
         bool m_linesJustStarted = false;
-        const Actor* m_ringRequester = nullptr;
+        const SceneActor* m_ringRequester = nullptr;
         HitDistortionRingDesc m_ring{};
         int m_ringElapsed = 0;
         bool m_ringActive = false;

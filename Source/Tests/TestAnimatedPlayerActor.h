@@ -1,14 +1,14 @@
 #pragma once
 
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Object/SubObjects/Animation.h"
 
-class TestAnimatedPlayer final : public Player
+class TestAnimatedPlayerActor final : public PlayerActor
 {
 protected:
     void OnInit() override
     {
-        Player::OnInit();
+        PlayerActor::OnInit();
         (void)CreateSubObj(m_animation);
     }
 };

@@ -52,7 +52,7 @@ namespace NS::Obj
             // OnStart で ActorRef を解決する SubObject が、自分より後ろの object も引けるようにするため
             for (const nlohmann::json& entry : objects)
             {
-                std::unique_ptr<Actor> obj = factory(entry);
+                std::unique_ptr<SceneActor> obj = factory(entry);
                 if (!obj)
                 {
                     continue; // 組み立てる SubObject が無いオブジェクトはファクトリが nullptr を返す
@@ -73,19 +73,19 @@ namespace NS::Obj
                 {
                     continue;
                 }
-                Actor* child = FindByObjectId(ObjectJsonId(entry));
-                Actor* parent = FindByObjectId(ObjectJsonParent(entry));
+                SceneActor* child = FindByObjectId(ObjectJsonId(entry));
+                SceneActor* parent = FindByObjectId(ObjectJsonParent(entry));
                 if (child != nullptr && parent != nullptr && child != parent)
                 {
                     child->SetParent(parent);
                 }
             }
-            for (std::unique_ptr<Actor>& objPtr : m_objects)
+            for (std::unique_ptr<SceneActor>& objPtr : m_objects)
             {
                 objPtr->OnStart();
             }
             // 全ての配置物が開始してから、揃っている前提の用意をさせる
-            for (std::unique_ptr<Actor>& objPtr : m_objects)
+            for (std::unique_ptr<SceneActor>& objPtr : m_objects)
             {
                 objPtr->InitAfterPlacement();
             }
@@ -96,19 +96,19 @@ namespace NS::Obj
         SnapshotObjects();
     }
 
-    Actor* ActorList::Append(std::unique_ptr<Actor> obj)
+    SceneActor* ActorList::Append(std::unique_ptr<SceneActor> obj)
     {
         if (!obj)
         {
             return nullptr;
         }
-        Actor* raw = obj.get();
+        SceneActor* raw = obj.get();
         m_objects.push_back(std::move(obj));
         MarkIndexDirty();
         return raw;
     }
 
-    Actor* ActorList::AppendWithNewId(std::unique_ptr<Actor> obj, std::string name)
+    SceneActor* ActorList::AppendWithNewId(std::unique_ptr<SceneActor> obj, std::string name)
     {
         if (!obj)
         {
@@ -137,7 +137,7 @@ namespace NS::Obj
             return;
         }
 
-        for (std::vector<std::unique_ptr<Actor>>::iterator it = m_objects.begin(); it != m_objects.end(); ++it)
+        for (std::vector<std::unique_ptr<SceneActor>>::iterator it = m_objects.begin(); it != m_objects.end(); ++it)
         {
             if ((*it)->Id() != objectId)
             {
@@ -159,7 +159,7 @@ namespace NS::Obj
                          "ActorList::RemoveDestroyed: 段の更新の最中に呼ばれたので Destroy した個体の解放を断った");
             return;
         }
-        const std::size_t removed = std::erase_if(m_objects, [](const std::unique_ptr<Actor>& obj) {
+        const std::size_t removed = std::erase_if(m_objects, [](const std::unique_ptr<SceneActor>& obj) {
             if (!obj->IsPendingDestroy())
             {
                 return false;
@@ -173,7 +173,7 @@ namespace NS::Obj
         }
     }
 
-    Actor* ActorList::ObjectAt(std::size_t index) const noexcept
+    SceneActor* ActorList::ObjectAt(std::size_t index) const noexcept
     {
         if (index >= m_objects.size())
         {
@@ -182,7 +182,7 @@ namespace NS::Obj
         return m_objects[index].get();
     }
 
-    Actor* ActorList::FindByObjectId(NS::uint32 objectId) noexcept
+    SceneActor* ActorList::FindByObjectId(NS::uint32 objectId) noexcept
     {
         // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が引ける
         if (objectId == k_NoObjectId)
@@ -192,7 +192,7 @@ namespace NS::Obj
 
         if (m_indexDirty)
         {
-            for (std::unique_ptr<Actor>& obj : m_objects)
+            for (std::unique_ptr<SceneActor>& obj : m_objects)
             {
                 if (obj->Id() != k_NoObjectId)
                 {
@@ -202,7 +202,7 @@ namespace NS::Obj
             m_indexDirty = false;
         }
 
-        const std::unordered_map<NS::uint32, Actor*>::iterator it = m_index.find(objectId);
+        const std::unordered_map<NS::uint32, SceneActor*>::iterator it = m_index.find(objectId);
         if (it == m_index.end())
         {
             return nullptr;
@@ -216,14 +216,14 @@ namespace NS::Obj
         m_indexDirty = true;
     }
 
-    Actor* ActorList::FindObject(ActorRef ref) noexcept
+    SceneActor* ActorList::FindObject(ActorRef ref) noexcept
     {
         return FindByObjectId(ref.id);
     }
 
     void ActorList::SyncPhysics(NS::Phys::PhysicsScene& physics)
     {
-        for (const std::unique_ptr<Actor>& actor : m_objects)
+        for (const std::unique_ptr<SceneActor>& actor : m_objects)
         {
             Collision* collision = actor->CollisionSubObj();
             if (collision == nullptr)
@@ -244,7 +244,7 @@ namespace NS::Obj
 
     void ActorList::SnapshotObjects()
     {
-        for (std::unique_ptr<Actor>& obj : m_objects)
+        for (std::unique_ptr<SceneActor>& obj : m_objects)
         {
             obj->SnapshotForInterpolation();
         }
@@ -265,7 +265,7 @@ namespace NS::Obj
     {
         NS_ASSERT(Scene, m_updating, "BeginPhase の前に段を回している");
         m_scheduled.clear();
-        for (const std::unique_ptr<Actor>& obj : m_objects)
+        for (const std::unique_ptr<SceneActor>& obj : m_objects)
         {
             if (!obj->IsActiveInHierarchy())
             {
@@ -276,7 +276,7 @@ namespace NS::Obj
                 m_scheduled.push_back(obj.get());
             }
         }
-        for (Actor* actor : m_scheduled)
+        for (SceneActor* actor : m_scheduled)
         {
             // 解放の口は段の間は断るので、積んだ生ポインタは生きている。途中で消えた物だけ飛ばす
             if (!actor->IsActiveInHierarchy())
@@ -298,7 +298,7 @@ namespace NS::Obj
         }
     }
 
-    void ActorList::ApplyIdentity(Actor& obj, const nlohmann::json& entry)
+    void ActorList::ApplyIdentity(SceneActor& obj, const nlohmann::json& entry)
     {
         obj.SetId(ObjectJsonId(entry));
         obj.SetName(std::string{ObjectJsonName(entry)});
@@ -312,7 +312,7 @@ namespace NS::Obj
         }
     }
 
-    Actor* ActorList::InsertFromJson(std::unique_ptr<Actor> obj, const nlohmann::json& entry, std::size_t index)
+    SceneActor* ActorList::InsertFromJson(std::unique_ptr<SceneActor> obj, const nlohmann::json& entry, std::size_t index)
     {
         if (!obj)
         {
@@ -324,7 +324,7 @@ namespace NS::Obj
         // 入れた物の id より先へカウンタを進める。進めないと次に置く 1 個目と重なる
         m_nextObjectId = std::max(m_nextObjectId, obj->Id() + 1);
 
-        Actor* raw = obj.get();
+        SceneActor* raw = obj.get();
         index = std::min(index, m_objects.size());
         m_objects.insert(m_objects.begin() + static_cast<std::ptrdiff_t>(index), std::move(obj));
         MarkIndexDirty();
@@ -347,11 +347,11 @@ namespace NS::Obj
         return m_objects.size();
     }
 
-    void ActorList::RenameObject(Actor& obj, std::string_view name)
+    void ActorList::RenameObject(SceneActor& obj, std::string_view name)
     {
         std::unordered_set<std::string> used;
         used.reserve(m_objects.size());
-        for (const std::unique_ptr<Actor>& existing : m_objects)
+        for (const std::unique_ptr<SceneActor>& existing : m_objects)
         {
             if (existing.get() != &obj)
             {
@@ -370,7 +370,7 @@ namespace NS::Obj
         }
 
         // OnEndPlay は生成の逆順で呼ぶ。依存し合う SubObject の後始末を生成と対称にする
-        for (std::vector<std::unique_ptr<Actor>>::reverse_iterator it = m_objects.rbegin(); it != m_objects.rend();
+        for (std::vector<std::unique_ptr<SceneActor>>::reverse_iterator it = m_objects.rbegin(); it != m_objects.rend();
              ++it)
         {
             (*it)->OnEndPlay();

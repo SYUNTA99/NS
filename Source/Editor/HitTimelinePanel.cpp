@@ -6,7 +6,7 @@
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Assert.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
 #include "NSlib/Core/Types.h"
@@ -274,7 +274,7 @@ namespace NS::Editor
         ImGui::SeparatorText("当てる条件");
         bool changed = false;
 
-        NS::Obj::Actor* selected = editor.SelectedObjectActor();
+        NS::Obj::SceneActor* selected = editor.SelectedObjectActor();
         const bool selectable =
             selected != nullptr && !editor.SelectedIsPlayerObject() && selected->BodySensorSubObj() != nullptr;
         if (m_desc.targetId == 0)

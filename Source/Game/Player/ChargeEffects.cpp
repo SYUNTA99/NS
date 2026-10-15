@@ -1,11 +1,11 @@
 #include "Game/Player/ChargeEffects.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/Types.h"
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerAppearance.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
@@ -31,14 +31,14 @@ namespace GL::Player
 
     void ChargeEffects::OnStart()
     {
-        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        if (::PlayerActor* ownerPlayer = NS::Obj::Cast<::PlayerActor>(Owner()))
         {
             m_actor = ownerPlayer;
             m_appearance = &ownerPlayer->Appearance();
             m_resolver = &ownerPlayer->Resolver();
         }
 
-        if (const NS::Obj::Actor* owner = Owner())
+        if (const NS::Obj::SceneActor* owner = Owner())
         {
             NS::Obj::PreloadEffects(owner,
                                     {m_curlAsset,

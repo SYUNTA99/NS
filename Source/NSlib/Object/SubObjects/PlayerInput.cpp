@@ -1,7 +1,7 @@
 #include "NSlib/Object/SubObjects/PlayerInput.h"
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Windows/Gamepad.h"

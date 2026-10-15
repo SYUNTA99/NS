@@ -11,7 +11,7 @@
 
 namespace GL::Level
 {
-    class MapObj;
+    class PropActor;
 
     //! @brief 押し飛ばされた配置物の尾と、着地の粉を出す部品
     //! @details 尾は曲線を離れた時に消す。段で色、飛ばしの比で長さ、威力と質量で粉の大きさを決める
@@ -72,7 +72,7 @@ namespace GL::Level
         // 尾を消し、床に落ちていればその場へ粉を出す
         void EndTrail();
 
-        MapObj* m_body = nullptr;
+        PropActor* m_body = nullptr;
         NS::uint32 m_trail = 0;   // 飛び出しの尾。消したら 0
         int m_trailStartStep = 0; // 尾を出したフレーム。このフレームは出した姿のまま
         int m_trailFrames = 0;

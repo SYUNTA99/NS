@@ -2,7 +2,7 @@
 #include "NSlib/Graphics/RenderTarget.h"
 #include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Graphics/Texture.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/SubObjects/Model.h"
@@ -28,7 +28,7 @@ namespace
     constexpr int k_Width = 160;
     constexpr int k_Height = 90;
 
-    class BoxActor : public NS::Obj::Actor
+    class BoxActor : public NS::Obj::SceneActor
     {
     public:
         explicit BoxActor(const NS::Vector3& position) : m_position(position) {}

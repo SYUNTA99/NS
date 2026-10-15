@@ -1,6 +1,6 @@
 #include "Game/Player/States/WalkPlayerState.h"
 
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BrakePlayerState.h"
@@ -10,7 +10,7 @@
 
 namespace GL::Player
 {
-    void WalkPlayerState::OnStep(::Player& player, float dt)
+    void WalkPlayerState::OnStep(::PlayerActor& player, float dt)
     {
         player.TickTimers(dt);
         const NS::Obj::Body& body = player.Body();

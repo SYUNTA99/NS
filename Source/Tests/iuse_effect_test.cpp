@@ -1,4 +1,4 @@
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "TestEffectActor.h"
@@ -66,7 +66,7 @@ TEST(IUseEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 
 TEST(IUseEffectTest, ActorWithoutTheSlotDoesNothing)
 {
-    NS::Obj::Actor actor;
+    NS::Obj::SceneActor actor;
     ASSERT_EQ(actor.GetEffectKeeper(), nullptr);
 
     NS::Obj::PreloadEffects(&actor, {"test.spark"});

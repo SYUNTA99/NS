@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactOutcome.h"
@@ -39,7 +39,7 @@
 #include <algorithm>
 #include <cmath>
 
-NS_REFLECT_BEGIN_IMPL(Player, NS::Obj::Actor)
+NS_REFLECT_BEGIN_IMPL(PlayerActor, NS::Obj::SceneActor)
 NS_REFLECT_SUBOBJ(m_appearance, "Appearance")
 NS_REFLECT_SUBOBJ(m_body, "Movement")
 NS_REFLECT_SUBOBJ(m_collider, "Collider")
@@ -53,12 +53,12 @@ NS_REFLECT_SUBOBJ(m_chargeEffects, "ChargeEffects")
 NS_REFLECT_SUBOBJ(m_impactEffects, "ImpactEffects")
 NS_REFLECT_END_IMPL()
 
-NS_CLASS(Player)
+NS_CLASS(PlayerActor)
 
-Player::Player() noexcept = default;
+PlayerActor::PlayerActor() noexcept = default;
 
-Player::~Player() = default;
-void Player::OnInit()
+PlayerActor::~PlayerActor() = default;
+void PlayerActor::OnInit()
 {
     NS::Obj::Model* model = CreateSubObj(m_model);
     model->SetMaterialRef("player");
@@ -84,7 +84,7 @@ void Player::OnInit()
     (void)CreateSubObj(m_chargeEffects);
     (void)CreateSubObj(m_impactEffects);
     // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
-    (void)BuildStateMachine<Player,
+    (void)BuildStateMachine<PlayerActor,
                             GL::Player::IdlePlayerState,
                             GL::Player::WalkPlayerState,
                             GL::Player::FallPlayerState,
@@ -96,7 +96,7 @@ void Player::OnInit()
                             GL::Player::SkidPlayerState>(*this, m_states);
 }
 
-GL::Player::CameraTargetState Player::GetCameraTargetState() const
+GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
 {
     GL::Player::CameraTargetState state{};
     state.grounded = m_body->IsGrounded();
@@ -123,7 +123,7 @@ GL::Player::CameraTargetState Player::GetCameraTargetState() const
     }
     if (IsRebounding() && impact.tier == GL::Level::HitTier::Center && OwningScene() != nullptr)
     {
-        if (const NS::Obj::Actor* partner = OwningScene()->Objects().FindByObjectId(impact.targetId))
+        if (const NS::Obj::SceneActor* partner = OwningScene()->Objects().FindByObjectId(impact.targetId))
         {
             state.rebound.partnerPosition = partner->Root().Position();
         }
@@ -147,7 +147,7 @@ GL::Player::CameraTargetState Player::GetCameraTargetState() const
     return state;
 }
 
-void Player::UpdateAnimation()
+void PlayerActor::UpdateAnimation()
 {
     NS::Obj::Animation* animation = AnimationSubObj();
     if (animation == nullptr)
@@ -173,20 +173,20 @@ void Player::UpdateAnimation()
     animation->SetSpeed(ChoosePlaybackSpeed(m_appliedClip, lateralSpeed));
 }
 
-void Player::ReadInput()
+void PlayerActor::ReadInput()
 {
     TickSubObj(m_input.get());
 }
 
-void Player::Update(bool chargeHeld)
+void PlayerActor::Update(bool chargeHeld)
 {
     m_input->SetSlamHeld(chargeHeld);
-    NS::Obj::Actor::Update();
+    NS::Obj::SceneActor::Update();
 }
 
-void Player::ObserveStep()
+void PlayerActor::ObserveStep()
 {
-    NS::Obj::Actor::ObserveStep();
+    NS::Obj::SceneActor::ObserveStep();
     // 当たりの途中は受け付けない。相手だけが戻ると、走っている当たりのタイムラインが戻った相手を飛ばす
     // 押しは同じ歩の状態の段で消費されるので、当たりの途中の押しは持ち越さない
     const bool inImpact = m_resolver->IsHitStopping() || m_resolver->IsAwaitingRebound();
@@ -204,7 +204,7 @@ void Player::ObserveStep()
     }
 }
 
-void Player::DecideStep()
+void PlayerActor::DecideStep()
 {
     AdvanceCharge(BodyDelta());
     if (m_resolver->IsActive())
@@ -218,7 +218,7 @@ void Player::DecideStep()
     }
 }
 
-void Player::StateStep()
+void PlayerActor::StateStep()
 {
     const float dt = BodyDelta();
     if (CanMoveBody() && dt > 0.0f)
@@ -234,7 +234,7 @@ void Player::StateStep()
     }
 }
 
-void Player::BodyStep()
+void PlayerActor::BodyStep()
 {
     const float dt = BodyDelta();
     if (CanMoveBody() && dt > 0.0f)
@@ -243,7 +243,7 @@ void Player::BodyStep()
     }
 }
 
-void Player::VisualStep()
+void PlayerActor::VisualStep()
 {
     UpdateAnimation();
     TickSubObj(m_targetMarker.get());
@@ -258,7 +258,7 @@ void Player::VisualStep()
 #endif
 }
 
-std::string_view Player::ChooseClip(float lateralSpeed) const noexcept
+std::string_view PlayerActor::ChooseClip(float lateralSpeed) const noexcept
 {
     if (m_states->IsCurrent<GL::Player::LedgeHangingPlayerState>())
     {
@@ -299,7 +299,7 @@ std::string_view Player::ChooseClip(float lateralSpeed) const noexcept
     return m_clips->m_idleClip;
 }
 
-float Player::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept
+float PlayerActor::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept
 {
     if (clip != m_clips->m_walkClip && clip != m_clips->m_runClip)
     {
@@ -314,9 +314,9 @@ float Player::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) con
     return std::max(m_clips->m_minPlaybackSpeed, lateralSpeed / maxSpeed);
 }
 
-void Player::OnStart()
+void PlayerActor::OnStart()
 {
-    NS::Obj::Actor::OnStart();
+    NS::Obj::SceneActor::OnStart();
     if (NS::Obj::Scene* scene = OwningScene())
     {
         scene->RegisterOverlay(m_targetMarker.get());
@@ -324,11 +324,11 @@ void Player::OnStart()
     }
 }
 
-void Player::OnEndPlay()
+void PlayerActor::OnEndPlay()
 {
     m_states->Reset();
     m_appliedClip.clear();
-    NS::Obj::Actor::OnEndPlay();
+    NS::Obj::SceneActor::OnEndPlay();
     if (NS::Obj::Scene* scene = OwningScene())
     {
         scene->UnregisterOverlay(m_targetMarker.get());
@@ -337,14 +337,14 @@ void Player::OnEndPlay()
     EndCharge();
 }
 
-void Player::InitAfterPlacement()
+void PlayerActor::InitAfterPlacement()
 {
     ResetHealth();
     // 死とゴールを伝える先。先に作っておくと、最初の知らせの段で流れが進む
     (void)NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this);
 }
 
-bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver)
+bool PlayerActor::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver)
 {
     (void)sender;
     (void)receiver;
@@ -383,7 +383,7 @@ bool Player::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender,
     return false;
 }
 
-void Player::RestartFrom(const nlohmann::json& baseline) noexcept
+void PlayerActor::RestartFrom(const nlohmann::json& baseline) noexcept
 {
     // 出現位置は配置したプレイヤーのカプセル中心の世界座標
     // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで補う位置へ戻す
@@ -400,79 +400,79 @@ void Player::RestartFrom(const nlohmann::json& baseline) noexcept
     Appear();
 }
 
-void Player::ApplyDamage(int amount) noexcept
+void PlayerActor::ApplyDamage(int amount) noexcept
 {
     m_health.ApplyDamage(amount);
 }
 
-void Player::Die() noexcept
+void PlayerActor::Die() noexcept
 {
     m_health.Deplete();
     Disappear();
 }
 
-void Player::ResetHealth() noexcept
+void PlayerActor::ResetHealth() noexcept
 {
     m_health.SetMaxHealth(m_params->MaxHealth());
     m_health.Reset();
 }
 
-bool Player::IsDead() const noexcept
+bool PlayerActor::IsDead() const noexcept
 {
     return m_health.IsDead();
 }
 
-int Player::Health() const noexcept
+int PlayerActor::Health() const noexcept
 {
     return m_health.Current();
 }
 
-void Player::SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept
+void PlayerActor::SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept
 {
     m_input->SetDesiredMove(worldDir, speedScale01);
 }
 
-float Player::DesiredSpeedScale() const noexcept
+float PlayerActor::DesiredSpeedScale() const noexcept
 {
     return m_input->DesiredSpeedScale();
 }
 
-NS::Vector3 Player::DesiredDirection() const noexcept
+NS::Vector3 PlayerActor::DesiredDirection() const noexcept
 {
     return m_input->DesiredDirection();
 }
 
-void Player::SetClimbMove(float localRight, float localForward) noexcept
+void PlayerActor::SetClimbMove(float localRight, float localForward) noexcept
 {
     m_input->SetClimbMove(localRight, localForward);
 }
 
-float Player::ClimbRight() const noexcept
+float PlayerActor::ClimbRight() const noexcept
 {
     return m_input->ClimbRight();
 }
 
-float Player::ClimbForward() const noexcept
+float PlayerActor::ClimbForward() const noexcept
 {
     return m_input->ClimbForward();
 }
 
-void Player::SetJumpPressed() noexcept
+void PlayerActor::SetJumpPressed() noexcept
 {
     m_input->SetJumpPressed();
 }
 
-void Player::SetReleaseLedgePressed() noexcept
+void PlayerActor::SetReleaseLedgePressed() noexcept
 {
     m_input->SetReleaseLedgePressed();
 }
 
-void Player::SetJumpHeld(bool held) noexcept
+void PlayerActor::SetJumpHeld(bool held) noexcept
 {
     m_input->SetJumpHeld(held);
 }
 
-float Player::MaxSpeed() const noexcept
+float PlayerActor::MaxSpeed() const noexcept
 {
     const float capped = m_params->m_runSpeed * m_maxSpeedScale;
     if (capped < 0.0f)
@@ -482,7 +482,7 @@ float Player::MaxSpeed() const noexcept
     return capped;
 }
 
-void Player::SetMaxSpeedScale(float scale) noexcept
+void PlayerActor::SetMaxSpeedScale(float scale) noexcept
 {
     // 非数を入れると MaxSpeed() との比較が偽になり、突進明けに水平の速さが切られない
     if (!std::isfinite(scale))
@@ -492,18 +492,18 @@ void Player::SetMaxSpeedScale(float scale) noexcept
     m_maxSpeedScale = scale;
 }
 
-float Player::RunSpeed() const noexcept
+float PlayerActor::RunSpeed() const noexcept
 {
     return m_params->m_runSpeed;
 }
 
-bool Player::IsBodySlamming() const noexcept
+bool PlayerActor::IsBodySlamming() const noexcept
 {
     // 状態機械を組んでいる最中 (先頭の OnEnter) はまだ預かっていないので nullptr を見る
     return m_states != nullptr && m_states->IsCurrent<GL::Player::BodySlamPlayerState>();
 }
 
-float Player::BodySlamProgress01() const noexcept
+float PlayerActor::BodySlamProgress01() const noexcept
 {
     if (!IsBodySlamming() || !(m_slam.distanceTarget > 0.0f))
     {
@@ -512,27 +512,27 @@ float Player::BodySlamProgress01() const noexcept
     return NS::Clamp(m_slam.travelled / m_slam.distanceTarget, 0.0f, 1.0f);
 }
 
-float Player::BodySlamDistance() const noexcept
+float PlayerActor::BodySlamDistance() const noexcept
 {
     return m_params->m_bodySlamDistance;
 }
 
-bool Player::IsRebounding() const noexcept
+bool PlayerActor::IsRebounding() const noexcept
 {
     return m_states != nullptr && m_states->IsCurrent<GL::Player::ReboundPlayerState>();
 }
 
-bool Player::IsSkidding() const noexcept
+bool PlayerActor::IsSkidding() const noexcept
 {
     return m_states != nullptr && m_states->IsCurrent<GL::Player::SkidPlayerState>();
 }
 
-bool Player::SkidsOnLanding() const noexcept
+bool PlayerActor::SkidsOnLanding() const noexcept
 {
     return m_rebound.missTumble.has_value() && m_params->m_missSkidSteps > 0;
 }
 
-float Player::SkidSpeedScale() const noexcept
+float PlayerActor::SkidSpeedScale() const noexcept
 {
     if (!IsSkidding())
     {
@@ -541,13 +541,13 @@ float Player::SkidSpeedScale() const noexcept
     return GL::Level::MissSkidSpeedScale(m_skid.elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
 }
 
-bool Player::CanMoveBody() const noexcept
+bool PlayerActor::CanMoveBody() const noexcept
 {
     // 当たりの止めの正は裁定役の時計。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
     return m_body->IsActive() && !m_resolver->IsHitStopping() && !m_resolver->IsAwaitingRebound();
 }
 
-void Player::ResetState() noexcept
+void PlayerActor::ResetState() noexcept
 {
     m_body->SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     m_input->ResetMovementInput();
@@ -585,13 +585,13 @@ void Player::ResetState() noexcept
     m_appearance->ResetDrawScale();
 }
 
-void Player::SkipBodyStep() noexcept
+void PlayerActor::SkipBodyStep() noexcept
 {
     m_input->ConsumePressed();
     m_prevJumpHeld = m_input->JumpHeld();
 }
 
-void Player::PrepareStateStep()
+void PlayerActor::PrepareStateStep()
 {
     const bool locomotion =
         GL::Player::PlayerJudgeLocomotion::Judge(m_states->IsCurrent<GL::Player::IdlePlayerState>(),
@@ -608,7 +608,7 @@ void Player::PrepareStateStep()
     }
 }
 
-void Player::FinishStateStep(float dt)
+void PlayerActor::FinishStateStep(float dt)
 {
     UncurlWhenSettled();
     m_prevJumpHeld = m_input->JumpHeld();
@@ -623,11 +623,11 @@ void Player::FinishStateStep(float dt)
     }
 }
 
-Player* FindPlayer(NS::Obj::ActorList& objects) noexcept
+PlayerActor* FindPlayer(NS::Obj::ActorList& objects) noexcept
 {
-    for (NS::Obj::Actor* obj : objects)
+    for (NS::Obj::SceneActor* obj : objects)
     {
-        if (Player* player = NS::Obj::Cast<Player>(obj))
+        if (PlayerActor* player = NS::Obj::Cast<PlayerActor>(obj))
         {
             return player;
         }
@@ -636,7 +636,7 @@ Player* FindPlayer(NS::Obj::ActorList& objects) noexcept
 }
 
 // TODO: 床の上面を仮定している。床の高さが違うレベルを作ったら、補う時に下向きに引いて置く
-NS::Vector3 Player::DefaultSpawnPosition() const noexcept
+NS::Vector3 PlayerActor::DefaultSpawnPosition() const noexcept
 {
     return NS::Vector3{0.0f,
                        m_params->m_spawnFloorTop + Collider().StandingHalfHeight() + Collider().CapsuleRadius() +

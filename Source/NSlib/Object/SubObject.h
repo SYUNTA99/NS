@@ -8,11 +8,11 @@
 namespace NS::Obj
 {
     class AssetManager;
-    class Actor;
+    class SceneActor;
     class Scene;
     class Transform;
 
-    //! @brief Actor が所有する部品。更新は持ち主が呼び、体の経過秒は BodyDelta から取る
+    //! @brief SceneActor が所有する部品。更新は持ち主が呼び、体の経過秒は BodyDelta から取る
     //! @details シーンへの接続後に OnStart、破棄前に OnEndPlay を呼ぶ
     class SubObject : public Object
     {
@@ -21,9 +21,9 @@ namespace NS::Obj
 
         virtual ~SubObject() noexcept;
 
-        //! 持ち主の Actor。シーンへの所属後は必ず設定される
-        [[nodiscard]] Actor* Owner() noexcept { return m_owner; }
-        [[nodiscard]] const Actor* Owner() const noexcept { return m_owner; }
+        //! 持ち主の SceneActor。シーンへの所属後は必ず設定される
+        [[nodiscard]] SceneActor* Owner() noexcept { return m_owner; }
+        [[nodiscard]] const SceneActor* Owner() const noexcept { return m_owner; }
 
         //! 持ち主の居る Scene。持ち主が無いか Scene に居なければ nullptr
         [[nodiscard]] Scene* OwningScene() const noexcept;
@@ -62,10 +62,10 @@ namespace NS::Obj
         NS_REFLECT_NONE(SubObject, Object)
 
     private:
-        friend class Actor;
-        void AttachOwner(Actor* owner) noexcept { m_owner = owner; }
+        friend class SceneActor;
+        void AttachOwner(SceneActor* owner) noexcept { m_owner = owner; }
 
-        Actor* m_owner = nullptr; // 所有 Actor、attach 前は nullptr
+        SceneActor* m_owner = nullptr; // 所有 SceneActor、attach 前は nullptr
         bool m_active = true;     // false なら OnUpdate を skip
         bool m_enabled = true;    // データの active 値、false なら OnUpdate を飛ばす
     };

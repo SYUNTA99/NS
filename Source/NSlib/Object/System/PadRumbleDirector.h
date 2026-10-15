@@ -7,7 +7,7 @@
 
 namespace NS::Obj
 {
-    class Actor;
+    class SceneActor;
     class Scene;
 
     //! @brief パッドの振動 1 回。左右のモーターの速さを始めてからのフレーム数の曲線で決め、書くフレーム数で切る
@@ -28,12 +28,12 @@ namespace NS::Obj
         //! @brief 振動を始める。前の振動が残っていても、重ねた分も含めて始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
         //! @param[in] pad 振動の設定
-        void Start(const Actor& requester, const HitPadVibration& pad);
+        void Start(const SceneActor& requester, const HitPadVibration& pad);
         //! requester の振動を重ねる。振動していなければ Start と同じ
-        void Blend(const Actor& requester, const HitPadVibration& pad);
+        void Blend(const SceneActor& requester, const HitPadVibration& pad);
 
         //! requester が頼んだ振動を外して書き直す。残りが無ければ 0 を書いて止める
-        void Stop(const Actor& requester);
+        void Stop(const SceneActor& requester);
 
         //! 振動を 1 フレーム進めて書く
         void OnTick() override;
@@ -47,7 +47,7 @@ namespace NS::Obj
         {
             HitPadVibration pad;
             int startElapsed = 0;
-            const Actor* requester = nullptr;
+            const SceneActor* requester = nullptr;
         };
 
         std::vector<Layer> m_layers; // 書いている振動。始めた振動と、重ねた振動

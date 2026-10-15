@@ -5,7 +5,7 @@
     "nextObjectId": 167,
     "objects": [
         {
-            "class": "Player",
+            "class": "PlayerActor",
             "id": 2,
             "subObjects": {
                 "Appearance": {
@@ -119,7 +119,7 @@
             }
         },
         {
-            "class": "FollowCamera",
+            "class": "FollowCameraActor",
             "id": 3,
             "name": "Player Camera",
             "subObjects": {
@@ -167,7 +167,7 @@
             }
         },
         {
-            "class": "Light",
+            "class": "LightActor",
             "id": 4,
             "subObjects": {
                 "DirectionalLight": {
@@ -209,7 +209,7 @@
             }
         },
         {
-            "class": "MapParts",
+            "class": "MapPartsActor",
             "id": 100,
             "name": "始まりの床",
             "subObjects": {
@@ -244,7 +244,7 @@
             }
         },
         {
-            "class": "MapParts",
+            "class": "MapPartsActor",
             "id": 104,
             "name": "広場の床",
             "subObjects": {
@@ -279,7 +279,7 @@
             }
         },
         {
-            "class": "MapParts",
+            "class": "MapPartsActor",
             "id": 108,
             "name": "上の台",
             "subObjects": {
@@ -314,7 +314,7 @@
             }
         },
         {
-            "class": "MapParts",
+            "class": "MapPartsActor",
             "id": 112,
             "name": "扉の壁 左",
             "subObjects": {
@@ -349,7 +349,7 @@
             }
         },
         {
-            "class": "MapParts",
+            "class": "MapPartsActor",
             "id": 116,
             "name": "扉の壁 右",
             "subObjects": {
@@ -384,7 +384,7 @@
             }
         },
         {
-            "class": "MapObj",
+            "class": "PropActor",
             "id": 120,
             "name": "扉の岩",
             "subObjects": {
@@ -443,7 +443,7 @@
             }
         },
         {
-            "class": "MapObj",
+            "class": "PropActor",
             "id": 130,
             "name": "手前の球",
             "subObjects": {
@@ -502,7 +502,7 @@
             }
         },
         {
-            "class": "MapObj",
+            "class": "PropActor",
             "id": 140,
             "name": "奥の球",
             "subObjects": {
@@ -561,7 +561,7 @@
             }
         },
         {
-            "class": "Goal",
+            "class": "GoalActor",
             "id": 150,
             "name": "ゴール",
             "subObjects": {
@@ -598,7 +598,7 @@
             }
         },
         {
-            "class": "DeathZone",
+            "class": "DeathZoneActor",
             "id": 160,
             "name": "落下死の体積",
             "subObjects": {

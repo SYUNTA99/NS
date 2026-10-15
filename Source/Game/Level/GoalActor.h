@@ -1,15 +1,15 @@
 #pragma once
 
 #include "Game/Level/GoalParams.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 
 namespace GL::Level
 {
     //! @brief プレイヤーとの重なりで MsgGoal を送り、受け手にクリア処理を委ねるゴール
-    class Goal : public NS::Obj::Actor
+    class GoalActor : public NS::Obj::SceneActor
     {
     public:
-        NS_REFLECT_BEGIN(Goal, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(GoalActor, NS::Obj::SceneActor)
         NS_REFLECT_SUBOBJ(m_params, "Params")
         NS_REFLECT_END()
 

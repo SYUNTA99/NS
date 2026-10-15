@@ -6,14 +6,14 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
@@ -270,7 +270,7 @@ namespace GL::Level
 
     void ImpactResolver::OnStart()
     {
-        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
+        if (::PlayerActor* ownerPlayer = NS::Obj::Cast<::PlayerActor>(Owner()))
         {
             m_player = ownerPlayer;
             m_body = &ownerPlayer->Body();
@@ -357,7 +357,7 @@ namespace GL::Level
 
         const NS::Vector3 position = Owner()->Root().Position();
         const float playerRadius = m_player->Collider().CapsuleRadius();
-        // 突進は丸まった玉で進む。玉の決まりは Player::SlamBallAt が持つ
+        // 突進は丸まった玉で進む。玉の決まりは PlayerActor::SlamBallAt が持つ
         const NS::Vector3 ballCenter = m_player->SlamBallAt(position).center;
         // 届くかは裁定と同じく、自機の当たりの玉と相手の体のセンサーの形で見る。外接箱を水平に見ると、中心の高い
         // 大きな球の端では、玉が触れずに横を通るのに届くと出る
@@ -558,7 +558,7 @@ namespace GL::Level
         {
             return false;
         }
-        const NS::Obj::Actor* target = scene->Objects().FindObject(m_observedTarget);
+        const NS::Obj::SceneActor* target = scene->Objects().FindObject(m_observedTarget);
         if (target == nullptr || !target->IsActiveInHierarchy())
         {
             return false;
@@ -768,7 +768,7 @@ namespace GL::Level
             {
                 return;
             }
-            // Player の StateStep と BodyStep はこの後に CanMoveBody で止めを見るので、同じフレームから効く
+            // PlayerActor の StateStep と BodyStep はこの後に CanMoveBody で止めを見るので、同じフレームから効く
             resolver.m_stopStarted = true;
             resolver.m_stopEnd = resolver.m_clock + length - 1;
             resolver.m_freezeBeganThisStep = true;
@@ -796,7 +796,7 @@ namespace GL::Level
                 return;
             }
             // 力が伝わった瞬間の絵。置かれていれば食い込ませて止めさせ、押し返されている反発の時だけ縮める
-            NS::Obj::Actor* target = scene->Objects().FindObject(resolver.m_pendingTarget);
+            NS::Obj::SceneActor* target = scene->Objects().FindObject(resolver.m_pendingTarget);
             if (target == nullptr)
             {
                 return;
@@ -1401,7 +1401,7 @@ namespace GL::Level
         TackleShakeDesc other = self;
         other.firstSign = -firstSign;
         other.amplitude = 0.0f;
-        const NS::Obj::Actor* target = PendingTargetActor();
+        const NS::Obj::SceneActor* target = PendingTargetActor();
         if (target != nullptr)
         {
             other.amplitude = ScreenPixelsToMeters(shake.amplitudePixels, *pose, target->Root().Position());
@@ -1436,14 +1436,14 @@ namespace GL::Level
         m_bodyShake = BodyShakeRun{.desc = self, .startClock = m_clock, .active = true};
         // 始めたフレームから描く。時計の 0 の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
         AdvanceBodyShake();
-        NS::Obj::Actor* target = PendingTargetActor();
+        NS::Obj::SceneActor* target = PendingTargetActor();
         if (target != nullptr)
         {
             (void)SendMsgTackleShake(*target, other);
         }
     }
 
-    NS::Obj::Actor* ImpactResolver::PendingTargetActor() const noexcept
+    NS::Obj::SceneActor* ImpactResolver::PendingTargetActor() const noexcept
     {
         if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
         {
@@ -1476,7 +1476,7 @@ namespace GL::Level
         m_ghost = GhostRun{.desc = self, .frame = 0, .active = true, .startedThisStep = true};
         // 始めたフレームから描く。startedThisStep が true の間は StepState が同じ固定ステップで進めない
         AdvanceGhost();
-        NS::Obj::Actor* target = PendingTargetActor();
+        NS::Obj::SceneActor* target = PendingTargetActor();
         if (target == nullptr)
         {
             return;
@@ -1497,7 +1497,7 @@ namespace GL::Level
         {
             return;
         }
-        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
+        NS::Obj::SceneActor* target = scene->Objects().FindObject(m_pendingTarget);
         if (target == nullptr || target->ModelSubObj() == nullptr || m_player->ModelSubObj() == nullptr)
         {
             return;
@@ -1589,7 +1589,7 @@ namespace GL::Level
         {
             return;
         }
-        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
+        NS::Obj::SceneActor* target = scene->Objects().FindObject(m_pendingTarget);
         if (target == nullptr)
         {
             return;
@@ -1784,7 +1784,7 @@ namespace GL::Level
 
         // 相手は id で引き直す。止まっている数フレームの間に消されていたら残りだけ諦める
         // 元の位置と形へ戻り、跡を残し、飛ぶか壊れるかは相手が決める
-        NS::Obj::Actor* target = scene->Objects().FindObject(m_pendingTarget);
+        NS::Obj::SceneActor* target = scene->Objects().FindObject(m_pendingTarget);
         if (target == nullptr)
         {
             return;

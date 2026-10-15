@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/System/HitScreenDirector.h"
@@ -14,16 +14,16 @@
 
 namespace
 {
-    Player* PlacePlayer(NS::Obj::Scene& scene)
+    PlayerActor* PlacePlayer(NS::Obj::Scene& scene)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json entry = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(entry, "Player");
+        NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
         NS::Obj::SetObjectJsonId(entry, 1);
         NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
         scene.ResetFromJson(doc);
-        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
     float PadLeft()
@@ -47,7 +47,7 @@ namespace
 TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePlayer(scene);
+    PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
     NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
@@ -89,7 +89,7 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
 TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
 {
     NS::Obj::Scene scene;
-    Player* player = PlacePlayer(scene);
+    PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
     NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);

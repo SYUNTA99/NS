@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/Clock.h"
@@ -9,14 +9,14 @@
 
 namespace
 {
-    // 欄の秒を固定ステップのフレーム数にする。Player::AdvanceCharge と同じ丸め
+    // 欄の秒を固定ステップのフレーム数にする。PlayerActor::AdvanceCharge と同じ丸め
     int FramesFor(float seconds)
     {
         return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
     }
 
     // しきい値 0.2 秒・満タン 1 秒・溜めすぎ 0.5 秒。強制で出るのは押し始めから 1.5 秒のフレーム
-    void UseShortOvercharge(Player& player)
+    void UseShortOvercharge(PlayerActor& player)
     {
         ASSERT_EQ(
             NS::Obj::ApplyJsonFields(
@@ -28,8 +28,8 @@ namespace
 // 溜めきりの後は溜めすぎが 0 から 1 へ進み、1 になったフレームに押したままでも 1 回だけ出る
 TEST(PlayerOvercharge, ForcedLaunchFiresOnceAndThenStopsTheChargeShow)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     UseShortOvercharge(player);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     const int full = FramesFor(1.0f);
@@ -96,8 +96,8 @@ TEST(PlayerOvercharge, ForcedLaunchFiresOnceAndThenStopsTheChargeShow)
 // 出せない間に溜めすぎきった時は消えずに待ち、出せるようになったフレームに出る
 TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     UseShortOvercharge(player);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -139,8 +139,8 @@ TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
 // 待つ間に放した時は何も控えず、判定は使い切りへ移らない
 TEST(PlayerOvercharge, ReleasingWhileWaitingFiresNothingNew)
 {
-    const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-    Player& player = *playerOwned;
+    const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+    PlayerActor& player = *playerOwned;
     UseShortOvercharge(player);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);

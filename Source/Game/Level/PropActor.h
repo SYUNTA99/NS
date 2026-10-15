@@ -5,7 +5,7 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/StateMachineOf.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 #include "NSlib/Object/SubObjects/Model.h"
@@ -17,12 +17,12 @@ namespace GL::Level
 {
     //! @brief 動く・反応する置物。岩・箱・樽
     // 個体ごとの見た目と重さは個体の上書きで変える
-    class MapObj : public NS::Obj::Actor
+    class PropActor : public NS::Obj::SceneActor
     {
     public:
-        MapObj() noexcept;
+        PropActor() noexcept;
 
-        NS_REFLECT_BEGIN(MapObj, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(PropActor, NS::Obj::SceneActor)
         NS_REFLECT_SUBOBJ(m_params, "Params")
         NS_REFLECT_SUBOBJ(m_hitZones, "HitZones")
         NS_REFLECT_SUBOBJ(m_effects, "LaunchEffects")
@@ -94,8 +94,8 @@ namespace GL::Level
         std::unique_ptr<MapObjParams> m_params;
         std::unique_ptr<HitZones> m_hitZones;
         std::unique_ptr<LaunchEffects> m_effects;
-        NS::Obj::StateMachineOf<MapObj>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
-        NS::Obj::SubStateMachine<MapObj> m_motion;
+        NS::Obj::StateMachineOf<PropActor>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
+        NS::Obj::SubStateMachine<PropActor> m_motion;
         TackleFreezeDesc m_freeze;
         // 止めの間の揺れ。知らせを受けたフレームの止めの 1 歩を 1 フレーム目に数える
         struct ShakeRun

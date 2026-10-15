@@ -1,7 +1,7 @@
-#include "Game/Level/MapObj.h"
+#include "Game/Level/PropActor.h"
 #include "NSlib/Core/Types.h"
 
-#include "Game/Level/ImpactMark.h"
+#include "Game/Level/ImpactMarkActor.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactTremor.h"
 #include "Game/Level/SensorKinds.h"
@@ -17,14 +17,14 @@
 
 namespace GL::Level
 {
-    class MapObj::RestingState : public NS::Obj::StateOf<RestingState, MapObj>
+    class PropActor::RestingState : public NS::Obj::StateOf<RestingState, PropActor>
     {
-        void OnEnter(MapObj& owner) override
+        void OnEnter(PropActor& owner) override
         {
             owner.m_velocity = NS::Vector3{};
             owner.m_restAge = 0.0f;
         }
-        void OnStep(MapObj& owner, float dt) override
+        void OnStep(PropActor& owner, float dt) override
         {
             if (owner.m_hasLaunched && owner.m_params->RestLifeSeconds() > 0.0f)
             {
@@ -39,9 +39,9 @@ namespace GL::Level
         }
     };
 
-    class MapObj::FreezeState : public NS::Obj::StateOf<FreezeState, MapObj>
+    class PropActor::FreezeState : public NS::Obj::StateOf<FreezeState, PropActor>
     {
-        void OnStep(MapObj& owner, float dt) override
+        void OnStep(PropActor& owner, float dt) override
         {
             if (!owner.m_freezePlaced)
             {
@@ -51,26 +51,26 @@ namespace GL::Level
         }
     };
 
-    class MapObj::LaunchedState : public NS::Obj::StateOf<LaunchedState, MapObj>
+    class PropActor::LaunchedState : public NS::Obj::StateOf<LaunchedState, PropActor>
     {
-        void OnStep(MapObj& owner, float dt) override { owner.StepLaunched(dt); }
+        void OnStep(PropActor& owner, float dt) override { owner.StepLaunched(dt); }
     };
 
-    class MapObj::ArcState : public NS::Obj::StateOf<ArcState, MapObj>
+    class PropActor::ArcState : public NS::Obj::StateOf<ArcState, PropActor>
     {
-        void OnStep(MapObj& owner, float dt) override { owner.StepArc(dt); }
+        void OnStep(PropActor& owner, float dt) override { owner.StepArc(dt); }
     };
 
-    class MapObj::RollingState : public NS::Obj::StateOf<RollingState, MapObj>
+    class PropActor::RollingState : public NS::Obj::StateOf<RollingState, PropActor>
     {
-        void OnStep(MapObj& owner, float dt) override { owner.StepRolling(dt); }
+        void OnStep(PropActor& owner, float dt) override { owner.StepRolling(dt); }
     };
 
-    MapObj::MapObj() noexcept
+    PropActor::PropActor() noexcept
     {
         m_motion.Finish();
     }
-    void MapObj::OnInit()
+    void PropActor::OnInit()
     {
         NS::Obj::Model* model = CreateSubObj(m_model);
         model->SetMeshRef("sphere");
@@ -88,30 +88,30 @@ namespace GL::Level
                 return NS::Obj::SensorVolume::Sphere(world.center, world.radius);
             });
         SetSensorKind(*bodySensor, SensorKind::MapObjBody);
-        (void)BuildStateMachine<MapObj, RestingState, FreezeState, LaunchedState>(*this, m_states);
+        (void)BuildStateMachine<PropActor, RestingState, FreezeState, LaunchedState>(*this, m_states);
     }
 
-    void MapObj::InitAfterPlacement()
+    void PropActor::InitAfterPlacement()
     {
         SyncCollision();
     }
 
-    bool MapObj::IsFrozen() const noexcept
+    bool PropActor::IsFrozen() const noexcept
     {
         return m_states->IsCurrent<FreezeState>();
     }
 
-    bool MapObj::IsFlying() const noexcept
+    bool PropActor::IsFlying() const noexcept
     {
         return m_states->IsCurrent<LaunchedState>() || (IsFrozen() && !m_freezePlaced && !m_motion.IsDead());
     }
 
-    bool MapObj::IsArc() const noexcept
+    bool PropActor::IsArc() const noexcept
     {
         return IsFlying() && m_motion.Machine().IsCurrent<ArcState>();
     }
 
-    void MapObj::BodyStep()
+    void PropActor::BodyStep()
     {
         // 置き直すたびに形を作り直すので、球が変わらない間は置かない。止まっている置物の数だけ毎ステップ確保が走る
         const NS::Sphere sphere = Sphere().WorldSphere();
@@ -122,7 +122,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::VisualStep()
+    void PropActor::VisualStep()
     {
         TickSubObj(m_effects.get());
         // 震えは止めが明けて飛んでいく間に通り抜けるので、状態に依らず根を動かした後で進める
@@ -131,13 +131,13 @@ namespace GL::Level
         AdvanceGhost();
     }
 
-    void MapObj::UpdateMotion()
+    void PropActor::UpdateMotion()
     {
         StateStep();
         BodyStep();
     }
 
-    void MapObj::SyncCollision()
+    void PropActor::SyncCollision()
     {
         // Scene に居ない間は入れる先が無い。入れたと控えると、球が変わるまで入れ直さない
         if (IsActiveInHierarchy() && OwningScene() != nullptr)
@@ -147,7 +147,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::BeginFreeze(const TackleFreezeDesc& desc)
+    void PropActor::BeginFreeze(const TackleFreezeDesc& desc)
     {
         if (IsFrozen())
         {
@@ -174,7 +174,7 @@ namespace GL::Level
         SyncCollision();
     }
 
-    void MapObj::AdvanceShake()
+    void PropActor::AdvanceShake()
     {
         if (!m_shake.active || ModelSubObj() == nullptr)
         {
@@ -189,7 +189,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::StopShake()
+    void PropActor::StopShake()
     {
         m_shake.active = false;
         if (ModelSubObj() != nullptr)
@@ -198,7 +198,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::AdvanceGhost()
+    void PropActor::AdvanceGhost()
     {
         if (!m_ghost.active || ModelSubObj() == nullptr)
         {
@@ -208,7 +208,7 @@ namespace GL::Level
         m_ghost.active = m_ghost.desc.WriteTo(*ModelSubObj(), m_ghost.frame);
     }
 
-    void MapObj::StopGhost()
+    void PropActor::StopGhost()
     {
         m_ghost.active = false;
         if (ModelSubObj() != nullptr)
@@ -218,7 +218,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::AdvanceTremor()
+    void PropActor::AdvanceTremor()
     {
         if (!m_tremor.active || ModelSubObj() == nullptr)
         {
@@ -240,7 +240,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::StopTremor()
+    void PropActor::StopTremor()
     {
         m_tremor.active = false;
         if (ModelSubObj() != nullptr)
@@ -249,7 +249,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::EndFreeze()
+    void PropActor::EndFreeze()
     {
         StopShake();
         if (m_freezePlaced)
@@ -263,7 +263,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::StepFreeze()
+    void PropActor::StepFreeze()
     {
         AdvanceShake();
         if (m_states->StepsInState() >= static_cast<NS::uint32>(std::max(m_freeze.stopSteps, 1)) + 2)
@@ -272,7 +272,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::LeaveFreeze()
+    void PropActor::LeaveFreeze()
     {
         EndFreeze();
         if (m_freezePlaced || m_motion.IsDead())
@@ -285,7 +285,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::Release(const TackleReleaseDesc& desc)
+    void PropActor::Release(const TackleReleaseDesc& desc)
     {
         if (IsFrozen())
         {
@@ -326,13 +326,13 @@ namespace GL::Level
         SyncCollision();
     }
 
-    NS::Vector3 MapObj::ArcOffset(float seconds) const noexcept
+    NS::Vector3 PropActor::ArcOffset(float seconds) const noexcept
     {
         const NS::Vector3 offset = LaunchArcOffsetAt(m_arc, seconds);
         return m_arcForward * offset.x + m_arcUp * offset.y;
     }
 
-    void MapObj::StepLaunched(float dt)
+    void PropActor::StepLaunched(float dt)
     {
         m_motion.Step(dt);
         if (m_motion.IsDead())
@@ -341,7 +341,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::StepArc(float dt)
+    void PropActor::StepArc(float dt)
     {
         const NS::Vector3 before = ArcOffset(m_arcSeconds);
         m_arcSeconds += dt;
@@ -379,7 +379,7 @@ namespace GL::Level
         }
     }
 
-    bool MapObj::ProbeFloor(float distance, NS::Vector3& outNormal)
+    bool PropActor::ProbeFloor(float distance, NS::Vector3& outNormal)
     {
         const NS::Sphere sphere = Sphere().WorldSphere();
         float hitDistance = 0.0f;
@@ -400,7 +400,7 @@ namespace GL::Level
         return true;
     }
 
-    void MapObj::Land(const NS::Vector3& normal)
+    void PropActor::Land(const NS::Vector3& normal)
     {
         // 外れの跳ねが残っていれば、向きを変えて跳ね直し、曲線の重力で落ちる
         if (m_hopsLeft > 0)
@@ -423,7 +423,7 @@ namespace GL::Level
         m_effects->NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius, normal);
     }
 
-    void MapObj::StepRolling(float dt)
+    void PropActor::StepRolling(float dt)
     {
         NS::Vector3 normal{};
         if (!ProbeFloor(Sphere().WorldSphere().radius / m_params->FloorDot() + 0.01f, normal))
@@ -447,7 +447,7 @@ namespace GL::Level
         MoveLaunched(dt);
     }
 
-    void MapObj::MoveLaunched(float dt)
+    void PropActor::MoveLaunched(float dt)
     {
         float remaining = dt;
         for (int contact = 0; contact < m_params->MaxContacts() && remaining > 0.0f; ++contact)
@@ -506,7 +506,7 @@ namespace GL::Level
         }
     }
 
-    void MapObj::SpawnMark()
+    void PropActor::SpawnMark()
     {
         const NS::Vector3 down = GravityDirection();
         const NS::Sphere sphere = Sphere().WorldSphere();
@@ -515,11 +515,11 @@ namespace GL::Level
         if (NS::Obj::RaycastCollision(
                 this, sphere.center, down, m_params->MarkProbeDistance(), distance, normal, Sphere().BodyId()))
         {
-            (void)ImpactMark::SpawnAt(OwningScene(), sphere.center + down * distance + normal * 0.02f);
+            (void)ImpactMarkActor::SpawnAt(OwningScene(), sphere.center + down * distance + normal * 0.02f);
         }
     }
 
-    void MapObj::ResetTo(const NS::Vector3& position, const NS::Quaternion& rotation)
+    void PropActor::ResetTo(const NS::Vector3& position, const NS::Quaternion& rotation)
     {
         if (IsFrozen())
         {
@@ -542,17 +542,17 @@ namespace GL::Level
         SyncCollision();
     }
 
-    void MapObj::OnEndPlay()
+    void PropActor::OnEndPlay()
     {
         if (IsFrozen())
         {
             EndFreeze();
         }
         m_motion.Finish();
-        NS::Obj::Actor::OnEndPlay();
+        NS::Obj::SceneActor::OnEndPlay();
     }
 
-    bool MapObj::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver)
+    bool PropActor::ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver)
     {
         (void)sender;
         (void)receiver;
@@ -617,5 +617,5 @@ namespace GL::Level
         return false;
     }
 
-    NS_PLACEABLE(MapObj, "置物")
+    NS_PLACEABLE(PropActor, "置物")
 } // namespace GL::Level

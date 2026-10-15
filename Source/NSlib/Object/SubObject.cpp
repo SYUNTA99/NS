@@ -1,7 +1,7 @@
 ﻿#include "NSlib/Object/SubObject.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Windows/Clock.h"
 

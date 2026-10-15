@@ -1,7 +1,7 @@
 ﻿#include "NSlib/Object/SubObjects/MeshCollision.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/SubObjects/Model.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
@@ -56,7 +56,7 @@ namespace NS::Obj
         {
             return {};
         }
-        const Actor* owner = Owner();
+        const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             return m_shape->triangles;
@@ -82,7 +82,7 @@ namespace NS::Obj
         }
 
         NS::Matrix world = NS::Matrix::Identity;
-        if (const Actor* owner = Owner())
+        if (const SceneActor* owner = Owner())
         {
             world = owner->Root().WorldMatrix();
         }
@@ -100,7 +100,7 @@ namespace NS::Obj
 
     void MeshCollision::ResolveAssets(AssetManager& assets)
     {
-        const Actor* owner = Owner();
+        const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             return;

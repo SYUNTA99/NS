@@ -13,7 +13,7 @@
 
 namespace NS::Obj
 {
-    class Actor;
+    class SceneActor;
     class HitSensor;
     class Model;
 } // namespace NS::Obj
@@ -68,7 +68,7 @@ namespace GL::Level
     private:
         const nlohmann::json& m_baseline;
     };
-    bool SendMsgCourseRestart(NS::Obj::Actor& receiver, const nlohmann::json& baseline);
+    bool SendMsgCourseRestart(NS::Obj::SceneActor& receiver, const nlohmann::json& baseline);
     [[nodiscard]] bool IsMsgCourseRestart(const NS::Obj::Message& msg) noexcept;
 
     //! @brief 操作を止めるか戻す知らせ。進行役がクリアの演出の間だけプレイヤーの操作を止める
@@ -86,7 +86,7 @@ namespace GL::Level
     private:
         bool m_locked = false;
     };
-    bool SendMsgInputLock(NS::Obj::Actor& receiver, bool locked);
+    bool SendMsgInputLock(NS::Obj::SceneActor& receiver, bool locked);
     [[nodiscard]] bool IsMsgInputLock(const NS::Obj::Message& msg) noexcept;
 
     //! @brief 体当たりの相手の答え。MsgAskTackleTarget の受け手が書く
@@ -145,7 +145,7 @@ namespace GL::Level
     private:
         const TackleFreezeDesc& m_desc;
     };
-    bool SendMsgTackleFreeze(NS::Obj::Actor& receiver, const TackleFreezeDesc& desc);
+    bool SendMsgTackleFreeze(NS::Obj::SceneActor& receiver, const TackleFreezeDesc& desc);
     [[nodiscard]] bool IsMsgTackleFreeze(const NS::Obj::Message& msg) noexcept;
 
     //! @brief 止めの間の揺れの形
@@ -186,7 +186,7 @@ namespace GL::Level
     private:
         const TackleShakeDesc& m_desc;
     };
-    bool SendMsgTackleShake(NS::Obj::Actor& receiver, const TackleShakeDesc& desc);
+    bool SendMsgTackleShake(NS::Obj::SceneActor& receiver, const TackleShakeDesc& desc);
     [[nodiscard]] bool IsMsgTackleShake(const NS::Obj::Message& msg) noexcept;
 
     //! @brief 残像。止めの間は根の左右に写しを置き、明けに止めの最後の姿を残して薄める
@@ -216,7 +216,7 @@ namespace GL::Level
     private:
         const TackleGhostDesc& m_desc;
     };
-    bool SendMsgTackleGhost(NS::Obj::Actor& receiver, const TackleGhostDesc& desc);
+    bool SendMsgTackleGhost(NS::Obj::SceneActor& receiver, const TackleGhostDesc& desc);
     [[nodiscard]] bool IsMsgTackleGhost(const NS::Obj::Message& msg) noexcept;
 
     //! @brief 衝撃の震え。受け手は長さの間、描く所の震えを毎フレーム MakeTremor で書き直す
@@ -242,7 +242,7 @@ namespace GL::Level
     private:
         const TackleTremorDesc& m_desc;
     };
-    bool SendMsgTackleTremor(NS::Obj::Actor& receiver, const TackleTremorDesc& desc);
+    bool SendMsgTackleTremor(NS::Obj::SceneActor& receiver, const TackleTremorDesc& desc);
     [[nodiscard]] bool IsMsgTackleTremor(const NS::Obj::Message& msg) noexcept;
 
     //! @brief 体当たりの止めが明けた時の、相手の飛び方
@@ -268,6 +268,6 @@ namespace GL::Level
     private:
         const TackleReleaseDesc& m_desc;
     };
-    bool SendMsgTackleRelease(NS::Obj::Actor& receiver, const TackleReleaseDesc& desc);
+    bool SendMsgTackleRelease(NS::Obj::SceneActor& receiver, const TackleReleaseDesc& desc);
     [[nodiscard]] bool IsMsgTackleRelease(const NS::Obj::Message& msg) noexcept;
 } // namespace GL::Level

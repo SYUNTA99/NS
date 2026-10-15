@@ -1,5 +1,5 @@
 {
-  "class": "FollowCamera",
+  "class": "FollowCameraActor",
   "subObjects": {
     "Vcam": {
       "ファークリップ": 100,

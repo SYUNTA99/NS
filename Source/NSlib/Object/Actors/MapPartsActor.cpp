@@ -1,4 +1,4 @@
-#include "NSlib/Object/Actors/MapParts.h"
+#include "NSlib/Object/Actors/MapPartsActor.h"
 
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/MeshCollision.h"
@@ -6,7 +6,7 @@
 
 namespace NS::Obj
 {
-    void MapParts::OnInit()
+    void MapPartsActor::OnInit()
     {
         // 色はテクスチャが無い時の見た目。床の既定の灰色
         Model* mesh = CreateSubObj(m_model);
@@ -16,5 +16,5 @@ namespace NS::Obj
         (void)CreateSubObj<Collision, MeshCollision>(m_collision);
     }
 
-    NS_PLACEABLE(MapParts, "地形の部品")
+    NS_PLACEABLE(MapPartsActor, "地形の部品")
 } // namespace NS::Obj

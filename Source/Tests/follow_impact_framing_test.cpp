@@ -1,5 +1,5 @@
-#include "Game/Level/FollowCamera.h"
-#include "NSlib/Object/Actor.h"
+#include "Game/Level/FollowCameraActor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -16,7 +16,7 @@
 namespace
 {
     // 溜め・突進・明けの状態を試しが書く追われる物。動かない
-    class FramingTargetProbe final : public NS::Obj::Actor
+    class FramingTargetProbeActor final : public NS::Obj::SceneActor
     {
     public:
         // 接地・溜め・保つかを仮想カメラの口へ渡す
@@ -44,13 +44,13 @@ namespace
     struct FramingScene
     {
         NS::Obj::Scene scene;
-        FramingTargetProbe* target = nullptr;
-        GL::Level::FollowCamera* camera = nullptr;
+        FramingTargetProbeActor* target = nullptr;
+        GL::Level::FollowCameraActor* camera = nullptr;
 
         FramingScene()
         {
-            target = scene.SpawnObject<FramingTargetProbe>("target");
-            camera = scene.SpawnTransient<GL::Level::FollowCamera>();
+            target = scene.SpawnObject<FramingTargetProbeActor>("target");
+            camera = scene.SpawnTransient<GL::Level::FollowCameraActor>();
             NS::Obj::ApplyJsonFields(camera->Vcam(),
                                      nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
         }

@@ -2,7 +2,7 @@
 #include "NSlib/Core/Types.h"
 
 #include "Editor/EditorUi.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/Curve.h"
 #include "NSlib/Object/Reflection/Reflection.h"
@@ -1015,7 +1015,7 @@ namespace NS::Editor
             }
 
             // 種類の既定にできるのは、種類を持つ配置物の、個体の物でない欄だけ
-            const NS::Obj::Actor* owner = comp.Owner();
+            const NS::Obj::SceneActor* owner = comp.Owner();
             const bool promotable =
                 owner != nullptr && owner->ClassName()[0] != '\0' && NS::Obj::IsArchetypeField(comp, field.name);
             const OverrideAction action = OverrideButton(changed, promotable);

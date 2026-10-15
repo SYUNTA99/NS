@@ -2,7 +2,7 @@
 
 #include "Game/Player/PlayerState.h"
 
-class Player;
+class PlayerActor;
 
 namespace GL::Player
 {
@@ -10,10 +10,10 @@ namespace GL::Player
     class LedgeClimbingPlayerState final : public PlayerState<LedgeClimbingPlayerState>
     {
     public:
-        void OnEnter(::Player& player) override;
-        void OnStep(::Player&, float) override {}
+        void OnEnter(::PlayerActor& player) override;
+        void OnStep(::PlayerActor&, float) override {}
 
     private:
-        NS::Coroutine Run(::Player& player);
+        NS::Coroutine Run(::PlayerActor& player);
     };
 } // namespace GL::Player

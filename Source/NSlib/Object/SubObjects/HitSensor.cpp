@@ -1,7 +1,7 @@
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 #include "NSlib/Object/System/HitSensorDirector.h"
@@ -290,7 +290,7 @@ namespace NS::Obj
     SensorVolume ShapeHitSensor::WorldVolume() const noexcept
     {
         NS::Matrix world = NS::Matrix::Identity;
-        if (const Actor* owner = Owner())
+        if (const SceneActor* owner = Owner())
         {
             world = owner->Root().WorldMatrix();
         }
@@ -324,7 +324,7 @@ namespace NS::Obj
         }
         NS_LOG_ERROR(Scene, "FollowHitSensor: 形を答える関数が空。根に長さ 0 の球を返す");
         NS::Vector3 root{0.0f, 0.0f, 0.0f};
-        if (const Actor* owner = Owner())
+        if (const SceneActor* owner = Owner())
         {
             root = owner->Root().Position();
         }

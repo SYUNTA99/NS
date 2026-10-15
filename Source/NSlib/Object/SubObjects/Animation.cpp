@@ -4,7 +4,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/Buffer.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/AssetManager.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/Model.h"
@@ -198,7 +198,7 @@ namespace NS::Obj
 
         // 参照解決は部品の並びで回るので、Model はここより先に解決済み
         // ここで差し替えないと skinned mesh が見た目に反映されない
-        if (Actor* owner = Owner())
+        if (SceneActor* owner = Owner())
         {
             if (Model* renderer = owner->ModelSubObj())
             {
@@ -239,7 +239,7 @@ namespace NS::Obj
         }
 
         // 描画する Model にパレットを差す。現在ポーズ境界は ApplyPose が毎フレーム差す
-        if (Actor* owner = Owner())
+        if (SceneActor* owner = Owner())
         {
             m_renderer = owner->ModelSubObj();
         }

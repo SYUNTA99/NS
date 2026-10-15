@@ -1,4 +1,4 @@
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
@@ -20,10 +20,10 @@ namespace
     class PlainSubObj final : public NS::Obj::SubObject
     {};
 
-    class OrderActor final : public NS::Obj::Actor
+    class OrderActor final : public NS::Obj::SceneActor
     {
     public:
-        NS_REFLECT_BEGIN(OrderActor, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(OrderActor, NS::Obj::SceneActor)
         NS_REFLECT_SUBOBJ(first, "First")
         NS_REFLECT_SUBOBJ(second, "Second")
         NS_REFLECT_END()
@@ -44,10 +44,10 @@ namespace
         }
     };
 
-    class NameClashActor final : public NS::Obj::Actor
+    class NameClashActor final : public NS::Obj::SceneActor
     {
     public:
-        NS_REFLECT_BEGIN(NameClashActor, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(NameClashActor, NS::Obj::SceneActor)
         NS_REFLECT_SUBOBJ(clash, "Model")
         NS_REFLECT_END()
 
@@ -63,7 +63,7 @@ namespace
     };
 
     // 基底の OnInit を呼ばずに、共通の部分を InitShape に出す
-    class MiddleActor : public NS::Obj::Actor
+    class MiddleActor : public NS::Obj::SceneActor
     {
     protected:
         void OnInit() override
@@ -85,7 +85,7 @@ namespace
     };
 
     // Init は作る関数だけが呼ぶ。外から呼べると、1 つの個体に 2 回書ける
-    template <class TActor = NS::Obj::Actor> void CheckInitIsClosed()
+    template <class TActor = NS::Obj::SceneActor> void CheckInitIsClosed()
     {
         static_assert(!requires(TActor& actor) { actor.Init(); });
     }
@@ -93,21 +93,21 @@ namespace
     // シーンは外で作った個体を受けない。受けると、Init していない個体が一覧に入る
     template <class TScene = NS::Obj::Scene> void CheckSceneBuildsItsOwnActors()
     {
-        static_assert(!requires(TScene& scene, std::unique_ptr<NS::Obj::Actor> actor) {
+        static_assert(!requires(TScene& scene, std::unique_ptr<NS::Obj::SceneActor> actor) {
             scene.SpawnTransient(std::move(actor));
         });
-        static_assert(!requires(TScene& scene, std::unique_ptr<NS::Obj::Actor> actor) {
+        static_assert(!requires(TScene& scene, std::unique_ptr<NS::Obj::SceneActor> actor) {
             scene.SpawnObject(std::move(actor), std::string{});
         });
     }
 
 } // namespace
 
-class SubObjectInitProbe final : public NS::Obj::Actor
+class SubObjectInitProbeActor final : public NS::Obj::SceneActor
 {
 public:
     int inits = 0;
-    NS_REFLECT_NONE(SubObjectInitProbe, NS::Obj::Actor)
+    NS_REFLECT_NONE(SubObjectInitProbeActor, NS::Obj::SceneActor)
 
 protected:
     void OnInit() override
@@ -116,7 +116,7 @@ protected:
         CreateSubObj(m_model);
     }
 };
-NS_CLASS(SubObjectInitProbe)
+NS_CLASS(SubObjectInitProbeActor)
 
 TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationOrder)
 {
@@ -169,23 +169,23 @@ TEST(SubObject, OnlyTheBuildersCanInitAndEnterAnActor)
 TEST(SubObject, EveryBuildPathRunsOnInitExactlyOnce)
 {
     NS::Obj::Scene scene;
-    const SubObjectInitProbe* transient = scene.SpawnTransient<SubObjectInitProbe>();
+    const SubObjectInitProbeActor* transient = scene.SpawnTransient<SubObjectInitProbeActor>();
     EXPECT_EQ(transient->inits, 1);
     EXPECT_NE(transient->ModelSubObj(), nullptr);
 
-    const SubObjectInitProbe* placed = scene.SpawnObject<SubObjectInitProbe>("Placed");
+    const SubObjectInitProbeActor* placed = scene.SpawnObject<SubObjectInitProbeActor>("Placed");
     EXPECT_EQ(placed->inits, 1);
 
-    const std::unique_ptr<SubObjectInitProbe> loose = NS::Obj::CreateActor<SubObjectInitProbe>();
+    const std::unique_ptr<SubObjectInitProbeActor> loose = NS::Obj::CreateActor<SubObjectInitProbeActor>();
     EXPECT_EQ(loose->inits, 1);
 
-    const SubObjectInitProbe* fromJson =
-        NS::Obj::Cast<SubObjectInitProbe>(scene.SpawnFromJson(NS::Obj::MakePrototypeJson<SubObjectInitProbe>()));
+    const SubObjectInitProbeActor* fromJson =
+        NS::Obj::Cast<SubObjectInitProbeActor>(scene.SpawnFromJson(NS::Obj::MakePrototypeJson<SubObjectInitProbeActor>()));
     ASSERT_NE(fromJson, nullptr);
     EXPECT_EQ(fromJson->inits, 1);
 
-    const NS::Obj::Actor& baseline = NS::Obj::ArchetypeLibrary::Get().Baseline("SubObjectInitProbe");
-    const SubObjectInitProbe* probe = NS::Obj::Cast<SubObjectInitProbe>(&baseline);
+    const NS::Obj::SceneActor& baseline = NS::Obj::ArchetypeLibrary::Get().Baseline("SubObjectInitProbeActor");
+    const SubObjectInitProbeActor* probe = NS::Obj::Cast<SubObjectInitProbeActor>(&baseline);
     ASSERT_NE(probe, nullptr);
     EXPECT_EQ(probe->inits, 1);
     EXPECT_NE(probe->ModelSubObj(), nullptr);
@@ -193,6 +193,6 @@ TEST(SubObject, EveryBuildPathRunsOnInitExactlyOnce)
 
 TEST(SubObject, PrototypeJsonListsTheSubObjectsInit)
 {
-    const nlohmann::json prototype = NS::Obj::MakePrototypeJson<SubObjectInitProbe>();
+    const nlohmann::json prototype = NS::Obj::MakePrototypeJson<SubObjectInitProbeActor>();
     EXPECT_NE(NS::Obj::SubObjFields(prototype, "Model"), nullptr);
 }

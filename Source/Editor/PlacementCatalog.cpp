@@ -1,6 +1,6 @@
 #include "Editor/PlacementCatalog.h"
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
@@ -15,7 +15,7 @@ namespace NS::Editor
         // クラスの OnInit が積む構成をそのまま写したひな形。値はコード既定に任せる
         [[nodiscard]] nlohmann::json PrototypeOf(const NS::Obj::TypeRegistry::Entry& entry)
         {
-            const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::CreateActorOfClass(entry.className);
+            const std::unique_ptr<NS::Obj::SceneActor> actor = NS::Obj::CreateActorOfClass(entry.className);
             nlohmann::json prototype = NS::Obj::MakePrototypeJson(*actor);
             NS::Obj::SetObjectJsonClass(prototype, entry.className);
             return prototype;
@@ -45,7 +45,7 @@ namespace NS::Editor
             std::vector<PlacementItem> items;
             for (const NS::Obj::TypeRegistry::Entry* entry : NS::Obj::PlaceableEntries())
             {
-                if (std::string_view{entry->className} != "MapParts")
+                if (std::string_view{entry->className} != "MapPartsActor")
                 {
                     items.push_back(PlacementItem{entry->label, PrototypeOf(*entry), false});
                     continue;
@@ -82,7 +82,7 @@ namespace NS::Editor
     nlohmann::json MakeMeshPartsPrototype(std::string_view meshRef)
     {
         nlohmann::json prototype = NS::Obj::MakeObjectJson();
-        const NS::Obj::TypeRegistry::Entry* entry = NS::Obj::TypeRegistry::Get().Find("MapParts");
+        const NS::Obj::TypeRegistry::Entry* entry = NS::Obj::TypeRegistry::Get().Find("MapPartsActor");
         if (entry != nullptr && entry->create != nullptr)
         {
             prototype = PrototypeOf(*entry);

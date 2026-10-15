@@ -5,7 +5,7 @@
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/SubObjectEntry.h"
 #include "NSlib/Object/Scene/SceneJson.h"
@@ -44,7 +44,7 @@ namespace NS::Editor
             refOptions.reserve(editor.Objects().ObjectCount());
             for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
             {
-                NS::Obj::Actor& candidate = *editor.Objects().ObjectAt(i);
+                NS::Obj::SceneActor& candidate = *editor.Objects().ObjectAt(i);
                 if (candidate.IsTransient())
                 {
                     continue;
@@ -67,7 +67,7 @@ namespace NS::Editor
             }
 
             // 直前の HasInspectableSelection で同じ識別番号の対象を確認済み
-            NS::Obj::Actor* go = editor.SelectedObjectActor();
+            NS::Obj::SceneActor* go = editor.SelectedObjectActor();
 
             // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
             const NS::uint32 selectedId = editor.SelectedObjectId();

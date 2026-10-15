@@ -2,7 +2,7 @@
 
 #include "Game/Player/PlayerState.h"
 
-class Player;
+class PlayerActor;
 
 namespace GL::Player
 {
@@ -10,7 +10,7 @@ namespace GL::Player
     class SkidPlayerState final : public PlayerState<SkidPlayerState>
     {
     public:
-        void OnEnter(::Player& player) override;
-        void OnStep(::Player& player, float dt) override;
+        void OnEnter(::PlayerActor& player) override;
+        void OnStep(::PlayerActor& player, float dt) override;
     };
 } // namespace GL::Player

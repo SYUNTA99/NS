@@ -1,6 +1,6 @@
 ﻿#include "NSlib/Object/SubObjects/Body.h"
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/SubObjects/Collider.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 
@@ -78,7 +78,7 @@ namespace NS::Obj
 
     void Body::Gravity(float gravity, float dt) noexcept
     {
-        const NS::Obj::Actor* owner = Owner();
+        const NS::Obj::SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             m_velocity.y += gravity * dt;

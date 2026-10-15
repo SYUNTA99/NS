@@ -16,7 +16,7 @@
 namespace NS::Obj
 {
     class SubObject;
-    class Actor;
+    class SceneActor;
     struct Curve;
 } // namespace NS::Obj
 

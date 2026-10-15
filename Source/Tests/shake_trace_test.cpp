@@ -1,7 +1,7 @@
-#include "Game/Level/FollowCamera.h"
+#include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
@@ -35,16 +35,16 @@ namespace
     constexpr int k_ChargeFrames = 60; // 溜めの揺れを書き出すフレーム数
 
     // 自機 (id 1) と、その前の置物 (id 2)。rockX を横へずらすと外れになる
-    Player* PlaceShakeScene(NS::Obj::Scene& scene, float rockX)
+    PlayerActor* PlaceShakeScene(NS::Obj::Scene& scene, float rockX)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "Player");
+        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
         NS::Obj::SetObjectJsonId(player, 1);
         NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "MapObj");
+        NS::Obj::SetObjectJsonClass(rock, "PropActor");
         NS::Obj::SetObjectJsonId(rock, 2);
         NS::Obj::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -56,7 +56,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
     // 当たりの揺れ。平行移動の揺れのずれ (x が右、y が上、m)・トラウマの揺れの角度 (横・縦・傾き、度)・
@@ -74,7 +74,7 @@ namespace
     {
         HitShakeTrace trace;
         NS::Obj::Scene scene;
-        Player* player = PlaceShakeScene(scene, rockX);
+        PlayerActor* player = PlaceShakeScene(scene, rockX);
         if (player == nullptr)
         {
             return trace;
@@ -118,7 +118,7 @@ namespace
     }
 
     // 溜めの量が 1 秒で 1 まで上がり、そのまま押し続ける相手
-    class ChargingTarget final : public NS::Obj::Actor
+    class ChargingTargetActor final : public NS::Obj::SceneActor
     {
     public:
         // 接地と溜めを仮想カメラの口へ渡す
@@ -138,8 +138,8 @@ namespace
     {
         std::vector<NS::Vector3> offsets;
         NS::Obj::Scene scene;
-        ChargingTarget* target = scene.SpawnObject<ChargingTarget>("target");
-        GL::Level::FollowCamera* actor = scene.SpawnTransient<GL::Level::FollowCamera>();
+        ChargingTargetActor* target = scene.SpawnObject<ChargingTargetActor>("target");
+        GL::Level::FollowCameraActor* actor = scene.SpawnTransient<GL::Level::FollowCameraActor>();
         if (target == nullptr || actor == nullptr)
         {
             return offsets;

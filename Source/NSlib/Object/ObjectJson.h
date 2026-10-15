@@ -32,9 +32,9 @@ namespace NS::Obj
     //! 配置物の永続 id を書く
     void SetObjectJsonId(nlohmann::json& object, NS::uint32 id);
 
-    //! 生成する Actor のクラス名。空は素の Actor
+    //! 生成する SceneActor のクラス名。空は素の SceneActor
     [[nodiscard]] std::string_view ObjectJsonClass(const nlohmann::json& object) noexcept;
-    //! クラス名を書く。空は素の Actor の印なので消す
+    //! クラス名を書く。空は素の SceneActor の印なので消す
     void SetObjectJsonClass(nlohmann::json& object, std::string_view className);
 
     //! 配置物の名前。空は未設定で、読込の一意化が名前を振る

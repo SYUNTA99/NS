@@ -7,7 +7,7 @@
 #include "NSlib/Core/Types.h"
 #include <string>
 
-class Player;
+class PlayerActor;
 
 namespace NS::Gfx
 {
@@ -37,10 +37,10 @@ namespace GL::Player
         PlayerAppearance() noexcept;
 
         //! @brief 玉の見た目へ持ち替える。既に玉なら何もしない
-        //! @details 持ち主の Player があれば、次の OnUpdate でその丸まりに合わせ直す
+        //! @details 持ち主の PlayerActor があれば、次の OnUpdate でその丸まりに合わせ直す
         void Curl() noexcept;
         //! @brief 立ち姿へ戻す。既に立ち姿なら何もしない
-        //! @details 持ち主の Player があれば、次の OnUpdate でその丸まりに合わせ直す
+        //! @details 持ち主の PlayerActor があれば、次の OnUpdate でその丸まりに合わせ直す
         void Uncurl() noexcept;
         [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
 
@@ -104,7 +104,7 @@ namespace GL::Player
         NS::Gfx::Mesh* m_ballMesh = nullptr;     // AssetManager 所有
         bool m_curled = false;
         const NS::Obj::Body* m_body = nullptr; // 接地の問い先。非所有
-        const ::Player* m_actor = nullptr;     // 突進の速度と狙いの向きと溜めと構えの縮みの問い先。非所有
+        const ::PlayerActor* m_actor = nullptr;     // 突進の速度と狙いの向きと溜めと構えの縮みの問い先。非所有
         const GL::Level::ImpactResolver* m_resolver = nullptr; // 当たりの潰れと伸びの問い先。非所有
 
         // 回る速さは 3 つとも 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の

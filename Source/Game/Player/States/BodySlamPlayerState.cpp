@@ -1,10 +1,10 @@
 #include "Game/Player/States/BodySlamPlayerState.h"
 
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 
 namespace GL::Player
 {
-    void BodySlamPlayerState::OnStep(::Player& player, float dt)
+    void BodySlamPlayerState::OnStep(::PlayerActor& player, float dt)
     {
         player.UpdateBodySlam(dt);
     }

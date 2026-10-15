@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/SubObjects/Model.h"
 
 namespace NS::Obj
@@ -13,15 +13,15 @@ namespace GL::Level
 {
     //! @brief 床へ置き、時間で縮めて消す半透明の跡
     //! @details 寿命後はシーンが更新の終わりに破棄する
-    class ImpactMark : public NS::Obj::Actor
+    class ImpactMarkActor : public NS::Obj::SceneActor
     {
     public:
-        ImpactMark() noexcept;
+        ImpactMarkActor() noexcept;
 
-        NS_REFLECT_NONE(ImpactMark, NS::Obj::Actor)
+        NS_REFLECT_NONE(ImpactMarkActor, NS::Obj::SceneActor)
 
         //! 指定の位置へ跡の一時オブジェクトを出す。scene が nullptr なら nullptr を返す
-        [[nodiscard]] static NS::Obj::Actor* SpawnAt(NS::Obj::Scene* scene, const NS::Vector3& position);
+        [[nodiscard]] static NS::Obj::SceneActor* SpawnAt(NS::Obj::Scene* scene, const NS::Vector3& position);
 
         [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Effects; }
 

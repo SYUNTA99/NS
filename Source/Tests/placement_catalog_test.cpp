@@ -15,7 +15,7 @@ TEST(PlacementCatalog, EveryPlaceableClassAppears)
     // 地形の部品以外の置けるクラスは、表示名そのままで 1 つずつ並ぶ
     for (const NS::Obj::TypeRegistry::Entry* entry : NS::Obj::PlaceableEntries())
     {
-        if (std::string_view{entry->className} == "MapParts")
+        if (std::string_view{entry->className} == "MapPartsActor")
         {
             continue;
         }
@@ -26,7 +26,7 @@ TEST(PlacementCatalog, EveryPlaceableClassAppears)
     // プレイヤーは置く一覧に出ない
     for (const NS::Editor::PlacementItem& item : NS::Editor::PlacementItems())
     {
-        EXPECT_NE(NS::Obj::ObjectJsonClass(item.prototype), "Player") << item.label;
+        EXPECT_NE(NS::Obj::ObjectJsonClass(item.prototype), "PlayerActor") << item.label;
     }
 }
 
@@ -41,7 +41,7 @@ TEST(PlacementCatalog, MapPartsIsSplitByMesh)
     ASSERT_NE(slope, nullptr);
     for (const NS::Editor::PlacementItem* item : {cube, sphere, slope})
     {
-        EXPECT_EQ(NS::Obj::ObjectJsonClass(item->prototype), "MapParts");
+        EXPECT_EQ(NS::Obj::ObjectJsonClass(item->prototype), "MapPartsActor");
         // 個体のデータは部品を足せないので、ひな形も当たりの件を持たない
         EXPECT_EQ(NS::Obj::SubObjFields(item->prototype, "BoxCollision"), nullptr);
     }
@@ -93,7 +93,7 @@ TEST(PlacementCatalog, MeshPartsUsesTheDroppedMesh)
 {
     // メッシュ資産から置く部品は、描いた三角形そのもので当たる
     const nlohmann::json prototype = NS::Editor::MakeMeshPartsPrototype("Assets/Models/terrain.glb");
-    EXPECT_EQ(NS::Obj::ObjectJsonClass(prototype), "MapParts");
+    EXPECT_EQ(NS::Obj::ObjectJsonClass(prototype), "MapPartsActor");
     const nlohmann::json* renderer = NS::Obj::SubObjFields(prototype, "Model");
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(NS::Obj::FieldString(*renderer, "メッシュ", ""), "Assets/Models/terrain.glb");

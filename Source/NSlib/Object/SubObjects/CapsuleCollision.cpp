@@ -1,7 +1,7 @@
 ﻿#include "NSlib/Object/SubObjects/CapsuleCollision.h"
 #include "NSlib/Core/AABB.h"
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Physics/PhysicsScene.h"

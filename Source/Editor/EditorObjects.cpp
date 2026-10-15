@@ -1,11 +1,11 @@
 #include "Editor/EditorObjects.h"
 #include "NSlib/Core/Types.h"
 
-#include "Game/Level/DeathZone.h"
-#include "Game/Player.h"
+#include "Game/Level/DeathZoneActor.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/Mesh.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
@@ -24,17 +24,17 @@ namespace NS::Editor
         // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
         constexpr float k_QuarterTurnYaw = NS::k_Pi * 0.5f;
 
-        // 登録の表示名、なければクラス名。未登録は Actor。返す文字列は登録情報が所有する
+        // 登録の表示名、なければクラス名。未登録は SceneActor。返す文字列は登録情報が所有する
         const char* ClassDisplayName(std::string_view className) noexcept
         {
             if (className.empty())
             {
-                return "Actor";
+                return "SceneActor";
             }
             const NS::Obj::TypeRegistry::Entry* entry = NS::Obj::TypeRegistry::Get().Find(className);
             if (entry == nullptr)
             {
-                return "Actor";
+                return "SceneActor";
             }
             if (entry->label != nullptr)
             {
@@ -45,28 +45,28 @@ namespace NS::Editor
 
         bool IsPlayerObject(const nlohmann::json& object) noexcept
         {
-            return NS::Obj::ObjectJsonClass(object) == ::Player::StaticReflection()->typeName;
+            return NS::Obj::ObjectJsonClass(object) == ::PlayerActor::StaticReflection()->typeName;
         }
 
         bool IsDeathZoneObject(const nlohmann::json& object) noexcept
         {
-            return NS::Obj::ObjectJsonClass(object) == GL::Level::DeathZone::StaticReflection()->typeName;
+            return NS::Obj::ObjectJsonClass(object) == GL::Level::DeathZoneActor::StaticReflection()->typeName;
         }
 
         nlohmann::json MakeDeathZoneObject()
         {
-            nlohmann::json object = NS::Obj::MakePrototypeJson<GL::Level::DeathZone>();
+            nlohmann::json object = NS::Obj::MakePrototypeJson<GL::Level::DeathZoneActor>();
             // 上面 y=-50 は従来の落下死の高さ
             NS::Obj::SetObjectPosition(object, NS::Vector3{0.0f, -55.0f, 0.0f});
             return object;
         }
     } // namespace
 
-    bool IsCellBrushObject(const NS::Obj::Actor& object) noexcept
+    bool IsCellBrushObject(const NS::Obj::SceneActor& object) noexcept
     {
         // 実行時の一時オブジェクトは配置物でないため対象外
-        // 自前の振る舞いを持つ Actor は、ブラシの置換や削除で崩さない
-        if (object.IsTransient() || std::string_view{object.ClassName()} != "MapParts")
+        // 自前の振る舞いを持つ SceneActor は、ブラシの置換や削除で崩さない
+        if (object.IsTransient() || std::string_view{object.ClassName()} != "MapPartsActor")
         {
             return false;
         }
@@ -79,26 +79,26 @@ namespace NS::Editor
         return mesh == "cube" || mesh == "wedge45";
     }
 
-    NS::int16 ObjectCellX(const NS::Obj::Actor& object) noexcept
+    NS::int16 ObjectCellX(const NS::Obj::SceneActor& object) noexcept
     {
         return static_cast<NS::int16>(std::lround(object.Root().Position().x));
     }
 
-    NS::int16 ObjectCellY(const NS::Obj::Actor& object) noexcept
+    NS::int16 ObjectCellY(const NS::Obj::SceneActor& object) noexcept
     {
         return static_cast<NS::int16>(std::lround(object.Root().Position().y));
     }
 
-    NS::int16 ObjectCellZ(const NS::Obj::Actor& object) noexcept
+    NS::int16 ObjectCellZ(const NS::Obj::SceneActor& object) noexcept
     {
         return static_cast<NS::int16>(std::lround(object.Root().Position().z));
     }
 
     NS::uint32 FindObjectIdAtCell(const NS::Obj::ActorList& objects, NS::int16 x, NS::int16 y, NS::int16 z) noexcept
     {
-        for (NS::Obj::Actor* objPtr : objects)
+        for (NS::Obj::SceneActor* objPtr : objects)
         {
-            NS::Obj::Actor& object = *objPtr;
+            NS::Obj::SceneActor& object = *objPtr;
             if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
                 ObjectCellZ(object) == z)
             {
@@ -110,7 +110,7 @@ namespace NS::Editor
 
     bool HasPlacedObjectAtCell(const NS::Obj::ActorList& objects, NS::int16 x, NS::int16 y, NS::int16 z) noexcept
     {
-        for (const NS::Obj::Actor* object : objects)
+        for (const NS::Obj::SceneActor* object : objects)
         {
             if (!object->IsTransient() && ObjectCellX(*object) == x && ObjectCellY(*object) == y &&
                 ObjectCellZ(*object) == z)
@@ -135,7 +135,7 @@ namespace NS::Editor
         NS::Obj::SetObjectRotation(object, rotation);
     }
 
-    const char* ObjectDisplayName(const NS::Obj::Actor& object)
+    const char* ObjectDisplayName(const NS::Obj::SceneActor& object)
     {
         if (!object.Name().empty())
         {
@@ -144,7 +144,7 @@ namespace NS::Editor
         return ClassDisplayName(object.ClassName());
     }
 
-    NS::AABB PickLocalBounds(const NS::Obj::Actor& object) noexcept
+    NS::AABB PickLocalBounds(const NS::Obj::SceneActor& object) noexcept
     {
         const NS::Obj::Model* renderer = object.ModelSubObj();
         if (renderer != nullptr && renderer->GetMesh() != nullptr)
@@ -169,7 +169,7 @@ namespace NS::Editor
 
     nlohmann::json MakePlayerObject(const NS::Vector3& position, const NS::Quaternion& rotation)
     {
-        nlohmann::json object = NS::Obj::MakePrototypeJson<::Player>();
+        nlohmann::json object = NS::Obj::MakePrototypeJson<::PlayerActor>();
         NS::Obj::SetObjectPosition(object, position);
         NS::Obj::SetObjectRotation(object, rotation);
         return object;
@@ -181,12 +181,12 @@ namespace NS::Editor
         if (FindPlayerObjectIndex(scene) == NS::Obj::k_NoObjectIndex)
         {
             // 高さはカプセルの寸法の持ち主 Collider から引く。種類の既定でカプセルを変えても足元が床の上に出る
-            const NS::Obj::Actor& baseline =
-                NS::Obj::ArchetypeLibrary::Get().Baseline(::Player::StaticReflection()->typeName);
-            const ::Player* player = NS::Obj::Cast<::Player>(&baseline);
+            const NS::Obj::SceneActor& baseline =
+                NS::Obj::ArchetypeLibrary::Get().Baseline(::PlayerActor::StaticReflection()->typeName);
+            const ::PlayerActor* player = NS::Obj::Cast<::PlayerActor>(&baseline);
             if (player == nullptr)
             {
-                NS_LOG_ERROR(Game, "プレイヤーの種類の既定を Player として引けず、プレイヤーを補えない");
+                NS_LOG_ERROR(Game, "プレイヤーの種類の既定を PlayerActor として引けず、プレイヤーを補えない");
                 return false;
             }
             NS::Obj::SceneJsonObjects(scene).push_back(

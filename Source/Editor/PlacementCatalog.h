@@ -1,7 +1,7 @@
 #pragma once
 
 // エディタで置ける物の一覧。ヒエラルキーの追加メニューとパレットが同じ一覧を読む
-// 置ける物は TypeRegistry に NS_PLACEABLE で登録した Actor のクラスから組む。出荷ビルドには載らない
+// 置ける物は TypeRegistry に NS_PLACEABLE で登録した SceneActor のクラスから組む。出荷ビルドには載らない
 
 #include "NSlib/Object/ObjectJson.h"
 
@@ -19,7 +19,7 @@ namespace NS::Editor
         bool rotatable = false;   //!< パレットで 90 度ずつ回せるか。地形の部品の箱と坂だけ
     };
 
-    //! 登録済みの配置可能な Actor を並べる。地形の部品はメッシュの形ごとに分ける
+    //! 登録済みの配置可能な SceneActor を並べる。地形の部品はメッシュの形ごとに分ける
     [[nodiscard]] const std::vector<PlacementItem>& PlacementItems();
 
     //! label が一致する物。無ければ nullptr

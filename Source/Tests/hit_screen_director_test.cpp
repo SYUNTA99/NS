@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/System/HitScreenDirector.h"
@@ -15,21 +15,21 @@
 namespace
 {
     // 置物は、自機でない頼み手として使う
-    Player* PlaceTwo(NS::Obj::Scene& scene)
+    PlayerActor* PlaceTwo(NS::Obj::Scene& scene)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json entry = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(entry, "Player");
+        NS::Obj::SetObjectJsonClass(entry, "PlayerActor");
         NS::Obj::SetObjectJsonId(entry, 1);
         NS::Obj::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(entry));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "MapObj");
+        NS::Obj::SetObjectJsonClass(rock, "PropActor");
         NS::Obj::SetObjectJsonId(rock, 2);
         NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 5.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
-        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 } // namespace
 
@@ -37,7 +37,7 @@ namespace
 TEST(HitScreenDirector, FlashStartsAtFullAlphaAndFadesFromTheNextTick)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceTwo(scene);
+    PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
     NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
@@ -61,7 +61,7 @@ TEST(HitScreenDirector, FlashStartsAtFullAlphaAndFadesFromTheNextTick)
 TEST(HitScreenDirector, ShakeLinesRunForTheirFrames)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceTwo(scene);
+    PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
     NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
@@ -81,9 +81,9 @@ TEST(HitScreenDirector, ShakeLinesRunForTheirFrames)
 TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceTwo(scene);
+    PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Actor* rock = scene.Objects().FindByObjectId(2);
+    NS::Obj::SceneActor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
     NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
@@ -101,7 +101,7 @@ TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
 TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceTwo(scene);
+    PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
     NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);
@@ -120,7 +120,7 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
 TEST(HitScreenDirector, FlashKeepsFadingWhileOthersAreHeld)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceTwo(scene);
+    PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
     NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
@@ -169,7 +169,7 @@ TEST(HitScreenDirector, ShakeLinesSitOutsideTheOutlineAndJitterByTheFlipFrames)
 TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceTwo(scene);
+    PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
     NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
@@ -211,9 +211,9 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
 TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceTwo(scene);
+    PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::Obj::Actor* rock = scene.Objects().FindByObjectId(2);
+    NS::Obj::SceneActor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
     NS::Obj::HitReaction* reaction = player->HitReactionSubObj();
     ASSERT_NE(reaction, nullptr);

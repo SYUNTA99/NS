@@ -1,7 +1,7 @@
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/MapObj.h"
-#include "Game/Player.h"
+#include "Game/Level/PropActor.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "NSlib/Core/OBB.h"
@@ -44,7 +44,7 @@ namespace
 
     // HitScreenDirector と PadRumbleDirector
     // は描く支度の段で進む。自機と相手を手で回す試しは、回した後にこれを呼んで同じ順にする
-    void TickHitDirectors(Player& player)
+    void TickHitDirectors(PlayerActor& player)
     {
         if (NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(&player))
         {
@@ -56,7 +56,7 @@ namespace
         }
     }
 
-    int FlashRemaining(const Player& player)
+    int FlashRemaining(const PlayerActor& player)
     {
         const NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(&player);
         if (screen == nullptr)
@@ -66,17 +66,17 @@ namespace
         return screen->FlashFramesRemaining();
     }
 
-    Player* PlaceClockScene(
+    PlayerActor* PlaceClockScene(
         NS::Obj::Scene& scene, float rockX, float rockZ, float mass, std::string_view hitTimeline = {})
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "Player");
+        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
         NS::Obj::SetObjectJsonId(player, 1);
         NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "MapObj");
+        NS::Obj::SetObjectJsonClass(rock, "PropActor");
         NS::Obj::SetObjectJsonId(rock, 2);
         NS::Obj::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, rockZ});
         if (mass > 0.0f)
@@ -96,12 +96,12 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
-    MapObj* RockOf(NS::Obj::Scene& scene)
+    PropActor* RockOf(NS::Obj::Scene& scene)
     {
-        return NS::Obj::Cast<MapObj>(scene.Objects().FindByObjectId(2));
+        return NS::Obj::Cast<PropActor>(scene.Objects().FindByObjectId(2));
     }
 
     // 検知のフレームを 0 にした 1 フレームの姿
@@ -125,7 +125,7 @@ namespace
         int flightLayers = 0; // 出した反動の尾の数
     };
 
-    int CountLayers(Player& player, std::string_view name)
+    int CountLayers(PlayerActor& player, std::string_view name)
     {
         int count = 0;
         for (const NS::Obj::EffectRecord& record : player.GetEffectKeeper()->Records())
@@ -139,7 +139,7 @@ namespace
     }
 
     // 突進を出して当たりまで回し、検知のフレームから frames フレームぶんの姿を並べる。当たらなければ空
-    std::vector<ClockFrame> RunHit(Player& player, MapObj& rock, float charge01, int frames, float overcharge01 = 0.0f)
+    std::vector<ClockFrame> RunHit(PlayerActor& player, PropActor& rock, float charge01, int frames, float overcharge01 = 0.0f)
     {
         std::vector<ClockFrame> trace;
         player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f}, 0.0f, overcharge01);
@@ -211,7 +211,7 @@ TEST(ImpactTimelineClock, EventsStartTheStopReleaseAndReboundOnTheirFrames)
     const ScopedHitTimelineDirectory directory("Clock");
     ScopedHitTimelineDirectory::SetBothTiers(MakeSplitReleaseTimeline());
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 10);
     ASSERT_EQ(trace.size(), 10u);
@@ -240,7 +240,7 @@ TEST(ImpactTimelineClock, TheStopIsAsLongAsTheTimelineSays)
         const ScopedHitTimelineDirectory directory("StopLength");
         ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(steps));
         NS::Obj::Scene scene;
-        Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+        PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, steps + 4);
         EXPECT_EQ(CountStopFrames(trace), steps);
@@ -260,7 +260,7 @@ TEST(ImpactTimelineClock, TheStopIgnoresChargeAndMass)
             const ScopedHitTimelineDirectory directory("StopFixed");
             ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(12));
             NS::Obj::Scene scene;
-            Player* player = PlaceClockScene(scene, 0.0f, 0.6f, mass);
+            PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, mass);
             ASSERT_NE(player, nullptr);
             const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), charge, 16);
             ASSERT_FALSE(trace.empty());
@@ -274,7 +274,7 @@ TEST(ImpactTimelineClock, AMissingTimelineReleasesOnTheDetectionFrame)
 {
     const ScopedHitTimelineDirectory directory("Missing");
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 4);
     ASSERT_EQ(trace.size(), 4u);
@@ -312,7 +312,7 @@ TEST(ImpactTimelineClock, EventsOnTheSameFrameRunInFileOrder)
         const ScopedHitTimelineDirectory directory("Order");
         ScopedHitTimelineDirectory::SetBothTiers(timeline);
         NS::Obj::Scene scene;
-        Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+        PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 4);
         ASSERT_EQ(trace.size(), 4u);
@@ -340,7 +340,7 @@ TEST(ImpactTimelineClock, TheShapeFollowsItsCurvesForItsLength)
     const ScopedHitTimelineDirectory directory("Shape");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 7);
     ASSERT_EQ(trace.size(), 7u);
@@ -376,7 +376,7 @@ TEST(ImpactTimelineClock, DirectedEventsRunOnlyForTheirDirection)
         const ScopedHitTimelineDirectory directory("Direction");
         ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
         NS::Obj::Scene scene;
-        Player* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
+        PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 1).empty());
         direction = player->Resolver().LastImpact().direction;
@@ -399,7 +399,7 @@ TEST(ImpactTimelineClock, DirectedEventsRunOnlyForTheirDirection)
         const ScopedHitTimelineDirectory directory("Direction");
         ScopedHitTimelineDirectory::SetBothTiers(timeline);
         NS::Obj::Scene scene;
-        Player* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
+        PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 3);
         ASSERT_EQ(trace.size(), 3u);
@@ -423,9 +423,9 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
     const ScopedHitTimelineDirectory directory("Abort");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     const std::vector<ClockFrame> first = RunHit(*player, *rock, 1.0f, 4);
     ASSERT_EQ(first.size(), 4u);
     ASSERT_TRUE(first[3].shapeAnimating);
@@ -472,9 +472,9 @@ TEST(ImpactTimelineClock, GradualReleaseSlowsTheWorldFromItsFrame)
     const ScopedHitTimelineDirectory directory("GradualRelease");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_EQ(RunHit(*player, *rock, 1.0f, 6).size(), 6u);
     EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
     player->Update(false);
@@ -502,9 +502,9 @@ TEST(ImpactTimelineClock, PurpleOnlyGradualReleaseSkipsTheRedHit)
     {
         SCOPED_TRACE(purple);
         NS::Obj::Scene scene;
-        Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+        PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
-        MapObj* rock = RockOf(scene);
+        PropActor* rock = RockOf(scene);
         float overcharge = 0.0f;
         if (purple == 1)
         {
@@ -535,7 +535,7 @@ TEST(ImpactTimelineClock, TheRecordNamesOnlyTheStopsTheTimelineUsed)
     const ScopedHitTimelineDirectory directory("NoStop");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 2).empty());
     EXPECT_FALSE(player->Resolver().LastImpact().localStop);
@@ -557,9 +557,9 @@ TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
     // 正面の当たりにする。外れは相手を脇へ押し、置き直した後も脇へ飛び続ける相手は 2 回目の突進の道から外れる
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_EQ(RunHit(*player, *rock, 1.0f, 4).size(), 4u);
     const NS::Obj::CameraManager* cameras = player->GetCameraManager();
     ASSERT_NE(cameras, nullptr);
@@ -615,7 +615,7 @@ TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     (void)NS::OS::Input::Get().Gamepad().SetVibration(0.0f, 0.0f);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 10);
     ASSERT_EQ(trace.size(), 10u);
@@ -669,7 +669,7 @@ TEST(ImpactTimelineClock, AMissShowsNoReboundTrailOrRecoilLines)
     const ScopedHitTimelineDirectory directory("MissFlight");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 20);
     ASSERT_EQ(trace.size(), 20u);
@@ -713,7 +713,7 @@ TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
         const ScopedHitTimelineDirectory directory("MissCamera");
         ScopedHitTimelineDirectory::SetBothTiers(timeline);
         NS::Obj::Scene scene;
-        Player* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
+        PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         ASSERT_EQ(RunHit(*player, *RockOf(scene), 1.0f, 6).size(), 6u);
         ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Wide);
@@ -764,7 +764,7 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
     const ScopedHitTimelineDirectory directory("MissCore");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(RunHit(*player, *RockOf(scene), 1.0f, 8).size(), 8u);
     const ImpactRecord& impact = player->Resolver().LastImpact();
@@ -814,7 +814,7 @@ namespace
     }
 
     // 置物の当たりの球の半径。置物の当たりは球で作る
-    float RockRadius(const MapObj& rock)
+    float RockRadius(const PropActor& rock)
     {
         return static_cast<const NS::Obj::SphereCollision*>(rock.CollisionSubObj())->WorldSphere().radius;
     }
@@ -837,9 +837,9 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
     const ScopedHitTimelineDirectory directory("Tremor");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
 
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -923,9 +923,9 @@ TEST(ImpactTimelineClock, TargetTremorRatioKeepsTheSameShareOfTheBody)
     const ScopedHitTimelineDirectory directory("TremorRatio");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
 
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -973,9 +973,9 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
     const ScopedHitTimelineDirectory directory("TremorPixelReference");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     for (int frame = 0; frame < 120; ++frame)
@@ -1014,9 +1014,9 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
     const ScopedHitTimelineDirectory directory("ShakeLines");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
 
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -1078,9 +1078,9 @@ TEST(ImpactTimelineClock, GroundWaveSpreadsFromTheContactForItsLength)
     const ScopedHitTimelineDirectory directory("GroundWave");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
 
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -1140,9 +1140,9 @@ TEST(ImpactTimelineClock, DistortionRingSpreadsFromTheContactForItsLength)
     const ScopedHitTimelineDirectory directory("DistortionRing");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
 
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -1190,9 +1190,9 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
     const ScopedHitTimelineDirectory directory("BodyShake");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
     const NS::Obj::CameraManager* cameras = player->GetCameraManager();
     ASSERT_NE(cameras, nullptr);
@@ -1268,9 +1268,9 @@ TEST(ImpactTimelineClock, DepthShakePushesEachBodyAlongTheForceItTook)
     const ScopedHitTimelineDirectory directory("DepthShake");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
 
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -1328,9 +1328,9 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
     const ScopedHitTimelineDirectory directory("Ghost");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
     const NS::Vector3 forward = player->GetCameraManager()->ForwardHorizontal();
 
@@ -1417,7 +1417,7 @@ TEST(ImpactTimelineClock, TheShakeIsItsStrengthScaledByTheHit)
         const ScopedHitTimelineDirectory directory("Shake");
         ScopedHitTimelineDirectory::SetBothTiers(timeline);
         NS::Obj::Scene scene;
-        Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 2.0f);
+        PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 2.0f);
         ASSERT_NE(player, nullptr);
         ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 1).empty());
         shakes.push_back(player->Resolver().LastImpact().cameraShake);
@@ -1453,9 +1453,9 @@ TEST(ImpactTimelineClock, NegativeEventsStartBeforeContact)
     const ScopedHitTimelineDirectory directory("BeforeContact");
     ScopedHitTimelineDirectory::SetBothTiers(MakeBeforeContactTimeline());
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     std::vector<bool> shaping;
     int detectedAt = -1;
@@ -1494,9 +1494,9 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsWhenTheBeforeContactClockStarts)
     const ScopedHitTimelineDirectory directory("BeforeContactBurst");
     ScopedHitTimelineDirectory::SetBothTiers(MakeBeforeContactTimeline());
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int beforeContactStep = -1;
     for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)
@@ -1529,9 +1529,9 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsOnTheContactFrameWithoutBeforeContactE
     const ScopedHitTimelineDirectory directory("ContactBurst");
     ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int contactStep = -1;
     for (int frame = 0; frame < 60 && contactStep < 0; ++frame)
@@ -1572,9 +1572,9 @@ TEST(ImpactTimelineClock, FramesToPredictedContactCountDownToTheDetection)
     const ScopedHitTimelineDirectory directory("PredictedFrames");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     std::vector<int> frames;
     for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)
@@ -1605,9 +1605,9 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
     const ScopedHitTimelineDirectory directory("PredictedBurst");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int contactStep = -1;
     for (int frame = 0; frame < 60 && contactStep < 0; ++frame)
@@ -1640,9 +1640,9 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
     const ScopedHitTimelineDirectory directory("BeforeContactMiss");
     ScopedHitTimelineDirectory::SetBothTiers(MakeBeforeContactTimeline());
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     bool started = false;
     for (int frame = 0; frame < 60 && !started; ++frame)
@@ -1696,7 +1696,7 @@ namespace
         float playerAdvance = 0.0f;
     };
 
-    std::vector<OthersStep> RunUntilDetection(NS::Obj::Scene& scene, Player& player, CountingTicker& others)
+    std::vector<OthersStep> RunUntilDetection(NS::Obj::Scene& scene, PlayerActor& player, CountingTicker& others)
     {
         std::vector<OthersStep> steps;
         player.RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -1718,7 +1718,7 @@ TEST(ImpactTimelineClock, OthersStopHoldsTheWorldButNotThePlayerBeforeContact)
     const ScopedHitTimelineDirectory directory("OthersStop");
     ScopedHitTimelineDirectory::SetBothTiers(MakeOthersStopTimeline());
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 6.0f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 6.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     CountingTicker others;
     scene.AddSystemTick(others, NS::Obj::UpdatePhase::Triggers);
@@ -1752,7 +1752,7 @@ TEST(ImpactTimelineClock, OthersStopDoesNotRunForAMissPrediction)
     HitTimelineLibrary::Get().Set("center", MakeOthersStopTimeline());
     HitTimelineLibrary::Get().Set("miss", MakeLegacyHitTimeline(4));
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.75f, 6.0f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.75f, 6.0f, 0.0f);
     ASSERT_NE(player, nullptr);
     CountingTicker others;
     scene.AddSystemTick(others, NS::Obj::UpdatePhase::Triggers);
@@ -1776,9 +1776,9 @@ TEST(ImpactTimelineClock, AMissedPredictionReleasesTheOthers)
     const ScopedHitTimelineDirectory directory("OthersStopDrop");
     ScopedHitTimelineDirectory::SetBothTiers(MakeOthersStopTimeline());
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 6.0f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 6.0f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     for (int frame = 0; frame < 30; ++frame)
     {
         scene.OnUpdate();
@@ -1810,9 +1810,9 @@ TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
     const ScopedHitTimelineDirectory directory("SinkShake");
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     std::vector<float> pixels;
     bool detected = false;
@@ -1861,9 +1861,9 @@ TEST(ImpactTimelineClock, ShippedCenterAndMissReboundOnTheReleaseFrame)
     {
         SCOPED_TRACE(rockX);
         NS::Obj::Scene scene;
-        Player* player = PlaceClockScene(scene, rockX, 4.0f, 0.0f);
+        PlayerActor* player = PlaceClockScene(scene, rockX, 4.0f, 0.0f);
         ASSERT_NE(player, nullptr);
-        MapObj* rock = RockOf(scene);
+        PropActor* rock = RockOf(scene);
         const std::vector<ClockFrame> trace = RunHit(*player, *rock, 1.0f, 24);
         ASSERT_EQ(trace.size(), 24u);
         int released = -1;
@@ -1968,9 +1968,9 @@ TEST(ImpactTimelineClock, DirectedPadVibrationsAreBlendedByTheFacePosition)
     ScopedHitTimelineDirectory::SetBothTiers(timeline);
     NS::Obj::Scene scene;
     // 横と上へずらした相手。面の上の位置が斜めになる
-    Player* player = PlaceClockScene(scene, 0.6f, 0.6f, 0.0f);
+    PlayerActor* player = PlaceClockScene(scene, 0.6f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(NS::Vector3{0.5f, 0.85f, 0.6f});
     const std::vector<ClockFrame> trace = RunHit(*player, *rock, 1.0f, 4);
@@ -2004,7 +2004,7 @@ TEST(ImpactTimelineClock, TheTargetsNamedTimelineDecidesTheHit)
     {
         SCOPED_TRACE(name);
         NS::Obj::Scene scene;
-        Player* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f, name);
+        PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f, name);
         ASSERT_NE(player, nullptr);
         ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 2).empty());
         const ImpactRecord& record = player->Resolver().LastImpact();
@@ -2028,9 +2028,9 @@ TEST(ImpactTimelineClock, BeforeContactUsesThePredictedTargetsTimeline)
     HitTimelineLibrary::Get().Set("barrel.center", MakeBeforeContactTimeline());
     HitTimelineLibrary::Get().Set("barrel.miss", MakeBeforeContactTimeline());
     NS::Obj::Scene scene;
-    Player* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f, "barrel");
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f, "barrel");
     ASSERT_NE(player, nullptr);
-    MapObj* rock = RockOf(scene);
+    PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     bool shrankBeforeContact = false;
     for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)

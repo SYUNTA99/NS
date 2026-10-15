@@ -1,6 +1,6 @@
 #include "Game/Player/States/BrakePlayerState.h"
 
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
@@ -8,7 +8,7 @@
 
 namespace GL::Player
 {
-    void BrakePlayerState::OnStep(::Player& player, float dt)
+    void BrakePlayerState::OnStep(::PlayerActor& player, float dt)
     {
         player.TickTimers(dt);
         player.ApplyBrake(dt);

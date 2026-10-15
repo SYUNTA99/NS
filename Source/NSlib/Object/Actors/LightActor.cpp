@@ -1,4 +1,4 @@
-#include "NSlib/Object/Actors/Light.h"
+#include "NSlib/Object/Actors/LightActor.h"
 
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -6,7 +6,7 @@
 
 namespace NS::Obj
 {
-    void Light::OnInit()
+    void LightActor::OnInit()
     {
         (void)CreateSubObj(m_light);
         NS::Vector3 initialDirection{-0.3f, -1.0f, -0.2f};
@@ -15,9 +15,9 @@ namespace NS::Obj
     }
 
     // 光はプレイの間ずっと登録しておく。消えている間は、描く側が IsActive を見て飛ばす
-    void Light::OnStart()
+    void LightActor::OnStart()
     {
-        Actor::OnStart();
+        SceneActor::OnStart();
         Scene* scene = OwningScene();
         if (scene != nullptr && m_light != nullptr)
         {
@@ -25,9 +25,9 @@ namespace NS::Obj
         }
     }
 
-    void Light::OnEndPlay()
+    void LightActor::OnEndPlay()
     {
-        Actor::OnEndPlay();
+        SceneActor::OnEndPlay();
         Scene* scene = OwningScene();
         if (scene != nullptr && m_light != nullptr)
         {
@@ -35,5 +35,5 @@ namespace NS::Obj
         }
     }
 
-    NS_PLACEABLE(Light, "ライト")
+    NS_PLACEABLE(LightActor, "ライト")
 } // namespace NS::Obj

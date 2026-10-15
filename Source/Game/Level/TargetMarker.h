@@ -11,7 +11,7 @@
 
 #include <vector>
 
-class Player;
+class PlayerActor;
 
 namespace GL::Level
 {
@@ -59,8 +59,8 @@ namespace GL::Level
     public:
         TargetMarker() noexcept;
 
-        //! 枠を示す元の Player。持ち主の Player が OnInit で渡す。渡されなければ何も示さない
-        void SetPlayer(::Player& player) noexcept { m_player = &player; }
+        //! 枠を示す元の PlayerActor。持ち主の PlayerActor が OnInit で渡す。渡されなければ何も示さない
+        void SetPlayer(::PlayerActor& player) noexcept { m_player = &player; }
 
         void OnUpdate() override;
 
@@ -107,6 +107,6 @@ namespace GL::Level
         int m_framesSinceCapture = 0; // 外れた後は外れたフレームの値で止める
         NS::AABB m_lostBounds{};      // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない
         int m_framesSinceLost = -1;
-        const ::Player* m_player = nullptr; // 溜めと狙う相手の問い先。非所有
+        const ::PlayerActor* m_player = nullptr; // 溜めと狙う相手の問い先。非所有
     };
 } // namespace GL::Level

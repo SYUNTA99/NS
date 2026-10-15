@@ -2,17 +2,17 @@
 
 #include "Game/Player/PlayerState.h"
 
-class Player;
+class PlayerActor;
 
 namespace GL::Player
 {
     class ReboundPlayerState final : public PlayerState<ReboundPlayerState>
     {
     public:
-        void OnEnter(::Player& player) override;
-        void OnStep(::Player&, float) override {}
+        void OnEnter(::PlayerActor& player) override;
+        void OnStep(::PlayerActor&, float) override {}
 
     private:
-        NS::Coroutine Run(::Player& player);
+        NS::Coroutine Run(::PlayerActor& player);
     };
 } // namespace GL::Player

@@ -4,11 +4,11 @@
 
 #include <string>
 
-class Player;
+class PlayerActor;
 
 namespace GL::Player
 {
-    //! @brief 自機のアニメの欄を持つ部品。どのクリップを選ぶかは Player が欄を読んで決める
+    //! @brief 自機のアニメの欄を持つ部品。どのクリップを選ぶかは PlayerActor が欄を読んで決める
     //! @details クリップの名前は、Animation の部品に読み込んだクリップの名前と照らす
     class PlayerClips : public NS::Obj::SubObject
     {
@@ -25,7 +25,7 @@ namespace GL::Player
         NS_REFLECT_END()
 
     private:
-        friend class ::Player;
+        friend class ::PlayerActor;
         std::string m_idleClip = "idle";
         std::string m_walkClip = "walk";
         std::string m_runClip = "run";

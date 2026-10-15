@@ -2,7 +2,7 @@
 
 namespace NS::Obj
 {
-    class Actor;
+    class SceneActor;
     class HitSensor;
 
     //! 個体間のメッセージ。NS_MESSAGE の識別値で種類を判定し、受け手が応答を決める
@@ -36,9 +36,9 @@ namespace NS::Obj
     //! @return 受け手が応じた場合 true
     bool SendMsg(const Message& msg, HitSensor& receiver, HitSensor* sender);
 
-    //! @brief センサーを介さずに Actor へ直接知らせを送る。進行役からの一斉の知らせなど、重なりと関係の無い知らせに使う
+    //! @brief センサーを介さずに SceneActor へ直接知らせを送る。進行役からの一斉の知らせなど、重なりと関係の無い知らせに使う
     //! @return 受け手が応じた場合 true
-    bool SendMsgToActor(const Message& msg, Actor& receiver);
+    bool SendMsgToActor(const Message& msg, SceneActor& receiver);
 } // namespace NS::Obj
 
 //! 知らせの型の中に 1 度だけ書く。型ごとの印を作る

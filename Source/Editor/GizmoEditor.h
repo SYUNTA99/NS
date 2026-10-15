@@ -20,7 +20,7 @@ namespace NS::UI
 namespace NS::Obj
 {
     class Transform;
-    class Actor;
+    class SceneActor;
 } // namespace NS::Obj
 
 namespace NS::Editor
@@ -69,7 +69,7 @@ namespace NS::Editor
 
         //! 選択候補を非所有で参照する。配列の格納元は使用中、有効に保つ
         //! pickable は objects と同じ添字。1 に当たらない場合だけ 0 を調べ、省略時は同じ優先度
-        void SetSelectableObjects(std::span<NS::Obj::Actor* const> objects,
+        void SetSelectableObjects(std::span<NS::Obj::SceneActor* const> objects,
                                   std::span<const NS::uint8> pickable = {}) noexcept;
 
         //! @brief ギズモ操作の有効を切り替える。休ませると進行中のドラッグを取り消す
@@ -180,7 +180,7 @@ namespace NS::Editor
         NS::OS::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
 
-        std::span<NS::Obj::Actor* const> m_objects{};
+        std::span<NS::Obj::SceneActor* const> m_objects{};
         std::span<const NS::uint8> m_pickable{}; //!< 選択の優先度。1 の配置物を先に選ぶ
 
         bool m_active = false;

@@ -13,7 +13,7 @@
 
 namespace NS::Obj
 {
-    class Actor;
+    class SceneActor;
     class SubObject;
 
     //! クラスごとの既定値を Directory()/<クラス名>.json から読む
@@ -45,8 +45,8 @@ namespace NS::Obj
         //! className の種類の既定値を Directory() へ書く。無いか書けなければ false
         [[nodiscard]] bool Save(std::string_view className);
 
-        //! 個体の上書き前の比較用 Actor。シーンへ入らず、種類の既定値変更で参照は無効になる
-        [[nodiscard]] const Actor& Baseline(std::string_view className);
+        //! 個体の上書き前の比較用 SceneActor。シーンへ入らず、種類の既定値変更で参照は無効になる
+        [[nodiscard]] const SceneActor& Baseline(std::string_view className);
 
     private:
         ArchetypeLibrary();
@@ -55,12 +55,12 @@ namespace NS::Obj
 
         std::string m_directory;                                                // 空なら既定のディレクトリ
         std::map<std::string, nlohmann::json, std::less<>> m_archetypes;        // クラス名から種類の既定値
-        std::map<std::string, std::unique_ptr<Actor>, std::less<>> m_baselines; // クラス名から既定の 1 体
+        std::map<std::string, std::unique_ptr<SceneActor>, std::less<>> m_baselines; // クラス名から既定の 1 体
         bool m_loaded = false;
     };
 
     //! actor のクラスの種類の既定値を当てる。足す部品を作り、欄の値を写す
-    void ApplyArchetype(Actor& actor);
+    void ApplyArchetype(SceneActor& actor);
 
     //! 個体の差分を全欄へ展開する。部品構成は Baseline に揃え、個体だけの部品は除く
     [[nodiscard]] nlohmann::json ExpandObjectJson(const nlohmann::json& object);

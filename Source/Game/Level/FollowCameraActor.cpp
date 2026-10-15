@@ -1,27 +1,27 @@
-#include "Game/Level/FollowCamera.h"
+#include "Game/Level/FollowCameraActor.h"
 
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 #include "NSlib/Object/Scene/Scene.h"
 
 namespace GL::Level
 {
-    NS_PLACEABLE(FollowCamera, "追従カメラ")
-    void FollowCamera::OnInit()
+    NS_PLACEABLE(FollowCameraActor, "追従カメラ")
+    void FollowCameraActor::OnInit()
     {
         (void)CreateSubObj(m_vcam);
     }
 
     // 仮想カメラはプレイの間ずっと候補に入れておく。消えている間は、カメラの管理役が IsActive を見て飛ばす
-    void FollowCamera::OnStart()
+    void FollowCameraActor::OnStart()
     {
-        NS::Obj::Actor::OnStart();
+        NS::Obj::SceneActor::OnStart();
         NS::Obj::RegisterVirtualCamera(this, m_vcam.get());
         m_vcam->ResetPose();
     }
 
-    void FollowCamera::ObserveStep()
+    void FollowCameraActor::ObserveStep()
     {
         if (!m_vcam->IsActive())
         {
@@ -29,10 +29,10 @@ namespace GL::Level
         }
         if (NS::Obj::Scene* scene = OwningScene())
         {
-            NS::Obj::Actor* target = scene->Objects().FindObject(m_vcam->TargetRef());
+            NS::Obj::SceneActor* target = scene->Objects().FindObject(m_vcam->TargetRef());
             if (target != nullptr)
             {
-                if (const ::Player* player = NS::Obj::Cast<::Player>(target))
+                if (const ::PlayerActor* player = NS::Obj::Cast<::PlayerActor>(target))
                 {
                     const GL::Player::CameraTargetState state = player->GetCameraTargetState();
                     m_vcam->SetFollowMotion(state.grounded, state.velocity);
@@ -56,22 +56,22 @@ namespace GL::Level
         }
     }
 
-    void FollowCamera::BodyStep()
+    void FollowCameraActor::BodyStep()
     {
         TickSubObj(m_vcam.get());
     }
 
-    void FollowCamera::OnDisappear() noexcept
+    void FollowCameraActor::OnDisappear() noexcept
     {
         m_vcam->SetTargetHeightOffset(0.0f);
         m_vcam->ClearCharge();
         m_vcam->ClearRebound();
-        NS::Obj::Actor::OnDisappear();
+        NS::Obj::SceneActor::OnDisappear();
     }
 
-    void FollowCamera::OnEndPlay()
+    void FollowCameraActor::OnEndPlay()
     {
-        NS::Obj::Actor::OnEndPlay();
+        NS::Obj::SceneActor::OnEndPlay();
         NS::Obj::UnregisterVirtualCamera(this, m_vcam.get());
     }
 } // namespace GL::Level

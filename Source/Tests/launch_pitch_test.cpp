@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
@@ -91,13 +91,13 @@ TEST(LaunchPitchTest, SearchStopsAtRepresentablePrecisionWithTinyTolerance)
     EXPECT_NEAR(ArrivalHeight(desc, result.verticalSpeed), desc.targetHeight, 0.00001f);
 }
 
-// Player::Gravity と切り出した関数は同じ値を当てる。欄を変えても両方が一緒に変わる
+// PlayerActor::Gravity と切り出した関数は同じ値を当てる。欄を変えても両方が一緒に変わる
 TEST(LaunchPitchTest, PlayerGravityMatchesTheSharedChoice)
 {
     for (int pass = 0; pass < 2; ++pass)
     {
-        const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-        Player& player = *playerOwned;
+        const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+        PlayerActor& player = *playerOwned;
         if (pass == 1)
         {
             ASSERT_EQ(NS::Obj::ApplyJsonFields(
@@ -207,16 +207,16 @@ TEST(LaunchPitchTest, ChargedSlamStartsFromTheGivenVerticalSpeed)
 {
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     {
-        const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-        Player& player = *playerOwned;
+        const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+        PlayerActor& player = *playerOwned;
         player.Body().SetVerticalVelocity(8.0f);
         player.RequestBodySlam(1.0f, forward);
         ASSERT_TRUE(player.BodySlam());
         EXPECT_FLOAT_EQ(player.Body().VerticalVelocity(), 0.0f);
     }
     {
-        const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-        Player& player = *playerOwned;
+        const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+        PlayerActor& player = *playerOwned;
         player.Body().SetVerticalVelocity(8.0f);
         player.RequestBodySlam(1.0f, forward, 4.5f);
         ASSERT_TRUE(player.BodySlam());
@@ -224,8 +224,8 @@ TEST(LaunchPitchTest, ChargedSlamStartsFromTheGivenVerticalSpeed)
     }
     {
         // 向きを添えない要求は前の上下の速さを残さない
-        const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-        Player& player = *playerOwned;
+        const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+        PlayerActor& player = *playerOwned;
         player.RequestBodySlam(1.0f, forward, 4.5f);
         player.RequestBodySlam(1.0f);
         player.Body().SetVerticalVelocity(8.0f);
@@ -235,8 +235,8 @@ TEST(LaunchPitchTest, ChargedSlamStartsFromTheGivenVerticalSpeed)
     }
     {
         // 通常突進は今のまま「通常突進の上向き初速」で跳ぶ
-        const std::unique_ptr<Player> playerOwned = NS::Obj::CreateActor<Player>();
-        Player& player = *playerOwned;
+        const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
+        PlayerActor& player = *playerOwned;
         player.RequestBodySlam(0.0f, forward, 4.5f);
         ASSERT_TRUE(player.BodySlam());
         EXPECT_FLOAT_EQ(player.Body().VerticalVelocity(), 3.0f);

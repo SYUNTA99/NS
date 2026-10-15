@@ -16,7 +16,7 @@ namespace GL::Player
     };
 
     //! @brief 当たりで決まる反動の向き・高さ・距離
-    //! @details 重力は Player の調整値で決め、BeginRebound に渡す
+    //! @details 重力は PlayerActor の調整値で決め、BeginRebound に渡す
     struct ReboundArc
     {
         NS::Vector3 direction{1.0f, 0.0f, 0.0f}; // 弾かれる向き。水平の成分だけを使う

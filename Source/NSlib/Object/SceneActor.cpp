@@ -1,4 +1,4 @@
-﻿#include "NSlib/Object/Actor.h"
+﻿#include "NSlib/Object/SceneActor.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -18,7 +18,7 @@
 namespace NS::Obj
 {
 
-    NS_REFLECT_BEGIN_IMPL(Actor, Object)
+    NS_REFLECT_BEGIN_IMPL(SceneActor, Object)
     NS_REFLECT_SUBOBJ(m_transform, "Transform")
     NS_REFLECT_SUBOBJ(m_model, "Model")
     NS_REFLECT_SUBOBJ(m_animation, "Animation")
@@ -30,19 +30,19 @@ namespace NS::Obj
     NS_REFLECT_SUBOBJ(m_effectKeeper, "Effect")
     NS_REFLECT_END_IMPL()
 
-    Actor::Actor() noexcept
+    SceneActor::SceneActor() noexcept
     {
         // Init 前にも姿勢と親子関係を使うため、Transform はここで用意する
         (void)CreateSubObj(m_transform);
         Appear();
     }
 
-    Transform& Actor::Root() noexcept
+    Transform& SceneActor::Root() noexcept
     {
         return *m_transform;
     }
 
-    const Transform& Actor::Root() const noexcept
+    const Transform& SceneActor::Root() const noexcept
     {
         return *m_transform;
     }
@@ -51,7 +51,7 @@ namespace NS::Obj
     {
         void VisitReflectedSubObjects(const Object& owner,
                                       const ReflectionInfo* info,
-                                      const Actor::SubObjFieldVisitor& visit)
+                                      const SceneActor::SubObjFieldVisitor& visit)
         {
             if (info == nullptr)
             {
@@ -69,7 +69,7 @@ namespace NS::Obj
         }
 
         // ForEachSubObj の std::function を介さず、登録を直接たどる
-        template <class TMatch> const SubObjectDesc* FindCreatedSubObj(const Actor& owner, TMatch match)
+        template <class TMatch> const SubObjectDesc* FindCreatedSubObj(const SceneActor& owner, TMatch match)
         {
             for (const ReflectionInfo* info = owner.GetReflection(); info != nullptr; info = info->base)
             {
@@ -87,17 +87,17 @@ namespace NS::Obj
         }
     } // namespace
 
-    void Actor::ForEachSubObj(const SubObjVisitor& visit) const
+    void SceneActor::ForEachSubObj(const SubObjVisitor& visit) const
     {
         ForEachSubObj([&](const SubObjectDesc&, SubObject* part) { visit(part); });
     }
 
-    void Actor::ForEachSubObj(const SubObjFieldVisitor& visit) const
+    void SceneActor::ForEachSubObj(const SubObjFieldVisitor& visit) const
     {
         VisitReflectedSubObjects(*this, GetReflection(), visit);
     }
 
-    const SubObjectDesc* Actor::FindSubObjMember(const void* member) const
+    const SubObjectDesc* SceneActor::FindSubObjMember(const void* member) const
     {
         for (const ReflectionInfo* info = GetReflection(); info != nullptr; info = info->base)
         {
@@ -113,7 +113,7 @@ namespace NS::Obj
         return nullptr;
     }
 
-    void Actor::ReportInvalidSubObj(const SubObjectDesc* field) const
+    void SceneActor::ReportInvalidSubObj(const SubObjectDesc* field) const
     {
         if (field == nullptr)
         {
@@ -123,7 +123,7 @@ namespace NS::Obj
         NS_LOG_ERROR(Scene, "{} の部品 {} は作成済みか、保存キーが使用済み", ClassName(), field->key);
     }
 
-    std::string_view Actor::SubObjKey(const SubObject& part) const
+    std::string_view SceneActor::SubObjKey(const SubObject& part) const
     {
         const SubObjectDesc* field = FindCreatedSubObj(
             *this, [&part](const SubObjectDesc&, const SubObject& candidate) { return &candidate == &part; });
@@ -134,7 +134,7 @@ namespace NS::Obj
         return field->key;
     }
 
-    SubObject* Actor::FindSubObj(std::string_view key) const
+    SubObject* SceneActor::FindSubObj(std::string_view key) const
     {
         const SubObjectDesc* field = FindCreatedSubObj(
             *this, [key](const SubObjectDesc& candidate, const SubObject&) { return candidate.key == key; });
@@ -145,33 +145,33 @@ namespace NS::Obj
         return field->get(this);
     }
 
-    IStateMachine* Actor::GetStates() noexcept
+    IStateMachine* SceneActor::GetStates() noexcept
     {
         return m_stateMachine.get();
     }
 
-    const IStateMachine* Actor::GetStates() const noexcept
+    const IStateMachine* SceneActor::GetStates() const noexcept
     {
         return m_stateMachine.get();
     }
 
-    bool Actor::AdoptStateMachine(std::unique_ptr<IStateMachine> machine)
+    bool SceneActor::AdoptStateMachine(std::unique_ptr<IStateMachine> machine)
     {
         if (m_stateMachine != nullptr)
         {
-            NS_LOG_ERROR(Scene, "Actor::BuildStateMachine: 状態機械は 1 体に 1 つ。2 回目は組まずに今の機械を残す");
+            NS_LOG_ERROR(Scene, "SceneActor::BuildStateMachine: 状態機械は 1 体に 1 つ。2 回目は組まずに今の機械を残す");
             return false;
         }
         m_stateMachine = std::move(machine);
         return true;
     }
 
-    float Actor::BodyDelta() const noexcept
+    float SceneActor::BodyDelta() const noexcept
     {
         return NS::OS::FrameTimer::FixedDelta() * m_bodyTimeScale;
     }
 
-    void Actor::Appear()
+    void SceneActor::Appear()
     {
         NS_ASSERT(Scene, !IsPendingDestroy(), "Destroy した個体を Appear で出そうとしている: {}", m_name);
         if (m_presence != Presence::Disappeared)
@@ -182,7 +182,7 @@ namespace NS::Obj
         OnAppear();
     }
 
-    void Actor::Disappear() noexcept
+    void SceneActor::Disappear() noexcept
     {
         if (m_presence != Presence::Appeared)
         {
@@ -192,13 +192,13 @@ namespace NS::Obj
         OnDisappear();
     }
 
-    void Actor::Destroy() noexcept
+    void SceneActor::Destroy() noexcept
     {
         Disappear();
         m_presence = Presence::PendingDestroy;
     }
 
-    CameraManager* Actor::GetCameraManager() const noexcept
+    CameraManager* SceneActor::GetCameraManager() const noexcept
     {
         if (m_scene == nullptr)
         {
@@ -207,7 +207,7 @@ namespace NS::Obj
         return m_scene->GetCameraManager();
     }
 
-    SceneSystemHolder* Actor::GetSceneSystemHolder() const noexcept
+    SceneSystemHolder* SceneActor::GetSceneSystemHolder() const noexcept
     {
         if (m_scene == nullptr)
         {
@@ -216,7 +216,7 @@ namespace NS::Obj
         return m_scene->GetSceneSystemHolder();
     }
 
-    NS::Phys::PhysicsScene* Actor::GetPhysicsScene() const noexcept
+    NS::Phys::PhysicsScene* SceneActor::GetPhysicsScene() const noexcept
     {
         if (m_scene == nullptr)
         {
@@ -225,7 +225,7 @@ namespace NS::Obj
         return m_scene->GetPhysicsScene();
     }
 
-    NS::Vector3 Actor::GravityDirection() const noexcept
+    NS::Vector3 SceneActor::GravityDirection() const noexcept
     {
         const Scene* scene = OwningScene();
         if (scene == nullptr)
@@ -235,7 +235,7 @@ namespace NS::Obj
         return scene->GravityDirection();
     }
 
-    void Actor::AddGravity(NS::Vector3& velocity, float strength, float dt) const noexcept
+    void SceneActor::AddGravity(NS::Vector3& velocity, float strength, float dt) const noexcept
     {
         if (!std::isfinite(strength) || !std::isfinite(dt) || !(dt > 0.0f))
         {
@@ -244,12 +244,12 @@ namespace NS::Obj
         velocity += GravityDirection() * (strength * dt);
     }
 
-    bool Actor::SetBodyTimeScale(float scale) noexcept
+    bool SceneActor::SetBodyTimeScale(float scale) noexcept
     {
         if (!std::isfinite(scale) || !(scale > 0.0f))
         {
             NS_LOG_ERROR(Scene,
-                         "Actor::SetBodyTimeScale: 体の倍率 {} は正の有限値でない。前の {} を残す",
+                         "SceneActor::SetBodyTimeScale: 体の倍率 {} は正の有限値でない。前の {} を残す",
                          scale,
                          m_bodyTimeScale);
             return false;
@@ -258,7 +258,7 @@ namespace NS::Obj
         return true;
     }
 
-    void Actor::StepStateMachine()
+    void SceneActor::StepStateMachine()
     {
         if (m_stateMachine != nullptr)
         {
@@ -266,10 +266,10 @@ namespace NS::Obj
         }
     }
 
-    Actor::~Actor() noexcept
+    SceneActor::~SceneActor() noexcept
     {
         DetachFromParent();
-        for (Actor* child : m_children)
+        for (SceneActor* child : m_children)
         {
             if (child == nullptr)
             {
@@ -286,10 +286,10 @@ namespace NS::Obj
         }
     }
 
-    bool Actor::IsActiveInHierarchy() const noexcept
+    bool SceneActor::IsActiveInHierarchy() const noexcept
     {
         // 1 つでも active が false なら効かない。循環は SetParent が作らせないので必ず root で止まる
-        for (const Actor* node = this; node != nullptr; node = node->m_parent)
+        for (const SceneActor* node = this; node != nullptr; node = node->m_parent)
         {
             if (!node->IsAppeared())
             {
@@ -299,7 +299,7 @@ namespace NS::Obj
         return true;
     }
 
-    void Actor::SetParent(Actor* parent) noexcept
+    void SceneActor::SetParent(SceneActor* parent) noexcept
     {
         if (parent == this || parent == m_parent)
         {
@@ -307,7 +307,7 @@ namespace NS::Obj
         }
 
         // 循環防止: parent の祖先に this がいたら拒否
-        for (Actor* p = parent; p != nullptr; p = p->m_parent)
+        for (SceneActor* p = parent; p != nullptr; p = p->m_parent)
         {
             if (p == this)
             {
@@ -342,18 +342,18 @@ namespace NS::Obj
         }
     }
 
-    void Actor::DetachFromParent() noexcept
+    void SceneActor::DetachFromParent() noexcept
     {
         if (m_parent == nullptr)
         {
             return;
         }
-        std::vector<Actor*>& siblings = m_parent->m_children;
+        std::vector<SceneActor*>& siblings = m_parent->m_children;
         siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
         m_parent = nullptr;
     }
 
-    void Actor::OnStart()
+    void SceneActor::OnStart()
     {
         // 部品の登録は部品の OnStart が済ませる。続けて OnAppear を呼ぶと、出る時に OnStart
         // を呼び直す部品が二重に登録する
@@ -370,7 +370,7 @@ namespace NS::Obj
         }
     }
 
-    void Actor::OnAppear()
+    void SceneActor::OnAppear()
     {
         // 部品が描画・当たり・センサーのシーンの仕組みへ登録するので、シーンに付いていない間は何もしない
         if (OwningScene() == nullptr || !IsActiveInHierarchy())
@@ -388,13 +388,13 @@ namespace NS::Obj
                 subObject->OnAppear();
             }
         });
-        for (Actor* child : m_children)
+        for (SceneActor* child : m_children)
         {
             child->OnAppear();
         }
     }
 
-    void Actor::OnDisappear() noexcept
+    void SceneActor::OnDisappear() noexcept
     {
         if (OwningScene() == nullptr)
         {
@@ -407,13 +407,13 @@ namespace NS::Obj
         CallIfPresent(m_attackSensor, &HitSensor::Unregister);
         CallIfPresent(m_hitReaction, &HitReaction::StopAll);
         ForEachSubObj([&](SubObject* subObject) { subObject->OnDisappear(); });
-        for (Actor* child : m_children)
+        for (SceneActor* child : m_children)
         {
             child->OnDisappear();
         }
     }
 
-    void Actor::Update()
+    void SceneActor::Update()
     {
         CallIfActive(m_effectKeeper, &EffectKeeper::BeginStep);
         ObserveStep();
@@ -423,23 +423,23 @@ namespace NS::Obj
         VisualStep();
     }
 
-    void Actor::SnapshotForInterpolation() noexcept
+    void SceneActor::SnapshotForInterpolation() noexcept
     {
         Root().Snapshot();
         CallIfPresent(m_model, &Model::Snapshot);
     }
 
-    void Actor::StateStep()
+    void SceneActor::StateStep()
     {
         StepStateMachine();
     }
 
-    void Actor::PrepareRender()
+    void SceneActor::PrepareRender()
     {
         TickSubObj(m_animation.get());
     }
 
-    void Actor::OnEndPlay()
+    void SceneActor::OnEndPlay()
     {
         Disappear();
         CallIfPresent(m_model, &Model::Unregister);

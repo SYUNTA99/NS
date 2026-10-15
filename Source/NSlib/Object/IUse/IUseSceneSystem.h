@@ -6,7 +6,7 @@
 namespace NS::Obj
 {
     //! @brief シーンに 1 つの物の窓口
-    //! @details Actor とシーンが持つ。部品は持ち主の Actor から引く
+    //! @details SceneActor とシーンが持つ。部品は持ち主の SceneActor から引く
     class IUseSceneSystem
     {
     public:

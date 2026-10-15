@@ -1,13 +1,13 @@
 #include "NSlib/Object/Message/Message.h"
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/SubObjects/HitSensor.h"
 
 namespace NS::Obj
 {
     bool SendMsg(const Message& msg, HitSensor& receiver, HitSensor* sender)
     {
-        Actor* owner = receiver.Owner();
+        SceneActor* owner = receiver.Owner();
         if (owner == nullptr || !receiver.IsValid())
         {
             return false;
@@ -20,7 +20,7 @@ namespace NS::Obj
         return owner->ReceiveMsg(msg, sender, &receiver);
     }
 
-    bool SendMsgToActor(const Message& msg, Actor& receiver)
+    bool SendMsgToActor(const Message& msg, SceneActor& receiver)
     {
         return receiver.ReceiveMsg(msg, nullptr, nullptr);
     }

@@ -1,4 +1,4 @@
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
 #include <gtest/gtest.h>
@@ -27,8 +27,8 @@ namespace
 
 TEST(ActorRegistry, PlaceableClassesHaveLabels)
 {
-    // 置ける Actor はどれも表示名を持つ
-    const std::vector<std::string_view> expected{"MapParts", "MapObj", "Goal", "DeathZone", "FollowCamera", "Light"};
+    // 置ける SceneActor はどれも表示名を持つ
+    const std::vector<std::string_view> expected{"MapPartsActor", "PropActor", "GoalActor", "DeathZoneActor", "FollowCameraActor", "LightActor"};
     for (const std::string_view className : expected)
     {
         const NS::Obj::TypeRegistry::Entry* entry = FindPlaceable(className);
@@ -42,7 +42,7 @@ TEST(ActorRegistry, PlaceableClassesHaveLabels)
 TEST(ActorRegistry, PlayerAndSubObjectsAreNotPlaceable)
 {
     // プレイヤーは新しいレベルに自動で 1 体入るので置く一覧に出さない。部品も置く物ではない
-    EXPECT_EQ(FindPlaceable("Player"), nullptr);
+    EXPECT_EQ(FindPlaceable("PlayerActor"), nullptr);
     EXPECT_EQ(FindPlaceable("Model"), nullptr);
     EXPECT_EQ(FindPlaceable("GoalParams"), nullptr);
 }
@@ -59,10 +59,10 @@ TEST(ActorRegistry, PlaceableEntriesAreSortedByLabel)
 
 TEST(ActorRegistry, CreatedActorReportsItsClassName)
 {
-    // 生成した Actor の ClassName が登録名と一致しないと、保存して読み直した時に別の型になる
+    // 生成した SceneActor の ClassName が登録名と一致しないと、保存して読み直した時に別の型になる
     for (const NS::Obj::TypeRegistry::Entry* entry : NS::Obj::PlaceableEntries())
     {
-        const std::unique_ptr<NS::Obj::Actor> actor = entry->create();
+        const std::unique_ptr<NS::Obj::SceneActor> actor = entry->create();
         ASSERT_NE(actor, nullptr);
         EXPECT_EQ(std::string_view{actor->ClassName()}, std::string_view{entry->className});
     }
@@ -71,19 +71,19 @@ TEST(ActorRegistry, CreatedActorReportsItsClassName)
 TEST(ActorRegistry, CreateRegisteredObjectUsesClass)
 {
     nlohmann::json object = NS::Obj::MakeObjectJson();
-    NS::Obj::SetObjectJsonClass(object, "MapObj");
-    const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::CreateRegisteredObject(object);
+    NS::Obj::SetObjectJsonClass(object, "PropActor");
+    const std::unique_ptr<NS::Obj::SceneActor> actor = NS::Obj::CreateRegisteredObject(object);
     ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(std::string_view{actor->ClassName()}, "MapObj");
+    EXPECT_EQ(std::string_view{actor->ClassName()}, "PropActor");
 }
 
 TEST(ActorRegistry, UnknownClassFallsBackToPlainActor)
 {
     nlohmann::json object = NS::Obj::MakeObjectJson();
     NS::Obj::SetObjectJsonClass(object, "NoSuchActor");
-    const std::unique_ptr<NS::Obj::Actor> actor = NS::Obj::CreateRegisteredObject(object);
+    const std::unique_ptr<NS::Obj::SceneActor> actor = NS::Obj::CreateRegisteredObject(object);
     ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(std::string_view{actor->ClassName()}, "Actor");
+    EXPECT_EQ(std::string_view{actor->ClassName()}, "SceneActor");
 }
 
 TEST(ActorRegistry, PartDefaultsAreOwnedWithoutAnActor)
@@ -95,7 +95,7 @@ TEST(ActorRegistry, PartDefaultsAreOwnedWithoutAnActor)
     EXPECT_NE(first.get(), second.get());
     EXPECT_EQ(first->Owner(), nullptr);
     EXPECT_EQ(second->Owner(), nullptr);
-    EXPECT_EQ(NS::Obj::CreateSubObjOfType("Player"), nullptr);
+    EXPECT_EQ(NS::Obj::CreateSubObjOfType("PlayerActor"), nullptr);
     EXPECT_EQ(NS::Obj::CreateSubObjOfType("NoSuchPart"), nullptr);
 }
 

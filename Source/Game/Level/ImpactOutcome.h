@@ -63,7 +63,7 @@ namespace GL::Level
         int stopSteps = 0;
     };
 
-    //! 威力・質量・調整値から反動と飛ばしを決める。反動の初速は Player::ReboundVelocityFor で求める
+    //! 威力・質量・調整値から反動と飛ばしを決める。反動の初速は PlayerActor::ReboundVelocityFor で求める
     //! 前提: mass は有限の正、両方向は水平で正規化済み、fixedDelta は正
     //! tuning は MakeImpactTuning、input.launch は MapObjParams::Launch の値を渡す
     [[nodiscard]] ImpactOutcome ComputeImpactOutcome(const ImpactInput& input, const ImpactTuning& tuning) noexcept;

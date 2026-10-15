@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-class Player;
+class PlayerActor;
 
 namespace GL::Player
 {
@@ -27,7 +27,7 @@ namespace GL::Player
 
 namespace NS::Obj
 {
-    class Actor;
+    class SceneActor;
     class Body;
     class HitSensor;
 } // namespace NS::Obj
@@ -90,7 +90,7 @@ namespace GL::Level
     public:
         ImpactResolver() noexcept = default;
 
-        //! 持ち主の Player と移動と当たりの演出を引き当てる。持ち主が Player でなければ以後何もしない
+        //! 持ち主の PlayerActor と移動と当たりの演出を引き当てる。持ち主が PlayerActor でなければ以後何もしない
         void OnStart() override;
 
         //! 次の固定ステップで重なる相手を控える。身体の実速度ではなく突進の予定速度を使う
@@ -138,7 +138,7 @@ namespace GL::Level
 
         //! @brief 当たりの止めの最中の場合 true、それ以外の場合は false
         //! @details 止めの正はこの部品の時計 1 つ。止めの事象の始まりから終わりのフレームまで真で、
-        //! 止めを待つ検知のフレームは偽。身体を動かしてよいかは Player::CanMoveBody が答える
+        //! 止めを待つ検知のフレームは偽。身体を動かしてよいかは PlayerActor::CanMoveBody が答える
         [[nodiscard]] bool IsHitStopping() const noexcept;
 
         //! @brief 止めが明けた後、反動の事象を待って自機を止めている間の場合 true、それ以外の場合は false
@@ -184,7 +184,7 @@ namespace GL::Level
     private:
         [[nodiscard]] const GL::Player::PlayerParams& Tuning() const noexcept;
         // 次の固定ステップで重なる体から、中心が最も近い相手を選ぶ。無ければ nullptr
-        // 前提: OnStart で Player を取得済み
+        // 前提: OnStart で PlayerActor を取得済み
         [[nodiscard]] NS::Obj::HitSensor* FindOverlapped(const NS::Vector3& predictedVelocity) const;
 
         // 当たりの向きで起きる事象の並びを控え、時計を 0 にして 0 フレームの事象を起こす
@@ -233,7 +233,7 @@ namespace GL::Level
         void StartDepthShake(const DepthShakeEvent& shake, int length);
         // 自機の揺れを控えて始めたフレームの分を書き、相手へ other を知らせる
         void BeginShake(const TackleShakeDesc& self, const TackleShakeDesc& other);
-        [[nodiscard]] NS::Obj::Actor* PendingTargetActor() const noexcept;
+        [[nodiscard]] NS::Obj::SceneActor* PendingTargetActor() const noexcept;
         // 残像を始める。自機の残像を控え、相手へ知らせる。カメラが無い世界では出さない
         void StartGhost(const GhostEvent& ghost, int length);
         void AdvanceGhost();
@@ -358,7 +358,7 @@ namespace GL::Level
         NS::Vector3 m_observedVelocity{};
         bool m_hasObservedTarget = false;
         bool m_stateReady = false;
-        ::Player* m_player = nullptr;                  // 突進と反動の技の呼び先。非所有
+        ::PlayerActor* m_player = nullptr;                  // 突進と反動の技の呼び先。非所有
         NS::Obj::Body* m_body = nullptr;               // 同じ配置物の身体。非所有
         NS::Obj::HitReaction* m_hitReaction = nullptr; // 同じ配置物の当たりの演出。非所有
     };

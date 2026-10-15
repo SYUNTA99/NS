@@ -1,7 +1,7 @@
-#include "Game/Level/FollowCamera.h"
-#include "Game/Player.h"
+#include "Game/Level/FollowCameraActor.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerParams.h"
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/Reflection/ReflectionJson.h"
 #include "NSlib/Object/Scene/Scene.h"
@@ -68,10 +68,10 @@ namespace
         NS_REFLECT_NONE(AlphaCamera, NS::Obj::VirtualCamera)
     };
 
-    class AlphaCameraHost final : public NS::Obj::Actor
+    class AlphaCameraHostActor final : public NS::Obj::SceneActor
     {
     public:
-        NS_REFLECT_BEGIN(AlphaCameraHost, NS::Obj::Actor)
+        NS_REFLECT_BEGIN(AlphaCameraHostActor, NS::Obj::SceneActor)
         NS_REFLECT_SUBOBJ(vcam, "Vcam")
         NS_REFLECT_END()
 
@@ -79,7 +79,7 @@ namespace
 
         void OnEndPlay() override
         {
-            NS::Obj::Actor::OnEndPlay();
+            NS::Obj::SceneActor::OnEndPlay();
             NS::Obj::UnregisterVirtualCamera(this, vcam.get());
         }
 
@@ -87,7 +87,7 @@ namespace
         void OnInit() override { (void)CreateSubObj(vcam); }
         void OnStart() override
         {
-            NS::Obj::Actor::OnStart();
+            NS::Obj::SceneActor::OnStart();
             NS::Obj::RegisterVirtualCamera(this, vcam.get());
         }
     };
@@ -184,8 +184,8 @@ TEST(CameraManager, FinishedModifiersAreRemovedOnTick)
 
 TEST(CameraManager, ModifiersApplyInOrder)
 {
-    const std::unique_ptr<TestViewCameraHost> hostOwned = NS::Obj::CreateActor<TestViewCameraHost>();
-    TestViewCameraHost& host = *hostOwned;
+    const std::unique_ptr<TestViewCameraHostActor> hostOwned = NS::Obj::CreateActor<TestViewCameraHostActor>();
+    TestViewCameraHostActor& host = *hostOwned;
     host.Vcam().SetPose(NS::Vector3{1.0f, 0.0f, -5.0f}, NS::Vector3{1.0f, 0.0f, 0.0f});
     NS::Obj::CameraManager cameras;
     cameras.AddVirtualCamera(&host.Vcam());
@@ -205,7 +205,7 @@ TEST(IUseCamera, ForwardFollowsTheVirtualCameraNotTheDrawnCamera)
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     scene.MainCamera()->SetPosition(NS::Vector3{});
     scene.MainCamera()->SetTarget(NS::Vector3{1.0f, 0.0f, 0.0f});
-    NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
+    NS::Obj::SceneActor* actor = scene.SpawnTransient<NS::Obj::SceneActor>();
     ASSERT_NE(actor, nullptr);
 
     const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(actor);
@@ -220,7 +220,7 @@ TEST(IUseCamera, ForwardWithoutAVirtualCameraIsPlusZ)
     NS::Obj::Scene scene;
     scene.MainCamera()->SetPosition(NS::Vector3{});
     scene.MainCamera()->SetTarget(NS::Vector3{1.0f, 0.0f, 0.0f});
-    NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
+    NS::Obj::SceneActor* actor = scene.SpawnTransient<NS::Obj::SceneActor>();
     ASSERT_NE(actor, nullptr);
 
     const NS::Vector3 forward = NS::Obj::CameraForwardHorizontal(actor);
@@ -237,13 +237,13 @@ TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
     cameras.SetCamera(&drawn);
     // 1 歩で半分まで進むブレンド
     cameras.SetBlendDuration(NS::OS::FrameTimer::FixedDelta() * 2.0f);
-    const std::unique_ptr<TestViewCameraHost> fromOwned = NS::Obj::CreateActor<TestViewCameraHost>();
-    TestViewCameraHost& from = *fromOwned;
+    const std::unique_ptr<TestViewCameraHostActor> fromOwned = NS::Obj::CreateActor<TestViewCameraHostActor>();
+    TestViewCameraHostActor& from = *fromOwned;
     cameras.AddVirtualCamera(&from.Vcam());
     cameras.OnTick();
     cameras.Evaluate(1.0f);
-    const std::unique_ptr<AlphaCameraHost> toOwned = NS::Obj::CreateActor<AlphaCameraHost>();
-    AlphaCameraHost& to = *toOwned;
+    const std::unique_ptr<AlphaCameraHostActor> toOwned = NS::Obj::CreateActor<AlphaCameraHostActor>();
+    AlphaCameraHostActor& to = *toOwned;
     to.vcam->SetVcamPriority(1);
     cameras.AddVirtualCamera(to.vcam.get());
     cameras.OnTick();
@@ -265,8 +265,8 @@ TEST(CameraManager, ForwardLeavesOutTheModifiers)
     NS::Obj::SceneCamera drawn;
     NS::Obj::CameraManager cameras;
     cameras.SetCamera(&drawn);
-    const std::unique_ptr<TestViewCameraHost> hostOwned = NS::Obj::CreateActor<TestViewCameraHost>();
-    TestViewCameraHost& host = *hostOwned;
+    const std::unique_ptr<TestViewCameraHostActor> hostOwned = NS::Obj::CreateActor<TestViewCameraHostActor>();
+    TestViewCameraHostActor& host = *hostOwned;
     cameras.AddVirtualCamera(&host.Vcam());
     // 位置の x を 0*2+10 = 10 へずらし、描く視線を斜めにする
     ASSERT_TRUE(cameras.AddModifier(std::make_unique<OrderProbe>(100, 10.0f)));
@@ -287,7 +287,7 @@ TEST(IUseCamera, ViewPoseLeavesOutTheShake)
 {
     NS::Obj::Scene scene;
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
-    NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
+    NS::Obj::SceneActor* actor = scene.SpawnTransient<NS::Obj::SceneActor>();
     ASSERT_NE(actor, nullptr);
     ASSERT_TRUE(NS::Obj::StartCameraShake(actor, ShakeOf(5)));
     const std::optional<NS::Obj::CameraPose> drawn = scene.GetCameraManager()->ComposePose(1.0f);
@@ -305,7 +305,7 @@ TEST(IUseCamera, ViewPoseLeavesOutTheShake)
 TEST(IUseCamera, ActorReachesSceneCameraManager)
 {
     NS::Obj::Scene scene;
-    NS::Obj::Actor* actor = scene.SpawnTransient<NS::Obj::Actor>();
+    NS::Obj::SceneActor* actor = scene.SpawnTransient<NS::Obj::SceneActor>();
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->GetCameraManager(), scene.GetCameraManager());
     EXPECT_TRUE(NS::Obj::StartCameraShake(actor, ShakeOf(5)));
@@ -313,21 +313,21 @@ TEST(IUseCamera, ActorReachesSceneCameraManager)
     NS::Obj::StopCameraEffects(actor);
     EXPECT_EQ(scene.GetCameraManager()->FindModifier<NS::Obj::CameraShakeModifier>(), nullptr);
 
-    // シーンに居ない Actor は窓口が何もしない
-    NS::Obj::Actor loose;
+    // シーンに居ない SceneActor は窓口が何もしない
+    NS::Obj::SceneActor loose;
     EXPECT_EQ(loose.GetCameraManager(), nullptr);
     EXPECT_FALSE(NS::Obj::StartCameraShake(&loose, ShakeOf(5)));
 }
 
 // 追従カメラの個体は、欄「追従対象」で指した自機の溜めを読んで仮想カメラへ渡す
-TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
+TEST(FollowCameraActor, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 {
     NS::Obj::Scene scene;
-    Player* player = scene.SpawnObject<Player>("player");
+    PlayerActor* player = scene.SpawnObject<PlayerActor>("player");
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}),
               0u);
-    GL::Level::FollowCamera* actor = scene.SpawnTransient<GL::Level::FollowCamera>();
+    GL::Level::FollowCameraActor* actor = scene.SpawnTransient<GL::Level::FollowCameraActor>();
     NS::Obj::ThirdPersonFollow& vcam = actor->Vcam();
     NS::Obj::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", player->Id()}}}});
     // しきい値を越えるまで押し続ける
@@ -349,10 +349,10 @@ TEST(FollowCamera, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 }
 
 // 追従カメラは出荷の姿で生まれる。プレイ中かは世界の駆動が答え、部品の active へ写さない
-TEST(FollowCamera, VcamIsLiveFromInit)
+TEST(FollowCameraActor, VcamIsLiveFromInit)
 {
-    const std::unique_ptr<GL::Level::FollowCamera> cameraOwned = NS::Obj::CreateActor<GL::Level::FollowCamera>();
-    GL::Level::FollowCamera& camera = *cameraOwned;
+    const std::unique_ptr<GL::Level::FollowCameraActor> cameraOwned = NS::Obj::CreateActor<GL::Level::FollowCameraActor>();
+    GL::Level::FollowCameraActor& camera = *cameraOwned;
     EXPECT_TRUE(camera.Vcam().IsActiveSelf());
 }
 
@@ -360,7 +360,7 @@ TEST(FollowCamera, VcamIsLiveFromInit)
 TEST(SceneCameraOnRender, RunningWorldWritesTheFollowPoseOnRender)
 {
     NS::Obj::Scene scene;
-    GL::Level::FollowCamera* follow = scene.SpawnTransient<GL::Level::FollowCamera>();
+    GL::Level::FollowCameraActor* follow = scene.SpawnTransient<GL::Level::FollowCameraActor>();
     ASSERT_NE(follow, nullptr);
     // 追う相手の居ない追従カメラは (0, 0, -5) から原点を見る
     const NS::Obj::CameraPose expected = follow->Vcam().EvaluatePose(1.0f);
@@ -378,7 +378,7 @@ TEST(SceneCameraOnRender, RunningWorldWritesTheFollowPoseOnRender)
 TEST(SceneCameraOnRender, StoppedWorldLeavesTheRealCameraToWhoeverStoppedIt)
 {
     NS::Obj::Scene scene;
-    ASSERT_NE(scene.SpawnTransient<GL::Level::FollowCamera>(), nullptr);
+    ASSERT_NE(scene.SpawnTransient<GL::Level::FollowCameraActor>(), nullptr);
     scene.SetSimulationEnabled(false);
     scene.MainCamera()->SetPosition(NS::Vector3{100.0f, 0.0f, 0.0f});
 

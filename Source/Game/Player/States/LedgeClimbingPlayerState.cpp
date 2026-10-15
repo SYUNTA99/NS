@@ -1,15 +1,15 @@
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 
 namespace GL::Player
 {
-    void LedgeClimbingPlayerState::OnEnter(::Player& player)
+    void LedgeClimbingPlayerState::OnEnter(::PlayerActor& player)
     {
         StartCoroutine(Run(player));
     }
 
-    NS::Coroutine LedgeClimbingPlayerState::Run(::Player& player)
+    NS::Coroutine LedgeClimbingPlayerState::Run(::PlayerActor& player)
     {
         while (true)
         {

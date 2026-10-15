@@ -2,7 +2,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/Core/OBB.h"
@@ -29,7 +29,7 @@ namespace
     using NS::Vector3;
 
     // 床の上面 y = 0 に自機と、+z の先に相手を置く。カメラは +z を向く
-    Player* PlaceOnFloor(NS::Obj::Scene& scene,
+    PlayerActor* PlaceOnFloor(NS::Obj::Scene& scene,
                          const Vector3& playerPosition,
                          bool withTarget,
                          float targetScale,
@@ -38,14 +38,14 @@ namespace
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "Player");
+        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
         NS::Obj::SetObjectJsonId(player, 1);
         NS::Obj::SetObjectPosition(player, playerPosition);
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         if (withTarget)
         {
             nlohmann::json rock = NS::Obj::MakeObjectJson();
-            NS::Obj::SetObjectJsonClass(rock, "MapObj");
+            NS::Obj::SetObjectJsonClass(rock, "PropActor");
             NS::Obj::SetObjectJsonId(rock, 2);
             NS::Obj::SetObjectPosition(rock, targetPosition);
             NS::Obj::SetObjectScale(rock, Vector3{targetScale, targetScale, targetScale});
@@ -63,7 +63,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, Vector3{0.0f, playerPosition.y, -1.0f}, Vector3{0.0f, playerPosition.y, 1.0f});
-        return NS::Obj::Cast<Player>(scene.Objects().FindByObjectId(1));
+        return NS::Obj::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
     // 線に沿った距離 along での帯の高さ。板の中は近い端から遠い端へ直線で上がる
@@ -89,7 +89,7 @@ namespace
 TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, true, 3.0f, Vector3{0.0f, 1.5f, 8.0f});
+    PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, true, 3.0f, Vector3{0.0f, 1.5f, 8.0f});
     ASSERT_NE(player, nullptr);
     for (int frame = 0; frame < k_ChargeFrames; ++frame)
     {
@@ -149,7 +149,7 @@ TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
 TEST(SlamArrowTest, ArrowIsOverlaidBeforeTheLockOnFrame)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, false, 1.0f, Vector3{});
+    PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, false, 1.0f, Vector3{});
     ASSERT_NE(player, nullptr);
     EXPECT_LT(player->SlamIndicator().OverlayOrder(), player->TargetIndicator().OverlayOrder());
 }
@@ -160,7 +160,7 @@ TEST(SlamArrowTest, PredictedTierUsesTheArcHeightAtContact)
 {
     NS::Obj::Scene scene;
     const nlohmann::json raised{{"HitZones", {{"上下の位置", 0.5f}, {"縦の幅", 0.2f}}}};
-    Player* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, true, 3.0f, Vector3{0.0f, 1.5f, 8.0f}, raised);
+    PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, true, 3.0f, Vector3{0.0f, 1.5f, 8.0f}, raised);
     ASSERT_NE(player, nullptr);
     for (int frame = 0; frame < 20; ++frame)
     {
@@ -177,7 +177,7 @@ TEST(SlamArrowTest, PredictedTierUsesTheArcHeightAtContact)
 TEST(SlamArrowTest, GroundArrowWithoutTargetLiesOnTheFloor)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, false, 1.0f, Vector3{});
+    PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, false, 1.0f, Vector3{});
     ASSERT_NE(player, nullptr);
     for (int frame = 0; frame < k_ChargeFrames; ++frame)
     {
@@ -201,7 +201,7 @@ TEST(SlamArrowTest, GroundArrowWithoutTargetLiesOnTheFloor)
 TEST(SlamArrowTest, AirArrowWithoutTargetFallsAndTheReleaseStartsLevel)
 {
     NS::Obj::Scene scene;
-    Player* player = PlaceOnFloor(scene, Vector3{0.0f, 6.0f, 0.0f}, false, 1.0f, Vector3{});
+    PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 6.0f, 0.0f}, false, 1.0f, Vector3{});
     ASSERT_NE(player, nullptr);
     player->Body().SetVerticalVelocity(10.0f);
     for (int frame = 0; frame < 15; ++frame)

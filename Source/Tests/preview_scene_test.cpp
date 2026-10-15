@@ -1,5 +1,5 @@
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Player.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Object/SubObjects/PlayerInput.h"
 #include "NSlib/Object/SubObjects/Transform.h"
@@ -16,12 +16,12 @@ namespace
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
         nlohmann::json player = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(player, "Player");
+        NS::Obj::SetObjectJsonClass(player, "PlayerActor");
         NS::Obj::SetObjectJsonId(player, 1);
         NS::Obj::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::Obj::MakeObjectJson();
-        NS::Obj::SetObjectJsonClass(rock, "MapObj");
+        NS::Obj::SetObjectJsonClass(rock, "PropActor");
         NS::Obj::SetObjectJsonId(rock, 2);
         NS::Obj::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 3.0f});
         NS::Obj::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -53,7 +53,7 @@ namespace
         preview.ResetFromJson(snapshot);
         AddFloor(preview);
         PlaceViewCamera(preview, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        Player* player = NS::Obj::Cast<Player>(preview.Objects().FindByObjectId(1));
+        PlayerActor* player = NS::Obj::Cast<PlayerActor>(preview.Objects().FindByObjectId(1));
         if (player == nullptr)
         {
             return result;
@@ -82,7 +82,7 @@ TEST(PreviewScene, CopiedSceneReachesTheImpactWithoutTouchingTheEditedScene)
     edited.ResetFromJson(MakeSlamSceneJson());
     AddFloor(edited);
     edited.SetSimulationEnabled(false);
-    Player* editedPlayer = NS::Obj::Cast<Player>(edited.Objects().FindByObjectId(1));
+    PlayerActor* editedPlayer = NS::Obj::Cast<PlayerActor>(edited.Objects().FindByObjectId(1));
     ASSERT_NE(editedPlayer, nullptr);
     const NS::Vector3 editedPosition = editedPlayer->Root().Position();
     const nlohmann::json snapshot = edited.ToJson();

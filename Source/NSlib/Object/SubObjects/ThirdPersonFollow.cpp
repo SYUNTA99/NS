@@ -1,6 +1,6 @@
 ﻿#include "NSlib/Object/SubObjects/ThirdPersonFollow.h"
 
-#include "NSlib/Object/Actor.h"
+#include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/IUse/IUseCamera.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
@@ -130,7 +130,7 @@ namespace NS::Obj
         {
             return nullptr;
         }
-        Actor* target = Owner()->OwningScene()->Objects().FindObject(m_targetRef);
+        SceneActor* target = Owner()->OwningScene()->Objects().FindObject(m_targetRef);
         if (target == nullptr)
         {
             return nullptr;
@@ -755,7 +755,7 @@ namespace NS::Obj
 
         const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
 
-        // Player Mesh の補間と整合させ、相対位置のガタつきを防ぐ
+        // PlayerActor Mesh の補間と整合させ、相対位置のガタつきを防ぐ
         const NS::Vector3 tgtPos = target->InterpolatedWorldMatrix(alpha).Translation();
         // ずれは補間しない。根を ShiftPosition で上げ下げしていれば、補間の途中でも 根 + ずれ は動かない
         NS::Vector3 headPos{tgtPos.x, tgtPos.y + m_targetHeightOffset + m_headHeight, tgtPos.z};

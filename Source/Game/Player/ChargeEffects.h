@@ -10,7 +10,7 @@
 #include <string_view>
 #include <vector>
 
-class Player;
+class PlayerActor;
 
 namespace GL::Level
 {
@@ -100,7 +100,7 @@ namespace GL::Player
         void Place(NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept;
         void SetCharge(NS::uint32 id, float charge01) const noexcept;
         void SetInput(NS::uint32 id, int index, float value) const noexcept;
-        // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ Player::AimDirection
+        // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ PlayerActor::AimDirection
         [[nodiscard]] NS::Vector3 HeldAimDirection() const noexcept;
         void StopAndClear(NS::uint32& id) noexcept;
         // 跳ね返りか破壊が起きたか、触れる見込みが m_burstClearFrames 以内か
@@ -142,7 +142,7 @@ namespace GL::Player
         float m_spinDegrees = 0.0f;       // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
         NS::Vector3 m_slamDirection;
 
-        const ::Player* m_actor = nullptr;              // 押し・溜め量・突進の速度・狙いの向きを答える自機。非所有
+        const ::PlayerActor* m_actor = nullptr;              // 押し・溜め量・突進の速度・狙いの向きを答える自機。非所有
         const PlayerAppearance* m_appearance = nullptr; // 玉の回転の正。非所有
         const GL::Level::ImpactResolver* m_resolver = nullptr; // 止めの頭の正。非所有
     };
