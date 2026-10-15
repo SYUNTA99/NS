@@ -14,9 +14,12 @@ namespace GL::Level
         [[nodiscard]] NS::Obj::UpdatePhase Phase() const noexcept override { return NS::Obj::UpdatePhase::Camera; }
         [[nodiscard]] NS::Obj::ThirdPersonFollow& Vcam() noexcept { return *m_vcam; }
         [[nodiscard]] const NS::Obj::ThirdPersonFollow& Vcam() const noexcept { return *m_vcam; }
+        void OnEndPlay() override;
 
     protected:
         void OnInit() override;
+        //! 仮想カメラを登録し、置いた向きへ戻す
+        void OnStart() override;
         //! 追う相手の状態を読んで仮想カメラへ渡す
         void ObserveStep() override;
         void BodyStep() override;

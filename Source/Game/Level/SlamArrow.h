@@ -36,7 +36,7 @@ namespace GL::Level
         //! 放った玉の縁が狙う相手に触れる所までの、線に沿った距離 (SlamLineTarget::launchContact)。単位は m。
         //! hasTarget が偽の間は読まない
         float targetContact = 0.0f;
-        int framesSinceShown = 0;  //!< 矢印を出したフレームを 0 として数えたフレーム数
+        int framesSinceShown = 0; //!< 矢印を出したフレームを 0 として数えたフレーム数
         float charge01 = 0.0f;
         bool chargeFull = false;   //!< 溜めきりの場合 true
         float overcharge01 = 0.0f; //!< 溜めすぎの深さ 0..1。溜めきりの間だけ色に効く
@@ -54,7 +54,7 @@ namespace GL::Level
     //! 地面の矢印の形と色。距離は狙いの線の始まり (自機の位置) から線に沿って測る
     struct SlamArrowShape
     {
-        NS::Vector3 origin;               //!< 狙いの線の始まり。世界座標
+        NS::Vector3 origin; //!< 狙いの線の始まり。世界座標
         NS::Vector3 direction;
         float bandWidth = 0.0f;           //!< 帯の幅 (玉の通る幅)。単位は m
         float start = 0.0f;               //!< 帯の始まり (玉の縁) の距離。単位は m
@@ -113,7 +113,7 @@ namespace GL::Level
     //! 矢印を描く資材。どれも非所有
     struct SlamArrowDrawAssets
     {
-        NS::Gfx::StaticMesh* mesh = nullptr;       //!< 共有の上向きの板
+        NS::Gfx::StaticMesh* mesh = nullptr; //!< 共有の上向きの板
         NS::Gfx::Material* bandMaterial = nullptr;
         NS::Gfx::Material* headMaterial = nullptr;
     };
@@ -136,9 +136,9 @@ namespace GL::Level
     public:
         SlamArrow() noexcept;
 
-        //! 重ね描きの登録簿へ入り、同じ配置物の Player と身体を引き当てる。
-        //! どちらかが無ければ以後何も組まない
-        void OnStart() override;
+        //! 矢印を組む元の Player と、その移動の当たり。持ち主の Player が OnInit で渡す。
+        //! 渡されなければ何も組まない
+        void SetPlayer(::Player& player) noexcept;
 
         void ResolveAssets(NS::Obj::AssetManager& assets) override;
 

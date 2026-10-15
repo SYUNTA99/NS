@@ -5,9 +5,9 @@
 #include "Game/Player/PlayerVisualParams.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Object/SubObjects/OverlayRenderer.h"
 #include "NSlib/Object/Reflection/ActorRef.h"
 #include "NSlib/Object/Reflection/Curve.h"
+#include "NSlib/Object/SubObjects/OverlayRenderer.h"
 
 #include <vector>
 
@@ -59,9 +59,8 @@ namespace GL::Level
     public:
         TargetMarker() noexcept;
 
-        //! 重ね描きの登録簿へ入り、同じ配置物の Player を引き当てる。
-        //! Player が無ければ以後何も示さない
-        void OnStart() override;
+        //! 枠を示す元の Player。持ち主の Player が OnInit で渡す。渡されなければ何も示さない
+        void SetPlayer(::Player& player) noexcept { m_player = &player; }
 
         void OnUpdate() override;
 
@@ -103,7 +102,7 @@ namespace GL::Level
 
     private:
         TargetMarkerDesc m_desc{};
-        SlamLineTarget m_shown{};  // 示す相手の予測。m_hasShown が偽の間は読まない
+        SlamLineTarget m_shown{}; // 示す相手の予測。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
         int m_framesSinceCapture = 0; // 外れた後は外れたフレームの値で止める
         NS::AABB m_lostBounds{};      // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない

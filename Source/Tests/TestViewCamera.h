@@ -45,9 +45,19 @@ public:
 
     //! 持っている仮想カメラ
     [[nodiscard]] TestViewCamera& Vcam() noexcept { return *m_vcam; }
+    void OnEndPlay() override
+    {
+        NS::Obj::Actor::OnEndPlay();
+        NS::Obj::UnregisterVirtualCamera(this, m_vcam.get());
+    }
 
 protected:
     void OnInit() override { (void)CreateSubObj(m_vcam); }
+    void OnStart() override
+    {
+        NS::Obj::Actor::OnStart();
+        NS::Obj::RegisterVirtualCamera(this, m_vcam.get());
+    }
 
 private:
     std::unique_ptr<TestViewCamera> m_vcam;

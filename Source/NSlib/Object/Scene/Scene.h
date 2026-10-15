@@ -56,16 +56,16 @@ namespace NS::Obj
         //! IRenderable SubObject の自己解除。Model 等が OnEndPlay で呼ぶ
         void UnregisterRenderable(IRenderable* renderable);
 
-        //! 重ね描きの登録。部品は OverlayRenderer の OnStart が呼ぶ。二重登録は無視する
+        //! 重ね描きの登録。部品は持ち主の Actor が OnStart で 1 回呼ぶ。二重登録は無視する
         //! 並びは OverlayOrder 昇順に保たれ、同値なら後から登録した方が後ろになる
         void RegisterOverlay(IOverlay* overlay);
-        //! 重ね描きの解除。部品は OverlayRenderer の OnEndPlay が呼ぶ
+        //! 重ね描きの解除。部品は持ち主の Actor が OnEndPlay で呼ぶ
         void UnregisterOverlay(IOverlay* overlay);
 
-        //! 平行光の自己登録。DirectionalLight が OnStart で呼ぶ。二重登録は無視する
-        //! 並びは登録順。ResolveSceneSettings はこの順に読む
+        //! 平行光の登録。持ち主の Light が OnStart で 1 回呼ぶ。二重登録は無視する
+        //! 並びは登録順。ResolveSceneSettings はこの順に読み、IsActive が偽の光は飛ばす
         void RegisterLight(DirectionalLight* light);
-        //! 平行光の自己解除。DirectionalLight が OnEndPlay で呼ぶ
+        //! 平行光の解除。持ち主の Light が OnEndPlay で呼ぶ
         void UnregisterLight(DirectionalLight* light);
 
         //! 描く物・重ね描き・平行光の登録簿に入っている数
@@ -303,7 +303,7 @@ namespace NS::Obj
         // ヒットセンサーの調べ役。配置物の部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         HitSensorDirector m_hitSensors;
         SceneCamera m_mainCamera;
-        // 仮想カメラの部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
+        // 仮想カメラは持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         CameraManager m_cameraManager;
         NS::Obj::ActorList m_objects; // 配置物の一覧
         // 更新へ登録した管理役 1 件

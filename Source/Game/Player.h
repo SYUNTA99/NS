@@ -293,6 +293,8 @@ protected:
     bool ReceiveMsg(const NS::Obj::Message& msg, NS::Obj::HitSensor* sender, NS::Obj::HitSensor* receiver) override;
 
     void OnInit() override;
+    //! ロックオンの枠と突進の矢印を重ね描きへ入れる。消えている間は描く側が IsOverlayVisible で飛ばす
+    void OnStart() override;
     //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;

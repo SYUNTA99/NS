@@ -14,8 +14,11 @@ namespace NS::Obj
         NS_REFLECT_SUBOBJ(m_light, "DirectionalLight")
         NS_REFLECT_END()
 
+        void OnEndPlay() override;
+
     protected:
         void OnInit() override;
+        void OnStart() override;
 
     private:
         std::unique_ptr<DirectionalLight> m_light;

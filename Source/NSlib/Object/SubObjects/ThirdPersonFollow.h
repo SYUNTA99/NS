@@ -51,7 +51,7 @@ namespace NS::Obj
         [[nodiscard]] ActorRef TargetRef() const noexcept { return m_targetRef; }
 
         //! プレイ開始 / rebuild ごとに初期姿勢へ戻す
-        void OnStart() override;
+        void ResetPose() noexcept;
 
         //! 自動ズームの判定に使う接地と速度を値で受け取る。移動 SubObject の型を include せずに済む
         void SetFollowMotion(bool grounded, const NS::Vector3& velocity) noexcept;
@@ -103,7 +103,7 @@ namespace NS::Obj
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
 
-        //! プレイ開始時の向き。OnStart で現在方位角・仰角へ写し、以降はプレイ中の手動回転で動く
+        //! プレイ開始時の向き。ResetPose で現在方位角・仰角へ写し、以降はプレイ中の手動回転で動く
         [[nodiscard]] float InitialYaw() const noexcept { return m_initialYaw; }
         [[nodiscard]] float InitialPitch() const noexcept { return m_initialPitch; }
 
@@ -206,7 +206,7 @@ namespace NS::Obj
         float m_yaw = 0.0f;       // 水平回転角
         float m_pitch = -0.2618f; // 仰俯角
 
-        // プレイ開始時の初期姿勢。editor のギズモ / Inspector が書き、OnStart で m_yaw/m_pitch へ写す
+        // プレイ開始時の初期姿勢。editor のギズモ / Inspector が書き、ResetPose で m_yaw/m_pitch へ写す
         float m_initialYaw = 0.0f;
         float m_initialPitch = -0.2618f;
 

@@ -77,8 +77,19 @@ namespace
 
         std::unique_ptr<AlphaCamera> vcam;
 
+        void OnEndPlay() override
+        {
+            NS::Obj::Actor::OnEndPlay();
+            NS::Obj::UnregisterVirtualCamera(this, vcam.get());
+        }
+
     protected:
         void OnInit() override { (void)CreateSubObj(vcam); }
+        void OnStart() override
+        {
+            NS::Obj::Actor::OnStart();
+            NS::Obj::RegisterVirtualCamera(this, vcam.get());
+        }
     };
 
     class OrderProbe final : public NS::Obj::CameraModifier

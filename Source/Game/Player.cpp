@@ -78,8 +78,8 @@ void Player::OnInit()
     GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
     (void)CreateSubObj(m_resolver);
     CreateSubObj(m_hitReaction);
-    (void)CreateSubObj(m_targetMarker);
-    (void)CreateSubObj(m_slamArrow);
+    CreateSubObj(m_targetMarker)->SetPlayer(*this);
+    CreateSubObj(m_slamArrow)->SetPlayer(*this);
     (void)CreateSubObj(m_effectKeeper);
     (void)CreateSubObj(m_chargeEffects);
     (void)CreateSubObj(m_impactEffects);
@@ -314,11 +314,26 @@ float Player::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) con
     return std::max(m_clips->m_minPlaybackSpeed, lateralSpeed / maxSpeed);
 }
 
+void Player::OnStart()
+{
+    NS::Obj::Actor::OnStart();
+    if (NS::Obj::Scene* scene = OwningScene())
+    {
+        scene->RegisterOverlay(m_targetMarker.get());
+        scene->RegisterOverlay(m_slamArrow.get());
+    }
+}
+
 void Player::OnEndPlay()
 {
     m_states->Reset();
     m_appliedClip.clear();
     NS::Obj::Actor::OnEndPlay();
+    if (NS::Obj::Scene* scene = OwningScene())
+    {
+        scene->UnregisterOverlay(m_targetMarker.get());
+        scene->UnregisterOverlay(m_slamArrow.get());
+    }
     EndCharge();
 }
 

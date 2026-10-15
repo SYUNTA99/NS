@@ -10,7 +10,8 @@ namespace NS::Gfx
 namespace NS::Obj
 {
     //! @brief シーンを描き終えた画面へ重ねて描く物。重ね描きの登録簿が受け取る型
-    //! @details 部品は OverlayRenderer を継ぐ。部品でない物はこれを直に継ぎ、自分で登録簿へ出し入れする
+    //! @details 部品は OverlayRenderer を継ぎ、持ち主の Actor が OnStart で登録簿へ入れて OnEndPlay で外す。
+    //! 部品でない物はこれを直に継ぎ、自分で登録簿へ出し入れする
     class IOverlay
     {
     public:
@@ -35,13 +36,6 @@ namespace NS::Obj
 
         //! 更新・当たりと同じ IsActive で切る。自分の値だけ見ると親を寝かせても描き続ける
         [[nodiscard]] bool IsOverlayVisible() const noexcept override { return IsActive(); }
-
-        //! 所属 scene の重ね描きの登録簿へ自分を入れる。派生で上書きするなら基底のこれを呼ぶ
-        void OnAppear() override { OverlayRenderer::OnStart(); }
-        void OnDisappear() noexcept override { OverlayRenderer::OnEndPlay(); }
-        void OnStart() override;
-        //! 所属 scene の重ね描きの登録簿から自分を外す。派生で上書きするなら基底のこれを呼ぶ
-        void OnEndPlay() override;
 
         NS_REFLECT_NONE(OverlayRenderer, SubObject)
     };

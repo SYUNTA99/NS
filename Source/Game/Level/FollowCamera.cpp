@@ -13,6 +13,14 @@ namespace GL::Level
         (void)CreateSubObj(m_vcam);
     }
 
+    // 仮想カメラはプレイの間ずっと候補に入れておく。消えている間は、カメラの管理役が IsActive を見て飛ばす
+    void FollowCamera::OnStart()
+    {
+        NS::Obj::Actor::OnStart();
+        NS::Obj::RegisterVirtualCamera(this, m_vcam.get());
+        m_vcam->ResetPose();
+    }
+
     void FollowCamera::ObserveStep()
     {
         if (!m_vcam->IsActive())
@@ -59,5 +67,11 @@ namespace GL::Level
         m_vcam->ClearCharge();
         m_vcam->ClearRebound();
         NS::Obj::Actor::OnDisappear();
+    }
+
+    void FollowCamera::OnEndPlay()
+    {
+        NS::Obj::Actor::OnEndPlay();
+        NS::Obj::UnregisterVirtualCamera(this, m_vcam.get());
     }
 } // namespace GL::Level

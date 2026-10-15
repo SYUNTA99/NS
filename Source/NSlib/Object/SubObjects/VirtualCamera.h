@@ -42,14 +42,6 @@ namespace NS::Obj
     public:
         VirtualCamera() noexcept = default;
 
-        //! カメラの窓口から管理役へ自分を登録する。派生で上書きするなら基底のこれを呼ぶ
-        void OnAppear() override { VirtualCamera::OnStart(); }
-        void OnDisappear() noexcept override { VirtualCamera::OnEndPlay(); }
-        void OnStart() override;
-
-        //! 管理役から自分を外す。派生で上書きするなら基底のこれを呼ぶ
-        void OnEndPlay() override;
-
         //! 最終姿勢を返す。alpha は追従対象の補間係数で、自由視点では使わない
         [[nodiscard]] virtual CameraPose EvaluatePose(float alpha) const noexcept = 0;
 

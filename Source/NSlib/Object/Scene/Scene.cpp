@@ -428,7 +428,7 @@ namespace NS::Obj
         m_sceneObjs.Clear();
         Fade().Cancel();
         // Actor の型選択は登録一覧、参照の実体化は各 SubObject の ResolveAssets が行う
-        // vcam の cameras への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
+        // 仮想カメラの付け外しは、持ち主の Actor が OnStart / OnEndPlay で行う
         m_objects.RebuildFromJson(
             scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
         m_objects.SyncPhysics(m_physics.Physics());

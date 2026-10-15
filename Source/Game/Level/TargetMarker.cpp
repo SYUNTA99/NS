@@ -172,16 +172,6 @@ namespace GL::Level
 
     TargetMarker::TargetMarker() noexcept : NS::Obj::OverlayRenderer() {}
 
-    void TargetMarker::OnStart()
-    {
-        NS::Obj::OverlayRenderer::OnStart();
-
-        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
-        {
-            m_player = ownerPlayer;
-        }
-    }
-
     void TargetMarker::OnUpdate()
     {
         const bool hadShown = m_hasShown;

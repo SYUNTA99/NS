@@ -514,15 +514,10 @@ namespace GL::Level
 
     SlamArrow::SlamArrow() noexcept : NS::Obj::OverlayRenderer() {}
 
-    void SlamArrow::OnStart()
+    void SlamArrow::SetPlayer(::Player& player) noexcept
     {
-        NS::Obj::OverlayRenderer::OnStart();
-
-        if (::Player* ownerPlayer = NS::Obj::Cast<::Player>(Owner()))
-        {
-            m_player = ownerPlayer;
-            m_collider = &ownerPlayer->Collider();
-        }
+        m_player = &player;
+        m_collider = &player.Collider();
     }
 
     void SlamArrow::ResolveAssets(NS::Obj::AssetManager& assets)
