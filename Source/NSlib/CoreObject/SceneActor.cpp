@@ -1,6 +1,10 @@
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ActorInitInfo.h"
+#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SubObject.h"
 #include "NSlib/CoreObject/SubObjects/Animation.h"
@@ -228,6 +232,25 @@ namespace NS
     }
 
     SceneActor::~SceneActor() noexcept = default;
+
+    void SceneActor::Init(const ActorInitInfo& info)
+    {
+        OnInit();
+        ApplyArchetype(*this);
+        if (info.placement != nullptr)
+        {
+            ApplyObjectSubObjs(*this, *info.placement);
+        }
+        // 素材の参照は欄にある。欄を書き終えてから読む
+        InitAssets(info);
+    }
+
+    void SceneActor::InitAssets(const ActorInitInfo& info)
+    {
+        // TODO: 部品の ResolveAssets を一列に呼んでいる。部品ごとに名指しで読む形にしたら、このループと ResolveAssets を消す
+        ForEachReflectedSubObj(*this,
+                               [&](const SubObjectDesc&, SubObject* subObject) { subObject->ResolveAssets(info.assets); });
+    }
 
     void SceneActor::OnStart()
     {

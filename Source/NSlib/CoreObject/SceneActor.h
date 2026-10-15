@@ -34,6 +34,7 @@ namespace NS
     class HitReaction;
     class Message;
     class Scene;
+    struct ActorInitInfo;
 
     //! @brief 世界に置く物の基底。Transform と部品を持ち、MapPartsActor / PropActor / PlayerActor などが派生する
     //! @details 所属シーンを持ち、IUse〜 の問いを居るシーンへ繋ぐ。シーンに居ない間の問いは nullptr を返す
@@ -162,6 +163,8 @@ namespace NS
         // 基底の部品の型を替える派生は、基底の OnInit を呼ばずに自分で作る
         //! 所属の Scene は入る道によって付いていないので、ここでは読まない
         virtual void OnInit() {}
+        //! 部品の素材を読む。Init が欄を書いた直後に 1 回呼ぶ。基底は登録された全部品を読むので、上書きする派生は基底も呼ぶ
+        virtual void InitAssets(const ActorInitInfo& info);
 
         // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
         template <class TBase, class T = TBase, class... TArgs>
@@ -224,6 +227,8 @@ namespace NS
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
         // 呼ぶのは作る関数 2 つだけで、作った直後に 1 回。private にして 2 回目を起こさない
         void Init() { OnInit(); }
+        //! アクターを作る順。部品を作る → 種類の既定 → 配置の上書き → 素材
+        void Init(const ActorInitInfo& info);
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
         //! @details ActorList::SnapshotObjects が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
