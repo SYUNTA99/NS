@@ -52,7 +52,8 @@ namespace NS::Obj
         //! 置物の出し直しのボタン (R かゲームパッドの Back) を押した場合 true、それ以外の場合は false
         [[nodiscard]] bool RespawnPressed() const noexcept { return m_respawnPressed; }
 
-        void OnUpdate() override;
+        //! キーボードとゲームパッドから今の入力を読む。有効でない間は何もしない
+        void Poll();
 
         // 入力を渡すだけで保存する調整値は無い。型名だけ登録する
         NS_REFLECT_NONE(PlayerInput, SubObject)

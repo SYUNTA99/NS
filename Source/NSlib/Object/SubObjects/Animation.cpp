@@ -252,7 +252,7 @@ namespace NS::Obj
         ApplyPose(m_time);
     }
 
-    void Animation::OnUpdate()
+    void Animation::Advance()
     {
         const float duration = Duration();
         if (m_playing && duration > 0.0f)

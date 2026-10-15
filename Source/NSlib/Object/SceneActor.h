@@ -202,13 +202,6 @@ namespace NS::Obj
         virtual void BodyStep() {}
         //! 移動後の姿勢から見た目・演出・寿命を更新する段
         virtual void VisualStep() {}
-        static void TickSubObj(SubObject* subObject)
-        {
-            if (subObject != nullptr && subObject->IsActive())
-            {
-                subObject->OnUpdate();
-            }
-        }
         //! 自分を持ち主に、TStates の先頭へ入る状態機械を一度だけ構築する
         //! OnEnter が使う部品を先に用意する。outMachine は OnEnter 前に設定する
         //! 基底が所有し、型付きポインタは非所有。既に構築済みなら変更せず false

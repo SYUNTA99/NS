@@ -124,25 +124,11 @@ namespace
         std::vector<std::string>& m_destroyed;
     };
 
-    class PassivePart final : public NS::Obj::SubObject
+    // 部品は自分からは動かない。基底に更新の関数があると、持ち主が全部の部品へ回す道が戻る
+    template <class TSubObject = NS::Obj::SubObject> void CheckSubObjectHasNoUpdate()
     {
-    public:
-        void OnUpdate() override { ++updates; }
-        int updates = 0;
-    };
-
-    class FixedPartActor final : public NS::Obj::SceneActor
-    {
-    public:
-        NS_REFLECT_BEGIN(FixedPartActor, NS::Obj::SceneActor)
-        NS_REFLECT_SUBOBJ(passive, "Passive")
-        NS_REFLECT_END()
-
-        std::unique_ptr<PassivePart> passive;
-
-    protected:
-        void OnInit() override { CreateSubObj(passive); }
-    };
+        static_assert(!requires(TSubObject& part) { part.OnUpdate(); });
+    }
 
     class ReflectedProbePart final : public NS::Obj::SubObject
     {
@@ -343,13 +329,9 @@ TEST(FixedParts, TransformClampsOnlyTheScaleFromTheField)
     EXPECT_EQ(actor.Root().Scale(), (NS::Vector3{0.0f, 1.0f, 0.0f}));
 }
 
-TEST(FixedParts, BaseActorDoesNotImplicitlyUpdateEveryEnumeratedPart)
+TEST(FixedParts, SubObjectBaseHasNoUpdate)
 {
-    const std::unique_ptr<FixedPartActor> owned = NS::Obj::CreateActor<FixedPartActor>();
-    FixedPartActor& actor = *owned;
-    ASSERT_EQ(actor.FindSubObj("Passive"), actor.passive.get());
-    actor.Update();
-    EXPECT_EQ(actor.passive->updates, 0);
+    CheckSubObjectHasNoUpdate();
 }
 
 TEST(FixedParts, CommonMembersAreCreatedByTheActorClass)

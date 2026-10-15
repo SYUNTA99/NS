@@ -49,8 +49,6 @@ namespace NS::Obj
         //! データの active を切り替える。実行中に部品を外す SetActive とは別系統で、互いを上書きしない
         void SetEnabled(bool enabled) noexcept { m_enabled = enabled; }
 
-        virtual void OnUpdate() {}
-
         //! 配置物の組み立てが値の適用後に呼ぶ。AssetManager が無い間 (テスト等) は呼ばれない
         virtual void ResolveAssets(AssetManager&) {}
 
@@ -61,8 +59,8 @@ namespace NS::Obj
         void AttachOwner(SceneActor* owner) noexcept { m_owner = owner; }
 
         SceneActor* m_owner = nullptr; // 所有 SceneActor、attach 前は nullptr
-        bool m_active = true;     // false なら OnUpdate を skip
-        bool m_enabled = true;    // データの active 値、false なら OnUpdate を飛ばす
+        bool m_active = true;
+        bool m_enabled = true;
     };
 
 } // namespace NS::Obj

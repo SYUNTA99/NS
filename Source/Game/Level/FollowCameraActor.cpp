@@ -58,7 +58,9 @@ namespace GL::Level
 
     void FollowCameraActor::BodyStep()
     {
-        TickSubObj(m_vcam.get());
+        // clang-format off
+        if (m_vcam && m_vcam->IsActive()) { m_vcam->Follow(); }
+        // clang-format on
     }
 
     void FollowCameraActor::OnDisappear() noexcept

@@ -160,7 +160,7 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
         player.Body().SetGrounded(true);
         player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
         player.UpdateAnimation();
-        animation->OnUpdate();
+        animation->Advance();
         times[index] = animation->Time();
     }
     ASSERT_GT(times[0], 0.0f);

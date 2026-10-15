@@ -115,7 +115,7 @@ namespace
     {
     public:
         explicit LoggingSubObject(TickLog* log = nullptr) noexcept : NS::Obj::SubObject(), m_log(log) {}
-        void OnUpdate() override
+        void Log()
         {
             if (m_log != nullptr)
             {
@@ -142,7 +142,7 @@ namespace
         void StateStep() override
         {
             m_log.order.push_back("actor");
-            TickSubObj(m_part.get());
+            m_part->Log();
         }
 
     private:

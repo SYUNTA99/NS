@@ -176,7 +176,9 @@ void PlayerActor::UpdateAnimation()
 
 void PlayerActor::ReadInput()
 {
-    TickSubObj(m_input.get());
+    // clang-format off
+    if (m_input && m_input->IsActive()) { m_input->Poll(); }
+    // clang-format on
 }
 
 void PlayerActor::Update(bool chargeHeld)

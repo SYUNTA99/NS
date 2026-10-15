@@ -408,7 +408,9 @@ namespace NS::Obj
 
     void SceneActor::PrepareRender()
     {
-        TickSubObj(m_animation.get());
+        // clang-format off
+        if (m_animation && m_animation->IsActive()) { m_animation->Advance(); }
+        // clang-format on
     }
 
     void SceneActor::OnEndPlay()

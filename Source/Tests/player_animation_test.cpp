@@ -25,11 +25,11 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
     ASSERT_EQ(animation->CurrentClip(), 1u);
-    animation->OnUpdate();
+    animation->Advance();
     const float first = animation->Time();
     EXPECT_NEAR(first, NS::OS::FrameTimer::FixedDelta() * 0.5f, 0.00001f);
     player.UpdateAnimation();
-    animation->OnUpdate();
+    animation->Advance();
     EXPECT_NEAR(animation->Time(), first * 2.0f, 0.00001f);
     player.Body().SetLateralVelocity(NS::Vector3{2.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
@@ -110,6 +110,6 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
     ASSERT_EQ(NS::Obj::ApplyJsonFields(*clipParts, {{"再生速度の下限", 0.75f}}), 0u);
     player.UpdateAnimation();
     ASSERT_EQ(animation->CurrentClip(), 1u);
-    animation->OnUpdate();
+    animation->Advance();
     EXPECT_NEAR(animation->Time(), NS::OS::FrameTimer::FixedDelta() * 0.75f, 0.00001f);
 }
