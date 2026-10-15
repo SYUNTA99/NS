@@ -78,8 +78,8 @@ void PlayerActor::OnInit()
     GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
     (void)CreateSubObj(m_resolver);
     CreateSubObj(m_hitReaction);
-    CreateSubObj(m_targetMarker)->SetPlayer(*this);
-    CreateSubObj(m_slamArrow)->SetPlayer(*this);
+    CreateSubObj(m_targetMarker);
+    CreateSubObj(m_slamArrow);
     (void)CreateSubObj(m_effectKeeper);
     (void)CreateSubObj(m_chargeEffects);
     (void)CreateSubObj(m_impactEffects);
@@ -246,8 +246,10 @@ void PlayerActor::BodyStep()
 void PlayerActor::VisualStep()
 {
     UpdateAnimation();
-    TickSubObj(m_targetMarker.get());
-    TickSubObj(m_slamArrow.get());
+    // clang-format off
+    if (m_targetMarker->IsActive()) { m_targetMarker->Update(m_charge); }
+    if (m_slamArrow->IsActive()) { m_slamArrow->Update(m_charge, *m_params, *m_collider); }
+    // clang-format on
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
     m_resolver->WriteTremor();
     TickSubObj(m_appearance.get());

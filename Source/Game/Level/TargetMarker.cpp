@@ -1,7 +1,7 @@
 #include "Game/Level/TargetMarker.h"
 
 #include "Game/Level/ImpactInputJudge.h"
-#include "Game/PlayerActor.h"
+#include "Game/Player/PlayerStatus.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Object/SceneActor.h"
@@ -172,19 +172,19 @@ namespace GL::Level
 
     TargetMarker::TargetMarker() noexcept : NS::Obj::OverlayRenderer() {}
 
-    void TargetMarker::OnUpdate()
+    void TargetMarker::Update(const GL::Player::ChargeStatus& charge)
     {
         const bool hadShown = m_hasShown;
         const NS::AABB previousBounds = m_shown.bounds;
         m_hasShown = false;
         // 溜め量は放した後も残るので、溜めているかで示すフレームを決める
-        if (m_player == nullptr || !m_player->ChargeJudge().IsCharging())
+        if (!charge.Judge().IsCharging())
         {
             // 放したフレームは外れた後の枠も出さない
             m_framesSinceLost = -1;
             return;
         }
-        m_hasShown = m_player->TryGetAimTarget(m_shown);
+        m_hasShown = charge.TryGetAimTarget(m_shown);
 
         if (m_hasShown)
         {

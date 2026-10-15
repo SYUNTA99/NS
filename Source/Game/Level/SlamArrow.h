@@ -12,7 +12,11 @@
 #include <string>
 #include <vector>
 
-class PlayerActor;
+namespace GL::Player
+{
+    class ChargeStatus;
+    class PlayerParams;
+} // namespace GL::Player
 
 namespace NS::Gfx
 {
@@ -136,14 +140,13 @@ namespace GL::Level
     public:
         SlamArrow() noexcept;
 
-        //! 矢印を組む元の PlayerActor と、その移動の当たり。持ち主の PlayerActor が OnInit で渡す。
-        //! 渡されなければ何も組まない
-        void SetPlayer(::PlayerActor& player) noexcept;
-
         void ResolveAssets(NS::Obj::AssetManager& assets) override;
 
-        //! 溜め中の矢印を控える。狙いが無いか溜めを終えたら、控えと経過フレーム数を戻す
-        void OnUpdate() override;
+        //! @brief 溜め中の矢印を控える。狙いが無いか溜めを終えたら、控えと経過フレーム数を戻す
+        //! @details 道筋は params の突進の速さと重力、玉の半径と床は collider (持ち主の移動の当たり) から出す
+        void Update(const GL::Player::ChargeStatus& charge,
+                    const GL::Player::PlayerParams& params,
+                    const NS::Obj::Collider& collider);
 
         //! ロックオンの枠 (TargetMarker の 0) より先に描き、枠を矢印の上に重ねる
         [[nodiscard]] int OverlayOrder() const noexcept override { return -1; }
@@ -203,9 +206,7 @@ namespace GL::Level
         SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
         bool m_hasShown = false;
         int m_framesSinceShown = -1;                   // 矢印を出していない間は負
-        const ::PlayerActor* m_player = nullptr;            // 溜めと狙いの問い先。非所有
-        const NS::Obj::Collider* m_collider = nullptr; // 玉の半径と床の問い先。非所有
-        NS::Gfx::StaticMesh* m_mesh = nullptr;         // 共有の上向きの板 (非所有)
+        NS::Gfx::StaticMesh* m_mesh = nullptr;        // 共有の上向きの板 (非所有)
         NS::Gfx::Material* m_bandMaterial = nullptr;   // 帯のマテリアル (非所有)
         NS::Gfx::Material* m_headMaterial = nullptr;   // 矢じりのマテリアル (非所有)
         std::vector<NS::Gfx::DrawItem> m_drawScratch;  // 描く単位を毎フレーム積み直す置き場。確保を使い回す

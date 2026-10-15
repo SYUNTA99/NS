@@ -2,8 +2,9 @@
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/PlayerActor.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/PlayerStatus.h"
+#include "Game/Player/SlamBall.h"
 #include "NSlib/Graphics/FrameConstants.h"
 #include "NSlib/Graphics/Material.h"
 #include "NSlib/Graphics/Pipeline.h"
@@ -514,12 +515,6 @@ namespace GL::Level
 
     SlamArrow::SlamArrow() noexcept : NS::Obj::OverlayRenderer() {}
 
-    void SlamArrow::SetPlayer(::PlayerActor& player) noexcept
-    {
-        m_player = &player;
-        m_collider = &player.Collider();
-    }
-
     void SlamArrow::ResolveAssets(NS::Obj::AssetManager& assets)
     {
         m_mesh = assets.Builtin(m_meshAsset);
@@ -527,20 +522,21 @@ namespace GL::Level
         m_headMaterial = LoadArrowMaterial(assets, m_headMaterialAsset.c_str());
     }
 
-    void SlamArrow::OnUpdate()
+    void SlamArrow::Update(const GL::Player::ChargeStatus& charge,
+                           const GL::Player::PlayerParams& params,
+                           const NS::Obj::Collider& collider)
     {
         m_hasShown = false;
         // 溜め量は放した後も残るので、溜めているかで組むフレームを決める。相手がいなくても放った玉の道筋は出す
         SlamArrowState state{};
-        if (m_player == nullptr || m_collider == nullptr || !m_player->ChargeJudge().IsCharging() ||
-            !m_player->TryGetAimLine(state.line))
+        if (!charge.Judge().IsCharging() || !charge.TryGetAimLine(state.line))
         {
             m_framesSinceShown = -1;
             return;
         }
         // 先は紫の揺れで振れた線の上の相手で決める。振れて外れた時は相手の手前で止めない
         SlamLineTarget target{};
-        state.hasTarget = m_player->TryGetLineTarget(target);
+        state.hasTarget = charge.TryGetLineTarget(target);
         // 前のフレームに出ていなければ 0 から数える。相手が替わっても数え直さない
         if (m_framesSinceShown < 0)
         {
@@ -551,12 +547,12 @@ namespace GL::Level
             ++m_framesSinceShown;
         }
 
-        state.ballRadius = m_collider->CapsuleRadius();
+        state.ballRadius = collider.CapsuleRadius();
         state.targetContact = target.launchContact;
         state.framesSinceShown = m_framesSinceShown;
-        state.charge01 = m_player->ChargeJudge().Charge01();
-        state.chargeFull = m_player->ChargeJudge().IsChargeFull();
-        state.overcharge01 = m_player->ChargeJudge().Overcharge01();
+        state.charge01 = charge.Judge().Charge01();
+        state.chargeFull = charge.Judge().IsChargeFull();
+        state.overcharge01 = charge.Judge().Overcharge01();
 
         SlamArrowShape shape{};
         if (!BuildSlamArrow(state, m_desc, shape))
@@ -564,13 +560,13 @@ namespace GL::Level
             return;
         }
         SlamArrowGroundProbe probe;
-        const NS::Obj::Collider* collider = m_collider;
+        const NS::Obj::Collider* ground = &collider;
         // Scene に居なければ probe は空のまま。空の probe は床を見ない合図
         if (Owner()->OwningScene() != nullptr)
         {
-            probe = [collider](const NS::Vector3& from, float maxDepth, float& outGroundY) {
+            probe = [ground](const NS::Vector3& from, float maxDepth, float& outGroundY) {
                 float distance = 0.0f;
-                if (!NS::Obj::RaycastCollision(collider, from, NS::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
+                if (!NS::Obj::RaycastCollision(ground, from, NS::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
                 {
                     return false;
                 }
@@ -586,15 +582,14 @@ namespace GL::Level
         else
         {
             // 道筋は放つ縦の速さを決めた LaunchPitch と同じ重力の計算。矢印と実際の飛び方をずらさない
-            const GL::Player::PlayerParams& params = m_player->Params();
             const GL::Player::LaunchPath path{.horizontalSpeed = params.m_bodySlamSpeed,
                                               .verticalSpeed = state.line.launchVerticalSpeed,
                                               .gravity = params.Gravity(),
                                               .dt = NS::OS::FrameTimer::FixedDelta(),
                                               .grounded = state.line.grounded,
                                               .maxFrames = params.m_launchMaxFrames};
-            // 線の始まりは根。玉の中心は持ち主の SlamBallAt が決める
-            const float ballCenterHeight = m_player->SlamBallAt(state.line.origin).center.y;
+            // 線の始まりは根。玉の中心は突進の玉と同じ SlamBallAt が決める
+            const float ballCenterHeight = GL::Player::SlamBallAt(collider, state.line.origin).center.y;
             PlaceSlamArrowOnPath(probe, path, ballCenterHeight, m_desc, shape);
         }
         m_shown = std::move(shape);

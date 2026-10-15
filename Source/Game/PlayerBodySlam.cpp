@@ -2,6 +2,7 @@
 
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/SlamBall.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
@@ -401,9 +402,7 @@ void PlayerActor::ChangeCurled(bool curled) noexcept
 
 NS::Sphere PlayerActor::SlamBallAt(const NS::Vector3& rootPosition) const noexcept
 {
-    // 立ち姿の下の球が、丸まった後の玉の中心。ChangeCurled が下端を揃えて根を下げるので、この式が成り立つ
-    const NS::Phys::Capsule capsule = m_collider->CapsuleAt(rootPosition);
-    return NS::Sphere{capsule.center - capsule.axis * capsule.halfHeight, capsule.radius};
+    return GL::Player::SlamBallAt(*m_collider, rootPosition);
 }
 
 void PlayerActor::UncurlWhenSettled() noexcept

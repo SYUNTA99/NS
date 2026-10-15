@@ -11,7 +11,10 @@
 
 #include <vector>
 
-class PlayerActor;
+namespace GL::Player
+{
+    class ChargeStatus;
+} // namespace GL::Player
 
 namespace GL::Level
 {
@@ -59,10 +62,8 @@ namespace GL::Level
     public:
         TargetMarker() noexcept;
 
-        //! 枠を示す元の PlayerActor。持ち主の PlayerActor が OnInit で渡す。渡されなければ何も示さない
-        void SetPlayer(::PlayerActor& player) noexcept { m_player = &player; }
-
-        void OnUpdate() override;
+        //! 溜めている間、確定した狙う相手へ枠を控える。溜めを終えたら控えと経過フレーム数を戻す
+        void Update(const GL::Player::ChargeStatus& charge);
 
         void OnRenderOverlay(const NS::Gfx::RenderContext& context) override;
 
@@ -107,6 +108,5 @@ namespace GL::Level
         int m_framesSinceCapture = 0; // 外れた後は外れたフレームの値で止める
         NS::AABB m_lostBounds{};      // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない
         int m_framesSinceLost = -1;
-        const ::PlayerActor* m_player = nullptr; // 溜めと狙う相手の問い先。非所有
     };
 } // namespace GL::Level
