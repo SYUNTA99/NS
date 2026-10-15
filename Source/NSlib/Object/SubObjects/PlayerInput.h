@@ -53,7 +53,7 @@ namespace NS::Obj
         [[nodiscard]] bool RespawnPressed() const noexcept { return m_respawnPressed; }
 
         //! キーボードとゲームパッドから今の入力を読む。有効でない間は何もしない
-        void Poll();
+        void Update();
 
         // 入力を渡すだけで保存する調整値は無い。型名だけ登録する
         NS_REFLECT_NONE(PlayerInput, SubObject)

@@ -73,7 +73,7 @@ namespace NS::Obj
         }
     }
 
-    void PlayerInput::Poll()
+    void PlayerInput::Update()
     {
         if (!IsActive())
         {

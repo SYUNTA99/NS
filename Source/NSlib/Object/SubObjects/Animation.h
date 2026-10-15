@@ -69,7 +69,7 @@ namespace NS::Obj
         //! 骨の定数バッファを作り、持ち主の Model へ差して今の時刻の姿勢を書く
         void BindToModel();
         //! 再生中なら体の時間ぶん時刻を進め、今の時刻の姿勢を書く
-        void Advance();
+        void Update();
 
         //! modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。同じ object の Model
         //! があれば同じ mesh を差す。空 / 解決不可はそのまま何もしない (SetMesh 等の手動配線を壊さない)

@@ -60,7 +60,7 @@ namespace NS::Obj
         void SetTargetHeightOffset(float offset) noexcept;
 
         //! @brief このフレームの溜めの状態を受け取る
-        //! @details 受けた値は次の Follow だけで使う。渡されなかったフレームは押していないのと同じに扱う
+        //! @details 受けた値は次の Update だけで使う。渡されなかったフレームは押していないのと同じに扱う
         //! 非数・0 未満・1 を超える溜め量と、狙う相手がいる時の非数の中心・非数か負の半径は壊れた値
         //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
         bool SetFollowCharge(const FollowChargeDesc& desc) noexcept;
@@ -111,7 +111,7 @@ namespace NS::Obj
         void SetInitialPoseFromCameraPosition(const NS::Vector3& cameraPosition) noexcept;
 
         //! 固定ステップで向きと距離を更新する。EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
-        void Follow();
+        void Update();
 
         //! alpha で補間した target を追う最終姿勢を返す。CameraManager が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
@@ -200,7 +200,7 @@ namespace NS::Obj
         bool m_followGrounded = false;
         float m_followHorizontalSpeed = 0.0f; // 速度の向きは使わないので水平の大きさへ畳んで持つ
         bool m_hasFollowMotion = false;
-        bool m_framingHeld = false;        // このフレームに距離と溜めの締めを保つか。Follow が読んで偽へ戻す
+        bool m_framingHeld = false;        // このフレームに距離と溜めの締めを保つか。Update が読んで偽へ戻す
         float m_targetHeightOffset = 0.0f; // 追う相手の根から注視の高さを測り始める所までの縦のずれ
 
         float m_yaw = 0.0f;       // 水平回転角
@@ -264,7 +264,7 @@ namespace NS::Obj
         // 勝手に出た突進の間に見せる遅れの上限 (m)。反動の 1.5 m だと約 5 フレームで届き、普通の突進と見分けにくい
         float m_forcedLaunchMaxLag = 3.0f;
 
-        FollowChargeDesc m_charge{};             // 次の Follow で使う溜めの状態
+        FollowChargeDesc m_charge{};             // 次の Update で使う溜めの状態
         float m_chargeHoldNarrowDegrees = 0.0f;  // 前のフレームの押している間の締め (度)
         float m_chargeNarrowDegrees = 0.0f;      // 今の締め (度)
         float m_chargeReturnFromDegrees = 0.0f;  // 戻し始めた時の締め (度)
@@ -275,7 +275,7 @@ namespace NS::Obj
         float m_chargeCenterTilt = 0.0f;         // 二人を縦の中心へ寄せる、注視点だけの上の向きのずれ (m)
         float m_chargeCenterTiltVelocity = 0.0f; // 寄せの速さ (m/秒)
 
-        FollowReboundDesc m_rebound{};    // 次の Follow で使う反動の状態
+        FollowReboundDesc m_rebound{};    // 次の Update で使う反動の状態
         bool m_wasRebounding = false;     // 前のフレームに反動の状態だったか
         bool m_wasForcedSlamming = false; // 前のフレームに勝手に出た突進の最中だったか
         bool m_reboundLookHeld = false;   // 反動になってから接地するまで、回す入力を受けないか

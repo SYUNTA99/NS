@@ -177,7 +177,7 @@ void PlayerActor::UpdateAnimation()
 void PlayerActor::ReadInput()
 {
     // clang-format off
-    if (m_input && m_input->IsActive()) { m_input->Poll(); }
+    if (m_input && m_input->IsActive()) { m_input->Update(); }
     // clang-format on
 }
 

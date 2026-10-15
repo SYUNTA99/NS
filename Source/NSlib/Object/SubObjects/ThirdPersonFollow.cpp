@@ -632,13 +632,13 @@ namespace NS::Obj
         m_initialPitch = pitch;
         m_idleDistance = distance;
 
-        // 編集中は Follow が走らないので現在値も直接書き、EvaluatePose 表示をその場で追従させる
+        // 編集中は Update が走らないので現在値も直接書き、EvaluatePose 表示をその場で追従させる
         m_yaw = yaw;
         m_pitch = pitch;
         m_distance = distance;
     }
 
-    void ThirdPersonFollow::Follow()
+    void ThirdPersonFollow::Update()
     {
         // 受けた溜めと反動の状態はこのフレームだけ使う。渡されなかったフレームは押していない・反動でないのと同じ
         const FollowChargeDesc charge = m_charge;

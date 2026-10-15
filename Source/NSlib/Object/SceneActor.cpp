@@ -409,7 +409,7 @@ namespace NS::Obj
     void SceneActor::PrepareRender()
     {
         // clang-format off
-        if (m_animation && m_animation->IsActive()) { m_animation->Advance(); }
+        if (m_animation && m_animation->IsActive()) { m_animation->Update(); }
         // clang-format on
     }
 
