@@ -130,7 +130,28 @@ namespace
         player.RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
         EXPECT_TRUE(player.BodySlam());
         player.Update(false);
-        return player.Resolver().LastImpact();
+        return player.Resolver().Answer().lastImpact;
+    }
+
+    // 裁定の観測と決定を、自機の段と同じ引数で 1 回ずつ呼ぶ。答えにある自機を動かす事はしない
+    void ObserveAndStepImpact(PlayerActor& player)
+    {
+        player.Resolver().ObserveImpact(player.SlamMotion(), &player.Collider());
+        player.Resolver().StepState(player.SlamMotion(),
+                                    &player.Params(),
+                                    &player.Body(),
+                                    &player.Collider(),
+                                    player.ModelSubObj(),
+                                    player.HitReactionSubObj());
+    }
+
+    bool FindSlamLineTarget(PlayerActor& player,
+                            const Vector3& direction,
+                            float distance,
+                            GL::Level::SlamLineTarget& out)
+    {
+        return player.Resolver().FindSlamLineTarget(
+            direction, distance, &player.Params(), &player.Body(), &player.Collider(), out);
     }
 } // namespace
 
@@ -764,7 +785,7 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
     player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     player->Update(false);
-    const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     ASSERT_EQ(impact.sequence, 1u);
 
     const Vector3 center = body.Center();
@@ -843,9 +864,8 @@ TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().ObserveImpact();
-    player->Resolver().StepState();
-    const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    ObserveAndStepImpact(*player);
+    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     ASSERT_EQ(impact.sequence, 1u);
     EXPECT_EQ(impact.tier, HitTier::Wide);
     EXPECT_FLOAT_EQ(impact.positionFactor, 0.7f);
@@ -864,9 +884,8 @@ TEST(HitZonesTest, VerdictJudgesTheBallWhereThisStepMovesIt)
     player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, riseSpeed);
     ASSERT_TRUE(player->BodySlam());
     ASSERT_FLOAT_EQ(player->BodySlamVelocity().y, riseSpeed);
-    player->Resolver().ObserveImpact();
-    player->Resolver().StepState();
-    const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    ObserveAndStepImpact(*player);
+    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     ASSERT_EQ(impact.sequence, 1u);
     EXPECT_EQ(impact.tier, HitTier::Center);
 }
@@ -883,7 +902,7 @@ TEST(HitZonesTest, AimPredictionGivesTheSameTierAsTheVerdict)
         PlayerActor* player = PlaceSlamTarget(scene, entry.first);
         ASSERT_NE(player, nullptr);
         GL::Level::SlamLineTarget predicted{};
-        ASSERT_TRUE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
+        ASSERT_TRUE(FindSlamLineTarget(*player, Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
         EXPECT_EQ(predicted.tier, entry.second);
         const GL::Level::ImpactRecord& impact = SlamOnce(*player);
         ASSERT_EQ(impact.sequence, 1u);
@@ -949,7 +968,7 @@ TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
     goal->Root().SetPosition(Vector3{0.0f, 0.5f, 1.5f});
 
     GL::Level::SlamLineTarget predicted{};
-    ASSERT_TRUE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
+    ASSERT_TRUE(FindSlamLineTarget(*player, Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
     EXPECT_EQ(predicted.target.id, 2u);
 }
 
@@ -981,5 +1000,5 @@ TEST(HitSensor, UnsetKindIsNotATackleTarget)
     unset->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});
 
     GL::Level::SlamLineTarget predicted{};
-    EXPECT_FALSE(player->Resolver().FindSlamLineTarget(Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
+    EXPECT_FALSE(FindSlamLineTarget(*player, Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
 }

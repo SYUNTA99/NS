@@ -19,8 +19,14 @@ namespace GL::Level
     class ImpactResolver;
     class SlamArrow;
     struct ImpactTuning;
+    struct LaunchArc;
     ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams& params) noexcept;
 } // namespace GL::Level
+
+namespace GL::Player
+{
+    struct ReboundArc;
+} // namespace GL::Player
 
 namespace GL::Player
 {
@@ -50,6 +56,9 @@ namespace GL::Player
                                  .apexSpeed = m_apexHangVy,
                                  .apexScale = m_apexHangScale};
         }
+        //! 当たりが決めた反動の向き・高さ・距離を、ReboundGravity の重力で飛ぶ曲線にする
+        //! 反動の初速と滞空の秒は、自機が弾く時も裁定が記録に書く時もこの曲線から引く
+        [[nodiscard]] GL::Level::LaunchArc ReboundLaunchArc(const ReboundArc& arc) const noexcept;
         //! @brief 溜め量 0..1 を欄「チャージ倍率カーブ」で威力の倍率にする
         //! @details 非有限の入力とカーブの 0 以下の値は 1 とみなす。ImpactResolver が当たりの威力を作る時に読む
         //! @param[in] charge01 溜め量。0..1 の外は丸める

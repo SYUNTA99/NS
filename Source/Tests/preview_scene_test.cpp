@@ -63,10 +63,10 @@ namespace
         for (int frame = 0; frame < 60; ++frame)
         {
             preview.OnUpdate();
-            if (player->Resolver().LastImpact().sequence > 0)
+            if (player->Resolver().Answer().lastImpact.sequence > 0)
             {
                 result.impactFrame = frame;
-                result.record = player->Resolver().LastImpact();
+                result.record = player->Resolver().Answer().lastImpact;
                 break;
             }
         }
@@ -99,5 +99,5 @@ TEST(PreviewScene, CopiedSceneReachesTheImpactWithoutTouchingTheEditedScene)
 
     EXPECT_EQ(edited.ToJson(), snapshot);
     EXPECT_TRUE(editedPlayer->Root().Position() == editedPosition);
-    EXPECT_EQ(editedPlayer->Resolver().LastImpact().sequence, 0u);
+    EXPECT_EQ(editedPlayer->Resolver().Answer().lastImpact.sequence, 0u);
 }

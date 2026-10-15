@@ -149,22 +149,22 @@ namespace
             player.Update(false);
             rock.Update();
             TickHitDirectors(player);
-            if (!detected && player.Resolver().LastImpact().sequence == 0)
+            if (!detected && player.Resolver().Answer().lastImpact.sequence == 0)
             {
                 continue;
             }
             detected = true;
             ClockFrame now;
-            now.hitStopping = player.Resolver().IsHitStopping();
-            now.awaitingRebound = player.Resolver().IsAwaitingRebound();
+            now.hitStopping = player.Resolver().Answer().hitStopping;
+            now.awaitingRebound = player.Resolver().Answer().awaitingRebound;
             now.canMoveBody = player.CanMoveBody();
-            now.freezeBegan = player.Resolver().FreezeBeganThisStep();
-            now.released = player.Resolver().ReleasedThisStep();
+            now.freezeBegan = player.Resolver().Answer().freezeBegan;
+            now.released = player.Resolver().Answer().released;
             now.rebounding = player.IsRebounding();
             now.rockFrozen = rock.IsFrozen();
             now.rockFlying = rock.IsFlying();
-            now.shape = player.Resolver().ShapeFactors();
-            now.shapeAnimating = player.Resolver().IsShapeAnimating();
+            now.shape = player.Resolver().Answer().shapeFactors;
+            now.shapeAnimating = player.Resolver().Answer().shapeAnimating;
             now.flashRemaining = FlashRemaining(player);
             now.padLeft = NS::OS::Input::Get().Gamepad().Vibration().left;
             if (const NS::Obj::CameraManager* cameras = player.GetCameraManager())
@@ -228,7 +228,7 @@ TEST(ImpactTimelineClock, EventsStartTheStopReleaseAndReboundOnTheirFrames)
         EXPECT_EQ(frame.rockFlying, k >= 6);
         EXPECT_EQ(frame.rebounding, k >= 8);
     }
-    EXPECT_EQ(player->Resolver().LastImpact().hitStopSteps, 5);
+    EXPECT_EQ(player->Resolver().Answer().lastImpact.hitStopSteps, 5);
 }
 
 // 止めの長さを決めるのはタイムラインだけ。12 を 8 にすると止めが 8 になる
@@ -244,7 +244,7 @@ TEST(ImpactTimelineClock, TheStopIsAsLongAsTheTimelineSays)
         ASSERT_NE(player, nullptr);
         const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, steps + 4);
         EXPECT_EQ(CountStopFrames(trace), steps);
-        EXPECT_EQ(player->Resolver().LastImpact().hitStopSteps, steps);
+        EXPECT_EQ(player->Resolver().Answer().lastImpact.hitStopSteps, steps);
     }
 }
 
@@ -286,7 +286,7 @@ TEST(ImpactTimelineClock, AMissingTimelineReleasesOnTheDetectionFrame)
         EXPECT_FALSE(frame.freezeBegan);
         EXPECT_FALSE(frame.shapeAnimating);
     }
-    EXPECT_EQ(player->Resolver().LastImpact().hitStopSteps, 0);
+    EXPECT_EQ(player->Resolver().Answer().lastImpact.hitStopSteps, 0);
 }
 
 // 同じフレームに始まる事象はファイルの並びの順に起きる
@@ -379,7 +379,7 @@ TEST(ImpactTimelineClock, DirectedEventsRunOnlyForTheirDirection)
         PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 1).empty());
-        direction = player->Resolver().LastImpact().direction;
+        direction = player->Resolver().Answer().lastImpact.direction;
         ASSERT_NE(direction, HitDirection::Any);
     }
     for (const bool matching : {true, false})
@@ -446,11 +446,11 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        rehit = player->Resolver().LastImpact().sequence == 2;
+        rehit = player->Resolver().Answer().lastImpact.sequence == 2;
         if (rehit)
         {
             // 前の当たりの返りも止まる。2 回目のタイムラインには白が無い
-            EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+            EXPECT_FALSE(player->Resolver().Answer().shapeAnimating);
             EXPECT_EQ(FlashRemaining(*player), 0);
         }
     }
@@ -458,8 +458,8 @@ TEST(ImpactTimelineClock, ANewHitAbortsTheRunningTimeline)
     player->Update(false);
     rock->Update();
     TickHitDirectors(*player);
-    EXPECT_TRUE(player->Resolver().FreezeBeganThisStep());
-    EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+    EXPECT_TRUE(player->Resolver().Answer().freezeBegan);
+    EXPECT_FALSE(player->Resolver().Answer().shapeAnimating);
 }
 
 // 段階的な明けの事象は置いたフレームに世界を遅くする。使った止めの種類は当たりの記録に残る
@@ -481,8 +481,8 @@ TEST(ImpactTimelineClock, GradualReleaseSlowsTheWorldFromItsFrame)
     rock->Update();
     TickHitDirectors(*player);
     EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.25f);
-    EXPECT_TRUE(player->Resolver().LastImpact().localStop);
-    EXPECT_TRUE(player->Resolver().LastImpact().gradualRelease);
+    EXPECT_TRUE(player->Resolver().Answer().lastImpact.localStop);
+    EXPECT_TRUE(player->Resolver().Answer().lastImpact.gradualRelease);
     // やり直しで当たりを打ち切ると、遅い世界も持ち越さない
     player->ResetState();
     EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
@@ -514,16 +514,16 @@ TEST(ImpactTimelineClock, PurpleOnlyGradualReleaseSkipsTheRedHit)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        EXPECT_FLOAT_EQ(player->Resolver().LastImpact().overcharge01, overcharge);
+        EXPECT_FLOAT_EQ(player->Resolver().Answer().lastImpact.overcharge01, overcharge);
         if (purple == 1)
         {
             EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.25f);
-            EXPECT_TRUE(player->Resolver().LastImpact().gradualRelease);
+            EXPECT_TRUE(player->Resolver().Answer().lastImpact.gradualRelease);
         }
         else
         {
             EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
-            EXPECT_FALSE(player->Resolver().LastImpact().gradualRelease);
+            EXPECT_FALSE(player->Resolver().Answer().lastImpact.gradualRelease);
         }
     }
 }
@@ -538,8 +538,8 @@ TEST(ImpactTimelineClock, TheRecordNamesOnlyTheStopsTheTimelineUsed)
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 2).empty());
-    EXPECT_FALSE(player->Resolver().LastImpact().localStop);
-    EXPECT_FALSE(player->Resolver().LastImpact().gradualRelease);
+    EXPECT_FALSE(player->Resolver().Answer().lastImpact.localStop);
+    EXPECT_FALSE(player->Resolver().Answer().lastImpact.gradualRelease);
 }
 
 // トラウマの揺れは始まりのフレームにトラウマを足し、続けて当てると前のトラウマに足される
@@ -563,7 +563,7 @@ TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
     ASSERT_EQ(RunHit(*player, *rock, 1.0f, 4).size(), 4u);
     const NS::Obj::CameraManager* cameras = player->GetCameraManager();
     ASSERT_NE(cameras, nullptr);
-    const float added = player->Resolver().LastImpact().cameraTrauma;
+    const float added = player->Resolver().Answer().lastImpact.cameraTrauma;
     EXPECT_GT(added, 0.0f);
     EXPECT_NEAR(cameras->Trauma(), added, 1.0e-5f);
     // 次の当たりは前の当たりの返りを止めるが、トラウマは残して足す
@@ -577,7 +577,7 @@ TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        rehit = player->Resolver().LastImpact().sequence == 2;
+        rehit = player->Resolver().Answer().lastImpact.sequence == 2;
     }
     ASSERT_TRUE(rehit);
     player->Update(false);
@@ -648,7 +648,7 @@ TEST(ImpactTimelineClock, ReturnsStartOnTheirOwnFrames)
         EXPECT_NEAR(frame.padLeft, expectedPad, 1e-6f);
     }
     // 当たりの記録は検知のフレームに、タイムラインの返りの始めの値を持つ
-    const ImpactRecord& impact = player->Resolver().LastImpact();
+    const ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     EXPECT_EQ(impact.flashStart, 4);
     EXPECT_FLOAT_EQ(impact.zoomStart, 1.2f);
     EXPECT_FLOAT_EQ(impact.padStart.left, 0.8f);
@@ -673,7 +673,7 @@ TEST(ImpactTimelineClock, AMissShowsNoReboundTrailOrRecoilLines)
     ASSERT_NE(player, nullptr);
     const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 20);
     ASSERT_EQ(trace.size(), 20u);
-    ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Wide);
+    ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, HitTier::Wide);
     bool rebounded = false;
     for (const ClockFrame& frame : trace)
     {
@@ -716,7 +716,7 @@ TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
         PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
         ASSERT_NE(player, nullptr);
         ASSERT_EQ(RunHit(*player, *RockOf(scene), 1.0f, 6).size(), 6u);
-        ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Wide);
+        ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, HitTier::Wide);
         const NS::Obj::CameraManager* cameras = player->GetCameraManager();
         ASSERT_NE(cameras, nullptr);
         const NS::Obj::CameraNudgeModifier* nudge =
@@ -726,7 +726,7 @@ TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
         NS::Vector3 expected{0.0f, 0.0f, 1.0f};
         if (sway)
         {
-            const NS::Vector3 rebound = player->Resolver().LastImpact().selfVelocity;
+            const NS::Vector3 rebound = player->Resolver().Answer().lastImpact.selfVelocity;
             expected = NS::Vector3{rebound.x, 0.0f, rebound.z};
             expected.Normalize();
         }
@@ -767,7 +767,7 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
     PlayerActor* player = PlaceClockScene(scene, 0.75f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(RunHit(*player, *RockOf(scene), 1.0f, 8).size(), 8u);
-    const ImpactRecord& impact = player->Resolver().LastImpact();
+    const ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     ASSERT_EQ(impact.tier, HitTier::Wide);
 
     const NS::Obj::EffectRecord* core = nullptr;
@@ -852,7 +852,7 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        if (clock < 0 && player->Resolver().Answer().lastImpact.sequence == 0)
         {
             continue;
         }
@@ -896,7 +896,7 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         {
             otherContact = other.contactOffset;
             EXPECT_GT(otherContact.Length(), 0.0f);
-            const NS::Vector3 surface = player->Resolver().LastImpact().surfacePoint;
+            const NS::Vector3 surface = player->Resolver().Answer().lastImpact.surfacePoint;
             EXPECT_NEAR((previousSelfRoot + self.contactOffset - surface).Length(), 0.0f, 1.0e-4f);
         }
         else
@@ -936,7 +936,7 @@ TEST(ImpactTimelineClock, TargetTremorRatioKeepsTheSameShareOfTheBody)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        if (clock < 0 && player->Resolver().Answer().lastImpact.sequence == 0)
         {
             continue;
         }
@@ -1026,7 +1026,7 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        if (clock < 0 && player->Resolver().Answer().lastImpact.sequence == 0)
         {
             continue;
         }
@@ -1091,7 +1091,7 @@ TEST(ImpactTimelineClock, GroundWaveSpreadsFromTheContactForItsLength)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        if (clock < 0 && player->Resolver().Answer().lastImpact.sequence == 0)
         {
             continue;
         }
@@ -1103,7 +1103,7 @@ TEST(ImpactTimelineClock, GroundWaveSpreadsFromTheContactForItsLength)
             EXPECT_FLOAT_EQ(now.strength, 0.0f);
             continue;
         }
-        const NS::Vector3 contact = player->Resolver().LastImpact().surfacePoint;
+        const NS::Vector3 contact = player->Resolver().Answer().lastImpact.surfacePoint;
         EXPECT_FLOAT_EQ(now.centerX, contact.x);
         EXPECT_FLOAT_EQ(now.centerZ, contact.z);
         EXPECT_FLOAT_EQ(now.strength, 0.8f);
@@ -1152,7 +1152,7 @@ TEST(ImpactTimelineClock, DistortionRingSpreadsFromTheContactForItsLength)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        if (clock < 0 && player->Resolver().Answer().lastImpact.sequence == 0)
         {
             continue;
         }
@@ -1164,7 +1164,7 @@ TEST(ImpactTimelineClock, DistortionRingSpreadsFromTheContactForItsLength)
             EXPECT_FLOAT_EQ(now.push, 0.0f);
             continue;
         }
-        EXPECT_TRUE(now.center == player->Resolver().LastImpact().surfacePoint);
+        EXPECT_TRUE(now.center == player->Resolver().Answer().lastImpact.surfacePoint);
         EXPECT_NEAR(now.radius, 0.1f * static_cast<float>(clock - 2), 1.0e-5f);
         EXPECT_FLOAT_EQ(now.push, 0.04f);
         EXPECT_FLOAT_EQ(now.halfWidth, 0.05f);
@@ -1207,7 +1207,7 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        if (clock < 0 && player->Resolver().Answer().lastImpact.sequence == 0)
         {
             continue;
         }
@@ -1280,7 +1280,7 @@ TEST(ImpactTimelineClock, DepthShakePushesEachBodyAlongTheForceItTook)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        if (clock < 0 && player->Resolver().Answer().lastImpact.sequence == 0)
         {
             continue;
         }
@@ -1290,7 +1290,7 @@ TEST(ImpactTimelineClock, DepthShakePushesEachBodyAlongTheForceItTook)
         const NS::Vector3 other = rock->ModelSubObj()->DrawOffset();
         if (clock >= 1 && clock <= 6)
         {
-            const NS::uint32 seed = player->Resolver().LastImpact().sequence;
+            const NS::uint32 seed = player->Resolver().Answer().lastImpact.sequence;
             // 真正面から当てたので、受けた力の向きは +z
             EXPECT_NEAR(other.x, 0.0f, 1.0e-5f);
             EXPECT_NEAR(other.y, 0.0f, 1.0e-6f);
@@ -1345,7 +1345,7 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (clock < 0 && player->Resolver().LastImpact().sequence == 0)
+        if (clock < 0 && player->Resolver().Answer().lastImpact.sequence == 0)
         {
             continue;
         }
@@ -1420,7 +1420,7 @@ TEST(ImpactTimelineClock, TheShakeIsItsStrengthScaledByTheHit)
         PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 2.0f);
         ASSERT_NE(player, nullptr);
         ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 1).empty());
-        shakes.push_back(player->Resolver().LastImpact().cameraShake);
+        shakes.push_back(player->Resolver().Answer().lastImpact.cameraShake);
     }
     ASSERT_EQ(shakes.size(), 3u);
     EXPECT_GT(shakes[0], 0.0f);
@@ -1464,8 +1464,8 @@ TEST(ImpactTimelineClock, NegativeEventsStartBeforeContact)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        shaping.push_back(player->Resolver().IsShapeAnimating());
-        if (player->Resolver().LastImpact().sequence != 0)
+        shaping.push_back(player->Resolver().Answer().shapeAnimating);
+        if (player->Resolver().Answer().lastImpact.sequence != 0)
         {
             detectedAt = frame;
         }
@@ -1476,16 +1476,16 @@ TEST(ImpactTimelineClock, NegativeEventsStartBeforeContact)
         SCOPED_TRACE(frame);
         EXPECT_EQ(shaping[static_cast<std::size_t>(frame)], frame >= detectedAt - 3);
     }
-    EXPECT_FLOAT_EQ(player->Resolver().ShapeFactors().y, 0.5f);
+    EXPECT_FLOAT_EQ(player->Resolver().Answer().shapeFactors.y, 0.5f);
     // 形の事象は -3 から 5 フレームなので、検知の次のフレーム (1) が最後
     player->Update(false);
     rock->Update();
     TickHitDirectors(*player);
-    EXPECT_TRUE(player->Resolver().IsShapeAnimating());
+    EXPECT_TRUE(player->Resolver().Answer().shapeAnimating);
     player->Update(false);
     rock->Update();
     TickHitDirectors(*player);
-    EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+    EXPECT_FALSE(player->Resolver().Answer().shapeAnimating);
 }
 
 // 触れる前の時計が走り始めたフレームに放しの弾けを消し、縮みと止まる間を光で隠さない
@@ -1499,12 +1499,12 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsWhenTheBeforeContactClockStarts)
     PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     int beforeContactStep = -1;
-    for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)
+    for (int frame = 0; frame < 60 && player->Resolver().Answer().lastImpact.sequence == 0; ++frame)
     {
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (beforeContactStep < 0 && player->Resolver().IsBeforeContact())
+        if (beforeContactStep < 0 && player->Resolver().Answer().beforeContact)
         {
             beforeContactStep = player->GetEffectKeeper()->Step();
         }
@@ -1539,7 +1539,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsOnTheContactFrameWithoutBeforeContactE
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (player->Resolver().LastImpact().sequence != 0)
+        if (player->Resolver().Answer().lastImpact.sequence != 0)
         {
             contactStep = player->GetEffectKeeper()->Step();
         }
@@ -1577,12 +1577,12 @@ TEST(ImpactTimelineClock, FramesToPredictedContactCountDownToTheDetection)
     PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     std::vector<int> frames;
-    for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)
+    for (int frame = 0; frame < 60 && player->Resolver().Answer().lastImpact.sequence == 0; ++frame)
     {
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        frames.push_back(player->Resolver().FramesToPredictedContact());
+        frames.push_back(player->Resolver().Answer().framesToPredictedContact);
     }
     ASSERT_GE(frames.size(), 5u);
     // 検知のフレームは見込みを捨てる。その前は 1, 2, 3 … と遠くなる
@@ -1615,7 +1615,7 @@ TEST(ImpactTimelineClock, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (player->Resolver().LastImpact().sequence != 0)
+        if (player->Resolver().Answer().lastImpact.sequence != 0)
         {
             contactStep = player->GetEffectKeeper()->Step();
         }
@@ -1650,18 +1650,18 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        started = player->Resolver().IsShapeAnimating();
+        started = player->Resolver().Answer().shapeAnimating;
     }
     ASSERT_TRUE(started);
-    ASSERT_EQ(player->Resolver().LastImpact().sequence, 0u);
+    ASSERT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
     // 相手を線の横へ退ける
     rock->Root().SetPosition(rock->Root().Position() + NS::Vector3{10.0f, 0.0f, 0.0f});
     player->Update(false);
     rock->Update();
     TickHitDirectors(*player);
-    EXPECT_FALSE(player->Resolver().IsShapeAnimating());
-    EXPECT_FLOAT_EQ(player->Resolver().ShapeFactors().y, 1.0f);
-    EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
+    EXPECT_FALSE(player->Resolver().Answer().shapeAnimating);
+    EXPECT_FLOAT_EQ(player->Resolver().Answer().shapeFactors.y, 1.0f);
+    EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
 }
 
 namespace
@@ -1700,7 +1700,7 @@ namespace
     {
         std::vector<OthersStep> steps;
         player.RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-        for (int frame = 0; frame < 60 && player.Resolver().LastImpact().sequence == 0; ++frame)
+        for (int frame = 0; frame < 60 && player.Resolver().Answer().lastImpact.sequence == 0; ++frame)
         {
             const int before = others.ticks;
             const float z = player.Root().Position().z;
@@ -1729,7 +1729,7 @@ TEST(ImpactTimelineClock, OthersStopHoldsTheWorldButNotThePlayerBeforeContact)
     const std::vector<OthersStep> steps = RunUntilDetection(scene, *player, others);
     scene.RemoveSystemTick(others);
     ASSERT_GE(steps.size(), 5u);
-    ASSERT_NE(player->Resolver().LastImpact().sequence, 0u);
+    ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
     const std::size_t detect = steps.size() - 1;
     const float slamStep = 20.0f * NS::OS::FrameTimer::FixedDelta();
     for (std::size_t i = 0; i <= detect; ++i)
@@ -1762,8 +1762,8 @@ TEST(ImpactTimelineClock, OthersStopDoesNotRunForAMissPrediction)
     }
     const std::vector<OthersStep> steps = RunUntilDetection(scene, *player, others);
     scene.RemoveSystemTick(others);
-    ASSERT_NE(player->Resolver().LastImpact().sequence, 0u);
-    ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Wide);
+    ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
+    ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, HitTier::Wide);
     for (const OthersStep& step : steps)
     {
         EXPECT_TRUE(step.othersRan);
@@ -1789,11 +1789,11 @@ TEST(ImpactTimelineClock, AMissedPredictionReleasesTheOthers)
         scene.OnUpdate();
     }
     ASSERT_TRUE(scene.IsHoldingOthers());
-    ASSERT_EQ(player->Resolver().LastImpact().sequence, 0u);
+    ASSERT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
     rock->Root().SetPosition(rock->Root().Position() + NS::Vector3{10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     EXPECT_FALSE(scene.IsHoldingOthers());
-    EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+    EXPECT_FALSE(player->Resolver().Answer().shapeAnimating);
 }
 
 // 沈む揺れは止めの頭に始まり、底で反動の頭までこらえ、反動の頭から跳ね返る。底の深さは威力で頭打ちに増える
@@ -1823,7 +1823,7 @@ TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
         TickHitDirectors(*player);
         // カメラの効果はカメラの段で 1 フレーム進む
         scene.ExecutePhase(NS::Obj::UpdatePhase::Camera);
-        detected = detected || player->Resolver().LastImpact().sequence != 0;
+        detected = detected || player->Resolver().Answer().lastImpact.sequence != 0;
         if (!detected)
         {
             continue;
@@ -1839,7 +1839,7 @@ TEST(ImpactTimelineClock, SinkShakeHoldsTheBottomUntilTheReboundFrame)
         pixels.push_back(now);
     }
     ASSERT_EQ(pixels.size(), 20u);
-    const float power = player->Resolver().LastImpact().power;
+    const float power = player->Resolver().Answer().lastImpact.power;
     const float bottom = -9.0f * (1.0f - std::exp(-power / 1.0f));
     // 0 が検知、1 が止めの頭
     EXPECT_FLOAT_EQ(pixels[0], 0.0f);
@@ -1889,7 +1889,7 @@ TEST(ImpactTimelineClock, ShippedCenterAndMissReboundOnTheReleaseFrame)
         EXPECT_EQ(launched, released);
         if (rockX == 0.0f)
         {
-            ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Center);
+            ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, HitTier::Center);
             // 相手が飛ぶのを待たずに跳ね返り、跳ね返りながら突進の向き (z) へ伸びて細くなる
             EXPECT_EQ(rebounded, released);
             for (int clock = released; clock < released + 2; ++clock)
@@ -1904,7 +1904,7 @@ TEST(ImpactTimelineClock, ShippedCenterAndMissReboundOnTheReleaseFrame)
         }
         else
         {
-            ASSERT_EQ(player->Resolver().LastImpact().tier, HitTier::Wide);
+            ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, HitTier::Wide);
             EXPECT_EQ(rebounded, released);
         }
     }
@@ -1975,7 +1975,7 @@ TEST(ImpactTimelineClock, DirectedPadVibrationsAreBlendedByTheFacePosition)
     rock->Root().SetPosition(NS::Vector3{0.5f, 0.85f, 0.6f});
     const std::vector<ClockFrame> trace = RunHit(*player, *rock, 1.0f, 4);
     ASSERT_EQ(trace.size(), 4u);
-    const ImpactRecord& record = player->Resolver().LastImpact();
+    const ImpactRecord& record = player->Resolver().Answer().lastImpact;
     const float u = record.faceU;
     const float v = record.faceV;
     // 斜めに当たり、2 つの向きに重みが分かれている
@@ -2007,7 +2007,7 @@ TEST(ImpactTimelineClock, TheTargetsNamedTimelineDecidesTheHit)
         PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f, name);
         ASSERT_NE(player, nullptr);
         ASSERT_FALSE(RunHit(*player, *RockOf(scene), 1.0f, 2).empty());
-        const ImpactRecord& record = player->Resolver().LastImpact();
+        const ImpactRecord& record = player->Resolver().Answer().lastImpact;
         EXPECT_EQ(record.timeline, HitTimelineLibrary::Get().NameFor(name, record.tier));
         if (name.empty())
         {
@@ -2033,16 +2033,16 @@ TEST(ImpactTimelineClock, BeforeContactUsesThePredictedTargetsTimeline)
     PropActor* rock = RockOf(scene);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     bool shrankBeforeContact = false;
-    for (int frame = 0; frame < 60 && player->Resolver().LastImpact().sequence == 0; ++frame)
+    for (int frame = 0; frame < 60 && player->Resolver().Answer().lastImpact.sequence == 0; ++frame)
     {
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        if (player->Resolver().LastImpact().sequence == 0 && player->Resolver().IsShapeAnimating())
+        if (player->Resolver().Answer().lastImpact.sequence == 0 && player->Resolver().Answer().shapeAnimating)
         {
             shrankBeforeContact = true;
         }
     }
-    ASSERT_NE(player->Resolver().LastImpact().sequence, 0u);
+    ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
     EXPECT_TRUE(shrankBeforeContact);
 }

@@ -12,7 +12,7 @@
 
 namespace GL::Level
 {
-    class ImpactResolver;
+    struct ImpactAnswer;
 } // namespace GL::Level
 
 namespace GL::Player
@@ -34,14 +34,14 @@ namespace GL::Player
 
         //! @brief 押し・溜め・放しに合わせて演出を出し、玉へ付いていかせる。持ち主の見た目の段が呼ぶ
         //! @param[in] aimDirection 押している間に狙っている水平の向き
-        //! @param[in] appearance 玉の回転の正。このフレームに玉が回った角度を読む
-        //! @param[in] resolver 止めの頭と接触の見込みを読む
+        //! @param[in] appearance 玉の回転の正。このフレームに玉が回った角度を読む。空でないこと
+        //! @param[in] impact 当たりの裁定の答え。止めの頭と接触の見込みを読む
         void Update(const ChargeStatus& charge,
                     const BodySlamStatus& slam,
                     const PlayerMotion& motion,
                     const NS::Vector3& aimDirection,
-                    const PlayerAppearance& appearance,
-                    const GL::Level::ImpactResolver& resolver);
+                    const PlayerAppearance* appearance,
+                    const GL::Level::ImpactAnswer& impact);
 
         //! 番号を控えている溜めと放しのエフェクトを消す。持ち主の OnEndPlay が呼ぶ
         void Clear();
@@ -113,7 +113,7 @@ namespace GL::Player
         void UpdateTrail(const NS::Vector3& center,
                          const BodySlamStatus& slam,
                          bool slamming,
-                         const GL::Level::ImpactResolver& resolver) noexcept;
+                         const GL::Level::ImpactAnswer& impact) noexcept;
         void StopTrailRoot() noexcept;
         // 層を今の位置・向き・大きさへ置き直し、向きを記録に書く。描画の無い世界では記録だけ書く
         void Place(NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept;
@@ -121,7 +121,7 @@ namespace GL::Player
         void SetInput(NS::uint32 id, int index, float value) const noexcept;
         void StopAndClear(NS::uint32& id) noexcept;
         // 跳ね返りか破壊が起きたか、触れる見込みが m_burstClearFrames 以内か
-        [[nodiscard]] bool IsContactNear(const GL::Level::ImpactResolver& resolver) const noexcept;
+        [[nodiscard]] bool IsContactNear(const GL::Level::ImpactAnswer& impact) const noexcept;
 
         //! 演出の寿命と接触前に消す猶予。単位は固定フレーム
         int m_curlSteps = 6;

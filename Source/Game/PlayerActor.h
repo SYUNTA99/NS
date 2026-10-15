@@ -40,6 +40,8 @@ namespace GL::Level
     class ImpactResolver;
     class TargetMarker;
     class SlamArrow;
+    struct BodySlamMotion;
+    struct ImpactAnswer;
 } // namespace GL::Level
 
 //! @brief 固定の部品を OnInit で組むプレイヤー
@@ -241,6 +243,8 @@ public:
     //! 突進中は予定の水平速度と身体の現在の縦速度、それ以外は身体の速度を返す
     //! 壁で消える実速度を使うと衝突を先読みできないため、裁定にはこの速度を使う
     [[nodiscard]] NS::Vector3 BodySlamVelocity() const noexcept;
+    //! 当たりの裁定へ渡す突進の今。突進中か・BodySlamVelocity・突進を出した時の溜めと溜めすぎ
+    [[nodiscard]] GL::Level::BodySlamMotion SlamMotion() const noexcept;
     //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
     void CancelBodySlam() noexcept;
     //! @brief 向きを解決して突進を始める
@@ -302,7 +306,8 @@ protected:
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;
     //! @brief 溜めを進め (AdvanceCharge)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)
-    //! @details 裁定役が外されていれば、走っている当たりのタイムラインを捨てる (ImpactResolver::CancelImpact)
+    //! @details 裁定の答えにある自機を動かす事 (突進の打ち切り・反動・貫通の速度) は、ここで自機がする。
+    //! 裁定役が外されていれば、走っている当たりのタイムラインを捨てる (ImpactResolver::CancelImpact)
     void DecideStep() override;
     //! 突進の発動、状態機械の 1 歩、丸まりの解除と押下の消費。CanMoveBody が偽の間は押下の消費だけ
     void StateStep() override;
@@ -351,6 +356,10 @@ private:
     [[nodiscard]] float BodySlamSpeed() const noexcept;
     //! 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ AimDirection
     [[nodiscard]] NS::Vector3 ChargeAimDirection() const noexcept;
+    //! @brief 裁定の答えにある、このフレームに自機がする事をする
+    //! @details 突進を打ち切ってから、止めた自機を動かし直す。反動の曲線があれば反動を始め、
+    //! 曲線にならない時と貫通は答えの速度を身体へ書く
+    void ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexcept;
     //! @brief 体当たりの要求を覚えてよい場合 true、それ以外の場合は false
     //! @details 突進中と CanMoveBody が偽の間は偽。ここで覚えた押しは止めの間に減らず、明けや空振りの後に 2 本目になる
     [[nodiscard]] bool AcceptsBodySlamRequest() const noexcept;

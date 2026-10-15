@@ -450,7 +450,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         PlayerActor* previewPlayer = FindPlayer(preview->Scene()->Objects());
         ASSERT_NE(previewPlayer, nullptr);
         const std::size_t addedRow = MakeLegacyHitTimeline(2).events.size();
-        const std::vector<std::size_t>& beforeRows = previewPlayer->Resolver().RowsStartedThisStep();
+        const std::vector<std::size_t>& beforeRows = previewPlayer->Resolver().Answer().rowsStarted;
         EXPECT_EQ(std::find(beforeRows.begin(), beforeRows.end(), addedRow), beforeRows.end());
         activate("再生の位置に足す");
         drawPanel();
@@ -466,7 +466,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         ASSERT_NE(timeline.Preview(editor), nullptr);
         previewPlayer = FindPlayer(timeline.Preview(editor)->Scene()->Objects());
         ASSERT_NE(previewPlayer, nullptr);
-        const std::vector<std::size_t>& afterRows = previewPlayer->Resolver().RowsStartedThisStep();
+        const std::vector<std::size_t>& afterRows = previewPlayer->Resolver().Answer().rowsStarted;
         EXPECT_NE(std::find(afterRows.begin(), afterRows.end(), addedRow), afterRows.end());
         EXPECT_EQ(scene.Objects().FindByObjectId(2)->Root().Position().x, 2.0f);
         activate("Game に下見を表示");

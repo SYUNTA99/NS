@@ -171,7 +171,7 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
             player->Update(false);
             rock->Update();
             // 体当たりと止めの間は、カメラに距離と溜めの締めを保たせる
-            if (player->IsBodySlamming() || player->Resolver().IsHoldingPlayer())
+            if (player->IsBodySlamming() || player->Resolver().Answer().holdingPlayer)
             {
                 EXPECT_TRUE(player->GetCameraTargetState().framingHeld);
                 ++held;
@@ -183,7 +183,7 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
             const GL::Player::CameraTargetState state = player->GetCameraTargetState();
             // 反動の間はもう保たない。保つのは体当たりから止めの明けまで
             EXPECT_FALSE(state.framingHeld);
-            if (player->Resolver().LastImpact().tier == GL::Level::HitTier::Center)
+            if (player->Resolver().Answer().lastImpact.tier == GL::Level::HitTier::Center)
             {
                 ASSERT_TRUE(state.rebound.partnerPosition.has_value());
                 EXPECT_TRUE(state.rebound.partnerPosition.value() == rock->Root().Position());
@@ -204,11 +204,11 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
         EXPECT_GT(held, 0);
         if (rockX == 0.0f)
         {
-            EXPECT_EQ(player->Resolver().LastImpact().tier, GL::Level::HitTier::Center);
+            EXPECT_EQ(player->Resolver().Answer().lastImpact.tier, GL::Level::HitTier::Center);
         }
         else
         {
-            EXPECT_EQ(player->Resolver().LastImpact().tier, GL::Level::HitTier::Wide);
+            EXPECT_EQ(player->Resolver().Answer().lastImpact.tier, GL::Level::HitTier::Wide);
         }
     }
 }

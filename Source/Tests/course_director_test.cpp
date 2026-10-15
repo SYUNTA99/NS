@@ -304,7 +304,7 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
         player->Update(true);
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
-    const NS::uint32 impacts = player->Resolver().LastImpact().sequence;
+    const NS::uint32 impacts = player->Resolver().Answer().lastImpact.sequence;
 
     EXPECT_TRUE(GL::Level::SendMsgInputLock(*player, true));
     EXPECT_FALSE(player->ChargeJudge().IsCharging());
@@ -312,7 +312,7 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
 
     player->Update(false);
     EXPECT_FALSE(player->IsBodySlamming());
-    EXPECT_EQ(player->Resolver().LastImpact().sequence, impacts);
+    EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, impacts);
 }
 
 TEST(CourseDirector, RestartReturnsObjectsToBaseline)

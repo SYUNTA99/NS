@@ -19,7 +19,7 @@ namespace NS::Obj
 
 namespace GL::Level
 {
-    class ImpactResolver;
+    struct ImpactAnswer;
 } // namespace GL::Level
 
 namespace GL::Player
@@ -52,16 +52,16 @@ namespace GL::Player
 
         //! @brief 丸まりに合わせて姿を持ち替え、玉を回し、描く形の倍率を書く。持ち主の見た目の段が呼ぶ
         //! @param[in] aimDirection 狙いの線が無い時に、放せば出る水平の向き
-        //! @param[in] body 反動の着地の判定に接地と縦の速さを読む
-        //! @param[in] resolver 当たりの潰れと伸びと、何回目の当たりかを読む
+        //! @param[in] body 反動の着地の判定に接地と縦の速さを読む。空でないこと
+        //! @param[in] impact 当たりの裁定の答え。当たりの潰れと伸びと、何回目の当たりかを読む
         void Update(const PlayerMotion& motion,
                     const ChargeStatus& charge,
                     const BodySlamStatus& slam,
                     const ReboundStatus& rebound,
                     const SkidStatus& skid,
                     const NS::Vector3& aimDirection,
-                    const NS::Obj::Body& body,
-                    const GL::Level::ImpactResolver& resolver);
+                    const NS::Obj::Body* body,
+                    const GL::Level::ImpactAnswer& impact);
 
         //! @brief 描く形の倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
         //! @details やり直しとプレイの終わりで持ち主が呼ぶ。次の Update からはその時の構えと当たりの形で組み直す
@@ -107,16 +107,16 @@ namespace GL::Player
                          const ReboundStatus& rebound,
                          const SkidStatus& skid,
                          const NS::Vector3& aimDirection,
-                         const GL::Level::ImpactResolver& resolver) noexcept;
+                         const GL::Level::ImpactAnswer& impact) noexcept;
         // skidScale はこすって止まる間の身体の速さの倍率。こすっていない間は 1
         void AdvanceMissTumble(const MissTumble& tumble,
                                const ReboundStatus& rebound,
                                float skidScale,
-                               const GL::Level::ImpactResolver& resolver) noexcept;
+                               const GL::Level::ImpactAnswer& impact) noexcept;
         // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
-        void AdvanceLandingSquash(const PlayerMotion& motion, const NS::Obj::Body& body) noexcept;
+        void AdvanceLandingSquash(const PlayerMotion& motion, const NS::Obj::Body* body) noexcept;
         // 当たりの形か構えの縮みに着地の潰れを掛け、同居する Model の描く時だけの倍率へ書く
-        void WriteDrawScale(const ChargeStatus& charge, const GL::Level::ImpactResolver& resolver) noexcept;
+        void WriteDrawScale(const ChargeStatus& charge, const GL::Level::ImpactAnswer& impact) noexcept;
 
         // 保存・編集される参照文字列。空は仮の形。ResolveAssets が実体を当てる
         std::string m_standingMeshRef{};

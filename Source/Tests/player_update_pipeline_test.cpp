@@ -32,6 +32,22 @@
 
 namespace
 {
+    // 裁定の観測と決定を、自機の段と同じ引数で単独に呼ぶ。答えにある自機を動かす事はしない
+    void ObserveImpact(PlayerActor& player)
+    {
+        player.Resolver().ObserveImpact(player.SlamMotion(), &player.Collider());
+    }
+
+    void StepImpact(PlayerActor& player)
+    {
+        player.Resolver().StepState(player.SlamMotion(),
+                                    &player.Params(),
+                                    &player.Body(),
+                                    &player.Collider(),
+                                    player.ModelSubObj(),
+                                    player.HitReactionSubObj());
+    }
+
     PlayerActor* PlacePipelinePlayer(NS::Obj::Scene& scene, float targetX = 0.0f, float targetZ = 3.0f)
     {
         nlohmann::json doc = NS::Obj::MakeSceneJson();
@@ -103,11 +119,11 @@ namespace
         {
             player.Update(false);
             rock.Update();
-            if (waitForFreeze && player.Resolver().FreezeBeganThisStep())
+            if (waitForFreeze && player.Resolver().Answer().freezeBegan)
             {
                 return true;
             }
-            if (!waitForFreeze && player.Resolver().LastImpact().sequence > 0)
+            if (!waitForFreeze && player.Resolver().Answer().lastImpact.sequence > 0)
             {
                 return true;
             }
@@ -124,8 +140,8 @@ TEST(PlayerUpdatePipeline, ImpactObservationDoesNotJudgeOrMoveThePlayer)
     player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
     const NS::Vector3 position = player->Root().Position();
     const NS::Vector3 velocity = player->Body().Velocity();
-    player->Resolver().ObserveImpact();
-    EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
+    ObserveImpact(*player);
+    EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
     ExpectSameVector(player->Root().Position(), position);
     ExpectSameVector(player->Body().Velocity(), velocity);
 }
@@ -174,17 +190,17 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().ObserveImpact();
-    player->Resolver().StepState();
-    ASSERT_EQ(player->Resolver().LastImpact().sequence, 1u);
-    ASSERT_FALSE(player->Resolver().FreezeBeganThisStep());
-    player->Resolver().StepState();
-    EXPECT_FALSE(player->Resolver().FreezeBeganThisStep());
-    EXPECT_FALSE(player->Resolver().IsHitStopping());
-    player->Resolver().ObserveImpact();
-    player->Resolver().StepState();
-    EXPECT_TRUE(player->Resolver().FreezeBeganThisStep());
-    EXPECT_TRUE(player->Resolver().IsHitStopping());
+    ObserveImpact(*player);
+    StepImpact(*player);
+    ASSERT_EQ(player->Resolver().Answer().lastImpact.sequence, 1u);
+    ASSERT_FALSE(player->Resolver().Answer().freezeBegan);
+    StepImpact(*player);
+    EXPECT_FALSE(player->Resolver().Answer().freezeBegan);
+    EXPECT_FALSE(player->Resolver().Answer().hitStopping);
+    ObserveImpact(*player);
+    StepImpact(*player);
+    EXPECT_TRUE(player->Resolver().Answer().freezeBegan);
+    EXPECT_TRUE(player->Resolver().Answer().hitStopping);
 }
 
 // 1 フレームを進める入口は PlayerActor::Update だけ。裁定の部品を単独で回しても、観測も裁定も走らない
@@ -196,9 +212,9 @@ TEST(PlayerUpdatePipeline, TickingTheResolverPartAloneDoesNotJudge)
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     player->Resolver().OnUpdate();
-    EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
+    EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
     EXPECT_TRUE(player->IsBodySlamming());
-    EXPECT_FALSE(player->Resolver().IsHitStopping());
+    EXPECT_FALSE(player->Resolver().Answer().hitStopping);
 }
 
 TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
@@ -208,12 +224,12 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    player->Resolver().ObserveImpact();
+    ObserveImpact(*player);
     scene.Objects().RemoveByObjectId(2);
-    player->Resolver().StepState();
-    EXPECT_EQ(player->Resolver().LastImpact().sequence, 0u);
+    StepImpact(*player);
+    EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
     EXPECT_TRUE(player->IsBodySlamming());
-    EXPECT_FALSE(player->Resolver().IsHitStopping());
+    EXPECT_FALSE(player->Resolver().Answer().hitStopping);
 }
 
 // 止めの持ち主は裁定役の数え。身体の部品は外さず、止めの間は位置も状態の歩も進まない
@@ -226,7 +242,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     EXPECT_TRUE(player->Body().IsActive());
-    EXPECT_TRUE(player->Resolver().IsHitStopping());
+    EXPECT_TRUE(player->Resolver().Answer().hitStopping);
     EXPECT_FALSE(player->CanMoveBody());
     const NS::Vector3 position = player->Root().Position();
     const NS::uint32 stateStep = player->States().StepsInState();
@@ -235,7 +251,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     {
         player->Update(false);
         rock->Update();
-        if (!player->Resolver().IsHitStopping() && !player->Resolver().IsAwaitingRebound())
+        if (!player->Resolver().Answer().hitStopping && !player->Resolver().Answer().awaitingRebound)
         {
             break;
         }
@@ -244,8 +260,8 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
         ExpectSameVector(player->Root().Position(), position);
         EXPECT_EQ(player->States().StepsInState(), stateStep);
     }
-    EXPECT_FALSE(player->Resolver().IsHitStopping());
-    EXPECT_FALSE(player->Resolver().IsAwaitingRebound());
+    EXPECT_FALSE(player->Resolver().Answer().hitStopping);
+    EXPECT_FALSE(player->Resolver().Answer().awaitingRebound);
     EXPECT_TRUE(player->CanMoveBody());
 }
 
@@ -264,7 +280,7 @@ TEST(PlayerUpdatePipeline, ReleasingTheHitStopLeavesASwitchedOffBodyAlone)
     {
         player->Update(false);
         rock->Update();
-        if (player->Resolver().ReleasedThisStep())
+        if (player->Resolver().Answer().released)
         {
             released = true;
         }
@@ -296,9 +312,9 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
             rock->Update();
             SCOPED_TRACE(frame);
             EXPECT_FALSE(player->IsRebounding());
-            EXPECT_FALSE(player->Resolver().FreezeBeganThisStep());
-            EXPECT_FALSE(player->Resolver().ReleasedThisStep());
-            EXPECT_FALSE(player->Resolver().IsHitStopping());
+            EXPECT_FALSE(player->Resolver().Answer().freezeBegan);
+            EXPECT_FALSE(player->Resolver().Answer().released);
+            EXPECT_FALSE(player->Resolver().Answer().hitStopping);
             ExpectSameVector(rock->Root().Position(), rockHome);
             ExpectSameVector(player->ModelSubObj()->DrawScale(), NS::Vector3{1.0f, 1.0f, 1.0f});
         }
@@ -314,12 +330,12 @@ TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
     GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
-    ASSERT_TRUE(player->Resolver().IsShapeAnimating());
+    ASSERT_TRUE(player->Resolver().Answer().shapeAnimating);
     ASSERT_LT(player->ModelSubObj()->DrawScale().z, 1.0f);
     player->OnEndPlay();
     EXPECT_TRUE(player->ModelSubObj()->DrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
-    EXPECT_FALSE(player->Resolver().IsHitStopping());
-    EXPECT_FALSE(player->Resolver().IsShapeAnimating());
+    EXPECT_FALSE(player->Resolver().Answer().hitStopping);
+    EXPECT_FALSE(player->Resolver().Answer().shapeAnimating);
 }
 
 // 溜めの構えは描く形の倍率に出る
@@ -346,9 +362,9 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     GL::Level::PropActor* rock = NS::Obj::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
-    ASSERT_FALSE(player->Resolver().LastImpact().broke);
+    ASSERT_FALSE(player->Resolver().Answer().lastImpact.broke);
     // 欄「潰れの厚み」0.7 を進む向きの成分の 2 乗で混ぜ、縦は欄「潰れの伸び上がり」1.1
-    const NS::Vector3 dir = player->Resolver().LastImpact().impactDir;
+    const NS::Vector3 dir = player->Resolver().Answer().lastImpact.impactDir;
     const NS::Vector3 squash{1.0f - 0.3f * dir.x * dir.x, 1.1f, 1.0f - 0.3f * dir.z * dir.z};
     const NS::Vector3 one{1.0f, 1.0f, 1.0f};
     bool released = false;
@@ -373,7 +389,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
             NS::Vector3{squash.x + side * dir.z * dir.z, squash.y + 0.2f * left, squash.z + side * dir.x * dir.x});
         player->Update(false);
         rock->Update();
-        released = player->Resolver().ReleasedThisStep();
+        released = player->Resolver().Answer().released;
     }
     ASSERT_TRUE(released);
     // 膨らみは止めの途中 (止めの 12 フレームの 7 フレーム目) に来る
@@ -383,14 +399,14 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     const float height = 1.1f - 0.2f / 3.0f;
     ExpectSameVector(player->ModelSubObj()->DrawScale(),
                      NS::Vector3{1.0f - (1.0f - along) * dir.x * dir.x, height, 1.0f - (1.0f - along) * dir.z * dir.z});
-    for (int frame = 0; frame < 30 && player->Resolver().IsShapeAnimating(); ++frame)
+    for (int frame = 0; frame < 30 && player->Resolver().Answer().shapeAnimating; ++frame)
     {
         SCOPED_TRACE(frame);
         ExpectSameVector(player->Root().Scale(), one);
         player->Update(false);
         rock->Update();
     }
-    ASSERT_FALSE(player->Resolver().IsShapeAnimating());
+    ASSERT_FALSE(player->Resolver().Answer().shapeAnimating);
     EXPECT_TRUE(player->ModelSubObj()->DrawScale() == one);
     EXPECT_TRUE(player->Root().Scale() == one);
 }
@@ -415,11 +431,11 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     {
         player->Update(false);
         rock->Update();
-        released = player->Resolver().ReleasedThisStep();
+        released = player->Resolver().Answer().released;
     }
     ASSERT_TRUE(released);
-    ASSERT_FALSE(player->Resolver().LastImpact().broke);
-    ASSERT_TRUE(player->Resolver().IsShapeAnimating());
+    ASSERT_FALSE(player->Resolver().Answer().lastImpact.broke);
+    ASSERT_TRUE(player->Resolver().Answer().shapeAnimating);
     NS::Obj::Model* model = player->ModelSubObj();
     // 試しには mesh が無いので、玉の局所の境界を差し、回転を外して形の伸びだけを測る
     const float radius = player->Collider().CapsuleRadius();
@@ -454,7 +470,7 @@ TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
         player->Update(false);
         rock->Update();
         SCOPED_TRACE(frame);
-        EXPECT_FALSE(player->Resolver().ReleasedThisStep());
+        EXPECT_FALSE(player->Resolver().Answer().released);
         EXPECT_FALSE(player->IsRebounding());
     }
 }
@@ -626,15 +642,15 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                 rock->Root().ShiftPosition(NS::Vector3{0.1f, 0.0f, 0.0f});
             }
             player->Update(held);
-            if (impact < 0 && player->Resolver().LastImpact().sequence > 0)
+            if (impact < 0 && player->Resolver().Answer().lastImpact.sequence > 0)
             {
                 impact = frame;
             }
-            if (freeze < 0 && player->Resolver().FreezeBeganThisStep())
+            if (freeze < 0 && player->Resolver().Answer().freezeBegan)
             {
                 freeze = frame;
             }
-            if (release < 0 && player->Resolver().ReleasedThisStep())
+            if (release < 0 && player->Resolver().Answer().released)
             {
                 release = frame;
             }

@@ -1,5 +1,6 @@
 #include "Game/PlayerActor.h"
 
+#include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/SlamBall.h"
@@ -25,21 +26,6 @@ namespace
             return 0.0f;
         }
         return turns * 360.0f / seconds;
-    }
-
-    // 実際の反動と同じ重力で曲線を組む。LaunchArc には正の上昇重力と下降倍率を渡す
-    [[nodiscard]] GL::Level::LaunchArc ReboundLaunchArc(const GL::Player::PlayerParams& params,
-                                                        const GL::Player::ReboundArc& arc) noexcept
-    {
-        const GL::Player::PlayerGravity gravity = params.ReboundGravity();
-        const float riseGravity = -gravity.rise;
-        return GL::Level::LaunchArc{.direction = arc.direction,
-                                    .distance = arc.distance,
-                                    .apexHeight = arc.apexHeight,
-                                    .riseGravity = riseGravity,
-                                    .fallGravityScale = -gravity.fall / riseGravity,
-                                    .apexBandSpeed = gravity.apexSpeed,
-                                    .apexBandGravityScale = gravity.apexScale};
     }
 } // namespace
 
@@ -123,6 +109,14 @@ NS::Vector3 PlayerActor::BodySlamVelocity() const noexcept
 
     const float speed = BodySlamSpeed();
     return NS::Vector3{m_slam.m_dir.x * speed, body.VerticalVelocity(), m_slam.m_dir.z * speed};
+}
+
+GL::Level::BodySlamMotion PlayerActor::SlamMotion() const noexcept
+{
+    return GL::Level::BodySlamMotion{.slamming = IsBodySlamming(),
+                                     .velocity = BodySlamVelocity(),
+                                     .charge01 = m_slam.Charge01(),
+                                     .overcharge01 = m_slam.Overcharge01()};
 }
 
 void PlayerActor::CancelBodySlam() noexcept
@@ -354,7 +348,7 @@ bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
     m_rebound.m_direction = direction;
     m_rebound.m_missTumble = arc.missTumble;
     ++m_rebound.m_count;
-    m_rebound.m_spinSpeed = SpinSpeedFor(turns, GL::Level::LaunchArcFlightSeconds(ReboundLaunchArc(*m_params, arc)));
+    m_rebound.m_spinSpeed = SpinSpeedFor(turns, GL::Level::LaunchArcFlightSeconds(m_params->ReboundLaunchArc(arc)));
     m_body->SetVelocity(velocity);
     (void)m_states->Change<GL::Player::ReboundPlayerState>();
     return true;
@@ -362,7 +356,7 @@ bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
 
 NS::Vector3 PlayerActor::ReboundVelocityFor(const GL::Player::ReboundArc& arc) const noexcept
 {
-    return GL::Level::LaunchArcInitialVelocity(ReboundLaunchArc(*m_params, arc));
+    return GL::Level::LaunchArcInitialVelocity(m_params->ReboundLaunchArc(arc));
 }
 
 void PlayerActor::SetCurled(bool curled) noexcept
@@ -423,7 +417,7 @@ void PlayerActor::UncurlWhenSettled() noexcept
     {
         return;
     }
-    // 当てたフレームは ImpactResolver が自分より先に突進を終える。今の状態だけを見ると、当てた瞬間に解ける
+    // 当てたフレームは、決定の段で裁定の答えを読んで先に突進を終える。今の状態だけを見ると、当てた瞬間に解ける
     if (m_slam.m_wasSlamming)
     {
         return;

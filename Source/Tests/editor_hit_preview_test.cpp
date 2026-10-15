@@ -281,13 +281,13 @@ TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
         scene.OnUpdate();
         SCOPED_TRACE(step);
         EXPECT_TRUE(player->Root().Position() == preview.frames[static_cast<std::size_t>(step)].playerPosition);
-        if (detection < 0 && player->Resolver().LastImpact().sequence != 0)
+        if (detection < 0 && player->Resolver().Answer().lastImpact.sequence != 0)
         {
             detection = step;
         }
     }
     EXPECT_EQ(detection, preview.detectionIndex);
-    const ImpactRecord& direct = player->Resolver().LastImpact();
+    const ImpactRecord& direct = player->Resolver().Answer().lastImpact;
     EXPECT_EQ(direct.tier, preview.impact.tier);
     EXPECT_FLOAT_EQ(direct.power, preview.impact.power);
     EXPECT_FLOAT_EQ(direct.faceU, preview.impact.faceU);
@@ -360,8 +360,8 @@ TEST(EditorHitPreview, PlaybackEvaluatesTheSceneAtTheRecordedFrameAndCanRewind)
         ASSERT_NE(player, nullptr);
         const NS::Editor::HitPreviewFrame& frame = result.frames[static_cast<std::size_t>(index)];
         EXPECT_TRUE(player->Root().Position() == frame.playerPosition);
-        EXPECT_TRUE(player->Resolver().ShapeFactors() == frame.shape);
-        EXPECT_EQ(player->Resolver().IsHitStopping(), frame.hitStopping);
+        EXPECT_TRUE(player->Resolver().Answer().shapeFactors == frame.shape);
+        EXPECT_EQ(player->Resolver().Answer().hitStopping, frame.hitStopping);
         EXPECT_EQ(player->IsRebounding(), frame.rebounding);
         EXPECT_FLOAT_EQ(scene->WorldSpeed(), frame.worldSpeed);
         EXPECT_TRUE(scene->IsSimulationPaused());

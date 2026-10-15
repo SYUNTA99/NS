@@ -1,5 +1,7 @@
 #include "Game/Player/PlayerParams.h"
 
+#include "Game/Level/LaunchArc.h"
+#include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
 
@@ -44,6 +46,20 @@ namespace GL::Player
     {
         // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる
         return NS::Clamp(1.0f - m_chargeSlowRate, 0.0f, 1.0f);
+    }
+
+    GL::Level::LaunchArc PlayerParams::ReboundLaunchArc(const ReboundArc& arc) const noexcept
+    {
+        // LaunchArc には正の上昇重力と下降倍率を渡す
+        const PlayerGravity gravity = ReboundGravity();
+        const float riseGravity = -gravity.rise;
+        return GL::Level::LaunchArc{.direction = arc.direction,
+                                    .distance = arc.distance,
+                                    .apexHeight = arc.apexHeight,
+                                    .riseGravity = riseGravity,
+                                    .fallGravityScale = -gravity.fall / riseGravity,
+                                    .apexBandSpeed = gravity.apexSpeed,
+                                    .apexBandGravityScale = gravity.apexScale};
     }
 
     NS_CLASS(PlayerParams)

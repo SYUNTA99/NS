@@ -123,11 +123,11 @@ namespace NS::Editor
                 HitPreviewFrame frame;
                 frame.pad = pad.Vibration();
                 frame.playerPosition = player->Root().Position();
-                frame.shape = player->Resolver().ShapeFactors();
-                frame.hitStopping = player->Resolver().IsHitStopping();
-                frame.awaitingRebound = player->Resolver().IsAwaitingRebound();
+                frame.shape = player->Resolver().Answer().shapeFactors;
+                frame.hitStopping = player->Resolver().Answer().hitStopping;
+                frame.awaitingRebound = player->Resolver().Answer().awaitingRebound;
                 frame.rebounding = player->IsRebounding();
-                frame.startedRows = player->Resolver().RowsStartedThisStep();
+                frame.startedRows = player->Resolver().Answer().rowsStarted;
                 frame.worldSpeed = scene->WorldSpeed();
                 if (const NS::Obj::CameraManager* cameras = scene->GetCameraManager())
                 {
@@ -144,10 +144,10 @@ namespace NS::Editor
                     }
                 }
                 result.frames.push_back(std::move(frame));
-                if (result.detectionIndex < 0 && player->Resolver().LastImpact().sequence != 0)
+                if (result.detectionIndex < 0 && player->Resolver().Answer().lastImpact.sequence != 0)
                 {
                     result.detectionIndex = step;
-                    result.impact = player->Resolver().LastImpact();
+                    result.impact = player->Resolver().Answer().lastImpact;
                     if (const GL::Level::HitTimeline* timeline =
                             GL::Level::HitTimelineLibrary::Get().Find(result.impact.timeline))
                     {

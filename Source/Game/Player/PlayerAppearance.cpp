@@ -5,6 +5,7 @@
 #include "Game/Level/SlamAim.h"
 #include "Game/PlayerActor.h"
 #include "Game/Player/PlayerJudges.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/StaticMesh.h"
 #include "NSlib/Object/SceneActor.h"
@@ -111,7 +112,7 @@ namespace GL::Player
                                        const ReboundStatus& rebound,
                                        const SkidStatus& skid,
                                        const NS::Vector3& aimDirection,
-                                       const GL::Level::ImpactResolver& resolver) noexcept
+                                       const GL::Level::ImpactAnswer& impact) noexcept
     {
         m_spinDegreesThisFrame = 0.0f;
         NS::Obj::Model* renderer = nullptr;
@@ -167,7 +168,7 @@ namespace GL::Player
             {
                 skidScale = skid.SpeedScale();
             }
-            AdvanceMissTumble(*rebound.Tumble(), rebound, skidScale, resolver);
+            AdvanceMissTumble(*rebound.Tumble(), rebound, skidScale, impact);
         }
         else if (motion.rebounding)
         {
@@ -195,7 +196,7 @@ namespace GL::Player
     void PlayerAppearance::AdvanceMissTumble(const MissTumble& tumble,
                                              const ReboundStatus& rebound,
                                              float skidScale,
-                                             const GL::Level::ImpactResolver& resolver) noexcept
+                                             const GL::Level::ImpactAnswer& impact) noexcept
     {
         // 新しい反動の最初のフレームに、その時の回転を寄せ始めの回転として控える
         if (m_tumbleReboundCount != rebound.Count())
@@ -206,7 +207,7 @@ namespace GL::Player
             // 種は何回目の当たりか。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。同じ入力の再生では同じ
             const float goldenAngle = static_cast<float>(std::acos(-1.0) * (3.0 - std::sqrt(5.0)));
             m_tumbleWobblePhase =
-                std::fmod(static_cast<float>(resolver.LastImpact().sequence) * goldenAngle, 2.0f * NS::k_Pi);
+                std::fmod(static_cast<float>(impact.lastImpact.sequence) * goldenAngle, 2.0f * NS::k_Pi);
         }
         ++m_tumbleSteps;
 
@@ -255,9 +256,10 @@ namespace GL::Player
                                   const ReboundStatus& rebound,
                                   const SkidStatus& skid,
                                   const NS::Vector3& aimDirection,
-                                  const NS::Obj::Body& body,
-                                  const GL::Level::ImpactResolver& resolver)
+                                  const NS::Obj::Body* body,
+                                  const GL::Level::ImpactAnswer& impact)
     {
+        NS_ASSERT(Game, body != nullptr, "体の部品が渡されていない");
         if (motion.curled)
         {
             Curl();
@@ -266,12 +268,12 @@ namespace GL::Player
         {
             Uncurl();
         }
-        AdvanceSpin(motion, charge, slam, rebound, skid, aimDirection, resolver);
+        AdvanceSpin(motion, charge, slam, rebound, skid, aimDirection, impact);
         AdvanceLandingSquash(motion, body);
-        WriteDrawScale(charge, resolver);
+        WriteDrawScale(charge, impact);
     }
 
-    void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion, const NS::Obj::Body& body) noexcept
+    void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion, const NS::Obj::Body* body) noexcept
     {
         if (!motion.canMoveBody)
         {
@@ -282,7 +284,7 @@ namespace GL::Player
         // 反動の出口の条件が成り立ったフレームが着地。移動の後に回るので、このフレームの接地を見る
         // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
         // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
-        if (motion.rebounding && PlayerJudgeLand::Judge(body.IsGrounded(), body.VerticalVelocity()) &&
+        if (motion.rebounding && PlayerJudgeLand::Judge(body->IsGrounded(), body->VerticalVelocity()) &&
             m_landingSquashRecoverSteps > 0)
         {
             m_landingSquashRemaining = m_landingSquashRecoverSteps;
@@ -315,7 +317,7 @@ namespace GL::Player
     }
 
     void PlayerAppearance::WriteDrawScale(const ChargeStatus& charge,
-                                          const GL::Level::ImpactResolver& resolver) noexcept
+                                          const GL::Level::ImpactAnswer& impact) noexcept
     {
         if (Owner() == nullptr)
         {
@@ -328,9 +330,9 @@ namespace GL::Player
         }
         // 当たりの潰れと伸びの間は構えを混ぜない。構えの最中に来た止めも元の形から潰す
         NS::Vector3 shape{1.0f, 1.0f, 1.0f};
-        if (resolver.IsShapeAnimating())
+        if (impact.shapeAnimating)
         {
-            shape = resolver.ShapeFactors();
+            shape = impact.shapeFactors;
         }
         else
         {

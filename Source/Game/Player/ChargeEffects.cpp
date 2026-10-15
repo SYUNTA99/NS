@@ -5,6 +5,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerStatus.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
@@ -46,9 +47,10 @@ namespace GL::Player
                                const BodySlamStatus& slam,
                                const PlayerMotion& motion,
                                const NS::Vector3& aimDirection,
-                               const PlayerAppearance& appearance,
-                               const GL::Level::ImpactResolver& resolver)
+                               const PlayerAppearance* appearance,
+                               const GL::Level::ImpactAnswer& impact)
     {
+        NS_ASSERT(Game, appearance != nullptr, "見た目の部品が渡されていない");
         ForgetEndedEffects();
 
         const GL::Level::ImpactInputJudge& judge = charge.Judge();
@@ -74,7 +76,7 @@ namespace GL::Player
         }
         if (held)
         {
-            FollowHeldEffects(center, aimDirection, judge.Charge01(), appearance.SpinDegreesThisFrame());
+            FollowHeldEffects(center, aimDirection, judge.Charge01(), appearance->SpinDegreesThisFrame());
             if (charge.SwayReachedEdge())
             {
                 PlaySwaySparks(center, charge);
@@ -90,9 +92,9 @@ namespace GL::Player
         {
             StartRelease(center, slam);
         }
-        UpdateTrail(center, slam, slamming, resolver);
+        UpdateTrail(center, slam, slamming, impact);
         // 接触前の縮みや止めを光で隠さないよう、接触が近づいたら放しの弾けを消す
-        if (m_burst != 0 && (resolver.IsBeforeContact() || IsContactNear(resolver)))
+        if (m_burst != 0 && (impact.beforeContact || IsContactNear(impact)))
         {
             StopAndClear(m_burst);
         }
@@ -273,7 +275,7 @@ namespace GL::Player
     void ChargeEffects::UpdateTrail(const NS::Vector3& center,
                                     const BodySlamStatus& slam,
                                     bool slamming,
-                                    const GL::Level::ImpactResolver& resolver) noexcept
+                                    const GL::Level::ImpactAnswer& impact) noexcept
     {
         if (m_trail == 0)
         {
@@ -286,7 +288,7 @@ namespace GL::Player
         }
 
         bool stop = false;
-        if (resolver.FreezeBeganThisStep())
+        if (impact.freezeBegan)
         {
             stop = true;
         }
@@ -298,7 +300,7 @@ namespace GL::Player
         else if (!slamming)
         {
             // 当たりで突進が打ち切られたフレームは、次のフレームの止めの頭まで尾を残す
-            if (resolver.DidRebound() || resolver.DidBreak())
+            if (impact.rebounded || impact.broke)
             {
                 m_trailAwaitsFreeze = true;
             }
@@ -363,13 +365,13 @@ namespace GL::Player
         NS::Obj::SetEffectDynamicInput(Owner(), id, index, value);
     }
 
-    bool ChargeEffects::IsContactNear(const GL::Level::ImpactResolver& resolver) const noexcept
+    bool ChargeEffects::IsContactNear(const GL::Level::ImpactAnswer& impact) const noexcept
     {
-        if (resolver.DidRebound() || resolver.DidBreak())
+        if (impact.rebounded || impact.broke)
         {
             return true;
         }
-        const int frames = resolver.FramesToPredictedContact();
+        const int frames = impact.framesToPredictedContact;
         return frames >= 0 && frames <= std::max(m_burstClearFrames, 0);
     }
 

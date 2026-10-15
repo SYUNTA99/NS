@@ -1193,7 +1193,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
     {
         return;
     }
-    const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     if (impact.sequence == 0)
     {
         return;

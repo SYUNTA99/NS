@@ -122,7 +122,7 @@ TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
                             GL::Player::ChooseGravity(gravity, target.launchVerticalSpeed) * dt,
                         0.0001f);
         }
-        if (player->Resolver().LastImpact().sequence > 0 || !player->IsBodySlamming())
+        if (player->Resolver().Answer().lastImpact.sequence > 0 || !player->IsBodySlamming())
         {
             break;
         }
@@ -141,7 +141,7 @@ TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
     EXPECT_GT(checked, 3);
     // 弧で上がった。床に沿うまっすぐな矢印とは違う形
     EXPECT_GT(highest, startHeight + 0.3f);
-    EXPECT_GT(player->Resolver().LastImpact().sequence, 0u);
+    EXPECT_GT(player->Resolver().Answer().lastImpact.sequence, 0u);
 }
 
 // 矢印は世界を描いてにじませた後の重ね描きで描き、溜めの光とそのにじみが矢じりを白く覆わない。ロックオンの

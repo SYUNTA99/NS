@@ -455,8 +455,8 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     player->Update(false);
-    ASSERT_TRUE(player->Resolver().DidRebound());
-    const GL::Level::ImpactRecord& impact = player->Resolver().LastImpact();
+    ASSERT_TRUE(player->Resolver().Answer().rebounded);
+    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     EXPECT_FLOAT_EQ(impact.launchDistance, 8.0f);
     EXPECT_FLOAT_EQ(impact.launchApexHeight, 3.0f);
     EXPECT_FLOAT_EQ(impact.reboundApexHeight, 2.0f);

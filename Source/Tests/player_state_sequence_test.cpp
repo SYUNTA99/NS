@@ -149,18 +149,18 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    for (int frame = 0; frame < 10 && !player->Resolver().FreezeBeganThisStep(); ++frame)
+    for (int frame = 0; frame < 10 && !player->Resolver().Answer().freezeBegan; ++frame)
     {
         player->Update();
     }
-    ASSERT_TRUE(player->Resolver().FreezeBeganThisStep());
+    ASSERT_TRUE(player->Resolver().Answer().freezeBegan);
     NS::Obj::HitScreenDirector* screen = NS::Obj::FindSceneSystem<NS::Obj::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(*player, 3, 1.0f);
     screen->OnTick();
     const NS::uint32 stateStep = player->States().StepsInState();
     scene.OnUpdate();
-    ASSERT_TRUE(player->Resolver().IsHitStopping());
+    ASSERT_TRUE(player->Resolver().Answer().hitStopping);
     EXPECT_EQ(player->States().StepsInState(), stateStep);
     EXPECT_EQ(screen->FlashFramesRemaining(), 2);
 }

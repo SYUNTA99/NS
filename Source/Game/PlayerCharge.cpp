@@ -115,8 +115,12 @@ void PlayerActor::ObserveCharge(bool held)
                                                   .launchVerticalSpeed = 0.0f,
                                                   .grounded = m_body->IsGrounded()};
     m_chargeObserved.hasAimLine = true;
-    m_chargeObserved.hasAimTarget = m_resolver->FindSlamLineTarget(
-        m_chargeObserved.aimLine.direction, m_chargeObserved.aimLine.length, m_chargeObserved.aimTarget);
+    m_chargeObserved.hasAimTarget = m_resolver->FindSlamLineTarget(m_chargeObserved.aimLine.direction,
+                                                                   m_chargeObserved.aimLine.length,
+                                                                   m_params.get(),
+                                                                   m_body.get(),
+                                                                   m_collider.get(),
+                                                                   m_chargeObserved.aimTarget);
     // 放す時に添える縦の速さ。届かない相手と相手が無い時は 0 で水平に放つ
     if (m_chargeObserved.hasAimTarget)
     {
@@ -266,7 +270,12 @@ void PlayerActor::ApplyChargeSway(float dt)
     }
     // 上下の角度は揺れていない線の相手へ合わせた縦の速さのまま。揺れは左右だけ
     m_charge.m_aimLine.direction = swayed;
-    m_charge.m_hasLineTarget = m_resolver->FindSlamLineTarget(swayed, m_charge.m_aimLine.length, m_charge.m_lineTarget);
+    m_charge.m_hasLineTarget = m_resolver->FindSlamLineTarget(swayed,
+                                                              m_charge.m_aimLine.length,
+                                                              m_params.get(),
+                                                              m_body.get(),
+                                                              m_collider.get(),
+                                                              m_charge.m_lineTarget);
     if (m_charge.m_hasLineTarget)
     {
         m_charge.m_lineTarget.origin = Root().Position();

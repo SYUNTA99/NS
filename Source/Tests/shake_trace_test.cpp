@@ -83,11 +83,11 @@ namespace
         for (int frame = 0; frame < 60 + k_HitFrames && static_cast<int>(trace.offsets.size()) < k_HitFrames; ++frame)
         {
             scene.OnUpdate();
-            if (trace.offsets.empty() && player->Resolver().LastImpact().sequence == 0)
+            if (trace.offsets.empty() && player->Resolver().Answer().lastImpact.sequence == 0)
             {
                 continue;
             }
-            trace.tier = player->Resolver().LastImpact().tier;
+            trace.tier = player->Resolver().Answer().lastImpact.tier;
             NS::Vector3 offset{};
             NS::Vector3 angles{};
             NS::Vector3 sink{};

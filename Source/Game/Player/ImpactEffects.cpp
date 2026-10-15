@@ -6,6 +6,7 @@
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Object/SceneActor.h"
 #include "NSlib/Object/IUse/IUseEffect.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
@@ -92,24 +93,21 @@ namespace GL::Player
 
     void ImpactEffects::Update(const BodySlamStatus& slam,
                                const PlayerMotion& motion,
-                               const NS::Obj::Body& body,
-                               const NS::Obj::Collider& collider,
-                               const GL::Level::ImpactResolver& resolver)
+                               const NS::Obj::Body* body,
+                               const NS::Obj::Collider* collider,
+                               const GL::Level::ImpactAnswer& impact)
     {
-        // 頼みは同じフレームの決定の段で事象が置く。読んだら消し、次のフレームへ持ち越さない
-        const bool hitRequested = m_hitRequested;
-        const bool flightRequested = m_flightRequested;
-        m_hitRequested = false;
-        m_flightRequested = false;
-        if (hitRequested)
+        NS_ASSERT(Game, body != nullptr && collider != nullptr, "体か当たりの部品が渡されていない");
+        // 頼みは同じフレームの決定の段で裁定が答えに書き、次のフレームの裁定が空にする
+        if (impact.hitEffect)
         {
-            BeginHit(resolver.LastImpact(), slam, collider);
+            BeginHit(impact.lastImpact, slam, collider);
         }
         // 同じフレームに置かれた 2 つの頼みは、当たりの絵の後に飛びの絵を出す
-        if (m_plan.active && flightRequested)
+        if (m_plan.active && impact.flightEffect)
         {
             m_plan.releaseStep = NS::Obj::EffectStep(Owner());
-            BeginFlight(motion, body, resolver);
+            BeginFlight(motion, body, impact.lastImpact);
         }
         AdvanceHit(collider);
         AdvanceFlight(motion, body);
@@ -266,7 +264,7 @@ namespace GL::Player
 
     void ImpactEffects::BeginHit(const GL::Level::ImpactRecord& impact,
                                  const BodySlamStatus& slam,
-                                 const NS::Obj::Collider& collider)
+                                 const NS::Obj::Collider* collider)
     {
         // 前の当たりの層が残っていても、次の核は当たりの絵の頭から出す。前の粉は親を止めて短くする
         FinishHeldEffects();
@@ -289,7 +287,7 @@ namespace GL::Player
         plan.targetId = impact.targetId;
 
         const Vector3 self = Owner()->Root().Position();
-        const float radius = collider.CapsuleRadius();
+        const float radius = collider->CapsuleRadius();
         const Vector3 horizontalForward{impact.impactDir.x, 0.0f, impact.impactDir.z};
         plan.launchDir = NormalizedOr(horizontalForward, Vector3{1.0f, 0.0f, 0.0f});
         const Vector3 toTarget = NormalizedOr(impact.targetPos - self, plan.launchDir);
@@ -393,7 +391,7 @@ namespace GL::Player
             Owner(), NS::Obj::PlayEffect(Owner(), m_embersAsset, embers), static_cast<float>(shape.emberCount));
     }
 
-    void ImpactEffects::AdvanceHit(const NS::Obj::Collider& collider)
+    void ImpactEffects::AdvanceHit(const NS::Obj::Collider* collider)
     {
         if (!m_plan.active)
         {
@@ -569,7 +567,7 @@ namespace GL::Player
             if (recoilDue && shape.recoilCount > 0)
             {
                 // 接触点から出すと動く方向を誤読しやすいため、反動と逆側の玉の縁から線を出す
-                const float radius = collider.CapsuleRadius();
+                const float radius = collider->CapsuleRadius();
                 m_aim.recoilOrigin = Owner()->Root().Position() - m_plan.selfDir * radius;
                 NS::Gfx::EffectPlayDesc recoil = PlayAt(m_aim.recoilOrigin, TurnUpTo(m_plan.selfDir), Uniform(1.0f));
                 recoil.dynamicInputs[0] = 0.0f;
@@ -590,8 +588,8 @@ namespace GL::Player
     }
 
     void ImpactEffects::BeginFlight(const PlayerMotion& motion,
-                                    const NS::Obj::Body& body,
-                                    const GL::Level::ImpactResolver& resolver)
+                                    const NS::Obj::Body* body,
+                                    const GL::Level::ImpactRecord& impact)
     {
         const int step = NS::Obj::EffectStep(Owner());
         // 前の当たりの尾が残っていれば、ここで消す。尾は 1 本ずつ持つ
@@ -602,11 +600,11 @@ namespace GL::Player
         }
         // 貫通した時と反動の初速が 0 の時は反動に入らないので、尾は出さない
         // 外れは弾かれた手応えを出さない。尾の輪と筋は弾き返された印に見える
-        const bool missed = resolver.LastImpact().tier == GL::Level::HitTier::Wide;
+        const bool missed = impact.tier == GL::Level::HitTier::Wide;
         if (motion.rebounding && !missed)
         {
             const Vector3 ball = Owner()->Root().Position();
-            const Vector3 heading = ReboundTrailHeading(body.Velocity(), ball, CameraPosition());
+            const Vector3 heading = ReboundTrailHeading(body->Velocity(), ball, CameraPosition());
             m_flight.reboundTrail =
                 NS::Obj::PlayEffect(Owner(), m_reboundTrailAsset, PlayAt(ball, TurnUpTo(heading), Uniform(1.0f)));
             m_flight.reboundStartStep = step;
@@ -614,18 +612,18 @@ namespace GL::Player
         // 飛ばした相手の飛び出しの尾は、相手が自分で出す (LaunchEffects)
     }
 
-    void ImpactEffects::AdvanceFlight(const PlayerMotion& motion, const NS::Obj::Body& body)
+    void ImpactEffects::AdvanceFlight(const PlayerMotion& motion, const NS::Obj::Body* body)
     {
         const int step = NS::Obj::EffectStep(Owner());
         if (m_flight.reboundTrail != 0 && step != m_flight.reboundStartStep)
         {
             // 頂点の前に反動を抜けた時 (縁を掴んだ時など) は、そこで輪ごと消す
-            if (!motion.rebounding || PlayerJudgeLand::Judge(body.IsGrounded(), body.VerticalVelocity()))
+            if (!motion.rebounding || PlayerJudgeLand::Judge(body->IsGrounded(), body->VerticalVelocity()))
             {
                 NS::Obj::StopEffect(Owner(), m_flight.reboundTrail);
                 m_flight.reboundTrail = 0;
             }
-            else if (!(body.VerticalVelocity() > 0.0f))
+            else if (!(body->VerticalVelocity() > 0.0f))
             {
                 // 頂点は縦の速さが 0 以下になったフレーム。親を止め、筋は頂点の位置と向きのまま薄れる
                 // 親を止めた後の筋は置き直しても動かない (Effekseer は親の最後の姿で子を描く)
@@ -636,27 +634,27 @@ namespace GL::Player
             else
             {
                 const Vector3 ball = Owner()->Root().Position();
-                const Vector3 heading = ReboundTrailHeading(body.Velocity(), ball, CameraPosition());
+                const Vector3 heading = ReboundTrailHeading(body->Velocity(), ball, CameraPosition());
                 NS::Obj::SetEffectTransform(Owner(), m_flight.reboundTrail, ball, TurnUpTo(heading), Uniform(1.0f));
             }
         }
     }
 
     void ImpactEffects::AdvanceLanding(const PlayerMotion& motion,
-                                       const NS::Obj::Body& body,
-                                       const NS::Obj::Collider& collider)
+                                       const NS::Obj::Body* body,
+                                       const NS::Obj::Collider* collider)
     {
         if (!motion.rebounding)
         {
             m_landingDustPlayed = false;
         }
-        else if (!m_landingDustPlayed && PlayerJudgeLand::Judge(body.IsGrounded(), body.VerticalVelocity()))
+        else if (!m_landingDustPlayed && PlayerJudgeLand::Judge(body->IsGrounded(), body->VerticalVelocity()))
         {
             // 着地の潰れ (PlayerAppearance) と同じ条件。このフレームの縦の速さは既に 0 なので、前のフレームの控えで測る
             m_landingDustPlayed = true;
             const float radius = LandDustRadiusFor(-m_lastVerticalVelocity);
             // 足元は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径))
-            const NS::Phys::Capsule capsule = collider.CapsuleAt(Owner()->Root().Position());
+            const NS::Phys::Capsule capsule = collider->CapsuleAt(Owner()->Root().Position());
             Vector3 at = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
             at.y += m_dustRingLift;
             const NS::uint32 dust = NS::Obj::PlayEffect(
@@ -666,7 +664,7 @@ namespace GL::Player
             NS::Obj::SetEffectAmount(Owner(), dust, radius);
             NS::Obj::StopEffectAfter(Owner(), dust, std::max(m_landDustLife, 1));
         }
-        m_lastVerticalVelocity = body.VerticalVelocity();
+        m_lastVerticalVelocity = body->VerticalVelocity();
     }
 
     std::optional<Vector3> ImpactEffects::CameraPosition() const

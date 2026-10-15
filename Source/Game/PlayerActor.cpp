@@ -22,6 +22,7 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "NSlib/Core/Logger.h"
 #include "NSlib/Object/ActorList.h"
 #include "NSlib/Object/IUse/IUseSceneSystem.h"
 #include "NSlib/Object/Reflection/TypeRegistry.h"
@@ -105,7 +106,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
     state.heightOffset = m_collider->StandingHalfHeight() - m_collider->CapsuleHalfHeight();
     // 体当たりから止めの明けまで、カメラは距離と溜めの締めを保つ。当たる瞬間に画面が引かない
-    state.framingHeld = IsBodySlamming() || m_resolver->IsHoldingPlayer();
+    state.framingHeld = IsBodySlamming() || m_resolver->Answer().holdingPlayer;
     state.hasRebound = true;
     state.rebound = NS::Obj::FollowReboundDesc{
         .rebounding = IsRebounding(),
@@ -113,7 +114,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
         .slamDirection = BodySlamDirection(),
     };
     // 真ん中の反動は、飛んでいく相手を画面に残す。外れはいつもどおり自機だけを追う (外れのカメラは寄り無し)
-    const GL::Level::ImpactRecord& impact = m_resolver->LastImpact();
+    const GL::Level::ImpactRecord& impact = m_resolver->Answer().lastImpact;
     // 外れはカメラを突進の向きへ回り込ませない。回り込むと画面が振り回され、自機がどちらへ逸れたかも読めない
     // 後ろへも下げない。下げるのは飛んでいく相手を画面に収めるためで、外れの相手はほとんど飛ばない
     if (IsRebounding() && impact.tier == GL::Level::HitTier::Wide)
@@ -189,7 +190,8 @@ void PlayerActor::ObserveStep()
     NS::Obj::SceneActor::ObserveStep();
     // 当たりの途中は受け付けない。相手だけが戻ると、走っている当たりのタイムラインが戻った相手を飛ばす
     // 押しは同じ歩の状態の段で消費されるので、当たりの途中の押しは持ち越さない
-    const bool inImpact = m_resolver->IsHitStopping() || m_resolver->IsAwaitingRebound();
+    const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
+    const bool inImpact = impact.hitStopping || impact.awaitingRebound;
     if (m_input->RespawnPressed() && !inImpact)
     {
         if (GL::Level::CourseDirector* director = NS::Obj::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
@@ -200,7 +202,7 @@ void PlayerActor::ObserveStep()
     ObserveCharge(m_input->SlamHeld());
     if (m_resolver->IsActive())
     {
-        m_resolver->ObserveImpact();
+        m_resolver->ObserveImpact(SlamMotion(), m_collider.get());
     }
 }
 
@@ -209,13 +211,40 @@ void PlayerActor::DecideStep()
     AdvanceCharge(BodyDelta());
     if (m_resolver->IsActive())
     {
-        m_resolver->StepState();
+        m_resolver->StepState(
+            SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), ModelSubObj(), HitReactionSubObj());
+        ApplyImpactOrders(m_resolver->Answer());
     }
     else
     {
         // 外された裁定役は走っている当たりのタイムラインを打ち切る。持ち越すと入れ直した時に残りの止めが明け、遅れて弾かれる
-        m_resolver->CancelImpact();
+        m_resolver->CancelImpact(ModelSubObj(), HitReactionSubObj());
     }
+}
+
+void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexcept
+{
+    if (answer.cancelBodySlam)
+    {
+        CancelBodySlam();
+    }
+    if (!answer.releaseVelocity.has_value())
+    {
+        return;
+    }
+    if (answer.reboundArc.has_value())
+    {
+        if (BeginRebound(*answer.reboundArc))
+        {
+            return;
+        }
+        // 欄が曲線にならない値の時だけ通る。書かないと、止める前の最後のフレームの速度のまま動き出す
+        NS_LOG_WARN(Game,
+                    "反動が曲線にならず、自機を弾けなかった: 高さ {} 距離 {}",
+                    answer.reboundArc->apexHeight,
+                    answer.reboundArc->distance);
+    }
+    m_body->SetVelocity(*answer.releaseVelocity);
 }
 
 void PlayerActor::StateStep()
@@ -251,12 +280,13 @@ void PlayerActor::VisualStep()
     if (m_slamArrow->IsActive()) { m_slamArrow->Update(m_charge, *m_params, *m_collider); }
     // clang-format on
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
-    m_resolver->WriteTremor();
+    m_resolver->WriteTremor(m_collider.get(), ModelSubObj());
     const GL::Player::PlayerMotion motion = Motion();
+    const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
-    if (m_appearance->IsActive()) { m_appearance->Update(motion, m_charge, m_slam, m_rebound, m_skid, AimDirection(), *m_body, *m_resolver); }
-    if (m_chargeEffects->IsActive()) { m_chargeEffects->Update(m_charge, m_slam, motion, ChargeAimDirection(), *m_appearance, *m_resolver); }
-    if (m_impactEffects->IsActive()) { m_impactEffects->Update(m_slam, motion, *m_body, *m_collider, *m_resolver); }
+    if (m_appearance->IsActive()) { m_appearance->Update(motion, m_charge, m_slam, m_rebound, m_skid, AimDirection(), m_body.get(), impact); }
+    if (m_chargeEffects->IsActive()) { m_chargeEffects->Update(m_charge, m_slam, motion, ChargeAimDirection(), m_appearance.get(), impact); }
+    if (m_impactEffects->IsActive()) { m_impactEffects->Update(m_slam, motion, m_body.get(), m_collider.get(), impact); }
     // clang-format on
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
@@ -336,6 +366,8 @@ void PlayerActor::OnEndPlay()
     m_states->Reset();
     m_appliedClip.clear();
     NS::Obj::SceneActor::OnEndPlay();
+    // 走っている当たりのタイムラインを捨てる。プレイの途中で外れても止めが次のプレイへ残らない
+    m_resolver->CancelImpact(ModelSubObj(), HitReactionSubObj());
     m_appearance->ResetDrawScale();
     m_chargeEffects->Clear();
     if (NS::Obj::Scene* scene = OwningScene())
@@ -553,7 +585,8 @@ float PlayerActor::SkidSpeedScale() const noexcept
 bool PlayerActor::CanMoveBody() const noexcept
 {
     // 当たりの止めの正は裁定役の時計。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
-    return m_body->IsActive() && !m_resolver->IsHitStopping() && !m_resolver->IsAwaitingRebound();
+    const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
+    return m_body->IsActive() && !impact.hitStopping && !impact.awaitingRebound;
 }
 
 GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
@@ -600,7 +633,7 @@ void PlayerActor::ResetState() noexcept
     m_bodySlamHeld = false;
     m_states->Reset();
     // 止めの最中か反動を待つ間のやり直しで、出現位置で明けて弾かれないよう、走っている当たりのタイムラインを持ち主に打ち切らせる
-    m_resolver->CancelImpact();
+    m_resolver->CancelImpact(ModelSubObj(), HitReactionSubObj());
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale();
 }

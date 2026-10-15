@@ -20,7 +20,7 @@ namespace NS::Obj
 
 namespace GL::Level
 {
-    class ImpactResolver;
+    struct ImpactAnswer;
     struct ImpactRecord;
 } // namespace GL::Level
 
@@ -87,7 +87,7 @@ namespace GL::Player
     };
 
     //! @brief 自機の命中・反動・着地のエフェクトを出す部品
-    //! @details タイムラインからの要求を移動後の VisualStep で消費する。要求の無い命中では出さない
+    //! @details 当たりの裁定の答えにある頼みを、移動後の VisualStep で読む。頼みの無い命中では出さない
     //! 相手の飛行・着地の演出は相手の LaunchEffects に任せる
     class ImpactEffects : public NS::Obj::SubObject
     {
@@ -99,20 +99,15 @@ namespace GL::Player
 
         //! @brief 頼まれた当たりと飛びの絵を始め、出ている絵を進める。持ち主の見た目の段が呼ぶ
         //! @param[in] slam 外れの火花の向きに突進の向きを読む
-        //! @param[in] body 反動の尾の向きと、頂点と着地の判定に速度と接地を読む
-        //! @param[in] collider 接触点と足元を、当たりのカプセルから作る
-        //! @param[in] resolver 最後の当たりを読む
+        //! @param[in] body 反動の尾の向きと、頂点と着地の判定に速度と接地を読む。空でないこと
+        //! @param[in] collider 接触点と足元を、当たりのカプセルから作る。空でないこと
+        //! @param[in] impact 当たりの裁定の答え。当たりと飛びの絵の頼みと、最後の当たりを読む。
+        //! 飛びの絵は当たりの絵が出ている間だけ始める
         void Update(const BodySlamStatus& slam,
                     const PlayerMotion& motion,
-                    const NS::Obj::Body& body,
-                    const NS::Obj::Collider& collider,
-                    const GL::Level::ImpactResolver& resolver);
-
-        //! 同じフレームの Update に命中演出を要求する。ChargeEffects の後に出す
-        void RequestHitEffect() noexcept { m_hitRequested = true; }
-
-        //! 同じフレームの Update に反動の尾を要求する。命中演出の終了後は無効
-        void RequestFlightEffect() noexcept { m_flightRequested = true; }
+                    const NS::Obj::Body* body,
+                    const NS::Obj::Collider* collider,
+                    const GL::Level::ImpactAnswer& impact);
 
         //! 当たりの内訳から、演出の大きさと量を決める
         [[nodiscard]] ImpactShape ShapeFor(const GL::Level::ImpactRecord& impact) const noexcept;
@@ -267,17 +262,17 @@ namespace GL::Player
 
         void BeginHit(const GL::Level::ImpactRecord& impact,
                       const BodySlamStatus& slam,
-                      const NS::Obj::Collider& collider);
-        void AdvanceHit(const NS::Obj::Collider& collider);
+                      const NS::Obj::Collider* collider);
+        void AdvanceHit(const NS::Obj::Collider* collider);
         void PlaySparks();
         void PlayEmbers();
         // 前の当たりの層のうち、ここが消える時を持っている物を今のフレームで畳む
         void FinishHeldEffects();
-        void BeginFlight(const PlayerMotion& motion, const NS::Obj::Body& body, const GL::Level::ImpactResolver& resolver);
+        void BeginFlight(const PlayerMotion& motion, const NS::Obj::Body* body, const GL::Level::ImpactRecord& impact);
         // 反動の尾を自機へ付いていかせる。頂点で親を止める
-        void AdvanceFlight(const PlayerMotion& motion, const NS::Obj::Body& body);
+        void AdvanceFlight(const PlayerMotion& motion, const NS::Obj::Body* body);
         // 反動の着地のフレームに足元へ粉を出し、次のフレームのために縦の速さを控える
-        void AdvanceLanding(const PlayerMotion& motion, const NS::Obj::Body& body, const NS::Obj::Collider& collider);
+        void AdvanceLanding(const PlayerMotion& motion, const NS::Obj::Body* body, const NS::Obj::Collider* collider);
         // 効果を掛ける前の視点の位置。カメラが無い・姿が決まらない世界では空
         [[nodiscard]] std::optional<NS::Vector3> CameraPosition() const;
 
@@ -287,8 +282,6 @@ namespace GL::Player
         bool m_landingDustPlayed = false;    // この反動の着地の粉を出した。反動を抜けたら戻す
         ImpactAim m_aim;
         std::vector<NS::uint32> m_dusts; // 出した粉。次の当たりの絵の頭で親を止める
-        bool m_hitRequested = false;     // 事象が置いた、当たりの絵を始める頼み。Update が読んで消す
-        bool m_flightRequested = false;  // 事象が置いた、飛びの絵を始める頼み。Update が読んで消す
 
         int m_coreHoldMax = 10;
         int m_wideCoreHoldLast = 1;
