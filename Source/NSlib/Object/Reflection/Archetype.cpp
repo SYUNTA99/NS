@@ -1,4 +1,5 @@
 #include "NSlib/Object/Reflection/Archetype.h"
+#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Object/SceneActor.h"
@@ -232,7 +233,7 @@ namespace NS::Obj
         nlohmann::json full = object;
         nlohmann::json& target = ObjectJsonSubObjs(full);
         target = nlohmann::json::object();
-        baseline.ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, const SubObject* subObject) {
+        ForEachReflectedSubObj(baseline, [&](const NS::Obj::SubObjectDesc& field, const SubObject* subObject) {
             nlohmann::json fields = SerializeSubObjFields(*subObject);
             if (const nlohmann::json* source = SubObjFields(object, field.key))
             {
@@ -247,7 +248,7 @@ namespace NS::Obj
     {
         const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
-        baseline.ForEachSubObj([&](const SubObjectDesc& member, const SubObject* subObject) {
+        ForEachReflectedSubObj(baseline, [&](const SubObjectDesc& member, const SubObject* subObject) {
             if (IsInstanceOnlySubObj(member.key))
             {
                 return;

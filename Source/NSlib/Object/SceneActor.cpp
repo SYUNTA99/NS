@@ -49,26 +49,7 @@ namespace NS::Obj
 
     namespace
     {
-        void VisitReflectedSubObjects(const Object& owner,
-                                      const ReflectionInfo* info,
-                                      const SceneActor::SubObjFieldVisitor& visit)
-        {
-            if (info == nullptr)
-            {
-                return;
-            }
-            VisitReflectedSubObjects(owner, info->base, visit);
-            for (std::size_t i = 0; i < info->subObjectCount; ++i)
-            {
-                const SubObjectDesc& field = info->subObjects[i];
-                if (SubObject* part = field.get(&owner))
-                {
-                    visit(field, part);
-                }
-            }
-        }
-
-        // ForEachSubObj の std::function を介さず、登録を直接たどる
+        // ForEachReflectedSubObj の std::function を介さず、登録を直接たどる
         template <class TMatch> const SubObjectDesc* FindCreatedSubObj(const SceneActor& owner, TMatch match)
         {
             for (const ReflectionInfo* info = owner.GetReflection(); info != nullptr; info = info->base)
@@ -86,16 +67,6 @@ namespace NS::Obj
             return nullptr;
         }
     } // namespace
-
-    void SceneActor::ForEachSubObj(const SubObjVisitor& visit) const
-    {
-        ForEachSubObj([&](const SubObjectDesc&, SubObject* part) { visit(part); });
-    }
-
-    void SceneActor::ForEachSubObj(const SubObjFieldVisitor& visit) const
-    {
-        VisitReflectedSubObjects(*this, GetReflection(), visit);
-    }
 
     const SubObjectDesc* SceneActor::FindSubObjMember(const void* member) const
     {

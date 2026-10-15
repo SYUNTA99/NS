@@ -1,4 +1,5 @@
 #include "Editor/LevelEditorController.h"
+#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
 #include "NSlib/Core/Types.h"
 
 #include "Editor/EditorObjects.h"
@@ -83,7 +84,8 @@ namespace
     const NS::Obj::Collider* ColliderOf(const NS::Obj::SceneActor& object) noexcept
     {
         const NS::Obj::Collider* found = nullptr;
-        object.ForEachSubObj([&](const NS::Obj::SubObject* subObject) {
+        NS::Obj::ForEachReflectedSubObj(object,
+                                        [&](const NS::Obj::SubObjectDesc&, const NS::Obj::SubObject* subObject) {
             if (found == nullptr)
             {
                 found = NS::Obj::Cast<NS::Obj::Collider>(subObject);

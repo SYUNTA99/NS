@@ -15,7 +15,6 @@
 
 #include "NSlib/Core/Types.h"
 #include <concepts>
-#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -96,11 +95,6 @@ namespace NS::Obj
         //! 非有限値または dt が 0 以下なら変更しない
         void AddGravity(NS::Vector3& velocity, float strength, float dt) const noexcept;
 
-        using SubObjVisitor = std::function<void(SubObject*)>;
-        using SubObjFieldVisitor = std::function<void(const SubObjectDesc&, SubObject*)>;
-        // 基底の部品を先に、派生の固定メンバーを後に渡す。所有は移さない
-        void ForEachSubObj(const SubObjVisitor& visit) const;
-        void ForEachSubObj(const SubObjFieldVisitor& visit) const;
         // 登録情報の保存キー。この SceneActor の部品でなければ空
         [[nodiscard]] std::string_view SubObjKey(const SubObject& part) const;
         // 保存キーに対応する部品。作っていなければ nullptr

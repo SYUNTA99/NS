@@ -1,4 +1,5 @@
 #include "NSlib/Object/SceneActor.h"
+#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
 #include "NSlib/Object/ObjectJson.h"
 #include "NSlib/Object/Reflection/Archetype.h"
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
@@ -129,7 +130,8 @@ TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationO
     ASSERT_NE(actor->CollisionSubObj(), nullptr);
     EXPECT_EQ(actor->SubObjKey(*actor->CollisionSubObj()), "Collision");
     std::vector<std::string> names;
-    actor->ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, const NS::Obj::SubObject* subObject) {
+    NS::Obj::ForEachReflectedSubObj(*actor,
+                                    [&](const NS::Obj::SubObjectDesc& field, const NS::Obj::SubObject* subObject) {
         EXPECT_EQ(subObject->Owner(), actor.get());
         names.push_back(field.key);
     });

@@ -302,3 +302,37 @@ TEST(SceneLoad, CourseSceneHasOneDeathZoneAndNoUnregisteredActor)
     }
     EXPECT_EQ(deathZones, 1);
 }
+
+// 欄の表示名と部品の登録が保存の鍵なので、鍵が変わると読み直した値が静かに既定へ戻る
+TEST(SceneLoad, CourseSceneKeysSurviveWritingBack)
+{
+    const std::string path = NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
+        "course.scene");
+    nlohmann::json doc;
+    ASSERT_TRUE(NS::Obj::LoadSceneFromJsonFile(doc, path));
+    NS::Obj::ArchetypeLibrary::Get().Reload();
+    NS::Obj::Scene scene;
+    scene.ResetFromJson(doc);
+
+    // 書き戻しは種類の既定と同じ欄を省くので、全欄へ広げてから、ファイルの鍵が全部残っているかを見る
+    const nlohmann::json written = scene.ToJson();
+    const nlohmann::json& writtenObjects = NS::Obj::SceneJsonObjects(written);
+    const nlohmann::json& fileObjects = NS::Obj::SceneJsonObjects(doc);
+    ASSERT_EQ(writtenObjects.size(), fileObjects.size());
+    for (std::size_t i = 0; i < fileObjects.size(); ++i)
+    {
+        const nlohmann::json expanded = NS::Obj::ExpandObjectJson(writtenObjects[i]);
+        const nlohmann::json& writtenParts = NS::Obj::ObjectJsonSubObjs(expanded);
+        const nlohmann::json& fileParts = NS::Obj::ObjectJsonSubObjs(fileObjects[i]);
+        for (nlohmann::json::const_iterator part = fileParts.begin(); part != fileParts.end(); ++part)
+        {
+            const std::string where = std::string{NS::Obj::ObjectJsonClass(fileObjects[i])} + " " + part.key();
+            ASSERT_TRUE(writtenParts.contains(part.key())) << where;
+            for (nlohmann::json::const_iterator field = part->begin(); field != part->end(); ++field)
+            {
+                EXPECT_TRUE(writtenParts[part.key()].contains(field.key())) << where << " " << field.key();
+            }
+        }
+    }
+}

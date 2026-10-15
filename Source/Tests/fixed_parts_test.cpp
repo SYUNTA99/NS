@@ -1,4 +1,5 @@
 #include "Game/Level/FollowCameraActor.h"
+#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Object/SceneActor.h"
@@ -235,7 +236,7 @@ TEST(ReflectedParts, InheritedMembersDriveEnumerationWithoutAnOverride)
     ASSERT_NE(actor->childPart, nullptr);
     EXPECT_EQ(actor->absentPart, nullptr);
     std::vector<std::string> keys;
-    actor->ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, NS::Obj::SubObject* part) {
+    NS::Obj::ForEachReflectedSubObj(*actor, [&](const NS::Obj::SubObjectDesc& field, NS::Obj::SubObject* part) {
         keys.emplace_back(field.key);
         EXPECT_EQ(part->Owner(), actor.get());
     });
@@ -362,7 +363,9 @@ TEST(FixedParts, CommonMembersAreCreatedByTheActorClass)
     EXPECT_EQ(actor.FindSubObj("Model"), model);
     EXPECT_EQ(model->Owner(), &actor);
     std::vector<std::string> names;
-    actor.ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, NS::Obj::SubObject*) { names.push_back(field.key); });
+    NS::Obj::ForEachReflectedSubObj(actor, [&](const NS::Obj::SubObjectDesc& field, NS::Obj::SubObject*) {
+        names.push_back(field.key);
+    });
     EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model"}));
 }
 

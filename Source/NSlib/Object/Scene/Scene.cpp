@@ -1,4 +1,5 @@
 #include "NSlib/Object/Scene/Scene.h"
+#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Graphics/DebugDraw.h"
@@ -268,7 +269,9 @@ namespace NS::Obj
         // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
         if (m_assets != nullptr)
         {
-            obj.ForEachSubObj([&](SubObject* subObject) { subObject->ResolveAssets(*m_assets); });
+            ForEachReflectedSubObj(obj, [&](const SubObjectDesc&, SubObject* subObject) {
+                subObject->ResolveAssets(*m_assets);
+            });
         }
         // 開始は引き当ての後。OnStart の中で資産を読む SubObject が空の参照を掴まない
         obj.OnStart();
@@ -357,7 +360,7 @@ namespace NS::Obj
         const nlohmann::json object = ExpandObjectJson(snapshot);
         bool same = ObjectJsonClass(object) == std::string_view{obj->ClassName()};
         std::size_t subObjectCount = 0;
-        obj->ForEachSubObj([&](const SubObjectDesc& field, SubObject*) {
+        ForEachReflectedSubObj(*obj, [&](const SubObjectDesc& field, SubObject*) {
             ++subObjectCount;
             if (SubObjFields(object, field.key) == nullptr)
             {
@@ -387,7 +390,7 @@ namespace NS::Obj
             parent = nullptr;
         }
         obj->SetParent(parent);
-        obj->ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, SubObject* subObject) {
+        ForEachReflectedSubObj(*obj, [&](const NS::Obj::SubObjectDesc& field, SubObject* subObject) {
             const nlohmann::json* fields = SubObjFields(object, field.key);
             if (fields == nullptr || SerializeSubObjFields(*subObject) == *fields)
             {

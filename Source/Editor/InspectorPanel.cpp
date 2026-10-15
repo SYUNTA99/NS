@@ -1,4 +1,5 @@
 #include "Editor/InspectorPanel.h"
+#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
 
 #include "Editor/EditorObjects.h"
 #include "Editor/EditorUi.h"
@@ -180,7 +181,7 @@ namespace NS::Editor
             ImGui::InputTextWithHint("##fieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
 
             NS::Editor::SubObjectEditResult subObjectEdit{};
-            go->ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, NS::Obj::SubObject* live) {
+            NS::Obj::ForEachReflectedSubObj(*go, [&](const NS::Obj::SubObjectDesc& field, NS::Obj::SubObject* live) {
                 if (live->GetReflection() == nullptr)
                 {
                     return;

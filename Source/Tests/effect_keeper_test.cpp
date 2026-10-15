@@ -1,4 +1,5 @@
 #include "NSlib/Object/SceneActor.h"
+#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
 #include "NSlib/Object/SubObjects/EffectKeeper.h"
 #include "NSlib/Object/SubObjects/HitReaction.h"
 #include "TestEffectActor.h"
@@ -131,7 +132,9 @@ TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
     ASSERT_NE(reaction, nullptr);
 
     std::vector<NS::Obj::SubObject*> parts;
-    actor.ForEachSubObj([&](NS::Obj::SubObject* part) { parts.push_back(part); });
+    NS::Obj::ForEachReflectedSubObj(actor, [&](const NS::Obj::SubObjectDesc&, NS::Obj::SubObject* part) {
+        parts.push_back(part);
+    });
     ASSERT_EQ(parts.size(), 3u);
     EXPECT_EQ(parts[1], reaction);
     EXPECT_EQ(parts[2], keeper);

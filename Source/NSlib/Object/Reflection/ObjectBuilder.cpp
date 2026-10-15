@@ -1,4 +1,5 @@
 #include "NSlib/Object/Reflection/ObjectBuilder.h"
+#include "NSlib/Object/Reflection/ReflectedSubObjs.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
@@ -61,7 +62,9 @@ namespace NS::Obj
         // 参照文字列の実体化は SubObject 自身の仕事。AssetManager が無い間は文字列のまま持たせておく
         if (assets != nullptr)
         {
-            obj->ForEachSubObj([&](SubObject* subObject) { subObject->ResolveAssets(*assets); });
+            ForEachReflectedSubObj(*obj, [&](const SubObjectDesc&, SubObject* subObject) {
+                subObject->ResolveAssets(*assets);
+            });
         }
         return obj;
     }
@@ -70,7 +73,9 @@ namespace NS::Obj
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, 0u);
         nlohmann::json& parts = ObjectJsonSubObjs(object);
-        obj.ForEachSubObj([&](const SubObjectDesc& field, SubObject*) { parts[field.key] = nlohmann::json::object(); });
+        ForEachReflectedSubObj(obj, [&](const SubObjectDesc& field, SubObject*) {
+            parts[field.key] = nlohmann::json::object();
+        });
         SetObjectPosition(object, obj.Root().Position());
         SetObjectRotation(object, obj.Root().Rotation());
         SetObjectScale(object, obj.Root().Scale());
@@ -81,7 +86,7 @@ namespace NS::Obj
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonSubObjs(object);
-        obj.ForEachSubObj([&](const NS::Obj::SubObjectDesc& field, const SubObject* subObject) {
+        ForEachReflectedSubObj(obj, [&](const NS::Obj::SubObjectDesc& field, const SubObject* subObject) {
             parts[field.key] = SerializeSubObjFields(*subObject);
         });
         return DiffObjectJson(object);
