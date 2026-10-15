@@ -215,6 +215,22 @@ namespace NS::Obj
                 subObject->OnUpdate();
             }
         }
+        //! 部品を作っていれば function を呼ぶ。function は部品のメンバー関数 (&Model::Register など)
+        template <class T, class F> static void CallIfPresent(const std::unique_ptr<T>& part, F function)
+        {
+            if (part != nullptr)
+            {
+                std::invoke(function, *part);
+            }
+        }
+        //! 部品を作っていて、IsActive の間だけ function を呼ぶ
+        template <class T, class F> static void CallIfActive(const std::unique_ptr<T>& part, F function)
+        {
+            if (part != nullptr && part->IsActive())
+            {
+                std::invoke(function, *part);
+            }
+        }
         //! 自分を持ち主に、TStates の先頭へ入る状態機械を一度だけ構築する
         //! OnEnter が使う部品を先に用意する。outMachine は OnEnter 前に設定する
         //! 基底が所有し、型付きポインタは非所有。既に構築済みなら変更せず false
