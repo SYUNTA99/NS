@@ -39,19 +39,6 @@ namespace
         }
     }
 
-    void ExpectOnlyEnabledField(const nlohmann::json& object)
-    {
-        const nlohmann::json* fields = NS::SubObjFields(object, "StateMachine");
-        if (fields == nullptr)
-        {
-            return;
-        }
-        for (nlohmann::json::const_iterator field = fields->begin(); field != fields->end(); ++field)
-        {
-            EXPECT_EQ(field.key(), "enabled");
-        }
-    }
-
     class OwnedState final : public NS::StateOf<OwnedState, NS::SceneActor>
     {
     public:
@@ -187,11 +174,11 @@ TEST(ActorStateMachine, SavedJsonGainsNoStateMachineFields)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
     ExpectNoStateMachineFields(NS::ObjectToJson(*player));
-    ExpectOnlyEnabledField(NS::ExpandObjectJson(NS::MakePrototypeJson<PlayerActor>()));
+    ExpectNoStateMachineFields(NS::ExpandObjectJson(NS::MakePrototypeJson<PlayerActor>()));
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
     ExpectNoStateMachineFields(NS::ObjectToJson(*prop));
-    ExpectOnlyEnabledField(NS::ExpandObjectJson(NS::MakePrototypeJson<GL::Level::PropActor>()));
+    ExpectNoStateMachineFields(NS::ExpandObjectJson(NS::MakePrototypeJson<GL::Level::PropActor>()));
 }
 
 TEST(ActorStateMachine, SecondBuildFailsAndKeepsTheFirstMachine)

@@ -186,9 +186,6 @@ public:
     //! 改名して Undo 履歴へ追加する。不在なら何もしない。重複には番号を付け、空名は Object にする
     void RenameObject(NS::uint32 id, std::string_view name);
 
-    //! 部品の保存される有効値を切り替える。プレイヤーの入力と根の姿勢は変更しない
-    void SetSubObjectEnabledOnSelected(NS::SubObject& comp, bool enabled);
-
     //! 選択中の配置物を新しい永続 id で複製して undo へ積む。プレイヤーは複製の対象から外す
     void DuplicateSelectedObject();
 

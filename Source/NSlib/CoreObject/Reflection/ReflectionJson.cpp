@@ -245,13 +245,6 @@ namespace NS
         }
     } // namespace
 
-    nlohmann::json SerializeSubObjFields(const SubObject& part)
-    {
-        nlohmann::json fields = SerializeSubObjectFields(part);
-        fields["enabled"] = part.IsEnabled();
-        return fields;
-    }
-
     nlohmann::json SerializeSubObjectFields(const SubObject& comp)
     {
         const ReflectionInfo* info = comp.GetReflection();
@@ -274,65 +267,47 @@ namespace NS
         return fields;
     }
 
-    namespace
-    {
-        // skippedKey は持ち主の基底が自分で読む鍵で、照合先の無い鍵に数えない。空なら読み飛ばす鍵は無い
-        std::size_t ApplyFieldsExcept(void* owner,
-                                      const ReflectionInfo& info,
-                                      const nlohmann::json& fields,
-                                      std::string_view skippedKey)
-        {
-            if (!fields.is_object())
-            {
-                return 0;
-            }
-
-            for (std::size_t i = 0; i < info.fieldCount; ++i)
-            {
-                const FieldDesc& field = info.fields[i];
-                const nlohmann::json::const_iterator it = fields.find(field.name);
-                if (it == fields.end())
-                {
-                    continue; // 欠損キーは既定値のまま据え置く
-                }
-                JsonToField(owner, field, *it);
-            }
-
-            std::size_t unreadCount = 0;
-            for (nlohmann::json::const_iterator entry = fields.begin(); entry != fields.end(); ++entry)
-            {
-                if ((!skippedKey.empty() && entry.key() == skippedKey) || FindField(&info, entry.key()) != nullptr)
-                {
-                    continue;
-                }
-                ++unreadCount;
-                NS_LOG_WARN(Game,
-                            "{} に読み手のいない欄 {} がある。 欄名を変えたなら保存済みの値は既定へ戻っている",
-                            info.typeName,
-                            entry.key());
-            }
-            return unreadCount;
-        }
-    } // namespace
-
     std::size_t ApplyJsonFields(SubObject& comp, const nlohmann::json& fields)
     {
         const ReflectionInfo* info = comp.GetReflection();
-        if (info == nullptr || !fields.is_object())
+        if (info == nullptr)
         {
             return 0;
         }
-
-        const nlohmann::json::const_iterator enabled = fields.find("enabled");
-        if (enabled != fields.end() && enabled->is_boolean())
-        {
-            comp.SetEnabled(enabled->get<bool>());
-        }
-        return ApplyFieldsExcept(&comp, *info, fields, "enabled");
+        return ApplyReflectedFields(&comp, *info, fields);
     }
 
     std::size_t ApplyReflectedFields(void* owner, const ReflectionInfo& info, const nlohmann::json& fields)
     {
-        return ApplyFieldsExcept(owner, info, fields, {});
+        if (!fields.is_object())
+        {
+            return 0;
+        }
+
+        for (std::size_t i = 0; i < info.fieldCount; ++i)
+        {
+            const FieldDesc& field = info.fields[i];
+            const nlohmann::json::const_iterator it = fields.find(field.name);
+            if (it == fields.end())
+            {
+                continue; // 欠損キーは既定値のまま据え置く
+            }
+            JsonToField(owner, field, *it);
+        }
+
+        std::size_t unreadCount = 0;
+        for (nlohmann::json::const_iterator entry = fields.begin(); entry != fields.end(); ++entry)
+        {
+            if (FindField(&info, entry.key()) != nullptr)
+            {
+                continue;
+            }
+            ++unreadCount;
+            NS_LOG_WARN(Game,
+                        "{} に読み手のいない欄 {} がある。 欄名を変えたなら保存済みの値は既定へ戻っている",
+                        info.typeName,
+                        entry.key());
+        }
+        return unreadCount;
     }
 } // namespace NS

@@ -197,17 +197,6 @@ namespace NS
 
                     ImGui::PushID(field.key);
 
-                    // 入力 SubObject を休止させると player が動かなくなるので active を触らせない
-                    const bool lockedSubObject = (typeName == "PlayerInput");
-                    bool enabled = live->IsEnabled();
-                    ImGui::BeginDisabled(lockedSubObject);
-                    if (ImGui::Checkbox("##enabled", &enabled))
-                    {
-                        editor.SetSubObjectEnabledOnSelected(*live, enabled);
-                    }
-                    ImGui::EndDisabled();
-                    ImGui::SameLine();
-
                     ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_SubObjectHeaderColor);
                     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_SubObjectHeaderHoveredColor);
                     ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_SubObjectHeaderActiveColor);

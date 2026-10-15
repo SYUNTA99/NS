@@ -8,10 +8,7 @@
 
 namespace NS
 {
-    //! @brief 部品の欄を、配置物の JSON の "subObjects" の 1 件の形で書き出す
-    //! @return {欄の名前: 値} に "enabled" を足した object
-    [[nodiscard]] nlohmann::json SerializeSubObjFields(const SubObject& part);
-    //! @brief comp のリフレクションの欄を {名前: 値} の object へ書き出す。"enabled" は含めない
+    //! @brief comp のリフレクションの欄を、配置物の JSON の "subObjects" の 1 件の形 {名前: 値} で書き出す
     //! @details GetReflection() が nullptr の SubObject は空の object を返し、警告を出す
     [[nodiscard]] nlohmann::json SerializeSubObjectFields(const SubObject& comp);
 

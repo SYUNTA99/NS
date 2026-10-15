@@ -14,7 +14,7 @@ namespace NS
 
     bool SubObject::IsActive() const noexcept
     {
-        if (!m_enabled || !m_active)
+        if (!m_active)
         {
             return false;
         }

@@ -446,11 +446,11 @@ TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
     GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
-    player->Resolver().SetEnabled(false);
+    player->Resolver().SetActive(false);
     player->Update(false);
     rock->Update();
     EXPECT_TRUE(player->CanMoveBody());
-    player->Resolver().SetEnabled(true);
+    player->Resolver().SetActive(true);
     for (int frame = 0; frame < 20; ++frame)
     {
         player->Update(false);

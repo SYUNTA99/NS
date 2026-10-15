@@ -45,11 +45,6 @@ namespace NS
         //! @details シーンの休止、ヒットストップ、操作ロックには使わない。階層や保存値は変更しない
         void SetActive(bool active) noexcept { m_active = active; }
 
-        //! データに書かれた active 値。false は保存にも残り、読み直しても false のまま
-        [[nodiscard]] bool IsEnabled() const noexcept { return m_enabled; }
-        //! データの active を切り替える。実行中に部品を外す SetActive とは別系統で、互いを上書きしない
-        void SetEnabled(bool enabled) noexcept { m_enabled = enabled; }
-
         //! 配置物の組み立てが値の適用後に呼ぶ。AssetManager が無い間 (テスト等) は呼ばれない
         virtual void ResolveAssets(AssetManager&) {}
 
@@ -61,7 +56,6 @@ namespace NS
 
         SceneActor* m_owner = nullptr; // 所有 SceneActor、attach 前は nullptr
         bool m_active = true;
-        bool m_enabled = true;
     };
 
 } // namespace NS

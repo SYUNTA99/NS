@@ -81,7 +81,7 @@ namespace NS
         nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonSubObjs(object);
         ForEachReflectedSubObj(obj, [&](const NS::SubObjectDesc& field, const SubObject* subObject) {
-            parts[field.key] = SerializeSubObjFields(*subObject);
+            parts[field.key] = SerializeSubObjectFields(*subObject);
         });
         return DiffObjectJson(object);
     }

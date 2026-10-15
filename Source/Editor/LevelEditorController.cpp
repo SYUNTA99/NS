@@ -1428,45 +1428,6 @@ void LevelEditorController::RenameObject(NS::uint32 id, std::string_view name)
     ResolveSelectionFromId();
 }
 
-void LevelEditorController::SetSubObjectEnabledOnSelected(NS::SubObject& comp, bool enabled)
-{
-    const NS::uint32 id = m_selectedObjectId;
-    if (id == NS::k_NoObjectId)
-    {
-        return;
-    }
-    NS::SceneActor* object = m_scene->Objects().FindByObjectId(id);
-    if (object == nullptr)
-    {
-        return;
-    }
-    if (comp.IsEnabled() == enabled)
-    {
-        return;
-    }
-    // 入力 SubObject を休止させると player が動かなくなる。根の部品も同様に守る
-    const std::string_view typeName = comp.ClassName();
-    if (typeName == "PlayerInput" || &comp == &object->Root())
-    {
-        return;
-    }
-
-    // 実体の有効を直接切り替え、当たりを張り直す。実体は既に after なので Do を呼ばず履歴だけ積む
-    std::optional<nlohmann::json> before = m_applier.CaptureObject(id);
-    comp.SetEnabled(enabled);
-    m_scene->SyncPhysics();
-    std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
-    // プレイ中の控えはプレイの姿なので積まない
-    if (m_mode == Mode::Edit)
-    {
-        m_editor.Undo().Record(
-            std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(after)));
-    }
-
-    RefreshGizmoSelectables();
-    ResolveSelectionFromId();
-}
-
 void LevelEditorController::DuplicateSelectedObject()
 {
     if (m_mode != Mode::Edit || m_selectionIds.empty())

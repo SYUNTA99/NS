@@ -112,7 +112,7 @@ namespace NS
         {
             return;
         }
-        const nlohmann::json fields = SerializeSubObjFields(comp);
+        const nlohmann::json fields = SerializeSubObjectFields(comp);
         const nlohmann::json::const_iterator value = fields.find(std::string{fieldName});
         if (value == fields.end())
         {
@@ -362,7 +362,7 @@ namespace NS
         }
         ForEachReflectedSubObj(*obj, [&](const NS::SubObjectDesc& field, SubObject* subObject) {
             const nlohmann::json* fields = SubObjFields(object, field.key);
-            if (fields == nullptr || SerializeSubObjFields(*subObject) == *fields)
+            if (fields == nullptr || SerializeSubObjectFields(*subObject) == *fields)
             {
                 return;
             }

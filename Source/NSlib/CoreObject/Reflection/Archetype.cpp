@@ -234,7 +234,7 @@ namespace NS
         nlohmann::json& target = ObjectJsonSubObjs(full);
         target = nlohmann::json::object();
         ForEachReflectedSubObj(baseline, [&](const NS::SubObjectDesc& field, const SubObject* subObject) {
-            nlohmann::json fields = SerializeSubObjFields(*subObject);
+            nlohmann::json fields = SerializeSubObjectFields(*subObject);
             if (const nlohmann::json* source = SubObjFields(object, field.key))
             {
                 fields.update(*source);
@@ -258,7 +258,7 @@ namespace NS
             {
                 return;
             }
-            const nlohmann::json defaults = SerializeSubObjFields(*subObject);
+            const nlohmann::json defaults = SerializeSubObjectFields(*subObject);
             for (nlohmann::json::iterator field = fields->begin(); field != fields->end();)
             {
                 const nlohmann::json::const_iterator original = defaults.find(field.key());
