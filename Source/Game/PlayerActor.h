@@ -156,8 +156,8 @@ public:
     [[nodiscard]] bool CanMoveBody() const noexcept;
     //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
     [[nodiscard]] NS::Vector3 ReboundDirection() const noexcept { return m_rebound.Direction(); }
-    //! 到達までの指定回転数を保つ角速度 (度/秒) を返す。到達時間が無効なら 0
-    [[nodiscard]] float BodySlamSpinSpeed() const noexcept;
+    //! 最後に出した突進の角速度 (度/秒)。突進を出す前と ResetState 後は 0
+    [[nodiscard]] float BodySlamSpinSpeed() const noexcept { return m_slam.SpinSpeed(); }
     //! 最後に始めた反動の角速度 (度/秒)。開始前と ResetState 後は 0
     [[nodiscard]] float ReboundSpinSpeed() const noexcept { return m_rebound.SpinSpeed(); }
     //! @brief 最後に始めた反動の外れの回り方を返す

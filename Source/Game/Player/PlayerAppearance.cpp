@@ -78,19 +78,17 @@ namespace GL::Player
         ShowCurrentLook();
     }
 
-    void PlayerAppearance::OnStart()
+    float PlayerAppearance::StanceHeight(const ChargeStatus& charge) const noexcept
     {
-        if (::PlayerActor* ownerPlayer = NS::Obj::Cast<::PlayerActor>(Owner()))
+        if (!charge.Judge().IsHoldingCharge())
         {
-            m_body = &ownerPlayer->Body();
-            m_actor = ownerPlayer;
-            m_resolver = &ownerPlayer->Resolver();
+            return 1.0f;
         }
-    }
-
-    void PlayerAppearance::OnEndPlay()
-    {
-        ResetDrawScale();
+        if (charge.Judge().IsCharging())
+        {
+            return m_chargeSquashScale;
+        }
+        return m_pressSquashScale;
     }
 
     void PlayerAppearance::ResetDrawScale() noexcept
@@ -107,7 +105,13 @@ namespace GL::Player
         }
     }
 
-    void PlayerAppearance::AdvanceSpin() noexcept
+    void PlayerAppearance::AdvanceSpin(const PlayerMotion& motion,
+                                       const ChargeStatus& charge,
+                                       const BodySlamStatus& slam,
+                                       const ReboundStatus& rebound,
+                                       const SkidStatus& skid,
+                                       const NS::Vector3& aimDirection,
+                                       const GL::Level::ImpactResolver& resolver) noexcept
     {
         m_spinDegreesThisFrame = 0.0f;
         NS::Obj::Model* renderer = nullptr;
@@ -130,41 +134,47 @@ namespace GL::Player
             }
             return;
         }
-        if (!m_actor->CanMoveBody())
+        if (!motion.canMoveBody)
         {
             // 当たりの止めで身体を動かせない間は、絵も止める
             return;
         }
 
-        if (m_actor->IsBodySlamming())
+        if (motion.bodySlamming)
         {
-            SetRollAxisToward(m_actor->BodySlamVelocity(), m_spinAxis);
-            m_spinSpeed = m_actor->BodySlamSpinSpeed();
+            // 軸は水平の向きだけを見るので、突進の向きを使う。突進の速度の水平は向き × 欄の速さで、速さが正なら同じ向き
+            SetRollAxisToward(slam.Direction(), m_spinAxis);
+            m_spinSpeed = slam.SpinSpeed();
         }
-        else if (m_actor->ChargeJudge().IsHoldingCharge())
+        else if (charge.Judge().IsHoldingCharge())
         {
             // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、通常突進と線の無い時は
-            // AimDirection の向きへ出る。狙いが決まらないフレームは前の軸で回し続ける
-            NS::Vector3 aim = m_actor->AimDirection();
+            // aimDirection の向きへ出る。狙いが決まらないフレームは前の軸で回し続ける
+            NS::Vector3 aim = aimDirection;
             GL::Level::AimLine line{};
-            if (m_actor->ChargeJudge().IsCharging() && m_actor->TryGetAimLine(line))
+            if (charge.Judge().IsCharging() && charge.TryGetAimLine(line))
             {
                 aim = line.direction;
             }
             SetRollAxisToward(aim, m_spinAxis);
             m_spinSpeed = m_emptyChargeSpinSpeed +
-                          (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * m_actor->ChargeJudge().Charge01();
+                          (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * charge.Judge().Charge01();
         }
-        else if ((m_actor->IsRebounding() || m_actor->IsSkidding()) && m_actor->ReboundMissTumble().has_value())
+        else if ((motion.rebounding || motion.skidding) && rebound.Tumble().has_value())
         {
-            AdvanceMissTumble(*m_actor->ReboundMissTumble());
+            float skidScale = 1.0f;
+            if (motion.skidding)
+            {
+                skidScale = skid.SpeedScale();
+            }
+            AdvanceMissTumble(*rebound.Tumble(), rebound, skidScale, resolver);
         }
-        else if (m_actor->IsRebounding())
+        else if (motion.rebounding)
         {
             // 弾かれた向きへ前転する。真正面の当たりでは突進と逆向きになる
             // 反動の間は空中の操作で速度の向きが変わっても、弾かれた向きから取った軸のまま回す
-            SetRollAxisToward(m_actor->ReboundDirection(), m_spinAxis);
-            m_spinSpeed = m_actor->ReboundSpinSpeed();
+            SetRollAxisToward(rebound.Direction(), m_spinAxis);
+            m_spinSpeed = rebound.SpinSpeed();
         }
         // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
 
@@ -182,22 +192,21 @@ namespace GL::Player
         }
     }
 
-    void PlayerAppearance::AdvanceMissTumble(const MissTumble& tumble) noexcept
+    void PlayerAppearance::AdvanceMissTumble(const MissTumble& tumble,
+                                             const ReboundStatus& rebound,
+                                             float skidScale,
+                                             const GL::Level::ImpactResolver& resolver) noexcept
     {
         // 新しい反動の最初のフレームに、その時の回転を寄せ始めの回転として控える
-        if (m_tumbleReboundCount != m_actor->ReboundCount())
+        if (m_tumbleReboundCount != rebound.Count())
         {
-            m_tumbleReboundCount = m_actor->ReboundCount();
+            m_tumbleReboundCount = rebound.Count();
             m_tumbleStartSpin = m_spinAxis * m_spinSpeed;
             m_tumbleSteps = 0;
-            m_tumbleWobblePhase = 0.0f;
-            if (m_resolver != nullptr)
-            {
-                // 種は何回目の当たりか。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。同じ入力の再生では同じ
-                const float goldenAngle = static_cast<float>(std::acos(-1.0) * (3.0 - std::sqrt(5.0)));
-                m_tumbleWobblePhase =
-                    std::fmod(static_cast<float>(m_resolver->LastImpact().sequence) * goldenAngle, 2.0f * NS::k_Pi);
-            }
+            // 種は何回目の当たりか。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。同じ入力の再生では同じ
+            const float goldenAngle = static_cast<float>(std::acos(-1.0) * (3.0 - std::sqrt(5.0)));
+            m_tumbleWobblePhase =
+                std::fmod(static_cast<float>(resolver.LastImpact().sequence) * goldenAngle, 2.0f * NS::k_Pi);
         }
         ++m_tumbleSteps;
 
@@ -210,7 +219,7 @@ namespace GL::Player
             blend = std::min(static_cast<float>(m_tumbleSteps) / static_cast<float>(m_missSpinBlendSteps), 1.0f);
         }
         // こすって止まる間は、身体の速さと同じ割合で回転も落とす
-        const NS::Vector3 spin = (m_tumbleStartSpin + (target - m_tumbleStartSpin) * blend) * m_actor->SkidSpeedScale();
+        const NS::Vector3 spin = (m_tumbleStartSpin + (target - m_tumbleStartSpin) * blend) * skidScale;
         const float speed = spin.Length();
         if (!std::isfinite(speed) || speed <= NS::k_Epsilon)
         {
@@ -240,13 +249,16 @@ namespace GL::Player
         m_spinSpeed = speed;
     }
 
-    void PlayerAppearance::OnUpdate()
+    void PlayerAppearance::Update(const PlayerMotion& motion,
+                                  const ChargeStatus& charge,
+                                  const BodySlamStatus& slam,
+                                  const ReboundStatus& rebound,
+                                  const SkidStatus& skid,
+                                  const NS::Vector3& aimDirection,
+                                  const NS::Obj::Body& body,
+                                  const GL::Level::ImpactResolver& resolver)
     {
-        if (m_body == nullptr)
-        {
-            return;
-        }
-        if (m_actor->IsCurled())
+        if (motion.curled)
         {
             Curl();
         }
@@ -254,14 +266,14 @@ namespace GL::Player
         {
             Uncurl();
         }
-        AdvanceSpin();
-        AdvanceLandingSquash();
-        WriteDrawScale();
+        AdvanceSpin(motion, charge, slam, rebound, skid, aimDirection, resolver);
+        AdvanceLandingSquash(motion, body);
+        WriteDrawScale(charge, resolver);
     }
 
-    void PlayerAppearance::AdvanceLandingSquash() noexcept
+    void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion, const NS::Obj::Body& body) noexcept
     {
-        if (!m_actor->CanMoveBody())
+        if (!motion.canMoveBody)
         {
             // 当たりの止めで身体を動かせない間は、潰れの戻しも止める
             return;
@@ -270,7 +282,7 @@ namespace GL::Player
         // 反動の出口の条件が成り立ったフレームが着地。移動の後に回るので、このフレームの接地を見る
         // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
         // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
-        if (m_actor->IsRebounding() && PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity()) &&
+        if (motion.rebounding && PlayerJudgeLand::Judge(body.IsGrounded(), body.VerticalVelocity()) &&
             m_landingSquashRecoverSteps > 0)
         {
             m_landingSquashRemaining = m_landingSquashRecoverSteps;
@@ -302,7 +314,8 @@ namespace GL::Player
         }
     }
 
-    void PlayerAppearance::WriteDrawScale() noexcept
+    void PlayerAppearance::WriteDrawScale(const ChargeStatus& charge,
+                                          const GL::Level::ImpactResolver& resolver) noexcept
     {
         if (Owner() == nullptr)
         {
@@ -315,13 +328,13 @@ namespace GL::Player
         }
         // 当たりの潰れと伸びの間は構えを混ぜない。構えの最中に来た止めも元の形から潰す
         NS::Vector3 shape{1.0f, 1.0f, 1.0f};
-        if (m_resolver != nullptr && m_resolver->IsShapeAnimating())
+        if (resolver.IsShapeAnimating())
         {
-            shape = m_resolver->ShapeFactors();
+            shape = resolver.ShapeFactors();
         }
-        else if (m_actor != nullptr)
+        else
         {
-            shape.y = m_actor->StanceHeight();
+            shape.y = StanceHeight(charge);
         }
         // 着地の潰れの水平は体積を保つ 1 ÷ √縦
         const float vertical = m_landingSquashVertical;
@@ -349,6 +362,8 @@ namespace GL::Player
         NS::Gfx::Mesh* standingPlaceholder = nullptr;
         NS::Gfx::Mesh* ballPlaceholder = nullptr;
         const NS::Obj::Collider* collider = nullptr;
+        // TODO: 仮の形の寸法を持ち主の型から引いている。計画「Actor を作る時の情報」で素材の読み込みを
+        // 作る時の情報を受ける形へ移す時に、当たりの部品を受け取る形へ替える
         if (Owner() != nullptr)
         {
             if (::PlayerActor* ownerPlayer = NS::Obj::Cast<::PlayerActor>(Owner()))

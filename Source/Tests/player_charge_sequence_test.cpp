@@ -192,7 +192,6 @@ TEST(PlayerChargeSequence, EndPlayWhileHeldRestoresStanceAndUncurls)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::Obj::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    player.Appearance().OnStart();
     ASSERT_EQ(NS::Obj::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
     {

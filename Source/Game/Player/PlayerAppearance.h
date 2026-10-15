@@ -7,8 +7,6 @@
 #include "NSlib/Core/Types.h"
 #include <string>
 
-class PlayerActor;
-
 namespace NS::Gfx
 {
     class Mesh;
@@ -26,7 +24,12 @@ namespace GL::Level
 
 namespace GL::Player
 {
+    class BodySlamStatus;
+    class ChargeStatus;
+    class ReboundStatus;
+    class SkidStatus;
     struct MissTumble;
+    struct PlayerMotion;
 
     //! @brief 自機の立ち姿・玉と、描画時の回転・変形を管理する部品
     //! @details 空の参照は Collider の寸法で仮の形を作る。Model の後に資産を解決する
@@ -37,35 +40,43 @@ namespace GL::Player
         PlayerAppearance() noexcept;
 
         //! @brief 玉の見た目へ持ち替える。既に玉なら何もしない
-        //! @details 持ち主の PlayerActor があれば、次の OnUpdate でその丸まりに合わせ直す
+        //! @details 次の Update で、持ち主の丸まりに合わせ直す
         void Curl() noexcept;
         //! @brief 立ち姿へ戻す。既に立ち姿なら何もしない
-        //! @details 持ち主の PlayerActor があれば、次の OnUpdate でその丸まりに合わせ直す
+        //! @details 次の Update で、持ち主の丸まりに合わせ直す
         void Uncurl() noexcept;
         [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
 
         //! 2 つの見た目を引き当て、今の姿の mesh を同居する Model へ差す
         void ResolveAssets(NS::Obj::AssetManager& assets) override;
 
-        //! 同居する身体の部品と ImpactResolver を控える。身体の部品が無ければ以後は丸まりを写さない
-        void OnStart() override;
-        void OnUpdate() override;
-        //! 描く形の倍率を 1 へ戻す。プレイを終えた後に潰れた形が残らない
-        void OnEndPlay() override;
+        //! @brief 丸まりに合わせて姿を持ち替え、玉を回し、描く形の倍率を書く。持ち主の見た目の段が呼ぶ
+        //! @param[in] aimDirection 狙いの線が無い時に、放せば出る水平の向き
+        //! @param[in] body 反動の着地の判定に接地と縦の速さを読む
+        //! @param[in] resolver 当たりの潰れと伸びと、何回目の当たりかを読む
+        void Update(const PlayerMotion& motion,
+                    const ChargeStatus& charge,
+                    const BodySlamStatus& slam,
+                    const ReboundStatus& rebound,
+                    const SkidStatus& skid,
+                    const NS::Vector3& aimDirection,
+                    const NS::Obj::Body& body,
+                    const GL::Level::ImpactResolver& resolver);
 
         //! @brief 描く形の倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
-        //! @details やり直しとプレイの終わりで呼ぶ。次の OnUpdate からはその時の構えと当たりの形で組み直す
+        //! @details やり直しとプレイの終わりで持ち主が呼ぶ。次の Update からはその時の構えと当たりの形で組み直す
         void ResetDrawScale() noexcept;
 
-        //! 直前の OnUpdate で玉が回った角度を度で返す。立ち姿と止めの間は 0
+        //! 押している間の構えの縦の倍率。押していない間は 1、溜めている間は構えの縮み、その前は押しの構えの縮み
+        [[nodiscard]] float StanceHeight(const ChargeStatus& charge) const noexcept;
+
+        //! 直前の Update で玉が回った角度を度で返す。立ち姿と止めの間は 0
         [[nodiscard]] float SpinDegreesThisFrame() const noexcept { return m_spinDegreesThisFrame; }
         //! @brief 玉を回している軸を返す
         //! @details 根の空間の単位ベクトル。正の角度で、玉の上面が 軸 × 上 の向きへ倒れる前転になる。
         //! 外れの反動の間は水平とは限らない
-        //! @return 直前の OnUpdate で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
+        //! @return 直前の Update で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
         [[nodiscard]] NS::Vector3 SpinAxis() const noexcept { return m_spinAxis; }
-        [[nodiscard]] float ChargeSquashScale() const noexcept { return m_chargeSquashScale; }
-        [[nodiscard]] float PressSquashScale() const noexcept { return m_pressSquashScale; }
 
         NS_REFLECT_BEGIN(PlayerAppearance, NS::Obj::SubObject)
         NS_REFLECT_GROUP("姿")
@@ -90,12 +101,22 @@ namespace GL::Player
 
     private:
         void ShowCurrentLook() noexcept;
-        void AdvanceSpin() noexcept;
-        void AdvanceMissTumble(const MissTumble& tumble) noexcept;
+        void AdvanceSpin(const PlayerMotion& motion,
+                         const ChargeStatus& charge,
+                         const BodySlamStatus& slam,
+                         const ReboundStatus& rebound,
+                         const SkidStatus& skid,
+                         const NS::Vector3& aimDirection,
+                         const GL::Level::ImpactResolver& resolver) noexcept;
+        // skidScale はこすって止まる間の身体の速さの倍率。こすっていない間は 1
+        void AdvanceMissTumble(const MissTumble& tumble,
+                               const ReboundStatus& rebound,
+                               float skidScale,
+                               const GL::Level::ImpactResolver& resolver) noexcept;
         // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
-        void AdvanceLandingSquash() noexcept;
+        void AdvanceLandingSquash(const PlayerMotion& motion, const NS::Obj::Body& body) noexcept;
         // 当たりの形か構えの縮みに着地の潰れを掛け、同居する Model の描く時だけの倍率へ書く
-        void WriteDrawScale() noexcept;
+        void WriteDrawScale(const ChargeStatus& charge, const GL::Level::ImpactResolver& resolver) noexcept;
 
         // 保存・編集される参照文字列。空は仮の形。ResolveAssets が実体を当てる
         std::string m_standingMeshRef{};
@@ -103,9 +124,6 @@ namespace GL::Player
         NS::Gfx::Mesh* m_standingMesh = nullptr; // AssetManager 所有
         NS::Gfx::Mesh* m_ballMesh = nullptr;     // AssetManager 所有
         bool m_curled = false;
-        const NS::Obj::Body* m_body = nullptr; // 接地の問い先。非所有
-        const ::PlayerActor* m_actor = nullptr;     // 突進の速度と狙いの向きと溜めと構えの縮みの問い先。非所有
-        const GL::Level::ImpactResolver* m_resolver = nullptr; // 当たりの潰れと伸びの問い先。非所有
 
         // 回る速さは 3 つとも 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の
         // 補間が短い側を通り、逆回りに見える
@@ -115,7 +133,7 @@ namespace GL::Player
         NS::Quaternion m_spin = NS::Quaternion::Identity;
         NS::Vector3 m_spinAxis = NS::Vector3::UnitX; // 直前のフレームに回した軸
         float m_spinSpeed = 0.0f;                    // 直前のフレームに回した速さ。度/秒
-        float m_spinDegreesThisFrame = 0.0f;         // 直前の OnUpdate で回った角度。度
+        float m_spinDegreesThisFrame = 0.0f;         // 直前の Update で回った角度。度
         NS::uint32 m_tumbleReboundCount = 0;         // 外れの回り方を始めた反動の回数。変わったら新しい反動
         NS::Vector3 m_tumbleStartSpin{};             // 外れの反動の始まりの回転。軸 × 度/秒
         int m_tumbleSteps = 0;                       // 外れの反動を始めてからのフレーム数

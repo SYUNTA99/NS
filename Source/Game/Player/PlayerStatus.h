@@ -36,10 +36,13 @@ namespace GL::Player
         //! @details 突進が終わった後も、次の突進を出すまで残す
         //! @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
         [[nodiscard]] NS::Vector3 Direction() const noexcept { return m_dir; }
+        //! 最後に出した突進で玉が回る速さ (度/秒)。突進を出す前と ResetState の後は 0
+        [[nodiscard]] float SpinSpeed() const noexcept { return m_spinSpeed; }
 
     private:
         friend class ::PlayerActor;
 
+        float m_spinSpeed = 0.0f;      // 書くのは突進を出した時
         float m_travelled = 0.0f;      // 突進で進んだ水平距離
         float m_distanceTarget = 0.0f; // 突進を終える水平距離
         bool m_isTap = false;          // 溜め量 0 の飛び込みか
@@ -77,11 +80,16 @@ namespace GL::Player
     //! 外れの着地からこすって止まる間の値。書くのは BeginSkid と AdvanceSkid
     class SkidStatus
     {
+    public:
+        //! 着いた水平の速さに今掛けている倍率 0〜1。身体と玉の回転が同じ倍率で落ちる
+        [[nodiscard]] float SpeedScale() const noexcept { return m_speedScale; }
+
     private:
         friend class ::PlayerActor;
 
         NS::Vector3 m_landingVelocity{}; // 着いたフレームの水平の速度
         int m_elapsedSteps = 0;          // 着いてからのフレーム数
+        float m_speedScale = 1.0f;
     };
 
     //! @brief 決定の段で確定した溜めと狙いの値

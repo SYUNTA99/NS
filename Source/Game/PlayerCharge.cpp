@@ -87,15 +87,7 @@ bool PlayerActor::TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const n
 
 float PlayerActor::StanceHeight() const noexcept
 {
-    if (!m_charge.m_judge.IsHoldingCharge())
-    {
-        return 1.0f;
-    }
-    if (m_charge.m_judge.IsCharging())
-    {
-        return m_appearance->ChargeSquashScale();
-    }
-    return m_appearance->PressSquashScale();
+    return m_appearance->StanceHeight(m_charge);
 }
 
 void PlayerActor::ObserveCharge(bool held)

@@ -113,16 +113,6 @@ float PlayerActor::BodySlamSpeed() const noexcept
     return m_params->m_bodySlamSpeed;
 }
 
-float PlayerActor::BodySlamSpinSpeed() const noexcept
-{
-    float turns = m_params->m_chargedSlamTurns;
-    if (m_slam.m_isTap)
-    {
-        turns = m_params->m_tapSlamTurns;
-    }
-    return SpinSpeedFor(turns, m_slam.m_distanceTarget / BodySlamSpeed());
-}
-
 NS::Vector3 PlayerActor::BodySlamVelocity() const noexcept
 {
     const NS::Obj::Body& body = *m_body;
@@ -307,6 +297,13 @@ bool PlayerActor::BodySlam() noexcept
         }
         body.SetVelocity(NS::Vector3{dir.x * speed, vertical, dir.z * speed});
     }
+    // 到達までの回転数を保つ角速度。到達時間が無効なら 0
+    float turns = m_params->m_chargedSlamTurns;
+    if (m_slam.m_isTap)
+    {
+        turns = m_params->m_tapSlamTurns;
+    }
+    m_slam.m_spinSpeed = SpinSpeedFor(turns, m_slam.m_distanceTarget / speed);
 
     // 距離が 0 以下だと 1 フレーム目で終わって発動が消えるため、出さずに通常移動のままにする
     if (!(m_slam.m_distanceTarget > 0.0f))

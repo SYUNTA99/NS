@@ -252,9 +252,9 @@ void PlayerActor::VisualStep()
     // clang-format on
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
     m_resolver->WriteTremor();
-    TickSubObj(m_appearance.get());
     const GL::Player::PlayerMotion motion = Motion();
     // clang-format off
+    if (m_appearance->IsActive()) { m_appearance->Update(motion, m_charge, m_slam, m_rebound, m_skid, AimDirection(), *m_body, *m_resolver); }
     if (m_chargeEffects->IsActive()) { m_chargeEffects->Update(m_charge, m_slam, motion, ChargeAimDirection(), *m_appearance, *m_resolver); }
     if (m_impactEffects->IsActive()) { m_impactEffects->Update(m_slam, motion, *m_body, *m_collider, *m_resolver); }
     // clang-format on
@@ -336,6 +336,7 @@ void PlayerActor::OnEndPlay()
     m_states->Reset();
     m_appliedClip.clear();
     NS::Obj::SceneActor::OnEndPlay();
+    m_appearance->ResetDrawScale();
     m_chargeEffects->Clear();
     if (NS::Obj::Scene* scene = OwningScene())
     {
@@ -546,7 +547,7 @@ float PlayerActor::SkidSpeedScale() const noexcept
     {
         return 1.0f;
     }
-    return GL::Level::MissSkidSpeedScale(m_skid.m_elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
+    return m_skid.SpeedScale();
 }
 
 bool PlayerActor::CanMoveBody() const noexcept

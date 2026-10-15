@@ -225,15 +225,16 @@ void PlayerActor::BeginSkid() noexcept
 {
     m_skid.m_landingVelocity = m_body->LateralVelocity();
     m_skid.m_elapsedSteps = 0;
+    m_skid.m_speedScale = GL::Level::MissSkidSpeedScale(0, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
 }
 
 bool PlayerActor::AdvanceSkid() noexcept
 {
     ++m_skid.m_elapsedSteps;
     // 着いた速さに依らず同じフレーム数で止まりきり、操作が戻る
-    const float scale =
+    m_skid.m_speedScale =
         GL::Level::MissSkidSpeedScale(m_skid.m_elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
-    m_body->SetLateralVelocity(m_skid.m_landingVelocity * scale);
+    m_body->SetLateralVelocity(m_skid.m_landingVelocity * m_skid.m_speedScale);
     return m_skid.m_elapsedSteps >= m_params->m_missSkidSteps;
 }
 
