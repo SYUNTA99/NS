@@ -12,7 +12,8 @@ namespace NS::Obj
     class Scene;
     class Transform;
 
-    //! @brief SceneActor が所有する部品。更新は持ち主が呼び、体の経過秒は BodyDelta から取る
+    //! @brief SceneActor が所有する部品。自分からは動かず、持ち主が部品の関数を名指しで呼ぶ
+    //! @details 基底に更新と出入りの仮想関数は無い。体の経過秒は BodyDelta から取る
     class SubObject : public Object
     {
     public:
