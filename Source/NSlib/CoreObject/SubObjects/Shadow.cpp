@@ -75,7 +75,7 @@ namespace NS
     void Shadow::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
         SceneActor* owner = Owner();
-        if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
+        if (!IsOwnerAppeared() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
         {
             return;
         }

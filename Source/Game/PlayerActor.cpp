@@ -175,7 +175,7 @@ void PlayerActor::UpdateAnimation()
 void PlayerActor::ReadInput()
 {
     // clang-format off
-    if (m_input && m_input->IsActive()) { m_input->Update(); }
+    if (m_input) { m_input->Update(); }
     // clang-format on
 }
 
@@ -200,26 +200,15 @@ void PlayerActor::ObserveStep()
         }
     }
     ObserveCharge(m_input->SlamHeld());
-    if (m_resolver->IsActive())
-    {
-        m_resolver->ObserveImpact(SlamMotion(), m_collider.get());
-    }
+    m_resolver->ObserveImpact(SlamMotion(), m_collider.get());
 }
 
 void PlayerActor::DecideStep()
 {
     AdvanceCharge(BodyDelta());
-    if (m_resolver->IsActive())
-    {
-        m_resolver->StepState(
-            SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), ModelSubObj(), HitReactionSubObj());
-        ApplyImpactOrders(m_resolver->Answer());
-    }
-    else
-    {
-        // 外された裁定役は走っている当たりのタイムラインを打ち切る。持ち越すと入れ直した時に残りの止めが明け、遅れて弾かれる
-        m_resolver->CancelImpact(ModelSubObj(), HitReactionSubObj());
-    }
+    m_resolver->StepState(
+        SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), ModelSubObj(), HitReactionSubObj());
+    ApplyImpactOrders(m_resolver->Answer());
 }
 
 void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexcept
@@ -254,7 +243,7 @@ void PlayerActor::StateStep()
     {
         PrepareStateStep();
         // clang-format off
-        if (m_stateMachine && m_stateMachine->IsActive()) { m_stateMachine->Update(); }
+        if (m_stateMachine) { m_stateMachine->Update(); }
         // clang-format on
         FinishStateStep(dt);
     }
@@ -278,17 +267,17 @@ void PlayerActor::VisualStep()
 {
     UpdateAnimation();
     // clang-format off
-    if (m_targetMarker->IsActive()) { m_targetMarker->Update(m_charge); }
-    if (m_slamArrow->IsActive()) { m_slamArrow->Update(m_charge, m_params.get(), m_collider.get()); }
+    m_targetMarker->Update(m_charge);
+    m_slamArrow->Update(m_charge, m_params.get(), m_collider.get());
     // clang-format on
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
     m_resolver->WriteTremor(m_collider.get(), ModelSubObj());
     const GL::Player::PlayerMotion motion = Motion();
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
-    if (m_appearance->IsActive()) { m_appearance->Update(motion, m_charge, m_slam, m_rebound, m_skid, AimDirection(), m_body.get(), impact); }
-    if (m_chargeEffects->IsActive()) { m_chargeEffects->Update(m_charge, m_slam, motion, ChargeAimDirection(), m_appearance.get(), impact); }
-    if (m_impactEffects->IsActive()) { m_impactEffects->Update(m_slam, motion, m_body.get(), m_collider.get(), impact); }
+    m_appearance->Update(motion, m_charge, m_slam, m_rebound, m_skid, AimDirection(), m_body.get(), impact);
+    m_chargeEffects->Update(m_charge, m_slam, motion, ChargeAimDirection(), m_appearance.get(), impact);
+    m_impactEffects->Update(m_slam, motion, m_body.get(), m_collider.get(), impact);
     // clang-format on
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
@@ -588,7 +577,7 @@ bool PlayerActor::CanMoveBody() const noexcept
 {
     // 当たりの止めの正は裁定役の時計。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
-    return m_body->IsActive() && !impact.hitStopping && !impact.awaitingRebound;
+    return IsAppeared() && !impact.hitStopping && !impact.awaitingRebound;
 }
 
 GL::Player::PlayerMotion PlayerActor::Motion() const noexcept

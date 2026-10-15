@@ -94,9 +94,9 @@ TEST(SubObjectLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
     EXPECT_EQ(RegisteredWhileAppeared(scene, *light), Registrations{});
     EXPECT_EQ(scene.LightCount(), 1u);
     // 描く側 (SceneRenderer::ResolveSceneSettings) は IsActive が偽の光を飛ばす
-    EXPECT_FALSE(sun->IsActive());
+    EXPECT_FALSE(sun->IsOwnerAppeared());
     light->Appear();
-    EXPECT_TRUE(sun->IsActive());
+    EXPECT_TRUE(sun->IsOwnerAppeared());
 }
 
 TEST(SubObjectLifecycle, FollowCameraStaysRegisteredAndIsSkippedWhileDisappeared)

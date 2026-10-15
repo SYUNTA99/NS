@@ -95,17 +95,6 @@ TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)
     EXPECT_EQ(player->States().StepsInState(), 1u);
 }
 
-TEST(PlayerStateSequence, InactiveMovementStopsTheActorStateStep)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceSequencePlayer(scene);
-    ASSERT_NE(player, nullptr);
-    player->Body().SetGrounded(true);
-    player->Body().SetActive(false);
-    player->Update();
-    EXPECT_EQ(player->States().StepsInState(), 0u);
-}
-
 TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
 {
     NS::Scene scene;

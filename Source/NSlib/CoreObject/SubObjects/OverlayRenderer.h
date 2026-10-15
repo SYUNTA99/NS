@@ -38,7 +38,7 @@ namespace NS
         OverlayRenderer() noexcept = default;
 
         //! 更新・当たりと同じ IsActive で切る。自分の値だけ見ると親を寝かせても描き続ける
-        [[nodiscard]] bool IsOverlayVisible() const noexcept override { return IsActive(); }
+        [[nodiscard]] bool IsOverlayVisible() const noexcept override { return IsOwnerAppeared(); }
 
         NS_REFLECT_NONE(OverlayRenderer, SubObject)
     };

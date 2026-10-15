@@ -214,7 +214,7 @@ namespace NS
             {
                 continue;
             }
-            if (collision->IsActive())
+            if (collision->IsOwnerAppeared())
             {
                 collision->SyncToPhysics();
             }

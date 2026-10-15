@@ -227,7 +227,6 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
-    EXPECT_TRUE(player->Body().IsActive());
     EXPECT_TRUE(player->Resolver().Answer().hitStopping);
     EXPECT_FALSE(player->CanMoveBody());
     const NS::Vector3 position = player->Root().Position();
@@ -242,37 +241,12 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
             break;
         }
         SCOPED_TRACE(frame);
-        EXPECT_TRUE(player->Body().IsActive());
         ExpectSameVector(player->Root().Position(), position);
         EXPECT_EQ(player->States().StepsInState(), stateStep);
     }
     EXPECT_FALSE(player->Resolver().Answer().hitStopping);
     EXPECT_FALSE(player->Resolver().Answer().awaitingRebound);
     EXPECT_TRUE(player->CanMoveBody());
-}
-
-// 身体の部品を外したのは試しで、止めの明けはそれを上書きしない
-TEST(PlayerUpdatePipeline, ReleasingTheHitStopLeavesASwitchedOffBodyAlone)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
-    ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
-    ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
-    player->Body().SetActive(false);
-    bool released = false;
-    for (int frame = 0; frame < 30; ++frame)
-    {
-        player->Update(false);
-        rock->Update();
-        if (player->Resolver().Answer().released)
-        {
-            released = true;
-        }
-    }
-    EXPECT_TRUE(released);
-    EXPECT_FALSE(player->Body().IsActiveSelf());
 }
 
 // やり直しは走っている当たりのタイムラインを捨てる。出現位置で弾かれず、元の位置へ戻った置物へ明けも止めの頭も届かない
@@ -437,56 +411,12 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     EXPECT_GE(bottom, -0.001f);
 }
 
-// Inspector で裁定役を外すと、走っている当たりのタイムラインを捨てる。入れ直しても遅れて弾かれない
-TEST(PlayerUpdatePipeline, SwitchingTheResolverOffDropsItsHitStop)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
-    ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
-    ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
-    player->Resolver().SetActive(false);
-    player->Update(false);
-    rock->Update();
-    EXPECT_TRUE(player->CanMoveBody());
-    player->Resolver().SetActive(true);
-    for (int frame = 0; frame < 20; ++frame)
-    {
-        player->Update(false);
-        rock->Update();
-        SCOPED_TRACE(frame);
-        EXPECT_FALSE(player->Resolver().Answer().released);
-        EXPECT_FALSE(player->IsRebounding());
-    }
-}
-
-TEST(PlayerUpdatePipeline, PausedMovementKeepsItsStoredVelocityDuringSlamControl)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlacePipelinePlayer(scene, 0.5f, 3.0f);
-    ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->BodySlam());
-    player->Body().SetVelocity(NS::Vector3{0.0f, 2.0f, 0.0f});
-    player->Body().SetActive(false);
-    const NS::Vector3 position = player->Root().Position();
-    const NS::Vector3 velocity = player->Body().Velocity();
-    const NS::uint32 stateStep = player->States().StepsInState();
-    player->Update(false);
-    ExpectSameVector(player->Root().Position(), position);
-    ExpectSameVector(player->Body().Velocity(), velocity);
-    EXPECT_EQ(player->States().StepsInState(), stateStep);
-}
-
 // 編集の休止の持ち主は世界の駆動だけ。身体と入力の部品を起こしたままでも、止めた世界では自機が動かない
 TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)
 {
     NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene);
     ASSERT_NE(player, nullptr);
-    ASSERT_TRUE(player->Body().IsActive());
-    ASSERT_TRUE(player->Input().IsActive());
     scene.SetSimulationEnabled(false);
     player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     // 入力の段が実機の入力で歩きを消しても、回っていればこの速さで動く

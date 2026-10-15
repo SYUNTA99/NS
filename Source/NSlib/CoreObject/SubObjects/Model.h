@@ -139,7 +139,7 @@ namespace NS
         //! @param[in] alpha 固定更新間の補間割合 0〜1
         [[nodiscard]] NS::Matrix DrawWorldMatrix(float alpha) const noexcept;
 
-        //! DrawWorldMatrix(context.alpha) を詰めた DrawItem を out に積む。IsActive()==false なら何も積まない
+        //! DrawWorldMatrix(context.alpha) を詰めた DrawItem を out に積む。持ち主が出ていなければ何も積まない
         void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
 
         //! Material の BlendMode から bucket を返し、Opaque 以外は Transparent。Material 不在は Opaque

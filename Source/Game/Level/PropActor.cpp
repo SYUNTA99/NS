@@ -141,7 +141,7 @@ namespace GL
         void PropActor::VisualStep()
         {
             // clang-format off
-            if (m_effects->IsActive()) { m_effects->Update(Flight()); }
+            m_effects->Update(Flight());
             // clang-format on
             // 震えは止めが明けて飛んでいく間に通り抜けるので、状態に依らず根を動かした後で進める
             AdvanceTremor();

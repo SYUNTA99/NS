@@ -219,7 +219,7 @@ namespace NS
         VirtualCamera* best = nullptr;
         for (VirtualCamera* vcam : m_vcams)
         {
-            if (vcam == nullptr || !vcam->IsActive())
+            if (vcam == nullptr || !vcam->IsOwnerAppeared())
             {
                 continue;
             }
@@ -293,7 +293,7 @@ namespace NS
     std::optional<CameraPose> CameraManager::ComposeBeforeEffects(float alpha) const noexcept
     {
         VirtualCamera* active = m_active;
-        if (active == nullptr || !active->IsActive())
+        if (active == nullptr || !active->IsOwnerAppeared())
         {
             active = SelectActive();
         }
@@ -347,7 +347,7 @@ namespace NS
     void CameraManager::Evaluate(float alpha) noexcept
     {
         // 非 active になった 仮想カメラの pose は書かない。一時停止で OnTick が回らない間も選び直す
-        if (m_active == nullptr || !m_active->IsActive())
+        if (m_active == nullptr || !m_active->IsOwnerAppeared())
         {
             m_active = SelectActive();
         }

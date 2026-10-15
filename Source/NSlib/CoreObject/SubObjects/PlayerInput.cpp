@@ -75,7 +75,7 @@ namespace NS
 
     void PlayerInput::Update()
     {
-        if (!IsActive())
+        if (!IsOwnerAppeared())
         {
             return;
         }

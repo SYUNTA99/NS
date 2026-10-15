@@ -34,16 +34,8 @@ namespace NS
         [[nodiscard]] Transform& RootTransform() noexcept;
         [[nodiscard]] const Transform& RootTransform() const noexcept;
 
-        //! @brief この SubObject が効いているか
-        //! @details 自分の active に加えて、owner の階層全体の active まで見る
-        //! 更新・ 描画・ 当たりは全てこの問いを使う。自身の値だけが要る編集 UI は IsActiveSelf を使う
-        [[nodiscard]] bool IsActive() const noexcept;
-
-        //! この SubObject 自身の active 値。owner の状態は含まない
-        [[nodiscard]] bool IsActiveSelf() const noexcept { return m_active; }
-        //! @brief 実行中の部品の有効状態を切り替える
-        //! @details シーンの休止、ヒットストップ、操作ロックには使わない。階層や保存値は変更しない
-        void SetActive(bool active) noexcept { m_active = active; }
+        //! 持ち主が出ているか。持ち主に着く前は出ていると答える
+        [[nodiscard]] bool IsOwnerAppeared() const noexcept;
 
         //! 配置物の組み立てが値の適用後に呼ぶ。AssetManager が無い間 (テスト等) は呼ばれない
         virtual void ResolveAssets(AssetManager&) {}
@@ -55,7 +47,6 @@ namespace NS
         void AttachOwner(SceneActor* owner) noexcept { m_owner = owner; }
 
         SceneActor* m_owner = nullptr; // 所有 SceneActor、attach 前は nullptr
-        bool m_active = true;
     };
 
 } // namespace NS

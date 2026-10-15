@@ -214,7 +214,6 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
     const NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player->FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     EXPECT_TRUE(input->IsLocked());
-    EXPECT_TRUE(input->IsActiveSelf());
 
     // 流れの最中に届くゴールの知らせは捨てる
     scene.HitSensors().OnTick();

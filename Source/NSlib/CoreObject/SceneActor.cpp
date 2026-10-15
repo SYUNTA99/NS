@@ -254,11 +254,11 @@ namespace NS
             return;
         }
         // clang-format off
-        if (m_model && m_model->IsActive()) { m_model->Register(); }
-        if (m_shadow && m_shadow->IsActive()) { m_shadow->Register(); }
-        if (m_collision && m_collision->IsActive()) { m_collision->SyncToPhysics(); }
-        if (m_bodySensor && m_bodySensor->IsActive()) { m_bodySensor->Register(); }
-        if (m_attackSensor && m_attackSensor->IsActive()) { m_attackSensor->Register(); }
+        if (m_model) { m_model->Register(); }
+        if (m_shadow) { m_shadow->Register(); }
+        if (m_collision) { m_collision->SyncToPhysics(); }
+        if (m_bodySensor) { m_bodySensor->Register(); }
+        if (m_attackSensor) { m_attackSensor->Register(); }
     }
 
     void SceneActor::OnDisappear() noexcept
@@ -279,7 +279,7 @@ namespace NS
     void SceneActor::Update()
     {
         // clang-format off
-        if (m_effectKeeper && m_effectKeeper->IsActive()) { m_effectKeeper->BeginStep(); }
+        if (m_effectKeeper) { m_effectKeeper->BeginStep(); }
         // clang-format on
         ObserveStep();
         DecideStep();
@@ -299,14 +299,14 @@ namespace NS
     void SceneActor::StateStep()
     {
         // clang-format off
-        if (m_stateMachine && m_stateMachine->IsActive()) { m_stateMachine->Update(); }
+        if (m_stateMachine) { m_stateMachine->Update(); }
         // clang-format on
     }
 
     void SceneActor::PrepareRender()
     {
         // clang-format off
-        if (m_animation && m_animation->IsActive()) { m_animation->Update(); }
+        if (m_animation) { m_animation->Update(); }
         // clang-format on
     }
 

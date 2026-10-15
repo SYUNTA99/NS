@@ -245,7 +245,7 @@ namespace NS
     void Model::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
         SceneActor* owner = Owner();
-        if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
+        if (!IsOwnerAppeared() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
         {
             return;
         }
@@ -287,7 +287,7 @@ namespace NS
 
     void Model::Ghosts::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
     {
-        if (!m_model.IsActive() || m_model.m_mesh == nullptr || m_model.m_ghostMaterial == nullptr ||
+        if (!m_model.IsOwnerAppeared() || m_model.m_mesh == nullptr || m_model.m_ghostMaterial == nullptr ||
             m_model.Owner() == nullptr)
         {
             return;

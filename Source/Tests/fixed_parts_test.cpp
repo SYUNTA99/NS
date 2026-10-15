@@ -128,6 +128,13 @@ namespace
         static_assert(!requires(TSubObject& part) { part.OnUpdate(); });
     }
 
+    template <class TSubObject = NS::SubObject> void CheckSubObjectHasNoOnOff()
+    {
+        static_assert(!requires(TSubObject& part) { part.SetActive(false); });
+        static_assert(!requires(const TSubObject& part) { part.IsActive(); });
+        static_assert(!requires(const TSubObject& part) { part.IsActiveSelf(); });
+    }
+
     class ReflectedProbePart final : public NS::SubObject
     {
     public:
@@ -329,6 +336,11 @@ TEST(FixedParts, TransformClampsOnlyTheScaleFromTheField)
 TEST(FixedParts, SubObjectBaseHasNoUpdate)
 {
     CheckSubObjectHasNoUpdate();
+}
+
+TEST(FixedParts, SubObjectBaseHasNoOnOff)
+{
+    CheckSubObjectHasNoOnOff();
 }
 
 TEST(FixedParts, CommonMembersAreCreatedByTheActorClass)

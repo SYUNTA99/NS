@@ -25,10 +25,6 @@ namespace GL
 
         void FollowCameraActor::ObserveStep()
         {
-            if (!m_vcam->IsActive())
-            {
-                return;
-            }
             if (NS::Scene* scene = OwningScene())
             {
                 NS::SceneActor* target = scene->Objects().FindObject(m_vcam->TargetRef());
@@ -62,7 +58,7 @@ namespace GL
         void FollowCameraActor::BodyStep()
         {
             // clang-format off
-            if (m_vcam && m_vcam->IsActive()) { m_vcam->Update(); }
+            if (m_vcam) { m_vcam->Update(); }
             // clang-format on
         }
 

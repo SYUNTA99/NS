@@ -22,7 +22,7 @@ TEST(ImpactMarkActor, TemporaryActorShrinksAndStops)
     mark->Update();
     EXPECT_FALSE(mark->IsAppeared());
     ASSERT_NE(mark->ModelSubObj(), nullptr);
-    EXPECT_FALSE(mark->ModelSubObj()->IsActive());
+    EXPECT_FALSE(mark->ModelSubObj()->IsOwnerAppeared());
 }
 
 TEST(ImpactMarkActor, ExpiredMarkLeavesTheActorList)

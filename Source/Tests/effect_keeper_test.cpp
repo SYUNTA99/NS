@@ -116,10 +116,6 @@ TEST(EffectKeeperTest, ActorUpdateAdvancesTheSlotKeeperOnce)
 
     actor.Update();
     EXPECT_EQ(keeper->Step(), 1);
-
-    keeper->SetActive(false);
-    actor.Update();
-    EXPECT_EQ(keeper->Step(), 1);
 }
 
 TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)

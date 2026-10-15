@@ -204,7 +204,7 @@ namespace NS
         NS::Gfx::RenderSettings resolved = projectDefaults;
         for (DirectionalLight* light : m_lights)
         {
-            if (!light->IsActive())
+            if (!light->IsOwnerAppeared())
             {
                 continue;
             }

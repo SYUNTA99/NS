@@ -347,14 +347,6 @@ TEST(FollowCameraActor, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
     actor->Update();
 }
 
-// 追従カメラは出荷の姿で生まれる。プレイ中かは世界の駆動が答え、部品の active へ写さない
-TEST(FollowCameraActor, VcamIsLiveFromInit)
-{
-    const std::unique_ptr<GL::Level::FollowCameraActor> cameraOwned = NS::CreateActor<GL::Level::FollowCameraActor>();
-    GL::Level::FollowCameraActor& camera = *cameraOwned;
-    EXPECT_TRUE(camera.Vcam().IsActiveSelf());
-}
-
 // 世界が回っている間は、描画の入口が管理役の姿勢を実カメラへ書く。描画先が無くても書く
 TEST(SceneCameraOnRender, RunningWorldWritesTheFollowPoseOnRender)
 {

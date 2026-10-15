@@ -66,7 +66,7 @@ namespace NS
         [[nodiscard]] NS::uint8 Kind() const noexcept { return m_kind; }
 
         //! 調べる対象か。部品が効いていて、無効にされていない時だけ真
-        [[nodiscard]] bool IsValid() const noexcept { return m_valid && IsActive(); }
+        [[nodiscard]] bool IsValid() const noexcept { return m_valid && IsOwnerAppeared(); }
         //! 調べる対象へ戻す
         void Validate() noexcept { m_valid = true; }
         //! 調べる対象から外す。飛んでいる間だけ当たらない物などに使う

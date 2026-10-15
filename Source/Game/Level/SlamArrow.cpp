@@ -610,7 +610,7 @@ namespace GL
 
         void SlamArrow::OnRenderOverlay(const NS::Gfx::RenderContext& context)
         {
-            if (!IsActive() || !m_hasShown || context.renderer == nullptr || m_mesh == nullptr ||
+            if (!IsOwnerAppeared() || !m_hasShown || context.renderer == nullptr || m_mesh == nullptr ||
                 m_bandMaterial == nullptr || m_headMaterial == nullptr)
             {
                 return;

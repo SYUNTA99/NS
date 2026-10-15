@@ -650,7 +650,7 @@ namespace NS
 
         const float dt = NS::OS::FrameTimer::FixedDelta();
         const Transform* target = Target();
-        if (!IsActive() || target == nullptr || dt <= 0.0f)
+        if (!IsOwnerAppeared() || target == nullptr || dt <= 0.0f)
         {
             // 休止の間は注視点を控えないので、反動の間の追い方も捨てる
             // 再開した時に古い注視点から留めない

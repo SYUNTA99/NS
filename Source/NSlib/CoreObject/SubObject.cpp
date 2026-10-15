@@ -12,13 +12,8 @@ namespace NS
 
     SubObject::~SubObject() noexcept = default;
 
-    bool SubObject::IsActive() const noexcept
+    bool SubObject::IsOwnerAppeared() const noexcept
     {
-        if (!m_active)
-        {
-            return false;
-        }
-        // owner に着く前は IsActiveSelf の値だけで答える。組み立て途中の問い合わせをここで落とさない
         if (m_owner == nullptr)
         {
             return true;
