@@ -28,6 +28,7 @@ namespace NS::Obj
     NS_REFLECT_SUBOBJ(m_attackSensor, "AttackSensor")
     NS_REFLECT_SUBOBJ(m_hitReaction, "HitReaction")
     NS_REFLECT_SUBOBJ(m_effectKeeper, "Effect")
+    NS_REFLECT_SUBOBJ(m_stateMachine, "StateMachine")
     NS_REFLECT_END_IMPL()
 
     SceneActor::SceneActor() noexcept
@@ -118,23 +119,20 @@ namespace NS::Obj
 
     IStateMachine* SceneActor::GetStates() noexcept
     {
-        return m_stateMachine.get();
+        if (m_stateMachine == nullptr)
+        {
+            return nullptr;
+        }
+        return m_stateMachine->Machine();
     }
 
     const IStateMachine* SceneActor::GetStates() const noexcept
     {
-        return m_stateMachine.get();
-    }
-
-    bool SceneActor::AdoptStateMachine(std::unique_ptr<IStateMachine> machine)
-    {
-        if (m_stateMachine != nullptr)
+        if (m_stateMachine == nullptr)
         {
-            NS_LOG_ERROR(Scene, "SceneActor::BuildStateMachine: 状態機械は 1 体に 1 つ。2 回目は組まずに今の機械を残す");
-            return false;
+            return nullptr;
         }
-        m_stateMachine = std::move(machine);
-        return true;
+        return m_stateMachine->Machine();
     }
 
     float SceneActor::BodyDelta() const noexcept
@@ -227,14 +225,6 @@ namespace NS::Obj
         }
         m_bodyTimeScale = scale;
         return true;
-    }
-
-    void SceneActor::StepStateMachine()
-    {
-        if (m_stateMachine != nullptr)
-        {
-            m_stateMachine->Step(BodyDelta());
-        }
     }
 
     SceneActor::~SceneActor() noexcept
@@ -403,7 +393,9 @@ namespace NS::Obj
 
     void SceneActor::StateStep()
     {
-        StepStateMachine();
+        // clang-format off
+        if (m_stateMachine && m_stateMachine->IsActive()) { m_stateMachine->Update(); }
+        // clang-format on
     }
 
     void SceneActor::PrepareRender()

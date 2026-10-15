@@ -255,7 +255,9 @@ void PlayerActor::StateStep()
     if (CanMoveBody() && dt > 0.0f)
     {
         PrepareStateStep();
-        StepStateMachine();
+        // clang-format off
+        if (m_stateMachine && m_stateMachine->IsActive()) { m_stateMachine->Update(); }
+        // clang-format on
         FinishStateStep(dt);
     }
     else

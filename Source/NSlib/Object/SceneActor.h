@@ -10,6 +10,7 @@
 #include "NSlib/Object/Object.h"
 #include "NSlib/Object/StateMachineOf.h"
 #include "NSlib/Object/SubObject.h"
+#include "NSlib/Object/SubObjects/StateMachine.h"
 #include "NSlib/Object/SubObjects/Transform.h"
 #include "NSlib/Object/UpdatePhase.h"
 
@@ -204,7 +205,7 @@ namespace NS::Obj
         virtual void VisualStep() {}
         //! 自分を持ち主に、TStates の先頭へ入る状態機械を一度だけ構築する
         //! OnEnter が使う部品を先に用意する。outMachine は OnEnter 前に設定する
-        //! 基底が所有し、型付きポインタは非所有。既に構築済みなら変更せず false
+        //! 機械は基底の部品 StateMachine が持ち、型付きポインタは非所有。既に構築済みなら変更せず false
         template <typename TOwner, typename... TStates>
         bool BuildStateMachine(TOwner& owner, StateMachineOf<TOwner>*& outMachine)
         {
@@ -212,18 +213,18 @@ namespace NS::Obj
             NS_ASSERT(Scene,
                       static_cast<const SceneActor*>(&owner) == this,
                       "SceneActor::BuildStateMachine: 持ち主に自分以外の SceneActor を渡している");
-            std::unique_ptr<StateMachineOf<TOwner>> machine = std::make_unique<StateMachineOf<TOwner>>();
-            StateMachineOf<TOwner>* built = machine.get();
-            if (!AdoptStateMachine(std::move(machine)))
+            StateMachine* part = CreateSubObj(m_stateMachine);
+            if (part == nullptr)
             {
                 return false;
             }
+            std::unique_ptr<StateMachineOf<TOwner>> machine = std::make_unique<StateMachineOf<TOwner>>();
+            StateMachineOf<TOwner>* built = machine.get();
+            part->Hold(std::move(machine));
             outMachine = built;
             built->template Build<TStates...>(owner);
             return true;
         }
-        //! 状態機械を 1 固定ステップ進める。持たなければ何もしない
-        void StepStateMachine();
 
     private:
         friend class ActorList;
@@ -236,8 +237,6 @@ namespace NS::Obj
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
         //! @details ActorList::SnapshotObjects が固定ステップの頭で全ての SceneActor に呼ぶ。世界を止めている間も呼ばれる
         void SnapshotForInterpolation() noexcept;
-        //! 状態機械を預かる。既に持っていれば NS_LOG_ERROR を出して machine を捨て、false を返す
-        [[nodiscard]] bool AdoptStateMachine(std::unique_ptr<IStateMachine> machine);
         void SetId(NS::uint32 id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
         [[nodiscard]] const SubObjectDesc* FindSubObjMember(const void* member) const;
@@ -264,9 +263,10 @@ namespace NS::Obj
         std::unique_ptr<HitSensor> m_attackSensor;
         std::unique_ptr<HitReaction> m_hitReaction;
         std::unique_ptr<EffectKeeper> m_effectKeeper;
+        // 状態が借りる部品より先に壊すので、部品の最後に置く。組むのは BuildStateMachine だけ
+        std::unique_ptr<StateMachine> m_stateMachine;
 
     private:
-        std::unique_ptr<IStateMachine> m_stateMachine; // BuildStateMachine が 1 回だけ預かる。持たない種類は nullptr
         std::vector<SceneActor*> m_children;                // 子 SceneActor、非所有
         SceneActor* m_parent = nullptr;                     // 親 SceneActor、root なら nullptr
         bool m_transient = false;                      // 一時オブジェクトの印。保存・凍結に写らない
