@@ -92,10 +92,6 @@ namespace
         {}
 
         ~MemberOwnedPart() override { m_destroyed.push_back(m_name); }
-        void OnStart() override { ++starts; }
-        void OnEndPlay() override { ++ends; }
-        int starts = 0;
-        int ends = 0;
 
     private:
         std::vector<std::string>& m_destroyed;
@@ -151,10 +147,6 @@ namespace
     {
     public:
         float value = 0.0f;
-        int starts = 0;
-        int ends = 0;
-        void OnStart() override { ++starts; }
-        void OnEndPlay() override { ++ends; }
         NS_REFLECT_BEGIN(ReflectedProbePart, NS::Obj::SubObject)
         NS_REFLECT_FIELD(value, "値")
         NS_REFLECT_END()
@@ -236,7 +228,7 @@ TEST(ReflectedParts, ReflectionDescribesOwnedParts)
     EXPECT_TRUE(k_HasReflectedParts<NS::Obj::ReflectionInfo>);
 }
 
-TEST(ReflectedParts, InheritedMembersDriveEnumerationAndLifecycleWithoutAnOverride)
+TEST(ReflectedParts, InheritedMembersDriveEnumerationWithoutAnOverride)
 {
     const std::unique_ptr<ReflectedHierarchyActor> actor = NS::Obj::CreateActor<ReflectedHierarchyActor>();
     ASSERT_NE(actor->parentPart, nullptr);
@@ -248,12 +240,6 @@ TEST(ReflectedParts, InheritedMembersDriveEnumerationAndLifecycleWithoutAnOverri
         EXPECT_EQ(part->Owner(), actor.get());
     });
     EXPECT_EQ(keys, (std::vector<std::string>{"Transform", "ParentPart", "ChildPart"}));
-    actor->OnStart();
-    actor->OnEndPlay();
-    EXPECT_EQ(actor->parentPart->starts, 1);
-    EXPECT_EQ(actor->childPart->starts, 1);
-    EXPECT_EQ(actor->parentPart->ends, 1);
-    EXPECT_EQ(actor->childPart->ends, 1);
     EXPECT_EQ(NS::Obj::Cast<ReflectedParentActor>(actor.get()), actor.get());
 }
 
@@ -314,7 +300,7 @@ TEST(FixedParts, MapObjCreatesShadowBeforeArchetypeIsApplied)
     EXPECT_EQ(actor->FindSubObj("Shadow"), actor->ShadowSubObj());
 }
 
-TEST(FixedParts, MemberOwnershipSupportsLookupLifecycleAndDestruction)
+TEST(FixedParts, MemberOwnershipSupportsLookupAndDestruction)
 {
     std::vector<std::string> destroyed;
     {
@@ -328,12 +314,6 @@ TEST(FixedParts, MemberOwnershipSupportsLookupLifecycleAndDestruction)
         EXPECT_EQ(actor.ReplaceFirst(), nullptr);
         EXPECT_EQ(actor.FindSubObj("First"), actor.first.get());
         EXPECT_EQ(actor.FindSubObj("Replacement"), nullptr);
-        actor.OnStart();
-        EXPECT_EQ(actor.first->starts, 1);
-        EXPECT_EQ(actor.second->starts, 1);
-        actor.OnEndPlay();
-        EXPECT_EQ(actor.first->ends, 1);
-        EXPECT_EQ(actor.second->ends, 1);
     }
     EXPECT_EQ(destroyed, (std::vector<std::string>{"second", "first"}));
 }

@@ -23,55 +23,37 @@ namespace
         int updates = 0;
     };
 
-    // 描画や当たりの部品と同じく、出る時に開始の処理で登録し直す部品
-    class RegisterCountSubObj final : public NS::Obj::SubObject
-    {
-    public:
-        void OnAppear() override { OnStart(); }
-        void OnStart() override { ++registers; }
-        void OnDisappear() noexcept override { ++unregisters; }
-        int registers = 0;
-        int unregisters = 0;
-    };
-
-    class CountedActor final : public NS::Obj::SceneActor
-    {
-    public:
-        NS_REFLECT_BEGIN(CountedActor, NS::Obj::SceneActor)
-        NS_REFLECT_SUBOBJ(part, "Counted")
-        NS_REFLECT_END()
-
-        std::unique_ptr<RegisterCountSubObj> part;
-
-    protected:
-        void OnInit() override { CreateSubObj(part); }
-    };
 } // namespace
 
+// 置物は模型の本体と残像・影の 3 つを描く物に、体のセンサー 1 つをセンサーに入れる
 TEST(ActorLifecycle, StartRegistersEachPartOnce)
 {
     NS::Obj::Scene scene;
-    CountedActor* actor = scene.SpawnTransient<CountedActor>();
-    EXPECT_EQ(actor->part->registers, 1);
-    EXPECT_EQ(actor->part->unregisters, 0);
+    const std::size_t renderables = scene.RenderableCount();
+    (void)scene.SpawnTransient<GL::Level::PropActor>();
+    EXPECT_EQ(scene.RenderableCount(), renderables + 3);
+    EXPECT_EQ(scene.HitSensors().Sensors().size(), 1u);
 }
 
 TEST(ActorLifecycle, ReparentingKeepsRegistrationWhileActivityIsUnchanged)
 {
     NS::Obj::Scene scene;
     LifeProbeActor* parent = scene.SpawnTransient<LifeProbeActor>();
-    CountedActor* child = scene.SpawnTransient<CountedActor>();
+    GL::Level::PropActor* child = scene.SpawnTransient<GL::Level::PropActor>();
+    const std::size_t renderables = scene.RenderableCount();
     child->SetParent(parent);
     child->SetParent(nullptr);
-    EXPECT_EQ(child->part->registers, 1);
-    EXPECT_EQ(child->part->unregisters, 0);
+    EXPECT_EQ(scene.RenderableCount(), renderables);
+    EXPECT_EQ(scene.HitSensors().Sensors().size(), 1u);
 
     // 消えている親の下へ入れると外れ、出ている所へ戻すと登録し直す
     child->SetParent(parent);
     parent->Disappear();
-    EXPECT_EQ(child->part->unregisters, 1);
+    EXPECT_EQ(scene.RenderableCount(), renderables - 3);
+    EXPECT_TRUE(scene.HitSensors().Sensors().empty());
     child->SetParent(nullptr);
-    EXPECT_EQ(child->part->registers, 2);
+    EXPECT_EQ(scene.RenderableCount(), renderables);
+    EXPECT_EQ(scene.HitSensors().Sensors().size(), 1u);
 }
 
 TEST(ActorLifecycle, DisappearStopsUpdatesAndAppearResumesOnce)

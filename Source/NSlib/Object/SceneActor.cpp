@@ -355,8 +355,7 @@ namespace NS::Obj
 
     void SceneActor::OnStart()
     {
-        // 部品の登録は部品の OnStart が済ませる。続けて OnAppear を呼ぶと、出る時に OnStart
-        // を呼び直す部品が二重に登録する
+        // 部品の登録はここで済ませる。続けて OnAppear を呼ぶと二重に登録する
         // clang-format off
         if (m_model) { m_model->Register(); }
         if (m_animation) { m_animation->BindToModel(); }
@@ -365,7 +364,6 @@ namespace NS::Obj
         if (m_attackSensor) { m_attackSensor->Register(); }
         if (m_hitReaction) { m_hitReaction->CreateDirectors(); }
         // clang-format on
-        ForEachSubObj([&](SubObject* subObject) { subObject->OnStart(); });
         if (!IsActiveInHierarchy())
         {
             OnDisappear();
@@ -386,12 +384,6 @@ namespace NS::Obj
         if (m_bodySensor && m_bodySensor->IsActive()) { m_bodySensor->Register(); }
         if (m_attackSensor && m_attackSensor->IsActive()) { m_attackSensor->Register(); }
         // clang-format on
-        ForEachSubObj([&](SubObject* subObject) {
-            if (subObject->IsActive())
-            {
-                subObject->OnAppear();
-            }
-        });
         for (SceneActor* child : m_children)
         {
             child->OnAppear();
@@ -412,7 +404,6 @@ namespace NS::Obj
         if (m_attackSensor) { m_attackSensor->Unregister(); }
         if (m_hitReaction) { m_hitReaction->StopAll(); }
         // clang-format on
-        ForEachSubObj([&](SubObject* subObject) { subObject->OnDisappear(); });
         for (SceneActor* child : m_children)
         {
             child->OnDisappear();
@@ -460,7 +451,6 @@ namespace NS::Obj
         if (m_attackSensor) { m_attackSensor->Unregister(); }
         if (m_hitReaction) { m_hitReaction->StopAll(); }
         // clang-format on
-        ForEachSubObj([&](SubObject* subObject) { subObject->OnEndPlay(); });
     }
 
 } // namespace NS::Obj

@@ -33,7 +33,6 @@ TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
     NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     NS::Obj::Body& movement = player.Body();
-    movement.OnStart();
     movement.SetGrounded(true);
     player.SyncGroundState();
     input->SetJumpPressed();
@@ -59,7 +58,6 @@ TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
     NS::Obj::PlayerInput* input = NS::Obj::Cast<NS::Obj::PlayerInput>(player.FindSubObj("Input"));
     ASSERT_NE(input, nullptr);
     NS::Obj::Body& movement = player.Body();
-    movement.OnStart();
     input->SetJumpHeld(true);
     player.Update();
     movement.SetVerticalVelocity(10.0f);

@@ -13,7 +13,6 @@ namespace NS::Obj
     class Transform;
 
     //! @brief SceneActor が所有する部品。更新は持ち主が呼び、体の経過秒は BodyDelta から取る
-    //! @details シーンへの接続後に OnStart、破棄前に OnEndPlay を呼ぶ
     class SubObject : public Object
     {
     public:
@@ -50,11 +49,7 @@ namespace NS::Obj
         //! データの active を切り替える。実行中に部品を外す SetActive とは別系統で、互いを上書きしない
         void SetEnabled(bool enabled) noexcept { m_enabled = enabled; }
 
-        virtual void OnAppear() {}
-        virtual void OnDisappear() noexcept {}
-        virtual void OnStart() {}
         virtual void OnUpdate() {}
-        virtual void OnEndPlay() {}
 
         //! 配置物の組み立てが値の適用後に呼ぶ。AssetManager が無い間 (テスト等) は呼ばれない
         virtual void ResolveAssets(AssetManager&) {}
