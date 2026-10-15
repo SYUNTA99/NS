@@ -65,6 +65,16 @@ bool PlayerActor::TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
     return m_charge.TryGetAimLine(outLine);
 }
 
+NS::Vector3 PlayerActor::ChargeAimDirection() const noexcept
+{
+    GL::Level::AimLine line{};
+    if (m_charge.TryGetAimLine(line))
+    {
+        return line.direction;
+    }
+    return AimDirection();
+}
+
 bool PlayerActor::TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
 {
     return m_charge.TryGetAimTarget(outTarget);

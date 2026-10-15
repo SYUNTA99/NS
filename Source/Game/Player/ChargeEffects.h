@@ -10,8 +10,6 @@
 #include <string_view>
 #include <vector>
 
-class PlayerActor;
-
 namespace GL::Level
 {
     class ImpactResolver;
@@ -19,7 +17,10 @@ namespace GL::Level
 
 namespace GL::Player
 {
+    class BodySlamStatus;
+    class ChargeStatus;
     class PlayerAppearance;
+    struct PlayerMotion;
 
     //! 溜めと放しの演出を出し、寿命を管理する部品
     //! PlayerAppearance の後に更新する
@@ -28,10 +29,22 @@ namespace GL::Player
     public:
         ChargeEffects() noexcept;
 
-        void OnStart() override;
-        void OnUpdate() override;
-        //! 番号を控えている溜めと放しのエフェクトを消す
-        void OnEndPlay() override;
+        //! 溜めと放しの絵を先に読む。持ち主の OnStart が呼ぶ
+        void Preload();
+
+        //! @brief 押し・溜め・放しに合わせて演出を出し、玉へ付いていかせる。持ち主の見た目の段が呼ぶ
+        //! @param[in] aimDirection 押している間に狙っている水平の向き
+        //! @param[in] appearance 玉の回転の正。このフレームに玉が回った角度を読む
+        //! @param[in] resolver 止めの頭と接触の見込みを読む
+        void Update(const ChargeStatus& charge,
+                    const BodySlamStatus& slam,
+                    const PlayerMotion& motion,
+                    const NS::Vector3& aimDirection,
+                    const PlayerAppearance& appearance,
+                    const GL::Level::ImpactResolver& resolver);
+
+        //! 番号を控えている溜めと放しのエフェクトを消す。持ち主の OnEndPlay が呼ぶ
+        void Clear();
 
         //! @brief 溜まる光へ動的入力 1 番で渡す、溜めきってからの数
         //! @return 押し続けている間、溜めきったフレームを 1 とした数。溜めきる前と押していない間は 0
@@ -85,26 +98,30 @@ namespace GL::Player
                                          const NS::Quaternion& rotation,
                                          float charge01) const noexcept;
         void ForgetEndedEffects() noexcept;
-        void StartPress(const NS::Vector3& center);
-        void StartCharging(const NS::Vector3& center);
+        void StartPress(const NS::Vector3& center, const NS::Vector3& aimDirection);
+        void StartCharging(const NS::Vector3& center, const NS::Vector3& aimDirection, float charge01);
         void StartFullFlash(const NS::Vector3& center);
         // 紫の揺れが端へ来たフレームに、その側へ火花を散らす
-        void PlaySwaySparks(const NS::Vector3& center);
+        void PlaySwaySparks(const NS::Vector3& center, const ChargeStatus& charge);
         // 押している間の層を玉へ付いていかせ、溜め量を渡す
-        void FollowHeldEffects(const NS::Vector3& center, float charge01) noexcept;
+        void FollowHeldEffects(const NS::Vector3& center,
+                               const NS::Vector3& aimDirection,
+                               float charge01,
+                               float spinDegreesThisFrame) noexcept;
         void ClearHeldEffects() noexcept;
-        void StartRelease(const NS::Vector3& center);
-        void UpdateTrail(const NS::Vector3& center, bool slamming) noexcept;
+        void StartRelease(const NS::Vector3& center, const BodySlamStatus& slam);
+        void UpdateTrail(const NS::Vector3& center,
+                         const BodySlamStatus& slam,
+                         bool slamming,
+                         const GL::Level::ImpactResolver& resolver) noexcept;
         void StopTrailRoot() noexcept;
         // 層を今の位置・向き・大きさへ置き直し、向きを記録に書く。描画の無い世界では記録だけ書く
         void Place(NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept;
         void SetCharge(NS::uint32 id, float charge01) const noexcept;
         void SetInput(NS::uint32 id, int index, float value) const noexcept;
-        // 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ PlayerActor::AimDirection
-        [[nodiscard]] NS::Vector3 HeldAimDirection() const noexcept;
         void StopAndClear(NS::uint32& id) noexcept;
         // 跳ね返りか破壊が起きたか、触れる見込みが m_burstClearFrames 以内か
-        [[nodiscard]] bool IsContactNear() const noexcept;
+        [[nodiscard]] bool IsContactNear(const GL::Level::ImpactResolver& resolver) const noexcept;
 
         //! 演出の寿命と接触前に消す猶予。単位は固定フレーム
         int m_curlSteps = 6;
@@ -134,16 +151,12 @@ namespace GL::Player
         NS::uint32 m_burst = 0;
 
         int m_fullStep = 0;        // 溜めきりの閃きを出したフレームの記録の番号
-        int m_framesSinceFull = 0; // FramesSinceFullCharge の値。OnUpdate が毎フレーム決める
+        int m_framesSinceFull = 0; // FramesSinceFullCharge の値。Update が毎フレーム決める
         bool m_fullShown = false;  // この押しで溜めきりの閃きを出したか。押し直すまで 2 回目を出さない
         bool m_wasHeld = false;
         bool m_wasSlamming = false;
         bool m_trailAwaitsFreeze = false; // 当たりを検知して突進が終わった。次のフレームの止めの頭で尾の親を止める
         float m_spinDegrees = 0.0f;       // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
         NS::Vector3 m_slamDirection;
-
-        const ::PlayerActor* m_actor = nullptr;              // 押し・溜め量・突進の速度・狙いの向きを答える自機。非所有
-        const PlayerAppearance* m_appearance = nullptr; // 玉の回転の正。非所有
-        const GL::Level::ImpactResolver* m_resolver = nullptr; // 止めの頭の正。非所有
     };
 } // namespace GL::Player

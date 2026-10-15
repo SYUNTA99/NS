@@ -12,7 +12,11 @@
 #include <optional>
 #include <vector>
 
-class PlayerActor;
+namespace NS::Obj
+{
+    class Body;
+    class Collider;
+} // namespace NS::Obj
 
 namespace GL::Level
 {
@@ -22,6 +26,9 @@ namespace GL::Level
 
 namespace GL::Player
 {
+    class BodySlamStatus;
+    struct PlayerMotion;
+
     //! @brief 核が最大近くに留まる間の大きさの動かし方
     enum class CoreHoldMotion
     {
@@ -87,14 +94,24 @@ namespace GL::Player
     public:
         ImpactEffects() noexcept;
 
-        void OnStart() override;
+        //! 当たり・反動・着地の絵を先に読む。持ち主の OnStart が呼ぶ
+        void Preload();
 
-        void OnUpdate() override;
+        //! @brief 頼まれた当たりと飛びの絵を始め、出ている絵を進める。持ち主の見た目の段が呼ぶ
+        //! @param[in] slam 外れの火花の向きに突進の向きを読む
+        //! @param[in] body 反動の尾の向きと、頂点と着地の判定に速度と接地を読む
+        //! @param[in] collider 接触点と足元を、当たりのカプセルから作る
+        //! @param[in] resolver 最後の当たりを読む
+        void Update(const BodySlamStatus& slam,
+                    const PlayerMotion& motion,
+                    const NS::Obj::Body& body,
+                    const NS::Obj::Collider& collider,
+                    const GL::Level::ImpactResolver& resolver);
 
-        //! 同じフレームの OnUpdate に命中演出を要求する。ChargeEffects の後に出す
+        //! 同じフレームの Update に命中演出を要求する。ChargeEffects の後に出す
         void RequestHitEffect() noexcept { m_hitRequested = true; }
 
-        //! 同じフレームの OnUpdate に反動の尾を要求する。命中演出の終了後は無効
+        //! 同じフレームの Update に反動の尾を要求する。命中演出の終了後は無効
         void RequestFlightEffect() noexcept { m_flightRequested = true; }
 
         //! 当たりの内訳から、演出の大きさと量を決める
@@ -248,30 +265,30 @@ namespace GL::Player
             int reboundStartStep = 0;    // 反動の尾を出したフレーム。このフレームは出した姿のまま置き直さない
         };
 
-        void BeginHit(const GL::Level::ImpactRecord& impact);
-        void AdvanceHit();
+        void BeginHit(const GL::Level::ImpactRecord& impact,
+                      const BodySlamStatus& slam,
+                      const NS::Obj::Collider& collider);
+        void AdvanceHit(const NS::Obj::Collider& collider);
         void PlaySparks();
         void PlayEmbers();
         // 前の当たりの層のうち、ここが消える時を持っている物を今のフレームで畳む
         void FinishHeldEffects();
-        void BeginFlight();
+        void BeginFlight(const PlayerMotion& motion, const NS::Obj::Body& body, const GL::Level::ImpactResolver& resolver);
         // 反動の尾を自機へ付いていかせる。頂点で親を止める
-        void AdvanceFlight();
+        void AdvanceFlight(const PlayerMotion& motion, const NS::Obj::Body& body);
         // 反動の着地のフレームに足元へ粉を出し、次のフレームのために縦の速さを控える
-        void AdvanceLanding();
+        void AdvanceLanding(const PlayerMotion& motion, const NS::Obj::Body& body, const NS::Obj::Collider& collider);
         // 効果を掛ける前の視点の位置。カメラが無い・姿が決まらない世界では空
         [[nodiscard]] std::optional<NS::Vector3> CameraPosition() const;
 
-        GL::Level::ImpactResolver* m_resolver = nullptr;
-        ::PlayerActor* m_player = nullptr;
         HitPlan m_plan;
         Flight m_flight;
         float m_lastVerticalVelocity = 0.0f; // 前のフレームの自機の縦の速さ (m/s)。着地のフレームは既に 0
         bool m_landingDustPlayed = false;    // この反動の着地の粉を出した。反動を抜けたら戻す
         ImpactAim m_aim;
         std::vector<NS::uint32> m_dusts; // 出した粉。次の当たりの絵の頭で親を止める
-        bool m_hitRequested = false;     // 事象が置いた、当たりの絵を始める頼み。OnUpdate が読んで消す
-        bool m_flightRequested = false;  // 事象が置いた、飛びの絵を始める頼み。OnUpdate が読んで消す
+        bool m_hitRequested = false;     // 事象が置いた、当たりの絵を始める頼み。Update が読んで消す
+        bool m_flightRequested = false;  // 事象が置いた、飛びの絵を始める頼み。Update が読んで消す
 
         int m_coreHoldMax = 10;
         int m_wideCoreHoldLast = 1;

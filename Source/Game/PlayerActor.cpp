@@ -253,8 +253,11 @@ void PlayerActor::VisualStep()
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
     m_resolver->WriteTremor();
     TickSubObj(m_appearance.get());
-    TickSubObj(m_chargeEffects.get());
-    TickSubObj(m_impactEffects.get());
+    const GL::Player::PlayerMotion motion = Motion();
+    // clang-format off
+    if (m_chargeEffects->IsActive()) { m_chargeEffects->Update(m_charge, m_slam, motion, ChargeAimDirection(), *m_appearance, *m_resolver); }
+    if (m_impactEffects->IsActive()) { m_impactEffects->Update(m_slam, motion, *m_body, *m_collider, *m_resolver); }
+    // clang-format on
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
 #endif
@@ -324,6 +327,8 @@ void PlayerActor::OnStart()
         scene->RegisterOverlay(m_targetMarker.get());
         scene->RegisterOverlay(m_slamArrow.get());
     }
+    m_chargeEffects->Preload();
+    m_impactEffects->Preload();
 }
 
 void PlayerActor::OnEndPlay()
@@ -331,6 +336,7 @@ void PlayerActor::OnEndPlay()
     m_states->Reset();
     m_appliedClip.clear();
     NS::Obj::SceneActor::OnEndPlay();
+    m_chargeEffects->Clear();
     if (NS::Obj::Scene* scene = OwningScene())
     {
         scene->UnregisterOverlay(m_targetMarker.get());

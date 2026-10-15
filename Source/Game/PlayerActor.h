@@ -349,6 +349,8 @@ private:
     [[nodiscard]] float BodySlamAimBlend01() const noexcept;
     //! 通常・溜めた突進の水平速度 (m/s) を返す。初速と更新に同じ値を使う
     [[nodiscard]] float BodySlamSpeed() const noexcept;
+    //! 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ AimDirection
+    [[nodiscard]] NS::Vector3 ChargeAimDirection() const noexcept;
     //! @brief 体当たりの要求を覚えてよい場合 true、それ以外の場合は false
     //! @details 突進中と CanMoveBody が偽の間は偽。ここで覚えた押しは止めの間に減らず、明けや空振りの後に 2 本目になる
     [[nodiscard]] bool AcceptsBodySlamRequest() const noexcept;
