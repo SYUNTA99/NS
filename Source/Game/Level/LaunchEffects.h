@@ -34,8 +34,8 @@ namespace GL::Level
         //! @param[in] sphere 置物の当たりの球。尾の太さを直径に合わせる
         void BeginTrail(const TackleReleaseDesc& release,
                         const PropFlight& flight,
-                        const MapObjParams& params,
-                        const NS::Obj::SphereCollision& sphere);
+                        const MapObjParams* params,
+                        const NS::Obj::SphereCollision* sphere);
 
         //! @brief 尾を消し、落ちた所へ粉を出す
         //! @param[in] position 床に触れた点。世界座標

@@ -237,7 +237,7 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     const NS::Obj::SphereCollision* sphere = NS::Obj::Cast<NS::Obj::SphereCollision>(actor->CollisionSubObj());
     ASSERT_NE(prop, nullptr);
     ASSERT_NE(sphere, nullptr);
-    effects->BeginTrail(trail, prop->Flight(), *params, *sphere);
+    effects->BeginTrail(trail, prop->Flight(), params, sphere);
     EXPECT_EQ(effects->TrailFrames(), 20);
     EXPECT_FLOAT_EQ(effects->LandDustScale(), 2.5f);
 }

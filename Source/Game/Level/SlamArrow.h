@@ -145,8 +145,8 @@ namespace GL::Level
         //! @brief 溜め中の矢印を控える。狙いが無いか溜めを終えたら、控えと経過フレーム数を戻す
         //! @details 道筋は params の突進の速さと重力、玉の半径と床は collider (持ち主の移動の当たり) から出す
         void Update(const GL::Player::ChargeStatus& charge,
-                    const GL::Player::PlayerParams& params,
-                    const NS::Obj::Collider& collider);
+                    const GL::Player::PlayerParams* params,
+                    const NS::Obj::Collider* collider);
 
         //! ロックオンの枠 (TargetMarker の 0) より先に描き、枠を矢印の上に重ねる
         [[nodiscard]] int OverlayOrder() const noexcept override { return -1; }

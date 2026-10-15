@@ -120,7 +120,7 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnSubObject)
     ASSERT_NE(effects, nullptr);
     const NS::Obj::SphereCollision* sphere = NS::Obj::Cast<NS::Obj::SphereCollision>(rock->CollisionSubObj());
     ASSERT_NE(sphere, nullptr);
-    effects->BeginTrail(GL::Level::TackleReleaseDesc{}, rock->Flight(), rock->Params(), *sphere);
+    effects->BeginTrail(GL::Level::TackleReleaseDesc{}, rock->Flight(), &rock->Params(), sphere);
     effects->NotifyLanding({}, {0.0f, 1.0f, 0.0f});
     NS::Obj::EffectKeeper* keeper = rock->GetEffectKeeper();
     ASSERT_NE(keeper, nullptr);

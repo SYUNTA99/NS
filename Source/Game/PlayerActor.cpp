@@ -277,7 +277,7 @@ void PlayerActor::VisualStep()
     UpdateAnimation();
     // clang-format off
     if (m_targetMarker->IsActive()) { m_targetMarker->Update(m_charge); }
-    if (m_slamArrow->IsActive()) { m_slamArrow->Update(m_charge, *m_params, *m_collider); }
+    if (m_slamArrow->IsActive()) { m_slamArrow->Update(m_charge, m_params.get(), m_collider.get()); }
     // clang-format on
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
     m_resolver->WriteTremor(m_collider.get(), ModelSubObj());

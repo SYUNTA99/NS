@@ -339,7 +339,7 @@ namespace GL::Level
         m_hasLaunched = true;
         m_motion.Build<ArcState, RollingState>(*this);
         (void)m_states->Change<LaunchedState>();
-        m_effects->BeginTrail(desc, Flight(), *m_params, Sphere());
+        m_effects->BeginTrail(desc, Flight(), m_params.get(), &Sphere());
         SyncCollision();
     }
 

@@ -71,9 +71,10 @@ namespace GL::Level
 
     void LaunchEffects::BeginTrail(const TackleReleaseDesc& release,
                                    const PropFlight& flight,
-                                   const MapObjParams& params,
-                                   const NS::Obj::SphereCollision& sphere)
+                                   const MapObjParams* params,
+                                   const NS::Obj::SphereCollision* sphere)
     {
+        NS_ASSERT(Game, params != nullptr && sphere != nullptr, "置物の調整値か当たりの球が渡されていない");
         // 尾は 1 本ずつ持つ。前の尾が残っていればここで消す
         if (m_trail != 0)
         {
@@ -90,13 +91,13 @@ namespace GL::Level
             static_cast<float>(m_trailFramesBase) + m_trailFramesPerLaunch * std::max(release.launchScale, 0.0f);
         m_trailFrames = std::max(1, static_cast<int>(std::lround(trailFrames)));
         // 威力 1 で質量だけの大きさ。強く飛ばした物ほど高く上がって強く落ちるので威力でも伸ばす
-        const float mass = params.Mass();
+        const float mass = params->Mass();
         const float powerGrowth =
             std::max(0.0f, 1.0f + m_landDustPerPower * (std::max(release.power, 0.0f) - 1.0f));
         m_landDustScale = (m_landDustBase + m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) * powerGrowth;
 
         // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ。物理への登録に依らず、変換と欄から作る
-        m_trailScale = 2.0f * sphere.WorldSphere().radius;
+        m_trailScale = 2.0f * sphere->WorldSphere().radius;
         const Vector3& launchDir = release.arc.direction;
         m_launchDir = NormalizedOr(Vector3{launchDir.x, 0.0f, launchDir.z}, Vector3{1.0f, 0.0f, 0.0f});
 
