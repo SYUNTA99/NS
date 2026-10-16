@@ -2,7 +2,6 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 
-#include "NSlib/CoreObject/AssetManager.h"
 
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
@@ -354,6 +353,7 @@ namespace NS
         {
             obj->Disappear();
         }
+        bool written = false;
         ForEachReflectedSubObj(*obj, [&](const SubObjectDesc& field, SubObject* subObject) {
             const nlohmann::json* fields = SubObjFields(object, field.key);
             if (fields == nullptr || SerializeSubObjectFields(*subObject) == *fields)
@@ -361,8 +361,13 @@ namespace NS
                 return;
             }
             (void)ApplyJsonFields(*subObject, *fields);
-            subObject->ResolveAssets(AssetManager::Get());
+            written = true;
         });
+        // 書き換えた欄に参照があれば読み直す。作る時と同じ組を通る
+        if (written)
+        {
+            obj->ReloadAssets();
+        }
         return obj;
     }
 

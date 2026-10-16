@@ -99,6 +99,14 @@ namespace NS
         }
     }
 
+    template <class Field> void LoadFieldAsset(Field& field)
+    {
+        if constexpr (IsAssetRef<Field>::value)
+        {
+            LoadAssetRef(field);
+        }
+    }
+
     template <class Field> void AssignFieldValue(Field& target, const void* in) noexcept
     {
         if constexpr (std::is_same_v<Field, float>)
@@ -122,6 +130,7 @@ namespace NS
         FieldType type;
         void (*get)(const void* obj, void* outValue) noexcept; // obj から値を outValue へ取り出す
         void (*set)(void* obj, const void* inValue) noexcept;  // inValue を obj へ書き込む
+        void (*load)(void* obj) = nullptr;                    // 参照の欄の素材を読む。ほかの型の欄では何もしない
     };
 
     //! @brief 欄の見出し 1 つ。インスペクタが firstField の欄の前に畳める区切りを出す
@@ -256,7 +265,8 @@ namespace NS
                                    },                                                                                  \
                                    +[](void* c, const void* in) noexcept {                                             \
                                        NS::AssignFieldValue(static_cast<Self*>(c)->member, in);                        \
-                                   }},                                                                                 \
+                                   },                                                                                  \
+                                   +[](void* c) { NS::LoadFieldAsset(static_cast<Self*>(c)->member); }},               \
                      nullptr},
 
 //! 欄の見出しを置く。次の見出しまでに並べた欄がこの見出しの下に入る。見出しは欄の配列に入らず、保存の鍵にならない

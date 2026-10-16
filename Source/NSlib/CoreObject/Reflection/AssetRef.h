@@ -43,4 +43,25 @@ namespace NS
     template <class T> struct IsAssetRef<AssetRef<T>> : std::true_type
     {
     };
+
+    //! @brief ref の名前の素材を AssetManager::Get() から読み、ref に持たせる。素材の型ごとに特殊化を 1 つ書く
+    //! @details 読めなかった名前はログに出し、型ごとの代わりの素材を持たせる。特殊化の無い型はリンクで落ちる
+    template <class T> void LoadAssetRef(AssetRef<T>& ref);
+
+    namespace Gfx
+    {
+        class Material;
+        class Mesh;
+    } // namespace Gfx
+
+    //! 組み込みの形の名前か、Content の下のメッシュのパス。読めなければ cube
+    template <> void LoadAssetRef<Gfx::Mesh>(AssetRef<Gfx::Mesh>& ref);
+    //! 共有のマテリアルの名前か、Content の下の .mat のパス。読めなければ共有の player
+    template <> void LoadAssetRef<Gfx::Material>(AssetRef<Gfx::Material>& ref);
+
+    class SceneActor;
+
+    //! @brief actor の部品の参照の欄を全部読む
+    //! @details 呼ぶのは SceneActor::ReloadAssets だけ。作る時と欄を書き換えた時の両方がそこを通る
+    void LoadAssetRefs(SceneActor& actor);
 } // namespace NS

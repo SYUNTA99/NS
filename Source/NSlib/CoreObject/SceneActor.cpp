@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -243,12 +244,18 @@ namespace NS
             ApplyObjectSubObjs(*this, *info.placement);
         }
         // 素材の参照は欄にある。欄を書き終えてから読む
-        InitAssets(info);
+        ReloadAssets();
     }
 
-    void SceneActor::InitAssets(const ActorInitInfo&)
+    void SceneActor::ReloadAssets()
     {
-        // TODO: 部品の ResolveAssets を一列に呼んでいる。部品ごとに名指しで読む形にしたら、このループと ResolveAssets を消す
+        LoadAssetRefs(*this);
+        OnAssetsLoaded();
+    }
+
+    void SceneActor::OnAssetsLoaded()
+    {
+        // TODO: 部品の ResolveAssets を一列に呼んでいる。部品の素材を参照の欄へ移し終えたら、このループと ResolveAssets を消す
         ForEachReflectedSubObj(*this,
                                [&](const SubObjectDesc&, SubObject* subObject) { subObject->ResolveAssets(AssetManager::Get()); });
     }

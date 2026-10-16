@@ -1344,13 +1344,12 @@ bool LevelEditorController::PromoteFieldToArchetype(NS::SubObject& comp, std::st
     // 付いて行く個体へ新しい値を写す。資産の参照の欄なら実体も引き直す
     nlohmann::json fields = nlohmann::json::object();
     fields[std::string{fieldName}] = FieldJson(comp, fieldName);
-    NS::Application* app = NS::Application::Get();
     for (NS::SubObject* part : followers)
     {
         (void)NS::ApplyJsonFields(*part, fields);
-        if (app != nullptr)
+        if (NS::SceneActor* owner = part->Owner())
         {
-            part->ResolveAssets(app->Assets());
+            owner->ReloadAssets();
         }
     }
     // 当たりの大きさの欄なら body を張り直す

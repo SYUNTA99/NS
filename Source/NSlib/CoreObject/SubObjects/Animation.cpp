@@ -164,6 +164,8 @@ namespace NS
 
     void Animation::ResolveAssets(AssetManager& assets)
     {
+        // 欄を書き換えるたびに読み直すので、前に読んだクリップを残さない
+        m_clips.clear();
         if (m_modelRef.empty())
         {
             // 結合先の骨格が無いので Clips だけあっても解決できない

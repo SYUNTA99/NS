@@ -148,6 +148,10 @@ namespace NS
         //! 世界から外し、全ての部品の OnEndPlay を呼ぶ
         virtual void OnEndPlay();
 
+        //! @brief 部品の参照の欄を読み直し、続けて OnAssetsLoaded を呼ぶ
+        //! @details 作る時は Init が欄を書いた直後に呼ぶ。エディタやシーンが欄を書き換えた後も、これを呼んで読み直す
+        void ReloadAssets();
+
     protected:
         //! @brief 知らせを受け取る。応じた場合 true、知らない知らせと応じなかった知らせは false
         //! @details 呼べるのは SendMsg と SendMsgToActor だけ。sender と receiver は知らせを運んだセンサーで、
@@ -163,8 +167,9 @@ namespace NS
         // 基底の部品の型を替える派生は、基底の OnInit を呼ばずに自分で作る
         //! 所属の Scene は入る道によって付いていないので、ここでは読まない
         virtual void OnInit() {}
-        //! 部品の素材を読む。Init が欄を書いた直後に 1 回呼ぶ。基底は登録された全部品を読むので、上書きする派生は基底も呼ぶ
-        virtual void InitAssets(const ActorInitInfo& info);
+        //! @brief 参照の欄を読んだ直後に呼ぶ。読んだ物から作る物を、部品を名指しで呼んで作る
+        //! @details 作る時と ReloadAssets の両方で呼ぶので、何回呼ばれても同じ姿になるように書く。上書きする派生は基底も呼ぶ
+        virtual void OnAssetsLoaded();
 
         // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
         template <class TBase, class T = TBase, class... TArgs>
