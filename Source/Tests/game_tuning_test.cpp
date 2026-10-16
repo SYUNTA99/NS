@@ -77,7 +77,7 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
     ASSERT_FALSE(keeper->Records().empty());
     EXPECT_EQ(keeper->Records().front().name, "custom.curl");
     const nlohmann::json saved = NS::SerializeSubObjectFields(player->ChargeVisuals());
-    GL::Player::ChargeEffects restored;
+    GL::Player::ChargeEffects restored{nullptr};
     ASSERT_EQ(NS::ApplyJsonFields(restored, saved), 0u);
     EXPECT_EQ(NS::SerializeSubObjectFields(restored)["丸まりの殻の資産"], "custom.curl");
 }
@@ -132,7 +132,7 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnSubObject)
 
 TEST(GameTuning, EditedPowerRangeAndTrailAngleKeepTheOutputFinite)
 {
-    GL::Player::ImpactEffects effects;
+    GL::Player::ImpactEffects effects{nullptr};
     ASSERT_EQ(
         NS::ApplyJsonFields(
             effects,
@@ -151,7 +151,7 @@ TEST(GameTuning, EditedPowerRangeAndTrailAngleKeepTheOutputFinite)
 
 TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
 {
-    GL::Player::ImpactEffects effects;
+    GL::Player::ImpactEffects effects{nullptr};
     ASSERT_EQ(NS::ApplyJsonFields(effects, {{"外れの火花の横の割合", 1.0f}}), 0u);
     const NS::Vector3 heading = effects.MissSparkHeading(0.8f, 0.0f, {0.0f, 0.0f, 1.0f});
     EXPECT_NEAR(heading.x, 1.0f, 0.001f);

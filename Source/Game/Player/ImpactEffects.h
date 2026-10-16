@@ -99,7 +99,7 @@ namespace GL
         class ImpactEffects : public NS::SubObject
         {
         public:
-            ImpactEffects() noexcept;
+            explicit ImpactEffects(NS::SceneActor* owner) noexcept;
 
             //! 当たり・反動・着地の絵を先に読む。持ち主の OnStart が呼ぶ
             void Preload();
@@ -358,6 +358,7 @@ namespace GL
             float m_dustScalePerPower = 0.5f;
             float m_landDustRadiusBase = 1.2f;
             float m_landDustRadiusPerFallSpeed = 0.04f;
+            NS::SceneActor* m_owner = nullptr; // 持ち主 (非所有)
         };
     } // namespace Player
 } // namespace GL

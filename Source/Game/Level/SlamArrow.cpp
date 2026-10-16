@@ -510,7 +510,7 @@ namespace GL
             out.push_back(occludedItem);
         }
 
-        SlamArrow::SlamArrow(NS::SceneActor* owner) noexcept : NS::OverlayRenderer(owner) {}
+        SlamArrow::SlamArrow(NS::SceneActor* owner) noexcept : NS::OverlayRenderer(owner), m_owner(owner) {}
 
         void SlamArrow::Update(const GL::Player::ChargeStatus& charge,
                                const GL::Player::PlayerParams* params,
@@ -553,7 +553,7 @@ namespace GL
             SlamArrowGroundProbe probe;
             const NS::Collider* ground = collider;
             // Scene に居なければ probe は空のまま。空の probe は床を見ない合図
-            if (Owner()->OwningScene() != nullptr)
+            if (m_owner->OwningScene() != nullptr)
             {
                 probe = [ground](const NS::Vector3& from, float maxDepth, float& outGroundY) {
                     float distance = 0.0f;
@@ -591,7 +591,7 @@ namespace GL
         {
             const SlamArrowDrawAssets assets{
                 .mesh = m_mesh.Get(), .bandMaterial = m_bandMaterial.Get(), .headMaterial = m_headMaterial.Get()};
-            if (!IsOwnerAppeared() || !m_hasShown || context.renderer == nullptr || assets.mesh == nullptr ||
+            if (!IsOverlayVisible() || !m_hasShown || context.renderer == nullptr || assets.mesh == nullptr ||
                 assets.bandMaterial == nullptr || assets.headMaterial == nullptr)
             {
                 return;

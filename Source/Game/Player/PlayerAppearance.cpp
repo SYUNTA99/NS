@@ -11,6 +11,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Body.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
+#include "NSlib/Windows/Clock.h"
 #include <algorithm>
 #include <cmath>
 
@@ -40,7 +41,7 @@ namespace GL
 {
     namespace Player
     {
-        PlayerAppearance::PlayerAppearance() noexcept : NS::SubObject() {}
+        PlayerAppearance::PlayerAppearance(NS::SceneActor* owner) noexcept : m_owner(owner) {}
 
         void PlayerAppearance::Curl() noexcept
         {
@@ -79,11 +80,11 @@ namespace GL
         {
             m_landingSquashRemaining = 0;
             m_landingSquashVertical = 1.0f;
-            if (Owner() == nullptr)
+            if (m_owner == nullptr)
             {
                 return;
             }
-            if (NS::Model* renderer = Owner()->ModelSubObj())
+            if (NS::Model* renderer = m_owner->ModelSubObj())
             {
                 (void)renderer->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
             }
@@ -99,9 +100,12 @@ namespace GL
         {
             m_spinDegreesThisFrame = 0.0f;
             NS::Model* renderer = nullptr;
-            if (Owner() != nullptr)
+            // 持ち主の無い部品は固定フレームの秒で回す
+            float dt = NS::OS::FrameTimer::FixedDelta();
+            if (m_owner != nullptr)
             {
-                renderer = Owner()->ModelSubObj();
+                renderer = m_owner->ModelSubObj();
+                dt = m_owner->BodyDelta();
             }
 
             if (!m_curled)
@@ -163,7 +167,7 @@ namespace GL
             }
             // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
 
-            const float degrees = m_spinSpeed * BodyDelta();
+            const float degrees = m_spinSpeed * dt;
             const float radians = NS::ToRadians(NS::Degrees{degrees}).value;
             const NS::Quaternion turn = NS::Quaternion::CreateFromAxisAngle(m_spinAxis, radians);
             // 既に回った姿勢の後に今の軸の回転を足す。SimpleMath の q1 * q2 は q1 の後に q2 で、軸は根の空間で固定
@@ -222,10 +226,15 @@ namespace GL
             NS::Vector3 side = axis.Cross(helper);
             side.Normalize();
             const NS::Vector3 other = axis.Cross(side);
+            float dt = NS::OS::FrameTimer::FixedDelta();
+            if (m_owner != nullptr)
+            {
+                dt = m_owner->BodyDelta();
+            }
             // TODO: 歩の数に今の歩の秒を掛けるので、倍率が途中で変わると位相が跳ぶ
             // 外した反動の間に倍率を動かす時に、経過の秒を足し込む形へ変える
             const float phase = m_tumbleWobblePhase + 2.0f * NS::k_Pi * m_missWobbleTurnsPerSecond *
-                                                          static_cast<float>(m_tumbleSteps) * BodyDelta();
+                                                          static_cast<float>(m_tumbleSteps) * dt;
             const float tilt = NS::ToRadians(NS::Degrees{m_missWobbleDegrees}).value;
             const NS::Vector3 lean = side * std::cos(phase) + other * std::sin(phase);
             NS::Vector3 tilted = axis * std::cos(tilt) + lean * std::sin(tilt);
@@ -303,11 +312,11 @@ namespace GL
         void PlayerAppearance::WriteDrawScale(const ChargeStatus& charge,
                                               const GL::Level::ImpactAnswer& impact) noexcept
         {
-            if (Owner() == nullptr)
+            if (m_owner == nullptr)
             {
                 return;
             }
-            NS::Model* renderer = Owner()->ModelSubObj();
+            NS::Model* renderer = m_owner->ModelSubObj();
             if (renderer == nullptr)
             {
                 return;
@@ -345,11 +354,11 @@ namespace GL
 
         void PlayerAppearance::ShowCurrentLook() noexcept
         {
-            if (Owner() == nullptr)
+            if (m_owner == nullptr)
             {
                 return;
             }
-            NS::Model* renderer = Owner()->ModelSubObj();
+            NS::Model* renderer = m_owner->ModelSubObj();
             if (renderer == nullptr)
             {
                 return;

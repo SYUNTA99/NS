@@ -182,7 +182,7 @@ TEST(MapObjParams, TackleAnswerCarriesTheLaunchShape)
 // 尾と粉の大きさは描く LaunchEffects の欄。遊びの欄と並ばない
 TEST(MapObjParams, LaunchSizeDefaultsBelongToLaunchEffects)
 {
-    GL::Level::LaunchEffects effects;
+    GL::Level::LaunchEffects effects{nullptr};
     const nlohmann::json fields = NS::SerializeSubObjectFields(effects);
     const nlohmann::json expected = {{"飛び出しの尾が残るフレーム数の基準", 8},
                                      {"飛び出しの尾が残るフレーム数の飛ばしの比あたり", 4.0f},

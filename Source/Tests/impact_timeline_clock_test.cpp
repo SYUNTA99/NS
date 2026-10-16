@@ -740,7 +740,7 @@ TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
 // 外れの火花は外した側へ 7 割、相手の表面に沿って滑る向きへ 3 割で流す。面の真ん中は向きが決まらない
 TEST(ImpactTimelineClock, MissSparksFlowTowardTheSideThatWasMissed)
 {
-    GL::Player::ImpactEffects effects;
+    GL::Player::ImpactEffects effects{nullptr};
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     // 右の縁: 外した側 +X、滑る向き (0.6, 0, 0.8)。0.7 × (1, 0, 0) + 0.3 × (0.6, 0, 0.8) を正規化
     const NS::Vector3 right = effects.MissSparkHeading(0.8f, 0.0f, forward);

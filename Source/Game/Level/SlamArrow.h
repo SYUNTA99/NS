@@ -218,6 +218,7 @@ namespace GL
             bool m_hasShown = false;
             int m_framesSinceShown = -1;                  // 矢印を出していない間は負
             std::vector<NS::Gfx::DrawItem> m_drawScratch; // 描く単位を毎フレーム積み直す置き場。確保を使い回す
+            NS::SceneActor* m_owner = nullptr;            // 持ち主 (非所有)
         };
     } // namespace Level
 } // namespace GL

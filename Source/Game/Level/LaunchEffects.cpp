@@ -64,11 +64,11 @@ namespace GL
             }
         } // namespace
 
-        LaunchEffects::LaunchEffects() noexcept : NS::SubObject() {}
+        LaunchEffects::LaunchEffects(NS::SceneActor* owner) noexcept : m_owner(owner) {}
 
         void LaunchEffects::Preload()
         {
-            NS::PreloadEffects(Owner(), {m_launchTrailAsset, m_launchLandDustAsset});
+            NS::PreloadEffects(m_owner, {m_launchTrailAsset, m_launchLandDustAsset});
         }
 
         void LaunchEffects::BeginTrail(const TackleReleaseDesc& release,
@@ -80,7 +80,7 @@ namespace GL
             // 尾は 1 本ずつ持つ。前の尾が残っていればここで消す
             if (m_trail != 0)
             {
-                NS::StopEffect(Owner(), m_trail);
+                NS::StopEffect(m_owner, m_trail);
                 m_trail = 0;
             }
             if (!flight.arc)
@@ -105,7 +105,7 @@ namespace GL
 
             // 置物が自分を動かす Triggers の段より前に走るので、帯の頭は放した時の速度で 1 フレーム先へ置く
             // 帯の点の +Y を飛ぶ向きへ回す。揃えないと、横から見た時に幅が道に沿って潰れる
-            const Vector3 head = flight.position + flight.velocity * BodyDelta();
+            const Vector3 head = flight.position + flight.velocity * m_owner->BodyDelta();
             NS::Gfx::EffectPlayDesc desc =
                 PlayAt(head, TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)), Uniform(m_trailScale));
             // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
@@ -114,20 +114,20 @@ namespace GL
             desc.dynamicInputs[TrailColorInputFor(release.tier)] = 1.0f;
             desc.dynamicInputs[2] = static_cast<float>(m_trailFrames);
             desc.dynamicInputs[3] = 0.0f;
-            m_trail = NS::PlayEffect(Owner(), m_launchTrailAsset, desc);
-            NS::SetEffectAmount(Owner(), m_trail, static_cast<float>(m_trailFrames));
-            m_trailStartStep = NS::EffectStep(Owner());
+            m_trail = NS::PlayEffect(m_owner, m_launchTrailAsset, desc);
+            NS::SetEffectAmount(m_owner, m_trail, static_cast<float>(m_trailFrames));
+            m_trailStartStep = NS::EffectStep(m_owner);
         }
 
         void LaunchEffects::Update(const PropFlight& flight)
         {
-            if (m_trail == 0 || NS::EffectStep(Owner()) == m_trailStartStep)
+            if (m_trail == 0 || NS::EffectStep(m_owner) == m_trailStartStep)
             {
                 return;
             }
             if (flight.arc)
             {
-                NS::SetEffectTransform(Owner(),
+                NS::SetEffectTransform(m_owner,
                                        m_trail,
                                        flight.position,
                                        TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)),
@@ -140,7 +140,7 @@ namespace GL
         void LaunchEffects::EndTrail()
         {
             // 帯と輪はここで消す。点は世界に残るので、通った道が柱のように残る
-            NS::StopEffect(Owner(), m_trail);
+            NS::StopEffect(m_owner, m_trail);
             m_trail = 0;
         }
 
@@ -154,12 +154,12 @@ namespace GL
             EndTrail();
             const Vector3 at = position + normal * m_dustRingLift;
             const NS::uint32 dust = NS::PlayEffect(
-                Owner(),
+                m_owner,
                 m_launchLandDustAsset,
                 PlayAt(
                     at, TurnUpTo(normal), Uniform(m_landDustScale / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
-            NS::SetEffectAmount(Owner(), dust, m_landDustScale);
-            NS::StopEffectAfter(Owner(), dust, std::max(m_landDustLife, 1));
+            NS::SetEffectAmount(m_owner, dust, m_landDustScale);
+            NS::StopEffectAfter(m_owner, dust, std::max(m_landDustLife, 1));
         }
 
         NS_CLASS(LaunchEffects)

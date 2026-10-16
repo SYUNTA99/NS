@@ -30,11 +30,11 @@ namespace GL
             return desc;
         }
 
-        ChargeEffects::ChargeEffects() noexcept : NS::SubObject() {}
+        ChargeEffects::ChargeEffects(NS::SceneActor* owner) noexcept : m_owner(owner) {}
 
         void ChargeEffects::Preload()
         {
-            NS::PreloadEffects(Owner(),
+            NS::PreloadEffects(m_owner,
                                {m_curlAsset,
                                 m_spinAsset,
                                 m_grindAsset,
@@ -56,7 +56,7 @@ namespace GL
             ForgetEndedEffects();
 
             const GL::Level::ImpactInputJudge& judge = charge.Judge();
-            const NS::Vector3 center = RootTransform().Position();
+            const NS::Vector3 center = m_owner->Root().Position();
             // 溜めすぎで出た後は押したままでも溜めの層を消す
             const bool held = judge.IsHoldingCharge();
             if (judge.JustPressed())
@@ -74,7 +74,7 @@ namespace GL
             m_framesSinceFull = 0;
             if (held && m_fullShown)
             {
-                m_framesSinceFull = NS::EffectStep(Owner()) - m_fullStep + 1;
+                m_framesSinceFull = NS::EffectStep(m_owner) - m_fullStep + 1;
             }
             if (held)
             {
@@ -144,7 +144,7 @@ namespace GL
                 {
                     return;
                 }
-                const NS::EffectRecord* record = NS::FindEffect(Owner(), id);
+                const NS::EffectRecord* record = NS::FindEffect(m_owner, id);
                 if (record != nullptr && record->endStep.has_value())
                 {
                     id = 0;
@@ -164,27 +164,27 @@ namespace GL
             m_fullShown = false;
             m_spinDegrees = 0.0f;
 
-            m_curl = NS::PlayEffect(Owner(), m_curlAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
-            NS::StopEffectAfter(Owner(), m_curl, std::max(m_curlSteps, 1));
-            m_spin = NS::PlayEffect(Owner(), m_spinAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
+            m_curl = NS::PlayEffect(m_owner, m_curlAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
+            NS::StopEffectAfter(m_owner, m_curl, std::max(m_curlSteps, 1));
+            m_spin = NS::PlayEffect(m_owner, m_spinAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
             // 玉を包む光は押したフレームから出し、丸まりの殻が消えた後も放すまで途切れさせない
             StopAndClear(m_gather);
-            m_gather = NS::PlayEffect(Owner(), m_gatherAsset, PlayDesc(center, YawToward(aimDirection), 0.0f));
+            m_gather = NS::PlayEffect(m_owner, m_gatherAsset, PlayDesc(center, YawToward(aimDirection), 0.0f));
         }
 
         void ChargeEffects::StartCharging(const NS::Vector3& center, const NS::Vector3& aimDirection, float charge01)
         {
             StopAndClear(m_grind);
-            m_grind = NS::PlayEffect(Owner(), m_grindAsset, PlayDesc(center, YawToward(aimDirection), charge01));
+            m_grind = NS::PlayEffect(m_owner, m_grindAsset, PlayDesc(center, YawToward(aimDirection), charge01));
         }
 
         void ChargeEffects::StartFullFlash(const NS::Vector3& center)
         {
             m_fullShown = true;
-            m_fullStep = NS::EffectStep(Owner());
+            m_fullStep = NS::EffectStep(m_owner);
             StopAndClear(m_full);
-            m_full = NS::PlayEffect(Owner(), m_fullAsset, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
-            NS::StopEffectAfter(Owner(), m_full, std::max(m_fullFlashSteps, 1));
+            m_full = NS::PlayEffect(m_owner, m_fullAsset, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
+            NS::StopEffectAfter(m_owner, m_full, std::max(m_fullFlashSteps, 1));
         }
 
         void ChargeEffects::PlaySwaySparks(const NS::Vector3& center, const ChargeStatus& charge)
@@ -217,7 +217,7 @@ namespace GL
             // 秒の速さを 1 フレームの距離にして絵へ渡す
             sparks.dynamicInputs[2] = speed / 60.0f;
             sparks.dynamicInputs[3] = 0.0f;
-            static_cast<void>(NS::PlayEffect(Owner(), m_swaySparksAsset, sparks));
+            static_cast<void>(NS::PlayEffect(m_owner, m_swaySparksAsset, sparks));
         }
 
         void ChargeEffects::FollowHeldEffects(const NS::Vector3& center,
@@ -262,8 +262,8 @@ namespace GL
             // 大きさを変えるのは輪・丸屋根・筋だけにする
             NS::Gfx::EffectPlayDesc burst = PlayDesc(center, facing, charge01);
             burst.dynamicInputs[m_burstScaleInput] = ReleaseBurstScale(charge01);
-            const NS::uint32 burstId = NS::PlayEffect(Owner(), m_burstAsset, burst);
-            NS::StopEffectAfter(Owner(), burstId, std::max(m_burstSteps, 1));
+            const NS::uint32 burstId = NS::PlayEffect(m_owner, m_burstAsset, burst);
+            NS::StopEffectAfter(m_owner, burstId, std::max(m_burstSteps, 1));
             m_burst = burstId;
 
             // 前の突進の尾がまだ伸びていれば止め、新しい尾と繋げない
@@ -272,7 +272,7 @@ namespace GL
                 StopTrailRoot();
             }
             m_trailAwaitsFreeze = false;
-            m_trail = NS::PlayEffect(Owner(), m_trailAsset, PlayDesc(center, facing, charge01));
+            m_trail = NS::PlayEffect(m_owner, m_trailAsset, PlayDesc(center, facing, charge01));
         }
 
         void ChargeEffects::UpdateTrail(const NS::Vector3& center,
@@ -284,7 +284,7 @@ namespace GL
             {
                 return;
             }
-            const NS::EffectRecord* record = NS::FindEffect(Owner(), m_trail);
+            const NS::EffectRecord* record = NS::FindEffect(m_owner, m_trail);
             if (record == nullptr || record->rootStopStep.has_value())
             {
                 return;
@@ -327,8 +327,8 @@ namespace GL
 
         void ChargeEffects::StopTrailRoot() noexcept
         {
-            NS::StopEffectRoot(Owner(), m_trail);
-            NS::StopEffectAfter(Owner(), m_trail, std::max(m_trailFadeSteps, 1));
+            NS::StopEffectRoot(m_owner, m_trail);
+            NS::StopEffectAfter(m_owner, m_trail, std::max(m_trailFadeSteps, 1));
             m_trailAwaitsFreeze = false;
         }
 
@@ -338,15 +338,15 @@ namespace GL
             {
                 return;
             }
-            const NS::EffectRecord* record = NS::FindEffect(Owner(), id);
+            const NS::EffectRecord* record = NS::FindEffect(m_owner, id);
             if (record == nullptr || record->endStep.has_value())
             {
                 return;
             }
             // 描画の無い世界でも向きは記録に残し、試しが読む
-            NS::SetEffectRotation(Owner(), id, rotation);
+            NS::SetEffectRotation(m_owner, id, rotation);
             // TODO: 固定ステップの位置へ置いている。60 を超える画面で段々に見えたら、補間の位置で渡す
-            NS::SetEffectTransform(Owner(), id, position, rotation, NS::Vector3::One);
+            NS::SetEffectTransform(m_owner, id, position, rotation, NS::Vector3::One);
         }
 
         void ChargeEffects::SetCharge(NS::uint32 id, float charge01) const noexcept
@@ -360,12 +360,12 @@ namespace GL
             {
                 return;
             }
-            const NS::EffectRecord* record = NS::FindEffect(Owner(), id);
+            const NS::EffectRecord* record = NS::FindEffect(m_owner, id);
             if (record == nullptr || record->endStep.has_value())
             {
                 return;
             }
-            NS::SetEffectDynamicInput(Owner(), id, index, value);
+            NS::SetEffectDynamicInput(m_owner, id, index, value);
         }
 
         bool ChargeEffects::IsContactNear(const GL::Level::ImpactAnswer& impact) const noexcept
@@ -384,7 +384,7 @@ namespace GL
             {
                 return;
             }
-            NS::StopEffect(Owner(), id);
+            NS::StopEffect(m_owner, id);
             id = 0;
         }
 

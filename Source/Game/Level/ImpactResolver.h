@@ -144,7 +144,7 @@ namespace GL
         class ImpactResolver : public NS::SubObject
         {
         public:
-            ImpactResolver() noexcept = default;
+            explicit ImpactResolver(NS::SceneActor* owner) noexcept : m_owner(owner) {}
 
             //! @brief 次の固定ステップで重なる相手を控える。身体の実速度ではなく突進の予定速度を使う
             //! @details 突進外と自機の停止中は探さない。結果は StepState が一度だけ使う
@@ -399,6 +399,7 @@ namespace GL
             NS::Vector3 m_observedVelocity{};
             bool m_hasObservedTarget = false;
             bool m_stateReady = false;
+            NS::SceneActor* m_owner = nullptr; // 持ち主 (非所有)
         };
     } // namespace Level
 } // namespace GL

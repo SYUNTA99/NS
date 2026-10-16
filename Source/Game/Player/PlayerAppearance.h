@@ -46,7 +46,7 @@ namespace GL
         class PlayerAppearance : public NS::SubObject
         {
         public:
-            PlayerAppearance() noexcept;
+            explicit PlayerAppearance(NS::SceneActor* owner) noexcept;
 
             //! @brief 玉の見た目へ持ち替える。既に玉なら何もしない
             //! @details 次の Update で、持ち主の丸まりに合わせ直す
@@ -167,6 +167,7 @@ namespace GL
             int m_landingSquashRecoverSteps = 6; // 着地の潰れを 1 へ戻すまでのフレーム数
             float m_chargeSquashScale = 0.95f;
             float m_pressSquashScale = 0.97f;
+            NS::SceneActor* m_owner = nullptr; // 持ち主 (非所有)
         };
     } // namespace Player
 } // namespace GL

@@ -268,11 +268,11 @@ namespace GL
 
         int ImpactResolver::CenterHitFlashStepsRemaining() const noexcept
         {
-            if (Owner() == nullptr)
+            if (m_owner == nullptr)
             {
                 return 0;
             }
-            const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(Owner());
+            const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(m_owner);
             if (screen == nullptr)
             {
                 return 0;
@@ -283,18 +283,18 @@ namespace GL
         NS::HitSensor* ImpactResolver::FindOverlapped(const NS::Vector3& predictedVelocity,
                                                       const NS::Collider& collider) const
         {
-            NS::Scene* scene = Owner()->OwningScene();
+            NS::Scene* scene = m_owner->OwningScene();
             if (scene == nullptr)
             {
                 return nullptr;
             }
 
-            const NS::Vector3 position = Owner()->Root().Position();
+            const NS::Vector3 position = m_owner->Root().Position();
 
             // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
             const NS::Phys::Capsule capsule = collider.CapsuleAt(PositionAfterStep(position, predictedVelocity));
             const std::vector<NS::HitSensor*> touching =
-                scene->HitSensors().FindOverlaps(NS::SensorVolume::Capsule(capsule), Owner());
+                scene->HitSensors().FindOverlaps(NS::SensorVolume::Capsule(capsule), m_owner);
 
             NS::HitSensor* nearest = nullptr;
             float nearestDistanceSq = 0.0f;
@@ -329,7 +329,7 @@ namespace GL
                       params != nullptr && body != nullptr && collider != nullptr,
                       "自機の調整値・体・当たりの部品のどれかが渡されていない");
             NS::Vector3 lineDir{};
-            if (Owner() == nullptr || !NS::TryNormalizeHorizontal(direction, lineDir))
+            if (m_owner == nullptr || !NS::TryNormalizeHorizontal(direction, lineDir))
             {
                 return false;
             }
@@ -338,7 +338,7 @@ namespace GL
             {
                 return false;
             }
-            NS::Scene* scene = Owner()->OwningScene();
+            NS::Scene* scene = m_owner->OwningScene();
             if (scene == nullptr)
             {
                 return false;
@@ -349,7 +349,7 @@ namespace GL
                 return false;
             }
 
-            const NS::Vector3 position = Owner()->Root().Position();
+            const NS::Vector3 position = m_owner->Root().Position();
             const float playerRadius = collider->CapsuleRadius();
             // 突進は丸まった玉で進む。玉の決まりは SlamBallAt が持つ
             const NS::Vector3 ballCenter = GL::Player::SlamBallAt(*collider, position).center;
@@ -362,7 +362,7 @@ namespace GL
             SlamLineTarget first{};
             NS::HitSensor* firstSensor = nullptr;
             // 掃いた玉に触れる相手だけを先に問う。下の線の条件はどれも順に依らないので、選ぶ相手は絞る順で変わらない
-            for (NS::HitSensor* sensor : scene->HitSensors().FindOverlaps(swept, Owner()))
+            for (NS::HitSensor* sensor : scene->HitSensors().FindOverlaps(swept, m_owner))
             {
                 if (!IsTackleTarget(*sensor))
                 {
@@ -388,7 +388,7 @@ namespace GL
                 if (!found || contact < first.contact)
                 {
                     found = true;
-                    first = SlamLineTarget{.target = NS::ActorRef{sensor->Owner()->Id()},
+                    first = SlamLineTarget{.target = NS::ActorRef{sensor->Host()->Id()},
                                            .bounds = bounds,
                                            .origin = position,
                                            .direction = lineDir,
@@ -472,11 +472,11 @@ namespace GL
             }
             const NS::Vector3 predictedVelocity = motion.velocity;
             NS::HitSensor* hit = FindOverlapped(predictedVelocity, *collider);
-            if (hit == nullptr || hit->Owner() == nullptr)
+            if (hit == nullptr || hit->Host() == nullptr)
             {
                 return;
             }
-            const NS::ActorRef target{hit->Owner()->Id()};
+            const NS::ActorRef target{hit->Host()->Id()};
             TackleTargetAnswer answer{};
             if (!SendMsgAskTackleTarget(*hit, answer))
             {
@@ -584,7 +584,7 @@ namespace GL
                                                 const BodySlamMotion& motion,
                                                 const PlayerParts& parts)
         {
-            NS::Scene* scene = Owner()->OwningScene();
+            NS::Scene* scene = m_owner->OwningScene();
             if (!hadObservation || scene == nullptr)
             {
                 return false;
@@ -597,7 +597,7 @@ namespace GL
             const TackleTargetAnswer& answer = m_observedAnswer;
             const NS::AABB bounds = answer.bounds;
 
-            const NS::Vector3 position = Owner()->Root().Position();
+            const NS::Vector3 position = m_owner->Root().Position();
             // 箱へ押し付けられたフレームは実速度が 0 に潰されるため、突進の狙いの速度で向きと貫通後の速度を決める
             const NS::Vector3 velocity = m_observedVelocity;
 
@@ -822,7 +822,7 @@ namespace GL
 
             void operator()(const TargetFreezeEvent& freeze) const
             {
-                NS::Scene* scene = resolver.Owner()->OwningScene();
+                NS::Scene* scene = resolver.m_owner->OwningScene();
                 if (scene == nullptr)
                 {
                     return;
@@ -956,7 +956,7 @@ namespace GL
 
             void operator()(const GradualReleaseEvent& release) const
             {
-                NS::Scene* scene = resolver.Owner()->OwningScene();
+                NS::Scene* scene = resolver.m_owner->OwningScene();
                 if (scene == nullptr)
                 {
                     return;
@@ -972,7 +972,7 @@ namespace GL
 
             void operator()(const OthersStopEvent&) const
             {
-                NS::Scene* scene = resolver.Owner()->OwningScene();
+                NS::Scene* scene = resolver.m_owner->OwningScene();
                 if (scene == nullptr)
                 {
                     return;
@@ -1147,18 +1147,18 @@ namespace GL
             if (m_startedGradualRelease)
             {
                 m_startedGradualRelease = false;
-                if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
+                if (m_owner != nullptr && m_owner->OwningScene() != nullptr)
                 {
-                    Owner()->OwningScene()->SetWorldSpeed(1.0f);
+                    m_owner->OwningScene()->SetWorldSpeed(1.0f);
                 }
             }
             // 外れた予測の止めを残すと、当たらないのに世界が止まったままになる
             if (m_heldOthers)
             {
                 m_heldOthers = false;
-                if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
+                if (m_owner != nullptr && m_owner->OwningScene() != nullptr)
                 {
-                    Owner()->OwningScene()->HoldOthers(0);
+                    m_owner->OwningScene()->HoldOthers(0);
                 }
             }
             m_beforeContact = false;
@@ -1310,7 +1310,7 @@ namespace GL
             desc.kick.direction = NS::Vector2{m_answer.lastImpact.faceU, m_answer.lastImpact.faceV};
             if (desc.kick.direction.LengthSquared() <= NS::k_Epsilon * NS::k_Epsilon)
             {
-                desc.kick.direction = NS::Vector2{NS::CameraSideSignOf(Owner(), m_pendingReboundArc.direction), 0.0f};
+                desc.kick.direction = NS::Vector2{NS::CameraSideSignOf(m_owner, m_pendingReboundArc.direction), 0.0f};
             }
             return desc;
         }
@@ -1366,7 +1366,7 @@ namespace GL
                 if (zoomRoll != nullptr && !zoomRollRecorded)
                 {
                     // 当たりの記録は検知のフレームに読まれるので、傾きの向きもここで今のカメラから決める
-                    const float rollSign = NS::CameraSideSignOf(Owner(), m_pendingImpactDir);
+                    const float rollSign = NS::CameraSideSignOf(m_owner, m_pendingImpactDir);
                     m_answer.lastImpact.zoomStart = zoomRoll->zoom;
                     m_answer.lastImpact.rollStart = zoomRoll->rollDegrees * rollSign;
                     zoomRollRecorded = true;
@@ -1386,18 +1386,18 @@ namespace GL
         void ImpactResolver::StartBodyShake(const BodyShakeEvent& shake, int length, NS::Model* model)
         {
             StopBodyShake(model);
-            if (Owner() == nullptr || length <= 0 || !std::isfinite(shake.amplitudePixels) ||
+            if (m_owner == nullptr || length <= 0 || !std::isfinite(shake.amplitudePixels) ||
                 !std::isfinite(shake.selfAmplitudePixels))
             {
                 return;
             }
-            const std::optional<NS::CameraPose> pose = NS::CameraViewPose(Owner());
+            const std::optional<NS::CameraPose> pose = NS::CameraViewPose(m_owner);
             if (!pose.has_value())
             {
                 return;
             }
             // 画面の横を床に沿わせた向き。後ろから見る NS では、地上でも空中でも視線に直角でよく見える
-            const NS::Vector3 forward = NS::CameraForwardHorizontal(Owner());
+            const NS::Vector3 forward = NS::CameraForwardHorizontal(m_owner);
             const NS::Vector3 axis{forward.z, 0.0f, -forward.x};
             // 外れは面の u の側へ逃がし、カメラ・火花・逸れる方向を揃える。真ん中は画面右から
             float firstSign = 1.0f;
@@ -1415,7 +1415,7 @@ namespace GL
             const TackleShakeDesc self{
                 .shape = TackleShakeShape::Side,
                 .axis = axis,
-                .amplitude = ScreenPixelsToMeters(shake.selfAmplitudePixels, *pose, Owner()->Root().Position()),
+                .amplitude = ScreenPixelsToMeters(shake.selfAmplitudePixels, *pose, m_owner->Root().Position()),
                 .length = length,
                 .seed = m_answer.lastImpact.sequence,
                 .firstSign = firstSign,
@@ -1436,7 +1436,7 @@ namespace GL
         {
             StopBodyShake(model);
             NS::Vector3 dir{};
-            if (Owner() == nullptr || length <= 0 || !std::isfinite(shake.depth) || !std::isfinite(shake.selfDepth) ||
+            if (m_owner == nullptr || length <= 0 || !std::isfinite(shake.depth) || !std::isfinite(shake.selfDepth) ||
                 !std::isfinite(shake.returnRatio) || !NS::TryNormalizeHorizontal(m_pendingImpactDir, dir))
             {
                 return;
@@ -1468,31 +1468,31 @@ namespace GL
 
         NS::SceneActor* ImpactResolver::PendingTargetActor() const noexcept
         {
-            if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
+            if (m_owner == nullptr || m_owner->OwningScene() == nullptr)
             {
                 return nullptr;
             }
-            return Owner()->OwningScene()->Objects().FindObject(m_pendingTarget);
+            return m_owner->OwningScene()->Objects().FindObject(m_pendingTarget);
         }
 
         void ImpactResolver::StartGhost(const GhostEvent& ghost, int length, NS::Model* model)
         {
             StopGhost(model);
-            if (Owner() == nullptr || length <= 0 || !std::isfinite(ghost.spreadPixels) ||
+            if (m_owner == nullptr || length <= 0 || !std::isfinite(ghost.spreadPixels) ||
                 !std::isfinite(ghost.selfSpreadPixels) || !std::isfinite(ghost.releaseOpacity))
             {
                 return;
             }
-            const std::optional<NS::CameraPose> pose = NS::CameraViewPose(Owner());
+            const std::optional<NS::CameraPose> pose = NS::CameraViewPose(m_owner);
             if (!pose.has_value())
             {
                 return;
             }
             // 写しは画面の横を床に沿わせた向きへ離す
-            const NS::Vector3 forward = NS::CameraForwardHorizontal(Owner());
+            const NS::Vector3 forward = NS::CameraForwardHorizontal(m_owner);
             const TackleGhostDesc self{
                 .axis = NS::Vector3{forward.z, 0.0f, -forward.x},
-                .spread = ScreenPixelsToMeters(ghost.selfSpreadPixels, *pose, Owner()->Root().Position()),
+                .spread = ScreenPixelsToMeters(ghost.selfSpreadPixels, *pose, m_owner->Root().Position()),
                 .stopLength = length,
                 .releaseFrames = ghost.releaseFrames,
                 .releaseOpacity = ghost.releaseOpacity};
@@ -1511,11 +1511,11 @@ namespace GL
 
         void ImpactResolver::StartShakeLines(const ShakeLinesEvent& lines, int length, const PlayerParts& parts)
         {
-            if (parts.hitReaction == nullptr || parts.model == nullptr || Owner() == nullptr || length <= 0)
+            if (parts.hitReaction == nullptr || parts.model == nullptr || m_owner == nullptr || length <= 0)
             {
                 return;
             }
-            NS::Scene* scene = Owner()->OwningScene();
+            NS::Scene* scene = m_owner->OwningScene();
             if (scene == nullptr)
             {
                 return;
@@ -1590,7 +1590,7 @@ namespace GL
         void ImpactResolver::StartTremor(const ImpactTremorEvent& tremor, int length, NS::Model* model)
         {
             StopTremor(model);
-            if (Owner() == nullptr || length <= 0)
+            if (m_owner == nullptr || length <= 0)
             {
                 return;
             }
@@ -1598,7 +1598,7 @@ namespace GL
             const NS::Vector3 contact = m_answer.lastImpact.surfacePoint;
             // 長さは止めに合わせて短くなる。裏まで届くのに長さを使い切ると震えが残らないので、届くのは長さの半分まで
             const int reachFrames = std::min(tremor.reachFrames, length / 2);
-            m_tremor = TremorRun{.desc = TackleTremorDesc{.contactOffset = contact - Owner()->Root().Position(),
+            m_tremor = TremorRun{.desc = TackleTremorDesc{.contactOffset = contact - m_owner->Root().Position(),
                                                           .amplitudePixels = tremor.amplitudePixels,
                                                           .reachFrames = reachFrames,
                                                           .length = length,
@@ -1607,7 +1607,7 @@ namespace GL
                                  .elapsed = 0,
                                  .active = true};
 
-            NS::Scene* scene = Owner()->OwningScene();
+            NS::Scene* scene = m_owner->OwningScene();
             if (scene == nullptr)
             {
                 return;
@@ -1635,18 +1635,18 @@ namespace GL
         void ImpactResolver::WriteTremor(const NS::Collider* collider, NS::Model* model)
         {
             NS_ASSERT(Game, collider != nullptr, "当たりの部品が渡されていない");
-            if (!m_tremor.active || Owner() == nullptr || model == nullptr)
+            if (!m_tremor.active || m_owner == nullptr || model == nullptr)
             {
                 return;
             }
             const int elapsed = m_tremor.elapsed;
             NS::Gfx::TremorCB tremor{};
-            const std::optional<NS::CameraPose> pose = NS::CameraViewPose(Owner());
+            const std::optional<NS::CameraPose> pose = NS::CameraViewPose(m_owner);
             if (pose.has_value())
             {
                 // 自機の玉の差し渡しで裏まで届く
                 tremor = MakeTremor(
-                    m_tremor.desc, elapsed, Owner()->Root().Position(), 2.0f * collider->CapsuleRadius(), *pose);
+                    m_tremor.desc, elapsed, m_owner->Root().Position(), 2.0f * collider->CapsuleRadius(), *pose);
             }
             (void)model->SetTremor(tremor);
             if (elapsed >= m_tremor.desc.length)
@@ -1676,7 +1676,7 @@ namespace GL
 
         void ImpactResolver::AdvanceGroundWave()
         {
-            if (!m_groundWave.active || Owner() == nullptr || Owner()->OwningScene() == nullptr)
+            if (!m_groundWave.active || m_owner == nullptr || m_owner->OwningScene() == nullptr)
             {
                 return;
             }
@@ -1687,7 +1687,7 @@ namespace GL
                 return;
             }
             const float frame = static_cast<float>(elapsed);
-            Owner()->OwningScene()->SetGroundWave(
+            m_owner->OwningScene()->SetGroundWave(
                 NS::Gfx::GroundWave{.centerX = m_groundWave.centerX,
                                     .centerZ = m_groundWave.centerZ,
                                     .radius = m_groundWave.event.radius.Evaluate(frame),
@@ -1702,9 +1702,9 @@ namespace GL
                 return;
             }
             m_groundWave.active = false;
-            if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
+            if (m_owner != nullptr && m_owner->OwningScene() != nullptr)
             {
-                Owner()->OwningScene()->SetGroundWave(NS::Gfx::GroundWave{});
+                m_owner->OwningScene()->SetGroundWave(NS::Gfx::GroundWave{});
             }
         }
 
@@ -1795,7 +1795,7 @@ namespace GL
 
         void ImpactResolver::LaunchTarget()
         {
-            NS::Scene* scene = Owner()->OwningScene();
+            NS::Scene* scene = m_owner->OwningScene();
             if (scene == nullptr)
             {
                 return;

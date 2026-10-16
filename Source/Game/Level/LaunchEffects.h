@@ -21,7 +21,7 @@ namespace GL
         class LaunchEffects : public NS::SubObject
         {
         public:
-            LaunchEffects() noexcept;
+            explicit LaunchEffects(NS::SceneActor* owner) noexcept;
 
             //! 尾と粉の絵を先に読む。持ち主の OnStart が呼ぶ
             void Preload();
@@ -86,6 +86,7 @@ namespace GL
             float m_trailScale = 1.0f; // 尾の再生の大きさ。自分の直径 (m)
             NS::Vector3 m_launchDir{1.0f, 0.0f, 0.0f};
             float m_landDustScale = 0.0f; // 落ちた所の粉の大きさ (m)
+            NS::SceneActor* m_owner = nullptr; // 持ち主 (非所有)
         };
     } // namespace Level
 } // namespace GL

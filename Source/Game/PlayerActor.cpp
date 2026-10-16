@@ -64,7 +64,7 @@ void PlayerActor::OnInit()
     NS::Model* model = CreateSubObj(m_model, this);
     model->SetMaterialRef("player");
     model->SetBaseColor(NS::Vector3{0.5f, 0.5f, 0.5f});
-    CreateSubObj(m_appearance);
+    CreateSubObj(m_appearance, this);
     CreateSubObj(m_body, this);
     CreateSubObj(m_collider, this);
     CreateSubObj(m_input, this);
@@ -77,13 +77,13 @@ void PlayerActor::OnInit()
             return NS::SensorVolume::Capsule(collider->WorldCapsule());
         });
     GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
-    CreateSubObj(m_resolver);
+    CreateSubObj(m_resolver, this);
     CreateSubObj(m_hitReaction, this);
     CreateSubObj(m_targetMarker, this);
     CreateSubObj(m_slamArrow, this);
     CreateSubObj(m_effectKeeper, this);
-    CreateSubObj(m_chargeEffects);
-    CreateSubObj(m_impactEffects);
+    CreateSubObj(m_chargeEffects, this);
+    CreateSubObj(m_impactEffects, this);
     // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
     (void)BuildStateMachine<PlayerActor,
                             GL::Player::IdlePlayerState,

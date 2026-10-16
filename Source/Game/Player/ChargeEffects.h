@@ -32,7 +32,7 @@ namespace GL
         class ChargeEffects : public NS::SubObject
         {
         public:
-            ChargeEffects() noexcept;
+            explicit ChargeEffects(NS::SceneActor* owner) noexcept;
 
             //! 溜めと放しの絵を先に読む。持ち主の OnStart が呼ぶ
             void Preload();
@@ -163,6 +163,7 @@ namespace GL
             bool m_trailAwaitsFreeze = false; // 当たりを検知して突進が終わった。次のフレームの止めの頭で尾の親を止める
             float m_spinDegrees = 0.0f;       // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
             NS::Vector3 m_slamDirection;
+            NS::SceneActor* m_owner = nullptr; // 持ち主 (非所有)
         };
     } // namespace Player
 } // namespace GL

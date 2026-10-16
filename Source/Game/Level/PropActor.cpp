@@ -82,7 +82,7 @@ namespace GL
             CreateSubObj(m_params);
             CreateSubObj(m_hitZones);
             CreateSubObj(m_effectKeeper, this);
-            CreateSubObj(m_effects);
+            CreateSubObj(m_effects, this);
             // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
             NS::FollowHitSensor* bodySensor =
                 CreateSubObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [sphere] {
