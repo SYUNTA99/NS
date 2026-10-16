@@ -37,8 +37,5 @@ TEST(SubObjectSavedFields, SavedJsonHasNoEnabledKey)
 TEST(SubObjectSavedFields, EnabledKeyIsReadLikeAnyUnknownField)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
-    NS::SubObject* input = player->FindSubObj("Input");
-    ASSERT_NE(input, nullptr);
-
-    EXPECT_EQ(NS::ApplyJsonFields(*input, nlohmann::json{{"enabled", false}}), 1u);
+    EXPECT_EQ(NS::ApplyJsonFields(player->Input(), nlohmann::json{{"enabled", false}}), 1u);
 }

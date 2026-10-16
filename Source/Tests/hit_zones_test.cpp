@@ -3,6 +3,7 @@
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
@@ -97,7 +98,12 @@ namespace
 
     const HitZones* HitZonesOf(const NS::SceneActor& actor)
     {
-        return NS::Cast<HitZones>(actor.FindSubObj("HitZones"));
+        const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(&actor);
+        if (prop == nullptr)
+        {
+            return nullptr;
+        }
+        return &prop->Zones();
     }
 
     // 自機を根 (0, 1, 0) に、半径 0.5 m の置物を 1 m 先の高さ rockHeight に置く

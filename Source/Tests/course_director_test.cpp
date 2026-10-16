@@ -98,8 +98,7 @@ TEST(CourseDirector, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
     director->StartCourse();
     PlayerActor* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    const NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player->FindSubObj("Input"));
-    ASSERT_NE(input, nullptr);
+    const NS::PlayerInput* input = &player->Input();
     const float duration = NS::OS::FrameTimer::FixedDelta() * 2.0f;
     director->NotifyGoal(duration, duration);
 
@@ -211,8 +210,7 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
     director->OnTick();
     EXPECT_TRUE(director->IsClearing());
     EXPECT_TRUE(scene.Fade().IsFading());
-    const NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player->FindSubObj("Input"));
-    ASSERT_NE(input, nullptr);
+    const NS::PlayerInput* input = &player->Input();
     EXPECT_TRUE(input->IsLocked());
 
     // 流れの最中に届くゴールの知らせは捨てる

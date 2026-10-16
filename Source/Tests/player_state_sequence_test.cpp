@@ -51,8 +51,7 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Body* movement = NS::Cast<NS::Body>(player->FindSubObj("Movement"));
-    ASSERT_NE(movement, nullptr);
+    NS::Body* movement = &player->Body();
     player->Root().SetPosition(NS::Vector3{});
     player->ClimbLedge();
     ASSERT_TRUE(player->States().IsCurrent<GL::Player::LedgeClimbingPlayerState>());
@@ -72,8 +71,7 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Body* movement = NS::Cast<NS::Body>(player->FindSubObj("Movement"));
-    ASSERT_NE(movement, nullptr);
+    NS::Body* movement = &player->Body();
     player->ClimbLedge();
     player->States().Step(0.0625f);
     ASSERT_TRUE(player->States().Change<GL::Player::IdlePlayerState>());
@@ -159,8 +157,7 @@ TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Body* movement = NS::Cast<NS::Body>(player->FindSubObj("Movement"));
-    ASSERT_NE(movement, nullptr);
+    NS::Body* movement = &player->Body();
     movement->SetGrounded(true);
     const GL::Player::ReboundArc arc{.apexHeight = 1.0f, .distance = 5.0f};
     const NS::Vector3 initial = player->ReboundVelocityFor(arc);
@@ -225,8 +222,7 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Body* movement = NS::Cast<NS::Body>(player->FindSubObj("Movement"));
-    ASSERT_NE(movement, nullptr);
+    NS::Body* movement = &player->Body();
     player->ClimbLedge();
     player->States().Step(0.0625f);
     player->OnEndPlay();

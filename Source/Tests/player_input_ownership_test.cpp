@@ -9,8 +9,7 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player.FindSubObj("Input"));
-    ASSERT_NE(input, nullptr);
+    NS::PlayerInput* input = &player.Input();
     NS::Body& movement = player.Body();
     input->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     movement.SetGrounded(true);
@@ -30,8 +29,7 @@ TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player.FindSubObj("Input"));
-    ASSERT_NE(input, nullptr);
+    NS::PlayerInput* input = &player.Input();
     NS::Body& movement = player.Body();
     movement.SetGrounded(true);
     player.SyncGroundState();
@@ -55,8 +53,7 @@ TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player.FindSubObj("Input"));
-    ASSERT_NE(input, nullptr);
+    NS::PlayerInput* input = &player.Input();
     NS::Body& movement = player.Body();
     input->SetJumpHeld(true);
     player.Update();
@@ -81,8 +78,7 @@ TEST(PlayerInputOwnership, SlamTappedBetweenPlayerStepsIsSeenOnce)
     NS::OS::Input& platform = NS::OS::Input::Get();
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::PlayerInput* input = NS::Cast<NS::PlayerInput>(player.FindSubObj("Input"));
-    ASSERT_NE(input, nullptr);
+    NS::PlayerInput* input = &player.Input();
     platform.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
     input->Update();
     platform.Mouse().OnButtonUp(NS::OS::MouseButton::Left);

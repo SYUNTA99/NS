@@ -16,6 +16,8 @@ namespace GL
             NS_REFLECT_END()
 
             void AttackSensor(NS::HitSensor& self, NS::HitSensor& other) override;
+            [[nodiscard]] GoalParams& Params() noexcept { return *m_params; }
+            [[nodiscard]] const GoalParams& Params() const noexcept { return *m_params; }
 
         protected:
             void OnInit() override;

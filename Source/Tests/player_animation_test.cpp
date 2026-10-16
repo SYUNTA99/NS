@@ -3,6 +3,7 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/SubObjects/Animation.h"
 #include "NSlib/CoreObject/SubObjects/Body.h"
 #include "NSlib/Graphics/Animation.h"
@@ -59,9 +60,7 @@ TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
-    const GL::Player::PlayerClips* clipParts = NS::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
-    ASSERT_NE(clipParts, nullptr);
-    const nlohmann::json fields = NS::SerializeSubObjectFields(*clipParts);
+    const nlohmann::json fields = NS::SerializeSubObjectFields(player.Clips());
     const nlohmann::json paramFields = NS::SerializeSubObjectFields(player.Params());
     const nlohmann::json expected = {{"立ちのクリップ", ""},
                                      {"歩きのクリップ", ""},
@@ -77,7 +76,7 @@ TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
         EXPECT_FALSE(paramFields.contains(it.key())) << it.key();
     }
-    EXPECT_EQ(player.FindSubObj("PlayerAnimator"), nullptr);
+    EXPECT_EQ(NS::SubObjFields(NS::MakePrototypeJson(player), "PlayerAnimator"), nullptr);
 }
 
 TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)

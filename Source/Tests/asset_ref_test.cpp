@@ -256,9 +256,7 @@ TEST(AssetRef, PlayerLookWritesItsScaleToTheModel)
     NS::Scene scene;
     PlayerActor* player = scene.SpawnTransient<PlayerActor>();
     ASSERT_NE(player, nullptr);
-    GL::Player::PlayerAppearance* appearance =
-        NS::Cast<GL::Player::PlayerAppearance>(player->FindSubObj("Appearance"));
-    ASSERT_NE(appearance, nullptr);
+    GL::Player::PlayerAppearance* appearance = &player->Appearance();
     const NS::Model* model = player->ModelSubObj();
     const nlohmann::json fields = NS::SerializeSubObjectFields(*appearance);
     const nlohmann::json standing = fields["立ち姿の倍率"];

@@ -540,9 +540,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                   0u);
         GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
-        GL::Level::MapObjParams* rockParams = NS::Cast<GL::Level::MapObjParams>(rock->FindSubObj("Params"));
-        ASSERT_NE(rockParams, nullptr);
-        EXPECT_EQ(NS::ApplyJsonFields(*rockParams, nlohmann::json{{"外れで飛ばす相手の距離の割合", 1.0f}}), 0u);
+        EXPECT_EQ(NS::ApplyJsonFields(rock->Params(), nlohmann::json{{"外れで飛ばす相手の距離の割合", 1.0f}}), 0u);
         int impact = -1;
         int freeze = -1;
         int release = -1;

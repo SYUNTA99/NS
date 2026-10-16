@@ -47,7 +47,7 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "wedge45");
     // 当たりは見た目のメッシュに付いて来る
-    EXPECT_NE(NS::Cast<NS::MeshCollision>(placed->FindSubObj("Collision")), nullptr);
+    EXPECT_NE(NS::Cast<NS::MeshCollision>(placed->CollisionSubObj()), nullptr);
 }
 
 TEST(EditorPlacement, UndoRemovesPlacedActor)
@@ -88,7 +88,7 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
     const NS::Model* renderer = placed->ModelSubObj();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "Assets/Models/__ns_missing_terrain__.glb");
-    EXPECT_NE(NS::Cast<NS::MeshCollision>(placed->FindSubObj("Collision")), nullptr);
+    EXPECT_NE(NS::Cast<NS::MeshCollision>(placed->CollisionSubObj()), nullptr);
     // 名前はファイル名から付く
     EXPECT_EQ(placed->Name(), "__ns_missing_terrain__");
 }

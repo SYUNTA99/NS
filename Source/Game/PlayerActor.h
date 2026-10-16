@@ -77,6 +77,8 @@ public:
     [[nodiscard]] const NS::Collider& Collider() const noexcept { return *m_collider; }
     [[nodiscard]] GL::Player::PlayerParams& Params() noexcept { return *m_params; }
     [[nodiscard]] const GL::Player::PlayerParams& Params() const noexcept { return *m_params; }
+    [[nodiscard]] GL::Player::PlayerClips& Clips() noexcept { return *m_clips; }
+    [[nodiscard]] const GL::Player::PlayerClips& Clips() const noexcept { return *m_clips; }
     [[nodiscard]] const GL::Level::ImpactInputJudge& ChargeJudge() const noexcept;
     //! 保持中の狙いの線を返す。入力方向ではなく、効果を掛ける前のカメラ方向を使う
     //! 押していない、カメラ管理なし、無効な方向では false で outLine を変更しない

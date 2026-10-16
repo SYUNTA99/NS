@@ -3,6 +3,7 @@
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -103,7 +104,7 @@ TEST(ColliderShape, PlayerOwnsAFixedColliderPart)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    EXPECT_EQ(player.FindSubObj("Collider"), &player.Collider());
+    EXPECT_NE(NS::SubObjFields(NS::MakePrototypeJson(player), "Collider"), nullptr);
 }
 
 TEST(ColliderShape, BodyHasNoShapeFields)
@@ -111,8 +112,7 @@ TEST(ColliderShape, BodyHasNoShapeFields)
     // 寸法の正は Collider 1 つ。Movement に欄が残ると、同じ値の置き場が 2 つに割れる
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const NS::SubObject* movement = player.FindSubObj("Movement");
-    ASSERT_NE(movement, nullptr);
+    const NS::SubObject* movement = &player.Body();
     ASSERT_NE(movement->GetReflection(), nullptr);
     EXPECT_EQ(movement->GetReflection()->fieldCount, 0u);
 }
@@ -134,10 +134,7 @@ TEST(ColliderShape, PlayerBodySensorFollowsARadiusEditWithoutRestart)
     LoadPlayerScene(scene, nlohmann::json::object());
     PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    NS::SubObject* collider = player->FindSubObj("Collider");
-    ASSERT_NE(collider, nullptr);
-
-    ASSERT_EQ(NS::ApplyJsonFields(*collider, {{"半径", 0.8f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(player->Collider(), {{"半径", 0.8f}}), 0u);
     const NS::SensorVolume volume = player->BodySensorSubObj()->WorldVolume();
     EXPECT_FLOAT_EQ(volume.radius, 0.8f);
 }
@@ -171,10 +168,10 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     scene.ResetFromJson(doc);
     NS::SceneActor* placed = scene.Objects().FindByObjectId(1);
     ASSERT_NE(placed, nullptr);
-    const NS::SphereCollision* collision = NS::Cast<NS::SphereCollision>(placed->FindSubObj("Collision"));
+    NS::SphereCollision* collision = NS::Cast<NS::SphereCollision>(placed->CollisionSubObj());
     ASSERT_NE(collision, nullptr);
 
-    ASSERT_EQ(NS::ApplyJsonFields(*placed->FindSubObj("Collision"),
+    ASSERT_EQ(NS::ApplyJsonFields(*collision,
                                   {{"半径", 0.8f}, {"中心オフセット", {0.0f, 0.25f, 0.0f}}}),
               0u);
     const NS::Sphere sphere = collision->WorldSphere();

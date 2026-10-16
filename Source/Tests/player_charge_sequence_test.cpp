@@ -109,8 +109,7 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    GL::Player::PlayerParams* params = &player.Params();
     player.Update(true);
     player.RestartFrom(NS::MakeSceneJson());
     EXPECT_FALSE(player.IsCurled());
@@ -135,8 +134,7 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    GL::Player::PlayerParams* params = &player.Params();
     ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 1.0f}}), 0u);
     // 溜め量は (押したフレーム数 − しきい値) / (満タン − しきい値)
     const int threshold = FramesFor(0.1f);

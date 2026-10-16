@@ -89,8 +89,7 @@ TEST(SubObjectLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
 {
     NS::Scene scene;
     NS::LightActor* light = scene.SpawnTransient<NS::LightActor>();
-    const NS::SubObject* sun = light->FindSubObj("DirectionalLight");
-    ASSERT_NE(sun, nullptr);
+    const NS::SubObject* sun = &light->Light();
     EXPECT_EQ(RegisteredWhileAppeared(scene, *light), Registrations{});
     EXPECT_EQ(scene.LightCount(), 1u);
     // 描く側 (SceneRenderer::ResolveSceneSettings) は IsActive が偽の光を飛ばす

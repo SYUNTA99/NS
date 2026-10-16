@@ -20,12 +20,7 @@ protected:
 // 自機の役の欄に字面を書いて読み直す。返すのは書けなかった欄の数
 inline std::size_t UseTestClips(PlayerActor& player, const nlohmann::json& fields)
 {
-    GL::Player::PlayerClips* clips = NS::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
-    if (clips == nullptr)
-    {
-        return fields.size();
-    }
-    const std::size_t failed = NS::ApplyJsonFields(*clips, fields);
+    const std::size_t failed = NS::ApplyJsonFields(player.Clips(), fields);
     player.ReloadAssets();
     return failed;
 }

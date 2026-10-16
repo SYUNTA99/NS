@@ -113,11 +113,8 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnSubObject)
     NS::Scene scene;
     GL::Level::PropActor* rock = scene.SpawnTransient<GL::Level::PropActor>();
     ASSERT_NE(rock, nullptr);
-    NS::SubObject* subObject = rock->FindSubObj("LaunchEffects");
-    ASSERT_NE(subObject, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(*subObject, {{"着地の粉の寿命フレーム", 2}}), 0u);
-    GL::Level::LaunchEffects* effects = NS::Cast<GL::Level::LaunchEffects>(subObject);
-    ASSERT_NE(effects, nullptr);
+    GL::Level::LaunchEffects* effects = &rock->Effects();
+    ASSERT_EQ(NS::ApplyJsonFields(*effects, {{"着地の粉の寿命フレーム", 2}}), 0u);
     const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(rock->CollisionSubObj());
     ASSERT_NE(sphere, nullptr);
     effects->BeginTrail(GL::Level::TackleReleaseDesc{}, rock->Flight(), &rock->Params(), sphere);

@@ -170,7 +170,6 @@ TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationO
     ASSERT_NE(actor->second, nullptr);
     EXPECT_EQ(actor->SubObjKey(*actor->first), "First");
     EXPECT_EQ(actor->first->Owner(), actor.get());
-    EXPECT_EQ(actor->FindSubObj("Second"), actor->second.get());
     ASSERT_NE(actor->CollisionSubObj(), nullptr);
     EXPECT_EQ(actor->SubObjKey(*actor->CollisionSubObj()), "Collision");
     std::vector<std::string> names;

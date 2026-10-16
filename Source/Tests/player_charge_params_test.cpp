@@ -3,6 +3,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -22,8 +23,7 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    GL::Player::PlayerParams* params = &player.Params();
     const nlohmann::json fields = NS::SerializeSubObjectFields(*params);
     const nlohmann::json expected = {
         {"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}, {"チャージ減速率", 0.7f}};
@@ -57,8 +57,7 @@ TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    GL::Player::PlayerParams* params = &player.Params();
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 1.5f);
 
     ASSERT_EQ(
@@ -87,8 +86,7 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    GL::Player::PlayerParams* params = &player.Params();
     ASSERT_EQ(NS::ApplyJsonFields(*params,
                                   {{"チャージ減速率", 0.4f},
                                    {"チャージしきい値秒", 0.1f},
@@ -160,14 +158,14 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    const nlohmann::json prototype = NS::MakePrototypeJson(*playerOwned);
     const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
     ASSERT_NE(archetype, nullptr);
     for (nlohmann::json::const_iterator it = NS::ObjectJsonSubObjs(*archetype).begin();
          it != NS::ObjectJsonSubObjs(*archetype).end();
          ++it)
     {
-        EXPECT_NE(player.FindSubObj(it.key()), nullptr) << "PlayerActor.json " << it.key();
+        EXPECT_NE(NS::SubObjFields(prototype, it.key()), nullptr) << "PlayerActor.json " << it.key();
     }
 
     for (const std::string_view sceneName : {"new_scene.scene"})
@@ -187,7 +185,7 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
             const nlohmann::json& parts = NS::ObjectJsonSubObjs(entry);
             for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
             {
-                EXPECT_NE(player.FindSubObj(it.key()), nullptr) << sceneName << " " << it.key();
+                EXPECT_NE(NS::SubObjFields(prototype, it.key()), nullptr) << sceneName << " " << it.key();
             }
         }
     }

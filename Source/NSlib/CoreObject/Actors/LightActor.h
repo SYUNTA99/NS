@@ -15,6 +15,8 @@ namespace NS
         NS_REFLECT_END()
 
         void OnEndPlay() override;
+        [[nodiscard]] DirectionalLight& Light() noexcept { return *m_light; }
+        [[nodiscard]] const DirectionalLight& Light() const noexcept { return *m_light; }
 
     protected:
         void OnInit() override;

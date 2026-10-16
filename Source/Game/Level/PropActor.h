@@ -51,7 +51,12 @@ namespace GL
             [[nodiscard]] NS::Vector3 Velocity() const noexcept { return m_velocity; }
             //! 今どう飛んでいるか。呼ばれた時の状態機械から組む
             [[nodiscard]] PropFlight Flight() const noexcept;
+            [[nodiscard]] MapObjParams& Params() noexcept { return *m_params; }
             [[nodiscard]] const MapObjParams& Params() const noexcept { return *m_params; }
+            [[nodiscard]] HitZones& Zones() noexcept { return *m_hitZones; }
+            [[nodiscard]] const HitZones& Zones() const noexcept { return *m_hitZones; }
+            [[nodiscard]] LaunchEffects& Effects() noexcept { return *m_effects; }
+            [[nodiscard]] const LaunchEffects& Effects() const noexcept { return *m_effects; }
 
         protected:
             //! 体当たりの問い・止め・明けと、コースのやり直しに応じる

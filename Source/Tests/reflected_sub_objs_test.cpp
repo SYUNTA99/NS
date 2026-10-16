@@ -14,7 +14,6 @@ TEST(ReflectedSubObjs, ListsBaseFramePartsBeforeTheClassPartsWithTheirSaveKeys)
     std::vector<std::string> keys;
     NS::ForEachReflectedSubObj(*actor, [&](const NS::SubObjectDesc& field, NS::SubObject* part) {
         EXPECT_EQ(part->Owner(), actor.get());
-        EXPECT_EQ(actor->FindSubObj(field.key), part);
         keys.emplace_back(field.key);
     });
     ASSERT_GE(keys.size(), 4u);

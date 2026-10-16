@@ -9,6 +9,8 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -41,17 +43,14 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
     scene.ResetFromJson(doc);
     PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    ASSERT_NE(NS::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params")), nullptr);
     EXPECT_EQ(player->Health(), 5);
-    ASSERT_NE(NS::Cast<NS::Body>(player->FindSubObj("Movement")), nullptr);
     player->ApplyDamage(2);
     EXPECT_EQ(player->Health(), 3);
     player->ResetHealth();
     EXPECT_EQ(player->Health(), 5);
 
     // エディタで体力を書き換えてから再生すると、満タンは書き換えた値になる
-    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    GL::Player::PlayerParams* params = &player->Params();
     ASSERT_EQ(NS::ApplyJsonFields(*params, nlohmann::json{{"体力", 3}}), 0u);
     player->ResetHealth();
     EXPECT_EQ(player->Health(), 3);
@@ -80,8 +79,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    const GL::Player::PlayerParams* params = &player.Params();
     const nlohmann::json fields = NS::SerializeSubObjectFields(*params);
     const nlohmann::json expected = {{"ジャンプ初速", 12.0f},
                                      {"上昇重力", -25.0f},
@@ -124,12 +122,10 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
     // 左右の寄せは消した。鍵が戻ると、保存した場面に効かない角度が載る
     EXPECT_FALSE(fields.contains("寄せる角度の上限"));
     EXPECT_FALSE(fields.contains("1 フレームの向きの変化の上限"));
-    const NS::Body* movement = NS::Cast<NS::Body>(player.FindSubObj("Movement"));
-    ASSERT_NE(movement, nullptr);
+    const NS::Body* movement = &player.Body();
     // 身体は欄を持たない。動きの調整値は Params、当たりの寸法は Collider に居る
     EXPECT_TRUE(NS::SerializeSubObjectFields(*movement).empty());
-    const NS::Collider* collider = NS::Cast<NS::Collider>(player.FindSubObj("Collider"));
-    ASSERT_NE(collider, nullptr);
+    const NS::Collider* collider = &player.Collider();
     const nlohmann::json colliderFields = NS::SerializeSubObjectFields(*collider);
     EXPECT_EQ(colliderFields.size(), 2u);
     EXPECT_TRUE(colliderFields.contains("半径"));
@@ -140,10 +136,8 @@ TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player.FindSubObj("Params"));
-    NS::Body* movement = NS::Cast<NS::Body>(player.FindSubObj("Movement"));
-    ASSERT_NE(params, nullptr);
-    ASSERT_NE(movement, nullptr);
+    GL::Player::PlayerParams* params = &player.Params();
+    NS::Body* movement = &player.Body();
     EXPECT_EQ(NS::ApplyJsonFields(*params, {{"走行速度", 10.0f}, {"加速度", 7.0f}, {"上昇重力", -15.0f}}), 0u);
     EXPECT_FLOAT_EQ(player.RunSpeed(), 10.0f);
     movement->SetGrounded(true);
@@ -173,13 +167,11 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     scene.ResetFromJson(saved);
     const PlayerActor* player = static_cast<const PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    const NS::Body* movement = NS::Cast<NS::Body>(player->FindSubObj("Movement"));
-    ASSERT_NE(movement, nullptr);
+    const NS::Body* movement = &player->Body();
     EXPECT_FLOAT_EQ(player->RunSpeed(), 9.0f);
     EXPECT_FLOAT_EQ(player->BodySlamDistance(), 14.0f);
     EXPECT_EQ(player->Health(), 6);
-    const GL::Player::PlayerParams* params = NS::Cast<GL::Player::PlayerParams>(player->FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    const GL::Player::PlayerParams* params = &player->Params();
     const nlohmann::json fields = NS::SerializeSubObjectFields(*params);
     EXPECT_FLOAT_EQ(fields["上昇重力"].get<float>(), -21.0f);
     EXPECT_FLOAT_EQ(fields["下降重力"].get<float>(), -39.0f);
@@ -570,12 +562,18 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
         const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
         PlayerActor& player = *playerOwned;
         const nlohmann::json& parts = NS::ObjectJsonSubObjs(entry);
+        const nlohmann::json prototype = NS::MakePrototypeJson(player);
         for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
         {
-            NS::SubObject* part = player.FindSubObj(it.key());
-            ASSERT_NE(part, nullptr) << source << " " << it.key();
-            EXPECT_EQ(NS::ApplyJsonFields(*part, it.value()), 0u) << source << " " << it.key();
+            EXPECT_NE(NS::SubObjFields(prototype, it.key()), nullptr) << source << " " << it.key();
         }
+        NS::ForEachReflectedSubObj(player, [&](const NS::SubObjectDesc& field, NS::SubObject* part) {
+            const nlohmann::json::const_iterator found = parts.find(field.key);
+            if (found != parts.end())
+            {
+                EXPECT_EQ(NS::ApplyJsonFields(*part, found.value()), 0u) << source << " " << field.key;
+            }
+        });
     };
     NS::ArchetypeLibrary::Get().Reload();
     const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");

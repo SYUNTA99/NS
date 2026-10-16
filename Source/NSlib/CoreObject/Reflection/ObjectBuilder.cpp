@@ -10,7 +10,10 @@
 #include "NSlib/CoreObject/SubObject.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 
+#include <algorithm>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace NS
 {
@@ -30,15 +33,21 @@ namespace NS
     void ApplyObjectSubObjs(SceneActor& obj, const nlohmann::json& object)
     {
         const nlohmann::json& parts = ObjectJsonSubObjs(object);
+        std::vector<std::string_view> knownKeys;
+        ForEachReflectedSubObj(obj, [&](const SubObjectDesc& field, SubObject* subObject) {
+            knownKeys.push_back(field.key);
+            const nlohmann::json::const_iterator entry = parts.find(field.key);
+            if (entry != parts.end())
+            {
+                ApplyJsonFields(*subObject, entry.value());
+            }
+        });
         for (nlohmann::json::const_iterator entry = parts.begin(); entry != parts.end(); ++entry)
         {
-            SubObject* target = obj.FindSubObj(entry.key());
-            if (target == nullptr)
+            if (std::find(knownKeys.begin(), knownKeys.end(), entry.key()) == knownKeys.end())
             {
                 NS_LOG_WARN(Scene, "{} の部品 {} はクラスに無いので読み飛ばす", obj.ClassName(), entry.key());
-                continue;
             }
-            ApplyJsonFields(*target, entry.value());
         }
     }
 

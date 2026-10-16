@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <string_view>
 #include <vector>
 
 #include "NSlib/Core/Types.h"
@@ -128,9 +129,13 @@ TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
     ASSERT_NE(reaction, nullptr);
 
     std::vector<NS::SubObject*> parts;
-    NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc&, NS::SubObject* part) { parts.push_back(part); });
+    std::vector<std::string_view> keys;
+    NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, NS::SubObject* part) {
+        parts.push_back(part);
+        keys.push_back(field.key);
+    });
     ASSERT_EQ(parts.size(), 3u);
     EXPECT_EQ(parts[1], reaction);
     EXPECT_EQ(parts[2], keeper);
-    EXPECT_EQ(actor.FindSubObj("Effect"), keeper);
+    EXPECT_EQ(keys[2], "Effect");
 }

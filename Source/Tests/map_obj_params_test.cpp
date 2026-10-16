@@ -4,6 +4,7 @@
 #include "Game/Level/MapObjParams.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -28,11 +29,12 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     scene.ResetFromJson(doc);
     NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    const GL::Level::MapObjParams* params = NS::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor);
+    ASSERT_NE(prop, nullptr);
+    const GL::Level::MapObjParams* params = &prop->Params();
     EXPECT_FLOAT_EQ(params->Mass(), 2.0f);
     EXPECT_FLOAT_EQ(params->Toughness(), 3.0f);
-    EXPECT_EQ(actor->FindSubObj("Breakable"), nullptr);
+    EXPECT_EQ(NS::SubObjFields(NS::MakePrototypeJson(*actor), "Breakable"), nullptr);
     GL::Level::TackleTargetAnswer answer;
     ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorSubObj(), answer));
     EXPECT_FLOAT_EQ(answer.mass, 2.0f);
@@ -66,8 +68,9 @@ TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
         }
         NS::SceneActor* actor = scene.Objects().FindByObjectId(id);
         ASSERT_NE(actor, nullptr);
-        const GL::Level::MapObjParams* params = NS::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
-        ASSERT_NE(params, nullptr);
+        const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor);
+        ASSERT_NE(prop, nullptr);
+        const GL::Level::MapObjParams* params = &prop->Params();
         EXPECT_EQ(params->HitTimelineName(), expected);
         GL::Level::TackleTargetAnswer answer;
         ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorSubObj(), answer));
@@ -97,10 +100,10 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
             }
             const NS::SceneActor* rock = scene.Objects().FindByObjectId(NS::ObjectJsonId(entry));
             ASSERT_NE(rock, nullptr);
-            const GL::Level::MapObjParams* params = NS::Cast<GL::Level::MapObjParams>(rock->FindSubObj("Params"));
-            ASSERT_NE(params, nullptr);
-            masses.push_back(params->Mass());
-            toughnesses.push_back(params->Toughness());
+            const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(rock);
+            ASSERT_NE(prop, nullptr);
+            masses.push_back(prop->Params().Mass());
+            toughnesses.push_back(prop->Params().Toughness());
         }
         std::sort(masses.begin(), masses.end());
         std::sort(toughnesses.begin(), toughnesses.end());
@@ -121,8 +124,9 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
     scene.ResetFromJson(doc);
     const NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    const GL::Level::MapObjParams* params = NS::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
-    ASSERT_NE(params, nullptr);
+    const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor);
+    ASSERT_NE(prop, nullptr);
+    const GL::Level::MapObjParams* params = &prop->Params();
     EXPECT_FLOAT_EQ(params->Mass(), 1.0f);
     EXPECT_FLOAT_EQ(params->Toughness(), 0.0f);
     EXPECT_FLOAT_EQ(params->Friction(), 0.0f);
@@ -206,10 +210,10 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     scene.ResetFromJson(doc);
     NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    GL::Level::MapObjParams* params = NS::Cast<GL::Level::MapObjParams>(actor->FindSubObj("Params"));
-    GL::Level::LaunchEffects* effects = NS::Cast<GL::Level::LaunchEffects>(actor->FindSubObj("LaunchEffects"));
-    ASSERT_NE(params, nullptr);
-    ASSERT_NE(effects, nullptr);
+    GL::Level::PropActor* placed = NS::Cast<GL::Level::PropActor>(actor);
+    ASSERT_NE(placed, nullptr);
+    GL::Level::MapObjParams* params = &placed->Params();
+    GL::Level::LaunchEffects* effects = &placed->Effects();
     EXPECT_EQ(NS::ApplyJsonFields(*params, {{"質量", 4.0f}}), 0u);
     EXPECT_EQ(NS::ApplyJsonFields(*effects,
                                   {{"飛び出しの尾が残るフレーム数の基準", 13},

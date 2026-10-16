@@ -11,6 +11,7 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/HitZones.h"
+#include "Game/Level/PropActor.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamAim.h"
 #include "Game/PlayerActor.h"
@@ -1141,12 +1142,13 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
         {
             continue;
         }
-        const GL::Level::HitZones* zones = NS::Cast<GL::Level::HitZones>(object->FindSubObj("HitZones"));
+        const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(object);
         const NS::HitSensor* bodySensor = object->BodySensorSubObj();
-        if (zones == nullptr || bodySensor == nullptr)
+        if (prop == nullptr || bodySensor == nullptr)
         {
             continue;
         }
+        const GL::Level::HitZones& zones = prop->Zones();
         // 調べる対象から外した体は、突進が当たらないので面も出さない
         if (!bodySensor->IsValid())
         {
@@ -1168,7 +1170,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
         {
             continue;
         }
-        for (const GL::Level::HitFaceShape& shape : GL::Level::HitFaceShapes(zones->Face(), frame.bodyShape))
+        for (const GL::Level::HitFaceShape& shape : GL::Level::HitFaceShapes(zones.Face(), frame.bodyShape))
         {
             DrawHitFaceShape(shapes, frame, shape);
         }
@@ -1281,10 +1283,7 @@ void LevelEditorController::SetSelectedFreeScale(NS::Vector3 scale)
 
 void LevelEditorController::MirrorRootEditToBaseline(NS::SceneActor& actor, std::string_view fieldName)
 {
-    if (NS::Transform* transform = NS::Cast<NS::Transform>(actor.FindSubObj(NS::k_TransformSubObjName)))
-    {
-        MirrorPlayEditToBaseline(*transform, fieldName);
-    }
+    MirrorPlayEditToBaseline(actor.Root(), fieldName);
 }
 
 void LevelEditorController::MirrorPlayEditToBaseline(const NS::SubObject& comp, std::string_view fieldName)

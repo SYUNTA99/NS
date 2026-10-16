@@ -9,6 +9,7 @@
 #include "NSlib/CoreObject/SubObjects/SphereCollision.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -71,7 +72,7 @@ TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
     NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(std::string_view{actor->ClassName()}, "PropActor");
-    EXPECT_NE(NS::Cast<NS::SphereCollision>(actor->FindSubObj("Collision")), nullptr);
+    EXPECT_NE(NS::Cast<NS::SphereCollision>(actor->CollisionSubObj()), nullptr);
 }
 
 TEST(SceneActor, ToJsonKeepsClassAndValues)
@@ -83,7 +84,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     scene.ResetFromJson(doc);
     NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->FindSubObj("Collision"));
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionSubObj());
     ASSERT_NE(sphere, nullptr);
     sphere->SetRadius(1.5f);
     actor->Root().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
@@ -99,12 +100,41 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     NS::SceneActor* again = reloaded.Objects().FindByObjectId(1);
     ASSERT_NE(again, nullptr);
     EXPECT_EQ(std::string_view{again->ClassName()}, "PropActor");
-    const NS::SphereCollision* sphereAgain = NS::Cast<NS::SphereCollision>(again->FindSubObj("Collision"));
+    const NS::SphereCollision* sphereAgain = NS::Cast<NS::SphereCollision>(again->CollisionSubObj());
     ASSERT_NE(sphereAgain, nullptr);
     EXPECT_FLOAT_EQ(sphereAgain->Radius(), 1.5f);
     EXPECT_FLOAT_EQ(again->Root().Position().x, 3.0f);
     EXPECT_FLOAT_EQ(again->Root().Position().y, 4.0f);
     EXPECT_FLOAT_EQ(again->Root().Position().z, 5.0f);
+}
+
+TEST(SceneActor, UnknownSubObjKeyIsWarnedAndOtherSubObjsAreRead)
+{
+    // クラスの表に無い鍵は警告して読み飛ばし、表にある部品の値は読む
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddClassObject(doc, "PropActor", 1);
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(actor, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionSubObj());
+    ASSERT_NE(sphere, nullptr);
+    sphere->SetRadius(1.5f);
+
+    nlohmann::json saved = scene.ToJson();
+    nlohmann::json& objects = NS::SceneJsonObjects(saved);
+    ASSERT_EQ(objects.size(), 1u);
+    NS::ObjectJsonSubObjs(objects[0])["NotInTheClass"] = nlohmann::json{{"Radius", 9.0f}};
+
+    const TestLogCapture log;
+    NS::Scene reloaded;
+    reloaded.ResetFromJson(saved);
+    EXPECT_EQ(log.WarningCount(), 1);
+    const NS::SceneActor* again = reloaded.Objects().FindByObjectId(1);
+    ASSERT_NE(again, nullptr);
+    const NS::SphereCollision* sphereAgain = NS::Cast<NS::SphereCollision>(again->CollisionSubObj());
+    ASSERT_NE(sphereAgain, nullptr);
+    EXPECT_FLOAT_EQ(sphereAgain->Radius(), 1.5f);
 }
 
 TEST(SceneActor, FileTextRoundTripKeepsClass)

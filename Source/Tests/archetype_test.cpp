@@ -1,4 +1,5 @@
 #include "Editor/LevelEditorController.h"
+#include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
@@ -82,7 +83,7 @@ namespace
 
     float RadiusOf(const NS::SceneActor& actor)
     {
-        const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor.FindSubObj("Collision"));
+        const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor.CollisionSubObj());
         if (sphere == nullptr)
         {
             return -1.0f;
@@ -140,7 +141,6 @@ TEST(Archetype, ArchetypeCannotAddParts)
     const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->AttackSensorSubObj(), nullptr);
-    EXPECT_EQ(actor->FindSubObj("AttackSensor"), nullptr);
     EXPECT_NE(actor->ShadowSubObj(), nullptr);
 }
 
@@ -153,7 +153,7 @@ TEST(Archetype, InstanceCannotAddParts)
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(object, scene);
     ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(NS::Cast<NS::DirectionalLight>(actor->FindSubObj("DirectionalLight")), nullptr);
+    EXPECT_EQ(NS::SubObjFields(NS::MakePrototypeJson(*actor), "DirectionalLight"), nullptr);
 }
 
 TEST(Archetype, ObjectWithoutClassIsNotBuilt)
@@ -188,7 +188,7 @@ TEST(Archetype, SaveWritesOnlyOverrides)
     scene.ResetFromJson(doc);
     NS::SceneActor* changed = scene.Objects().FindByObjectId(2);
     ASSERT_NE(changed, nullptr);
-    NS::Cast<NS::SphereCollision>(changed->FindSubObj("Collision"))->SetRadius(4.0f);
+    NS::Cast<NS::SphereCollision>(changed->CollisionSubObj())->SetRadius(4.0f);
 
     const nlohmann::json saved = scene.ToJson();
     const nlohmann::json& objects = NS::SceneJsonObjects(saved);
@@ -243,7 +243,7 @@ TEST(Archetype, ApplyingSnapshotResetsFieldsWithoutOverride)
     ASSERT_NE(actor, nullptr);
     const nlohmann::json snapshot = NS::ObjectToJson(*actor);
 
-    NS::Cast<NS::SphereCollision>(actor->FindSubObj("Collision"))->SetRadius(9.0f);
+    NS::Cast<NS::SphereCollision>(actor->CollisionSubObj())->SetRadius(9.0f);
     NS::SceneActor* applied = scene.ApplyFromJson(snapshot);
     ASSERT_EQ(applied, actor); // 構成が同じなので作り直さない
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 2.0f);
@@ -292,9 +292,9 @@ TEST(Archetype, ReferenceFieldsAreNotArchetypeValues)
 
     // インスペクタでも種類の既定にできない
     const NS::SceneActor& baseline = NS::ArchetypeLibrary::Get().Baseline("FollowCameraActor");
-    const NS::ThirdPersonFollow* live = NS::Cast<NS::ThirdPersonFollow>(baseline.FindSubObj("Vcam"));
-    ASSERT_NE(live, nullptr);
-    EXPECT_FALSE(NS::IsArchetypeField(*live, "追従対象"));
+    const GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(&baseline);
+    ASSERT_NE(camera, nullptr);
+    EXPECT_FALSE(NS::IsArchetypeField(camera->Vcam(), "追従対象"));
 }
 
 TEST(Archetype, OverrideIsDetectedAgainstBaseline)
@@ -307,7 +307,7 @@ TEST(Archetype, OverrideIsDetectedAgainstBaseline)
     NS::Scene scene;
     scene.ResetFromJson(doc);
     NS::SphereCollision* sphere =
-        NS::Cast<NS::SphereCollision>(scene.Objects().FindByObjectId(1)->FindSubObj("Collision"));
+        NS::Cast<NS::SphereCollision>(scene.Objects().FindByObjectId(1)->CollisionSubObj());
     ASSERT_NE(sphere, nullptr);
     EXPECT_FALSE(NS::IsFieldOverridden(*sphere, "半径"));
     sphere->SetRadius(2.5f);
@@ -335,9 +335,7 @@ TEST(Archetype, TransformPartIsInstanceOnlyOnEveryPath)
     ASSERT_NE(transform, nullptr);
     EXPECT_TRUE(NS::HasField(*transform, NS::k_PositionFieldName));
 
-    const NS::SubObject* root = baseline.FindSubObj(NS::k_TransformSubObjName);
-    ASSERT_NE(root, nullptr);
-    EXPECT_FALSE(NS::IsArchetypeField(*root, NS::k_PositionFieldName));
+    EXPECT_FALSE(NS::IsArchetypeField(baseline.Root(), NS::k_PositionFieldName));
 }
 
 TEST(Archetype, SavedArchetypeIsReadBack)
@@ -371,7 +369,7 @@ TEST(Archetype, PromoteReachesOtherInstancesAndFile)
     LevelEditorController editor(&scene);
 
     NS::SphereCollision* sphere =
-        NS::Cast<NS::SphereCollision>(scene.Objects().FindByObjectId(1)->FindSubObj("Collision"));
+        NS::Cast<NS::SphereCollision>(scene.Objects().FindByObjectId(1)->CollisionSubObj());
     sphere->SetRadius(1.75f);
     ASSERT_TRUE(editor.PromoteFieldToArchetype(*sphere, "半径"));
 
@@ -394,10 +392,10 @@ TEST(Archetype, PromoteRejectsReferenceField)
     scene.ResetFromJson(doc);
     LevelEditorController editor(&scene);
 
-    NS::ThirdPersonFollow* follow =
-        NS::Cast<NS::ThirdPersonFollow>(scene.Objects().FindByObjectId(1)->FindSubObj("Vcam"));
-    ASSERT_NE(follow, nullptr);
-    EXPECT_FALSE(editor.PromoteFieldToArchetype(*follow, "追従対象"));
+    GL::Level::FollowCameraActor* placed =
+        NS::Cast<GL::Level::FollowCameraActor>(scene.Objects().FindByObjectId(1));
+    ASSERT_NE(placed, nullptr);
+    EXPECT_FALSE(editor.PromoteFieldToArchetype(placed->Vcam(), "追従対象"));
     EXPECT_EQ(NS::ArchetypeLibrary::Get().Find("FollowCameraActor"), nullptr);
 }
 

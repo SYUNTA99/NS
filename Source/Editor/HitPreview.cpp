@@ -4,7 +4,7 @@
 #include "Editor/EditorObjects.h"
 #include "Editor/HitTimelineEdit.h"
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/HitZones.h"
+#include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -191,8 +191,7 @@ namespace NS
             bool IsHitTarget(SceneActor& object)
             {
                 const HitSensor* bodySensor = object.BodySensorSubObj();
-                return bodySensor != nullptr && bodySensor->IsValid() &&
-                       Cast<GL::Level::HitZones>(object.FindSubObj("HitZones")) != nullptr;
+                return bodySensor != nullptr && bodySensor->IsValid() && Cast<GL::Level::PropActor>(&object) != nullptr;
             }
 
             // 自機の根に一番近い、下見の相手になれる配置物の id。居なければ 0
