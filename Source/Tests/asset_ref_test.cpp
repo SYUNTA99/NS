@@ -3,6 +3,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -168,6 +169,24 @@ TEST(AssetRef, ModelAndShadowHoldTheirAssetsInRefFields)
     EXPECT_EQ(shadowFields["マテリアル"], nlohmann::json("shadow"));
 }
 
+// 読めない名前の欄も、その名前を持つ中身の空の素材を指すので、保存し直しても名前が残る
+TEST(AssetField, UnreadableNamesStayWhenSavedAgain)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const NS::AssetManagerScope useAssets{assets};
+    const nlohmann::json written{{"メッシュ", "Assets/Models/__ns_missing_mesh__.glb"},
+                                 {"マテリアル", "Assets/Materials/__ns_missing__.mat"},
+                                 {"残像のマテリアル", "../__ns_outside__.mat"}};
+    NS::Model model{nullptr};
+    EXPECT_EQ(NS::ApplyJsonFields(model, written), 0u); // 受ける欄の無い鍵の数
+
+    const nlohmann::json saved = NS::SerializeSubObjectFields(model);
+    EXPECT_EQ(saved["メッシュ"], written["メッシュ"]);
+    EXPECT_EQ(saved["マテリアル"], written["マテリアル"]);
+    EXPECT_EQ(saved["残像のマテリアル"], written["残像のマテリアル"]);
+    EXPECT_TRUE(assets.LoadMaterial("Assets/Materials/__ns_missing__.mat")->IsEmpty());
+}
+
 // 欄の名前から素材を引く決まりは AssetManager の口の中にある
 // 当たりの口は装置が無くても形を作れるので、名前の決まりをここで確かめる
 TEST(AssetManagerLoad, MeshShapeFollowsTheNameRules)
@@ -192,9 +211,9 @@ TEST(AssetManagerLoad, MaterialWithoutARendererIsEmptyAndLogsNoError)
     ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const TestLogCapture log;
-    const NS::Gfx::D3DMaterial* material = assets.TryLoadMaterial("Assets/Materials/stone.mat");
-    ASSERT_NE(material, nullptr);
-    EXPECT_FALSE(material->IsValid());
+    const NS::Material* material = assets.LoadMaterial("Assets/Materials/stone.mat");
+    ASSERT_FALSE(material->IsEmpty());
+    EXPECT_FALSE(material->D3D()->IsValid());
     EXPECT_EQ(log.ErrorCount(), 0);
 }
 

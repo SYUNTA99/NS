@@ -24,15 +24,6 @@ namespace GL
 
 namespace NS
 {
-    namespace Gfx
-    {
-        class D3DMaterial;
-        class D3DMesh;
-    } // namespace Gfx
-} // namespace NS
-
-namespace NS
-{
     class Collider;
 }
 
@@ -130,9 +121,9 @@ namespace GL
         //! 矢印を描く資材。どれも非所有
         struct SlamArrowDrawAssets
         {
-            NS::Gfx::D3DMesh* mesh = nullptr; //!< 共有の上向きの板
-            NS::Gfx::D3DMaterial* bandMaterial = nullptr;
-            NS::Gfx::D3DMaterial* headMaterial = nullptr;
+            const NS::Mesh* mesh = nullptr; //!< 共有の上向きの板
+            const NS::Material* bandMaterial = nullptr;
+            const NS::Material* headMaterial = nullptr;
         };
 
         //! 配置済みの帯・矢じりと、隠れた部分用の矢じりを out へ追加する。資材が空でも追加する
@@ -151,7 +142,8 @@ namespace GL
         class SlamArrow : public NS::OverlayRenderer
         {
         public:
-            explicit SlamArrow(NS::SceneActor* owner) noexcept;
+            //! 板と材質の欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
+            explicit SlamArrow(NS::SceneActor* owner);
 
             //! @brief 溜め中の矢印を控える。狙いが無いか溜めを終えたら、控えと経過フレーム数を戻す
             //! @details 道筋は params の突進の速さと重力、玉の半径と床は collider (持ち主の移動の当たり) から出す
@@ -209,9 +201,10 @@ namespace GL
             NS_REFLECT_END()
 
         private:
-            NS::AssetRef<NS::Gfx::D3DMesh> m_mesh{"shadowQuad"}; // 共有の上向きの板
-            NS::AssetRef<NS::Gfx::D3DMaterial> m_bandMaterial{"Assets/Materials/ground_arrow_band.mat"};
-            NS::AssetRef<NS::Gfx::D3DMaterial> m_headMaterial{"Assets/Materials/ground_arrow_head.mat"};
+            // 素材は AssetManager が持つ。欄は nullptr にならない
+            NS::Mesh* m_mesh = nullptr; // 共有の上向きの板
+            NS::Material* m_bandMaterial = nullptr;
+            NS::Material* m_headMaterial = nullptr;
             SlamArrowDesc m_desc{};
             SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
             bool m_hasShown = false;

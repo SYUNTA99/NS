@@ -40,7 +40,11 @@ namespace GL
 {
     namespace Player
     {
-        PlayerAppearance::PlayerAppearance(NS::SceneActor* owner) noexcept : m_owner(owner) {}
+        PlayerAppearance::PlayerAppearance(NS::SceneActor* owner) : m_owner(owner)
+        {
+            NS::LoadAssetField(m_standingMesh, "capsule");
+            NS::LoadAssetField(m_ballMesh, "sphere");
+        }
 
         void PlayerAppearance::Curl() noexcept
         {
@@ -363,11 +367,11 @@ namespace GL
                 return;
             }
 
-            NS::Gfx::D3DMesh* mesh = m_standingMesh.Get();
+            NS::Mesh* mesh = m_standingMesh;
             NS::Vector3 scale = m_standingScale;
             if (m_curled)
             {
-                mesh = m_ballMesh.Get();
+                mesh = m_ballMesh;
                 scale = m_ballScale;
             }
             if (!renderer->SetLocalScale(scale))
@@ -377,11 +381,6 @@ namespace GL
                             scale.x,
                             scale.y,
                             scale.z);
-            }
-            // 読む前は Model が自分の参照から差した mesh を残す
-            if (mesh == nullptr)
-            {
-                return;
             }
             renderer->SetMesh(mesh);
         }

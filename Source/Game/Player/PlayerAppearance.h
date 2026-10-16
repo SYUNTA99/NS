@@ -10,14 +10,6 @@
 
 namespace NS
 {
-    namespace Gfx
-    {
-        class D3DMesh;
-    }
-} // namespace NS
-
-namespace NS
-{
     class Body;
 }
 
@@ -46,7 +38,8 @@ namespace GL
         class PlayerAppearance : public NS::Object
         {
         public:
-            explicit PlayerAppearance(NS::SceneActor* owner) noexcept;
+            //! 姿のメッシュの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
+            explicit PlayerAppearance(NS::SceneActor* owner);
 
             //! @brief 玉の見た目へ持ち替える。既に玉なら何もしない
             //! @details 次の Update で、持ち主の丸まりに合わせ直す
@@ -129,8 +122,9 @@ namespace GL
             // 当たりの形か構えの縮みに着地の潰れを掛け、同居する Model の描く時だけの倍率へ書く
             void WriteDrawScale(const ChargeStatus& charge, const GL::Level::ImpactAnswer& impact) noexcept;
 
-            NS::AssetRef<NS::Gfx::D3DMesh> m_standingMesh{"capsule"};
-            NS::AssetRef<NS::Gfx::D3DMesh> m_ballMesh{"sphere"};
+            // 素材は AssetManager が持つ。欄は nullptr にならない
+            NS::Mesh* m_standingMesh = nullptr;
+            NS::Mesh* m_ballMesh = nullptr;
             NS::Vector3 m_standingScale{1.3f, 1.15f, 1.3f};
             NS::Vector3 m_ballScale{1.3f, 1.3f, 1.3f};
             bool m_curled = false;

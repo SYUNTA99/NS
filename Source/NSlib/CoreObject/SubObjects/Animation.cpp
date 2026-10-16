@@ -3,6 +3,7 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Graphics/D3DBuffer.h"
@@ -114,7 +115,7 @@ namespace NS
         if (model != nullptr)
         {
             SetSkeleton(&model->skeleton);
-            SetMesh(model->mesh.get());
+            SetMesh(model->mesh->D3DSkeletal());
 
             // Model のメッシュの欄は空なので、ここで差さないと骨付きのメッシュが見た目に出ない
             if (m_owner != nullptr)

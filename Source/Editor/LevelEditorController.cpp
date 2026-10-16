@@ -122,11 +122,11 @@ namespace
         {
             // メッシュの当たりは見た目の三角形そのもの。三角形は多いので、見た目のメッシュを包む箱を出す
             const NS::Model* renderer = object.ModelSubObj();
-            if (renderer == nullptr || renderer->GetMesh() == nullptr)
+            if (renderer == nullptr || renderer->GetMesh()->LocalBounds() == nullptr)
             {
                 return;
             }
-            const NS::AABB& local = renderer->GetMesh()->LocalBounds();
+            const NS::AABB& local = *renderer->GetMesh()->LocalBounds();
             const NS::Matrix world = object.Root().WorldMatrix();
             const NS::AffineDecomposition parts = NS::DecomposeAffine(world);
             const NS::Vector3 center = NS::Vector3::Transform(NS::Vector3{local.Center}, world);
@@ -1768,8 +1768,8 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
 
     // .mat パスは ContentRoot 相対で持つ。材質の正データは欄の名前なので、名前を書いて欄から読み直す
     const std::string stored = RelativeToRoot(matPath, NS::OS::FileSystem::ContentRoot());
-    NS::AssetManager& assets = app->Assets();
-    if (assets.TryLoadMaterial(stored) == nullptr)
+    const NS::Material* material = app->Assets().LoadMaterial(stored);
+    if (material->IsEmpty())
     {
         return false;
     }
@@ -1779,7 +1779,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
 
     mesh->SetMaterialRef(stored);
     go->ReloadAssets();
-    mesh->SetBaseColor(NS::Color{assets.MaterialBaseColor(stored)});
+    mesh->SetBaseColor(material->BaseColor());
 
     std::optional<nlohmann::json> after = m_applier.CaptureObject(m_selectedObjectId);
     if (before && after && !(*before == *after))

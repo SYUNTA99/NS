@@ -2,6 +2,8 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Types.h"
 
+#include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
@@ -36,6 +38,22 @@ namespace
 
 namespace NS
 {
+    Model::Model(SceneActor* owner) : m_owner(owner)
+    {
+        LoadAssetField(m_mesh, "");
+        LoadAssetField(m_material, "");
+        LoadAssetField(m_ghostMaterial, "water");
+    }
+
+    const Mesh* Model::GetMesh() const noexcept
+    {
+        if (m_shownMesh != nullptr)
+        {
+            return m_shownMesh;
+        }
+        return m_mesh;
+    }
+
     void Model::SetPerObjectVsConstant(const Gfx::D3DBuffer* cb,
                                        const void* cpuData,
                                        std::size_t cpuDataSize,
@@ -172,11 +190,7 @@ namespace NS
         {
             return &m_localBoundsOverride;
         }
-        if (const Gfx::D3DMesh* mesh = m_mesh.Get())
-        {
-            return &mesh->LocalBounds();
-        }
-        return nullptr;
+        return GetMesh()->LocalBounds();
     }
 
     Matrix Model::DrawWorldMatrix(float alpha) const noexcept
@@ -236,26 +250,30 @@ namespace NS
 
     void Model::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
-        Gfx::D3DMaterial* material = m_material.Get();
-        if (m_owner == nullptr || !m_owner->IsAppeared() || m_mesh.Get() == nullptr || material == nullptr)
+        if (!CanDraw(m_material))
         {
             return;
         }
 
-        out.push_back(MakeDrawItem(context, material, DrawWorldMatrix(context.alpha)));
+        out.push_back(MakeDrawItem(context, m_material, DrawWorldMatrix(context.alpha)));
+    }
+
+    bool Model::CanDraw(const Material* material) const noexcept
+    {
+        return m_owner != nullptr && m_owner->IsAppeared() && GetMesh()->D3D() != nullptr && material->D3D() != nullptr;
     }
 
     Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context,
-                                          Gfx::D3DMaterial* material,
+                                          const Material* material,
                                           const Matrix& world) const noexcept
     {
         // context.resolvedSettings は project 既定に配置された平行光まで解決済
         const Gfx::RenderSettings& settings = context.resolvedSettings;
 
         Gfx::DrawItem item{};
-        item.mesh = m_mesh.Get();
-        item.material = material;
-        item.blend = material->Blend();
+        item.mesh = GetMesh()->D3D();
+        item.material = material->D3D();
+        item.blend = item.material->Blend();
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
         item.constants.lightDir = settings.lightDir;
@@ -279,9 +297,8 @@ namespace NS
 
     void Model::Ghosts::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
-        Gfx::D3DMaterial* material = m_model.m_ghostMaterial.Get();
-        if (m_model.m_owner == nullptr || !m_model.m_owner->IsAppeared() || m_model.m_mesh.Get() == nullptr ||
-            material == nullptr)
+        const Material* material = m_model.m_ghostMaterial;
+        if (!m_model.CanDraw(material))
         {
             return;
         }
@@ -330,7 +347,7 @@ namespace NS
 
     RenderBucket Model::Bucket() const noexcept
     {
-        const Gfx::D3DMaterial* material = m_material.Get();
+        const Gfx::D3DMaterial* material = m_material->D3D();
         if (material == nullptr || material->Blend() == Gfx::BlendMode::Opaque)
         {
             return RenderBucket::Opaque;
@@ -350,7 +367,7 @@ namespace NS
 
     int Model::SortPriority() const noexcept
     {
-        if (const Gfx::D3DMaterial* material = m_material.Get())
+        if (const Gfx::D3DMaterial* material = m_material->D3D())
         {
             return material->RenderPriority();
         }
@@ -359,7 +376,7 @@ namespace NS
 
     AABB Model::WorldBounds() const noexcept
     {
-        if (m_mesh.Get() == nullptr || m_owner == nullptr)
+        if (GetMesh()->D3D() == nullptr || m_owner == nullptr)
         {
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない
         }

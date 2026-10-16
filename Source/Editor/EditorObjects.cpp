@@ -5,6 +5,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
@@ -13,7 +14,6 @@
 #include "NSlib/CoreObject/SubObjects/Collider.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Graphics/D3DMesh.h"
 
 #include <algorithm>
 
@@ -149,9 +149,9 @@ namespace NS
         AABB PickLocalBounds(const SceneActor& object) noexcept
         {
             const Model* renderer = object.ModelSubObj();
-            if (renderer != nullptr && renderer->GetMesh() != nullptr)
+            if (renderer != nullptr && renderer->GetMesh()->LocalBounds() != nullptr)
             {
-                return renderer->GetMesh()->LocalBounds();
+                return *renderer->GetMesh()->LocalBounds();
             }
             return AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}};
         }

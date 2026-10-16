@@ -1,6 +1,8 @@
 #include "NSlib/CoreObject/SubObjects/Shadow.h"
 #include "NSlib/Core/AABB.h"
 
+#include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
@@ -10,6 +12,12 @@
 
 namespace NS
 {
+    Shadow::Shadow(SceneActor* owner) : m_owner(owner)
+    {
+        LoadAssetField(m_mesh, "shadowQuad");
+        LoadAssetField(m_material, "shadow");
+    }
+
     void Shadow::Register()
     {
         if (m_owner == nullptr)
@@ -72,7 +80,7 @@ namespace NS
 
     void Shadow::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
-        if (m_owner == nullptr || !m_owner->IsAppeared() || m_mesh.Get() == nullptr || m_material.Get() == nullptr)
+        if (m_owner == nullptr || !m_owner->IsAppeared() || m_mesh->D3D() == nullptr || m_material->D3D() == nullptr)
         {
             return;
         }
@@ -99,8 +107,8 @@ namespace NS
                                  Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
 
         Gfx::DrawItem item{};
-        item.mesh = m_mesh.Get();
-        item.material = m_material.Get();
+        item.mesh = m_mesh->D3D();
+        item.material = m_material->D3D();
         item.blend = Gfx::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;

@@ -39,15 +39,29 @@ namespace NS
     //! @brief マテリアル 1 つ。.mat の値と、その値で作った D3DMaterial を持つ
     //! @details シェーダーとテクスチャは AssetManager が持ち、ここは指すだけ。欄の値を変えても D3DMaterial は作り直さない
     //! 基本の色はアクターに付けた時に写す色で、描く時には使わない
+    //! 道は欄に保存する名前で、共有のマテリアルは共有の名前
     class Material : public Object
     {
     public:
         //! @brief file の値と、AssetManager が file の道から引いたシェーダーとテクスチャで D3DMaterial を作る
         //! @details textures の番号がテクスチャの枠の番号。シェーダーとテクスチャはこのマテリアルより長く生きること
-        Material(MaterialFileDesc file, Shader* vertexShader, Shader* pixelShader, std::span<Texture* const> textures);
+        Material(std::string path,
+                 MaterialFileDesc file,
+                 Shader* vertexShader,
+                 Shader* pixelShader,
+                 std::span<Texture* const> textures);
+        //! 読めなかった名前のマテリアル。値も D3DMaterial も持たず、道だけを持つ
+        explicit Material(std::string path);
         ~Material() noexcept override;
 
+        [[nodiscard]] const std::string& Path() const noexcept;
+        //! 読めなかった名前のマテリアルの場合 true
+        [[nodiscard]] bool IsEmpty() const noexcept;
+
+        //! 描く D3DMaterial。中身が空なら代わりのマテリアルの物を返す。どちらも無ければ nullptr
         [[nodiscard]] Gfx::D3DMaterial* D3D() const noexcept;
+        //! 中身が空の間に描くマテリアル。standIn はこのマテリアルより長く生きること
+        void SetStandIn(const Material* standIn) noexcept;
         [[nodiscard]] Shader* VertexShader() const noexcept;
         [[nodiscard]] Shader* PixelShader() const noexcept;
         [[nodiscard]] const MaterialFileDesc& File() const noexcept;
@@ -84,6 +98,8 @@ namespace NS
     private:
         void SetTexturePathAt(std::size_t slot, const std::string& path);
 
+        std::string m_path;
+        const Material* m_standIn = nullptr;
         MaterialFileDesc m_file;
         Shader* m_vertexShader = nullptr;
         Shader* m_pixelShader = nullptr;

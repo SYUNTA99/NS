@@ -1,25 +1,48 @@
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
 
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/Graphics/D3DMaterial.h"
-#include "NSlib/Graphics/D3DMesh.h"
 
 #include <string>
 
 namespace NS
 {
-    void LoadAssetRef(AssetRef<Gfx::D3DMesh>& ref)
+    namespace
     {
-        ref.SetLoaded(AssetManager::Get().LoadMesh(ref.Name()));
+        const std::string k_NoName;
+    } // namespace
+
+    void LoadAssetField(Mesh*& field, std::string_view name)
+    {
+        field = AssetManager::Get().LoadMesh(name);
     }
 
-    void LoadAssetRef(AssetRef<Gfx::D3DMaterial>& ref)
+    void LoadAssetField(Material*& field, std::string_view name)
     {
-        ref.SetLoaded(AssetManager::Get().LoadMaterial(ref.Name()));
+        field = AssetManager::Get().LoadMaterial(name);
+    }
+
+    const std::string& AssetFieldName(const Mesh* field) noexcept
+    {
+        if (field == nullptr)
+        {
+            return k_NoName;
+        }
+        return field->Path();
+    }
+
+    const std::string& AssetFieldName(const Material* field) noexcept
+    {
+        if (field == nullptr)
+        {
+            return k_NoName;
+        }
+        return field->Path();
     }
 
     void LoadAssetRef(AssetRef<const SkinnedModel>& ref)

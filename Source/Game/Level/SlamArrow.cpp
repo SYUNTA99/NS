@@ -5,6 +5,8 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/PlayerStatus.h"
 #include "Game/Player/SlamBall.h"
+#include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Collider.h"
@@ -236,13 +238,19 @@ namespace GL
                 inOutRise = length * std::sin(wanted);
             }
 
-            [[nodiscard]] NS::Gfx::DrawItem MakeDrawItem(NS::Gfx::D3DMesh* mesh,
-                                                         NS::Gfx::D3DMaterial* material,
+            [[nodiscard]] NS::Gfx::DrawItem MakeDrawItem(const NS::Mesh* mesh,
+                                                         const NS::Material* material,
                                                          const SlamArrowConstants& constants) noexcept
             {
                 NS::Gfx::DrawItem item{};
-                item.mesh = mesh;
-                item.material = material;
+                if (mesh != nullptr)
+                {
+                    item.mesh = mesh->D3D();
+                }
+                if (material != nullptr)
+                {
+                    item.material = material->D3D();
+                }
                 item.blend = NS::Gfx::BlendMode::Alpha; // 深度は読むだけ。壁と手前の物に隠れる
                 // 下る道筋と目の高さより上の弧では、板がカメラから裏を向く。裏を描かないと帯の先と矢じりが丸ごと消える
                 item.twoSided = true;
@@ -512,7 +520,12 @@ namespace GL
             out.push_back(occludedItem);
         }
 
-        SlamArrow::SlamArrow(NS::SceneActor* owner) noexcept : NS::OverlayRenderer(owner), m_owner(owner) {}
+        SlamArrow::SlamArrow(NS::SceneActor* owner) : NS::OverlayRenderer(owner), m_owner(owner)
+        {
+            NS::LoadAssetField(m_mesh, "shadowQuad");
+            NS::LoadAssetField(m_bandMaterial, "Assets/Materials/ground_arrow_band.mat");
+            NS::LoadAssetField(m_headMaterial, "Assets/Materials/ground_arrow_head.mat");
+        }
 
         void SlamArrow::Update(const GL::Player::ChargeStatus& charge,
                                const GL::Player::PlayerParams* params,
@@ -592,9 +605,9 @@ namespace GL
         void SlamArrow::OnRenderOverlay(const NS::Gfx::RenderContext& context)
         {
             const SlamArrowDrawAssets assets{
-                .mesh = m_mesh.Get(), .bandMaterial = m_bandMaterial.Get(), .headMaterial = m_headMaterial.Get()};
-            if (!IsOverlayVisible() || !m_hasShown || context.renderer == nullptr || assets.mesh == nullptr ||
-                assets.bandMaterial == nullptr || assets.headMaterial == nullptr)
+                .mesh = m_mesh, .bandMaterial = m_bandMaterial, .headMaterial = m_headMaterial};
+            if (!IsOverlayVisible() || !m_hasShown || context.renderer == nullptr || m_mesh->D3D() == nullptr ||
+                m_bandMaterial->D3D() == nullptr || m_headMaterial->D3D() == nullptr)
             {
                 return;
             }

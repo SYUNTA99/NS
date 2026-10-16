@@ -1,5 +1,6 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Asset/Material.h"
@@ -214,16 +215,6 @@ namespace NS
         g_currentAssets = m_previous;
     }
 
-    Gfx::D3DShader* AssetManager::GetOrLoadShader(std::string_view path)
-    {
-        return LoadShader(path)->D3D();
-    }
-
-    Gfx::D3DTexture* AssetManager::GetOrLoadTexture(std::string_view path)
-    {
-        return LoadTexture(path)->D3D();
-    }
-
     Shader* AssetManager::LoadShader(std::string_view path)
     {
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
@@ -258,7 +249,7 @@ namespace NS
         return raw;
     }
 
-    Mesh& AssetManager::LoadMeshFile(std::string_view path)
+    Mesh& AssetManager::LoadMeshFile(std::string_view path, std::string_view name)
     {
         const std::string key = OS::FileSystem::Normalize(path);
         if (const std::map<std::string, std::unique_ptr<Mesh>>::iterator it = m_meshes.find(key);
@@ -297,41 +288,66 @@ namespace NS
             collision = MakeCollision(geom);
         }
         // 失敗した記録も残し、同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。修正後の再試行は Clear() で解いてから
-        return *m_meshes.emplace(key, std::make_unique<Mesh>(std::move(drawn), std::move(collision))).first->second;
+        std::unique_ptr<Mesh> mesh =
+            std::make_unique<Mesh>(std::string{name}, std::move(drawn), std::move(collision));
+        if (mesh->D3D() == nullptr)
+        {
+            mesh->SetStandIn(&BuiltinMesh("cube"));
+        }
+        return *m_meshes.emplace(key, std::move(mesh)).first->second;
     }
 
-    Gfx::D3DMesh* AssetManager::LoadMesh(std::string_view name)
+    Mesh& AssetManager::BuiltinMesh(std::string_view name)
     {
-        if (Gfx::D3DMesh* mesh = TryLoadMesh(name))
+        const std::string key{name};
+        std::map<std::string, std::unique_ptr<Mesh>>::iterator it = m_builtins.find(key);
+        if (it == m_builtins.end())
         {
-            return mesh;
+            const BuiltinShape* shape = FindBuiltinShape(name);
+            NS_ASSERT(Scene, shape != nullptr, "組み込みの形でない名前で組み込みの形を作ろうとしている");
+            it = m_builtins.emplace(key, std::make_unique<Mesh>(key, nullptr, MakeCollision(shape->make()))).first;
         }
-        // 空の名前は「メッシュを選んでいない」で、誤りではない
-        // 組み込みの形の名前は装置が無くて登録されていない時だけ外れる
-        if (!name.empty() && FindBuiltinShape(name) == nullptr)
-        {
-            NS_LOG_WARN(Scene, "メッシュ {} を読めないので cube で描く", name);
-        }
-        return Builtin("cube");
+        return *it->second;
     }
 
-    Gfx::D3DMesh* AssetManager::TryLoadMesh(std::string_view name)
+    Mesh& AssetManager::MissingMesh(std::string_view name)
     {
-        if (name.empty())
+        const std::string key{name};
+        std::map<std::string, std::unique_ptr<Mesh>>::iterator it = m_missingMeshes.find(key);
+        if (it == m_missingMeshes.end())
         {
-            return nullptr;
+            std::unique_ptr<Mesh> mesh = std::make_unique<Mesh>(key, nullptr, nullptr);
+            mesh->SetStandIn(&BuiltinMesh("cube"));
+            it = m_missingMeshes.emplace(key, std::move(mesh)).first;
         }
+        return *it->second;
+    }
+
+    Mesh* AssetManager::LoadMesh(std::string_view name)
+    {
         // 組み込みの形の名前はファイルでないので、登録の前でもファイルとして読まない
         if (FindBuiltinShape(name) != nullptr)
         {
-            return Builtin(name);
+            return &BuiltinMesh(name);
         }
-        const std::optional<std::string> path = ResolveContentPath(std::string{name});
-        if (!path)
+        Mesh* mesh = nullptr;
+        if (!name.empty())
         {
-            return nullptr;
+            if (const std::optional<std::string> path = ResolveContentPath(std::string{name}))
+            {
+                mesh = &LoadMeshFile(*path, name);
+            }
         }
-        return LoadMeshFile(*path).D3D();
+        if (mesh == nullptr)
+        {
+            mesh = &MissingMesh(name);
+        }
+        // 空の名前は「メッシュを選んでいない」で、誤りではない
+        if (!name.empty() && mesh->UsesStandIn())
+        {
+            NS_LOG_WARN(Scene, "メッシュ {} を読めないので cube で描く", name);
+        }
+        return mesh;
     }
 
     const Phys::MeshShape* AssetManager::LoadMeshShape(std::string_view name)
@@ -342,22 +358,15 @@ namespace NS
         {
             shapeName = "cube";
         }
-        if (const BuiltinShape* shape = FindBuiltinShape(shapeName))
+        if (FindBuiltinShape(shapeName) != nullptr)
         {
-            // 描く形は装置が要るので、ここでは作らずに RegisterBuiltins へ任せる
-            const std::string key{shapeName};
-            std::map<std::string, std::unique_ptr<Mesh>>::iterator it = m_builtins.find(key);
-            if (it == m_builtins.end())
-            {
-                it = m_builtins.emplace(key, std::make_unique<Mesh>(nullptr, MakeCollision(shape->make()))).first;
-            }
-            return WithShape(it->second->Collision());
+            return WithShape(BuiltinMesh(shapeName).Collision());
         }
 
         const Phys::MeshShape* collision = nullptr;
         if (const std::optional<std::string> path = ResolveContentPath(std::string{name}))
         {
-            collision = WithShape(LoadMeshFile(*path).Collision());
+            collision = WithShape(LoadMeshFile(*path, name).Collision());
         }
         if (collision == nullptr)
         {
@@ -379,10 +388,10 @@ namespace NS
             NS_LOG_WARN(Scene, "骨付きのモデル {} は ContentRoot の外を指すので読まない", name);
             return nullptr;
         }
-        return LoadSkinnedModelFile(*path);
+        return LoadSkinnedModelFile(*path, name);
     }
 
-    const SkinnedModel* AssetManager::LoadSkinnedModelFile(std::string_view path)
+    const SkinnedModel* AssetManager::LoadSkinnedModelFile(std::string_view path, std::string_view name)
     {
         const std::string key = OS::FileSystem::Normalize(path);
         if (const std::map<std::string, SkinnedModel>::iterator it = m_skinnedModels.find(key);
@@ -411,15 +420,16 @@ namespace NS
         smd.indexCount = data.indices.size();
         smd.boneCount = data.skeleton.BoneCount();
 
-        SkinnedModel model{};
-        model.mesh = Gfx::D3DSkeletalMesh::Create(smd);
-        if (model.mesh == nullptr || !model.mesh->IsValid())
+        std::unique_ptr<Gfx::D3DSkeletalMesh> mesh = Gfx::D3DSkeletalMesh::Create(smd);
+        if (mesh == nullptr || !mesh->IsValid())
         {
             // GPU buffer 生成に失敗。壊れた mesh をキャッシュせず無効を返し、Draw が無音で何もしないのを防ぐ
             NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key);
             return nullptr;
         }
 
+        SkinnedModel model{};
+        model.mesh = std::make_unique<Mesh>(std::string{name}, std::move(mesh));
         model.skeleton = std::move(data.skeleton);
         return &m_skinnedModels.emplace(key, std::move(model)).first->second;
     }
@@ -512,7 +522,8 @@ namespace NS
             const std::map<std::string, std::unique_ptr<Mesh>>::iterator it = m_builtins.find(shape.name);
             if (it == m_builtins.end())
             {
-                m_builtins.emplace(shape.name, std::make_unique<Mesh>(MakeStaticMesh(geom), MakeCollision(geom)));
+                m_builtins.emplace(shape.name,
+                                   std::make_unique<Mesh>(shape.name, MakeStaticMesh(geom), MakeCollision(geom)));
                 continue;
             }
             if (it->second->D3D() == nullptr)
@@ -522,19 +533,18 @@ namespace NS
         }
     }
 
-    Gfx::D3DMesh* AssetManager::Builtin(std::string_view name) const noexcept
+    Material* AssetManager::LoadMaterial(std::string_view name)
     {
-        const std::map<std::string, std::unique_ptr<Mesh>>::const_iterator it = m_builtins.find(std::string(name));
-        if (it != m_builtins.end())
+        Material* material = FindSharedMaterial(name);
+        // 共有の名前はファイルでないので、登録の前でもファイルとして読まない
+        if (material == nullptr && !name.empty() && !IsSharedMaterialName(name))
         {
-            return it->second->D3D();
+            if (const std::optional<std::string> path = ResolveContentPath(std::string{name}))
+            {
+                material = LoadMaterialFile(*path, name);
+            }
         }
-        return nullptr;
-    }
-
-    Gfx::D3DMaterial* AssetManager::LoadMaterial(std::string_view name)
-    {
-        if (Gfx::D3DMaterial* material = TryLoadMaterial(name))
+        if (material != nullptr)
         {
             return material;
         }
@@ -544,59 +554,24 @@ namespace NS
         {
             NS_LOG_WARN(Scene, "マテリアル {} を読めないので共有の player で描く", name);
         }
-        return SharedMaterial("player");
+        return &MissingMaterial(name);
     }
 
-    Gfx::D3DMaterial* AssetManager::TryLoadMaterial(std::string_view name)
+    Material& AssetManager::MissingMaterial(std::string_view name)
     {
-        if (const Material* material = TryLoadMaterialAsset(name))
+        const std::string key{name};
+        std::map<std::string, std::unique_ptr<Material>>::iterator it = m_missingMaterials.find(key);
+        if (it == m_missingMaterials.end())
         {
-            return material->D3D();
+            std::unique_ptr<Material> material = std::make_unique<Material>(key);
+            // RegisterSharedMaterials の前は代わりが無く、何も描かない。player は登録の時に差す
+            material->SetStandIn(FindSharedMaterial("player"));
+            it = m_missingMaterials.emplace(key, std::move(material)).first;
         }
-        return nullptr;
+        return *it->second;
     }
 
-    Material* AssetManager::TryLoadMaterialAsset(std::string_view name)
-    {
-        if (Material* shared = FindSharedMaterial(name))
-        {
-            return shared;
-        }
-        // 共有の名前はファイルでないので、登録の前でもファイルとして読まない
-        if (name.empty() || IsSharedMaterialName(name))
-        {
-            return nullptr;
-        }
-        const std::optional<std::string> path = ResolveContentPath(std::string{name});
-        if (!path)
-        {
-            return nullptr;
-        }
-        return LoadMaterialFile(*path);
-    }
-
-    Vector3 AssetManager::MaterialBaseColor(std::string_view name) const
-    {
-        const Vector3 white{1.0f, 1.0f, 1.0f};
-        if (name.empty() || IsSharedMaterialName(name))
-        {
-            return white;
-        }
-        const std::optional<std::string> path = ResolveContentPath(std::string{name});
-        if (!path)
-        {
-            return white;
-        }
-        const std::map<std::string, std::unique_ptr<Material>>::const_iterator it =
-            m_materials.find(OS::FileSystem::Normalize(*path));
-        if (it == m_materials.end())
-        {
-            return white;
-        }
-        return it->second->File().baseColor;
-    }
-
-    Material* AssetManager::LoadMaterialFile(const std::string& path)
+    Material* AssetManager::LoadMaterialFile(const std::string& path, std::string_view name)
     {
         const std::string matKey = OS::FileSystem::Normalize(path);
         if (const std::map<std::string, std::unique_ptr<Material>>::iterator it = m_materials.find(matKey);
@@ -620,10 +595,10 @@ namespace NS
             return nullptr;
         }
 
-        return m_materials.emplace(matKey, CreateMaterial(std::move(fileDesc))).first->second.get();
+        return m_materials.emplace(matKey, CreateMaterial(name, std::move(fileDesc))).first->second.get();
     }
 
-    std::unique_ptr<Material> AssetManager::CreateMaterial(MaterialFileDesc file)
+    std::unique_ptr<Material> AssetManager::CreateMaterial(std::string_view name, MaterialFileDesc file)
     {
         // 相対 path は構築時の baseDir 基準で解決する。絶対 / ドライブ相対は Combine が baseDir を捨てて通す
         const auto resolve = [this](std::string_view p) { return OS::FileSystem::Combine(m_baseDir, p); };
@@ -636,7 +611,7 @@ namespace NS
         {
             textures.push_back(LoadTexture(resolve(texture)));
         }
-        return std::make_unique<Material>(std::move(file), vertexShader, pixelShader, textures);
+        return std::make_unique<Material>(std::string{name}, std::move(file), vertexShader, pixelShader, textures);
     }
 
     void AssetManager::RegisterSharedMaterials()
@@ -658,21 +633,18 @@ namespace NS
         const auto add = [this](const char* name, const MaterialFileDesc& file) {
             if (!m_sharedMaterials.contains(name))
             {
-                m_sharedMaterials.emplace(name, CreateMaterial(file));
+                m_sharedMaterials.emplace(name, CreateMaterial(name, file));
             }
         };
         add("player", player);
         add("water", water);
         add("shadow", shadow);
-    }
 
-    Gfx::D3DMaterial* AssetManager::SharedMaterial(std::string_view name) const noexcept
-    {
-        if (const Material* material = FindSharedMaterial(name))
+        const Material* standIn = FindSharedMaterial("player");
+        for (std::pair<const std::string, std::unique_ptr<Material>>& entry : m_missingMaterials)
         {
-            return material->D3D();
+            entry.second->SetStandIn(standIn);
         }
-        return nullptr;
     }
 
     Material* AssetManager::FindSharedMaterial(std::string_view name) const noexcept
@@ -715,11 +687,13 @@ namespace NS
     void AssetManager::Clear() noexcept
     {
         // material は shader / texture を参照するので先に解放する
+        m_missingMaterials.clear();
         m_sharedMaterials.clear();
         m_materials.clear();
         m_textures.clear();
         m_shaders.clear();
         m_meshes.clear();
+        m_missingMeshes.clear();
         m_skinnedModels.clear();
         m_animationSources.clear();
         m_builtins.clear();

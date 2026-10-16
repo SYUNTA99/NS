@@ -9,19 +9,11 @@
 #include "NSlib/Graphics/DrawItem.h"
 
 #include <string>
-#include <utility>
+#include <string_view>
 #include <vector>
 
 namespace NS
 {
-    namespace Gfx
-    {
-        class D3DMesh;
-    }
-    namespace Gfx
-    {
-        class D3DMaterial;
-    }
     namespace Gfx
     {
         class D3DBuffer;
@@ -39,31 +31,27 @@ namespace NS
     class Model : public Object, public IRenderable
     {
     public:
-        //! メッシュとマテリアルは参照の欄に名前で持ち、SceneActor::ReloadAssets が読む
-        explicit Model(SceneActor* owner) noexcept : m_owner(owner) {}
+        //! メッシュとマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
+        explicit Model(SceneActor* owner);
 
-        //! D3DMaterial を共有したまま配置物ごとに変える個体色。lighting とは別系統
+        //! マテリアルを共有したまま配置物ごとに変える個体色。lighting とは別系統
         void SetBaseColor(const Color& color) noexcept { m_baseColor = color; }
 
-        //! 名前を替えずに、描くマテリアルを替える。nullptr で描画しない。次の読み直しで名前の物に戻る
-        void SetMaterial(Gfx::D3DMaterial* material) noexcept { m_material.SetLoaded(material); }
-        //! 現在の D3DMaterial で非所有。未設定なら nullptr
-        [[nodiscard]] Gfx::D3DMaterial* GetMaterial() const noexcept { return m_material.Get(); }
-
-        //! 名前を替えずに、描くメッシュを替える。nullptr で描画しない。次の読み直しで名前の物に戻る
-        void SetMesh(Gfx::D3DMesh* mesh) noexcept { m_mesh.SetLoaded(mesh); }
-        //! 読んだメッシュを返す。まだ読んでいなければ nullptr
-        [[nodiscard]] const Gfx::D3DMesh* GetMesh() const noexcept { return m_mesh.Get(); }
+        //! @brief 欄を替えずに、描くメッシュを替える。保存する名前は欄のメッシュのまま
+        //! @details nullptr で欄のメッシュに戻す。SceneActor::ReloadAssets も欄のメッシュに戻す
+        void SetMesh(Mesh* mesh) noexcept { m_shownMesh = mesh; }
+        //! 描くメッシュ。SetMesh で替えていればその物、無ければ欄のメッシュ
+        [[nodiscard]] const Mesh* GetMesh() const noexcept;
 
         //! 描くメッシュの名前。組み込みの形の名前か、Content の下のパス。空・読めない時は cube で描く
-        [[nodiscard]] const std::string& MeshRef() const noexcept { return m_mesh.Name(); }
-        //! 違う名前なら、読んだメッシュを空に戻す。次の SceneActor::ReloadAssets で読む
-        void SetMeshRef(std::string ref) { m_mesh.SetName(std::move(ref)); }
+        [[nodiscard]] const std::string& MeshRef() const noexcept { return AssetFieldName(m_mesh); }
+        //! 名前のメッシュをその場で AssetManager::Get() から引き、欄に入れる
+        void SetMeshRef(std::string_view ref) { LoadAssetField(m_mesh, ref); }
 
         //! 描くマテリアルの名前。共有のマテリアルの名前か .mat のパス。空・読めない時は共有の player で描く
-        [[nodiscard]] const std::string& MaterialRef() const noexcept { return m_material.Name(); }
-        //! 違う名前なら、読んだマテリアルを空に戻す。次の SceneActor::ReloadAssets で読む
-        void SetMaterialRef(std::string ref) { m_material.SetName(std::move(ref)); }
+        [[nodiscard]] const std::string& MaterialRef() const noexcept { return AssetFieldName(m_material); }
+        //! 名前のマテリアルをその場で AssetManager::Get() から引き、欄に入れる
+        void SetMaterialRef(std::string_view ref) { LoadAssetField(m_material, ref); }
 
         //! 個体ごとの頂点シェーダーの定数を設定する。同じ SceneActor の Animation がプレイの始まりに設定する
         //! cpuData があれば、描画側が毎回バッファーへ転送してから設定する
@@ -192,16 +180,21 @@ namespace NS
         };
 
         [[nodiscard]] Matrix DrawWorldMatrixWithOffset(float alpha, const Vector3& offset) const noexcept;
+        // 持ち主が出ていて、描く形と material の描く D3DMaterial が揃っている場合 true
+        [[nodiscard]] bool CanDraw(const Material* material) const noexcept;
+        // CanDraw が true の時だけ呼ぶ
         [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Gfx::RenderContext& context,
-                                                     Gfx::D3DMaterial* material,
+                                                     const Material* material,
                                                      const Matrix& world) const noexcept;
 
         // 描く形の局所の境界。差された境界を先に、無ければ mesh の境界。どちらも無ければ nullptr
         [[nodiscard]] const AABB* DrawnLocalBounds() const noexcept;
 
-        AssetRef<Gfx::D3DMesh> m_mesh{};                     // 描くメッシュ
-        AssetRef<Gfx::D3DMaterial> m_material{};             // 描くマテリアル
-        AssetRef<Gfx::D3DMaterial> m_ghostMaterial{"water"}; // 残像と明けの写しのマテリアル
+        // 素材は AssetManager が持つ。欄は nullptr にならない
+        Mesh* m_mesh = nullptr;              // 描くメッシュ
+        Material* m_material = nullptr;      // 描くマテリアル
+        Material* m_ghostMaterial = nullptr; // 残像と明けの写しのマテリアル
+        Mesh* m_shownMesh = nullptr;         // 欄を替えずに描くメッシュ。保存しない
         Color m_baseColor{1.0f, 1.0f, 1.0f};              // 個体色、lighting と別系統。透明度は使わず rgb だけを描く
 
         // 追加 VS 定数。cpuData があれば描画ごとに転送する

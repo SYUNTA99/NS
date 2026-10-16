@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -46,8 +47,6 @@ namespace NS
 
     namespace Gfx
     {
-        class D3DMaterial;
-        class D3DMesh;
         struct AnimClip;
     } // namespace Gfx
     struct SkinnedModel;
@@ -55,10 +54,30 @@ namespace NS
     //! @brief ref の名前の素材を AssetManager::Get() の型ごとの口から読み、ref に持たせる
     //! @details 名前の決まり・読めない時の代わりと警告は口が持つ。参照の欄にできる型は、ここに並ぶ型だけ
     //! 並んでいない型の欄を作ると、その欄の NS_REFLECT_FIELD の行でビルドが落ちる
-    void LoadAssetRef(AssetRef<Gfx::D3DMesh>& ref);
-    void LoadAssetRef(AssetRef<Gfx::D3DMaterial>& ref);
     void LoadAssetRef(AssetRef<const SkinnedModel>& ref);
     void LoadAssetRef(AssetRef<const Gfx::AnimClip>& ref);
+
+    class Mesh;
+    class Material;
+
+    //! 素材の姿を指す欄の型。保存とインスペクタは、指す素材の道の文字列を扱う
+    template <class T> struct IsAssetPointer : std::false_type
+    {
+    };
+    template <> struct IsAssetPointer<Mesh*> : std::true_type
+    {
+    };
+    template <> struct IsAssetPointer<Material*> : std::true_type
+    {
+    };
+
+    //! @brief name の素材を AssetManager::Get() の型ごとの口から引き、field に入れる
+    //! @details 読めない名前でも、その名前を持つ中身の空の素材が入るので、field は nullptr にならない
+    void LoadAssetField(Mesh*& field, std::string_view name);
+    void LoadAssetField(Material*& field, std::string_view name);
+    //! field が指す素材の道。nullptr なら空
+    [[nodiscard]] const std::string& AssetFieldName(const Mesh* field) noexcept;
+    [[nodiscard]] const std::string& AssetFieldName(const Material* field) noexcept;
 
     class SceneActor;
 

@@ -31,11 +31,11 @@ namespace NS
 
     template <class T> constexpr AssetKind AssetKindOf() noexcept
     {
-        if constexpr (std::is_same_v<T, AssetRef<Gfx::D3DMesh>>)
+        if constexpr (std::is_same_v<T, Mesh*>)
         {
             return AssetKind::Mesh;
         }
-        else if constexpr (std::is_same_v<T, AssetRef<Gfx::D3DMaterial>>)
+        else if constexpr (std::is_same_v<T, Material*>)
         {
             return AssetKind::Material;
         }
@@ -67,7 +67,7 @@ namespace NS
         String, // 欄は std::string か EffectName。取得・設定の関数が受け渡すのは std::string
         ActorRef,
         Curve,
-        AssetRef // 欄は AssetRef<T>。取得・設定の関数が受け渡すのは名前の std::string
+        AssetRef // 欄は AssetRef<T> か素材の姿のポインタ。取得・設定の関数が受け渡すのは名前の std::string
     };
 
     //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
@@ -105,7 +105,7 @@ namespace NS
         {
             return FieldType::Curve;
         }
-        else if constexpr (IsAssetRef<T>::value)
+        else if constexpr (IsAssetRef<T>::value || IsAssetPointer<T>::value)
         {
             return FieldType::AssetRef;
         }
@@ -113,7 +113,7 @@ namespace NS
         {
             static_assert(std::is_same_v<T, Vector3>,
                           "FieldTypeOf の T は float / int / bool / NS::Vector3 / NS::Quaternion / NS::Color / "
-                          "std::string / EffectName / ActorRef / Curve / AssetRef<T> のいずれか");
+                          "std::string / EffectName / ActorRef / Curve / AssetRef<T> / Mesh* / Material* のいずれか");
             return FieldType::Vector3;
         }
     }
@@ -134,6 +134,10 @@ namespace NS
         {
             *static_cast<std::string*>(out) = source.Name();
         }
+        else if constexpr (IsAssetPointer<Field>::value)
+        {
+            static_cast<std::string*>(out)->assign(AssetFieldName(source));
+        }
         else if constexpr (std::is_same_v<Field, EffectName>)
         {
             *static_cast<std::string*>(out) = source.name;
@@ -150,6 +154,11 @@ namespace NS
         {
             LoadAssetRef(field);
         }
+        else if constexpr (IsAssetPointer<Field>::value)
+        {
+            // 同じ道で引き直す。共有のマテリアルを登録した後や、読めなかった .mat を直した後は別の素材が返る
+            LoadAssetField(field, AssetFieldName(field));
+        }
     }
 
     template <class Field> void AssignFieldValue(Field& target, const void* in) noexcept
@@ -161,6 +170,10 @@ namespace NS
         else if constexpr (IsAssetRef<Field>::value)
         {
             target.SetName(*static_cast<const std::string*>(in));
+        }
+        else if constexpr (IsAssetPointer<Field>::value)
+        {
+            LoadAssetField(target, *static_cast<const std::string*>(in));
         }
         else if constexpr (std::is_same_v<Field, EffectName>)
         {

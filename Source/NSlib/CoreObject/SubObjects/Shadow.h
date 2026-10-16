@@ -10,24 +10,13 @@
 
 namespace NS
 {
-    namespace Gfx
-    {
-        class D3DMesh;
-    }
-    namespace Gfx
-    {
-        class D3DMaterial;
-    }
-} // namespace NS
-
-namespace NS
-{
     //! 真下の地形へ丸影を描く。地面がなければ描かず、高さに応じて薄く小さくする
     //! 位置は描画時に衝突へ問い合わせ、過去の命中位置を保持しない
     class Shadow : public Object, public IRenderable
     {
     public:
-        explicit Shadow(SceneActor* owner) noexcept : m_owner(owner) {}
+        //! 板とマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
+        explicit Shadow(SceneActor* owner);
 
         //! 真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
         void Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out) override;
@@ -57,8 +46,9 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        AssetRef<Gfx::D3DMesh> m_mesh{"shadowQuad"};     // 影を描く板
-        AssetRef<Gfx::D3DMaterial> m_material{"shadow"}; // 影のマテリアル
+        // 素材は AssetManager が持つ。欄は nullptr にならない
+        Mesh* m_mesh = nullptr;         // 影を描く板
+        Material* m_material = nullptr; // 影のマテリアル
 
         float m_baseDiameter = 1.2f;   // 接地時の影の直径
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離

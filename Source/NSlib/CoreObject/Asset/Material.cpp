@@ -43,11 +43,12 @@ namespace NS
         return "Opaque";
     }
 
-    Material::Material(MaterialFileDesc file,
+    Material::Material(std::string path,
+                       MaterialFileDesc file,
                        Shader* vertexShader,
                        Shader* pixelShader,
                        std::span<Texture* const> textures)
-        : m_file(std::move(file)), m_vertexShader(vertexShader), m_pixelShader(pixelShader)
+        : m_path(std::move(path)), m_file(std::move(file)), m_vertexShader(vertexShader), m_pixelShader(pixelShader)
     {
         NS_ASSERT(Graphics, vertexShader != nullptr && pixelShader != nullptr, "マテリアルにシェーダーが無い");
 
@@ -66,11 +67,37 @@ namespace NS
         }
     }
 
+    Material::Material(std::string path) : m_path(std::move(path)) {}
+
     Material::~Material() noexcept = default;
+
+    const std::string& Material::Path() const noexcept
+    {
+        return m_path;
+    }
+
+    bool Material::IsEmpty() const noexcept
+    {
+        return m_material == nullptr;
+    }
 
     Gfx::D3DMaterial* Material::D3D() const noexcept
     {
-        return m_material.get();
+        if (m_material != nullptr)
+        {
+            return m_material.get();
+        }
+        if (m_standIn != nullptr)
+        {
+            return m_standIn->D3D();
+        }
+        return nullptr;
+    }
+
+    void Material::SetStandIn(const Material* standIn) noexcept
+    {
+        NS_ASSERT(Graphics, standIn != this, "マテリアルの代わりに自分を指そうとしている");
+        m_standIn = standIn;
     }
 
     Shader* Material::VertexShader() const noexcept

@@ -220,6 +220,11 @@ namespace NS
     void SceneActor::ReloadAssets()
     {
         LoadAssetRefs(*this);
+        // 差したメッシュを残すと、骨付きのモデルの欄を空にした後も前のメッシュを描く。差し直すのは OnAssetsLoaded
+        if (m_model)
+        {
+            m_model->SetMesh(nullptr);
+        }
         OnAssetsLoaded();
     }
 
