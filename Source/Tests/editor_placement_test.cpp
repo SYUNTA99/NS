@@ -72,7 +72,7 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
     EXPECT_EQ(std::string_view{again->ClassName()}, "GoalActor");
 }
 
-// 参照の実体化は AssetManager を差した Scene だけが行う。この試しは差していないので実在しない file で足りる
+// この試しは置いた物の種類と欄の名前だけを見るので、実在しない file で足りる
 TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
 {
     NS::Scene scene;

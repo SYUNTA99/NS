@@ -85,7 +85,7 @@ namespace NS
 } // namespace NS
 
 //! 型をクラス名で自己登録する。その型の .cpp で 1 度だけ書く。#Type が保存形式と検索のキーになる
-//! SubObject は既定コンストラクタで生成されるので、値はリフレクション field と ResolveAssets で後から入れる
+//! SubObject は既定コンストラクタで生成されるので、値はリフレクション field と参照の欄で後から入れる
 #define NS_CLASS(Type)                                                                                                 \
     namespace                                                                                                          \
     {                                                                                                                  \

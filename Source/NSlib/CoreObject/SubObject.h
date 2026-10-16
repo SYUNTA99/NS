@@ -7,7 +7,6 @@
 
 namespace NS
 {
-    class AssetManager;
     class SceneActor;
     class Scene;
     class Transform;
@@ -36,9 +35,6 @@ namespace NS
 
         //! 持ち主が出ているか。持ち主に着く前は出ていると答える
         [[nodiscard]] bool IsOwnerAppeared() const noexcept;
-
-        //! 配置物の組み立てが値の適用後に呼ぶ。AssetManager が無い間 (テスト等) は呼ばれない
-        virtual void ResolveAssets(AssetManager&) {}
 
         NS_REFLECT_NONE(SubObject, Object)
 

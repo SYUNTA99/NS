@@ -122,8 +122,8 @@ protected:
 };
 NS_CLASS(SubObjectInitProbeActor)
 
-// 素材を読んだ時に、持ち主がシーンの一覧に居たか・始まっていたかを控える
-class AssetTimingProbe final : public NS::SubObject
+// 素材を読んだ時に、シーンの一覧に居たか・始まっていたかを控える
+class AssetTimingProbeActor final : public NS::SceneActor
 {
 public:
     int loads = 0;
@@ -131,46 +131,34 @@ public:
     bool startedAtLoad = false;
     bool started = false;
 
-    void ResolveAssets(NS::AssetManager&) override
+    NS_REFLECT_NONE(AssetTimingProbeActor, NS::SceneActor)
+
+    void OnStart() override
     {
+        started = true;
+        NS::SceneActor::OnStart();
+    }
+
+protected:
+    void OnAssetsLoaded() override
+    {
+        NS::SceneActor::OnAssetsLoaded();
         ++loads;
         startedAtLoad = started;
-        // 一時の個体は id を持たないので、一覧を端から見る
+        // 一時のアクターは id を持たないので、一覧を端から見る
         inListAtLoad = false;
-        const NS::Scene* scene = Owner()->OwningScene();
+        const NS::Scene* scene = OwningScene();
         if (scene == nullptr)
         {
             return;
         }
         for (const NS::SceneActor* actor : scene->Objects())
         {
-            if (actor == Owner())
+            if (actor == this)
             {
                 inListAtLoad = true;
             }
         }
-    }
-};
-
-class AssetTimingProbeActor final : public NS::SceneActor
-{
-public:
-    NS_REFLECT_BEGIN(AssetTimingProbeActor, NS::SceneActor)
-    NS_REFLECT_SUBOBJ(probe, "Probe")
-    NS_REFLECT_END()
-
-    std::unique_ptr<AssetTimingProbe> probe;
-
-    void OnStart() override
-    {
-        probe->started = true;
-        NS::SceneActor::OnStart();
-    }
-
-protected:
-    void OnInit() override
-    {
-        CreateSubObj(probe);
     }
 };
 NS_CLASS(AssetTimingProbeActor)
@@ -258,10 +246,10 @@ TEST(SubObject, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
         SCOPED_TRACE(path);
         const AssetTimingProbeActor* actor = NS::Cast<AssetTimingProbeActor>(built);
         ASSERT_NE(actor, nullptr);
-        EXPECT_EQ(actor->probe->loads, 1);
-        EXPECT_FALSE(actor->probe->inListAtLoad);
-        EXPECT_FALSE(actor->probe->startedAtLoad);
-        EXPECT_TRUE(actor->probe->started);
+        EXPECT_EQ(actor->loads, 1);
+        EXPECT_FALSE(actor->inListAtLoad);
+        EXPECT_FALSE(actor->startedAtLoad);
+        EXPECT_TRUE(actor->started);
     };
 
     nlohmann::json placed = NS::MakePrototypeJson<AssetTimingProbeActor>();
@@ -283,7 +271,7 @@ TEST(SubObject, ActorLoadsAssetsWithoutAssetManagerScope)
     NS::Scene scene;
     const AssetTimingProbeActor* actor = scene.SpawnTransient<AssetTimingProbeActor>();
     ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(actor->probe->loads, 1);
+    EXPECT_EQ(actor->loads, 1);
 }
 
 TEST(SubObject, PrototypeJsonListsTheSubObjectsInit)

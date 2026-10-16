@@ -256,10 +256,6 @@ namespace NS
 
     void SceneActor::OnAssetsLoaded()
     {
-        // TODO: 部品の ResolveAssets を一列に呼んでいる。部品の素材を参照の欄へ移し終えたら、このループと ResolveAssets を消す
-        ForEachReflectedSubObj(*this,
-                               [&](const SubObjectDesc&, SubObject* subObject) { subObject->ResolveAssets(AssetManager::Get()); });
-
         // 読んだ素材から作る物。骨付きのメッシュを Model に差してから、Model のメッシュの名前で当たりを作る
         if (m_animation)
         {
