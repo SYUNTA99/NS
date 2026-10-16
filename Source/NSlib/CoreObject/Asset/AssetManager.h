@@ -6,6 +6,7 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Animation/Skeleton.h"
+#include "NSlib/Core/Geometry/GltfParser.h"
 
 #include <map>
 #include <memory>
@@ -15,14 +16,6 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-
-namespace NS
-{
-    namespace Gfx
-    {
-        struct AnimSource;
-    }
-} // namespace NS
 
 namespace NS
 {
@@ -50,6 +43,14 @@ namespace NS
     //! @details テクスチャが k_MaterialTextureSlots 枚より多い時と、基本の色が数でない時は nullopt
     //! 鍵の並びと書き方は今の .mat と同じで、値を変えずに書くと同じ文字列になる
     [[nodiscard]] std::optional<std::string> MakeMaterialJson(const MaterialFileDesc& file);
+
+    //! @brief 道の glTF を読んで形にする。外部のバッファも同じ読み方で、本体と同じフォルダから読む
+    //! @details 本体か外部のバッファを読めない時と、中身が壊れている時はログを出して空を返す
+    [[nodiscard]] MeshGeometry LoadGltfMesh(std::string_view path);
+    //! 読み方と失敗の扱いは LoadGltfMesh と同じ。失敗した時は IsValid() が false
+    [[nodiscard]] SkinnedMeshData LoadGltfSkinnedMesh(std::string_view path);
+    //! 読み方と失敗の扱いは LoadGltfMesh と同じ。失敗した時は IsValid() が false
+    [[nodiscard]] AnimSource LoadGltfAnimationSource(std::string_view path);
 
     //! @brief 読んだ骨付きのモデル 1 件。AssetManager が持ち、Clear まで有効
     //! @details 読んだ後は書き換えないので、何体のアクターでも同じ物を使う。再生の状態はアクターの側が持つ
@@ -162,7 +163,7 @@ namespace NS
         // 本当の場所の skinned glTF を読んで記録する。読めなければ nullptr。name はメッシュが持つ道
         [[nodiscard]] const SkinnedModel* LoadSkinnedModelFile(std::string_view path, std::string_view name);
         // アニメーションの glTF を path キーで 1 回だけ読む。読めなかった path も覚え、Clear まで読み直さない
-        [[nodiscard]] const Gfx::AnimSource* GetOrLoadAnimationSource(std::string_view path);
+        [[nodiscard]] const AnimSource* GetOrLoadAnimationSource(std::string_view path);
 
         std::string m_baseDir; // 相対 path 解決の基準ディレクトリ
         std::map<std::string, std::unique_ptr<Shader>> m_shaders;
@@ -175,7 +176,7 @@ namespace NS
         std::map<std::string, std::unique_ptr<Material>> m_sharedMaterials;  // コードで組む共有のマテリアル
         std::map<std::string, std::unique_ptr<Material>> m_missingMaterials; // 名前キー。読めなかった名前
         std::map<std::string, SkinnedModel> m_skinnedModels; // skinned glTF。挿入後に書き換えず、配った参照を安定させる
-        std::map<std::string, std::unique_ptr<Gfx::AnimSource>>
+        std::map<std::string, std::unique_ptr<AnimSource>>
             m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録
     };
 

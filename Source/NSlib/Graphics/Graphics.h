@@ -9,7 +9,6 @@
 #include "NSlib/Graphics/D3dCommon.h"
 #include "NSlib/Graphics/DebugDraw.h"
 #include "NSlib/Graphics/EffectScene.h"
-#include "NSlib/Graphics/GltfLoader.h"
 #include "NSlib/Graphics/D3DGpuTimer.h"
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/D3DMaterial.h"

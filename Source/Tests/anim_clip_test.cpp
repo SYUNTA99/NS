@@ -1,6 +1,6 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/Core/Animation/AnimClip.h"
-#include "NSlib/Graphics/GltfLoader.h"
+#include "NSlib/Core/Geometry/GltfParser.h"
 #include "NSlib/Core/Animation/Retarget.h"
 #include "NSlib/Core/Animation/Skeleton.h"
 #include "NSlib/Windows/FileSystem.h"
@@ -45,7 +45,7 @@ TEST(AnimClip, LoadedTracksNameTheBonesOfTheirModel)
     const NS::Anim::AnimClip* run = assets.LoadAnimClip("Assets/Models/Xbot.glb#run");
     ASSERT_NE(run, nullptr);
     ASSERT_FALSE(run->tracks.empty());
-    const NS::Gfx::AnimSource source = NS::Gfx::LoadGltfAnimationSource(NS::OS::FileSystem::Combine(
+    const NS::AnimSource source = NS::LoadGltfAnimationSource(NS::OS::FileSystem::Combine(
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Models"), "Xbot.glb"));
     ASSERT_TRUE(source.IsValid());
     for (const int bone : NS::Anim::FindTrackBones(*run, source.skeleton))

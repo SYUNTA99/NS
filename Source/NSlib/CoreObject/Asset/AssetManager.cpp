@@ -8,7 +8,6 @@
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
-#include "NSlib/Graphics/GltfLoader.h"
 #include "NSlib/Graphics/D3DMaterial.h"
 #include "NSlib/Graphics/D3DMesh.h"
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
@@ -242,6 +241,41 @@ namespace NS
         return text;
     }
 
+    namespace
+    {
+        template <class Result>
+        [[nodiscard]] Result LoadGltfFile(std::string_view path, Result (*parse)(const GltfFileDesc&))
+        {
+            const std::optional<std::vector<std::byte>> bytes = OS::FileSystem::ReadAllBytes(path);
+            if (!bytes)
+            {
+                return Result{};
+            }
+            const std::string directory = OS::FileSystem::ParentDirectory(path);
+            GltfFileDesc file{};
+            file.bytes = *bytes;
+            file.name = path;
+            file.baseDirectory = directory;
+            file.readFile = [](std::string_view bufferPath) { return OS::FileSystem::ReadAllBytes(bufferPath); };
+            return parse(file);
+        }
+    } // namespace
+
+    MeshGeometry LoadGltfMesh(std::string_view path)
+    {
+        return LoadGltfFile(path, &ParseGltfMesh);
+    }
+
+    SkinnedMeshData LoadGltfSkinnedMesh(std::string_view path)
+    {
+        return LoadGltfFile(path, &ParseGltfSkinnedMesh);
+    }
+
+    AnimSource LoadGltfAnimationSource(std::string_view path)
+    {
+        return LoadGltfFile(path, &ParseGltfAnimationSource);
+    }
+
     AssetManager::AssetManager(std::string baseDir) noexcept : m_baseDir(std::move(baseDir)) {}
     AssetManager::~AssetManager() = default;
 
@@ -318,7 +352,7 @@ namespace NS
         // 当たりは MeshCollision が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
         std::unique_ptr<Gfx::D3DMesh> drawn;
         std::unique_ptr<Phys::MeshShape> collision;
-        const MeshGeometry geom = Gfx::LoadGltfMesh(key);
+        const MeshGeometry geom = LoadGltfMesh(key);
         if (geom.vertices.empty() || geom.indices.empty())
         {
             NS_LOG_WARN(Graphics, "AssetManager: mesh の読込失敗 / 空: {}", key);
@@ -456,7 +490,7 @@ namespace NS
             return &it->second;
         }
 
-        Gfx::SkinnedMeshData data = Gfx::LoadGltfSkinnedMesh(key);
+        SkinnedMeshData data = LoadGltfSkinnedMesh(key);
         if (!data.IsValid())
         {
             NS_LOG_ERROR(Graphics, "AssetManager: skinned glTF 読込失敗: {}", key);
@@ -490,18 +524,18 @@ namespace NS
         return &m_skinnedModels.emplace(key, std::move(model)).first->second;
     }
 
-    const Gfx::AnimSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
+    const AnimSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
     {
         const std::string key = OS::FileSystem::Normalize(path);
         // 空の項目は読み込み失敗の記録。get() が nullptr を返し、再読み込みを避ける
-        if (const std::map<std::string, std::unique_ptr<Gfx::AnimSource>>::iterator it =
+        if (const std::map<std::string, std::unique_ptr<AnimSource>>::iterator it =
                 m_animationSources.find(key);
             it != m_animationSources.end())
         {
             return it->second.get();
         }
 
-        Gfx::AnimSource source = Gfx::LoadGltfAnimationSource(key);
+        AnimSource source = LoadGltfAnimationSource(key);
         if (!source.IsValid())
         {
             NS_LOG_WARN(Graphics, "AssetManager: アニメーション glTF の読込失敗 / 空: {}", key);
@@ -510,8 +544,8 @@ namespace NS
             return nullptr;
         }
 
-        std::unique_ptr<Gfx::AnimSource> owned = std::make_unique<Gfx::AnimSource>(std::move(source));
-        const Gfx::AnimSource* raw = owned.get();
+        std::unique_ptr<AnimSource> owned = std::make_unique<AnimSource>(std::move(source));
+        const AnimSource* raw = owned.get();
         m_animationSources.emplace(key, std::move(owned));
         return raw;
     }
@@ -530,7 +564,7 @@ namespace NS
             NS_LOG_WARN(Scene, "クリップ {} は ContentRoot の外を指すので読まない", name);
             return nullptr;
         }
-        const Gfx::AnimSource* source = GetOrLoadAnimationSource(*path);
+        const AnimSource* source = GetOrLoadAnimationSource(*path);
         if (source == nullptr)
         {
             // 読めなかった理由は GetOrLoadAnimationSource が報告している

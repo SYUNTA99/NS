@@ -263,7 +263,7 @@ project "effekseer"
 -- ヘッダだけの依存 (Utility)
 --   ビルドする物が無く、 使う側が includedirs で読むだけ。 同梱の依存を Solution Explorer に
 --   全部並べるために、 何もビルドしないプロジェクトとして置く。 リンクにもビルド順にも関わらない
---   cgltf の実装は NSlib の GltfLoader.cpp がコンパイルする
+--   cgltf の実装は NSlib の Core/Geometry/GltfParser.cpp がコンパイルする
 --============================================================================
 local headerOnlyLibraries = {
     { name = "cgltf", headers = { "Source/ThirdParty/cgltf/**.h" } },

@@ -1,7 +1,6 @@
 #include "Editor/AssetPicker.h"
 
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/Graphics/GltfLoader.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
@@ -57,7 +56,7 @@ namespace NS
                 const std::string location = OS::FileSystem::ParentDirectory(relative);
                 if (kind == AssetKind::Animation)
                 {
-                    const Gfx::AnimSource source = Gfx::LoadGltfAnimationSource(file);
+                    const AnimSource source = LoadGltfAnimationSource(file);
                     for (const Anim::AnimClip& clip : source.animations)
                     {
                         if (clip.IsValid())

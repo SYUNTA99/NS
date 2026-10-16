@@ -1,9 +1,9 @@
-#include "NSlib/Graphics/GltfLoader.h"
+#include "NSlib/Core/Geometry/GltfParser.h"
 
 #include <gtest/gtest.h>
 
-#include <filesystem>
-#include <fstream>
+#include <cstddef>
+#include <span>
 #include <string>
 
 // 壊れた glTF を読み込みの入口で断る事を縛る
@@ -30,36 +30,25 @@ namespace
                R"("nodes":[{"mesh":0}],"scenes":[{"nodes":[0]}],"scene":0})";
     }
 
-    std::filesystem::path TestDirectory()
+    NS::MeshGeometry ParseText(const std::string& text)
     {
-        return std::filesystem::temp_directory_path() / "ns_gltf_validate_test";
+        NS::GltfFileDesc file{};
+        file.bytes = std::as_bytes(std::span<const char>{text.data(), text.size()});
+        file.name = "triangle.gltf";
+        return NS::ParseGltfMesh(file);
     }
-
-    std::string WriteGltf(const std::string& name, const std::string& text)
-    {
-        std::filesystem::create_directories(TestDirectory());
-        const std::filesystem::path path = TestDirectory() / name;
-        std::ofstream(path, std::ios::binary) << text;
-        return path.string();
-    }
-
-    class GltfValidate : public ::testing::Test
-    {
-    protected:
-        void TearDown() override { std::filesystem::remove_all(TestDirectory()); }
-    };
 } // namespace
 
 // 数の揃ったファイルは読める。下の試しが別の理由で空になっていない事の確かめ
-TEST_F(GltfValidate, MatchingCountsLoad)
+TEST(GltfValidate, MatchingCountsLoad)
 {
-    const NS::MeshGeometry geom = NS::Gfx::LoadGltfMesh(WriteGltf("matching.gltf", TriangleGltf(3)));
+    const NS::MeshGeometry geom = ParseText(TriangleGltf(3));
     EXPECT_EQ(geom.vertices.size(), 3u);
 }
 
 // TEXCOORD_0 が POSITION より少ないファイルは、読まずに空を返す
-TEST_F(GltfValidate, MismatchedAttributeCountIsRejected)
+TEST(GltfValidate, MismatchedAttributeCountIsRejected)
 {
-    const NS::MeshGeometry geom = NS::Gfx::LoadGltfMesh(WriteGltf("mismatched.gltf", TriangleGltf(1)));
+    const NS::MeshGeometry geom = ParseText(TriangleGltf(1));
     EXPECT_TRUE(geom.vertices.empty());
 }

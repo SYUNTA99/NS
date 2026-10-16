@@ -12,6 +12,7 @@
 #include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Animation/Retarget.h"
 #include "NSlib/Core/Animation/Skeleton.h"
+#include "NSlib/Core/Geometry/GltfParser.h"
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Core/Geometry/Vertex.h"
 
