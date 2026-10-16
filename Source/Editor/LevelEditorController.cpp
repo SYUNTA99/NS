@@ -1360,7 +1360,7 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
         NS_LOG_WARN(App, "種類の既定値 {} をファイルへ書けなかった。今の起動の間だけ効く", className);
     }
 
-    // 付いて行く個体へ新しい値を写す。資産の参照の欄なら実体も引き直す
+    // 付いて行くアクターへ新しい値を写す。素材の欄は道を写すので、姿は引き直して差し替える
     nlohmann::json fields = nlohmann::json::object();
     fields[std::string{fieldName}] = FieldJson(*comp, fieldName);
     for (NS::SceneActor* follower : followers)

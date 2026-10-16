@@ -143,7 +143,7 @@ namespace NS
         //! 世界から外し、全ての部品の OnEndPlay を呼ぶ
         virtual void OnEndPlay();
 
-        //! @brief 部品の参照の欄を読み直し、続けて OnAssetsLoaded を呼ぶ
+        //! @brief 部品の素材の欄を引き直し、続けて OnAssetsLoaded を呼ぶ
         //! @details 作る時は Init が欄を書いた直後に呼ぶ。エディタやシーンが欄を書き換えた後も、これを呼んで読み直す
         void ReloadAssets();
 
@@ -162,7 +162,7 @@ namespace NS
         // 基底の部品の型を替える派生は、基底の OnInit を呼ばずに自分で作る
         //! 所属の Scene は入る道によって付いていないので、ここでは読まない
         virtual void OnInit() {}
-        //! @brief 参照の欄を読んだ直後に呼ぶ。読んだ物から作る物を、部品を名指しで呼んで作る
+        //! @brief 素材の欄を引いた直後に呼ぶ。読んだ物から作る物を、部品を名指しで呼んで作る
         //! @details 作る時と ReloadAssets の両方で呼ぶので、何回呼ばれても同じ姿になるように書く。上書きする派生は基底も呼ぶ
         virtual void OnAssetsLoaded();
 

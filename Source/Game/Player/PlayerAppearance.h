@@ -33,7 +33,7 @@ namespace GL
         struct PlayerMotion;
 
         //! @brief 自機の立ち姿・玉と、描画時の回転・変形を管理する部品
-        //! @details 姿のメッシュは参照の欄から読み、姿ごとの倍率で大きさを合わせる。当たりの寸法には付いて行かない
+        //! @details 姿のメッシュは素材の姿のポインタの欄 (NS::Mesh*) に持ち、姿ごとの倍率で大きさを合わせる。当たりの寸法には付いて行かない
         // TODO: 部分的な JSON 適用では Model の undo を再反映できない。ResetFromJson で直る
         class PlayerAppearance : public NS::Object
         {
