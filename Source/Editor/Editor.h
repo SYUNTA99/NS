@@ -51,7 +51,7 @@ private:
     //! @return 帯の高さ。ドックホストはこの分だけ上端を空ける
     [[nodiscard]] static float RenderPlayToolbar(LevelEditorController& editor) noexcept;
 
-    //! 全面化中のパネルだけをワークエリア全面へ描く。ドックと他パネルは発行しない
+    //! 全面化中のパネルだけをワークエリア全面へ描く。ドックの配置は別途維持する
     void RenderMaximizedPanel(LevelEditorController& editor, float topOffset) noexcept;
 
     //! 編集モードのキー操作を処理する。Delete = 削除、Ctrl+D = 複製、F = 選択物へ寄る

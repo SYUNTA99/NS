@@ -651,6 +651,7 @@ project "Tests"
         "Source/Editor/HitTimelineEdit.cpp",
         "Source/Editor/HitTimelinePanel.cpp",
         "Source/Editor/Timeline.cpp",
+        "Source/Editor/DockController.cpp",
         "Source/Editor/TimelinePreview.cpp",
         "Source/Editor/GameViewPanel.cpp",
         "Source/Editor/ViewportSurface.cpp",

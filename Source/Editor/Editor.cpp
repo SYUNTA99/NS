@@ -54,6 +54,10 @@ void Editor::OnAttach()
     {
         NS_LOG_ERROR(App, "ImGuiContext 構築失敗、 編集 UI は機能しない");
     }
+    else
+    {
+        ImGui::GetIO().ConfigWindowsMoveFromTitleBarOnly = true;
+    }
 
     // Platform は UI 実装を知らないので、転送は hook 経由にする
     app->Window().SetMessageHook([imgui = m_imgui.get()](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -79,6 +83,7 @@ void Editor::OnAttach()
 
 void Editor::OnDetach()
 {
+    m_dock.ExitMaximize();
     m_hitTimeline.ResetPreview();
     // overlay は逆順で OnDetach されるので、scene を破棄する Game::OnDetach より先にここが走る
     if (m_controller)
@@ -153,19 +158,18 @@ void Editor::OnRender()
         // メニューバーは帯の分だけビューポート作業領域を下げるので、ツールバーより先に置いて上端を確保する
         RenderMainMenuBar(editor);
         const float toolbarHeight = RenderPlayToolbar(editor);
+        m_dock.RenderDockSpaceHost(toolbarHeight);
 
         if (!m_dock.IsMaximized())
         {
             // 個体一覧と Inspector はプレイ中も出す。PlayerActor / Camera
             // を選んで操作感をライブ調整できるようにするため DockSpace も両モードで毎フレーム置き、edit
             // で組んだドッキングがプレイ移行で崩れないようにする
-            m_dock.RenderDockSpaceHost(toolbarHeight);
             m_sceneView.Render(editor);
             m_gameView.Render(editor);
-            if (!playMode)
-            {
-                m_toolMode.Render(editor);
-            }
+            ImGui::BeginDisabled(playMode);
+            m_toolMode.Render(editor);
+            ImGui::EndDisabled();
 
             m_actorList.Render(editor);
             m_inspector.Render(editor);
@@ -195,7 +199,7 @@ void Editor::OnRender()
         }
         else
         {
-            // 全面化中はドックも他パネルも発行せず、対象 1 枚だけをワークエリア全面へ描く
+            // ドックの配置を維持したまま、対象 1 枚をワークエリア全面へ描く
             RenderMaximizedPanel(editor, toolbarHeight);
         }
 
@@ -206,13 +210,14 @@ void Editor::OnRender()
         }
         HandleEditShortcuts(editor);
 
-        // どちらの表示でもパネル右上に全面化 / 復元ボタンを重ねる
+        // パネルの内容に重ならないショートカットで全面化と復元を切り替える
         m_dock.RenderMaximizeButton();
 
         m_lastModeWasPlay = playMode;
     }
     else
     {
+        m_dock.RenderDockSpaceHost(0.0f, true);
         // F5 の全画面直描き中はパネル矩形が無いので予備の全画面矩形へ戻し、自由視点の上書きも外す
         m_sceneView.ClearForHiddenUi(editor);
     }
@@ -509,6 +514,7 @@ void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
             ImGui::PopStyleColor();
             ImGui::EndMenu();
         }
+        m_dock.RenderWindowMenu();
         ImGui::PopStyleColor();
 
         ImGui::EndMainMenuBar();
@@ -533,6 +539,7 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
 
     // ドックから外し、ワークエリア全面へ固定する。SetNext* は次の Begin にだけ効く
     ImGui::SetNextWindowPos(hostPos, ImGuiCond_Always);
+    ImGui::SetNextWindowViewport(vp->ID);
     ImGui::SetNextWindowSize(hostSize, ImGuiCond_Always);
     ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
 
@@ -571,7 +578,13 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
     }
     else if (name == NS::Editor::k_PanelEditMode)
     {
+        ImGui::BeginDisabled(editor.CurrentMode() == LevelEditorController::Mode::Play);
         m_toolMode.Render(editor);
+        ImGui::EndDisabled();
+    }
+    else if (name == NS::Editor::k_PanelHitTimeline)
+    {
+        m_hitTimeline.Render(editor);
     }
     else
     {

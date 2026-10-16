@@ -1,9 +1,13 @@
 #include "Editor/DockController.h"
 
 #include "Editor/PanelIds.h"
+#include "NSlib/Windows/Filesystem.h"
 
+#include <algorithm>
 #include <cstddef>
-#include <cstdio>
+#include <cstring>
+#include <optional>
+#include <span>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -17,11 +21,9 @@ namespace NS
 #if NS_EDITOR_ENABLED
         namespace
         {
-            // 右上に浮かべる全面化ボタンの共通フラグ
-            constexpr ImGuiWindowFlags k_FloatingButtonFlags =
-                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
-                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+            const char* const k_Panels[] = {k_PanelScene, k_PanelGame, k_PanelActorList, k_PanelInspector,
+                                             k_PanelConsole, k_PanelAssets, k_PanelEditMode, k_PanelHitTimeline};
+            const ImGuiID k_DockspaceId = ImHashStr("EditorDockSpaceV11");
 
             void SelectDefaultTab(ImGuiID nodeId, const char* windowName)
             {
@@ -59,7 +61,7 @@ namespace NS
                 ImGui::DockBuilderDockWindow(k_PanelConsole, bottomId);
                 ImGui::DockBuilderDockWindow(k_PanelAssets, bottomId);
                 ImGui::DockBuilderDockWindow(k_PanelHitTimeline, bottomId);
-                // 中央ノードは窓を割り当てず、Scene / Game の両方をドックする。映像を持つのは前面の側だけ
+                // Scene と Game の初期配置は同じタブ群にする。分割後は両方の映像を描ける
                 ImGui::DockBuilderDockWindow(k_PanelScene, centerId);
                 ImGui::DockBuilderDockWindow(k_PanelGame, centerId);
 
@@ -71,50 +73,10 @@ namespace NS
                 ImGui::DockBuilderFinish(dockspaceId);
             }
 
-            // タブバーが畳まれた単独タブのパネルへ、右上に浮かせる全面化ボタンを出す。押下で true
-            bool FloatingMaximizeButton(const char* buttonId, const ImGuiWindow* panel)
-            {
-                constexpr float k_Btn = 22.0f;
-                constexpr float k_PadX = 3.0f;
-                constexpr float k_PadY = -3.0f; // タブ行へ乗せ、少し上へ
-                // タブバーのある枠はタブ行の高さに合わせたいので、ノードがあればノード上端・右端を使う
-                ImVec2 topRight{panel->Pos.x + panel->Size.x, panel->Pos.y};
-                if (panel->DockNode != nullptr)
-                {
-                    topRight = ImVec2{panel->DockNode->Pos.x + panel->DockNode->Size.x, panel->DockNode->Pos.y};
-                }
-                const ImVec2 anchor{topRight.x - k_Btn - k_PadX, topRight.y + k_PadY};
-                ImGui::SetNextWindowPos(anchor, ImGuiCond_Always);
-                // 浮いた小窓に見せないよう枠と余白を消し、アイコン 1 個分だけの当たりにする
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0.0f, 0.0f});
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.0f, 0.0f, 0.0f, 0.45f});
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{1.0f, 1.0f, 1.0f, 0.22f});
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{1.0f, 1.0f, 1.0f, 0.35f});
-                bool pressed = false;
-                if (ImGui::Begin(buttonId, nullptr, k_FloatingButtonFlags | ImGuiWindowFlags_NoBackground))
-                {
-                    // ドック内パネルの上に出す時、そのパネルへ焦点が移ると背後へ潜るので毎フレーム前面へ出す
-                    ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
-                    if (ImGui::Button("□", ImVec2{k_Btn, k_Btn}))
-                    {
-                        pressed = true;
-                    }
-                    if (ImGui::IsItemHovered())
-                    {
-                        ImGui::SetTooltip("このパネルを全面化");
-                    }
-                }
-                ImGui::End();
-                ImGui::PopStyleColor(3);
-                ImGui::PopStyleVar(3);
-                return pressed;
-            }
         } // namespace
 #endif
 
-        void DockController::RenderDockSpaceHost(float topOffset) noexcept
+        void DockController::RenderDockSpaceHost(float topOffset, bool keepAliveOnly) noexcept
         {
 #if NS_EDITOR_ENABLED
             const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -123,43 +85,61 @@ namespace NS
                 return;
             }
             const ImVec2 hostPos{vp->WorkPos.x, vp->WorkPos.y + topOffset};
-            const ImVec2 hostSize{vp->WorkSize.x, vp->WorkSize.y - topOffset};
+            const ImVec2 hostSize{std::max(1.0f, vp->WorkSize.x), std::max(1.0f, vp->WorkSize.y - topOffset)};
 
+            ImGui::SetNextWindowViewport(vp->ID);
             ImGui::SetNextWindowPos(hostPos);
             ImGui::SetNextWindowSize(hostSize);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0.0f, 0.0f});
             constexpr ImGuiWindowFlags k_HostFlags =
                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBackground |
-                ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+                ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoSavedSettings;
             ImGui::Begin("##EditorDockHost", nullptr, k_HostFlags);
             ImGui::PopStyleVar();
 
             // 0 だと DockSpaceOverViewport 相当の自動 id 判定ができないので明示 id にする
-            const ImGuiID dockspaceId = ImHashStr("EditorDockSpaceV11");
-            if (ImGui::DockBuilderGetNode(dockspaceId) == nullptr)
+            const ImGuiID dockspaceId = k_DockspaceId;
+            if (!keepAliveOnly && !IsMaximized() &&
+                (m_resetPending || ImGui::DockBuilderGetNode(dockspaceId) == nullptr))
             {
-                // ini に保存済みのユーザー配置が無い時だけ既定レイアウトを組む
+                // 保存済みの配置が無い場合と明示的なリセット時だけ組み直す
                 BuildDefaultDockLayout(dockspaceId, hostPos, hostSize);
+                m_resetPending = false;
                 // このフレームは組むだけ。焦点を渡すのは全パネルが発行された次のフレーム
                 m_dockFocusPending = 2;
             }
-            ImGui::DockSpace(dockspaceId, ImVec2{0.0f, 0.0f}, ImGuiDockNodeFlags_None);
+            ImGuiDockNodeFlags flags = ImGuiDockNodeFlags_None;
+            if (keepAliveOnly || IsMaximized())
+            {
+                // 非表示のドックを発行しないと、次のフレームで所属するパネルが外れる
+                flags = ImGuiDockNodeFlags_KeepAliveOnly;
+            }
+            ImGui::DockSpace(dockspaceId, ImVec2{0.0f, 0.0f}, flags);
             ImGui::End();
 #else
             (void)topOffset;
+            (void)keepAliveOnly;
 #endif
         }
 
         void DockController::EnterMaximize(const char* name) noexcept
         {
 #if NS_EDITOR_ENABLED
+            if (IsMaximized())
+            {
+                ExitMaximize();
+            }
             std::size_t iniSize = 0;
             const char* ini = ImGui::SaveIniSettingsToMemory(&iniSize);
             if (ini != nullptr)
             {
                 m_savedImGuiIni.assign(ini, iniSize);
             }
+            m_normalIniFilename = ImGui::GetIO().IniFilename;
+            // 一時的な全面配置が通常の配置を上書きしないよう、自動保存を復元まで止める
+            ImGui::GetIO().IniFilename = nullptr;
+            m_dockFocusPending = 0;
             m_maximizedPanel = name;
 #else
             (void)name;
@@ -169,6 +149,12 @@ namespace NS
         void DockController::ExitMaximize() noexcept
         {
 #if NS_EDITOR_ENABLED
+            if (!IsMaximized())
+            {
+                return;
+            }
+            ImGui::GetIO().IniFilename = m_normalIniFilename;
+            m_normalIniFilename = nullptr;
             if (!m_savedImGuiIni.empty())
             {
                 ImGui::LoadIniSettingsFromMemory(m_savedImGuiIni.data(), m_savedImGuiIni.size());
@@ -181,66 +167,231 @@ namespace NS
         void DockController::RenderMaximizeButton() noexcept
         {
 #if NS_EDITOR_ENABLED
-            // 全面化中はパネルがドックを外れてタブが無いので、右上に復元ボタンを浮かべる
-            if (!m_maximizedPanel.empty())
+            if (ImGui::GetIO().WantTextInput || !ImGui::GetIO().KeyShift ||
+                !ImGui::IsKeyPressed(ImGuiKey_Space, false))
             {
-                ImGuiWindow* w = ImGui::FindWindowByName(m_maximizedPanel.c_str());
-                if (w == nullptr || !w->WasActive)
+                return;
+            }
+            if (IsMaximized())
+            {
+                ExitMaximize();
+                return;
+            }
+            const ImGuiWindow* hovered = GImGui->HoveredWindow;
+            if (hovered == nullptr)
+            {
+                return;
+            }
+            for (const char* panel : k_Panels)
+            {
+                const ImGuiWindow* window = ImGui::FindWindowByName(panel);
+                if (window != nullptr && window == hovered->RootWindow)
+                {
+                    EnterMaximize(panel);
+                    break;
+                }
+            }
+#endif
+        }
+
+        void DockController::MovePanel(const char* panel, const char* target, Placement placement) noexcept
+        {
+#if NS_EDITOR_ENABLED
+            ExitMaximize();
+            ImGuiWindow* window = ImGui::FindWindowByName(panel);
+            if (window == nullptr)
+            {
+                return;
+            }
+            if (placement == Placement::Floating)
+            {
+                ImGui::DockContextProcessUndockWindow(GImGui, window);
+                const ImGuiViewport* viewport = ImGui::GetMainViewport();
+                ImGui::SetWindowPos(panel, ImVec2{viewport->WorkPos.x + 60.0f, viewport->WorkPos.y + 60.0f});
+                ImGui::SetWindowSize(panel, ImVec2{viewport->WorkSize.x * 0.5f, viewport->WorkSize.y * 0.6f});
+            }
+            else
+            {
+                ImGuiWindow* destination = ImGui::FindWindowByName(target);
+                if (destination == nullptr || destination == window)
                 {
                     return;
                 }
-
-                constexpr float k_Btn = 24.0f;
-                constexpr float k_Pad = 6.0f;
-                const ImVec2 anchor{w->Pos.x + w->Size.x - k_Btn - k_Pad, w->Pos.y + k_Pad};
-                ImGui::SetNextWindowPos(anchor, ImGuiCond_Always);
-                ImGui::SetNextWindowBgAlpha(0.65f);
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{2.0f, 2.0f});
-                if (ImGui::Begin("##PanelRestoreButton", nullptr, k_FloatingButtonFlags))
+                // 最後のタブを外すと隣の領域が統合されるため、配置先の識別子は外した後で読む
+                ImGui::DockContextProcessUndockWindow(GImGui, window);
+                ImGuiID nodeId = destination->DockId;
+                if (nodeId == 0)
                 {
-                    if (ImGui::Button("戻", ImVec2{k_Btn, k_Btn}))
-                    {
-                        ExitMaximize();
-                    }
-                    if (ImGui::IsItemHovered())
-                    {
-                        ImGui::SetTooltip("元のレイアウトに戻す");
-                    }
+                    nodeId = ImGui::DockBuilderAddNode();
+                    ImGui::DockBuilderSetNodePos(nodeId, destination->Pos);
+                    ImGui::DockBuilderSetNodeSize(nodeId, destination->Size);
+                    ImGui::DockBuilderDockWindow(target, nodeId);
                 }
-                ImGui::End();
-                ImGui::PopStyleVar();
+                if (placement != Placement::Tab)
+                {
+                    ImGuiDir direction = ImGuiDir_Left;
+                    switch (placement)
+                    {
+                    case Placement::Right:
+                        direction = ImGuiDir_Right;
+                        break;
+                    case Placement::Above:
+                        direction = ImGuiDir_Up;
+                        break;
+                    case Placement::Below:
+                        direction = ImGuiDir_Down;
+                        break;
+                    default:
+                        break;
+                    }
+                    nodeId = ImGui::DockBuilderSplitNode(nodeId, direction, 0.5f, nullptr, nullptr);
+                }
+                ImGui::DockBuilderDockWindow(panel, nodeId);
+                ImGui::DockBuilderFinish(ImGui::DockNodeGetRootNode(ImGui::DockBuilderGetNode(nodeId))->ID);
+            }
+            m_dockFocusPending = 0;
+            ImGui::SetWindowFocus(panel);
+#endif
+        }
+
+        void DockController::ResetLayout() noexcept
+        {
+            ExitMaximize();
+            m_resetPending = true;
+        }
+
+        bool DockController::SaveLayout(const char* path) const
+        {
+#if NS_EDITOR_ENABLED
+            std::size_t size = 0;
+            const char* data = ImGui::SaveIniSettingsToMemory(&size);
+            if (IsMaximized())
+            {
+                data = m_savedImGuiIni.data();
+                size = m_savedImGuiIni.size();
+            }
+            return OS::FileSystem::WriteAllBytes(path, std::as_bytes(std::span{data, size}));
+#else
+            return false;
+#endif
+        }
+
+        bool DockController::LoadLayout(const char* path)
+        {
+#if NS_EDITOR_ENABLED
+            const std::optional<std::string> data = OS::FileSystem::ReadAllText(path);
+            if (!data.has_value() || data->empty() ||
+                data->find("[Docking][Data]") == std::string::npos ||
+                data->find("[Window][Scene]") == std::string::npos)
+            {
+                return false;
+            }
+            ExitMaximize();
+            ImGui::LoadIniSettingsFromMemory(data->data(), data->size());
+            m_resetPending = false;
+            m_dockFocusPending = 0;
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        void DockController::RenderPanelMenu(const char* panel) noexcept
+        {
+#if NS_EDITOR_ENABLED
+            if (ImGui::MenuItem("前面に表示"))
+            {
+                ExitMaximize();
+                ImGui::SetWindowFocus(panel);
+            }
+            if (ImGui::MenuItem("最大化", "Shift+Space"))
+            {
+                EnterMaximize(panel);
+            }
+            if (ImGui::MenuItem("独立ウィンドウにする"))
+            {
+                MovePanel(panel, nullptr, Placement::Floating);
+            }
+            if (ImGui::BeginMenu("配置先"))
+            {
+                for (const char* target : k_Panels)
+                {
+                    if (std::strcmp(panel, target) == 0 || !ImGui::BeginMenu(target))
+                    {
+                        continue;
+                    }
+                    const char* labels[] = {"同じタブにまとめる", "左に分割", "右に分割", "上に分割", "下に分割"};
+                    const Placement placements[] = {Placement::Tab, Placement::Left, Placement::Right,
+                                                    Placement::Above, Placement::Below};
+                    for (int i = 0; i < IM_ARRAYSIZE(labels); ++i)
+                    {
+                        if (ImGui::MenuItem(labels[i]))
+                        {
+                            MovePanel(panel, target, placements[i]);
+                        }
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMenu();
+            }
+#endif
+        }
+
+        void DockController::RenderWindowMenu() noexcept
+        {
+#if NS_EDITOR_ENABLED
+            if (!ImGui::BeginMenu("Window"))
+            {
                 return;
             }
-
-            // 各パネルの右上へ全面化ボタンを浮かせる。タブバーの状態に依らず出せるよう埋め込みは使わない
-            static const char* const k_Panels[] = {k_PanelScene,
-                                                   k_PanelGame,
-                                                   k_PanelActorList,
-                                                   k_PanelInspector,
-                                                   k_PanelConsole,
-                                                   k_PanelAssets,
-                                                   k_PanelEditMode};
-            for (int i = 0; i < IM_ARRAYSIZE(k_Panels); ++i)
+            if (ImGui::MenuItem("最大化を解除", "Shift+Space", false, IsMaximized()))
             {
-                const char* name = k_Panels[i];
-                ImGuiWindow* w = ImGui::FindWindowByName(name);
-                if (w == nullptr || !w->WasActive)
+                ExitMaximize();
+            }
+            for (const char* panel : k_Panels)
+            {
+                if (ImGui::BeginMenu(panel))
                 {
-                    continue;
-                }
-                // ドック内で今表に出ている窓にだけ出す。裏に隠れたタブは飛ばす
-                // 単独枠や浮き窓はタブが畳まれても表なので出す
-                if (w->DockNode != nullptr && w->DockNode->VisibleWindow != w)
-                {
-                    continue;
-                }
-                char btnId[32];
-                std::snprintf(btnId, sizeof(btnId), "##PanelMaxBtn%d", i);
-                if (FloatingMaximizeButton(btnId, w))
-                {
-                    EnterMaximize(name);
+                    RenderPanelMenu(panel);
+                    ImGui::EndMenu();
                 }
             }
+            ImGui::Separator();
+            const std::string path = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "build/editor-layout.ini");
+            if (ImGui::MenuItem("現在の配置を保存"))
+            {
+                if (SaveLayout(path.c_str()))
+                {
+                    m_layoutStatus = "配置を保存しました";
+                }
+                else
+                {
+                    m_layoutStatus = "配置を保存できませんでした";
+                }
+            }
+            if (ImGui::MenuItem("保存した配置を復元", nullptr, false, OS::FileSystem::Exists(path)))
+            {
+                if (LoadLayout(path.c_str()))
+                {
+                    m_layoutStatus = "配置を復元しました";
+                }
+                else
+                {
+                    m_layoutStatus = "配置を読み込めませんでした";
+                }
+            }
+            if (ImGui::MenuItem("初期配置に戻す"))
+            {
+                ResetLayout();
+            }
+            ImGui::Separator();
+            ImGui::TextDisabled("タブをドラッグ: 移動・分割・合流");
+            ImGui::TextDisabled("境界をドラッグ: サイズ変更");
+            if (!m_layoutStatus.empty())
+            {
+                ImGui::TextUnformatted(m_layoutStatus.c_str());
+            }
+            ImGui::EndMenu();
 #endif
         }
 
