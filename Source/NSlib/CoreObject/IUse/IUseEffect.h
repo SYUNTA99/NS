@@ -1,11 +1,11 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Reflection/EffectName.h"
 #include "NSlib/Graphics/EffectTypes.h"
 
 #include "NSlib/Core/Types.h"
 #include <initializer_list>
-#include <string_view>
 
 namespace NS
 {
@@ -25,13 +25,13 @@ namespace NS
 
     //! @brief 出す名前の絵を先に読む。EffectKeeper が無ければ何もしない
     //! @details 持ち主がシーンに入った後の OnStart で呼ぶ
-    void PreloadEffects(const IUseEffect* user, std::initializer_list<std::string_view> names);
+    void PreloadEffects(const IUseEffect* user, std::initializer_list<EffectName> names);
 
     //! @brief エフェクトを 1 つ出す
     //! @param[in] name PreloadEffects に渡した名前
     //! @return 記録の番号。EffectKeeper が無い時は 0
     [[nodiscard]] uint32 PlayEffect(const IUseEffect* user,
-                                        std::string_view name,
+                                        const EffectName& name,
                                         const Gfx::EffectPlayDesc& desc);
 
     //! 子も含めて消す。無い番号と EffectKeeper が無い時は何もしない

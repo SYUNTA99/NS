@@ -451,30 +451,27 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     EXPECT_FLOAT_EQ(impact.reboundApexHeight, 2.0f);
 }
 
-TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
+TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyFiveFields)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     const GL::Level::TargetMarkerDesc marker{};
     const GL::Level::SlamArrowDesc arrow{};
     const nlohmann::json markerFields = {
-        {"印の色", {marker.color.x, marker.color.y, marker.color.z}},
+        {"印の色", {marker.color.x, marker.color.y, marker.color.z, marker.color.w}},
         {"印の太さ", marker.lineThickness},
         {"印の腕の割合", marker.armRatio},
         {"枠と輪郭の間", marker.frameGap},
         {"枠の一辺の下限", marker.frameMinSide},
-        {"枠の不透明度", marker.frameAlpha},
         {"枠が出る時の倍率", marker.appearScale},
         {"枠が出る時の一辺の上限", marker.appearMaxSide},
         {"枠が縮むフレーム数", marker.appearFrames},
         {"枠が縮む進みの曲線",
          {{"curve", {{0.0f, 0.0f}, {0.25f, 0.12f}, {0.5f, 0.38f}, {0.75f, 0.70f}, {1.0f, 1.0f}}}}},
-        {"枠が出る時の色", {marker.appearColor.x, marker.appearColor.y, marker.appearColor.z}},
-        {"枠が出る時の不透明度", marker.appearAlpha},
+        {"枠が出る時の色", {marker.appearColor.x, marker.appearColor.y, marker.appearColor.z, marker.appearColor.w}},
         {"外れた時の枠の倍率", marker.lostScale},
         {"外れた時の枠のフレーム数", marker.lostFrames},
-        {"枠の縁の色", {marker.outlineColor.x, marker.outlineColor.y, marker.outlineColor.z}},
-        {"枠の縁の不透明度", marker.outlineAlpha}};
+        {"枠の縁の色", {marker.outlineColor.x, marker.outlineColor.y, marker.outlineColor.z, marker.outlineColor.w}}};
     const nlohmann::json arrowFields = {
         {"矢印が伸びるフレーム数", arrow.growFrames},
         {"矢印を浮かせる高さ", arrow.groundLift},
@@ -485,12 +482,11 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyNineFields)
         {"帯の始まりのぼかし", arrow.startFade},
         {"色の境目のぼかし", arrow.frontSoftness},
         {"後半の色へ変わる溜め量", arrow.lateStageFrom},
-        {"溜めの前半の色", {arrow.earlyColor.x, arrow.earlyColor.y, arrow.earlyColor.z}},
-        {"溜めの後半の色", {arrow.lateColor.x, arrow.lateColor.y, arrow.lateColor.z}},
-        {"溜めきりの色", {arrow.fullColor.x, arrow.fullColor.y, arrow.fullColor.z}},
-        {"色の付いていない部分の色", {arrow.plainColor.x, arrow.plainColor.y, arrow.plainColor.z}},
-        {"矢印の暗い縁の色", {arrow.darkColor.x, arrow.darkColor.y, arrow.darkColor.z}},
-        {"矢印の暗い縁の不透明度", arrow.darkAlpha},
+        {"溜めの前半の色", {arrow.earlyColor.x, arrow.earlyColor.y, arrow.earlyColor.z, arrow.earlyColor.w}},
+        {"溜めの後半の色", {arrow.lateColor.x, arrow.lateColor.y, arrow.lateColor.z, arrow.lateColor.w}},
+        {"溜めきりの色", {arrow.fullColor.x, arrow.fullColor.y, arrow.fullColor.z, arrow.fullColor.w}},
+        {"色の付いていない部分の色", {arrow.plainColor.x, arrow.plainColor.y, arrow.plainColor.z, arrow.plainColor.w}},
+        {"矢印の暗い縁の色", {arrow.darkColor.x, arrow.darkColor.y, arrow.darkColor.z, arrow.darkColor.w}},
         {"帯の明るい縁の不透明度", arrow.bandEdgeAlpha},
         {"帯の塗りの不透明度", arrow.bandFillAlpha},
         {"矢じりの明るい縁の不透明度", arrow.headEdgeAlpha},
@@ -528,7 +524,7 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     EXPECT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     EXPECT_EQ(NS::ApplyJsonFields(player->TargetIndicator(), {{"印の太さ", 7.0f}}), 0u);
     EXPECT_EQ(NS::ApplyJsonFields(player->SlamIndicator(),
-                                  {{"溜めの前半の色", {0.2f, 0.3f, 0.4f}}, {"矢印が伸びるフレーム数", 1}}),
+                                  {{"溜めの前半の色", {0.2f, 0.3f, 0.4f, 1.0f}}, {"矢印が伸びるフレーム数", 1}}),
               0u);
     // しきい値のフレームまで押して溜めに入れる
     const int threshold = static_cast<int>(std::lround(0.2f / NS::OS::FrameTimer::FixedDelta()));

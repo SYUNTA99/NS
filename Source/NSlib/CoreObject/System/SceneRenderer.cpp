@@ -219,9 +219,9 @@ namespace NS
                 m_warnedZeroLightDirection = true;
             }
             // 多灯合成を持たないので、後から登録した有効な 1 本が前の値を上書きする
-            resolved.lightColor = light->Color();
-            resolved.ambientColor = light->Ambient();
-            resolved.groundColor = light->Ground();
+            resolved.lightColor = light->Color().ToVector3();
+            resolved.ambientColor = light->Ambient().ToVector3();
+            resolved.groundColor = light->Ground().ToVector3();
             resolved.exposure = light->Exposure();
         }
         return resolved;

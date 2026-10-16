@@ -235,11 +235,11 @@ TEST(SlamArrowTest, FullArrowTurnsFromRedToPurpleWithTheOvercharge)
     state.chargeFull = true;
     GL::Level::SlamArrowShape shape{};
     ASSERT_TRUE(GL::Level::BuildSlamArrow(state, desc, shape));
-    EXPECT_TRUE(shape.stageColor == desc.fullColor);
+    EXPECT_TRUE(shape.stageColor == desc.fullColor.ToVector3());
 
     state.overcharge01 = 1.0f;
     ASSERT_TRUE(GL::Level::BuildSlamArrow(state, desc, shape));
-    EXPECT_TRUE(shape.stageColor == desc.overchargeColor);
+    EXPECT_TRUE(shape.stageColor == desc.overchargeColor.ToVector3());
 
     state.overcharge01 = 0.5f;
     ASSERT_TRUE(GL::Level::BuildSlamArrow(state, desc, shape));
@@ -251,7 +251,7 @@ TEST(SlamArrowTest, FullArrowTurnsFromRedToPurpleWithTheOvercharge)
     state.chargeFull = false;
     state.charge01 = 0.9f;
     ASSERT_TRUE(GL::Level::BuildSlamArrow(state, desc, shape));
-    EXPECT_TRUE(shape.stageColor == desc.lateColor);
+    EXPECT_TRUE(shape.stageColor == desc.lateColor.ToVector3());
 }
 
 namespace

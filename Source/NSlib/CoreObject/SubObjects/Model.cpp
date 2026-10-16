@@ -260,7 +260,7 @@ namespace NS
         item.constants.viewProj = context.viewProjection;
         item.constants.lightDir = settings.lightDir;
         item.constants.lightDir.Normalize();
-        item.constants.baseColor = m_baseColor; // 個体色は lighting と別系統
+        item.constants.baseColor = m_baseColor.ToVector3(); // 個体色は lighting と別系統
         item.constants.lightColor = settings.lightColor;
         item.constants.ambientColor = settings.ambientColor;
         item.constants.groundColor = settings.groundColor;

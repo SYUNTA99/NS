@@ -19,7 +19,22 @@ namespace NS
             return value;
         }
 
-        // field を JSON 値へ変換する。素の配列で書くのは Vector3=[x,y,z] と Quaternion=[x,y,z,w]
+        // 数 4 個の [r,g,b,a] を読む。形式が違えば出力を変更せず false
+        bool ReadColor(const nlohmann::json& value, Color& out) noexcept
+        {
+            if (!value.is_array() || value.size() != 4u)
+            {
+                return false;
+            }
+            if (!value[0].is_number() || !value[1].is_number() || !value[2].is_number() || !value[3].is_number())
+            {
+                return false;
+            }
+            out = Color{value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()};
+            return true;
+        }
+
+        // field を JSON 値へ変換する。素の配列で書くのは Vector3=[x,y,z]、Quaternion=[x,y,z,w]、Color=[r,g,b,a]
         nlohmann::json FieldToJson(const void* owner, const FieldDesc& field)
         {
             switch (field.type)
@@ -39,6 +54,11 @@ namespace NS
             {
                 // 配列の長さで Vector3 と区別できるため単キー object で包まない
                 const Quaternion value = ReadField<Quaternion>(owner, field);
+                return nlohmann::json{value.x, value.y, value.z, value.w};
+            }
+            case FieldType::Color:
+            {
+                const Color value = ReadField<Color>(owner, field);
                 return nlohmann::json{value.x, value.y, value.z, value.w};
             }
             case FieldType::String:
@@ -133,6 +153,18 @@ namespace NS
                 {
                     field.set(owner, &v);
                 }
+                return;
+            }
+            case FieldType::Color:
+            {
+                // 透明度の無い 3 成分は前の形の色。読めずに今の値のまま残るので、警告で知らせる
+                Color v;
+                if (!ReadColor(value, v))
+                {
+                    NS_LOG_WARN(Game, "色の欄 {} は [r,g,b,a] の 4 つの数でないため読まない", field.name);
+                    return;
+                }
+                field.set(owner, &v);
                 return;
             }
             case FieldType::String:

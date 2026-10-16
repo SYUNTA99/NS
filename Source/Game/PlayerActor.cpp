@@ -63,7 +63,7 @@ void PlayerActor::OnInit()
 {
     NS::Model* model = CreateSubObj(m_model, this);
     model->SetMaterialRef("player");
-    model->SetBaseColor(NS::Vector3{0.5f, 0.5f, 0.5f});
+    model->SetBaseColor(NS::Color{0.5f, 0.5f, 0.5f});
     CreateSubObj(m_appearance, this);
     CreateSubObj(m_body, this);
     CreateSubObj(m_collider, this);

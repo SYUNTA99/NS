@@ -36,18 +36,19 @@ namespace GL
 
             [[nodiscard]] bool IsValidFrameDesc(const TargetMarkerDesc& desc) noexcept
             {
-                if (!NS::IsFinite(desc.color) || !NS::IsFinite(desc.appearColor) || !NS::IsFinite(desc.outlineColor))
+                if (!NS::IsFinite(desc.color.ToVector3()) || !NS::IsFinite(desc.appearColor.ToVector3()) ||
+                    !NS::IsFinite(desc.outlineColor.ToVector3()))
                 {
                     return false;
                 }
                 if (!NS::IsPositiveFinite(desc.referenceHeight) || !NS::IsPositiveFinite(desc.frameMinSide) ||
-                    !NS::IsPositiveFinite(desc.frameAlpha) || !NS::IsPositiveFinite(desc.appearScale) ||
+                    !NS::IsPositiveFinite(desc.color.w) || !NS::IsPositiveFinite(desc.appearScale) ||
                     !NS::IsPositiveFinite(desc.appearMaxSide) || !NS::IsPositiveFinite(desc.lostScale))
                 {
                     return false;
                 }
-                if (!NS::IsNonNegativeFinite(desc.frameGap) || !NS::IsNonNegativeFinite(desc.appearAlpha) ||
-                    !NS::IsNonNegativeFinite(desc.outlineAlpha) || !NS::IsNonNegativeFinite(desc.outlineWidth))
+                if (!NS::IsNonNegativeFinite(desc.frameGap) || !NS::IsNonNegativeFinite(desc.appearColor.w) ||
+                    !NS::IsNonNegativeFinite(desc.outlineColor.w) || !NS::IsNonNegativeFinite(desc.outlineWidth))
                 {
                     return false;
                 }
@@ -141,7 +142,7 @@ namespace GL
             {
                 side *= desc.lostScale;
             }
-            const float alpha = NS::Lerp(desc.appearAlpha, desc.frameAlpha, progress);
+            const float alpha = NS::Lerp(desc.appearColor.w, desc.color.w, progress);
 
             AppendCornerHooks(centerPixel.x - side * 0.5f,
                               centerPixel.y - side * 0.5f,
@@ -166,7 +167,7 @@ namespace GL
             frame.outlineColor = NS::Color{desc.outlineColor.x,
                                            desc.outlineColor.y,
                                            desc.outlineColor.z,
-                                           desc.outlineAlpha * alpha / desc.frameAlpha};
+                                           desc.outlineColor.w * alpha / desc.color.w};
 
             outFrame = std::move(frame);
             return true;

@@ -18,25 +18,26 @@ namespace NS
         //! @details 向きの欄は持たない。エディタのギズモで個体を回すと光も回る
         [[nodiscard]] Vector3 Direction() const noexcept;
         //! 平行光の色。1.0 超の HDR 値も許容する
-        [[nodiscard]] const Vector3& Color() const noexcept { return m_color; }
+        [[nodiscard]] const NS::Color& Color() const noexcept { return m_color; }
         //! 空側の環境光。上を向いた面へ回る
-        [[nodiscard]] const Vector3& Ambient() const noexcept { return m_ambient; }
+        [[nodiscard]] const NS::Color& Ambient() const noexcept { return m_ambient; }
         //! 地面側の環境光。下を向いた面へ回る
-        [[nodiscard]] const Vector3& Ground() const noexcept { return m_ground; }
+        [[nodiscard]] const NS::Color& Ground() const noexcept { return m_ground; }
         //! 画面へ出す前の露出。上げると暗部が持ち上がり、明部は S 字が受け止めるので飛ばない
         [[nodiscard]] float Exposure() const noexcept { return m_exposure; }
 
         NS_REFLECT_BEGIN(DirectionalLight, Object)
-        NS_REFLECT_COLOR(m_color, "色")
-        NS_REFLECT_COLOR(m_ambient, "環境光")
-        NS_REFLECT_COLOR(m_ground, "地面環境光")
+        NS_REFLECT_FIELD(m_color, "色")
+        NS_REFLECT_FIELD(m_ambient, "環境光")
+        NS_REFLECT_FIELD(m_ground, "地面環境光")
         NS_REFLECT_FIELD(m_exposure, "露出")
         NS_REFLECT_END()
 
     private:
-        Vector3 m_color{1.0f, 1.0f, 1.0f};
-        Vector3 m_ambient{0.30f, 0.34f, 0.40f};
-        Vector3 m_ground{0.24f, 0.21f, 0.18f};
+        // 光の 3 つの色は透明度を使わない。描く所へは rgb だけを渡す
+        NS::Color m_color{1.0f, 1.0f, 1.0f};
+        NS::Color m_ambient{0.30f, 0.34f, 0.40f};
+        NS::Color m_ground{0.24f, 0.21f, 0.18f};
         float m_exposure = 1.35f;
         SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };

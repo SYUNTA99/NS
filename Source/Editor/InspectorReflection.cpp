@@ -65,6 +65,8 @@ namespace NS
                 return !SameValue<Vector3>(comp, *defaults, field);
             case FieldType::Quaternion:
                 return !SameValue<Quaternion>(comp, *defaults, field);
+            case FieldType::Color:
+                return !SameValue<Color>(comp, *defaults, field);
             case FieldType::String:
             case FieldType::AssetRef:
                 return !SameValue<std::string>(comp, *defaults, field);
@@ -96,6 +98,9 @@ namespace NS
                 break;
             case FieldType::Quaternion:
                 CopyValue<Quaternion>(comp, defaults, field);
+                break;
+            case FieldType::Color:
+                CopyValue<Color>(comp, defaults, field);
                 break;
             case FieldType::String:
             case FieldType::AssetRef:
@@ -666,9 +671,9 @@ namespace NS
 
             void DrawColorFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
             {
-                Vector3 value{};
+                Color value{};
                 field.get(owner, &value);
-                float rgb[] = {value.x, value.y, value.z};
+                float rgba[] = {value.x, value.y, value.z, value.w};
                 // 色選択中はつまみを離しても編集を確定せず、選択画面を閉じるまでまとめる
                 ImGuiStorage* storage = ImGui::GetStateStorage();
                 const ImGuiID stateId = ImGui::GetID("##colorPickerOpen");
@@ -676,8 +681,8 @@ namespace NS
                 const ImGuiID popupId = ImHashStr("picker", 0, ImGui::GetID("##value"));
                 constexpr ImGuiColorEditFlags k_Flags = ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float |
                                                        ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_PickerHueBar |
-                                                       ImGuiColorEditFlags_NoDragDrop;
-                const bool changed = ImGui::ColorEdit3("##value", rgb, k_Flags);
+                                                       ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_AlphaBar;
+                const bool changed = ImGui::ColorEdit4("##value", rgba, k_Flags);
                 const bool open = ImGui::IsPopupOpen(popupId, ImGuiPopupFlags_None);
                 result.popupActive = open;
                 result.activated |= open && !wasOpen;
@@ -685,7 +690,7 @@ namespace NS
                 storage->SetBool(stateId, open);
                 if (changed)
                 {
-                    value = Vector3{rgb[0], rgb[1], rgb[2]};
+                    value = Color{rgba[0], rgba[1], rgba[2], rgba[3]};
                     field.set(owner, &value);
                     result.changed = true;
                 }
@@ -1432,11 +1437,6 @@ namespace NS
                 }
                 case FieldType::Vector3:
                 {
-                    if (field.isColor)
-                    {
-                        DrawColorFieldWidget(owner, field, result);
-                        break;
-                    }
                     Vector3 value{};
                     field.get(owner, &value);
                     float xyz[3] = {value.x, value.y, value.z};
@@ -1463,6 +1463,9 @@ namespace NS
                     }
                     break;
                 }
+                case FieldType::Color:
+                    DrawColorFieldWidget(owner, field, result);
+                    break;
                 case FieldType::String:
                 case FieldType::AssetRef:
                 {

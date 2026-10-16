@@ -110,6 +110,27 @@ namespace
         NS_REFLECT_FIELD(text, "説明")
         NS_REFLECT_END_VALUE()
     };
+
+    struct EffectSettings
+    {
+        NS::EffectName effect{"charge.curl"};
+        NS_REFLECT_BEGIN(EffectSettings, void)
+        NS_REFLECT_FIELD(effect, "エフェクト")
+        NS_REFLECT_END_VALUE()
+    };
+}
+
+TEST(AssetPickerCatalog, EffectNameMemberIsAnEffectFieldSavedAsItsName)
+{
+    const NS::ReflectionInfo& info = *EffectSettings::StaticReflection();
+    const NS::FieldDesc* field = NS::FindField(&info, "エフェクト");
+    ASSERT_NE(field, nullptr);
+    EXPECT_EQ(field->assetKind, NS::AssetKind::Effect);
+
+    EffectSettings settings;
+    EXPECT_EQ(NS::SerializeReflectedFields(&settings, info)["エフェクト"], nlohmann::json("charge.curl"));
+    EXPECT_EQ(NS::ApplyReflectedFields(&settings, info, nlohmann::json{{"エフェクト", "impact.ring"}}), 0u);
+    EXPECT_EQ(settings.effect.name, "impact.ring");
 }
 
 TEST_F(EditorAssetPickerTest, FileReferenceOpensChoicesBeforeChangingTheValue)

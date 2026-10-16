@@ -2,6 +2,7 @@
 #include "Editor/InspectorReflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -69,11 +70,46 @@ namespace
         bool m_openActivated = false;
         bool m_openCommitted = false;
     };
+
+    struct ColorSettings
+    {
+        NS::Color tint{0.1f, 0.2f, 0.3f, 0.4f};
+        NS_REFLECT_BEGIN(ColorSettings, void)
+        NS_REFLECT_FIELD(tint, "色合い")
+        NS_REFLECT_END_VALUE()
+    };
+}
+
+TEST(ColorField, ColorMemberIsAColorFieldSavedWithItsAlpha)
+{
+    const NS::ReflectionInfo& info = *ColorSettings::StaticReflection();
+    const NS::FieldDesc* field = NS::FindField(&info, "色合い");
+    ASSERT_NE(field, nullptr);
+    EXPECT_EQ(field->type, NS::FieldType::Color);
+
+    const ColorSettings settings;
+    const nlohmann::json saved = NS::SerializeReflectedFields(&settings, info);
+    EXPECT_EQ(saved["色合い"], nlohmann::json::array({0.1f, 0.2f, 0.3f, 0.4f}));
+    ColorSettings loaded;
+    loaded.tint = NS::Color{1.0f, 1.0f, 1.0f, 1.0f};
+    EXPECT_EQ(NS::ApplyReflectedFields(&loaded, info, saved), 0u);
+    EXPECT_TRUE(loaded.tint == settings.tint);
+}
+
+// 透明度の無い 3 成分は前の形の色。黙って既定に戻さず、警告して今の値を残す
+TEST(ColorField, ThreeComponentColorWarnsAndKeepsTheValue)
+{
+    const NS::ReflectionInfo& info = *ColorSettings::StaticReflection();
+    ColorSettings settings;
+    const TestLogCapture log;
+    (void)NS::ApplyReflectedFields(&settings, info, nlohmann::json{{"色合い", {1.0f, 1.0f, 1.0f}}});
+    EXPECT_EQ(log.WarningCount(), 1);
+    EXPECT_TRUE(settings.tint == (NS::Color{0.1f, 0.2f, 0.3f, 0.4f}));
 }
 
 TEST_F(EditorColorTest, ColorSwatchOpensAPickerBeforeChangingTheValue)
 {
-    m_model.SetBaseColor(NS::Vector3{0.2f, 0.4f, 0.7f});
+    m_model.SetBaseColor(NS::Color{0.2f, 0.4f, 0.7f});
     const nlohmann::json before = NS::SerializeSubObjectFields(m_model);
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
@@ -84,7 +120,7 @@ TEST_F(EditorColorTest, ColorSwatchOpensAPickerBeforeChangingTheValue)
 
 TEST_F(EditorColorTest, DrawingAColorFieldPreservesHighIntensityAndSavedNumbers)
 {
-    m_model.SetBaseColor(NS::Vector3{2.5f, 0.3f, 0.1f});
+    m_model.SetBaseColor(NS::Color{2.5f, 0.3f, 0.1f});
     const nlohmann::json before = NS::SerializeSubObjectFields(m_model);
     for (int i = 0; i < 3; ++i)
     {
@@ -97,7 +133,7 @@ TEST_F(EditorColorTest, DrawingAColorFieldPreservesHighIntensityAndSavedNumbers)
 
 TEST_F(EditorColorTest, ChoosingAColorWritesTheFieldAndCommitsWhenThePickerCloses)
 {
-    m_model.SetBaseColor(NS::Vector3{0.2f, 0.4f, 0.7f});
+    m_model.SetBaseColor(NS::Color{0.2f, 0.4f, 0.7f});
     const nlohmann::json before = NS::SerializeSubObjectFields(m_model);
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);

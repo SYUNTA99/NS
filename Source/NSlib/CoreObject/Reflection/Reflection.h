@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/Reflection/ActorRef.h"
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
+#include "NSlib/CoreObject/Reflection/EffectName.h"
 
 #include <cmath>
 #include <cstddef>
@@ -46,6 +47,10 @@ namespace NS
         {
             return AssetKind::Animation;
         }
+        else if constexpr (std::is_same_v<T, EffectName>)
+        {
+            return AssetKind::Effect;
+        }
         return AssetKind::None;
     }
 
@@ -58,7 +63,8 @@ namespace NS
         Bool,
         Vector3,
         Quaternion,
-        String,
+        Color,  // 欄は NS::Color。保存は [r,g,b,a] の 4 成分
+        String, // 欄は std::string か EffectName。取得・設定の関数が受け渡すのは std::string
         ActorRef,
         Curve,
         AssetRef // 欄は AssetRef<T>。取得・設定の関数が受け渡すのは名前の std::string
@@ -83,7 +89,11 @@ namespace NS
         {
             return FieldType::Quaternion;
         }
-        else if constexpr (std::is_same_v<T, std::string>)
+        else if constexpr (std::is_same_v<T, Color>)
+        {
+            return FieldType::Color;
+        }
+        else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, EffectName>)
         {
             return FieldType::String;
         }
@@ -102,8 +112,8 @@ namespace NS
         else
         {
             static_assert(std::is_same_v<T, Vector3>,
-                          "FieldTypeOf の T は float / int / bool / NS::Vector3 / NS::Quaternion / "
-                          "std::string / ActorRef / Curve / AssetRef<T> のいずれか");
+                          "FieldTypeOf の T は float / int / bool / NS::Vector3 / NS::Quaternion / NS::Color / "
+                          "std::string / EffectName / ActorRef / Curve / AssetRef<T> のいずれか");
             return FieldType::Vector3;
         }
     }
@@ -123,6 +133,10 @@ namespace NS
         if constexpr (IsAssetRef<Field>::value)
         {
             *static_cast<std::string*>(out) = source.Name();
+        }
+        else if constexpr (std::is_same_v<Field, EffectName>)
+        {
+            *static_cast<std::string*>(out) = source.name;
         }
         else
         {
@@ -148,6 +162,10 @@ namespace NS
         {
             target.SetName(*static_cast<const std::string*>(in));
         }
+        else if constexpr (std::is_same_v<Field, EffectName>)
+        {
+            target.name = *static_cast<const std::string*>(in);
+        }
         else
         {
             target = *static_cast<const Field*>(in);
@@ -162,7 +180,6 @@ namespace NS
         void (*get)(const void* obj, void* outValue) noexcept; // obj から値を outValue へ取り出す
         void (*set)(void* obj, const void* inValue) noexcept;  // inValue を obj へ書き込む
         void (*load)(void* obj) = nullptr;                    // 参照の欄の素材を読む。ほかの型の欄では何もしない
-        bool isColor = false;
         AssetKind assetKind = AssetKind::None;
     };
 
@@ -289,27 +306,19 @@ namespace NS
         static const NS::ReflectEntry k_Entries[] = {
 
 //! メンバを 1 フィールドとして登録する。private も入れ子の struct のメンバ (m_tuning.speed) も書ける
-//! 型タグはメンバ型から推論する。float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
-#define NS_REFLECT_FIELD(member, label) NS_REFLECT_FIELD_IMPL(member, label, false, NS::AssetKindOf<decltype(Self::member)>())
-
-#define NS_REFLECT_COLOR(member, label) NS_REFLECT_FIELD_IMPL(member, label, true, NS::AssetKind::None)
-
-#define NS_REFLECT_ASSET(member, label, kind) NS_REFLECT_FIELD_IMPL(member, label, false, kind)
-
-#define NS_REFLECT_FIELD_IMPL(member, label, colorField, assetKindValue)                                                \
+//! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectName の型で欄の種類が決まる
+//! float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
+#define NS_REFLECT_FIELD(member, label)                                                                                \
     NS::ReflectEntry{NS::FieldDesc{label,                                                                              \
                                    NS::FieldTypeOf<decltype(Self::member)>(),                                          \
                                    +[](const void* c, void* out) noexcept {                                            \
-                                       static_assert(!(colorField) || std::is_same_v<decltype(Self::member), NS::Vector3>); \
-                                       static_assert((assetKindValue) == NS::AssetKind::None ||                         \
-                                                     NS::FieldTypeOf<decltype(Self::member)>() == NS::FieldType::AssetRef || \
-                                                     std::is_same_v<decltype(Self::member), std::string>);             \
                                        NS::ReadFieldValue(static_cast<const Self*>(c)->member, out);                   \
                                    },                                                                                  \
                                    +[](void* c, const void* in) noexcept {                                             \
                                        NS::AssignFieldValue(static_cast<Self*>(c)->member, in);                        \
                                    },                                                                                  \
-                                   +[](void* c) { NS::LoadFieldAsset(static_cast<Self*>(c)->member); }, colorField, assetKindValue}, \
+                                   +[](void* c) { NS::LoadFieldAsset(static_cast<Self*>(c)->member); },                \
+                                   NS::AssetKindOf<decltype(Self::member)>()},                                         \
                      nullptr},
 
 //! 欄の見出しを置く。次の見出しまでに並べた欄がこの見出しの下に入る。見出しは欄の配列に入らず、保存の鍵にならない

@@ -1,12 +1,12 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Reflection/EffectName.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/Graphics/EffectTypes.h"
 
 #include "NSlib/Core/Types.h"
-#include <string>
 #include <string_view>
 #include <vector>
 
@@ -77,25 +77,25 @@ namespace GL
             NS_REFLECT_FIELD(m_burstClearFrames, "放しの弾けを消す接触前フレーム")
             NS_REFLECT_FIELD(m_trailFadeSteps, "突進の尾の薄れるフレーム")
             NS_REFLECT_FIELD(m_sideLift, "紫の火花の上向きの重み")
-            NS_REFLECT_ASSET(m_curlAsset, "丸まりの殻の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_spinAsset, "回転の弧の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_grindAsset, "溜めの擦れの資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_gatherAsset, "溜まる光の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_fullAsset, "溜めきりの資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_burstAsset, "放しの弾けの資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_trailAsset, "突進の尾の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_swaySparksAsset, "紫の火花の資産", NS::AssetKind::Effect)
+            NS_REFLECT_FIELD(m_curlAsset, "丸まりの殻の資産")
+            NS_REFLECT_FIELD(m_spinAsset, "回転の弧の資産")
+            NS_REFLECT_FIELD(m_grindAsset, "溜めの擦れの資産")
+            NS_REFLECT_FIELD(m_gatherAsset, "溜まる光の資産")
+            NS_REFLECT_FIELD(m_fullAsset, "溜めきりの資産")
+            NS_REFLECT_FIELD(m_burstAsset, "放しの弾けの資産")
+            NS_REFLECT_FIELD(m_trailAsset, "突進の尾の資産")
+            NS_REFLECT_FIELD(m_swaySparksAsset, "紫の火花の資産")
             NS_REFLECT_END()
 
         private:
-            std::string m_curlAsset = "charge.curl";
-            std::string m_spinAsset = "charge.spin";
-            std::string m_grindAsset = "charge.grind";
-            std::string m_gatherAsset = "charge.gather";
-            std::string m_fullAsset = "charge.full";
-            std::string m_burstAsset = "release.burst";
-            std::string m_trailAsset = "slam.trail";
-            std::string m_swaySparksAsset = "impact.sparks";
+            NS::EffectName m_curlAsset{"charge.curl"};
+            NS::EffectName m_spinAsset{"charge.spin"};
+            NS::EffectName m_grindAsset{"charge.grind"};
+            NS::EffectName m_gatherAsset{"charge.gather"};
+            NS::EffectName m_fullAsset{"charge.full"};
+            NS::EffectName m_burstAsset{"release.burst"};
+            NS::EffectName m_trailAsset{"slam.trail"};
+            NS::EffectName m_swaySparksAsset{"impact.sparks"};
             int m_chargeInput = 0;
             int m_burstScaleInput = 1;
             int m_fullFramesInput = 1;

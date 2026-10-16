@@ -43,7 +43,7 @@ namespace NS
         explicit Model(SceneActor* owner) noexcept : m_owner(owner) {}
 
         //! Material を共有したまま配置物ごとに変える個体色。lighting とは別系統
-        void SetBaseColor(const Vector3& color) noexcept { m_baseColor = color; }
+        void SetBaseColor(const Color& color) noexcept { m_baseColor = color; }
 
         //! 名前を替えずに、描くマテリアルを替える。nullptr で描画しない。次の読み直しで名前の物に戻る
         void SetMaterial(Gfx::Material* material) noexcept { m_material.SetLoaded(material); }
@@ -170,7 +170,7 @@ namespace NS
         void Snapshot() noexcept;
 
         NS_REFLECT_BEGIN(Model, Object)
-        NS_REFLECT_COLOR(m_baseColor, "基本色")
+        NS_REFLECT_FIELD(m_baseColor, "基本色")
         NS_REFLECT_FIELD(m_mesh, "メッシュ")
         NS_REFLECT_FIELD(m_material, "マテリアル")
         NS_REFLECT_FIELD(m_ghostMaterial, "残像のマテリアル")
@@ -202,7 +202,7 @@ namespace NS
         AssetRef<Gfx::Mesh> m_mesh{};                     // 描くメッシュ
         AssetRef<Gfx::Material> m_material{};             // 描くマテリアル
         AssetRef<Gfx::Material> m_ghostMaterial{"water"}; // 残像と明けの写しのマテリアル
-        Vector3 m_baseColor{1.0f, 1.0f, 1.0f};            // 個体色、lighting と別系統
+        Color m_baseColor{1.0f, 1.0f, 1.0f};              // 個体色、lighting と別系統。透明度は使わず rgb だけを描く
 
         // 追加 VS 定数。cpuData があれば描画ごとに転送する
         const Gfx::Buffer* m_perObjectVsCb = nullptr;

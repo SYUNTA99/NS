@@ -1,9 +1,8 @@
 #pragma once
 
-#include <string>
-
 #include "Game/Level/HitTier.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Reflection/EffectName.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Object.h"
 
@@ -207,31 +206,31 @@ namespace GL
             NS_REFLECT_FIELD(m_landDustLife, "着地の粉の寿命フレーム")
             NS_REFLECT_FIELD(m_dustRingLift, "着地の粉を浮かせる高さ")
             NS_REFLECT_FIELD(m_reboundStreakMinAcross, "反動の尾の最小横成分")
-            NS_REFLECT_ASSET(m_coreAsset, "核の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_streakAsset, "光条の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_ringAsset, "輪の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_sparksAsset, "火花の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_embersAsset, "火の粉の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_glowAsset, "照りの資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_recoilAsset, "弾かれ線の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_dustAsset, "当たりの粉の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_reboundTrailAsset, "反動の尾の資産", NS::AssetKind::Effect)
-            NS_REFLECT_ASSET(m_landDustAsset, "着地の粉の資産", NS::AssetKind::Effect)
+            NS_REFLECT_FIELD(m_coreAsset, "核の資産")
+            NS_REFLECT_FIELD(m_streakAsset, "光条の資産")
+            NS_REFLECT_FIELD(m_ringAsset, "輪の資産")
+            NS_REFLECT_FIELD(m_sparksAsset, "火花の資産")
+            NS_REFLECT_FIELD(m_embersAsset, "火の粉の資産")
+            NS_REFLECT_FIELD(m_glowAsset, "照りの資産")
+            NS_REFLECT_FIELD(m_recoilAsset, "弾かれ線の資産")
+            NS_REFLECT_FIELD(m_dustAsset, "当たりの粉の資産")
+            NS_REFLECT_FIELD(m_reboundTrailAsset, "反動の尾の資産")
+            NS_REFLECT_FIELD(m_landDustAsset, "着地の粉の資産")
             NS_REFLECT_FIELD(m_floorLift, "照りを浮かせる高さ")
             NS_REFLECT_FIELD(m_landDustAssetRadius, "着地の粉の資産半径")
             NS_REFLECT_END()
 
         private:
-            std::string m_coreAsset = "impact.core";
-            std::string m_streakAsset = "impact.streak";
-            std::string m_ringAsset = "impact.ring";
-            std::string m_sparksAsset = "impact.sparks";
-            std::string m_embersAsset = "impact.embers";
-            std::string m_glowAsset = "impact.glow";
-            std::string m_recoilAsset = "impact.recoil";
-            std::string m_dustAsset = "impact.dust";
-            std::string m_reboundTrailAsset = "rebound.trail";
-            std::string m_landDustAsset = "land.dust";
+            NS::EffectName m_coreAsset{"impact.core"};
+            NS::EffectName m_streakAsset{"impact.streak"};
+            NS::EffectName m_ringAsset{"impact.ring"};
+            NS::EffectName m_sparksAsset{"impact.sparks"};
+            NS::EffectName m_embersAsset{"impact.embers"};
+            NS::EffectName m_glowAsset{"impact.glow"};
+            NS::EffectName m_recoilAsset{"impact.recoil"};
+            NS::EffectName m_dustAsset{"impact.dust"};
+            NS::EffectName m_reboundTrailAsset{"rebound.trail"};
+            NS::EffectName m_landDustAsset{"land.dust"};
             //! 同じ面で描画がちらつかないための離隔
             float m_floorLift = 0.03f;
             float m_landDustAssetRadius = 1.2f;

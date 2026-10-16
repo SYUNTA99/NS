@@ -20,7 +20,7 @@ TEST(IUseEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
     TestEffectActor& actor = *owned;
     ASSERT_NE(actor.GetEffectKeeper(), nullptr);
 
-    const NS::uint32 id = NS::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
     EXPECT_EQ(actor.GetEffectKeeper()->Records().size(), 1u);
@@ -33,7 +33,7 @@ TEST(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 {
     const std::unique_ptr<TestEffectActor> owned = NS::CreateActor<TestEffectActor>();
     TestEffectActor& actor = *owned;
-    const NS::uint32 id = NS::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{});
     actor.Update();
     ASSERT_EQ(NS::EffectStep(&actor), 1);
 
@@ -55,7 +55,7 @@ TEST(IUseEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 {
     const std::unique_ptr<TestEffectActor> owned = NS::CreateActor<TestEffectActor>();
     TestEffectActor& actor = *owned;
-    const NS::uint32 id = NS::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{});
     NS::StopEffectAfter(&actor, id, 2);
 
     actor.Update();
@@ -69,8 +69,8 @@ TEST(IUseEffectTest, ActorWithoutTheSlotDoesNothing)
     NS::SceneActor actor;
     ASSERT_EQ(actor.GetEffectKeeper(), nullptr);
 
-    NS::PreloadEffects(&actor, {"test.spark"});
-    EXPECT_EQ(NS::PlayEffect(&actor, "test.spark", NS::Gfx::EffectPlayDesc{}), 0u);
+    NS::PreloadEffects(&actor, {NS::EffectName{"test.spark"}});
+    EXPECT_EQ(NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{}), 0u);
     NS::StopEffect(&actor, 1);
     NS::StopEffectRoot(&actor, 1);
     NS::StopEffectAfter(&actor, 1, 1);

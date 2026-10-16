@@ -76,7 +76,7 @@ namespace GL
         {
             NS::Model* model = CreateSubObj(m_model, this);
             model->SetMeshRef("sphere");
-            model->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
+            model->SetBaseColor(NS::Color{0.72f, 0.70f, 0.66f});
             CreateSubObj(m_shadow, this);
             NS::SphereCollision* sphere = CreateSubObj<NS::Collision, NS::SphereCollision>(m_collision, this);
             CreateSubObj(m_params);

@@ -94,7 +94,7 @@ namespace GL
                 const float nonNegative[] = {desc.groundLift,
                                              desc.headDepthRatio,
                                              desc.lateStageFrom,
-                                             desc.darkAlpha,
+                                             desc.darkColor.w,
                                              desc.bandEdgeAlpha,
                                              desc.bandFillAlpha,
                                              desc.headEdgeAlpha,
@@ -110,8 +110,9 @@ namespace GL
                         return false;
                     }
                 }
-                return NS::IsFinite(desc.earlyColor) && NS::IsFinite(desc.lateColor) && NS::IsFinite(desc.fullColor) &&
-                       NS::IsFinite(desc.plainColor) && NS::IsFinite(desc.darkColor);
+                return NS::IsFinite(desc.earlyColor.ToVector3()) && NS::IsFinite(desc.lateColor.ToVector3()) &&
+                       NS::IsFinite(desc.fullColor.ToVector3()) && NS::IsFinite(desc.plainColor.ToVector3()) &&
+                       NS::IsFinite(desc.darkColor.ToVector3());
             }
 
             // 上向きの板 (shadowQuad。1 × 1 m で、+z の端が v = 0) を、線に沿った範囲と横の幅へ伸ばし、線の向きへ回して
@@ -170,7 +171,8 @@ namespace GL
                     NS::Vector4{shape.stageColor.x, shape.stageColor.y, shape.stageColor.z, look.edgeAlpha};
                 constants.plainColor =
                     NS::Vector4{desc.plainColor.x, desc.plainColor.y, desc.plainColor.z, look.plainEdgeAlpha};
-                constants.darkColor = NS::Vector4{desc.darkColor.x, desc.darkColor.y, desc.darkColor.z, desc.darkAlpha};
+                constants.darkColor =
+                    NS::Vector4{desc.darkColor.x, desc.darkColor.y, desc.darkColor.z, desc.darkColor.w};
 
                 // 始まりのぼかし: (along − 玉の縁) ÷ ぼかす長さ。0 以下で消え、1 以上で全部出る
                 PlateLinear fade{.value = 1.0f, .slope = 0.0f};
@@ -302,15 +304,16 @@ namespace GL
                 {
                     purple = NS::Clamp(state.overcharge01, 0.0f, 1.0f);
                 }
-                shape.stageColor = desc.fullColor + (desc.overchargeColor - desc.fullColor) * purple;
+                const NS::Vector3 full = desc.fullColor.ToVector3();
+                shape.stageColor = full + (desc.overchargeColor.ToVector3() - full) * purple;
             }
             else if (charge < desc.lateStageFrom)
             {
-                shape.stageColor = desc.earlyColor;
+                shape.stageColor = desc.earlyColor.ToVector3();
             }
             else
             {
-                shape.stageColor = desc.lateColor;
+                shape.stageColor = desc.lateColor.ToVector3();
             }
 
             outShape = std::move(shape);
