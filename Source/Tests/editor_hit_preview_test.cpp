@@ -4,7 +4,7 @@
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SubObjects/PlayerInput.h"

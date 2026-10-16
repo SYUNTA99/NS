@@ -11,7 +11,7 @@
 #include "NSlib/Windows/Windows.h"
 
 // Object 層は一括ヘッダを持たないため、層の公開ヘッダを直接並べる
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorRef.h"

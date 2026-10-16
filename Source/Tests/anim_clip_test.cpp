@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/Graphics/Animation.h"
 #include "NSlib/Graphics/GltfLoader.h"
 #include "NSlib/Graphics/Retarget.h"

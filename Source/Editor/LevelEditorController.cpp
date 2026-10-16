@@ -21,7 +21,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Sphere.h"
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"

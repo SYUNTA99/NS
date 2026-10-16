@@ -1,6 +1,6 @@
 #include "Editor/AssetPicker.h"
 
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/Graphics/GltfLoader.h"
 #include "NSlib/Windows/Filesystem.h"
 

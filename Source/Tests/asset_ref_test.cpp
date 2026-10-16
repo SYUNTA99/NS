@@ -2,7 +2,7 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"

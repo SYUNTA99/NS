@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"

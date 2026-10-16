@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"

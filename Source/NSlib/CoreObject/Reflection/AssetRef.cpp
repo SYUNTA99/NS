@@ -1,6 +1,6 @@
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
 
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/SceneActor.h"

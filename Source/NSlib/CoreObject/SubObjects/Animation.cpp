@@ -2,7 +2,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/CoreObject/AssetManager.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Graphics/D3DBuffer.h"
