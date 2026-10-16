@@ -160,14 +160,9 @@ namespace NS
         {
             if (first == ObjectLayers::Terrain)
             {
-                return second == ObjectLayers::Rock || second == ObjectLayers::Debris;
+                return second == ObjectLayers::Rock;
             }
             if (first == ObjectLayers::Rock)
-            {
-                return second == ObjectLayers::Terrain || second == ObjectLayers::Rock ||
-                       second == ObjectLayers::Debris;
-            }
-            if (first == ObjectLayers::Debris)
             {
                 return second == ObjectLayers::Terrain || second == ObjectLayers::Rock;
             }

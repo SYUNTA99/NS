@@ -55,11 +55,6 @@ namespace GL
             }
             [[nodiscard]] float RestLifeSeconds() const noexcept { return m_restLifeSeconds; }
             [[nodiscard]] float FloorDot() const noexcept { return std::clamp(m_floorDot, NS::k_Epsilon, 1.0f); }
-            [[nodiscard]] int DebrisCount() const noexcept { return m_debrisCount; }
-            [[nodiscard]] float DebrisSpeed() const noexcept { return m_debrisSpeed; }
-            [[nodiscard]] float DebrisLifeSeconds() const noexcept { return m_debrisLifeSeconds; }
-            [[nodiscard]] float DebrisScale() const noexcept { return m_debrisScale; }
-            [[nodiscard]] NS::Vector3 DebrisBaseColor() const noexcept { return m_debrisBaseColor; }
             [[nodiscard]] float MarkProbeDistance() const noexcept { return m_markProbeDistance; }
             [[nodiscard]] int MissHopCount() const noexcept { return std::max(m_missHopCount, 0); }
             //! 外れで着地した後の跳ね方の欄をまとめた値
@@ -93,11 +88,6 @@ namespace GL
             NS_REFLECT_FIELD(m_toughness, "耐久")
             NS_REFLECT_FIELD(m_restLifeSeconds, "止まってから消える秒")
             NS_REFLECT_FIELD(m_floorDot, "床とみなす法線の上向き成分")
-            NS_REFLECT_FIELD(m_debrisCount, "破片の数")
-            NS_REFLECT_FIELD(m_debrisSpeed, "破片の速さ")
-            NS_REFLECT_FIELD(m_debrisLifeSeconds, "破片の寿命秒")
-            NS_REFLECT_FIELD(m_debrisScale, "破片の大きさ")
-            NS_REFLECT_FIELD(m_debrisBaseColor, "破片の色")
             NS_REFLECT_FIELD(m_markProbeDistance, "跡の床探しの距離")
             NS_REFLECT_FIELD(m_launchApexHeight, "押し飛ばしの高さ")
             NS_REFLECT_FIELD(m_launchRiseGravity, "押し飛ばしの上昇重力")
@@ -127,11 +117,6 @@ namespace GL
             float m_toughness = 1.0f;
             float m_restLifeSeconds = 0.0f;
             float m_floorDot = 0.7071f;
-            int m_debrisCount = 5;
-            float m_debrisSpeed = 6.0f;
-            float m_debrisLifeSeconds = 8.0f;
-            float m_debrisScale = 0.25f;
-            NS::Vector3 m_debrisBaseColor{0.35f, 0.32f, 0.30f};
             float m_markProbeDistance = 64.0f;
             float m_launchApexHeight = 2.0f;
             float m_launchRiseGravity = 25.0f;

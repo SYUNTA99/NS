@@ -74,7 +74,7 @@ namespace GL
         void CourseDirector::SendRestart(const NS::SceneActor* skip)
         {
             // 送る先は控えた並びで回す。受け手が戻る間に配置物の並びが変わっても崩れない
-            // 一時オブジェクト (破片・跡) は凍結に無いので送らない
+            // 一時オブジェクト (跡) は凍結に無いので送らない
             const nlohmann::json& baseline = m_scene.PlayBaseline();
             std::vector<NS::SceneActor*> receivers;
             receivers.reserve(m_scene.Objects().ObjectCount());

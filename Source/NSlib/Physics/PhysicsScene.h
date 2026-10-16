@@ -34,8 +34,7 @@ namespace NS
         {
             inline constexpr JPH::ObjectLayer Terrain = 0;
             inline constexpr JPH::ObjectLayer Rock = 1;
-            inline constexpr JPH::ObjectLayer Debris = 2;
-            inline constexpr uint Count = 3;
+            inline constexpr uint Count = 2;
         } // namespace ObjectLayers
 
         namespace BroadPhaseLayers
@@ -50,7 +49,6 @@ namespace NS
 
             inline constexpr JPH::BroadPhaseLayer Terrain = FromObjectLayer(ObjectLayers::Terrain);
             inline constexpr JPH::BroadPhaseLayer Rock = FromObjectLayer(ObjectLayers::Rock);
-            inline constexpr JPH::BroadPhaseLayer Debris = FromObjectLayer(ObjectLayers::Debris);
             inline constexpr uint Count = ObjectLayers::Count;
         } // namespace BroadPhaseLayers
 
