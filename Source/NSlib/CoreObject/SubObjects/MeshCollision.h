@@ -31,10 +31,7 @@ namespace NS
         //! 当たりが無ければ空
         [[nodiscard]] std::vector<Phys::Triangle> WorldTriangles() const;
 
-        //! Model の参照から形状を借りる。解決失敗は cube、Model がなければ衝突なし
-        void ResolveAssets(AssetManager& assets) override;
-
-        // 当たりはリフレクションで運ばない。ResolveAssets が描画の参照から借りるので、型名だけ登録しておく
+        // 当たりはリフレクションで運ばない。持ち主の OnAssetsLoaded が Model のメッシュの名前から渡すので、型名だけ登録しておく
         NS_REFLECT_NONE(MeshCollision, Collision)
 
     private:

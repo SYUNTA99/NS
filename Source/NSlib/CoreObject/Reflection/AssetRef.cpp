@@ -22,6 +22,11 @@ namespace NS
         ref.SetLoaded(AssetManager::Get().LoadMaterial(ref.Name()));
     }
 
+    void LoadAssetRef(AssetRef<const SkinnedModel>& ref)
+    {
+        ref.SetLoaded(AssetManager::Get().LoadSkinnedModel(ref.Name()));
+    }
+
     void LoadAssetRefs(SceneActor& actor)
     {
         ForEachReflectedSubObj(actor, [](const SubObjectDesc&, SubObject* subObject) {

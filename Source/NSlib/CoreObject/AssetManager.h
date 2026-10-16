@@ -68,14 +68,13 @@ namespace NS
     //! vs / ps は必須、他は欠落時に既定値
     [[nodiscard]] bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError);
 
-    //! 読み込んだ skinned model。mesh / skeleton / clips 全て AssetManager 所有でキャッシュ寿命中のみ有効
-    //! 再生状態はインスタンス側が持つが、skeleton / clips のデータは不変なので複数インスタンスで共有する
-    struct LoadedSkinnedModel
+    //! @brief 読んだ骨付きのモデル 1 件。AssetManager が持ち、Clear まで有効
+    //! @details 読んだ後は書き換えないので、何体のアクターでも同じ物を使う。再生の状態はアクターの側が持つ
+    struct SkinnedModel
     {
-        Gfx::SkeletalMesh* mesh = nullptr;
-        const Gfx::Skeleton* skeleton = nullptr;
-        const std::vector<Gfx::AnimationClip>* clips = nullptr;
-        bool valid = false;
+        std::unique_ptr<Gfx::SkeletalMesh> mesh;
+        Gfx::Skeleton skeleton;
+        std::vector<Gfx::AnimationClip> clips;
     };
 
     //! アプリ寿命でアセットを重複なく所有する単一キャッシュ。ファイル由来は path キー、組み込みは名前キー
@@ -106,9 +105,10 @@ namespace NS
         //! @details 装置が無くても作れる。同じファイルは描く物と同じ記録から 1 回だけ読む
         [[nodiscard]] const Phys::MeshShape* LoadMeshShape(std::string_view name);
 
-        //! skinned glTF を読み SkeletalMesh を path キーで重複なく所有して返す。skeleton / clips は
-        //! キャッシュ record への参照で返し、再生状態だけをインスタンス側が持つ。失敗時は valid=false
-        [[nodiscard]] LoadedSkinnedModel GetOrLoadSkinnedModel(std::string_view path);
+        //! @brief 欄の名前の骨付きのモデルを返す。名前は ContentRoot からの glTF の道筋
+        //! @details 空の名前は「使わない」で、警告せずに nullptr。読めない名前は報告して nullptr
+        //! 読めなかったファイルは覚えないので、直した後に読み直すと読める
+        [[nodiscard]] const SkinnedModel* LoadSkinnedModel(std::string_view name);
 
         //! アニメーション専用 glTF を path キーで重複なく所有して返す。読込失敗の path は負キャッシュし
         //! 以後は再読込せず nullptr を返す。修正した file の再試行は Clear() でキャッシュを解いてから
@@ -175,12 +175,8 @@ namespace NS
         // 本当の場所の .mat を読んで記録する。読めなければ nullptr
         [[nodiscard]] const MaterialRecord* LoadMaterialFile(const std::string& path);
 
-        struct SkinnedModelRecord
-        {
-            std::unique_ptr<Gfx::SkeletalMesh> mesh;
-            Gfx::Skeleton skeleton;
-            std::vector<Gfx::AnimationClip> clips;
-        };
+        // 本当の場所の skinned glTF を読んで記録する。読めなければ nullptr
+        [[nodiscard]] const SkinnedModel* LoadSkinnedModelFile(std::string_view path);
 
         std::string m_baseDir; // 相対 path 解決の基準ディレクトリ
         std::map<std::string, std::unique_ptr<Gfx::Shader>> m_shaders;
@@ -192,8 +188,7 @@ namespace NS
             m_capsules;                                                              // 半径と半分の高さの組がキー
         std::map<std::string, MaterialRecord> m_materials;                           // .mat composite
         std::map<std::string, std::unique_ptr<Gfx::Material>> m_sharedMaterials; // 手続き共有マテリアル
-        std::map<std::string, SkinnedModelRecord>
-            m_skinnedModels; // skinned glTF。record は挿入後に書き換えず、配った参照を安定させる
+        std::map<std::string, SkinnedModel> m_skinnedModels; // skinned glTF。挿入後に書き換えず、配った参照を安定させる
         std::map<std::string, std::unique_ptr<Gfx::AnimationSource>>
             m_animationSources; // アニメ専用 glTF。空の値は読み込み失敗の記録
         std::map<std::pair<std::string, std::string>, std::unique_ptr<std::vector<Gfx::AnimationClip>>>

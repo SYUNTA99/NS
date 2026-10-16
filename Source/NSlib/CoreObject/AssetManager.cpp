@@ -360,53 +360,62 @@ namespace NS
         return collision;
     }
 
-    LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(std::string_view path)
+    const SkinnedModel* AssetManager::LoadSkinnedModel(std::string_view name)
+    {
+        if (name.empty())
+        {
+            return nullptr;
+        }
+        const std::optional<std::string> path = ResolveContentPath(std::string{name});
+        if (!path)
+        {
+            NS_LOG_WARN(Scene, "骨付きのモデル {} は ContentRoot の外を指すので読まない", name);
+            return nullptr;
+        }
+        return LoadSkinnedModelFile(*path);
+    }
+
+    const SkinnedModel* AssetManager::LoadSkinnedModelFile(std::string_view path)
     {
         const std::string key = OS::FileSystem::Normalize(path);
-        std::map<std::string, SkinnedModelRecord>::iterator it = m_skinnedModels.find(key);
-        if (it == m_skinnedModels.end())
+        if (const std::map<std::string, SkinnedModel>::iterator it = m_skinnedModels.find(key);
+            it != m_skinnedModels.end())
         {
-            Gfx::SkinnedMeshData data = Gfx::LoadGltfSkinnedMesh(key);
-            if (!data.IsValid())
-            {
-                NS_LOG_ERROR(Graphics, "AssetManager: skinned glTF 読込失敗: {}", key);
-                return LoadedSkinnedModel{};
-            }
-
-            if (data.vertices.empty())
-            {
-                NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh に頂点が無い: {}", key);
-                return LoadedSkinnedModel{};
-            }
-
-            Gfx::SkinnedMeshDesc smd{};
-            smd.vertices = data.vertices.data();
-            smd.vertexCount = data.vertices.size();
-            smd.indices = data.indices.data();
-            smd.indexCount = data.indices.size();
-            smd.boneCount = data.skeleton.BoneCount();
-
-            SkinnedModelRecord record{};
-            record.mesh = Gfx::SkeletalMesh::Create(smd);
-            if (record.mesh == nullptr || !record.mesh->IsValid())
-            {
-                // GPU buffer 生成に失敗。壊れた mesh をキャッシュせず無効を返し、Draw が無音で何もしないのを防ぐ
-                NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key);
-                return LoadedSkinnedModel{};
-            }
-
-            record.skeleton = std::move(data.skeleton);
-            record.clips = std::move(data.animations);
-            it = m_skinnedModels.emplace(key, std::move(record)).first;
+            return &it->second;
         }
 
-        // record への参照を渡す。record は挿入後に書き換えないので、参照は Clear() まで有効
-        LoadedSkinnedModel out{};
-        out.mesh = it->second.mesh.get();
-        out.skeleton = &it->second.skeleton;
-        out.clips = &it->second.clips;
-        out.valid = true;
-        return out;
+        Gfx::SkinnedMeshData data = Gfx::LoadGltfSkinnedMesh(key);
+        if (!data.IsValid())
+        {
+            NS_LOG_ERROR(Graphics, "AssetManager: skinned glTF 読込失敗: {}", key);
+            return nullptr;
+        }
+
+        if (data.vertices.empty())
+        {
+            NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh に頂点が無い: {}", key);
+            return nullptr;
+        }
+
+        Gfx::SkinnedMeshDesc smd{};
+        smd.vertices = data.vertices.data();
+        smd.vertexCount = data.vertices.size();
+        smd.indices = data.indices.data();
+        smd.indexCount = data.indices.size();
+        smd.boneCount = data.skeleton.BoneCount();
+
+        SkinnedModel model{};
+        model.mesh = Gfx::SkeletalMesh::Create(smd);
+        if (model.mesh == nullptr || !model.mesh->IsValid())
+        {
+            // GPU buffer 生成に失敗。壊れた mesh をキャッシュせず無効を返し、Draw が無音で何もしないのを防ぐ
+            NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key);
+            return nullptr;
+        }
+
+        model.skeleton = std::move(data.skeleton);
+        model.clips = std::move(data.animations);
+        return &m_skinnedModels.emplace(key, std::move(model)).first->second;
     }
 
     const Gfx::AnimationSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
@@ -455,10 +464,10 @@ namespace NS
             return nullptr;
         }
 
-        const LoadedSkinnedModel model = GetOrLoadSkinnedModel(key.second);
-        if (!model.valid || model.skeleton == nullptr)
+        const SkinnedModel* model = LoadSkinnedModelFile(key.second);
+        if (model == nullptr)
         {
-            // model 側の失敗は GetOrLoadSkinnedModel がキャッシュせず再試行できるようにしている。組で恒久化しない
+            // model 側の失敗は LoadSkinnedModelFile がキャッシュせず再試行できるようにしている。組で恒久化しない
             return nullptr;
         }
 
@@ -466,7 +475,7 @@ namespace NS
         // 同じ組で解決する全インスタンスがこの 1 本を共有する
         std::unique_ptr<std::vector<Gfx::AnimationClip>> bound =
             std::make_unique<std::vector<Gfx::AnimationClip>>(
-                Gfx::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
+                Gfx::BindClipsByName(source->animations, source->skeleton, model->skeleton));
         const std::vector<Gfx::AnimationClip>* raw = bound.get();
         m_boundClips.emplace(key, std::move(bound));
         return raw;

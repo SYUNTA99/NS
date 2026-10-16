@@ -162,11 +162,14 @@ namespace NS
         return m_playing;
     }
 
-    void Animation::ResolveAssets(AssetManager& assets)
+    void Animation::UseModel()
     {
-        // 欄を書き換えるたびに読み直すので、前に読んだクリップを残さない
+        // 欄を書き換えるたびに読み直すので、前のモデルの骨格・メッシュ・クリップを残さない
         m_clips.clear();
-        if (m_modelRef.empty())
+        SetSkeleton(nullptr);
+        SetMesh(nullptr);
+        const SkinnedModel* model = m_model.Get();
+        if (model == nullptr)
         {
             // 結合先の骨格が無いので Clips だけあっても解決できない
             if (!m_clipsRef.empty())
@@ -176,43 +179,27 @@ namespace NS
             return;
         }
 
-        const std::optional<std::string> resolved = ResolveContentPath(m_modelRef);
-        if (!resolved)
-        {
-            NS_LOG_WARN(Graphics, "SkeletalAnimation: model 参照を解決できない: {}", m_modelRef);
-            return;
-        }
+        SetSkeleton(&model->skeleton);
+        AddClips(std::span(model->clips));
+        SetMesh(model->mesh.get());
 
-        LoadedSkinnedModel loaded = assets.GetOrLoadSkinnedModel(*resolved);
-        if (!loaded.valid)
-        {
-            // 読込失敗は GetOrLoadSkinnedModel が path 込みで報告済み
-            return;
-        }
-
-        SetSkeleton(loaded.skeleton);
-        if (loaded.clips != nullptr)
-        {
-            AddClips(std::span(*loaded.clips));
-        }
-
-        SetMesh(loaded.mesh);
-
-        // 参照解決は部品の並びで回るので、Model はここより先に解決済み
-        // ここで差し替えないと skinned mesh が見た目に反映されない
+        // Model のメッシュの欄は空なので、ここで差さないと骨付きのメッシュが見た目に出ない
         if (SceneActor* owner = Owner())
         {
             if (Model* renderer = owner->ModelSubObj())
             {
-                renderer->SetMesh(loaded.mesh);
+                renderer->SetMesh(model->mesh.get());
             }
         }
 
         // Clips 欄のエントリを骨名で model の骨格へ結合して足す。失敗エントリは skip して残りを続ける
-        if (loaded.skeleton == nullptr)
+        // 読めたモデルの名前は ContentRoot の中を指している
+        const std::optional<std::string> resolved = ResolveContentPath(m_model.Name());
+        if (!resolved)
         {
             return;
         }
+        AssetManager& assets = AssetManager::Get();
         for (const std::string& entry : SplitClipRefs(m_clipsRef))
         {
             const std::optional<std::string> resolvedClip = ResolveContentPath(entry);

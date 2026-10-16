@@ -1,3 +1,4 @@
+#include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -5,9 +6,12 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/SubObjects/Animation.h"
+#include "NSlib/CoreObject/SubObjects/MeshCollision.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/Shadow.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "TestAnimatedPlayerActor.h"
 
 #include <gtest/gtest.h>
 
@@ -173,4 +177,36 @@ TEST(AssetManagerLoad, MeshShapeFollowsTheNameRules)
     EXPECT_EQ(assets.LoadMeshShape(""), cube);
     EXPECT_EQ(assets.LoadMeshShape("Assets/Models/__ns_missing_shape__.glb"), cube);
     EXPECT_EQ(assets.LoadMeshShape("../__ns_outside__.glb"), cube);
+}
+
+// 当たりは Model のメッシュの名前から作るので、メッシュを替えて読み直すと当たりも替わる
+TEST(AssetRef, ReloadingAnotherMeshChangesTheCollisionShape)
+{
+    NS::Scene scene;
+    NS::MapPartsActor* parts = scene.SpawnTransient<NS::MapPartsActor>();
+    ASSERT_NE(parts, nullptr);
+    const NS::MeshCollision* collision = NS::Cast<NS::MeshCollision>(parts->CollisionSubObj());
+    ASSERT_NE(collision, nullptr);
+    NS::AssetManager& assets = NS::AssetManager::Get();
+    EXPECT_EQ(collision->Shape(), assets.LoadMeshShape(parts->ModelSubObj()->MeshRef()));
+
+    parts->ModelSubObj()->SetMeshRef("sphere");
+    parts->ReloadAssets();
+    EXPECT_EQ(collision->Shape(), assets.LoadMeshShape("sphere"));
+    EXPECT_NE(collision->Shape(), assets.LoadMeshShape("cube"));
+}
+
+// モデルの欄を空にして読み直すと、前に使っていた骨格を残さない
+TEST(AssetRef, EmptyModelLeavesNoSkeleton)
+{
+    const NS::FieldDesc* field = NS::FindField(NS::Animation::StaticReflection(), "モデル");
+    ASSERT_NE(field, nullptr);
+    EXPECT_EQ(field->type, NS::FieldType::AssetRef);
+
+    const std::unique_ptr<PlayerActor> player = NS::CreateActor<TestAnimatedPlayerActor>();
+    NS::Animation* animation = player->AnimationSubObj();
+    const NS::Gfx::Skeleton skeleton;
+    animation->SetSkeleton(&skeleton);
+    player->ReloadAssets();
+    EXPECT_EQ(animation->Skeleton(), nullptr);
 }

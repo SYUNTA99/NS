@@ -14,6 +14,7 @@
 #include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
 #include "NSlib/CoreObject/SubObjects/HitReaction.h"
 #include "NSlib/CoreObject/SubObjects/HitSensor.h"
+#include "NSlib/CoreObject/SubObjects/MeshCollision.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/Shadow.h"
 #include "NSlib/Windows/Clock.h"
@@ -258,6 +259,23 @@ namespace NS
         // TODO: 部品の ResolveAssets を一列に呼んでいる。部品の素材を参照の欄へ移し終えたら、このループと ResolveAssets を消す
         ForEachReflectedSubObj(*this,
                                [&](const SubObjectDesc&, SubObject* subObject) { subObject->ResolveAssets(AssetManager::Get()); });
+
+        // 読んだ素材から作る物。骨付きのメッシュを Model に差してから、Model のメッシュの名前で当たりを作る
+        if (m_animation)
+        {
+            m_animation->UseModel();
+        }
+        if (MeshCollision* meshCollision = Cast<MeshCollision>(m_collision.get()))
+        {
+            if (m_model)
+            {
+                meshCollision->SetShape(AssetManager::Get().LoadMeshShape(m_model->MeshRef()));
+            }
+            else
+            {
+                NS_LOG_WARN(Scene, "{} は Model が無いので、メッシュの当たりは空のまま", ClassName());
+            }
+        }
     }
 
     void SceneActor::OnStart()

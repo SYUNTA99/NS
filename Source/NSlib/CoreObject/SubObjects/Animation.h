@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/SubObject.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Graphics/Animation.h"
@@ -28,12 +29,8 @@ namespace NS
         void SetMesh(Gfx::SkeletalMesh* mesh) noexcept;
         //! 骨格を差し替える。呼び出し側が寿命を保つ。参照先がない間は ApplyPose を行わない
         void SetSkeleton(const Gfx::Skeleton* skeleton) noexcept;
-
-        //! この SubObject が表す skinned モデルの参照。ContentRoot 配下の glTF 相対パス
-        [[nodiscard]] const std::string& ModelRef() const noexcept { return m_modelRef; }
-        //! build 時にこの文字列から mesh / skeleton / clips を解決する。同じ object の Model の mesh
-        //! もこちらが差すので、skinned の配置物は Model 側の Mesh 参照を空のままにする
-        void SetModelRef(std::string ref) noexcept { m_modelRef = std::move(ref); }
+        //! 使っている骨格。モデルを使っていなければ nullptr
+        [[nodiscard]] const Gfx::Skeleton* Skeleton() const noexcept { return m_skeleton; }
 
         //! 追加で読むアニメーション glTF の参照一覧。セミコロン区切りの ContentRoot 相対パス
         [[nodiscard]] const std::string& ClipsRef() const noexcept { return m_clipsRef; }
@@ -71,15 +68,16 @@ namespace NS
         //! 再生中なら体の時間ぶん時刻を進め、今の時刻の姿勢を書く
         void Update();
 
-        //! modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。同じ object の Model
-        //! があれば同じ mesh を差す。空 / 解決不可はそのまま何もしない (SetMesh 等の手動配線を壊さない)
-        void ResolveAssets(AssetManager& assets) override;
+        //! @brief モデルの欄で読んだ骨付きのモデルの骨格・メッシュ・クリップを使い、持ち主の Model に同じメッシュを差す
+        //! @details 呼ぶのは持ち主の OnAssetsLoaded だけ。モデルが空・読めなければ、骨格もメッシュもクリップも空にする
+        //! 骨付きのアクターは Model のメッシュの欄を空のままにする。差すのはこちら
+        void UseModel();
 
         // 再生速度 / ループを Inspector へ公開する。毎フレーム読まれるのでライブで効き、負速度なら逆再生になる
         NS_REFLECT_BEGIN(Animation, SubObject)
         NS_REFLECT_FIELD(m_speed, "再生速度")
         NS_REFLECT_FIELD(m_looping, "ループ再生")
-        NS_REFLECT_FIELD(m_modelRef, "モデル")
+        NS_REFLECT_FIELD(m_model, "モデル")
         NS_REFLECT_FIELD(m_clipsRef, "クリップ")
         NS_REFLECT_END()
 
@@ -87,8 +85,8 @@ namespace NS
         void ApplyPose(float time);
 
         Gfx::SkeletalMesh* m_mesh = nullptr; // 更新先の SkeletalMesh (非所有)
-        std::string m_modelRef{}; // 保存・編集される参照文字列。ResolveAssets が mesh/skeleton/clips へ実体を当てる
-        std::string m_clipsRef{}; // 追加アニメーションの参照一覧。セミコロン区切りで ResolveAssets が結合する
+        AssetRef<const SkinnedModel> m_model;
+        std::string m_clipsRef{}; // 追加アニメーションの参照一覧。セミコロン区切りで UseModel が結合する
         const Gfx::Skeleton* m_skeleton = nullptr;      // ボーンパレット計算用の骨格 (非所有)
         std::vector<const Gfx::AnimationClip*> m_clips; // 再生できるクリップ一覧 (非所有)
         std::size_t m_current = 0;

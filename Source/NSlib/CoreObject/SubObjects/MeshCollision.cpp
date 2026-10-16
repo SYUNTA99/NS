@@ -1,10 +1,7 @@
 #include "NSlib/CoreObject/SubObjects/MeshCollision.h"
 
-#include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Physics/MeshShape.h"
 #include "NSlib/Physics/PhysicsScene.h"
@@ -96,24 +93,6 @@ namespace NS
         const Phys::MeshShape& shared = *m_shape;
         return physics.SyncMeshShape(
             current, shared, parts.translation, parts.rotation, parts.scale, Phys::ObjectLayers::Terrain);
-    }
-
-    void MeshCollision::ResolveAssets(AssetManager& assets)
-    {
-        const SceneActor* owner = Owner();
-        if (owner == nullptr)
-        {
-            return;
-        }
-
-        const Model* renderer = owner->ModelSubObj();
-        if (renderer == nullptr)
-        {
-            NS_LOG_WARN(Scene, "MeshCollision: 同じ object に MeshRenderer が無く、 当たりは空のまま");
-            return;
-        }
-
-        SetShape(assets.LoadMeshShape(renderer->MeshRef()));
     }
 
     // data からは当たり無しで作る
