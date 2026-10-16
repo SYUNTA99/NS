@@ -67,6 +67,41 @@ namespace
             ImGui::EndFrame();
         }
 
+        void DragPanelTo(const char* panel, ImVec2 destination, bool floating = true)
+        {
+            if (floating)
+            {
+                Frame([&]() { m_dock.MovePanel(panel, nullptr, NS::Editor::DockController::Placement::Floating); });
+                Frame();
+            }
+            const ImGuiWindow* window = ImGui::FindWindowByName(panel);
+            ImVec2 start{window->Pos.x + 80.0f, window->Pos.y + ImGui::GetFrameHeight() * 0.5f};
+            if (!floating)
+            {
+                ASSERT_NE(window->DockNode, nullptr);
+                ImGuiTabBar* bar = window->DockNode->TabBar;
+                ASSERT_NE(bar, nullptr);
+                const ImGuiTabItem* tab = ImGui::TabBarFindTabByID(bar, window->TabId);
+                ASSERT_NE(tab, nullptr);
+                start = ImVec2{bar->BarRect.Min.x + tab->Offset + tab->Width * 0.5f, bar->BarRect.GetCenter().y};
+            }
+            ImGuiIO& io = ImGui::GetIO();
+            io.AddMousePosEvent(start.x, start.y);
+            Frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            Frame();
+            io.AddMousePosEvent(start.x + 30.0f, start.y + ImGui::GetFrameHeight() * 3.0f);
+            Frame();
+            io.AddMousePosEvent(destination.x, destination.y);
+            Frame();
+            Frame();
+            ASSERT_NE(ImGui::GetDragDropPayload(), nullptr);
+            ASSERT_TRUE(ImGui::GetDragDropPayload()->IsDataType(IMGUI_PAYLOAD_TYPE_WINDOW));
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            Frame();
+            Frame();
+        }
+
         ImGuiContext* m_context = nullptr;
         NS::Editor::DockController m_dock;
     };
@@ -78,6 +113,124 @@ TEST_F(EditorDockTest, TabBarsHaveNoOverlappingUtilityWindows)
     Frame();
     EXPECT_EQ(ImGui::FindWindowByName("##PanelMaxBtn0"), nullptr);
     EXPECT_EQ(ImGui::FindWindowByName("##PanelMaxBtn2"), nullptr);
+}
+
+TEST_F(EditorDockTest, DroppingIntoThePanelBodyMergesWithoutAimingAtAMarker)
+{
+    Frame();
+    Frame();
+    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+    const ImVec2 destination{scene->Pos.x + scene->Size.x * 0.62f, scene->Pos.y + scene->Size.y * 0.67f};
+    DragPanelTo(NS::Editor::k_PanelAssets, destination);
+    const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Editor::k_PanelAssets);
+    EXPECT_NE(assets->DockId, 0u);
+    EXPECT_EQ(assets->DockId, scene->DockId);
+}
+
+TEST_F(EditorDockTest, DraggingADockedTabDirectlyIntoAnotherPanelBodyMergesIt)
+{
+    Frame();
+    Frame();
+    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+    const ImVec2 destination{scene->Pos.x + scene->Size.x * 0.62f, scene->Pos.y + scene->Size.y * 0.67f};
+    DragPanelTo(NS::Editor::k_PanelAssets, destination, false);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelAssets)->DockId, scene->DockId);
+}
+
+TEST_F(EditorDockTest, DroppingNearAPanelEdgeSplitsAwayFromTheOldMarker)
+{
+    const ImVec2 points[] = {{0.12f, 0.68f}, {0.88f, 0.32f}, {0.63f, 0.12f}, {0.37f, 0.88f}};
+    for (int direction = 0; direction < IM_ARRAYSIZE(points); ++direction)
+    {
+        Frame([&]() { m_dock.ResetLayout(); });
+        Frame();
+        const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+        const ImVec2 destination{scene->Pos.x + scene->Size.x * points[direction].x,
+                                 scene->Pos.y + scene->Size.y * points[direction].y};
+        DragPanelTo(NS::Editor::k_PanelAssets, destination);
+        const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Editor::k_PanelAssets);
+        ASSERT_NE(assets->DockNode, nullptr);
+        EXPECT_NE(assets->DockId, scene->DockId);
+        if (direction == ImGuiDir_Left)
+        {
+            EXPECT_LT(assets->Pos.x, scene->Pos.x);
+        }
+        else if (direction == ImGuiDir_Right)
+        {
+            EXPECT_GT(assets->Pos.x, scene->Pos.x);
+        }
+        else if (direction == ImGuiDir_Up)
+        {
+            EXPECT_LT(assets->Pos.y, scene->Pos.y);
+        }
+        else
+        {
+            EXPECT_GT(assets->Pos.y, scene->Pos.y);
+        }
+        EXPECT_EQ(ImGui::DockNodeGetRootNode(assets->DockNode), ImGui::DockNodeGetRootNode(scene->DockNode));
+    }
+}
+
+TEST_F(EditorDockTest, DroppingOntoATabBarMergesInsteadOfSplittingTheWholeLayout)
+{
+    Frame();
+    Frame();
+    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+    ASSERT_NE(scene->DockNode->TabBar, nullptr);
+    const ImRect bar = scene->DockNode->TabBar->BarRect;
+    DragPanelTo(NS::Editor::k_PanelAssets, ImVec2{bar.Min.x + bar.GetWidth() * 0.62f, bar.GetCenter().y});
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelAssets)->DockId, scene->DockId);
+}
+
+TEST_F(EditorDockTest, DroppingAlongTheWorkspaceEdgeSplitsTheWholeLayout)
+{
+    for (int direction = ImGuiDir_Left; direction < ImGuiDir_COUNT; ++direction)
+    {
+        Frame([&]() { m_dock.ResetLayout(); });
+        Frame();
+        const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+        const ImGuiDockNode* root = ImGui::DockNodeGetRootNode(scene->DockNode);
+        const ImVec2 size = root->Size;
+        ImVec2 destination{root->Pos.x + size.x * 0.55f, root->Pos.y + size.y * 0.64f};
+        if (direction == ImGuiDir_Left)
+        {
+            destination.x = root->Pos.x + 8.0f;
+        }
+        else if (direction == ImGuiDir_Right)
+        {
+            destination.x = root->Pos.x + size.x - 8.0f;
+        }
+        else if (direction == ImGuiDir_Up)
+        {
+            destination.y = root->Pos.y + ImGui::GetFrameHeight() + 8.0f;
+        }
+        else
+        {
+            destination.y = root->Pos.y + size.y - 8.0f;
+        }
+        DragPanelTo(NS::Editor::k_PanelAssets, destination);
+        const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Editor::k_PanelAssets);
+        ASSERT_NE(assets->DockNode, nullptr);
+        if (direction == ImGuiDir_Left || direction == ImGuiDir_Right)
+        {
+            EXPECT_NEAR(assets->DockNode->Size.y, size.y, 1.0f);
+        }
+        else
+        {
+            EXPECT_NEAR(assets->DockNode->Size.x, size.x, 1.0f);
+        }
+    }
+}
+
+TEST_F(EditorDockTest, DisablingSplitsStillAllowsBodyDropsToMerge)
+{
+    Frame();
+    Frame();
+    ImGui::GetIO().ConfigDockingNoSplit = true;
+    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+    const ImVec2 destination{scene->Pos.x + scene->Size.x * 0.12f, scene->Pos.y + scene->Size.y * 0.68f};
+    DragPanelTo(NS::Editor::k_PanelAssets, destination);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelAssets)->DockId, scene->DockId);
 }
 
 TEST_F(EditorDockTest, EverySplitDirectionCanBeMergedBackIntoTheSameTabGroup)

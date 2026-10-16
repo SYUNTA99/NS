@@ -1635,6 +1635,7 @@ ImGuiIO::ImGuiIO()
     ConfigDockingNoSplit = false;
     ConfigDockingNoDockingOver = false;
     ConfigDockingWithShift = false;
+    ConfigDockingWithWideTargets = false;
     ConfigDockingAlwaysTabBar = false;
     ConfigDockingTransparentPayload = false;
 
@@ -19690,6 +19691,59 @@ bool ImGui::DockNodeCalcDropRectsAndTestMousePos(const ImRect& parent, ImGuiDir 
 {
     ImGuiContext& g = *GImGui;
 
+    if (g.IO.ConfigDockingWithWideTargets)
+    {
+        // 角では各辺までの距離を帯幅で正規化し、横長・縦長のパネルでも最も近い辺を選ぶ
+        const ImVec2 size = parent.GetSize();
+        const float band_x = size.x * 0.25f;
+        const float band_y = size.y * 0.25f;
+        float hit_band_x = band_x;
+        float hit_band_y = band_y;
+        if (outer_docking)
+        {
+            hit_band_x = ImMin(size.x * 0.10f, g.FontSize * 3.0f);
+            hit_band_y = ImMin(size.y * 0.10f, g.FontSize * 3.0f);
+        }
+        out_r = parent;
+        switch (dir)
+        {
+        case ImGuiDir_Left:
+            out_r.Max.x = parent.Min.x + hit_band_x;
+            break;
+        case ImGuiDir_Right:
+            out_r.Min.x = parent.Max.x - hit_band_x;
+            break;
+        case ImGuiDir_Up:
+            out_r.Max.y = parent.Min.y + hit_band_y;
+            break;
+        case ImGuiDir_Down:
+            out_r.Min.y = parent.Max.y - hit_band_y;
+            break;
+        default:
+            out_r.Expand(ImVec2(-band_x, -band_y));
+            break;
+        }
+        if (test_mouse_pos == NULL || !parent.Contains(*test_mouse_pos) || hit_band_x <= 0.0f || hit_band_y <= 0.0f)
+        {
+            return false;
+        }
+        const float distances[] = {(test_mouse_pos->x - parent.Min.x) / hit_band_x,
+                                   (parent.Max.x - test_mouse_pos->x) / hit_band_x,
+                                   (test_mouse_pos->y - parent.Min.y) / hit_band_y,
+                                   (parent.Max.y - test_mouse_pos->y) / hit_band_y};
+        ImGuiDir selected = ImGuiDir_None;
+        float nearest = 1.0f;
+        for (int edge = 0; edge < ImGuiDir_COUNT; ++edge)
+        {
+            if (distances[edge] < nearest)
+            {
+                nearest = distances[edge];
+                selected = static_cast<ImGuiDir>(edge);
+            }
+        }
+        return selected == dir;
+    }
+
     const float parent_smaller_axis = ImMin(parent.GetWidth(), parent.GetHeight());
     const float hs_for_central_nodes = ImMin(g.FontSize * 1.5f, ImMax(g.FontSize * 0.5f, parent_smaller_axis / 8.0f));
     float hs_w; // Half-size, longer axis
@@ -19798,6 +19852,10 @@ static void ImGui::DockNodePreviewDockSetup(ImGuiWindow* host_window, ImGuiDockN
                 continue;
             if (dir != ImGuiDir_None && !data->IsSidesAvailable)
                 continue;
+            if (g.IO.ConfigDockingWithWideTargets && is_explicit_target && !is_outer_docking && dir != ImGuiDir_None)
+            {
+                continue;
+            }
             if (DockNodeCalcDropRectsAndTestMousePos(data->FutureNode.Rect(), (ImGuiDir)dir, data->DropRectsDraw[dir+1], is_outer_docking, &g.IO.MousePos))
             {
                 data->SplitDir = (ImGuiDir)dir;
@@ -19805,9 +19863,9 @@ static void ImGui::DockNodePreviewDockSetup(ImGuiWindow* host_window, ImGuiDockN
             }
         }
 
-    // When docking without holding Shift, we only allow and preview docking when hovering over a drop rect or over the title bar
+    // 広い配置範囲を使わない時は、配置マークかタイトルバーに重ねた場合にだけ受け付ける
     data->IsDropAllowed = (data->SplitDir != ImGuiDir_None) || (data->IsCenterAvailable);
-    if (!is_explicit_target && !data->IsSplitDirExplicit && !g.IO.ConfigDockingWithShift)
+    if (!is_explicit_target && !data->IsSplitDirExplicit && !g.IO.ConfigDockingWithShift && !g.IO.ConfigDockingWithWideTargets)
         data->IsDropAllowed = false;
 
     // Calculate split area
@@ -19859,7 +19917,13 @@ static void ImGui::DockNodePreviewDockRender(ImGuiWindow* host_window, ImGuiDock
             overlay_rect.Min.y += GetFrameHeight();
         if (data->SplitDir != ImGuiDir_None || data->IsCenterAvailable)
             for (int overlay_n = 0; overlay_n < overlay_draw_lists_count; overlay_n++)
+            {
                 overlay_draw_lists[overlay_n]->AddRectFilled(overlay_rect.Min, overlay_rect.Max, overlay_col_main, host_window->WindowRounding, CalcRoundingFlagsForRectInRect(overlay_rect, host_window->Rect(), g.Style.DockingSeparatorSize));
+                if (g.IO.ConfigDockingWithWideTargets)
+                {
+                    overlay_draw_lists[overlay_n]->AddRect(overlay_rect.Min, overlay_rect.Max, overlay_col_lines, host_window->WindowRounding, 0, 2.0f);
+                }
+            }
     }
 
     // Display tab shape/label preview unless we are splitting node (it generally makes the situation harder to read)
@@ -19916,6 +19980,11 @@ static void ImGui::DockNodePreviewDockRender(ImGuiWindow* host_window, ImGuiDock
             }
             PopStyleColor(2);
         }
+    }
+
+    if (g.IO.ConfigDockingWithWideTargets)
+    {
+        return;
     }
 
     // Display drop boxes
@@ -21232,7 +21301,9 @@ void ImGui::BeginDockableDragDropTarget(ImGuiWindow* window)
             ImGuiDockPreviewData split_inner;
             ImGuiDockPreviewData split_outer;
             ImGuiDockPreviewData* split_data = &split_inner;
-            if (node && (node->ParentNode || node->IsCentralNode() || !node->IsLeafNode()))
+            // タブバーへのドロップは合流を優先し、配置全体の端への分割と競合させない
+            if (node && (node->ParentNode || node->IsCentralNode() || !node->IsLeafNode()) &&
+                !(g.IO.ConfigDockingWithWideTargets && is_explicit_target))
                 if (ImGuiDockNode* root_node = DockNodeGetRootNode(node))
                 {
                     DockNodePreviewDockSetup(window, root_node, payload_window, NULL, &split_outer, is_explicit_target, true);

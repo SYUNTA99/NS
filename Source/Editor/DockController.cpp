@@ -79,6 +79,8 @@ namespace NS
         void DockController::RenderDockSpaceHost(float topOffset, bool keepAliveOnly) noexcept
         {
 #if NS_EDITOR_ENABLED
+            ImGui::GetIO().ConfigDockingWithWideTargets = true;
+            ImGui::GetIO().ConfigDockingTransparentPayload = true;
             const ImGuiViewport* vp = ImGui::GetMainViewport();
             if (vp == nullptr)
             {
