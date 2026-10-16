@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/Graphics/Animation.h"
 #include "NSlib/Graphics/D3DMaterial.h"
 #include "NSlib/Graphics/Skeleton.h"
@@ -31,10 +32,6 @@ namespace NS
     }
     namespace Gfx
     {
-        class D3DStaticMesh;
-    }
-    namespace Gfx
-    {
         struct AnimSource;
     }
 } // namespace NS
@@ -50,23 +47,16 @@ namespace NS
 namespace NS
 {
     class AssetManager;
+    class Mesh;
+    class Shader;
+    class Texture;
 
     //! アセット相対パスを ContentRoot 配下の絶対パスへ正規化する
     //! ディレクトリトラバーサル (..) で ContentRoot 外へ出る不正なパスは弾き nullopt を返す
     [[nodiscard]] std::optional<std::string> ResolveContentPath(const std::string& relative);
 
-    //! .mat の JSON 解析結果。GPU 非依存なので device 無しでテストできる
-    struct MaterialFileDesc
-    {
-        std::string vertexShader;
-        std::string pixelShader;
-        std::vector<std::string> textures;
-        Vector3 baseColor{1.0f, 1.0f, 1.0f};
-        Gfx::BlendMode blend = Gfx::BlendMode::Opaque;
-    };
-
     //! JSON 文字列を MaterialFileDesc へ解析する。成功で true、失敗時は outError に理由を入れる
-    //! vs / ps は必須、他は欠落時に既定値
+    //! vs / ps は必須、他は欠落時に既定値。綴りの合わない混ぜ方は Opaque。GPU を使わないので装置無しで試せる
     [[nodiscard]] bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError);
 
     //! @brief 読んだ骨付きのモデル 1 件。AssetManager が持ち、Clear まで有効
@@ -118,10 +108,10 @@ namespace NS
         //! 手続き生成の組み込み cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         //! device 確立後・最初の利用前に 1 度だけ呼ぶ。既登録名は上書きしない
         void RegisterBuiltins();
-        //! 名前キーで組み込み D3DStaticMesh を引く。未登録は nullptr
+        //! 名前キーで組み込みの形の描く物を引く。未登録は nullptr
         //! RegisterBuiltins を通っていない AssetManager では全部 nullptr になる
         //! 同じ名前の当たりは RegisterBuiltins 無しでも LoadMeshShape が返す
-        [[nodiscard]] Gfx::D3DStaticMesh* Builtin(std::string_view name) const noexcept;
+        [[nodiscard]] Gfx::D3DMesh* Builtin(std::string_view name) const noexcept;
         //! 登録前も取得できる組み込みの形の名前。名前の一覧はアプリ寿命で保持する
         [[nodiscard]] static std::span<const std::string_view> BuiltinMeshNames() noexcept;
         //! @brief 欄の名前のマテリアルを返す。名前は共有の material の名前か、ContentRoot からの .mat の道筋
@@ -130,6 +120,8 @@ namespace NS
         [[nodiscard]] Gfx::D3DMaterial* LoadMaterial(std::string_view name);
         //! LoadMaterial と同じ名前の決まりで引き、読めなければ代えずに nullptr を返す。警告もしない
         [[nodiscard]] Gfx::D3DMaterial* TryLoadMaterial(std::string_view name);
+        //! TryLoadMaterial と同じ名前の決まりで、マテリアルそのものを返す。読めなければ nullptr
+        [[nodiscard]] Material* TryLoadMaterialAsset(std::string_view name);
         //! name の .mat に書かれた基準色。共有の名前・空・まだ読んでいない名前は (1, 1, 1)
         [[nodiscard]] Vector3 MaterialBaseColor(std::string_view name) const;
 
@@ -141,34 +133,27 @@ namespace NS
         //! 登録前も取得できる共有の材質の名前。名前の一覧はアプリ寿命で保持する
         [[nodiscard]] static std::span<const std::string_view> SharedMaterialNames() noexcept;
 
-        //! path キーのアセットを同じインスタンスのまま読み直す。現状 D3DShader のみ。成功で true、未キャッシュ /
-        //! 失敗で false
+        //! path キーのシェーダーを、同じインスタンスのまま読み直す。成功で true、未キャッシュか失敗で false
         [[nodiscard]] bool Reload(std::string_view path);
 
-        //! キャッシュ済み全 D3DShader を同じインスタンスのまま読み直す。成功本数を返す。HLSL 編集の即時反映に使う
+        //! 読んだ全部のシェーダーを、同じインスタンスのまま各自の道で読み直す。成功本数を返す。HLSL 編集の即時反映に使う
         std::size_t ReloadAllShaders();
 
         //! 全キャッシュを解放する。Renderer 破棄より前に呼ぶ
         void Clear() noexcept;
 
     private:
-        struct MaterialRecord
-        {
-            std::unique_ptr<Gfx::D3DMaterial> material;
-            Vector3 baseColor{1.0f, 1.0f, 1.0f};
-        };
-
-        // ファイルのメッシュ 1 件。描画と当たりを一度の読み込みで作る。失敗時は両方空で記録する
-        struct MeshRecord
-        {
-            std::unique_ptr<Gfx::D3DMesh> mesh;            // GPU での生成に失敗したら空
-            std::unique_ptr<Phys::MeshShape> collision; // Jolt の形は当たりを頼まれた時に作る
-        };
-
-        // 正規化した path で記録を引き、無ければ glTF を読んで作る
-        [[nodiscard]] MeshRecord& LoadMeshRecord(std::string_view path);
-        // 本当の場所の .mat を読んで記録する。読めなければ nullptr
-        [[nodiscard]] const MaterialRecord* LoadMaterialFile(const std::string& path);
+        // 正規化した path ごとに 1 つを作って共有する。読めない時は代わりの中身になる
+        [[nodiscard]] Shader* LoadShader(std::string_view path);
+        [[nodiscard]] Texture* LoadTexture(std::string_view path);
+        // 正規化した path でメッシュを引き、無ければ glTF を読んで描く形と当たりを一度に作る
+        // 読めなかった道も中身の空のメッシュで覚える
+        [[nodiscard]] Mesh& LoadMeshFile(std::string_view path);
+        // 本当の場所の .mat を読んで覚える。読めなければ nullptr
+        [[nodiscard]] Material* LoadMaterialFile(const std::string& path);
+        // file の道を baseDir から引いてシェーダーとテクスチャを読み、マテリアルを作る
+        [[nodiscard]] std::unique_ptr<Material> CreateMaterial(MaterialFileDesc file);
+        [[nodiscard]] Material* FindSharedMaterial(std::string_view name) const noexcept;
 
         // 本当の場所の skinned glTF を読んで記録する。読めなければ nullptr
         [[nodiscard]] const SkinnedModel* LoadSkinnedModelFile(std::string_view path);
@@ -176,13 +161,13 @@ namespace NS
         [[nodiscard]] const Gfx::AnimSource* GetOrLoadAnimationSource(std::string_view path);
 
         std::string m_baseDir; // 相対 path 解決の基準ディレクトリ
-        std::map<std::string, std::unique_ptr<Gfx::D3DShader>> m_shaders;
-        std::map<std::string, std::unique_ptr<Gfx::D3DTexture>> m_textures;
-        std::map<std::string, MeshRecord> m_meshes;                                      // path キーの file mesh
-        std::map<std::string, std::unique_ptr<Phys::MeshShape>> m_builtinCollisions; // 組み込み名キーの当たり
-        std::map<std::string, std::unique_ptr<Gfx::D3DStaticMesh>> m_builtins;          // path 無し、leaf と別容器
-        std::map<std::string, MaterialRecord> m_materials;                           // .mat composite
-        std::map<std::string, std::unique_ptr<Gfx::D3DMaterial>> m_sharedMaterials; // 手続き共有マテリアル
+        std::map<std::string, std::unique_ptr<Shader>> m_shaders;
+        std::map<std::string, std::unique_ptr<Texture>> m_textures;
+        std::map<std::string, std::unique_ptr<Mesh>> m_meshes; // path キーの glTF のメッシュ
+        // 組み込みの形の名前キー。当たりは装置の前でも作り、描く形は RegisterBuiltins が足す
+        std::map<std::string, std::unique_ptr<Mesh>> m_builtins;
+        std::map<std::string, std::unique_ptr<Material>> m_materials;       // path キーの .mat
+        std::map<std::string, std::unique_ptr<Material>> m_sharedMaterials; // コードで組む共有のマテリアル
         std::map<std::string, SkinnedModel> m_skinnedModels; // skinned glTF。挿入後に書き換えず、配った参照を安定させる
         std::map<std::string, std::unique_ptr<Gfx::AnimSource>>
             m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録

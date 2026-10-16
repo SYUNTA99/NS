@@ -2,8 +2,11 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
+#include "NSlib/CoreObject/Asset/Shader.h"
+#include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
-#include "NSlib/Graphics/FrameConstants.h"
 #include "NSlib/Graphics/GltfLoader.h"
 #include "NSlib/Graphics/D3DMaterial.h"
 #include "NSlib/Graphics/D3DMesh.h"
@@ -127,17 +130,11 @@ namespace NS
             return Gfx::D3DStaticMesh::Create(desc);
         }
 
-        [[nodiscard]] Gfx::BlendMode ParseBlend(const std::string& value) noexcept
+        [[nodiscard]] std::unique_ptr<Phys::MeshShape> MakeCollision(const Gfx::MeshGeometry& geom)
         {
-            if (value == "Alpha")
-            {
-                return Gfx::BlendMode::Alpha;
-            }
-            if (value == "Additive")
-            {
-                return Gfx::BlendMode::Additive;
-            }
-            return Gfx::BlendMode::Opaque;
+            std::unique_ptr<Phys::MeshShape> collision = std::make_unique<Phys::MeshShape>();
+            collision->triangles = MakeTriangles(geom);
+            return collision;
         }
     } // namespace
 
@@ -181,7 +178,7 @@ namespace NS
         out.blend = Gfx::BlendMode::Opaque;
         if (j.contains("blend") && j["blend"].is_string())
         {
-            out.blend = ParseBlend(j["blend"].get<std::string>());
+            out.blend = ParseBlend(j["blend"].get<std::string>()).value_or(Gfx::BlendMode::Opaque);
         }
 
         outError.clear();
@@ -219,17 +216,27 @@ namespace NS
 
     Gfx::D3DShader* AssetManager::GetOrLoadShader(std::string_view path)
     {
+        return LoadShader(path)->D3D();
+    }
+
+    Gfx::D3DTexture* AssetManager::GetOrLoadTexture(std::string_view path)
+    {
+        return LoadTexture(path)->D3D();
+    }
+
+    Shader* AssetManager::LoadShader(std::string_view path)
+    {
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
         const std::string key = OS::FileSystem::Normalize(path);
-        if (const std::map<std::string, std::unique_ptr<Gfx::D3DShader>>::iterator it = m_shaders.find(key);
+        if (const std::map<std::string, std::unique_ptr<Shader>>::iterator it = m_shaders.find(key);
             it != m_shaders.end())
         {
             return it->second.get();
         }
 
-        std::unique_ptr<Gfx::D3DShader> shader = Gfx::D3DShader::Create(key);
-        Gfx::D3DShader* raw = shader.get();
-        if (raw->IsUsingFallback())
+        std::unique_ptr<Shader> shader = std::make_unique<Shader>(key);
+        Shader* raw = shader.get();
+        if (raw->D3D()->IsUsingFallback())
         {
             NS_LOG_ERROR(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key);
         }
@@ -237,31 +244,33 @@ namespace NS
         return raw;
     }
 
-    Gfx::D3DTexture* AssetManager::GetOrLoadTexture(std::string_view path)
+    Texture* AssetManager::LoadTexture(std::string_view path)
     {
         const std::string key = OS::FileSystem::Normalize(path);
-        if (const std::map<std::string, std::unique_ptr<Gfx::D3DTexture>>::iterator it = m_textures.find(key);
+        if (const std::map<std::string, std::unique_ptr<Texture>>::iterator it = m_textures.find(key);
             it != m_textures.end())
         {
             return it->second.get();
         }
-        std::unique_ptr<Gfx::D3DTexture> texture = Gfx::D3DTexture::Create({.path = key});
-        Gfx::D3DTexture* raw = texture.get();
+        std::unique_ptr<Texture> texture = std::make_unique<Texture>(key);
+        Texture* raw = texture.get();
         m_textures.emplace(key, std::move(texture));
         return raw;
     }
 
-    AssetManager::MeshRecord& AssetManager::LoadMeshRecord(std::string_view path)
+    Mesh& AssetManager::LoadMeshFile(std::string_view path)
     {
         const std::string key = OS::FileSystem::Normalize(path);
-        if (const std::map<std::string, MeshRecord>::iterator it = m_meshes.find(key); it != m_meshes.end())
+        if (const std::map<std::string, std::unique_ptr<Mesh>>::iterator it = m_meshes.find(key);
+            it != m_meshes.end())
         {
-            return it->second;
+            return *it->second;
         }
 
         // 描画と当たりのどちらを先に頼まれても両方ここで作る
         // 当たりは MeshCollision が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
-        MeshRecord record;
+        std::unique_ptr<Gfx::D3DMesh> drawn;
+        std::unique_ptr<Phys::MeshShape> collision;
         const Gfx::MeshGeometry geom = Gfx::LoadGltfMesh(key);
         if (geom.vertices.empty() || geom.indices.empty())
         {
@@ -279,17 +288,16 @@ namespace NS
             }
             else
             {
-                record.mesh = std::move(mesh);
+                drawn = std::move(mesh);
             }
             // GPU 生成だけ失敗しても当たりは作る。device 無しのテストでも当たりを確かめられる
             // 当たりだけ頼まれた時も GPU 生成を通るので、device の無いテストでは上のエラーが出る
             // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
             // 大きな mesh を飾りに多く置いてメモリが効いてきたら、当たりを頼まれた時に作る形へ移す
-            record.collision = std::make_unique<Phys::MeshShape>();
-            record.collision->triangles = MakeTriangles(geom);
+            collision = MakeCollision(geom);
         }
         // 失敗した記録も残し、同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。修正後の再試行は Clear() で解いてから
-        return m_meshes.emplace(key, std::move(record)).first->second;
+        return *m_meshes.emplace(key, std::make_unique<Mesh>(std::move(drawn), std::move(collision))).first->second;
     }
 
     Gfx::D3DMesh* AssetManager::LoadMesh(std::string_view name)
@@ -323,7 +331,7 @@ namespace NS
         {
             return nullptr;
         }
-        return LoadMeshRecord(*path).mesh.get();
+        return LoadMeshFile(*path).D3D();
     }
 
     const Phys::MeshShape* AssetManager::LoadMeshShape(std::string_view name)
@@ -336,21 +344,20 @@ namespace NS
         }
         if (const BuiltinShape* shape = FindBuiltinShape(shapeName))
         {
+            // 描く形は装置が要るので、ここでは作らずに RegisterBuiltins へ任せる
             const std::string key{shapeName};
-            std::map<std::string, std::unique_ptr<Phys::MeshShape>>::iterator it = m_builtinCollisions.find(key);
-            if (it == m_builtinCollisions.end())
+            std::map<std::string, std::unique_ptr<Mesh>>::iterator it = m_builtins.find(key);
+            if (it == m_builtins.end())
             {
-                std::unique_ptr<Phys::MeshShape> collision = std::make_unique<Phys::MeshShape>();
-                collision->triangles = MakeTriangles(shape->make());
-                it = m_builtinCollisions.emplace(key, std::move(collision)).first;
+                it = m_builtins.emplace(key, std::make_unique<Mesh>(nullptr, MakeCollision(shape->make()))).first;
             }
-            return WithShape(it->second.get());
+            return WithShape(it->second->Collision());
         }
 
         const Phys::MeshShape* collision = nullptr;
         if (const std::optional<std::string> path = ResolveContentPath(std::string{name}))
         {
-            collision = WithShape(LoadMeshRecord(*path).collision.get());
+            collision = WithShape(LoadMeshFile(*path).Collision());
         }
         if (collision == nullptr)
         {
@@ -501,17 +508,26 @@ namespace NS
     {
         for (const BuiltinShape& shape : k_BuiltinShapes)
         {
-            m_builtins.emplace(shape.name, MakeStaticMesh(shape.make()));
+            const Gfx::MeshGeometry geom = shape.make();
+            const std::map<std::string, std::unique_ptr<Mesh>>::iterator it = m_builtins.find(shape.name);
+            if (it == m_builtins.end())
+            {
+                m_builtins.emplace(shape.name, std::make_unique<Mesh>(MakeStaticMesh(geom), MakeCollision(geom)));
+                continue;
+            }
+            if (it->second->D3D() == nullptr)
+            {
+                it->second->SetD3D(MakeStaticMesh(geom));
+            }
         }
     }
 
-    Gfx::D3DStaticMesh* AssetManager::Builtin(std::string_view name) const noexcept
+    Gfx::D3DMesh* AssetManager::Builtin(std::string_view name) const noexcept
     {
-        const std::map<std::string, std::unique_ptr<Gfx::D3DStaticMesh>>::const_iterator it =
-            m_builtins.find(std::string(name));
+        const std::map<std::string, std::unique_ptr<Mesh>>::const_iterator it = m_builtins.find(std::string(name));
         if (it != m_builtins.end())
         {
-            return it->second.get();
+            return it->second->D3D();
         }
         return nullptr;
     }
@@ -533,7 +549,16 @@ namespace NS
 
     Gfx::D3DMaterial* AssetManager::TryLoadMaterial(std::string_view name)
     {
-        if (Gfx::D3DMaterial* shared = SharedMaterial(name))
+        if (const Material* material = TryLoadMaterialAsset(name))
+        {
+            return material->D3D();
+        }
+        return nullptr;
+    }
+
+    Material* AssetManager::TryLoadMaterialAsset(std::string_view name)
+    {
+        if (Material* shared = FindSharedMaterial(name))
         {
             return shared;
         }
@@ -547,11 +572,7 @@ namespace NS
         {
             return nullptr;
         }
-        if (const MaterialRecord* record = LoadMaterialFile(*path))
-        {
-            return record->material.get();
-        }
-        return nullptr;
+        return LoadMaterialFile(*path);
     }
 
     Vector3 AssetManager::MaterialBaseColor(std::string_view name) const
@@ -566,22 +587,22 @@ namespace NS
         {
             return white;
         }
-        const std::map<std::string, MaterialRecord>::const_iterator it =
+        const std::map<std::string, std::unique_ptr<Material>>::const_iterator it =
             m_materials.find(OS::FileSystem::Normalize(*path));
         if (it == m_materials.end())
         {
             return white;
         }
-        return it->second.baseColor;
+        return it->second->File().baseColor;
     }
 
-    const AssetManager::MaterialRecord* AssetManager::LoadMaterialFile(const std::string& path)
+    Material* AssetManager::LoadMaterialFile(const std::string& path)
     {
         const std::string matKey = OS::FileSystem::Normalize(path);
-        if (const std::map<std::string, MaterialRecord>::iterator it = m_materials.find(matKey);
+        if (const std::map<std::string, std::unique_ptr<Material>>::iterator it = m_materials.find(matKey);
             it != m_materials.end())
         {
-            return &it->second;
+            return it->second.get();
         }
 
         const std::optional<std::string> textOpt = OS::FileSystem::ReadAllText(matKey);
@@ -599,75 +620,64 @@ namespace NS
             return nullptr;
         }
 
+        return m_materials.emplace(matKey, CreateMaterial(std::move(fileDesc))).first->second.get();
+    }
+
+    std::unique_ptr<Material> AssetManager::CreateMaterial(MaterialFileDesc file)
+    {
         // 相対 path は構築時の baseDir 基準で解決する。絶対 / ドライブ相対は Combine が baseDir を捨てて通す
         const auto resolve = [this](std::string_view p) { return OS::FileSystem::Combine(m_baseDir, p); };
 
-        Gfx::D3DShader* vertexShader = GetOrLoadShader(resolve(fileDesc.vertexShader));
-        Gfx::D3DShader* pixelShader = GetOrLoadShader(resolve(fileDesc.pixelShader));
-
-        // 定数バッファは slot 0 で Model が流す FrameCB に合わせる
-        Gfx::D3DMaterialDesc matDesc{};
-        matDesc.vertexShader = vertexShader;
-        matDesc.pixelShader = pixelShader;
-        matDesc.constantBufferSize = sizeof(Gfx::FrameCB);
-        matDesc.cbSlot = 0;
-        matDesc.blend = fileDesc.blend;
-        std::unique_ptr<Gfx::D3DMaterial> material = Gfx::D3DMaterial::Create(matDesc);
-
-        for (std::size_t i = 0; i < fileDesc.textures.size(); ++i)
+        Shader* vertexShader = LoadShader(resolve(file.vertexShader));
+        Shader* pixelShader = LoadShader(resolve(file.pixelShader));
+        std::vector<Texture*> textures;
+        textures.reserve(file.textures.size());
+        for (const std::string& texture : file.textures)
         {
-            Gfx::D3DTexture* texture = GetOrLoadTexture(resolve(fileDesc.textures[i]));
-            material->SetTexture(static_cast<uint>(i), texture);
+            textures.push_back(LoadTexture(resolve(texture)));
         }
-
-        return &m_materials.emplace(matKey, MaterialRecord{std::move(material), fileDesc.baseColor}).first->second;
+        return std::make_unique<Material>(std::move(file), vertexShader, pixelShader, textures);
     }
 
     void AssetManager::RegisterSharedMaterials()
     {
-        const auto shaderPath = [this](const char* name) {
-            return OS::FileSystem::Combine(OS::FileSystem::Combine(m_baseDir, "Shaders"), name);
+        // .mat と同じ値の形で組み、.mat と同じ道でシェーダーとテクスチャを引く
+        // water は描く 1 回ごとの不透明度を出す water.ps を使い、混ぜ方は Alpha にする
+        // shadow は shadow.ps が放射状の透明度を作るのでテクスチャを貼らない
+        const MaterialFileDesc player{.vertexShader = "Shaders/standard.vs.hlsl",
+                                      .pixelShader = "Shaders/player.ps.hlsl",
+                                      .textures = {"Assets/Textures/cube_test.png"}};
+        MaterialFileDesc water = player;
+        water.pixelShader = "Shaders/water.ps.hlsl";
+        water.blend = Gfx::BlendMode::Alpha;
+        MaterialFileDesc shadow = player;
+        shadow.pixelShader = "Shaders/shadow.ps.hlsl";
+        shadow.textures.clear();
+        shadow.blend = Gfx::BlendMode::Alpha;
+
+        const auto add = [this](const char* name, const MaterialFileDesc& file) {
+            if (!m_sharedMaterials.contains(name))
+            {
+                m_sharedMaterials.emplace(name, CreateMaterial(file));
+            }
         };
-        Gfx::D3DShader* standardVS = GetOrLoadShader(shaderPath("standard.vs.hlsl"));
-        Gfx::D3DShader* playerPS = GetOrLoadShader(shaderPath("player.ps.hlsl"));
-        Gfx::D3DTexture* baseTexture = GetOrLoadTexture(OS::FileSystem::Combine(
-            OS::FileSystem::Combine(OS::FileSystem::Combine(m_baseDir, "Assets"), "Textures"),
-            "cube_test.png"));
-
-        // 定数バッファは slot 0 で Model が流す FrameCB に合わせる
-        Gfx::D3DMaterialDesc base{};
-        base.vertexShader = standardVS;
-        base.pixelShader = playerPS;
-        base.constantBufferSize = sizeof(Gfx::FrameCB);
-        base.cbSlot = 0;
-
-        // player: 単一 Texture2D。slot0 に基準テクスチャを bind する
-        {
-            std::unique_ptr<Gfx::D3DMaterial> mat = Gfx::D3DMaterial::Create(base);
-            mat->SetTexture(0, baseTexture);
-            m_sharedMaterials.emplace("player", std::move(mat));
-        }
-        // water: alpha<1 を出す water.ps + Alpha ブレンドの専用 material
-        {
-            Gfx::D3DMaterialDesc desc = base;
-            desc.pixelShader = GetOrLoadShader(shaderPath("water.ps.hlsl"));
-            desc.blend = Gfx::BlendMode::Alpha;
-            std::unique_ptr<Gfx::D3DMaterial> mat = Gfx::D3DMaterial::Create(desc);
-            mat->SetTexture(0, baseTexture);
-            m_sharedMaterials.emplace("water", std::move(mat));
-        }
-        // shadow: shadow.ps が放射状アルファを生成するためテクスチャ不要、Alpha ブレンド
-        {
-            Gfx::D3DMaterialDesc desc = base;
-            desc.pixelShader = GetOrLoadShader(shaderPath("shadow.ps.hlsl"));
-            desc.blend = Gfx::BlendMode::Alpha;
-            m_sharedMaterials.emplace("shadow", Gfx::D3DMaterial::Create(desc));
-        }
+        add("player", player);
+        add("water", water);
+        add("shadow", shadow);
     }
 
     Gfx::D3DMaterial* AssetManager::SharedMaterial(std::string_view name) const noexcept
     {
-        const std::map<std::string, std::unique_ptr<Gfx::D3DMaterial>>::const_iterator it =
+        if (const Material* material = FindSharedMaterial(name))
+        {
+            return material->D3D();
+        }
+        return nullptr;
+    }
+
+    Material* AssetManager::FindSharedMaterial(std::string_view name) const noexcept
+    {
+        const std::map<std::string, std::unique_ptr<Material>>::const_iterator it =
             m_sharedMaterials.find(std::string(name));
         if (it != m_sharedMaterials.end())
         {
@@ -679,7 +689,7 @@ namespace NS
     bool AssetManager::Reload(std::string_view path)
     {
         const std::string key = OS::FileSystem::Normalize(path);
-        if (const std::map<std::string, std::unique_ptr<Gfx::D3DShader>>::iterator it = m_shaders.find(key);
+        if (const std::map<std::string, std::unique_ptr<Shader>>::iterator it = m_shaders.find(key);
             it != m_shaders.end())
         {
             return it->second->Reload();
@@ -691,7 +701,7 @@ namespace NS
     std::size_t AssetManager::ReloadAllShaders()
     {
         std::size_t reloaded = 0;
-        for (std::pair<const std::string, std::unique_ptr<Gfx::D3DShader>>& entry : m_shaders)
+        for (std::pair<const std::string, std::unique_ptr<Shader>>& entry : m_shaders)
         {
             if (entry.second->Reload())
             {
@@ -710,7 +720,6 @@ namespace NS
         m_textures.clear();
         m_shaders.clear();
         m_meshes.clear();
-        m_builtinCollisions.clear();
         m_skinnedModels.clear();
         m_animationSources.clear();
         m_builtins.clear();

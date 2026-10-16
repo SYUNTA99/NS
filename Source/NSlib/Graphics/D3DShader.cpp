@@ -225,15 +225,15 @@ namespace NS
             return Create(OS::FileSystem::Combine(shaderDir, fileName));
         }
 
-        D3DShader::D3DShader(std::string_view hlslPath) : m_sourcePath(hlslPath)
+        D3DShader::D3DShader(std::string_view hlslPath)
         {
-            const ShaderTypeInfo* info = DetectStage(m_sourcePath);
+            const ShaderTypeInfo* info = DetectStage(hlslPath);
             if (info == nullptr)
             {
                 NS_LOG_ERROR(
                     Graphics,
                     "D3DShader: ファイル名からステージを判定できない (.vs./.ps./.gs./.hs./.ds./.cs. を含まない): {}",
-                    m_sourcePath);
+                    hlslPath);
                 return;
             }
             m_type = info->stage;
@@ -248,7 +248,7 @@ namespace NS
 
             ComPtr<ID3D11DeviceChild> shader;
             ComPtr<ID3DBlob> bytecode;
-            if (Compile(shader, bytecode))
+            if (Compile(hlslPath, shader, bytecode))
             {
                 m_shader = std::move(shader);
                 m_vsBytecode = std::move(bytecode);
@@ -260,7 +260,7 @@ namespace NS
             {
                 return;
             }
-            NS_LOG_ERROR(Graphics, "D3DShader build failed, falling back to magenta: {}", m_sourcePath);
+            NS_LOG_ERROR(Graphics, "D3DShader build failed, falling back to magenta: {}", hlslPath);
             ComPtr<ID3DBlob> fb = CompileFallbackStage(info->entry, info->target);
             if (!fb || !CreateStageObject(device, m_type, fb, m_shader))
             {
@@ -273,7 +273,9 @@ namespace NS
             m_fallback = true;
         }
 
-        bool D3DShader::Compile(ComPtr<ID3D11DeviceChild>& outShader, ComPtr<ID3DBlob>& outVsBytecode) const noexcept
+        bool D3DShader::Compile(std::string_view hlslPath,
+                                ComPtr<ID3D11DeviceChild>& outShader,
+                                ComPtr<ID3DBlob>& outVsBytecode) const noexcept
         {
             ID3D11Device* device = Gpu().device;
             if (device == nullptr)
@@ -281,12 +283,17 @@ namespace NS
                 NS_LOG_ERROR(Graphics, "D3DShader: Renderer の Device が無効");
                 return false;
             }
-            const ShaderTypeInfo* info = DetectStage(m_sourcePath);
+            const ShaderTypeInfo* info = DetectStage(hlslPath);
             if (info == nullptr)
             {
                 return false;
             }
-            ComPtr<ID3DBlob> blob = CompileStage(m_sourcePath, info->entry, info->target);
+            if (info->stage != m_type)
+            {
+                NS_LOG_ERROR(Graphics, "D3DShader: 作った時とステージの違うファイルは読まない: {}", hlslPath);
+                return false;
+            }
+            ComPtr<ID3DBlob> blob = CompileStage(hlslPath, info->entry, info->target);
             if (!blob)
             {
                 return false;
@@ -304,11 +311,11 @@ namespace NS
             return true;
         }
 
-        bool D3DShader::Reload()
+        bool D3DShader::Reload(std::string_view hlslPath)
         {
             ComPtr<ID3D11DeviceChild> shader;
             ComPtr<ID3DBlob> bytecode;
-            if (!Compile(shader, bytecode))
+            if (!Compile(hlslPath, shader, bytecode))
             {
                 return false;
             }
