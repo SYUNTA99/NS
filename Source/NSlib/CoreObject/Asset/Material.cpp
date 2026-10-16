@@ -43,6 +43,32 @@ namespace NS
         return "Opaque";
     }
 
+    namespace
+    {
+        [[nodiscard]] std::unique_ptr<Gfx::D3DMaterial> MakeD3DMaterial(const Shader* vertexShader,
+                                                                        const Shader* pixelShader,
+                                                                        Gfx::BlendMode blend,
+                                                                        std::span<Texture* const> textures)
+        {
+            NS_ASSERT(Graphics, vertexShader != nullptr && pixelShader != nullptr, "マテリアルにシェーダーが無い");
+
+            // 定数バッファは slot 0 で Model が流す FrameCB に合わせる
+            Gfx::D3DMaterialDesc desc{};
+            desc.vertexShader = vertexShader->D3D();
+            desc.pixelShader = pixelShader->D3D();
+            desc.constantBufferSize = sizeof(Gfx::FrameCB);
+            desc.cbSlot = 0;
+            desc.blend = blend;
+            std::unique_ptr<Gfx::D3DMaterial> material = Gfx::D3DMaterial::Create(desc);
+
+            for (std::size_t i = 0; i < textures.size(); ++i)
+            {
+                material->SetTexture(static_cast<uint>(i), textures[i]->D3D());
+            }
+            return material;
+        }
+    } // namespace
+
     Material::Material(std::string path,
                        MaterialFileDesc file,
                        Shader* vertexShader,
@@ -50,21 +76,7 @@ namespace NS
                        std::span<Texture* const> textures)
         : m_path(std::move(path)), m_file(std::move(file)), m_vertexShader(vertexShader), m_pixelShader(pixelShader)
     {
-        NS_ASSERT(Graphics, vertexShader != nullptr && pixelShader != nullptr, "マテリアルにシェーダーが無い");
-
-        // 定数バッファは slot 0 で Model が流す FrameCB に合わせる
-        Gfx::D3DMaterialDesc desc{};
-        desc.vertexShader = m_vertexShader->D3D();
-        desc.pixelShader = m_pixelShader->D3D();
-        desc.constantBufferSize = sizeof(Gfx::FrameCB);
-        desc.cbSlot = 0;
-        desc.blend = m_file.blend;
-        m_material = Gfx::D3DMaterial::Create(desc);
-
-        for (std::size_t i = 0; i < textures.size(); ++i)
-        {
-            m_material->SetTexture(static_cast<uint>(i), textures[i]->D3D());
-        }
+        m_material = MakeD3DMaterial(m_vertexShader, m_pixelShader, m_file.blend, textures);
     }
 
     Material::Material(std::string path) : m_path(std::move(path)) {}
@@ -113,6 +125,20 @@ namespace NS
     const MaterialFileDesc& Material::File() const noexcept
     {
         return m_file;
+    }
+
+    bool Material::Rebuild(Shader* vertexShader, Shader* pixelShader, std::span<Texture* const> textures)
+    {
+        std::unique_ptr<Gfx::D3DMaterial> material = MakeD3DMaterial(vertexShader, pixelShader, m_file.blend, textures);
+        if (!material->IsValid())
+        {
+            NS_LOG_WARN(Graphics, "マテリアル {} を作り直せないので、前の D3DMaterial で描き続ける", m_path);
+            return false;
+        }
+        m_vertexShader = vertexShader;
+        m_pixelShader = pixelShader;
+        m_material = std::move(material);
+        return true;
     }
 
     Color Material::BaseColor() const noexcept

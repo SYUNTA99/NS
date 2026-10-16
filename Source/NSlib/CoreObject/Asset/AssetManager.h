@@ -46,6 +46,11 @@ namespace NS
     //! vs / ps は必須、他は欠落時に既定値。綴りの合わない混ぜ方は Opaque。GPU を使わないので装置無しで試せる
     [[nodiscard]] bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError);
 
+    //! @brief MaterialFileDesc を .mat の JSON 文字列にする。ParseMaterialJson で読み直すと同じ値になる
+    //! @details テクスチャが k_MaterialTextureSlots 枚より多い時と、基本の色が数でない時は nullopt
+    //! 鍵の並びと書き方は今の .mat と同じで、値を変えずに書くと同じ文字列になる
+    [[nodiscard]] std::optional<std::string> MakeMaterialJson(const MaterialFileDesc& file);
+
     //! @brief 読んだ骨付きのモデル 1 件。AssetManager が持ち、Clear まで有効
     //! @details 読んだ後は書き換えないので、何体のアクターでも同じ物を使う。再生の状態はアクターの側が持つ
     struct SkinnedModel
@@ -111,6 +116,15 @@ namespace NS
         //! 登録前も取得できる共有の材質の名前。名前の一覧はアプリ寿命で保持する
         [[nodiscard]] static std::span<const std::string_view> SharedMaterialNames() noexcept;
 
+        //! @brief material が .mat から読んだマテリアルなら、その値を .mat の JSON 文字列にする
+        //! @details 共有のマテリアルと読めなかった名前のマテリアルは書く先が無いので nullopt
+        //! 値が書けない時も nullopt (MakeMaterialJson と同じ決まり)
+        [[nodiscard]] std::optional<std::string> MakeMaterialFileJson(const Material& material) const;
+        //! @brief material の今の値で、シェーダーとテクスチャを引き直して中の D3DMaterial を作り直す
+        //! @details 同じマテリアルのまま中身を替えるので、欄が指すポインタはそのまま使える
+        //! 作り直せなかった時と中身の空のマテリアルは false を返し、前の D3DMaterial で描き続ける
+        [[nodiscard]] bool RebuildMaterial(Material& material);
+
         //! path キーのシェーダーを、同じインスタンスのまま読み直す。成功で true、未キャッシュか失敗で false
         [[nodiscard]] bool Reload(std::string_view path);
 
@@ -132,8 +146,17 @@ namespace NS
         [[nodiscard]] Material* LoadMaterialFile(const std::string& path, std::string_view name);
         // 読めなかった名前のマテリアル。名前ごとに 1 つ
         [[nodiscard]] Material& MissingMaterial(std::string_view name);
+        struct MaterialSources
+        {
+            Shader* vertexShader = nullptr;
+            Shader* pixelShader = nullptr;
+            std::vector<Texture*> textures; // 並びの番号がテクスチャの枠の番号
+        };
+
         // file の道を baseDir から引いてシェーダーとテクスチャを読み、マテリアルを作る
         [[nodiscard]] std::unique_ptr<Material> CreateMaterial(std::string_view name, MaterialFileDesc file);
+        // file の道を baseDir から引いてシェーダーとテクスチャを読む
+        [[nodiscard]] MaterialSources LoadMaterialSources(const MaterialFileDesc& file);
         [[nodiscard]] Material* FindSharedMaterial(std::string_view name) const noexcept;
 
         // 本当の場所の skinned glTF を読んで記録する。読めなければ nullptr。name はメッシュが持つ道

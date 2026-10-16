@@ -6,7 +6,11 @@
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
+#include "NSlib/Core/AABB.h"
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -34,6 +38,45 @@ namespace NS
             const Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
             const Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
+            void DrawSelectedAsset(LevelEditorController& editor, Object& asset)
+            {
+                if (Material* material = Cast<Material>(&asset))
+                {
+                    ImGui::TextUnformatted(material->Path().c_str());
+                    // 共有のマテリアルと、テクスチャが欄の枠より多い .mat は書けないので見るだけにする
+                    const bool writable = AssetManager::Get().MakeMaterialFileJson(*material).has_value();
+                    if (!writable)
+                    {
+                        ImGui::TextDisabled("見るだけ (.mat に書けないマテリアル)");
+                    }
+                    ImGui::TextDisabled("基本の色は、ドラッグでアクターに付けた時にアクターへ写す色");
+                    ImGui::Separator();
+                    ImGui::BeginDisabled(!writable);
+                    const ValueEditResult edit = DrawReflectedValue(material, *material->GetReflection());
+                    ImGui::EndDisabled();
+                    if (edit.changed)
+                    {
+                        editor.MarkAssetEdited();
+                    }
+                    if (edit.committed)
+                    {
+                        editor.CommitAssetEdit();
+                    }
+                    return;
+                }
+                if (const Mesh* mesh = Cast<Mesh>(&asset))
+                {
+                    ImGui::TextUnformatted(mesh->Path().c_str());
+                    ImGui::Separator();
+                    if (const AABB* bounds = mesh->LocalBounds())
+                    {
+                        ImGui::Text("幅 %.3f  高さ %.3f  奥行き %.3f",
+                                    bounds->Extents.x * 2.0f,
+                                    bounds->Extents.y * 2.0f,
+                                    bounds->Extents.z * 2.0f);
+                    }
+                }
+            }
         } // namespace
 #endif
 
@@ -61,6 +104,14 @@ namespace NS
                                   Editor::ObjectDisplayName(candidate),
                                   candidate.Id());
                     refOptions.push_back(Editor::ObjectRefOption{candidate.Id(), label});
+                }
+
+                // 素材の選択はアクターの選択と排他なので、選んでいる間はアクターの欄を出さない
+                if (Object* asset = editor.SelectedAsset())
+                {
+                    DrawSelectedAsset(editor, *asset);
+                    ImGui::End();
+                    return;
                 }
 
                 if (!editor.HasInspectableSelection())

@@ -204,6 +204,29 @@ namespace NS
             return true;
         }
 
+        bool FileSystem::ReplaceAllBytes(std::string_view path, std::span<const std::byte> bytes)
+        {
+            const std::string temporary = std::string{path} + ".tmp";
+            const std::wstring temporaryWide = OS::StringUtils::WideFromUtf8(temporary);
+            if (!WriteAllBytes(temporary, bytes))
+            {
+                ::DeleteFileW(temporaryWide.c_str());
+                return false;
+            }
+            if (::MoveFileExW(temporaryWide.c_str(),
+                              OS::StringUtils::WideFromUtf8(path).c_str(),
+                              MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == 0)
+            {
+                NS_LOG_ERROR(Core,
+                             "FileSystem::ReplaceAllBytes: {} を置き換えられないので前の中身を残す ({})",
+                             path,
+                             ErrorText(::GetLastError()));
+                ::DeleteFileW(temporaryWide.c_str());
+                return false;
+            }
+            return true;
+        }
+
         std::optional<std::string> FileSystem::ReadAllText(std::string_view path)
         {
             const std::optional<std::vector<std::byte>> bytes = ReadAllBytes(path);

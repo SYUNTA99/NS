@@ -13,6 +13,7 @@
 #include "NSlib/Core/Types.h"
 #include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -28,6 +29,8 @@ namespace NS
     class ThirdPersonFollow;
     class Scene;
     struct SceneView;
+    class AssetManager;
+    class Material;
 } // namespace NS
 
 namespace NS
@@ -210,6 +213,23 @@ public:
     //! 選択中の配置物の Model に材質を割り当てて undo へ積む。対象外なら false
     bool ApplyMaterialToSelected(std::string_view matPath);
 
+    //! @brief 素材の窓で押した素材 (.mat かメッシュ) を選ぶ。アクターの選択は外れる
+    //! @details 道は ContentRoot からの道で覚え、SelectedAsset が引くたびに AssetManager から引く
+    //! 読めない素材は選ばない。選ぶ前に、前の素材の確定していない編集を確定する
+    //! @param[in] assetPath 素材のファイルの絶対パス
+    void SelectAsset(std::string_view assetPath);
+    //! 選んだ素材の ContentRoot からの道。選んでいなければ空
+    [[nodiscard]] const std::string& SelectedAssetPath() const noexcept { return m_selectedAssetPath; }
+    //! 素材の窓の行が選んだ素材か。assetPath は素材のファイルの絶対パス
+    [[nodiscard]] bool IsAssetSelected(std::string_view assetPath) const;
+    //! 選んだ素材 (NS::Material か NS::Mesh)。選んでいなければ nullptr
+    [[nodiscard]] NS::Object* SelectedAsset();
+    //! Inspector で選んだ素材の値が変わったフレームに呼ぶ
+    void MarkAssetEdited() noexcept;
+    //! @brief 値が変わった後の確定で、選んだ .mat のマテリアルを作り直して .mat に書く
+    //! @details 値が変わっていなければ何もしない。作り直せなくても値は .mat に書き、前の絵で描き続ける
+    void CommitAssetEdit();
+
 private:
     void TickEdit();
 
@@ -306,4 +326,20 @@ private:
     bool m_subObjectEditing = false;
     NS::uint32 m_subObjectEditBaselineId = NS::k_NoObjectId; // 編集開始時の対象 id
     nlohmann::json m_subObjectEditBaseline;                  // 編集開始時の状態スナップショット
+
+    // 素材の窓で選んだ素材の ContentRoot からの道。アクターの選択と排他。
+    // 姿のポインタを持たないのは、AssetManager::Clear の後に古いポインタを残さないため
+    std::string m_selectedAssetPath;
+    bool m_assetEdited = false; // 選んだ素材の値が変わり、まだ確定していない
 };
+
+namespace NS
+{
+    namespace Editor
+    {
+        //! @brief material の値を、一時のファイルに書いてから filePath の .mat と置き換える
+        //! @details .mat から読んだマテリアルでない時と、書けない値の時は書かずに false
+        //! 書けなかった時は filePath の前の中身が残る
+        [[nodiscard]] bool WriteMaterialFile(const AssetManager& assets, const Material& material, std::string_view filePath);
+    } // namespace Editor
+} // namespace NS

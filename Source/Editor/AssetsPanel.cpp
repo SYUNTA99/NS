@@ -45,8 +45,6 @@ namespace NS
         void AssetsPanel::RenderTree(std::string_view dir, LevelEditorController& editor) noexcept
         {
 #if NS_EDITOR_ENABLED
-            const bool hasSelection = editor.HasGizmoSelection();
-
             // 開いた時だけ中身を走査する
             for (const std::string& sub : OS::FileSystem::ListDirectories(dir))
             {
@@ -75,11 +73,14 @@ namespace NS
                 if (extension == ".gltf" || extension == ".glb")
                 {
                     ImGui::PushID(name.c_str());
-                    ImGui::Selectable(name.c_str());
+                    if (ImGui::Selectable(name.c_str(), editor.IsAssetSelected(file)))
+                    {
+                        editor.SelectAsset(file);
+                    }
                     dragSource(k_MeshDragType);
                     if (ImGui::IsItemHovered())
                     {
-                        ImGui::SetTooltip("Scene ビューへドラッグすると置ける");
+                        ImGui::SetTooltip("押すと Inspector で見られる。Scene ビューへドラッグすると置ける");
                     }
                     ImGui::PopID();
                     continue;
@@ -91,11 +92,15 @@ namespace NS
                     continue;
                 }
                 ImGui::PushID(name.c_str());
-                if (ImGui::Selectable(name.c_str()) && hasSelection)
+                if (ImGui::Selectable(name.c_str(), editor.IsAssetSelected(file)))
                 {
-                    editor.ApplyMaterialToSelected(file);
+                    editor.SelectAsset(file);
                 }
                 dragSource(k_MaterialDragType);
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::SetTooltip("押すと Inspector で値を変えられる。選んだアクターに付けるには Scene ビューへドラッグする");
+                }
                 ImGui::PopID();
             }
 #else

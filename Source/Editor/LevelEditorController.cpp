@@ -22,6 +22,8 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Sphere.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
@@ -1007,6 +1009,9 @@ void LevelEditorController::SetPrimarySelection(NS::uint32 id) noexcept
         return;
     }
 
+    // アクターの選択と素材の選択は排他
+    m_selectedAssetPath.clear();
+
     // ハンドルを出すため Object ツールへ切替える。Build のままだとギズモが描かれない
     SetObjectToolActive(true);
 
@@ -1211,6 +1216,7 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
             // ビューポートのクリックは 1 体に絞る。複数選択はヒエラルキー側の Ctrl / Shift で組む
             m_selectedObjectId = object->Id();
             m_selectionIds.assign(1, m_selectedObjectId);
+            m_selectedAssetPath.clear();
             return;
         }
     }
@@ -1402,6 +1408,7 @@ void LevelEditorController::PushCreateObject(nlohmann::json object)
     // 組み直し後の新規を選択する。選択候補も貼り直す
     m_selectedObjectId = id;
     m_selectionIds.assign(1, id);
+    m_selectedAssetPath.clear();
     SetObjectToolActive(true);
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1789,3 +1796,122 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     }
     return true;
 }
+
+namespace
+{
+    [[nodiscard]] NS::Object* LoadSelectableAsset(std::string_view path)
+    {
+        const std::string extension = NS::OS::FileSystem::Extension(path);
+        if (extension == ".mat")
+        {
+            return NS::AssetManager::Get().LoadMaterial(path);
+        }
+        if (extension == ".gltf" || extension == ".glb")
+        {
+            return NS::AssetManager::Get().LoadMesh(path);
+        }
+        return nullptr;
+    }
+
+    // 読めない素材は、引くたびに読み直しと警告が走る
+    [[nodiscard]] bool IsReadable(const NS::Object& asset)
+    {
+        if (const NS::Material* material = NS::Cast<NS::Material>(&asset))
+        {
+            return !material->IsEmpty();
+        }
+        if (const NS::Mesh* mesh = NS::Cast<NS::Mesh>(&asset))
+        {
+            return !mesh->UsesStandIn();
+        }
+        return false;
+    }
+} // namespace
+
+void LevelEditorController::SelectAsset(std::string_view assetPath)
+{
+    CommitAssetEdit();
+    SelectObjectById(NS::k_NoObjectId);
+    m_selectedAssetPath.clear();
+
+    const std::string stored = RelativeToRoot(assetPath, NS::OS::FileSystem::ContentRoot());
+    const NS::Object* asset = LoadSelectableAsset(stored);
+    if (asset == nullptr || !IsReadable(*asset))
+    {
+        NS_LOG_WARN(App, "素材 {} を読めないので選ばない", stored);
+        return;
+    }
+    m_selectedAssetPath = stored;
+}
+
+bool LevelEditorController::IsAssetSelected(std::string_view assetPath) const
+{
+    return !m_selectedAssetPath.empty() &&
+           RelativeToRoot(assetPath, NS::OS::FileSystem::ContentRoot()) == m_selectedAssetPath;
+}
+
+NS::Object* LevelEditorController::SelectedAsset()
+{
+    if (m_selectedAssetPath.empty())
+    {
+        return nullptr;
+    }
+    return LoadSelectableAsset(m_selectedAssetPath);
+}
+
+void LevelEditorController::MarkAssetEdited() noexcept
+{
+    m_assetEdited = true;
+}
+
+void LevelEditorController::CommitAssetEdit()
+{
+    if (!m_assetEdited)
+    {
+        return;
+    }
+    m_assetEdited = false;
+
+    NS::Material* material = NS::Cast<NS::Material>(SelectedAsset());
+    if (material == nullptr)
+    {
+        return;
+    }
+    NS::AssetManager& assets = NS::AssetManager::Get();
+    // 共有のマテリアルは書く先が無いので、絵も作り直さない。Inspector は見るだけにしている
+    if (!assets.MakeMaterialFileJson(*material))
+    {
+        return;
+    }
+    // 作り直せなくても値は .mat に残す。作り直しの失敗は Rebuild が報告する
+    (void)assets.RebuildMaterial(*material);
+    const std::optional<std::string> path = NS::ResolveContentPath(m_selectedAssetPath);
+    if (!path)
+    {
+        return;
+    }
+    (void)NS::Editor::WriteMaterialFile(assets, *material, *path);
+}
+
+namespace NS
+{
+    namespace Editor
+    {
+        bool WriteMaterialFile(const AssetManager& assets, const Material& material, std::string_view filePath)
+        {
+            const std::optional<std::string> text = assets.MakeMaterialFileJson(material);
+            if (!text)
+            {
+                NS_LOG_WARN(App, "マテリアル {} は .mat から読んだ物でないか、書けない値を持つので書かない", material.Path());
+                return false;
+            }
+            const std::span<const std::byte> bytes = std::as_bytes(std::span<const char>{text->data(), text->size()});
+            if (!OS::FileSystem::ReplaceAllBytes(filePath, bytes))
+            {
+                NS_LOG_WARN(App, "マテリアル {} を {} に書けないので前の .mat を残す", material.Path(), filePath);
+                return false;
+            }
+            return true;
+        }
+    } // namespace Editor
+} // namespace NS

@@ -28,6 +28,10 @@ namespace NS
             //! 既存のファイルは上書きされ、存在しない中間ディレクトリは自動的に作成される
             [[nodiscard]] static bool WriteAllBytes(std::string_view path, std::span<const std::byte> bytes);
 
+            //! @brief path に .tmp を足した一時のファイルに書いてから、path と置き換える
+            //! @details 途中で失敗した場合は path の前の中身を残し、一時のファイルを消す
+            [[nodiscard]] static bool ReplaceAllBytes(std::string_view path, std::span<const std::byte> bytes);
+
             //! 文字コードは UTF-8 を想定している
             [[nodiscard]] static std::optional<std::string> ReadAllText(std::string_view path);
 

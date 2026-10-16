@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <format>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -184,6 +185,61 @@ namespace NS
 
         outError.clear();
         return true;
+    }
+
+    namespace
+    {
+        // 読み直すと同じ float になる一番短い綴り。整数の値は今の .mat と同じく .0 を付ける
+        [[nodiscard]] std::string FloatJson(float value)
+        {
+            std::string text = std::format("{}", value);
+            if (text.find_first_of(".e") == std::string::npos)
+            {
+                text += ".0";
+            }
+            return text;
+        }
+
+        // nlohmann は UTF-8 でない文字列で例外を投げるので、置き換え文字で書く
+        [[nodiscard]] std::string StringJson(std::string_view value)
+        {
+            return nlohmann::json(value).dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+        }
+    } // namespace
+
+    std::optional<std::string> MakeMaterialJson(const MaterialFileDesc& file)
+    {
+        if (file.textures.size() > k_MaterialTextureSlots)
+        {
+            return std::nullopt;
+        }
+        const Vector3& color = file.baseColor;
+        if (!std::isfinite(color.x) || !std::isfinite(color.y) || !std::isfinite(color.z))
+        {
+            return std::nullopt;
+        }
+
+        std::string text = "{\n";
+        text += "  \"vs\": " + StringJson(file.vertexShader) + ",\n";
+        text += "  \"ps\": " + StringJson(file.pixelShader) + ",\n";
+        if (!file.textures.empty())
+        {
+            text += "  \"textures\": [";
+            for (std::size_t i = 0; i < file.textures.size(); ++i)
+            {
+                if (i > 0)
+                {
+                    text += ", ";
+                }
+                text += StringJson(file.textures[i]);
+            }
+            text += "],\n";
+        }
+        text += std::format(
+            "  \"baseColor\": [{}, {}, {}],\n", FloatJson(color.x), FloatJson(color.y), FloatJson(color.z));
+        text += "  \"blend\": " + StringJson(BlendName(file.blend)) + "\n";
+        text += "}\n";
+        return text;
     }
 
     AssetManager::AssetManager(std::string baseDir) noexcept : m_baseDir(std::move(baseDir)) {}
@@ -600,18 +656,25 @@ namespace NS
 
     std::unique_ptr<Material> AssetManager::CreateMaterial(std::string_view name, MaterialFileDesc file)
     {
+        const MaterialSources sources = LoadMaterialSources(file);
+        return std::make_unique<Material>(
+            std::string{name}, std::move(file), sources.vertexShader, sources.pixelShader, sources.textures);
+    }
+
+    AssetManager::MaterialSources AssetManager::LoadMaterialSources(const MaterialFileDesc& file)
+    {
         // 相対 path は構築時の baseDir 基準で解決する。絶対 / ドライブ相対は Combine が baseDir を捨てて通す
         const auto resolve = [this](std::string_view p) { return OS::FileSystem::Combine(m_baseDir, p); };
 
-        Shader* vertexShader = LoadShader(resolve(file.vertexShader));
-        Shader* pixelShader = LoadShader(resolve(file.pixelShader));
-        std::vector<Texture*> textures;
-        textures.reserve(file.textures.size());
+        MaterialSources sources{};
+        sources.vertexShader = LoadShader(resolve(file.vertexShader));
+        sources.pixelShader = LoadShader(resolve(file.pixelShader));
+        sources.textures.reserve(file.textures.size());
         for (const std::string& texture : file.textures)
         {
-            textures.push_back(LoadTexture(resolve(texture)));
+            sources.textures.push_back(LoadTexture(resolve(texture)));
         }
-        return std::make_unique<Material>(std::string{name}, std::move(file), vertexShader, pixelShader, textures);
+        return sources;
     }
 
     void AssetManager::RegisterSharedMaterials()
@@ -645,6 +708,28 @@ namespace NS
         {
             entry.second->SetStandIn(standIn);
         }
+    }
+
+    std::optional<std::string> AssetManager::MakeMaterialFileJson(const Material& material) const
+    {
+        for (const std::pair<const std::string, std::unique_ptr<Material>>& entry : m_materials)
+        {
+            if (entry.second.get() == &material)
+            {
+                return MakeMaterialJson(material.File());
+            }
+        }
+        return std::nullopt;
+    }
+
+    bool AssetManager::RebuildMaterial(Material& material)
+    {
+        if (material.IsEmpty())
+        {
+            return false;
+        }
+        const MaterialSources sources = LoadMaterialSources(material.File());
+        return material.Rebuild(sources.vertexShader, sources.pixelShader, sources.textures);
     }
 
     Material* AssetManager::FindSharedMaterial(std::string_view name) const noexcept

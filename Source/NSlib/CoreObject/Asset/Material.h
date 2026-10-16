@@ -21,6 +21,9 @@ namespace NS
     class Shader;
     class Texture;
 
+    //! Inspector のマテリアルの欄が持つテクスチャの枠の数。これより多い .mat は書かない
+    inline constexpr std::size_t k_MaterialTextureSlots = 4;
+
     //! .mat の値。道は ContentRoot からの相対で、ファイルに書いてある綴りのまま持つ
     struct MaterialFileDesc
     {
@@ -37,7 +40,8 @@ namespace NS
     [[nodiscard]] std::string_view BlendName(Gfx::BlendMode blend) noexcept;
 
     //! @brief マテリアル 1 つ。.mat の値と、その値で作った D3DMaterial を持つ
-    //! @details シェーダーとテクスチャは AssetManager が持ち、ここは指すだけ。欄の値を変えても D3DMaterial は作り直さない
+    //! @details シェーダーとテクスチャは AssetManager が持ち、ここは指すだけ。欄の値を変えても D3DMaterial は作り直さず、
+    //! 作り直すのは Rebuild だけ
     //! 基本の色はアクターに付けた時に写す色で、描く時には使わない
     //! 道は欄に保存する名前で、共有のマテリアルは共有の名前
     class Material : public Object
@@ -65,6 +69,11 @@ namespace NS
         [[nodiscard]] Shader* VertexShader() const noexcept;
         [[nodiscard]] Shader* PixelShader() const noexcept;
         [[nodiscard]] const MaterialFileDesc& File() const noexcept;
+
+        //! @brief 今の値と、AssetManager が今の値の道から引いたシェーダーとテクスチャで D3DMaterial を作り直す
+        //! @details 作れなかった時は false を返し、前の D3DMaterial とシェーダーを残す
+        //! シェーダーとテクスチャはこのマテリアルより長く生きること
+        [[nodiscard]] bool Rebuild(Shader* vertexShader, Shader* pixelShader, std::span<Texture* const> textures);
 
         [[nodiscard]] Color BaseColor() const noexcept;
         //! 透明度は .mat に無いので捨てる

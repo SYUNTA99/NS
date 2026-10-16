@@ -9,9 +9,11 @@
 #include "NSlib/App/Layer.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
+#include "NSlib/Windows/Filesystem.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -431,4 +433,25 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
               std::string::npos);
     EXPECT_EQ(NS::Editor::ObjectDisplayName(*scene.Objects().FindByObjectId(second)), secondName);
     ImGui::DestroyContext(gui);
+}
+
+TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
+{
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+    ASSERT_NE(item, nullptr);
+    editor.PlaceItem(*item);
+    const NS::uint32 placed = editor.SelectedObjectId();
+    ASSERT_NE(placed, NS::k_NoObjectId);
+
+    editor.SelectAsset(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Materials/stone.mat"));
+    EXPECT_EQ(editor.SelectedObjectId(), NS::k_NoObjectId);
+    EXPECT_TRUE(editor.SelectedObjectIds().empty());
+    EXPECT_EQ(editor.SelectedAssetPath(), "Assets/Materials/stone.mat");
+    EXPECT_NE(NS::Cast<NS::Material>(editor.SelectedAsset()), nullptr);
+
+    editor.SelectObjectById(placed);
+    EXPECT_TRUE(editor.SelectedAssetPath().empty());
+    EXPECT_EQ(editor.SelectedAsset(), nullptr);
 }

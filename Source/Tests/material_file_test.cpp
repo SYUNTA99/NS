@@ -2,11 +2,18 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
+#include "NSlib/Graphics/D3DMaterial.h"
+#include "NSlib/Graphics/GraphicObject.h"
+#include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Windows/Window.h"
 
 #include <gtest/gtest.h>
 
+#include <limits>
+#include <optional>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -91,6 +98,99 @@ TEST(MaterialFile, BlendFieldKeepsItsValueForAnUnknownSpelling)
     ASSERT_NE(material, nullptr);
     WriteStringField(*material, "混ぜ方", "alpha");
     EXPECT_EQ(ReadStringField(*material, "混ぜ方"), "Alpha");
+    const std::optional<std::string> written = assets.MakeMaterialFileJson(*material);
+    ASSERT_TRUE(written.has_value());
+    NS::MaterialFileDesc reread{};
+    std::string error;
+    ASSERT_TRUE(NS::ParseMaterialJson(*written, reread, error)) << error;
+    EXPECT_EQ(reread.blend, NS::Gfx::BlendMode::Alpha);
+
     WriteStringField(*material, "混ぜ方", "Additive");
     EXPECT_EQ(ReadStringField(*material, "混ぜ方"), "Additive");
+}
+
+TEST(MaterialFile, WritingWhatWasReadGivesTheSameFile)
+{
+    const std::vector<std::string> files =
+        NS::OS::FileSystem::ListFiles(ContentPath("Assets/Materials"), ".mat");
+    ASSERT_FALSE(files.empty());
+    for (const std::string& file : files)
+    {
+        const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(file);
+        ASSERT_TRUE(text.has_value()) << file;
+        NS::MaterialFileDesc read{};
+        std::string error;
+        ASSERT_TRUE(NS::ParseMaterialJson(*text, read, error)) << file << ": " << error;
+
+        const std::optional<std::string> written = NS::MakeMaterialJson(read);
+        ASSERT_TRUE(written.has_value()) << file;
+        EXPECT_EQ(*written, *text) << file;
+
+        NS::MaterialFileDesc reread{};
+        ASSERT_TRUE(NS::ParseMaterialJson(*written, reread, error)) << file << ": " << error;
+        EXPECT_EQ(reread.vertexShader, read.vertexShader) << file;
+        EXPECT_EQ(reread.pixelShader, read.pixelShader) << file;
+        EXPECT_EQ(reread.textures, read.textures) << file;
+        EXPECT_EQ(reread.baseColor, read.baseColor) << file;
+        EXPECT_EQ(reread.blend, read.blend) << file;
+    }
+}
+
+// Inspector の枠より多いテクスチャと、JSON に書けない色は書かない。書くと枠に出ない道や読めない .mat が残る
+TEST(MaterialFile, ValuesTheFieldsCannotHoldAreNotWritten)
+{
+    NS::MaterialFileDesc file{.vertexShader = "Shaders/standard.vs.hlsl", .pixelShader = "Shaders/player.ps.hlsl"};
+    file.textures.assign(4, "Assets/Textures/cube_test.png");
+    EXPECT_TRUE(NS::MakeMaterialJson(file).has_value());
+    file.textures.push_back("Assets/Textures/cube_test.png");
+    EXPECT_FALSE(NS::MakeMaterialJson(file).has_value());
+
+    file.textures.clear();
+    file.baseColor.y = std::numeric_limits<float>::quiet_NaN();
+    EXPECT_FALSE(NS::MakeMaterialJson(file).has_value());
+}
+
+// 書くのは .mat から読んだマテリアルだけ。共有のマテリアルと読めなかった名前のマテリアルには書く先が無い
+TEST(MaterialFile, OnlyMaterialsReadFromAFileAreWritten)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    assets.RegisterSharedMaterials();
+    EXPECT_TRUE(assets.MakeMaterialFileJson(*assets.LoadMaterial("Assets/Materials/stone.mat")).has_value());
+    EXPECT_FALSE(assets.MakeMaterialFileJson(*assets.LoadMaterial("water")).has_value());
+    EXPECT_FALSE(
+        assets.MakeMaterialFileJson(*assets.LoadMaterial("Assets/Materials/__ns_missing__.mat")).has_value());
+}
+
+// 装置の無い場では作り直せない。前の D3DMaterial を残し、同じ道は同じマテリアルを返す
+TEST(MaterialFile, FailedRebuildKeepsTheDrawnMaterial)
+{
+    ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    NS::Material* material = assets.LoadMaterial("Assets/Materials/stone.mat");
+    const NS::Gfx::D3DMaterial* drawn = material->D3D();
+    ASSERT_NE(drawn, nullptr);
+
+    WriteStringField(*material, "混ぜ方", "Additive");
+    EXPECT_FALSE(assets.RebuildMaterial(*material));
+    EXPECT_EQ(material->D3D(), drawn);
+    EXPECT_EQ(assets.LoadMaterial("Assets/Materials/stone.mat"), material);
+}
+
+TEST(MaterialFile, RebuildDrawsTheNewValues)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "マテリアルの作り直しの試し", .size = {64, 64}, .visible = false});
+    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
+    ASSERT_TRUE(renderer.IsValid());
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    NS::Material* material = assets.LoadMaterial("Assets/Materials/ground_arrow_band.mat");
+    ASSERT_TRUE(material->D3D()->IsValid());
+    ASSERT_EQ(material->D3D()->Blend(), NS::Gfx::BlendMode::Alpha);
+
+    WriteStringField(*material, "混ぜ方", "Additive");
+    WriteStringField(*material, "ピクセルシェーダー", "Shaders/player.ps.hlsl");
+    EXPECT_TRUE(assets.RebuildMaterial(*material));
+    EXPECT_EQ(material->D3D()->Blend(), NS::Gfx::BlendMode::Additive);
+    EXPECT_EQ(material->PixelShader()->Path(), ContentPath("Shaders/player.ps.hlsl"));
+    EXPECT_EQ(assets.LoadMaterial("Assets/Materials/ground_arrow_band.mat"), material);
+    assets.Clear();
 }
