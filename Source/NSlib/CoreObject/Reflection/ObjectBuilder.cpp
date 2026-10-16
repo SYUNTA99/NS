@@ -42,26 +42,14 @@ namespace NS
         }
     }
 
-    std::unique_ptr<SceneActor> ObjectFromJson(const nlohmann::json& object, AssetManager* assets)
+    std::unique_ptr<SceneActor> ObjectFromJson(const nlohmann::json& object, Scene& scene)
     {
         // 部品構成はクラスの OnInit で決まる。クラスの無い JSON は配置物でない
         if (ObjectJsonClass(object).empty())
         {
             return nullptr;
         }
-
-        // コードの既定値 < 種類の既定値 < 個体の上書き の順に重ねる
-        std::unique_ptr<SceneActor> obj = CreateRegisteredObject(object);
-        ApplyArchetype(*obj);
-        ApplyObjectSubObjs(*obj, object);
-
-        // 参照文字列の実体化は SubObject 自身の仕事。AssetManager が無い間は文字列のまま持たせておく
-        if (assets != nullptr)
-        {
-            ForEachReflectedSubObj(
-                *obj, [&](const SubObjectDesc&, SubObject* subObject) { subObject->ResolveAssets(*assets); });
-        }
-        return obj;
+        return CreateRegisteredObject(object, scene);
     }
 
     nlohmann::json MakePrototypeJson(const SceneActor& obj)

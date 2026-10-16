@@ -267,10 +267,7 @@ namespace NS
 
     void Scene::StartSpawned(SceneActor& obj)
     {
-        // データ由来の配置物は ObjectBuilder が引き当てる。後から入る物はここで引き当てる
-        ForEachReflectedSubObj(
-            obj, [&](const SubObjectDesc&, SubObject* subObject) { subObject->ResolveAssets(AssetManager::Get()); });
-        // 開始は引き当ての後。OnStart の中で資産を読む SubObject が空の参照を掴まない
+        // 素材は作る関数の Init が読み終えている
         obj.OnStart();
         // 後から入る物は他の配置物が既に揃っている
         obj.InitAfterPlacement();
@@ -278,8 +275,7 @@ namespace NS
 
     SceneActor* Scene::SpawnFromJson(const nlohmann::json& object)
     {
-        // 資産の引き当ては開始の直前に StartSpawned がまとめて行う
-        std::unique_ptr<SceneActor> built = ObjectFromJson(object, nullptr);
+        std::unique_ptr<SceneActor> built = ObjectFromJson(object, *this);
         if (!built)
         {
             return nullptr;
@@ -304,7 +300,7 @@ namespace NS
             return SpawnFromJson(object);
         }
 
-        std::unique_ptr<SceneActor> built = ObjectFromJson(object, nullptr);
+        std::unique_ptr<SceneActor> built = ObjectFromJson(object, *this);
         if (!built)
         {
             // 組める SubObject が無い姿は、居ない姿として扱う
@@ -395,10 +391,9 @@ namespace NS
         // シーンに 1 つの物 (進行役など) は最初の状態から作り直させる。組み直した配置物の開始が必要な物を作る
         m_sceneObjs.Clear();
         Fade().Cancel();
-        // SceneActor の型選択は登録一覧、参照の実体化は各 SubObject の ResolveAssets が行う
         // 仮想カメラの付け外しは、持ち主の SceneActor が OnStart / OnEndPlay で行う
         m_objects.RebuildFromJson(
-            scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, &AssetManager::Get()); });
+            scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, *this); });
         m_objects.SyncPhysics(m_physics.Physics());
     }
 

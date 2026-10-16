@@ -1,6 +1,7 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
@@ -65,39 +66,65 @@ namespace NS
         return nullptr;
     }
 
-    std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object)
+    namespace
     {
-        // class が正。一致登録があればその型で作る
-        const std::string_view className = ObjectJsonClass(object);
-        if (!className.empty())
+        // 一致する登録の型で作る。部品はまだ無い
+        std::unique_ptr<SceneActor> ConstructOfClass(std::string_view className)
         {
+            const TypeRegistry::Entry* entry = nullptr;
+            if (!className.empty())
+            {
+                entry = TypeRegistry::Get().Find(className);
+            }
+            if (entry != nullptr && entry->create != nullptr)
+            {
+                return entry->create();
+            }
+            return std::make_unique<SceneActor>();
+        }
+
+        // class が正。登録の無い class は素の SceneActor で組むので、データの誤りとして知らせる
+        void WarnIfUnregistered(std::string_view className)
+        {
+            if (className.empty())
+            {
+                return;
+            }
             const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
             if (entry == nullptr || entry->create == nullptr)
             {
                 NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の SceneActor で組む", className);
             }
         }
+    } // namespace
+
+    std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object)
+    {
+        const std::string_view className = ObjectJsonClass(object);
+        WarnIfUnregistered(className);
         return CreateActorOfClass(className);
+    }
+
+    std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object, Scene& scene)
+    {
+        const std::string_view className = ObjectJsonClass(object);
+        WarnIfUnregistered(className);
+        const ActorInitInfo info{.placement = &object, .scene = scene};
+        return CreateActorOfClass(className, info);
     }
 
     std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className)
     {
-        std::unique_ptr<SceneActor> actor;
-        const TypeRegistry::Entry* entry = nullptr;
-        if (!className.empty())
-        {
-            entry = TypeRegistry::Get().Find(className);
-        }
-        if (entry != nullptr && entry->create != nullptr)
-        {
-            actor = entry->create();
-        }
-        else
-        {
-            actor = std::make_unique<SceneActor>();
-        }
+        std::unique_ptr<SceneActor> actor = ConstructOfClass(className);
         // 部品を作ってから返す。データの読み込みは返った部品へ欄を流し込む
         actor->Init();
+        return actor;
+    }
+
+    std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info)
+    {
+        std::unique_ptr<SceneActor> actor = ConstructOfClass(className);
+        actor->Init(info);
         return actor;
     }
 

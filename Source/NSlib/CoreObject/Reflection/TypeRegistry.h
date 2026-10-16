@@ -50,8 +50,14 @@ namespace NS
     //! クラス名から SceneActor をコードの既定値で作り、Init を済ませて返す。未登録のクラスと空の名前は素の SceneActor
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
 
+    //! クラス名から SceneActor を作り、info で種類の既定・配置の上書き・素材まで済ませて返す
+    [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
+
     //! object の SceneActor を作る。className 一致の登録があればその生成関数、該当しなければ素の SceneActor を返す
     [[nodiscard]] std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object);
+
+    //! object を配置として scene の中に置くアクターを作り、欄と素材まで済ませて返す
+    [[nodiscard]] std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object, Scene& scene);
 
     //! 型名から部品をコードの既定値で作る。持ち主と名前は付かない。未登録の型名と SceneActor の型名は nullptr
     [[nodiscard]] std::unique_ptr<SubObject> CreateSubObjOfType(std::string_view typeName);

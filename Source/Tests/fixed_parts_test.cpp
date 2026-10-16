@@ -244,7 +244,8 @@ TEST(ReflectedParts, SameTypedMembersSaveAndReloadThroughTheirRegisteredKeys)
     EXPECT_FLOAT_EQ(saved["subObjects"]["ParentPart"]["値"].get<float>(), 2.0f);
     EXPECT_FLOAT_EQ(saved["subObjects"]["ChildPart"]["値"].get<float>(), 7.0f);
     EXPECT_FALSE(saved["subObjects"].contains("AbsentPart"));
-    const std::unique_ptr<NS::SceneActor> loaded = NS::ObjectFromJson(saved, nullptr);
+    NS::Scene scene;
+    const std::unique_ptr<NS::SceneActor> loaded = NS::ObjectFromJson(saved, scene);
     const ReflectedHierarchyActor* restored = NS::Cast<ReflectedHierarchyActor>(loaded.get());
     ASSERT_NE(restored, nullptr);
     EXPECT_FLOAT_EQ(restored->parentPart->value, 2.0f);
@@ -406,7 +407,8 @@ TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
 {
     const nlohmann::json source = {
         {"class", "PropActor"}, {"id", 7u}, {"subObjects", {{"Collision", {{"半径", 2.0f}}}}}};
-    std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(source, nullptr);
+    NS::Scene scene;
+    std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(source, scene);
     ASSERT_NE(actor, nullptr);
     ASSERT_NE(actor->CollisionSubObj(), nullptr);
     const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionSubObj());

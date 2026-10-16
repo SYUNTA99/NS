@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseCollision.h"
@@ -224,20 +225,22 @@ namespace NS
 
         //! @brief 型 T の一時オブジェクトをシーンの中で作って入れ、開始する。呼出側へは生ポインタだけ返す
         //! @details 所有はシーンが握る。保存・凍結に写らず、データからの組み直しで捨てる。
-        //! 更新は配置物と同じく自分の段で回る。入れる前に値を書く口は無いので、返った個体へ書く
+        //! 更新は配置物と同じく自分の段で回る。値は種類の既定で、入れた後に変える時は返ったアクターへ書く
         template <class T, class... Args> T* SpawnTransient(Args&&... args)
         {
-            std::unique_ptr<T> obj = CreateActor<T>(std::forward<Args>(args)...);
+            const ActorInitInfo info{.scene = *this};
+            std::unique_ptr<T> obj = CreateActorWithInfo<T>(info, std::forward<Args>(args)...);
             T* raw = obj.get();
             AdoptTransient(std::move(obj));
             return raw;
         }
 
         //! @brief 型 T の配置物をシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
-        //! @details 名前は既存と重なれば番号を付ける。一時オブジェクトと違い保存に写る
+        //! @details 名前は既存と重なれば番号を付ける。値は種類の既定。一時オブジェクトと違い保存に写る
         template <class T, class... Args> T* SpawnObject(std::string name, Args&&... args)
         {
-            std::unique_ptr<T> obj = CreateActor<T>(std::forward<Args>(args)...);
+            const ActorInitInfo info{.scene = *this};
+            std::unique_ptr<T> obj = CreateActorWithInfo<T>(info, std::forward<Args>(args)...);
             T* raw = obj.get();
             AdoptObject(std::move(obj), std::move(name));
             return raw;

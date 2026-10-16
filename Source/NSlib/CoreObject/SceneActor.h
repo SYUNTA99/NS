@@ -224,8 +224,11 @@ namespace NS
         friend bool SendMsg(const Message& msg, HitSensor& receiver, HitSensor* sender);
         friend bool SendMsgToActor(const Message& msg, SceneActor& receiver);
         template <class T, class... TArgs> friend std::unique_ptr<T> CreateActor(TArgs&&... args);
+        template <class T, class... TArgs>
+        friend std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
-        // 呼ぶのは作る関数 2 つだけで、作った直後に 1 回。private にして 2 回目を起こさない
+        friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
+        // 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない
         void Init() { OnInit(); }
         //! アクターを作る順。部品を作る → 種類の既定 → 配置の上書き → 素材
         void Init(const ActorInitInfo& info);
@@ -276,6 +279,18 @@ namespace NS
         std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
         SceneActor& base = *actor;
         base.Init();
+        return actor;
+    }
+
+    //! @brief T を作り、info で部品・種類の既定・配置の上書き・素材まで済ませて返す
+    //! @details シーンへ入れる口 (Scene::SpawnTransient・SpawnObject) が呼ぶ。シーンの一覧に入る前に素材を読み終える
+    template <class T, class... TArgs>
+    [[nodiscard]] std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args)
+    {
+        static_assert(std::derived_from<T, SceneActor>, "T は SceneActor の派生でなければならない");
+        std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
+        SceneActor& base = *actor;
+        base.Init(info);
         return actor;
     }
 

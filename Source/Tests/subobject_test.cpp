@@ -1,13 +1,16 @@
+#include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/BoxCollision.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/SphereCollision.h"
+#include "NSlib/Windows/FileSystem.h"
 
 #include <gtest/gtest.h>
 
@@ -119,6 +122,59 @@ protected:
 };
 NS_CLASS(SubObjectInitProbeActor)
 
+// 素材を読んだ時に、持ち主がシーンの一覧に居たか・始まっていたかを控える
+class AssetTimingProbe final : public NS::SubObject
+{
+public:
+    int loads = 0;
+    bool inListAtLoad = false;
+    bool startedAtLoad = false;
+    bool started = false;
+
+    void ResolveAssets(NS::AssetManager&) override
+    {
+        ++loads;
+        startedAtLoad = started;
+        // 一時の個体は id を持たないので、一覧を端から見る
+        inListAtLoad = false;
+        const NS::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+        {
+            return;
+        }
+        for (const NS::SceneActor* actor : scene->Objects())
+        {
+            if (actor == Owner())
+            {
+                inListAtLoad = true;
+            }
+        }
+    }
+};
+
+class AssetTimingProbeActor final : public NS::SceneActor
+{
+public:
+    NS_REFLECT_BEGIN(AssetTimingProbeActor, NS::SceneActor)
+    NS_REFLECT_SUBOBJ(probe, "Probe")
+    NS_REFLECT_END()
+
+    std::unique_ptr<AssetTimingProbe> probe;
+
+    void OnStart() override
+    {
+        probe->started = true;
+        NS::SceneActor::OnStart();
+    }
+
+protected:
+    void OnInit() override
+    {
+        CreateSubObj(probe);
+    }
+};
+NS_CLASS(AssetTimingProbeActor)
+
 TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationOrder)
 {
     const std::unique_ptr<OrderActor> actor = NS::CreateActor<OrderActor>();
@@ -190,6 +246,44 @@ TEST(SubObject, EveryBuildPathRunsOnInitExactlyOnce)
     ASSERT_NE(probe, nullptr);
     EXPECT_EQ(probe->inits, 1);
     EXPECT_NE(probe->ModelSubObj(), nullptr);
+}
+
+// どの道で作っても、素材は欄を書いた後・一覧に入る前・OnStart の前に 1 回だけ読む
+TEST(SubObject, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const NS::AssetManagerScope useAssets{assets};
+    NS::Scene scene;
+    const auto check = [](const NS::SceneActor* built, const char* path) {
+        SCOPED_TRACE(path);
+        const AssetTimingProbeActor* actor = NS::Cast<AssetTimingProbeActor>(built);
+        ASSERT_NE(actor, nullptr);
+        EXPECT_EQ(actor->probe->loads, 1);
+        EXPECT_FALSE(actor->probe->inListAtLoad);
+        EXPECT_FALSE(actor->probe->startedAtLoad);
+        EXPECT_TRUE(actor->probe->started);
+    };
+
+    nlohmann::json placed = NS::MakePrototypeJson<AssetTimingProbeActor>();
+    NS::SetObjectJsonId(placed, 1);
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::SceneJsonObjects(doc).push_back(placed);
+    scene.ResetFromJson(doc);
+    check(scene.Objects().FindByObjectId(1), "組み直し");
+
+    check(scene.ReplaceFromJson(placed), "作り直す");
+    check(scene.SpawnFromJson(NS::MakePrototypeJson<AssetTimingProbeActor>()), "JSON から湧かす");
+    check(scene.SpawnTransient<AssetTimingProbeActor>(), "型から湧かす (一時)");
+    check(scene.SpawnObject<AssetTimingProbeActor>("Placed"), "型から湧かす (配置)");
+}
+
+// AssetManager を差していない間も素材を読む道を通る。試しも本番と同じ順を通る
+TEST(SubObject, ActorLoadsAssetsWithoutAssetManagerScope)
+{
+    NS::Scene scene;
+    const AssetTimingProbeActor* actor = scene.SpawnTransient<AssetTimingProbeActor>();
+    ASSERT_NE(actor, nullptr);
+    EXPECT_EQ(actor->probe->loads, 1);
 }
 
 TEST(SubObject, PrototypeJsonListsTheSubObjectsInit)

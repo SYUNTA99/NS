@@ -1,4 +1,5 @@
 #include "Editor/LevelEditorController.h"
+#include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
@@ -99,7 +100,8 @@ namespace
 TEST(Archetype, CodeDefaultWithoutArchetype)
 {
     const ScopedArchetypeDirectory scope("CodeDefault");
-    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), nullptr);
+    NS::Scene scene;
+    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 0.5f);
     EXPECT_NE(actor->ShadowSubObj(), nullptr);
@@ -110,7 +112,8 @@ TEST(Archetype, ArchetypeOverridesCodeDefault)
     const ScopedArchetypeDirectory scope("OverridesCode");
     NS::ArchetypeLibrary::Get().Set("PropActor", ArchetypeWith("PropActor", "Collision", SphereEntry(2.0f)));
 
-    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), nullptr);
+    NS::Scene scene;
+    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 2.0f);
 }
@@ -122,7 +125,8 @@ TEST(Archetype, InstanceOverridesArchetype)
 
     nlohmann::json object = MapObjJson(1);
     NS::ObjectJsonSubObjs(object)["Collision"] = SphereEntry(3.0f);
-    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(object, nullptr);
+    NS::Scene scene;
+    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(object, scene);
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 3.0f);
 }
@@ -132,7 +136,8 @@ TEST(Archetype, ArchetypeCannotAddParts)
     const ScopedArchetypeDirectory scope("FixedParts");
     NS::ArchetypeLibrary::Get().Set("PropActor", ArchetypeWith("PropActor", "AttackSensor", nlohmann::json::object()));
 
-    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), nullptr);
+    NS::Scene scene;
+    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->AttackSensorSubObj(), nullptr);
     EXPECT_EQ(actor->FindSubObj("AttackSensor"), nullptr);
@@ -145,7 +150,8 @@ TEST(Archetype, InstanceCannotAddParts)
     nlohmann::json object = MapObjJson(1);
     NS::ObjectJsonSubObjs(object)["DirectionalLight"] = nlohmann::json::object();
 
-    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(object, nullptr);
+    NS::Scene scene;
+    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(object, scene);
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(NS::Cast<NS::DirectionalLight>(actor->FindSubObj("DirectionalLight")), nullptr);
 }
@@ -154,7 +160,20 @@ TEST(Archetype, ObjectWithoutClassIsNotBuilt)
 {
     nlohmann::json object = NS::MakeObjectJson();
     NS::ObjectJsonSubObjs(object)["Collision"] = SphereEntry(1.0f);
-    EXPECT_EQ(NS::ObjectFromJson(object, nullptr), nullptr);
+    NS::Scene scene;
+    EXPECT_EQ(NS::ObjectFromJson(object, scene), nullptr);
+}
+
+// 型から湧かすアクターにも種類の既定が届く。作る道で型の値が変わらない
+TEST(Archetype, SpawnedByTypeGetsArchetype)
+{
+    const ScopedArchetypeDirectory scope("SpawnedByType");
+    NS::ArchetypeLibrary::Get().Set("PropActor", ArchetypeWith("PropActor", "Collision", SphereEntry(2.0f)));
+
+    NS::Scene scene;
+    const NS::SceneActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
+    ASSERT_NE(actor, nullptr);
+    EXPECT_FLOAT_EQ(RadiusOf(*actor), 2.0f);
 }
 
 TEST(Archetype, SaveWritesOnlyOverrides)
@@ -332,7 +351,8 @@ TEST(Archetype, SavedArchetypeIsReadBack)
     library.Erase("PropActor");
     EXPECT_EQ(library.Find("PropActor"), nullptr);
     library.Reload();
-    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), nullptr);
+    NS::Scene scene;
+    const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 1.25f);
 }
