@@ -35,8 +35,6 @@ namespace
     // 描画用のリソース一式
     struct LineBackend
     {
-        std::unique_ptr<NS::Gfx::D3DShader> vs;
-        std::unique_ptr<NS::Gfx::D3DShader> ps;
         NS::Gfx::ComPtr<ID3D11InputLayout> inputLayout;
         std::unique_ptr<NS::Gfx::D3DBuffer> vb;
         std::unique_ptr<NS::Gfx::D3DBuffer> faceVb;
@@ -53,7 +51,9 @@ namespace
         return backend;
     }
 
-    bool EnsureBackend() noexcept
+    // 入力レイアウトは初回の vs のバイトコードで作り、読み直しても作り直さない
+    // debug_line.vs.hlsl の入力の並びを変えた時は、起動し直すまで合わない
+    bool EnsureBackend(const NS::Gfx::D3DShader& vs, const NS::Gfx::D3DShader& ps) noexcept
     {
         LineBackend& b = Backend();
         if (b.initAttempted)
@@ -69,15 +69,13 @@ namespace
             return false;
         }
 
-        b.vs = NS::Gfx::D3DShader::CreateBuiltin("debug_line.vs.hlsl");
-        b.ps = NS::Gfx::D3DShader::CreateBuiltin("debug_line.ps.hlsl");
-        if (!b.vs->IsValid() || !b.ps->IsValid())
+        if (!vs.IsValid() || !ps.IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: shader 構築失敗");
             return false;
         }
 
-        const std::span<const std::byte> bytecode = b.vs->VertexShaderBytecode();
+        const std::span<const std::byte> bytecode = vs.VertexShaderBytecode();
         const D3D11_INPUT_ELEMENT_DESC layout[] = {
             {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
             {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -274,7 +272,13 @@ namespace NS
                 return;
             }
 
-            if (!EnsureBackend())
+            // シェーダーは AssetManager が捨てると消えるので、静的な資源に控えず毎回 Renderer から引く
+            const BuiltinShaders& shaders = renderer.Shaders();
+            if (shaders.debugLineVs == nullptr || shaders.debugLinePs == nullptr)
+            {
+                return;
+            }
+            if (!EnsureBackend(*shaders.debugLineVs, *shaders.debugLinePs))
             {
                 return;
             }
@@ -287,8 +291,8 @@ namespace NS
 
             LineBackend& b = Backend();
             cmd.UpdateSubresource(*b.cb, &viewProjection, sizeof(viewProjection));
-            cmd.VSSetShader(*b.vs);
-            cmd.PSSetShader(*b.ps);
+            cmd.VSSetShader(*shaders.debugLineVs);
+            cmd.PSSetShader(*shaders.debugLinePs);
             cmd.SetInputLayout(b.inputLayout.Get());
             cmd.VSSetConstantBuffer(*b.cb, 0u);
 

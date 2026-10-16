@@ -1,4 +1,5 @@
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
@@ -11,6 +12,7 @@
 #include "NSlib/Graphics/ScreenFade.h"
 #include "NSlib/Graphics/D3DTexture.h"
 #include "NSlib/Windows/Clock.h"
+#include "NSlib/Windows/Filesystem.h"
 
 #include <gtest/gtest.h>
 
@@ -179,6 +181,8 @@ TEST(ScreenFade, FullscreenDrawCoversUIAndTheResizedTarget)
     NS::OS::Window window(NS::OS::WindowDesc{.title = "全画面暗転の試し", .size = {64, 36}, .visible = false});
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    renderer.SetShaders(assets.LoadBuiltinShaders());
     const std::unique_ptr<NS::Gfx::D3DRenderTarget> target = NS::Gfx::D3DRenderTarget::Create({64, 36});
     ASSERT_TRUE(target->IsValid());
     NS::SceneRenderer sceneRenderer;

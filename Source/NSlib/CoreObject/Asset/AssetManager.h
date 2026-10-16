@@ -24,6 +24,10 @@ namespace NS
     {
         struct MeshShape;
     }
+    namespace Gfx
+    {
+        struct BuiltinShaders;
+    }
 } // namespace NS
 
 namespace NS
@@ -70,6 +74,10 @@ namespace NS
 
         //! 正規化した path ごとに 1 つを作って共有する。読めない時は代わりの中身になる
         [[nodiscard]] Shader* LoadShader(std::string_view path);
+        //! @brief 描く段が使う組み込みのシェーダーを、baseDir の Shaders から LoadShader で引く
+        //! @details 欄は全部この AssetManager の Shader の中身を指し、nullptr にならない。何度引いても同じ物を返す
+        //! ReloadAllShaders が読み直す。Clear と破棄で捨てるので、その後は渡した先で描かない
+        [[nodiscard]] Gfx::BuiltinShaders LoadBuiltinShaders();
         //! 正規化した path ごとに 1 つを作って共有する。読めない時は代わりのピンクの画像になる
         [[nodiscard]] Texture* LoadTexture(std::string_view path);
         //! @brief 欄の名前のメッシュを返す。名前は組み込みの形の名前か、ContentRoot からのファイルの道筋

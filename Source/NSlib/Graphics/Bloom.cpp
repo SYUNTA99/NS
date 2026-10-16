@@ -50,6 +50,11 @@ namespace NS
                 return Size2D{std::max(1, size.width >> shift), std::max(1, size.height >> shift)};
             }
 
+            bool IsUsable(const D3DShader* shader) noexcept
+            {
+                return shader != nullptr && shader->IsValid() && !shader->IsUsingFallback();
+            }
+
             void UnbindShaderResources(D3DCommandList& cmd)
             {
                 // 次の段で描画先にする絵が読む側に残っていると、描画装置は書き込みを捨てる
@@ -58,7 +63,9 @@ namespace NS
             }
         } // namespace
 
-        Bloom::Bloom(const BloomDesc& desc) noexcept : m_desc(desc)
+        Bloom::Bloom(const BloomDesc& desc, const BuiltinShaders& shaders) noexcept
+            : m_desc(desc), m_vs(shaders.fullscreenVs), m_thresholdPs(shaders.bloomThresholdPs),
+              m_downPs(shaders.bloomDownPs), m_upPs(shaders.bloomUpPs), m_compositePs(shaders.bloomCompositePs)
         {
             const GraphicObject& gpu = Gpu();
             if (gpu.device == nullptr || gpu.context == nullptr)
@@ -67,16 +74,8 @@ namespace NS
                 return;
             }
 
-            // 頂点バッファを使わない全画面三角形。DrawFullscreenColor と同じ物
-            m_vs = D3DShader::CreateBuiltin("fade.vs.hlsl");
-            m_thresholdPs = D3DShader::CreateBuiltin("bloom_threshold.ps.hlsl");
-            m_downPs = D3DShader::CreateBuiltin("bloom_down.ps.hlsl");
-            m_upPs = D3DShader::CreateBuiltin("bloom_up.ps.hlsl");
-            m_compositePs = D3DShader::CreateBuiltin("bloom_composite.ps.hlsl");
-            if (!m_vs->IsValid() || m_vs->IsUsingFallback() || !m_thresholdPs->IsValid() ||
-                m_thresholdPs->IsUsingFallback() || !m_downPs->IsValid() || m_downPs->IsUsingFallback() ||
-                !m_upPs->IsValid() || m_upPs->IsUsingFallback() || !m_compositePs->IsValid() ||
-                m_compositePs->IsUsingFallback())
+            if (!IsUsable(m_vs) || !IsUsable(m_thresholdPs) || !IsUsable(m_downPs) || !IsUsable(m_upPs) ||
+                !IsUsable(m_compositePs))
             {
                 NS_LOG_ERROR(Graphics, "Bloom: シェーダを作れなかった");
                 return;

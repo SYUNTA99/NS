@@ -16,6 +16,7 @@ namespace NS
         class Renderer;
         class D3DShader;
         class D3DTexture;
+        struct BuiltinShaders;
 
         //! @brief 歪みの段に渡す輪。長さはどれも描画先の画素
         struct ScreenRing
@@ -41,12 +42,14 @@ namespace NS
         //! @brief 出来上がった絵に、画面全体に掛ける演出を掛ける
         //! @details 描画先を同じ形の絵へ写し、写しを読んで全画面を 1 回描いて描画先へ書く
         //! 選んだ描く物だけを世界の深度で隠して 1 色で写した体の型も作る
-        //! @warning Renderer より先に破棄すること
+        //! @warning Renderer より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
         class ScreenPasses : public NonCopyable
         {
         public:
-            //! シェーダ・パイプライン・定数バッファを作る。Renderer が未構築なら無効な状態になる
-            ScreenPasses() noexcept;
+            //! @brief パイプライン・定数バッファを作る。Renderer が未構築なら無効な状態になる
+            //! @param[in] shaders fullscreenVs・screenDistortionPs・bodyMaskPs を指すだけで持たない
+            //! どれかが nullptr か読めずに代わりの物の時は無効になる
+            explicit ScreenPasses(const BuiltinShaders& shaders) noexcept;
             ~ScreenPasses();
 
             //! 構築に成功した場合 true、それ以外の場合は false
@@ -82,9 +85,9 @@ namespace NS
 
             [[nodiscard]] bool EnsureBodyMask(const D3D11_TEXTURE2D_DESC& target) noexcept;
 
-            std::unique_ptr<D3DShader> m_vs;              // 全画面三角形
-            std::unique_ptr<D3DShader> m_distortionPs;    // 輪の所を押し出す
-            std::unique_ptr<D3DShader> m_bodyMaskPs;      // 写る画素を 1 にする
+            D3DShader* m_vs = nullptr;                    // 全画面三角形
+            D3DShader* m_distortionPs = nullptr;          // 輪の所を押し出す
+            D3DShader* m_bodyMaskPs = nullptr;            // 写る画素を 1 にする
             std::unique_ptr<D3DPipeline> m_writePipeline; // 書き込み先を置き換える
             //! 体の型を描く。世界の深度は読むだけ。両面の描く物は添字 1
             std::unique_ptr<D3DPipeline> m_bodyMaskPipelines[2];

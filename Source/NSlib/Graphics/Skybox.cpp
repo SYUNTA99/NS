@@ -10,6 +10,7 @@
 #include "NSlib/Graphics/D3DPipeline.h"
 #include "NSlib/Graphics/D3DShader.h"
 #include "NSlib/Graphics/D3DStaticMesh.h"
+#include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Graphics/detail/TextureFile.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
@@ -248,12 +249,12 @@ namespace NS
 
         } // namespace
 
-        std::unique_ptr<Skybox> Skybox::Create()
+        std::unique_ptr<Skybox> Skybox::Create(const BuiltinShaders& shaders)
         {
-            return std::unique_ptr<Skybox>(new Skybox());
+            return std::unique_ptr<Skybox>(new Skybox(shaders));
         }
 
-        Skybox::Skybox()
+        Skybox::Skybox(const BuiltinShaders& shaders) : m_vs(shaders.skyboxVs), m_ps(shaders.skyboxPs)
         {
             ID3D11Device* device = Gpu().device;
             if (device == nullptr)
@@ -275,9 +276,7 @@ namespace NS
                 return;
             }
 
-            m_vs = D3DShader::CreateBuiltin("skybox.vs.hlsl");
-            m_ps = D3DShader::CreateBuiltin("skybox.ps.hlsl");
-            if (!m_vs->IsValid() || !m_ps->IsValid())
+            if (m_vs == nullptr || m_ps == nullptr || !m_vs->IsValid() || !m_ps->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "Skybox: shader 構築失敗");
                 return;

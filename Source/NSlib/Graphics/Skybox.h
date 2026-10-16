@@ -15,16 +15,18 @@ namespace NS
         class D3DShader;
         class D3DBuffer;
         class D3DPipeline;
+        struct BuiltinShaders;
 
         //! @brief スカイボックスの描画リソース
         //! @details 無限遠の背景を描くメッシュとキューブマップを持つ
         //! 画像を読み込むまではピンク一色のフォールバックを描く
-        //! @warning Renderer より先に破棄すること
+        //! @warning Renderer より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
         class Skybox : public NonCopyable
         {
         public:
-            //! スカイボックス用のリソースを生成する
-            [[nodiscard]] static std::unique_ptr<Skybox> Create();
+            //! @brief スカイボックス用のリソースを生成する
+            //! @param[in] shaders skyboxVs と skyboxPs を指すだけで持たない。どちらかが nullptr なら無効になる
+            [[nodiscard]] static std::unique_ptr<Skybox> Create(const BuiltinShaders& shaders);
 
             ~Skybox();
 
@@ -47,11 +49,11 @@ namespace NS
                       ID3D11SamplerState* sampler) const noexcept;
 
         private:
-            Skybox();
+            explicit Skybox(const BuiltinShaders& shaders);
 
             std::unique_ptr<D3DStaticMesh> m_cubeMesh;
-            std::unique_ptr<D3DShader> m_vs;
-            std::unique_ptr<D3DShader> m_ps;
+            D3DShader* m_vs = nullptr;
+            D3DShader* m_ps = nullptr;
             std::unique_ptr<D3DBuffer> m_cb;
             std::unique_ptr<D3DPipeline> m_pipeline;
             ComPtr<ID3D11ShaderResourceView> m_cubemapSrv;

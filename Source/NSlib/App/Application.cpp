@@ -173,6 +173,8 @@ namespace NS
         m_assets->RegisterBuiltins();
         m_assets->RegisterSharedMaterials();
         m_assetsScope = std::make_unique<AssetManagerScope>(*m_assets);
+        // Renderer は AssetManager より先に立つので、組み込みのシェーダーは AssetManager を作った後に渡す
+        m_renderer->SetShaders(m_assets->LoadBuiltinShaders());
 
         for (std::unique_ptr<Layer>& layer : m_layers)
         {
@@ -294,6 +296,11 @@ namespace NS
         }
 
         m_assetsScope.reset();
+        // Clear が捨てるシェーダーを Renderer に指させたままにしない
+        if (m_renderer)
+        {
+            m_renderer->SetShaders(Gfx::BuiltinShaders{});
+        }
         if (m_assets)
         {
             m_assets->Clear();

@@ -442,24 +442,35 @@ namespace NS
             return *m_occludedPipelines[sided];
         }
 
+        void Renderer::SetShaders(const BuiltinShaders& shaders) noexcept
+        {
+            m_shaders = shaders;
+            // 空は作った時のシェーダーを指すので、捨てて次の DrawSky で今のシェーダーから作り直す
+            m_skybox.reset();
+            m_skyboxTried = false;
+            m_loadedSkyboxPath.clear();
+        }
+
+        const BuiltinShaders& Renderer::Shaders() const noexcept
+        {
+            return m_shaders;
+        }
+
         bool Renderer::EnsureOverlay(OverlayResources& overlay,
-                                     std::string_view vsFileName,
-                                     std::string_view psFileName,
+                                     const D3DShader* vs,
+                                     const D3DShader* ps,
                                      std::size_t constantBytes,
                                      std::string_view label) noexcept
         {
+            if (vs == nullptr || ps == nullptr || !vs->IsValid() || !ps->IsValid())
+            {
+                return false;
+            }
             if (!overlay.tried)
             {
                 overlay.tried = true;
                 if (m_device == nullptr)
                 {
-                    return false;
-                }
-                overlay.vs = D3DShader::CreateBuiltin(vsFileName);
-                overlay.ps = D3DShader::CreateBuiltin(psFileName);
-                if (!overlay.vs->IsValid() || !overlay.ps->IsValid())
-                {
-                    NS_LOG_ERROR(Graphics, "Renderer: {} shader 構築失敗", label);
                     return false;
                 }
 
@@ -489,6 +500,8 @@ namespace NS
         }
 
         void Renderer::DrawOverlay(const OverlayResources& overlay,
+                                   const D3DShader& vs,
+                                   const D3DShader& ps,
                                    const void* constants,
                                    std::size_t constantBytes,
                                    uint vertexCount,
@@ -498,8 +511,8 @@ namespace NS
             cmd.UpdateSubresource(*overlay.cb, constants, constantBytes);
 
             cmd.SetPipeline(*overlay.pipeline);
-            cmd.VSSetShader(*overlay.vs);
-            cmd.PSSetShader(*overlay.ps);
+            cmd.VSSetShader(vs);
+            cmd.PSSetShader(ps);
             if (vsReadsConstants)
             {
                 cmd.VSSetConstantBuffer(*overlay.cb, 0);
@@ -514,19 +527,21 @@ namespace NS
 
         void Renderer::DrawFullscreenColor(const Color& color) noexcept
         {
-            if (!EnsureOverlay(m_fullscreen, "fade.vs.hlsl", "fade.ps.hlsl", sizeof(FullscreenColorCB), "全画面塗り"))
+            if (!EnsureOverlay(
+                    m_fullscreen, m_shaders.fullscreenVs, m_shaders.fadePs, sizeof(FullscreenColorCB), "全画面塗り"))
             {
                 return;
             }
 
             FullscreenColorCB cbData{};
             cbData.color = color;
-            DrawOverlay(m_fullscreen, &cbData, sizeof(cbData), 3, false);
+            DrawOverlay(m_fullscreen, *m_shaders.fullscreenVs, *m_shaders.fadePs, &cbData, sizeof(cbData), 3, false);
         }
 
         void Renderer::DrawScreenRect(float x, float y, float width, float height, const Color& color) noexcept
         {
-            if (!EnsureOverlay(m_screenRect, "ui_rect.vs.hlsl", "ui_rect.ps.hlsl", sizeof(ScreenRectCB), "UI 矩形"))
+            if (!EnsureOverlay(
+                    m_screenRect, m_shaders.screenRectVs, m_shaders.screenRectPs, sizeof(ScreenRectCB), "UI 矩形"))
             {
                 return;
             }
@@ -548,7 +563,7 @@ namespace NS
             cbData.rect[2] = width / targetWidth * 2.0f;
             cbData.rect[3] = height / targetHeight * 2.0f;
             cbData.color = color;
-            DrawOverlay(m_screenRect, &cbData, sizeof(cbData), 6, true);
+            DrawOverlay(m_screenRect, *m_shaders.screenRectVs, *m_shaders.screenRectPs, &cbData, sizeof(cbData), 6, true);
         }
 
         void Renderer::EnsureSkyboxResources() noexcept
@@ -565,7 +580,7 @@ namespace NS
                 return;
             }
 
-            std::unique_ptr<Skybox> skybox = Skybox::Create();
+            std::unique_ptr<Skybox> skybox = Skybox::Create(m_shaders);
             if (!skybox || !skybox->IsValid())
             {
                 NS_LOG_WARN(Graphics, "Renderer: Skybox の構築失敗のため空を描かない");

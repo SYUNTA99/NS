@@ -17,6 +17,7 @@ namespace NS
         class Renderer;
         class D3DShader;
         class D3DTexture;
+        struct BuiltinShaders;
 
         //! @brief 光のにじみの設定
         //! @details 物の絵は S 字で 1 以下に書くので、閾値 1 なら 1 を超えて書いたエフェクトだけがにじむ
@@ -32,13 +33,15 @@ namespace NS
 
         //! @brief HDR の明るい部分をぼかして元の描画先へ加算する
         //! @details BeginWorld と EndWorld で描画先を切り替える。深度は元の描画先を共有する
-        //! @warning Renderer より先に破棄すること
+        //! @warning Renderer より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
         class Bloom : public NonCopyable
         {
         public:
-            //! @brief シェーダ・パイプライン・定数バッファを作る
+            //! @brief パイプライン・定数バッファを作る
             //! @param[in] desc 閾値・足す強さ・段の数
-            explicit Bloom(const BloomDesc& desc) noexcept;
+            //! @param[in] shaders fullscreenVs と bloom の 4 つを指すだけで持たない
+            //! どれかが nullptr か読めずに代わりの物の時は無効になる
+            Bloom(const BloomDesc& desc, const BuiltinShaders& shaders) noexcept;
             ~Bloom();
 
             //! 構築に成功した場合 true、それ以外の場合は false
@@ -66,11 +69,11 @@ namespace NS
 
             BloomDesc m_desc{};
 
-            std::unique_ptr<D3DShader> m_vs;              // 全画面三角形
-            std::unique_ptr<D3DShader> m_thresholdPs;     // 閾値を超えた分だけを残す
-            std::unique_ptr<D3DShader> m_downPs;          // 13 点で拾って半分に縮める
-            std::unique_ptr<D3DShader> m_upPs;            // 3×3 の山形で拾って 1 段大きい方へ足す
-            std::unique_ptr<D3DShader> m_compositePs;     // 元の絵ににじみを足して 1 へ丸める
+            D3DShader* m_vs = nullptr;                    // 全画面三角形
+            D3DShader* m_thresholdPs = nullptr;           // 閾値を超えた分だけを残す
+            D3DShader* m_downPs = nullptr;                // 13 点で拾って半分に縮める
+            D3DShader* m_upPs = nullptr;                  // 3×3 の山形で拾って 1 段大きい方へ足す
+            D3DShader* m_compositePs = nullptr;           // 元の絵ににじみを足して 1 へ丸める
             std::unique_ptr<D3DPipeline> m_writePipeline; // 書き込み先を置き換える
             std::unique_ptr<D3DPipeline> m_addPipeline;   // 書き込み先へ足す
             std::unique_ptr<D3DBuffer> m_cb;

@@ -50,7 +50,8 @@ namespace NS
             void Triangle(const Vector3& a, const Vector3& b, const Vector3& c, const Color& color);
 
             //! @brief 溜めた図形を描く。溜めた図形は残る
-            //! @details 面を先に、線を後に描く。空なら何もしない。GPU の準備に失敗した時は何も描かない
+            //! @details 面を先に、線を後に描く。空なら何もしない。GPU の準備に失敗した時と、
+            //! renderer の Shaders に debug_line のシェーダーが無い時は何も描かない
             //! @param[in,out] renderer 描画コマンドの発行先
             //! @param[in] viewProjection ビュー・プロジェクション行列
             void Draw(Renderer& renderer, const Matrix& viewProjection) const noexcept;

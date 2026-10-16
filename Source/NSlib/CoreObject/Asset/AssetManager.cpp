@@ -17,6 +17,7 @@
 #include "NSlib/Graphics/D3DSkeletalMesh.h"
 #include "NSlib/Graphics/D3DStaticMesh.h"
 #include "NSlib/Graphics/D3DTexture.h"
+#include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Physics/MeshShape.h"
 #include "NSlib/Windows/Filesystem.h"
 
@@ -325,6 +326,30 @@ namespace NS
         }
         m_shaders.emplace(key, std::move(shader));
         return raw;
+    }
+
+    Gfx::BuiltinShaders AssetManager::LoadBuiltinShaders()
+    {
+        const std::string directory = OS::FileSystem::Combine(m_baseDir, "Shaders");
+        const auto load = [this, &directory](std::string_view fileName) {
+            return LoadShader(OS::FileSystem::Combine(directory, fileName))->D3D();
+        };
+        Gfx::BuiltinShaders shaders{};
+        shaders.fullscreenVs = load("fade.vs.hlsl");
+        shaders.fadePs = load("fade.ps.hlsl");
+        shaders.screenRectVs = load("ui_rect.vs.hlsl");
+        shaders.screenRectPs = load("ui_rect.ps.hlsl");
+        shaders.skyboxVs = load("skybox.vs.hlsl");
+        shaders.skyboxPs = load("skybox.ps.hlsl");
+        shaders.debugLineVs = load("debug_line.vs.hlsl");
+        shaders.debugLinePs = load("debug_line.ps.hlsl");
+        shaders.bloomThresholdPs = load("bloom_threshold.ps.hlsl");
+        shaders.bloomDownPs = load("bloom_down.ps.hlsl");
+        shaders.bloomUpPs = load("bloom_up.ps.hlsl");
+        shaders.bloomCompositePs = load("bloom_composite.ps.hlsl");
+        shaders.screenDistortionPs = load("screen_distortion.ps.hlsl");
+        shaders.bodyMaskPs = load("body_mask.ps.hlsl");
+        return shaders;
     }
 
     Texture* AssetManager::LoadTexture(std::string_view path)

@@ -16,7 +16,16 @@ namespace NS
 {
     namespace Gfx
     {
-        ScreenPasses::ScreenPasses() noexcept
+        namespace
+        {
+            bool IsUsable(const D3DShader* shader) noexcept
+            {
+                return shader != nullptr && shader->IsValid() && !shader->IsUsingFallback();
+            }
+        } // namespace
+
+        ScreenPasses::ScreenPasses(const BuiltinShaders& shaders) noexcept
+            : m_vs(shaders.fullscreenVs), m_distortionPs(shaders.screenDistortionPs), m_bodyMaskPs(shaders.bodyMaskPs)
         {
             const GraphicObject& gpu = Gpu();
             if (gpu.device == nullptr || gpu.context == nullptr)
@@ -25,11 +34,7 @@ namespace NS
                 return;
             }
 
-            m_vs = D3DShader::CreateBuiltin("fade.vs.hlsl");
-            m_distortionPs = D3DShader::CreateBuiltin("screen_distortion.ps.hlsl");
-            m_bodyMaskPs = D3DShader::CreateBuiltin("body_mask.ps.hlsl");
-            if (!m_vs->IsValid() || m_vs->IsUsingFallback() || !m_distortionPs->IsValid() ||
-                m_distortionPs->IsUsingFallback() || !m_bodyMaskPs->IsValid() || m_bodyMaskPs->IsUsingFallback())
+            if (!IsUsable(m_vs) || !IsUsable(m_distortionPs) || !IsUsable(m_bodyMaskPs))
             {
                 NS_LOG_ERROR(Graphics, "ScreenPasses: シェーダを作れなかった");
                 return;

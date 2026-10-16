@@ -94,6 +94,7 @@ namespace
         {
             m_assets.RegisterBuiltins();
             m_assets.RegisterSharedMaterials();
+            m_renderer.SetShaders(m_assets.LoadBuiltinShaders());
             m_target = NS::Gfx::D3DRenderTarget::Create({k_Width, k_Height});
         }
 

@@ -287,8 +287,10 @@ namespace NS
         while (m_viewPasses.size() <= index)
         {
             ViewPasses passes;
-            passes.bloom = std::make_unique<Gfx::Bloom>(Gfx::BloomDesc{});
-            passes.screen = std::make_unique<Gfx::ScreenPasses>();
+            // 描く時は AssetManager を引かない決まりなので、Application が Renderer へ渡したシェーダーを使う
+            const Gfx::BuiltinShaders& shaders = m_renderer->Shaders();
+            passes.bloom = std::make_unique<Gfx::Bloom>(Gfx::BloomDesc{}, shaders);
+            passes.screen = std::make_unique<Gfx::ScreenPasses>(shaders);
             m_viewPasses.push_back(std::move(passes));
         }
         return m_viewPasses[index];

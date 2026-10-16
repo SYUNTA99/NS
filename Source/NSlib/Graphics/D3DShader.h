@@ -30,10 +30,6 @@ namespace NS
             //! HLSLファイルからシェーダを生成する
             [[nodiscard]] static std::unique_ptr<D3DShader> Create(std::string_view hlslPath);
 
-            //! @brief ContentRoot の Shaders ディレクトリにある HLSL ファイルからシェーダを生成する
-            //! @param[in] fileName Shaders ディレクトリ相対のファイル名 (例 "fade.vs.hlsl")
-            [[nodiscard]] static std::unique_ptr<D3DShader> CreateBuiltin(std::string_view fileName);
-
             [[nodiscard]] bool IsValid() const noexcept;
 
             //! 読み込みに失敗してピンクのフォールバックへ差し替わっているか

@@ -219,12 +219,6 @@ namespace NS
             return std::unique_ptr<D3DShader>(new D3DShader(hlslPath));
         }
 
-        std::unique_ptr<D3DShader> D3DShader::CreateBuiltin(std::string_view fileName)
-        {
-            const std::string shaderDir = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Shaders");
-            return Create(OS::FileSystem::Combine(shaderDir, fileName));
-        }
-
         D3DShader::D3DShader(std::string_view hlslPath)
         {
             const ShaderTypeInfo* info = DetectStage(hlslPath);
