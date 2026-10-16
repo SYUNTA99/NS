@@ -170,7 +170,7 @@ namespace NS
         void Snapshot() noexcept;
 
         NS_REFLECT_BEGIN(Model, Object)
-        NS_REFLECT_FIELD(m_baseColor, "基本色")
+        NS_REFLECT_COLOR(m_baseColor, "基本色")
         NS_REFLECT_FIELD(m_mesh, "メッシュ")
         NS_REFLECT_FIELD(m_material, "マテリアル")
         NS_REFLECT_FIELD(m_ghostMaterial, "残像のマテリアル")

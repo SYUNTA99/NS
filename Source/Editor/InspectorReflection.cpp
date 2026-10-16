@@ -2,17 +2,20 @@
 #include "NSlib/Core/Types.h"
 
 #include "Editor/EditorUi.h"
+#include "Editor/AssetPicker.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
 #include <climits>
 #include <cmath>
 #include <cstring>
+#include <limits>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -128,8 +131,8 @@ namespace NS
 #if NS_EDITOR_ENABLED
         namespace
         {
-            constexpr float k_CurveGraphHeight = 100.0f;
-            constexpr float k_CurveGrabRadius = 6.0f;
+            constexpr float k_CurveGraphHeight = 150.0f;
+            constexpr float k_CurveGrabRadius = 10.0f;
             constexpr float k_CurveHandleLength = 40.0f;
 
             constexpr ImU32 k_CurveGridColor = IM_COL32(255, 255, 255, 28);
@@ -142,6 +145,7 @@ namespace NS
             constexpr int k_GrabPoint = 0;
             constexpr int k_GrabInHandle = 1;
             constexpr int k_GrabOutHandle = 2;
+            constexpr int k_GrabPan = 3;
 
             struct CurveGraphView
             {
@@ -153,7 +157,7 @@ namespace NS
                 float yMax = 1.0f;
             };
 
-            // y の表示範囲を点の最小最大から決める。最低でも 0..1 を含め、上下に 1 割の余白を足す
+            // 手動接線では点の間で膨らむため、全体表示は評価した曲線も含めて余白を足す
             void ComputeCurveYRange(const Curve& curve, float& outMin, float& outMax) noexcept
             {
                 float low = 0.0f;
@@ -163,9 +167,60 @@ namespace NS
                     low = std::min(low, curve.keys[i].y);
                     high = std::max(high, curve.keys[i].y);
                 }
+                for (uint32 i = 0; i + 1 < curve.count; ++i)
+                {
+                    for (int sample = 1; sample < 64; ++sample)
+                    {
+                        const float x = curve.keys[i].x +
+                                        (curve.keys[i + 1].x - curve.keys[i].x) * static_cast<float>(sample) / 64.0f;
+                        const float y = curve.Evaluate(x);
+                        low = std::min(low, y);
+                        high = std::max(high, y);
+                    }
+                }
                 const float margin = (high - low) * 0.1f;
                 outMin = low - margin;
                 outMax = high + margin;
+            }
+
+            float CurveGridStep(float span, float pixels, float spacing) noexcept
+            {
+                const float rawStep = span / std::max(1.0f, pixels / spacing);
+                const float magnitude = std::pow(10.0f, std::floor(std::log10(rawStep)));
+                const float fraction = rawStep / magnitude;
+                if (fraction <= 1.0f)
+                {
+                    return magnitude;
+                }
+                if (fraction <= 2.0f)
+                {
+                    return magnitude * 2.0f;
+                }
+                if (fraction <= 5.0f)
+                {
+                    return magnitude * 5.0f;
+                }
+                return magnitude * 10.0f;
+            }
+
+            void StoreCurveView(ImGuiStorage& storage, const CurveGraphView& view) noexcept
+            {
+                storage.SetFloat(ImGui::GetID("graph-view-x-min"), view.xMin);
+                storage.SetFloat(ImGui::GetID("graph-view-x-max"), view.xMax);
+                storage.SetFloat(ImGui::GetID("graph-view-y-min"), view.yMin);
+                storage.SetFloat(ImGui::GetID("graph-view-y-max"), view.yMax);
+            }
+
+            void ZoomCurveAxis(float& low, float& high, float anchor, float factor) noexcept
+            {
+                const float span = high - low;
+                // 大きなフレーム数では小さすぎる幅が丸めで消えるため、値の桁にも下限を合わせる
+                const float minSpan = std::max(0.0001f, std::abs(anchor) * std::numeric_limits<float>::epsilon() * 16.0f);
+                const float maxSpan = std::max(minSpan, 10000000.0f);
+                const float newSpan = std::clamp(span * factor, minSpan, maxSpan);
+                const float ratio = (anchor - low) / span;
+                low = anchor - ratio * newSpan;
+                high = low + newSpan;
             }
 
             // カーブ座標を画面ピクセルへ写す。画面の y 軸は下向きなので上下を反転する
@@ -176,7 +231,7 @@ namespace NS
                 return ImVec2{view.origin.x + ratioX * view.size.x, view.origin.y + (1.0f - ratioY) * view.size.y};
             }
 
-            // 画面ピクセルをカーブ座標へ戻す。今の使い手の入力域が 0..1 のため x はそこへ収める
+            // 横方向へ欄を越えてドラッグした時は表示範囲の端で止める
             Curve::Key ScreenToCurve(const CurveGraphView& view, ImVec2 pos) noexcept
             {
                 const float ratioX = std::clamp((pos.x - view.origin.x) / view.size.x, 0.0f, 1.0f);
@@ -308,6 +363,23 @@ namespace NS
                 curve.keys[curve.count] = Curve::Key{};
             }
 
+            void DrawCurveTangent(ImDrawList& drawList, ImVec2 center, ImVec2 tip) noexcept
+            {
+                const ImVec2 step{(tip.x - center.x) / 8.0f, (tip.y - center.y) / 8.0f};
+                for (int i = 0; i < 8; i += 2)
+                {
+                    const float start = static_cast<float>(i);
+                    const float end = static_cast<float>(i + 1);
+                    drawList.AddLine(ImVec2{center.x + step.x * start, center.y + step.y * start},
+                                     ImVec2{center.x + step.x * end, center.y + step.y * end},
+                                     k_CurveHandleColor, 1.5f);
+                }
+                const ImVec2 low{tip.x - 5.0f, tip.y - 5.0f};
+                const ImVec2 high{tip.x + 5.0f, tip.y + 5.0f};
+                drawList.AddRectFilled(low, high, k_CurveHandleColor);
+                drawList.AddRect(low, high, IM_COL32(20, 25, 30, 255));
+            }
+
             void DrawCurveGraph(ImDrawList& drawList,
                                 const CurveGraphView& view,
                                 const Curve& curve,
@@ -323,16 +395,47 @@ namespace NS
                                       ImVec2{rectMax.x + k_CurveGrabRadius, rectMax.y},
                                       true);
 
-                for (int i = 1; i < 4; ++i)
+                const float xStep = CurveGridStep(view.xMax - view.xMin, view.size.x, 80.0f);
+                const float yStep = CurveGridStep(view.yMax - view.yMin, view.size.y, 40.0f);
+                const ImU32 textColor = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+                const float xStart = std::ceil(view.xMin / xStep) * xStep;
+                for (int i = 0; i < 100; ++i)
                 {
-                    const float x = rectMin.x + view.size.x * static_cast<float>(i) * 0.25f;
+                    const float tick = xStart + static_cast<float>(i) * xStep;
+                    if (tick > view.xMax)
+                    {
+                        break;
+                    }
+                    const float x = CurveToScreen(view, tick, 0.0f).x;
                     drawList.AddLine(ImVec2{x, rectMin.y}, ImVec2{x, rectMax.y}, k_CurveGridColor);
+                    char label[32]{};
+                    ImFormatString(label, sizeof(label), "%.4g", tick + 0.0f);
+                    const float labelWidth = ImGui::CalcTextSize(label).x;
+                    const float labelX = std::clamp(x + 3.0f, rectMin.x, std::max(rectMin.x, rectMax.x - labelWidth));
+                    drawList.AddText(ImVec2{labelX, rectMax.y - ImGui::GetFontSize() - 2.0f}, textColor, label);
                 }
-                // y の範囲は点に合わせて動くため、0 と 1 の基準線を目盛りの代わりにする
-                const float zeroY = CurveToScreen(view, 0.0f, 0.0f).y;
-                const float oneY = CurveToScreen(view, 0.0f, 1.0f).y;
-                drawList.AddLine(ImVec2{rectMin.x, zeroY}, ImVec2{rectMax.x, zeroY}, k_CurveRefLineColor);
-                drawList.AddLine(ImVec2{rectMin.x, oneY}, ImVec2{rectMax.x, oneY}, k_CurveRefLineColor);
+                const float yStart = std::ceil(view.yMin / yStep) * yStep;
+                for (int i = 0; i < 100; ++i)
+                {
+                    const float tick = yStart + static_cast<float>(i) * yStep;
+                    if (tick > view.yMax)
+                    {
+                        break;
+                    }
+                    const float y = CurveToScreen(view, 0.0f, tick).y;
+                    ImU32 color = k_CurveGridColor;
+                    if (std::abs(tick) < yStep * 0.01f)
+                    {
+                        color = k_CurveRefLineColor;
+                    }
+                    drawList.AddLine(ImVec2{rectMin.x, y}, ImVec2{rectMax.x, y}, color);
+                    char label[32]{};
+                    ImFormatString(label, sizeof(label), "%.4g", tick + 0.0f);
+                    if (y > rectMin.y + ImGui::GetFontSize() && y < rectMax.y - ImGui::GetFontSize() * 2.0f)
+                    {
+                        drawList.AddText(ImVec2{rectMin.x + 3.0f, y + 2.0f}, textColor, label);
+                    }
+                }
 
                 if (curve.count > 0)
                 {
@@ -375,27 +478,34 @@ namespace NS
                 {
                     const uint32 selectedIndex = static_cast<uint32>(selected);
                     const ImVec2 center = CurveToScreen(view, curve.keys[selectedIndex].x, curve.keys[selectedIndex].y);
-                    const ImVec2 inTip =
-                        TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, true), true);
-                    const ImVec2 outTip =
-                        TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, false), false);
-                    drawList.AddLine(center, inTip, k_CurveHandleColor, 1.5f);
-                    drawList.AddLine(center, outTip, k_CurveHandleColor, 1.5f);
-                    drawList.AddCircleFilled(inTip, 3.5f, k_CurveHandleColor);
-                    drawList.AddCircleFilled(outTip, 3.5f, k_CurveHandleColor);
+                    if (selectedIndex > 0)
+                    {
+                        const ImVec2 tip = TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, true), true);
+                        DrawCurveTangent(drawList, center, tip);
+                    }
+                    if (selectedIndex + 1 < curve.count)
+                    {
+                        const ImVec2 tip = TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, false), false);
+                        DrawCurveTangent(drawList, center, tip);
+                    }
                 }
 
                 for (uint32 i = 0; i < curve.count; ++i)
                 {
                     const ImVec2 center = CurveToScreen(view, curve.keys[i].x, curve.keys[i].y);
                     ImU32 color = k_CurvePointColor;
-                    float radius = 4.0f;
+                    float radius = 8.0f;
                     if (static_cast<int>(i) == highlighted)
                     {
                         color = k_CurvePointActiveColor;
-                        radius = 5.5f;
+                        radius = 9.0f;
                     }
                     drawList.AddCircleFilled(center, radius, color);
+                    char number[8]{};
+                    ImFormatString(number, sizeof(number), "%u", i + 1);
+                    const ImVec2 textSize = ImGui::CalcTextSize(number);
+                    drawList.AddText(ImVec2{center.x - textSize.x * 0.5f, center.y - textSize.y * 0.5f},
+                                     IM_COL32(20, 25, 30, 255), number);
                     if (static_cast<int>(i) == selected)
                     {
                         drawList.AddCircle(center, radius + 2.5f, k_CurveHandleColor, 0, 1.5f);
@@ -411,7 +521,175 @@ namespace NS
                 bool changed = false;   // 値が編集された
                 bool activated = false; // 編集が始まった
                 bool committed = false; // ウィジェットが非活性化した
+                bool popupActive = false;
             };
+
+            void DrawStringFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
+            {
+                std::string value;
+                field.get(owner, &value);
+                const auto resize = [](ImGuiInputTextCallbackData* data) -> int {
+                    std::string* text = static_cast<std::string*>(data->UserData);
+                    text->resize(static_cast<std::size_t>(data->BufTextLen));
+                    data->Buf = text->data();
+                    return 0;
+                };
+                if (ImGui::InputTextWithHint("##value", "文字を入力", value.data(), value.capacity() + 1,
+                                             ImGuiInputTextFlags_CallbackResize, resize, &value))
+                {
+                    field.set(owner, &value);
+                    result.changed = true;
+                }
+                if (ImGui::IsItemHovered() && !value.empty())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 36.0f);
+                    ImGui::TextUnformatted(value.c_str());
+                    ImGui::PopTextWrapPos();
+                    ImGui::EndTooltip();
+                }
+            }
+
+            void DrawAssetFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
+            {
+                // 開くたびに候補を取り直す。検索や表示だけではディスクを読み直さず、次の欄へ検索も持ち越さない
+                static std::vector<AssetOption> options;
+                static char search[256]{};
+                std::string value;
+                field.get(owner, &value);
+                ImGuiStorage* storage = ImGui::GetStateStorage();
+                const ImGuiID wasOpenId = ImGui::GetID("asset-picker-was-open");
+                const bool wasOpen = storage->GetBool(wasOpenId, false);
+                std::string label = OS::FileSystem::FileName(value);
+                if (label.empty())
+                {
+                    label = "素材を選択...";
+                }
+                const std::string button = label + "###value";
+                const float width = ImGui::CalcItemWidth();
+                if (ImGui::Button(button.c_str(), ImVec2{std::max(width, 1.0f), 0.0f}))
+                {
+                    options = CollectAssetOptions(field.assetKind, OS::FileSystem::ContentRoot());
+                    search[0] = '\0';
+                    result.activated = true;
+                    ImGui::OpenPopup("asset-picker");
+                }
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 36.0f);
+                    ImGui::TextUnformatted("クリックして候補から選択");
+                    if (!value.empty())
+                    {
+                        ImGui::TextUnformatted(value.c_str());
+                    }
+                    ImGui::PopTextWrapPos();
+                    ImGui::EndTooltip();
+                }
+                const std::string location = OS::FileSystem::ParentDirectory(value);
+                if (!location.empty())
+                {
+                    ImGui::TextDisabled("%s", location.c_str());
+                }
+                ImGui::SetNextWindowSize(ImVec2{640.0f, 480.0f}, ImGuiCond_Appearing);
+                if (ImGui::BeginPopup("asset-picker"))
+                {
+                    ImGui::TextUnformatted(field.name);
+                    if (ImGui::IsWindowAppearing())
+                    {
+                        ImGui::SetKeyboardFocusHere();
+                    }
+                    ImGui::SetNextItemWidth(-1.0f);
+                    ImGui::InputTextWithHint("##asset-search", "名前・フォルダーを検索", search, sizeof(search));
+                    if (ImGui::SmallButton("未設定にする"))
+                    {
+                        if (!value.empty())
+                        {
+                            value.clear();
+                            result.changed = true;
+                        }
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::Separator();
+                    bool found = false;
+                    if (ImGui::BeginChild("##asset-options", ImVec2{0.0f, 0.0f}, ImGuiChildFlags_Borders))
+                    {
+                        for (const AssetOption& option : options)
+                        {
+                            if (!NameMatches(option.value.c_str(), search) && !NameMatches(option.label.c_str(), search) &&
+                                !NameMatches(option.location.c_str(), search))
+                            {
+                                continue;
+                            }
+                            found = true;
+                            ImGui::PushID(option.value.c_str());
+                            const float line = ImGui::GetTextLineHeight();
+                            const bool chosen = ImGui::Selectable("##option", option.value == value, 0,
+                                                                  ImVec2{0.0f, line * 2.0f + 4.0f});
+                            const ImVec2 at = ImGui::GetItemRectMin();
+                            ImDrawList* drawList = ImGui::GetWindowDrawList();
+                            drawList->AddText(ImVec2{at.x + 4.0f, at.y + 2.0f}, ImGui::GetColorU32(ImGuiCol_Text), option.label.c_str());
+                            drawList->AddText(ImVec2{at.x + 4.0f, at.y + line + 3.0f}, ImGui::GetColorU32(ImGuiCol_TextDisabled), option.location.c_str());
+                            if (ImGui::IsItemHovered())
+                            {
+                                ImGui::SetTooltip("%s", option.value.c_str());
+                            }
+                            ImGui::PopID();
+                            if (chosen)
+                            {
+                                if (value != option.value)
+                                {
+                                    value = option.value;
+                                    result.changed = true;
+                                }
+                                ImGui::CloseCurrentPopup();
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            ImGui::TextWrapped("該当する素材がありません。ファイルをAssetsに追加してから開き直してください。");
+                        }
+                    }
+                    ImGui::EndChild();
+                    ImGui::EndPopup();
+                }
+                const bool open = ImGui::IsPopupOpen("asset-picker");
+                result.popupActive = open;
+                result.committed |= wasOpen && !open;
+                storage->SetBool(wasOpenId, open);
+                if (result.changed)
+                {
+                    field.set(owner, &value);
+                }
+            }
+
+            void DrawColorFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
+            {
+                Vector3 value{};
+                field.get(owner, &value);
+                float rgb[] = {value.x, value.y, value.z};
+                // 色選択中はつまみを離しても編集を確定せず、選択画面を閉じるまでまとめる
+                ImGuiStorage* storage = ImGui::GetStateStorage();
+                const ImGuiID stateId = ImGui::GetID("##colorPickerOpen");
+                const bool wasOpen = storage->GetBool(stateId, false);
+                const ImGuiID popupId = ImHashStr("picker", 0, ImGui::GetID("##value"));
+                constexpr ImGuiColorEditFlags k_Flags = ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float |
+                                                       ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_PickerHueBar |
+                                                       ImGuiColorEditFlags_NoDragDrop;
+                const bool changed = ImGui::ColorEdit3("##value", rgb, k_Flags);
+                const bool open = ImGui::IsPopupOpen(popupId, ImGuiPopupFlags_None);
+                result.popupActive = open;
+                result.activated |= open && !wasOpen;
+                result.committed |= wasOpen && !open;
+                storage->SetBool(stateId, open);
+                if (changed)
+                {
+                    value = Vector3{rgb[0], rgb[1], rgb[2]};
+                    field.set(owner, &value);
+                    result.changed = true;
+                }
+            }
 
             // ActorRef の欄。参照候補が無ければ id を打たせ、あれば候補から選ばせる。値を変えたら true
             bool DrawActorRefFieldWidget(void* owner,
@@ -558,8 +836,157 @@ namespace NS
                 return edited;
             }
 
-            // グラフのドラッグでは細かい値を打てないため、数値の並びを折り畳みで残す。値を変えたら true
-            bool DrawCurveNumbers(Curve& value, ImGuiStorage* storage, const CurveGraphIds& ids) noexcept
+            void TrackCurveItem(FieldWidgetResult& result) noexcept
+            {
+                result.activated |= ImGui::IsItemActivated();
+                result.committed |= ImGui::IsItemDeactivated();
+            }
+
+            bool DrawCurveSelection(Curve& value, ImGuiStorage& storage,
+                                    const CurveGraphIds& ids, FieldWidgetResult& result, float width) noexcept
+            {
+                int selected = storage.GetInt(ids.selectedId, -1);
+                if (value.count > 0)
+                {
+                    const float right = ImGui::GetCursorScreenPos().x + width;
+                    const float buttonSize = ImGui::GetFrameHeight();
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::TextUnformatted("点");
+                    ImGui::PushID("curve-key-buttons");
+                    for (uint32 i = 0; i < value.count; ++i)
+                    {
+                        if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + buttonSize <= right)
+                        {
+                            ImGui::SameLine();
+                        }
+                        const bool isSelected = selected == static_cast<int>(i);
+                        if (isSelected)
+                        {
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+                        }
+                        char number[8]{};
+                        ImFormatString(number, sizeof(number), "%u", i + 1);
+                        if (ImGui::Button(number, ImVec2{buttonSize, buttonSize}))
+                        {
+                            selected = static_cast<int>(i);
+                            storage.SetInt(ids.selectedId, selected);
+                        }
+                        if (isSelected)
+                        {
+                            ImGui::PopStyleColor();
+                        }
+                    }
+                    ImGui::PopID();
+                }
+                if (selected < 0 || static_cast<uint32>(selected) >= value.count)
+                {
+                    if (value.count == 0)
+                    {
+                        ImGui::TextWrapped("空いている場所をダブルクリックして点を追加します。");
+                    }
+                    else
+                    {
+                        ImGui::TextWrapped("線は点の間の値を表します。番号か丸い点を選んで編集します。");
+                    }
+                    return false;
+                }
+                bool edited = false;
+                ImGui::TextWrapped("丸を上下: 値を変更 / 左右: 位置を変更");
+                if (value.count > 1)
+                {
+                    ImGui::TextWrapped("四角をドラッグ: 線の曲がり具合を変更");
+                }
+                ImGui::Text("点 %d (X / Y)", selected + 1);
+                Curve::Key moved = value.keys[selected];
+                float xy[2] = {moved.x, moved.y};
+                ImGui::SetNextItemWidth(width);
+                if (ImGui::DragFloat2("##selectedPoint", xy, 0.01f, 0.0f, 0.0f, "%.4f"))
+                {
+                    moved.x = xy[0];
+                    moved.y = xy[1];
+                    selected = static_cast<int>(MoveKey(value, static_cast<uint32>(selected), moved));
+                    storage.SetInt(ids.selectedId, selected);
+                    edited = true;
+                }
+                TrackCurveItem(result);
+                const char* modes[] = {"直線", "自動なめらか", "手動接線"};
+                ImGui::TextDisabled("線の形");
+                const ImGuiID comboWasOpenId = ImGui::GetID("graph-mode-was-open");
+                const bool comboWasOpen = storage.GetBool(comboWasOpenId, false);
+                ImGui::SetNextItemWidth(width);
+                const bool comboOpen = ImGui::BeginCombo("##interpolation", modes[static_cast<int>(value.keys[selected].mode)]);
+                TrackCurveItem(result);
+                storage.SetBool(comboWasOpenId, comboOpen);
+                result.popupActive |= comboOpen;
+                result.activated |= comboOpen && !comboWasOpen;
+                if (!comboOpen && comboWasOpen)
+                {
+                    result.committed = true;
+                }
+                if (comboOpen)
+                {
+                    for (int mode = 0; mode < 3; ++mode)
+                    {
+                        if (ImGui::Selectable(modes[mode], mode == static_cast<int>(value.keys[selected].mode)))
+                        {
+                            Curve::Key& key = value.keys[selected];
+                            if (mode == static_cast<int>(Curve::InterpMode::Manual) && key.mode != Curve::InterpMode::Manual)
+                            {
+                                key.inTangent = DisplayTangent(value, static_cast<uint32>(selected), true);
+                                key.outTangent = DisplayTangent(value, static_cast<uint32>(selected), false);
+                            }
+                            key.mode = static_cast<Curve::InterpMode>(mode);
+                            edited = true;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                if (value.keys[selected].mode == Curve::InterpMode::Manual)
+                {
+                    ImGui::TextDisabled("接線の傾き: 入 / 出");
+                    Curve::Key& key = value.keys[selected];
+                    float tangents[2] = {key.inTangent, key.outTangent};
+                    ImGui::SetNextItemWidth(width);
+                    if (ImGui::DragFloat2("##selectedTangents", tangents, 0.01f, 0.0f, 0.0f, "%.4f"))
+                    {
+                        key.inTangent = tangents[0];
+                        key.outTangent = tangents[1];
+                        edited = true;
+                    }
+                    TrackCurveItem(result);
+                }
+                if (ImGui::SmallButton("接線を水平に"))
+                {
+                    Curve::Key& key = value.keys[selected];
+                    key.mode = Curve::InterpMode::Manual;
+                    key.inTangent = 0.0f;
+                    key.outTangent = 0.0f;
+                    edited = true;
+                }
+                TrackCurveItem(result);
+                const float buttonsWidth = ImGui::CalcTextSize("接線を水平に選択点を削除").x +
+                                           ImGui::GetStyle().FramePadding.x * 4.0f + ImGui::GetStyle().ItemSpacing.x;
+                if (width >= buttonsWidth)
+                {
+                    ImGui::SameLine();
+                }
+                if (ImGui::SmallButton("選択点を削除"))
+                {
+                    RemoveKey(value, static_cast<uint32>(selected));
+                    storage.SetInt(ids.selectedId, -1);
+                    edited = true;
+                }
+                TrackCurveItem(result);
+                if (comboOpen)
+                {
+                    result.committed = false;
+                }
+                return edited;
+            }
+
+            // 一覧で比較して入力できるよう、全点の数値欄も折り畳みで残す
+            bool DrawCurveNumbers(Curve& value, ImGuiStorage* storage, const CurveGraphIds& ids,
+                                  FieldWidgetResult& result) noexcept
             {
                 bool edited = false;
                 if (ImGui::TreeNode("数値で編集"))
@@ -578,9 +1005,11 @@ namespace NS
                             value.keys[pointIndex].y = xy[1];
                             edited = true;
                         }
+                        TrackCurveItem(result);
                         ImGui::SameLine();
                         if (ImGui::SmallButton("削除"))
                         {
+                            TrackCurveItem(result);
                             RemoveKey(value, pointIndex);
                             storage->SetInt(ids.selectedId, -1);
                             edited = true;
@@ -588,20 +1017,8 @@ namespace NS
                             ImGui::PopID();
                             break;
                         }
+                        TrackCurveItem(result);
                         ImGui::PopID();
-                    }
-                    const int selectedPoint = storage->GetInt(ids.selectedId, -1);
-                    if (selectedPoint >= 0 && static_cast<uint32>(selectedPoint) < value.count &&
-                        value.keys[selectedPoint].mode == Curve::InterpMode::Manual)
-                    {
-                        float tangents[2] = {value.keys[selectedPoint].inTangent,
-                                             value.keys[selectedPoint].outTangent};
-                        if (ImGui::DragFloat2("選択中の接線", tangents, 0.05f))
-                        {
-                            value.keys[selectedPoint].inTangent = tangents[0];
-                            value.keys[selectedPoint].outTangent = tangents[1];
-                            edited = true;
-                        }
                     }
                     if (value.count < Curve::k_MaxKeys && ImGui::SmallButton("点を追加"))
                     {
@@ -620,36 +1037,74 @@ namespace NS
                         ++value.count;
                         edited = true;
                     }
+                    TrackCurveItem(result);
                     ImGui::TreePop();
                 }
                 return edited;
             }
 
             // 曲線の欄。グラフのドラッグ・メニュー・数値の並びで点を編集する
-            void DrawCurveFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
+            bool DrawCurveEditor(Curve& value, FieldWidgetResult& result, float width, float height) noexcept
             {
-                Curve value{};
-                field.get(owner, &value);
                 bool edited = false;
 
+                ImGuiStorage* storage = ImGui::GetStateStorage();
+                const CurveGraphIds ids = MakeCurveGraphIds();
+                const bool fit = ImGui::SmallButton("全体表示 (F)");
                 CurveGraphView view{};
-                view.size = ImVec2{ImGui::CalcItemWidth(), k_CurveGraphHeight};
+                view.size = ImVec2{std::max(width, 1.0f), height};
                 view.origin = ImGui::GetCursorScreenPos();
                 ComputeCurveYRange(value, view.yMin, view.yMax);
                 CurveGraphXRange(value, view.xMin, view.xMax);
+                const float xMargin = (view.xMax - view.xMin) * 0.05f;
+                view.xMin -= xMargin;
+                view.xMax += xMargin;
+                const CurveGraphView fitted = view;
+                // 移動した点で毎回範囲を変えると、同じカーソル位置でも値が動き続けるため保持する
+                if (!fit)
+                {
+                    view.xMin = storage->GetFloat(ImGui::GetID("graph-view-x-min"), view.xMin);
+                    view.xMax = storage->GetFloat(ImGui::GetID("graph-view-x-max"), view.xMax);
+                    view.yMin = storage->GetFloat(ImGui::GetID("graph-view-y-min"), view.yMin);
+                    view.yMax = storage->GetFloat(ImGui::GetID("graph-view-y-max"), view.yMax);
+                }
 
                 // 右クリックのメニュー操作でも活性化と確定を拾うため、右ボタンも受ける
                 ImGui::InvisibleButton(
-                    "##graph", view.size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+                    "##graph", view.size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight |
+                                         ImGuiButtonFlags_MouseButtonMiddle);
                 // ドラッグ全体を 1 回の undo にまとめるため、グラフの活性化と非活性化も集約へ入れる
                 result.activated |= ImGui::IsItemActivated();
                 const bool graphDeactivated = ImGui::IsItemDeactivated();
 
-                ImGuiStorage* storage = ImGui::GetStateStorage();
-                const CurveGraphIds ids = MakeCurveGraphIds();
                 const ImVec2 mouse = ImGui::GetMousePos();
                 const bool hovered = ImGui::IsItemHovered();
                 const bool leftHeld = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+                const ImGuiIO& io = ImGui::GetIO();
+                if (hovered)
+                {
+                    ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
+                    if (!ImGui::IsAnyItemActive() && !io.WantTextInput)
+                    {
+                        if (ImGui::IsKeyPressed(ImGuiKey_F, false))
+                        {
+                            view = fitted;
+                        }
+                        if (io.MouseWheel != 0.0f)
+                        {
+                            const Curve::Key anchor = ScreenToCurve(view, mouse);
+                            const float factor = std::pow(1.2f, -std::clamp(io.MouseWheel, -10.0f, 10.0f));
+                            if (!io.KeyShift)
+                            {
+                                ZoomCurveAxis(view.xMin, view.xMax, anchor.x, factor);
+                            }
+                            if (!io.KeyCtrl)
+                            {
+                                ZoomCurveAxis(view.yMin, view.yMax, anchor.y, factor);
+                            }
+                        }
+                    }
+                }
 
                 int highlighted = -1;
                 if (hovered || ImGui::IsItemActive())
@@ -671,7 +1126,11 @@ namespace NS
                     // 右ボタンの活性化で前回の番号が残ると、右を押したまま左を押した時に別の点を掴むため空にする
                     int grabbedNow = -1;
                     int grabKind = k_GrabPoint;
-                    if (leftHeld)
+                    if (ImGui::IsMouseDown(ImGuiMouseButton_Middle) || (leftHeld && io.KeyAlt))
+                    {
+                        grabKind = k_GrabPan;
+                    }
+                    else if (leftHeld)
                     {
                         // 点よりハンドルを先に判定する。重なった時に点の掴みが勝つと選択が移って接線を触れないため
                         if (selected >= 0 && static_cast<uint32>(selected) < value.count)
@@ -688,12 +1147,12 @@ namespace NS
                             const float outDx = outTip.x - mouse.x;
                             const float outDy = outTip.y - mouse.y;
                             constexpr float k_HandleRadiusSq = k_CurveGrabRadius * k_CurveGrabRadius;
-                            if (inDx * inDx + inDy * inDy <= k_HandleRadiusSq)
+                            if (selectedIndex > 0 && inDx * inDx + inDy * inDy <= k_HandleRadiusSq)
                             {
                                 grabbedNow = selected;
                                 grabKind = k_GrabInHandle;
                             }
-                            else if (outDx * outDx + outDy * outDy <= k_HandleRadiusSq)
+                            else if (selectedIndex + 1 < value.count && outDx * outDx + outDy * outDy <= k_HandleRadiusSq)
                             {
                                 grabbedNow = selected;
                                 grabKind = k_GrabOutHandle;
@@ -719,7 +1178,19 @@ namespace NS
                 }
 
                 // 左の単クリックは掴みと選択に使うため、追加は空きのダブルクリックか右クリックのメニューに分ける
-                if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && highlighted < 0 &&
+                if (ImGui::IsItemActive() && storage->GetInt(ids.grabKindId) == k_GrabPan)
+                {
+                    if (!ImGui::IsItemActivated())
+                    {
+                        const float dx = io.MouseDelta.x / view.size.x * (view.xMax - view.xMin);
+                        const float dy = io.MouseDelta.y / view.size.y * (view.yMax - view.yMin);
+                        view.xMin -= dx;
+                        view.xMax -= dx;
+                        view.yMin += dy;
+                        view.yMax += dy;
+                    }
+                }
+                else if (hovered && !io.KeyAlt && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && highlighted < 0 &&
                     value.count < Curve::k_MaxKeys)
                 {
                     const Curve::Key added = ScreenToCurve(view, mouse);
@@ -751,6 +1222,13 @@ namespace NS
                             Curve::Key moved = value.keys[grabbed];
                             moved.x = targetKey.x;
                             moved.y = targetKey.y;
+                            if (io.KeyCtrl)
+                            {
+                                const float xStep = CurveGridStep(view.xMax - view.xMin, view.size.x, 80.0f);
+                                const float yStep = CurveGridStep(view.yMax - view.yMin, view.size.y, 40.0f);
+                                moved.x = std::round(moved.x / xStep) * xStep;
+                                moved.y = std::round(moved.y / yStep) * yStep;
+                            }
                             if (moved != value.keys[grabbed])
                             {
                                 const uint32 movedTo = MoveKey(value, static_cast<uint32>(grabbed), moved);
@@ -810,13 +1288,95 @@ namespace NS
                     result.committed = true;
                 }
                 storage->SetBool(ids.menuWasOpenId, menuOpen);
+                StoreCurveView(*storage, view);
 
                 DrawCurveGraph(
                     *ImGui::GetWindowDrawList(), view, value, highlighted, storage->GetInt(ids.selectedId, -1));
-                ImGui::TextDisabled(
-                    "ドラッグで移動 / ダブルクリックで追加 / 右クリックでメニュー / クリックで選択して接線");
+                if (hovered && highlighted >= 0)
+                {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+                }
+                if (hovered && highlighted >= 0 && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+                {
+                    const Curve::Key& key = value.keys[highlighted];
+                    ImGui::SetTooltip("点 %d\n上下に動かす: 値を変更\n左右に動かす: 位置を変更\nX: %.4f\nY: %.4f",
+                                      highlighted + 1, key.x, key.y);
+                }
+                ImGui::TextDisabled("操作方法 (?)");
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::SetTooltip("X: 入力 / Y: 値\nホイール: カーソルを中心にズーム\n"
+                                      "Ctrl+ホイール: 横軸のみ / Shift+ホイール: 縦軸のみ\n"
+                                      "中ボタン・Alt+左ドラッグ: 表示移動 / F: 全体表示\n"
+                                      "点をドラッグ: 移動 / Ctrl: 目盛りに吸着\n"
+                                      "ダブルクリック: 点を追加 / 右クリック: メニュー\n"
+                                      "数値欄をCtrl+クリック: 直接入力");
+                }
 
-                edited |= DrawCurveNumbers(value, storage, ids);
+                edited |= DrawCurveSelection(value, *storage, ids, result, width);
+                edited |= DrawCurveNumbers(value, storage, ids, result);
+                result.popupActive |= menuOpen;
+                if (result.popupActive)
+                {
+                    result.committed = false;
+                }
+                return edited;
+            }
+
+            void DrawCurveFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
+            {
+                Curve value{};
+                field.get(owner, &value);
+                ImGuiStorage* storage = ImGui::GetStateStorage();
+                const ImGuiID wasOpenId = ImGui::GetID("curve-editor-was-open");
+                const bool wasOpen = storage->GetBool(wasOpenId, false);
+                const float width = ImGui::CalcItemWidth();
+                char editorName[64]{};
+                ImFormatString(editorName, sizeof(editorName), "カーブ編集###curve-editor-%08X", ImGui::GetID("curve-editor"));
+                ImGui::PushItemWidth(width);
+                if (ImGui::SmallButton("大きく編集"))
+                {
+                    result.activated = true;
+                    ImGui::OpenPopup(editorName);
+                }
+                bool edited = false;
+                if (!ImGui::IsPopupOpen(editorName))
+                {
+                    edited = DrawCurveEditor(value, result, width, k_CurveGraphHeight);
+                }
+                else
+                {
+                    CurveGraphView preview{};
+                    preview.origin = ImGui::GetCursorScreenPos();
+                    preview.size = ImVec2{std::max(width, 1.0f), k_CurveGraphHeight};
+                    CurveGraphXRange(value, preview.xMin, preview.xMax);
+                    ComputeCurveYRange(value, preview.yMin, preview.yMax);
+                    DrawCurveGraph(*ImGui::GetWindowDrawList(), preview, value, -1, -1);
+                    ImGui::Dummy(preview.size);
+                }
+                ImGui::PopItemWidth();
+                ImGui::SetNextWindowSize(ImVec2{780.0f, 620.0f}, ImGuiCond_FirstUseEver);
+                bool keepOpen = true;
+                if (ImGui::BeginPopupModal(editorName, &keepOpen, ImGuiWindowFlags_NoSavedSettings))
+                {
+                    ImGui::TextUnformatted(field.name);
+                    const float editorWidth = ImGui::GetContentRegionAvail().x;
+                    const float editorHeight = std::max(180.0f, ImGui::GetContentRegionAvail().y - 240.0f);
+                    edited |= DrawCurveEditor(value, result, editorWidth, editorHeight);
+                    ImGui::EndPopup();
+                }
+                const bool open = ImGui::IsPopupOpen(editorName);
+                result.popupActive |= open;
+                // 拡大画面のつまみを離すたびに履歴を区切らず、画面を閉じるまでをまとめる
+                if (open)
+                {
+                    result.committed = false;
+                }
+                else if (wasOpen)
+                {
+                    result.committed = true;
+                }
+                storage->SetBool(wasOpenId, open);
 
                 if (edited)
                 {
@@ -872,6 +1432,11 @@ namespace NS
                 }
                 case FieldType::Vector3:
                 {
+                    if (field.isColor)
+                    {
+                        DrawColorFieldWidget(owner, field, result);
+                        break;
+                    }
                     Vector3 value{};
                     field.get(owner, &value);
                     float xyz[3] = {value.x, value.y, value.z};
@@ -901,16 +1466,13 @@ namespace NS
                 case FieldType::String:
                 case FieldType::AssetRef:
                 {
-                    std::string value;
-                    field.get(owner, &value);
-                    char text[256];
-                    const std::size_t copied = value.copy(text, sizeof(text) - 1);
-                    text[copied] = '\0';
-                    if (ImGui::InputText("##value", text, sizeof(text)))
+                    if (field.assetKind != AssetKind::None)
                     {
-                        std::string edited(text);
-                        field.set(owner, &edited);
-                        result.changed = true;
+                        DrawAssetFieldWidget(owner, field, result);
+                    }
+                    else
+                    {
+                        DrawStringFieldWidget(owner, field, result);
                     }
                     break;
                 }
@@ -926,7 +1488,10 @@ namespace NS
                 result.activated |= ImGui::IsItemActivated();
                 // 編集無しのクリックでもラッチを解くため、確定ではなく非活性化で committed を立てる
                 // 空編集は CommitSubObjectEdit が before==after で弾くので履歴は汚れない
-                result.committed |= ImGui::IsItemDeactivated();
+                if (!result.popupActive)
+                {
+                    result.committed |= ImGui::IsItemDeactivated();
+                }
                 return result;
             }
 

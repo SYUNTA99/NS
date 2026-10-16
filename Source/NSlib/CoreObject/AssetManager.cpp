@@ -479,6 +479,24 @@ namespace NS
         return nullptr;
     }
 
+    std::span<const std::string_view> AssetManager::BuiltinMeshNames() noexcept
+    {
+        static constexpr std::array<std::string_view, k_BuiltinShapes.size()> names = [] {
+            std::array<std::string_view, k_BuiltinShapes.size()> result{};
+            for (std::size_t i = 0; i < k_BuiltinShapes.size(); ++i)
+            {
+                result[i] = k_BuiltinShapes[i].name;
+            }
+            return result;
+        }();
+        return names;
+    }
+
+    std::span<const std::string_view> AssetManager::SharedMaterialNames() noexcept
+    {
+        return k_SharedMaterialNames;
+    }
+
     void AssetManager::RegisterBuiltins()
     {
         for (const BuiltinShape& shape : k_BuiltinShapes)

@@ -17,6 +17,38 @@ namespace NS
 {
     class Object;
 
+    // 保存形式を変えず、欄の参照先の種類に合う素材を選ぶための情報
+    enum class AssetKind
+    {
+        None,
+        Mesh,
+        Material,
+        Model,
+        Animation,
+        Effect,
+    };
+
+    template <class T> constexpr AssetKind AssetKindOf() noexcept
+    {
+        if constexpr (std::is_same_v<T, AssetRef<Gfx::Mesh>>)
+        {
+            return AssetKind::Mesh;
+        }
+        else if constexpr (std::is_same_v<T, AssetRef<Gfx::Material>>)
+        {
+            return AssetKind::Material;
+        }
+        else if constexpr (std::is_same_v<T, AssetRef<const SkinnedModel>>)
+        {
+            return AssetKind::Model;
+        }
+        else if constexpr (std::is_same_v<T, AssetRef<const Gfx::AnimClip>>)
+        {
+            return AssetKind::Animation;
+        }
+        return AssetKind::None;
+    }
+
     //! リフレクションが扱うフィールド型タグ
     // TODO: 角度の欄は素の float / Vector3 で、単位は欄名だけが持つ。Core/Math.h の Radians を FieldType へ足す
     enum class FieldType
@@ -130,6 +162,8 @@ namespace NS
         void (*get)(const void* obj, void* outValue) noexcept; // obj から値を outValue へ取り出す
         void (*set)(void* obj, const void* inValue) noexcept;  // inValue を obj へ書き込む
         void (*load)(void* obj) = nullptr;                    // 参照の欄の素材を読む。ほかの型の欄では何もしない
+        bool isColor = false;
+        AssetKind assetKind = AssetKind::None;
     };
 
     //! @brief 欄の見出し 1 つ。インスペクタが firstField の欄の前に畳める区切りを出す
@@ -256,16 +290,26 @@ namespace NS
 
 //! メンバを 1 フィールドとして登録する。private も入れ子の struct のメンバ (m_tuning.speed) も書ける
 //! 型タグはメンバ型から推論する。float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
-#define NS_REFLECT_FIELD(member, label)                                                                                \
+#define NS_REFLECT_FIELD(member, label) NS_REFLECT_FIELD_IMPL(member, label, false, NS::AssetKindOf<decltype(Self::member)>())
+
+#define NS_REFLECT_COLOR(member, label) NS_REFLECT_FIELD_IMPL(member, label, true, NS::AssetKind::None)
+
+#define NS_REFLECT_ASSET(member, label, kind) NS_REFLECT_FIELD_IMPL(member, label, false, kind)
+
+#define NS_REFLECT_FIELD_IMPL(member, label, colorField, assetKindValue)                                                \
     NS::ReflectEntry{NS::FieldDesc{label,                                                                              \
                                    NS::FieldTypeOf<decltype(Self::member)>(),                                          \
                                    +[](const void* c, void* out) noexcept {                                            \
+                                       static_assert(!(colorField) || std::is_same_v<decltype(Self::member), NS::Vector3>); \
+                                       static_assert((assetKindValue) == NS::AssetKind::None ||                         \
+                                                     NS::FieldTypeOf<decltype(Self::member)>() == NS::FieldType::AssetRef || \
+                                                     std::is_same_v<decltype(Self::member), std::string>);             \
                                        NS::ReadFieldValue(static_cast<const Self*>(c)->member, out);                   \
                                    },                                                                                  \
                                    +[](void* c, const void* in) noexcept {                                             \
                                        NS::AssignFieldValue(static_cast<Self*>(c)->member, in);                        \
                                    },                                                                                  \
-                                   +[](void* c) { NS::LoadFieldAsset(static_cast<Self*>(c)->member); }},               \
+                                   +[](void* c) { NS::LoadFieldAsset(static_cast<Self*>(c)->member); }, colorField, assetKindValue}, \
                      nullptr},
 
 //! 欄の見出しを置く。次の見出しまでに並べた欄がこの見出しの下に入る。見出しは欄の配列に入らず、保存の鍵にならない

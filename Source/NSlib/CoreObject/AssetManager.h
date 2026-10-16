@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -121,6 +122,8 @@ namespace NS
         //! RegisterBuiltins を通っていない AssetManager では全部 nullptr になる
         //! 同じ名前の当たりは RegisterBuiltins 無しでも LoadMeshShape が返す
         [[nodiscard]] Gfx::StaticMesh* Builtin(std::string_view name) const noexcept;
+        //! 登録前も取得できる組み込みの形の名前。名前の一覧はアプリ寿命で保持する
+        [[nodiscard]] static std::span<const std::string_view> BuiltinMeshNames() noexcept;
         //! @brief 欄の名前のマテリアルを返す。名前は共有の material の名前か、ContentRoot からの .mat の道筋
         //! @details 空の名前と読めない名前は共有の player で代え、読めない名前は警告する
         //! 共有の名前はファイルとして読まないので、RegisterSharedMaterials の前は nullptr
@@ -135,6 +138,8 @@ namespace NS
         void RegisterSharedMaterials();
         //! 名前キーで共有 material を引く。キーは "player" / "water" / "shadow"。未登録は nullptr
         [[nodiscard]] Gfx::Material* SharedMaterial(std::string_view name) const noexcept;
+        //! 登録前も取得できる共有の材質の名前。名前の一覧はアプリ寿命で保持する
+        [[nodiscard]] static std::span<const std::string_view> SharedMaterialNames() noexcept;
 
         //! path キーのアセットを同じインスタンスのまま読み直す。現状 Shader のみ。成功で true、未キャッシュ /
         //! 失敗で false
