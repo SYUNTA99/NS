@@ -28,7 +28,7 @@ namespace
         {
             return placeholder;
         }
-        if (NS::Gfx::Mesh* mesh = NS::ResolveMeshFromRef(assets, ref))
+        if (NS::Gfx::Mesh* mesh = assets.TryLoadMesh(ref))
         {
             return mesh;
         }

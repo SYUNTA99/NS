@@ -23,7 +23,6 @@
 #include <cstddef>
 #include <cstring>
 #include <limits>
-#include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -250,17 +249,6 @@ namespace GL
                 item.twoSided = true;
                 std::memcpy(&item.constants, &constants, sizeof(constants));
                 return item;
-            }
-
-            // .mat を読んだマテリアル。読めなければ nullptr
-            [[nodiscard]] NS::Gfx::Material* LoadArrowMaterial(NS::AssetManager& assets, const char* path)
-            {
-                const std::optional<std::string> resolved = NS::ResolveContentPath(path);
-                if (!resolved)
-                {
-                    return nullptr;
-                }
-                return assets.LoadMaterial(*resolved).material;
             }
         } // namespace
 
@@ -529,8 +517,8 @@ namespace GL
         void SlamArrow::ResolveAssets(NS::AssetManager& assets)
         {
             m_mesh = assets.Builtin(m_meshAsset);
-            m_bandMaterial = LoadArrowMaterial(assets, m_bandMaterialAsset.c_str());
-            m_headMaterial = LoadArrowMaterial(assets, m_headMaterialAsset.c_str());
+            m_bandMaterial = assets.TryLoadMaterial(m_bandMaterialAsset);
+            m_headMaterial = assets.TryLoadMaterial(m_headMaterialAsset);
         }
 
         void SlamArrow::Update(const GL::Player::ChargeStatus& charge,

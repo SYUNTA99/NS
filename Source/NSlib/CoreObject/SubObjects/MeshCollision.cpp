@@ -113,13 +113,7 @@ namespace NS
             return;
         }
 
-        const Phys::MeshShape* shape = assets.GetOrLoadMeshShape(renderer->MeshRef());
-        if (shape == nullptr)
-        {
-            shape = assets.GetOrLoadMeshShape("cube");
-        }
-
-        SetShape(shape);
+        SetShape(assets.LoadMeshShape(renderer->MeshRef()));
     }
 
     // data からは当たり無しで作る

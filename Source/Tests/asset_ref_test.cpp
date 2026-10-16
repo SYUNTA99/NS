@@ -7,6 +7,7 @@
 #include "NSlib/CoreObject/SubObject.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/Shadow.h"
+#include "NSlib/Windows/Filesystem.h"
 
 #include <gtest/gtest.h>
 
@@ -28,11 +29,14 @@ namespace
     }
 } // namespace
 
-// 偽の素材の読み方。名前ごとの置き場を指す
-template <> void NS::LoadAssetRef<FakeAsset>(AssetRef<FakeAsset>& ref)
+namespace
 {
-    ref.SetLoaded(&FakeAssets()[ref.Name()]);
-}
+    // 偽の素材の読み方。名前ごとの置き場を指す。欄の読み方は欄の型から多重定義で選ばれる
+    void LoadAssetRef(NS::AssetRef<FakeAsset>& ref)
+    {
+        ref.SetLoaded(&FakeAssets()[ref.Name()]);
+    }
+} // namespace
 
 namespace
 {
@@ -154,17 +158,19 @@ TEST(AssetRef, ModelAndShadowHoldTheirAssetsInRefFields)
     EXPECT_EQ(shadowFields["マテリアル"], nlohmann::json("shadow"));
 }
 
-// 組み込みの形と共有のマテリアルの名前はファイルでない。装置が無くて登録されていなくても名前で分かる
-TEST(AssetRef, BuiltinAndSharedNamesAreKnownWithoutRegistering)
+// 欄の名前から素材を引く決まりは AssetManager の口の中にある
+// 当たりの口は装置が無くても形を作れるので、名前の決まりをここで確かめる
+TEST(AssetManagerLoad, MeshShapeFollowsTheNameRules)
 {
-    EXPECT_TRUE(NS::AssetManager::IsBuiltinName("cube"));
-    EXPECT_TRUE(NS::AssetManager::IsBuiltinName("shadowQuad"));
-    EXPECT_FALSE(NS::AssetManager::IsBuiltinName("Assets/Models/ball.glb"));
-    EXPECT_FALSE(NS::AssetManager::IsBuiltinName(""));
-
-    EXPECT_TRUE(NS::AssetManager::IsSharedMaterialName("player"));
-    EXPECT_TRUE(NS::AssetManager::IsSharedMaterialName("water"));
-    EXPECT_TRUE(NS::AssetManager::IsSharedMaterialName("shadow"));
-    EXPECT_FALSE(NS::AssetManager::IsSharedMaterialName("Assets/Materials/ground.mat"));
-    EXPECT_FALSE(NS::AssetManager::IsSharedMaterialName(""));
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const NS::Phys::MeshShape* cube = assets.LoadMeshShape("cube");
+    ASSERT_NE(cube, nullptr);
+    // 組み込みの形は、登録の前でもファイルとして読まずに形を作る
+    const NS::Phys::MeshShape* quad = assets.LoadMeshShape("shadowQuad");
+    ASSERT_NE(quad, nullptr);
+    EXPECT_NE(quad, cube);
+    // 選んでいない・読めないファイル・基準のフォルダの外は、描く物と同じく cube で代える
+    EXPECT_EQ(assets.LoadMeshShape(""), cube);
+    EXPECT_EQ(assets.LoadMeshShape("Assets/Models/__ns_missing_shape__.glb"), cube);
+    EXPECT_EQ(assets.LoadMeshShape("../__ns_outside__.glb"), cube);
 }

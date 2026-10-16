@@ -54,10 +54,6 @@ namespace NS
     //! ディレクトリトラバーサル (..) で ContentRoot 外へ出る不正なパスは弾き nullopt を返す
     [[nodiscard]] std::optional<std::string> ResolveContentPath(const std::string& relative);
 
-    //! 参照文字列からメッシュを解決する。組み込み名を先に引き、外れたら ContentRoot 相対の glTF パスとして読む
-    //! 空文字・登録前の組み込み名・トラバーサル・読込失敗は nullptr。組み込み名はパスとして読まない
-    [[nodiscard]] Gfx::Mesh* ResolveMeshFromRef(AssetManager& assets, const std::string& meshRef);
-
     //! .mat の JSON 解析結果。GPU 非依存なので device 無しでテストできる
     struct MaterialFileDesc
     {
@@ -71,14 +67,6 @@ namespace NS
     //! JSON 文字列を MaterialFileDesc へ解析する。成功で true、失敗時は outError に理由を入れる
     //! vs / ps は必須、他は欠落時に既定値
     [[nodiscard]] bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError);
-
-    //! 読み込んだ Material とその基準色。baseColor は Model 側に適用するため別で返す
-    struct LoadedMaterial
-    {
-        //! AssetManager 所有、キャッシュ寿命中のみ有効
-        Gfx::Material* material = nullptr;
-        Vector3 baseColor{1.0f, 1.0f, 1.0f};
-    };
 
     //! 読み込んだ skinned model。mesh / skeleton / clips 全て AssetManager 所有でキャッシュ寿命中のみ有効
     //! 再生状態はインスタンス側が持つが、skeleton / clips のデータは不変なので複数インスタンスで共有する
@@ -107,13 +95,16 @@ namespace NS
         [[nodiscard]] Gfx::Shader* GetOrLoadShader(std::string_view path);
         //! path キーで Texture を共有して返す。同一 path は同一インスタンス
         [[nodiscard]] Gfx::Texture* GetOrLoadTexture(std::string_view path);
-        //! path キーで Mesh を共有して返す。読込 / GPU 生成に失敗した path も負キャッシュし、以後は再読込せず
-        //! 即 nullptr を返す。修正した file の再試行は Clear() でキャッシュを解いてから
-        [[nodiscard]] Gfx::Mesh* GetOrLoadMesh(std::string_view path);
+        //! @brief 欄の名前のメッシュを返す。名前は組み込みの形の名前か、ContentRoot からのファイルの道筋
+        //! @details 空の名前と読めない名前は組み込みの cube で代え、読めない名前は警告する
+        //! 組み込みの形の名前はファイルとして読まないので、RegisterBuiltins の前は nullptr
+        [[nodiscard]] Gfx::Mesh* LoadMesh(std::string_view name);
+        //! LoadMesh と同じ名前の決まりで引き、読めなければ代えずに nullptr を返す。警告もしない
+        [[nodiscard]] Gfx::Mesh* TryLoadMesh(std::string_view name);
 
-        //! 資産ごとの衝突形状を共有する。GPU がなくても作成でき、同じファイルは重複して読まない
-        //! 空・領域外の参照・読込失敗は nullptr。失敗をキャッシュし、参照は Clear まで有効
-        [[nodiscard]] const Phys::MeshShape* GetOrLoadMeshShape(const std::string& meshRef);
+        //! @brief 欄の名前のメッシュの当たりを返す。名前の決まりと代わりの cube は LoadMesh と同じ
+        //! @details 装置が無くても作れる。同じファイルは描く物と同じ記録から 1 回だけ読む
+        [[nodiscard]] const Phys::MeshShape* LoadMeshShape(std::string_view name);
 
         //! skinned glTF を読み SkeletalMesh を path キーで重複なく所有して返す。skeleton / clips は
         //! キャッシュ record への参照で返し、再生状態だけをインスタンス側が持つ。失敗時は valid=false
@@ -133,27 +124,27 @@ namespace NS
         void RegisterBuiltins();
         //! 名前キーで組み込み StaticMesh を引く。未登録は nullptr
         //! RegisterBuiltins を通っていない AssetManager では全部 nullptr になる
-        //! 同じ名前の当たりは RegisterBuiltins 無しでも GetOrLoadMeshShape が返す
+        //! 同じ名前の当たりは RegisterBuiltins 無しでも LoadMeshShape が返す
         [[nodiscard]] Gfx::StaticMesh* Builtin(std::string_view name) const noexcept;
-        //! name が RegisterBuiltins の登録する組み込みの形の名前なら true。登録の前でも答える
-        [[nodiscard]] static bool IsBuiltinName(std::string_view name) noexcept;
 
         //! 寸法ごとに共有するカプセルメッシュ。半長 0 で球になり、参照は Clear まで有効
         //! 非有限の寸法・GPU なし・生成失敗は nullptr。生成失敗は次回に再試行する
         [[nodiscard]] Gfx::StaticMesh* GetOrMakeCapsuleMesh(float radius, float halfHeight);
 
-        //! matPath の .mat を読み込み composite Material を組んで返す。shader / texture は内部 leaf を借りて共有
-        //! 既読なら cache を返す。読込 / 解析失敗時は material=nullptr の LoadedMaterial を返す
-        //! 相対 path は構築時の baseDir 基準で解決する
-        [[nodiscard]] LoadedMaterial LoadMaterial(std::string_view matPath);
+        //! @brief 欄の名前のマテリアルを返す。名前は共有の material の名前か、ContentRoot からの .mat の道筋
+        //! @details 空の名前と読めない名前は共有の player で代え、読めない名前は警告する
+        //! 共有の名前はファイルとして読まないので、RegisterSharedMaterials の前は nullptr
+        [[nodiscard]] Gfx::Material* LoadMaterial(std::string_view name);
+        //! LoadMaterial と同じ名前の決まりで引き、読めなければ代えずに nullptr を返す。警告もしない
+        [[nodiscard]] Gfx::Material* TryLoadMaterial(std::string_view name);
+        //! name の .mat に書かれた基準色。共有の名前・空・まだ読んでいない名前は (1, 1, 1)
+        [[nodiscard]] Vector3 MaterialBaseColor(std::string_view name) const;
 
         //! 共有 material である player / water / shadow を組み込み shader + texture から一括組み立てする
         //! device + RegisterBuiltins 後・最初の利用前に 1 度呼ぶ。既登録名は上書きしない
         void RegisterSharedMaterials();
         //! 名前キーで共有 material を引く。キーは "player" / "water" / "shadow"。未登録は nullptr
         [[nodiscard]] Gfx::Material* SharedMaterial(std::string_view name) const noexcept;
-        //! name が RegisterSharedMaterials の登録する共有 material の名前なら true。登録の前でも答える
-        [[nodiscard]] static bool IsSharedMaterialName(std::string_view name) noexcept;
 
         //! path キーのアセットを同じインスタンスのまま読み直す。現状 Shader のみ。成功で true、未キャッシュ /
         //! 失敗で false
@@ -181,6 +172,8 @@ namespace NS
 
         // 正規化した path で記録を引き、無ければ glTF を読んで作る
         [[nodiscard]] MeshRecord& LoadMeshRecord(std::string_view path);
+        // 本当の場所の .mat を読んで記録する。読めなければ nullptr
+        [[nodiscard]] const MaterialRecord* LoadMaterialFile(const std::string& path);
 
         struct SkinnedModelRecord
         {

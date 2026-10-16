@@ -1756,22 +1756,20 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
         return false;
     }
 
-    const NS::LoadedMaterial loaded = app->Assets().LoadMaterial(matPath);
-    if (loaded.material == nullptr)
+    // .mat パスは ContentRoot 相対で持つ。材質の正データは欄の名前なので、名前を書いて欄から読み直す
+    const std::string stored = RelativeToRoot(matPath, NS::OS::FileSystem::ContentRoot());
+    NS::AssetManager& assets = app->Assets();
+    if (assets.TryLoadMaterial(stored) == nullptr)
     {
         return false;
     }
 
-    // .mat パスは ContentRoot 相対で持つ。材質の正データは matRef なので実体の SubObject へ書き込む
-    const std::string stored = RelativeToRoot(matPath, NS::OS::FileSystem::ContentRoot());
-
     // 差替前を忠実に写す。matRef を実体へ書き込み、差替後との差分を 取り消し 履歴へ積む
     std::optional<nlohmann::json> before = m_applier.CaptureObject(m_selectedObjectId);
 
-    // 名前を先に書く。違う名前を書くと読んだマテリアルが空に戻る
     mesh->SetMaterialRef(stored);
-    mesh->SetMaterial(loaded.material);
-    mesh->SetBaseColor(loaded.baseColor);
+    go->ReloadAssets();
+    mesh->SetBaseColor(assets.MaterialBaseColor(stored));
 
     std::optional<nlohmann::json> after = m_applier.CaptureObject(m_selectedObjectId);
     if (before && after && !(*before == *after))
