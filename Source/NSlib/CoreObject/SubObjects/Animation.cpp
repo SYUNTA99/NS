@@ -7,7 +7,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Graphics/D3DBuffer.h"
-#include "NSlib/Graphics/Retarget.h"
+#include "NSlib/Core/Animation/Retarget.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
@@ -24,7 +24,7 @@ namespace NS
         m_mesh = mesh;
     }
 
-    void Animation::SetSkeleton(const Gfx::Skeleton* skeleton) noexcept
+    void Animation::SetSkeleton(const Anim::Skeleton* skeleton) noexcept
     {
         m_skeleton = skeleton;
     }
@@ -34,7 +34,7 @@ namespace NS
         m_playing = true;
     }
 
-    void Animation::Play(const Gfx::AnimClip* clip)
+    void Animation::Play(const Anim::AnimClip* clip)
     {
         if (clip == m_clip)
         {
@@ -102,7 +102,7 @@ namespace NS
         m_clipBones.clear();
         if (m_clip != nullptr && m_skeleton != nullptr)
         {
-            m_clipBones = Gfx::FindTrackBones(*m_clip, *m_skeleton);
+            m_clipBones = Anim::FindTrackBones(*m_clip, *m_skeleton);
         }
     }
 
@@ -194,7 +194,7 @@ namespace NS
         }
         if (m_clip != nullptr && m_clip->IsValid())
         {
-            Gfx::SampleClipPose(*m_clip, m_clipBones, *m_skeleton, time, m_poseScratch);
+            Anim::SampleClipPose(*m_clip, m_clipBones, *m_skeleton, time, m_poseScratch);
             m_skeleton->ComputePalette(m_poseScratch, m_paletteScratch);
         }
         else

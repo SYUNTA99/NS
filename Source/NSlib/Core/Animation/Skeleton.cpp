@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/Skeleton.h"
+#include "NSlib/Core/Animation/Skeleton.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
@@ -7,7 +7,7 @@
 
 namespace NS
 {
-    namespace Gfx
+    namespace Anim
     {
         namespace
         {
@@ -45,7 +45,6 @@ namespace NS
                 return;
             }
 
-            // 根本となるボーンには、スケルトン全体の基準となる変換行列を適用する
             ComputeGlobals(pose, out, true);
             for (std::size_t i = 0; i < boneCount; ++i)
             {
@@ -131,5 +130,5 @@ namespace NS
             }
             return result;
         }
-    } // namespace Gfx
+    } // namespace Anim
 } // namespace NS

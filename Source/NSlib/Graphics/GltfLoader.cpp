@@ -3,7 +3,7 @@
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Graphics/Animation.h"
+#include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Graphics/detail/GltfSkinHelpers.h"
 #include "NSlib/Windows/Filesystem.h"
 
@@ -426,9 +426,9 @@ namespace NS
             }
 
             // 関節の局所の位置・回転・拡縮を左手系に変換する。has_* で値の有無を確認する
-            BonePose ReadJointLocalPose(const cgltf_node& node)
+            Anim::BonePose ReadJointLocalPose(const cgltf_node& node)
             {
-                BonePose pose;
+                Anim::BonePose pose;
                 if (node.has_matrix)
                 {
                     Vector3 scale;
@@ -462,7 +462,7 @@ namespace NS
             }
 
             // skin から Bone 配列を組む。ボーン 0 / 上限超過 / inverse bind 欠落・数不一致は false
-            bool BuildSkeletonBones(const cgltf_skin& skin, const std::string& path, std::vector<Bone>& outBones)
+            bool BuildSkeletonBones(const cgltf_skin& skin, const std::string& path, std::vector<Anim::Bone>& outBones)
             {
                 if (skin.joints_count == 0)
                 {
@@ -497,7 +497,7 @@ namespace NS
                 for (cgltf_size i = 0; i < skin.joints_count; ++i)
                 {
                     const cgltf_node* jointNode = skin.joints[i];
-                    Bone& bone = outBones[i];
+                    Anim::Bone& bone = outBones[i];
                     const cgltf_node* parentNode = nullptr;
                     if (jointNode != nullptr)
                     {
@@ -638,26 +638,26 @@ namespace NS
                 return true;
             }
 
-            Interpolation MapInterpolation(cgltf_interpolation_type type) noexcept
+            Anim::Interpolation MapInterpolation(cgltf_interpolation_type type) noexcept
             {
                 if (type == cgltf_interpolation_type_step)
                 {
-                    return Interpolation::Step;
+                    return Anim::Interpolation::Step;
                 }
-                return Interpolation::Linear; // linear、cubic_spline は linear で代替
+                return Anim::Interpolation::Linear; // linear、cubic_spline は linear で代替
             }
 
             // 位置・回転・拡縮の channel は同じ骨の 1 本のトラックへまとめる
-            BoneTrack& FindOrAddTrack(std::vector<BoneTrack>& tracks, const std::string& boneName)
+            Anim::BoneTrack& FindOrAddTrack(std::vector<Anim::BoneTrack>& tracks, const std::string& boneName)
             {
-                for (BoneTrack& track : tracks)
+                for (Anim::BoneTrack& track : tracks)
                 {
                     if (track.boneName == boneName)
                     {
                         return track;
                     }
                 }
-                tracks.push_back(BoneTrack{});
+                tracks.push_back(Anim::BoneTrack{});
                 tracks.back().boneName = boneName;
                 return tracks.back();
             }
@@ -667,20 +667,20 @@ namespace NS
             template <class ResolveBone>
             void ParseAnimations(const cgltf_data& model,
                                  ResolveBone resolveBone,
-                                 const std::vector<Bone>& bones,
+                                 const std::vector<Anim::Bone>& bones,
                                  const std::string& path,
-                                 std::vector<AnimClip>& outClips)
+                                 std::vector<Anim::AnimClip>& outClips)
             {
                 for (cgltf_size a = 0; a < model.animations_count; ++a)
                 {
                     const cgltf_animation& anim = model.animations[a];
-                    AnimClip clip;
+                    Anim::AnimClip clip;
                     if (anim.name != nullptr)
                     {
                         clip.name = anim.name;
                     }
                     float duration = 0.0f;
-                    std::vector<BoneTrack> tracks;
+                    std::vector<Anim::BoneTrack> tracks;
 
                     // channel ごとに位置・回転・拡縮トラックを組む
                     for (cgltf_size c = 0; c < anim.channels_count; ++c)
@@ -722,7 +722,7 @@ namespace NS
                             valueOffset = 1;
                         }
 
-                        const Interpolation interp = MapInterpolation(sampler.interpolation);
+                        const Anim::Interpolation interp = MapInterpolation(sampler.interpolation);
 
                         std::vector<float> times(keyCount, 0.0f);
                         for (cgltf_size i = 0; i < keyCount; ++i)
@@ -731,7 +731,7 @@ namespace NS
                         }
                         duration = std::max(duration, times.back());
 
-                        BoneTrack& track = FindOrAddTrack(tracks, bones[static_cast<std::size_t>(boneIndex)].name);
+                        Anim::BoneTrack& track = FindOrAddTrack(tracks, bones[static_cast<std::size_t>(boneIndex)].name);
                         if (channel.target_path == cgltf_animation_path_type_translation)
                         {
                             track.positionTimes = times;
@@ -782,7 +782,7 @@ namespace NS
             // アニメの対象ノードと祖先から骨格を作る。bones は親が先、outRootXf は左手系の上位変換
             bool BuildSourceSkeleton(const cgltf_data& model,
                                      const std::string& path,
-                                     std::vector<Bone>& outBones,
+                                     std::vector<Anim::Bone>& outBones,
                                      std::unordered_map<const cgltf_node*, int>& outNodeToBone,
                                      Matrix& outRootXf)
             {
@@ -821,7 +821,7 @@ namespace NS
                 std::function<void(const cgltf_node*)> visit = [&](const cgltf_node* node) {
                     const int index = static_cast<int>(outBones.size());
                     outNodeToBone.emplace(node, index);
-                    Bone bone;
+                    Anim::Bone bone;
                     const cgltf_node* parent = node->parent;
                     if (parent != nullptr && included.count(parent) != 0)
                     {
@@ -925,7 +925,7 @@ namespace NS
 
             const cgltf_skin& skin = *skinnedNode->skin;
 
-            std::vector<Bone> bones;
+            std::vector<Anim::Bone> bones;
             if (!BuildSkeletonBones(skin, path, bones))
             {
                 return data;
@@ -985,7 +985,7 @@ namespace NS
 
             data.vertices = std::move(vertices);
             data.indices = std::move(indices);
-            data.skeleton = Skeleton(std::move(bones));
+            data.skeleton = Anim::Skeleton(std::move(bones));
             data.skeleton.SetRootTransform(ComputeSkeletonRootTransform(skin));
             return data;
         }
@@ -1007,7 +1007,7 @@ namespace NS
                 return source;
             }
 
-            std::vector<Bone> bones;
+            std::vector<Anim::Bone> bones;
             std::unordered_map<const cgltf_node*, int> nodeToBone;
             Matrix rootXf = Matrix::Identity;
             if (!BuildSourceSkeleton(model, path, bones, nodeToBone, rootXf))
@@ -1015,7 +1015,7 @@ namespace NS
                 return source;
             }
 
-            source.skeleton = Skeleton(std::move(bones));
+            source.skeleton = Anim::Skeleton(std::move(bones));
             source.skeleton.SetRootTransform(rootXf);
             ParseAnimations(
                 model,

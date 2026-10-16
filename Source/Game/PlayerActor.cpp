@@ -157,7 +157,7 @@ void PlayerActor::UpdateAnimation()
     }
 
     const float lateralSpeed = m_body->LateralVelocity().Length();
-    const NS::Gfx::AnimClip* clip = ChooseClip(lateralSpeed).Get();
+    const NS::Anim::AnimClip* clip = ChooseClip(lateralSpeed).Get();
     if (clip == nullptr)
     {
         clip = m_clips->m_idleClip.Get();
@@ -283,7 +283,7 @@ void PlayerActor::VisualStep()
 #endif
 }
 
-const NS::AssetRef<const NS::Gfx::AnimClip>& PlayerActor::ChooseClip(float lateralSpeed) const noexcept
+const NS::AssetRef<const NS::Anim::AnimClip>& PlayerActor::ChooseClip(float lateralSpeed) const noexcept
 {
     if (m_states->IsCurrent<GL::Player::LedgeHangingPlayerState>())
     {
@@ -324,7 +324,7 @@ const NS::AssetRef<const NS::Gfx::AnimClip>& PlayerActor::ChooseClip(float later
     return m_clips->m_idleClip;
 }
 
-float PlayerActor::ChoosePlaybackSpeed(const NS::Gfx::AnimClip* clip, float lateralSpeed) const noexcept
+float PlayerActor::ChoosePlaybackSpeed(const NS::Anim::AnimClip* clip, float lateralSpeed) const noexcept
 {
     if (clip == nullptr || (clip != m_clips->m_walkClip.Get() && clip != m_clips->m_runClip.Get()))
     {

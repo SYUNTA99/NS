@@ -58,7 +58,7 @@ namespace NS
                 if (kind == AssetKind::Animation)
                 {
                     const Gfx::AnimSource source = Gfx::LoadGltfAnimationSource(file);
-                    for (const Gfx::AnimClip& clip : source.animations)
+                    for (const Anim::AnimClip& clip : source.animations)
                     {
                         if (clip.IsValid())
                         {

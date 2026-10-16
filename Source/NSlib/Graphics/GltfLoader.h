@@ -1,9 +1,9 @@
 #pragma once
 
 #include "NSlib/Core/Types.h"
-#include "NSlib/Graphics/Animation.h"
+#include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
-#include "NSlib/Graphics/Skeleton.h"
+#include "NSlib/Core/Animation/Skeleton.h"
 
 #include <string>
 
@@ -22,7 +22,7 @@ namespace NS
         {
             std::vector<SkinnedVertex> vertices;   //!< スキニング用の頂点データ列
             std::vector<uint32> indices;       //!< 全プリミティブを連結したインデックス列
-            Skeleton skeleton;                     //!< ボーン階層と逆バインド行列
+            Anim::Skeleton skeleton;                     //!< ボーン階層と逆バインド行列
 
             [[nodiscard]] bool IsValid() const noexcept
             {
@@ -39,8 +39,8 @@ namespace NS
         //! @details メッシュやスキン情報を持たない、アニメーション専用のファイルからも読み込み可能
         struct AnimSource
         {
-            Skeleton skeleton;
-            std::vector<AnimClip> animations;
+            Anim::Skeleton skeleton;
+            std::vector<Anim::AnimClip> animations;
 
             [[nodiscard]] bool IsValid() const noexcept { return skeleton.BoneCount() > 0 && !animations.empty(); }
         };

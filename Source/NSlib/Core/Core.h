@@ -9,6 +9,9 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Sphere.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/Core/Animation/AnimClip.h"
+#include "NSlib/Core/Animation/Retarget.h"
+#include "NSlib/Core/Animation/Skeleton.h"
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Core/Geometry/Vertex.h"
 

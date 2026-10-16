@@ -1,14 +1,14 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Graphics/Skeleton.h"
+#include "NSlib/Core/Animation/Skeleton.h"
 
 #include <span>
 #include <string>
 
 namespace NS
 {
-    namespace Gfx
+    namespace Anim
     {
         //! キーとキーの間の埋め方。3 次スプラインには対応しない
         enum class Interpolation
@@ -19,31 +19,30 @@ namespace NS
 
         //! ボーンの TRS トラック。空のチャンネルは bindLocal を使う
         //! 骨を名前で持つので、どのモデルの骨格にも依らない。番号は再生する側が FindTrackBones で引く
+        //! 時刻列の単位は秒
         struct BoneTrack
         {
             std::string boneName;
 
-            std::vector<float> positionTimes; //!< 位置キーの時刻列 (秒)
+            std::vector<float> positionTimes;
             std::vector<Vector3> positionValues;
             Interpolation positionInterp = Interpolation::Linear;
 
-            std::vector<float> rotationTimes; //!< 回転キーの時刻列 (秒)
+            std::vector<float> rotationTimes;
             std::vector<Quaternion> rotationValues;
             Interpolation rotationInterp = Interpolation::Linear;
 
-            std::vector<float> scaleTimes; //!< スケールキーの時刻列 (秒)
+            std::vector<float> scaleTimes;
             std::vector<Vector3> scaleValues;
             Interpolation scaleInterp = Interpolation::Linear;
         };
 
-        //! 描画用ポーズの評価に使うアニメーションクリップ
         struct AnimClip
         {
             std::string name;
             float duration = 0.0f; // 尺 (秒)
             std::vector<BoneTrack> tracks;
 
-            //! 尺が正でトラックが 1 本以上あれば true
             [[nodiscard]] bool IsValid() const noexcept { return duration > 0.0f && !tracks.empty(); }
         };
 
@@ -71,5 +70,5 @@ namespace NS
                             const Skeleton& skeleton,
                             float t,
                             std::vector<BonePose>& outPose);
-    } // namespace Gfx
+    } // namespace Anim
 } // namespace NS

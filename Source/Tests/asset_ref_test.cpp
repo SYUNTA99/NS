@@ -243,7 +243,7 @@ TEST(AssetRef, EmptyModelLeavesNoSkeleton)
 
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<TestAnimatedPlayerActor>();
     NS::Animation* animation = player->AnimationSubObj();
-    const NS::Gfx::Skeleton skeleton;
+    const NS::Anim::Skeleton skeleton;
     animation->SetSkeleton(&skeleton);
     player->ReloadAssets();
     EXPECT_EQ(animation->Skeleton(), nullptr);

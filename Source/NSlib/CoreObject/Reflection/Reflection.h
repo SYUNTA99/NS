@@ -43,7 +43,7 @@ namespace NS
         {
             return AssetKind::Model;
         }
-        else if constexpr (std::is_same_v<T, AssetRef<const Gfx::AnimClip>>)
+        else if constexpr (std::is_same_v<T, AssetRef<const Anim::AnimClip>>)
         {
             return AssetKind::Animation;
         }

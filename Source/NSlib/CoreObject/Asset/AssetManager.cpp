@@ -516,7 +516,7 @@ namespace NS
         return raw;
     }
 
-    const Gfx::AnimClip* AssetManager::LoadAnimClip(std::string_view name)
+    const Anim::AnimClip* AssetManager::LoadAnimClip(std::string_view name)
     {
         if (name.empty())
         {
@@ -541,7 +541,7 @@ namespace NS
             return &source->animations.front();
         }
         const std::string_view clipName = name.substr(hash + 1);
-        for (const Gfx::AnimClip& clip : source->animations)
+        for (const Anim::AnimClip& clip : source->animations)
         {
             if (clip.name == clipName)
             {

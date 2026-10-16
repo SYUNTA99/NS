@@ -4,7 +4,7 @@
 // 右手系から左手系への変換は S = diag(1,1,-1) で相似変換する。位置の Z と回転の x,y を反転する
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Graphics/Skeleton.h"
+#include "NSlib/Core/Animation/Skeleton.h"
 
 #include "NSlib/Core/Types.h"
 #include <array>
@@ -78,12 +78,12 @@ namespace NS
 
             //! bones を親が子より前に来る順へ並べ替え、old→new index の remap を返す
             //! 出力 bones の parentIndex は new index に張り替え済。呼出側は remap で頂点 joint index を変換する
-            [[nodiscard]] inline std::vector<uint32> TopologicalSortBones(std::vector<Bone>& bones) noexcept
+            [[nodiscard]] inline std::vector<uint32> TopologicalSortBones(std::vector<Anim::Bone>& bones) noexcept
             {
                 const std::size_t boneCount = bones.size();
                 std::vector<uint32> oldToNew(boneCount, 0u);
                 std::vector<bool> emitted(boneCount, false);
-                std::vector<Bone> sorted;
+                std::vector<Anim::Bone> sorted;
                 sorted.reserve(boneCount);
 
                 bool progress = true;
@@ -117,7 +117,7 @@ namespace NS
                     }
                 }
 
-                for (Bone& bone : sorted)
+                for (Anim::Bone& bone : sorted)
                 {
                     if (bone.parentIndex >= 0)
                     {

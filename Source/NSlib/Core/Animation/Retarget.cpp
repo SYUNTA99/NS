@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/Retarget.h"
+#include "NSlib/Core/Animation/Retarget.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
@@ -9,11 +9,10 @@
 
 namespace NS
 {
-    namespace Gfx
+    namespace Anim
     {
         std::string NormalizeBoneName(std::string_view raw)
         {
-            // 最後の : / | より後ろが素の骨名
             const std::size_t separator = raw.find_last_of(":|");
             if (separator != std::string_view::npos)
             {
@@ -68,5 +67,5 @@ namespace NS
             }
             return trackBones;
         }
-    } // namespace Gfx
+    } // namespace Anim
 } // namespace NS

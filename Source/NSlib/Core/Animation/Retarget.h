@@ -1,7 +1,7 @@
 #pragma once
 
-#include "NSlib/Graphics/Animation.h"
-#include "NSlib/Graphics/Skeleton.h"
+#include "NSlib/Core/Animation/AnimClip.h"
+#include "NSlib/Core/Animation/Skeleton.h"
 
 #include <string>
 #include <string_view>
@@ -9,7 +9,7 @@
 
 namespace NS
 {
-    namespace Gfx
+    namespace Anim
     {
         //! 骨名からリグ固有の接頭辞を外して照合用に正規化する
         //! 最後の : か | までを取り除き、残りを前後の空白なしの小文字にする
@@ -19,5 +19,5 @@ namespace NS
         //! @details 戻り値はトラックと同じ並びで、一致する骨が無いトラックは -1
         //! 正規化した骨名が skeleton の中で重なる時は先の骨を使い、警告する
         [[nodiscard]] std::vector<int> FindTrackBones(const AnimClip& clip, const Skeleton& skeleton);
-    } // namespace Gfx
+    } // namespace Anim
 } // namespace NS

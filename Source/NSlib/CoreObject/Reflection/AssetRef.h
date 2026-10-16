@@ -45,17 +45,17 @@ namespace NS
     {
     };
 
-    namespace Gfx
+    namespace Anim
     {
         struct AnimClip;
-    } // namespace Gfx
+    } // namespace Anim
     struct SkinnedModel;
 
     //! @brief ref の名前の素材を AssetManager::Get() の型ごとの口から読み、ref に持たせる
     //! @details 名前の決まり・読めない時の代わりと警告は口が持つ。参照の欄にできる型は、ここに並ぶ型だけ
     //! 並んでいない型の欄を作ると、その欄の NS_REFLECT_FIELD の行でビルドが落ちる
     void LoadAssetRef(AssetRef<const SkinnedModel>& ref);
-    void LoadAssetRef(AssetRef<const Gfx::AnimClip>& ref);
+    void LoadAssetRef(AssetRef<const Anim::AnimClip>& ref);
 
     class Mesh;
     class Material;

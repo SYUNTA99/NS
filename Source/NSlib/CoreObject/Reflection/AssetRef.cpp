@@ -50,7 +50,7 @@ namespace NS
         ref.SetLoaded(AssetManager::Get().LoadSkinnedModel(ref.Name()));
     }
 
-    void LoadAssetRef(AssetRef<const Gfx::AnimClip>& ref)
+    void LoadAssetRef(AssetRef<const Anim::AnimClip>& ref)
     {
         ref.SetLoaded(AssetManager::Get().LoadAnimClip(ref.Name()));
     }

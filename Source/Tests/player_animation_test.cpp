@@ -6,7 +6,7 @@
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/SubObjects/Animation.h"
 #include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/Graphics/Animation.h"
+#include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Windows/Clock.h"
 #include "TestAnimatedPlayerActor.h"
 

@@ -4,9 +4,9 @@
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/Graphics/Animation.h"
+#include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Graphics/D3DSkeletalMesh.h"
-#include "NSlib/Graphics/Skeleton.h"
+#include "NSlib/Core/Animation/Skeleton.h"
 
 #include <cstddef>
 #include <span>
@@ -28,15 +28,15 @@ namespace NS
         //! 非所有の D3DSkeletalMesh を差し替える。参照先がない間は ApplyPose を行わない
         void SetMesh(Gfx::D3DSkeletalMesh* mesh) noexcept;
         //! 骨格を差し替える。呼び出し側が寿命を保つ。参照先がない間は ApplyPose を行わない
-        void SetSkeleton(const Gfx::Skeleton* skeleton) noexcept;
+        void SetSkeleton(const Anim::Skeleton* skeleton) noexcept;
         //! 使っている骨格。モデルを使っていなければ nullptr
-        [[nodiscard]] const Gfx::Skeleton* Skeleton() const noexcept { return m_skeleton; }
+        [[nodiscard]] const Anim::Skeleton* Skeleton() const noexcept { return m_skeleton; }
 
         void Play() noexcept;
         //! @brief clip を今のクリップにして、時刻を 0 から再生する。今と同じクリップなら何もしない
         //! @details clip のトラックの骨を、今の骨格で名前から 1 回だけ引いて控える。clip の寿命は AssetManager が保つ
         //! nullptr を渡すとクリップを外し、骨格の基準の姿勢を描く
-        void Play(const Gfx::AnimClip* clip);
+        void Play(const Anim::AnimClip* clip);
         void Pause() noexcept;
         //! 再生時刻を 0 に戻して停止する
         void Stop() noexcept;
@@ -47,7 +47,7 @@ namespace NS
         void SetLooping(bool looping) noexcept;
 
         //! 今のクリップ。無ければ nullptr
-        [[nodiscard]] const Gfx::AnimClip* CurrentClip() const noexcept { return m_clip; }
+        [[nodiscard]] const Anim::AnimClip* CurrentClip() const noexcept { return m_clip; }
         [[nodiscard]] float Time() const noexcept;
         //! 現在クリップの尺。無ければ 0
         [[nodiscard]] float Duration() const noexcept;
@@ -78,14 +78,14 @@ namespace NS
 
         Gfx::D3DSkeletalMesh* m_mesh = nullptr; // 更新先の D3DSkeletalMesh (非所有)
         AssetRef<const SkinnedModel> m_model;
-        const Gfx::Skeleton* m_skeleton = nullptr; // ボーンパレット計算用の骨格 (非所有)
-        const Gfx::AnimClip* m_clip = nullptr;     // 今のクリップ (非所有)
+        const Anim::Skeleton* m_skeleton = nullptr; // ボーンパレット計算用の骨格 (非所有)
+        const Anim::AnimClip* m_clip = nullptr;     // 今のクリップ (非所有)
         std::vector<int> m_clipBones;              // m_clip のトラックごとの骨の番号。-1 は骨格に無い骨
         float m_time = 0.0f;
         float m_speed = 1.0f;
         bool m_playing = true;
         bool m_looping = true;
-        std::vector<Gfx::BonePose> m_poseScratch; // サンプリング結果の一時ポーズ
+        std::vector<Anim::BonePose> m_poseScratch; // サンプリング結果の一時ポーズ
         std::vector<Matrix> m_paletteScratch;     // ボーンパレットの一時バッファ
 
         // ボーンパレットはオブジェクト単位の状態なので mesh でなく本部品が所有する

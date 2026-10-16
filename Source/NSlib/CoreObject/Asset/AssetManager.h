@@ -4,8 +4,8 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
-#include "NSlib/Graphics/Animation.h"
-#include "NSlib/Graphics/Skeleton.h"
+#include "NSlib/Core/Animation/AnimClip.h"
+#include "NSlib/Core/Animation/Skeleton.h"
 
 #include <map>
 #include <memory>
@@ -56,7 +56,7 @@ namespace NS
     struct SkinnedModel
     {
         std::unique_ptr<Mesh> mesh; // 骨付きで作ったので、D3DSkeletal が描く形を返す
-        Gfx::Skeleton skeleton;
+        Anim::Skeleton skeleton;
     };
 
     //! アプリ寿命でアセットを重複なく所有する単一キャッシュ。ファイル由来は path キー、組み込みは名前キー
@@ -94,7 +94,7 @@ namespace NS
         //! @brief 欄の名前のクリップを返す。名前は ContentRoot からの glTF の道筋か「道筋#動きの名前」
         //! @details # が無ければファイルの中の先頭の 1 本。空の名前は「使わない」で、警告せずに nullptr
         //! 読めないファイル・無い動きの名前は警告して nullptr。トラックは骨を名前で持ち、どのモデルにも依らない
-        [[nodiscard]] const Gfx::AnimClip* LoadAnimClip(std::string_view name);
+        [[nodiscard]] const Anim::AnimClip* LoadAnimClip(std::string_view name);
 
         //! 手続き生成の組み込み cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         //! device 確立後・最初の利用前に 1 度だけ呼ぶ。既登録名は上書きしない

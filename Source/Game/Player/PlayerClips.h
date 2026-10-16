@@ -27,12 +27,12 @@ namespace GL
 
         private:
             friend class ::PlayerActor;
-            NS::AssetRef<const NS::Gfx::AnimClip> m_idleClip;
-            NS::AssetRef<const NS::Gfx::AnimClip> m_walkClip;
-            NS::AssetRef<const NS::Gfx::AnimClip> m_runClip;
-            NS::AssetRef<const NS::Gfx::AnimClip> m_jumpClip;
-            NS::AssetRef<const NS::Gfx::AnimClip> m_fallClip;
-            NS::AssetRef<const NS::Gfx::AnimClip> m_ledgeHangClip;
+            NS::AssetRef<const NS::Anim::AnimClip> m_idleClip;
+            NS::AssetRef<const NS::Anim::AnimClip> m_walkClip;
+            NS::AssetRef<const NS::Anim::AnimClip> m_runClip;
+            NS::AssetRef<const NS::Anim::AnimClip> m_jumpClip;
+            NS::AssetRef<const NS::Anim::AnimClip> m_fallClip;
+            NS::AssetRef<const NS::Anim::AnimClip> m_ledgeHangClip;
             float m_runBlendRatio = 0.4f;
             float m_minPlaybackSpeed = 0.5f;
         };
