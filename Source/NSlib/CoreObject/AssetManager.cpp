@@ -47,9 +47,10 @@ namespace NS
             Gfx::MeshGeometry (*make)();
         };
 
-        constexpr std::array<BuiltinShape, 7> k_BuiltinShapes = {{
+        constexpr std::array<BuiltinShape, 8> k_BuiltinShapes = {{
             {"cube", [] { return Gfx::MakeCube(Vector3{0.5f, 0.5f, 0.5f}); }},
             {"sphere", [] { return Gfx::MakeSphere(0.5f); }},
+            {"capsule", [] { return Gfx::MakeCapsule(0.5f, 0.5f); }},
             {"wedge45", [] { return Gfx::MakeSlope(45.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
             {"wedge30", [] { return Gfx::MakeSlope(30.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
             {"wedge22", [] { return Gfx::MakeSlope(22.5f, Vector3{0.5f, 0.5f, 0.5f}); }},
@@ -500,37 +501,6 @@ namespace NS
         return nullptr;
     }
 
-    Gfx::StaticMesh* AssetManager::GetOrMakeCapsuleMesh(float radius, float halfHeight)
-    {
-        // 非数を鍵にすると map の比較が順序にならず、引き当てが壊れる。無限大は頂点の座標が無限大になり描けない
-        if (!std::isfinite(radius) || !std::isfinite(halfHeight))
-        {
-            NS_LOG_WARN(
-                Graphics, "AssetManager: カプセルの寸法が有限でない (半径 {}, 半分の高さ {})", radius, halfHeight);
-            return nullptr;
-        }
-
-        const std::pair<float, float> key{radius, halfHeight};
-        if (const std::map<std::pair<float, float>, std::unique_ptr<Gfx::StaticMesh>>::iterator it =
-                m_capsules.find(key);
-            it != m_capsules.end())
-        {
-            return it->second.get();
-        }
-
-        std::unique_ptr<Gfx::StaticMesh> mesh = MakeStaticMesh(Gfx::MakeCapsule(radius, halfHeight));
-        // device の無い間に作った空の mesh を覚えると、device ができた後も空のまま返し続ける
-        if (mesh == nullptr || !mesh->IsValid())
-        {
-            NS_LOG_ERROR(
-                Graphics, "AssetManager: カプセルの mesh の GPU 生成失敗 (半径 {}, 半分の高さ {})", radius, halfHeight);
-            return nullptr;
-        }
-        Gfx::StaticMesh* raw = mesh.get();
-        m_capsules.emplace(key, std::move(mesh));
-        return raw;
-    }
-
     Gfx::Material* AssetManager::LoadMaterial(std::string_view name)
     {
         if (Gfx::Material* material = TryLoadMaterial(name))
@@ -730,6 +700,5 @@ namespace NS
         m_animationSources.clear();
         m_boundClips.clear();
         m_builtins.clear();
-        m_capsules.clear();
     }
 } // namespace NS

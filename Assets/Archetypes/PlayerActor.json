@@ -2,8 +2,8 @@
     "class": "PlayerActor",
     "subObjects": {
         "Appearance": {
-            "玉のメッシュ": "",
-            "立ち姿のメッシュ": ""
+            "玉のメッシュ": "sphere",
+            "立ち姿のメッシュ": "capsule"
         },
         "Collider": {
             "半分の高さ": 0.5,

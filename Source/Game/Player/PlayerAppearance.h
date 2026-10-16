@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/SubObject.h"
 
@@ -40,8 +41,8 @@ namespace GL
         struct PlayerMotion;
 
         //! @brief 自機の立ち姿・玉と、描画時の回転・変形を管理する部品
-        //! @details 空の参照は Collider の寸法で仮の形を作る。Model の後に資産を解決する
-        // TODO: 部分的な JSON 適用では Model の undo や Collider の寸法変更を再反映できない。ResetFromJson で直る
+        //! @details 姿のメッシュは参照の欄から読み、姿ごとの倍率で大きさを合わせる。当たりの寸法には付いて行かない
+        // TODO: 部分的な JSON 適用では Model の undo を再反映できない。ResetFromJson で直る
         class PlayerAppearance : public NS::SubObject
         {
         public:
@@ -55,8 +56,9 @@ namespace GL
             void Uncurl() noexcept;
             [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
 
-            //! 2 つの見た目を引き当て、今の姿の mesh を同居する Model へ差す
-            void ResolveAssets(NS::AssetManager& assets) override;
+            //! @brief 今の姿のメッシュを同居する Model へ差し、姿の倍率を Model の局所の倍率へ書く
+            //! @details 持ち主の OnAssetsLoaded と、丸まる・戻るが呼ぶ。読めていない姿は Model の今のメッシュを残す
+            void ShowCurrentLook() noexcept;
 
             //! @brief 丸まりに合わせて姿を持ち替え、玉を回し、描く形の倍率を書く。持ち主の見た目の段が呼ぶ
             //! @param[in] aimDirection 狙いの線が無い時に、放せば出る水平の向き
@@ -88,8 +90,10 @@ namespace GL
 
             NS_REFLECT_BEGIN(PlayerAppearance, NS::SubObject)
             NS_REFLECT_GROUP("姿")
-            NS_REFLECT_FIELD(m_standingMeshRef, "立ち姿のメッシュ")
-            NS_REFLECT_FIELD(m_ballMeshRef, "玉のメッシュ")
+            NS_REFLECT_FIELD(m_standingMesh, "立ち姿のメッシュ")
+            NS_REFLECT_FIELD(m_ballMesh, "玉のメッシュ")
+            NS_REFLECT_FIELD(m_standingScale, "立ち姿の倍率")
+            NS_REFLECT_FIELD(m_ballScale, "玉の倍率")
             NS_REFLECT_GROUP("溜めの回転")
             NS_REFLECT_FIELD(m_emptyChargeSpinSpeed, "溜め 0 の回る速さ")
             NS_REFLECT_FIELD(m_fullChargeSpinSpeed, "溜めきりの回る速さ")
@@ -108,7 +112,6 @@ namespace GL
             NS_REFLECT_END()
 
         private:
-            void ShowCurrentLook() noexcept;
             void AdvanceSpin(const PlayerMotion& motion,
                              const ChargeStatus& charge,
                              const BodySlamStatus& slam,
@@ -126,11 +129,10 @@ namespace GL
             // 当たりの形か構えの縮みに着地の潰れを掛け、同居する Model の描く時だけの倍率へ書く
             void WriteDrawScale(const ChargeStatus& charge, const GL::Level::ImpactAnswer& impact) noexcept;
 
-            // 保存・編集される参照文字列。空は仮の形。ResolveAssets が実体を当てる
-            std::string m_standingMeshRef{};
-            std::string m_ballMeshRef{};
-            NS::Gfx::Mesh* m_standingMesh = nullptr; // AssetManager 所有
-            NS::Gfx::Mesh* m_ballMesh = nullptr;     // AssetManager 所有
+            NS::AssetRef<NS::Gfx::Mesh> m_standingMesh{"capsule"};
+            NS::AssetRef<NS::Gfx::Mesh> m_ballMesh{"sphere"};
+            NS::Vector3 m_standingScale{1.3f, 1.15f, 1.3f};
+            NS::Vector3 m_ballScale{1.3f, 1.3f, 1.3f};
             bool m_curled = false;
 
             // 回る速さは 3 つとも 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の

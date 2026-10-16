@@ -4,6 +4,7 @@
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerVisualParams.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/SubObjects/OverlayRenderer.h"
 #include "NSlib/Graphics/DrawItem.h"
 #include "NSlib/Graphics/FrameConstants.h"
@@ -26,11 +27,8 @@ namespace NS
     namespace Gfx
     {
         class Material;
-    }
-    namespace Gfx
-    {
-        class StaticMesh;
-    }
+        class Mesh;
+    } // namespace Gfx
 } // namespace NS
 
 namespace NS
@@ -132,7 +130,7 @@ namespace GL
         //! 矢印を描く資材。どれも非所有
         struct SlamArrowDrawAssets
         {
-            NS::Gfx::StaticMesh* mesh = nullptr; //!< 共有の上向きの板
+            NS::Gfx::Mesh* mesh = nullptr; //!< 共有の上向きの板
             NS::Gfx::Material* bandMaterial = nullptr;
             NS::Gfx::Material* headMaterial = nullptr;
         };
@@ -154,8 +152,6 @@ namespace GL
         {
         public:
             SlamArrow() noexcept;
-
-            void ResolveAssets(NS::AssetManager& assets) override;
 
             //! @brief 溜め中の矢印を控える。狙いが無いか溜めを終えたら、控えと経過フレーム数を戻す
             //! @details 道筋は params の突進の速さと重力、玉の半径と床は collider (持ち主の移動の当たり) から出す
@@ -208,22 +204,19 @@ namespace GL
             NS_REFLECT_FIELD(m_desc.bandTextureSpan, "帯の画像内の幅比")
             NS_REFLECT_FIELD(m_desc.headTextureSpan, "矢じりの画像内の幅比")
             NS_REFLECT_FIELD(m_desc.maxHeadTiltDegrees, "矢じりを起こす角度の上限")
-            NS_REFLECT_FIELD(m_meshAsset, "板の資産")
-            NS_REFLECT_FIELD(m_bandMaterialAsset, "帯の材質の資産")
-            NS_REFLECT_FIELD(m_headMaterialAsset, "矢じりの材質の資産")
+            NS_REFLECT_FIELD(m_mesh, "板の資産")
+            NS_REFLECT_FIELD(m_bandMaterial, "帯の材質の資産")
+            NS_REFLECT_FIELD(m_headMaterial, "矢じりの材質の資産")
             NS_REFLECT_END()
 
         private:
-            std::string m_meshAsset = "shadowQuad";
-            std::string m_bandMaterialAsset = "Assets/Materials/ground_arrow_band.mat";
-            std::string m_headMaterialAsset = "Assets/Materials/ground_arrow_head.mat";
+            NS::AssetRef<NS::Gfx::Mesh> m_mesh{"shadowQuad"}; // 共有の上向きの板
+            NS::AssetRef<NS::Gfx::Material> m_bandMaterial{"Assets/Materials/ground_arrow_band.mat"};
+            NS::AssetRef<NS::Gfx::Material> m_headMaterial{"Assets/Materials/ground_arrow_head.mat"};
             SlamArrowDesc m_desc{};
             SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
             bool m_hasShown = false;
             int m_framesSinceShown = -1;                  // 矢印を出していない間は負
-            NS::Gfx::StaticMesh* m_mesh = nullptr;        // 共有の上向きの板 (非所有)
-            NS::Gfx::Material* m_bandMaterial = nullptr;  // 帯のマテリアル (非所有)
-            NS::Gfx::Material* m_headMaterial = nullptr;  // 矢じりのマテリアル (非所有)
             std::vector<NS::Gfx::DrawItem> m_drawScratch; // 描く単位を毎フレーム積み直す置き場。確保を使い回す
         };
     } // namespace Level

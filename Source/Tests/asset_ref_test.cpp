@@ -1,3 +1,6 @@
+#include "Game/Level/SlamArrow.h"
+#include "Game/Player/PlayerAppearance.h"
+#include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
@@ -209,4 +212,47 @@ TEST(AssetRef, EmptyModelLeavesNoSkeleton)
     animation->SetSkeleton(&skeleton);
     player->ReloadAssets();
     EXPECT_EQ(animation->Skeleton(), nullptr);
+}
+
+// 叩きつけの矢印と自機の見た目も、素材を参照の欄で持つ。自機の姿は組み込みの形を読む
+TEST(AssetRef, SlamArrowAndPlayerLooksHoldTheirAssetsInRefFields)
+{
+    for (const char* key : {"板の資産", "帯の材質の資産", "矢じりの材質の資産"})
+    {
+        const NS::FieldDesc* field = NS::FindField(GL::Level::SlamArrow::StaticReflection(), key);
+        ASSERT_NE(field, nullptr) << key;
+        EXPECT_EQ(field->type, NS::FieldType::AssetRef) << key;
+    }
+    for (const char* key : {"立ち姿のメッシュ", "玉のメッシュ"})
+    {
+        const NS::FieldDesc* field = NS::FindField(GL::Player::PlayerAppearance::StaticReflection(), key);
+        ASSERT_NE(field, nullptr) << key;
+        EXPECT_EQ(field->type, NS::FieldType::AssetRef) << key;
+    }
+
+    NS::AssetManager& assets = NS::AssetManager::Get();
+    EXPECT_NE(assets.LoadMeshShape("capsule"), assets.LoadMeshShape("cube"));
+}
+
+// 自機の姿は、姿ごとの倍率を Model の局所の倍率へ書いて大きさを合わせる
+TEST(AssetRef, PlayerLookWritesItsScaleToTheModel)
+{
+    NS::Scene scene;
+    PlayerActor* player = scene.SpawnTransient<PlayerActor>();
+    ASSERT_NE(player, nullptr);
+    GL::Player::PlayerAppearance* appearance =
+        NS::Cast<GL::Player::PlayerAppearance>(player->FindSubObj("Appearance"));
+    ASSERT_NE(appearance, nullptr);
+    const NS::Model* model = player->ModelSubObj();
+    const nlohmann::json fields = NS::SerializeSubObjectFields(*appearance);
+    const nlohmann::json standing = fields["立ち姿の倍率"];
+    const nlohmann::json ball = fields["玉の倍率"];
+    ASSERT_TRUE(standing.is_array());
+    ASSERT_TRUE(ball.is_array());
+
+    EXPECT_FLOAT_EQ(model->LocalScale().y, standing[1].get<float>());
+    appearance->Curl();
+    EXPECT_FLOAT_EQ(model->LocalScale().y, ball[1].get<float>());
+    appearance->Uncurl();
+    EXPECT_FLOAT_EQ(model->LocalScale().y, standing[1].get<float>());
 }

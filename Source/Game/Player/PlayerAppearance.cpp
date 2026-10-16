@@ -4,38 +4,19 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamAim.h"
 #include "Game/Player/PlayerJudges.h"
-#include "Game/PlayerActor.h"
+#include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/Graphics/StaticMesh.h"
 #include <algorithm>
 #include <cmath>
 
 namespace
 {
     // 参照が書いてあればそのファイルの mesh、空か引き当てられなければ仮の形を返す
-    [[nodiscard]] NS::Gfx::Mesh* ResolveLook(NS::AssetManager& assets,
-                                             const std::string& ref,
-                                             NS::Gfx::Mesh* placeholder)
-    {
-        if (ref.empty())
-        {
-            return placeholder;
-        }
-        if (NS::Gfx::Mesh* mesh = assets.TryLoadMesh(ref))
-        {
-            return mesh;
-        }
-        NS_LOG_WARN(Game, "PlayerAppearance: 見た目の参照を引き当てられない。仮の形で描く: {}", ref);
-        return placeholder;
-    }
-
     // 上と向きの外積を水平の回転軸として axis へ書く。正の角度で上面がその向きへ倒れる前転になる
     // 長さの無い向きと、水平成分に非数・無限大を含む向きは採らず、axis を書き換えない
     // TryNormalizeHorizontal は長さの 2 乗が非数だと下限との比較が偽になって通すので、先に有限かを見る
@@ -362,39 +343,6 @@ namespace GL
             m_drawScaleRejected = true;
         }
 
-        void PlayerAppearance::ResolveAssets(NS::AssetManager& assets)
-        {
-            NS::Gfx::Mesh* standingPlaceholder = nullptr;
-            NS::Gfx::Mesh* ballPlaceholder = nullptr;
-            const NS::Collider* collider = nullptr;
-            // TODO: 仮の形の寸法を持ち主の型から引いている。計画「Actor を作る時の情報」で素材の読み込みを
-            // 作る時の情報を受ける形へ移す時に、当たりの部品を受け取る形へ替える
-            if (Owner() != nullptr)
-            {
-                if (::PlayerActor* ownerPlayer = NS::Cast<::PlayerActor>(Owner()))
-                {
-                    collider = &ownerPlayer->Collider();
-                }
-            }
-            if (collider != nullptr)
-            {
-                // 寸法の正は移動と当たりの裁定が読むカプセルの欄。玉は円柱の長さ 0 のカプセルで、直径が当たりと揃う
-                // 立ち姿は丸まりに依らない立ち姿の半長で作る。今の当たりの半長は玉の間 0 で、丸まっている間に引き直すと
-                // 立ち姿まで玉になる
-                standingPlaceholder =
-                    assets.GetOrMakeCapsuleMesh(collider->CapsuleRadius(), collider->StandingHalfHeight());
-                ballPlaceholder = assets.GetOrMakeCapsuleMesh(collider->CapsuleRadius(), 0.0f);
-            }
-            else
-            {
-                NS_LOG_WARN(Game, "PlayerAppearance: 同居する当たりの部品 Collider が無く、仮の形の寸法を決められない");
-            }
-
-            m_standingMesh = ResolveLook(assets, m_standingMeshRef, standingPlaceholder);
-            m_ballMesh = ResolveLook(assets, m_ballMeshRef, ballPlaceholder);
-            ShowCurrentLook();
-        }
-
         void PlayerAppearance::ShowCurrentLook() noexcept
         {
             if (Owner() == nullptr)
@@ -407,12 +355,22 @@ namespace GL
                 return;
             }
 
-            NS::Gfx::Mesh* mesh = m_standingMesh;
+            NS::Gfx::Mesh* mesh = m_standingMesh.Get();
+            NS::Vector3 scale = m_standingScale;
             if (m_curled)
             {
-                mesh = m_ballMesh;
+                mesh = m_ballMesh.Get();
+                scale = m_ballScale;
             }
-            // 引き当て前は Model が自分の参照から差した mesh を残す
+            if (!renderer->SetLocalScale(scale))
+            {
+                NS_LOG_WARN(Game,
+                            "PlayerAppearance: 姿の倍率が有限の正でなく、書かなかった: ({}, {}, {})",
+                            scale.x,
+                            scale.y,
+                            scale.z);
+            }
+            // 読む前は Model が自分の参照から差した mesh を残す
             if (mesh == nullptr)
             {
                 return;

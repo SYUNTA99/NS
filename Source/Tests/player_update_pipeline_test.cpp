@@ -397,11 +397,12 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     ASSERT_FALSE(player->Resolver().Answer().lastImpact.broke);
     ASSERT_TRUE(player->Resolver().Answer().shapeAnimating);
     NS::Model* model = player->ModelSubObj();
-    // 試しには mesh が無いので、玉の局所の境界を差し、回転を外して形の伸びだけを測る
+    // 試しには mesh が無いので、組み込みの sphere (半径 0.5) の局所の境界を差し、回転を外して形の伸びだけを測る
+    // 玉の倍率は当たりの半径に合わせてあるので、描く玉の下端は当たりの下端に乗る
     const float radius = player->Collider().CapsuleRadius();
     NS::AABB local{};
     local.Center = NS::Vector3{0.0f, 0.0f, 0.0f};
-    local.Extents = NS::Vector3{radius, radius, radius};
+    local.Extents = NS::Vector3{0.5f, 0.5f, 0.5f};
     model->SetLocalBoundsOverride(local);
     model->SnapLocalRotation(NS::Quaternion::Identity);
     NS::AABB drawn{};

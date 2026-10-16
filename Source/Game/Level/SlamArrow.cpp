@@ -5,7 +5,6 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/PlayerStatus.h"
 #include "Game/Player/SlamBall.h"
-#include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -15,7 +14,6 @@
 #include "NSlib/Graphics/Material.h"
 #include "NSlib/Graphics/Pipeline.h"
 #include "NSlib/Graphics/RenderContext.h"
-#include "NSlib/Graphics/StaticMesh.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
@@ -237,7 +235,7 @@ namespace GL
                 inOutRise = length * std::sin(wanted);
             }
 
-            [[nodiscard]] NS::Gfx::DrawItem MakeDrawItem(NS::Gfx::StaticMesh* mesh,
+            [[nodiscard]] NS::Gfx::DrawItem MakeDrawItem(NS::Gfx::Mesh* mesh,
                                                          NS::Gfx::Material* material,
                                                          const SlamArrowConstants& constants) noexcept
             {
@@ -514,13 +512,6 @@ namespace GL
 
         SlamArrow::SlamArrow() noexcept : NS::OverlayRenderer() {}
 
-        void SlamArrow::ResolveAssets(NS::AssetManager& assets)
-        {
-            m_mesh = assets.Builtin(m_meshAsset);
-            m_bandMaterial = assets.TryLoadMaterial(m_bandMaterialAsset);
-            m_headMaterial = assets.TryLoadMaterial(m_headMaterialAsset);
-        }
-
         void SlamArrow::Update(const GL::Player::ChargeStatus& charge,
                                const GL::Player::PlayerParams* params,
                                const NS::Collider* collider)
@@ -598,19 +589,16 @@ namespace GL
 
         void SlamArrow::OnRenderOverlay(const NS::Gfx::RenderContext& context)
         {
-            if (!IsOwnerAppeared() || !m_hasShown || context.renderer == nullptr || m_mesh == nullptr ||
-                m_bandMaterial == nullptr || m_headMaterial == nullptr)
+            const SlamArrowDrawAssets assets{
+                .mesh = m_mesh.Get(), .bandMaterial = m_bandMaterial.Get(), .headMaterial = m_headMaterial.Get()};
+            if (!IsOwnerAppeared() || !m_hasShown || context.renderer == nullptr || assets.mesh == nullptr ||
+                assets.bandMaterial == nullptr || assets.headMaterial == nullptr)
             {
                 return;
             }
             m_drawScratch.clear();
             AppendSlamArrowDrawItems(
-                m_shown,
-                m_desc,
-                context.viewProjection,
-                context.cameraPosition,
-                SlamArrowDrawAssets{.mesh = m_mesh, .bandMaterial = m_bandMaterial, .headMaterial = m_headMaterial},
-                m_drawScratch);
+                m_shown, m_desc, context.viewProjection, context.cameraPosition, assets, m_drawScratch);
             for (const NS::Gfx::DrawItem& item : m_drawScratch)
             {
                 NS::Gfx::IssueDrawItem(*context.renderer, item);

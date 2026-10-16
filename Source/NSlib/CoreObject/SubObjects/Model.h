@@ -91,6 +91,14 @@ namespace NS
         //! 今のフレームの局所の回転を返す。書かれていなければ単位回転
         [[nodiscard]] const Quaternion& LocalRotation() const noexcept { return m_localRotation; }
 
+        //! @brief 形の原点を中心に、局所の回転より先に掛ける倍率を設定する。補間しない
+        //! @details 差したメッシュの大きさを合わせる倍率で、根の倍率と描く倍率とは別に掛かる
+        //! 描く倍率の中心と描く形の箱は、この倍率を掛けた形から測る
+        //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
+        [[nodiscard]] bool SetLocalScale(const Vector3& scale) noexcept;
+        //! 局所の倍率を返す。書かれていなければ (1, 1, 1)
+        [[nodiscard]] const Vector3& LocalScale() const noexcept { return m_localScale; }
+
         //! @brief 形の下端中央を中心に、世界軸の描画倍率を設定する。固定更新間を補間する
         //! @details 境界がなければ根を中心にする。補間しない変更は SnapDrawScale を使う
         //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
@@ -209,6 +217,9 @@ namespace NS
         // 描く時だけの局所の回転。同居する SubObject が毎フレーム書き直すので保存しない
         Quaternion m_localRotation = Quaternion::Identity;
         Quaternion m_previousLocalRotation = Quaternion::Identity; // 前のフレームの値。補間の始点
+
+        // 差したメッシュに合わせる局所の倍率。メッシュを差す SubObject が書くので保存しない
+        Vector3 m_localScale{1.0f, 1.0f, 1.0f};
 
         // 描く時だけの世界の軸の倍率。他の SubObject が書き直すので保存しない
         Vector3 m_drawScale{1.0f, 1.0f, 1.0f};

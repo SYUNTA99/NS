@@ -461,3 +461,23 @@ TEST(OthersHold, ZeroStepsAndRestartingThePlayReleaseTheHold)
     scene.SetSimulationEnabled(true);
     EXPECT_FALSE(scene.IsHoldingOthers());
 }
+
+// 局所の倍率は形の中心で掛かり、根の位置を動かさない。描く倍率の中心 (下端の真ん中) は倍率を掛けた形から測る
+TEST(ModelLocalScale, ScalesAroundTheMeshOriginAndMovesTheDrawScalePivot)
+{
+    NS::Scene scene;
+    NS::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    NS::Model* model = drawn->ModelSubObj();
+    ASSERT_NE(model, nullptr);
+    model->SetLocalBoundsOverride(NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 1.0f, 1.0f}});
+    ASSERT_TRUE(model->SetLocalScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._42, 0.0f);
+
+    // 倍率を掛けた形の下端は -2。縦に 2 倍すると、形の中心は下端から 2 × 2 の高さへ上がる
+    ASSERT_TRUE(model->SnapDrawScale(NS::Vector3{1.0f, 2.0f, 1.0f}));
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._42, 2.0f);
+
+    EXPECT_FALSE(model->SetLocalScale(NS::Vector3{0.0f, 1.0f, 1.0f}));
+    EXPECT_FLOAT_EQ(model->LocalScale().x, 2.0f);
+}

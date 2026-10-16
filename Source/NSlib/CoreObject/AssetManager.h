@@ -119,18 +119,13 @@ namespace NS
         [[nodiscard]] const std::vector<Gfx::AnimationClip>* GetOrLoadBoundClips(std::string_view clipPath,
                                                                                      std::string_view modelPath);
 
-        //! 手続き生成の組み込み cube / sphere / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
+        //! 手続き生成の組み込み cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         //! device 確立後・最初の利用前に 1 度だけ呼ぶ。既登録名は上書きしない
         void RegisterBuiltins();
         //! 名前キーで組み込み StaticMesh を引く。未登録は nullptr
         //! RegisterBuiltins を通っていない AssetManager では全部 nullptr になる
         //! 同じ名前の当たりは RegisterBuiltins 無しでも LoadMeshShape が返す
         [[nodiscard]] Gfx::StaticMesh* Builtin(std::string_view name) const noexcept;
-
-        //! 寸法ごとに共有するカプセルメッシュ。半長 0 で球になり、参照は Clear まで有効
-        //! 非有限の寸法・GPU なし・生成失敗は nullptr。生成失敗は次回に再試行する
-        [[nodiscard]] Gfx::StaticMesh* GetOrMakeCapsuleMesh(float radius, float halfHeight);
-
         //! @brief 欄の名前のマテリアルを返す。名前は共有の material の名前か、ContentRoot からの .mat の道筋
         //! @details 空の名前と読めない名前は共有の player で代え、読めない名前は警告する
         //! 共有の名前はファイルとして読まないので、RegisterSharedMaterials の前は nullptr
@@ -184,8 +179,6 @@ namespace NS
         std::map<std::string, MeshRecord> m_meshes;                                      // path キーの file mesh
         std::map<std::string, std::unique_ptr<Phys::MeshShape>> m_builtinCollisions; // 組み込み名キーの当たり
         std::map<std::string, std::unique_ptr<Gfx::StaticMesh>> m_builtins;          // path 無し、leaf と別容器
-        std::map<std::pair<float, float>, std::unique_ptr<Gfx::StaticMesh>>
-            m_capsules;                                                              // 半径と半分の高さの組がキー
         std::map<std::string, MaterialRecord> m_materials;                           // .mat composite
         std::map<std::string, std::unique_ptr<Gfx::Material>> m_sharedMaterials; // 手続き共有マテリアル
         std::map<std::string, SkinnedModel> m_skinnedModels; // skinned glTF。挿入後に書き換えず、配った参照を安定させる

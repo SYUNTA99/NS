@@ -340,6 +340,13 @@ float PlayerActor::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed
     return std::max(m_clips->m_minPlaybackSpeed, lateralSpeed / maxSpeed);
 }
 
+void PlayerActor::OnAssetsLoaded()
+{
+    NS::SceneActor::OnAssetsLoaded();
+    // Model は自分のメッシュの欄を読み直したところなので、今の姿のメッシュを差し直す
+    m_appearance->ShowCurrentLook();
+}
+
 void PlayerActor::OnStart()
 {
     NS::SceneActor::OnStart();

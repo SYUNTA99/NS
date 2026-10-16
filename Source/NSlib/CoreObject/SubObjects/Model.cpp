@@ -23,6 +23,16 @@ namespace
     {
         return NS::IsPositiveFinite(scale.x) && NS::IsPositiveFinite(scale.y) && NS::IsPositiveFinite(scale.z);
     }
+
+    // 形の原点で局所の倍率を掛けてから matrix を掛ける。倍率が 1 の間は、掛け算が下の桁を丸めないように掛けない
+    [[nodiscard]] NS::Matrix WithLocalScale(const NS::Vector3& localScale, const NS::Matrix& matrix) noexcept
+    {
+        if (localScale == k_NoDrawScale)
+        {
+            return matrix;
+        }
+        return NS::Matrix::CreateScale(localScale) * matrix;
+    }
 } // namespace
 
 namespace NS
@@ -64,6 +74,16 @@ namespace NS
     {
         m_previousLocalRotation = m_localRotation;
         m_previousDrawScale = m_drawScale;
+    }
+
+    bool Model::SetLocalScale(const Vector3& scale) noexcept
+    {
+        if (!IsPositiveFiniteScale(scale))
+        {
+            return false;
+        }
+        m_localScale = scale;
+        return true;
     }
 
     bool Model::SetDrawScale(const Vector3& scale) noexcept
@@ -160,7 +180,7 @@ namespace NS
     Matrix Model::DrawWorldMatrixWithOffset(float alpha, const Vector3& offset) const noexcept
     {
         const Quaternion local = Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
-        const Matrix localMatrix = Matrix::CreateFromQuaternion(local);
+        const Matrix localMatrix = WithLocalScale(m_localScale, Matrix::CreateFromQuaternion(local));
         const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
@@ -194,7 +214,7 @@ namespace NS
         if (const AABB* localBounds = DrawnLocalBounds())
         {
             AABB worldBounds{};
-            localBounds->Transform(worldBounds, root);
+            localBounds->Transform(worldBounds, WithLocalScale(m_localScale, root));
             pivot =
                 Vector3{worldBounds.Center.x, worldBounds.Center.y - worldBounds.Extents.y, worldBounds.Center.z};
         }
@@ -342,7 +362,7 @@ namespace NS
         }
         AABB out{};
         // m_mesh は確認済みで、描画の境界を取得できる
-        DrawnLocalBounds()->Transform(out, owner->Root().WorldMatrix());
+        DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, owner->Root().WorldMatrix()));
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
         const Vector3 scale = Vector3::Max(m_previousDrawScale, m_drawScale);

@@ -210,8 +210,8 @@ TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const nlohmann::json appearance = {{"立ち姿のメッシュ", ""},
-                                       {"玉のメッシュ", ""},
+    const nlohmann::json appearance = {{"立ち姿のメッシュ", "capsule"},
+                                       {"玉のメッシュ", "sphere"},
                                        {"溜め 0 の回る速さ", 360.0f},
                                        {"溜めきりの回る速さ", 1440.0f},
                                        {"着地の潰れ", 0.8f},

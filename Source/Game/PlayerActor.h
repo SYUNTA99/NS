@@ -306,6 +306,8 @@ protected:
     bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
     void OnInit() override;
+    //! 基底の作る物に続けて、読んだ姿のメッシュと倍率を Model へ差す
+    void OnAssetsLoaded() override;
     //! ロックオンの枠と突進の矢印を重ね描きへ入れる。消えている間は描く側が IsOverlayVisible で飛ばす
     void OnStart() override;
     //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
