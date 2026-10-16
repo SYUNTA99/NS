@@ -4,7 +4,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/MeshPrimitives.h"
+#include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Graphics/Renderer.h"
 
 namespace NS

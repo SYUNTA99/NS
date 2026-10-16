@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Types.h"
 #include "NSlib/Graphics/Animation.h"
-#include "NSlib/Graphics/MeshPrimitives.h"
+#include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Graphics/Skeleton.h"
 
 #include <string>

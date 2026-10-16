@@ -15,7 +15,6 @@
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/D3DMaterial.h"
 #include "NSlib/Graphics/D3DMesh.h"
-#include "NSlib/Graphics/MeshPrimitives.h"
 #include "NSlib/Graphics/D3DPipeline.h"
 #include "NSlib/Graphics/RenderSettings.h"
 #include "NSlib/Graphics/D3DRenderTarget.h"

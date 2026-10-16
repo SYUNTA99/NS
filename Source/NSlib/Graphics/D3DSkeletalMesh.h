@@ -3,6 +3,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/Core/Geometry/Vertex.h"
 #include "NSlib/Graphics/D3DMesh.h"
 
 #include <cstddef>
@@ -13,24 +14,6 @@ namespace NS
 {
     namespace Gfx
     {
-        //! スキンメッシュで使えるボーンの最大数
-        inline constexpr std::size_t k_MaxBones = 128;
-
-        //! @brief スキンメッシュ用の頂点データ構造
-        //! @details 頂点の基本情報に加え、最大4つのボーンからインデックスとウェイトを保持する
-        struct SkinnedVertex
-        {
-            Vector3 position;
-            Vector2 uv;
-            Vector3 normal;
-            uint32 joints[4];
-            float weights[4];
-        };
-        static_assert(sizeof(SkinnedVertex) == 64,
-                      "頂点レイアウトの制約上、SkinnedVertexは64バイトである必要があります。");
-        static_assert(std::is_standard_layout_v<SkinnedVertex>,
-                      "GPUへ正しく転送するため、SkinnedVertexは標準レイアウトである必要があります。");
-
         //! スキンメッシュの初期化パラメータ
         struct D3DSkeletalMeshDesc
         {

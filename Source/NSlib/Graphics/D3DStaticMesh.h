@@ -3,27 +3,15 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/Core/Geometry/Vertex.h"
 #include "NSlib/Graphics/D3DMesh.h"
 
 #include <memory>
-#include <type_traits>
 
 namespace NS
 {
     namespace Gfx
     {
-        //! アニメーションを持たない静的モデル用の頂点データ構造
-        struct StaticVertex
-        {
-            Vector3 position;
-            Vector2 uv;
-            Vector3 normal;
-        };
-        static_assert(sizeof(StaticVertex) == 32,
-                      "頂点レイアウトの制約上、StaticVertexは32バイトである必要があります。");
-        static_assert(std::is_standard_layout_v<StaticVertex>,
-                      "GPUへ正しく転送するため、StaticVertexは標準レイアウトである必要があります。");
-
         //! 静的メッシュの初期化パラメータ
         struct D3DStaticMeshDesc
         {

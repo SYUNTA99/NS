@@ -53,13 +53,13 @@ namespace
 // 数の揃ったファイルは読める。下の試しが別の理由で空になっていない事の確かめ
 TEST_F(GltfValidate, MatchingCountsLoad)
 {
-    const NS::Gfx::MeshGeometry geom = NS::Gfx::LoadGltfMesh(WriteGltf("matching.gltf", TriangleGltf(3)));
+    const NS::MeshGeometry geom = NS::Gfx::LoadGltfMesh(WriteGltf("matching.gltf", TriangleGltf(3)));
     EXPECT_EQ(geom.vertices.size(), 3u);
 }
 
 // TEXCOORD_0 が POSITION より少ないファイルは、読まずに空を返す
 TEST_F(GltfValidate, MismatchedAttributeCountIsRejected)
 {
-    const NS::Gfx::MeshGeometry geom = NS::Gfx::LoadGltfMesh(WriteGltf("mismatched.gltf", TriangleGltf(1)));
+    const NS::MeshGeometry geom = NS::Gfx::LoadGltfMesh(WriteGltf("mismatched.gltf", TriangleGltf(1)));
     EXPECT_TRUE(geom.vertices.empty());
 }

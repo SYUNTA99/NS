@@ -11,7 +11,7 @@
 #include "NSlib/Graphics/GltfLoader.h"
 #include "NSlib/Graphics/D3DMaterial.h"
 #include "NSlib/Graphics/D3DMesh.h"
-#include "NSlib/Graphics/MeshPrimitives.h"
+#include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Graphics/D3DShader.h"
 #include "NSlib/Graphics/D3DSkeletalMesh.h"
 #include "NSlib/Graphics/D3DStaticMesh.h"
@@ -48,18 +48,18 @@ namespace NS
         struct BuiltinShape
         {
             const char* name;
-            Gfx::MeshGeometry (*make)();
+            MeshGeometry (*make)();
         };
 
         constexpr std::array<BuiltinShape, 8> k_BuiltinShapes = {{
-            {"cube", [] { return Gfx::MakeCube(Vector3{0.5f, 0.5f, 0.5f}); }},
-            {"sphere", [] { return Gfx::MakeSphere(0.5f); }},
-            {"capsule", [] { return Gfx::MakeCapsule(0.5f, 0.5f); }},
-            {"wedge45", [] { return Gfx::MakeSlope(45.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
-            {"wedge30", [] { return Gfx::MakeSlope(30.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
-            {"wedge22", [] { return Gfx::MakeSlope(22.5f, Vector3{0.5f, 0.5f, 0.5f}); }},
-            {"wedge15", [] { return Gfx::MakeSlope(15.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
-            {"shadowQuad", [] { return Gfx::MakePlane(Vector2{0.5f, 0.5f}); }},
+            {"cube", [] { return MakeCube(Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"sphere", [] { return MakeSphere(0.5f); }},
+            {"capsule", [] { return MakeCapsule(0.5f, 0.5f); }},
+            {"wedge45", [] { return MakeSlope(45.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"wedge30", [] { return MakeSlope(30.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"wedge22", [] { return MakeSlope(22.5f, Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"wedge15", [] { return MakeSlope(15.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"shadowQuad", [] { return MakePlane(Vector2{0.5f, 0.5f}); }},
         }};
 
         // RegisterSharedMaterials が登録する名前。登録を足したらここにも足す
@@ -86,7 +86,7 @@ namespace NS
 
         // index の並びを入れ替えずに写す。描画の並びのまま (v1 - v0) × (v2 - v0) が表面の外を向く
         // 当たりの表裏もこの向きで決まる
-        [[nodiscard]] std::vector<Phys::Triangle> MakeTriangles(const Gfx::MeshGeometry& geom)
+        [[nodiscard]] std::vector<Phys::Triangle> MakeTriangles(const MeshGeometry& geom)
         {
             std::vector<Phys::Triangle> triangles;
             triangles.reserve(geom.indices.size() / 3);
@@ -118,7 +118,7 @@ namespace NS
         }
 
         // geom はこの呼出中のみ参照される
-        [[nodiscard]] std::unique_ptr<Gfx::D3DStaticMesh> MakeStaticMesh(const Gfx::MeshGeometry& geom)
+        [[nodiscard]] std::unique_ptr<Gfx::D3DStaticMesh> MakeStaticMesh(const MeshGeometry& geom)
         {
             Gfx::D3DStaticMeshDesc desc{};
             desc.vertices = geom.vertices.data();
@@ -132,7 +132,7 @@ namespace NS
             return Gfx::D3DStaticMesh::Create(desc);
         }
 
-        [[nodiscard]] std::unique_ptr<Phys::MeshShape> MakeCollision(const Gfx::MeshGeometry& geom)
+        [[nodiscard]] std::unique_ptr<Phys::MeshShape> MakeCollision(const MeshGeometry& geom)
         {
             std::unique_ptr<Phys::MeshShape> collision = std::make_unique<Phys::MeshShape>();
             collision->triangles = MakeTriangles(geom);
@@ -318,7 +318,7 @@ namespace NS
         // 当たりは MeshCollision が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
         std::unique_ptr<Gfx::D3DMesh> drawn;
         std::unique_ptr<Phys::MeshShape> collision;
-        const Gfx::MeshGeometry geom = Gfx::LoadGltfMesh(key);
+        const MeshGeometry geom = Gfx::LoadGltfMesh(key);
         if (geom.vertices.empty() || geom.indices.empty())
         {
             NS_LOG_WARN(Graphics, "AssetManager: mesh の読込失敗 / 空: {}", key);
@@ -574,7 +574,7 @@ namespace NS
     {
         for (const BuiltinShape& shape : k_BuiltinShapes)
         {
-            const Gfx::MeshGeometry geom = shape.make();
+            const MeshGeometry geom = shape.make();
             const std::map<std::string, std::unique_ptr<Mesh>>::iterator it = m_builtins.find(shape.name);
             if (it == m_builtins.end())
             {

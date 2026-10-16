@@ -6,7 +6,7 @@
 #include "NSlib/Graphics/D3DCommandList.h"
 #include "NSlib/Graphics/D3dCommon.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/MeshPrimitives.h"
+#include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Graphics/D3DPipeline.h"
 #include "NSlib/Graphics/D3DShader.h"
 #include "NSlib/Graphics/D3DStaticMesh.h"
