@@ -1,5 +1,6 @@
 #include "NSlib/CoreObject/SubObjects/Body.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Collider.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
@@ -78,21 +79,21 @@ namespace NS
 
     void Body::Gravity(float gravity, float dt) noexcept
     {
-        const SceneActor* owner = Owner();
-        if (owner == nullptr)
+        if (m_owner == nullptr)
         {
             m_velocity.y += gravity * dt;
             return;
         }
-        owner->AddGravity(m_velocity, -gravity, dt);
+        m_owner->AddGravity(m_velocity, -gravity, dt);
     }
 
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
     // 天井に当たったフレームの上向き速度は Move を抜けた時点で 0 になっている
     void Body::Move(Collider& collider, float dt, float maxStepHeight) noexcept
     {
-        const ColliderMove moved = collider.Move(RootTransform().Position(), m_velocity, dt, maxStepHeight);
-        RootTransform().SetPosition(moved.position);
+        NS_ASSERT(Scene, m_owner != nullptr, "持ち主の無い Body を動かしている");
+        const ColliderMove moved = collider.Move(m_owner->Root().Position(), m_velocity, dt, maxStepHeight);
+        m_owner->Root().SetPosition(moved.position);
         m_velocity = moved.velocity;
         m_wasGrounded = m_isGrounded;
         m_isGrounded = moved.grounded;

@@ -61,25 +61,27 @@ PlayerActor::PlayerActor() noexcept = default;
 PlayerActor::~PlayerActor() = default;
 void PlayerActor::OnInit()
 {
-    NS::Model* model = CreateSubObj(m_model);
+    NS::Model* model = CreateSubObj(m_model, this);
     model->SetMaterialRef("player");
     model->SetBaseColor(NS::Vector3{0.5f, 0.5f, 0.5f});
     CreateSubObj(m_appearance);
-    CreateSubObj(m_body);
-    CreateSubObj(m_collider);
-    CreateSubObj(m_input);
+    CreateSubObj(m_body, this);
+    CreateSubObj(m_collider, this);
+    CreateSubObj(m_input, this);
     CreateSubObj(m_params);
     CreateSubObj(m_clips);
-    CreateSubObj(m_shadow);
+    CreateSubObj(m_shadow, this);
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
-    NS::FollowHitSensor* bodySensor = CreateSubObj<NS::HitSensor, NS::FollowHitSensor>(
-        m_bodySensor, [collider = m_collider.get()] { return NS::SensorVolume::Capsule(collider->WorldCapsule()); });
+    NS::FollowHitSensor* bodySensor =
+        CreateSubObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [collider = m_collider.get()] {
+            return NS::SensorVolume::Capsule(collider->WorldCapsule());
+        });
     GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
     CreateSubObj(m_resolver);
-    CreateSubObj(m_hitReaction);
-    CreateSubObj(m_targetMarker);
-    CreateSubObj(m_slamArrow);
-    CreateSubObj(m_effectKeeper);
+    CreateSubObj(m_hitReaction, this);
+    CreateSubObj(m_targetMarker, this);
+    CreateSubObj(m_slamArrow, this);
+    CreateSubObj(m_effectKeeper, this);
     CreateSubObj(m_chargeEffects);
     CreateSubObj(m_impactEffects);
     // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる

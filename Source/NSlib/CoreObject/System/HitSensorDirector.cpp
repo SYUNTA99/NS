@@ -41,7 +41,7 @@ namespace NS
             for (std::size_t j = i + 1; j < m_sensors.size(); ++j)
             {
                 HitSensor* second = m_sensors[j];
-                if (second->Owner() == first->Owner() || !second->IsValid())
+                if (second->Host() == first->Host() || !second->IsValid())
                 {
                     continue;
                 }
@@ -59,7 +59,7 @@ namespace NS
             {
                 continue;
             }
-            if (SceneActor* owner = pair.first->Owner())
+            if (SceneActor* owner = pair.first->Host())
             {
                 owner->AttackSensor(*pair.first, *pair.second);
             }
@@ -72,7 +72,7 @@ namespace NS
         std::vector<HitSensor*> found;
         for (HitSensor* sensor : m_sensors)
         {
-            if (!sensor->IsValid() || sensor->Owner() == ignore)
+            if (!sensor->IsValid() || sensor->Host() == ignore)
             {
                 continue;
             }

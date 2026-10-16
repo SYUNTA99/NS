@@ -36,7 +36,7 @@ namespace
     public:
         template <class TSelf = MemberCreationProbeActor> static constexpr bool CanCreateWithoutName()
         {
-            return requires(TSelf& self) { self.CreateSubObj(self.part); };
+            return requires(TSelf& self) { self.CreateSubObj(self.part, &self); };
         }
 
     private:
@@ -56,21 +56,23 @@ namespace
         std::unique_ptr<NS::Collision> shape;
 
     protected:
-        void OnInit() override { CreateSubObj<NS::Collision, NS::SphereCollision>(shape); }
+        void OnInit() override { CreateSubObj<NS::Collision, NS::SphereCollision>(shape, this); }
 
     public:
         template <class TSelf = DirectMemberActor> static void CheckTypes()
         {
+            static_assert(requires(TSelf& self) {
+                self.template CreateSubObj<NS::Collision, NS::SphereCollision>(self.shape, &self);
+            });
             static_assert(
-                requires(TSelf& self) { self.template CreateSubObj<NS::Collision, NS::SphereCollision>(self.shape); });
-            static_assert(!requires(TSelf& self) { self.template CreateSubObj<NS::Collision, NS::Model>(self.shape); });
+                !requires(TSelf& self) { self.template CreateSubObj<NS::Collision, NS::Model>(self.shape, &self); });
         }
     };
 
     class ModelPartActor final : public NS::SceneActor
     {
     protected:
-        void OnInit() override { CreateSubObj(m_model); }
+        void OnInit() override { CreateSubObj(m_model, this); }
     };
 
     class SensorPartsActor final : public NS::SceneActor
@@ -78,8 +80,8 @@ namespace
     protected:
         void OnInit() override
         {
-            CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor);
-            CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_attackSensor);
+            CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
+            CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_attackSensor, this);
         }
     };
 

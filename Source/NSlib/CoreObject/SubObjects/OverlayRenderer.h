@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObject.h"
 
 namespace NS
@@ -35,11 +36,22 @@ namespace NS
     class OverlayRenderer : public SubObject, public IOverlay
     {
     public:
-        OverlayRenderer() noexcept = default;
+        explicit OverlayRenderer(SceneActor* owner) noexcept : m_owner(owner) {}
 
         //! 更新・当たりと同じ IsActive で切る。自分の値だけ見ると親を寝かせても描き続ける
-        [[nodiscard]] bool IsOverlayVisible() const noexcept override { return IsOwnerAppeared(); }
+        //! 持ち主の無い物は出ていると見る
+        [[nodiscard]] bool IsOverlayVisible() const noexcept override
+        {
+            if (m_owner == nullptr)
+            {
+                return true;
+            }
+            return m_owner->IsAppeared();
+        }
 
         NS_REFLECT_NONE(OverlayRenderer, SubObject)
+
+    private:
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

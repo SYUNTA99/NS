@@ -8,7 +8,7 @@ namespace NS
 {
     void LightActor::OnInit()
     {
-        CreateSubObj(m_light);
+        CreateSubObj(m_light, this);
         Vector3 initialDirection{-0.3f, -1.0f, -0.2f};
         initialDirection.Normalize();
         Root().SetRotation(Quaternion::FromToRotation(Vector3::UnitZ, initialDirection));

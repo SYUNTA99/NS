@@ -40,7 +40,7 @@ namespace NS
     {
     public:
         //! メッシュとマテリアルは参照の欄に名前で持ち、SceneActor::ReloadAssets が読む
-        Model() noexcept = default;
+        explicit Model(SceneActor* owner) noexcept : m_owner(owner) {}
 
         //! Material を共有したまま配置物ごとに変える個体色。lighting とは別系統
         void SetBaseColor(const Vector3& color) noexcept { m_baseColor = color; }
@@ -235,6 +235,7 @@ namespace NS
         Matrix m_afterimageWorld = Matrix::Identity;
         float m_afterimageOpacity = 0.0f;
         Ghosts m_ghosts{*this};                       // 残像を描く物。Scene へは self と並べて登録する
+        SceneActor* m_owner = nullptr;                // 持ち主 (非所有)
     };
 #pragma warning(pop)
 } // namespace NS

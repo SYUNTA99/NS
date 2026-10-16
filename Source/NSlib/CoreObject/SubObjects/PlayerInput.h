@@ -10,7 +10,7 @@ namespace NS
     class PlayerInput : public SubObject
     {
     public:
-        PlayerInput() noexcept = default;
+        explicit PlayerInput(SceneActor* owner) noexcept : m_owner(owner) {}
 
         //! 水平の基準方向。シーンにカメラがあれば更新時に上書きし、未指定なら +Z
         void SetCameraForward(const Vector3& cameraForwardHorizontal) noexcept;
@@ -74,5 +74,6 @@ namespace NS
         bool m_slamSeen = false; // ConsumePressed の後に突進を押したか
         bool m_respawnPressed = false;
         bool m_locked = false; // 操作の停止中か。保存しない
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

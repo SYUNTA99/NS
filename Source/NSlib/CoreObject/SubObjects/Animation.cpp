@@ -8,13 +8,14 @@
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Graphics/Buffer.h"
 #include "NSlib/Graphics/Retarget.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
 
 namespace NS
 {
-    Animation::Animation() noexcept = default;
+    Animation::Animation(SceneActor* owner) noexcept : m_owner(owner) {}
 
     Animation::~Animation() = default;
 
@@ -117,9 +118,9 @@ namespace NS
             SetMesh(model->mesh.get());
 
             // Model のメッシュの欄は空なので、ここで差さないと骨付きのメッシュが見た目に出ない
-            if (SceneActor* owner = Owner())
+            if (m_owner != nullptr)
             {
-                if (Model* renderer = owner->ModelSubObj())
+                if (Model* renderer = m_owner->ModelSubObj())
                 {
                     renderer->SetMesh(model->mesh.get());
                 }
@@ -138,9 +139,9 @@ namespace NS
         }
 
         // 描画する Model にパレットを差す。現在ポーズ境界は ApplyPose が毎フレーム差す
-        if (SceneActor* owner = Owner())
+        if (m_owner != nullptr)
         {
-            m_renderer = owner->ModelSubObj();
+            m_renderer = m_owner->ModelSubObj();
         }
 
         if (m_renderer != nullptr && m_bonePaletteCB->IsValid())
@@ -156,7 +157,13 @@ namespace NS
         const float duration = Duration();
         if (m_playing && duration > 0.0f)
         {
-            m_time += BodyDelta() * m_speed;
+            // 持ち主の無い部品は固定の 1 歩の秒で進む
+            float dt = OS::FrameTimer::FixedDelta();
+            if (m_owner != nullptr)
+            {
+                dt = m_owner->BodyDelta();
+            }
+            m_time += dt * m_speed;
             if (m_looping)
             {
                 m_time = std::fmod(m_time, duration);

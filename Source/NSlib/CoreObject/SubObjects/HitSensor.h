@@ -53,7 +53,10 @@ namespace NS
     class HitSensor : public SubObject
     {
     public:
-        HitSensor() noexcept = default;
+        explicit HitSensor(SceneActor* owner) noexcept : m_owner(owner) {}
+
+        //! このセンサーを持つアクター。重なりを知らせる宛先
+        [[nodiscard]] SceneActor* Host() const noexcept { return m_owner; }
 
         //! シーンの調べ役へ入る。入っていれば何もしない
         void Register();
@@ -66,7 +69,7 @@ namespace NS
         [[nodiscard]] uint8 Kind() const noexcept { return m_kind; }
 
         //! 調べる対象か。部品が効いていて、無効にされていない時だけ真
-        [[nodiscard]] bool IsValid() const noexcept { return m_valid && IsOwnerAppeared(); }
+        [[nodiscard]] bool IsValid() const noexcept;
         //! 調べる対象へ戻す
         void Validate() noexcept { m_valid = true; }
         //! 調べる対象から外す。飛んでいる間だけ当たらない物などに使う
@@ -81,13 +84,14 @@ namespace NS
         uint8 m_kind = 0;      // 種類の値。0 は未設定で、どの受け手も応じない
         bool m_valid = true;       // 調べる対象か
         bool m_registered = false; // 調べ役へ入っているか
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 
     //! 独立した形状を持つセンサー。寸法は持ち主の世界スケールに従う
     class ShapeHitSensor final : public HitSensor
     {
     public:
-        ShapeHitSensor() noexcept = default;
+        explicit ShapeHitSensor(SceneActor* owner) noexcept : HitSensor(owner) {}
 
         //! 球にする。半径は根のスケール前
         void SetSphere(float radius) noexcept;
@@ -131,7 +135,7 @@ namespace NS
         //! @brief 形を答える関数を受けて作る
         //! @param[in] volume 世界座標の形を返す関数。事前条件: 空でない。空なら WorldVolume は根に長さ 0 の球を返し
         //! NS_LOG_ERROR で知らせる
-        explicit FollowHitSensor(std::function<SensorVolume()> volume) noexcept;
+        FollowHitSensor(SceneActor* owner, std::function<SensorVolume()> volume) noexcept;
 
         //! 世界座標の形。受けた関数の答えをそのまま返す
         [[nodiscard]] SensorVolume WorldVolume() const noexcept override;

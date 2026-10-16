@@ -13,7 +13,7 @@ namespace NS
     class StateMachine final : public SubObject
     {
     public:
-        StateMachine() noexcept = default;
+        explicit StateMachine(SceneActor* owner) noexcept : m_owner(owner) {}
 
         //! 組んだ機械を預かる。預かるのは 1 回だけで、2 回目は呼び手のバグ
         void Hold(std::unique_ptr<IStateMachine> machine) noexcept;
@@ -27,5 +27,6 @@ namespace NS
 
     private:
         std::unique_ptr<IStateMachine> m_machine;
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

@@ -55,7 +55,7 @@ TEST(ObjectType, ActorAndPartsShareTheReflectionCastWithoutRtti)
     const NS::Object* constant = object;
     EXPECT_EQ(NS::Cast<ReflectedActor>(constant), &actor);
     EXPECT_EQ(NS::Cast<ReflectedActor>(static_cast<NS::Object*>(nullptr)), nullptr);
-    NS::Model mesh;
+    NS::Model mesh{nullptr};
     EXPECT_EQ(NS::Cast<NS::SubObject>(&mesh), &mesh);
     EXPECT_EQ(NS::Cast<NS::SceneActor>(&mesh), nullptr);
 }

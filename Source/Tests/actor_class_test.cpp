@@ -137,7 +137,7 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
 TEST(SensorKinds, SetKindIsSeenByIsKindOnlyForThatKind)
 {
     // 付けた種類にだけ真で、他の種類と未設定には偽
-    NS::ShapeHitSensor sensor;
+    NS::ShapeHitSensor sensor{nullptr};
     const GL::Level::SensorKind kinds[] = {
         GL::Level::SensorKind::PlayerBody, GL::Level::SensorKind::MapObjBody, GL::Level::SensorKind::Area};
     for (const GL::Level::SensorKind set : kinds)
@@ -154,7 +154,7 @@ TEST(SensorKinds, SetKindIsSeenByIsKindOnlyForThatKind)
 TEST(SensorKinds, NewSensorIsUnsetAndUnsetCanBeWrittenBack)
 {
     // 作ったばかりのセンサーはどの種類でもない。付け忘れたセンサーが黙って体当たりの相手にならない
-    NS::ShapeHitSensor sensor;
+    NS::ShapeHitSensor sensor{nullptr};
     EXPECT_EQ(sensor.Kind(), 0u);
     EXPECT_FALSE(GL::Level::IsSensorKind(sensor, GL::Level::SensorKind::MapObjBody));
     // 未設定を書くと未設定へ戻る

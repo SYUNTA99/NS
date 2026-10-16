@@ -8,7 +8,7 @@
 
 namespace NS
 {
-    CapsuleCollision::CapsuleCollision(float radius, float halfHeight) noexcept
+    CapsuleCollision::CapsuleCollision(SceneActor* owner, float radius, float halfHeight) noexcept : Collision(owner)
     {
         SetRadius(radius);
         SetHalfHeight(halfHeight);

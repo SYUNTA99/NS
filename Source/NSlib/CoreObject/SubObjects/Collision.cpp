@@ -25,17 +25,16 @@ namespace NS
     {
         const Matrix local =
             Matrix::CreateFromQuaternion(localRotation) * Matrix::CreateTranslation(centerOffset);
-        const SceneActor* owner = Owner();
-        if (owner == nullptr)
+        if (m_owner == nullptr)
         {
             return local;
         }
-        return local * owner->Root().WorldMatrix();
+        return local * m_owner->Root().WorldMatrix();
     }
 
     void Collision::SyncToPhysics()
     {
-        Phys::PhysicsScene* physics = OwnerPhysics(Owner());
+        Phys::PhysicsScene* physics = OwnerPhysics(m_owner);
         if (physics == nullptr)
         {
             return;
@@ -52,7 +51,7 @@ namespace NS
 
     void Collision::RemoveFromPhysics()
     {
-        Phys::PhysicsScene* physics = OwnerPhysics(Owner());
+        Phys::PhysicsScene* physics = OwnerPhysics(m_owner);
         if (physics == nullptr)
         {
             return;
@@ -69,7 +68,7 @@ namespace NS
             return;
         }
 
-        if (OwnerPhysics(Owner()) == nullptr)
+        if (OwnerPhysics(m_owner) == nullptr)
         {
             NS_LOG_ERROR(Scene, "Collision: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
             m_bodyId = JPH::BodyID{};

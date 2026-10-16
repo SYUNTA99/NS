@@ -74,20 +74,21 @@ namespace GL
         }
         void PropActor::OnInit()
         {
-            NS::Model* model = CreateSubObj(m_model);
+            NS::Model* model = CreateSubObj(m_model, this);
             model->SetMeshRef("sphere");
             model->SetBaseColor(NS::Vector3{0.72f, 0.70f, 0.66f});
-            CreateSubObj(m_shadow);
-            NS::SphereCollision* sphere = CreateSubObj<NS::Collision, NS::SphereCollision>(m_collision);
+            CreateSubObj(m_shadow, this);
+            NS::SphereCollision* sphere = CreateSubObj<NS::Collision, NS::SphereCollision>(m_collision, this);
             CreateSubObj(m_params);
             CreateSubObj(m_hitZones);
-            CreateSubObj(m_effectKeeper);
+            CreateSubObj(m_effectKeeper, this);
             CreateSubObj(m_effects);
             // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
-            NS::FollowHitSensor* bodySensor = CreateSubObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, [sphere] {
-                const NS::Sphere world = sphere->WorldSphere();
-                return NS::SensorVolume::Sphere(world.center, world.radius);
-            });
+            NS::FollowHitSensor* bodySensor =
+                CreateSubObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [sphere] {
+                    const NS::Sphere world = sphere->WorldSphere();
+                    return NS::SensorVolume::Sphere(world.center, world.radius);
+                });
             SetSensorKind(*bodySensor, SensorKind::MapObjBody);
             (void)BuildStateMachine<PropActor, RestingState, FreezeState, LaunchedState>(*this, m_states);
         }

@@ -7,13 +7,13 @@ namespace NS
 {
     bool SendMsg(const Message& msg, HitSensor& receiver, HitSensor* sender)
     {
-        SceneActor* owner = receiver.Owner();
+        SceneActor* owner = receiver.Host();
         if (owner == nullptr || !receiver.IsValid())
         {
             return false;
         }
         // 自分宛ては送らない。自分のセンサーどうしの重なりは調べ役も数えない
-        if (sender != nullptr && sender->Owner() == owner)
+        if (sender != nullptr && sender->Host() == owner)
         {
             return false;
         }

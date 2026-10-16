@@ -160,9 +160,9 @@ TEST(AssetRef, ModelAndShadowHoldTheirAssetsInRefFields)
         EXPECT_EQ(field->type, NS::FieldType::AssetRef) << key;
     }
 
-    const NS::Model model;
+    const NS::Model model{nullptr};
     EXPECT_EQ(NS::SerializeSubObjectFields(model)["残像のマテリアル"], nlohmann::json("water"));
-    const NS::Shadow shadow;
+    const NS::Shadow shadow{nullptr};
     const nlohmann::json shadowFields = NS::SerializeSubObjectFields(shadow);
     EXPECT_EQ(shadowFields["メッシュ"], nlohmann::json("shadowQuad"));
     EXPECT_EQ(shadowFields["マテリアル"], nlohmann::json("shadow"));

@@ -75,15 +75,16 @@ namespace NS
 
     void PlayerInput::Update()
     {
-        if (!IsOwnerAppeared())
+        // 持ち主の無い部品は出ていると見る
+        if (m_owner != nullptr && !m_owner->IsAppeared())
         {
             return;
         }
 
         // camera 相対移動の基準 forward は CameraManager から自分で読む。CameraManager 不在 (テスト等) は注入値のまま
-        if (Owner() != nullptr && Owner()->GetCameraManager() != nullptr)
+        if (m_owner != nullptr && m_owner->GetCameraManager() != nullptr)
         {
-            m_cameraForward = NormalizeHorizontal(CameraForwardHorizontal(Owner()));
+            m_cameraForward = NormalizeHorizontal(CameraForwardHorizontal(m_owner));
         }
 
         OS::Input& input = OS::Input::Get();

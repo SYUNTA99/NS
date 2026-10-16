@@ -13,7 +13,7 @@ namespace NS
     class Body : public SubObject
     {
     public:
-        Body() noexcept = default;
+        explicit Body(SceneActor* owner) noexcept : m_owner(owner) {}
 
         [[nodiscard]] Vector3 Velocity() const noexcept { return m_velocity; }
         void SetVelocity(const Vector3& v) noexcept { m_velocity = v; }
@@ -58,5 +58,6 @@ namespace NS
         bool m_isGrounded = false;
         bool m_wasGrounded = false; // 直前の Move より前の接地
         BodyEvents m_events;
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

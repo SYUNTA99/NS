@@ -52,7 +52,7 @@ namespace
     protected:
         void OnInit() override
         {
-            m_sensor = CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor);
+            m_sensor = CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
             GL::Level::SetSensorKind(*m_sensor, m_kind);
             m_sensor->SetSphere(m_radius);
         }

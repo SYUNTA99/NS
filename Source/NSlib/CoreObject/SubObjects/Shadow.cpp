@@ -13,7 +13,11 @@ namespace NS
 {
     void Shadow::Register()
     {
-        Scene* scene = OwningScene();
+        if (m_owner == nullptr)
+        {
+            return;
+        }
+        Scene* scene = m_owner->OwningScene();
         if (scene == nullptr)
         {
             return;
@@ -23,7 +27,11 @@ namespace NS
 
     void Shadow::Unregister()
     {
-        Scene* scene = OwningScene();
+        if (m_owner == nullptr)
+        {
+            return;
+        }
+        Scene* scene = m_owner->OwningScene();
         if (scene == nullptr)
         {
             return;
@@ -33,22 +41,20 @@ namespace NS
 
     Vector3 Shadow::SortCenter() const noexcept
     {
-        const SceneActor* owner = Owner();
-        if (owner == nullptr)
+        if (m_owner == nullptr)
         {
             return {};
         }
-        return owner->Root().WorldMatrix().Translation();
+        return m_owner->Root().WorldMatrix().Translation();
     }
 
     AABB Shadow::WorldBounds() const noexcept
     {
-        const SceneActor* owner = Owner();
-        if (owner == nullptr)
+        if (m_owner == nullptr)
         {
             return {};
         }
-        const Matrix world = owner->Root().WorldMatrix();
+        const Matrix world = m_owner->Root().WorldMatrix();
         const Vector3 origin = world.Translation();
         // 影は owner 直下 [-maxDrop, 0] のどこかに baseDiameter 幅で落ちる。その可動域を全部覆う
         const Vector3 center{origin.x, origin.y - m_maxDrop * 0.5f, origin.z};
@@ -67,16 +73,15 @@ namespace NS
 
     void Shadow::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
-        SceneActor* owner = Owner();
-        if (!IsOwnerAppeared() || m_mesh.Get() == nullptr || m_material.Get() == nullptr || owner == nullptr)
+        if (m_owner == nullptr || !m_owner->IsAppeared() || m_mesh.Get() == nullptr || m_material.Get() == nullptr)
         {
             return;
         }
-        const Matrix ownerWorld = owner->Root().InterpolatedWorldMatrix(context.alpha);
+        const Matrix ownerWorld = m_owner->Root().InterpolatedWorldMatrix(context.alpha);
         const Vector3 origin = ownerWorld.Translation();
 
         float dist = 0.0f;
-        if (!RaycastCollision(owner, origin, Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
+        if (!RaycastCollision(m_owner, origin, Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
         {
             return; // 真下 maxDrop 以内に地面が無ければ描かない
         }

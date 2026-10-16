@@ -34,7 +34,8 @@ namespace NS
         }
     } // namespace
 
-    BoxCollision::BoxCollision(const Vector3& halfExtents) noexcept : m_halfExtents(ClampNonNegative(halfExtents))
+    BoxCollision::BoxCollision(SceneActor* owner, const Vector3& halfExtents) noexcept
+        : Collision(owner), m_halfExtents(ClampNonNegative(halfExtents))
     {}
 
     void BoxCollision::SetHalfExtents(const Vector3& halfExtents) noexcept

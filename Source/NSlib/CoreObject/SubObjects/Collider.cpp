@@ -57,11 +57,11 @@ namespace NS
 
     Phys::Capsule Collider::WorldCapsule() const noexcept
     {
-        if (Owner() == nullptr)
+        if (m_owner == nullptr)
         {
             return CapsuleAt(Vector3{0.0f, 0.0f, 0.0f});
         }
-        return CapsuleAt(RootTransform().Position());
+        return CapsuleAt(m_owner->Root().Position());
     }
 
     void Collider::SetSphereShape(bool sphere) noexcept
@@ -71,11 +71,11 @@ namespace NS
 
     Phys::PhysicsScene* Collider::GetPhysicsScene() const noexcept
     {
-        if (Owner() == nullptr)
+        if (m_owner == nullptr)
         {
             return nullptr;
         }
-        return Owner()->GetPhysicsScene();
+        return m_owner->GetPhysicsScene();
     }
 
     ColliderMove Collider::Move(const Vector3& from,

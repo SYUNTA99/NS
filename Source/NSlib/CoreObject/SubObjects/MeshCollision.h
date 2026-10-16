@@ -20,7 +20,7 @@ namespace NS
     class MeshCollision : public Collision
     {
     public:
-        MeshCollision() noexcept = default;
+        explicit MeshCollision(SceneActor* owner) noexcept : Collision(owner), m_owner(owner) {}
 
         //! 所有しない当たりを差し替える。この SubObject より長く生きる物を渡す。未指定なら当たりなし
         void SetShape(const Phys::MeshShape* shape) noexcept;
@@ -40,5 +40,6 @@ namespace NS
         [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current) override;
 
         const Phys::MeshShape* m_shape = nullptr; // 非所有。普段は AssetManager の持ち物
+        SceneActor* m_owner = nullptr;            // 持ち主 (非所有)
     };
 } // namespace NS

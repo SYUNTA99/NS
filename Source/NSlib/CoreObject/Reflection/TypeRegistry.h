@@ -72,8 +72,17 @@ namespace NS
     {
         if constexpr (std::is_base_of_v<SubObject, T>)
         {
-            TypeRegistry::Get().Register(
-                className, nullptr, +[]() -> std::unique_ptr<SubObject> { return std::make_unique<T>(); });
+            // TODO: 持ち主を受ける部品は持ち主の無い既定を作る。型の既定を作る道を消す時にこの分かれ道ごと外す
+            if constexpr (std::is_constructible_v<T, SceneActor*>)
+            {
+                TypeRegistry::Get().Register(
+                    className, nullptr, +[]() -> std::unique_ptr<SubObject> { return std::make_unique<T>(nullptr); });
+            }
+            else
+            {
+                TypeRegistry::Get().Register(
+                    className, nullptr, +[]() -> std::unique_ptr<SubObject> { return std::make_unique<T>(); });
+            }
         }
         else
         {
@@ -85,7 +94,7 @@ namespace NS
 } // namespace NS
 
 //! 型をクラス名で自己登録する。その型の .cpp で 1 度だけ書く。#Type が保存形式と検索のキーになる
-//! SubObject は既定コンストラクタで生成されるので、値はリフレクション field と参照の欄で後から入れる
+//! SubObject は既定コンストラクタか持ち主を空にしたコンストラクタで生成されるので、値はリフレクション field と参照の欄で後から入れる
 #define NS_CLASS(Type)                                                                                                 \
     namespace                                                                                                          \
     {                                                                                                                  \

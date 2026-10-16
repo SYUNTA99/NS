@@ -173,7 +173,7 @@ namespace GL
             return true;
         }
 
-        TargetMarker::TargetMarker() noexcept : NS::OverlayRenderer() {}
+        TargetMarker::TargetMarker(NS::SceneActor* owner) noexcept : NS::OverlayRenderer(owner) {}
 
         void TargetMarker::Update(const GL::Player::ChargeStatus& charge)
         {

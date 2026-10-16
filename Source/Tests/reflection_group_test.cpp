@@ -26,7 +26,7 @@ namespace
         NS_REFLECT_END()
 
     protected:
-        void OnInit() override { CreateSubObj(part); }
+        void OnInit() override { CreateSubObj(part, this); }
     };
 
     // 見出しの前の欄・空の見出し・続く見出しを 1 つずつ持つ値型

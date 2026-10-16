@@ -13,7 +13,7 @@ protected:
     void OnInit() override
     {
         PlayerActor::OnInit();
-        CreateSubObj(m_animation);
+        CreateSubObj(m_animation, this);
     }
 };
 

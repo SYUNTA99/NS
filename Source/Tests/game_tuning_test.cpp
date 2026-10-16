@@ -93,8 +93,8 @@ TEST(GameTuning, DefaultSpawnReadsThePlayerInstance)
 
 TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 {
-    NS::EffectKeeper shortHistory{2};
-    NS::EffectKeeper longHistory{6};
+    NS::EffectKeeper shortHistory{nullptr, 2};
+    NS::EffectKeeper longHistory{nullptr, 6};
     const NS::uint32 shortId = shortHistory.Play("test", {});
     const NS::uint32 longId = longHistory.Play("test", {});
     shortHistory.Stop(shortId);
@@ -156,7 +156,7 @@ TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
     const NS::Vector3 heading = effects.MissSparkHeading(0.8f, 0.0f, {0.0f, 0.0f, 1.0f});
     EXPECT_NEAR(heading.x, 1.0f, 0.001f);
     EXPECT_NEAR(heading.z, 0.0f, 0.001f);
-    GL::Level::TargetMarker marker;
+    GL::Level::TargetMarker marker{nullptr};
     ASSERT_EQ(NS::ApplyJsonFields(marker, {{"枠の縁の幅", 3.0f}}), 0u);
     const nlohmann::json fields = NS::SerializeSubObjectFields(marker);
     EXPECT_EQ(fields["枠の縁の幅"], 3.0f);

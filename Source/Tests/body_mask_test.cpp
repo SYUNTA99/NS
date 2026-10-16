@@ -38,7 +38,7 @@ namespace
     protected:
         void OnInit() override
         {
-            m_body = CreateSubObj(m_model);
+            m_body = CreateSubObj(m_model, this);
             m_body->SetMeshRef("cube");
             m_body->SetMaterialRef("player");
             Root().SetPosition(m_position);

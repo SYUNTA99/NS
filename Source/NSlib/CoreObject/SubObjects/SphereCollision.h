@@ -12,9 +12,9 @@ namespace NS
     {
     public:
         //! 既定半径 0.5 で構築する
-        SphereCollision() noexcept = default;
+        explicit SphereCollision(SceneActor* owner) noexcept : Collision(owner), m_owner(owner) {}
         //! 半径を指定して構築する。負は 0 にクランプ
-        explicit SphereCollision(float radius) noexcept;
+        SphereCollision(SceneActor* owner, float radius) noexcept;
 
         //! 負は 0 にクランプ
         void SetRadius(float radius) noexcept;
@@ -43,5 +43,6 @@ namespace NS
 
         float m_radius = 0.5f;                        // 球の半径 (owner scale 前)
         Vector3 m_centerOffset{0.0f, 0.0f, 0.0f}; // 持ち主の局所座標系での中心オフセット
+        SceneActor* m_owner = nullptr;            // 持ち主 (非所有)
     };
 } // namespace NS

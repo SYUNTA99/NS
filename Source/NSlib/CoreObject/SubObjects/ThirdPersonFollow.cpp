@@ -117,7 +117,7 @@ namespace
 namespace NS
 {
 
-    ThirdPersonFollow::ThirdPersonFollow() noexcept : VirtualCamera()
+    ThirdPersonFollow::ThirdPersonFollow(SceneActor* owner) noexcept : VirtualCamera(), m_owner(owner)
     {
         // 追う相手を中心に見るので遠景は要らない。編集カメラの 5000 と違いプレイ視点は 100 で足りる
         SetFarPlane(100.0f);
@@ -126,11 +126,11 @@ namespace NS
     Transform* ThirdPersonFollow::Target() const noexcept
     {
         // 追う相手は控えず使うたびに引く。控えると、消された相手を指したまま次のフレームへ持ち越す
-        if (!m_targetRef.IsSet() || Owner() == nullptr || Owner()->OwningScene() == nullptr)
+        if (!m_targetRef.IsSet() || m_owner == nullptr || m_owner->OwningScene() == nullptr)
         {
             return nullptr;
         }
-        SceneActor* target = Owner()->OwningScene()->Objects().FindObject(m_targetRef);
+        SceneActor* target = m_owner->OwningScene()->Objects().FindObject(m_targetRef);
         if (target == nullptr)
         {
             return nullptr;
@@ -511,14 +511,14 @@ namespace NS
 
         // 溜めの揺れはカメラの管理役のトラウマに保たせる。揺れの持ち主を当たりの揺れと 1 つにする
         // 締めと同じ溜め量から作り、変わり始めのフレームを締めと揃える。トラウマの 2 乗で、溜めきりに近いほど強まる
-        if (holdCharge > 0.0f && Owner() != nullptr)
+        if (holdCharge > 0.0f && m_owner != nullptr)
         {
             CameraTraumaShape shape;
             shape.yawDegrees = m_chargeShakeYawDegrees;
             shape.pitchDegrees = m_chargeShakePitchDegrees;
             shape.frequency = m_chargeShakeFrequency;
             shape.decayPerSecond = m_chargeShakeDecayPerSecond;
-            (void)HoldCameraTrauma(Owner(), holdCharge, shape);
+            (void)HoldCameraTrauma(m_owner, holdCharge, shape);
         }
 
         // 構図は押したフレームから動かし、溜めに入った時には相手を枠へ入れておく
@@ -650,7 +650,9 @@ namespace NS
 
         const float dt = OS::FrameTimer::FixedDelta();
         const Transform* target = Target();
-        if (!IsOwnerAppeared() || target == nullptr || dt <= 0.0f)
+        // 持ち主の無い部品は出ていると見る
+        const bool ownerAppeared = m_owner == nullptr || m_owner->IsAppeared();
+        if (!ownerAppeared || target == nullptr || dt <= 0.0f)
         {
             // 休止の間は注視点を控えないので、反動の間の追い方も捨てる
             // 再開した時に古い注視点から留めない

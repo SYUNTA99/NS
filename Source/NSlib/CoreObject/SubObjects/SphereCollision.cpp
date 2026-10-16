@@ -12,7 +12,9 @@
 
 namespace NS
 {
-    SphereCollision::SphereCollision(float radius) noexcept : m_radius(std::max(radius, 0.0f)) {}
+    SphereCollision::SphereCollision(SceneActor* owner, float radius) noexcept
+        : Collision(owner), m_radius(std::max(radius, 0.0f)), m_owner(owner)
+    {}
 
     void SphereCollision::SetRadius(float radius) noexcept
     {
@@ -36,13 +38,12 @@ namespace NS
 
     Sphere SphereCollision::WorldSphere() const noexcept
     {
-        const SceneActor* owner = Owner();
-        if (owner == nullptr)
+        if (m_owner == nullptr)
         {
             return Sphere{m_centerOffset, m_radius};
         }
 
-        const Matrix world = owner->Root().WorldMatrix();
+        const Matrix world = m_owner->Root().WorldMatrix();
         const Vector3 center = Vector3::Transform(m_centerOffset, world);
 
         const Vector3 scale = DecomposeAffine(world).scale;

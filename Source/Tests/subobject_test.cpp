@@ -41,10 +41,10 @@ namespace
         void OnInit() override
         {
             CreateSubObj(first);
-            box = CreateSubObj<NS::Collision, NS::BoxCollision>(m_collision);
+            box = CreateSubObj<NS::Collision, NS::BoxCollision>(m_collision, this);
             CreateSubObj(second);
-            CreateSubObj(m_model);
-            refused = CreateSubObj<NS::Collision, NS::SphereCollision>(m_collision);
+            CreateSubObj(m_model, this);
+            refused = CreateSubObj<NS::Collision, NS::SphereCollision>(m_collision, this);
         }
     };
 
@@ -62,7 +62,7 @@ namespace
         void OnInit() override
         {
             CreateSubObj(clash);
-            model = CreateSubObj(m_model);
+            model = CreateSubObj(m_model, this);
         }
     };
 
@@ -73,9 +73,9 @@ namespace
         void OnInit() override
         {
             InitShape();
-            CreateSubObj<NS::Collision, NS::BoxCollision>(m_collision);
+            CreateSubObj<NS::Collision, NS::BoxCollision>(m_collision, this);
         }
-        void InitShape() { CreateSubObj(m_model); }
+        void InitShape() { CreateSubObj(m_model, this); }
     };
 
     class GrandActor final : public MiddleActor
@@ -84,7 +84,7 @@ namespace
         void OnInit() override
         {
             InitShape();
-            CreateSubObj<NS::Collision, NS::SphereCollision>(m_collision);
+            CreateSubObj<NS::Collision, NS::SphereCollision>(m_collision, this);
         }
     };
 
@@ -117,7 +117,7 @@ protected:
     void OnInit() override
     {
         ++inits;
-        CreateSubObj(m_model);
+        CreateSubObj(m_model, this);
     }
 };
 NS_CLASS(SubObjectInitProbeActor)

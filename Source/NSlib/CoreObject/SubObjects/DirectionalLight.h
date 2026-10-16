@@ -9,6 +9,8 @@ namespace NS
     class DirectionalLight : public SubObject
     {
     public:
+        explicit DirectionalLight(SceneActor* owner) noexcept : m_owner(owner) {}
+
         //! @brief 平行光の向き。持ち主の根の姿勢で +Z を回した、長さ 1 の向き
         //! @details 向きの欄は持たない。エディタのギズモで個体を回すと光も回る
         [[nodiscard]] Vector3 Direction() const noexcept;
@@ -33,5 +35,6 @@ namespace NS
         Vector3 m_ambient{0.30f, 0.34f, 0.40f};
         Vector3 m_ground{0.24f, 0.21f, 0.18f};
         float m_exposure = 1.35f;
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

@@ -21,6 +21,8 @@ namespace NS
     class Collision : public SubObject
     {
     public:
+        explicit Collision(SceneActor* owner) noexcept : m_owner(owner) {}
+
         //! 世界座標の当たりを body 1 個として持ち主の Scene の PhysicsScene へ入れる。入れた body があれば置き直す
         //! 何も入れない形状もある。持ち主が Scene に居なければ何もしない
         void SyncToPhysics();
@@ -48,5 +50,6 @@ namespace NS
         [[nodiscard]] virtual JPH::BodyID SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current) = 0;
 
         JPH::BodyID m_bodyId;
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

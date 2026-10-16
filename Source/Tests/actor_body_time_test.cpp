@@ -173,7 +173,7 @@ TEST(ActorBodyTime, SubObjectReadsItsOwnersClock)
     ASSERT_TRUE(actor.SetBodyTimeScale(1.5f));
     EXPECT_EQ(animation->BodyDelta(), actor.BodyDelta());
 
-    const NS::Animation loose;
+    const NS::Animation loose{nullptr};
     EXPECT_EQ(loose.BodyDelta(), NS::OS::FrameTimer::FixedDelta());
 }
 

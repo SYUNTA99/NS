@@ -211,7 +211,7 @@ namespace NS
             NS_ASSERT(Scene,
                       static_cast<const SceneActor*>(&owner) == this,
                       "SceneActor::BuildStateMachine: 持ち主に自分以外の SceneActor を渡している");
-            StateMachine* part = CreateSubObj(m_stateMachine);
+            StateMachine* part = CreateSubObj(m_stateMachine, this);
             if (part == nullptr)
             {
                 return false;

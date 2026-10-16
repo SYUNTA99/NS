@@ -27,6 +27,8 @@ namespace NS
     class Shadow : public SubObject, public IRenderable
     {
     public:
+        explicit Shadow(SceneActor* owner) noexcept : m_owner(owner) {}
+
         //! 真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
         void Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out) override;
         [[nodiscard]] RenderBucket Bucket() const noexcept override { return RenderBucket::Transparent; }
@@ -62,5 +64,6 @@ namespace NS
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離
         float m_surfaceOffset = 0.02f; // 地面へめり込ませない浮かせ量
         float m_baseAlpha = 0.5f;      // 接地時の不透明度
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

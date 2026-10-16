@@ -50,7 +50,11 @@ namespace NS
 
     void Model::Register()
     {
-        Scene* scene = OwningScene();
+        if (m_owner == nullptr)
+        {
+            return;
+        }
+        Scene* scene = m_owner->OwningScene();
         if (scene == nullptr)
         {
             return;
@@ -61,7 +65,11 @@ namespace NS
 
     void Model::Unregister()
     {
-        Scene* scene = OwningScene();
+        if (m_owner == nullptr)
+        {
+            return;
+        }
+        Scene* scene = m_owner->OwningScene();
         if (scene == nullptr)
         {
             return;
@@ -181,13 +189,12 @@ namespace NS
     {
         const Quaternion local = Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
         const Matrix localMatrix = WithLocalScale(m_localScale, Matrix::CreateFromQuaternion(local));
-        const SceneActor* owner = Owner();
-        if (owner == nullptr)
+        if (m_owner == nullptr)
         {
             return localMatrix;
         }
         // 回転を先に掛ける。根のスケールは根の軸に残り、局所の回転と一緒に回らない
-        const Matrix root = owner->Root().InterpolatedWorldMatrix(alpha);
+        const Matrix root = m_owner->Root().InterpolatedWorldMatrix(alpha);
         Matrix drawn = localMatrix * root;
         // ずれは倍率の後に世界で足す。倍率の中心 (下端の真ん中) は根から測るので、ずれと一緒に動いて形を変えない
         // ずれが 0 の間は掛けない。0 の平行移動でも掛け算が下の桁を丸めることがある
@@ -230,9 +237,8 @@ namespace NS
 
     void Model::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
-        SceneActor* owner = Owner();
         Gfx::Material* material = m_material.Get();
-        if (!IsOwnerAppeared() || m_mesh.Get() == nullptr || material == nullptr || owner == nullptr)
+        if (m_owner == nullptr || !m_owner->IsAppeared() || m_mesh.Get() == nullptr || material == nullptr)
         {
             return;
         }
@@ -275,8 +281,8 @@ namespace NS
     void Model::Ghosts::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
         Gfx::Material* material = m_model.m_ghostMaterial.Get();
-        if (!m_model.IsOwnerAppeared() || m_model.m_mesh.Get() == nullptr || material == nullptr ||
-            m_model.Owner() == nullptr)
+        if (m_model.m_owner == nullptr || !m_model.m_owner->IsAppeared() || m_model.m_mesh.Get() == nullptr ||
+            material == nullptr)
         {
             return;
         }
@@ -336,12 +342,11 @@ namespace NS
 
     Vector3 Model::SortCenter() const noexcept
     {
-        const SceneActor* owner = Owner();
-        if (owner == nullptr)
+        if (m_owner == nullptr)
         {
             return {};
         }
-        return owner->Root().WorldMatrix().Translation();
+        return m_owner->Root().WorldMatrix().Translation();
     }
 
     int Model::SortPriority() const noexcept
@@ -355,14 +360,13 @@ namespace NS
 
     AABB Model::WorldBounds() const noexcept
     {
-        const SceneActor* owner = Owner();
-        if (m_mesh.Get() == nullptr || owner == nullptr)
+        if (m_mesh.Get() == nullptr || m_owner == nullptr)
         {
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない
         }
         AABB out{};
         // m_mesh は確認済みで、描画の境界を取得できる
-        DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, owner->Root().WorldMatrix()));
+        DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, m_owner->Root().WorldMatrix()));
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
         const Vector3 scale = Vector3::Max(m_previousDrawScale, m_drawScale);

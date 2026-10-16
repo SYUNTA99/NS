@@ -42,7 +42,7 @@ namespace NS
     class ThirdPersonFollow : public VirtualCamera
     {
     public:
-        ThirdPersonFollow() noexcept;
+        explicit ThirdPersonFollow(SceneActor* owner) noexcept;
 
         //! 追従対象の Transform。参照から使うたびに引き、未設定と解決不可は nullptr
         [[nodiscard]] Transform* Target() const noexcept;
@@ -295,6 +295,7 @@ namespace NS
         Vector3 m_look{};                  // このフレームの注視点。反動と寄せ戻しで使う
         Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
         bool m_hasLook = false;                // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
+        SceneActor* m_owner = nullptr;         // 持ち主 (非所有)
     };
 
 } // namespace NS

@@ -245,10 +245,24 @@ namespace NS
         return SegmentSegmentDistanceSq(lhs.a, lhs.b, rhs.a, rhs.b) <= reach * reach;
     }
 
+    bool HitSensor::IsValid() const noexcept
+    {
+        // 持ち主の無いセンサーは出ていると見る
+        if (m_owner == nullptr)
+        {
+            return m_valid;
+        }
+        return m_valid && m_owner->IsAppeared();
+    }
+
     void HitSensor::Register()
     {
-        Scene* scene = OwningScene();
-        if (m_registered || scene == nullptr)
+        if (m_registered || m_owner == nullptr)
+        {
+            return;
+        }
+        Scene* scene = m_owner->OwningScene();
+        if (scene == nullptr)
         {
             return;
         }
@@ -258,8 +272,12 @@ namespace NS
 
     void HitSensor::Unregister()
     {
-        Scene* scene = OwningScene();
-        if (!m_registered || scene == nullptr)
+        if (!m_registered || m_owner == nullptr)
+        {
+            return;
+        }
+        Scene* scene = m_owner->OwningScene();
+        if (scene == nullptr)
         {
             return;
         }
@@ -290,7 +308,7 @@ namespace NS
     SensorVolume ShapeHitSensor::WorldVolume() const noexcept
     {
         Matrix world = Matrix::Identity;
-        if (const SceneActor* owner = Owner())
+        if (const SceneActor* owner = Host())
         {
             world = owner->Root().WorldMatrix();
         }
@@ -314,7 +332,9 @@ namespace NS
         }
     }
 
-    FollowHitSensor::FollowHitSensor(std::function<SensorVolume()> volume) noexcept : m_volume(std::move(volume)) {}
+    FollowHitSensor::FollowHitSensor(SceneActor* owner, std::function<SensorVolume()> volume) noexcept
+        : HitSensor(owner), m_volume(std::move(volume))
+    {}
 
     SensorVolume FollowHitSensor::WorldVolume() const noexcept
     {
@@ -324,7 +344,7 @@ namespace NS
         }
         NS_LOG_ERROR(Scene, "FollowHitSensor: 形を答える関数が空。根に長さ 0 の球を返す");
         Vector3 root{0.0f, 0.0f, 0.0f};
-        if (const SceneActor* owner = Owner())
+        if (const SceneActor* owner = Host())
         {
             root = owner->Root().Position();
         }

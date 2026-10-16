@@ -23,7 +23,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     int height = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-    NS::ThirdPersonFollow follow;
+    NS::ThirdPersonFollow follow{nullptr};
     const std::vector<NS::Editor::ObjectRefOption> options{{7u, "相手"}};
     ImVec2 tableMin{};
     float tableWidth = 0.0f;

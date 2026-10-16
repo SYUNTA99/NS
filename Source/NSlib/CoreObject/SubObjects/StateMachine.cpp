@@ -2,6 +2,8 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <utility>
 
@@ -16,10 +18,17 @@ namespace NS
 
     void StateMachine::Update()
     {
-        if (m_machine != nullptr)
+        if (m_machine == nullptr)
         {
-            m_machine->Step(BodyDelta());
+            return;
         }
+        // 持ち主の無い部品は固定の 1 歩の秒で進む
+        float dt = OS::FrameTimer::FixedDelta();
+        if (m_owner != nullptr)
+        {
+            dt = m_owner->BodyDelta();
+        }
+        m_machine->Step(dt);
     }
 
     NS_CLASS(StateMachine)

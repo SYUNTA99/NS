@@ -59,7 +59,7 @@ namespace
     protected:
         void OnInit() override
         {
-            NS::Model* model = CreateSubObj(m_model);
+            NS::Model* model = CreateSubObj(m_model, this);
             model->SetMeshRef("cube");
             model->SetMaterialRef("player");
         }

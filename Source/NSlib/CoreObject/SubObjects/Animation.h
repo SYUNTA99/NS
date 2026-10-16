@@ -22,7 +22,7 @@ namespace NS
     class Animation : public SubObject
     {
     public:
-        Animation() noexcept;
+        explicit Animation(SceneActor* owner) noexcept;
         ~Animation();
 
         //! 非所有の SkeletalMesh を差し替える。参照先がない間は ApplyPose を行わない
@@ -93,6 +93,7 @@ namespace NS
         Gfx::BonePaletteCB m_palette;                 // CPU 側パレット、描画側が毎描画 GPU へ上げる
 
         Model* m_renderer = nullptr; // 同じ object の描画 SubObject。パレットと境界の差し先 (非所有)
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 
 } // namespace NS

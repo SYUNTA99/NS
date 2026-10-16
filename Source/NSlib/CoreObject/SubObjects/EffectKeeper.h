@@ -43,7 +43,9 @@ namespace NS
     {
     public:
         //! @param[in] keepEndedSteps 消えた記録を残すフレーム数。過ぎた記録は BeginStep が捨てる
-        explicit EffectKeeper(int keepEndedSteps = 600) noexcept : m_keepEndedSteps(keepEndedSteps) {}
+        explicit EffectKeeper(SceneActor* owner, int keepEndedSteps = 600) noexcept
+            : m_keepEndedSteps(keepEndedSteps), m_owner(owner)
+        {}
 
         //! @brief フレームを 1 つ進め、前のフレームの更新で Effekseer から消えた記録に消えたフレームを書く
         //! @details SceneActor::Update が頭で 1 回呼ぶ。残すフレーム数を過ぎた記録を捨て、StopAfter の予約を消す
@@ -127,5 +129,6 @@ namespace NS
         std::vector<ScheduledStop> m_scheduledStops;
         int m_step = 0;
         uint32 m_nextId = 1;
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

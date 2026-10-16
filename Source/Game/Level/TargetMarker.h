@@ -65,7 +65,7 @@ namespace GL
         class TargetMarker : public NS::OverlayRenderer
         {
         public:
-            TargetMarker() noexcept;
+            explicit TargetMarker(NS::SceneActor* owner) noexcept;
 
             //! 溜めている間、確定した狙う相手へ枠を控える。溜めを終えたら控えと経過フレーム数を戻す
             void Update(const GL::Player::ChargeStatus& charge);

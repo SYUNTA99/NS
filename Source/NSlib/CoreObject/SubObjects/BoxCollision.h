@@ -12,9 +12,9 @@ namespace NS
     {
     public:
         //! 既定 halfExtents {0.5,0.5,0.5} で構築する
-        BoxCollision() noexcept = default;
+        explicit BoxCollision(SceneActor* owner) noexcept : Collision(owner) {}
         //! halfExtents を指定して構築する。負の成分は 0 にクランプ
-        explicit BoxCollision(const Vector3& halfExtents) noexcept;
+        BoxCollision(SceneActor* owner, const Vector3& halfExtents) noexcept;
 
         //! 当たり箱の各軸の半径を設定する。負の成分は 0 にクランプ
         void SetHalfExtents(const Vector3& halfExtents) noexcept;

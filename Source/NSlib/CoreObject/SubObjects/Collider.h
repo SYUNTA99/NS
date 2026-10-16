@@ -32,7 +32,7 @@ namespace NS
     class Collider : public SubObject, public IUseCollision
     {
     public:
-        Collider() noexcept = default;
+        explicit Collider(SceneActor* owner) noexcept : m_owner(owner) {}
 
         //! 当たりのカプセルの半径 (m)。欄「半径」の値で、球にしている間も変わらない
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_radius; }
@@ -83,5 +83,6 @@ namespace NS
         float m_standingHalfHeight = 0.5f; // 立ち姿の円柱の半分の高さ (m)。半球を除く
         bool m_sphereShape = false;        // 当たりを球にしているか。書くのは SetSphereShape だけ
         std::unique_ptr<Phys::JoltCharacter> m_character;
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

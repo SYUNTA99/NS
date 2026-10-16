@@ -1,6 +1,7 @@
 #include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
 #include "NSlib/Core/Types.h"
 
+#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Graphics/EffectScene.h"
 
@@ -10,7 +11,11 @@ namespace NS
 {
     Gfx::EffectScene* EffectKeeper::Effects() const noexcept
     {
-        const Scene* scene = OwningScene();
+        if (m_owner == nullptr)
+        {
+            return nullptr;
+        }
+        const Scene* scene = m_owner->OwningScene();
         if (scene == nullptr)
         {
             return nullptr;

@@ -13,7 +13,7 @@ namespace NS
     class HitReaction : public SubObject
     {
     public:
-        HitReaction() noexcept = default;
+        explicit HitReaction(SceneActor* owner) noexcept : m_owner(owner) {}
 
         //! シーンに 1 つの HitScreenDirector と PadRumbleDirector
         //! を作る。更新の最中に作ると、そのフレームの段に間に合わない
@@ -82,5 +82,8 @@ namespace NS
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する
         NS_REFLECT_NONE(HitReaction, SubObject)
+
+    private:
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

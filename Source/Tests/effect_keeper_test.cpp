@@ -21,7 +21,7 @@ namespace
         void OnInit() override
         {
             TestEffectActor::OnInit();
-            CreateSubObj(m_hitReaction);
+            CreateSubObj(m_hitReaction, this);
         }
     };
 
@@ -31,7 +31,7 @@ namespace
 
 TEST(EffectKeeperTest, PlayWithoutAnOwnerLeavesOneRecord)
 {
-    EffectKeeper keeper;
+    EffectKeeper keeper{nullptr};
     const NS::uint32 id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
@@ -46,7 +46,7 @@ TEST(EffectKeeperTest, PlayWithoutAnOwnerLeavesOneRecord)
 
 TEST(EffectKeeperTest, StopWritesTheStepItEndedOn)
 {
-    EffectKeeper keeper;
+    EffectKeeper keeper{nullptr};
     keeper.BeginStep();
     const NS::uint32 id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
     keeper.BeginStep();
@@ -65,7 +65,7 @@ TEST(EffectKeeperTest, StopWritesTheStepItEndedOn)
 
 TEST(EffectKeeperTest, StopAfterEndsOnTheScheduledStep)
 {
-    EffectKeeper keeper;
+    EffectKeeper keeper{nullptr};
     const NS::uint32 id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
     keeper.StopAfter(id, 2);
 
@@ -78,7 +78,7 @@ TEST(EffectKeeperTest, StopAfterEndsOnTheScheduledStep)
 
 TEST(EffectKeeperTest, EndedRecordIsDroppedAfterTheKeepSteps)
 {
-    EffectKeeper keeper{3};
+    EffectKeeper keeper{nullptr, 3};
     const NS::uint32 id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
     keeper.Stop(id);
 
@@ -93,7 +93,7 @@ TEST(EffectKeeperTest, EndedRecordIsDroppedAfterTheKeepSteps)
 
 TEST(EffectKeeperTest, AmountAndRotationAreWrittenToTheRecord)
 {
-    EffectKeeper keeper;
+    EffectKeeper keeper{nullptr};
     const NS::uint32 id = keeper.Play("test.spark", NS::Gfx::EffectPlayDesc{});
     const NS::Quaternion turned = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, 1.0f);
     keeper.SetAmount(id, 2.5f);

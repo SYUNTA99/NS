@@ -151,7 +151,7 @@ namespace GL
         class SlamArrow : public NS::OverlayRenderer
         {
         public:
-            SlamArrow() noexcept;
+            explicit SlamArrow(NS::SceneActor* owner) noexcept;
 
             //! @brief 溜め中の矢印を控える。狙いが無いか溜めを終えたら、控えと経過フレーム数を戻す
             //! @details 道筋は params の突進の速さと重力、玉の半径と床は collider (持ち主の移動の当たり) から出す

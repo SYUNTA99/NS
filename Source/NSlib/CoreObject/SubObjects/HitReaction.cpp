@@ -40,19 +40,19 @@ namespace NS
 
     void HitReaction::CreateDirectors()
     {
-        if (Owner() == nullptr)
+        if (m_owner == nullptr)
         {
             return;
         }
-        (void)GetOrCreateSceneSystem<HitScreenDirector>(Owner());
-        (void)GetOrCreateSceneSystem<PadRumbleDirector>(Owner());
+        (void)GetOrCreateSceneSystem<HitScreenDirector>(m_owner);
+        (void)GetOrCreateSceneSystem<PadRumbleDirector>(m_owner);
     }
 
     void HitReaction::StartFlash(int frames, float alpha) noexcept
     {
-        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(Owner()))
+        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
         {
-            screen->StartFlash(*Owner(), frames, alpha);
+            screen->StartFlash(*m_owner, frames, alpha);
         }
     }
 
@@ -62,11 +62,11 @@ namespace NS
         {
             return true;
         }
-        if (!CanStartCameraMotion(Owner(), desc.frames))
+        if (!CanStartCameraMotion(m_owner, desc.frames))
         {
             return false;
         }
-        if (!StartCameraShake(Owner(), desc))
+        if (!StartCameraShake(m_owner, desc))
         {
             NS_LOG_WARN(Scene,
                         "揺れの設定が壊れていて、揺らさなかった: 横 {} 縦 {} フレーム数 {} 最長 {}",
@@ -85,11 +85,11 @@ namespace NS
         {
             return true;
         }
-        if (!CanStartCameraMotion(Owner(), desc.frames))
+        if (!CanStartCameraMotion(m_owner, desc.frames))
         {
             return false;
         }
-        if (!AddCameraModifier(Owner(), CameraSinkModifier::Create(desc)))
+        if (!AddCameraModifier(m_owner, CameraSinkModifier::Create(desc)))
         {
             NS_LOG_WARN(Scene,
                         "沈む揺れの設定が壊れていて、揺らさなかった: 深さ {} 震え {} 行き過ぎ {} フレーム数 {}",
@@ -108,11 +108,11 @@ namespace NS
         {
             return true;
         }
-        if (!CanStartCameraMotion(Owner(), desc.frames))
+        if (!CanStartCameraMotion(m_owner, desc.frames))
         {
             return false;
         }
-        if (!AddCameraModifier(Owner(), CameraNudgeModifier::Create(desc)))
+        if (!AddCameraModifier(m_owner, CameraNudgeModifier::Create(desc)))
         {
             NS_LOG_WARN(Scene,
                         "ずれの設定が壊れていて、ずらさなかった: 向き ({}, {}, {}) フレーム数 {}",
@@ -127,11 +127,11 @@ namespace NS
 
     bool HitReaction::StartZoomRoll(const CameraZoomRollDesc& desc)
     {
-        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+        if (m_owner == nullptr || m_owner->GetCameraManager() == nullptr)
         {
             return false;
         }
-        if (!StartCameraZoomRoll(Owner(), desc))
+        if (!StartCameraZoomRoll(m_owner, desc))
         {
             NS_LOG_WARN(Scene,
                         "寄りと傾きの設定が壊れていて、寄せなかった: 倍率 {} 傾き {} 保つ {} 戻す {}",
@@ -146,69 +146,69 @@ namespace NS
 
     void HitReaction::StartShakeLines(const HitShakeLinesDesc& desc) noexcept
     {
-        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(Owner()))
+        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
         {
-            screen->StartShakeLines(*Owner(), desc);
+            screen->StartShakeLines(*m_owner, desc);
         }
     }
 
     void HitReaction::StartDistortionRing(const HitDistortionRingDesc& desc) noexcept
     {
-        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(Owner()))
+        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
         {
-            screen->StartDistortionRing(*Owner(), desc);
+            screen->StartDistortionRing(*m_owner, desc);
         }
     }
 
     void HitReaction::StopDistortionRing() noexcept
     {
-        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(Owner()))
+        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
         {
-            screen->StopDistortionRing(*Owner());
+            screen->StopDistortionRing(*m_owner);
         }
     }
 
     void HitReaction::StartPadVibration(const HitPadVibration& pad)
     {
-        if (PadRumbleDirector* rumble = FindDirector<PadRumbleDirector>(Owner()))
+        if (PadRumbleDirector* rumble = FindDirector<PadRumbleDirector>(m_owner))
         {
-            rumble->Start(*Owner(), pad);
+            rumble->Start(*m_owner, pad);
         }
     }
 
     void HitReaction::BlendPadVibration(const HitPadVibration& pad)
     {
-        if (PadRumbleDirector* rumble = FindDirector<PadRumbleDirector>(Owner()))
+        if (PadRumbleDirector* rumble = FindDirector<PadRumbleDirector>(m_owner))
         {
-            rumble->Blend(*Owner(), pad);
+            rumble->Blend(*m_owner, pad);
         }
     }
 
     void HitReaction::Stop()
     {
-        if (Owner() == nullptr)
+        if (m_owner == nullptr)
         {
             return;
         }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(Owner()))
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(m_owner))
         {
-            screen->Stop(*Owner());
+            screen->Stop(*m_owner);
         }
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(Owner()))
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(m_owner))
         {
-            rumble->Stop(*Owner());
+            rumble->Stop(*m_owner);
         }
-        StopCameraHitEffects(Owner());
+        StopCameraHitEffects(m_owner);
     }
 
     bool HitReaction::AddTrauma(const CameraTraumaDesc& desc)
     {
         // カメラの無い場面 (試しの台) では揺らす先が無い。設定の誤りではないので黙って返す
-        if (Owner() == nullptr || Owner()->GetCameraManager() == nullptr)
+        if (m_owner == nullptr || m_owner->GetCameraManager() == nullptr)
         {
             return false;
         }
-        if (!AddCameraTrauma(Owner(), desc))
+        if (!AddCameraTrauma(m_owner, desc))
         {
             NS_LOG_WARN(Scene,
                         "トラウマの量か形が壊れていて、揺らさなかった: 量 {} 減る速さ {}",
@@ -223,9 +223,9 @@ namespace NS
     {
         Stop();
         // プレイを終えた後の視点にトラウマを残さない
-        if (Owner() != nullptr)
+        if (m_owner != nullptr)
         {
-            StopCameraEffects(Owner());
+            StopCameraEffects(m_owner);
         }
     }
 

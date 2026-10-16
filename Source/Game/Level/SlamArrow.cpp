@@ -510,7 +510,7 @@ namespace GL
             out.push_back(occludedItem);
         }
 
-        SlamArrow::SlamArrow() noexcept : NS::OverlayRenderer() {}
+        SlamArrow::SlamArrow(NS::SceneActor* owner) noexcept : NS::OverlayRenderer(owner) {}
 
         void SlamArrow::Update(const GL::Player::ChargeStatus& charge,
                                const GL::Player::PlayerParams* params,
