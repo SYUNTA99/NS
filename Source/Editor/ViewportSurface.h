@@ -12,7 +12,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class RenderTarget;
+        class D3DRenderTarget;
     }
 } // namespace NS
 
@@ -30,7 +30,7 @@ namespace NS
         class ViewportSurface : public NonCopyable
         {
         public:
-            // RenderTarget の完全型が必要なため、構築と破棄は .cpp で定義する
+            // D3DRenderTarget の完全型が必要なため、構築と破棄は .cpp で定義する
             ViewportSurface();
             ~ViewportSurface();
 
@@ -76,7 +76,7 @@ namespace NS
             [[nodiscard]] bool IsFocused() const noexcept { return m_focused; }
 
         private:
-            std::unique_ptr<Gfx::RenderTarget> m_target;
+            std::unique_ptr<Gfx::D3DRenderTarget> m_target;
             Size2D m_size{0, 0}; // content 領域。次フレームの描画先サイズ
             float m_fixedAspect = 0.0f;
             bool m_visible = false;

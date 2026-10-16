@@ -3,7 +3,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Graphics/Mesh.h"
+#include "NSlib/Graphics/D3DMesh.h"
 
 #include <memory>
 #include <type_traits>
@@ -25,7 +25,7 @@ namespace NS
                       "GPUへ正しく転送するため、StaticVertexは標準レイアウトである必要があります。");
 
         //! 静的メッシュの初期化パラメータ
-        struct MeshDesc
+        struct D3DStaticMeshDesc
         {
             const StaticVertex* vertices = nullptr;
             std::size_t vertexCount = 0;
@@ -38,19 +38,19 @@ namespace NS
         //! @details 位置・UV 座標・法線の頂点情報を持ち、描画へ渡す
         //! @note 構築に失敗するとキューブのフォールバックへ差し替わる
         //! @warning Renderer より先に破棄すること
-        class StaticMesh : public Mesh
+        class D3DStaticMesh : public D3DMesh
         {
         public:
             //! @brief パラメータから静的メッシュを生成する
-            [[nodiscard]] static std::unique_ptr<StaticMesh> Create(const MeshDesc& desc);
+            [[nodiscard]] static std::unique_ptr<D3DStaticMesh> Create(const D3DStaticMeshDesc& desc);
 
-            ~StaticMesh() override = default;
+            ~D3DStaticMesh() override = default;
 
             //! 静的メッシュ用の頂点入力レイアウトを返す
             [[nodiscard]] static std::vector<InputElement> StandardInputLayout();
 
         private:
-            explicit StaticMesh(const MeshDesc& desc);
+            explicit D3DStaticMesh(const D3DStaticMeshDesc& desc);
         };
     } // namespace Gfx
 } // namespace NS

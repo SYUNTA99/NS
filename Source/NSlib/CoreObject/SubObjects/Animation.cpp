@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/Graphics/Buffer.h"
+#include "NSlib/Graphics/D3DBuffer.h"
 #include "NSlib/Graphics/Retarget.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -18,7 +18,7 @@ namespace NS
 
     Animation::~Animation() = default;
 
-    void Animation::SetMesh(Gfx::SkeletalMesh* mesh) noexcept
+    void Animation::SetMesh(Gfx::D3DSkeletalMesh* mesh) noexcept
     {
         m_mesh = mesh;
     }
@@ -130,8 +130,8 @@ namespace NS
 
     void Animation::BindToModel()
     {
-        Gfx::BufferDesc cbDesc = Gfx::MakeConstantBufferDesc(sizeof(Gfx::BonePaletteCB));
-        m_bonePaletteCB = Gfx::Buffer::Create(cbDesc);
+        Gfx::D3DBufferDesc cbDesc = Gfx::MakeConstantBufferDesc(sizeof(Gfx::BonePaletteCB));
+        m_bonePaletteCB = Gfx::D3DBuffer::Create(cbDesc);
         for (std::size_t i = 0; i < Gfx::k_MaxBones; ++i)
         {
             m_palette.bones[i] = Matrix::Identity;

@@ -1,15 +1,15 @@
 #include "NSlib/Graphics/Bloom.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Graphics/Buffer.h"
-#include "NSlib/Graphics/CommandList.h"
-#include "NSlib/Graphics/CommonStates.h"
+#include "NSlib/Graphics/D3DBuffer.h"
+#include "NSlib/Graphics/D3DCommandList.h"
+#include "NSlib/Graphics/D3DCommonStates.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/Mesh.h"
-#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/D3DMesh.h"
+#include "NSlib/Graphics/D3DPipeline.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Graphics/Shader.h"
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DShader.h"
+#include "NSlib/Graphics/D3DTexture.h"
 
 #include <algorithm>
 
@@ -33,14 +33,14 @@ namespace NS
             // 1 を超える明るさを持つ。16 ビットの浮動小数は 1 付近の刻みが 1/2048 で、8 ビットの 1/255 より細かい
             constexpr DXGI_FORMAT k_HdrFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
-            std::unique_ptr<Texture> MakeHdrTarget(Size2D size)
+            std::unique_ptr<D3DTexture> MakeHdrTarget(Size2D size)
             {
-                TextureDesc desc{};
+                D3DTextureDesc desc{};
                 desc.width = static_cast<UINT>(size.width);
                 desc.height = static_cast<UINT>(size.height);
                 desc.format = k_HdrFormat;
                 desc.bindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-                return Texture::Create(desc);
+                return D3DTexture::Create(desc);
             }
 
             // 半分ずつ縮めた大きさ。0 にはしない
@@ -50,7 +50,7 @@ namespace NS
                 return Size2D{std::max(1, size.width >> shift), std::max(1, size.height >> shift)};
             }
 
-            void UnbindShaderResources(CommandList& cmd)
+            void UnbindShaderResources(D3DCommandList& cmd)
             {
                 // 次の段で描画先にする絵が読む側に残っていると、描画装置は書き込みを捨てる
                 ID3D11ShaderResourceView* none[2] = {nullptr, nullptr};
@@ -68,11 +68,11 @@ namespace NS
             }
 
             // 頂点バッファを使わない全画面三角形。DrawFullscreenColor と同じ物
-            m_vs = Shader::CreateBuiltin("fade.vs.hlsl");
-            m_thresholdPs = Shader::CreateBuiltin("bloom_threshold.ps.hlsl");
-            m_downPs = Shader::CreateBuiltin("bloom_down.ps.hlsl");
-            m_upPs = Shader::CreateBuiltin("bloom_up.ps.hlsl");
-            m_compositePs = Shader::CreateBuiltin("bloom_composite.ps.hlsl");
+            m_vs = D3DShader::CreateBuiltin("fade.vs.hlsl");
+            m_thresholdPs = D3DShader::CreateBuiltin("bloom_threshold.ps.hlsl");
+            m_downPs = D3DShader::CreateBuiltin("bloom_down.ps.hlsl");
+            m_upPs = D3DShader::CreateBuiltin("bloom_up.ps.hlsl");
+            m_compositePs = D3DShader::CreateBuiltin("bloom_composite.ps.hlsl");
             if (!m_vs->IsValid() || m_vs->IsUsingFallback() || !m_thresholdPs->IsValid() ||
                 m_thresholdPs->IsUsingFallback() || !m_downPs->IsValid() || m_downPs->IsUsingFallback() ||
                 !m_upPs->IsValid() || m_upPs->IsUsingFallback() || !m_compositePs->IsValid() ||
@@ -83,21 +83,21 @@ namespace NS
             }
 
             // 全画面三角形は裏向きなので面を捨てない。世界の深度は読みも書きもしない
-            PipelineDesc writeDesc{};
+            D3DPipelineDesc writeDesc{};
             writeDesc.cull = CullMode::None;
             writeDesc.blend = BlendMode::Opaque;
             writeDesc.depth = DepthMode::Disabled;
-            m_writePipeline = Pipeline::Create(writeDesc);
-            PipelineDesc addDesc = writeDesc;
+            m_writePipeline = D3DPipeline::Create(writeDesc);
+            D3DPipelineDesc addDesc = writeDesc;
             addDesc.blend = BlendMode::Additive;
-            m_addPipeline = Pipeline::Create(addDesc);
+            m_addPipeline = D3DPipeline::Create(addDesc);
             if (!m_writePipeline->IsValid() || !m_addPipeline->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "Bloom: パイプラインを作れなかった");
                 return;
             }
 
-            m_cb = Buffer::Create(MakeConstantBufferDesc(sizeof(BloomCB)));
+            m_cb = D3DBuffer::Create(MakeConstantBufferDesc(sizeof(BloomCB)));
             if (!m_cb->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "Bloom: 定数バッファを作れなかった");
@@ -121,7 +121,7 @@ namespace NS
                 return;
             }
 
-            CommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = renderer.Commands();
             ComPtr<ID3D11RenderTargetView> target;
             ComPtr<ID3D11DepthStencilView> depth;
             cmd->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
@@ -170,7 +170,7 @@ namespace NS
             }
             m_active = false;
 
-            CommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = renderer.Commands();
             // 縮めと山形は画素の間を線形で拾う。端の外は端の色を伸ばし、画面の外から黒が入らないようにする
             cmd.PSSetSampler(renderer.States().LinearClamp(), 0);
             if (m_desc.intensity > 0.0f)
@@ -178,8 +178,8 @@ namespace NS
                 DrawPass(cmd, *m_thresholdPs, *m_writePipeline, *m_scene, nullptr, m_bright->Rtv(), m_size);
 
                 // TODO: 細かい火花のにじみが明滅したら、最初の縮めで 5 つの四角を 1 / (1 + 明るさ) で重み付けする
-                const Texture* source = m_bright.get();
-                for (std::unique_ptr<Texture>& level : m_levels)
+                const D3DTexture* source = m_bright.get();
+                for (std::unique_ptr<D3DTexture>& level : m_levels)
                 {
                     DrawPass(cmd, *m_downPs, *m_writePipeline, *source, nullptr, level->Rtv(), level->Size());
                     source = level.get();
@@ -187,8 +187,8 @@ namespace NS
                 // 小さい段から順に 1 段大きい方へ足す。先頭の段が全部の段を持つ
                 for (std::size_t i = m_levels.size() - 1; i > 0; --i)
                 {
-                    Texture& smaller = *m_levels[i];
-                    Texture& larger = *m_levels[i - 1];
+                    D3DTexture& smaller = *m_levels[i];
+                    D3DTexture& larger = *m_levels[i - 1];
                     DrawPass(cmd, *m_upPs, *m_addPipeline, smaller, nullptr, larger.Rtv(), larger.Size());
                 }
             }
@@ -231,11 +231,11 @@ namespace NS
             return true;
         }
 
-        void Bloom::DrawPass(CommandList& cmd,
-                             const Shader& pixelShader,
-                             const Pipeline& pipeline,
-                             const Texture& source,
-                             const Texture* scene,
+        void Bloom::DrawPass(D3DCommandList& cmd,
+                             const D3DShader& pixelShader,
+                             const D3DPipeline& pipeline,
+                             const D3DTexture& source,
+                             const D3DTexture* scene,
                              ID3D11RenderTargetView* destination,
                              Size2D destinationSize) noexcept
         {

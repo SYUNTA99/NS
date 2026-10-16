@@ -1,15 +1,15 @@
-#include "NSlib/Graphics/Material.h"
+#include "NSlib/Graphics/D3DMaterial.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Graphics/Buffer.h"
-#include "NSlib/Graphics/CommandList.h"
-#include "NSlib/Graphics/CommonStates.h"
+#include "NSlib/Graphics/D3DBuffer.h"
+#include "NSlib/Graphics/D3DCommandList.h"
+#include "NSlib/Graphics/D3DCommonStates.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/Mesh.h"
+#include "NSlib/Graphics/D3DMesh.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Graphics/Shader.h"
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DShader.h"
+#include "NSlib/Graphics/D3DTexture.h"
 
 #include <map>
 
@@ -17,12 +17,12 @@ namespace NS
 {
     namespace Gfx
     {
-        std::unique_ptr<Material> Material::Create(const MaterialDesc& desc)
+        std::unique_ptr<D3DMaterial> D3DMaterial::Create(const D3DMaterialDesc& desc)
         {
-            return std::unique_ptr<Material>(new Material(desc));
+            return std::unique_ptr<D3DMaterial>(new D3DMaterial(desc));
         }
 
-        Material::Material(const MaterialDesc& desc)
+        D3DMaterial::D3DMaterial(const D3DMaterialDesc& desc)
         {
             // 構築に失敗した場合でも後から参照できるように、設定値を先に保存しておく
             m_blend = desc.blend;
@@ -36,18 +36,18 @@ namespace NS
             }
             if (desc.vertexShader == nullptr || desc.pixelShader == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "Material: VertexShader / PixelShader が nullptr (共有参照必須)");
+                NS_LOG_ERROR(Graphics, "D3DMaterial: VertexShader / PixelShader が nullptr (共有参照必須)");
                 return;
             }
 
             // サイズ 0 の指定は定数バッファを持たない意味なので作らない
             if (desc.constantBufferSize > 0u)
             {
-                BufferDesc cbDesc = MakeConstantBufferDesc(desc.constantBufferSize);
-                std::unique_ptr<Buffer> cb = Buffer::Create(cbDesc);
+                D3DBufferDesc cbDesc = MakeConstantBufferDesc(desc.constantBufferSize);
+                std::unique_ptr<D3DBuffer> cb = D3DBuffer::Create(cbDesc);
                 if (!cb->IsValid())
                 {
-                    NS_LOG_ERROR(Graphics, "Material: ConstantBuffer 構築失敗 (byteSize={})", desc.constantBufferSize);
+                    NS_LOG_ERROR(Graphics, "D3DMaterial: ConstantBuffer 構築失敗 (byteSize={})", desc.constantBufferSize);
                     return;
                 }
                 m_cb = std::move(cb);
@@ -59,14 +59,14 @@ namespace NS
             m_valid = true;
         }
 
-        Material::~Material() = default;
+        D3DMaterial::~D3DMaterial() = default;
 
-        bool Material::IsValid() const noexcept
+        bool D3DMaterial::IsValid() const noexcept
         {
             return m_valid;
         }
 
-        bool Material::IsUsingFallback() const noexcept
+        bool D3DMaterial::IsUsingFallback() const noexcept
         {
             if (m_vertexShader == nullptr || m_pixelShader == nullptr)
             {
@@ -75,17 +75,17 @@ namespace NS
             return m_vertexShader->IsUsingFallback() || m_pixelShader->IsUsingFallback();
         }
 
-        BlendMode Material::Blend() const noexcept
+        BlendMode D3DMaterial::Blend() const noexcept
         {
             return m_blend;
         }
 
-        int Material::RenderPriority() const noexcept
+        int D3DMaterial::RenderPriority() const noexcept
         {
             return m_renderPriority;
         }
 
-        void Material::SetTexture(uint slot, const Texture* texture) noexcept
+        void D3DMaterial::SetTexture(uint slot, const D3DTexture* texture) noexcept
         {
             if (texture == nullptr)
             {
@@ -95,7 +95,7 @@ namespace NS
             m_textures[slot] = texture;
         }
 
-        void Material::UpdateParamsRaw(Renderer& renderer, const void* data, std::size_t bytes) noexcept
+        void D3DMaterial::UpdateParamsRaw(Renderer& renderer, const void* data, std::size_t bytes) noexcept
         {
             if (!IsValid() || !m_cb)
             {
@@ -104,7 +104,7 @@ namespace NS
             renderer.Commands().UpdateSubresource(*m_cb, data, bytes);
         }
 
-        void Material::Bind(Renderer& renderer) noexcept
+        void D3DMaterial::Bind(Renderer& renderer) noexcept
         {
             if (!IsValid())
             {
@@ -114,7 +114,7 @@ namespace NS
             renderer.Commands().VSSetShader(*m_vertexShader);
             renderer.Commands().PSSetShader(*m_pixelShader);
 
-            for (std::pair<const uint, const Texture*>& entry : m_textures)
+            for (std::pair<const uint, const D3DTexture*>& entry : m_textures)
             {
                 renderer.Commands().PSSetShaderResource(*entry.second, entry.first);
             }
@@ -132,7 +132,7 @@ namespace NS
             }
         }
 
-        void Material::CreateInputLayoutFor(Mesh& mesh) noexcept
+        void D3DMaterial::CreateInputLayoutFor(D3DMesh& mesh) noexcept
         {
             if (m_vertexShader != nullptr)
             {

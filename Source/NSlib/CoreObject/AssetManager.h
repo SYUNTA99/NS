@@ -3,7 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Graphics/Animation.h"
-#include "NSlib/Graphics/Material.h"
+#include "NSlib/Graphics/D3DMaterial.h"
 #include "NSlib/Graphics/Skeleton.h"
 
 #include <map>
@@ -19,19 +19,19 @@ namespace NS
 {
     namespace Gfx
     {
-        class Shader;
+        class D3DShader;
     }
     namespace Gfx
     {
-        class Texture;
+        class D3DTexture;
     }
     namespace Gfx
     {
-        class Mesh;
+        class D3DMesh;
     }
     namespace Gfx
     {
-        class StaticMesh;
+        class D3DStaticMesh;
     }
     namespace Gfx
     {
@@ -73,7 +73,7 @@ namespace NS
     //! @details 読んだ後は書き換えないので、何体のアクターでも同じ物を使う。再生の状態はアクターの側が持つ
     struct SkinnedModel
     {
-        std::unique_ptr<Gfx::SkeletalMesh> mesh;
+        std::unique_ptr<Gfx::D3DSkeletalMesh> mesh;
         Gfx::Skeleton skeleton;
     };
 
@@ -90,16 +90,16 @@ namespace NS
         //! 登録していない AssetManager を返すので、組み込みの名前は引けない
         [[nodiscard]] static AssetManager& Get() noexcept;
 
-        //! path ごとに Shader を共有する。失敗時も代替シェーダーを返す
-        [[nodiscard]] Gfx::Shader* GetOrLoadShader(std::string_view path);
-        //! path キーで Texture を共有して返す。同一 path は同一インスタンス
-        [[nodiscard]] Gfx::Texture* GetOrLoadTexture(std::string_view path);
+        //! path ごとに D3DShader を共有する。失敗時も代替シェーダーを返す
+        [[nodiscard]] Gfx::D3DShader* GetOrLoadShader(std::string_view path);
+        //! path キーで D3DTexture を共有して返す。同一 path は同一インスタンス
+        [[nodiscard]] Gfx::D3DTexture* GetOrLoadTexture(std::string_view path);
         //! @brief 欄の名前のメッシュを返す。名前は組み込みの形の名前か、ContentRoot からのファイルの道筋
         //! @details 空の名前と読めない名前は組み込みの cube で代え、読めない名前は警告する
         //! 組み込みの形の名前はファイルとして読まないので、RegisterBuiltins の前は nullptr
-        [[nodiscard]] Gfx::Mesh* LoadMesh(std::string_view name);
+        [[nodiscard]] Gfx::D3DMesh* LoadMesh(std::string_view name);
         //! LoadMesh と同じ名前の決まりで引き、読めなければ代えずに nullptr を返す。警告もしない
-        [[nodiscard]] Gfx::Mesh* TryLoadMesh(std::string_view name);
+        [[nodiscard]] Gfx::D3DMesh* TryLoadMesh(std::string_view name);
 
         //! @brief 欄の名前のメッシュの当たりを返す。名前の決まりと代わりの cube は LoadMesh と同じ
         //! @details 装置が無くても作れる。同じファイルは描く物と同じ記録から 1 回だけ読む
@@ -118,18 +118,18 @@ namespace NS
         //! 手続き生成の組み込み cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         //! device 確立後・最初の利用前に 1 度だけ呼ぶ。既登録名は上書きしない
         void RegisterBuiltins();
-        //! 名前キーで組み込み StaticMesh を引く。未登録は nullptr
+        //! 名前キーで組み込み D3DStaticMesh を引く。未登録は nullptr
         //! RegisterBuiltins を通っていない AssetManager では全部 nullptr になる
         //! 同じ名前の当たりは RegisterBuiltins 無しでも LoadMeshShape が返す
-        [[nodiscard]] Gfx::StaticMesh* Builtin(std::string_view name) const noexcept;
+        [[nodiscard]] Gfx::D3DStaticMesh* Builtin(std::string_view name) const noexcept;
         //! 登録前も取得できる組み込みの形の名前。名前の一覧はアプリ寿命で保持する
         [[nodiscard]] static std::span<const std::string_view> BuiltinMeshNames() noexcept;
         //! @brief 欄の名前のマテリアルを返す。名前は共有の material の名前か、ContentRoot からの .mat の道筋
         //! @details 空の名前と読めない名前は共有の player で代え、読めない名前は警告する
         //! 共有の名前はファイルとして読まないので、RegisterSharedMaterials の前は nullptr
-        [[nodiscard]] Gfx::Material* LoadMaterial(std::string_view name);
+        [[nodiscard]] Gfx::D3DMaterial* LoadMaterial(std::string_view name);
         //! LoadMaterial と同じ名前の決まりで引き、読めなければ代えずに nullptr を返す。警告もしない
-        [[nodiscard]] Gfx::Material* TryLoadMaterial(std::string_view name);
+        [[nodiscard]] Gfx::D3DMaterial* TryLoadMaterial(std::string_view name);
         //! name の .mat に書かれた基準色。共有の名前・空・まだ読んでいない名前は (1, 1, 1)
         [[nodiscard]] Vector3 MaterialBaseColor(std::string_view name) const;
 
@@ -137,15 +137,15 @@ namespace NS
         //! device + RegisterBuiltins 後・最初の利用前に 1 度呼ぶ。既登録名は上書きしない
         void RegisterSharedMaterials();
         //! 名前キーで共有 material を引く。キーは "player" / "water" / "shadow"。未登録は nullptr
-        [[nodiscard]] Gfx::Material* SharedMaterial(std::string_view name) const noexcept;
+        [[nodiscard]] Gfx::D3DMaterial* SharedMaterial(std::string_view name) const noexcept;
         //! 登録前も取得できる共有の材質の名前。名前の一覧はアプリ寿命で保持する
         [[nodiscard]] static std::span<const std::string_view> SharedMaterialNames() noexcept;
 
-        //! path キーのアセットを同じインスタンスのまま読み直す。現状 Shader のみ。成功で true、未キャッシュ /
+        //! path キーのアセットを同じインスタンスのまま読み直す。現状 D3DShader のみ。成功で true、未キャッシュ /
         //! 失敗で false
         [[nodiscard]] bool Reload(std::string_view path);
 
-        //! キャッシュ済み全 Shader を同じインスタンスのまま読み直す。成功本数を返す。HLSL 編集の即時反映に使う
+        //! キャッシュ済み全 D3DShader を同じインスタンスのまま読み直す。成功本数を返す。HLSL 編集の即時反映に使う
         std::size_t ReloadAllShaders();
 
         //! 全キャッシュを解放する。Renderer 破棄より前に呼ぶ
@@ -154,14 +154,14 @@ namespace NS
     private:
         struct MaterialRecord
         {
-            std::unique_ptr<Gfx::Material> material;
+            std::unique_ptr<Gfx::D3DMaterial> material;
             Vector3 baseColor{1.0f, 1.0f, 1.0f};
         };
 
         // ファイルのメッシュ 1 件。描画と当たりを一度の読み込みで作る。失敗時は両方空で記録する
         struct MeshRecord
         {
-            std::unique_ptr<Gfx::Mesh> mesh;            // GPU での生成に失敗したら空
+            std::unique_ptr<Gfx::D3DMesh> mesh;            // GPU での生成に失敗したら空
             std::unique_ptr<Phys::MeshShape> collision; // Jolt の形は当たりを頼まれた時に作る
         };
 
@@ -176,13 +176,13 @@ namespace NS
         [[nodiscard]] const Gfx::AnimSource* GetOrLoadAnimationSource(std::string_view path);
 
         std::string m_baseDir; // 相対 path 解決の基準ディレクトリ
-        std::map<std::string, std::unique_ptr<Gfx::Shader>> m_shaders;
-        std::map<std::string, std::unique_ptr<Gfx::Texture>> m_textures;
+        std::map<std::string, std::unique_ptr<Gfx::D3DShader>> m_shaders;
+        std::map<std::string, std::unique_ptr<Gfx::D3DTexture>> m_textures;
         std::map<std::string, MeshRecord> m_meshes;                                      // path キーの file mesh
         std::map<std::string, std::unique_ptr<Phys::MeshShape>> m_builtinCollisions; // 組み込み名キーの当たり
-        std::map<std::string, std::unique_ptr<Gfx::StaticMesh>> m_builtins;          // path 無し、leaf と別容器
+        std::map<std::string, std::unique_ptr<Gfx::D3DStaticMesh>> m_builtins;          // path 無し、leaf と別容器
         std::map<std::string, MaterialRecord> m_materials;                           // .mat composite
-        std::map<std::string, std::unique_ptr<Gfx::Material>> m_sharedMaterials; // 手続き共有マテリアル
+        std::map<std::string, std::unique_ptr<Gfx::D3DMaterial>> m_sharedMaterials; // 手続き共有マテリアル
         std::map<std::string, SkinnedModel> m_skinnedModels; // skinned glTF。挿入後に書き換えず、配った参照を安定させる
         std::map<std::string, std::unique_ptr<Gfx::AnimSource>>
             m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録

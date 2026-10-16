@@ -12,7 +12,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class Mesh;
+        class D3DMesh;
     }
 } // namespace NS
 
@@ -129,8 +129,8 @@ namespace GL
             // 当たりの形か構えの縮みに着地の潰れを掛け、同居する Model の描く時だけの倍率へ書く
             void WriteDrawScale(const ChargeStatus& charge, const GL::Level::ImpactAnswer& impact) noexcept;
 
-            NS::AssetRef<NS::Gfx::Mesh> m_standingMesh{"capsule"};
-            NS::AssetRef<NS::Gfx::Mesh> m_ballMesh{"sphere"};
+            NS::AssetRef<NS::Gfx::D3DMesh> m_standingMesh{"capsule"};
+            NS::AssetRef<NS::Gfx::D3DMesh> m_ballMesh{"sphere"};
             NS::Vector3 m_standingScale{1.3f, 1.15f, 1.3f};
             NS::Vector3 m_ballScale{1.3f, 1.3f, 1.3f};
             bool m_curled = false;

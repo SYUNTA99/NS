@@ -10,11 +10,11 @@ namespace NS
 {
     namespace Gfx
     {
-        class CommandList;
-        class StaticMesh;
-        class Shader;
-        class Buffer;
-        class Pipeline;
+        class D3DCommandList;
+        class D3DStaticMesh;
+        class D3DShader;
+        class D3DBuffer;
+        class D3DPipeline;
 
         //! @brief スカイボックスの描画リソース
         //! @details 無限遠の背景を描くメッシュとキューブマップを持つ
@@ -42,18 +42,18 @@ namespace NS
 
             //! 不透明の後、半透明の前に描く。変更した描画ステートは終了時に戻す
             //! viewProjNoTranslate はカメラの平行移動を除く行列、sampler は線形・端固定
-            void Draw(CommandList& commands,
+            void Draw(D3DCommandList& commands,
                       const Matrix& viewProjNoTranslate,
                       ID3D11SamplerState* sampler) const noexcept;
 
         private:
             Skybox();
 
-            std::unique_ptr<StaticMesh> m_cubeMesh;
-            std::unique_ptr<Shader> m_vs;
-            std::unique_ptr<Shader> m_ps;
-            std::unique_ptr<Buffer> m_cb;
-            std::unique_ptr<Pipeline> m_pipeline;
+            std::unique_ptr<D3DStaticMesh> m_cubeMesh;
+            std::unique_ptr<D3DShader> m_vs;
+            std::unique_ptr<D3DShader> m_ps;
+            std::unique_ptr<D3DBuffer> m_cb;
+            std::unique_ptr<D3DPipeline> m_pipeline;
             ComPtr<ID3D11ShaderResourceView> m_cubemapSrv;
             bool m_usingFallback = true;
             bool m_valid = false;

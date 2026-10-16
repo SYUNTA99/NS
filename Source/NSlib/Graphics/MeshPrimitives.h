@@ -3,7 +3,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Graphics/StaticMesh.h"
+#include "NSlib/Graphics/D3DStaticMesh.h"
 
 namespace NS
 {
@@ -15,7 +15,7 @@ namespace NS
             std::vector<StaticVertex> vertices; // 頂点データ
             std::vector<uint32> indices;    // index データ
             AABB bounds{};                  // 頂点構築時に広げた軸並行境界
-            bool hasBounds = false;             // 有効なら StaticMesh がこれを使い、無ければ頂点から算出
+            bool hasBounds = false;             // 有効なら D3DStaticMesh がこれを使い、無ければ頂点から算出
         };
 
         //! extents は各軸の半幅。面ごとに独立した法線を持つ

@@ -14,7 +14,7 @@
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/Shadow.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/Material.h"
+#include "NSlib/Graphics/D3DMaterial.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "TestAnimatedPlayerActor.h"
 #include "TestLogCapture.h"
@@ -192,7 +192,7 @@ TEST(AssetManagerLoad, MaterialWithoutARendererIsEmptyAndLogsNoError)
     ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const TestLogCapture log;
-    const NS::Gfx::Material* material = assets.TryLoadMaterial("Assets/Materials/stone.mat");
+    const NS::Gfx::D3DMaterial* material = assets.TryLoadMaterial("Assets/Materials/stone.mat");
     ASSERT_NE(material, nullptr);
     EXPECT_FALSE(material->IsValid());
     EXPECT_EQ(log.ErrorCount(), 0);

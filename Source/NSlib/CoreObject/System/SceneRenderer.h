@@ -33,7 +33,7 @@ namespace NS
     }
     namespace Gfx
     {
-        class RenderTarget;
+        class D3DRenderTarget;
     }
     namespace Gfx
     {
@@ -41,7 +41,7 @@ namespace NS
     }
     namespace Gfx
     {
-        class Texture;
+        class D3DTexture;
     }
 } // namespace NS
 
@@ -59,7 +59,7 @@ namespace NS
     //! drawShapes を持つビューだけ、描く直前に使い捨ての DebugShapes へ図形を積ませて描く
     struct SceneView
     {
-        Gfx::RenderTarget* target = nullptr; // 非所有の描画先。未指定ならウィンドウへ描く
+        Gfx::D3DRenderTarget* target = nullptr; // 非所有の描画先。未指定ならウィンドウへ描く
         std::optional<CameraPose> viewPose;      // 描画視点。空なら CameraManager の選ぶカメラ
 
         //! そのビューを描く間だけ要る開発用の図形を積む口。空なら積まない
@@ -109,7 +109,7 @@ namespace NS
         void SetBodyMask(std::vector<IRenderable*> renderables) noexcept { m_bodyMask = std::move(renderables); }
         //! @brief ビュー列の index 番目に、今のフレームで描いた体の型を返す
         //! @return 1 色 8 ビットの型。未描画なら空
-        [[nodiscard]] const Gfx::Texture* BodyMaskShown(std::size_t viewIndex) const noexcept;
+        [[nodiscard]] const Gfx::D3DTexture* BodyMaskShown(std::size_t viewIndex) const noexcept;
 
         //! IRenderable の部品の自己登録。二重登録は無視する
         void RegisterRenderable(IRenderable* renderable);

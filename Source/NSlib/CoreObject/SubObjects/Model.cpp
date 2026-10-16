@@ -5,8 +5,8 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Graphics/Material.h"
-#include "NSlib/Graphics/Mesh.h"
+#include "NSlib/Graphics/D3DMaterial.h"
+#include "NSlib/Graphics/D3DMesh.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include <cmath>
 
@@ -36,7 +36,7 @@ namespace
 
 namespace NS
 {
-    void Model::SetPerObjectVsConstant(const Gfx::Buffer* cb,
+    void Model::SetPerObjectVsConstant(const Gfx::D3DBuffer* cb,
                                        const void* cpuData,
                                        std::size_t cpuDataSize,
                                        uint slot) noexcept
@@ -172,7 +172,7 @@ namespace NS
         {
             return &m_localBoundsOverride;
         }
-        if (const Gfx::Mesh* mesh = m_mesh.Get())
+        if (const Gfx::D3DMesh* mesh = m_mesh.Get())
         {
             return &mesh->LocalBounds();
         }
@@ -236,7 +236,7 @@ namespace NS
 
     void Model::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
-        Gfx::Material* material = m_material.Get();
+        Gfx::D3DMaterial* material = m_material.Get();
         if (m_owner == nullptr || !m_owner->IsAppeared() || m_mesh.Get() == nullptr || material == nullptr)
         {
             return;
@@ -246,7 +246,7 @@ namespace NS
     }
 
     Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context,
-                                          Gfx::Material* material,
+                                          Gfx::D3DMaterial* material,
                                           const Matrix& world) const noexcept
     {
         // context.resolvedSettings は project 既定に配置された平行光まで解決済
@@ -279,7 +279,7 @@ namespace NS
 
     void Model::Ghosts::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
-        Gfx::Material* material = m_model.m_ghostMaterial.Get();
+        Gfx::D3DMaterial* material = m_model.m_ghostMaterial.Get();
         if (m_model.m_owner == nullptr || !m_model.m_owner->IsAppeared() || m_model.m_mesh.Get() == nullptr ||
             material == nullptr)
         {
@@ -330,7 +330,7 @@ namespace NS
 
     RenderBucket Model::Bucket() const noexcept
     {
-        const Gfx::Material* material = m_material.Get();
+        const Gfx::D3DMaterial* material = m_material.Get();
         if (material == nullptr || material->Blend() == Gfx::BlendMode::Opaque)
         {
             return RenderBucket::Opaque;
@@ -350,7 +350,7 @@ namespace NS
 
     int Model::SortPriority() const noexcept
     {
-        if (const Gfx::Material* material = m_material.Get())
+        if (const Gfx::D3DMaterial* material = m_material.Get())
         {
             return material->RenderPriority();
         }

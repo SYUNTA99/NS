@@ -25,7 +25,7 @@ namespace NS
         static_assert(sizeof(TremorCB) == 64, "TremorCB は Common.hlsli の震えの欄と同じ 64 byte");
 
         //! @brief 描画 1 回ごとの定数バッファー。standard.{vs,ps} と配置が一致する 288 バイト、行優先の左手系
-        //! @details world / viewProj と照明・床の波を、Material の定数バッファーへ渡す
+        //! @details world / viewProj と照明・床の波を、D3DMaterial の定数バッファーへ渡す
         struct alignas(16) FrameCB
         {
             Matrix world{};

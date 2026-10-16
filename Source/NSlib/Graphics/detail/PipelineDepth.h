@@ -2,7 +2,7 @@
 
 // DepthMode から深度とステンシルのステートの設定を組む内部ヘルパ
 
-#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/D3DPipeline.h"
 
 #include <d3d11.h>
 

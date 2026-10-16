@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/Buffer.h"
+#include "NSlib/Graphics/D3DBuffer.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
@@ -20,12 +20,12 @@ namespace NS
             }
         } // namespace
 
-        BufferDesc MakeVertexBufferDesc(const void* data,
+        D3DBufferDesc MakeVertexBufferDesc(const void* data,
                                         std::size_t vertexCount,
                                         std::size_t stride,
                                         D3D11_USAGE usage) noexcept
         {
-            BufferDesc desc{};
+            D3DBufferDesc desc{};
             desc.initialData = data;
             desc.byteSize = vertexCount * stride;
             desc.stride = stride;
@@ -35,7 +35,7 @@ namespace NS
             return desc;
         }
 
-        BufferDesc MakeIndexBufferDesc(const void* data,
+        D3DBufferDesc MakeIndexBufferDesc(const void* data,
                                        std::size_t indexCount,
                                        DXGI_FORMAT format,
                                        D3D11_USAGE usage) noexcept
@@ -47,7 +47,7 @@ namespace NS
                 }
                 return 4u;
             }();
-            BufferDesc desc{};
+            D3DBufferDesc desc{};
             desc.initialData = data;
             desc.byteSize = indexCount * elementSize;
             desc.indexFormat = format;
@@ -57,22 +57,22 @@ namespace NS
             return desc;
         }
 
-        BufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept
+        D3DBufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept
         {
-            BufferDesc desc{};
-            desc.byteSize = byteSize; // 16 バイト切り上げは Buffer のコンストラクタでやる
+            D3DBufferDesc desc{};
+            desc.byteSize = byteSize; // 16 バイト切り上げは D3DBuffer のコンストラクタでやる
             desc.usage = D3D11_USAGE_DYNAMIC;
             desc.bindFlags = D3D11_BIND_CONSTANT_BUFFER;
 
             return desc;
         }
 
-        std::unique_ptr<Buffer> Buffer::Create(const BufferDesc& desc)
+        std::unique_ptr<D3DBuffer> D3DBuffer::Create(const D3DBufferDesc& desc)
         {
-            return std::unique_ptr<Buffer>(new Buffer(desc));
+            return std::unique_ptr<D3DBuffer>(new D3DBuffer(desc));
         }
 
-        Buffer::Buffer(const BufferDesc& desc)
+        D3DBuffer::D3DBuffer(const D3DBufferDesc& desc)
         {
             const bool isConstant = (desc.bindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0u;
             const std::size_t bytes = [&]() -> std::size_t {
@@ -92,7 +92,7 @@ namespace NS
             if (device == nullptr || bytes == 0u)
             {
                 NS_LOG_ERROR(Graphics,
-                             "Buffer 構築失敗 (device={}, bytes={}, bind=0x{:X})",
+                             "D3DBuffer 構築失敗 (device={}, bytes={}, bind=0x{:X})",
                              static_cast<const void*>(device),
                              bytes,
                              static_cast<uint>(desc.bindFlags));
@@ -131,27 +131,27 @@ namespace NS
             }
         }
 
-        bool Buffer::IsValid() const noexcept
+        bool D3DBuffer::IsValid() const noexcept
         {
             return m_buffer != nullptr;
         }
-        ID3D11Buffer* Buffer::Native() const noexcept
+        ID3D11Buffer* D3DBuffer::Native() const noexcept
         {
             return m_buffer.Get();
         }
-        std::size_t Buffer::Stride() const noexcept
+        std::size_t D3DBuffer::Stride() const noexcept
         {
             return m_stride;
         }
-        std::size_t Buffer::ByteSize() const noexcept
+        std::size_t D3DBuffer::ByteSize() const noexcept
         {
             return m_byteSize;
         }
-        DXGI_FORMAT Buffer::Format() const noexcept
+        DXGI_FORMAT D3DBuffer::Format() const noexcept
         {
             return m_format;
         }
-        bool Buffer::IsDynamic() const noexcept
+        bool D3DBuffer::IsDynamic() const noexcept
         {
             return m_dynamic;
         }

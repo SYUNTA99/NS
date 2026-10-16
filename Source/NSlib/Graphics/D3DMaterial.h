@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/D3DPipeline.h"
 
 #include <map>
 #include <memory>
@@ -12,18 +12,18 @@ namespace NS
     namespace Gfx
     {
         class Renderer;
-        class Shader;
-        class Texture;
-        class Mesh;
-        class Buffer;
+        class D3DShader;
+        class D3DTexture;
+        class D3DMesh;
+        class D3DBuffer;
 
         //! @brief マテリアルの初期構築用パラメータ
         //! @details 2つのシェーダーは非所有の参照として扱うため、本マテリアルの寿命中は有効に保つ必要がある
         //! 定数バッファサイズを0に指定した場合、内部バッファは構築されずパラメータ更新関数は機能しない
-        struct MaterialDesc
+        struct D3DMaterialDesc
         {
-            Shader* vertexShader = nullptr;
-            Shader* pixelShader = nullptr;
+            D3DShader* vertexShader = nullptr;
+            D3DShader* pixelShader = nullptr;
             std::size_t constantBufferSize = 0;  //!< 内蔵定数バッファのサイズ
             uint cbSlot = 1;                 //!< 定数バッファのバインド先スロット
             BlendMode blend = BlendMode::Opaque; //!< 描画順序の分類基準
@@ -32,12 +32,12 @@ namespace NS
 
         //! シェーダーとテクスチャ、定数バッファを組み合わせるマテリアル
         //! シェーダーは非所有で、マテリアルより長く生きること。サンプラは線形ラップ固定
-        class Material : public NonCopyable
+        class D3DMaterial : public NonCopyable
         {
         public:
-            [[nodiscard]] static std::unique_ptr<Material> Create(const MaterialDesc& desc);
+            [[nodiscard]] static std::unique_ptr<D3DMaterial> Create(const D3DMaterialDesc& desc);
 
-            ~Material();
+            ~D3DMaterial();
 
             [[nodiscard]] bool IsValid() const noexcept;
 
@@ -50,17 +50,17 @@ namespace NS
             [[nodiscard]] int RenderPriority() const noexcept;
 
             //! テクスチャを設定する。nullptr ならその枠を外す
-            void SetTexture(uint slot, const Texture* texture) noexcept;
+            void SetTexture(uint slot, const D3DTexture* texture) noexcept;
 
             //! @brief 定数バッファのパラメータを更新する
-            //! @details 定数バッファを持たない Material では何もしない
+            //! @details 定数バッファを持たない D3DMaterial では何もしない
             //! @note T は alignas(16) で、サイズも 16 の倍数であること
             template <typename T> void SetParams(Renderer& renderer, const T& params) noexcept
             {
                 static_assert((sizeof(T) % 16) == 0,
-                              "Material::SetParams<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
+                              "D3DMaterial::SetParams<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
                 static_assert(alignof(T) >= 16,
-                              "Material::SetParams<T> は struct alignas(16) 必須 (Vector3 16-byte 境界)");
+                              "D3DMaterial::SetParams<T> は struct alignas(16) 必須 (Vector3 16-byte 境界)");
                 UpdateParamsRaw(renderer, &params, sizeof(T));
             }
 
@@ -69,17 +69,17 @@ namespace NS
 
             //! @brief 保持している頂点シェーダーを利用して、対象メッシュの入力レイアウトを生成する
             //! @note 描画対象のメッシュに対して事前に呼び出す必要がある
-            void CreateInputLayoutFor(Mesh& mesh) noexcept;
+            void CreateInputLayoutFor(D3DMesh& mesh) noexcept;
 
         private:
-            explicit Material(const MaterialDesc& desc);
+            explicit D3DMaterial(const D3DMaterialDesc& desc);
 
             void UpdateParamsRaw(Renderer& renderer, const void* data, std::size_t bytes) noexcept;
 
-            Shader* m_vertexShader = nullptr; // 非所有の参照
-            Shader* m_pixelShader = nullptr;  // 非所有の参照
-            std::map<uint, const Texture*> m_textures;
-            std::unique_ptr<Buffer> m_cb;
+            D3DShader* m_vertexShader = nullptr; // 非所有の参照
+            D3DShader* m_pixelShader = nullptr;  // 非所有の参照
+            std::map<uint, const D3DTexture*> m_textures;
+            std::unique_ptr<D3DBuffer> m_cb;
             uint m_cbSlot = 1;
             BlendMode m_blend = BlendMode::Opaque;
             int m_renderPriority = 0;

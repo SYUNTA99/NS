@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/Graphics/Buffer.h"
+#include "NSlib/Graphics/D3DBuffer.h"
 #include "NSlib/Graphics/D3dCommon.h"
 
 #include <string>
@@ -13,7 +13,7 @@ namespace NS
     {
         //! path があれば画像から読み、空なら指定の寸法・形式で空のテクスチャを作る
         //! path も寸法もなければ 1×1 の代替画像
-        struct TextureDesc
+        struct D3DTextureDesc
         {
             std::string path;                                //!< 読み込む画像ファイル
             UINT width = 0;                                  //!< 幅。path が空の時だけ見る
@@ -26,18 +26,18 @@ namespace NS
         };
 
         //! 2D テクスチャと指定されたビュー。画像読込失敗はピンクの代替画像で示す
-        class Texture : public NonCopyable
+        class D3DTexture : public NonCopyable
         {
         public:
             //! 参照先を必ず返す。画像の読み込み失敗は代替画像、空テクスチャの生成失敗は IsValid が false
-            [[nodiscard]] static std::unique_ptr<Texture> Create(const TextureDesc& desc);
+            [[nodiscard]] static std::unique_ptr<D3DTexture> Create(const D3DTextureDesc& desc);
 
             //! @brief 既存のテクスチャリソースを包んで生成する
             //! @param[in] existing 包む対象。空なら IsValid() が false を返す
             //! @param[in] bindFlags 作るビュー。立っている物だけ SRV / RTV / DSV を作る
-            [[nodiscard]] static std::unique_ptr<Texture> Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
+            [[nodiscard]] static std::unique_ptr<D3DTexture> Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
 
-            ~Texture();
+            ~D3DTexture();
 
             //! SRV / RTV / DSV のいずれかを作れているか
             [[nodiscard]] bool IsValid() const noexcept;
@@ -59,8 +59,8 @@ namespace NS
             [[nodiscard]] ID3D11DepthStencilView* Dsv() const noexcept;
 
         private:
-            explicit Texture(const TextureDesc& desc);
-            Texture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
+            explicit D3DTexture(const D3DTextureDesc& desc);
+            D3DTexture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
 
             ComPtr<ID3D11Texture2D> m_tex;
             ComPtr<ID3D11ShaderResourceView> m_srv;

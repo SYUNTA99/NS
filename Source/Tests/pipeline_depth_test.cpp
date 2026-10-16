@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/D3DPipeline.h"
 #include "NSlib/Graphics/detail/PipelineDepth.h"
 
 #include <gtest/gtest.h>

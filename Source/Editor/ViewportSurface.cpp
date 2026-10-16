@@ -1,7 +1,7 @@
 #include "Editor/ViewportSurface.h"
 
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Graphics/RenderTarget.h"
+#include "NSlib/Graphics/D3DRenderTarget.h"
 
 #include "NSlib/Core/Types.h"
 
@@ -99,7 +99,7 @@ namespace NS
 
             if (!m_target)
             {
-                m_target = Gfx::RenderTarget::Create(m_size);
+                m_target = Gfx::D3DRenderTarget::Create(m_size);
             }
             else
             {

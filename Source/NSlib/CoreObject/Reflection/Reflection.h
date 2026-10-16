@@ -31,11 +31,11 @@ namespace NS
 
     template <class T> constexpr AssetKind AssetKindOf() noexcept
     {
-        if constexpr (std::is_same_v<T, AssetRef<Gfx::Mesh>>)
+        if constexpr (std::is_same_v<T, AssetRef<Gfx::D3DMesh>>)
         {
             return AssetKind::Mesh;
         }
-        else if constexpr (std::is_same_v<T, AssetRef<Gfx::Material>>)
+        else if constexpr (std::is_same_v<T, AssetRef<Gfx::D3DMaterial>>)
         {
             return AssetKind::Material;
         }

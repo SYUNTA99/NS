@@ -24,15 +24,15 @@ namespace NS
 
         //! ファイル名からステージを判定して実行時にコンパイルするシェーダ
         //! 頂点・ピクセルシェーダの読込失敗はピンクの代替表示で示す
-        class Shader : public NonCopyable
+        class D3DShader : public NonCopyable
         {
         public:
             //! HLSLファイルからシェーダを生成する
-            [[nodiscard]] static std::unique_ptr<Shader> Create(std::string_view hlslPath);
+            [[nodiscard]] static std::unique_ptr<D3DShader> Create(std::string_view hlslPath);
 
             //! @brief ContentRoot の Shaders ディレクトリにある HLSL ファイルからシェーダを生成する
             //! @param[in] fileName Shaders ディレクトリ相対のファイル名 (例 "fade.vs.hlsl")
-            [[nodiscard]] static std::unique_ptr<Shader> CreateBuiltin(std::string_view fileName);
+            [[nodiscard]] static std::unique_ptr<D3DShader> CreateBuiltin(std::string_view fileName);
 
             [[nodiscard]] bool IsValid() const noexcept;
 
@@ -51,7 +51,7 @@ namespace NS
             [[nodiscard]] bool Reload();
 
         private:
-            explicit Shader(std::string_view hlslPath);
+            explicit D3DShader(std::string_view hlslPath);
 
             //! コンパイルして、成功した時だけシェーダを作る
             [[nodiscard]] bool Compile(ComPtr<ID3D11DeviceChild>& outShader,

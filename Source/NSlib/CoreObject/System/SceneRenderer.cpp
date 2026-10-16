@@ -254,7 +254,7 @@ namespace NS
         }
     }
 
-    const Gfx::Texture* SceneRenderer::BodyMaskShown(std::size_t viewIndex) const noexcept
+    const Gfx::D3DTexture* SceneRenderer::BodyMaskShown(std::size_t viewIndex) const noexcept
     {
         if (viewIndex >= m_viewPasses.size())
         {

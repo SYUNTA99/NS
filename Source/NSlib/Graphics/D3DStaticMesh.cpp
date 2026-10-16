@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/StaticMesh.h"
+#include "NSlib/Graphics/D3DStaticMesh.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"
@@ -29,16 +29,16 @@ namespace NS
             }
         } // namespace
 
-        std::unique_ptr<StaticMesh> StaticMesh::Create(const MeshDesc& desc)
+        std::unique_ptr<D3DStaticMesh> D3DStaticMesh::Create(const D3DStaticMeshDesc& desc)
         {
-            return std::unique_ptr<StaticMesh>(new StaticMesh(desc));
+            return std::unique_ptr<D3DStaticMesh>(new D3DStaticMesh(desc));
         }
 
-        StaticMesh::StaticMesh(const MeshDesc& desc)
+        D3DStaticMesh::D3DStaticMesh(const D3DStaticMeshDesc& desc)
         {
             if (Gpu().device == nullptr || Gpu().context == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "StaticMesh: Renderer の Device / Context が無効");
+                NS_LOG_ERROR(Graphics, "D3DStaticMesh: Renderer の Device / Context が無効");
                 return;
             }
 
@@ -66,7 +66,7 @@ namespace NS
             {
                 NS_LOG_ERROR(
                     Graphics,
-                    "StaticMesh: MeshDesc 不正 — fallback Cube に切替 (vertices={}, vCount={}, indices={}, iCount={})",
+                    "D3DStaticMesh: D3DStaticMeshDesc 不正 — fallback Cube に切替 (vertices={}, vCount={}, indices={}, iCount={})",
                     static_cast<const void*>(desc.vertices),
                     desc.vertexCount,
                     static_cast<const void*>(desc.indices),
@@ -75,7 +75,7 @@ namespace NS
             else
             {
                 NS_LOG_ERROR(Graphics,
-                             "StaticMesh: VertexBuffer / IndexBuffer 構築失敗 — fallback Cube に切替 (v={}, i={})",
+                             "D3DStaticMesh: VertexBuffer / IndexBuffer 構築失敗 — fallback Cube に切替 (v={}, i={})",
                              desc.vertexCount,
                              desc.indexCount);
             }
@@ -93,11 +93,11 @@ namespace NS
             }
             else
             {
-                NS_LOG_ERROR(Graphics, "StaticMesh: fallback Cube 構築失敗");
+                NS_LOG_ERROR(Graphics, "D3DStaticMesh: fallback Cube 構築失敗");
             }
         }
 
-        std::vector<InputElement> StaticMesh::StandardInputLayout()
+        std::vector<InputElement> D3DStaticMesh::StandardInputLayout()
         {
             static const std::vector<InputElement> k_Layout = {
                 InputElement{

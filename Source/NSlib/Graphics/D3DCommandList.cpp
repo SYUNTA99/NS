@@ -1,12 +1,12 @@
-#include "NSlib/Graphics/CommandList.h"
+#include "NSlib/Graphics/D3DCommandList.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Graphics/Buffer.h"
-#include "NSlib/Graphics/Mesh.h"
-#include "NSlib/Graphics/Pipeline.h"
-#include "NSlib/Graphics/Shader.h"
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DBuffer.h"
+#include "NSlib/Graphics/D3DMesh.h"
+#include "NSlib/Graphics/D3DPipeline.h"
+#include "NSlib/Graphics/D3DShader.h"
+#include "NSlib/Graphics/D3DTexture.h"
 
 namespace NS
 {
@@ -32,7 +32,7 @@ namespace NS
                 if (context == nullptr || buffer == nullptr || data == nullptr || bytes == 0u)
                 {
                     NS_LOG_ERROR(Graphics,
-                                 "CommandList::Update: 引数不正 (context={}, buffer={}, data={}, bytes={})",
+                                 "D3DCommandList::Update: 引数不正 (context={}, buffer={}, data={}, bytes={})",
                                  static_cast<const void*>(context),
                                  static_cast<const void*>(buffer),
                                  data,
@@ -43,7 +43,7 @@ namespace NS
                 const HRESULT hr = context->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(Graphics, "Buffer::Map 失敗 (hr=0x{:X})", static_cast<uint>(hr));
+                    NS_LOG_ERROR(Graphics, "D3DBuffer::Map 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                     return false;
                 }
                 std::memcpy(mapped.pData, data, bytes);
@@ -52,9 +52,9 @@ namespace NS
             }
         } // namespace
 
-        CommandList::CommandList(ID3D11DeviceContext* context) noexcept : m_context(context) {}
+        D3DCommandList::D3DCommandList(ID3D11DeviceContext* context) noexcept : m_context(context) {}
 
-        void CommandList::SetRenderTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv) noexcept
+        void D3DCommandList::SetRenderTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv) noexcept
         {
             if (m_context == nullptr)
             {
@@ -64,7 +64,7 @@ namespace NS
             m_context->OMSetRenderTargets(1u, rtvs, dsv);
         }
 
-        void CommandList::ClearRenderTarget(ID3D11RenderTargetView* rtv, float r, float g, float b, float a) noexcept
+        void D3DCommandList::ClearRenderTarget(ID3D11RenderTargetView* rtv, float r, float g, float b, float a) noexcept
         {
             if (m_context == nullptr || rtv == nullptr)
             {
@@ -74,7 +74,7 @@ namespace NS
             m_context->ClearRenderTargetView(rtv, color);
         }
 
-        void CommandList::ClearDepth(ID3D11DepthStencilView* dsv, float depth) noexcept
+        void D3DCommandList::ClearDepth(ID3D11DepthStencilView* dsv, float depth) noexcept
         {
             if (m_context == nullptr || dsv == nullptr)
             {
@@ -83,7 +83,7 @@ namespace NS
             m_context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, depth, 0);
         }
 
-        void CommandList::SetViewport(float width, float height) noexcept
+        void D3DCommandList::SetViewport(float width, float height) noexcept
         {
             if (m_context == nullptr)
             {
@@ -99,7 +99,7 @@ namespace NS
             m_context->RSSetViewports(1u, &vp);
         }
 
-        void CommandList::SetPipeline(const Pipeline& pipeline) noexcept
+        void D3DCommandList::SetPipeline(const D3DPipeline& pipeline) noexcept
         {
             if (m_context == nullptr || !pipeline.IsValid())
             {
@@ -111,7 +111,7 @@ namespace NS
         }
 
         // InputLayout は NS にラッパ型が無いため生の ID3D11InputLayout* をそのまま受ける
-        void CommandList::SetInputLayout(ID3D11InputLayout* layout) noexcept
+        void D3DCommandList::SetInputLayout(ID3D11InputLayout* layout) noexcept
         {
             if (m_context == nullptr || layout == nullptr)
             {
@@ -120,7 +120,7 @@ namespace NS
             m_context->IASetInputLayout(layout);
         }
 
-        void CommandList::SetVertexBuffer(const Buffer& buffer, uint slot) noexcept
+        void D3DCommandList::SetVertexBuffer(const D3DBuffer& buffer, uint slot) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -132,7 +132,7 @@ namespace NS
             m_context->IASetVertexBuffers(slot, 1u, buffers, &stride, &offset);
         }
 
-        void CommandList::SetIndexBuffer(const Buffer& buffer) noexcept
+        void D3DCommandList::SetIndexBuffer(const D3DBuffer& buffer) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -141,7 +141,7 @@ namespace NS
             m_context->IASetIndexBuffer(buffer.Native(), buffer.Format(), 0u);
         }
 
-        void CommandList::SetTopology(Topology topology) noexcept
+        void D3DCommandList::SetTopology(Topology topology) noexcept
         {
             if (m_context == nullptr)
             {
@@ -150,7 +150,7 @@ namespace NS
             m_context->IASetPrimitiveTopology(ToD3d(topology));
         }
 
-        void CommandList::UpdateSubresource(const Buffer& buffer, const void* data, std::size_t bytes) noexcept
+        void D3DCommandList::UpdateSubresource(const D3DBuffer& buffer, const void* data, std::size_t bytes) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid() || data == nullptr || bytes == 0u)
             {
@@ -159,7 +159,7 @@ namespace NS
             if (bytes > buffer.ByteSize())
             {
                 NS_LOG_ERROR(
-                    Graphics, "CommandList::Update: buffer サイズ超過 (req={}, max={})", bytes, buffer.ByteSize());
+                    Graphics, "D3DCommandList::Update: buffer サイズ超過 (req={}, max={})", bytes, buffer.ByteSize());
                 return;
             }
 
@@ -184,13 +184,13 @@ namespace NS
             }
             default:
                 NS_LOG_ERROR(Graphics,
-                             "CommandList::Update: IMMUTABLE/STAGING buffer は更新不可 (usage={})",
+                             "D3DCommandList::Update: IMMUTABLE/STAGING buffer は更新不可 (usage={})",
                              static_cast<int>(desc.Usage));
                 break;
             }
         }
 
-        void CommandList::UpdateSubresource(const Texture& texture, const void* data, uint rowPitch) noexcept
+        void D3DCommandList::UpdateSubresource(const D3DTexture& texture, const void* data, uint rowPitch) noexcept
         {
             if (m_context == nullptr || !texture.IsValid() || data == nullptr || rowPitch == 0u)
             {
@@ -232,14 +232,14 @@ namespace NS
             }
             default:
                 NS_LOG_ERROR(Graphics,
-                             "CommandList::Update: IMMUTABLE/STAGING texture は更新不可 (usage={})",
+                             "D3DCommandList::Update: IMMUTABLE/STAGING texture は更新不可 (usage={})",
                              static_cast<int>(desc.Usage));
                 break;
             }
         }
 
         // 実型は生成時のステージで決まる。Type を検証してから static_cast で下ろす
-        void CommandList::VSSetShader(const Shader& shader) noexcept
+        void D3DCommandList::VSSetShader(const D3DShader& shader) noexcept
         {
             if (m_context == nullptr)
             {
@@ -248,7 +248,7 @@ namespace NS
             if (shader.Type() != ShaderType::Vertex)
             {
                 NS_LOG_ERROR(Graphics,
-                             "CommandList::VSSetShader: 頂点以外の Shader を渡した (type={})",
+                             "D3DCommandList::VSSetShader: 頂点以外の D3DShader を渡した (type={})",
                              static_cast<int>(shader.Type()));
                 return;
             }
@@ -260,7 +260,7 @@ namespace NS
             m_context->VSSetShader(static_cast<ID3D11VertexShader*>(raw), nullptr, 0u);
         }
 
-        void CommandList::VSSetShaderResource(const Texture& texture, uint slot) noexcept
+        void D3DCommandList::VSSetShaderResource(const D3DTexture& texture, uint slot) noexcept
         {
             ID3D11ShaderResourceView* srv = texture.Srv();
             if (m_context == nullptr || srv == nullptr)
@@ -272,7 +272,7 @@ namespace NS
         }
 
         // サンプラーは NS にラッパ型が無いため生の ID3D11SamplerState* をそのまま受ける
-        void CommandList::VSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
+        void D3DCommandList::VSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
             if (m_context == nullptr || sampler == nullptr)
             {
@@ -282,7 +282,7 @@ namespace NS
             m_context->VSSetSamplers(slot, 1u, samplers);
         }
 
-        void CommandList::VSSetConstantBuffer(const Buffer& buffer, uint slot) noexcept
+        void D3DCommandList::VSSetConstantBuffer(const D3DBuffer& buffer, uint slot) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -292,7 +292,7 @@ namespace NS
             m_context->VSSetConstantBuffers(slot, 1u, buffers);
         }
 
-        void CommandList::PSSetShader(const Shader& shader) noexcept
+        void D3DCommandList::PSSetShader(const D3DShader& shader) noexcept
         {
             if (m_context == nullptr)
             {
@@ -301,7 +301,7 @@ namespace NS
             if (shader.Type() != ShaderType::Pixel)
             {
                 NS_LOG_ERROR(Graphics,
-                             "CommandList::PSSetShader: ピクセル以外の Shader を渡した (type={})",
+                             "D3DCommandList::PSSetShader: ピクセル以外の D3DShader を渡した (type={})",
                              static_cast<int>(shader.Type()));
                 return;
             }
@@ -313,7 +313,7 @@ namespace NS
             m_context->PSSetShader(static_cast<ID3D11PixelShader*>(raw), nullptr, 0u);
         }
 
-        void CommandList::PSSetShaderResource(const Texture& texture, uint slot) noexcept
+        void D3DCommandList::PSSetShaderResource(const D3DTexture& texture, uint slot) noexcept
         {
             ID3D11ShaderResourceView* srv = texture.Srv();
             if (m_context == nullptr || srv == nullptr)
@@ -324,7 +324,7 @@ namespace NS
             m_context->PSSetShaderResources(slot, 1u, srvs);
         }
 
-        void CommandList::PSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
+        void D3DCommandList::PSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
             if (m_context == nullptr || sampler == nullptr)
             {
@@ -334,7 +334,7 @@ namespace NS
             m_context->PSSetSamplers(slot, 1u, samplers);
         }
 
-        void CommandList::PSSetConstantBuffer(const Buffer& buffer, uint slot) noexcept
+        void D3DCommandList::PSSetConstantBuffer(const D3DBuffer& buffer, uint slot) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -344,7 +344,7 @@ namespace NS
             m_context->PSSetConstantBuffers(slot, 1u, buffers);
         }
 
-        void CommandList::GSSetShader(const Shader& shader) noexcept
+        void D3DCommandList::GSSetShader(const D3DShader& shader) noexcept
         {
             if (m_context == nullptr)
             {
@@ -353,7 +353,7 @@ namespace NS
             if (shader.Type() != ShaderType::Geometry)
             {
                 NS_LOG_ERROR(Graphics,
-                             "CommandList::GSSetShader: ジオメトリ以外の Shader を渡した (type={})",
+                             "D3DCommandList::GSSetShader: ジオメトリ以外の D3DShader を渡した (type={})",
                              static_cast<int>(shader.Type()));
                 return;
             }
@@ -365,7 +365,7 @@ namespace NS
             m_context->GSSetShader(static_cast<ID3D11GeometryShader*>(raw), nullptr, 0u);
         }
 
-        void CommandList::GSSetShaderResource(const Texture& texture, uint slot) noexcept
+        void D3DCommandList::GSSetShaderResource(const D3DTexture& texture, uint slot) noexcept
         {
             ID3D11ShaderResourceView* srv = texture.Srv();
             if (m_context == nullptr || srv == nullptr)
@@ -376,7 +376,7 @@ namespace NS
             m_context->GSSetShaderResources(slot, 1u, srvs);
         }
 
-        void CommandList::GSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
+        void D3DCommandList::GSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
             if (m_context == nullptr || sampler == nullptr)
             {
@@ -386,7 +386,7 @@ namespace NS
             m_context->GSSetSamplers(slot, 1u, samplers);
         }
 
-        void CommandList::GSSetConstantBuffer(const Buffer& buffer, uint slot) noexcept
+        void D3DCommandList::GSSetConstantBuffer(const D3DBuffer& buffer, uint slot) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -396,7 +396,7 @@ namespace NS
             m_context->GSSetConstantBuffers(slot, 1u, buffers);
         }
 
-        void CommandList::CSSetShader(const Shader& shader) noexcept
+        void D3DCommandList::CSSetShader(const D3DShader& shader) noexcept
         {
             if (m_context == nullptr)
             {
@@ -405,7 +405,7 @@ namespace NS
             if (shader.Type() != ShaderType::Compute)
             {
                 NS_LOG_ERROR(Graphics,
-                             "CommandList::CSSetShader: コンピュート以外の Shader を渡した (type={})",
+                             "D3DCommandList::CSSetShader: コンピュート以外の D3DShader を渡した (type={})",
                              static_cast<int>(shader.Type()));
                 return;
             }
@@ -417,7 +417,7 @@ namespace NS
             m_context->CSSetShader(static_cast<ID3D11ComputeShader*>(raw), nullptr, 0u);
         }
 
-        void CommandList::CSSetShaderResource(const Texture& texture, uint slot) noexcept
+        void D3DCommandList::CSSetShaderResource(const D3DTexture& texture, uint slot) noexcept
         {
             ID3D11ShaderResourceView* srv = texture.Srv();
             if (m_context == nullptr || srv == nullptr)
@@ -428,7 +428,7 @@ namespace NS
             m_context->CSSetShaderResources(slot, 1u, srvs);
         }
 
-        void CommandList::CSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
+        void D3DCommandList::CSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
             if (m_context == nullptr || sampler == nullptr)
             {
@@ -438,7 +438,7 @@ namespace NS
             m_context->CSSetSamplers(slot, 1u, samplers);
         }
 
-        void CommandList::CSSetConstantBuffer(const Buffer& buffer, uint slot) noexcept
+        void D3DCommandList::CSSetConstantBuffer(const D3DBuffer& buffer, uint slot) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -448,7 +448,7 @@ namespace NS
             m_context->CSSetConstantBuffers(slot, 1u, buffers);
         }
 
-        void CommandList::DrawIndexed(uint indexCount) noexcept
+        void D3DCommandList::DrawIndexed(uint indexCount) noexcept
         {
             if (m_context != nullptr)
             {
@@ -456,7 +456,7 @@ namespace NS
             }
         }
 
-        void CommandList::Draw(uint vertexCount) noexcept
+        void D3DCommandList::Draw(uint vertexCount) noexcept
         {
             if (m_context != nullptr)
             {
@@ -464,12 +464,12 @@ namespace NS
             }
         }
 
-        ID3D11DeviceContext* CommandList::Native() const noexcept
+        ID3D11DeviceContext* D3DCommandList::Native() const noexcept
         {
             return m_context;
         }
 
-        ID3D11DeviceContext* CommandList::operator->() const noexcept
+        ID3D11DeviceContext* D3DCommandList::operator->() const noexcept
         {
             return m_context;
         }

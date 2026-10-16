@@ -1,10 +1,10 @@
 #include "NSlib/Graphics/DrawItem.h"
 
-#include "NSlib/Graphics/CommandList.h"
-#include "NSlib/Graphics/Material.h"
-#include "NSlib/Graphics/Mesh.h"
+#include "NSlib/Graphics/D3DCommandList.h"
+#include "NSlib/Graphics/D3DMaterial.h"
+#include "NSlib/Graphics/D3DMesh.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Graphics/Shader.h"
+#include "NSlib/Graphics/D3DShader.h"
 
 namespace NS
 {
@@ -15,7 +15,7 @@ namespace NS
             // パイプラインは呼ぶ前に設定する
             void BindDrawItem(Renderer& renderer, const DrawItem& item) noexcept
             {
-                CommandList& cmd = renderer.Commands();
+                D3DCommandList& cmd = renderer.Commands();
                 item.material->CreateInputLayoutFor(*item.mesh);
                 item.material->SetParams(renderer, item.constants);
 
@@ -40,7 +40,7 @@ namespace NS
                 return;
             }
 
-            CommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = renderer.Commands();
 
             // 前回の描画ステートを引き継がないよう、描画ごとにパイプラインを設定する
             if (item.occludedOnly)
@@ -57,15 +57,15 @@ namespace NS
 
         void IssueDrawItemWith(Renderer& renderer,
                                const DrawItem& item,
-                               const Pipeline& pipeline,
-                               const Shader& pixelShader) noexcept
+                               const D3DPipeline& pipeline,
+                               const D3DShader& pixelShader) noexcept
         {
             if (item.mesh == nullptr || item.material == nullptr)
             {
                 return;
             }
 
-            CommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = renderer.Commands();
             cmd.SetPipeline(pipeline);
             BindDrawItem(renderer, item);
             cmd.PSSetShader(pixelShader);

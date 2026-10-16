@@ -26,8 +26,8 @@ namespace NS
 {
     namespace Gfx
     {
-        class Material;
-        class Mesh;
+        class D3DMaterial;
+        class D3DMesh;
     } // namespace Gfx
 } // namespace NS
 
@@ -130,9 +130,9 @@ namespace GL
         //! 矢印を描く資材。どれも非所有
         struct SlamArrowDrawAssets
         {
-            NS::Gfx::Mesh* mesh = nullptr; //!< 共有の上向きの板
-            NS::Gfx::Material* bandMaterial = nullptr;
-            NS::Gfx::Material* headMaterial = nullptr;
+            NS::Gfx::D3DMesh* mesh = nullptr; //!< 共有の上向きの板
+            NS::Gfx::D3DMaterial* bandMaterial = nullptr;
+            NS::Gfx::D3DMaterial* headMaterial = nullptr;
         };
 
         //! 配置済みの帯・矢じりと、隠れた部分用の矢じりを out へ追加する。資材が空でも追加する
@@ -209,9 +209,9 @@ namespace GL
             NS_REFLECT_END()
 
         private:
-            NS::AssetRef<NS::Gfx::Mesh> m_mesh{"shadowQuad"}; // 共有の上向きの板
-            NS::AssetRef<NS::Gfx::Material> m_bandMaterial{"Assets/Materials/ground_arrow_band.mat"};
-            NS::AssetRef<NS::Gfx::Material> m_headMaterial{"Assets/Materials/ground_arrow_head.mat"};
+            NS::AssetRef<NS::Gfx::D3DMesh> m_mesh{"shadowQuad"}; // 共有の上向きの板
+            NS::AssetRef<NS::Gfx::D3DMaterial> m_bandMaterial{"Assets/Materials/ground_arrow_band.mat"};
+            NS::AssetRef<NS::Gfx::D3DMaterial> m_headMaterial{"Assets/Materials/ground_arrow_head.mat"};
             SlamArrowDesc m_desc{};
             SlamArrowShape m_shown{}; // 控えた矢印。m_hasShown が偽の間は読まない
             bool m_hasShown = false;

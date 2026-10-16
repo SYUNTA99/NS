@@ -12,11 +12,11 @@ namespace NS
 {
     namespace Gfx
     {
-        class Mesh;
+        class D3DMesh;
     }
     namespace Gfx
     {
-        class Material;
+        class D3DMaterial;
     }
 } // namespace NS
 
@@ -57,8 +57,8 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        AssetRef<Gfx::Mesh> m_mesh{"shadowQuad"};     // 影を描く板
-        AssetRef<Gfx::Material> m_material{"shadow"}; // 影のマテリアル
+        AssetRef<Gfx::D3DMesh> m_mesh{"shadowQuad"};     // 影を描く板
+        AssetRef<Gfx::D3DMaterial> m_material{"shadow"}; // 影のマテリアル
 
         float m_baseDiameter = 1.2f;   // 接地時の影の直径
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離

@@ -20,10 +20,10 @@ namespace NS
         class Renderer;
 
         //! Renderer が所有する DirectXTK の共通描画ステート
-        class CommonStates : public NonCopyable
+        class D3DCommonStates : public NonCopyable
         {
         public:
-            ~CommonStates();
+            ~D3DCommonStates();
 
             [[nodiscard]] bool IsValid() const noexcept;
 
@@ -45,7 +45,7 @@ namespace NS
             std::unique_ptr<DirectX::CommonStates> m_states;
 
             friend class Renderer;
-            explicit CommonStates(ID3D11Device* device) noexcept;
+            explicit D3DCommonStates(ID3D11Device* device) noexcept;
         };
     } // namespace Gfx
 } // namespace NS

@@ -4,9 +4,9 @@
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/RenderTarget.h"
+#include "NSlib/Graphics/D3DRenderTarget.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DTexture.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 
@@ -50,7 +50,7 @@ namespace
     };
 
     // 型を行の順に 1 画素 1 バイトで読む。読めなければ空
-    std::vector<NS::uint8> ReadMask(const NS::Gfx::Texture& mask)
+    std::vector<NS::uint8> ReadMask(const NS::Gfx::D3DTexture& mask)
     {
         ID3D11Texture2D* texture = mask.Native();
         D3D11_TEXTURE2D_DESC desc{};
@@ -94,7 +94,7 @@ namespace
         {
             m_assets.RegisterBuiltins();
             m_assets.RegisterSharedMaterials();
-            m_target = NS::Gfx::RenderTarget::Create({k_Width, k_Height});
+            m_target = NS::Gfx::D3DRenderTarget::Create({k_Width, k_Height});
         }
 
         ~BodyMaskRig()
@@ -127,7 +127,7 @@ namespace
             scene.SetSceneViews({NS::SceneView{m_target.get(), pose}});
             scene.OnRender();
             scene.SetSceneViews({});
-            const NS::Gfx::Texture* mask = scene.BodyMaskShown(0);
+            const NS::Gfx::D3DTexture* mask = scene.BodyMaskShown(0);
             if (mask == nullptr)
             {
                 return {};
@@ -139,7 +139,7 @@ namespace
         NS::OS::Window m_window;
         NS::Gfx::Renderer m_renderer;
         NS::AssetManager m_assets;
-        std::unique_ptr<NS::Gfx::RenderTarget> m_target;
+        std::unique_ptr<NS::Gfx::D3DRenderTarget> m_target;
     };
 
     int CountSet(const std::vector<NS::uint8>& mask)

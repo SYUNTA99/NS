@@ -27,7 +27,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class Texture;
+        class D3DTexture;
 
         //! Effekseer の再生と描画。Renderer の構築後に作り、Preload 後に再生する
         //! 無効な状態では各操作を行わない
@@ -96,7 +96,7 @@ namespace NS
             // 奥行きの写し先 1 枚。描画先の大きさで引く
             struct DepthCopy
             {
-                std::unique_ptr<Texture> texture;
+                std::unique_ptr<D3DTexture> texture;
                 Effekseer::Backend::TextureRef effekseerTexture;
                 uint32 width = 0;
                 uint32 height = 0;

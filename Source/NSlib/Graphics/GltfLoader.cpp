@@ -260,7 +260,7 @@ namespace NS
 
                 // 頂点を世界変換して左手系で積む
                 geom.vertices.reserve(geom.vertices.size() + vertexCount);
-                // 頂点を積むついでに軸並行境界を広げ、StaticMesh 側の二度目の全走査を省く
+                // 頂点を積むついでに軸並行境界を広げ、D3DStaticMesh 側の二度目の全走査を省く
                 Vector3 pmin{0.0f, 0.0f, 0.0f};
                 Vector3 pmax{0.0f, 0.0f, 0.0f};
                 for (cgltf_size i = 0; i < vertexCount; ++i)

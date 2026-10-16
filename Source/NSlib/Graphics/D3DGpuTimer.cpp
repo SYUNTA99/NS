@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/GpuTimer.h"
+#include "NSlib/Graphics/D3DGpuTimer.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/GraphicObject.h"
@@ -37,12 +37,12 @@ namespace NS
             }
         } // namespace
 
-        GpuTimer::GpuTimer() noexcept
+        D3DGpuTimer::D3DGpuTimer() noexcept
         {
             ID3D11Device* device = Gpu().device;
             if (device == nullptr)
             {
-                NS_LOG_WARN(Graphics, "GpuTimer: Renderer が未構築のため無効のまま作る");
+                NS_LOG_WARN(Graphics, "D3DGpuTimer: Renderer が未構築のため無効のまま作る");
                 return;
             }
 
@@ -54,21 +54,21 @@ namespace NS
                 FAILED(device->CreateQuery(&timestampDesc, &m_start)) ||
                 FAILED(device->CreateQuery(&timestampDesc, &m_end)))
             {
-                NS_LOG_ERROR(Graphics, "GpuTimer: 時刻の問い合わせを作れなかった");
+                NS_LOG_ERROR(Graphics, "D3DGpuTimer: 時刻の問い合わせを作れなかった");
                 m_disjoint.Reset();
                 m_start.Reset();
                 m_end.Reset();
             }
         }
 
-        GpuTimer::~GpuTimer() = default;
+        D3DGpuTimer::~D3DGpuTimer() = default;
 
-        bool GpuTimer::IsValid() const noexcept
+        bool D3DGpuTimer::IsValid() const noexcept
         {
             return m_disjoint != nullptr && m_start != nullptr && m_end != nullptr;
         }
 
-        void GpuTimer::Begin() noexcept
+        void D3DGpuTimer::Begin() noexcept
         {
             ID3D11DeviceContext* context = Gpu().context;
             if (!IsValid() || context == nullptr)
@@ -86,7 +86,7 @@ namespace NS
             m_ended = false;
         }
 
-        void GpuTimer::End() noexcept
+        void D3DGpuTimer::End() noexcept
         {
             ID3D11DeviceContext* context = Gpu().context;
             if (!IsValid() || context == nullptr || !m_begun)
@@ -99,7 +99,7 @@ namespace NS
             m_ended = true;
         }
 
-        std::optional<float> GpuTimer::ReadMilliseconds() noexcept
+        std::optional<float> D3DGpuTimer::ReadMilliseconds() noexcept
         {
             ID3D11DeviceContext* context = Gpu().context;
             if (!IsValid() || context == nullptr || !m_ended)
@@ -116,7 +116,7 @@ namespace NS
                 !WaitForData(context, m_start.Get(), start, deadline) ||
                 !WaitForData(context, m_end.Get(), end, deadline))
             {
-                NS_LOG_WARN(Graphics, "GpuTimer: 描画装置の時刻を読めなかった");
+                NS_LOG_WARN(Graphics, "D3DGpuTimer: 描画装置の時刻を読めなかった");
                 return std::nullopt;
             }
             // 刻みが途中で変わった区間の差は時間にならない (電源の切り替えなど)

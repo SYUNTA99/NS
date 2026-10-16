@@ -13,7 +13,7 @@
 #include "NSlib/CoreObject/SubObjects/Collider.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Graphics/Mesh.h"
+#include "NSlib/Graphics/D3DMesh.h"
 
 #include <algorithm>
 

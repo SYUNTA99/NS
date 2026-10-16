@@ -42,8 +42,8 @@ namespace NS
             Occluded
         };
 
-        //! Pipeline 構築パラメータ
-        struct PipelineDesc
+        //! D3DPipeline 構築パラメータ
+        struct D3DPipelineDesc
         {
             CullMode cull = CullMode::Back;
             FillMode fill = FillMode::Solid;
@@ -52,29 +52,29 @@ namespace NS
         };
 
         //! @brief ラスタライザやブレンドなどの描画ステートを一括管理するクラス
-        //! @details CommandList::SetPipeline へ渡すと 3 つのステートをまとめて適用できる
-        class Pipeline : public NonCopyable
+        //! @details D3DCommandList::SetPipeline へ渡すと 3 つのステートをまとめて適用できる
+        class D3DPipeline : public NonCopyable
         {
         public:
             //! @brief パイプラインを生成する
             //! @return 生成失敗時も非nullのインスタンスを返すが、無効な状態となる
-            [[nodiscard]] static std::unique_ptr<Pipeline> Create(const PipelineDesc& desc);
+            [[nodiscard]] static std::unique_ptr<D3DPipeline> Create(const D3DPipelineDesc& desc);
 
-            ~Pipeline();
+            ~D3DPipeline();
 
             [[nodiscard]] bool IsValid() const noexcept;
 
             //! 構築時に指定されたパラメータを返す
-            [[nodiscard]] const PipelineDesc& Desc() const noexcept;
+            [[nodiscard]] const D3DPipelineDesc& Desc() const noexcept;
 
             [[nodiscard]] ID3D11RasterizerState* RasterizerState() const noexcept;
             [[nodiscard]] ID3D11BlendState* BlendState() const noexcept;
             [[nodiscard]] ID3D11DepthStencilState* DepthStencilState() const noexcept;
 
         private:
-            explicit Pipeline(const PipelineDesc& desc) noexcept;
+            explicit D3DPipeline(const D3DPipelineDesc& desc) noexcept;
 
-            PipelineDesc m_desc{};
+            D3DPipelineDesc m_desc{};
             ComPtr<ID3D11RasterizerState> m_rasterizer;
             ComPtr<ID3D11BlendState> m_blend;
             ComPtr<ID3D11DepthStencilState> m_depthStencil;

@@ -5,19 +5,19 @@
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/Graphics/Material.h"
-#include "NSlib/Graphics/Mesh.h"
+#include "NSlib/Graphics/D3DMaterial.h"
+#include "NSlib/Graphics/D3DMesh.h"
 
 #include <string>
 
 namespace NS
 {
-    void LoadAssetRef(AssetRef<Gfx::Mesh>& ref)
+    void LoadAssetRef(AssetRef<Gfx::D3DMesh>& ref)
     {
         ref.SetLoaded(AssetManager::Get().LoadMesh(ref.Name()));
     }
 
-    void LoadAssetRef(AssetRef<Gfx::Material>& ref)
+    void LoadAssetRef(AssetRef<Gfx::D3DMaterial>& ref)
     {
         ref.SetLoaded(AssetManager::Get().LoadMaterial(ref.Name()));
     }

@@ -9,20 +9,20 @@ namespace NS
 {
     namespace Gfx
     {
-        class Texture;
+        class D3DTexture;
 
         //! @brief シーンをテクスチャへ描くためのオフスクリーン描画先
         //! @details カラー (RTV+SRV) と深度 (DSV) を 1 組で持ち、Renderer::SetSceneTarget へ渡して使う
         //! 構築に失敗した場合は例外を送出せず、無効な状態として扱う
-        class RenderTarget : public NonCopyable
+        class D3DRenderTarget : public NonCopyable
         {
         public:
             //! @brief 指定サイズのオフスクリーン描画先を生成する
             //! @param[in] size 幅と高さ。0 以下の成分があると無効なインスタンスを返す
             //! @return 成否にかかわらず参照先を返す。成否は IsValid で確認する
-            [[nodiscard]] static std::unique_ptr<RenderTarget> Create(Size2D size);
+            [[nodiscard]] static std::unique_ptr<D3DRenderTarget> Create(Size2D size);
 
-            ~RenderTarget();
+            ~D3DRenderTarget();
 
             [[nodiscard]] bool IsValid() const noexcept;
 
@@ -34,23 +34,23 @@ namespace NS
             void Resize(Size2D size) noexcept;
 
             //! 描画先となるカラーテクスチャ (RTV+SRV)。無効時は nullptr
-            [[nodiscard]] Texture* Color() const noexcept;
+            [[nodiscard]] D3DTexture* Color() const noexcept;
 
             //! 深度テクスチャ (DSV)。無効時は nullptr
-            [[nodiscard]] Texture* Depth() const noexcept;
+            [[nodiscard]] D3DTexture* Depth() const noexcept;
 
             //! @brief UI (ImGui::Image) へ渡すためのカラー SRV ハンドルを取得する
             //! @return 無効時は nullptr。型を伏せた非所有ポインタで、寿命はこのインスタンスに従う
             [[nodiscard]] void* UiTextureHandle() const noexcept;
 
         private:
-            explicit RenderTarget(Size2D size);
+            explicit D3DRenderTarget(Size2D size);
 
             //! カラーと深度を組で作り直す。片方でも失敗したら両方とも持たない
             void Build(Size2D size) noexcept;
 
-            std::unique_ptr<Texture> m_color; // カラー (RTV+SRV)
-            std::unique_ptr<Texture> m_depth; // 深度 (DSV)
+            std::unique_ptr<D3DTexture> m_color; // カラー (RTV+SRV)
+            std::unique_ptr<D3DTexture> m_depth; // 深度 (DSV)
         };
     } // namespace Gfx
 } // namespace NS

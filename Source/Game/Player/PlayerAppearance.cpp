@@ -363,7 +363,7 @@ namespace GL
                 return;
             }
 
-            NS::Gfx::Mesh* mesh = m_standingMesh.Get();
+            NS::Gfx::D3DMesh* mesh = m_standingMesh.Get();
             NS::Vector3 scale = m_standingScale;
             if (m_curled)
             {

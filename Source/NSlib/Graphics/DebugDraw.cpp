@@ -5,14 +5,14 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Sphere.h"
-#include "NSlib/Graphics/Buffer.h"
-#include "NSlib/Graphics/CommandList.h"
+#include "NSlib/Graphics/D3DBuffer.h"
+#include "NSlib/Graphics/D3DCommandList.h"
 #include "NSlib/Graphics/D3dCommon.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/Mesh.h"
-#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/D3DMesh.h"
+#include "NSlib/Graphics/D3DPipeline.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Graphics/Shader.h"
+#include "NSlib/Graphics/D3DShader.h"
 
 namespace
 {
@@ -35,14 +35,14 @@ namespace
     // 描画用のリソース一式
     struct LineBackend
     {
-        std::unique_ptr<NS::Gfx::Shader> vs;
-        std::unique_ptr<NS::Gfx::Shader> ps;
+        std::unique_ptr<NS::Gfx::D3DShader> vs;
+        std::unique_ptr<NS::Gfx::D3DShader> ps;
         NS::Gfx::ComPtr<ID3D11InputLayout> inputLayout;
-        std::unique_ptr<NS::Gfx::Buffer> vb;
-        std::unique_ptr<NS::Gfx::Buffer> faceVb;
-        std::unique_ptr<NS::Gfx::Buffer> cb;
+        std::unique_ptr<NS::Gfx::D3DBuffer> vb;
+        std::unique_ptr<NS::Gfx::D3DBuffer> faceVb;
+        std::unique_ptr<NS::Gfx::D3DBuffer> cb;
         // 面は奥の側も見せるので裏表とも描く。深度を見ないので、物の表面と重なった面もちらつかずに透ける
-        std::unique_ptr<NS::Gfx::Pipeline> facePipeline;
+        std::unique_ptr<NS::Gfx::D3DPipeline> facePipeline;
         bool initAttempted = false;
         bool valid = false;
     };
@@ -69,8 +69,8 @@ namespace
             return false;
         }
 
-        b.vs = NS::Gfx::Shader::CreateBuiltin("debug_line.vs.hlsl");
-        b.ps = NS::Gfx::Shader::CreateBuiltin("debug_line.ps.hlsl");
+        b.vs = NS::Gfx::D3DShader::CreateBuiltin("debug_line.vs.hlsl");
+        b.ps = NS::Gfx::D3DShader::CreateBuiltin("debug_line.ps.hlsl");
         if (!b.vs->IsValid() || !b.ps->IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: shader 構築失敗");
@@ -90,23 +90,23 @@ namespace
             return false;
         }
 
-        b.vb = NS::Gfx::Buffer::Create(
+        b.vb = NS::Gfx::D3DBuffer::Create(
             NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxVertices, k_VertexStride, D3D11_USAGE_DYNAMIC));
-        b.faceVb = NS::Gfx::Buffer::Create(
+        b.faceVb = NS::Gfx::D3DBuffer::Create(
             NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxFaceVertices, k_VertexStride, D3D11_USAGE_DYNAMIC));
-        b.cb = NS::Gfx::Buffer::Create(NS::Gfx::MakeConstantBufferDesc(sizeof(NS::Matrix)));
+        b.cb = NS::Gfx::D3DBuffer::Create(NS::Gfx::MakeConstantBufferDesc(sizeof(NS::Matrix)));
         if (!b.vb->IsValid() || !b.faceVb->IsValid() || !b.cb->IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: VB / CB 構築失敗");
             return false;
         }
 
-        b.facePipeline = NS::Gfx::Pipeline::Create(NS::Gfx::PipelineDesc{.cull = NS::Gfx::CullMode::None,
+        b.facePipeline = NS::Gfx::D3DPipeline::Create(NS::Gfx::D3DPipelineDesc{.cull = NS::Gfx::CullMode::None,
                                                                          .blend = NS::Gfx::BlendMode::Alpha,
                                                                          .depth = NS::Gfx::DepthMode::Disabled});
         if (!b.facePipeline->IsValid())
         {
-            NS_LOG_ERROR(Graphics, "DebugDraw: 面の Pipeline 構築失敗");
+            NS_LOG_ERROR(Graphics, "DebugDraw: 面の D3DPipeline 構築失敗");
             return false;
         }
 
@@ -279,7 +279,7 @@ namespace NS
                 return;
             }
 
-            CommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = renderer.Commands();
             if (cmd.Native() == nullptr)
             {
                 return;

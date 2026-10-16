@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Graphics/SkeletalMesh.h"
+#include "NSlib/Graphics/D3DSkeletalMesh.h"
 
 #include <span>
 #include <string>

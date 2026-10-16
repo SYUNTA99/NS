@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DTexture.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
@@ -27,7 +27,7 @@ namespace NS
                     if (FAILED(hr))
                     {
                         NS_LOG_ERROR(Graphics,
-                                     "Texture: ID3D11Texture2D への QI 失敗、 2D 以外のリソースの可能性 (hr=0x{:X})",
+                                     "D3DTexture: ID3D11Texture2D への QI 失敗、 2D 以外のリソースの可能性 (hr=0x{:X})",
                                      static_cast<uint>(hr));
                     }
                 }
@@ -75,7 +75,7 @@ namespace NS
                     if (FAILED(hr))
                     {
                         NS_LOG_ERROR(
-                            Graphics, "Texture: CreateShaderResourceView 失敗 (hr=0x{:X})", static_cast<uint>(hr));
+                            Graphics, "D3DTexture: CreateShaderResourceView 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                     }
                 }
                 if (bindFlags & D3D11_BIND_RENDER_TARGET)
@@ -84,7 +84,7 @@ namespace NS
                     if (FAILED(hr))
                     {
                         NS_LOG_ERROR(
-                            Graphics, "Texture: CreateRenderTargetView 失敗 (hr=0x{:X})", static_cast<uint>(hr));
+                            Graphics, "D3DTexture: CreateRenderTargetView 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                     }
                 }
                 if (bindFlags & D3D11_BIND_DEPTH_STENCIL)
@@ -93,7 +93,7 @@ namespace NS
                     if (FAILED(hr))
                     {
                         NS_LOG_ERROR(
-                            Graphics, "Texture: CreateDepthStencilView 失敗 (hr=0x{:X})", static_cast<uint>(hr));
+                            Graphics, "D3DTexture: CreateDepthStencilView 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                     }
                 }
             }
@@ -127,14 +127,14 @@ namespace NS
                 if (FAILED(hr))
                 {
                     NS_LOG_ERROR(
-                        Graphics, "Texture fallback CreateTexture2D 失敗 (hr=0x{:X})", static_cast<uint>(hr));
+                        Graphics, "D3DTexture fallback CreateTexture2D 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                     return false;
                 }
 
                 hr = device->CreateShaderResourceView(tex2d.Get(), nullptr, outSrv.GetAddressOf());
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(Graphics, "Texture fallback CreateSRV 失敗 (hr=0x{:X})", static_cast<uint>(hr));
+                    NS_LOG_ERROR(Graphics, "D3DTexture fallback CreateSRV 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                     return false;
                 }
 
@@ -192,7 +192,7 @@ namespace NS
 
             // 中身の無いテクスチャを作る。mipmap 1 枚・単層のみ
             bool CreateEmptyTexture(ID3D11Device* device,
-                                    const TextureDesc& desc,
+                                    const D3DTextureDesc& desc,
                                     ComPtr<ID3D11Texture2D>& outTex) noexcept
             {
                 D3D11_TEXTURE2D_DESC td{};
@@ -210,7 +210,7 @@ namespace NS
                 if (FAILED(hr))
                 {
                     NS_LOG_ERROR(Graphics,
-                                 "Texture: CreateTexture2D 失敗 (W={} H={} hr=0x{:X})",
+                                 "D3DTexture: CreateTexture2D 失敗 (W={} H={} hr=0x{:X})",
                                  desc.width,
                                  desc.height,
                                  static_cast<uint>(hr));
@@ -220,17 +220,17 @@ namespace NS
             }
         } // namespace
 
-        std::unique_ptr<Texture> Texture::Create(const TextureDesc& desc)
+        std::unique_ptr<D3DTexture> D3DTexture::Create(const D3DTextureDesc& desc)
         {
-            return std::unique_ptr<Texture>(new Texture(desc));
+            return std::unique_ptr<D3DTexture>(new D3DTexture(desc));
         }
 
-        std::unique_ptr<Texture> Texture::Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
+        std::unique_ptr<D3DTexture> D3DTexture::Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
         {
-            return std::unique_ptr<Texture>(new Texture(std::move(existing), bindFlags));
+            return std::unique_ptr<D3DTexture>(new D3DTexture(std::move(existing), bindFlags));
         }
 
-        Texture::Texture(const TextureDesc& desc)
+        D3DTexture::D3DTexture(const D3DTextureDesc& desc)
         {
             ID3D11Device* device = Gpu().device;
             ID3D11DeviceContext* context = Gpu().context;
@@ -275,7 +275,7 @@ namespace NS
                 }
                 else
                 {
-                    NS_LOG_ERROR(Graphics, "Texture load failed: {}", desc.path);
+                    NS_LOG_ERROR(Graphics, "D3DTexture load failed: {}", desc.path);
                 }
             }
 
@@ -294,12 +294,12 @@ namespace NS
             m_fallback = true;
         }
 
-        Texture::Texture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
+        D3DTexture::D3DTexture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
         {
             ID3D11Device* device = Gpu().device;
             if (device == nullptr || !existing)
             {
-                NS_LOG_ERROR(Graphics, "Texture: ラップ対象 / Device が無効");
+                NS_LOG_ERROR(Graphics, "D3DTexture: ラップ対象 / Device が無効");
                 return;
             }
             m_tex = std::move(existing);
@@ -307,33 +307,33 @@ namespace NS
             CreateRequestedViews(device, m_tex.Get(), bindFlags, DXGI_FORMAT_UNKNOWN, m_srv, m_rtv, m_dsv);
         }
 
-        Texture::~Texture() = default;
+        D3DTexture::~D3DTexture() = default;
 
-        bool Texture::IsValid() const noexcept
+        bool D3DTexture::IsValid() const noexcept
         {
             return m_srv || m_rtv || m_dsv;
         }
-        Size2D Texture::Size() const noexcept
+        Size2D D3DTexture::Size() const noexcept
         {
             return m_size;
         }
-        bool Texture::IsUsingFallback() const noexcept
+        bool D3DTexture::IsUsingFallback() const noexcept
         {
             return m_fallback;
         }
-        ID3D11Texture2D* Texture::Native() const noexcept
+        ID3D11Texture2D* D3DTexture::Native() const noexcept
         {
             return m_tex.Get();
         }
-        ID3D11ShaderResourceView* Texture::Srv() const noexcept
+        ID3D11ShaderResourceView* D3DTexture::Srv() const noexcept
         {
             return m_srv.Get();
         }
-        ID3D11RenderTargetView* Texture::Rtv() const noexcept
+        ID3D11RenderTargetView* D3DTexture::Rtv() const noexcept
         {
             return m_rtv.Get();
         }
-        ID3D11DepthStencilView* Texture::Dsv() const noexcept
+        ID3D11DepthStencilView* D3DTexture::Dsv() const noexcept
         {
             return m_dsv.Get();
         }

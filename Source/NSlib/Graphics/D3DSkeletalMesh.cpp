@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/SkeletalMesh.h"
+#include "NSlib/Graphics/D3DSkeletalMesh.h"
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
@@ -131,16 +131,16 @@ namespace NS
             return merged;
         }
 
-        std::unique_ptr<SkeletalMesh> SkeletalMesh::Create(const SkinnedMeshDesc& desc)
+        std::unique_ptr<D3DSkeletalMesh> D3DSkeletalMesh::Create(const D3DSkeletalMeshDesc& desc)
         {
-            return std::unique_ptr<SkeletalMesh>(new SkeletalMesh(desc));
+            return std::unique_ptr<D3DSkeletalMesh>(new D3DSkeletalMesh(desc));
         }
 
-        SkeletalMesh::SkeletalMesh(const SkinnedMeshDesc& desc)
+        D3DSkeletalMesh::D3DSkeletalMesh(const D3DSkeletalMeshDesc& desc)
         {
             if (Gpu().device == nullptr || Gpu().context == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "SkeletalMesh: Renderer の Device / Context が無効");
+                NS_LOG_ERROR(Graphics, "D3DSkeletalMesh: Renderer の Device / Context が無効");
                 return;
             }
 
@@ -151,7 +151,7 @@ namespace NS
             if (!descValid)
             {
                 NS_LOG_ERROR(Graphics,
-                             "SkeletalMesh: SkinnedMeshDesc 不正 — IsValid false (vertices={}, vCount={}, indices={}, "
+                             "D3DSkeletalMesh: D3DSkeletalMeshDesc 不正 — IsValid false (vertices={}, vCount={}, indices={}, "
                              "iCount={})",
                              static_cast<const void*>(desc.vertices),
                              desc.vertexCount,
@@ -164,7 +164,7 @@ namespace NS
                     desc.vertices, desc.vertexCount, sizeof(SkinnedVertex), desc.indices, desc.indexCount, false))
             {
                 NS_LOG_ERROR(Graphics,
-                             "SkeletalMesh: VertexBuffer / IndexBuffer 構築失敗 — IsValid false (v={}, i={})",
+                             "D3DSkeletalMesh: VertexBuffer / IndexBuffer 構築失敗 — IsValid false (v={}, i={})",
                              desc.vertexCount,
                              desc.indexCount);
                 return;
@@ -181,7 +181,7 @@ namespace NS
             if (desc.boneCount > k_MaxBones)
             {
                 NS_LOG_ERROR(
-                    Graphics, "SkeletalMesh: boneCount {} が上限 {} を超過 — 上限に切詰め", desc.boneCount, k_MaxBones);
+                    Graphics, "D3DSkeletalMesh: boneCount {} が上限 {} を超過 — 上限に切詰め", desc.boneCount, k_MaxBones);
             }
             m_boneCount = std::min(desc.boneCount, k_MaxBones);
 
@@ -189,9 +189,9 @@ namespace NS
             m_boneSpheres = ComputeBoneSpheres(desc.vertices, desc.vertexCount, m_boneCount);
         }
 
-        SkeletalMesh::~SkeletalMesh() = default;
+        D3DSkeletalMesh::~D3DSkeletalMesh() = default;
 
-        std::vector<InputElement> SkeletalMesh::SkinnedInputLayout()
+        std::vector<InputElement> D3DSkeletalMesh::SkinnedInputLayout()
         {
             static const std::vector<InputElement> k_Layout = {
                 InputElement{
@@ -208,12 +208,12 @@ namespace NS
             return k_Layout;
         }
 
-        std::size_t SkeletalMesh::BoneCount() const noexcept
+        std::size_t D3DSkeletalMesh::BoneCount() const noexcept
         {
             return m_boneCount;
         }
 
-        const std::vector<BoneSphere>& SkeletalMesh::BoneSpheres() const noexcept
+        const std::vector<BoneSphere>& D3DSkeletalMesh::BoneSpheres() const noexcept
         {
             return m_boneSpheres;
         }

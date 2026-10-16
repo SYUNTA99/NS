@@ -16,15 +16,15 @@ namespace NS
 {
     namespace Gfx
     {
-        class Mesh;
+        class D3DMesh;
     }
     namespace Gfx
     {
-        class Material;
+        class D3DMaterial;
     }
     namespace Gfx
     {
-        class Buffer;
+        class D3DBuffer;
     }
 } // namespace NS
 
@@ -42,18 +42,18 @@ namespace NS
         //! メッシュとマテリアルは参照の欄に名前で持ち、SceneActor::ReloadAssets が読む
         explicit Model(SceneActor* owner) noexcept : m_owner(owner) {}
 
-        //! Material を共有したまま配置物ごとに変える個体色。lighting とは別系統
+        //! D3DMaterial を共有したまま配置物ごとに変える個体色。lighting とは別系統
         void SetBaseColor(const Color& color) noexcept { m_baseColor = color; }
 
         //! 名前を替えずに、描くマテリアルを替える。nullptr で描画しない。次の読み直しで名前の物に戻る
-        void SetMaterial(Gfx::Material* material) noexcept { m_material.SetLoaded(material); }
-        //! 現在の Material で非所有。未設定なら nullptr
-        [[nodiscard]] Gfx::Material* GetMaterial() const noexcept { return m_material.Get(); }
+        void SetMaterial(Gfx::D3DMaterial* material) noexcept { m_material.SetLoaded(material); }
+        //! 現在の D3DMaterial で非所有。未設定なら nullptr
+        [[nodiscard]] Gfx::D3DMaterial* GetMaterial() const noexcept { return m_material.Get(); }
 
         //! 名前を替えずに、描くメッシュを替える。nullptr で描画しない。次の読み直しで名前の物に戻る
-        void SetMesh(Gfx::Mesh* mesh) noexcept { m_mesh.SetLoaded(mesh); }
+        void SetMesh(Gfx::D3DMesh* mesh) noexcept { m_mesh.SetLoaded(mesh); }
         //! 読んだメッシュを返す。まだ読んでいなければ nullptr
-        [[nodiscard]] const Gfx::Mesh* GetMesh() const noexcept { return m_mesh.Get(); }
+        [[nodiscard]] const Gfx::D3DMesh* GetMesh() const noexcept { return m_mesh.Get(); }
 
         //! 描くメッシュの名前。組み込みの形の名前か、Content の下のパス。空・読めない時は cube で描く
         [[nodiscard]] const std::string& MeshRef() const noexcept { return m_mesh.Name(); }
@@ -67,7 +67,7 @@ namespace NS
 
         //! 個体ごとの頂点シェーダーの定数を設定する。同じ SceneActor の Animation がプレイの始まりに設定する
         //! cpuData があれば、描画側が毎回バッファーへ転送してから設定する
-        void SetPerObjectVsConstant(const Gfx::Buffer* cb,
+        void SetPerObjectVsConstant(const Gfx::D3DBuffer* cb,
                                     const void* cpuData,
                                     std::size_t cpuDataSize,
                                     uint slot) noexcept;
@@ -151,11 +151,11 @@ namespace NS
         //! DrawWorldMatrix(context.alpha) を詰めた DrawItem を out に積む。持ち主が出ていなければ何も積まない
         void Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out) override;
 
-        //! Material の BlendMode から bucket を返し、Opaque 以外は Transparent。Material 不在は Opaque
+        //! D3DMaterial の BlendMode から bucket を返し、Opaque 以外は Transparent。D3DMaterial 不在は Opaque
         [[nodiscard]] RenderBucket Bucket() const noexcept override;
         //! Owner の世界行列の平行移動成分で半透明ソート用の中心
         [[nodiscard]] Vector3 SortCenter() const noexcept override;
-        //! Material の renderPriority で距離同値時のタイブレークに使う
+        //! D3DMaterial の renderPriority で距離同値時のタイブレークに使う
         [[nodiscard]] int SortPriority() const noexcept override;
 
         //! @brief 上書き境界を優先し、メッシュの境界を世界座標で包む
@@ -193,19 +193,19 @@ namespace NS
 
         [[nodiscard]] Matrix DrawWorldMatrixWithOffset(float alpha, const Vector3& offset) const noexcept;
         [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Gfx::RenderContext& context,
-                                                     Gfx::Material* material,
+                                                     Gfx::D3DMaterial* material,
                                                      const Matrix& world) const noexcept;
 
         // 描く形の局所の境界。差された境界を先に、無ければ mesh の境界。どちらも無ければ nullptr
         [[nodiscard]] const AABB* DrawnLocalBounds() const noexcept;
 
-        AssetRef<Gfx::Mesh> m_mesh{};                     // 描くメッシュ
-        AssetRef<Gfx::Material> m_material{};             // 描くマテリアル
-        AssetRef<Gfx::Material> m_ghostMaterial{"water"}; // 残像と明けの写しのマテリアル
+        AssetRef<Gfx::D3DMesh> m_mesh{};                     // 描くメッシュ
+        AssetRef<Gfx::D3DMaterial> m_material{};             // 描くマテリアル
+        AssetRef<Gfx::D3DMaterial> m_ghostMaterial{"water"}; // 残像と明けの写しのマテリアル
         Color m_baseColor{1.0f, 1.0f, 1.0f};              // 個体色、lighting と別系統。透明度は使わず rgb だけを描く
 
         // 追加 VS 定数。cpuData があれば描画ごとに転送する
-        const Gfx::Buffer* m_perObjectVsCb = nullptr;
+        const Gfx::D3DBuffer* m_perObjectVsCb = nullptr;
         const void* m_perObjectVsData = nullptr;
         std::size_t m_perObjectVsSize = 0;
         uint m_perObjectVsSlot = 1;

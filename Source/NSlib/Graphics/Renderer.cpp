@@ -4,17 +4,17 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Graphics/Buffer.h"
-#include "NSlib/Graphics/CommandList.h"
-#include "NSlib/Graphics/CommonStates.h"
+#include "NSlib/Graphics/D3DBuffer.h"
+#include "NSlib/Graphics/D3DCommandList.h"
+#include "NSlib/Graphics/D3DCommonStates.h"
 #include "NSlib/Graphics/D3dCommon.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/Mesh.h"
-#include "NSlib/Graphics/Pipeline.h"
-#include "NSlib/Graphics/RenderTarget.h"
-#include "NSlib/Graphics/Shader.h"
+#include "NSlib/Graphics/D3DMesh.h"
+#include "NSlib/Graphics/D3DPipeline.h"
+#include "NSlib/Graphics/D3DRenderTarget.h"
+#include "NSlib/Graphics/D3DShader.h"
 #include "NSlib/Graphics/Skybox.h"
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DTexture.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "ThirdParty/DirectXTex/ScreenGrab/ScreenGrab11.h"
 
@@ -132,11 +132,11 @@ namespace NS
                 factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
             }
 
-            // swapchain の backbuffer を RTV Texture として包み、同サイズの depth Texture を生成する
+            // swapchain の backbuffer を RTV D3DTexture として包み、同サイズの depth D3DTexture を生成する
             // 構築 / Resize の両方から呼ぶ。失敗時は false を返し out を書き換えない
             bool BuildBackbufferTargets(IDXGISwapChain* swapchain,
-                                        std::unique_ptr<Texture>& outBackbuffer,
-                                        std::unique_ptr<Texture>& outDepth)
+                                        std::unique_ptr<D3DTexture>& outBackbuffer,
+                                        std::unique_ptr<D3DTexture>& outDepth)
             {
                 ComPtr<ID3D11Texture2D> bb;
                 const HRESULT hr = swapchain->GetBuffer(0, IID_PPV_ARGS(bb.GetAddressOf()));
@@ -146,7 +146,7 @@ namespace NS
                     return false;
                 }
 
-                std::unique_ptr<Texture> backbuffer = Texture::Create(bb, D3D11_BIND_RENDER_TARGET);
+                std::unique_ptr<D3DTexture> backbuffer = D3DTexture::Create(bb, D3D11_BIND_RENDER_TARGET);
                 if (backbuffer->Rtv() == nullptr)
                 {
                     NS_LOG_ERROR(Graphics, "backbuffer RTV の構築失敗");
@@ -154,13 +154,13 @@ namespace NS
                 }
 
                 const Size2D size = backbuffer->Size();
-                TextureDesc depthDesc{};
+                D3DTextureDesc depthDesc{};
                 depthDesc.width = static_cast<UINT>(size.width);
                 depthDesc.height = static_cast<UINT>(size.height);
                 depthDesc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
                 depthDesc.bindFlags = D3D11_BIND_DEPTH_STENCIL;
 
-                std::unique_ptr<Texture> depth = Texture::Create(depthDesc);
+                std::unique_ptr<D3DTexture> depth = D3DTexture::Create(depthDesc);
                 if (depth->Dsv() == nullptr)
                 {
                     NS_LOG_ERROR(Graphics, "depth DSV の構築失敗");
@@ -215,43 +215,43 @@ namespace NS
                 NS_LOG_ERROR(Graphics,
                              "Renderer を同時に複数構築している (単一 device 前提、 グローバルが上書きされる)");
             }
-            // backbuffer Texture 構築より前にグローバル公開する。構築が Gpu() を引くため
+            // backbuffer D3DTexture 構築より前にグローバル公開する。構築が Gpu() を引くため
             Gpu().device = m_device.Get();
             Gpu().context = m_context.Get();
 
             SuppressAltEnter(m_swapchain.Get(), hwnd);
 
             // コンストラクタは friend の Renderer にだけ開いているので、make_unique では呼べない
-            m_commands.reset(new CommandList(m_context.Get()));
+            m_commands.reset(new D3DCommandList(m_context.Get()));
 
             if (!BuildBackbufferTargets(m_swapchain.Get(), m_backbuffer, m_depth))
             {
-                NS_LOG_ERROR(Graphics, "backbuffer / depth Texture の構築失敗");
+                NS_LOG_ERROR(Graphics, "backbuffer / depth D3DTexture の構築失敗");
                 return;
             }
 
-            // CommonStates の private コンストラクタは make_unique から呼べない。例外を使わず nothrow new で構築し
+            // D3DCommonStates の private コンストラクタは make_unique から呼べない。例外を使わず nothrow new で構築し
             // 確保できたかは参照先の有無で判定する
-            m_states.reset(new (std::nothrow) CommonStates(m_device.Get()));
+            m_states.reset(new (std::nothrow) D3DCommonStates(m_device.Get()));
             if (!m_states)
             {
-                NS_LOG_ERROR(Graphics, "CommonStates の確保失敗");
+                NS_LOG_ERROR(Graphics, "D3DCommonStates の確保失敗");
                 return;
             }
 
-            // 共通 Pipeline を 1 回だけ生成して使い回す。Pipeline::Create は Gpu() を引くので公開の後に呼ぶ
+            // 共通 D3DPipeline を 1 回だけ生成して使い回す。D3DPipeline::Create は Gpu() を引くので公開の後に呼ぶ
             // [0] は裏を向いた面を描かない、[1] は裏も描く
             const CullMode culls[2] = {CullMode::Back, CullMode::None};
             for (int sided = 0; sided < 2; ++sided)
             {
                 const CullMode cull = culls[sided];
-                m_commonPipelines[sided][0] = Pipeline::Create(PipelineDesc{.cull = cull});
-                m_commonPipelines[sided][1] = Pipeline::Create(
-                    PipelineDesc{.cull = cull, .blend = BlendMode::Alpha, .depth = DepthMode::ReadOnly});
-                m_commonPipelines[sided][2] = Pipeline::Create(
-                    PipelineDesc{.cull = cull, .blend = BlendMode::Additive, .depth = DepthMode::ReadOnly});
-                m_occludedPipelines[sided] = Pipeline::Create(
-                    PipelineDesc{.cull = cull, .blend = BlendMode::Alpha, .depth = DepthMode::Occluded});
+                m_commonPipelines[sided][0] = D3DPipeline::Create(D3DPipelineDesc{.cull = cull});
+                m_commonPipelines[sided][1] = D3DPipeline::Create(
+                    D3DPipelineDesc{.cull = cull, .blend = BlendMode::Alpha, .depth = DepthMode::ReadOnly});
+                m_commonPipelines[sided][2] = D3DPipeline::Create(
+                    D3DPipelineDesc{.cull = cull, .blend = BlendMode::Additive, .depth = DepthMode::ReadOnly});
+                m_occludedPipelines[sided] = D3DPipeline::Create(
+                    D3DPipelineDesc{.cull = cull, .blend = BlendMode::Alpha, .depth = DepthMode::Occluded});
             }
 
             window.SetResizeCallback([this](Size2D rs) { this->Resize(rs); });
@@ -405,7 +405,7 @@ namespace NS
             return true;
         }
 
-        const Pipeline& Renderer::CommonPipeline(BlendMode blend, bool twoSided) const noexcept
+        const D3DPipeline& Renderer::CommonPipeline(BlendMode blend, bool twoSided) const noexcept
         {
             int sided = 0;
             if (twoSided)
@@ -431,7 +431,7 @@ namespace NS
             return *m_commonPipelines[sided][index];
         }
 
-        const Pipeline& Renderer::OccludedPipeline(bool twoSided) const noexcept
+        const D3DPipeline& Renderer::OccludedPipeline(bool twoSided) const noexcept
         {
             int sided = 0;
             if (twoSided)
@@ -455,15 +455,15 @@ namespace NS
                 {
                     return false;
                 }
-                overlay.vs = Shader::CreateBuiltin(vsFileName);
-                overlay.ps = Shader::CreateBuiltin(psFileName);
+                overlay.vs = D3DShader::CreateBuiltin(vsFileName);
+                overlay.ps = D3DShader::CreateBuiltin(psFileName);
                 if (!overlay.vs->IsValid() || !overlay.ps->IsValid())
                 {
                     NS_LOG_ERROR(Graphics, "Renderer: {} shader 構築失敗", label);
                     return false;
                 }
 
-                overlay.cb = Buffer::Create(MakeConstantBufferDesc(constantBytes));
+                overlay.cb = D3DBuffer::Create(MakeConstantBufferDesc(constantBytes));
                 if (!overlay.cb->IsValid())
                 {
                     NS_LOG_ERROR(Graphics, "Renderer: {} ConstantBuffer 構築失敗", label);
@@ -472,14 +472,14 @@ namespace NS
 
                 // 描画済みの絵の上へ半透明で重ねる。常に最前面へ出すので深度は見ない
                 // 全画面三角形の 3 頂点はスクリーン空間で反時計回りになり、既定の背面カリングでは消える
-                PipelineDesc pipeDesc{};
+                D3DPipelineDesc pipeDesc{};
                 pipeDesc.cull = CullMode::None;
                 pipeDesc.blend = BlendMode::Alpha;
                 pipeDesc.depth = DepthMode::Disabled;
-                overlay.pipeline = Pipeline::Create(pipeDesc);
+                overlay.pipeline = D3DPipeline::Create(pipeDesc);
                 if (!overlay.pipeline->IsValid())
                 {
-                    NS_LOG_ERROR(Graphics, "Renderer: {} Pipeline 構築失敗", label);
+                    NS_LOG_ERROR(Graphics, "Renderer: {} D3DPipeline 構築失敗", label);
                     return false;
                 }
 
@@ -494,7 +494,7 @@ namespace NS
                                    uint vertexCount,
                                    bool vsReadsConstants) noexcept
         {
-            CommandList& cmd = *m_commands;
+            D3DCommandList& cmd = *m_commands;
             cmd.UpdateSubresource(*overlay.cb, constants, constantBytes);
 
             cmd.SetPipeline(*overlay.pipeline);
@@ -626,7 +626,7 @@ namespace NS
             {
                 return;
             }
-            CommandList& cmd = *m_commands;
+            D3DCommandList& cmd = *m_commands;
             ID3D11RenderTargetView* rtv = m_backbuffer->Rtv();
             ID3D11DepthStencilView* dsv = m_depth->Dsv();
 
@@ -714,17 +714,17 @@ namespace NS
 
             if (!BuildBackbufferTargets(m_swapchain.Get(), m_backbuffer, m_depth))
             {
-                NS_LOG_ERROR(Graphics, "Resize 後の backbuffer / depth Texture 再構築失敗");
+                NS_LOG_ERROR(Graphics, "Resize 後の backbuffer / depth D3DTexture 再構築失敗");
                 m_valid = false;
             }
         }
 
-        void Renderer::SetSceneTarget(RenderTarget* target) noexcept
+        void Renderer::SetSceneTarget(D3DRenderTarget* target) noexcept
         {
             m_sceneTarget = target;
         }
 
-        void Renderer::BeginSceneView(RenderTarget* target) noexcept
+        void Renderer::BeginSceneView(D3DRenderTarget* target) noexcept
         {
             if (!IsValid() || !m_commands)
             {
@@ -773,13 +773,13 @@ namespace NS
             return m_backbuffer->Size();
         }
 
-        CommonStates& Renderer::States() noexcept
+        D3DCommonStates& Renderer::States() noexcept
         {
             NS_ASSERT(Graphics, m_states, "Renderer が無効な状態で States() を呼んでいる");
             return *m_states;
         }
 
-        CommandList& Renderer::Commands() noexcept
+        D3DCommandList& Renderer::Commands() noexcept
         {
             NS_ASSERT(Graphics, m_commands, "Renderer が無効な状態で Commands() を呼んでいる");
             return *m_commands;

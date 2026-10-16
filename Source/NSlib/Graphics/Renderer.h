@@ -28,13 +28,13 @@ namespace NS
             RenderSettings settings{};     //!< プロジェクト全体の標準となる描画設定
         };
 
-        class CommandList;
-        class CommonStates;
-        class RenderTarget;
-        class Texture;
-        class Pipeline;
-        class Shader;
-        class Buffer;
+        class D3DCommandList;
+        class D3DCommonStates;
+        class D3DRenderTarget;
+        class D3DTexture;
+        class D3DPipeline;
+        class D3DShader;
+        class D3DBuffer;
         class Skybox;
         enum class BlendMode;
 
@@ -75,11 +75,11 @@ namespace NS
             //! @brief シーンの描画先をオフスクリーンへ切り替える
             //! @param[in,out] target 非所有の描画先。空の参照でウィンドウの描画先へ戻す
             //! @note 反映は次の BeginFrame から。target の破棄前に空の参照を渡して外す
-            void SetSceneTarget(RenderTarget* target) noexcept;
+            void SetSceneTarget(D3DRenderTarget* target) noexcept;
 
             //! 非所有の描画先とビューポートを切り替える。nullptr はバックバッファ
             //! オフスクリーンだけをクリアする。描画先の破棄後は渡さない
-            void BeginSceneView(RenderTarget* target) noexcept;
+            void BeginSceneView(D3DRenderTarget* target) noexcept;
 
             //! @brief backbuffer を描画先へ戻し viewport を張り直す
             //! @details オフスクリーン描画のフレームで、UI の実描画直前に呼ぶ
@@ -96,22 +96,22 @@ namespace NS
             [[nodiscard]] bool ReadBackbufferPixels(std::vector<uint8>& outBgra, Size2D& outSize) noexcept;
 
             //! よく使われる共通の描画ステート
-            [[nodiscard]] CommonStates& States() noexcept;
+            [[nodiscard]] D3DCommonStates& States() noexcept;
 
             //! 描画コマンドの発行やリソース更新などを記録するためのコマンドリスト
-            [[nodiscard]] CommandList& Commands() noexcept;
+            [[nodiscard]] D3DCommandList& Commands() noexcept;
 
             //! @brief 各種ブレンドモードに対応する標準的な描画パイプラインを取得する
             //! @param[in] blend 取得したいブレンドモード
             //! @param[in] twoSided 裏を向いた面も描く場合 true。偽なら裏を向いた面は描かない
             //! @note 共通パイプラインは構築の最後に作るので、構築に失敗した Renderer では呼んではいけない
-            [[nodiscard]] const Pipeline& CommonPipeline(BlendMode blend, bool twoSided = false) const noexcept;
+            [[nodiscard]] const D3DPipeline& CommonPipeline(BlendMode blend, bool twoSided = false) const noexcept;
 
             //! @brief 手前の物に隠れた画素だけへ半透明で描くパイプラインを取得する
             //! @details 深度は書かない。隠れた所を透かして見せる描画が、普通の描画と同じ物を 2 回目に描く時に使う
             //! @param[in] twoSided 裏を向いた面も描く場合 true。偽なら裏を向いた面は描かない
             //! @note 共通パイプラインと一緒に構築の最後に作るので、構築に失敗した Renderer では呼んではいけない
-            [[nodiscard]] const Pipeline& OccludedPipeline(bool twoSided = false) const noexcept;
+            [[nodiscard]] const D3DPipeline& OccludedPipeline(bool twoSided = false) const noexcept;
 
             //! 全画面に指定色を半透明合成する。最前面に出す場合は最後に呼ぶ
             void DrawFullscreenColor(const Color& color) noexcept;
@@ -127,10 +127,10 @@ namespace NS
             // 頂点を持たず SV_VertexID から形を作り、最前面へ半透明で重ねる描画の資源
             struct OverlayResources
             {
-                std::unique_ptr<Shader> vs;
-                std::unique_ptr<Shader> ps;
-                std::unique_ptr<Buffer> cb;
-                std::unique_ptr<Pipeline> pipeline;
+                std::unique_ptr<D3DShader> vs;
+                std::unique_ptr<D3DShader> ps;
+                std::unique_ptr<D3DBuffer> cb;
+                std::unique_ptr<D3DPipeline> pipeline;
                 bool tried = false; // 構築を試みたか
                 bool ready = false; // 構築成功
             };
@@ -158,14 +158,14 @@ namespace NS
             ComPtr<ID3D11Device> m_device;
             ComPtr<ID3D11DeviceContext> m_context;
             ComPtr<IDXGISwapChain> m_swapchain;
-            std::unique_ptr<Texture> m_backbuffer;
-            std::unique_ptr<Texture> m_depth;
-            std::unique_ptr<CommandList> m_commands;
-            std::unique_ptr<CommonStates> m_states;
+            std::unique_ptr<D3DTexture> m_backbuffer;
+            std::unique_ptr<D3DTexture> m_depth;
+            std::unique_ptr<D3DCommandList> m_commands;
+            std::unique_ptr<D3DCommonStates> m_states;
             //! 共通パイプライン。[裏も描くか][合成モード]
-            std::unique_ptr<Pipeline> m_commonPipelines[2][3];
+            std::unique_ptr<D3DPipeline> m_commonPipelines[2][3];
             //! 隠れた画素だけへ半透明で描くパイプライン。[裏も描くか]
-            std::unique_ptr<Pipeline> m_occludedPipelines[2];
+            std::unique_ptr<D3DPipeline> m_occludedPipelines[2];
             OverlayResources m_fullscreen; // 全画面塗り。初回 DrawFullscreenColor で構築
             OverlayResources m_screenRect; // UI 矩形。初回 DrawScreenRect で構築
             // 空を描く Skybox。cubemap を指定した初回の DrawSky で一度だけ構築する
@@ -173,7 +173,7 @@ namespace NS
             std::string
                 m_loadedSkyboxPath;     // 前回判定した cubemap のパス。読めた物と拒否した物が入り、差分の時だけ読み直す
             bool m_skyboxTried = false; // 構築を試みたか
-            RenderTarget* m_sceneTarget = nullptr; //!< 非所有のシーン描画先。未指定ならウィンドウへ描く
+            D3DRenderTarget* m_sceneTarget = nullptr; //!< 非所有のシーン描画先。未指定ならウィンドウへ描く
             OS::Window* m_window = nullptr;
             RenderSettings m_settings{};
             bool m_vsync = true;

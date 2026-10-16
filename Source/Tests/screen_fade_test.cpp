@@ -6,10 +6,10 @@
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/RenderTarget.h"
+#include "NSlib/Graphics/D3DRenderTarget.h"
 #include "NSlib/Graphics/Renderer.h"
 #include "NSlib/Graphics/ScreenFade.h"
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DTexture.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
@@ -29,7 +29,7 @@ namespace
         }
     };
 
-    void ExpectEveryPixel(const NS::Gfx::Texture& texture, int expected)
+    void ExpectEveryPixel(const NS::Gfx::D3DTexture& texture, int expected)
     {
         D3D11_TEXTURE2D_DESC desc{};
         texture.Native()->GetDesc(&desc);
@@ -179,7 +179,7 @@ TEST(ScreenFade, FullscreenDrawCoversUIAndTheResizedTarget)
     NS::OS::Window window(NS::OS::WindowDesc{.title = "全画面暗転の試し", .size = {64, 36}, .visible = false});
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
-    const std::unique_ptr<NS::Gfx::RenderTarget> target = NS::Gfx::RenderTarget::Create({64, 36});
+    const std::unique_ptr<NS::Gfx::D3DRenderTarget> target = NS::Gfx::D3DRenderTarget::Create({64, 36});
     ASSERT_TRUE(target->IsValid());
     NS::SceneRenderer sceneRenderer;
     NS::Gfx::ScreenFade fade;

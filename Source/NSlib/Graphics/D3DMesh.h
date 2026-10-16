@@ -13,9 +13,9 @@ namespace NS
 {
     namespace Gfx
     {
-        class Buffer;
-        class Shader;
-        class CommandList;
+        class D3DBuffer;
+        class D3DShader;
+        class D3DCommandList;
 
         //! 公開 InputElement 用フォーマット。頂点属性として受け付けるフォーマットの閉集合
         enum class InputElementFormat
@@ -43,10 +43,10 @@ namespace NS
         };
 
         //! 頂点とインデックスの GPU データ。描画は DrawMesh が行う
-        class Mesh : public NonCopyable
+        class D3DMesh : public NonCopyable
         {
         public:
-            virtual ~Mesh();
+            virtual ~D3DMesh();
 
             //! 頂点バッファとインデックスバッファが揃っているか
             [[nodiscard]] bool IsValid() const noexcept;
@@ -63,15 +63,15 @@ namespace NS
 
             //! @brief 頂点シェーダーを利用して入力レイアウトを生成する
             //! @note 生成済みの場合や、グラフィックスデバイスが無効な場合は何もしない
-            void CreateInputLayout(const Shader& vertexShader) noexcept;
+            void CreateInputLayout(const D3DShader& vertexShader) noexcept;
 
-            [[nodiscard]] const Buffer* VertexBuffer() const noexcept;
-            [[nodiscard]] const Buffer* IndexBuffer() const noexcept;
+            [[nodiscard]] const D3DBuffer* VertexBuffer() const noexcept;
+            [[nodiscard]] const D3DBuffer* IndexBuffer() const noexcept;
             [[nodiscard]] ID3D11InputLayout* InputLayout() const noexcept;
             [[nodiscard]] Topology GetTopology() const noexcept;
 
         protected:
-            Mesh();
+            D3DMesh();
 
             //! 成功時だけ両方の GPU バッファを登録する。失敗時は変更せず false
             //! stride は頂点 1 個のバイト数、usingFallback は代替形状かを示す
@@ -90,8 +90,8 @@ namespace NS
             void SetLocalBounds(const AABB& bounds) noexcept;
 
         private:
-            std::unique_ptr<Buffer> m_vb;
-            std::unique_ptr<Buffer> m_ib;
+            std::unique_ptr<D3DBuffer> m_vb;
+            std::unique_ptr<D3DBuffer> m_ib;
             ComPtr<ID3D11InputLayout> m_inputLayout;
             std::vector<InputElement> m_layoutElements; // 派生クラスから登録されたレイアウト記述
             Topology m_topology = Topology::TriangleList;
@@ -102,7 +102,7 @@ namespace NS
             bool m_usingFallback = false;
         };
 
-        //! Mesh のデータを読んで bind + DrawIndexed を発行する。Shader/Material の Bind は呼出側責任
-        void DrawMesh(CommandList& commands, const Mesh& mesh) noexcept;
+        //! D3DMesh のデータを読んで bind + DrawIndexed を発行する。D3DShader/D3DMaterial の Bind は呼出側責任
+        void DrawMesh(D3DCommandList& commands, const D3DMesh& mesh) noexcept;
     } // namespace Gfx
 } // namespace NS

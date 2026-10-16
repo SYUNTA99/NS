@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/D3DPipeline.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/GraphicObject.h"
@@ -34,7 +34,7 @@ namespace NS
             }
 
             bool CreateRasterizer(ID3D11Device* device,
-                                  const PipelineDesc& desc,
+                                  const D3DPipelineDesc& desc,
                                   ComPtr<ID3D11RasterizerState>& out) noexcept
             {
                 D3D11_RASTERIZER_DESC rd{};
@@ -45,7 +45,7 @@ namespace NS
                 return SUCCEEDED(device->CreateRasterizerState(&rd, out.GetAddressOf()));
             }
 
-            bool CreateBlend(ID3D11Device* device, const PipelineDesc& desc, ComPtr<ID3D11BlendState>& out) noexcept
+            bool CreateBlend(ID3D11Device* device, const D3DPipelineDesc& desc, ComPtr<ID3D11BlendState>& out) noexcept
             {
                 D3D11_BLEND_DESC bd{};
                 D3D11_RENDER_TARGET_BLEND_DESC& rt = bd.RenderTarget[0];
@@ -85,7 +85,7 @@ namespace NS
             }
 
             bool CreateDepthStencil(ID3D11Device* device,
-                                    const PipelineDesc& desc,
+                                    const D3DPipelineDesc& desc,
                                     ComPtr<ID3D11DepthStencilState>& out) noexcept
             {
                 const D3D11_DEPTH_STENCIL_DESC dd = detail::MakeDepthStencilDesc(desc.depth);
@@ -93,51 +93,51 @@ namespace NS
             }
         } // namespace
 
-        std::unique_ptr<Pipeline> Pipeline::Create(const PipelineDesc& desc)
+        std::unique_ptr<D3DPipeline> D3DPipeline::Create(const D3DPipelineDesc& desc)
         {
-            return std::unique_ptr<Pipeline>(new Pipeline(desc));
+            return std::unique_ptr<D3DPipeline>(new D3DPipeline(desc));
         }
 
-        Pipeline::Pipeline(const PipelineDesc& desc) noexcept : m_desc(desc)
+        D3DPipeline::D3DPipeline(const D3DPipelineDesc& desc) noexcept : m_desc(desc)
         {
             ID3D11Device* device = Gpu().device;
             if (device == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "Pipeline: Device 不在のため構築不可");
+                NS_LOG_ERROR(Graphics, "D3DPipeline: Device 不在のため構築不可");
                 return;
             }
             if (!CreateRasterizer(device, desc, m_rasterizer) || !CreateBlend(device, desc, m_blend) ||
                 !CreateDepthStencil(device, desc, m_depthStencil))
             {
-                NS_LOG_ERROR(Graphics, "Pipeline: ステートオブジェクトの構築失敗");
+                NS_LOG_ERROR(Graphics, "D3DPipeline: ステートオブジェクトの構築失敗");
                 return;
             }
             m_valid = true;
         }
 
-        Pipeline::~Pipeline() = default;
+        D3DPipeline::~D3DPipeline() = default;
 
-        bool Pipeline::IsValid() const noexcept
+        bool D3DPipeline::IsValid() const noexcept
         {
             return m_valid;
         }
 
-        const PipelineDesc& Pipeline::Desc() const noexcept
+        const D3DPipelineDesc& D3DPipeline::Desc() const noexcept
         {
             return m_desc;
         }
 
-        ID3D11RasterizerState* Pipeline::RasterizerState() const noexcept
+        ID3D11RasterizerState* D3DPipeline::RasterizerState() const noexcept
         {
             return m_rasterizer.Get();
         }
 
-        ID3D11BlendState* Pipeline::BlendState() const noexcept
+        ID3D11BlendState* D3DPipeline::BlendState() const noexcept
         {
             return m_blend.Get();
         }
 
-        ID3D11DepthStencilState* Pipeline::DepthStencilState() const noexcept
+        ID3D11DepthStencilState* D3DPipeline::DepthStencilState() const noexcept
         {
             return m_depthStencil.Get();
         }

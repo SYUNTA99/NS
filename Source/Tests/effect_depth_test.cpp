@@ -4,7 +4,7 @@
 #include "NSlib/Graphics/EffectScene.h"
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DTexture.h"
 #include "NSlib/Windows/Window.h"
 #include "TestEffectFiles.h"
 
@@ -60,14 +60,14 @@ namespace
         [[nodiscard]] bool Valid() const { return device != nullptr; }
     };
 
-    std::unique_ptr<NS::Gfx::Texture> MakeDepth(UINT width, UINT height, DXGI_FORMAT format)
+    std::unique_ptr<NS::Gfx::D3DTexture> MakeDepth(UINT width, UINT height, DXGI_FORMAT format)
     {
-        NS::Gfx::TextureDesc desc{};
+        NS::Gfx::D3DTextureDesc desc{};
         desc.width = width;
         desc.height = height;
         desc.format = format;
         desc.bindFlags = D3D11_BIND_DEPTH_STENCIL;
-        return NS::Gfx::Texture::Create(desc);
+        return NS::Gfx::D3DTexture::Create(desc);
     }
 
     NS::CameraData MakeCamera()
@@ -78,7 +78,7 @@ namespace
         return camera;
     }
 
-    void BindDepth(const ScopedWarpGpu& gpu, const NS::Gfx::Texture& depth)
+    void BindDepth(const ScopedWarpGpu& gpu, const NS::Gfx::D3DTexture& depth)
     {
         gpu.context->OMSetRenderTargets(0, nullptr, depth.Dsv());
     }
@@ -195,21 +195,21 @@ TEST(EffectDepth, TextureViewFormatIsUsedOnlyWhenGiven)
     {
         GTEST_SKIP() << "WARP の描画装置を作れなかった";
     }
-    NS::Gfx::TextureDesc depthCopy{};
+    NS::Gfx::D3DTextureDesc depthCopy{};
     depthCopy.width = 8;
     depthCopy.height = 4;
     depthCopy.format = DXGI_FORMAT_R24G8_TYPELESS;
     depthCopy.viewFormat = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-    const std::unique_ptr<NS::Gfx::Texture> copy = NS::Gfx::Texture::Create(depthCopy);
+    const std::unique_ptr<NS::Gfx::D3DTexture> copy = NS::Gfx::D3DTexture::Create(depthCopy);
     ASSERT_NE(copy->Srv(), nullptr);
     D3D11_SHADER_RESOURCE_VIEW_DESC view{};
     copy->Srv()->GetDesc(&view);
     EXPECT_EQ(view.Format, DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
 
-    NS::Gfx::TextureDesc plain{};
+    NS::Gfx::D3DTextureDesc plain{};
     plain.width = 8;
     plain.height = 4;
-    const std::unique_ptr<NS::Gfx::Texture> color = NS::Gfx::Texture::Create(plain);
+    const std::unique_ptr<NS::Gfx::D3DTexture> color = NS::Gfx::D3DTexture::Create(plain);
     ASSERT_NE(color->Srv(), nullptr);
     color->Srv()->GetDesc(&view);
     EXPECT_EQ(view.Format, DXGI_FORMAT_R8G8B8A8_UNORM);
@@ -225,8 +225,8 @@ TEST(EffectDepth, PassesTheBoundDepthAndKeepsOneCopyPerSize)
     }
     NS::Gfx::EffectScene effects("Assets/Effects");
     ASSERT_TRUE(effects.IsValid());
-    const std::unique_ptr<NS::Gfx::Texture> game = MakeDepth(64, 32, DXGI_FORMAT_D24_UNORM_S8_UINT);
-    const std::unique_ptr<NS::Gfx::Texture> editor = MakeDepth(48, 48, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    const std::unique_ptr<NS::Gfx::D3DTexture> game = MakeDepth(64, 32, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    const std::unique_ptr<NS::Gfx::D3DTexture> editor = MakeDepth(48, 48, DXGI_FORMAT_D24_UNORM_S8_UINT);
     ASSERT_NE(game->Dsv(), nullptr);
     ASSERT_NE(editor->Dsv(), nullptr);
     const NS::CameraData camera = MakeCamera();
@@ -254,8 +254,8 @@ TEST(EffectDepth, UnreadableDepthFallsBackToDrawingWithoutIt)
     }
     NS::Gfx::EffectScene effects("Assets/Effects");
     ASSERT_TRUE(effects.IsValid());
-    const std::unique_ptr<NS::Gfx::Texture> good = MakeDepth(32, 32, DXGI_FORMAT_D24_UNORM_S8_UINT);
-    const std::unique_ptr<NS::Gfx::Texture> other = MakeDepth(32, 32, DXGI_FORMAT_D32_FLOAT);
+    const std::unique_ptr<NS::Gfx::D3DTexture> good = MakeDepth(32, 32, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    const std::unique_ptr<NS::Gfx::D3DTexture> other = MakeDepth(32, 32, DXGI_FORMAT_D32_FLOAT);
     ASSERT_NE(other->Dsv(), nullptr);
     const NS::CameraData camera = MakeCamera();
 

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Types.h"
 #include "NSlib/Graphics/FrameConstants.h"
-#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/D3DPipeline.h"
 
 #include <cstddef>
 
@@ -10,11 +10,11 @@ namespace NS
 {
     namespace Gfx
     {
-        class Mesh;
-        class Material;
-        class Buffer;
+        class D3DMesh;
+        class D3DMaterial;
+        class D3DBuffer;
         class Renderer;
-        class Shader;
+        class D3DShader;
 
         //! @brief 1回の描画に必要なデータをまとめた構造体
         // FrameCB の 16 バイト整列を値で抱えるため DrawItem に想定どおりのパディングが入る。C4324 を黙らせる
@@ -22,8 +22,8 @@ namespace NS
 #pragma warning(disable : 4324)
         struct DrawItem
         {
-            Mesh* mesh = nullptr;
-            Material* material = nullptr;
+            D3DMesh* mesh = nullptr;
+            D3DMaterial* material = nullptr;
             BlendMode blend = BlendMode::Opaque;
             //! 手前の物に隠れた画素だけへ描く場合 true。その時の合成は blend に関わらず半透明で、深度は書かない
             bool occludedOnly = false;
@@ -31,7 +31,7 @@ namespace NS
             FrameCB constants{};   //!< オブジェクトの座標やカメラ、ライトなどの基本定数
 
             // 頂点シェーダへの追加データ。スキンメッシュのボーンパレットがこれを使う
-            const Buffer* extraVsCb = nullptr;
+            const D3DBuffer* extraVsCb = nullptr;
             const void* extraVsData = nullptr;
             std::size_t extraVsSize = 0;
             uint extraVsSlot = 1;
@@ -48,7 +48,7 @@ namespace NS
         //! @param[in] pixelShader material のピクセルシェーダの代わりに差す物。入力は SV_POSITION から始める
         void IssueDrawItemWith(Renderer& renderer,
                                const DrawItem& item,
-                               const Pipeline& pipeline,
-                               const Shader& pixelShader) noexcept;
+                               const D3DPipeline& pipeline,
+                               const D3DShader& pixelShader) noexcept;
     } // namespace Gfx
 } // namespace NS

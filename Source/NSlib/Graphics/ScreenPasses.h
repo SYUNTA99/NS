@@ -10,12 +10,12 @@ namespace NS
 {
     namespace Gfx
     {
-        class Buffer;
+        class D3DBuffer;
         struct DrawItem;
-        class Pipeline;
+        class D3DPipeline;
         class Renderer;
-        class Shader;
-        class Texture;
+        class D3DShader;
+        class D3DTexture;
 
         //! @brief 歪みの段に渡す輪。長さはどれも描画先の画素
         struct ScreenRing
@@ -75,24 +75,24 @@ namespace NS
 
             //! @brief 今のフレームに描いた体の型を返す
             //! @return 1 色 8 ビットの描画先と同じ大きさの型。未描画なら空
-            [[nodiscard]] const Texture* BodyMask() const noexcept;
+            [[nodiscard]] const D3DTexture* BodyMask() const noexcept;
 
         private:
             [[nodiscard]] bool EnsureCopy(ID3D11Texture2D& target) noexcept;
 
             [[nodiscard]] bool EnsureBodyMask(const D3D11_TEXTURE2D_DESC& target) noexcept;
 
-            std::unique_ptr<Shader> m_vs;              // 全画面三角形
-            std::unique_ptr<Shader> m_distortionPs;    // 輪の所を押し出す
-            std::unique_ptr<Shader> m_bodyMaskPs;      // 写る画素を 1 にする
-            std::unique_ptr<Pipeline> m_writePipeline; // 書き込み先を置き換える
+            std::unique_ptr<D3DShader> m_vs;              // 全画面三角形
+            std::unique_ptr<D3DShader> m_distortionPs;    // 輪の所を押し出す
+            std::unique_ptr<D3DShader> m_bodyMaskPs;      // 写る画素を 1 にする
+            std::unique_ptr<D3DPipeline> m_writePipeline; // 書き込み先を置き換える
             //! 体の型を描く。世界の深度は読むだけ。両面の描く物は添字 1
-            std::unique_ptr<Pipeline> m_bodyMaskPipelines[2];
-            std::unique_ptr<Buffer> m_cb;
+            std::unique_ptr<D3DPipeline> m_bodyMaskPipelines[2];
+            std::unique_ptr<D3DBuffer> m_cb;
 
-            std::unique_ptr<Texture> m_copy; // 描画先の写し。読みながら同じ描画先へは書けないので取る
+            std::unique_ptr<D3DTexture> m_copy; // 描画先の写し。読みながら同じ描画先へは書けないので取る
             D3D11_TEXTURE2D_DESC m_copyDesc{};
-            std::unique_ptr<Texture> m_bodyMask; // 体の型。描画先と同じ大きさ
+            std::unique_ptr<D3DTexture> m_bodyMask; // 体の型。描画先と同じ大きさ
             bool m_bodyMaskDrawn = false;
 
             // BeginBodyMask から EndBodyMask の間だけ持つ

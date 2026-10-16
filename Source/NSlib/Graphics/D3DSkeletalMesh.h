@@ -3,7 +3,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Graphics/Mesh.h"
+#include "NSlib/Graphics/D3DMesh.h"
 
 #include <cstddef>
 #include <memory>
@@ -32,7 +32,7 @@ namespace NS
                       "GPUへ正しく転送するため、SkinnedVertexは標準レイアウトである必要があります。");
 
         //! スキンメッシュの初期化パラメータ
-        struct SkinnedMeshDesc
+        struct D3DSkeletalMeshDesc
         {
             const SkinnedVertex* vertices = nullptr;
             std::size_t vertexCount = 0;
@@ -70,13 +70,13 @@ namespace NS
                                                   const AABB& fallback);
 
         //! スキン頂点のメッシュ。複数個体で共有するため、姿勢は描画側が持つ
-        class SkeletalMesh : public Mesh
+        class D3DSkeletalMesh : public D3DMesh
         {
         public:
             //! スキンメッシュを生成する
-            [[nodiscard]] static std::unique_ptr<SkeletalMesh> Create(const SkinnedMeshDesc& desc);
+            [[nodiscard]] static std::unique_ptr<D3DSkeletalMesh> Create(const D3DSkeletalMeshDesc& desc);
 
-            ~SkeletalMesh() override;
+            ~D3DSkeletalMesh() override;
 
             //! スキンメッシュ用の頂点入力レイアウトを返す
             [[nodiscard]] static std::vector<InputElement> SkinnedInputLayout();
@@ -88,7 +88,7 @@ namespace NS
             [[nodiscard]] const std::vector<BoneSphere>& BoneSpheres() const noexcept;
 
         private:
-            explicit SkeletalMesh(const SkinnedMeshDesc& desc);
+            explicit D3DSkeletalMesh(const D3DSkeletalMeshDesc& desc);
 
             std::size_t m_boneCount = 0;
             std::vector<BoneSphere> m_boneSpheres; // ボーンごとの影響球、Create 時に頂点から求める

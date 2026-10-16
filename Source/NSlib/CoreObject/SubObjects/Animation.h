@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Graphics/Animation.h"
-#include "NSlib/Graphics/SkeletalMesh.h"
+#include "NSlib/Graphics/D3DSkeletalMesh.h"
 #include "NSlib/Graphics/Skeleton.h"
 
 #include <cstddef>
@@ -25,8 +25,8 @@ namespace NS
         explicit Animation(SceneActor* owner) noexcept;
         ~Animation();
 
-        //! 非所有の SkeletalMesh を差し替える。参照先がない間は ApplyPose を行わない
-        void SetMesh(Gfx::SkeletalMesh* mesh) noexcept;
+        //! 非所有の D3DSkeletalMesh を差し替える。参照先がない間は ApplyPose を行わない
+        void SetMesh(Gfx::D3DSkeletalMesh* mesh) noexcept;
         //! 骨格を差し替える。呼び出し側が寿命を保つ。参照先がない間は ApplyPose を行わない
         void SetSkeleton(const Gfx::Skeleton* skeleton) noexcept;
         //! 使っている骨格。モデルを使っていなければ nullptr
@@ -76,7 +76,7 @@ namespace NS
         // 今のクリップのトラックの骨を、今の骨格で名前から引き直す
         void FindClipBones();
 
-        Gfx::SkeletalMesh* m_mesh = nullptr; // 更新先の SkeletalMesh (非所有)
+        Gfx::D3DSkeletalMesh* m_mesh = nullptr; // 更新先の D3DSkeletalMesh (非所有)
         AssetRef<const SkinnedModel> m_model;
         const Gfx::Skeleton* m_skeleton = nullptr; // ボーンパレット計算用の骨格 (非所有)
         const Gfx::AnimClip* m_clip = nullptr;     // 今のクリップ (非所有)
@@ -89,7 +89,7 @@ namespace NS
         std::vector<Matrix> m_paletteScratch;     // ボーンパレットの一時バッファ
 
         // ボーンパレットはオブジェクト単位の状態なので mesh でなく本部品が所有する
-        std::unique_ptr<Gfx::Buffer> m_bonePaletteCB; // VS b1 用の定数バッファ
+        std::unique_ptr<Gfx::D3DBuffer> m_bonePaletteCB; // VS b1 用の定数バッファ
         Gfx::BonePaletteCB m_palette;                 // CPU 側パレット、描画側が毎描画 GPU へ上げる
 
         Model* m_renderer = nullptr; // 同じ object の描画部品。パレットと境界の差し先 (非所有)

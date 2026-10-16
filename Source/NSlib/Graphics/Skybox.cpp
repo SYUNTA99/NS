@@ -2,14 +2,14 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Graphics/Buffer.h"
-#include "NSlib/Graphics/CommandList.h"
+#include "NSlib/Graphics/D3DBuffer.h"
+#include "NSlib/Graphics/D3DCommandList.h"
 #include "NSlib/Graphics/D3dCommon.h"
 #include "NSlib/Graphics/GraphicObject.h"
 #include "NSlib/Graphics/MeshPrimitives.h"
-#include "NSlib/Graphics/Pipeline.h"
-#include "NSlib/Graphics/Shader.h"
-#include "NSlib/Graphics/StaticMesh.h"
+#include "NSlib/Graphics/D3DPipeline.h"
+#include "NSlib/Graphics/D3DShader.h"
+#include "NSlib/Graphics/D3DStaticMesh.h"
 #include "NSlib/Graphics/detail/TextureFile.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
@@ -263,20 +263,20 @@ namespace NS
             }
 
             MeshGeometry geom = MakeCube({0.5f, 0.5f, 0.5f});
-            MeshDesc md{};
+            D3DStaticMeshDesc md{};
             md.vertices = geom.vertices.data();
             md.vertexCount = geom.vertices.size();
             md.indices = geom.indices.data();
             md.indexCount = geom.indices.size();
-            m_cubeMesh = StaticMesh::Create(md);
+            m_cubeMesh = D3DStaticMesh::Create(md);
             if (!m_cubeMesh->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "Skybox: cube mesh 構築失敗");
                 return;
             }
 
-            m_vs = Shader::CreateBuiltin("skybox.vs.hlsl");
-            m_ps = Shader::CreateBuiltin("skybox.ps.hlsl");
+            m_vs = D3DShader::CreateBuiltin("skybox.vs.hlsl");
+            m_ps = D3DShader::CreateBuiltin("skybox.ps.hlsl");
             if (!m_vs->IsValid() || !m_ps->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "Skybox: shader 構築失敗");
@@ -285,8 +285,8 @@ namespace NS
 
             m_cubeMesh->CreateInputLayout(*m_vs);
 
-            BufferDesc cbDesc = MakeConstantBufferDesc(sizeof(SkyboxCB));
-            m_cb = Buffer::Create(cbDesc);
+            D3DBufferDesc cbDesc = MakeConstantBufferDesc(sizeof(SkyboxCB));
+            m_cb = D3DBuffer::Create(cbDesc);
             if (!m_cb->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "Skybox: ConstantBuffer 構築失敗");
@@ -294,13 +294,13 @@ namespace NS
             }
 
             // 立方体の内側から見るので表面をカリングし、深度は書かない
-            PipelineDesc pipeDesc{};
+            D3DPipelineDesc pipeDesc{};
             pipeDesc.cull = CullMode::Front;
             pipeDesc.depth = DepthMode::ReadOnly;
-            m_pipeline = Pipeline::Create(pipeDesc);
+            m_pipeline = D3DPipeline::Create(pipeDesc);
             if (!m_pipeline->IsValid())
             {
-                NS_LOG_ERROR(Graphics, "Skybox: Pipeline 構築失敗");
+                NS_LOG_ERROR(Graphics, "Skybox: D3DPipeline 構築失敗");
                 return;
             }
             // 未ロード時でも安全に描画できるよう、初期状態として代替画像を設定しておく
@@ -353,7 +353,7 @@ namespace NS
             return false;
         }
 
-        void Skybox::Draw(CommandList& commands,
+        void Skybox::Draw(D3DCommandList& commands,
                           const Matrix& viewProjNoTranslate,
                           ID3D11SamplerState* sampler) const noexcept
         {

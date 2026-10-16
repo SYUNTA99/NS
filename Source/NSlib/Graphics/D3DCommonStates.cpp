@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/CommonStates.h"
+#include "NSlib/Graphics/D3DCommonStates.h"
 
 #include "NSlib/Core/Logger.h"
 
@@ -9,24 +9,24 @@ namespace NS
 {
     namespace Gfx
     {
-        CommonStates::CommonStates(ID3D11Device* device) noexcept
+        D3DCommonStates::D3DCommonStates(ID3D11Device* device) noexcept
         {
             if (device == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "CommonStates 構築時に device が null");
+                NS_LOG_ERROR(Graphics, "D3DCommonStates 構築時に device が null");
                 return;
             }
             m_states = std::make_unique<DirectX::CommonStates>(device);
         }
 
-        CommonStates::~CommonStates() = default;
+        D3DCommonStates::~D3DCommonStates() = default;
 
-        bool CommonStates::IsValid() const noexcept
+        bool D3DCommonStates::IsValid() const noexcept
         {
             return m_states != nullptr;
         }
 
-        ID3D11BlendState* CommonStates::Opaque() const noexcept
+        ID3D11BlendState* D3DCommonStates::Opaque() const noexcept
         {
             if (m_states)
             {
@@ -35,7 +35,7 @@ namespace NS
             return nullptr;
         }
 
-        ID3D11BlendState* CommonStates::AlphaBlend() const noexcept
+        ID3D11BlendState* D3DCommonStates::AlphaBlend() const noexcept
         {
             if (m_states)
             {
@@ -44,7 +44,7 @@ namespace NS
             return nullptr;
         }
 
-        ID3D11DepthStencilState* CommonStates::DepthDefault() const noexcept
+        ID3D11DepthStencilState* D3DCommonStates::DepthDefault() const noexcept
         {
             if (m_states)
             {
@@ -53,7 +53,7 @@ namespace NS
             return nullptr;
         }
 
-        ID3D11DepthStencilState* CommonStates::DepthNone() const noexcept
+        ID3D11DepthStencilState* D3DCommonStates::DepthNone() const noexcept
         {
             if (m_states)
             {
@@ -62,7 +62,7 @@ namespace NS
             return nullptr;
         }
 
-        ID3D11RasterizerState* CommonStates::CullCounterClockwise() const noexcept
+        ID3D11RasterizerState* D3DCommonStates::CullCounterClockwise() const noexcept
         {
             if (m_states)
             {
@@ -71,7 +71,7 @@ namespace NS
             return nullptr;
         }
 
-        ID3D11RasterizerState* CommonStates::CullClockwise() const noexcept
+        ID3D11RasterizerState* D3DCommonStates::CullClockwise() const noexcept
         {
             if (m_states)
             {
@@ -80,7 +80,7 @@ namespace NS
             return nullptr;
         }
 
-        ID3D11SamplerState* CommonStates::LinearWrap() const noexcept
+        ID3D11SamplerState* D3DCommonStates::LinearWrap() const noexcept
         {
             if (m_states)
             {
@@ -89,7 +89,7 @@ namespace NS
             return nullptr;
         }
 
-        ID3D11SamplerState* CommonStates::LinearClamp() const noexcept
+        ID3D11SamplerState* D3DCommonStates::LinearClamp() const noexcept
         {
             if (m_states)
             {
@@ -99,7 +99,7 @@ namespace NS
             return nullptr;
         }
 
-        ID3D11SamplerState* CommonStates::PointWrap() const noexcept
+        ID3D11SamplerState* D3DCommonStates::PointWrap() const noexcept
         {
             if (m_states)
             {
@@ -109,7 +109,7 @@ namespace NS
             return nullptr;
         }
 
-        ID3D11SamplerState* CommonStates::PointClamp() const noexcept
+        ID3D11SamplerState* D3DCommonStates::PointClamp() const noexcept
         {
             if (m_states)
             {

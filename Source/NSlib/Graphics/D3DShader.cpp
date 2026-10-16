@@ -1,4 +1,4 @@
-#include "NSlib/Graphics/Shader.h"
+#include "NSlib/Graphics/D3DShader.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
@@ -87,7 +87,7 @@ namespace NS
                     return "(no error blob)";
                 }();
                 NS_LOG_ERROR(Graphics,
-                             "Shader compile failed: target={}, entry={}, hr=0x{:X}, msg={}",
+                             "D3DShader compile failed: target={}, entry={}, hr=0x{:X}, msg={}",
                              target,
                              entryPoint,
                              static_cast<uint>(hr),
@@ -106,7 +106,7 @@ namespace NS
                 }
                 if (!OS::FileSystem::Exists(path))
                 {
-                    NS_LOG_ERROR(Graphics, "Shader file not found: {}", path);
+                    NS_LOG_ERROR(Graphics, "D3DShader file not found: {}", path);
                     return nullptr;
                 }
                 const std::wstring widePath = OS::StringUtils::WideFromUtf8(path);
@@ -214,25 +214,25 @@ namespace NS
             }
         } // namespace
 
-        std::unique_ptr<Shader> Shader::Create(std::string_view hlslPath)
+        std::unique_ptr<D3DShader> D3DShader::Create(std::string_view hlslPath)
         {
-            return std::unique_ptr<Shader>(new Shader(hlslPath));
+            return std::unique_ptr<D3DShader>(new D3DShader(hlslPath));
         }
 
-        std::unique_ptr<Shader> Shader::CreateBuiltin(std::string_view fileName)
+        std::unique_ptr<D3DShader> D3DShader::CreateBuiltin(std::string_view fileName)
         {
             const std::string shaderDir = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Shaders");
             return Create(OS::FileSystem::Combine(shaderDir, fileName));
         }
 
-        Shader::Shader(std::string_view hlslPath) : m_sourcePath(hlslPath)
+        D3DShader::D3DShader(std::string_view hlslPath) : m_sourcePath(hlslPath)
         {
             const ShaderTypeInfo* info = DetectStage(m_sourcePath);
             if (info == nullptr)
             {
                 NS_LOG_ERROR(
                     Graphics,
-                    "Shader: ファイル名からステージを判定できない (.vs./.ps./.gs./.hs./.ds./.cs. を含まない): {}",
+                    "D3DShader: ファイル名からステージを判定できない (.vs./.ps./.gs./.hs./.ds./.cs. を含まない): {}",
                     m_sourcePath);
                 return;
             }
@@ -260,7 +260,7 @@ namespace NS
             {
                 return;
             }
-            NS_LOG_ERROR(Graphics, "Shader build failed, falling back to magenta: {}", m_sourcePath);
+            NS_LOG_ERROR(Graphics, "D3DShader build failed, falling back to magenta: {}", m_sourcePath);
             ComPtr<ID3DBlob> fb = CompileFallbackStage(info->entry, info->target);
             if (!fb || !CreateStageObject(device, m_type, fb, m_shader))
             {
@@ -273,12 +273,12 @@ namespace NS
             m_fallback = true;
         }
 
-        bool Shader::Compile(ComPtr<ID3D11DeviceChild>& outShader, ComPtr<ID3DBlob>& outVsBytecode) const noexcept
+        bool D3DShader::Compile(ComPtr<ID3D11DeviceChild>& outShader, ComPtr<ID3DBlob>& outVsBytecode) const noexcept
         {
             ID3D11Device* device = Gpu().device;
             if (device == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "Shader: Renderer の Device が無効");
+                NS_LOG_ERROR(Graphics, "D3DShader: Renderer の Device が無効");
                 return false;
             }
             const ShaderTypeInfo* info = DetectStage(m_sourcePath);
@@ -304,7 +304,7 @@ namespace NS
             return true;
         }
 
-        bool Shader::Reload()
+        bool D3DShader::Reload()
         {
             ComPtr<ID3D11DeviceChild> shader;
             ComPtr<ID3DBlob> bytecode;
@@ -321,23 +321,23 @@ namespace NS
             return true;
         }
 
-        bool Shader::IsValid() const noexcept
+        bool D3DShader::IsValid() const noexcept
         {
             return static_cast<bool>(m_shader);
         }
-        bool Shader::IsUsingFallback() const noexcept
+        bool D3DShader::IsUsingFallback() const noexcept
         {
             return m_fallback;
         }
-        ShaderType Shader::Type() const noexcept
+        ShaderType D3DShader::Type() const noexcept
         {
             return m_type;
         }
-        ID3D11DeviceChild* Shader::Native() const noexcept
+        ID3D11DeviceChild* D3DShader::Native() const noexcept
         {
             return m_shader.Get();
         }
-        std::span<const std::byte> Shader::VertexShaderBytecode() const noexcept
+        std::span<const std::byte> D3DShader::VertexShaderBytecode() const noexcept
         {
             if (m_type != ShaderType::Vertex || !m_vsBytecode)
             {

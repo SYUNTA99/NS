@@ -1,16 +1,16 @@
 #include "NSlib/Graphics/ScreenPasses.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Graphics/Buffer.h"
-#include "NSlib/Graphics/CommandList.h"
-#include "NSlib/Graphics/CommonStates.h"
+#include "NSlib/Graphics/D3DBuffer.h"
+#include "NSlib/Graphics/D3DCommandList.h"
+#include "NSlib/Graphics/D3DCommonStates.h"
 #include "NSlib/Graphics/DrawItem.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/Mesh.h"
-#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/D3DMesh.h"
+#include "NSlib/Graphics/D3DPipeline.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Graphics/Shader.h"
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DShader.h"
+#include "NSlib/Graphics/D3DTexture.h"
 
 namespace NS
 {
@@ -25,9 +25,9 @@ namespace NS
                 return;
             }
 
-            m_vs = Shader::CreateBuiltin("fade.vs.hlsl");
-            m_distortionPs = Shader::CreateBuiltin("screen_distortion.ps.hlsl");
-            m_bodyMaskPs = Shader::CreateBuiltin("body_mask.ps.hlsl");
+            m_vs = D3DShader::CreateBuiltin("fade.vs.hlsl");
+            m_distortionPs = D3DShader::CreateBuiltin("screen_distortion.ps.hlsl");
+            m_bodyMaskPs = D3DShader::CreateBuiltin("body_mask.ps.hlsl");
             if (!m_vs->IsValid() || m_vs->IsUsingFallback() || !m_distortionPs->IsValid() ||
                 m_distortionPs->IsUsingFallback() || !m_bodyMaskPs->IsValid() || m_bodyMaskPs->IsUsingFallback())
             {
@@ -36,23 +36,23 @@ namespace NS
             }
 
             // 全画面三角形は裏向きなので面を捨てない
-            PipelineDesc writeDesc{};
+            D3DPipelineDesc writeDesc{};
             writeDesc.cull = CullMode::None;
             writeDesc.blend = BlendMode::Opaque;
             writeDesc.depth = DepthMode::Disabled;
-            m_writePipeline = Pipeline::Create(writeDesc);
+            m_writePipeline = D3DPipeline::Create(writeDesc);
             // 世界の深度と同じ深度の画素も通すので、比べは以下
             m_bodyMaskPipelines[0] =
-                Pipeline::Create(PipelineDesc{.cull = CullMode::Back, .depth = DepthMode::ReadOnly});
+                D3DPipeline::Create(D3DPipelineDesc{.cull = CullMode::Back, .depth = DepthMode::ReadOnly});
             m_bodyMaskPipelines[1] =
-                Pipeline::Create(PipelineDesc{.cull = CullMode::None, .depth = DepthMode::ReadOnly});
+                D3DPipeline::Create(D3DPipelineDesc{.cull = CullMode::None, .depth = DepthMode::ReadOnly});
             if (!m_writePipeline->IsValid() || !m_bodyMaskPipelines[0]->IsValid() || !m_bodyMaskPipelines[1]->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "ScreenPasses: パイプラインを作れなかった");
                 return;
             }
 
-            m_cb = Buffer::Create(MakeConstantBufferDesc(sizeof(ScreenDistortionCB)));
+            m_cb = D3DBuffer::Create(MakeConstantBufferDesc(sizeof(ScreenDistortionCB)));
             if (!m_cb->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "ScreenPasses: 定数バッファを作れなかった");
@@ -76,7 +76,7 @@ namespace NS
                 return;
             }
 
-            CommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = renderer.Commands();
             ComPtr<ID3D11RenderTargetView> target;
             ComPtr<ID3D11DepthStencilView> depth;
             cmd->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
@@ -117,7 +117,7 @@ namespace NS
             cmd.PSSetShader(*m_distortionPs);
             cmd.PSSetConstantBuffer(*m_cb, 0);
             cmd.PSSetShaderResource(*m_copy, 0);
-            const Texture* bodyMask = BodyMask();
+            const D3DTexture* bodyMask = BodyMask();
             if (bodyMask != nullptr)
             {
                 cmd.PSSetShaderResource(*bodyMask, 1);
@@ -152,7 +152,7 @@ namespace NS
                 return false;
             }
 
-            CommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = renderer.Commands();
             ComPtr<ID3D11RenderTargetView> target;
             ComPtr<ID3D11DepthStencilView> depth;
             cmd->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
@@ -212,7 +212,7 @@ namespace NS
             {
                 return;
             }
-            CommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = renderer.Commands();
             cmd.SetRenderTarget(m_savedTarget.Get(), m_savedDepth.Get());
             cmd->RSSetViewports(1, &m_savedViewport);
             m_savedTarget.Reset();
@@ -220,7 +220,7 @@ namespace NS
             m_bodyMaskDrawn = true;
         }
 
-        const Texture* ScreenPasses::BodyMask() const noexcept
+        const D3DTexture* ScreenPasses::BodyMask() const noexcept
         {
             if (!m_bodyMaskDrawn)
             {
@@ -241,12 +241,12 @@ namespace NS
             }
 
             m_bodyMask.reset();
-            TextureDesc maskDesc{};
+            D3DTextureDesc maskDesc{};
             maskDesc.width = target.Width;
             maskDesc.height = target.Height;
             maskDesc.format = DXGI_FORMAT_R8_UNORM;
             maskDesc.bindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-            std::unique_ptr<Texture> mask = Texture::Create(maskDesc);
+            std::unique_ptr<D3DTexture> mask = D3DTexture::Create(maskDesc);
             if (!mask->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "ScreenPasses: {}x{} の体の型を作れなかった", target.Width, target.Height);
@@ -267,12 +267,12 @@ namespace NS
             }
 
             m_copy.reset();
-            TextureDesc copyDesc{};
+            D3DTextureDesc copyDesc{};
             copyDesc.width = desc.Width;
             copyDesc.height = desc.Height;
             copyDesc.format = desc.Format;
             copyDesc.bindFlags = D3D11_BIND_SHADER_RESOURCE;
-            std::unique_ptr<Texture> copy = Texture::Create(copyDesc);
+            std::unique_ptr<D3DTexture> copy = D3DTexture::Create(copyDesc);
             if (!copy->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "ScreenPasses: {}x{} の描画先の写しを作れなかった", desc.Width, desc.Height);

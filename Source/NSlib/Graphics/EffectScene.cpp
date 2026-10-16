@@ -4,7 +4,7 @@
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DTexture.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
 
@@ -506,13 +506,13 @@ namespace NS
                 }
             }
             *oldest = DepthCopy{};
-            TextureDesc desc{};
+            D3DTextureDesc desc{};
             desc.width = width;
             desc.height = height;
             desc.format = DXGI_FORMAT_R24G8_TYPELESS;
             desc.viewFormat = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
             desc.bindFlags = D3D11_BIND_SHADER_RESOURCE;
-            std::unique_ptr<Texture> texture = Texture::Create(desc);
+            std::unique_ptr<D3DTexture> texture = D3DTexture::Create(desc);
             if (texture == nullptr || texture->Srv() == nullptr)
             {
                 return nullptr;

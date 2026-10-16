@@ -150,7 +150,7 @@ namespace NS
         }
         //! @brief ビュー列の index 番目に、今のフレームで描いた体の型を返す
         //! @return 1 色 8 ビットの型。未描画なら空
-        [[nodiscard]] const Gfx::Texture* BodyMaskShown(std::size_t viewIndex) const noexcept
+        [[nodiscard]] const Gfx::D3DTexture* BodyMaskShown(std::size_t viewIndex) const noexcept
         {
             return m_sceneRenderer.BodyMaskShown(viewIndex);
         }

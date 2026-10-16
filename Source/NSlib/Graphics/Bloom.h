@@ -11,12 +11,12 @@ namespace NS
 {
     namespace Gfx
     {
-        class Buffer;
-        class CommandList;
-        class Pipeline;
+        class D3DBuffer;
+        class D3DCommandList;
+        class D3DPipeline;
         class Renderer;
-        class Shader;
-        class Texture;
+        class D3DShader;
+        class D3DTexture;
 
         //! @brief 光のにじみの設定
         //! @details 物の絵は S 字で 1 以下に書くので、閾値 1 なら 1 を超えて書いたエフェクトだけがにじむ
@@ -56,29 +56,29 @@ namespace NS
             [[nodiscard]] bool EnsureTargets(Size2D size) noexcept;
 
             // 全画面を 1 回描く。source を t0、scene を t1 に差して destination へ書く。scene は無ければ差さない
-            void DrawPass(CommandList& cmd,
-                          const Shader& pixelShader,
-                          const Pipeline& pipeline,
-                          const Texture& source,
-                          const Texture* scene,
+            void DrawPass(D3DCommandList& cmd,
+                          const D3DShader& pixelShader,
+                          const D3DPipeline& pipeline,
+                          const D3DTexture& source,
+                          const D3DTexture* scene,
                           ID3D11RenderTargetView* destination,
                           Size2D destinationSize) noexcept;
 
             BloomDesc m_desc{};
 
-            std::unique_ptr<Shader> m_vs;              // 全画面三角形
-            std::unique_ptr<Shader> m_thresholdPs;     // 閾値を超えた分だけを残す
-            std::unique_ptr<Shader> m_downPs;          // 13 点で拾って半分に縮める
-            std::unique_ptr<Shader> m_upPs;            // 3×3 の山形で拾って 1 段大きい方へ足す
-            std::unique_ptr<Shader> m_compositePs;     // 元の絵ににじみを足して 1 へ丸める
-            std::unique_ptr<Pipeline> m_writePipeline; // 書き込み先を置き換える
-            std::unique_ptr<Pipeline> m_addPipeline;   // 書き込み先へ足す
-            std::unique_ptr<Buffer> m_cb;
+            std::unique_ptr<D3DShader> m_vs;              // 全画面三角形
+            std::unique_ptr<D3DShader> m_thresholdPs;     // 閾値を超えた分だけを残す
+            std::unique_ptr<D3DShader> m_downPs;          // 13 点で拾って半分に縮める
+            std::unique_ptr<D3DShader> m_upPs;            // 3×3 の山形で拾って 1 段大きい方へ足す
+            std::unique_ptr<D3DShader> m_compositePs;     // 元の絵ににじみを足して 1 へ丸める
+            std::unique_ptr<D3DPipeline> m_writePipeline; // 書き込み先を置き換える
+            std::unique_ptr<D3DPipeline> m_addPipeline;   // 書き込み先へ足す
+            std::unique_ptr<D3DBuffer> m_cb;
 
             Size2D m_size{0, 0};                        // 浮動小数の描画先の大きさ。0 なら未作成
-            std::unique_ptr<Texture> m_scene;               // 世界を描く浮動小数の描画先
-            std::unique_ptr<Texture> m_bright;              // 閾値を超えた分。世界と同じ大きさ
-            std::vector<std::unique_ptr<Texture>> m_levels; // 縮めた段。先頭が半分の大きさ
+            std::unique_ptr<D3DTexture> m_scene;               // 世界を描く浮動小数の描画先
+            std::unique_ptr<D3DTexture> m_bright;              // 閾値を超えた分。世界と同じ大きさ
+            std::vector<std::unique_ptr<D3DTexture>> m_levels; // 縮めた段。先頭が半分の大きさ
 
             ComPtr<ID3D11RenderTargetView> m_savedTarget; // BeginWorld で控えた描画先
             ComPtr<ID3D11DepthStencilView> m_savedDepth;  // BeginWorld で控えた深度

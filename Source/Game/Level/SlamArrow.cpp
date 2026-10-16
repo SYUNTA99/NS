@@ -10,8 +10,8 @@
 #include "NSlib/CoreObject/SubObjects/Collider.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Graphics/FrameConstants.h"
-#include "NSlib/Graphics/Material.h"
-#include "NSlib/Graphics/Pipeline.h"
+#include "NSlib/Graphics/D3DMaterial.h"
+#include "NSlib/Graphics/D3DPipeline.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -236,8 +236,8 @@ namespace GL
                 inOutRise = length * std::sin(wanted);
             }
 
-            [[nodiscard]] NS::Gfx::DrawItem MakeDrawItem(NS::Gfx::Mesh* mesh,
-                                                         NS::Gfx::Material* material,
+            [[nodiscard]] NS::Gfx::DrawItem MakeDrawItem(NS::Gfx::D3DMesh* mesh,
+                                                         NS::Gfx::D3DMaterial* material,
                                                          const SlamArrowConstants& constants) noexcept
             {
                 NS::Gfx::DrawItem item{};

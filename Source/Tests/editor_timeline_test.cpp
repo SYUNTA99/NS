@@ -14,9 +14,9 @@
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/RenderTarget.h"
+#include "NSlib/Graphics/D3DRenderTarget.h"
 #include "NSlib/Graphics/Renderer.h"
-#include "NSlib/Graphics/Texture.h"
+#include "NSlib/Graphics/D3DTexture.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 #include "Tests/TestHitTimelines.h"
@@ -80,7 +80,7 @@ namespace
         std::function<void()> m_check;
     };
 
-    std::vector<NS::uint8> ReadPixels(NS::Gfx::RenderTarget& target)
+    std::vector<NS::uint8> ReadPixels(NS::Gfx::D3DRenderTarget& target)
     {
         ID3D11Texture2D* texture = target.Color()->Native();
         D3D11_TEXTURE2D_DESC desc{};
@@ -194,7 +194,7 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     assets.RegisterBuiltins();
     assets.RegisterSharedMaterials();
     const NS::AssetManagerScope useAssets{assets};
-    std::unique_ptr<NS::Gfx::RenderTarget> target = NS::Gfx::RenderTarget::Create({160, 90});
+    std::unique_ptr<NS::Gfx::D3DRenderTarget> target = NS::Gfx::D3DRenderTarget::Create({160, 90});
     ASSERT_TRUE(target->IsValid());
     NS::Editor::TimelinePreview preview;
     preview.Reset(

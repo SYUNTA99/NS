@@ -11,12 +11,12 @@ namespace NS
     {
         //! GPU の Begin〜End の時間を測る。読み取りは GPU を待つため計測用に限る
         //! Renderer が未構築なら無効。Renderer より先に破棄する
-        class GpuTimer : public NonCopyable
+        class D3DGpuTimer : public NonCopyable
         {
         public:
             //! 時刻と、時刻の刻みが揃っているかの問い合わせを作る
-            GpuTimer() noexcept;
-            ~GpuTimer();
+            D3DGpuTimer() noexcept;
+            ~D3DGpuTimer();
 
             //! 構築に成功した場合 true、それ以外の場合は false
             [[nodiscard]] bool IsValid() const noexcept;
