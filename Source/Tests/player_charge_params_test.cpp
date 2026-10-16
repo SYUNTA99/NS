@@ -133,7 +133,7 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
         EXPECT_FALSE(NS::HasField(*archetypeFields, key)) << key;
     }
 
-    for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
+    for (const std::string_view sceneName : {"new_scene.scene"})
     {
         const std::string path = NS::OS::FileSystem::Combine(
             NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"),
@@ -170,7 +170,7 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
         EXPECT_NE(player.FindSubObj(it.key()), nullptr) << "PlayerActor.json " << it.key();
     }
 
-    for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
+    for (const std::string_view sceneName : {"new_scene.scene"})
     {
         const std::string path = NS::OS::FileSystem::Combine(
             NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"),

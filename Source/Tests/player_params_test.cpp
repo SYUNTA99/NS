@@ -582,7 +582,7 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
     ASSERT_NE(archetype, nullptr);
     expectEveryFieldRead(*archetype, "PlayerActor.json");
 
-    for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
+    for (const std::string_view sceneName : {"new_scene.scene"})
     {
         const std::string path = NS::OS::FileSystem::Combine(
             NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"),

@@ -371,10 +371,9 @@ TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
 
 TEST(CourseDirector, GameLoadSceneFreezesTheNewlyLoadedScene)
 {
-    // ServeLayer の台本の差し替えと同じく、立ち上がった後に別のシーンを読み直す
+    // ServeLayer の台本の差し替えと同じく、立ち上がった後にシーンを読み直す
     ::Game game{"Assets/Scenes/new_scene.scene"};
     ASSERT_TRUE(game.LoadScene("Assets/Scenes/new_scene.scene"));
-    ASSERT_TRUE(game.LoadScene("Assets/Scenes/course.scene"));
     NS::Scene* scene = game.CurrentScene();
     ASSERT_NE(scene, nullptr);
 

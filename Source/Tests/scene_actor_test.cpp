@@ -287,42 +287,44 @@ TEST(SceneLoad, RejectsPreviousHierarchySchema)
     EXPECT_FALSE(NS::DeserializeSceneFromJson(loaded, previous.dump()));
 }
 
-TEST(SceneLoad, CourseSceneHasOneDeathZoneAndNoUnregisteredActor)
+TEST(SceneLoad, RegisteredClassBuildsItsTypeAndUnregisteredFallsBackToPlainActor)
 {
-    // 同梱の course.scene は落下死の範囲 (DeathZoneActor) をちょうど 1 体持ち、未登録のクラスで素の SceneActor
-    // へ落ちる物が無い クラス名は保存の鍵なので、クラスを改名してこのシーンを書き換え忘れるとここが赤になる
-    const std::string path = NS::OS::FileSystem::Combine(
-        NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
-        "course.scene");
-    nlohmann::json doc;
-    ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path));
-
-    int deathZones = 0;
-    for (const nlohmann::json& object : NS::SceneJsonObjects(doc))
-    {
-        const std::string_view className = NS::ObjectJsonClass(object);
-        EXPECT_NE(NS::TypeRegistry::Get().Find(className), nullptr) << className;
-        if (className == "DeathZoneActor")
-        {
-            ++deathZones;
-        }
-    }
-    EXPECT_EQ(deathZones, 1);
-}
-
-// 欄の表示名と部品の登録が保存の鍵なので、鍵が変わると読み直した値が静かに既定へ戻る
-TEST(SceneLoad, CourseSceneKeysSurviveWritingBack)
-{
-    const std::string path = NS::OS::FileSystem::Combine(
-        NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
-        "course.scene");
-    nlohmann::json doc;
-    ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path));
-    NS::ArchetypeLibrary::Get().Reload();
+    // クラス名は保存の鍵。登録の有るクラスはその型で組まれ、登録の無いクラスは素の SceneActor へ落ちる
+    // クラスを改名して配置のデータを書き換え忘れると、落下の区域が素の SceneActor になり働かない
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddClassObject(doc, "DeathZoneActor", 1);
+    AddClassObject(doc, "UnregisteredActor", 2);
     NS::Scene scene;
     scene.ResetFromJson(doc);
 
-    // 書き戻しは種類の既定と同じ欄を省くので、全欄へ広げてから、ファイルの鍵が全部残っているかを見る
+    NS::SceneActor* zone = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(zone, nullptr);
+    EXPECT_NE(NS::Cast<GL::Level::DeathZoneActor>(zone), nullptr);
+    NS::SceneActor* plain = scene.Objects().FindByObjectId(2);
+    ASSERT_NE(plain, nullptr);
+    EXPECT_EQ(NS::Cast<GL::Level::DeathZoneActor>(plain), nullptr);
+}
+
+// 欄の表示名と部品の登録が保存の鍵なので、鍵が変わると読み直した値が静かに既定へ戻る
+TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
+{
+    // 置けるクラスを 1 体ずつ、全欄を書いた形で置く。読んで書き戻し、全欄へ広げると、置いた鍵が全部残る
+    NS::ArchetypeLibrary::Get().Reload();
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::uint32 id = 1;
+    for (const NS::TypeRegistry::Entry* entry : NS::PlaceableEntries())
+    {
+        nlohmann::json object = NS::MakeObjectJson();
+        NS::SetObjectJsonClass(object, entry->className);
+        NS::SetObjectJsonId(object, id);
+        ++id;
+        NS::SceneJsonObjects(doc).push_back(NS::ExpandObjectJson(object));
+    }
+    ASSERT_FALSE(NS::SceneJsonObjects(doc).empty());
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+
+    // 書き戻しは種類の既定と同じ欄を省くので、全欄へ広げてから、置いた鍵が全部残っているかを見る
     const nlohmann::json written = scene.ToJson();
     const nlohmann::json& writtenObjects = NS::SceneJsonObjects(written);
     const nlohmann::json& fileObjects = NS::SceneJsonObjects(doc);

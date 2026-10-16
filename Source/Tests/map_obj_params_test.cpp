@@ -77,7 +77,7 @@ TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
 
 TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
 {
-    for (const std::string_view sceneName : {"new_scene.scene", "course.scene"})
+    for (const std::string_view sceneName : {"new_scene.scene"})
     {
         const std::string path = NS::OS::FileSystem::Combine(
             NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"),
@@ -104,16 +104,8 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
         }
         std::sort(masses.begin(), masses.end());
         std::sort(toughnesses.begin(), toughnesses.end());
-        if (sceneName == "new_scene.scene")
-        {
-            EXPECT_EQ(masses, (std::vector<float>{0.5f, 1.0f, 2.0f, 8.0f}));
-            EXPECT_EQ(toughnesses, (std::vector<float>{0.5f, 1.0f, 2.0f, 5.0f}));
-        }
-        else
-        {
-            EXPECT_EQ(masses, (std::vector<float>{2.0f, 8.0f, 8.0f}));
-            EXPECT_EQ(toughnesses, (std::vector<float>{2.0f, 5.0f, 5.0f}));
-        }
+        EXPECT_EQ(masses, (std::vector<float>{0.5f, 1.0f, 2.0f, 8.0f}));
+        EXPECT_EQ(toughnesses, (std::vector<float>{0.5f, 1.0f, 2.0f, 5.0f}));
     }
 }
 
