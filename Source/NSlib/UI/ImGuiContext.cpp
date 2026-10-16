@@ -30,7 +30,7 @@ namespace NS
             bool fallback = true; // スタブ / 失敗で実機能が無効か
 #if NS_EDITOR_ENABLED
             ::ImGuiContext* context = nullptr; // ImGui コンテキスト (所有)
-            NS::OS::Window* window = nullptr;  // カーソル状態参照用 (非所有)
+            OS::Window* window = nullptr;  // カーソル状態参照用 (非所有)
 #endif
         };
 
@@ -113,7 +113,7 @@ namespace NS
         } // namespace
 #endif
 
-        ImGuiContext::ImGuiContext(NS::OS::Window& window, NS::Gfx::Renderer& renderer) noexcept
+        ImGuiContext::ImGuiContext(OS::Window& window, Gfx::Renderer& renderer) noexcept
             : m_pImpl(std::make_unique<Impl>())
         {
 #if NS_EDITOR_ENABLED
@@ -153,7 +153,7 @@ namespace NS
                 const ImWchar* ranges = s_glyphRanges.Data;
                 for (const char* fontPath : k_FontCandidates)
                 {
-                    if (!NS::OS::FileSystem::Exists(fontPath))
+                    if (!OS::FileSystem::Exists(fontPath))
                     {
                         continue;
                     }
@@ -179,8 +179,8 @@ namespace NS
             }
 
             (void)renderer;
-            ID3D11Device* device = NS::Gfx::Gpu().device;
-            ID3D11DeviceContext* context = NS::Gfx::Gpu().context;
+            ID3D11Device* device = Gfx::Gpu().device;
+            ID3D11DeviceContext* context = Gfx::Gpu().context;
             if (device == nullptr || context == nullptr || !::ImGui_ImplDX11_Init(device, context))
             {
                 NS_LOG_ERROR(UI, "ImGui_ImplDX11_Init 失敗、 stub mode に fallback");
@@ -263,7 +263,7 @@ namespace NS
 #endif
         }
 
-        bool ImGuiContext::ForwardWndProc(void* hwnd, NS::uint32 msg, NS::uintptr wParam, NS::intptr lParam) noexcept
+        bool ImGuiContext::ForwardWndProc(void* hwnd, uint32 msg, uintptr wParam, intptr lParam) noexcept
         {
 #if NS_EDITOR_ENABLED
             if (!IsValid())

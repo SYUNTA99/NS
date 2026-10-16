@@ -38,7 +38,7 @@ namespace NS
 
                 // 感度はこの場で効き、シーンには保存しない
                 ImGui::SeparatorText("自由視点");
-                NS::Editor::EditorCamera::FeelTuning& tuning = editor.EditorFreeCamera().Tuning();
+                Editor::EditorCamera::FeelTuning& tuning = editor.EditorFreeCamera().Tuning();
                 ImGui::DragFloat("ズームバネ角速度", &tuning.springOmega, 0.1f, 0.5f, 30.0f);
                 ImGui::DragFloat("マウス見回し感度", &tuning.mouseSensOrbit, 0.0005f, 0.0005f, 0.02f, "%.4f");
                 ImGui::DragFloat("マウス平行移動感度", &tuning.mouseSensPan, 0.001f, 0.001f, 0.2f, "%.3f");

@@ -86,7 +86,7 @@ namespace NS
         bool StartShake(const CameraShakeDesc& desc);
 
         //! 今のフレームの揺れのずれ。x がカメラの右、y が上 (m)。揺れていない時は 0
-        [[nodiscard]] NS::Vector2 ShakeOffset() const noexcept;
+        [[nodiscard]] Vector2 ShakeOffset() const noexcept;
 
         //! @brief 寄りと傾きを始める。戻しの途中なら新しい倍率と傾きから始め直す
         //! @details 寄りと傾きのモディファイアを作って積む補助。傾きの向きは、始めた時のカメラの右と
@@ -116,7 +116,7 @@ namespace NS
 
         //! @brief 効果を含まないカメラの右に対する direction の側を返す
         //! @return 内積が負の場合 -1、それ以外の場合は 1
-        [[nodiscard]] float SideSignOf(const NS::Vector3& direction) const noexcept;
+        [[nodiscard]] float SideSignOf(const Vector3& direction) const noexcept;
 
         //! @brief Evaluate が実カメラへ書く姿勢を、書かずに返す
         //! @details 仮想カメラ、ブレンド、積んだモディファイアの順に合成する
@@ -133,10 +133,10 @@ namespace NS
         [[nodiscard]] std::optional<CameraPose> EvaluateTopPose(float alpha) const noexcept;
 
         //! 実カメラの視点と投影の行列。実カメラが無ければ単位行列
-        [[nodiscard]] NS::Matrix ViewProjection() const noexcept;
+        [[nodiscard]] Matrix ViewProjection() const noexcept;
 
         //! ViewPose の視線を水平に正規化する。視点か水平成分がなければ +Z
-        [[nodiscard]] NS::Vector3 ForwardHorizontal() const noexcept;
+        [[nodiscard]] Vector3 ForwardHorizontal() const noexcept;
 
         //! 姿勢を書き込む実カメラ。無ければ nullptr
         [[nodiscard]] SceneCamera* Camera() const noexcept { return m_camera; }

@@ -22,14 +22,14 @@ namespace NS
             std::string title = "NS";
 
             //! クライアント領域のサイズ
-            NS::Size2D size{1920, 1080};
+            Size2D size{1920, 1080};
 
             bool visible = true;
         };
 
         //! @brief OS ウィンドウ
         //! @details 単一インスタンス。二重に作ると致命ログを出す
-        class Window : public NS::NonCopyable
+        class Window : public NonCopyable
         {
         public:
             //! @brief OS のメッセージをそのまま受け取るコールバック型
@@ -49,7 +49,7 @@ namespace NS
             [[nodiscard]] bool ShouldClose() const noexcept;
 
             //! @brief 現在のクライアント領域のサイズを取得する
-            [[nodiscard]] NS::Size2D Size() const noexcept;
+            [[nodiscard]] Size2D Size() const noexcept;
 
             //! @brief ウィンドウハンドルを返す。構築に失敗した時は nullptr
             [[nodiscard]] HWND NativeHandle() const noexcept;
@@ -76,7 +76,7 @@ namespace NS
 
             //! @brief リサイズ時に呼び出されるコールバックを設定する
             //! @note 最小化時はコールバックの呼び出しがスキップされる
-            void SetResizeCallback(std::function<void(NS::Size2D)> cb);
+            void SetResizeCallback(std::function<void(Size2D)> cb);
 
             //! @brief ウィンドウの閉じる要求を受け取った際のコールバックを設定する
             //! @note 独自の終了処理や、終了をキャンセルする処理をここで挟むことができる
@@ -95,10 +95,10 @@ namespace NS
             ATOM m_classAtom = 0;
             HINSTANCE m_hInstance = nullptr;
 
-            NS::Size2D m_size{0, 0};
+            Size2D m_size{0, 0};
             bool m_shouldClose = false; //!< WM_QUIT を受けたか
 
-            std::function<void(NS::Size2D)> m_onResize;
+            std::function<void(Size2D)> m_onResize;
             std::function<void()> m_onClose;
 
             Input* m_input = nullptr; //!< 入力の転送先。持ち主ではない

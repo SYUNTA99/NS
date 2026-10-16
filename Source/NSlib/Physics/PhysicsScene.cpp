@@ -30,10 +30,10 @@ namespace NS
     {
         namespace
         {
-            constexpr NS::uint k_MaxBodies = 4096;
-            constexpr NS::uint k_MaxBodyPairs = 16384;
-            constexpr NS::uint k_MaxContactConstraints = 4096;
-            constexpr NS::uint k_MaxJobs = 1024;
+            constexpr uint k_MaxBodies = 4096;
+            constexpr uint k_MaxBodyPairs = 16384;
+            constexpr uint k_MaxContactConstraints = 4096;
+            constexpr uint k_MaxJobs = 1024;
             constexpr std::size_t k_TempAllocatorBytes = 10 * 1024 * 1024;
 
             [[nodiscard]] float FiniteOr(float value, float fallback) noexcept
@@ -50,7 +50,7 @@ namespace NS
             {
                 const BodyMotion defaults;
                 BodyMotion out = motion;
-                if (!NS::IsPositiveFinite(out.mass))
+                if (!IsPositiveFinite(out.mass))
                 {
                     out.mass = defaults.mass;
                 }
@@ -145,7 +145,7 @@ namespace NS
             detail::InitJoltRuntime();
         }
 
-        NS::uint PhysicsScene::BPLayerInterface::GetNumBroadPhaseLayers() const
+        uint PhysicsScene::BPLayerInterface::GetNumBroadPhaseLayers() const
         {
             return BroadPhaseLayers::Count;
         }
@@ -226,15 +226,15 @@ namespace NS
 
         PhysicsScene::~PhysicsScene() = default;
 
-        NS::uint PhysicsScene::BodyCount() const noexcept
+        uint PhysicsScene::BodyCount() const noexcept
         {
             return m_physicsSystem.GetNumBodies();
         }
 
         JPH::BodyID PhysicsScene::SyncStatic(JPH::BodyID id,
                                              const JPH::ShapeRefC& shape,
-                                             const NS::Vector3& position,
-                                             const NS::Quaternion& rotation,
+                                             const Vector3& position,
+                                             const Quaternion& rotation,
                                              JPH::ObjectLayer layer)
         {
             if (shape == nullptr)
@@ -258,23 +258,23 @@ namespace NS
             return id;
         }
 
-        JPH::BodyID PhysicsScene::AddBox(const NS::OBB& box, JPH::ObjectLayer layer)
+        JPH::BodyID PhysicsScene::AddBox(const OBB& box, JPH::ObjectLayer layer)
         {
             return SyncBox(JPH::BodyID{}, box, layer);
         }
 
-        JPH::BodyID PhysicsScene::SyncBox(JPH::BodyID id, const NS::OBB& box, JPH::ObjectLayer layer)
+        JPH::BodyID PhysicsScene::SyncBox(JPH::BodyID id, const OBB& box, JPH::ObjectLayer layer)
         {
             const ShapePart part = MakeBoxPart(box);
             return SyncStatic(id, part.shape, part.position, part.rotation, layer);
         }
 
-        JPH::BodyID PhysicsScene::AddSphere(const NS::Sphere& sphere, JPH::ObjectLayer layer)
+        JPH::BodyID PhysicsScene::AddSphere(const Sphere& sphere, JPH::ObjectLayer layer)
         {
             return SyncSphere(JPH::BodyID{}, sphere, layer);
         }
 
-        JPH::BodyID PhysicsScene::SyncSphere(JPH::BodyID id, const NS::Sphere& sphere, JPH::ObjectLayer layer)
+        JPH::BodyID PhysicsScene::SyncSphere(JPH::BodyID id, const Sphere& sphere, JPH::ObjectLayer layer)
         {
             const ShapePart part = MakeSpherePart(sphere);
             return SyncStatic(id, part.shape, part.position, part.rotation, layer);
@@ -299,14 +299,14 @@ namespace NS
         JPH::BodyID PhysicsScene::SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer)
         {
             return SyncStatic(
-                id, CreateMeshShape(triangles), NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Quaternion::Identity, layer);
+                id, CreateMeshShape(triangles), Vector3{0.0f, 0.0f, 0.0f}, Quaternion::Identity, layer);
         }
 
         JPH::BodyID PhysicsScene::SyncMeshShape(JPH::BodyID id,
                                                 const MeshShape& collision,
-                                                const NS::Vector3& position,
-                                                const NS::Quaternion& rotation,
-                                                const NS::Vector3& scale,
+                                                const Vector3& position,
+                                                const Quaternion& rotation,
+                                                const Vector3& scale,
                                                 JPH::ObjectLayer layer)
         {
             if (collision.shape == nullptr)
@@ -319,8 +319,8 @@ namespace NS
         }
 
         JPH::BodyID PhysicsScene::AddDynamic(const JPH::ShapeRefC& shape,
-                                             const NS::Vector3& position,
-                                             const NS::Quaternion& rotation,
+                                             const Vector3& position,
+                                             const Quaternion& rotation,
                                              const DynamicBodyDesc& desc)
         {
             if (shape == nullptr || shape->MustBeStatic())
@@ -341,13 +341,13 @@ namespace NS
             return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::Activate);
         }
 
-        JPH::BodyID PhysicsScene::AddDynamicBox(const NS::OBB& box, const DynamicBodyDesc& desc)
+        JPH::BodyID PhysicsScene::AddDynamicBox(const OBB& box, const DynamicBodyDesc& desc)
         {
             const ShapePart part = MakeBoxPart(box);
             return AddDynamic(part.shape, part.position, part.rotation, desc);
         }
 
-        JPH::BodyID PhysicsScene::AddDynamicSphere(const NS::Sphere& sphere, const DynamicBodyDesc& desc)
+        JPH::BodyID PhysicsScene::AddDynamicSphere(const Sphere& sphere, const DynamicBodyDesc& desc)
         {
             const ShapePart part = MakeSpherePart(sphere);
             return AddDynamic(part.shape, part.position, part.rotation, desc);
@@ -355,8 +355,8 @@ namespace NS
 
         JPH::BodyID PhysicsScene::SyncMovingBody(JPH::BodyID id,
                                                  std::span<const ShapePart> parts,
-                                                 const NS::Vector3& position,
-                                                 const NS::Quaternion& rotation,
+                                                 const Vector3& position,
+                                                 const Quaternion& rotation,
                                                  const BodyMotion& motion,
                                                  JPH::ObjectLayer layer)
         {
@@ -431,8 +431,8 @@ namespace NS
         }
 
         void PhysicsScene::MoveKinematic(JPH::BodyID id,
-                                         const NS::Vector3& position,
-                                         const NS::Quaternion& rotation,
+                                         const Vector3& position,
+                                         const Quaternion& rotation,
                                          float deltaTime)
         {
             if (id.IsInvalid() || !(deltaTime > 0.0f))
@@ -444,7 +444,7 @@ namespace NS
                 id, ToJolt(position), ToJolt(rotation).Normalized(), deltaTime);
         }
 
-        void PhysicsScene::TeleportBody(JPH::BodyID id, const NS::Vector3& position, const NS::Quaternion& rotation)
+        void PhysicsScene::TeleportBody(JPH::BodyID id, const Vector3& position, const Quaternion& rotation)
         {
             if (id.IsInvalid())
             {
@@ -455,7 +455,7 @@ namespace NS
                 id, ToJolt(position), ToJolt(rotation).Normalized(), JPH::EActivation::Activate);
         }
 
-        void PhysicsScene::AddBodyForce(JPH::BodyID id, const NS::Vector3& force)
+        void PhysicsScene::AddBodyForce(JPH::BodyID id, const Vector3& force)
         {
             if (id.IsInvalid())
             {
@@ -465,7 +465,7 @@ namespace NS
             m_physicsSystem.GetBodyInterface().AddForce(id, ToJolt(force));
         }
 
-        void PhysicsScene::AddBodyImpulse(JPH::BodyID id, const NS::Vector3& impulse)
+        void PhysicsScene::AddBodyImpulse(JPH::BodyID id, const Vector3& impulse)
         {
             if (id.IsInvalid())
             {
@@ -475,7 +475,7 @@ namespace NS
             m_physicsSystem.GetBodyInterface().AddImpulse(id, ToJolt(impulse));
         }
 
-        void PhysicsScene::AddBodyTorque(JPH::BodyID id, const NS::Vector3& torque)
+        void PhysicsScene::AddBodyTorque(JPH::BodyID id, const Vector3& torque)
         {
             if (id.IsInvalid())
             {
@@ -485,7 +485,7 @@ namespace NS
             m_physicsSystem.GetBodyInterface().AddTorque(id, ToJolt(torque));
         }
 
-        void PhysicsScene::AddBodyAngularImpulse(JPH::BodyID id, const NS::Vector3& angularImpulse)
+        void PhysicsScene::AddBodyAngularImpulse(JPH::BodyID id, const Vector3& angularImpulse)
         {
             if (id.IsInvalid())
             {
@@ -505,9 +505,9 @@ namespace NS
             m_physicsSystem.GetBodyInterface().ActivateBody(id);
         }
 
-        void PhysicsScene::SetGravity(const NS::Vector3& gravity)
+        void PhysicsScene::SetGravity(const Vector3& gravity)
         {
-            if (!NS::IsFinite(gravity))
+            if (!IsFinite(gravity))
             {
                 return;
             }
@@ -515,7 +515,7 @@ namespace NS
             m_physicsSystem.SetGravity(ToJolt(gravity));
         }
 
-        NS::Vector3 PhysicsScene::Gravity() const
+        Vector3 PhysicsScene::Gravity() const
         {
             return FromJolt(m_physicsSystem.GetGravity());
         }
@@ -533,7 +533,7 @@ namespace NS
             m_physicsSystem.Update(deltaTime, 1, &m_tempAllocator, &m_jobSystem);
         }
 
-        void PhysicsScene::SetBodyAngularVelocity(JPH::BodyID id, const NS::Vector3& angularVelocity)
+        void PhysicsScene::SetBodyAngularVelocity(JPH::BodyID id, const Vector3& angularVelocity)
         {
             if (id.IsInvalid())
             {
@@ -543,7 +543,7 @@ namespace NS
             m_physicsSystem.GetBodyInterface().SetAngularVelocity(id, ToJolt(angularVelocity));
         }
 
-        NS::Vector3 PhysicsScene::BodyAngularVelocity(JPH::BodyID id) const
+        Vector3 PhysicsScene::BodyAngularVelocity(JPH::BodyID id) const
         {
             return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetAngularVelocity(id));
         }
@@ -580,13 +580,13 @@ namespace NS
             bodies.DestroyBody(id);
         }
 
-        bool PhysicsScene::Raycast(const NS::Vector3& origin,
-                                   const NS::Vector3& direction,
+        bool PhysicsScene::Raycast(const Vector3& origin,
+                                   const Vector3& direction,
                                    float maxDistance,
                                    float& outDistance) const
         {
             const float directionLength = direction.Length();
-            if (!NS::IsPositiveFinite(maxDistance) || !NS::IsPositiveFinite(directionLength) || !NS::IsFinite(origin))
+            if (!IsPositiveFinite(maxDistance) || !IsPositiveFinite(directionLength) || !IsFinite(origin))
             {
                 return false;
             }
@@ -600,15 +600,15 @@ namespace NS
             return true;
         }
 
-        bool PhysicsScene::Raycast(const NS::Vector3& origin,
-                                   const NS::Vector3& direction,
+        bool PhysicsScene::Raycast(const Vector3& origin,
+                                   const Vector3& direction,
                                    float maxDistance,
                                    float& outDistance,
-                                   NS::Vector3& outNormal,
+                                   Vector3& outNormal,
                                    JPH::BodyID ignoredBody) const
         {
             const float directionLength = direction.Length();
-            if (!NS::IsPositiveFinite(maxDistance) || !NS::IsPositiveFinite(directionLength) || !NS::IsFinite(origin))
+            if (!IsPositiveFinite(maxDistance) || !IsPositiveFinite(directionLength) || !IsFinite(origin))
             {
                 return false;
             }
@@ -660,7 +660,7 @@ namespace NS
             return found;
         }
 
-        std::vector<NS::AABB> PhysicsScene::OverlapBox(const NS::AABB& region) const
+        std::vector<AABB> PhysicsScene::OverlapBox(const AABB& region) const
         {
             const JPH::Vec3 center = ToJolt(region.Center);
             const JPH::Vec3 extents = ToJolt(region.Extents);
@@ -669,7 +669,7 @@ namespace NS
             JPH::AllHitCollisionCollector<JPH::CollideShapeBodyCollector> collector;
             m_physicsSystem.GetBroadPhaseQuery().CollideAABox(box, collector);
 
-            std::vector<NS::AABB> found;
+            std::vector<AABB> found;
             found.reserve(collector.mHits.size());
             const JPH::BodyLockInterface& lock = m_physicsSystem.GetBodyLockInterfaceNoLock();
             for (const JPH::BodyID id : collector.mHits)
@@ -681,12 +681,12 @@ namespace NS
                 }
 
                 const JPH::AABox& bounds = body.GetBody().GetWorldSpaceBounds();
-                found.push_back(NS::AABB{FromJolt(bounds.GetCenter()), FromJolt(bounds.GetExtent())});
+                found.push_back(AABB{FromJolt(bounds.GetCenter()), FromJolt(bounds.GetExtent())});
             }
             return found;
         }
 
-        void PhysicsScene::SetBodyVelocity(JPH::BodyID id, const NS::Vector3& velocity)
+        void PhysicsScene::SetBodyVelocity(JPH::BodyID id, const Vector3& velocity)
         {
             if (id.IsInvalid())
             {
@@ -696,17 +696,17 @@ namespace NS
             m_physicsSystem.GetBodyInterface().SetLinearVelocity(id, ToJolt(velocity));
         }
 
-        NS::Vector3 PhysicsScene::BodyVelocity(JPH::BodyID id) const
+        Vector3 PhysicsScene::BodyVelocity(JPH::BodyID id) const
         {
             return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetLinearVelocity(id));
         }
 
-        NS::Vector3 PhysicsScene::BodyPosition(JPH::BodyID id) const
+        Vector3 PhysicsScene::BodyPosition(JPH::BodyID id) const
         {
             return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetPosition(id));
         }
 
-        NS::Quaternion PhysicsScene::BodyRotation(JPH::BodyID id) const
+        Quaternion PhysicsScene::BodyRotation(JPH::BodyID id) const
         {
             return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetRotation(id));
         }

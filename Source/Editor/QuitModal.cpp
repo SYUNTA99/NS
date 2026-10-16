@@ -58,7 +58,7 @@ namespace NS
                     {
                         m_confirmed = true;
                         m_open = false;
-                        NS::Application::Quit();
+                        Application::Quit();
                     }
                     else
                     {
@@ -69,7 +69,7 @@ namespace NS
                 {
                     m_confirmed = true;
                     m_open = false;
-                    NS::Application::Quit();
+                    Application::Quit();
                 }
                 if (ImGui::Button("キャンセル", ImVec2(180.0f, 0.0f)))
                 {

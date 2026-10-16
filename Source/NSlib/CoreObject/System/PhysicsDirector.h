@@ -11,12 +11,12 @@ namespace NS
     class PhysicsDirector final : public SceneSystem
     {
     public:
-        [[nodiscard]] NS::Phys::PhysicsScene& Physics() noexcept { return m_physicsScene; }
-        [[nodiscard]] const NS::Phys::PhysicsScene& Physics() const noexcept { return m_physicsScene; }
+        [[nodiscard]] Phys::PhysicsScene& Physics() noexcept { return m_physicsScene; }
+        [[nodiscard]] const Phys::PhysicsScene& Physics() const noexcept { return m_physicsScene; }
 
         void OnTick() override;
 
     private:
-        NS::Phys::PhysicsScene m_physicsScene;
+        Phys::PhysicsScene m_physicsScene;
     };
 } // namespace NS

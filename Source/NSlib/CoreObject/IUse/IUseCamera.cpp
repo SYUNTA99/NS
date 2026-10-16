@@ -62,7 +62,7 @@ namespace NS
         }
     }
 
-    float CameraSideSignOf(const IUseCamera* user, const NS::Vector3& direction) noexcept
+    float CameraSideSignOf(const IUseCamera* user, const Vector3& direction) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const CameraManager* cameras = user->GetCameraManager();
@@ -73,13 +73,13 @@ namespace NS
         return cameras->SideSignOf(direction);
     }
 
-    NS::Vector3 CameraForwardHorizontal(const IUseCamera* user) noexcept
+    Vector3 CameraForwardHorizontal(const IUseCamera* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const CameraManager* cameras = user->GetCameraManager();
         if (cameras == nullptr)
         {
-            return NS::Vector3{0.0f, 0.0f, 1.0f};
+            return Vector3{0.0f, 0.0f, 1.0f};
         }
         return cameras->ForwardHorizontal();
     }

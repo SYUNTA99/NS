@@ -24,8 +24,8 @@ namespace NS
             }
 
             constexpr float k_Big = std::numeric_limits<float>::max();
-            std::vector<NS::Vector3> mn(boneCount, NS::Vector3{k_Big, k_Big, k_Big});
-            std::vector<NS::Vector3> mx(boneCount, NS::Vector3{-k_Big, -k_Big, -k_Big});
+            std::vector<Vector3> mn(boneCount, Vector3{k_Big, k_Big, k_Big});
+            std::vector<Vector3> mx(boneCount, Vector3{-k_Big, -k_Big, -k_Big});
             std::vector<bool> hit(boneCount, false);
 
             // 各頂点を weight>0 の全影響ボーンへ算入し、ボーンごとの軸並行範囲を取る
@@ -38,13 +38,13 @@ namespace NS
                     {
                         continue;
                     }
-                    const NS::uint32 j = v.joints[k];
+                    const uint32 j = v.joints[k];
                     if (j >= boneCount)
                     {
                         continue;
                     }
-                    mn[j] = NS::Vector3::Min(mn[j], v.position);
-                    mx[j] = NS::Vector3::Max(mx[j], v.position);
+                    mn[j] = Vector3::Min(mn[j], v.position);
+                    mx[j] = Vector3::Max(mx[j], v.position);
                     hit[j] = true;
                 }
             }
@@ -67,12 +67,12 @@ namespace NS
                     {
                         continue;
                     }
-                    const NS::uint32 j = v.joints[k];
+                    const uint32 j = v.joints[k];
                     if (j >= boneCount)
                     {
                         continue;
                     }
-                    const float d2 = NS::Vector3::DistanceSquared(v.position, spheres[j].center);
+                    const float d2 = Vector3::DistanceSquared(v.position, spheres[j].center);
                     if (d2 > maxD2[j])
                     {
                         maxD2[j] = d2;
@@ -89,10 +89,10 @@ namespace NS
             return spheres;
         }
 
-        NS::AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
-                                    const NS::Matrix* palette,
+        AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
+                                    const Matrix* palette,
                                     std::size_t paletteCount,
-                                    const NS::AABB& fallback)
+                                    const AABB& fallback)
         {
             if (palette == nullptr)
             {
@@ -100,7 +100,7 @@ namespace NS
                 return fallback;
             }
 
-            NS::AABB merged{};
+            AABB merged{};
             bool any = false;
             const std::size_t count = std::min(spheres.size(), paletteCount);
             for (std::size_t i = 0; i < count; ++i)
@@ -111,9 +111,9 @@ namespace NS
                 }
 
                 // 球中心だけ現在ポーズへ動かし半径そのままの箱にする。剛体変換なら半径は変わらない
-                const NS::Vector3 c = NS::Vector3::Transform(spheres[i].center, palette[i]);
+                const Vector3 c = Vector3::Transform(spheres[i].center, palette[i]);
                 const float r = spheres[i].radius;
-                const NS::AABB box{c, NS::Vector3{r, r, r}};
+                const AABB box{c, Vector3{r, r, r}};
                 if (!any)
                 {
                     merged = box;
@@ -121,7 +121,7 @@ namespace NS
                 }
                 else
                 {
-                    NS::AABB::CreateMerged(merged, merged, box);
+                    AABB::CreateMerged(merged, merged, box);
                 }
             }
             if (!any)
@@ -171,7 +171,7 @@ namespace NS
             }
 
             // バインドポーズ実測箱。アニメ非再生時のフォールバック境界に使う
-            NS::AABB bounds{};
+            AABB bounds{};
             DirectX::BoundingBox::CreateFromPoints(bounds,
                                                    desc.vertexCount,
                                                    static_cast<const DirectX::XMFLOAT3*>(&desc.vertices[0].position),
@@ -195,15 +195,15 @@ namespace NS
         {
             static const std::vector<InputElement> k_Layout = {
                 InputElement{
-                    "POSITION", InputElementFormat::Float3, static_cast<NS::uint>(offsetof(SkinnedVertex, position))},
+                    "POSITION", InputElementFormat::Float3, static_cast<uint>(offsetof(SkinnedVertex, position))},
                 InputElement{
-                    "TEXCOORD", InputElementFormat::Float2, static_cast<NS::uint>(offsetof(SkinnedVertex, uv))},
+                    "TEXCOORD", InputElementFormat::Float2, static_cast<uint>(offsetof(SkinnedVertex, uv))},
                 InputElement{
-                    "NORMAL", InputElementFormat::Float3, static_cast<NS::uint>(offsetof(SkinnedVertex, normal))},
+                    "NORMAL", InputElementFormat::Float3, static_cast<uint>(offsetof(SkinnedVertex, normal))},
                 InputElement{
-                    "BLENDINDICES", InputElementFormat::UInt4, static_cast<NS::uint>(offsetof(SkinnedVertex, joints))},
+                    "BLENDINDICES", InputElementFormat::UInt4, static_cast<uint>(offsetof(SkinnedVertex, joints))},
                 InputElement{
-                    "BLENDWEIGHT", InputElementFormat::Float4, static_cast<NS::uint>(offsetof(SkinnedVertex, weights))},
+                    "BLENDWEIGHT", InputElementFormat::Float4, static_cast<uint>(offsetof(SkinnedVertex, weights))},
             };
             return k_Layout;
         }

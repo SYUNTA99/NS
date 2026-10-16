@@ -15,9 +15,9 @@ namespace NS
         //! アニメーションを持たない静的モデル用の頂点データ構造
         struct StaticVertex
         {
-            NS::Vector3 position;
-            NS::Vector2 uv;
-            NS::Vector3 normal;
+            Vector3 position;
+            Vector2 uv;
+            Vector3 normal;
         };
         static_assert(sizeof(StaticVertex) == 32,
                       "頂点レイアウトの制約上、StaticVertexは32バイトである必要があります。");
@@ -29,9 +29,9 @@ namespace NS
         {
             const StaticVertex* vertices = nullptr;
             std::size_t vertexCount = 0;
-            const NS::uint32* indices = nullptr;
+            const uint32* indices = nullptr;
             std::size_t indexCount = 0;
-            const NS::AABB* precomputedBounds = nullptr; // あれば頂点走査を省いて局所境界に使う
+            const AABB* precomputedBounds = nullptr; // あれば頂点走査を省いて局所境界に使う
         };
 
         //! @brief アニメーションを持たない静的な 3D モデル

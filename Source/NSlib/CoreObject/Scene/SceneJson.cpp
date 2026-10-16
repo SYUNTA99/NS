@@ -56,7 +56,7 @@ namespace NS
         {
             nlohmann::json& objects = SceneJsonObjects(scene);
             std::unordered_map<std::string, int> counts;
-            std::unordered_map<NS::uint32, std::string> names;
+            std::unordered_map<uint32, std::string> names;
             for (const nlohmann::json& object : objects)
             {
                 ++counts[std::string{ObjectJsonName(object)}];
@@ -77,8 +77,8 @@ namespace NS
                     {
                         return;
                     }
-                    const std::unordered_map<NS::uint32, std::string>::const_iterator found =
-                        names.find(ref.get<NS::uint32>());
+                    const std::unordered_map<uint32, std::string>::const_iterator found =
+                        names.find(ref.get<uint32>());
                     if (found != names.end())
                     {
                         ref = found->second;
@@ -91,7 +91,7 @@ namespace NS
         void ReadRefsByName(nlohmann::json& scene)
         {
             nlohmann::json& objects = SceneJsonObjects(scene);
-            std::unordered_map<std::string, NS::uint32> ids;
+            std::unordered_map<std::string, uint32> ids;
             for (const nlohmann::json& object : objects)
             {
                 ids.emplace(std::string{ObjectJsonName(object)}, ObjectJsonId(object));
@@ -104,7 +104,7 @@ namespace NS
                     {
                         return;
                     }
-                    const std::unordered_map<std::string, NS::uint32>::const_iterator found =
+                    const std::unordered_map<std::string, uint32>::const_iterator found =
                         ids.find(ref.get<std::string>());
                     if (found == ids.end())
                     {
@@ -175,12 +175,12 @@ namespace NS
         return objects;
     }
 
-    NS::uint32 SceneJsonNextObjectId(const nlohmann::json& scene) noexcept
+    uint32 SceneJsonNextObjectId(const nlohmann::json& scene) noexcept
     {
         return FieldUnsigned(scene, "nextObjectId", 1);
     }
 
-    void SetSceneJsonNextObjectId(nlohmann::json& scene, NS::uint32 nextObjectId)
+    void SetSceneJsonNextObjectId(nlohmann::json& scene, uint32 nextObjectId)
     {
         if (!scene.is_object())
         {
@@ -213,40 +213,40 @@ namespace NS
         EnsureEnvironment(scene)["skybox"] = std::string{path};
     }
 
-    NS::Vector3 NormalizeGravityDirection(const NS::Vector3& direction) noexcept
+    Vector3 NormalizeGravityDirection(const Vector3& direction) noexcept
     {
         const float lengthSquared = direction.LengthSquared();
-        if (!NS::IsFinite(direction) || !std::isfinite(lengthSquared) ||
-            !(lengthSquared > NS::k_Epsilon * NS::k_Epsilon))
+        if (!IsFinite(direction) || !std::isfinite(lengthSquared) ||
+            !(lengthSquared > k_Epsilon * k_Epsilon))
         {
-            return NS::Vector3{0.0f, -1.0f, 0.0f};
+            return Vector3{0.0f, -1.0f, 0.0f};
         }
         return direction / std::sqrt(lengthSquared);
     }
 
-    NS::Vector3 SceneJsonGravityDirection(const nlohmann::json& scene) noexcept
+    Vector3 SceneJsonGravityDirection(const nlohmann::json& scene) noexcept
     {
         if (!scene.is_object())
         {
-            return NS::Vector3{0.0f, -1.0f, 0.0f};
+            return Vector3{0.0f, -1.0f, 0.0f};
         }
         const nlohmann::json::const_iterator environmentIt = scene.find("environment");
         if (environmentIt == scene.end() || !environmentIt->is_object())
         {
-            return NS::Vector3{0.0f, -1.0f, 0.0f};
+            return Vector3{0.0f, -1.0f, 0.0f};
         }
         return NormalizeGravityDirection(
-            FieldVector3(*environmentIt, "gravityDirection", NS::Vector3{0.0f, -1.0f, 0.0f}));
+            FieldVector3(*environmentIt, "gravityDirection", Vector3{0.0f, -1.0f, 0.0f}));
     }
 
-    void SetSceneJsonGravityDirection(nlohmann::json& scene, const NS::Vector3& direction)
+    void SetSceneJsonGravityDirection(nlohmann::json& scene, const Vector3& direction)
     {
-        const NS::Vector3 normalized = NormalizeGravityDirection(direction);
+        const Vector3 normalized = NormalizeGravityDirection(direction);
         EnsureEnvironment(scene)["gravityDirection"] =
             nlohmann::json::array({normalized.x, normalized.y, normalized.z});
     }
 
-    std::size_t FindObjectIndexById(const nlohmann::json& scene, NS::uint32 id) noexcept
+    std::size_t FindObjectIndexById(const nlohmann::json& scene, uint32 id) noexcept
     {
         if (id == k_NoObjectId)
         {
@@ -291,7 +291,7 @@ namespace NS
         std::size_t PruneDanglingObjectRefs(nlohmann::json& scene)
         {
             nlohmann::json& objects = SceneJsonObjects(scene);
-            std::unordered_set<NS::uint32> ids;
+            std::unordered_set<uint32> ids;
             for (const nlohmann::json& object : objects)
             {
                 ids.insert(ObjectJsonId(object));
@@ -305,7 +305,7 @@ namespace NS
                     {
                         return;
                     }
-                    const NS::uint32 id = ref.get<NS::uint32>();
+                    const uint32 id = ref.get<uint32>();
                     if (id == 0 || ids.contains(id))
                     {
                         return;
@@ -322,18 +322,18 @@ namespace NS
     void EnsureUniqueObjectIds(nlohmann::json& scene)
     {
         nlohmann::json& objects = SceneJsonObjects(scene);
-        NS::uint32 nextObjectId = std::max(SceneJsonNextObjectId(scene), 1u);
+        uint32 nextObjectId = std::max(SceneJsonNextObjectId(scene), 1u);
         for (const nlohmann::json& object : objects)
         {
             nextObjectId = std::max(nextObjectId, ObjectJsonId(object) + 1);
         }
-        std::unordered_set<NS::uint32> seen;
+        std::unordered_set<uint32> seen;
         for (nlohmann::json& object : objects)
         {
-            const NS::uint32 id = ObjectJsonId(object);
+            const uint32 id = ObjectJsonId(object);
             if (id == 0 || !seen.insert(id).second)
             {
-                const NS::uint32 fresh = nextObjectId++;
+                const uint32 fresh = nextObjectId++;
                 SetObjectJsonId(object, fresh);
                 seen.insert(fresh);
             }
@@ -353,7 +353,7 @@ namespace NS
         {
             return name;
         }
-        for (NS::uint32 n = 1;; ++n)
+        for (uint32 n = 1;; ++n)
         {
             std::string candidate = name + "_" + std::to_string(n);
             if (!used.contains(candidate))
@@ -452,14 +452,14 @@ namespace NS
         }
 
         const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
-        return ::NS::OS::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size()));
+        return OS::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size()));
     }
 
     bool LoadSceneFromJsonFile(nlohmann::json& outScene, std::string_view path) noexcept
     {
         outScene = MakeSceneJson();
 
-        std::optional<std::string> textOpt = ::NS::OS::FileSystem::ReadAllText(path);
+        std::optional<std::string> textOpt = OS::FileSystem::ReadAllText(path);
         if (!textOpt.has_value())
         {
             return false;

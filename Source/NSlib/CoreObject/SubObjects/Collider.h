@@ -21,15 +21,15 @@ namespace NS
     //! @brief Collider::Move が返す 1 フレームの移動の結果
     struct ColliderMove
     {
-        NS::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 地形に当てて押し返した後の根の位置
-        NS::Vector3 velocity{0.0f, 0.0f, 0.0f}; //!< 接触面へ射影した後の速度
+        Vector3 position{0.0f, 0.0f, 0.0f}; //!< 地形に当てて押し返した後の根の位置
+        Vector3 velocity{0.0f, 0.0f, 0.0f}; //!< 接触面へ射影した後の速度
         bool grounded = false;                  //!< 移動の後に足場に立っているか
         bool inWorld = false;                   //!< 地形を見たか。持ち主が Scene に居なければ偽
     };
 
     //! @brief カプセルを地形に当てて移動する部品。位置・速度への反映は Body が行う
     //! @details 自分への衝突を避けるため、静的な PhysicsScene の body には登録しない
-    class Collider : public NS::SubObject, public NS::IUseCollision
+    class Collider : public SubObject, public IUseCollision
     {
     public:
         Collider() noexcept = default;
@@ -45,9 +45,9 @@ namespace NS
         [[nodiscard]] float CapsuleHalfHeight() const noexcept;
         //! @brief 移動判定と同じカプセルを返す。中心は根、軸は +Y
         //! @param[in] rootPosition 根の位置 (ワールド)
-        [[nodiscard]] NS::Phys::Capsule CapsuleAt(const NS::Vector3& rootPosition) const noexcept;
+        [[nodiscard]] Phys::Capsule CapsuleAt(const Vector3& rootPosition) const noexcept;
         //! @brief 現在の根の位置に置いたカプセル。持ち主がなければ原点を使う
-        [[nodiscard]] NS::Phys::Capsule WorldCapsule() const noexcept;
+        [[nodiscard]] Phys::Capsule WorldCapsule() const noexcept;
         //! 立ち姿の円柱の半分の高さ (m)。欄「半分の高さ」の値。
         //! 球にしている間も変わらないので、立ち姿の寸法はここから引く
         [[nodiscard]] float StandingHalfHeight() const noexcept { return m_standingHalfHeight; }
@@ -62,18 +62,18 @@ namespace NS
         void SetSphereShape(bool sphere) noexcept;
 
         //! 持ち主の Scene の衝突の PhysicsScene。持ち主が無いか Scene に居なければ nullptr
-        [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
+        [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
 
         //! 位置 from から地形に当てた移動結果を返す。個体の姿勢と速度は変更しない
         //! velocity は m/s、dt は秒、maxStepHeight は登れる段差 m
         //! シーンなしでは速度分だけ進み、grounded と inWorld は false
-        [[nodiscard]] ColliderMove Move(const NS::Vector3& from,
-                                        const NS::Vector3& velocity,
+        [[nodiscard]] ColliderMove Move(const Vector3& from,
+                                        const Vector3& velocity,
                                         float dt,
                                         float maxStepHeight) noexcept;
 
         // TypeRegistry には登録しない。欄の表示名は保存の鍵
-        NS_REFLECT_BEGIN(Collider, NS::SubObject)
+        NS_REFLECT_BEGIN(Collider, SubObject)
         NS_REFLECT_ACCESSOR(float, "半径", CapsuleRadius(), SetCapsuleRadius)
         NS_REFLECT_ACCESSOR(float, "半分の高さ", StandingHalfHeight(), SetStandingHalfHeight)
         NS_REFLECT_END()
@@ -82,6 +82,6 @@ namespace NS
         float m_radius = 0.4f;             // 当たりのカプセルの半径 (m)
         float m_standingHalfHeight = 0.5f; // 立ち姿の円柱の半分の高さ (m)。半球を除く
         bool m_sphereShape = false;        // 当たりを球にしているか。書くのは SetSphereShape だけ
-        std::unique_ptr<NS::Phys::JoltCharacter> m_character;
+        std::unique_ptr<Phys::JoltCharacter> m_character;
     };
 } // namespace NS

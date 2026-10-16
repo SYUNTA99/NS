@@ -104,7 +104,7 @@ namespace NS
             //! 起動からの累計秒
             [[nodiscard]] static double TotalSeconds() noexcept { return s_total; }
             //! 累計フレーム数
-            [[nodiscard]] static NS::uint64 FrameNumber() noexcept { return s_frame; }
+            [[nodiscard]] static uint64 FrameNumber() noexcept { return s_frame; }
 
             //! デフォルトは毎秒 60 回の固定更新
             static constexpr float k_DefaultFixedDelta = 1.0f / 60.0f;
@@ -128,7 +128,7 @@ namespace NS
             static inline std::chrono::steady_clock::time_point s_lastTime{std::chrono::steady_clock::now()};
             static inline float s_delta = 0.0f;                     //!< 前フレームからの経過秒
             static inline double s_total = 0.0;                     //!< 起動からの累計秒
-            static inline NS::uint64 s_frame = 0;                   //!< 累計フレーム数
+            static inline uint64 s_frame = 0;                   //!< 累計フレーム数
             static inline float s_fixedDelta = k_DefaultFixedDelta; //!< 固定更新の間隔（秒）
             static inline float s_accumulator = 0.0f;               //!< 未消化の経過時間。固定ステップを刻んだ残り
             static inline int s_fixedSteps = 0;                     //!< 今フレームで固定更新を回す回数
@@ -139,7 +139,7 @@ namespace NS
         class ScopedTimer
         {
         public:
-            ScopedTimer(::NS::LogType logType, std::string label)
+            ScopedTimer(LogType logType, std::string label)
                 : m_logType(logType), m_label(std::move(label)), m_startTime(std::chrono::steady_clock::now())
             {}
 
@@ -147,7 +147,7 @@ namespace NS
             {
                 const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
                 const double ms = std::chrono::duration<double, std::milli>(end - m_startTime).count();
-                ::NS::Logger::LogImpl(::NS::LogLevel::Debug,
+                Logger::LogImpl(LogLevel::Debug,
                                       ::magic_enum::enum_name(m_logType),
                                       __FILE__,
                                       __LINE__,
@@ -159,7 +159,7 @@ namespace NS
             ScopedTimer& operator=(const ScopedTimer&) = delete;
 
         private:
-            ::NS::LogType m_logType;
+            LogType m_logType;
             std::string m_label;
             std::chrono::steady_clock::time_point m_startTime;
         };

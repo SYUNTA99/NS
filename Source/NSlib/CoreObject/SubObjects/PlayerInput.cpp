@@ -27,21 +27,21 @@ namespace
 
 namespace NS
 {
-    void PlayerInput::SetCameraForward(const NS::Vector3& cameraForwardHorizontal) noexcept
+    void PlayerInput::SetCameraForward(const Vector3& cameraForwardHorizontal) noexcept
     {
         m_cameraForward = NormalizeHorizontal(cameraForwardHorizontal);
     }
 
-    void PlayerInput::SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept
+    void PlayerInput::SetDesiredMove(const Vector3& worldDir, float speedScale01) noexcept
     {
         m_desiredDir = worldDir;
-        m_desiredSpeedScale = NS::Clamp(speedScale01, 0.0f, 1.0f);
+        m_desiredSpeedScale = Clamp(speedScale01, 0.0f, 1.0f);
     }
 
     void PlayerInput::SetClimbMove(float localRight, float localForward) noexcept
     {
-        m_climbRight = NS::Clamp(localRight, -1.0f, 1.0f);
-        m_climbForward = NS::Clamp(localForward, -1.0f, 1.0f);
+        m_climbRight = Clamp(localRight, -1.0f, 1.0f);
+        m_climbForward = Clamp(localForward, -1.0f, 1.0f);
     }
 
     void PlayerInput::ConsumePressed() noexcept
@@ -54,7 +54,7 @@ namespace NS
 
     void PlayerInput::ResetMovementInput() noexcept
     {
-        m_desiredDir = NS::Vector3{};
+        m_desiredDir = Vector3{};
         m_desiredSpeedScale = 0.0f;
         m_climbRight = 0.0f;
         m_climbForward = 0.0f;
@@ -86,9 +86,9 @@ namespace NS
             m_cameraForward = NormalizeHorizontal(CameraForwardHorizontal(Owner()));
         }
 
-        NS::OS::Input& input = NS::OS::Input::Get();
-        const NS::OS::Keyboard& kb = input.Keyboard();
-        const NS::OS::Gamepad& pad = input.Gamepad();
+        OS::Input& input = OS::Input::Get();
+        const OS::Keyboard& kb = input.Keyboard();
+        const OS::Gamepad& pad = input.Gamepad();
 
         // トリガーは XInput の既定のしきい値を NormalizeTrigger が先に切っているので、0 を超えたかだけ見る
         const bool releaseLedgeHeld = pad.LeftTrigger() > 0.0f;
@@ -108,25 +108,25 @@ namespace NS
         float kbRight = 0.0f;
         if (!wantKb)
         {
-            if (kb.IsHeld(NS::OS::Key::W))
+            if (kb.IsHeld(OS::Key::W))
             {
                 kbForward += 1.0f;
             }
-            if (kb.IsHeld(NS::OS::Key::S))
+            if (kb.IsHeld(OS::Key::S))
             {
                 kbForward -= 1.0f;
             }
-            if (kb.IsHeld(NS::OS::Key::A))
+            if (kb.IsHeld(OS::Key::A))
             {
                 kbRight -= 1.0f;
             }
-            if (kb.IsHeld(NS::OS::Key::D))
+            if (kb.IsHeld(OS::Key::D))
             {
                 kbRight += 1.0f;
             }
         }
 
-        const NS::OS::Stick lstick = pad.LeftStick();
+        const OS::Stick lstick = pad.LeftStick();
 
         float localX = kbRight + lstick.x;
         float localZ = kbForward + lstick.y;
@@ -144,18 +144,18 @@ namespace NS
             speedScale = localMag;
         }
 
-        const NS::Vector3& fwd = m_cameraForward;
-        const NS::Vector3 right{fwd.z, 0.0f, -fwd.x};
+        const Vector3& fwd = m_cameraForward;
+        const Vector3 right{fwd.z, 0.0f, -fwd.x};
 
-        const NS::Vector3 worldDir{
+        const Vector3 worldDir{
             right.x * localX + fwd.x * localZ,
             0.0f,
             right.z * localX + fwd.z * localZ,
         };
 
         const bool jumpPressed =
-            (!wantKb && kb.IsPressed(NS::OS::Key::Space)) || pad.IsPressed(NS::OS::GamepadButton::A);
-        const bool jumpHeld = (!wantKb && kb.IsHeld(NS::OS::Key::Space)) || pad.IsHeld(NS::OS::GamepadButton::A);
+            (!wantKb && kb.IsPressed(OS::Key::Space)) || pad.IsPressed(OS::GamepadButton::A);
+        const bool jumpHeld = (!wantKb && kb.IsHeld(OS::Key::Space)) || pad.IsHeld(OS::GamepadButton::A);
 
         m_desiredDir = worldDir;
         m_desiredSpeedScale = speedScale;
@@ -164,12 +164,12 @@ namespace NS
         m_jumpPressed = m_jumpPressed || jumpPressed;
         m_jumpHeld = jumpHeld;
         m_respawnPressed =
-            m_respawnPressed || (!wantKb && kb.IsPressed(NS::OS::Key::R)) || pad.IsPressed(NS::OS::GamepadButton::Back);
+            m_respawnPressed || (!wantKb && kb.IsPressed(OS::Key::R)) || pad.IsPressed(OS::GamepadButton::Back);
 
         // 体当たりのマウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
-        const bool slamHeld = (input.GameReceivesMouseButton(NS::OS::MouseButton::Left) &&
-                               input.Mouse().IsHeld(NS::OS::MouseButton::Left)) ||
-                              pad.IsHeld(NS::OS::GamepadButton::X);
+        const bool slamHeld = (input.GameReceivesMouseButton(OS::MouseButton::Left) &&
+                               input.Mouse().IsHeld(OS::MouseButton::Left)) ||
+                              pad.IsHeld(OS::GamepadButton::X);
         // 遅い世界では自機が読まない歩がある。その間に押して放した分も、次に読む歩で押したと見せる
         m_slamHeld = slamHeld || m_slamSeen;
         m_slamSeen = m_slamHeld;
@@ -177,7 +177,7 @@ namespace NS
         // 手放しは専用のマウス右ボタン / 左トリガー。後ろ入力と兼ねると、カメラ側の縁へ寄せた入力で手を放す
         const bool mouseFree = !input.UiWantsMouse();
         m_releaseLedgePressed = m_releaseLedgePressed ||
-                                (mouseFree && input.Mouse().IsPressed(NS::OS::MouseButton::Right)) ||
+                                (mouseFree && input.Mouse().IsPressed(OS::MouseButton::Right)) ||
                                 (releaseLedgeHeld && !m_prevReleaseLedgeHeld);
         m_prevReleaseLedgeHeld = releaseLedgeHeld;
     }

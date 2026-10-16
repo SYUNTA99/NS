@@ -35,7 +35,7 @@ namespace NS
             inline constexpr JPH::ObjectLayer Terrain = 0;
             inline constexpr JPH::ObjectLayer Rock = 1;
             inline constexpr JPH::ObjectLayer Debris = 2;
-            inline constexpr NS::uint Count = 3;
+            inline constexpr uint Count = 3;
         } // namespace ObjectLayers
 
         namespace BroadPhaseLayers
@@ -51,7 +51,7 @@ namespace NS
             inline constexpr JPH::BroadPhaseLayer Terrain = FromObjectLayer(ObjectLayers::Terrain);
             inline constexpr JPH::BroadPhaseLayer Rock = FromObjectLayer(ObjectLayers::Rock);
             inline constexpr JPH::BroadPhaseLayer Debris = FromObjectLayer(ObjectLayers::Debris);
-            inline constexpr NS::uint Count = ObjectLayers::Count;
+            inline constexpr uint Count = ObjectLayers::Count;
         } // namespace BroadPhaseLayers
 
         //! @brief 重力の既定の Y 成分 (m/s^2)
@@ -60,16 +60,16 @@ namespace NS
         inline constexpr float k_DefaultGravityY = -25.0f;
 
         //! 重力の既定値。真下へ k_DefaultGravityY
-        [[nodiscard]] inline NS::Vector3 DefaultGravity() noexcept
+        [[nodiscard]] inline Vector3 DefaultGravity() noexcept
         {
-            return NS::Vector3{0.0f, k_DefaultGravityY, 0.0f};
+            return Vector3{0.0f, k_DefaultGravityY, 0.0f};
         }
 
         //! @brief 直近の Update で記録した接触 1 件
         struct BodyContact
         {
             JPH::BodyID other;  // ぶつかった相手の body
-            NS::Vector3 normal; // 接触面の法線。持ち主を相手から離す向き
+            Vector3 normal; // 接触面の法線。持ち主を相手から離す向き
         };
 
         //! @brief 動的 body を作る時の設定
@@ -102,23 +102,23 @@ namespace NS
 
         //! Jolt の物理世界。初回の構築かメッシュ形状の生成時に共通の型登録を行う
         //! Add 系で形状を作れなければ無効な BodyID
-        class PhysicsScene : public NS::NonCopyable
+        class PhysicsScene : public NonCopyable
         {
         public:
             PhysicsScene();
             ~PhysicsScene();
 
             //! 入っている body の数
-            [[nodiscard]] NS::uint BodyCount() const noexcept;
+            [[nodiscard]] uint BodyCount() const noexcept;
 
             //! OBB の中心と 3 軸をそのまま box body にする
-            JPH::BodyID AddBox(const NS::OBB& box, JPH::ObjectLayer layer);
+            JPH::BodyID AddBox(const OBB& box, JPH::ObjectLayer layer);
             //! id の body を box の形と姿勢・layer へ書き換えて id を返す。id が無効なら新しく作る
-            JPH::BodyID SyncBox(JPH::BodyID id, const NS::OBB& box, JPH::ObjectLayer layer);
+            JPH::BodyID SyncBox(JPH::BodyID id, const OBB& box, JPH::ObjectLayer layer);
             //! 中心と半径をそのまま球 body にする
-            JPH::BodyID AddSphere(const NS::Sphere& sphere, JPH::ObjectLayer layer);
+            JPH::BodyID AddSphere(const Sphere& sphere, JPH::ObjectLayer layer);
             //! id の body を sphere の形と位置・layer へ書き換えて id を返す。id が無効なら新しく作る
-            JPH::BodyID SyncSphere(JPH::BodyID id, const NS::Sphere& sphere, JPH::ObjectLayer layer);
+            JPH::BodyID SyncSphere(JPH::BodyID id, const Sphere& sphere, JPH::ObjectLayer layer);
             //! capsule body を capsule.axis の向きで入れる。軸が零ベクトルなら Y 軸
             JPH::BodyID AddCapsule(const Capsule& capsule, JPH::ObjectLayer layer);
             //! id の body を capsule の形と姿勢・layer へ書き換えて id を返す。id が無効なら新しく作る
@@ -134,23 +134,23 @@ namespace NS
             //! 形がないか、拡縮の 3 軸とも零に近ければ無効な BodyID を返す。既存の物体は外さない
             JPH::BodyID SyncMeshShape(JPH::BodyID id,
                                       const MeshShape& collision,
-                                      const NS::Vector3& position,
-                                      const NS::Quaternion& rotation,
-                                      const NS::Vector3& scale,
+                                      const Vector3& position,
+                                      const Quaternion& rotation,
+                                      const Vector3& scale,
                                       JPH::ObjectLayer layer);
 
             //! OBB の中心と 3 軸をそのまま動的な box body にする
-            JPH::BodyID AddDynamicBox(const NS::OBB& box, const DynamicBodyDesc& desc);
+            JPH::BodyID AddDynamicBox(const OBB& box, const DynamicBodyDesc& desc);
             //! 中心と半径をそのまま動的な球 body にする
-            JPH::BodyID AddDynamicSphere(const NS::Sphere& sphere, const DynamicBodyDesc& desc);
+            JPH::BodyID AddDynamicSphere(const Sphere& sphere, const DynamicBodyDesc& desc);
 
             //! 世界座標の形状群を動く body にまとめ、位置と回転を更新する。速度は保つ
             //! 無効な id または静的 body は新規作成し、元の body は削除しない
             //! 動的に使えない形状は除外し、有効な形状がなければ無効な BodyID
             JPH::BodyID SyncMovingBody(JPH::BodyID id,
                                        std::span<const ShapePart> parts,
-                                       const NS::Vector3& position,
-                                       const NS::Quaternion& rotation,
+                                       const Vector3& position,
+                                       const Quaternion& rotation,
                                        const BodyMotion& motion,
                                        JPH::ObjectLayer layer = ObjectLayers::Rock);
 
@@ -161,34 +161,34 @@ namespace NS
             //! @details 瞬間移動ではなく速度を持たせて運ぶので、途中で触れた相手を押す
             //! 無効な BodyID と、deltaTime が正でない時は何もしない
             void MoveKinematic(JPH::BodyID id,
-                               const NS::Vector3& position,
-                               const NS::Quaternion& rotation,
+                               const Vector3& position,
+                               const Quaternion& rotation,
                                float deltaTime);
 
             //! body を position・rotation へ瞬間移動させて起こす。速度はそのまま。無効な BodyID は何もしない
-            void TeleportBody(JPH::BodyID id, const NS::Vector3& position, const NS::Quaternion& rotation);
+            void TeleportBody(JPH::BodyID id, const Vector3& position, const Quaternion& rotation);
 
             //! 次の Update の間、重心へ力 (N) を掛け続ける。無効な BodyID は何もしない
-            void AddBodyForce(JPH::BodyID id, const NS::Vector3& force);
+            void AddBodyForce(JPH::BodyID id, const Vector3& force);
             //! 重心へ力積 (N·s) を与え、速度を即座に変える。無効な BodyID は何もしない
-            void AddBodyImpulse(JPH::BodyID id, const NS::Vector3& impulse);
+            void AddBodyImpulse(JPH::BodyID id, const Vector3& impulse);
             //! 次の Update の間、トルク (N·m) を掛け続ける。無効な BodyID は何もしない
-            void AddBodyTorque(JPH::BodyID id, const NS::Vector3& torque);
+            void AddBodyTorque(JPH::BodyID id, const Vector3& torque);
             //! 角力積 (N·m·s) を与え、角速度を即座に変える。無効な BodyID は何もしない
-            void AddBodyAngularImpulse(JPH::BodyID id, const NS::Vector3& angularImpulse);
+            void AddBodyAngularImpulse(JPH::BodyID id, const Vector3& angularImpulse);
             //! 眠っている body を起こす。無効な BodyID は何もしない
             void WakeBody(JPH::BodyID id);
 
             //! @details 置き換えるのは動く body に掛かる重力だけ。自機は重力を自分で持つので変わらない
             //! 非有限の成分を含む値は受け取らない
-            void SetGravity(const NS::Vector3& gravity);
+            void SetGravity(const Vector3& gravity);
             //! 世界の重力 (m/s^2)
-            [[nodiscard]] NS::Vector3 Gravity() const;
+            [[nodiscard]] Vector3 Gravity() const;
 
             //! body の角速度を置く。無効な BodyID は何もしない
-            void SetBodyAngularVelocity(JPH::BodyID id, const NS::Vector3& angularVelocity);
+            void SetBodyAngularVelocity(JPH::BodyID id, const Vector3& angularVelocity);
             //! body の角速度
-            [[nodiscard]] NS::Vector3 BodyAngularVelocity(JPH::BodyID id) const;
+            [[nodiscard]] Vector3 BodyAngularVelocity(JPH::BodyID id) const;
             //! body が起きている場合 true、それ以外の場合は false。無効な BodyID は false
             [[nodiscard]] bool IsBodyAwake(JPH::BodyID id) const;
             //! 直近の Update で記録した id の接触。前の Update の分は残らない。無効な BodyID は空
@@ -202,18 +202,18 @@ namespace NS
 
             //! 光線上の最も近い命中までの世界距離を返す。direction の長さは問わず、全 body を調べる
             //! maxDistance か direction の長さが正でなければ false。未命中では outDistance を変更しない
-            [[nodiscard]] bool Raycast(const NS::Vector3& origin,
-                                       const NS::Vector3& direction,
+            [[nodiscard]] bool Raycast(const Vector3& origin,
+                                       const Vector3& direction,
                                        float maxDistance,
                                        float& outDistance) const;
 
             //! ignoredBody を除き、最も近い命中の世界距離と面の世界法線を返す
             //! 非有限値・正でない距離や方向長・未命中では、出力を変えず false
-            [[nodiscard]] bool Raycast(const NS::Vector3& origin,
-                                       const NS::Vector3& direction,
+            [[nodiscard]] bool Raycast(const Vector3& origin,
+                                       const Vector3& direction,
                                        float maxDistance,
                                        float& outDistance,
-                                       NS::Vector3& outNormal,
+                                       Vector3& outNormal,
                                        JPH::BodyID ignoredBody) const;
 
             //! @brief capsule に重なっている body の id を集めて返す
@@ -224,29 +224,29 @@ namespace NS
             //! @brief region に重なる body の世界座標の境界箱を集めて返す
             //! @details 重なりを見るのも返すのも軸並行の境界箱で、shape の形は見ない
             //! 回転した box や mesh では形より大きい箱が返る
-            [[nodiscard]] std::vector<NS::AABB> OverlapBox(const NS::AABB& region) const;
+            [[nodiscard]] std::vector<AABB> OverlapBox(const AABB& region) const;
 
             //! body の線速度を置く。無効な BodyID は何もしない
-            void SetBodyVelocity(JPH::BodyID id, const NS::Vector3& velocity);
+            void SetBodyVelocity(JPH::BodyID id, const Vector3& velocity);
 
             //! body の線速度
-            [[nodiscard]] NS::Vector3 BodyVelocity(JPH::BodyID id) const;
+            [[nodiscard]] Vector3 BodyVelocity(JPH::BodyID id) const;
 
             //! body をこの PhysicsScene から外して壊す。無効な BodyID は何もしない
             void RemoveBody(JPH::BodyID id);
 
             //! body の世界座標の位置
-            [[nodiscard]] NS::Vector3 BodyPosition(JPH::BodyID id) const;
+            [[nodiscard]] Vector3 BodyPosition(JPH::BodyID id) const;
             //! body の世界座標の回転
-            [[nodiscard]] NS::Quaternion BodyRotation(JPH::BodyID id) const;
+            [[nodiscard]] Quaternion BodyRotation(JPH::BodyID id) const;
 
         private:
             friend class JoltCharacter;
 
             JPH::BodyID SyncStatic(JPH::BodyID id,
                                    const JPH::ShapeRefC& shape,
-                                   const NS::Vector3& position,
-                                   const NS::Quaternion& rotation,
+                                   const Vector3& position,
+                                   const Quaternion& rotation,
                                    JPH::ObjectLayer layer);
 
             class RuntimeInit
@@ -258,7 +258,7 @@ namespace NS
             class BPLayerInterface final : public JPH::BroadPhaseLayerInterface
             {
             public:
-                [[nodiscard]] NS::uint GetNumBroadPhaseLayers() const override;
+                [[nodiscard]] uint GetNumBroadPhaseLayers() const override;
                 [[nodiscard]] JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override;
             };
 
@@ -297,8 +297,8 @@ namespace NS
             };
 
             JPH::BodyID AddDynamic(const JPH::ShapeRefC& shape,
-                                   const NS::Vector3& position,
-                                   const NS::Quaternion& rotation,
+                                   const Vector3& position,
+                                   const Quaternion& rotation,
                                    const DynamicBodyDesc& desc);
 
             // m_tempAllocator より前に置く。構築が呼ぶ Jolt の確保関数は RegisterDefaultAllocator まで nullptr

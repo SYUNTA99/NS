@@ -36,30 +36,30 @@ namespace NS
         {
             constexpr float k_CellHalfExtent = 0.5f;
 
-            constexpr NS::Color k_CursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
-            constexpr NS::Color k_CursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
+            constexpr Color k_CursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
+            constexpr Color k_CursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
 
             constexpr float k_StatusToastSeconds = 2.5f;
 
-            [[nodiscard]] NS::int16 RoundToCell(float v) noexcept
+            [[nodiscard]] int16 RoundToCell(float v) noexcept
             {
-                return static_cast<NS::int16>(std::lround(v));
+                return static_cast<int16>(std::lround(v));
             }
 
             //! ワールド座標をパネル上のスクリーン座標へ射影する。カメラの後ろ (w <= 0) なら false を返す
             struct CursorScreenProjector
             {
-                NS::Matrix viewProjection; // 射影に使う view * projection
+                Matrix viewProjection; // 射影に使う view * projection
                 float originX = 0.0f;      // パネル左上の X
                 float originY = 0.0f;      // パネル左上の Y
                 float width = 0.0f;        // パネル幅
                 float height = 0.0f;       // パネル高さ
 
-                bool operator()(const NS::Vector3& world, ImVec2& out) const noexcept
+                bool operator()(const Vector3& world, ImVec2& out) const noexcept
                 {
-                    NS::Vector2 pixel{};
+                    Vector2 pixel{};
                     float w = 0.0f;
-                    if (!NS::Gfx::TryProjectToPixels(viewProjection, world, width, height, pixel, w))
+                    if (!Gfx::TryProjectToPixels(viewProjection, world, width, height, pixel, w))
                     {
                         return false;
                     }
@@ -70,12 +70,12 @@ namespace NS
             };
         } // namespace
 
-        bool EditorMode::HasObjectAtCell(NS::int16 x, NS::int16 y, NS::int16 z) const noexcept
+        bool EditorMode::HasObjectAtCell(int16 x, int16 y, int16 z) const noexcept
         {
-            return m_findCellObject && m_findCellObject(x, y, z) != NS::k_NoObjectId;
+            return m_findCellObject && m_findCellObject(x, y, z) != k_NoObjectId;
         }
 
-        bool EditorMode::IsCellOccupied(NS::int16 x, NS::int16 y, NS::int16 z) const noexcept
+        bool EditorMode::IsCellOccupied(int16 x, int16 y, int16 z) const noexcept
         {
             return m_cellOccupied && m_cellOccupied(x, y, z);
         }
@@ -94,11 +94,11 @@ namespace NS
             HandleSaveLoadInput();
             m_palette.TickInput(m_input, m_imgui);
 
-            const NS::Quaternion targetQuat = RotationToQuaternion(m_currentRotation);
+            const Quaternion targetQuat = RotationToQuaternion(m_currentRotation);
             constexpr float k_RotationSpringRate = 12.0f;
-            const float dt = NS::OS::FrameTimer::FixedDelta();
+            const float dt = OS::FrameTimer::FixedDelta();
             const float t = std::min(1.0f, k_RotationSpringRate * dt);
-            m_displayedYawQuat = NS::Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
+            m_displayedYawQuat = Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
         }
 
         void EditorMode::HandleSaveLoadInput() noexcept
@@ -114,14 +114,14 @@ namespace NS
                 return;
             }
 
-            const NS::OS::Keyboard& kb = m_input->Keyboard();
-            if (!kb.IsHeld(NS::OS::Key::Ctrl))
+            const OS::Keyboard& kb = m_input->Keyboard();
+            if (!kb.IsHeld(OS::Key::Ctrl))
             {
                 return;
             }
 
-            const bool shift = kb.IsHeld(NS::OS::Key::Shift);
-            if (kb.IsPressed(NS::OS::Key::S))
+            const bool shift = kb.IsHeld(OS::Key::Shift);
+            if (kb.IsPressed(OS::Key::S))
             {
                 // Shift 付きは常に名前を付けて保存、素の Ctrl+S は上書き (名前が無ければ付けて保存へ落ちる)
                 if (shift)
@@ -133,7 +133,7 @@ namespace NS
                     RequestSave();
                 }
             }
-            if (kb.IsPressed(NS::OS::Key::O))
+            if (kb.IsPressed(OS::Key::O))
             {
                 OpenLoadModal();
             }
@@ -171,7 +171,7 @@ namespace NS
 
             // 保存の出所は実体。捕捉関数で実体からシーンの JSON 文書を作って書く
             const nlohmann::json snapshot = m_captureLevel();
-            const bool ok = NS::SaveSceneToJsonFile(snapshot, *path);
+            const bool ok = SaveSceneToJsonFile(snapshot, *path);
             if (ok)
             {
                 m_currentLevelName = safe;
@@ -247,7 +247,7 @@ namespace NS
                 }
 
                 nlohmann::json fresh;
-                const bool ok = NS::LoadSceneFromJsonFile(fresh, *path);
+                const bool ok = LoadSceneFromJsonFile(fresh, *path);
                 if (ok)
                 {
                     // プレイヤー / 落下死体積が欠けたレベルには既定の 1 体を補う
@@ -277,7 +277,7 @@ namespace NS
             // 上書き保存などモーダルを開かずに終わった操作をトーストで知らせる
             if (m_statusTimer > 0.0f)
             {
-                m_statusTimer -= NS::OS::FrameTimer::DeltaSeconds();
+                m_statusTimer -= OS::FrameTimer::DeltaSeconds();
                 ImGuiViewport* const vp = ImGui::GetMainViewport();
                 if (vp != nullptr)
                 {
@@ -307,16 +307,16 @@ namespace NS
 #endif
         }
 
-        void EditorMode::DrawCursorShapes(NS::Gfx::DebugShapes& shapes) const noexcept
+        void EditorMode::DrawCursorShapes(Gfx::DebugShapes& shapes) const noexcept
         {
             if (!m_active || !m_cursor.valid)
             {
                 return;
             }
 
-            const NS::AABB placeBox(m_cursor.placementCenter,
-                                    NS::Vector3{k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
-            NS::Color cursorColor = k_CursorOkColor;
+            const AABB placeBox(m_cursor.placementCenter,
+                                    Vector3{k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
+            Color cursorColor = k_CursorOkColor;
 
             if (m_cursor.placementBlocked)
             {
@@ -345,8 +345,8 @@ namespace NS
                 return;
             }
 
-            const NS::Matrix vp = m_camera->ViewProjection();
-            const NS::Vector3 c = m_cursor.placementCenter;
+            const Matrix vp = m_camera->ViewProjection();
+            const Vector3 c = m_cursor.placementCenter;
             constexpr float h = k_CellHalfExtent;
             const float vpW = static_cast<float>(view.width);
             const float vpH = static_cast<float>(view.height);
@@ -363,7 +363,7 @@ namespace NS
 
             const CursorScreenProjector project{vp, originX, originY, vpW, vpH};
 
-            const NS::Vector3 boxCorners[8] = {
+            const Vector3 boxCorners[8] = {
                 {c.x - h, c.y - h, c.z - h},
                 {c.x + h, c.y - h, c.z - h},
                 {c.x + h, c.y + h, c.z - h},
@@ -415,12 +415,12 @@ namespace NS
             if (slopeAngle >= 0.0f)
             {
                 const float angle = slopeAngle;
-                const float rawHeight = std::tan(NS::DegreesToRadians(angle)) * (2.0f * h);
+                const float rawHeight = std::tan(DegreesToRadians(angle)) * (2.0f * h);
                 const float height = std::min(rawHeight, 2.0f * h);
                 const float yBot = -h;
                 const float yTop = -h + height;
 
-                const NS::Vector3 wedgeLocal[6] = {
+                const Vector3 wedgeLocal[6] = {
                     {-h, yBot, -h},
                     {+h, yBot, -h},
                     {-h, yBot, +h},
@@ -433,8 +433,8 @@ namespace NS
                 bool wedgeFront[6]{};
                 for (int i = 0; i < 6; ++i)
                 {
-                    const NS::Vector3 r = NS::Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
-                    wedgeFront[i] = project(NS::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
+                    const Vector3 r = Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
+                    wedgeFront[i] = project(Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
                 }
 
                 static constexpr int k_WedgeEdges[9][2] = {
@@ -463,30 +463,30 @@ namespace NS
 #endif
         }
 
-        void EditorMode::PlaceUnderCursorProgrammatic(NS::int16 x, NS::int16 y, NS::int16 z) noexcept
+        void EditorMode::PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
             if (m_applier == nullptr || !m_findCellObject || !m_allocateId)
             {
                 return;
             }
 
-            const NS::uint8 rotation = [this]() -> NS::uint8 {
+            const uint8 rotation = [this]() -> uint8 {
                 if (m_palette.CurrentIsRotatable())
                 {
                     return m_currentRotation;
                 }
-                return NS::uint8{0};
+                return uint8{0};
             }();
 
             nlohmann::json placed = m_palette.CurrentTemplate();
-            NS::SetObjectPosition(placed,
-                                  NS::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
-            NS::Editor::SetCellRotationStep(placed, rotation);
+            SetObjectPosition(placed,
+                                  Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
+            Editor::SetCellRotationStep(placed, rotation);
 
             // 既存 cell は同じ永続 id で置換、空 cell は新規採番
             std::optional<nlohmann::json> before;
-            NS::uint32 id = m_findCellObject(x, y, z);
-            if (id != NS::k_NoObjectId)
+            uint32 id = m_findCellObject(x, y, z);
+            if (id != k_NoObjectId)
             {
                 before = m_applier->CaptureObject(id);
             }
@@ -499,22 +499,22 @@ namespace NS
             {
                 id = m_allocateId();
             }
-            NS::SetObjectJsonId(placed, id);
+            SetObjectJsonId(placed, id);
 
-            m_undo.Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(placed)),
+            m_undo.Push(std::make_unique<Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(placed)),
                         *m_applier);
             m_levelDirty = true;
         }
 
-        void EditorMode::DeleteAtProgrammatic(NS::int16 x, NS::int16 y, NS::int16 z) noexcept
+        void EditorMode::DeleteAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
             if (m_applier == nullptr || !m_findCellObject)
             {
                 return;
             }
 
-            const NS::uint32 id = m_findCellObject(x, y, z);
-            if (id == NS::k_NoObjectId)
+            const uint32 id = m_findCellObject(x, y, z);
+            if (id == k_NoObjectId)
             {
                 return;
             }
@@ -523,20 +523,20 @@ namespace NS
             {
                 return;
             }
-            m_undo.Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(before), std::nullopt),
+            m_undo.Push(std::make_unique<Editor::ObjectSnapshotCommand>(id, std::move(before), std::nullopt),
                         *m_applier);
             m_levelDirty = true;
         }
 
-        void EditorMode::RotateAtProgrammatic(NS::int16 x, NS::int16 y, NS::int16 z) noexcept
+        void EditorMode::RotateAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
             if (m_applier == nullptr || !m_findCellObject)
             {
                 return;
             }
 
-            const NS::uint32 id = m_findCellObject(x, y, z);
-            if (id == NS::k_NoObjectId)
+            const uint32 id = m_findCellObject(x, y, z);
+            if (id == k_NoObjectId)
             {
                 return;
             }
@@ -546,8 +546,8 @@ namespace NS
                 return;
             }
             nlohmann::json after = *before;
-            NS::Editor::AddCellQuarterTurn(after);
-            m_undo.Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::move(*before), std::move(after)),
+            Editor::AddCellQuarterTurn(after);
+            m_undo.Push(std::make_unique<Editor::ObjectSnapshotCommand>(id, std::move(*before), std::move(after)),
                         *m_applier);
             m_levelDirty = true;
         }
@@ -586,14 +586,14 @@ namespace NS
             int localY = 0;
             ViewRectToLocal(view, mouseX, mouseY, localX, localY);
 
-            const NS::Matrix vp = m_camera->ViewProjection();
-            const NS::Ray ray = NS::Editor::ScreenToWorldRay(vp, ViewRectSize(view), localX, localY);
+            const Matrix vp = m_camera->ViewProjection();
+            const Ray ray = Editor::ScreenToWorldRay(vp, ViewRectSize(view), localX, localY);
 
             float bestT = std::numeric_limits<float>::max();
             bool hit = false;
             CellCoord hitCell{};
             CellCoord normal{0, 1, 0};
-            NS::Vector3 hitPoint{};
+            Vector3 hitPoint{};
 
             std::vector<CellCoord> cells;
             if (m_collectCells)
@@ -602,9 +602,9 @@ namespace NS
             }
             for (const CellCoord& cell : cells)
             {
-                const NS::Vector3 center{
+                const Vector3 center{
                     static_cast<float>(cell.x), static_cast<float>(cell.y), static_cast<float>(cell.z)};
-                const NS::AABB box(center, {k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
+                const AABB box(center, {k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
 
                 float t = 0.0f;
                 if (ray.Intersects(box, t) && t < bestT)
@@ -612,11 +612,11 @@ namespace NS
                     bestT = t;
                     hit = true;
                     hitCell = cell;
-                    hitPoint = NS::Vector3(ray.position.x + ray.direction.x * t,
+                    hitPoint = Vector3(ray.position.x + ray.direction.x * t,
                                            ray.position.y + ray.direction.y * t,
                                            ray.position.z + ray.direction.z * t);
 
-                    const NS::Vector3 d = hitPoint - center;
+                    const Vector3 d = hitPoint - center;
                     const float ax = std::fabs(d.x);
                     const float ay = std::fabs(d.y);
                     const float az = std::fabs(d.z);
@@ -651,21 +651,21 @@ namespace NS
 
             if (hit)
             {
-                const CellCoord place{static_cast<NS::int16>(hitCell.x + normal.x),
-                                      static_cast<NS::int16>(hitCell.y + normal.y),
-                                      static_cast<NS::int16>(hitCell.z + normal.z)};
+                const CellCoord place{static_cast<int16>(hitCell.x + normal.x),
+                                      static_cast<int16>(hitCell.y + normal.y),
+                                      static_cast<int16>(hitCell.z + normal.z)};
 
                 m_cursor.valid = true;
                 m_cursor.hit = hitCell;
                 m_cursor.placementCenter =
-                    NS::Vector3{static_cast<float>(place.x), static_cast<float>(place.y), static_cast<float>(place.z)};
+                    Vector3{static_cast<float>(place.x), static_cast<float>(place.y), static_cast<float>(place.z)};
                 m_cursor.place = place;
                 m_cursor.placementBlocked = IsCellOccupied(place.x, place.y, place.z);
                 return;
             }
 
-            NS::Vector3 cellCenter{};
-            if (!NS::Editor::TryGroundPlaneFallback(ray, cellCenter))
+            Vector3 cellCenter{};
+            if (!Editor::TryGroundPlaneFallback(ray, cellCenter))
             {
                 return;
             }
@@ -690,28 +690,28 @@ namespace NS
                 return;
             }
 
-            NS::OS::Mouse& mouse = m_input->Mouse();
-            if (mouse.IsPressed(NS::OS::MouseButton::Left) && !m_cursor.placementBlocked)
+            OS::Mouse& mouse = m_input->Mouse();
+            if (mouse.IsPressed(OS::MouseButton::Left) && !m_cursor.placementBlocked)
             {
                 PlaceUnderCursorProgrammatic(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
             }
-            if (mouse.IsPressed(NS::OS::MouseButton::Right) &&
+            if (mouse.IsPressed(OS::MouseButton::Right) &&
                 HasObjectAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
             {
                 DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
             }
 
-            NS::OS::Gamepad& gp = m_input->Gamepad();
+            OS::Gamepad& gp = m_input->Gamepad();
             if (!gp.IsConnected())
             {
                 return;
             }
 
-            if (gp.IsPressed(NS::OS::GamepadButton::A) && !m_cursor.placementBlocked)
+            if (gp.IsPressed(OS::GamepadButton::A) && !m_cursor.placementBlocked)
             {
                 PlaceUnderCursorProgrammatic(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
             }
-            if (gp.IsPressed(NS::OS::GamepadButton::B) &&
+            if (gp.IsPressed(OS::GamepadButton::B) &&
                 HasObjectAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
             {
                 DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
@@ -734,8 +734,8 @@ namespace NS
             }
 
             const bool rotate =
-                m_input->Keyboard().IsPressed(NS::OS::Key::R) ||
-                (m_input->Gamepad().IsConnected() && m_input->Gamepad().IsPressed(NS::OS::GamepadButton::Y));
+                m_input->Keyboard().IsPressed(OS::Key::R) ||
+                (m_input->Gamepad().IsConnected() && m_input->Gamepad().IsPressed(OS::GamepadButton::Y));
 
             if (!rotate || !m_cursor.valid)
             {
@@ -748,7 +748,7 @@ namespace NS
             }
             else if (m_palette.CurrentIsRotatable())
             {
-                m_currentRotation = static_cast<NS::uint8>((m_currentRotation + 1) & 0x03);
+                m_currentRotation = static_cast<uint8>((m_currentRotation + 1) & 0x03);
             }
         }
 
@@ -768,20 +768,20 @@ namespace NS
                 return;
             }
 
-            NS::OS::Keyboard& kb = m_input->Keyboard();
-            const bool ctrl = kb.IsHeld(NS::OS::Key::Ctrl);
-            const bool shift = kb.IsHeld(NS::OS::Key::Shift);
+            OS::Keyboard& kb = m_input->Keyboard();
+            const bool ctrl = kb.IsHeld(OS::Key::Ctrl);
+            const bool shift = kb.IsHeld(OS::Key::Shift);
 
-            if (ctrl && shift && kb.IsPressed(NS::OS::Key::Z))
+            if (ctrl && shift && kb.IsPressed(OS::Key::Z))
             {
                 PerformRedo();
                 return;
             }
-            if (ctrl && kb.IsPressed(NS::OS::Key::Z))
+            if (ctrl && kb.IsPressed(OS::Key::Z))
             {
                 PerformUndo();
             }
-            if (ctrl && kb.IsPressed(NS::OS::Key::Y))
+            if (ctrl && kb.IsPressed(OS::Key::Y))
             {
                 PerformRedo();
             }

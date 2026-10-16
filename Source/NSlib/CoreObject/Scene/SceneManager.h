@@ -20,7 +20,7 @@ namespace NS
     class Scene;
 
     //! シーン一つを所有し、アプリケーションの更新・描画・終了を転送する
-    class SceneManager : public NS::NonCopyable
+    class SceneManager : public NonCopyable
     {
     public:
         SceneManager();
@@ -30,7 +30,7 @@ namespace NS
         void SetAssets(AssetManager* assets) noexcept;
 
         //! 立てる scene へ引き継ぐレンダラーを非所有で差す。以降 LoadScene する scene が受け取る
-        void SetRenderer(NS::Gfx::Renderer* renderer) noexcept;
+        void SetRenderer(Gfx::Renderer* renderer) noexcept;
 
         //! シーンの JSON 文書から scene を立てる。現 scene は破棄してから作り直す
         //! 文書は取込後に用済みで、以降の出所は実体になる
@@ -52,7 +52,7 @@ namespace NS
         std::unique_ptr<Scene> m_current;
         //! 立てる scene へ引き継ぐ参照で非所有。未設定なら scene 側が未設定のまま動く
         AssetManager* m_assets = nullptr;
-        NS::Gfx::Renderer* m_renderer = nullptr;
+        Gfx::Renderer* m_renderer = nullptr;
     };
 
 } // namespace NS

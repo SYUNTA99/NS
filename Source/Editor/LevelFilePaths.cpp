@@ -27,7 +27,7 @@ namespace NS
                 upper.reserve(name.size());
                 for (char c : name)
                 {
-                    upper.push_back(static_cast<char>(std::toupper(static_cast<NS::uint8>(c))));
+                    upper.push_back(static_cast<char>(std::toupper(static_cast<uint8>(c))));
                 }
                 for (const std::string_view& r : k_ReservedNames)
                 {
@@ -71,7 +71,7 @@ namespace NS
 
             std::string GetScenesDirectory() noexcept
             {
-                return NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Scenes");
+                return OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets/Scenes");
             }
         } // namespace
 
@@ -124,19 +124,19 @@ namespace NS
             {
                 return std::nullopt;
             }
-            return NS::OS::FileSystem::ResolveUnder(
-                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"),
+            return OS::FileSystem::ResolveUnder(
+                OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"),
                 QualifyLevelPath(safe) + ".scene");
         }
 
         bool EnsureScenesDirectoryExists() noexcept
         {
             const std::string dir = GetScenesDirectory();
-            if (NS::OS::FileSystem::Exists(dir))
+            if (OS::FileSystem::Exists(dir))
             {
                 return true;
             }
-            if (!NS::OS::FileSystem::CreateDirectories(dir))
+            if (!OS::FileSystem::CreateDirectories(dir))
             {
                 NS_LOG_ERROR(App, "Scenes/ ディレクトリ作成失敗");
                 return false;
@@ -147,18 +147,18 @@ namespace NS
         std::vector<std::string> EnumerateLevelFiles() noexcept
         {
             std::vector<std::string> result;
-            const std::string assetsDir = NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets");
-            if (!NS::OS::FileSystem::Exists(assetsDir))
+            const std::string assetsDir = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets");
+            if (!OS::FileSystem::Exists(assetsDir))
             {
                 return result;
             }
 
-            for (const std::string& path : NS::OS::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
+            for (const std::string& path : OS::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
             {
                 // ListFilesRecursive は assetsDir を Combine で頭に付けて返すので、先頭 + 区切り 1
                 // 文字を削ると相対になる
                 std::string relStr = path.substr(assetsDir.size() + 1);
-                const std::string extension = NS::OS::FileSystem::Extension(relStr);
+                const std::string extension = OS::FileSystem::Extension(relStr);
                 relStr.resize(relStr.size() - extension.size());
                 const std::string safe = SanitizeLevelPath(relStr);
                 if (safe.empty())

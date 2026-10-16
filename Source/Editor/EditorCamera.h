@@ -33,19 +33,19 @@ namespace NS
             void Tick() noexcept;
 
             //! 現在姿勢と投影設定をまとめた pose を返す
-            [[nodiscard]] NS::CameraPose Pose() const noexcept;
+            [[nodiscard]] CameraPose Pose() const noexcept;
 
             //! 投影設定。Pose() が返す pose に載せる
-            void SetFovY(NS::Radians fov) noexcept { m_fovY = fov; }
+            void SetFovY(Radians fov) noexcept { m_fovY = fov; }
             void SetNearPlane(float nearPlane) noexcept { m_nearPlane = nearPlane; }
             void SetFarPlane(float farPlane) noexcept { m_farPlane = farPlane; }
 
             // 起動時の視点と、選んだ物へ寄せる時に使う
-            void SetCenter(NS::Vector3 center) noexcept;
+            void SetCenter(Vector3 center) noexcept;
             void SetDistance(float distance) noexcept;
 
-            [[nodiscard]] NS::Vector3 Center() const noexcept { return m_center; }
-            [[nodiscard]] NS::Vector3 ComputeCameraPosition() const noexcept;
+            [[nodiscard]] Vector3 Center() const noexcept { return m_center; }
+            [[nodiscard]] Vector3 ComputeCameraPosition() const noexcept;
 
             void ApplyOrbit(float yawDelta, float pitchDelta) noexcept;
             void ApplyPan(float panX, float panY) noexcept;
@@ -90,7 +90,7 @@ namespace NS
             [[nodiscard]] const FeelTuning& Tuning() const noexcept { return m_tuning; }
 
         private:
-            NS::Vector3 m_center{0.0f, 0.0f, 0.0f}; // orbit の中心 pivot
+            Vector3 m_center{0.0f, 0.0f, 0.0f}; // orbit の中心 pivot
             float m_yaw = 0.0f;                     // 方位角 (ラジアン)
             float m_pitch = -0.5236f;               // 仰角 (ラジアン)
             float m_distance = 15.0f;
@@ -98,7 +98,7 @@ namespace NS
 
             FeelTuning m_tuning{}; // 自由視点の感触。Inspector がライブで書く
 
-            NS::Radians m_fovY{NS::ToRadians(NS::Degrees{60.0f})};
+            Radians m_fovY{ToRadians(Degrees{60.0f})};
             float m_nearPlane = 0.1f;
             float m_farPlane = 1000.0f;
         };

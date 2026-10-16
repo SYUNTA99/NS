@@ -33,7 +33,7 @@ namespace NS
         //! @brief HDR の明るい部分をぼかして元の描画先へ加算する
         //! @details BeginWorld と EndWorld で描画先を切り替える。深度は元の描画先を共有する
         //! @warning Renderer より先に破棄すること
-        class Bloom : public NS::NonCopyable
+        class Bloom : public NonCopyable
         {
         public:
             //! @brief シェーダ・パイプライン・定数バッファを作る
@@ -46,14 +46,14 @@ namespace NS
 
             //! HDR 描画へ切り替える。準備に失敗した場合は元の描画先で続ける
             //! 深度は共有し、clearColor で背景を塗る
-            void BeginWorld(Renderer& renderer, const NS::Color& clearColor) noexcept;
+            void BeginWorld(Renderer& renderer, const Color& clearColor) noexcept;
 
             //! にじみを加算し、元の描画先とビューポートへ戻す。BeginWorld と同じ Renderer を渡す
             void EndWorld(Renderer& renderer) noexcept;
 
         private:
             // 描画先の大きさと段の数に合わせて浮動小数の描画先を揃える。作れなければ false
-            [[nodiscard]] bool EnsureTargets(NS::Size2D size) noexcept;
+            [[nodiscard]] bool EnsureTargets(Size2D size) noexcept;
 
             // 全画面を 1 回描く。source を t0、scene を t1 に差して destination へ書く。scene は無ければ差さない
             void DrawPass(CommandList& cmd,
@@ -62,7 +62,7 @@ namespace NS
                           const Texture& source,
                           const Texture* scene,
                           ID3D11RenderTargetView* destination,
-                          NS::Size2D destinationSize) noexcept;
+                          Size2D destinationSize) noexcept;
 
             BloomDesc m_desc{};
 
@@ -75,7 +75,7 @@ namespace NS
             std::unique_ptr<Pipeline> m_addPipeline;   // 書き込み先へ足す
             std::unique_ptr<Buffer> m_cb;
 
-            NS::Size2D m_size{0, 0};                        // 浮動小数の描画先の大きさ。0 なら未作成
+            Size2D m_size{0, 0};                        // 浮動小数の描画先の大きさ。0 なら未作成
             std::unique_ptr<Texture> m_scene;               // 世界を描く浮動小数の描画先
             std::unique_ptr<Texture> m_bright;              // 閾値を超えた分。世界と同じ大きさ
             std::vector<std::unique_ptr<Texture>> m_levels; // 縮めた段。先頭が半分の大きさ

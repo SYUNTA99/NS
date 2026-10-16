@@ -14,7 +14,7 @@ namespace NS
         // 減る速さが 0 以下だと揺れが終わらず、非数は姿勢を非数にして画面を消す
         [[nodiscard]] bool IsValidTraumaShape(const CameraTraumaShape& shape) noexcept
         {
-            return NS::IsPositiveFinite(shape.decayPerSecond) && std::isfinite(shape.yawDegrees) &&
+            return IsPositiveFinite(shape.decayPerSecond) && std::isfinite(shape.yawDegrees) &&
                    std::isfinite(shape.pitchDegrees) && std::isfinite(shape.rollDegrees) &&
                    std::isfinite(shape.frequency) && std::isfinite(shape.exponent);
         }
@@ -23,18 +23,18 @@ namespace NS
         [[nodiscard]] CameraAxes ViewAxes(const CameraPose& pose) noexcept
         {
             CameraAxes axes{};
-            const NS::Vector3 look = pose.target - pose.position;
-            NS::Vector3 forward{};
-            if (!NS::TryNormalizeHorizontal(look, forward))
+            const Vector3 look = pose.target - pose.position;
+            Vector3 forward{};
+            if (!TryNormalizeHorizontal(look, forward))
             {
-                forward = NS::Vector3{0.0f, 0.0f, 1.0f};
+                forward = Vector3{0.0f, 0.0f, 1.0f};
             }
-            axes.right = NS::Vector3{forward.z, 0.0f, -forward.x};
+            axes.right = Vector3{forward.z, 0.0f, -forward.x};
 
-            NS::Vector3 up = NS::Cross(look, axes.right);
-            if (up.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
+            Vector3 up = Cross(look, axes.right);
+            if (up.LengthSquared() < k_Epsilon * k_Epsilon)
             {
-                up = NS::Vector3{0.0f, 1.0f, 0.0f};
+                up = Vector3{0.0f, 1.0f, 0.0f};
             }
             up.Normalize();
             axes.up = up;
@@ -112,13 +112,13 @@ namespace NS
         return AddModifier(CameraShakeModifier::Create(desc, SideSignOf(desc.firstSideDirection)));
     }
 
-    NS::Vector2 CameraManager::ShakeOffset() const noexcept
+    Vector2 CameraManager::ShakeOffset() const noexcept
     {
         if (const CameraShakeModifier* shake = FindModifier<CameraShakeModifier>())
         {
             return shake->Offset();
         }
-        return NS::Vector2{0.0f, 0.0f};
+        return Vector2{0.0f, 0.0f};
     }
 
     bool CameraManager::StartZoomRoll(const CameraZoomRollDesc& desc)
@@ -152,7 +152,7 @@ namespace NS
 
     bool CameraManager::AddTrauma(const CameraTraumaDesc& desc)
     {
-        if (!NS::IsNonNegativeFinite(desc.trauma) || !IsValidTraumaShape(desc.shape) ||
+        if (!IsNonNegativeFinite(desc.trauma) || !IsValidTraumaShape(desc.shape) ||
             !std::isfinite(desc.kick.degrees))
         {
             return false;
@@ -163,7 +163,7 @@ namespace NS
 
     bool CameraManager::HoldTrauma(float level, const CameraTraumaShape& shape)
     {
-        if (!NS::IsNonNegativeFinite(level) || !IsValidTraumaShape(shape))
+        if (!IsNonNegativeFinite(level) || !IsValidTraumaShape(shape))
         {
             return false;
         }
@@ -187,14 +187,14 @@ namespace NS
         {
             return;
         }
-        m_shakeScale = NS::Clamp(scale, 0.0f, 1.0f);
+        m_shakeScale = Clamp(scale, 0.0f, 1.0f);
     }
 
-    float CameraManager::SideSignOf(const NS::Vector3& direction) const noexcept
+    float CameraManager::SideSignOf(const Vector3& direction) const noexcept
     {
-        const NS::Vector3 forwardHorizontal = ForwardHorizontal();
-        const NS::Vector3 right{forwardHorizontal.z, 0.0f, -forwardHorizontal.x};
-        if (NS::Dot(right, direction) < 0.0f)
+        const Vector3 forwardHorizontal = ForwardHorizontal();
+        const Vector3 right{forwardHorizontal.z, 0.0f, -forwardHorizontal.x};
+        if (Dot(right, direction) < 0.0f)
         {
             return -1.0f;
         }
@@ -275,7 +275,7 @@ namespace NS
 
         if (m_blending)
         {
-            m_blendElapsed += NS::OS::FrameTimer::FixedDelta();
+            m_blendElapsed += OS::FrameTimer::FixedDelta();
             if (m_blendElapsed >= m_blendDuration)
             {
                 m_blending = false;
@@ -305,8 +305,8 @@ namespace NS
         CameraPose pose = active->EvaluatePose(alpha);
         if (m_blending && m_blendDuration > 0.0f)
         {
-            const float t = NS::Clamp(m_blendElapsed / m_blendDuration, 0.0f, 1.0f);
-            pose = CameraPose::Lerp(m_blendFrom, pose, NS::SmoothStep(t));
+            const float t = Clamp(m_blendElapsed / m_blendDuration, 0.0f, 1.0f);
+            pose = CameraPose::Lerp(m_blendFrom, pose, SmoothStep(t));
         }
         return pose;
     }
@@ -365,26 +365,26 @@ namespace NS
         m_camera->ApplyPose(*pose);
     }
 
-    NS::Matrix CameraManager::ViewProjection() const noexcept
+    Matrix CameraManager::ViewProjection() const noexcept
     {
         if (m_camera != nullptr)
         {
             return m_camera->ViewProjection();
         }
-        return NS::Matrix::Identity;
+        return Matrix::Identity;
     }
 
-    NS::Vector3 CameraManager::ForwardHorizontal() const noexcept
+    Vector3 CameraManager::ForwardHorizontal() const noexcept
     {
         const std::optional<CameraPose> view = ViewPose();
         if (!view.has_value())
         {
-            return NS::Vector3{0.0f, 0.0f, 1.0f};
+            return Vector3{0.0f, 0.0f, 1.0f};
         }
-        NS::Vector3 forward{};
-        if (!NS::TryNormalizeHorizontal(view->target - view->position, forward))
+        Vector3 forward{};
+        if (!TryNormalizeHorizontal(view->target - view->position, forward))
         {
-            return NS::Vector3{0.0f, 0.0f, 1.0f};
+            return Vector3{0.0f, 0.0f, 1.0f};
         }
         return forward;
     }

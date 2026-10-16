@@ -26,18 +26,18 @@ namespace
 
 namespace NS
 {
-    NS::Vector3 Body::LateralVelocity() const noexcept
+    Vector3 Body::LateralVelocity() const noexcept
     {
         // 8 m/s を減速度 40 で止めると、最後のフレームに 6×10⁻⁷ m/s の端数が残る
         // 0 と読まないと、止まったかの判定が 1 フレーム遅れる
-        if (m_velocity.x * m_velocity.x + m_velocity.z * m_velocity.z < NS::k_Epsilon * NS::k_Epsilon)
+        if (m_velocity.x * m_velocity.x + m_velocity.z * m_velocity.z < k_Epsilon * k_Epsilon)
         {
-            return NS::Vector3{0.0f, 0.0f, 0.0f};
+            return Vector3{0.0f, 0.0f, 0.0f};
         }
-        return NS::Vector3{m_velocity.x, 0.0f, m_velocity.z};
+        return Vector3{m_velocity.x, 0.0f, m_velocity.z};
     }
 
-    void Body::SetLateralVelocity(const NS::Vector3& v) noexcept
+    void Body::SetLateralVelocity(const Vector3& v) noexcept
     {
         m_velocity.x = v.x;
         m_velocity.z = v.z;
@@ -50,9 +50,9 @@ namespace NS
     }
 
     void Body::Accelerate(
-        const NS::Vector3& direction, float turningDrag, float acceleration, float topSpeed, float dt) noexcept
+        const Vector3& direction, float turningDrag, float acceleration, float topSpeed, float dt) noexcept
     {
-        const NS::Vector3 lateral = LateralVelocity();
+        const Vector3 lateral = LateralVelocity();
         float speed = direction.x * lateral.x + direction.z * lateral.z;
         float turningX = lateral.x - direction.x * speed;
         float turningZ = lateral.z - direction.z * speed;
@@ -60,7 +60,7 @@ namespace NS
         const float lateralSpeed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
         if (lateralSpeed < topSpeed || speed < 0.0f)
         {
-            speed = NS::Clamp(speed + acceleration * dt, -topSpeed, topSpeed);
+            speed = Clamp(speed + acceleration * dt, -topSpeed, topSpeed);
         }
 
         ShrinkHorizontal(turningX, turningZ, turningDrag * dt);
@@ -70,7 +70,7 @@ namespace NS
 
     void Body::Decelerate(float deceleration, float dt) noexcept
     {
-        NS::Vector3 lateral = LateralVelocity();
+        Vector3 lateral = LateralVelocity();
         ShrinkHorizontal(lateral.x, lateral.z, deceleration * dt);
         m_velocity.x = lateral.x;
         m_velocity.z = lateral.z;
@@ -78,7 +78,7 @@ namespace NS
 
     void Body::Gravity(float gravity, float dt) noexcept
     {
-        const NS::SceneActor* owner = Owner();
+        const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             m_velocity.y += gravity * dt;
@@ -89,9 +89,9 @@ namespace NS
 
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
     // 天井に当たったフレームの上向き速度は Move を抜けた時点で 0 になっている
-    void Body::Move(NS::Collider& collider, float dt, float maxStepHeight) noexcept
+    void Body::Move(Collider& collider, float dt, float maxStepHeight) noexcept
     {
-        const NS::ColliderMove moved = collider.Move(RootTransform().Position(), m_velocity, dt, maxStepHeight);
+        const ColliderMove moved = collider.Move(RootTransform().Position(), m_velocity, dt, maxStepHeight);
         RootTransform().SetPosition(moved.position);
         m_velocity = moved.velocity;
         m_wasGrounded = m_isGrounded;

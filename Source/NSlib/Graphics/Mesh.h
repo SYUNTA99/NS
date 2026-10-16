@@ -32,7 +32,7 @@ namespace NS
         {
             std::string semanticName;
             InputElementFormat format = InputElementFormat::Float3;
-            NS::uint byteOffset = 0;
+            uint byteOffset = 0;
         };
 
         //! インデックスバッファの解釈方法を表すプリミティブ形状
@@ -43,7 +43,7 @@ namespace NS
         };
 
         //! 頂点とインデックスの GPU データ。描画は DrawMesh が行う
-        class Mesh : public NS::NonCopyable
+        class Mesh : public NonCopyable
         {
         public:
             virtual ~Mesh();
@@ -59,7 +59,7 @@ namespace NS
 
             //! @brief モデル空間の軸並行境界ボックス。カリングで世界変換して視錐台に掛ける
             //! @details 派生が build 時に頂点から算出して登録する。未登録なら原点の単位ボックス
-            [[nodiscard]] const NS::AABB& LocalBounds() const noexcept;
+            [[nodiscard]] const AABB& LocalBounds() const noexcept;
 
             //! @brief 頂点シェーダーを利用して入力レイアウトを生成する
             //! @note 生成済みの場合や、グラフィックスデバイスが無効な場合は何もしない
@@ -78,7 +78,7 @@ namespace NS
             [[nodiscard]] bool BuildGeometry(const void* vertices,
                                              std::size_t vertexCount,
                                              std::size_t stride,
-                                             const NS::uint32* indices,
+                                             const uint32* indices,
                                              std::size_t indexCount,
                                              bool usingFallback) noexcept;
 
@@ -87,7 +87,7 @@ namespace NS
             void SetTopology(Topology topology) noexcept;
 
             //! @brief 派生クラスが頂点から算出したモデル空間境界ボックスを登録する
-            void SetLocalBounds(const NS::AABB& bounds) noexcept;
+            void SetLocalBounds(const AABB& bounds) noexcept;
 
         private:
             std::unique_ptr<Buffer> m_vb;
@@ -97,7 +97,7 @@ namespace NS
             Topology m_topology = Topology::TriangleList;
             std::size_t m_vertexCount = 0;
             std::size_t m_indexCount = 0;
-            NS::AABB m_localBounds{}; // モデル空間の境界。派生が build 時に頂点から満たす
+            AABB m_localBounds{}; // モデル空間の境界。派生が build 時に頂点から満たす
             bool m_valid = false;
             bool m_usingFallback = false;
         };

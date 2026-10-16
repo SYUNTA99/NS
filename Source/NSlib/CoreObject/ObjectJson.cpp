@@ -98,12 +98,12 @@ namespace NS
         return object;
     }
 
-    NS::uint32 ObjectJsonId(const nlohmann::json& object) noexcept
+    uint32 ObjectJsonId(const nlohmann::json& object) noexcept
     {
         return FieldUnsigned(object, "id", 0);
     }
 
-    void SetObjectJsonId(nlohmann::json& object, NS::uint32 id)
+    void SetObjectJsonId(nlohmann::json& object, uint32 id)
     {
         WriteOrErase(object, "id", false, id);
     }
@@ -147,7 +147,7 @@ namespace NS
         WriteOrErase(object, "active", active, active);
     }
 
-    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<NS::uint32, NS::uint32>& idMap)
+    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<uint32, uint32>& idMap)
     {
         ForEachRefValue(object, [&idMap](nlohmann::json& value) {
             const nlohmann::json::iterator it = value.find("ref");
@@ -155,7 +155,7 @@ namespace NS
             {
                 return;
             }
-            const std::unordered_map<NS::uint32, NS::uint32>::const_iterator mapped = idMap.find(it->get<NS::uint32>());
+            const std::unordered_map<uint32, uint32>::const_iterator mapped = idMap.find(it->get<uint32>());
             if (mapped != idMap.end())
             {
                 *it = mapped->second;
@@ -165,9 +165,9 @@ namespace NS
 
     namespace
     {
-        NS::Vector3 ReadTransformVec3(const nlohmann::json& object,
+        Vector3 ReadTransformVec3(const nlohmann::json& object,
                                       std::string_view fieldName,
-                                      const NS::Vector3& fallback) noexcept
+                                      const Vector3& fallback) noexcept
         {
             const nlohmann::json* transform = SubObjFields(object, k_TransformSubObjName);
             if (transform == nullptr)
@@ -184,44 +184,44 @@ namespace NS
         if (!transform.is_object())
         {
             transform = nlohmann::json::object();
-            SetField(transform, k_PositionFieldName, NS::Vector3{0.0f, 0.0f, 0.0f});
-            SetField(transform, k_RotationFieldName, NS::Quaternion::Identity);
-            SetField(transform, k_ScaleFieldName, NS::Vector3{1.0f, 1.0f, 1.0f});
+            SetField(transform, k_PositionFieldName, Vector3{0.0f, 0.0f, 0.0f});
+            SetField(transform, k_RotationFieldName, Quaternion::Identity);
+            SetField(transform, k_ScaleFieldName, Vector3{1.0f, 1.0f, 1.0f});
         }
         return transform;
     }
 
-    NS::Vector3 ObjectPosition(const nlohmann::json& object) noexcept
+    Vector3 ObjectPosition(const nlohmann::json& object) noexcept
     {
-        return ReadTransformVec3(object, k_PositionFieldName, NS::Vector3{0.0f, 0.0f, 0.0f});
+        return ReadTransformVec3(object, k_PositionFieldName, Vector3{0.0f, 0.0f, 0.0f});
     }
 
-    void SetObjectPosition(nlohmann::json& object, const NS::Vector3& position) noexcept
+    void SetObjectPosition(nlohmann::json& object, const Vector3& position) noexcept
     {
         SetField(EnsureTransformSubObject(object), k_PositionFieldName, position);
     }
 
-    NS::Quaternion ObjectRotation(const nlohmann::json& object) noexcept
+    Quaternion ObjectRotation(const nlohmann::json& object) noexcept
     {
         const nlohmann::json* transform = SubObjFields(object, k_TransformSubObjName);
         if (transform == nullptr)
         {
-            return NS::Quaternion::Identity;
+            return Quaternion::Identity;
         }
-        return FieldQuaternion(*transform, k_RotationFieldName, NS::Quaternion::Identity);
+        return FieldQuaternion(*transform, k_RotationFieldName, Quaternion::Identity);
     }
 
-    void SetObjectRotation(nlohmann::json& object, const NS::Quaternion& rotation) noexcept
+    void SetObjectRotation(nlohmann::json& object, const Quaternion& rotation) noexcept
     {
         SetField(EnsureTransformSubObject(object), k_RotationFieldName, rotation);
     }
 
-    NS::Vector3 ObjectScale(const nlohmann::json& object) noexcept
+    Vector3 ObjectScale(const nlohmann::json& object) noexcept
     {
-        return ReadTransformVec3(object, k_ScaleFieldName, NS::Vector3{1.0f, 1.0f, 1.0f});
+        return ReadTransformVec3(object, k_ScaleFieldName, Vector3{1.0f, 1.0f, 1.0f});
     }
 
-    void SetObjectScale(nlohmann::json& object, const NS::Vector3& scale) noexcept
+    void SetObjectScale(nlohmann::json& object, const Vector3& scale) noexcept
     {
         SetField(EnsureTransformSubObject(object), k_ScaleFieldName, scale);
     }

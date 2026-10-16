@@ -53,7 +53,7 @@ namespace NS
 
         //! @brief ラスタライザやブレンドなどの描画ステートを一括管理するクラス
         //! @details CommandList::SetPipeline へ渡すと 3 つのステートをまとめて適用できる
-        class Pipeline : public NS::NonCopyable
+        class Pipeline : public NonCopyable
         {
         public:
             //! @brief パイプラインを生成する

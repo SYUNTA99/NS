@@ -22,26 +22,26 @@ namespace NS
         [[nodiscard]] float Radius() const noexcept;
 
         //! 持ち主の局所座標系での中心オフセットを設定 / 取得する
-        void SetCenterOffset(const NS::Vector3& offset) noexcept;
-        [[nodiscard]] NS::Vector3 CenterOffset() const noexcept;
+        void SetCenterOffset(const Vector3& offset) noexcept;
+        [[nodiscard]] Vector3 CenterOffset() const noexcept;
 
         //! owner の世界変換に offset を重ねた球を返す。半径は owner scale 最大成分で拡縮する
         //! Owner 未登録時は局所のずれと半径だけを反映する。例外は投げない
-        [[nodiscard]] NS::Sphere WorldSphere() const noexcept;
+        [[nodiscard]] Sphere WorldSphere() const noexcept;
 
         //! owner の世界変換を反映した世界軸並行 AABB を返す。Owner 未登録時は局所の値だけを反映する
-        [[nodiscard]] NS::AABB WorldAABB() const noexcept;
+        [[nodiscard]] AABB WorldAABB() const noexcept;
 
         NS_REFLECT_BEGIN(SphereCollision, Collision)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
-        NS_REFLECT_ACCESSOR(NS::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
+        NS_REFLECT_ACCESSOR(Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
         NS_REFLECT_END()
 
     private:
         // 世界座標の球を body 1 個として入れる
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current) override;
 
         float m_radius = 0.5f;                        // 球の半径 (owner scale 前)
-        NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f}; // 持ち主の局所座標系での中心オフセット
+        Vector3 m_centerOffset{0.0f, 0.0f, 0.0f}; // 持ち主の局所座標系での中心オフセット
     };
 } // namespace NS

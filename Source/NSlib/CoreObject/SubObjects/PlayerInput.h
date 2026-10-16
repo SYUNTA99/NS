@@ -13,12 +13,12 @@ namespace NS
         PlayerInput() noexcept = default;
 
         //! 水平の基準方向。シーンにカメラがあれば更新時に上書きし、未指定なら +Z
-        void SetCameraForward(const NS::Vector3& cameraForwardHorizontal) noexcept;
+        void SetCameraForward(const Vector3& cameraForwardHorizontal) noexcept;
 
         //! @brief 目標の移動方向と速度スケールを直接書く
         //! @param[in] worldDir 世界座標系の目標移動方向。そのまま控える
         //! @param[in] speedScale01 目標速度スケール。0..1 に丸める
-        void SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept;
+        void SetDesiredMove(const Vector3& worldDir, float speedScale01) noexcept;
         //! @brief 掴まりで使うローカル入力を直接書く。どちらも -1..1 に丸める
         void SetClimbMove(float localRight, float localForward) noexcept;
         //! 跳びの押した瞬間を立てる。ConsumePressed が下ろす
@@ -38,7 +38,7 @@ namespace NS
 
         // 読み取った値は自分で持つ。渡し先の型を include できない場所からも引ける
         //! 直近のフレームの世界座標系での目標移動方向。長さは入力の強さのまま
-        [[nodiscard]] NS::Vector3 DesiredDirection() const noexcept { return m_desiredDir; }
+        [[nodiscard]] Vector3 DesiredDirection() const noexcept { return m_desiredDir; }
         //! 直近のフレームの目標速度スケール。入力の大きさで 0..1
         [[nodiscard]] float DesiredSpeedScale() const noexcept { return m_desiredSpeedScale; }
         //! 掴まりで使う、camera 回転をかける前のローカル入力
@@ -59,10 +59,10 @@ namespace NS
         NS_REFLECT_NONE(PlayerInput, SubObject)
 
     private:
-        NS::Vector3 m_cameraForward{0.0f, 0.0f, 1.0f}; // camera 相対移動用の水平 forward
+        Vector3 m_cameraForward{0.0f, 0.0f, 1.0f}; // camera 相対移動用の水平 forward
 
         // 直近に稼働したフレームで読み取った値。稼働していない間は書き換わらず、止めの間は中立を書く
-        NS::Vector3 m_desiredDir{0.0f, 0.0f, 0.0f}; // 世界座標系の目標移動方向
+        Vector3 m_desiredDir{0.0f, 0.0f, 0.0f}; // 世界座標系の目標移動方向
         float m_desiredSpeedScale = 0.0f;
         float m_climbRight = 0.0f;
         float m_climbForward = 0.0f;

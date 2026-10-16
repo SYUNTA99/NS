@@ -17,7 +17,7 @@ namespace NS
         float charge01 = 0.0f;         // 押している間の溜め量 (0〜1)
         bool held = false;             // 押しているか
         bool hasAimTarget = false;     // 狙う相手がいるか
-        NS::Vector3 aimTargetCenter{}; // 狙う相手の中心。世界座標
+        Vector3 aimTargetCenter{}; // 狙う相手の中心。世界座標
         float aimTargetRadius = 0.0f;  // 狙う相手の半径 (m)。構図は中心でなく中心 ± 半径を枠に入れる
     };
 
@@ -30,9 +30,9 @@ namespace NS
         bool forcedSlamming = false;
         // 反動を起こした突進を出したフレームの向き。世界座標で、縦の成分は使わない
         // 水平の長さが 0 なら回さない
-        NS::Vector3 slamDirection{};
+        Vector3 slamDirection{};
         // 反動の間に画面へ残したい相手の今の位置。世界座標。空なら追う相手だけを見る
-        std::optional<NS::Vector3> partnerPosition{};
+        std::optional<Vector3> partnerPosition{};
         // 反動になったフレームに、欄「反動の間に下げる距離」だけ後ろへ下げるか。反動になったフレームにだけ読む
         bool pullBack = true;
     };
@@ -54,7 +54,7 @@ namespace NS
         void ResetPose() noexcept;
 
         //! 自動ズームの判定に使う接地と速度を値で受け取る。移動 SubObject の型を include せずに済む
-        void SetFollowMotion(bool grounded, const NS::Vector3& velocity) noexcept;
+        void SetFollowMotion(bool grounded, const Vector3& velocity) noexcept;
         //! 根を上下させても見る高さを保つためのずれ。注視点は根 + ずれ + 頭の高さ
         //! ずれは補間しないため、根の移動は Transform::ShiftPosition で前後の値を揃える
         void SetTargetHeightOffset(float offset) noexcept;
@@ -75,7 +75,7 @@ namespace NS
 
         //! @brief 溜めの構図のずらしを返す
         //! @return x がカメラの右、y がカメラの上の向きのずれ (m)。ずらしていない時は 0
-        [[nodiscard]] NS::Vector2 ChargeFrameOffset() const noexcept { return m_chargeFrameOffset; }
+        [[nodiscard]] Vector2 ChargeFrameOffset() const noexcept { return m_chargeFrameOffset; }
 
         //! @brief 溜めの締め・揺れ・構図のずらしをその場で 0 にし、受けた溜めの状態を捨てる
         void ClearCharge() noexcept;
@@ -108,7 +108,7 @@ namespace NS
         [[nodiscard]] float InitialPitch() const noexcept { return m_initialPitch; }
 
         //! 指定位置から初期姿勢を逆算し、現在姿勢にも反映する。対象なし・距離ゼロなら変更しない
-        void SetInitialPoseFromCameraPosition(const NS::Vector3& cameraPosition) noexcept;
+        void SetInitialPoseFromCameraPosition(const Vector3& cameraPosition) noexcept;
 
         //! 固定ステップで向きと距離を更新する。EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
         void Update();
@@ -168,21 +168,21 @@ namespace NS
         void UpdateCharge(const FollowChargeDesc& charge,
                           bool framingHeld,
                           const Transform& target,
-                          const NS::Vector3& look,
+                          const Vector3& look,
                           float dt) noexcept;
 
         // 距離と注視点を決める前に、反動と強制突進の状態を更新する
         void UpdateReboundPhase(
-            bool began, bool rebounding, bool launchBegan, bool launching, const NS::Vector3& head) noexcept;
+            bool began, bool rebounding, bool launchBegan, bool launching, const Vector3& head) noexcept;
 
         // 手動入力を適用する前に、反動の回転と入力制限を更新する
         void UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept;
         // 反動の間に受けた相手の位置から、注視点の寄せと引きのばねを 1 フレーム進める。反動の間でなければ 0 へ戻す
-        void UpdateReboundPartner(const FollowReboundDesc& rebound, const NS::Vector3& head, float dt) noexcept;
+        void UpdateReboundPartner(const FollowReboundDesc& rebound, const Vector3& head, float dt) noexcept;
 
         // ball を上下の帯に保つ注視点。通常時は head を返す
-        [[nodiscard]] NS::Vector3 UpdateReboundLook(const NS::Vector3& head,
-                                                    const NS::Vector3& ball,
+        [[nodiscard]] Vector3 UpdateReboundLook(const Vector3& head,
+                                                    const Vector3& ball,
                                                     float dt) noexcept;
 
         // 反動の間の追い方の段
@@ -270,8 +270,8 @@ namespace NS
         float m_chargeReturnFromDegrees = 0.0f;  // 戻し始めた時の締め (度)
         int m_chargeReturnFrame = 0;             // 戻しの何フレーム目か。0 は戻していない
         bool m_chargeReturnWaiting = false;      // 放した後、止めの明けまで戻しを始めずに待っているか
-        NS::Vector2 m_chargeFrameOffset{};       // 今の構図のずらし (m、カメラの右と上)
-        NS::Vector2 m_chargeFrameVelocity{};     // 構図のずらしの速さ (m/秒)
+        Vector2 m_chargeFrameOffset{};       // 今の構図のずらし (m、カメラの右と上)
+        Vector2 m_chargeFrameVelocity{};     // 構図のずらしの速さ (m/秒)
         float m_chargeCenterTilt = 0.0f;         // 二人を縦の中心へ寄せる、注視点だけの上の向きのずれ (m)
         float m_chargeCenterTiltVelocity = 0.0f; // 寄せの速さ (m/秒)
 
@@ -282,18 +282,18 @@ namespace NS
         float m_reboundTurnAngle = 0.0f;  // 反動になったフレームに決めた、回す角度 (ラジアン)
         int m_reboundTurnFrame = 0;       // 回しの何フレーム目か。欄のフレーム数で回し終える
         ReboundPhase m_reboundPhase = ReboundPhase::None;
-        NS::Vector3 m_reboundAnchor{};         // 横と前後を遅らせて追う注視点。高さは留める
-        NS::Vector3 m_reboundAnchorVelocity{}; // 注視点の横と前後の速さ (m/秒)。縦は使わない
+        Vector3 m_reboundAnchor{};         // 横と前後を遅らせて追う注視点。高さは留める
+        Vector3 m_reboundAnchorVelocity{}; // 注視点の横と前後の速さ (m/秒)。縦は使わない
         float m_reboundLagCap = 0.0f;          // 反動の間の遅れの今の上限 (m)。欄の上限より下にはしない
-        NS::Vector3 m_reboundReturnOffset{};   // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
+        Vector3 m_reboundReturnOffset{};   // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
         int m_reboundReturnFrame = 0;          // 寄せ戻しの何フレーム目か
         float m_reboundBaseDistance = 0.0f;    // 反動になったフレームに決めた、相手を収める引きの前の距離 (m)
-        NS::Vector3 m_partnerLean{};           // 注視点を相手へ寄せている量 (m)
-        NS::Vector3 m_partnerLeanVelocity{};   // 寄せの速さ (m/秒)
+        Vector3 m_partnerLean{};           // 注視点を相手へ寄せている量 (m)
+        Vector3 m_partnerLeanVelocity{};   // 寄せの速さ (m/秒)
         float m_partnerPull = 0.0f;            // 相手を収めるために引いている距離 (m)
         float m_partnerPullVelocity = 0.0f;    // 引きの速さ (m/秒)
-        NS::Vector3 m_look{};                  // このフレームの注視点。反動と寄せ戻しで使う
-        NS::Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
+        Vector3 m_look{};                  // このフレームの注視点。反動と寄せ戻しで使う
+        Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
         bool m_hasLook = false;                // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
     };
 

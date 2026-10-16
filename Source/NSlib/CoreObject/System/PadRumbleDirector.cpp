@@ -18,7 +18,7 @@ namespace NS
         // 振動の途中で場面を捨てても、パッドを震わせたままにしない
         if (m_running)
         {
-            (void)NS::OS::Input::Get().Gamepad().SetVibration(0.0f, 0.0f);
+            (void)OS::Input::Get().Gamepad().SetVibration(0.0f, 0.0f);
         }
     }
 
@@ -74,7 +74,7 @@ namespace NS
 
     void PadRumbleDirector::Write()
     {
-        NS::OS::GamepadVibration speed{};
+        OS::GamepadVibration speed{};
         bool anyRunning = false;
         for (const Layer& layer : m_layers)
         {
@@ -92,7 +92,7 @@ namespace NS
             m_running = false;
         }
         // 曲線が範囲の外へ出て書けなかったら、以後は書かない
-        if (!NS::OS::Input::Get().Gamepad().SetVibration(speed.left, speed.right))
+        if (!OS::Input::Get().Gamepad().SetVibration(speed.left, speed.right))
         {
             NS_LOG_WARN(
                 Scene, "パッドの振動の速さが 0〜1 の外で、震わせなかった: 左 {} 右 {}", speed.left, speed.right);

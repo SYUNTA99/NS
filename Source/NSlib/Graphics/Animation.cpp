@@ -47,11 +47,11 @@ namespace NS
             }
         } // namespace
 
-        NS::Vector3 SampleVec3(std::span<const float> times,
-                               std::span<const NS::Vector3> values,
+        Vector3 SampleVec3(std::span<const float> times,
+                               std::span<const Vector3> values,
                                Interpolation interp,
                                float t,
-                               const NS::Vector3& fallback) noexcept
+                               const Vector3& fallback) noexcept
         {
             if (times.empty() || values.empty())
             {
@@ -64,14 +64,14 @@ namespace NS
             {
                 return values[i0];
             }
-            return NS::Vector3::Lerp(values[i0], values[i1], seg.f);
+            return Vector3::Lerp(values[i0], values[i1], seg.f);
         }
 
-        NS::Quaternion SampleQuat(std::span<const float> times,
-                                  std::span<const NS::Quaternion> values,
+        Quaternion SampleQuat(std::span<const float> times,
+                                  std::span<const Quaternion> values,
                                   Interpolation interp,
                                   float t,
-                                  const NS::Quaternion& fallback) noexcept
+                                  const Quaternion& fallback) noexcept
         {
             if (times.empty() || values.empty())
             {
@@ -84,14 +84,14 @@ namespace NS
             {
                 return values[i0];
             }
-            NS::Quaternion a = values[i0];
-            NS::Quaternion b = values[i1];
+            Quaternion a = values[i0];
+            Quaternion b = values[i1];
             // 内積が負なら一方を反転して同じ回転の近い表現へ揃える
             if (a.Dot(b) < 0.0f)
             {
-                b = NS::Quaternion{-b.x, -b.y, -b.z, -b.w};
+                b = Quaternion{-b.x, -b.y, -b.z, -b.w};
             }
-            return NS::Quaternion::Slerp(a, b, seg.f);
+            return Quaternion::Slerp(a, b, seg.f);
         }
 
         void SampleClipPose(const AnimationClip& clip,

@@ -26,13 +26,13 @@ namespace NS
     namespace UI
     {
         //! ウィンドウと Renderer に対応する開発用 ImGui。無効な構成では何もしない
-        class ImGuiContext : public NS::NonCopyable
+        class ImGuiContext : public NonCopyable
         {
         public:
             struct Impl;
 
             //! 指定されたウィンドウと描画システムを用いてUIコンテキストを初期化する
-            ImGuiContext(NS::OS::Window& window, NS::Gfx::Renderer& renderer) noexcept;
+            ImGuiContext(OS::Window& window, Gfx::Renderer& renderer) noexcept;
             ~ImGuiContext() noexcept;
 
             [[nodiscard]] bool IsValid() const noexcept;
@@ -51,9 +51,9 @@ namespace NS
             //! @brief OSからのウィンドウメッセージをUI側へ転送して処理する
             //! @return UI がメッセージを消費した場合 true、それ以外の場合は false。true ならゲーム側は入力を無視する
             [[nodiscard]] bool ForwardWndProc(void* hwnd,
-                                              NS::uint32 msg,
-                                              NS::uintptr wParam,
-                                              NS::intptr lParam) noexcept;
+                                              uint32 msg,
+                                              uintptr wParam,
+                                              intptr lParam) noexcept;
 
             //! UI ウィンドウを操作中などで、UI がマウス入力を要求しているかを返す
             [[nodiscard]] bool WantCaptureMouse() const noexcept;

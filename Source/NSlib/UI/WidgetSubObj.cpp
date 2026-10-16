@@ -17,7 +17,7 @@ namespace NS
             m_root.Layout(canvas.rect);
         }
 
-        void WidgetSubObj::Draw(NS::Gfx::Renderer* renderer, const UICanvas& canvas)
+        void WidgetSubObj::Draw(Gfx::Renderer* renderer, const UICanvas& canvas)
         {
             NS_ASSERT(UI, renderer != nullptr, "null の renderer で画面の木を描こうとしている");
             if (!m_root.HasChildren())

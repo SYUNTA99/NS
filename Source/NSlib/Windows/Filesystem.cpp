@@ -87,7 +87,7 @@ namespace NS
                 {
                     wide.remove_suffix(1);
                 }
-                const std::string text = ::NS::OS::StringUtils::Utf8FromWide(wide);
+                const std::string text = OS::StringUtils::Utf8FromWide(wide);
                 ::LocalFree(buffer);
                 return std::format("{}: {}", error, text);
             }
@@ -95,7 +95,7 @@ namespace NS
             // TODO: 260 文字を超えるパスは失敗する。扱うなら \\?\ プレフィックスを付ける
             [[nodiscard]] DWORD AttributesOf(std::string_view path) noexcept
             {
-                return ::GetFileAttributesW(::NS::OS::StringUtils::WideFromUtf8(path).c_str());
+                return ::GetFileAttributesW(OS::StringUtils::WideFromUtf8(path).c_str());
             }
         } // namespace
 
@@ -116,7 +116,7 @@ namespace NS
 
         std::optional<std::vector<std::byte>> FileSystem::ReadAllBytes(std::string_view path)
         {
-            const FileHandle handle(::CreateFileW(::NS::OS::StringUtils::WideFromUtf8(path).c_str(),
+            const FileHandle handle(::CreateFileW(OS::StringUtils::WideFromUtf8(path).c_str(),
                                                   GENERIC_READ,
                                                   FILE_SHARE_READ,
                                                   nullptr,
@@ -171,7 +171,7 @@ namespace NS
                 }
             }
 
-            const FileHandle handle(::CreateFileW(::NS::OS::StringUtils::WideFromUtf8(path).c_str(),
+            const FileHandle handle(::CreateFileW(OS::StringUtils::WideFromUtf8(path).c_str(),
                                                   GENERIC_WRITE,
                                                   0,
                                                   nullptr,
@@ -240,7 +240,7 @@ namespace NS
                 return false;
             }
 
-            if (::CreateDirectoryW(::NS::OS::StringUtils::WideFromUtf8(path).c_str(), nullptr) != 0)
+            if (::CreateDirectoryW(OS::StringUtils::WideFromUtf8(path).c_str(), nullptr) != 0)
             {
                 return true;
             }
@@ -270,14 +270,14 @@ namespace NS
                 }
                 for (std::size_t i = 0; i < ext.size(); ++i)
                 {
-                    const NS::uint8 c = static_cast<NS::uint8>(ext[i]);
+                    const uint8 c = static_cast<uint8>(ext[i]);
                     if (c > 127)
                     {
                         return false;
                     }
 
                     const int a = std::tolower(static_cast<int>(c));
-                    const int b = std::tolower(static_cast<NS::uint8>(extension[i]));
+                    const int b = std::tolower(static_cast<uint8>(extension[i]));
                     if (a != b)
                     {
                         return false;
@@ -290,7 +290,7 @@ namespace NS
             void ForEachEntry(std::string_view dir, const char* callerName, OnEntry&& onEntry)
             {
                 WIN32_FIND_DATAW data{};
-                const std::wstring pattern = ::NS::OS::StringUtils::WideFromUtf8(FileSystem::Combine(dir, "*"));
+                const std::wstring pattern = OS::StringUtils::WideFromUtf8(FileSystem::Combine(dir, "*"));
                 const FindHandle handle(::FindFirstFileW(pattern.c_str(), &data));
                 if (!handle.IsValid())
                 {
@@ -305,7 +305,7 @@ namespace NS
                     {
                         continue;
                     }
-                    onEntry(data.dwFileAttributes, FileSystem::Combine(dir, ::NS::OS::StringUtils::Utf8FromWide(name)));
+                    onEntry(data.dwFileAttributes, FileSystem::Combine(dir, OS::StringUtils::Utf8FromWide(name)));
                 }
                 while (::FindNextFileW(handle.Get(), &data) != 0);
 
@@ -382,7 +382,7 @@ namespace NS
                 return {};
             }
 
-            return ParentDirectory(::NS::OS::StringUtils::Utf8FromWide(std::wstring_view(buffer.data(), len)));
+            return ParentDirectory(OS::StringUtils::Utf8FromWide(std::wstring_view(buffer.data(), len)));
         }
 
         std::string FileSystem::ContentRoot()
@@ -437,8 +437,8 @@ namespace NS
                 }
                 if (HasDriveLetter(base))
                 {
-                    return std::tolower(static_cast<NS::uint8>(base[0])) !=
-                           std::tolower(static_cast<NS::uint8>(relative[0]));
+                    return std::tolower(static_cast<uint8>(base[0])) !=
+                           std::tolower(static_cast<uint8>(relative[0]));
                 }
                 return true;
             }

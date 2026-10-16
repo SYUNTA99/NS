@@ -26,9 +26,9 @@ namespace NS
                     return 0.0f;
                 }();
                 ImGui::Text("%.1f FPS (%.2f ms)", static_cast<double>(fps), static_cast<double>(ms));
-                ImGui::Text("delta       : %.4f s", static_cast<double>(NS::OS::FrameTimer::DeltaSeconds()));
-                ImGui::Text("fixed delta : %.4f s", static_cast<double>(NS::OS::FrameTimer::FixedDelta()));
-                ImGui::Text("fixed steps : %d", NS::OS::FrameTimer::FixedStepsThisFrame());
+                ImGui::Text("delta       : %.4f s", static_cast<double>(OS::FrameTimer::DeltaSeconds()));
+                ImGui::Text("fixed delta : %.4f s", static_cast<double>(OS::FrameTimer::FixedDelta()));
+                ImGui::Text("fixed steps : %d", OS::FrameTimer::FixedStepsThisFrame());
             }
             ImGui::End();
 #endif

@@ -13,26 +13,26 @@ namespace NS
     namespace Phys
     {
         //! 軸と符号はそのまま変換する。三角形の巻き方は双方とも CCW
-        [[nodiscard]] inline JPH::Vec3 ToJolt(const NS::Vector3& value) noexcept
+        [[nodiscard]] inline JPH::Vec3 ToJolt(const Vector3& value) noexcept
         {
             return JPH::Vec3{value.x, value.y, value.z};
         }
 
-        [[nodiscard]] inline NS::Vector3 FromJolt(JPH::Vec3Arg value) noexcept
+        [[nodiscard]] inline Vector3 FromJolt(JPH::Vec3Arg value) noexcept
         {
-            return NS::Vector3{value.GetX(), value.GetY(), value.GetZ()};
+            return Vector3{value.GetX(), value.GetY(), value.GetZ()};
         }
 
         //! @brief NS::Quaternion を JPH::Quat へ変換する
-        [[nodiscard]] inline JPH::Quat ToJolt(const NS::Quaternion& value) noexcept
+        [[nodiscard]] inline JPH::Quat ToJolt(const Quaternion& value) noexcept
         {
             return JPH::Quat{value.x, value.y, value.z, value.w};
         }
 
         //! @brief JPH::Quat を NS::Quaternion へ変換する
-        [[nodiscard]] inline NS::Quaternion FromJolt(JPH::QuatArg value) noexcept
+        [[nodiscard]] inline Quaternion FromJolt(JPH::QuatArg value) noexcept
         {
-            return NS::Quaternion{value.GetX(), value.GetY(), value.GetZ(), value.GetW()};
+            return Quaternion{value.GetX(), value.GetY(), value.GetZ(), value.GetW()};
         }
 
         [[nodiscard]] inline JPH::ShapeRefC ShapeOrNull(const JPH::ShapeSettings::ShapeResult& result)

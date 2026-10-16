@@ -44,10 +44,10 @@ namespace NS
 
         void TimelinePlayback::StepBy(int steps, TimelineFrameRange range) noexcept
         {
-            const NS::int64 requested = static_cast<NS::int64>(frame) + steps;
+            const int64 requested = static_cast<int64>(frame) + steps;
             Seek(static_cast<int>(std::clamp(requested,
-                                             static_cast<NS::int64>(range.first),
-                                             static_cast<NS::int64>(std::max(range.first, range.last)))),
+                                             static_cast<int64>(range.first),
+                                             static_cast<int64>(std::max(range.first, range.last)))),
                  range);
         }
 

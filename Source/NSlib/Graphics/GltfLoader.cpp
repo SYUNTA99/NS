@@ -57,7 +57,7 @@ namespace NS
             // の確保の仕方に合わせる 失敗はログを出して false。caller はログの頭に出す読み込み関数の名前
             bool OpenGltf(const std::string& path, std::string_view caller, CgltfGuard& outFile)
             {
-                std::optional<std::vector<std::byte>> bytes = NS::OS::FileSystem::ReadAllBytes(path);
+                std::optional<std::vector<std::byte>> bytes = OS::FileSystem::ReadAllBytes(path);
                 if (!bytes)
                 {
                     return false; // ReadAllBytes 内で NS_LOG_ERROR 済
@@ -200,9 +200,9 @@ namespace NS
             // primitive の index を baseVertex offset 付きで積み、この primitive
             // 分だけ三角形の巻き順を右手から左手へ反転する index を持たない primitive は頂点の並び順を index とみなす
             void AppendIndicesLeftHanded(const cgltf_primitive& prim,
-                                         NS::uint32 baseVertex,
+                                         uint32 baseVertex,
                                          cgltf_size vertexCount,
-                                         std::vector<NS::uint32>& outIndices)
+                                         std::vector<uint32>& outIndices)
             {
                 const std::size_t indexStart = outIndices.size();
                 if (prim.indices != nullptr)
@@ -212,7 +212,7 @@ namespace NS
                     for (cgltf_size i = 0; i < indexCount; ++i)
                     {
                         outIndices.push_back(baseVertex +
-                                             static_cast<NS::uint32>(cgltf_accessor_read_index(prim.indices, i)));
+                                             static_cast<uint32>(cgltf_accessor_read_index(prim.indices, i)));
                     }
                 }
                 else
@@ -220,7 +220,7 @@ namespace NS
                     outIndices.reserve(outIndices.size() + vertexCount);
                     for (cgltf_size i = 0; i < vertexCount; ++i)
                     {
-                        outIndices.push_back(baseVertex + static_cast<NS::uint32>(i));
+                        outIndices.push_back(baseVertex + static_cast<uint32>(i));
                     }
                 }
 
@@ -247,7 +247,7 @@ namespace NS
                 float nm[9];
                 ComputeNormalMatrix(world, nm);
 
-                const NS::uint32 baseVertex = static_cast<NS::uint32>(geom.vertices.size());
+                const uint32 baseVertex = static_cast<uint32>(geom.vertices.size());
                 const cgltf_size vertexCount = posAcc->count;
 
                 std::vector<std::array<float, 3>> computedNormals;
@@ -261,8 +261,8 @@ namespace NS
                 // 頂点を世界変換して左手系で積む
                 geom.vertices.reserve(geom.vertices.size() + vertexCount);
                 // 頂点を積むついでに軸並行境界を広げ、StaticMesh 側の二度目の全走査を省く
-                NS::Vector3 pmin{0.0f, 0.0f, 0.0f};
-                NS::Vector3 pmax{0.0f, 0.0f, 0.0f};
+                Vector3 pmin{0.0f, 0.0f, 0.0f};
+                Vector3 pmax{0.0f, 0.0f, 0.0f};
                 for (cgltf_size i = 0; i < vertexCount; ++i)
                 {
                     float p[3] = {0.0f, 0.0f, 0.0f};
@@ -273,7 +273,7 @@ namespace NS
                     const float wz = world[2] * p[0] + world[6] * p[1] + world[10] * p[2] + world[14];
 
                     StaticVertex v{};
-                    v.position = NS::Vector3{wx, wy, -wz};
+                    v.position = Vector3{wx, wy, -wz};
                     if (i == 0)
                     {
                         pmin = v.position;
@@ -281,8 +281,8 @@ namespace NS
                     }
                     else
                     {
-                        pmin = NS::Vector3::Min(pmin, v.position);
-                        pmax = NS::Vector3::Max(pmax, v.position);
+                        pmin = Vector3::Min(pmin, v.position);
+                        pmax = Vector3::Max(pmax, v.position);
                     }
 
                     float uv[2] = {0.0f, 0.0f};
@@ -290,7 +290,7 @@ namespace NS
                     {
                         cgltf_accessor_read_float(uvAcc, i, uv, 2);
                     }
-                    v.uv = NS::Vector2{uv[0], uv[1]};
+                    v.uv = Vector2{uv[0], uv[1]};
 
                     float n[3] = {0.0f, 0.0f, 1.0f};
                     if (normalAcc != nullptr)
@@ -304,7 +304,7 @@ namespace NS
                     const float nx = nm[0] * n[0] + nm[1] * n[1] + nm[2] * n[2];
                     const float ny = nm[3] * n[0] + nm[4] * n[1] + nm[5] * n[2];
                     const float nz = nm[6] * n[0] + nm[7] * n[1] + nm[8] * n[2];
-                    NS::Vector3 normal{nx, ny, -nz};
+                    Vector3 normal{nx, ny, -nz};
                     normal.Normalize();
                     v.normal = normal;
 
@@ -313,9 +313,9 @@ namespace NS
 
                 if (vertexCount > 0)
                 {
-                    const NS::Vector3 center = (pmin + pmax) * 0.5f;
-                    const NS::Vector3 extents = (pmax - pmin) * 0.5f;
-                    const NS::AABB primBox{center, extents};
+                    const Vector3 center = (pmin + pmax) * 0.5f;
+                    const Vector3 extents = (pmax - pmin) * 0.5f;
+                    const AABB primBox{center, extents};
                     if (!geom.hasBounds)
                     {
                         geom.bounds = primBox;
@@ -323,7 +323,7 @@ namespace NS
                     }
                     else
                     {
-                        NS::AABB::CreateMerged(geom.bounds, geom.bounds, primBox);
+                        AABB::CreateMerged(geom.bounds, geom.bounds, primBox);
                     }
                 }
 
@@ -431,10 +431,10 @@ namespace NS
                 BonePose pose;
                 if (node.has_matrix)
                 {
-                    NS::Vector3 scale;
-                    NS::Quaternion rotation;
-                    NS::Vector3 translation;
-                    NS::Matrix local = detail::ReadColumnMajorMatrix(node.matrix);
+                    Vector3 scale;
+                    Quaternion rotation;
+                    Vector3 translation;
+                    Matrix local = detail::ReadColumnMajorMatrix(node.matrix);
                     local.Decompose(scale, rotation, translation);
                     pose.translation = detail::MirrorZ(translation);
                     pose.rotation = detail::MirrorQuaternionZ(rotation);
@@ -444,16 +444,16 @@ namespace NS
                 {
                     if (node.has_translation)
                     {
-                        pose.translation = NS::Vector3{node.translation[0], node.translation[1], node.translation[2]};
+                        pose.translation = Vector3{node.translation[0], node.translation[1], node.translation[2]};
                     }
                     if (node.has_rotation)
                     {
                         pose.rotation =
-                            NS::Quaternion{node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]};
+                            Quaternion{node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]};
                     }
                     if (node.has_scale)
                     {
-                        pose.scale = NS::Vector3{node.scale[0], node.scale[1], node.scale[2]};
+                        pose.scale = Vector3{node.scale[0], node.scale[1], node.scale[2]};
                     }
                     pose.translation = detail::MirrorZ(pose.translation);
                     pose.rotation = detail::MirrorQuaternionZ(pose.rotation);
@@ -520,7 +520,7 @@ namespace NS
             }
 
             // 根の関節の親ノードの世界変換を左手系で返し、骨格付きメッシュへ反映する。親がなければ単位行列
-            NS::Matrix ComputeSkeletonRootTransform(const cgltf_skin& skin)
+            Matrix ComputeSkeletonRootTransform(const cgltf_skin& skin)
             {
                 for (cgltf_size i = 0; i < skin.joints_count; ++i)
                 {
@@ -532,13 +532,13 @@ namespace NS
                     const cgltf_node* armature = jointNode->parent;
                     if (armature == nullptr)
                     {
-                        return NS::Matrix::Identity;
+                        return Matrix::Identity;
                     }
                     float world[16];
                     cgltf_node_transform_world(armature, world);
                     return detail::ConjugateZMatrix(detail::ReadColumnMajorMatrix(world));
                 }
-                return NS::Matrix::Identity;
+                return Matrix::Identity;
             }
 
             // node 変換は頂点へ適用しない。glTF の仕様で、skin 付き mesh は joint の行列だけで動かす
@@ -547,7 +547,7 @@ namespace NS
                                         cgltf_size jointsCount,
                                         const std::string& path,
                                         std::vector<SkinnedVertex>& vertices,
-                                        std::vector<NS::uint32>& indices)
+                                        std::vector<uint32>& indices)
             {
                 const cgltf_accessor* posAcc = FindAttribute(prim, cgltf_attribute_type_position, 0);
                 if (posAcc == nullptr)
@@ -565,7 +565,7 @@ namespace NS
                     return false;
                 }
 
-                const NS::uint32 baseVertex = static_cast<NS::uint32>(vertices.size());
+                const uint32 baseVertex = static_cast<uint32>(vertices.size());
                 const cgltf_size vertexCount = posAcc->count;
 
                 std::vector<std::array<float, 3>> computedNormals;
@@ -584,14 +584,14 @@ namespace NS
                     float p[3] = {0.0f, 0.0f, 0.0f};
                     cgltf_accessor_read_float(posAcc, i, p, 3);
                     SkinnedVertex v{};
-                    v.position = detail::MirrorZ(NS::Vector3{p[0], p[1], p[2]});
+                    v.position = detail::MirrorZ(Vector3{p[0], p[1], p[2]});
 
                     float uv[2] = {0.0f, 0.0f};
                     if (uvAcc != nullptr)
                     {
                         cgltf_accessor_read_float(uvAcc, i, uv, 2);
                     }
-                    v.uv = NS::Vector2{uv[0], uv[1]};
+                    v.uv = Vector2{uv[0], uv[1]};
 
                     float n[3] = {0.0f, 0.0f, 1.0f};
                     if (normalAcc != nullptr)
@@ -602,11 +602,11 @@ namespace NS
                     {
                         std::copy(computedNormals[i].begin(), computedNormals[i].end(), n);
                     }
-                    NS::Vector3 normal = detail::MirrorZ(NS::Vector3{n[0], n[1], n[2]});
+                    Vector3 normal = detail::MirrorZ(Vector3{n[0], n[1], n[2]});
                     normal.Normalize();
                     v.normal = normal;
 
-                    std::array<NS::uint32, 4> joints{};
+                    std::array<uint32, 4> joints{};
                     cgltf_accessor_read_uint(jointsAcc, i, joints.data(), 4);
                     std::array<float, 4> weights{};
                     cgltf_accessor_read_float(weightsAcc, i, weights.data(), 4);
@@ -736,7 +736,7 @@ namespace NS
                             {
                                 float v[3] = {0.0f, 0.0f, 0.0f};
                                 cgltf_accessor_read_float(sampler.output, i * stride + valueOffset, v, 3);
-                                track.positionValues[i] = detail::MirrorZ(NS::Vector3{v[0], v[1], v[2]});
+                                track.positionValues[i] = detail::MirrorZ(Vector3{v[0], v[1], v[2]});
                             }
                         }
                         else if (channel.target_path == cgltf_animation_path_type_rotation)
@@ -749,7 +749,7 @@ namespace NS
                                 float q[4] = {0.0f, 0.0f, 0.0f, 1.0f};
                                 cgltf_accessor_read_float(sampler.output, i * stride + valueOffset, q, 4);
                                 track.rotationValues[i] =
-                                    detail::MirrorQuaternionZ(NS::Quaternion{q[0], q[1], q[2], q[3]});
+                                    detail::MirrorQuaternionZ(Quaternion{q[0], q[1], q[2], q[3]});
                             }
                         }
                         else if (channel.target_path == cgltf_animation_path_type_scale)
@@ -761,7 +761,7 @@ namespace NS
                             {
                                 float v[3] = {1.0f, 1.0f, 1.0f};
                                 cgltf_accessor_read_float(sampler.output, i * stride + valueOffset, v, 3);
-                                track.scaleValues[i] = NS::Vector3{v[0], v[1], v[2]};
+                                track.scaleValues[i] = Vector3{v[0], v[1], v[2]};
                             }
                         }
                     }
@@ -779,7 +779,7 @@ namespace NS
                                      const std::string& path,
                                      std::vector<Bone>& outBones,
                                      std::unordered_map<const cgltf_node*, int>& outNodeToBone,
-                                     NS::Matrix& outRootXf)
+                                     Matrix& outRootXf)
             {
                 // animation 対象 node を集める
                 std::unordered_set<const cgltf_node*> animated;
@@ -841,7 +841,7 @@ namespace NS
                     }
                 };
 
-                outRootXf = NS::Matrix::Identity;
+                outRootXf = Matrix::Identity;
                 bool rootXfSet = false;
                 for (cgltf_size n = 0; n < model.nodes_count; ++n)
                 {
@@ -929,7 +929,7 @@ namespace NS
             // 同一 skin を共有する全 mesh node を連結する。Mixamo は本体と関節マーカーが別 mesh に分かれており、
             // 先頭だけ読むと関節マーカーしか出ない。joint index 整合のため skin が一致する node のみ対象とする
             std::vector<SkinnedVertex> vertices;
-            std::vector<NS::uint32> indices;
+            std::vector<uint32> indices;
             for (cgltf_size n = 0; n < model.nodes_count; ++n)
             {
                 const cgltf_node& node = model.nodes[n];
@@ -969,7 +969,7 @@ namespace NS
             }
 
             // bone 並べ替えに合わせて頂点の joint index を張り替える
-            const std::vector<NS::uint32> remap = detail::TopologicalSortBones(bones);
+            const std::vector<uint32> remap = detail::TopologicalSortBones(bones);
             for (SkinnedVertex& v : vertices)
             {
                 for (int k = 0; k < 4; ++k)
@@ -1016,7 +1016,7 @@ namespace NS
 
             std::vector<Bone> bones;
             std::unordered_map<const cgltf_node*, int> nodeToBone;
-            NS::Matrix rootXf = NS::Matrix::Identity;
+            Matrix rootXf = Matrix::Identity;
             if (!BuildSourceSkeleton(model, path, bones, nodeToBone, rootXf))
             {
                 return source;

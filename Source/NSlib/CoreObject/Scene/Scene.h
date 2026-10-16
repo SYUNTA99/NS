@@ -46,7 +46,7 @@ namespace NS
 
     //! @brief 配置物と共有システムを所有し、固定更新と描画を行うシーン
     //! @details JSON は保存・凍結・編集履歴に使い、実行中の状態は SceneActor と部品が持つ
-    class Scene : public NS::NonCopyable, public IUseCamera, public IUseSceneSystem, public IUseCollision
+    class Scene : public NonCopyable, public IUseCamera, public IUseSceneSystem, public IUseCollision
     {
     public:
         Scene();
@@ -86,18 +86,18 @@ namespace NS
 
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
 
-        [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
+        [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
 
         //! エフェクトの EffectScene。描画を持たないシーン (試し) では nullptr
-        [[nodiscard]] NS::Gfx::EffectScene* GetEffectScene() const noexcept;
+        [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept;
 
         //! シーンのヒットセンサーの調べ役。HitSensor が OnStart で入り OnEndPlay で出る
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
 
         //! シーン全体の暗転。UI の段で進め、全 UI の後に描く。時間停止中は凍る
-        [[nodiscard]] NS::Gfx::ScreenFade& Fade() noexcept { return m_fade.Fade(); }
-        [[nodiscard]] const NS::Gfx::ScreenFade& Fade() const noexcept { return m_fade.Fade(); }
+        [[nodiscard]] Gfx::ScreenFade& Fade() noexcept { return m_fade.Fade(); }
+        [[nodiscard]] const Gfx::ScreenFade& Fade() const noexcept { return m_fade.Fade(); }
 
         //! @brief 管理役を段 phase の更新へ登録する。登録済みなら段だけを差し替える
         //! @details 同じ段の SceneActor の後に登録順で OnTick が呼ばれる
@@ -111,34 +111,34 @@ namespace NS
         [[nodiscard]] const UIDirector& UI() const noexcept { return m_ui; }
 
         //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
-        [[nodiscard]] NS::Phys::PhysicsScene& Physics() noexcept { return m_physics.Physics(); }
-        [[nodiscard]] const NS::Phys::PhysicsScene& Physics() const noexcept { return m_physics.Physics(); }
+        [[nodiscard]] Phys::PhysicsScene& Physics() noexcept { return m_physics.Physics(); }
+        [[nodiscard]] const Phys::PhysicsScene& Physics() const noexcept { return m_physics.Physics(); }
 
-        [[nodiscard]] const NS::Vector3& GravityDirection() const noexcept { return m_gravityDirection; }
+        [[nodiscard]] const Vector3& GravityDirection() const noexcept { return m_gravityDirection; }
         //! 重力方向を正規化して、物理の重力方向も揃える
-        void SetGravityDirection(const NS::Vector3& direction) noexcept;
+        void SetGravityDirection(const Vector3& direction) noexcept;
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
         void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
 
         //! レンダラーを非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
-        void SetRenderer(NS::Gfx::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
+        void SetRenderer(Gfx::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
 
         //! @brief 次に描くフレームから使う床の波を書く。強さ 0 で消える
-        void SetGroundWave(const NS::Gfx::GroundWave& wave) noexcept { m_sceneRenderer.SetGroundWave(wave); }
+        void SetGroundWave(const Gfx::GroundWave& wave) noexcept { m_sceneRenderer.SetGroundWave(wave); }
         //! 描く時に使う床の波
-        [[nodiscard]] const NS::Gfx::GroundWave& GroundWaveShown() const noexcept
+        [[nodiscard]] const Gfx::GroundWave& GroundWaveShown() const noexcept
         {
             return m_sceneRenderer.GroundWaveShown();
         }
 
         //! @brief 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
-        void SetDistortionRing(const NS::Gfx::DistortionRing& ring) noexcept
+        void SetDistortionRing(const Gfx::DistortionRing& ring) noexcept
         {
             m_sceneRenderer.SetDistortionRing(ring);
         }
         //! 描く時に使う歪みの輪
-        [[nodiscard]] const NS::Gfx::DistortionRing& DistortionRingShown() const noexcept
+        [[nodiscard]] const Gfx::DistortionRing& DistortionRingShown() const noexcept
         {
             return m_sceneRenderer.DistortionRingShown();
         }
@@ -151,7 +151,7 @@ namespace NS
         }
         //! @brief ビュー列の index 番目に、今のフレームで描いた体の型を返す
         //! @return 1 色 8 ビットの型。未描画なら空
-        [[nodiscard]] const NS::Gfx::Texture* BodyMaskShown(std::size_t viewIndex) const noexcept
+        [[nodiscard]] const Gfx::Texture* BodyMaskShown(std::size_t viewIndex) const noexcept
         {
             return m_sceneRenderer.BodyMaskShown(viewIndex);
         }
@@ -166,8 +166,8 @@ namespace NS
         void SetSkyboxPath(std::string path) noexcept { m_skyboxPath = std::move(path); }
 
         //! @brief シーンの配置物の一覧
-        [[nodiscard]] NS::ActorList& Objects() noexcept { return m_objects; }
-        [[nodiscard]] const NS::ActorList& Objects() const noexcept { return m_objects; }
+        [[nodiscard]] ActorList& Objects() noexcept { return m_objects; }
+        [[nodiscard]] const ActorList& Objects() const noexcept { return m_objects; }
 
         //! @brief シーンの JSON 文書を取り込み配置物を組み直す。文書は取込後に用済みになる
         //! @details 組む前に id と名前を一意に揃える。前の世界の固定ステップで積んだ開発用の図形は捨てる
@@ -262,7 +262,7 @@ namespace NS
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
         //! 子は根として残る。まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
-        void DestroyObject(NS::uint32 objectId);
+        void DestroyObject(uint32 objectId);
 
         //! 固定更新の段を順に実行する。同じ段では SceneActor の後にシステムを更新する
         void OnUpdate();
@@ -304,14 +304,14 @@ namespace NS
         //! 衝突判定の PhysicsScene を持つ。ActorList::SyncPhysics が Collision の body を入れる
         //! Collision が OnEndPlay で body を外し、Collider が借りるので、m_objects より先に宣言して後に破棄する
         PhysicsDirector m_physics;
-        NS::Vector3 m_gravityDirection{0.0f, -1.0f, 0.0f};
+        Vector3 m_gravityDirection{0.0f, -1.0f, 0.0f};
 
         // ヒットセンサーの調べ役。配置物の部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         HitSensorDirector m_hitSensors;
         SceneCamera m_mainCamera;
         // 仮想カメラは持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         CameraManager m_cameraManager;
-        NS::ActorList m_objects; // 配置物の一覧
+        ActorList m_objects; // 配置物の一覧
         // 更新へ登録した管理役 1 件
         struct SystemEntry
         {
@@ -331,7 +331,7 @@ namespace NS
 
         bool m_simulationEnabled = true;      // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;      // 時間停止中か
-        NS::int32 m_simulationStepFrames = 0; // コマ送り残り固定ステップ数。止めたままこの数だけ進める
+        int32 m_simulationStepFrames = 0; // コマ送り残り固定ステップ数。止めたままこの数だけ進める
         float m_worldSpeed = 1.0f;            // 世界の速さ (0〜1)
         float m_worldCarry = 0.0f;            // 前に世界を進めてから足した速さ。1 に届いたら世界を 1 歩進める
         bool m_rampActive = false;            // 世界の速さを戻している間か

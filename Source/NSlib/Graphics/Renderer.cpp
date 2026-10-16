@@ -36,7 +36,7 @@ namespace NS
             // 全画面塗り shader (fade.ps) の cbuffer b0 とバイト一致させる
             struct alignas(16) FullscreenColorCB
             {
-                NS::Color color;
+                Color color;
             };
             static_assert(sizeof(FullscreenColorCB) == 16,
                           "FullscreenColorCB は HLSL の cbuffer b0 とバイト一致が必要");
@@ -45,7 +45,7 @@ namespace NS
             struct alignas(16) ScreenRectCB
             {
                 float rect[4]; // clip 空間の左上の x と y、幅と高さ。高さは画面下方向の量
-                NS::Color color;
+                Color color;
             };
             static_assert(sizeof(ScreenRectCB) == 32, "ScreenRectCB は HLSL の cbuffer b0 とバイト一致が必要");
 
@@ -91,8 +91,8 @@ namespace NS
                 {
                     NS_LOG_WARN(Graphics,
                                 "D3D11CreateDeviceAndSwapChain failed (hr=0x{:X}, flags=0x{:X})",
-                                static_cast<NS::uint>(hr),
-                                static_cast<NS::uint>(createFlags));
+                                static_cast<uint>(hr),
+                                static_cast<uint>(createFlags));
                     return false;
                 }
                 return true;
@@ -142,7 +142,7 @@ namespace NS
                 const HRESULT hr = swapchain->GetBuffer(0, IID_PPV_ARGS(bb.GetAddressOf()));
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(Graphics, "SwapChain::GetBuffer 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
+                    NS_LOG_ERROR(Graphics, "SwapChain::GetBuffer 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                     return false;
                 }
 
@@ -153,7 +153,7 @@ namespace NS
                     return false;
                 }
 
-                const ::NS::Size2D size = backbuffer->Size();
+                const Size2D size = backbuffer->Size();
                 TextureDesc depthDesc{};
                 depthDesc.width = static_cast<UINT>(size.width);
                 depthDesc.height = static_cast<UINT>(size.height);
@@ -173,7 +173,7 @@ namespace NS
             }
         } // namespace
 
-        Renderer::Renderer(const RendererDesc& desc, ::NS::OS::Window& window) noexcept
+        Renderer::Renderer(const RendererDesc& desc, OS::Window& window) noexcept
         {
             m_window = &window;
             m_vsync = desc.vsync;
@@ -186,7 +186,7 @@ namespace NS
             }
 
             HWND hwnd = window.NativeHandle();
-            const ::NS::Size2D winSize = window.Size();
+            const Size2D winSize = window.Size();
             const int w = winSize.width;
             const int h = winSize.height;
 
@@ -254,7 +254,7 @@ namespace NS
                     PipelineDesc{.cull = cull, .blend = BlendMode::Alpha, .depth = DepthMode::Occluded});
             }
 
-            window.SetResizeCallback([this](::NS::Size2D rs) { this->Resize(rs); });
+            window.SetResizeCallback([this](Size2D rs) { this->Resize(rs); });
             m_resizeCallbackRegistered = true;
 
             m_valid = true;
@@ -305,7 +305,7 @@ namespace NS
             if (FAILED(hr))
             {
                 NS_LOG_ERROR(
-                    Graphics, "CaptureBackbufferToPng: backbuffer を取れない (hr=0x{:08X})", static_cast<NS::uint>(hr));
+                    Graphics, "CaptureBackbufferToPng: backbuffer を取れない (hr=0x{:08X})", static_cast<uint>(hr));
                 return false;
             }
 
@@ -315,14 +315,14 @@ namespace NS
             {
                 NS_LOG_ERROR(Graphics,
                              "CaptureBackbufferToPng: 書き出しに失敗 (hr=0x{:08X}): {}",
-                             static_cast<NS::uint>(hr),
+                             static_cast<uint>(hr),
                              path.string());
                 return false;
             }
             return true;
         }
 
-        bool Renderer::ReadBackbufferPixels(std::vector<NS::uint8>& outBgra, NS::Size2D& outSize) noexcept
+        bool Renderer::ReadBackbufferPixels(std::vector<uint8>& outBgra, Size2D& outSize) noexcept
         {
             if (!m_valid || !m_swapchain || !m_context)
             {
@@ -334,7 +334,7 @@ namespace NS
             if (FAILED(hr))
             {
                 NS_LOG_ERROR(
-                    Graphics, "ReadBackbufferPixels: backbuffer を取れない (hr=0x{:08X})", static_cast<NS::uint>(hr));
+                    Graphics, "ReadBackbufferPixels: backbuffer を取れない (hr=0x{:08X})", static_cast<uint>(hr));
                 return false;
             }
 
@@ -369,7 +369,7 @@ namespace NS
             {
                 NS_LOG_ERROR(Graphics,
                              "ReadBackbufferPixels: 読み出し用の写しを作れない (hr=0x{:08X})",
-                             static_cast<NS::uint>(hr));
+                             static_cast<uint>(hr));
                 return false;
             }
             m_context->CopyResource(staging.Get(), backbuffer.Get());
@@ -378,13 +378,13 @@ namespace NS
             hr = m_context->Map(staging.Get(), 0u, D3D11_MAP_READ, 0u, &mapped);
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "ReadBackbufferPixels: Map に失敗 (hr=0x{:08X})", static_cast<NS::uint>(hr));
+                NS_LOG_ERROR(Graphics, "ReadBackbufferPixels: Map に失敗 (hr=0x{:08X})", static_cast<uint>(hr));
                 return false;
             }
 
             const std::size_t rowBytes = static_cast<std::size_t>(desc.Width) * 4u;
             outBgra.resize(rowBytes * desc.Height);
-            const NS::uint8* source = static_cast<const NS::uint8*>(mapped.pData);
+            const uint8* source = static_cast<const uint8*>(mapped.pData);
             for (UINT y = 0; y < desc.Height; ++y)
             {
                 std::memcpy(
@@ -401,7 +401,7 @@ namespace NS
                 }
             }
 
-            outSize = NS::Size2D{static_cast<int>(desc.Width), static_cast<int>(desc.Height)};
+            outSize = Size2D{static_cast<int>(desc.Width), static_cast<int>(desc.Height)};
             return true;
         }
 
@@ -491,7 +491,7 @@ namespace NS
         void Renderer::DrawOverlay(const OverlayResources& overlay,
                                    const void* constants,
                                    std::size_t constantBytes,
-                                   NS::uint vertexCount,
+                                   uint vertexCount,
                                    bool vsReadsConstants) noexcept
         {
             CommandList& cmd = *m_commands;
@@ -512,7 +512,7 @@ namespace NS
             cmd.Draw(vertexCount);
         }
 
-        void Renderer::DrawFullscreenColor(const NS::Color& color) noexcept
+        void Renderer::DrawFullscreenColor(const Color& color) noexcept
         {
             if (!EnsureOverlay(m_fullscreen, "fade.vs.hlsl", "fade.ps.hlsl", sizeof(FullscreenColorCB), "全画面塗り"))
             {
@@ -524,14 +524,14 @@ namespace NS
             DrawOverlay(m_fullscreen, &cbData, sizeof(cbData), 3, false);
         }
 
-        void Renderer::DrawScreenRect(float x, float y, float width, float height, const NS::Color& color) noexcept
+        void Renderer::DrawScreenRect(float x, float y, float width, float height, const Color& color) noexcept
         {
             if (!EnsureOverlay(m_screenRect, "ui_rect.vs.hlsl", "ui_rect.ps.hlsl", sizeof(ScreenRectCB), "UI 矩形"))
             {
                 return;
             }
 
-            const ::NS::Size2D targetSize = Size();
+            const Size2D targetSize = Size();
             if (targetSize.width <= 0 || targetSize.height <= 0)
             {
                 NS_LOG_WARN(
@@ -574,7 +574,7 @@ namespace NS
             m_skybox = std::move(skybox);
         }
 
-        void Renderer::DrawSky(const NS::CameraData& camera, std::string_view cubemapPath) noexcept
+        void Renderer::DrawSky(const CameraData& camera, std::string_view cubemapPath) noexcept
         {
             // cubemap を指定していないシーンは空を持たない。Skybox の構築もしない
             if (cubemapPath.empty())
@@ -593,7 +593,7 @@ namespace NS
             {
                 // ユーザー編集ファイル由来のパスを ContentRoot 配下へ閉じ込める。外を指す値は読み込まない
                 const std::optional<std::string> absPath =
-                    ::NS::OS::FileSystem::ResolveUnder(::NS::OS::FileSystem::ContentRoot(), cubemapPath);
+                    OS::FileSystem::ResolveUnder(OS::FileSystem::ContentRoot(), cubemapPath);
                 if (!absPath.has_value())
                 {
                     NS_LOG_WARN(
@@ -613,7 +613,7 @@ namespace NS
             }
 
             // view の平行移動成分を 0 化して camera 中心に空を固定する
-            NS::Matrix viewNoTranslate = camera.View();
+            Matrix viewNoTranslate = camera.View();
             viewNoTranslate._41 = 0.0f;
             viewNoTranslate._42 = 0.0f;
             viewNoTranslate._43 = 0.0f;
@@ -649,7 +649,7 @@ namespace NS
 
         void Renderer::BeginFrame() noexcept
         {
-            const ::NS::Color& c = m_settings.clearColor;
+            const Color& c = m_settings.clearColor;
             BeginFrame(c.R(), c.G(), c.B(), c.A());
         }
 
@@ -675,7 +675,7 @@ namespace NS
             const HRESULT hr = m_swapchain->Present(sync, 0);
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "SwapChain::Present 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
+                NS_LOG_ERROR(Graphics, "SwapChain::Present 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                 // device 喪失は復帰不能。以降の描画を止め、毎フレームのログ連発も防ぐ
                 if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
                 {
@@ -684,7 +684,7 @@ namespace NS
             }
         }
 
-        void Renderer::Resize(::NS::Size2D size) noexcept
+        void Renderer::Resize(Size2D size) noexcept
         {
             if (!IsValid())
             {
@@ -708,7 +708,7 @@ namespace NS
                 0, static_cast<UINT>(size.width), static_cast<UINT>(size.height), DXGI_FORMAT_UNKNOWN, 0);
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics, "SwapChain::ResizeBuffers 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
+                NS_LOG_ERROR(Graphics, "SwapChain::ResizeBuffers 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                 return;
             }
 
@@ -736,7 +736,7 @@ namespace NS
             {
                 ID3D11RenderTargetView* rtv = target->Color()->Rtv();
                 ID3D11DepthStencilView* dsv = target->Depth()->Dsv();
-                const ::NS::Color& c = m_settings.clearColor;
+                const Color& c = m_settings.clearColor;
                 m_commands->ClearRenderTarget(rtv, c.R(), c.G(), c.B(), c.A());
                 m_commands->ClearDepth(dsv, 1.0f);
                 BindTarget(rtv, dsv, target->Size());
@@ -754,13 +754,13 @@ namespace NS
             BindTarget(m_backbuffer->Rtv(), m_depth->Dsv(), m_backbuffer->Size());
         }
 
-        void Renderer::BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, ::NS::Size2D size) noexcept
+        void Renderer::BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, Size2D size) noexcept
         {
             m_commands->SetRenderTarget(rtv, dsv);
             m_commands->SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
         }
 
-        ::NS::Size2D Renderer::Size() const noexcept
+        Size2D Renderer::Size() const noexcept
         {
             if (m_sceneTarget != nullptr && m_sceneTarget->IsValid())
             {
@@ -768,7 +768,7 @@ namespace NS
             }
             if (!m_backbuffer)
             {
-                return ::NS::Size2D{0, 0};
+                return Size2D{0, 0};
             }
             return m_backbuffer->Size();
         }

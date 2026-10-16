@@ -21,7 +21,7 @@ namespace NS
         struct SkinnedMeshData
         {
             std::vector<SkinnedVertex> vertices;   //!< スキニング用の頂点データ列
-            std::vector<NS::uint32> indices;       //!< 全プリミティブを連結したインデックス列
+            std::vector<uint32> indices;       //!< 全プリミティブを連結したインデックス列
             Skeleton skeleton;                     //!< ボーン階層と逆バインド行列
             std::vector<AnimationClip> animations; //!< 読み込まれたアニメーションクリップ群
 

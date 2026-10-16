@@ -34,10 +34,10 @@ namespace NS
             }
             if (previous < 1)
             {
-                return 1 + static_cast<int>(generator() % static_cast<NS::uint32>(longest));
+                return 1 + static_cast<int>(generator() % static_cast<uint32>(longest));
             }
             // previous を除いた longest - 1 通りから選び、previous 以上は 1 つ後ろへずらす
-            int picked = 1 + static_cast<int>(generator() % static_cast<NS::uint32>(longest - 1));
+            int picked = 1 + static_cast<int>(generator() % static_cast<uint32>(longest - 1));
             if (picked >= previous)
             {
                 ++picked;
@@ -49,8 +49,8 @@ namespace NS
         void FillFlipSigns(std::mt19937& generator,
                            int longest,
                            float firstSign,
-                           float NS::Vector2::* axis,
-                           std::vector<NS::Vector2>& offsets) noexcept
+                           float Vector2::* axis,
+                           std::vector<Vector2>& offsets) noexcept
         {
             float sign = firstSign;
             int previous = 0;
@@ -89,8 +89,8 @@ namespace NS
     std::unique_ptr<CameraShakeModifier> CameraShakeModifier::Create(const CameraShakeDesc& desc, float firstSideSign)
     {
         // 壊れた値が pose へ流れると視点が消える。入口で捨てる
-        if (!NS::IsNonNegativeFinite(desc.sideAmplitude) || !NS::IsNonNegativeFinite(desc.upAmplitude) ||
-            !NS::IsFinite(desc.firstSideDirection) || desc.frames <= 0 || desc.longestFlipFrames < 1)
+        if (!IsNonNegativeFinite(desc.sideAmplitude) || !IsNonNegativeFinite(desc.upAmplitude) ||
+            !IsFinite(desc.firstSideDirection) || desc.frames <= 0 || desc.longestFlipFrames < 1)
         {
             return nullptr;
         }
@@ -99,20 +99,20 @@ namespace NS
         // seed_seq と mt19937 は手順が規格で決まっているので、同じ種なら実装によらず同じ並びになる
         std::seed_seq seeds{desc.seed};
         std::mt19937 generator(seeds);
-        shake->m_offsets.assign(static_cast<std::size_t>(desc.frames), NS::Vector2{0.0f, 0.0f});
+        shake->m_offsets.assign(static_cast<std::size_t>(desc.frames), Vector2{0.0f, 0.0f});
         float sideSign = 1.0f;
         if (firstSideSign < 0.0f)
         {
             sideSign = -1.0f;
         }
-        FillFlipSigns(generator, desc.longestFlipFrames, sideSign, &NS::Vector2::x, shake->m_offsets);
-        FillFlipSigns(generator, desc.longestFlipFrames, -1.0f, &NS::Vector2::y, shake->m_offsets);
+        FillFlipSigns(generator, desc.longestFlipFrames, sideSign, &Vector2::x, shake->m_offsets);
+        FillFlipSigns(generator, desc.longestFlipFrames, -1.0f, &Vector2::y, shake->m_offsets);
 
         // 始めたフレームが最大で、残りのフレーム数に比例して減る
         for (int frame = 0; frame < desc.frames; ++frame)
         {
             const float decay = static_cast<float>(desc.frames - frame) / static_cast<float>(desc.frames);
-            NS::Vector2& offset = shake->m_offsets[static_cast<std::size_t>(frame)];
+            Vector2& offset = shake->m_offsets[static_cast<std::size_t>(frame)];
             offset.x *= desc.sideAmplitude * decay;
             offset.y *= desc.upAmplitude * decay;
         }
@@ -125,23 +125,23 @@ namespace NS
         return &kind;
     }
 
-    NS::Vector2 CameraShakeModifier::Offset() const noexcept
+    Vector2 CameraShakeModifier::Offset() const noexcept
     {
         if (Frame() < static_cast<int>(m_offsets.size()))
         {
             return m_offsets[static_cast<std::size_t>(Frame())];
         }
-        return NS::Vector2{0.0f, 0.0f};
+        return Vector2{0.0f, 0.0f};
     }
 
     void CameraShakeModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
     {
-        const NS::Vector2 shake = Offset();
+        const Vector2 shake = Offset();
         if (shake.x == 0.0f && shake.y == 0.0f)
         {
             return;
         }
-        const NS::Vector3 offset = axes.right * shake.x + axes.up * shake.y;
+        const Vector3 offset = axes.right * shake.x + axes.up * shake.y;
         pose.position += offset;
         pose.target += offset;
     }
@@ -189,7 +189,7 @@ namespace NS
     std::unique_ptr<CameraSinkModifier> CameraSinkModifier::Create(const CameraSinkDesc& desc)
     {
         // 壊れた値が姿へ流れると画面が消える。入口で捨てる
-        if (!NS::IsNonNegativeFinite(desc.bottomPixels) || !NS::IsNonNegativeFinite(desc.tremblePixels) ||
+        if (!IsNonNegativeFinite(desc.bottomPixels) || !IsNonNegativeFinite(desc.tremblePixels) ||
             !std::isfinite(desc.overshootRatio) || desc.frames <= 0 || desc.sinkFrames < 1 || desc.trembleFrames < 0 ||
             desc.tremblePeriodFrames < 1 || desc.bouncePeriodFrames < 1 || !(desc.overshootRatio > 0.0f) ||
             !(desc.overshootRatio < 1.0f))
@@ -227,7 +227,7 @@ namespace NS
                                                                            float rollSign)
     {
         const bool finite =
-            std::isfinite(desc.zoom) && std::isfinite(desc.rollDegrees) && NS::IsFinite(desc.rollDirection);
+            std::isfinite(desc.zoom) && std::isfinite(desc.rollDegrees) && IsFinite(desc.rollDirection);
         if (!finite || desc.zoom < 1.0f || desc.holdFrames < 0 || desc.returnFrames < 0)
         {
             return nullptr;
@@ -267,7 +267,7 @@ namespace NS
 
         // 重みを 1 - weight と weight に分けて掛けるので、戻しの最後のフレームで倍率 1・傾き 0 ちょうどになる
         const float t = static_cast<float>(Frame() - m_holdFrames + 1) / static_cast<float>(m_returnFrames);
-        const float weight = NS::SmoothStep(t);
+        const float weight = SmoothStep(t);
         return CameraZoomRoll{
             .zoom = m_full.zoom * (1.0f - weight) + weight,
             .rollDegrees = m_full.rollDegrees * (1.0f - weight),
@@ -279,11 +279,11 @@ namespace NS
         const CameraZoomRoll zoomRoll = Current();
         if (zoomRoll.zoom != 1.0f)
         {
-            pose.fovY = NS::Radians{2.0f * std::atan(std::tan(pose.fovY.value * 0.5f) / zoomRoll.zoom)};
+            pose.fovY = Radians{2.0f * std::atan(std::tan(pose.fovY.value * 0.5f) / zoomRoll.zoom)};
         }
         if (zoomRoll.rollDegrees != 0.0f)
         {
-            const float roll = NS::DegreesToRadians(zoomRoll.rollDegrees);
+            const float roll = DegreesToRadians(zoomRoll.rollDegrees);
             pose.up = axes.up * std::cos(roll) + axes.right * std::sin(roll);
         }
     }
@@ -314,7 +314,7 @@ namespace NS
 
     void CameraTraumaModifier::HoldTrauma(float level, const CameraTraumaShape& shape) noexcept
     {
-        const float clamped = NS::Clamp(level, 0.0f, 1.0f);
+        const float clamped = Clamp(level, 0.0f, 1.0f);
         // 弱い保ちは強い揺れの形を奪わない。外れの揺れの途中に溜め始めても、外れの揺れのまま減る
         if (clamped >= m_trauma)
         {
@@ -329,19 +329,19 @@ namespace NS
         return std::pow(m_trauma, m_shape.exponent);
     }
 
-    NS::Vector3 CameraTraumaModifier::Angles() const noexcept
+    Vector3 CameraTraumaModifier::Angles() const noexcept
     {
         // 時刻はフレーム数から出す。種と時刻だけで決まり、下見で途中のフレームへ飛んでもその場で引ける
-        const float time = static_cast<float>(Frame()) * NS::OS::FrameTimer::FixedDelta() * m_shape.frequency;
+        const float time = static_cast<float>(Frame()) * OS::FrameTimer::FixedDelta() * m_shape.frequency;
         const float amount = ShakeAmount();
-        NS::Vector3 angles{m_shape.yawDegrees * amount * NS::ValueNoise1D(time, m_seed),
-                           m_shape.pitchDegrees * amount * NS::ValueNoise1D(time, m_seed + 1u),
-                           m_shape.rollDegrees * amount * NS::ValueNoise1D(time, m_seed + 2u)};
+        Vector3 angles{m_shape.yawDegrees * amount * ValueNoise1D(time, m_seed),
+                           m_shape.pitchDegrees * amount * ValueNoise1D(time, m_seed + 1u),
+                           m_shape.rollDegrees * amount * ValueNoise1D(time, m_seed + 2u)};
         if (m_kickFrame > 0)
         {
             const float ratio = static_cast<float>(m_kickFrame) / static_cast<float>(m_kick.peakFrames);
             const float kick = m_kick.degrees * ratio * std::exp(1.0f - ratio);
-            NS::Vector2 direction = m_kick.direction;
+            Vector2 direction = m_kick.direction;
             direction.Normalize();
             angles.x += kick * direction.x;
             angles.y += kick * direction.y;
@@ -351,21 +351,21 @@ namespace NS
 
     void CameraTraumaModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
     {
-        const NS::Vector3 angles = Angles();
-        NS::Vector3 look = pose.target - pose.position;
+        const Vector3 angles = Angles();
+        Vector3 look = pose.target - pose.position;
         const float distance = look.Length();
-        if (distance <= NS::k_Epsilon)
+        if (distance <= k_Epsilon)
         {
             return;
         }
         look /= distance;
         // 右手まわりの符号に合わせる。横は上の軸まわりの正で右を向き、縦と傾きは軸まわりの負で上・右へ倒れる
-        const NS::Quaternion yaw = NS::Quaternion::CreateFromAxisAngle(axes.up, NS::DegreesToRadians(angles.x));
-        const NS::Quaternion pitch = NS::Quaternion::CreateFromAxisAngle(axes.right, NS::DegreesToRadians(-angles.y));
-        const NS::Quaternion turn = yaw * pitch;
-        const NS::Vector3 turnedLook = NS::Vector3::Transform(look, turn);
-        const NS::Quaternion roll = NS::Quaternion::CreateFromAxisAngle(turnedLook, NS::DegreesToRadians(-angles.z));
-        NS::Vector3 up = NS::Vector3::Transform(NS::Vector3::Transform(pose.up, turn), roll);
+        const Quaternion yaw = Quaternion::CreateFromAxisAngle(axes.up, DegreesToRadians(angles.x));
+        const Quaternion pitch = Quaternion::CreateFromAxisAngle(axes.right, DegreesToRadians(-angles.y));
+        const Quaternion turn = yaw * pitch;
+        const Vector3 turnedLook = Vector3::Transform(look, turn);
+        const Quaternion roll = Quaternion::CreateFromAxisAngle(turnedLook, DegreesToRadians(-angles.z));
+        Vector3 up = Vector3::Transform(Vector3::Transform(pose.up, turn), roll);
         up.Normalize();
         pose.target = pose.position + turnedLook * distance;
         pose.up = up;
@@ -378,7 +378,7 @@ namespace NS
 
     void CameraTraumaModifier::Advance() noexcept
     {
-        m_trauma = std::max(m_trauma - m_shape.decayPerSecond * NS::OS::FrameTimer::FixedDelta(), 0.0f);
+        m_trauma = std::max(m_trauma - m_shape.decayPerSecond * OS::FrameTimer::FixedDelta(), 0.0f);
         // 保たれたフレームは減らさない。頼みは 1 フレームだけ効く
         m_trauma = std::max(m_trauma, m_held);
         m_held = 0.0f;
@@ -396,13 +396,13 @@ namespace NS
     std::unique_ptr<CameraNudgeModifier> CameraNudgeModifier::Create(const CameraNudgeDesc& desc)
     {
         // 壊れた値が姿へ流れると画面が消える。入口で捨てる
-        const NS::Vector3& d = desc.direction;
-        if (!NS::IsFinite(d) || !(std::abs(d.Length() - 1.0f) < k_UnitLengthTolerance) || desc.frames <= 0 ||
+        const Vector3& d = desc.direction;
+        if (!IsFinite(d) || !(std::abs(d.Length() - 1.0f) < k_UnitLengthTolerance) || desc.frames <= 0 ||
             desc.distance.count > Curve::k_MaxKeys)
         {
             return nullptr;
         }
-        for (NS::uint32 i = 0; i < desc.distance.count; ++i)
+        for (uint32 i = 0; i < desc.distance.count; ++i)
         {
             const Curve::Key& key = desc.distance.keys[i];
             if (!std::isfinite(key.x) || !std::isfinite(key.y) || !std::isfinite(key.inTangent) ||
@@ -438,12 +438,12 @@ namespace NS
 
     void CameraNudgeModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
     {
-        NS::Vector3 direction = m_desc.direction;
+        Vector3 direction = m_desc.direction;
         if (m_desc.onScreen)
         {
             // 奥へ向かう分を捨て、画面の右と上の成分だけを長さ 1 にする
-            const float right = NS::Dot(direction, axes.right);
-            const float up = NS::Dot(direction, axes.up);
+            const float right = Dot(direction, axes.right);
+            const float up = Dot(direction, axes.up);
             const float onScreen = std::sqrt(right * right + up * up);
             if (!(onScreen > k_MinScreenShare))
             {
@@ -451,7 +451,7 @@ namespace NS
             }
             direction = axes.right * (right / onScreen) + axes.up * (up / onScreen);
         }
-        const NS::Vector3 shift = direction * Distance();
+        const Vector3 shift = direction * Distance();
         pose.position += shift;
         pose.target += shift;
     }

@@ -11,11 +11,11 @@ namespace NS
     {
         namespace
         {
-            [[nodiscard]] NS::Matrix LocalMatrix(const BonePose& pose) noexcept
+            [[nodiscard]] Matrix LocalMatrix(const BonePose& pose) noexcept
             {
-                const NS::Matrix scale = NS::Matrix::CreateScale(pose.scale);
-                const NS::Matrix rotate = NS::Matrix::CreateFromQuaternion(pose.rotation);
-                const NS::Matrix translate = NS::Matrix::CreateTranslation(pose.translation);
+                const Matrix scale = Matrix::CreateScale(pose.scale);
+                const Matrix rotate = Matrix::CreateFromQuaternion(pose.rotation);
+                const Matrix translate = Matrix::CreateTranslation(pose.translation);
                 return scale * rotate * translate;
             }
         } // namespace
@@ -32,10 +32,10 @@ namespace NS
             return m_bones;
         }
 
-        void Skeleton::ComputePalette(std::span<const BonePose> pose, std::vector<NS::Matrix>& out) const
+        void Skeleton::ComputePalette(std::span<const BonePose> pose, std::vector<Matrix>& out) const
         {
             const std::size_t boneCount = m_bones.size();
-            out.assign(boneCount, NS::Matrix::Identity);
+            out.assign(boneCount, Matrix::Identity);
             if (pose.size() != boneCount)
             {
                 NS_LOG_ERROR(Graphics,
@@ -54,11 +54,11 @@ namespace NS
         }
 
         void Skeleton::ComputeGlobals(std::span<const BonePose> pose,
-                                      std::vector<NS::Matrix>& out,
+                                      std::vector<Matrix>& out,
                                       bool applyRootTransform) const
         {
             const std::size_t boneCount = m_bones.size();
-            out.assign(boneCount, NS::Matrix::Identity);
+            out.assign(boneCount, Matrix::Identity);
             if (pose.size() != boneCount)
             {
                 NS_LOG_ERROR(Graphics,
@@ -68,16 +68,16 @@ namespace NS
                 return;
             }
 
-            const NS::Matrix rootParent = [&]() -> NS::Matrix {
+            const Matrix rootParent = [&]() -> Matrix {
                 if (applyRootTransform)
                 {
                     return m_rootTransform;
                 }
-                return NS::Matrix::Identity;
+                return Matrix::Identity;
             }();
             for (std::size_t i = 0; i < boneCount; ++i)
             {
-                const NS::Matrix local = LocalMatrix(pose[i]);
+                const Matrix local = LocalMatrix(pose[i]);
                 const int parent = m_bones[i].parentIndex;
                 if (parent >= 0 && static_cast<std::size_t>(parent) < i)
                 {
@@ -90,7 +90,7 @@ namespace NS
             }
         }
 
-        void Skeleton::ComputeBindPalette(std::vector<NS::Matrix>& out) const
+        void Skeleton::ComputeBindPalette(std::vector<Matrix>& out) const
         {
             std::vector<BonePose> bindPose;
             bindPose.reserve(m_bones.size());
@@ -101,20 +101,20 @@ namespace NS
             ComputePalette(bindPose, out);
         }
 
-        void Skeleton::SetRootTransform(const NS::Matrix& transform) noexcept
+        void Skeleton::SetRootTransform(const Matrix& transform) noexcept
         {
             m_rootTransform = transform;
         }
 
-        const NS::Matrix& Skeleton::RootTransform() const noexcept
+        const Matrix& Skeleton::RootTransform() const noexcept
         {
             return m_rootTransform;
         }
 
-        NS::Vector3 Skeleton::SkinPositionReference(const SkinnedVertex& vertex,
-                                                    std::span<const NS::Matrix> palette) noexcept
+        Vector3 Skeleton::SkinPositionReference(const SkinnedVertex& vertex,
+                                                    std::span<const Matrix> palette) noexcept
         {
-            NS::Vector3 result(0.0f, 0.0f, 0.0f);
+            Vector3 result(0.0f, 0.0f, 0.0f);
             for (int i = 0; i < 4; ++i)
             {
                 const float weight = vertex.weights[i];
@@ -122,12 +122,12 @@ namespace NS
                 {
                     continue;
                 }
-                const NS::uint32 joint = vertex.joints[i];
+                const uint32 joint = vertex.joints[i];
                 if (joint >= palette.size())
                 {
                     continue;
                 }
-                result += weight * NS::Vector3::Transform(vertex.position, palette[joint]);
+                result += weight * Vector3::Transform(vertex.position, palette[joint]);
             }
             return result;
         }

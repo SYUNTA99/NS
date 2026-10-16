@@ -16,7 +16,7 @@ namespace NS
 {
     namespace
     {
-        nlohmann::json MakeObjectHeaderJson(const SceneActor& obj, NS::uint32 id)
+        nlohmann::json MakeObjectHeaderJson(const SceneActor& obj, uint32 id)
         {
             nlohmann::json object = nlohmann::json::object();
             SetObjectJsonId(object, id);
@@ -80,7 +80,7 @@ namespace NS
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonSubObjs(object);
-        ForEachReflectedSubObj(obj, [&](const NS::SubObjectDesc& field, const SubObject* subObject) {
+        ForEachReflectedSubObj(obj, [&](const SubObjectDesc& field, const SubObject* subObject) {
             parts[field.key] = SerializeSubObjectFields(*subObject);
         });
         return DiffObjectJson(object);

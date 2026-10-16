@@ -63,14 +63,14 @@ namespace NS
 #endif
         }
 
-        std::optional<NS::SceneView> GameViewPanel::CollectView(LevelEditorController& editor) noexcept
+        std::optional<SceneView> GameViewPanel::CollectView(LevelEditorController& editor) noexcept
         {
             return m_surface.CollectView(editor.GameViewPose());
         }
 
         bool GameViewPanel::RenderPreview(TimelinePreview& preview)
         {
-            const std::optional<NS::SceneView> view = m_surface.CurrentView(std::nullopt);
+            const std::optional<SceneView> view = m_surface.CurrentView(std::nullopt);
             if (!view.has_value())
             {
                 return false;

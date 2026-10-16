@@ -102,8 +102,8 @@ namespace NS
             GamepadVibration m_vibration{};
             bool m_vibrationWritten = false; // 前の Update の後に振動が書かれたか
             // 実機へ最後に送った速さ。XInput の 0〜65535
-            NS::uint16 m_sentLeftMotor = 0;
-            NS::uint16 m_sentRightMotor = 0;
+            uint16 m_sentLeftMotor = 0;
+            uint16 m_sentRightMotor = 0;
         };
     } // namespace OS
 } // namespace NS

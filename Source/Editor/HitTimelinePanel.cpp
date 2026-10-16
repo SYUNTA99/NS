@@ -143,7 +143,7 @@ namespace NS
             m_needsRun = false;
             m_snapshot = editor.SceneSnapshot();
             HitPreviewWorld world;
-            if (NS::Application* app = NS::Application::Get())
+            if (Application* app = Application::Get())
             {
                 world.assets = &app->Assets();
                 world.renderer = &app->Renderer();
@@ -160,11 +160,11 @@ namespace NS
                 {
                     for (const GL::Level::HitEvent& event : timeline->events)
                     {
-                        const NS::int64 end = static_cast<NS::int64>(event.start) + std::max(event.length, 1) +
+                        const int64 end = static_cast<int64>(event.start) + std::max(event.length, 1) +
                                               desc.leadFrames + desc.framesAfterRebound;
                         desc.maxFrames =
                             std::max(desc.maxFrames,
-                                     static_cast<int>(std::clamp(end, NS::int64{0}, NS::int64{k_MaxPreviewFrames})));
+                                     static_cast<int>(std::clamp(end, int64{0}, int64{k_MaxPreviewFrames})));
                     }
                 }
             }
@@ -277,7 +277,7 @@ namespace NS
             ImGui::SeparatorText("当てる条件");
             bool changed = false;
 
-            NS::SceneActor* selected = editor.SelectedObjectActor();
+            SceneActor* selected = editor.SelectedObjectActor();
             const bool selectable =
                 selected != nullptr && !editor.SelectedIsPlayerObject() && selected->BodySensorSubObj() != nullptr;
             if (m_desc.targetId == 0)
@@ -744,7 +744,7 @@ namespace NS
                 }
                 EndFieldTable();
             }
-            if (const NS::ReflectionInfo* info = GL::Level::HitEventReflection(event.value))
+            if (const ReflectionInfo* info = GL::Level::HitEventReflection(event.value))
             {
                 const ValueEditResult fields = DrawReflectedValue(GL::Level::HitEventFields(event.value), *info);
                 changed |= fields.changed;

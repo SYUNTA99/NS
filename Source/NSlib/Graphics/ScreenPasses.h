@@ -20,7 +20,7 @@ namespace NS
         //! @brief 歪みの段に渡す輪。長さはどれも描画先の画素
         struct ScreenRing
         {
-            NS::Vector2 centerPixel{};    //!< 中心。左上が原点
+            Vector2 centerPixel{};    //!< 中心。左上が原点
             float radiusPixels = 0.0f;    //!< 輪の半径
             float pushPixels = 0.0f;      //!< 輪の真ん中で絵を押し出す長さ。0 以下なら歪めない
             float halfWidthPixels = 0.0f; //!< 輪の半分の幅。0 以下なら歪めない
@@ -42,7 +42,7 @@ namespace NS
         //! @details 描画先を同じ形の絵へ写し、写しを読んで全画面を 1 回描いて描画先へ書く
         //! 選んだ描く物だけを世界の深度で隠して 1 色で写した体の型も作る
         //! @warning Renderer より先に破棄すること
-        class ScreenPasses : public NS::NonCopyable
+        class ScreenPasses : public NonCopyable
         {
         public:
             //! シェーダ・パイプライン・定数バッファを作る。Renderer が未構築なら無効な状態になる

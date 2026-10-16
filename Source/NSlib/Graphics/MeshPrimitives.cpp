@@ -11,16 +11,16 @@ namespace NS
         {
             // 1 行 segments + 1 頂点で rows 行並んだ格子を、隣り合う 2 行ずつ三角形 2 枚の帯で繋ぐ
             // 行が下へ進むほど経線を南へ下る並びで、各面が外側を向く
-            void AppendLatticeIndices(NS::uint32 rows, NS::uint32 segments, std::vector<NS::uint32>& outIndices)
+            void AppendLatticeIndices(uint32 rows, uint32 segments, std::vector<uint32>& outIndices)
             {
-                const NS::uint32 stride = segments + 1;
+                const uint32 stride = segments + 1;
                 outIndices.reserve(outIndices.size() + static_cast<std::size_t>(rows - 1) * segments * 6);
-                for (NS::uint32 row = 0; row + 1 < rows; ++row)
+                for (uint32 row = 0; row + 1 < rows; ++row)
                 {
-                    for (NS::uint32 segment = 0; segment < segments; ++segment)
+                    for (uint32 segment = 0; segment < segments; ++segment)
                     {
-                        const NS::uint32 upper = row * stride + segment;
-                        const NS::uint32 lower = upper + stride;
+                        const uint32 upper = row * stride + segment;
+                        const uint32 lower = upper + stride;
                         outIndices.push_back(upper);
                         outIndices.push_back(lower);
                         outIndices.push_back(upper + 1);
@@ -32,7 +32,7 @@ namespace NS
             }
         } // namespace
 
-        MeshGeometry MakeCube(const NS::Vector3& extents)
+        MeshGeometry MakeCube(const Vector3& extents)
         {
             const float ex = extents.x;
             const float ey = extents.y;
@@ -84,7 +84,7 @@ namespace NS
             return geom;
         }
 
-        MeshGeometry MakePlane(const NS::Vector2& extents)
+        MeshGeometry MakePlane(const Vector2& extents)
         {
             const float ex = extents.x;
             const float ez = extents.y;
@@ -101,14 +101,14 @@ namespace NS
             return geom;
         }
 
-        MeshGeometry MakeSlope(float angleDegrees, const NS::Vector3& extents)
+        MeshGeometry MakeSlope(float angleDegrees, const Vector3& extents)
         {
             const float ex = extents.x;
             const float ey = extents.y;
             const float ez = extents.z;
 
             // スロープの高さを求め、指定の最大高さで上限クランプする
-            const float angleRad = NS::DegreesToRadians(angleDegrees);
+            const float angleRad = DegreesToRadians(angleDegrees);
             const float rawHeight = std::tan(angleRad) * (2.0f * ez);
             const float height = std::min(rawHeight, 2.0f * ey);
 
@@ -158,7 +158,7 @@ namespace NS
             return geom;
         }
 
-        MeshGeometry MakeSphere(float radius, NS::uint32 rings, NS::uint32 segments)
+        MeshGeometry MakeSphere(float radius, uint32 rings, uint32 segments)
         {
             rings = std::max(rings, 2u);
             segments = std::max(segments, 3u);
@@ -167,17 +167,17 @@ namespace NS
             geom.vertices.reserve(static_cast<std::size_t>(rings + 1) * (segments + 1));
 
             // 経線の継ぎ目で u が 0 と 1 に割れるよう、一周した先にもう 1 列重ねて置く
-            for (NS::uint32 ring = 0; ring <= rings; ++ring)
+            for (uint32 ring = 0; ring <= rings; ++ring)
             {
                 const float v = static_cast<float>(ring) / static_cast<float>(rings);
-                const float phi = v * NS::k_Pi;
+                const float phi = v * k_Pi;
                 const float y = std::cos(phi);
                 const float ringRadius = std::sin(phi);
-                for (NS::uint32 segment = 0; segment <= segments; ++segment)
+                for (uint32 segment = 0; segment <= segments; ++segment)
                 {
                     const float u = static_cast<float>(segment) / static_cast<float>(segments);
-                    const float theta = u * NS::k_Pi * 2.0f;
-                    const NS::Vector3 normal{ringRadius * std::sin(theta), y, ringRadius * std::cos(theta)};
+                    const float theta = u * k_Pi * 2.0f;
+                    const Vector3 normal{ringRadius * std::sin(theta), y, ringRadius * std::cos(theta)};
                     geom.vertices.push_back(
                         {{normal.x * radius, normal.y * radius, normal.z * radius}, {u, v}, normal});
                 }
@@ -188,7 +188,7 @@ namespace NS
             return geom;
         }
 
-        MeshGeometry MakeCapsule(float radius, float halfHeight, NS::uint32 rings, NS::uint32 segments)
+        MeshGeometry MakeCapsule(float radius, float halfHeight, uint32 rings, uint32 segments)
         {
             radius = std::max(radius, 0.0f);
             halfHeight = std::max(halfHeight, 0.0f);
@@ -196,17 +196,17 @@ namespace NS
             segments = std::max(segments, 3u);
 
             // v は経線に沿った長さの比。円柱部で模様が縦に伸びない
-            const float quarterArc = radius * NS::k_Pi * 0.5f;
+            const float quarterArc = radius * k_Pi * 0.5f;
             const float meridian = 2.0f * quarterArc + 2.0f * halfHeight;
 
             // 上の半球を北極から赤道へ、続けて下の半球を赤道から南極へ置く。赤道は上下で 2 列あり、その間が円柱になる
-            const NS::uint32 rows = 2 * (rings + 1);
-            const NS::uint32 stride = segments + 1;
+            const uint32 rows = 2 * (rings + 1);
+            const uint32 stride = segments + 1;
             MeshGeometry geom;
             geom.vertices.reserve(static_cast<std::size_t>(rows) * stride);
-            for (NS::uint32 row = 0; row < rows; ++row)
+            for (uint32 row = 0; row < rows; ++row)
             {
-                NS::uint32 step = row;
+                uint32 step = row;
                 float centerY = halfHeight;
                 float phiStart = 0.0f;
                 float arcBefore = 0.0f;
@@ -214,11 +214,11 @@ namespace NS
                 {
                     step = row - (rings + 1);
                     centerY = -halfHeight;
-                    phiStart = NS::k_Pi * 0.5f;
+                    phiStart = k_Pi * 0.5f;
                     arcBefore = quarterArc + 2.0f * halfHeight;
                 }
                 const float t = static_cast<float>(step) / static_cast<float>(rings);
-                const float phi = phiStart + t * NS::k_Pi * 0.5f;
+                const float phi = phiStart + t * k_Pi * 0.5f;
                 const float y = std::cos(phi);
                 const float ringRadius = std::sin(phi);
                 float v = 0.0f;
@@ -228,11 +228,11 @@ namespace NS
                 }
 
                 // 経線の継ぎ目で u が 0 と 1 に割れるよう、一周した先にもう 1 列重ねて置く
-                for (NS::uint32 segment = 0; segment <= segments; ++segment)
+                for (uint32 segment = 0; segment <= segments; ++segment)
                 {
                     const float u = static_cast<float>(segment) / static_cast<float>(segments);
-                    const float theta = u * NS::k_Pi * 2.0f;
-                    const NS::Vector3 normal{ringRadius * std::sin(theta), y, ringRadius * std::cos(theta)};
+                    const float theta = u * k_Pi * 2.0f;
+                    const Vector3 normal{ringRadius * std::sin(theta), y, ringRadius * std::cos(theta)};
                     geom.vertices.push_back(
                         {{normal.x * radius, normal.y * radius + centerY, normal.z * radius}, {u, v}, normal});
                 }

@@ -119,7 +119,7 @@ namespace NS
 {
     namespace Gfx
     {
-        void DebugShapes::Line(const NS::Vector3& a, const NS::Vector3& b, const NS::Color& color)
+        void DebugShapes::Line(const Vector3& a, const Vector3& b, const Color& color)
         {
             if (m_lines.size() + 2 > k_MaxVertices) // 最大容量を超える場合は最も古い線を破棄する
             {
@@ -129,7 +129,7 @@ namespace NS
             m_lines.push_back({b, color});
         }
 
-        void DebugShapes::AABB(const NS::AABB& box, const NS::Color& color)
+        void DebugShapes::AABB(const NS::AABB& box, const Color& color)
         {
             NS::OBB obb{};
             obb.center = box.Center;
@@ -139,20 +139,20 @@ namespace NS
             OBB(obb, color);
         }
 
-        void DebugShapes::OBB(const NS::OBB& obb, const NS::Color& color)
+        void DebugShapes::OBB(const NS::OBB& obb, const Color& color)
         {
-            const NS::Vector3 ex = obb.axisX * obb.halfExtentX;
-            const NS::Vector3 ey = obb.axisY * obb.halfExtentY;
-            const NS::Vector3 ez = obb.axisZ * obb.halfExtentZ;
+            const Vector3 ex = obb.axisX * obb.halfExtentX;
+            const Vector3 ey = obb.axisY * obb.halfExtentY;
+            const Vector3 ez = obb.axisZ * obb.halfExtentZ;
 
-            const NS::Vector3 c000 = obb.center - ex - ey - ez;
-            const NS::Vector3 c100 = obb.center + ex - ey - ez;
-            const NS::Vector3 c110 = obb.center + ex + ey - ez;
-            const NS::Vector3 c010 = obb.center - ex + ey - ez;
-            const NS::Vector3 c001 = obb.center - ex - ey + ez;
-            const NS::Vector3 c101 = obb.center + ex - ey + ez;
-            const NS::Vector3 c111 = obb.center + ex + ey + ez;
-            const NS::Vector3 c011 = obb.center - ex + ey + ez;
+            const Vector3 c000 = obb.center - ex - ey - ez;
+            const Vector3 c100 = obb.center + ex - ey - ez;
+            const Vector3 c110 = obb.center + ex + ey - ez;
+            const Vector3 c010 = obb.center - ex + ey - ez;
+            const Vector3 c001 = obb.center - ex - ey + ez;
+            const Vector3 c101 = obb.center + ex - ey + ez;
+            const Vector3 c111 = obb.center + ex + ey + ez;
+            const Vector3 c011 = obb.center - ex + ey + ez;
 
             // 前面
             Line(c000, c100, color);
@@ -173,11 +173,11 @@ namespace NS
             Line(c010, c011, color);
         }
 
-        void DebugShapes::Sphere(const NS::Sphere& sphere, const NS::Color& color)
+        void DebugShapes::Sphere(const NS::Sphere& sphere, const Color& color)
         {
-            const NS::Vector3 rx{sphere.radius, 0.0f, 0.0f};
-            const NS::Vector3 ry{0.0f, sphere.radius, 0.0f};
-            const NS::Vector3 rz{0.0f, 0.0f, sphere.radius};
+            const Vector3 rx{sphere.radius, 0.0f, 0.0f};
+            const Vector3 ry{0.0f, sphere.radius, 0.0f};
+            const Vector3 rz{0.0f, 0.0f, sphere.radius};
 
             Circle(sphere.center, rx, ry, color);
             Circle(sphere.center, ry, rz, color);
@@ -185,19 +185,19 @@ namespace NS
         }
 
         // center を中心に u と v が張る平面上の円を積む。u と v は半径ぶん伸ばした直交ベクトルを渡す
-        void DebugShapes::Circle(const NS::Vector3& center,
-                                 const NS::Vector3& u,
-                                 const NS::Vector3& v,
-                                 const NS::Color& color)
+        void DebugShapes::Circle(const Vector3& center,
+                                 const Vector3& u,
+                                 const Vector3& v,
+                                 const Color& color)
         {
-            constexpr float twoPi = 2.0f * NS::k_Pi;
-            NS::Vector3 prev{};
+            constexpr float twoPi = 2.0f * k_Pi;
+            Vector3 prev{};
             for (int i = 0; i <= k_CircleSegments; ++i)
             {
                 const float t = (static_cast<float>(i) / k_CircleSegments) * twoPi;
                 const float ca = std::cos(t);
                 const float sa = std::sin(t);
-                const NS::Vector3 point{
+                const Vector3 point{
                     center.x + u.x * ca + v.x * sa, center.y + u.y * ca + v.y * sa, center.z + u.z * ca + v.z * sa};
                 if (i > 0)
                 {
@@ -207,26 +207,26 @@ namespace NS
             }
         }
 
-        void DebugShapes::Capsule(const NS::Vector3& base,
-                                  const NS::Vector3& axis,
+        void DebugShapes::Capsule(const Vector3& base,
+                                  const Vector3& axis,
                                   float radius,
-                                  const NS::Color& color)
+                                  const Color& color)
         {
             // 上下端の基準点
-            const NS::Vector3 top = base + axis;
-            const NS::Vector3 bottom = base - axis;
+            const Vector3 top = base + axis;
+            const Vector3 bottom = base - axis;
 
             // 軸に対して垂直な2つのベクトルを計算する
-            NS::Vector3 axisN = axis;
+            Vector3 axisN = axis;
             if (axisN.Length() > 1e-6f)
             {
                 axisN.Normalize();
             }
 
-            NS::Vector3 perpA{1.0f, 0.0f, 0.0f};
+            Vector3 perpA{1.0f, 0.0f, 0.0f};
             if (std::abs(axisN.y) < 0.99f)
             {
-                perpA = NS::Vector3{0.0f, 1.0f, 0.0f};
+                perpA = Vector3{0.0f, 1.0f, 0.0f};
             }
 
             perpA = perpA.Cross(axisN);
@@ -234,26 +234,26 @@ namespace NS
             {
                 perpA.Normalize();
             }
-            const NS::Vector3 perpB = axisN.Cross(perpA);
+            const Vector3 perpB = axisN.Cross(perpA);
 
             // 上下端の円
-            const NS::Vector3 uA = perpA * radius;
-            const NS::Vector3 uB = perpB * radius;
+            const Vector3 uA = perpA * radius;
+            const Vector3 uB = perpB * radius;
             Circle(top, uA, uB, color);
             Circle(bottom, uA, uB, color);
 
             // 円柱の側面に沿う線 4 本
-            const NS::Vector3 dirs[4] = {uA, -uA, uB, -uB};
-            for (const NS::Vector3& d : dirs)
+            const Vector3 dirs[4] = {uA, -uA, uB, -uB};
+            for (const Vector3& d : dirs)
             {
                 Line(bottom + d, top + d, color);
             }
         }
 
-        void DebugShapes::Triangle(const NS::Vector3& a,
-                                   const NS::Vector3& b,
-                                   const NS::Vector3& c,
-                                   const NS::Color& color)
+        void DebugShapes::Triangle(const Vector3& a,
+                                   const Vector3& b,
+                                   const Vector3& c,
+                                   const Color& color)
         {
             // 線と同じく、上限を超える時は最も古い三角形を捨てる
             if (m_faces.size() + 3 > k_MaxFaceVertices)
@@ -265,7 +265,7 @@ namespace NS
             m_faces.push_back({c, color});
         }
 
-        void DebugShapes::Draw(Renderer& renderer, const NS::Matrix& viewProjection) const noexcept
+        void DebugShapes::Draw(Renderer& renderer, const Matrix& viewProjection) const noexcept
         {
             static_assert(sizeof(Vertex) == k_VertexStride, "Vertex は POSITION(12) + COLOR(16) の 28 byte 前提");
 
@@ -299,7 +299,7 @@ namespace NS
                 cmd.SetPipeline(*b.facePipeline);
                 cmd.SetVertexBuffer(*b.faceVb, 0u);
                 cmd.SetTopology(Topology::TriangleList);
-                cmd.Draw(static_cast<NS::uint>(m_faces.size()));
+                cmd.Draw(static_cast<uint>(m_faces.size()));
             }
 
             // 溜めた頂点データを一括で描画する
@@ -309,7 +309,7 @@ namespace NS
                 cmd.SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
                 cmd.SetVertexBuffer(*b.vb, 0u);
                 cmd.SetTopology(Topology::LineList);
-                cmd.Draw(static_cast<NS::uint>(m_lines.size()));
+                cmd.Draw(static_cast<uint>(m_lines.size()));
             }
         }
 
@@ -327,43 +327,43 @@ namespace NS
     {
         namespace DebugDraw
         {
-            void Line(const NS::Vector3& a, const NS::Vector3& b, const NS::Color& color) noexcept
+            void Line(const Vector3& a, const Vector3& b, const Color& color) noexcept
             {
                 StepShapes().Line(a, b, color);
             }
 
-            void AABB(const NS::AABB& box, const NS::Color& color) noexcept
+            void AABB(const NS::AABB& box, const Color& color) noexcept
             {
                 StepShapes().AABB(box, color);
             }
 
-            void OBB(const NS::OBB& obb, const NS::Color& color) noexcept
+            void OBB(const NS::OBB& obb, const Color& color) noexcept
             {
                 StepShapes().OBB(obb, color);
             }
 
-            void Sphere(const NS::Sphere& sphere, const NS::Color& color) noexcept
+            void Sphere(const NS::Sphere& sphere, const Color& color) noexcept
             {
                 StepShapes().Sphere(sphere, color);
             }
 
-            void Circle(const NS::Vector3& center,
-                        const NS::Vector3& u,
-                        const NS::Vector3& v,
-                        const NS::Color& color) noexcept
+            void Circle(const Vector3& center,
+                        const Vector3& u,
+                        const Vector3& v,
+                        const Color& color) noexcept
             {
                 StepShapes().Circle(center, u, v, color);
             }
 
-            void Capsule(const NS::Vector3& base,
-                         const NS::Vector3& axis,
+            void Capsule(const Vector3& base,
+                         const Vector3& axis,
                          float radius,
-                         const NS::Color& color) noexcept
+                         const Color& color) noexcept
             {
                 StepShapes().Capsule(base, axis, radius, color);
             }
 
-            void Draw(Renderer& renderer, const NS::Matrix& viewProjection) noexcept
+            void Draw(Renderer& renderer, const Matrix& viewProjection) noexcept
             {
                 StepShapes().Draw(renderer, viewProjection);
             }
@@ -383,10 +383,10 @@ namespace NS
                 return StepShapes().VertexCount();
             }
 
-            void Triangle(const NS::Vector3& a,
-                          const NS::Vector3& b,
-                          const NS::Vector3& c,
-                          const NS::Color& color) noexcept
+            void Triangle(const Vector3& a,
+                          const Vector3& b,
+                          const Vector3& c,
+                          const Color& color) noexcept
             {
                 StepShapes().Triangle(a, b, c, color);
             }

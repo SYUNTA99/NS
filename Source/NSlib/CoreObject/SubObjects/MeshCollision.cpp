@@ -21,10 +21,10 @@ namespace NS
 
         // 分解した拡縮と回転から 3x3 を組み直し、元と合わなければ歪みがある
         // 歪みは縦横で違う拡縮の親の下に回転した子を置いた時に出て、位置・回転・拡縮の 3 つでは表せない
-        [[nodiscard]] bool HasShear(const NS::Matrix& world, const NS::AffineDecomposition& parts) noexcept
+        [[nodiscard]] bool HasShear(const Matrix& world, const AffineDecomposition& parts) noexcept
         {
-            const NS::Matrix rebuilt =
-                NS::Matrix::CreateScale(parts.scale) * NS::Matrix::CreateFromQuaternion(parts.rotation);
+            const Matrix rebuilt =
+                Matrix::CreateScale(parts.scale) * Matrix::CreateFromQuaternion(parts.rotation);
             const float tolerance = k_ShearTolerance * std::max({1.0f, parts.scale.x, parts.scale.y, parts.scale.z});
             for (int row = 0; row < 3; ++row)
             {
@@ -40,17 +40,17 @@ namespace NS
         }
     } // namespace
 
-    void MeshCollision::SetShape(const NS::Phys::MeshShape* shape) noexcept
+    void MeshCollision::SetShape(const Phys::MeshShape* shape) noexcept
     {
         m_shape = shape;
     }
 
-    const NS::Phys::MeshShape* MeshCollision::Shape() const noexcept
+    const Phys::MeshShape* MeshCollision::Shape() const noexcept
     {
         return m_shape;
     }
 
-    std::vector<NS::Phys::Triangle> MeshCollision::WorldTriangles() const
+    std::vector<Phys::Triangle> MeshCollision::WorldTriangles() const
     {
         if (m_shape == nullptr)
         {
@@ -62,40 +62,40 @@ namespace NS
             return m_shape->triangles;
         }
 
-        const NS::Matrix world = owner->Root().WorldMatrix();
-        std::vector<NS::Phys::Triangle> result;
+        const Matrix world = owner->Root().WorldMatrix();
+        std::vector<Phys::Triangle> result;
         result.reserve(m_shape->triangles.size());
-        for (const NS::Phys::Triangle& tri : m_shape->triangles)
+        for (const Phys::Triangle& tri : m_shape->triangles)
         {
-            result.push_back(NS::Phys::Triangle{NS::Vector3::Transform(tri.v0, world),
-                                                NS::Vector3::Transform(tri.v1, world),
-                                                NS::Vector3::Transform(tri.v2, world)});
+            result.push_back(Phys::Triangle{Vector3::Transform(tri.v0, world),
+                                                Vector3::Transform(tri.v1, world),
+                                                Vector3::Transform(tri.v2, world)});
         }
         return result;
     }
 
-    JPH::BodyID MeshCollision::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID MeshCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current)
     {
         if (m_shape == nullptr)
         {
             return JPH::BodyID{};
         }
 
-        NS::Matrix world = NS::Matrix::Identity;
+        Matrix world = Matrix::Identity;
         if (const SceneActor* owner = Owner())
         {
             world = owner->Root().WorldMatrix();
         }
-        const NS::AffineDecomposition parts = NS::DecomposeAffine(world);
+        const AffineDecomposition parts = DecomposeAffine(world);
         // 描画は 4x4 の行列で歪みまで出すので、形の共有をやめて世界座標の三角形から作り、描画と当たりを揃える
         if (HasShear(world, parts))
         {
-            return physics.SyncMesh(current, WorldTriangles(), NS::Phys::ObjectLayers::Terrain);
+            return physics.SyncMesh(current, WorldTriangles(), Phys::ObjectLayers::Terrain);
         }
 
-        const NS::Phys::MeshShape& shared = *m_shape;
+        const Phys::MeshShape& shared = *m_shape;
         return physics.SyncMeshShape(
-            current, shared, parts.translation, parts.rotation, parts.scale, NS::Phys::ObjectLayers::Terrain);
+            current, shared, parts.translation, parts.rotation, parts.scale, Phys::ObjectLayers::Terrain);
     }
 
     void MeshCollision::ResolveAssets(AssetManager& assets)
@@ -113,7 +113,7 @@ namespace NS
             return;
         }
 
-        const NS::Phys::MeshShape* shape = assets.GetOrLoadMeshShape(renderer->MeshRef());
+        const Phys::MeshShape* shape = assets.GetOrLoadMeshShape(renderer->MeshRef());
         if (shape == nullptr)
         {
             shape = assets.GetOrLoadMeshShape("cube");

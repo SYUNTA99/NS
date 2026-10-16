@@ -233,7 +233,7 @@ namespace NS
         {
             if (m_bodyMask != nullptr)
             {
-                const NS::Size2D size = m_bodyMask->Size();
+                const Size2D size = m_bodyMask->Size();
                 if (size.width == static_cast<int>(target.Width) && size.height == static_cast<int>(target.Height))
                 {
                     return true;

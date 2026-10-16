@@ -18,7 +18,7 @@ namespace NS
     namespace Editor
     {
         //! 下見専用の場面。再生時計を持たず、指定されたフレームで止まる
-        class TimelinePreview : public NS::NonCopyable
+        class TimelinePreview : public NonCopyable
         {
         public:
             TimelinePreview();
@@ -38,7 +38,7 @@ namespace NS
             //! @brief 現在のフレームを view の描画先へ描く
             //! @details 時間は進めない。描画先はこの呼び出しの中だけ借りる
             //! @return 描画を呼べた場合 true、それ以外の場合は false
-            bool RenderView(const NS::SceneView& view);
+            bool RenderView(const SceneView& view);
 
         private:
             std::function<std::unique_ptr<NS::Scene>()> m_create;

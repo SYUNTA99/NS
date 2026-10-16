@@ -12,7 +12,7 @@ namespace NS
 
         //! スナップショットを適用・取消する編集コマンド。描画資源は保持しない
         //! 履歴のメモリ制限のため EstimatedBytes で推定バイト数を返す
-        class ICommand : public NS::NonCopyable
+        class ICommand : public NonCopyable
         {
         public:
             virtual ~ICommand() = default;

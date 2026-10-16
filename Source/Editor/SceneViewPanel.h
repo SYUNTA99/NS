@@ -12,11 +12,11 @@ namespace NS
     namespace Editor
     {
         //! 編集視点を映すパネル。編集時は配置操作、プレイ時は自由視点の入力を受け付ける
-        class SceneViewPanel : public NS::NonCopyable
+        class SceneViewPanel : public NonCopyable
         {
         public:
             //! 描画先の初期目標サイズを窓サイズに合わせる
-            void SetInitialSize(const NS::Size2D& size) noexcept { m_surface.SetInitialSize(size); }
+            void SetInitialSize(const Size2D& size) noexcept { m_surface.SetInitialSize(size); }
 
             //! フレーム先頭で可視状態を false にする。描画パス (通常 / 全面化) が立て直す
             void ResetVisibility() noexcept { m_surface.ResetVisibility(); }
@@ -31,7 +31,7 @@ namespace NS
             void ClearForHiddenUi(LevelEditorController& editor) noexcept;
 
             //! 可視なら視点と編集用の図形を含むビューを返す。不可視なら nullopt
-            [[nodiscard]] std::optional<NS::SceneView> CollectView(LevelEditorController& editor) noexcept;
+            [[nodiscard]] std::optional<SceneView> CollectView(LevelEditorController& editor) noexcept;
 
             //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
             void ReleaseTarget() noexcept { m_surface.Release(); }

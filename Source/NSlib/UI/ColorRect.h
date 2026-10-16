@@ -10,14 +10,14 @@ namespace NS
         class ColorRect : public Widget
         {
         public:
-            void SetColor(const NS::Color& color) noexcept { m_color = color; }
-            [[nodiscard]] const NS::Color& GetColor() const noexcept { return m_color; }
+            void SetColor(const Color& color) noexcept { m_color = color; }
+            [[nodiscard]] const Color& GetColor() const noexcept { return m_color; }
 
         protected:
-            void OnDraw(NS::Gfx::Renderer& renderer, const WidgetRect& rectPx, float alpha) override;
+            void OnDraw(Gfx::Renderer& renderer, const WidgetRect& rectPx, float alpha) override;
 
         private:
-            NS::Color m_color{1.0f, 1.0f, 1.0f, 1.0f}; // 塗り色。alpha は Widget の実効値と掛かる
+            Color m_color{1.0f, 1.0f, 1.0f, 1.0f}; // 塗り色。alpha は Widget の実効値と掛かる
         };
     } // namespace UI
 } // namespace NS

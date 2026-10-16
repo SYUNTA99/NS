@@ -14,13 +14,13 @@ namespace NS
     //! 効果を掛ける時の姿勢の軸。仮想カメラとブレンドまで済んだ姿勢の視線から作る。どちらも長さ 1
     struct CameraAxes
     {
-        NS::Vector3 right{1.0f, 0.0f, 0.0f}; // 視線の水平から作った右
-        NS::Vector3 up{0.0f, 1.0f, 0.0f};    // 視線と右から作った上
+        Vector3 right{1.0f, 0.0f, 0.0f}; // 視線の水平から作った右
+        Vector3 up{0.0f, 1.0f, 0.0f};    // 視線と右から作った上
     };
 
     //! CameraManager が所有する姿勢の効果。Order 順に適用し、完了すると外す
     //! 最初の Tick は進めず、追加したフレームに初期姿勢を描く
-    class CameraModifier : public NS::NonCopyable
+    class CameraModifier : public NonCopyable
     {
     public:
         virtual ~CameraModifier() noexcept;
@@ -64,8 +64,8 @@ namespace NS
         float upAmplitude = 0.0f;                         // 最初の振れの縦の大きさ (m)
         int frames = 0;                                   // 揺れを描くフレーム数。始めたフレームを含む
         int longestFlipFrames = 1;                        // 向きが入れ替わるまでの最長フレーム数。横と縦の両方に掛かる
-        NS::Vector3 firstSideDirection{1.0f, 0.0f, 0.0f}; // 最初の横の振れを向ける世界の向き
-        NS::uint32 seed = 0;                              // 入れ替わりの間隔を選ぶ種
+        Vector3 firstSideDirection{1.0f, 0.0f, 0.0f}; // 最初の横の振れを向ける世界の向き
+        uint32 seed = 0;                              // 入れ替わりの間隔を選ぶ種
     };
 
     //! @brief 寄りと傾きの設定
@@ -74,7 +74,7 @@ namespace NS
     {
         float zoom = 1.0f;                           // 画面に写る大きさの倍率。1 で寄らない
         float rollDegrees = 0.0f;                    // 視線の軸まわりの傾き (度)
-        NS::Vector3 rollDirection{1.0f, 0.0f, 0.0f}; // 画面の上端を倒す側を決める世界の向き
+        Vector3 rollDirection{1.0f, 0.0f, 0.0f}; // 画面の上端を倒す側を決める世界の向き
         int holdFrames = 0;                          // 倍率と傾きを保つフレーム数。始めたフレームを含む
         int returnFrames = 0;                        // 元へ戻すフレーム数
     };
@@ -110,12 +110,12 @@ namespace NS
         [[nodiscard]] bool IsShake() const noexcept override { return true; }
 
         //! 今のフレームのずれ。x がカメラの右、y が上 (m)。描き終えたら 0
-        [[nodiscard]] NS::Vector2 Offset() const noexcept;
+        [[nodiscard]] Vector2 Offset() const noexcept;
 
     private:
         CameraShakeModifier() noexcept = default;
 
-        std::vector<NS::Vector2> m_offsets; // フレームごとのずれ (m)。x が右、y が上
+        std::vector<Vector2> m_offsets; // フレームごとのずれ (m)。x が右、y が上
     };
 
     //! @brief 寄りと傾き。寄りは視野角、傾きは視線の軸まわりの上の向きで掛け、注視点 - 位置は変えない
@@ -213,7 +213,7 @@ namespace NS
     {
         float degrees = 0.0f;    // 山の大きさ (度)
         int peakFrames = 1;      // 山のフレーム
-        NS::Vector2 direction{}; // 画面の上の向き。x が右、y が上。長さ 0 なら振らない
+        Vector2 direction{}; // 画面の上の向き。x が右、y が上。長さ 0 なら振らない
     };
 
     //! @brief トラウマを足す設定
@@ -221,7 +221,7 @@ namespace NS
     {
         float trauma = 0.0f;     // 足すトラウマ 0〜1。足した後も 1 で頭打ち
         CameraTraumaShape shape; // 揺れの形。足した後はこの形で揺れる
-        NS::uint32 seed = 0;     // ノイズの種。同じ当たりは同じ揺れになる
+        uint32 seed = 0;     // ノイズの種。同じ当たりは同じ揺れになる
         CameraKick kick;         // 重ねる一撃。大きさ 0 なら重ねない
     };
 
@@ -253,7 +253,7 @@ namespace NS
 
         //! 今のフレームの角度 (度)。x が横の首振り (右が正)、y が縦の首振り (上が正)、z が傾き
         //! (上端が右へ倒れる向きが正)
-        [[nodiscard]] NS::Vector3 Angles() const noexcept;
+        [[nodiscard]] Vector3 Angles() const noexcept;
 
         void Modify(CameraPose& pose, const CameraAxes& axes) const noexcept override;
         [[nodiscard]] bool IsFinished() const noexcept override;
@@ -265,7 +265,7 @@ namespace NS
         CameraTraumaShape m_shape{}; // 揺れの形
         float m_trauma = 0.0f;       // 今のトラウマ
         float m_held = 0.0f;         // このフレームに保つと頼まれたトラウマ。次の Advance で下ろす
-        NS::uint32 m_seed = 0;       // ノイズの種
+        uint32 m_seed = 0;       // ノイズの種
         CameraKick m_kick{};         // 重ねている一撃
         int m_kickFrame = 0;         // 一撃のフレーム。足したフレームが 1、一撃が無ければ 0
     };
@@ -274,7 +274,7 @@ namespace NS
     //! @details 位置と注視点を同じだけずらすので、向きと地平線は変わらない
     struct CameraNudgeDesc
     {
-        NS::Vector3 direction{}; // ずらす世界の向き。長さ 1
+        Vector3 direction{}; // ずらす世界の向き。長さ 1
         Curve distance{};        // 始めたフレームを 0 とした番号を横軸にした、ずらす距離 (m)。負は逆の向き
         int frames = 0;          // 描くフレーム数。始めたフレームを含む
         bool onScreen = false;   // 向きをカメラの右と上へ写した画面の上の向きでずらすか。偽は世界の向きのまま

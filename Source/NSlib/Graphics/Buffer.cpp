@@ -95,7 +95,7 @@ namespace NS
                              "Buffer 構築失敗 (device={}, bytes={}, bind=0x{:X})",
                              static_cast<const void*>(device),
                              bytes,
-                             static_cast<NS::uint>(desc.bindFlags));
+                             static_cast<uint>(desc.bindFlags));
                 return;
             }
 
@@ -124,9 +124,9 @@ namespace NS
             {
                 NS_LOG_ERROR(Graphics,
                              "CreateBuffer 失敗 (hr=0x{:X}, bytes={}, bind=0x{:X})",
-                             static_cast<NS::uint>(hr),
+                             static_cast<uint>(hr),
                              bytes,
-                             static_cast<NS::uint>(desc.bindFlags));
+                             static_cast<uint>(desc.bindFlags));
                 m_buffer.Reset();
             }
         }

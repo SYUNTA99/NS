@@ -24,7 +24,7 @@ namespace NS
         UIActor() noexcept = default;
         ~UIActor() noexcept override;
         //! この画面の Widget の木を持つ部品
-        [[nodiscard]] NS::UI::WidgetSubObj* Widgets() noexcept { return &m_widgets; }
+        [[nodiscard]] UI::WidgetSubObj* Widgets() noexcept { return &m_widgets; }
         NS_REFLECT_NONE(UIActor, Object)
 
         //! scene の画面の一覧へ入る。開いていれば何もしない
@@ -42,13 +42,13 @@ namespace NS
         virtual void OnTick() {}
 
         //! @brief 世界と重ね描きの部品を描いた後の画面へ重ねて描く
-        virtual void OnRenderOverlay(const NS::Gfx::RenderContext& context);
+        virtual void OnRenderOverlay(const Gfx::RenderContext& context);
 
         //! 描く順。小さいほど先に描き、後から描く物が上に重なる
         [[nodiscard]] virtual int DrawOrder() const noexcept { return 0; }
 
     private:
-        NS::UI::WidgetSubObj m_widgets;
+        UI::WidgetSubObj m_widgets;
         Scene* m_scene = nullptr; // 開いている先、非所有
     };
 } // namespace NS

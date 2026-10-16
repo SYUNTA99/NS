@@ -25,7 +25,7 @@ namespace NS
         [[nodiscard]] virtual bool IsOverlayVisible() const noexcept { return true; }
 
         //! 標準のシーンの描画パスの後に画面へ重ねて描く
-        virtual void OnRenderOverlay(const NS::Gfx::RenderContext& context) = 0;
+        virtual void OnRenderOverlay(const Gfx::RenderContext& context) = 0;
 
     protected:
         ~IOverlay() = default;

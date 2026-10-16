@@ -52,13 +52,13 @@ namespace NS
             }
 
             // スティック値を -1.0〜1.0 へ正規化
-            [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, NS::uint16 deadzone) noexcept
+            [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, uint16 deadzone) noexcept
             {
                 const float dz = static_cast<float>(deadzone) / 32767.0f;
                 return Stick{NormalizeAxis(rawX, dz), NormalizeAxis(rawY, dz)};
             }
 
-            [[nodiscard]] float NormalizeTrigger(NS::uint8 raw) noexcept
+            [[nodiscard]] float NormalizeTrigger(uint8 raw) noexcept
             {
                 if (raw < XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
                 {
@@ -68,13 +68,13 @@ namespace NS
             }
 
             // 0.0〜1.0 のモーターの速さを XInput の 0〜65535 へ写す
-            [[nodiscard]] NS::uint16 ToMotorSpeed(float speed01) noexcept
+            [[nodiscard]] uint16 ToMotorSpeed(float speed01) noexcept
             {
-                return static_cast<NS::uint16>(std::lround(speed01 * 65535.0f));
+                return static_cast<uint16>(std::lround(speed01 * 65535.0f));
             }
 
             // 送れた場合 true。繋がっていない番号は失敗で返る
-            [[nodiscard]] bool SendMotorSpeeds(int userIndex, NS::uint16 left, NS::uint16 right) noexcept
+            [[nodiscard]] bool SendMotorSpeeds(int userIndex, uint16 left, uint16 right) noexcept
             {
                 XINPUT_VIBRATION vibration{};
                 vibration.wLeftMotorSpeed = left;
@@ -83,7 +83,7 @@ namespace NS
             }
 
             // XINPUT_GAMEPAD::wButtons と GamepadButton の対応表
-            constexpr std::array<NS::uint16, static_cast<std::size_t>(GamepadButton::Count)> k_ButtonBits{
+            constexpr std::array<uint16, static_cast<std::size_t>(GamepadButton::Count)> k_ButtonBits{
                 XINPUT_GAMEPAD_A,
                 XINPUT_GAMEPAD_B,
                 XINPUT_GAMEPAD_X,
@@ -397,8 +397,8 @@ namespace NS
             m_rightTrigger = NormalizeTrigger(state.Gamepad.bRightTrigger);
 
             // 同じ速さを毎フレーム送り直さない
-            const NS::uint16 leftMotor = ToMotorSpeed(m_vibration.left);
-            const NS::uint16 rightMotor = ToMotorSpeed(m_vibration.right);
+            const uint16 leftMotor = ToMotorSpeed(m_vibration.left);
+            const uint16 rightMotor = ToMotorSpeed(m_vibration.right);
             if (leftMotor == m_sentLeftMotor && rightMotor == m_sentRightMotor)
             {
                 return;
@@ -418,7 +418,7 @@ namespace NS
             }
             // 向け直した後は前の番号の Update が来ないので、前の番号の振動をここで止める
             m_gamepad.StopVibration();
-            m_gamepad = ::NS::OS::Gamepad{userIndex};
+            m_gamepad = OS::Gamepad{userIndex};
             return true;
         }
 
@@ -437,10 +437,10 @@ namespace NS
                 return;
             }
             // 控えの側を中立の物に作り直してから入れ替える。入れ替えた後の控えが手元の状態
-            m_heldKeyboard = NS::OS::Keyboard{};
-            m_heldMouse = NS::OS::Mouse{};
+            m_heldKeyboard = OS::Keyboard{};
+            m_heldMouse = OS::Mouse{};
             // 中立のパッドは Update を受けないので機器を読まず、送った速さが 0 のまま止めても機器へ書かない
-            m_heldGamepad = NS::OS::Gamepad{};
+            m_heldGamepad = OS::Gamepad{};
             std::swap(m_keyboard, m_heldKeyboard);
             std::swap(m_mouse, m_heldMouse);
             std::swap(m_gamepad, m_heldGamepad);
@@ -464,7 +464,7 @@ namespace NS
 
         namespace
         {
-            Key MapVkToKey(NS::uint vk) noexcept
+            Key MapVkToKey(uint vk) noexcept
             {
                 if (vk >= 'A' && vk <= 'Z')
                 {
@@ -529,14 +529,14 @@ namespace NS
             case WM_SYSKEYDOWN:
             {
                 // lparam のスキャンコード、bit 30 のリピートフラグ、拡張キーは現状未使用
-                const Key k = MapVkToKey(static_cast<NS::uint>(wparam));
+                const Key k = MapVkToKey(static_cast<uint>(wparam));
                 input.Keyboard().OnKeyDown(k);
                 break;
             }
             case WM_KEYUP:
             case WM_SYSKEYUP:
             {
-                const Key k = MapVkToKey(static_cast<NS::uint>(wparam));
+                const Key k = MapVkToKey(static_cast<uint>(wparam));
                 input.Keyboard().OnKeyUp(k);
                 break;
             }

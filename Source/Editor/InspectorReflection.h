@@ -27,12 +27,12 @@ namespace NS
         //! @brief ActorRef の欄で参照可能なオブジェクトの選択肢
         struct ObjectRefOption
         {
-            NS::uint32 id = 0;
+            uint32 id = 0;
             std::string label;
         };
 
         //! 欄の比較と復元に使う既定値。所有者の種類の既定を優先し、なければ部品の型の既定を使う
-        class SubObjectDefaults : public NS::NonCopyable
+        class SubObjectDefaults : public NonCopyable
         {
         public:
             SubObjectDefaults() noexcept;
@@ -41,13 +41,13 @@ namespace NS
             //! @brief comp と比べる既定の部品を返す
             //! @details 種類の既定値を変えると指す先が作り直されるので、そのフレームの間だけ使う。見つからなければ
             //! nullptr
-            [[nodiscard]] const NS::SubObject* Find(const NS::SubObject& comp);
+            [[nodiscard]] const SubObject* Find(const SubObject& comp);
 
         private:
             // typeName のコードの既定値の 1 個。初回だけ作って以降は使い回す。未登録の型は nullptr
-            [[nodiscard]] const NS::SubObject* FindTypeDefault(std::string_view typeName);
+            [[nodiscard]] const SubObject* FindTypeDefault(std::string_view typeName);
 
-            std::vector<std::pair<std::string, std::unique_ptr<NS::SubObject>>> m_byType;
+            std::vector<std::pair<std::string, std::unique_ptr<SubObject>>> m_byType;
         };
 
         //! @brief 1フレームのサブオブジェクト編集で起きた相互作用の集約
@@ -60,37 +60,37 @@ namespace NS
 
             // 既定へ戻す要求。ボタンが押されたフレームだけ対象と欄が入る
             // 値をこの場で書くと 取り消し の控えを取る前に実体が動くので、適用は呼び出し側へ預ける
-            NS::SubObject* revertTarget = nullptr;
-            const NS::FieldDesc* revertField = nullptr;
+            SubObject* revertTarget = nullptr;
+            const FieldDesc* revertField = nullptr;
 
             // 種類の既定にする要求。選ばれたフレームだけ対象と欄が入る
             // 同じ種類の他の個体とファイルも書き換えるので、適用は呼び出し側へ預ける
-            NS::SubObject* promoteTarget = nullptr;
-            const NS::FieldDesc* promoteField = nullptr;
+            SubObject* promoteTarget = nullptr;
+            const FieldDesc* promoteField = nullptr;
 
             // 値が編集された対象と欄。編集が起きたフレームだけ入る
             // 凍結スナップショットへの写しが欄単位で要るので、changed の集約とは別に持つ
-            NS::SubObject* changedTarget = nullptr;
-            const NS::FieldDesc* changedField = nullptr;
+            SubObject* changedTarget = nullptr;
+            const FieldDesc* changedField = nullptr;
         };
 
         //! @brief リフレクション欄 1 つの値が既定と違うか
         //! @param[in] defaults 既定インスタンス。nullptr なら常に false
-        [[nodiscard]] bool FieldDiffersFromDefault(const NS::SubObject& comp,
-                                                   const NS::SubObject* defaults,
-                                                   const NS::FieldDesc& field) noexcept;
+        [[nodiscard]] bool FieldDiffersFromDefault(const SubObject& comp,
+                                                   const SubObject* defaults,
+                                                   const FieldDesc& field) noexcept;
 
         //! @brief リフレクション欄 1 つを既定値へ戻す
-        void RevertFieldToDefault(NS::SubObject& comp,
-                                  const NS::SubObject& defaults,
-                                  const NS::FieldDesc& field) noexcept;
+        void RevertFieldToDefault(SubObject& comp,
+                                  const SubObject& defaults,
+                                  const FieldDesc& field) noexcept;
 
         //! リフレクション欄を編集し、Undo に必要な編集開始・終了と変更内容を返す
         //! refOptions が空なら参照は数値入力、defaults があれば上書きの表示と復元を使える
         //! filter は欄名の部分一致。空か nullptr なら絞らない
-        [[nodiscard]] SubObjectEditResult DrawReflectedSubObject(NS::SubObject& comp,
+        [[nodiscard]] SubObjectEditResult DrawReflectedSubObject(SubObject& comp,
                                                                  std::span<const ObjectRefOption> refOptions = {},
-                                                                 const NS::SubObject* defaults = nullptr,
+                                                                 const SubObject* defaults = nullptr,
                                                                  const char* filter = nullptr) noexcept;
 
         //! @brief 部品でない値型の 1 フレームの編集で起きた事
@@ -100,18 +100,18 @@ namespace NS
             bool activated = false; //!< いずれかのウィジェットで編集が始まった (ドラッグ開始フレーム)
             bool committed = false; //!< いずれかのウィジェットが非活性化した (編集の有無は問わない)
             //! 値が編集された欄。編集が起きたフレームだけ入る
-            const NS::FieldDesc* changedField = nullptr;
+            const FieldDesc* changedField = nullptr;
         };
 
         //! info の型として value を編集する。部品と同じ UI を使い、既定値との比較は行わない
         //! refOptions が空なら参照は数値入力
         [[nodiscard]] ValueEditResult DrawReflectedValue(void* value,
-                                                         const NS::ReflectionInfo& info,
+                                                         const ReflectionInfo& info,
                                                          std::span<const ObjectRefOption> refOptions = {}) noexcept;
 
         //! 点の x が 0〜1 なら表示も 0〜1。範囲外の点があれば全点と右側の 1 割の余白を含める
         //! outMax は outMin より大きい
-        void CurveGraphXRange(const NS::Curve& curve, float& outMin, float& outMax) noexcept;
+        void CurveGraphXRange(const Curve& curve, float& outMin, float& outMax) noexcept;
 
         //! T は NS_REFLECT_END_VALUE で欄を宣言した型
         template <class T> [[nodiscard]] ValueEditResult DrawReflectedValue(T& value) noexcept

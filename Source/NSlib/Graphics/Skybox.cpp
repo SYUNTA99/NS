@@ -27,7 +27,7 @@ namespace NS
             // シェーダへ渡す定数。HLSL 側の cbuffer と同じ 64 バイトに揃える
             struct alignas(16) SkyboxCB
             {
-                NS::Matrix viewProj;
+                Matrix viewProj;
             };
             static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
 
@@ -51,7 +51,7 @@ namespace NS
                     return false;
                 }
 
-                const NS::uint8 magenta[4] = {0xFF, 0x00, 0xFF, 0xFF};
+                const uint8 magenta[4] = {0xFF, 0x00, 0xFF, 0xFF};
 
                 D3D11_TEXTURE2D_DESC td{};
                 td.Width = 1;
@@ -77,7 +77,7 @@ namespace NS
                 {
                     NS_LOG_ERROR(Graphics,
                                  "Skybox fallback cubemap CreateTexture2D 失敗 (hr=0x{:08X})",
-                                 static_cast<NS::uint>(hr));
+                                 static_cast<uint>(hr));
                     return false;
                 }
 
@@ -91,7 +91,7 @@ namespace NS
                 if (FAILED(hr))
                 {
                     NS_LOG_ERROR(
-                        Graphics, "Skybox fallback cubemap CreateSRV 失敗 (hr=0x{:08X})", static_cast<NS::uint>(hr));
+                        Graphics, "Skybox fallback cubemap CreateSRV 失敗 (hr=0x{:08X})", static_cast<uint>(hr));
                     return false;
                 }
                 return true;
@@ -103,7 +103,7 @@ namespace NS
             {
                 ComPtr<ID3D11Resource> resource;
                 const HRESULT hr = DirectX::CreateDDSTextureFromFileEx(device,
-                                                                       NS::OS::StringUtils::WideFromUtf8(path).c_str(),
+                                                                       OS::StringUtils::WideFromUtf8(path).c_str(),
                                                                        0,
                                                                        D3D11_USAGE_IMMUTABLE,
                                                                        D3D11_BIND_SHADER_RESOURCE,
@@ -114,7 +114,7 @@ namespace NS
                                                                        outSrv.GetAddressOf());
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(Graphics, "Skybox .dds ロード失敗: {} (hr=0x{:08X})", path, static_cast<NS::uint>(hr));
+                    NS_LOG_ERROR(Graphics, "Skybox .dds ロード失敗: {} (hr=0x{:08X})", path, static_cast<uint>(hr));
                     return false;
                 }
                 return true;
@@ -133,14 +133,14 @@ namespace NS
 
                 for (std::size_t i = 0; i < 6; ++i)
                 {
-                    const std::string facePath = ::NS::OS::FileSystem::Combine(dir, k_KurtFaceFileNames[i]);
-                    if (!::NS::OS::FileSystem::Exists(facePath))
+                    const std::string facePath = OS::FileSystem::Combine(dir, k_KurtFaceFileNames[i]);
+                    if (!OS::FileSystem::Exists(facePath))
                     {
                         NS_LOG_ERROR(Graphics, "Skybox 6-face: {} が見つからない", facePath);
                         return false;
                     }
 
-                    std::optional<std::vector<std::byte>> bytesOpt = ::NS::OS::FileSystem::ReadAllBytes(facePath);
+                    std::optional<std::vector<std::byte>> bytesOpt = OS::FileSystem::ReadAllBytes(facePath);
                     if (!bytesOpt.has_value())
                     {
                         NS_LOG_ERROR(Graphics, "Skybox 6-face: {} 読込失敗", facePath);
@@ -154,7 +154,7 @@ namespace NS
                     const HRESULT hr =
                         DirectX::CreateWICTextureFromMemoryEx(device,
                                                               nullptr,
-                                                              reinterpret_cast<const NS::uint8*>(bytes.data()),
+                                                              reinterpret_cast<const uint8*>(bytes.data()),
                                                               bytes.size(),
                                                               0u,
                                                               D3D11_USAGE_DEFAULT,
@@ -169,7 +169,7 @@ namespace NS
                         NS_LOG_ERROR(Graphics,
                                      "Skybox 6-face: WIC 読込失敗 {} (hr=0x{:08X})",
                                      facePath,
-                                     static_cast<NS::uint>(hr));
+                                     static_cast<uint>(hr));
                         return false;
                     }
 
@@ -219,7 +219,7 @@ namespace NS
                 {
                     NS_LOG_ERROR(Graphics,
                                  "Skybox 6-face: cubemap 本体の CreateTexture2D 失敗 (hr=0x{:08X})",
-                                 static_cast<NS::uint>(hr));
+                                 static_cast<uint>(hr));
                     return false;
                 }
 
@@ -240,7 +240,7 @@ namespace NS
                 if (FAILED(hr))
                 {
                     NS_LOG_ERROR(
-                        Graphics, "Skybox 6-face: cubemap SRV 作成失敗 (hr=0x{:08X})", static_cast<NS::uint>(hr));
+                        Graphics, "Skybox 6-face: cubemap SRV 作成失敗 (hr=0x{:08X})", static_cast<uint>(hr));
                     return false;
                 }
                 return true;
@@ -331,7 +331,7 @@ namespace NS
             {
                 loaded = LoadDdsCubemap(device, path, newSrv);
             }
-            else if (::NS::OS::FileSystem::IsDirectory(path))
+            else if (OS::FileSystem::IsDirectory(path))
             {
                 // ディレクトリが指定された場合は、6方向の画像ファイルとして読み込みを試みる
                 ID3D11DeviceContext* context = Gpu().context;
@@ -354,7 +354,7 @@ namespace NS
         }
 
         void Skybox::Draw(CommandList& commands,
-                          const NS::Matrix& viewProjNoTranslate,
+                          const Matrix& viewProjNoTranslate,
                           ID3D11SamplerState* sampler) const noexcept
         {
             if (!IsValid() || commands.Native() == nullptr)

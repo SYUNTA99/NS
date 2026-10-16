@@ -11,7 +11,7 @@ namespace NS
     {
         class TimelinePreview;
         //! ゲーム視点を映すパネル。ゲーム操作の入力はプレイ中だけ受け付ける
-        class GameViewPanel : public NS::NonCopyable
+        class GameViewPanel : public NonCopyable
         {
         public:
             //! 出荷時の画面比。パネルをどう並べてもゲームの見え方が変わらないようここで固定する
@@ -20,7 +20,7 @@ namespace NS
             GameViewPanel() noexcept { m_surface.SetFixedAspect(k_GameAspect); }
 
             //! 描画先の初期目標サイズを窓サイズに合わせる
-            void SetInitialSize(const NS::Size2D& size) noexcept { m_surface.SetInitialSize(size); }
+            void SetInitialSize(const Size2D& size) noexcept { m_surface.SetInitialSize(size); }
 
             //! フレーム先頭で可視状態を false にする。描画パス (通常 / 全面化) が立て直す
             void ResetVisibility() noexcept { m_surface.ResetVisibility(); }
@@ -33,7 +33,7 @@ namespace NS
 
             //! @brief 描画先とゲーム視点のビューを返す
             //! @return 可視ならビュー、不可視なら nullopt
-            [[nodiscard]] std::optional<NS::SceneView> CollectView(LevelEditorController& editor) noexcept;
+            [[nodiscard]] std::optional<SceneView> CollectView(LevelEditorController& editor) noexcept;
 
             //! @brief 貼り付け中の描画先へ、下見の現在のフレームを描く
             //! @return 描画できた場合 true、それ以外の場合は false

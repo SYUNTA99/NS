@@ -45,13 +45,13 @@ namespace NS
         return ordered;
     }
 
-    void UIDirector::Draw(const NS::Gfx::RenderContext& context)
+    void UIDirector::Draw(const Gfx::RenderContext& context)
     {
-        m_canvas = NS::UI::UICanvas{};
+        m_canvas = UI::UICanvas{};
         if (context.renderer != nullptr)
         {
-            const NS::Size2D size = context.renderer->Size();
-            m_canvas = NS::UI::MakeUICanvas(static_cast<float>(size.width), static_cast<float>(size.height));
+            const Size2D size = context.renderer->Size();
+            m_canvas = UI::MakeUICanvas(static_cast<float>(size.width), static_cast<float>(size.height));
         }
         for (UIActor* screen : DrawOrdered())
         {

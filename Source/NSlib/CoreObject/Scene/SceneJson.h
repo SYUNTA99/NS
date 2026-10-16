@@ -27,8 +27,8 @@ namespace NS
     [[nodiscard]] nlohmann::json& SceneJsonObjects(nlohmann::json& scene);
 
     //! 次に割り当てる永続 id。無ければ 1
-    [[nodiscard]] NS::uint32 SceneJsonNextObjectId(const nlohmann::json& scene) noexcept;
-    void SetSceneJsonNextObjectId(nlohmann::json& scene, NS::uint32 nextObjectId);
+    [[nodiscard]] uint32 SceneJsonNextObjectId(const nlohmann::json& scene) noexcept;
+    void SetSceneJsonNextObjectId(nlohmann::json& scene, uint32 nextObjectId);
 
     //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない
     [[nodiscard]] std::string_view SceneJsonSkybox(const nlohmann::json& scene) noexcept;
@@ -36,18 +36,18 @@ namespace NS
 
     //! @brief 重力の向きを長さ 1 に揃えて返す
     //! @return 有限でない成分を含むか長さがほぼ 0 なら (0, -1, 0)
-    [[nodiscard]] NS::Vector3 NormalizeGravityDirection(const NS::Vector3& direction) noexcept;
+    [[nodiscard]] Vector3 NormalizeGravityDirection(const Vector3& direction) noexcept;
     //! @brief environment.gravityDirection を長さ 1 に揃えて返す
     //! @return 無いか 3 つの数でなければ (0, -1, 0)
-    [[nodiscard]] NS::Vector3 SceneJsonGravityDirection(const nlohmann::json& scene) noexcept;
+    [[nodiscard]] Vector3 SceneJsonGravityDirection(const nlohmann::json& scene) noexcept;
     //! 長さ 1 に揃えた重力の向きを environment.gravityDirection へ書く。environment が無ければ作る
-    void SetSceneJsonGravityDirection(nlohmann::json& scene, const NS::Vector3& direction);
+    void SetSceneJsonGravityDirection(nlohmann::json& scene, const Vector3& direction);
 
     //! objects 配列で「該当無し」を表す添字
     inline constexpr std::size_t k_NoObjectIndex = static_cast<std::size_t>(-1);
 
     //! 永続 id が id の配置物の添字。無ければ k_NoObjectIndex、k_NoObjectId は常に該当無し
-    [[nodiscard]] std::size_t FindObjectIndexById(const nlohmann::json& scene, NS::uint32 id) noexcept;
+    [[nodiscard]] std::size_t FindObjectIndexById(const nlohmann::json& scene, uint32 id) noexcept;
 
     //! @details 未割当と重複には新 id を振り、nextObjectId を既存最大 id より先へ進める。重複は先勝ち
     void EnsureUniqueObjectIds(nlohmann::json& scene);

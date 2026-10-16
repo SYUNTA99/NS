@@ -49,7 +49,7 @@ namespace NS
     public:
         SceneActor() noexcept;
         virtual ~SceneActor() noexcept;
-        [[nodiscard]] NS::uint32 Id() const noexcept { return m_id; }
+        [[nodiscard]] uint32 Id() const noexcept { return m_id; }
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
         NS_REFLECT_DECLARE()
 
@@ -75,7 +75,7 @@ namespace NS
 
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
-        [[nodiscard]] NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
+        [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
         // 出したエフェクトを記録する部品。持たなければ nullptr
         [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept override { return m_effectKeeper.get(); }
 
@@ -92,10 +92,10 @@ namespace NS
 
         //! @brief 居るシーンの重力の向きを返す
         //! @return シーンに居なければ (0, -1, 0)
-        [[nodiscard]] NS::Vector3 GravityDirection() const noexcept;
+        [[nodiscard]] Vector3 GravityDirection() const noexcept;
         //! シーンの重力方向へ加速する。strength は m/s²、dt は秒
         //! 非有限値または dt が 0 以下なら変更しない
-        void AddGravity(NS::Vector3& velocity, float strength, float dt) const noexcept;
+        void AddGravity(Vector3& velocity, float strength, float dt) const noexcept;
 
         // 登録情報の保存キー。この SceneActor の部品でなければ空
         [[nodiscard]] std::string_view SubObjKey(const SubObject& part) const;
@@ -233,18 +233,18 @@ namespace NS
         //! @details ActorList::SnapshotObjects が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
         void SnapshotForInterpolation() noexcept;
-        void SetId(NS::uint32 id) noexcept { m_id = id; }
+        void SetId(uint32 id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
         [[nodiscard]] const SubObjectDesc* FindSubObjMember(const void* member) const;
         void ReportInvalidSubObj(const SubObjectDesc* field) const;
         // PendingDestroy からはどこへも移らない
-        enum class Presence : NS::uint8
+        enum class Presence : uint8
         {
             Disappeared,
             Appeared,
             PendingDestroy,
         };
-        NS::uint32 m_id = 0;
+        uint32 m_id = 0;
         std::string m_name;
         Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr
         Presence m_presence = Presence::Disappeared;

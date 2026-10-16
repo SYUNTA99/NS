@@ -111,7 +111,7 @@ namespace NS
 
     //! Tick で待ちを進めるシーケンスの所有者。Tick を止めれば全シーケンスが停止する
     //! CancelAll は再開せずに破棄する。コルーチンフレーム内のデストラクタは呼ばれる
-    class CoroutineRunner : public NS::NonCopyable
+    class CoroutineRunner : public NonCopyable
     {
     public:
         CoroutineRunner() = default;

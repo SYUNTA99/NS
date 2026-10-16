@@ -27,7 +27,7 @@ namespace NS
     namespace Editor
     {
         //! パネルに貼るオフスクリーン描画先。画像表示後に次フレームのサイズへ合わせる
-        class ViewportSurface : public NS::NonCopyable
+        class ViewportSurface : public NonCopyable
         {
         public:
             // RenderTarget の完全型が必要なため、構築と破棄は .cpp で定義する
@@ -35,7 +35,7 @@ namespace NS
             ~ViewportSurface();
 
             //! 描画先の初期目標サイズを窓サイズに合わせ、初回フレームから映せるようにする
-            void SetInitialSize(const NS::Size2D& size) noexcept { m_size = size; }
+            void SetInitialSize(const Size2D& size) noexcept { m_size = size; }
 
             //! 映像の縦横比を固定する。0 以下ならパネルの形に追従する
             void SetFixedAspect(float aspect) noexcept { m_fixedAspect = aspect; }
@@ -59,12 +59,12 @@ namespace NS
 
             //! @brief 目標サイズに追従して描画先を用意し、pose とセットのビューを返す
             //! @return 可視だったフレームは {描画先, pose}。不可視やサイズ不足なら nullopt
-            [[nodiscard]] std::optional<NS::SceneView> CollectView(std::optional<NS::CameraPose> pose) noexcept;
+            [[nodiscard]] std::optional<SceneView> CollectView(std::optional<CameraPose> pose) noexcept;
 
             //! @brief 貼り付け中の描画先をリサイズせず、pose とセットで返す
             //! @details 画像の実描画前に使い、CollectView の前に使い終える
             //! @return 可視かつ描画先が有効ならビュー、それ以外なら nullopt
-            [[nodiscard]] std::optional<NS::SceneView> CurrentView(std::optional<NS::CameraPose> pose) const noexcept;
+            [[nodiscard]] std::optional<SceneView> CurrentView(std::optional<CameraPose> pose) const noexcept;
 
             //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
             void Release() noexcept;
@@ -76,8 +76,8 @@ namespace NS
             [[nodiscard]] bool IsFocused() const noexcept { return m_focused; }
 
         private:
-            std::unique_ptr<NS::Gfx::RenderTarget> m_target;
-            NS::Size2D m_size{0, 0}; // content 領域。次フレームの描画先サイズ
+            std::unique_ptr<Gfx::RenderTarget> m_target;
+            Size2D m_size{0, 0}; // content 領域。次フレームの描画先サイズ
             float m_fixedAspect = 0.0f;
             bool m_visible = false;
             bool m_focused = false;

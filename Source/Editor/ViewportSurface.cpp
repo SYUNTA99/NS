@@ -55,7 +55,7 @@ namespace NS
 
                     // 可視なら次フレームの描画先サイズを立てる。描画先未生成でも記録する
                     m_visible = true;
-                    m_size = NS::Size2D{static_cast<int>(draw.x), static_cast<int>(draw.y)};
+                    m_size = Size2D{static_cast<int>(draw.x), static_cast<int>(draw.y)};
 
                     if (m_target != nullptr && m_target->IsValid())
                     {
@@ -64,7 +64,7 @@ namespace NS
                         ImGui::SetCursorPos(
                             ImVec2{cursor.x + (avail.x - draw.x) * 0.5f, cursor.y + (avail.y - draw.y) * 0.5f});
                         ImGui::Image(
-                            static_cast<ImTextureID>(reinterpret_cast<NS::uintptr>(m_target->UiTextureHandle())), draw);
+                            static_cast<ImTextureID>(reinterpret_cast<uintptr>(m_target->UiTextureHandle())), draw);
                         outHovered = ImGui::IsItemHovered();
                         outMin = ImGui::GetItemRectMin();
                         outMax = ImGui::GetItemRectMax();
@@ -90,7 +90,7 @@ namespace NS
 #endif
         }
 
-        std::optional<NS::SceneView> ViewportSurface::CollectView(std::optional<NS::CameraPose> pose) noexcept
+        std::optional<SceneView> ViewportSurface::CollectView(std::optional<CameraPose> pose) noexcept
         {
             if (!m_visible || m_size.width < 8 || m_size.height < 8)
             {
@@ -99,23 +99,23 @@ namespace NS
 
             if (!m_target)
             {
-                m_target = NS::Gfx::RenderTarget::Create(m_size);
+                m_target = Gfx::RenderTarget::Create(m_size);
             }
             else
             {
                 m_target->Resize(m_size);
             }
 
-            return NS::SceneView{m_target.get(), pose};
+            return SceneView{m_target.get(), pose};
         }
 
-        std::optional<NS::SceneView> ViewportSurface::CurrentView(std::optional<NS::CameraPose> pose) const noexcept
+        std::optional<SceneView> ViewportSurface::CurrentView(std::optional<CameraPose> pose) const noexcept
         {
             if (!m_visible || m_target == nullptr || !m_target->IsValid())
             {
                 return std::nullopt;
             }
-            return NS::SceneView{m_target.get(), pose};
+            return SceneView{m_target.get(), pose};
         }
 
         void ViewportSurface::Release() noexcept

@@ -141,7 +141,7 @@ namespace NS
 
     float SceneActor::BodyDelta() const noexcept
     {
-        return NS::OS::FrameTimer::FixedDelta() * m_bodyTimeScale;
+        return OS::FrameTimer::FixedDelta() * m_bodyTimeScale;
     }
 
     void SceneActor::Appear()
@@ -189,7 +189,7 @@ namespace NS
         return m_scene->GetSceneSystemHolder();
     }
 
-    NS::Phys::PhysicsScene* SceneActor::GetPhysicsScene() const noexcept
+    Phys::PhysicsScene* SceneActor::GetPhysicsScene() const noexcept
     {
         if (m_scene == nullptr)
         {
@@ -198,17 +198,17 @@ namespace NS
         return m_scene->GetPhysicsScene();
     }
 
-    NS::Vector3 SceneActor::GravityDirection() const noexcept
+    Vector3 SceneActor::GravityDirection() const noexcept
     {
         const Scene* scene = OwningScene();
         if (scene == nullptr)
         {
-            return NS::Vector3{0.0f, -1.0f, 0.0f};
+            return Vector3{0.0f, -1.0f, 0.0f};
         }
         return scene->GravityDirection();
     }
 
-    void SceneActor::AddGravity(NS::Vector3& velocity, float strength, float dt) const noexcept
+    void SceneActor::AddGravity(Vector3& velocity, float strength, float dt) const noexcept
     {
         if (!std::isfinite(strength) || !std::isfinite(dt) || !(dt > 0.0f))
         {

@@ -14,7 +14,7 @@ namespace NS
         class IObjectSnapshotApplier;
 
         //! Undo・Redo の履歴。200 操作か 50 MB を超えた分は古い履歴から捨てる
-        class UndoStack : public NS::NonCopyable
+        class UndoStack : public NonCopyable
         {
         public:
             static constexpr std::size_t k_MaxOps = 200;
@@ -39,7 +39,7 @@ namespace NS
             void Clear() noexcept;
 
             //! 履歴変更の通算回数。同じ内容へ戻しても進むため、未保存判定は変更ありとみなす側にずれる
-            [[nodiscard]] NS::uint64 Version() const noexcept { return m_version; }
+            [[nodiscard]] uint64 Version() const noexcept { return m_version; }
 
             [[nodiscard]] std::size_t UndoSize() const noexcept { return m_undo.size(); }
             [[nodiscard]] std::size_t RedoSize() const noexcept { return m_redo.size(); }
@@ -50,7 +50,7 @@ namespace NS
             std::deque<std::unique_ptr<ICommand>> m_redo;
             std::size_t m_undoBytes = 0; // Undo 履歴の概算メモリ使用量
             std::size_t m_redoBytes = 0; // Redo 履歴の概算メモリ使用量
-            NS::uint64 m_version = 0;
+            uint64 m_version = 0;
 
             void PushRecorded(std::unique_ptr<ICommand> cmd) noexcept;
             void TrimOldest() noexcept;

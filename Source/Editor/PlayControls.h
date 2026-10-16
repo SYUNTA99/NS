@@ -10,7 +10,7 @@ namespace NS
     namespace Editor
     {
         //! 中央ノードのタブ
-        enum class CenterTab : NS::uint8
+        enum class CenterTab : uint8
         {
             Scene,
             Game
@@ -73,7 +73,7 @@ namespace NS
         [[nodiscard]] InputOwnership ResolveInputOwnership(InputOwnerQuery query) noexcept;
 
         //! @brief プレイ中のカーソルの置き方
-        enum class PlayCursor : NS::uint8
+        enum class PlayCursor : uint8
         {
             Captured, // 消して Game の画像の中心へ固定し、マウスを相対にする。視点を回せる
             Released  // 出して固定と相対を解く。タブやパネルを押せる

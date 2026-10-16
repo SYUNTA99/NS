@@ -40,12 +40,12 @@ namespace NS
     protected:
         //! @brief 形の回転と中心のずれに、持ち主の root の世界行列を重ねた行列を返す
         //! @details 持ち主が居なければ、回転とずれの行列だけを返す
-        [[nodiscard]] NS::Matrix ShapeWorldMatrix(const NS::Quaternion& localRotation,
-                                                  const NS::Vector3& centerOffset) const noexcept;
+        [[nodiscard]] Matrix ShapeWorldMatrix(const Quaternion& localRotation,
+                                                  const Vector3& centerOffset) const noexcept;
 
     private:
         // 無効な current は新規作成。所属と異なる PhysicsScene の id と混同しないよう、SyncToPhysics だけが呼ぶ
-        [[nodiscard]] virtual JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) = 0;
+        [[nodiscard]] virtual JPH::BodyID SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current) = 0;
 
         JPH::BodyID m_bodyId;
     };

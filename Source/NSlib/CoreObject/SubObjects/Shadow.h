@@ -27,13 +27,13 @@ namespace NS
     {
     public:
         //! 真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
-        void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
+        void Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out) override;
         [[nodiscard]] RenderBucket Bucket() const noexcept override { return RenderBucket::Transparent; }
         //! 半透明の並べ替えに使う中心として、持ち主の世界座標の位置を返す
-        [[nodiscard]] NS::Vector3 SortCenter() const noexcept override;
+        [[nodiscard]] Vector3 SortCenter() const noexcept override;
 
         //! owner 直下の落下可動域を丸ごと覆う AABB。影がどこに落ちても視錐台判定で外さない
-        [[nodiscard]] NS::AABB WorldBounds() const noexcept override;
+        [[nodiscard]] AABB WorldBounds() const noexcept override;
 
         //! OwningScene に自分を IRenderable として登録する
         void Register();
@@ -55,8 +55,8 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        NS::Gfx::StaticMesh* m_mesh = nullptr;   // 共有 quad mesh (非所有)
-        NS::Gfx::Material* m_material = nullptr; // 共有 shadow material (非所有)
+        Gfx::StaticMesh* m_mesh = nullptr;   // 共有 quad mesh (非所有)
+        Gfx::Material* m_material = nullptr; // 共有 shadow material (非所有)
 
         float m_baseDiameter = 1.2f;   // 接地時の影の直径
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離

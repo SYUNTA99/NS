@@ -26,7 +26,7 @@ namespace NS
         };
 
         //! 2D テクスチャと指定されたビュー。画像読込失敗はピンクの代替画像で示す
-        class Texture : public NS::NonCopyable
+        class Texture : public NonCopyable
         {
         public:
             //! 参照先を必ず返す。画像の読み込み失敗は代替画像、空テクスチャの生成失敗は IsValid が false
@@ -42,7 +42,7 @@ namespace NS
             //! SRV / RTV / DSV のいずれかを作れているか
             [[nodiscard]] bool IsValid() const noexcept;
 
-            [[nodiscard]] NS::Size2D Size() const noexcept;
+            [[nodiscard]] Size2D Size() const noexcept;
 
             //! 読み込みに失敗してピンクのフォールバックへ差し替わっているか
             [[nodiscard]] bool IsUsingFallback() const noexcept;
@@ -66,7 +66,7 @@ namespace NS
             ComPtr<ID3D11ShaderResourceView> m_srv;
             ComPtr<ID3D11RenderTargetView> m_rtv;
             ComPtr<ID3D11DepthStencilView> m_dsv;
-            NS::Size2D m_size{0, 0};
+            Size2D m_size{0, 0};
             bool m_fallback = false;
         };
     } // namespace Gfx

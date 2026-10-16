@@ -24,11 +24,11 @@ namespace NS
 
             // TODO: 仮の値で、Effekseer のサンプルと同じ 8000。衝突のエフェクトを作ったら同時に出る最大数を測って決める
             // 超えた分のインスタンスは作られず、スプライトは描かれない
-            constexpr NS::int32 k_MaxSprites = 8000;
-            constexpr NS::int32 k_MaxInstances = 8000;
+            constexpr int32 k_MaxSprites = 8000;
+            constexpr int32 k_MaxInstances = 8000;
 
             // 平行移動を 4 行目に置く並びが DirectXMath と Effekseer で同じなので、転置しない
-            Effekseer::Matrix44 ToEffekseer(const NS::Matrix& matrix) noexcept
+            Effekseer::Matrix44 ToEffekseer(const Matrix& matrix) noexcept
             {
                 Effekseer::Matrix44 result;
                 for (int row = 0; row < 4; ++row)
@@ -45,12 +45,12 @@ namespace NS
             constexpr int k_DynamicInputCount = 4;
 
             // 大きさ・回転・位置の順に掛けた姿勢。行の並びは DirectXMath と同じで、平行移動は 4 行目
-            Effekseer::Matrix43 ToEffekseerTransform(const NS::Vector3& position,
-                                                     const NS::Quaternion& rotation,
-                                                     const NS::Vector3& scale) noexcept
+            Effekseer::Matrix43 ToEffekseerTransform(const Vector3& position,
+                                                     const Quaternion& rotation,
+                                                     const Vector3& scale) noexcept
             {
-                const NS::Matrix world = NS::Matrix::CreateScale(scale) * NS::Matrix::CreateFromQuaternion(rotation) *
-                                         NS::Matrix::CreateTranslation(position);
+                const Matrix world = Matrix::CreateScale(scale) * Matrix::CreateFromQuaternion(rotation) *
+                                         Matrix::CreateTranslation(position);
                 Effekseer::Matrix43 result;
                 for (int row = 0; row < 4; ++row)
                 {
@@ -63,7 +63,7 @@ namespace NS
             }
 
             // 0〜1 の色の成分を 0〜255 にする。非数と 0 以下は 0、1 以上は 255
-            NS::uint8 ToColorByte(float value) noexcept
+            uint8 ToColorByte(float value) noexcept
             {
                 if (!(value > 0.0f))
                 {
@@ -73,20 +73,20 @@ namespace NS
                 {
                     return 255;
                 }
-                return static_cast<NS::uint8>(std::lround(value * 255.0f));
+                return static_cast<uint8>(std::lround(value * 255.0f));
             }
 
             // 他の再生や std::rand の呼び出しに影響されないよう、名前と再生回数から乱数の種を作る。
-            NS::int32 SeedOf(std::string_view name, NS::uint32 playIndex) noexcept
+            int32 SeedOf(std::string_view name, uint32 playIndex) noexcept
             {
-                NS::uint32 hash = 2166136261u;
+                uint32 hash = 2166136261u;
                 for (const char c : name)
                 {
-                    hash ^= static_cast<NS::uint8>(c);
+                    hash ^= static_cast<uint8>(c);
                     hash *= 16777619u;
                 }
                 hash ^= playIndex * 2654435761u;
-                return static_cast<NS::int32>(hash & 0x7FFFFFFFu);
+                return static_cast<int32>(hash & 0x7FFFFFFFu);
             }
 
             std::string ToUtf8(const char16_t* path)
@@ -95,14 +95,14 @@ namespace NS
                 {
                     return std::string{};
                 }
-                return NS::OS::StringUtils::Utf8FromWide(reinterpret_cast<const wchar_t*>(path));
+                return OS::StringUtils::Utf8FromWide(reinterpret_cast<const wchar_t*>(path));
             }
 
             template <typename GetResource, typename GetPath>
-            int CountMissing(NS::int32 count, GetResource getResource, GetPath getPath, std::string_view kind)
+            int CountMissing(int32 count, GetResource getResource, GetPath getPath, std::string_view kind)
             {
                 int missing = 0;
-                for (NS::int32 i = 0; i < count; ++i)
+                for (int32 i = 0; i < count; ++i)
                 {
                     if (getResource(i) == nullptr)
                     {
@@ -119,33 +119,33 @@ namespace NS
                 int missing = 0;
                 missing += CountMissing(
                     effect->GetColorImageCount(),
-                    [&](NS::int32 i) { return effect->GetColorImage(i); },
-                    [&](NS::int32 i) { return effect->GetColorImagePath(i); },
+                    [&](int32 i) { return effect->GetColorImage(i); },
+                    [&](int32 i) { return effect->GetColorImagePath(i); },
                     "テクスチャ");
                 missing += CountMissing(
                     effect->GetNormalImageCount(),
-                    [&](NS::int32 i) { return effect->GetNormalImage(i); },
-                    [&](NS::int32 i) { return effect->GetNormalImagePath(i); },
+                    [&](int32 i) { return effect->GetNormalImage(i); },
+                    [&](int32 i) { return effect->GetNormalImagePath(i); },
                     "法線テクスチャ");
                 missing += CountMissing(
                     effect->GetDistortionImageCount(),
-                    [&](NS::int32 i) { return effect->GetDistortionImage(i); },
-                    [&](NS::int32 i) { return effect->GetDistortionImagePath(i); },
+                    [&](int32 i) { return effect->GetDistortionImage(i); },
+                    [&](int32 i) { return effect->GetDistortionImagePath(i); },
                     "歪みテクスチャ");
                 missing += CountMissing(
                     effect->GetModelCount(),
-                    [&](NS::int32 i) { return effect->GetModel(i); },
-                    [&](NS::int32 i) { return effect->GetModelPath(i); },
+                    [&](int32 i) { return effect->GetModel(i); },
+                    [&](int32 i) { return effect->GetModelPath(i); },
                     "モデル");
                 missing += CountMissing(
                     effect->GetMaterialCount(),
-                    [&](NS::int32 i) { return effect->GetMaterial(i); },
-                    [&](NS::int32 i) { return effect->GetMaterialPath(i); },
+                    [&](int32 i) { return effect->GetMaterial(i); },
+                    [&](int32 i) { return effect->GetMaterialPath(i); },
                     "マテリアル");
                 missing += CountMissing(
                     effect->GetCurveCount(),
-                    [&](NS::int32 i) { return effect->GetCurve(i); },
-                    [&](NS::int32 i) { return effect->GetCurvePath(i); },
+                    [&](int32 i) { return effect->GetCurve(i); },
+                    [&](int32 i) { return effect->GetCurvePath(i); },
                     "カーブ");
                 return missing;
             }
@@ -238,8 +238,8 @@ namespace NS
                 return true;
             }
 
-            const std::string path = NS::OS::FileSystem::Combine(m_effectRoot, std::string(name) + ".efkefc");
-            const std::wstring pathWide = NS::OS::StringUtils::WideFromUtf8(path);
+            const std::string path = OS::FileSystem::Combine(m_effectRoot, std::string(name) + ".efkefc");
+            const std::wstring pathWide = OS::StringUtils::WideFromUtf8(path);
             const std::u16string pathU16(pathWide.begin(), pathWide.end());
 
             Effekseer::EffectRef effect = Effekseer::Effect::Create(m_manager, pathU16.c_str());
@@ -247,7 +247,7 @@ namespace NS
             {
                 NS_LOG_ERROR(Graphics,
                              "EffectScene::Preload: エフェクトを読めなかった ({})",
-                             NS::OS::StringUtils::Utf8FromWide(pathWide));
+                             OS::StringUtils::Utf8FromWide(pathWide));
                 return false;
             }
             if (CountMissingResources(effect) > 0)
@@ -259,7 +259,7 @@ namespace NS
             return true;
         }
 
-        EffectHandle EffectScene::Play(std::string_view name, NS::Vector3 position) noexcept
+        EffectHandle EffectScene::Play(std::string_view name, Vector3 position) noexcept
         {
             return Play(name, EffectPlayDesc{.position = position});
         }
@@ -286,7 +286,7 @@ namespace NS
             const Effekseer::Handle handle =
                 m_manager->Play(found->second, desc.position.x, desc.position.y, desc.position.z);
             // Play が std::rand から引いた種を上書きする。節が生まれる最初の Update より前なので、この種で生まれる
-            NS::uint32& playCount = m_playCounts[key];
+            uint32& playCount = m_playCounts[key];
             m_manager->SetRandomSeed(handle, SeedOf(key, playCount));
             ++playCount;
             // Play は節を作らず、最初の Update で作る。ここで渡した姿勢・色・入力は生まれる時に読まれる
@@ -300,16 +300,16 @@ namespace NS
             {
                 if (desc.dynamicInputs[i].has_value())
                 {
-                    m_manager->SetDynamicInput(handle, static_cast<NS::int32>(i), desc.dynamicInputs[i].value());
+                    m_manager->SetDynamicInput(handle, static_cast<int32>(i), desc.dynamicInputs[i].value());
                 }
             }
             return EffectHandle{handle};
         }
 
         void EffectScene::SetTransform(EffectHandle handle,
-                                       const NS::Vector3& position,
-                                       const NS::Quaternion& rotation,
-                                       const NS::Vector3& scale) noexcept
+                                       const Vector3& position,
+                                       const Quaternion& rotation,
+                                       const Vector3& scale) noexcept
         {
             if (!IsValid() || !handle.IsValid())
             {
@@ -380,14 +380,14 @@ namespace NS
             m_manager->Update(deltaSeconds * k_EffekseerFramesPerSecond);
         }
 
-        void EffectScene::Draw(const NS::CameraData& camera) noexcept
+        void EffectScene::Draw(const CameraData& camera) noexcept
         {
             if (!IsValid())
             {
                 return;
             }
 
-            const NS::Vector3& eye = camera.Position();
+            const Vector3& eye = camera.Position();
             Effekseer::Manager::LayerParameter layer;
             layer.ViewerPosition = Effekseer::Vector3D(eye.x, eye.y, eye.z);
             m_manager->SetLayerParameter(0, layer);
@@ -422,7 +422,7 @@ namespace NS
             return texture != nullptr;
         }
 
-        void EffectScene::PassDepth(const NS::CameraData& camera) noexcept
+        void EffectScene::PassDepth(const CameraData& camera) noexcept
         {
             ++m_drawCount;
             ID3D11DeviceContext* context = Gpu().context;
@@ -482,7 +482,7 @@ namespace NS
             m_failedDepthKey.clear();
         }
 
-        EffectScene::DepthCopy* EffectScene::DepthCopyFor(NS::uint32 width, NS::uint32 height) noexcept
+        EffectScene::DepthCopy* EffectScene::DepthCopyFor(uint32 width, uint32 height) noexcept
         {
             DepthCopy* oldest = &m_depthCopies[0];
             for (DepthCopy& copy : m_depthCopies)
@@ -531,7 +531,7 @@ namespace NS
             return oldest;
         }
 
-        void EffectScene::FallBackWithoutDepth(std::string_view reason, NS::uint32 width, NS::uint32 height) noexcept
+        void EffectScene::FallBackWithoutDepth(std::string_view reason, uint32 width, uint32 height) noexcept
         {
             // 前の奥行きを残すと、別の描画先の物で薄くなる
             m_renderer->SetDepth(nullptr, EffekseerRenderer::DepthReconstructionParameter{});

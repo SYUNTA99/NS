@@ -31,11 +31,11 @@ namespace NS
                     end = refs.size();
                 }
                 std::string_view entry(refs.data() + begin, end - begin);
-                while (!entry.empty() && std::isspace(static_cast<NS::uint8>(entry.front())) != 0)
+                while (!entry.empty() && std::isspace(static_cast<uint8>(entry.front())) != 0)
                 {
                     entry.remove_prefix(1);
                 }
-                while (!entry.empty() && std::isspace(static_cast<NS::uint8>(entry.back())) != 0)
+                while (!entry.empty() && std::isspace(static_cast<uint8>(entry.back())) != 0)
                 {
                     entry.remove_suffix(1);
                 }
@@ -53,12 +53,12 @@ namespace NS
 
     Animation::~Animation() = default;
 
-    void Animation::SetMesh(NS::Gfx::SkeletalMesh* mesh) noexcept
+    void Animation::SetMesh(Gfx::SkeletalMesh* mesh) noexcept
     {
         m_mesh = mesh;
     }
 
-    void Animation::SetSkeleton(const NS::Gfx::Skeleton* skeleton) noexcept
+    void Animation::SetSkeleton(const Gfx::Skeleton* skeleton) noexcept
     {
         m_skeleton = skeleton;
     }
@@ -124,10 +124,10 @@ namespace NS
         return false;
     }
 
-    void Animation::AddClips(std::span<const NS::Gfx::AnimationClip> clips)
+    void Animation::AddClips(std::span<const Gfx::AnimationClip> clips)
     {
         m_clips.reserve(m_clips.size() + clips.size());
-        for (const NS::Gfx::AnimationClip& clip : clips)
+        for (const Gfx::AnimationClip& clip : clips)
         {
             m_clips.push_back(&clip);
         }
@@ -219,7 +219,7 @@ namespace NS
                 NS_LOG_WARN(Graphics, "SkeletalAnimation: clip 参照を解決できない: {}", entry);
                 continue;
             }
-            const std::vector<NS::Gfx::AnimationClip>* bound = assets.GetOrLoadBoundClips(*resolvedClip, *resolved);
+            const std::vector<Gfx::AnimationClip>* bound = assets.GetOrLoadBoundClips(*resolvedClip, *resolved);
             if (bound == nullptr)
             {
                 // 失敗はキャッシュ側が path 込みで報告済み
@@ -231,11 +231,11 @@ namespace NS
 
     void Animation::BindToModel()
     {
-        NS::Gfx::BufferDesc cbDesc = NS::Gfx::MakeConstantBufferDesc(sizeof(NS::Gfx::BonePaletteCB));
-        m_bonePaletteCB = NS::Gfx::Buffer::Create(cbDesc);
-        for (std::size_t i = 0; i < NS::Gfx::k_MaxBones; ++i)
+        Gfx::BufferDesc cbDesc = Gfx::MakeConstantBufferDesc(sizeof(Gfx::BonePaletteCB));
+        m_bonePaletteCB = Gfx::Buffer::Create(cbDesc);
+        for (std::size_t i = 0; i < Gfx::k_MaxBones; ++i)
         {
-            m_palette.bones[i] = NS::Matrix::Identity;
+            m_palette.bones[i] = Matrix::Identity;
         }
 
         // 描画する Model にパレットを差す。現在ポーズ境界は ApplyPose が毎フレーム差す
@@ -247,7 +247,7 @@ namespace NS
         if (m_renderer != nullptr && m_bonePaletteCB->IsValid())
         {
             m_renderer->SetPerObjectVsConstant(
-                m_bonePaletteCB.get(), &m_palette, sizeof(NS::Gfx::BonePaletteCB), NS::Gfx::k_BonePaletteSlot);
+                m_bonePaletteCB.get(), &m_palette, sizeof(Gfx::BonePaletteCB), Gfx::k_BonePaletteSlot);
         }
         ApplyPose(m_time);
     }
@@ -288,7 +288,7 @@ namespace NS
         }
         if (m_current < m_clips.size() && m_clips[m_current] != nullptr && m_clips[m_current]->IsValid())
         {
-            NS::Gfx::SampleClipPose(*m_clips[m_current], *m_skeleton, time, m_poseScratch);
+            Gfx::SampleClipPose(*m_clips[m_current], *m_skeleton, time, m_poseScratch);
             m_skeleton->ComputePalette(m_poseScratch, m_paletteScratch);
         }
         else
@@ -297,8 +297,8 @@ namespace NS
         }
 
         // CPU 側パレットへ写す。余りは恒等で埋める。GPU への upload は描画側が毎描画行う
-        const std::size_t count = std::min(m_paletteScratch.size(), NS::Gfx::k_MaxBones);
-        for (std::size_t i = 0; i < NS::Gfx::k_MaxBones; ++i)
+        const std::size_t count = std::min(m_paletteScratch.size(), Gfx::k_MaxBones);
+        for (std::size_t i = 0; i < Gfx::k_MaxBones; ++i)
         {
             if (i < count)
             {
@@ -306,14 +306,14 @@ namespace NS
             }
             else
             {
-                m_palette.bones[i] = NS::Matrix::Identity;
+                m_palette.bones[i] = Matrix::Identity;
             }
         }
 
         // 現在ポーズの締まった境界を描画側へ差し、カリングをポーズ追従させる
         if (m_renderer != nullptr)
         {
-            const NS::AABB localBounds = NS::Gfx::MergeSkinnedBounds(
+            const AABB localBounds = Gfx::MergeSkinnedBounds(
                 m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
             m_renderer->SetLocalBoundsOverride(localBounds);
         }

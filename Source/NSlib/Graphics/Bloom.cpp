@@ -33,7 +33,7 @@ namespace NS
             // 1 を超える明るさを持つ。16 ビットの浮動小数は 1 付近の刻みが 1/2048 で、8 ビットの 1/255 より細かい
             constexpr DXGI_FORMAT k_HdrFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
-            std::unique_ptr<Texture> MakeHdrTarget(NS::Size2D size)
+            std::unique_ptr<Texture> MakeHdrTarget(Size2D size)
             {
                 TextureDesc desc{};
                 desc.width = static_cast<UINT>(size.width);
@@ -44,10 +44,10 @@ namespace NS
             }
 
             // 半分ずつ縮めた大きさ。0 にはしない
-            NS::Size2D LevelSize(NS::Size2D size, int level)
+            Size2D LevelSize(Size2D size, int level)
             {
                 const int shift = level + 1;
-                return NS::Size2D{std::max(1, size.width >> shift), std::max(1, size.height >> shift)};
+                return Size2D{std::max(1, size.width >> shift), std::max(1, size.height >> shift)};
             }
 
             void UnbindShaderResources(CommandList& cmd)
@@ -114,7 +114,7 @@ namespace NS
             return m_valid;
         }
 
-        void Bloom::BeginWorld(Renderer& renderer, const NS::Color& clearColor) noexcept
+        void Bloom::BeginWorld(Renderer& renderer, const Color& clearColor) noexcept
         {
             if (!m_valid || m_active)
             {
@@ -139,7 +139,7 @@ namespace NS
             }
             D3D11_TEXTURE2D_DESC desc{};
             texture->GetDesc(&desc);
-            const NS::Size2D size{static_cast<int>(desc.Width), static_cast<int>(desc.Height)};
+            const Size2D size{static_cast<int>(desc.Width), static_cast<int>(desc.Height)};
             if (!EnsureTargets(size))
             {
                 return;
@@ -203,7 +203,7 @@ namespace NS
             m_savedDepth.Reset();
         }
 
-        bool Bloom::EnsureTargets(NS::Size2D size) noexcept
+        bool Bloom::EnsureTargets(Size2D size) noexcept
         {
             const std::size_t levelCount = static_cast<std::size_t>(std::max(1, m_desc.levels));
             if (size.width == m_size.width && size.height == m_size.height && m_levels.size() == levelCount)
@@ -211,7 +211,7 @@ namespace NS
                 return true;
             }
 
-            m_size = NS::Size2D{0, 0};
+            m_size = Size2D{0, 0};
             m_levels.clear();
             m_scene = MakeHdrTarget(size);
             m_bright = MakeHdrTarget(size);
@@ -237,13 +237,13 @@ namespace NS
                              const Texture& source,
                              const Texture* scene,
                              ID3D11RenderTargetView* destination,
-                             NS::Size2D destinationSize) noexcept
+                             Size2D destinationSize) noexcept
         {
             UnbindShaderResources(cmd);
             cmd.SetRenderTarget(destination, nullptr);
             cmd.SetViewport(static_cast<float>(destinationSize.width), static_cast<float>(destinationSize.height));
 
-            const NS::Size2D sourceSize = source.Size();
+            const Size2D sourceSize = source.Size();
             BloomCB cbData{};
             cbData.sourceTexel[0] = 1.0f / static_cast<float>(sourceSize.width);
             cbData.sourceTexel[1] = 1.0f / static_cast<float>(sourceSize.height);

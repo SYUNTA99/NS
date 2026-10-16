@@ -34,7 +34,7 @@ namespace NS
             const Buffer* extraVsCb = nullptr;
             const void* extraVsData = nullptr;
             std::size_t extraVsSize = 0;
-            NS::uint extraVsSlot = 1;
+            uint extraVsSlot = 1;
         };
 #pragma warning(pop)
 

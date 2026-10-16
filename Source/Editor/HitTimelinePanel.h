@@ -22,7 +22,7 @@ namespace NS
     {
         //! 当たりのタイムラインを編集・下見する。編集はメモリへ即反映し、保存でファイルへ書く
         //! 下見は別シーンで行い、編集中のシーンを変更しない
-        class HitTimelinePanel : public NS::NonCopyable
+        class HitTimelinePanel : public NonCopyable
         {
         public:
             HitTimelinePanel();

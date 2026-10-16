@@ -76,10 +76,10 @@ namespace NS
         return scene;
     }
 
-    void Scene::SetGravityDirection(const NS::Vector3& direction) noexcept
+    void Scene::SetGravityDirection(const Vector3& direction) noexcept
     {
         m_gravityDirection = NormalizeGravityDirection(direction);
-        m_physics.Physics().SetGravity(m_gravityDirection * -NS::Phys::k_DefaultGravityY);
+        m_physics.Physics().SetGravity(m_gravityDirection * -Phys::k_DefaultGravityY);
     }
 
     void Scene::SyncPhysics()
@@ -146,7 +146,7 @@ namespace NS
         {
             return;
         }
-        m_worldSpeed = NS::Clamp(speed, 0.0f, 1.0f);
+        m_worldSpeed = Clamp(speed, 0.0f, 1.0f);
         m_rampActive = false;
     }
 
@@ -172,7 +172,7 @@ namespace NS
             m_worldSpeed = 1.0f;
             return;
         }
-        m_worldSpeed = NS::Clamp(fromSpeed, 0.0f, 1.0f);
+        m_worldSpeed = Clamp(fromSpeed, 0.0f, 1.0f);
         m_rampActive = true;
         m_rampFrom = m_worldSpeed;
         m_rampSeconds = realSeconds;
@@ -187,7 +187,7 @@ namespace NS
             return;
         }
         // 世界の時間で数えると、遅い分だけ戻るのが延びる
-        m_rampElapsed += NS::OS::FrameTimer::FixedDelta();
+        m_rampElapsed += OS::FrameTimer::FixedDelta();
         const float ratio = m_rampElapsed / m_rampSeconds;
         if (ratio >= 1.0f - k_WorldCarryTolerance)
         {
@@ -198,7 +198,7 @@ namespace NS
         float recovered = ratio;
         if (m_rampShape.count > 0)
         {
-            recovered = NS::Clamp(m_rampShape.Evaluate(ratio), 0.0f, 1.0f);
+            recovered = Clamp(m_rampShape.Evaluate(ratio), 0.0f, 1.0f);
         }
         m_worldSpeed = m_rampFrom + (1.0f - m_rampFrom) * recovered;
     }
@@ -298,7 +298,7 @@ namespace NS
 
     SceneActor* Scene::ReplaceFromJson(const nlohmann::json& object)
     {
-        const NS::uint32 id = ObjectJsonId(object);
+        const uint32 id = ObjectJsonId(object);
         const std::size_t index = m_objects.IndexOfObjectId(id);
         SceneActor* old = m_objects.FindByObjectId(id);
         if (old == nullptr)
@@ -360,7 +360,7 @@ namespace NS
         {
             obj->Disappear();
         }
-        ForEachReflectedSubObj(*obj, [&](const NS::SubObjectDesc& field, SubObject* subObject) {
+        ForEachReflectedSubObj(*obj, [&](const SubObjectDesc& field, SubObject* subObject) {
             const nlohmann::json* fields = SubObjFields(object, field.key);
             if (fields == nullptr || SerializeSubObjectFields(*subObject) == *fields)
             {
@@ -375,14 +375,14 @@ namespace NS
         return obj;
     }
 
-    void Scene::DestroyObject(NS::uint32 objectId)
+    void Scene::DestroyObject(uint32 objectId)
     {
         m_objects.RemoveByObjectId(objectId);
     }
 
     void Scene::ClearEffects() noexcept
     {
-        NS::Gfx::EffectScene* effects = m_sceneRenderer.Effects();
+        Gfx::EffectScene* effects = m_sceneRenderer.Effects();
         if (effects != nullptr)
         {
             effects->StopAll();
@@ -395,7 +395,7 @@ namespace NS
         ClearEffects();
 #if !defined(NS_SHIPPING)
         // ステップの図形は前の世界の姿。組み直した世界へ残すと、次の歩が来るまで消えた物の線が出る
-        NS::Gfx::DebugDraw::Clear();
+        Gfx::DebugDraw::Clear();
 #endif
         // シーンに 1 つの物 (進行役など) は最初の状態から作り直させる。組み直した配置物の開始が必要な物を作る
         m_sceneObjs.Clear();
@@ -436,7 +436,7 @@ namespace NS
             m_objects.SnapshotObjects();
 #if !defined(NS_SHIPPING)
             // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
-            NS::Gfx::DebugDraw::BeginStep();
+            Gfx::DebugDraw::BeginStep();
 #endif
         }
         for (UpdatePhase phase : magic_enum::enum_values<UpdatePhase>())
@@ -472,7 +472,7 @@ namespace NS
         m_cameraManager.SetCamera(nullptr);
 #if !defined(NS_SHIPPING)
         // 溜め場は静的な 1 つなので、畳んだ世界の線が次のシーンの描画へ残る
-        NS::Gfx::DebugDraw::Clear();
+        Gfx::DebugDraw::Clear();
 #endif
     }
 
@@ -483,7 +483,7 @@ namespace NS
 
         // 世界が実時間で進まない間は、前の固定フレームからの経過の割合に意味が無い
         // 描く度に割合が変わると、同じフレームの絵が揺れる
-        const float alpha = RenderAlpha(NS::OS::FrameTimer::Alpha());
+        const float alpha = RenderAlpha(OS::FrameTimer::Alpha());
         // 姿勢はビューに依らないので 1 フレームに 1 回。止めている間の実カメラは止めた側が書く
         if (m_simulationEnabled)
         {
@@ -532,13 +532,13 @@ namespace NS
         return &m_sceneObjs;
     }
 
-    NS::Phys::PhysicsScene* Scene::GetPhysicsScene() const noexcept
+    Phys::PhysicsScene* Scene::GetPhysicsScene() const noexcept
     {
         // 地形を問う関数のほか、Collision も持ち主の Scene の body を出し入れする時にここから引く
-        return const_cast<NS::Phys::PhysicsScene*>(&m_physics.Physics());
+        return const_cast<Phys::PhysicsScene*>(&m_physics.Physics());
     }
 
-    NS::Gfx::EffectScene* Scene::GetEffectScene() const noexcept
+    Gfx::EffectScene* Scene::GetEffectScene() const noexcept
     {
         return m_sceneRenderer.Effects();
     }

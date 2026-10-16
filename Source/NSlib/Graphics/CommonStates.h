@@ -20,7 +20,7 @@ namespace NS
         class Renderer;
 
         //! Renderer が所有する DirectXTK の共通描画ステート
-        class CommonStates : public NS::NonCopyable
+        class CommonStates : public NonCopyable
         {
         public:
             ~CommonStates();

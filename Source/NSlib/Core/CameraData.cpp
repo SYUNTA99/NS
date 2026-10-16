@@ -4,41 +4,41 @@ namespace NS
 {
     namespace
     {
-        NS::Matrix MakeViewLH(const NS::Vector3& position, const NS::Vector3& target, const NS::Vector3& up) noexcept
+        Matrix MakeViewLH(const Vector3& position, const Vector3& target, const Vector3& up) noexcept
         {
             const DirectX::XMVECTOR eye = DirectX::XMLoadFloat3(&position);
             const DirectX::XMVECTOR tgt = DirectX::XMLoadFloat3(&target);
             const DirectX::XMVECTOR upv = DirectX::XMLoadFloat3(&up);
-            NS::Matrix m;
+            Matrix m;
             DirectX::XMStoreFloat4x4(&m, DirectX::XMMatrixLookAtLH(eye, tgt, upv));
             return m;
         }
 
-        NS::Matrix MakeProjectionLH(float fovY, float aspect, float nearPlane, float farPlane) noexcept
+        Matrix MakeProjectionLH(float fovY, float aspect, float nearPlane, float farPlane) noexcept
         {
-            NS::Matrix m;
+            Matrix m;
             DirectX::XMStoreFloat4x4(&m, DirectX::XMMatrixPerspectiveFovLH(fovY, aspect, nearPlane, farPlane));
             return m;
         }
     } // namespace
 
-    void CameraData::SetPosition(const NS::Vector3& position) noexcept
+    void CameraData::SetPosition(const Vector3& position) noexcept
     {
         m_position = position;
         m_viewDirty = true;
     }
-    void CameraData::SetTarget(const NS::Vector3& target) noexcept
+    void CameraData::SetTarget(const Vector3& target) noexcept
     {
         m_target = target;
         m_viewDirty = true;
     }
-    void CameraData::SetUp(const NS::Vector3& up) noexcept
+    void CameraData::SetUp(const Vector3& up) noexcept
     {
         m_up = up;
         m_viewDirty = true;
     }
 
-    void CameraData::SetFovY(NS::Radians fov) noexcept
+    void CameraData::SetFovY(Radians fov) noexcept
     {
         m_fovY = fov;
         m_projDirty = true;
@@ -58,25 +58,25 @@ namespace NS
         m_far = farPlane;
         m_projDirty = true;
     }
-    void CameraData::SetScreenOffset(const NS::Vector2& offset) noexcept
+    void CameraData::SetScreenOffset(const Vector2& offset) noexcept
     {
         m_screenOffset = offset;
         m_projDirty = true;
     }
 
-    const NS::Vector3& CameraData::Position() const noexcept
+    const Vector3& CameraData::Position() const noexcept
     {
         return m_position;
     }
-    const NS::Vector3& CameraData::Target() const noexcept
+    const Vector3& CameraData::Target() const noexcept
     {
         return m_target;
     }
-    const NS::Vector3& CameraData::Up() const noexcept
+    const Vector3& CameraData::Up() const noexcept
     {
         return m_up;
     }
-    NS::Radians CameraData::FovY() const noexcept
+    Radians CameraData::FovY() const noexcept
     {
         return m_fovY;
     }
@@ -92,19 +92,19 @@ namespace NS
     {
         return m_far;
     }
-    const NS::Vector2& CameraData::ScreenOffset() const noexcept
+    const Vector2& CameraData::ScreenOffset() const noexcept
     {
         return m_screenOffset;
     }
 
-    const NS::Matrix& CameraData::View() const noexcept
+    const Matrix& CameraData::View() const noexcept
     {
         if (m_viewDirty)
         {
-            const NS::Vector3 lookDir = m_target - m_position;
-            if (lookDir.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
+            const Vector3 lookDir = m_target - m_position;
+            if (lookDir.LengthSquared() < k_Epsilon * k_Epsilon)
             {
-                m_view = NS::Matrix::Identity;
+                m_view = Matrix::Identity;
             }
             else
             {
@@ -115,7 +115,7 @@ namespace NS
         return m_view;
     }
 
-    const NS::Matrix& CameraData::Projection() const noexcept
+    const Matrix& CameraData::Projection() const noexcept
     {
         if (m_projDirty)
         {
@@ -128,7 +128,7 @@ namespace NS
         return m_projection;
     }
 
-    NS::Matrix CameraData::ViewProjection() const noexcept
+    Matrix CameraData::ViewProjection() const noexcept
     {
         return View() * Projection();
     }

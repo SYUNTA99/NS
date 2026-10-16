@@ -19,7 +19,7 @@ namespace NS
         namespace detail
         {
             //! joint weights を合計 1 へ正規化する。合計が極小なら joints[0]=0, weights={1,0,0,0} にする
-            inline void NormalizeJointWeights(std::array<NS::uint32, 4>& joints, std::array<float, 4>& weights) noexcept
+            inline void NormalizeJointWeights(std::array<uint32, 4>& joints, std::array<float, 4>& weights) noexcept
             {
                 const float sum = weights[0] + weights[1] + weights[2] + weights[3];
                 if (sum < 1e-8f)
@@ -36,22 +36,22 @@ namespace NS
             }
 
             //! position / translation を Z 反転で右手系から左手系へ変換する
-            [[nodiscard]] inline NS::Vector3 MirrorZ(const NS::Vector3& v) noexcept
+            [[nodiscard]] inline Vector3 MirrorZ(const Vector3& v) noexcept
             {
-                return NS::Vector3{v.x, v.y, -v.z};
+                return Vector3{v.x, v.y, -v.z};
             }
 
             //! 回転クォータニオンを右手系から左手系へ変換する。Z 反転の相似変換では (x,y,z,w) → (-x,-y,z,w)
-            [[nodiscard]] inline NS::Quaternion MirrorQuaternionZ(const NS::Quaternion& q) noexcept
+            [[nodiscard]] inline Quaternion MirrorQuaternionZ(const Quaternion& q) noexcept
             {
-                return NS::Quaternion{-q.x, -q.y, q.z, q.w};
+                return Quaternion{-q.x, -q.y, q.z, q.w};
             }
 
             //! cgltf 列優先 16 float を行ベクトル Matrix に読む。列優先 M == 行優先 Mᵀ
             //! なので順序そのままでよく、translation は _41/_42/_43 に入る
-            [[nodiscard]] inline NS::Matrix ReadColumnMajorMatrix(const float m[16]) noexcept
+            [[nodiscard]] inline Matrix ReadColumnMajorMatrix(const float m[16]) noexcept
             {
-                return NS::Matrix{m[0],
+                return Matrix{m[0],
                                   m[1],
                                   m[2],
                                   m[3],
@@ -70,18 +70,18 @@ namespace NS
             }
 
             //! inverseBind を Z 反転で右手系から左手系へ変換する。S = diag(1,1,-1) として S * M * S
-            [[nodiscard]] inline NS::Matrix ConjugateZMatrix(const NS::Matrix& m) noexcept
+            [[nodiscard]] inline Matrix ConjugateZMatrix(const Matrix& m) noexcept
             {
-                const NS::Matrix s = NS::Matrix::CreateScale(1.0f, 1.0f, -1.0f);
+                const Matrix s = Matrix::CreateScale(1.0f, 1.0f, -1.0f);
                 return s * m * s;
             }
 
             //! bones を親が子より前に来る順へ並べ替え、old→new index の remap を返す
             //! 出力 bones の parentIndex は new index に張り替え済。呼出側は remap で頂点 joint index を変換する
-            [[nodiscard]] inline std::vector<NS::uint32> TopologicalSortBones(std::vector<Bone>& bones) noexcept
+            [[nodiscard]] inline std::vector<uint32> TopologicalSortBones(std::vector<Bone>& bones) noexcept
             {
                 const std::size_t boneCount = bones.size();
-                std::vector<NS::uint32> oldToNew(boneCount, 0u);
+                std::vector<uint32> oldToNew(boneCount, 0u);
                 std::vector<bool> emitted(boneCount, false);
                 std::vector<Bone> sorted;
                 sorted.reserve(boneCount);
@@ -99,7 +99,7 @@ namespace NS
                         const int parent = bones[i].parentIndex;
                         if (parent < 0 || emitted[static_cast<std::size_t>(parent)])
                         {
-                            oldToNew[i] = static_cast<NS::uint32>(sorted.size());
+                            oldToNew[i] = static_cast<uint32>(sorted.size());
                             sorted.push_back(bones[i]);
                             emitted[i] = true;
                             progress = true;
@@ -112,7 +112,7 @@ namespace NS
                 {
                     if (!emitted[i])
                     {
-                        oldToNew[i] = static_cast<NS::uint32>(sorted.size());
+                        oldToNew[i] = static_cast<uint32>(sorted.size());
                         sorted.push_back(bones[i]);
                     }
                 }

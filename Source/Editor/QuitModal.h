@@ -9,7 +9,7 @@ namespace NS
     namespace Editor
     {
         //! @brief 終了時に保存を確認するモーダル。終了ガードと保存確認の状態を持つ
-        class QuitModal : public NS::NonCopyable
+        class QuitModal : public NonCopyable
         {
         public:
             //! @brief 終了要求を受ける

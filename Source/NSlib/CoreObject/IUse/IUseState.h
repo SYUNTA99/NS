@@ -30,7 +30,7 @@ namespace NS
         [[nodiscard]] virtual StateId CurrentId() const noexcept = 0;
         //! @brief 今の状態に入ってから進めたフレーム数を返す
         //! @return 入った最初のフレームは 0
-        [[nodiscard]] virtual NS::uint32 StepsInState() const noexcept = 0;
+        [[nodiscard]] virtual uint32 StepsInState() const noexcept = 0;
         //! 状態遷移を予約する。予約できたか同じ状態なら true
         virtual bool Change(StateId id) = 0;
         //! 組み立て時の持ち主で dt 秒進める。未組立なら何もしない
@@ -80,7 +80,7 @@ namespace NS
 
     //! @brief user が今の状態に入ってから進めたフレーム数を返す
     //! @return 状態機械を持たなければ 0
-    [[nodiscard]] inline NS::uint32 StepsInState(const IUseState* user) noexcept
+    [[nodiscard]] inline uint32 StepsInState(const IUseState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const IStateMachine* machine = user->GetStates();

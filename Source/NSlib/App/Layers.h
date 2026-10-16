@@ -12,7 +12,7 @@ namespace NS
     class Layer;
 
     //! 通常の層の後にオーバーレイを実行する。構成は起動時に確定する
-    class Layers : public NS::NonCopyable
+    class Layers : public NonCopyable
     {
     public:
         Layers();

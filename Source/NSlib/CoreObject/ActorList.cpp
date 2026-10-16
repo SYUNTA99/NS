@@ -105,7 +105,7 @@ namespace NS
         return Append(std::move(obj));
     }
 
-    void ActorList::RemoveByObjectId(NS::uint32 objectId)
+    void ActorList::RemoveByObjectId(uint32 objectId)
     {
         // 段の最中に解放すると、その段で後に呼ぶ予定の生ポインタが破棄済みになる
         if (m_updating)
@@ -166,7 +166,7 @@ namespace NS
         return m_objects[index].get();
     }
 
-    SceneActor* ActorList::FindByObjectId(NS::uint32 objectId) noexcept
+    SceneActor* ActorList::FindByObjectId(uint32 objectId) noexcept
     {
         // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が引ける
         if (objectId == k_NoObjectId)
@@ -186,7 +186,7 @@ namespace NS
             m_indexDirty = false;
         }
 
-        const std::unordered_map<NS::uint32, SceneActor*>::iterator it = m_index.find(objectId);
+        const std::unordered_map<uint32, SceneActor*>::iterator it = m_index.find(objectId);
         if (it == m_index.end())
         {
             return nullptr;
@@ -205,7 +205,7 @@ namespace NS
         return FindByObjectId(ref.id);
     }
 
-    void ActorList::SyncPhysics(NS::Phys::PhysicsScene& physics)
+    void ActorList::SyncPhysics(Phys::PhysicsScene& physics)
     {
         for (const std::unique_ptr<SceneActor>& actor : m_objects)
         {
@@ -317,7 +317,7 @@ namespace NS
         return raw;
     }
 
-    std::size_t ActorList::IndexOfObjectId(NS::uint32 objectId) const noexcept
+    std::size_t ActorList::IndexOfObjectId(uint32 objectId) const noexcept
     {
         if (objectId == k_NoObjectId)
         {

@@ -10,7 +10,7 @@ namespace NS
     {
     public:
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で SceneActor の型を選ぶ
-        NS_REFLECT_NONE(MapPartsActor, NS::SceneActor)
+        NS_REFLECT_NONE(MapPartsActor, SceneActor)
 
     protected:
         void OnInit() override;

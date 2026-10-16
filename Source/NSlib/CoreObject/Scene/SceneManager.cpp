@@ -20,7 +20,7 @@ namespace NS
         m_assets = assets;
     }
 
-    void SceneManager::SetRenderer(NS::Gfx::Renderer* renderer) noexcept
+    void SceneManager::SetRenderer(Gfx::Renderer* renderer) noexcept
     {
         m_renderer = renderer;
     }

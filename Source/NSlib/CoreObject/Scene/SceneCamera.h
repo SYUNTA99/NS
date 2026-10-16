@@ -21,25 +21,25 @@ namespace NS
     public:
         SceneCamera() noexcept = default;
 
-        void SetPosition(const NS::Vector3& position) noexcept;
-        void SetTarget(const NS::Vector3& target) noexcept;
-        void SetUp(const NS::Vector3& up) noexcept;
-        void SetAspectRatioFromRenderer(const NS::Gfx::Renderer& renderer) noexcept;
+        void SetPosition(const Vector3& position) noexcept;
+        void SetTarget(const Vector3& target) noexcept;
+        void SetUp(const Vector3& up) noexcept;
+        void SetAspectRatioFromRenderer(const Gfx::Renderer& renderer) noexcept;
 
         //! pose の位置 / 注視点 / up と投影設定をまとめて書く。CameraManager の Evaluate とエディタの視点反映が使う
         void ApplyPose(const CameraPose& pose) noexcept;
 
-        [[nodiscard]] const NS::Vector3& Position() const noexcept { return m_camera.Position(); }
-        [[nodiscard]] const NS::Vector3& Target() const noexcept { return m_camera.Target(); }
-        [[nodiscard]] const NS::Vector3& Up() const noexcept { return m_camera.Up(); }
-        [[nodiscard]] NS::Radians FovY() const noexcept { return m_camera.FovY(); }
+        [[nodiscard]] const Vector3& Position() const noexcept { return m_camera.Position(); }
+        [[nodiscard]] const Vector3& Target() const noexcept { return m_camera.Target(); }
+        [[nodiscard]] const Vector3& Up() const noexcept { return m_camera.Up(); }
+        [[nodiscard]] Radians FovY() const noexcept { return m_camera.FovY(); }
 
         //! 内包する CameraData への変更不可参照。skybox 描画とカメラ位置を読むのに使う
-        [[nodiscard]] const NS::CameraData& Camera() const noexcept { return m_camera; }
+        [[nodiscard]] const CameraData& Camera() const noexcept { return m_camera; }
 
-        [[nodiscard]] NS::Matrix ViewProjection() const noexcept { return m_camera.ViewProjection(); }
+        [[nodiscard]] Matrix ViewProjection() const noexcept { return m_camera.ViewProjection(); }
 
     private:
-        NS::CameraData m_camera; // 内包する実カメラ
+        CameraData m_camera; // 内包する実カメラ
     };
 } // namespace NS

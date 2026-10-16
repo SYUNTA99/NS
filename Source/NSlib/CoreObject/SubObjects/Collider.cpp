@@ -28,7 +28,7 @@ namespace NS
     void Collider::SetCapsuleRadius(float radius) noexcept
     {
         // 半径 0 以下の体は作れない。断る NS_ASSERT は Release で消える
-        if (NS::IsPositiveFinite(radius))
+        if (IsPositiveFinite(radius))
         {
             m_radius = radius;
         }
@@ -49,17 +49,17 @@ namespace NS
         return StandingHalfHeight();
     }
 
-    NS::Phys::Capsule Collider::CapsuleAt(const NS::Vector3& rootPosition) const noexcept
+    Phys::Capsule Collider::CapsuleAt(const Vector3& rootPosition) const noexcept
     {
         // 軸は +Y 固定、中心は根。Move が JoltCharacter へ渡す (半径, 半分の高さ) と同じ 2 つの値から組む
-        return NS::Phys::Capsule{rootPosition, NS::Vector3::UnitY, CapsuleHalfHeight(), CapsuleRadius()};
+        return Phys::Capsule{rootPosition, Vector3::UnitY, CapsuleHalfHeight(), CapsuleRadius()};
     }
 
-    NS::Phys::Capsule Collider::WorldCapsule() const noexcept
+    Phys::Capsule Collider::WorldCapsule() const noexcept
     {
         if (Owner() == nullptr)
         {
-            return CapsuleAt(NS::Vector3{0.0f, 0.0f, 0.0f});
+            return CapsuleAt(Vector3{0.0f, 0.0f, 0.0f});
         }
         return CapsuleAt(RootTransform().Position());
     }
@@ -69,7 +69,7 @@ namespace NS
         m_sphereShape = sphere;
     }
 
-    NS::Phys::PhysicsScene* Collider::GetPhysicsScene() const noexcept
+    Phys::PhysicsScene* Collider::GetPhysicsScene() const noexcept
     {
         if (Owner() == nullptr)
         {
@@ -78,13 +78,13 @@ namespace NS
         return Owner()->GetPhysicsScene();
     }
 
-    ColliderMove Collider::Move(const NS::Vector3& from,
-                                const NS::Vector3& velocity,
+    ColliderMove Collider::Move(const Vector3& from,
+                                const Vector3& velocity,
                                 float dt,
                                 float maxStepHeight) noexcept
     {
         ColliderMove moved;
-        NS::Phys::PhysicsScene* physics = GetPhysicsScene();
+        Phys::PhysicsScene* physics = GetPhysicsScene();
         if (physics == nullptr)
         {
             moved.position = from + velocity * dt;
@@ -97,7 +97,7 @@ namespace NS
         // AttachScene は新しく組んだ配置物にしか呼ばれない。Scene が変わらないので m_character を作り直さない
         if (m_character == nullptr)
         {
-            m_character = std::make_unique<NS::Phys::JoltCharacter>(*physics, radius, halfHeight);
+            m_character = std::make_unique<Phys::JoltCharacter>(*physics, radius, halfHeight);
         }
         m_character->Resize(radius, halfHeight);
 

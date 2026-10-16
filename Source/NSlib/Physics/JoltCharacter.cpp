@@ -58,7 +58,7 @@ namespace NS
 
             JPH::Ref<JPH::CharacterVirtual> MakeCharacter(JPH::PhysicsSystem& system, float radius, float halfHeight)
             {
-                NS_ASSERT(Physics, NS::IsPositiveFinite(radius), "JoltCharacter: 半径が正でない ({})", radius);
+                NS_ASSERT(Physics, IsPositiveFinite(radius), "JoltCharacter: 半径が正でない ({})", radius);
                 JPH::CharacterVirtualSettings settings;
                 // 半長 0 は同じ半径の球。JPH::CapsuleShape は半長 0 を assert で断るので球で作る
                 float supportHeight = halfHeight;
@@ -97,8 +97,8 @@ namespace NS
             m_character = MakeCharacter(m_physics.m_physicsSystem, radius, halfHeight);
         }
 
-        void JoltCharacter::Step(const NS::Vector3& position,
-                                 const NS::Vector3& velocity,
+        void JoltCharacter::Step(const Vector3& position,
+                                 const Vector3& velocity,
                                  float dt,
                                  float maxStepHeight)
         {
@@ -196,12 +196,12 @@ namespace NS
             m_character->SetLinearVelocity(correctedVelocity);
         }
 
-        NS::Vector3 JoltCharacter::Position() const
+        Vector3 JoltCharacter::Position() const
         {
             return FromJolt(m_character->GetPosition());
         }
 
-        NS::Vector3 JoltCharacter::Velocity() const
+        Vector3 JoltCharacter::Velocity() const
         {
             return FromJolt(m_character->GetLinearVelocity());
         }

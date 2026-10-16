@@ -50,17 +50,17 @@ namespace NS
         return value->get<int>();
     }
 
-    NS::uint32 FieldUnsigned(const nlohmann::json& entry, std::string_view name, NS::uint32 fallback) noexcept
+    uint32 FieldUnsigned(const nlohmann::json& entry, std::string_view name, uint32 fallback) noexcept
     {
         const nlohmann::json* value = FindFieldValue(entry, name);
         if (value == nullptr || !value->is_number_unsigned())
         {
             return fallback;
         }
-        return value->get<NS::uint32>();
+        return value->get<uint32>();
     }
 
-    bool ReadVector3(const nlohmann::json& value, NS::Vector3& out) noexcept
+    bool ReadVector3(const nlohmann::json& value, Vector3& out) noexcept
     {
         if (!value.is_array() || value.size() != 3u)
         {
@@ -70,11 +70,11 @@ namespace NS
         {
             return false;
         }
-        out = NS::Vector3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
+        out = Vector3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
         return true;
     }
 
-    bool ReadQuaternion(const nlohmann::json& value, NS::Quaternion& out) noexcept
+    bool ReadQuaternion(const nlohmann::json& value, Quaternion& out) noexcept
     {
         if (!value.is_array() || value.size() != 4u)
         {
@@ -85,14 +85,14 @@ namespace NS
             return false;
         }
         out =
-            NS::Quaternion{value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()};
+            Quaternion{value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()};
         return true;
     }
 
-    NS::Vector3 FieldVector3(const nlohmann::json& entry, std::string_view name, const NS::Vector3& fallback) noexcept
+    Vector3 FieldVector3(const nlohmann::json& entry, std::string_view name, const Vector3& fallback) noexcept
     {
         const nlohmann::json* value = FindFieldValue(entry, name);
-        NS::Vector3 out = fallback;
+        Vector3 out = fallback;
         if (value != nullptr)
         {
             (void)ReadVector3(*value, out);
@@ -100,12 +100,12 @@ namespace NS
         return out;
     }
 
-    NS::Quaternion FieldQuaternion(const nlohmann::json& entry,
+    Quaternion FieldQuaternion(const nlohmann::json& entry,
                                    std::string_view name,
-                                   const NS::Quaternion& fallback) noexcept
+                                   const Quaternion& fallback) noexcept
     {
         const nlohmann::json* value = FindFieldValue(entry, name);
-        NS::Quaternion out = fallback;
+        Quaternion out = fallback;
         if (value != nullptr)
         {
             (void)ReadQuaternion(*value, out);
@@ -135,7 +135,7 @@ namespace NS
         {
             return ActorRef{};
         }
-        return ActorRef{refIt->get<NS::uint32>()};
+        return ActorRef{refIt->get<uint32>()};
     }
 
     bool HasField(const nlohmann::json& entry, std::string_view name) noexcept
@@ -158,12 +158,12 @@ namespace NS
         EnsureObject(entry)[std::string(name)] = value;
     }
 
-    void SetField(nlohmann::json& entry, std::string_view name, const NS::Vector3& value)
+    void SetField(nlohmann::json& entry, std::string_view name, const Vector3& value)
     {
         EnsureObject(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z};
     }
 
-    void SetField(nlohmann::json& entry, std::string_view name, const NS::Quaternion& value)
+    void SetField(nlohmann::json& entry, std::string_view name, const Quaternion& value)
     {
         EnsureObject(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z, value.w};
     }

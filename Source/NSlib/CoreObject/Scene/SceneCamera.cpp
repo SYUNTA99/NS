@@ -6,30 +6,30 @@
 
 namespace NS
 {
-    void SceneCamera::SetPosition(const NS::Vector3& position) noexcept
+    void SceneCamera::SetPosition(const Vector3& position) noexcept
     {
         m_camera.SetPosition(position);
     }
 
-    void SceneCamera::SetTarget(const NS::Vector3& target) noexcept
+    void SceneCamera::SetTarget(const Vector3& target) noexcept
     {
         m_camera.SetTarget(target);
     }
 
-    void SceneCamera::SetUp(const NS::Vector3& up) noexcept
+    void SceneCamera::SetUp(const Vector3& up) noexcept
     {
         m_camera.SetUp(up);
     }
 
-    void SceneCamera::SetAspectRatioFromRenderer(const NS::Gfx::Renderer& renderer) noexcept
+    void SceneCamera::SetAspectRatioFromRenderer(const Gfx::Renderer& renderer) noexcept
     {
-        const NS::Size2D size = renderer.Size();
+        const Size2D size = renderer.Size();
         if (size.width <= 0 || size.height <= 0)
         {
             m_camera.SetAspectRatio(16.0f / 9.0f);
             return;
         }
-        m_camera.SetAspectRatio(NS::AspectRatio(size));
+        m_camera.SetAspectRatio(AspectRatio(size));
     }
 
     void SceneCamera::ApplyPose(const CameraPose& pose) noexcept

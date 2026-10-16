@@ -23,13 +23,13 @@ namespace NS
         MeshCollision() noexcept = default;
 
         //! 所有しない当たりを差し替える。この SubObject より長く生きる物を渡す。未指定なら当たりなし
-        void SetShape(const NS::Phys::MeshShape* shape) noexcept;
+        void SetShape(const Phys::MeshShape* shape) noexcept;
         //! 借りている当たり。なければ空
-        [[nodiscard]] const NS::Phys::MeshShape* Shape() const noexcept;
+        [[nodiscard]] const Phys::MeshShape* Shape() const noexcept;
 
         //! 持ち主の世界変換を各頂点に掛け、世界座標の三角形群を返す。持ち主が未登録なら資産の座標のまま
         //! 当たりが無ければ空
-        [[nodiscard]] std::vector<NS::Phys::Triangle> WorldTriangles() const;
+        [[nodiscard]] std::vector<Phys::Triangle> WorldTriangles() const;
 
         //! Model の参照から形状を借りる。解決失敗は cube、Model がなければ衝突なし
         void ResolveAssets(AssetManager& assets) override;
@@ -40,8 +40,8 @@ namespace NS
     private:
         // 資産の形を自分の位置・回転・拡縮で body 1 個として置く。当たりが無ければ何も入れない
         // 歪みのある変換だけは、WorldTriangles の三角形から自分専用の形を作る
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current) override;
 
-        const NS::Phys::MeshShape* m_shape = nullptr; // 非所有。普段は AssetManager の持ち物
+        const Phys::MeshShape* m_shape = nullptr; // 非所有。普段は AssetManager の持ち物
     };
 } // namespace NS

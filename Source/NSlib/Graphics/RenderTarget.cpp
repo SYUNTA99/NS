@@ -7,19 +7,19 @@ namespace NS
 {
     namespace Gfx
     {
-        std::unique_ptr<RenderTarget> RenderTarget::Create(::NS::Size2D size)
+        std::unique_ptr<RenderTarget> RenderTarget::Create(Size2D size)
         {
             return std::unique_ptr<RenderTarget>(new RenderTarget(size));
         }
 
-        RenderTarget::RenderTarget(::NS::Size2D size)
+        RenderTarget::RenderTarget(Size2D size)
         {
             Build(size);
         }
 
         RenderTarget::~RenderTarget() = default;
 
-        void RenderTarget::Build(::NS::Size2D size) noexcept
+        void RenderTarget::Build(Size2D size) noexcept
         {
             if (size.width <= 0 || size.height <= 0)
             {
@@ -63,16 +63,16 @@ namespace NS
             return m_color != nullptr && m_depth != nullptr;
         }
 
-        ::NS::Size2D RenderTarget::Size() const noexcept
+        Size2D RenderTarget::Size() const noexcept
         {
             if (!m_color)
             {
-                return ::NS::Size2D{0, 0};
+                return Size2D{0, 0};
             }
             return m_color->Size();
         }
 
-        void RenderTarget::Resize(::NS::Size2D size) noexcept
+        void RenderTarget::Resize(Size2D size) noexcept
         {
             if (size.width <= 0 || size.height <= 0)
             {

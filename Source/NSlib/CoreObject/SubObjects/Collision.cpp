@@ -20,11 +20,11 @@ namespace
 
 namespace NS
 {
-    NS::Matrix Collision::ShapeWorldMatrix(const NS::Quaternion& localRotation,
-                                           const NS::Vector3& centerOffset) const noexcept
+    Matrix Collision::ShapeWorldMatrix(const Quaternion& localRotation,
+                                           const Vector3& centerOffset) const noexcept
     {
-        const NS::Matrix local =
-            NS::Matrix::CreateFromQuaternion(localRotation) * NS::Matrix::CreateTranslation(centerOffset);
+        const Matrix local =
+            Matrix::CreateFromQuaternion(localRotation) * Matrix::CreateTranslation(centerOffset);
         const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
@@ -35,7 +35,7 @@ namespace NS
 
     void Collision::SyncToPhysics()
     {
-        NS::Phys::PhysicsScene* physics = OwnerPhysics(Owner());
+        Phys::PhysicsScene* physics = OwnerPhysics(Owner());
         if (physics == nullptr)
         {
             return;
@@ -52,7 +52,7 @@ namespace NS
 
     void Collision::RemoveFromPhysics()
     {
-        NS::Phys::PhysicsScene* physics = OwnerPhysics(Owner());
+        Phys::PhysicsScene* physics = OwnerPhysics(Owner());
         if (physics == nullptr)
         {
             return;

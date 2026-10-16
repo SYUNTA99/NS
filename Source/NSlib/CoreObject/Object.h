@@ -8,7 +8,7 @@
 namespace NS
 {
     //! @brief 型情報とリフレクションを持つ全ての基底。実行時型情報を切っているので IsA / Cast もここで持つ
-    class Object : public NS::NonCopyable
+    class Object : public NonCopyable
     {
     public:
         Object() noexcept = default;

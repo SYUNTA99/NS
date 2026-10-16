@@ -24,7 +24,7 @@ namespace NS
 
         //! ファイル名からステージを判定して実行時にコンパイルするシェーダ
         //! 頂点・ピクセルシェーダの読込失敗はピンクの代替表示で示す
-        class Shader : public NS::NonCopyable
+        class Shader : public NonCopyable
         {
         public:
             //! HLSLファイルからシェーダを生成する

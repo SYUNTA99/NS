@@ -12,10 +12,10 @@ namespace NS
     namespace Editor
     {
         //! @brief レベルファイルを保存・読込するモーダル UI
-        class LevelFileBrowser : public NS::NonCopyable
+        class LevelFileBrowser : public NonCopyable
         {
         public:
-            enum class Action : NS::uint8
+            enum class Action : uint8
             {
                 None,
                 RequestSave,

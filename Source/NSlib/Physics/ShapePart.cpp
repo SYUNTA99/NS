@@ -11,7 +11,7 @@ namespace NS
 {
     namespace Phys
     {
-        ShapePart MakeBoxPart(const NS::OBB& box)
+        ShapePart MakeBoxPart(const OBB& box)
         {
             // collision は PhysicsScene より先に形を作ることがある。形の確保は allocator の登録が済んでいないと落ちる
             detail::InitJoltRuntime();
@@ -25,11 +25,11 @@ namespace NS
             return ShapePart{ShapeOrNull(settings.Create()), box.center, FromJolt(axes.GetQuaternion())};
         }
 
-        ShapePart MakeSpherePart(const NS::Sphere& sphere)
+        ShapePart MakeSpherePart(const Sphere& sphere)
         {
             detail::InitJoltRuntime();
             const JPH::SphereShapeSettings settings{sphere.radius};
-            return ShapePart{ShapeOrNull(settings.Create()), sphere.center, NS::Quaternion::Identity};
+            return ShapePart{ShapeOrNull(settings.Create()), sphere.center, Quaternion::Identity};
         }
 
         ShapePart MakeCapsulePart(const Capsule& capsule)

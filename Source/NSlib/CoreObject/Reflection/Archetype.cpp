@@ -83,8 +83,8 @@ namespace NS
     {
         if (m_directory.empty())
         {
-            m_directory = NS::OS::FileSystem::Combine(
-                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Archetypes");
+            m_directory = OS::FileSystem::Combine(
+                OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"), "Archetypes");
         }
         return m_directory;
     }
@@ -110,14 +110,14 @@ namespace NS
         m_loaded = true;
 
         const std::string& directory = Directory();
-        if (!NS::OS::FileSystem::IsDirectory(directory))
+        if (!OS::FileSystem::IsDirectory(directory))
         {
             // 種類の既定値が 1 つも無いプロジェクトもある。全てコードの既定値で組む
             return;
         }
-        for (const std::string& path : NS::OS::FileSystem::ListFiles(directory, ".json"))
+        for (const std::string& path : OS::FileSystem::ListFiles(directory, ".json"))
         {
-            const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(path);
+            const std::optional<std::string> text = OS::FileSystem::ReadAllText(path);
             if (!text.has_value())
             {
                 continue;
@@ -135,7 +135,7 @@ namespace NS
                 continue;
             }
             // クラス名はファイル名が正。中の class と食い違えばファイル名を使う
-            const std::string className = NS::OS::FileSystem::Stem(path);
+            const std::string className = OS::FileSystem::Stem(path);
             const std::string_view written = ObjectJsonClass(root);
             if (!written.empty() && written != className)
             {
@@ -191,9 +191,9 @@ namespace NS
         }
         // シーンのファイルと同じく辞書順のキーで書く。同じ中身の 2 回の保存はバイト一致になる
         const std::string text = archetype->dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
-        const std::string path = NS::OS::FileSystem::Combine(Directory(), std::string{className} + ".json");
+        const std::string path = OS::FileSystem::Combine(Directory(), std::string{className} + ".json");
         const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
-        if (!NS::OS::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size())))
+        if (!OS::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size())))
         {
             NS_LOG_ERROR(Scene, "種類の既定値 {} を書けない", path);
             return false;
@@ -233,7 +233,7 @@ namespace NS
         nlohmann::json full = object;
         nlohmann::json& target = ObjectJsonSubObjs(full);
         target = nlohmann::json::object();
-        ForEachReflectedSubObj(baseline, [&](const NS::SubObjectDesc& field, const SubObject* subObject) {
+        ForEachReflectedSubObj(baseline, [&](const SubObjectDesc& field, const SubObject* subObject) {
             nlohmann::json fields = SerializeSubObjectFields(*subObject);
             if (const nlohmann::json* source = SubObjFields(object, field.key))
             {

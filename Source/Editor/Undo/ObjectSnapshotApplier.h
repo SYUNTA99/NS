@@ -18,16 +18,16 @@ namespace NS
         class ObjectSnapshotApplier final : public IObjectSnapshotApplier
         {
         public:
-            explicit ObjectSnapshotApplier(NS::Scene* scene) noexcept : m_scene(scene) {}
+            explicit ObjectSnapshotApplier(Scene* scene) noexcept : m_scene(scene) {}
 
             //! objectId の現在の姿を写す。居なければ nullopt。シーン未設定も nullopt
-            [[nodiscard]] std::optional<nlohmann::json> CaptureObject(NS::uint32 objectId) const override;
+            [[nodiscard]] std::optional<nlohmann::json> CaptureObject(uint32 objectId) const override;
 
             //! objectId を desired の姿へ揃える。シーン未設定なら何もしない
-            void ApplyObjectSnapshot(NS::uint32 objectId, const std::optional<nlohmann::json>& desired) override;
+            void ApplyObjectSnapshot(uint32 objectId, const std::optional<nlohmann::json>& desired) override;
 
         private:
-            NS::Scene* m_scene = nullptr; // 編集対象のシーン、非所有
+            Scene* m_scene = nullptr; // 編集対象のシーン、非所有
         };
     } // namespace Editor
 } // namespace NS

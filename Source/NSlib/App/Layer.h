@@ -10,7 +10,7 @@ namespace NS
 {
 
     //! メインループが更新と描画を呼ぶ層。実行中の追加・削除は禁止
-    class Layer : public NS::NonCopyable
+    class Layer : public NonCopyable
     {
     public:
         explicit Layer(std::string name = "Layer") noexcept : m_name(std::move(name)) {}

@@ -40,12 +40,12 @@ namespace NS
 
         //! ウィンドウに対応する D3D11 の描画基盤。構築失敗は IsValid で確認する
         //! @warning 静的変数として保持せず、GPU 資源より後に破棄する
-        class Renderer : public NS::NonCopyable
+        class Renderer : public NonCopyable
         {
         public:
             //! @brief 描画システムを構築する
             //! @param[in,out] window 紐づける対象のウィンドウ
-            Renderer(const RendererDesc& desc, ::NS::OS::Window& window) noexcept;
+            Renderer(const RendererDesc& desc, OS::Window& window) noexcept;
             ~Renderer();
 
             //! 描画できる状態か。構築失敗のほか、Present で device 喪失を検知した後も false になる
@@ -66,11 +66,11 @@ namespace NS
             //! @brief ウィンドウのサイズ変更に合わせて描画領域を再構築する
             //! @param[in] size 新しい描画領域のサイズ
             //! @note 指定された幅や高さが0以下の場合は、ウィンドウの最小化として扱われ何も行わない
-            void Resize(NS::Size2D size) noexcept;
+            void Resize(Size2D size) noexcept;
 
             //! @brief 現在のシーン描画先サイズを取得する
             //! @details SetSceneTarget 設定中はその描画先、未設定時は backbuffer のサイズを返す
-            [[nodiscard]] NS::Size2D Size() const noexcept;
+            [[nodiscard]] Size2D Size() const noexcept;
 
             //! @brief シーンの描画先をオフスクリーンへ切り替える
             //! @param[in,out] target 非所有の描画先。空の参照でウィンドウの描画先へ戻す
@@ -93,7 +93,7 @@ namespace NS
 
             //! バックバッファを左上から行順の BGRA と画素サイズへ読み出す
             //! 失敗時は出力を変更せず false。無効な描画基盤や変換できない形式では読まない
-            [[nodiscard]] bool ReadBackbufferPixels(std::vector<NS::uint8>& outBgra, NS::Size2D& outSize) noexcept;
+            [[nodiscard]] bool ReadBackbufferPixels(std::vector<uint8>& outBgra, Size2D& outSize) noexcept;
 
             //! よく使われる共通の描画ステート
             [[nodiscard]] CommonStates& States() noexcept;
@@ -114,14 +114,14 @@ namespace NS
             [[nodiscard]] const Pipeline& OccludedPipeline(bool twoSided = false) const noexcept;
 
             //! 全画面に指定色を半透明合成する。最前面に出す場合は最後に呼ぶ
-            void DrawFullscreenColor(const NS::Color& color) noexcept;
+            void DrawFullscreenColor(const Color& color) noexcept;
 
             //! 左上原点の画素座標で矩形を半透明合成する。最前面に出す場合は最後に呼ぶ
-            void DrawScreenRect(float x, float y, float width, float height, const NS::Color& color) noexcept;
+            void DrawScreenRect(float x, float y, float width, float height, const Color& color) noexcept;
 
             //! 不透明の後、半透明の前に空を描く。ContentRoot 内の .dds またはキューブマップのディレクトリを使う
             //! 空パスでは描かない。画像読込失敗は前の画像を保って再試行し、GPU 資源の生成失敗は再試行しない
-            void DrawSky(const NS::CameraData& camera, std::string_view cubemapPath) noexcept;
+            void DrawSky(const CameraData& camera, std::string_view cubemapPath) noexcept;
 
         private:
             // 頂点を持たず SV_VertexID から形を作り、最前面へ半透明で重ねる描画の資源
@@ -146,11 +146,11 @@ namespace NS
             void DrawOverlay(const OverlayResources& overlay,
                              const void* constants,
                              std::size_t constantBytes,
-                             NS::uint vertexCount,
+                             uint vertexCount,
                              bool vsReadsConstants) noexcept;
 
             // 描画先とビューポートを差す
-            void BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, NS::Size2D size) noexcept;
+            void BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, Size2D size) noexcept;
 
             // 空を描く Skybox を初回だけ構築する
             void EnsureSkyboxResources() noexcept;
@@ -174,7 +174,7 @@ namespace NS
                 m_loadedSkyboxPath;     // 前回判定した cubemap のパス。読めた物と拒否した物が入り、差分の時だけ読み直す
             bool m_skyboxTried = false; // 構築を試みたか
             RenderTarget* m_sceneTarget = nullptr; //!< 非所有のシーン描画先。未指定ならウィンドウへ描く
-            ::NS::OS::Window* m_window = nullptr;
+            OS::Window* m_window = nullptr;
             RenderSettings m_settings{};
             bool m_vsync = true;
             bool m_valid = false;

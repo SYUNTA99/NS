@@ -14,7 +14,7 @@ namespace NS
         static constexpr std::size_t k_MaxKeys = 8; // 保持できる点の上限
 
         //! 点ごとの補間モード。番号は保存する点のモード番号にそのまま書くので並びを変えない
-        enum class InterpMode : NS::uint8
+        enum class InterpMode : uint8
         {
             Linear = 0,
             AutoSmooth = 1,
@@ -35,7 +35,7 @@ namespace NS
         };
 
         Key keys[k_MaxKeys]{}; // 点の並び。有効なのは先頭 count 個
-        NS::uint32 count = 0;  // 有効な点の数
+        uint32 count = 0;  // 有効な点の数
 
         //! 空なら 0、範囲外は端点、区間内は両端のモードで補間する。同じ x の区間は後の点を使う
         [[nodiscard]] float Evaluate(float x) const noexcept;
@@ -45,10 +45,10 @@ namespace NS
 
         //! i 番目と i + 1 番目の点の間を x でエルミート補間した y を返す。width は区間の x の幅
         //! 事前条件: i + 1 < count と width > 0。守らないと配列の外を読み 0 除算する
-        [[nodiscard]] float EvaluateHermite(NS::uint32 i, float x, float width) const noexcept;
+        [[nodiscard]] float EvaluateHermite(uint32 i, float x, float width) const noexcept;
 
         //! AutoSmooth の点の接線 dy/dx を返す。隣り合う点の y の間から飛び出さない傾きへ抑える
-        [[nodiscard]] float AutoTangentAt(NS::uint32 i) const noexcept;
+        [[nodiscard]] float AutoTangentAt(uint32 i) const noexcept;
 
         [[nodiscard]] constexpr bool operator==(const Curve&) const noexcept = default;
     };
@@ -65,12 +65,12 @@ namespace NS
         {
             return keys[0].y;
         }
-        const NS::uint32 last = count - 1;
+        const uint32 last = count - 1;
         if (x >= keys[last].x)
         {
             return keys[last].y;
         }
-        for (NS::uint32 i = 0; i < last; ++i)
+        for (uint32 i = 0; i < last; ++i)
         {
             if (x <= keys[i + 1].x)
             {
@@ -85,7 +85,7 @@ namespace NS
                 if (keys[i].mode == InterpMode::Linear && keys[i + 1].mode == InterpMode::Linear)
                 {
                     const float t = (x - keys[i].x) / width;
-                    return NS::Lerp(keys[i].y, keys[i + 1].y, t);
+                    return Lerp(keys[i].y, keys[i + 1].y, t);
                 }
                 return EvaluateHermite(i, x, width);
             }
@@ -93,7 +93,7 @@ namespace NS
         return keys[last].y;
     }
 
-    inline float Curve::EvaluateHermite(NS::uint32 i, float x, float width) const noexcept
+    inline float Curve::EvaluateHermite(uint32 i, float x, float width) const noexcept
     {
         const float slope = (keys[i + 1].y - keys[i].y) / width;
         float tangentOut = slope;
@@ -134,7 +134,7 @@ namespace NS
                weightIn * width * tangentIn;
     }
 
-    inline float Curve::AutoTangentAt(NS::uint32 i) const noexcept
+    inline float Curve::AutoTangentAt(uint32 i) const noexcept
     {
         // 幅 0 の隣は傾きを作れないので隣が無い扱いにする
         bool hasPrev = false;
@@ -185,16 +185,16 @@ namespace NS
         {
             limit = 3.0f * magnitudeNext;
         }
-        return NS::Clamp((slopePrev + slopeNext) * 0.5f, -limit, limit);
+        return Clamp((slopePrev + slopeNext) * 0.5f, -limit, limit);
     }
 
     inline void Curve::SortKeys() noexcept
     {
         // 最大 8 個なので挿入で足りる。同じ x は元の並びを保つ
-        for (NS::uint32 i = 1; i < count; ++i)
+        for (uint32 i = 1; i < count; ++i)
         {
             const Key inserted = keys[i];
-            NS::uint32 j = i;
+            uint32 j = i;
             while (j > 0 && inserted.x < keys[j - 1].x)
             {
                 keys[j] = keys[j - 1];

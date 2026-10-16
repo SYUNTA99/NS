@@ -30,8 +30,8 @@ namespace NS
         namespace
         {
             // 置いたばかりの配置物の姿。ここから動かした欄だけ印を出す
-            const NS::Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
-            const NS::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
+            const Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
+            const Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
         } // namespace
 #endif
@@ -43,11 +43,11 @@ namespace NS
             if (ImGui::Begin(k_PanelInspector))
             {
                 // ActorRef の欄の参照先候補。個体一覧と同じ並びと表示名で全配置物を出す
-                std::vector<NS::Editor::ObjectRefOption> refOptions;
+                std::vector<Editor::ObjectRefOption> refOptions;
                 refOptions.reserve(editor.Objects().ObjectCount());
                 for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
                 {
-                    NS::SceneActor& candidate = *editor.Objects().ObjectAt(i);
+                    SceneActor& candidate = *editor.Objects().ObjectAt(i);
                     if (candidate.IsTransient())
                     {
                         continue;
@@ -57,9 +57,9 @@ namespace NS
                                   sizeof(label),
                                   "[%zu] %s (id %u)",
                                   i,
-                                  NS::Editor::ObjectDisplayName(candidate),
+                                  Editor::ObjectDisplayName(candidate),
                                   candidate.Id());
-                    refOptions.push_back(NS::Editor::ObjectRefOption{candidate.Id(), label});
+                    refOptions.push_back(Editor::ObjectRefOption{candidate.Id(), label});
                 }
 
                 if (!editor.HasInspectableSelection())
@@ -70,15 +70,15 @@ namespace NS
                 }
 
                 // 直前の HasInspectableSelection で同じ識別番号の対象を確認済み
-                NS::SceneActor* go = editor.SelectedObjectActor();
+                SceneActor* go = editor.SelectedObjectActor();
 
                 // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
-                const NS::uint32 selectedId = editor.SelectedObjectId();
+                const uint32 selectedId = editor.SelectedObjectId();
                 // 打っている間は入れ直さない。打った名前は打ち始めた対象へ確定する
                 if (m_nameEditId == 0 && m_nameId != selectedId)
                 {
                     m_nameId = selectedId;
-                    std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", NS::Editor::ObjectDisplayName(*go));
+                    std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", Editor::ObjectDisplayName(*go));
                 }
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputText("##objectName", m_nameBuffer, sizeof(m_nameBuffer));
@@ -101,7 +101,7 @@ namespace NS
                 // Transform は runtime が唯一の出所なので即反映し、commit が undo へ確定する
                 ImGui::SeparatorText("Transform");
 
-                if (NS::Editor::BeginFieldTable("##transform"))
+                if (Editor::BeginFieldTable("##transform"))
                 {
                     const auto transformRow = [&](const char* id,
                                                   const char* label,
@@ -111,7 +111,7 @@ namespace NS
                                                   const std::function<void()>& apply,
                                                   const std::function<void()>& revert) {
                         ImGui::PushID(id);
-                        NS::Editor::FieldRow(label);
+                        Editor::FieldRow(label);
                         if (ImGui::DragFloat3("##value", values, speed))
                         {
                             apply();
@@ -124,7 +124,7 @@ namespace NS
                         {
                             editor.CommitTransformEdit();
                         }
-                        if (NS::Editor::RevertButton(moved))
+                        if (Editor::RevertButton(moved))
                         {
                             editor.BeginTransformEdit();
                             revert();
@@ -133,7 +133,7 @@ namespace NS
                         ImGui::PopID();
                     };
 
-                    const NS::Vector3 posVec = go->Root().Position();
+                    const Vector3 posVec = go->Root().Position();
                     float pos[3] = {posVec.x, posVec.y, posVec.z};
                     transformRow(
                         "position",
@@ -141,27 +141,27 @@ namespace NS
                         pos,
                         0.05f,
                         posVec != k_DefaultPosition,
-                        [&] { editor.SetSelectedFreePosition(NS::Vector3{pos[0], pos[1], pos[2]}); },
+                        [&] { editor.SetSelectedFreePosition(Vector3{pos[0], pos[1], pos[2]}); },
                         [&] { editor.SetSelectedFreePosition(k_DefaultPosition); });
 
                     // 回転は内部のクォータニオンを度のオイラー角へ変換して編集し、入力をクォータニオンへ戻す
                     // 滑らかに回し続けるならギズモの回転ツールが向く。ここは角度の直接入力 / 微調整用
-                    const NS::Quaternion q = go->Root().Rotation();
-                    const NS::Vector3 euler = NS::QuaternionToEulerDegrees(q);
+                    const Quaternion q = go->Root().Rotation();
+                    const Vector3 euler = QuaternionToEulerDegrees(q);
                     float rot[3] = {euler.x, euler.y, euler.z};
                     transformRow(
                         "rotation",
                         "回転",
                         rot,
                         0.5f,
-                        q != NS::Quaternion::Identity,
+                        q != Quaternion::Identity,
                         [&] {
-                            const NS::Vector3 degrees{rot[0], rot[1], rot[2]};
-                            editor.SetSelectedFreeRotation(NS::EulerDegreesToQuaternion(degrees));
+                            const Vector3 degrees{rot[0], rot[1], rot[2]};
+                            editor.SetSelectedFreeRotation(EulerDegreesToQuaternion(degrees));
                         },
-                        [&] { editor.SetSelectedFreeRotation(NS::Quaternion::Identity); });
+                        [&] { editor.SetSelectedFreeRotation(Quaternion::Identity); });
 
-                    const NS::Vector3 sclVec = go->Root().Scale();
+                    const Vector3 sclVec = go->Root().Scale();
                     float scl[3] = {sclVec.x, sclVec.y, sclVec.z};
                     transformRow(
                         "scale",
@@ -169,10 +169,10 @@ namespace NS
                         scl,
                         0.05f,
                         sclVec != k_DefaultScale,
-                        [&] { editor.SetSelectedFreeScale(NS::Vector3{scl[0], scl[1], scl[2]}); },
+                        [&] { editor.SetSelectedFreeScale(Vector3{scl[0], scl[1], scl[2]}); },
                         [&] { editor.SetSelectedFreeScale(k_DefaultScale); });
 
-                    NS::Editor::EndFieldTable();
+                    Editor::EndFieldTable();
                 }
 
                 ImGui::Separator();
@@ -182,8 +182,8 @@ namespace NS
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputTextWithHint("##fieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
 
-                NS::Editor::SubObjectEditResult subObjectEdit{};
-                NS::ForEachReflectedSubObj(*go, [&](const NS::SubObjectDesc& field, NS::SubObject* live) {
+                Editor::SubObjectEditResult subObjectEdit{};
+                ForEachReflectedSubObj(*go, [&](const SubObjectDesc& field, SubObject* live) {
                     if (live->GetReflection() == nullptr)
                     {
                         return;
@@ -197,9 +197,9 @@ namespace NS
 
                     ImGui::PushID(field.key);
 
-                    ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_SubObjectHeaderColor);
-                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_SubObjectHeaderHoveredColor);
-                    ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_SubObjectHeaderActiveColor);
+                    ImGui::PushStyleColor(ImGuiCol_Header, Editor::k_SubObjectHeaderColor);
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, Editor::k_SubObjectHeaderHoveredColor);
+                    ImGui::PushStyleColor(ImGuiCol_HeaderActive, Editor::k_SubObjectHeaderActiveColor);
                     std::string header{field.key};
                     if (header != typeName)
                     {
@@ -214,9 +214,9 @@ namespace NS
                     if (open)
                     {
                         // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
-                        const NS::SubObject* baseline = m_defaults.Find(*live);
-                        const NS::Editor::SubObjectEditResult r =
-                            NS::Editor::DrawReflectedSubObject(*live, refOptions, baseline, m_fieldFilter);
+                        const SubObject* baseline = m_defaults.Find(*live);
+                        const Editor::SubObjectEditResult r =
+                            Editor::DrawReflectedSubObject(*live, refOptions, baseline, m_fieldFilter);
                         subObjectEdit.activated |= r.activated;
                         subObjectEdit.committed |= r.committed;
                         subObjectEdit.changed |= r.changed;
@@ -241,11 +241,11 @@ namespace NS
                 // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
                 if (subObjectEdit.revertTarget != nullptr && subObjectEdit.revertField != nullptr)
                 {
-                    const NS::SubObject* baseline = m_defaults.Find(*subObjectEdit.revertTarget);
+                    const SubObject* baseline = m_defaults.Find(*subObjectEdit.revertTarget);
                     if (baseline != nullptr)
                     {
                         editor.BeginSubObjectEdit();
-                        NS::Editor::RevertFieldToDefault(
+                        Editor::RevertFieldToDefault(
                             *subObjectEdit.revertTarget, *baseline, *subObjectEdit.revertField);
                         // 既定へ戻すのも手編集。プレイ中は凍結側へも写して残す
                         editor.MirrorPlayEditToBaseline(*subObjectEdit.revertTarget, subObjectEdit.revertField->name);

@@ -16,10 +16,10 @@ namespace NS
         //! @brief 描画オブジェクトを一意に識別するための登録ハンドル
         struct RenderHandle
         {
-            static constexpr NS::uint32 k_InvalidSlot = 0xffffffffu;
+            static constexpr uint32 k_InvalidSlot = 0xffffffffu;
 
-            NS::uint32 slot = k_InvalidSlot;
-            NS::uint32 generation = 0;
+            uint32 slot = k_InvalidSlot;
+            uint32 generation = 0;
 
             [[nodiscard]] bool IsValid() const noexcept { return slot != k_InvalidSlot; }
         };
@@ -28,10 +28,10 @@ namespace NS
         struct RenderProxyDesc
         {
             //! カリング判定に用いるワールド空間のAABB
-            NS::AABB bounds{};
+            AABB bounds{};
 
             //! 深度ソート用の中心座標
-            NS::Vector3 sortCenter{};
+            Vector3 sortCenter{};
 
             //! ソート優先度。半透明の並べ替えで距離が同じときだけ効き、小さい方から先に描く
             int sortPriority = 0;
@@ -58,8 +58,8 @@ namespace NS
 
             //! @brief 登録済みの境界とソート情報を差し替える
             void Update(RenderHandle handle,
-                        const NS::AABB& bounds,
-                        const NS::Vector3& sortCenter,
+                        const AABB& bounds,
+                        const Vector3& sortCenter,
                         int sortPriority,
                         bool transparent) noexcept;
 
@@ -75,15 +75,15 @@ namespace NS
             struct Proxy
             {
                 RenderProxyDesc desc{};
-                NS::uint32 generation = 0;
+                uint32 generation = 0;
                 bool alive = false;
             };
 
             [[nodiscard]] bool IsLive(RenderHandle handle) const noexcept;
 
             std::vector<Proxy> m_proxies;
-            std::vector<NS::uint32> m_freeSlots;
-            std::vector<NS::uint32> m_visibleScratch;
+            std::vector<uint32> m_freeSlots;
+            std::vector<uint32> m_visibleScratch;
             std::vector<DrawItem> m_drawScratch;
         };
     } // namespace Gfx

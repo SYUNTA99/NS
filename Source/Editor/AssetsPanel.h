@@ -11,7 +11,7 @@ namespace NS
     namespace Editor
     {
         //! @brief Assets ツリーを出し、.mat の適用と .gltf / .glb のドラッグ配置を仲介するパネル
-        class AssetsPanel : public NS::NonCopyable
+        class AssetsPanel : public NonCopyable
         {
         public:
             void Render(LevelEditorController& editor) noexcept;

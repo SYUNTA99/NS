@@ -22,13 +22,13 @@ namespace NS
             }};
         } // namespace
 
-        NS::Color HitZoneColor(GL::Level::HitTier tier) noexcept
+        Color HitZoneColor(GL::Level::HitTier tier) noexcept
         {
             for (const HitZoneColorRow& row : k_HitZoneColors)
             {
                 if (row.tier == tier)
                 {
-                    return NS::Color{row.red, row.green, row.blue, 1.0f};
+                    return Color{row.red, row.green, row.blue, 1.0f};
                 }
             }
             // 番号から作った段や欠番が来ても赤に見せない
@@ -37,7 +37,7 @@ namespace NS
                 return HitZoneColor(GL::Level::HitTier::Wide);
             }
             // 外れの行まで消した表。どの段とも見分けられる白
-            return NS::Color{1.0f, 1.0f, 1.0f, 1.0f};
+            return Color{1.0f, 1.0f, 1.0f, 1.0f};
         }
     } // namespace Editor
 } // namespace NS

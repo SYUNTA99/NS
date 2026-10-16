@@ -41,15 +41,15 @@ namespace NS
             // 1 回目の置き直しで、玉の表面から面までに空ける距離 (m)。2 回目からは 1 歩の長さを測って決め直す
             constexpr float k_FirstLeadDistance = 2.0f;
 
-            [[nodiscard]] nlohmann::ordered_json Vec3Json(const NS::Vector3& v)
+            [[nodiscard]] nlohmann::ordered_json Vec3Json(const Vector3& v)
             {
                 return nlohmann::ordered_json{v.x, v.y, v.z};
             }
 
             // 写しから場面を組む。描かない下見では資産と描き手は空
-            std::unique_ptr<NS::Scene> MakeScene(const nlohmann::json& scene, const HitPreviewWorld& world)
+            std::unique_ptr<Scene> MakeScene(const nlohmann::json& scene, const HitPreviewWorld& world)
             {
-                std::unique_ptr<NS::Scene> made = std::make_unique<NS::Scene>();
+                std::unique_ptr<Scene> made = std::make_unique<Scene>();
                 made->SetAssets(world.assets);
                 made->SetRenderer(world.renderer);
                 made->ResetFromJson(scene);
@@ -57,34 +57,34 @@ namespace NS
             }
 
             // 写しの自機の根を rootPosition へ置き直した文書。自機が居なければ写しのまま
-            nlohmann::json PlacePlayer(const nlohmann::json& snapshot, const NS::Vector3& rootPosition)
+            nlohmann::json PlacePlayer(const nlohmann::json& snapshot, const Vector3& rootPosition)
             {
                 nlohmann::json placed = snapshot;
                 const std::size_t index = FindPlayerObjectIndex(placed);
-                if (index != NS::k_NoObjectIndex)
+                if (index != k_NoObjectIndex)
                 {
-                    NS::SetObjectPosition(NS::SceneJsonObjects(placed)[index], rootPosition);
+                    SetObjectPosition(SceneJsonObjects(placed)[index], rootPosition);
                 }
                 return placed;
             }
 
             // 置き直した自機の入力を止めて突進を頼んだ場面。自機が居なければ outPlayer は nullptr
-            std::unique_ptr<NS::Scene> StartRun(const nlohmann::json& snapshot,
+            std::unique_ptr<Scene> StartRun(const nlohmann::json& snapshot,
                                                 const HitPreviewResult& placement,
                                                 const HitPreviewWorld& world,
                                                 PlayerActor*& outPlayer)
             {
-                std::unique_ptr<NS::Scene> scene = MakeScene(PlacePlayer(snapshot, placement.playerStart), world);
+                std::unique_ptr<Scene> scene = MakeScene(PlacePlayer(snapshot, placement.playerStart), world);
                 outPlayer = FindPlayer(scene->Objects());
                 if (outPlayer != nullptr)
                 {
                     // 追従カメラは置いた時の向きのままだと、突進の横や前から映る。ゲームでは狙う向きの後ろから見ているので、
                     // 自機の後ろ上へ置き直す。当たりの動きはカメラを読まないので、記録は変わらない
-                    const NS::Vector3 behind = placement.playerStart - placement.direction * k_CameraBehindDistance +
-                                               NS::Vector3{0.0f, k_CameraHeight, 0.0f};
-                    for (NS::SceneActor* object : scene->Objects())
+                    const Vector3 behind = placement.playerStart - placement.direction * k_CameraBehindDistance +
+                                               Vector3{0.0f, k_CameraHeight, 0.0f};
+                    for (SceneActor* object : scene->Objects())
                     {
-                        if (GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(object))
+                        if (GL::Level::FollowCameraActor* camera = Cast<GL::Level::FollowCameraActor>(object))
                         {
                             camera->Vcam().SetInitialPoseFromCameraPosition(behind);
                         }
@@ -105,10 +105,10 @@ namespace NS
                 result.detectionIndex = -1;
                 // 手元の機器を読まず、振動を手元のパッドへ送らない。組む前から入れる
                 // (配置物が組む時に機器を読んでも中立)
-                const NS::OS::ScopedNeutralInput neutral;
-                NS::OS::Gamepad& pad = NS::OS::Input::Get().Gamepad();
+                const OS::ScopedNeutralInput neutral;
+                OS::Gamepad& pad = OS::Input::Get().Gamepad();
                 PlayerActor* player = nullptr;
-                std::unique_ptr<NS::Scene> scene = StartRun(snapshot, result, world, player);
+                std::unique_ptr<Scene> scene = StartRun(snapshot, result, world, player);
                 if (player == nullptr)
                 {
                     result.error = "場面に自機が居ない";
@@ -132,15 +132,15 @@ namespace NS
                     frame.rebounding = player->IsRebounding();
                     frame.startedRows = player->Resolver().Answer().rowsStarted;
                     frame.worldSpeed = scene->WorldSpeed();
-                    if (const NS::CameraManager* cameras = scene->GetCameraManager())
+                    if (const CameraManager* cameras = scene->GetCameraManager())
                     {
                         frame.trauma = cameras->Trauma();
                         frame.shakeOffset = cameras->ShakeOffset();
-                        if (const NS::CameraSinkModifier* sink = cameras->FindModifier<NS::CameraSinkModifier>())
+                        if (const CameraSinkModifier* sink = cameras->FindModifier<CameraSinkModifier>())
                         {
                             frame.sinkPixels = sink->Pixels();
                         }
-                        if (const NS::CameraTraumaModifier* shake = cameras->FindModifier<NS::CameraTraumaModifier>())
+                        if (const CameraTraumaModifier* shake = cameras->FindModifier<CameraTraumaModifier>())
                         {
                             frame.shakeAngles = shake->Angles();
                         }
@@ -189,26 +189,26 @@ namespace NS
             }
 
             // 突進が当たる体と面を持つ配置物か。下見の相手になれる
-            bool IsHitTarget(NS::SceneActor& object)
+            bool IsHitTarget(SceneActor& object)
             {
-                const NS::HitSensor* bodySensor = object.BodySensorSubObj();
+                const HitSensor* bodySensor = object.BodySensorSubObj();
                 return bodySensor != nullptr && bodySensor->IsValid() &&
-                       NS::Cast<GL::Level::HitZones>(object.FindSubObj("HitZones")) != nullptr;
+                       Cast<GL::Level::HitZones>(object.FindSubObj("HitZones")) != nullptr;
             }
 
             // 自機の根に一番近い、下見の相手になれる配置物の id。居なければ 0
-            NS::uint32 FindNearestTarget(NS::Scene& scene, const PlayerActor& player)
+            uint32 FindNearestTarget(Scene& scene, const PlayerActor& player)
             {
-                const NS::Vector3 from = player.Root().Position();
-                NS::uint32 nearest = 0;
+                const Vector3 from = player.Root().Position();
+                uint32 nearest = 0;
                 float nearestDistance = 0.0f;
-                for (NS::SceneActor* object : scene.Objects())
+                for (SceneActor* object : scene.Objects())
                 {
                     if (object == &player || !object->IsAppeared() || !IsHitTarget(*object))
                     {
                         continue;
                     }
-                    const float distance = NS::Vector3::DistanceSquared(object->Root().Position(), from);
+                    const float distance = Vector3::DistanceSquared(object->Root().Position(), from);
                     if (nearest == 0 || distance < nearestDistance)
                     {
                         nearest = object->Id();
@@ -225,8 +225,8 @@ namespace NS
                 {
                     return 0.0f;
                 }
-                const NS::Vector3 first = result.frames.front().playerPosition;
-                const NS::Vector3 last =
+                const Vector3 first = result.frames.front().playerPosition;
+                const Vector3 last =
                     result.frames[static_cast<std::size_t>(result.detectionIndex - 1)].playerPosition;
                 const float dx = last.x - first.x;
                 const float dz = last.z - first.z;
@@ -241,9 +241,9 @@ namespace NS
             HitPreviewResult result;
             result.desc = desc;
             // 写しの場面を組む・進める・壊す間は、手元の機器を読まず振動を送らない
-            const NS::OS::ScopedNeutralInput neutral;
+            const OS::ScopedNeutralInput neutral;
             // 置き直しの前の自機と相手を、写しをそのまま組んだ場面から読む
-            std::unique_ptr<NS::Scene> original = MakeScene(snapshot, world);
+            std::unique_ptr<Scene> original = MakeScene(snapshot, world);
             PlayerActor* player = FindPlayer(original->Objects());
             if (player == nullptr)
             {
@@ -259,22 +259,22 @@ namespace NS
                     return result;
                 }
             }
-            NS::SceneActor* target = original->Objects().FindByObjectId(result.desc.targetId);
+            SceneActor* target = original->Objects().FindByObjectId(result.desc.targetId);
             if (target == nullptr)
             {
                 result.error = std::format("id {} の配置物が場面に無い", result.desc.targetId);
                 return result;
             }
-            const NS::HitSensor* bodySensor = target->BodySensorSubObj();
+            const HitSensor* bodySensor = target->BodySensorSubObj();
             if (bodySensor == nullptr || !bodySensor->IsValid())
             {
                 result.error = std::format("id {} の配置物に突進が当たる体が無い", result.desc.targetId);
                 return result;
             }
-            const NS::SensorVolume body = bodySensor->WorldVolume();
-            const NS::Vector3 root = player->Root().Position();
-            const NS::Sphere ball = player->SlamBallAt(root);
-            const NS::Vector3 ballOffset = ball.center - root;
+            const SensorVolume body = bodySensor->WorldVolume();
+            const Vector3 root = player->Root().Position();
+            const Sphere ball = player->SlamBallAt(root);
+            const Vector3 ballOffset = ball.center - root;
             // 向きはエディタが面を描く時と同じく、自機の玉から相手の体の中心へ
             GL::Level::HitFaceFrame face;
             if (!GL::Level::MakeHitFaceFrame(body, body.Center() - ball.center, ball.radius, face))
@@ -286,9 +286,9 @@ namespace NS
             result.direction = -face.normal;
 
             // 玉の中心が面の点から自機の半径だけ手前で触れるので、そこから突進の向きの逆へ空けて置く
-            const NS::Vector3 contactCenter =
+            const Vector3 contactCenter =
                 GL::Level::HitFacePoint(face, desc.faceU, desc.faceV) + face.normal * ball.radius;
-            NS::Vector3 ballStart = contactCenter + face.normal * k_FirstLeadDistance;
+            Vector3 ballStart = contactCenter + face.normal * k_FirstLeadDistance;
             // 選んだ位置に一番近く当てた回。床より下へ置き直して当たらなくなった時はこれを返す
             HitPreviewResult best;
             float bestMiss = 0.0f;
@@ -327,7 +327,7 @@ namespace NS
             return best;
         }
 
-        std::unique_ptr<NS::Scene> MakeHitPreviewScene(const nlohmann::json& snapshot,
+        std::unique_ptr<Scene> MakeHitPreviewScene(const nlohmann::json& snapshot,
                                                        const HitPreviewResult& result,
                                                        const HitPreviewWorld& world)
         {
@@ -335,7 +335,7 @@ namespace NS
             {
                 return nullptr;
             }
-            const NS::OS::ScopedNeutralInput neutral;
+            const OS::ScopedNeutralInput neutral;
             PlayerActor* player = nullptr;
             return StartRun(snapshot, result, world, player);
         }
@@ -349,7 +349,7 @@ namespace NS
             // 鍵と並びは当たりの記録 hits.jsonl の 1 行に合わせる
             using Json = nlohmann::ordered_json;
             const GL::Level::ImpactRecord& impact = result.impact;
-            const NS::Vector3& launch = impact.launchVelocity;
+            const Vector3& launch = impact.launchVelocity;
             Json root;
             root["f"] = result.detectionIndex;
             root["victim"] = impact.targetId;

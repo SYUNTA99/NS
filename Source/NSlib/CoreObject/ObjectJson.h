@@ -28,9 +28,9 @@ namespace NS
     [[nodiscard]] nlohmann::json MakeObjectJson();
 
     //! 配置物の永続 id。未採番と壊れた形は 0
-    [[nodiscard]] NS::uint32 ObjectJsonId(const nlohmann::json& object) noexcept;
+    [[nodiscard]] uint32 ObjectJsonId(const nlohmann::json& object) noexcept;
     //! 配置物の永続 id を書く
-    void SetObjectJsonId(nlohmann::json& object, NS::uint32 id);
+    void SetObjectJsonId(nlohmann::json& object, uint32 id);
 
     //! 生成する SceneActor のクラス名。空は素の SceneActor
     [[nodiscard]] std::string_view ObjectJsonClass(const nlohmann::json& object) noexcept;
@@ -76,17 +76,17 @@ namespace NS
 
     //! @brief object の参照の欄のうち、idMap に載った id を指す物を載った先の id へ付け替える
     //! @details 複製で使う。コピーした範囲の中を指す参照だけをコピー側へ向け、範囲の外を指す参照は元のまま残す
-    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<NS::uint32, NS::uint32>& idMap);
+    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<uint32, uint32>& idMap);
 
     //! 配置物の JSON の姿勢を読み書きする。
     //! 実体は subObjects 内の k_TransformSubObjName の欄
     //! Set は対象エントリが無ければ EnsureTransformSubObject で 1 つ作る
-    [[nodiscard]] NS::Vector3 ObjectPosition(const nlohmann::json& object) noexcept;
-    void SetObjectPosition(nlohmann::json& object, const NS::Vector3& position) noexcept;
-    [[nodiscard]] NS::Quaternion ObjectRotation(const nlohmann::json& object) noexcept;
-    void SetObjectRotation(nlohmann::json& object, const NS::Quaternion& rotation) noexcept;
-    [[nodiscard]] NS::Vector3 ObjectScale(const nlohmann::json& object) noexcept;
-    void SetObjectScale(nlohmann::json& object, const NS::Vector3& scale) noexcept;
+    [[nodiscard]] Vector3 ObjectPosition(const nlohmann::json& object) noexcept;
+    void SetObjectPosition(nlohmann::json& object, const Vector3& position) noexcept;
+    [[nodiscard]] Quaternion ObjectRotation(const nlohmann::json& object) noexcept;
+    void SetObjectRotation(nlohmann::json& object, const Quaternion& rotation) noexcept;
+    [[nodiscard]] Vector3 ObjectScale(const nlohmann::json& object) noexcept;
+    void SetObjectScale(nlohmann::json& object, const Vector3& scale) noexcept;
 
     //! object に Transform のエントリが無ければ既定値(位置0 / 回転なし / スケール1)で 1 つ足して返す
     //! 既にあればそれを返す。シーンの JSON を読む所で通し、全 object が Transform を必ず 1 つ持つようにする

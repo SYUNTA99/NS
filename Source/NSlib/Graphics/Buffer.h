@@ -23,7 +23,7 @@ namespace NS
         //! @brief 頂点 / インデックス / 定数を兼ねる単一 Buffer
         //! @details 役割は bindFlags で決まる。バインドと更新は CommandList 経由
         //! 定数用途は alignas(16) と手動 padding で 16 バイト境界を守ること
-        class Buffer : public NS::NonCopyable
+        class Buffer : public NonCopyable
         {
         public:
             [[nodiscard]] static std::unique_ptr<Buffer> Create(const BufferDesc& desc);

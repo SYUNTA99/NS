@@ -28,7 +28,7 @@ namespace NS
             }
         }
 
-        void Widget::Draw(NS::Gfx::Renderer& renderer, float parentAlpha, float scale)
+        void Widget::Draw(Gfx::Renderer& renderer, float parentAlpha, float scale)
         {
             if (!m_visible)
             {

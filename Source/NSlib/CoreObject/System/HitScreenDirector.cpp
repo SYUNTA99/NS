@@ -123,7 +123,7 @@ namespace NS
     void HitScreenDirector::WriteDistortionRing() noexcept
     {
         const float frame = static_cast<float>(m_ringElapsed);
-        m_scene.SetDistortionRing(NS::Gfx::DistortionRing{.center = m_ring.center,
+        m_scene.SetDistortionRing(Gfx::DistortionRing{.center = m_ring.center,
                                                           .radius = m_ring.radius.Evaluate(frame),
                                                           .push = m_ring.push.Evaluate(frame),
                                                           .halfWidth = m_ring.halfWidth});
@@ -139,7 +139,7 @@ namespace NS
         m_ringActive = false;
         m_ringJustStarted = false;
         m_ringRequester = nullptr;
-        m_scene.SetDistortionRing(NS::Gfx::DistortionRing{});
+        m_scene.SetDistortionRing(Gfx::DistortionRing{});
     }
 
     float HitScreenDirector::FlashAlpha() const noexcept
@@ -188,7 +188,7 @@ namespace NS
         }
     }
 
-    void HitScreenDirector::OnRenderOverlay(const NS::Gfx::RenderContext& context)
+    void HitScreenDirector::OnRenderOverlay(const Gfx::RenderContext& context)
     {
         if (context.renderer == nullptr)
         {
@@ -197,18 +197,18 @@ namespace NS
         const float alpha = FlashAlpha();
         if (alpha > 0.0f)
         {
-            context.renderer->DrawFullscreenColor(NS::Color{1.0f, 1.0f, 1.0f, alpha});
+            context.renderer->DrawFullscreenColor(Color{1.0f, 1.0f, 1.0f, alpha});
         }
         RenderShakeLines(context);
     }
 
-    void HitScreenDirector::RenderShakeLines(const NS::Gfx::RenderContext& context) const noexcept
+    void HitScreenDirector::RenderShakeLines(const Gfx::RenderContext& context) const noexcept
     {
         if (m_linesRemaining <= 0)
         {
             return;
         }
-        const NS::Size2D size = context.renderer->Size();
+        const Size2D size = context.renderer->Size();
         if (size.width <= 0 || size.height <= 0)
         {
             return;
@@ -220,22 +220,22 @@ namespace NS
         float right = std::numeric_limits<float>::lowest();
         float top = std::numeric_limits<float>::max();
         float bottom = std::numeric_limits<float>::lowest();
-        const std::array<std::pair<NS::Vector3, float>, 2> bodies{std::pair{m_lines.center, m_lines.radius},
+        const std::array<std::pair<Vector3, float>, 2> bodies{std::pair{m_lines.center, m_lines.radius},
                                                                   std::pair{m_lines.otherCenter, m_lines.otherRadius}};
-        for (const std::pair<NS::Vector3, float>& body : bodies)
+        for (const std::pair<Vector3, float>& body : bodies)
         {
             if (!(body.second > 0.0f))
             {
                 continue;
             }
-            NS::Vector2 centerPixel{};
+            Vector2 centerPixel{};
             float centerW = 0.0f;
-            if (!NS::Gfx::TryProjectToPixels(context.viewProjection, body.first, width, height, centerPixel, centerW))
+            if (!Gfx::TryProjectToPixels(context.viewProjection, body.first, width, height, centerPixel, centerW))
             {
                 return;
             }
             const float radiusPixels =
-                NS::Gfx::ProjectedLengthPixels(context.viewProjection, body.second, centerW, height);
+                Gfx::ProjectedLengthPixels(context.viewProjection, body.second, centerW, height);
             left = std::min(left, centerPixel.x - radiusPixels);
             right = std::max(right, centerPixel.x + radiusPixels);
             top = std::min(top, centerPixel.y - radiusPixels);
@@ -252,12 +252,12 @@ namespace NS
                                              rect.y - outline,
                                              rect.width + outline * 2.0f,
                                              rect.height + outline * 2.0f,
-                                             NS::Color{0.0f, 0.0f, 0.0f, 0.6f});
+                                             Color{0.0f, 0.0f, 0.0f, 0.6f});
         }
         for (const HitShakeLineRect& rect : rects)
         {
             context.renderer->DrawScreenRect(
-                rect.x, rect.y, rect.width, rect.height, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
+                rect.x, rect.y, rect.width, rect.height, Color{1.0f, 1.0f, 1.0f, 1.0f});
         }
     }
 } // namespace NS

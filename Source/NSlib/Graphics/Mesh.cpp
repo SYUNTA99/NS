@@ -75,7 +75,7 @@ namespace NS
                 {
                     NS_LOG_ERROR(Graphics,
                                  "Mesh::CreateInputLayout: CreateInputLayout 失敗 (hr=0x{:X}, elements={})",
-                                 static_cast<NS::uint>(hr),
+                                 static_cast<uint>(hr),
                                  elements.size());
                     return false;
                 }
@@ -89,7 +89,7 @@ namespace NS
         bool Mesh::BuildGeometry(const void* vertices,
                                  std::size_t vertexCount,
                                  std::size_t stride,
-                                 const NS::uint32* indices,
+                                 const uint32* indices,
                                  std::size_t indexCount,
                                  bool usingFallback) noexcept
         {
@@ -166,12 +166,12 @@ namespace NS
             return m_indexCount;
         }
 
-        const NS::AABB& Mesh::LocalBounds() const noexcept
+        const AABB& Mesh::LocalBounds() const noexcept
         {
             return m_localBounds;
         }
 
-        void Mesh::SetLocalBounds(const NS::AABB& bounds) noexcept
+        void Mesh::SetLocalBounds(const AABB& bounds) noexcept
         {
             m_localBounds = bounds;
         }
@@ -192,7 +192,7 @@ namespace NS
             commands.SetVertexBuffer(*mesh.VertexBuffer(), 0);
             commands.SetIndexBuffer(*mesh.IndexBuffer());
             commands.SetTopology(mesh.GetTopology());
-            commands.DrawIndexed(static_cast<NS::uint>(mesh.IndexCount()));
+            commands.DrawIndexed(static_cast<uint>(mesh.IndexCount()));
         }
 
         const Buffer* Mesh::VertexBuffer() const noexcept

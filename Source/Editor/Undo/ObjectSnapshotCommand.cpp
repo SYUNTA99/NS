@@ -35,7 +35,7 @@ namespace NS
             }
         } // namespace
 
-        ObjectSnapshotCommand::ObjectSnapshotCommand(NS::uint32 id,
+        ObjectSnapshotCommand::ObjectSnapshotCommand(uint32 id,
                                                      std::optional<nlohmann::json> before,
                                                      std::optional<nlohmann::json> after) noexcept
             : m_id(id), m_before(std::move(before)), m_after(std::move(after))

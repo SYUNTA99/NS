@@ -29,10 +29,10 @@ namespace
 
 namespace NS
 {
-    void Model::SetPerObjectVsConstant(const NS::Gfx::Buffer* cb,
+    void Model::SetPerObjectVsConstant(const Gfx::Buffer* cb,
                                        const void* cpuData,
                                        std::size_t cpuDataSize,
-                                       NS::uint slot) noexcept
+                                       uint slot) noexcept
     {
         m_perObjectVsCb = cb;
         m_perObjectVsData = cpuData;
@@ -44,7 +44,7 @@ namespace NS
     {
         // 共有 material 名 (player / water / shadow) を先に引き、外れたら .mat 相対パスとして読む
         // 空・トラバーサル・読込失敗は既定の共有 player material にして、描けない状態を作らない
-        NS::Gfx::Material* material = assets.SharedMaterial(m_materialRef);
+        Gfx::Material* material = assets.SharedMaterial(m_materialRef);
         if (material == nullptr)
         {
             material = assets.SharedMaterial("player");
@@ -62,7 +62,7 @@ namespace NS
         SetMaterial(material);
 
         // mesh は解決不可なら cube をフォールバックとする
-        NS::Gfx::Mesh* resolved = ResolveMeshFromRef(assets, m_meshRef);
+        Gfx::Mesh* resolved = ResolveMeshFromRef(assets, m_meshRef);
         if (resolved == nullptr)
         {
             resolved = assets.Builtin("cube");
@@ -100,7 +100,7 @@ namespace NS
         m_previousDrawScale = m_drawScale;
     }
 
-    bool Model::SetDrawScale(const NS::Vector3& scale) noexcept
+    bool Model::SetDrawScale(const Vector3& scale) noexcept
     {
         if (!IsPositiveFiniteScale(scale))
         {
@@ -110,7 +110,7 @@ namespace NS
         return true;
     }
 
-    bool Model::SnapDrawScale(const NS::Vector3& scale) noexcept
+    bool Model::SnapDrawScale(const Vector3& scale) noexcept
     {
         if (!IsPositiveFiniteScale(scale))
         {
@@ -121,9 +121,9 @@ namespace NS
         return true;
     }
 
-    bool Model::SetDrawOffset(const NS::Vector3& offset) noexcept
+    bool Model::SetDrawOffset(const Vector3& offset) noexcept
     {
-        if (!NS::IsFinite(offset))
+        if (!IsFinite(offset))
         {
             return false;
         }
@@ -131,9 +131,9 @@ namespace NS
         return true;
     }
 
-    bool Model::SetGhostSpread(const NS::Vector3& spread) noexcept
+    bool Model::SetGhostSpread(const Vector3& spread) noexcept
     {
-        if (!NS::IsFinite(spread))
+        if (!IsFinite(spread))
         {
             return false;
         }
@@ -141,7 +141,7 @@ namespace NS
         return true;
     }
 
-    NS::Matrix Model::GhostWorldMatrix(float alpha, float side) const noexcept
+    Matrix Model::GhostWorldMatrix(float alpha, float side) const noexcept
     {
         return DrawWorldMatrixWithOffset(alpha, m_ghostSpread * side);
     }
@@ -161,9 +161,9 @@ namespace NS
         return true;
     }
 
-    bool Model::SetTremor(const NS::Gfx::TremorCB& tremor) noexcept
+    bool Model::SetTremor(const Gfx::TremorCB& tremor) noexcept
     {
-        if (!NS::IsFinite(tremor.contactOffset) || !NS::IsFinite(tremor.right) || !NS::IsFinite(tremor.up) ||
+        if (!IsFinite(tremor.contactOffset) || !IsFinite(tremor.right) || !IsFinite(tremor.up) ||
             !std::isfinite(tremor.amplitude) || !std::isfinite(tremor.elapsedFrames) ||
             !std::isfinite(tremor.framesPerMeter) || !std::isfinite(tremor.ringFrames))
         {
@@ -173,7 +173,7 @@ namespace NS
         return true;
     }
 
-    const NS::AABB* Model::DrawnLocalBounds() const noexcept
+    const AABB* Model::DrawnLocalBounds() const noexcept
     {
         if (m_hasLocalBoundsOverride)
         {
@@ -186,32 +186,32 @@ namespace NS
         return nullptr;
     }
 
-    NS::Matrix Model::DrawWorldMatrix(float alpha) const noexcept
+    Matrix Model::DrawWorldMatrix(float alpha) const noexcept
     {
         return DrawWorldMatrixWithOffset(alpha, m_drawOffset);
     }
 
-    NS::Matrix Model::DrawWorldMatrixWithOffset(float alpha, const NS::Vector3& offset) const noexcept
+    Matrix Model::DrawWorldMatrixWithOffset(float alpha, const Vector3& offset) const noexcept
     {
-        const NS::Quaternion local = NS::Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
-        const NS::Matrix localMatrix = NS::Matrix::CreateFromQuaternion(local);
+        const Quaternion local = Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
+        const Matrix localMatrix = Matrix::CreateFromQuaternion(local);
         const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             return localMatrix;
         }
         // 回転を先に掛ける。根のスケールは根の軸に残り、局所の回転と一緒に回らない
-        const NS::Matrix root = owner->Root().InterpolatedWorldMatrix(alpha);
-        NS::Matrix drawn = localMatrix * root;
+        const Matrix root = owner->Root().InterpolatedWorldMatrix(alpha);
+        Matrix drawn = localMatrix * root;
         // ずれは倍率の後に世界で足す。倍率の中心 (下端の真ん中) は根から測るので、ずれと一緒に動いて形を変えない
         // ずれが 0 の間は掛けない。0 の平行移動でも掛け算が下の桁を丸めることがある
-        NS::Matrix shift = NS::Matrix::Identity;
+        Matrix shift = Matrix::Identity;
         const bool shifted = offset.x != 0.0f || offset.y != 0.0f || offset.z != 0.0f;
         if (shifted)
         {
-            shift = NS::Matrix::CreateTranslation(offset);
+            shift = Matrix::CreateTranslation(offset);
         }
-        const NS::Vector3 scale = NS::Vector3::Lerp(m_previousDrawScale, m_drawScale, alpha);
+        const Vector3 scale = Vector3::Lerp(m_previousDrawScale, m_drawScale, alpha);
         // 倍率が 1 でも、下端の真ん中へ移して戻す足し引きが下の桁を丸めることがある。倍率の無い間は掛けずに返す
         if (scale == k_NoDrawScale)
         {
@@ -224,17 +224,17 @@ namespace NS
 
         // 中心は描く形の下端の真ん中。局所の回転は含めない。回した箱を包む箱は玉の下端より下へ出るので、
         // 中心が床より下に来て、潰すと玉が床へめり込む
-        NS::Vector3 pivot = root.Translation();
-        if (const NS::AABB* localBounds = DrawnLocalBounds())
+        Vector3 pivot = root.Translation();
+        if (const AABB* localBounds = DrawnLocalBounds())
         {
-            NS::AABB worldBounds{};
+            AABB worldBounds{};
             localBounds->Transform(worldBounds, root);
             pivot =
-                NS::Vector3{worldBounds.Center.x, worldBounds.Center.y - worldBounds.Extents.y, worldBounds.Center.z};
+                Vector3{worldBounds.Center.x, worldBounds.Center.y - worldBounds.Extents.y, worldBounds.Center.z};
         }
         // 倍率は世界の軸で掛ける。局所の回転と根の回転に依らず世界の縦に潰れる
-        NS::Matrix scaled = drawn * NS::Matrix::CreateTranslation(-pivot) * NS::Matrix::CreateScale(scale) *
-                            NS::Matrix::CreateTranslation(pivot);
+        Matrix scaled = drawn * Matrix::CreateTranslation(-pivot) * Matrix::CreateScale(scale) *
+                            Matrix::CreateTranslation(pivot);
         if (shifted)
         {
             scaled = scaled * shift;
@@ -242,7 +242,7 @@ namespace NS
         return scaled;
     }
 
-    void Model::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
+    void Model::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
         SceneActor* owner = Owner();
         if (!IsOwnerAppeared() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
@@ -253,14 +253,14 @@ namespace NS
         out.push_back(MakeDrawItem(context, m_material, DrawWorldMatrix(context.alpha)));
     }
 
-    NS::Gfx::DrawItem Model::MakeDrawItem(const NS::Gfx::RenderContext& context,
-                                          NS::Gfx::Material* material,
-                                          const NS::Matrix& world) const noexcept
+    Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context,
+                                          Gfx::Material* material,
+                                          const Matrix& world) const noexcept
     {
         // context.resolvedSettings は project 既定に配置された平行光まで解決済
-        const NS::Gfx::RenderSettings& settings = context.resolvedSettings;
+        const Gfx::RenderSettings& settings = context.resolvedSettings;
 
-        NS::Gfx::DrawItem item{};
+        Gfx::DrawItem item{};
         item.mesh = m_mesh;
         item.material = material;
         item.blend = material->Blend();
@@ -285,19 +285,19 @@ namespace NS
         return item;
     }
 
-    void Model::Ghosts::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
+    void Model::Ghosts::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
         if (!m_model.IsOwnerAppeared() || m_model.m_mesh == nullptr || m_model.m_ghostMaterial == nullptr ||
             m_model.Owner() == nullptr)
         {
             return;
         }
-        const NS::Vector3& spread = m_model.m_ghostSpread;
+        const Vector3& spread = m_model.m_ghostSpread;
         if (spread.x != 0.0f || spread.y != 0.0f || spread.z != 0.0f)
         {
             for (const float side : {1.0f, -1.0f})
             {
-                NS::Gfx::DrawItem item = m_model.MakeDrawItem(
+                Gfx::DrawItem item = m_model.MakeDrawItem(
                     context, m_model.m_ghostMaterial, m_model.GhostWorldMatrix(context.alpha, side));
                 item.constants.opacity = k_SideGhostOpacity;
                 out.push_back(item);
@@ -306,30 +306,30 @@ namespace NS
         if (m_model.m_afterimageOpacity > 0.0f)
         {
             // 控えた姿のまま残す。震えを足すと止まった姿に見えない
-            NS::Gfx::DrawItem item = m_model.MakeDrawItem(context, m_model.m_ghostMaterial, m_model.m_afterimageWorld);
-            item.constants.tremor = NS::Gfx::TremorCB{};
+            Gfx::DrawItem item = m_model.MakeDrawItem(context, m_model.m_ghostMaterial, m_model.m_afterimageWorld);
+            item.constants.tremor = Gfx::TremorCB{};
             item.constants.opacity = m_model.m_afterimageOpacity;
             out.push_back(item);
         }
     }
 
-    NS::AABB Model::Ghosts::WorldBounds() const noexcept
+    AABB Model::Ghosts::WorldBounds() const noexcept
     {
         // 描く形の箱を、描く時だけのずれと残像の離れの分だけ広げる。どちらの写しも外さない
-        NS::AABB out = m_model.WorldBounds();
-        const NS::Vector3& spread = m_model.m_ghostSpread;
-        const NS::Vector3& offset = m_model.m_drawOffset;
+        AABB out = m_model.WorldBounds();
+        const Vector3& spread = m_model.m_ghostSpread;
+        const Vector3& offset = m_model.m_drawOffset;
         out.Extents.x += std::abs(spread.x) + std::abs(offset.x);
         out.Extents.y += std::abs(spread.y) + std::abs(offset.y);
         out.Extents.z += std::abs(spread.z) + std::abs(offset.z);
-        const NS::AABB* local = m_model.DrawnLocalBounds();
+        const AABB* local = m_model.DrawnLocalBounds();
         if (m_model.m_afterimageOpacity > 0.0f && local != nullptr)
         {
             // 明けの写しは根が飛び去った後も当たった所に残るので、控えた姿の箱も包む
-            NS::AABB afterimage{};
+            AABB afterimage{};
             local->Transform(afterimage, m_model.m_afterimageWorld);
-            NS::AABB merged{};
-            NS::AABB::CreateMerged(merged, out, afterimage);
+            AABB merged{};
+            AABB::CreateMerged(merged, out, afterimage);
             return merged;
         }
         return out;
@@ -337,7 +337,7 @@ namespace NS
 
     RenderBucket Model::Bucket() const noexcept
     {
-        if (m_material == nullptr || m_material->Blend() == NS::Gfx::BlendMode::Opaque)
+        if (m_material == nullptr || m_material->Blend() == Gfx::BlendMode::Opaque)
         {
             return RenderBucket::Opaque;
         }
@@ -345,7 +345,7 @@ namespace NS
         return RenderBucket::Transparent;
     }
 
-    NS::Vector3 Model::SortCenter() const noexcept
+    Vector3 Model::SortCenter() const noexcept
     {
         const SceneActor* owner = Owner();
         if (owner == nullptr)
@@ -364,19 +364,19 @@ namespace NS
         return 0;
     }
 
-    NS::AABB Model::WorldBounds() const noexcept
+    AABB Model::WorldBounds() const noexcept
     {
         const SceneActor* owner = Owner();
         if (m_mesh == nullptr || owner == nullptr)
         {
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない
         }
-        NS::AABB out{};
+        AABB out{};
         // m_mesh は確認済みで、描画の境界を取得できる
         DrawnLocalBounds()->Transform(out, owner->Root().WorldMatrix());
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
-        const NS::Vector3 scale = NS::Vector3::Max(m_previousDrawScale, m_drawScale);
+        const Vector3 scale = Vector3::Max(m_previousDrawScale, m_drawScale);
         if (scale != k_NoDrawScale)
         {
             const float bottom = out.Center.y - out.Extents.y;

@@ -35,7 +35,7 @@ namespace NS
         virtual void OnExit(TOwner&) {}
 
     protected:
-        void StartCoroutine(NS::Coroutine&& coroutine) { m_coroutines.Start(std::move(coroutine)); }
+        void StartCoroutine(Coroutine&& coroutine) { m_coroutines.Start(std::move(coroutine)); }
         [[nodiscard]] float StepDelta() const noexcept { return m_stepDelta; }
 
     private:
@@ -47,7 +47,7 @@ namespace NS
         }
         void CancelCoroutines() noexcept { m_coroutines.CancelAll(); }
 
-        NS::CoroutineRunner m_coroutines;
+        CoroutineRunner m_coroutines;
         float m_stepDelta = 0.0f;
     };
 
@@ -124,11 +124,11 @@ namespace NS
 
         //! @brief 今の状態に入ってから進めたフレーム数を返す
         //! @return 入った最初のフレームは 0。移る予約があれば NS::uint32 の最大値
-        [[nodiscard]] NS::uint32 StepsInState() const noexcept override
+        [[nodiscard]] uint32 StepsInState() const noexcept override
         {
             if (m_next != nullptr)
             {
-                return static_cast<NS::uint32>(-1);
+                return static_cast<uint32>(-1);
             }
             return m_step;
         }
@@ -241,7 +241,7 @@ namespace NS
         State<TOwner>* m_current = nullptr;
         State<TOwner>* m_next = nullptr;
         TOwner* m_owner = nullptr; // 書くのは Build だけ。未組立は nullptr
-        NS::uint32 m_step = 0;
+        uint32 m_step = 0;
         bool m_stepCancelled = false;
     };
 

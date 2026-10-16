@@ -13,7 +13,7 @@ namespace NS
             const float alpha = Alpha();
             if (alpha > 0.0f)
             {
-                renderer.DrawFullscreenColor(NS::Color{0.0f, 0.0f, 0.0f, alpha});
+                renderer.DrawFullscreenColor(Color{0.0f, 0.0f, 0.0f, alpha});
             }
         }
 

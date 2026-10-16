@@ -6,7 +6,7 @@ namespace NS
 {
     namespace UI
     {
-        void ColorRect::OnDraw(NS::Gfx::Renderer& renderer, const WidgetRect& rectPx, float alpha)
+        void ColorRect::OnDraw(Gfx::Renderer& renderer, const WidgetRect& rectPx, float alpha)
         {
             const float effective = m_color.A() * alpha;
             if (effective <= 0.0f)
@@ -18,7 +18,7 @@ namespace NS
                                     rectPx.y,
                                     rectPx.width,
                                     rectPx.height,
-                                    NS::Color{m_color.R(), m_color.G(), m_color.B(), effective});
+                                    Color{m_color.R(), m_color.G(), m_color.B(), effective});
         }
     } // namespace UI
 } // namespace NS

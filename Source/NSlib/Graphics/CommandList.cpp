@@ -43,7 +43,7 @@ namespace NS
                 const HRESULT hr = context->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(Graphics, "Buffer::Map 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
+                    NS_LOG_ERROR(Graphics, "Buffer::Map 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                     return false;
                 }
                 std::memcpy(mapped.pData, data, bytes);
@@ -120,7 +120,7 @@ namespace NS
             m_context->IASetInputLayout(layout);
         }
 
-        void CommandList::SetVertexBuffer(const Buffer& buffer, NS::uint slot) noexcept
+        void CommandList::SetVertexBuffer(const Buffer& buffer, uint slot) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -190,7 +190,7 @@ namespace NS
             }
         }
 
-        void CommandList::UpdateSubresource(const Texture& texture, const void* data, NS::uint rowPitch) noexcept
+        void CommandList::UpdateSubresource(const Texture& texture, const void* data, uint rowPitch) noexcept
         {
             if (m_context == nullptr || !texture.IsValid() || data == nullptr || rowPitch == 0u)
             {
@@ -260,7 +260,7 @@ namespace NS
             m_context->VSSetShader(static_cast<ID3D11VertexShader*>(raw), nullptr, 0u);
         }
 
-        void CommandList::VSSetShaderResource(const Texture& texture, NS::uint slot) noexcept
+        void CommandList::VSSetShaderResource(const Texture& texture, uint slot) noexcept
         {
             ID3D11ShaderResourceView* srv = texture.Srv();
             if (m_context == nullptr || srv == nullptr)
@@ -272,7 +272,7 @@ namespace NS
         }
 
         // サンプラーは NS にラッパ型が無いため生の ID3D11SamplerState* をそのまま受ける
-        void CommandList::VSSetSampler(ID3D11SamplerState* sampler, NS::uint slot) noexcept
+        void CommandList::VSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
             if (m_context == nullptr || sampler == nullptr)
             {
@@ -282,7 +282,7 @@ namespace NS
             m_context->VSSetSamplers(slot, 1u, samplers);
         }
 
-        void CommandList::VSSetConstantBuffer(const Buffer& buffer, NS::uint slot) noexcept
+        void CommandList::VSSetConstantBuffer(const Buffer& buffer, uint slot) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -313,7 +313,7 @@ namespace NS
             m_context->PSSetShader(static_cast<ID3D11PixelShader*>(raw), nullptr, 0u);
         }
 
-        void CommandList::PSSetShaderResource(const Texture& texture, NS::uint slot) noexcept
+        void CommandList::PSSetShaderResource(const Texture& texture, uint slot) noexcept
         {
             ID3D11ShaderResourceView* srv = texture.Srv();
             if (m_context == nullptr || srv == nullptr)
@@ -324,7 +324,7 @@ namespace NS
             m_context->PSSetShaderResources(slot, 1u, srvs);
         }
 
-        void CommandList::PSSetSampler(ID3D11SamplerState* sampler, NS::uint slot) noexcept
+        void CommandList::PSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
             if (m_context == nullptr || sampler == nullptr)
             {
@@ -334,7 +334,7 @@ namespace NS
             m_context->PSSetSamplers(slot, 1u, samplers);
         }
 
-        void CommandList::PSSetConstantBuffer(const Buffer& buffer, NS::uint slot) noexcept
+        void CommandList::PSSetConstantBuffer(const Buffer& buffer, uint slot) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -365,7 +365,7 @@ namespace NS
             m_context->GSSetShader(static_cast<ID3D11GeometryShader*>(raw), nullptr, 0u);
         }
 
-        void CommandList::GSSetShaderResource(const Texture& texture, NS::uint slot) noexcept
+        void CommandList::GSSetShaderResource(const Texture& texture, uint slot) noexcept
         {
             ID3D11ShaderResourceView* srv = texture.Srv();
             if (m_context == nullptr || srv == nullptr)
@@ -376,7 +376,7 @@ namespace NS
             m_context->GSSetShaderResources(slot, 1u, srvs);
         }
 
-        void CommandList::GSSetSampler(ID3D11SamplerState* sampler, NS::uint slot) noexcept
+        void CommandList::GSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
             if (m_context == nullptr || sampler == nullptr)
             {
@@ -386,7 +386,7 @@ namespace NS
             m_context->GSSetSamplers(slot, 1u, samplers);
         }
 
-        void CommandList::GSSetConstantBuffer(const Buffer& buffer, NS::uint slot) noexcept
+        void CommandList::GSSetConstantBuffer(const Buffer& buffer, uint slot) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -417,7 +417,7 @@ namespace NS
             m_context->CSSetShader(static_cast<ID3D11ComputeShader*>(raw), nullptr, 0u);
         }
 
-        void CommandList::CSSetShaderResource(const Texture& texture, NS::uint slot) noexcept
+        void CommandList::CSSetShaderResource(const Texture& texture, uint slot) noexcept
         {
             ID3D11ShaderResourceView* srv = texture.Srv();
             if (m_context == nullptr || srv == nullptr)
@@ -428,7 +428,7 @@ namespace NS
             m_context->CSSetShaderResources(slot, 1u, srvs);
         }
 
-        void CommandList::CSSetSampler(ID3D11SamplerState* sampler, NS::uint slot) noexcept
+        void CommandList::CSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
             if (m_context == nullptr || sampler == nullptr)
             {
@@ -438,7 +438,7 @@ namespace NS
             m_context->CSSetSamplers(slot, 1u, samplers);
         }
 
-        void CommandList::CSSetConstantBuffer(const Buffer& buffer, NS::uint slot) noexcept
+        void CommandList::CSSetConstantBuffer(const Buffer& buffer, uint slot) noexcept
         {
             if (m_context == nullptr || !buffer.IsValid())
             {
@@ -448,7 +448,7 @@ namespace NS
             m_context->CSSetConstantBuffers(slot, 1u, buffers);
         }
 
-        void CommandList::DrawIndexed(NS::uint indexCount) noexcept
+        void CommandList::DrawIndexed(uint indexCount) noexcept
         {
             if (m_context != nullptr)
             {
@@ -456,7 +456,7 @@ namespace NS
             }
         }
 
-        void CommandList::Draw(NS::uint vertexCount) noexcept
+        void CommandList::Draw(uint vertexCount) noexcept
         {
             if (m_context != nullptr)
             {

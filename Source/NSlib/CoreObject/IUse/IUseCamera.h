@@ -45,10 +45,10 @@ namespace NS
     void StopCameraHitEffects(const IUseCamera* user) noexcept;
 
     //! 今のカメラの画面で direction が右と左のどちらの側か。左なら -1、それ以外と管理役が無い時は 1
-    [[nodiscard]] float CameraSideSignOf(const IUseCamera* user, const NS::Vector3& direction) noexcept;
+    [[nodiscard]] float CameraSideSignOf(const IUseCamera* user, const Vector3& direction) noexcept;
 
     //! 遊びが読む水平の前。効果を掛ける前の視点から作る。管理役か選べる仮想カメラが無ければ +Z
-    [[nodiscard]] NS::Vector3 CameraForwardHorizontal(const IUseCamera* user) noexcept;
+    [[nodiscard]] Vector3 CameraForwardHorizontal(const IUseCamera* user) noexcept;
 
     //! 効果を掛ける前の、遊びが読む視点。管理役か選べる仮想カメラが無ければ nullopt
     [[nodiscard]] std::optional<CameraPose> CameraViewPose(const IUseCamera* user) noexcept;

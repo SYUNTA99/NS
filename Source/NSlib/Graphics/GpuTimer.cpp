@@ -29,7 +29,7 @@ namespace NS
                     {
                         return true;
                     }
-                    if (FAILED(hr) || NS::OS::Clock::Now() >= deadline)
+                    if (FAILED(hr) || OS::Clock::Now() >= deadline)
                     {
                         return false;
                     }
@@ -108,7 +108,7 @@ namespace NS
             }
             m_ended = false;
 
-            const std::chrono::steady_clock::time_point deadline = NS::OS::Clock::Now() + k_ReadTimeout;
+            const std::chrono::steady_clock::time_point deadline = OS::Clock::Now() + k_ReadTimeout;
             D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint{};
             UINT64 start = 0;
             UINT64 end = 0;

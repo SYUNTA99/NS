@@ -36,7 +36,7 @@ namespace NS
         //! UI の矩形の木。子は後から追加した順に上へ描く
         //! 座標は高さ 1080 を基準とし、alpha は子へ乗算して伝わる
         //! anchor は親内の基準点 0〜1、pivot は自分の対応点
-        class Widget : public NS::NonCopyable
+        class Widget : public NonCopyable
         {
         public:
             Widget() = default;
@@ -56,13 +56,13 @@ namespace NS
             [[nodiscard]] bool HasChildren() const noexcept { return !m_children.empty(); }
 
             //! 親矩形内の基準点 (0..1)。(0,0)=左上、(1,1)=右下
-            void SetAnchor(const NS::Vector2& anchor) noexcept { m_anchor = anchor; }
+            void SetAnchor(const Vector2& anchor) noexcept { m_anchor = anchor; }
             //! 自分の矩形のどこを anchor に合わせるか (0..1)
-            void SetPivot(const NS::Vector2& pivot) noexcept { m_pivot = pivot; }
+            void SetPivot(const Vector2& pivot) noexcept { m_pivot = pivot; }
             //! anchor からのずらし量 (基準解像度ピクセル)
-            void SetOffset(const NS::Vector2& offset) noexcept { m_offset = offset; }
+            void SetOffset(const Vector2& offset) noexcept { m_offset = offset; }
             //! 自分の矩形の大きさ (基準解像度ピクセル)
-            void SetSize(const NS::Vector2& size) noexcept { m_size = size; }
+            void SetSize(const Vector2& size) noexcept { m_size = size; }
             //! true なら親矩形いっぱいに広がり、anchor / offset / size を無視する。全画面の覆いに使う
             void SetStretch(bool stretch) noexcept { m_stretch = stretch; }
             //! false の間は自分ごと子も描かず、当たり判定からも消える
@@ -85,20 +85,20 @@ namespace NS
             void Layout(const WidgetRect& parent) noexcept;
 
             //! 自分と子孫を描く。scale は基準解像度 → 実ピクセルの拡縮率
-            void Draw(NS::Gfx::Renderer& renderer, float parentAlpha, float scale);
+            void Draw(Gfx::Renderer& renderer, float parentAlpha, float scale);
 
             //! 点 (基準解像度単位) を自分以下の誰かが吸うか。後に描かれる子から先に見る
             [[nodiscard]] bool HitTest(float px, float py) const noexcept;
 
         protected:
             //! 自分だけを描く。rectPx は実ピクセルへ拡縮済みの矩形、alpha は親から掛かった実効値
-            virtual void OnDraw(NS::Gfx::Renderer&, const WidgetRect& /*rectPx*/, float /*alpha*/) {}
+            virtual void OnDraw(Gfx::Renderer&, const WidgetRect& /*rectPx*/, float /*alpha*/) {}
 
         private:
-            NS::Vector2 m_anchor{0.0f, 0.0f}; // 親矩形内の基準点 (0..1)
-            NS::Vector2 m_pivot{0.0f, 0.0f};  // 自分の矩形の合わせ点 (0..1)
-            NS::Vector2 m_offset{0.0f, 0.0f}; // anchor からのずらし (基準解像度ピクセル)
-            NS::Vector2 m_size{0.0f, 0.0f};   // 大きさ (基準解像度ピクセル)
+            Vector2 m_anchor{0.0f, 0.0f}; // 親矩形内の基準点 (0..1)
+            Vector2 m_pivot{0.0f, 0.0f};  // 自分の矩形の合わせ点 (0..1)
+            Vector2 m_offset{0.0f, 0.0f}; // anchor からのずらし (基準解像度ピクセル)
+            Vector2 m_size{0.0f, 0.0f};   // 大きさ (基準解像度ピクセル)
             bool m_stretch = false;           // 親いっぱいに広がるか
             bool m_visible = true;
             float m_alpha = 1.0f;

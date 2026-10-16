@@ -38,7 +38,7 @@ namespace NS
         scene->UnregisterRenderable(this);
     }
 
-    NS::Vector3 Shadow::SortCenter() const noexcept
+    Vector3 Shadow::SortCenter() const noexcept
     {
         const SceneActor* owner = Owner();
         if (owner == nullptr)
@@ -48,19 +48,19 @@ namespace NS
         return owner->Root().WorldMatrix().Translation();
     }
 
-    NS::AABB Shadow::WorldBounds() const noexcept
+    AABB Shadow::WorldBounds() const noexcept
     {
         const SceneActor* owner = Owner();
         if (owner == nullptr)
         {
             return {};
         }
-        const NS::Matrix world = owner->Root().WorldMatrix();
-        const NS::Vector3 origin = world.Translation();
+        const Matrix world = owner->Root().WorldMatrix();
+        const Vector3 origin = world.Translation();
         // 影は owner 直下 [-maxDrop, 0] のどこかに baseDiameter 幅で落ちる。その可動域を全部覆う
-        const NS::Vector3 center{origin.x, origin.y - m_maxDrop * 0.5f, origin.z};
-        const NS::Vector3 extents{m_baseDiameter, m_maxDrop * 0.5f, m_baseDiameter};
-        return NS::AABB{center, extents};
+        const Vector3 center{origin.x, origin.y - m_maxDrop * 0.5f, origin.z};
+        const Vector3 extents{m_baseDiameter, m_maxDrop * 0.5f, m_baseDiameter};
+        return AABB{center, extents};
     }
 
     float Shadow::ComputeFade(float dist, float maxDist) noexcept
@@ -69,21 +69,21 @@ namespace NS
         {
             return 0.0f;
         }
-        return NS::Clamp(1.0f - dist / maxDist, 0.0f, 1.0f);
+        return Clamp(1.0f - dist / maxDist, 0.0f, 1.0f);
     }
 
-    void Shadow::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
+    void Shadow::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
         SceneActor* owner = Owner();
         if (!IsOwnerAppeared() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
         {
             return;
         }
-        const NS::Matrix ownerWorld = owner->Root().InterpolatedWorldMatrix(context.alpha);
-        const NS::Vector3 origin = ownerWorld.Translation();
+        const Matrix ownerWorld = owner->Root().InterpolatedWorldMatrix(context.alpha);
+        const Vector3 origin = ownerWorld.Translation();
 
         float dist = 0.0f;
-        if (!RaycastCollision(owner, origin, NS::Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
+        if (!RaycastCollision(owner, origin, Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
         {
             return; // 真下 maxDrop 以内に地面が無ければ描かない
         }
@@ -98,16 +98,16 @@ namespace NS
         const float scale = m_baseDiameter * (0.6f + 0.4f * fade); // 高いほど小さく
         const float groundY = origin.y - dist;
 
-        const NS::Matrix world = NS::Matrix::CreateScale(scale, 1.0f, scale) *
-                                 NS::Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
+        const Matrix world = Matrix::CreateScale(scale, 1.0f, scale) *
+                                 Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
 
-        NS::Gfx::DrawItem item{};
+        Gfx::DrawItem item{};
         item.mesh = m_mesh;
         item.material = m_material;
-        item.blend = NS::Gfx::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
+        item.blend = Gfx::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
-        item.constants.baseColor = NS::Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファで shadow.ps が読む
+        item.constants.baseColor = Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファで shadow.ps が読む
         out.push_back(item);
     }
 

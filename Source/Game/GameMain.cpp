@@ -14,7 +14,7 @@ namespace NS
     {
         ApplicationDesc desc{};
         desc.window.title = "NS Game";
-        desc.window.size = NS::Size2D{1920, 1080};
+        desc.window.size = Size2D{1920, 1080};
 #ifdef NS_BUILD_DEBUG
         desc.renderer.enableDebugLayer = true;
 #endif

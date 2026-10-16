@@ -31,7 +31,7 @@ namespace NS
 
         //! Effekseer の再生と描画。Renderer の構築後に作り、Preload 後に再生する
         //! 無効な状態では各操作を行わない
-        class EffectScene : public NS::NonCopyable
+        class EffectScene : public NonCopyable
         {
         public:
             //! @brief Effekseer の Renderer と Manager を作る
@@ -48,7 +48,7 @@ namespace NS
             [[nodiscard]] bool Preload(std::string_view name) noexcept;
 
             //! 読み込み済みの名前を世界座標の position で再生する。未読み込みなら無効なハンドル
-            [[nodiscard]] EffectHandle Play(std::string_view name, NS::Vector3 position = {}) noexcept;
+            [[nodiscard]] EffectHandle Play(std::string_view name, Vector3 position = {}) noexcept;
 
             //! 読み込み済みの名前を再生する。粒の生成は次の Update、未読み込みなら無効なハンドル
             //! 同じ名前の再生回数から乱数を決めるため、他のエフェクトの乱数に影響されない
@@ -56,9 +56,9 @@ namespace NS
 
             //! 世界座標の姿勢を設定する。反映は次の Update、無効なハンドルでは何もしない
             void SetTransform(EffectHandle handle,
-                              const NS::Vector3& position,
-                              const NS::Quaternion& rotation,
-                              const NS::Vector3& scale) noexcept;
+                              const Vector3& position,
+                              const Quaternion& rotation,
+                              const Vector3& scale) noexcept;
 
             //! 動的入力 index 0〜3 を設定する。生成時の値は最初の Update 前に設定する
             //! 範囲外の番号や無効なハンドルでは何もしない
@@ -81,7 +81,7 @@ namespace NS
 
             //! 全エフェクトを描く。D24_UNORM_S8_UINT の深度を渡せない場合は深度なしで描く
             //! 深度のコピーに失敗した場合は IsUsingDepthFallback で確認できる
-            void Draw(const NS::CameraData& camera) noexcept;
+            void Draw(const CameraData& camera) noexcept;
 
             //! 直前の Draw がエフェクトへ奥行きを渡した場合 true、それ以外の場合は false
             [[nodiscard]] bool PassesDepth() const noexcept;
@@ -90,7 +90,7 @@ namespace NS
             [[nodiscard]] bool IsUsingDepthFallback() const noexcept { return m_depthFallback; }
 
             //! 奥行きの写し先を作った回数
-            [[nodiscard]] NS::uint32 DepthCopiesCreated() const noexcept { return m_depthCopiesCreated; }
+            [[nodiscard]] uint32 DepthCopiesCreated() const noexcept { return m_depthCopiesCreated; }
 
         private:
             // 奥行きの写し先 1 枚。描画先の大きさで引く
@@ -98,30 +98,30 @@ namespace NS
             {
                 std::unique_ptr<Texture> texture;
                 Effekseer::Backend::TextureRef effekseerTexture;
-                NS::uint32 width = 0;
-                NS::uint32 height = 0;
-                NS::uint32 lastUsed = 0; // 最後に使った Draw の番号。3 つ目の大きさが来たら古い方を捨てる
+                uint32 width = 0;
+                uint32 height = 0;
+                uint32 lastUsed = 0; // 最後に使った Draw の番号。3 つ目の大きさが来たら古い方を捨てる
             };
 
             // 描画先に結ばれた奥行きを写し先へ写してエフェクトへ渡す。渡せない時は奥行きを外す
-            void PassDepth(const NS::CameraData& camera) noexcept;
+            void PassDepth(const CameraData& camera) noexcept;
             // 大きさの合う写し先を返す。無ければ作る。作れなければ nullptr
-            [[nodiscard]] DepthCopy* DepthCopyFor(NS::uint32 width, NS::uint32 height) noexcept;
+            [[nodiscard]] DepthCopy* DepthCopyFor(uint32 width, uint32 height) noexcept;
             // 奥行き無しへ倒す。同じ理由と大きさでは 2 回目からエラーを出さない
-            void FallBackWithoutDepth(std::string_view reason, NS::uint32 width, NS::uint32 height) noexcept;
+            void FallBackWithoutDepth(std::string_view reason, uint32 width, uint32 height) noexcept;
 
             Effekseer::ManagerRef m_manager;
             EffekseerRenderer::RendererRef m_renderer;
             std::unordered_map<std::string, Effekseer::EffectRef> m_effects;
             std::unordered_set<std::string> m_warnedMissing;
             // 名前ごとに Play した回数。乱数の種に混ぜる
-            std::unordered_map<std::string, NS::uint32> m_playCounts;
+            std::unordered_map<std::string, uint32> m_playCounts;
             std::string m_effectRoot;
             float m_elapsedSeconds = 0.0f;
 
             std::array<DepthCopy, 2> m_depthCopies{}; // Bloom と同じくゲームの絵とエディタのビューで 1 枚ずつ
-            NS::uint32 m_depthCopiesCreated = 0;
-            NS::uint32 m_drawCount = 0;
+            uint32 m_depthCopiesCreated = 0;
+            uint32 m_drawCount = 0;
             bool m_depthFallback = false;
             std::string m_failedDepthKey; // 最後にエラーを出した理由と大きさ。同じ失敗を毎フレーム出さない
         };

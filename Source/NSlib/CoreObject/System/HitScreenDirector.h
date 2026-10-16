@@ -15,9 +15,9 @@ namespace NS
     //! 対象の輪郭の左右へ出す震えの線。寸法は高さ 720 基準の画素
     struct HitShakeLinesDesc
     {
-        NS::Vector3 center{};       //!< 線で挟む物の中心。世界の点
+        Vector3 center{};       //!< 線で挟む物の中心。世界の点
         float radius = 0.0f;        //!< 線で挟む物の半径。世界の長さ。0 以下なら出さない
-        NS::Vector3 otherCenter{};  //!< 一緒に挟むもう 1 つの物の中心。世界の点
+        Vector3 otherCenter{};  //!< 一緒に挟むもう 1 つの物の中心。世界の点
         float otherRadius = 0.0f;   //!< 一緒に挟むもう 1 つの物の半径。0 以下なら 1 つだけを挟む
         int frames = 0;             //!< 出すフレーム数。0 以下なら出さない
         int flipFrames = 1;         //!< 外と内へずらし直すフレーム数。1 未満は 1
@@ -29,7 +29,7 @@ namespace NS
     //! @brief 歪みの輪 1 回。長さの欄はどれも画面の高さに対する割合
     struct HitDistortionRingDesc
     {
-        NS::Vector3 center{};   //!< 輪の中心。世界の点
+        Vector3 center{};   //!< 輪の中心。世界の点
         Curve radius{};         //!< 輪の半径。始めたフレームを 0 にしたフレーム数で引く
         Curve push{};           //!< 輪の真ん中で絵を押し出す長さ。0 以下のフレームは歪めない
         float halfWidth = 0.0f; //!< 輪の半分の幅
@@ -103,11 +103,11 @@ namespace NS
 
         [[nodiscard]] int OverlayOrder() const noexcept override { return 1; }
         //! 残りのフレーム数に比例して薄くなる白を画面全体へ重ね、震えの線を描く
-        void OnRenderOverlay(const NS::Gfx::RenderContext& context) override;
+        void OnRenderOverlay(const Gfx::RenderContext& context) override;
 
     private:
         // 震えの線を挟む物の中心と半径から投げて描く。どれかがカメラの後ろにある時は描かない
-        void RenderShakeLines(const NS::Gfx::RenderContext& context) const noexcept;
+        void RenderShakeLines(const Gfx::RenderContext& context) const noexcept;
         void WriteDistortionRing() noexcept;
         void EndDistortionRing() noexcept;
 

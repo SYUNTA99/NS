@@ -13,7 +13,7 @@ namespace NS
 {
     namespace
     {
-        [[nodiscard]] NS::Vector3 ClampNonNegative(const NS::Vector3& v) noexcept
+        [[nodiscard]] Vector3 ClampNonNegative(const Vector3& v) noexcept
         {
             float x = v.x;
             if (x < 0.0f)
@@ -30,78 +30,78 @@ namespace NS
             {
                 z = 0.0f;
             }
-            return NS::Vector3{x, y, z};
+            return Vector3{x, y, z};
         }
     } // namespace
 
-    BoxCollision::BoxCollision(const NS::Vector3& halfExtents) noexcept : m_halfExtents(ClampNonNegative(halfExtents))
+    BoxCollision::BoxCollision(const Vector3& halfExtents) noexcept : m_halfExtents(ClampNonNegative(halfExtents))
     {}
 
-    void BoxCollision::SetHalfExtents(const NS::Vector3& halfExtents) noexcept
+    void BoxCollision::SetHalfExtents(const Vector3& halfExtents) noexcept
     {
         m_halfExtents = ClampNonNegative(halfExtents);
     }
 
-    NS::Vector3 BoxCollision::HalfExtents() const noexcept
+    Vector3 BoxCollision::HalfExtents() const noexcept
     {
         return m_halfExtents;
     }
 
-    void BoxCollision::SetCenterOffset(const NS::Vector3& offset) noexcept
+    void BoxCollision::SetCenterOffset(const Vector3& offset) noexcept
     {
         m_centerOffset = offset;
     }
 
-    NS::Vector3 BoxCollision::CenterOffset() const noexcept
+    Vector3 BoxCollision::CenterOffset() const noexcept
     {
         return m_centerOffset;
     }
 
-    void BoxCollision::SetLocalRotation(const NS::Quaternion& rotation) noexcept
+    void BoxCollision::SetLocalRotation(const Quaternion& rotation) noexcept
     {
         m_localRotation = rotation;
     }
 
-    NS::Quaternion BoxCollision::LocalRotation() const noexcept
+    Quaternion BoxCollision::LocalRotation() const noexcept
     {
         return m_localRotation;
     }
 
-    void BoxCollision::SetRotationEulerDegrees(const NS::Vector3& eulerDegrees) noexcept
+    void BoxCollision::SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept
     {
-        m_localRotation = NS::EulerDegreesToQuaternion(eulerDegrees);
+        m_localRotation = EulerDegreesToQuaternion(eulerDegrees);
     }
 
-    NS::Vector3 BoxCollision::RotationEulerDegrees() const noexcept
+    Vector3 BoxCollision::RotationEulerDegrees() const noexcept
     {
-        return NS::QuaternionToEulerDegrees(m_localRotation);
+        return QuaternionToEulerDegrees(m_localRotation);
     }
 
-    NS::AABB BoxCollision::WorldAABB() const noexcept
+    AABB BoxCollision::WorldAABB() const noexcept
     {
         // 原点中心の箱に局所のずれと回転を掛け、その後で持ち主の世界変換を掛ける
         // 回転時は内包する軸並行 AABB になる
-        const NS::Matrix combined = ShapeWorldMatrix(m_localRotation, m_centerOffset);
-        const NS::AABB local(NS::Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);
-        NS::AABB world;
+        const Matrix combined = ShapeWorldMatrix(m_localRotation, m_centerOffset);
+        const AABB local(Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);
+        AABB world;
         local.Transform(world, combined);
         return world;
     }
 
-    NS::OBB BoxCollision::WorldOBB() const noexcept
+    OBB BoxCollision::WorldOBB() const noexcept
     {
-        const NS::AffineDecomposition decomposed =
-            NS::DecomposeAffine(ShapeWorldMatrix(m_localRotation, m_centerOffset));
-        const NS::Vector3 half{m_halfExtents.x * std::abs(decomposed.scale.x),
+        const AffineDecomposition decomposed =
+            DecomposeAffine(ShapeWorldMatrix(m_localRotation, m_centerOffset));
+        const Vector3 half{m_halfExtents.x * std::abs(decomposed.scale.x),
                                m_halfExtents.y * std::abs(decomposed.scale.y),
                                m_halfExtents.z * std::abs(decomposed.scale.z)};
 
-        return NS::MakeOBB(decomposed.translation, decomposed.rotation, half);
+        return MakeOBB(decomposed.translation, decomposed.rotation, half);
     }
 
-    JPH::BodyID BoxCollision::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID BoxCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current)
     {
-        return physics.SyncBox(current, WorldOBB(), NS::Phys::ObjectLayers::Terrain);
+        return physics.SyncBox(current, WorldOBB(), Phys::ObjectLayers::Terrain);
     }
 
     NS_CLASS(BoxCollision)

@@ -20,11 +20,11 @@ namespace NS
                 raw = raw.substr(separator + 1);
             }
 
-            while (!raw.empty() && std::isspace(static_cast<NS::uint8>(raw.front())) != 0)
+            while (!raw.empty() && std::isspace(static_cast<uint8>(raw.front())) != 0)
             {
                 raw.remove_prefix(1);
             }
-            while (!raw.empty() && std::isspace(static_cast<NS::uint8>(raw.back())) != 0)
+            while (!raw.empty() && std::isspace(static_cast<uint8>(raw.back())) != 0)
             {
                 raw.remove_suffix(1);
             }
@@ -33,7 +33,7 @@ namespace NS
             normalized.reserve(raw.size());
             for (const char c : raw)
             {
-                normalized.push_back(static_cast<char>(std::tolower(static_cast<NS::uint8>(c))));
+                normalized.push_back(static_cast<char>(std::tolower(static_cast<uint8>(c))));
             }
             return normalized;
         }

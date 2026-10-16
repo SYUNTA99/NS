@@ -15,7 +15,7 @@ namespace NS
         {
         public:
             //! before は Undo、after は実行・Redo の状態。nullopt は個体が存在しない状態
-            ObjectSnapshotCommand(NS::uint32 id,
+            ObjectSnapshotCommand(uint32 id,
                                   std::optional<nlohmann::json> before,
                                   std::optional<nlohmann::json> after) noexcept;
 
@@ -25,7 +25,7 @@ namespace NS
             [[nodiscard]] std::size_t EstimatedBytes() const noexcept override;
 
         private:
-            NS::uint32 m_id;                        // 対象オブジェクトの永続 id
+            uint32 m_id;                        // 対象オブジェクトの永続 id
             std::optional<nlohmann::json> m_before; // 適用前の姿 (Undo 復元用、無ければ未存在)
             std::optional<nlohmann::json> m_after;  // 適用後の姿 (無ければ除去)
         };

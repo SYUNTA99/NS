@@ -12,7 +12,7 @@ namespace NS
     class Scene;
 
     //! 型ごとに一つのシステムを必要時に生成する。配置の再構築時に生成と逆順で破棄する
-    class SceneSystemHolder : public NS::NonCopyable
+    class SceneSystemHolder : public NonCopyable
     {
     public:
         explicit SceneSystemHolder(Scene& scene) noexcept : m_scene(scene) {}

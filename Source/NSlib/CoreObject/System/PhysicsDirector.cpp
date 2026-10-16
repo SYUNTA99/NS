@@ -6,6 +6,6 @@ namespace NS
 {
     void PhysicsDirector::OnTick()
     {
-        m_physicsScene.Update(NS::OS::FrameTimer::FixedDelta());
+        m_physicsScene.Update(OS::FrameTimer::FixedDelta());
     }
 } // namespace NS

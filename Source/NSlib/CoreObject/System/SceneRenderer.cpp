@@ -26,7 +26,7 @@ namespace NS
     namespace
     {
         // RenderProxyList の proxy を IRenderable::Collect へつなぐ。owner は登録元の IRenderable
-        void CollectRenderable(void* owner, const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
+        void CollectRenderable(void* owner, const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
         {
             static_cast<IRenderable*>(owner)->Collect(context, out);
         }
@@ -34,8 +34,8 @@ namespace NS
         // effectRoot が空ならここを見る
         std::string DefaultEffectRoot()
         {
-            const std::string assets = NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets");
-            return NS::OS::FileSystem::Combine(assets, "Effects");
+            const std::string assets = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets");
+            return OS::FileSystem::Combine(assets, "Effects");
         }
     } // namespace
 
@@ -43,7 +43,7 @@ namespace NS
 
     SceneRenderer::~SceneRenderer() = default;
 
-    void SceneRenderer::SetRenderer(NS::Gfx::Renderer* renderer) noexcept
+    void SceneRenderer::SetRenderer(Gfx::Renderer* renderer) noexcept
     {
         m_renderer = renderer;
         // 描画先は前のレンダラーの device で作った物なので、差し替えたら作り直す
@@ -59,7 +59,7 @@ namespace NS
         {
             root = DefaultEffectRoot();
         }
-        m_effects = std::make_unique<NS::Gfx::EffectScene>(std::move(root));
+        m_effects = std::make_unique<Gfx::EffectScene>(std::move(root));
     }
 
     void SceneRenderer::SetEffectRoot(std::string root) noexcept
@@ -73,7 +73,7 @@ namespace NS
         {
             return;
         }
-        m_effects->Update(NS::OS::FrameTimer::FixedDelta());
+        m_effects->Update(OS::FrameTimer::FixedDelta());
     }
 
     void SceneRenderer::RegisterRenderable(IRenderable* renderable)
@@ -88,7 +88,7 @@ namespace NS
             return;
         }
 
-        NS::Gfx::RenderProxyDesc desc{};
+        Gfx::RenderProxyDesc desc{};
         desc.bounds = renderable->WorldBounds();
         desc.sortCenter = renderable->SortCenter();
         desc.sortPriority = renderable->SortPriority();
@@ -169,19 +169,19 @@ namespace NS
         }
     }
 
-    void SceneRenderer::DrawOpaque(const NS::Gfx::RenderContext& context)
+    void SceneRenderer::DrawOpaque(const Gfx::RenderContext& context)
     {
         m_renderScene.DrawBucket(context, false);
     }
 
-    void SceneRenderer::DrawTransparent(const NS::Gfx::RenderContext& context)
+    void SceneRenderer::DrawTransparent(const Gfx::RenderContext& context)
     {
         m_renderScene.DrawBucket(context, true);
     }
 
-    void SceneRenderer::DrawOverlays(const NS::Gfx::RenderContext& context,
+    void SceneRenderer::DrawOverlays(const Gfx::RenderContext& context,
                                      UIDirector& ui,
-                                     const NS::Gfx::ScreenFade& fade)
+                                     const Gfx::ScreenFade& fade)
     {
         for (IOverlay* overlay : m_overlays)
         {
@@ -199,9 +199,9 @@ namespace NS
         }
     }
 
-    NS::Gfx::RenderSettings SceneRenderer::ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults)
+    Gfx::RenderSettings SceneRenderer::ResolveSceneSettings(const Gfx::RenderSettings& projectDefaults)
     {
-        NS::Gfx::RenderSettings resolved = projectDefaults;
+        Gfx::RenderSettings resolved = projectDefaults;
         for (DirectionalLight* light : m_lights)
         {
             if (!light->IsOwnerAppeared())
@@ -230,7 +230,7 @@ namespace NS
     void SceneRenderer::Render(CameraManager& cameras,
                                SceneCamera& camera,
                                UIDirector& ui,
-                               const NS::Gfx::ScreenFade& fade,
+                               const Gfx::ScreenFade& fade,
                                std::string_view skyboxPath,
                                float alpha)
     {
@@ -254,7 +254,7 @@ namespace NS
         }
     }
 
-    const NS::Gfx::Texture* SceneRenderer::BodyMaskShown(std::size_t viewIndex) const noexcept
+    const Gfx::Texture* SceneRenderer::BodyMaskShown(std::size_t viewIndex) const noexcept
     {
         if (viewIndex >= m_viewPasses.size())
         {
@@ -263,7 +263,7 @@ namespace NS
         return m_viewPasses[viewIndex].screen->BodyMask();
     }
 
-    void SceneRenderer::DrawBodyMask(const NS::Gfx::RenderContext& context, NS::Gfx::ScreenPasses& screen)
+    void SceneRenderer::DrawBodyMask(const Gfx::RenderContext& context, Gfx::ScreenPasses& screen)
     {
         if (m_bodyMask.empty() || !screen.BeginBodyMask(*m_renderer))
         {
@@ -275,7 +275,7 @@ namespace NS
         {
             renderable->Collect(context, m_bodyMaskItems);
         }
-        for (const NS::Gfx::DrawItem& item : m_bodyMaskItems)
+        for (const Gfx::DrawItem& item : m_bodyMaskItems)
         {
             screen.DrawBodyMaskItem(*m_renderer, item);
         }
@@ -287,8 +287,8 @@ namespace NS
         while (m_viewPasses.size() <= index)
         {
             ViewPasses passes;
-            passes.bloom = std::make_unique<NS::Gfx::Bloom>(NS::Gfx::BloomDesc{});
-            passes.screen = std::make_unique<NS::Gfx::ScreenPasses>();
+            passes.bloom = std::make_unique<Gfx::Bloom>(Gfx::BloomDesc{});
+            passes.screen = std::make_unique<Gfx::ScreenPasses>();
             m_viewPasses.push_back(std::move(passes));
         }
         return m_viewPasses[index];
@@ -297,16 +297,16 @@ namespace NS
     void SceneRenderer::RenderViewWithOverlays(CameraManager& cameras,
                                                SceneCamera& camera,
                                                UIDirector& ui,
-                                               const NS::Gfx::ScreenFade& fade,
+                                               const Gfx::ScreenFade& fade,
                                                std::string_view skyboxPath,
                                                const SceneView& view,
                                                float alpha,
                                                ViewPasses& passes)
     {
-        const NS::Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, view.viewPose, alpha, passes);
+        const Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, view.viewPose, alpha, passes);
 
 #if !defined(NS_SHIPPING)
-        NS::Gfx::DebugDraw::Draw(*ctx.renderer, ctx.viewProjection);
+        Gfx::DebugDraw::Draw(*ctx.renderer, ctx.viewProjection);
 
         // ビューの図形は、このビューの行列で積んで描いたらすぐ捨てる。次のビューや次のフレームへ持ち越さない
         if (view.drawShapes)
@@ -324,30 +324,30 @@ namespace NS
     namespace
     {
         // 歪みの輪を描画先の画素へ直す。中心がカメラの後ろか、描画先が無い時は歪めない
-        [[nodiscard]] NS::Gfx::ScreenRing ToScreenRing(const NS::Gfx::DistortionRing& ring,
-                                                       const NS::Matrix& viewProjection,
-                                                       NS::Size2D size) noexcept
+        [[nodiscard]] Gfx::ScreenRing ToScreenRing(const Gfx::DistortionRing& ring,
+                                                       const Matrix& viewProjection,
+                                                       Size2D size) noexcept
         {
             if (!(ring.push > 0.0f) || size.width <= 0 || size.height <= 0)
             {
-                return NS::Gfx::ScreenRing{};
+                return Gfx::ScreenRing{};
             }
             const float width = static_cast<float>(size.width);
             const float height = static_cast<float>(size.height);
-            NS::Vector2 centerPixel{};
+            Vector2 centerPixel{};
             float centerW = 0.0f;
-            if (!NS::Gfx::TryProjectToPixels(viewProjection, ring.center, width, height, centerPixel, centerW))
+            if (!Gfx::TryProjectToPixels(viewProjection, ring.center, width, height, centerPixel, centerW))
             {
-                return NS::Gfx::ScreenRing{};
+                return Gfx::ScreenRing{};
             }
-            return NS::Gfx::ScreenRing{.centerPixel = centerPixel,
+            return Gfx::ScreenRing{.centerPixel = centerPixel,
                                        .radiusPixels = ring.radius * height,
                                        .pushPixels = ring.push * height,
                                        .halfWidthPixels = ring.halfWidth * height};
         }
     } // namespace
 
-    NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraManager& cameras,
+    Gfx::RenderContext SceneRenderer::RenderWorld(CameraManager& cameras,
                                                       SceneCamera& camera,
                                                       std::string_view skyboxPath,
                                                       const std::optional<CameraPose>& viewOverride,
@@ -357,13 +357,13 @@ namespace NS
         // レンダラーの現在サイズから毎回取り直し、リサイズとビュー切替に追従する
         camera.SetAspectRatioFromRenderer(*m_renderer);
 
-        NS::Gfx::RenderContext ctx{};
+        Gfx::RenderContext ctx{};
         ctx.renderer = m_renderer;
         ctx.alpha = alpha;
 
         // 上書き視点は実カメラを経由せず、その場で行列を組む。実カメラの中身はゲーム視点のまま残す
-        NS::CameraData overrideCamera{};
-        const NS::CameraData* viewCamera = &camera.Camera();
+        CameraData overrideCamera{};
+        const CameraData* viewCamera = &camera.Camera();
         if (viewOverride.has_value())
         {
             overrideCamera.SetPosition(viewOverride->position);

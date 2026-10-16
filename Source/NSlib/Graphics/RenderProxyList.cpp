@@ -13,7 +13,7 @@ namespace NS
     {
         RenderHandle RenderProxyList::Register(const RenderProxyDesc& desc)
         {
-            NS::uint32 slot = static_cast<NS::uint32>(m_proxies.size());
+            uint32 slot = static_cast<uint32>(m_proxies.size());
             if (!m_freeSlots.empty())
             {
                 slot = m_freeSlots.back();
@@ -44,8 +44,8 @@ namespace NS
         }
 
         void RenderProxyList::Update(RenderHandle handle,
-                                     const NS::AABB& bounds,
-                                     const NS::Vector3& sortCenter,
+                                     const AABB& bounds,
+                                     const Vector3& sortCenter,
                                      int sortPriority,
                                      bool transparent) noexcept
         {
@@ -62,10 +62,10 @@ namespace NS
 
         void RenderProxyList::DrawBucket(const RenderContext& context, bool transparent)
         {
-            const NS::Frustum frustum = NS::Frustum::FromViewProjection(context.viewProjection);
+            const Frustum frustum = Frustum::FromViewProjection(context.viewProjection);
 
             m_visibleScratch.clear();
-            for (NS::uint32 slot = 0; slot < m_proxies.size(); ++slot)
+            for (uint32 slot = 0; slot < m_proxies.size(); ++slot)
             {
                 const Proxy& p = m_proxies[slot];
                 if (!p.alive || p.desc.transparent != transparent)
@@ -81,11 +81,11 @@ namespace NS
 
             if (transparent)
             {
-                const NS::Vector3 camPos = context.cameraPosition;
+                const Vector3 camPos = context.cameraPosition;
                 // 距離も優先度も同じ物はスロット順のまま残すため stable_sort
                 std::stable_sort(m_visibleScratch.begin(),
                                  m_visibleScratch.end(),
-                                 [this, camPos](NS::uint32 a, NS::uint32 b) noexcept {
+                                 [this, camPos](uint32 a, uint32 b) noexcept {
                                      const float da = (m_proxies[a].desc.sortCenter - camPos).LengthSquared();
                                      const float db = (m_proxies[b].desc.sortCenter - camPos).LengthSquared();
                                      if (da != db)
@@ -96,7 +96,7 @@ namespace NS
                                  });
             }
 
-            for (const NS::uint32 slot : m_visibleScratch)
+            for (const uint32 slot : m_visibleScratch)
             {
                 const Proxy& p = m_proxies[slot];
                 if (p.desc.collect == nullptr)

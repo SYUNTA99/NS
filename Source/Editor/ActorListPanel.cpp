@@ -65,7 +65,7 @@ namespace NS
                 ImGui::Separator();
 
                 std::size_t shownCount = 0;
-                for (const NS::SceneActor* obj : editor.Objects())
+                for (const SceneActor* obj : editor.Objects())
                 {
                     if (!obj->IsTransient())
                     {
@@ -89,19 +89,19 @@ namespace NS
 
                 if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_F2))
                 {
-                    if (NS::SceneActor* target = editor.SelectedObjectActor())
+                    if (SceneActor* target = editor.SelectedObjectActor())
                     {
                         BeginRename(*target);
                     }
                 }
 
-                for (NS::SceneActor* object : editor.Objects())
+                for (SceneActor* object : editor.Objects())
                 {
                     if (object->IsTransient())
                     {
                         continue;
                     }
-                    if (!filtering || NameMatches(NS::Editor::ObjectDisplayName(*object), m_actorListFilter))
+                    if (!filtering || NameMatches(Editor::ObjectDisplayName(*object), m_actorListFilter))
                     {
                         RenderRow(editor, *object);
                     }
@@ -163,7 +163,7 @@ namespace NS
                         {
                             std::swap(from, to);
                         }
-                        std::vector<NS::uint32> range(m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(from),
+                        std::vector<uint32> range(m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(from),
                                                       m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(to) + 1);
                         editor.SelectObjects(std::move(range), m_rangeSelectToId);
                     }
@@ -191,10 +191,10 @@ namespace NS
 #endif
         }
 
-        void ActorListPanel::RenderRow(LevelEditorController& editor, NS::SceneActor& object) noexcept
+        void ActorListPanel::RenderRow(LevelEditorController& editor, SceneActor& object) noexcept
         {
 #if NS_EDITOR_ENABLED
-            const NS::uint32 id = object.Id();
+            const uint32 id = object.Id();
 
             ImGui::PushID(static_cast<int>(id));
 
@@ -226,7 +226,7 @@ namespace NS
 
             m_visibleOrder.push_back(id);
 
-            ImGui::Selectable(NS::Editor::ObjectDisplayName(object),
+            ImGui::Selectable(Editor::ObjectDisplayName(object),
                               editor.IsObjectSelected(id),
                               ImGuiSelectableFlags_AllowDoubleClick);
 
@@ -283,12 +283,12 @@ namespace NS
 #endif
         }
 
-        void ActorListPanel::BeginRename(NS::SceneActor& object) noexcept
+        void ActorListPanel::BeginRename(SceneActor& object) noexcept
         {
 #if NS_EDITOR_ENABLED
             m_renamingObjectId = object.Id();
             // 導出名から始めるので、そのまま確定すると今見えている名前がそのまま実体になる
-            std::snprintf(m_renameBuffer, sizeof(m_renameBuffer), "%s", NS::Editor::ObjectDisplayName(object));
+            std::snprintf(m_renameBuffer, sizeof(m_renameBuffer), "%s", Editor::ObjectDisplayName(object));
             m_renameFocusPending = true;
 #else
             (void)object;

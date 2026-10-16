@@ -15,19 +15,19 @@ namespace NS
         namespace
         {
             // クラスの OnInit が積む構成をそのまま写したひな形。値はコード既定に任せる
-            [[nodiscard]] nlohmann::json PrototypeOf(const NS::TypeRegistry::Entry& entry)
+            [[nodiscard]] nlohmann::json PrototypeOf(const TypeRegistry::Entry& entry)
             {
-                const std::unique_ptr<NS::SceneActor> actor = NS::CreateActorOfClass(entry.className);
-                nlohmann::json prototype = NS::MakePrototypeJson(*actor);
-                NS::SetObjectJsonClass(prototype, entry.className);
+                const std::unique_ptr<SceneActor> actor = CreateActorOfClass(entry.className);
+                nlohmann::json prototype = MakePrototypeJson(*actor);
+                SetObjectJsonClass(prototype, entry.className);
                 return prototype;
             }
 
             void SetPartsMesh(nlohmann::json& prototype, std::string_view meshName)
             {
-                if (nlohmann::json* renderer = NS::SubObjFields(prototype, "Model"))
+                if (nlohmann::json* renderer = SubObjFields(prototype, "Model"))
                 {
-                    NS::SetField(*renderer, "メッシュ", meshName);
+                    SetField(*renderer, "メッシュ", meshName);
                 }
             }
 
@@ -45,7 +45,7 @@ namespace NS
             [[nodiscard]] std::vector<PlacementItem> BuildItems()
             {
                 std::vector<PlacementItem> items;
-                for (const NS::TypeRegistry::Entry* entry : NS::PlaceableEntries())
+                for (const TypeRegistry::Entry* entry : PlaceableEntries())
                 {
                     if (std::string_view{entry->className} != "MapPartsActor")
                     {
@@ -84,8 +84,8 @@ namespace NS
 
         nlohmann::json MakeMeshPartsPrototype(std::string_view meshRef)
         {
-            nlohmann::json prototype = NS::MakeObjectJson();
-            const NS::TypeRegistry::Entry* entry = NS::TypeRegistry::Get().Find("MapPartsActor");
+            nlohmann::json prototype = MakeObjectJson();
+            const TypeRegistry::Entry* entry = TypeRegistry::Get().Find("MapPartsActor");
             if (entry != nullptr && entry->create != nullptr)
             {
                 prototype = PrototypeOf(*entry);
@@ -96,13 +96,13 @@ namespace NS
 
         float PartsSlopeAngleDegrees(const nlohmann::json& prototype) noexcept
         {
-            const nlohmann::json* renderer = NS::SubObjFields(prototype, "Model");
+            const nlohmann::json* renderer = SubObjFields(prototype, "Model");
             if (renderer == nullptr)
             {
                 return -1.0f;
             }
             // 組み込みの坂のメッシュの名前と角度の対応。AssetManager の組み込みの形と揃える
-            const std::string mesh = NS::FieldString(*renderer, "メッシュ", "");
+            const std::string mesh = FieldString(*renderer, "メッシュ", "");
             if (mesh == "wedge45")
             {
                 return 45.0f;

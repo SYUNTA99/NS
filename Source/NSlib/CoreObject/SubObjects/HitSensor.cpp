@@ -74,7 +74,7 @@ namespace NS
         }
 
         // 点から向きのある箱までの距離の 2 乗。中なら 0
-        [[nodiscard]] float PointBoxDistanceSq(const Vector3& point, const NS::OBB& box) noexcept
+        [[nodiscard]] float PointBoxDistanceSq(const Vector3& point, const OBB& box) noexcept
         {
             const Vector3 d = point - box.center;
             const std::array<Vector3, 3> axes{box.axisX, box.axisY, box.axisZ};
@@ -94,7 +94,7 @@ namespace NS
 
         // 線分から向きのある箱までの距離の 2 乗
         // 点から凸な形までの距離は線分に沿って凸なので、三分探索で最小を詰める
-        [[nodiscard]] float SegmentBoxDistanceSq(const Vector3& a, const Vector3& b, const NS::OBB& box) noexcept
+        [[nodiscard]] float SegmentBoxDistanceSq(const Vector3& a, const Vector3& b, const OBB& box) noexcept
         {
             constexpr int k_Steps = 40;
             float lo = 0.0f;
@@ -120,7 +120,7 @@ namespace NS
         }
 
         // 分離軸の定理で向きのある箱どうしの重なりを見る。15 本の軸のどれかで離れていれば重ならない
-        [[nodiscard]] bool BoxesOverlap(const NS::OBB& lhs, const NS::OBB& rhs) noexcept
+        [[nodiscard]] bool BoxesOverlap(const OBB& lhs, const OBB& rhs) noexcept
         {
             const std::array<Vector3, 3> a{lhs.axisX, lhs.axisY, lhs.axisZ};
             const std::array<Vector3, 3> b{rhs.axisX, rhs.axisY, rhs.axisZ};
@@ -165,7 +165,7 @@ namespace NS
 
     } // namespace
 
-    SensorVolume SensorVolume::Sphere(const NS::Vector3& center, float radius) noexcept
+    SensorVolume SensorVolume::Sphere(const Vector3& center, float radius) noexcept
     {
         SensorVolume volume{};
         volume.a = center;
@@ -174,9 +174,9 @@ namespace NS
         return volume;
     }
 
-    SensorVolume SensorVolume::Capsule(const NS::Phys::Capsule& capsule) noexcept
+    SensorVolume SensorVolume::Capsule(const Phys::Capsule& capsule) noexcept
     {
-        NS::Vector3 axis = capsule.axis;
+        Vector3 axis = capsule.axis;
         if (axis.LengthSquared() > 0.0f)
         {
             axis.Normalize();
@@ -188,7 +188,7 @@ namespace NS
         return volume;
     }
 
-    SensorVolume SensorVolume::Box(const NS::OBB& box) noexcept
+    SensorVolume SensorVolume::Box(const OBB& box) noexcept
     {
         SensorVolume volume{};
         volume.isBox = true;
@@ -198,12 +198,12 @@ namespace NS
         return volume;
     }
 
-    NS::AABB SensorVolume::Bounds() const noexcept
+    AABB SensorVolume::Bounds() const noexcept
     {
         if (isBox)
         {
             // 各軸へ投影した半幅の和が、その軸並行の箱の半幅になる
-            const NS::Vector3 extent{
+            const Vector3 extent{
                 std::abs(box.axisX.x) * box.halfExtentX + std::abs(box.axisY.x) * box.halfExtentY +
                     std::abs(box.axisZ.x) * box.halfExtentZ,
                 std::abs(box.axisX.y) * box.halfExtentX + std::abs(box.axisY.y) * box.halfExtentY +
@@ -211,14 +211,14 @@ namespace NS
                 std::abs(box.axisX.z) * box.halfExtentX + std::abs(box.axisY.z) * box.halfExtentY +
                     std::abs(box.axisZ.z) * box.halfExtentZ,
             };
-            return NS::AABB{box.center, extent};
+            return AABB{box.center, extent};
         }
-        const NS::Vector3 lo = NS::Vector3::Min(a, b) - NS::Vector3{radius, radius, radius};
-        const NS::Vector3 hi = NS::Vector3::Max(a, b) + NS::Vector3{radius, radius, radius};
-        return NS::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
+        const Vector3 lo = Vector3::Min(a, b) - Vector3{radius, radius, radius};
+        const Vector3 hi = Vector3::Max(a, b) + Vector3{radius, radius, radius};
+        return AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
 
-    NS::Vector3 SensorVolume::Center() const noexcept
+    Vector3 SensorVolume::Center() const noexcept
     {
         if (isBox)
         {
@@ -280,37 +280,37 @@ namespace NS
         m_halfHeight = std::max(halfHeight, 0.0f);
     }
 
-    void ShapeHitSensor::SetBox(const NS::Vector3& halfExtents) noexcept
+    void ShapeHitSensor::SetBox(const Vector3& halfExtents) noexcept
     {
         m_shape = HitSensorShape::Box;
         m_boxHalfExtents =
-            NS::Vector3{std::max(halfExtents.x, 0.0f), std::max(halfExtents.y, 0.0f), std::max(halfExtents.z, 0.0f)};
+            Vector3{std::max(halfExtents.x, 0.0f), std::max(halfExtents.y, 0.0f), std::max(halfExtents.z, 0.0f)};
     }
 
     SensorVolume ShapeHitSensor::WorldVolume() const noexcept
     {
-        NS::Matrix world = NS::Matrix::Identity;
+        Matrix world = Matrix::Identity;
         if (const SceneActor* owner = Owner())
         {
             world = owner->Root().WorldMatrix();
         }
-        const NS::AffineDecomposition parts = NS::DecomposeAffine(world);
-        const NS::Vector3 center = NS::Vector3::Transform(m_centerOffset, world);
+        const AffineDecomposition parts = DecomposeAffine(world);
+        const Vector3 center = Vector3::Transform(m_centerOffset, world);
         switch (m_shape)
         {
         case HitSensorShape::Capsule:
             return SensorVolume::Capsule(
-                NS::Phys::MakeScaledCapsule(center, parts.rotation, parts.scale, m_radius, m_halfHeight));
+                Phys::MakeScaledCapsule(center, parts.rotation, parts.scale, m_radius, m_halfHeight));
         case HitSensorShape::Box:
         {
-            const NS::Vector3 half{m_boxHalfExtents.x * std::abs(parts.scale.x),
+            const Vector3 half{m_boxHalfExtents.x * std::abs(parts.scale.x),
                                    m_boxHalfExtents.y * std::abs(parts.scale.y),
                                    m_boxHalfExtents.z * std::abs(parts.scale.z)};
-            return SensorVolume::Box(NS::MakeOBB(center, parts.rotation, half));
+            return SensorVolume::Box(MakeOBB(center, parts.rotation, half));
         }
         case HitSensorShape::Sphere:
         default:
-            return SensorVolume::Sphere(center, m_radius * NS::MaxAbsComponent(parts.scale));
+            return SensorVolume::Sphere(center, m_radius * MaxAbsComponent(parts.scale));
         }
     }
 
@@ -323,7 +323,7 @@ namespace NS
             return m_volume();
         }
         NS_LOG_ERROR(Scene, "FollowHitSensor: 形を答える関数が空。根に長さ 0 の球を返す");
-        NS::Vector3 root{0.0f, 0.0f, 0.0f};
+        Vector3 root{0.0f, 0.0f, 0.0f};
         if (const SceneActor* owner = Owner())
         {
             root = owner->Root().Position();

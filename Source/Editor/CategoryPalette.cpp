@@ -32,22 +32,22 @@ namespace NS
             return PartsSlopeAngleDegrees(PaletteTemplateSlots()[m_activeSlot].prototype);
         }
 
-        void CategoryPalette::TickInput(NS::OS::Input* input, NS::UI::ImGuiContext* imgui) noexcept
+        void CategoryPalette::TickInput(OS::Input* input, UI::ImGuiContext* imgui) noexcept
         {
             if (input == nullptr)
             {
                 return;
             }
 
-            NS::OS::Gamepad& gp = input->Gamepad();
+            OS::Gamepad& gp = input->Gamepad();
             if (gp.IsConnected())
             {
-                if (gp.IsPressed(NS::OS::GamepadButton::LeftShoulder))
+                if (gp.IsPressed(OS::GamepadButton::LeftShoulder))
                 {
                     SetActiveSlot((m_activeSlot + k_PaletteSlotCount - 1) % k_PaletteSlotCount);
                 }
 
-                if (gp.IsPressed(NS::OS::GamepadButton::RightShoulder))
+                if (gp.IsPressed(OS::GamepadButton::RightShoulder))
                 {
                     SetActiveSlot((m_activeSlot + 1) % k_PaletteSlotCount);
                 }
@@ -59,11 +59,11 @@ namespace NS
                 return;
             }
 
-            NS::OS::Keyboard& kb = input->Keyboard();
+            OS::Keyboard& kb = input->Keyboard();
             for (std::size_t i = 0; i < k_PaletteSlotCount; ++i)
             {
-                const NS::OS::Key code =
-                    static_cast<NS::OS::Key>(static_cast<int>(NS::OS::Key::Num1) + static_cast<int>(i));
+                const OS::Key code =
+                    static_cast<OS::Key>(static_cast<int>(OS::Key::Num1) + static_cast<int>(i));
                 if (kb.IsPressed(code))
                 {
                     SetActiveSlot(i);
@@ -71,7 +71,7 @@ namespace NS
             }
         }
 
-        void CategoryPalette::Render(const NS::Editor::ViewRect& viewRect) noexcept
+        void CategoryPalette::Render(const Editor::ViewRect& viewRect) noexcept
         {
 #if NS_EDITOR_ENABLED
             constexpr float k_DesiredWidth = 640.0f;

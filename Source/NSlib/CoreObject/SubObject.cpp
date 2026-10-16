@@ -34,7 +34,7 @@ namespace NS
     {
         if (m_owner == nullptr)
         {
-            return NS::OS::FrameTimer::FixedDelta();
+            return OS::FrameTimer::FixedDelta();
         }
         return m_owner->BodyDelta();
     }

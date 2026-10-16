@@ -26,21 +26,21 @@ namespace NS
         {
             if (m_scene != nullptr)
             {
-                const NS::OS::ScopedNeutralInput neutral;
+                const OS::ScopedNeutralInput neutral;
                 m_scene.reset();
             }
             m_create = {};
             m_frame.reset();
         }
 
-        NS::Scene* TimelinePreview::Seek(int frame)
+        Scene* TimelinePreview::Seek(int frame)
         {
             if (!m_create || m_range.last < m_range.first)
             {
                 return nullptr;
             }
             frame = std::clamp(frame, m_range.first, m_range.last);
-            const NS::OS::ScopedNeutralInput neutral;
+            const OS::ScopedNeutralInput neutral;
             if (!m_scene || (m_frame.has_value() && frame < *m_frame))
             {
                 m_scene.reset();
@@ -64,7 +64,7 @@ namespace NS
             // 先頭も 1 歩後の姿。記録と描画で同じ添字を使うための並び
             for (int step = next; step <= frame; ++step)
             {
-                NS::OS::Input::Get().Gamepad().StopVibration();
+                OS::Input::Get().Gamepad().StopVibration();
                 m_scene->OnUpdate();
             }
             m_scene->SetSimulationPaused(true);
@@ -72,7 +72,7 @@ namespace NS
             return m_scene.get();
         }
 
-        bool TimelinePreview::RenderView(const NS::SceneView& view)
+        bool TimelinePreview::RenderView(const SceneView& view)
         {
             if (!m_scene || !m_frame.has_value() || view.target == nullptr)
             {

@@ -23,7 +23,7 @@ namespace NS
     {
     public:
         //! シーンの PhysicsScene。シーンに居ない間は nullptr
-        [[nodiscard]] virtual NS::Phys::PhysicsScene* GetPhysicsScene() const noexcept = 0;
+        [[nodiscard]] virtual Phys::PhysicsScene* GetPhysicsScene() const noexcept = 0;
 
     protected:
         ~IUseCollision() = default;
@@ -32,20 +32,20 @@ namespace NS
     //! @brief origin から direction へ maxDistance までで一番近い当たりまでの距離を outDistance に返す
     //! @return 当たりがあれば true。シーンに居ない時と当たりが無い時は false で outDistance を変えない
     [[nodiscard]] bool RaycastCollision(const IUseCollision* user,
-                                        const NS::Vector3& origin,
-                                        const NS::Vector3& direction,
+                                        const Vector3& origin,
+                                        const Vector3& direction,
                                         float maxDistance,
                                         float& outDistance);
 
     [[nodiscard]] bool RaycastCollision(const IUseCollision* user,
-                                        const NS::Vector3& origin,
-                                        const NS::Vector3& direction,
+                                        const Vector3& origin,
+                                        const Vector3& direction,
                                         float maxDistance,
                                         float& outDistance,
-                                        NS::Vector3& outNormal,
+                                        Vector3& outNormal,
                                         JPH::BodyID ignoredBody);
 
     //! 軸並行の境界箱で重なりを調べ、世界座標の境界箱を返す。実形状は判定しない
     //! region は幅 0 の点や柱も受け付ける。シーンなし・重なりなしなら空
-    [[nodiscard]] std::vector<NS::AABB> OverlapBoxCollision(const IUseCollision* user, const NS::AABB& region);
+    [[nodiscard]] std::vector<AABB> OverlapBoxCollision(const IUseCollision* user, const AABB& region);
 } // namespace NS

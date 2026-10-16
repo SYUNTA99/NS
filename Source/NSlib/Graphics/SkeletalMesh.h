@@ -20,10 +20,10 @@ namespace NS
         //! @details 頂点の基本情報に加え、最大4つのボーンからインデックスとウェイトを保持する
         struct SkinnedVertex
         {
-            NS::Vector3 position;
-            NS::Vector2 uv;
-            NS::Vector3 normal;
-            NS::uint32 joints[4];
+            Vector3 position;
+            Vector2 uv;
+            Vector3 normal;
+            uint32 joints[4];
             float weights[4];
         };
         static_assert(sizeof(SkinnedVertex) == 64,
@@ -36,7 +36,7 @@ namespace NS
         {
             const SkinnedVertex* vertices = nullptr;
             std::size_t vertexCount = 0;
-            const NS::uint32* indices = nullptr;
+            const uint32* indices = nullptr;
             std::size_t indexCount = 0;
             std::size_t boneCount = 0;
         };
@@ -44,17 +44,17 @@ namespace NS
         //! シェーダへ転送するボーンパレット
         struct BonePaletteCB
         {
-            NS::Matrix bones[k_MaxBones];
+            Matrix bones[k_MaxBones];
         };
         static_assert((sizeof(BonePaletteCB) % 16) == 0, "定数バッファのサイズは16バイトの倍数である必要があります。");
 
         //! ボーンデータをシェーダへ転送する際のスロット番号
-        inline constexpr NS::uint k_BonePaletteSlot = 1;
+        inline constexpr uint k_BonePaletteSlot = 1;
 
         //! バインド空間の影響頂点を包む球。姿勢に追従する境界の計算に使う
         struct BoneSphere
         {
-            NS::Vector3 center{0.0f, 0.0f, 0.0f}; // バインド空間での影響頂点の中心
+            Vector3 center{0.0f, 0.0f, 0.0f}; // バインド空間での影響頂点の中心
             float radius = 0.0f;                  // 中心から最遠の影響頂点までの距離、負なら影響頂点なし
         };
 
@@ -64,10 +64,10 @@ namespace NS
                                                                  std::size_t boneCount);
 
         //! 姿勢に追従する球で境界を保守的に包む。影響球がなければ fallback
-        [[nodiscard]] NS::AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
-                                                  const NS::Matrix* palette,
+        [[nodiscard]] AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
+                                                  const Matrix* palette,
                                                   std::size_t paletteCount,
-                                                  const NS::AABB& fallback);
+                                                  const AABB& fallback);
 
         //! スキン頂点のメッシュ。複数個体で共有するため、姿勢は描画側が持つ
         class SkeletalMesh : public Mesh

@@ -25,9 +25,9 @@ namespace NS
         ~Animation();
 
         //! 非所有の SkeletalMesh を差し替える。参照先がない間は ApplyPose を行わない
-        void SetMesh(NS::Gfx::SkeletalMesh* mesh) noexcept;
+        void SetMesh(Gfx::SkeletalMesh* mesh) noexcept;
         //! 骨格を差し替える。呼び出し側が寿命を保つ。参照先がない間は ApplyPose を行わない
-        void SetSkeleton(const NS::Gfx::Skeleton* skeleton) noexcept;
+        void SetSkeleton(const Gfx::Skeleton* skeleton) noexcept;
 
         //! この SubObject が表す skinned モデルの参照。ContentRoot 配下の glTF 相対パス
         [[nodiscard]] const std::string& ModelRef() const noexcept { return m_modelRef; }
@@ -57,7 +57,7 @@ namespace NS
 
         //! クリップを後から追加する。既存の選択・再生位置は維持
         //! 各要素のアドレスを控えるだけなので、格納元の寿命は呼出側が保証する。右辺値の vector を渡すと参照が宙に浮く
-        void AddClips(std::span<const NS::Gfx::AnimationClip> clips);
+        void AddClips(std::span<const Gfx::AnimationClip> clips);
 
         [[nodiscard]] std::size_t ClipCount() const noexcept;
         [[nodiscard]] std::size_t CurrentClip() const noexcept;
@@ -86,22 +86,22 @@ namespace NS
     private:
         void ApplyPose(float time);
 
-        NS::Gfx::SkeletalMesh* m_mesh = nullptr; // 更新先の SkeletalMesh (非所有)
+        Gfx::SkeletalMesh* m_mesh = nullptr; // 更新先の SkeletalMesh (非所有)
         std::string m_modelRef{}; // 保存・編集される参照文字列。ResolveAssets が mesh/skeleton/clips へ実体を当てる
         std::string m_clipsRef{}; // 追加アニメーションの参照一覧。セミコロン区切りで ResolveAssets が結合する
-        const NS::Gfx::Skeleton* m_skeleton = nullptr;      // ボーンパレット計算用の骨格 (非所有)
-        std::vector<const NS::Gfx::AnimationClip*> m_clips; // 再生できるクリップ一覧 (非所有)
+        const Gfx::Skeleton* m_skeleton = nullptr;      // ボーンパレット計算用の骨格 (非所有)
+        std::vector<const Gfx::AnimationClip*> m_clips; // 再生できるクリップ一覧 (非所有)
         std::size_t m_current = 0;
         float m_time = 0.0f;
         float m_speed = 1.0f;
         bool m_playing = true;
         bool m_looping = true;
-        std::vector<NS::Gfx::BonePose> m_poseScratch; // サンプリング結果の一時ポーズ
-        std::vector<NS::Matrix> m_paletteScratch;     // ボーンパレットの一時バッファ
+        std::vector<Gfx::BonePose> m_poseScratch; // サンプリング結果の一時ポーズ
+        std::vector<Matrix> m_paletteScratch;     // ボーンパレットの一時バッファ
 
         // ボーンパレットはオブジェクト単位の状態なので mesh でなく本 SubObject が所有する
-        std::unique_ptr<NS::Gfx::Buffer> m_bonePaletteCB; // VS b1 用の定数バッファ
-        NS::Gfx::BonePaletteCB m_palette;                 // CPU 側パレット、描画側が毎描画 GPU へ上げる
+        std::unique_ptr<Gfx::Buffer> m_bonePaletteCB; // VS b1 用の定数バッファ
+        Gfx::BonePaletteCB m_palette;                 // CPU 側パレット、描画側が毎描画 GPU へ上げる
 
         Model* m_renderer = nullptr; // 同じ object の描画 SubObject。パレットと境界の差し先 (非所有)
     };

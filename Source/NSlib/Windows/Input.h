@@ -27,15 +27,15 @@ namespace NS
                 return s_instance;
             }
 
-            [[nodiscard]] NS::OS::Keyboard& Keyboard() noexcept { return m_keyboard; }
-            [[nodiscard]] const NS::OS::Keyboard& Keyboard() const noexcept { return m_keyboard; }
+            [[nodiscard]] OS::Keyboard& Keyboard() noexcept { return m_keyboard; }
+            [[nodiscard]] const OS::Keyboard& Keyboard() const noexcept { return m_keyboard; }
 
-            [[nodiscard]] NS::OS::Mouse& Mouse() noexcept { return m_mouse; }
-            [[nodiscard]] const NS::OS::Mouse& Mouse() const noexcept { return m_mouse; }
+            [[nodiscard]] OS::Mouse& Mouse() noexcept { return m_mouse; }
+            [[nodiscard]] const OS::Mouse& Mouse() const noexcept { return m_mouse; }
 
             //! @brief SetGamepadUserIndex で選んだ 1 台のゲームパッドを返す
-            [[nodiscard]] NS::OS::Gamepad& Gamepad() noexcept { return m_gamepad; }
-            [[nodiscard]] const NS::OS::Gamepad& Gamepad() const noexcept { return m_gamepad; }
+            [[nodiscard]] OS::Gamepad& Gamepad() noexcept { return m_gamepad; }
+            [[nodiscard]] const OS::Gamepad& Gamepad() const noexcept { return m_gamepad; }
 
             //! XInput の番号 0〜3 に切り替える。状態を初期化し、次の Update から読む
             //! 範囲外は変更せず false
@@ -73,16 +73,16 @@ namespace NS
             }
 
         private:
-            NS::OS::Keyboard m_keyboard;
-            NS::OS::Mouse m_mouse;
-            NS::OS::Gamepad m_gamepad;
+            OS::Keyboard m_keyboard;
+            OS::Mouse m_mouse;
+            OS::Gamepad m_gamepad;
 
             UiCaptureDesc m_uiCapture{};
 
             // 中立の間に控える手元の機器の状態。BeginNeutral で入れ替え、EndNeutral で戻す
-            NS::OS::Keyboard m_heldKeyboard;
-            NS::OS::Mouse m_heldMouse;
-            NS::OS::Gamepad m_heldGamepad;
+            OS::Keyboard m_heldKeyboard;
+            OS::Mouse m_heldMouse;
+            OS::Gamepad m_heldGamepad;
             int m_neutralDepth = 0; // BeginNeutral を重ねた数
         };
 

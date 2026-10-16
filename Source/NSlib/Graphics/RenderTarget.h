@@ -14,24 +14,24 @@ namespace NS
         //! @brief シーンをテクスチャへ描くためのオフスクリーン描画先
         //! @details カラー (RTV+SRV) と深度 (DSV) を 1 組で持ち、Renderer::SetSceneTarget へ渡して使う
         //! 構築に失敗した場合は例外を送出せず、無効な状態として扱う
-        class RenderTarget : public NS::NonCopyable
+        class RenderTarget : public NonCopyable
         {
         public:
             //! @brief 指定サイズのオフスクリーン描画先を生成する
             //! @param[in] size 幅と高さ。0 以下の成分があると無効なインスタンスを返す
             //! @return 成否にかかわらず参照先を返す。成否は IsValid で確認する
-            [[nodiscard]] static std::unique_ptr<RenderTarget> Create(NS::Size2D size);
+            [[nodiscard]] static std::unique_ptr<RenderTarget> Create(Size2D size);
 
             ~RenderTarget();
 
             [[nodiscard]] bool IsValid() const noexcept;
 
-            [[nodiscard]] NS::Size2D Size() const noexcept;
+            [[nodiscard]] Size2D Size() const noexcept;
 
             //! @brief 描画先のサイズを変更する
             //! @note 同サイズ、または 0 以下の指定は何もしない。旧テクスチャは即座に手放すため、
             //! SRV を参照する描画が終わった位置で呼ぶこと
-            void Resize(NS::Size2D size) noexcept;
+            void Resize(Size2D size) noexcept;
 
             //! 描画先となるカラーテクスチャ (RTV+SRV)。無効時は nullptr
             [[nodiscard]] Texture* Color() const noexcept;
@@ -44,10 +44,10 @@ namespace NS
             [[nodiscard]] void* UiTextureHandle() const noexcept;
 
         private:
-            explicit RenderTarget(NS::Size2D size);
+            explicit RenderTarget(Size2D size);
 
             //! カラーと深度を組で作り直す。片方でも失敗したら両方とも持たない
-            void Build(NS::Size2D size) noexcept;
+            void Build(Size2D size) noexcept;
 
             std::unique_ptr<Texture> m_color; // カラー (RTV+SRV)
             std::unique_ptr<Texture> m_depth; // 深度 (DSV)

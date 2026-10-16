@@ -34,13 +34,13 @@ namespace NS
     //! 描画のプロジェクト既定値などは RendererDesc の settings 側で設定する
     struct ApplicationDesc
     {
-        NS::OS::WindowDesc window{};
-        NS::Gfx::RendererDesc renderer{};
-        float fixedDelta = NS::OS::FrameTimer::k_DefaultFixedDelta;
+        OS::WindowDesc window{};
+        Gfx::RendererDesc renderer{};
+        float fixedDelta = OS::FrameTimer::k_DefaultFixedDelta;
     };
 
     //! 単一インスタンスのメインループ。レイヤーの構成は起動時に確定する
-    class Application : public NS::NonCopyable
+    class Application : public NonCopyable
     {
     public:
         explicit Application(const ApplicationDesc& desc);
@@ -50,27 +50,27 @@ namespace NS
         [[nodiscard]] bool IsValid() const noexcept;
 
         //! 通常のレイヤーをオーバーレイより前へ追加する。メインループ開始前に呼ぶこと
-        void AddLayer(std::unique_ptr<NS::Layer> layer);
+        void AddLayer(std::unique_ptr<Layer> layer);
 
         //! 描画が最後になるよう、オーバーレイを通常のレイヤーより後ろへ追加する。メインループ開始前に呼ぶこと
-        void AddOverlay(std::unique_ptr<NS::Layer> overlay);
+        void AddOverlay(std::unique_ptr<Layer> overlay);
 
         //! @return 正常終了時に 0、初期化失敗またはレイヤーが空の場合は -1
         int Run();
 
         //! 起動時に作ったウィンドウ。Shutdown で破棄するので以降は参照できない
-        [[nodiscard]] NS::OS::Window& Window() noexcept;
-        [[nodiscard]] const NS::OS::Window& Window() const noexcept;
+        [[nodiscard]] OS::Window& Window() noexcept;
+        [[nodiscard]] const OS::Window& Window() const noexcept;
         //! 起動時に作ったレンダラー。破棄の時期はウィンドウと同じ
-        [[nodiscard]] NS::Gfx::Renderer& Renderer() noexcept;
-        [[nodiscard]] const NS::Gfx::Renderer& Renderer() const noexcept;
+        [[nodiscard]] Gfx::Renderer& Renderer() noexcept;
+        [[nodiscard]] const Gfx::Renderer& Renderer() const noexcept;
         //! プロセス全体で共有される入力。Application は所有しない
-        [[nodiscard]] NS::OS::Input& Input() noexcept;
-        [[nodiscard]] const NS::OS::Input& Input() const noexcept;
+        [[nodiscard]] OS::Input& Input() noexcept;
+        [[nodiscard]] const OS::Input& Input() const noexcept;
 
         //! アプリの寿命に紐づくアセットキャッシュ
-        [[nodiscard]] NS::AssetManager& Assets() noexcept;
-        [[nodiscard]] const NS::AssetManager& Assets() const noexcept;
+        [[nodiscard]] AssetManager& Assets() noexcept;
+        [[nodiscard]] const AssetManager& Assets() const noexcept;
 
         //! 表示・固定・相対モードをまとめて切り替える。captured が true ならカーソルを隠す
         //! 固定点の設定は変更しない
@@ -94,10 +94,10 @@ namespace NS
         //! ウィンドウが閉じられた場合は即座に終了する。終了要求は guard に諮り、拒否されたら取り下げる
         [[nodiscard]] bool WantExit() noexcept;
 
-        std::unique_ptr<NS::OS::Window> m_window;
-        std::unique_ptr<NS::Gfx::Renderer> m_renderer;
+        std::unique_ptr<OS::Window> m_window;
+        std::unique_ptr<Gfx::Renderer> m_renderer;
         // 下から順番に破棄されるから、アセットを Renderer より先に解放させるためにここに書く
-        std::unique_ptr<NS::AssetManager> m_assets;
+        std::unique_ptr<AssetManager> m_assets;
         Layers m_layers;
         bool m_valid = false;
         bool m_quitRequested = false;

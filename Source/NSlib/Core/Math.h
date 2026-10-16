@@ -164,13 +164,13 @@ namespace NS
     }
 
     //! 同じ位置と種から同じ値を返す、状態を持たないハッシュ
-    [[nodiscard]] constexpr NS::uint32 NoiseHash(NS::int32 position, NS::uint32 seed) noexcept
+    [[nodiscard]] constexpr uint32 NoiseHash(int32 position, uint32 seed) noexcept
     {
         // 掛ける数は上位と下位のビットがよく混ざる奇数。足して右へずらして排他的論理和を取り、位置の近さを壊す
-        constexpr NS::uint32 k_Mix1 = 0xB5297A4Du;
-        constexpr NS::uint32 k_Mix2 = 0x68E31DA4u;
-        constexpr NS::uint32 k_Mix3 = 0x1B56C4E9u;
-        NS::uint32 mixed = static_cast<NS::uint32>(position);
+        constexpr uint32 k_Mix1 = 0xB5297A4Du;
+        constexpr uint32 k_Mix2 = 0x68E31DA4u;
+        constexpr uint32 k_Mix3 = 0x1B56C4E9u;
+        uint32 mixed = static_cast<uint32>(position);
         mixed *= k_Mix1;
         mixed += seed;
         mixed ^= mixed >> 8;
@@ -183,10 +183,10 @@ namespace NS
 
     //! 同じ位置と種から連続した -1〜1 のノイズを返す。格子上の傾きは 0
     //! x は格子間隔を 1 とする位置 (時刻 × 周波数)
-    [[nodiscard]] inline float ValueNoise1D(float x, NS::uint32 seed) noexcept
+    [[nodiscard]] inline float ValueNoise1D(float x, uint32 seed) noexcept
     {
         const float cell = std::floor(x);
-        const NS::int32 index = static_cast<NS::int32>(cell);
+        const int32 index = static_cast<int32>(cell);
         const float t = x - cell;
         constexpr float k_HashToUnit = 1.0f / 4294967295.0f;
         const float a = static_cast<float>(NoiseHash(index, seed)) * k_HashToUnit * 2.0f - 1.0f;

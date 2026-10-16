@@ -38,13 +38,13 @@ namespace NS
 
         //! @brief 描画先の大きさから UICanvas を作って控え、画面を描く順に描く
         //! @details renderer がなければ UICanvas は既定の値を使い、画面の描画処理は呼ぶ
-        void Draw(const NS::Gfx::RenderContext& context);
+        void Draw(const Gfx::RenderContext& context);
 
         //! 直近の Draw で控えた拡縮と全画面の矩形。画面が描く時に借りる
-        [[nodiscard]] const NS::UI::UICanvas& Canvas() const noexcept { return m_canvas; }
+        [[nodiscard]] const UI::UICanvas& Canvas() const noexcept { return m_canvas; }
 
     private:
         std::vector<UIActor*> m_screens; // 開いた順、非所有
-        NS::UI::UICanvas m_canvas{};     // 直近の Draw の描画先で作った値
+        UI::UICanvas m_canvas{};     // 直近の Draw の描画先で作った値
     };
 } // namespace NS

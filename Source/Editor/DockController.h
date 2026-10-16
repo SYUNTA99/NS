@@ -9,7 +9,7 @@ namespace NS
     namespace Editor
     {
         //! ドック配置とパネルの全面化を管理する。パネルの内容は呼び手が描く
-        class DockController : public NS::NonCopyable
+        class DockController : public NonCopyable
         {
         public:
             //! @brief ツールバー帯の下にドックホストを 1 枚置く

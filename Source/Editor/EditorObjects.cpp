@@ -24,7 +24,7 @@ namespace NS
         namespace
         {
             // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
-            constexpr float k_QuarterTurnYaw = NS::k_Pi * 0.5f;
+            constexpr float k_QuarterTurnYaw = k_Pi * 0.5f;
 
             // 登録の表示名、なければクラス名。未登録は SceneActor。返す文字列は登録情報が所有する
             const char* ClassDisplayName(std::string_view className) noexcept
@@ -33,7 +33,7 @@ namespace NS
                 {
                     return "SceneActor";
                 }
-                const NS::TypeRegistry::Entry* entry = NS::TypeRegistry::Get().Find(className);
+                const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
                 if (entry == nullptr)
                 {
                     return "SceneActor";
@@ -47,24 +47,24 @@ namespace NS
 
             bool IsPlayerObject(const nlohmann::json& object) noexcept
             {
-                return NS::ObjectJsonClass(object) == ::PlayerActor::StaticReflection()->typeName;
+                return ObjectJsonClass(object) == ::PlayerActor::StaticReflection()->typeName;
             }
 
             bool IsDeathZoneObject(const nlohmann::json& object) noexcept
             {
-                return NS::ObjectJsonClass(object) == GL::Level::DeathZoneActor::StaticReflection()->typeName;
+                return ObjectJsonClass(object) == GL::Level::DeathZoneActor::StaticReflection()->typeName;
             }
 
             nlohmann::json MakeDeathZoneObject()
             {
-                nlohmann::json object = NS::MakePrototypeJson<GL::Level::DeathZoneActor>();
+                nlohmann::json object = MakePrototypeJson<GL::Level::DeathZoneActor>();
                 // 上面 y=-50 は従来の落下死の高さ
-                NS::SetObjectPosition(object, NS::Vector3{0.0f, -55.0f, 0.0f});
+                SetObjectPosition(object, Vector3{0.0f, -55.0f, 0.0f});
                 return object;
             }
         } // namespace
 
-        bool IsCellBrushObject(const NS::SceneActor& object) noexcept
+        bool IsCellBrushObject(const SceneActor& object) noexcept
         {
             // 実行時の一時オブジェクトは配置物でないため対象外
             // 自前の振る舞いを持つ SceneActor は、ブラシの置換や削除で崩さない
@@ -72,7 +72,7 @@ namespace NS
             {
                 return false;
             }
-            const NS::Model* model = object.ModelSubObj();
+            const Model* model = object.ModelSubObj();
             if (model == nullptr)
             {
                 return false;
@@ -81,38 +81,38 @@ namespace NS
             return mesh == "cube" || mesh == "wedge45";
         }
 
-        NS::int16 ObjectCellX(const NS::SceneActor& object) noexcept
+        int16 ObjectCellX(const SceneActor& object) noexcept
         {
-            return static_cast<NS::int16>(std::lround(object.Root().Position().x));
+            return static_cast<int16>(std::lround(object.Root().Position().x));
         }
 
-        NS::int16 ObjectCellY(const NS::SceneActor& object) noexcept
+        int16 ObjectCellY(const SceneActor& object) noexcept
         {
-            return static_cast<NS::int16>(std::lround(object.Root().Position().y));
+            return static_cast<int16>(std::lround(object.Root().Position().y));
         }
 
-        NS::int16 ObjectCellZ(const NS::SceneActor& object) noexcept
+        int16 ObjectCellZ(const SceneActor& object) noexcept
         {
-            return static_cast<NS::int16>(std::lround(object.Root().Position().z));
+            return static_cast<int16>(std::lround(object.Root().Position().z));
         }
 
-        NS::uint32 FindObjectIdAtCell(const NS::ActorList& objects, NS::int16 x, NS::int16 y, NS::int16 z) noexcept
+        uint32 FindObjectIdAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
         {
-            for (NS::SceneActor* objPtr : objects)
+            for (SceneActor* objPtr : objects)
             {
-                NS::SceneActor& object = *objPtr;
+                SceneActor& object = *objPtr;
                 if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
                     ObjectCellZ(object) == z)
                 {
                     return object.Id();
                 }
             }
-            return NS::k_NoObjectId;
+            return k_NoObjectId;
         }
 
-        bool HasPlacedObjectAtCell(const NS::ActorList& objects, NS::int16 x, NS::int16 y, NS::int16 z) noexcept
+        bool HasPlacedObjectAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
         {
-            for (const NS::SceneActor* object : objects)
+            for (const SceneActor* object : objects)
             {
                 if (!object->IsTransient() && ObjectCellX(*object) == x && ObjectCellY(*object) == y &&
                     ObjectCellZ(*object) == z)
@@ -126,18 +126,18 @@ namespace NS
         void AddCellQuarterTurn(nlohmann::json& object) noexcept
         {
             // 今の回転の後に世界の Y 軸まわりを掛ける。段へ丸めると傾きが消える
-            const NS::Quaternion quarter = NS::Quaternion::CreateFromYawPitchRoll(k_QuarterTurnYaw, 0.0f, 0.0f);
-            NS::SetObjectRotation(object, NS::ObjectRotation(object) * quarter);
+            const Quaternion quarter = Quaternion::CreateFromYawPitchRoll(k_QuarterTurnYaw, 0.0f, 0.0f);
+            SetObjectRotation(object, ObjectRotation(object) * quarter);
         }
 
-        void SetCellRotationStep(nlohmann::json& object, NS::uint8 rotationStep) noexcept
+        void SetCellRotationStep(nlohmann::json& object, uint8 rotationStep) noexcept
         {
             const float yaw = static_cast<float>(rotationStep & 0x03) * k_QuarterTurnYaw;
-            const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
-            NS::SetObjectRotation(object, rotation);
+            const Quaternion rotation = Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
+            SetObjectRotation(object, rotation);
         }
 
-        const char* ObjectDisplayName(const NS::SceneActor& object)
+        const char* ObjectDisplayName(const SceneActor& object)
         {
             if (!object.Name().empty())
             {
@@ -146,19 +146,19 @@ namespace NS
             return ClassDisplayName(object.ClassName());
         }
 
-        NS::AABB PickLocalBounds(const NS::SceneActor& object) noexcept
+        AABB PickLocalBounds(const SceneActor& object) noexcept
         {
-            const NS::Model* renderer = object.ModelSubObj();
+            const Model* renderer = object.ModelSubObj();
             if (renderer != nullptr && renderer->GetMesh() != nullptr)
             {
                 return renderer->GetMesh()->LocalBounds();
             }
-            return NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{0.5f, 0.5f, 0.5f}};
+            return AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}};
         }
 
         std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept
         {
-            const nlohmann::json& objects = NS::SceneJsonObjects(scene);
+            const nlohmann::json& objects = SceneJsonObjects(scene);
             for (std::size_t i = 0; i < objects.size(); ++i)
             {
                 if (IsPlayerObject(objects[i]))
@@ -166,37 +166,37 @@ namespace NS
                     return i;
                 }
             }
-            return NS::k_NoObjectIndex;
+            return k_NoObjectIndex;
         }
 
-        nlohmann::json MakePlayerObject(const NS::Vector3& position, const NS::Quaternion& rotation)
+        nlohmann::json MakePlayerObject(const Vector3& position, const Quaternion& rotation)
         {
-            nlohmann::json object = NS::MakePrototypeJson<::PlayerActor>();
-            NS::SetObjectPosition(object, position);
-            NS::SetObjectRotation(object, rotation);
+            nlohmann::json object = MakePrototypeJson<::PlayerActor>();
+            SetObjectPosition(object, position);
+            SetObjectRotation(object, rotation);
             return object;
         }
 
         bool EnsurePlayerObject(nlohmann::json& scene)
         {
             bool created = false;
-            if (FindPlayerObjectIndex(scene) == NS::k_NoObjectIndex)
+            if (FindPlayerObjectIndex(scene) == k_NoObjectIndex)
             {
                 // 高さはカプセルの寸法の持ち主 Collider から引く。種類の既定でカプセルを変えても足元が床の上に出る
-                const NS::SceneActor& baseline =
-                    NS::ArchetypeLibrary::Get().Baseline(::PlayerActor::StaticReflection()->typeName);
-                const ::PlayerActor* player = NS::Cast<::PlayerActor>(&baseline);
+                const SceneActor& baseline =
+                    ArchetypeLibrary::Get().Baseline(::PlayerActor::StaticReflection()->typeName);
+                const ::PlayerActor* player = Cast<::PlayerActor>(&baseline);
                 if (player == nullptr)
                 {
                     NS_LOG_ERROR(Game, "プレイヤーの種類の既定を PlayerActor として引けず、プレイヤーを補えない");
                     return false;
                 }
-                NS::SceneJsonObjects(scene).push_back(
-                    MakePlayerObject(player->DefaultSpawnPosition(), NS::Quaternion{}));
+                SceneJsonObjects(scene).push_back(
+                    MakePlayerObject(player->DefaultSpawnPosition(), Quaternion{}));
                 created = true;
             }
 
-            const nlohmann::json& objects = NS::SceneJsonObjects(scene);
+            const nlohmann::json& objects = SceneJsonObjects(scene);
             const std::ptrdiff_t count = std::count_if(objects.begin(), objects.end(), IsPlayerObject);
             if (count > 1)
             {
@@ -204,19 +204,19 @@ namespace NS
             }
 
             // 追従カメラの追従先の欄が id で結ぶので、ここで採番まで済ませる
-            NS::EnsureUniqueObjectIds(scene);
+            EnsureUniqueObjectIds(scene);
             return created;
         }
 
         bool EnsureDeathZoneObject(nlohmann::json& scene)
         {
-            const nlohmann::json& objects = NS::SceneJsonObjects(scene);
+            const nlohmann::json& objects = SceneJsonObjects(scene);
             if (std::any_of(objects.begin(), objects.end(), IsDeathZoneObject))
             {
                 return false;
             }
-            NS::SceneJsonObjects(scene).push_back(MakeDeathZoneObject());
-            NS::EnsureUniqueObjectIds(scene);
+            SceneJsonObjects(scene).push_back(MakeDeathZoneObject());
+            EnsureUniqueObjectIds(scene);
             return true;
         }
     } // namespace Editor

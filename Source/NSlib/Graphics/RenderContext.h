@@ -24,7 +24,7 @@ namespace NS
         //! @details 長さはどれも描画先の高さに対する割合。光のにじみが世界の絵を書き戻す時に掛ける
         struct DistortionRing
         {
-            NS::Vector3 center{};   //!< 中心の世界の点
+            Vector3 center{};   //!< 中心の世界の点
             float radius = 0.0f;    //!< 輪の半径
             float push = 0.0f;      //!< 輪の真ん中で絵を押し出す長さ。0 以下なら歪めない
             float halfWidth = 0.0f; //!< 輪の半分の幅
@@ -37,10 +37,10 @@ namespace NS
             Renderer* renderer = nullptr;
 
             //! カメラのビュープロジェクション行列
-            NS::Matrix viewProjection{};
+            Matrix viewProjection{};
 
             //! カメラのワールド座標
-            NS::Vector3 cameraPosition{};
+            Vector3 cameraPosition{};
 
             //! 固定ステップ更新と描画のズレを埋める補間係数 (0.0 〜 1.0)
             float alpha = 1.0f;
@@ -57,29 +57,29 @@ namespace NS
 
         //! 世界座標を描画先の左上原点の画素座標へ投影する。width・height は画素数
         //! カメラの後ろなら false で出力を変更しない。outW は投影後の奥行き係数
-        [[nodiscard]] inline bool TryProjectToPixels(const NS::Matrix& viewProjection,
-                                                     const NS::Vector3& point,
+        [[nodiscard]] inline bool TryProjectToPixels(const Matrix& viewProjection,
+                                                     const Vector3& point,
                                                      float width,
                                                      float height,
-                                                     NS::Vector2& outPixel,
+                                                     Vector2& outPixel,
                                                      float& outW) noexcept
         {
-            const NS::Vector4 clip =
-                NS::Vector4::Transform(NS::Vector4{point.x, point.y, point.z, 1.0f}, viewProjection);
+            const Vector4 clip =
+                Vector4::Transform(Vector4{point.x, point.y, point.z, 1.0f}, viewProjection);
             if (!(clip.w > 0.0f))
             {
                 return false;
             }
             const float ndcX = clip.x / clip.w;
             const float ndcY = clip.y / clip.w;
-            outPixel = NS::Vector2{(ndcX + 1.0f) * 0.5f * width, (1.0f - ndcY) * 0.5f * height};
+            outPixel = Vector2{(ndcX + 1.0f) * 0.5f * width, (1.0f - ndcY) * 0.5f * height};
             outW = clip.w;
             return true;
         }
 
         //! projectedW の奥行きで、世界座標の長さを画素数へ変換する。カメラの回転に依存しない
         //! projectedW は TryProjectToPixels の正の出力、height は描画先の高さの画素数
-        [[nodiscard]] inline float ProjectedLengthPixels(const NS::Matrix& viewProjection,
+        [[nodiscard]] inline float ProjectedLengthPixels(const Matrix& viewProjection,
                                                          float length,
                                                          float projectedW,
                                                          float height) noexcept

@@ -10,23 +10,23 @@ namespace NS
 {
     namespace Editor
     {
-        std::optional<nlohmann::json> ObjectSnapshotApplier::CaptureObject(NS::uint32 objectId) const
+        std::optional<nlohmann::json> ObjectSnapshotApplier::CaptureObject(uint32 objectId) const
         {
             if (m_scene == nullptr)
             {
                 return std::nullopt;
             }
 
-            const NS::SceneActor* obj = m_scene->Objects().FindByObjectId(objectId);
+            const SceneActor* obj = m_scene->Objects().FindByObjectId(objectId);
             if (obj == nullptr)
             {
                 return std::nullopt;
             }
             // undo は編集値ごと戻すため、配置物が自分を全 SubObject 値まで忠実に書き出す
-            return NS::ObjectToJson(*obj);
+            return ObjectToJson(*obj);
         }
 
-        void ObjectSnapshotApplier::ApplyObjectSnapshot(NS::uint32 objectId,
+        void ObjectSnapshotApplier::ApplyObjectSnapshot(uint32 objectId,
                                                         const std::optional<nlohmann::json>& desired)
         {
             if (m_scene == nullptr)
@@ -38,7 +38,7 @@ namespace NS
             if (desired)
             {
                 nlohmann::json entry = *desired;
-                NS::SetObjectJsonId(entry, objectId);
+                SetObjectJsonId(entry, objectId);
                 (void)m_scene->ApplyFromJson(entry);
             }
             else

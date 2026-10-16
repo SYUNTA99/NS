@@ -23,15 +23,15 @@ namespace NS
             int boneIndex = -1; //!< ボーン番号 (-1 は未割り当て)
 
             std::vector<float> positionTimes; //!< 位置キーの時刻列 (秒)
-            std::vector<NS::Vector3> positionValues;
+            std::vector<Vector3> positionValues;
             Interpolation positionInterp = Interpolation::Linear;
 
             std::vector<float> rotationTimes; //!< 回転キーの時刻列 (秒)
-            std::vector<NS::Quaternion> rotationValues;
+            std::vector<Quaternion> rotationValues;
             Interpolation rotationInterp = Interpolation::Linear;
 
             std::vector<float> scaleTimes; //!< スケールキーの時刻列 (秒)
-            std::vector<NS::Vector3> scaleValues;
+            std::vector<Vector3> scaleValues;
             Interpolation scaleInterp = Interpolation::Linear;
         };
 
@@ -48,19 +48,19 @@ namespace NS
 
         //! 時刻 t 秒で評価する。Linear は線形補間、Step は左キーを保持する
         //! times は昇順。範囲外は端点、空なら fallback を返す
-        [[nodiscard]] NS::Vector3 SampleVec3(std::span<const float> times,
-                                             std::span<const NS::Vector3> values,
+        [[nodiscard]] Vector3 SampleVec3(std::span<const float> times,
+                                             std::span<const Vector3> values,
                                              Interpolation interp,
                                              float t,
-                                             const NS::Vector3& fallback) noexcept;
+                                             const Vector3& fallback) noexcept;
 
         //! 時刻 t 秒で評価する。Linear は最短経路の slerp、Step は左キーを保持する
         //! times は昇順で values と同数。範囲外は端点、空なら fallback を返す
-        [[nodiscard]] NS::Quaternion SampleQuat(std::span<const float> times,
-                                                std::span<const NS::Quaternion> values,
+        [[nodiscard]] Quaternion SampleQuat(std::span<const float> times,
+                                                std::span<const Quaternion> values,
                                                 Interpolation interp,
                                                 float t,
-                                                const NS::Quaternion& fallback) noexcept;
+                                                const Quaternion& fallback) noexcept;
 
         //! 時刻 t 秒の姿勢で outPose を上書きする。トラックのないボーンは bindLocal を使う
         //! 出力の要素数は skeleton.BoneCount()

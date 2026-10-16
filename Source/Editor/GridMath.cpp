@@ -19,9 +19,9 @@ namespace NS
                    screenY < rect.y + rect.height;
         }
 
-        NS::Size2D ViewRectSize(const ViewRect& rect) noexcept
+        Size2D ViewRectSize(const ViewRect& rect) noexcept
         {
-            return NS::Size2D{rect.width, rect.height};
+            return Size2D{rect.width, rect.height};
         }
 
         void ViewRectToLocal(const ViewRect& rect, int screenX, int screenY, int& outX, int& outY) noexcept
@@ -50,20 +50,20 @@ namespace NS
 #endif
         }
 
-        NS::Ray ScreenToWorldRay(const NS::Matrix& viewProjection, NS::Size2D viewport, int mouseX, int mouseY) noexcept
+        Ray ScreenToWorldRay(const Matrix& viewProjection, Size2D viewport, int mouseX, int mouseY) noexcept
         {
             const float ndcX = (2.0f * static_cast<float>(mouseX)) / static_cast<float>(viewport.width) - 1.0f;
             const float ndcY = 1.0f - (2.0f * static_cast<float>(mouseY)) / static_cast<float>(viewport.height);
 
-            NS::Matrix inv = viewProjection.Invert();
+            Matrix inv = viewProjection.Invert();
 
-            const NS::Vector4 nearH{ndcX, ndcY, 0.0f, 1.0f};
-            const NS::Vector4 farH{ndcX, ndcY, 1.0f, 1.0f};
+            const Vector4 nearH{ndcX, ndcY, 0.0f, 1.0f};
+            const Vector4 farH{ndcX, ndcY, 1.0f, 1.0f};
 
-            const NS::Vector4 wNearH = NS::Vector4::Transform(nearH, inv);
-            const NS::Vector4 wFarH = NS::Vector4::Transform(farH, inv);
+            const Vector4 wNearH = Vector4::Transform(nearH, inv);
+            const Vector4 wFarH = Vector4::Transform(farH, inv);
 
-            const auto inverseW = [](const NS::Vector4& h) -> float {
+            const auto inverseW = [](const Vector4& h) -> float {
                 if (std::abs(h.w) > 1e-6f)
                 {
                     return 1.0f / h.w;
@@ -73,14 +73,14 @@ namespace NS
             const float invWNear = inverseW(wNearH);
             const float invWFar = inverseW(wFarH);
 
-            NS::Vector3 wNear{wNearH.x * invWNear, wNearH.y * invWNear, wNearH.z * invWNear};
-            NS::Vector3 wFar{wFarH.x * invWFar, wFarH.y * invWFar, wFarH.z * invWFar};
-            NS::Vector3 dir = wFar - wNear;
+            Vector3 wNear{wNearH.x * invWNear, wNearH.y * invWNear, wNearH.z * invWNear};
+            Vector3 wFar{wFarH.x * invWFar, wFarH.y * invWFar, wFarH.z * invWFar};
+            Vector3 dir = wFar - wNear;
             dir.Normalize();
-            return NS::Ray{wNear, dir};
+            return Ray{wNear, dir};
         }
 
-        NS::Vector3 SnapWorldPointToGrid(NS::Vector3 p, float g) noexcept
+        Vector3 SnapWorldPointToGrid(Vector3 p, float g) noexcept
         {
             const float gx = std::floor(p.x / g + 0.5f) * g;
             const float gy = std::floor(p.y / g + 0.5f) * g;
@@ -88,7 +88,7 @@ namespace NS
             return {gx, gy, gz};
         }
 
-        bool TryGroundPlaneFallback(const NS::Ray& ray, NS::Vector3& outCenter, float g) noexcept
+        bool TryGroundPlaneFallback(const Ray& ray, Vector3& outCenter, float g) noexcept
         {
             // 水平または上向きのレイは交差対象外とする
             if (ray.direction.y > -1e-4f)
@@ -100,7 +100,7 @@ namespace NS
             {
                 return false;
             }
-            const NS::Vector3 hit{
+            const Vector3 hit{
                 ray.position.x + ray.direction.x * t,
                 0.0f,
                 ray.position.z + ray.direction.z * t,
@@ -110,18 +110,18 @@ namespace NS
             return true;
         }
 
-        NS::Quaternion RotationToQuaternion(NS::uint8 rotation) noexcept
+        Quaternion RotationToQuaternion(uint8 rotation) noexcept
         {
-            const NS::uint8 r = static_cast<NS::uint8>(rotation & 0x03);
-            const float angle = static_cast<float>(r) * (NS::k_Pi * 0.5f);
-            return NS::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
+            const uint8 r = static_cast<uint8>(rotation & 0x03);
+            const float angle = static_cast<float>(r) * (k_Pi * 0.5f);
+            return Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
         }
 
-        float ScreenConstantScale(const NS::Vector3& point, const NS::Matrix& viewProjection) noexcept
+        float ScreenConstantScale(const Vector3& point, const Matrix& viewProjection) noexcept
         {
             // 見かけの寸法は世界の長さ / clip.w に比例するので、長さを clip.w に比例させると相殺される
-            const NS::Vector4 clip =
-                NS::Vector4::Transform(NS::Vector4{point.x, point.y, point.z, 1.0f}, viewProjection);
+            const Vector4 clip =
+                Vector4::Transform(Vector4{point.x, point.y, point.z, 1.0f}, viewProjection);
             // カメラ至近や背面では伸ばさない
             if (clip.w <= 1.0e-3f)
             {

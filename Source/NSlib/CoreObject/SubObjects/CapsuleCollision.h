@@ -28,36 +28,36 @@ namespace NS
         [[nodiscard]] float HalfHeight() const noexcept;
 
         //! 持ち主の局所座標系での中心オフセット
-        void SetCenterOffset(const NS::Vector3& offset) noexcept;
-        [[nodiscard]] NS::Vector3 CenterOffset() const noexcept;
+        void SetCenterOffset(const Vector3& offset) noexcept;
+        [[nodiscard]] Vector3 CenterOffset() const noexcept;
 
         //! 局所回転をクォータニオンで直接設定 / 取得する
-        void SetLocalRotation(const NS::Quaternion& rotation) noexcept;
-        [[nodiscard]] NS::Quaternion LocalRotation() const noexcept;
+        void SetLocalRotation(const Quaternion& rotation) noexcept;
+        [[nodiscard]] Quaternion LocalRotation() const noexcept;
 
         //! 局所回転を仰角・方位角・傾きのオイラー角 (度) で読み書きする。寝かせ用に内部はクォータニオン保持
-        void SetRotationEulerDegrees(const NS::Vector3& eulerDegrees) noexcept;
-        [[nodiscard]] NS::Vector3 RotationEulerDegrees() const noexcept;
+        void SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept;
+        [[nodiscard]] Vector3 RotationEulerDegrees() const noexcept;
 
         //! 持ち主の世界変換と局所変換を重ねる。持ち主がなければ局所変換だけを使う
-        [[nodiscard]] NS::Phys::Capsule WorldCapsule() const noexcept;
+        [[nodiscard]] Phys::Capsule WorldCapsule() const noexcept;
 
         //! owner の世界変換を反映した世界軸並行 AABB を返す。Owner 未登録時は局所の値だけを反映する
-        [[nodiscard]] NS::AABB WorldAABB() const noexcept;
+        [[nodiscard]] AABB WorldAABB() const noexcept;
 
         NS_REFLECT_BEGIN(CapsuleCollision, Collision)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
         NS_REFLECT_ACCESSOR(float, "半分の高さ", HalfHeight(), SetHalfHeight)
-        NS_REFLECT_ACCESSOR(NS::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
-        NS_REFLECT_ACCESSOR(NS::Vector3, "回転 (度)", RotationEulerDegrees(), SetRotationEulerDegrees)
+        NS_REFLECT_ACCESSOR(Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
+        NS_REFLECT_ACCESSOR(Vector3, "回転 (度)", RotationEulerDegrees(), SetRotationEulerDegrees)
         NS_REFLECT_END()
 
     private:
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current) override;
 
         float m_radius = 0.4f;                                     // capsule 半径
         float m_halfHeight = 0.5f;                                 // 円柱部の半長、半球を除く
-        NS::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};              // 持ち主の局所座標系での中心オフセット
-        NS::Quaternion m_localRotation = NS::Quaternion::Identity; // owner 回転に重ねる局所回転
+        Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};              // 持ち主の局所座標系での中心オフセット
+        Quaternion m_localRotation = Quaternion::Identity; // owner 回転に重ねる局所回転
     };
 } // namespace NS

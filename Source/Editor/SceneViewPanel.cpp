@@ -106,15 +106,15 @@ namespace NS
             m_freeFlying = false;
         }
 
-        std::optional<NS::SceneView> SceneViewPanel::CollectView(LevelEditorController& editor) noexcept
+        std::optional<SceneView> SceneViewPanel::CollectView(LevelEditorController& editor) noexcept
         {
-            std::optional<NS::SceneView> view = m_surface.CollectView(editor.SceneViewPose());
+            std::optional<SceneView> view = m_surface.CollectView(editor.SceneViewPose());
             if (!view.has_value())
             {
                 return view;
             }
             // エディタの図形は Scene タブにだけ積ませる。Game タブはゲーム画面そのままを映す
-            view->drawShapes = [&editor](NS::Gfx::DebugShapes& shapes, const NS::Matrix& viewProjection) {
+            view->drawShapes = [&editor](Gfx::DebugShapes& shapes, const Matrix& viewProjection) {
                 editor.DrawSceneViewShapes(shapes, viewProjection);
             };
             return view;
@@ -151,7 +151,7 @@ namespace NS
             const bool flying = m_freeViewLatch && ImGui::IsMouseDown(ImGuiMouseButton_Right);
             const bool panning = m_freeViewLatch && ImGui::IsMouseDown(ImGuiMouseButton_Middle);
 
-            NS::Editor::EditorCameraInput input{};
+            Editor::EditorCameraInput input{};
             input.deltaSeconds = io.DeltaTime;
             input.flying = flying;
             if (flying)

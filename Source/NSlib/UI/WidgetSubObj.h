@@ -17,7 +17,7 @@ namespace NS
     namespace UI
     {
         //! 画面ごとの Widget の木。拡縮は描画時に渡す UICanvas に従う
-        class WidgetSubObj : public NS::NonCopyable
+        class WidgetSubObj : public NonCopyable
         {
         public:
             WidgetSubObj();
@@ -30,7 +30,7 @@ namespace NS
 
             //! @brief 矩形を確定し、現在の描画先へ重ねて描く
             //! @details 中身が無ければ何もしない。renderer が未設定なら呼び出し側の不備
-            void Draw(NS::Gfx::Renderer* renderer, const UICanvas& canvas);
+            void Draw(Gfx::Renderer* renderer, const UICanvas& canvas);
 
             //! 描画先ピクセル座標の点を UI が吸うか。直近の Layout の結果で判定する
             [[nodiscard]] bool ConsumesPointer(const UICanvas& canvas, float px, float py) const noexcept;

@@ -7,9 +7,9 @@ namespace NS
 {
     NS_CLASS(DirectionalLight)
 
-    NS::Vector3 DirectionalLight::Direction() const noexcept
+    Vector3 DirectionalLight::Direction() const noexcept
     {
-        NS::Vector3 direction = NS::Vector3::TransformNormal(NS::Vector3::UnitZ, RootTransform().WorldMatrix());
+        Vector3 direction = Vector3::TransformNormal(Vector3::UnitZ, RootTransform().WorldMatrix());
         direction.Normalize();
         return direction;
     }

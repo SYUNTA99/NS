@@ -17,9 +17,9 @@ namespace NS
             constexpr float k_FallbackCubeHalfExtent = 0.5f;
 
             // 頂点位置データから、モデルのAABBを算出する
-            NS::AABB ComputeLocalBounds(const StaticVertex* vertices, std::size_t count)
+            AABB ComputeLocalBounds(const StaticVertex* vertices, std::size_t count)
             {
-                NS::AABB box{};
+                AABB box{};
                 if (vertices != nullptr && count > 0u)
                 {
                     DirectX::BoundingBox::CreateFromPoints(
@@ -81,7 +81,7 @@ namespace NS
             }
 
             const MeshGeometry geom =
-                MakeCube(NS::Vector3{k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent});
+                MakeCube(Vector3{k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent});
             if (BuildGeometry(geom.vertices.data(),
                               geom.vertices.size(),
                               sizeof(StaticVertex),
@@ -101,10 +101,10 @@ namespace NS
         {
             static const std::vector<InputElement> k_Layout = {
                 InputElement{
-                    "POSITION", InputElementFormat::Float3, static_cast<NS::uint>(offsetof(StaticVertex, position))},
-                InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<NS::uint>(offsetof(StaticVertex, uv))},
+                    "POSITION", InputElementFormat::Float3, static_cast<uint>(offsetof(StaticVertex, position))},
+                InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<uint>(offsetof(StaticVertex, uv))},
                 InputElement{
-                    "NORMAL", InputElementFormat::Float3, static_cast<NS::uint>(offsetof(StaticVertex, normal))},
+                    "NORMAL", InputElementFormat::Float3, static_cast<uint>(offsetof(StaticVertex, normal))},
             };
             return k_Layout;
         }

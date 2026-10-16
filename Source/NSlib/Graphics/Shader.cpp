@@ -37,7 +37,7 @@ namespace NS
             // 該当するステージが無ければ nullptr
             [[nodiscard]] const ShaderTypeInfo* DetectStage(std::string_view path) noexcept
             {
-                const std::string name = NS::OS::FileSystem::FileName(path);
+                const std::string name = OS::FileSystem::FileName(path);
                 for (const ShaderTypeInfo& info : k_StageTable)
                 {
                     if (name.find(info.infix) != std::string::npos)
@@ -90,7 +90,7 @@ namespace NS
                              "Shader compile failed: target={}, entry={}, hr=0x{:X}, msg={}",
                              target,
                              entryPoint,
-                             static_cast<NS::uint>(hr),
+                             static_cast<uint>(hr),
                              msg);
             }
 
@@ -104,12 +104,12 @@ namespace NS
                 {
                     return nullptr;
                 }
-                if (!::NS::OS::FileSystem::Exists(path))
+                if (!OS::FileSystem::Exists(path))
                 {
                     NS_LOG_ERROR(Graphics, "Shader file not found: {}", path);
                     return nullptr;
                 }
-                const std::wstring widePath = NS::OS::StringUtils::WideFromUtf8(path);
+                const std::wstring widePath = OS::StringUtils::WideFromUtf8(path);
                 ComPtr<ID3DBlob> blob;
                 ComPtr<ID3DBlob> errorBlob;
                 const HRESULT hr = D3DCompileFromFile(widePath.c_str(),
@@ -207,7 +207,7 @@ namespace NS
                 }
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(Graphics, "Create*Shader 失敗 (hr=0x{:X})", static_cast<NS::uint>(hr));
+                    NS_LOG_ERROR(Graphics, "Create*Shader 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                     return false;
                 }
                 return true;
@@ -221,8 +221,8 @@ namespace NS
 
         std::unique_ptr<Shader> Shader::CreateBuiltin(std::string_view fileName)
         {
-            const std::string shaderDir = ::NS::OS::FileSystem::Combine(::NS::OS::FileSystem::ContentRoot(), "Shaders");
-            return Create(::NS::OS::FileSystem::Combine(shaderDir, fileName));
+            const std::string shaderDir = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Shaders");
+            return Create(OS::FileSystem::Combine(shaderDir, fileName));
         }
 
         Shader::Shader(std::string_view hlslPath) : m_sourcePath(hlslPath)

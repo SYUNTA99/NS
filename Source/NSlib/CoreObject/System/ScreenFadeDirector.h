@@ -11,12 +11,12 @@ namespace NS
     class ScreenFadeDirector final : public SceneSystem
     {
     public:
-        [[nodiscard]] NS::Gfx::ScreenFade& Fade() noexcept { return m_fade; }
-        [[nodiscard]] const NS::Gfx::ScreenFade& Fade() const noexcept { return m_fade; }
+        [[nodiscard]] Gfx::ScreenFade& Fade() noexcept { return m_fade; }
+        [[nodiscard]] const Gfx::ScreenFade& Fade() const noexcept { return m_fade; }
 
         void OnTick() override;
 
     private:
-        NS::Gfx::ScreenFade m_fade;
+        Gfx::ScreenFade m_fade;
     };
 } // namespace NS

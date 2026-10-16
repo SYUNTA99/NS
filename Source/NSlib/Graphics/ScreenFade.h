@@ -13,7 +13,7 @@ namespace NS
         //! @brief 全画面へ黒を重ねる暗転と明転
         //! @details Advance で時間を進め、全 UI の後に Render を呼ぶ
         //! 暗転しきったら BeginIn まで全黒を保持する
-        class ScreenFade final : public NS::NonCopyable
+        class ScreenFade final : public NonCopyable
         {
         public:
             ScreenFade() noexcept = default;
@@ -44,7 +44,7 @@ namespace NS
 
         private:
             // 演出の段階。None は透明、Hold は全黒の保持
-            enum class Stage : NS::uint8
+            enum class Stage : uint8
             {
                 None,
                 Out,

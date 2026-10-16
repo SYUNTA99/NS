@@ -48,58 +48,58 @@ namespace NS
         return m_halfHeight;
     }
 
-    void CapsuleCollision::SetCenterOffset(const NS::Vector3& offset) noexcept
+    void CapsuleCollision::SetCenterOffset(const Vector3& offset) noexcept
     {
         m_centerOffset = offset;
     }
 
-    NS::Vector3 CapsuleCollision::CenterOffset() const noexcept
+    Vector3 CapsuleCollision::CenterOffset() const noexcept
     {
         return m_centerOffset;
     }
 
-    void CapsuleCollision::SetLocalRotation(const NS::Quaternion& rotation) noexcept
+    void CapsuleCollision::SetLocalRotation(const Quaternion& rotation) noexcept
     {
         m_localRotation = rotation;
     }
 
-    NS::Quaternion CapsuleCollision::LocalRotation() const noexcept
+    Quaternion CapsuleCollision::LocalRotation() const noexcept
     {
         return m_localRotation;
     }
 
-    void CapsuleCollision::SetRotationEulerDegrees(const NS::Vector3& eulerDegrees) noexcept
+    void CapsuleCollision::SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept
     {
-        m_localRotation = NS::EulerDegreesToQuaternion(eulerDegrees);
+        m_localRotation = EulerDegreesToQuaternion(eulerDegrees);
     }
 
-    NS::Vector3 CapsuleCollision::RotationEulerDegrees() const noexcept
+    Vector3 CapsuleCollision::RotationEulerDegrees() const noexcept
     {
-        return NS::QuaternionToEulerDegrees(m_localRotation);
+        return QuaternionToEulerDegrees(m_localRotation);
     }
 
-    NS::Phys::Capsule CapsuleCollision::WorldCapsule() const noexcept
+    Phys::Capsule CapsuleCollision::WorldCapsule() const noexcept
     {
-        const NS::AffineDecomposition decomposed =
-            NS::DecomposeAffine(ShapeWorldMatrix(m_localRotation, m_centerOffset));
-        return NS::Phys::MakeScaledCapsule(
+        const AffineDecomposition decomposed =
+            DecomposeAffine(ShapeWorldMatrix(m_localRotation, m_centerOffset));
+        return Phys::MakeScaledCapsule(
             decomposed.translation, decomposed.rotation, decomposed.scale, m_radius, m_halfHeight);
     }
 
-    NS::AABB CapsuleCollision::WorldAABB() const noexcept
+    AABB CapsuleCollision::WorldAABB() const noexcept
     {
-        const NS::Phys::Capsule capsule = WorldCapsule();
-        const NS::Vector3 tip = capsule.center + capsule.axis * capsule.halfHeight;
-        const NS::Vector3 base = capsule.center - capsule.axis * capsule.halfHeight;
-        const NS::Vector3 r{capsule.radius, capsule.radius, capsule.radius};
-        const NS::Vector3 lo = NS::Vector3::Min(tip, base) - r;
-        const NS::Vector3 hi = NS::Vector3::Max(tip, base) + r;
-        return NS::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
+        const Phys::Capsule capsule = WorldCapsule();
+        const Vector3 tip = capsule.center + capsule.axis * capsule.halfHeight;
+        const Vector3 base = capsule.center - capsule.axis * capsule.halfHeight;
+        const Vector3 r{capsule.radius, capsule.radius, capsule.radius};
+        const Vector3 lo = Vector3::Min(tip, base) - r;
+        const Vector3 hi = Vector3::Max(tip, base) + r;
+        return AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
 
-    JPH::BodyID CapsuleCollision::SyncBody(NS::Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID CapsuleCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current)
     {
-        return physics.SyncCapsule(current, WorldCapsule(), NS::Phys::ObjectLayers::Terrain);
+        return physics.SyncCapsule(current, WorldCapsule(), Phys::ObjectLayers::Terrain);
     }
 
     NS_CLASS(CapsuleCollision)

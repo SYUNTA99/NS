@@ -32,13 +32,13 @@ namespace NS
                 return ReadField<bool>(owner, field);
             case FieldType::Vector3:
             {
-                const NS::Vector3 value = ReadField<NS::Vector3>(owner, field);
+                const Vector3 value = ReadField<Vector3>(owner, field);
                 return nlohmann::json{value.x, value.y, value.z};
             }
             case FieldType::Quaternion:
             {
                 // 配列の長さで Vector3 と区別できるため単キー object で包まない
-                const NS::Quaternion value = ReadField<NS::Quaternion>(owner, field);
+                const Quaternion value = ReadField<Quaternion>(owner, field);
                 return nlohmann::json{value.x, value.y, value.z, value.w};
             }
             case FieldType::String:
@@ -55,7 +55,7 @@ namespace NS
                 // 素の配列だと読み込み時に Vector3 と区別できないため {"curve": [[x,y], ...]} の単キー object で書く
                 const Curve value = ReadField<Curve>(owner, field);
                 nlohmann::json points = nlohmann::json::array();
-                for (NS::uint32 i = 0; i < value.count; ++i)
+                for (uint32 i = 0; i < value.count; ++i)
                 {
                     const Curve::Key& key = value.keys[i];
                     // 直線の点は従来の 2 要素のまま書く。要素を足すと古い記述との互換が切れるため
@@ -118,7 +118,7 @@ namespace NS
             }
             case FieldType::Vector3:
             {
-                NS::Vector3 v;
+                Vector3 v;
                 if (ReadVector3(value, v))
                 {
                     field.set(owner, &v);
@@ -127,7 +127,7 @@ namespace NS
             }
             case FieldType::Quaternion:
             {
-                NS::Quaternion v;
+                Quaternion v;
                 if (ReadQuaternion(value, v))
                 {
                     field.set(owner, &v);
@@ -156,7 +156,7 @@ namespace NS
                 {
                     return;
                 }
-                ActorRef v{it->get<NS::uint32>()};
+                ActorRef v{it->get<uint32>()};
                 field.set(owner, &v);
                 return;
             }

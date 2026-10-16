@@ -25,7 +25,7 @@ namespace NS
         //! スクリーン座標が矩形内かを返す。右端 (x+width) と下端 (y+height) は外側扱い
         [[nodiscard]] bool ViewRectContains(const ViewRect& rect, int screenX, int screenY) noexcept;
 
-        [[nodiscard]] NS::Size2D ViewRectSize(const ViewRect& rect) noexcept;
+        [[nodiscard]] Size2D ViewRectSize(const ViewRect& rect) noexcept;
 
         //! @brief スクリーン座標を矩形原点基準のローカル座標へ変換する
         //! @note 矩形外でも変換自体は返す。範囲判定は ViewRectContains が担う
@@ -35,26 +35,26 @@ namespace NS
         void WindowMouseToViewSpace(int mouseX, int mouseY, int& outX, int& outY) noexcept;
 
         //! @brief スクリーンの2D座標からワールド空間へ向かう Ray を生成する
-        [[nodiscard]] NS::Ray ScreenToWorldRay(const NS::Matrix& viewProjection,
-                                               NS::Size2D viewport,
+        [[nodiscard]] Ray ScreenToWorldRay(const Matrix& viewProjection,
+                                               Size2D viewport,
                                                int mouseX,
                                                int mouseY) noexcept;
 
         //! ワールド座標を最も近いグリッドセルの中心座標に丸める
-        [[nodiscard]] NS::Vector3 SnapWorldPointToGrid(NS::Vector3 worldPoint, float gridSize = k_GridSize) noexcept;
+        [[nodiscard]] Vector3 SnapWorldPointToGrid(Vector3 worldPoint, float gridSize = k_GridSize) noexcept;
 
         //! @brief レイと水平な地面との交点を算出し、グリッドにスナップした座標を取得する
         //! @param[out] outCellCenter スナップ後のセル中心。交差した時だけ書く
         //! @return 交差した場合 true、それ以外の場合は false
-        [[nodiscard]] bool TryGroundPlaneFallback(const NS::Ray& ray,
-                                                  NS::Vector3& outCellCenter,
+        [[nodiscard]] bool TryGroundPlaneFallback(const Ray& ray,
+                                                  Vector3& outCellCenter,
                                                   float gridSize = k_GridSize) noexcept;
 
         //! 0〜3の段階的な回転値を、Y軸周りの90度刻みのクォータニオンに変換する
-        [[nodiscard]] NS::Quaternion RotationToQuaternion(NS::uint8 rotation) noexcept;
+        [[nodiscard]] Quaternion RotationToQuaternion(uint8 rotation) noexcept;
 
         //! @brief 画面上の見かけの大きさを一定に近づける、世界の長さの倍率を返す
         //! @details 深度 10 までは 1、遠いほど深度に比例して伸ばす。clip.w が 0.001 以下なら 1
-        [[nodiscard]] float ScreenConstantScale(const NS::Vector3& point, const NS::Matrix& viewProjection) noexcept;
+        [[nodiscard]] float ScreenConstantScale(const Vector3& point, const Matrix& viewProjection) noexcept;
     } // namespace Editor
 } // namespace NS

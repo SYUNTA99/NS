@@ -25,14 +25,14 @@ namespace NS
     namespace Editor
     {
         //! 配置ブラシを数字キーとツールバーで選ぶ
-        class CategoryPalette : public NS::NonCopyable
+        class CategoryPalette : public NonCopyable
         {
         public:
             //! 数字キーで選ぶ。UI がキーボードを使っている間は無視する
-            void TickInput(NS::OS::Input* input, NS::UI::ImGuiContext* imgui) noexcept;
+            void TickInput(OS::Input* input, UI::ImGuiContext* imgui) noexcept;
 
             //! Scene ビュー内に収まるツールバーを描く。viewRect はスクリーン座標
-            void Render(const NS::Editor::ViewRect& viewRect) noexcept;
+            void Render(const Editor::ViewRect& viewRect) noexcept;
 
             [[nodiscard]] std::size_t ActiveSlot() const noexcept { return m_activeSlot; }
 

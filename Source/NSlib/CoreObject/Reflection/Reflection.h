@@ -46,7 +46,7 @@ namespace NS
         {
             return FieldType::Bool;
         }
-        else if constexpr (std::is_same_v<T, NS::Quaternion>)
+        else if constexpr (std::is_same_v<T, Quaternion>)
         {
             return FieldType::Quaternion;
         }
@@ -64,7 +64,7 @@ namespace NS
         }
         else
         {
-            static_assert(std::is_same_v<T, NS::Vector3>,
+            static_assert(std::is_same_v<T, Vector3>,
                           "FieldTypeOf の T は float / int / bool / NS::Vector3 / NS::Quaternion / "
                           "std::string / ActorRef / Curve のいずれか");
             return FieldType::Vector3;

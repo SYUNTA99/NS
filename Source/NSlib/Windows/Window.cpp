@@ -221,7 +221,7 @@ namespace NS
             const DWORD exStyle = 0;
             ::AdjustWindowRectEx(&rect, style, FALSE, exStyle);
 
-            const std::wstring wideTitle = ::NS::OS::StringUtils::WideFromUtf8(desc.title);
+            const std::wstring wideTitle = OS::StringUtils::WideFromUtf8(desc.title);
 
             m_hwnd = ::CreateWindowExW(exStyle,
                                        k_ClassName,
@@ -315,7 +315,7 @@ namespace NS
             return m_shouldClose;
         }
 
-        ::NS::Size2D Window::Size() const noexcept
+        Size2D Window::Size() const noexcept
         {
             return m_size;
         }
@@ -331,7 +331,7 @@ namespace NS
             {
                 return;
             }
-            const std::wstring wide = ::NS::OS::StringUtils::WideFromUtf8(utf8Title);
+            const std::wstring wide = OS::StringUtils::WideFromUtf8(utf8Title);
             ::SetWindowTextW(m_hwnd, wide.c_str());
         }
 
@@ -375,7 +375,7 @@ namespace NS
             }
         }
 
-        void Window::SetResizeCallback(std::function<void(::NS::Size2D)> cb)
+        void Window::SetResizeCallback(std::function<void(Size2D)> cb)
         {
             m_onResize = std::move(cb);
         }

@@ -42,25 +42,25 @@ namespace NS
         {
             NS_LOG_WARN(
                 App, "ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック", fixedDelta);
-            fixedDelta = NS::OS::FrameTimer::k_DefaultFixedDelta;
+            fixedDelta = OS::FrameTimer::k_DefaultFixedDelta;
         }
-        NS::OS::FrameTimer::SetFixedDelta(fixedDelta);
+        OS::FrameTimer::SetFixedDelta(fixedDelta);
 
-        m_window = std::make_unique<NS::OS::Window>(desc.window);
+        m_window = std::make_unique<OS::Window>(desc.window);
         if (!m_window->IsValid())
         {
             NS_LOG_ERROR(App, "Application: Window 構築失敗");
             return;
         }
 
-        m_renderer = std::make_unique<NS::Gfx::Renderer>(desc.renderer, *m_window);
+        m_renderer = std::make_unique<Gfx::Renderer>(desc.renderer, *m_window);
         if (!m_renderer->IsValid())
         {
             NS_LOG_ERROR(App, "Application: Renderer 構築失敗");
             return;
         }
 
-        m_window->AttachInput(&NS::OS::Input::Get());
+        m_window->AttachInput(&OS::Input::Get());
 
         m_window->SetCloseCallback([this]() { m_quitRequested = true; });
 
@@ -81,38 +81,38 @@ namespace NS
         return m_valid;
     }
 
-    NS::OS::Window& Application::Window() noexcept
+    OS::Window& Application::Window() noexcept
     {
         NS_ASSERT(App, m_window, "構築の失敗後 / Shutdown 後に Window() を呼んでいる");
         return *m_window;
     }
 
-    const NS::OS::Window& Application::Window() const noexcept
+    const OS::Window& Application::Window() const noexcept
     {
         NS_ASSERT(App, m_window, "構築の失敗後 / Shutdown 後に Window() を呼んでいる");
         return *m_window;
     }
 
-    NS::Gfx::Renderer& Application::Renderer() noexcept
+    Gfx::Renderer& Application::Renderer() noexcept
     {
         NS_ASSERT(App, m_renderer, "構築の失敗後 / Shutdown 後に Renderer() を呼んでいる");
         return *m_renderer;
     }
 
-    const NS::Gfx::Renderer& Application::Renderer() const noexcept
+    const Gfx::Renderer& Application::Renderer() const noexcept
     {
         NS_ASSERT(App, m_renderer, "構築の失敗後 / Shutdown 後に Renderer() を呼んでいる");
         return *m_renderer;
     }
 
-    NS::OS::Input& Application::Input() noexcept
+    OS::Input& Application::Input() noexcept
     {
-        return NS::OS::Input::Get();
+        return OS::Input::Get();
     }
 
-    const NS::OS::Input& Application::Input() const noexcept
+    const OS::Input& Application::Input() const noexcept
     {
-        return NS::OS::Input::Get();
+        return OS::Input::Get();
     }
 
     void Application::SetCursorCaptured(bool captured) noexcept
@@ -120,27 +120,27 @@ namespace NS
         m_window->SetCursorVisible(!captured);
         // 固定しないとクリックが他のパネルへ落ち、押しっぱなしの体当たり入力が届かないフレームができる
         m_window->SetCursorLocked(captured);
-        NS::OS::Input::Get().Mouse().SetRelativeMode(captured);
+        OS::Input::Get().Mouse().SetRelativeMode(captured);
     }
 
-    NS::AssetManager& Application::Assets() noexcept
+    AssetManager& Application::Assets() noexcept
     {
         NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
         return *m_assets;
     }
 
-    const NS::AssetManager& Application::Assets() const noexcept
+    const AssetManager& Application::Assets() const noexcept
     {
         NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
         return *m_assets;
     }
 
-    void Application::AddLayer(std::unique_ptr<NS::Layer> layer)
+    void Application::AddLayer(std::unique_ptr<Layer> layer)
     {
         m_layers.AddLayer(std::move(layer));
     }
 
-    void Application::AddOverlay(std::unique_ptr<NS::Layer> overlay)
+    void Application::AddOverlay(std::unique_ptr<Layer> overlay)
     {
         m_layers.AddOverlay(std::move(overlay));
     }
@@ -167,9 +167,9 @@ namespace NS
     void Application::Init()
     {
         DrainPendingQuit();
-        NS::OS::FrameTimer::Reset();
+        OS::FrameTimer::Reset();
 
-        m_assets = std::make_unique<NS::AssetManager>(NS::OS::FileSystem::ContentRoot());
+        m_assets = std::make_unique<AssetManager>(OS::FileSystem::ContentRoot());
         m_assets->RegisterBuiltins();
         m_assets->RegisterSharedMaterials();
 
@@ -201,9 +201,9 @@ namespace NS
 
     void Application::MainLoop()
     {
-        NS::OS::Window& window = *m_window;
-        NS::Gfx::Renderer& renderer = *m_renderer;
-        NS::OS::Input& input = NS::OS::Input::Get();
+        OS::Window& window = *m_window;
+        Gfx::Renderer& renderer = *m_renderer;
+        OS::Input& input = OS::Input::Get();
         Layers& stack = m_layers;
 
         while (true)
@@ -215,9 +215,9 @@ namespace NS
                 break;
             }
 
-            NS::OS::FrameTimer::Tick();
+            OS::FrameTimer::Tick();
 
-            const int steps = NS::OS::FrameTimer::FixedStepsThisFrame();
+            const int steps = OS::FrameTimer::FixedStepsThisFrame();
 
             if (steps >= 2)
             {
@@ -282,7 +282,7 @@ namespace NS
         }
 
         // 終了の後は Update が来ないので、止めないと最後に送った振動が実機に残る
-        NS::OS::Input::Get().Gamepad().StopVibration();
+        OS::Input::Get().Gamepad().StopVibration();
 
         m_quitGuard = nullptr;
 
