@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/Graphics/EffectTypes.h"
 
 #include "NSlib/Core/Types.h"
@@ -39,7 +39,7 @@ namespace NS
 
     //! 個体のエフェクト再生と記録。描画先がなくても記録を残す
     //! 利用側は IUseEffect の関数を使う
-    class EffectKeeper : public SubObject
+    class EffectKeeper : public Object
     {
     public:
         //! @param[in] keepEndedSteps 消えた記録を残すフレーム数。過ぎた記録は BeginStep が捨てる
@@ -111,7 +111,7 @@ namespace NS
         //! @param[out] out 名前を足す先。中身は消さない
         void AppendLiveNames(std::vector<std::string>& out) const;
 
-        NS_REFLECT_NONE(EffectKeeper, SubObject)
+        NS_REFLECT_NONE(EffectKeeper, Object)
 
     private:
         struct ScheduledStop

@@ -49,13 +49,13 @@ namespace NS
         if (factory)
         {
             // 先に全 object を組んで、開始は後段でまとめて行う
-            // OnStart で ActorRef を解決する SubObject が、自分より後ろの object も引けるようにするため
+            // OnStart で ActorRef を解決する部品が、自分より後ろの object も引けるようにするため
             for (const nlohmann::json& entry : objects)
             {
                 std::unique_ptr<SceneActor> obj = factory(entry);
                 if (!obj)
                 {
-                    continue; // 組み立てる SubObject が無いオブジェクトはファクトリが nullptr を返す
+                    continue; // 組み立てる部品が無いオブジェクトはファクトリが nullptr を返す
                 }
 
                 obj->AttachScene(&owner);
@@ -214,7 +214,7 @@ namespace NS
             {
                 continue;
             }
-            if (collision->IsOwnerAppeared())
+            if (actor->IsAppeared())
             {
                 collision->SyncToPhysics();
             }
@@ -355,7 +355,7 @@ namespace NS
             return;
         }
 
-        // OnEndPlay は生成の逆順で呼ぶ。依存し合う SubObject の後始末を生成と対称にする
+        // OnEndPlay は生成の逆順で呼ぶ。依存し合う部品の後始末を生成と対称にする
         for (std::vector<std::unique_ptr<SceneActor>>::reverse_iterator it = m_objects.rbegin(); it != m_objects.rend();
              ++it)
         {

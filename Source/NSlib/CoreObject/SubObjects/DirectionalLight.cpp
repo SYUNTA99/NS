@@ -1,12 +1,18 @@
 #include "NSlib/CoreObject/SubObjects/DirectionalLight.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 namespace NS
 {
-    NS_CLASS(DirectionalLight)
+    bool DirectionalLight::IsOwnerAppeared() const noexcept
+    {
+        if (m_owner == nullptr)
+        {
+            return true;
+        }
+        return m_owner->IsAppeared();
+    }
 
     Vector3 DirectionalLight::Direction() const noexcept
     {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 namespace NS
 {
@@ -33,7 +33,7 @@ namespace NS
     };
 
     //! 世界の描画後に重ね描きする部品の基底
-    class OverlayRenderer : public SubObject, public IOverlay
+    class OverlayRenderer : public Object, public IOverlay
     {
     public:
         explicit OverlayRenderer(SceneActor* owner) noexcept : m_owner(owner) {}
@@ -49,7 +49,7 @@ namespace NS
             return m_owner->IsAppeared();
         }
 
-        NS_REFLECT_NONE(OverlayRenderer, SubObject)
+        NS_REFLECT_NONE(OverlayRenderer, Object)
 
     private:
         SceneActor* m_owner = nullptr; // 持ち主 (非所有)

@@ -22,7 +22,6 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneManager.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObject.h"
 #include "NSlib/CoreObject/SubObjects/Animation.h"
 #include "NSlib/CoreObject/SubObjects/BoxCollision.h"
 #include "NSlib/CoreObject/SubObjects/CapsuleCollision.h"

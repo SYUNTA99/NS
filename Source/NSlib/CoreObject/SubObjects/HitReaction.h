@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/CameraModifier.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
@@ -10,7 +10,7 @@ namespace NS
     //! @brief 当たりの演出を頼む部品
     //! @details 並びと始めるフレームは当たりのタイムラインが決める。揺れと寄りは CameraManager、
     //! 白・震えの線・歪みの輪は HitScreenDirector、振動は PadRumbleDirector が進める
-    class HitReaction : public SubObject
+    class HitReaction : public Object
     {
     public:
         explicit HitReaction(SceneActor* owner) noexcept : m_owner(owner) {}
@@ -81,7 +81,7 @@ namespace NS
         void StopAll();
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する
-        NS_REFLECT_NONE(HitReaction, SubObject)
+        NS_REFLECT_NONE(HitReaction, Object)
 
     private:
         SceneActor* m_owner = nullptr; // 持ち主 (非所有)

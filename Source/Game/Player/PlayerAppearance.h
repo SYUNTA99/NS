@@ -3,7 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 #include "NSlib/Core/Types.h"
 #include <string>
@@ -43,7 +43,7 @@ namespace GL
         //! @brief 自機の立ち姿・玉と、描画時の回転・変形を管理する部品
         //! @details 姿のメッシュは参照の欄から読み、姿ごとの倍率で大きさを合わせる。当たりの寸法には付いて行かない
         // TODO: 部分的な JSON 適用では Model の undo を再反映できない。ResetFromJson で直る
-        class PlayerAppearance : public NS::SubObject
+        class PlayerAppearance : public NS::Object
         {
         public:
             explicit PlayerAppearance(NS::SceneActor* owner) noexcept;
@@ -88,7 +88,7 @@ namespace GL
             //! @return 直前の Update で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
             [[nodiscard]] NS::Vector3 SpinAxis() const noexcept { return m_spinAxis; }
 
-            NS_REFLECT_BEGIN(PlayerAppearance, NS::SubObject)
+            NS_REFLECT_BEGIN(PlayerAppearance, NS::Object)
             NS_REFLECT_GROUP("姿")
             NS_REFLECT_FIELD(m_standingMesh, "立ち姿のメッシュ")
             NS_REFLECT_FIELD(m_ballMesh, "玉のメッシュ")

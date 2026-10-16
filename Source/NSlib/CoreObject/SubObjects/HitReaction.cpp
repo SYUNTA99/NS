@@ -3,7 +3,6 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 namespace NS
@@ -228,6 +227,4 @@ namespace NS
             StopCameraEffects(m_owner);
         }
     }
-
-    NS_CLASS(HitReaction)
 } // namespace NS

@@ -14,9 +14,7 @@ namespace NS
     //! SceneActor 派生を生成する関数
     using ActorCreateFn = std::unique_ptr<SceneActor> (*)();
 
-    using SubObjectDefaultFn = std::unique_ptr<SubObject> (*)();
-
-    //! NS_CLASS で登録した SceneActor と部品をクラス名から生成する
+    //! NS_CLASS で登録した SceneActor をクラス名から生成する
     //! 静的ライブラリでは自己登録の翻訳単位がリンク時に除去されないようにする
     class TypeRegistry
     {
@@ -25,17 +23,13 @@ namespace NS
 
         struct Entry
         {
-            const char* className;            // 保存形式に書くクラス名
-            ActorCreateFn create;             // SceneActor 側の生成関数。SubObject 側の登録は nullptr
-            SubObjectDefaultFn createDefault; // SubObject 側の生成関数。SceneActor 側の登録は nullptr
-            const char* label;                // エディタで置ける SceneActor の表示名。置けない型は nullptr
+            const char* className; // 保存形式に書くクラス名
+            ActorCreateFn create;
+            const char* label; // エディタで置ける SceneActor の表示名。置けない型は nullptr
         };
 
         //! label はエディタで置ける SceneActor にだけ渡す。同名の二重登録は先勝ちで拒否し debug では assert で落とす
-        void Register(const char* className,
-                      ActorCreateFn create,
-                      SubObjectDefaultFn attach,
-                      const char* label = nullptr);
+        void Register(const char* className, ActorCreateFn create, const char* label = nullptr);
 
         [[nodiscard]] const std::vector<Entry>& Entries() const noexcept;
 
@@ -59,42 +53,20 @@ namespace NS
     //! object を配置として scene の中に置くアクターを作り、欄と素材まで済ませて返す
     [[nodiscard]] std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object, Scene& scene);
 
-    //! 型名から部品をコードの既定値で作る。持ち主と名前は付かない。未登録の型名と SceneActor の型名は nullptr
-    [[nodiscard]] std::unique_ptr<SubObject> CreateSubObjOfType(std::string_view typeName);
-
     //! @brief エディタで置ける SceneActor の登録の一覧。表示名の順で安定
     //! @details ヒエラルキーの追加メニューとパレットが、置ける種類の列挙に使う
     [[nodiscard]] const std::vector<const TypeRegistry::Entry*>& PlaceableEntries();
 
-    //! NS_CLASS / NS_PLACEABLE の実体。T の継承で SceneActor 側か SubObject 側かを見分けて登録する
-    //! label を渡すのはエディタで置ける SceneActor だけ
+    //! NS_CLASS / NS_PLACEABLE の実体。label を渡すのはエディタで置ける SceneActor だけ
     template <class T> void RegisterClass(const char* className, const char* label = nullptr)
     {
-        if constexpr (std::is_base_of_v<SubObject, T>)
-        {
-            // TODO: 持ち主を受ける部品は持ち主の無い既定を作る。型の既定を作る道を消す時にこの分かれ道ごと外す
-            if constexpr (std::is_constructible_v<T, SceneActor*>)
-            {
-                TypeRegistry::Get().Register(
-                    className, nullptr, +[]() -> std::unique_ptr<SubObject> { return std::make_unique<T>(nullptr); });
-            }
-            else
-            {
-                TypeRegistry::Get().Register(
-                    className, nullptr, +[]() -> std::unique_ptr<SubObject> { return std::make_unique<T>(); });
-            }
-        }
-        else
-        {
-            static_assert(std::is_base_of_v<SceneActor, T>, "NS_CLASS は SceneActor か SubObject の派生に書く");
-            TypeRegistry::Get().Register(
-                className, +[]() -> std::unique_ptr<SceneActor> { return std::make_unique<T>(); }, nullptr, label);
-        }
+        static_assert(std::is_base_of_v<SceneActor, T>, "NS_CLASS は SceneActor の派生に書く");
+        TypeRegistry::Get().Register(
+            className, +[]() -> std::unique_ptr<SceneActor> { return std::make_unique<T>(); }, label);
     }
 } // namespace NS
 
-//! 型をクラス名で自己登録する。その型の .cpp で 1 度だけ書く。#Type が保存形式と検索のキーになる
-//! SubObject は既定コンストラクタか持ち主を空にしたコンストラクタで生成されるので、値はリフレクション field と参照の欄で後から入れる
+//! SceneActor の型をクラス名で自己登録する。その型の .cpp で 1 度だけ書く。#Type が保存形式と検索のキーになる
 #define NS_CLASS(Type)                                                                                                 \
     namespace                                                                                                          \
     {                                                                                                                  \

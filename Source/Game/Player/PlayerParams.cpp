@@ -3,7 +3,6 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
 #include <cmath>
 
@@ -63,7 +62,5 @@ namespace GL
                                         .apexBandSpeed = gravity.apexSpeed,
                                         .apexBandGravityScale = gravity.apexScale};
         }
-
-        NS_CLASS(PlayerParams)
     } // namespace Player
 } // namespace GL

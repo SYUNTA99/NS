@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Graphics/Animation.h"
 #include "NSlib/Graphics/SkeletalMesh.h"
@@ -19,7 +19,7 @@ namespace NS
 {
     //! 固定更新後にボーンの姿勢を計算する部品
     //! メッシュ・骨格・クリップは非所有で、所有元が寿命を保証する
-    class Animation : public SubObject
+    class Animation : public Object
     {
     public:
         explicit Animation(SceneActor* owner) noexcept;
@@ -65,7 +65,7 @@ namespace NS
         void UseModel();
 
         // 再生速度 / ループを Inspector へ公開する。毎フレーム読まれるのでライブで効き、負速度なら逆再生になる
-        NS_REFLECT_BEGIN(Animation, SubObject)
+        NS_REFLECT_BEGIN(Animation, Object)
         NS_REFLECT_FIELD(m_speed, "再生速度")
         NS_REFLECT_FIELD(m_looping, "ループ再生")
         NS_REFLECT_FIELD(m_model, "モデル")
@@ -88,11 +88,11 @@ namespace NS
         std::vector<Gfx::BonePose> m_poseScratch; // サンプリング結果の一時ポーズ
         std::vector<Matrix> m_paletteScratch;     // ボーンパレットの一時バッファ
 
-        // ボーンパレットはオブジェクト単位の状態なので mesh でなく本 SubObject が所有する
+        // ボーンパレットはオブジェクト単位の状態なので mesh でなく本部品が所有する
         std::unique_ptr<Gfx::Buffer> m_bonePaletteCB; // VS b1 用の定数バッファ
         Gfx::BonePaletteCB m_palette;                 // CPU 側パレット、描画側が毎描画 GPU へ上げる
 
-        Model* m_renderer = nullptr; // 同じ object の描画 SubObject。パレットと境界の差し先 (非所有)
+        Model* m_renderer = nullptr; // 同じ object の描画部品。パレットと境界の差し先 (非所有)
         SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 

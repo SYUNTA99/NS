@@ -123,14 +123,14 @@ TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
 {
     const std::unique_ptr<ReactionEffectActor> owned = NS::CreateActor<ReactionEffectActor>();
     ReactionEffectActor& actor = *owned;
-    NS::SubObject* keeper = actor.GetEffectKeeper();
-    NS::SubObject* reaction = actor.HitReactionSubObj();
+    NS::Object* keeper = actor.GetEffectKeeper();
+    NS::Object* reaction = actor.HitReactionSubObj();
     ASSERT_NE(keeper, nullptr);
     ASSERT_NE(reaction, nullptr);
 
-    std::vector<NS::SubObject*> parts;
+    std::vector<NS::Object*> parts;
     std::vector<std::string_view> keys;
-    NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, NS::SubObject* part) {
+    NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, NS::Object* part) {
         parts.push_back(part);
         keys.push_back(field.key);
     });

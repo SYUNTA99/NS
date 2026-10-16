@@ -89,10 +89,10 @@ TEST(SubObjectLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
 {
     NS::Scene scene;
     NS::LightActor* light = scene.SpawnTransient<NS::LightActor>();
-    const NS::SubObject* sun = &light->Light();
+    const NS::DirectionalLight* sun = &light->Light();
     EXPECT_EQ(RegisteredWhileAppeared(scene, *light), Registrations{});
     EXPECT_EQ(scene.LightCount(), 1u);
-    // 描く側 (SceneRenderer::ResolveSceneSettings) は IsActive が偽の光を飛ばす
+    // 描く側 (SceneRenderer::ResolveSceneSettings) は持ち主が出ていない光を飛ばす
     EXPECT_FALSE(sun->IsOwnerAppeared());
     light->Appear();
     EXPECT_TRUE(sun->IsOwnerAppeared());

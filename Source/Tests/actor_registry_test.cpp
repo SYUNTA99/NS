@@ -87,19 +87,6 @@ TEST(ActorRegistry, UnknownClassFallsBackToPlainActor)
     EXPECT_EQ(std::string_view{actor->ClassName()}, "SceneActor");
 }
 
-TEST(ActorRegistry, PartDefaultsAreOwnedWithoutAnActor)
-{
-    const std::unique_ptr<NS::SubObject> first = NS::CreateSubObjOfType("Model");
-    const std::unique_ptr<NS::SubObject> second = NS::CreateSubObjOfType("Model");
-    ASSERT_NE(first, nullptr);
-    ASSERT_NE(second, nullptr);
-    EXPECT_NE(first.get(), second.get());
-    EXPECT_EQ(first->Owner(), nullptr);
-    EXPECT_EQ(second->Owner(), nullptr);
-    EXPECT_EQ(NS::CreateSubObjOfType("PlayerActor"), nullptr);
-    EXPECT_EQ(NS::CreateSubObjOfType("NoSuchPart"), nullptr);
-}
-
 TEST(ActorRegistry, RetiredMapObjectAbilitiesCannotBeCreated)
 {
     EXPECT_EQ(NS::TypeRegistry::Get().Find("LaunchedBody"), nullptr);

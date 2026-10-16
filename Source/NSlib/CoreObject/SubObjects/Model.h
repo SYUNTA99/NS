@@ -5,7 +5,7 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/Graphics/DrawItem.h"
 
 #include <string>
@@ -36,7 +36,7 @@ namespace NS
 #pragma warning(disable : 4324)
     //! @brief メッシュとマテリアルを描画する部品
     //! @details 描画用の姿勢変更は根の Transform と衝突形状に影響せず、保存されない
-    class Model : public SubObject, public IRenderable
+    class Model : public Object, public IRenderable
     {
     public:
         //! メッシュとマテリアルは参照の欄に名前で持ち、SceneActor::ReloadAssets が読む
@@ -72,7 +72,7 @@ namespace NS
                                     std::size_t cpuDataSize,
                                     uint slot) noexcept;
 
-        //! skinned など mesh 固定の LocalBounds では現在ポーズを包めない時に、同じ object の SubObject が毎フレーム
+        //! skinned など mesh 固定の LocalBounds では現在ポーズを包めない時に、同じ object の部品が毎フレーム
         //! 現在ポーズの局所境界を差す。差された間は WorldBounds がこれを世界変換して使う
         void SetLocalBoundsOverride(const AABB& localBounds) noexcept
         {
@@ -169,7 +169,7 @@ namespace NS
         //! 固定更新の先頭で補間用の姿勢を控える。時間停止中も前後の値を揃える
         void Snapshot() noexcept;
 
-        NS_REFLECT_BEGIN(Model, SubObject)
+        NS_REFLECT_BEGIN(Model, Object)
         NS_REFLECT_FIELD(m_baseColor, "基本色")
         NS_REFLECT_FIELD(m_mesh, "メッシュ")
         NS_REFLECT_FIELD(m_material, "マテリアル")
@@ -214,24 +214,24 @@ namespace NS
         AABB m_localBoundsOverride{};
         bool m_hasLocalBoundsOverride = false;
 
-        // 描く時だけの局所の回転。同居する SubObject が毎フレーム書き直すので保存しない
+        // 描く時だけの局所の回転。同居する部品が毎フレーム書き直すので保存しない
         Quaternion m_localRotation = Quaternion::Identity;
         Quaternion m_previousLocalRotation = Quaternion::Identity; // 前のフレームの値。補間の始点
 
-        // 差したメッシュに合わせる局所の倍率。メッシュを差す SubObject が書くので保存しない
+        // 差したメッシュに合わせる局所の倍率。メッシュを差す部品が書くので保存しない
         Vector3 m_localScale{1.0f, 1.0f, 1.0f};
 
-        // 描く時だけの世界の軸の倍率。他の SubObject が書き直すので保存しない
+        // 描く時だけの世界の軸の倍率。他の部品が書き直すので保存しない
         Vector3 m_drawScale{1.0f, 1.0f, 1.0f};
         Vector3 m_previousDrawScale{1.0f, 1.0f, 1.0f}; // 前のフレームの値。補間の始点
 
-        // 描く時だけの世界のずれ。他の SubObject が書き直すので保存しない。補間しない
+        // 描く時だけの世界のずれ。他の部品が書き直すので保存しない。補間しない
         Vector3 m_drawOffset{0.0f, 0.0f, 0.0f};
-        // 描く時だけの震え。他の SubObject が書き直すので保存しない。補間しない
+        // 描く時だけの震え。他の部品が書き直すので保存しない。補間しない
         Gfx::TremorCB m_tremor{};
-        // 描く時だけの残像の離れ。他の SubObject が書き直すので保存しない。補間しない
+        // 描く時だけの残像の離れ。他の部品が書き直すので保存しない。補間しない
         Vector3 m_ghostSpread{0.0f, 0.0f, 0.0f};
-        // 明けの写しの控えた姿と不透明度。他の SubObject が書き直すので保存しない
+        // 明けの写しの控えた姿と不透明度。他の部品が書き直すので保存しない
         Matrix m_afterimageWorld = Matrix::Identity;
         float m_afterimageOpacity = 0.0f;
         Ghosts m_ghosts{*this};                       // 残像を描く物。Scene へは self と並べて登録する

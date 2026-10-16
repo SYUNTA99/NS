@@ -94,10 +94,10 @@ namespace
     }
 
     // actor の表で part を持つ行。無ければ nullptr
-    const NS::SubObjectDesc* RowOf(const NS::SceneActor& actor, const NS::SubObject* part)
+    const NS::SubObjectDesc* RowOf(const NS::SceneActor& actor, const NS::Object* part)
     {
         const NS::SubObjectDesc* row = nullptr;
-        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::SubObject* candidate) {
+        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::Object* candidate) {
             if (candidate == part)
             {
                 row = &field;
@@ -355,14 +355,47 @@ TEST(Archetype, InspectorMarksAndRevertsAgainstTheArchetype)
     const NS::SubObjectDesc* row = RowOf(actor, sphere);
     ASSERT_NE(row, nullptr);
 
-    NS::Editor::SubObjectDefaults defaults;
-    const NS::SubObject* baseline = defaults.Find(actor, *row);
+    const NS::Object* baseline = NS::FindBaselineSubObj(actor, *row);
     ASSERT_NE(baseline, nullptr);
     EXPECT_FALSE(NS::Editor::FieldDiffersFromDefault(*sphere, baseline, *radius));
     sphere->SetRadius(2.5f);
     EXPECT_TRUE(NS::Editor::FieldDiffersFromDefault(*sphere, baseline, *radius));
     NS::Editor::RevertFieldToDefault(*sphere, *baseline, *radius);
     EXPECT_FLOAT_EQ(sphere->Radius(), 2.0f);
+}
+
+namespace
+{
+    // 登録の無いクラス。種類の既定の比べ先は素の SceneActor になり、Collision の行を持たない
+    class UnregisteredSphereActor final : public NS::SceneActor
+    {
+    public:
+        NS_REFLECT_NONE(UnregisteredSphereActor, NS::SceneActor)
+
+    protected:
+        void OnInit() override { CreateSubObj<NS::Collision, NS::SphereCollision>(m_collision, this); }
+    };
+} // namespace
+
+// 比べ先は種類の既定の比べ先の同じ行だけ。そこに行が無い時に型の既定 (半径 0.5) と比べると、
+// 種類の既定で変えた半径 2 に印が出る
+TEST(Archetype, InspectorDoesNotMarkAFieldTheArchetypeChanged)
+{
+    const ScopedArchetypeDirectory scope("InspectorWithoutBaselineRow");
+    NS::ArchetypeLibrary::Get().Set(
+        "UnregisteredSphereActor", ArchetypeWith("UnregisteredSphereActor", "Collision", SphereEntry(2.0f)));
+
+    const std::unique_ptr<UnregisteredSphereActor> actor = NS::CreateActor<UnregisteredSphereActor>();
+    NS::ApplyArchetype(*actor);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionSubObj());
+    ASSERT_NE(sphere, nullptr);
+    ASSERT_FLOAT_EQ(sphere->Radius(), 2.0f);
+    const NS::FieldDesc* radius = NS::FindField(sphere->GetReflection(), "半径");
+    ASSERT_NE(radius, nullptr);
+    const NS::SubObjectDesc* row = RowOf(*actor, sphere);
+    ASSERT_NE(row, nullptr);
+
+    EXPECT_FALSE(NS::Editor::FieldDiffersFromDefault(*sphere, NS::FindBaselineSubObj(*actor, *row), *radius));
 }
 
 TEST(Archetype, TransformPartIsInstanceOnlyOnEveryPath)

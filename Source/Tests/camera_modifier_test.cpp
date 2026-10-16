@@ -17,8 +17,6 @@
 #include <optional>
 #include <type_traits>
 
-static_assert(!std::is_base_of_v<NS::SubObject, NS::CameraManager>);
-static_assert(!std::is_base_of_v<NS::SubObject, NS::SceneCamera>);
 // 実カメラは遊びの向きを答えない。向きの口は IUseCamera の補助関数 1 本だけ
 template <class T>
 concept AnswersForwardHorizontal = requires(const T& camera) { camera.ForwardHorizontal(); };
@@ -60,6 +58,8 @@ namespace
     class AlphaCamera final : public NS::VirtualCamera
     {
     public:
+        using NS::VirtualCamera::VirtualCamera;
+
         [[nodiscard]] NS::CameraPose EvaluatePose(float alpha) const noexcept override
         {
             return MakePose(
@@ -84,7 +84,7 @@ namespace
         }
 
     protected:
-        void OnInit() override { CreateSubObj(vcam); }
+        void OnInit() override { CreateSubObj(vcam, this); }
         void OnStart() override
         {
             NS::SceneActor::OnStart();

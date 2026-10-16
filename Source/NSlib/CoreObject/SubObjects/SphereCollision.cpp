@@ -2,7 +2,6 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Sphere.h"
 
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Physics/PhysicsScene.h"
@@ -60,6 +59,4 @@ namespace NS
     {
         return physics.SyncSphere(current, WorldSphere(), Phys::ObjectLayers::Terrain);
     }
-
-    NS_CLASS(SphereCollision)
 } // namespace NS

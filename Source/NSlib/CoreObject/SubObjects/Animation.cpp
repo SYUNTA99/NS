@@ -3,7 +3,6 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/CoreObject/AssetManager.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Graphics/Buffer.h"
@@ -224,7 +223,4 @@ namespace NS
             m_renderer->SetLocalBoundsOverride(localBounds);
         }
     }
-
-    // mesh / skeleton / clip は asset 由来なので data からは空で作る。mesh 未注入の間 ApplyPose は何もしない
-    NS_CLASS(Animation)
 } // namespace NS

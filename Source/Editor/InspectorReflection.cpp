@@ -7,7 +7,7 @@
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 #include <algorithm>
 #include <climits>
@@ -25,7 +25,7 @@ namespace NS
         namespace
         {
             template <class T>
-            bool SameValue(const SubObject& a, const SubObject& b, const FieldDesc& field)
+            bool SameValue(const Object& a, const Object& b, const FieldDesc& field)
             {
                 T lhs{};
                 T rhs{};
@@ -34,7 +34,7 @@ namespace NS
                 return lhs == rhs;
             }
 
-            template <class T> void CopyValue(SubObject& dst, const SubObject& src, const FieldDesc& field)
+            template <class T> void CopyValue(Object& dst, const Object& src, const FieldDesc& field)
             {
                 T value{};
                 field.get(&src, &value);
@@ -42,46 +42,8 @@ namespace NS
             }
         } // namespace
 
-        SubObjectDefaults::SubObjectDefaults() noexcept = default;
-        SubObjectDefaults::~SubObjectDefaults() noexcept = default;
-
-        const SubObject* SubObjectDefaults::Find(const SceneActor& actor, const SubObjectDesc& row)
-        {
-            // 持ち主のクラスの既定の 1 体の同じ部品。値はコードの既定値に種類の既定値を当てた物
-            if (const SubObject* part = FindBaselineSubObj(actor, row))
-            {
-                return part;
-            }
-            const SubObject* comp = row.get(&actor);
-            if (comp == nullptr)
-            {
-                return nullptr;
-            }
-            const ReflectionInfo* info = comp->GetReflection();
-            if (info == nullptr)
-            {
-                return nullptr;
-            }
-            return FindTypeDefault(info->typeName);
-        }
-
-        const SubObject* SubObjectDefaults::FindTypeDefault(std::string_view typeName)
-        {
-            for (const std::pair<std::string, std::unique_ptr<SubObject>>& entry : m_byType)
-            {
-                if (entry.first == typeName)
-                {
-                    return entry.second.get();
-                }
-            }
-            std::unique_ptr<SubObject> created = CreateSubObjOfType(typeName);
-            const SubObject* result = created.get();
-            m_byType.emplace_back(std::string(typeName), std::move(created));
-            return result;
-        }
-
-        bool FieldDiffersFromDefault(const SubObject& comp,
-                                     const SubObject* defaults,
+        bool FieldDiffersFromDefault(const Object& comp,
+                                     const Object* defaults,
                                      const FieldDesc& field) noexcept
         {
             if (defaults == nullptr)
@@ -111,8 +73,8 @@ namespace NS
             return false;
         }
 
-        void RevertFieldToDefault(SubObject& comp,
-                                  const SubObject& defaults,
+        void RevertFieldToDefault(Object& comp,
+                                  const Object& defaults,
                                   const FieldDesc& field) noexcept
         {
             switch (field.type)
@@ -1043,9 +1005,9 @@ namespace NS
             }
         } // namespace
 
-        SubObjectEditResult DrawReflectedSubObject(SubObject& comp,
+        SubObjectEditResult DrawReflectedSubObject(Object& comp,
                                                    std::span<const ObjectRefOption> refOptions,
-                                                   const SubObject* defaults,
+                                                   const Object* defaults,
                                                    const char* filter,
                                                    const SceneActor* actor,
                                                    const SubObjectDesc* row) noexcept
@@ -1135,9 +1097,9 @@ namespace NS
         }
 
 #else
-        SubObjectEditResult DrawReflectedSubObject(SubObject&,
+        SubObjectEditResult DrawReflectedSubObject(Object&,
                                                    std::span<const ObjectRefOption>,
-                                                   const SubObject*,
+                                                   const Object*,
                                                    const char*,
                                                    const SceneActor*,
                                                    const SubObjectDesc*) noexcept

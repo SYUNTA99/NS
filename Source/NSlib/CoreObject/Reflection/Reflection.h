@@ -16,7 +16,6 @@
 namespace NS
 {
     class Object;
-    class SubObject;
 
     //! リフレクションが扱うフィールド型タグ
     // TODO: 角度の欄は素の float / Vector3 で、単位は欄名だけが持つ。Core/Math.h の Radians を FieldType へ足す
@@ -145,7 +144,7 @@ namespace NS
     struct SubObjectDesc
     {
         const char* key;
-        SubObject* (*get)(const Object* owner) noexcept;
+        Object* (*get)(const Object* owner) noexcept;
         const void* (*member)(const Object* owner) noexcept;
     };
 
@@ -155,7 +154,7 @@ namespace NS
         const char* typeName;
         const FieldDesc* fields; // フィールド記述子配列 (static 寿命)
         std::size_t fieldCount;
-        const ReflectionInfo* base;         // 基底型のリフレクション。SubObject 直下は nullptr
+        const ReflectionInfo* base;         // 基底型のリフレクション。Object と素の値型は nullptr
         const FieldGroup* groups = nullptr; // 欄の見出しの配列 (static 寿命)。宣言の並び
         std::size_t groupCount = 0;
         const SubObjectDesc* subObjects = nullptr;
@@ -214,7 +213,7 @@ namespace NS
         std::vector<FieldGroup> m_groups; // 見出し。宣言の並び
     };
 
-    //! 基底型のリフレクションを返す。SubObject 直下は SubObject、素の値型は void を渡し、いずれも nullptr になる
+    //! 基底型のリフレクションを返す。素の値型は void を渡し、nullptr になる
     template <class TBase> [[nodiscard]] const ReflectionInfo* ReflectionBaseOf() noexcept
     {
         if constexpr (std::is_same_v<TBase, void>)
@@ -297,7 +296,7 @@ namespace NS
     NS::ReflectEntry{NS::FieldDesc{},                                                                                  \
                      nullptr,                                                                                          \
                      NS::SubObjectDesc{savedKey,                                                                       \
-                                       +[](const NS::Object* owner) noexcept -> NS::SubObject* {                       \
+                                       +[](const NS::Object* owner) noexcept -> NS::Object* {                       \
                                            return static_cast<const Self*>(owner)->memberName.get();                   \
                                        },                                                                              \
                                        +[](const NS::Object* owner) noexcept -> const void* {                          \
@@ -323,7 +322,7 @@ namespace NS
 // NS_REFLECT_BEGIN_IMPL の終了。仮想の GetReflection は NS_REFLECT_DECLARE が宣言に置く
 #define NS_REFLECT_END_IMPL() NS_REFLECT_END_VALUE()
 
-//! 値型用のフィールド宣言終了。SubObject を継承しない型向けに、仮想の GetReflection を出さず静的関数だけ定義する
+//! 値型用のフィールド宣言終了。Object を継承しない型向けに、仮想の GetReflection を出さず静的関数だけ定義する
 #define NS_REFLECT_END_VALUE()                                                                                         \
     }                                                                                                                  \
     ;                                                                                                                  \

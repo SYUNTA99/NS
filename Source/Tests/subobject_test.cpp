@@ -21,7 +21,7 @@
 
 namespace
 {
-    class PlainSubObj final : public NS::SubObject
+    class PlainSubObj final : public NS::Object
     {};
 
     class OrderActor final : public NS::SceneActor
@@ -163,38 +163,42 @@ protected:
 };
 NS_CLASS(AssetTimingProbeActor)
 
-TEST(SubObject, CreateWritesNameAndEnumeratesRootThenSlotsThenDerivedInCreationOrder)
+TEST(ClassObj, CreateEnumeratesRootThenSlotsThenDerivedInCreationOrder)
 {
     const std::unique_ptr<OrderActor> actor = NS::CreateActor<OrderActor>();
     ASSERT_NE(actor->first, nullptr);
     ASSERT_NE(actor->second, nullptr);
-    EXPECT_EQ(actor->SubObjKey(*actor->first), "First");
-    EXPECT_EQ(actor->first->Owner(), actor.get());
     ASSERT_NE(actor->CollisionSubObj(), nullptr);
-    EXPECT_EQ(actor->SubObjKey(*actor->CollisionSubObj()), "Collision");
     std::vector<std::string> names;
-    NS::ForEachReflectedSubObj(*actor, [&](const NS::SubObjectDesc& field, const NS::SubObject* subObject) {
-        EXPECT_EQ(subObject->Owner(), actor.get());
+    NS::ForEachReflectedSubObj(*actor, [&](const NS::SubObjectDesc& field, const NS::Object* part) {
+        if (std::string_view{field.key} == "First")
+        {
+            EXPECT_EQ(part, actor->first.get());
+        }
+        if (std::string_view{field.key} == "Collision")
+        {
+            EXPECT_EQ(part, actor->CollisionSubObj());
+        }
         names.push_back(field.key);
     });
     EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model", "Collision", "First", "Second"}));
 }
 
-TEST(SubObject, SecondCreateInTheSameSlotIsRefused)
+TEST(ClassObj, SecondCreateInTheSameSlotIsRefused)
 {
     const std::unique_ptr<OrderActor> actor = NS::CreateActor<OrderActor>();
     EXPECT_EQ(actor->refused, nullptr);
     EXPECT_EQ(actor->CollisionSubObj(), actor->box);
 }
 
-TEST(SubObject, SlotIsRefusedWhenItsNameIsTaken)
+TEST(ClassObj, SlotIsRefusedWhenItsNameIsTaken)
 {
     const std::unique_ptr<NameClashActor> actor = NS::CreateActor<NameClashActor>();
     EXPECT_EQ(actor->model, nullptr);
     EXPECT_EQ(actor->ModelSubObj(), nullptr);
 }
 
-TEST(SubObject, GrandchildReplacesTheCollisionTypeChosenByTheMiddleBase)
+TEST(ClassObj, GrandchildReplacesTheCollisionTypeChosenByTheMiddleBase)
 {
     const std::unique_ptr<MiddleActor> middle = NS::CreateActor<MiddleActor>();
     EXPECT_NE(NS::Cast<NS::BoxCollision>(middle->CollisionSubObj()), nullptr);
@@ -204,13 +208,13 @@ TEST(SubObject, GrandchildReplacesTheCollisionTypeChosenByTheMiddleBase)
     EXPECT_NE(grand->ModelSubObj(), nullptr);
 }
 
-TEST(SubObject, OnlyTheBuildersCanInitAndEnterAnActor)
+TEST(ClassObj, OnlyTheBuildersCanInitAndEnterAnActor)
 {
     CheckInitIsClosed();
     CheckSceneBuildsItsOwnActors();
 }
 
-TEST(SubObject, EveryBuildPathRunsOnInitExactlyOnce)
+TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
 {
     NS::Scene scene;
     const SubObjectInitProbeActor* transient = scene.SpawnTransient<SubObjectInitProbeActor>();
@@ -236,7 +240,7 @@ TEST(SubObject, EveryBuildPathRunsOnInitExactlyOnce)
 }
 
 // どの道で作っても、素材は欄を書いた後・一覧に入る前・OnStart の前に 1 回だけ読む
-TEST(SubObject, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
+TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
@@ -265,7 +269,7 @@ TEST(SubObject, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
 }
 
 // AssetManager を差していない間も素材を読む道を通る。試しも本番と同じ順を通る
-TEST(SubObject, ActorLoadsAssetsWithoutAssetManagerScope)
+TEST(ClassObj, ActorLoadsAssetsWithoutAssetManagerScope)
 {
     NS::Scene scene;
     const AssetTimingProbeActor* actor = scene.SpawnTransient<AssetTimingProbeActor>();
@@ -273,7 +277,7 @@ TEST(SubObject, ActorLoadsAssetsWithoutAssetManagerScope)
     EXPECT_EQ(actor->loads, 1);
 }
 
-TEST(SubObject, PrototypeJsonListsTheSubObjectsInit)
+TEST(ClassObj, PrototypeJsonListsTheSubObjectsInit)
 {
     const nlohmann::json prototype = NS::MakePrototypeJson<SubObjectInitProbeActor>();
     EXPECT_NE(NS::SubObjFields(prototype, "Model"), nullptr);

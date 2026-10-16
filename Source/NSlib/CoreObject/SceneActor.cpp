@@ -8,7 +8,7 @@
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/Animation.h"
 #include "NSlib/CoreObject/SubObjects/Collision.h"
 #include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
@@ -55,7 +55,7 @@ namespace NS
         return *m_transform;
     }
 
-    const SubObjectDesc* SceneActor::FindSubObjMember(const void* member) const
+    const SubObjectDesc* SceneActor::FindReflectedMember(const void* member) const
     {
         for (const ReflectionInfo* info = GetReflection(); info != nullptr; info = info->base)
         {
@@ -84,37 +84,13 @@ namespace NS
     bool SceneActor::IsSubObjKeyCreated(std::string_view key) const
     {
         bool created = false;
-        ForEachReflectedSubObj(*this, [&](const SubObjectDesc& field, const SubObject*) {
+        ForEachReflectedSubObj(*this, [&](const SubObjectDesc& field, const Object*) {
             if (field.key == key)
             {
                 created = true;
             }
         });
         return created;
-    }
-
-    std::string_view SceneActor::SubObjKey(const SubObject& part) const
-    {
-        std::string_view key;
-        ForEachReflectedSubObj(*this, [&](const SubObjectDesc& field, const SubObject* candidate) {
-            if (candidate == &part)
-            {
-                key = field.key;
-            }
-        });
-        return key;
-    }
-
-    SubObject* SceneActor::FindSubObj(std::string_view key) const
-    {
-        SubObject* found = nullptr;
-        ForEachReflectedSubObj(*this, [&](const SubObjectDesc& field, SubObject* part) {
-            if (found == nullptr && field.key == key)
-            {
-                found = part;
-            }
-        });
-        return found;
     }
 
     IStateMachine* SceneActor::GetStates() noexcept

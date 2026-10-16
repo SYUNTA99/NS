@@ -3,7 +3,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 #include "NSlib/Core/Types.h"
 #include <functional>
@@ -50,7 +50,7 @@ namespace NS
     [[nodiscard]] bool VolumesOverlap(const SensorVolume& lhs, const SensorVolume& rhs) noexcept;
 
     //! シーンへ登録するセンサーの基底。形状は派生、種類への応答は持ち主が決める
-    class HitSensor : public SubObject
+    class HitSensor : public Object
     {
     public:
         explicit HitSensor(SceneActor* owner) noexcept : m_owner(owner) {}
@@ -78,7 +78,7 @@ namespace NS
         //! 世界座標の形。調べ役と問う側が毎回これを読む
         [[nodiscard]] virtual SensorVolume WorldVolume() const noexcept = 0;
 
-        NS_REFLECT_NONE(HitSensor, SubObject)
+        NS_REFLECT_NONE(HitSensor, Object)
 
     private:
         uint8 m_kind = 0;      // 種類の値。0 は未設定で、どの受け手も応じない

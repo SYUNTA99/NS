@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 #include <string_view>
 
@@ -16,7 +16,7 @@ namespace NS
 
     //! @brief 個体の姿勢を持つ部品。Snapshot で控えた固定更新間の姿勢を描画時に補間する
     //! @details SceneActor::Root() はこの部品を返す。持ち主なしでも作れる
-    class Transform : public SubObject
+    class Transform : public Object
     {
     public:
         Transform() noexcept = default;
@@ -49,7 +49,7 @@ namespace NS
         //! 個体の前後の姿勢を補間したシーン内の行列
         [[nodiscard]] Matrix InterpolatedWorldMatrix(float alpha) const noexcept;
 
-        NS_REFLECT_BEGIN(Transform, SubObject)
+        NS_REFLECT_BEGIN(Transform, Object)
         NS_REFLECT_ACCESSOR(Vector3, k_PositionFieldName, Position(), SetPosition)
         NS_REFLECT_ACCESSOR(Quaternion, k_RotationFieldName, Rotation(), SetRotation)
         NS_REFLECT_ACCESSOR(Vector3, k_ScaleFieldName, Scale(), SetScaleField)

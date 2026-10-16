@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 namespace NS
 {
@@ -35,12 +35,17 @@ namespace NS
         }
     };
 
+    class SceneActor;
+
     //! 実カメラを変更せず、CameraManager が選ぶ目標姿勢を返す部品
     //! 状態は固定更新で進め、描画時の EvaluatePose で補間する
-    class VirtualCamera : public SubObject
+    class VirtualCamera : public Object
     {
     public:
-        VirtualCamera() noexcept = default;
+        explicit VirtualCamera(SceneActor* owner) noexcept : m_owner(owner) {}
+
+        //! 持ち主が出ているか。持ち主の無い物は出ていると答える
+        [[nodiscard]] bool IsOwnerAppeared() const noexcept;
 
         //! 最終姿勢を返す。alpha は追従対象の補間係数で、自由視点では使わない
         [[nodiscard]] virtual CameraPose EvaluatePose(float alpha) const noexcept = 0;
@@ -59,7 +64,7 @@ namespace NS
 
         // 姿勢は派生と CameraManager
         // が決めるので保存する調整値は無い。派生のリフレクション鎖の中継点として型名だけ登録する
-        NS_REFLECT_NONE(VirtualCamera, SubObject)
+        NS_REFLECT_NONE(VirtualCamera, Object)
 
     protected:
         //! 派生が position/target/up を渡すと、保持中の投影設定を載せた CameraPose を返す
@@ -78,6 +83,7 @@ namespace NS
         }
 
     private:
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
         int m_vcamPriority = 0;
         Radians m_fovY{ToRadians(Degrees{60.0f})};
         float m_nearPlane = 0.1f;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 #include <Jolt/Jolt.h>
 
@@ -18,7 +18,7 @@ namespace NS
 namespace NS
 {
     //! 所属シーンへ地形の body を登録する部品の基底。具体的な形状は派生が決める
-    class Collision : public SubObject
+    class Collision : public Object
     {
     public:
         explicit Collision(SceneActor* owner) noexcept : m_owner(owner) {}
@@ -37,7 +37,7 @@ namespace NS
         //! body を外す。所属シーンがなければエラーを出し、id だけを手放す
         void Unregister();
 
-        NS_REFLECT_NONE(Collision, SubObject)
+        NS_REFLECT_NONE(Collision, Object)
 
     protected:
         //! @brief 形の回転と中心のずれに、持ち主の root の世界行列を重ねた行列を返す

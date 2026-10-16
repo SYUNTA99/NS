@@ -12,10 +12,8 @@ TEST(ReflectedSubObjs, ListsBaseFramePartsBeforeTheClassPartsWithTheirSaveKeys)
 {
     const std::unique_ptr<GL::Level::PropActor> actor = NS::CreateActor<GL::Level::PropActor>();
     std::vector<std::string> keys;
-    NS::ForEachReflectedSubObj(*actor, [&](const NS::SubObjectDesc& field, NS::SubObject* part) {
-        EXPECT_EQ(part->Owner(), actor.get());
-        keys.emplace_back(field.key);
-    });
+    NS::ForEachReflectedSubObj(*actor,
+                               [&](const NS::SubObjectDesc& field, NS::Object*) { keys.emplace_back(field.key); });
     ASSERT_GE(keys.size(), 4u);
     EXPECT_EQ(keys.front(), "Transform");
     EXPECT_EQ((std::vector<std::string>(keys.end() - 3, keys.end())),

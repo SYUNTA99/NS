@@ -1,6 +1,5 @@
 #include "NSlib/CoreObject/SubObjects/MeshCollision.h"
 
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Physics/MeshShape.h"
@@ -93,7 +92,4 @@ namespace NS
         return physics.SyncMeshShape(
             current, shared, parts.translation, parts.rotation, parts.scale, Phys::ObjectLayers::Terrain);
     }
-
-    // data からは当たり無しで作る
-    NS_CLASS(MeshCollision)
 } // namespace NS

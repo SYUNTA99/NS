@@ -2,7 +2,6 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
@@ -383,6 +382,4 @@ namespace NS
         out.Center.z += m_drawOffset.z;
         return out;
     }
-
-    NS_CLASS(Model)
 } // namespace NS

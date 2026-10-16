@@ -1,7 +1,6 @@
 #include "NSlib/CoreObject/SubObjects/PlayerInput.h"
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Gamepad.h"
@@ -182,6 +181,4 @@ namespace NS
                                 (releaseLedgeHeld && !m_prevReleaseLedgeHeld);
         m_prevReleaseLedgeHeld = releaseLedgeHeld;
     }
-
-    NS_CLASS(PlayerInput)
 } // namespace NS

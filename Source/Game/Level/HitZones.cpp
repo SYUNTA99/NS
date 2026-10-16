@@ -1,7 +1,6 @@
 #include "Game/Level/HitZones.h"
 
 #include "NSlib/Core/OBB.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
 #include <algorithm>
 #include <array>
@@ -427,7 +426,5 @@ namespace GL
         {
             m_face.remainderPowerScale = SanitizeScale(scale);
         }
-
-        NS_CLASS(HitZones)
     } // namespace Level
 } // namespace GL

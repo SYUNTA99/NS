@@ -1,7 +1,6 @@
 #include "NSlib/CoreObject/SubObjects/Shadow.h"
 #include "NSlib/Core/AABB.h"
 
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
@@ -108,6 +107,4 @@ namespace NS
         item.constants.baseColor = Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファで shadow.ps が読む
         out.push_back(item);
     }
-
-    NS_CLASS(Shadow)
 } // namespace NS

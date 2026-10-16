@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/BodyEvents.h"
 
 namespace NS
@@ -10,7 +10,7 @@ namespace NS
 
     //! @brief 速度と接地を保持し、Collider の移動結果を根の姿勢へ反映する部品
     //! @details 自動更新はしない。持ち主が固定更新の経過秒 dt で各操作を呼ぶ
-    class Body : public SubObject
+    class Body : public Object
     {
     public:
         explicit Body(SceneActor* owner) noexcept : m_owner(owner) {}
@@ -51,7 +51,7 @@ namespace NS
         [[nodiscard]] BodyEvents& Events() noexcept { return m_events; }
 
         // TypeRegistry には登録しない。欄は持たず、古い場面に残る寸法の鍵は読み飛ばす。寸法の欄は Collider が持つ
-        NS_REFLECT_NONE(Body, SubObject)
+        NS_REFLECT_NONE(Body, Object)
 
     private:
         Vector3 m_velocity{0.0f, 0.0f, 0.0f};

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Coroutine.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/System/SceneSystem.h"
 
 namespace NS

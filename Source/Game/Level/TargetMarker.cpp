@@ -2,7 +2,6 @@
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Player/PlayerStatus.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Graphics/RenderContext.h"
 #include "NSlib/Graphics/Renderer.h"
@@ -271,7 +270,5 @@ namespace GL
             const LockOnFrames frames{.sinceCapture = m_framesSinceCapture, .sinceLost = m_framesSinceLost};
             return BuildLockOnFrame(viewProjection, targetSize, m_lostBounds, frames, m_desc, outFrame);
         }
-
-        NS_CLASS(TargetMarker)
     } // namespace Level
 } // namespace GL

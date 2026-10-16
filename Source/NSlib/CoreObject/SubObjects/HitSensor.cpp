@@ -1,7 +1,6 @@
 #include "NSlib/CoreObject/SubObjects/HitSensor.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
@@ -350,6 +349,4 @@ namespace NS
         }
         return SensorVolume::Sphere(root, 0.0f);
     }
-
-    NS_CLASS(ShapeHitSensor)
 } // namespace NS

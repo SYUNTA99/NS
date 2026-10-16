@@ -7,7 +7,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Filesystem.h"
 
@@ -58,7 +58,7 @@ namespace NS
         }
 
         // comp の欄 fieldName の値を JSON で読む。無ければ nullopt
-        [[nodiscard]] std::optional<nlohmann::json> FieldValue(const SubObject& comp, std::string_view fieldName)
+        [[nodiscard]] std::optional<nlohmann::json> FieldValue(const Object& comp, std::string_view fieldName)
         {
             const nlohmann::json fields = SerializeSubObjectFields(comp);
             const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
@@ -233,7 +233,7 @@ namespace NS
         nlohmann::json full = object;
         nlohmann::json& target = ObjectJsonSubObjs(full);
         target = nlohmann::json::object();
-        ForEachReflectedSubObj(baseline, [&](const SubObjectDesc& field, const SubObject* subObject) {
+        ForEachReflectedSubObj(baseline, [&](const SubObjectDesc& field, const Object* subObject) {
             nlohmann::json fields = SerializeSubObjectFields(*subObject);
             if (const nlohmann::json* source = SubObjFields(object, field.key))
             {
@@ -248,7 +248,7 @@ namespace NS
     {
         const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
-        ForEachReflectedSubObj(baseline, [&](const SubObjectDesc& member, const SubObject* subObject) {
+        ForEachReflectedSubObj(baseline, [&](const SubObjectDesc& member, const Object* subObject) {
             if (IsInstanceOnlySubObj(member.key))
             {
                 return;
@@ -279,10 +279,10 @@ namespace NS
     {
         // row が actor の表に無ければ nullptr。Baseline は登録の無いクラスでは素の SceneActor なので、
         // 行の関数を直に呼ばず、actor の表を回して同じ行を探す
-        [[nodiscard]] const SubObject* FindRowPart(const SceneActor& actor, const SubObjectDesc& row)
+        [[nodiscard]] const Object* FindRowPart(const SceneActor& actor, const SubObjectDesc& row)
         {
-            const SubObject* found = nullptr;
-            ForEachReflectedSubObj(actor, [&](const SubObjectDesc& field, const SubObject* part) {
+            const Object* found = nullptr;
+            ForEachReflectedSubObj(actor, [&](const SubObjectDesc& field, const Object* part) {
                 if (&field == &row)
                 {
                     found = part;
@@ -292,15 +292,15 @@ namespace NS
         }
     } // namespace
 
-    const SubObject* FindBaselineSubObj(const SceneActor& actor, const SubObjectDesc& row)
+    const Object* FindBaselineSubObj(const SceneActor& actor, const SubObjectDesc& row)
     {
-        const SubObject* live = FindRowPart(actor, row);
+        const Object* live = FindRowPart(actor, row);
         if (live == nullptr)
         {
             return nullptr;
         }
         const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(actor.ClassName());
-        const SubObject* found = FindRowPart(baseline, row);
+        const Object* found = FindRowPart(baseline, row);
         if (found != nullptr && std::string_view{found->ClassName()} == live->ClassName())
         {
             return found;
@@ -310,7 +310,7 @@ namespace NS
 
     bool IsFieldOverridden(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName)
     {
-        const SubObject* part = FindBaselineSubObj(actor, row);
+        const Object* part = FindBaselineSubObj(actor, row);
         if (part == nullptr)
         {
             return false;
@@ -320,7 +320,7 @@ namespace NS
 
     bool IsArchetypeField(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName)
     {
-        const SubObject* live = FindRowPart(actor, row);
+        const Object* live = FindRowPart(actor, row);
         if (live == nullptr || IsInstanceOnlySubObj(row.key))
         {
             return false;

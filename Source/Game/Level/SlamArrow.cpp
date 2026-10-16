@@ -5,7 +5,6 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/PlayerStatus.h"
 #include "Game/Player/SlamBall.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Collider.h"
@@ -614,7 +613,5 @@ namespace GL
             outShape = m_shown;
             return true;
         }
-
-        NS_CLASS(SlamArrow)
     } // namespace Level
 } // namespace GL

@@ -14,7 +14,7 @@
 namespace NS
 {
     class SceneActor;
-    class SubObject;
+    class Object;
     struct SubObjectDesc;
 
     //! クラスごとの既定値を Directory()/<クラス名>.json から読む
@@ -74,7 +74,7 @@ namespace NS
 
     //! actor の行 row の部品に対応する、actor のクラスの Baseline の部品。どちらかが作られていないか型が違えば nullptr
     //! 種類の既定値を変えると指す先が作り直されるので、そのフレームの間だけ使う
-    [[nodiscard]] const SubObject* FindBaselineSubObj(const SceneActor& actor, const SubObjectDesc& row);
+    [[nodiscard]] const Object* FindBaselineSubObj(const SceneActor& actor, const SubObjectDesc& row);
 
     //! actor の行 row の部品の欄 fieldName が、actor のクラスの種類の既定値と違うか
     [[nodiscard]] bool IsFieldOverridden(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName);

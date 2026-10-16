@@ -2,7 +2,7 @@
 
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/MissHop.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,7 +13,7 @@ namespace GL
     namespace Level
     {
         //! @brief 置物の重さ・転がり・壊れ方・飛び方の見た目の調整値の欄を持つ部品
-        class MapObjParams : public NS::SubObject
+        class MapObjParams : public NS::Object
         {
         public:
             //! 欄「質量」の値。有限の正でなければ 1
@@ -80,7 +80,7 @@ namespace GL
             //! 欄「当たりのタイムライン」の値。空なら段の既定のタイムラインを使う
             [[nodiscard]] const std::string& HitTimelineName() const noexcept { return m_hitTimeline; }
 
-            NS_REFLECT_BEGIN(MapObjParams, NS::SubObject)
+            NS_REFLECT_BEGIN(MapObjParams, NS::Object)
             NS_REFLECT_FIELD(m_mass, "質量")
             NS_REFLECT_FIELD(m_friction, "摩擦")
             NS_REFLECT_FIELD(m_restitution, "跳ね返り")

@@ -103,7 +103,7 @@ namespace NS
         {
             return;
         }
-        const SubObject* part = row.get(&actor);
+        const Object* part = row.get(&actor);
         if (part == nullptr)
         {
             return;
@@ -297,7 +297,7 @@ namespace NS
         std::unique_ptr<SceneActor> built = ObjectFromJson(object, *this);
         if (!built)
         {
-            // 組める SubObject が無い姿は、居ない姿として扱う
+            // 組める部品が無い姿は、居ない姿として扱う
             DestroyObject(id);
             return nullptr;
         }
@@ -324,7 +324,7 @@ namespace NS
         const nlohmann::json object = ExpandObjectJson(snapshot);
         bool same = ObjectJsonClass(object) == std::string_view{obj->ClassName()};
         std::size_t subObjectCount = 0;
-        ForEachReflectedSubObj(*obj, [&](const SubObjectDesc& field, SubObject*) {
+        ForEachReflectedSubObj(*obj, [&](const SubObjectDesc& field, Object*) {
             ++subObjectCount;
             if (SubObjFields(object, field.key) == nullptr)
             {
@@ -349,7 +349,7 @@ namespace NS
             obj->Disappear();
         }
         bool written = false;
-        ForEachReflectedSubObj(*obj, [&](const SubObjectDesc& field, SubObject* subObject) {
+        ForEachReflectedSubObj(*obj, [&](const SubObjectDesc& field, Object* subObject) {
             const nlohmann::json* fields = SubObjFields(object, field.key);
             if (fields == nullptr || SerializeSubObjectFields(*subObject) == *fields)
             {

@@ -1,7 +1,6 @@
 #include "NSlib/CoreObject/SubObjects/CapsuleCollision.h"
 #include "NSlib/Core/AABB.h"
 
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Physics/PhysicsScene.h"
@@ -101,6 +100,4 @@ namespace NS
     {
         return physics.SyncCapsule(current, WorldCapsule(), Phys::ObjectLayers::Terrain);
     }
-
-    NS_CLASS(CapsuleCollision)
 } // namespace NS

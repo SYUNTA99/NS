@@ -12,7 +12,7 @@
 namespace NS
 {
     class Scene;
-    class SubObject;
+    class Object;
 
     // 既存の部品へ値を適用する。クラスに無い部品名は警告して読み飛ばす
     void ApplyObjectSubObjs(SceneActor& obj, const nlohmann::json& object);

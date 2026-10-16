@@ -4,7 +4,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/Graphics/Material.h"
 #include "NSlib/Graphics/Mesh.h"
 
@@ -34,7 +34,7 @@ namespace NS
 
     void LoadAssetRefs(SceneActor& actor)
     {
-        ForEachReflectedSubObj(actor, [](const SubObjectDesc&, SubObject* subObject) {
+        ForEachReflectedSubObj(actor, [](const SubObjectDesc&, Object* subObject) {
             const ReflectionInfo* info = subObject->GetReflection();
             if (info == nullptr)
             {

@@ -1,13 +1,13 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 namespace NS
 {
     //! 機器の入力をカメラ相対の移動方向と操作状態へ変換する部品
     //! 操作ロック中は中立値を保持する
-    class PlayerInput : public SubObject
+    class PlayerInput : public Object
     {
     public:
         explicit PlayerInput(SceneActor* owner) noexcept : m_owner(owner) {}
@@ -56,7 +56,7 @@ namespace NS
         void Update();
 
         // 入力を渡すだけで保存する調整値は無い。型名だけ登録する
-        NS_REFLECT_NONE(PlayerInput, SubObject)
+        NS_REFLECT_NONE(PlayerInput, Object)
 
     private:
         Vector3 m_cameraForward{0.0f, 0.0f, 1.0f}; // camera 相対移動用の水平 forward

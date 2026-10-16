@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/Graphics/EffectTypes.h"
 
 #include "NSlib/Core/Types.h"
@@ -29,7 +29,7 @@ namespace GL
 
         //! 溜めと放しの演出を出し、寿命を管理する部品
         //! PlayerAppearance の後に更新する
-        class ChargeEffects : public NS::SubObject
+        class ChargeEffects : public NS::Object
         {
         public:
             explicit ChargeEffects(NS::SceneActor* owner) noexcept;
@@ -61,7 +61,7 @@ namespace GL
             //! +Z を direction の水平成分へ向ける。水平の向きが無効なら無回転
             [[nodiscard]] static NS::Quaternion YawToward(const NS::Vector3& direction) noexcept;
 
-            NS_REFLECT_BEGIN(ChargeEffects, NS::SubObject)
+            NS_REFLECT_BEGIN(ChargeEffects, NS::Object)
             NS_REFLECT_GROUP("放しの弾け")
             NS_REFLECT_FIELD(m_tapBurstScale, "通常突進の弾けの大きさ")
             NS_REFLECT_FIELD(m_fullBurstScaleGain, "溜めきりで足す弾けの大きさ")

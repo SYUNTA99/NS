@@ -2,20 +2,17 @@
 
 //! @brief サブオブジェクトのリフレクション情報から、ImGui編集用UIを自動生成するインスペクタヘルパー
 
-#include "NSlib/Core/NonCopyable.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 
 #include "NSlib/Core/Types.h"
-#include <memory>
 #include <span>
 #include <string>
 #include <string_view>
-#include <utility>
 #include <vector>
 
 namespace NS
 {
-    class SubObject;
+    class Object;
     class SceneActor;
     struct Curve;
 } // namespace NS
@@ -31,25 +28,6 @@ namespace NS
             std::string label;
         };
 
-        //! 欄の比較と復元に使う既定値。所有者の種類の既定を優先し、なければ部品の型の既定を使う
-        class SubObjectDefaults : public NonCopyable
-        {
-        public:
-            SubObjectDefaults() noexcept;
-            ~SubObjectDefaults() noexcept;
-
-            //! @brief actor の行 row の部品と比べる既定の部品を返す
-            //! @details row は actor のクラスの表の行。種類の既定値を変えると指す先が作り直されるので、
-            //! そのフレームの間だけ使う。見つからなければ nullptr
-            [[nodiscard]] const SubObject* Find(const SceneActor& actor, const SubObjectDesc& row);
-
-        private:
-            // typeName のコードの既定値の 1 個。初回だけ作って以降は使い回す。未登録の型は nullptr
-            [[nodiscard]] const SubObject* FindTypeDefault(std::string_view typeName);
-
-            std::vector<std::pair<std::string, std::unique_ptr<SubObject>>> m_byType;
-        };
-
         //! @brief 1フレームのサブオブジェクト編集で起きた相互作用の集約
         //! @details activated/committed はドラッグを1つのundo単位へまとめるための開始・終了フレームの印
         struct SubObjectEditResult
@@ -60,38 +38,38 @@ namespace NS
 
             // 既定へ戻す要求。ボタンが押されたフレームだけ対象と欄が入る
             // 値をこの場で書くと 取り消し の控えを取る前に実体が動くので、適用は呼び出し側へ預ける
-            SubObject* revertTarget = nullptr;
+            Object* revertTarget = nullptr;
             const FieldDesc* revertField = nullptr;
 
             // 種類の既定にする要求。選ばれたフレームだけ対象と欄が入る
             // 同じ種類の他の個体とファイルも書き換えるので、適用は呼び出し側へ預ける
-            SubObject* promoteTarget = nullptr;
+            Object* promoteTarget = nullptr;
             const FieldDesc* promoteField = nullptr;
 
             // 値が編集された対象と欄。編集が起きたフレームだけ入る
             // 凍結スナップショットへの写しが欄単位で要るので、changed の集約とは別に持つ
-            SubObject* changedTarget = nullptr;
+            Object* changedTarget = nullptr;
             const FieldDesc* changedField = nullptr;
         };
 
         //! @brief リフレクション欄 1 つの値が既定と違うか
         //! @param[in] defaults 既定インスタンス。nullptr なら常に false
-        [[nodiscard]] bool FieldDiffersFromDefault(const SubObject& comp,
-                                                   const SubObject* defaults,
+        [[nodiscard]] bool FieldDiffersFromDefault(const Object& comp,
+                                                   const Object* defaults,
                                                    const FieldDesc& field) noexcept;
 
         //! @brief リフレクション欄 1 つを既定値へ戻す
-        void RevertFieldToDefault(SubObject& comp,
-                                  const SubObject& defaults,
+        void RevertFieldToDefault(Object& comp,
+                                  const Object& defaults,
                                   const FieldDesc& field) noexcept;
 
         //! リフレクション欄を編集し、Undo に必要な編集開始・終了と変更内容を返す
         //! refOptions が空なら参照は数値入力、defaults があれば上書きの表示と復元を使える
         //! filter は欄名の部分一致。空か nullptr なら絞らない
         //! actor と row は comp の持ち主とその表の行。どちらかが nullptr なら種類の既定にする操作を出さない
-        [[nodiscard]] SubObjectEditResult DrawReflectedSubObject(SubObject& comp,
+        [[nodiscard]] SubObjectEditResult DrawReflectedSubObject(Object& comp,
                                                                  std::span<const ObjectRefOption> refOptions = {},
-                                                                 const SubObject* defaults = nullptr,
+                                                                 const Object* defaults = nullptr,
                                                                  const char* filter = nullptr,
                                                                  const SceneActor* actor = nullptr,
                                                                  const SubObjectDesc* row = nullptr) noexcept;

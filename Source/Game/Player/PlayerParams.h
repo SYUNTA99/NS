@@ -3,7 +3,7 @@
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerGravity.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 #include <algorithm>
 
@@ -42,7 +42,7 @@ namespace GL
     namespace Player
     {
         //! @brief 自機の移動・溜め・衝突・反動の調整値を持つ部品
-        class PlayerParams : public NS::SubObject
+        class PlayerParams : public NS::Object
         {
         public:
             PlayerParams() noexcept;
@@ -87,7 +87,7 @@ namespace GL
             //! 溜め中の最高速度の倍率を返す。1 − チャージ減速率を 0〜1 に丸める
             [[nodiscard]] float ChargingSpeedScale() const noexcept;
 
-            NS_REFLECT_BEGIN(PlayerParams, NS::SubObject)
+            NS_REFLECT_BEGIN(PlayerParams, NS::Object)
             NS_REFLECT_GROUP("体力")
             NS_REFLECT_FIELD(m_maxHealth, "体力")
             NS_REFLECT_GROUP("ジャンプ")

@@ -6,7 +6,7 @@
 #include "Game/Level/MapObjParams.h"
 #include "Game/Level/PropFlight.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/SphereCollision.h"
 
 #include "NSlib/Core/Types.h"
@@ -18,7 +18,7 @@ namespace GL
     {
         //! @brief 押し飛ばされた配置物の尾と、着地の粉を出す部品
         //! @details 尾は曲線を離れた時に消す。段で色、飛ばしの比で長さ、威力と質量で粉の大きさを決める
-        class LaunchEffects : public NS::SubObject
+        class LaunchEffects : public NS::Object
         {
         public:
             explicit LaunchEffects(NS::SceneActor* owner) noexcept;
@@ -52,7 +52,7 @@ namespace GL
             //! 落ちた所の粉の大きさ (m)
             [[nodiscard]] float LandDustScale() const noexcept { return m_landDustScale; }
 
-            NS_REFLECT_BEGIN(LaunchEffects, NS::SubObject)
+            NS_REFLECT_BEGIN(LaunchEffects, NS::Object)
             NS_REFLECT_FIELD(m_landDustLife, "着地の粉の寿命フレーム")
             NS_REFLECT_FIELD(m_dustRingLift, "着地の粉を浮かせる高さ")
             NS_REFLECT_FIELD(m_launchTrailAsset, "飛び出しの尾の資産")

@@ -164,19 +164,6 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
     EXPECT_NEAR(times[1], times[0] * 2.0f, 1.0e-6f);
 }
 
-TEST(ActorBodyTime, SubObjectReadsItsOwnersClock)
-{
-    const std::unique_ptr<NS::SceneActor> actorOwned = NS::CreateActor<TestAnimatedPlayerActor>();
-    NS::SceneActor& actor = *actorOwned;
-    NS::SubObject* animation = actor.AnimationSubObj();
-    ASSERT_NE(animation, nullptr);
-    ASSERT_TRUE(actor.SetBodyTimeScale(1.5f));
-    EXPECT_EQ(animation->BodyDelta(), actor.BodyDelta());
-
-    const NS::Animation loose{nullptr};
-    EXPECT_EQ(loose.BodyDelta(), NS::OS::FrameTimer::FixedDelta());
-}
-
 TEST(ActorBodyTime, RejectsScalesThatAreNotFiniteAndPositive)
 {
     NS::SceneActor actor;

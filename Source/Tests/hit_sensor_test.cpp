@@ -146,7 +146,7 @@ TEST(HitSensor, ShapeSensorKeepsItsFourSavedFieldLabels)
     // 欄の表示名は保存の鍵。ゴールと落下死の範囲の保存済みの値がこの 4 つで読まれる
     const std::unique_ptr<SensorProbeActor> owned = NS::CreateActor<SensorProbeActor>(SensorKind::Area, 0.5f);
     SensorProbeActor& actor = *owned;
-    NS::SubObject* sensor = actor.m_sensor;
+    NS::Object* sensor = actor.m_sensor;
     ASSERT_NE(sensor, nullptr);
     const NS::ReflectionInfo* info = sensor->GetReflection();
     std::vector<std::string> labels;

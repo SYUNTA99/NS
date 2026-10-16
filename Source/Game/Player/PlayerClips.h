@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 class PlayerActor;
 
@@ -11,10 +11,10 @@ namespace GL
     {
         //! @brief 自機のアニメの欄を持つ部品。どのクリップを選ぶかは PlayerActor が欄を読んで決める
         //! @details クリップの欄の字面は「ContentRoot からの glTF の道筋」か「道筋#動きの名前」
-        class PlayerClips : public NS::SubObject
+        class PlayerClips : public NS::Object
         {
         public:
-            NS_REFLECT_BEGIN(PlayerClips, NS::SubObject)
+            NS_REFLECT_BEGIN(PlayerClips, NS::Object)
             NS_REFLECT_FIELD(m_idleClip, "立ちのクリップ")
             NS_REFLECT_FIELD(m_walkClip, "歩きのクリップ")
             NS_REFLECT_FIELD(m_runClip, "走りのクリップ")

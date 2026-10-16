@@ -2,7 +2,6 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <algorithm>
@@ -161,7 +160,5 @@ namespace GL
             NS::SetEffectAmount(m_owner, dust, m_landDustScale);
             NS::StopEffectAfter(m_owner, dust, std::max(m_landDustLife, 1));
         }
-
-        NS_CLASS(LaunchEffects)
     } // namespace Level
 } // namespace GL

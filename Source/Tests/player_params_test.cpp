@@ -29,8 +29,6 @@
 #include <string_view>
 #include <type_traits>
 
-static_assert(!std::is_base_of_v<NS::SubObject, GL::Level::Health>);
-
 TEST(PlayerParams, MaxHealthBelongsToPlayer)
 {
     NS::Scene scene;
@@ -177,7 +175,7 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
 }
 
 // part の欄に expected の名前が全部あり、値も同じことを確かめる
-static void ExpectSubObjFields(const NS::SubObject& part, const nlohmann::json& expected)
+static void ExpectSubObjFields(const NS::Object& part, const nlohmann::json& expected)
 {
     const nlohmann::json fields = NS::SerializeSubObjectFields(part);
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -566,7 +564,7 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
         {
             EXPECT_NE(NS::SubObjFields(prototype, it.key()), nullptr) << source << " " << it.key();
         }
-        NS::ForEachReflectedSubObj(player, [&](const NS::SubObjectDesc& field, NS::SubObject* part) {
+        NS::ForEachReflectedSubObj(player, [&](const NS::SubObjectDesc& field, NS::Object* part) {
             const nlohmann::json::const_iterator found = parts.find(field.key);
             if (found != parts.end())
             {

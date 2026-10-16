@@ -7,7 +7,6 @@
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
@@ -387,7 +386,5 @@ namespace GL
             NS::StopEffect(m_owner, id);
             id = 0;
         }
-
-        NS_CLASS(ChargeEffects)
     } // namespace Player
 } // namespace GL

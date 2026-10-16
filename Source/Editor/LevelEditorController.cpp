@@ -52,7 +52,7 @@
 namespace
 {
     // 部品の欄の値を JSON で読む。欄が無ければ値なしを返す
-    nlohmann::json FieldJson(const NS::SubObject& comp, std::string_view fieldName)
+    nlohmann::json FieldJson(const NS::Object& comp, std::string_view fieldName)
     {
         const nlohmann::json fields = NS::SerializeSubObjectFields(comp);
         const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
@@ -85,7 +85,7 @@ namespace
     const NS::Collider* ColliderOf(const NS::SceneActor& object) noexcept
     {
         const NS::Collider* found = nullptr;
-        NS::ForEachReflectedSubObj(object, [&](const NS::SubObjectDesc&, const NS::SubObject* subObject) {
+        NS::ForEachReflectedSubObj(object, [&](const NS::SubObjectDesc&, const NS::Object* subObject) {
             if (found == nullptr)
             {
                 found = NS::Cast<NS::Collider>(subObject);
@@ -632,7 +632,7 @@ void LevelEditorController::SetSceneViews(std::vector<NS::SceneView> views)
 
 void LevelEditorController::Tick()
 {
-    // プレイ中のクリア / 死亡は応答 SubObject が出荷と同じ手順で完結させる
+    // プレイ中のクリア / 死亡は応答部品が出荷と同じ手順で完結させる
     // editor は割り込まず、編集へ戻るのは Tab / Pause modal の明示操作だけ
     if (m_mode == Mode::Edit)
     {
@@ -920,7 +920,7 @@ void LevelEditorController::SyncFollowCameraPoses()
 void LevelEditorController::ApplyFollowCameraGizmoDrag()
 {
     // ドラッグ中の追従カメラは、gizmo が動かした Root 位置から初期姿勢の方位角・仰角/距離を逆算して
-    // 実体の SubObject へ書き戻す。Root 位置は初期姿勢由来なので保存対象は SubObject 側になる
+    // 実体の部品へ書き戻す。Root 位置は初期姿勢由来なので保存対象は部品側になる
     if (!m_gizmo.IsDragging())
     {
         return;
@@ -1284,7 +1284,7 @@ void LevelEditorController::SetSelectedFreeScale(NS::Vector3 scale)
 void LevelEditorController::MirrorRootEditToBaseline(NS::SceneActor& actor, std::string_view fieldName)
 {
     const NS::SubObjectDesc* rootRow = nullptr;
-    NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::SubObject* part) {
+    NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::Object* part) {
         if (part == &actor.Root())
         {
             rootRow = &field;
@@ -1312,7 +1312,7 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
                                                     const NS::SubObjectDesc& row,
                                                     std::string_view fieldName)
 {
-    const NS::SubObject* comp = row.get(&actor);
+    const NS::Object* comp = row.get(&actor);
     if (m_scene == nullptr || comp == nullptr || comp->GetReflection() == nullptr)
     {
         return false;
@@ -1334,7 +1334,7 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
         {
             continue;
         }
-        const NS::SubObject* part = row.get(other);
+        const NS::Object* part = row.get(other);
         if (part == nullptr || part->GetReflection() == nullptr || typeName != part->GetReflection()->typeName)
         {
             continue;
@@ -1725,7 +1725,7 @@ void LevelEditorController::CommitSubObjectEdit() noexcept
     }
     m_subObjectEditing = false;
 
-    // リフレクション編集は実体の SubObject へ直接入っている。after は実体の忠実な写しで、baseline と同じなら積まない
+    // リフレクション編集は実体の部品へ直接入っている。after は実体の忠実な写しで、baseline と同じなら積まない
     // プレイ中の控えはプレイの姿なので積まない
     if (m_mode != Mode::Edit)
     {

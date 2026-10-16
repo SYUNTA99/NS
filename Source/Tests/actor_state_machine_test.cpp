@@ -21,7 +21,7 @@ namespace
     int CountSubObjKey(const NS::SceneActor& actor, std::string_view key)
     {
         int count = 0;
-        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::SubObject*) {
+        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::Object*) {
             if (std::string_view(field.key) == key)
             {
                 ++count;
@@ -31,10 +31,10 @@ namespace
     }
 
     // 並びに鍵 key で出た部品。出なければ nullptr
-    const NS::SubObject* ListedSubObj(const NS::SceneActor& actor, std::string_view key)
+    const NS::Object* ListedSubObj(const NS::SceneActor& actor, std::string_view key)
     {
-        const NS::SubObject* listed = nullptr;
-        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::SubObject* part) {
+        const NS::Object* listed = nullptr;
+        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::Object* part) {
             if (std::string_view(field.key) == key)
             {
                 listed = part;

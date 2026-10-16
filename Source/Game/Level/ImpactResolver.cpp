@@ -16,7 +16,6 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Body.h"
@@ -1839,7 +1838,5 @@ namespace GL
                                height,
                                1.0f + (along - 1.0f) * dz2 + (side - 1.0f) * dx2};
         }
-
-        NS_CLASS(ImpactResolver)
     } // namespace Level
 } // namespace GL

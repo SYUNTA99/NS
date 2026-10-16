@@ -2,9 +2,9 @@
 
 #include <gtest/gtest.h>
 
-TEST(NSlibLink, UnreferencedSubObjectsRemainRegistered)
+TEST(NSlibLink, UnreferencedActorsRemainRegistered)
 {
-    const NS::TypeRegistry::Entry* entry = NS::TypeRegistry::Get().Find("Model");
+    const NS::TypeRegistry::Entry* entry = NS::TypeRegistry::Get().Find("LightActor");
     ASSERT_NE(entry, nullptr);
-    EXPECT_NE(entry->createDefault, nullptr);
+    EXPECT_NE(entry->create, nullptr);
 }

@@ -1,15 +1,18 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 namespace NS
 {
     //! シーンへ向き・色・環境光を渡す平行光。複数置いても有効な一つだけを使う
-    class DirectionalLight : public SubObject
+    class DirectionalLight : public Object
     {
     public:
         explicit DirectionalLight(SceneActor* owner) noexcept : m_owner(owner) {}
+
+        //! 持ち主が出ているか。持ち主の無い物は出ていると答える
+        [[nodiscard]] bool IsOwnerAppeared() const noexcept;
 
         //! @brief 平行光の向き。持ち主の根の姿勢で +Z を回した、長さ 1 の向き
         //! @details 向きの欄は持たない。エディタのギズモで個体を回すと光も回る
@@ -23,7 +26,7 @@ namespace NS
         //! 画面へ出す前の露出。上げると暗部が持ち上がり、明部は S 字が受け止めるので飛ばない
         [[nodiscard]] float Exposure() const noexcept { return m_exposure; }
 
-        NS_REFLECT_BEGIN(DirectionalLight, SubObject)
+        NS_REFLECT_BEGIN(DirectionalLight, Object)
         NS_REFLECT_FIELD(m_color, "色")
         NS_REFLECT_FIELD(m_ambient, "環境光")
         NS_REFLECT_FIELD(m_ground, "地面環境光")

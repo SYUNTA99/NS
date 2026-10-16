@@ -39,7 +39,7 @@ namespace NS
 namespace NS
 {
     class AssetManager;
-    class SubObject;
+    class Object;
     struct SubObjectDesc;
     class DirectionalLight;
     class IRenderable;
@@ -58,10 +58,10 @@ namespace NS
         //! @details 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
         void OnRender();
 
-        //! IRenderable SubObject の自己登録。Model 等が OnStart で呼ぶ。二重登録は無視する
+        //! IRenderable の部品の自己登録。Model 等が OnStart で呼ぶ。二重登録は無視する
         //! 登録簿は SceneRenderer が持つ
         void RegisterRenderable(IRenderable* renderable);
-        //! IRenderable SubObject の自己解除。Model 等が OnEndPlay で呼ぶ
+        //! IRenderable の部品の自己解除。Model 等が OnEndPlay で呼ぶ
         void UnregisterRenderable(IRenderable* renderable);
 
         //! 重ね描きの登録。部品は持ち主の SceneActor が OnStart で 1 回呼ぶ。二重登録は無視する
@@ -173,7 +173,7 @@ namespace NS
         void ResetFromJson(nlohmann::json scene);
 
         //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
-        //! @details 一時オブジェクトを除く全配置物を、全 SubObject 値まで忠実に写す
+        //! @details 一時オブジェクトを除く全配置物を、全部品の値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
 
         //! @brief 編集で動いた実体の当たりを張り直し、一時オブジェクトへ知らせる。object は作り直さない

@@ -2,7 +2,6 @@
 
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
@@ -117,7 +116,7 @@ namespace
 namespace NS
 {
 
-    ThirdPersonFollow::ThirdPersonFollow(SceneActor* owner) noexcept : VirtualCamera(), m_owner(owner)
+    ThirdPersonFollow::ThirdPersonFollow(SceneActor* owner) noexcept : VirtualCamera(owner), m_owner(owner)
     {
         // 追う相手を中心に見るので遠景は要らない。編集カメラの 5000 と違いプレイ視点は 100 で足りる
         SetFarPlane(100.0f);
@@ -789,6 +788,4 @@ namespace NS
         }
         return pose;
     }
-
-    NS_CLASS(ThirdPersonFollow)
 } // namespace NS

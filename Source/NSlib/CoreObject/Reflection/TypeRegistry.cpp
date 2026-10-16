@@ -18,18 +18,11 @@ namespace NS
         return instance;
     }
 
-    void TypeRegistry::Register(const char* className,
-                                ActorCreateFn create,
-                                SubObjectDefaultFn attach,
-                                const char* label)
+    void TypeRegistry::Register(const char* className, ActorCreateFn create, const char* label)
     {
         if (className == nullptr)
         {
             NS_LOG_ERROR(Scene, "TypeRegistry::Register: className が nullptr");
-            return;
-        }
-        if ((create == nullptr) == (attach == nullptr))
-        {
             return;
         }
 
@@ -40,13 +33,7 @@ namespace NS
         {
             return;
         }
-        // 置けるのは SceneActor だけ。SubObject に表示名を付けても一覧には出さない
-        const char* placeableLabel = nullptr;
-        if (create != nullptr)
-        {
-            placeableLabel = label;
-        }
-        m_entries.push_back(Entry{className, create, attach, placeableLabel});
+        m_entries.push_back(Entry{className, create, label});
     }
 
     const std::vector<TypeRegistry::Entry>& TypeRegistry::Entries() const noexcept
@@ -126,16 +113,6 @@ namespace NS
         std::unique_ptr<SceneActor> actor = ConstructOfClass(className);
         actor->Init(info);
         return actor;
-    }
-
-    std::unique_ptr<SubObject> CreateSubObjOfType(std::string_view typeName)
-    {
-        const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(typeName);
-        if (entry != nullptr && entry->createDefault != nullptr)
-        {
-            return entry->createDefault();
-        }
-        return nullptr;
     }
 
     const std::vector<const TypeRegistry::Entry*>& PlaceableEntries()

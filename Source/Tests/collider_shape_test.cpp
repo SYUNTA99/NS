@@ -112,7 +112,7 @@ TEST(ColliderShape, BodyHasNoShapeFields)
     // 寸法の正は Collider 1 つ。Movement に欄が残ると、同じ値の置き場が 2 つに割れる
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const NS::SubObject* movement = &player.Body();
+    const NS::Object* movement = &player.Body();
     ASSERT_NE(movement->GetReflection(), nullptr);
     EXPECT_EQ(movement->GetReflection()->fieldCount, 0u);
 }

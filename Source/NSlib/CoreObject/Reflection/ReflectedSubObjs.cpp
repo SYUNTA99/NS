@@ -18,7 +18,7 @@ namespace NS
             for (std::size_t i = 0; i < info->subObjectCount; ++i)
             {
                 const SubObjectDesc& field = info->subObjects[i];
-                if (SubObject* part = field.get(&actor))
+                if (Object* part = field.get(&actor))
                 {
                     visit(field, part);
                 }

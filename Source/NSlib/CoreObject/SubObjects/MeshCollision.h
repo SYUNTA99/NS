@@ -22,7 +22,7 @@ namespace NS
     public:
         explicit MeshCollision(SceneActor* owner) noexcept : Collision(owner), m_owner(owner) {}
 
-        //! 所有しない当たりを差し替える。この SubObject より長く生きる物を渡す。未指定なら当たりなし
+        //! 所有しない当たりを差し替える。この部品より長く生きる物を渡す。未指定なら当たりなし
         void SetShape(const Phys::MeshShape* shape) noexcept;
         //! 借りている当たり。なければ空
         [[nodiscard]] const Phys::MeshShape* Shape() const noexcept;

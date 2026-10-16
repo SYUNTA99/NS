@@ -111,9 +111,9 @@ namespace NS
         //! @return 1 色 8 ビットの型。未描画なら空
         [[nodiscard]] const Gfx::Texture* BodyMaskShown(std::size_t viewIndex) const noexcept;
 
-        //! IRenderable SubObject の自己登録。二重登録は無視する
+        //! IRenderable の部品の自己登録。二重登録は無視する
         void RegisterRenderable(IRenderable* renderable);
-        //! IRenderable SubObject の自己解除
+        //! IRenderable の部品の自己解除
         void UnregisterRenderable(IRenderable* renderable);
 
         //! 重ね描きの登録。二重登録は無視する

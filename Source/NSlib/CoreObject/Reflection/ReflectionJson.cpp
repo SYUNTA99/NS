@@ -247,12 +247,12 @@ namespace NS
         }
     } // namespace
 
-    nlohmann::json SerializeSubObjectFields(const SubObject& comp)
+    nlohmann::json SerializeSubObjectFields(const Object& comp)
     {
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
         {
-            NS_LOG_WARN(Game, "リフレクションの無い SubObject を直列化しようとした");
+            NS_LOG_WARN(Game, "リフレクションの無い部品を直列化しようとした");
             return nlohmann::json::object();
         }
         return SerializeReflectedFields(&comp, *info);
@@ -269,7 +269,7 @@ namespace NS
         return fields;
     }
 
-    std::size_t ApplyJsonFields(SubObject& comp, const nlohmann::json& fields)
+    std::size_t ApplyJsonFields(Object& comp, const nlohmann::json& fields)
     {
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)

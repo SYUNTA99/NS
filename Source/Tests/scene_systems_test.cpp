@@ -6,7 +6,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
@@ -107,10 +107,10 @@ namespace
         TickLog& m_log;
     };
 
-    class LoggingSubObject final : public NS::SubObject
+    class LoggingSubObject final : public NS::Object
     {
     public:
-        explicit LoggingSubObject(TickLog* log = nullptr) noexcept : NS::SubObject(), m_log(log) {}
+        explicit LoggingSubObject(TickLog* log = nullptr) noexcept : m_log(log) {}
         void Log()
         {
             if (m_log != nullptr)
@@ -118,7 +118,7 @@ namespace
                 m_log->order.push_back("component");
             }
         }
-        NS_REFLECT_NONE(LoggingSubObject, NS::SubObject)
+        NS_REFLECT_NONE(LoggingSubObject, NS::Object)
 
     private:
         TickLog* m_log = nullptr;

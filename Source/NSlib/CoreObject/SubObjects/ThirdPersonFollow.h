@@ -53,7 +53,7 @@ namespace NS
         //! プレイ開始 / rebuild ごとに初期姿勢へ戻す
         void ResetPose() noexcept;
 
-        //! 自動ズームの判定に使う接地と速度を値で受け取る。移動 SubObject の型を include せずに済む
+        //! 自動ズームの判定に使う接地と速度を値で受け取る。移動部品の型を include せずに済む
         void SetFollowMotion(bool grounded, const Vector3& velocity) noexcept;
         //! 根を上下させても見る高さを保つためのずれ。注視点は根 + ずれ + 頭の高さ
         //! ずれは補間しないため、根の移動は Transform::ShiftPosition で前後の値を揃える

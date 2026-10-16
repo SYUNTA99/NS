@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/CoreObject/IUse/IUseState.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 #include <memory>
 
@@ -10,7 +10,7 @@ namespace NS
     //! @brief 持ち主の状態機械を持つ部品
     //! @details 機械は持ち主の型ごとの StateMachineOf で、組む時に持ち主を控える。
     //! 部品は持ち主の型を知らずに IStateMachine で進める。組むのは SceneActor::BuildStateMachine だけ
-    class StateMachine final : public SubObject
+    class StateMachine final : public Object
     {
     public:
         explicit StateMachine(SceneActor* owner) noexcept : m_owner(owner) {}
@@ -23,7 +23,7 @@ namespace NS
 
         void Update();
 
-        NS_REFLECT_NONE(StateMachine, SubObject)
+        NS_REFLECT_NONE(StateMachine, Object)
 
     private:
         std::unique_ptr<IStateMachine> m_machine;

@@ -30,8 +30,6 @@ static_assert(std::is_base_of_v<NS::IUseEffect, NS::SceneActor>);
 static_assert(!std::is_base_of_v<NS::IUseEffect, NS::Scene>);
 static_assert(!std::is_base_of_v<NS::IUseEffect, NS::UIActor>);
 static_assert(!k_HasObjectName<NS::UIActor>);
-static_assert(!k_HasPersistentId<NS::SubObject>);
-static_assert(!k_HasObjectName<NS::SubObject>);
 static_assert(!k_CanCreateTypedSubObjFromOutside<NS::SceneActor>);
 static_assert(!k_HasPartTypeSearch<NS::SceneActor>);
 
@@ -56,6 +54,6 @@ TEST(ObjectType, ActorAndPartsShareTheReflectionCastWithoutRtti)
     EXPECT_EQ(NS::Cast<ReflectedActor>(constant), &actor);
     EXPECT_EQ(NS::Cast<ReflectedActor>(static_cast<NS::Object*>(nullptr)), nullptr);
     NS::Model mesh{nullptr};
-    EXPECT_EQ(NS::Cast<NS::SubObject>(&mesh), &mesh);
+    EXPECT_EQ(NS::Cast<NS::Model>(&mesh), &mesh);
     EXPECT_EQ(NS::Cast<NS::SceneActor>(&mesh), nullptr);
 }

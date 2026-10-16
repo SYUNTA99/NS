@@ -1,13 +1,13 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 namespace GL
 {
     namespace Level
     {
-        class GoalParams : public NS::SubObject
+        class GoalParams : public NS::Object
         {
         public:
             [[nodiscard]] float FadeOutSeconds() const noexcept
@@ -28,7 +28,7 @@ namespace GL
                 return m_fadeInSeconds;
             }
 
-            NS_REFLECT_BEGIN(GoalParams, NS::SubObject)
+            NS_REFLECT_BEGIN(GoalParams, NS::Object)
             NS_REFLECT_FIELD(m_fadeOutSeconds, "クリアの暗転秒")
             NS_REFLECT_FIELD(m_fadeInSeconds, "クリアの明転秒")
             NS_REFLECT_END()

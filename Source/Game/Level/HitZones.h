@@ -2,7 +2,7 @@
 
 #include "Game/Level/HitTier.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/HitSensor.h"
 
 #include <vector>
@@ -116,7 +116,7 @@ namespace GL
 #endif
 
         //! @brief 配置物ごとの赤領域と威力倍率を保持する部品
-        class HitZones : public NS::SubObject
+        class HitZones : public NS::Object
         {
         public:
             [[nodiscard]] const HitFace& Face() const noexcept { return m_face; }
@@ -136,7 +136,7 @@ namespace GL
             void SetRemainderPowerScale(float scale) noexcept;
 
             // 種類の既定値と個体の Inspector で赤を決める
-            NS_REFLECT_BEGIN(HitZones, NS::SubObject)
+            NS_REFLECT_BEGIN(HitZones, NS::Object)
             NS_REFLECT_ACCESSOR(bool, "丸", Face().round, SetRound)
             NS_REFLECT_ACCESSOR(float, "横幅", Face().width, SetWidth)
             NS_REFLECT_ACCESSOR(float, "縦の幅", Face().height, SetHeight)

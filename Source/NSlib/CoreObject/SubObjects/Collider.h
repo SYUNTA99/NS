@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/IUse/IUseCollision.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/Physics/Capsule.h"
 #include "NSlib/Physics/JoltCharacter.h"
 
@@ -29,7 +29,7 @@ namespace NS
 
     //! @brief カプセルを地形に当てて移動する部品。位置・速度への反映は Body が行う
     //! @details 自分への衝突を避けるため、静的な PhysicsScene の body には登録しない
-    class Collider : public SubObject, public IUseCollision
+    class Collider : public Object, public IUseCollision
     {
     public:
         explicit Collider(SceneActor* owner) noexcept : m_owner(owner) {}
@@ -73,7 +73,7 @@ namespace NS
                                         float maxStepHeight) noexcept;
 
         // TypeRegistry には登録しない。欄の表示名は保存の鍵
-        NS_REFLECT_BEGIN(Collider, SubObject)
+        NS_REFLECT_BEGIN(Collider, Object)
         NS_REFLECT_ACCESSOR(float, "半径", CapsuleRadius(), SetCapsuleRadius)
         NS_REFLECT_ACCESSOR(float, "半分の高さ", StandingHalfHeight(), SetStandingHalfHeight)
         NS_REFLECT_END()

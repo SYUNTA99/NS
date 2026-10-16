@@ -14,7 +14,7 @@ namespace NS
         Root().SetRotation(Quaternion::FromToRotation(Vector3::UnitZ, initialDirection));
     }
 
-    // 光はプレイの間ずっと登録しておく。消えている間は、描く側が IsActive を見て飛ばす
+    // 光はプレイの間ずっと登録しておく。消えている間は、描く側が DirectionalLight::IsOwnerAppeared を見て飛ばす
     void LightActor::OnStart()
     {
         SceneActor::OnStart();

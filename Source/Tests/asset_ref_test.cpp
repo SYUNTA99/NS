@@ -8,7 +8,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/Animation.h"
 #include "NSlib/CoreObject/SubObjects/MeshCollision.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
@@ -50,11 +50,11 @@ namespace
 
 namespace
 {
-    class AssetRefProbePart final : public NS::SubObject
+    class AssetRefProbePart final : public NS::Object
     {
     public:
         NS::AssetRef<FakeAsset> asset{"sphere"};
-        NS_REFLECT_BEGIN(AssetRefProbePart, NS::SubObject)
+        NS_REFLECT_BEGIN(AssetRefProbePart, NS::Object)
         NS_REFLECT_FIELD(asset, "素材")
         NS_REFLECT_END()
     };

@@ -22,7 +22,7 @@ namespace NS
             {
                 return std::nullopt;
             }
-            // undo は編集値ごと戻すため、配置物が自分を全 SubObject 値まで忠実に書き出す
+            // undo は編集値ごと戻すため、配置物が自分を全部品の値まで忠実に書き出す
             return ObjectToJson(*obj);
         }
 
@@ -34,7 +34,7 @@ namespace NS
                 return;
             }
 
-            // 対象 1 体へ姿を書き戻す。構成が同じなら実体は残し、SubObject が増減した時だけ作り直す
+            // 対象 1 体へ姿を書き戻す。構成が同じなら実体は残し、部品が増減した時だけ作り直す
             if (desired)
             {
                 nlohmann::json entry = *desired;

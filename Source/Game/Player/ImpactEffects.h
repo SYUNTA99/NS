@@ -5,7 +5,7 @@
 #include "Game/Level/HitTier.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 
 #include "NSlib/Core/Types.h"
 #include <cstddef>
@@ -96,7 +96,7 @@ namespace GL
         //! @brief 自機の命中・反動・着地のエフェクトを出す部品
         //! @details 当たりの裁定の答えにある頼みを、移動後の VisualStep で読む。頼みの無い命中では出さない
         //! 相手の飛行・着地の演出は相手の LaunchEffects に任せる
-        class ImpactEffects : public NS::SubObject
+        class ImpactEffects : public NS::Object
         {
         public:
             explicit ImpactEffects(NS::SceneActor* owner) noexcept;
@@ -140,7 +140,7 @@ namespace GL
                                                        float v,
                                                        const NS::Vector3& slamDirection) const noexcept;
 
-            NS_REFLECT_BEGIN(ImpactEffects, NS::SubObject)
+            NS_REFLECT_BEGIN(ImpactEffects, NS::Object)
             NS_REFLECT_GROUP("核")
             NS_REFLECT_FIELD(m_coreDiameterBase, "核の直径の基準")
             NS_REFLECT_FIELD(m_coreDiameterPerPower, "核の直径の威力あたり")

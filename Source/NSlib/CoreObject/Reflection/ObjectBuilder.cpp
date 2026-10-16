@@ -7,7 +7,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <algorithm>
@@ -34,7 +34,7 @@ namespace NS
     {
         const nlohmann::json& parts = ObjectJsonSubObjs(object);
         std::vector<std::string_view> knownKeys;
-        ForEachReflectedSubObj(obj, [&](const SubObjectDesc& field, SubObject* subObject) {
+        ForEachReflectedSubObj(obj, [&](const SubObjectDesc& field, Object* subObject) {
             knownKeys.push_back(field.key);
             const nlohmann::json::const_iterator entry = parts.find(field.key);
             if (entry != parts.end())
@@ -66,7 +66,7 @@ namespace NS
         nlohmann::json object = MakeObjectHeaderJson(obj, 0u);
         nlohmann::json& parts = ObjectJsonSubObjs(object);
         ForEachReflectedSubObj(
-            obj, [&](const SubObjectDesc& field, SubObject*) { parts[field.key] = nlohmann::json::object(); });
+            obj, [&](const SubObjectDesc& field, Object*) { parts[field.key] = nlohmann::json::object(); });
         SetObjectPosition(object, obj.Root().Position());
         SetObjectRotation(object, obj.Root().Rotation());
         SetObjectScale(object, obj.Root().Scale());
@@ -77,7 +77,7 @@ namespace NS
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonSubObjs(object);
-        ForEachReflectedSubObj(obj, [&](const SubObjectDesc& field, const SubObject* subObject) {
+        ForEachReflectedSubObj(obj, [&](const SubObjectDesc& field, const Object* subObject) {
             parts[field.key] = SerializeSubObjectFields(*subObject);
         });
         return DiffObjectJson(object);

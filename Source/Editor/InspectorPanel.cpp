@@ -7,6 +7,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -186,7 +187,7 @@ namespace NS
                 // 戻すと種類の既定にするは描いた後に行うので、対象の部品の行を控える
                 const SubObjectDesc* revertRow = nullptr;
                 const SubObjectDesc* promoteRow = nullptr;
-                ForEachReflectedSubObj(*go, [&](const SubObjectDesc& field, SubObject* live) {
+                ForEachReflectedSubObj(*go, [&](const SubObjectDesc& field, Object* live) {
                     if (live->GetReflection() == nullptr)
                     {
                         return;
@@ -217,7 +218,7 @@ namespace NS
                     if (open)
                     {
                         // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
-                        const SubObject* baseline = m_defaults.Find(*go, field);
+                        const Object* baseline = FindBaselineSubObj(*go, field);
                         const Editor::SubObjectEditResult r =
                             Editor::DrawReflectedSubObject(*live, refOptions, baseline, m_fieldFilter, go, &field);
                         subObjectEdit.activated |= r.activated;
@@ -246,7 +247,7 @@ namespace NS
                 // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
                 if (subObjectEdit.revertTarget != nullptr && revertRow != nullptr)
                 {
-                    const SubObject* baseline = m_defaults.Find(*go, *revertRow);
+                    const Object* baseline = FindBaselineSubObj(*go, *revertRow);
                     if (baseline != nullptr)
                     {
                         editor.BeginSubObjectEdit();

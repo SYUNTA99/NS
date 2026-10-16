@@ -12,6 +12,8 @@
 class TestViewCamera final : public NS::VirtualCamera
 {
 public:
+    using NS::VirtualCamera::VirtualCamera;
+
     //! 返す位置と注視点を差し替える
     void SetPose(const NS::Vector3& position, const NS::Vector3& target) noexcept
     {
@@ -52,7 +54,7 @@ public:
     }
 
 protected:
-    void OnInit() override { CreateSubObj(m_vcam); }
+    void OnInit() override { CreateSubObj(m_vcam, this); }
     void OnStart() override
     {
         NS::SceneActor::OnStart();

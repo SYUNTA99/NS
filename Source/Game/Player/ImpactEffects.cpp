@@ -8,7 +8,6 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Body.h"
@@ -693,7 +692,5 @@ namespace GL
             NS::StopEffect(m_owner, m_plan.ring);
             m_plan = HitPlan{};
         }
-
-        NS_CLASS(ImpactEffects)
     } // namespace Player
 } // namespace GL

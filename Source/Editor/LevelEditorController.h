@@ -23,7 +23,7 @@ namespace NS
     class Transform;
     class CameraManager;
     class SceneCamera;
-    class SubObject;
+    class Object;
     class ActorList;
     class ThirdPersonFollow;
     class Scene;

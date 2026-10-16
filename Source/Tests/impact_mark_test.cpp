@@ -7,7 +7,6 @@
 #include <type_traits>
 
 static_assert(std::is_base_of_v<NS::SceneActor, GL::Level::ImpactMarkActor>);
-static_assert(!std::is_base_of_v<NS::SubObject, GL::Level::ImpactMarkActor>);
 
 TEST(ImpactMarkActor, TemporaryActorShrinksAndStops)
 {
@@ -22,7 +21,7 @@ TEST(ImpactMarkActor, TemporaryActorShrinksAndStops)
     mark->Update();
     EXPECT_FALSE(mark->IsAppeared());
     ASSERT_NE(mark->ModelSubObj(), nullptr);
-    EXPECT_FALSE(mark->ModelSubObj()->IsOwnerAppeared());
+    EXPECT_FALSE(mark->IsAppeared());
 }
 
 TEST(ImpactMarkActor, ExpiredMarkLeavesTheActorList)

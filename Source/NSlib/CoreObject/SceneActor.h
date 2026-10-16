@@ -9,7 +9,6 @@
 #include "NSlib/CoreObject/IUse/IUseTime.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
-#include "NSlib/CoreObject/SubObject.h"
 #include "NSlib/CoreObject/SubObjects/StateMachine.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
@@ -97,10 +96,6 @@ namespace NS
         //! 非有限値または dt が 0 以下なら変更しない
         void AddGravity(Vector3& velocity, float strength, float dt) const noexcept;
 
-        // 登録情報の保存キー。この SceneActor の部品でなければ空
-        [[nodiscard]] std::string_view SubObjKey(const SubObject& part) const;
-        // 保存キーに対応する部品。作っていなければ nullptr
-        [[nodiscard]] SubObject* FindSubObj(std::string_view name) const;
         [[nodiscard]] Model* ModelSubObj() noexcept { return m_model.get(); }
         [[nodiscard]] const Model* ModelSubObj() const noexcept { return m_model.get(); }
         [[nodiscard]] Animation* AnimationSubObj() noexcept { return m_animation.get(); }
@@ -173,10 +168,10 @@ namespace NS
 
         // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
         template <class TBase, class T = TBase, class... TArgs>
-            requires std::derived_from<T, TBase> && std::derived_from<T, SubObject>
+            requires std::derived_from<T, TBase> && std::derived_from<T, Object>
         T* CreateSubObj(std::unique_ptr<TBase>& member, TArgs&&... args)
         {
-            const SubObjectDesc* field = FindSubObjMember(&member);
+            const SubObjectDesc* field = FindReflectedMember(&member);
             if (field == nullptr || member != nullptr || IsSubObjKeyCreated(field->key))
             {
                 ReportInvalidSubObj(field);
@@ -184,7 +179,6 @@ namespace NS
             }
             std::unique_ptr<T> subObject = std::make_unique<T>(std::forward<TArgs>(args)...);
             T* raw = subObject.get();
-            raw->AttachOwner(this);
             member = std::move(subObject);
             return raw;
         }
@@ -243,7 +237,8 @@ namespace NS
         void SnapshotForInterpolation() noexcept;
         void SetId(uint32 id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
-        [[nodiscard]] const SubObjectDesc* FindSubObjMember(const void* member) const;
+        // member を指すアクターの表の行。表に無ければ nullptr
+        [[nodiscard]] const SubObjectDesc* FindReflectedMember(const void* member) const;
         // 別のメンバーが同じ保存キーで作成済みか。同じキーの部品が 2 つあると保存で片方が消える
         [[nodiscard]] bool IsSubObjKeyCreated(std::string_view key) const;
         void ReportInvalidSubObj(const SubObjectDesc* field) const;

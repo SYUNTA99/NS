@@ -7,7 +7,6 @@
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Body.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
@@ -386,7 +385,5 @@ namespace GL
             }
             renderer->SetMesh(mesh);
         }
-
-        NS_CLASS(PlayerAppearance)
     } // namespace Player
 } // namespace GL

@@ -9,7 +9,7 @@
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/ActorRef.h"
-#include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/HitReaction.h"
 #include "NSlib/Windows/Gamepad.h"
 
@@ -141,7 +141,7 @@ namespace GL
         //! @brief 自機の衝突結果と、当たりのタイムラインを管理する部品
         //! @details 身体が動く前に突進の予定速度で判定する。物理停止で実速度が消えるため
         //! 相手にはメッセージで止め・飛ばしを通知し、相手の部品を直接操作しない
-        class ImpactResolver : public NS::SubObject
+        class ImpactResolver : public NS::Object
         {
         public:
             explicit ImpactResolver(NS::SceneActor* owner) noexcept : m_owner(owner) {}
@@ -194,7 +194,7 @@ namespace GL
                                                   const NS::Collider* collider,
                                                   SlamLineTarget& outTarget) const;
 
-            NS_REFLECT_NONE(ImpactResolver, NS::SubObject)
+            NS_REFLECT_NONE(ImpactResolver, NS::Object)
 
         private:
             // StepState が受けた自機の部品。StepState の中で呼ぶ関数へそのまま渡し、控えない

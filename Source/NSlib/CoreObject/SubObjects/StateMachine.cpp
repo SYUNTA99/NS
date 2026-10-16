@@ -1,7 +1,6 @@
 #include "NSlib/CoreObject/SubObjects/StateMachine.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -30,6 +29,4 @@ namespace NS
         }
         m_machine->Step(dt);
     }
-
-    NS_CLASS(StateMachine)
 } // namespace NS
