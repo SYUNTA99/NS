@@ -1,8 +1,10 @@
-#include "NSlib/CoreObject/Reflection/AssetRef.h"
+#include "NSlib/CoreObject/Reflection/AssetField.h"
 
+#include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
+#include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -15,6 +17,15 @@ namespace NS
     namespace
     {
         const std::string k_NoName;
+
+        template <class T> const std::string& PathOrEmpty(const T* field) noexcept
+        {
+            if (field == nullptr)
+            {
+                return k_NoName;
+            }
+            return field->Path();
+        }
     } // namespace
 
     void LoadAssetField(Mesh*& field, std::string_view name)
@@ -27,35 +38,37 @@ namespace NS
         field = AssetManager::Get().LoadMaterial(name);
     }
 
+    void LoadAssetField(SkinnedModel*& field, std::string_view name)
+    {
+        field = AssetManager::Get().LoadSkinnedModel(name);
+    }
+
+    void LoadAssetField(AnimClip*& field, std::string_view name)
+    {
+        field = AssetManager::Get().LoadAnimClip(name);
+    }
+
     const std::string& AssetFieldName(const Mesh* field) noexcept
     {
-        if (field == nullptr)
-        {
-            return k_NoName;
-        }
-        return field->Path();
+        return PathOrEmpty(field);
     }
 
     const std::string& AssetFieldName(const Material* field) noexcept
     {
-        if (field == nullptr)
-        {
-            return k_NoName;
-        }
-        return field->Path();
+        return PathOrEmpty(field);
     }
 
-    void LoadAssetRef(AssetRef<const SkinnedModel>& ref)
+    const std::string& AssetFieldName(const SkinnedModel* field) noexcept
     {
-        ref.SetLoaded(AssetManager::Get().LoadSkinnedModel(ref.Name()));
+        return PathOrEmpty(field);
     }
 
-    void LoadAssetRef(AssetRef<const Anim::AnimClip>& ref)
+    const std::string& AssetFieldName(const AnimClip* field) noexcept
     {
-        ref.SetLoaded(AssetManager::Get().LoadAnimClip(ref.Name()));
+        return PathOrEmpty(field);
     }
 
-    void LoadAssetRefs(SceneActor& actor)
+    void LoadAssetFields(SceneActor& actor)
     {
         ForEachReflectedSubObj(actor, [](const SubObjectDesc&, Object* subObject) {
             const ReflectionInfo* info = subObject->GetReflection();
@@ -66,7 +79,7 @@ namespace NS
             for (std::size_t i = 0; i < info->fieldCount; ++i)
             {
                 const FieldDesc& field = info->fields[i];
-                if (field.type == FieldType::AssetRef && field.load != nullptr)
+                if (field.type == FieldType::Asset && field.load != nullptr)
                 {
                     field.load(subObject);
                 }

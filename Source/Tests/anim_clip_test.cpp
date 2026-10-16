@@ -1,4 +1,9 @@
+#include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
+#include "NSlib/CoreObject/Asset/SkinnedModel.h"
+#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Windows/Window.h"
 #include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Geometry/GltfParser.h"
 #include "NSlib/Core/Animation/Retarget.h"
@@ -14,16 +19,61 @@
 TEST(AnimClip, LoadsTheNamedClipOrTheFirstOneInTheFile)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    const NS::Anim::AnimClip* run = assets.LoadAnimClip("Assets/Models/Xbot.glb#run");
-    ASSERT_NE(run, nullptr);
-    EXPECT_EQ(run->name, "run");
+    const NS::AnimClip* run = assets.LoadAnimClip("Assets/Models/Xbot.glb#run");
+    ASSERT_NE(run->Clip(), nullptr);
+    EXPECT_EQ(run->Clip()->name, "run");
+    EXPECT_EQ(run->Path(), "Assets/Models/Xbot.glb#run");
+    EXPECT_EQ(run, assets.LoadAnimClip("Assets/Models/Xbot.glb#run"));
 
-    const NS::Anim::AnimClip* first = assets.LoadAnimClip("Assets/Models/Xbot.glb");
-    ASSERT_NE(first, nullptr);
-    EXPECT_EQ(first, assets.LoadAnimClip("Assets/Models/Xbot.glb#" + first->name));
+    const NS::AnimClip* first = assets.LoadAnimClip("Assets/Models/Xbot.glb");
+    ASSERT_NE(first->Clip(), nullptr);
+    const NS::AnimClip* named = assets.LoadAnimClip("Assets/Models/Xbot.glb#" + first->Clip()->name);
+    ASSERT_NE(named->Clip(), nullptr);
+    EXPECT_EQ(first->Clip()->tracks.size(), named->Clip()->tracks.size());
+}
 
-    EXPECT_EQ(assets.LoadAnimClip("Assets/Models/Xbot.glb#__ns_missing__"), nullptr);
-    EXPECT_EQ(assets.LoadAnimClip(""), nullptr);
+// 欄が保存し直す時に字面を失わないよう、どの名前でも字面を持つ。名前は順に、選んでいない・無い動き・読めないファイル・ContentRoot の外
+TEST(AnimClip, UnreadableNamesGiveAnEmptyClipWithTheName)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    for (const char* name :
+         {"", "Assets/Models/Xbot.glb#__ns_missing__", "Assets/Models/__ns_missing__.glb", "../__ns_outside__.glb"})
+    {
+        const NS::AnimClip* clip = assets.LoadAnimClip(name);
+        ASSERT_NE(clip, nullptr) << name;
+        EXPECT_EQ(clip->Path(), name);
+        EXPECT_EQ(clip->Clip(), nullptr) << name;
+        EXPECT_EQ(clip, assets.LoadAnimClip(name)) << name;
+    }
+}
+
+TEST(SkinnedModelAsset, UnreadableNamesGiveAnEmptyModelWithTheName)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    for (const char* name : {"", "Assets/Models/__ns_missing__.glb", "../__ns_outside__.glb"})
+    {
+        const NS::SkinnedModel* model = assets.LoadSkinnedModel(name);
+        ASSERT_NE(model, nullptr) << name;
+        EXPECT_EQ(model->Path(), name);
+        EXPECT_EQ(model->GetMesh(), nullptr) << name;
+        EXPECT_EQ(model->GetSkeleton(), nullptr) << name;
+        EXPECT_EQ(model, assets.LoadSkinnedModel(name)) << name;
+    }
+}
+
+TEST(SkinnedModelAsset, ReadableFileHoldsTheSkinnedMeshAndItsSkeleton)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "骨付きのモデルの試し", .size = {64, 64}, .visible = false});
+    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
+    ASSERT_TRUE(renderer.IsValid());
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+
+    const NS::SkinnedModel* model = assets.LoadSkinnedModel("Assets/Models/Xbot.glb");
+    EXPECT_EQ(model->Path(), "Assets/Models/Xbot.glb");
+    ASSERT_NE(model->GetMesh(), nullptr);
+    EXPECT_NE(model->GetMesh()->D3DSkeletal(), nullptr);
+    ASSERT_NE(model->GetSkeleton(), nullptr);
+    EXPECT_GT(model->GetSkeleton()->BoneCount(), 0u);
 }
 
 // トラックは骨を名前で持つので、どの骨格でも名前で番号を引ける。無い骨は -1
@@ -42,7 +92,7 @@ TEST(AnimClip, TracksFindBonesByNameInTheSkeletonThatPlaysThem)
 TEST(AnimClip, LoadedTracksNameTheBonesOfTheirModel)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    const NS::Anim::AnimClip* run = assets.LoadAnimClip("Assets/Models/Xbot.glb#run");
+    const NS::Anim::AnimClip* run = assets.LoadAnimClip("Assets/Models/Xbot.glb#run")->Clip();
     ASSERT_NE(run, nullptr);
     ASSERT_FALSE(run->tracks.empty());
     const NS::AnimSource source = NS::LoadGltfAnimationSource(NS::OS::FileSystem::Combine(

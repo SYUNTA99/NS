@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/CoreObject/Reflection/AssetRef.h"
+#include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
 
 class PlayerActor;
@@ -14,6 +14,17 @@ namespace GL
         class PlayerClips : public NS::Object
         {
         public:
+            //! 欄が nullptr にならないように、空の名前の中身の空のクリップで始める
+            PlayerClips()
+            {
+                NS::LoadAssetField(m_idleClip, "");
+                NS::LoadAssetField(m_walkClip, "");
+                NS::LoadAssetField(m_runClip, "");
+                NS::LoadAssetField(m_jumpClip, "");
+                NS::LoadAssetField(m_fallClip, "");
+                NS::LoadAssetField(m_ledgeHangClip, "");
+            }
+
             NS_REFLECT_BEGIN(PlayerClips, NS::Object)
             NS_REFLECT_FIELD(m_idleClip, "立ちのクリップ")
             NS_REFLECT_FIELD(m_walkClip, "歩きのクリップ")
@@ -27,12 +38,12 @@ namespace GL
 
         private:
             friend class ::PlayerActor;
-            NS::AssetRef<const NS::Anim::AnimClip> m_idleClip;
-            NS::AssetRef<const NS::Anim::AnimClip> m_walkClip;
-            NS::AssetRef<const NS::Anim::AnimClip> m_runClip;
-            NS::AssetRef<const NS::Anim::AnimClip> m_jumpClip;
-            NS::AssetRef<const NS::Anim::AnimClip> m_fallClip;
-            NS::AssetRef<const NS::Anim::AnimClip> m_ledgeHangClip;
+            NS::AnimClip* m_idleClip = nullptr;
+            NS::AnimClip* m_walkClip = nullptr;
+            NS::AnimClip* m_runClip = nullptr;
+            NS::AnimClip* m_jumpClip = nullptr;
+            NS::AnimClip* m_fallClip = nullptr;
+            NS::AnimClip* m_ledgeHangClip = nullptr;
             float m_runBlendRatio = 0.4f;
             float m_minPlaybackSpeed = 0.5f;
         };

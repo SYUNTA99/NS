@@ -3,7 +3,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/IRenderable.h"
-#include "NSlib/CoreObject/Reflection/AssetRef.h"
+#include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
 
 #include <vector>

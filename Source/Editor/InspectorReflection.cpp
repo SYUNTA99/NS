@@ -68,7 +68,7 @@ namespace NS
             case FieldType::Color:
                 return !SameValue<Color>(comp, *defaults, field);
             case FieldType::String:
-            case FieldType::AssetRef:
+            case FieldType::Asset:
                 return !SameValue<std::string>(comp, *defaults, field);
             case FieldType::ActorRef:
                 return !SameValue<ActorRef>(comp, *defaults, field);
@@ -103,7 +103,7 @@ namespace NS
                 CopyValue<Color>(comp, defaults, field);
                 break;
             case FieldType::String:
-            case FieldType::AssetRef:
+            case FieldType::Asset:
                 CopyValue<std::string>(comp, defaults, field);
                 break;
             case FieldType::ActorRef:
@@ -1467,7 +1467,7 @@ namespace NS
                     DrawColorFieldWidget(owner, field, result);
                     break;
                 case FieldType::String:
-                case FieldType::AssetRef:
+                case FieldType::Asset:
                 {
                     if (field.assetKind != AssetKind::None)
                     {

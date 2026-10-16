@@ -4,7 +4,7 @@
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
-#include "NSlib/CoreObject/Reflection/AssetRef.h"
+#include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -219,7 +219,7 @@ namespace NS
 
     void SceneActor::ReloadAssets()
     {
-        LoadAssetRefs(*this);
+        LoadAssetFields(*this);
         // 差したメッシュを残すと、骨付きのモデルの欄を空にした後も前のメッシュを描く。差し直すのは OnAssetsLoaded
         if (m_model)
         {

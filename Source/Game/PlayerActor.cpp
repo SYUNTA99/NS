@@ -23,6 +23,7 @@
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -157,10 +158,10 @@ void PlayerActor::UpdateAnimation()
     }
 
     const float lateralSpeed = m_body->LateralVelocity().Length();
-    const NS::Anim::AnimClip* clip = ChooseClip(lateralSpeed).Get();
+    const NS::Anim::AnimClip* clip = ChooseClip(lateralSpeed)->Clip();
     if (clip == nullptr)
     {
-        clip = m_clips->m_idleClip.Get();
+        clip = m_clips->m_idleClip->Clip();
     }
     // 立ちのクリップも読めなければ、今のクリップのまま
     if (clip != nullptr)
@@ -283,11 +284,11 @@ void PlayerActor::VisualStep()
 #endif
 }
 
-const NS::AssetRef<const NS::Anim::AnimClip>& PlayerActor::ChooseClip(float lateralSpeed) const noexcept
+const NS::AnimClip* PlayerActor::ChooseClip(float lateralSpeed) const noexcept
 {
     if (m_states->IsCurrent<GL::Player::LedgeHangingPlayerState>())
     {
-        if (!m_clips->m_ledgeHangClip.Name().empty())
+        if (!m_clips->m_ledgeHangClip->Path().empty())
         {
             return m_clips->m_ledgeHangClip;
         }
@@ -296,11 +297,11 @@ const NS::AssetRef<const NS::Anim::AnimClip>& PlayerActor::ChooseClip(float late
 
     if (!m_body->IsGrounded())
     {
-        if (m_body->VerticalVelocity() > 0.0f && !m_clips->m_jumpClip.Name().empty())
+        if (m_body->VerticalVelocity() > 0.0f && !m_clips->m_jumpClip->Path().empty())
         {
             return m_clips->m_jumpClip;
         }
-        if (m_body->VerticalVelocity() <= 0.0f && !m_clips->m_fallClip.Name().empty())
+        if (m_body->VerticalVelocity() <= 0.0f && !m_clips->m_fallClip->Path().empty())
         {
             return m_clips->m_fallClip;
         }
@@ -313,11 +314,11 @@ const NS::AssetRef<const NS::Anim::AnimClip>& PlayerActor::ChooseClip(float late
     }
 
     const float maxSpeed = MaxSpeed();
-    if (maxSpeed > 0.0f && lateralSpeed >= maxSpeed * m_clips->m_runBlendRatio && !m_clips->m_runClip.Name().empty())
+    if (maxSpeed > 0.0f && lateralSpeed >= maxSpeed * m_clips->m_runBlendRatio && !m_clips->m_runClip->Path().empty())
     {
         return m_clips->m_runClip;
     }
-    if (!m_clips->m_walkClip.Name().empty())
+    if (!m_clips->m_walkClip->Path().empty())
     {
         return m_clips->m_walkClip;
     }
@@ -326,7 +327,7 @@ const NS::AssetRef<const NS::Anim::AnimClip>& PlayerActor::ChooseClip(float late
 
 float PlayerActor::ChoosePlaybackSpeed(const NS::Anim::AnimClip* clip, float lateralSpeed) const noexcept
 {
-    if (clip == nullptr || (clip != m_clips->m_walkClip.Get() && clip != m_clips->m_runClip.Get()))
+    if (clip == nullptr || (clip != m_clips->m_walkClip->Clip() && clip != m_clips->m_runClip->Clip()))
     {
         return 1.0f;
     }

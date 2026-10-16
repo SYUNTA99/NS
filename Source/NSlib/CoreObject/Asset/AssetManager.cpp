@@ -3,9 +3,11 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Shader.h"
+#include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/Graphics/D3DMaterial.h"
@@ -466,28 +468,44 @@ namespace NS
         return collision;
     }
 
-    const SkinnedModel* AssetManager::LoadSkinnedModel(std::string_view name)
+    SkinnedModel* AssetManager::LoadSkinnedModel(std::string_view name)
     {
         if (name.empty())
         {
-            return nullptr;
+            return &MissingSkinnedModel(name);
         }
         const std::optional<std::string> path = ResolveContentPath(std::string{name});
         if (!path)
         {
             NS_LOG_WARN(Scene, "骨付きのモデル {} は ContentRoot の外を指すので読まない", name);
-            return nullptr;
+            return &MissingSkinnedModel(name);
         }
-        return LoadSkinnedModelFile(*path, name);
+        SkinnedModel* model = LoadSkinnedModelFile(*path, name);
+        if (model == nullptr)
+        {
+            return &MissingSkinnedModel(name);
+        }
+        return model;
     }
 
-    const SkinnedModel* AssetManager::LoadSkinnedModelFile(std::string_view path, std::string_view name)
+    SkinnedModel& AssetManager::MissingSkinnedModel(std::string_view name)
+    {
+        const std::string key{name};
+        std::map<std::string, std::unique_ptr<SkinnedModel>>::iterator it = m_missingSkinnedModels.find(key);
+        if (it == m_missingSkinnedModels.end())
+        {
+            it = m_missingSkinnedModels.emplace(key, std::make_unique<SkinnedModel>(key)).first;
+        }
+        return *it->second;
+    }
+
+    SkinnedModel* AssetManager::LoadSkinnedModelFile(std::string_view path, std::string_view name)
     {
         const std::string key = OS::FileSystem::Normalize(path);
-        if (const std::map<std::string, SkinnedModel>::iterator it = m_skinnedModels.find(key);
+        if (const std::map<std::string, std::unique_ptr<SkinnedModel>>::iterator it = m_skinnedModels.find(key);
             it != m_skinnedModels.end())
         {
-            return &it->second;
+            return it->second.get();
         }
 
         SkinnedMeshData data = LoadGltfSkinnedMesh(key);
@@ -518,10 +536,9 @@ namespace NS
             return nullptr;
         }
 
-        SkinnedModel model{};
-        model.mesh = std::make_unique<Mesh>(std::string{name}, std::move(mesh));
-        model.skeleton = std::move(data.skeleton);
-        return &m_skinnedModels.emplace(key, std::move(model)).first->second;
+        std::unique_ptr<SkinnedModel> model = std::make_unique<SkinnedModel>(
+            std::string{name}, std::make_unique<Mesh>(std::string{name}, std::move(mesh)), std::move(data.skeleton));
+        return m_skinnedModels.emplace(key, std::move(model)).first->second.get();
     }
 
     const AnimSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
@@ -550,11 +567,21 @@ namespace NS
         return raw;
     }
 
-    const Anim::AnimClip* AssetManager::LoadAnimClip(std::string_view name)
+    AnimClip* AssetManager::LoadAnimClip(std::string_view name)
+    {
+        if (const std::map<std::string, std::unique_ptr<AnimClip>, std::less<>>::iterator it = m_animClips.find(name);
+            it != m_animClips.end())
+        {
+            return it->second.get();
+        }
+        return m_animClips.emplace(std::string{name}, CreateAnimClip(name)).first->second.get();
+    }
+
+    std::unique_ptr<AnimClip> AssetManager::CreateAnimClip(std::string_view name)
     {
         if (name.empty())
         {
-            return nullptr;
+            return std::make_unique<AnimClip>(std::string{}, nullptr);
         }
         const std::size_t hash = name.find('#');
         const std::string_view file = name.substr(0, hash);
@@ -562,28 +589,29 @@ namespace NS
         if (!path)
         {
             NS_LOG_WARN(Scene, "クリップ {} は ContentRoot の外を指すので読まない", name);
-            return nullptr;
+            return std::make_unique<AnimClip>(std::string{name}, nullptr);
         }
         const AnimSource* source = GetOrLoadAnimationSource(*path);
         if (source == nullptr)
         {
             // 読めなかった理由は GetOrLoadAnimationSource が報告している
-            return nullptr;
+            return std::make_unique<AnimClip>(std::string{name}, nullptr);
         }
         if (hash == std::string_view::npos)
         {
-            return &source->animations.front();
+            return std::make_unique<AnimClip>(std::string{name},
+                                              std::make_unique<Anim::AnimClip>(source->animations.front()));
         }
         const std::string_view clipName = name.substr(hash + 1);
         for (const Anim::AnimClip& clip : source->animations)
         {
             if (clip.name == clipName)
             {
-                return &clip;
+                return std::make_unique<AnimClip>(std::string{name}, std::make_unique<Anim::AnimClip>(clip));
             }
         }
         NS_LOG_WARN(Scene, "クリップ {} の動き {} がファイルに無い", name, clipName);
-        return nullptr;
+        return std::make_unique<AnimClip>(std::string{name}, nullptr);
     }
 
     std::span<const std::string_view> AssetManager::BuiltinMeshNames() noexcept
@@ -814,6 +842,8 @@ namespace NS
         m_meshes.clear();
         m_missingMeshes.clear();
         m_skinnedModels.clear();
+        m_missingSkinnedModels.clear();
+        m_animClips.clear();
         m_animationSources.clear();
         m_builtins.clear();
     }

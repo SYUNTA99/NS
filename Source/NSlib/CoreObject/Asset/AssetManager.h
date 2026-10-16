@@ -8,6 +8,7 @@
 #include "NSlib/Core/Animation/Skeleton.h"
 #include "NSlib/Core/Geometry/GltfParser.h"
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -27,8 +28,10 @@ namespace NS
 
 namespace NS
 {
+    class AnimClip;
     class AssetManager;
     class Shader;
+    class SkinnedModel;
     class Texture;
 
     //! アセット相対パスを ContentRoot 配下の絶対パスへ正規化する
@@ -51,14 +54,6 @@ namespace NS
     [[nodiscard]] SkinnedMeshData LoadGltfSkinnedMesh(std::string_view path);
     //! 読み方と失敗の扱いは LoadGltfMesh と同じ。失敗した時は IsValid() が false
     [[nodiscard]] AnimSource LoadGltfAnimationSource(std::string_view path);
-
-    //! @brief 読んだ骨付きのモデル 1 件。AssetManager が持ち、Clear まで有効
-    //! @details 読んだ後は書き換えないので、何体のアクターでも同じ物を使う。再生の状態はアクターの側が持つ
-    struct SkinnedModel
-    {
-        std::unique_ptr<Mesh> mesh; // 骨付きで作ったので、D3DSkeletal が描く形を返す
-        Anim::Skeleton skeleton;
-    };
 
     //! アプリ寿命でアセットを重複なく所有する単一キャッシュ。ファイル由来は path キー、組み込みは名前キー
     class AssetManager : public NonCopyable
@@ -88,14 +83,16 @@ namespace NS
         [[nodiscard]] const Phys::MeshShape* LoadMeshShape(std::string_view name);
 
         //! @brief 欄の名前の骨付きのモデルを返す。名前は ContentRoot からの glTF の道筋
-        //! @details 空の名前は「使わない」で、警告せずに nullptr。読めない名前は報告して nullptr
+        //! @details nullptr を返さない。空の名前と読めない名前は、その名前を持つ中身の空のモデルを返す
+        //! 空の名前は「使わない」で警告しない。読めない名前は報告する
         //! 読めなかったファイルは覚えないので、直した後に読み直すと読める
-        [[nodiscard]] const SkinnedModel* LoadSkinnedModel(std::string_view name);
+        [[nodiscard]] SkinnedModel* LoadSkinnedModel(std::string_view name);
 
         //! @brief 欄の名前のクリップを返す。名前は ContentRoot からの glTF の道筋か「道筋#動きの名前」
-        //! @details # が無ければファイルの中の先頭の 1 本。空の名前は「使わない」で、警告せずに nullptr
-        //! 読めないファイル・無い動きの名前は警告して nullptr。トラックは骨を名前で持ち、どのモデルにも依らない
-        [[nodiscard]] const Anim::AnimClip* LoadAnimClip(std::string_view name);
+        //! @details # が無ければファイルの中の先頭の 1 本。nullptr を返さない
+        //! 空の名前・読めないファイル・無い動きの名前は、その名前を持つ中身の空のクリップを返す
+        //! 空の名前は「使わない」で警告しない。読めない名前は最初の 1 回だけ警告し、Clear まで同じクリップを返す
+        [[nodiscard]] AnimClip* LoadAnimClip(std::string_view name);
 
         //! 手続き生成の組み込み cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         //! device 確立後・最初の利用前に 1 度だけ呼ぶ。既登録名は上書きしない
@@ -160,8 +157,12 @@ namespace NS
         [[nodiscard]] MaterialSources LoadMaterialSources(const MaterialFileDesc& file);
         [[nodiscard]] Material* FindSharedMaterial(std::string_view name) const noexcept;
 
-        // 本当の場所の skinned glTF を読んで記録する。読めなければ nullptr。name はメッシュが持つ道
-        [[nodiscard]] const SkinnedModel* LoadSkinnedModelFile(std::string_view path, std::string_view name);
+        // 本当の場所の skinned glTF を読んで記録する。読めなければ nullptr。name はモデルとメッシュが持つ道
+        [[nodiscard]] SkinnedModel* LoadSkinnedModelFile(std::string_view path, std::string_view name);
+        // 読めなかった名前のモデル。名前ごとに 1 つ
+        [[nodiscard]] SkinnedModel& MissingSkinnedModel(std::string_view name);
+        // name のクリップを作る。読めなければ中身の空のクリップにする
+        [[nodiscard]] std::unique_ptr<AnimClip> CreateAnimClip(std::string_view name);
         // アニメーションの glTF を path キーで 1 回だけ読む。読めなかった path も覚え、Clear まで読み直さない
         [[nodiscard]] const AnimSource* GetOrLoadAnimationSource(std::string_view path);
 
@@ -175,9 +176,12 @@ namespace NS
         std::map<std::string, std::unique_ptr<Material>> m_materials;        // path キーの .mat
         std::map<std::string, std::unique_ptr<Material>> m_sharedMaterials;  // コードで組む共有のマテリアル
         std::map<std::string, std::unique_ptr<Material>> m_missingMaterials; // 名前キー。読めなかった名前
-        std::map<std::string, SkinnedModel> m_skinnedModels; // skinned glTF。挿入後に書き換えず、配った参照を安定させる
+        std::map<std::string, std::unique_ptr<SkinnedModel>> m_skinnedModels; // path キーの skinned glTF
+        std::map<std::string, std::unique_ptr<SkinnedModel>> m_missingSkinnedModels; // 名前キー。読めなかった名前
         std::map<std::string, std::unique_ptr<AnimSource>>
             m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録
+        // 欄の字面キー。読めなかった名前の中身の空のクリップも覚える
+        std::map<std::string, std::unique_ptr<AnimClip>, std::less<>> m_animClips;
     };
 
     //! @brief 生きている間だけ AssetManager::Get() が assets を返すようにし、壊れる時に前の物へ戻す

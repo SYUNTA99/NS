@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/Reflection/AssetRef.h"
+#include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Core/Animation/AnimClip.h"
@@ -22,7 +22,7 @@ namespace NS
     class Animation : public Object
     {
     public:
-        explicit Animation(SceneActor* owner) noexcept;
+        explicit Animation(SceneActor* owner);
         ~Animation();
 
         //! 非所有の D3DSkeletalMesh を差し替える。参照先がない間は ApplyPose を行わない
@@ -77,7 +77,7 @@ namespace NS
         void FindClipBones();
 
         Gfx::D3DSkeletalMesh* m_mesh = nullptr; // 更新先の D3DSkeletalMesh (非所有)
-        AssetRef<const SkinnedModel> m_model;
+        SkinnedModel* m_model = nullptr;
         const Anim::Skeleton* m_skeleton = nullptr; // ボーンパレット計算用の骨格 (非所有)
         const Anim::AnimClip* m_clip = nullptr;     // 今のクリップ (非所有)
         std::vector<int> m_clipBones;              // m_clip のトラックごとの骨の番号。-1 は骨格に無い骨

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/ActorRef.h"
-#include "NSlib/CoreObject/Reflection/AssetRef.h"
+#include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/EffectName.h"
 
@@ -39,11 +39,11 @@ namespace NS
         {
             return AssetKind::Material;
         }
-        else if constexpr (std::is_same_v<T, AssetRef<const SkinnedModel>>)
+        else if constexpr (std::is_same_v<T, SkinnedModel*>)
         {
             return AssetKind::Model;
         }
-        else if constexpr (std::is_same_v<T, AssetRef<const Anim::AnimClip>>)
+        else if constexpr (std::is_same_v<T, AnimClip*>)
         {
             return AssetKind::Animation;
         }
@@ -67,7 +67,7 @@ namespace NS
         String, // 欄は std::string か EffectName。取得・設定の関数が受け渡すのは std::string
         ActorRef,
         Curve,
-        AssetRef // 欄は AssetRef<T> か素材の姿のポインタ。取得・設定の関数が受け渡すのは名前の std::string
+        Asset // 欄は素材の姿のポインタ。取得・設定の関数が受け渡すのは道の std::string
     };
 
     //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
@@ -105,15 +105,15 @@ namespace NS
         {
             return FieldType::Curve;
         }
-        else if constexpr (IsAssetRef<T>::value || IsAssetPointer<T>::value)
+        else if constexpr (IsAssetPointer<T>::value)
         {
-            return FieldType::AssetRef;
+            return FieldType::Asset;
         }
         else
         {
             static_assert(std::is_same_v<T, Vector3>,
                           "FieldTypeOf の T は float / int / bool / NS::Vector3 / NS::Quaternion / NS::Color / "
-                          "std::string / EffectName / ActorRef / Curve / AssetRef<T> / Mesh* / Material* のいずれか");
+                          "std::string / EffectName / ActorRef / Curve / IsAssetPointer に並ぶ素材の姿のポインタ のいずれか");
             return FieldType::Vector3;
         }
     }
@@ -130,11 +130,7 @@ namespace NS
     // 捨てる枝の型検査を避けるため、マクロの外のテンプレートで分岐する
     template <class Field> void ReadFieldValue(const Field& source, void* out) noexcept
     {
-        if constexpr (IsAssetRef<Field>::value)
-        {
-            *static_cast<std::string*>(out) = source.Name();
-        }
-        else if constexpr (IsAssetPointer<Field>::value)
+        if constexpr (IsAssetPointer<Field>::value)
         {
             static_cast<std::string*>(out)->assign(AssetFieldName(source));
         }
@@ -150,11 +146,7 @@ namespace NS
 
     template <class Field> void LoadFieldAsset(Field& field)
     {
-        if constexpr (IsAssetRef<Field>::value)
-        {
-            LoadAssetRef(field);
-        }
-        else if constexpr (IsAssetPointer<Field>::value)
+        if constexpr (IsAssetPointer<Field>::value)
         {
             // 同じ道で引き直す。共有のマテリアルを登録した後や、読めなかった .mat を直した後は別の素材が返る
             LoadAssetField(field, AssetFieldName(field));
@@ -166,10 +158,6 @@ namespace NS
         if constexpr (std::is_same_v<Field, float>)
         {
             AssignIfFinite(target, *static_cast<const float*>(in));
-        }
-        else if constexpr (IsAssetRef<Field>::value)
-        {
-            target.SetName(*static_cast<const std::string*>(in));
         }
         else if constexpr (IsAssetPointer<Field>::value)
         {
@@ -192,7 +180,7 @@ namespace NS
         FieldType type;
         void (*get)(const void* obj, void* outValue) noexcept; // obj から値を outValue へ取り出す
         void (*set)(void* obj, const void* inValue) noexcept;  // inValue を obj へ書き込む
-        void (*load)(void* obj) = nullptr;                    // 参照の欄の素材を読む。ほかの型の欄では何もしない
+        void (*load)(void* obj) = nullptr;                    // 素材の欄の素材を引き直す。ほかの型の欄では何もしない
         AssetKind assetKind = AssetKind::None;
     };
 

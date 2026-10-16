@@ -4,7 +4,7 @@
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerVisualParams.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/Reflection/AssetRef.h"
+#include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/SubObjects/OverlayRenderer.h"
 #include "NSlib/Graphics/DrawItem.h"
 #include "NSlib/Graphics/FrameConstants.h"
