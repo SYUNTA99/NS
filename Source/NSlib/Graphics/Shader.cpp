@@ -238,6 +238,14 @@ namespace NS
             }
             m_type = info->stage;
 
+            // Renderer の無い場 (GPU の無い試し) では、ERROR を出さずに空のシェーダを返す
+            // ゲームでは Renderer を先に作るので、ここで返らない。Reload の Compile は ERROR を出す
+            ID3D11Device* device = Gpu().device;
+            if (device == nullptr)
+            {
+                return;
+            }
+
             ComPtr<ID3D11DeviceChild> shader;
             ComPtr<ID3DBlob> bytecode;
             if (Compile(shader, bytecode))
@@ -249,11 +257,6 @@ namespace NS
 
             // 読み込み失敗時は、頂点/ピクセルシェーダであれば代替表示に切り替える
             if (m_type != ShaderType::Vertex && m_type != ShaderType::Pixel)
-            {
-                return;
-            }
-            ID3D11Device* device = Gpu().device;
-            if (device == nullptr)
             {
                 return;
             }

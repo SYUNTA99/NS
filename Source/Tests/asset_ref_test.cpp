@@ -13,8 +13,11 @@
 #include "NSlib/CoreObject/SubObjects/MeshCollision.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/SubObjects/Shadow.h"
+#include "NSlib/Graphics/GraphicObject.h"
+#include "NSlib/Graphics/Material.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "TestAnimatedPlayerActor.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -180,6 +183,19 @@ TEST(AssetManagerLoad, MeshShapeFollowsTheNameRules)
     EXPECT_EQ(assets.LoadMeshShape(""), cube);
     EXPECT_EQ(assets.LoadMeshShape("Assets/Models/__ns_missing_shape__.glb"), cube);
     EXPECT_EQ(assets.LoadMeshShape("../__ns_outside__.glb"), cube);
+}
+
+// Renderer の無い場で読んだマテリアルは、シェーダとテクスチャも含めて空で、ERROR を出さない
+// ゲームでは Renderer が先にあるので、この道を通らない
+TEST(AssetManagerLoad, MaterialWithoutARendererIsEmptyAndLogsNoError)
+{
+    ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const TestLogCapture log;
+    const NS::Gfx::Material* material = assets.TryLoadMaterial("Assets/Materials/stone.mat");
+    ASSERT_NE(material, nullptr);
+    EXPECT_FALSE(material->IsValid());
+    EXPECT_EQ(log.ErrorCount(), 0);
 }
 
 // 当たりは Model のメッシュの名前から作るので、メッシュを替えて読み直すと当たりも替わる

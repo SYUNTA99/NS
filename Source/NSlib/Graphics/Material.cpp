@@ -28,9 +28,10 @@ namespace NS
             m_blend = desc.blend;
             m_renderPriority = desc.renderPriority;
 
+            // Renderer の無い場 (GPU の無い試し) では、ERROR を出さずに空のマテリアルを返す
+            // ゲームでは Renderer を先に作るので、ここで返らない
             if (Gpu().device == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "Material: グローバル Device が無効");
                 return;
             }
             if (desc.vertexShader == nullptr || desc.pixelShader == nullptr)

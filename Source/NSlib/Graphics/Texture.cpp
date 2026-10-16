@@ -234,9 +234,10 @@ namespace NS
         {
             ID3D11Device* device = Gpu().device;
             ID3D11DeviceContext* context = Gpu().context;
+            // Renderer の無い場 (GPU の無い試し) では、ERROR を出さずに空のテクスチャを返す
+            // ゲームでは Renderer を先に作るので、ここで返らない
             if (device == nullptr || context == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "Texture: Renderer の Device / Context が無効");
                 return;
             }
 
