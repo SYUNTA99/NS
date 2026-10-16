@@ -96,30 +96,25 @@ namespace NS
         return m_playBaseline;
     }
 
-    void Scene::WritePlayBaselineField(const SubObject& comp, std::string_view fieldName)
+    void Scene::WritePlayBaselineField(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName)
     {
-        const SceneActor* owner = comp.Owner();
-        if (owner == nullptr)
-        {
-            return;
-        }
-        const std::size_t index = FindObjectIndexById(m_playBaseline, owner->Id());
+        const std::size_t index = FindObjectIndexById(m_playBaseline, actor.Id());
         if (index == k_NoObjectIndex)
         {
             return;
         }
-        const std::string_view role = owner->SubObjKey(comp);
-        if (role.empty())
+        const SubObject* part = row.get(&actor);
+        if (part == nullptr)
         {
             return;
         }
-        const nlohmann::json fields = SerializeSubObjectFields(comp);
+        const nlohmann::json fields = SerializeSubObjectFields(*part);
         const nlohmann::json::const_iterator value = fields.find(std::string{fieldName});
         if (value == fields.end())
         {
             return;
         }
-        ObjectJsonSubObjs(SceneJsonObjects(m_playBaseline)[index])[std::string{role}][std::string{fieldName}] = *value;
+        ObjectJsonSubObjs(SceneJsonObjects(m_playBaseline)[index])[std::string{row.key}][std::string{fieldName}] = *value;
     }
 
     void Scene::SetSimulationEnabled(bool enabled) noexcept

@@ -165,11 +165,17 @@ public:
 
     //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
     //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
-    void MirrorPlayEditToBaseline(const NS::SubObject& comp, std::string_view fieldName);
+    //! row は actor のクラスの表の行
+    void MirrorPlayEditToBaseline(const NS::SceneActor& actor,
+                                  const NS::SubObjectDesc& row,
+                                  std::string_view fieldName);
 
     //! 種類の既定値と未上書きの個体を更新する。変更できた場合 true、参照・姿勢など対象外の欄は false
     //! ファイル保存に失敗してもメモリ上の変更は残し、警告する。Undo の対象外
-    bool PromoteFieldToArchetype(NS::SubObject& comp, std::string_view fieldName);
+    //! row は actor のクラスの表の行
+    bool PromoteFieldToArchetype(const NS::SceneActor& actor,
+                                 const NS::SubObjectDesc& row,
+                                 std::string_view fieldName);
 
     //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);

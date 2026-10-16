@@ -55,27 +55,6 @@ namespace NS
         return *m_transform;
     }
 
-    namespace
-    {
-        // ForEachReflectedSubObj の std::function を介さず、登録を直接たどる
-        template <class TMatch> const SubObjectDesc* FindCreatedSubObj(const SceneActor& owner, TMatch match)
-        {
-            for (const ReflectionInfo* info = owner.GetReflection(); info != nullptr; info = info->base)
-            {
-                for (std::size_t i = 0; i < info->subObjectCount; ++i)
-                {
-                    const SubObjectDesc& field = info->subObjects[i];
-                    const SubObject* part = field.get(&owner);
-                    if (part != nullptr && match(field, *part))
-                    {
-                        return &field;
-                    }
-                }
-            }
-            return nullptr;
-        }
-    } // namespace
-
     const SubObjectDesc* SceneActor::FindSubObjMember(const void* member) const
     {
         for (const ReflectionInfo* info = GetReflection(); info != nullptr; info = info->base)
@@ -102,26 +81,40 @@ namespace NS
         NS_LOG_ERROR(Scene, "{} の部品 {} は作成済みか、保存キーが使用済み", ClassName(), field->key);
     }
 
+    bool SceneActor::IsSubObjKeyCreated(std::string_view key) const
+    {
+        bool created = false;
+        ForEachReflectedSubObj(*this, [&](const SubObjectDesc& field, const SubObject*) {
+            if (field.key == key)
+            {
+                created = true;
+            }
+        });
+        return created;
+    }
+
     std::string_view SceneActor::SubObjKey(const SubObject& part) const
     {
-        const SubObjectDesc* field = FindCreatedSubObj(
-            *this, [&part](const SubObjectDesc&, const SubObject& candidate) { return &candidate == &part; });
-        if (field == nullptr)
-        {
-            return {};
-        }
-        return field->key;
+        std::string_view key;
+        ForEachReflectedSubObj(*this, [&](const SubObjectDesc& field, const SubObject* candidate) {
+            if (candidate == &part)
+            {
+                key = field.key;
+            }
+        });
+        return key;
     }
 
     SubObject* SceneActor::FindSubObj(std::string_view key) const
     {
-        const SubObjectDesc* field = FindCreatedSubObj(
-            *this, [key](const SubObjectDesc& candidate, const SubObject&) { return candidate.key == key; });
-        if (field == nullptr)
-        {
-            return nullptr;
-        }
-        return field->get(this);
+        SubObject* found = nullptr;
+        ForEachReflectedSubObj(*this, [&](const SubObjectDesc& field, SubObject* part) {
+            if (found == nullptr && field.key == key)
+            {
+                found = part;
+            }
+        });
+        return found;
     }
 
     IStateMachine* SceneActor::GetStates() noexcept

@@ -71,7 +71,6 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Body* movement = &player->Body();
     player->ClimbLedge();
     player->States().Step(0.0625f);
     ASSERT_TRUE(player->States().Change<GL::Player::IdlePlayerState>());
@@ -222,7 +221,6 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::Body* movement = &player->Body();
     player->ClimbLedge();
     player->States().Step(0.0625f);
     player->OnEndPlay();

@@ -45,14 +45,19 @@ namespace NS
         SubObjectDefaults::SubObjectDefaults() noexcept = default;
         SubObjectDefaults::~SubObjectDefaults() noexcept = default;
 
-        const SubObject* SubObjectDefaults::Find(const SubObject& comp)
+        const SubObject* SubObjectDefaults::Find(const SceneActor& actor, const SubObjectDesc& row)
         {
             // 持ち主のクラスの既定の 1 体の同じ部品。値はコードの既定値に種類の既定値を当てた物
-            if (const SubObject* part = FindBaselineSubObj(comp))
+            if (const SubObject* part = FindBaselineSubObj(actor, row))
             {
                 return part;
             }
-            const ReflectionInfo* info = comp.GetReflection();
+            const SubObject* comp = row.get(&actor);
+            if (comp == nullptr)
+            {
+                return nullptr;
+            }
+            const ReflectionInfo* info = comp->GetReflection();
             if (info == nullptr)
             {
                 return nullptr;
@@ -1041,7 +1046,9 @@ namespace NS
         SubObjectEditResult DrawReflectedSubObject(SubObject& comp,
                                                    std::span<const ObjectRefOption> refOptions,
                                                    const SubObject* defaults,
-                                                   const char* filter) noexcept
+                                                   const char* filter,
+                                                   const SceneActor* actor,
+                                                   const SubObjectDesc* row) noexcept
         {
             const ReflectionInfo* info = comp.GetReflection();
             if (info == nullptr || info->fieldCount == 0)
@@ -1073,9 +1080,8 @@ namespace NS
                 }
 
                 // 種類の既定にできるのは、種類を持つ配置物の、個体の物でない欄だけ
-                const SceneActor* owner = comp.Owner();
-                const bool promotable =
-                    owner != nullptr && owner->ClassName()[0] != '\0' && IsArchetypeField(comp, field.name);
+                const bool promotable = actor != nullptr && row != nullptr && actor->ClassName()[0] != '\0' &&
+                                        IsArchetypeField(*actor, *row, field.name);
                 const OverrideAction action = OverrideButton(changed, promotable);
                 if (action == OverrideAction::Revert && defaults != nullptr)
                 {
@@ -1132,7 +1138,9 @@ namespace NS
         SubObjectEditResult DrawReflectedSubObject(SubObject&,
                                                    std::span<const ObjectRefOption>,
                                                    const SubObject*,
-                                                   const char*) noexcept
+                                                   const char*,
+                                                   const SceneActor*,
+                                                   const SubObjectDesc*) noexcept
         {
             return SubObjectEditResult{};
         }

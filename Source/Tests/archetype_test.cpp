@@ -1,8 +1,10 @@
+#include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 #include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -89,6 +91,19 @@ namespace
             return -1.0f;
         }
         return sphere->Radius();
+    }
+
+    // actor の表で part を持つ行。無ければ nullptr
+    const NS::SubObjectDesc* RowOf(const NS::SceneActor& actor, const NS::SubObject* part)
+    {
+        const NS::SubObjectDesc* row = nullptr;
+        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::SubObject* candidate) {
+            if (candidate == part)
+            {
+                row = &field;
+            }
+        });
+        return row;
     }
 
     // 保存した配置物の JSON から、部品の件の fields を引く。無ければ nullptr
@@ -294,7 +309,9 @@ TEST(Archetype, ReferenceFieldsAreNotArchetypeValues)
     const NS::SceneActor& baseline = NS::ArchetypeLibrary::Get().Baseline("FollowCameraActor");
     const GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(&baseline);
     ASSERT_NE(camera, nullptr);
-    EXPECT_FALSE(NS::IsArchetypeField(camera->Vcam(), "追従対象"));
+    const NS::SubObjectDesc* row = RowOf(*camera, &camera->Vcam());
+    ASSERT_NE(row, nullptr);
+    EXPECT_FALSE(NS::IsArchetypeField(*camera, *row, "追従対象"));
 }
 
 TEST(Archetype, OverrideIsDetectedAgainstBaseline)
@@ -309,10 +326,43 @@ TEST(Archetype, OverrideIsDetectedAgainstBaseline)
     NS::SphereCollision* sphere =
         NS::Cast<NS::SphereCollision>(scene.Objects().FindByObjectId(1)->CollisionSubObj());
     ASSERT_NE(sphere, nullptr);
-    EXPECT_FALSE(NS::IsFieldOverridden(*sphere, "半径"));
+    const NS::SceneActor& actor = *scene.Objects().FindByObjectId(1);
+    const NS::SubObjectDesc* row = RowOf(actor, sphere);
+    ASSERT_NE(row, nullptr);
+    EXPECT_FALSE(NS::IsFieldOverridden(actor, *row, "半径"));
     sphere->SetRadius(2.5f);
-    EXPECT_TRUE(NS::IsFieldOverridden(*sphere, "半径"));
-    EXPECT_TRUE(NS::IsArchetypeField(*sphere, "半径"));
+    EXPECT_TRUE(NS::IsFieldOverridden(actor, *row, "半径"));
+    EXPECT_TRUE(NS::IsArchetypeField(actor, *row, "半径"));
+}
+
+// インスペクタの印と「既定に戻す」は、型の既定 (半径 0.5) でなく種類の既定 (半径 2) と比べて戻す
+TEST(Archetype, InspectorMarksAndRevertsAgainstTheArchetype)
+{
+    const ScopedArchetypeDirectory scope("InspectorDefaults");
+    NS::ArchetypeLibrary::Get().Set("PropActor", ArchetypeWith("PropActor", "Collision", SphereEntry(2.0f)));
+
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::SceneJsonObjects(doc).push_back(MapObjJson(1));
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    NS::SphereCollision* sphere =
+        NS::Cast<NS::SphereCollision>(scene.Objects().FindByObjectId(1)->CollisionSubObj());
+    ASSERT_NE(sphere, nullptr);
+    const NS::FieldDesc* radius = NS::FindField(sphere->GetReflection(), "半径");
+    ASSERT_NE(radius, nullptr);
+
+    const NS::SceneActor& actor = *scene.Objects().FindByObjectId(1);
+    const NS::SubObjectDesc* row = RowOf(actor, sphere);
+    ASSERT_NE(row, nullptr);
+
+    NS::Editor::SubObjectDefaults defaults;
+    const NS::SubObject* baseline = defaults.Find(actor, *row);
+    ASSERT_NE(baseline, nullptr);
+    EXPECT_FALSE(NS::Editor::FieldDiffersFromDefault(*sphere, baseline, *radius));
+    sphere->SetRadius(2.5f);
+    EXPECT_TRUE(NS::Editor::FieldDiffersFromDefault(*sphere, baseline, *radius));
+    NS::Editor::RevertFieldToDefault(*sphere, *baseline, *radius);
+    EXPECT_FLOAT_EQ(sphere->Radius(), 2.0f);
 }
 
 TEST(Archetype, TransformPartIsInstanceOnlyOnEveryPath)
@@ -335,7 +385,9 @@ TEST(Archetype, TransformPartIsInstanceOnlyOnEveryPath)
     ASSERT_NE(transform, nullptr);
     EXPECT_TRUE(NS::HasField(*transform, NS::k_PositionFieldName));
 
-    EXPECT_FALSE(NS::IsArchetypeField(baseline.Root(), NS::k_PositionFieldName));
+    const NS::SubObjectDesc* row = RowOf(baseline, &baseline.Root());
+    ASSERT_NE(row, nullptr);
+    EXPECT_FALSE(NS::IsArchetypeField(baseline, *row, NS::k_PositionFieldName));
 }
 
 TEST(Archetype, SavedArchetypeIsReadBack)
@@ -371,10 +423,13 @@ TEST(Archetype, PromoteReachesOtherInstancesAndFile)
     NS::SphereCollision* sphere =
         NS::Cast<NS::SphereCollision>(scene.Objects().FindByObjectId(1)->CollisionSubObj());
     sphere->SetRadius(1.75f);
-    ASSERT_TRUE(editor.PromoteFieldToArchetype(*sphere, "半径"));
+    const NS::SceneActor& actor = *scene.Objects().FindByObjectId(1);
+    const NS::SubObjectDesc* row = RowOf(actor, sphere);
+    ASSERT_NE(row, nullptr);
+    ASSERT_TRUE(editor.PromoteFieldToArchetype(actor, *row, "半径"));
 
     // 上げた個体は上書きでなくなり、上書きしていなかった個体は付いて来て、上書きしていた個体はそのまま
-    EXPECT_FALSE(NS::IsFieldOverridden(*sphere, "半径"));
+    EXPECT_FALSE(NS::IsFieldOverridden(actor, *row, "半径"));
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 1.75f);
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(3)), 4.0f);
     EXPECT_TRUE(NS::OS::FileSystem::Exists(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.json")));
@@ -395,7 +450,9 @@ TEST(Archetype, PromoteRejectsReferenceField)
     GL::Level::FollowCameraActor* placed =
         NS::Cast<GL::Level::FollowCameraActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(placed, nullptr);
-    EXPECT_FALSE(editor.PromoteFieldToArchetype(placed->Vcam(), "追従対象"));
+    const NS::SubObjectDesc* row = RowOf(*placed, &placed->Vcam());
+    ASSERT_NE(row, nullptr);
+    EXPECT_FALSE(editor.PromoteFieldToArchetype(*placed, *row, "追従対象"));
     EXPECT_EQ(NS::ArchetypeLibrary::Get().Find("FollowCameraActor"), nullptr);
 }
 

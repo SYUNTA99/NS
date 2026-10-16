@@ -275,40 +275,57 @@ namespace NS
         return out;
     }
 
-    const SubObject* FindBaselineSubObj(const SubObject& comp)
+    namespace
     {
-        const SceneActor* owner = comp.Owner();
-        if (owner == nullptr)
+        // row が actor の表に無ければ nullptr。Baseline は登録の無いクラスでは素の SceneActor なので、
+        // 行の関数を直に呼ばず、actor の表を回して同じ行を探す
+        [[nodiscard]] const SubObject* FindRowPart(const SceneActor& actor, const SubObjectDesc& row)
+        {
+            const SubObject* found = nullptr;
+            ForEachReflectedSubObj(actor, [&](const SubObjectDesc& field, const SubObject* part) {
+                if (&field == &row)
+                {
+                    found = part;
+                }
+            });
+            return found;
+        }
+    } // namespace
+
+    const SubObject* FindBaselineSubObj(const SceneActor& actor, const SubObjectDesc& row)
+    {
+        const SubObject* live = FindRowPart(actor, row);
+        if (live == nullptr)
         {
             return nullptr;
         }
-        const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(owner->ClassName());
-        const SubObject* found = baseline.FindSubObj(owner->SubObjKey(comp));
-        if (found != nullptr && std::string_view{found->ClassName()} == comp.ClassName())
+        const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(actor.ClassName());
+        const SubObject* found = FindRowPart(baseline, row);
+        if (found != nullptr && std::string_view{found->ClassName()} == live->ClassName())
         {
             return found;
         }
         return nullptr;
     }
 
-    bool IsFieldOverridden(const SubObject& comp, std::string_view fieldName)
+    bool IsFieldOverridden(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName)
     {
-        const SubObject* part = FindBaselineSubObj(comp);
+        const SubObject* part = FindBaselineSubObj(actor, row);
         if (part == nullptr)
         {
             return false;
         }
-        return FieldValue(comp, fieldName) != FieldValue(*part, fieldName);
+        return FieldValue(*FindRowPart(actor, row), fieldName) != FieldValue(*part, fieldName);
     }
 
-    bool IsArchetypeField(const SubObject& comp, std::string_view fieldName)
+    bool IsArchetypeField(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName)
     {
-        // 持ち主の無い部品は種類を持たない
-        if (comp.Owner() == nullptr || IsInstanceOnlySubObj(comp.Owner()->SubObjKey(comp)))
+        const SubObject* live = FindRowPart(actor, row);
+        if (live == nullptr || IsInstanceOnlySubObj(row.key))
         {
             return false;
         }
-        const FieldDesc* field = FindField(comp.GetReflection(), fieldName);
+        const FieldDesc* field = FindField(live->GetReflection(), fieldName);
         if (field == nullptr)
         {
             return false;
@@ -316,32 +333,30 @@ namespace NS
         return field->type != FieldType::ActorRef;
     }
 
-    bool WriteFieldToArchetype(const SubObject& comp, std::string_view fieldName)
+    bool WriteFieldToArchetype(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName)
     {
-        const SceneActor* owner = comp.Owner();
-        if (owner == nullptr || !IsArchetypeField(comp, fieldName))
+        if (!IsArchetypeField(actor, row, fieldName))
         {
             return false;
         }
-        const std::string_view role = owner->SubObjKey(comp);
-        const std::optional<nlohmann::json> value = FieldValue(comp, fieldName);
-        if (role.empty() || !value.has_value())
+        const std::optional<nlohmann::json> value = FieldValue(*FindRowPart(actor, row), fieldName);
+        if (!value.has_value())
         {
             return false;
         }
         ArchetypeLibrary& library = ArchetypeLibrary::Get();
         nlohmann::json archetype = nlohmann::json::object();
-        if (const nlohmann::json* current = library.Find(owner->ClassName()))
+        if (const nlohmann::json* current = library.Find(actor.ClassName()))
         {
             archetype = *current;
         }
-        nlohmann::json& fields = ObjectJsonSubObjs(archetype)[std::string{role}];
+        nlohmann::json& fields = ObjectJsonSubObjs(archetype)[std::string{row.key}];
         if (!fields.is_object())
         {
             fields = nlohmann::json::object();
         }
         fields[std::string{fieldName}] = *value;
-        library.Set(owner->ClassName(), std::move(archetype));
+        library.Set(actor.ClassName(), std::move(archetype));
         return true;
     }
 } // namespace NS

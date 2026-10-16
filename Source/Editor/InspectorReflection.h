@@ -38,10 +38,10 @@ namespace NS
             SubObjectDefaults() noexcept;
             ~SubObjectDefaults() noexcept;
 
-            //! @brief comp と比べる既定の部品を返す
-            //! @details 種類の既定値を変えると指す先が作り直されるので、そのフレームの間だけ使う。見つからなければ
-            //! nullptr
-            [[nodiscard]] const SubObject* Find(const SubObject& comp);
+            //! @brief actor の行 row の部品と比べる既定の部品を返す
+            //! @details row は actor のクラスの表の行。種類の既定値を変えると指す先が作り直されるので、
+            //! そのフレームの間だけ使う。見つからなければ nullptr
+            [[nodiscard]] const SubObject* Find(const SceneActor& actor, const SubObjectDesc& row);
 
         private:
             // typeName のコードの既定値の 1 個。初回だけ作って以降は使い回す。未登録の型は nullptr
@@ -88,10 +88,13 @@ namespace NS
         //! リフレクション欄を編集し、Undo に必要な編集開始・終了と変更内容を返す
         //! refOptions が空なら参照は数値入力、defaults があれば上書きの表示と復元を使える
         //! filter は欄名の部分一致。空か nullptr なら絞らない
+        //! actor と row は comp の持ち主とその表の行。どちらかが nullptr なら種類の既定にする操作を出さない
         [[nodiscard]] SubObjectEditResult DrawReflectedSubObject(SubObject& comp,
                                                                  std::span<const ObjectRefOption> refOptions = {},
                                                                  const SubObject* defaults = nullptr,
-                                                                 const char* filter = nullptr) noexcept;
+                                                                 const char* filter = nullptr,
+                                                                 const SceneActor* actor = nullptr,
+                                                                 const SubObjectDesc* row = nullptr) noexcept;
 
         //! @brief 部品でない値型の 1 フレームの編集で起きた事
         struct ValueEditResult

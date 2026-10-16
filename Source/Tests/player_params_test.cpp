@@ -167,7 +167,6 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     scene.ResetFromJson(saved);
     const PlayerActor* player = static_cast<const PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
-    const NS::Body* movement = &player->Body();
     EXPECT_FLOAT_EQ(player->RunSpeed(), 9.0f);
     EXPECT_FLOAT_EQ(player->BodySlamDistance(), 14.0f);
     EXPECT_EQ(player->Health(), 6);

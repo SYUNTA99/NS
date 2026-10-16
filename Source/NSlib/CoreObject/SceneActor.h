@@ -177,7 +177,7 @@ namespace NS
         T* CreateSubObj(std::unique_ptr<TBase>& member, TArgs&&... args)
         {
             const SubObjectDesc* field = FindSubObjMember(&member);
-            if (field == nullptr || member != nullptr || FindSubObj(field->key) != nullptr)
+            if (field == nullptr || member != nullptr || IsSubObjKeyCreated(field->key))
             {
                 ReportInvalidSubObj(field);
                 return nullptr;
@@ -244,6 +244,8 @@ namespace NS
         void SetId(uint32 id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
         [[nodiscard]] const SubObjectDesc* FindSubObjMember(const void* member) const;
+        // 別のメンバーが同じ保存キーで作成済みか。同じキーの部品が 2 つあると保存で片方が消える
+        [[nodiscard]] bool IsSubObjKeyCreated(std::string_view key) const;
         void ReportInvalidSubObj(const SubObjectDesc* field) const;
         // PendingDestroy からはどこへも移らない
         enum class Presence : uint8

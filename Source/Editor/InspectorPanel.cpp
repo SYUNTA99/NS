@@ -183,6 +183,9 @@ namespace NS
                 ImGui::InputTextWithHint("##fieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
 
                 Editor::SubObjectEditResult subObjectEdit{};
+                // 戻すと種類の既定にするは描いた後に行うので、対象の部品の行を控える
+                const SubObjectDesc* revertRow = nullptr;
+                const SubObjectDesc* promoteRow = nullptr;
                 ForEachReflectedSubObj(*go, [&](const SubObjectDesc& field, SubObject* live) {
                     if (live->GetReflection() == nullptr)
                     {
@@ -214,9 +217,9 @@ namespace NS
                     if (open)
                     {
                         // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
-                        const SubObject* baseline = m_defaults.Find(*live);
+                        const SubObject* baseline = m_defaults.Find(*go, field);
                         const Editor::SubObjectEditResult r =
-                            Editor::DrawReflectedSubObject(*live, refOptions, baseline, m_fieldFilter);
+                            Editor::DrawReflectedSubObject(*live, refOptions, baseline, m_fieldFilter, go, &field);
                         subObjectEdit.activated |= r.activated;
                         subObjectEdit.committed |= r.committed;
                         subObjectEdit.changed |= r.changed;
@@ -224,39 +227,40 @@ namespace NS
                         {
                             subObjectEdit.revertTarget = r.revertTarget;
                             subObjectEdit.revertField = r.revertField;
+                            revertRow = &field;
                         }
                         if (r.promoteField != nullptr)
                         {
                             subObjectEdit.promoteTarget = r.promoteTarget;
                             subObjectEdit.promoteField = r.promoteField;
+                            promoteRow = &field;
                         }
                         // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
                         if (r.changedTarget != nullptr && r.changedField != nullptr)
                         {
-                            editor.MirrorPlayEditToBaseline(*r.changedTarget, r.changedField->name);
+                            editor.MirrorPlayEditToBaseline(*go, field, r.changedField->name);
                         }
                     }
                     ImGui::PopID();
                 });
                 // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
-                if (subObjectEdit.revertTarget != nullptr && subObjectEdit.revertField != nullptr)
+                if (subObjectEdit.revertTarget != nullptr && revertRow != nullptr)
                 {
-                    const SubObject* baseline = m_defaults.Find(*subObjectEdit.revertTarget);
+                    const SubObject* baseline = m_defaults.Find(*go, *revertRow);
                     if (baseline != nullptr)
                     {
                         editor.BeginSubObjectEdit();
                         Editor::RevertFieldToDefault(
                             *subObjectEdit.revertTarget, *baseline, *subObjectEdit.revertField);
                         // 既定へ戻すのも手編集。プレイ中は凍結側へも写して残す
-                        editor.MirrorPlayEditToBaseline(*subObjectEdit.revertTarget, subObjectEdit.revertField->name);
+                        editor.MirrorPlayEditToBaseline(*go, *revertRow, subObjectEdit.revertField->name);
                         editor.CommitSubObjectEdit();
                     }
                 }
                 // 種類の既定にするのは、同じ種類の全ての個体とファイルを書き換える。既定の部品を作り直すので描画の後で行う
-                if (subObjectEdit.promoteTarget != nullptr && subObjectEdit.promoteField != nullptr)
+                if (subObjectEdit.promoteField != nullptr && promoteRow != nullptr)
                 {
-                    (void)editor.PromoteFieldToArchetype(*subObjectEdit.promoteTarget,
-                                                         subObjectEdit.promoteField->name);
+                    (void)editor.PromoteFieldToArchetype(*go, *promoteRow, subObjectEdit.promoteField->name);
                 }
                 if (subObjectEdit.activated)
                 {

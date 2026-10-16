@@ -15,6 +15,7 @@ namespace NS
 {
     class SceneActor;
     class SubObject;
+    struct SubObjectDesc;
 
     //! クラスごとの既定値を Directory()/<クラス名>.json から読む
     //! ActorRef はシーン内の参照なので既定値には含めない
@@ -69,18 +70,22 @@ namespace NS
     //! @details 欄が全部既定と同じ部品も、空の件として残す。位置・回転・拡縮の部品 Transform は個体の物なので除かない
     [[nodiscard]] nlohmann::json DiffObjectJson(const nlohmann::json& object);
 
-    //! comp に対応する、持ち主のクラスの Baseline の部品。持ち主が無いか対応が無ければ nullptr
-    //! 種類の既定値を変えると指す先が作り直されるので、そのフレームの間だけ使う
-    [[nodiscard]] const SubObject* FindBaselineSubObj(const SubObject& comp);
+    // 下の 4 つの row は actor のクラスの表 (NS_REFLECT_SUBOBJ) の行。ForEachReflectedSubObj で回した行を渡す
 
-    //! 部品 comp の欄 fieldName が、持ち主のクラスの種類の既定値と違うか
-    [[nodiscard]] bool IsFieldOverridden(const SubObject& comp, std::string_view fieldName);
+    //! actor の行 row の部品に対応する、actor のクラスの Baseline の部品。どちらかが作られていないか型が違えば nullptr
+    //! 種類の既定値を変えると指す先が作り直されるので、そのフレームの間だけ使う
+    [[nodiscard]] const SubObject* FindBaselineSubObj(const SceneActor& actor, const SubObjectDesc& row);
+
+    //! actor の行 row の部品の欄 fieldName が、actor のクラスの種類の既定値と違うか
+    [[nodiscard]] bool IsFieldOverridden(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName);
 
     //! 種類の既定値へ上げてよい欄か。参照の欄と位置・回転・拡縮は個体の物なので上げられない
-    //! 持ち主の無い部品も、部品名が引けないので上げられない
-    [[nodiscard]] bool IsArchetypeField(const SubObject& comp, std::string_view fieldName);
+    //! 行の部品が作られていなければ上げられない
+    [[nodiscard]] bool IsArchetypeField(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName);
 
-    //! @brief 部品 comp の欄 fieldName の今の値を、持ち主のクラスの種類の既定値へ書く
-    //! @details ファイルへは書かない。上げられない欄と持ち主の無い部品は何もせず false
-    [[nodiscard]] bool WriteFieldToArchetype(const SubObject& comp, std::string_view fieldName);
+    //! @brief actor の行 row の部品の欄 fieldName の今の値を、actor のクラスの種類の既定値へ書く
+    //! @details ファイルへは書かない。上げられない欄は何もせず false
+    [[nodiscard]] bool WriteFieldToArchetype(const SceneActor& actor,
+                                             const SubObjectDesc& row,
+                                             std::string_view fieldName);
 } // namespace NS

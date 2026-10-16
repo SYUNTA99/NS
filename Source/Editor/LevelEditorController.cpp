@@ -1283,55 +1283,69 @@ void LevelEditorController::SetSelectedFreeScale(NS::Vector3 scale)
 
 void LevelEditorController::MirrorRootEditToBaseline(NS::SceneActor& actor, std::string_view fieldName)
 {
-    MirrorPlayEditToBaseline(actor.Root(), fieldName);
+    const NS::SubObjectDesc* rootRow = nullptr;
+    NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::SubObject* part) {
+        if (part == &actor.Root())
+        {
+            rootRow = &field;
+        }
+    });
+    if (rootRow != nullptr)
+    {
+        MirrorPlayEditToBaseline(actor, *rootRow, fieldName);
+    }
 }
 
-void LevelEditorController::MirrorPlayEditToBaseline(const NS::SubObject& comp, std::string_view fieldName)
+void LevelEditorController::MirrorPlayEditToBaseline(const NS::SceneActor& actor,
+                                                     const NS::SubObjectDesc& row,
+                                                     std::string_view fieldName)
 {
     // 写すのはプレイ中だけ。編集モードで写すと次のプレイ突入の捕捉と二重管理になる
     if (m_mode != Mode::Play || m_scene == nullptr)
     {
         return;
     }
-    m_scene->WritePlayBaselineField(comp, fieldName);
+    m_scene->WritePlayBaselineField(actor, row, fieldName);
 }
 
-bool LevelEditorController::PromoteFieldToArchetype(NS::SubObject& comp, std::string_view fieldName)
+bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
+                                                    const NS::SubObjectDesc& row,
+                                                    std::string_view fieldName)
 {
-    NS::SceneActor* owner = comp.Owner();
-    const NS::ReflectionInfo* info = comp.GetReflection();
-    if (m_scene == nullptr || owner == nullptr || info == nullptr)
+    const NS::SubObject* comp = row.get(&actor);
+    if (m_scene == nullptr || comp == nullptr || comp->GetReflection() == nullptr)
     {
         return false;
     }
-    const std::string className{owner->ClassName()};
-    const std::string_view typeName{info->typeName};
+    const std::string className{actor.ClassName()};
+    const std::string_view typeName{comp->GetReflection()->typeName};
 
     // 上げる前の既定の値。これと同じ値の個体は上書きしていないので、新しい既定値へ付いて行く
-    if (NS::FindBaselineSubObj(comp) == nullptr)
+    if (NS::FindBaselineSubObj(actor, row) == nullptr)
     {
         return false;
     }
 
-    std::vector<NS::SubObject*> followers;
-    for (NS::SceneActor* actor : m_scene->Objects())
+    // 同じクラスの個体は同じ表を持つので、row をそのまま使える
+    std::vector<NS::SceneActor*> followers;
+    for (NS::SceneActor* other : m_scene->Objects())
     {
-        if (actor == owner || actor->IsTransient() || className != actor->ClassName())
+        if (other == &actor || other->IsTransient() || className != other->ClassName())
         {
             continue;
         }
-        NS::SubObject* part = actor->FindSubObj(owner->SubObjKey(comp));
+        const NS::SubObject* part = row.get(other);
         if (part == nullptr || part->GetReflection() == nullptr || typeName != part->GetReflection()->typeName)
         {
             continue;
         }
-        if (!NS::IsFieldOverridden(*part, fieldName))
+        if (!NS::IsFieldOverridden(*other, row, fieldName))
         {
-            followers.push_back(part);
+            followers.push_back(other);
         }
     }
 
-    if (!NS::WriteFieldToArchetype(comp, fieldName))
+    if (!NS::WriteFieldToArchetype(actor, row, fieldName))
     {
         return false;
     }
@@ -1342,14 +1356,11 @@ bool LevelEditorController::PromoteFieldToArchetype(NS::SubObject& comp, std::st
 
     // 付いて行く個体へ新しい値を写す。資産の参照の欄なら実体も引き直す
     nlohmann::json fields = nlohmann::json::object();
-    fields[std::string{fieldName}] = FieldJson(comp, fieldName);
-    for (NS::SubObject* part : followers)
+    fields[std::string{fieldName}] = FieldJson(*comp, fieldName);
+    for (NS::SceneActor* follower : followers)
     {
-        (void)NS::ApplyJsonFields(*part, fields);
-        if (NS::SceneActor* follower = part->Owner())
-        {
-            follower->ReloadAssets();
-        }
+        (void)NS::ApplyJsonFields(*row.get(follower), fields);
+        follower->ReloadAssets();
     }
     // 当たりの大きさの欄なら body を張り直す
     m_scene->SyncPhysics();
