@@ -96,6 +96,7 @@ namespace NS
             case FieldType::Quaternion:
                 return !SameValue<Quaternion>(comp, *defaults, field);
             case FieldType::String:
+            case FieldType::AssetRef:
                 return !SameValue<std::string>(comp, *defaults, field);
             case FieldType::ActorRef:
                 return !SameValue<ActorRef>(comp, *defaults, field);
@@ -127,6 +128,7 @@ namespace NS
                 CopyValue<Quaternion>(comp, defaults, field);
                 break;
             case FieldType::String:
+            case FieldType::AssetRef:
                 CopyValue<std::string>(comp, defaults, field);
                 break;
             case FieldType::ActorRef:
@@ -444,6 +446,420 @@ namespace NS
                 bool committed = false; // ウィジェットが非活性化した
             };
 
+            // ActorRef の欄。参照候補が無ければ id を打たせ、あれば候補から選ばせる。値を変えたら true
+            bool DrawActorRefFieldWidget(void* owner,
+                                         const FieldDesc& field,
+                                         std::span<const ObjectRefOption> refOptions) noexcept
+            {
+                bool changed = false;
+                ActorRef value{};
+                field.get(owner, &value);
+
+                // 参照候補が無ければ id を直接打たせる
+                if (refOptions.empty())
+                {
+                    int id = static_cast<int>(value.id);
+                    const char* format = "未設定";
+                    if (value.IsSet())
+                    {
+                        format = "id %d";
+                    }
+                    if (ImGui::DragInt("##value", &id, 1.0f, 0, INT_MAX, format))
+                    {
+                        if (id <= 0)
+                        {
+                            value.id = 0u;
+                        }
+                        else
+                        {
+                            value.id = static_cast<uint32>(id);
+                        }
+                        field.set(owner, &value);
+                        changed = true;
+                    }
+                    return changed;
+                }
+
+                const char* currentLabel = "未設定";
+                if (value.IsSet())
+                {
+                    currentLabel = "(消えた参照)";
+                }
+                for (const ObjectRefOption& option : refOptions)
+                {
+                    if (option.id == value.id)
+                    {
+                        currentLabel = option.label.c_str();
+                        break;
+                    }
+                }
+                if (ImGui::BeginCombo("##value", currentLabel))
+                {
+                    if (ImGui::Selectable("未設定", !value.IsSet()))
+                    {
+                        value.id = 0;
+                        field.set(owner, &value);
+                        changed = true;
+                    }
+                    for (const ObjectRefOption& option : refOptions)
+                    {
+                        ImGui::PushID(static_cast<int>(option.id));
+                        if (ImGui::Selectable(option.label.c_str(), option.id == value.id))
+                        {
+                            value.id = option.id;
+                            field.set(owner, &value);
+                            changed = true;
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::EndCombo();
+                }
+                return changed;
+            }
+
+            // 曲線のグラフが ImGui の状態の保存に使う識別子。グラフと同じ ID スタックの中で作る
+            struct CurveGraphIds
+            {
+                ImGuiID grabbedId = 0;
+                ImGuiID grabKindId = 0;
+                ImGuiID grabOffsetXId = 0;
+                ImGuiID grabOffsetYId = 0;
+                ImGuiID selectedId = 0;
+                ImGuiID menuPointId = 0;
+                ImGuiID menuXId = 0;
+                ImGuiID menuYId = 0;
+                ImGuiID menuWasOpenId = 0;
+            };
+
+            CurveGraphIds MakeCurveGraphIds() noexcept
+            {
+                CurveGraphIds ids;
+                ids.grabbedId = ImGui::GetID("graph-grabbed");
+                ids.grabKindId = ImGui::GetID("graph-grab-kind");
+                ids.grabOffsetXId = ImGui::GetID("graph-grab-offset-x");
+                ids.grabOffsetYId = ImGui::GetID("graph-grab-offset-y");
+                ids.selectedId = ImGui::GetID("graph-selected");
+                ids.menuPointId = ImGui::GetID("graph-menu-point");
+                ids.menuXId = ImGui::GetID("graph-menu-x");
+                ids.menuYId = ImGui::GetID("graph-menu-y");
+                ids.menuWasOpenId = ImGui::GetID("graph-menu-was-open");
+                return ids;
+            }
+
+            // 曲線のグラフの右クリックのメニュー。値を変えたら true
+            bool DrawCurveMenu(Curve& value, ImGuiStorage* storage, const CurveGraphIds& ids) noexcept
+            {
+                bool edited = false;
+                if (ImGui::BeginPopup("curve-menu"))
+                {
+                    const int menuPoint = storage->GetInt(ids.menuPointId, -1);
+                    if (menuPoint >= 0 && static_cast<uint32>(menuPoint) < value.count)
+                    {
+                        Curve::Key& key = value.keys[menuPoint];
+                        const bool isLinear = key.mode == Curve::InterpMode::Linear;
+                        const bool isSmooth = key.mode == Curve::InterpMode::AutoSmooth;
+                        if (ImGui::MenuItem("直線にする", nullptr, isLinear) && !isLinear)
+                        {
+                            key.mode = Curve::InterpMode::Linear;
+                            edited = true;
+                        }
+                        if (ImGui::MenuItem("なめらかにする", nullptr, isSmooth) && !isSmooth)
+                        {
+                            key.mode = Curve::InterpMode::AutoSmooth;
+                            edited = true;
+                        }
+                        ImGui::Separator();
+                        if (ImGui::MenuItem("削除"))
+                        {
+                            RemoveKey(value, static_cast<uint32>(menuPoint));
+                            storage->SetInt(ids.selectedId, -1);
+                            edited = true;
+                        }
+                    }
+                    else if (ImGui::MenuItem("点を追加", nullptr, false, value.count < Curve::k_MaxKeys))
+                    {
+                        const Curve::Key added{storage->GetFloat(ids.menuXId, 0.0f),
+                                                   storage->GetFloat(ids.menuYId, 0.0f)};
+                        value.keys[value.count] = added;
+                        ++value.count;
+                        const uint32 inserted = MoveKey(value, value.count - 1, added);
+                        storage->SetInt(ids.selectedId, static_cast<int>(inserted));
+                        edited = true;
+                    }
+                    ImGui::EndPopup();
+                }
+                return edited;
+            }
+
+            // グラフのドラッグでは細かい値を打てないため、数値の並びを折り畳みで残す。値を変えたら true
+            bool DrawCurveNumbers(Curve& value, ImGuiStorage* storage, const CurveGraphIds& ids) noexcept
+            {
+                bool edited = false;
+                if (ImGui::TreeNode("数値で編集"))
+                {
+                    const float deleteButtonWidth =
+                        ImGui::CalcTextSize("削除").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+                    for (uint32 pointIndex = 0; pointIndex < value.count; ++pointIndex)
+                    {
+                        ImGui::PushID(static_cast<int>(pointIndex));
+                        float xy[2] = {value.keys[pointIndex].x, value.keys[pointIndex].y};
+                        ImGui::SetNextItemWidth(-(deleteButtonWidth + ImGui::GetStyle().ItemSpacing.x));
+                        if (ImGui::DragFloat2("##point", xy, 0.05f))
+                        {
+                            // x y だけ書く。Key ごと作り直すとモードと接線が既定へ戻るため
+                            value.keys[pointIndex].x = xy[0];
+                            value.keys[pointIndex].y = xy[1];
+                            edited = true;
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("削除"))
+                        {
+                            RemoveKey(value, pointIndex);
+                            storage->SetInt(ids.selectedId, -1);
+                            edited = true;
+                            // 詰めた並びを同じ周回で回し続けると、消した点の隣の行がこの周だけ描かれないため抜ける
+                            ImGui::PopID();
+                            break;
+                        }
+                        ImGui::PopID();
+                    }
+                    const int selectedPoint = storage->GetInt(ids.selectedId, -1);
+                    if (selectedPoint >= 0 && static_cast<uint32>(selectedPoint) < value.count &&
+                        value.keys[selectedPoint].mode == Curve::InterpMode::Manual)
+                    {
+                        float tangents[2] = {value.keys[selectedPoint].inTangent,
+                                             value.keys[selectedPoint].outTangent};
+                        if (ImGui::DragFloat2("選択中の接線", tangents, 0.05f))
+                        {
+                            value.keys[selectedPoint].inTangent = tangents[0];
+                            value.keys[selectedPoint].outTangent = tangents[1];
+                            edited = true;
+                        }
+                    }
+                    if (value.count < Curve::k_MaxKeys && ImGui::SmallButton("点を追加"))
+                    {
+                        // 離れた位置に湧くと並びが崩れて SortKeys で点の番号が飛ぶため、末尾の点の右隣へ足す
+                        float lastX = 0.0f;
+                        float lastY = 1.0f;
+                        if (value.count > 0)
+                        {
+                            lastX = value.keys[value.count - 1].x;
+                            lastY = value.keys[value.count - 1].y;
+                        }
+                        float rangeMin = 0.0f;
+                        float rangeMax = 1.0f;
+                        CurveGraphXRange(value, rangeMin, rangeMax);
+                        value.keys[value.count] = Curve::Key{lastX + 0.1f * (rangeMax - rangeMin), lastY};
+                        ++value.count;
+                        edited = true;
+                    }
+                    ImGui::TreePop();
+                }
+                return edited;
+            }
+
+            // 曲線の欄。グラフのドラッグ・メニュー・数値の並びで点を編集する
+            void DrawCurveFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
+            {
+                Curve value{};
+                field.get(owner, &value);
+                bool edited = false;
+
+                CurveGraphView view{};
+                view.size = ImVec2{ImGui::CalcItemWidth(), k_CurveGraphHeight};
+                view.origin = ImGui::GetCursorScreenPos();
+                ComputeCurveYRange(value, view.yMin, view.yMax);
+                CurveGraphXRange(value, view.xMin, view.xMax);
+
+                // 右クリックのメニュー操作でも活性化と確定を拾うため、右ボタンも受ける
+                ImGui::InvisibleButton(
+                    "##graph", view.size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+                // ドラッグ全体を 1 回の undo にまとめるため、グラフの活性化と非活性化も集約へ入れる
+                result.activated |= ImGui::IsItemActivated();
+                const bool graphDeactivated = ImGui::IsItemDeactivated();
+
+                ImGuiStorage* storage = ImGui::GetStateStorage();
+                const CurveGraphIds ids = MakeCurveGraphIds();
+                const ImVec2 mouse = ImGui::GetMousePos();
+                const bool hovered = ImGui::IsItemHovered();
+                const bool leftHeld = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+
+                int highlighted = -1;
+                if (hovered || ImGui::IsItemActive())
+                {
+                    highlighted = FindKeyNear(value, view, mouse, k_CurveGrabRadius);
+                }
+
+                // 点の削除は選択も解くが、既定へ戻すは点数だけ減らして選択を残すため、範囲の外へ出た選択は毎フレーム解く
+                int selected = storage->GetInt(ids.selectedId, -1);
+                if (selected >= 0 && static_cast<uint32>(selected) >= value.count)
+                {
+                    selected = -1;
+                    storage->SetInt(ids.selectedId, -1);
+                }
+
+                if (ImGui::IsItemActivated())
+                {
+                    // ドラッグの途中で隣の点へ乗り移ると形が壊れるため、掴む点は押した瞬間に決めて離すまで追う
+                    // 右ボタンの活性化で前回の番号が残ると、右を押したまま左を押した時に別の点を掴むため空にする
+                    int grabbedNow = -1;
+                    int grabKind = k_GrabPoint;
+                    if (leftHeld)
+                    {
+                        // 点よりハンドルを先に判定する。重なった時に点の掴みが勝つと選択が移って接線を触れないため
+                        if (selected >= 0 && static_cast<uint32>(selected) < value.count)
+                        {
+                            const uint32 selectedIndex = static_cast<uint32>(selected);
+                            const ImVec2 center =
+                                CurveToScreen(view, value.keys[selectedIndex].x, value.keys[selectedIndex].y);
+                            const ImVec2 inTip =
+                                TangentHandleTip(view, center, DisplayTangent(value, selectedIndex, true), true);
+                            const ImVec2 outTip =
+                                TangentHandleTip(view, center, DisplayTangent(value, selectedIndex, false), false);
+                            const float inDx = inTip.x - mouse.x;
+                            const float inDy = inTip.y - mouse.y;
+                            const float outDx = outTip.x - mouse.x;
+                            const float outDy = outTip.y - mouse.y;
+                            constexpr float k_HandleRadiusSq = k_CurveGrabRadius * k_CurveGrabRadius;
+                            if (inDx * inDx + inDy * inDy <= k_HandleRadiusSq)
+                            {
+                                grabbedNow = selected;
+                                grabKind = k_GrabInHandle;
+                            }
+                            else if (outDx * outDx + outDy * outDy <= k_HandleRadiusSq)
+                            {
+                                grabbedNow = selected;
+                                grabKind = k_GrabOutHandle;
+                            }
+                        }
+                        if (grabKind == k_GrabPoint)
+                        {
+                            grabbedNow = highlighted;
+                            storage->SetInt(ids.selectedId, grabbedNow);
+                            selected = grabbedNow;
+                        }
+                    }
+                    storage->SetInt(ids.grabbedId, grabbedNow);
+                    storage->SetInt(ids.grabKindId, grabKind);
+                    if (grabbedNow >= 0 && grabKind == k_GrabPoint)
+                    {
+                        // 掴んだ瞬間に点がカーソルへ飛ぶのを避けるため、点の中心と押した位置のずれを控える
+                        const Curve::Key& key = value.keys[grabbedNow];
+                        const ImVec2 center = CurveToScreen(view, key.x, key.y);
+                        storage->SetFloat(ids.grabOffsetXId, center.x - mouse.x);
+                        storage->SetFloat(ids.grabOffsetYId, center.y - mouse.y);
+                    }
+                }
+
+                // 左の単クリックは掴みと選択に使うため、追加は空きのダブルクリックか右クリックのメニューに分ける
+                if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && highlighted < 0 &&
+                    value.count < Curve::k_MaxKeys)
+                {
+                    const Curve::Key added = ScreenToCurve(view, mouse);
+                    value.keys[value.count] = added;
+                    ++value.count;
+                    // 追加してから掴み直す手間を省くため、追加した点をそのまま掴んだ扱いにする
+                    const uint32 inserted = MoveKey(value, value.count - 1, added);
+                    storage->SetInt(ids.grabbedId, static_cast<int>(inserted));
+                    storage->SetInt(ids.grabKindId, k_GrabPoint);
+                    storage->SetInt(ids.selectedId, static_cast<int>(inserted));
+                    storage->SetFloat(ids.grabOffsetXId, 0.0f);
+                    storage->SetFloat(ids.grabOffsetYId, 0.0f);
+                    highlighted = static_cast<int>(inserted);
+                    edited = true;
+                }
+                else if (ImGui::IsItemActive() && leftHeld)
+                {
+                    const int grabbed = storage->GetInt(ids.grabbedId, -1);
+                    const int grabKind = storage->GetInt(ids.grabKindId, k_GrabPoint);
+                    if (grabbed >= 0 && static_cast<uint32>(grabbed) < value.count)
+                    {
+                        if (grabKind == k_GrabPoint)
+                        {
+                            const ImVec2 target{mouse.x + storage->GetFloat(ids.grabOffsetXId, 0.0f),
+                                                mouse.y + storage->GetFloat(ids.grabOffsetYId, 0.0f)};
+                            // 移動先の x y だけ写す。ScreenToCurve
+                            // の返り値ごと代入するとモードと接線が既定へ戻るため
+                            const Curve::Key targetKey = ScreenToCurve(view, target);
+                            Curve::Key moved = value.keys[grabbed];
+                            moved.x = targetKey.x;
+                            moved.y = targetKey.y;
+                            if (moved != value.keys[grabbed])
+                            {
+                                const uint32 movedTo = MoveKey(value, static_cast<uint32>(grabbed), moved);
+                                storage->SetInt(ids.grabbedId, static_cast<int>(movedTo));
+                                storage->SetInt(ids.selectedId, static_cast<int>(movedTo));
+                                highlighted = static_cast<int>(movedTo);
+                                edited = true;
+                            }
+                        }
+                        else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.0f))
+                        {
+                            Curve::Key& key = value.keys[grabbed];
+                            const ImVec2 center = CurveToScreen(view, key.x, key.y);
+                            const float slope = ScreenToTangent(view, center, mouse, grabKind == k_GrabInHandle);
+                            // 昇格は動かした瞬間に行う。掴んだだけで昇格するとクリックだけでモードが変わるため
+                            if (key.mode != Curve::InterpMode::Manual)
+                            {
+                                const uint32 grabbedIndex = static_cast<uint32>(grabbed);
+                                const float inNow = DisplayTangent(value, grabbedIndex, true);
+                                const float outNow = DisplayTangent(value, grabbedIndex, false);
+                                key.mode = Curve::InterpMode::Manual;
+                                key.inTangent = inNow;
+                                key.outTangent = outNow;
+                                edited = true;
+                            }
+                            if (grabKind == k_GrabInHandle && slope != key.inTangent)
+                            {
+                                key.inTangent = slope;
+                                edited = true;
+                            }
+                            if (grabKind == k_GrabOutHandle && slope != key.outTangent)
+                            {
+                                key.outTangent = slope;
+                                edited = true;
+                            }
+                        }
+                    }
+                }
+
+                // メニューの対象は開く瞬間に控える。開いている間にマウスが動くと対象の点がずれるため
+                if (hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+                {
+                    storage->SetInt(ids.menuPointId, highlighted);
+                    const Curve::Key menuAt = ScreenToCurve(view, mouse);
+                    storage->SetFloat(ids.menuXId, menuAt.x);
+                    storage->SetFloat(ids.menuYId, menuAt.y);
+                    // 開く瞬間に activated を立てる。undo の控えを開いている間の編集より前に取らせるため
+                    result.activated = true;
+                    ImGui::OpenPopup("curve-menu");
+                }
+                edited |= DrawCurveMenu(value, storage, ids);
+                // メニューが開いている間は確定を遅らせる。開いた瞬間に確定するとメニューの編集が履歴に残らないため
+                const bool menuOpen = ImGui::IsPopupOpen("curve-menu");
+                const bool menuWasOpen = storage->GetBool(ids.menuWasOpenId, false);
+                if (!menuOpen && (graphDeactivated || menuWasOpen))
+                {
+                    result.committed = true;
+                }
+                storage->SetBool(ids.menuWasOpenId, menuOpen);
+
+                DrawCurveGraph(
+                    *ImGui::GetWindowDrawList(), view, value, highlighted, storage->GetInt(ids.selectedId, -1));
+                ImGui::TextDisabled(
+                    "ドラッグで移動 / ダブルクリックで追加 / 右クリックでメニュー / クリックで選択して接線");
+
+                edited |= DrawCurveNumbers(value, storage, ids);
+
+                if (edited)
+                {
+                    // x を左右へドラッグすると並びが崩れるため、編集のたびに並べ直してから書き戻す
+                    value.SortKeys();
+                    field.set(owner, &value);
+                    result.changed = true;
+                }
+            }
+
             // owner の欄 field を、型に合ったウィジェット 1 つで描く。部品と値型の両方が使う
             FieldWidgetResult DrawFieldWidget(void* owner,
                                               const FieldDesc& field,
@@ -516,6 +932,7 @@ namespace NS
                     break;
                 }
                 case FieldType::String:
+                case FieldType::AssetRef:
                 {
                     std::string value;
                     field.get(owner, &value);
@@ -531,377 +948,11 @@ namespace NS
                     break;
                 }
                 case FieldType::ActorRef:
-                {
-                    ActorRef value{};
-                    field.get(owner, &value);
-
-                    // 参照候補が無ければ id を直接打たせる
-                    if (refOptions.empty())
-                    {
-                        int id = static_cast<int>(value.id);
-                        const char* format = "未設定";
-                        if (value.IsSet())
-                        {
-                            format = "id %d";
-                        }
-                        if (ImGui::DragInt("##value", &id, 1.0f, 0, INT_MAX, format))
-                        {
-                            if (id <= 0)
-                            {
-                                value.id = 0u;
-                            }
-                            else
-                            {
-                                value.id = static_cast<uint32>(id);
-                            }
-                            field.set(owner, &value);
-                            result.changed = true;
-                        }
-                        break;
-                    }
-
-                    const char* currentLabel = "未設定";
-                    if (value.IsSet())
-                    {
-                        currentLabel = "(消えた参照)";
-                    }
-                    for (const ObjectRefOption& option : refOptions)
-                    {
-                        if (option.id == value.id)
-                        {
-                            currentLabel = option.label.c_str();
-                            break;
-                        }
-                    }
-                    if (ImGui::BeginCombo("##value", currentLabel))
-                    {
-                        if (ImGui::Selectable("未設定", !value.IsSet()))
-                        {
-                            value.id = 0;
-                            field.set(owner, &value);
-                            result.changed = true;
-                        }
-                        for (const ObjectRefOption& option : refOptions)
-                        {
-                            ImGui::PushID(static_cast<int>(option.id));
-                            if (ImGui::Selectable(option.label.c_str(), option.id == value.id))
-                            {
-                                value.id = option.id;
-                                field.set(owner, &value);
-                                result.changed = true;
-                            }
-                            ImGui::PopID();
-                        }
-                        ImGui::EndCombo();
-                    }
+                    result.changed |= DrawActorRefFieldWidget(owner, field, refOptions);
                     break;
-                }
                 case FieldType::Curve:
-                {
-                    Curve value{};
-                    field.get(owner, &value);
-                    bool edited = false;
-
-                    CurveGraphView view{};
-                    view.size = ImVec2{ImGui::CalcItemWidth(), k_CurveGraphHeight};
-                    view.origin = ImGui::GetCursorScreenPos();
-                    ComputeCurveYRange(value, view.yMin, view.yMax);
-                    CurveGraphXRange(value, view.xMin, view.xMax);
-
-                    // 右クリックのメニュー操作でも活性化と確定を拾うため、右ボタンも受ける
-                    ImGui::InvisibleButton(
-                        "##graph", view.size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-                    // ドラッグ全体を 1 回の undo にまとめるため、グラフの活性化と非活性化も集約へ入れる
-                    result.activated |= ImGui::IsItemActivated();
-                    const bool graphDeactivated = ImGui::IsItemDeactivated();
-
-                    ImGuiStorage* storage = ImGui::GetStateStorage();
-                    const ImGuiID grabbedId = ImGui::GetID("graph-grabbed");
-                    const ImGuiID grabKindId = ImGui::GetID("graph-grab-kind");
-                    const ImGuiID grabOffsetXId = ImGui::GetID("graph-grab-offset-x");
-                    const ImGuiID grabOffsetYId = ImGui::GetID("graph-grab-offset-y");
-                    const ImGuiID selectedId = ImGui::GetID("graph-selected");
-                    const ImGuiID menuPointId = ImGui::GetID("graph-menu-point");
-                    const ImGuiID menuXId = ImGui::GetID("graph-menu-x");
-                    const ImGuiID menuYId = ImGui::GetID("graph-menu-y");
-                    const ImGuiID menuWasOpenId = ImGui::GetID("graph-menu-was-open");
-                    const ImVec2 mouse = ImGui::GetMousePos();
-                    const bool hovered = ImGui::IsItemHovered();
-                    const bool leftHeld = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-
-                    int highlighted = -1;
-                    if (hovered || ImGui::IsItemActive())
-                    {
-                        highlighted = FindKeyNear(value, view, mouse, k_CurveGrabRadius);
-                    }
-
-                    // 点の削除は選択も解くが、既定へ戻すは点数だけ減らして選択を残すため、範囲の外へ出た選択は毎フレーム解く
-                    int selected = storage->GetInt(selectedId, -1);
-                    if (selected >= 0 && static_cast<uint32>(selected) >= value.count)
-                    {
-                        selected = -1;
-                        storage->SetInt(selectedId, -1);
-                    }
-
-                    if (ImGui::IsItemActivated())
-                    {
-                        // ドラッグの途中で隣の点へ乗り移ると形が壊れるため、掴む点は押した瞬間に決めて離すまで追う
-                        // 右ボタンの活性化で前回の番号が残ると、右を押したまま左を押した時に別の点を掴むため空にする
-                        int grabbedNow = -1;
-                        int grabKind = k_GrabPoint;
-                        if (leftHeld)
-                        {
-                            // 点よりハンドルを先に判定する。重なった時に点の掴みが勝つと選択が移って接線を触れないため
-                            if (selected >= 0 && static_cast<uint32>(selected) < value.count)
-                            {
-                                const uint32 selectedIndex = static_cast<uint32>(selected);
-                                const ImVec2 center =
-                                    CurveToScreen(view, value.keys[selectedIndex].x, value.keys[selectedIndex].y);
-                                const ImVec2 inTip =
-                                    TangentHandleTip(view, center, DisplayTangent(value, selectedIndex, true), true);
-                                const ImVec2 outTip =
-                                    TangentHandleTip(view, center, DisplayTangent(value, selectedIndex, false), false);
-                                const float inDx = inTip.x - mouse.x;
-                                const float inDy = inTip.y - mouse.y;
-                                const float outDx = outTip.x - mouse.x;
-                                const float outDy = outTip.y - mouse.y;
-                                constexpr float k_HandleRadiusSq = k_CurveGrabRadius * k_CurveGrabRadius;
-                                if (inDx * inDx + inDy * inDy <= k_HandleRadiusSq)
-                                {
-                                    grabbedNow = selected;
-                                    grabKind = k_GrabInHandle;
-                                }
-                                else if (outDx * outDx + outDy * outDy <= k_HandleRadiusSq)
-                                {
-                                    grabbedNow = selected;
-                                    grabKind = k_GrabOutHandle;
-                                }
-                            }
-                            if (grabKind == k_GrabPoint)
-                            {
-                                grabbedNow = highlighted;
-                                storage->SetInt(selectedId, grabbedNow);
-                                selected = grabbedNow;
-                            }
-                        }
-                        storage->SetInt(grabbedId, grabbedNow);
-                        storage->SetInt(grabKindId, grabKind);
-                        if (grabbedNow >= 0 && grabKind == k_GrabPoint)
-                        {
-                            // 掴んだ瞬間に点がカーソルへ飛ぶのを避けるため、点の中心と押した位置のずれを控える
-                            const Curve::Key& key = value.keys[grabbedNow];
-                            const ImVec2 center = CurveToScreen(view, key.x, key.y);
-                            storage->SetFloat(grabOffsetXId, center.x - mouse.x);
-                            storage->SetFloat(grabOffsetYId, center.y - mouse.y);
-                        }
-                    }
-
-                    // 左の単クリックは掴みと選択に使うため、追加は空きのダブルクリックか右クリックのメニューに分ける
-                    if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && highlighted < 0 &&
-                        value.count < Curve::k_MaxKeys)
-                    {
-                        const Curve::Key added = ScreenToCurve(view, mouse);
-                        value.keys[value.count] = added;
-                        ++value.count;
-                        // 追加してから掴み直す手間を省くため、追加した点をそのまま掴んだ扱いにする
-                        const uint32 inserted = MoveKey(value, value.count - 1, added);
-                        storage->SetInt(grabbedId, static_cast<int>(inserted));
-                        storage->SetInt(grabKindId, k_GrabPoint);
-                        storage->SetInt(selectedId, static_cast<int>(inserted));
-                        storage->SetFloat(grabOffsetXId, 0.0f);
-                        storage->SetFloat(grabOffsetYId, 0.0f);
-                        highlighted = static_cast<int>(inserted);
-                        edited = true;
-                    }
-                    else if (ImGui::IsItemActive() && leftHeld)
-                    {
-                        const int grabbed = storage->GetInt(grabbedId, -1);
-                        const int grabKind = storage->GetInt(grabKindId, k_GrabPoint);
-                        if (grabbed >= 0 && static_cast<uint32>(grabbed) < value.count)
-                        {
-                            if (grabKind == k_GrabPoint)
-                            {
-                                const ImVec2 target{mouse.x + storage->GetFloat(grabOffsetXId, 0.0f),
-                                                    mouse.y + storage->GetFloat(grabOffsetYId, 0.0f)};
-                                // 移動先の x y だけ写す。ScreenToCurve
-                                // の返り値ごと代入するとモードと接線が既定へ戻るため
-                                const Curve::Key targetKey = ScreenToCurve(view, target);
-                                Curve::Key moved = value.keys[grabbed];
-                                moved.x = targetKey.x;
-                                moved.y = targetKey.y;
-                                if (moved != value.keys[grabbed])
-                                {
-                                    const uint32 movedTo = MoveKey(value, static_cast<uint32>(grabbed), moved);
-                                    storage->SetInt(grabbedId, static_cast<int>(movedTo));
-                                    storage->SetInt(selectedId, static_cast<int>(movedTo));
-                                    highlighted = static_cast<int>(movedTo);
-                                    edited = true;
-                                }
-                            }
-                            else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.0f))
-                            {
-                                Curve::Key& key = value.keys[grabbed];
-                                const ImVec2 center = CurveToScreen(view, key.x, key.y);
-                                const float slope = ScreenToTangent(view, center, mouse, grabKind == k_GrabInHandle);
-                                // 昇格は動かした瞬間に行う。掴んだだけで昇格するとクリックだけでモードが変わるため
-                                if (key.mode != Curve::InterpMode::Manual)
-                                {
-                                    const uint32 grabbedIndex = static_cast<uint32>(grabbed);
-                                    const float inNow = DisplayTangent(value, grabbedIndex, true);
-                                    const float outNow = DisplayTangent(value, grabbedIndex, false);
-                                    key.mode = Curve::InterpMode::Manual;
-                                    key.inTangent = inNow;
-                                    key.outTangent = outNow;
-                                    edited = true;
-                                }
-                                if (grabKind == k_GrabInHandle && slope != key.inTangent)
-                                {
-                                    key.inTangent = slope;
-                                    edited = true;
-                                }
-                                if (grabKind == k_GrabOutHandle && slope != key.outTangent)
-                                {
-                                    key.outTangent = slope;
-                                    edited = true;
-                                }
-                            }
-                        }
-                    }
-
-                    // メニューの対象は開く瞬間に控える。開いている間にマウスが動くと対象の点がずれるため
-                    if (hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
-                    {
-                        storage->SetInt(menuPointId, highlighted);
-                        const Curve::Key menuAt = ScreenToCurve(view, mouse);
-                        storage->SetFloat(menuXId, menuAt.x);
-                        storage->SetFloat(menuYId, menuAt.y);
-                        // 開く瞬間に activated を立てる。undo の控えを開いている間の編集より前に取らせるため
-                        result.activated = true;
-                        ImGui::OpenPopup("curve-menu");
-                    }
-                    if (ImGui::BeginPopup("curve-menu"))
-                    {
-                        const int menuPoint = storage->GetInt(menuPointId, -1);
-                        if (menuPoint >= 0 && static_cast<uint32>(menuPoint) < value.count)
-                        {
-                            Curve::Key& key = value.keys[menuPoint];
-                            const bool isLinear = key.mode == Curve::InterpMode::Linear;
-                            const bool isSmooth = key.mode == Curve::InterpMode::AutoSmooth;
-                            if (ImGui::MenuItem("直線にする", nullptr, isLinear) && !isLinear)
-                            {
-                                key.mode = Curve::InterpMode::Linear;
-                                edited = true;
-                            }
-                            if (ImGui::MenuItem("なめらかにする", nullptr, isSmooth) && !isSmooth)
-                            {
-                                key.mode = Curve::InterpMode::AutoSmooth;
-                                edited = true;
-                            }
-                            ImGui::Separator();
-                            if (ImGui::MenuItem("削除"))
-                            {
-                                RemoveKey(value, static_cast<uint32>(menuPoint));
-                                storage->SetInt(selectedId, -1);
-                                edited = true;
-                            }
-                        }
-                        else if (ImGui::MenuItem("点を追加", nullptr, false, value.count < Curve::k_MaxKeys))
-                        {
-                            const Curve::Key added{storage->GetFloat(menuXId, 0.0f),
-                                                       storage->GetFloat(menuYId, 0.0f)};
-                            value.keys[value.count] = added;
-                            ++value.count;
-                            const uint32 inserted = MoveKey(value, value.count - 1, added);
-                            storage->SetInt(selectedId, static_cast<int>(inserted));
-                            edited = true;
-                        }
-                        ImGui::EndPopup();
-                    }
-                    // メニューが開いている間は確定を遅らせる。開いた瞬間に確定するとメニューの編集が履歴に残らないため
-                    const bool menuOpen = ImGui::IsPopupOpen("curve-menu");
-                    const bool menuWasOpen = storage->GetBool(menuWasOpenId, false);
-                    if (!menuOpen && (graphDeactivated || menuWasOpen))
-                    {
-                        result.committed = true;
-                    }
-                    storage->SetBool(menuWasOpenId, menuOpen);
-
-                    DrawCurveGraph(
-                        *ImGui::GetWindowDrawList(), view, value, highlighted, storage->GetInt(selectedId, -1));
-                    ImGui::TextDisabled(
-                        "ドラッグで移動 / ダブルクリックで追加 / 右クリックでメニュー / クリックで選択して接線");
-
-                    // グラフのドラッグでは細かい値を打てないため、数値の並びを折り畳みで残す
-                    if (ImGui::TreeNode("数値で編集"))
-                    {
-                        const float deleteButtonWidth =
-                            ImGui::CalcTextSize("削除").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-                        for (uint32 pointIndex = 0; pointIndex < value.count; ++pointIndex)
-                        {
-                            ImGui::PushID(static_cast<int>(pointIndex));
-                            float xy[2] = {value.keys[pointIndex].x, value.keys[pointIndex].y};
-                            ImGui::SetNextItemWidth(-(deleteButtonWidth + ImGui::GetStyle().ItemSpacing.x));
-                            if (ImGui::DragFloat2("##point", xy, 0.05f))
-                            {
-                                // x y だけ書く。Key ごと作り直すとモードと接線が既定へ戻るため
-                                value.keys[pointIndex].x = xy[0];
-                                value.keys[pointIndex].y = xy[1];
-                                edited = true;
-                            }
-                            ImGui::SameLine();
-                            if (ImGui::SmallButton("削除"))
-                            {
-                                RemoveKey(value, pointIndex);
-                                storage->SetInt(selectedId, -1);
-                                edited = true;
-                                // 詰めた並びを同じ周回で回し続けると、消した点の隣の行がこの周だけ描かれないため抜ける
-                                ImGui::PopID();
-                                break;
-                            }
-                            ImGui::PopID();
-                        }
-                        const int selectedPoint = storage->GetInt(selectedId, -1);
-                        if (selectedPoint >= 0 && static_cast<uint32>(selectedPoint) < value.count &&
-                            value.keys[selectedPoint].mode == Curve::InterpMode::Manual)
-                        {
-                            float tangents[2] = {value.keys[selectedPoint].inTangent,
-                                                 value.keys[selectedPoint].outTangent};
-                            if (ImGui::DragFloat2("選択中の接線", tangents, 0.05f))
-                            {
-                                value.keys[selectedPoint].inTangent = tangents[0];
-                                value.keys[selectedPoint].outTangent = tangents[1];
-                                edited = true;
-                            }
-                        }
-                        if (value.count < Curve::k_MaxKeys && ImGui::SmallButton("点を追加"))
-                        {
-                            // 離れた位置に湧くと並びが崩れて SortKeys で点の番号が飛ぶため、末尾の点の右隣へ足す
-                            float lastX = 0.0f;
-                            float lastY = 1.0f;
-                            if (value.count > 0)
-                            {
-                                lastX = value.keys[value.count - 1].x;
-                                lastY = value.keys[value.count - 1].y;
-                            }
-                            float rangeMin = 0.0f;
-                            float rangeMax = 1.0f;
-                            CurveGraphXRange(value, rangeMin, rangeMax);
-                            value.keys[value.count] = Curve::Key{lastX + 0.1f * (rangeMax - rangeMin), lastY};
-                            ++value.count;
-                            edited = true;
-                        }
-                        ImGui::TreePop();
-                    }
-
-                    if (edited)
-                    {
-                        // x を左右へドラッグすると並びが崩れるため、編集のたびに並べ直してから書き戻す
-                        value.SortKeys();
-                        field.set(owner, &value);
-                        result.changed = true;
-                    }
+                    DrawCurveFieldWidget(owner, field, result);
                     break;
-                }
                 }
                 ImGui::EndGroup();
 

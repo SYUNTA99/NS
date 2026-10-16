@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/ActorRef.h"
+#include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 
 #include <cmath>
@@ -28,7 +29,8 @@ namespace NS
         Quaternion,
         String,
         ActorRef,
-        Curve
+        Curve,
+        AssetRef // 欄は AssetRef<T>。取得・設定の関数が受け渡すのは名前の std::string
     };
 
     //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
@@ -62,11 +64,15 @@ namespace NS
         {
             return FieldType::Curve;
         }
+        else if constexpr (IsAssetRef<T>::value)
+        {
+            return FieldType::AssetRef;
+        }
         else
         {
             static_assert(std::is_same_v<T, Vector3>,
                           "FieldTypeOf の T は float / int / bool / NS::Vector3 / NS::Quaternion / "
-                          "std::string / ActorRef / Curve のいずれか");
+                          "std::string / ActorRef / Curve / AssetRef<T> のいずれか");
             return FieldType::Vector3;
         }
     }
@@ -81,11 +87,27 @@ namespace NS
     }
 
     // 捨てる枝の型検査を避けるため、マクロの外のテンプレートで分岐する
+    template <class Field> void ReadFieldValue(const Field& source, void* out) noexcept
+    {
+        if constexpr (IsAssetRef<Field>::value)
+        {
+            *static_cast<std::string*>(out) = source.Name();
+        }
+        else
+        {
+            *static_cast<Field*>(out) = source;
+        }
+    }
+
     template <class Field> void AssignFieldValue(Field& target, const void* in) noexcept
     {
         if constexpr (std::is_same_v<Field, float>)
         {
             AssignIfFinite(target, *static_cast<const float*>(in));
+        }
+        else if constexpr (IsAssetRef<Field>::value)
+        {
+            target.SetName(*static_cast<const std::string*>(in));
         }
         else
         {
@@ -230,8 +252,7 @@ namespace NS
     NS::ReflectEntry{NS::FieldDesc{label,                                                                              \
                                    NS::FieldTypeOf<decltype(Self::member)>(),                                          \
                                    +[](const void* c, void* out) noexcept {                                            \
-                                       *static_cast<decltype(Self::member)*>(out) =                                    \
-                                           static_cast<const Self*>(c)->member;                                        \
+                                       NS::ReadFieldValue(static_cast<const Self*>(c)->member, out);                   \
                                    },                                                                                  \
                                    +[](void* c, const void* in) noexcept {                                             \
                                        NS::AssignFieldValue(static_cast<Self*>(c)->member, in);                        \

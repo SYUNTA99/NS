@@ -42,6 +42,7 @@ namespace NS
                 return nlohmann::json{value.x, value.y, value.z, value.w};
             }
             case FieldType::String:
+            case FieldType::AssetRef:
                 return ReadField<std::string>(owner, field);
             case FieldType::ActorRef:
             {
@@ -135,6 +136,7 @@ namespace NS
                 return;
             }
             case FieldType::String:
+            case FieldType::AssetRef:
             {
                 if (!value.is_string())
                 {
