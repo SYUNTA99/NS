@@ -34,7 +34,7 @@ namespace NS
     }
     namespace Gfx
     {
-        struct AnimationSource;
+        struct AnimSource;
     }
 } // namespace NS
 
@@ -74,7 +74,6 @@ namespace NS
     {
         std::unique_ptr<Gfx::SkeletalMesh> mesh;
         Gfx::Skeleton skeleton;
-        std::vector<Gfx::AnimationClip> clips;
     };
 
     //! アプリ寿命でアセットを重複なく所有する単一キャッシュ。ファイル由来は path キー、組み込みは名前キー
@@ -110,14 +109,10 @@ namespace NS
         //! 読めなかったファイルは覚えないので、直した後に読み直すと読める
         [[nodiscard]] const SkinnedModel* LoadSkinnedModel(std::string_view name);
 
-        //! アニメーション専用 glTF を path キーで重複なく所有して返す。読込失敗の path は負キャッシュし
-        //! 以後は再読込せず nullptr を返す。修正した file の再試行は Clear() でキャッシュを解いてから
-        [[nodiscard]] const Gfx::AnimationSource* GetOrLoadAnimationSource(std::string_view path);
-
-        //! 骨名で結合したクリップをパスの組ごとに共有する。結合対象がなければ空の一覧
-        //! クリップ読込失敗は負キャッシュ、モデル読込失敗は再試行可能な nullptr
-        [[nodiscard]] const std::vector<Gfx::AnimationClip>* GetOrLoadBoundClips(std::string_view clipPath,
-                                                                                     std::string_view modelPath);
+        //! @brief 欄の名前のクリップを返す。名前は ContentRoot からの glTF の道筋か「道筋#動きの名前」
+        //! @details # が無ければファイルの中の先頭の 1 本。空の名前は「使わない」で、警告せずに nullptr
+        //! 読めないファイル・無い動きの名前は警告して nullptr。トラックは骨を名前で持ち、どのモデルにも依らない
+        [[nodiscard]] const Gfx::AnimClip* LoadAnimClip(std::string_view name);
 
         //! 手続き生成の組み込み cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         //! device 確立後・最初の利用前に 1 度だけ呼ぶ。既登録名は上書きしない
@@ -172,6 +167,8 @@ namespace NS
 
         // 本当の場所の skinned glTF を読んで記録する。読めなければ nullptr
         [[nodiscard]] const SkinnedModel* LoadSkinnedModelFile(std::string_view path);
+        // アニメーションの glTF を path キーで 1 回だけ読む。読めなかった path も覚え、Clear まで読み直さない
+        [[nodiscard]] const Gfx::AnimSource* GetOrLoadAnimationSource(std::string_view path);
 
         std::string m_baseDir; // 相対 path 解決の基準ディレクトリ
         std::map<std::string, std::unique_ptr<Gfx::Shader>> m_shaders;
@@ -182,10 +179,8 @@ namespace NS
         std::map<std::string, MaterialRecord> m_materials;                           // .mat composite
         std::map<std::string, std::unique_ptr<Gfx::Material>> m_sharedMaterials; // 手続き共有マテリアル
         std::map<std::string, SkinnedModel> m_skinnedModels; // skinned glTF。挿入後に書き換えず、配った参照を安定させる
-        std::map<std::string, std::unique_ptr<Gfx::AnimationSource>>
-            m_animationSources; // アニメ専用 glTF。空の値は読み込み失敗の記録
-        std::map<std::pair<std::string, std::string>, std::unique_ptr<std::vector<Gfx::AnimationClip>>>
-            m_boundClips; // clip と model の path の組で引く結合済みクリップ。空の値は読み込み失敗の記録
+        std::map<std::string, std::unique_ptr<Gfx::AnimSource>>
+            m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録
     };
 
     //! @brief 生きている間だけ AssetManager::Get() が assets を返すようにし、壊れる時に前の物へ戻す

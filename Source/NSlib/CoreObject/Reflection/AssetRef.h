@@ -48,6 +48,7 @@ namespace NS
     {
         class Material;
         class Mesh;
+        struct AnimClip;
     } // namespace Gfx
     struct SkinnedModel;
 
@@ -57,6 +58,7 @@ namespace NS
     void LoadAssetRef(AssetRef<Gfx::Mesh>& ref);
     void LoadAssetRef(AssetRef<Gfx::Material>& ref);
     void LoadAssetRef(AssetRef<const SkinnedModel>& ref);
+    void LoadAssetRef(AssetRef<const Gfx::AnimClip>& ref);
 
     class SceneActor;
 

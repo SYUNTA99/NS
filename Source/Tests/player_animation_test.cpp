@@ -11,20 +11,35 @@
 
 #include <gtest/gtest.h>
 
-#include <vector>
+#include <string>
+
+namespace
+{
+    // 今のクリップの名前。クリップが無ければ空
+    std::string CurrentClipName(const NS::Animation& animation)
+    {
+        if (animation.CurrentClip() == nullptr)
+        {
+            return {};
+        }
+        return animation.CurrentClip()->name;
+    }
+} // namespace
 
 TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 {
-    const std::vector<NS::Gfx::AnimationClip> clips = {
-        {.name = "idle", .duration = 10.0f}, {.name = "run", .duration = 10.0f}, {.name = "walk", .duration = 10.0f}};
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
+    ASSERT_EQ(UseTestClips(player,
+                           {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},
+                            {"歩きのクリップ", "Assets/Models/Xbot.glb#walk"},
+                            {"走りのクリップ", "Assets/Models/Xbot.glb#run"}}),
+              0u);
     NS::Animation* animation = player.AnimationSubObj();
-    animation->AddClips(clips);
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
-    ASSERT_EQ(animation->CurrentClip(), 1u);
+    ASSERT_EQ(CurrentClipName(*animation), "run");
     animation->Update();
     const float first = animation->Time();
     EXPECT_NEAR(first, NS::OS::FrameTimer::FixedDelta() * 0.5f, 0.00001f);
@@ -33,13 +48,13 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
     EXPECT_NEAR(animation->Time(), first * 2.0f, 0.00001f);
     player.Body().SetLateralVelocity(NS::Vector3{2.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
-    EXPECT_EQ(animation->CurrentClip(), 2u);
+    EXPECT_EQ(CurrentClipName(*animation), "walk");
     player.Body().SetLateralVelocity(NS::Vector3{});
     player.UpdateAnimation();
-    EXPECT_EQ(animation->CurrentClip(), 0u);
+    EXPECT_EQ(CurrentClipName(*animation), "idle");
 }
 
-// アニメの欄はアニメの欄だけの部品 Clips が持ち、遊びの欄と並ばない
+// アニメの欄はアニメの欄だけの部品 Clips が持ち、遊びの欄と並ばない。モデルを入れるまで字面は空
 TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
@@ -48,9 +63,9 @@ TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
     ASSERT_NE(clipParts, nullptr);
     const nlohmann::json fields = NS::SerializeSubObjectFields(*clipParts);
     const nlohmann::json paramFields = NS::SerializeSubObjectFields(player.Params());
-    const nlohmann::json expected = {{"立ちのクリップ", "idle"},
-                                     {"歩きのクリップ", "walk"},
-                                     {"走りのクリップ", "run"},
+    const nlohmann::json expected = {{"立ちのクリップ", ""},
+                                     {"歩きのクリップ", ""},
+                                     {"走りのクリップ", ""},
                                      {"跳ぶクリップ", ""},
                                      {"落ちるクリップ", ""},
                                      {"ぶら下がりのクリップ", ""},
@@ -67,49 +82,46 @@ TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
 
 TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
 {
-    const std::vector<NS::Gfx::AnimationClip> clips = {{.name = "idle", .duration = 10.0f},
-                                                       {.name = "jump", .duration = 10.0f},
-                                                       {.name = "fall", .duration = 10.0f},
-                                                       {.name = "hang", .duration = 10.0f}};
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
     NS::Animation* animation = player.AnimationSubObj();
-    animation->AddClips(clips);
-    GL::Player::PlayerClips* clipParts = NS::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
-    ASSERT_NE(clipParts, nullptr);
-    const nlohmann::json airborne = {
-        {"跳ぶクリップ", "jump"}, {"落ちるクリップ", "fall"}, {"ぶら下がりのクリップ", "hang"}};
-    ASSERT_EQ(NS::ApplyJsonFields(*clipParts, airborne), 0u);
+    ASSERT_EQ(UseTestClips(player,
+                           {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},
+                            {"跳ぶクリップ", "Assets/Models/Xbot.glb#agree"},
+                            {"落ちるクリップ", "Assets/Models/Xbot.glb#headShake"},
+                            {"ぶら下がりのクリップ", "Assets/Models/Xbot.glb#sad_pose"}}),
+              0u);
     player.Body().SetGrounded(false);
     player.Body().SetVerticalVelocity(2.0f);
     player.UpdateAnimation();
-    EXPECT_EQ(animation->CurrentClip(), 1u);
+    EXPECT_EQ(CurrentClipName(*animation), "agree");
     player.Body().SetVerticalVelocity(-2.0f);
     player.UpdateAnimation();
-    EXPECT_EQ(animation->CurrentClip(), 2u);
+    EXPECT_EQ(CurrentClipName(*animation), "headShake");
     ASSERT_TRUE(player.States().Change<GL::Player::LedgeHangingPlayerState>());
     player.UpdateAnimation();
-    EXPECT_EQ(animation->CurrentClip(), 3u);
+    EXPECT_EQ(CurrentClipName(*animation), "sad_pose");
 }
 
+// 字面はあるが読めないクリップは、立ちのクリップへ戻す
 TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
 {
-    const std::vector<NS::Gfx::AnimationClip> clips = {{.name = "idle", .duration = 10.0f},
-                                                       {.name = "walk", .duration = 10.0f}};
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
     NS::Animation* animation = player.AnimationSubObj();
-    animation->AddClips(clips);
-    GL::Player::PlayerClips* clipParts = NS::Cast<GL::Player::PlayerClips>(player.FindSubObj("Clips"));
-    ASSERT_NE(clipParts, nullptr);
+    ASSERT_EQ(UseTestClips(player,
+                           {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},
+                            {"歩きのクリップ", "Assets/Models/Xbot.glb#walk"},
+                            {"走りのクリップ", "Assets/Models/Xbot.glb#__ns_missing__"}}),
+              0u);
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
-    EXPECT_EQ(animation->CurrentClip(), 0u);
+    EXPECT_EQ(CurrentClipName(*animation), "idle");
     player.Body().SetLateralVelocity(NS::Vector3{1.0f, 0.0f, 0.0f});
-    ASSERT_EQ(NS::ApplyJsonFields(*clipParts, {{"再生速度の下限", 0.75f}}), 0u);
+    ASSERT_EQ(UseTestClips(player, {{"再生速度の下限", 0.75f}}), 0u);
     player.UpdateAnimation();
-    ASSERT_EQ(animation->CurrentClip(), 1u);
+    ASSERT_EQ(CurrentClipName(*animation), "walk");
     animation->Update();
     EXPECT_NEAR(animation->Time(), NS::OS::FrameTimer::FixedDelta() * 0.75f, 0.00001f);
 }

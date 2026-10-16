@@ -18,9 +18,10 @@ namespace NS
         };
 
         //! ボーンの TRS トラック。空のチャンネルは bindLocal を使う
+        //! 骨を名前で持つので、どのモデルの骨格にも依らない。番号は再生する側が FindTrackBones で引く
         struct BoneTrack
         {
-            int boneIndex = -1; //!< ボーン番号 (-1 は未割り当て)
+            std::string boneName;
 
             std::vector<float> positionTimes; //!< 位置キーの時刻列 (秒)
             std::vector<Vector3> positionValues;
@@ -36,7 +37,7 @@ namespace NS
         };
 
         //! 描画用ポーズの評価に使うアニメーションクリップ
-        struct AnimationClip
+        struct AnimClip
         {
             std::string name;
             float duration = 0.0f; // 尺 (秒)
@@ -63,8 +64,10 @@ namespace NS
                                                 const Quaternion& fallback) noexcept;
 
         //! 時刻 t 秒の姿勢で outPose を上書きする。トラックのないボーンは bindLocal を使う
+        //! trackBones は FindTrackBones が clip と skeleton から引いた骨の番号。-1 のトラックは使わない
         //! 出力の要素数は skeleton.BoneCount()
-        void SampleClipPose(const AnimationClip& clip,
+        void SampleClipPose(const AnimClip& clip,
+                            std::span<const int> trackBones,
                             const Skeleton& skeleton,
                             float t,
                             std::vector<BonePose>& outPose);

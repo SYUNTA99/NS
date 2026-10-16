@@ -15,10 +15,9 @@ namespace NS
         //! 最後の : か | までを取り除き、残りを前後の空白なしの小文字にする
         [[nodiscard]] std::string NormalizeBoneName(std::string_view raw);
 
-        //! 正規化した骨名でトラックを張り替える。一致しないトラックと空のクリップは除く
-        //! 対象の骨名が重複した場合は先の骨を使い、警告する
-        [[nodiscard]] std::vector<AnimationClip> BindClipsByName(const std::vector<AnimationClip>& sourceClips,
-                                                                 const Skeleton& sourceSkeleton,
-                                                                 const Skeleton& targetSkeleton);
+        //! @brief clip のトラックごとに、正規化した骨名が一致する skeleton の骨の番号を引く
+        //! @details 戻り値はトラックと同じ並びで、一致する骨が無いトラックは -1
+        //! 正規化した骨名が skeleton の中で重なる時は先の骨を使い、警告する
+        [[nodiscard]] std::vector<int> FindTrackBones(const AnimClip& clip, const Skeleton& skeleton);
     } // namespace Gfx
 } // namespace NS

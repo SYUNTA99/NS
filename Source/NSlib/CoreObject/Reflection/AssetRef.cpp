@@ -27,6 +27,11 @@ namespace NS
         ref.SetLoaded(AssetManager::Get().LoadSkinnedModel(ref.Name()));
     }
 
+    void LoadAssetRef(AssetRef<const Gfx::AnimClip>& ref)
+    {
+        ref.SetLoaded(AssetManager::Get().LoadAnimClip(ref.Name()));
+    }
+
     void LoadAssetRefs(SceneActor& actor)
     {
         ForEachReflectedSubObj(actor, [](const SubObjectDesc&, SubObject* subObject) {

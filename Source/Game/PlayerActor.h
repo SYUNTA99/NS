@@ -9,6 +9,7 @@
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
+#include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
@@ -412,11 +413,11 @@ private:
     //! @param[out] outTop 見つけた縁の上端の y。見つからない場合は書き換えない
     //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
     [[nodiscard]] bool FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept;
-    [[nodiscard]] std::string_view ChooseClip(float lateralSpeed) const noexcept;
-    [[nodiscard]] float ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept;
+    // 状態と水平の速さから役の欄を選ぶ。字面が空の役は立ちの欄に代える
+    [[nodiscard]] const NS::AssetRef<const NS::Gfx::AnimClip>& ChooseClip(float lateralSpeed) const noexcept;
+    [[nodiscard]] float ChoosePlaybackSpeed(const NS::Gfx::AnimClip* clip, float lateralSpeed) const noexcept;
     std::unique_ptr<GL::Player::PlayerParams> m_params;
     std::unique_ptr<GL::Player::PlayerClips> m_clips;
-    std::string m_appliedClip{};
     std::unique_ptr<NS::PlayerInput> m_input;
     std::unique_ptr<NS::Body> m_body;
     std::unique_ptr<NS::Collider> m_collider;

@@ -145,9 +145,6 @@ TEST(ActorBodyTime, PlayerAtScaleTwoMovesAndSpinsTwoStepsInOne)
 
 TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
 {
-    // アニメはクリップを写さずに指すので、試しの間は生かしておく
-    const std::vector<NS::Gfx::AnimationClip> clips = {
-        {.name = "idle", .duration = 10.0f}, {.name = "run", .duration = 10.0f}, {.name = "walk", .duration = 10.0f}};
     float times[2] = {};
     for (int index = 0; index < 2; ++index)
     {
@@ -155,7 +152,7 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
         PlayerActor& player = *playerOwned;
         NS::Animation* animation = player.AnimationSubObj();
         ASSERT_NE(animation, nullptr);
-        animation->AddClips(clips);
+        ASSERT_EQ(UseTestClips(player, {{"走りのクリップ", "Assets/Models/Xbot.glb#run"}}), 0u);
         ASSERT_TRUE(player.SetBodyTimeScale(static_cast<float>(index + 1)));
         player.Body().SetGrounded(true);
         player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});

@@ -8,7 +8,6 @@
 #include "NSlib/Graphics/Material.h"
 #include "NSlib/Graphics/Mesh.h"
 #include "NSlib/Graphics/MeshPrimitives.h"
-#include "NSlib/Graphics/Retarget.h"
 #include "NSlib/Graphics/Shader.h"
 #include "NSlib/Graphics/SkeletalMesh.h"
 #include "NSlib/Graphics/StaticMesh.h"
@@ -415,22 +414,21 @@ namespace NS
         }
 
         model.skeleton = std::move(data.skeleton);
-        model.clips = std::move(data.animations);
         return &m_skinnedModels.emplace(key, std::move(model)).first->second;
     }
 
-    const Gfx::AnimationSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
+    const Gfx::AnimSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
     {
         const std::string key = OS::FileSystem::Normalize(path);
         // 空の項目は読み込み失敗の記録。get() が nullptr を返し、再読み込みを避ける
-        if (const std::map<std::string, std::unique_ptr<Gfx::AnimationSource>>::iterator it =
+        if (const std::map<std::string, std::unique_ptr<Gfx::AnimSource>>::iterator it =
                 m_animationSources.find(key);
             it != m_animationSources.end())
         {
             return it->second.get();
         }
 
-        Gfx::AnimationSource source = Gfx::LoadGltfAnimationSource(key);
+        Gfx::AnimSource source = Gfx::LoadGltfAnimationSource(key);
         if (!source.IsValid())
         {
             NS_LOG_WARN(Graphics, "AssetManager: アニメーション glTF の読込失敗 / 空: {}", key);
@@ -439,47 +437,46 @@ namespace NS
             return nullptr;
         }
 
-        std::unique_ptr<Gfx::AnimationSource> owned = std::make_unique<Gfx::AnimationSource>(std::move(source));
-        const Gfx::AnimationSource* raw = owned.get();
+        std::unique_ptr<Gfx::AnimSource> owned = std::make_unique<Gfx::AnimSource>(std::move(source));
+        const Gfx::AnimSource* raw = owned.get();
         m_animationSources.emplace(key, std::move(owned));
         return raw;
     }
 
-    const std::vector<Gfx::AnimationClip>* AssetManager::GetOrLoadBoundClips(std::string_view clipPath,
-                                                                                 std::string_view modelPath)
+    const Gfx::AnimClip* AssetManager::LoadAnimClip(std::string_view name)
     {
-        const std::pair<std::string, std::string> key{OS::FileSystem::Normalize(clipPath),
-                                                      OS::FileSystem::Normalize(modelPath)};
-        if (const std::map<std::pair<std::string, std::string>,
-                           std::unique_ptr<std::vector<Gfx::AnimationClip>>>::iterator it = m_boundClips.find(key);
-            it != m_boundClips.end())
+        if (name.empty())
         {
-            return it->second.get();
+            return nullptr;
         }
-
-        const Gfx::AnimationSource* source = GetOrLoadAnimationSource(key.first);
+        const std::size_t hash = name.find('#');
+        const std::string_view file = name.substr(0, hash);
+        const std::optional<std::string> path = ResolveContentPath(std::string{file});
+        if (!path)
+        {
+            NS_LOG_WARN(Scene, "クリップ {} は ContentRoot の外を指すので読まない", name);
+            return nullptr;
+        }
+        const Gfx::AnimSource* source = GetOrLoadAnimationSource(*path);
         if (source == nullptr)
         {
-            // クリップ側の読込失敗は上流で負キャッシュ済み。組としても負キャッシュする
-            m_boundClips.emplace(key, nullptr);
+            // 読めなかった理由は GetOrLoadAnimationSource が報告している
             return nullptr;
         }
-
-        const SkinnedModel* model = LoadSkinnedModelFile(key.second);
-        if (model == nullptr)
+        if (hash == std::string_view::npos)
         {
-            // model 側の失敗は LoadSkinnedModelFile がキャッシュせず再試行できるようにしている。組で恒久化しない
-            return nullptr;
+            return &source->animations.front();
         }
-
-        // 結合で index を振り直した複製は避けられない派生データだが、所有はこちら側なので
-        // 同じ組で解決する全インスタンスがこの 1 本を共有する
-        std::unique_ptr<std::vector<Gfx::AnimationClip>> bound =
-            std::make_unique<std::vector<Gfx::AnimationClip>>(
-                Gfx::BindClipsByName(source->animations, source->skeleton, model->skeleton));
-        const std::vector<Gfx::AnimationClip>* raw = bound.get();
-        m_boundClips.emplace(key, std::move(bound));
-        return raw;
+        const std::string_view clipName = name.substr(hash + 1);
+        for (const Gfx::AnimClip& clip : source->animations)
+        {
+            if (clip.name == clipName)
+            {
+                return &clip;
+            }
+        }
+        NS_LOG_WARN(Scene, "クリップ {} の動き {} がファイルに無い", name, clipName);
+        return nullptr;
     }
 
     void AssetManager::RegisterBuiltins()
@@ -698,7 +695,6 @@ namespace NS
         m_builtinCollisions.clear();
         m_skinnedModels.clear();
         m_animationSources.clear();
-        m_boundClips.clear();
         m_builtins.clear();
     }
 } // namespace NS

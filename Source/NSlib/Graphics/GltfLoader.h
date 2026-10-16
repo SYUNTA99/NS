@@ -23,7 +23,6 @@ namespace NS
             std::vector<SkinnedVertex> vertices;   //!< スキニング用の頂点データ列
             std::vector<uint32> indices;       //!< 全プリミティブを連結したインデックス列
             Skeleton skeleton;                     //!< ボーン階層と逆バインド行列
-            std::vector<AnimationClip> animations; //!< 読み込まれたアニメーションクリップ群
 
             [[nodiscard]] bool IsValid() const noexcept
             {
@@ -38,16 +37,16 @@ namespace NS
 
         //! @brief スキニング情報に依存しないアニメーションデータの読み込み結果
         //! @details メッシュやスキン情報を持たない、アニメーション専用のファイルからも読み込み可能
-        struct AnimationSource
+        struct AnimSource
         {
             Skeleton skeleton;
-            std::vector<AnimationClip> animations;
+            std::vector<AnimClip> animations;
 
             [[nodiscard]] bool IsValid() const noexcept { return skeleton.BoneCount() > 0 && !animations.empty(); }
         };
 
         //! @brief スキニング情報に依存しないアニメーションを読み込む
         //! @return 読み込み失敗時は無効な状態のデータを返す
-        [[nodiscard]] AnimationSource LoadGltfAnimationSource(const std::string& path);
+        [[nodiscard]] AnimSource LoadGltfAnimationSource(const std::string& path);
     } // namespace Gfx
 } // namespace NS

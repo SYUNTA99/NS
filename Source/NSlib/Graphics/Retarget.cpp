@@ -38,60 +38,35 @@ namespace NS
             return normalized;
         }
 
-        std::vector<AnimationClip> BindClipsByName(const std::vector<AnimationClip>& sourceClips,
-                                                   const Skeleton& sourceSkeleton,
-                                                   const Skeleton& targetSkeleton)
+        std::vector<int> FindTrackBones(const AnimClip& clip, const Skeleton& skeleton)
         {
-            // target の正規化名 → 骨 index
-            std::unordered_map<std::string, int> targetIndexByName;
-            const std::vector<Bone>& targetBones = targetSkeleton.Bones();
-            for (std::size_t i = 0; i < targetBones.size(); ++i)
+            std::unordered_map<std::string, int> indexByName;
+            const std::vector<Bone>& bones = skeleton.Bones();
+            for (std::size_t i = 0; i < bones.size(); ++i)
             {
-                const bool inserted =
-                    targetIndexByName.try_emplace(NormalizeBoneName(targetBones[i].name), static_cast<int>(i)).second;
+                const bool inserted = indexByName.try_emplace(NormalizeBoneName(bones[i].name), static_cast<int>(i)).second;
                 if (!inserted)
                 {
-                    NS_LOG_WARN(
-                        Graphics, "BindClipsByName: 正規化後の骨名が重複、 先の骨へ張る: {}", targetBones[i].name);
+                    NS_LOG_WARN(Graphics, "FindTrackBones: 正規化後の骨名が重複、 先の骨を使う: {}", bones[i].name);
                 }
             }
 
-            const std::vector<Bone>& sourceBones = sourceSkeleton.Bones();
-            std::vector<AnimationClip> bound;
-            bound.reserve(sourceClips.size());
-            for (const AnimationClip& clip : sourceClips)
+            std::vector<int> trackBones;
+            trackBones.reserve(clip.tracks.size());
+            for (const BoneTrack& track : clip.tracks)
             {
-                AnimationClip remappedClip;
-                remappedClip.name = clip.name;
-                remappedClip.duration = clip.duration;
-                for (const BoneTrack& track : clip.tracks)
+                const std::unordered_map<std::string, int>::const_iterator found =
+                    indexByName.find(NormalizeBoneName(track.boneName));
+                if (found == indexByName.end())
                 {
-                    if (track.boneIndex < 0 || static_cast<std::size_t>(track.boneIndex) >= sourceBones.size())
-                    {
-                        NS_LOG_WARN(Graphics, "BindClipsByName: 無効な骨番号のトラックを skip: {}", track.boneIndex);
-                        continue;
-                    }
-                    const std::string& sourceName = sourceBones[static_cast<std::size_t>(track.boneIndex)].name;
-                    const std::unordered_map<std::string, int>::iterator found =
-                        targetIndexByName.find(NormalizeBoneName(sourceName));
-                    if (found == targetIndexByName.end())
-                    {
-                        continue;
-                    }
-                    BoneTrack remappedTrack = track;
-                    remappedTrack.boneIndex = found->second;
-                    remappedClip.tracks.push_back(std::move(remappedTrack));
+                    trackBones.push_back(-1);
                 }
-
-                // 1 本も結合できないクリップは残しても bind ポーズしか出せず、添字選択をずらすだけなので除外する
-                if (remappedClip.tracks.empty())
+                else
                 {
-                    NS_LOG_WARN(Graphics, "BindClipsByName: 一致する骨が無いためクリップを除外: {}", clip.name);
-                    continue;
+                    trackBones.push_back(found->second);
                 }
-                bound.push_back(std::move(remappedClip));
             }
-            return bound;
+            return trackBones;
         }
     } // namespace Gfx
 } // namespace NS

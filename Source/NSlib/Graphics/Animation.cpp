@@ -94,7 +94,8 @@ namespace NS
             return Quaternion::Slerp(a, b, seg.f);
         }
 
-        void SampleClipPose(const AnimationClip& clip,
+        void SampleClipPose(const AnimClip& clip,
+                            std::span<const int> trackBones,
                             const Skeleton& skeleton,
                             float t,
                             std::vector<BonePose>& outPose)
@@ -106,13 +107,15 @@ namespace NS
                 outPose[i] = bones[i].bindLocal;
             }
 
-            for (const BoneTrack& track : clip.tracks)
+            const std::size_t trackCount = std::min(clip.tracks.size(), trackBones.size());
+            for (std::size_t i = 0; i < trackCount; ++i)
             {
-                if (track.boneIndex < 0)
+                const BoneTrack& track = clip.tracks[i];
+                if (trackBones[i] < 0)
                 {
                     continue;
                 }
-                const std::size_t boneIndex = static_cast<std::size_t>(track.boneIndex);
+                const std::size_t boneIndex = static_cast<std::size_t>(trackBones[i]);
                 if (boneIndex >= outPose.size())
                 {
                     continue;

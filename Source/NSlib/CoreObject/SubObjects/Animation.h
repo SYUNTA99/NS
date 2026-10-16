@@ -32,13 +32,11 @@ namespace NS
         //! 使っている骨格。モデルを使っていなければ nullptr
         [[nodiscard]] const Gfx::Skeleton* Skeleton() const noexcept { return m_skeleton; }
 
-        //! 追加で読むアニメーション glTF の参照一覧。セミコロン区切りの ContentRoot 相対パス
-        [[nodiscard]] const std::string& ClipsRef() const noexcept { return m_clipsRef; }
-        //! 各エントリのクリップを骨名で model の骨格へ結合して後ろに足す。空エントリと前後の空白は無視し、
-        //! 解決できないエントリは読み飛ばして残りを続ける
-        void SetClipsRef(std::string ref) noexcept { m_clipsRef = std::move(ref); }
-
         void Play() noexcept;
+        //! @brief clip を今のクリップにして、時刻を 0 から再生する。今と同じクリップなら何もしない
+        //! @details clip のトラックの骨を、今の骨格で名前から 1 回だけ引いて控える。clip の寿命は AssetManager が保つ
+        //! nullptr を渡すとクリップを外し、骨格の基準の姿勢を描く
+        void Play(const Gfx::AnimClip* clip);
         void Pause() noexcept;
         //! 再生時刻を 0 に戻して停止する
         void Stop() noexcept;
@@ -47,17 +45,9 @@ namespace NS
         //! @param[in] speed 再生速度。1.0 が等倍
         void SetSpeed(float speed) noexcept;
         void SetLooping(bool looping) noexcept;
-        //! 添字でクリップを選び再生時刻を 0 へ戻す。範囲外は false で選択を変えない
-        bool SelectClip(std::size_t index) noexcept;
-        //! 名前一致のクリップを選ぶ。一致が無ければ false で選択を変えない
-        bool SelectClip(std::string_view name) noexcept;
 
-        //! クリップを後から追加する。既存の選択・再生位置は維持
-        //! 各要素のアドレスを控えるだけなので、格納元の寿命は呼出側が保証する。右辺値の vector を渡すと参照が宙に浮く
-        void AddClips(std::span<const Gfx::AnimationClip> clips);
-
-        [[nodiscard]] std::size_t ClipCount() const noexcept;
-        [[nodiscard]] std::size_t CurrentClip() const noexcept;
+        //! 今のクリップ。無ければ nullptr
+        [[nodiscard]] const Gfx::AnimClip* CurrentClip() const noexcept { return m_clip; }
         [[nodiscard]] float Time() const noexcept;
         //! 現在クリップの尺。無ければ 0
         [[nodiscard]] float Duration() const noexcept;
@@ -68,8 +58,9 @@ namespace NS
         //! 再生中なら体の時間ぶん時刻を進め、今の時刻の姿勢を書く
         void Update();
 
-        //! @brief モデルの欄で読んだ骨付きのモデルの骨格・メッシュ・クリップを使い、持ち主の Model に同じメッシュを差す
-        //! @details 呼ぶのは持ち主の OnAssetsLoaded だけ。モデルが空・読めなければ、骨格もメッシュもクリップも空にする
+        //! @brief モデルの欄で読んだ骨付きのモデルの骨格とメッシュを使い、持ち主の Model に同じメッシュを差す
+        //! @details 呼ぶのは持ち主の OnAssetsLoaded だけ。モデルが空・読めなければ、骨格もメッシュも空にする
+        //! 今のクリップは残し、トラックの骨を新しい骨格で引き直す
         //! 骨付きのアクターは Model のメッシュの欄を空のままにする。差すのはこちら
         void UseModel();
 
@@ -78,18 +69,18 @@ namespace NS
         NS_REFLECT_FIELD(m_speed, "再生速度")
         NS_REFLECT_FIELD(m_looping, "ループ再生")
         NS_REFLECT_FIELD(m_model, "モデル")
-        NS_REFLECT_FIELD(m_clipsRef, "クリップ")
         NS_REFLECT_END()
 
     private:
         void ApplyPose(float time);
+        // 今のクリップのトラックの骨を、今の骨格で名前から引き直す
+        void FindClipBones();
 
         Gfx::SkeletalMesh* m_mesh = nullptr; // 更新先の SkeletalMesh (非所有)
         AssetRef<const SkinnedModel> m_model;
-        std::string m_clipsRef{}; // 追加アニメーションの参照一覧。セミコロン区切りで UseModel が結合する
-        const Gfx::Skeleton* m_skeleton = nullptr;      // ボーンパレット計算用の骨格 (非所有)
-        std::vector<const Gfx::AnimationClip*> m_clips; // 再生できるクリップ一覧 (非所有)
-        std::size_t m_current = 0;
+        const Gfx::Skeleton* m_skeleton = nullptr; // ボーンパレット計算用の骨格 (非所有)
+        const Gfx::AnimClip* m_clip = nullptr;     // 今のクリップ (非所有)
+        std::vector<int> m_clipBones;              // m_clip のトラックごとの骨の番号。-1 は骨格に無い骨
         float m_time = 0.0f;
         float m_speed = 1.0f;
         bool m_playing = true;

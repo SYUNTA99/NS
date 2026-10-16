@@ -647,18 +647,34 @@ namespace NS
                 return Interpolation::Linear; // linear、cubic_spline は linear で代替
             }
 
-            // animation channel/sampler を AnimationClip へ変換。resolveBone(node)→bone index は -1
-            // で対象外、skinned/source 共用
+            // 位置・回転・拡縮の channel は同じ骨の 1 本のトラックへまとめる
+            BoneTrack& FindOrAddTrack(std::vector<BoneTrack>& tracks, const std::string& boneName)
+            {
+                for (BoneTrack& track : tracks)
+                {
+                    if (track.boneName == boneName)
+                    {
+                        return track;
+                    }
+                }
+                tracks.push_back(BoneTrack{});
+                tracks.back().boneName = boneName;
+                return tracks.back();
+            }
+
+            // animation channel/sampler を AnimClip へ変換。resolveBone(node) は bones の番号を返し、-1 は対象外
+            // トラックには骨の名前を入れ、骨格の番号に依らないクリップにする
             template <class ResolveBone>
             void ParseAnimations(const cgltf_data& model,
                                  ResolveBone resolveBone,
+                                 const std::vector<Bone>& bones,
                                  const std::string& path,
-                                 std::vector<AnimationClip>& outClips)
+                                 std::vector<AnimClip>& outClips)
             {
                 for (cgltf_size a = 0; a < model.animations_count; ++a)
                 {
                     const cgltf_animation& anim = model.animations[a];
-                    AnimationClip clip;
+                    AnimClip clip;
                     if (anim.name != nullptr)
                     {
                         clip.name = anim.name;
@@ -682,7 +698,7 @@ namespace NS
                             continue; // morph target は非対応
                         }
                         const int boneIndex = resolveBone(channel.target_node);
-                        if (boneIndex < 0)
+                        if (boneIndex < 0 || static_cast<std::size_t>(boneIndex) >= bones.size())
                         {
                             NS_LOG_WARN(Graphics, "glTF animation: target が骨に対応しないため skip (path={})", path);
                             continue;
@@ -715,18 +731,7 @@ namespace NS
                         }
                         duration = std::max(duration, times.back());
 
-                        BoneTrack& track = [&tracks, boneIndex]() -> BoneTrack& {
-                            for (BoneTrack& tr : tracks)
-                            {
-                                if (tr.boneIndex == boneIndex)
-                                {
-                                    return tr;
-                                }
-                            }
-                            tracks.push_back(BoneTrack{});
-                            tracks.back().boneIndex = boneIndex;
-                            return tracks.back();
-                        }();
+                        BoneTrack& track = FindOrAddTrack(tracks, bones[static_cast<std::size_t>(boneIndex)].name);
                         if (channel.target_path == cgltf_animation_path_type_translation)
                         {
                             track.positionTimes = times;
@@ -982,24 +987,12 @@ namespace NS
             data.indices = std::move(indices);
             data.skeleton = Skeleton(std::move(bones));
             data.skeleton.SetRootTransform(ComputeSkeletonRootTransform(skin));
-            ParseAnimations(
-                model,
-                [&](const cgltf_node* node) -> int {
-                    const int joint = FindJointIndex(skin, node);
-                    if (joint < 0)
-                    {
-                        return -1;
-                    }
-                    return static_cast<int>(remap[static_cast<std::size_t>(joint)]);
-                },
-                path,
-                data.animations);
             return data;
         }
 
-        AnimationSource LoadGltfAnimationSource(const std::string& path)
+        AnimSource LoadGltfAnimationSource(const std::string& path)
         {
-            AnimationSource source;
+            AnimSource source;
 
             CgltfGuard guard;
             if (!OpenGltf(path, "LoadGltfAnimationSource", guard))
@@ -1034,6 +1027,7 @@ namespace NS
                     }
                     return it->second;
                 },
+                source.skeleton.Bones(),
                 path,
                 source.animations);
             return source;

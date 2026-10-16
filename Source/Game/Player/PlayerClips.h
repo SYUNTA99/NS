@@ -1,8 +1,7 @@
 #pragma once
 
+#include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/SubObject.h"
-
-#include <string>
 
 class PlayerActor;
 
@@ -11,7 +10,7 @@ namespace GL
     namespace Player
     {
         //! @brief 自機のアニメの欄を持つ部品。どのクリップを選ぶかは PlayerActor が欄を読んで決める
-        //! @details クリップの名前は、Animation の部品に読み込んだクリップの名前と照らす
+        //! @details クリップの欄の字面は「ContentRoot からの glTF の道筋」か「道筋#動きの名前」
         class PlayerClips : public NS::SubObject
         {
         public:
@@ -28,12 +27,12 @@ namespace GL
 
         private:
             friend class ::PlayerActor;
-            std::string m_idleClip = "idle";
-            std::string m_walkClip = "walk";
-            std::string m_runClip = "run";
-            std::string m_jumpClip{};
-            std::string m_fallClip{};
-            std::string m_ledgeHangClip{};
+            NS::AssetRef<const NS::Gfx::AnimClip> m_idleClip;
+            NS::AssetRef<const NS::Gfx::AnimClip> m_walkClip;
+            NS::AssetRef<const NS::Gfx::AnimClip> m_runClip;
+            NS::AssetRef<const NS::Gfx::AnimClip> m_jumpClip;
+            NS::AssetRef<const NS::Gfx::AnimClip> m_fallClip;
+            NS::AssetRef<const NS::Gfx::AnimClip> m_ledgeHangClip;
             float m_runBlendRatio = 0.4f;
             float m_minPlaybackSpeed = 0.5f;
         };

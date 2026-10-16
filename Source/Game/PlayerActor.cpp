@@ -155,21 +155,18 @@ void PlayerActor::UpdateAnimation()
     }
 
     const float lateralSpeed = m_body->LateralVelocity().Length();
-    const std::string_view clip = ChooseClip(lateralSpeed);
-
-    if (clip != m_appliedClip)
+    const NS::Gfx::AnimClip* clip = ChooseClip(lateralSpeed).Get();
+    if (clip == nullptr)
     {
-        if (animation->SelectClip(clip))
-        {
-            m_appliedClip = clip;
-        }
-        else if (animation->SelectClip(m_clips->m_idleClip))
-        {
-            m_appliedClip = m_clips->m_idleClip;
-        }
+        clip = m_clips->m_idleClip.Get();
+    }
+    // 立ちのクリップも読めなければ、今のクリップのまま
+    if (clip != nullptr)
+    {
+        animation->Play(clip);
     }
 
-    animation->SetSpeed(ChoosePlaybackSpeed(m_appliedClip, lateralSpeed));
+    animation->SetSpeed(ChoosePlaybackSpeed(animation->CurrentClip(), lateralSpeed));
 }
 
 void PlayerActor::ReadInput()
@@ -284,11 +281,11 @@ void PlayerActor::VisualStep()
 #endif
 }
 
-std::string_view PlayerActor::ChooseClip(float lateralSpeed) const noexcept
+const NS::AssetRef<const NS::Gfx::AnimClip>& PlayerActor::ChooseClip(float lateralSpeed) const noexcept
 {
     if (m_states->IsCurrent<GL::Player::LedgeHangingPlayerState>())
     {
-        if (!m_clips->m_ledgeHangClip.empty())
+        if (!m_clips->m_ledgeHangClip.Name().empty())
         {
             return m_clips->m_ledgeHangClip;
         }
@@ -297,11 +294,11 @@ std::string_view PlayerActor::ChooseClip(float lateralSpeed) const noexcept
 
     if (!m_body->IsGrounded())
     {
-        if (m_body->VerticalVelocity() > 0.0f && !m_clips->m_jumpClip.empty())
+        if (m_body->VerticalVelocity() > 0.0f && !m_clips->m_jumpClip.Name().empty())
         {
             return m_clips->m_jumpClip;
         }
-        if (m_body->VerticalVelocity() <= 0.0f && !m_clips->m_fallClip.empty())
+        if (m_body->VerticalVelocity() <= 0.0f && !m_clips->m_fallClip.Name().empty())
         {
             return m_clips->m_fallClip;
         }
@@ -314,20 +311,20 @@ std::string_view PlayerActor::ChooseClip(float lateralSpeed) const noexcept
     }
 
     const float maxSpeed = MaxSpeed();
-    if (maxSpeed > 0.0f && lateralSpeed >= maxSpeed * m_clips->m_runBlendRatio && !m_clips->m_runClip.empty())
+    if (maxSpeed > 0.0f && lateralSpeed >= maxSpeed * m_clips->m_runBlendRatio && !m_clips->m_runClip.Name().empty())
     {
         return m_clips->m_runClip;
     }
-    if (!m_clips->m_walkClip.empty())
+    if (!m_clips->m_walkClip.Name().empty())
     {
         return m_clips->m_walkClip;
     }
     return m_clips->m_idleClip;
 }
 
-float PlayerActor::ChoosePlaybackSpeed(std::string_view clip, float lateralSpeed) const noexcept
+float PlayerActor::ChoosePlaybackSpeed(const NS::Gfx::AnimClip* clip, float lateralSpeed) const noexcept
 {
-    if (clip != m_clips->m_walkClip && clip != m_clips->m_runClip)
+    if (clip == nullptr || (clip != m_clips->m_walkClip.Get() && clip != m_clips->m_runClip.Get()))
     {
         return 1.0f;
     }
@@ -362,7 +359,11 @@ void PlayerActor::OnStart()
 void PlayerActor::OnEndPlay()
 {
     m_states->Reset();
-    m_appliedClip.clear();
+    // 次のプレイで選んだクリップを頭から流す
+    if (NS::Animation* animation = AnimationSubObj())
+    {
+        animation->Play(nullptr);
+    }
     NS::SceneActor::OnEndPlay();
     // 走っている当たりのタイムラインを捨てる。プレイの途中で外れても止めが次のプレイへ残らない
     m_resolver->CancelImpact(ModelSubObj(), HitReactionSubObj());

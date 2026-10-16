@@ -2,53 +2,18 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Graphics/Buffer.h"
+#include "NSlib/Graphics/Retarget.h"
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
-#include <string_view>
 
 namespace NS
 {
-    namespace
-    {
-        // セミコロン区切りの参照文字列を trim 済みエントリへ分解する。空エントリは捨てる
-        [[nodiscard]] std::vector<std::string> SplitClipRefs(const std::string& refs)
-        {
-            std::vector<std::string> entries;
-            std::size_t begin = 0;
-            while (begin <= refs.size())
-            {
-                std::size_t end = refs.find(';', begin);
-                if (end == std::string::npos)
-                {
-                    end = refs.size();
-                }
-                std::string_view entry(refs.data() + begin, end - begin);
-                while (!entry.empty() && std::isspace(static_cast<uint8>(entry.front())) != 0)
-                {
-                    entry.remove_prefix(1);
-                }
-                while (!entry.empty() && std::isspace(static_cast<uint8>(entry.back())) != 0)
-                {
-                    entry.remove_suffix(1);
-                }
-                if (!entry.empty())
-                {
-                    entries.emplace_back(entry);
-                }
-                begin = end + 1;
-            }
-            return entries;
-        }
-    } // namespace
-
     Animation::Animation() noexcept = default;
 
     Animation::~Animation() = default;
@@ -66,6 +31,17 @@ namespace NS
     void Animation::Play() noexcept
     {
         m_playing = true;
+    }
+
+    void Animation::Play(const Gfx::AnimClip* clip)
+    {
+        if (clip == m_clip)
+        {
+            return;
+        }
+        m_clip = clip;
+        m_time = 0.0f;
+        FindClipBones();
     }
 
     void Animation::Pause() noexcept
@@ -101,48 +77,6 @@ namespace NS
         m_looping = looping;
     }
 
-    bool Animation::SelectClip(std::size_t index) noexcept
-    {
-        if (index >= m_clips.size())
-        {
-            return false;
-        }
-        m_current = index;
-        m_time = 0.0f;
-        return true;
-    }
-
-    bool Animation::SelectClip(std::string_view name) noexcept
-    {
-        for (std::size_t i = 0; i < m_clips.size(); ++i)
-        {
-            if (m_clips[i] != nullptr && m_clips[i]->name == name)
-            {
-                return SelectClip(i);
-            }
-        }
-        return false;
-    }
-
-    void Animation::AddClips(std::span<const Gfx::AnimationClip> clips)
-    {
-        m_clips.reserve(m_clips.size() + clips.size());
-        for (const Gfx::AnimationClip& clip : clips)
-        {
-            m_clips.push_back(&clip);
-        }
-    }
-
-    std::size_t Animation::ClipCount() const noexcept
-    {
-        return m_clips.size();
-    }
-
-    std::size_t Animation::CurrentClip() const noexcept
-    {
-        return m_current;
-    }
-
     float Animation::Time() const noexcept
     {
         return m_time;
@@ -150,9 +84,9 @@ namespace NS
 
     float Animation::Duration() const noexcept
     {
-        if (m_current < m_clips.size() && m_clips[m_current] != nullptr)
+        if (m_clip != nullptr)
         {
-            return m_clips[m_current]->duration;
+            return m_clip->duration;
         }
         return 0.0f;
     }
@@ -162,60 +96,36 @@ namespace NS
         return m_playing;
     }
 
+    void Animation::FindClipBones()
+    {
+        m_clipBones.clear();
+        if (m_clip != nullptr && m_skeleton != nullptr)
+        {
+            m_clipBones = Gfx::FindTrackBones(*m_clip, *m_skeleton);
+        }
+    }
+
     void Animation::UseModel()
     {
-        // 欄を書き換えるたびに読み直すので、前のモデルの骨格・メッシュ・クリップを残さない
-        m_clips.clear();
+        // 欄を書き換えるたびに読み直すので、前のモデルの骨格とメッシュを残さない
         SetSkeleton(nullptr);
         SetMesh(nullptr);
         const SkinnedModel* model = m_model.Get();
-        if (model == nullptr)
+        if (model != nullptr)
         {
-            // 結合先の骨格が無いので Clips だけあっても解決できない
-            if (!m_clipsRef.empty())
-            {
-                NS_LOG_WARN(Graphics, "SkeletalAnimation: model 参照が空のまま Clips を結合しようとしている");
-            }
-            return;
-        }
+            SetSkeleton(&model->skeleton);
+            SetMesh(model->mesh.get());
 
-        SetSkeleton(&model->skeleton);
-        AddClips(std::span(model->clips));
-        SetMesh(model->mesh.get());
-
-        // Model のメッシュの欄は空なので、ここで差さないと骨付きのメッシュが見た目に出ない
-        if (SceneActor* owner = Owner())
-        {
-            if (Model* renderer = owner->ModelSubObj())
+            // Model のメッシュの欄は空なので、ここで差さないと骨付きのメッシュが見た目に出ない
+            if (SceneActor* owner = Owner())
             {
-                renderer->SetMesh(model->mesh.get());
+                if (Model* renderer = owner->ModelSubObj())
+                {
+                    renderer->SetMesh(model->mesh.get());
+                }
             }
         }
-
-        // Clips 欄のエントリを骨名で model の骨格へ結合して足す。失敗エントリは skip して残りを続ける
-        // 読めたモデルの名前は ContentRoot の中を指している
-        const std::optional<std::string> resolved = ResolveContentPath(m_model.Name());
-        if (!resolved)
-        {
-            return;
-        }
-        AssetManager& assets = AssetManager::Get();
-        for (const std::string& entry : SplitClipRefs(m_clipsRef))
-        {
-            const std::optional<std::string> resolvedClip = ResolveContentPath(entry);
-            if (!resolvedClip)
-            {
-                NS_LOG_WARN(Graphics, "SkeletalAnimation: clip 参照を解決できない: {}", entry);
-                continue;
-            }
-            const std::vector<Gfx::AnimationClip>* bound = assets.GetOrLoadBoundClips(*resolvedClip, *resolved);
-            if (bound == nullptr)
-            {
-                // 失敗はキャッシュ側が path 込みで報告済み
-                continue;
-            }
-            AddClips(std::span(*bound));
-        }
+        FindClipBones();
     }
 
     void Animation::BindToModel()
@@ -275,9 +185,9 @@ namespace NS
             // 骨格が届くまでパレットは恒等のまま
             return;
         }
-        if (m_current < m_clips.size() && m_clips[m_current] != nullptr && m_clips[m_current]->IsValid())
+        if (m_clip != nullptr && m_clip->IsValid())
         {
-            Gfx::SampleClipPose(*m_clips[m_current], *m_skeleton, time, m_poseScratch);
+            Gfx::SampleClipPose(*m_clip, m_clipBones, *m_skeleton, time, m_poseScratch);
             m_skeleton->ComputePalette(m_poseScratch, m_paletteScratch);
         }
         else
@@ -308,6 +218,6 @@ namespace NS
         }
     }
 
-    // mesh / skeleton / clips は asset 由来なので data からは空で作る。mesh 未注入の間 ApplyPose は何もしない
+    // mesh / skeleton / clip は asset 由来なので data からは空で作る。mesh 未注入の間 ApplyPose は何もしない
     NS_CLASS(Animation)
 } // namespace NS
