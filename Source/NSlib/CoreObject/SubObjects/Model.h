@@ -4,6 +4,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/IRenderable.h"
+#include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/SubObject.h"
 #include "NSlib/Graphics/DrawItem.h"
 
@@ -38,31 +39,31 @@ namespace NS
     class Model : public SubObject, public IRenderable
     {
     public:
-        //! Mesh / Material は非所有の生ポインタ。空で作り、後から SetMesh / SetMaterial で入れる
-        //! 寿命は AssetManager 等の所有側が保証する
+        //! メッシュとマテリアルは参照の欄に名前で持ち、SceneActor::ReloadAssets が読む
         Model() noexcept = default;
 
         //! Material を共有したまま配置物ごとに変える個体色。lighting とは別系統
         void SetBaseColor(const Vector3& color) noexcept { m_baseColor = color; }
 
-        //! nullptr で描画しない。マテリアルは非所有で、ブレンド設定を即反映する
-        void SetMaterial(Gfx::Material* material) noexcept { m_material = material; }
+        //! 名前を替えずに、描くマテリアルを替える。nullptr で描画しない。次の読み直しで名前の物に戻る
+        void SetMaterial(Gfx::Material* material) noexcept { m_material.SetLoaded(material); }
         //! 現在の Material で非所有。未設定なら nullptr
-        [[nodiscard]] Gfx::Material* GetMaterial() const noexcept { return m_material; }
+        [[nodiscard]] Gfx::Material* GetMaterial() const noexcept { return m_material.Get(); }
 
-        //! nullptr で描画しない。メッシュは非所有
-        void SetMesh(Gfx::Mesh* mesh) noexcept { m_mesh = mesh; }
-        //! build 時に解決された実体 Mesh を返す。未解決なら nullptr
-        [[nodiscard]] const Gfx::Mesh* GetMesh() const noexcept { return m_mesh; }
+        //! 名前を替えずに、描くメッシュを替える。nullptr で描画しない。次の読み直しで名前の物に戻る
+        void SetMesh(Gfx::Mesh* mesh) noexcept { m_mesh.SetLoaded(mesh); }
+        //! 読んだメッシュを返す。まだ読んでいなければ nullptr
+        [[nodiscard]] const Gfx::Mesh* GetMesh() const noexcept { return m_mesh.Get(); }
 
-        //! 描くメッシュの参照。builtin 名または ContentRoot 配下の相対パス。空 / 解決不可なら構築側が既定にする
-        [[nodiscard]] const std::string& MeshRef() const noexcept { return m_meshRef; }
-        void SetMeshRef(std::string ref) noexcept { m_meshRef = std::move(ref); }
+        //! 描くメッシュの名前。組み込みの形の名前か、Content の下のパス。空・読めない時は cube で描く
+        [[nodiscard]] const std::string& MeshRef() const noexcept { return m_mesh.Name(); }
+        //! 違う名前なら、読んだメッシュを空に戻す。次の SceneActor::ReloadAssets で読む
+        void SetMeshRef(std::string ref) { m_mesh.SetName(std::move(ref)); }
 
-        //! 描画 material の参照。player / water / shadow といった共有 material 名または .mat 相対パス
-        //! 空・解決不可は ResolveAssets が既定 material にする
-        [[nodiscard]] const std::string& MaterialRef() const noexcept { return m_materialRef; }
-        void SetMaterialRef(std::string ref) noexcept { m_materialRef = std::move(ref); }
+        //! 描くマテリアルの名前。共有のマテリアルの名前か .mat のパス。空・読めない時は共有の player で描く
+        [[nodiscard]] const std::string& MaterialRef() const noexcept { return m_material.Name(); }
+        //! 違う名前なら、読んだマテリアルを空に戻す。次の SceneActor::ReloadAssets で読む
+        void SetMaterialRef(std::string ref) { m_material.SetName(std::move(ref)); }
 
         //! 個体ごとの頂点シェーダーの定数を設定する。同じ SceneActor の Animation がプレイの始まりに設定する
         //! cpuData があれば、描画側が毎回バッファーへ転送してから設定する
@@ -160,15 +161,11 @@ namespace NS
         //! 固定更新の先頭で補間用の姿勢を控える。時間停止中も前後の値を揃える
         void Snapshot() noexcept;
 
-        //! meshRef / matRef の参照文字列から実体の Mesh / Material を引き当てる
-        //! 共有 material 名を先に引き、外れたら .mat 相対パスとして読む。解決不可は cube と既定 material にする
-        //! 残像には共有の water の material を当てる
-        void ResolveAssets(AssetManager& assets) override;
-
         NS_REFLECT_BEGIN(Model, SubObject)
         NS_REFLECT_FIELD(m_baseColor, "基本色")
-        NS_REFLECT_FIELD(m_meshRef, "メッシュ")
-        NS_REFLECT_FIELD(m_materialRef, "マテリアル")
+        NS_REFLECT_FIELD(m_mesh, "メッシュ")
+        NS_REFLECT_FIELD(m_material, "マテリアル")
+        NS_REFLECT_FIELD(m_ghostMaterial, "残像のマテリアル")
         NS_REFLECT_END()
 
     private:
@@ -194,12 +191,10 @@ namespace NS
         // 描く形の局所の境界。差された境界を先に、無ければ mesh の境界。どちらも無ければ nullptr
         [[nodiscard]] const AABB* DrawnLocalBounds() const noexcept;
 
-        Gfx::Mesh* m_mesh = nullptr;           // 描画する Mesh (非所有)
-        Gfx::Material* m_material = nullptr;   // 描画に使う Material (非所有)
-        Vector3 m_baseColor{1.0f, 1.0f, 1.0f}; // 個体色、lighting と別系統
-        // 保存・編集される参照文字列。build 時に解決して m_mesh / m_material へ実体を当てる
-        std::string m_meshRef{};
-        std::string m_materialRef{};
+        AssetRef<Gfx::Mesh> m_mesh{};                     // 描くメッシュ
+        AssetRef<Gfx::Material> m_material{};             // 描くマテリアル
+        AssetRef<Gfx::Material> m_ghostMaterial{"water"}; // 残像と明けの写しのマテリアル
+        Vector3 m_baseColor{1.0f, 1.0f, 1.0f};            // 個体色、lighting と別系統
 
         // 追加 VS 定数。cpuData があれば描画ごとに転送する
         const Gfx::Buffer* m_perObjectVsCb = nullptr;
@@ -228,7 +223,6 @@ namespace NS
         // 明けの写しの控えた姿と不透明度。他の SubObject が書き直すので保存しない
         Matrix m_afterimageWorld = Matrix::Identity;
         float m_afterimageOpacity = 0.0f;
-        Gfx::Material* m_ghostMaterial = nullptr; // 残像の共有 water material (非所有)
         Ghosts m_ghosts{*this};                       // 残像を描く物。Scene へは self と並べて登録する
     };
 #pragma warning(pop)

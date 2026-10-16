@@ -3,6 +3,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/IRenderable.h"
+#include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/SubObject.h"
 
 #include <vector>
@@ -11,7 +12,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class StaticMesh;
+        class Mesh;
     }
     namespace Gfx
     {
@@ -40,14 +41,13 @@ namespace NS
         //! OwningScene から自分を解除する
         void Unregister();
 
-        //! 共有の quad mesh と shadow material を引き当てる。参照文字列は持たず資材は固定
-        void ResolveAssets(AssetManager& assets) override;
-
         //! 落下距離 dist に対する高さフェード係数 [0,1]。dist=0 で 1、dist>=maxDist で 0
         [[nodiscard]] static float ComputeFade(float dist, float maxDist) noexcept;
 
         // 接地シャドウの見た目を Inspector へ公開する。毎 Draw 読まれるのでライブで効く
         NS_REFLECT_BEGIN(Shadow, SubObject)
+        NS_REFLECT_FIELD(m_mesh, "メッシュ")
+        NS_REFLECT_FIELD(m_material, "マテリアル")
         NS_REFLECT_FIELD(m_baseDiameter, "基本直径")
         NS_REFLECT_FIELD(m_maxDrop, "最大投影距離")
         NS_REFLECT_FIELD(m_surfaceOffset, "表面オフセット")
@@ -55,8 +55,8 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        Gfx::StaticMesh* m_mesh = nullptr;   // 共有 quad mesh (非所有)
-        Gfx::Material* m_material = nullptr; // 共有 shadow material (非所有)
+        AssetRef<Gfx::Mesh> m_mesh{"shadowQuad"};     // 影を描く板
+        AssetRef<Gfx::Material> m_material{"shadow"}; // 影のマテリアル
 
         float m_baseDiameter = 1.2f;   // 接地時の影の直径
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離

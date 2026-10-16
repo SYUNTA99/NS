@@ -21,8 +21,8 @@ namespace NS
         Gfx::Mesh* mesh = ResolveMeshFromRef(assets, ref.Name());
         if (mesh == nullptr)
         {
-            // 空の名前は「メッシュを選んでいない」で、誤りではない
-            if (!ref.Name().empty())
+            // 空の名前は「メッシュを選んでいない」で、誤りではない。組み込みの名前は装置が無くて登録されていない時だけ外れる
+            if (!ref.Name().empty() && !AssetManager::IsBuiltinName(ref.Name()))
             {
                 NS_LOG_WARN(Scene, "メッシュ {} を読めないので cube で描く", ref.Name());
             }
@@ -34,9 +34,10 @@ namespace NS
     template <> void LoadAssetRef<Gfx::Material>(AssetRef<Gfx::Material>& ref)
     {
         // 共有のマテリアルの名前を先に引き、外れたら .mat のパスとして読む
+        // 共有の名前は装置が無くて登録されていない時だけ外れる。ファイルでないので、パスとして読まない
         AssetManager& assets = AssetManager::Get();
         Gfx::Material* material = assets.SharedMaterial(ref.Name());
-        if (material == nullptr && !ref.Name().empty())
+        if (material == nullptr && !ref.Name().empty() && !AssetManager::IsSharedMaterialName(ref.Name()))
         {
             if (const std::optional<std::string> resolved = ResolveContentPath(ref.Name()))
             {

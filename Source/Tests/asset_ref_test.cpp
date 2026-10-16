@@ -1,9 +1,12 @@
+#include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/AssetRef.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObject.h"
+#include "NSlib/CoreObject/SubObjects/Model.h"
+#include "NSlib/CoreObject/SubObjects/Shadow.h"
 
 #include <gtest/gtest.h>
 
@@ -125,4 +128,43 @@ TEST(AssetRef, FieldTypeIsAssetRef)
     const NS::FieldDesc* field = NS::FindField(AssetRefProbePart::StaticReflection(), "素材");
     ASSERT_NE(field, nullptr);
     EXPECT_EQ(field->type, NS::FieldType::AssetRef);
+}
+
+// Model と Shadow の素材は参照の欄で持つ。コードが決めていた素材も、欄の既定の名前になる
+TEST(AssetRef, ModelAndShadowHoldTheirAssetsInRefFields)
+{
+    for (const char* key : {"メッシュ", "マテリアル", "残像のマテリアル"})
+    {
+        const NS::FieldDesc* field = NS::FindField(NS::Model::StaticReflection(), key);
+        ASSERT_NE(field, nullptr) << key;
+        EXPECT_EQ(field->type, NS::FieldType::AssetRef) << key;
+    }
+    for (const char* key : {"メッシュ", "マテリアル"})
+    {
+        const NS::FieldDesc* field = NS::FindField(NS::Shadow::StaticReflection(), key);
+        ASSERT_NE(field, nullptr) << key;
+        EXPECT_EQ(field->type, NS::FieldType::AssetRef) << key;
+    }
+
+    const NS::Model model;
+    EXPECT_EQ(NS::SerializeSubObjectFields(model)["残像のマテリアル"], nlohmann::json("water"));
+    const NS::Shadow shadow;
+    const nlohmann::json shadowFields = NS::SerializeSubObjectFields(shadow);
+    EXPECT_EQ(shadowFields["メッシュ"], nlohmann::json("shadowQuad"));
+    EXPECT_EQ(shadowFields["マテリアル"], nlohmann::json("shadow"));
+}
+
+// 組み込みの形と共有のマテリアルの名前はファイルでない。装置が無くて登録されていなくても名前で分かる
+TEST(AssetRef, BuiltinAndSharedNamesAreKnownWithoutRegistering)
+{
+    EXPECT_TRUE(NS::AssetManager::IsBuiltinName("cube"));
+    EXPECT_TRUE(NS::AssetManager::IsBuiltinName("shadowQuad"));
+    EXPECT_FALSE(NS::AssetManager::IsBuiltinName("Assets/Models/ball.glb"));
+    EXPECT_FALSE(NS::AssetManager::IsBuiltinName(""));
+
+    EXPECT_TRUE(NS::AssetManager::IsSharedMaterialName("player"));
+    EXPECT_TRUE(NS::AssetManager::IsSharedMaterialName("water"));
+    EXPECT_TRUE(NS::AssetManager::IsSharedMaterialName("shadow"));
+    EXPECT_FALSE(NS::AssetManager::IsSharedMaterialName("Assets/Materials/ground.mat"));
+    EXPECT_FALSE(NS::AssetManager::IsSharedMaterialName(""));
 }

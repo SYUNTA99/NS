@@ -2,7 +2,6 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -10,7 +9,6 @@
 #include "NSlib/Graphics/Material.h"
 #include "NSlib/Graphics/Mesh.h"
 #include "NSlib/Graphics/RenderContext.h"
-#include "NSlib/Graphics/StaticMesh.h"
 #include <cmath>
 
 namespace
@@ -38,38 +36,6 @@ namespace NS
         m_perObjectVsData = cpuData;
         m_perObjectVsSize = cpuDataSize;
         m_perObjectVsSlot = slot;
-    }
-
-    void Model::ResolveAssets(AssetManager& assets)
-    {
-        // 共有 material 名 (player / water / shadow) を先に引き、外れたら .mat 相対パスとして読む
-        // 空・トラバーサル・読込失敗は既定の共有 player material にして、描けない状態を作らない
-        Gfx::Material* material = assets.SharedMaterial(m_materialRef);
-        if (material == nullptr)
-        {
-            material = assets.SharedMaterial("player");
-            if (!m_materialRef.empty())
-            {
-                if (const std::optional<std::string> resolved = ResolveContentPath(m_materialRef))
-                {
-                    if (const LoadedMaterial loaded = assets.LoadMaterial(*resolved); loaded.material != nullptr)
-                    {
-                        material = loaded.material;
-                    }
-                }
-            }
-        }
-        SetMaterial(material);
-
-        // mesh は解決不可なら cube をフォールバックとする
-        Gfx::Mesh* resolved = ResolveMeshFromRef(assets, m_meshRef);
-        if (resolved == nullptr)
-        {
-            resolved = assets.Builtin("cube");
-        }
-
-        SetMesh(resolved);
-        m_ghostMaterial = assets.SharedMaterial("water");
     }
 
     void Model::Register()
@@ -179,9 +145,9 @@ namespace NS
         {
             return &m_localBoundsOverride;
         }
-        if (m_mesh != nullptr)
+        if (const Gfx::Mesh* mesh = m_mesh.Get())
         {
-            return &m_mesh->LocalBounds();
+            return &mesh->LocalBounds();
         }
         return nullptr;
     }
@@ -245,12 +211,13 @@ namespace NS
     void Model::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
         SceneActor* owner = Owner();
-        if (!IsOwnerAppeared() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
+        Gfx::Material* material = m_material.Get();
+        if (!IsOwnerAppeared() || m_mesh.Get() == nullptr || material == nullptr || owner == nullptr)
         {
             return;
         }
 
-        out.push_back(MakeDrawItem(context, m_material, DrawWorldMatrix(context.alpha)));
+        out.push_back(MakeDrawItem(context, material, DrawWorldMatrix(context.alpha)));
     }
 
     Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context,
@@ -261,7 +228,7 @@ namespace NS
         const Gfx::RenderSettings& settings = context.resolvedSettings;
 
         Gfx::DrawItem item{};
-        item.mesh = m_mesh;
+        item.mesh = m_mesh.Get();
         item.material = material;
         item.blend = material->Blend();
         item.constants.world = world;
@@ -287,7 +254,8 @@ namespace NS
 
     void Model::Ghosts::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
-        if (!m_model.IsOwnerAppeared() || m_model.m_mesh == nullptr || m_model.m_ghostMaterial == nullptr ||
+        Gfx::Material* material = m_model.m_ghostMaterial.Get();
+        if (!m_model.IsOwnerAppeared() || m_model.m_mesh.Get() == nullptr || material == nullptr ||
             m_model.Owner() == nullptr)
         {
             return;
@@ -298,7 +266,7 @@ namespace NS
             for (const float side : {1.0f, -1.0f})
             {
                 Gfx::DrawItem item = m_model.MakeDrawItem(
-                    context, m_model.m_ghostMaterial, m_model.GhostWorldMatrix(context.alpha, side));
+                    context, material, m_model.GhostWorldMatrix(context.alpha, side));
                 item.constants.opacity = k_SideGhostOpacity;
                 out.push_back(item);
             }
@@ -306,7 +274,7 @@ namespace NS
         if (m_model.m_afterimageOpacity > 0.0f)
         {
             // 控えた姿のまま残す。震えを足すと止まった姿に見えない
-            Gfx::DrawItem item = m_model.MakeDrawItem(context, m_model.m_ghostMaterial, m_model.m_afterimageWorld);
+            Gfx::DrawItem item = m_model.MakeDrawItem(context, material, m_model.m_afterimageWorld);
             item.constants.tremor = Gfx::TremorCB{};
             item.constants.opacity = m_model.m_afterimageOpacity;
             out.push_back(item);
@@ -337,7 +305,8 @@ namespace NS
 
     RenderBucket Model::Bucket() const noexcept
     {
-        if (m_material == nullptr || m_material->Blend() == Gfx::BlendMode::Opaque)
+        const Gfx::Material* material = m_material.Get();
+        if (material == nullptr || material->Blend() == Gfx::BlendMode::Opaque)
         {
             return RenderBucket::Opaque;
         }
@@ -357,9 +326,9 @@ namespace NS
 
     int Model::SortPriority() const noexcept
     {
-        if (m_material != nullptr)
+        if (const Gfx::Material* material = m_material.Get())
         {
-            return m_material->RenderPriority();
+            return material->RenderPriority();
         }
         return 0;
     }
@@ -367,7 +336,7 @@ namespace NS
     AABB Model::WorldBounds() const noexcept
     {
         const SceneActor* owner = Owner();
-        if (m_mesh == nullptr || owner == nullptr)
+        if (m_mesh.Get() == nullptr || owner == nullptr)
         {
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない
         }
@@ -391,6 +360,5 @@ namespace NS
         return out;
     }
 
-    // mesh / material は空で構築し、読み込み時にリフレクションと ResolveAssets が差し込む
     NS_CLASS(Model)
 } // namespace NS

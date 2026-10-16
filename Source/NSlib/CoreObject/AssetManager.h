@@ -55,7 +55,7 @@ namespace NS
     [[nodiscard]] std::optional<std::string> ResolveContentPath(const std::string& relative);
 
     //! 参照文字列からメッシュを解決する。組み込み名を先に引き、外れたら ContentRoot 相対の glTF パスとして読む
-    //! 空文字・トラバーサル・読込失敗は nullptr
+    //! 空文字・登録前の組み込み名・トラバーサル・読込失敗は nullptr。組み込み名はパスとして読まない
     [[nodiscard]] Gfx::Mesh* ResolveMeshFromRef(AssetManager& assets, const std::string& meshRef);
 
     //! .mat の JSON 解析結果。GPU 非依存なので device 無しでテストできる
@@ -135,6 +135,8 @@ namespace NS
         //! RegisterBuiltins を通っていない AssetManager では全部 nullptr になる
         //! 同じ名前の当たりは RegisterBuiltins 無しでも GetOrLoadMeshShape が返す
         [[nodiscard]] Gfx::StaticMesh* Builtin(std::string_view name) const noexcept;
+        //! name が RegisterBuiltins の登録する組み込みの形の名前なら true。登録の前でも答える
+        [[nodiscard]] static bool IsBuiltinName(std::string_view name) noexcept;
 
         //! 寸法ごとに共有するカプセルメッシュ。半長 0 で球になり、参照は Clear まで有効
         //! 非有限の寸法・GPU なし・生成失敗は nullptr。生成失敗は次回に再試行する
@@ -150,6 +152,8 @@ namespace NS
         void RegisterSharedMaterials();
         //! 名前キーで共有 material を引く。キーは "player" / "water" / "shadow"。未登録は nullptr
         [[nodiscard]] Gfx::Material* SharedMaterial(std::string_view name) const noexcept;
+        //! name が RegisterSharedMaterials の登録する共有 material の名前なら true。登録の前でも答える
+        [[nodiscard]] static bool IsSharedMaterialName(std::string_view name) noexcept;
 
         //! path キーのアセットを同じインスタンスのまま読み直す。現状 Shader のみ。成功で true、未キャッシュ /
         //! 失敗で false

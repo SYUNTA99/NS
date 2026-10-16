@@ -1347,9 +1347,9 @@ bool LevelEditorController::PromoteFieldToArchetype(NS::SubObject& comp, std::st
     for (NS::SubObject* part : followers)
     {
         (void)NS::ApplyJsonFields(*part, fields);
-        if (NS::SceneActor* owner = part->Owner())
+        if (NS::SceneActor* follower = part->Owner())
         {
-            owner->ReloadAssets();
+            follower->ReloadAssets();
         }
     }
     // 当たりの大きさの欄なら body を張り直す
@@ -1768,9 +1768,10 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     // 差替前を忠実に写す。matRef を実体へ書き込み、差替後との差分を 取り消し 履歴へ積む
     std::optional<nlohmann::json> before = m_applier.CaptureObject(m_selectedObjectId);
 
+    // 名前を先に書く。違う名前を書くと読んだマテリアルが空に戻る
+    mesh->SetMaterialRef(stored);
     mesh->SetMaterial(loaded.material);
     mesh->SetBaseColor(loaded.baseColor);
-    mesh->SetMaterialRef(stored);
 
     std::optional<nlohmann::json> after = m_applier.CaptureObject(m_selectedObjectId);
     if (before && after && !(*before == *after))

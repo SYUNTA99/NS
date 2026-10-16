@@ -17,6 +17,7 @@
 #include "NSlib/Windows/Filesystem.h"
 
 #include "NSlib/Core/Types.h"
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <memory>
@@ -47,6 +48,11 @@ namespace NS
         {
             return builtin;
         }
+        // 登録前の組み込み名はファイルでないので、パスとして読まない
+        if (AssetManager::IsBuiltinName(meshRef))
+        {
+            return nullptr;
+        }
 
         const std::optional<std::string> resolved = ResolveContentPath(meshRef);
         if (!resolved)
@@ -75,6 +81,9 @@ namespace NS
             {"wedge15", [] { return Gfx::MakeSlope(15.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
             {"shadowQuad", [] { return Gfx::MakePlane(Vector2{0.5f, 0.5f}); }},
         }};
+
+        // RegisterSharedMaterials が登録する名前。登録を足したらここにも足す
+        constexpr std::array<std::string_view, 3> k_SharedMaterialNames = {"player", "water", "shadow"};
 
         // 引く先は m_builtins でなく k_BuiltinShapes。RegisterBuiltins を呼んでいなくても引ける
         [[nodiscard]] const BuiltinShape* FindBuiltinShape(std::string_view name) noexcept
@@ -466,6 +475,11 @@ namespace NS
         return nullptr;
     }
 
+    bool AssetManager::IsBuiltinName(std::string_view name) noexcept
+    {
+        return FindBuiltinShape(name) != nullptr;
+    }
+
     Gfx::StaticMesh* AssetManager::GetOrMakeCapsuleMesh(float radius, float halfHeight)
     {
         // 非数を鍵にすると map の比較が順序にならず、引き当てが壊れる。無限大は頂点の座標が無限大になり描けない
@@ -598,6 +612,12 @@ namespace NS
             return it->second.get();
         }
         return nullptr;
+    }
+
+    bool AssetManager::IsSharedMaterialName(std::string_view name) noexcept
+    {
+        return std::find(k_SharedMaterialNames.begin(), k_SharedMaterialNames.end(), name) !=
+               k_SharedMaterialNames.end();
     }
 
     bool AssetManager::Reload(std::string_view path)

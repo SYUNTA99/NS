@@ -1,23 +1,16 @@
 #include "NSlib/CoreObject/SubObjects/Shadow.h"
 #include "NSlib/Core/AABB.h"
 
-#include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Graphics/Material.h"
 #include "NSlib/Graphics/RenderContext.h"
-#include "NSlib/Graphics/StaticMesh.h"
+#include "NSlib/Graphics/Mesh.h"
 
 namespace NS
 {
-    void Shadow::ResolveAssets(AssetManager& assets)
-    {
-        m_mesh = assets.Builtin("shadowQuad");
-        m_material = assets.SharedMaterial("shadow");
-    }
-
     void Shadow::Register()
     {
         Scene* scene = OwningScene();
@@ -75,7 +68,7 @@ namespace NS
     void Shadow::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
         SceneActor* owner = Owner();
-        if (!IsOwnerAppeared() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
+        if (!IsOwnerAppeared() || m_mesh.Get() == nullptr || m_material.Get() == nullptr || owner == nullptr)
         {
             return;
         }
@@ -102,8 +95,8 @@ namespace NS
                                  Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
 
         Gfx::DrawItem item{};
-        item.mesh = m_mesh;
-        item.material = m_material;
+        item.mesh = m_mesh.Get();
+        item.material = m_material.Get();
         item.blend = Gfx::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
