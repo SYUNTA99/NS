@@ -145,7 +145,6 @@ namespace NS
             HitPreviewWorld world;
             if (Application* app = Application::Get())
             {
-                world.assets = &app->Assets();
                 world.renderer = &app->Renderer();
             }
             const bool wasHit = m_result.hit;

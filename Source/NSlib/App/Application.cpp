@@ -172,6 +172,7 @@ namespace NS
         m_assets = std::make_unique<AssetManager>(OS::FileSystem::ContentRoot());
         m_assets->RegisterBuiltins();
         m_assets->RegisterSharedMaterials();
+        m_assetsScope = std::make_unique<AssetManagerScope>(*m_assets);
 
         for (std::unique_ptr<Layer>& layer : m_layers)
         {
@@ -292,6 +293,7 @@ namespace NS
             m_window->AttachInput(nullptr);
         }
 
+        m_assetsScope.reset();
         if (m_assets)
         {
             m_assets->Clear();

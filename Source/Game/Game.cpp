@@ -35,8 +35,7 @@ void Game::OnAttach()
         return;
     }
 
-    // AssetManager とレンダラーを預ける。立てるシーンがここから受け取る
-    m_scenes.SetAssets(&app->Assets());
+    // LoadScene で立てるシーンへ引き継ぐので、LoadScene より前に呼ぶ
     m_scenes.SetRenderer(&app->Renderer());
 
     // 同梱シーンを読む。読めなければ何も置かない空のシーンを立てる

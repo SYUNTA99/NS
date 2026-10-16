@@ -16,7 +16,6 @@ namespace NS
 namespace NS
 {
 
-    class AssetManager;
     class Scene;
 
     //! シーン一つを所有し、アプリケーションの更新・描画・終了を転送する
@@ -25,9 +24,6 @@ namespace NS
     public:
         SceneManager();
         ~SceneManager();
-
-        //! 立てる scene へ引き継ぐ AssetManager を非所有で差す。以降 LoadScene する scene が受け取る
-        void SetAssets(AssetManager* assets) noexcept;
 
         //! 立てる scene へ引き継ぐレンダラーを非所有で差す。以降 LoadScene する scene が受け取る
         void SetRenderer(Gfx::Renderer* renderer) noexcept;
@@ -50,8 +46,6 @@ namespace NS
 
     private:
         std::unique_ptr<Scene> m_current;
-        //! 立てる scene へ引き継ぐ参照で非所有。未設定なら scene 側が未設定のまま動く
-        AssetManager* m_assets = nullptr;
         Gfx::Renderer* m_renderer = nullptr;
     };
 

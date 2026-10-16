@@ -2,6 +2,8 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
 
+#include "NSlib/CoreObject/AssetManager.h"
+
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -266,12 +268,8 @@ namespace NS
     void Scene::StartSpawned(SceneActor& obj)
     {
         // データ由来の配置物は ObjectBuilder が引き当てる。後から入る物はここで引き当てる
-        // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
-        if (m_assets != nullptr)
-        {
-            ForEachReflectedSubObj(
-                obj, [&](const SubObjectDesc&, SubObject* subObject) { subObject->ResolveAssets(*m_assets); });
-        }
+        ForEachReflectedSubObj(
+            obj, [&](const SubObjectDesc&, SubObject* subObject) { subObject->ResolveAssets(AssetManager::Get()); });
         // 開始は引き当ての後。OnStart の中で資産を読む SubObject が空の参照を掴まない
         obj.OnStart();
         // 後から入る物は他の配置物が既に揃っている
@@ -367,10 +365,7 @@ namespace NS
                 return;
             }
             (void)ApplyJsonFields(*subObject, *fields);
-            if (m_assets != nullptr)
-            {
-                subObject->ResolveAssets(*m_assets);
-            }
+            subObject->ResolveAssets(AssetManager::Get());
         });
         return obj;
     }
@@ -403,7 +398,7 @@ namespace NS
         // SceneActor の型選択は登録一覧、参照の実体化は各 SubObject の ResolveAssets が行う
         // 仮想カメラの付け外しは、持ち主の SceneActor が OnStart / OnEndPlay で行う
         m_objects.RebuildFromJson(
-            scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, m_assets); });
+            scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, &AssetManager::Get()); });
         m_objects.SyncPhysics(m_physics.Physics());
     }
 

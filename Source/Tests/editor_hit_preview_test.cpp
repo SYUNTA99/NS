@@ -33,7 +33,8 @@ namespace
     struct PreviewAssets
     {
         NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-        NS::Editor::HitPreviewWorld World() { return NS::Editor::HitPreviewWorld{.assets = &assets}; }
+        NS::AssetManagerScope useAssets{assets};
+        NS::Editor::HitPreviewWorld World() { return NS::Editor::HitPreviewWorld{}; }
     };
 
     // 床 (id 100)・自機 (id 1)・その前の置物 (id 2) の場面の文書
@@ -269,7 +270,6 @@ TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
     ASSERT_NE(playerIndex, NS::k_NoObjectIndex);
     NS::SetObjectPosition(NS::SceneJsonObjects(placed)[playerIndex], preview.playerStart);
     NS::Scene scene;
-    scene.SetAssets(&assets.assets);
     scene.ResetFromJson(placed);
     PlayerActor* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);

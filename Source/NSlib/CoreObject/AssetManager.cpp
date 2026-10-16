@@ -201,6 +201,32 @@ namespace NS
     AssetManager::AssetManager(std::string baseDir) noexcept : m_baseDir(std::move(baseDir)) {}
     AssetManager::~AssetManager() = default;
 
+    namespace
+    {
+        AssetManager* g_currentAssets = nullptr;
+    } // namespace
+
+    AssetManager& AssetManager::Get() noexcept
+    {
+        if (g_currentAssets != nullptr)
+        {
+            return *g_currentAssets;
+        }
+        // 差していない間に返す。RegisterBuiltins と RegisterSharedMaterials は呼んでいない
+        static AssetManager s_unregistered{OS::FileSystem::ContentRoot()};
+        return s_unregistered;
+    }
+
+    AssetManagerScope::AssetManagerScope(AssetManager& assets) noexcept : m_previous(g_currentAssets)
+    {
+        g_currentAssets = &assets;
+    }
+
+    AssetManagerScope::~AssetManagerScope() noexcept
+    {
+        g_currentAssets = m_previous;
+    }
+
     Gfx::Shader* AssetManager::GetOrLoadShader(std::string_view path)
     {
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる

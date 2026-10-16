@@ -98,6 +98,11 @@ namespace NS
         explicit AssetManager(std::string baseDir) noexcept;
         ~AssetManager();
 
+        //! @brief 素材を読む AssetManager を返す
+        //! @details AssetManagerScope が差した物を返す。差していない間は、組み込みも共有の material も
+        //! 登録していない AssetManager を返すので、組み込みの名前は引けない
+        [[nodiscard]] static AssetManager& Get() noexcept;
+
         //! path ごとに Shader を共有する。失敗時も代替シェーダーを返す
         [[nodiscard]] Gfx::Shader* GetOrLoadShader(std::string_view path);
         //! path キーで Texture を共有して返す。同一 path は同一インスタンス
@@ -196,5 +201,17 @@ namespace NS
             m_animationSources; // アニメ専用 glTF。空の値は読み込み失敗の記録
         std::map<std::pair<std::string, std::string>, std::unique_ptr<std::vector<Gfx::AnimationClip>>>
             m_boundClips; // clip と model の path の組で引く結合済みクリップ。空の値は読み込み失敗の記録
+    };
+
+    //! @brief 生きている間だけ AssetManager::Get() が assets を返すようにし、壊れる時に前の物へ戻す
+    //! @details Application が自分の AssetManager を差す。自分で AssetManager を作る試しも、試しの間だけ差す
+    class AssetManagerScope : public NonCopyable
+    {
+    public:
+        explicit AssetManagerScope(AssetManager& assets) noexcept;
+        ~AssetManagerScope() noexcept;
+
+    private:
+        AssetManager* m_previous = nullptr;
     };
 } // namespace NS

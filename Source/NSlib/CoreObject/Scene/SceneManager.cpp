@@ -15,11 +15,6 @@ namespace NS
         UnloadScene();
     }
 
-    void SceneManager::SetAssets(AssetManager* assets) noexcept
-    {
-        m_assets = assets;
-    }
-
     void SceneManager::SetRenderer(Gfx::Renderer* renderer) noexcept
     {
         m_renderer = renderer;
@@ -30,7 +25,6 @@ namespace NS
         UnloadScene();
 
         m_current = std::make_unique<Scene>();
-        m_current->SetAssets(m_assets);
         m_current->SetRenderer(m_renderer);
 
         m_current->ResetFromJson(std::move(scene));

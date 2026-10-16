@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
+#include "NSlib/CoreObject/AssetManager.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
@@ -245,11 +246,11 @@ namespace NS
         InitAssets(info);
     }
 
-    void SceneActor::InitAssets(const ActorInitInfo& info)
+    void SceneActor::InitAssets(const ActorInitInfo&)
     {
         // TODO: 部品の ResolveAssets を一列に呼んでいる。部品ごとに名指しで読む形にしたら、このループと ResolveAssets を消す
         ForEachReflectedSubObj(*this,
-                               [&](const SubObjectDesc&, SubObject* subObject) { subObject->ResolveAssets(info.assets); });
+                               [&](const SubObjectDesc&, SubObject* subObject) { subObject->ResolveAssets(AssetManager::Get()); });
     }
 
     void SceneActor::OnStart()

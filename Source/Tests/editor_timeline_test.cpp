@@ -193,13 +193,13 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     assets.RegisterBuiltins();
     assets.RegisterSharedMaterials();
+    const NS::AssetManagerScope useAssets{assets};
     std::unique_ptr<NS::Gfx::RenderTarget> target = NS::Gfx::RenderTarget::Create({160, 90});
     ASSERT_TRUE(target->IsValid());
     NS::Editor::TimelinePreview preview;
     preview.Reset(
-        [&assets, &renderer] {
+        [&renderer] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SetAssets(&assets);
             scene->SetRenderer(&renderer);
             scene->SpawnTransient<TimelineMovingActor>();
             return scene;
@@ -286,6 +286,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     assets.RegisterBuiltins();
     assets.RegisterSharedMaterials();
+    const NS::AssetManagerScope useAssets{assets};
     NS::Scene original;
     LevelEditorController editor(&original);
     NS::Editor::GameViewPanel game;
@@ -294,9 +295,8 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     pose.position = NS::Vector3{0.0f, 2.0f, -5.0f};
     pose.target = NS::Vector3{0.0f, 0.0f, 0.0f};
     preview.Reset(
-        [&assets, &renderer, pose] {
+        [&renderer, pose] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SetAssets(&assets);
             scene->SetRenderer(&renderer);
             scene->MainCamera()->ApplyPose(pose);
             scene->SpawnTransient<TimelineMovingActor>();
@@ -346,7 +346,6 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
     app.AddLayer(std::make_unique<TimelinePanelTestLayer>([&app] {
         TimelineGui gui;
         NS::Scene scene;
-        scene.SetAssets(&app.Assets());
         scene.SetRenderer(&app.Renderer());
         nlohmann::json snapshot = NS::MakeSceneJson();
         nlohmann::json floor = NS::MakeObjectJson();

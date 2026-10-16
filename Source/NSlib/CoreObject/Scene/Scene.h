@@ -118,9 +118,6 @@ namespace NS
         //! 重力方向を正規化して、物理の重力方向も揃える
         void SetGravityDirection(const Vector3& direction) noexcept;
 
-        //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
-        void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
-
         //! レンダラーを非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
         void SetRenderer(Gfx::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
 
@@ -324,8 +321,6 @@ namespace NS
         // const の窓口からも作れるよう mutable にする。作っても見かけのシーンの状態は変わらない
         mutable SceneSystemHolder m_sceneObjs{*this};
         std::string m_skyboxPath; // skybox のパス。実体側の唯一の出所
-
-        AssetManager* m_assets = nullptr; // AssetManager、非所有。未設定なら参照の実体化を跳ばす
 
         nlohmann::json m_playBaseline = MakeSceneJson(); // プレイ突入時の凍結
 

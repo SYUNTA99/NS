@@ -16,7 +16,6 @@
 
 namespace NS
 {
-    class AssetManager;
     class Scene;
 } // namespace NS
 
@@ -79,7 +78,6 @@ namespace NS
         //! @brief 写しの場面を組む時に渡す物。描かない下見では空でよい
         struct HitPreviewWorld
         {
-            AssetManager* assets = nullptr;    //!< 資産の置き場。空なら参照を実体化しない
             Gfx::Renderer* renderer = nullptr; //!< 描き手。空ならエフェクトの世界を描かない
         };
 

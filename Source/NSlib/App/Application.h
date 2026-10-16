@@ -26,6 +26,7 @@ namespace NS
 namespace NS
 {
     class AssetManager;
+    class AssetManagerScope;
 }
 
 namespace NS
@@ -98,6 +99,8 @@ namespace NS
         std::unique_ptr<Gfx::Renderer> m_renderer;
         // 下から順番に破棄されるから、アセットを Renderer より先に解放させるためにここに書く
         std::unique_ptr<AssetManager> m_assets;
+        // AssetManager::Get() が m_assets を返す間。m_assets より先に壊して、捨てた物を返さない
+        std::unique_ptr<AssetManagerScope> m_assetsScope;
         Layers m_layers;
         bool m_valid = false;
         bool m_quitRequested = false;

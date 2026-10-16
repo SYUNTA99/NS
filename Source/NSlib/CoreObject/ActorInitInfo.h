@@ -6,7 +6,6 @@
 
 namespace NS
 {
-    class AssetManager;
     class Scene;
 
     //! @brief SceneActor::Init が受ける、アクターを作る時の情報
@@ -16,7 +15,6 @@ namespace NS
         //! 型から湧かすアクターは配置の JSON が無いので nullptr。そのアクターには種類の既定だけが書かれる
         const nlohmann::json* placement = nullptr;
         Scene& scene;
-        AssetManager& assets;
     };
 
 } // namespace NS

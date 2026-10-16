@@ -50,7 +50,6 @@ namespace NS
             std::unique_ptr<Scene> MakeScene(const nlohmann::json& scene, const HitPreviewWorld& world)
             {
                 std::unique_ptr<Scene> made = std::make_unique<Scene>();
-                made->SetAssets(world.assets);
                 made->SetRenderer(world.renderer);
                 made->ResetFromJson(scene);
                 return made;

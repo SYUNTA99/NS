@@ -109,7 +109,7 @@ namespace
         std::vector<NS::uint8> Render(const NS::Vector3& masked, const std::optional<NS::Vector3>& other)
         {
             NS::Scene scene;
-            scene.SetAssets(&m_assets);
+            const NS::AssetManagerScope useAssets{m_assets};
             scene.SetRenderer(&m_renderer);
             BoxActor* maskedBox = scene.SpawnTransient<BoxActor>(masked);
             if (other.has_value())
