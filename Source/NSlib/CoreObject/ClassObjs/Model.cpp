@@ -2,7 +2,6 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -63,7 +62,12 @@ namespace NS
             m_drawnMaterial = m_material;
             return;
         }
-        m_drawnMaterial = AssetManager::Get().LoadUnsetMaterial(*GetMesh());
+        Mesh* mesh = m_shownMesh;
+        if (mesh == nullptr)
+        {
+            mesh = m_mesh;
+        }
+        m_drawnMaterial = mesh->UseUnsetMaterial();
     }
 
     const Mesh* Model::GetMesh() const noexcept

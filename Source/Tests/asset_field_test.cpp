@@ -203,6 +203,18 @@ TEST(AssetManagerLoad, MeshShapeFollowsTheNameRules)
     EXPECT_GE(log.ErrorCount(), 2);
 }
 
+// Renderer の無い場では、ファイルのメッシュも描く形を作らずに当たりだけを作り、ERROR を出さない
+TEST(AssetManagerLoad, FileMeshWithoutARendererHasOnlyCollisionAndLogsNoError)
+{
+    ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const TestLogCapture log;
+    const NS::Mesh* mesh = assets.LoadMesh("Assets/Models/CesiumMan.glb");
+    EXPECT_EQ(mesh->D3D(), nullptr);
+    EXPECT_NE(mesh->Collision(), nullptr);
+    EXPECT_EQ(log.ErrorCount(), 0);
+}
+
 // Renderer の無い場で読んだマテリアルは、シェーダとテクスチャも含めて空で、ERROR を出さない
 // ゲームでは Renderer が先にあるので、この道を通らない
 TEST(AssetManagerLoad, MaterialWithoutARendererIsEmptyAndLogsNoError)
@@ -283,22 +295,23 @@ TEST(AssetManagerLoad, PlayerAndShadowAreMaterialFilesThatCanBeWritten)
     EXPECT_EQ(log.ErrorCount(), 0);
 }
 
+// ピンクの ERROR はメッシュごとに 1 回で、読み直しても増えない
 TEST(AssetField, ModelWithoutAMaterialDrawsGrayOnABuiltinShapeAndPinkOnAFileMesh)
 {
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
     NS::MapPartsActor* parts = scene.SpawnTransient<NS::MapPartsActor>();
     ASSERT_NE(parts, nullptr);
     NS::Model* model = parts->ModelClassObj();
-    NS::AssetManager& assets = NS::AssetManager::Get();
     ASSERT_EQ(model->MaterialRef(), "");
     EXPECT_EQ(model->DrawnMaterial(), assets.LoadMaterial("Assets/Materials/default.mat"));
 
-    (void)assets.LoadMesh("Assets/Models/CesiumMan.glb");
     const TestLogCapture log;
     model->SetMeshRef("Assets/Models/CesiumMan.glb");
     parts->ReloadAssets();
     EXPECT_EQ(model->DrawnMaterial(), assets.LoadMaterial("Assets/Materials/missing.mat"));
-    EXPECT_GE(log.ErrorCount(), 1);
+    EXPECT_EQ(log.ErrorCount(), 1);
     EXPECT_EQ(model->MaterialRef(), "");
 
     model->SetMaterialRef("Assets/Materials/stone.mat");

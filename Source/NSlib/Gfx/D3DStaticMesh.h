@@ -30,6 +30,7 @@ namespace NS
         {
         public:
             //! @brief パラメータから静的メッシュを生成する
+            //! @details Renderer の無い場では ERROR を出さずに nullptr を返す
             [[nodiscard]] static std::unique_ptr<D3DStaticMesh> Create(const D3DStaticMeshDesc& desc);
 
             ~D3DStaticMesh() override = default;

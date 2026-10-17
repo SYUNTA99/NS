@@ -45,8 +45,7 @@ namespace NS
 
     namespace
     {
-        // 描画の RegisterBuiltins と当たりの LoadMeshShape が同じ表から形を作る
-        // 組み込みの形は両者で食い違わない
+        // 組み込みの形の頂点を作る表。ここから先はファイルのメッシュと同じ道で、描く形と当たりを作る
         struct BuiltinShape
         {
             const char* name;
@@ -91,7 +90,6 @@ namespace NS
             return *it->second;
         }
 
-        // RegisterBuiltins を呼んでいなくても引ける
         [[nodiscard]] const BuiltinShape* FindBuiltinShape(std::string_view name) noexcept
         {
             for (const BuiltinShape& shape : k_BuiltinShapes)
@@ -150,6 +148,40 @@ namespace NS
                 desc.precomputedBounds = &geom.bounds;
             }
             return Gfx::D3DStaticMesh::Create(desc);
+        }
+
+        // Renderer の無い場では作らずに黙る。GPU で作れなかった時だけ ERROR を出す
+        [[nodiscard]] std::unique_ptr<Gfx::D3DMesh> MakeDrawnMesh(const std::string& key, const MeshGeometry& geom)
+        {
+            std::unique_ptr<Gfx::D3DStaticMesh> mesh = MakeStaticMesh(geom);
+            if (mesh == nullptr)
+            {
+                return nullptr;
+            }
+            if (!mesh->IsValid())
+            {
+                NS_LOG_ERROR(Graphics, "AssetManager: mesh の GPU 生成失敗。 描かず、 当たりは本物の形のまま: {}", key);
+                return nullptr;
+            }
+            return mesh;
+        }
+
+        // key の glTF を読む。読めない時は ERROR を出して nullopt
+        [[nodiscard]] std::optional<MeshGeometry> ReadMeshFile(const std::string& key)
+        {
+            const std::optional<std::string> path = ResolveContentPath(key);
+            if (!path)
+            {
+                NS_LOG_ERROR(Scene, "メッシュ {} は ContentRoot の外を指すので読まず、何も描かない", key);
+                return std::nullopt;
+            }
+            MeshGeometry geom = LoadGltfMesh(*path);
+            if (geom.vertices.empty() || geom.indices.empty())
+            {
+                NS_LOG_ERROR(Scene, "メッシュ {} を読めないので、何も描かず当たりも作らない", key);
+                return std::nullopt;
+            }
+            return geom;
         }
 
         [[nodiscard]] std::unique_ptr<Phys::MeshShape> MakeCollision(const MeshGeometry& geom)
@@ -311,7 +343,7 @@ namespace NS
         {
             return *g_currentAssets;
         }
-        // 差していない間に返す。RegisterBuiltins は呼んでいない
+        // 差していない間に返す
         static AssetManager s_unregistered{OS::FileSystem::ContentRoot()};
         return s_unregistered;
     }
@@ -386,45 +418,36 @@ namespace NS
 
     std::unique_ptr<Mesh> AssetManager::CreateMesh(const std::string& key)
     {
+        // 組み込みの形と、描く形も当たりも無いメッシュは灰色。何も描かないメッシュの ERROR は読む時に出す
+        const MeshUnsetMaterial gray{LoadMaterial(k_DefaultMaterialPath), false};
         // 空の名前は「メッシュを選んでいない」で、誤りではない
         if (key.empty())
         {
-            return std::make_unique<Mesh>(key, nullptr, nullptr);
-        }
-        // 組み込みの形の名前はファイルでないので、登録の前でもファイルとして読まない
-        if (const BuiltinShape* shape = FindBuiltinShape(key))
-        {
-            return std::make_unique<Mesh>(key, nullptr, MakeCollision(shape->make()));
-        }
-        const std::optional<std::string> path = ResolveContentPath(key);
-        if (!path)
-        {
-            NS_LOG_ERROR(Scene, "メッシュ {} は ContentRoot の外を指すので読まず、何も描かない", key);
-            return std::make_unique<Mesh>(key, nullptr, nullptr);
+            return std::make_unique<Mesh>(key, nullptr, nullptr, gray);
         }
 
-        // 描画と当たりのどちらを先に頼まれても両方ここで作る
-        const MeshGeometry geom = LoadGltfMesh(*path);
-        if (geom.vertices.empty() || geom.indices.empty())
+        // 組み込みとファイルで違うのは、頂点の出どころと欄が空の時のマテリアルだけ
+        MeshGeometry geom;
+        MeshUnsetMaterial unset = gray;
+        if (const BuiltinShape* shape = FindBuiltinShape(key))
         {
-            NS_LOG_ERROR(Scene, "メッシュ {} を読めないので、何も描かず当たりも作らない", key);
-            return std::make_unique<Mesh>(key, nullptr, nullptr);
-        }
-        std::unique_ptr<Gfx::D3DMesh> drawn;
-        std::unique_ptr<Gfx::D3DStaticMesh> mesh = MakeStaticMesh(geom);
-        if (mesh == nullptr || !mesh->IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "AssetManager: mesh の GPU 生成失敗。 描かず、 当たりは本物の形のまま: {}", key);
+            geom = shape->make();
         }
         else
         {
-            drawn = std::move(mesh);
+            std::optional<MeshGeometry> file = ReadMeshFile(key);
+            if (!file)
+            {
+                return std::make_unique<Mesh>(key, nullptr, nullptr, gray);
+            }
+            geom = std::move(*file);
+            unset = MeshUnsetMaterial{LoadMaterial(k_MissingMaterialPath), true};
         }
-        // GPU 生成だけ失敗しても当たりは作る。device 無しのテストでも当たりを確かめられる
-        // 当たりだけ頼まれた時も GPU 生成を通るので、device の無い所でファイルの mesh を読むと上のエラーが出る
+
+        // 描く形と当たりのどちらを先に頼まれても両方ここで作る。GPU で作れなくても当たりは作る
         // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
         // 大きな mesh を飾りに多く置いてメモリが効いてきたら、当たりを頼まれた時に作る形へ移す
-        return std::make_unique<Mesh>(key, std::move(drawn), MakeCollision(geom));
+        return std::make_unique<Mesh>(key, MakeDrawnMesh(key, geom), MakeCollision(geom), unset);
     }
 
     Mesh* AssetManager::LoadMesh(std::string_view name)
@@ -484,7 +507,9 @@ namespace NS
             return std::make_unique<SkinnedModel>(key);
         }
 
-        return std::make_unique<SkinnedModel>(key, std::make_unique<Mesh>(key, std::move(mesh)), std::move(data.skeleton));
+        const MeshUnsetMaterial pink{LoadMaterial(k_MissingMaterialPath), true};
+        return std::make_unique<SkinnedModel>(
+            key, std::make_unique<Mesh>(key, std::move(mesh), pink), std::move(data.skeleton));
     }
 
     const AnimSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
@@ -573,36 +598,10 @@ namespace NS
         return names;
     }
 
-    void AssetManager::RegisterBuiltins()
-    {
-        for (const BuiltinShape& shape : k_BuiltinShapes)
-        {
-            const MeshGeometry geom = shape.make();
-            Mesh& mesh = FindOrAdd(m_meshes, std::string{shape.name}, [&shape, &geom] {
-                return std::make_unique<Mesh>(std::string{shape.name}, nullptr, MakeCollision(geom));
-            });
-            if (mesh.D3D() == nullptr)
-            {
-                mesh.SetD3D(MakeStaticMesh(geom));
-            }
-        }
-    }
-
     Material* AssetManager::LoadMaterial(std::string_view name)
     {
         const std::string key = NameKey(name);
         return &FindOrAdd(m_materials, key, [this, &key] { return ReadMaterial(key); });
-    }
-
-    Material* AssetManager::LoadUnsetMaterial(const Mesh& mesh)
-    {
-        // 空のメッシュは何も描かないので、ERROR を出さず灰色にする。読めない時の ERROR はメッシュが出している
-        if (mesh.IsEmpty() || FindBuiltinShape(mesh.Path()) != nullptr)
-        {
-            return LoadMaterial(k_DefaultMaterialPath);
-        }
-        NS_LOG_ERROR(Scene, "メッシュ {} にマテリアルが無いので、ピンクで描く", mesh.Path());
-        return LoadMaterial(k_MissingMaterialPath);
     }
 
     std::unique_ptr<Material> AssetManager::ReadMaterial(const std::string& key)

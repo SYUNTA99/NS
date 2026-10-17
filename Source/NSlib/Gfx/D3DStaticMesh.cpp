@@ -31,17 +31,17 @@ namespace NS
 
         std::unique_ptr<D3DStaticMesh> D3DStaticMesh::Create(const D3DStaticMeshDesc& desc)
         {
+            // Renderer の無い場 (GPU の無い試し) では、ERROR を出さずに作らない
+            // ゲームでは Renderer を先に作るので、ここで返らない
+            if (Gpu().device == nullptr || Gpu().context == nullptr)
+            {
+                return nullptr;
+            }
             return std::unique_ptr<D3DStaticMesh>(new D3DStaticMesh(desc));
         }
 
         D3DStaticMesh::D3DStaticMesh(const D3DStaticMeshDesc& desc)
         {
-            if (Gpu().device == nullptr || Gpu().context == nullptr)
-            {
-                NS_LOG_ERROR(Graphics, "D3DStaticMesh: Renderer の Device / Context が無効");
-                return;
-            }
-
             SetVertexLayout(StandardInputLayout());
 
             const bool descValid = (desc.vertices != nullptr && desc.vertexCount != 0u && desc.indices != nullptr &&

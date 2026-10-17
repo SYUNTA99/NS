@@ -70,8 +70,7 @@ namespace NS
         ~AssetManager();
 
         //! @brief 素材を読む AssetManager を返す
-        //! @details AssetManagerScope が差した物を返す。差していない間は、組み込みの形を登録していない
-        //! AssetManager を返すので、組み込みの形は当たりだけで描く形が無い
+        //! @details AssetManagerScope が差した物を返す。差していない間は、アプリ寿命の別の AssetManager を返す
         [[nodiscard]] static AssetManager& Get() noexcept;
 
         //! 正規化した path ごとに 1 つを作って共有する。読めない時は代わりの中身になる
@@ -85,7 +84,9 @@ namespace NS
         //! @brief 欄の名前のメッシュを返す。名前は組み込みの形の名前か、ContentRoot からのファイルの道筋
         //! @details nullptr を返さない。空の名前と読めない名前は、描く形も当たりも無い中身の空のメッシュを返し、
         //! 何も描かない。読めない名前は ERROR を出す。空の名前は「選んでいない」で何も出さない
-        //! 組み込みの形の名前はファイルとして読まないので、RegisterBuiltins の前は描く形が無い
+        //! 組み込みの形もファイルも、作る時に描く形と当たりを作る。Renderer の無い場では描く形を作らない
+        //! マテリアルの欄が空の時に描くマテリアルも作る時に決める (Mesh::UseUnsetMaterial)。
+        //! 組み込みの形と空のメッシュは灰色の既定 (default.mat)、ファイルのモデルはピンク (missing.mat) で ERROR を出す
         [[nodiscard]] Mesh* LoadMesh(std::string_view name);
 
         //! @brief 欄の名前のメッシュの当たりを返す。名前の決まりは LoadMesh と同じ
@@ -103,21 +104,12 @@ namespace NS
         //! 空の名前は「使わない」で警告しない。読めない名前は最初の 1 回だけ警告し、Clear まで同じクリップを返す
         [[nodiscard]] AnimClip* LoadAnimClip(std::string_view name);
 
-        //! 手続き生成の組み込み cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
-        //! device 確立後・最初の利用前に 1 度だけ呼ぶ。既登録名は上書きしない
-        //! 前に LoadMesh や LoadMeshShape が返した組み込みの形にも、同じメッシュのまま描く形を入れる
-        void RegisterBuiltins();
-        //! 登録前も取得できる組み込みの形の名前。名前の一覧はアプリ寿命で保持する
+        //! コードで作る組み込みの形 cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad の名前
         [[nodiscard]] static std::span<const std::string_view> BuiltinMeshNames() noexcept;
         //! @brief 欄の名前のマテリアルを返す。名前は ContentRoot からの .mat の道筋
         //! @details nullptr を返さない。読めない名前は中身の空のマテリアルを返してピンク (missing.mat) で描き、ERROR を出す
-        //! 空の名前は「選んでいない」で、中身の空のマテリアルを返す。何で描くかは Model が LoadUnsetMaterial で決める
+        //! 空の名前は「選んでいない」で、中身の空のマテリアルを返す。何で描くかはメッシュが決める (Mesh::UseUnsetMaterial)
         [[nodiscard]] Material* LoadMaterial(std::string_view name);
-
-        //! @brief マテリアルを選んでいない mesh を描くマテリアルを返す
-        //! @details 組み込みの形と、描く形も当たりも無いメッシュは灰色の既定 (default.mat)。
-        //! ファイルのモデルはピンク (missing.mat) で、ERROR を出す
-        [[nodiscard]] Material* LoadUnsetMaterial(const Mesh& mesh);
 
         //! @brief material が .mat から読んだマテリアルなら、その値を .mat の JSON 文字列にする
         //! @details 読めなかった名前と空の名前のマテリアルは書く先が無いので nullopt
@@ -138,8 +130,7 @@ namespace NS
         void Clear() noexcept;
 
     private:
-        // 表に無い key のメッシュを作る。組み込みの形は当たりだけで作り、描く形は RegisterBuiltins が入れる
-        // ファイルは glTF を読んで描く形と当たりを一度に作る
+        // 表に無い key のメッシュを作る。組み込みの表か glTF から頂点を持ってきて、描く形と当たりを一度に作る
         [[nodiscard]] std::unique_ptr<Mesh> CreateMesh(const std::string& key);
         // 表に無い key のマテリアルを .mat から作る。読めなければピンクで描く中身の空のマテリアル
         [[nodiscard]] std::unique_ptr<Material> ReadMaterial(const std::string& key);

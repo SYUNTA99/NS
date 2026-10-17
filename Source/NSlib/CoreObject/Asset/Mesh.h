@@ -18,15 +18,27 @@ namespace NS
         struct MeshShape;
     }
 
+    class Material;
+
+    //! マテリアルの欄が空の時に描くマテリアル。メッシュを作る時に AssetManager が決める
+    struct MeshUnsetMaterial
+    {
+        Material* material = nullptr;
+        bool reportWhenUsed = false; // 欄が空のまま描くのが誤りの時 true。初めて使う時に ERROR を出す
+    };
+
     //! @brief 描く形と当たりの形の組。道から読むメッシュ・組み込みの形・骨付きのモデルのメッシュを同じ型で持つ
     //! @details どちらも無い事がある。描く形は装置が無い時と GPU で作れなかった時に空、当たりは骨付きと読めなかった時に空
     //! 道は欄に保存する名前を正規化した物で、組み込みの形は形の名前
     class Mesh : public Object
     {
     public:
-        Mesh(std::string path, std::unique_ptr<Gfx::D3DMesh> mesh, std::unique_ptr<Phys::MeshShape> collision) noexcept;
+        Mesh(std::string path,
+             std::unique_ptr<Gfx::D3DMesh> mesh,
+             std::unique_ptr<Phys::MeshShape> collision,
+             MeshUnsetMaterial unset) noexcept;
         //! 骨付きのモデルのメッシュ。当たりは持たない
-        Mesh(std::string path, std::unique_ptr<Gfx::D3DSkeletalMesh> mesh) noexcept;
+        Mesh(std::string path, std::unique_ptr<Gfx::D3DSkeletalMesh> mesh, MeshUnsetMaterial unset) noexcept;
         ~Mesh() noexcept override;
 
         [[nodiscard]] const std::string& Path() const noexcept;
@@ -41,9 +53,9 @@ namespace NS
         //! 描く形も当たりも無い場合 true。空の名前と、読めなかった名前のメッシュ
         [[nodiscard]] bool IsEmpty() const noexcept;
 
-        //! @brief 描く形を後から入れる。組み込みの形は当たりを装置の前でも作り、描く形を装置の後で足す
-        //! @details 骨付きで作ったメッシュには使わない
-        void SetD3D(std::unique_ptr<Gfx::D3DMesh> mesh) noexcept;
+        //! @brief マテリアルの欄が空の時に描くマテリアルを返す
+        //! @details 欄が空のまま描くのが誤りのメッシュは、初めて呼んだ時だけ ERROR を出す
+        [[nodiscard]] Material* UseUnsetMaterial();
 
         NS_REFLECT_NONE(Mesh, Object)
 
@@ -52,5 +64,6 @@ namespace NS
         std::unique_ptr<Gfx::D3DMesh> m_mesh;
         Gfx::D3DSkeletalMesh* m_skeletal = nullptr; // m_mesh と同じ物。骨付きで作った時だけ持つ
         std::unique_ptr<Phys::MeshShape> m_collision;
+        MeshUnsetMaterial m_unset;
     };
 } // namespace NS

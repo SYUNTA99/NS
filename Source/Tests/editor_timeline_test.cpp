@@ -191,7 +191,6 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
-    assets.RegisterBuiltins();
     const NS::AssetManagerScope useAssets{assets};
     renderer.SetShaders(assets.LoadBuiltinShaders());
     std::unique_ptr<NS::Gfx::D3DRenderTarget> target = NS::Gfx::D3DRenderTarget::Create({160, 90});
@@ -284,7 +283,6 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
-    assets.RegisterBuiltins();
     const NS::AssetManagerScope useAssets{assets};
     renderer.SetShaders(assets.LoadBuiltinShaders());
     NS::Scene original;

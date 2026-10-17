@@ -52,11 +52,11 @@ namespace NS
         //! 名前のマテリアルをその場で AssetManager::Get() から引き、欄に入れる
         void SetMaterialRef(std::string_view ref);
 
-        //! @brief 描くマテリアル。欄が空でなければ欄の物、空なら描くメッシュで選んだ物 (AssetManager::LoadUnsetMaterial)
+        //! @brief 描くマテリアル。欄が空でなければ欄の物、空なら描くメッシュが決めた物 (Mesh::UseUnsetMaterial)
         //! @details 選び直すのは ChooseDrawnMaterial を呼んだ時だけ。保存はしない
         [[nodiscard]] const Material* DrawnMaterial() const noexcept { return m_drawnMaterial; }
         //! @brief 今の欄と描くメッシュで、描くマテリアルを選び直す
-        //! @details 作る時・名前の欄を書いた時・SceneActor::ReloadAssets の最後に呼ぶ。マテリアルの無いファイルのモデルは ERROR を出す
+        //! @details 作る時・名前の欄を書いた時・SceneActor::ReloadAssets の最後に呼ぶ。マテリアルの無いファイルのモデルは、メッシュごとに 1 回 ERROR を出す
         void ChooseDrawnMaterial();
 
         //! 個体ごとの頂点シェーダーの定数を設定する。同じ SceneActor の Animation がプレイの始まりに設定する

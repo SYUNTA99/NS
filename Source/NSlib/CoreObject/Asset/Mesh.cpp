@@ -1,6 +1,6 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 
-#include "NSlib/Core/Assert.h"
+#include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DSkeletalMesh.h"
 #include "NSlib/Phys/MeshShape.h"
@@ -11,12 +11,14 @@ namespace NS
 {
     Mesh::Mesh(std::string path,
                std::unique_ptr<Gfx::D3DMesh> mesh,
-               std::unique_ptr<Phys::MeshShape> collision) noexcept
-        : m_path(std::move(path)), m_mesh(std::move(mesh)), m_collision(std::move(collision))
+               std::unique_ptr<Phys::MeshShape> collision,
+               MeshUnsetMaterial unset) noexcept
+        : m_path(std::move(path)), m_mesh(std::move(mesh)), m_collision(std::move(collision)), m_unset(unset)
     {
     }
 
-    Mesh::Mesh(std::string path, std::unique_ptr<Gfx::D3DSkeletalMesh> mesh) noexcept : m_path(std::move(path))
+    Mesh::Mesh(std::string path, std::unique_ptr<Gfx::D3DSkeletalMesh> mesh, MeshUnsetMaterial unset) noexcept
+        : m_path(std::move(path)), m_unset(unset)
     {
         m_skeletal = mesh.get();
         m_mesh = std::move(mesh);
@@ -59,9 +61,13 @@ namespace NS
         return m_mesh == nullptr && m_collision == nullptr;
     }
 
-    void Mesh::SetD3D(std::unique_ptr<Gfx::D3DMesh> mesh) noexcept
+    Material* Mesh::UseUnsetMaterial()
     {
-        NS_ASSERT(Scene, m_skeletal == nullptr, "骨付きのメッシュの描く形を入れ替えようとしている");
-        m_mesh = std::move(mesh);
+        if (m_unset.reportWhenUsed)
+        {
+            NS_LOG_ERROR(Scene, "メッシュ {} にマテリアルが無いので、ピンクで描く", m_path);
+            m_unset.reportWhenUsed = false;
+        }
+        return m_unset.material;
     }
 } // namespace NS

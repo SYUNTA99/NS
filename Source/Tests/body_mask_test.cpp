@@ -92,7 +92,6 @@ namespace
             : m_window(NS::OS::WindowDesc{.title = "型抜きの試し", .size = {k_Width, k_Height}, .visible = false}),
               m_renderer(NS::Gfx::RendererDesc{}, m_window), m_assets(NS::OS::FileSystem::ContentRoot())
         {
-            m_assets.RegisterBuiltins();
             m_renderer.SetShaders(m_assets.LoadBuiltinShaders());
             m_target = NS::Gfx::D3DRenderTarget::Create({k_Width, k_Height});
         }
