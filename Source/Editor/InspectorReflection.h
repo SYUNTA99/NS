@@ -1,6 +1,6 @@
 #pragma once
 
-//! @brief サブオブジェクトのリフレクション情報から、ImGui編集用UIを自動生成するインスペクタヘルパー
+//! @brief アクターの持ち物のリフレクション情報から、ImGui編集用UIを自動生成するインスペクタヘルパー
 
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 
@@ -28,7 +28,7 @@ namespace NS
             std::string label;
         };
 
-        //! @brief 1フレームのサブオブジェクト編集で起きた相互作用の集約
+        //! @brief 1フレームのアクターの持ち物の編集で起きた相互作用の集約
         //! @details activated/committed はドラッグを1つのundo単位へまとめるための開始・終了フレームの印
         struct ClassObjEditResult
         {

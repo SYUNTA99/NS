@@ -15,7 +15,7 @@ namespace NS
         class InspectorPanel : public NonCopyable
         {
         public:
-            //! インスペクターを 1 枚描く。名前・トランスフォーム・サブオブジェクトの編集は controller へ流す
+            //! インスペクターを 1 枚描く。名前・トランスフォーム・アクターの持ち物の編集は controller へ流す
             void Render(LevelEditorController& editor) noexcept;
 
         private:

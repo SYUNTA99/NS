@@ -399,7 +399,7 @@ namespace NS
                 drawn = std::move(mesh);
             }
             // GPU 生成だけ失敗しても当たりは作る。device 無しのテストでも当たりを確かめられる
-            // 当たりだけ頼まれた時も GPU 生成を通るので、device の無いテストでは上のエラーが出る
+            // 当たりだけ頼まれた時も GPU 生成を通るので、device の無い所でファイルの mesh を読むと上のエラーが出る
             // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
             // 大きな mesh を飾りに多く置いてメモリが効いてきたら、当たりを頼まれた時に作る形へ移す
             collision = MakeCollision(geom);
