@@ -2,9 +2,9 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
-#include "NSlib/Graphics/D3DMaterial.h"
-#include "NSlib/Graphics/GraphicObject.h"
-#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Gfx/D3DMaterial.h"
+#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 

@@ -6,7 +6,7 @@
 #include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/Graphics/DrawItem.h"
+#include "NSlib/Gfx/DrawItem.h"
 
 #include <string>
 #include <string_view>

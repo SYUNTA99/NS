@@ -41,7 +41,7 @@
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/SubObjects/VirtualCamera.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Gfx/DebugDraw.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Input.h"

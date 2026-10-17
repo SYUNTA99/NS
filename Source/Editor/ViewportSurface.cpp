@@ -1,7 +1,7 @@
 #include "Editor/ViewportSurface.h"
 
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Graphics/D3DRenderTarget.h"
+#include "NSlib/Gfx/D3DRenderTarget.h"
 
 #include "NSlib/Core/Types.h"
 

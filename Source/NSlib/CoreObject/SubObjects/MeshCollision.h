@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/SubObjects/Collision.h"
-#include "NSlib/Physics/Triangle.h"
+#include "NSlib/Phys/Triangle.h"
 
 #include <vector>
 

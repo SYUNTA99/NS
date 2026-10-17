@@ -6,7 +6,7 @@
 #include "NSlib/CoreObject/Actors/LightActor.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/Physics/PhysicsScene.h"
+#include "NSlib/Phys/PhysicsScene.h"
 
 #include <gtest/gtest.h>
 

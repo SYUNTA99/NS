@@ -3,7 +3,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/SubObjects/Collision.h"
-#include "NSlib/Physics/Capsule.h"
+#include "NSlib/Phys/Capsule.h"
 
 namespace NS
 {

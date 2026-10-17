@@ -24,7 +24,7 @@
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
-#include "NSlib/Physics/Capsule.h"
+#include "NSlib/Phys/Capsule.h"
 #include "NSlib/Windows/Clock.h"
 
 #include "NSlib/Core/Types.h"

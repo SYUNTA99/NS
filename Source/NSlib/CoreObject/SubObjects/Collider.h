@@ -3,8 +3,8 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/IUse/IUseCollision.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/Physics/Capsule.h"
-#include "NSlib/Physics/JoltCharacter.h"
+#include "NSlib/Phys/Capsule.h"
+#include "NSlib/Phys/JoltCharacter.h"
 
 #include <memory>
 

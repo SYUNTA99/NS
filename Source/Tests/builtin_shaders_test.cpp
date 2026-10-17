@@ -1,7 +1,7 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/Graphics/D3DShader.h"
-#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Gfx/D3DShader.h"
+#include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 

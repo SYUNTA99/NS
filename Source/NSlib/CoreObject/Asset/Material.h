@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/Graphics/D3DPipeline.h"
+#include "NSlib/Gfx/D3DPipeline.h"
 
 #include <cstddef>
 #include <memory>

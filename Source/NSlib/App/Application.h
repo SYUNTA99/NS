@@ -2,7 +2,7 @@
 
 #include "NSlib/App/Layers.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Window.h"
 

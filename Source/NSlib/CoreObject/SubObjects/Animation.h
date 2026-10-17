@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Core/Animation/AnimClip.h"
-#include "NSlib/Graphics/D3DSkeletalMesh.h"
+#include "NSlib/Gfx/D3DSkeletalMesh.h"
 #include "NSlib/Core/Animation/Skeleton.h"
 
 #include <cstddef>

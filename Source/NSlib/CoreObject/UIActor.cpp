@@ -1,7 +1,7 @@
 #include "NSlib/CoreObject/UIActor.h"
 
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Graphics/RenderContext.h"
+#include "NSlib/Gfx/RenderContext.h"
 
 namespace NS
 {

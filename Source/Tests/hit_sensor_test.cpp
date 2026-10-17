@@ -9,7 +9,7 @@
 #include "NSlib/CoreObject/SubObjects/HitSensor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
-#include "NSlib/Physics/Capsule.h"
+#include "NSlib/Phys/Capsule.h"
 
 #include <gtest/gtest.h>
 

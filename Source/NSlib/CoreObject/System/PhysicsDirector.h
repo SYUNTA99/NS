@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/CoreObject/System/SceneSystem.h"
-#include "NSlib/Physics/PhysicsScene.h"
+#include "NSlib/Phys/PhysicsScene.h"
 
 namespace NS
 {

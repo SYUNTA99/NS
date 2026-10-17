@@ -1,9 +1,9 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/Graphics/D3DMesh.h"
-#include "NSlib/Graphics/D3DSkeletalMesh.h"
-#include "NSlib/Physics/MeshShape.h"
+#include "NSlib/Gfx/D3DMesh.h"
+#include "NSlib/Gfx/D3DSkeletalMesh.h"
+#include "NSlib/Phys/MeshShape.h"
 
 #include <utility>
 

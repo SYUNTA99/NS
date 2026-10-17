@@ -1,5 +1,5 @@
-#include "NSlib/Graphics/D3DPipeline.h"
-#include "NSlib/Graphics/detail/PipelineDepth.h"
+#include "NSlib/Gfx/D3DPipeline.h"
+#include "NSlib/Gfx/detail/PipelineDepth.h"
 
 #include <gtest/gtest.h>
 

@@ -6,8 +6,8 @@
 #include "NSlib/App/App.h"
 #include "NSlib/Core/Core.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Graphics/Graphics.h"
-#include "NSlib/Physics/Physics.h"
+#include "NSlib/Gfx/Gfx.h"
+#include "NSlib/Phys/Phys.h"
 #include "NSlib/Windows/Windows.h"
 
 // Object 層は一括ヘッダを持たないため、層の公開ヘッダを直接並べる
@@ -36,7 +36,7 @@
 #include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/SubObjects/VirtualCamera.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/Graphics/RenderContext.h"
+#include "NSlib/Gfx/RenderContext.h"
 
 #include "NSlib/CommonStl.h"
 

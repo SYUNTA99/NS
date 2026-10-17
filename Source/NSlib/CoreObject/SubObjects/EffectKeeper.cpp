@@ -3,7 +3,7 @@
 
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Graphics/EffectScene.h"
+#include "NSlib/Gfx/EffectScene.h"
 
 #include <utility>
 

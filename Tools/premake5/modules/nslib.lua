@@ -42,7 +42,7 @@ premake.override(premake.vstudio.vc2010, "precompiledHeader", function(base, cfg
     if filecfg and prjcfg.project.name == "NSlib" then
         local layer = filecfg.abspath:match("/Source/NSlib/([^/]+)/")
         if filecfg.abspath:match("/ScreenGrab11.cpp$") then
-            layer = "Graphics"
+            layer = "Gfx"
         end
         if layer then
             local mode = "Use"

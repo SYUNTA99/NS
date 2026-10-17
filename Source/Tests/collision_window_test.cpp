@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Collider.h"
 #include "NSlib/CoreObject/SubObjects/SphereCollision.h"
-#include "NSlib/Physics/PhysicsScene.h"
+#include "NSlib/Phys/PhysicsScene.h"
 
 #include <gtest/gtest.h>
 

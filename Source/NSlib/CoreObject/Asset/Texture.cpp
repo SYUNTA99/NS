@@ -1,6 +1,6 @@
 #include "NSlib/CoreObject/Asset/Texture.h"
 
-#include "NSlib/Graphics/D3DTexture.h"
+#include "NSlib/Gfx/D3DTexture.h"
 
 namespace NS
 {

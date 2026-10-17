@@ -1,7 +1,7 @@
 #include "NSlib/UI/WidgetSubObj.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Gfx/Renderer.h"
 
 namespace NS
 {

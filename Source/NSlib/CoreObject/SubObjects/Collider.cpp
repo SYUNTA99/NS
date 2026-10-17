@@ -2,7 +2,7 @@
 
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Physics/JoltCharacter.h"
+#include "NSlib/Phys/JoltCharacter.h"
 
 #include <cmath>
 

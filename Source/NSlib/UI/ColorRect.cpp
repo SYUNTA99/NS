@@ -1,6 +1,6 @@
 #include "NSlib/UI/ColorRect.h"
 
-#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Gfx/Renderer.h"
 
 namespace NS
 {

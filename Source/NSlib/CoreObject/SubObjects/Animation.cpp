@@ -6,7 +6,7 @@
 #include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/Graphics/D3DBuffer.h"
+#include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Core/Animation/Retarget.h"
 #include "NSlib/Windows/Clock.h"
 

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/Graphics/EffectTypes.h"
+#include "NSlib/Gfx/EffectTypes.h"
 
 #include "NSlib/Core/Types.h"
 #include <optional>

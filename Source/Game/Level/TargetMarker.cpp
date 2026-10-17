@@ -3,8 +3,8 @@
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Graphics/RenderContext.h"
-#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/Renderer.h"
 
 #include <algorithm>
 #include <cmath>

@@ -1,6 +1,6 @@
 #include "NSlib/CoreObject/Asset/Shader.h"
 
-#include "NSlib/Graphics/D3DShader.h"
+#include "NSlib/Gfx/D3DShader.h"
 
 #include <utility>
 

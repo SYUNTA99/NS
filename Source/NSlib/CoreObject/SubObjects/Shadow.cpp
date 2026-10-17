@@ -6,9 +6,9 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Graphics/D3DMaterial.h"
-#include "NSlib/Graphics/RenderContext.h"
-#include "NSlib/Graphics/D3DMesh.h"
+#include "NSlib/Gfx/D3DMaterial.h"
+#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/D3DMesh.h"
 
 namespace NS
 {

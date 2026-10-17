@@ -16,7 +16,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/HitSensor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Physics/Capsule.h"
+#include "NSlib/Phys/Capsule.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>

@@ -2,8 +2,8 @@
 
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Physics/MeshShape.h"
-#include "NSlib/Physics/PhysicsScene.h"
+#include "NSlib/Phys/MeshShape.h"
+#include "NSlib/Phys/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>

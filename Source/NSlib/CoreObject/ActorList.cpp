@@ -5,7 +5,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SubObjects/Collision.h"
-#include "NSlib/Physics/PhysicsScene.h"
+#include "NSlib/Phys/PhysicsScene.h"
 
 #include <algorithm>
 #include <unordered_map>

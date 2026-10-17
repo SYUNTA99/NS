@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/SubObjects/VirtualCamera.h"
-#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Gfx/Renderer.h"
 
 namespace NS
 {

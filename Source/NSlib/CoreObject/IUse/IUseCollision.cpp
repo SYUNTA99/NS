@@ -1,7 +1,7 @@
 #include "NSlib/CoreObject/IUse/IUseCollision.h"
 #include "NSlib/Core/Assert.h"
 
-#include "NSlib/Physics/PhysicsScene.h"
+#include "NSlib/Phys/PhysicsScene.h"
 
 namespace NS
 {

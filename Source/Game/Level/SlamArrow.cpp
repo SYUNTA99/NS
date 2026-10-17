@@ -11,10 +11,10 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/SubObjects/Collider.h"
 #include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Graphics/FrameConstants.h"
-#include "NSlib/Graphics/D3DMaterial.h"
-#include "NSlib/Graphics/D3DPipeline.h"
-#include "NSlib/Graphics/RenderContext.h"
+#include "NSlib/Gfx/FrameConstants.h"
+#include "NSlib/Gfx/D3DMaterial.h"
+#include "NSlib/Gfx/D3DPipeline.h"
+#include "NSlib/Gfx/RenderContext.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>

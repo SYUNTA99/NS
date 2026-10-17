@@ -3,8 +3,8 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
-#include "NSlib/Graphics/RenderContext.h"
-#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/Renderer.h"
 
 #include <algorithm>
 #include <limits>

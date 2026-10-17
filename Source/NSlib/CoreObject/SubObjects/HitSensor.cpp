@@ -4,7 +4,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
-#include "NSlib/Physics/Capsule.h"
+#include "NSlib/Phys/Capsule.h"
 
 #include <algorithm>
 #include <array>

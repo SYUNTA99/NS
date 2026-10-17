@@ -7,7 +7,7 @@
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/SubObjects/Body.h"
 #include "NSlib/CoreObject/SubObjects/Collider.h"
-#include "NSlib/Graphics/DebugDraw.h"
+#include "NSlib/Gfx/DebugDraw.h"
 
 #include <algorithm>
 #include <cmath>

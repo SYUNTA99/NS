@@ -297,7 +297,7 @@ project "NSlib"
     removefiles { "Source/NSlib/App/WinMain.cpp" }
     vpaths {
         ["*"] = { "Source/NSlib/**" },
-        ["Graphics/ThirdParty/*"] = { "Source/ThirdParty/DirectXTex/ScreenGrab/**" }
+        ["Gfx/ThirdParty/*"] = { "Source/ThirdParty/DirectXTex/ScreenGrab/**" }
     }
     includedirs {
         "Source/ThirdParty/DirectXTK/Inc",

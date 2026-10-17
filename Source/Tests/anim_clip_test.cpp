@@ -2,7 +2,7 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/SkinnedModel.h"
-#include "NSlib/Graphics/Renderer.h"
+#include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Windows/Window.h"
 #include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Geometry/GltfParser.h"

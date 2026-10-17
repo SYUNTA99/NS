@@ -1,5 +1,5 @@
 #include "NSlib/Core/Math.h"
-#include "NSlib/Graphics/FrameConstants.h"
+#include "NSlib/Gfx/FrameConstants.h"
 
 #include <gtest/gtest.h>
 
