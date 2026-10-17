@@ -1,4 +1,4 @@
-#include "NSlib/Gfx/EffectScene.h"
+#include "NSlib/Gfx/Render/EffectScene.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/CameraData.h"

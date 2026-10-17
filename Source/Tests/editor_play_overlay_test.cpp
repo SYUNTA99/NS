@@ -1,7 +1,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Gfx/DebugDraw.h"
+#include "NSlib/Gfx/Render/DebugDraw.h"
 
 #include <gtest/gtest.h>
 

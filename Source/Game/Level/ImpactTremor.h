@@ -3,7 +3,7 @@
 #include "Game/Level/LevelMessages.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
-#include "NSlib/Gfx/FrameConstants.h"
+#include "NSlib/Gfx/Render/FrameConstants.h"
 
 namespace GL
 {

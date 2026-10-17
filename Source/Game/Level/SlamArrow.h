@@ -6,8 +6,8 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
-#include "NSlib/Gfx/DrawItem.h"
-#include "NSlib/Gfx/FrameConstants.h"
+#include "NSlib/Gfx/Render/DrawItem.h"
+#include "NSlib/Gfx/Render/FrameConstants.h"
 
 #include <functional>
 #include <string>

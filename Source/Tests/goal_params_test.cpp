@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Gfx/ScreenFade.h"
+#include "NSlib/Gfx/Render/ScreenFade.h"
 
 #include <gtest/gtest.h>
 

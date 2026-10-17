@@ -8,7 +8,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
-#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 
 namespace NS
 {

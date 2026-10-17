@@ -36,7 +36,7 @@
 #include "NSlib/CoreObject/Scene/SceneManager.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 
 #include "NSlib/CommonStl.h"
 

@@ -1,4 +1,4 @@
-#include "NSlib/Gfx/ScreenPasses.h"
+#include "NSlib/Gfx/Render/ScreenPasses.h"
 
 #include <gtest/gtest.h>
 

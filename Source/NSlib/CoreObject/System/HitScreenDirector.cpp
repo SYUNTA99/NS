@@ -4,7 +4,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
-#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/Gfx/Renderer.h"
 
 #include <algorithm>

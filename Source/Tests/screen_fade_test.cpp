@@ -10,7 +10,7 @@
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Renderer.h"
-#include "NSlib/Gfx/ScreenFade.h"
+#include "NSlib/Gfx/Render/ScreenFade.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Filesystem.h"

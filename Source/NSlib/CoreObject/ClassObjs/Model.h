@@ -7,7 +7,7 @@
 #include "NSlib/CoreObject/IUse/IUseDrawAdjust.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/Gfx/DrawItem.h"
+#include "NSlib/Gfx/Render/DrawItem.h"
 
 #include <string>
 #include <string_view>

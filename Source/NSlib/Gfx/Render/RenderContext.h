@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/Gfx/RenderSettings.h"
+#include "NSlib/Gfx/Render/RenderSettings.h"
 
 #include <cmath>
 

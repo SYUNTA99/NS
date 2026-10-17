@@ -11,7 +11,7 @@
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorRef.h"
-#include "NSlib/Gfx/FrameConstants.h"
+#include "NSlib/Gfx/Render/FrameConstants.h"
 #include "NSlib/Windows/Gamepad.h"
 
 #include "NSlib/Core/Types.h"

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Gfx/DrawItem.h"
+#include "NSlib/Gfx/Render/DrawItem.h"
 
 #include "NSlib/Core/Types.h"
 #include <vector>

@@ -1,9 +1,9 @@
-#include "NSlib/Gfx/RenderProxyList.h"
+#include "NSlib/Gfx/Render/RenderProxyList.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Frustum.h"
-#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 
 #include <algorithm>
 

@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/Gfx/D3DMaterial.h"
-#include "NSlib/Gfx/FrameConstants.h"
+#include "NSlib/Gfx/Render/FrameConstants.h"
 
 #include "NSlib/Core/Types.h"
 #include <utility>

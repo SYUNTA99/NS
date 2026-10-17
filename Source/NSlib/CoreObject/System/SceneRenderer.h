@@ -3,12 +3,12 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/System/SceneSystem.h"
-#include "NSlib/Gfx/DebugDraw.h"
+#include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Gfx/RenderContext.h"
-#include "NSlib/Gfx/RenderProxyList.h"
-#include "NSlib/Gfx/RenderSettings.h"
-#include "NSlib/Gfx/ScreenFade.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
+#include "NSlib/Gfx/Render/RenderProxyList.h"
+#include "NSlib/Gfx/Render/RenderSettings.h"
+#include "NSlib/Gfx/Render/ScreenFade.h"
 
 #include <functional>
 #include <memory>

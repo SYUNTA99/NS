@@ -1,4 +1,4 @@
-#include "NSlib/Gfx/Skybox.h"
+#include "NSlib/Gfx/Render/Skybox.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/CameraData.h"

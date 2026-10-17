@@ -1,10 +1,10 @@
-#include "NSlib/Gfx/ScreenPasses.h"
+#include "NSlib/Gfx/Render/ScreenPasses.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
-#include "NSlib/Gfx/DrawItem.h"
+#include "NSlib/Gfx/Render/DrawItem.h"
 #include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"

@@ -3,7 +3,7 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 
 #include <algorithm>
 #include <cmath>

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/Gfx/EffectTypes.h"
+#include "NSlib/Gfx/Render/EffectTypes.h"
 
 #pragma warning(push, 0)
 #include <Effekseer.h>

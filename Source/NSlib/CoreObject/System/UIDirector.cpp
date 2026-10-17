@@ -1,7 +1,7 @@
 #include "NSlib/CoreObject/System/UIDirector.h"
 
 #include "NSlib/CoreObject/UIActor.h"
-#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/Gfx/Renderer.h"
 
 #include <algorithm>

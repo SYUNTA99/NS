@@ -2,7 +2,7 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Gfx/EffectScene.h"
+#include "NSlib/Gfx/Render/EffectScene.h"
 #include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Gfx/D3DTexture.h"

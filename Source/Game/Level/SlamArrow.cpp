@@ -13,8 +13,8 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DPipeline.h"
-#include "NSlib/Gfx/FrameConstants.h"
-#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/Render/FrameConstants.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>

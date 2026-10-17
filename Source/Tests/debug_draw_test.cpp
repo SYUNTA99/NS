@@ -1,5 +1,5 @@
 #include "NSlib/Core/Math.h"
-#include "NSlib/Gfx/DebugDraw.h"
+#include "NSlib/Gfx/Render/DebugDraw.h"
 
 #include <gtest/gtest.h>
 

@@ -17,7 +17,7 @@
 #include "NSlib/CoreObject/System/ScreenFadeDirector.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/CoreObject/UIActor.h"
-#include "NSlib/Gfx/DebugDraw.h"
+#include "NSlib/Gfx/Render/DebugDraw.h"
 
 #include <gtest/gtest.h>
 

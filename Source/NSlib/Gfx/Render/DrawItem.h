@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Types.h"
-#include "NSlib/Gfx/FrameConstants.h"
+#include "NSlib/Gfx/Render/FrameConstants.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 
 #include <cstddef>

@@ -6,7 +6,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Gfx/RenderContext.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"

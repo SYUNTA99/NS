@@ -3,7 +3,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/IRenderable.h"
-#include "NSlib/Gfx/DrawItem.h"
+#include "NSlib/Gfx/Render/DrawItem.h"
 
 #include <vector>
 

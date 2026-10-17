@@ -4,7 +4,7 @@
 #include "NSlib/CoreObject/Reflection/EffectName.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/Gfx/EffectTypes.h"
+#include "NSlib/Gfx/Render/EffectTypes.h"
 
 #include "NSlib/Core/Types.h"
 #include <string_view>

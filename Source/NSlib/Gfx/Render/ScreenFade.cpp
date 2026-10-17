@@ -1,4 +1,4 @@
-#include "NSlib/Gfx/ScreenFade.h"
+#include "NSlib/Gfx/Render/ScreenFade.h"
 
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 

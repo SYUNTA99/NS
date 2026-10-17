@@ -1,4 +1,4 @@
-#include "NSlib/Gfx/Bloom.h"
+#include "NSlib/Gfx/Render/Bloom.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3DBuffer.h"

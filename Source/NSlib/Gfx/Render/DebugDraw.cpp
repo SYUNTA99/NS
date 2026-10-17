@@ -1,4 +1,4 @@
-#include "NSlib/Gfx/DebugDraw.h"
+#include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"

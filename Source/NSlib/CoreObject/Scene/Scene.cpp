@@ -10,8 +10,8 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/UIActor.h"
-#include "NSlib/Gfx/DebugDraw.h"
-#include "NSlib/Gfx/EffectScene.h"
+#include "NSlib/Gfx/Render/DebugDraw.h"
+#include "NSlib/Gfx/Render/EffectScene.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <magic_enum/magic_enum.hpp>

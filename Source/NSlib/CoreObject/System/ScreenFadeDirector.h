@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/CoreObject/System/SceneSystem.h"
-#include "NSlib/Gfx/ScreenFade.h"
+#include "NSlib/Gfx/Render/ScreenFade.h"
 
 namespace NS
 {
