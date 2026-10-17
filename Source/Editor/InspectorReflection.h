@@ -65,7 +65,7 @@ namespace NS
 
         //! リフレクション欄を編集し、Undo に必要な編集開始・終了と変更内容を返す
         //! refOptions が空なら参照は数値入力、defaults があれば上書きの表示と復元を使える
-        //! filter は欄名の部分一致。空か nullptr なら絞らない
+        //! filter は欄の見せる名前の部分一致。空か nullptr なら絞らない
         //! actor と row は comp の持ち主とその表の行。どちらかが nullptr なら種類の既定にする操作を出さない
         [[nodiscard]] ClassObjEditResult DrawReflectedClassObj(Object& comp,
                                                                std::span<const ObjectRefOption> refOptions = {},

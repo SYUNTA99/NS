@@ -599,7 +599,7 @@ namespace NS
                 ImGui::SetNextWindowSize(ImVec2{640.0f, 480.0f}, ImGuiCond_Appearing);
                 if (ImGui::BeginPopup("asset-picker"))
                 {
-                    ImGui::TextUnformatted(field.name);
+                    ImGui::TextUnformatted(FieldLabel(field));
                     if (ImGui::IsWindowAppearing())
                     {
                         ImGui::SetKeyboardFocusHere();
@@ -1364,7 +1364,7 @@ namespace NS
                 bool keepOpen = true;
                 if (ImGui::BeginPopupModal(editorName, &keepOpen, ImGuiWindowFlags_NoSavedSettings))
                 {
-                    ImGui::TextUnformatted(field.name);
+                    ImGui::TextUnformatted(FieldLabel(field));
                     const float editorWidth = ImGui::GetContentRegionAvail().x;
                     const float editorHeight = std::max(180.0f, ImGui::GetContentRegionAvail().y - 240.0f);
                     edited |= DrawCurveEditor(value, result, editorWidth, editorHeight);
@@ -1522,7 +1522,7 @@ namespace NS
                     const bool anyMatch =
                         std::any_of(info.fields + group.firstField,
                                     info.fields + end,
-                                    [filter](const FieldDesc& field) { return NameMatches(field.name, filter); });
+                                    [filter](const FieldDesc& field) { return NameMatches(FieldLabel(field), filter); });
                     if (!anyMatch)
                     {
                         return false;
@@ -1564,7 +1564,7 @@ namespace NS
                     {
                         continue;
                     }
-                    if (filtering && !NameMatches(info.fields[i].name, filter))
+                    if (filtering && !NameMatches(FieldLabel(info.fields[i]), filter))
                     {
                         continue;
                     }
@@ -1596,7 +1596,7 @@ namespace NS
                 const bool changed = FieldDiffersFromDefault(comp, defaults, field);
                 const bool wasChanged = result.changed;
                 ImGui::PushID(static_cast<int>(i));
-                FieldRow(field.name, changed);
+                FieldRow(FieldLabel(field), changed);
 
                 const FieldWidgetResult widget = DrawFieldWidget(&comp, field, refOptions);
                 result.changed |= widget.changed;
@@ -1646,7 +1646,7 @@ namespace NS
             const auto drawRow = [&](std::size_t i) {
                 const FieldDesc& field = info.fields[i];
                 ImGui::PushID(static_cast<int>(i));
-                FieldRow(field.name);
+                FieldRow(FieldLabel(field));
                 const FieldWidgetResult widget = DrawFieldWidget(value, field, refOptions);
                 result.activated |= widget.activated;
                 result.committed |= widget.committed;

@@ -176,13 +176,24 @@ namespace NS
     //! 型消去したフィールドの取得・設定関数。obj は宣言した具象型を指す
     struct FieldDesc
     {
-        const char* name;
+        const char* name; // データの名前。保存と読み込みの鍵で、変えると保存済みの値が既定へ戻る
         FieldType type;
         void (*get)(const void* obj, void* outValue) noexcept; // obj から値を outValue へ取り出す
         void (*set)(void* obj, const void* inValue) noexcept;  // inValue を obj へ書き込む
         void (*load)(void* obj) = nullptr;                    // 素材の欄の素材を引き直す。ほかの型の欄では何もしない
         AssetKind assetKind = AssetKind::None;
+        const char* label = nullptr; // インスペクタに見せる名前。変えても保存の鍵は変わらない
     };
+
+    //! インスペクタに見せる名前。label を書かない欄は name を返す
+    [[nodiscard]] inline const char* FieldLabel(const FieldDesc& field) noexcept
+    {
+        if (field.label != nullptr)
+        {
+            return field.label;
+        }
+        return field.name;
+    }
 
     //! @brief 欄の見出し 1 つ。インスペクタが firstField の欄の前に畳める区切りを出す
     //! @details 見出しは次の見出しの手前の欄までを束ねる。次の見出しと firstField が同じなら欄を持たない
@@ -310,30 +321,36 @@ namespace NS
 //! private も入れ子の struct のメンバ (m_tuning.speed) も書ける
 //! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectName の型で欄の種類が決まる
 //! float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
-#define NS_FIELD(member, label)                                                                                        \
+//! name は保存の鍵。3 つ目に見せる名前を書くと、インスペクタは name の代わりにそれを見せる
+#define NS_FIELD(member, name, ...)                                                                                    \
     NS::ReflectEntry{                                                                                                  \
         NS::FieldDesc{                                                                                                 \
-            label,                                                                                                     \
+            name,                                                                                                      \
             NS::FieldTypeOf<decltype(Self::member)>(),                                                                 \
             +[](const void* c, void* out) noexcept { NS::ReadFieldValue(static_cast<const Self*>(c)->member, out); },  \
             +[](void* c, const void* in) noexcept { NS::AssignFieldValue(static_cast<Self*>(c)->member, in); },        \
             +[](void* c) { NS::LoadFieldAsset(static_cast<Self*>(c)->member); },                                       \
-            NS::AssetKindOf<decltype(Self::member)>()},                                                                \
+            NS::AssetKindOf<decltype(Self::member)>(),                                                                 \
+            {__VA_ARGS__}},                                                                                            \
         nullptr},
 
 //! 欄の見出しを置く。次の見出しまでに並べた欄がこの見出しの下に入る。見出しは欄の配列に入らず、保存の鍵にならない
 #define NS_GROUP(groupName) NS::ReflectEntry{NS::FieldDesc{}, groupName},
 
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
-#define NS_ACCESSOR(ValueType, label, getterCall, setterCall)                                                          \
-    NS::ReflectEntry{NS::FieldDesc{label,                                                                              \
+//! 見せる名前は NS_FIELD と同じく、最後の引数に書く
+#define NS_ACCESSOR(ValueType, name, getterCall, setterCall, ...)                                                      \
+    NS::ReflectEntry{NS::FieldDesc{name,                                                                               \
                                    NS::FieldTypeOf<ValueType>(),                                                       \
                                    +[](const void* c, void* out) noexcept {                                            \
                                        *static_cast<ValueType*>(out) = static_cast<const Self*>(c)->getterCall;        \
                                    },                                                                                  \
                                    +[](void* c, const void* in) noexcept {                                             \
                                        static_cast<Self*>(c)->setterCall(*static_cast<const ValueType*>(in));          \
-                                   }},                                                                                 \
+                                   },                                                                                  \
+                                   nullptr,                                                                            \
+                                   NS::AssetKind::None,                                                                \
+                                   {__VA_ARGS__}},                                                                     \
                      nullptr},
 
 //! フィールド宣言の終了。static なリフレクション情報を組み立てて返し、仮想の GetReflection はそこへ転送する

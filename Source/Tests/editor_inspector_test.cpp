@@ -1,11 +1,15 @@
 #include "Editor/InspectorReflection.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Reflection/Reflection.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <string>
 #include <vector>
 
 // コンボで参照先を選ぶと、値が変わる前に編集の始まりを、変わった後に確定を返す
@@ -89,4 +93,62 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     EXPECT_LT(activatedAt, changedAt);
     EXPECT_GE(committedAt, changedAt);
     ImGui::DestroyContext(gui);
+}
+
+namespace
+{
+    class LabeledFieldObject final : public NS::Object
+    {
+    public:
+        float speed = 2.0f;
+
+        NS_REFLECT_BEGIN(LabeledFieldObject, NS::Object)
+        NS_FIELD(speed, "speed", "走る速さ")
+        NS_REFLECT_END()
+    };
+} // namespace
+
+// 見せる名前を足した欄は、データの名前で保存されて読み戻され、インスペクタの見出しは見せる名前になる
+TEST(EditorInspector, LabeledFieldSavesByNameAndShowsTheLabel)
+{
+    LabeledFieldObject object;
+    const NS::ReflectionInfo& info = *object.GetReflection();
+    EXPECT_EQ(NS::SerializeReflectedFields(&object, info), (nlohmann::json{{"speed", 2.0f}}));
+    EXPECT_EQ(NS::ApplyReflectedFields(&object, info, nlohmann::json{{"speed", 5.0f}}), 0u);
+    EXPECT_FLOAT_EQ(object.speed, 5.0f);
+
+    ImGuiContext* gui = ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.DisplaySize = ImVec2{800.0f, 600.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    NS::uint8* pixels = nullptr;
+    int width = 0;
+    int height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+
+    // 表の列の幅は数回描くと定まるので、最後のフレームの文字だけを写し取る
+    std::string drawnText;
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        ImGui::NewFrame();
+        ImGui::Begin("見せる名前の欄");
+        const bool capture = frame == 2;
+        if (capture)
+        {
+            ImGui::LogToBuffer();
+        }
+        (void)NS::Editor::DrawReflectedClassObj(object);
+        if (capture)
+        {
+            drawnText = GImGui->LogBuffer.c_str();
+            ImGui::LogFinish();
+        }
+        ImGui::End();
+        ImGui::EndFrame();
+    }
+    ImGui::DestroyContext(gui);
+
+    EXPECT_NE(drawnText.find("走る速さ"), std::string::npos) << drawnText;
+    EXPECT_EQ(drawnText.find("speed"), std::string::npos) << drawnText;
 }
