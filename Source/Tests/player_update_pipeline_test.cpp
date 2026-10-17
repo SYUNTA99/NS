@@ -12,15 +12,15 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
@@ -44,8 +44,8 @@ namespace
                                     &player.Params(),
                                     &player.Body(),
                                     &player.Collider(),
-                                    player.ModelSubObj(),
-                                    player.HitReactionSubObj());
+                                    player.ModelClassObj(),
+                                    player.HitReactionClassObj());
     }
 
     PlayerActor* PlacePipelinePlayer(NS::Scene& scene, float targetX = 0.0f, float targetZ = 3.0f)
@@ -276,7 +276,7 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
             EXPECT_FALSE(player->Resolver().Answer().released);
             EXPECT_FALSE(player->Resolver().Answer().hitStopping);
             ExpectSameVector(rock->Root().Position(), rockHome);
-            ExpectSameVector(player->ModelSubObj()->DrawScale(), NS::Vector3{1.0f, 1.0f, 1.0f});
+            ExpectSameVector(player->ModelClassObj()->DrawScale(), NS::Vector3{1.0f, 1.0f, 1.0f});
         }
     }
 }
@@ -291,9 +291,9 @@ TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     ASSERT_TRUE(player->Resolver().Answer().shapeAnimating);
-    ASSERT_LT(player->ModelSubObj()->DrawScale().z, 1.0f);
+    ASSERT_LT(player->ModelClassObj()->DrawScale().z, 1.0f);
     player->OnEndPlay();
-    EXPECT_TRUE(player->ModelSubObj()->DrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_TRUE(player->ModelClassObj()->DrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     EXPECT_FALSE(player->Resolver().Answer().hitStopping);
     EXPECT_FALSE(player->Resolver().Answer().shapeAnimating);
 }
@@ -309,7 +309,7 @@ TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
         player->Update(true);
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
-    EXPECT_FLOAT_EQ(player->ModelSubObj()->DrawScale().y, 0.95f);
+    EXPECT_FLOAT_EQ(player->ModelClassObj()->DrawScale().y, 0.95f);
 }
 
 // 当てた瞬間の潰れと明けの伸びは描く形の倍率に出て、根のスケールは 1 のまま。戻しの最後のフレームでちょうど 1
@@ -334,7 +334,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         SCOPED_TRACE(frame);
         ExpectSameVector(player->Root().Scale(), one);
         // 膨らみは高さの倍率が 1.1 を超えたフレームから。横は進む向きに直角な軸 (成分の 2 乗を入れ替えて混ぜる)
-        if (bulgeAt < 0 && player->ModelSubObj()->DrawScale().y > 1.1f + 1.0e-4f)
+        if (bulgeAt < 0 && player->ModelClassObj()->DrawScale().y > 1.1f + 1.0e-4f)
         {
             bulgeAt = frame;
         }
@@ -345,7 +345,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         }
         const float side = 0.3f * left;
         ExpectSameVector(
-            player->ModelSubObj()->DrawScale(),
+            player->ModelClassObj()->DrawScale(),
             NS::Vector3{squash.x + side * dir.z * dir.z, squash.y + 0.2f * left, squash.z + side * dir.x * dir.x});
         player->Update(false);
         rock->Update();
@@ -357,7 +357,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     // 明けは潰れ 0.7 から 3 フレームで突進の向きへ 1.25 まで伸び、縦は 1.1 から 0.9 へ細る。明けはその 1 フレーム目
     const float along = 0.7f + 0.55f / 3.0f;
     const float height = 1.1f - 0.2f / 3.0f;
-    ExpectSameVector(player->ModelSubObj()->DrawScale(),
+    ExpectSameVector(player->ModelClassObj()->DrawScale(),
                      NS::Vector3{1.0f - (1.0f - along) * dir.x * dir.x, height, 1.0f - (1.0f - along) * dir.z * dir.z});
     for (int frame = 0; frame < 30 && player->Resolver().Answer().shapeAnimating; ++frame)
     {
@@ -367,7 +367,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         rock->Update();
     }
     ASSERT_FALSE(player->Resolver().Answer().shapeAnimating);
-    EXPECT_TRUE(player->ModelSubObj()->DrawScale() == one);
+    EXPECT_TRUE(player->ModelClassObj()->DrawScale() == one);
     EXPECT_TRUE(player->Root().Scale() == one);
 }
 
@@ -396,7 +396,7 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     ASSERT_TRUE(released);
     ASSERT_FALSE(player->Resolver().Answer().lastImpact.broke);
     ASSERT_TRUE(player->Resolver().Answer().shapeAnimating);
-    NS::Model* model = player->ModelSubObj();
+    NS::Model* model = player->ModelClassObj();
     // 試しには mesh が無いので、組み込みの sphere (半径 0.5) の局所の境界を差し、回転を外して形の伸びだけを測る
     // 玉の倍率は当たりの半径に合わせてあるので、描く玉の下端は当たりの下端に乗る
     const float radius = player->Collider().CapsuleRadius();
@@ -584,7 +584,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                 SCOPED_TRACE(frame);
                 EXPECT_EQ(StateName(*player), (*pose)[1].get<std::string>());
                 ExpectSameVector(
-                    player->ModelSubObj()->DrawScale(),
+                    player->ModelClassObj()->DrawScale(),
                     NS::Vector3{(*pose)[2].get<float>(), (*pose)[3].get<float>(), (*pose)[4].get<float>()});
                 // 構え・潰れ・伸び・着地の潰れのどれの間も、根のスケールは配置の値のまま
                 EXPECT_TRUE(player->Root().Scale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObjects/CameraModifier.h"
+#include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 
 #include <memory>
 #include <optional>

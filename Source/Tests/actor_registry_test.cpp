@@ -40,7 +40,7 @@ TEST(ActorRegistry, PlaceableClassesHaveLabels)
     }
 }
 
-TEST(ActorRegistry, PlayerAndSubObjectsAreNotPlaceable)
+TEST(ActorRegistry, PlayerAndClassObjsAreNotPlaceable)
 {
     // プレイヤーは新しいレベルに自動で 1 体入るので置く一覧に出さない。部品も置く物ではない
     EXPECT_EQ(FindPlaceable("PlayerActor"), nullptr);

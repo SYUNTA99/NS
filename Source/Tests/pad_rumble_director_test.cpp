@@ -1,9 +1,9 @@
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SubObjects/HitReaction.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/Windows/Input.h"
 
@@ -79,7 +79,7 @@ TEST(PadRumbleDirector, HitReactionStopWritesZero)
     NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitReaction* reaction = player->HitReactionSubObj();
+    NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
     reaction->StartPadVibration(FadingLeft(1.0f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);

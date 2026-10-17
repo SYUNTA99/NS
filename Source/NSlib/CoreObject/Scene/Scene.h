@@ -40,7 +40,7 @@ namespace NS
 {
     class AssetManager;
     class Object;
-    struct SubObjectDesc;
+    struct ClassObjInfo;
     class DirectionalLight;
     class IRenderable;
     class IOverlay;
@@ -187,7 +187,7 @@ namespace NS
 
         //! 手編集した欄だけを凍結へ写し、編集復帰後も残す。実行で動いた値は写さない
         //! row は actor のクラスの表の行。凍結にない個体、作られていない行、存在しない欄は変更しない
-        void WritePlayBaselineField(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName);
+        void WritePlayBaselineField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
 
         //! シミュレーションを切り替え、一時停止とコマ送りを解除する
         //! 無効中はカメラも更新せず、部品の有効状態には反映しない

@@ -81,7 +81,7 @@ namespace NS
             //! 直近の Layout で確定した矩形 (基準解像度単位)。当たり判定とテストが読む
             [[nodiscard]] const WidgetRect& LayoutRect() const noexcept { return m_layoutRect; }
 
-            //! 親矩形から自分と子孫の矩形を確定する。WidgetSubObj が根から呼ぶ
+            //! 親矩形から自分と子孫の矩形を確定する。WidgetTree が根から呼ぶ
             void Layout(const WidgetRect& parent) noexcept;
 
             //! 自分と子孫を描く。scale は基準解像度 → 実ピクセルの拡縮率

@@ -2,8 +2,8 @@
 
 #include "Game/Level/HitTier.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
 
 #include <vector>
 
@@ -137,13 +137,13 @@ namespace GL
 
             // 種類の既定値と個体の Inspector で赤を決める
             NS_REFLECT_BEGIN(HitZones, NS::Object)
-            NS_REFLECT_ACCESSOR(bool, "丸", Face().round, SetRound)
-            NS_REFLECT_ACCESSOR(float, "横幅", Face().width, SetWidth)
-            NS_REFLECT_ACCESSOR(float, "縦の幅", Face().height, SetHeight)
-            NS_REFLECT_ACCESSOR(float, "左右の位置", Face().centerU, SetCenterU)
-            NS_REFLECT_ACCESSOR(float, "上下の位置", Face().centerV, SetCenterV)
-            NS_REFLECT_ACCESSOR(float, "威力の倍率", Face().powerScale, SetPowerScale)
-            NS_REFLECT_ACCESSOR(float, "残りの威力の倍率", Face().remainderPowerScale, SetRemainderPowerScale)
+            NS_ACCESSOR(bool, "丸", Face().round, SetRound)
+            NS_ACCESSOR(float, "横幅", Face().width, SetWidth)
+            NS_ACCESSOR(float, "縦の幅", Face().height, SetHeight)
+            NS_ACCESSOR(float, "左右の位置", Face().centerU, SetCenterU)
+            NS_ACCESSOR(float, "上下の位置", Face().centerV, SetCenterV)
+            NS_ACCESSOR(float, "威力の倍率", Face().powerScale, SetPowerScale)
+            NS_ACCESSOR(float, "残りの威力の倍率", Face().remainderPowerScale, SetRemainderPowerScale)
             NS_REFLECT_END()
 
         private:

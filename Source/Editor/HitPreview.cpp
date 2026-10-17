@@ -6,13 +6,13 @@
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
+#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/CameraModifier.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
-#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Windows/Input.h"
 
@@ -190,7 +190,7 @@ namespace NS
             // 突進が当たる体と面を持つ配置物か。下見の相手になれる
             bool IsHitTarget(SceneActor& object)
             {
-                const HitSensor* bodySensor = object.BodySensorSubObj();
+                const HitSensor* bodySensor = object.BodySensorClassObj();
                 return bodySensor != nullptr && bodySensor->IsValid() && Cast<GL::Level::PropActor>(&object) != nullptr;
             }
 
@@ -263,7 +263,7 @@ namespace NS
                 result.error = std::format("id {} の配置物が場面に無い", result.desc.targetId);
                 return result;
             }
-            const HitSensor* bodySensor = target->BodySensorSubObj();
+            const HitSensor* bodySensor = target->BodySensorClassObj();
             if (bodySensor == nullptr || !bodySensor->IsValid())
             {
                 result.error = std::format("id {} の配置物に突進が当たる体が無い", result.desc.targetId);

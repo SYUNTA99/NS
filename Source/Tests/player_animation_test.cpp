@@ -2,11 +2,11 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
-#include "NSlib/CoreObject/SubObjects/Animation.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
 #include "NSlib/Core/Animation/AnimClip.h"
+#include "NSlib/CoreObject/ClassObjs/Animation.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/Clock.h"
 #include "TestAnimatedPlayerActor.h"
 
@@ -36,7 +36,7 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
                             {"歩きのクリップ", "Assets/Models/Xbot.glb#walk"},
                             {"走りのクリップ", "Assets/Models/Xbot.glb#run"}}),
               0u);
-    NS::Animation* animation = player.AnimationSubObj();
+    NS::Animation* animation = player.AnimationClassObj();
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
@@ -60,8 +60,8 @@ TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
-    const nlohmann::json fields = NS::SerializeSubObjectFields(player.Clips());
-    const nlohmann::json paramFields = NS::SerializeSubObjectFields(player.Params());
+    const nlohmann::json fields = NS::SerializeClassObjFields(player.Clips());
+    const nlohmann::json paramFields = NS::SerializeClassObjFields(player.Params());
     const nlohmann::json expected = {{"立ちのクリップ", ""},
                                      {"歩きのクリップ", ""},
                                      {"走りのクリップ", ""},
@@ -76,14 +76,14 @@ TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
         EXPECT_FALSE(paramFields.contains(it.key())) << it.key();
     }
-    EXPECT_EQ(NS::SubObjFields(NS::MakePrototypeJson(player), "PlayerAnimator"), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(NS::MakePrototypeJson(player), "PlayerAnimator"), nullptr);
 }
 
 TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::Animation* animation = player.AnimationSubObj();
+    NS::Animation* animation = player.AnimationClassObj();
     ASSERT_EQ(UseTestClips(player,
                            {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},
                             {"跳ぶクリップ", "Assets/Models/Xbot.glb#agree"},
@@ -107,7 +107,7 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
-    NS::Animation* animation = player.AnimationSubObj();
+    NS::Animation* animation = player.AnimationClassObj();
     ASSERT_EQ(UseTestClips(player,
                            {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},
                             {"歩きのクリップ", "Assets/Models/Xbot.glb#walk"},

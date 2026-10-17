@@ -57,9 +57,9 @@ namespace GL
             NS::Curve side{};
 
             NS_REFLECT_BEGIN(ShapeEvent, void)
-            NS_REFLECT_FIELD(along, "突進の向きの倍率")
-            NS_REFLECT_FIELD(height, "高さの倍率")
-            NS_REFLECT_FIELD(side, "横の倍率")
+            NS_FIELD(along, "突進の向きの倍率")
+            NS_FIELD(height, "高さの倍率")
+            NS_FIELD(side, "横の倍率")
             NS_REFLECT_END_VALUE()
         };
 
@@ -75,9 +75,9 @@ namespace GL
             float squashHeight = 1.1f;    //!< 相手の高さの倍率
 
             NS_REFLECT_BEGIN(TargetFreezeEvent, void)
-            NS_REFLECT_FIELD(pushInDistance, "食い込み距離")
-            NS_REFLECT_FIELD(squashThickness, "潰れの厚み")
-            NS_REFLECT_FIELD(squashHeight, "潰れの伸び上がり")
+            NS_FIELD(pushInDistance, "食い込み距離")
+            NS_FIELD(squashThickness, "潰れの厚み")
+            NS_FIELD(squashHeight, "潰れの伸び上がり")
             NS_REFLECT_END_VALUE()
         };
 
@@ -112,10 +112,10 @@ namespace GL
             int longestFlipFrames = 1; //!< 振れの向きが入れ替わるまでの最長フレーム数
 
             NS_REFLECT_BEGIN(CameraShakeEvent, void)
-            NS_REFLECT_FIELD(strength, "強さ")
-            NS_REFLECT_FIELD(sideWeight, "横の重み")
-            NS_REFLECT_FIELD(upWeight, "縦の重み")
-            NS_REFLECT_FIELD(longestFlipFrames, "入れ替わりの最長フレーム数")
+            NS_FIELD(strength, "強さ")
+            NS_FIELD(sideWeight, "横の重み")
+            NS_FIELD(upWeight, "縦の重み")
+            NS_FIELD(longestFlipFrames, "入れ替わりの最長フレーム数")
             NS_REFLECT_END_VALUE()
         };
 
@@ -138,15 +138,15 @@ namespace GL
             int kickPeakFrames = 1;      //!< 一撃の山のフレーム。始まりのフレームを 1 と数える
 
             NS_REFLECT_BEGIN(CameraTraumaEvent, void)
-            NS_REFLECT_FIELD(trauma, "トラウマ")
-            NS_REFLECT_FIELD(yawDegrees, "横の首振り")
-            NS_REFLECT_FIELD(pitchDegrees, "縦の首振り")
-            NS_REFLECT_FIELD(rollDegrees, "傾き")
-            NS_REFLECT_FIELD(frequency, "細かさ")
-            NS_REFLECT_FIELD(decayPerSecond, "減る速さ")
-            NS_REFLECT_FIELD(exponent, "指数")
-            NS_REFLECT_FIELD(kickDegrees, "一撃の大きさ")
-            NS_REFLECT_FIELD(kickPeakFrames, "一撃の山のフレーム")
+            NS_FIELD(trauma, "トラウマ")
+            NS_FIELD(yawDegrees, "横の首振り")
+            NS_FIELD(pitchDegrees, "縦の首振り")
+            NS_FIELD(rollDegrees, "傾き")
+            NS_FIELD(frequency, "細かさ")
+            NS_FIELD(decayPerSecond, "減る速さ")
+            NS_FIELD(exponent, "指数")
+            NS_FIELD(kickDegrees, "一撃の大きさ")
+            NS_FIELD(kickPeakFrames, "一撃の山のフレーム")
             NS_REFLECT_END_VALUE()
         };
 
@@ -162,9 +162,9 @@ namespace GL
             int returnFrames = 6;     //!< 長さのうち、元へ戻すのに使う末尾のフレーム数
 
             NS_REFLECT_BEGIN(ZoomRollEvent, void)
-            NS_REFLECT_FIELD(zoom, "寄りの倍率")
-            NS_REFLECT_FIELD(rollDegrees, "傾き")
-            NS_REFLECT_FIELD(returnFrames, "戻すフレーム数")
+            NS_FIELD(zoom, "寄りの倍率")
+            NS_FIELD(rollDegrees, "傾き")
+            NS_FIELD(returnFrames, "戻すフレーム数")
             NS_REFLECT_END_VALUE()
         };
 
@@ -179,8 +179,8 @@ namespace GL
             NS::Curve right{}; //!< 右のモーターの速さ 0〜1
 
             NS_REFLECT_BEGIN(PadVibrationEvent, void)
-            NS_REFLECT_FIELD(left, "左の速さ")
-            NS_REFLECT_FIELD(right, "右の速さ")
+            NS_FIELD(left, "左の速さ")
+            NS_FIELD(right, "右の速さ")
             NS_REFLECT_END_VALUE()
         };
 
@@ -194,7 +194,7 @@ namespace GL
             float alpha = 0.5f; //!< 始めの濃さ 0〜1
 
             NS_REFLECT_BEGIN(FlashEvent, void)
-            NS_REFLECT_FIELD(alpha, "濃さ")
+            NS_FIELD(alpha, "濃さ")
             NS_REFLECT_END_VALUE()
         };
 
@@ -229,10 +229,10 @@ namespace GL
             bool overchargedOnly = false;
 
             NS_REFLECT_BEGIN(GradualReleaseEvent, void)
-            NS_REFLECT_FIELD(startSpeed, "始まりの速さ")
-            NS_REFLECT_FIELD(returnSeconds, "戻る秒")
-            NS_REFLECT_FIELD(shape, "戻り方")
-            NS_REFLECT_FIELD(overchargedOnly, "紫の時だけ")
+            NS_FIELD(startSpeed, "始まりの速さ")
+            NS_FIELD(returnSeconds, "戻る秒")
+            NS_FIELD(shape, "戻り方")
+            NS_FIELD(overchargedOnly, "紫の時だけ")
             NS_REFLECT_END_VALUE()
         };
 
@@ -254,14 +254,14 @@ namespace GL
             int bouncePeriodFrames = 8;  //!< 跳ね返りの 1 往復のフレーム数
 
             NS_REFLECT_BEGIN(CameraSinkEvent, void)
-            NS_REFLECT_FIELD(maxPixels, "沈みの最大")
-            NS_REFLECT_FIELD(powerBase, "威力の基準")
-            NS_REFLECT_FIELD(sinkFrames, "沈むフレーム数")
-            NS_REFLECT_FIELD(tremblePixels, "震えの大きさ")
-            NS_REFLECT_FIELD(trembleFrames, "震えのフレーム数")
-            NS_REFLECT_FIELD(tremblePeriodFrames, "震えの 1 往復")
-            NS_REFLECT_FIELD(overshootRatio, "行き過ぎの割合")
-            NS_REFLECT_FIELD(bouncePeriodFrames, "跳ね返りの 1 往復")
+            NS_FIELD(maxPixels, "沈みの最大")
+            NS_FIELD(powerBase, "威力の基準")
+            NS_FIELD(sinkFrames, "沈むフレーム数")
+            NS_FIELD(tremblePixels, "震えの大きさ")
+            NS_FIELD(trembleFrames, "震えのフレーム数")
+            NS_FIELD(tremblePeriodFrames, "震えの 1 往復")
+            NS_FIELD(overshootRatio, "行き過ぎの割合")
+            NS_FIELD(bouncePeriodFrames, "跳ね返りの 1 往復")
             NS_REFLECT_END_VALUE()
         };
 
@@ -291,9 +291,9 @@ namespace GL
             int flipFrames = 1;
 
             NS_REFLECT_BEGIN(BodyShakeEvent, void)
-            NS_REFLECT_FIELD(amplitudePixels, "振れ幅の画素")
-            NS_REFLECT_FIELD(selfAmplitudePixels, "自機の振れ幅の画素")
-            NS_REFLECT_FIELD(flipFrames, "左右を入れ替えるフレーム数")
+            NS_FIELD(amplitudePixels, "振れ幅の画素")
+            NS_FIELD(selfAmplitudePixels, "自機の振れ幅の画素")
+            NS_FIELD(flipFrames, "左右を入れ替えるフレーム数")
             NS_REFLECT_END_VALUE()
         };
 
@@ -311,10 +311,10 @@ namespace GL
             float returnRatio = 0.45f; //!< 押してから 1 フレームごとにずれに掛ける倍率
 
             NS_REFLECT_BEGIN(DepthShakeEvent, void)
-            NS_REFLECT_FIELD(depth, "相手の奥の幅")
-            NS_REFLECT_FIELD(selfDepth, "自機の手前の幅")
-            NS_REFLECT_FIELD(pushFrames, "押す間のフレーム数")
-            NS_REFLECT_FIELD(returnRatio, "戻りの残り")
+            NS_FIELD(depth, "相手の奥の幅")
+            NS_FIELD(selfDepth, "自機の手前の幅")
+            NS_FIELD(pushFrames, "押す間のフレーム数")
+            NS_FIELD(returnRatio, "戻りの残り")
             NS_REFLECT_END_VALUE()
         };
 
@@ -333,10 +333,10 @@ namespace GL
             float releaseOpacity = 0.45f;   //!< 明けの写しの最初の不透明度
 
             NS_REFLECT_BEGIN(GhostEvent, void)
-            NS_REFLECT_FIELD(spreadPixels, "離れの画素")
-            NS_REFLECT_FIELD(selfSpreadPixels, "自機の離れの画素")
-            NS_REFLECT_FIELD(releaseFrames, "明けの残像のフレーム数")
-            NS_REFLECT_FIELD(releaseOpacity, "明けの残像の不透明度")
+            NS_FIELD(spreadPixels, "離れの画素")
+            NS_FIELD(selfSpreadPixels, "自機の離れの画素")
+            NS_FIELD(releaseFrames, "明けの残像のフレーム数")
+            NS_FIELD(releaseOpacity, "明けの残像の不透明度")
             NS_REFLECT_END_VALUE()
         };
 
@@ -357,10 +357,10 @@ namespace GL
 
             float referenceHeight = 720.0f;
             NS_REFLECT_BEGIN(ImpactTremorEvent, void)
-            NS_REFLECT_FIELD(amplitudePixels, "振れ幅の画素")
-            NS_REFLECT_FIELD(reachFrames, "裏まで届くフレーム数")
-            NS_REFLECT_FIELD(targetAmplitudeRatio, "相手の振れ幅の割合")
-            NS_REFLECT_FIELD(referenceHeight, "画素寸法の基準の高さ")
+            NS_FIELD(amplitudePixels, "振れ幅の画素")
+            NS_FIELD(reachFrames, "裏まで届くフレーム数")
+            NS_FIELD(targetAmplitudeRatio, "相手の振れ幅の割合")
+            NS_FIELD(referenceHeight, "画素寸法の基準の高さ")
             NS_REFLECT_END_VALUE()
         };
 
@@ -376,8 +376,8 @@ namespace GL
             NS::Curve strength{}; //!< 輪の強さ。面の倒れと頂の光の量。点が無ければ 0 で出さない
 
             NS_REFLECT_BEGIN(GroundWaveEvent, void)
-            NS_REFLECT_FIELD(radius, "半径")
-            NS_REFLECT_FIELD(strength, "強さ")
+            NS_FIELD(radius, "半径")
+            NS_FIELD(strength, "強さ")
             NS_REFLECT_END_VALUE()
         };
 
@@ -394,9 +394,9 @@ namespace GL
             float halfWidth = 0.05f; //!< 輪の半分の幅。画面の高さに対する割合
 
             NS_REFLECT_BEGIN(DistortionRingEvent, void)
-            NS_REFLECT_FIELD(radius, "半径")
-            NS_REFLECT_FIELD(push, "押し")
-            NS_REFLECT_FIELD(halfWidth, "半分の幅")
+            NS_FIELD(radius, "半径")
+            NS_FIELD(push, "押し")
+            NS_FIELD(halfWidth, "半分の幅")
             NS_REFLECT_END_VALUE()
         };
 
@@ -414,10 +414,10 @@ namespace GL
             int flipFrames = 2;         //!< 外と内へずらし直すフレーム数。1 未満は 1
 
             NS_REFLECT_BEGIN(ShakeLinesEvent, void)
-            NS_REFLECT_FIELD(lengthPixels, "線の長さの画素")
-            NS_REFLECT_FIELD(widthPixels, "線の太さの画素")
-            NS_REFLECT_FIELD(gapPixels, "輪郭から離す画素")
-            NS_REFLECT_FIELD(flipFrames, "ずらし直すフレーム数")
+            NS_FIELD(lengthPixels, "線の長さの画素")
+            NS_FIELD(widthPixels, "線の太さの画素")
+            NS_FIELD(gapPixels, "輪郭から離す画素")
+            NS_FIELD(flipFrames, "ずらし直すフレーム数")
             NS_REFLECT_END_VALUE()
         };
 
@@ -432,7 +432,7 @@ namespace GL
             NS::Curve distance{}; //!< 始まりからのフレーム数を横軸にした、ずらす距離 (m)。負は手前へ
 
             NS_REFLECT_BEGIN(CameraLurchEvent, void)
-            NS_REFLECT_FIELD(distance, "ずらす距離")
+            NS_FIELD(distance, "ずらす距離")
             NS_REFLECT_END_VALUE()
         };
 
@@ -447,7 +447,7 @@ namespace GL
             NS::Curve distance{}; //!< 始まりからのフレーム数を横軸にした、ずらす距離 (m)。負は反動と逆の向き
 
             NS_REFLECT_BEGIN(CameraReboundSwayEvent, void)
-            NS_REFLECT_FIELD(distance, "ずらす距離")
+            NS_FIELD(distance, "ずらす距離")
             NS_REFLECT_END_VALUE()
         };
 

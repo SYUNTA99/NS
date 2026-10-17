@@ -4,17 +4,17 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
+#include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
-#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
-#include "NSlib/CoreObject/SubObjects/SphereCollision.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
 
@@ -28,8 +28,8 @@ namespace
     template <class T> constexpr bool k_HasPartName = requires(const T& part) { part.Name(); };
     template <class T>
     constexpr bool k_HasReflectedParts = requires(const T& info) {
-        info.subObjects;
-        info.subObjectCount;
+        info.classObjs;
+        info.classObjCount;
     };
 
     class MemberCreationProbeActor final : public NS::SceneActor
@@ -37,7 +37,7 @@ namespace
     public:
         template <class TSelf = MemberCreationProbeActor> static constexpr bool CanCreateWithoutName()
         {
-            return requires(TSelf& self) { self.CreateSubObj(self.part, &self); };
+            return requires(TSelf& self) { self.CreateClassObj(self.part, &self); };
         }
 
     private:
@@ -45,35 +45,35 @@ namespace
     };
 
     template <class T>
-    constexpr bool k_CanCreatePartByName = requires(T& actor) { actor.CreateSubObj(std::string_view{"Model"}); };
+    constexpr bool k_CanCreatePartByName = requires(T& actor) { actor.CreateClassObj(std::string_view{"Model"}); };
 
     class DirectMemberActor final : public NS::SceneActor
     {
     public:
         NS_REFLECT_BEGIN(DirectMemberActor, NS::SceneActor)
-        NS_REFLECT_SUBOBJ(shape, "Shape")
+        NS_CLASSOBJ(shape, "Shape")
         NS_REFLECT_END()
 
         std::unique_ptr<NS::Collision> shape;
 
     protected:
-        void OnInit() override { CreateSubObj<NS::Collision, NS::SphereCollision>(shape, this); }
+        void OnInit() override { CreateClassObj<NS::Collision, NS::SphereCollision>(shape, this); }
 
     public:
         template <class TSelf = DirectMemberActor> static void CheckTypes()
         {
             static_assert(requires(TSelf& self) {
-                self.template CreateSubObj<NS::Collision, NS::SphereCollision>(self.shape, &self);
+                self.template CreateClassObj<NS::Collision, NS::SphereCollision>(self.shape, &self);
             });
             static_assert(
-                !requires(TSelf& self) { self.template CreateSubObj<NS::Collision, NS::Model>(self.shape, &self); });
+                !requires(TSelf& self) { self.template CreateClassObj<NS::Collision, NS::Model>(self.shape, &self); });
         }
     };
 
     class ModelPartActor final : public NS::SceneActor
     {
     protected:
-        void OnInit() override { CreateSubObj(m_model, this); }
+        void OnInit() override { CreateClassObj(m_model, this); }
     };
 
     class SensorPartsActor final : public NS::SceneActor
@@ -81,8 +81,8 @@ namespace
     protected:
         void OnInit() override
         {
-            CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
-            CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_attackSensor, this);
+            CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
+            CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_attackSensor, this);
         }
     };
 
@@ -90,7 +90,7 @@ namespace
     NS::Object* PartAt(const NS::SceneActor& actor, std::string_view key)
     {
         NS::Object* found = nullptr;
-        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, NS::Object* part) {
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, NS::Object* part) {
             if (std::string_view{field.key} == key)
             {
                 found = part;
@@ -103,7 +103,7 @@ namespace
     std::string_view KeyOf(const NS::SceneActor& actor, const NS::Object& part)
     {
         std::string_view key;
-        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::Object* candidate) {
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, const NS::Object* candidate) {
             if (candidate == &part)
             {
                 key = field.key;
@@ -130,21 +130,21 @@ namespace
     {
     public:
         NS_REFLECT_BEGIN(MemberOwnedActor, NS::SceneActor)
-        NS_REFLECT_SUBOBJ(first, "First")
-        NS_REFLECT_SUBOBJ(second, "Second")
+        NS_CLASSOBJ(first, "First")
+        NS_CLASSOBJ(second, "Second")
         NS_REFLECT_END()
 
         explicit MemberOwnedActor(std::vector<std::string>& destroyed) : m_destroyed(destroyed) {}
         std::unique_ptr<MemberOwnedPart> first;
         std::unique_ptr<MemberOwnedPart> second;
 
-        MemberOwnedPart* ReplaceFirst() { return CreateSubObj(first, m_destroyed, std::string{"replacement"}); }
+        MemberOwnedPart* ReplaceFirst() { return CreateClassObj(first, m_destroyed, std::string{"replacement"}); }
 
     protected:
         void OnInit() override
         {
-            CreateSubObj(first, m_destroyed, std::string{"first"});
-            CreateSubObj(second, m_destroyed, std::string{"second"});
+            CreateClassObj(first, m_destroyed, std::string{"first"});
+            CreateClassObj(second, m_destroyed, std::string{"second"});
         }
 
     private:
@@ -152,16 +152,16 @@ namespace
     };
 
     // 部品は自分からは動かない。基底に更新の関数があると、持ち主が全部の部品へ回す道が戻る
-    template <class TSubObject = NS::Object> void CheckSubObjectHasNoUpdate()
+    template <class TClassObj = NS::Object> void CheckClassObjHasNoUpdate()
     {
-        static_assert(!requires(TSubObject& part) { part.OnUpdate(); });
+        static_assert(!requires(TClassObj& part) { part.OnUpdate(); });
     }
 
-    template <class TSubObject = NS::Object> void CheckSubObjectHasNoOnOff()
+    template <class TClassObj = NS::Object> void CheckClassObjHasNoOnOff()
     {
-        static_assert(!requires(TSubObject& part) { part.SetActive(false); });
-        static_assert(!requires(const TSubObject& part) { part.IsActive(); });
-        static_assert(!requires(const TSubObject& part) { part.IsActiveSelf(); });
+        static_assert(!requires(TClassObj& part) { part.SetActive(false); });
+        static_assert(!requires(const TClassObj& part) { part.IsActive(); });
+        static_assert(!requires(const TClassObj& part) { part.IsActiveSelf(); });
     }
 
     class ReflectedProbePart final : public NS::Object
@@ -169,7 +169,7 @@ namespace
     public:
         float value = 0.0f;
         NS_REFLECT_BEGIN(ReflectedProbePart, NS::Object)
-        NS_REFLECT_FIELD(value, "値")
+        NS_FIELD(value, "値")
         NS_REFLECT_END()
     };
 
@@ -178,11 +178,11 @@ namespace
     public:
         std::unique_ptr<ReflectedProbePart> parentPart;
         NS_REFLECT_BEGIN(ReflectedParentActor, NS::SceneActor)
-        NS_REFLECT_SUBOBJ(parentPart, "ParentPart")
+        NS_CLASSOBJ(parentPart, "ParentPart")
         NS_REFLECT_END()
 
     protected:
-        void OnInit() override { CreateSubObj(parentPart); }
+        void OnInit() override { CreateClassObj(parentPart); }
     };
 
     class ReflectedHierarchyActor final : public ReflectedParentActor
@@ -191,15 +191,15 @@ namespace
         std::unique_ptr<ReflectedProbePart> childPart;
         std::unique_ptr<ReflectedProbePart> absentPart;
         NS_REFLECT_BEGIN(ReflectedHierarchyActor, ReflectedParentActor)
-        NS_REFLECT_SUBOBJ(childPart, "ChildPart")
-        NS_REFLECT_SUBOBJ(absentPart, "AbsentPart")
+        NS_CLASSOBJ(childPart, "ChildPart")
+        NS_CLASSOBJ(absentPart, "AbsentPart")
         NS_REFLECT_END()
 
     protected:
         void OnInit() override
         {
             ReflectedParentActor::OnInit();
-            CreateSubObj(childPart);
+            CreateClassObj(childPart);
         }
     };
     NS_CLASS(ReflectedHierarchyActor)
@@ -210,7 +210,7 @@ namespace
         std::unique_ptr<ReflectedProbePart> part;
 
     protected:
-        void OnInit() override { CreateSubObj(part); }
+        void OnInit() override { CreateClassObj(part); }
     };
 
     class OffsetPrefix
@@ -225,11 +225,11 @@ namespace
     public:
         std::unique_ptr<ReflectedProbePart> part;
         NS_REFLECT_BEGIN(OffsetPartActor, NS::SceneActor)
-        NS_REFLECT_SUBOBJ(part, "OffsetPart")
+        NS_CLASSOBJ(part, "OffsetPart")
         NS_REFLECT_END()
 
     protected:
-        void OnInit() override { CreateSubObj(part); }
+        void OnInit() override { CreateClassObj(part); }
     };
 
 } // namespace
@@ -256,8 +256,8 @@ TEST(ReflectedParts, InheritedMembersDriveEnumerationWithoutAnOverride)
     ASSERT_NE(actor->childPart, nullptr);
     EXPECT_EQ(actor->absentPart, nullptr);
     std::vector<std::string> keys;
-    NS::ForEachReflectedSubObj(*actor,
-                               [&](const NS::SubObjectDesc& field, NS::Object*) { keys.emplace_back(field.key); });
+    NS::ForEachReflectedClassObj(*actor,
+                                 [&](const NS::ClassObjInfo& field, NS::Object*) { keys.emplace_back(field.key); });
     EXPECT_EQ(keys, (std::vector<std::string>{"Transform", "ParentPart", "ChildPart"}));
     EXPECT_EQ(NS::Cast<ReflectedParentActor>(actor.get()), actor.get());
 }
@@ -268,9 +268,9 @@ TEST(ReflectedParts, SameTypedMembersSaveAndReloadThroughTheirRegisteredKeys)
     actor->parentPart->value = 2.0f;
     actor->childPart->value = 7.0f;
     const nlohmann::json saved = NS::ObjectToJson(*actor);
-    EXPECT_FLOAT_EQ(saved["subObjects"]["ParentPart"]["値"].get<float>(), 2.0f);
-    EXPECT_FLOAT_EQ(saved["subObjects"]["ChildPart"]["値"].get<float>(), 7.0f);
-    EXPECT_FALSE(saved["subObjects"].contains("AbsentPart"));
+    EXPECT_FLOAT_EQ(saved["classObjs"]["ParentPart"]["値"].get<float>(), 2.0f);
+    EXPECT_FLOAT_EQ(saved["classObjs"]["ChildPart"]["値"].get<float>(), 7.0f);
+    EXPECT_FALSE(saved["classObjs"].contains("AbsentPart"));
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> loaded = NS::ObjectFromJson(saved, scene);
     const ReflectedHierarchyActor* restored = NS::Cast<ReflectedHierarchyActor>(loaded.get());
@@ -314,8 +314,8 @@ TEST(FixedParts, MemberTypeCanOwnADerivedPartWithoutASlot)
 TEST(FixedParts, MapObjCreatesShadowBeforeArchetypeIsApplied)
 {
     const std::unique_ptr<GL::Level::PropActor> actor = NS::CreateActor<GL::Level::PropActor>();
-    ASSERT_NE(actor->ShadowSubObj(), nullptr);
-    EXPECT_EQ(PartAt(*actor, "Shadow"), actor->ShadowSubObj());
+    ASSERT_NE(actor->ShadowClassObj(), nullptr);
+    EXPECT_EQ(PartAt(*actor, "Shadow"), actor->ShadowClassObj());
 }
 
 TEST(FixedParts, MemberOwnershipSupportsLookupAndDestruction)
@@ -343,7 +343,7 @@ TEST(FixedParts, TransformUsesTheSamePartLookupAndFieldEditing)
     EXPECT_EQ(&actor.Root(), transform);
     NS::ApplyJsonFields(*transform, nlohmann::json{{"位置", {2.0f, 3.0f, 4.0f}}});
     EXPECT_EQ(actor.Root().Position(), (NS::Vector3{2.0f, 3.0f, 4.0f}));
-    EXPECT_EQ(NS::ObjectToJson(actor)["subObjects"]["Transform"]["位置"], (nlohmann::json::array({2.0f, 3.0f, 4.0f})));
+    EXPECT_EQ(NS::ObjectToJson(actor)["classObjs"]["Transform"]["位置"], (nlohmann::json::array({2.0f, 3.0f, 4.0f})));
 }
 
 // 外から来る大きさだけを下限で止める。コードからの値は跡を 0 まで縮めるので止めない
@@ -357,28 +357,28 @@ TEST(FixedParts, TransformClampsOnlyTheScaleFromTheField)
     EXPECT_EQ(actor.Root().Scale(), (NS::Vector3{0.0f, 1.0f, 0.0f}));
 }
 
-TEST(FixedParts, SubObjectBaseHasNoUpdate)
+TEST(FixedParts, ClassObjBaseHasNoUpdate)
 {
-    CheckSubObjectHasNoUpdate();
+    CheckClassObjHasNoUpdate();
 }
 
-TEST(FixedParts, SubObjectBaseHasNoOnOff)
+TEST(FixedParts, ClassObjBaseHasNoOnOff)
 {
-    CheckSubObjectHasNoOnOff();
+    CheckClassObjHasNoOnOff();
 }
 
 TEST(FixedParts, CommonMembersAreCreatedByTheActorClass)
 {
     const NS::SceneActor empty;
-    EXPECT_EQ(empty.ModelSubObj(), nullptr);
+    EXPECT_EQ(empty.ModelClassObj(), nullptr);
     const std::unique_ptr<ModelPartActor> owned = NS::CreateActor<ModelPartActor>();
     NS::SceneActor& actor = *owned;
-    NS::Model* model = actor.ModelSubObj();
+    NS::Model* model = actor.ModelClassObj();
     ASSERT_NE(model, nullptr);
     EXPECT_EQ(PartAt(actor, "Model"), model);
     std::vector<std::string> names;
-    NS::ForEachReflectedSubObj(actor,
-                               [&](const NS::SubObjectDesc& field, NS::Object*) { names.push_back(field.key); });
+    NS::ForEachReflectedClassObj(actor,
+                                 [&](const NS::ClassObjInfo& field, NS::Object*) { names.push_back(field.key); });
     EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model"}));
 }
 
@@ -386,8 +386,8 @@ TEST(FixedParts, SensorsHaveDistinctRoleNames)
 {
     const std::unique_ptr<SensorPartsActor> owned = NS::CreateActor<SensorPartsActor>();
     NS::SceneActor& actor = *owned;
-    NS::Object* body = actor.BodySensorSubObj();
-    NS::Object* attack = actor.AttackSensorSubObj();
+    NS::Object* body = actor.BodySensorClassObj();
+    NS::Object* attack = actor.AttackSensorClassObj();
     ASSERT_NE(body, nullptr);
     ASSERT_NE(attack, nullptr);
     EXPECT_NE(body, attack);
@@ -413,52 +413,52 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
     EXPECT_EQ(PartAt(player, "Input"), &player.Input());
     EXPECT_EQ(PartAt(player, "Movement"), &player.Body());
     EXPECT_NE(PartAt(player, "Params"), nullptr);
-    EXPECT_NE(player.ModelSubObj(), nullptr);
-    EXPECT_NE(player.BodySensorSubObj(), nullptr);
-    EXPECT_NE(rock.ModelSubObj(), nullptr);
-    EXPECT_NE(rock.CollisionSubObj(), nullptr);
+    EXPECT_NE(player.ModelClassObj(), nullptr);
+    EXPECT_NE(player.BodySensorClassObj(), nullptr);
+    EXPECT_NE(rock.ModelClassObj(), nullptr);
+    EXPECT_NE(rock.CollisionClassObj(), nullptr);
     EXPECT_NE(PartAt(rock, "Params"), nullptr);
     EXPECT_NE(PartAt(rock, "LaunchEffects"), nullptr);
     EXPECT_EQ(PartAt(camera, "Vcam"), &camera.Vcam());
     EXPECT_NE(PartAt(light, "DirectionalLight"), nullptr);
-    EXPECT_NE(terrain.ModelSubObj(), nullptr);
-    EXPECT_NE(terrain.CollisionSubObj(), nullptr);
+    EXPECT_NE(terrain.ModelClassObj(), nullptr);
+    EXPECT_NE(terrain.CollisionClassObj(), nullptr);
 }
 
 TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
 {
     const nlohmann::json source = {
-        {"class", "PropActor"}, {"id", 7u}, {"subObjects", {{"Collision", {{"半径", 2.0f}}}}}};
+        {"class", "PropActor"}, {"id", 7u}, {"classObjs", {{"Collision", {{"半径", 2.0f}}}}}};
     NS::Scene scene;
     std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(source, scene);
     ASSERT_NE(actor, nullptr);
-    ASSERT_NE(actor->CollisionSubObj(), nullptr);
-    const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionSubObj());
+    ASSERT_NE(actor->CollisionClassObj(), nullptr);
+    const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
     EXPECT_FLOAT_EQ(sphere->Radius(), 2.0f);
     const nlohmann::json saved = NS::ObjectToJson(*actor);
     EXPECT_FALSE(saved.contains("components"));
-    ASSERT_TRUE(saved.contains("subObjects"));
-    ASSERT_TRUE(saved["subObjects"].is_object());
-    EXPECT_FLOAT_EQ(saved["subObjects"]["Collision"]["半径"].get<float>(), 2.0f);
-    EXPECT_FALSE(saved["subObjects"]["Collision"].contains("id"));
-    EXPECT_FALSE(saved["subObjects"]["Collision"].contains("type"));
-    EXPECT_FALSE(saved["subObjects"]["Collision"].contains("fields"));
-    EXPECT_TRUE(saved["subObjects"]["Transform"].contains("位置"));
+    ASSERT_TRUE(saved.contains("classObjs"));
+    ASSERT_TRUE(saved["classObjs"].is_object());
+    EXPECT_FLOAT_EQ(saved["classObjs"]["Collision"]["半径"].get<float>(), 2.0f);
+    EXPECT_FALSE(saved["classObjs"]["Collision"].contains("id"));
+    EXPECT_FALSE(saved["classObjs"]["Collision"].contains("type"));
+    EXPECT_FALSE(saved["classObjs"]["Collision"].contains("fields"));
+    EXPECT_TRUE(saved["classObjs"]["Transform"].contains("位置"));
 }
 
 TEST(FixedParts, FileReferencesUseNamesAndClonesRemapIds)
 {
     nlohmann::json scene = NS::MakeSceneJson();
     NS::SceneJsonObjects(scene) = {
-        {{"class", "PropActor"}, {"id", 1u}, {"name", "target"}, {"subObjects", {{"Model", nlohmann::json::object()}}}},
-        {{"class", "PropActor"}, {"id", 2u}, {"subObjects", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
+        {{"class", "PropActor"}, {"id", 1u}, {"name", "target"}, {"classObjs", {{"Model", nlohmann::json::object()}}}},
+        {{"class", "PropActor"}, {"id", 2u}, {"classObjs", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
     const std::string text = NS::SerializeSceneToJson(scene);
     const nlohmann::json file = nlohmann::json::parse(text);
-    EXPECT_EQ(file["objects"][1]["subObjects"]["Model"]["reference"]["ref"], "target");
+    EXPECT_EQ(file["objects"][1]["classObjs"]["Model"]["reference"]["ref"], "target");
     nlohmann::json restored;
     ASSERT_TRUE(NS::DeserializeSceneFromJson(restored, text));
     nlohmann::json& copy = NS::SceneJsonObjects(restored)[1];
     NS::RemapObjectRefs(copy, {{1u, 9u}});
-    EXPECT_EQ(copy["subObjects"]["Model"]["reference"], (nlohmann::json{{"ref", 9u}}));
+    EXPECT_EQ(copy["classObjs"]["Model"]["reference"], (nlohmann::json{{"ref", 9u}}));
 }

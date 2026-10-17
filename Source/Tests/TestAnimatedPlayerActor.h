@@ -2,8 +2,8 @@
 
 #include "Game/Player/PlayerClips.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/CoreObject/SubObjects/Animation.h"
 
 #include <cstddef>
 
@@ -13,7 +13,7 @@ protected:
     void OnInit() override
     {
         PlayerActor::OnInit();
-        CreateSubObj(m_animation, this);
+        CreateClassObj(m_animation, this);
     }
 };
 

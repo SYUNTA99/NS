@@ -1,7 +1,7 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObjects/VirtualCamera.h"
+#include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/Gfx/Renderer.h"
 
 namespace NS

@@ -7,15 +7,15 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Phys/Capsule.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -87,7 +87,7 @@ namespace
                 // 位置は Transform の件に入っているので、件ごと置き換えずに足す
                 for (nlohmann::json::const_iterator it = overriddenParts.begin(); it != overriddenParts.end(); ++it)
                 {
-                    NS::ObjectJsonSubObjs(rock)[it.key()] = it.value();
+                    NS::ObjectJsonClassObjs(rock)[it.key()] = it.value();
                 }
             }
             NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -122,7 +122,7 @@ namespace
         NS::SetObjectPosition(rock, Vector3{0.0f, rockHeight, 1.0f});
         for (nlohmann::json::const_iterator it = rockParts.begin(); it != rockParts.end(); ++it)
         {
-            NS::ObjectJsonSubObjs(rock)[it.key()] = it.value();
+            NS::ObjectJsonClassObjs(rock)[it.key()] = it.value();
         }
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
@@ -147,8 +147,8 @@ namespace
                                     &player.Params(),
                                     &player.Body(),
                                     &player.Collider(),
-                                    player.ModelSubObj(),
-                                    player.HitReactionSubObj());
+                                    player.ModelClassObj(),
+                                    player.HitReactionClassObj());
     }
 
     bool FindSlamLineTarget(PlayerActor& player,
@@ -487,7 +487,7 @@ TEST(HitZonesTest, LinePointIsTheCenterDroppedOntoTheLineAtTheCenterHeight)
 TEST(HitZonesTest, FieldDefaultsAreARoundRedOfPoint43)
 {
     const HitZones zones;
-    const nlohmann::json fields = NS::SerializeSubObjectFields(zones);
+    const nlohmann::json fields = NS::SerializeClassObjFields(zones);
     EXPECT_EQ(fields["丸"], true);
     EXPECT_FLOAT_EQ(fields["横幅"].get<float>(), 0.43f);
     EXPECT_FLOAT_EQ(fields["縦の幅"].get<float>(), 0.43f);
@@ -531,7 +531,7 @@ TEST(HitZonesTest, MapObjArchetypeWritesTheRedDefaults)
 {
     const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PropActor");
     ASSERT_NE(archetype, nullptr);
-    const nlohmann::json* fields = NS::SubObjFields(*archetype, "HitZones");
+    const nlohmann::json* fields = NS::ClassObjFields(*archetype, "HitZones");
     ASSERT_NE(fields, nullptr);
     EXPECT_EQ((*fields)["丸"], true);
     EXPECT_FLOAT_EQ(NS::FieldFloat(*fields, "横幅", -1.0f), 0.43f);
@@ -552,14 +552,14 @@ TEST(HitZonesTest, MapObjAnswersWithItsFaceAndBody)
     ASSERT_NE(zones, nullptr);
 
     GL::Level::TackleTargetAnswer answer{};
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorSubObj(), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorClassObj(), answer));
     EXPECT_EQ(answer.face.round, zones->Face().round);
     EXPECT_FLOAT_EQ(answer.face.width, zones->Face().width);
     EXPECT_FLOAT_EQ(answer.face.centerU, 0.25f);
     EXPECT_FLOAT_EQ(answer.face.powerScale, 1.1f);
     EXPECT_FLOAT_EQ(answer.face.remainderPowerScale, zones->Face().remainderPowerScale);
 
-    const SensorVolume expected = rock->BodySensorSubObj()->WorldVolume();
+    const SensorVolume expected = rock->BodySensorClassObj()->WorldVolume();
     EXPECT_FALSE(answer.body.isBox);
     EXPECT_FLOAT_EQ(answer.body.radius, expected.radius);
     EXPECT_FLOAT_EQ(answer.body.a.x, 8.0f);
@@ -578,7 +578,7 @@ TEST(HitZonesTest, InstanceOverrideChangesOnlyThatTarget)
 
     const auto judgeThroughCenter = [&](NS::SceneActor& target) {
         GL::Level::TackleTargetAnswer answer{};
-        EXPECT_TRUE(GL::Level::SendMsgAskTackleTarget(*target.BodySensorSubObj(), answer));
+        EXPECT_TRUE(GL::Level::SendMsgAskTackleTarget(*target.BodySensorClassObj(), answer));
         const Vector3 center = answer.body.Center();
         HitFaceJudgement result;
         EXPECT_TRUE(JudgeHitFace(answer.face,
@@ -604,13 +604,13 @@ TEST(HitZonesTest, InstanceOverrideSurvivesSaveAndLoad)
         saved = scene.ToJson();
     }
     const nlohmann::json& objects = NS::SceneJsonObjects(saved);
-    const nlohmann::json* plainFields = NS::SubObjFields(objects[NS::FindObjectIndexById(saved, 1)], "HitZones");
+    const nlohmann::json* plainFields = NS::ClassObjFields(objects[NS::FindObjectIndexById(saved, 1)], "HitZones");
     if (plainFields != nullptr)
     {
         EXPECT_FALSE(NS::HasField(*plainFields, "上下の位置"));
         EXPECT_FALSE(NS::HasField(*plainFields, "丸"));
     }
-    const nlohmann::json* overriddenFields = NS::SubObjFields(objects[NS::FindObjectIndexById(saved, 2)], "HitZones");
+    const nlohmann::json* overriddenFields = NS::ClassObjFields(objects[NS::FindObjectIndexById(saved, 2)], "HitZones");
     ASSERT_NE(overriddenFields, nullptr);
     EXPECT_FLOAT_EQ(NS::FieldFloat(*overriddenFields, "上下の位置", 0.0f), 0.3f);
     EXPECT_FALSE(NS::HasField(*overriddenFields, "横幅"));
@@ -784,7 +784,7 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
     ASSERT_NE(player, nullptr);
     const NS::SceneActor* target = scene.Objects().FindByObjectId(2);
     ASSERT_NE(target, nullptr);
-    const SensorVolume body = target->BodySensorSubObj()->WorldVolume();
+    const SensorVolume body = target->BodySensorClassObj()->WorldVolume();
 
     player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -985,7 +985,7 @@ namespace
     protected:
         void OnInit() override
         {
-            NS::ShapeHitSensor* sensor = CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
+            NS::ShapeHitSensor* sensor = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
             sensor->SetSphere(0.5f);
         }
     };

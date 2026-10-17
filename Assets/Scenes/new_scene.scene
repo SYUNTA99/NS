@@ -13,7 +13,7 @@
       "class": "MapPartsActor",
       "id": 1,
       "name": "Object",
-      "subObjects": {
+      "classObjs": {
         "Collision": {},
         "Model": {},
         "Transform": {
@@ -40,7 +40,7 @@
       "class": "PlayerActor",
       "id": 2,
       "name": "Object_1",
-      "subObjects": {
+      "classObjs": {
         "Appearance": {},
         "BodySensor": {},
         "ChargeEffects": {},
@@ -80,7 +80,7 @@
       "class": "FollowCameraActor",
       "id": 3,
       "name": "Player Camera",
-      "subObjects": {
+      "classObjs": {
         "Transform": {
           "スケール": [
             1.0,
@@ -110,7 +110,7 @@
       "class": "LightActor",
       "id": 4,
       "name": "Object_2",
-      "subObjects": {
+      "classObjs": {
         "DirectionalLight": {},
         "Transform": {
           "スケール": [
@@ -136,7 +136,7 @@
       "class": "PropActor",
       "id": 35,
       "name": "Object_3",
-      "subObjects": {
+      "classObjs": {
         "BodySensor": {},
         "Collision": {},
         "HitZones": {},
@@ -173,7 +173,7 @@
       "class": "PropActor",
       "id": 41,
       "name": "Object_4",
-      "subObjects": {
+      "classObjs": {
         "BodySensor": {},
         "Collision": {},
         "HitZones": {},
@@ -214,7 +214,7 @@
       "class": "PropActor",
       "id": 47,
       "name": "Object_5",
-      "subObjects": {
+      "classObjs": {
         "BodySensor": {},
         "Collision": {},
         "HitZones": {},
@@ -258,7 +258,7 @@
       "class": "PropActor",
       "id": 53,
       "name": "Object_6",
-      "subObjects": {
+      "classObjs": {
         "BodySensor": {},
         "Collision": {},
         "HitZones": {},
@@ -299,5 +299,5 @@
       }
     }
   ],
-  "version": 7
+  "version": 8
 }

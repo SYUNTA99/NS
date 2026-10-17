@@ -1,6 +1,6 @@
 {
   "class": "PropActor",
-  "subObjects": {
+  "classObjs": {
     "Collision": {
       "中心オフセット": [
         0,

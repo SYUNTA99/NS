@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/CoreObject/SubObjects/BodyEvents.h"
+#include "NSlib/CoreObject/ClassObjs/BodyEvents.h"
 
 namespace GL
 {

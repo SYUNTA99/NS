@@ -1,7 +1,7 @@
 #include "NSlib/CoreObject/Message/Message.h"
 
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
 
 namespace NS
 {

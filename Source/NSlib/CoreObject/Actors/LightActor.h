@@ -1,7 +1,7 @@
 #pragma once
 
+#include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/DirectionalLight.h"
 
 namespace NS
 {
@@ -11,7 +11,7 @@ namespace NS
     public:
         //! 保存形式と TypeRegistry の登録名。読込はこの名前で SceneActor の型を選ぶ
         NS_REFLECT_BEGIN(LightActor, SceneActor)
-        NS_REFLECT_SUBOBJ(m_light, "DirectionalLight")
+        NS_CLASSOBJ(m_light, "DirectionalLight")
         NS_REFLECT_END()
 
         void OnEndPlay() override;

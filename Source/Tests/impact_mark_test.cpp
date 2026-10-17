@@ -20,7 +20,7 @@ TEST(ImpactMarkActor, TemporaryActorShrinksAndStops)
     mark->SetLifeSeconds(NS::OS::FrameTimer::FixedDelta());
     mark->Update();
     EXPECT_FALSE(mark->IsAppeared());
-    ASSERT_NE(mark->ModelSubObj(), nullptr);
+    ASSERT_NE(mark->ModelClassObj(), nullptr);
     EXPECT_FALSE(mark->IsAppeared());
 }
 

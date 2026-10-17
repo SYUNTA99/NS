@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 
 namespace GL
 {

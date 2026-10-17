@@ -1,13 +1,12 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
-
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/UIActor.h"
@@ -96,7 +95,7 @@ namespace NS
         return m_playBaseline;
     }
 
-    void Scene::WritePlayBaselineField(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName)
+    void Scene::WritePlayBaselineField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
     {
         const std::size_t index = FindObjectIndexById(m_playBaseline, actor.Id());
         if (index == k_NoObjectIndex)
@@ -108,13 +107,14 @@ namespace NS
         {
             return;
         }
-        const nlohmann::json fields = SerializeSubObjectFields(*part);
+        const nlohmann::json fields = SerializeClassObjFields(*part);
         const nlohmann::json::const_iterator value = fields.find(std::string{fieldName});
         if (value == fields.end())
         {
             return;
         }
-        ObjectJsonSubObjs(SceneJsonObjects(m_playBaseline)[index])[std::string{row.key}][std::string{fieldName}] = *value;
+        ObjectJsonClassObjs(SceneJsonObjects(m_playBaseline)[index])[std::string{row.key}][std::string{fieldName}] =
+            *value;
     }
 
     void Scene::SetSimulationEnabled(bool enabled) noexcept
@@ -323,15 +323,15 @@ namespace NS
         // 控えは個体の上書きだけを持つ。上書きの無い欄も種類の既定値へ戻すため、全欄の姿へ広げてから比べる
         const nlohmann::json object = ExpandObjectJson(snapshot);
         bool same = ObjectJsonClass(object) == std::string_view{obj->ClassName()};
-        std::size_t subObjectCount = 0;
-        ForEachReflectedSubObj(*obj, [&](const SubObjectDesc& field, Object*) {
-            ++subObjectCount;
-            if (SubObjFields(object, field.key) == nullptr)
+        std::size_t classObjCount = 0;
+        ForEachReflectedClassObj(*obj, [&](const ClassObjInfo& field, Object*) {
+            ++classObjCount;
+            if (ClassObjFields(object, field.key) == nullptr)
             {
                 same = false;
             }
         });
-        if (!same || subObjectCount != ObjectJsonSubObjs(object).size())
+        if (!same || classObjCount != ObjectJsonClassObjs(object).size())
         {
             return ReplaceFromJson(snapshot);
         }
@@ -349,13 +349,13 @@ namespace NS
             obj->Disappear();
         }
         bool written = false;
-        ForEachReflectedSubObj(*obj, [&](const SubObjectDesc& field, Object* subObject) {
-            const nlohmann::json* fields = SubObjFields(object, field.key);
-            if (fields == nullptr || SerializeSubObjectFields(*subObject) == *fields)
+        ForEachReflectedClassObj(*obj, [&](const ClassObjInfo& field, Object* classObj) {
+            const nlohmann::json* fields = ClassObjFields(object, field.key);
+            if (fields == nullptr || SerializeClassObjFields(*classObj) == *fields)
             {
                 return;
             }
-            (void)ApplyJsonFields(*subObject, *fields);
+            (void)ApplyJsonFields(*classObj, *fields);
             written = true;
         });
         // 書き換えた欄に参照があれば読み直す。作る時と同じ組を通る

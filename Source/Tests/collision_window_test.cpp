@@ -1,10 +1,10 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/IUse/IUseCollision.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
-#include "NSlib/CoreObject/SubObjects/SphereCollision.h"
 #include "NSlib/Phys/PhysicsScene.h"
 
 #include <gtest/gtest.h>
@@ -18,8 +18,8 @@ namespace
     {
     public:
         NS_REFLECT_BEGIN(CollisionProbeActor, NS::SceneActor)
-        NS_REFLECT_SUBOBJ(collider, "Collider")
-        NS_REFLECT_SUBOBJ(sphere, "Sphere")
+        NS_CLASSOBJ(collider, "Collider")
+        NS_CLASSOBJ(sphere, "Sphere")
         NS_REFLECT_END()
 
         std::unique_ptr<NS::Collider> collider;
@@ -28,8 +28,8 @@ namespace
     protected:
         void OnInit() override
         {
-            CreateSubObj(collider, this);
-            CreateSubObj(sphere, this);
+            CreateClassObj(collider, this);
+            CreateClassObj(sphere, this);
         }
     };
 

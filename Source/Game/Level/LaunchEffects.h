@@ -4,9 +4,9 @@
 #include "Game/Level/MapObjParams.h"
 #include "Game/Level/PropFlight.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/EffectName.h"
-#include "NSlib/CoreObject/SubObjects/SphereCollision.h"
 
 #include "NSlib/Core/Types.h"
 #include <vector>
@@ -52,16 +52,16 @@ namespace GL
             [[nodiscard]] float LandDustScale() const noexcept { return m_landDustScale; }
 
             NS_REFLECT_BEGIN(LaunchEffects, NS::Object)
-            NS_REFLECT_FIELD(m_landDustLife, "着地の粉の寿命フレーム")
-            NS_REFLECT_FIELD(m_dustRingLift, "着地の粉を浮かせる高さ")
-            NS_REFLECT_FIELD(m_launchTrailAsset, "飛び出しの尾の資産")
-            NS_REFLECT_FIELD(m_launchLandDustAsset, "着地の粉の資産")
-            NS_REFLECT_FIELD(m_landDustAssetRadius, "着地の粉の資産半径")
-            NS_REFLECT_FIELD(m_trailFramesBase, "飛び出しの尾が残るフレーム数の基準")
-            NS_REFLECT_FIELD(m_trailFramesPerLaunch, "飛び出しの尾が残るフレーム数の飛ばしの比あたり")
-            NS_REFLECT_FIELD(m_landDustBase, "着地の粉の大きさの基準")
-            NS_REFLECT_FIELD(m_landDustPerRootMass, "着地の粉の大きさの質量の平方根あたり")
-            NS_REFLECT_FIELD(m_landDustPerPower, "着地の粉の大きさの威力あたりの伸び")
+            NS_FIELD(m_landDustLife, "着地の粉の寿命フレーム")
+            NS_FIELD(m_dustRingLift, "着地の粉を浮かせる高さ")
+            NS_FIELD(m_launchTrailAsset, "飛び出しの尾の資産")
+            NS_FIELD(m_launchLandDustAsset, "着地の粉の資産")
+            NS_FIELD(m_landDustAssetRadius, "着地の粉の資産半径")
+            NS_FIELD(m_trailFramesBase, "飛び出しの尾が残るフレーム数の基準")
+            NS_FIELD(m_trailFramesPerLaunch, "飛び出しの尾が残るフレーム数の飛ばしの比あたり")
+            NS_FIELD(m_landDustBase, "着地の粉の大きさの基準")
+            NS_FIELD(m_landDustPerRootMass, "着地の粉の大きさの質量の平方根あたり")
+            NS_FIELD(m_landDustPerPower, "着地の粉の大きさの威力あたりの伸び")
             NS_REFLECT_END()
 
         private:

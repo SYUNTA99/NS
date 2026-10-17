@@ -15,7 +15,7 @@ namespace NS
 {
     class SceneActor;
     class Object;
-    struct SubObjectDesc;
+    struct ClassObjInfo;
 
     //! クラスごとの既定値を Directory()/<クラス名>.json から読む
     //! ActorRef はシーン内の参照なので既定値には含めない
@@ -70,22 +70,22 @@ namespace NS
     //! @details 欄が全部既定と同じ部品も、空の件として残す。位置・回転・拡縮の部品 Transform は個体の物なので除かない
     [[nodiscard]] nlohmann::json DiffObjectJson(const nlohmann::json& object);
 
-    // 下の 4 つの row は actor のクラスの表 (NS_REFLECT_SUBOBJ) の行。ForEachReflectedSubObj で回した行を渡す
+    // 下の 4 つの row は actor のクラスの表 (NS_CLASSOBJ) の行。ForEachReflectedClassObj で回した行を渡す
 
     //! actor の行 row の部品に対応する、actor のクラスの Baseline の部品。どちらかが作られていないか型が違えば nullptr
     //! 種類の既定値を変えると指す先が作り直されるので、そのフレームの間だけ使う
-    [[nodiscard]] const Object* FindBaselineSubObj(const SceneActor& actor, const SubObjectDesc& row);
+    [[nodiscard]] const Object* FindBaselineClassObj(const SceneActor& actor, const ClassObjInfo& row);
 
     //! actor の行 row の部品の欄 fieldName が、actor のクラスの種類の既定値と違うか
-    [[nodiscard]] bool IsFieldOverridden(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName);
+    [[nodiscard]] bool IsFieldOverridden(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
 
     //! 種類の既定値へ上げてよい欄か。参照の欄と位置・回転・拡縮は個体の物なので上げられない
     //! 行の部品が作られていなければ上げられない
-    [[nodiscard]] bool IsArchetypeField(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName);
+    [[nodiscard]] bool IsArchetypeField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
 
     //! @brief actor の行 row の部品の欄 fieldName の今の値を、actor のクラスの種類の既定値へ書く
     //! @details ファイルへは書かない。上げられない欄は何もせず false
     [[nodiscard]] bool WriteFieldToArchetype(const SceneActor& actor,
-                                             const SubObjectDesc& row,
+                                             const ClassObjInfo& row,
                                              std::string_view fieldName);
 } // namespace NS

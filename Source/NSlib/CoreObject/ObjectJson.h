@@ -13,17 +13,18 @@
 
 namespace NS
 {
-    //! @brief 配置物の "subObjects" を返す
+    //! @brief 配置物の "classObjs" を返す
     //! @return 無いか object でなければ空の object
-    [[nodiscard]] const nlohmann::json& ObjectJsonSubObjs(const nlohmann::json& object) noexcept;
-    //! @brief 配置物の "subObjects" を返す。無いか object でなければ空の object を作って入れる
-    [[nodiscard]] nlohmann::json& ObjectJsonSubObjs(nlohmann::json& object);
+    [[nodiscard]] const nlohmann::json& ObjectJsonClassObjs(const nlohmann::json& object) noexcept;
+    //! @brief 配置物の "classObjs" を返す。無いか object でなければ空の object を作って入れる
+    [[nodiscard]] nlohmann::json& ObjectJsonClassObjs(nlohmann::json& object);
     //! @brief 部品名 partName の欄の object を返す
     //! @return 無いか object でなければ nullptr
-    [[nodiscard]] const nlohmann::json* SubObjFields(const nlohmann::json& object, std::string_view partName) noexcept;
+    [[nodiscard]] const nlohmann::json* ClassObjFields(const nlohmann::json& object,
+                                                       std::string_view partName) noexcept;
     //! @brief 部品名 partName の欄の object を返す。無い部品は作らない
     //! @return 無いか object でなければ nullptr
-    [[nodiscard]] nlohmann::json* SubObjFields(nlohmann::json& object, std::string_view partName) noexcept;
+    [[nodiscard]] nlohmann::json* ClassObjFields(nlohmann::json& object, std::string_view partName) noexcept;
     //! 配置物の保存・凍結・編集履歴で共用する JSON。参照はメモリ上では id、ファイルでは名前
     [[nodiscard]] nlohmann::json MakeObjectJson();
 
@@ -57,8 +58,8 @@ namespace NS
     //! 参照の欄を辿る処理はここだけに置き、欄の形を知る場所を 1 つにする
     template <class Fn> void ForEachRefValue(nlohmann::json& object, Fn&& fn)
     {
-        nlohmann::json& subObjects = ObjectJsonSubObjs(object);
-        for (nlohmann::json& entry : subObjects)
+        nlohmann::json& classObjs = ObjectJsonClassObjs(object);
+        for (nlohmann::json& entry : classObjs)
         {
             if (!entry.is_object())
             {
@@ -79,8 +80,8 @@ namespace NS
     void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<uint32, uint32>& idMap);
 
     //! 配置物の JSON の姿勢を読み書きする。
-    //! 実体は subObjects 内の k_TransformSubObjName の欄
-    //! Set は対象エントリが無ければ EnsureTransformSubObject で 1 つ作る
+    //! 実体は classObjs 内の k_TransformClassObjName の欄
+    //! Set は対象エントリが無ければ EnsureTransformClassObj で 1 つ作る
     [[nodiscard]] Vector3 ObjectPosition(const nlohmann::json& object) noexcept;
     void SetObjectPosition(nlohmann::json& object, const Vector3& position) noexcept;
     [[nodiscard]] Quaternion ObjectRotation(const nlohmann::json& object) noexcept;
@@ -90,5 +91,5 @@ namespace NS
 
     //! object に Transform のエントリが無ければ既定値(位置0 / 回転なし / スケール1)で 1 つ足して返す
     //! 既にあればそれを返す。シーンの JSON を読む所で通し、全 object が Transform を必ず 1 つ持つようにする
-    nlohmann::json& EnsureTransformSubObject(nlohmann::json& object);
+    nlohmann::json& EnsureTransformClassObj(nlohmann::json& object);
 } // namespace NS

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/UI/WidgetSubObj.h"
+#include "NSlib/UI/WidgetTree.h"
 
 namespace NS
 {
@@ -24,7 +24,7 @@ namespace NS
         UIActor() noexcept = default;
         ~UIActor() noexcept override;
         //! この画面の Widget の木を持つ部品
-        [[nodiscard]] UI::WidgetSubObj* Widgets() noexcept { return &m_widgets; }
+        [[nodiscard]] UI::WidgetTree* Widgets() noexcept { return &m_widgets; }
         NS_REFLECT_NONE(UIActor, Object)
 
         //! scene の画面の一覧へ入る。開いていれば何もしない
@@ -48,7 +48,7 @@ namespace NS
         [[nodiscard]] virtual int DrawOrder() const noexcept { return 0; }
 
     private:
-        UI::WidgetSubObj m_widgets;
+        UI::WidgetTree m_widgets;
         Scene* m_scene = nullptr; // 開いている先、非所有
     };
 } // namespace NS

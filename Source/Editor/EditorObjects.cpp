@@ -6,14 +6,14 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <algorithm>
 
@@ -72,7 +72,7 @@ namespace NS
             {
                 return false;
             }
-            const Model* model = object.ModelSubObj();
+            const Model* model = object.ModelClassObj();
             if (model == nullptr)
             {
                 return false;
@@ -148,7 +148,7 @@ namespace NS
 
         AABB PickLocalBounds(const SceneActor& object) noexcept
         {
-            const Model* renderer = object.ModelSubObj();
+            const Model* renderer = object.ModelClassObj();
             if (renderer != nullptr && renderer->GetMesh()->LocalBounds() != nullptr)
             {
                 return *renderer->GetMesh()->LocalBounds();

@@ -1,10 +1,10 @@
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
+#include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
 #include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
-#include "NSlib/CoreObject/SubObjects/DirectionalLight.h"
-#include "NSlib/CoreObject/SubObjects/OverlayRenderer.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/CoreObject/UIActor.h"

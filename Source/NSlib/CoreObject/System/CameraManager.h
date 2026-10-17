@@ -1,8 +1,8 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObjects/CameraModifier.h"
-#include "NSlib/CoreObject/SubObjects/VirtualCamera.h"
+#include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
+#include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/System/SceneSystem.h"
 
 #include <cstdint>

@@ -6,11 +6,11 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
@@ -51,7 +51,7 @@ namespace
             NS::SetObjectScale(rock, Vector3{targetScale, targetScale, targetScale});
             for (nlohmann::json::const_iterator it = targetParts.begin(); it != targetParts.end(); ++it)
             {
-                NS::ObjectJsonSubObjs(rock)[it.key()] = it.value();
+                NS::ObjectJsonClassObjs(rock)[it.key()] = it.value();
             }
             NS::SceneJsonObjects(doc).push_back(std::move(rock));
         }

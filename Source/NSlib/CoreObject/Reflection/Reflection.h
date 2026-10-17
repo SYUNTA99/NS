@@ -193,7 +193,7 @@ namespace NS
     };
 
     // 保存キーと固定メンバーへのアクセス。所有や部品の交換は行わない
-    struct SubObjectDesc
+    struct ClassObjInfo
     {
         const char* key;
         Object* (*get)(const Object* owner) noexcept;
@@ -209,8 +209,8 @@ namespace NS
         const ReflectionInfo* base;         // 基底型のリフレクション。Object と素の値型は nullptr
         const FieldGroup* groups = nullptr; // 欄の見出しの配列 (static 寿命)。宣言の並び
         std::size_t groupCount = 0;
-        const SubObjectDesc* subObjects = nullptr;
-        std::size_t subObjectCount = 0;
+        const ClassObjInfo* classObjs = nullptr;
+        std::size_t classObjCount = 0;
     };
 
     // マクロが宣言順に積む、値の欄・見出し・部品メンバーのいずれか
@@ -218,7 +218,7 @@ namespace NS
     {
         FieldDesc field;   // 欄。見出しの項目では空
         const char* group; // 見出しの名前。欄の項目では nullptr
-        SubObjectDesc subObject{};
+        ClassObjInfo classObj{};
     };
 
     //! 型ごとの不変なフィールド配列。ReflectionInfo が参照するためコピーしない
@@ -229,9 +229,9 @@ namespace NS
         {
             for (const ReflectEntry& entry : entries)
             {
-                if (entry.subObject.key != nullptr)
+                if (entry.classObj.key != nullptr)
                 {
-                    m_subObjects.push_back(entry.subObject);
+                    m_classObjs.push_back(entry.classObj);
                 }
                 else if (entry.group != nullptr)
                 {
@@ -255,12 +255,12 @@ namespace NS
                                   base,
                                   m_groups.data(),
                                   m_groups.size(),
-                                  m_subObjects.data(),
-                                  m_subObjects.size()};
+                                  m_classObjs.data(),
+                                  m_classObjs.size()};
         }
 
     private:
-        std::vector<SubObjectDesc> m_subObjects;
+        std::vector<ClassObjInfo> m_classObjs;
         std::vector<FieldDesc> m_fields;  // 見出しを除いた欄。宣言の並び
         std::vector<FieldGroup> m_groups; // 見出し。宣言の並び
     };
@@ -306,27 +306,26 @@ namespace NS
         static constexpr const char* k_TypeName = #ThisType;                                                           \
         static const NS::ReflectEntry k_Entries[] = {
 
-//! メンバを 1 フィールドとして登録する。private も入れ子の struct のメンバ (m_tuning.speed) も書ける
+//! 宣言済みのメンバを 1 フィールドとして登録する。メンバの宣言はしないので、クラスに別に書く
+//! private も入れ子の struct のメンバ (m_tuning.speed) も書ける
 //! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectName の型で欄の種類が決まる
 //! float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
-#define NS_REFLECT_FIELD(member, label)                                                                                \
-    NS::ReflectEntry{NS::FieldDesc{label,                                                                              \
-                                   NS::FieldTypeOf<decltype(Self::member)>(),                                          \
-                                   +[](const void* c, void* out) noexcept {                                            \
-                                       NS::ReadFieldValue(static_cast<const Self*>(c)->member, out);                   \
-                                   },                                                                                  \
-                                   +[](void* c, const void* in) noexcept {                                             \
-                                       NS::AssignFieldValue(static_cast<Self*>(c)->member, in);                        \
-                                   },                                                                                  \
-                                   +[](void* c) { NS::LoadFieldAsset(static_cast<Self*>(c)->member); },                \
-                                   NS::AssetKindOf<decltype(Self::member)>()},                                         \
-                     nullptr},
+#define NS_FIELD(member, label)                                                                                        \
+    NS::ReflectEntry{                                                                                                  \
+        NS::FieldDesc{                                                                                                 \
+            label,                                                                                                     \
+            NS::FieldTypeOf<decltype(Self::member)>(),                                                                 \
+            +[](const void* c, void* out) noexcept { NS::ReadFieldValue(static_cast<const Self*>(c)->member, out); },  \
+            +[](void* c, const void* in) noexcept { NS::AssignFieldValue(static_cast<Self*>(c)->member, in); },        \
+            +[](void* c) { NS::LoadFieldAsset(static_cast<Self*>(c)->member); },                                       \
+            NS::AssetKindOf<decltype(Self::member)>()},                                                                \
+        nullptr},
 
 //! 欄の見出しを置く。次の見出しまでに並べた欄がこの見出しの下に入る。見出しは欄の配列に入らず、保存の鍵にならない
-#define NS_REFLECT_GROUP(groupName) NS::ReflectEntry{NS::FieldDesc{}, groupName},
+#define NS_GROUP(groupName) NS::ReflectEntry{NS::FieldDesc{}, groupName},
 
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
-#define NS_REFLECT_ACCESSOR(ValueType, label, getterCall, setterCall)                                                  \
+#define NS_ACCESSOR(ValueType, label, getterCall, setterCall)                                                          \
     NS::ReflectEntry{NS::FieldDesc{label,                                                                              \
                                    NS::FieldTypeOf<ValueType>(),                                                       \
                                    +[](const void* c, void* out) noexcept {                                            \
@@ -346,16 +345,16 @@ namespace NS
     }
 
 // 保存キーは既存データとの対応に使う。型が同じ部品もメンバーごとに区別する
-#define NS_REFLECT_SUBOBJ(memberName, savedKey)                                                                        \
+#define NS_CLASSOBJ(memberName, savedKey)                                                                              \
     NS::ReflectEntry{NS::FieldDesc{},                                                                                  \
                      nullptr,                                                                                          \
-                     NS::SubObjectDesc{savedKey,                                                                       \
-                                       +[](const NS::Object* owner) noexcept -> NS::Object* {                       \
-                                           return static_cast<const Self*>(owner)->memberName.get();                   \
-                                       },                                                                              \
-                                       +[](const NS::Object* owner) noexcept -> const void* {                          \
-                                           return &static_cast<const Self*>(owner)->memberName;                        \
-                                       }}},
+                     NS::ClassObjInfo{savedKey,                                                                        \
+                                      +[](const NS::Object* owner) noexcept -> NS::Object* {                           \
+                                          return static_cast<const Self*>(owner)->memberName.get();                    \
+                                      },                                                                               \
+                                      +[](const NS::Object* owner) noexcept -> const void* {                           \
+                                          return &static_cast<const Self*>(owner)->memberName;                         \
+                                      }}},
 
 // 部品の型を前方宣言するクラスでは、情報の定義を実装ファイルへ置く
 #define NS_REFLECT_DECLARE()                                                                                           \

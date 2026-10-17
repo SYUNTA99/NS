@@ -12,7 +12,7 @@ namespace GL
         {
         public:
             NS_REFLECT_BEGIN(GoalActor, NS::SceneActor)
-            NS_REFLECT_SUBOBJ(m_params, "Params")
+            NS_CLASSOBJ(m_params, "Params")
             NS_REFLECT_END()
 
             void AttackSensor(NS::HitSensor& self, NS::HitSensor& other) override;

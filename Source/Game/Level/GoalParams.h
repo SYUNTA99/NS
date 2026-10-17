@@ -29,8 +29,8 @@ namespace GL
             }
 
             NS_REFLECT_BEGIN(GoalParams, NS::Object)
-            NS_REFLECT_FIELD(m_fadeOutSeconds, "クリアの暗転秒")
-            NS_REFLECT_FIELD(m_fadeInSeconds, "クリアの明転秒")
+            NS_FIELD(m_fadeOutSeconds, "クリアの暗転秒")
+            NS_FIELD(m_fadeInSeconds, "クリアの明転秒")
             NS_REFLECT_END()
 
         private:

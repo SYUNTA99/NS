@@ -1,7 +1,7 @@
 #include "Editor/PlacementCatalog.h"
 
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
@@ -25,7 +25,7 @@ namespace NS
 
             void SetPartsMesh(nlohmann::json& prototype, std::string_view meshName)
             {
-                if (nlohmann::json* renderer = SubObjFields(prototype, "Model"))
+                if (nlohmann::json* renderer = ClassObjFields(prototype, "Model"))
                 {
                     SetField(*renderer, "メッシュ", meshName);
                 }
@@ -96,7 +96,7 @@ namespace NS
 
         float PartsSlopeAngleDegrees(const nlohmann::json& prototype) noexcept
         {
-            const nlohmann::json* renderer = SubObjFields(prototype, "Model");
+            const nlohmann::json* renderer = ClassObjFields(prototype, "Model");
             if (renderer == nullptr)
             {
                 return -1.0f;

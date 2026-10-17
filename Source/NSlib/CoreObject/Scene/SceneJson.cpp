@@ -2,8 +2,8 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
@@ -20,7 +20,7 @@ namespace NS
     namespace
     {
         // 保存形式を変えたら上げる。読み込みは一致する版だけを受け付ける
-        constexpr int k_FormatVersion = 7;
+        constexpr int k_FormatVersion = 8;
 
         //! 読込時の上限。巨大 size / 要素数による メモリ枯渇を防ぐ
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;
@@ -38,8 +38,8 @@ namespace NS
             SetObjectJsonClass(object, ObjectJsonClass(json));
             SetObjectJsonName(object, ObjectJsonName(json));
             SetObjectJsonActive(object, ObjectJsonActive(json));
-            nlohmann::json& parts = ObjectJsonSubObjs(object);
-            const nlohmann::json& source = ObjectJsonSubObjs(json);
+            nlohmann::json& parts = ObjectJsonClassObjs(object);
+            const nlohmann::json& source = ObjectJsonClassObjs(json);
             for (nlohmann::json::const_iterator part = source.begin(); part != source.end(); ++part)
             {
                 if (part.value().is_object())
@@ -47,7 +47,7 @@ namespace NS
                     parts[part.key()] = part.value();
                 }
             }
-            (void)EnsureTransformSubObject(object);
+            (void)EnsureTransformClassObj(object);
             return object;
         }
 

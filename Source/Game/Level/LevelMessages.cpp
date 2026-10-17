@@ -1,9 +1,9 @@
 #include "Game/Level/LevelMessages.h"
 
 #include "Game/Level/ImpactOutcome.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 
 namespace GL
 {

@@ -5,7 +5,7 @@
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
 
 namespace GL
 {

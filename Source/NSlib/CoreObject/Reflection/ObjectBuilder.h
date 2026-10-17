@@ -15,7 +15,7 @@ namespace NS
     class Object;
 
     // 既存の部品へ値を適用する。クラスに無い部品名は警告して読み飛ばす
-    void ApplyObjectSubObjs(SceneActor& obj, const nlohmann::json& object);
+    void ApplyObjectClassObjs(SceneActor& obj, const nlohmann::json& object);
 
     //! 型登録から scene に置くアクターを作り、種類の既定値と配置の上書きを書いて素材を読む。id と名前は設定しない
     //! class がなければ nullptr

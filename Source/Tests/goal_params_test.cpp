@@ -1,10 +1,10 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
 #include "NSlib/Gfx/ScreenFade.h"
 
 #include <gtest/gtest.h>

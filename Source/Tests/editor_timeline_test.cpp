@@ -8,15 +8,15 @@
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
-#include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Gfx/D3DTexture.h"
+#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 #include "Tests/TestHitTimelines.h"
@@ -59,7 +59,7 @@ namespace
     protected:
         void OnInit() override
         {
-            NS::Model* model = CreateSubObj(m_model, this);
+            NS::Model* model = CreateClassObj(m_model, this);
             model->SetMeshRef("cube");
             model->SetMaterialRef("player");
         }

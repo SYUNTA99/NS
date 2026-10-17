@@ -2,7 +2,7 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
 
 namespace NS
 {

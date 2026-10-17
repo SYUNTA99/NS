@@ -1,8 +1,8 @@
 #include "Game/Player/PlayerParams.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 
 #include <gtest/gtest.h>
 
@@ -18,15 +18,15 @@ namespace
         float value = 2.0f;
         int count = 3;
         NS_REFLECT_BEGIN(MixedReflectionActor, NS::SceneActor)
-        NS_REFLECT_SUBOBJ(part, "Part")
-        NS_REFLECT_FIELD(value, "値")
-        NS_REFLECT_GROUP("数")
-        NS_REFLECT_SUBOBJ(absentPart, "AbsentPart")
-        NS_REFLECT_FIELD(count, "個数")
+        NS_CLASSOBJ(part, "Part")
+        NS_FIELD(value, "値")
+        NS_GROUP("数")
+        NS_CLASSOBJ(absentPart, "AbsentPart")
+        NS_FIELD(count, "個数")
         NS_REFLECT_END()
 
     protected:
-        void OnInit() override { CreateSubObj(part, this); }
+        void OnInit() override { CreateClassObj(part, this); }
     };
 
     // 見出しの前の欄・空の見出し・続く見出しを 1 つずつ持つ値型
@@ -38,13 +38,13 @@ namespace
         int runSpeed = 3;
 
         NS_REFLECT_BEGIN(GroupedValue, void)
-        NS_REFLECT_FIELD(loose, "見出しの前の欄")
-        NS_REFLECT_GROUP("ジャンプ")
-        NS_REFLECT_FIELD(jumpSpeed, "跳ぶ速さ")
-        NS_REFLECT_FIELD(jumpGravity, "跳ぶ重力")
-        NS_REFLECT_GROUP("空の見出し")
-        NS_REFLECT_GROUP("走り")
-        NS_REFLECT_FIELD(runSpeed, "走る速さ")
+        NS_FIELD(loose, "見出しの前の欄")
+        NS_GROUP("ジャンプ")
+        NS_FIELD(jumpSpeed, "跳ぶ速さ")
+        NS_FIELD(jumpGravity, "跳ぶ重力")
+        NS_GROUP("空の見出し")
+        NS_GROUP("走り")
+        NS_FIELD(runSpeed, "走る速さ")
         NS_REFLECT_END_VALUE()
     };
 } // namespace
@@ -54,12 +54,12 @@ TEST(ReflectionGroup, OwnedPartsDoNotBecomeValueFieldsOrChangeGroupOffsets)
     const std::unique_ptr<MixedReflectionActor> actor = NS::CreateActor<MixedReflectionActor>();
     const NS::ReflectionInfo* info = actor->GetReflection();
     ASSERT_EQ(info->fieldCount, 2u);
-    ASSERT_EQ(info->subObjectCount, 2u);
+    ASSERT_EQ(info->classObjCount, 2u);
     ASSERT_EQ(info->groupCount, 1u);
     EXPECT_EQ(info->groups[0].firstField, 1u);
-    EXPECT_EQ(info->subObjects[0].get(actor.get()), actor->part.get());
-    EXPECT_EQ(info->subObjects[0].member(actor.get()), &actor->part);
-    EXPECT_EQ(info->subObjects[1].get(actor.get()), nullptr);
+    EXPECT_EQ(info->classObjs[0].get(actor.get()), actor->part.get());
+    EXPECT_EQ(info->classObjs[0].member(actor.get()), &actor->part);
+    EXPECT_EQ(info->classObjs[1].get(actor.get()), nullptr);
     EXPECT_EQ(NS::SerializeReflectedFields(actor.get(), *info), (nlohmann::json{{"値", 2.0f}, {"個数", 3}}));
 }
 

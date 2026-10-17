@@ -1,7 +1,7 @@
-#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
-#include "NSlib/CoreObject/SubObjects/HitReaction.h"
 #include "TestEffectActor.h"
 
 #include <gtest/gtest.h>
@@ -21,7 +21,7 @@ namespace
         void OnInit() override
         {
             TestEffectActor::OnInit();
-            CreateSubObj(m_hitReaction, this);
+            CreateClassObj(m_hitReaction, this);
         }
     };
 
@@ -124,13 +124,13 @@ TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
     const std::unique_ptr<ReactionEffectActor> owned = NS::CreateActor<ReactionEffectActor>();
     ReactionEffectActor& actor = *owned;
     NS::Object* keeper = actor.GetEffectKeeper();
-    NS::Object* reaction = actor.HitReactionSubObj();
+    NS::Object* reaction = actor.HitReactionClassObj();
     ASSERT_NE(keeper, nullptr);
     ASSERT_NE(reaction, nullptr);
 
     std::vector<NS::Object*> parts;
     std::vector<std::string_view> keys;
-    NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, NS::Object* part) {
+    NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, NS::Object* part) {
         parts.push_back(part);
         keys.push_back(field.key);
     });

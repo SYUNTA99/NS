@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/SubObjects/VirtualCamera.h"
+#include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 
 namespace NS
 {

@@ -1,7 +1,7 @@
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -29,7 +29,7 @@ namespace
 
         void TearDown() override { ImGui::DestroyContext(m_gui); }
 
-        NS::Editor::SubObjectEditResult Frame()
+        NS::Editor::ClassObjEditResult Frame()
         {
             ImGui::NewFrame();
             ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
@@ -37,8 +37,8 @@ namespace
             ImGui::Begin("色の欄");
             m_tableMin = ImGui::GetCursorScreenPos();
             m_tableWidth = ImGui::GetContentRegionAvail().x;
-            const NS::Editor::SubObjectEditResult result =
-                NS::Editor::DrawReflectedSubObject(m_model, {}, nullptr, "基本色");
+            const NS::Editor::ClassObjEditResult result =
+                NS::Editor::DrawReflectedClassObj(m_model, {}, nullptr, "基本色");
             ImGui::End();
             ImGui::EndFrame();
             return result;
@@ -58,7 +58,7 @@ namespace
             ImGui::GetIO().AddMouseButtonEvent(0, true);
             m_openActivated = Frame().activated;
             ImGui::GetIO().AddMouseButtonEvent(0, false);
-            const NS::Editor::SubObjectEditResult result = Frame();
+            const NS::Editor::ClassObjEditResult result = Frame();
             m_openActivated |= result.activated;
             m_openCommitted = result.committed;
         }
@@ -75,7 +75,7 @@ namespace
     {
         NS::Color tint{0.1f, 0.2f, 0.3f, 0.4f};
         NS_REFLECT_BEGIN(ColorSettings, void)
-        NS_REFLECT_FIELD(tint, "色合い")
+        NS_FIELD(tint, "色合い")
         NS_REFLECT_END_VALUE()
     };
 }
@@ -110,23 +110,23 @@ TEST(ColorField, ThreeComponentColorWarnsAndKeepsTheValue)
 TEST_F(EditorColorTest, ColorSwatchOpensAPickerBeforeChangingTheValue)
 {
     m_model.SetBaseColor(NS::Color{0.2f, 0.4f, 0.7f});
-    const nlohmann::json before = NS::SerializeSubObjectFields(m_model);
+    const nlohmann::json before = NS::SerializeClassObjFields(m_model);
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
     EXPECT_TRUE(m_openActivated);
     EXPECT_FALSE(m_openCommitted);
-    EXPECT_EQ(NS::SerializeSubObjectFields(m_model), before);
+    EXPECT_EQ(NS::SerializeClassObjFields(m_model), before);
 }
 
 TEST_F(EditorColorTest, DrawingAColorFieldPreservesHighIntensityAndSavedNumbers)
 {
     m_model.SetBaseColor(NS::Color{2.5f, 0.3f, 0.1f});
-    const nlohmann::json before = NS::SerializeSubObjectFields(m_model);
+    const nlohmann::json before = NS::SerializeClassObjFields(m_model);
     for (int i = 0; i < 3; ++i)
     {
         EXPECT_FALSE(Frame().changed);
     }
-    EXPECT_EQ(NS::SerializeSubObjectFields(m_model), before);
+    EXPECT_EQ(NS::SerializeClassObjFields(m_model), before);
     ASSERT_TRUE(before.contains("基本色"));
     EXPECT_FLOAT_EQ(before["基本色"][0].get<float>(), 2.5f);
 }
@@ -134,7 +134,7 @@ TEST_F(EditorColorTest, DrawingAColorFieldPreservesHighIntensityAndSavedNumbers)
 TEST_F(EditorColorTest, ChoosingAColorWritesTheFieldAndCommitsWhenThePickerCloses)
 {
     m_model.SetBaseColor(NS::Color{0.2f, 0.4f, 0.7f});
-    const nlohmann::json before = NS::SerializeSubObjectFields(m_model);
+    const nlohmann::json before = NS::SerializeClassObjFields(m_model);
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
     (void)Frame();
@@ -144,7 +144,7 @@ TEST_F(EditorColorTest, ChoosingAColorWritesTheFieldAndCommitsWhenThePickerClose
     ImGui::GetIO().AddMousePosEvent(point.x, point.y);
     (void)Frame();
     ImGui::GetIO().AddMouseButtonEvent(0, true);
-    const NS::Editor::SubObjectEditResult press = Frame();
+    const NS::Editor::ClassObjEditResult press = Frame();
     EXPECT_TRUE(press.changed);
     EXPECT_FALSE(press.committed);
     EXPECT_EQ(press.changedTarget, &m_model);
@@ -154,7 +154,7 @@ TEST_F(EditorColorTest, ChoosingAColorWritesTheFieldAndCommitsWhenThePickerClose
     EXPECT_FALSE(Frame().committed);
     ImGui::GetIO().AddMouseButtonEvent(0, false);
     EXPECT_FALSE(Frame().committed);
-    EXPECT_NE(NS::SerializeSubObjectFields(m_model), before);
+    EXPECT_NE(NS::SerializeClassObjFields(m_model), before);
     ImGui::GetIO().AddMousePosEvent(950.0f, 750.0f);
     ImGui::GetIO().AddMouseButtonEvent(0, true);
     bool committed = Frame().committed;

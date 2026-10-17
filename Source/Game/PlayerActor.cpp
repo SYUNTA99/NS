@@ -23,36 +23,36 @@
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Asset/AnimClip.h"
+#include "NSlib/CoreObject/ClassObjs/Animation.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
+#include "NSlib/CoreObject/ClassObjs/Shadow.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
-#include "NSlib/CoreObject/SubObjects/Animation.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
-#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
-#include "NSlib/CoreObject/SubObjects/HitReaction.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
-#include "NSlib/CoreObject/SubObjects/Shadow.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <algorithm>
 #include <cmath>
 
 NS_REFLECT_BEGIN_IMPL(PlayerActor, NS::SceneActor)
-NS_REFLECT_SUBOBJ(m_appearance, "Appearance")
-NS_REFLECT_SUBOBJ(m_body, "Movement")
-NS_REFLECT_SUBOBJ(m_collider, "Collider")
-NS_REFLECT_SUBOBJ(m_input, "Input")
-NS_REFLECT_SUBOBJ(m_params, "Params")
-NS_REFLECT_SUBOBJ(m_clips, "Clips")
-NS_REFLECT_SUBOBJ(m_resolver, "ImpactResolver")
-NS_REFLECT_SUBOBJ(m_targetMarker, "TargetMarker")
-NS_REFLECT_SUBOBJ(m_slamArrow, "SlamArrow")
-NS_REFLECT_SUBOBJ(m_chargeEffects, "ChargeEffects")
-NS_REFLECT_SUBOBJ(m_impactEffects, "ImpactEffects")
+NS_CLASSOBJ(m_appearance, "Appearance")
+NS_CLASSOBJ(m_body, "Movement")
+NS_CLASSOBJ(m_collider, "Collider")
+NS_CLASSOBJ(m_input, "Input")
+NS_CLASSOBJ(m_params, "Params")
+NS_CLASSOBJ(m_clips, "Clips")
+NS_CLASSOBJ(m_resolver, "ImpactResolver")
+NS_CLASSOBJ(m_targetMarker, "TargetMarker")
+NS_CLASSOBJ(m_slamArrow, "SlamArrow")
+NS_CLASSOBJ(m_chargeEffects, "ChargeEffects")
+NS_CLASSOBJ(m_impactEffects, "ImpactEffects")
 NS_REFLECT_END_IMPL()
 
 NS_CLASS(PlayerActor)
@@ -62,29 +62,29 @@ PlayerActor::PlayerActor() noexcept = default;
 PlayerActor::~PlayerActor() = default;
 void PlayerActor::OnInit()
 {
-    NS::Model* model = CreateSubObj(m_model, this);
+    NS::Model* model = CreateClassObj(m_model, this);
     model->SetMaterialRef("player");
     model->SetBaseColor(NS::Color{0.5f, 0.5f, 0.5f});
-    CreateSubObj(m_appearance, this);
-    CreateSubObj(m_body, this);
-    CreateSubObj(m_collider, this);
-    CreateSubObj(m_input, this);
-    CreateSubObj(m_params);
-    CreateSubObj(m_clips);
-    CreateSubObj(m_shadow, this);
+    CreateClassObj(m_appearance, this);
+    CreateClassObj(m_body, this);
+    CreateClassObj(m_collider, this);
+    CreateClassObj(m_input, this);
+    CreateClassObj(m_params);
+    CreateClassObj(m_clips);
+    CreateClassObj(m_shadow, this);
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
     NS::FollowHitSensor* bodySensor =
-        CreateSubObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [collider = m_collider.get()] {
+        CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [collider = m_collider.get()] {
             return NS::SensorVolume::Capsule(collider->WorldCapsule());
         });
     GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
-    CreateSubObj(m_resolver, this);
-    CreateSubObj(m_hitReaction, this);
-    CreateSubObj(m_targetMarker, this);
-    CreateSubObj(m_slamArrow, this);
-    CreateSubObj(m_effectKeeper, this);
-    CreateSubObj(m_chargeEffects, this);
-    CreateSubObj(m_impactEffects, this);
+    CreateClassObj(m_resolver, this);
+    CreateClassObj(m_hitReaction, this);
+    CreateClassObj(m_targetMarker, this);
+    CreateClassObj(m_slamArrow, this);
+    CreateClassObj(m_effectKeeper, this);
+    CreateClassObj(m_chargeEffects, this);
+    CreateClassObj(m_impactEffects, this);
     // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
     (void)BuildStateMachine<PlayerActor,
                             GL::Player::IdlePlayerState,
@@ -151,7 +151,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
 
 void PlayerActor::UpdateAnimation()
 {
-    NS::Animation* animation = AnimationSubObj();
+    NS::Animation* animation = AnimationClassObj();
     if (animation == nullptr)
     {
         return;
@@ -207,7 +207,7 @@ void PlayerActor::DecideStep()
 {
     AdvanceCharge(BodyDelta());
     m_resolver->StepState(
-        SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), ModelSubObj(), HitReactionSubObj());
+        SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), ModelClassObj(), HitReactionClassObj());
     ApplyImpactOrders(m_resolver->Answer());
 }
 
@@ -271,7 +271,7 @@ void PlayerActor::VisualStep()
     m_slamArrow->Update(m_charge, m_params.get(), m_collider.get());
     // clang-format on
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
-    m_resolver->WriteTremor(m_collider.get(), ModelSubObj());
+    m_resolver->WriteTremor(m_collider.get(), ModelClassObj());
     const GL::Player::PlayerMotion motion = Motion();
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
@@ -363,13 +363,13 @@ void PlayerActor::OnEndPlay()
 {
     m_states->Reset();
     // 次のプレイで選んだクリップを頭から流す
-    if (NS::Animation* animation = AnimationSubObj())
+    if (NS::Animation* animation = AnimationClassObj())
     {
         animation->Play(nullptr);
     }
     NS::SceneActor::OnEndPlay();
     // 走っている当たりのタイムラインを捨てる。プレイの途中で外れても止めが次のプレイへ残らない
-    m_resolver->CancelImpact(ModelSubObj(), HitReactionSubObj());
+    m_resolver->CancelImpact(ModelClassObj(), HitReactionClassObj());
     m_appearance->ResetDrawScale();
     m_chargeEffects->Clear();
     if (NS::Scene* scene = OwningScene())
@@ -635,7 +635,7 @@ void PlayerActor::ResetState() noexcept
     m_bodySlamHeld = false;
     m_states->Reset();
     // 止めの最中か反動を待つ間のやり直しで、出現位置で明けて弾かれないよう、走っている当たりのタイムラインを持ち主に打ち切らせる
-    m_resolver->CancelImpact(ModelSubObj(), HitReactionSubObj());
+    m_resolver->CancelImpact(ModelClassObj(), HitReactionClassObj());
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale();
 }

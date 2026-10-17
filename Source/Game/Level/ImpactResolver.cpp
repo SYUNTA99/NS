@@ -14,14 +14,14 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
 #include "NSlib/Phys/Capsule.h"
@@ -1520,13 +1520,13 @@ namespace GL
                 return;
             }
             NS::SceneActor* target = scene->Objects().FindObject(m_pendingTarget);
-            if (target == nullptr || target->ModelSubObj() == nullptr)
+            if (target == nullptr || target->ModelClassObj() == nullptr)
             {
                 return;
             }
             // 止めの間の二人は食い込んだ所に留まり、描く形が揺れるだけなので、始めた時の形で挟めば最後まで外れない
             // 真後ろのカメラでは自機が相手に重なるので、二人をまとめて挟む
-            const NS::AABB other = target->ModelSubObj()->WorldBounds();
+            const NS::AABB other = target->ModelClassObj()->WorldBounds();
             const NS::AABB self = parts.model->WorldBounds();
             parts.hitReaction->StartShakeLines(
                 NS::HitShakeLinesDesc{.center = NS::Vector3{other.Center.x, other.Center.y, other.Center.z},

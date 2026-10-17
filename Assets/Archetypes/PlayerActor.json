@@ -1,6 +1,6 @@
 {
     "class": "PlayerActor",
-    "subObjects": {
+    "classObjs": {
         "Appearance": {
             "玉のメッシュ": "sphere",
             "立ち姿のメッシュ": "capsule"

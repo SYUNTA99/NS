@@ -10,9 +10,9 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <gtest/gtest.h>

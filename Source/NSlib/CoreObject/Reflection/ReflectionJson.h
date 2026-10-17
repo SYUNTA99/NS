@@ -8,9 +8,9 @@
 
 namespace NS
 {
-    //! @brief comp のリフレクションの欄を、配置物の JSON の "subObjects" の 1 件の形 {名前: 値} で書き出す
+    //! @brief comp のリフレクションの欄を、配置物の JSON の "classObjs" の 1 件の形 {名前: 値} で書き出す
     //! @details GetReflection() が nullptr の部品は空の object を返し、警告を出す
-    [[nodiscard]] nlohmann::json SerializeSubObjectFields(const Object& comp);
+    [[nodiscard]] nlohmann::json SerializeClassObjFields(const Object& comp);
 
     //! フィールド名を照合して値を適用する。欠損は現在値を保ち、型不一致は無視する
     //! 未知のキーを警告し、その件数を返す

@@ -6,17 +6,17 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/CameraModifier.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
-#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
-#include "NSlib/CoreObject/SubObjects/HitReaction.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
@@ -81,11 +81,11 @@ namespace
         NS::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, rockZ});
         if (mass > 0.0f)
         {
-            NS::ObjectJsonSubObjs(rock)["Params"]["質量"] = mass;
+            NS::ObjectJsonClassObjs(rock)["Params"]["質量"] = mass;
         }
         if (!hitTimeline.empty())
         {
-            NS::ObjectJsonSubObjs(rock)["Params"]["当たりのタイムライン"] = std::string{hitTimeline};
+            NS::ObjectJsonClassObjs(rock)["Params"]["当たりのタイムライン"] = std::string{hitTimeline};
         }
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
@@ -568,7 +568,7 @@ TEST(ImpactTimelineClock, TraumaEventAddsTraumaThatStacksOnTheNextHit)
     EXPECT_GT(added, 0.0f);
     EXPECT_NEAR(cameras->Trauma(), added, 1.0e-5f);
     // 次の当たりは前の当たりの返りを止めるが、トラウマは残して足す
-    player->HitReactionSubObj()->Stop();
+    player->HitReactionClassObj()->Stop();
     rock->Root().SetPosition(player->Root().Position() + NS::Vector3{0.0f, -0.5f, 0.6f});
     player->Body().SetGrounded(true);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -817,7 +817,7 @@ namespace
     // 置物の当たりの球の半径。置物の当たりは球で作る
     float RockRadius(const PropActor& rock)
     {
-        return static_cast<const NS::SphereCollision*>(rock.CollisionSubObj())->WorldSphere().radius;
+        return static_cast<const NS::SphereCollision*>(rock.CollisionClassObj())->WorldSphere().radius;
     }
 } // namespace
 
@@ -860,8 +860,8 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         ++clock;
         SCOPED_TRACE(clock);
         previousSelfRoot = selfRootBefore;
-        const NS::Gfx::TremorCB& self = player->ModelSubObj()->Tremor();
-        const NS::Gfx::TremorCB& other = rock->ModelSubObj()->Tremor();
+        const NS::Gfx::TremorCB& self = player->ModelClassObj()->Tremor();
+        const NS::Gfx::TremorCB& other = rock->ModelClassObj()->Tremor();
         if (clock < 7 || clock >= 13)
         {
             EXPECT_FLOAT_EQ(self.amplitude, 0.0f);
@@ -949,8 +949,8 @@ TEST(ImpactTimelineClock, TargetTremorRatioKeepsTheSameShareOfTheBody)
         }
         const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
-        EXPECT_NEAR(rock->ModelSubObj()->Tremor().amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
-        EXPECT_NEAR(player->ModelSubObj()->Tremor().amplitude,
+        EXPECT_NEAR(rock->ModelClassObj()->Tremor().amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
+        EXPECT_NEAR(player->ModelClassObj()->Tremor().amplitude,
                     MetersForPixels(*pose, player->Root().Position(), 3.0f),
                     1.0e-5f);
         depths.push_back((rock->Root().Position() - pose->position).Length());
@@ -984,7 +984,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        const float selfAmplitude = player->ModelSubObj()->Tremor().amplitude;
+        const float selfAmplitude = player->ModelClassObj()->Tremor().amplitude;
         if (!(selfAmplitude > 0.0f))
         {
             continue;
@@ -992,7 +992,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
         const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(selfAmplitude, MetersForPixels(*pose, player->Root().Position(), 3.0f) * 0.5f, 0.00001f);
-        EXPECT_NEAR(rock->ModelSubObj()->Tremor().amplitude,
+        EXPECT_NEAR(rock->ModelClassObj()->Tremor().amplitude,
                     MetersForPixels(*pose, rock->Root().Position(), 3.0f) * 0.5f,
                     0.00001f);
         return;
@@ -1042,8 +1042,8 @@ TEST(ImpactTimelineClock, ShakeLinesFrameTheTargetForTheStop)
         EXPECT_EQ(reaction.ShakeLinesFramesRemaining(), 7 - clock);
         if (clock == 1)
         {
-            const NS::AABB bounds = rock->ModelSubObj()->WorldBounds();
-            const NS::AABB self = player->ModelSubObj()->WorldBounds();
+            const NS::AABB bounds = rock->ModelClassObj()->WorldBounds();
+            const NS::AABB self = player->ModelClassObj()->WorldBounds();
             const NS::HitShakeLinesDesc& shown = reaction.ShakeLines();
             EXPECT_NEAR(shown.center.x, bounds.Center.x, 1.0e-5f);
             EXPECT_NEAR(shown.center.y, bounds.Center.y, 1.0e-5f);
@@ -1214,8 +1214,8 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Vector3 self = player->ModelSubObj()->DrawOffset();
-        const NS::Vector3 other = rock->ModelSubObj()->DrawOffset();
+        const NS::Vector3 self = player->ModelClassObj()->DrawOffset();
+        const NS::Vector3 other = rock->ModelClassObj()->DrawOffset();
         if (clock >= 1 && clock <= 5)
         {
             // 画面の横の向きだけに、逆向きに揺れる
@@ -1245,8 +1245,8 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
             EXPECT_FLOAT_EQ(other.Length(), 0.0f);
         }
         // 横揺れは残像を出さない。残像は残像の事象が出す
-        EXPECT_FLOAT_EQ(player->ModelSubObj()->GhostSpread().Length(), 0.0f);
-        EXPECT_FLOAT_EQ(rock->ModelSubObj()->GhostSpread().Length(), 0.0f);
+        EXPECT_FLOAT_EQ(player->ModelClassObj()->GhostSpread().Length(), 0.0f);
+        EXPECT_FLOAT_EQ(rock->ModelClassObj()->GhostSpread().Length(), 0.0f);
     }
     EXPECT_GE(clock, 9);
 }
@@ -1287,8 +1287,8 @@ TEST(ImpactTimelineClock, DepthShakePushesEachBodyAlongTheForceItTook)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Vector3 self = player->ModelSubObj()->DrawOffset();
-        const NS::Vector3 other = rock->ModelSubObj()->DrawOffset();
+        const NS::Vector3 self = player->ModelClassObj()->DrawOffset();
+        const NS::Vector3 other = rock->ModelClassObj()->DrawOffset();
         if (clock >= 1 && clock <= 6)
         {
             const NS::uint32 seed = player->Resolver().Answer().lastImpact.sequence;
@@ -1352,8 +1352,8 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Model& self = *player->ModelSubObj();
-        const NS::Model& other = *rock->ModelSubObj();
+        const NS::Model& self = *player->ModelClassObj();
+        const NS::Model& other = *rock->ModelClassObj();
         if (clock == 1)
         {
             const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);

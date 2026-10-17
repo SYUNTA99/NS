@@ -3,8 +3,8 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ClassObjs/Collision.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/CoreObject/SubObjects/Collision.h"
 #include "NSlib/Phys/PhysicsScene.h"
 
 #include <algorithm>
@@ -209,7 +209,7 @@ namespace NS
     {
         for (const std::unique_ptr<SceneActor>& actor : m_objects)
         {
-            Collision* collision = actor->CollisionSubObj();
+            Collision* collision = actor->CollisionClassObj();
             if (collision == nullptr)
             {
                 continue;

@@ -9,18 +9,18 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
+#include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
+#include "NSlib/CoreObject/ClassObjs/Shadow.h"
+#include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
+#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/BoxCollision.h"
-#include "NSlib/CoreObject/SubObjects/DirectionalLight.h"
-#include "NSlib/CoreObject/SubObjects/HitReaction.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/MeshCollision.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
-#include "NSlib/CoreObject/SubObjects/Shadow.h"
-#include "NSlib/CoreObject/SubObjects/SphereCollision.h"
-#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
 
 #include <gtest/gtest.h>
 
@@ -30,31 +30,31 @@ TEST(ActorClass, MapPartsCollidesWithItsMesh)
 {
     const std::unique_ptr<NS::MapPartsActor> partsOwned = NS::CreateActor<NS::MapPartsActor>();
     NS::MapPartsActor& parts = *partsOwned;
-    const NS::Model* mesh = parts.ModelSubObj();
+    const NS::Model* mesh = parts.ModelClassObj();
     ASSERT_NE(mesh, nullptr);
     EXPECT_EQ(mesh->MeshRef(), "cube");
     // 当たりは見た目のメッシュの三角形。箱や球の当たりは持たない
-    EXPECT_NE(NS::Cast<NS::MeshCollision>(parts.CollisionSubObj()), nullptr);
-    EXPECT_EQ(NS::Cast<NS::BoxCollision>(parts.CollisionSubObj()), nullptr);
-    EXPECT_EQ(NS::Cast<NS::SphereCollision>(parts.CollisionSubObj()), nullptr);
+    EXPECT_NE(NS::Cast<NS::MeshCollision>(parts.CollisionClassObj()), nullptr);
+    EXPECT_EQ(NS::Cast<NS::BoxCollision>(parts.CollisionClassObj()), nullptr);
+    EXPECT_EQ(NS::Cast<NS::SphereCollision>(parts.CollisionClassObj()), nullptr);
 }
 
 TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
 {
     const std::unique_ptr<GL::Level::PropActor> objOwned = NS::CreateActor<GL::Level::PropActor>();
     GL::Level::PropActor& obj = *objOwned;
-    EXPECT_NE(obj.ModelSubObj(), nullptr);
-    EXPECT_NE(NS::Cast<NS::SphereCollision>(obj.CollisionSubObj()), nullptr);
+    EXPECT_NE(obj.ModelClassObj(), nullptr);
+    EXPECT_NE(NS::Cast<NS::SphereCollision>(obj.CollisionClassObj()), nullptr);
     const nlohmann::json prototype = NS::MakePrototypeJson(obj);
-    EXPECT_EQ(NS::SubObjFields(prototype, "Breakable"), nullptr);
-    EXPECT_EQ(NS::SubObjFields(prototype, "LaunchedBody"), nullptr);
-    EXPECT_NE(obj.ShadowSubObj(), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(prototype, "Breakable"), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(prototype, "LaunchedBody"), nullptr);
+    EXPECT_NE(obj.ShadowClassObj(), nullptr);
     // 体当たりは物の体のセンサーで調べられ、受け方と尾は自分で持つ
-    const NS::HitSensor* sensor = obj.BodySensorSubObj();
+    const NS::HitSensor* sensor = obj.BodySensorClassObj();
     ASSERT_NE(sensor, nullptr);
     EXPECT_TRUE(GL::Level::IsSensorKind(*sensor, GL::Level::SensorKind::MapObjBody));
-    EXPECT_EQ(NS::SubObjFields(prototype, "TackleReaction"), nullptr);
-    EXPECT_NE(NS::SubObjFields(prototype, "LaunchEffects"), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(prototype, "TackleReaction"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(prototype, "LaunchEffects"), nullptr);
     EXPECT_NE(obj.GetStates(), nullptr);
     EXPECT_FALSE(obj.IsFlying());
 }
@@ -63,8 +63,8 @@ TEST(ActorClass, GoalHasMarkerAndArea)
 {
     const std::unique_ptr<GL::Level::GoalActor> goalOwned = NS::CreateActor<GL::Level::GoalActor>();
     GL::Level::GoalActor& goal = *goalOwned;
-    EXPECT_NE(goal.ModelSubObj(), nullptr);
-    const NS::HitSensor* area = goal.BodySensorSubObj();
+    EXPECT_NE(goal.ModelClassObj(), nullptr);
+    const NS::HitSensor* area = goal.BodySensorClassObj();
     ASSERT_NE(area, nullptr);
     EXPECT_TRUE(GL::Level::IsSensorKind(*area, GL::Level::SensorKind::Area));
 }
@@ -73,27 +73,27 @@ TEST(ActorClass, DeathZoneIsBoxAreaWithoutTerrainCollision)
 {
     const std::unique_ptr<GL::Level::DeathZoneActor> zoneOwned = NS::CreateActor<GL::Level::DeathZoneActor>();
     GL::Level::DeathZoneActor& zone = *zoneOwned;
-    const NS::ShapeHitSensor* area = NS::Cast<NS::ShapeHitSensor>(zone.BodySensorSubObj());
+    const NS::ShapeHitSensor* area = NS::Cast<NS::ShapeHitSensor>(zone.BodySensorClassObj());
     ASSERT_NE(area, nullptr);
     EXPECT_TRUE(GL::Level::IsSensorKind(*area, GL::Level::SensorKind::Area));
     EXPECT_EQ(area->Shape(), NS::HitSensorShape::Box);
     EXPECT_GE(area->BoxHalfExtents().x, 100.0f);
     // 地形の当たりを持つと、落ちてきたプレイヤーが上面に着地してしまう
-    EXPECT_EQ(NS::Cast<NS::BoxCollision>(zone.CollisionSubObj()), nullptr);
+    EXPECT_EQ(NS::Cast<NS::BoxCollision>(zone.CollisionClassObj()), nullptr);
 }
 
 TEST(ActorClass, FollowCameraHasFollowAndFeed)
 {
     const std::unique_ptr<GL::Level::FollowCameraActor> cameraOwned = NS::CreateActor<GL::Level::FollowCameraActor>();
     GL::Level::FollowCameraActor& camera = *cameraOwned;
-    EXPECT_NE(NS::SubObjFields(NS::MakePrototypeJson(camera), "Vcam"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(NS::MakePrototypeJson(camera), "Vcam"), nullptr);
 }
 
 TEST(ActorClass, LightHasDirectionalLight)
 {
     const std::unique_ptr<NS::LightActor> lightOwned = NS::CreateActor<NS::LightActor>();
     NS::LightActor& light = *lightOwned;
-    EXPECT_NE(NS::SubObjFields(NS::MakePrototypeJson(light), "DirectionalLight"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(NS::MakePrototypeJson(light), "DirectionalLight"), nullptr);
 }
 
 TEST(ActorClass, LightShinesAlongItsRotation)
@@ -122,14 +122,14 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     const nlohmann::json prototype = NS::MakePrototypeJson(player);
-    EXPECT_NE(NS::SubObjFields(prototype, "Movement"), nullptr);
-    EXPECT_NE(NS::SubObjFields(prototype, "Input"), nullptr);
-    EXPECT_EQ(NS::SubObjFields(prototype, "PlayerInputRelay"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(prototype, "Movement"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(prototype, "Input"), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(prototype, "PlayerInputRelay"), nullptr);
     EXPECT_NE(player.GetStates(), nullptr);
     EXPECT_EQ(player.Phase(), NS::UpdatePhase::Player);
-    EXPECT_NE(NS::SubObjFields(prototype, "ImpactResolver"), nullptr);
-    EXPECT_NE(player.HitReactionSubObj(), nullptr);
-    const NS::HitSensor* body = player.BodySensorSubObj();
+    EXPECT_NE(NS::ClassObjFields(prototype, "ImpactResolver"), nullptr);
+    EXPECT_NE(player.HitReactionClassObj(), nullptr);
+    const NS::HitSensor* body = player.BodySensorClassObj();
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(GL::Level::IsSensorKind(*body, GL::Level::SensorKind::PlayerBody));
 }

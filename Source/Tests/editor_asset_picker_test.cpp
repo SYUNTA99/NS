@@ -1,8 +1,8 @@
-#include "Editor/EditorUi.h"
 #include "Editor/AssetPicker.h"
+#include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <gtest/gtest.h>
@@ -39,7 +39,7 @@ namespace
 
         void TearDown() override { ImGui::DestroyContext(m_gui); }
 
-        NS::Editor::SubObjectEditResult Frame()
+        NS::Editor::ClassObjEditResult Frame()
         {
             ImGui::NewFrame();
             ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
@@ -47,8 +47,8 @@ namespace
             ImGui::Begin("素材の欄");
             m_tableMin = ImGui::GetCursorScreenPos();
             m_tableWidth = ImGui::GetContentRegionAvail().x;
-            const NS::Editor::SubObjectEditResult result =
-                NS::Editor::DrawReflectedSubObject(m_model, {}, nullptr, "メッシュ");
+            const NS::Editor::ClassObjEditResult result =
+                NS::Editor::DrawReflectedClassObj(m_model, {}, nullptr, "メッシュ");
             ImGui::End();
             ImGui::EndFrame();
             return result;
@@ -63,7 +63,7 @@ namespace
             ImGui::GetIO().AddMouseButtonEvent(0, true);
             m_activated = Frame().activated;
             ImGui::GetIO().AddMouseButtonEvent(0, false);
-            const NS::Editor::SubObjectEditResult opened = Frame();
+            const NS::Editor::ClassObjEditResult opened = Frame();
             m_activated |= opened.activated;
             m_committed = opened.committed;
             (void)Frame();
@@ -107,7 +107,7 @@ namespace
     {
         std::string text;
         NS_REFLECT_BEGIN(StringSettings, void)
-        NS_REFLECT_FIELD(text, "説明")
+        NS_FIELD(text, "説明")
         NS_REFLECT_END_VALUE()
     };
 
@@ -115,7 +115,7 @@ namespace
     {
         NS::EffectName effect{"charge.curl"};
         NS_REFLECT_BEGIN(EffectSettings, void)
-        NS_REFLECT_FIELD(effect, "エフェクト")
+        NS_FIELD(effect, "エフェクト")
         NS_REFLECT_END_VALUE()
     };
 }
@@ -135,12 +135,12 @@ TEST(AssetPickerCatalog, EffectNameMemberIsAnEffectFieldSavedAsItsName)
 
 TEST_F(EditorAssetPickerTest, FileReferenceOpensChoicesBeforeChangingTheValue)
 {
-    const nlohmann::json before = NS::SerializeSubObjectFields(m_model);
+    const nlohmann::json before = NS::SerializeClassObjFields(m_model);
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
     EXPECT_TRUE(m_activated);
     EXPECT_FALSE(m_committed);
-    EXPECT_EQ(NS::SerializeSubObjectFields(m_model), before);
+    EXPECT_EQ(NS::SerializeClassObjFields(m_model), before);
 }
 
 TEST_F(EditorAssetPickerTest, SearchFiltersChoicesAndSelectionWritesOnlyTheSelectedName)
@@ -167,7 +167,7 @@ TEST_F(EditorAssetPickerTest, SearchFiltersChoicesAndSelectionWritesOnlyTheSelec
     ImGui::GetIO().AddMouseButtonEvent(0, true);
     (void)Frame();
     ImGui::GetIO().AddMouseButtonEvent(0, false);
-    const NS::Editor::SubObjectEditResult selected = Frame();
+    const NS::Editor::ClassObjEditResult selected = Frame();
     EXPECT_TRUE(selected.changed);
     EXPECT_EQ(m_model.MeshRef(), "capsule");
     EXPECT_EQ(selected.changedTarget, &m_model);

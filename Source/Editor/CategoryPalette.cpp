@@ -2,7 +2,7 @@
 
 #include "Editor/PaletteTemplates.h"
 #include "Editor/PlacementCatalog.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Gamepad.h"
 #include "NSlib/Windows/Input.h"

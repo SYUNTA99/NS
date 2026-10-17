@@ -1,10 +1,10 @@
 #pragma once
 
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
 
 class TestEffectActor : public NS::SceneActor
 {
 protected:
-    void OnInit() override { CreateSubObj(m_effectKeeper, this); }
+    void OnInit() override { CreateClassObj(m_effectKeeper, this); }
 };

@@ -1,11 +1,11 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
@@ -192,10 +192,10 @@ TEST(PlayerChargeSequence, EndPlayWhileHeldRestoresStanceAndUncurls)
     {
         player.Update(true);
     }
-    ASSERT_FLOAT_EQ(player.ModelSubObj()->DrawScale().y, 0.95f);
+    ASSERT_FLOAT_EQ(player.ModelClassObj()->DrawScale().y, 0.95f);
     player.OnEndPlay();
     EXPECT_FLOAT_EQ(player.StanceHeight(), 1.0f);
-    EXPECT_TRUE(player.ModelSubObj()->DrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_TRUE(player.ModelClassObj()->DrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     EXPECT_FALSE(player.IsCurled());
 }
 

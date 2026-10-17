@@ -2,9 +2,9 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 
 namespace GL
 {
@@ -12,12 +12,12 @@ namespace GL
     {
         void GoalActor::OnInit()
         {
-            CreateSubObj(m_params);
-            NS::Model* mesh = CreateSubObj(m_model, this);
+            CreateClassObj(m_params);
+            NS::Model* mesh = CreateClassObj(m_model, this);
             mesh->SetMeshRef("cube");
             mesh->SetBaseColor(NS::Color{1.0f, 0.84f, 0.0f});
             // ゴールの半径 0.9 m にプレイヤーの体が重なれば触れたとみなす
-            NS::ShapeHitSensor* area = CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
+            NS::ShapeHitSensor* area = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
             SetSensorKind(*area, SensorKind::Area);
             area->SetSphere(0.9f);
         }

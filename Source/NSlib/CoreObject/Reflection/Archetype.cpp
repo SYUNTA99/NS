@@ -1,14 +1,14 @@
 #include "NSlib/CoreObject/Reflection/Archetype.h"
-#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <cstddef>
@@ -25,9 +25,9 @@ namespace NS
 
         // 位置・回転・拡縮は個体の物。種類の既定値に持たせず、保存の差分でも落とさない
         // 保存側は JSON の件しか持たないので、型でなく保存の鍵の部品名で見分ける
-        [[nodiscard]] bool IsInstanceOnlySubObj(std::string_view partName) noexcept
+        [[nodiscard]] bool IsInstanceOnlyClassObj(std::string_view partName) noexcept
         {
-            return partName == k_TransformSubObjName;
+            return partName == k_TransformClassObjName;
         }
 
         // 種類の既定値に持たせない物を落とした写し。参照の欄・id・位置と回転と拡縮は個体の物
@@ -35,11 +35,11 @@ namespace NS
         {
             nlohmann::json out = nlohmann::json::object();
             SetObjectJsonClass(out, className);
-            nlohmann::json& parts = ObjectJsonSubObjs(out);
-            const nlohmann::json& source = ObjectJsonSubObjs(archetype);
+            nlohmann::json& parts = ObjectJsonClassObjs(out);
+            const nlohmann::json& source = ObjectJsonClassObjs(archetype);
             for (nlohmann::json::const_iterator entry = source.begin(); entry != source.end(); ++entry)
             {
-                if (IsInstanceOnlySubObj(entry.key()) || !entry.value().is_object())
+                if (IsInstanceOnlyClassObj(entry.key()) || !entry.value().is_object())
                 {
                     continue;
                 }
@@ -57,10 +57,24 @@ namespace NS
             return out;
         }
 
+        // 種類の既定値のファイルが持つのはクラス名と持ち物の鍵だけ。ほかの鍵は打ち間違いか古い形で、
+        // そのまま読むと値が黙って既定に戻るので、最初に見つけた 1 つを返す。無ければ nullptr
+        [[nodiscard]] const std::string* FindUnknownArchetypeKey(const nlohmann::json& root)
+        {
+            for (nlohmann::json::const_iterator it = root.begin(); it != root.end(); ++it)
+            {
+                if (it.key() != "class" && it.key() != "classObjs")
+                {
+                    return &it.key();
+                }
+            }
+            return nullptr;
+        }
+
         // comp の欄 fieldName の値を JSON で読む。無ければ nullopt
         [[nodiscard]] std::optional<nlohmann::json> FieldValue(const Object& comp, std::string_view fieldName)
         {
-            const nlohmann::json fields = SerializeSubObjectFields(comp);
+            const nlohmann::json fields = SerializeClassObjFields(comp);
             const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
             if (it == fields.end())
             {
@@ -132,6 +146,11 @@ namespace NS
             if (root.is_discarded() || !root.is_object())
             {
                 NS_LOG_ERROR(Scene, "種類の既定値 {} の JSON を読めない", path);
+                continue;
+            }
+            if (const std::string* unknown = FindUnknownArchetypeKey(root))
+            {
+                NS_LOG_ERROR(Scene, "種類の既定値 {} に知らない鍵 {} があるので読まない", path, *unknown);
                 continue;
             }
             // クラス名はファイル名が正。中の class と食い違えばファイル名を使う
@@ -224,18 +243,18 @@ namespace NS
         {
             return;
         }
-        ApplyObjectSubObjs(actor, *archetype);
+        ApplyObjectClassObjs(actor, *archetype);
     }
 
     nlohmann::json ExpandObjectJson(const nlohmann::json& object)
     {
         const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json full = object;
-        nlohmann::json& target = ObjectJsonSubObjs(full);
+        nlohmann::json& target = ObjectJsonClassObjs(full);
         target = nlohmann::json::object();
-        ForEachReflectedSubObj(baseline, [&](const SubObjectDesc& field, const Object* subObject) {
-            nlohmann::json fields = SerializeSubObjectFields(*subObject);
-            if (const nlohmann::json* source = SubObjFields(object, field.key))
+        ForEachReflectedClassObj(baseline, [&](const ClassObjInfo& field, const Object* classObj) {
+            nlohmann::json fields = SerializeClassObjFields(*classObj);
+            if (const nlohmann::json* source = ClassObjFields(object, field.key))
             {
                 fields.update(*source);
             }
@@ -248,17 +267,17 @@ namespace NS
     {
         const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
-        ForEachReflectedSubObj(baseline, [&](const SubObjectDesc& member, const Object* subObject) {
-            if (IsInstanceOnlySubObj(member.key))
+        ForEachReflectedClassObj(baseline, [&](const ClassObjInfo& member, const Object* classObj) {
+            if (IsInstanceOnlyClassObj(member.key))
             {
                 return;
             }
-            nlohmann::json* fields = SubObjFields(out, member.key);
+            nlohmann::json* fields = ClassObjFields(out, member.key);
             if (fields == nullptr)
             {
                 return;
             }
-            const nlohmann::json defaults = SerializeSubObjectFields(*subObject);
+            const nlohmann::json defaults = SerializeClassObjFields(*classObj);
             for (nlohmann::json::iterator field = fields->begin(); field != fields->end();)
             {
                 const nlohmann::json::const_iterator original = defaults.find(field.key());
@@ -279,10 +298,10 @@ namespace NS
     {
         // row が actor の表に無ければ nullptr。Baseline は登録の無いクラスでは素の SceneActor なので、
         // 行の関数を直に呼ばず、actor の表を回して同じ行を探す
-        [[nodiscard]] const Object* FindRowPart(const SceneActor& actor, const SubObjectDesc& row)
+        [[nodiscard]] const Object* FindRowPart(const SceneActor& actor, const ClassObjInfo& row)
         {
             const Object* found = nullptr;
-            ForEachReflectedSubObj(actor, [&](const SubObjectDesc& field, const Object* part) {
+            ForEachReflectedClassObj(actor, [&](const ClassObjInfo& field, const Object* part) {
                 if (&field == &row)
                 {
                     found = part;
@@ -292,7 +311,7 @@ namespace NS
         }
     } // namespace
 
-    const Object* FindBaselineSubObj(const SceneActor& actor, const SubObjectDesc& row)
+    const Object* FindBaselineClassObj(const SceneActor& actor, const ClassObjInfo& row)
     {
         const Object* live = FindRowPart(actor, row);
         if (live == nullptr)
@@ -308,9 +327,9 @@ namespace NS
         return nullptr;
     }
 
-    bool IsFieldOverridden(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName)
+    bool IsFieldOverridden(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
     {
-        const Object* part = FindBaselineSubObj(actor, row);
+        const Object* part = FindBaselineClassObj(actor, row);
         if (part == nullptr)
         {
             return false;
@@ -318,10 +337,10 @@ namespace NS
         return FieldValue(*FindRowPart(actor, row), fieldName) != FieldValue(*part, fieldName);
     }
 
-    bool IsArchetypeField(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName)
+    bool IsArchetypeField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
     {
         const Object* live = FindRowPart(actor, row);
-        if (live == nullptr || IsInstanceOnlySubObj(row.key))
+        if (live == nullptr || IsInstanceOnlyClassObj(row.key))
         {
             return false;
         }
@@ -333,7 +352,7 @@ namespace NS
         return field->type != FieldType::ActorRef;
     }
 
-    bool WriteFieldToArchetype(const SceneActor& actor, const SubObjectDesc& row, std::string_view fieldName)
+    bool WriteFieldToArchetype(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
     {
         if (!IsArchetypeField(actor, row, fieldName))
         {
@@ -350,7 +369,7 @@ namespace NS
         {
             archetype = *current;
         }
-        nlohmann::json& fields = ObjectJsonSubObjs(archetype)[std::string{row.key}];
+        nlohmann::json& fields = ObjectJsonClassObjs(archetype)[std::string{row.key}];
         if (!fields.is_object())
         {
             fields = nlohmann::json::object();

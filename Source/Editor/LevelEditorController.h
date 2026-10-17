@@ -8,7 +8,7 @@
 #include "Editor/PlayControls.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/CoreObject/SubObjects/VirtualCamera.h"
+#include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 
 #include "NSlib/Core/Types.h"
 #include <memory>
@@ -163,22 +163,18 @@ public:
     void CommitTransformEdit() noexcept;
 
     //! Inspector のリフレクション項目をドラッグで編集し始める / 確定する
-    void BeginSubObjectEdit() noexcept;
-    void CommitSubObjectEdit() noexcept;
+    void BeginClassObjEdit() noexcept;
+    void CommitClassObjEdit() noexcept;
 
     //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
     //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
     //! row は actor のクラスの表の行
-    void MirrorPlayEditToBaseline(const NS::SceneActor& actor,
-                                  const NS::SubObjectDesc& row,
-                                  std::string_view fieldName);
+    void MirrorPlayEditToBaseline(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
     //! 種類の既定値と未上書きの個体を更新する。変更できた場合 true、参照・姿勢など対象外の欄は false
     //! ファイル保存に失敗してもメモリ上の変更は残し、警告する。Undo の対象外
     //! row は actor のクラスの表の行
-    bool PromoteFieldToArchetype(const NS::SceneActor& actor,
-                                 const NS::SubObjectDesc& row,
-                                 std::string_view fieldName);
+    bool PromoteFieldToArchetype(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
     //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);
@@ -323,9 +319,9 @@ private:
     // 編集開始時の状態スナップショット。選択している分だけ並ぶ
     std::vector<std::pair<NS::uint32, nlohmann::json>> m_editBaselines;
 
-    bool m_subObjectEditing = false;
-    NS::uint32 m_subObjectEditBaselineId = NS::k_NoObjectId; // 編集開始時の対象 id
-    nlohmann::json m_subObjectEditBaseline;                  // 編集開始時の状態スナップショット
+    bool m_classObjEditing = false;
+    NS::uint32 m_classObjEditBaselineId = NS::k_NoObjectId; // 編集開始時の対象 id
+    nlohmann::json m_classObjEditBaseline;                  // 編集開始時の状態スナップショット
 
     // 素材の窓で選んだ素材の ContentRoot からの道。アクターの選択と排他。
     // 姿のポインタを持たないのは、AssetManager::Clear の後に古いポインタを残さないため

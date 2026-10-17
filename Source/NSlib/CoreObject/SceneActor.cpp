@@ -3,20 +3,20 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/Animation.h"
+#include "NSlib/CoreObject/ClassObjs/Collision.h"
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Shadow.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
-#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/SubObjects/Animation.h"
-#include "NSlib/CoreObject/SubObjects/Collision.h"
-#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
-#include "NSlib/CoreObject/SubObjects/HitReaction.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/MeshCollision.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/Shadow.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
@@ -26,22 +26,22 @@ namespace NS
 {
 
     NS_REFLECT_BEGIN_IMPL(SceneActor, Object)
-    NS_REFLECT_SUBOBJ(m_transform, "Transform")
-    NS_REFLECT_SUBOBJ(m_model, "Model")
-    NS_REFLECT_SUBOBJ(m_animation, "Animation")
-    NS_REFLECT_SUBOBJ(m_shadow, "Shadow")
-    NS_REFLECT_SUBOBJ(m_collision, "Collision")
-    NS_REFLECT_SUBOBJ(m_bodySensor, "BodySensor")
-    NS_REFLECT_SUBOBJ(m_attackSensor, "AttackSensor")
-    NS_REFLECT_SUBOBJ(m_hitReaction, "HitReaction")
-    NS_REFLECT_SUBOBJ(m_effectKeeper, "Effect")
-    NS_REFLECT_SUBOBJ(m_stateMachine, "StateMachine")
+    NS_CLASSOBJ(m_transform, "Transform")
+    NS_CLASSOBJ(m_model, "Model")
+    NS_CLASSOBJ(m_animation, "Animation")
+    NS_CLASSOBJ(m_shadow, "Shadow")
+    NS_CLASSOBJ(m_collision, "Collision")
+    NS_CLASSOBJ(m_bodySensor, "BodySensor")
+    NS_CLASSOBJ(m_attackSensor, "AttackSensor")
+    NS_CLASSOBJ(m_hitReaction, "HitReaction")
+    NS_CLASSOBJ(m_effectKeeper, "Effect")
+    NS_CLASSOBJ(m_stateMachine, "StateMachine")
     NS_REFLECT_END_IMPL()
 
     SceneActor::SceneActor() noexcept
     {
         // Init 前にも姿勢を使うため、Transform はここで用意する
-        CreateSubObj(m_transform);
+        CreateClassObj(m_transform);
         Appear();
     }
 
@@ -55,13 +55,13 @@ namespace NS
         return *m_transform;
     }
 
-    const SubObjectDesc* SceneActor::FindReflectedMember(const void* member) const
+    const ClassObjInfo* SceneActor::FindReflectedMember(const void* member) const
     {
         for (const ReflectionInfo* info = GetReflection(); info != nullptr; info = info->base)
         {
-            for (std::size_t i = 0; i < info->subObjectCount; ++i)
+            for (std::size_t i = 0; i < info->classObjCount; ++i)
             {
-                const SubObjectDesc& field = info->subObjects[i];
+                const ClassObjInfo& field = info->classObjs[i];
                 if (field.member(this) == member)
                 {
                     return &field;
@@ -71,7 +71,7 @@ namespace NS
         return nullptr;
     }
 
-    void SceneActor::ReportInvalidSubObj(const SubObjectDesc* field) const
+    void SceneActor::ReportInvalidClassObj(const ClassObjInfo* field) const
     {
         if (field == nullptr)
         {
@@ -81,10 +81,10 @@ namespace NS
         NS_LOG_ERROR(Scene, "{} の部品 {} は作成済みか、保存キーが使用済み", ClassName(), field->key);
     }
 
-    bool SceneActor::IsSubObjKeyCreated(std::string_view key) const
+    bool SceneActor::IsClassObjKeyCreated(std::string_view key) const
     {
         bool created = false;
-        ForEachReflectedSubObj(*this, [&](const SubObjectDesc& field, const Object*) {
+        ForEachReflectedClassObj(*this, [&](const ClassObjInfo& field, const Object*) {
             if (field.key == key)
             {
                 created = true;
@@ -211,7 +211,7 @@ namespace NS
         ApplyArchetype(*this);
         if (info.placement != nullptr)
         {
-            ApplyObjectSubObjs(*this, *info.placement);
+            ApplyObjectClassObjs(*this, *info.placement);
         }
         // 素材の参照は欄にある。欄を書き終えてから読む
         ReloadAssets();

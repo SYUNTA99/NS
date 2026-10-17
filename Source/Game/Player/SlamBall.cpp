@@ -1,6 +1,6 @@
 #include "Game/Player/SlamBall.h"
 
-#include "NSlib/CoreObject/SubObjects/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
 
 namespace GL
 {

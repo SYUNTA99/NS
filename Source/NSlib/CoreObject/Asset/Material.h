@@ -94,14 +94,14 @@ namespace NS
         }
 
         NS_REFLECT_BEGIN(Material, Object)
-        NS_REFLECT_ACCESSOR(Color, "基本の色", BaseColor(), SetBaseColor)
-        NS_REFLECT_ACCESSOR(std::string, "混ぜ方", BlendText(), SetBlendText)
-        NS_REFLECT_ACCESSOR(std::string, "頂点シェーダー", VertexShaderPath(), SetVertexShaderPath)
-        NS_REFLECT_ACCESSOR(std::string, "ピクセルシェーダー", PixelShaderPath(), SetPixelShaderPath)
-        NS_REFLECT_ACCESSOR(std::string, "テクスチャ 1", TexturePath(0), SetTexturePath<0>)
-        NS_REFLECT_ACCESSOR(std::string, "テクスチャ 2", TexturePath(1), SetTexturePath<1>)
-        NS_REFLECT_ACCESSOR(std::string, "テクスチャ 3", TexturePath(2), SetTexturePath<2>)
-        NS_REFLECT_ACCESSOR(std::string, "テクスチャ 4", TexturePath(3), SetTexturePath<3>)
+        NS_ACCESSOR(Color, "基本の色", BaseColor(), SetBaseColor)
+        NS_ACCESSOR(std::string, "混ぜ方", BlendText(), SetBlendText)
+        NS_ACCESSOR(std::string, "頂点シェーダー", VertexShaderPath(), SetVertexShaderPath)
+        NS_ACCESSOR(std::string, "ピクセルシェーダー", PixelShaderPath(), SetPixelShaderPath)
+        NS_ACCESSOR(std::string, "テクスチャ 1", TexturePath(0), SetTexturePath<0>)
+        NS_ACCESSOR(std::string, "テクスチャ 2", TexturePath(1), SetTexturePath<1>)
+        NS_ACCESSOR(std::string, "テクスチャ 3", TexturePath(2), SetTexturePath<2>)
+        NS_ACCESSOR(std::string, "テクスチャ 4", TexturePath(3), SetTexturePath<3>)
         NS_REFLECT_END()
 
     private:

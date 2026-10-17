@@ -1,6 +1,6 @@
 #include "Editor/PaletteTemplates.h"
 #include "Editor/PlacementCatalog.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
 #include <gtest/gtest.h>
@@ -43,11 +43,11 @@ TEST(PlacementCatalog, MapPartsIsSplitByMesh)
     {
         EXPECT_EQ(NS::ObjectJsonClass(item->prototype), "MapPartsActor");
         // 個体のデータは部品を足せないので、ひな形も当たりの件を持たない
-        EXPECT_EQ(NS::SubObjFields(item->prototype, "BoxCollision"), nullptr);
+        EXPECT_EQ(NS::ClassObjFields(item->prototype, "BoxCollision"), nullptr);
     }
-    const nlohmann::json* cubeMesh = NS::SubObjFields(cube->prototype, "Model");
-    const nlohmann::json* sphereMesh = NS::SubObjFields(sphere->prototype, "Model");
-    const nlohmann::json* slopeMesh = NS::SubObjFields(slope->prototype, "Model");
+    const nlohmann::json* cubeMesh = NS::ClassObjFields(cube->prototype, "Model");
+    const nlohmann::json* sphereMesh = NS::ClassObjFields(sphere->prototype, "Model");
+    const nlohmann::json* slopeMesh = NS::ClassObjFields(slope->prototype, "Model");
     ASSERT_NE(cubeMesh, nullptr);
     ASSERT_NE(sphereMesh, nullptr);
     ASSERT_NE(slopeMesh, nullptr);
@@ -94,9 +94,9 @@ TEST(PlacementCatalog, MeshPartsUsesTheDroppedMesh)
     // メッシュ資産から置く部品は、描いた三角形そのもので当たる
     const nlohmann::json prototype = NS::Editor::MakeMeshPartsPrototype("Assets/Models/terrain.glb");
     EXPECT_EQ(NS::ObjectJsonClass(prototype), "MapPartsActor");
-    const nlohmann::json* renderer = NS::SubObjFields(prototype, "Model");
+    const nlohmann::json* renderer = NS::ClassObjFields(prototype, "Model");
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(NS::FieldString(*renderer, "メッシュ", ""), "Assets/Models/terrain.glb");
     // 当たりは地形の部品のクラスが持つ MeshCollision。ひな形は当たりの件を足さない
-    EXPECT_EQ(NS::SubObjFields(prototype, "BoxCollision"), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(prototype, "BoxCollision"), nullptr);
 }

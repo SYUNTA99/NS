@@ -5,9 +5,9 @@
 #include "Game/Player/PlayerVisualParams.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
 #include "NSlib/CoreObject/Reflection/ActorRef.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
-#include "NSlib/CoreObject/SubObjects/OverlayRenderer.h"
 
 #include <vector>
 
@@ -82,25 +82,25 @@ namespace GL
                                                LockOnFrameShape& outFrame) const;
 
             NS_REFLECT_BEGIN(TargetMarker, NS::OverlayRenderer)
-            NS_REFLECT_GROUP("印")
-            NS_REFLECT_FIELD(m_desc.color, "印の色")
-            NS_REFLECT_FIELD(m_desc.lineThickness, "印の太さ")
-            NS_REFLECT_FIELD(m_desc.armRatio, "印の腕の割合")
-            NS_REFLECT_GROUP("枠")
-            NS_REFLECT_FIELD(m_desc.frameGap, "枠と輪郭の間")
-            NS_REFLECT_FIELD(m_desc.frameMinSide, "枠の一辺の下限")
-            NS_REFLECT_FIELD(m_desc.outlineColor, "枠の縁の色")
-            NS_REFLECT_FIELD(m_desc.outlineWidth, "枠の縁の幅")
-            NS_REFLECT_GROUP("枠が出る時")
-            NS_REFLECT_FIELD(m_desc.appearScale, "枠が出る時の倍率")
-            NS_REFLECT_FIELD(m_desc.appearMaxSide, "枠が出る時の一辺の上限")
-            NS_REFLECT_FIELD(m_desc.appearFrames, "枠が縮むフレーム数")
-            NS_REFLECT_FIELD(m_desc.appearCurve, "枠が縮む進みの曲線")
-            NS_REFLECT_FIELD(m_desc.appearColor, "枠が出る時の色")
-            NS_REFLECT_GROUP("外れた時")
-            NS_REFLECT_FIELD(m_desc.lostScale, "外れた時の枠の倍率")
-            NS_REFLECT_FIELD(m_desc.lostFrames, "外れた時の枠のフレーム数")
-            NS_REFLECT_FIELD(m_desc.referenceHeight, "画素寸法の基準の高さ")
+            NS_GROUP("印")
+            NS_FIELD(m_desc.color, "印の色")
+            NS_FIELD(m_desc.lineThickness, "印の太さ")
+            NS_FIELD(m_desc.armRatio, "印の腕の割合")
+            NS_GROUP("枠")
+            NS_FIELD(m_desc.frameGap, "枠と輪郭の間")
+            NS_FIELD(m_desc.frameMinSide, "枠の一辺の下限")
+            NS_FIELD(m_desc.outlineColor, "枠の縁の色")
+            NS_FIELD(m_desc.outlineWidth, "枠の縁の幅")
+            NS_GROUP("枠が出る時")
+            NS_FIELD(m_desc.appearScale, "枠が出る時の倍率")
+            NS_FIELD(m_desc.appearMaxSide, "枠が出る時の一辺の上限")
+            NS_FIELD(m_desc.appearFrames, "枠が縮むフレーム数")
+            NS_FIELD(m_desc.appearCurve, "枠が縮む進みの曲線")
+            NS_FIELD(m_desc.appearColor, "枠が出る時の色")
+            NS_GROUP("外れた時")
+            NS_FIELD(m_desc.lostScale, "外れた時の枠の倍率")
+            NS_FIELD(m_desc.lostFrames, "外れた時の枠のフレーム数")
+            NS_FIELD(m_desc.referenceHeight, "画素寸法の基準の高さ")
             NS_REFLECT_END()
 
         private:

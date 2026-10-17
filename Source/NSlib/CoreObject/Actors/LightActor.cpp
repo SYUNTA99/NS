@@ -1,14 +1,14 @@
 #include "NSlib/CoreObject/Actors/LightActor.h"
 
+#include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SubObjects/DirectionalLight.h"
 
 namespace NS
 {
     void LightActor::OnInit()
     {
-        CreateSubObj(m_light, this);
+        CreateClassObj(m_light, this);
         Vector3 initialDirection{-0.3f, -1.0f, -0.2f};
         initialDirection.Normalize();
         Root().SetRotation(Quaternion::FromToRotation(Vector3::UnitZ, initialDirection));

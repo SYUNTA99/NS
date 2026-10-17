@@ -1,9 +1,9 @@
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SubObjects/HitReaction.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/Windows/Input.h"
@@ -49,7 +49,7 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitReaction* reaction = player->HitReactionSubObj();
+    NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
@@ -91,7 +91,7 @@ TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
     NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitReaction* reaction = player->HitReactionSubObj();
+    NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);

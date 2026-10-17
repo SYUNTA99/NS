@@ -8,9 +8,9 @@
 #include "Game/Level/SlamAim.h"
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/Reflection/ActorRef.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/SubObjects/HitReaction.h"
+#include "NSlib/CoreObject/Reflection/ActorRef.h"
 #include "NSlib/Windows/Gamepad.h"
 
 #include "NSlib/Core/Types.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/System/SceneSystem.h"
 
 #include <utility>

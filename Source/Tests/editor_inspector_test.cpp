@@ -1,6 +1,6 @@
 #include "Editor/InspectorReflection.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -34,8 +34,8 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
         ImGui::Begin("参照の欄");
         tableMin = ImGui::GetCursorScreenPos();
         tableWidth = ImGui::GetContentRegionAvail().x;
-        const NS::Editor::SubObjectEditResult result =
-            NS::Editor::DrawReflectedSubObject(follow, options, nullptr, "追従対象");
+        const NS::Editor::ClassObjEditResult result =
+            NS::Editor::DrawReflectedClassObj(follow, options, nullptr, "追従対象");
         ImGui::End();
         ImGui::EndFrame();
         return result;
@@ -43,7 +43,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     const auto click = [&](ImVec2 at) {
         io.AddMousePosEvent(at.x, at.y);
         io.AddMouseButtonEvent(0, true);
-        std::vector<NS::Editor::SubObjectEditResult> results{frame()};
+        std::vector<NS::Editor::ClassObjEditResult> results{frame()};
         io.AddMouseButtonEvent(0, false);
         results.push_back(frame());
         return results;
@@ -64,7 +64,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     const float line = ImGui::GetTextLineHeight();
     const ImVec2 option{popup->Pos.x + popup->Size.x * 0.5f,
                         popup->Pos.y + popup->WindowPadding.y + line + ImGui::GetStyle().ItemSpacing.y + line * 0.5f};
-    const std::vector<NS::Editor::SubObjectEditResult> results = click(option);
+    const std::vector<NS::Editor::ClassObjEditResult> results = click(option);
     ASSERT_EQ(follow.TargetRef().id, 7u);
 
     int activatedAt = -1;

@@ -3,9 +3,9 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/Clock.h"
@@ -24,7 +24,7 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     GL::Player::PlayerParams* params = &player.Params();
-    const nlohmann::json fields = NS::SerializeSubObjectFields(*params);
+    const nlohmann::json fields = NS::SerializeClassObjFields(*params);
     const nlohmann::json expected = {
         {"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}, {"チャージ減速率", 0.7f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -33,7 +33,7 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
     // 構えの縮みは体の形を描く PlayerAppearance の欄
-    const nlohmann::json appearance = NS::SerializeSubObjectFields(player.Appearance());
+    const nlohmann::json appearance = NS::SerializeClassObjFields(player.Appearance());
     const nlohmann::json squash = {{"構えの縮み", 0.95f}, {"押しの構えの縮み", 0.97f}};
     for (nlohmann::json::const_iterator it = squash.begin(); it != squash.end(); ++it)
     {
@@ -107,7 +107,7 @@ TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
     nlohmann::json entry = NS::MakeObjectJson();
     NS::SetObjectJsonClass(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
-    entry["subObjects"] = {
+    entry["classObjs"] = {
         {"Params", {{"チャージ減速率", 0.25f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}}};
     NS::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
@@ -124,7 +124,7 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
     const std::vector<std::string_view> removed{"突進位置係数カーブ", "中心近くの境目"};
     const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
     ASSERT_NE(archetype, nullptr);
-    const nlohmann::json* archetypeFields = NS::SubObjFields(*archetype, "Params");
+    const nlohmann::json* archetypeFields = NS::ClassObjFields(*archetype, "Params");
     ASSERT_NE(archetypeFields, nullptr);
     for (const std::string_view key : removed)
     {
@@ -141,7 +141,7 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
         ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
         for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
-            const nlohmann::json* fields = NS::SubObjFields(entry, "Params");
+            const nlohmann::json* fields = NS::ClassObjFields(entry, "Params");
             if (NS::ObjectJsonClass(entry) != "PlayerActor" || fields == nullptr)
             {
                 continue;
@@ -161,11 +161,11 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
     const nlohmann::json prototype = NS::MakePrototypeJson(*playerOwned);
     const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
     ASSERT_NE(archetype, nullptr);
-    for (nlohmann::json::const_iterator it = NS::ObjectJsonSubObjs(*archetype).begin();
-         it != NS::ObjectJsonSubObjs(*archetype).end();
+    for (nlohmann::json::const_iterator it = NS::ObjectJsonClassObjs(*archetype).begin();
+         it != NS::ObjectJsonClassObjs(*archetype).end();
          ++it)
     {
-        EXPECT_NE(NS::SubObjFields(prototype, it.key()), nullptr) << "PlayerActor.json " << it.key();
+        EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << "PlayerActor.json " << it.key();
     }
 
     for (const std::string_view sceneName : {"new_scene.scene"})
@@ -182,10 +182,10 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
             {
                 continue;
             }
-            const nlohmann::json& parts = NS::ObjectJsonSubObjs(entry);
+            const nlohmann::json& parts = NS::ObjectJsonClassObjs(entry);
             for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
             {
-                EXPECT_NE(NS::SubObjFields(prototype, it.key()), nullptr) << sceneName << " " << it.key();
+                EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << sceneName << " " << it.key();
             }
         }
     }

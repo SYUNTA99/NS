@@ -2,8 +2,8 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
 
 namespace GL
 {
@@ -11,7 +11,7 @@ namespace GL
     {
         void DeathZoneActor::OnInit()
         {
-            NS::ShapeHitSensor* area = CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
+            NS::ShapeHitSensor* area = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
             SetSensorKind(*area, SensorKind::Area);
             area->SetBox(NS::Vector3{1000.0f, 5.0f, 1000.0f});
         }

@@ -1,9 +1,9 @@
 #include "Game/Level/ImpactOutcome.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
 
@@ -75,7 +75,7 @@ TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
     NS::Scene scene;
     NS::SceneActor* rock = PlaceRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Model* model = rock->ModelSubObj();
+    NS::Model* model = rock->ModelClassObj();
     ASSERT_NE(model, nullptr);
     const NS::Matrix before = model->DrawWorldMatrix(1.0f);
 
@@ -100,7 +100,7 @@ TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
     NS::Scene scene;
     NS::SceneActor* rock = PlaceRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Model* model = rock->ModelSubObj();
+    NS::Model* model = rock->ModelClassObj();
     ASSERT_NE(model, nullptr);
     const NS::Matrix root = model->DrawWorldMatrix(1.0f);
     ASSERT_TRUE(model->SetDrawOffset(NS::Vector3{0.1f, 0.0f, 0.0f}));

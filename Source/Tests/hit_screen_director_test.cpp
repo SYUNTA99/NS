@@ -1,9 +1,9 @@
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SubObjects/HitReaction.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 
 #include <gtest/gtest.h>
@@ -103,7 +103,7 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
     NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitReaction* reaction = player->HitReactionSubObj();
+    NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
@@ -215,7 +215,7 @@ TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
     ASSERT_NE(player, nullptr);
     NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
-    NS::HitReaction* reaction = player->HitReactionSubObj();
+    NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);

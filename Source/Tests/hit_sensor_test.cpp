@@ -3,11 +3,11 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Message/Message.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
 #include "NSlib/Phys/Capsule.h"
 
@@ -52,7 +52,7 @@ namespace
     protected:
         void OnInit() override
         {
-            m_sensor = CreateSubObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
+            m_sensor = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
             GL::Level::SetSensorKind(*m_sensor, m_kind);
             m_sensor->SetSphere(m_radius);
         }

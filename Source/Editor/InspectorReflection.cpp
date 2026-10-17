@@ -1490,7 +1490,7 @@ namespace NS
 
                 result.activated |= ImGui::IsItemActivated();
                 // 編集無しのクリックでもラッチを解くため、確定ではなく非活性化で committed を立てる
-                // 空編集は CommitSubObjectEdit が before==after で弾くので履歴は汚れない
+                // 空編集は CommitClassObjEdit が before==after で弾くので履歴は汚れない
                 if (!result.popupActive)
                 {
                     result.committed |= ImGui::IsItemDeactivated();
@@ -1573,24 +1573,24 @@ namespace NS
             }
         } // namespace
 
-        SubObjectEditResult DrawReflectedSubObject(Object& comp,
-                                                   std::span<const ObjectRefOption> refOptions,
-                                                   const Object* defaults,
-                                                   const char* filter,
-                                                   const SceneActor* actor,
-                                                   const SubObjectDesc* row) noexcept
+        ClassObjEditResult DrawReflectedClassObj(Object& comp,
+                                                 std::span<const ObjectRefOption> refOptions,
+                                                 const Object* defaults,
+                                                 const char* filter,
+                                                 const SceneActor* actor,
+                                                 const ClassObjInfo* row) noexcept
         {
             const ReflectionInfo* info = comp.GetReflection();
             if (info == nullptr || info->fieldCount == 0)
             {
-                return SubObjectEditResult{};
+                return ClassObjEditResult{};
             }
             if (!BeginFieldTable("##fields"))
             {
-                return SubObjectEditResult{};
+                return ClassObjEditResult{};
             }
 
-            SubObjectEditResult result;
+            ClassObjEditResult result;
             const auto drawRow = [&](std::size_t i) {
                 const FieldDesc& field = info->fields[i];
                 const bool changed = FieldDiffersFromDefault(comp, defaults, field);
@@ -1665,14 +1665,14 @@ namespace NS
         }
 
 #else
-        SubObjectEditResult DrawReflectedSubObject(Object&,
-                                                   std::span<const ObjectRefOption>,
-                                                   const Object*,
-                                                   const char*,
-                                                   const SceneActor*,
-                                                   const SubObjectDesc*) noexcept
+        ClassObjEditResult DrawReflectedClassObj(Object&,
+                                                 std::span<const ObjectRefOption>,
+                                                 const Object*,
+                                                 const char*,
+                                                 const SceneActor*,
+                                                 const ClassObjInfo*) noexcept
         {
-            return SubObjectEditResult{};
+            return ClassObjEditResult{};
         }
 
         ValueEditResult DrawReflectedValue(void*, const ReflectionInfo&, std::span<const ObjectRefOption>) noexcept

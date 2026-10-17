@@ -1,12 +1,12 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
-#include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Gfx/D3DTexture.h"
+#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 
@@ -38,7 +38,7 @@ namespace
     protected:
         void OnInit() override
         {
-            m_body = CreateSubObj(m_model, this);
+            m_body = CreateClassObj(m_model, this);
             m_body->SetMeshRef("cube");
             m_body->SetMaterialRef("player");
             Root().SetPosition(m_position);

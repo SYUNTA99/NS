@@ -14,9 +14,9 @@ namespace NS
         inline const ImVec4 k_MsgOkColor{0.4f, 1.0f, 0.4f, 1.0f};
 
         // サブオブジェクトのヘッダは中身より一段明るくして、どこからどこまでが 1 個か見えるようにする
-        inline const ImVec4 k_SubObjectHeaderColor{0.26f, 0.29f, 0.34f, 1.0f};
-        inline const ImVec4 k_SubObjectHeaderHoveredColor{0.33f, 0.37f, 0.43f, 1.0f};
-        inline const ImVec4 k_SubObjectHeaderActiveColor{0.38f, 0.43f, 0.50f, 1.0f};
+        inline const ImVec4 k_ClassObjHeaderColor{0.26f, 0.29f, 0.34f, 1.0f};
+        inline const ImVec4 k_ClassObjHeaderHoveredColor{0.33f, 0.37f, 0.43f, 1.0f};
+        inline const ImVec4 k_ClassObjHeaderActiveColor{0.38f, 0.43f, 0.50f, 1.0f};
 
         // 欄の名前列が占める幅の割合。残りが値列
         inline constexpr float k_FieldNameColumnRatio = 0.42f;

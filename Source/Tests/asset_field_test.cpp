@@ -5,18 +5,18 @@
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/ClassObjs/Animation.h"
+#include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Shadow.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/SubObjects/Animation.h"
-#include "NSlib/CoreObject/SubObjects/MeshCollision.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/Shadow.h"
-#include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Gfx/D3DMaterial.h"
+#include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "TestAnimatedPlayerActor.h"
 #include "TestLogCapture.h"
@@ -35,7 +35,7 @@ namespace
 
         NS::Mesh* asset = nullptr;
         NS_REFLECT_BEGIN(AssetFieldProbePart, NS::Object)
-        NS_REFLECT_FIELD(asset, "素材")
+        NS_FIELD(asset, "素材")
         NS_REFLECT_END()
     };
 
@@ -43,7 +43,7 @@ namespace
     {
     public:
         NS_REFLECT_BEGIN(AssetFieldProbeActor, NS::SceneActor)
-        NS_REFLECT_SUBOBJ(part, "Part")
+        NS_CLASSOBJ(part, "Part")
         NS_REFLECT_END()
 
         std::unique_ptr<AssetFieldProbePart> part;
@@ -51,7 +51,7 @@ namespace
         const NS::Mesh* loadedAtCall = nullptr;
 
     protected:
-        void OnInit() override { CreateSubObj(part); }
+        void OnInit() override { CreateClassObj(part); }
 
         void OnAssetsLoaded() override
         {
@@ -90,7 +90,7 @@ TEST(AssetField, ReloadAssetsReadsTheNewName)
 TEST(AssetField, JsonIsTheNameString)
 {
     const AssetFieldProbePart part;
-    const nlohmann::json saved = NS::SerializeSubObjectFields(part);
+    const nlohmann::json saved = NS::SerializeClassObjFields(part);
     EXPECT_EQ(saved["素材"], nlohmann::json("sphere"));
 
     AssetFieldProbePart loaded;
@@ -123,9 +123,9 @@ TEST(AssetField, ModelAndShadowHoldTheirAssetsInAssetFields)
     }
 
     const NS::Model model{nullptr};
-    EXPECT_EQ(NS::SerializeSubObjectFields(model)["残像のマテリアル"], nlohmann::json("water"));
+    EXPECT_EQ(NS::SerializeClassObjFields(model)["残像のマテリアル"], nlohmann::json("water"));
     const NS::Shadow shadow{nullptr};
-    const nlohmann::json shadowFields = NS::SerializeSubObjectFields(shadow);
+    const nlohmann::json shadowFields = NS::SerializeClassObjFields(shadow);
     EXPECT_EQ(shadowFields["メッシュ"], nlohmann::json("shadowQuad"));
     EXPECT_EQ(shadowFields["マテリアル"], nlohmann::json("shadow"));
 }
@@ -140,7 +140,7 @@ TEST(AssetField, UnreadableNamesStayWhenSavedAgain)
     NS::Model model{nullptr};
     EXPECT_EQ(NS::ApplyJsonFields(model, written), 0u);
 
-    const nlohmann::json saved = NS::SerializeSubObjectFields(model);
+    const nlohmann::json saved = NS::SerializeClassObjFields(model);
     EXPECT_EQ(saved["メッシュ"], written["メッシュ"]);
     EXPECT_EQ(saved["マテリアル"], written["マテリアル"]);
     EXPECT_EQ(saved["残像のマテリアル"], written["残像のマテリアル"]);
@@ -155,14 +155,14 @@ TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
     const nlohmann::json model{{"モデル", "Assets/Models/__ns_missing_model__.glb"}};
     NS::Animation animation{nullptr};
     EXPECT_EQ(NS::ApplyJsonFields(animation, model), 0u);
-    EXPECT_EQ(NS::SerializeSubObjectFields(animation)["モデル"], model["モデル"]);
+    EXPECT_EQ(NS::SerializeClassObjFields(animation)["モデル"], model["モデル"]);
 
     const nlohmann::json clips{{"立ちのクリップ", "Assets/Models/__ns_missing_clip__.glb"},
                                {"走りのクリップ", "Assets/Models/Xbot.glb#__ns_missing__"},
                                {"跳ぶクリップ", "../__ns_outside__.glb"}};
     GL::Player::PlayerClips playerClips;
     EXPECT_EQ(NS::ApplyJsonFields(playerClips, clips), 0u);
-    const nlohmann::json saved = NS::SerializeSubObjectFields(playerClips);
+    const nlohmann::json saved = NS::SerializeClassObjFields(playerClips);
     EXPECT_EQ(saved["立ちのクリップ"], clips["立ちのクリップ"]);
     EXPECT_EQ(saved["走りのクリップ"], clips["走りのクリップ"]);
     EXPECT_EQ(saved["跳ぶクリップ"], clips["跳ぶクリップ"]);
@@ -211,12 +211,12 @@ TEST(AssetField, ReloadingAnotherMeshChangesTheCollisionShape)
     NS::Scene scene;
     NS::MapPartsActor* parts = scene.SpawnTransient<NS::MapPartsActor>();
     ASSERT_NE(parts, nullptr);
-    const NS::MeshCollision* collision = NS::Cast<NS::MeshCollision>(parts->CollisionSubObj());
+    const NS::MeshCollision* collision = NS::Cast<NS::MeshCollision>(parts->CollisionClassObj());
     ASSERT_NE(collision, nullptr);
     NS::AssetManager& assets = NS::AssetManager::Get();
-    EXPECT_EQ(collision->Shape(), assets.LoadMeshShape(parts->ModelSubObj()->MeshRef()));
+    EXPECT_EQ(collision->Shape(), assets.LoadMeshShape(parts->ModelClassObj()->MeshRef()));
 
-    parts->ModelSubObj()->SetMeshRef("sphere");
+    parts->ModelClassObj()->SetMeshRef("sphere");
     parts->ReloadAssets();
     EXPECT_EQ(collision->Shape(), assets.LoadMeshShape("sphere"));
     EXPECT_NE(collision->Shape(), assets.LoadMeshShape("cube"));
@@ -229,7 +229,7 @@ TEST(AssetField, EmptyModelLeavesNoSkeleton)
     EXPECT_EQ(field->type, NS::FieldType::Asset);
 
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<TestAnimatedPlayerActor>();
-    NS::Animation* animation = player->AnimationSubObj();
+    NS::Animation* animation = player->AnimationClassObj();
     const NS::Anim::Skeleton skeleton;
     animation->SetSkeleton(&skeleton);
     player->ReloadAssets();
@@ -261,8 +261,8 @@ TEST(AssetField, PlayerLookWritesItsScaleToTheModel)
     PlayerActor* player = scene.SpawnTransient<PlayerActor>();
     ASSERT_NE(player, nullptr);
     GL::Player::PlayerAppearance* appearance = &player->Appearance();
-    const NS::Model* model = player->ModelSubObj();
-    const nlohmann::json fields = NS::SerializeSubObjectFields(*appearance);
+    const NS::Model* model = player->ModelClassObj();
+    const nlohmann::json fields = NS::SerializeClassObjFields(*appearance);
     const nlohmann::json standing = fields["立ち姿の倍率"];
     const nlohmann::json ball = fields["玉の倍率"];
     ASSERT_TRUE(standing.is_array());

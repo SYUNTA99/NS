@@ -1,6 +1,6 @@
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
 #include "TestEffectActor.h"
 
 #include <gtest/gtest.h>

@@ -1,6 +1,6 @@
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/UIActor.h"
 
 #include <type_traits>
@@ -10,10 +10,10 @@
 template <class T> constexpr bool k_HasPersistentId = requires(const T& object) { object.Id(); };
 template <class T> constexpr bool k_HasObjectName = requires(const T& object) { object.Name(); };
 template <class T>
-constexpr bool k_CanCreateTypedSubObjFromOutside =
-    requires(T& actor) { actor.template CreateSubObj<NS::Model>("Model"); };
+constexpr bool k_CanCreateTypedClassObjFromOutside =
+    requires(T& actor) { actor.template CreateClassObj<NS::Model>("Model"); };
 template <class T>
-constexpr bool k_HasPartTypeSearch = requires(T& actor) { actor.template FindSubObject<NS::Model>(); };
+constexpr bool k_HasPartTypeSearch = requires(T& actor) { actor.template FindClassObj<NS::Model>(); };
 static_assert(!k_HasPersistentId<NS::Object>);
 static_assert(!k_HasObjectName<NS::Object>);
 static_assert(k_HasPersistentId<NS::SceneActor>);
@@ -30,7 +30,7 @@ static_assert(std::is_base_of_v<NS::IUseEffect, NS::SceneActor>);
 static_assert(!std::is_base_of_v<NS::IUseEffect, NS::Scene>);
 static_assert(!std::is_base_of_v<NS::IUseEffect, NS::UIActor>);
 static_assert(!k_HasObjectName<NS::UIActor>);
-static_assert(!k_CanCreateTypedSubObjFromOutside<NS::SceneActor>);
+static_assert(!k_CanCreateTypedClassObjFromOutside<NS::SceneActor>);
 static_assert(!k_HasPartTypeSearch<NS::SceneActor>);
 
 namespace

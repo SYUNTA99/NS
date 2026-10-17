@@ -1,21 +1,21 @@
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 
 #include <string>
 
 namespace NS
 {
-    const nlohmann::json& ObjectJsonSubObjs(const nlohmann::json& object) noexcept
+    const nlohmann::json& ObjectJsonClassObjs(const nlohmann::json& object) noexcept
     {
         static const nlohmann::json empty = nlohmann::json::object();
         if (!object.is_object())
         {
             return empty;
         }
-        const nlohmann::json::const_iterator found = object.find("subObjects");
+        const nlohmann::json::const_iterator found = object.find("classObjs");
         if (found == object.end() || !found->is_object())
         {
             return empty;
@@ -23,13 +23,13 @@ namespace NS
         return *found;
     }
 
-    nlohmann::json& ObjectJsonSubObjs(nlohmann::json& object)
+    nlohmann::json& ObjectJsonClassObjs(nlohmann::json& object)
     {
         if (!object.is_object())
         {
             object = nlohmann::json::object();
         }
-        nlohmann::json& parts = object["subObjects"];
+        nlohmann::json& parts = object["classObjs"];
         if (!parts.is_object())
         {
             parts = nlohmann::json::object();
@@ -37,9 +37,9 @@ namespace NS
         return parts;
     }
 
-    const nlohmann::json* SubObjFields(const nlohmann::json& object, std::string_view partName) noexcept
+    const nlohmann::json* ClassObjFields(const nlohmann::json& object, std::string_view partName) noexcept
     {
-        const nlohmann::json& parts = ObjectJsonSubObjs(object);
+        const nlohmann::json& parts = ObjectJsonClassObjs(object);
         const nlohmann::json::const_iterator found = parts.find(std::string{partName});
         if (found == parts.end() || !found->is_object())
         {
@@ -48,14 +48,14 @@ namespace NS
         return &*found;
     }
 
-    nlohmann::json* SubObjFields(nlohmann::json& object, std::string_view partName) noexcept
+    nlohmann::json* ClassObjFields(nlohmann::json& object, std::string_view partName) noexcept
     {
-        const nlohmann::json* found = SubObjFields(static_cast<const nlohmann::json&>(object), partName);
+        const nlohmann::json* found = ClassObjFields(static_cast<const nlohmann::json&>(object), partName);
         if (found == nullptr)
         {
             return nullptr;
         }
-        return &ObjectJsonSubObjs(object)[std::string{partName}];
+        return &ObjectJsonClassObjs(object)[std::string{partName}];
     }
     namespace
     {
@@ -94,7 +94,7 @@ namespace NS
     {
         nlohmann::json object = nlohmann::json::object();
         object["id"] = 0u;
-        object["subObjects"] = nlohmann::json::object();
+        object["classObjs"] = nlohmann::json::object();
         return object;
     }
 
@@ -169,7 +169,7 @@ namespace NS
                                       std::string_view fieldName,
                                       const Vector3& fallback) noexcept
         {
-            const nlohmann::json* transform = SubObjFields(object, k_TransformSubObjName);
+            const nlohmann::json* transform = ClassObjFields(object, k_TransformClassObjName);
             if (transform == nullptr)
             {
                 return fallback;
@@ -178,9 +178,9 @@ namespace NS
         }
     } // namespace
 
-    nlohmann::json& EnsureTransformSubObject(nlohmann::json& object)
+    nlohmann::json& EnsureTransformClassObj(nlohmann::json& object)
     {
-        nlohmann::json& transform = ObjectJsonSubObjs(object)[std::string{k_TransformSubObjName}];
+        nlohmann::json& transform = ObjectJsonClassObjs(object)[std::string{k_TransformClassObjName}];
         if (!transform.is_object())
         {
             transform = nlohmann::json::object();
@@ -198,12 +198,12 @@ namespace NS
 
     void SetObjectPosition(nlohmann::json& object, const Vector3& position) noexcept
     {
-        SetField(EnsureTransformSubObject(object), k_PositionFieldName, position);
+        SetField(EnsureTransformClassObj(object), k_PositionFieldName, position);
     }
 
     Quaternion ObjectRotation(const nlohmann::json& object) noexcept
     {
-        const nlohmann::json* transform = SubObjFields(object, k_TransformSubObjName);
+        const nlohmann::json* transform = ClassObjFields(object, k_TransformClassObjName);
         if (transform == nullptr)
         {
             return Quaternion::Identity;
@@ -213,7 +213,7 @@ namespace NS
 
     void SetObjectRotation(nlohmann::json& object, const Quaternion& rotation) noexcept
     {
-        SetField(EnsureTransformSubObject(object), k_RotationFieldName, rotation);
+        SetField(EnsureTransformClassObj(object), k_RotationFieldName, rotation);
     }
 
     Vector3 ObjectScale(const nlohmann::json& object) noexcept
@@ -223,6 +223,6 @@ namespace NS
 
     void SetObjectScale(nlohmann::json& object, const Vector3& scale) noexcept
     {
-        SetField(EnsureTransformSubObject(object), k_ScaleFieldName, scale);
+        SetField(EnsureTransformClassObj(object), k_ScaleFieldName, scale);
     }
 } // namespace NS

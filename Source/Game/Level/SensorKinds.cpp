@@ -1,7 +1,7 @@
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 
 namespace GL
 {

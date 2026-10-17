@@ -30,7 +30,7 @@ namespace NS
 
         //! @brief 1フレームのサブオブジェクト編集で起きた相互作用の集約
         //! @details activated/committed はドラッグを1つのundo単位へまとめるための開始・終了フレームの印
-        struct SubObjectEditResult
+        struct ClassObjEditResult
         {
             bool changed = false;   // いずれかの値が編集された
             bool activated = false; // いずれかのウィジェットで編集が始まった (ドラッグ開始フレーム)
@@ -67,12 +67,12 @@ namespace NS
         //! refOptions が空なら参照は数値入力、defaults があれば上書きの表示と復元を使える
         //! filter は欄名の部分一致。空か nullptr なら絞らない
         //! actor と row は comp の持ち主とその表の行。どちらかが nullptr なら種類の既定にする操作を出さない
-        [[nodiscard]] SubObjectEditResult DrawReflectedSubObject(Object& comp,
-                                                                 std::span<const ObjectRefOption> refOptions = {},
-                                                                 const Object* defaults = nullptr,
-                                                                 const char* filter = nullptr,
-                                                                 const SceneActor* actor = nullptr,
-                                                                 const SubObjectDesc* row = nullptr) noexcept;
+        [[nodiscard]] ClassObjEditResult DrawReflectedClassObj(Object& comp,
+                                                               std::span<const ObjectRefOption> refOptions = {},
+                                                               const Object* defaults = nullptr,
+                                                               const char* filter = nullptr,
+                                                               const SceneActor* actor = nullptr,
+                                                               const ClassObjInfo* row = nullptr) noexcept;
 
         //! @brief 部品でない値型の 1 フレームの編集で起きた事
         struct ValueEditResult

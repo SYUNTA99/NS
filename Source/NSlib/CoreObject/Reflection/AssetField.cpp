@@ -5,10 +5,10 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/SkinnedModel.h"
-#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/Object.h"
 
 #include <string>
 
@@ -70,8 +70,8 @@ namespace NS
 
     void LoadAssetFields(SceneActor& actor)
     {
-        ForEachReflectedSubObj(actor, [](const SubObjectDesc&, Object* subObject) {
-            const ReflectionInfo* info = subObject->GetReflection();
+        ForEachReflectedClassObj(actor, [](const ClassObjInfo&, Object* classObj) {
+            const ReflectionInfo* info = classObj->GetReflection();
             if (info == nullptr)
             {
                 return;
@@ -81,7 +81,7 @@ namespace NS
                 const FieldDesc& field = info->fields[i];
                 if (field.type == FieldType::Asset && field.load != nullptr)
                 {
-                    field.load(subObject);
+                    field.load(classObj);
                 }
             }
         });

@@ -1,12 +1,12 @@
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/CameraModifier.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
@@ -72,7 +72,7 @@ namespace
     {
     public:
         NS_REFLECT_BEGIN(AlphaCameraHostActor, NS::SceneActor)
-        NS_REFLECT_SUBOBJ(vcam, "Vcam")
+        NS_CLASSOBJ(vcam, "Vcam")
         NS_REFLECT_END()
 
         std::unique_ptr<AlphaCamera> vcam;
@@ -84,7 +84,7 @@ namespace
         }
 
     protected:
-        void OnInit() override { CreateSubObj(vcam, this); }
+        void OnInit() override { CreateClassObj(vcam, this); }
         void OnStart() override
         {
             NS::SceneActor::OnStart();

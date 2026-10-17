@@ -107,10 +107,10 @@ namespace
         TickLog& m_log;
     };
 
-    class LoggingSubObject final : public NS::Object
+    class LoggingClassObj final : public NS::Object
     {
     public:
-        explicit LoggingSubObject(TickLog* log = nullptr) noexcept : m_log(log) {}
+        explicit LoggingClassObj(TickLog* log = nullptr) noexcept : m_log(log) {}
         void Log()
         {
             if (m_log != nullptr)
@@ -118,7 +118,7 @@ namespace
                 m_log->order.push_back("component");
             }
         }
-        NS_REFLECT_NONE(LoggingSubObject, NS::Object)
+        NS_REFLECT_NONE(LoggingClassObj, NS::Object)
 
     private:
         TickLog* m_log = nullptr;
@@ -128,13 +128,13 @@ namespace
     {
     public:
         NS_REFLECT_BEGIN(LoggingActor, NS::SceneActor)
-        NS_REFLECT_SUBOBJ(m_part, "Logging")
+        NS_CLASSOBJ(m_part, "Logging")
         NS_REFLECT_END()
 
         explicit LoggingActor(TickLog& log) noexcept : m_log(log) {}
 
     protected:
-        void OnInit() override { CreateSubObj(m_part, &m_log); }
+        void OnInit() override { CreateClassObj(m_part, &m_log); }
         void StateStep() override
         {
             m_log.order.push_back("actor");
@@ -143,7 +143,7 @@ namespace
 
     private:
         TickLog& m_log;
-        std::unique_ptr<LoggingSubObject> m_part;
+        std::unique_ptr<LoggingClassObj> m_part;
     };
 } // namespace
 
@@ -203,7 +203,7 @@ TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
     EXPECT_EQ(ui.updates, 1);
 }
 
-TEST(ActorListTicker, TickerRunsAfterSubObjectsOfSameBand)
+TEST(ActorListTicker, TickerRunsAfterClassObjsOfSameBand)
 {
     NS::Scene scene;
     TickLog log;

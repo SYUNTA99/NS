@@ -6,11 +6,11 @@
 #include "Game/Level/MapObjParams.h"
 #include "Game/Level/PropFlight.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/SphereCollision.h"
 
 #include <optional>
 
@@ -26,9 +26,9 @@ namespace GL
             PropActor() noexcept;
 
             NS_REFLECT_BEGIN(PropActor, NS::SceneActor)
-            NS_REFLECT_SUBOBJ(m_params, "Params")
-            NS_REFLECT_SUBOBJ(m_hitZones, "HitZones")
-            NS_REFLECT_SUBOBJ(m_effects, "LaunchEffects")
+            NS_CLASSOBJ(m_params, "Params")
+            NS_CLASSOBJ(m_hitZones, "HitZones")
+            NS_CLASSOBJ(m_effects, "LaunchEffects")
             NS_REFLECT_END()
 
             //! 尾と粉の絵を先に読む
@@ -101,7 +101,7 @@ namespace GL
 
             [[nodiscard]] NS::SphereCollision& Sphere() noexcept
             {
-                return *static_cast<NS::SphereCollision*>(CollisionSubObj());
+                return *static_cast<NS::SphereCollision*>(CollisionClassObj());
             }
             std::unique_ptr<MapObjParams> m_params;
             std::unique_ptr<HitZones> m_hitZones;

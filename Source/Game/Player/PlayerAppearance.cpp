@@ -7,9 +7,9 @@
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/Windows/Clock.h"
 #include <algorithm>
 #include <cmath>
@@ -87,7 +87,7 @@ namespace GL
             {
                 return;
             }
-            if (NS::Model* renderer = m_owner->ModelSubObj())
+            if (NS::Model* renderer = m_owner->ModelClassObj())
             {
                 (void)renderer->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
             }
@@ -107,7 +107,7 @@ namespace GL
             float dt = NS::OS::FrameTimer::FixedDelta();
             if (m_owner != nullptr)
             {
-                renderer = m_owner->ModelSubObj();
+                renderer = m_owner->ModelClassObj();
                 dt = m_owner->BodyDelta();
             }
 
@@ -319,7 +319,7 @@ namespace GL
             {
                 return;
             }
-            NS::Model* renderer = m_owner->ModelSubObj();
+            NS::Model* renderer = m_owner->ModelClassObj();
             if (renderer == nullptr)
             {
                 return;
@@ -361,7 +361,7 @@ namespace GL
             {
                 return;
             }
-            NS::Model* renderer = m_owner->ModelSubObj();
+            NS::Model* renderer = m_owner->ModelClassObj();
             if (renderer == nullptr)
             {
                 return;

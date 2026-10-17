@@ -5,12 +5,12 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactTremor.h"
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Shadow.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
-#include "NSlib/CoreObject/SubObjects/Shadow.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <algorithm>
 #include <cmath>
@@ -33,7 +33,7 @@ namespace GL
                     owner.m_restAge += dt;
                     if (owner.m_restAge >= owner.m_params->RestLifeSeconds())
                     {
-                        owner.BodySensorSubObj()->Invalidate();
+                        owner.BodySensorClassObj()->Invalidate();
                         owner.Sphere().RemoveFromPhysics();
                         owner.Disappear();
                     }
@@ -74,18 +74,18 @@ namespace GL
         }
         void PropActor::OnInit()
         {
-            NS::Model* model = CreateSubObj(m_model, this);
+            NS::Model* model = CreateClassObj(m_model, this);
             model->SetMeshRef("sphere");
             model->SetBaseColor(NS::Color{0.72f, 0.70f, 0.66f});
-            CreateSubObj(m_shadow, this);
-            NS::SphereCollision* sphere = CreateSubObj<NS::Collision, NS::SphereCollision>(m_collision, this);
-            CreateSubObj(m_params);
-            CreateSubObj(m_hitZones);
-            CreateSubObj(m_effectKeeper, this);
-            CreateSubObj(m_effects, this);
+            CreateClassObj(m_shadow, this);
+            NS::SphereCollision* sphere = CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision, this);
+            CreateClassObj(m_params);
+            CreateClassObj(m_hitZones);
+            CreateClassObj(m_effectKeeper, this);
+            CreateClassObj(m_effects, this);
             // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
             NS::FollowHitSensor* bodySensor =
-                CreateSubObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [sphere] {
+                CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [sphere] {
                     const NS::Sphere world = sphere->WorldSphere();
                     return NS::SensorVolume::Sphere(world.center, world.radius);
                 });
@@ -186,9 +186,9 @@ namespace GL
                     const float x2 = desc.impactDir.x * desc.impactDir.x;
                     const float z2 = desc.impactDir.z * desc.impactDir.z;
                     m_freeze.squash =
-                        ModelSubObj()->SnapDrawScale(NS::Vector3{1.0f + (desc.squashThickness - 1.0f) * x2,
-                                                                 desc.squashHeight,
-                                                                 1.0f + (desc.squashThickness - 1.0f) * z2});
+                        ModelClassObj()->SnapDrawScale(NS::Vector3{1.0f + (desc.squashThickness - 1.0f) * x2,
+                                                                   desc.squashHeight,
+                                                                   1.0f + (desc.squashThickness - 1.0f) * z2});
                 }
             }
             SyncCollision();
@@ -196,12 +196,12 @@ namespace GL
 
         void PropActor::AdvanceShake()
         {
-            if (!m_shake.active || ModelSubObj() == nullptr)
+            if (!m_shake.active || ModelClassObj() == nullptr)
             {
                 return;
             }
             ++m_shake.frame;
-            (void)ModelSubObj()->SetDrawOffset(m_shake.desc.OffsetAt(m_shake.frame));
+            (void)ModelClassObj()->SetDrawOffset(m_shake.desc.OffsetAt(m_shake.frame));
             // 奥揺れは止めの最後のフレームまで揺れるので、長さの次のフレームで 0 を書いてから止める
             if (m_shake.frame > m_shake.desc.length)
             {
@@ -212,35 +212,35 @@ namespace GL
         void PropActor::StopShake()
         {
             m_shake.active = false;
-            if (ModelSubObj() != nullptr)
+            if (ModelClassObj() != nullptr)
             {
-                (void)ModelSubObj()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
+                (void)ModelClassObj()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
             }
         }
 
         void PropActor::AdvanceGhost()
         {
-            if (!m_ghost.active || ModelSubObj() == nullptr)
+            if (!m_ghost.active || ModelClassObj() == nullptr)
             {
                 return;
             }
             ++m_ghost.frame;
-            m_ghost.active = m_ghost.desc.WriteTo(*ModelSubObj(), m_ghost.frame);
+            m_ghost.active = m_ghost.desc.WriteTo(*ModelClassObj(), m_ghost.frame);
         }
 
         void PropActor::StopGhost()
         {
             m_ghost.active = false;
-            if (ModelSubObj() != nullptr)
+            if (ModelClassObj() != nullptr)
             {
-                (void)ModelSubObj()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
-                (void)ModelSubObj()->SetAfterimageOpacity(0.0f);
+                (void)ModelClassObj()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
+                (void)ModelClassObj()->SetAfterimageOpacity(0.0f);
             }
         }
 
         void PropActor::AdvanceTremor()
         {
-            if (!m_tremor.active || ModelSubObj() == nullptr)
+            if (!m_tremor.active || ModelClassObj() == nullptr)
             {
                 return;
             }
@@ -253,7 +253,7 @@ namespace GL
                 tremor = MakeTremor(
                     m_tremor.desc, m_tremor.elapsed, Root().Position(), 2.0f * Sphere().WorldSphere().radius, *pose);
             }
-            (void)ModelSubObj()->SetTremor(tremor);
+            (void)ModelClassObj()->SetTremor(tremor);
             if (m_tremor.elapsed >= m_tremor.desc.length)
             {
                 m_tremor.active = false;
@@ -263,9 +263,9 @@ namespace GL
         void PropActor::StopTremor()
         {
             m_tremor.active = false;
-            if (ModelSubObj() != nullptr)
+            if (ModelClassObj() != nullptr)
             {
-                (void)ModelSubObj()->SetTremor(NS::Gfx::TremorCB{});
+                (void)ModelClassObj()->SetTremor(NS::Gfx::TremorCB{});
             }
         }
 
@@ -278,7 +278,7 @@ namespace GL
             }
             if (m_freeze.squash)
             {
-                (void)ModelSubObj()->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
+                (void)ModelClassObj()->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
                 m_freeze.squash = false;
             }
         }
@@ -557,7 +557,7 @@ namespace GL
             Root().SetPosition(position);
             Root().SetRotation(rotation);
             Appear();
-            BodySensorSubObj()->Validate();
+            BodySensorClassObj()->Validate();
             m_effects->CancelTrail();
             SyncCollision();
         }
@@ -578,7 +578,7 @@ namespace GL
             (void)receiver;
             if (const MsgAskTackleTarget* ask = NS::MsgCast<MsgAskTackleTarget>(msg))
             {
-                if (!IsAppeared() || !BodySensorSubObj()->IsValid())
+                if (!IsAppeared() || !BodySensorClassObj()->IsValid())
                 {
                     return false;
                 }
@@ -589,7 +589,7 @@ namespace GL
                 answer.breakable = false;
                 answer.placed = !IsFlying();
                 answer.position = Root().Position();
-                const NS::SensorVolume body = BodySensorSubObj()->WorldVolume();
+                const NS::SensorVolume body = BodySensorClassObj()->WorldVolume();
                 answer.bounds = body.Bounds();
                 answer.face = m_hitZones->Face();
                 answer.body = body;

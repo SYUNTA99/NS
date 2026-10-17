@@ -1,11 +1,11 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
 
@@ -31,7 +31,7 @@ TEST(MapObjTackle, RockAnswersTheAsk)
     NS::Scene scene;
     NS::SceneActor* rock = PlaceRock(scene, NS::Vector3{2.0f, 1.0f, 0.0f});
     ASSERT_NE(rock, nullptr);
-    NS::HitSensor* body = rock->BodySensorSubObj();
+    NS::HitSensor* body = rock->BodySensorClassObj();
     ASSERT_NE(body, nullptr);
 
     GL::Level::TackleTargetAnswer answer{};
@@ -78,7 +78,7 @@ TEST(MapObjTackle, FlyingRockIsNotPushedIn)
     ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*rock, release));
 
     GL::Level::TackleTargetAnswer answer{};
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorSubObj(), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorClassObj(), answer));
     EXPECT_FALSE(answer.placed);
 
     const GL::Level::TackleFreezeDesc freeze{
@@ -95,7 +95,7 @@ TEST(MapObjTackle, DestructionRemainsDisabled)
     GL::Level::TackleReleaseDesc release{};
     release.breaks = true;
     ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*rock, release));
-    EXPECT_TRUE(rock->BodySensorSubObj()->IsValid());
+    EXPECT_TRUE(rock->BodySensorClassObj()->IsValid());
     EXPECT_TRUE(rock->IsAppeared());
 }
 

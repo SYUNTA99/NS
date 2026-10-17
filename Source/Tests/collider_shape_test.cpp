@@ -2,16 +2,16 @@
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/SphereCollision.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include <gtest/gtest.h>
 
@@ -28,7 +28,7 @@ namespace
         nlohmann::json entry = NS::MakeObjectJson();
         NS::SetObjectJsonClass(entry, "PlayerActor");
         NS::SetObjectJsonId(entry, 1);
-        entry["subObjects"] = parts;
+        entry["classObjs"] = parts;
         NS::SceneJsonObjects(doc).push_back(std::move(entry));
         scene.ResetFromJson(doc);
     }
@@ -104,7 +104,7 @@ TEST(ColliderShape, PlayerOwnsAFixedColliderPart)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    EXPECT_NE(NS::SubObjFields(NS::MakePrototypeJson(player), "Collider"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(NS::MakePrototypeJson(player), "Collider"), nullptr);
 }
 
 TEST(ColliderShape, BodyHasNoShapeFields)
@@ -135,7 +135,7 @@ TEST(ColliderShape, PlayerBodySensorFollowsARadiusEditWithoutRestart)
     PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->Collider(), {{"半径", 0.8f}}), 0u);
-    const NS::SensorVolume volume = player->BodySensorSubObj()->WorldVolume();
+    const NS::SensorVolume volume = player->BodySensorClassObj()->WorldVolume();
     EXPECT_FLOAT_EQ(volume.radius, 0.8f);
 }
 
@@ -148,7 +148,7 @@ TEST(ColliderShape, ScaledPlayerRootDoesNotScaleTheBodySensor)
     ASSERT_NE(player, nullptr);
 
     player->Root().SetScale(NS::Vector3{1.2f, 1.2f, 1.2f});
-    const NS::SensorVolume volume = player->BodySensorSubObj()->WorldVolume();
+    const NS::SensorVolume volume = player->BodySensorClassObj()->WorldVolume();
     const NS::Phys::Capsule capsule = player->Collider().CapsuleAt(player->Root().Position());
     EXPECT_FLOAT_EQ(volume.radius, capsule.radius);
     EXPECT_FLOAT_EQ((volume.b - volume.a).Length(), capsule.halfHeight * 2.0f);
@@ -168,14 +168,14 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     scene.ResetFromJson(doc);
     NS::SceneActor* placed = scene.Objects().FindByObjectId(1);
     ASSERT_NE(placed, nullptr);
-    NS::SphereCollision* collision = NS::Cast<NS::SphereCollision>(placed->CollisionSubObj());
+    NS::SphereCollision* collision = NS::Cast<NS::SphereCollision>(placed->CollisionClassObj());
     ASSERT_NE(collision, nullptr);
 
     ASSERT_EQ(NS::ApplyJsonFields(*collision,
                                   {{"半径", 0.8f}, {"中心オフセット", {0.0f, 0.25f, 0.0f}}}),
               0u);
     const NS::Sphere sphere = collision->WorldSphere();
-    const NS::SensorVolume volume = placed->BodySensorSubObj()->WorldVolume();
+    const NS::SensorVolume volume = placed->BodySensorClassObj()->WorldVolume();
     EXPECT_FLOAT_EQ(sphere.radius, 0.8f);
     EXPECT_FLOAT_EQ(volume.radius, sphere.radius);
     EXPECT_FLOAT_EQ(volume.Center().x, sphere.center.x);
@@ -190,10 +190,10 @@ TEST(ColliderShape, FollowingBodySensorsShowNoFields)
     PlayerActor& player = *playerOwned;
     const std::unique_ptr<GL::Level::PropActor> objOwned = NS::CreateActor<GL::Level::PropActor>();
     GL::Level::PropActor& obj = *objOwned;
-    ASSERT_NE(player.BodySensorSubObj(), nullptr);
-    ASSERT_NE(obj.BodySensorSubObj(), nullptr);
-    EXPECT_EQ(player.BodySensorSubObj()->GetReflection()->fieldCount, 0u);
-    EXPECT_EQ(obj.BodySensorSubObj()->GetReflection()->fieldCount, 0u);
+    ASSERT_NE(player.BodySensorClassObj(), nullptr);
+    ASSERT_NE(obj.BodySensorClassObj(), nullptr);
+    EXPECT_EQ(player.BodySensorClassObj()->GetReflection()->fieldCount, 0u);
+    EXPECT_EQ(obj.BodySensorClassObj()->GetReflection()->fieldCount, 0u);
 }
 
 TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
@@ -203,10 +203,10 @@ TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
     GL::Level::GoalActor& goal = *goalOwned;
     const std::unique_ptr<GL::Level::DeathZoneActor> zoneOwned = NS::CreateActor<GL::Level::DeathZoneActor>();
     GL::Level::DeathZoneActor& zone = *zoneOwned;
-    ASSERT_NE(goal.BodySensorSubObj(), nullptr);
-    ASSERT_NE(zone.BodySensorSubObj(), nullptr);
-    EXPECT_EQ(NS::ApplyJsonFields(*goal.BodySensorSubObj(), {{"半径", 0.9f}}), 0u);
-    EXPECT_EQ(NS::ApplyJsonFields(*zone.BodySensorSubObj(),
+    ASSERT_NE(goal.BodySensorClassObj(), nullptr);
+    ASSERT_NE(zone.BodySensorClassObj(), nullptr);
+    EXPECT_EQ(NS::ApplyJsonFields(*goal.BodySensorClassObj(), {{"半径", 0.9f}}), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(*zone.BodySensorClassObj(),
                                   {{"箱の半径", {1000.0f, 5.0f, 1000.0f}}, {"中心オフセット", {0.0f, 0.0f, 0.0f}}}),
               0u);
 }
@@ -219,7 +219,7 @@ TEST(ColliderShape, ShapeSurvivesSaveAndReloadUnderCollider)
 
     const nlohmann::json& objects = NS::SceneJsonObjects(saved);
     ASSERT_EQ(objects.size(), 1u);
-    const nlohmann::json& parts = NS::ObjectJsonSubObjs(objects[0]);
+    const nlohmann::json& parts = NS::ObjectJsonClassObjs(objects[0]);
     ASSERT_TRUE(parts.contains("Collider"));
     EXPECT_FLOAT_EQ(parts["Collider"]["半径"].get<float>(), 0.3f);
     EXPECT_FLOAT_EQ(parts["Collider"]["半分の高さ"].get<float>(), 0.8f);
@@ -244,7 +244,7 @@ TEST(ColliderShape, OldMovementShapeKeysAreSkipped)
     const nlohmann::json saved = scene.ToJson();
     const nlohmann::json& objects = NS::SceneJsonObjects(saved);
     ASSERT_EQ(objects.size(), 1u);
-    const nlohmann::json& parts = NS::ObjectJsonSubObjs(objects[0]);
+    const nlohmann::json& parts = NS::ObjectJsonClassObjs(objects[0]);
     if (parts.contains("Movement"))
     {
         EXPECT_FALSE(parts["Movement"].contains("半径"));

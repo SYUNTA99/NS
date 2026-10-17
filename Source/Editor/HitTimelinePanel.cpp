@@ -6,8 +6,8 @@
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Assert.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
 
 #include "NSlib/Core/Types.h"
 #include <algorithm>
@@ -278,7 +278,7 @@ namespace NS
 
             SceneActor* selected = editor.SelectedObjectActor();
             const bool selectable =
-                selected != nullptr && !editor.SelectedIsPlayerObject() && selected->BodySensorSubObj() != nullptr;
+                selected != nullptr && !editor.SelectedIsPlayerObject() && selected->BodySensorClassObj() != nullptr;
             if (m_desc.targetId == 0)
             {
                 ImGui::TextUnformatted("相手: 自機に一番近い配置物");

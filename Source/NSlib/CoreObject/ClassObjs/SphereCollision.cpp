@@ -1,0 +1,62 @@
+#include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
+#include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Sphere.h"
+
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Phys/PhysicsScene.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace NS
+{
+    SphereCollision::SphereCollision(SceneActor* owner, float radius) noexcept
+        : Collision(owner), m_radius(std::max(radius, 0.0f)), m_owner(owner)
+    {}
+
+    void SphereCollision::SetRadius(float radius) noexcept
+    {
+        m_radius = std::max(radius, 0.0f);
+    }
+
+    float SphereCollision::Radius() const noexcept
+    {
+        return m_radius;
+    }
+
+    void SphereCollision::SetCenterOffset(const Vector3& offset) noexcept
+    {
+        m_centerOffset = offset;
+    }
+
+    Vector3 SphereCollision::CenterOffset() const noexcept
+    {
+        return m_centerOffset;
+    }
+
+    Sphere SphereCollision::WorldSphere() const noexcept
+    {
+        if (m_owner == nullptr)
+        {
+            return Sphere{m_centerOffset, m_radius};
+        }
+
+        const Matrix world = m_owner->Root().WorldMatrix();
+        const Vector3 center = Vector3::Transform(m_centerOffset, world);
+
+        const Vector3 scale = DecomposeAffine(world).scale;
+        return Sphere{center, m_radius * MaxAbsComponent(scale)};
+    }
+
+    AABB SphereCollision::WorldAABB() const noexcept
+    {
+        const Sphere s = WorldSphere();
+        return AABB{s.center, Vector3{s.radius, s.radius, s.radius}};
+    }
+
+    JPH::BodyID SphereCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current)
+    {
+        return physics.SyncSphere(current, WorldSphere(), Phys::ObjectLayers::Terrain);
+    }
+} // namespace NS

@@ -1,13 +1,13 @@
 #include "Editor/EditorObjects.h"
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/SphereCollision.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "TestLogCapture.h"
 
@@ -72,7 +72,7 @@ TEST(SceneActor, ClassOnlyObjectBuildsWholeComposition)
     NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(std::string_view{actor->ClassName()}, "PropActor");
-    EXPECT_NE(NS::Cast<NS::SphereCollision>(actor->CollisionSubObj()), nullptr);
+    EXPECT_NE(NS::Cast<NS::SphereCollision>(actor->CollisionClassObj()), nullptr);
 }
 
 TEST(SceneActor, ToJsonKeepsClassAndValues)
@@ -84,7 +84,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     scene.ResetFromJson(doc);
     NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionSubObj());
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
     sphere->SetRadius(1.5f);
     actor->Root().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
@@ -100,7 +100,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     NS::SceneActor* again = reloaded.Objects().FindByObjectId(1);
     ASSERT_NE(again, nullptr);
     EXPECT_EQ(std::string_view{again->ClassName()}, "PropActor");
-    const NS::SphereCollision* sphereAgain = NS::Cast<NS::SphereCollision>(again->CollisionSubObj());
+    const NS::SphereCollision* sphereAgain = NS::Cast<NS::SphereCollision>(again->CollisionClassObj());
     ASSERT_NE(sphereAgain, nullptr);
     EXPECT_FLOAT_EQ(sphereAgain->Radius(), 1.5f);
     EXPECT_FLOAT_EQ(again->Root().Position().x, 3.0f);
@@ -108,7 +108,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     EXPECT_FLOAT_EQ(again->Root().Position().z, 5.0f);
 }
 
-TEST(SceneActor, UnknownSubObjKeyIsWarnedAndOtherSubObjsAreRead)
+TEST(SceneActor, UnknownClassObjKeyIsWarnedAndOtherClassObjsAreRead)
 {
     // クラスの表に無い鍵は警告して読み飛ばし、表にある部品の値は読む
     nlohmann::json doc = NS::MakeSceneJson();
@@ -117,14 +117,14 @@ TEST(SceneActor, UnknownSubObjKeyIsWarnedAndOtherSubObjsAreRead)
     scene.ResetFromJson(doc);
     NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
-    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionSubObj());
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
     sphere->SetRadius(1.5f);
 
     nlohmann::json saved = scene.ToJson();
     nlohmann::json& objects = NS::SceneJsonObjects(saved);
     ASSERT_EQ(objects.size(), 1u);
-    NS::ObjectJsonSubObjs(objects[0])["NotInTheClass"] = nlohmann::json{{"Radius", 9.0f}};
+    NS::ObjectJsonClassObjs(objects[0])["NotInTheClass"] = nlohmann::json{{"Radius", 9.0f}};
 
     const TestLogCapture log;
     NS::Scene reloaded;
@@ -132,7 +132,7 @@ TEST(SceneActor, UnknownSubObjKeyIsWarnedAndOtherSubObjsAreRead)
     EXPECT_EQ(log.WarningCount(), 1);
     const NS::SceneActor* again = reloaded.Objects().FindByObjectId(1);
     ASSERT_NE(again, nullptr);
-    const NS::SphereCollision* sphereAgain = NS::Cast<NS::SphereCollision>(again->CollisionSubObj());
+    const NS::SphereCollision* sphereAgain = NS::Cast<NS::SphereCollision>(again->CollisionClassObj());
     ASSERT_NE(sphereAgain, nullptr);
     EXPECT_FLOAT_EQ(sphereAgain->Radius(), 1.5f);
 }
@@ -182,7 +182,7 @@ TEST(SceneActor, InvalidGravityDirectionFallsBackToDown)
     EXPECT_EQ(scene.Physics().Gravity(), (NS::Vector3{0.0f, -25.0f, 0.0f}));
 }
 
-TEST(SceneActor, PhysicsSettingsIsNotAPlaceableSubObject)
+TEST(SceneActor, PhysicsSettingsIsNotAPlaceableClassObj)
 {
     EXPECT_EQ(NS::TypeRegistry::Get().Find("PhysicsSettings"), nullptr);
 }
@@ -276,7 +276,7 @@ TEST(SceneActor, EnsuredPlayerStandsOnTheAssumedFloorForItsCapsule)
     // 補う自機の高さはカプセルの寸法から出す。床の上面 0.5 + 半分の高さ + 半径 + 余白 1cm
     // 種類の既定の半径を変えても、足元が床の 1cm 上に出る
     const ScopedPlayerArchetype archetype{nlohmann::json{
-        {"class", "PlayerActor"}, {"subObjects", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
+        {"class", "PlayerActor"}, {"classObjs", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::MakeSceneJson();
     EXPECT_TRUE(NS::Editor::EnsurePlayerObject(doc));
 
@@ -289,7 +289,7 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
 {
     // 補う位置とやり直しの落ち先は同じ DefaultSpawnPosition から出る。数字の写しが戻ると片方だけずれる
     const ScopedPlayerArchetype archetype{nlohmann::json{
-        {"class", "PlayerActor"}, {"subObjects", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
+        {"class", "PlayerActor"}, {"classObjs", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::MakeSceneJson();
     ASSERT_TRUE(NS::Editor::EnsurePlayerObject(doc));
     const NS::Vector3 ensured = NS::ObjectPosition(NS::SceneJsonObjects(doc)[0]);
@@ -313,6 +313,15 @@ TEST(SceneLoad, RejectsPreviousHierarchySchema)
 {
     nlohmann::json previous = NS::MakeSceneJson();
     previous["version"] = 6;
+    nlohmann::json loaded;
+    EXPECT_FALSE(NS::DeserializeSceneFromJson(loaded, previous.dump()));
+}
+
+TEST(SceneLoad, RejectsVersionBeforeTheClassObjsKey)
+{
+    // 版 7 のファイルは持ち物を別の鍵に書いていた。読むと全部の値が黙って既定に戻る
+    nlohmann::json previous = NS::MakeSceneJson();
+    previous["version"] = 7;
     nlohmann::json loaded;
     EXPECT_FALSE(NS::DeserializeSceneFromJson(loaded, previous.dump()));
 }
@@ -362,8 +371,8 @@ TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
     for (std::size_t i = 0; i < fileObjects.size(); ++i)
     {
         const nlohmann::json expanded = NS::ExpandObjectJson(writtenObjects[i]);
-        const nlohmann::json& writtenParts = NS::ObjectJsonSubObjs(expanded);
-        const nlohmann::json& fileParts = NS::ObjectJsonSubObjs(fileObjects[i]);
+        const nlohmann::json& writtenParts = NS::ObjectJsonClassObjs(expanded);
+        const nlohmann::json& fileParts = NS::ObjectJsonClassObjs(fileObjects[i]);
         for (nlohmann::json::const_iterator part = fileParts.begin(); part != fileParts.end(); ++part)
         {
             const std::string where = std::string{NS::ObjectJsonClass(fileObjects[i])} + " " + part.key();

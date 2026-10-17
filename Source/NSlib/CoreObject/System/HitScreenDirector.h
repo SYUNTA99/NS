@@ -1,8 +1,8 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
-#include "NSlib/CoreObject/SubObjects/OverlayRenderer.h"
 #include "NSlib/CoreObject/System/SceneSystem.h"
 
 #include <array>

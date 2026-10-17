@@ -2,11 +2,11 @@
 #include "Game/Level/PropActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
@@ -70,7 +70,7 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
         rock->UpdateMotion();
     }
     GL::Level::TackleTargetAnswer answer;
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorSubObj(), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorClassObj(), answer));
     EXPECT_TRUE(answer.placed);
     EXPECT_GT(rock->Root().Position().x, 5.0f);
     EXPECT_NEAR(rock->Root().Position().y, 0.5f, 0.002f);
@@ -180,7 +180,7 @@ TEST(MapObjMotion, ZeroLengthFreezeStillWaitsForReleaseGrace)
     rock->UpdateMotion();
     EXPECT_FALSE(rock->IsFrozen());
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 0.0f);
-    EXPECT_FLOAT_EQ(rock->ModelSubObj()->DrawScale().x, 1.0f);
+    EXPECT_FLOAT_EQ(rock->ModelClassObj()->DrawScale().x, 1.0f);
 }
 
 TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
@@ -217,7 +217,7 @@ TEST(MapObjMotion, FreezeWithoutSquashPreservesExistingDrawScale)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Model* mesh = rock->ModelSubObj();
+    NS::Model* mesh = rock->ModelClassObj();
     ASSERT_NE(mesh, nullptr);
     ASSERT_TRUE(mesh->SnapDrawScale(NS::Vector3{0.9f, 0.9f, 0.9f}));
     GL::Level::TackleFreezeDesc freeze;

@@ -3,9 +3,9 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 
 namespace NS
 {
@@ -279,7 +279,7 @@ namespace NS
         }
     } // namespace
 
-    nlohmann::json SerializeSubObjectFields(const Object& comp)
+    nlohmann::json SerializeClassObjFields(const Object& comp)
     {
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)

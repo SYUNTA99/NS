@@ -1,6 +1,6 @@
 #include "Editor/LevelEditorController.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "Editor/EditorObjects.h"
 #include "Editor/GridMath.h"
@@ -11,8 +11,8 @@
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/HitZones.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/PropActor.h"
 #include "Game/Level/SlamAim.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"
@@ -24,22 +24,22 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
+#include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
+#include "NSlib/CoreObject/ClassObjs/CapsuleCollision.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
+#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/CoreObject/SubObjects/BoxCollision.h"
-#include "NSlib/CoreObject/SubObjects/CapsuleCollision.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
-#include "NSlib/CoreObject/SubObjects/MeshCollision.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
-#include "NSlib/CoreObject/SubObjects/SphereCollision.h"
-#include "NSlib/CoreObject/SubObjects/ThirdPersonFollow.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/CoreObject/SubObjects/VirtualCamera.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Gfx/DebugDraw.h"
 #include "NSlib/Windows/Clock.h"
@@ -56,7 +56,7 @@ namespace
     // 部品の欄の値を JSON で読む。欄が無ければ値なしを返す
     nlohmann::json FieldJson(const NS::Object& comp, std::string_view fieldName)
     {
-        const nlohmann::json fields = NS::SerializeSubObjectFields(comp);
+        const nlohmann::json fields = NS::SerializeClassObjFields(comp);
         const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
         if (it == fields.end())
         {
@@ -87,10 +87,10 @@ namespace
     const NS::Collider* ColliderOf(const NS::SceneActor& object) noexcept
     {
         const NS::Collider* found = nullptr;
-        NS::ForEachReflectedSubObj(object, [&](const NS::SubObjectDesc&, const NS::Object* subObject) {
+        NS::ForEachReflectedClassObj(object, [&](const NS::ClassObjInfo&, const NS::Object* classObj) {
             if (found == nullptr)
             {
-                found = NS::Cast<NS::Collider>(subObject);
+                found = NS::Cast<NS::Collider>(classObj);
             }
         });
         return found;
@@ -99,15 +99,15 @@ namespace
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
     void DrawCollisionWireframe(NS::Gfx::DebugShapes& shapes, NS::SceneActor& object, const NS::Color& color) noexcept
     {
-        if (NS::BoxCollision* box = NS::Cast<NS::BoxCollision>(object.CollisionSubObj()))
+        if (NS::BoxCollision* box = NS::Cast<NS::BoxCollision>(object.CollisionClassObj()))
         {
             shapes.OBB(box->WorldOBB(), color);
         }
-        else if (NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(object.CollisionSubObj()))
+        else if (NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(object.CollisionClassObj()))
         {
             shapes.Sphere(sphere->WorldSphere(), color);
         }
-        else if (NS::CapsuleCollision* capsule = NS::Cast<NS::CapsuleCollision>(object.CollisionSubObj()))
+        else if (NS::CapsuleCollision* capsule = NS::Cast<NS::CapsuleCollision>(object.CollisionClassObj()))
         {
             NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
             worldCapsule.axis.Normalize();
@@ -120,10 +120,10 @@ namespace
             const NS::Phys::Capsule bodyCapsule = collider->CapsuleAt(object.Root().Position());
             shapes.Capsule(bodyCapsule.center, bodyCapsule.axis * bodyCapsule.halfHeight, bodyCapsule.radius, color);
         }
-        else if (NS::Cast<NS::MeshCollision>(object.CollisionSubObj()) != nullptr)
+        else if (NS::Cast<NS::MeshCollision>(object.CollisionClassObj()) != nullptr)
         {
             // メッシュの当たりは見た目の三角形そのもの。三角形は多いので、見た目のメッシュを包む箱を出す
-            const NS::Model* renderer = object.ModelSubObj();
+            const NS::Model* renderer = object.ModelClassObj();
             if (renderer == nullptr || renderer->GetMesh()->LocalBounds() == nullptr)
             {
                 return;
@@ -142,7 +142,7 @@ namespace
     // 配置物 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
     void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes, NS::SceneActor& object, const NS::Color& color) noexcept
     {
-        for (const NS::HitSensor* sensor : {object.BodySensorSubObj(), object.AttackSensorSubObj()})
+        for (const NS::HitSensor* sensor : {object.BodySensorClassObj(), object.AttackSensorClassObj()})
         {
             if (sensor == nullptr)
             {
@@ -883,7 +883,7 @@ void LevelEditorController::RefreshGizmoSelectables()
             continue;
         }
         m_selectablePtrs.push_back(object);
-        m_selectablePickable.push_back(static_cast<NS::uint8>(object->ModelSubObj() != nullptr));
+        m_selectablePickable.push_back(static_cast<NS::uint8>(object->ModelClassObj() != nullptr));
     }
 
     m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectablePickable);
@@ -1148,7 +1148,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
             continue;
         }
         const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(object);
-        const NS::HitSensor* bodySensor = object->BodySensorSubObj();
+        const NS::HitSensor* bodySensor = object->BodySensorClassObj();
         if (prop == nullptr || bodySensor == nullptr)
         {
             continue;
@@ -1289,8 +1289,8 @@ void LevelEditorController::SetSelectedFreeScale(NS::Vector3 scale)
 
 void LevelEditorController::MirrorRootEditToBaseline(NS::SceneActor& actor, std::string_view fieldName)
 {
-    const NS::SubObjectDesc* rootRow = nullptr;
-    NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::Object* part) {
+    const NS::ClassObjInfo* rootRow = nullptr;
+    NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, const NS::Object* part) {
         if (part == &actor.Root())
         {
             rootRow = &field;
@@ -1303,7 +1303,7 @@ void LevelEditorController::MirrorRootEditToBaseline(NS::SceneActor& actor, std:
 }
 
 void LevelEditorController::MirrorPlayEditToBaseline(const NS::SceneActor& actor,
-                                                     const NS::SubObjectDesc& row,
+                                                     const NS::ClassObjInfo& row,
                                                      std::string_view fieldName)
 {
     // 写すのはプレイ中だけ。編集モードで写すと次のプレイ突入の捕捉と二重管理になる
@@ -1315,7 +1315,7 @@ void LevelEditorController::MirrorPlayEditToBaseline(const NS::SceneActor& actor
 }
 
 bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
-                                                    const NS::SubObjectDesc& row,
+                                                    const NS::ClassObjInfo& row,
                                                     std::string_view fieldName)
 {
     const NS::Object* comp = row.get(&actor);
@@ -1327,7 +1327,7 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
     const std::string_view typeName{comp->GetReflection()->typeName};
 
     // 上げる前の既定の値。これと同じ値の個体は上書きしていないので、新しい既定値へ付いて行く
-    if (NS::FindBaselineSubObj(actor, row) == nullptr)
+    if (NS::FindBaselineClassObj(actor, row) == nullptr)
     {
         return false;
     }
@@ -1708,9 +1708,9 @@ void LevelEditorController::CommitTransformEdit() noexcept
     m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
 }
 
-void LevelEditorController::BeginSubObjectEdit() noexcept
+void LevelEditorController::BeginClassObjEdit() noexcept
 {
-    if (m_subObjectEditing)
+    if (m_classObjEditing)
     {
         return;
     }
@@ -1719,18 +1719,18 @@ void LevelEditorController::BeginSubObjectEdit() noexcept
     {
         return;
     }
-    m_subObjectEditBaseline = std::move(*baseline);
-    m_subObjectEditBaselineId = m_selectedObjectId;
-    m_subObjectEditing = true;
+    m_classObjEditBaseline = std::move(*baseline);
+    m_classObjEditBaselineId = m_selectedObjectId;
+    m_classObjEditing = true;
 }
 
-void LevelEditorController::CommitSubObjectEdit() noexcept
+void LevelEditorController::CommitClassObjEdit() noexcept
 {
-    if (!m_subObjectEditing)
+    if (!m_classObjEditing)
     {
         return;
     }
-    m_subObjectEditing = false;
+    m_classObjEditing = false;
 
     // リフレクション編集は実体の部品へ直接入っている。after は実体の忠実な写しで、baseline と同じなら積まない
     // プレイ中の控えはプレイの姿なので積まない
@@ -1738,15 +1738,15 @@ void LevelEditorController::CommitSubObjectEdit() noexcept
     {
         return;
     }
-    std::optional<nlohmann::json> after = m_applier.CaptureObject(m_subObjectEditBaselineId);
-    if (!after || *after == m_subObjectEditBaseline)
+    std::optional<nlohmann::json> after = m_applier.CaptureObject(m_classObjEditBaselineId);
+    if (!after || *after == m_classObjEditBaseline)
     {
         return;
     }
 
     // 実体は既に after なので Do を呼ばず履歴だけ積む
     m_editor.Undo().Record(std::make_unique<NS::Editor::ObjectSnapshotCommand>(
-        m_subObjectEditBaselineId, m_subObjectEditBaseline, std::move(*after)));
+        m_classObjEditBaselineId, m_classObjEditBaseline, std::move(*after)));
 }
 
 bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
@@ -1767,7 +1767,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
         return false;
     }
 
-    NS::Model* mesh = go->ModelSubObj();
+    NS::Model* mesh = go->ModelClassObj();
     if (mesh == nullptr)
     {
         return false;

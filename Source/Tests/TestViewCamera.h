@@ -1,9 +1,9 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/VirtualCamera.h"
 
 //! @brief 試し用の仮想カメラ。差し替えた位置と注視点をそのまま返す
 //! @details 遊びはカメラの管理役が仮想カメラから合成した視点を読み、実カメラは読まない
@@ -42,7 +42,7 @@ class TestViewCameraHostActor final : public NS::SceneActor
 {
 public:
     NS_REFLECT_BEGIN(TestViewCameraHostActor, NS::SceneActor)
-    NS_REFLECT_SUBOBJ(m_vcam, "Vcam")
+    NS_CLASSOBJ(m_vcam, "Vcam")
     NS_REFLECT_END()
 
     //! 持っている仮想カメラ
@@ -54,7 +54,7 @@ public:
     }
 
 protected:
-    void OnInit() override { CreateSubObj(m_vcam, this); }
+    void OnInit() override { CreateClassObj(m_vcam, this); }
     void OnStart() override
     {
         NS::SceneActor::OnStart();

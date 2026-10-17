@@ -2,8 +2,8 @@
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
 
 #include <gtest/gtest.h>
 

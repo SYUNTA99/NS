@@ -9,12 +9,12 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SubObjects/EffectKeeper.h"
-#include "NSlib/CoreObject/SubObjects/HitSensor.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <cmath>
@@ -76,10 +76,10 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
     ASSERT_NE(keeper, nullptr);
     ASSERT_FALSE(keeper->Records().empty());
     EXPECT_EQ(keeper->Records().front().name, "custom.curl");
-    const nlohmann::json saved = NS::SerializeSubObjectFields(player->ChargeVisuals());
+    const nlohmann::json saved = NS::SerializeClassObjFields(player->ChargeVisuals());
     GL::Player::ChargeEffects restored{nullptr};
     ASSERT_EQ(NS::ApplyJsonFields(restored, saved), 0u);
-    EXPECT_EQ(NS::SerializeSubObjectFields(restored)["丸まりの殻の資産"], "custom.curl");
+    EXPECT_EQ(NS::SerializeClassObjFields(restored)["丸まりの殻の資産"], "custom.curl");
 }
 
 TEST(GameTuning, DefaultSpawnReadsThePlayerInstance)
@@ -108,14 +108,14 @@ TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
     EXPECT_EQ(longHistory.Records().size(), 1u);
 }
 
-TEST(GameTuning, LaunchDustLifetimeReadsItsOwnSubObject)
+TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
 {
     NS::Scene scene;
     GL::Level::PropActor* rock = scene.SpawnTransient<GL::Level::PropActor>();
     ASSERT_NE(rock, nullptr);
     GL::Level::LaunchEffects* effects = &rock->Effects();
     ASSERT_EQ(NS::ApplyJsonFields(*effects, {{"着地の粉の寿命フレーム", 2}}), 0u);
-    const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(rock->CollisionSubObj());
+    const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(rock->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
     effects->BeginTrail(GL::Level::TackleReleaseDesc{}, rock->Flight(), &rock->Params(), sphere);
     effects->NotifyLanding({}, {0.0f, 1.0f, 0.0f});
@@ -158,7 +158,7 @@ TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
     EXPECT_NEAR(heading.z, 0.0f, 0.001f);
     GL::Level::TargetMarker marker{nullptr};
     ASSERT_EQ(NS::ApplyJsonFields(marker, {{"枠の縁の幅", 3.0f}}), 0u);
-    const nlohmann::json fields = NS::SerializeSubObjectFields(marker);
+    const nlohmann::json fields = NS::SerializeClassObjFields(marker);
     EXPECT_EQ(fields["枠の縁の幅"], 3.0f);
     GL::Level::TargetMarkerDesc desc;
     desc.outlineWidth = 3.0f;

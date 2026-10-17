@@ -1,7 +1,7 @@
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Model.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -93,7 +93,7 @@ namespace
     class DrawModelActor final : public NS::SceneActor
     {
     protected:
-        void OnInit() override { CreateSubObj(m_model, this); }
+        void OnInit() override { CreateClassObj(m_model, this); }
     };
 
     // PlayerActor の段で、別の SceneActor の Model の描く倍率を書く
@@ -262,8 +262,8 @@ TEST(InterpolationSnapshot, ModelWrittenByAnEarlierPhaseStartsFromTheValueBefore
     // 前の値を書き手より後の段で控えると、先の段で書いた倍率が始点にもなり補間されずに飛ぶ
     NS::Scene scene;
     NS::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
-    ASSERT_NE(drawn->ModelSubObj(), nullptr);
-    NS::Model* model = drawn->ModelSubObj();
+    ASSERT_NE(drawn->ModelClassObj(), nullptr);
+    NS::Model* model = drawn->ModelClassObj();
     scene.SpawnTransient<DrawScaleWriterActor>(*model);
 
     scene.OnUpdate();
@@ -277,8 +277,8 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
     // 止めている間は段が回らない。前の値の控えも段に置くと、止める前に書いた倍率から補間し続けて絵が揺れる
     NS::Scene scene;
     NS::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
-    ASSERT_NE(drawn->ModelSubObj(), nullptr);
-    NS::Model* model = drawn->ModelSubObj();
+    ASSERT_NE(drawn->ModelClassObj(), nullptr);
+    NS::Model* model = drawn->ModelClassObj();
     scene.SetSimulationPaused(true);
     ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
 
@@ -338,8 +338,8 @@ TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
     // 世界を進めない歩に前の値を控えると補間が止まる。割合は前に世界を進めてからの溜めで出す
     NS::Scene scene;
     NS::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
-    ASSERT_NE(drawn->ModelSubObj(), nullptr);
-    NS::Model* model = drawn->ModelSubObj();
+    ASSERT_NE(drawn->ModelClassObj(), nullptr);
+    NS::Model* model = drawn->ModelClassObj();
     scene.SpawnTransient<DrawScaleWriterActor>(*model);
     scene.SetWorldSpeed(0.5f);
 
@@ -467,7 +467,7 @@ TEST(ModelLocalScale, ScalesAroundTheMeshOriginAndMovesTheDrawScalePivot)
 {
     NS::Scene scene;
     NS::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
-    NS::Model* model = drawn->ModelSubObj();
+    NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
     model->SetLocalBoundsOverride(NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 1.0f, 1.0f}});
     ASSERT_TRUE(model->SetLocalScale(NS::Vector3{2.0f, 2.0f, 2.0f}));

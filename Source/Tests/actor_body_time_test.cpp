@@ -2,14 +2,14 @@
 #include "Game/Level/PropActor.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/CoreObject/ClassObjs/Animation.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Animation.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
-#include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Windows/Clock.h"
 #include "TestAnimatedPlayerActor.h"
 #include "Tests/TestViewCamera.h"
@@ -150,7 +150,7 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
     {
         const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
         PlayerActor& player = *playerOwned;
-        NS::Animation* animation = player.AnimationSubObj();
+        NS::Animation* animation = player.AnimationClassObj();
         ASSERT_NE(animation, nullptr);
         ASSERT_EQ(UseTestClips(player, {{"走りのクリップ", "Assets/Models/Xbot.glb#run"}}), 0u);
         ASSERT_TRUE(player.SetBodyTimeScale(static_cast<float>(index + 1)));

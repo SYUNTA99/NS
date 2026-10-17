@@ -14,7 +14,7 @@ namespace
         NS::Curve curve{};
 
         NS_REFLECT_BEGIN(CurveSettings, void)
-        NS_REFLECT_FIELD(curve, "曲線")
+        NS_FIELD(curve, "曲線")
         NS_REFLECT_END_VALUE()
     };
 

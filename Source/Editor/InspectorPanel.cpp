@@ -1,5 +1,5 @@
 #include "Editor/InspectorPanel.h"
-#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "Editor/EditorObjects.h"
 #include "Editor/EditorUi.h"
@@ -11,11 +11,11 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
-#include "NSlib/CoreObject/Reflection/SubObjectEntry.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 
 #include "NSlib/Core/Types.h"
 #include <cstdio>
@@ -234,11 +234,11 @@ namespace NS
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputTextWithHint("##fieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
 
-                Editor::SubObjectEditResult subObjectEdit{};
+                Editor::ClassObjEditResult classObjEdit{};
                 // 戻すと種類の既定にするは描いた後に行うので、対象の部品の行を控える
-                const SubObjectDesc* revertRow = nullptr;
-                const SubObjectDesc* promoteRow = nullptr;
-                ForEachReflectedSubObj(*go, [&](const SubObjectDesc& field, Object* live) {
+                const ClassObjInfo* revertRow = nullptr;
+                const ClassObjInfo* promoteRow = nullptr;
+                ForEachReflectedClassObj(*go, [&](const ClassObjInfo& field, Object* live) {
                     if (live->GetReflection() == nullptr)
                     {
                         return;
@@ -252,9 +252,9 @@ namespace NS
 
                     ImGui::PushID(field.key);
 
-                    ImGui::PushStyleColor(ImGuiCol_Header, Editor::k_SubObjectHeaderColor);
-                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, Editor::k_SubObjectHeaderHoveredColor);
-                    ImGui::PushStyleColor(ImGuiCol_HeaderActive, Editor::k_SubObjectHeaderActiveColor);
+                    ImGui::PushStyleColor(ImGuiCol_Header, Editor::k_ClassObjHeaderColor);
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, Editor::k_ClassObjHeaderHoveredColor);
+                    ImGui::PushStyleColor(ImGuiCol_HeaderActive, Editor::k_ClassObjHeaderActiveColor);
                     std::string header{field.key};
                     if (header != typeName)
                     {
@@ -269,22 +269,22 @@ namespace NS
                     if (open)
                     {
                         // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
-                        const Object* baseline = FindBaselineSubObj(*go, field);
-                        const Editor::SubObjectEditResult r =
-                            Editor::DrawReflectedSubObject(*live, refOptions, baseline, m_fieldFilter, go, &field);
-                        subObjectEdit.activated |= r.activated;
-                        subObjectEdit.committed |= r.committed;
-                        subObjectEdit.changed |= r.changed;
+                        const Object* baseline = FindBaselineClassObj(*go, field);
+                        const Editor::ClassObjEditResult r =
+                            Editor::DrawReflectedClassObj(*live, refOptions, baseline, m_fieldFilter, go, &field);
+                        classObjEdit.activated |= r.activated;
+                        classObjEdit.committed |= r.committed;
+                        classObjEdit.changed |= r.changed;
                         if (r.revertField != nullptr)
                         {
-                            subObjectEdit.revertTarget = r.revertTarget;
-                            subObjectEdit.revertField = r.revertField;
+                            classObjEdit.revertTarget = r.revertTarget;
+                            classObjEdit.revertField = r.revertField;
                             revertRow = &field;
                         }
                         if (r.promoteField != nullptr)
                         {
-                            subObjectEdit.promoteTarget = r.promoteTarget;
-                            subObjectEdit.promoteField = r.promoteField;
+                            classObjEdit.promoteTarget = r.promoteTarget;
+                            classObjEdit.promoteField = r.promoteField;
                             promoteRow = &field;
                         }
                         // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
@@ -300,31 +300,30 @@ namespace NS
                     ImGui::PopID();
                 });
                 // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
-                if (subObjectEdit.revertTarget != nullptr && revertRow != nullptr)
+                if (classObjEdit.revertTarget != nullptr && revertRow != nullptr)
                 {
-                    const Object* baseline = FindBaselineSubObj(*go, *revertRow);
+                    const Object* baseline = FindBaselineClassObj(*go, *revertRow);
                     if (baseline != nullptr)
                     {
-                        editor.BeginSubObjectEdit();
-                        Editor::RevertFieldToDefault(
-                            *subObjectEdit.revertTarget, *baseline, *subObjectEdit.revertField);
+                        editor.BeginClassObjEdit();
+                        Editor::RevertFieldToDefault(*classObjEdit.revertTarget, *baseline, *classObjEdit.revertField);
                         // 既定へ戻すのも手編集。プレイ中は凍結側へも写して残す
-                        editor.MirrorPlayEditToBaseline(*go, *revertRow, subObjectEdit.revertField->name);
-                        editor.CommitSubObjectEdit();
+                        editor.MirrorPlayEditToBaseline(*go, *revertRow, classObjEdit.revertField->name);
+                        editor.CommitClassObjEdit();
                     }
                 }
                 // 種類の既定にするのは、同じ種類の全ての個体とファイルを書き換える。既定の部品を作り直すので描画の後で行う
-                if (subObjectEdit.promoteField != nullptr && promoteRow != nullptr)
+                if (classObjEdit.promoteField != nullptr && promoteRow != nullptr)
                 {
-                    (void)editor.PromoteFieldToArchetype(*go, *promoteRow, subObjectEdit.promoteField->name);
+                    (void)editor.PromoteFieldToArchetype(*go, *promoteRow, classObjEdit.promoteField->name);
                 }
-                if (subObjectEdit.activated)
+                if (classObjEdit.activated)
                 {
-                    editor.BeginSubObjectEdit();
+                    editor.BeginClassObjEdit();
                 }
-                if (subObjectEdit.committed)
+                if (classObjEdit.committed)
                 {
-                    editor.CommitSubObjectEdit();
+                    editor.CommitClassObjEdit();
                 }
             }
             ImGui::End();

@@ -1,13 +1,13 @@
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/StateMachine.h"
 #include "NSlib/CoreObject/IUse/IUseState.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
-#include "NSlib/CoreObject/Reflection/ReflectedSubObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
-#include "NSlib/CoreObject/SubObjects/StateMachine.h"
 
 #include <gtest/gtest.h>
 
@@ -18,10 +18,10 @@
 
 namespace
 {
-    int CountSubObjKey(const NS::SceneActor& actor, std::string_view key)
+    int CountClassObjKey(const NS::SceneActor& actor, std::string_view key)
     {
         int count = 0;
-        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::Object*) {
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, const NS::Object*) {
             if (std::string_view(field.key) == key)
             {
                 ++count;
@@ -31,10 +31,10 @@ namespace
     }
 
     // 並びに鍵 key で出た部品。出なければ nullptr
-    const NS::Object* ListedSubObj(const NS::SceneActor& actor, std::string_view key)
+    const NS::Object* ListedClassObj(const NS::SceneActor& actor, std::string_view key)
     {
         const NS::Object* listed = nullptr;
-        NS::ForEachReflectedSubObj(actor, [&](const NS::SubObjectDesc& field, const NS::Object* part) {
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, const NS::Object* part) {
             if (std::string_view(field.key) == key)
             {
                 listed = part;
@@ -45,7 +45,7 @@ namespace
 
     void ExpectNoStateMachineFields(const nlohmann::json& object)
     {
-        const nlohmann::json* fields = NS::SubObjFields(object, "StateMachine");
+        const nlohmann::json* fields = NS::ClassObjFields(object, "StateMachine");
         if (fields != nullptr)
         {
             EXPECT_TRUE(fields->empty()) << fields->dump();
@@ -166,18 +166,18 @@ TEST(ActorStateMachine, TypedPointerIsReadableFromFirstStateOnEnter)
     EXPECT_EQ(actor.GetStates(), actor.machine);
 }
 
-TEST(ActorStateMachine, MachineIsListedAsTheStateMachineSubObject)
+TEST(ActorStateMachine, MachineIsListedAsTheStateMachineClassObj)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
-    EXPECT_EQ(CountSubObjKey(*player, "StateMachine"), 1);
-    const NS::StateMachine* playerPart = NS::Cast<NS::StateMachine>(ListedSubObj(*player, "StateMachine"));
+    EXPECT_EQ(CountClassObjKey(*player, "StateMachine"), 1);
+    const NS::StateMachine* playerPart = NS::Cast<NS::StateMachine>(ListedClassObj(*player, "StateMachine"));
     ASSERT_NE(playerPart, nullptr);
     ASSERT_NE(player->GetStates(), nullptr);
     EXPECT_EQ(playerPart->Machine(), player->GetStates());
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
-    EXPECT_EQ(CountSubObjKey(*prop, "StateMachine"), 1);
-    const NS::StateMachine* propPart = NS::Cast<NS::StateMachine>(ListedSubObj(*prop, "StateMachine"));
+    EXPECT_EQ(CountClassObjKey(*prop, "StateMachine"), 1);
+    const NS::StateMachine* propPart = NS::Cast<NS::StateMachine>(ListedClassObj(*prop, "StateMachine"));
     ASSERT_NE(propPart, nullptr);
     ASSERT_NE(prop->GetStates(), nullptr);
     EXPECT_EQ(propPart->Machine(), prop->GetStates());

@@ -7,11 +7,11 @@
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Assert.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/Collider.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>

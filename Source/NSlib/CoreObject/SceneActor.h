@@ -1,6 +1,8 @@
 #pragma once
 
 #include "NSlib/Core/Assert.h"
+#include "NSlib/CoreObject/ClassObjs/StateMachine.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseCollision.h"
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
@@ -9,8 +11,6 @@
 #include "NSlib/CoreObject/IUse/IUseTime.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
-#include "NSlib/CoreObject/SubObjects/StateMachine.h"
-#include "NSlib/CoreObject/SubObjects/Transform.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
 
 #include "NSlib/Core/Types.h"
@@ -96,23 +96,23 @@ namespace NS
         //! 非有限値または dt が 0 以下なら変更しない
         void AddGravity(Vector3& velocity, float strength, float dt) const noexcept;
 
-        [[nodiscard]] Model* ModelSubObj() noexcept { return m_model.get(); }
-        [[nodiscard]] const Model* ModelSubObj() const noexcept { return m_model.get(); }
-        [[nodiscard]] Animation* AnimationSubObj() noexcept { return m_animation.get(); }
-        [[nodiscard]] const Animation* AnimationSubObj() const noexcept { return m_animation.get(); }
-        [[nodiscard]] Shadow* ShadowSubObj() noexcept { return m_shadow.get(); }
-        [[nodiscard]] const Shadow* ShadowSubObj() const noexcept { return m_shadow.get(); }
-        [[nodiscard]] Collision* CollisionSubObj() noexcept { return m_collision.get(); }
-        [[nodiscard]] const Collision* CollisionSubObj() const noexcept { return m_collision.get(); }
+        [[nodiscard]] Model* ModelClassObj() noexcept { return m_model.get(); }
+        [[nodiscard]] const Model* ModelClassObj() const noexcept { return m_model.get(); }
+        [[nodiscard]] Animation* AnimationClassObj() noexcept { return m_animation.get(); }
+        [[nodiscard]] const Animation* AnimationClassObj() const noexcept { return m_animation.get(); }
+        [[nodiscard]] Shadow* ShadowClassObj() noexcept { return m_shadow.get(); }
+        [[nodiscard]] const Shadow* ShadowClassObj() const noexcept { return m_shadow.get(); }
+        [[nodiscard]] Collision* CollisionClassObj() noexcept { return m_collision.get(); }
+        [[nodiscard]] const Collision* CollisionClassObj() const noexcept { return m_collision.get(); }
         //! その物の体の広がりのセンサー。持たなければ nullptr
-        [[nodiscard]] HitSensor* BodySensorSubObj() noexcept { return m_bodySensor.get(); }
-        [[nodiscard]] const HitSensor* BodySensorSubObj() const noexcept { return m_bodySensor.get(); }
+        [[nodiscard]] HitSensor* BodySensorClassObj() noexcept { return m_bodySensor.get(); }
+        [[nodiscard]] const HitSensor* BodySensorClassObj() const noexcept { return m_bodySensor.get(); }
         //! @brief 体と別の広がりを持つ 2 つ目のセンサー。持たなければ nullptr
         //! @details 調べ役は体のセンサーと区別せずに扱う。今はこの枠を作る種類が無い
-        [[nodiscard]] HitSensor* AttackSensorSubObj() noexcept { return m_attackSensor.get(); }
-        [[nodiscard]] const HitSensor* AttackSensorSubObj() const noexcept { return m_attackSensor.get(); }
-        [[nodiscard]] HitReaction* HitReactionSubObj() noexcept { return m_hitReaction.get(); }
-        [[nodiscard]] const HitReaction* HitReactionSubObj() const noexcept { return m_hitReaction.get(); }
+        [[nodiscard]] HitSensor* AttackSensorClassObj() noexcept { return m_attackSensor.get(); }
+        [[nodiscard]] const HitSensor* AttackSensorClassObj() const noexcept { return m_attackSensor.get(); }
+        [[nodiscard]] HitReaction* HitReactionClassObj() noexcept { return m_hitReaction.get(); }
+        [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
 
         //! @brief Update を呼ばれる段を返す
         [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
@@ -169,17 +169,17 @@ namespace NS
         // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
         template <class TBase, class T = TBase, class... TArgs>
             requires std::derived_from<T, TBase> && std::derived_from<T, Object>
-        T* CreateSubObj(std::unique_ptr<TBase>& member, TArgs&&... args)
+        T* CreateClassObj(std::unique_ptr<TBase>& member, TArgs&&... args)
         {
-            const SubObjectDesc* field = FindReflectedMember(&member);
-            if (field == nullptr || member != nullptr || IsSubObjKeyCreated(field->key))
+            const ClassObjInfo* field = FindReflectedMember(&member);
+            if (field == nullptr || member != nullptr || IsClassObjKeyCreated(field->key))
             {
-                ReportInvalidSubObj(field);
+                ReportInvalidClassObj(field);
                 return nullptr;
             }
-            std::unique_ptr<T> subObject = std::make_unique<T>(std::forward<TArgs>(args)...);
-            T* raw = subObject.get();
-            member = std::move(subObject);
+            std::unique_ptr<T> classObj = std::make_unique<T>(std::forward<TArgs>(args)...);
+            T* raw = classObj.get();
+            member = std::move(classObj);
             return raw;
         }
 
@@ -205,7 +205,7 @@ namespace NS
             NS_ASSERT(Scene,
                       static_cast<const SceneActor*>(&owner) == this,
                       "SceneActor::BuildStateMachine: 持ち主に自分以外の SceneActor を渡している");
-            StateMachine* part = CreateSubObj(m_stateMachine, this);
+            StateMachine* part = CreateClassObj(m_stateMachine, this);
             if (part == nullptr)
             {
                 return false;
@@ -238,10 +238,10 @@ namespace NS
         void SetId(uint32 id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
         // member を指すアクターの表の行。表に無ければ nullptr
-        [[nodiscard]] const SubObjectDesc* FindReflectedMember(const void* member) const;
+        [[nodiscard]] const ClassObjInfo* FindReflectedMember(const void* member) const;
         // 別のメンバーが同じ保存キーで作成済みか。同じキーの部品が 2 つあると保存で片方が消える
-        [[nodiscard]] bool IsSubObjKeyCreated(std::string_view key) const;
-        void ReportInvalidSubObj(const SubObjectDesc* field) const;
+        [[nodiscard]] bool IsClassObjKeyCreated(std::string_view key) const;
+        void ReportInvalidClassObj(const ClassObjInfo* field) const;
         // PendingDestroy からはどこへも移らない
         enum class Presence : uint8
         {

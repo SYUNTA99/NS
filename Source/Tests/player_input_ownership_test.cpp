@@ -1,6 +1,6 @@
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/SubObjects/Body.h"
-#include "NSlib/CoreObject/SubObjects/PlayerInput.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>
