@@ -3,6 +3,7 @@
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/RenderContext.h"
 #include "NSlib/Gfx/Renderer.h"
 
@@ -222,7 +223,7 @@ namespace GL
 
         void TargetMarker::OnRenderOverlay(const NS::Gfx::RenderContext& context)
         {
-            if (context.renderer == nullptr)
+            if (context.renderer == nullptr || context.overlay == nullptr)
             {
                 return;
             }
@@ -234,11 +235,11 @@ namespace GL
             // 暗い縁を先に描き、明るい線を上に重ねる
             for (const MarkerRect& rect : frame.outline)
             {
-                context.renderer->DrawScreenRect(rect.x, rect.y, rect.width, rect.height, frame.outlineColor);
+                context.overlay->DrawScreenRect(rect.x, rect.y, rect.width, rect.height, frame.outlineColor);
             }
             for (const MarkerRect& rect : frame.corners)
             {
-                context.renderer->DrawScreenRect(rect.x, rect.y, rect.width, rect.height, frame.color);
+                context.overlay->DrawScreenRect(rect.x, rect.y, rect.width, rect.height, frame.color);
             }
         }
 

@@ -1,6 +1,7 @@
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
 #include "NSlib/CoreObject/IRenderable.h"
@@ -11,9 +12,11 @@
 #include "NSlib/Gfx/Bloom.h"
 #include "NSlib/Gfx/DebugDraw.h"
 #include "NSlib/Gfx/EffectScene.h"
+#include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/RenderContext.h"
 #include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Gfx/ScreenPasses.h"
+#include "NSlib/Gfx/Skybox.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Filesystem.h"
 
@@ -51,8 +54,16 @@ namespace NS
         if (renderer == nullptr)
         {
             m_effects.reset();
+            m_overlay.reset();
+            m_skybox.reset();
+            m_shaders = Gfx::BuiltinShaders{};
             return;
         }
+
+        // 描く時は AssetManager を引かない決まりなので、差した時に 1 回だけ引いて描く段へ渡す
+        m_shaders = AssetManager::Get().LoadBuiltinShaders();
+        m_overlay = std::make_unique<Gfx::ScreenOverlay>(renderer, m_shaders);
+        m_skybox = std::make_unique<Gfx::Skybox>(m_shaders);
 
         std::string root = m_effectRoot;
         if (root.empty())
@@ -193,9 +204,9 @@ namespace NS
         // 画面に出す物は世界の上の重ね描きよりさらに上
         ui.Draw(context);
         // 暗転は UIActor の描く順に依らず、全ての UI と光を覆う
-        if (context.renderer != nullptr)
+        if (context.overlay != nullptr)
         {
-            fade.Render(*context.renderer);
+            fade.Render(*context.overlay);
         }
     }
 
@@ -287,10 +298,8 @@ namespace NS
         while (m_viewPasses.size() <= index)
         {
             ViewPasses passes;
-            // 描く時は AssetManager を引かない決まりなので、Application が Renderer へ渡したシェーダーを使う
-            const Gfx::BuiltinShaders& shaders = m_renderer->Shaders();
-            passes.bloom = std::make_unique<Gfx::Bloom>(Gfx::BloomDesc{}, shaders);
-            passes.screen = std::make_unique<Gfx::ScreenPasses>(shaders);
+            passes.bloom = std::make_unique<Gfx::Bloom>(Gfx::BloomDesc{}, m_shaders);
+            passes.screen = std::make_unique<Gfx::ScreenPasses>(m_shaders);
             m_viewPasses.push_back(std::move(passes));
         }
         return m_viewPasses[index];
@@ -308,14 +317,14 @@ namespace NS
         const Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, view.viewPose, alpha, passes);
 
 #if !defined(NS_SHIPPING)
-        Gfx::DebugDraw::Draw(*ctx.renderer, ctx.viewProjection);
+        Gfx::DebugDraw::Draw(*ctx.renderer, m_shaders, ctx.viewProjection);
 
         // ビューの図形は、このビューの行列で積んで描いたらすぐ捨てる。次のビューや次のフレームへ持ち越さない
         if (view.drawShapes)
         {
             m_viewShapes.Clear();
             view.drawShapes(m_viewShapes, ctx.viewProjection);
-            m_viewShapes.Draw(*ctx.renderer, ctx.viewProjection);
+            m_viewShapes.Draw(*ctx.renderer, m_shaders, ctx.viewProjection);
             m_viewShapes.Clear();
         }
 #endif
@@ -361,6 +370,7 @@ namespace NS
 
         Gfx::RenderContext ctx{};
         ctx.renderer = m_renderer;
+        ctx.overlay = m_overlay.get();
         ctx.alpha = alpha;
 
         // 上書き視点は実カメラを経由せず、その場で行列を組む。実カメラの中身はゲーム視点のまま残す
@@ -387,15 +397,15 @@ namespace NS
             ctx.viewProjection = cameras.ViewProjection();
             ctx.cameraPosition = camera.Position();
         }
-        ctx.resolvedSettings = ResolveSceneSettings(m_renderer->Settings());
+        ctx.resolvedSettings = ResolveSceneSettings(Gfx::RenderSettings{});
         ctx.groundWave = m_groundWave;
         ctx.distortionRing = m_distortionRing;
 
         // 物の絵は S 字で 1 以下に書くので、にじむのは 1 を超えて書いたエフェクトだけ
         // 深度は今の描画先の物を使うので、後で描くデバッグの線も世界の深度で隠れる
-        passes.bloom->BeginWorld(*m_renderer, m_renderer->Settings().clearColor);
+        passes.bloom->BeginWorld(*m_renderer, m_renderer->ClearColor());
         DrawOpaque(ctx);
-        m_renderer->DrawSky(*viewCamera, skyboxPath);
+        m_skybox->Draw(*m_renderer, *viewCamera, skyboxPath);
         DrawTransparent(ctx);
         // ワールド空間の半透明物。半透明の後、デバッグ描画の前
         if (m_effects != nullptr)

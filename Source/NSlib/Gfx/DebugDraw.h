@@ -15,6 +15,7 @@ namespace NS
     namespace Gfx
     {
         class Renderer;
+        struct BuiltinShaders;
 
         //! 描画しても消えないデバッグ図形の記録。破棄は Clear で行う
         //! 線は 4096 頂点、面は 12960 三角形を超えると古いものから捨てる
@@ -51,10 +52,11 @@ namespace NS
 
             //! @brief 溜めた図形を描く。溜めた図形は残る
             //! @details 面を先に、線を後に描く。空なら何もしない。GPU の準備に失敗した時と、
-            //! renderer の Shaders に debug_line のシェーダーが無い時は何も描かない
+            //! shaders に debug_line のシェーダーが無い時は何も描かない
             //! @param[in,out] renderer 描画コマンドの発行先
+            //! @param[in] shaders debugLineVs と debugLinePs を描く間だけ使う
             //! @param[in] viewProjection ビュー・プロジェクション行列
-            void Draw(Renderer& renderer, const Matrix& viewProjection) const noexcept;
+            void Draw(Renderer& renderer, const BuiltinShaders& shaders, const Matrix& viewProjection) const noexcept;
 
             //! 溜めた線と面を全て捨てる
             void Clear() noexcept;
@@ -121,10 +123,11 @@ namespace NS
             void BeginStep() noexcept;
 
             //! @brief この固定ステップの図形を描く。溜めた図形は残る
-            //! @details ビューを何枚描いても、歩の無いフレームでも同じ図形が出る
+            //! @details ビューを何枚描いても、固定ステップが進まないフレームでも同じ図形が出る
             //! @param[in,out] renderer 描画コマンドの発行先
+            //! @param[in] shaders debugLineVs と debugLinePs を描く間だけ使う
             //! @param[in] viewProjection ビュー・プロジェクション行列
-            void Draw(Renderer& renderer, const Matrix& viewProjection) noexcept;
+            void Draw(Renderer& renderer, const BuiltinShaders& shaders, const Matrix& viewProjection) noexcept;
 
             //! 蓄積した頂点を全て捨てる
             void Clear() noexcept;

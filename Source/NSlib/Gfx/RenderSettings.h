@@ -6,11 +6,10 @@ namespace NS
 {
     namespace Gfx
     {
-        //! @brief プロジェクト全体の標準となる描画設定
-        //! @details 描画システムが保持し、シーンは配置された平行光の値で照明を上書きした複製を描画に使う
+        //! @brief プロジェクト全体の標準となる照明
+        //! @details シーンは初期値から、配置された平行光の値で照明を上書きした複製を描画に使う
         struct RenderSettings
         {
-            Color clearColor{0.10f, 0.10f, 0.15f, 1.0f}; //!< 画面のクリア色
             Vector3 lightDir{-0.3f, -1.0f, -0.2f};       //!< 平行光源の方向
             Vector3 lightColor{1.0f, 1.0f, 1.0f};        //!< 平行光源の色と明るさ
             //! 空側の環境光。上を向いた面へ回る

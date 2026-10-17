@@ -8,6 +8,7 @@
 #include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
+#include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Gfx/ScreenFade.h"
 #include "NSlib/Gfx/D3DTexture.h"
@@ -27,7 +28,7 @@ namespace
         int DrawOrder() const noexcept override { return 10000; }
         void OnRenderOverlay(const NS::Gfx::RenderContext& context) override
         {
-            context.renderer->DrawFullscreenColor(NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
+            context.overlay->DrawFullscreenColor(NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
         }
     };
 
@@ -182,16 +183,19 @@ TEST(ScreenFade, FullscreenDrawCoversUIAndTheResizedTarget)
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    renderer.SetShaders(assets.LoadBuiltinShaders());
+    const NS::AssetManagerScope useAssets{assets};
     const std::unique_ptr<NS::Gfx::D3DRenderTarget> target = NS::Gfx::D3DRenderTarget::Create({64, 36});
     ASSERT_TRUE(target->IsValid());
     NS::SceneRenderer sceneRenderer;
+    sceneRenderer.SetRenderer(&renderer);
     NS::Gfx::ScreenFade fade;
     WhiteScreen ui;
     NS::UIDirector screens;
     screens.Add(ui);
     NS::Gfx::RenderContext context;
     context.renderer = &renderer;
+    context.overlay = sceneRenderer.Overlay();
+    ASSERT_NE(context.overlay, nullptr);
 
     renderer.SetSceneTarget(target.get());
     fade.BeginOut(0.0f);

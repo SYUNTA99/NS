@@ -17,7 +17,7 @@
 #include "NSlib/Gfx/D3DSkeletalMesh.h"
 #include "NSlib/Gfx/D3DStaticMesh.h"
 #include "NSlib/Gfx/D3DTexture.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Phys/MeshShape.h"
 #include "NSlib/Windows/Filesystem.h"
 

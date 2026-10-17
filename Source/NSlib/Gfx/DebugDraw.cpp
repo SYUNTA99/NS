@@ -11,6 +11,7 @@
 #include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
+#include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Gfx/D3DShader.h"
 
@@ -263,7 +264,9 @@ namespace NS
             m_faces.push_back({c, color});
         }
 
-        void DebugShapes::Draw(Renderer& renderer, const Matrix& viewProjection) const noexcept
+        void DebugShapes::Draw(Renderer& renderer,
+                               const BuiltinShaders& shaders,
+                               const Matrix& viewProjection) const noexcept
         {
             static_assert(sizeof(Vertex) == k_VertexStride, "Vertex は POSITION(12) + COLOR(16) の 28 byte 前提");
 
@@ -272,8 +275,7 @@ namespace NS
                 return;
             }
 
-            // シェーダーは AssetManager が捨てると消えるので、静的な資源に控えず毎回 Renderer から引く
-            const BuiltinShaders& shaders = renderer.Shaders();
+            // シェーダーは AssetManager が捨てると消えるので、静的な資源に控えず毎回渡された物を使う
             if (shaders.debugLineVs == nullptr || shaders.debugLinePs == nullptr)
             {
                 return;
@@ -367,9 +369,9 @@ namespace NS
                 StepShapes().Capsule(base, axis, radius, color);
             }
 
-            void Draw(Renderer& renderer, const Matrix& viewProjection) noexcept
+            void Draw(Renderer& renderer, const BuiltinShaders& shaders, const Matrix& viewProjection) noexcept
             {
-                StepShapes().Draw(renderer, viewProjection);
+                StepShapes().Draw(renderer, shaders, viewProjection);
             }
 
             void BeginStep() noexcept

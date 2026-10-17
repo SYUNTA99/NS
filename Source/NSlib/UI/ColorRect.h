@@ -14,7 +14,7 @@ namespace NS
             [[nodiscard]] const Color& GetColor() const noexcept { return m_color; }
 
         protected:
-            void OnDraw(Gfx::Renderer& renderer, const WidgetRect& rectPx, float alpha) override;
+            void OnDraw(Gfx::ScreenOverlay& overlay, const WidgetRect& rectPx, float alpha) override;
 
         private:
             Color m_color{1.0f, 1.0f, 1.0f, 1.0f}; // 塗り色。alpha は Widget の実効値と掛かる

@@ -32,7 +32,7 @@ namespace NS
 namespace NS
 {
 
-    //! 描画のプロジェクト既定値などは RendererDesc の settings 側で設定する
+    //! 画面のクリア色などは RendererDesc 側で設定する
     struct ApplicationDesc
     {
         OS::WindowDesc window{};

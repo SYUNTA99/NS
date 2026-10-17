@@ -3,6 +3,7 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
+#include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/RenderContext.h"
 #include "NSlib/Gfx/Renderer.h"
 
@@ -190,14 +191,14 @@ namespace NS
 
     void HitScreenDirector::OnRenderOverlay(const Gfx::RenderContext& context)
     {
-        if (context.renderer == nullptr)
+        if (context.renderer == nullptr || context.overlay == nullptr)
         {
             return;
         }
         const float alpha = FlashAlpha();
         if (alpha > 0.0f)
         {
-            context.renderer->DrawFullscreenColor(Color{1.0f, 1.0f, 1.0f, alpha});
+            context.overlay->DrawFullscreenColor(Color{1.0f, 1.0f, 1.0f, alpha});
         }
         RenderShakeLines(context);
     }
@@ -248,15 +249,15 @@ namespace NS
         const float outline = k_LineOutlineWidth * pixelScale;
         for (const HitShakeLineRect& rect : rects)
         {
-            context.renderer->DrawScreenRect(rect.x - outline,
-                                             rect.y - outline,
-                                             rect.width + outline * 2.0f,
-                                             rect.height + outline * 2.0f,
-                                             Color{0.0f, 0.0f, 0.0f, 0.6f});
+            context.overlay->DrawScreenRect(rect.x - outline,
+                                            rect.y - outline,
+                                            rect.width + outline * 2.0f,
+                                            rect.height + outline * 2.0f,
+                                            Color{0.0f, 0.0f, 0.0f, 0.6f});
         }
         for (const HitShakeLineRect& rect : rects)
         {
-            context.renderer->DrawScreenRect(
+            context.overlay->DrawScreenRect(
                 rect.x, rect.y, rect.width, rect.height, Color{1.0f, 1.0f, 1.0f, 1.0f});
         }
     }

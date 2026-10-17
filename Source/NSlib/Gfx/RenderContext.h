@@ -10,6 +10,7 @@ namespace NS
     namespace Gfx
     {
         class Renderer;
+        class ScreenOverlay;
 
         //! 上向きの面に広がる光の輪。形状は変えず、画素シェーダーで表現する
         struct GroundWave
@@ -35,6 +36,9 @@ namespace NS
         {
             //! 描画先のレンダラー
             Renderer* renderer = nullptr;
+
+            //! 重ね描きと UI が、全画面の色と画面の矩形を描く先。無ければ描かない
+            ScreenOverlay* overlay = nullptr;
 
             //! カメラのビュープロジェクション行列
             Matrix viewProjection{};

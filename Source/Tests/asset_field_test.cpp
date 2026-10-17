@@ -19,7 +19,7 @@
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/GraphicObject.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "TestAnimatedPlayerActor.h"
 #include "TestLogCapture.h"

@@ -8,7 +8,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class Renderer;
+        class ScreenOverlay;
 
         //! @brief 全画面へ黒を重ねる暗転と明転
         //! @details Advance で時間を進め、全 UI の後に Render を呼ぶ
@@ -31,7 +31,7 @@ namespace NS
             void Advance(float dt) noexcept;
 
             //! 現在の描画先の全体へ黒を重ねる。透明時は何もしない
-            void Render(Renderer& renderer) const noexcept;
+            void Render(ScreenOverlay& overlay) const noexcept;
 
             //! 暗転か明転が進行中か
             [[nodiscard]] bool IsFading() const noexcept { return m_stage == Stage::Out || m_stage == Stage::In; }

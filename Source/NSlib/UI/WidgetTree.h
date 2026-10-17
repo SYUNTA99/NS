@@ -8,7 +8,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class Renderer;
+        class ScreenOverlay;
     } // namespace Gfx
 } // namespace NS
 
@@ -29,8 +29,8 @@ namespace NS
             void Layout(const UICanvas& canvas) noexcept;
 
             //! @brief 矩形を確定し、現在の描画先へ重ねて描く
-            //! @details 中身が無ければ何もしない。renderer が未設定なら呼び出し側の不備
-            void Draw(Gfx::Renderer* renderer, const UICanvas& canvas);
+            //! @details 中身が無ければ何もしない。overlay が未設定なら呼び出し側の不備
+            void Draw(Gfx::ScreenOverlay* overlay, const UICanvas& canvas);
 
             //! 描画先ピクセル座標の点を UI が吸うか。直近の Layout の結果で判定する
             [[nodiscard]] bool ConsumesPointer(const UICanvas& canvas, float px, float py) const noexcept;

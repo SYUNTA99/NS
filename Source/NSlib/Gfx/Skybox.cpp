@@ -1,15 +1,18 @@
 #include "NSlib/Gfx/Skybox.h"
 #include "NSlib/Core/Types.h"
 
+#include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
+#include "NSlib/Gfx/D3DCommonStates.h"
 #include "NSlib/Gfx/D3dCommon.h"
 #include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DStaticMesh.h"
+#include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Gfx/detail/TextureFile.h"
 #include "NSlib/Windows/Filesystem.h"
@@ -249,17 +252,24 @@ namespace NS
 
         } // namespace
 
-        std::unique_ptr<Skybox> Skybox::Create(const BuiltinShaders& shaders)
+        Skybox::Skybox(const BuiltinShaders& shaders) noexcept : m_vs(shaders.skyboxVs), m_ps(shaders.skyboxPs)
         {
-            return std::unique_ptr<Skybox>(new Skybox(shaders));
         }
 
-        Skybox::Skybox(const BuiltinShaders& shaders) : m_vs(shaders.skyboxVs), m_ps(shaders.skyboxPs)
+        Skybox::~Skybox() = default;
+
+        void Skybox::EnsureResources() noexcept
         {
+            if (m_tried)
+            {
+                return;
+            }
+            m_tried = true;
+
             ID3D11Device* device = Gpu().device;
             if (device == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "Skybox: グローバル Device が無効");
+                NS_LOG_WARN(Graphics, "Skybox: device が無いため空を描かない");
                 return;
             }
 
@@ -313,7 +323,55 @@ namespace NS
             m_valid = true;
         }
 
-        Skybox::~Skybox() = default;
+        void Skybox::Draw(Renderer& renderer, const CameraData& camera, std::string_view cubemapPath) noexcept
+        {
+            // cubemap を指定していないシーンは空を持たない。描く資源も作らない
+            if (cubemapPath.empty())
+            {
+                return;
+            }
+
+            EnsureResources();
+            if (!IsValid() || !renderer.IsValid())
+            {
+                return;
+            }
+            UpdateCubemap(cubemapPath);
+
+            // view の平行移動成分を 0 化して camera 中心に空を固定する
+            Matrix viewNoTranslate = camera.View();
+            viewNoTranslate._41 = 0.0f;
+            viewNoTranslate._42 = 0.0f;
+            viewNoTranslate._43 = 0.0f;
+            DrawCube(renderer.Commands(), viewNoTranslate * camera.Projection(), renderer.States().LinearClamp());
+        }
+
+        void Skybox::UpdateCubemap(std::string_view cubemapPath) noexcept
+        {
+            // 毎フレーム LoadCubemap するとファイル読み込みが常時走る
+            if (cubemapPath == m_loadedPath)
+            {
+                return;
+            }
+            // ユーザー編集ファイル由来のパスを ContentRoot 配下へ閉じ込める。外を指す値は読み込まない
+            const std::optional<std::string> absPath =
+                OS::FileSystem::ResolveUnder(OS::FileSystem::ContentRoot(), cubemapPath);
+            if (!absPath.has_value())
+            {
+                NS_LOG_WARN(Graphics, "Skybox: cubemap パス '{}' は ContentRoot 配下でないため読み込まない", cubemapPath);
+                // 拒否はパスを直すまで変わらないので、覚えて警告の連打を止める
+                m_loadedPath = cubemapPath;
+            }
+            else if (LoadCubemap(*absPath))
+            {
+                m_loadedPath = cubemapPath;
+            }
+            else
+            {
+                NS_LOG_WARN(Graphics, "Skybox: cubemap 読込失敗 ({}), 既存を維持", *absPath);
+                // 失敗時は前回パスを更新しないので次フレームで再試行できる
+            }
+        }
 
         bool Skybox::LoadCubemap(std::string_view path)
         {
@@ -352,9 +410,9 @@ namespace NS
             return false;
         }
 
-        void Skybox::Draw(D3DCommandList& commands,
-                          const Matrix& viewProjNoTranslate,
-                          ID3D11SamplerState* sampler) const noexcept
+        void Skybox::DrawCube(D3DCommandList& commands,
+                              const Matrix& viewProjNoTranslate,
+                              ID3D11SamplerState* sampler) const noexcept
         {
             if (!IsValid() || commands.Native() == nullptr)
             {

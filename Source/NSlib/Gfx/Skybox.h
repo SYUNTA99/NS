@@ -4,7 +4,14 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Gfx/D3dCommon.h"
 
+#include <memory>
 #include <string>
+#include <string_view>
+
+namespace NS
+{
+    class CameraData;
+} // namespace NS
 
 namespace NS
 {
@@ -15,26 +22,24 @@ namespace NS
         class D3DShader;
         class D3DBuffer;
         class D3DPipeline;
+        class Renderer;
         struct BuiltinShaders;
 
-        //! @brief スカイボックスの描画リソース
-        //! @details 無限遠の背景を描くメッシュとキューブマップを持つ
+        //! @brief 無限遠の背景の空を描く
+        //! @details 立方体のメッシュとキューブマップを持つ。描く資源は、画像を指定した初回の Draw で作る
         //! 画像を読み込むまではピンク一色のフォールバックを描く
         //! @warning Renderer より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
         class Skybox : public NonCopyable
         {
         public:
-            //! @brief スカイボックス用のリソースを生成する
-            //! @param[in] shaders skyboxVs と skyboxPs を指すだけで持たない。どちらかが nullptr なら無効になる
-            [[nodiscard]] static std::unique_ptr<Skybox> Create(const BuiltinShaders& shaders);
-
+            //! @param[in] shaders skyboxVs と skyboxPs を指すだけで持たない。どちらかが nullptr なら描かない
+            explicit Skybox(const BuiltinShaders& shaders) noexcept;
             ~Skybox();
 
-            //! @brief 指定されたパスから背景画像を読み込む
-            //! @details DDS などの単一ファイルか、6 方向の画像を入れたディレクトリを指定できる
-            //! @param[in] path 読み込むファイルまたはディレクトリのパス
-            //! @return 成功した場合 true、それ以外の場合は false。失敗しても前の中身を保つ
-            [[nodiscard]] bool LoadCubemap(std::string_view path);
+            //! @brief 不透明の後、半透明の前に空を描く。変更した描画ステートは終了時に戻す
+            //! @details cubemapPath は ContentRoot 内の .dds か、6 方向の画像を入れたディレクトリ。空なら描かない
+            //! 画像の読み込みに失敗した時は前の画像を保って次の Draw で再試行し、GPU 資源の生成失敗は再試行しない
+            void Draw(Renderer& renderer, const CameraData& camera, std::string_view cubemapPath) noexcept;
 
             //! 立方体メッシュ・シェーダ・定数バッファ・パイプライン・代替のキューブマップが揃っているか
             [[nodiscard]] bool IsValid() const noexcept;
@@ -42,14 +47,20 @@ namespace NS
             //! 画像が未読み込み、または直近の読み込みに失敗したか
             [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-            //! 不透明の後、半透明の前に描く。変更した描画ステートは終了時に戻す
-            //! viewProjNoTranslate はカメラの平行移動を除く行列、sampler は線形・端固定
-            void Draw(D3DCommandList& commands,
-                      const Matrix& viewProjNoTranslate,
-                      ID3D11SamplerState* sampler) const noexcept;
-
         private:
-            explicit Skybox(const BuiltinShaders& shaders);
+            // 描く資源を初回だけ作る
+            void EnsureResources() noexcept;
+
+            // cubemapPath が前回と違う時だけ読み直す。ContentRoot の外を指す道は読まない
+            void UpdateCubemap(std::string_view cubemapPath) noexcept;
+
+            // DDS などの単一ファイルか、6 方向の画像を入れたディレクトリを読む。失敗しても前の中身を保つ
+            [[nodiscard]] bool LoadCubemap(std::string_view path);
+
+            // viewProjNoTranslate はカメラの平行移動を除く行列、sampler は線形・端固定
+            void DrawCube(D3DCommandList& commands,
+                          const Matrix& viewProjNoTranslate,
+                          ID3D11SamplerState* sampler) const noexcept;
 
             std::unique_ptr<D3DStaticMesh> m_cubeMesh;
             D3DShader* m_vs = nullptr;
@@ -57,7 +68,9 @@ namespace NS
             std::unique_ptr<D3DBuffer> m_cb;
             std::unique_ptr<D3DPipeline> m_pipeline;
             ComPtr<ID3D11ShaderResourceView> m_cubemapSrv;
+            std::string m_loadedPath;
             bool m_usingFallback = true;
+            bool m_tried = false;
             bool m_valid = false;
         };
     } // namespace Gfx

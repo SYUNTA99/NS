@@ -1,10 +1,12 @@
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Gfx/EffectScene.h"
 #include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Gfx/D3DTexture.h"
+#include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 #include "TestEffectFiles.h"
 #include "TestLogCapture.h"
@@ -152,6 +154,8 @@ TEST(EffectLifecycle, RebuildingThePausedSceneClearsPixelsBeforeAnotherStep)
     NS::OS::Window window(NS::OS::WindowDesc{.title = "エフェクト終了の試し", .size = {32, 32}, .visible = false});
     NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
     ASSERT_TRUE(renderer.IsValid());
+    NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
+    const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
     scene.SetEffectRoot("Assets/Effects");
     scene.SetRenderer(&renderer);

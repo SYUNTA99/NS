@@ -3,18 +3,11 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/RenderSettings.h"
 #include "NSlib/Windows/Window.h"
 
 #include "NSlib/Core/Types.h"
 #include <filesystem>
-#include <string>
 #include <vector>
-
-namespace NS
-{
-    class CameraData;
-} // namespace NS
 
 namespace NS
 {
@@ -25,7 +18,7 @@ namespace NS
         {
             bool enableDebugLayer = false; //!< DX11 のデバッグレイヤーを有効にするか
             bool vsync = true;             //!< 垂直同期を有効にするか
-            RenderSettings settings{};     //!< プロジェクト全体の標準となる描画設定
+            Color clearColor{0.10f, 0.10f, 0.15f, 1.0f}; //!< BeginFrame と BeginSceneView が描画先を塗る色
         };
 
         class D3DCommandList;
@@ -33,31 +26,7 @@ namespace NS
         class D3DRenderTarget;
         class D3DTexture;
         class D3DPipeline;
-        class D3DShader;
-        class D3DBuffer;
-        class Skybox;
         enum class BlendMode;
-
-        //! @brief 描く段が使う組み込みのシェーダー。持ち主は渡す側で、描く段は指すだけ
-        //! @details 渡す側は描く段より長く持つ。読み直しは同じ D3DShader のまま中身を替えるので、
-        //! 描く段は指したまま新しい中身で描く。nullptr のシェーダーを使う段は描かない
-        struct BuiltinShaders
-        {
-            D3DShader* fullscreenVs = nullptr; //!< fade.vs.hlsl。全画面塗り・Bloom・ScreenPasses が共有する
-            D3DShader* fadePs = nullptr;       //!< fade.ps.hlsl。全画面塗り
-            D3DShader* screenRectVs = nullptr; //!< ui_rect.vs.hlsl。UI 矩形
-            D3DShader* screenRectPs = nullptr; //!< ui_rect.ps.hlsl。UI 矩形
-            D3DShader* skyboxVs = nullptr;     //!< skybox.vs.hlsl
-            D3DShader* skyboxPs = nullptr;     //!< skybox.ps.hlsl
-            D3DShader* debugLineVs = nullptr;  //!< debug_line.vs.hlsl。DebugDraw
-            D3DShader* debugLinePs = nullptr;  //!< debug_line.ps.hlsl。DebugDraw
-            D3DShader* bloomThresholdPs = nullptr;   //!< bloom_threshold.ps.hlsl
-            D3DShader* bloomDownPs = nullptr;        //!< bloom_down.ps.hlsl
-            D3DShader* bloomUpPs = nullptr;          //!< bloom_up.ps.hlsl
-            D3DShader* bloomCompositePs = nullptr;   //!< bloom_composite.ps.hlsl
-            D3DShader* screenDistortionPs = nullptr; //!< screen_distortion.ps.hlsl。ScreenPasses
-            D3DShader* bodyMaskPs = nullptr;         //!< body_mask.ps.hlsl。ScreenPasses
-        };
 
         //! ウィンドウに対応する D3D11 の描画基盤。構築失敗は IsValid で確認する
         //! @warning 静的変数として保持せず、GPU 資源より後に破棄する
@@ -78,8 +47,8 @@ namespace NS
             //! 既定のクリア色で新しいフレームの描画を始める
             void BeginFrame() noexcept;
 
-            //! プロジェクト全体の標準となる描画設定を返す
-            [[nodiscard]] const RenderSettings& Settings() const noexcept;
+            //! BeginFrame と BeginSceneView が描画先を塗る色
+            [[nodiscard]] const Color& ClearColor() const noexcept;
 
             //! フレームの描画を終了し、結果を画面に出力する
             void EndFrame() noexcept;
@@ -134,56 +103,9 @@ namespace NS
             //! @note 共通パイプラインと一緒に構築の最後に作るので、構築に失敗した Renderer では呼んではいけない
             [[nodiscard]] const D3DPipeline& OccludedPipeline(bool twoSided = false) const noexcept;
 
-            //! @brief 全画面塗り・UI 矩形・空・DebugDraw が使うシェーダーを差し替える
-            //! @details 渡す前とシェーダーが nullptr の間は、それを使う描画をしない。空は次の DrawSky で作り直す
-            //! シェーダーの持ち主を捨てた後は、別の BuiltinShaders を渡すまで描かない
-            void SetShaders(const BuiltinShaders& shaders) noexcept;
-
-            //! SetShaders で渡したシェーダー。渡す前は全部 nullptr
-            [[nodiscard]] const BuiltinShaders& Shaders() const noexcept;
-
-            //! 全画面に指定色を半透明合成する。最前面に出す場合は最後に呼ぶ
-            void DrawFullscreenColor(const Color& color) noexcept;
-
-            //! 左上原点の画素座標で矩形を半透明合成する。最前面に出す場合は最後に呼ぶ
-            void DrawScreenRect(float x, float y, float width, float height, const Color& color) noexcept;
-
-            //! 不透明の後、半透明の前に空を描く。ContentRoot 内の .dds またはキューブマップのディレクトリを使う
-            //! 空パスでは描かない。画像読込失敗は前の画像を保って再試行し、GPU 資源の生成失敗は再試行しない
-            void DrawSky(const CameraData& camera, std::string_view cubemapPath) noexcept;
-
         private:
-            // 頂点を持たず SV_VertexID から形を作り、最前面へ半透明で重ねる描画の資源
-            struct OverlayResources
-            {
-                std::unique_ptr<D3DBuffer> cb;
-                std::unique_ptr<D3DPipeline> pipeline;
-                bool tried = false; // 構築を試みたか
-                bool ready = false; // 構築成功
-            };
-
-            // 重ね描きの資源を初回だけ構築し、今描けるかを返す。シェーダーは毎回見て、nullptr なら描かない
-            // label はログに出す名前
-            [[nodiscard]] bool EnsureOverlay(OverlayResources& overlay,
-                                             const D3DShader* vs,
-                                             const D3DShader* ps,
-                                             std::size_t constantBytes,
-                                             std::string_view label) noexcept;
-
-            // 定数を流して重ね描きを 1 回出す。vsReadsConstants が false なら頂点シェーダへ定数を差さない
-            void DrawOverlay(const OverlayResources& overlay,
-                             const D3DShader& vs,
-                             const D3DShader& ps,
-                             const void* constants,
-                             std::size_t constantBytes,
-                             uint vertexCount,
-                             bool vsReadsConstants) noexcept;
-
             // 描画先とビューポートを差す
             void BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, Size2D size) noexcept;
-
-            // 空を描く Skybox を初回だけ構築する
-            void EnsureSkyboxResources() noexcept;
 
             ComPtr<ID3D11Device> m_device;
             ComPtr<ID3D11DeviceContext> m_context;
@@ -196,17 +118,9 @@ namespace NS
             std::unique_ptr<D3DPipeline> m_commonPipelines[2][3];
             //! 隠れた画素だけへ半透明で描くパイプライン。[裏も描くか]
             std::unique_ptr<D3DPipeline> m_occludedPipelines[2];
-            BuiltinShaders m_shaders{};
-            OverlayResources m_fullscreen; // 全画面塗り。初回 DrawFullscreenColor で構築
-            OverlayResources m_screenRect; // UI 矩形。初回 DrawScreenRect で構築
-            // 空を描く Skybox。cubemap を指定した初回の DrawSky で一度だけ構築する
-            std::unique_ptr<Skybox> m_skybox;
-            std::string
-                m_loadedSkyboxPath;     // 前回判定した cubemap のパス。読めた物と拒否した物が入り、差分の時だけ読み直す
-            bool m_skyboxTried = false; // 構築を試みたか
             D3DRenderTarget* m_sceneTarget = nullptr; //!< 非所有のシーン描画先。未指定ならウィンドウへ描く
             OS::Window* m_window = nullptr;
-            RenderSettings m_settings{};
+            Color m_clearColor{};
             bool m_vsync = true;
             bool m_valid = false;
             bool m_resizeCallbackRegistered = false; // デストラクタの購読解除判定

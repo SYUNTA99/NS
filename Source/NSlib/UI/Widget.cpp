@@ -28,7 +28,7 @@ namespace NS
             }
         }
 
-        void Widget::Draw(Gfx::Renderer& renderer, float parentAlpha, float scale)
+        void Widget::Draw(Gfx::ScreenOverlay& overlay, float parentAlpha, float scale)
         {
             if (!m_visible)
             {
@@ -41,11 +41,11 @@ namespace NS
             rectPx.y = m_layoutRect.y * scale;
             rectPx.width = m_layoutRect.width * scale;
             rectPx.height = m_layoutRect.height * scale;
-            OnDraw(renderer, rectPx, alpha);
+            OnDraw(overlay, rectPx, alpha);
 
             for (const std::unique_ptr<Widget>& child : m_children)
             {
-                child->Draw(renderer, alpha, scale);
+                child->Draw(overlay, alpha, scale);
             }
         }
 

@@ -1,12 +1,12 @@
 #include "NSlib/UI/ColorRect.h"
 
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/Render/ScreenOverlay.h"
 
 namespace NS
 {
     namespace UI
     {
-        void ColorRect::OnDraw(Gfx::Renderer& renderer, const WidgetRect& rectPx, float alpha)
+        void ColorRect::OnDraw(Gfx::ScreenOverlay& overlay, const WidgetRect& rectPx, float alpha)
         {
             const float effective = m_color.A() * alpha;
             if (effective <= 0.0f)
@@ -14,11 +14,11 @@ namespace NS
                 return;
             }
 
-            renderer.DrawScreenRect(rectPx.x,
-                                    rectPx.y,
-                                    rectPx.width,
-                                    rectPx.height,
-                                    Color{m_color.R(), m_color.G(), m_color.B(), effective});
+            overlay.DrawScreenRect(rectPx.x,
+                                   rectPx.y,
+                                   rectPx.width,
+                                   rectPx.height,
+                                   Color{m_color.R(), m_color.G(), m_color.B(), effective});
         }
     } // namespace UI
 } // namespace NS

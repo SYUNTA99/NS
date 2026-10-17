@@ -1,6 +1,6 @@
 #include "NSlib/Gfx/ScreenFade.h"
 
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/Render/ScreenOverlay.h"
 
 #include <algorithm>
 
@@ -8,12 +8,12 @@ namespace NS
 {
     namespace Gfx
     {
-        void ScreenFade::Render(Renderer& renderer) const noexcept
+        void ScreenFade::Render(ScreenOverlay& overlay) const noexcept
         {
             const float alpha = Alpha();
             if (alpha > 0.0f)
             {
-                renderer.DrawFullscreenColor(Color{0.0f, 0.0f, 0.0f, alpha});
+                overlay.DrawFullscreenColor(Color{0.0f, 0.0f, 0.0f, alpha});
             }
         }
 

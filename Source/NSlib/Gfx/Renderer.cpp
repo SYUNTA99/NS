@@ -2,9 +2,7 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
 #include "NSlib/Gfx/D3dCommon.h"
@@ -12,10 +10,7 @@
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
-#include "NSlib/Gfx/D3DShader.h"
-#include "NSlib/Gfx/Skybox.h"
 #include "NSlib/Gfx/D3DTexture.h"
-#include "NSlib/Windows/Filesystem.h"
 #include "ThirdParty/DirectXTex/ScreenGrab/ScreenGrab11.h"
 
 #include <cstring>
@@ -33,22 +28,6 @@ namespace NS
     {
         namespace
         {
-            // 全画面塗り shader (fade.ps) の cbuffer b0 とバイト一致させる
-            struct alignas(16) FullscreenColorCB
-            {
-                Color color;
-            };
-            static_assert(sizeof(FullscreenColorCB) == 16,
-                          "FullscreenColorCB は HLSL の cbuffer b0 とバイト一致が必要");
-
-            // UI 矩形 shader (ui_rect.vs / ps) の cbuffer b0 とバイト一致させる
-            struct alignas(16) ScreenRectCB
-            {
-                float rect[4]; // clip 空間の左上の x と y、幅と高さ。高さは画面下方向の量
-                Color color;
-            };
-            static_assert(sizeof(ScreenRectCB) == 32, "ScreenRectCB は HLSL の cbuffer b0 とバイト一致が必要");
-
             bool TryCreateDeviceAndSwapChain(HWND hwnd,
                                              int width,
                                              int height,
@@ -177,7 +156,7 @@ namespace NS
         {
             m_window = &window;
             m_vsync = desc.vsync;
-            m_settings = desc.settings;
+            m_clearColor = desc.clearColor;
 
             if (!window.IsValid())
             {
@@ -442,199 +421,6 @@ namespace NS
             return *m_occludedPipelines[sided];
         }
 
-        void Renderer::SetShaders(const BuiltinShaders& shaders) noexcept
-        {
-            m_shaders = shaders;
-            // 空は作った時のシェーダーを指すので、捨てて次の DrawSky で今のシェーダーから作り直す
-            m_skybox.reset();
-            m_skyboxTried = false;
-            m_loadedSkyboxPath.clear();
-        }
-
-        const BuiltinShaders& Renderer::Shaders() const noexcept
-        {
-            return m_shaders;
-        }
-
-        bool Renderer::EnsureOverlay(OverlayResources& overlay,
-                                     const D3DShader* vs,
-                                     const D3DShader* ps,
-                                     std::size_t constantBytes,
-                                     std::string_view label) noexcept
-        {
-            if (vs == nullptr || ps == nullptr || !vs->IsValid() || !ps->IsValid())
-            {
-                return false;
-            }
-            if (!overlay.tried)
-            {
-                overlay.tried = true;
-                if (m_device == nullptr)
-                {
-                    return false;
-                }
-
-                overlay.cb = D3DBuffer::Create(MakeConstantBufferDesc(constantBytes));
-                if (!overlay.cb->IsValid())
-                {
-                    NS_LOG_ERROR(Graphics, "Renderer: {} ConstantBuffer 構築失敗", label);
-                    return false;
-                }
-
-                // 描画済みの絵の上へ半透明で重ねる。常に最前面へ出すので深度は見ない
-                // 全画面三角形の 3 頂点はスクリーン空間で反時計回りになり、既定の背面カリングでは消える
-                D3DPipelineDesc pipeDesc{};
-                pipeDesc.cull = CullMode::None;
-                pipeDesc.blend = BlendMode::Alpha;
-                pipeDesc.depth = DepthMode::Disabled;
-                overlay.pipeline = D3DPipeline::Create(pipeDesc);
-                if (!overlay.pipeline->IsValid())
-                {
-                    NS_LOG_ERROR(Graphics, "Renderer: {} D3DPipeline 構築失敗", label);
-                    return false;
-                }
-
-                overlay.ready = true;
-            }
-            return overlay.ready && m_commands && m_commands->Native() != nullptr;
-        }
-
-        void Renderer::DrawOverlay(const OverlayResources& overlay,
-                                   const D3DShader& vs,
-                                   const D3DShader& ps,
-                                   const void* constants,
-                                   std::size_t constantBytes,
-                                   uint vertexCount,
-                                   bool vsReadsConstants) noexcept
-        {
-            D3DCommandList& cmd = *m_commands;
-            cmd.UpdateSubresource(*overlay.cb, constants, constantBytes);
-
-            cmd.SetPipeline(*overlay.pipeline);
-            cmd.VSSetShader(vs);
-            cmd.PSSetShader(ps);
-            if (vsReadsConstants)
-            {
-                cmd.VSSetConstantBuffer(*overlay.cb, 0);
-            }
-            cmd.PSSetConstantBuffer(*overlay.cb, 0);
-
-            // VS が SV_VertexID から形を作るので、InputLayout を外し頂点もインデックスもバインドしない
-            cmd->IASetInputLayout(nullptr);
-            cmd.SetTopology(Topology::TriangleList);
-            cmd.Draw(vertexCount);
-        }
-
-        void Renderer::DrawFullscreenColor(const Color& color) noexcept
-        {
-            if (!EnsureOverlay(
-                    m_fullscreen, m_shaders.fullscreenVs, m_shaders.fadePs, sizeof(FullscreenColorCB), "全画面塗り"))
-            {
-                return;
-            }
-
-            FullscreenColorCB cbData{};
-            cbData.color = color;
-            DrawOverlay(m_fullscreen, *m_shaders.fullscreenVs, *m_shaders.fadePs, &cbData, sizeof(cbData), 3, false);
-        }
-
-        void Renderer::DrawScreenRect(float x, float y, float width, float height, const Color& color) noexcept
-        {
-            if (!EnsureOverlay(
-                    m_screenRect, m_shaders.screenRectVs, m_shaders.screenRectPs, sizeof(ScreenRectCB), "UI 矩形"))
-            {
-                return;
-            }
-
-            const Size2D targetSize = Size();
-            if (targetSize.width <= 0 || targetSize.height <= 0)
-            {
-                NS_LOG_WARN(
-                    Graphics, "Renderer: DrawScreenRect 無効な描画先サイズ {}x{}", targetSize.width, targetSize.height);
-                return;
-            }
-            const float targetWidth = static_cast<float>(targetSize.width);
-            const float targetHeight = static_cast<float>(targetSize.height);
-
-            // ピクセル (左上原点) → clip 空間 (中央原点・y 上向き) へ CPU 側で変換して渡す
-            ScreenRectCB cbData{};
-            cbData.rect[0] = x / targetWidth * 2.0f - 1.0f;
-            cbData.rect[1] = 1.0f - y / targetHeight * 2.0f;
-            cbData.rect[2] = width / targetWidth * 2.0f;
-            cbData.rect[3] = height / targetHeight * 2.0f;
-            cbData.color = color;
-            DrawOverlay(m_screenRect, *m_shaders.screenRectVs, *m_shaders.screenRectPs, &cbData, sizeof(cbData), 6, true);
-        }
-
-        void Renderer::EnsureSkyboxResources() noexcept
-        {
-            if (m_skyboxTried)
-            {
-                return;
-            }
-            m_skyboxTried = true;
-
-            if (m_device == nullptr)
-            {
-                NS_LOG_WARN(Graphics, "Renderer: device が無いため空を描かない");
-                return;
-            }
-
-            std::unique_ptr<Skybox> skybox = Skybox::Create(m_shaders);
-            if (!skybox || !skybox->IsValid())
-            {
-                NS_LOG_WARN(Graphics, "Renderer: Skybox の構築失敗のため空を描かない");
-                return;
-            }
-            m_skybox = std::move(skybox);
-        }
-
-        void Renderer::DrawSky(const CameraData& camera, std::string_view cubemapPath) noexcept
-        {
-            // cubemap を指定していないシーンは空を持たない。Skybox の構築もしない
-            if (cubemapPath.empty())
-            {
-                return;
-            }
-
-            EnsureSkyboxResources();
-            if (!m_skybox || !m_commands || !m_states)
-            {
-                return;
-            }
-
-            // 毎フレーム LoadCubemap するとファイル読み込みが常時走る
-            if (cubemapPath != m_loadedSkyboxPath)
-            {
-                // ユーザー編集ファイル由来のパスを ContentRoot 配下へ閉じ込める。外を指す値は読み込まない
-                const std::optional<std::string> absPath =
-                    OS::FileSystem::ResolveUnder(OS::FileSystem::ContentRoot(), cubemapPath);
-                if (!absPath.has_value())
-                {
-                    NS_LOG_WARN(
-                        Graphics, "Renderer: cubemap パス '{}' は ContentRoot 配下でないため読み込まない", cubemapPath);
-                    // 拒否はパスを直すまで変わらないので、覚えて警告の連打を止める
-                    m_loadedSkyboxPath = cubemapPath;
-                }
-                else if (m_skybox->LoadCubemap(*absPath))
-                {
-                    m_loadedSkyboxPath = cubemapPath;
-                }
-                else
-                {
-                    NS_LOG_WARN(Graphics, "Renderer: cubemap 読込失敗 ({}), 既存を維持", *absPath);
-                    // 失敗時は前回パスを更新しないので次フレームで再試行できる
-                }
-            }
-
-            // view の平行移動成分を 0 化して camera 中心に空を固定する
-            Matrix viewNoTranslate = camera.View();
-            viewNoTranslate._41 = 0.0f;
-            viewNoTranslate._42 = 0.0f;
-            viewNoTranslate._43 = 0.0f;
-            m_skybox->Draw(*m_commands, viewNoTranslate * camera.Projection(), m_states->LinearClamp());
-        }
-
         void Renderer::BeginFrame(float r, float g, float b, float a) noexcept
         {
             if (!IsValid() || !m_backbuffer || !m_depth || !m_commands)
@@ -664,13 +450,13 @@ namespace NS
 
         void Renderer::BeginFrame() noexcept
         {
-            const Color& c = m_settings.clearColor;
+            const Color& c = m_clearColor;
             BeginFrame(c.R(), c.G(), c.B(), c.A());
         }
 
-        const RenderSettings& Renderer::Settings() const noexcept
+        const Color& Renderer::ClearColor() const noexcept
         {
-            return m_settings;
+            return m_clearColor;
         }
 
         void Renderer::EndFrame() noexcept
@@ -751,7 +537,7 @@ namespace NS
             {
                 ID3D11RenderTargetView* rtv = target->Color()->Rtv();
                 ID3D11DepthStencilView* dsv = target->Depth()->Dsv();
-                const Color& c = m_settings.clearColor;
+                const Color& c = m_clearColor;
                 m_commands->ClearRenderTarget(rtv, c.R(), c.G(), c.B(), c.A());
                 m_commands->ClearDepth(dsv, 1.0f);
                 BindTarget(rtv, dsv, target->Size());

@@ -7,6 +7,7 @@
 #include "NSlib/Gfx/GraphicObject.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
+#include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"

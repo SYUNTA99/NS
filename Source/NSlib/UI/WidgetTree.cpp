@@ -1,7 +1,6 @@
 #include "NSlib/UI/WidgetTree.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/Gfx/Renderer.h"
 
 namespace NS
 {
@@ -17,16 +16,16 @@ namespace NS
             m_root.Layout(canvas.rect);
         }
 
-        void WidgetTree::Draw(Gfx::Renderer* renderer, const UICanvas& canvas)
+        void WidgetTree::Draw(Gfx::ScreenOverlay* overlay, const UICanvas& canvas)
         {
-            NS_ASSERT(UI, renderer != nullptr, "null の renderer で画面の木を描こうとしている");
+            NS_ASSERT(UI, overlay != nullptr, "null の overlay で画面の木を描こうとしている");
             if (!m_root.HasChildren())
             {
                 return;
             }
 
             Layout(canvas);
-            m_root.Draw(*renderer, 1.0f, canvas.scale);
+            m_root.Draw(*overlay, 1.0f, canvas.scale);
         }
 
         bool WidgetTree::ConsumesPointer(const UICanvas& canvas, float px, float py) const noexcept

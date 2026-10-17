@@ -12,11 +12,11 @@ namespace NS
 
     void UIActor::OnRenderOverlay(const Gfx::RenderContext& context)
     {
-        if (context.renderer == nullptr || m_scene == nullptr)
+        if (context.overlay == nullptr || m_scene == nullptr)
         {
             return;
         }
-        m_widgets.Draw(context.renderer, m_scene->UI().Canvas());
+        m_widgets.Draw(context.overlay, m_scene->UI().Canvas());
     }
 
     void UIActor::Open(Scene& scene)

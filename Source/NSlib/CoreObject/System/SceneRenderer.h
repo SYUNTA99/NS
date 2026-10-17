@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/System/SceneSystem.h"
 #include "NSlib/Gfx/DebugDraw.h"
+#include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/RenderContext.h"
 #include "NSlib/Gfx/RenderProxyList.h"
 #include "NSlib/Gfx/RenderSettings.h"
@@ -43,6 +44,14 @@ namespace NS
     {
         class D3DTexture;
     }
+    namespace Gfx
+    {
+        class ScreenOverlay;
+    }
+    namespace Gfx
+    {
+        class Skybox;
+    }
 } // namespace NS
 
 namespace NS
@@ -75,8 +84,9 @@ namespace NS
         SceneRenderer();
         ~SceneRenderer();
 
-        //! @brief レンダラーを非所有で差す。EffectScene を作り直し、未設定なら畳む
+        //! @brief レンダラーを非所有で差す。EffectScene と描く段を作り直し、未設定なら畳む
         //! @details EffectScene は構築時に Gpu() を読む。Renderer が立つまで作れない
+        //! 描く段のシェーダーはここで AssetManager::Get() から引くので、AssetManager を差した後に呼ぶ
         void SetRenderer(Gfx::Renderer* renderer) noexcept;
 
         //! @brief Preload が .efkefc を探すディレクトリを差す。空のままなら ContentRoot の Assets/Effects
@@ -85,6 +95,9 @@ namespace NS
 
         //! 所有している EffectScene。レンダラー未設定の間は nullptr
         [[nodiscard]] Gfx::EffectScene* Effects() const noexcept { return m_effects.get(); }
+
+        //! 重ね描きと UI が全画面の色と画面の矩形を描く先。レンダラー未設定の間は nullptr
+        [[nodiscard]] Gfx::ScreenOverlay* Overlay() const noexcept { return m_overlay.get(); }
 
         //! エフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ何もしない
         void OnTick() override;
@@ -155,7 +168,7 @@ namespace NS
         //! 最後にシーン全体の暗転 fade を重ねる
         void DrawOverlays(const Gfx::RenderContext& context, UIDirector& ui, const Gfx::ScreenFade& fade);
 
-        //! @brief プロジェクト既定値からシーンの描画設定を作る。有効な平行光があれば照明を上書きする
+        //! @brief プロジェクト既定値からシーンの照明を作る。有効な平行光があれば照明を上書きする
         //! @details 登録が無ければプロジェクト既定値がそのまま残る
         [[nodiscard]] Gfx::RenderSettings ResolveSceneSettings(const Gfx::RenderSettings& projectDefaults);
 
@@ -217,6 +230,11 @@ namespace NS
         Gfx::DebugShapes m_viewShapes; // ビューの図形の使い捨ての溜め場。1 ビューを描く間だけ中身がある
 
         std::unique_ptr<Gfx::EffectScene> m_effects; // エフェクトの再生と描画。レンダラー未設定の間は空
+
+        // 描く段の組み込みのシェーダー。レンダラーを差した時に AssetManager から引き、指すだけで持たない
+        Gfx::BuiltinShaders m_shaders{};
+        std::unique_ptr<Gfx::ScreenOverlay> m_overlay; // 全画面の色と画面の矩形。レンダラー未設定の間は空
+        std::unique_ptr<Gfx::Skybox> m_skybox;         // 空。レンダラー未設定の間は空
 
         // 光のにじみと画面の段。ビュー列と同じ並び。レンダラーを差し替えると畳み、描く時に作る
         std::vector<ViewPasses> m_viewPasses;

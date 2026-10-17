@@ -3,6 +3,8 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/CoreObject/UIActor.h"
+#include "NSlib/Gfx/Render/BuiltinShaders.h"
+#include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/RenderContext.h"
 #include "NSlib/Gfx/Renderer.h"
 #include "NSlib/UI/ColorRect.h"
@@ -203,8 +205,11 @@ TEST(UIActorWidgets, DirectorLaysOutEveryOpenScreenWithOneCanvas)
     second.Widgets()->Root().AddChild<NS::UI::ColorRect>()->SetStretch(true);
     first.Open(scene);
     second.Open(scene);
+    // 拡縮と矩形だけを見るので、シェーダーの無い塗りで描かずに並べる
+    NS::Gfx::ScreenOverlay overlay(&renderer, NS::Gfx::BuiltinShaders{});
     NS::Gfx::RenderContext context;
     context.renderer = &renderer;
+    context.overlay = &overlay;
 
     renderer.BeginFrame();
     scene.UI().Draw(context);

@@ -11,7 +11,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class Renderer;
+        class ScreenOverlay;
     } // namespace Gfx
 } // namespace NS
 
@@ -85,14 +85,14 @@ namespace NS
             void Layout(const WidgetRect& parent) noexcept;
 
             //! 自分と子孫を描く。scale は基準解像度 → 実ピクセルの拡縮率
-            void Draw(Gfx::Renderer& renderer, float parentAlpha, float scale);
+            void Draw(Gfx::ScreenOverlay& overlay, float parentAlpha, float scale);
 
             //! 点 (基準解像度単位) を自分以下の誰かが吸うか。後に描かれる子から先に見る
             [[nodiscard]] bool HitTest(float px, float py) const noexcept;
 
         protected:
             //! 自分だけを描く。rectPx は実ピクセルへ拡縮済みの矩形、alpha は親から掛かった実効値
-            virtual void OnDraw(Gfx::Renderer&, const WidgetRect& /*rectPx*/, float /*alpha*/) {}
+            virtual void OnDraw(Gfx::ScreenOverlay&, const WidgetRect& /*rectPx*/, float /*alpha*/) {}
 
         private:
             Vector2 m_anchor{0.0f, 0.0f}; // 親矩形内の基準点 (0..1)
