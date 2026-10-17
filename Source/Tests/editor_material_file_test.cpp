@@ -3,6 +3,7 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -90,7 +91,9 @@ TEST(EditorMaterialFile, FailedWriteKeepsThePreviousFile)
     {
         const std::ifstream held{std::filesystem::path{path}};
         ASSERT_TRUE(held.is_open());
+        const TestLogCapture log;
         EXPECT_FALSE(NS::Editor::WriteMaterialFile(assets, *material, path));
+        EXPECT_EQ(log.ErrorCount(), 1);
     }
 
     EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), previous);

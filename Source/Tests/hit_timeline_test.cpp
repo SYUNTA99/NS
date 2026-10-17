@@ -2,6 +2,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "Tests/TestHitTimelines.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -196,11 +197,13 @@ TEST(HitTimeline, LibraryHasNoTimelineForAMissingOrBrokenFile)
     const ScopedHitTimelineDirectory directory("Broken");
     directory.WriteFile("center", R"({"version": 1, "events": [{"type": "Explode", "start": 1, "length": 1}]})");
     directory.WriteFile("miss", "{ not json");
+    const TestLogCapture log;
     HitTimelineLibrary::Get().Reload();
     EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(GL::Level::HitTier::Center), nullptr);
     EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(GL::Level::HitTier::Wide), nullptr);
     EXPECT_EQ(HitTimelineLibrary::Get().FindForTier(static_cast<GL::Level::HitTier>(7)), nullptr);
     EXPECT_EQ(HitTimelineLibrary::Get().Find("graze"), nullptr);
+    EXPECT_EQ(log.ErrorCount(), 5);
 }
 
 TEST(HitTimeline, LibraryUsesTheTargetsTimelineAndFallsBackPerTier)
@@ -227,10 +230,12 @@ TEST(HitTimeline, LibraryUsesTheTierTimelineForANameWithNoTimelines)
     HitTimelineLibrary::Get().Set("center", HitTimeline{});
     HitTimelineLibrary::Get().Set("miss", HitTimeline{});
     HitTimelineLibrary& library = HitTimelineLibrary::Get();
+    const TestLogCapture log;
 
     EXPECT_EQ(library.NameFor("crate", GL::Level::HitTier::Center), "center");
     EXPECT_EQ(library.FindFor("crate", GL::Level::HitTier::Center), library.Find("center"));
     EXPECT_EQ(library.FindFor("crate", GL::Level::HitTier::Wide), library.Find("miss"));
+    EXPECT_EQ(log.ErrorCount(), 1);
 }
 
 TEST(HitTimeline, TargetNamesAreCheckedBeforeTheyBecomeFileNames)

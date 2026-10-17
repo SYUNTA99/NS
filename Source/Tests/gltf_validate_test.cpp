@@ -1,4 +1,5 @@
 #include "NSlib/Core/Geometry/GltfParser.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -49,6 +50,8 @@ TEST(GltfValidate, MatchingCountsLoad)
 // TEXCOORD_0 が POSITION より少ないファイルは、読まずに空を返す
 TEST(GltfValidate, MismatchedAttributeCountIsRejected)
 {
+    const TestLogCapture log;
     const NS::MeshGeometry geom = ParseText(TriangleGltf(1));
     EXPECT_TRUE(geom.vertices.empty());
+    EXPECT_EQ(log.ErrorCount(), 1);
 }

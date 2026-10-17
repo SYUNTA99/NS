@@ -16,7 +16,9 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DMaterial.h"
+#include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "TestAnimatedPlayerActor.h"
 #include "TestLogCapture.h"
@@ -132,6 +134,7 @@ TEST(AssetField, UnreadableNamesStayWhenSavedAgain)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
+    const TestLogCapture log;
     const nlohmann::json written{{"メッシュ", "Assets/Models/__ns_missing_mesh__.glb"},
                                  {"マテリアル", "Assets/Materials/__ns_missing__.mat"}};
     NS::Model model{nullptr};
@@ -145,12 +148,14 @@ TEST(AssetField, UnreadableNamesStayWhenSavedAgain)
     EXPECT_EQ(saved["マテリアル"], written["マテリアル"]);
     EXPECT_EQ(NS::SerializeClassObjFields(shadow)["マテリアル"], outside["マテリアル"]);
     EXPECT_TRUE(assets.LoadMaterial("Assets/Materials/__ns_missing__.mat")->IsEmpty());
+    EXPECT_EQ(log.ErrorCount(), 5);
 }
 
 TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
+    const TestLogCapture log;
 
     const nlohmann::json model{{"モデル", "Assets/Models/__ns_missing_model__.glb"}};
     NS::Animation animation{nullptr};
@@ -175,6 +180,7 @@ TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
     ASSERT_NE(clipField, nullptr);
     EXPECT_EQ(clipField->type, NS::FieldType::Asset);
     EXPECT_EQ(clipField->assetKind, NS::AssetKind::Animation);
+    EXPECT_EQ(log.ErrorCount(), 3);
 }
 
 // 欄の名前から素材を引く決まりは AssetManager の口の中にある
@@ -182,6 +188,7 @@ TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
 TEST(AssetManagerLoad, MeshShapeFollowsTheNameRules)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const TestLogCapture log;
     const NS::Phys::MeshShape* cube = assets.LoadMeshShape("cube");
     ASSERT_NE(cube, nullptr);
     // 組み込みの形は、登録の前でもファイルとして読まずに形を作る
@@ -191,6 +198,7 @@ TEST(AssetManagerLoad, MeshShapeFollowsTheNameRules)
     EXPECT_EQ(assets.LoadMeshShape(""), cube);
     EXPECT_EQ(assets.LoadMeshShape("Assets/Models/__ns_missing_shape__.glb"), cube);
     EXPECT_EQ(assets.LoadMeshShape("../__ns_outside__.glb"), cube);
+    EXPECT_EQ(log.ErrorCount(), 1);
 }
 
 // Renderer の無い場で読んだマテリアルは、シェーダとテクスチャも含めて空で、ERROR を出さない
@@ -203,6 +211,17 @@ TEST(AssetManagerLoad, MaterialWithoutARendererIsEmptyAndLogsNoError)
     const NS::Material* material = assets.LoadMaterial("Assets/Materials/stone.mat");
     ASSERT_FALSE(material->IsEmpty());
     EXPECT_FALSE(material->D3D()->IsValid());
+    EXPECT_EQ(log.ErrorCount(), 0);
+}
+
+TEST(AssetManagerLoad, BuiltinShadersWithoutARendererAreEmptyAndLogNoError)
+{
+    ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const TestLogCapture log;
+    const NS::Gfx::BuiltinShaders shaders = assets.LoadBuiltinShaders();
+    ASSERT_NE(shaders.fadePs, nullptr);
+    EXPECT_FALSE(shaders.fadePs->IsValid());
     EXPECT_EQ(log.ErrorCount(), 0);
 }
 

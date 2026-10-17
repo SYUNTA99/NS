@@ -15,6 +15,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -285,7 +286,9 @@ TEST(ReflectedParts, SameTypedMembersSaveAndReloadThroughTheirRegisteredKeys)
 
 TEST(ReflectedParts, UnregisteredMembersCannotCreateInvisibleParts)
 {
+    const TestLogCapture log;
     const std::unique_ptr<UnregisteredPartActor> actor = NS::CreateActor<UnregisteredPartActor>();
+    EXPECT_EQ(log.ErrorCount(), 1);
     EXPECT_EQ(actor->part, nullptr);
 }
 
@@ -328,7 +331,9 @@ TEST(FixedParts, MemberOwnershipSupportsLookupAndDestruction)
         ASSERT_NE(actor.second, nullptr);
         EXPECT_EQ(PartAt(actor, "First"), actor.first.get());
         EXPECT_EQ(PartAt(actor, "Second"), actor.second.get());
+        const TestLogCapture log;
         EXPECT_EQ(actor.ReplaceFirst(), nullptr);
+        EXPECT_EQ(log.ErrorCount(), 1);
         EXPECT_EQ(PartAt(actor, "First"), actor.first.get());
         EXPECT_EQ(PartAt(actor, "Replacement"), nullptr);
     }

@@ -11,6 +11,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/FileSystem.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -165,7 +166,9 @@ NS_CLASS(AssetTimingProbeActor)
 
 TEST(ClassObj, CreateEnumeratesRootThenSlotsThenDerivedInCreationOrder)
 {
+    const TestLogCapture log;
     const std::unique_ptr<OrderActor> actor = NS::CreateActor<OrderActor>();
+    EXPECT_EQ(log.ErrorCount(), 1);
     ASSERT_NE(actor->first, nullptr);
     ASSERT_NE(actor->second, nullptr);
     ASSERT_NE(actor->CollisionClassObj(), nullptr);
@@ -186,14 +189,18 @@ TEST(ClassObj, CreateEnumeratesRootThenSlotsThenDerivedInCreationOrder)
 
 TEST(ClassObj, SecondCreateInTheSameSlotIsRefused)
 {
+    const TestLogCapture log;
     const std::unique_ptr<OrderActor> actor = NS::CreateActor<OrderActor>();
+    EXPECT_EQ(log.ErrorCount(), 1);
     EXPECT_EQ(actor->refused, nullptr);
     EXPECT_EQ(actor->CollisionClassObj(), actor->box);
 }
 
 TEST(ClassObj, SlotIsRefusedWhenItsNameIsTaken)
 {
+    const TestLogCapture log;
     const std::unique_ptr<NameClashActor> actor = NS::CreateActor<NameClashActor>();
+    EXPECT_EQ(log.ErrorCount(), 1);
     EXPECT_EQ(actor->model, nullptr);
     EXPECT_EQ(actor->ModelClassObj(), nullptr);
 }

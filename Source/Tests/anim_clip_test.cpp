@@ -9,6 +9,7 @@
 #include "NSlib/Core/Animation/Retarget.h"
 #include "NSlib/Core/Animation/Skeleton.h"
 #include "NSlib/Windows/FileSystem.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -36,6 +37,7 @@ TEST(AnimClip, LoadsTheNamedClipOrTheFirstOneInTheFile)
 TEST(AnimClip, UnreadableNamesGiveAnEmptyClipWithTheName)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const TestLogCapture log;
     for (const char* name :
          {"", "Assets/Models/Xbot.glb#__ns_missing__", "Assets/Models/__ns_missing__.glb", "../__ns_outside__.glb"})
     {
@@ -45,11 +47,13 @@ TEST(AnimClip, UnreadableNamesGiveAnEmptyClipWithTheName)
         EXPECT_EQ(clip->Clip(), nullptr) << name;
         EXPECT_EQ(clip, assets.LoadAnimClip(name)) << name;
     }
+    EXPECT_EQ(log.ErrorCount(), 1);
 }
 
 TEST(SkinnedModelAsset, UnreadableNamesGiveAnEmptyModelWithTheName)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const TestLogCapture log;
     for (const char* name : {"", "Assets/Models/__ns_missing__.glb", "../__ns_outside__.glb"})
     {
         const NS::SkinnedModel* model = assets.LoadSkinnedModel(name);
@@ -59,6 +63,7 @@ TEST(SkinnedModelAsset, UnreadableNamesGiveAnEmptyModelWithTheName)
         EXPECT_EQ(model->GetSkeleton(), nullptr) << name;
         EXPECT_EQ(model, assets.LoadSkinnedModel(name)) << name;
     }
+    EXPECT_EQ(log.ErrorCount(), 4);
 }
 
 TEST(SkinnedModelAsset, ReadableFileHoldsTheSkinnedMeshAndItsSkeleton)

@@ -12,6 +12,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Clock.h"
 #include "TestAnimatedPlayerActor.h"
+#include "TestLogCapture.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -168,10 +169,12 @@ TEST(ActorBodyTime, RejectsScalesThatAreNotFiniteAndPositive)
 {
     NS::SceneActor actor;
     ASSERT_TRUE(actor.SetBodyTimeScale(2.0f));
+    const TestLogCapture log;
     for (const float bad :
          {0.0f, -1.0f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()})
     {
         EXPECT_FALSE(actor.SetBodyTimeScale(bad)) << bad;
         EXPECT_FLOAT_EQ(actor.BodyTimeScale(), 2.0f) << bad;
     }
+    EXPECT_EQ(log.ErrorCount(), 4);
 }

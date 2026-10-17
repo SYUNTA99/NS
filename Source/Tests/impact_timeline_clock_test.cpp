@@ -27,6 +27,7 @@
 #include "NSlib/Windows/Input.h"
 #include "Tests/TestHitTimelines.h"
 #include "Tests/TestViewCamera.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -275,6 +276,7 @@ TEST(ImpactTimelineClock, TheStopIgnoresChargeAndMass)
 TEST(ImpactTimelineClock, AMissingTimelineReleasesOnTheDetectionFrame)
 {
     const ScopedHitTimelineDirectory directory("Missing");
+    const TestLogCapture log;
     NS::Scene scene;
     PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
     ASSERT_NE(player, nullptr);
@@ -289,6 +291,7 @@ TEST(ImpactTimelineClock, AMissingTimelineReleasesOnTheDetectionFrame)
         EXPECT_FALSE(frame.shapeAnimating);
     }
     EXPECT_EQ(player->Resolver().Answer().lastImpact.hitStopSteps, 0);
+    EXPECT_EQ(log.ErrorCount(), 1);
 }
 
 // 同じフレームに始まる事象はファイルの並びの順に起きる

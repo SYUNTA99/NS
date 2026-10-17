@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
 #include "NSlib/Windows/Clock.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -187,7 +188,9 @@ TEST(UpdatePhase, DestroyingFromASystemTickIsRefused)
     destroyer.SetTarget(victimId);
     scene.AddSystemTick(destroyer, NS::UpdatePhase::Triggers);
 
+    const TestLogCapture log;
     scene.OnUpdate();
+    EXPECT_EQ(log.ErrorCount(), 1);
 
     EXPECT_EQ(scene.Objects().FindByObjectId(victimId), victim);
     scene.RemoveSystemTick(destroyer);
@@ -257,7 +260,9 @@ TEST(UpdatePhase, DestroyingDuringAPhaseIsRefused)
     const NS::uint32 victimId = victim->Id();
     destroyer->SetTarget(victimId);
 
+    const TestLogCapture log;
     scene.ExecutePhase(NS::UpdatePhase::Triggers);
+    EXPECT_EQ(log.ErrorCount(), 1);
 
     ASSERT_EQ(scene.Objects().FindByObjectId(victimId), victim);
     EXPECT_EQ(victim->updates, 1);

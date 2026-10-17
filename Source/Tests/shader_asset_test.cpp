@@ -3,6 +3,7 @@
 #include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -34,7 +35,9 @@ TEST(ShaderAsset, ReloadCompilesTheFileAtItsPath)
     const std::string path = (directory / "reload.ps.hlsl").generic_string();
 
     ASSERT_TRUE(WriteText(path, "壊れたシェーダー"));
+    const TestLogCapture log;
     NS::Shader shader{path};
+    EXPECT_EQ(log.ErrorCount(), 2);
     EXPECT_EQ(shader.Path(), path);
     EXPECT_TRUE(shader.D3D()->IsUsingFallback());
 

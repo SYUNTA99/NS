@@ -7,6 +7,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -78,9 +79,11 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
     NS::Scene scene;
     LevelEditorController editor(&scene);
 
+    const TestLogCapture log;
     editor.AddMeshParts(NS::OS::FileSystem::Combine(
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Models"),
         "__ns_missing_terrain__.glb"));
+    EXPECT_EQ(log.ErrorCount(), 1);
 
     NS::SceneActor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placed, nullptr);

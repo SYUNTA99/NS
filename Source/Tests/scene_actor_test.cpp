@@ -314,7 +314,9 @@ TEST(SceneLoad, RejectsPreviousHierarchySchema)
     nlohmann::json previous = NS::MakeSceneJson();
     previous["version"] = 6;
     nlohmann::json loaded;
+    const TestLogCapture log;
     EXPECT_FALSE(NS::DeserializeSceneFromJson(loaded, previous.dump()));
+    EXPECT_EQ(log.ErrorCount(), 1);
 }
 
 TEST(SceneLoad, RejectsVersionBeforeTheClassObjsKey)
@@ -323,7 +325,9 @@ TEST(SceneLoad, RejectsVersionBeforeTheClassObjsKey)
     nlohmann::json previous = NS::MakeSceneJson();
     previous["version"] = 7;
     nlohmann::json loaded;
+    const TestLogCapture log;
     EXPECT_FALSE(NS::DeserializeSceneFromJson(loaded, previous.dump()));
+    EXPECT_EQ(log.ErrorCount(), 1);
 }
 
 TEST(SceneLoad, RegisteredClassBuildsItsTypeAndUnregisteredFallsBackToPlainActor)

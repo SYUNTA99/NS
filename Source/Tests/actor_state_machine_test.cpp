@@ -8,6 +8,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -200,7 +201,9 @@ TEST(ActorStateMachine, SecondBuildFailsAndKeepsTheFirstMachine)
     ASSERT_TRUE(actor.BuildProbe());
     NS::StateMachineOf<ProbeActor>* first = actor.machine;
 
+    const TestLogCapture log;
     EXPECT_FALSE(actor.BuildSecond());
+    EXPECT_EQ(log.ErrorCount(), 1);
 
     EXPECT_EQ(actor.machine, first);
     EXPECT_EQ(actor.GetStates(), first);

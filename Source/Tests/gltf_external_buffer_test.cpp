@@ -1,5 +1,6 @@
 #include "NSlib/Core/Geometry/GltfParser.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -68,7 +69,9 @@ TEST(GltfExternalBuffer, FailsWhenTheFunctionCannotRead)
     file.baseDirectory = "Models";
     file.readFile = [](std::string_view) -> std::optional<std::vector<std::byte>> { return std::nullopt; };
 
+    const TestLogCapture log;
     EXPECT_TRUE(NS::ParseGltfMesh(file).vertices.empty());
+    EXPECT_EQ(log.ErrorCount(), 1);
 }
 
 // 道から読む口は、本体のフォルダを基準に渡す。基準が空だと作業フォルダの tri.bin を探して読めない

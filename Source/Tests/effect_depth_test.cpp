@@ -7,6 +7,7 @@
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Windows/Window.h"
 #include "TestEffectFiles.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -263,7 +264,9 @@ TEST(EffectDepth, UnreadableDepthFallsBackToDrawingWithoutIt)
     effects.Draw(camera);
     ASSERT_TRUE(effects.PassesDepth());
     BindDepth(gpu, *other);
+    const TestLogCapture log;
     effects.Draw(camera);
+    EXPECT_EQ(log.ErrorCount(), 1);
     EXPECT_FALSE(effects.PassesDepth());
     EXPECT_TRUE(effects.IsUsingDepthFallback());
     // 戻せる奥行きなら戻る

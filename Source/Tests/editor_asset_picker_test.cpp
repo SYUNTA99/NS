@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -177,6 +178,7 @@ TEST_F(EditorAssetPickerTest, SearchFiltersChoicesAndSelectionWritesOnlyTheSelec
 TEST_F(EditorAssetPickerTest, OpeningAndClosingPreservesAnUnlistedLongReference)
 {
     const std::string path = "Assets/Models/" + std::string(350, 'a') + "/missing.glb";
+    const TestLogCapture log;
     m_model.SetMeshRef(path);
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
@@ -188,6 +190,7 @@ TEST_F(EditorAssetPickerTest, OpeningAndClosingPreservesAnUnlistedLongReference)
     EXPECT_TRUE(committed);
     EXPECT_EQ(GImGui->OpenPopupStack.Size, 0);
     EXPECT_EQ(m_model.MeshRef(), path);
+    EXPECT_EQ(log.ErrorCount(), 1);
 }
 
 TEST_F(AssetPickerCatalogTest, ChoicesIncludeBuiltinsAndOnlyFilesOfTheRequestedKind)

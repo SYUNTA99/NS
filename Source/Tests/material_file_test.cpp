@@ -7,6 +7,7 @@
 #include "NSlib/Gfx/Renderer.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -159,8 +160,10 @@ TEST(MaterialFile, OnlyMaterialsReadFromAFileAreWritten)
     assets.RegisterSharedMaterials();
     EXPECT_TRUE(assets.MakeMaterialFileJson(*assets.LoadMaterial("Assets/Materials/stone.mat")).has_value());
     EXPECT_FALSE(assets.MakeMaterialFileJson(*assets.LoadMaterial("shadow")).has_value());
+    const TestLogCapture log;
     EXPECT_FALSE(
         assets.MakeMaterialFileJson(*assets.LoadMaterial("Assets/Materials/__ns_missing__.mat")).has_value());
+    EXPECT_EQ(log.ErrorCount(), 2);
 }
 
 // 装置の無い場では作り直せない。前の D3DMaterial を残し、同じ道は同じマテリアルを返す
