@@ -44,15 +44,19 @@ namespace
             return result;
         }
 
-        void OpenPicker()
+        void OpenPicker(bool fromLeft = false)
         {
             for (int i = 0; i < 3; ++i)
             {
                 (void)Frame();
             }
             const ImGuiStyle& style = ImGui::GetStyle();
-            const float x = m_tableMin.x + m_tableWidth - style.CellPadding.x -
-                            NS::Editor::RevertButtonWidth() - style.ItemSpacing.x - ImGui::GetFrameHeight() * 0.5f;
+            float x = m_tableMin.x + m_tableWidth - style.CellPadding.x -
+                      NS::Editor::RevertButtonWidth() - style.ItemSpacing.x - ImGui::GetFrameHeight() * 0.5f;
+            if (fromLeft)
+            {
+                x = m_tableMin.x + m_tableWidth * 0.5f;
+            }
             const float y = m_tableMin.y + style.CellPadding.y + ImGui::GetFrameHeight() * 0.5f;
             ImGui::GetIO().AddMousePosEvent(x, y);
             ImGui::GetIO().AddMouseButtonEvent(0, true);
@@ -113,6 +117,16 @@ TEST_F(EditorColorTest, ColorSwatchOpensAPickerBeforeChangingTheValue)
     const nlohmann::json before = NS::SerializeClassObjFields(m_model);
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
+    EXPECT_TRUE(m_openActivated);
+    EXPECT_FALSE(m_openCommitted);
+    EXPECT_EQ(NS::SerializeClassObjFields(m_model), before);
+}
+
+TEST_F(EditorColorTest, ClickingTheLeftSideOfTheSwatchOpensThePicker)
+{
+    const nlohmann::json before = NS::SerializeClassObjFields(m_model);
+    OpenPicker(true);
+    EXPECT_EQ(GImGui->OpenPopupStack.Size, 1);
     EXPECT_TRUE(m_openActivated);
     EXPECT_FALSE(m_openCommitted);
     EXPECT_EQ(NS::SerializeClassObjFields(m_model), before);

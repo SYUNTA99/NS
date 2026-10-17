@@ -435,6 +435,79 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
     ImGui::DestroyContext(gui);
 }
 
+TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
+{
+    ImGuiContext* gui = ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.DisplaySize = ImVec2{800.0f, 700.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.ConfigInputTrickleEventQueue = false;
+    NS::uint8* pixels = nullptr;
+    int width = 0;
+    int height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::ObjectSnapshotApplier applier(&scene);
+    editor.Editor().SetApplier(&applier);
+    editor.PlaceItem(*NS::Editor::FindPlacementItem("置物"));
+    const NS::uint32 id = editor.SelectedObjectId();
+    const NS::Vector3 beforePosition = editor.SelectedObjectActor()->Root().Position();
+    const NS::Vector3 beforeScale = editor.SelectedObjectActor()->Root().Scale();
+    const NS::Quaternion beforeRotation = editor.SelectedObjectActor()->Root().Rotation();
+    const std::size_t beforeUndo = editor.Editor().Undo().UndoSize();
+    NS::Editor::InspectorPanel inspector;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
+        ImGui::SetNextWindowSize(ImVec2{472.0f, 650.0f});
+        inspector.Render(editor);
+        ImGui::EndFrame();
+    };
+    frame();
+    frame();
+    const char* rows[] = {"position", "rotation", "scale"};
+    const char* values[] = {"12.5", "30", "2.5"};
+    for (int row = 0; row < 3; ++row)
+    {
+        ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+        ImGuiID inputId = ImHashStr("##transform", 0, window->ID);
+        inputId = ImHashStr(rows[row], 0, inputId);
+        inputId = ImHashStr("Y", 0, inputId);
+        inputId = ImHashStr("##value", 0, inputId);
+        ImGui::ActivateItemByID(inputId);
+        GImGui->NavNextActivateFlags = ImGuiActivateFlags_PreferInput;
+        frame();
+        EXPECT_EQ(GImGui->ActiveId, inputId);
+        io.AddInputCharactersUTF8(values[row]);
+        frame();
+        io.AddKeyEvent(ImGuiKey_Enter, true);
+        frame();
+        io.AddKeyEvent(ImGuiKey_Enter, false);
+        frame();
+        EXPECT_EQ(editor.Editor().Undo().UndoSize(), beforeUndo + row + 1);
+    }
+    const NS::Transform& edited = scene.Objects().FindByObjectId(id)->Root();
+    EXPECT_FLOAT_EQ(edited.Position().x, beforePosition.x);
+    EXPECT_FLOAT_EQ(edited.Position().y, 12.5f);
+    EXPECT_FLOAT_EQ(edited.Position().z, beforePosition.z);
+    EXPECT_NEAR(NS::QuaternionToEulerDegrees(edited.Rotation()).y, 30.0f, 0.001f);
+    EXPECT_FLOAT_EQ(edited.Scale().x, beforeScale.x);
+    EXPECT_FLOAT_EQ(edited.Scale().y, 2.5f);
+    EXPECT_FLOAT_EQ(edited.Scale().z, beforeScale.z);
+    for (int i = 0; i < 3; ++i)
+    {
+        EXPECT_TRUE(editor.Editor().PerformUndo());
+    }
+    const NS::Transform& restored = scene.Objects().FindByObjectId(id)->Root();
+    EXPECT_EQ(restored.Position(), beforePosition);
+    EXPECT_EQ(restored.Rotation(), beforeRotation);
+    EXPECT_EQ(restored.Scale(), beforeScale);
+    ImGui::DestroyContext(gui);
+}
+
 TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
 {
     NS::Scene scene;

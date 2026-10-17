@@ -678,12 +678,30 @@ namespace NS
                 ImGuiStorage* storage = ImGui::GetStateStorage();
                 const ImGuiID stateId = ImGui::GetID("##colorPickerOpen");
                 const bool wasOpen = storage->GetBool(stateId, false);
-                const ImGuiID popupId = ImHashStr("picker", 0, ImGui::GetID("##value"));
                 constexpr ImGuiColorEditFlags k_Flags = ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float |
                                                        ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_PickerHueBar |
                                                        ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_AlphaBar;
-                const bool changed = ImGui::ColorEdit4("##value", rgba, k_Flags);
-                const bool open = ImGui::IsPopupOpen(popupId, ImGuiPopupFlags_None);
+                const float width = ImGui::CalcItemWidth();
+                if (ImGui::ColorButton("##value", ImVec4{value.x, value.y, value.z, value.w},
+                                       ImGuiColorEditFlags_AlphaPreviewHalf | ImGuiColorEditFlags_NoDragDrop |
+                                           ImGuiColorEditFlags_NoTooltip,
+                                       ImVec2{std::max(width, 1.0f), ImGui::GetFrameHeight() * 1.25f}))
+                {
+                    ImGui::OpenPopup("##colorPicker");
+                }
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::SetTooltip("クリックして色・透明度を編集");
+                }
+                bool changed = false;
+                if (ImGui::BeginPopup("##colorPicker"))
+                {
+                    ImGui::TextUnformatted(FieldLabel(field));
+                    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 20.0f);
+                    changed = ImGui::ColorPicker4("##picker", rgba, k_Flags);
+                    ImGui::EndPopup();
+                }
+                const bool open = ImGui::IsPopupOpen("##colorPicker");
                 result.popupActive = open;
                 result.activated |= open && !wasOpen;
                 result.committed |= wasOpen && !open;

@@ -18,6 +18,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include "NSlib/Core/Types.h"
+#include <algorithm>
 #include <cstdio>
 #include <functional>
 #include <string>
@@ -153,8 +154,12 @@ namespace NS
                 // Transform は runtime が唯一の出所なので即反映し、commit が undo へ確定する
                 ImGui::SeparatorText("Transform");
 
-                if (Editor::BeginFieldTable("##transform"))
+                if (ImGui::BeginTable("##transform", 2,
+                                      ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings))
                 {
+                    ImGui::TableSetupColumn("##name", ImGuiTableColumnFlags_WidthFixed,
+                                            ImGui::CalcTextSize("回転 (度)").x);
+                    ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthStretch);
                     const auto transformRow = [&](const char* id,
                                                   const char* label,
                                                   float(&values)[3],
@@ -164,18 +169,42 @@ namespace NS
                                                   const std::function<void()>& revert) {
                         ImGui::PushID(id);
                         Editor::FieldRow(label);
-                        if (ImGui::DragFloat3("##value", values, speed))
+                        const char* axes[] = {"X", "Y", "Z"};
+                        const ImVec4 colors[] = {{1.0f, 0.45f, 0.45f, 1.0f},
+                                                 {0.5f, 0.9f, 0.5f, 1.0f},
+                                                 {0.45f, 0.7f, 1.0f, 1.0f}};
+                        const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+                        const float axisWidth = ImGui::CalcTextSize("X").x;
+                        const float inputWidth =
+                            (ImGui::CalcItemWidth() - axisWidth * 3.0f - spacing * 5.0f) / 3.0f;
+                        ImGui::BeginGroup();
+                        for (int axis = 0; axis < 3; ++axis)
                         {
-                            apply();
+                            if (axis > 0)
+                            {
+                                ImGui::SameLine(0.0f, spacing);
+                            }
+                            ImGui::PushID(axes[axis]);
+                            ImGui::AlignTextToFramePadding();
+                            ImGui::TextColored(colors[axis], "%s", axes[axis]);
+                            ImGui::SameLine(0.0f, spacing);
+                            ImGui::SetNextItemWidth(std::max(inputWidth, 1.0f));
+                            const bool changed = ImGui::DragFloat("##value", &values[axis], speed);
+                            if (ImGui::IsItemActivated())
+                            {
+                                editor.BeginTransformEdit();
+                            }
+                            if (changed)
+                            {
+                                apply();
+                            }
+                            if (ImGui::IsItemDeactivated())
+                            {
+                                editor.CommitTransformEdit();
+                            }
+                            ImGui::PopID();
                         }
-                        if (ImGui::IsItemActivated())
-                        {
-                            editor.BeginTransformEdit();
-                        }
-                        if (ImGui::IsItemDeactivatedAfterEdit())
-                        {
-                            editor.CommitTransformEdit();
-                        }
+                        ImGui::EndGroup();
                         if (Editor::RevertButton(moved))
                         {
                             editor.BeginTransformEdit();
@@ -203,7 +232,7 @@ namespace NS
                     float rot[3] = {euler.x, euler.y, euler.z};
                     transformRow(
                         "rotation",
-                        "回転",
+                        "回転 (度)",
                         rot,
                         0.5f,
                         q != Quaternion::Identity,
