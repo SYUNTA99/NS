@@ -54,7 +54,7 @@ namespace NS
                 ImGui::TextDisabled("Del      選択物を削除");
                 ImGui::TextDisabled("Ctrl+D   選択物を複製");
                 ImGui::TextDisabled("Ctrl+S   上書き保存");
-                ImGui::TextDisabled("F2       ヒエラルキーで改名");
+                ImGui::TextDisabled("F2       アクター一覧で改名");
                 ImGui::TextDisabled("Ctrl/Shift クリックで複数選択");
             }
             ImGui::End();

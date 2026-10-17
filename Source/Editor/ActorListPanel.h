@@ -20,7 +20,7 @@ namespace NS
         class ActorListPanel : public NonCopyable
         {
         public:
-            //! 個体一覧を描く。選択・改名・複製・削除の要求は controller へ渡す
+            //! アクター一覧を描く。選択・改名・複製・削除の要求は controller へ渡す
             void Render(LevelEditorController& editor) noexcept;
 
         private:
@@ -33,7 +33,7 @@ namespace NS
             char m_renameBuffer[64]{};         // 改名の入力欄
             bool m_renameFocusPending = false; // 入力欄を出した最初のフレームでキーボード焦点を渡す
 
-            // 描画中に world を組み直すと一覧が入れ替わるので、要求だけ溜めて描き終えてから流す
+            // 描画中にシーンのアクターを組み直すと一覧が入れ替わるので、要求だけ溜めて描き終えてから適用する
             uint32 m_renameCommitId = 0;     // このフレームに確定した改名の対象、0 なら無し
             uint32 m_duplicateRequestId = 0; // このフレームに複製を頼まれた対象、0 なら無し
             uint32 m_deleteRequestId = 0;    // このフレームに削除を頼まれた対象、0 なら無し

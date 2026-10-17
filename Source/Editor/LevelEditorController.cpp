@@ -1213,7 +1213,7 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
     {
         if (&object->Root() == selected)
         {
-            // ビューポートのクリックは 1 体に絞る。複数選択はヒエラルキー側の Ctrl / Shift で組む
+            // ビューポートのクリックは 1 体に絞る。複数選択はアクター一覧の Ctrl / Shift で組む
             m_selectedObjectId = object->Id();
             m_selectionIds.assign(1, m_selectedObjectId);
             m_selectedAssetPath.clear();
