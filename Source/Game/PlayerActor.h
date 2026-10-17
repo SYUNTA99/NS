@@ -3,12 +3,14 @@
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/SlamAim.h"
+#include "Game/Level/TackleGhost.h"
 #include "Game/Player/CameraTargetState.h"
 #include "Game/Player/PlayerEvents.h"
 #include "Game/Player/PlayerStatus.h"
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
+#include "NSlib/CoreObject/IUse/IUseDrawAdjust.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
@@ -57,7 +59,7 @@ namespace GL
 
 //! @brief 固定の部品を OnInit で組むプレイヤー
 //! @details 衝突の観測・裁定を身体の移動より先に行う。死とゴールは Scene の CourseDirector に通知する
-class PlayerActor : public NS::SceneActor
+class PlayerActor : public NS::SceneActor, public NS::IUseDrawAdjust
 {
 public:
     PlayerActor() noexcept;
@@ -110,6 +112,10 @@ public:
     [[nodiscard]] GL::Level::SlamArrow& SlamIndicator() noexcept { return *m_slamArrow; }
     [[nodiscard]] GL::Player::ChargeEffects& ChargeVisuals() noexcept { return *m_chargeEffects; }
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
+    [[nodiscard]] GL::Level::TackleGhost& Ghost() noexcept { return m_tackleGhost; }
+    [[nodiscard]] const GL::Level::TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
+    //! 止めの揺れと震えは ImpactResolver、倍率は PlayerAppearance の値をまとめて返す
+    [[nodiscard]] NS::DrawAdjust GetDrawAdjust() const noexcept override;
 
     [[nodiscard]] NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Player; }
     void ReadInput() override;
@@ -316,7 +322,10 @@ protected:
     //! 基底の作る物に続けて、読んだ姿のメッシュと倍率を Model へ差す
     void OnAssetsLoaded() override;
     //! ロックオンの枠と突進の矢印を重ね描きへ入れる。消えている間は描く側が IsOverlayVisible で飛ばす
+    //! 残像は Model と同じく、出ている間だけ描く物へ入れる
     void OnStart() override;
+    void OnAppear() override;
+    void OnDisappear() noexcept override;
     //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
     //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
     void ObserveStep() override;
@@ -433,6 +442,7 @@ private:
     std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
     std::unique_ptr<GL::Player::ChargeEffects> m_chargeEffects;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
+    GL::Level::TackleGhost m_tackleGhost{this}; // 体当たりの残像。Model を借りて描く
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
     GL::Level::Health m_health;
 

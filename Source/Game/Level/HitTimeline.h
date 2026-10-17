@@ -329,12 +329,14 @@ namespace GL
             //! 相手の左右の写しの最初の離れ。高さ 720 画素の画面の上の画素数で持ち、始まりのフレームに世界の長さへ直す
             float spreadPixels = 112.5f;
             float selfSpreadPixels = 35.0f; //!< 自機の左右の写しの最初の離れ。画素の数え方は spreadPixels と同じ
+            float sideOpacity = 0.45f;      //!< 止めの間の左右の写しの不透明度。自機と相手で同じ値を使う
             int releaseFrames = 6;          //!< 明けの写しを残すフレーム数。0 以下は残さない
             float releaseOpacity = 0.45f;   //!< 明けの写しの最初の不透明度
 
             NS_REFLECT_BEGIN(GhostEvent, void)
             NS_FIELD(spreadPixels, "離れの画素")
             NS_FIELD(selfSpreadPixels, "自機の離れの画素")
+            NS_FIELD(sideOpacity, "左右の残像の不透明度")
             NS_FIELD(releaseFrames, "明けの残像のフレーム数")
             NS_FIELD(releaseOpacity, "明けの残像の不透明度")
             NS_REFLECT_END_VALUE()

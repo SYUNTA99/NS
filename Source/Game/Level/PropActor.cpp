@@ -74,7 +74,7 @@ namespace GL
         }
         void PropActor::OnInit()
         {
-            NS::Model* model = CreateClassObj(m_model, this);
+            NS::Model* model = CreateClassObj(m_model, this, this);
             model->SetMeshRef("sphere");
             model->SetBaseColor(NS::Color{0.72f, 0.70f, 0.66f});
             CreateClassObj(m_shadow, this);
@@ -97,6 +97,25 @@ namespace GL
         {
             NS::SceneActor::OnStart();
             m_effects->Preload();
+            if (IsAppeared())
+            {
+                m_tackleGhost.Register();
+            }
+        }
+
+        void PropActor::OnAppear()
+        {
+            NS::SceneActor::OnAppear();
+            if (IsAppeared())
+            {
+                m_tackleGhost.Register();
+            }
+        }
+
+        void PropActor::OnDisappear() noexcept
+        {
+            NS::SceneActor::OnDisappear();
+            m_tackleGhost.Unregister();
         }
 
         void PropActor::InitAfterPlacement()
@@ -185,10 +204,16 @@ namespace GL
                 {
                     const float x2 = desc.impactDir.x * desc.impactDir.x;
                     const float z2 = desc.impactDir.z * desc.impactDir.z;
-                    m_freeze.squash =
-                        ModelClassObj()->SnapDrawScale(NS::Vector3{1.0f + (desc.squashThickness - 1.0f) * x2,
-                                                                   desc.squashHeight,
-                                                                   1.0f + (desc.squashThickness - 1.0f) * z2});
+                    const NS::Vector3 squash{1.0f + (desc.squashThickness - 1.0f) * x2,
+                                             desc.squashHeight,
+                                             1.0f + (desc.squashThickness - 1.0f) * z2};
+                    // 有限の正でない欄の値では潰さない
+                    m_freeze.squash = NS::IsPositiveFinite(squash.x) && NS::IsPositiveFinite(squash.y) &&
+                                      NS::IsPositiveFinite(squash.z);
+                    if (m_freeze.squash)
+                    {
+                        SnapDrawScale(squash);
+                    }
                 }
             }
             SyncCollision();
@@ -196,12 +221,17 @@ namespace GL
 
         void PropActor::AdvanceShake()
         {
-            if (!m_shake.active || ModelClassObj() == nullptr)
+            if (!m_shake.active)
             {
                 return;
             }
             ++m_shake.frame;
-            (void)ModelClassObj()->SetDrawOffset(m_shake.desc.OffsetAt(m_shake.frame));
+            const NS::Vector3 offset = m_shake.desc.OffsetAt(m_shake.frame);
+            // 有限でないずれは描く形を消すので控えず、前のずれのまま描く
+            if (NS::IsFinite(offset))
+            {
+                m_drawAdjust.offset = offset;
+            }
             // 奥揺れは止めの最後のフレームまで揺れるので、長さの次のフレームで 0 を書いてから止める
             if (m_shake.frame > m_shake.desc.length)
             {
@@ -212,35 +242,29 @@ namespace GL
         void PropActor::StopShake()
         {
             m_shake.active = false;
-            if (ModelClassObj() != nullptr)
-            {
-                (void)ModelClassObj()->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f});
-            }
+            m_drawAdjust.offset = NS::Vector3{0.0f, 0.0f, 0.0f};
         }
 
         void PropActor::AdvanceGhost()
         {
-            if (!m_ghost.active || ModelClassObj() == nullptr)
+            if (!m_ghost.active)
             {
                 return;
             }
             ++m_ghost.frame;
-            m_ghost.active = m_ghost.desc.WriteTo(*ModelClassObj(), m_ghost.frame);
+            m_ghost.active = m_ghost.desc.WriteTo(&m_tackleGhost, m_ghost.frame);
         }
 
         void PropActor::StopGhost()
         {
             m_ghost.active = false;
-            if (ModelClassObj() != nullptr)
-            {
-                (void)ModelClassObj()->SetGhostSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
-                (void)ModelClassObj()->SetAfterimageOpacity(0.0f);
-            }
+            (void)m_tackleGhost.SetSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)m_tackleGhost.SetAfterimageOpacity(0.0f);
         }
 
         void PropActor::AdvanceTremor()
         {
-            if (!m_tremor.active || ModelClassObj() == nullptr)
+            if (!m_tremor.active)
             {
                 return;
             }
@@ -253,7 +277,11 @@ namespace GL
                 tremor = MakeTremor(
                     m_tremor.desc, m_tremor.elapsed, Root().Position(), 2.0f * Sphere().WorldSphere().radius, *pose);
             }
-            (void)ModelClassObj()->SetTremor(tremor);
+            // 有限でない震えは描く形を消すので控えず、前の震えのまま描く
+            if (IsFiniteTremor(tremor))
+            {
+                m_drawAdjust.tremor = tremor;
+            }
             if (m_tremor.elapsed >= m_tremor.desc.length)
             {
                 m_tremor.active = false;
@@ -263,10 +291,7 @@ namespace GL
         void PropActor::StopTremor()
         {
             m_tremor.active = false;
-            if (ModelClassObj() != nullptr)
-            {
-                (void)ModelClassObj()->SetTremor(NS::Gfx::TremorCB{});
-            }
+            m_drawAdjust.tremor = NS::Gfx::TremorCB{};
         }
 
         void PropActor::EndFreeze()
@@ -278,7 +303,7 @@ namespace GL
             }
             if (m_freeze.squash)
             {
-                (void)ModelClassObj()->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
+                SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
                 m_freeze.squash = false;
             }
         }
@@ -570,6 +595,16 @@ namespace GL
             }
             m_motion.Finish();
             NS::SceneActor::OnEndPlay();
+            m_tackleGhost.Unregister();
+        }
+
+        void PropActor::SnapDrawScale(const NS::Vector3& scale) noexcept
+        {
+            m_drawAdjust.scale = scale;
+            if (NS::Model* model = ModelClassObj())
+            {
+                model->SnapDrawScale();
+            }
         }
 
         bool PropActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver)

@@ -62,7 +62,7 @@ PlayerActor::PlayerActor() noexcept = default;
 PlayerActor::~PlayerActor() = default;
 void PlayerActor::OnInit()
 {
-    NS::Model* model = CreateClassObj(m_model, this);
+    NS::Model* model = CreateClassObj(m_model, this, this);
     model->SetMaterialRef("player");
     model->SetBaseColor(NS::Color{0.5f, 0.5f, 0.5f});
     CreateClassObj(m_appearance, this);
@@ -206,8 +206,13 @@ void PlayerActor::ObserveStep()
 void PlayerActor::DecideStep()
 {
     AdvanceCharge(BodyDelta());
-    m_resolver->StepState(
-        SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), ModelClassObj(), HitReactionClassObj());
+    m_resolver->StepState(SlamMotion(),
+                          m_params.get(),
+                          m_body.get(),
+                          m_collider.get(),
+                          ModelClassObj(),
+                          &m_tackleGhost,
+                          HitReactionClassObj());
     ApplyImpactOrders(m_resolver->Answer());
 }
 
@@ -271,7 +276,7 @@ void PlayerActor::VisualStep()
     m_slamArrow->Update(m_charge, m_params.get(), m_collider.get());
     // clang-format on
     // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
-    m_resolver->WriteTremor(m_collider.get(), ModelClassObj());
+    m_resolver->WriteTremor(m_collider.get());
     const GL::Player::PlayerMotion motion = Motion();
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
@@ -355,6 +360,10 @@ void PlayerActor::OnStart()
         scene->RegisterOverlay(m_targetMarker.get());
         scene->RegisterOverlay(m_slamArrow.get());
     }
+    if (IsAppeared())
+    {
+        m_tackleGhost.Register();
+    }
     m_chargeEffects->Preload();
     m_impactEffects->Preload();
 }
@@ -369,7 +378,7 @@ void PlayerActor::OnEndPlay()
     }
     NS::SceneActor::OnEndPlay();
     // 走っている当たりのタイムラインを捨てる。プレイの途中で外れても止めが次のプレイへ残らない
-    m_resolver->CancelImpact(ModelClassObj(), HitReactionClassObj());
+    m_resolver->CancelImpact(&m_tackleGhost, HitReactionClassObj());
     m_appearance->ResetDrawScale();
     m_chargeEffects->Clear();
     if (NS::Scene* scene = OwningScene())
@@ -377,7 +386,38 @@ void PlayerActor::OnEndPlay()
         scene->UnregisterOverlay(m_targetMarker.get());
         scene->UnregisterOverlay(m_slamArrow.get());
     }
+    m_tackleGhost.Unregister();
     EndCharge();
+}
+
+void PlayerActor::OnAppear()
+{
+    NS::SceneActor::OnAppear();
+    if (IsAppeared())
+    {
+        m_tackleGhost.Register();
+    }
+}
+
+void PlayerActor::OnDisappear() noexcept
+{
+    NS::SceneActor::OnDisappear();
+    m_tackleGhost.Unregister();
+}
+
+NS::DrawAdjust PlayerActor::GetDrawAdjust() const noexcept
+{
+    NS::DrawAdjust adjust{};
+    if (m_resolver)
+    {
+        adjust.offset = m_resolver->DrawOffset();
+        adjust.tremor = m_resolver->Tremor();
+    }
+    if (m_appearance)
+    {
+        adjust.scale = m_appearance->DrawScale();
+    }
+    return adjust;
 }
 
 void PlayerActor::InitAfterPlacement()
@@ -635,7 +675,7 @@ void PlayerActor::ResetState() noexcept
     m_bodySlamHeld = false;
     m_states->Reset();
     // 止めの最中か反動を待つ間のやり直しで、出現位置で明けて弾かれないよう、走っている当たりのタイムラインを持ち主に打ち切らせる
-    m_resolver->CancelImpact(ModelClassObj(), HitReactionClassObj());
+    m_resolver->CancelImpact(&m_tackleGhost, HitReactionClassObj());
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale();
 }

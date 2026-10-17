@@ -1,6 +1,7 @@
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
+#include "Game/Level/TackleGhost.h"
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/PlayerActor.h"
@@ -860,8 +861,8 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         ++clock;
         SCOPED_TRACE(clock);
         previousSelfRoot = selfRootBefore;
-        const NS::Gfx::TremorCB& self = player->ModelClassObj()->Tremor();
-        const NS::Gfx::TremorCB& other = rock->ModelClassObj()->Tremor();
+        const NS::Gfx::TremorCB self = player->GetDrawAdjust().tremor;
+        const NS::Gfx::TremorCB other = rock->GetDrawAdjust().tremor;
         if (clock < 7 || clock >= 13)
         {
             EXPECT_FLOAT_EQ(self.amplitude, 0.0f);
@@ -949,8 +950,8 @@ TEST(ImpactTimelineClock, TargetTremorRatioKeepsTheSameShareOfTheBody)
         }
         const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
-        EXPECT_NEAR(rock->ModelClassObj()->Tremor().amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
-        EXPECT_NEAR(player->ModelClassObj()->Tremor().amplitude,
+        EXPECT_NEAR(rock->GetDrawAdjust().tremor.amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
+        EXPECT_NEAR(player->GetDrawAdjust().tremor.amplitude,
                     MetersForPixels(*pose, player->Root().Position(), 3.0f),
                     1.0e-5f);
         depths.push_back((rock->Root().Position() - pose->position).Length());
@@ -984,7 +985,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        const float selfAmplitude = player->ModelClassObj()->Tremor().amplitude;
+        const float selfAmplitude = player->GetDrawAdjust().tremor.amplitude;
         if (!(selfAmplitude > 0.0f))
         {
             continue;
@@ -992,7 +993,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
         const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(selfAmplitude, MetersForPixels(*pose, player->Root().Position(), 3.0f) * 0.5f, 0.00001f);
-        EXPECT_NEAR(rock->ModelClassObj()->Tremor().amplitude,
+        EXPECT_NEAR(rock->GetDrawAdjust().tremor.amplitude,
                     MetersForPixels(*pose, rock->Root().Position(), 3.0f) * 0.5f,
                     0.00001f);
         return;
@@ -1214,8 +1215,8 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Vector3 self = player->ModelClassObj()->DrawOffset();
-        const NS::Vector3 other = rock->ModelClassObj()->DrawOffset();
+        const NS::Vector3 self = player->GetDrawAdjust().offset;
+        const NS::Vector3 other = rock->GetDrawAdjust().offset;
         if (clock >= 1 && clock <= 5)
         {
             // 画面の横の向きだけに、逆向きに揺れる
@@ -1245,8 +1246,8 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
             EXPECT_FLOAT_EQ(other.Length(), 0.0f);
         }
         // 横揺れは残像を出さない。残像は残像の事象が出す
-        EXPECT_FLOAT_EQ(player->ModelClassObj()->GhostSpread().Length(), 0.0f);
-        EXPECT_FLOAT_EQ(rock->ModelClassObj()->GhostSpread().Length(), 0.0f);
+        EXPECT_FLOAT_EQ(player->Ghost().Spread().Length(), 0.0f);
+        EXPECT_FLOAT_EQ(rock->Ghost().Spread().Length(), 0.0f);
     }
     EXPECT_GE(clock, 9);
 }
@@ -1287,8 +1288,8 @@ TEST(ImpactTimelineClock, DepthShakePushesEachBodyAlongTheForceItTook)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Vector3 self = player->ModelClassObj()->DrawOffset();
-        const NS::Vector3 other = rock->ModelClassObj()->DrawOffset();
+        const NS::Vector3 self = player->GetDrawAdjust().offset;
+        const NS::Vector3 other = rock->GetDrawAdjust().offset;
         if (clock >= 1 && clock <= 6)
         {
             const NS::uint32 seed = player->Resolver().Answer().lastImpact.sequence;
@@ -1318,6 +1319,7 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
     GhostEvent ghost;
     ghost.spreadPixels = 112.5f;
     ghost.selfSpreadPixels = 35.0f;
+    ghost.sideOpacity = 0.3f;
     ghost.releaseFrames = 6;
     ghost.releaseOpacity = 0.45f;
     HitTimeline timeline;
@@ -1352,8 +1354,8 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Model& self = *player->ModelClassObj();
-        const NS::Model& other = *rock->ModelClassObj();
+        const GL::Level::TackleGhost& self = player->Ghost();
+        const GL::Level::TackleGhost& other = rock->Ghost();
         if (clock == 1)
         {
             const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
@@ -1364,21 +1366,22 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
         if (clock >= 1 && clock <= 5)
         {
             const float left = 1.0f - static_cast<float>(clock) / 6.0f;
-            for (const NS::Model* each : {&self, &other})
+            for (const GL::Level::TackleGhost* each : {&self, &other})
             {
-                EXPECT_NEAR(each->GhostSpread().Dot(forward), 0.0f, 1.0e-5f);
-                EXPECT_NEAR(each->GhostSpread().y, 0.0f, 1.0e-6f);
+                EXPECT_NEAR(each->Spread().Dot(forward), 0.0f, 1.0e-5f);
+                EXPECT_NEAR(each->Spread().y, 0.0f, 1.0e-6f);
+                EXPECT_FLOAT_EQ(each->SideOpacity(), 0.3f);
                 EXPECT_FLOAT_EQ(each->AfterimageOpacity(), 0.0f);
             }
-            EXPECT_NEAR(self.GhostSpread().Length(), selfSpread * left, 1.0e-4f);
-            EXPECT_NEAR(other.GhostSpread().Length(), otherSpread * left, 1.0e-4f);
+            EXPECT_NEAR(self.Spread().Length(), selfSpread * left, 1.0e-4f);
+            EXPECT_NEAR(other.Spread().Length(), otherSpread * left, 1.0e-4f);
         }
         if (clock == 6)
         {
-            EXPECT_FLOAT_EQ(self.GhostSpread().Length(), 0.0f);
-            EXPECT_FLOAT_EQ(other.GhostSpread().Length(), 0.0f);
-            selfStopped = self.DrawWorldMatrix(1.0f).Translation();
-            otherStopped = other.DrawWorldMatrix(1.0f).Translation();
+            EXPECT_FLOAT_EQ(self.Spread().Length(), 0.0f);
+            EXPECT_FLOAT_EQ(other.Spread().Length(), 0.0f);
+            selfStopped = player->ModelClassObj()->DrawWorldMatrix(1.0f).Translation();
+            otherStopped = rock->ModelClassObj()->DrawWorldMatrix(1.0f).Translation();
         }
         if (clock >= 7 && clock <= 12)
         {

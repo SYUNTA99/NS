@@ -45,6 +45,7 @@ namespace
                                     &player.Body(),
                                     &player.Collider(),
                                     player.ModelClassObj(),
+                                    &player.Ghost(),
                                     player.HitReactionClassObj());
     }
 
@@ -276,7 +277,7 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
             EXPECT_FALSE(player->Resolver().Answer().released);
             EXPECT_FALSE(player->Resolver().Answer().hitStopping);
             ExpectSameVector(rock->Root().Position(), rockHome);
-            ExpectSameVector(player->ModelClassObj()->DrawScale(), NS::Vector3{1.0f, 1.0f, 1.0f});
+            ExpectSameVector(player->GetDrawAdjust().scale, NS::Vector3{1.0f, 1.0f, 1.0f});
         }
     }
 }
@@ -291,9 +292,9 @@ TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     ASSERT_TRUE(player->Resolver().Answer().shapeAnimating);
-    ASSERT_LT(player->ModelClassObj()->DrawScale().z, 1.0f);
+    ASSERT_LT(player->GetDrawAdjust().scale.z, 1.0f);
     player->OnEndPlay();
-    EXPECT_TRUE(player->ModelClassObj()->DrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_TRUE(player->GetDrawAdjust().scale == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     EXPECT_FALSE(player->Resolver().Answer().hitStopping);
     EXPECT_FALSE(player->Resolver().Answer().shapeAnimating);
 }
@@ -309,7 +310,7 @@ TEST(PlayerAppearance, ComposesTheStanceIntoTheDrawScale)
         player->Update(true);
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
-    EXPECT_FLOAT_EQ(player->ModelClassObj()->DrawScale().y, 0.95f);
+    EXPECT_FLOAT_EQ(player->GetDrawAdjust().scale.y, 0.95f);
 }
 
 // 当てた瞬間の潰れと明けの伸びは描く形の倍率に出て、根のスケールは 1 のまま。戻しの最後のフレームでちょうど 1
@@ -334,7 +335,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         SCOPED_TRACE(frame);
         ExpectSameVector(player->Root().Scale(), one);
         // 膨らみは高さの倍率が 1.1 を超えたフレームから。横は進む向きに直角な軸 (成分の 2 乗を入れ替えて混ぜる)
-        if (bulgeAt < 0 && player->ModelClassObj()->DrawScale().y > 1.1f + 1.0e-4f)
+        if (bulgeAt < 0 && player->GetDrawAdjust().scale.y > 1.1f + 1.0e-4f)
         {
             bulgeAt = frame;
         }
@@ -345,7 +346,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         }
         const float side = 0.3f * left;
         ExpectSameVector(
-            player->ModelClassObj()->DrawScale(),
+            player->GetDrawAdjust().scale,
             NS::Vector3{squash.x + side * dir.z * dir.z, squash.y + 0.2f * left, squash.z + side * dir.x * dir.x});
         player->Update(false);
         rock->Update();
@@ -357,7 +358,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     // 明けは潰れ 0.7 から 3 フレームで突進の向きへ 1.25 まで伸び、縦は 1.1 から 0.9 へ細る。明けはその 1 フレーム目
     const float along = 0.7f + 0.55f / 3.0f;
     const float height = 1.1f - 0.2f / 3.0f;
-    ExpectSameVector(player->ModelClassObj()->DrawScale(),
+    ExpectSameVector(player->GetDrawAdjust().scale,
                      NS::Vector3{1.0f - (1.0f - along) * dir.x * dir.x, height, 1.0f - (1.0f - along) * dir.z * dir.z});
     for (int frame = 0; frame < 30 && player->Resolver().Answer().shapeAnimating; ++frame)
     {
@@ -367,7 +368,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         rock->Update();
     }
     ASSERT_FALSE(player->Resolver().Answer().shapeAnimating);
-    EXPECT_TRUE(player->ModelClassObj()->DrawScale() == one);
+    EXPECT_TRUE(player->GetDrawAdjust().scale == one);
     EXPECT_TRUE(player->Root().Scale() == one);
 }
 
@@ -584,7 +585,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                 SCOPED_TRACE(frame);
                 EXPECT_EQ(StateName(*player), (*pose)[1].get<std::string>());
                 ExpectSameVector(
-                    player->ModelClassObj()->DrawScale(),
+                    player->GetDrawAdjust().scale,
                     NS::Vector3{(*pose)[2].get<float>(), (*pose)[3].get<float>(), (*pose)[4].get<float>()});
                 // 構え・潰れ・伸び・着地の潰れのどれの間も、根のスケールは配置の値のまま
                 EXPECT_TRUE(player->Root().Scale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));

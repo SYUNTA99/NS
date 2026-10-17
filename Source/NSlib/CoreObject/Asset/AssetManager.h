@@ -115,7 +115,7 @@ namespace NS
         //! 読めなかった .mat は覚えないので、直した後に引き直すと読める
         [[nodiscard]] Material* LoadMaterial(std::string_view name);
 
-        //! 共有 material である player / water / shadow を組み込み shader + texture から一括組み立てする
+        //! 共有 material である player / shadow を組み込み shader + texture から一括組み立てする
         //! device + RegisterBuiltins 後・最初の利用前に 1 度呼ぶ。既登録名は上書きしない
         //! 前に LoadMaterial が返した中身の空のマテリアルは、これより後は player で描く
         void RegisterSharedMaterials();

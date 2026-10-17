@@ -109,7 +109,7 @@ TEST(AssetField, FieldTypeIsAsset)
 
 TEST(AssetField, ModelAndShadowHoldTheirAssetsInAssetFields)
 {
-    for (const char* key : {"メッシュ", "マテリアル", "残像のマテリアル"})
+    for (const char* key : {"メッシュ", "マテリアル"})
     {
         const NS::FieldDesc* field = NS::FindField(NS::Model::StaticReflection(), key);
         ASSERT_NE(field, nullptr) << key;
@@ -122,8 +122,6 @@ TEST(AssetField, ModelAndShadowHoldTheirAssetsInAssetFields)
         EXPECT_EQ(field->type, NS::FieldType::Asset) << key;
     }
 
-    const NS::Model model{nullptr};
-    EXPECT_EQ(NS::SerializeClassObjFields(model)["残像のマテリアル"], nlohmann::json("water"));
     const NS::Shadow shadow{nullptr};
     const nlohmann::json shadowFields = NS::SerializeClassObjFields(shadow);
     EXPECT_EQ(shadowFields["メッシュ"], nlohmann::json("shadowQuad"));
@@ -135,15 +133,17 @@ TEST(AssetField, UnreadableNamesStayWhenSavedAgain)
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
     const nlohmann::json written{{"メッシュ", "Assets/Models/__ns_missing_mesh__.glb"},
-                                 {"マテリアル", "Assets/Materials/__ns_missing__.mat"},
-                                 {"残像のマテリアル", "../__ns_outside__.mat"}};
+                                 {"マテリアル", "Assets/Materials/__ns_missing__.mat"}};
     NS::Model model{nullptr};
     EXPECT_EQ(NS::ApplyJsonFields(model, written), 0u);
+    const nlohmann::json outside{{"マテリアル", "../__ns_outside__.mat"}};
+    NS::Shadow shadow{nullptr};
+    EXPECT_EQ(NS::ApplyJsonFields(shadow, outside), 0u);
 
     const nlohmann::json saved = NS::SerializeClassObjFields(model);
     EXPECT_EQ(saved["メッシュ"], written["メッシュ"]);
     EXPECT_EQ(saved["マテリアル"], written["マテリアル"]);
-    EXPECT_EQ(saved["残像のマテリアル"], written["残像のマテリアル"]);
+    EXPECT_EQ(NS::SerializeClassObjFields(shadow)["マテリアル"], outside["マテリアル"]);
     EXPECT_TRUE(assets.LoadMaterial("Assets/Materials/__ns_missing__.mat")->IsEmpty());
 }
 

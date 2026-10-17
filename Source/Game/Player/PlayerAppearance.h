@@ -69,6 +69,8 @@ namespace GL
             //! @brief 描く形の倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
             //! @details やり直しとプレイの終わりで持ち主が呼ぶ。次の Update からはその時の構えと当たりの形で組み直す
             void ResetDrawScale() noexcept;
+            //! 自機を描く時だけの倍率。形の下端中央を中心に世界の軸で掛ける。全成分が有限の正
+            [[nodiscard]] const NS::Vector3& DrawScale() const noexcept { return m_drawScale; }
 
             //! 押している間の構えの縦の倍率。押していない間は 1、溜めている間は構えの縮み、その前は押しの構えの縮み
             [[nodiscard]] float StanceHeight(const ChargeStatus& charge) const noexcept;
@@ -119,7 +121,7 @@ namespace GL
                                    const GL::Level::ImpactAnswer& impact) noexcept;
             // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
             void AdvanceLandingSquash(const PlayerMotion& motion, const NS::Body* body) noexcept;
-            // 当たりの形か構えの縮みに着地の潰れを掛け、同居する Model の描く時だけの倍率へ書く
+            // 当たりの形か構えの縮みに着地の潰れを掛け、描く時だけの倍率に控える
             void WriteDrawScale(const ChargeStatus& charge, const GL::Level::ImpactAnswer& impact) noexcept;
 
             // 素材は AssetManager が持つ。欄は nullptr にならない
@@ -144,7 +146,8 @@ namespace GL
             float m_tumbleWobblePhase = 0.0f;            // 軸のぶれの始まりの向き。ラジアン
             int m_landingSquashRemaining = 0;            // 着地の潰れを戻し切るまでの残りフレーム数。0 は潰れていない
             float m_landingSquashVertical = 1.0f;        // 着地の潰れの今の縦の倍率。潰れていない間は 1
-            bool m_drawScaleRejected = false;            // 直前に組んだ倍率を Model が断ったか。知らせを 1 回に絞る
+            bool m_drawScaleRejected = false;            // 直前に組んだ倍率が有限の正でなかったか。知らせを 1 回に絞る
+            NS::Vector3 m_drawScale{1.0f, 1.0f, 1.0f};   // 描く時だけの倍率。自機の Model が PlayerActor を通して引く
 
             float m_emptyChargeSpinSpeed = 360.0f; // 溜め 0 の玉が回る速さ。度/秒
             float m_fullChargeSpinSpeed = 1440.0f; // 溜めきりの玉が回る速さ。度/秒

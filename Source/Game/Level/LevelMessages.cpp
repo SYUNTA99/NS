@@ -1,8 +1,8 @@
 #include "Game/Level/LevelMessages.h"
 
 #include "Game/Level/ImpactOutcome.h"
+#include "Game/Level/TackleGhost.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
-#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 namespace GL
@@ -88,21 +88,23 @@ namespace GL
             return axis * BodyShakeOffset(frame, length, amplitude, seed, firstSign, flipFrames);
         }
 
-        bool TackleGhostDesc::WriteTo(NS::Model& model, int frame) const noexcept
+        bool TackleGhostDesc::WriteTo(TackleGhost* ghost, int frame) const noexcept
         {
-            (void)model.SetGhostSpread(axis * BodyShakeReach(frame, stopLength, spread));
+            NS_ASSERT(Game, ghost != nullptr, "残像が渡されていない");
+            (void)ghost->SetSpread(axis * BodyShakeReach(frame, stopLength, spread));
+            (void)ghost->SetSideOpacity(sideOpacity);
             if (frame == stopLength)
             {
-                model.CaptureAfterimage();
+                ghost->CaptureAfterimage();
             }
             const int release = frame - stopLength - 1;
             if (release < 0 || release >= releaseFrames)
             {
-                (void)model.SetAfterimageOpacity(0.0f);
+                (void)ghost->SetAfterimageOpacity(0.0f);
                 return release < releaseFrames;
             }
             const float left = 1.0f - static_cast<float>(release) / static_cast<float>(releaseFrames);
-            (void)model.SetAfterimageOpacity(releaseOpacity * left);
+            (void)ghost->SetAfterimageOpacity(releaseOpacity * left);
             return true;
         }
 

@@ -24,5 +24,8 @@ namespace GL
                                                    const NS::Vector3& root,
                                                    float bodyLength,
                                                    const NS::CameraPose& pose) noexcept;
+
+        //! 震えの全項目が有限の場合 true。有限でない震えを描くと形が消える
+        [[nodiscard]] bool IsFiniteTremor(const NS::Gfx::TremorCB& tremor) noexcept;
     } // namespace Level
 } // namespace GL

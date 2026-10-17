@@ -16,8 +16,6 @@ namespace
 {
     // 描く時だけの倍率の既定。この値の間は描く行列にも境界にも何も掛けない
     const NS::Vector3 k_NoDrawScale{1.0f, 1.0f, 1.0f};
-    // 止めの間の左右の写しの不透明度
-    constexpr float k_SideGhostOpacity = 0.45f;
 
     // 0 以下と非数・無限大の成分を弾き、全部が有限の正の時だけ真を返す
     [[nodiscard]] bool IsPositiveFiniteScale(const NS::Vector3& scale) noexcept
@@ -38,11 +36,10 @@ namespace
 
 namespace NS
 {
-    Model::Model(SceneActor* owner) : m_owner(owner)
+    Model::Model(SceneActor* owner, const IUseDrawAdjust* drawAdjust) : m_owner(owner), m_drawAdjust(drawAdjust)
     {
         LoadAssetField(m_mesh, "");
         LoadAssetField(m_material, "");
-        LoadAssetField(m_ghostMaterial, "water");
     }
 
     const Mesh* Model::GetMesh() const noexcept
@@ -77,7 +74,6 @@ namespace NS
             return;
         }
         scene->RegisterRenderable(this);
-        scene->RegisterRenderable(&m_ghosts);
     }
 
     void Model::Unregister()
@@ -92,13 +88,26 @@ namespace NS
             return;
         }
         scene->UnregisterRenderable(this);
-        scene->UnregisterRenderable(&m_ghosts);
     }
 
     void Model::Snapshot() noexcept
     {
         m_previousLocalRotation = m_localRotation;
-        m_previousDrawScale = m_drawScale;
+        m_previousDrawScale = DrawAdjustment().scale;
+    }
+
+    DrawAdjust Model::DrawAdjustment() const noexcept
+    {
+        if (m_drawAdjust == nullptr)
+        {
+            return DrawAdjust{};
+        }
+        return m_drawAdjust->GetDrawAdjust();
+    }
+
+    void Model::SnapDrawScale() noexcept
+    {
+        m_previousDrawScale = DrawAdjustment().scale;
     }
 
     bool Model::SetLocalScale(const Vector3& scale) noexcept
@@ -108,79 +117,6 @@ namespace NS
             return false;
         }
         m_localScale = scale;
-        return true;
-    }
-
-    bool Model::SetDrawScale(const Vector3& scale) noexcept
-    {
-        if (!IsPositiveFiniteScale(scale))
-        {
-            return false;
-        }
-        m_drawScale = scale;
-        return true;
-    }
-
-    bool Model::SnapDrawScale(const Vector3& scale) noexcept
-    {
-        if (!IsPositiveFiniteScale(scale))
-        {
-            return false;
-        }
-        m_drawScale = scale;
-        m_previousDrawScale = scale;
-        return true;
-    }
-
-    bool Model::SetDrawOffset(const Vector3& offset) noexcept
-    {
-        if (!IsFinite(offset))
-        {
-            return false;
-        }
-        m_drawOffset = offset;
-        return true;
-    }
-
-    bool Model::SetGhostSpread(const Vector3& spread) noexcept
-    {
-        if (!IsFinite(spread))
-        {
-            return false;
-        }
-        m_ghostSpread = spread;
-        return true;
-    }
-
-    Matrix Model::GhostWorldMatrix(float alpha, float side) const noexcept
-    {
-        return DrawWorldMatrixWithOffset(alpha, m_ghostSpread * side);
-    }
-
-    void Model::CaptureAfterimage() noexcept
-    {
-        m_afterimageWorld = DrawWorldMatrix(1.0f);
-    }
-
-    bool Model::SetAfterimageOpacity(float opacity) noexcept
-    {
-        if (!std::isfinite(opacity))
-        {
-            return false;
-        }
-        m_afterimageOpacity = std::clamp(opacity, 0.0f, 1.0f);
-        return true;
-    }
-
-    bool Model::SetTremor(const Gfx::TremorCB& tremor) noexcept
-    {
-        if (!IsFinite(tremor.contactOffset) || !IsFinite(tremor.right) || !IsFinite(tremor.up) ||
-            !std::isfinite(tremor.amplitude) || !std::isfinite(tremor.elapsedFrames) ||
-            !std::isfinite(tremor.framesPerMeter) || !std::isfinite(tremor.ringFrames))
-        {
-            return false;
-        }
-        m_tremor = tremor;
         return true;
     }
 
@@ -195,7 +131,7 @@ namespace NS
 
     Matrix Model::DrawWorldMatrix(float alpha) const noexcept
     {
-        return DrawWorldMatrixWithOffset(alpha, m_drawOffset);
+        return DrawWorldMatrixWithOffset(alpha, DrawAdjustment().offset);
     }
 
     Matrix Model::DrawWorldMatrixWithOffset(float alpha, const Vector3& offset) const noexcept
@@ -217,7 +153,7 @@ namespace NS
         {
             shift = Matrix::CreateTranslation(offset);
         }
-        const Vector3 scale = Vector3::Lerp(m_previousDrawScale, m_drawScale, alpha);
+        const Vector3 scale = Vector3::Lerp(m_previousDrawScale, DrawAdjustment().scale, alpha);
         // 倍率が 1 でも、下端の真ん中へ移して戻す足し引きが下の桁を丸めることがある。倍率の無い間は掛けずに返す
         if (scale == k_NoDrawScale)
         {
@@ -258,6 +194,16 @@ namespace NS
         out.push_back(MakeDrawItem(context, m_material, DrawWorldMatrix(context.alpha)));
     }
 
+    bool Model::CanDraw() const noexcept
+    {
+        return CanDraw(m_material);
+    }
+
+    Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept
+    {
+        return MakeDrawItem(context, m_material, world);
+    }
+
     bool Model::CanDraw(const Material* material) const noexcept
     {
         return m_owner != nullptr && m_owner->IsAppeared() && GetMesh()->D3D() != nullptr && material->D3D() != nullptr;
@@ -287,62 +233,12 @@ namespace NS
         item.constants.groundWaveCenterZ = context.groundWave.centerZ;
         item.constants.groundWaveRadius = context.groundWave.radius;
         item.constants.groundWaveStrength = context.groundWave.strength;
-        item.constants.tremor = m_tremor;
+        item.constants.tremor = DrawAdjustment().tremor;
         item.extraVsCb = m_perObjectVsCb;
         item.extraVsData = m_perObjectVsData;
         item.extraVsSize = m_perObjectVsSize;
         item.extraVsSlot = m_perObjectVsSlot;
         return item;
-    }
-
-    void Model::Ghosts::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
-    {
-        const Material* material = m_model.m_ghostMaterial;
-        if (!m_model.CanDraw(material))
-        {
-            return;
-        }
-        const Vector3& spread = m_model.m_ghostSpread;
-        if (spread.x != 0.0f || spread.y != 0.0f || spread.z != 0.0f)
-        {
-            for (const float side : {1.0f, -1.0f})
-            {
-                Gfx::DrawItem item = m_model.MakeDrawItem(
-                    context, material, m_model.GhostWorldMatrix(context.alpha, side));
-                item.constants.opacity = k_SideGhostOpacity;
-                out.push_back(item);
-            }
-        }
-        if (m_model.m_afterimageOpacity > 0.0f)
-        {
-            // 控えた姿のまま残す。震えを足すと止まった姿に見えない
-            Gfx::DrawItem item = m_model.MakeDrawItem(context, material, m_model.m_afterimageWorld);
-            item.constants.tremor = Gfx::TremorCB{};
-            item.constants.opacity = m_model.m_afterimageOpacity;
-            out.push_back(item);
-        }
-    }
-
-    AABB Model::Ghosts::WorldBounds() const noexcept
-    {
-        // 描く形の箱を、描く時だけのずれと残像の離れの分だけ広げる。どちらの写しも外さない
-        AABB out = m_model.WorldBounds();
-        const Vector3& spread = m_model.m_ghostSpread;
-        const Vector3& offset = m_model.m_drawOffset;
-        out.Extents.x += std::abs(spread.x) + std::abs(offset.x);
-        out.Extents.y += std::abs(spread.y) + std::abs(offset.y);
-        out.Extents.z += std::abs(spread.z) + std::abs(offset.z);
-        const AABB* local = m_model.DrawnLocalBounds();
-        if (m_model.m_afterimageOpacity > 0.0f && local != nullptr)
-        {
-            // 明けの写しは根が飛び去った後も当たった所に残るので、控えた姿の箱も包む
-            AABB afterimage{};
-            local->Transform(afterimage, m_model.m_afterimageWorld);
-            AABB merged{};
-            AABB::CreateMerged(merged, out, afterimage);
-            return merged;
-        }
-        return out;
     }
 
     RenderBucket Model::Bucket() const noexcept
@@ -385,7 +281,8 @@ namespace NS
         DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, m_owner->Root().WorldMatrix()));
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
-        const Vector3 scale = Vector3::Max(m_previousDrawScale, m_drawScale);
+        const DrawAdjust adjust = DrawAdjustment();
+        const Vector3 scale = Vector3::Max(m_previousDrawScale, adjust.scale);
         if (scale != k_NoDrawScale)
         {
             const float bottom = out.Center.y - out.Extents.y;
@@ -394,9 +291,9 @@ namespace NS
             out.Extents.z *= scale.z;
             out.Center.y = bottom + out.Extents.y;
         }
-        out.Center.x += m_drawOffset.x;
-        out.Center.y += m_drawOffset.y;
-        out.Center.z += m_drawOffset.z;
+        out.Center.x += adjust.offset.x;
+        out.Center.y += adjust.offset.y;
+        out.Center.z += adjust.offset.z;
         return out;
     }
 } // namespace NS

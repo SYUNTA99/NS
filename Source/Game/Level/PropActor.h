@@ -5,10 +5,12 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
 #include "Game/Level/PropFlight.h"
+#include "Game/Level/TackleGhost.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
+#include "NSlib/CoreObject/IUse/IUseDrawAdjust.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
 
@@ -20,7 +22,7 @@ namespace GL
     {
         //! @brief 動く・反応する置物。岩・箱・樽
         // 個体ごとの見た目と重さは個体の上書きで変える
-        class PropActor : public NS::SceneActor
+        class PropActor : public NS::SceneActor, public NS::IUseDrawAdjust
         {
         public:
             PropActor() noexcept;
@@ -31,7 +33,7 @@ namespace GL
             NS_CLASSOBJ(m_effects, "LaunchEffects")
             NS_REFLECT_END()
 
-            //! 尾と粉の絵を先に読む
+            //! 尾と粉の絵を先に読む。残像は Model と同じく、出ている間だけ描く物へ入れる
             void OnStart() override;
             //! 配置が揃った後に、当たりの球を物理へ入れる
             void InitAfterPlacement() override;
@@ -57,6 +59,9 @@ namespace GL
             [[nodiscard]] const HitZones& Zones() const noexcept { return *m_hitZones; }
             [[nodiscard]] LaunchEffects& Effects() noexcept { return *m_effects; }
             [[nodiscard]] const LaunchEffects& Effects() const noexcept { return *m_effects; }
+            [[nodiscard]] const TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
+            //! 止めの間の揺れ・潰れと衝撃の震え
+            [[nodiscard]] NS::DrawAdjust GetDrawAdjust() const noexcept override { return m_drawAdjust; }
 
         protected:
             //! 体当たりの問い・止め・明けと、コースのやり直しに応じる
@@ -64,6 +69,8 @@ namespace GL
             bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
             void OnInit() override;
+            void OnAppear() override;
+            void OnDisappear() noexcept override;
             void BodyStep() override;
             //! 発光の層を進める。HitReaction は進めない
             void VisualStep() override;
@@ -87,6 +94,8 @@ namespace GL
             // 衝撃の震えを 1 フレーム進めて描く所へ書く。長さの終わりで振れ幅 0 を書いて止める
             void AdvanceTremor();
             void StopTremor();
+            // 描く倍率を書き、補間せずに切り替える。scale は全成分が有限の正であること
+            void SnapDrawScale(const NS::Vector3& scale) noexcept;
             void Release(const TackleReleaseDesc& desc);
             void ResetTo(const NS::Vector3& position, const NS::Quaternion& rotation);
             void StepLaunched(float dt);
@@ -125,6 +134,8 @@ namespace GL
                 bool active = false;
             };
             GhostRun m_ghost;
+            TackleGhost m_tackleGhost{this}; // 体当たりの残像。Model を借りて描く
+            NS::DrawAdjust m_drawAdjust{};   // 描く時だけの揺れ・潰れ・震え。Model が描く時に引く
             // 衝撃の震え。知らせを受けたフレームの見た目の 1 歩を 0 フレーム目に数え、状態に依らず進める
             struct TremorRun
             {

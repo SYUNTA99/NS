@@ -180,7 +180,7 @@ TEST(MapObjMotion, ZeroLengthFreezeStillWaitsForReleaseGrace)
     rock->UpdateMotion();
     EXPECT_FALSE(rock->IsFrozen());
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 0.0f);
-    EXPECT_FLOAT_EQ(rock->ModelClassObj()->DrawScale().x, 1.0f);
+    EXPECT_FLOAT_EQ(rock->GetDrawAdjust().scale.x, 1.0f);
 }
 
 TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
@@ -212,22 +212,22 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
     EXPECT_EQ(dustCount, 1);
 }
 
-TEST(MapObjMotion, FreezeWithoutSquashPreservesExistingDrawScale)
+TEST(MapObjMotion, FreezeWithoutSquashLeavesTheDrawScale)
 {
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::Model* mesh = rock->ModelClassObj();
-    ASSERT_NE(mesh, nullptr);
-    ASSERT_TRUE(mesh->SnapDrawScale(NS::Vector3{0.9f, 0.9f, 0.9f}));
     GL::Level::TackleFreezeDesc freeze;
     freeze.squash = false;
+    freeze.squashThickness = 0.8f;
+    freeze.squashHeight = 0.7f;
     ASSERT_TRUE(GL::Level::SendMsgTackleFreeze(*rock, freeze));
+    EXPECT_TRUE(rock->GetDrawAdjust().scale == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     for (int step = 0; step < 4; ++step)
     {
         rock->UpdateMotion();
     }
-    EXPECT_FLOAT_EQ(mesh->DrawScale().x, 0.9f);
+    EXPECT_TRUE(rock->GetDrawAdjust().scale == (NS::Vector3{1.0f, 1.0f, 1.0f}));
 }
 
 TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)

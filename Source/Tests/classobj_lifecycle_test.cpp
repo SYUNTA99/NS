@@ -60,7 +60,7 @@ TEST(ClassObjLifecycle, BaseFramePartsRegisterOnlyWhileAppeared)
 {
     NS::Scene scene;
     GL::Level::PropActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
-    // 模型は本体と残像の 2 つ、影は 1 つを描く物に入れる
+    // 模型・残像・影を 1 つずつ描く物に入れる
     EXPECT_EQ(RegisteredWhileAppeared(scene, *actor), (Registrations{.renderables = 3, .sensors = 1, .bodies = 1}));
 }
 

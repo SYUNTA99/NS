@@ -1,5 +1,6 @@
 // Player / 単一テクスチャ用 PS。 Texture2D diffuse を sampling し baseColor と平行光を掛ける
 // 単一 mesh の Player などはこちらを使う
+// 出力 alpha は描く 1 回ごとの不透明度 g_opacity。 混ぜ方が Alpha の描画 (残像の写し) だけが効かせる
 
 #include "Common.hlsli"
 
@@ -13,5 +14,5 @@ float4 PSMain(SurfaceInterp input) : SV_TARGET
     float3 normal = GroundWaveNormal(input.worldPos, input.worldNormal);
     float3 lit = albedo * baseColor * DirectionalLight(normal) +
                  GroundWaveGlow(input.worldPos, input.worldNormal) * g_lightColor;
-    return float4(ToDisplay(lit), 1.0);
+    return float4(ToDisplay(lit), saturate(g_opacity));
 }

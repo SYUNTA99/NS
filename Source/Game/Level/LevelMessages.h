@@ -15,8 +15,15 @@ namespace NS
 {
     class SceneActor;
     class HitSensor;
-    class Model;
 } // namespace NS
+
+namespace GL
+{
+    namespace Level
+    {
+        class TackleGhost;
+    } // namespace Level
+} // namespace GL
 
 // コースの仕掛けと進行役がやり取りする知らせ。型ごとに「送る」と「調べる」を対で置く
 // 受け手が応じたかは送る関数の戻り値で分かる
@@ -193,14 +200,15 @@ namespace GL
         {
             NS::Vector3 axis{1.0f, 0.0f, 0.0f}; //!< 左右の写しを離す世界の長さ 1 の向き
             float spread = 0.0f;                //!< 左右の写しの最初の離れ (m)
+            float sideOpacity = 0.0f;           //!< 左右の写しの不透明度
             int stopLength = 0;                 //!< 止めのフレーム数。このフレームで姿を写し取る
             int releaseFrames = 0;              //!< 明けの写しを残すフレーム数
             float releaseOpacity = 0.0f;        //!< 明けの写しの最初の不透明度
 
-            //! @brief frame フレーム目の左右の写しの離れ、写し取り、明けの写しの不透明度を model へ書く
+            //! @brief frame フレーム目の左右の写しの離れと不透明度、写し取り、明けの写しの不透明度を ghost へ書く
             //! @param[in] frame 残像の何フレーム目か。始まりのフレームが 1
             //! @return まだ続く場合 true、明けの写しが消えて終わった場合は false
-            bool WriteTo(NS::Model& model, int frame) const noexcept;
+            bool WriteTo(TackleGhost* ghost, int frame) const noexcept;
         };
 
         //! @brief 残像を知らせる。受け手は知らせを受けたフレームを 1 フレーム目として、止めの後も明けの写しを進める

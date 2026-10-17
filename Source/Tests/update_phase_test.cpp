@@ -1,4 +1,5 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/IUse/IUseDrawAdjust.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -90,24 +91,29 @@ namespace
         void StateStep() override { ++updates; }
     };
 
-    class DrawModelActor final : public NS::SceneActor
+    class DrawModelActor final : public NS::SceneActor, public NS::IUseDrawAdjust
     {
+    public:
+        [[nodiscard]] NS::DrawAdjust GetDrawAdjust() const noexcept override { return adjust; }
+
+        NS::DrawAdjust adjust{};
+
     protected:
-        void OnInit() override { CreateClassObj(m_model, this); }
+        void OnInit() override { CreateClassObj(m_model, this, this); }
     };
 
-    // PlayerActor の段で、別の SceneActor の Model の描く倍率を書く
+    // 描く側より先に回る自機の段で書く。補間の始点が書く前の値で控えられたかを見る
     class DrawScaleWriterActor final : public NS::SceneActor
     {
     public:
-        explicit DrawScaleWriterActor(NS::Model& target) : m_target(target) {}
+        explicit DrawScaleWriterActor(DrawModelActor& target) : m_target(target) {}
         NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Player; }
 
     protected:
-        void StateStep() override { (void)m_target.SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}); }
+        void StateStep() override { m_target.adjust.scale = NS::Vector3{2.0f, 2.0f, 2.0f}; }
 
     private:
-        NS::Model& m_target;
+        DrawModelActor& m_target;
     };
 
     class PhaseTicker final : public NS::SceneSystem
@@ -261,10 +267,10 @@ TEST(InterpolationSnapshot, ModelWrittenByAnEarlierPhaseStartsFromTheValueBefore
 {
     // 前の値を書き手より後の段で控えると、先の段で書いた倍率が始点にもなり補間されずに飛ぶ
     NS::Scene scene;
-    NS::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
-    scene.SpawnTransient<DrawScaleWriterActor>(*model);
+    scene.SpawnTransient<DrawScaleWriterActor>(*drawn);
 
     scene.OnUpdate();
 
@@ -276,13 +282,27 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
 {
     // 止めている間は段が回らない。前の値の控えも段に置くと、止める前に書いた倍率から補間し続けて絵が揺れる
     NS::Scene scene;
-    NS::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
     scene.SetSimulationPaused(true);
-    ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
+    drawn->adjust.scale = NS::Vector3{2.0f, 2.0f, 2.0f};
 
     scene.OnUpdate();
+
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 2.0f);
+}
+
+TEST(InterpolationSnapshot, SnapStartsTheModelAtTheOwnersScale)
+{
+    NS::Scene scene;
+    DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    NS::Model* model = drawn->ModelClassObj();
+    ASSERT_NE(model, nullptr);
+    drawn->adjust.scale = NS::Vector3{2.0f, 2.0f, 2.0f};
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
+
+    model->SnapDrawScale();
 
     EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 2.0f);
 }
@@ -337,10 +357,10 @@ TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
 {
     // 世界を進めない歩に前の値を控えると補間が止まる。割合は前に世界を進めてからの溜めで出す
     NS::Scene scene;
-    NS::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
-    scene.SpawnTransient<DrawScaleWriterActor>(*model);
+    scene.SpawnTransient<DrawScaleWriterActor>(*drawn);
     scene.SetWorldSpeed(0.5f);
 
     scene.OnUpdate();
@@ -466,7 +486,7 @@ TEST(OthersHold, ZeroStepsAndRestartingThePlayReleaseTheHold)
 TEST(ModelLocalScale, ScalesAroundTheMeshOriginAndMovesTheDrawScalePivot)
 {
     NS::Scene scene;
-    NS::SceneActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
     NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
     model->SetLocalBoundsOverride(NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 1.0f, 1.0f}});
@@ -475,7 +495,8 @@ TEST(ModelLocalScale, ScalesAroundTheMeshOriginAndMovesTheDrawScalePivot)
     EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._42, 0.0f);
 
     // 倍率を掛けた形の下端は -2。縦に 2 倍すると、形の中心は下端から 2 × 2 の高さへ上がる
-    ASSERT_TRUE(model->SnapDrawScale(NS::Vector3{1.0f, 2.0f, 1.0f}));
+    drawn->adjust.scale = NS::Vector3{1.0f, 2.0f, 1.0f};
+    model->SnapDrawScale();
     EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._42, 2.0f);
 
     EXPECT_FALSE(model->SetLocalScale(NS::Vector3{0.0f, 1.0f, 1.0f}));

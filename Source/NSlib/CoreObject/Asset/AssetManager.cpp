@@ -65,7 +65,7 @@ namespace NS
         }};
 
         // RegisterSharedMaterials が登録する名前。登録を足したらここにも足す
-        constexpr std::array<std::string_view, 3> k_SharedMaterialNames = {"player", "water", "shadow"};
+        constexpr std::array<std::string_view, 2> k_SharedMaterialNames = {"player", "shadow"};
 
         // 引く先は m_builtins でなく k_BuiltinShapes。RegisterBuiltins を呼んでいなくても引ける
         [[nodiscard]] const BuiltinShape* FindBuiltinShape(std::string_view name) noexcept
@@ -767,14 +767,10 @@ namespace NS
     void AssetManager::RegisterSharedMaterials()
     {
         // .mat と同じ値の形で組み、.mat と同じ道でシェーダーとテクスチャを引く
-        // water は描く 1 回ごとの不透明度を出す water.ps を使い、混ぜ方は Alpha にする
         // shadow は shadow.ps が放射状の透明度を作るのでテクスチャを貼らない
         const MaterialFileDesc player{.vertexShader = "Shaders/standard.vs.hlsl",
                                       .pixelShader = "Shaders/player.ps.hlsl",
                                       .textures = {"Assets/Textures/cube_test.png"}};
-        MaterialFileDesc water = player;
-        water.pixelShader = "Shaders/water.ps.hlsl";
-        water.blend = Gfx::BlendMode::Alpha;
         MaterialFileDesc shadow = player;
         shadow.pixelShader = "Shaders/shadow.ps.hlsl";
         shadow.textures.clear();
@@ -787,7 +783,6 @@ namespace NS
             }
         };
         add("player", player);
-        add("water", water);
         add("shadow", shadow);
 
         const Material* standIn = FindSharedMaterial("player");

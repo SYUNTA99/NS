@@ -1,7 +1,8 @@
 #include "Game/Level/ImpactOutcome.h"
+#include "Game/Level/TackleGhost.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/IUse/IUseDrawAdjust.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
@@ -15,17 +16,24 @@
 
 namespace
 {
-    NS::SceneActor* PlaceRock(NS::Scene& scene)
+    class AdjustedActor final : public NS::SceneActor, public NS::IUseDrawAdjust
     {
-        nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 2);
-        NS::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
-        scene.ResetFromJson(doc);
-        return scene.Objects().FindByObjectId(2);
-    }
+    public:
+        [[nodiscard]] NS::DrawAdjust GetDrawAdjust() const noexcept override { return adjust; }
+
+        NS::DrawAdjust adjust{};
+        GL::Level::TackleGhost ghost{this};
+
+    protected:
+        void OnInit() override { CreateClassObj(m_model, this, this); }
+    };
+
+    // 描く時の調整を返さないアクター
+    class PlainActor final : public NS::SceneActor
+    {
+    protected:
+        void OnInit() override { CreateClassObj(m_model, this); }
+    };
 } // namespace
 
 // 振れ幅 × (1 − 経過 ÷ 長さ) に 0.7〜1 のばらつきを掛ける。1 フレーム目から入れ替えのフレーム数 (2) の間は最初の向き、
@@ -68,29 +76,40 @@ TEST(BodyShake, OffsetHoldsEachSideForTheFlipFramesAndFallsLinearly)
     EXPECT_TRUE(differs);
 }
 
-// 描く時だけのずれは描く行列の位置にだけ足し、根の位置は変えない。有限でないずれは書かない
+// 持ち主が返す描く時だけのずれは描く行列の位置にだけ足し、根の位置は変えない
 // 描く箱へ足す分は、試しの世界にメッシュが無いので見ない
-TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
+TEST(BodyShake, DrawOffsetFromTheOwnerMovesOnlyTheDrawnShape)
 {
     NS::Scene scene;
-    NS::SceneActor* rock = PlaceRock(scene);
-    ASSERT_NE(rock, nullptr);
-    NS::Model* model = rock->ModelClassObj();
+    AdjustedActor* actor = scene.SpawnTransient<AdjustedActor>();
+    actor->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
+    NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
     const NS::Matrix before = model->DrawWorldMatrix(1.0f);
 
-    ASSERT_TRUE(model->SetDrawOffset(NS::Vector3{0.25f, 0.0f, -0.5f}));
+    actor->adjust.offset = NS::Vector3{0.25f, 0.0f, -0.5f};
     const NS::Matrix after = model->DrawWorldMatrix(1.0f);
     EXPECT_NEAR(after._41 - before._41, 0.25f, 1.0e-5f);
     EXPECT_NEAR(after._42 - before._42, 0.0f, 1.0e-5f);
     EXPECT_NEAR(after._43 - before._43, -0.5f, 1.0e-5f);
-    EXPECT_FLOAT_EQ(rock->Root().Position().x, 2.0f);
+    EXPECT_FLOAT_EQ(actor->Root().Position().x, 2.0f);
 
-    EXPECT_FALSE(model->SetDrawOffset(NS::Vector3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}));
-    EXPECT_FLOAT_EQ(model->DrawOffset().x, 0.25f);
-    ASSERT_TRUE(model->SetDrawOffset(NS::Vector3{0.0f, 0.0f, 0.0f}));
+    actor->adjust.offset = NS::Vector3{0.0f, 0.0f, 0.0f};
     const NS::Matrix reset = model->DrawWorldMatrix(1.0f);
     EXPECT_FLOAT_EQ(reset._41, before._41);
+}
+
+// 描く時の調整を返さない持ち主の Model は、ずれ 0・倍率 1・震えなしで描く
+TEST(BodyShake, ModelOfAnOwnerWithoutAdjustDrawsUnadjusted)
+{
+    NS::Scene scene;
+    PlainActor* actor = scene.SpawnTransient<PlainActor>();
+    NS::Model* model = actor->ModelClassObj();
+    ASSERT_NE(model, nullptr);
+    const NS::DrawAdjust adjust = model->DrawAdjustment();
+    EXPECT_TRUE(adjust.offset == (NS::Vector3{0.0f, 0.0f, 0.0f}));
+    EXPECT_TRUE(adjust.scale == (NS::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_FLOAT_EQ(adjust.tremor.amplitude, 0.0f);
 }
 
 // 残像は根の形を ±離れだけずらした所に描く。描く時だけのずれは残像に足さないので、体が片側へ振れても残像は
@@ -98,21 +117,21 @@ TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
 TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
 {
     NS::Scene scene;
-    NS::SceneActor* rock = PlaceRock(scene);
-    ASSERT_NE(rock, nullptr);
-    NS::Model* model = rock->ModelClassObj();
+    AdjustedActor* actor = scene.SpawnTransient<AdjustedActor>();
+    actor->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
+    NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
     const NS::Matrix root = model->DrawWorldMatrix(1.0f);
-    ASSERT_TRUE(model->SetDrawOffset(NS::Vector3{0.1f, 0.0f, 0.0f}));
-    ASSERT_TRUE(model->SetGhostSpread(NS::Vector3{0.3f, 0.0f, -0.2f}));
-    const NS::Matrix plus = model->GhostWorldMatrix(1.0f, 1.0f);
-    const NS::Matrix minus = model->GhostWorldMatrix(1.0f, -1.0f);
+    actor->adjust.offset = NS::Vector3{0.1f, 0.0f, 0.0f};
+    ASSERT_TRUE(actor->ghost.SetSpread(NS::Vector3{0.3f, 0.0f, -0.2f}));
+    const NS::Matrix plus = actor->ghost.SideWorldMatrix(1.0f, 1.0f);
+    const NS::Matrix minus = actor->ghost.SideWorldMatrix(1.0f, -1.0f);
     EXPECT_NEAR(plus._41 - root._41, 0.3f, 1.0e-5f);
     EXPECT_NEAR(plus._43 - root._43, -0.2f, 1.0e-5f);
     EXPECT_NEAR(minus._41 - root._41, -0.3f, 1.0e-5f);
     EXPECT_NEAR(minus._43 - root._43, 0.2f, 1.0e-5f);
-    EXPECT_FALSE(model->SetGhostSpread(NS::Vector3{std::numeric_limits<float>::infinity(), 0.0f, 0.0f}));
-    EXPECT_FLOAT_EQ(model->GhostSpread().x, 0.3f);
+    EXPECT_FALSE(actor->ghost.SetSpread(NS::Vector3{std::numeric_limits<float>::infinity(), 0.0f, 0.0f}));
+    EXPECT_FLOAT_EQ(actor->ghost.Spread().x, 0.3f);
 }
 
 // 奥揺れは押し直すたびに弱まりながら押しては戻し、止めの最後のフレームまで揺れる

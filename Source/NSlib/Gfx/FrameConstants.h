@@ -42,7 +42,7 @@ namespace NS
             Vector3 groundColor = Gfx::RenderSettings{}.groundColor;
             float exposure = Gfx::RenderSettings{}.exposure;
             TremorCB tremor{};    //!< 物の震え。頂点のシェーダーが読む。書かなければ震えない
-            float opacity = 1.0f; //!< 半透明の材質が出す不透明度 0..1。読むのは water.ps だけ
+            float opacity = 1.0f; //!< 描く 1 回ごとの不透明度 0..1。player.ps と unlit.ps が出し、混ぜ方が Alpha の時だけ効く
             float pad0 = 0.0f;
             float pad1 = 0.0f;
             float pad2 = 0.0f;

@@ -84,11 +84,13 @@ TEST(MaterialFile, SharedMaterialShowsTheValuesItWasBuiltFrom)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     assets.RegisterSharedMaterials();
-    const NS::Material* water = assets.LoadMaterial("water");
-    ASSERT_FALSE(water->IsEmpty());
-    EXPECT_EQ(ReadStringField(*water, "ピクセルシェーダー"), "Shaders/water.ps.hlsl");
-    EXPECT_EQ(ReadStringField(*water, "混ぜ方"), "Alpha");
-    EXPECT_EQ(ReadStringField(*water, "テクスチャ 1"), "Assets/Textures/cube_test.png");
+    const NS::Material* shadow = assets.LoadMaterial("shadow");
+    ASSERT_FALSE(shadow->IsEmpty());
+    EXPECT_EQ(ReadStringField(*shadow, "ピクセルシェーダー"), "Shaders/shadow.ps.hlsl");
+    EXPECT_EQ(ReadStringField(*shadow, "混ぜ方"), "Alpha");
+    const NS::Material* player = assets.LoadMaterial("player");
+    ASSERT_FALSE(player->IsEmpty());
+    EXPECT_EQ(ReadStringField(*player, "テクスチャ 1"), "Assets/Textures/cube_test.png");
 }
 
 TEST(MaterialFile, BlendFieldKeepsItsValueForAnUnknownSpelling)
@@ -156,7 +158,7 @@ TEST(MaterialFile, OnlyMaterialsReadFromAFileAreWritten)
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     assets.RegisterSharedMaterials();
     EXPECT_TRUE(assets.MakeMaterialFileJson(*assets.LoadMaterial("Assets/Materials/stone.mat")).has_value());
-    EXPECT_FALSE(assets.MakeMaterialFileJson(*assets.LoadMaterial("water")).has_value());
+    EXPECT_FALSE(assets.MakeMaterialFileJson(*assets.LoadMaterial("shadow")).has_value());
     EXPECT_FALSE(
         assets.MakeMaterialFileJson(*assets.LoadMaterial("Assets/Materials/__ns_missing__.mat")).has_value());
 }

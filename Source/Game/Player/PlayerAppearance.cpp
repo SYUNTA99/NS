@@ -83,13 +83,14 @@ namespace GL
         {
             m_landingSquashRemaining = 0;
             m_landingSquashVertical = 1.0f;
+            m_drawScale = NS::Vector3{1.0f, 1.0f, 1.0f};
             if (m_owner == nullptr)
             {
                 return;
             }
             if (NS::Model* renderer = m_owner->ModelClassObj())
             {
-                (void)renderer->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
+                renderer->SnapDrawScale();
             }
         }
 
@@ -315,15 +316,6 @@ namespace GL
         void PlayerAppearance::WriteDrawScale(const ChargeStatus& charge,
                                               const GL::Level::ImpactAnswer& impact) noexcept
         {
-            if (m_owner == nullptr)
-            {
-                return;
-            }
-            NS::Model* renderer = m_owner->ModelClassObj();
-            if (renderer == nullptr)
-            {
-                return;
-            }
             // 当たりの潰れと伸びの間は構えを混ぜない。構えの最中に来た止めも元の形から潰す
             NS::Vector3 shape{1.0f, 1.0f, 1.0f};
             if (impact.shapeAnimating)
@@ -338,8 +330,9 @@ namespace GL
             const float vertical = m_landingSquashVertical;
             const float horizontal = 1.0f / std::sqrt(vertical);
             const NS::Vector3 scale{shape.x * horizontal, shape.y * vertical, shape.z * horizontal};
-            if (renderer->SetDrawScale(scale))
+            if (NS::IsPositiveFinite(scale.x) && NS::IsPositiveFinite(scale.y) && NS::IsPositiveFinite(scale.z))
             {
+                m_drawScale = scale;
                 m_drawScaleRejected = false;
                 return;
             }

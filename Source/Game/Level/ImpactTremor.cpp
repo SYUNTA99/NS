@@ -83,5 +83,12 @@ namespace GL
             tremor.ringFrames = static_cast<float>(ringFrames);
             return tremor;
         }
+
+        bool IsFiniteTremor(const NS::Gfx::TremorCB& tremor) noexcept
+        {
+            return NS::IsFinite(tremor.contactOffset) && NS::IsFinite(tremor.right) && NS::IsFinite(tremor.up) &&
+                   std::isfinite(tremor.amplitude) && std::isfinite(tremor.elapsedFrames) &&
+                   std::isfinite(tremor.framesPerMeter) && std::isfinite(tremor.ringFrames);
+        }
     } // namespace Level
 } // namespace GL
