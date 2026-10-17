@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -223,6 +224,15 @@ TEST(AssetManagerLoad, BuiltinShadersWithoutARendererAreEmptyAndLogNoError)
     ASSERT_NE(shaders.fadePs, nullptr);
     EXPECT_FALSE(shaders.fadePs->IsValid());
     EXPECT_EQ(log.ErrorCount(), 0);
+}
+
+TEST(AssetManagerLoad, TextureKeepsThePathItWasLoadedBy)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    NS::Texture* texture = assets.LoadTexture("Textures\\checker.png");
+    ASSERT_NE(texture, nullptr);
+    EXPECT_EQ(texture->Path(), NS::OS::FileSystem::Normalize("Textures\\checker.png"));
+    EXPECT_EQ(assets.LoadTexture(texture->Path()), texture);
 }
 
 TEST(AssetField, ReloadingAnotherMeshChangesTheCollisionShape)

@@ -17,14 +17,17 @@ namespace NS
     class Texture : public Object
     {
     public:
-        explicit Texture(const std::string& path);
+        explicit Texture(std::string path);
         ~Texture() noexcept override;
+
+        [[nodiscard]] const std::string& Path() const noexcept;
 
         [[nodiscard]] Gfx::D3DTexture* D3D() const noexcept;
 
         NS_REFLECT_NONE(Texture, Object)
 
     private:
+        std::string m_path;
         std::unique_ptr<Gfx::D3DTexture> m_texture;
     };
 } // namespace NS
