@@ -83,7 +83,7 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
     editor.AddMeshParts(NS::OS::FileSystem::Combine(
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Models"),
         "__ns_missing_terrain__.glb"));
-    EXPECT_EQ(log.ErrorCount(), 1);
+    EXPECT_EQ(log.ErrorCount(), 2);
 
     NS::SceneActor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placed, nullptr);

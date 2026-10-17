@@ -42,15 +42,22 @@ namespace NS
         //! 描くメッシュ。SetMesh で替えていればその物、無ければ欄のメッシュ
         [[nodiscard]] const Mesh* GetMesh() const noexcept;
 
-        //! 描くメッシュの名前。組み込みの形の名前か、Content の下のパス。空・読めない時は cube で描く
+        //! 描くメッシュの名前。組み込みの形の名前か、Content の下のパス。空・読めない時は何も描かない
         [[nodiscard]] const std::string& MeshRef() const noexcept { return AssetFieldName(m_mesh); }
         //! 名前のメッシュをその場で AssetManager::Get() から引き、欄に入れる
-        void SetMeshRef(std::string_view ref) { LoadAssetField(m_mesh, ref); }
+        void SetMeshRef(std::string_view ref);
 
-        //! 描くマテリアルの名前。共有のマテリアルの名前か .mat のパス。空・読めない時は共有の player で描く
+        //! 欄のマテリアルの名前。.mat のパス。読めない時はピンクで描き、空の時は DrawnMaterial を描く
         [[nodiscard]] const std::string& MaterialRef() const noexcept { return AssetFieldName(m_material); }
         //! 名前のマテリアルをその場で AssetManager::Get() から引き、欄に入れる
-        void SetMaterialRef(std::string_view ref) { LoadAssetField(m_material, ref); }
+        void SetMaterialRef(std::string_view ref);
+
+        //! @brief 描くマテリアル。欄が空でなければ欄の物、空なら描くメッシュで選んだ物 (AssetManager::LoadUnsetMaterial)
+        //! @details 選び直すのは ChooseDrawnMaterial を呼んだ時だけ。保存はしない
+        [[nodiscard]] const Material* DrawnMaterial() const noexcept { return m_drawnMaterial; }
+        //! @brief 今の欄と描くメッシュで、描くマテリアルを選び直す
+        //! @details 作る時・名前の欄を書いた時・SceneActor::ReloadAssets の最後に呼ぶ。マテリアルの無いファイルのモデルは ERROR を出す
+        void ChooseDrawnMaterial();
 
         //! 個体ごとの頂点シェーダーの定数を設定する。同じ SceneActor の Animation がプレイの始まりに設定する
         //! cpuData があれば、描画側が毎回バッファーへ転送してから設定する
@@ -145,8 +152,9 @@ namespace NS
 
         // 素材は AssetManager が持つ。欄は nullptr にならない
         Mesh* m_mesh = nullptr;              // 描くメッシュ
-        Material* m_material = nullptr;      // 描くマテリアル
+        Material* m_material = nullptr;
         Mesh* m_shownMesh = nullptr;         // 欄を替えずに描くメッシュ。保存しない
+        Material* m_drawnMaterial = nullptr; // ChooseDrawnMaterial が選ぶ。保存しない
         Color m_baseColor{1.0f, 1.0f, 1.0f};              // 個体色、lighting と別系統。透明度は使わず rgb だけを描く
 
         // 追加 VS 定数。cpuData があれば描画ごとに転送する

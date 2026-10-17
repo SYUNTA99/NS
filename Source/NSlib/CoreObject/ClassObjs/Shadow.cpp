@@ -15,7 +15,7 @@ namespace NS
     Shadow::Shadow(SceneActor* owner) : m_owner(owner)
     {
         LoadAssetField(m_mesh, "shadowQuad");
-        LoadAssetField(m_material, "shadow");
+        LoadAssetField(m_material, "Assets/Materials/shadow.mat");
     }
 
     void Shadow::Register()

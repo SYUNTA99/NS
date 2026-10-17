@@ -81,17 +81,22 @@ TEST(MaterialFile, MaterialPointsAtTheShaderOfItsPath)
     EXPECT_EQ(band->VertexShader(), stone->VertexShader());
 }
 
-TEST(MaterialFile, SharedMaterialShowsTheValuesItWasBuiltFrom)
+TEST(MaterialFile, PlayerAndShadowFilesHoldTheValuesTheyWereBuiltFrom)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    assets.RegisterSharedMaterials();
-    const NS::Material* shadow = assets.LoadMaterial("shadow");
+    const NS::Material* shadow = assets.LoadMaterial("Assets/Materials/shadow.mat");
     ASSERT_FALSE(shadow->IsEmpty());
+    EXPECT_EQ(ReadStringField(*shadow, "頂点シェーダー"), "Shaders/standard.vs.hlsl");
     EXPECT_EQ(ReadStringField(*shadow, "ピクセルシェーダー"), "Shaders/shadow.ps.hlsl");
     EXPECT_EQ(ReadStringField(*shadow, "混ぜ方"), "Alpha");
-    const NS::Material* player = assets.LoadMaterial("player");
+    EXPECT_EQ(ReadStringField(*shadow, "テクスチャ 1"), "");
+    const NS::Material* player = assets.LoadMaterial("Assets/Materials/player.mat");
     ASSERT_FALSE(player->IsEmpty());
+    EXPECT_EQ(ReadStringField(*player, "頂点シェーダー"), "Shaders/standard.vs.hlsl");
+    EXPECT_EQ(ReadStringField(*player, "ピクセルシェーダー"), "Shaders/player.ps.hlsl");
+    EXPECT_EQ(ReadStringField(*player, "混ぜ方"), "Opaque");
     EXPECT_EQ(ReadStringField(*player, "テクスチャ 1"), "Assets/Textures/cube_test.png");
+    EXPECT_EQ(ReadStringField(*player, "テクスチャ 2"), "");
 }
 
 TEST(MaterialFile, BlendFieldKeepsItsValueForAnUnknownSpelling)
@@ -153,13 +158,11 @@ TEST(MaterialFile, ValuesTheFieldsCannotHoldAreNotWritten)
     EXPECT_FALSE(NS::MakeMaterialJson(file).has_value());
 }
 
-// 書くのは .mat から読んだマテリアルだけ。共有のマテリアルと読めなかった名前のマテリアルには書く先が無い
 TEST(MaterialFile, OnlyMaterialsReadFromAFileAreWritten)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    assets.RegisterSharedMaterials();
     EXPECT_TRUE(assets.MakeMaterialFileJson(*assets.LoadMaterial("Assets/Materials/stone.mat")).has_value());
-    EXPECT_FALSE(assets.MakeMaterialFileJson(*assets.LoadMaterial("shadow")).has_value());
+    EXPECT_FALSE(assets.MakeMaterialFileJson(*assets.LoadMaterial("")).has_value());
     const TestLogCapture log;
     EXPECT_FALSE(
         assets.MakeMaterialFileJson(*assets.LoadMaterial("Assets/Materials/__ns_missing__.mat")).has_value());

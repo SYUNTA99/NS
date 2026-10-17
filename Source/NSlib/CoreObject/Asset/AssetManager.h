@@ -59,7 +59,9 @@ namespace NS
     //! 読み方と失敗の扱いは LoadGltfMesh と同じ。失敗した時は IsValid() が false
     [[nodiscard]] AnimSource LoadGltfAnimationSource(std::string_view path);
 
-    //! アプリ寿命でアセットを重複なく所有する単一キャッシュ。ファイル由来は path キー、組み込みは名前キー
+    //! @brief アプリ寿命で素材を重複なく持つ。素材の種類ごとに表を 1 本持つ
+    //! @details メッシュ・マテリアル・骨付きのモデル・動きのクリップは、欄の名前を正規化した鍵で持つ。
+    //! 読めなかった名前も中身の空の姿で覚え、Clear まで読み直さないので、読めない時のログは名前ごとに 1 回出る
     class AssetManager : public NonCopyable
     {
     public:
@@ -68,8 +70,8 @@ namespace NS
         ~AssetManager();
 
         //! @brief 素材を読む AssetManager を返す
-        //! @details AssetManagerScope が差した物を返す。差していない間は、組み込みも共有の material も
-        //! 登録していない AssetManager を返すので、組み込みの名前は引けない
+        //! @details AssetManagerScope が差した物を返す。差していない間は、組み込みの形を登録していない
+        //! AssetManager を返すので、組み込みの形は当たりだけで描く形が無い
         [[nodiscard]] static AssetManager& Get() noexcept;
 
         //! 正規化した path ごとに 1 つを作って共有する。読めない時は代わりの中身になる
@@ -81,19 +83,18 @@ namespace NS
         //! 正規化した path ごとに 1 つを作って共有する。読めない時は代わりのピンクの画像になる
         [[nodiscard]] Texture* LoadTexture(std::string_view path);
         //! @brief 欄の名前のメッシュを返す。名前は組み込みの形の名前か、ContentRoot からのファイルの道筋
-        //! @details nullptr を返さない。空の名前と読めない名前は、その名前を道に持ち描く形の無いメッシュを返し、
-        //! 組み込みの cube で描く。読めない名前は警告する
+        //! @details nullptr を返さない。空の名前と読めない名前は、描く形も当たりも無い中身の空のメッシュを返し、
+        //! 何も描かない。読めない名前は ERROR を出す。空の名前は「選んでいない」で何も出さない
         //! 組み込みの形の名前はファイルとして読まないので、RegisterBuiltins の前は描く形が無い
         [[nodiscard]] Mesh* LoadMesh(std::string_view name);
 
-        //! @brief 欄の名前のメッシュの当たりを返す。名前の決まりと代わりの cube は LoadMesh と同じ
-        //! @details 装置が無くても作れる。同じファイルは描く物と同じ記録から 1 回だけ読む
+        //! @brief 欄の名前のメッシュの当たりを返す。名前の決まりは LoadMesh と同じ
+        //! @details 装置が無くても作れる。空の名前と読めない名前は nullptr で、当たりを作らない
         [[nodiscard]] const Phys::MeshShape* LoadMeshShape(std::string_view name);
 
         //! @brief 欄の名前の骨付きのモデルを返す。名前は ContentRoot からの glTF の道筋
         //! @details nullptr を返さない。空の名前と読めない名前は、その名前を持つ中身の空のモデルを返す
-        //! 空の名前は「使わない」で警告しない。読めない名前は報告する
-        //! 読めなかったファイルは覚えないので、直した後に読み直すと読める
+        //! 空の名前は「使わない」で何も出さない。読めない名前は ERROR を出す
         [[nodiscard]] SkinnedModel* LoadSkinnedModel(std::string_view name);
 
         //! @brief 欄の名前のクリップを返す。名前は ContentRoot からの glTF の道筋か「道筋#動きの名前」
@@ -108,22 +109,18 @@ namespace NS
         void RegisterBuiltins();
         //! 登録前も取得できる組み込みの形の名前。名前の一覧はアプリ寿命で保持する
         [[nodiscard]] static std::span<const std::string_view> BuiltinMeshNames() noexcept;
-        //! @brief 欄の名前のマテリアルを返す。名前は共有の material の名前か、ContentRoot からの .mat の道筋
-        //! @details nullptr を返さない。空の名前と読めない名前は、その名前を持つ中身の空のマテリアルを返し、
-        //! 共有の player で描く。読めない名前は警告する
-        //! 共有の名前はファイルとして読まないので、RegisterSharedMaterials の前は中身の空のマテリアルを返す
-        //! 読めなかった .mat は覚えないので、直した後に引き直すと読める
+        //! @brief 欄の名前のマテリアルを返す。名前は ContentRoot からの .mat の道筋
+        //! @details nullptr を返さない。読めない名前は中身の空のマテリアルを返してピンク (missing.mat) で描き、ERROR を出す
+        //! 空の名前は「選んでいない」で、中身の空のマテリアルを返す。何で描くかは Model が LoadUnsetMaterial で決める
         [[nodiscard]] Material* LoadMaterial(std::string_view name);
 
-        //! 共有 material である player / shadow を組み込み shader + texture から一括組み立てする
-        //! device + RegisterBuiltins 後・最初の利用前に 1 度呼ぶ。既登録名は上書きしない
-        //! 前に LoadMaterial が返した中身の空のマテリアルは、これより後は player で描く
-        void RegisterSharedMaterials();
-        //! 登録前も取得できる共有の材質の名前。名前の一覧はアプリ寿命で保持する
-        [[nodiscard]] static std::span<const std::string_view> SharedMaterialNames() noexcept;
+        //! @brief マテリアルを選んでいない mesh を描くマテリアルを返す
+        //! @details 組み込みの形と、描く形も当たりも無いメッシュは灰色の既定 (default.mat)。
+        //! ファイルのモデルはピンク (missing.mat) で、ERROR を出す
+        [[nodiscard]] Material* LoadUnsetMaterial(const Mesh& mesh);
 
         //! @brief material が .mat から読んだマテリアルなら、その値を .mat の JSON 文字列にする
-        //! @details 共有のマテリアルと読めなかった名前のマテリアルは書く先が無いので nullopt
+        //! @details 読めなかった名前と空の名前のマテリアルは書く先が無いので nullopt
         //! 値が書けない時も nullopt (MakeMaterialJson と同じ決まり)
         [[nodiscard]] std::optional<std::string> MakeMaterialFileJson(const Material& material) const;
         //! @brief material の今の値で、シェーダーとテクスチャを引き直して中の D3DMaterial を作り直す
@@ -141,17 +138,13 @@ namespace NS
         void Clear() noexcept;
 
     private:
-        // 正規化した path でメッシュを引き、無ければ glTF を読んで描く形と当たりを一度に作る
-        // 読めなかった道も中身の空のメッシュで覚える。name はメッシュが持つ道
-        [[nodiscard]] Mesh& LoadMeshFile(std::string_view path, std::string_view name);
-        // 組み込みの形のメッシュ。無ければ当たりだけで作り、描く形は RegisterBuiltins が入れる
-        [[nodiscard]] Mesh& BuiltinMesh(std::string_view name);
-        // ファイルでも組み込みでもない名前 (空・ContentRoot の外) のメッシュ。名前ごとに 1 つ
-        [[nodiscard]] Mesh& MissingMesh(std::string_view name);
-        // 本当の場所の .mat を読んで覚える。読めなければ nullptr。name はマテリアルが持つ道
-        [[nodiscard]] Material* LoadMaterialFile(const std::string& path, std::string_view name);
-        // 読めなかった名前のマテリアル。名前ごとに 1 つ
-        [[nodiscard]] Material& MissingMaterial(std::string_view name);
+        // 表に無い key のメッシュを作る。組み込みの形は当たりだけで作り、描く形は RegisterBuiltins が入れる
+        // ファイルは glTF を読んで描く形と当たりを一度に作る
+        [[nodiscard]] std::unique_ptr<Mesh> CreateMesh(const std::string& key);
+        // 表に無い key のマテリアルを .mat から作る。読めなければピンクで描く中身の空のマテリアル
+        [[nodiscard]] std::unique_ptr<Material> ReadMaterial(const std::string& key);
+        // 読めなかった key のマテリアル。missing.mat 自身が読めない時は代わりも無い
+        [[nodiscard]] std::unique_ptr<Material> MakeUnreadableMaterial(const std::string& key);
         struct MaterialSources
         {
             Shader* vertexShader = nullptr;
@@ -163,12 +156,9 @@ namespace NS
         [[nodiscard]] std::unique_ptr<Material> CreateMaterial(std::string_view name, MaterialFileDesc file);
         // file の道を baseDir から引いてシェーダーとテクスチャを読む
         [[nodiscard]] MaterialSources LoadMaterialSources(const MaterialFileDesc& file);
-        [[nodiscard]] Material* FindSharedMaterial(std::string_view name) const noexcept;
 
-        // 本当の場所の skinned glTF を読んで記録する。読めなければ nullptr。name はモデルとメッシュが持つ道
-        [[nodiscard]] SkinnedModel* LoadSkinnedModelFile(std::string_view path, std::string_view name);
-        // 読めなかった名前のモデル。名前ごとに 1 つ
-        [[nodiscard]] SkinnedModel& MissingSkinnedModel(std::string_view name);
+        // 表に無い key の骨付きのモデルを skinned glTF から作る。読めなければ中身の空のモデル
+        [[nodiscard]] std::unique_ptr<SkinnedModel> CreateSkinnedModel(const std::string& key);
         // name のクリップを作る。読めなければ中身の空のクリップにする
         [[nodiscard]] std::unique_ptr<AnimClip> CreateAnimClip(std::string_view name);
         // アニメーションの glTF を path キーで 1 回だけ読む。読めなかった path も覚え、Clear まで読み直さない
@@ -177,17 +167,10 @@ namespace NS
         std::string m_baseDir; // 相対 path 解決の基準ディレクトリ
         std::map<std::string, std::unique_ptr<Shader>> m_shaders;
         std::map<std::string, std::unique_ptr<Texture>> m_textures;
-        std::map<std::string, std::unique_ptr<Mesh>> m_meshes; // path キーの glTF のメッシュ
-        // 組み込みの形の名前キー。当たりは装置の前でも作り、描く形は RegisterBuiltins が足す
-        std::map<std::string, std::unique_ptr<Mesh>> m_builtins;
-        std::map<std::string, std::unique_ptr<Mesh>> m_missingMeshes; // 名前キー。ファイルでも組み込みでもない名前
-        std::map<std::string, std::unique_ptr<Material>> m_materials;        // path キーの .mat
-        std::map<std::string, std::unique_ptr<Material>> m_sharedMaterials;  // コードで組む共有のマテリアル
-        std::map<std::string, std::unique_ptr<Material>> m_missingMaterials; // 名前キー。読めなかった名前
-        std::map<std::string, std::unique_ptr<SkinnedModel>> m_skinnedModels; // path キーの skinned glTF
-        std::map<std::string, std::unique_ptr<SkinnedModel>> m_missingSkinnedModels; // 名前キー。読めなかった名前
-        std::map<std::string, std::unique_ptr<AnimSource>>
-            m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録
+        std::map<std::string, std::unique_ptr<Mesh>> m_meshes;
+        std::map<std::string, std::unique_ptr<Material>> m_materials;
+        std::map<std::string, std::unique_ptr<SkinnedModel>> m_skinnedModels;
+        std::map<std::string, std::unique_ptr<AnimSource>>  m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録
         // 欄の字面キー。読めなかった名前の中身の空のクリップも覚える
         std::map<std::string, std::unique_ptr<AnimClip>, std::less<>> m_animClips;
     };

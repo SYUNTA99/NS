@@ -1813,7 +1813,6 @@ namespace
         return nullptr;
     }
 
-    // 読めない素材は、引くたびに読み直しと警告が走る
     [[nodiscard]] bool IsReadable(const NS::Object& asset)
     {
         if (const NS::Material* material = NS::Cast<NS::Material>(&asset))
@@ -1822,7 +1821,7 @@ namespace
         }
         if (const NS::Mesh* mesh = NS::Cast<NS::Mesh>(&asset))
         {
-            return !mesh->UsesStandIn();
+            return !mesh->IsEmpty();
         }
         return false;
     }

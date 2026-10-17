@@ -19,10 +19,6 @@ namespace NS
             {
                 builtins = AssetManager::BuiltinMeshNames();
             }
-            else if (kind == AssetKind::Material)
-            {
-                builtins = AssetManager::SharedMaterialNames();
-            }
             for (const std::string_view name : builtins)
             {
                 options.push_back(AssetOption{std::string{name}, std::string{name}, "組み込み"});

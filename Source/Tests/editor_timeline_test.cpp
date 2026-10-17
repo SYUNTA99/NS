@@ -61,7 +61,7 @@ namespace
         {
             NS::Model* model = CreateClassObj(m_model, this);
             model->SetMeshRef("cube");
-            model->SetMaterialRef("player");
+            model->SetMaterialRef("Assets/Materials/player.mat");
         }
         void BodyStep() override { Root().SetPosition(Root().Position() + NS::Vector3{0.1f, 0.0f, 0.0f}); }
     };
@@ -192,7 +192,6 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     ASSERT_TRUE(renderer.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     assets.RegisterBuiltins();
-    assets.RegisterSharedMaterials();
     const NS::AssetManagerScope useAssets{assets};
     renderer.SetShaders(assets.LoadBuiltinShaders());
     std::unique_ptr<NS::Gfx::D3DRenderTarget> target = NS::Gfx::D3DRenderTarget::Create({160, 90});
@@ -286,7 +285,6 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     ASSERT_TRUE(renderer.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     assets.RegisterBuiltins();
-    assets.RegisterSharedMaterials();
     const NS::AssetManagerScope useAssets{assets};
     renderer.SetShaders(assets.LoadBuiltinShaders());
     NS::Scene original;

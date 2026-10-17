@@ -226,6 +226,11 @@ namespace NS
             m_model->SetMesh(nullptr);
         }
         OnAssetsLoaded();
+        // マテリアルの無いメッシュの描き方は描くメッシュで決まるので、OnAssetsLoaded がメッシュを差した後に選ぶ
+        if (m_model)
+        {
+            m_model->ChooseDrawnMaterial();
+        }
     }
 
     void SceneActor::OnAssetsLoaded()

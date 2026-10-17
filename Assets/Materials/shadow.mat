@@ -1,0 +1,6 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/shadow.ps.hlsl",
+  "baseColor": [1.0, 1.0, 1.0],
+  "blend": "Alpha"
+}

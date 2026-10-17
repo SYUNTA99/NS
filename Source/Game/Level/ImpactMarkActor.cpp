@@ -18,7 +18,7 @@ namespace GL
         {
             NS::Model* model = CreateClassObj(m_model, this);
             model->SetMeshRef("shadowQuad");
-            model->SetMaterialRef("shadow");
+            model->SetMaterialRef("Assets/Materials/shadow.mat");
         }
 
         NS::SceneActor* ImpactMarkActor::SpawnAt(NS::Scene* scene, const NS::Vector3& position)

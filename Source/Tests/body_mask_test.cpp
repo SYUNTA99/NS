@@ -40,7 +40,7 @@ namespace
         {
             m_body = CreateClassObj(m_model, this);
             m_body->SetMeshRef("cube");
-            m_body->SetMaterialRef("player");
+            m_body->SetMaterialRef("Assets/Materials/player.mat");
             Root().SetPosition(m_position);
         }
 
@@ -93,7 +93,6 @@ namespace
               m_renderer(NS::Gfx::RendererDesc{}, m_window), m_assets(NS::OS::FileSystem::ContentRoot())
         {
             m_assets.RegisterBuiltins();
-            m_assets.RegisterSharedMaterials();
             m_renderer.SetShaders(m_assets.LoadBuiltinShaders());
             m_target = NS::Gfx::D3DRenderTarget::Create({k_Width, k_Height});
         }

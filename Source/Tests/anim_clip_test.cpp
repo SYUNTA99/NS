@@ -63,7 +63,7 @@ TEST(SkinnedModelAsset, UnreadableNamesGiveAnEmptyModelWithTheName)
         EXPECT_EQ(model->GetSkeleton(), nullptr) << name;
         EXPECT_EQ(model, assets.LoadSkinnedModel(name)) << name;
     }
-    EXPECT_EQ(log.ErrorCount(), 4);
+    EXPECT_EQ(log.ErrorCount(), 3);
 }
 
 TEST(SkinnedModelAsset, ReadableFileHoldsTheSkinnedMeshAndItsSkeleton)

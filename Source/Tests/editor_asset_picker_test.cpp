@@ -190,7 +190,7 @@ TEST_F(EditorAssetPickerTest, OpeningAndClosingPreservesAnUnlistedLongReference)
     EXPECT_TRUE(committed);
     EXPECT_EQ(GImGui->OpenPopupStack.Size, 0);
     EXPECT_EQ(m_model.MeshRef(), path);
-    EXPECT_EQ(log.ErrorCount(), 1);
+    EXPECT_EQ(log.ErrorCount(), 2);
 }
 
 TEST_F(AssetPickerCatalogTest, ChoicesIncludeBuiltinsAndOnlyFilesOfTheRequestedKind)

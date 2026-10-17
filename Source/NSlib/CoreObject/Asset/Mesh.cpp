@@ -31,15 +31,7 @@ namespace NS
 
     Gfx::D3DMesh* Mesh::D3D() const noexcept
     {
-        if (m_mesh != nullptr)
-        {
-            return m_mesh.get();
-        }
-        if (m_standIn != nullptr)
-        {
-            return m_standIn->D3D();
-        }
-        return nullptr;
+        return m_mesh.get();
     }
 
     Gfx::D3DSkeletalMesh* Mesh::D3DSkeletal() const noexcept
@@ -62,20 +54,14 @@ namespace NS
         return &mesh->LocalBounds();
     }
 
-    bool Mesh::UsesStandIn() const noexcept
+    bool Mesh::IsEmpty() const noexcept
     {
-        return m_mesh == nullptr && m_standIn != nullptr;
+        return m_mesh == nullptr && m_collision == nullptr;
     }
 
     void Mesh::SetD3D(std::unique_ptr<Gfx::D3DMesh> mesh) noexcept
     {
         NS_ASSERT(Scene, m_skeletal == nullptr, "骨付きのメッシュの描く形を入れ替えようとしている");
         m_mesh = std::move(mesh);
-    }
-
-    void Mesh::SetStandIn(const Mesh* standIn) noexcept
-    {
-        NS_ASSERT(Scene, standIn != this, "メッシュの代わりに自分を指そうとしている");
-        m_standIn = standIn;
     }
 } // namespace NS

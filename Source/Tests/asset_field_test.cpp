@@ -128,7 +128,7 @@ TEST(AssetField, ModelAndShadowHoldTheirAssetsInAssetFields)
     const NS::Shadow shadow{nullptr};
     const nlohmann::json shadowFields = NS::SerializeClassObjFields(shadow);
     EXPECT_EQ(shadowFields["メッシュ"], nlohmann::json("shadowQuad"));
-    EXPECT_EQ(shadowFields["マテリアル"], nlohmann::json("shadow"));
+    EXPECT_EQ(shadowFields["マテリアル"], nlohmann::json("Assets/Materials/shadow.mat"));
 }
 
 TEST(AssetField, UnreadableNamesStayWhenSavedAgain)
@@ -196,10 +196,11 @@ TEST(AssetManagerLoad, MeshShapeFollowsTheNameRules)
     const NS::Phys::MeshShape* quad = assets.LoadMeshShape("shadowQuad");
     ASSERT_NE(quad, nullptr);
     EXPECT_NE(quad, cube);
-    EXPECT_EQ(assets.LoadMeshShape(""), cube);
-    EXPECT_EQ(assets.LoadMeshShape("Assets/Models/__ns_missing_shape__.glb"), cube);
-    EXPECT_EQ(assets.LoadMeshShape("../__ns_outside__.glb"), cube);
-    EXPECT_EQ(log.ErrorCount(), 1);
+    EXPECT_EQ(log.ErrorCount(), 0);
+    EXPECT_EQ(assets.LoadMeshShape(""), nullptr);
+    EXPECT_EQ(assets.LoadMeshShape("Assets/Models/__ns_missing_shape__.glb"), nullptr);
+    EXPECT_EQ(assets.LoadMeshShape("../__ns_outside__.glb"), nullptr);
+    EXPECT_GE(log.ErrorCount(), 2);
 }
 
 // Renderer の無い場で読んだマテリアルは、シェーダとテクスチャも含めて空で、ERROR を出さない
@@ -233,6 +234,75 @@ TEST(AssetManagerLoad, TextureKeepsThePathItWasLoadedBy)
     ASSERT_NE(texture, nullptr);
     EXPECT_EQ(texture->Path(), NS::OS::FileSystem::Normalize("Textures\\checker.png"));
     EXPECT_EQ(assets.LoadTexture(texture->Path()), texture);
+}
+
+TEST(AssetManagerLoad, UnreadableMeshDrawsNothingHasNoCollisionAndLogsOnce)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const TestLogCapture log;
+    NS::Mesh* missing = assets.LoadMesh("Assets/Models/__ns_missing_mesh__.glb");
+    const int errorsAfterFirst = log.ErrorCount();
+    EXPECT_GE(errorsAfterFirst, 1);
+    EXPECT_EQ(assets.LoadMesh("Assets\\Models\\__ns_missing_mesh__.glb"), missing);
+    EXPECT_EQ(missing->D3D(), nullptr);
+    EXPECT_EQ(missing->Collision(), nullptr);
+    EXPECT_EQ(assets.LoadMeshShape("Assets/Models/__ns_missing_mesh__.glb"), nullptr);
+    EXPECT_EQ(log.ErrorCount(), errorsAfterFirst);
+
+    EXPECT_EQ(assets.LoadMeshShape(""), nullptr);
+    EXPECT_EQ(log.ErrorCount(), errorsAfterFirst);
+}
+
+TEST(AssetManagerLoad, UnreadableMaterialDrawsTheMissingMaterialAndLogsOnce)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const TestLogCapture log;
+    NS::Material* missing = assets.LoadMaterial("Assets/Materials/__ns_missing__.mat");
+    const int errorsAfterFirst = log.ErrorCount();
+    EXPECT_GE(errorsAfterFirst, 1);
+    EXPECT_EQ(assets.LoadMaterial("Assets\\Materials\\__ns_missing__.mat"), missing);
+    EXPECT_TRUE(missing->IsEmpty());
+    EXPECT_FALSE(assets.MakeMaterialFileJson(*missing).has_value());
+
+    const NS::Material* pink = assets.LoadMaterial("Assets/Materials/missing.mat");
+    ASSERT_FALSE(pink->IsEmpty());
+    EXPECT_EQ(missing->D3D(), pink->D3D());
+    EXPECT_EQ(log.ErrorCount(), errorsAfterFirst);
+}
+
+TEST(AssetManagerLoad, PlayerAndShadowAreMaterialFilesThatCanBeWritten)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const TestLogCapture log;
+    for (const char* path : {"Assets/Materials/player.mat", "Assets/Materials/shadow.mat"})
+    {
+        const NS::Material* material = assets.LoadMaterial(path);
+        EXPECT_FALSE(material->IsEmpty()) << path;
+        EXPECT_TRUE(assets.MakeMaterialFileJson(*material).has_value()) << path;
+    }
+    EXPECT_EQ(log.ErrorCount(), 0);
+}
+
+TEST(AssetField, ModelWithoutAMaterialDrawsGrayOnABuiltinShapeAndPinkOnAFileMesh)
+{
+    NS::Scene scene;
+    NS::MapPartsActor* parts = scene.SpawnTransient<NS::MapPartsActor>();
+    ASSERT_NE(parts, nullptr);
+    NS::Model* model = parts->ModelClassObj();
+    NS::AssetManager& assets = NS::AssetManager::Get();
+    ASSERT_EQ(model->MaterialRef(), "");
+    EXPECT_EQ(model->DrawnMaterial(), assets.LoadMaterial("Assets/Materials/default.mat"));
+
+    (void)assets.LoadMesh("Assets/Models/CesiumMan.glb");
+    const TestLogCapture log;
+    model->SetMeshRef("Assets/Models/CesiumMan.glb");
+    parts->ReloadAssets();
+    EXPECT_EQ(model->DrawnMaterial(), assets.LoadMaterial("Assets/Materials/missing.mat"));
+    EXPECT_GE(log.ErrorCount(), 1);
+    EXPECT_EQ(model->MaterialRef(), "");
+
+    model->SetMaterialRef("Assets/Materials/stone.mat");
+    EXPECT_EQ(model->DrawnMaterial(), assets.LoadMaterial("Assets/Materials/stone.mat"));
 }
 
 TEST(AssetField, ReloadingAnotherMeshChangesTheCollisionShape)

@@ -11,7 +11,7 @@
         },
         "ImpactResolver": {},
         "Model": {
-            "マテリアル": "player",
+            "マテリアル": "Assets/Materials/player.mat",
             "メッシュ": "",
             "基本色": [
                 0.5,

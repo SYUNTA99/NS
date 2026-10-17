@@ -2,6 +2,7 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Types.h"
 
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -40,6 +41,29 @@ namespace NS
     {
         LoadAssetField(m_mesh, "");
         LoadAssetField(m_material, "");
+        ChooseDrawnMaterial();
+    }
+
+    void Model::SetMeshRef(std::string_view ref)
+    {
+        LoadAssetField(m_mesh, ref);
+        ChooseDrawnMaterial();
+    }
+
+    void Model::SetMaterialRef(std::string_view ref)
+    {
+        LoadAssetField(m_material, ref);
+        ChooseDrawnMaterial();
+    }
+
+    void Model::ChooseDrawnMaterial()
+    {
+        if (!m_material->Path().empty())
+        {
+            m_drawnMaterial = m_material;
+            return;
+        }
+        m_drawnMaterial = AssetManager::Get().LoadUnsetMaterial(*GetMesh());
     }
 
     const Mesh* Model::GetMesh() const noexcept
@@ -186,22 +210,22 @@ namespace NS
 
     void Model::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
-        if (!CanDraw(m_material))
+        if (!CanDraw(m_drawnMaterial))
         {
             return;
         }
 
-        out.push_back(MakeDrawItem(context, m_material, DrawWorldMatrix(context.alpha)));
+        out.push_back(MakeDrawItem(context, m_drawnMaterial, DrawWorldMatrix(context.alpha)));
     }
 
     bool Model::CanDraw() const noexcept
     {
-        return CanDraw(m_material);
+        return CanDraw(m_drawnMaterial);
     }
 
     Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept
     {
-        return MakeDrawItem(context, m_material, world);
+        return MakeDrawItem(context, m_drawnMaterial, world);
     }
 
     bool Model::CanDraw(const Material* material) const noexcept
@@ -243,7 +267,7 @@ namespace NS
 
     RenderBucket Model::Bucket() const noexcept
     {
-        const Gfx::D3DMaterial* material = m_material->D3D();
+        const Gfx::D3DMaterial* material = m_drawnMaterial->D3D();
         if (material == nullptr || material->Blend() == Gfx::BlendMode::Opaque)
         {
             return RenderBucket::Opaque;
@@ -263,7 +287,7 @@ namespace NS
 
     int Model::SortPriority() const noexcept
     {
-        if (const Gfx::D3DMaterial* material = m_material->D3D())
+        if (const Gfx::D3DMaterial* material = m_drawnMaterial->D3D())
         {
             return material->RenderPriority();
         }

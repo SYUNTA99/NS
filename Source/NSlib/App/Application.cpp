@@ -171,7 +171,6 @@ namespace NS
 
         m_assets = std::make_unique<AssetManager>(OS::FileSystem::ContentRoot());
         m_assets->RegisterBuiltins();
-        m_assets->RegisterSharedMaterials();
         m_assetsScope = std::make_unique<AssetManagerScope>(*m_assets);
         // Renderer は AssetManager より先に立つので、組み込みのシェーダーは AssetManager を作った後に渡す
         m_renderer->SetShaders(m_assets->LoadBuiltinShaders());
