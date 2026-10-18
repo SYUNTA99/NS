@@ -5,11 +5,11 @@
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
 #include "NSlib/Gfx/Render/DrawItem.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
@@ -28,10 +28,10 @@ namespace NS
         ScreenPasses::ScreenPasses(const BuiltinShaders& shaders) noexcept
             : m_vs(shaders.fullscreenVs), m_distortionPs(shaders.screenDistortionPs), m_bodyMaskPs(shaders.bodyMaskPs)
         {
-            const GraphicObject& gpu = Gpu();
+            const D3DGlobal& gpu = Gpu();
             if (gpu.device == nullptr || gpu.context == nullptr)
             {
-                NS_LOG_WARN(Graphics, "ScreenPasses: Renderer が未構築のため無効のまま作る");
+                NS_LOG_WARN(Graphics, "ScreenPasses: D3DDevice が未構築のため無効のまま作る");
                 return;
             }
 
@@ -75,14 +75,14 @@ namespace NS
             return m_valid;
         }
 
-        void ScreenPasses::Distort(Renderer& renderer, const ScreenRing& ring) noexcept
+        void ScreenPasses::Distort(D3DDevice& device, const ScreenRing& ring) noexcept
         {
             if (!m_valid || !(ring.pushPixels > 0.0f) || !(ring.halfWidthPixels > 0.0f))
             {
                 return;
             }
 
-            D3DCommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = device.Commands();
             ComPtr<ID3D11RenderTargetView> target;
             ComPtr<ID3D11DepthStencilView> depth;
             cmd->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
@@ -134,7 +134,7 @@ namespace NS
                 cmd->PSSetShaderResources(1, 1, noMask);
             }
             // 押した先は線形で拾う。端の外は端の色を伸ばす
-            cmd.PSSetSampler(renderer.States().LinearClamp(), 0);
+            cmd.PSSetSampler(device.States().LinearClamp(), 0);
 
             // 頂点は SV_VertexID から作る
             cmd->IASetInputLayout(nullptr);
@@ -150,7 +150,7 @@ namespace NS
             }
         }
 
-        bool ScreenPasses::BeginBodyMask(Renderer& renderer) noexcept
+        bool ScreenPasses::BeginBodyMask(D3DDevice& device) noexcept
         {
             m_bodyMaskDrawn = false;
             if (!m_valid || m_savedTarget != nullptr)
@@ -158,7 +158,7 @@ namespace NS
                 return false;
             }
 
-            D3DCommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = device.Commands();
             ComPtr<ID3D11RenderTargetView> target;
             ComPtr<ID3D11DepthStencilView> depth;
             cmd->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
@@ -198,7 +198,7 @@ namespace NS
             return true;
         }
 
-        void ScreenPasses::DrawBodyMaskItem(Renderer& renderer, const DrawItem& item) noexcept
+        void ScreenPasses::DrawBodyMaskItem(D3DDevice& device, const DrawItem& item) noexcept
         {
             if (m_savedTarget == nullptr)
             {
@@ -209,16 +209,16 @@ namespace NS
             {
                 sided = 1;
             }
-            IssueDrawItemWith(renderer, item, *m_bodyMaskPipelines[sided], *m_bodyMaskPs);
+            IssueDrawItemWith(device, item, *m_bodyMaskPipelines[sided], *m_bodyMaskPs);
         }
 
-        void ScreenPasses::EndBodyMask(Renderer& renderer) noexcept
+        void ScreenPasses::EndBodyMask(D3DDevice& device) noexcept
         {
             if (m_savedTarget == nullptr)
             {
                 return;
             }
-            D3DCommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = device.Commands();
             cmd.SetRenderTarget(m_savedTarget.Get(), m_savedDepth.Get());
             cmd->RSSetViewports(1, &m_savedViewport);
             m_savedTarget.Reset();

@@ -39,7 +39,7 @@ namespace NS
             //! @return 描画できた場合 true、それ以外の場合は false
             bool RenderPreview(TimelinePreview& preview);
 
-            //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
+            //! 描画先を破棄する。D3DDevice が非所有ポインタを踏まないよう外した後に呼ぶ
             void ReleaseTarget() noexcept { m_surface.Release(); }
 
             //! 全ボタン解放中だけ、カーソルの重なりに合わせて受付を更新する

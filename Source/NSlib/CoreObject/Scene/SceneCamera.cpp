@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 
 namespace NS
 {
@@ -21,9 +21,9 @@ namespace NS
         m_camera.SetUp(up);
     }
 
-    void SceneCamera::SetAspectRatioFromRenderer(const Gfx::Renderer& renderer) noexcept
+    void SceneCamera::SetAspectRatioFromDevice(const Gfx::D3DDevice& device) noexcept
     {
-        const Size2D size = renderer.Size();
+        const Size2D size = device.Size();
         if (size.width <= 0 || size.height <= 0)
         {
             m_camera.SetAspectRatio(16.0f / 9.0f);

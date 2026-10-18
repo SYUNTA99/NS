@@ -33,7 +33,7 @@ namespace NS
             //! 可視なら視点と編集用の図形を含むビューを返す。不可視なら nullopt
             [[nodiscard]] std::optional<SceneView> CollectView(LevelEditorController& editor) noexcept;
 
-            //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
+            //! 描画先を破棄する。D3DDevice が非所有ポインタを踏まないよう外した後に呼ぶ
             void ReleaseTarget() noexcept { m_surface.Release(); }
 
             //! 自由視点の見回しドラッグ中か。真の間はキーボードも UI が持つ

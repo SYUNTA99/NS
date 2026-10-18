@@ -1,4 +1,4 @@
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Assert.h"
@@ -6,7 +6,7 @@
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
@@ -152,7 +152,7 @@ namespace NS
             }
         } // namespace
 
-        Renderer::Renderer(const RendererDesc& desc, OS::Window& window) noexcept
+        D3DDevice::D3DDevice(const D3DDeviceDesc& desc, OS::Window& window) noexcept
         {
             m_window = &window;
             m_vsync = desc.vsync;
@@ -160,7 +160,7 @@ namespace NS
 
             if (!window.IsValid())
             {
-                NS_LOG_ERROR(Graphics, "Renderer 構築時に Window が無効");
+                NS_LOG_ERROR(Graphics, "D3DDevice 構築時に Window が無効");
                 return;
             }
 
@@ -188,11 +188,11 @@ namespace NS
                 return;
             }
 
-            // 単一 device 前提。既に別 Renderer が公開済みならグローバルを上書きするため検知する
+            // 単一 device 前提。既に別 D3DDevice が公開済みならグローバルを上書きするため検知する
             if (Gpu().device != nullptr)
             {
                 NS_LOG_ERROR(Graphics,
-                             "Renderer を同時に複数構築している (単一 device 前提、 グローバルが上書きされる)");
+                             "D3DDevice を同時に複数構築している (単一 device 前提、 グローバルが上書きされる)");
             }
             // backbuffer D3DTexture 構築より前にグローバル公開する。構築が Gpu() を引くため
             Gpu().device = m_device.Get();
@@ -200,7 +200,7 @@ namespace NS
 
             SuppressAltEnter(m_swapchain.Get(), hwnd);
 
-            // コンストラクタは friend の Renderer にだけ開いているので、make_unique では呼べない
+            // コンストラクタは friend の D3DDevice にだけ開いているので、make_unique では呼べない
             m_commands.reset(new D3DCommandList(m_context.Get()));
 
             if (!BuildBackbufferTargets(m_swapchain.Get(), m_backbuffer, m_depth))
@@ -239,21 +239,21 @@ namespace NS
             m_valid = true;
             // 失敗時は別途 ERROR ログ済のため成功は Debug に落とす
             NS_LOG_DEBUG(Graphics,
-                         "Renderer 構築完了 ({}x{}, vsync={}, debugLayer={})",
+                         "D3DDevice 構築完了 ({}x{}, vsync={}, debugLayer={})",
                          w,
                          h,
                          desc.vsync,
                          desc.enableDebugLayer);
         }
 
-        Renderer::~Renderer()
+        D3DDevice::~D3DDevice()
         {
             // コンストラクタで登録したリサイズ購読を解除し、Window 側の発火で無効参照を踏むのを防ぐ
             if (m_resizeCallbackRegistered && m_window != nullptr)
             {
                 m_window->SetResizeCallback(nullptr);
             }
-            // 自分が公開したグローバルだけを戻す。別 Renderer が上書きしている場合は触らない
+            // 自分が公開したグローバルだけを戻す。別 D3DDevice が上書きしている場合は触らない
             if (m_device && Gpu().device == m_device.Get())
             {
                 Gpu() = {};
@@ -267,12 +267,12 @@ namespace NS
             // Gpu() は既に空のため各リソースのデストラクタから Gpu() を参照しないこと
         }
 
-        bool Renderer::IsValid() const noexcept
+        bool D3DDevice::IsValid() const noexcept
         {
             return m_valid;
         }
 
-        bool Renderer::CaptureBackbufferToPng(const std::filesystem::path& path) noexcept
+        bool D3DDevice::CaptureBackbufferToPng(const std::filesystem::path& path) noexcept
         {
             if (!m_valid || !m_swapchain || !m_context)
             {
@@ -301,7 +301,7 @@ namespace NS
             return true;
         }
 
-        bool Renderer::ReadBackbufferPixels(std::vector<uint8>& outBgra, Size2D& outSize) noexcept
+        bool D3DDevice::ReadBackbufferPixels(std::vector<uint8>& outBgra, Size2D& outSize) noexcept
         {
             if (!m_valid || !m_swapchain || !m_context)
             {
@@ -384,7 +384,7 @@ namespace NS
             return true;
         }
 
-        const D3DPipeline& Renderer::CommonPipeline(BlendMode blend, bool twoSided) const noexcept
+        const D3DPipeline& D3DDevice::CommonPipeline(BlendMode blend, bool twoSided) const noexcept
         {
             int sided = 0;
             if (twoSided)
@@ -406,22 +406,22 @@ namespace NS
                 break;
             }
             NS_ASSERT(
-                Graphics, m_commonPipelines[sided][index], "Renderer が無効な状態で CommonPipeline() を呼んでいる");
+                Graphics, m_commonPipelines[sided][index], "D3DDevice が無効な状態で CommonPipeline() を呼んでいる");
             return *m_commonPipelines[sided][index];
         }
 
-        const D3DPipeline& Renderer::OccludedPipeline(bool twoSided) const noexcept
+        const D3DPipeline& D3DDevice::OccludedPipeline(bool twoSided) const noexcept
         {
             int sided = 0;
             if (twoSided)
             {
                 sided = 1;
             }
-            NS_ASSERT(Graphics, m_occludedPipelines[sided], "Renderer が無効な状態で OccludedPipeline() を呼んでいる");
+            NS_ASSERT(Graphics, m_occludedPipelines[sided], "D3DDevice が無効な状態で OccludedPipeline() を呼んでいる");
             return *m_occludedPipelines[sided];
         }
 
-        void Renderer::BeginFrame(float r, float g, float b, float a) noexcept
+        void D3DDevice::BeginFrame(float r, float g, float b, float a) noexcept
         {
             if (!IsValid() || !m_backbuffer || !m_depth || !m_commands)
             {
@@ -448,18 +448,18 @@ namespace NS
             BindTarget(rtv, dsv, m_backbuffer->Size());
         }
 
-        void Renderer::BeginFrame() noexcept
+        void D3DDevice::BeginFrame() noexcept
         {
             const Color& c = m_clearColor;
             BeginFrame(c.R(), c.G(), c.B(), c.A());
         }
 
-        const Color& Renderer::ClearColor() const noexcept
+        const Color& D3DDevice::ClearColor() const noexcept
         {
             return m_clearColor;
         }
 
-        void Renderer::EndFrame() noexcept
+        void D3DDevice::EndFrame() noexcept
         {
             if (!IsValid() || !m_swapchain)
             {
@@ -485,7 +485,7 @@ namespace NS
             }
         }
 
-        void Renderer::Resize(Size2D size) noexcept
+        void D3DDevice::Resize(Size2D size) noexcept
         {
             if (!IsValid())
             {
@@ -520,12 +520,12 @@ namespace NS
             }
         }
 
-        void Renderer::SetSceneTarget(D3DRenderTarget* target) noexcept
+        void D3DDevice::SetSceneTarget(D3DRenderTarget* target) noexcept
         {
             m_sceneTarget = target;
         }
 
-        void Renderer::BeginSceneView(D3DRenderTarget* target) noexcept
+        void D3DDevice::BeginSceneView(D3DRenderTarget* target) noexcept
         {
             if (!IsValid() || !m_commands)
             {
@@ -546,7 +546,7 @@ namespace NS
             BindBackbuffer();
         }
 
-        void Renderer::BindBackbuffer() noexcept
+        void D3DDevice::BindBackbuffer() noexcept
         {
             if (!IsValid() || !m_backbuffer || !m_depth || !m_commands)
             {
@@ -555,13 +555,13 @@ namespace NS
             BindTarget(m_backbuffer->Rtv(), m_depth->Dsv(), m_backbuffer->Size());
         }
 
-        void Renderer::BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, Size2D size) noexcept
+        void D3DDevice::BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, Size2D size) noexcept
         {
             m_commands->SetRenderTarget(rtv, dsv);
             m_commands->SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
         }
 
-        Size2D Renderer::Size() const noexcept
+        Size2D D3DDevice::Size() const noexcept
         {
             if (m_sceneTarget != nullptr && m_sceneTarget->IsValid())
             {
@@ -574,15 +574,15 @@ namespace NS
             return m_backbuffer->Size();
         }
 
-        D3DCommonStates& Renderer::States() noexcept
+        D3DCommonStates& D3DDevice::States() noexcept
         {
-            NS_ASSERT(Graphics, m_states, "Renderer が無効な状態で States() を呼んでいる");
+            NS_ASSERT(Graphics, m_states, "D3DDevice が無効な状態で States() を呼んでいる");
             return *m_states;
         }
 
-        D3DCommandList& Renderer::Commands() noexcept
+        D3DCommandList& D3DDevice::Commands() noexcept
         {
-            NS_ASSERT(Graphics, m_commands, "Renderer が無効な状態で Commands() を呼んでいる");
+            NS_ASSERT(Graphics, m_commands, "D3DDevice が無効な状態で Commands() を呼んでいる");
             return *m_commands;
         }
     } // namespace Gfx

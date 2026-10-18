@@ -5,8 +5,8 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DTexture.h"
-#include "NSlib/Gfx/GraphicObject.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 
@@ -90,25 +90,25 @@ namespace
     public:
         BodyMaskRig()
             : m_window(NS::OS::WindowDesc{.title = "型抜きの試し", .size = {k_Width, k_Height}, .visible = false}),
-              m_renderer(NS::Gfx::RendererDesc{}, m_window), m_assets(NS::OS::FileSystem::ContentRoot())
+              m_device(NS::Gfx::D3DDeviceDesc{}, m_window), m_assets(NS::OS::FileSystem::ContentRoot())
         {
             m_target = NS::Gfx::D3DRenderTarget::Create({k_Width, k_Height});
         }
 
         ~BodyMaskRig()
         {
-            m_renderer.SetSceneTarget(nullptr);
-            m_renderer.BindBackbuffer();
+            m_device.SetSceneTarget(nullptr);
+            m_device.BindBackbuffer();
         }
 
-        [[nodiscard]] bool Valid() const { return m_renderer.IsValid() && m_target != nullptr && m_target->IsValid(); }
+        [[nodiscard]] bool Valid() const { return m_device.IsValid() && m_target != nullptr && m_target->IsValid(); }
 
         // 1 回描いて型を返す。型が無ければ空
         std::vector<NS::uint8> Render(const NS::Vector3& masked, const std::optional<NS::Vector3>& other)
         {
             NS::Scene scene;
             const NS::AssetManagerScope useAssets{m_assets};
-            scene.SetRenderer(&m_renderer);
+            scene.SetDevice(&m_device);
             BoxActor* maskedBox = scene.SpawnTransient<BoxActor>(masked);
             if (other.has_value())
             {
@@ -121,7 +121,7 @@ namespace
             NS::CameraPose pose;
             pose.position = NS::Vector3{0.0f, 1.0f, -6.0f};
             pose.target = NS::Vector3{0.0f, 0.0f, 0.0f};
-            m_renderer.BeginFrame();
+            m_device.BeginFrame();
             scene.SetSceneViews({NS::SceneView{m_target.get(), pose}});
             scene.OnRender();
             scene.SetSceneViews({});
@@ -135,7 +135,7 @@ namespace
 
     private:
         NS::OS::Window m_window;
-        NS::Gfx::Renderer m_renderer;
+        NS::Gfx::D3DDevice m_device;
         NS::AssetManager m_assets;
         std::unique_ptr<NS::Gfx::D3DRenderTarget> m_target;
     };

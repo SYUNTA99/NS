@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 
 #include "NSlib/Core/Types.h"
 #include <algorithm>
@@ -140,7 +140,7 @@ namespace NS
         {
             if (Gpu().device == nullptr || Gpu().context == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "D3DSkeletalMesh: Renderer の Device / Context が無効");
+                NS_LOG_ERROR(Graphics, "D3DSkeletalMesh: 装置か文脈が無効");
                 return;
             }
 

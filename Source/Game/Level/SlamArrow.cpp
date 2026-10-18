@@ -606,7 +606,7 @@ namespace GL
         {
             const SlamArrowDrawAssets assets{
                 .mesh = m_mesh, .bandMaterial = m_bandMaterial, .headMaterial = m_headMaterial};
-            if (!IsOverlayVisible() || !m_hasShown || context.renderer == nullptr || m_mesh->D3D() == nullptr ||
+            if (!IsOverlayVisible() || !m_hasShown || context.device == nullptr || m_mesh->D3D() == nullptr ||
                 m_bandMaterial->D3D() == nullptr || m_headMaterial->D3D() == nullptr)
             {
                 return;
@@ -616,7 +616,7 @@ namespace GL
                 m_shown, m_desc, context.viewProjection, context.cameraPosition, assets, m_drawScratch);
             for (const NS::Gfx::DrawItem& item : m_drawScratch)
             {
-                NS::Gfx::IssueDrawItem(*context.renderer, item);
+                NS::Gfx::IssueDrawItem(*context.device, item);
             }
         }
 

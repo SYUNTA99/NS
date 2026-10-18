@@ -22,13 +22,13 @@ namespace NS
         class D3DShader;
         class D3DBuffer;
         class D3DPipeline;
-        class Renderer;
+        class D3DDevice;
         struct BuiltinShaders;
 
         //! @brief 無限遠の背景の空を描く
         //! @details 立方体のメッシュとキューブマップを持つ。描く資源は、画像を指定した初回の Draw で作る
         //! 画像を読み込むまではピンク一色のフォールバックを描く
-        //! @warning Renderer より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
+        //! @warning D3DDevice より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
         class Skybox : public NonCopyable
         {
         public:
@@ -39,7 +39,7 @@ namespace NS
             //! @brief 不透明の後、半透明の前に空を描く。変更した描画ステートは終了時に戻す
             //! @details cubemapPath は ContentRoot 内の .dds か、6 方向の画像を入れたディレクトリ。空なら描かない
             //! 画像の読み込みに失敗した時は前の画像を保って次の Draw で再試行し、GPU 資源の生成失敗は再試行しない
-            void Draw(Renderer& renderer, const CameraData& camera, std::string_view cubemapPath) noexcept;
+            void Draw(D3DDevice& device, const CameraData& camera, std::string_view cubemapPath) noexcept;
 
             //! 立方体メッシュ・シェーダ・定数バッファ・パイプライン・代替のキューブマップが揃っているか
             [[nodiscard]] bool IsValid() const noexcept;

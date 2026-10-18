@@ -53,10 +53,10 @@ namespace NS
             return;
         }
 
-        m_renderer = std::make_unique<Gfx::Renderer>(desc.renderer, *m_window);
-        if (!m_renderer->IsValid())
+        m_device = std::make_unique<Gfx::D3DDevice>(desc.device, *m_window);
+        if (!m_device->IsValid())
         {
-            NS_LOG_ERROR(App, "Application: Renderer 構築失敗");
+            NS_LOG_ERROR(App, "Application: D3DDevice 構築失敗");
             return;
         }
 
@@ -93,16 +93,16 @@ namespace NS
         return *m_window;
     }
 
-    Gfx::Renderer& Application::Renderer() noexcept
+    Gfx::D3DDevice& Application::Device() noexcept
     {
-        NS_ASSERT(App, m_renderer, "構築の失敗後 / Shutdown 後に Renderer() を呼んでいる");
-        return *m_renderer;
+        NS_ASSERT(App, m_device, "構築の失敗後 / Shutdown 後に Device() を呼んでいる");
+        return *m_device;
     }
 
-    const Gfx::Renderer& Application::Renderer() const noexcept
+    const Gfx::D3DDevice& Application::Device() const noexcept
     {
-        NS_ASSERT(App, m_renderer, "構築の失敗後 / Shutdown 後に Renderer() を呼んでいる");
-        return *m_renderer;
+        NS_ASSERT(App, m_device, "構築の失敗後 / Shutdown 後に Device() を呼んでいる");
+        return *m_device;
     }
 
     OS::Input& Application::Input() noexcept
@@ -201,7 +201,7 @@ namespace NS
     void Application::MainLoop()
     {
         OS::Window& window = *m_window;
-        Gfx::Renderer& renderer = *m_renderer;
+        Gfx::D3DDevice& device = *m_device;
         OS::Input& input = OS::Input::Get();
         Layers& stack = m_layers;
 
@@ -247,7 +247,7 @@ namespace NS
                 }
             }
 
-            renderer.BeginFrame();
+            device.BeginFrame();
 
             for (std::unique_ptr<Layer>& layer : stack)
             {
@@ -257,7 +257,7 @@ namespace NS
                 }
             }
 
-            renderer.EndFrame();
+            device.EndFrame();
         }
     }
 
@@ -296,7 +296,7 @@ namespace NS
         {
             m_assets->Clear();
         }
-        m_renderer.reset();
+        m_device.reset();
         m_window.reset();
     }
 

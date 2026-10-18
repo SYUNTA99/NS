@@ -14,7 +14,7 @@
 #include "NSlib/Gfx/Render/EffectScene.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/ScreenPasses.h"
 #include "NSlib/Gfx/Render/Skybox.h"
 #include "NSlib/Windows/Clock.h"
@@ -46,12 +46,12 @@ namespace NS
 
     SceneRenderer::~SceneRenderer() = default;
 
-    void SceneRenderer::SetRenderer(Gfx::Renderer* renderer) noexcept
+    void SceneRenderer::SetDevice(Gfx::D3DDevice* device) noexcept
     {
-        m_renderer = renderer;
-        // 描画先は前のレンダラーの device で作った物なので、差し替えたら作り直す
+        m_device = device;
+        // 描画先は前の装置で作った物なので、差し替えたら作り直す
         m_viewPasses.clear();
-        if (renderer == nullptr)
+        if (device == nullptr)
         {
             m_effects.reset();
             m_overlay.reset();
@@ -62,7 +62,7 @@ namespace NS
 
         // 描く時は AssetManager を引かない決まりなので、差した時に 1 回だけ引いて描く段へ渡す
         m_shaders = AssetManager::Get().LoadBuiltinShaders();
-        m_overlay = std::make_unique<Gfx::ScreenOverlay>(renderer, m_shaders);
+        m_overlay = std::make_unique<Gfx::ScreenOverlay>(device, m_shaders);
         m_skybox = std::make_unique<Gfx::Skybox>(m_shaders);
 
         std::string root = m_effectRoot;
@@ -245,7 +245,7 @@ namespace NS
                                std::string_view skyboxPath,
                                float alpha)
     {
-        if (m_renderer == nullptr)
+        if (m_device == nullptr)
         {
             return;
         }
@@ -260,7 +260,7 @@ namespace NS
         for (std::size_t i = 0; i < m_sceneViews.size(); ++i)
         {
             const SceneView& view = m_sceneViews[i];
-            m_renderer->BeginSceneView(view.target);
+            m_device->BeginSceneView(view.target);
             RenderViewWithOverlays(cameras, camera, ui, fade, skyboxPath, view, alpha, PassesForView(i));
         }
     }
@@ -276,7 +276,7 @@ namespace NS
 
     void SceneRenderer::DrawBodyMask(const Gfx::RenderContext& context, Gfx::ScreenPasses& screen)
     {
-        if (m_bodyMask.empty() || !screen.BeginBodyMask(*m_renderer))
+        if (m_bodyMask.empty() || !screen.BeginBodyMask(*m_device))
         {
             screen.DropBodyMask();
             return;
@@ -288,9 +288,9 @@ namespace NS
         }
         for (const Gfx::DrawItem& item : m_bodyMaskItems)
         {
-            screen.DrawBodyMaskItem(*m_renderer, item);
+            screen.DrawBodyMaskItem(*m_device, item);
         }
-        screen.EndBodyMask(*m_renderer);
+        screen.EndBodyMask(*m_device);
     }
 
     SceneRenderer::ViewPasses& SceneRenderer::PassesForView(std::size_t index)
@@ -317,14 +317,14 @@ namespace NS
         const Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, view.viewPose, alpha, passes);
 
 #if !defined(NS_SHIPPING)
-        Gfx::DebugDraw::Draw(*ctx.renderer, m_shaders, ctx.viewProjection);
+        Gfx::DebugDraw::Draw(*ctx.device, m_shaders, ctx.viewProjection);
 
         // ビューの図形は、このビューの行列で積んで描いたらすぐ捨てる。次のビューや次のフレームへ持ち越さない
         if (view.drawShapes)
         {
             m_viewShapes.Clear();
             view.drawShapes(m_viewShapes, ctx.viewProjection);
-            m_viewShapes.Draw(*ctx.renderer, m_shaders, ctx.viewProjection);
+            m_viewShapes.Draw(*ctx.device, m_shaders, ctx.viewProjection);
             m_viewShapes.Clear();
         }
 #endif
@@ -365,11 +365,11 @@ namespace NS
                                                       float alpha,
                                                       ViewPasses& passes)
     {
-        // レンダラーの現在サイズから毎回取り直し、リサイズとビュー切替に追従する
-        camera.SetAspectRatioFromRenderer(*m_renderer);
+        // 装置の現在サイズから毎回取り直し、リサイズとビュー切替に追従する
+        camera.SetAspectRatioFromDevice(*m_device);
 
         Gfx::RenderContext ctx{};
-        ctx.renderer = m_renderer;
+        ctx.device = m_device;
         ctx.overlay = m_overlay.get();
         ctx.alpha = alpha;
 
@@ -385,7 +385,7 @@ namespace NS
             overrideCamera.SetNearPlane(viewOverride->nearPlane);
             overrideCamera.SetFarPlane(viewOverride->farPlane);
 
-            // aspect は関数の冒頭で renderer から取り直した実カメラの物を写す
+            // aspect は関数の冒頭で device から取り直した実カメラの物を写す
             overrideCamera.SetAspectRatio(camera.Camera().AspectRatio());
 
             ctx.viewProjection = overrideCamera.ViewProjection();
@@ -403,9 +403,9 @@ namespace NS
 
         // 物の絵は S 字で 1 以下に書くので、にじむのは 1 を超えて書いたエフェクトだけ
         // 深度は今の描画先の物を使うので、後で描くデバッグの線も世界の深度で隠れる
-        passes.bloom->BeginWorld(*m_renderer, m_renderer->ClearColor());
+        passes.bloom->BeginWorld(*m_device, m_device->ClearColor());
         DrawOpaque(ctx);
-        m_skybox->Draw(*m_renderer, *viewCamera, skyboxPath);
+        m_skybox->Draw(*m_device, *viewCamera, skyboxPath);
         DrawTransparent(ctx);
         // ワールド空間の半透明物。半透明の後、デバッグ描画の前
         if (m_effects != nullptr)
@@ -413,9 +413,9 @@ namespace NS
             m_effects->Draw(*viewCamera);
         }
         // 重ね描きとデバッグの線はにじませも歪ませもしないので、この後に今の描画先へ描く
-        passes.bloom->EndWorld(*m_renderer);
+        passes.bloom->EndWorld(*m_device);
         DrawBodyMask(ctx, *passes.screen);
-        passes.screen->Distort(*m_renderer, ToScreenRing(ctx.distortionRing, ctx.viewProjection, m_renderer->Size()));
+        passes.screen->Distort(*m_device, ToScreenRing(ctx.distortionRing, ctx.viewProjection, m_device->Size()));
         return ctx;
     }
 } // namespace NS

@@ -15,18 +15,18 @@ namespace NS
         class D3DBuffer;
         class D3DPipeline;
         class D3DShader;
-        class Renderer;
+        class D3DDevice;
         struct BuiltinShaders;
 
         //! @brief 今の描画先の最前面へ、全画面の色と画面の矩形を半透明で重ねる
         //! @details 描く資源は初回の描画で作る。装置が無い時とシェーダーが nullptr の時は何も描かない
-        //! @warning Renderer より先に破棄する。シェーダーの持ち主が捨てた後は描画を呼ばない
+        //! @warning D3DDevice より先に破棄する。シェーダーの持ち主が捨てた後は描画を呼ばない
         class ScreenOverlay : public NonCopyable
         {
         public:
-            //! @param[in,out] renderer 描く命令と描画先の大きさを借りる先。この型より長く生きる
+            //! @param[in,out] device 描く命令と描画先の大きさを借りる先。この型より長く生きる
             //! @param[in] shaders fullscreenVs・fadePs・screenRectVs・screenRectPs を指すだけで持たない
-            ScreenOverlay(Renderer* renderer, const BuiltinShaders& shaders) noexcept;
+            ScreenOverlay(D3DDevice* device, const BuiltinShaders& shaders) noexcept;
             ~ScreenOverlay();
 
             //! 全画面に指定色を半透明合成する。最前面に出す場合は最後に呼ぶ
@@ -61,7 +61,7 @@ namespace NS
                           uint vertexCount,
                           bool vsReadsConstants) noexcept;
 
-            Renderer* m_renderer = nullptr;
+            D3DDevice* m_device = nullptr;
             D3DShader* m_fullscreenVs = nullptr;
             D3DShader* m_fadePs = nullptr;
             D3DShader* m_screenRectVs = nullptr;

@@ -17,9 +17,9 @@ namespace NS
 {
     namespace Gfx
     {
-        class Renderer;
+        class D3DDevice;
 
-        //! Renderer が所有する DirectXTK の共通描画ステート
+        //! 所有は D3DDevice。DirectXTK の CommonStates を包む
         class D3DCommonStates : public NonCopyable
         {
         public:
@@ -44,7 +44,7 @@ namespace NS
         private:
             std::unique_ptr<DirectX::CommonStates> m_states;
 
-            friend class Renderer;
+            friend class D3DDevice;
             explicit D3DCommonStates(ID3D11Device* device) noexcept;
         };
     } // namespace Gfx

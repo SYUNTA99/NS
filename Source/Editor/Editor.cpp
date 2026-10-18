@@ -49,7 +49,7 @@ void Editor::OnAttach()
     }
 
     // ImGui ライフサイクルを Layer が所有する。Application は UI を知らないので editor が立ち上げる
-    m_imgui = std::make_unique<NS::UI::ImGuiContext>(app->Window(), app->Renderer());
+    m_imgui = std::make_unique<NS::UI::ImGuiContext>(app->Window(), app->Device());
     if (!m_imgui->IsValid())
     {
         NS_LOG_ERROR(App, "ImGuiContext 構築失敗、 編集 UI は機能しない");
@@ -100,12 +100,12 @@ void Editor::OnDetach()
         app->SetQuitGuard(nullptr);
         app->Window().SetMessageHook(nullptr);
         app->Input().SetUiCapture({});
-        // Renderer が非所有ポインタを宙吊りにしないよう、ターゲットを破棄する前に必ず外す
-        app->Renderer().SetSceneTarget(nullptr);
+        // D3DDevice が非所有ポインタを宙吊りにしないよう、ターゲットを破棄する前に必ず外す
+        app->Device().SetSceneTarget(nullptr);
     }
     m_sceneView.ReleaseTarget();
     m_gameView.ReleaseTarget();
-    // ImGui_ImplDX11_Shutdown が ID3D11Device を要求するため Renderer 健在で Application::Shutdown より前の今に破棄
+    // ImGui_ImplDX11_Shutdown が ID3D11Device を要求するため D3DDevice 健在で Application::Shutdown より前の今に破棄
     m_imgui.reset();
     NS_LOG_INFO(App, "Editor detached");
 }
@@ -136,7 +136,7 @@ void Editor::OnRender()
         return;
     }
 
-    // Layer が ImGui のフレームを管理する。Renderer::BeginFrame の描画先へ EndFrame で描く
+    // Layer が ImGui のフレームを管理する。D3DDevice::BeginFrame の描画先へ EndFrame で描く
     m_imgui->BeginFrame();
 
     // 編集用の ImGui の上乗せ。カーソルの枠 / パレット / ギズモ。立体の図形は Scene タブを描く時に積む
@@ -234,7 +234,7 @@ void Editor::OnRender()
     }
 
     // ImGui 実描画の直前に backbuffer へ戻す。それまではオフスクリーンへ描いたままで良い
-    app->Renderer().BindBackbuffer();
+    app->Device().BindBackbuffer();
     m_imgui->EndFrame();
 
     // 次フレームの描画先を決める。SRV 参照 (ImGui 実描画) が終わった直後の安全な位置で切り替える
@@ -261,7 +261,7 @@ void Editor::OnRender()
         editor.SetSceneViews({});
     }
     // ビュー列方式なので単一 sceneTarget は使わない。BeginFrame には backbuffer だけ clear させる
-    app->Renderer().SetSceneTarget(nullptr);
+    app->Device().SetSceneTarget(nullptr);
 
     m_gameView.UpdateMouseLatch();
     m_sceneView.UpdateMouseLatch();

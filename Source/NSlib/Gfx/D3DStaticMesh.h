@@ -25,12 +25,12 @@ namespace NS
         //! @brief アニメーションを持たない静的な 3D モデル
         //! @details 位置・UV 座標・法線の頂点情報を持ち、描画へ渡す
         //! @note 構築に失敗するとキューブのフォールバックへ差し替わる
-        //! @warning Renderer より先に破棄すること
+        //! @warning D3DDevice より先に破棄すること
         class D3DStaticMesh : public D3DMesh
         {
         public:
             //! @brief パラメータから静的メッシュを生成する
-            //! @details Renderer の無い場では ERROR を出さずに nullptr を返す
+            //! @details D3DDevice の無い場では ERROR を出さずに nullptr を返す
             [[nodiscard]] static std::unique_ptr<D3DStaticMesh> Create(const D3DStaticMeshDesc& desc);
 
             ~D3DStaticMesh() override = default;

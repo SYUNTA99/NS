@@ -145,7 +145,7 @@ namespace NS
             HitPreviewWorld world;
             if (Application* app = Application::Get())
             {
-                world.renderer = &app->Renderer();
+                world.device = &app->Device();
             }
             const bool wasHit = m_result.hit;
             HitPreviewDesc desc = m_desc;

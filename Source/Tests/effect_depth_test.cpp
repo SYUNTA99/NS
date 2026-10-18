@@ -3,8 +3,8 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Gfx/Render/EffectScene.h"
-#include "NSlib/Gfx/GraphicObject.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
@@ -29,7 +29,7 @@ namespace
     // 試しの間だけ WARP の描画装置を Gpu() に差す。作れない機械では空のまま
     struct ScopedWarpGpu
     {
-        ComPtr<ID3D11Device> device;
+        ComPtr<ID3D11Device> d3d11Device;
         ComPtr<ID3D11DeviceContext> context;
 
         ScopedWarpGpu()
@@ -41,16 +41,16 @@ namespace
                                                    nullptr,
                                                    0,
                                                    D3D11_SDK_VERSION,
-                                                   device.GetAddressOf(),
+                                                   d3d11Device.GetAddressOf(),
                                                    nullptr,
                                                    context.GetAddressOf());
             if (FAILED(hr))
             {
-                device.Reset();
+                d3d11Device.Reset();
                 context.Reset();
                 return;
             }
-            NS::Gfx::Gpu().device = device.Get();
+            NS::Gfx::Gpu().device = d3d11Device.Get();
             NS::Gfx::Gpu().context = context.Get();
         }
 
@@ -60,7 +60,7 @@ namespace
             NS::Gfx::Gpu().context = nullptr;
         }
 
-        [[nodiscard]] bool Valid() const { return device != nullptr; }
+        [[nodiscard]] bool Valid() const { return d3d11Device != nullptr; }
     };
 
     std::unique_ptr<NS::Gfx::D3DTexture> MakeDepth(UINT width, UINT height, DXGI_FORMAT format)
@@ -87,7 +87,7 @@ namespace
     }
     int CountEffectPixels(NS::Gfx::EffectScene& effects)
     {
-        const NS::Gfx::GraphicObject& gpu = NS::Gfx::Gpu();
+        const NS::Gfx::D3DGlobal& gpu = NS::Gfx::Gpu();
         D3D11_TEXTURE2D_DESC desc{};
         desc.Width = 32;
         desc.Height = 32;
@@ -152,13 +152,13 @@ namespace
 TEST(EffectLifecycle, RebuildingThePausedSceneClearsPixelsBeforeAnotherStep)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "エフェクト終了の試し", .size = {32, 32}, .visible = false});
-    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
-    ASSERT_TRUE(renderer.IsValid());
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
     scene.SetEffectRoot("Assets/Effects");
-    scene.SetRenderer(&renderer);
+    scene.SetDevice(&device);
     NS::Gfx::EffectScene* effects = scene.GetEffectScene();
     ASSERT_NE(effects, nullptr);
     ASSERT_TRUE(effects->Preload("impact.core"));

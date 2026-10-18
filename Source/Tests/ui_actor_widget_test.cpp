@@ -6,7 +6,7 @@
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/UI/ColorRect.h"
 #include "NSlib/UI/UICanvas.h"
 #include "NSlib/Windows/Window.h"
@@ -196,8 +196,8 @@ TEST(UIActorWidgets, CanvasScalesByTheViewportHeight)
 TEST(UIActorWidgets, DirectorLaysOutEveryOpenScreenWithOneCanvas)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "画面の拡縮の試し", .size = {64, 36}, .visible = false});
-    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
-    ASSERT_TRUE(renderer.IsValid());
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
     NS::Scene scene;
     NS::UIActor first;
     NS::UIActor second;
@@ -206,15 +206,15 @@ TEST(UIActorWidgets, DirectorLaysOutEveryOpenScreenWithOneCanvas)
     first.Open(scene);
     second.Open(scene);
     // 拡縮と矩形だけを見るので、シェーダーの無い塗りで描かずに並べる
-    NS::Gfx::ScreenOverlay overlay(&renderer, NS::Gfx::BuiltinShaders{});
+    NS::Gfx::ScreenOverlay overlay(&device, NS::Gfx::BuiltinShaders{});
     NS::Gfx::RenderContext context;
-    context.renderer = &renderer;
+    context.device = &device;
     context.overlay = &overlay;
 
-    renderer.BeginFrame();
+    device.BeginFrame();
     scene.UI().Draw(context);
 
-    const NS::Size2D size = renderer.Size();
+    const NS::Size2D size = device.Size();
     const NS::UI::UICanvas expected =
         NS::UI::MakeUICanvas(static_cast<float>(size.width), static_cast<float>(size.height));
     EXPECT_FLOAT_EQ(scene.UI().Canvas().scale, expected.scale);

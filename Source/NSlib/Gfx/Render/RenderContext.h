@@ -9,7 +9,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class Renderer;
+        class D3DDevice;
         class ScreenOverlay;
 
         //! 上向きの面に広がる光の輪。形状は変えず、画素シェーダーで表現する
@@ -34,8 +34,7 @@ namespace NS
         //! @brief 1フレームの描画処理全体で共有されるコンテキスト情報
         struct RenderContext
         {
-            //! 描画先のレンダラー
-            Renderer* renderer = nullptr;
+            D3DDevice* device = nullptr;
 
             //! 重ね描きと UI が、全画面の色と画面の矩形を描く先。無ければ描かない
             ScreenOverlay* overlay = nullptr;

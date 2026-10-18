@@ -14,7 +14,7 @@ namespace NS
         class D3DBuffer;
         class D3DCommandList;
         class D3DPipeline;
-        class Renderer;
+        class D3DDevice;
         class D3DShader;
         class D3DTexture;
         struct BuiltinShaders;
@@ -33,7 +33,7 @@ namespace NS
 
         //! @brief HDR の明るい部分をぼかして元の描画先へ加算する
         //! @details BeginWorld と EndWorld で描画先を切り替える。深度は元の描画先を共有する
-        //! @warning Renderer より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
+        //! @warning D3DDevice より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
         class Bloom : public NonCopyable
         {
         public:
@@ -49,10 +49,10 @@ namespace NS
 
             //! HDR 描画へ切り替える。準備に失敗した場合は元の描画先で続ける
             //! 深度は共有し、clearColor で背景を塗る
-            void BeginWorld(Renderer& renderer, const Color& clearColor) noexcept;
+            void BeginWorld(D3DDevice& device, const Color& clearColor) noexcept;
 
-            //! にじみを加算し、元の描画先とビューポートへ戻す。BeginWorld と同じ Renderer を渡す
-            void EndWorld(Renderer& renderer) noexcept;
+            //! にじみを加算し、元の描画先とビューポートへ戻す。BeginWorld と同じ D3DDevice を渡す
+            void EndWorld(D3DDevice& device) noexcept;
 
         private:
             // 描画先の大きさと段の数に合わせて浮動小数の描画先を揃える。作れなければ false

@@ -7,9 +7,9 @@
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/D3DShader.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 
 namespace NS
 {
@@ -34,11 +34,11 @@ namespace NS
             static_assert(sizeof(ScreenRectCB) == 32, "ScreenRectCB は HLSL の cbuffer b0 とバイト一致が必要");
         } // namespace
 
-        ScreenOverlay::ScreenOverlay(Renderer* renderer, const BuiltinShaders& shaders) noexcept
-            : m_renderer(renderer), m_fullscreenVs(shaders.fullscreenVs), m_fadePs(shaders.fadePs),
+        ScreenOverlay::ScreenOverlay(D3DDevice* device, const BuiltinShaders& shaders) noexcept
+            : m_device(device), m_fullscreenVs(shaders.fullscreenVs), m_fadePs(shaders.fadePs),
               m_screenRectVs(shaders.screenRectVs), m_screenRectPs(shaders.screenRectPs)
         {
-            NS_ASSERT(Graphics, renderer != nullptr, "null の renderer で ScreenOverlay を作っている");
+            NS_ASSERT(Graphics, device != nullptr, "null の device で ScreenOverlay を作っている");
         }
 
         ScreenOverlay::~ScreenOverlay() = default;
@@ -83,7 +83,7 @@ namespace NS
 
                 pass.ready = true;
             }
-            return pass.ready && m_renderer->IsValid() && m_renderer->Commands().Native() != nullptr;
+            return pass.ready && m_device->IsValid() && m_device->Commands().Native() != nullptr;
         }
 
         void ScreenOverlay::DrawPass(const Pass& pass,
@@ -94,7 +94,7 @@ namespace NS
                                      uint vertexCount,
                                      bool vsReadsConstants) noexcept
         {
-            D3DCommandList& cmd = m_renderer->Commands();
+            D3DCommandList& cmd = m_device->Commands();
             cmd.UpdateSubresource(*pass.cb, constants, constantBytes);
 
             cmd.SetPipeline(*pass.pipeline);
@@ -131,7 +131,7 @@ namespace NS
                 return;
             }
 
-            const Size2D targetSize = m_renderer->Size();
+            const Size2D targetSize = m_device->Size();
             if (targetSize.width <= 0 || targetSize.height <= 0)
             {
                 NS_LOG_WARN(Graphics,

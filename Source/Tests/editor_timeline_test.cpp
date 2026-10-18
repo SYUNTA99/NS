@@ -15,8 +15,8 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DTexture.h"
-#include "NSlib/Gfx/GraphicObject.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 #include "Tests/TestHitTimelines.h"
@@ -188,17 +188,17 @@ TEST(EditorTimelinePreview, RewindsTheEntireSceneAndDoesNotStepWhilePaused)
 TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "タイムライン描画の試し", .size = {160, 90}, .visible = false});
-    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
-    ASSERT_TRUE(renderer.IsValid());
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     const NS::AssetManagerScope useAssets{assets};
     std::unique_ptr<NS::Gfx::D3DRenderTarget> target = NS::Gfx::D3DRenderTarget::Create({160, 90});
     ASSERT_TRUE(target->IsValid());
     NS::Editor::TimelinePreview preview;
     preview.Reset(
-        [&renderer] {
+        [&device] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SetRenderer(&renderer);
+            scene->SetDevice(&device);
             scene->SpawnTransient<TimelineMovingActor>();
             return scene;
         },
@@ -207,7 +207,7 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     pose.position = NS::Vector3{0.0f, 2.0f, -5.0f};
     pose.target = NS::Vector3{0.0f, 0.0f, 0.0f};
     const NS::SceneView view{target.get(), pose};
-    renderer.BeginFrame();
+    device.BeginFrame();
     ASSERT_NE(preview.Seek(0), nullptr);
     ASSERT_TRUE(preview.RenderView(view));
     const std::vector<NS::uint8> first = ReadPixels(*target);
@@ -221,8 +221,8 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     EXPECT_EQ(first, ReadPixels(*target));
     EXPECT_TRUE(preview.RenderView(view));
     EXPECT_EQ(first, ReadPixels(*target));
-    renderer.SetSceneTarget(nullptr);
-    renderer.BindBackbuffer();
+    device.SetSceneTarget(nullptr);
+    device.BindBackbuffer();
 }
 
 TEST(EditorTimeline, ScrubbingAnUnrelatedTrackUsesTheSameSignedClock)
@@ -279,8 +279,8 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
 {
     TimelineGui gui;
     NS::OS::Window window(NS::OS::WindowDesc{.title = "Game 下見の試し", .size = {160, 90}, .visible = false});
-    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
-    ASSERT_TRUE(renderer.IsValid());
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene original;
@@ -291,9 +291,9 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     pose.position = NS::Vector3{0.0f, 2.0f, -5.0f};
     pose.target = NS::Vector3{0.0f, 0.0f, 0.0f};
     preview.Reset(
-        [&renderer, pose] {
+        [&device, pose] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SetRenderer(&renderer);
+            scene->SetDevice(&device);
             scene->MainCamera()->ApplyPose(pose);
             scene->SpawnTransient<TimelineMovingActor>();
             return scene;
@@ -311,7 +311,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     ASSERT_TRUE(view.has_value());
     ASSERT_TRUE(view->target->IsValid());
     show();
-    renderer.BeginFrame();
+    device.BeginFrame();
     ASSERT_NE(preview.Seek(0), nullptr);
     EXPECT_TRUE(game.RenderPreview(preview));
     const std::vector<NS::uint8> first = ReadPixels(*view->target);
@@ -325,8 +325,8 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     EXPECT_EQ(original.ToJson(), NS::MakeSceneJson());
     game.ResetVisibility();
     EXPECT_FALSE(game.RenderPreview(preview));
-    renderer.SetSceneTarget(nullptr);
-    renderer.BindBackbuffer();
+    device.SetSceneTarget(nullptr);
+    device.BindBackbuffer();
 }
 
 TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
@@ -342,7 +342,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
     app.AddLayer(std::make_unique<TimelinePanelTestLayer>([&app] {
         TimelineGui gui;
         NS::Scene scene;
-        scene.SetRenderer(&app.Renderer());
+        scene.SetDevice(&app.Device());
         nlohmann::json snapshot = NS::MakeSceneJson();
         nlohmann::json floor = NS::MakeObjectJson();
         NS::SetObjectJsonClass(floor, "MapPartsActor");
@@ -468,7 +468,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         drawPanel();
         EXPECT_EQ(timeline.Preview(editor), nullptr);
         ImGui::EndFrame();
-        app.Renderer().BindBackbuffer();
+        app.Device().BindBackbuffer();
     }));
     EXPECT_EQ(app.Run(), 0);
 }

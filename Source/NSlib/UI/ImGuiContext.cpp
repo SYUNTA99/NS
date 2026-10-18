@@ -2,8 +2,8 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/GraphicObject.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 
@@ -113,7 +113,7 @@ namespace NS
         } // namespace
 #endif
 
-        ImGuiContext::ImGuiContext(OS::Window& window, Gfx::Renderer& renderer) noexcept
+        ImGuiContext::ImGuiContext(OS::Window& window, Gfx::D3DDevice& device) noexcept
             : m_pImpl(std::make_unique<Impl>())
         {
 #if NS_EDITOR_ENABLED
@@ -178,10 +178,10 @@ namespace NS
                 return;
             }
 
-            (void)renderer;
-            ID3D11Device* device = Gfx::Gpu().device;
+            (void)device;
+            ID3D11Device* d3d11Device = Gfx::Gpu().device;
             ID3D11DeviceContext* context = Gfx::Gpu().context;
-            if (device == nullptr || context == nullptr || !::ImGui_ImplDX11_Init(device, context))
+            if (d3d11Device == nullptr || context == nullptr || !::ImGui_ImplDX11_Init(d3d11Device, context))
             {
                 NS_LOG_ERROR(UI, "ImGui_ImplDX11_Init 失敗、 stub mode に fallback");
                 ::ImGui_ImplWin32_Shutdown();
@@ -194,7 +194,7 @@ namespace NS
             m_pImpl->fallback = false;
 #else
             (void)window;
-            (void)renderer;
+            (void)device;
 #endif
         }
 

@@ -17,7 +17,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class Renderer;
+        class D3DDevice;
     } // namespace Gfx
 } // namespace NS
 
@@ -25,14 +25,14 @@ namespace NS
 {
     namespace UI
     {
-        //! ウィンドウと Renderer に対応する開発用 ImGui。無効な構成では何もしない
+        //! ウィンドウと D3DDevice に対応する開発用 ImGui。無効な構成では何もしない
         class ImGuiContext : public NonCopyable
         {
         public:
             struct Impl;
 
             //! 指定されたウィンドウと描画システムを用いてUIコンテキストを初期化する
-            ImGuiContext(OS::Window& window, Gfx::Renderer& renderer) noexcept;
+            ImGuiContext(OS::Window& window, Gfx::D3DDevice& device) noexcept;
             ~ImGuiContext() noexcept;
 
             [[nodiscard]] bool IsValid() const noexcept;
@@ -41,11 +41,11 @@ namespace NS
             [[nodiscard]] bool IsUsingFallback() const noexcept;
 
             //! @brief 新しいUIフレームの構築を開始する
-            //! @note Renderer::BeginFrame の直後に呼ぶこと
+            //! @note D3DDevice::BeginFrame の直後に呼ぶこと
             void BeginFrame() noexcept;
 
             //! @brief UIの構築を終了し、描画コマンドを発行する
-            //! @note Renderer::EndFrame の直前に呼ぶこと
+            //! @note D3DDevice::EndFrame の直前に呼ぶこと
             void EndFrame() noexcept;
 
             //! @brief OSからのウィンドウメッセージをUI側へ転送して処理する

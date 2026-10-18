@@ -3,8 +3,8 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/GraphicObject.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
 
@@ -232,8 +232,8 @@ namespace NS
             }
             m_type = info->stage;
 
-            // Renderer の無い場 (GPU の無い試し) では、ERROR を出さずに空のシェーダを返す
-            // ゲームでは Renderer を先に作るので、ここで返らない。Reload の Compile は ERROR を出す
+            // D3DDevice の無い場 (GPU の無い試し) では、ERROR を出さずに空のシェーダを返す
+            // ゲームでは D3DDevice を先に作るので、ここで返らない。Reload の Compile は ERROR を出す
             ID3D11Device* device = Gpu().device;
             if (device == nullptr)
             {
@@ -274,7 +274,7 @@ namespace NS
             ID3D11Device* device = Gpu().device;
             if (device == nullptr)
             {
-                NS_LOG_ERROR(Graphics, "D3DShader: Renderer の Device が無効");
+                NS_LOG_ERROR(Graphics, "D3DShader: 装置が無効");
                 return false;
             }
             const ShaderTypeInfo* info = DetectStage(hlslPath);

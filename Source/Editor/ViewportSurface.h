@@ -66,7 +66,7 @@ namespace NS
             //! @return 可視かつ描画先が有効ならビュー、それ以外なら nullopt
             [[nodiscard]] std::optional<SceneView> CurrentView(std::optional<CameraPose> pose) const noexcept;
 
-            //! 描画先を破棄する。Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
+            //! 描画先を破棄する。D3DDevice が非所有ポインタを踏まないよう外した後に呼ぶ
             void Release() noexcept;
 
             //! このフレームにパネルが可視 (サイズを持つ) だったか

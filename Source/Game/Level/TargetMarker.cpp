@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 
 #include <algorithm>
 #include <cmath>
@@ -223,12 +223,12 @@ namespace GL
 
         void TargetMarker::OnRenderOverlay(const NS::Gfx::RenderContext& context)
         {
-            if (context.renderer == nullptr || context.overlay == nullptr)
+            if (context.device == nullptr || context.overlay == nullptr)
             {
                 return;
             }
             LockOnFrameShape frame{};
-            if (!BuildShownShape(context.viewProjection, context.renderer->Size(), frame))
+            if (!BuildShownShape(context.viewProjection, context.device->Size(), frame))
             {
                 return;
             }

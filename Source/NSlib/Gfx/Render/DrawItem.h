@@ -13,7 +13,7 @@ namespace NS
         class D3DMesh;
         class D3DMaterial;
         class D3DBuffer;
-        class Renderer;
+        class D3DDevice;
         class D3DShader;
 
         //! @brief 1回の描画に必要なデータをまとめた構造体
@@ -40,13 +40,13 @@ namespace NS
 
         //! @brief DrawItem をもとに描画を出す
         //! @note mesh か material が空なら何もしない
-        void IssueDrawItem(Renderer& renderer, const DrawItem& item) noexcept;
+        void IssueDrawItem(D3DDevice& device, const DrawItem& item) noexcept;
 
         //! @brief DrawItem の形を、渡したパイプラインとピクセルシェーダで描く
         //! @details 頂点シェーダと定数は material の物を使うので、骨で動く形も同じ姿勢で描ける
         //! mesh か material が空なら何もしない
         //! @param[in] pixelShader material のピクセルシェーダの代わりに差す物。入力は SV_POSITION から始める
-        void IssueDrawItemWith(Renderer& renderer,
+        void IssueDrawItemWith(D3DDevice& device,
                                const DrawItem& item,
                                const D3DPipeline& pipeline,
                                const D3DShader& pixelShader) noexcept;

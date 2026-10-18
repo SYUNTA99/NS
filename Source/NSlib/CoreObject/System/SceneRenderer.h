@@ -30,7 +30,7 @@ namespace NS
     }
     namespace Gfx
     {
-        class Renderer;
+        class D3DDevice;
     }
     namespace Gfx
     {
@@ -84,19 +84,19 @@ namespace NS
         SceneRenderer();
         ~SceneRenderer();
 
-        //! @brief レンダラーを非所有で差す。EffectScene と描く段を作り直し、未設定なら畳む
-        //! @details EffectScene は構築時に Gpu() を読む。Renderer が立つまで作れない
+        //! @brief 装置を非所有で差す。EffectScene と描く段を作り直し、未設定なら畳む
+        //! @details EffectScene は構築時に Gpu() を読む。D3DDevice が立つまで作れない
         //! 描く段のシェーダーはここで AssetManager::Get() から引くので、AssetManager を差した後に呼ぶ
-        void SetRenderer(Gfx::Renderer* renderer) noexcept;
+        void SetDevice(Gfx::D3DDevice* device) noexcept;
 
         //! @brief Preload が .efkefc を探すディレクトリを差す。空のままなら ContentRoot の Assets/Effects
-        //! @details effectRoot は EffectScene の構築時に固まる。SetRenderer より前に差す
+        //! @details effectRoot は EffectScene の構築時に固まる。SetDevice より前に差す
         void SetEffectRoot(std::string root) noexcept;
 
-        //! 所有している EffectScene。レンダラー未設定の間は nullptr
+        //! 所有している EffectScene。装置未設定の間は nullptr
         [[nodiscard]] Gfx::EffectScene* Effects() const noexcept { return m_effects.get(); }
 
-        //! 重ね描きと UI が全画面の色と画面の矩形を描く先。レンダラー未設定の間は nullptr
+        //! 重ね描きと UI が全画面の色と画面の矩形を描く先。装置未設定の間は nullptr
         [[nodiscard]] Gfx::ScreenOverlay* Overlay() const noexcept { return m_overlay.get(); }
 
         //! エフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ何もしない
@@ -148,7 +148,7 @@ namespace NS
         //! 登録中の全 renderable の bounds とソート情報を RenderProxyList へ同期する。描画の入口で呼ぶ
         void SyncRenderBounds();
 
-        //! ビューを順に描く。未指定なら現在の描画先、レンダラーなしなら描画しない
+        //! ビューを順に描く。未指定なら現在の描画先、装置なしなら描画しない
         //! カメラの姿勢は呼ぶ前に確定する。alpha は固定更新間の割合 0〜1
         //! skyboxPath は ContentRoot 内の相対パス。空なら空を描かない
         void Render(CameraManager& cameras,
@@ -223,20 +223,20 @@ namespace NS
         Gfx::RenderProxyList m_renderScene;
 
         bool m_warnedZeroLightDirection = false; // 平行光の向きが 0 の警告を出したか
-        Gfx::Renderer* m_renderer = nullptr; // レンダラー、非所有。未設定なら描かない
+        Gfx::D3DDevice* m_device = nullptr; // 装置、非所有。未設定なら描かない
 
         std::vector<SceneView> m_sceneViews; // 描くビュー列。空なら現描画先へ 1 回だけ描く
 
         Gfx::DebugShapes m_viewShapes; // ビューの図形の使い捨ての溜め場。1 ビューを描く間だけ中身がある
 
-        std::unique_ptr<Gfx::EffectScene> m_effects; // エフェクトの再生と描画。レンダラー未設定の間は空
+        std::unique_ptr<Gfx::EffectScene> m_effects; // エフェクトの再生と描画。装置未設定の間は空
 
-        // 描く段の組み込みのシェーダー。レンダラーを差した時に AssetManager から引き、指すだけで持たない
+        // 描く段の組み込みのシェーダー。装置を差した時に AssetManager から引き、指すだけで持たない
         Gfx::BuiltinShaders m_shaders{};
-        std::unique_ptr<Gfx::ScreenOverlay> m_overlay; // 全画面の色と画面の矩形。レンダラー未設定の間は空
-        std::unique_ptr<Gfx::Skybox> m_skybox;         // 空。レンダラー未設定の間は空
+        std::unique_ptr<Gfx::ScreenOverlay> m_overlay; // 全画面の色と画面の矩形。装置未設定の間は空
+        std::unique_ptr<Gfx::Skybox> m_skybox;         // 空。装置未設定の間は空
 
-        // 光のにじみと画面の段。ビュー列と同じ並び。レンダラーを差し替えると畳み、描く時に作る
+        // 光のにじみと画面の段。ビュー列と同じ並び。装置を差し替えると畳み、描く時に作る
         std::vector<ViewPasses> m_viewPasses;
 
         std::string m_effectRoot;                       // .efkefc を探すディレクトリ。空なら既定の Assets/Effects

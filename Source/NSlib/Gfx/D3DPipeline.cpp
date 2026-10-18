@@ -1,7 +1,7 @@
 #include "NSlib/Gfx/D3DPipeline.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/detail/PipelineDepth.h"
 
 namespace NS

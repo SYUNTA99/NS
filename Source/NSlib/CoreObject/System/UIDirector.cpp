@@ -2,7 +2,7 @@
 
 #include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 
 #include <algorithm>
 
@@ -48,9 +48,9 @@ namespace NS
     void UIDirector::Draw(const Gfx::RenderContext& context)
     {
         m_canvas = UI::UICanvas{};
-        if (context.renderer != nullptr)
+        if (context.device != nullptr)
         {
-            const Size2D size = context.renderer->Size();
+            const Size2D size = context.device->Size();
             m_canvas = UI::MakeUICanvas(static_cast<float>(size.width), static_cast<float>(size.height));
         }
         for (UIActor* screen : DrawOrdered())

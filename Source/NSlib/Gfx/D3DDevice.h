@@ -14,7 +14,7 @@ namespace NS
     namespace Gfx
     {
         //! @brief 描画システムの初期化パラメータ
-        struct RendererDesc
+        struct D3DDeviceDesc
         {
             bool enableDebugLayer = false; //!< DX11 のデバッグレイヤーを有効にするか
             bool vsync = true;             //!< 垂直同期を有効にするか
@@ -30,13 +30,13 @@ namespace NS
 
         //! ウィンドウに対応する D3D11 の描画基盤。構築失敗は IsValid で確認する
         //! @warning 静的変数として保持せず、GPU 資源より後に破棄する
-        class Renderer : public NonCopyable
+        class D3DDevice : public NonCopyable
         {
         public:
             //! @brief 描画システムを構築する
             //! @param[in,out] window 紐づける対象のウィンドウ
-            Renderer(const RendererDesc& desc, OS::Window& window) noexcept;
-            ~Renderer();
+            D3DDevice(const D3DDeviceDesc& desc, OS::Window& window) noexcept;
+            ~D3DDevice();
 
             //! 描画できる状態か。構築失敗のほか、Present で device 喪失を検知した後も false になる
             [[nodiscard]] bool IsValid() const noexcept;
@@ -94,13 +94,13 @@ namespace NS
             //! @brief 各種ブレンドモードに対応する標準的な描画パイプラインを取得する
             //! @param[in] blend 取得したいブレンドモード
             //! @param[in] twoSided 裏を向いた面も描く場合 true。偽なら裏を向いた面は描かない
-            //! @note 共通パイプラインは構築の最後に作るので、構築に失敗した Renderer では呼んではいけない
+            //! @note 共通パイプラインは構築の最後に作るので、構築に失敗した D3DDevice では呼んではいけない
             [[nodiscard]] const D3DPipeline& CommonPipeline(BlendMode blend, bool twoSided = false) const noexcept;
 
             //! @brief 手前の物に隠れた画素だけへ半透明で描くパイプラインを取得する
             //! @details 深度は書かない。隠れた所を透かして見せる描画が、普通の描画と同じ物を 2 回目に描く時に使う
             //! @param[in] twoSided 裏を向いた面も描く場合 true。偽なら裏を向いた面は描かない
-            //! @note 共通パイプラインと一緒に構築の最後に作るので、構築に失敗した Renderer では呼んではいけない
+            //! @note 共通パイプラインと一緒に構築の最後に作るので、構築に失敗した D3DDevice では呼んではいけない
             [[nodiscard]] const D3DPipeline& OccludedPipeline(bool twoSided = false) const noexcept;
 
         private:

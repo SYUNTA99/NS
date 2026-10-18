@@ -5,9 +5,9 @@
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DMesh.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
@@ -28,8 +28,8 @@ namespace NS
             m_blend = desc.blend;
             m_renderPriority = desc.renderPriority;
 
-            // Renderer の無い場 (GPU の無い試し) では、ERROR を出さずに空のマテリアルを返す
-            // ゲームでは Renderer を先に作るので、ここで返らない
+            // D3DDevice の無い場 (GPU の無い試し) では、ERROR を出さずに空のマテリアルを返す
+            // ゲームでは D3DDevice を先に作るので、ここで返らない
             if (Gpu().device == nullptr)
             {
                 return;
@@ -95,40 +95,40 @@ namespace NS
             m_textures[slot] = texture;
         }
 
-        void D3DMaterial::UpdateParamsRaw(Renderer& renderer, const void* data, std::size_t bytes) noexcept
+        void D3DMaterial::UpdateParamsRaw(D3DDevice& device, const void* data, std::size_t bytes) noexcept
         {
             if (!IsValid() || !m_cb)
             {
                 return;
             }
-            renderer.Commands().UpdateSubresource(*m_cb, data, bytes);
+            device.Commands().UpdateSubresource(*m_cb, data, bytes);
         }
 
-        void D3DMaterial::Bind(Renderer& renderer) noexcept
+        void D3DMaterial::Bind(D3DDevice& device) noexcept
         {
             if (!IsValid())
             {
                 return;
             }
 
-            renderer.Commands().VSSetShader(*m_vertexShader);
-            renderer.Commands().PSSetShader(*m_pixelShader);
+            device.Commands().VSSetShader(*m_vertexShader);
+            device.Commands().PSSetShader(*m_pixelShader);
 
             for (std::pair<const uint, const D3DTexture*>& entry : m_textures)
             {
-                renderer.Commands().PSSetShaderResource(*entry.second, entry.first);
+                device.Commands().PSSetShaderResource(*entry.second, entry.first);
             }
 
             if (m_cb)
             {
-                renderer.Commands().VSSetConstantBuffer(*m_cb, m_cbSlot);
-                renderer.Commands().PSSetConstantBuffer(*m_cb, m_cbSlot);
+                device.Commands().VSSetConstantBuffer(*m_cb, m_cbSlot);
+                device.Commands().PSSetConstantBuffer(*m_cb, m_cbSlot);
             }
 
             // テクスチャのサンプリング設定は、描画時にシステム共通のものを利用する
-            if (ID3D11SamplerState* sampler = renderer.States().LinearWrap())
+            if (ID3D11SamplerState* sampler = device.States().LinearWrap())
             {
-                renderer.Commands().PSSetSampler(sampler, 0u);
+                device.Commands().PSSetSampler(sampler, 0u);
             }
         }
 

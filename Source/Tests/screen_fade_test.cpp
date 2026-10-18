@@ -6,10 +6,10 @@
 #include "NSlib/CoreObject/System/ScreenFadeDirector.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/CoreObject/UIActor.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/ScreenFade.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Windows/Clock.h"
@@ -180,40 +180,40 @@ TEST(ScreenFade, SceneReloadAndShutdownCancelTheFade)
 TEST(ScreenFade, FullscreenDrawCoversUIAndTheResizedTarget)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "全画面暗転の試し", .size = {64, 36}, .visible = false});
-    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
-    ASSERT_TRUE(renderer.IsValid());
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
     const std::unique_ptr<NS::Gfx::D3DRenderTarget> target = NS::Gfx::D3DRenderTarget::Create({64, 36});
     ASSERT_TRUE(target->IsValid());
     NS::SceneRenderer sceneRenderer;
-    sceneRenderer.SetRenderer(&renderer);
+    sceneRenderer.SetDevice(&device);
     NS::Gfx::ScreenFade fade;
     WhiteScreen ui;
     NS::UIDirector screens;
     screens.Add(ui);
     NS::Gfx::RenderContext context;
-    context.renderer = &renderer;
+    context.device = &device;
     context.overlay = sceneRenderer.Overlay();
     ASSERT_NE(context.overlay, nullptr);
 
-    renderer.SetSceneTarget(target.get());
+    device.SetSceneTarget(target.get());
     fade.BeginOut(0.0f);
-    renderer.BeginFrame();
+    device.BeginFrame();
     sceneRenderer.DrawOverlays(context, screens, fade);
     ExpectEveryPixel(*target->Color(), 0);
 
     fade.BeginIn(0.4f);
     fade.Advance(0.2f);
     target->Resize({37, 53});
-    renderer.BeginFrame();
+    device.BeginFrame();
     sceneRenderer.DrawOverlays(context, screens, fade);
     ExpectEveryPixel(*target->Color(), 128);
 
     fade.Cancel();
-    renderer.BeginFrame();
+    device.BeginFrame();
     sceneRenderer.DrawOverlays(context, screens, fade);
     ExpectEveryPixel(*target->Color(), 255);
-    renderer.SetSceneTarget(nullptr);
-    renderer.BindBackbuffer();
+    device.SetSceneTarget(nullptr);
+    device.BindBackbuffer();
 }

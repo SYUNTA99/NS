@@ -3,8 +3,8 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/GraphicObject.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/detail/TextureFile.h"
 #include "NSlib/Windows/Filesystem.h"
 
@@ -234,8 +234,8 @@ namespace NS
         {
             ID3D11Device* device = Gpu().device;
             ID3D11DeviceContext* context = Gpu().context;
-            // Renderer の無い場 (GPU の無い試し) では、ERROR を出さずに空のテクスチャを返す
-            // ゲームでは Renderer を先に作るので、ここで返らない
+            // D3DDevice の無い場 (GPU の無い試し) では、ERROR を出さずに空のテクスチャを返す
+            // ゲームでは D3DDevice を先に作るので、ここで返らない
             if (device == nullptr || context == nullptr)
             {
                 return;

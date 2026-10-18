@@ -32,7 +32,7 @@ namespace NS
     }
     namespace Gfx
     {
-        class Renderer;
+        class D3DDevice;
     }
 } // namespace NS
 
@@ -120,8 +120,8 @@ namespace NS
         //! 重力方向を正規化して、物理の重力方向も揃える
         void SetGravityDirection(const Vector3& direction) noexcept;
 
-        //! レンダラーを非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
-        void SetRenderer(Gfx::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
+        //! 装置を非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
+        void SetDevice(Gfx::D3DDevice* device) noexcept { m_sceneRenderer.SetDevice(device); }
 
         //! @brief 次に描くフレームから使う床の波を書く。強さ 0 で消える
         void SetGroundWave(const Gfx::GroundWave& wave) noexcept { m_sceneRenderer.SetGroundWave(wave); }
@@ -156,7 +156,7 @@ namespace NS
         }
 
         //! エフェクトを探すディレクトリを SceneRenderer へ渡す。空のままなら ContentRoot の Assets/Effects
-        //! effectRoot は EffectScene の構築時に固まる。SetRenderer より前に差す
+        //! effectRoot は EffectScene の構築時に固まる。SetDevice より前に差す
         void SetEffectRoot(std::string root) noexcept { m_sceneRenderer.SetEffectRoot(std::move(root)); }
 
         //! @brief skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空なら skybox を描かない

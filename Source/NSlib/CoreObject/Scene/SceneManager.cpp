@@ -15,9 +15,9 @@ namespace NS
         UnloadScene();
     }
 
-    void SceneManager::SetRenderer(Gfx::Renderer* renderer) noexcept
+    void SceneManager::SetDevice(Gfx::D3DDevice* device) noexcept
     {
-        m_renderer = renderer;
+        m_device = device;
     }
 
     Scene& SceneManager::LoadScene(nlohmann::json&& scene)
@@ -25,7 +25,7 @@ namespace NS
         UnloadScene();
 
         m_current = std::make_unique<Scene>();
-        m_current->SetRenderer(m_renderer);
+        m_current->SetDevice(m_device);
 
         m_current->ResetFromJson(std::move(scene));
         return *m_current;

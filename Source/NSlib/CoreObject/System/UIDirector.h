@@ -37,7 +37,7 @@ namespace NS
         [[nodiscard]] std::vector<UIActor*> DrawOrdered() const;
 
         //! @brief 描画先の大きさから UICanvas を作って控え、画面を描く順に描く
-        //! @details renderer がなければ UICanvas は既定の値を使い、画面の描画処理は呼ぶ
+        //! @details device がなければ UICanvas は既定の値を使い、画面の描画処理は呼ぶ
         void Draw(const Gfx::RenderContext& context);
 
         //! 直近の Draw で控えた拡縮と全画面の矩形。画面が描く時に借りる

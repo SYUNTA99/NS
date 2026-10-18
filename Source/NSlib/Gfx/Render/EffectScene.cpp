@@ -3,7 +3,7 @@
 
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
@@ -153,10 +153,10 @@ namespace NS
 
         EffectScene::EffectScene(std::string effectRoot) noexcept : m_effectRoot(std::move(effectRoot))
         {
-            const GraphicObject& gpu = Gpu();
+            const D3DGlobal& gpu = Gpu();
             if (gpu.device == nullptr || gpu.context == nullptr)
             {
-                NS_LOG_WARN(Graphics, "EffectScene: Renderer が未構築のため無効のまま作る");
+                NS_LOG_WARN(Graphics, "EffectScene: D3DDevice が未構築のため無効のまま作る");
                 return;
             }
 

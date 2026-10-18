@@ -18,7 +18,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DShader.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "TestAnimatedPlayerActor.h"
@@ -203,8 +203,8 @@ TEST(AssetManagerLoad, MeshShapeFollowsTheNameRules)
     EXPECT_GE(log.ErrorCount(), 2);
 }
 
-// Renderer の無い場では、ファイルのメッシュも描く形を作らずに当たりだけを作り、ERROR を出さない
-TEST(AssetManagerLoad, FileMeshWithoutARendererHasOnlyCollisionAndLogsNoError)
+// D3DDevice の無い場では、ファイルのメッシュも描く形を作らずに当たりだけを作り、ERROR を出さない
+TEST(AssetManagerLoad, FileMeshWithoutADeviceHasOnlyCollisionAndLogsNoError)
 {
     ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
@@ -215,9 +215,9 @@ TEST(AssetManagerLoad, FileMeshWithoutARendererHasOnlyCollisionAndLogsNoError)
     EXPECT_EQ(log.ErrorCount(), 0);
 }
 
-// Renderer の無い場で読んだマテリアルは、シェーダとテクスチャも含めて空で、ERROR を出さない
-// ゲームでは Renderer が先にあるので、この道を通らない
-TEST(AssetManagerLoad, MaterialWithoutARendererIsEmptyAndLogsNoError)
+// D3DDevice の無い場で読んだマテリアルは、シェーダとテクスチャも含めて空で、ERROR を出さない
+// ゲームでは D3DDevice が先にあるので、この道を通らない
+TEST(AssetManagerLoad, MaterialWithoutADeviceIsEmptyAndLogsNoError)
 {
     ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
@@ -228,7 +228,7 @@ TEST(AssetManagerLoad, MaterialWithoutARendererIsEmptyAndLogsNoError)
     EXPECT_EQ(log.ErrorCount(), 0);
 }
 
-TEST(AssetManagerLoad, BuiltinShadersWithoutARendererAreEmptyAndLogNoError)
+TEST(AssetManagerLoad, BuiltinShadersWithoutADeviceAreEmptyAndLogNoError)
 {
     ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};

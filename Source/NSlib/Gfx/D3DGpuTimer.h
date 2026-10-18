@@ -10,7 +10,7 @@ namespace NS
     namespace Gfx
     {
         //! GPU の Begin〜End の時間を測る。読み取りは GPU を待つため計測用に限る
-        //! Renderer が未構築なら無効。Renderer より先に破棄する
+        //! D3DDevice が未構築なら無効。D3DDevice より先に破棄する
         class D3DGpuTimer : public NonCopyable
         {
         public:

@@ -4,11 +4,11 @@
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
@@ -68,10 +68,10 @@ namespace NS
             : m_desc(desc), m_vs(shaders.fullscreenVs), m_thresholdPs(shaders.bloomThresholdPs),
               m_downPs(shaders.bloomDownPs), m_upPs(shaders.bloomUpPs), m_compositePs(shaders.bloomCompositePs)
         {
-            const GraphicObject& gpu = Gpu();
+            const D3DGlobal& gpu = Gpu();
             if (gpu.device == nullptr || gpu.context == nullptr)
             {
-                NS_LOG_WARN(Graphics, "Bloom: Renderer が未構築のため無効のまま作る");
+                NS_LOG_WARN(Graphics, "Bloom: D3DDevice が未構築のため無効のまま作る");
                 return;
             }
 
@@ -114,14 +114,14 @@ namespace NS
             return m_valid;
         }
 
-        void Bloom::BeginWorld(Renderer& renderer, const Color& clearColor) noexcept
+        void Bloom::BeginWorld(D3DDevice& device, const Color& clearColor) noexcept
         {
             if (!m_valid || m_active)
             {
                 return;
             }
 
-            D3DCommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = device.Commands();
             ComPtr<ID3D11RenderTargetView> target;
             ComPtr<ID3D11DepthStencilView> depth;
             cmd->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
@@ -162,7 +162,7 @@ namespace NS
             m_active = true;
         }
 
-        void Bloom::EndWorld(Renderer& renderer) noexcept
+        void Bloom::EndWorld(D3DDevice& device) noexcept
         {
             if (!m_active)
             {
@@ -170,9 +170,9 @@ namespace NS
             }
             m_active = false;
 
-            D3DCommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = device.Commands();
             // 縮めと山形は画素の間を線形で拾う。端の外は端の色を伸ばし、画面の外から黒が入らないようにする
-            cmd.PSSetSampler(renderer.States().LinearClamp(), 0);
+            cmd.PSSetSampler(device.States().LinearClamp(), 0);
             if (m_desc.intensity > 0.0f)
             {
                 DrawPass(cmd, *m_thresholdPs, *m_writePipeline, *m_scene, nullptr, m_bright->Rtv(), m_size);

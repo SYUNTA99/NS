@@ -12,7 +12,7 @@ namespace NS
         class D3DTexture;
 
         //! @brief シーンをテクスチャへ描くためのオフスクリーン描画先
-        //! @details カラー (RTV+SRV) と深度 (DSV) を 1 組で持ち、Renderer::SetSceneTarget へ渡して使う
+        //! @details カラー (RTV+SRV) と深度 (DSV) を 1 組で持ち、D3DDevice::SetSceneTarget へ渡して使う
         //! 構築に失敗した場合は例外を送出せず、無効な状態として扱う
         class D3DRenderTarget : public NonCopyable
         {

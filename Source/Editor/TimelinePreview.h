@@ -26,7 +26,7 @@ namespace NS
 
             //! @brief 前の場面を捨て、開始状態を作る関数と範囲を受け取る
             //! @details create は範囲の先頭より 1 歩前の場面を作る
-            //! 資産と Renderer はこの下見より長く生きること
+            //! 資産と D3DDevice はこの下見より長く生きること
             void Reset(std::function<std::unique_ptr<NS::Scene>()> create, TimelineFrameRange range);
             //! @brief 場面と生成関数を手放す
             void Clear() noexcept;

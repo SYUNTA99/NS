@@ -84,7 +84,7 @@ namespace NS
         //! @brief 欄の名前のメッシュを返す。名前は組み込みの形の名前か、ContentRoot からのファイルの道筋
         //! @details nullptr を返さない。空の名前と読めない名前は、描く形も当たりも無い中身の空のメッシュを返し、
         //! 何も描かない。読めない名前は ERROR を出す。空の名前は「選んでいない」で何も出さない
-        //! 組み込みの形もファイルも、作る時に描く形と当たりを作る。Renderer の無い場では描く形を作らない
+        //! 組み込みの形もファイルも、作る時に描く形と当たりを作る。D3DDevice の無い場では描く形を作らない
         //! マテリアルの欄が空の時に描くマテリアルも作る時に決める (Mesh::UseUnsetMaterial)。
         //! 組み込みの形と空のメッシュは灰色の既定 (default.mat)、ファイルのモデルはピンク (missing.mat) で ERROR を出す
         [[nodiscard]] Mesh* LoadMesh(std::string_view name);
@@ -126,7 +126,7 @@ namespace NS
         //! 読んだ全部のシェーダーを、同じインスタンスのまま各自の道で読み直す。成功本数を返す。HLSL 編集の即時反映に使う
         std::size_t ReloadAllShaders();
 
-        //! 全キャッシュを解放する。Renderer 破棄より前に呼ぶ
+        //! 全キャッシュを解放する。D3DDevice 破棄より前に呼ぶ
         void Clear() noexcept;
 
     private:

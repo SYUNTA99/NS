@@ -11,7 +11,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class Renderer;
+        class D3DDevice;
         class D3DShader;
         class D3DTexture;
         class D3DMesh;
@@ -55,17 +55,17 @@ namespace NS
             //! @brief 定数バッファのパラメータを更新する
             //! @details 定数バッファを持たない D3DMaterial では何もしない
             //! @note T は alignas(16) で、サイズも 16 の倍数であること
-            template <typename T> void SetParams(Renderer& renderer, const T& params) noexcept
+            template <typename T> void SetParams(D3DDevice& device, const T& params) noexcept
             {
                 static_assert((sizeof(T) % 16) == 0,
                               "D3DMaterial::SetParams<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
                 static_assert(alignof(T) >= 16,
                               "D3DMaterial::SetParams<T> は struct alignas(16) 必須 (Vector3 16-byte 境界)");
-                UpdateParamsRaw(renderer, &params, sizeof(T));
+                UpdateParamsRaw(device, &params, sizeof(T));
             }
 
             //! 描画の直前にシェーダー・テクスチャ・定数バッファ・サンプラを設定する
-            void Bind(Renderer& renderer) noexcept;
+            void Bind(D3DDevice& device) noexcept;
 
             //! @brief 保持している頂点シェーダーを利用して、対象メッシュの入力レイアウトを生成する
             //! @note 描画対象のメッシュに対して事前に呼び出す必要がある
@@ -74,7 +74,7 @@ namespace NS
         private:
             explicit D3DMaterial(const D3DMaterialDesc& desc);
 
-            void UpdateParamsRaw(Renderer& renderer, const void* data, std::size_t bytes) noexcept;
+            void UpdateParamsRaw(D3DDevice& device, const void* data, std::size_t bytes) noexcept;
 
             D3DShader* m_vertexShader = nullptr; // 非所有の参照
             D3DShader* m_pixelShader = nullptr;  // 非所有の参照

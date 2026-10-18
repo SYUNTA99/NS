@@ -1,6 +1,6 @@
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/Gfx/D3DShader.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 #include "TestLogCapture.h"
@@ -25,8 +25,8 @@ namespace
 TEST(ShaderAsset, ReloadCompilesTheFileAtItsPath)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "シェーダーの読み直しの試し", .size = {64, 64}, .visible = false});
-    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
-    ASSERT_TRUE(renderer.IsValid());
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
 
     const std::filesystem::path directory =
         std::filesystem::temp_directory_path() /

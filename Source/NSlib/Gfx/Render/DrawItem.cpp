@@ -3,7 +3,7 @@
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 
 namespace NS
@@ -13,11 +13,11 @@ namespace NS
         namespace
         {
             // パイプラインは呼ぶ前に設定する
-            void BindDrawItem(Renderer& renderer, const DrawItem& item) noexcept
+            void BindDrawItem(D3DDevice& device, const DrawItem& item) noexcept
             {
-                D3DCommandList& cmd = renderer.Commands();
+                D3DCommandList& cmd = device.Commands();
                 item.material->CreateInputLayoutFor(*item.mesh);
-                item.material->SetParams(renderer, item.constants);
+                item.material->SetParams(device, item.constants);
 
                 // ボーンパレットなどの追加データがあれば転送して頂点シェーダのスロットへ設定する
                 if (item.extraVsCb != nullptr)
@@ -29,33 +29,33 @@ namespace NS
                     cmd.VSSetConstantBuffer(*item.extraVsCb, item.extraVsSlot);
                 }
 
-                item.material->Bind(renderer);
+                item.material->Bind(device);
             }
         } // namespace
 
-        void IssueDrawItem(Renderer& renderer, const DrawItem& item) noexcept
+        void IssueDrawItem(D3DDevice& device, const DrawItem& item) noexcept
         {
             if (item.mesh == nullptr || item.material == nullptr)
             {
                 return;
             }
 
-            D3DCommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = device.Commands();
 
             // 前回の描画ステートを引き継がないよう、描画ごとにパイプラインを設定する
             if (item.occludedOnly)
             {
-                cmd.SetPipeline(renderer.OccludedPipeline(item.twoSided));
+                cmd.SetPipeline(device.OccludedPipeline(item.twoSided));
             }
             else
             {
-                cmd.SetPipeline(renderer.CommonPipeline(item.blend, item.twoSided));
+                cmd.SetPipeline(device.CommonPipeline(item.blend, item.twoSided));
             }
-            BindDrawItem(renderer, item);
+            BindDrawItem(device, item);
             DrawMesh(cmd, *item.mesh);
         }
 
-        void IssueDrawItemWith(Renderer& renderer,
+        void IssueDrawItemWith(D3DDevice& device,
                                const DrawItem& item,
                                const D3DPipeline& pipeline,
                                const D3DShader& pixelShader) noexcept
@@ -65,9 +65,9 @@ namespace NS
                 return;
             }
 
-            D3DCommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = device.Commands();
             cmd.SetPipeline(pipeline);
-            BindDrawItem(renderer, item);
+            BindDrawItem(device, item);
             cmd.PSSetShader(pixelShader);
             DrawMesh(cmd, *item.mesh);
         }

@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/UpdatePhase.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 
 #include <algorithm>
 #include <limits>
@@ -191,7 +191,7 @@ namespace NS
 
     void HitScreenDirector::OnRenderOverlay(const Gfx::RenderContext& context)
     {
-        if (context.renderer == nullptr || context.overlay == nullptr)
+        if (context.device == nullptr || context.overlay == nullptr)
         {
             return;
         }
@@ -209,7 +209,7 @@ namespace NS
         {
             return;
         }
-        const Size2D size = context.renderer->Size();
+        const Size2D size = context.device->Size();
         if (size.width <= 0 || size.height <= 0)
         {
             return;

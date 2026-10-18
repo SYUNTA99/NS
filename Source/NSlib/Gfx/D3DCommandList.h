@@ -16,7 +16,7 @@ namespace NS
         class D3DPipeline;
         enum class Topology;
 
-        //! Renderer が所有する描画コンテキスト。変換や一括設定はメソッド、それ以外は operator-> を使う
+        //! D3DDevice が所有する描画コンテキスト。変換や一括設定はメソッド、それ以外は operator-> を使う
         class D3DCommandList : public NonCopyable
         {
         public:
@@ -109,13 +109,13 @@ namespace NS
 
             //!@}
         private:
-            friend class Renderer;
+            friend class D3DDevice;
 
-            //! @brief Renderer が自分の immediate context を包んで作る
+            //! @brief D3DDevice が自分の immediate context を包んで作る
             //! @param[in] context 非所有の ID3D11DeviceContext
             explicit D3DCommandList(ID3D11DeviceContext* context) noexcept;
 
-            ID3D11DeviceContext* m_context; //!< 非所有。所有は Renderer
+            ID3D11DeviceContext* m_context; //!< 非所有。所有は D3DDevice
         };
     } // namespace Gfx
 } // namespace NS

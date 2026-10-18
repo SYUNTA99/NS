@@ -13,7 +13,7 @@ namespace NS
         class D3DBuffer;
         struct DrawItem;
         class D3DPipeline;
-        class Renderer;
+        class D3DDevice;
         class D3DShader;
         class D3DTexture;
         struct BuiltinShaders;
@@ -42,11 +42,11 @@ namespace NS
         //! @brief 出来上がった絵に、画面全体に掛ける演出を掛ける
         //! @details 描画先を同じ形の絵へ写し、写しを読んで全画面を 1 回描いて描画先へ書く
         //! 選んだ描く物だけを世界の深度で隠して 1 色で写した体の型も作る
-        //! @warning Renderer より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
+        //! @warning D3DDevice より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
         class ScreenPasses : public NonCopyable
         {
         public:
-            //! @brief パイプライン・定数バッファを作る。Renderer が未構築なら無効な状態になる
+            //! @brief パイプライン・定数バッファを作る。D3DDevice が未構築なら無効な状態になる
             //! @param[in] shaders fullscreenVs・screenDistortionPs・bodyMaskPs を指すだけで持たない
             //! どれかが nullptr か読めずに代わりの物の時は無効になる
             explicit ScreenPasses(const BuiltinShaders& shaders) noexcept;
@@ -58,20 +58,20 @@ namespace NS
             //! @brief 今の描画先の絵の輪の所を、輪の外へ押し出す
             //! @details 押しか幅が 0 以下・無効な状態・描画先が無い時は何もしない
             //! 描画先・深度・ビューポートは呼ぶ前の物へ戻す
-            //! @param[in,out] renderer 描く命令を借りる先。今の描画先とビューポートもここから読む
-            void Distort(Renderer& renderer, const ScreenRing& ring) noexcept;
+            //! @param[in,out] device 描く命令を借りる先。今の描画先とビューポートもここから読む
+            void Distort(D3DDevice& device, const ScreenRing& ring) noexcept;
 
             //! @brief 体の型を 0 で塗り、型を描画先にする
             //! @details 深度は今の物を読むだけ。true を返した時だけ、描いた後に EndBodyMask を呼ぶ
             //! @return 型を描画先にできた場合 true、それ以外の場合は false
-            [[nodiscard]] bool BeginBodyMask(Renderer& renderer) noexcept;
+            [[nodiscard]] bool BeginBodyMask(D3DDevice& device) noexcept;
 
             //! @brief 描く物の写る画素のうち、世界の深度で隠れていない所を型に 1 で描く
             //! @details BeginBodyMask と EndBodyMask の間で呼ぶ
-            void DrawBodyMaskItem(Renderer& renderer, const DrawItem& item) noexcept;
+            void DrawBodyMaskItem(D3DDevice& device, const DrawItem& item) noexcept;
 
             //! 描画先・深度・ビューポートを BeginBodyMask の前へ戻し、BodyMask が型を返すようにする
-            void EndBodyMask(Renderer& renderer) noexcept;
+            void EndBodyMask(D3DDevice& device) noexcept;
 
             //! 体の型を描かないフレームに呼び、前のフレームの型を Distort に読ませない
             void DropBodyMask() noexcept { m_bodyMaskDrawn = false; }

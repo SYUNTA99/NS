@@ -8,11 +8,11 @@
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 
 namespace
@@ -63,8 +63,8 @@ namespace
         }
         b.initAttempted = true;
 
-        ID3D11Device* device = NS::Gfx::Gpu().device;
-        if (device == nullptr)
+        ID3D11Device* d3d11Device = NS::Gfx::Gpu().device;
+        if (d3d11Device == nullptr)
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: グローバル Device が無効");
             return false;
@@ -82,7 +82,7 @@ namespace
             {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
         };
         const HRESULT hr =
-            device->CreateInputLayout(layout, 2u, bytecode.data(), bytecode.size(), b.inputLayout.GetAddressOf());
+            d3d11Device->CreateInputLayout(layout, 2u, bytecode.data(), bytecode.size(), b.inputLayout.GetAddressOf());
         if (FAILED(hr))
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: CreateInputLayout 失敗 (hr=0x{:08X})", static_cast<NS::uint>(hr));
@@ -264,7 +264,7 @@ namespace NS
             m_faces.push_back({c, color});
         }
 
-        void DebugShapes::Draw(Renderer& renderer,
+        void DebugShapes::Draw(D3DDevice& device,
                                const BuiltinShaders& shaders,
                                const Matrix& viewProjection) const noexcept
         {
@@ -285,7 +285,7 @@ namespace NS
                 return;
             }
 
-            D3DCommandList& cmd = renderer.Commands();
+            D3DCommandList& cmd = device.Commands();
             if (cmd.Native() == nullptr)
             {
                 return;
@@ -312,7 +312,7 @@ namespace NS
             if (!m_lines.empty())
             {
                 cmd.UpdateSubresource(*b.vb, m_lines.data(), m_lines.size() * sizeof(Vertex));
-                cmd.SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
+                cmd.SetPipeline(device.CommonPipeline(BlendMode::Opaque));
                 cmd.SetVertexBuffer(*b.vb, 0u);
                 cmd.SetTopology(Topology::LineList);
                 cmd.Draw(static_cast<uint>(m_lines.size()));
@@ -369,9 +369,9 @@ namespace NS
                 StepShapes().Capsule(base, axis, radius, color);
             }
 
-            void Draw(Renderer& renderer, const BuiltinShaders& shaders, const Matrix& viewProjection) noexcept
+            void Draw(D3DDevice& device, const BuiltinShaders& shaders, const Matrix& viewProjection) noexcept
             {
-                StepShapes().Draw(renderer, shaders, viewProjection);
+                StepShapes().Draw(device, shaders, viewProjection);
             }
 
             void BeginStep() noexcept

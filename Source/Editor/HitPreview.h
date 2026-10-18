@@ -23,7 +23,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class Renderer;
+        class D3DDevice;
     }
 } // namespace NS
 
@@ -78,7 +78,7 @@ namespace NS
         //! @brief 写しの場面を組む時に渡す物。描かない下見では空でよい
         struct HitPreviewWorld
         {
-            Gfx::Renderer* renderer = nullptr; //!< 描き手。空ならエフェクトの世界を描かない
+            Gfx::D3DDevice* device = nullptr; //!< 描く装置。空ならエフェクトの世界を描かない
         };
 
         //! snapshot を変えずに別シーンで当たりを再現する。実行中は入力を中立にし、実機へ振動を送らない

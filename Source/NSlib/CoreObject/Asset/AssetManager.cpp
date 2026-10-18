@@ -150,7 +150,7 @@ namespace NS
             return Gfx::D3DStaticMesh::Create(desc);
         }
 
-        // Renderer の無い場では作らずに黙る。GPU で作れなかった時だけ ERROR を出す
+        // D3DDevice の無い場では作らずに黙る。GPU で作れなかった時だけ ERROR を出す
         [[nodiscard]] std::unique_ptr<Gfx::D3DMesh> MakeDrawnMesh(const std::string& key, const MeshGeometry& geom)
         {
             std::unique_ptr<Gfx::D3DStaticMesh> mesh = MakeStaticMesh(geom);

@@ -3,9 +3,9 @@
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 
 namespace NS
 {
@@ -31,8 +31,8 @@ namespace NS
 
         std::unique_ptr<D3DStaticMesh> D3DStaticMesh::Create(const D3DStaticMeshDesc& desc)
         {
-            // Renderer の無い場 (GPU の無い試し) では、ERROR を出さずに作らない
-            // ゲームでは Renderer を先に作るので、ここで返らない
+            // D3DDevice の無い場 (GPU の無い試し) では、ERROR を出さずに作らない
+            // ゲームでは D3DDevice を先に作るので、ここで返らない
             if (Gpu().device == nullptr || Gpu().context == nullptr)
             {
                 return nullptr;

@@ -29,7 +29,7 @@ namespace NS
     {
         class D3DTexture;
 
-        //! Effekseer の再生と描画。Renderer の構築後に作り、Preload 後に再生する
+        //! Effekseer の再生と描画。D3DDevice の構築後に作り、Preload 後に再生する
         //! 無効な状態では各操作を行わない
         class EffectScene : public NonCopyable
         {

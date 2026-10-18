@@ -105,11 +105,11 @@ namespace NS
                 }
                 m_drawScratch.clear();
                 p.desc.collect(p.desc.owner, context, m_drawScratch);
-                if (context.renderer != nullptr)
+                if (context.device != nullptr)
                 {
                     for (const DrawItem& item : m_drawScratch)
                     {
-                        IssueDrawItem(*context.renderer, item);
+                        IssueDrawItem(*context.device, item);
                     }
                 }
             }

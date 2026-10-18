@@ -2,7 +2,7 @@
 
 #include "NSlib/App/Layers.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Window.h"
 
@@ -32,11 +32,11 @@ namespace NS
 namespace NS
 {
 
-    //! 画面のクリア色などは RendererDesc 側で設定する
+    //! 画面のクリア色などは D3DDeviceDesc 側で設定する
     struct ApplicationDesc
     {
         OS::WindowDesc window{};
-        Gfx::RendererDesc renderer{};
+        Gfx::D3DDeviceDesc device{};
         float fixedDelta = OS::FrameTimer::k_DefaultFixedDelta;
     };
 
@@ -47,7 +47,7 @@ namespace NS
         explicit Application(const ApplicationDesc& desc);
         ~Application();
 
-        //! 下層の Window / Renderer の構築に失敗した場合は false を返す
+        //! 下層の Window / D3DDevice の構築に失敗した場合は false を返す
         [[nodiscard]] bool IsValid() const noexcept;
 
         //! 通常のレイヤーをオーバーレイより前へ追加する。メインループ開始前に呼ぶこと
@@ -62,9 +62,9 @@ namespace NS
         //! 起動時に作ったウィンドウ。Shutdown で破棄するので以降は参照できない
         [[nodiscard]] OS::Window& Window() noexcept;
         [[nodiscard]] const OS::Window& Window() const noexcept;
-        //! 起動時に作ったレンダラー。破棄の時期はウィンドウと同じ
-        [[nodiscard]] Gfx::Renderer& Renderer() noexcept;
-        [[nodiscard]] const Gfx::Renderer& Renderer() const noexcept;
+        //! 起動時に作った装置。破棄の時期はウィンドウと同じ
+        [[nodiscard]] Gfx::D3DDevice& Device() noexcept;
+        [[nodiscard]] const Gfx::D3DDevice& Device() const noexcept;
         //! プロセス全体で共有される入力。Application は所有しない
         [[nodiscard]] OS::Input& Input() noexcept;
         [[nodiscard]] const OS::Input& Input() const noexcept;
@@ -96,8 +96,8 @@ namespace NS
         [[nodiscard]] bool WantExit() noexcept;
 
         std::unique_ptr<OS::Window> m_window;
-        std::unique_ptr<Gfx::Renderer> m_renderer;
-        // 下から順番に破棄されるから、アセットを Renderer より先に解放させるためにここに書く
+        std::unique_ptr<Gfx::D3DDevice> m_device;
+        // 下から順番に破棄されるから、アセットを D3DDevice より先に解放させるためにここに書く
         std::unique_ptr<AssetManager> m_assets;
         // AssetManager::Get() が m_assets を返す間。m_assets より先に壊して、捨てた物を返さない
         std::unique_ptr<AssetManagerScope> m_assetsScope;

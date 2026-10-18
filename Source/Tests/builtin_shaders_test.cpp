@@ -3,7 +3,7 @@
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
 
@@ -44,13 +44,13 @@ namespace
                 shaders.bodyMaskPs};
     }
 
-    std::vector<NS::uint8> DrawFullscreenAndReadCenter(NS::Gfx::Renderer& renderer, NS::Gfx::ScreenOverlay& overlay)
+    std::vector<NS::uint8> DrawFullscreenAndReadCenter(NS::Gfx::D3DDevice& device, NS::Gfx::ScreenOverlay& overlay)
     {
-        renderer.BeginFrame(0.0f, 0.0f, 0.0f, 1.0f);
+        device.BeginFrame(0.0f, 0.0f, 0.0f, 1.0f);
         overlay.DrawFullscreenColor(NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
         std::vector<NS::uint8> pixels;
         NS::Size2D size{};
-        if (!renderer.ReadBackbufferPixels(pixels, size))
+        if (!device.ReadBackbufferPixels(pixels, size))
         {
             return {};
         }
@@ -65,8 +65,8 @@ namespace
 TEST(BuiltinShaders, ReloadAllShadersReachesTheShadersThePassesDraw)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "描く段のシェーダーの試し", .size = {16, 16}, .visible = false});
-    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
-    ASSERT_TRUE(renderer.IsValid());
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
 
     const std::filesystem::path directory =
         std::filesystem::temp_directory_path() /
@@ -83,8 +83,8 @@ TEST(BuiltinShaders, ReloadAllShadersReachesTheShadersThePassesDraw)
 
     {
         NS::AssetManager assets{directory.generic_string()};
-        NS::Gfx::ScreenOverlay overlay(&renderer, assets.LoadBuiltinShaders());
-        const std::vector<NS::uint8> red = DrawFullscreenAndReadCenter(renderer, overlay);
+        NS::Gfx::ScreenOverlay overlay(&device, assets.LoadBuiltinShaders());
+        const std::vector<NS::uint8> red = DrawFullscreenAndReadCenter(device, overlay);
         ASSERT_EQ(red.size(), 4u);
         EXPECT_EQ(red[0], 0);
         EXPECT_EQ(red[1], 0);
@@ -92,7 +92,7 @@ TEST(BuiltinShaders, ReloadAllShadersReachesTheShadersThePassesDraw)
 
         ASSERT_TRUE(WriteText(fadePs, "float4 PSMain() : SV_Target { return float4(0.0, 1.0, 0.0, 1.0); }"));
         assets.ReloadAllShaders();
-        const std::vector<NS::uint8> green = DrawFullscreenAndReadCenter(renderer, overlay);
+        const std::vector<NS::uint8> green = DrawFullscreenAndReadCenter(device, overlay);
         ASSERT_EQ(green.size(), 4u);
         EXPECT_EQ(green[0], 0);
         EXPECT_EQ(green[1], 255);
@@ -105,8 +105,8 @@ TEST(BuiltinShaders, ReloadAllShadersReachesTheShadersThePassesDraw)
 TEST(BuiltinShaders, EachFileIsLoadedOnceAndSharedByThePasses)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "描く段のシェーダーの試し", .size = {16, 16}, .visible = false});
-    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
-    ASSERT_TRUE(renderer.IsValid());
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
 
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::Gfx::BuiltinShaders first = assets.LoadBuiltinShaders();

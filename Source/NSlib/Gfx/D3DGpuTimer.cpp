@@ -1,7 +1,7 @@
 #include "NSlib/Gfx/D3DGpuTimer.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/GraphicObject.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <chrono>
@@ -42,7 +42,7 @@ namespace NS
             ID3D11Device* device = Gpu().device;
             if (device == nullptr)
             {
-                NS_LOG_WARN(Graphics, "D3DGpuTimer: Renderer が未構築のため無効のまま作る");
+                NS_LOG_WARN(Graphics, "D3DGpuTimer: D3DDevice が未構築のため無効のまま作る");
                 return;
             }
 

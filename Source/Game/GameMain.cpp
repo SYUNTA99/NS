@@ -16,7 +16,7 @@ namespace NS
         desc.window.title = "NS Game";
         desc.window.size = Size2D{1920, 1080};
 #ifdef NS_BUILD_DEBUG
-        desc.renderer.enableDebugLayer = true;
+        desc.device.enableDebugLayer = true;
 #endif
         std::unique_ptr<Application> app = std::make_unique<Application>(desc);
 

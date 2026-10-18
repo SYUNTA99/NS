@@ -2,7 +2,7 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/SkinnedModel.h"
-#include "NSlib/Gfx/Renderer.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Windows/Window.h"
 #include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Geometry/GltfParser.h"
@@ -69,8 +69,8 @@ TEST(SkinnedModelAsset, UnreadableNamesGiveAnEmptyModelWithTheName)
 TEST(SkinnedModelAsset, ReadableFileHoldsTheSkinnedMeshAndItsSkeleton)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "骨付きのモデルの試し", .size = {64, 64}, .visible = false});
-    NS::Gfx::Renderer renderer(NS::Gfx::RendererDesc{}, window);
-    ASSERT_TRUE(renderer.IsValid());
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
 
     const NS::SkinnedModel* model = assets.LoadSkinnedModel("Assets/Models/Xbot.glb");

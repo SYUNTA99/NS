@@ -7,7 +7,7 @@ namespace NS
 {
     namespace Gfx
     {
-        class Renderer;
+        class D3DDevice;
     }
 } // namespace NS
 
@@ -24,7 +24,7 @@ namespace NS
         void SetPosition(const Vector3& position) noexcept;
         void SetTarget(const Vector3& target) noexcept;
         void SetUp(const Vector3& up) noexcept;
-        void SetAspectRatioFromRenderer(const Gfx::Renderer& renderer) noexcept;
+        void SetAspectRatioFromDevice(const Gfx::D3DDevice& device) noexcept;
 
         //! pose の位置 / 注視点 / up と投影設定をまとめて書く。CameraManager の Evaluate とエディタの視点反映が使う
         void ApplyPose(const CameraPose& pose) noexcept;
