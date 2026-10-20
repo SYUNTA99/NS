@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <span>
+#include <vector>
 
 namespace NS
 {
@@ -28,7 +29,7 @@ namespace NS
             D3DShader* pixelShader = nullptr;
             std::size_t constantBufferSize = 0;  //!< 内蔵定数バッファのサイズ
             uint cbSlot = 1;                 //!< 定数バッファのバインド先スロット
-            //! 材質の値のバッファ (b2) の大きさ。0 なら作らない。中身は UpdateMaterialParams で書く
+            //! 材質の値のバッファ (b2) の大きさ。0 なら作らない。中身は SetMaterialParams で書く
             std::size_t materialParamsSize = 0;
             BlendMode blend = BlendMode::Opaque; //!< 描画順序の分類基準
             int renderPriority = 0;              //!< 半透明描画時のソート優先度
@@ -68,9 +69,10 @@ namespace NS
                 UpdateParamsRaw(device, &params, sizeof(T));
             }
 
-            //! @brief 材質の値のバッファ (b2) を bytes で書き換える
-            //! @details バッファを持たない時と、bytes の大きさがバッファと違う時は書かない
-            void UpdateMaterialParams(D3DDevice& device, std::span<const std::byte> bytes) noexcept;
+            //! @brief 材質の値のバッファ (b2) の中身を bytes にする
+            //! @details 写して持ち、次の Bind で GPU へ送る。バッファを持たない時と、
+            //! bytes の大きさがバッファと違う時は受けない
+            void SetMaterialParams(std::span<const std::byte> bytes) noexcept;
 
             //! 描画の直前にシェーダー・テクスチャ・定数バッファ・サンプラを設定する
             void Bind(D3DDevice& device) noexcept;
@@ -90,7 +92,8 @@ namespace NS
             std::unique_ptr<D3DBuffer> m_cb;
             uint m_cbSlot = 1;
             std::unique_ptr<D3DBuffer> m_materialParams;
-            std::size_t m_materialParamsSize = 0;
+            std::vector<std::byte> m_materialParamBytes;
+            bool m_materialParamsDirty = false;
             BlendMode m_blend = BlendMode::Opaque;
             int m_renderPriority = 0;
             bool m_valid = false;

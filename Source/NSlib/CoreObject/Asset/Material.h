@@ -3,8 +3,10 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/Gfx/D3DPipeline.h"
+#include "NSlib/Gfx/D3DShader.h"
 
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <optional>
 #include <span>
@@ -24,6 +26,19 @@ namespace NS
     //! Inspector のマテリアルの欄が持つテクスチャの枠の数。これより多い .mat は書かない
     inline constexpr std::size_t k_MaterialTextureSlots = 4;
 
+    //! @brief シェーダーの MaterialParams の項目 1 つに当てる値。.mat の params に書く形で持つ
+    //! @details 数は 1〜4 個で、どれも有限。bool は isBool で、numbers は 0 か 1 の 1 個
+    struct MaterialParamValue
+    {
+        bool isBool = false;
+        std::vector<double> numbers;
+
+        bool operator==(const MaterialParamValue&) const = default;
+    };
+
+    //! 項目の名前から値を引く。シェーダーから消えた名前の値も持ち続け、.mat に書き戻す
+    using MaterialParamValues = std::map<std::string, MaterialParamValue>;
+
     //! .mat の値。道は ContentRoot からの相対で、ファイルに書いてある綴りのまま持つ
     struct MaterialFileDesc
     {
@@ -32,7 +47,17 @@ namespace NS
         std::vector<std::string> textures; // 並びの番号がテクスチャの枠の番号
         Vector3 baseColor{1.0f, 1.0f, 1.0f};
         Gfx::BlendMode blend = Gfx::BlendMode::Opaque;
+        MaterialParamValues params;
     };
+
+    //! value を param に当てられるか。成分の数と bool か数かが型に合い、整数の型には範囲内の整数だけが合う
+    [[nodiscard]] bool FitsParam(const Gfx::ShaderParam& param, const MaterialParamValue& value) noexcept;
+    //! HLSL に書いた param の初期値を、.mat に書く値の形で返す。対応しない型は数の無い値
+    [[nodiscard]] MaterialParamValue InitialParamValue(const Gfx::ShaderParam& param);
+    //! @brief layout のバッファの中身を作る
+    //! @details 名前で引いた値が FitsParam で合う項目にはその値を、ほかの項目にはシェーダーの初期値を書く
+    [[nodiscard]] std::vector<std::byte> PackMaterialParams(const Gfx::ShaderParamLayout& layout,
+                                                           const MaterialParamValues& values);
 
     //! .mat の混ぜ方の綴り (Opaque・Alpha・Additive) を読む。綴りが合わなければ nullopt
     [[nodiscard]] std::optional<Gfx::BlendMode> ParseBlend(std::string_view name) noexcept;
@@ -41,7 +66,7 @@ namespace NS
 
     //! @brief マテリアル 1 つ。.mat の値と、その値で作った D3DMaterial を持つ
     //! @details シェーダーとテクスチャは AssetManager が持ち、ここは指すだけ。欄の値を変えても D3DMaterial は作り直さず、
-    //! 作り直すのは Rebuild だけ
+    //! 作り直すのは Rebuild だけ。シェーダーの材質の値だけは SetParamValue がその場で送る
     //! 基本の色はアクターに付けた時に写す色で、描く時には使わない
     //! 道は欄に保存する名前で、共有のマテリアルは共有の名前
     class Material : public Object
@@ -74,6 +99,14 @@ namespace NS
         //! @details 作れなかった時は false を返し、前の D3DMaterial とシェーダーを残す
         //! シェーダーとテクスチャはこのマテリアルより長く生きること
         [[nodiscard]] bool Rebuild(Shader* vertexShader, Shader* pixelShader, std::span<Texture* const> textures);
+
+        //! 頂点と画素のシェーダーの MaterialParams を合わせた並び。作った時と Rebuild の時に取り直す
+        [[nodiscard]] const Gfx::ShaderParamLayout& ParamLayout() const noexcept;
+        //! param に当てている値。持っている値が合わなければシェーダーの初期値
+        [[nodiscard]] MaterialParamValue ParamValue(const Gfx::ShaderParam& param) const;
+        //! @brief param の値を value にし、D3DMaterial へ送る。作り直さずに次の描画から効く
+        //! @return FitsParam で合わない値は受けずに false
+        bool SetParamValue(const Gfx::ShaderParam& param, const MaterialParamValue& value);
 
         [[nodiscard]] Color BaseColor() const noexcept;
         //! 透明度は .mat に無いので捨てる
@@ -112,6 +145,7 @@ namespace NS
         MaterialFileDesc m_file;
         Shader* m_vertexShader = nullptr;
         Shader* m_pixelShader = nullptr;
+        Gfx::ShaderParamLayout m_paramLayout;
         std::unique_ptr<Gfx::D3DMaterial> m_material;
     };
 } // namespace NS

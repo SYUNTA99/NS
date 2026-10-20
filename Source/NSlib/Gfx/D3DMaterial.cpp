@@ -12,6 +12,7 @@
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
+#include <algorithm>
 #include <map>
 
 namespace NS
@@ -61,7 +62,8 @@ namespace NS
                 if (params->IsValid())
                 {
                     m_materialParams = std::move(params);
-                    m_materialParamsSize = desc.materialParamsSize;
+                    m_materialParamBytes.assign(desc.materialParamsSize, std::byte{0});
+                    m_materialParamsDirty = true;
                 }
                 else
                 {
@@ -122,22 +124,23 @@ namespace NS
             device.Commands().UpdateSubresource(*m_cb, data, bytes);
         }
 
-        void D3DMaterial::UpdateMaterialParams(D3DDevice& device, std::span<const std::byte> bytes) noexcept
+        void D3DMaterial::SetMaterialParams(std::span<const std::byte> bytes) noexcept
         {
             if (!IsValid() || !m_materialParams)
             {
                 return;
             }
             NS_ASSERT(Graphics,
-                      bytes.size() == m_materialParamsSize,
+                      bytes.size() == m_materialParamBytes.size(),
                       "材質の値の大きさ {} がバッファの {} と違う",
                       bytes.size(),
-                      m_materialParamsSize);
-            if (bytes.size() != m_materialParamsSize)
+                      m_materialParamBytes.size());
+            if (bytes.size() != m_materialParamBytes.size())
             {
                 return;
             }
-            device.Commands().UpdateSubresource(*m_materialParams, bytes.data(), bytes.size());
+            std::copy(bytes.begin(), bytes.end(), m_materialParamBytes.begin());
+            m_materialParamsDirty = true;
         }
 
         void D3DMaterial::Bind(D3DDevice& device) noexcept
@@ -162,6 +165,12 @@ namespace NS
             }
             if (m_materialParams)
             {
+                if (m_materialParamsDirty)
+                {
+                    device.Commands().UpdateSubresource(
+                        *m_materialParams, m_materialParamBytes.data(), m_materialParamBytes.size());
+                    m_materialParamsDirty = false;
+                }
                 device.Commands().VSSetConstantBuffer(*m_materialParams, k_MaterialParamsSlot);
                 device.Commands().PSSetConstantBuffer(*m_materialParams, k_MaterialParamsSlot);
             }

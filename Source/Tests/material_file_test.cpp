@@ -144,6 +144,78 @@ TEST(MaterialFile, WritingWhatWasReadGivesTheSameFile)
     }
 }
 
+// シェーダーの材質の値は params に名前で書き、読み直すと同じ値に戻る。シェーダーに無い名前も消さない
+TEST(MaterialFile, ParamsRoundTripByName)
+{
+    NS::MaterialFileDesc file{.vertexShader = "Shaders/standard.vs.hlsl", .pixelShader = "Shaders/floor.ps.hlsl"};
+    file.params["tileLength"] = NS::MaterialParamValue{.numbers = {3.125}};
+    file.params["tint"] = NS::MaterialParamValue{.numbers = {0.2, 0.4, 0.6}};
+    file.params["enabled"] = NS::MaterialParamValue{.isBool = true, .numbers = {1.0}};
+    file.params["mode"] = NS::MaterialParamValue{.numbers = {2.0}};
+
+    const std::optional<std::string> written = NS::MakeMaterialJson(file);
+    ASSERT_TRUE(written.has_value());
+    NS::MaterialFileDesc reread{};
+    std::string error;
+    ASSERT_TRUE(NS::ParseMaterialJson(*written, reread, error)) << error;
+    EXPECT_EQ(reread.params, file.params) << *written;
+}
+
+// 1 つの値が壊れていても、ほかの値と鍵は読む。壊れた値はその名前を出して捨てる
+// 範囲を超える数 (1e999) は nlohmann が JSON ごと断るので、ここには並べない
+TEST(MaterialFile, BadParamValuesAreDroppedOneByOne)
+{
+    constexpr const char* k_Text = R"({
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/floor.ps.hlsl",
+  "blend": "Additive",
+  "params": {
+    "good": 1.5,
+    "text": "abc",
+    "five": [1.0, 2.0, 3.0, 4.0, 5.0],
+    "empty": [],
+    "mixed": [1.0, true],
+    "pair": [0.25, 0.5]
+  }
+})";
+    const TestLogCapture log;
+    NS::MaterialFileDesc read{};
+    std::string error;
+    ASSERT_TRUE(NS::ParseMaterialJson(k_Text, read, error)) << error;
+    EXPECT_EQ(read.blend, NS::Gfx::BlendMode::Additive);
+    ASSERT_EQ(read.params.size(), 2u);
+    EXPECT_EQ(read.params.at("good").numbers, std::vector<double>{1.5});
+    EXPECT_EQ(read.params.at("pair").numbers, (std::vector<double>{0.25, 0.5}));
+    EXPECT_EQ(log.WarningCount(), 4);
+}
+
+// 欄で変えた材質の値は .mat に書く値になる。項目の型に合わない値は受けず、前の値を残す
+TEST(MaterialFile, SetParamValueKeepsOnlyValuesThatFitTheParam)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    NS::Material* material = assets.LoadMaterial("Assets/Materials/stone.mat");
+    NS::Gfx::ShaderParam length;
+    length.name = "tileLength";
+    length.type = NS::Gfx::ShaderParamType::Float;
+    length.size = 4;
+    length.used = true;
+
+    EXPECT_TRUE(material->SetParamValue(length, NS::MaterialParamValue{.numbers = {3.125}}));
+    {
+        const TestLogCapture log;
+        EXPECT_FALSE(material->SetParamValue(length, NS::MaterialParamValue{.isBool = true, .numbers = {1.0}}));
+        EXPECT_EQ(log.WarningCount(), 1);
+    }
+    EXPECT_EQ(material->ParamValue(length).numbers, std::vector<double>{3.125});
+
+    const std::optional<std::string> written = assets.MakeMaterialFileJson(*material);
+    ASSERT_TRUE(written.has_value());
+    NS::MaterialFileDesc reread{};
+    std::string error;
+    ASSERT_TRUE(NS::ParseMaterialJson(*written, reread, error)) << error;
+    EXPECT_EQ(reread.params.at("tileLength").numbers, std::vector<double>{3.125});
+}
+
 // Inspector の枠より多いテクスチャと、JSON に書けない色は書かない。書くと枠に出ない道や読めない .mat が残る
 TEST(MaterialFile, ValuesTheFieldsCannotHoldAreNotWritten)
 {

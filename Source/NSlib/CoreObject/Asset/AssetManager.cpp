@@ -192,6 +192,84 @@ namespace NS
         }
     } // namespace
 
+    namespace
+    {
+        // .mat の params の値 1 つ。bool か、有限の数か、有限の数 1〜4 個の配列だけを読む
+        [[nodiscard]] std::optional<MaterialParamValue> ParseParamValue(const nlohmann::json& j)
+        {
+            if (j.is_boolean())
+            {
+                MaterialParamValue value{.isBool = true};
+                if (j.get<bool>())
+                {
+                    value.numbers.push_back(1.0);
+                }
+                else
+                {
+                    value.numbers.push_back(0.0);
+                }
+                return value;
+            }
+            MaterialParamValue value;
+            if (j.is_number())
+            {
+                value.numbers.push_back(j.get<double>());
+            }
+            else if (j.is_array() && !j.empty() && j.size() <= 4u)
+            {
+                for (const nlohmann::json& element : j)
+                {
+                    if (!element.is_number())
+                    {
+                        return std::nullopt;
+                    }
+                    value.numbers.push_back(element.get<double>());
+                }
+            }
+            else
+            {
+                return std::nullopt;
+            }
+            for (const double number : value.numbers)
+            {
+                if (!std::isfinite(number))
+                {
+                    return std::nullopt;
+                }
+            }
+            return value;
+        }
+
+        // 壊れた値は名前を出して 1 つずつ捨てる。1 つのために .mat 全体をピンクにしない
+        [[nodiscard]] MaterialParamValues ParseParams(const nlohmann::json& root)
+        {
+            MaterialParamValues params;
+            if (!root.contains("params"))
+            {
+                return params;
+            }
+            const nlohmann::json& j = root["params"];
+            if (!j.is_object())
+            {
+                NS_LOG_WARN(Scene, "マテリアルの params が object でないので、材質の値を読まない");
+                return params;
+            }
+            for (nlohmann::json::const_iterator it = j.begin(); it != j.end(); ++it)
+            {
+                std::optional<MaterialParamValue> value = ParseParamValue(it.value());
+                if (!value)
+                {
+                    NS_LOG_WARN(Scene,
+                                "マテリアルの値 {} は bool・有限の数・有限の数 1〜4 個の配列のどれでもないので捨てる",
+                                it.key());
+                    continue;
+                }
+                params.emplace(it.key(), std::move(*value));
+            }
+            return params;
+        }
+    } // namespace
+
     bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError)
     {
         // 例外を投げない parse。不正 JSON は is_discarded() で検知する
@@ -235,6 +313,8 @@ namespace NS
             out.blend = ParseBlend(j["blend"].get<std::string>()).value_or(Gfx::BlendMode::Opaque);
         }
 
+        out.params = ParseParams(j);
+
         outError.clear();
         return true;
     }
@@ -250,6 +330,64 @@ namespace NS
                 text += ".0";
             }
             return text;
+        }
+
+        // 材質の値は double で持つので、double で読み直すと同じになる一番短い綴りにする
+        [[nodiscard]] std::string DoubleJson(double value)
+        {
+            std::string text = std::format("{}", value);
+            if (text.find_first_of(".e") == std::string::npos)
+            {
+                text += ".0";
+            }
+            return text;
+        }
+
+        // 読み直せない値は書かない。ParseParamValue が断る値と同じ決まり
+        [[nodiscard]] bool IsWritableParam(const MaterialParamValue& value) noexcept
+        {
+            if (value.numbers.empty() || value.numbers.size() > 4u)
+            {
+                return false;
+            }
+            if (value.isBool)
+            {
+                return value.numbers.size() == 1u;
+            }
+            for (const double number : value.numbers)
+            {
+                if (!std::isfinite(number))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        [[nodiscard]] std::string ParamJson(const MaterialParamValue& value)
+        {
+            if (value.isBool)
+            {
+                if (value.numbers[0] != 0.0)
+                {
+                    return "true";
+                }
+                return "false";
+            }
+            if (value.numbers.size() == 1u)
+            {
+                return DoubleJson(value.numbers[0]);
+            }
+            std::string text = "[";
+            for (std::size_t i = 0; i < value.numbers.size(); ++i)
+            {
+                if (i > 0)
+                {
+                    text += ", ";
+                }
+                text += DoubleJson(value.numbers[i]);
+            }
+            return text + "]";
         }
 
         // nlohmann は UTF-8 でない文字列で例外を投げるので、置き換え文字で書く
@@ -270,6 +408,13 @@ namespace NS
         {
             return std::nullopt;
         }
+        for (const std::pair<const std::string, MaterialParamValue>& param : file.params)
+        {
+            if (!IsWritableParam(param.second))
+            {
+                return std::nullopt;
+            }
+        }
 
         std::string text = "{\n";
         text += "  \"vs\": " + StringJson(file.vertexShader) + ",\n";
@@ -289,8 +434,24 @@ namespace NS
         }
         text += std::format(
             "  \"baseColor\": [{}, {}, {}],\n", FloatJson(color.x), FloatJson(color.y), FloatJson(color.z));
-        text += "  \"blend\": " + StringJson(BlendName(file.blend)) + "\n";
-        text += "}\n";
+        text += "  \"blend\": " + StringJson(BlendName(file.blend));
+        // params の無い .mat は、params を持つ前と同じ字面に書く
+        if (!file.params.empty())
+        {
+            text += ",\n  \"params\": {\n";
+            std::size_t written = 0;
+            for (const std::pair<const std::string, MaterialParamValue>& param : file.params)
+            {
+                if (written > 0)
+                {
+                    text += ",\n";
+                }
+                text += "    " + StringJson(param.first) + ": " + ParamJson(param.second);
+                ++written;
+            }
+            text += "\n  }";
+        }
+        text += "\n}\n";
         return text;
     }
 
@@ -691,7 +852,12 @@ namespace NS
         if (const std::map<std::string, std::unique_ptr<Shader>>::iterator it = m_shaders.find(key);
             it != m_shaders.end())
         {
-            return it->second->Reload();
+            if (!it->second->Reload())
+            {
+                return false;
+            }
+            RebuildAllMaterials();
+            return true;
         }
         NS_LOG_WARN(Graphics, "AssetManager::Reload: 未キャッシュの path: {}", key);
         return false;
@@ -708,7 +874,17 @@ namespace NS
             }
         }
         NS_LOG_INFO(Graphics, "AssetManager: shader reload {} / {} 本成功", reloaded, m_shaders.size());
+        RebuildAllMaterials();
         return reloaded;
+    }
+
+    void AssetManager::RebuildAllMaterials()
+    {
+        // 作り直せないマテリアルは RebuildMaterial が WARN を出し、前の D3DMaterial で描き続ける
+        for (std::pair<const std::string, std::unique_ptr<Material>>& entry : m_materials)
+        {
+            (void)RebuildMaterial(*entry.second);
+        }
     }
 
     void AssetManager::Clear() noexcept

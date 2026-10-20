@@ -44,11 +44,13 @@ namespace NS
 
     //! JSON 文字列を MaterialFileDesc へ解析する。成功で true、失敗時は outError に理由を入れる
     //! vs / ps は必須、他は欠落時に既定値。綴りの合わない混ぜ方は Opaque。GPU を使わないので装置無しで試せる
+    //! params の壊れた値は名前を WARN に出して 1 つずつ捨て、ほかの値は読む
     [[nodiscard]] bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError);
 
     //! @brief MaterialFileDesc を .mat の JSON 文字列にする。ParseMaterialJson で読み直すと同じ値になる
-    //! @details テクスチャが k_MaterialTextureSlots 枚より多い時と、基本の色が数でない時は nullopt
-    //! 鍵の並びと書き方は今の .mat と同じで、値を変えずに書くと同じ文字列になる
+    //! @details テクスチャが k_MaterialTextureSlots 枚より多い時、基本の色が数でない時、
+    //! ParseMaterialJson が読めない材質の値がある時は nullopt
+    //! 鍵の並びと書き方は今の .mat と同じで、値を変えずに書くと同じ文字列になる。params は空なら書かない
     [[nodiscard]] std::optional<std::string> MakeMaterialJson(const MaterialFileDesc& file);
 
     //! @brief 道の glTF を読んで形にする。外部のバッファも同じ読み方で、本体と同じフォルダから読む
@@ -121,9 +123,11 @@ namespace NS
         [[nodiscard]] bool RebuildMaterial(Material& material);
 
         //! path キーのシェーダーを、同じインスタンスのまま読み直す。成功で true、未キャッシュか失敗で false
+        //! 読み直せたら、材質の値の並びを取り直すために全部のマテリアルを作り直す
         [[nodiscard]] bool Reload(std::string_view path);
 
         //! 読んだ全部のシェーダーを、同じインスタンスのまま各自の道で読み直す。成功本数を返す。HLSL 編集の即時反映に使う
+        //! 読み直した後、材質の値の並びを取り直すために全部のマテリアルを作り直す
         std::size_t ReloadAllShaders();
 
         //! 全キャッシュを解放する。D3DDevice 破棄より前に呼ぶ
@@ -147,6 +151,8 @@ namespace NS
         [[nodiscard]] std::unique_ptr<Material> CreateMaterial(std::string_view name, MaterialFileDesc file);
         // file の道を baseDir から引いてシェーダーとテクスチャを読む
         [[nodiscard]] MaterialSources LoadMaterialSources(const MaterialFileDesc& file);
+        // 読み直したシェーダーは MaterialParams の並びが変わり得るので、全部のマテリアルの b2 と値を組み直す
+        void RebuildAllMaterials();
 
         // 表に無い key の骨付きのモデルを skinned glTF から作る。読めなければ中身の空のモデル
         [[nodiscard]] std::unique_ptr<SkinnedModel> CreateSkinnedModel(const std::string& key);

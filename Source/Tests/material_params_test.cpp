@@ -1,3 +1,4 @@
+#include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/Gfx/D3DShader.h"
 
 #include <gtest/gtest.h>
@@ -7,6 +8,8 @@
 
 #include <bit>
 #include <cstddef>
+#include <cstring>
+#include <vector>
 #include <optional>
 #include <span>
 #include <string>
@@ -249,4 +252,86 @@ TEST(MaterialParamsMerge, OneSideEmptyTakesTheOther)
     EXPECT_EQ(merged->bufferSize, 16u);
     ASSERT_EQ(merged->params.size(), 1u);
     EXPECT_EQ(merged->params[0].name, "tileLength");
+}
+
+namespace
+{
+    ShaderParam MakeParam(std::string name, ShaderParamType type, NS::uint offset, NS::uint size, float initial)
+    {
+        ShaderParam param;
+        param.name = std::move(name);
+        param.type = type;
+        param.offset = offset;
+        param.size = size;
+        param.initialBits[0] = std::bit_cast<NS::uint32>(initial);
+        param.used = true;
+        return param;
+    }
+
+    float ReadFloat(const std::vector<std::byte>& bytes, std::size_t offset)
+    {
+        float value = 0.0f;
+        std::memcpy(&value, bytes.data() + offset, sizeof(value));
+        return value;
+    }
+} // namespace
+
+// 保存した値は名前と型が合う項目にだけ当て、合わない項目はシェーダーの初期値で埋める
+TEST(MaterialParamsPack, StoredValuesGoToTheirOffsetAndOthersUseTheInitialValue)
+{
+    ShaderParamLayout layout;
+    layout.bufferSize = 16;
+    layout.params.push_back(MakeParam("tileLength", ShaderParamType::Float, 0, 4, 1.0f));
+    layout.params.push_back(MakeParam("gap", ShaderParamType::Float, 4, 4, 0.5f));
+
+    NS::MaterialParamValues values;
+    values["tileLength"] = NS::MaterialParamValue{.numbers = {3.125}};
+
+    const std::vector<std::byte> bytes = NS::PackMaterialParams(layout, values);
+    ASSERT_EQ(bytes.size(), 16u);
+    EXPECT_FLOAT_EQ(ReadFloat(bytes, 0), 3.125f);
+    EXPECT_FLOAT_EQ(ReadFloat(bytes, 4), 0.5f);
+}
+
+// シェーダーを直して並びが変わっても、名前と型の合う値は新しい位置へ移る。型が変わった項目には前の値を当てない
+TEST(MaterialParamsPack, ReorderedShaderKeepsValuesByNameAndDropsChangedTypes)
+{
+    NS::MaterialParamValues values;
+    values["tileLength"] = NS::MaterialParamValue{.numbers = {3.125}};
+    values["gap"] = NS::MaterialParamValue{.numbers = {0.1}};
+    values["gone"] = NS::MaterialParamValue{.numbers = {9.0}};
+
+    ShaderParamLayout reordered;
+    reordered.bufferSize = 16;
+    reordered.params.push_back(MakeParam("gap", ShaderParamType::Float, 0, 4, 0.5f));
+    reordered.params.push_back(MakeParam("tileLength", ShaderParamType::Float2, 4, 8, 2.0f));
+
+    const std::vector<std::byte> bytes = NS::PackMaterialParams(reordered, values);
+    EXPECT_FLOAT_EQ(ReadFloat(bytes, 0), 0.1f);
+    EXPECT_FLOAT_EQ(ReadFloat(bytes, 4), 2.0f);
+    EXPECT_FALSE(NS::FitsParam(reordered.params[1], values.at("tileLength")));
+}
+
+TEST(MaterialParamsPack, IntegerAndBoolFitOnlyTheirOwnKind)
+{
+    const ShaderParam mode = MakeParam("mode", ShaderParamType::Uint, 0, 4, 0.0f);
+    const ShaderParam level = MakeParam("level", ShaderParamType::Int, 0, 4, 0.0f);
+    const ShaderParam enabled = MakeParam("enabled", ShaderParamType::Bool, 0, 4, 0.0f);
+    EXPECT_TRUE(NS::FitsParam(mode, NS::MaterialParamValue{.numbers = {2.0}}));
+    EXPECT_FALSE(NS::FitsParam(mode, NS::MaterialParamValue{.numbers = {2.5}}));
+    EXPECT_FALSE(NS::FitsParam(mode, NS::MaterialParamValue{.numbers = {-1.0}}));
+    EXPECT_TRUE(NS::FitsParam(level, NS::MaterialParamValue{.numbers = {-1.0}}));
+    EXPECT_TRUE(NS::FitsParam(enabled, NS::MaterialParamValue{.isBool = true, .numbers = {1.0}}));
+    EXPECT_FALSE(NS::FitsParam(enabled, NS::MaterialParamValue{.numbers = {1.0}}));
+    EXPECT_FALSE(NS::FitsParam(mode, NS::MaterialParamValue{.isBool = true, .numbers = {1.0}}));
+}
+
+// 初期値はシェーダーに書いた値を、.mat に書く値の形で返す
+TEST(MaterialParamsPack, InitialValueReadsTheShaderDefault)
+{
+    const ShaderParam length = MakeParam("tileLength", ShaderParamType::Float, 0, 4, 3.125f);
+    EXPECT_EQ(NS::InitialParamValue(length).numbers, std::vector<double>{3.125});
+    ShaderParam mode = MakeParam("mode", ShaderParamType::Uint, 0, 4, 0.0f);
+    mode.initialBits[0] = 2u;
+    EXPECT_EQ(NS::InitialParamValue(mode).numbers, std::vector<double>{2.0});
 }
