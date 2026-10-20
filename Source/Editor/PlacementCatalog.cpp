@@ -1,5 +1,6 @@
 #include "Editor/PlacementCatalog.h"
 
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -7,6 +8,9 @@
 
 #include <algorithm>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace NS
 {
@@ -40,22 +44,44 @@ namespace NS
                 return item;
             }
 
-            [[nodiscard]] std::vector<PlacementItem> BuildItems()
+            // 一覧を組む元。.actor の名前とその中の class
+            using ActorFileClasses = std::vector<std::pair<std::string, std::string>>;
+
+            [[nodiscard]] ActorFileClasses ReadActorFileClasses()
+            {
+                ActorFileLibrary& library = ActorFileLibrary::Get();
+                ActorFileClasses classes;
+                for (std::string& name : library.Names())
+                {
+                    std::string className = library.ClassNameOf(name);
+                    classes.emplace_back(std::move(name), std::move(className));
+                }
+                return classes;
+            }
+
+            [[nodiscard]] std::vector<PlacementItem> BuildItems(const ActorFileClasses& classes)
             {
                 std::vector<PlacementItem> items;
-                for (const TypeRegistry::Entry* entry : PlaceableEntries())
+                for (const std::pair<std::string, std::string>& actorFile : classes)
                 {
-                    if (std::string_view{entry->className} != "MapPartsActor")
+                    // 置けるのは NS_PLACEABLE で登録したクラスの .actor だけ。自機の .actor は並べない
+                    const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(actorFile.second);
+                    if (entry == nullptr || entry->label == nullptr)
                     {
-                        items.push_back(PlacementItem{entry->label, PrototypeOf(*entry), false});
+                        continue;
+                    }
+                    const nlohmann::json prototype = MakePrototypeJson(ActorFileLibrary::Get().Baseline(actorFile.first));
+                    // 型から作る地形の部品と同じ .actor だけを、メッシュの形ごとに並べる
+                    if (actorFile.first != "MapPartsActor")
+                    {
+                        items.push_back(PlacementItem{actorFile.first, prototype, false});
                         continue;
                     }
 
-                    // 地形の部品は形ごとに並べる。組み込みの形はどれも 1m のセルに合わせた大きさ
-                    const nlohmann::json parts = PrototypeOf(*entry);
-                    items.push_back(MakePartsItem(k_PartsCubeLabel, parts, "cube", true));
-                    items.push_back(MakePartsItem("地形の部品 (球)", parts, "sphere", false));
-                    items.push_back(MakePartsItem(k_PartsSlopeLabel, parts, "wedge45", true));
+                    // 組み込みの形はどれも 1m のセルに合わせた大きさ
+                    items.push_back(MakePartsItem(k_PartsCubeLabel, prototype, "cube", true));
+                    items.push_back(MakePartsItem("地形の部品 (球)", prototype, "sphere", false));
+                    items.push_back(MakePartsItem(k_PartsSlopeLabel, prototype, "wedge45", true));
                 }
                 return items;
             }
@@ -63,8 +89,15 @@ namespace NS
 
         const std::vector<PlacementItem>& PlacementItems()
         {
-            // 登録は main 前の静的初期化で済むので、初回に確定した一覧を使い回せる
-            static const std::vector<PlacementItem> items = BuildItems();
+            // .actor は試しが敷いた物や置き場の差し替えで変わるので、名前とクラスが変わった時に組み直す
+            static ActorFileClasses builtFrom;
+            static std::vector<PlacementItem> items;
+            ActorFileClasses current = ReadActorFileClasses();
+            if (current != builtFrom)
+            {
+                items = BuildItems(current);
+                builtFrom = std::move(current);
+            }
             return items;
         }
 

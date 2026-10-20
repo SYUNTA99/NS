@@ -39,6 +39,8 @@
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -51,8 +53,11 @@
 #include "NSlib/Windows/Keyboard.h"
 
 #include <algorithm>
+#include <set>
 #include <string>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 namespace
 {
@@ -297,8 +302,41 @@ namespace
         std::string m_after;
     };
 
-    // actor の .actor へ書く欄を、.actor の基準の 1 体の値へ揃える。配置物へ書く欄は触らない
-    void CopyActorFileFields(NS::SceneActor& actor)
+    // 部品の表の鍵と欄の名前の組
+    using FieldKeys = std::set<std::pair<std::string, std::string>>;
+
+    // actor の配置物へ書く欄のうち、値が .actor の基準の 1 体と同じ欄。上書きしていない欄で、.actor の値に付いて行く
+    [[nodiscard]] FieldKeys PlacementFieldsAtActorFile(const NS::SceneActor& actor)
+    {
+        FieldKeys keys;
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+            const NS::Object* baseline = NS::FindBaselineClassObj(actor, row);
+            if (part == &actor.Root() || baseline == nullptr)
+            {
+                return;
+            }
+            const nlohmann::json fields = NS::SerializeClassObjFields(*part);
+            const nlohmann::json baselineFields = NS::SerializeClassObjFields(*baseline);
+            for (nlohmann::json::const_iterator it = fields.begin(); it != fields.end(); ++it)
+            {
+                const NS::FieldDesc* field = NS::FindField(part->GetReflection(), it.key());
+                if (field == nullptr || field->type == NS::FieldType::ActorRef ||
+                    NS::FieldDestinationOf(actor, *part, *field) != NS::FieldDestination::Placement)
+                {
+                    continue;
+                }
+                const nlohmann::json::const_iterator same = baselineFields.find(it.key());
+                if (same != baselineFields.end() && *same == it.value())
+                {
+                    keys.emplace(std::string{row.key}, it.key());
+                }
+            }
+        });
+        return keys;
+    }
+
+    // actor の .actor へ書く欄と、following に入れた配置物へ書く欄を、.actor の基準の 1 体の値へ揃える
+    void CopyActorFileFields(NS::SceneActor& actor, const FieldKeys& following)
     {
         NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, NS::Object* part) {
             const NS::Object* baseline = NS::FindBaselineClassObj(actor, row);
@@ -310,14 +348,17 @@ namespace
             for (nlohmann::json::iterator it = fields.begin(); it != fields.end();)
             {
                 const NS::FieldDesc* field = NS::FindField(part->GetReflection(), it.key());
-                if (field == nullptr ||
-                    NS::FieldDestinationOf(actor, *part, *field) == NS::FieldDestination::Placement)
+                const bool kept =
+                    field != nullptr &&
+                    (NS::FieldDestinationOf(actor, *part, *field) == NS::FieldDestination::ActorFile ||
+                     following.contains(std::pair<std::string, std::string>{std::string{row.key}, it.key()}));
+                if (kept)
                 {
-                    it = fields.erase(it);
+                    ++it;
                 }
                 else
                 {
-                    ++it;
+                    it = fields.erase(it);
                 }
             }
             (void)NS::ApplyJsonFields(*part, fields);
@@ -326,21 +367,27 @@ namespace
     }
 
     // name の .actor を document に差し替えてファイルへ書き、scene の同じ .actor のアクターの全部へ写す
+    // 配置物へ書く欄は、書く前の .actor と同じ値のアクターだけが付いて来る。上書きしたアクターの値は残る
     // 直し終えた時・取り消し・やり直しの全部がこの 1 本を通る
     void WriteActorFile(NS::Scene& scene, const std::string& name, const nlohmann::json& document)
     {
+        std::vector<std::pair<NS::SceneActor*, FieldKeys>> actors;
+        for (NS::SceneActor* actor : scene.Objects())
+        {
+            if (actor->ActorFileName() == name)
+            {
+                actors.emplace_back(actor, PlacementFieldsAtActorFile(*actor));
+            }
+        }
         NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
         library.Set(name, document);
         if (!library.Save(name))
         {
             NS_LOG_WARN(App, ".actor {} をファイルへ書けなかった。今の起動の間だけ効く", name);
         }
-        for (NS::SceneActor* actor : scene.Objects())
+        for (const std::pair<NS::SceneActor*, FieldKeys>& actor : actors)
         {
-            if (actor->ActorFileName() == name)
-            {
-                CopyActorFileFields(*actor);
-            }
+            CopyActorFileFields(*actor.first, actor.second);
         }
     }
 
@@ -1480,6 +1527,33 @@ void LevelEditorController::NoteFieldEdit(const NS::SceneActor& actor,
     m_actorFileEdits.push_back(ActorFileEdit{actor.Id(), &row, std::string{fieldName}});
 }
 
+void LevelEditorController::NoteActorFileFieldEdit(const NS::ClassObjInfo& row, std::string_view fieldName)
+{
+    if (m_actorFileDraft == nullptr)
+    {
+        return;
+    }
+    const NS::Object* part = row.get(m_actorFileDraft.get());
+    if (part == nullptr || part == &m_actorFileDraft->Root())
+    {
+        return;
+    }
+    const NS::FieldDesc* field = NS::FindField(part->GetReflection(), fieldName);
+    if (field == nullptr || field->type == NS::FieldType::ActorRef)
+    {
+        return;
+    }
+    m_assetEdited = true;
+    for (const ActorFileEdit& edit : m_actorFileEdits)
+    {
+        if (edit.actorId == NS::k_NoObjectId && edit.row == &row && edit.fieldName == fieldName)
+        {
+            return;
+        }
+    }
+    m_actorFileEdits.push_back(ActorFileEdit{NS::k_NoObjectId, &row, std::string{fieldName}});
+}
+
 void LevelEditorController::CommitActorFileEdits()
 {
     std::vector<ActorFileEdit> edits = std::move(m_actorFileEdits);
@@ -1491,7 +1565,12 @@ void LevelEditorController::CommitActorFileEdits()
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
     for (const ActorFileEdit& edit : edits)
     {
-        const NS::SceneActor* actor = m_scene->Objects().FindByObjectId(edit.actorId);
+        // 選んだ .actor の 1 体は作り直さずに読む。作り直すと直した値が文書の値へ戻る
+        const NS::SceneActor* actor = m_actorFileDraft.get();
+        if (edit.actorId != NS::k_NoObjectId)
+        {
+            actor = m_scene->Objects().FindByObjectId(edit.actorId);
+        }
         if (actor == nullptr)
         {
             continue;
@@ -1997,7 +2076,20 @@ void LevelEditorController::SelectAsset(std::string_view assetPath)
     SelectObjectById(NS::k_NoObjectId);
     m_selectedAssetPath.clear();
 
+    m_actorFileDraft.reset();
+
     const std::string stored = RelativeToRoot(assetPath, NS::OS::FileSystem::ContentRoot());
+    // .actor は名前で引く。読めなかった .actor は持っていないので選ばない
+    if (NS::OS::FileSystem::Extension(stored) == ".actor")
+    {
+        if (NS::ActorFileLibrary::Get().Find(NS::OS::FileSystem::Stem(stored)) == nullptr)
+        {
+            NS_LOG_WARN(App, ".actor {} を読めていないので選ばない", stored);
+            return;
+        }
+        m_selectedAssetPath = stored;
+        return;
+    }
     const NS::Object* asset = LoadSelectableAsset(stored);
     if (asset == nullptr || !IsReadable(*asset))
     {
@@ -2019,7 +2111,29 @@ NS::Object* LevelEditorController::SelectedAsset()
     {
         return nullptr;
     }
+    if (NS::OS::FileSystem::Extension(m_selectedAssetPath) == ".actor")
+    {
+        return SelectedActorFile();
+    }
     return LoadSelectableAsset(m_selectedAssetPath);
+}
+
+NS::SceneActor* LevelEditorController::SelectedActorFile()
+{
+    const std::string name = NS::OS::FileSystem::Stem(m_selectedAssetPath);
+    const nlohmann::json* document = NS::ActorFileLibrary::Get().Find(name);
+    if (document == nullptr)
+    {
+        m_actorFileDraft.reset();
+        return nullptr;
+    }
+    if (m_actorFileDraft == nullptr || m_actorFileDraft->ActorFileName() != name || m_actorFileDraftSource != *document)
+    {
+        m_actorFileDraftSource = *document;
+        const NS::ActorInitInfo info{.actorFile = name};
+        m_actorFileDraft = NS::CreateActorOfClass(NS::ActorFileClass(m_actorFileDraftSource), info);
+    }
+    return m_actorFileDraft.get();
 }
 
 void LevelEditorController::MarkAssetEdited() noexcept
@@ -2035,6 +2149,14 @@ void LevelEditorController::CommitAssetEdit()
     }
     m_assetEdited = false;
 
+    if (NS::OS::FileSystem::Extension(m_selectedAssetPath) == ".actor")
+    {
+        CommitActorFileEdits();
+        // 直した 1 体は書いた文書と同じ値だが、作った時の文書と比べると取り消しで元の文書へ戻った事を見落とす。
+        // 次に引いた時に今の文書から作り直させる
+        m_actorFileDraftSource = nlohmann::json{};
+        return;
+    }
     NS::Material* material = NS::Cast<NS::Material>(SelectedAsset());
     if (material == nullptr)
     {

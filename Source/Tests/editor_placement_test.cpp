@@ -20,7 +20,7 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 {
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_NE(item, nullptr);
 
     editor.PlaceItem(*item);
@@ -55,7 +55,7 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
 {
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("ゴール");
+    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("GoalActor");
     ASSERT_NE(item, nullptr);
 
     editor.PlaceItem(*item);

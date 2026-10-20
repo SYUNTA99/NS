@@ -370,6 +370,44 @@ namespace NS
                 }
                 return;
             }
+            if (SceneActor* actorFile = Cast<SceneActor>(&asset))
+            {
+                // .actor の欄は、印の付いた欄も含めて全部 .actor へ書く。直し終えた時にファイルへ書き、同じ .actor のアクターへ写す
+                ImGui::Text("%s.actor (%s)", actorFile->ActorFileName().c_str(), actorFile->ClassName());
+                ImGui::TextDisabled("ここで直した値は、この .actor を指すアクターの全部に効く");
+                ImGui::Separator();
+                ImGui::SetNextItemWidth(-1.0f);
+                ImGui::InputTextWithHint("##actorFileFieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
+                bool committed = false;
+                ForEachReflectedClassObj(*actorFile, [&](const ClassObjInfo& row, Object* part) {
+                    // 根の部品は配置物の物なので .actor には書かない
+                    if (part->GetReflection() == nullptr || part == &actorFile->Root())
+                    {
+                        return;
+                    }
+                    ImGui::PushID(row.key);
+                    if (ImGui::CollapsingHeader(row.key, ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        const ClassObjEditResult edit = DrawReflectedClassObj(*part, {}, nullptr, m_fieldFilter);
+                        if (edit.changedTarget != nullptr && edit.changedField != nullptr)
+                        {
+                            if (edit.changedField->type == FieldType::Asset)
+                            {
+                                actorFile->ReloadAssets();
+                            }
+                            editor.NoteActorFileFieldEdit(row, edit.changedField->name);
+                        }
+                        committed |= edit.committed;
+                    }
+                    ImGui::PopID();
+                });
+                // 確定で .actor の文書が変わると、この 1 体は次に引いた時に作り直される
+                if (committed)
+                {
+                    editor.CommitAssetEdit();
+                }
+                return;
+            }
             if (const Texture* texture = Cast<Texture>(&asset))
             {
                 ImGui::TextWrapped("%s", texture->Path().c_str());

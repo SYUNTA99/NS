@@ -216,6 +216,18 @@ namespace NS
         }
     }
 
+    std::vector<std::string> ActorFileLibrary::Names()
+    {
+        EnsureLoaded();
+        std::vector<std::string> names;
+        names.reserve(m_actorFiles.size());
+        for (const std::pair<const std::string, nlohmann::json>& entry : m_actorFiles)
+        {
+            names.push_back(entry.first);
+        }
+        return names;
+    }
+
     const nlohmann::json* ActorFileLibrary::Find(std::string_view name)
     {
         EnsureLoaded();

@@ -192,6 +192,14 @@ namespace NS
                 {
                     previewFiles.push_back(file);
                 }
+                else if (extension == ".actor")
+                {
+                    // 絵を持たないので行で出す。選ぶとインスペクタで欄を直せる
+                    if (ImGui::Selectable(OS::FileSystem::FileName(file).c_str(), editor.IsAssetSelected(file)))
+                    {
+                        editor.SelectAsset(file);
+                    }
+                }
                 else
                 {
                     ImGui::TextDisabled("%s", OS::FileSystem::FileName(file).c_str());

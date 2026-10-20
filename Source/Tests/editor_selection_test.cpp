@@ -95,7 +95,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
         ASSERT_NE(editor.SelectedObjectId(), NS::k_NoObjectId);
@@ -127,7 +127,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
     app.AddLayer(std::make_unique<SelectionTestLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedObjectId();
@@ -157,7 +157,7 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
     app.AddLayer(std::make_unique<SelectionTestLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedObjectId();
@@ -193,7 +193,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("追従カメラ");
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("FollowCameraActor");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
@@ -239,7 +239,7 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
         const NS::uint32 otherId = editor.SelectedObjectId();
@@ -293,7 +293,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedObjectId();
@@ -398,7 +398,7 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
 
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_NE(item, nullptr);
     editor.PlaceItem(*item);
     const NS::uint32 first = editor.SelectedObjectId();
@@ -452,7 +452,7 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
     LevelEditorController editor(&scene);
     NS::Editor::ObjectSnapshotApplier applier(&scene);
     editor.Editor().SetApplier(&applier);
-    editor.PlaceItem(*NS::Editor::FindPlacementItem("置物"));
+    editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
     const NS::uint32 id = editor.SelectedObjectId();
     const NS::Vector3 beforePosition = editor.SelectedObjectActor()->Root().Position();
     const NS::Vector3 beforeScale = editor.SelectedObjectActor()->Root().Scale();
@@ -512,7 +512,7 @@ TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
 {
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_NE(item, nullptr);
     editor.PlaceItem(*item);
     const NS::uint32 placed = editor.SelectedObjectId();

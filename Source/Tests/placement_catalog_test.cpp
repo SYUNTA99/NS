@@ -2,32 +2,49 @@
 #include "Editor/PlacementCatalog.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "TestActorFile.h"
 
 #include <gtest/gtest.h>
 
 #include <array>
+#include <string>
 #include <string_view>
 
 // エディタで置ける物の一覧と、パレットのブラシがそこから組まれることを縛る
 
-TEST(PlacementCatalog, EveryPlaceableClassAppears)
+TEST(PlacementCatalog, ActorFilesOfPlaceableClassesAppearByTheirName)
 {
-    // 地形の部品以外の置けるクラスは、表示名そのままで 1 つずつ並ぶ
-    for (const NS::TypeRegistry::Entry* entry : NS::PlaceableEntries())
+    // 置けるクラスの .actor は、地形の部品の 1 本を除いて .actor の名前で 1 つずつ並び、その .actor を指す
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    library.Reload();
+    std::size_t listed = 0;
+    for (const std::string& name : library.Names())
     {
-        if (std::string_view{entry->className} == "MapPartsActor")
+        const NS::TypeRegistry::Entry* entry = NS::TypeRegistry::Get().Find(library.ClassNameOf(name));
+        if (entry == nullptr || entry->label == nullptr || name == "MapPartsActor")
         {
             continue;
         }
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem(entry->label);
-        ASSERT_NE(item, nullptr) << entry->label;
-        EXPECT_EQ(NS::ObjectJsonActorFile(item->prototype), std::string_view{entry->className});
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem(name);
+        ASSERT_NE(item, nullptr) << name;
+        EXPECT_EQ(NS::ObjectJsonActorFile(item->prototype), name);
+        ++listed;
     }
-    // プレイヤーは置く一覧に出ない
+    EXPECT_GE(listed, 5u);
+    // プレイヤーは .actor があっても置く一覧に出ない
     for (const NS::Editor::PlacementItem& item : NS::Editor::PlacementItems())
     {
         EXPECT_NE(NS::ObjectJsonActorFile(item.prototype), "PlayerActor") << item.label;
     }
+}
+
+TEST(PlacementCatalog, ActorFileAddedLaterAppearsUnderItsName)
+{
+    // クラスと違う名前の .actor も、敷いた後の一覧に並ぶ
+    const ScopedActorFile heavy{"HeavyProp", ClassOnlyActorFile("PropActor")};
+    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("HeavyProp");
+    ASSERT_NE(item, nullptr);
+    EXPECT_EQ(NS::ObjectJsonActorFile(item->prototype), "HeavyProp");
 }
 
 TEST(PlacementCatalog, MapPartsIsSplitByMesh)
@@ -78,10 +95,15 @@ TEST(PlacementCatalog, PaletteSlotsComeFromCatalog)
         NS::Editor::PaletteTemplateSlots();
     const NS::Editor::PlacementItem* cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
     const NS::Editor::PlacementItem* slope = NS::Editor::FindPlacementItem(NS::Editor::k_PartsSlopeLabel);
-    const NS::Editor::PlacementItem* goal = NS::Editor::FindPlacementItem("ゴール");
+    const NS::Editor::PlacementItem* goal = NS::Editor::FindPlacementItem("GoalActor");
     ASSERT_NE(cube, nullptr);
     ASSERT_NE(slope, nullptr);
     ASSERT_NE(goal, nullptr);
+    // 3 つのブラシはどれも置く物を持つ
+    for (const NS::Editor::PaletteTemplate& slot : slots)
+    {
+        EXPECT_FALSE(NS::ObjectJsonActorFile(slot.prototype).empty()) << slot.name;
+    }
     EXPECT_EQ(slots[0].prototype, cube->prototype);
     EXPECT_EQ(slots[1].prototype, slope->prototype);
     EXPECT_EQ(slots[2].prototype, goal->prototype);

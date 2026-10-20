@@ -19,7 +19,7 @@ namespace NS
     }
     namespace Editor
     {
-        //! 素材ツリーからマテリアル・メッシュ・画像を選ぶ。ドラッグで材質の適用とメッシュの配置ができる
+        //! 素材ツリーからマテリアル・メッシュ・画像・.actor を選ぶ。ドラッグで材質の適用とメッシュの配置ができる
         class AssetsPanel : public NonCopyable
         {
         public:

@@ -1,7 +1,7 @@
 #pragma once
 
 // エディタで置ける物の一覧。ヒエラルキーの追加メニューとパレットが同じ一覧を読む
-// 置ける物は TypeRegistry に NS_PLACEABLE で登録した SceneActor のクラスから組む。出荷ビルドには載らない
+// 置ける物は Assets/Actors の .actor のうち、中の class が NS_PLACEABLE で登録したクラスの物。出荷ビルドには載らない
 
 #include "NSlib/CoreObject/ObjectJson.h"
 
@@ -16,15 +16,16 @@ namespace NS
         //! @brief エディタで置ける物 1 種類
         struct PlacementItem
         {
-            std::string label;        //!< メニューとパレットに出す名前
-            nlohmann::json prototype; //!< 置く時に写すひな形。class と値を持ち、id と位置は置く時に書く
+            std::string label;        //!< メニューとパレットに出す名前。地形の部品の形の 3 つの他は .actor の名前
+            nlohmann::json prototype; //!< 置く時に写すひな形。.actor の名前を持ち、id と位置は置く時に書く
             bool rotatable = false;   //!< パレットで 90 度ずつ回せるか。地形の部品の箱と坂だけ
         };
 
-        //! 登録済みの配置可能な SceneActor を並べる。地形の部品はメッシュの形ごとに分ける
+        //! @brief 置ける .actor を名前の順に並べる。地形の部品の .actor はメッシュの形ごとに分ける
+        //! @details .actor の名前かクラスが変わると組み直すので、返した参照と要素は次に呼ぶまでの間だけ使う
         [[nodiscard]] const std::vector<PlacementItem>& PlacementItems();
 
-        //! label が一致する物。無ければ nullptr
+        //! label が一致する物。無ければ nullptr。PlacementItems の要素を指すので、使える間も同じ
         [[nodiscard]] const PlacementItem* FindPlacementItem(std::string_view label) noexcept;
 
         //! 地形の部品の立方体の名前。パレットの既定のブラシ

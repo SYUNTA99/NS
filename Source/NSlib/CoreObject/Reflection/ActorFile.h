@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace NS
 {
@@ -40,6 +41,9 @@ namespace NS
         //! @brief Directory() の *.actor を全て読み直す
         //! @details 読めない JSON・知らない頭の鍵・class が無いか登録されていない物は ERROR を出して飛ばす
         void Reload();
+
+        //! 持っている .actor の名前。名前の順
+        [[nodiscard]] std::vector<std::string> Names();
 
         //! name の .actor の文書。頭の鍵を全部持つ。無ければ nullptr
         [[nodiscard]] const nlohmann::json* Find(std::string_view name);

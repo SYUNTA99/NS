@@ -29,7 +29,7 @@ namespace NS
                 // 地形の部品の立方体・45 度の坂と、ゴール
                 FillSlot(result[0], "立方体", k_PartsCubeLabel);
                 FillSlot(result[1], "坂 45", k_PartsSlopeLabel);
-                FillSlot(result[2], "ゴール", "ゴール");
+                FillSlot(result[2], "ゴール", "GoalActor");
                 return result;
             }();
             return slots;

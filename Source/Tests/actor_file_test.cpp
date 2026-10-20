@@ -856,6 +856,103 @@ TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningT
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 3.0f);
 }
 
+namespace
+{
+    // 素材の窓で選んだ .actor の 1 体。選べなければ nullptr
+    NS::SceneActor* SelectActorFile(LevelEditorController& editor, const std::string& directory, std::string_view name)
+    {
+        editor.SelectAsset(NS::OS::FileSystem::Combine(directory, std::string{name} + ".actor"));
+        return NS::Cast<NS::SceneActor>(editor.SelectedAsset());
+    }
+
+    // インスペクタと同じ順で、素材の窓で選んだ .actor の part の欄 fieldName を直し終える。値は呼ぶ前に part へ書いておく
+    void EditActorFileField(LevelEditorController& editor,
+                            const NS::SceneActor& actorFile,
+                            const NS::Object* part,
+                            std::string_view fieldName)
+    {
+        const NS::ClassObjInfo* row = RowOf(actorFile, part);
+        ASSERT_NE(row, nullptr);
+        editor.NoteActorFileFieldEdit(*row, fieldName);
+        editor.CommitAssetEdit();
+    }
+} // namespace
+
+// 素材の窓で選んだ .actor の欄を直すと .actor に書かれ、シーンの同じ .actor のアクターの全部に効く
+TEST(ActorFile, ActorFileSelectedInTheAssetWindowIsEditedForEveryActor)
+{
+    const ScopedActorFileDirectory scope("AssetWindowActorFile");
+    NS::Scene scene;
+    ResetTwoProps(scene);
+    LevelEditorController editor(&scene);
+    NS::SceneActor* selected = SelectActorFile(editor, scope.Path(), "PropActor");
+    ASSERT_NE(selected, nullptr);
+    EXPECT_FALSE(editor.SelectedAssetPath().empty());
+    EXPECT_EQ(selected->ActorFileName(), "PropActor");
+    EXPECT_FLOAT_EQ(RadiusOf(*selected), 2.0f);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(selected->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
+
+    sphere->SetRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, *selected, sphere, "半径"));
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(1)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 3.0f);
+
+    // 戻すと .actor とアクターの全部が前の値へ戻り、選んだ .actor も前の値を見せる
+    NS::Editor::ObjectSnapshotApplier applier{&scene};
+    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(1)), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 2.0f);
+    NS::SceneActor* again = NS::Cast<NS::SceneActor>(editor.SelectedAsset());
+    ASSERT_NE(again, nullptr);
+    EXPECT_FLOAT_EQ(RadiusOf(*again), 2.0f);
+}
+
+// 素材の窓では印の付いた欄の .actor の値も直せる。上書きの無いアクターは付いて来て、上書きのあるアクターは残る
+TEST(ActorFile, MarkedFieldEditedOnTheActorFileReachesActorsWithoutAnOverride)
+{
+    const ScopedActorFileDirectory scope("AssetWindowMarkedField");
+    NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "Params", MassEntry(2.0f)));
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::SceneJsonObjects(doc).push_back(MapObjJson(1));
+    nlohmann::json overridden = MapObjJson(2);
+    NS::ObjectJsonClassObjs(overridden)["Params"] = MassEntry(5.0f);
+    NS::SceneJsonObjects(doc).push_back(std::move(overridden));
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    LevelEditorController editor(&scene);
+    GL::Level::PropActor* selected = NS::Cast<GL::Level::PropActor>(SelectActorFile(editor, scope.Path(), "PropActor"));
+    ASSERT_NE(selected, nullptr);
+
+    ASSERT_EQ(NS::ApplyJsonFields(selected->Params(), MassEntry(4.0f)), 0u);
+    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, *selected, &selected->Params(), "質量"));
+    const nlohmann::json* written = NS::ActorFileLibrary::Get().Find("PropActor");
+    ASSERT_NE(written, nullptr);
+    const nlohmann::json* params = NS::ClassObjFields(*written, "Params");
+    ASSERT_NE(params, nullptr);
+    EXPECT_FLOAT_EQ(NS::FieldFloat(*params, "質量", 0.0f), 4.0f);
+    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(1)), 4.0f);
+    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(2)), 5.0f);
+    // 付いて来たアクターは上書きを持たないまま保存される
+    const nlohmann::json saved = scene.ToJson();
+    for (const nlohmann::json& object : NS::SceneJsonObjects(saved))
+    {
+        if (NS::ObjectJsonId(object) != 1u)
+        {
+            continue;
+        }
+        const nlohmann::json* savedParams = SavedFields(object, "Params");
+        EXPECT_TRUE(savedParams == nullptr || !savedParams->contains("質量"));
+    }
+
+    NS::Editor::ObjectSnapshotApplier applier{&scene};
+    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(1)), 2.0f);
+    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(2)), 5.0f);
+}
+
 TEST(ActorFile, ShippedActorFilesLoad)
 {
     // 出荷の種類の既定値はどれも登録済みのクラスの物で、置物は影を種類で足す

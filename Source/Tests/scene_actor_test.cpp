@@ -550,19 +550,14 @@ TEST(SceneActor, ActorMadeFromATypeAnswersTheActorFileOfItsClass)
 // 欄の表示名と部品の登録が保存の鍵なので、鍵が変わると読み直した値が静かに既定へ戻る
 TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
 {
-    // 置けるクラスを 1 体ずつ、全欄を書いた形で置く。読んで書き戻し、全欄へ広げると、置いた鍵が全部残る
+    // Assets/Actors の .actor を 1 本ずつ、全欄を書いた形で置く。読んで書き戻し、全欄へ広げると、置いた鍵が全部残る
     NS::ActorFileLibrary::Get().Reload();
     nlohmann::json doc = NS::MakeSceneJson();
     NS::uint32 id = 1;
-    for (const NS::TypeRegistry::Entry* entry : NS::PlaceableEntries())
+    for (const std::string& name : NS::ActorFileLibrary::Get().Names())
     {
-        // 試しだけで置けるクラスは Assets/Actors に .actor が無く、配置物から作られない
-        if (NS::ActorFileLibrary::Get().ClassNameOf(entry->className).empty())
-        {
-            continue;
-        }
         nlohmann::json object = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(object, entry->className);
+        NS::SetObjectJsonActorFile(object, name);
         NS::SetObjectJsonId(object, id);
         ++id;
         NS::SceneJsonObjects(doc).push_back(NS::ExpandObjectJson(object));
