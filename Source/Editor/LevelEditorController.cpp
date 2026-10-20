@@ -326,8 +326,7 @@ namespace
 
 void LevelEditorController::SelectSceneSettings()
 {
-    CommitAssetEdit();
-    m_selectedAssetPath.clear();
+    ClearAssetSelection();
     SelectObjectById(NS::k_NoObjectId);
 }
 
@@ -1113,7 +1112,7 @@ void LevelEditorController::SetPrimarySelection(NS::uint32 id) noexcept
     }
 
     // アクターの選択と素材の選択は排他
-    m_selectedAssetPath.clear();
+    ClearAssetSelection();
 
     // ハンドルを出すため Object ツールへ切替える。Build のままだとギズモが描かれない
     SetObjectToolActive(true);
@@ -1319,7 +1318,7 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
             // ビューポートのクリックは 1 体に絞る。複数選択はアクター一覧の Ctrl / Shift で組む
             m_selectedObjectId = object->Id();
             m_selectionIds.assign(1, m_selectedObjectId);
-            m_selectedAssetPath.clear();
+            ClearAssetSelection();
             return;
         }
     }
@@ -1525,7 +1524,7 @@ void LevelEditorController::PushCreateObject(nlohmann::json object)
     // 組み直し後の新規を選択する。選択候補も貼り直す
     m_selectedObjectId = id;
     m_selectionIds.assign(1, id);
-    m_selectedAssetPath.clear();
+    ClearAssetSelection();
     SetObjectToolActive(true);
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1958,9 +1957,8 @@ namespace
 
 void LevelEditorController::SelectAsset(std::string_view assetPath)
 {
-    CommitAssetEdit();
+    ClearAssetSelection();
     SelectObjectById(NS::k_NoObjectId);
-    m_selectedAssetPath.clear();
 
     const std::string stored = RelativeToRoot(assetPath, NS::OS::FileSystem::ContentRoot());
     const NS::Object* asset = LoadSelectableAsset(stored);
@@ -1985,6 +1983,12 @@ NS::Object* LevelEditorController::SelectedAsset()
         return nullptr;
     }
     return LoadSelectableAsset(m_selectedAssetPath);
+}
+
+void LevelEditorController::ClearAssetSelection()
+{
+    CommitAssetEdit();
+    m_selectedAssetPath.clear();
 }
 
 void LevelEditorController::MarkAssetEdited() noexcept

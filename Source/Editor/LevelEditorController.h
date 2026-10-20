@@ -255,6 +255,10 @@ private:
     //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
     void PushCreateObject(nlohmann::json object);
 
+    //! 素材の選択を外す。前に、選んだ素材の確定していない編集を確定して .mat に書く
+    //! 選択を外す道は全部これを通す。外してから確定すると、書く先の道が消えて編集を失う
+    void ClearAssetSelection();
+
     //! 選んだ配置物の Root を書いた後、その欄をプレイ中の凍結へも写す
     void MirrorRootEditToBaseline(NS::SceneActor& actor, std::string_view fieldName);
 

@@ -10,6 +10,7 @@
 #include "NSlib/App/Layer.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -18,16 +19,23 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Windows/StringUtils.h"
 #include "Tests/TestCheckLayer.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <chrono>
+#include <cstddef>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
+#include <system_error>
+#include <vector>
 
 namespace
 {
@@ -586,4 +594,106 @@ TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
     editor.SelectObjectById(placed);
     EXPECT_TRUE(editor.SelectedAssetPath().empty());
     EXPECT_EQ(editor.SelectedAsset(), nullptr);
+}
+
+// 素材の値を変えた後は、どの道で素材の選択が外れても .mat に新しい値が書かれている
+TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "素材の選択を外す試し";
+    desc.window.size = {320, 200};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
+        // 選ぶ素材は ContentRoot の下に限られるので、Assets の下に試しのフォルダを作り、終わったら消す
+        const std::string folder =
+            "EditorAssetSelectTest" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+        const std::string directory = NS::OS::FileSystem::Combine(
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), folder);
+        ASSERT_TRUE(NS::OS::FileSystem::CreateDirectories(directory));
+        const std::string stone =
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Materials/stone.mat");
+        const std::optional<std::string> stoneText = NS::OS::FileSystem::ReadAllText(stone);
+        ASSERT_TRUE(stoneText.has_value());
+
+        NS::Scene scene;
+        LevelEditorController editor(&scene);
+        editor.Setup(nullptr, {});
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+        ASSERT_NE(item, nullptr);
+        editor.PlaceItem(*item);
+        const NS::uint32 actorId = editor.SelectedObjectId();
+        ASSERT_NE(actorId, NS::k_NoObjectId);
+        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        editor.SetGameView(view.x, view.y, view.width, view.height, true);
+        NS::OS::Mouse& mouse = app.Input().Mouse();
+        const int startX = mouse.GetX();
+        const int startY = mouse.GetY();
+        app.Input().Keyboard().ClearState();
+        mouse.ClearState();
+        editor.Tick();
+        editor.FocusSelectedInView();
+        editor.Tick();
+
+        struct ClearPath
+        {
+            const char* name;
+            std::function<void()> clear;
+        };
+        const std::vector<ClearPath> paths{
+            {"アクターの選択", [&editor, actorId] { editor.SelectObjectById(actorId); }},
+            {"ギズモの選択",
+             [&editor, &mouse, &view] {
+                 // 選んだアクターは画面の中心に居るので、中心のクリックでギズモが拾う
+                 mouse.OnMove(view.width / 2, view.height / 2);
+                 mouse.OnButtonDown(NS::OS::MouseButton::Left);
+                 editor.Tick();
+                 mouse.Update();
+                 mouse.OnButtonUp(NS::OS::MouseButton::Left);
+                 editor.Tick();
+                 mouse.Update();
+                 EXPECT_NE(editor.SelectedObjectId(), NS::k_NoObjectId);
+             }},
+            {"置く", [&editor, item] { editor.PlaceItem(*item); }},
+            {"シーン設定", [&editor] { editor.SelectSceneSettings(); }},
+            {"別の素材", [&editor, &stone] { editor.SelectAsset(stone); }},
+        };
+        std::size_t index = 0;
+        for (const ClearPath& path : paths)
+        {
+            ++index;
+            const std::string fileName = "edit_" + std::to_string(index) + ".mat";
+            const std::string file = NS::OS::FileSystem::Combine(directory, fileName);
+            ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(
+                file, std::as_bytes(std::span<const char>{stoneText->data(), stoneText->size()})));
+            editor.SelectAsset(file);
+            ASSERT_EQ(editor.SelectedAssetPath(), "Assets/" + folder + "/" + fileName) << path.name;
+            NS::Material* material = NS::Cast<NS::Material>(editor.SelectedAsset());
+            ASSERT_NE(material, nullptr) << path.name;
+            const NS::FieldDesc* blend = NS::FindField(material->GetReflection(), "混ぜ方");
+            ASSERT_NE(blend, nullptr);
+            const std::string additive = "Additive";
+            blend->set(material, &additive);
+            editor.MarkAssetEdited();
+
+            path.clear();
+
+            EXPECT_NE(editor.SelectedAssetPath(), "Assets/" + folder + "/" + fileName) << path.name;
+            const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(file);
+            ASSERT_TRUE(text.has_value()) << path.name;
+            NS::MaterialFileDesc written{};
+            std::string error;
+            ASSERT_TRUE(NS::ParseMaterialJson(*text, written, error)) << path.name << error;
+            EXPECT_EQ(written.blend, NS::Gfx::BlendMode::Additive) << path.name;
+        }
+
+        std::error_code error;
+        std::filesystem::remove_all(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(directory)}, error);
+        // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
+        mouse.OnMove(startX, startY);
+        mouse.ClearState();
+        mouse.Update();
+    }));
+    EXPECT_EQ(app.Run(), 0);
 }
