@@ -68,7 +68,7 @@ namespace
 TEST(AssetField, ActorLoadsItsFieldsWhenCreated)
 {
     NS::Scene scene;
-    const AssetFieldProbeActor* actor = scene.SpawnTransient<AssetFieldProbeActor>();
+    const AssetFieldProbeActor* actor = scene.SpawnObject<AssetFieldProbeActor>("AssetFieldProbeActor");
     ASSERT_NE(actor, nullptr);
     const NS::Mesh* sphere = NS::AssetManager::Get().LoadMesh("sphere");
     EXPECT_EQ(actor->part->asset, sphere);
@@ -79,7 +79,7 @@ TEST(AssetField, ActorLoadsItsFieldsWhenCreated)
 TEST(AssetField, ReloadAssetsReadsTheNewName)
 {
     NS::Scene scene;
-    AssetFieldProbeActor* actor = scene.SpawnTransient<AssetFieldProbeActor>();
+    AssetFieldProbeActor* actor = scene.SpawnObject<AssetFieldProbeActor>("AssetFieldProbeActor");
     ASSERT_NE(actor, nullptr);
     const NS::Mesh* cube = NS::AssetManager::Get().LoadMesh("cube");
     (void)NS::ApplyJsonFields(*actor->part, nlohmann::json{{"素材", "cube"}});
@@ -301,7 +301,7 @@ TEST(AssetField, ModelWithoutAMaterialDrawsGrayOnABuiltinShapeAndPinkOnAFileMesh
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
-    NS::MapPartsActor* parts = scene.SpawnTransient<NS::MapPartsActor>();
+    NS::MapPartsActor* parts = scene.SpawnObject<NS::MapPartsActor>("MapPartsActor");
     ASSERT_NE(parts, nullptr);
     NS::Model* model = parts->ModelClassObj();
     ASSERT_EQ(model->MaterialRef(), "");
@@ -321,7 +321,7 @@ TEST(AssetField, ModelWithoutAMaterialDrawsGrayOnABuiltinShapeAndPinkOnAFileMesh
 TEST(AssetField, ReloadingAnotherMeshChangesTheCollisionShape)
 {
     NS::Scene scene;
-    NS::MapPartsActor* parts = scene.SpawnTransient<NS::MapPartsActor>();
+    NS::MapPartsActor* parts = scene.SpawnObject<NS::MapPartsActor>("MapPartsActor");
     ASSERT_NE(parts, nullptr);
     const NS::MeshCollision* collision = NS::Cast<NS::MeshCollision>(parts->CollisionClassObj());
     ASSERT_NE(collision, nullptr);
@@ -370,7 +370,7 @@ TEST(AssetField, SlamArrowAndPlayerLooksHoldTheirAssetsInAssetFields)
 TEST(AssetField, PlayerLookWritesItsScaleToTheModel)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnTransient<PlayerActor>();
+    PlayerActor* player = scene.SpawnObject<PlayerActor>("PlayerActor");
     ASSERT_NE(player, nullptr);
     GL::Player::PlayerAppearance* appearance = &player->Appearance();
     const NS::Model* model = player->ModelClassObj();

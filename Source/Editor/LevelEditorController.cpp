@@ -947,10 +947,6 @@ void LevelEditorController::RefreshGizmoSelectables()
     // 全配置物をギズモ候補に積む。判定箱はギズモがクリックの時に配置物から引く
     for (NS::SceneActor* object : m_scene->Objects())
     {
-        if (object->IsTransient())
-        {
-            continue;
-        }
         m_selectablePtrs.push_back(object);
         m_selectablePickable.push_back(static_cast<NS::uint8>(object->ModelClassObj() != nullptr));
     }
@@ -1405,7 +1401,7 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
     std::vector<NS::SceneActor*> followers;
     for (NS::SceneActor* other : m_scene->Objects())
     {
-        if (other == &actor || other->IsTransient() || className != other->ClassName())
+        if (other == &actor || className != other->ClassName())
         {
             continue;
         }

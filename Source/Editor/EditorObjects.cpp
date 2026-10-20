@@ -66,9 +66,8 @@ namespace NS
 
         bool IsCellBrushObject(const SceneActor& object) noexcept
         {
-            // 実行時の一時オブジェクトは配置物でないため対象外
             // 自前の振る舞いを持つ SceneActor は、ブラシの置換や削除で崩さない
-            if (object.IsTransient() || std::string_view{object.ClassName()} != "MapPartsActor")
+            if (std::string_view{object.ClassName()} != "MapPartsActor")
             {
                 return false;
             }
@@ -114,8 +113,7 @@ namespace NS
         {
             for (const SceneActor* object : objects)
             {
-                if (!object->IsTransient() && ObjectCellX(*object) == x && ObjectCellY(*object) == y &&
-                    ObjectCellZ(*object) == z)
+                if (ObjectCellX(*object) == x && ObjectCellY(*object) == y && ObjectCellZ(*object) == z)
                 {
                     return true;
                 }

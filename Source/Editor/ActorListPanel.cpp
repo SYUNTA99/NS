@@ -69,14 +69,7 @@ namespace NS
                     editor.SelectSceneSettings();
                 }
 
-                std::size_t shownCount = 0;
-                for (const SceneActor* obj : editor.Objects())
-                {
-                    if (!obj->IsTransient())
-                    {
-                        ++shownCount;
-                    }
-                }
+                const std::size_t shownCount = editor.Objects().ObjectCount();
                 ImGui::Text("オブジェクト %zu 個", shownCount);
 
                 ImGui::SetNextItemWidth(-1.0f);
@@ -102,10 +95,6 @@ namespace NS
 
                 for (SceneActor* object : editor.Objects())
                 {
-                    if (object->IsTransient())
-                    {
-                        continue;
-                    }
                     if (!filtering || NameMatches(Editor::ObjectDisplayName(*object), m_actorListFilter))
                     {
                         RenderRow(editor, *object);

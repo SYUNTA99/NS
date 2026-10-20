@@ -50,7 +50,7 @@ namespace
         void Load()
         {
             target = scene.SpawnObject<LaunchTargetProbeActor>("target");
-            camera = scene.SpawnTransient<GL::Level::FollowCameraActor>();
+            camera = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
             NS::ApplyJsonFields(camera->Vcam(),
                                 nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
                                                {"強制発射の追う速さ", 4.0f},

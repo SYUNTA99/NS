@@ -16,6 +16,6 @@ TEST(ReflectedClassObjs, ListsBaseFramePartsBeforeTheClassPartsWithTheirSaveKeys
                                  [&](const NS::ClassObjInfo& field, NS::Object*) { keys.emplace_back(field.key); });
     ASSERT_GE(keys.size(), 4u);
     EXPECT_EQ(keys.front(), "Transform");
-    EXPECT_EQ((std::vector<std::string>(keys.end() - 3, keys.end())),
-              (std::vector<std::string>{"Params", "HitZones", "LaunchEffects"}));
+    EXPECT_EQ((std::vector<std::string>(keys.end() - 4, keys.end())),
+              (std::vector<std::string>{"Params", "HitZones", "LaunchEffects", "ImpactMarks"}));
 }

@@ -414,10 +414,6 @@ namespace NS
                 for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
                 {
                     SceneActor& candidate = *editor.Objects().ObjectAt(i);
-                    if (candidate.IsTransient())
-                    {
-                        continue;
-                    }
                     char label[96];
                     std::snprintf(label,
                                   sizeof(label),

@@ -99,9 +99,6 @@ namespace
     template <class TScene = NS::Scene> void CheckSceneBuildsItsOwnActors()
     {
         static_assert(!requires(TScene& scene, std::unique_ptr<NS::SceneActor> actor) {
-            scene.SpawnTransient(std::move(actor));
-        });
-        static_assert(!requires(TScene& scene, std::unique_ptr<NS::SceneActor> actor) {
             scene.SpawnObject(std::move(actor), std::string{});
         });
     }
@@ -146,7 +143,7 @@ protected:
         NS::SceneActor::OnAssetsLoaded();
         ++loads;
         startedAtLoad = started;
-        // 一時のアクターは id を持たないので、一覧を端から見る
+        // 型から湧かす道は一覧へ入る時に id を振るので、id で引かずに一覧を端から見る
         inListAtLoad = false;
         const NS::Scene* scene = OwningScene();
         if (scene == nullptr)
@@ -224,12 +221,9 @@ TEST(ClassObj, OnlyTheBuildersCanInitAndEnterAnActor)
 TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
 {
     NS::Scene scene;
-    const ClassObjInitProbeActor* transient = scene.SpawnTransient<ClassObjInitProbeActor>();
-    EXPECT_EQ(transient->inits, 1);
-    EXPECT_NE(transient->ModelClassObj(), nullptr);
-
     const ClassObjInitProbeActor* placed = scene.SpawnObject<ClassObjInitProbeActor>("Placed");
     EXPECT_EQ(placed->inits, 1);
+    EXPECT_NE(placed->ModelClassObj(), nullptr);
 
     const std::unique_ptr<ClassObjInitProbeActor> loose = NS::CreateActor<ClassObjInitProbeActor>();
     EXPECT_EQ(loose->inits, 1);
@@ -271,15 +265,14 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
 
     check(scene.ReplaceFromJson(placed), "作り直す");
     check(scene.SpawnFromJson(NS::MakePrototypeJson<AssetTimingProbeActor>()), "JSON から湧かす");
-    check(scene.SpawnTransient<AssetTimingProbeActor>(), "型から湧かす (一時)");
-    check(scene.SpawnObject<AssetTimingProbeActor>("Placed"), "型から湧かす (配置)");
+    check(scene.SpawnObject<AssetTimingProbeActor>("Placed"), "型から湧かす");
 }
 
 // AssetManager を差していない間も素材を読む道を通る。試しも本番と同じ順を通る
 TEST(ClassObj, ActorLoadsAssetsWithoutAssetManagerScope)
 {
     NS::Scene scene;
-    const AssetTimingProbeActor* actor = scene.SpawnTransient<AssetTimingProbeActor>();
+    const AssetTimingProbeActor* actor = scene.SpawnObject<AssetTimingProbeActor>("AssetTimingProbeActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->loads, 1);
 }

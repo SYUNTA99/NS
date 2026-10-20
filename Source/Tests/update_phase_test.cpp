@@ -163,7 +163,7 @@ TEST(UpdatePhase, SystemAddedDuringItsPhaseWaitsForTheNextFrame)
     // 段で呼ぶ物は段の始まりに決める。段の SceneActor が足した管理役をその段で呼ぶと、登録の時期で呼ぶ回数が変わる
     NS::Scene scene;
     CountingTicker late;
-    scene.SpawnTransient<LateRegisterActor>(scene, late);
+    scene.SpawnObject<LateRegisterActor>("LateRegisterActor", scene, late);
 
     scene.OnUpdate();
     EXPECT_EQ(late.ticks, 0);
@@ -194,10 +194,10 @@ TEST(UpdatePhase, SceneRunsTheNamedTableAroundPhysics)
 {
     NS::Scene scene;
     std::vector<std::string> log;
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Camera, log, "camera");
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Triggers, log, "triggers");
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Enemy, log, "enemy");
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Player, log, "player");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Camera, log, "camera");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "triggers");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Enemy, log, "enemy");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
     PhaseTicker sensors(log, "sensors");
     PhaseTicker course(log, "course");
     PhaseTicker ui(log, "ui");
@@ -232,8 +232,8 @@ TEST(UpdatePhase, StableActorOrderAndRemovedTickerArePreserved)
 {
     NS::Scene scene;
     std::vector<std::string> log;
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Triggers, log, "first");
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Triggers, log, "second");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "first");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "second");
     PhaseTicker ticker(log, "ticker");
     scene.AddSystemTick(ticker, NS::UpdatePhase::Triggers);
     scene.ExecutePhase(NS::UpdatePhase::Triggers);
@@ -266,10 +266,10 @@ TEST(InterpolationSnapshot, ModelWrittenByAnEarlierPhaseStartsFromTheValueBefore
 {
     // 前の値を書き手より後の段で控えると、先の段で書いた倍率が始点にもなり補間されずに飛ぶ
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    DrawModelActor* drawn = scene.SpawnObject<DrawModelActor>("DrawModelActor");
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
-    scene.SpawnTransient<DrawScaleWriterActor>(*drawn);
+    scene.SpawnObject<DrawScaleWriterActor>("DrawScaleWriterActor", *drawn);
 
     scene.OnUpdate();
 
@@ -281,7 +281,7 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
 {
     // 止めている間は段が回らない。前の値の控えも段に置くと、止める前に書いた倍率から補間し続けて絵が揺れる
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    DrawModelActor* drawn = scene.SpawnObject<DrawModelActor>("DrawModelActor");
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
     scene.SetSimulationPaused(true);
@@ -295,7 +295,7 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
 TEST(InterpolationSnapshot, SnapStartsTheModelAtTheNewScale)
 {
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    DrawModelActor* drawn = scene.SpawnObject<DrawModelActor>("DrawModelActor");
     NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
     ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
@@ -322,7 +322,7 @@ TEST(WorldSpeed, SlowWorldStepsOnceInFiveAndRealTimePhasesEveryStep)
     // 遅い世界は 1 歩の中身を変えず、世界の時計の段を間引く。入力と UI は毎歩回る
     NS::Scene scene;
     std::vector<std::string> log;
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Player, log, "player");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
     PhaseTicker physics(log, "physics");
     PhaseTicker ui(log, "ui");
     PhaseTicker effects(log, "effects");
@@ -356,10 +356,10 @@ TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
 {
     // 世界を進めない歩に前の値を控えると補間が止まる。割合は前に世界を進めてからの溜めで出す
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    DrawModelActor* drawn = scene.SpawnObject<DrawModelActor>("DrawModelActor");
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
-    scene.SpawnTransient<DrawScaleWriterActor>(*drawn);
+    scene.SpawnObject<DrawScaleWriterActor>("DrawScaleWriterActor", *drawn);
     scene.SetWorldSpeed(0.5f);
 
     scene.OnUpdate();
@@ -432,10 +432,10 @@ TEST(OthersHold, HoldingOthersRunsOnlyThePlayerSideForItsSteps)
     // 真ん中で触れる前の数フレーム、自機以外の世界を止める。自機・入力・カメラ・UI は回す
     NS::Scene scene;
     std::vector<std::string> log;
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Player, log, "player");
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Enemy, log, "enemy");
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Triggers, log, "triggers");
-    scene.SpawnTransient<PhaseActor>(NS::UpdatePhase::Camera, log, "camera");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Enemy, log, "enemy");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "triggers");
+    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Camera, log, "camera");
     PhaseTicker physics(log, "physics");
     PhaseTicker sensors(log, "sensors");
     PhaseTicker course(log, "course");
@@ -485,7 +485,7 @@ TEST(OthersHold, ZeroStepsAndRestartingThePlayReleaseTheHold)
 TEST(ModelLocalScale, ScalesAroundTheMeshOriginAndMovesTheDrawScalePivot)
 {
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
+    DrawModelActor* drawn = scene.SpawnObject<DrawModelActor>("DrawModelActor");
     NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
     model->SetLocalBoundsOverride(NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 1.0f, 1.0f}});

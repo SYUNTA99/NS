@@ -63,7 +63,7 @@ namespace GL
 
             void SendInputLock(bool locked);
 
-            //! skip の他の、一時オブジェクトでない配置物。skip が nullptr なら全員
+            //! skip の他の配置物。skip が nullptr なら全員
             [[nodiscard]] std::vector<NS::SceneActor*> PlacedActors(const NS::SceneActor* skip) const;
 
             //! PlacedActors の全員へ MsgCourseRestart を送る

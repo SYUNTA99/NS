@@ -169,7 +169,7 @@ namespace NS
         void ResetFromJson(nlohmann::json scene);
 
         //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
-        //! @details 一時オブジェクトを除く全配置物を、全部品の値まで忠実に写す
+        //! @details 全配置物を、全部品の値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
 
         //! @brief 出ている実体の当たりを今の姿と形へ揃え、broadphase を張り直す。object は作り直さない
@@ -221,20 +221,9 @@ namespace NS
         //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneRenderer.SetSceneViews(std::move(views)); }
 
-        //! @brief 型 T の一時オブジェクトをシーンの中で作って入れ、開始する。呼出側へは生ポインタだけ返す
-        //! @details 所有はシーンが握る。保存・凍結に写らず、データからの組み直しで捨てる。
-        //! 更新は配置物と同じく自分の段で回る。値は種類の既定で、入れた後に変える時は返ったアクターへ書く
-        template <class T, class... Args> T* SpawnTransient(Args&&... args)
-        {
-            const ActorInitInfo info{.scene = *this};
-            std::unique_ptr<T> obj = CreateActorWithInfo<T>(info, std::forward<Args>(args)...);
-            T* raw = obj.get();
-            AdoptTransient(std::move(obj));
-            return raw;
-        }
-
         //! @brief 型 T の配置物をシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
-        //! @details 名前は既存と重なれば番号を付ける。値は種類の既定。一時オブジェクトと違い保存に写る
+        //! @details 所有はシーンが握り、呼出側へは生ポインタだけ返す。名前は既存と重なれば番号を付ける。
+        //! 値は種類の既定で、保存と凍結に写る
         template <class T, class... Args> T* SpawnObject(std::string name, Args&&... args)
         {
             const ActorInitInfo info{.scene = *this};
@@ -288,8 +277,7 @@ namespace NS
         //! シーンに 1 つの物・暗転・配置物・エフェクト・開発用の図形を捨てる。組み直しと終わりが呼ぶ
         void ClearWorld();
 
-        // SpawnTransient と SpawnObject の中身。外から個体を受けると、OnInit を通っていない個体が入る
-        SceneActor* AdoptTransient(std::unique_ptr<SceneActor> obj);
+        // SpawnObject の中身。外から個体を受けると、OnInit を通っていない個体が入る
         SceneActor* AdoptObject(std::unique_ptr<SceneActor> obj, std::string name);
 
         //! 実行時に入れた配置物の資産を引き当ててから開始する

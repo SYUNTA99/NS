@@ -953,7 +953,7 @@ TEST(ImpactResolver, TackleSkipsANearerAreaSensor)
     NS::Scene scene;
     PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object());
     ASSERT_NE(player, nullptr);
-    GL::Level::GoalActor* goal = scene.SpawnTransient<GL::Level::GoalActor>();
+    GL::Level::GoalActor* goal = scene.SpawnObject<GL::Level::GoalActor>("GoalActor");
     goal->Root().SetPosition(Vector3{0.0f, 1.0f, 0.3f});
 
     const GL::Level::ImpactRecord& impact = SlamOnce(*player);
@@ -970,7 +970,7 @@ TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
     NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(Vector3{0.0f, 0.5f, 3.0f});
-    GL::Level::GoalActor* goal = scene.SpawnTransient<GL::Level::GoalActor>();
+    GL::Level::GoalActor* goal = scene.SpawnObject<GL::Level::GoalActor>("GoalActor");
     goal->Root().SetPosition(Vector3{0.0f, 0.5f, 1.5f});
 
     GL::Level::SlamLineTarget predicted{};
@@ -1002,7 +1002,7 @@ TEST(HitSensor, UnsetKindIsNotATackleTarget)
     NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(Vector3{0.0f, 0.5f, -5.0f});
-    UnsetKindSensorActor* unset = scene.SpawnTransient<UnsetKindSensorActor>();
+    UnsetKindSensorActor* unset = scene.SpawnObject<UnsetKindSensorActor>("UnsetKindSensorActor");
     unset->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});
 
     GL::Level::SlamLineTarget predicted{};

@@ -1,7 +1,6 @@
 #include "Game/Level/PropActor.h"
 #include "NSlib/Core/Types.h"
 
-#include "Game/Level/ImpactMarkActor.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
@@ -10,6 +9,7 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -82,6 +82,7 @@ namespace GL
             CreateClassObj(m_hitZones);
             CreateClassObj(m_effectKeeper, this);
             CreateClassObj(m_effects, this);
+            CreateClassObj(m_marks, this);
             // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
             NS::FollowHitSensor* bodySensor =
                 CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [sphere] {
@@ -104,6 +105,7 @@ namespace GL
             if (IsAppeared())
             {
                 m_tackleGhost.Register();
+                m_marks->Register();
             }
         }
 
@@ -111,6 +113,7 @@ namespace GL
         {
             NS::SceneActor::OnDisappear();
             m_tackleGhost.Unregister();
+            m_marks->Unregister();
         }
 
         bool PropActor::IsFrozen() const noexcept
@@ -144,6 +147,7 @@ namespace GL
             // clang-format on
             // 明けの写しは止めの後も残り、写し取る姿は揺れを書いた後の姿なので、Model が揺れを進めた後で進める
             AdvanceGhost();
+            m_marks->Step(NS::OS::FrameTimer::FixedDelta());
         }
 
         void PropActor::UpdateMotion()
@@ -469,7 +473,7 @@ namespace GL
             if (NS::RaycastCollision(
                     this, sphere.center, down, m_params->MarkProbeDistance(), distance, normal, Sphere().BodyId()))
             {
-                (void)ImpactMarkActor::SpawnAt(OwningScene(), sphere.center + down * distance + normal * 0.02f);
+                m_marks->Spawn(sphere.center + down * distance + normal * 0.02f);
             }
         }
 

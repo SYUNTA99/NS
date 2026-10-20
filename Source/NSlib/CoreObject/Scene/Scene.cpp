@@ -65,11 +65,6 @@ namespace NS
         nlohmann::json& objects = SceneJsonObjects(scene);
         for (const SceneActor* obj : m_objects)
         {
-            // 一時オブジェクトは保存にも凍結にも写さない
-            if (obj->IsTransient())
-            {
-                continue;
-            }
             objects.push_back(ObjectToJson(*obj));
         }
         return scene;
@@ -215,24 +210,6 @@ namespace NS
         }
         m_worldCarry = std::max(m_worldCarry - 1.0f, 0.0f);
         return true;
-    }
-
-    SceneActor* Scene::AdoptTransient(std::unique_ptr<SceneActor> obj)
-    {
-        if (!obj)
-        {
-            return nullptr;
-        }
-
-        obj->SetTransient(true);
-        obj->AttachScene(this);
-        SceneActor* raw = m_objects.Append(std::move(obj));
-        if (raw == nullptr)
-        {
-            return nullptr;
-        }
-        StartSpawned(*raw);
-        return raw;
     }
 
     SceneActor* Scene::AdoptObject(std::unique_ptr<SceneActor> obj, std::string name)

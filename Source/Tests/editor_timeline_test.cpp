@@ -159,7 +159,7 @@ TEST(EditorTimelinePreview, RewindsTheEntireSceneAndDoesNotStepWhilePaused)
         [&builds] {
             ++builds;
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SpawnTransient<TimelineMovingActor>();
+            scene->SpawnObject<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
         {-2, 10});
@@ -202,7 +202,7 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
         [&device] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
             scene->SetDevice(&device);
-            scene->SpawnTransient<TimelineMovingActor>();
+            scene->SpawnObject<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
         {0, 20});
@@ -298,7 +298,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
             scene->SetDevice(&device);
             scene->MainCamera()->ApplyPose(pose);
-            scene->SpawnTransient<TimelineMovingActor>();
+            scene->SpawnObject<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
         {0, 20});

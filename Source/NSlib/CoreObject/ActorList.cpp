@@ -28,7 +28,6 @@ namespace NS
             return;
         }
 
-        // 一時オブジェクトも捨てる。組み直す JSON に戻り先が無い
         Clear();
 
         // カウンタは 1 始まりでファイルの id を知らない。読込値まで上げないと次に置く 1 個目が既存とぶつかる
@@ -68,18 +67,6 @@ namespace NS
         }
     }
 
-    SceneActor* ActorList::Append(std::unique_ptr<SceneActor> obj)
-    {
-        if (!obj)
-        {
-            return nullptr;
-        }
-        SceneActor* raw = obj.get();
-        m_objects.push_back(std::move(obj));
-        MarkIndexDirty();
-        return raw;
-    }
-
     SceneActor* ActorList::AppendWithNewId(std::unique_ptr<SceneActor> obj, std::string name)
     {
         if (!obj)
@@ -90,7 +77,10 @@ namespace NS
 
         // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
         RenameObject(*obj, name);
-        return Append(std::move(obj));
+        SceneActor* raw = obj.get();
+        m_objects.push_back(std::move(obj));
+        MarkIndexDirty();
+        return raw;
     }
 
     void ActorList::RemoveByObjectId(uint32 objectId)
@@ -103,7 +93,7 @@ namespace NS
             return;
         }
 
-        // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が消える
+        // 0 は未採番の印。id の無い JSON から入れた配置物は 0 のままなので、素通しするとその 1 体が消える
         if (objectId == k_NoObjectId)
         {
             return;
@@ -156,7 +146,7 @@ namespace NS
 
     SceneActor* ActorList::FindByObjectId(uint32 objectId) noexcept
     {
-        // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が引ける
+        // 0 は未採番の印。id の無い JSON から入れた配置物は 0 のままなので、素通しするとその 1 体が引ける
         if (objectId == k_NoObjectId)
         {
             return nullptr;

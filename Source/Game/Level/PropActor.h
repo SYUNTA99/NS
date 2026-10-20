@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game/Level/HitZones.h"
+#include "Game/Level/ImpactMarks.h"
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
@@ -30,6 +31,7 @@ namespace GL
             NS_CLASSOBJ(m_params, "Params")
             NS_CLASSOBJ(m_hitZones, "HitZones")
             NS_CLASSOBJ(m_effects, "LaunchEffects")
+            NS_CLASSOBJ(m_marks, "ImpactMarks")
             NS_REFLECT_END()
 
             //! 尾と粉の絵を先に読む。残像は Model と同じく、出ている間だけ描く物へ入れる
@@ -55,6 +57,8 @@ namespace GL
             [[nodiscard]] const HitZones& Zones() const noexcept { return *m_hitZones; }
             [[nodiscard]] LaunchEffects& Effects() noexcept { return *m_effects; }
             [[nodiscard]] const LaunchEffects& Effects() const noexcept { return *m_effects; }
+            [[nodiscard]] ImpactMarks& Marks() noexcept { return *m_marks; }
+            [[nodiscard]] const ImpactMarks& Marks() const noexcept { return *m_marks; }
             [[nodiscard]] const TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
 
         protected:
@@ -100,6 +104,7 @@ namespace GL
             std::unique_ptr<MapObjParams> m_params;
             std::unique_ptr<HitZones> m_hitZones;
             std::unique_ptr<LaunchEffects> m_effects;
+            std::unique_ptr<ImpactMarks> m_marks;
             NS::StateMachineOf<PropActor>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
             NS::SubStateMachine<PropActor> m_motion;
             TackleFreezeDesc m_freeze;

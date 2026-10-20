@@ -139,7 +139,7 @@ namespace
         std::vector<NS::Vector3> offsets;
         NS::Scene scene;
         ChargingTargetActor* target = scene.SpawnObject<ChargingTargetActor>("target");
-        GL::Level::FollowCameraActor* actor = scene.SpawnTransient<GL::Level::FollowCameraActor>();
+        GL::Level::FollowCameraActor* actor = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
         if (target == nullptr || actor == nullptr)
         {
             return offsets;

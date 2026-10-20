@@ -114,12 +114,6 @@ namespace NS
         void Update();
         virtual void PrepareRender();
 
-        //! 実行時にコードが足す一時オブジェクトか。true は保存・凍結・作業データに写らない
-        [[nodiscard]] bool IsTransient() const noexcept { return m_transient; }
-
-        //! 一時オブジェクトの印。Scene::SpawnTransient が立てる。テストは直接立ててよい
-        void SetTransient(bool transient) noexcept { m_transient = transient; }
-
         //! 全配置物の初期化後に一度呼ぶ。他の配置物を必要とする初期化を行う
         virtual void InitAfterPlacement() {}
 
@@ -262,7 +256,6 @@ namespace NS
         std::unique_ptr<StateMachine> m_stateMachine;
 
     private:
-        bool m_transient = false; // 一時オブジェクトの印。保存・凍結に写らない
         float m_frameRate = 1.0f; // 体の倍率。読み書きは GetFrameRate・SetFrameRate だけ
     };
 
@@ -276,7 +269,7 @@ namespace NS
     [[nodiscard]] float GetFrameDelta(const SceneActor* actor) noexcept;
 
     //! @brief T を作り、部品・種類の既定・素材まで済ませて返す
-    //! @details Scene の中に作る時は Scene::SpawnTransient か Scene::SpawnObject を使う (中でこの関数を呼ぶ)。
+    //! @details Scene の中に作る時は Scene::SpawnObject を使う (中でこの関数を呼ぶ)。
     //! Scene に入れずに部品を触る試しは、この関数で作る
     template <class T, class... TArgs> [[nodiscard]] std::unique_ptr<T> CreateActor(TArgs&&... args)
     {
@@ -288,7 +281,7 @@ namespace NS
     }
 
     //! @brief T を作り、info で部品・種類の既定・配置の上書き・素材まで済ませて返す
-    //! @details シーンへ入れる口 (Scene::SpawnTransient・SpawnObject) が呼ぶ。シーンの一覧に入る前に素材を読み終える
+    //! @details シーンへ入れる口 (Scene::SpawnObject) が呼ぶ。シーンの一覧に入る前に素材を読み終える
     template <class T, class... TArgs>
     [[nodiscard]] std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args)
     {

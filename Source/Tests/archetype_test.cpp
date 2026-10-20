@@ -230,7 +230,7 @@ TEST(Archetype, SpawnedByTypeGetsArchetype)
     NS::ArchetypeLibrary::Get().Set("PropActor", ArchetypeWith("PropActor", "Collision", SphereEntry(2.0f)));
 
     NS::Scene scene;
-    const NS::SceneActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
+    const NS::SceneActor* actor = scene.SpawnObject<GL::Level::PropActor>("PropActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 2.0f);
 }

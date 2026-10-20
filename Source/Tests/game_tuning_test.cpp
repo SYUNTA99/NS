@@ -49,7 +49,7 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShapeAndSurviveSceneReload)
 TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnTransient<PlayerActor>();
+    PlayerActor* player = scene.SpawnObject<PlayerActor>("PlayerActor");
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->ChargeVisuals(), {{"丸まりの殻の寿命フレーム", 2}}), 0u);
     for (int i = 0; i < 3; ++i)
@@ -68,7 +68,7 @@ TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
 TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnTransient<PlayerActor>();
+    PlayerActor* player = scene.SpawnObject<PlayerActor>("PlayerActor");
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->ChargeVisuals(), {{"丸まりの殻の資産", "custom.curl"}}), 0u);
     player->Update(true);
@@ -111,7 +111,7 @@ TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
 {
     NS::Scene scene;
-    GL::Level::PropActor* rock = scene.SpawnTransient<GL::Level::PropActor>();
+    GL::Level::PropActor* rock = scene.SpawnObject<GL::Level::PropActor>("PropActor");
     ASSERT_NE(rock, nullptr);
     GL::Level::LaunchEffects* effects = &rock->Effects();
     ASSERT_EQ(NS::ApplyJsonFields(*effects, {{"着地の粉の寿命フレーム", 2}}), 0u);

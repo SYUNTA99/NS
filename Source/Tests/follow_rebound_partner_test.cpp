@@ -53,7 +53,7 @@ namespace
             target = scene.SpawnObject<PartnerTargetProbeActor>("target");
             target->partner = partner;
             target->pullBack = pullBack;
-            camera = scene.SpawnTransient<GL::Level::FollowCameraActor>();
+            camera = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
             NS::ApplyJsonFields(camera->Vcam(),
                                 nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
                                                {"反動の間に相手を収める重み", 0.3f},
