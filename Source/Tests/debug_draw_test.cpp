@@ -1,9 +1,15 @@
 #include "NSlib/Core/Math.h"
+#include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
+#include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Windows/Window.h"
 
 #include <gtest/gtest.h>
 
 #include <cstddef>
+#include <vector>
 
 // 半透明の面の口: 線と別に積む・上限で古い物から捨てる・消す
 
@@ -164,4 +170,68 @@ TEST(DebugShapesTest, ShapesStayAtTheirCapacityByDroppingTheOldest)
     }
     EXPECT_EQ(shapes.FaceVertexCount(), k_MaxFaceTriangles * 3);
     EXPECT_EQ(shapes.VertexCount(), k_MaxLineVertices);
+}
+
+// 線の GPU の資源は描く側が装置ごとに持つ。装置を作り直しても、前の装置の資源で描かない
+
+namespace
+{
+    // 縦横を奇数にして、中央のピクセルの中心を画面の中心に置く。x 軸に沿う線が中央の行を通る
+    constexpr int k_ViewSize = 17;
+
+    // 隠した窓と装置と描く段を作り、画面の中央の行を通る赤い線を描いて、
+    // 中央のピクセルを青・緑・赤・不透明度の順で返す。読めなければ空
+    std::vector<NS::uint8> DrawLineOnNewDeviceAndReadCenter()
+    {
+        NS::OS::Window window(
+            NS::OS::WindowDesc{.title = "開発用の線の試し", .size = {k_ViewSize, k_ViewSize}, .visible = false});
+        NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+        if (!device.IsValid())
+        {
+            ADD_FAILURE() << "装置を作れない";
+            return {};
+        }
+        NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+
+        std::vector<NS::uint8> pixels;
+        NS::Size2D size{};
+        {
+            NS::Gfx::DebugShapePass pass(assets.LoadBuiltinShaders());
+            NS::Gfx::DebugShapes shapes;
+            // ビュー射影を単位行列にして、座標をそのまま画面の座標として描く
+            shapes.Line(Vector3{-1.0f, 0.0f, 0.5f}, Vector3{1.0f, 0.0f, 0.5f}, Color{1.0f, 0.0f, 0.0f, 1.0f});
+            device.BeginFrame(0.0f, 0.0f, 0.0f, 1.0f);
+            pass.Draw(device, shapes, NS::Matrix::Identity);
+            if (!device.ReadBackbufferPixels(pixels, size))
+            {
+                pixels.clear();
+            }
+        }
+        if (pixels.empty())
+        {
+            return {};
+        }
+        const std::size_t index =
+            (static_cast<std::size_t>(size.height / 2) * static_cast<std::size_t>(size.width) +
+             static_cast<std::size_t>(size.width / 2)) *
+            4;
+        return {pixels[index], pixels[index + 1], pixels[index + 2], pixels[index + 3]};
+    }
+
+    bool IsRed(const std::vector<NS::uint8>& bgra)
+    {
+        return bgra.size() == 4u && bgra[0] == 0 && bgra[1] == 0 && bgra[2] == 255;
+    }
+} // namespace
+
+TEST(DebugShapePassTest, LineReachesTheTargetAfterTheDeviceIsRebuilt)
+{
+    const std::vector<NS::uint8> first = DrawLineOnNewDeviceAndReadCenter();
+    ASSERT_EQ(first.size(), 4u);
+    EXPECT_TRUE(IsRed(first)) << "1 つ目の装置: " << int{first[0]} << "," << int{first[1]} << "," << int{first[2]};
+
+    const std::vector<NS::uint8> second = DrawLineOnNewDeviceAndReadCenter();
+    ASSERT_EQ(second.size(), 4u);
+    EXPECT_TRUE(IsRed(second)) << "2 つ目の装置: " << int{second[0]} << "," << int{second[1]} << ","
+                               << int{second[2]};
 }

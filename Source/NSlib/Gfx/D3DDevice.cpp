@@ -208,6 +208,7 @@ namespace NS
                 NS_LOG_ERROR(Graphics, "backbuffer / depth D3DTexture の構築失敗");
                 return;
             }
+            m_boundSize = m_backbuffer->Size();
 
             // D3DCommonStates の private コンストラクタは make_unique から呼べない。例外を使わず nothrow new で構築し
             // 確保できたかは参照先の有無で判定する
@@ -501,6 +502,7 @@ namespace NS
             context->OMSetRenderTargets(0, nullptr, nullptr);
             m_backbuffer.reset();
             m_depth.reset();
+            m_boundSize = Size2D{0, 0};
             context->ClearState();
             context->Flush();
 
@@ -517,7 +519,10 @@ namespace NS
             {
                 NS_LOG_ERROR(Graphics, "Resize 後の backbuffer / depth D3DTexture 再構築失敗");
                 m_valid = false;
+                return;
             }
+            // ClearState でビューを外したので、次に差すまではバックバッファの大きさを返す
+            m_boundSize = m_backbuffer->Size();
         }
 
         void D3DDevice::SetSceneTarget(D3DRenderTarget* target) noexcept
@@ -531,8 +536,6 @@ namespace NS
             {
                 return;
             }
-            // Size() が今のビューを返すよう描画先を差し替える。RenderWorld のアスペクト比計算がこれを読む
-            m_sceneTarget = target;
             if (target != nullptr && target->IsValid())
             {
                 ID3D11RenderTargetView* rtv = target->Color()->Rtv();
@@ -559,19 +562,12 @@ namespace NS
         {
             m_commands->SetRenderTarget(rtv, dsv);
             m_commands->SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
+            m_boundSize = size;
         }
 
         Size2D D3DDevice::Size() const noexcept
         {
-            if (m_sceneTarget != nullptr && m_sceneTarget->IsValid())
-            {
-                return m_sceneTarget->Size();
-            }
-            if (!m_backbuffer)
-            {
-                return Size2D{0, 0};
-            }
-            return m_backbuffer->Size();
+            return m_boundSize;
         }
 
         D3DCommonStates& D3DDevice::States() noexcept

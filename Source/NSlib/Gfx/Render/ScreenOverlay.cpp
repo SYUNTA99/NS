@@ -15,25 +15,6 @@ namespace NS
 {
     namespace Gfx
     {
-        namespace
-        {
-            // 全画面塗り shader (fade.ps) の cbuffer b0 とバイト一致させる
-            struct alignas(16) FullscreenColorCB
-            {
-                Color color;
-            };
-            static_assert(sizeof(FullscreenColorCB) == 16,
-                          "FullscreenColorCB は HLSL の cbuffer b0 とバイト一致が必要");
-
-            // UI 矩形 shader (ui_rect.vs / ps) の cbuffer b0 とバイト一致させる
-            struct alignas(16) ScreenRectCB
-            {
-                float rect[4]; // clip 空間の左上の x と y、幅と高さ。高さは画面下方向の量
-                Color color;
-            };
-            static_assert(sizeof(ScreenRectCB) == 32, "ScreenRectCB は HLSL の cbuffer b0 とバイト一致が必要");
-        } // namespace
-
         ScreenOverlay::ScreenOverlay(D3DDevice* device, const BuiltinShaders& shaders) noexcept
             : m_device(device), m_fullscreenVs(shaders.fullscreenVs), m_fadePs(shaders.fadePs),
               m_screenRectVs(shaders.screenRectVs), m_screenRectPs(shaders.screenRectPs)
@@ -49,7 +30,7 @@ namespace NS
                                        std::size_t constantBytes,
                                        std::string_view label) noexcept
         {
-            if (vs == nullptr || ps == nullptr || !vs->IsValid() || !ps->IsValid())
+            if (!CanDrawFromVertexId(vs) || !IsUsable(ps))
             {
                 return false;
             }
@@ -102,14 +83,12 @@ namespace NS
             cmd.PSSetShader(ps);
             if (vsReadsConstants)
             {
-                cmd.VSSetConstantBuffer(*pass.cb, 0);
+                cmd.VSSetConstantBuffer(*pass.cb, k_DrawConstantsSlot);
             }
-            cmd.PSSetConstantBuffer(*pass.cb, 0);
+            cmd.PSSetConstantBuffer(*pass.cb, k_DrawConstantsSlot);
 
-            // VS が SV_VertexID から形を作るので、InputLayout を外し頂点もインデックスもバインドしない
-            cmd->IASetInputLayout(nullptr);
-            cmd.SetTopology(Topology::TriangleList);
-            cmd.Draw(vertexCount);
+            // 頂点もインデックスも差さない
+            cmd.DrawFromVertexId(vertexCount);
         }
 
         void ScreenOverlay::DrawFullscreenColor(const Color& color) noexcept

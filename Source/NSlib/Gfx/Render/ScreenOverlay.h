@@ -18,8 +18,25 @@ namespace NS
         class D3DDevice;
         struct BuiltinShaders;
 
+        //! @brief 全画面を塗るシェーダーの定数
+        //! @details fade.ps.hlsl の cbuffer FadeCB と大きさを合わせる。照らす試しは shader_constants_test.cpp
+        struct alignas(16) FullscreenColorCB
+        {
+            Color color;
+        };
+        static_assert(sizeof(FullscreenColorCB) == 16, "FullscreenColorCB は HLSL の cbuffer FadeCB とバイト一致が必要");
+
+        //! @brief 画面の矩形を塗るシェーダーの定数
+        //! @details ui_rect.vs.hlsl と ui_rect.ps.hlsl の cbuffer UiRectCB と大きさを合わせる
+        struct alignas(16) ScreenRectCB
+        {
+            float rect[4]{}; //!< クリップ空間の左上の x と y、幅と高さ。高さは画面の下向きの量
+            Color color;
+        };
+        static_assert(sizeof(ScreenRectCB) == 32, "ScreenRectCB は HLSL の cbuffer UiRectCB とバイト一致が必要");
+
         //! @brief 今の描画先の最前面へ、全画面の色と画面の矩形を半透明で重ねる
-        //! @details 描く資源は初回の描画で作る。装置が無い時とシェーダーが nullptr の時は何も描かない
+        //! @details 描く資源は初回の描画で作る。装置が無い時と IsUsable が使えないと答えた時は何も描かない
         //! @warning D3DDevice より先に破棄する。シェーダーの持ち主が捨てた後は描画を呼ばない
         class ScreenOverlay : public NonCopyable
         {
@@ -45,7 +62,7 @@ namespace NS
                 bool ready = false;
             };
 
-            // 描く資源を初回だけ構築し、今描けるかを返す。シェーダーは毎回見て、nullptr なら描かない
+            // 描く資源を初回だけ構築し、今描けるかを返す。シェーダーは毎回 IsUsable で見る
             // label はログに出す名前
             [[nodiscard]] bool EnsurePass(Pass& pass,
                                           const D3DShader* vs,

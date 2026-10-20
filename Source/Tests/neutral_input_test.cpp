@@ -1,4 +1,5 @@
 #include "NSlib/Windows/Input.h"
+#include "NSlib/Windows/detail/InputWin32.h"
 
 #include <gtest/gtest.h>
 
@@ -53,4 +54,39 @@ TEST(NeutralInput, NestedScopesEndWithTheOuterOne)
     EXPECT_FALSE(input.IsNeutral());
     EXPECT_TRUE(input.Keyboard().IsHeld(NS::OS::Key::B));
     input.Keyboard().OnKeyUp(NS::OS::Key::B);
+}
+
+// 中立の間に OS から届いた離しは手元のキーボードへ書かれ、終わった後に押したままが残らない
+TEST(NeutralInput, ReleaseDuringNeutralReachesTheHeldKeyboard)
+{
+    NS::OS::Input& input = NS::OS::Input::Get();
+    input.Keyboard().OnKeyDown(NS::OS::Key::A);
+    {
+        const NS::OS::ScopedNeutralInput neutral;
+        NS::OS::DispatchWin32MessageToInput(input, WM_KEYUP, 'A', 0);
+    }
+    EXPECT_FALSE(input.Keyboard().IsHeld(NS::OS::Key::A));
+    input.Keyboard().OnKeyUp(NS::OS::Key::A);
+}
+
+// 中立の間に決めた相対移動は、終わった後の手元のマウスに付いている
+TEST(NeutralInput, RelativeModeSetDuringNeutralStaysOnTheHeldMouse)
+{
+    NS::OS::Input& input = NS::OS::Input::Get();
+    {
+        const NS::OS::ScopedNeutralInput neutral;
+        input.SetMouseRelativeMode(true);
+    }
+    EXPECT_TRUE(input.Mouse().IsRelativeMode());
+    input.SetMouseRelativeMode(false);
+}
+
+// 生のマウス移動も、ほかのマウスの入力と同じく UI がマウスを持つ間はゲームへ流さない
+TEST(NeutralInput, RawMouseMoveIsTakenWhileUiHasTheMouse)
+{
+    NS::OS::Input& input = NS::OS::Input::Get();
+    input.SetUiCapture(NS::OS::UiCaptureDesc{.wantMouse = true});
+    EXPECT_TRUE(NS::OS::IsTakenByUi(input, WM_INPUT));
+    input.SetUiCapture(NS::OS::UiCaptureDesc{});
+    EXPECT_FALSE(NS::OS::IsTakenByUi(input, WM_INPUT));
 }

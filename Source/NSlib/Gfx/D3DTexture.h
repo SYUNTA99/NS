@@ -5,6 +5,8 @@
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3dCommon.h"
 
+#include <array>
+#include <memory>
 #include <string>
 
 namespace NS
@@ -25,7 +27,8 @@ namespace NS
             DXGI_FORMAT viewFormat = DXGI_FORMAT_UNKNOWN;
         };
 
-        //! 2D テクスチャと指定されたビュー。画像読込失敗はピンクの代替画像で示す
+        //! 2D か立方体のテクスチャと指定されたビュー。画像読込失敗はピンクの代替画像で示す
+        //! 画像ファイルから GPU のテクスチャを作るのはこの型だけ。mipmap・色空間・代替画像の決まりを 2D と立方体で共有する
         class D3DTexture : public NonCopyable
         {
         public:
@@ -36,6 +39,19 @@ namespace NS
             //! @param[in] existing 包む対象。空なら IsValid() が false を返す
             //! @param[in] bindFlags 作るビュー。立っている物だけ SRV / RTV / DSV を作る
             [[nodiscard]] static std::unique_ptr<D3DTexture> Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
+
+            //! 立方体の DDS から立方体のテクスチャを作る。参照先を必ず返す
+            //! 読めない時と立方体でない DDS の時は、ピンクの立方体の代替画像
+            [[nodiscard]] static std::unique_ptr<D3DTexture> CreateCubeFromDds(const std::string& path);
+
+            //! 6 枚の画像を +X・-X・+Y・-Y・+Z・-Z の面に並べた立方体のテクスチャを作る。参照先を必ず返す
+            //! 各面は 2D と同じ道で読み、2D と同じ段数の mipmap を持つ
+            //! 1 枚でも読めない時と、大きさ・書式・段数が揃わない時は、ピンクの立方体の代替画像
+            [[nodiscard]] static std::unique_ptr<D3DTexture>
+            CreateCubeFromFaces(const std::array<std::string, 6>& facePaths);
+
+            //! ピンクの立方体の代替画像を作る。IsUsingFallback は true
+            [[nodiscard]] static std::unique_ptr<D3DTexture> CreateCubeFallback();
 
             ~D3DTexture();
 
@@ -59,8 +75,12 @@ namespace NS
             [[nodiscard]] ID3D11DepthStencilView* Dsv() const noexcept;
 
         private:
+            D3DTexture() noexcept = default;
             explicit D3DTexture(const D3DTextureDesc& desc);
             D3DTexture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
+
+            // 読めた資源を持つ。読めなければ代替画像 (cube なら立方体) へ差し替える
+            void AdoptLoaded(ID3D11Device* device, ComPtr<ID3D11Resource> loaded, bool cube) noexcept;
 
             ComPtr<ID3D11Texture2D> m_tex;
             ComPtr<ID3D11ShaderResourceView> m_srv;

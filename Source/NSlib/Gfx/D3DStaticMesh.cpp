@@ -15,18 +15,6 @@ namespace NS
         {
             // モデルの読み込みに失敗した場合に表示する、デバッグ用の代替モデル
             constexpr float k_FallbackCubeHalfExtent = 0.5f;
-
-            // 頂点位置データから、モデルのAABBを算出する
-            AABB ComputeLocalBounds(const StaticVertex* vertices, std::size_t count)
-            {
-                AABB box{};
-                if (vertices != nullptr && count > 0u)
-                {
-                    DirectX::BoundingBox::CreateFromPoints(
-                        box, count, static_cast<const DirectX::XMFLOAT3*>(&vertices[0].position), sizeof(StaticVertex));
-                }
-                return box;
-            }
         } // namespace
 
         std::unique_ptr<D3DStaticMesh> D3DStaticMesh::Create(const D3DStaticMeshDesc& desc)
@@ -57,7 +45,8 @@ namespace NS
                 }
                 else
                 {
-                    SetLocalBounds(ComputeLocalBounds(desc.vertices, desc.vertexCount));
+                    SetLocalBounds(
+                        AABBFromPositions(&desc.vertices[0].position, desc.vertexCount, sizeof(StaticVertex)));
                 }
                 return;
             }
@@ -89,7 +78,8 @@ namespace NS
                               geom.indices.size(),
                               true))
             {
-                SetLocalBounds(ComputeLocalBounds(geom.vertices.data(), geom.vertices.size()));
+                SetLocalBounds(
+                    AABBFromPositions(&geom.vertices[0].position, geom.vertices.size(), sizeof(StaticVertex)));
             }
             else
             {

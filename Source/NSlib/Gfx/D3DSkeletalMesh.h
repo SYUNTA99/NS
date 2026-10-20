@@ -5,6 +5,7 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Geometry/Vertex.h"
 #include "NSlib/Gfx/D3DMesh.h"
+#include "NSlib/Gfx/D3DShader.h"
 
 #include <cstddef>
 #include <memory>
@@ -24,15 +25,12 @@ namespace NS
             std::size_t boneCount = 0;
         };
 
-        //! シェーダへ転送するボーンパレット
+        //! シェーダへ転送するボーンパレット。差す場所は k_BonePaletteSlot
         struct BonePaletteCB
         {
             Matrix bones[k_MaxBones];
         };
         static_assert((sizeof(BonePaletteCB) % 16) == 0, "定数バッファのサイズは16バイトの倍数である必要があります。");
-
-        //! ボーンデータをシェーダへ転送する際のスロット番号
-        inline constexpr uint k_BonePaletteSlot = 1;
 
         //! バインド空間の影響頂点を包む球。姿勢に追従する境界の計算に使う
         struct BoneSphere

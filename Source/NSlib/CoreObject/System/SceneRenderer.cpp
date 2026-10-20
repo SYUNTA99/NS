@@ -6,7 +6,6 @@
 #include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
 #include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
-#include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Gfx/Render/Bloom.h"
@@ -56,6 +55,7 @@ namespace NS
             m_effects.reset();
             m_overlay.reset();
             m_skybox.reset();
+            m_debugShapes.reset();
             m_shaders = Gfx::BuiltinShaders{};
             return;
         }
@@ -64,6 +64,10 @@ namespace NS
         m_shaders = AssetManager::Get().LoadBuiltinShaders();
         m_overlay = std::make_unique<Gfx::ScreenOverlay>(device, m_shaders);
         m_skybox = std::make_unique<Gfx::Skybox>(m_shaders);
+        // 資源は今の装置の物なので、装置を差す度に作り直す。出荷では線を描かないので作らない
+#if !defined(NS_SHIPPING)
+        m_debugShapes = std::make_unique<Gfx::DebugShapePass>(m_shaders);
+#endif
 
         std::string root = m_effectRoot;
         if (root.empty())
@@ -238,8 +242,7 @@ namespace NS
         return resolved;
     }
 
-    void SceneRenderer::Render(CameraManager& cameras,
-                               SceneCamera& camera,
+    void SceneRenderer::Render(SceneCamera& camera,
                                UIDirector& ui,
                                const Gfx::ScreenFade& fade,
                                std::string_view skyboxPath,
@@ -250,10 +253,10 @@ namespace NS
             return;
         }
 
-        // ビュー列が空なら現描画先へ CameraManager の視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
+        // ビュー列が空なら現描画先へ実カメラの視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
-            RenderViewWithOverlays(cameras, camera, ui, fade, skyboxPath, SceneView{}, alpha, PassesForView(0));
+            RenderViewWithOverlays(camera, ui, fade, skyboxPath, SceneView{}, alpha, PassesForView(0));
             return;
         }
 
@@ -261,7 +264,7 @@ namespace NS
         {
             const SceneView& view = m_sceneViews[i];
             m_device->BeginSceneView(view.target);
-            RenderViewWithOverlays(cameras, camera, ui, fade, skyboxPath, view, alpha, PassesForView(i));
+            RenderViewWithOverlays(camera, ui, fade, skyboxPath, view, alpha, PassesForView(i));
         }
     }
 
@@ -305,8 +308,7 @@ namespace NS
         return m_viewPasses[index];
     }
 
-    void SceneRenderer::RenderViewWithOverlays(CameraManager& cameras,
-                                               SceneCamera& camera,
+    void SceneRenderer::RenderViewWithOverlays(SceneCamera& camera,
                                                UIDirector& ui,
                                                const Gfx::ScreenFade& fade,
                                                std::string_view skyboxPath,
@@ -314,17 +316,17 @@ namespace NS
                                                float alpha,
                                                ViewPasses& passes)
     {
-        const Gfx::RenderContext ctx = RenderWorld(cameras, camera, skyboxPath, view.viewPose, alpha, passes);
+        const Gfx::RenderContext ctx = RenderWorld(camera, skyboxPath, view.viewPose, alpha, passes);
 
 #if !defined(NS_SHIPPING)
-        Gfx::DebugDraw::Draw(*ctx.device, m_shaders, ctx.viewProjection);
+        m_debugShapes->Draw(*ctx.device, Gfx::DebugDraw::StepShapes(), ctx.viewProjection);
 
         // ビューの図形は、このビューの行列で積んで描いたらすぐ捨てる。次のビューや次のフレームへ持ち越さない
         if (view.drawShapes)
         {
             m_viewShapes.Clear();
             view.drawShapes(m_viewShapes, ctx.viewProjection);
-            m_viewShapes.Draw(*ctx.device, m_shaders, ctx.viewProjection);
+            m_debugShapes->Draw(*ctx.device, m_viewShapes, ctx.viewProjection);
             m_viewShapes.Clear();
         }
 #endif
@@ -358,8 +360,7 @@ namespace NS
         }
     } // namespace
 
-    Gfx::RenderContext SceneRenderer::RenderWorld(CameraManager& cameras,
-                                                      SceneCamera& camera,
+    Gfx::RenderContext SceneRenderer::RenderWorld(SceneCamera& camera,
                                                       std::string_view skyboxPath,
                                                       const std::optional<CameraPose>& viewOverride,
                                                       float alpha,
@@ -373,7 +374,7 @@ namespace NS
         ctx.overlay = m_overlay.get();
         ctx.alpha = alpha;
 
-        // 上書き視点は実カメラを経由せず、その場で行列を組む。実カメラの中身はゲーム視点のまま残す
+        // 上書き視点は実カメラを経由せず、その場で組む。実カメラの中身はゲーム視点のまま残す
         CameraData overrideCamera{};
         const CameraData* viewCamera = &camera.Camera();
         if (viewOverride.has_value())
@@ -387,16 +388,10 @@ namespace NS
 
             // aspect は関数の冒頭で device から取り直した実カメラの物を写す
             overrideCamera.SetAspectRatio(camera.Camera().AspectRatio());
-
-            ctx.viewProjection = overrideCamera.ViewProjection();
-            ctx.cameraPosition = viewOverride->position;
             viewCamera = &overrideCamera;
         }
-        else
-        {
-            ctx.viewProjection = cameras.ViewProjection();
-            ctx.cameraPosition = camera.Position();
-        }
+        ctx.viewProjection = viewCamera->ViewProjection();
+        ctx.cameraPosition = viewCamera->Position();
         ctx.resolvedSettings = ResolveSceneSettings(Gfx::RenderSettings{});
         ctx.groundWave = m_groundWave;
         ctx.distortionRing = m_distortionRing;

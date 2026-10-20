@@ -27,90 +27,10 @@ namespace
     constexpr std::size_t k_MaxFaceVertices = 38880;
 
     // この固定ステップの図形の積み先。自由関数の Line や Circle などは全部ここへ積む
-    NS::Gfx::DebugShapes& StepShapes() noexcept
+    NS::Gfx::DebugShapes& EditableStepShapes() noexcept
     {
         static NS::Gfx::DebugShapes g_stepShapes;
         return g_stepShapes;
-    }
-
-    // 描画用のリソース一式
-    struct LineBackend
-    {
-        NS::Gfx::ComPtr<ID3D11InputLayout> inputLayout;
-        std::unique_ptr<NS::Gfx::D3DBuffer> vb;
-        std::unique_ptr<NS::Gfx::D3DBuffer> faceVb;
-        std::unique_ptr<NS::Gfx::D3DBuffer> cb;
-        // 面は奥の側も見せるので裏表とも描く。深度を見ないので、物の表面と重なった面もちらつかずに透ける
-        std::unique_ptr<NS::Gfx::D3DPipeline> facePipeline;
-        bool initAttempted = false;
-        bool valid = false;
-    };
-
-    LineBackend& Backend() noexcept
-    {
-        static LineBackend backend;
-        return backend;
-    }
-
-    // 入力レイアウトは初回の vs のバイトコードで作り、読み直しても作り直さない
-    // debug_line.vs.hlsl の入力の並びを変えた時は、起動し直すまで合わない
-    bool EnsureBackend(const NS::Gfx::D3DShader& vs, const NS::Gfx::D3DShader& ps) noexcept
-    {
-        LineBackend& b = Backend();
-        if (b.initAttempted)
-        {
-            return b.valid;
-        }
-        b.initAttempted = true;
-
-        ID3D11Device* d3d11Device = NS::Gfx::Gpu().device;
-        if (d3d11Device == nullptr)
-        {
-            NS_LOG_ERROR(Graphics, "DebugDraw: グローバル Device が無効");
-            return false;
-        }
-
-        if (!vs.IsValid() || !ps.IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "DebugDraw: shader 構築失敗");
-            return false;
-        }
-
-        const std::span<const std::byte> bytecode = vs.VertexShaderBytecode();
-        const D3D11_INPUT_ELEMENT_DESC layout[] = {
-            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        };
-        const HRESULT hr =
-            d3d11Device->CreateInputLayout(layout, 2u, bytecode.data(), bytecode.size(), b.inputLayout.GetAddressOf());
-        if (FAILED(hr))
-        {
-            NS_LOG_ERROR(Graphics, "DebugDraw: CreateInputLayout 失敗 (hr=0x{:08X})", static_cast<NS::uint>(hr));
-            return false;
-        }
-
-        b.vb = NS::Gfx::D3DBuffer::Create(
-            NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxVertices, k_VertexStride, D3D11_USAGE_DYNAMIC));
-        b.faceVb = NS::Gfx::D3DBuffer::Create(
-            NS::Gfx::MakeVertexBufferDesc(nullptr, k_MaxFaceVertices, k_VertexStride, D3D11_USAGE_DYNAMIC));
-        b.cb = NS::Gfx::D3DBuffer::Create(NS::Gfx::MakeConstantBufferDesc(sizeof(NS::Matrix)));
-        if (!b.vb->IsValid() || !b.faceVb->IsValid() || !b.cb->IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "DebugDraw: VB / CB 構築失敗");
-            return false;
-        }
-
-        b.facePipeline = NS::Gfx::D3DPipeline::Create(NS::Gfx::D3DPipelineDesc{.cull = NS::Gfx::CullMode::None,
-                                                                         .blend = NS::Gfx::BlendMode::Alpha,
-                                                                         .depth = NS::Gfx::DepthMode::Disabled});
-        if (!b.facePipeline->IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "DebugDraw: 面の D3DPipeline 構築失敗");
-            return false;
-        }
-
-        b.valid = true;
-        return true;
     }
 } // namespace
 
@@ -264,58 +184,107 @@ namespace NS
             m_faces.push_back({c, color});
         }
 
-        void DebugShapes::Draw(D3DDevice& device,
-                               const BuiltinShaders& shaders,
-                               const Matrix& viewProjection) const noexcept
+        DebugShapePass::DebugShapePass(const BuiltinShaders& shaders) noexcept
+            : m_vs(shaders.debugLineVs), m_ps(shaders.debugLinePs)
         {
-            static_assert(sizeof(Vertex) == k_VertexStride, "Vertex は POSITION(12) + COLOR(16) の 28 byte 前提");
-
-            if (m_lines.empty() && m_faces.empty())
+            m_lineVb = D3DBuffer::Create(MakeVertexBufferDesc(nullptr, k_MaxVertices, k_VertexStride, D3D11_USAGE_DYNAMIC));
+            m_faceVb =
+                D3DBuffer::Create(MakeVertexBufferDesc(nullptr, k_MaxFaceVertices, k_VertexStride, D3D11_USAGE_DYNAMIC));
+            m_cb = D3DBuffer::Create(MakeConstantBufferDesc(sizeof(Matrix)));
+            if (!m_lineVb->IsValid() || !m_faceVb->IsValid() || !m_cb->IsValid())
             {
+                NS_LOG_ERROR(Graphics, "DebugShapePass: VB / CB 構築失敗");
                 return;
             }
 
-            // シェーダーは AssetManager が捨てると消えるので、静的な資源に控えず毎回渡された物を使う
-            if (shaders.debugLineVs == nullptr || shaders.debugLinePs == nullptr)
+            m_facePipeline = D3DPipeline::Create(
+                D3DPipelineDesc{.cull = CullMode::None, .blend = BlendMode::Alpha, .depth = DepthMode::Disabled});
+            if (!m_facePipeline->IsValid())
             {
+                NS_LOG_ERROR(Graphics, "DebugShapePass: 面の D3DPipeline 構築失敗");
                 return;
             }
-            if (!EnsureBackend(*shaders.debugLineVs, *shaders.debugLinePs))
-            {
-                return;
-            }
+            m_valid = true;
+        }
 
+        DebugShapePass::~DebugShapePass() = default;
+
+        void DebugShapePass::SelectInputLayout(const D3DShader& vertexShader) noexcept
+        {
+            if (m_layoutBytecodeId == vertexShader.BytecodeId())
+            {
+                return;
+            }
+            m_layoutBytecodeId = vertexShader.BytecodeId();
+            m_inputLayout.Reset();
+
+            ID3D11Device* d3d11Device = Gpu().device;
+            const std::span<const std::byte> bytecode = vertexShader.VertexShaderBytecode();
+            if (d3d11Device == nullptr || bytecode.empty())
+            {
+                NS_LOG_ERROR(Graphics, "DebugShapePass: グローバル Device が無効か、VS バイトコードが空");
+                return;
+            }
+            const D3D11_INPUT_ELEMENT_DESC layout[] = {
+                {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+                {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+            };
+            const HRESULT hr =
+                d3d11Device->CreateInputLayout(layout, 2u, bytecode.data(), bytecode.size(), m_inputLayout.GetAddressOf());
+            if (FAILED(hr))
+            {
+                NS_LOG_ERROR(Graphics, "DebugShapePass: CreateInputLayout 失敗 (hr=0x{:08X})", static_cast<uint>(hr));
+                m_inputLayout.Reset();
+            }
+        }
+
+        void DebugShapePass::Draw(D3DDevice& device, const DebugShapes& shapes, const Matrix& viewProjection) noexcept
+        {
+            static_assert(sizeof(DebugShapes::Vertex) == k_VertexStride,
+                          "Vertex は POSITION(12) + COLOR(16) の 28 byte 前提");
+
+            if (shapes.m_lines.empty() && shapes.m_faces.empty())
+            {
+                return;
+            }
+            if (!m_valid || !IsUsable(m_vs) || !IsUsable(m_ps))
+            {
+                return;
+            }
             D3DCommandList& cmd = device.Commands();
             if (cmd.Native() == nullptr)
             {
                 return;
             }
-
-            LineBackend& b = Backend();
-            cmd.UpdateSubresource(*b.cb, &viewProjection, sizeof(viewProjection));
-            cmd.VSSetShader(*shaders.debugLineVs);
-            cmd.PSSetShader(*shaders.debugLinePs);
-            cmd.SetInputLayout(b.inputLayout.Get());
-            cmd.VSSetConstantBuffer(*b.cb, 0u);
-
-            // 面を先に描く。線は深度を書くので、後に描かないと面が線の奥で途切れる
-            if (!m_faces.empty())
+            SelectInputLayout(*m_vs);
+            if (m_inputLayout == nullptr)
             {
-                cmd.UpdateSubresource(*b.faceVb, m_faces.data(), m_faces.size() * sizeof(Vertex));
-                cmd.SetPipeline(*b.facePipeline);
-                cmd.SetVertexBuffer(*b.faceVb, 0u);
-                cmd.SetTopology(Topology::TriangleList);
-                cmd.Draw(static_cast<uint>(m_faces.size()));
+                return;
             }
 
-            // 溜めた頂点データを一括で描画する
-            if (!m_lines.empty())
+            cmd.UpdateSubresource(*m_cb, &viewProjection, sizeof(viewProjection));
+            cmd.VSSetShader(*m_vs);
+            cmd.PSSetShader(*m_ps);
+            cmd.SetInputLayout(m_inputLayout.Get());
+            cmd.VSSetConstantBuffer(*m_cb, k_DrawConstantsSlot);
+
+            // 面を先に描く。線は深度を書くので、後に描かないと面が線の奥で途切れる
+            if (!shapes.m_faces.empty())
             {
-                cmd.UpdateSubresource(*b.vb, m_lines.data(), m_lines.size() * sizeof(Vertex));
+                cmd.UpdateSubresource(*m_faceVb, shapes.m_faces.data(), shapes.m_faces.size() * sizeof(DebugShapes::Vertex));
+                cmd.SetPipeline(*m_facePipeline);
+                cmd.SetVertexBuffer(*m_faceVb, 0u);
+                cmd.SetTopology(Topology::TriangleList);
+                cmd.Draw(static_cast<uint>(shapes.m_faces.size()));
+            }
+
+            if (!shapes.m_lines.empty())
+            {
+                cmd.UpdateSubresource(*m_lineVb, shapes.m_lines.data(), shapes.m_lines.size() * sizeof(DebugShapes::Vertex));
                 cmd.SetPipeline(device.CommonPipeline(BlendMode::Opaque));
-                cmd.SetVertexBuffer(*b.vb, 0u);
+                cmd.SetVertexBuffer(*m_lineVb, 0u);
                 cmd.SetTopology(Topology::LineList);
-                cmd.Draw(static_cast<uint>(m_lines.size()));
+                cmd.Draw(static_cast<uint>(shapes.m_lines.size()));
             }
         }
 
@@ -335,22 +304,22 @@ namespace NS
         {
             void Line(const Vector3& a, const Vector3& b, const Color& color) noexcept
             {
-                StepShapes().Line(a, b, color);
+                EditableStepShapes().Line(a, b, color);
             }
 
             void AABB(const NS::AABB& box, const Color& color) noexcept
             {
-                StepShapes().AABB(box, color);
+                EditableStepShapes().AABB(box, color);
             }
 
             void OBB(const NS::OBB& obb, const Color& color) noexcept
             {
-                StepShapes().OBB(obb, color);
+                EditableStepShapes().OBB(obb, color);
             }
 
             void Sphere(const NS::Sphere& sphere, const Color& color) noexcept
             {
-                StepShapes().Sphere(sphere, color);
+                EditableStepShapes().Sphere(sphere, color);
             }
 
             void Circle(const Vector3& center,
@@ -358,7 +327,7 @@ namespace NS
                         const Vector3& v,
                         const Color& color) noexcept
             {
-                StepShapes().Circle(center, u, v, color);
+                EditableStepShapes().Circle(center, u, v, color);
             }
 
             void Capsule(const Vector3& base,
@@ -366,27 +335,27 @@ namespace NS
                          float radius,
                          const Color& color) noexcept
             {
-                StepShapes().Capsule(base, axis, radius, color);
+                EditableStepShapes().Capsule(base, axis, radius, color);
             }
 
-            void Draw(D3DDevice& device, const BuiltinShaders& shaders, const Matrix& viewProjection) noexcept
+            const DebugShapes& StepShapes() noexcept
             {
-                StepShapes().Draw(device, shaders, viewProjection);
+                return EditableStepShapes();
             }
 
             void BeginStep() noexcept
             {
-                StepShapes().Clear();
+                EditableStepShapes().Clear();
             }
 
             void Clear() noexcept
             {
-                StepShapes().Clear();
+                EditableStepShapes().Clear();
             }
 
             std::size_t VertexCount() noexcept
             {
-                return StepShapes().VertexCount();
+                return EditableStepShapes().VertexCount();
             }
 
             void Triangle(const Vector3& a,
@@ -394,12 +363,12 @@ namespace NS
                           const Vector3& c,
                           const Color& color) noexcept
             {
-                StepShapes().Triangle(a, b, c, color);
+                EditableStepShapes().Triangle(a, b, c, color);
             }
 
             std::size_t FaceVertexCount() noexcept
             {
-                return StepShapes().FaceVertexCount();
+                return EditableStepShapes().FaceVertexCount();
             }
         } // namespace DebugDraw
     } // namespace Gfx

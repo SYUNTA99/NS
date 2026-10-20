@@ -12,15 +12,13 @@
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DStaticMesh.h"
+#include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/detail/TextureFile.h"
 #include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/StringUtils.h"
 
-#include <DDSTextureLoader.h>
-#include <WICTextureLoader.h>
-#include <algorithm>
+#include <array>
 
 namespace NS
 {
@@ -28,13 +26,6 @@ namespace NS
     {
         namespace
         {
-            // シェーダへ渡す定数。HLSL 側の cbuffer と同じ 64 バイトに揃える
-            struct alignas(16) SkyboxCB
-            {
-                Matrix viewProj;
-            };
-            static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
-
             // キューブマップのテクスチャファイル名
             // 素材のファイル名が示す向きは DX11 の軸から水平に 90° ずれている。継ぎ目が合う並びで置く
             constexpr std::array<const char*, 6> k_KurtFaceFileNames = {
@@ -45,211 +36,6 @@ namespace NS
                 "space_rt.png", // 奥
                 "space_lf.png", // 手前
             };
-
-            // 読み込みに失敗した時のピンク一色のキューブマップを作る
-            bool CreateMagentaCubemapFallback(ID3D11Device* d3d11Device, ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
-            {
-                if (d3d11Device == nullptr)
-                {
-                    NS_LOG_ERROR(Graphics, "Skybox fallback cubemap: device が nullptr");
-                    return false;
-                }
-
-                const uint8 magenta[4] = {0xFF, 0x00, 0xFF, 0xFF};
-
-                D3D11_TEXTURE2D_DESC td{};
-                td.Width = 1;
-                td.Height = 1;
-                td.MipLevels = 1;
-                td.ArraySize = 6;
-                td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-                td.SampleDesc.Count = 1;
-                td.Usage = D3D11_USAGE_IMMUTABLE;
-                td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-                td.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
-
-                std::array<D3D11_SUBRESOURCE_DATA, 6> srd{};
-                for (D3D11_SUBRESOURCE_DATA& s : srd)
-                {
-                    s.pSysMem = magenta;
-                    s.SysMemPitch = sizeof(magenta);
-                }
-
-                ComPtr<ID3D11Texture2D> tex;
-                HRESULT hr = d3d11Device->CreateTexture2D(&td, srd.data(), tex.GetAddressOf());
-                if (FAILED(hr))
-                {
-                    NS_LOG_ERROR(Graphics,
-                                 "Skybox fallback cubemap CreateTexture2D 失敗 (hr=0x{:08X})",
-                                 static_cast<uint>(hr));
-                    return false;
-                }
-
-                D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-                srvDesc.Format = td.Format;
-                srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
-                srvDesc.TextureCube.MostDetailedMip = 0;
-                srvDesc.TextureCube.MipLevels = 1;
-
-                hr = d3d11Device->CreateShaderResourceView(tex.Get(), &srvDesc, outSrv.GetAddressOf());
-                if (FAILED(hr))
-                {
-                    NS_LOG_ERROR(
-                        Graphics, "Skybox fallback cubemap CreateSRV 失敗 (hr=0x{:08X})", static_cast<uint>(hr));
-                    return false;
-                }
-                return true;
-            }
-
-            bool LoadDdsCubemap(ID3D11Device* d3d11Device,
-                                std::string_view path,
-                                ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
-            {
-                ComPtr<ID3D11Resource> resource;
-                const HRESULT hr = DirectX::CreateDDSTextureFromFileEx(d3d11Device,
-                                                                       OS::StringUtils::WideFromUtf8(path).c_str(),
-                                                                       0,
-                                                                       D3D11_USAGE_IMMUTABLE,
-                                                                       D3D11_BIND_SHADER_RESOURCE,
-                                                                       0,
-                                                                       D3D11_RESOURCE_MISC_TEXTURECUBE,
-                                                                       DirectX::DDS_LOADER_DEFAULT,
-                                                                       resource.GetAddressOf(),
-                                                                       outSrv.GetAddressOf());
-                if (FAILED(hr))
-                {
-                    NS_LOG_ERROR(Graphics, "Skybox .dds ロード失敗: {} (hr=0x{:08X})", path, static_cast<uint>(hr));
-                    return false;
-                }
-                return true;
-            }
-
-            // 6枚の画像ファイルを読み込み、1つのキューブマップとして結合する
-            bool LoadSixFacePngCubemap(ID3D11Device* d3d11Device,
-                                       ID3D11DeviceContext* context,
-                                       std::string_view dir,
-                                       ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
-            {
-                std::array<ComPtr<ID3D11Texture2D>, 6> faceTextures{};
-                int faceWidth = 0;
-                int faceHeight = 0;
-                DXGI_FORMAT faceFormat = DXGI_FORMAT_UNKNOWN;
-
-                for (std::size_t i = 0; i < 6; ++i)
-                {
-                    const std::string facePath = OS::FileSystem::Combine(dir, k_KurtFaceFileNames[i]);
-                    if (!OS::FileSystem::Exists(facePath))
-                    {
-                        NS_LOG_ERROR(Graphics, "Skybox 6-face: {} が見つからない", facePath);
-                        return false;
-                    }
-
-                    std::optional<std::vector<std::byte>> bytesOpt = OS::FileSystem::ReadAllBytes(facePath);
-                    if (!bytesOpt.has_value())
-                    {
-                        NS_LOG_ERROR(Graphics, "Skybox 6-face: {} 読込失敗", facePath);
-                        return false;
-                    }
-                    const std::vector<std::byte>& bytes = bytesOpt.value();
-
-                    ComPtr<ID3D11Resource> resource;
-                    ComPtr<ID3D11ShaderResourceView> tmpSrv;
-
-                    const HRESULT hr =
-                        DirectX::CreateWICTextureFromMemoryEx(d3d11Device,
-                                                              nullptr,
-                                                              reinterpret_cast<const uint8*>(bytes.data()),
-                                                              bytes.size(),
-                                                              0u,
-                                                              D3D11_USAGE_DEFAULT,
-                                                              D3D11_BIND_SHADER_RESOURCE,
-                                                              0u,
-                                                              0u,
-                                                              DirectX::WIC_LOADER_IGNORE_SRGB,
-                                                              resource.GetAddressOf(),
-                                                              tmpSrv.GetAddressOf());
-                    if (FAILED(hr) || !resource)
-                    {
-                        NS_LOG_ERROR(Graphics,
-                                     "Skybox 6-face: WIC 読込失敗 {} (hr=0x{:08X})",
-                                     facePath,
-                                     static_cast<uint>(hr));
-                        return false;
-                    }
-
-                    ComPtr<ID3D11Texture2D> tex2d;
-                    if (FAILED(resource->QueryInterface(IID_PPV_ARGS(tex2d.GetAddressOf()))) || !tex2d)
-                    {
-                        NS_LOG_ERROR(Graphics, "Skybox 6-face: ID3D11Texture2D へ QI 失敗 {}", facePath);
-                        return false;
-                    }
-
-                    D3D11_TEXTURE2D_DESC d{};
-                    tex2d->GetDesc(&d);
-                    if (i == 0)
-                    {
-                        faceWidth = static_cast<int>(d.Width);
-                        faceHeight = static_cast<int>(d.Height);
-                        faceFormat = d.Format;
-                    }
-                    else if (static_cast<int>(d.Width) != faceWidth || static_cast<int>(d.Height) != faceHeight ||
-                             d.Format != faceFormat)
-                    {
-                        NS_LOG_ERROR(Graphics,
-                                     "Skybox 6-face: face {} の解像度/フォーマット不一致 ({}x{}, fmt={})",
-                                     facePath,
-                                     static_cast<int>(d.Width),
-                                     static_cast<int>(d.Height),
-                                     static_cast<int>(d.Format));
-                        return false;
-                    }
-                    faceTextures[i] = std::move(tex2d);
-                }
-
-                D3D11_TEXTURE2D_DESC cubeDesc{};
-                cubeDesc.Width = static_cast<UINT>(faceWidth);
-                cubeDesc.Height = static_cast<UINT>(faceHeight);
-                cubeDesc.MipLevels = 1;
-                cubeDesc.ArraySize = 6;
-                cubeDesc.Format = faceFormat;
-                cubeDesc.SampleDesc.Count = 1;
-                cubeDesc.Usage = D3D11_USAGE_DEFAULT;
-                cubeDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-                cubeDesc.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
-
-                ComPtr<ID3D11Texture2D> cubeTex;
-                HRESULT hr = d3d11Device->CreateTexture2D(&cubeDesc, nullptr, cubeTex.GetAddressOf());
-                if (FAILED(hr))
-                {
-                    NS_LOG_ERROR(Graphics,
-                                 "Skybox 6-face: cubemap 本体の CreateTexture2D 失敗 (hr=0x{:08X})",
-                                 static_cast<uint>(hr));
-                    return false;
-                }
-
-                for (UINT face = 0; face < 6; ++face)
-                {
-                    const UINT dstSub = D3D11CalcSubresource(0, face, 1);
-                    context->CopySubresourceRegion(
-                        cubeTex.Get(), dstSub, 0, 0, 0, faceTextures[face].Get(), 0, nullptr);
-                }
-
-                D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-                srvDesc.Format = faceFormat;
-                srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
-                srvDesc.TextureCube.MostDetailedMip = 0;
-                srvDesc.TextureCube.MipLevels = 1;
-
-                hr = d3d11Device->CreateShaderResourceView(cubeTex.Get(), &srvDesc, outSrv.GetAddressOf());
-                if (FAILED(hr))
-                {
-                    NS_LOG_ERROR(
-                        Graphics, "Skybox 6-face: cubemap SRV 作成失敗 (hr=0x{:08X})", static_cast<uint>(hr));
-                    return false;
-                }
-                return true;
-            }
-
         } // namespace
 
         Skybox::Skybox(const BuiltinShaders& shaders) noexcept : m_vs(shaders.skyboxVs), m_ps(shaders.skyboxPs)
@@ -286,14 +72,6 @@ namespace NS
                 return;
             }
 
-            if (m_vs == nullptr || m_ps == nullptr || !m_vs->IsValid() || !m_ps->IsValid())
-            {
-                NS_LOG_ERROR(Graphics, "Skybox: shader 構築失敗");
-                return;
-            }
-
-            m_cubeMesh->CreateInputLayout(*m_vs);
-
             D3DBufferDesc cbDesc = MakeConstantBufferDesc(sizeof(SkyboxCB));
             m_cb = D3DBuffer::Create(cbDesc);
             if (!m_cb->IsValid())
@@ -313,7 +91,8 @@ namespace NS
                 return;
             }
             // 未ロード時でも安全に描画できるよう、初期状態として代替画像を設定しておく
-            if (!CreateMagentaCubemapFallback(d3d11Device, m_cubemapSrv))
+            m_cubemap = D3DTexture::CreateCubeFallback();
+            if (!m_cubemap->IsValid())
             {
                 NS_LOG_ERROR(Graphics, "Skybox: fallback cubemap 構築失敗");
                 return;
@@ -332,11 +111,13 @@ namespace NS
             }
 
             EnsureResources();
-            if (!IsValid() || !device.IsValid())
+            if (!IsValid() || !device.IsValid() || !IsUsable(m_vs) || !IsUsable(m_ps))
             {
                 return;
             }
             UpdateCubemap(cubemapPath);
+            // 頂点シェーダーを読み直した時に、入力の並びを新しい中身に合わせる
+            m_cubeMesh->CreateInputLayout(*m_vs);
 
             // view の平行移動成分を 0 化して camera 中心に空を固定する
             Matrix viewNoTranslate = camera.View();
@@ -375,33 +156,30 @@ namespace NS
 
         bool Skybox::LoadCubemap(std::string_view path)
         {
-            ID3D11Device* d3d11Device = Gpu().device;
-            if (d3d11Device == nullptr)
-            {
-                return false;
-            }
-
-            ComPtr<ID3D11ShaderResourceView> newSrv;
-            bool loaded = false;
-
+            std::unique_ptr<D3DTexture> loaded;
             if (detail::IsDdsExtension(path))
             {
-                loaded = LoadDdsCubemap(d3d11Device, path, newSrv);
+                loaded = D3DTexture::CreateCubeFromDds(std::string(path));
             }
             else if (OS::FileSystem::IsDirectory(path))
             {
                 // ディレクトリが指定された場合は、6方向の画像ファイルとして読み込みを試みる
-                ID3D11DeviceContext* context = Gpu().context;
-                loaded = (context != nullptr) && LoadSixFacePngCubemap(d3d11Device, context, path, newSrv);
+                std::array<std::string, 6> facePaths{};
+                for (std::size_t i = 0; i < facePaths.size(); ++i)
+                {
+                    facePaths[i] = OS::FileSystem::Combine(path, k_KurtFaceFileNames[i]);
+                }
+                loaded = D3DTexture::CreateCubeFromFaces(facePaths);
             }
             else
             {
                 NS_LOG_ERROR(Graphics, "Skybox LoadCubemap: ディレクトリでも .dds でもないパス: {}", path);
             }
 
-            if (loaded && newSrv)
+            // 代替画像に落ちた時は前の画像を保つ
+            if (loaded && loaded->IsValid() && !loaded->IsUsingFallback())
             {
-                m_cubemapSrv = std::move(newSrv);
+                m_cubemap = std::move(loaded);
                 m_usingFallback = false;
                 return true;
             }
@@ -440,18 +218,15 @@ namespace NS
 
             commands.VSSetShader(*m_vs);
             commands.PSSetShader(*m_ps);
-            commands.VSSetConstantBuffer(*m_cb, 0);
+            commands.VSSetConstantBuffer(*m_cb, k_DrawConstantsSlot);
 
-            ID3D11ShaderResourceView* srvs[1] = {m_cubemapSrv.Get()};
-            commands->PSSetShaderResources(0, 1, srvs);
+            commands.PSSetShaderResource(*m_cubemap, 0);
 
             commands.PSSetSampler(sampler, 0);
 
             DrawMesh(commands, *m_cubeMesh);
 
-            // 警告やバグを防ぐため、使用したテクスチャのバインドを解除する
-            ID3D11ShaderResourceView* nullSrv[1] = {nullptr};
-            commands->PSSetShaderResources(0, 1, nullSrv);
+            commands.UnbindPixelShaderResources(0, 1);
 
             commands->OMSetDepthStencilState(prevDss.Get(), prevStencilRef);
             commands->RSSetState(prevRs.Get());

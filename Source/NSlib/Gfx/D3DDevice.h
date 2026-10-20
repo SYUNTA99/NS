@@ -58,17 +58,20 @@ namespace NS
             //! @note 指定された幅や高さが0以下の場合は、ウィンドウの最小化として扱われ何も行わない
             void Resize(Size2D size) noexcept;
 
-            //! @brief 現在のシーン描画先サイズを取得する
-            //! @details SetSceneTarget 設定中はその描画先、未設定時は backbuffer のサイズを返す
+            //! @brief 最後に差したビューの大きさを取得する
+            //! @details BeginFrame・BeginSceneView・BindBackbuffer が差した描画先の大きさを返す。
+            //! 構築と Resize の後、次に差すまではバックバッファの大きさ。
+            //! Commands() から直に差した描画先は数えない
             [[nodiscard]] Size2D Size() const noexcept;
 
-            //! @brief シーンの描画先をオフスクリーンへ切り替える
+            //! @brief BeginFrame が塗って差す描画先をオフスクリーンへ切り替える
             //! @param[in,out] target 非所有の描画先。空の参照でウィンドウの描画先へ戻す
             //! @note 反映は次の BeginFrame から。target の破棄前に空の参照を渡して外す
             void SetSceneTarget(D3DRenderTarget* target) noexcept;
 
             //! 非所有の描画先とビューポートを切り替える。nullptr はバックバッファ
-            //! オフスクリーンだけをクリアする。描画先の破棄後は渡さない
+            //! オフスクリーンだけをクリアする。描画先の破棄後は渡さない。
+            //! SetSceneTarget の描画先は変えない
             void BeginSceneView(D3DRenderTarget* target) noexcept;
 
             //! @brief backbuffer を描画先へ戻し viewport を張り直す
@@ -85,7 +88,7 @@ namespace NS
             //! 失敗時は出力を変更せず false。無効な描画基盤や変換できない形式では読まない
             [[nodiscard]] bool ReadBackbufferPixels(std::vector<uint8>& outBgra, Size2D& outSize) noexcept;
 
-            //! よく使われる共通の描画ステート
+            //! よく使われる共通のサンプラー
             [[nodiscard]] D3DCommonStates& States() noexcept;
 
             //! 描画コマンドの発行やリソース更新などを記録するためのコマンドリスト
@@ -104,7 +107,7 @@ namespace NS
             [[nodiscard]] const D3DPipeline& OccludedPipeline(bool twoSided = false) const noexcept;
 
         private:
-            // 描画先とビューポートを差す
+            // 描画先とビューポートを差し、Size() が返す大きさを控える
             void BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, Size2D size) noexcept;
 
             ComPtr<ID3D11Device> m_device;
@@ -118,7 +121,8 @@ namespace NS
             std::unique_ptr<D3DPipeline> m_commonPipelines[2][3];
             //! 隠れた画素だけへ半透明で描くパイプライン。[裏も描くか]
             std::unique_ptr<D3DPipeline> m_occludedPipelines[2];
-            D3DRenderTarget* m_sceneTarget = nullptr; //!< 非所有のシーン描画先。未指定ならウィンドウへ描く
+            D3DRenderTarget* m_sceneTarget = nullptr; //!< 非所有。BeginFrame が塗って差す先。未指定ならウィンドウへ描く
+            Size2D m_boundSize{};                     //!< 最後に差したビューの大きさ
             OS::Window* m_window = nullptr;
             Color m_clearColor{};
             bool m_vsync = true;

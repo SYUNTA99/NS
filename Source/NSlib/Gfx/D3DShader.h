@@ -14,7 +14,14 @@ namespace NS
 {
     namespace Gfx
     {
-        //! 材質の値を書く定数バッファ MaterialParams のスロット。b0 は描く側の FrameCB、b1 は骨
+        // 定数バッファの場所はここだけに書く。HLSL の register(bN) は C++ から読めないので、
+        // shader_constants_test がシェーダーを反射で読んで場所と大きさを照らす
+
+        //! 描く 1 回ごとの定数 (物の FrameCB、描く段の定数) のスロット
+        inline constexpr uint k_DrawConstantsSlot = 0;
+        //! 骨の行列の並び BonePalette のスロット
+        inline constexpr uint k_BonePaletteSlot = 1;
+        //! 材質の値を書く定数バッファ MaterialParams のスロット
         inline constexpr uint k_MaterialParamsSlot = 2;
 
         //! MaterialParams の項目の型。配列・構造体・行列などは Unsupported で、値を持たない
@@ -91,6 +98,11 @@ namespace NS
             //! 頂点レイアウト生成用のバイナリコードを取得する
             [[nodiscard]] std::span<const std::byte> VertexShaderBytecode() const noexcept;
 
+            //! @brief 今の中身の番号。中身を持たない間は 0
+            //! @details バイトコードの入力シグネチャから求める。入力が変われば番号も変わり、入力が同じなら別のシェーダーでも同じ番号。
+            //! 入力レイアウトのようにバイトコードから作る物は、作った時の番号と比べて作り直すかを決める
+            [[nodiscard]] uint64 BytecodeId() const noexcept;
+
             //! 今の中身の MaterialParams の並び。代わりのピンクと、取り出せなかった時は空
             [[nodiscard]] const ShaderParamLayout& MaterialParams() const noexcept;
 
@@ -112,6 +124,7 @@ namespace NS
             ComPtr<ID3D11DeviceChild> m_shader;
             ComPtr<ID3DBlob> m_vsBytecode;
             ShaderParamLayout m_materialParams;
+            uint64 m_bytecodeId = 0;
             bool m_fallback = false;
         };
     } // namespace Gfx

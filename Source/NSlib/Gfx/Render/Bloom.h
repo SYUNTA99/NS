@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3dCommon.h"
 
 #include <memory>
@@ -12,12 +13,23 @@ namespace NS
     namespace Gfx
     {
         class D3DBuffer;
-        class D3DCommandList;
         class D3DPipeline;
         class D3DDevice;
         class D3DShader;
         class D3DTexture;
         struct BuiltinShaders;
+
+        //! @brief 光のにじみの 4 つのシェーダーが共有する定数
+        //! @details bloom.hlsli の cbuffer BloomCB と大きさを合わせる。照らす試しは shader_constants_test.cpp
+        struct alignas(16) BloomCB
+        {
+            float sourceTexel[2]{};      //!< 読む絵の 1 ピクセルの UV の幅と高さ
+            float destinationTexel[2]{}; //!< 書く絵の 1 ピクセルの UV の幅と高さ
+            float threshold = 0.0f;
+            float intensity = 0.0f;
+            float padding[2]{};
+        };
+        static_assert(sizeof(BloomCB) == 32, "BloomCB は HLSL の cbuffer BloomCB とバイト一致が必要");
 
         //! @brief 光のにじみの設定
         //! @details 物の絵は S 字で 1 以下に書くので、閾値 1 なら 1 を超えて書いたエフェクトだけがにじむ
@@ -40,11 +52,11 @@ namespace NS
             //! @brief パイプライン・定数バッファを作る
             //! @param[in] desc 閾値・足す強さ・段の数
             //! @param[in] shaders fullscreenVs と bloom の 4 つを指すだけで持たない
-            //! どれかが nullptr か読めずに代わりの物の時は無効になる
+            //! 使えるかは BeginWorld の度に決め、どれかが使えなければそのフレームは元の描画先で続ける
             Bloom(const BloomDesc& desc, const BuiltinShaders& shaders) noexcept;
             ~Bloom();
 
-            //! 構築に成功した場合 true、それ以外の場合は false
+            //! パイプラインと定数バッファを作れた場合 true、それ以外の場合は false
             [[nodiscard]] bool IsValid() const noexcept;
 
             //! HDR 描画へ切り替える。準備に失敗した場合は元の描画先で続ける
@@ -83,9 +95,7 @@ namespace NS
             std::unique_ptr<D3DTexture> m_bright;              // 閾値を超えた分。世界と同じ大きさ
             std::vector<std::unique_ptr<D3DTexture>> m_levels; // 縮めた段。先頭が半分の大きさ
 
-            ComPtr<ID3D11RenderTargetView> m_savedTarget; // BeginWorld で控えた描画先
-            ComPtr<ID3D11DepthStencilView> m_savedDepth;  // BeginWorld で控えた深度
-            D3D11_VIEWPORT m_savedViewport{};
+            SavedTargets m_saved{}; // BeginWorld で控えた描画先・深度・ビューポート
             bool m_active = false; // BeginWorld が差し替えて EndWorld を待っているか
             bool m_valid = false;
         };

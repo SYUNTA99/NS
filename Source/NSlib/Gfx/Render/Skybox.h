@@ -23,7 +23,16 @@ namespace NS
         class D3DBuffer;
         class D3DPipeline;
         class D3DDevice;
+        class D3DTexture;
         struct BuiltinShaders;
+
+        //! @brief 空の頂点シェーダーの定数
+        //! @details skybox.vs.hlsl の cbuffer SkyboxCB と大きさを合わせる。照らす試しは shader_constants_test.cpp
+        struct alignas(16) SkyboxCB
+        {
+            Matrix viewProj; //!< カメラの平行移動を除いたビュー射影
+        };
+        static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL の cbuffer SkyboxCB とバイト一致が必要");
 
         //! @brief 無限遠の背景の空を描く
         //! @details 立方体のメッシュとキューブマップを持つ。描く資源は、画像を指定した初回の Draw で作る
@@ -32,7 +41,7 @@ namespace NS
         class Skybox : public NonCopyable
         {
         public:
-            //! @param[in] shaders skyboxVs と skyboxPs を指すだけで持たない。どちらかが nullptr なら描かない
+            //! @param[in] shaders skyboxVs と skyboxPs を指すだけで持たない。使えるかは Draw の度に IsUsable で決める
             explicit Skybox(const BuiltinShaders& shaders) noexcept;
             ~Skybox();
 
@@ -41,7 +50,7 @@ namespace NS
             //! 画像の読み込みに失敗した時は前の画像を保って次の Draw で再試行し、GPU 資源の生成失敗は再試行しない
             void Draw(D3DDevice& device, const CameraData& camera, std::string_view cubemapPath) noexcept;
 
-            //! 立方体メッシュ・シェーダ・定数バッファ・パイプライン・代替のキューブマップが揃っているか
+            //! 立方体メッシュ・定数バッファ・パイプライン・代替のキューブマップが揃っているか
             [[nodiscard]] bool IsValid() const noexcept;
 
             //! 画像が未読み込み、または直近の読み込みに失敗したか
@@ -67,7 +76,7 @@ namespace NS
             D3DShader* m_ps = nullptr;
             std::unique_ptr<D3DBuffer> m_cb;
             std::unique_ptr<D3DPipeline> m_pipeline;
-            ComPtr<ID3D11ShaderResourceView> m_cubemapSrv;
+            std::unique_ptr<D3DTexture> m_cubemap;
             std::string m_loadedPath;
             bool m_usingFallback = true;
             bool m_tried = false;

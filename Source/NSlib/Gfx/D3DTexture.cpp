@@ -98,7 +98,30 @@ namespace NS
                 }
             }
 
+            // 立方体の 6 面を mipmap の全段で読むビューを作る
+            [[nodiscard]] bool CreateCubeSrv(ID3D11Device* device,
+                                             ID3D11Texture2D* cube,
+                                             ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
+            {
+                D3D11_TEXTURE2D_DESC td{};
+                cube->GetDesc(&td);
+                D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+                srvDesc.Format = td.Format;
+                srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+                srvDesc.TextureCube.MostDetailedMip = 0;
+                srvDesc.TextureCube.MipLevels = td.MipLevels;
+                const HRESULT hr = device->CreateShaderResourceView(cube, &srvDesc, outSrv.GetAddressOf());
+                if (FAILED(hr))
+                {
+                    NS_LOG_ERROR(Graphics, "D3DTexture: 立方体の CreateSRV 失敗 (hr=0x{:X})", static_cast<uint>(hr));
+                    return false;
+                }
+                return true;
+            }
+
+            // 1×1 のピンク。cube なら 6 面とも同じ色の立方体
             bool CreateMagentaFallback(ID3D11Device* device,
+                                       bool cube,
                                        ComPtr<ID3D11Texture2D>& outTex,
                                        ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
             {
@@ -117,13 +140,21 @@ namespace NS
                 td.SampleDesc.Count = 1;
                 td.Usage = D3D11_USAGE_IMMUTABLE;
                 td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+                if (cube)
+                {
+                    td.ArraySize = 6;
+                    td.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
+                }
 
-                D3D11_SUBRESOURCE_DATA srd{};
-                srd.pSysMem = magenta;
-                srd.SysMemPitch = sizeof(magenta);
+                std::array<D3D11_SUBRESOURCE_DATA, 6> srd{};
+                for (D3D11_SUBRESOURCE_DATA& face : srd)
+                {
+                    face.pSysMem = magenta;
+                    face.SysMemPitch = sizeof(magenta);
+                }
 
                 ComPtr<ID3D11Texture2D> tex2d;
-                HRESULT hr = device->CreateTexture2D(&td, &srd, tex2d.GetAddressOf());
+                HRESULT hr = device->CreateTexture2D(&td, srd.data(), tex2d.GetAddressOf());
                 if (FAILED(hr))
                 {
                     NS_LOG_ERROR(
@@ -131,11 +162,22 @@ namespace NS
                     return false;
                 }
 
-                hr = device->CreateShaderResourceView(tex2d.Get(), nullptr, outSrv.GetAddressOf());
-                if (FAILED(hr))
+                if (cube)
                 {
-                    NS_LOG_ERROR(Graphics, "D3DTexture fallback CreateSRV 失敗 (hr=0x{:X})", static_cast<uint>(hr));
-                    return false;
+                    if (!CreateCubeSrv(device, tex2d.Get(), outSrv))
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    hr = device->CreateShaderResourceView(tex2d.Get(), nullptr, outSrv.GetAddressOf());
+                    if (FAILED(hr))
+                    {
+                        NS_LOG_ERROR(
+                            Graphics, "D3DTexture fallback CreateSRV 失敗 (hr=0x{:X})", static_cast<uint>(hr));
+                        return false;
+                    }
                 }
 
                 outTex = tex2d;
@@ -160,7 +202,7 @@ namespace NS
             }
 
             // mipmap は常に作る。RENDER_TARGET と GENERATE_MIPS は GenerateMips の前提
-            // sRGB へ強制しない。NS はどこでも色空間を変換しておらず、Skybox も IGNORE_SRGB で読む
+            // sRGB へ強制しない。NS はどこでも色空間を変換しないので、2D も立方体の面も画像の値をそのまま読む
             bool TryLoadWic(ID3D11Device* device,
                             ID3D11DeviceContext* context,
                             const uint8* bytes,
@@ -187,6 +229,114 @@ namespace NS
                     NS_LOG_ERROR(Graphics, "CreateWICTextureFromMemoryEx 失敗 (hr=0x{:X})", static_cast<uint>(hr));
                     return false;
                 }
+                return true;
+            }
+
+            // 画像ファイルを読む。DDS は中の mipmap を使い、ほかは WIC で読んで mipmap を作る
+            bool LoadImageFile(ID3D11Device* device,
+                               ID3D11DeviceContext* context,
+                               const std::string& path,
+                               ComPtr<ID3D11Resource>& outResource,
+                               ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
+            {
+                std::optional<std::vector<std::byte>> bytesOpt = OS::FileSystem::ReadAllBytes(path);
+                if (!bytesOpt.has_value())
+                {
+                    NS_LOG_ERROR(Graphics, "D3DTexture load failed: {}", path);
+                    return false;
+                }
+                const std::vector<std::byte>& bytes = bytesOpt.value();
+                const uint8* data = reinterpret_cast<const uint8*>(bytes.data());
+                if (detail::IsDdsExtension(path))
+                {
+                    // DDS は内蔵 mipmap を尊重して作り直さない
+                    // mipmap が欲しければ Texconv.exe 等で事前生成した DDS を渡すこと
+                    return TryLoadDds(device, context, data, bytes.size(), outResource, outSrv);
+                }
+                return TryLoadWic(device, context, data, bytes.size(), outResource, outSrv);
+            }
+
+            // 6 面を 2D と同じ道で読み、各面の mipmap を全段そのまま立方体へ写す
+            // mipmap を作るのは 2D の読み込みの 1 か所だけにするため、立方体では作り直さない
+            bool LoadCubeFaces(ID3D11Device* device,
+                               ID3D11DeviceContext* context,
+                               const std::array<std::string, 6>& facePaths,
+                               ComPtr<ID3D11Resource>& outResource,
+                               ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
+            {
+                std::array<ComPtr<ID3D11Texture2D>, 6> faces{};
+                D3D11_TEXTURE2D_DESC faceDesc{};
+                for (std::size_t i = 0; i < faces.size(); ++i)
+                {
+                    ComPtr<ID3D11Resource> resource;
+                    ComPtr<ID3D11ShaderResourceView> faceSrv;
+                    if (!LoadImageFile(device, context, facePaths[i], resource, faceSrv))
+                    {
+                        return false;
+                    }
+                    faces[i] = AsTexture2D(resource.Get());
+                    if (!faces[i])
+                    {
+                        return false;
+                    }
+                    D3D11_TEXTURE2D_DESC d{};
+                    faces[i]->GetDesc(&d);
+                    if (i == 0)
+                    {
+                        faceDesc = d;
+                    }
+                    if (d.ArraySize != 1 || d.Width != faceDesc.Width || d.Height != faceDesc.Height ||
+                        d.Format != faceDesc.Format || d.MipLevels != faceDesc.MipLevels)
+                    {
+                        NS_LOG_ERROR(Graphics,
+                                     "D3DTexture: 立方体の面 {} の大きさ・書式・段数が 1 枚目と揃わない ({}x{}, fmt={}, mip={})",
+                                     facePaths[i],
+                                     d.Width,
+                                     d.Height,
+                                     static_cast<int>(d.Format),
+                                     d.MipLevels);
+                        return false;
+                    }
+                }
+
+                D3D11_TEXTURE2D_DESC cubeDesc{};
+                cubeDesc.Width = faceDesc.Width;
+                cubeDesc.Height = faceDesc.Height;
+                cubeDesc.MipLevels = faceDesc.MipLevels;
+                cubeDesc.ArraySize = 6;
+                cubeDesc.Format = faceDesc.Format;
+                cubeDesc.SampleDesc.Count = 1;
+                cubeDesc.Usage = D3D11_USAGE_DEFAULT;
+                cubeDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+                cubeDesc.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
+
+                ComPtr<ID3D11Texture2D> cube;
+                const HRESULT hr = device->CreateTexture2D(&cubeDesc, nullptr, cube.GetAddressOf());
+                if (FAILED(hr))
+                {
+                    NS_LOG_ERROR(
+                        Graphics, "D3DTexture: 立方体の CreateTexture2D 失敗 (hr=0x{:X})", static_cast<uint>(hr));
+                    return false;
+                }
+                for (UINT face = 0; face < 6; ++face)
+                {
+                    for (UINT mip = 0; mip < cubeDesc.MipLevels; ++mip)
+                    {
+                        context->CopySubresourceRegion(cube.Get(),
+                                                       D3D11CalcSubresource(mip, face, cubeDesc.MipLevels),
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       faces[face].Get(),
+                                                       mip,
+                                                       nullptr);
+                    }
+                }
+                if (!CreateCubeSrv(device, cube.Get(), outSrv))
+                {
+                    return false;
+                }
+                outResource = cube;
                 return true;
             }
 
@@ -254,39 +404,76 @@ namespace NS
             }
 
             ComPtr<ID3D11Resource> resource;
-            bool loaded = false;
             if (!desc.path.empty())
             {
-                std::optional<std::vector<std::byte>> bytesOpt = OS::FileSystem::ReadAllBytes(desc.path);
-                if (bytesOpt.has_value())
+                if (!LoadImageFile(device, context, desc.path, resource, m_srv))
                 {
-                    const std::vector<std::byte>& bytes = bytesOpt.value();
-                    const uint8* data = reinterpret_cast<const uint8*>(bytes.data());
-                    if (detail::IsDdsExtension(desc.path))
-                    {
-                        // DDS は内蔵 mipmap を尊重して作り直さない
-                        // mipmap が欲しければ Texconv.exe 等で事前生成した DDS を渡すこと
-                        loaded = TryLoadDds(device, context, data, bytes.size(), resource, m_srv);
-                    }
-                    else
-                    {
-                        loaded = TryLoadWic(device, context, data, bytes.size(), resource, m_srv);
-                    }
-                }
-                else
-                {
-                    NS_LOG_ERROR(Graphics, "D3DTexture load failed: {}", desc.path);
+                    resource.Reset();
                 }
             }
+            AdoptLoaded(device, std::move(resource), false);
+        }
 
+        std::unique_ptr<D3DTexture> D3DTexture::CreateCubeFromDds(const std::string& path)
+        {
+            std::unique_ptr<D3DTexture> texture(new D3DTexture());
+            ID3D11Device* device = Gpu().device;
+            ID3D11DeviceContext* context = Gpu().context;
+            if (device == nullptr || context == nullptr)
+            {
+                return texture;
+            }
+            ComPtr<ID3D11Resource> resource;
+            if (LoadImageFile(device, context, path, resource, texture->m_srv))
+            {
+                D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+                texture->m_srv->GetDesc(&srvDesc);
+                if (srvDesc.ViewDimension != D3D11_SRV_DIMENSION_TEXTURECUBE)
+                {
+                    NS_LOG_ERROR(Graphics, "D3DTexture: 立方体でない DDS は立方体のテクスチャにできない: {}", path);
+                    resource.Reset();
+                }
+            }
+            texture->AdoptLoaded(device, std::move(resource), true);
+            return texture;
+        }
+
+        std::unique_ptr<D3DTexture> D3DTexture::CreateCubeFromFaces(const std::array<std::string, 6>& facePaths)
+        {
+            std::unique_ptr<D3DTexture> texture(new D3DTexture());
+            ID3D11Device* device = Gpu().device;
+            ID3D11DeviceContext* context = Gpu().context;
+            if (device == nullptr || context == nullptr)
+            {
+                return texture;
+            }
+            ComPtr<ID3D11Resource> resource;
+            if (!LoadCubeFaces(device, context, facePaths, resource, texture->m_srv))
+            {
+                resource.Reset();
+            }
+            texture->AdoptLoaded(device, std::move(resource), true);
+            return texture;
+        }
+
+        std::unique_ptr<D3DTexture> D3DTexture::CreateCubeFallback()
+        {
+            std::unique_ptr<D3DTexture> texture(new D3DTexture());
+            texture->AdoptLoaded(Gpu().device, nullptr, true);
+            return texture;
+        }
+
+        void D3DTexture::AdoptLoaded(ID3D11Device* device, ComPtr<ID3D11Resource> loaded, bool cube) noexcept
+        {
             if (loaded)
             {
-                m_tex = AsTexture2D(resource.Get());
+                m_tex = AsTexture2D(loaded.Get());
                 m_size = Texture2DSize(m_tex.Get());
                 return;
             }
-
-            if (!CreateMagentaFallback(device, m_tex, m_srv))
+            // 読みかけで作ったビューを捨て、代替画像のビューだけを持つ
+            m_srv.Reset();
+            if (!CreateMagentaFallback(device, cube, m_tex, m_srv))
             {
                 return;
             }

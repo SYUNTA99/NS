@@ -12,7 +12,9 @@
 
 #include <algorithm>
 #include <cstring>
+#include <functional>
 #include <string>
+#include <string_view>
 
 namespace NS
 {
@@ -282,6 +284,24 @@ namespace NS
             {
                 return a.name == b.name && a.type == b.type && a.offset == b.offset && a.size == b.size;
             }
+
+            // 番号は入力シグネチャの中身から求め、作った順や数を数えない。捨てたシェーダーと同じ番地に作り直しても、
+            // 入力が違えば番号が違う。入力が同じなら、そのシェーダーで作った入力レイアウトはそのまま使える。
+            // バイトコード全体は、Debug の構成で同じソースからでも毎回違うバイト列になるので使わない
+            [[nodiscard]] uint64 BytecodeIdOf(ID3DBlob& bytecode) noexcept
+            {
+                ComPtr<ID3DBlob> signature;
+                const HRESULT hr = D3DGetInputSignatureBlob(
+                    bytecode.GetBufferPointer(), bytecode.GetBufferSize(), signature.GetAddressOf());
+                if (FAILED(hr))
+                {
+                    NS_LOG_ERROR(Graphics, "D3DShader: 入力シグネチャを読めない (hr=0x{:X})", static_cast<uint>(hr));
+                    return 0;
+                }
+                const std::string_view bytes(static_cast<const char*>(signature->GetBufferPointer()),
+                                             signature->GetBufferSize());
+                return static_cast<uint64>(std::hash<std::string_view>{}(bytes));
+            }
         } // namespace
 
         std::optional<ShaderParamLayout> ReflectMaterialParams(std::span<const std::byte> bytecode)
@@ -416,6 +436,7 @@ namespace NS
             {
                 return;
             }
+            m_bytecodeId = BytecodeIdOf(*fb.Get());
             if (m_type == ShaderType::Vertex)
             {
                 m_vsBytecode = std::move(fb);
@@ -469,6 +490,7 @@ namespace NS
                 NS_LOG_ERROR(Graphics, "{} の MaterialParams を取り出せないので、材質の値なしで描く", hlslPath);
             }
             m_materialParams = std::move(layout).value_or(ShaderParamLayout{});
+            m_bytecodeId = BytecodeIdOf(*bytecode.Get());
             if (m_type == ShaderType::Vertex)
             {
                 m_vsBytecode = std::move(bytecode);
@@ -508,6 +530,10 @@ namespace NS
         const ShaderParamLayout& D3DShader::MaterialParams() const noexcept
         {
             return m_materialParams;
+        }
+        uint64 D3DShader::BytecodeId() const noexcept
+        {
+            return m_bytecodeId;
         }
         std::span<const std::byte> D3DShader::VertexShaderBytecode() const noexcept
         {
