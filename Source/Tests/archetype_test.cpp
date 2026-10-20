@@ -2,6 +2,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
@@ -11,6 +12,8 @@
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
+#include "NSlib/CoreObject/Reflection/Reflection.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -114,6 +117,45 @@ namespace
         return NS::ClassObjFields(object, typeName);
     }
 } // namespace
+
+// 素材を読み終えた回数を数える。既定の 1 体が配置と同じ初期化を通るかを見る
+class BaselineLoadProbeActor final : public NS::SceneActor
+{
+public:
+    static inline int s_loads = 0;
+
+    NS_REFLECT_NONE(BaselineLoadProbeActor, NS::SceneActor)
+
+protected:
+    void OnAssetsLoaded() override
+    {
+        NS::SceneActor::OnAssetsLoaded();
+        ++s_loads;
+    }
+};
+NS_CLASS(BaselineLoadProbeActor)
+
+TEST(Archetype, BaselineLoadsAssetsLikeAPlacedActor)
+{
+    const ScopedArchetypeDirectory scope("BaselineLoadsAssets");
+    const int before = BaselineLoadProbeActor::s_loads;
+    (void)NS::ArchetypeLibrary::Get().Baseline("BaselineLoadProbeActor");
+    EXPECT_EQ(BaselineLoadProbeActor::s_loads, before + 1);
+}
+
+TEST(Archetype, ClearingAssetsRebuildsTheBaseline)
+{
+    // 既定の 1 体は読んだ素材を指すので、素材の表を空にした後は作り直す
+    const ScopedArchetypeDirectory scope("ClearingAssetsRebuildsTheBaseline");
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const NS::AssetManagerScope useAssets{assets};
+    NS::ArchetypeLibrary& library = NS::ArchetypeLibrary::Get();
+    (void)library.Baseline("BaselineLoadProbeActor");
+    const int before = BaselineLoadProbeActor::s_loads;
+    assets.Clear();
+    (void)library.Baseline("BaselineLoadProbeActor");
+    EXPECT_EQ(BaselineLoadProbeActor::s_loads, before + 1);
+}
 
 TEST(Archetype, CodeDefaultWithoutArchetype)
 {

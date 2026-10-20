@@ -223,10 +223,14 @@ namespace NS
             return *it->second;
         }
         std::unique_ptr<SceneActor> actor = CreateActorOfClass(className);
-        ApplyArchetype(*actor);
         const SceneActor& result = *actor;
         m_baselines.emplace(std::string{className}, std::move(actor));
         return result;
+    }
+
+    void ArchetypeLibrary::ClearBaselines() noexcept
+    {
+        m_baselines.clear();
     }
 
     void ApplyArchetype(SceneActor& actor)

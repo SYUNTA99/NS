@@ -10,6 +10,7 @@
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
+#include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
@@ -509,14 +510,17 @@ namespace NS
         return s_unregistered;
     }
 
+    // 種類の既定の 1 体は作った時の AssetManager の素材を指すので、差し替えるたびに捨てる
     AssetManagerScope::AssetManagerScope(AssetManager& assets) noexcept : m_previous(g_currentAssets)
     {
         g_currentAssets = &assets;
+        ArchetypeLibrary::Get().ClearBaselines();
     }
 
     AssetManagerScope::~AssetManagerScope() noexcept
     {
         g_currentAssets = m_previous;
+        ArchetypeLibrary::Get().ClearBaselines();
     }
 
     Shader* AssetManager::LoadShader(std::string_view path)
@@ -889,6 +893,8 @@ namespace NS
 
     void AssetManager::Clear() noexcept
     {
+        // 種類の既定の 1 体は素材を指すので、素材より先に捨てる
+        ArchetypeLibrary::Get().ClearBaselines();
         // material は shader / texture を参照するので先に解放する
         m_materials.clear();
         m_textures.clear();

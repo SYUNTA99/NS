@@ -49,6 +49,10 @@ namespace NS
         //! 個体の上書き前の比較用 SceneActor。シーンへ入らず、種類の既定値変更で参照は無効になる
         [[nodiscard]] const SceneActor& Baseline(std::string_view className);
 
+        //! @brief 既定の 1 体を全部捨てる。次の Baseline で作り直す
+        //! @details 既定の 1 体は作った時の AssetManager の素材を指すので、その表を空にする時と差し替える時に呼ぶ
+        void ClearBaselines() noexcept;
+
     private:
         ArchetypeLibrary();
         // まだ読んでいなければ Directory() を読む

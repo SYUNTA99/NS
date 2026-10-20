@@ -210,13 +210,13 @@ namespace NS
 
     SceneActor::~SceneActor() noexcept = default;
 
-    void SceneActor::Init(const ActorInitInfo& info)
+    void SceneActor::Init(const ActorInitInfo* info)
     {
         OnInit();
         ApplyArchetype(*this);
-        if (info.placement != nullptr)
+        if (info != nullptr && info->placement != nullptr)
         {
-            ApplyObjectClassObjs(*this, *info.placement);
+            ApplyObjectClassObjs(*this, *info->placement);
         }
         // 素材の参照は欄にある。欄を書き終えてから読む
         ReloadAssets();

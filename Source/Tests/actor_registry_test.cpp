@@ -69,20 +69,16 @@ TEST(ActorRegistry, CreatedActorReportsItsClassName)
     }
 }
 
-TEST(ActorRegistry, CreateRegisteredObjectUsesClass)
+TEST(ActorRegistry, CreateActorOfClassUsesClass)
 {
-    nlohmann::json object = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(object, "PropActor");
-    const std::unique_ptr<NS::SceneActor> actor = NS::CreateRegisteredObject(object);
+    const std::unique_ptr<NS::SceneActor> actor = NS::CreateActorOfClass("PropActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(std::string_view{actor->ClassName()}, "PropActor");
 }
 
 TEST(ActorRegistry, UnknownClassFallsBackToPlainActor)
 {
-    nlohmann::json object = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(object, "NoSuchActor");
-    const std::unique_ptr<NS::SceneActor> actor = NS::CreateRegisteredObject(object);
+    const std::unique_ptr<NS::SceneActor> actor = NS::CreateActorOfClass("NoSuchActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(std::string_view{actor->ClassName()}, "SceneActor");
 }

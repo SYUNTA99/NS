@@ -85,13 +85,6 @@ namespace NS
         }
     } // namespace
 
-    std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object)
-    {
-        const std::string_view className = ObjectJsonClass(object);
-        WarnIfUnregistered(className);
-        return CreateActorOfClass(className);
-    }
-
     std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object, Scene& scene)
     {
         const std::string_view className = ObjectJsonClass(object);
@@ -103,15 +96,14 @@ namespace NS
     std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className)
     {
         std::unique_ptr<SceneActor> actor = ConstructOfClass(className);
-        // 部品を作ってから返す。データの読み込みは返った部品へ欄を流し込む
-        actor->Init();
+        actor->Init(nullptr);
         return actor;
     }
 
     std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info)
     {
         std::unique_ptr<SceneActor> actor = ConstructOfClass(className);
-        actor->Init(info);
+        actor->Init(&info);
         return actor;
     }
 
