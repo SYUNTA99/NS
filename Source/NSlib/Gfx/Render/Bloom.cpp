@@ -51,11 +51,6 @@ namespace NS
                 return Size2D{std::max(1, size.width >> shift), std::max(1, size.height >> shift)};
             }
 
-            bool IsUsable(const D3DShader* shader) noexcept
-            {
-                return shader != nullptr && shader->IsValid() && !shader->IsUsingFallback();
-            }
-
             void UnbindShaderResources(D3DCommandList& cmd)
             {
                 // 次の段で描画先にする絵が読む側に残っていると、描画装置は書き込みを捨てる
@@ -72,13 +67,6 @@ namespace NS
             if (gpu.device == nullptr || gpu.context == nullptr)
             {
                 NS_LOG_WARN(Graphics, "Bloom: D3DDevice が未構築のため無効のまま作る");
-                return;
-            }
-
-            if (!IsUsable(m_vs) || !IsUsable(m_thresholdPs) || !IsUsable(m_downPs) || !IsUsable(m_upPs) ||
-                !IsUsable(m_compositePs))
-            {
-                NS_LOG_ERROR(Graphics, "Bloom: シェーダを作れなかった");
                 return;
             }
 
@@ -117,6 +105,11 @@ namespace NS
         void Bloom::BeginWorld(D3DDevice& device, const Color& clearColor) noexcept
         {
             if (!m_valid || m_active)
+            {
+                return;
+            }
+            if (!IsUsable(m_vs) || !IsUsable(m_thresholdPs) || !IsUsable(m_downPs) || !IsUsable(m_upPs) ||
+                !IsUsable(m_compositePs))
             {
                 return;
             }

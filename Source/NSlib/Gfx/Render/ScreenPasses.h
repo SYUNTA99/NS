@@ -48,11 +48,11 @@ namespace NS
         public:
             //! @brief パイプライン・定数バッファを作る。D3DDevice が未構築なら無効な状態になる
             //! @param[in] shaders fullscreenVs・screenDistortionPs・bodyMaskPs を指すだけで持たない
-            //! どれかが nullptr か読めずに代わりの物の時は無効になる
+            //! 使えるかは Distort と BeginBodyMask の度に決め、使えなければその段を描かない
             explicit ScreenPasses(const BuiltinShaders& shaders) noexcept;
             ~ScreenPasses();
 
-            //! 構築に成功した場合 true、それ以外の場合は false
+            //! パイプラインと定数バッファを作れた場合 true、それ以外の場合は false
             [[nodiscard]] bool IsValid() const noexcept;
 
             //! @brief 今の描画先の絵の輪の所を、輪の外へ押し出す

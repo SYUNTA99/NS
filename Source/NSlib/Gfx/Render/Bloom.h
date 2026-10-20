@@ -40,11 +40,11 @@ namespace NS
             //! @brief パイプライン・定数バッファを作る
             //! @param[in] desc 閾値・足す強さ・段の数
             //! @param[in] shaders fullscreenVs と bloom の 4 つを指すだけで持たない
-            //! どれかが nullptr か読めずに代わりの物の時は無効になる
+            //! 使えるかは BeginWorld の度に決め、どれかが使えなければそのフレームは元の描画先で続ける
             Bloom(const BloomDesc& desc, const BuiltinShaders& shaders) noexcept;
             ~Bloom();
 
-            //! 構築に成功した場合 true、それ以外の場合は false
+            //! パイプラインと定数バッファを作れた場合 true、それ以外の場合は false
             [[nodiscard]] bool IsValid() const noexcept;
 
             //! HDR 描画へ切り替える。準備に失敗した場合は元の描画先で続ける

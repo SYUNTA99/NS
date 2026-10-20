@@ -32,7 +32,7 @@ namespace NS
         class Skybox : public NonCopyable
         {
         public:
-            //! @param[in] shaders skyboxVs と skyboxPs を指すだけで持たない。どちらかが nullptr なら描かない
+            //! @param[in] shaders skyboxVs と skyboxPs を指すだけで持たない。使えるかは Draw の度に IsUsable で決める
             explicit Skybox(const BuiltinShaders& shaders) noexcept;
             ~Skybox();
 
@@ -41,7 +41,7 @@ namespace NS
             //! 画像の読み込みに失敗した時は前の画像を保って次の Draw で再試行し、GPU 資源の生成失敗は再試行しない
             void Draw(D3DDevice& device, const CameraData& camera, std::string_view cubemapPath) noexcept;
 
-            //! 立方体メッシュ・シェーダ・定数バッファ・パイプライン・代替のキューブマップが揃っているか
+            //! 立方体メッシュ・定数バッファ・パイプライン・代替のキューブマップが揃っているか
             [[nodiscard]] bool IsValid() const noexcept;
 
             //! 画像が未読み込み、または直近の読み込みに失敗したか

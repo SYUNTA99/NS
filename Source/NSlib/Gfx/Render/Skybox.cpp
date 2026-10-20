@@ -286,12 +286,6 @@ namespace NS
                 return;
             }
 
-            if (m_vs == nullptr || m_ps == nullptr || !m_vs->IsValid() || !m_ps->IsValid())
-            {
-                NS_LOG_ERROR(Graphics, "Skybox: shader 構築失敗");
-                return;
-            }
-
             D3DBufferDesc cbDesc = MakeConstantBufferDesc(sizeof(SkyboxCB));
             m_cb = D3DBuffer::Create(cbDesc);
             if (!m_cb->IsValid())
@@ -330,7 +324,7 @@ namespace NS
             }
 
             EnsureResources();
-            if (!IsValid() || !device.IsValid())
+            if (!IsValid() || !device.IsValid() || !IsUsable(m_vs) || !IsUsable(m_ps))
             {
                 return;
             }

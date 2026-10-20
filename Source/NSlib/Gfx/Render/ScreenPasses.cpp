@@ -17,14 +17,6 @@ namespace NS
 {
     namespace Gfx
     {
-        namespace
-        {
-            bool IsUsable(const D3DShader* shader) noexcept
-            {
-                return shader != nullptr && shader->IsValid() && !shader->IsUsingFallback();
-            }
-        } // namespace
-
         ScreenPasses::ScreenPasses(const BuiltinShaders& shaders) noexcept
             : m_vs(shaders.fullscreenVs), m_distortionPs(shaders.screenDistortionPs), m_bodyMaskPs(shaders.bodyMaskPs)
         {
@@ -32,12 +24,6 @@ namespace NS
             if (gpu.device == nullptr || gpu.context == nullptr)
             {
                 NS_LOG_WARN(Graphics, "ScreenPasses: D3DDevice が未構築のため無効のまま作る");
-                return;
-            }
-
-            if (!IsUsable(m_vs) || !IsUsable(m_distortionPs) || !IsUsable(m_bodyMaskPs))
-            {
-                NS_LOG_ERROR(Graphics, "ScreenPasses: シェーダを作れなかった");
                 return;
             }
 
@@ -78,6 +64,10 @@ namespace NS
         void ScreenPasses::Distort(D3DDevice& device, const ScreenRing& ring) noexcept
         {
             if (!m_valid || !(ring.pushPixels > 0.0f) || !(ring.halfWidthPixels > 0.0f))
+            {
+                return;
+            }
+            if (!IsUsable(m_vs) || !IsUsable(m_distortionPs))
             {
                 return;
             }
@@ -153,7 +143,7 @@ namespace NS
         bool ScreenPasses::BeginBodyMask(D3DDevice& device) noexcept
         {
             m_bodyMaskDrawn = false;
-            if (!m_valid || m_savedTarget != nullptr)
+            if (!m_valid || m_savedTarget != nullptr || !IsUsable(m_bodyMaskPs))
             {
                 return false;
             }
