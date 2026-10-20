@@ -3,6 +3,7 @@
 #include "Editor/InspectorReflection.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/Gfx/Render/Skybox.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "TestLogCapture.h"
 
@@ -10,6 +11,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstring>
 #include <filesystem>
@@ -234,14 +236,20 @@ TEST_F(AssetPickerCatalogTest, EffectChoicesKeepTheNamesExpectedByTheEffectLoade
 
 TEST_F(AssetPickerCatalogTest, SkyboxesRequireSixFacesOrACubemapDds)
 {
-    const char* faces[] = {"space_ft.png", "space_bk.png", "space_up.png",
-                           "space_dn.png", "space_rt.png", "space_lf.png"};
-    for (const char* face : faces)
+    // 選べる空は、描く側の Skybox が読む 6 面の名前と同じ物を揃えたフォルダだけ
+    const std::array<std::string_view, 6>& faces = NS::Gfx::Skybox::FaceFileNames();
+    for (std::size_t i = 0; i < faces.size(); ++i)
     {
-        const std::string relative = "Assets/Skybox/complete/" + std::string{face};
-        File(relative.c_str());
+        const std::string complete = "Assets/Skybox/complete/" + std::string{faces[i]};
+        File(complete.c_str());
+        if (i + 1 < faces.size())
+        {
+            const std::string incomplete = "Assets/Skybox/incomplete/" + std::string{faces[i]};
+            File(incomplete.c_str());
+        }
     }
-    File("Assets/Skybox/incomplete/space_ft.png");
+    EXPECT_TRUE(NS::Editor::IsSkyboxAssetPath((m_root / "Assets/Skybox/complete").generic_string()));
+    EXPECT_FALSE(NS::Editor::IsSkyboxAssetPath((m_root / "Assets/Skybox/incomplete").generic_string()));
     File("Assets/Skybox/invalid.dds");
     std::vector<std::byte> bytes(152);
     const auto word = [&](std::size_t offset, NS::uint32 value) {

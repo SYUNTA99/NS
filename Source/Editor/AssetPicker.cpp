@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/Gfx/Render/Skybox.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
@@ -17,11 +18,6 @@ namespace NS
     {
         namespace
         {
-            // Skybox::LoadCubemap が読む六方向のファイル名に合わせる。
-            constexpr std::array<std::string_view, 6> k_SkyboxFaces = {
-                "space_ft.png", "space_bk.png", "space_up.png",
-                "space_dn.png", "space_rt.png", "space_lf.png"};
-
             // 素材の種類は拡張子で分ける。大文字と小文字を区別しないため、比べる前に小文字へ揃える
             std::string LowerExtension(std::string_view path)
             {
@@ -80,7 +76,8 @@ namespace NS
         {
             if (OS::FileSystem::IsDirectory(absolutePath))
             {
-                return std::all_of(k_SkyboxFaces.begin(), k_SkyboxFaces.end(), [&](std::string_view face) {
+                const std::array<std::string_view, 6>& faces = Gfx::Skybox::FaceFileNames();
+                return std::all_of(faces.begin(), faces.end(), [&](std::string_view face) {
                     const std::string file = OS::FileSystem::Combine(absolutePath, face);
                     return OS::FileSystem::Exists(file) && !OS::FileSystem::IsDirectory(file);
                 });
@@ -101,7 +98,7 @@ namespace NS
             for (const std::string& file : OS::FileSystem::ListFilesRecursive(assets))
             {
                 std::string candidate = file;
-                if (OS::FileSystem::FileName(file) == k_SkyboxFaces.front())
+                if (OS::FileSystem::FileName(file) == Gfx::Skybox::FaceFileNames().front())
                 {
                     candidate = OS::FileSystem::ParentDirectory(file);
                 }
