@@ -384,6 +384,8 @@ project "Editor"
         -- Game 側 PCH を共有するため pchsource 用に取り込む (Editor は Game に依存済)
         "Source/Game/GamePch.cpp"
     }
+    -- EditorMain.cpp (Editor.exe の CreateApplication) は exe 側。 Editor からは除外する
+    removefiles { "Source/Editor/EditorMain.cpp" }
 
     includedirs {
         "Source/ThirdParty/DirectXTK/Inc",
@@ -423,8 +425,8 @@ group ""
 
 --============================================================================
 -- Game 実行ファイル (WindowedApp) — 薄い合成ルート
---   GameMain.cpp (CreateApplication) のみ。 Game を常時、 Editor を editor 構成のみリンクし、
---   出荷 (GameRelease) には editor / imgui を一切積まない (ゲーム UI の UI 層は積む)。
+--   GameMain.cpp (CreateApplication) のみ。 どの構成でも Editor をリンクしない。
+--   出荷 (GameRelease) には imgui も積まない (ゲーム UI の UI 層は積む)。
 --============================================================================
 project "GameApp"
     kind "WindowedApp"
@@ -477,14 +479,64 @@ project "GameApp"
         }
     filter {}
 
-    -- editor 構成のみ Editor モジュール (+imgui) をリンクする。 GameRelease では積まない
-    filter "configurations:Debug or Development or GameDebug"
-        links { "Editor" }
-    filter {}
-
     -- GameDebug: Game.exe のみ -O0 + symbols フル
     filter "configurations:GameDebug"
         optimize "Off"
+    filter {}
+
+    -- Game と同じ Game 側 PCH を共有する (GamePch.cpp は files に追加済)
+    pchheader "Game/GamePch.h"
+    pchsource "Source/Game/GamePch.cpp"
+    buildoptions { "/FI\"Game/GamePch.h\"" }
+
+    applyCommonBuildOptions()
+
+--============================================================================
+-- Editor 実行ファイル (WindowedApp) — エディタの合成ルート
+--   EditorMain.cpp (CreateApplication) のみ。 Game と Editor を積む。
+--   開発の構成だけで作り、 GameRelease では kind None で作らない。
+--============================================================================
+project "EditorApp"
+    kind "WindowedApp"
+    location "build/EditorApp"
+    targetname "Editor"
+
+    targetdir (bindir)        -- exe は build/bin/<Config>/ 直下
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/Editor/EditorMain.cpp",
+        "Source/NSlib/App/WinMain.cpp",
+        -- Game 側 PCH を共有するため pchsource 用に取り込む
+        "Source/Game/GamePch.cpp",
+        -- パスの文字コードと長さの上限は起動時に決まるので、コードからは変えられない
+        "Source/Game/Game.manifest"
+    }
+
+    includedirs {
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/imgui",
+        "Source/ThirdParty/imgui/backends",
+        "Source/ThirdParty/JoltPhysics",
+    }
+    includedirs(effekseerIncludeDirs)
+
+    applyJoltDefines()
+
+    defines {
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
+    }
+
+    links { "Editor", "Game", "NSlib" }
+
+    -- Game.exe と同じ理由で、Game 層の配置物のクラスの自己登録をリンカに捨てさせない
+    linkoptions { "/WHOLEARCHIVE:Game.lib" }
+
+    filter "configurations:GameRelease"
+        kind "None"
     filter {}
 
     -- Game と同じ Game 側 PCH を共有する (GamePch.cpp は files に追加済)
