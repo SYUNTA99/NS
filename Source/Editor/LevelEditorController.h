@@ -149,8 +149,6 @@ public:
     //! 配置ツールを Build / Object 切替える。Build へ戻す時はギズモ選択を解除する
     void SetObjectToolActive(bool active) noexcept;
 
-    //! 現在選択中の配置物の表示用添字。選択の真実は永続 id で、添字は実体から引き直す
-    [[nodiscard]] std::size_t SelectedObjectIndex() const noexcept;
     //! 永続 id で配置物を 1 体だけ選択する。0 を渡すと選択を外す
     void SelectObjectById(NS::uint32 id) noexcept;
     //! 現在の主対象の永続 id。未選択は 0。ギズモと Inspector はこの 1 体を見る

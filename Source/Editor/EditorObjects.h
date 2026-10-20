@@ -9,6 +9,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 
 #include <string_view>
+#include <vector>
 
 namespace NS
 {
@@ -20,8 +21,13 @@ namespace NS
 {
     namespace Editor
     {
+        //! @brief エディタが並べて番号を振る配置物。一時物を除き、objects の並びのまま
+        //! @details アクター一覧・その数・参照先の候補はこの並びと番号で出す
+        [[nodiscard]] std::vector<SceneActor*> PlacedActors(const ActorList& objects);
+
         //! @brief cell ブラシが置換・削除・回転できる 1 m の升の配置物か
-        //! @details 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない
+        //! @details 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。
+        //! 一時物かは見ないので、PlacedActors で並べた物を渡す
         [[nodiscard]] bool IsCellBrushObject(const SceneActor& object) noexcept;
 
         //! 実体のセル座標。Root の位置を最も近い整数へ丸めた値

@@ -459,7 +459,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui, std::string_view 
     m_editor.SetCollectCellsFn([this]() {
         std::vector<NS::Editor::EditorMode::CellCoord> cells;
         cells.reserve(m_scene->Objects().ObjectCount());
-        for (NS::SceneActor* objPtr : m_scene->Objects())
+        for (NS::SceneActor* objPtr : NS::Editor::PlacedActors(m_scene->Objects()))
         {
             NS::SceneActor& object = *objPtr;
             if (!NS::Editor::IsCellBrushObject(object))
@@ -923,21 +923,6 @@ void LevelEditorController::SetObjectToolActive(bool active) noexcept
     }
 }
 
-std::size_t LevelEditorController::SelectedObjectIndex() const noexcept
-{
-    if (m_selectedObjectId == NS::k_NoObjectId)
-    {
-        return NS::k_NoObjectIndex;
-    }
-    const NS::ActorList& objects = m_scene->Objects();
-    const std::size_t index = objects.IndexOfObjectId(m_selectedObjectId);
-    if (index == objects.ObjectCount())
-    {
-        return NS::k_NoObjectIndex;
-    }
-    return index;
-}
-
 bool LevelEditorController::HasInspectableSelection() const noexcept
 {
     return m_selectedObjectId != NS::k_NoObjectId && m_scene->Objects().FindByObjectId(m_selectedObjectId) != nullptr;
@@ -968,12 +953,8 @@ void LevelEditorController::RefreshGizmoSelectables()
 
     // 可視メッシュを持つ候補は 1、見えないカメラ等は 0。ギズモは 1 の候補を先に選ぶ
     // 全配置物をギズモ候補に積む。判定箱はギズモがクリックの時に配置物から引く
-    for (NS::SceneActor* object : m_scene->Objects())
+    for (NS::SceneActor* object : NS::Editor::PlacedActors(m_scene->Objects()))
     {
-        if (object->IsTransient())
-        {
-            continue;
-        }
         m_selectablePtrs.push_back(object);
         m_selectablePickable.push_back(static_cast<NS::uint8>(object->ModelClassObj() != nullptr));
     }
@@ -1431,9 +1412,9 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
 
     // 同じクラスの個体は同じ表を持つので、row をそのまま使える
     std::vector<NS::SceneActor*> followers;
-    for (NS::SceneActor* other : m_scene->Objects())
+    for (NS::SceneActor* other : NS::Editor::PlacedActors(m_scene->Objects()))
     {
-        if (other == &actor || other->IsTransient() || className != other->ClassName())
+        if (other == &actor || className != other->ClassName())
         {
             continue;
         }

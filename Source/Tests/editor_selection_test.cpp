@@ -7,6 +7,7 @@
 #include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "Game/Level/FollowCameraActor.h"
+#include "Game/Level/PropActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
 #include "NSlib/Core/Types.h"
@@ -512,6 +513,95 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
               std::string::npos);
     EXPECT_EQ(NS::Editor::ObjectDisplayName(*scene.Objects().FindByObjectId(second)), secondName);
     ImGui::DestroyContext(gui);
+}
+
+namespace
+{
+    void RenderInspectorFrame(NS::Editor::InspectorPanel& inspector, LevelEditorController& editor)
+    {
+        ImGui::NewFrame();
+        inspector.Render(editor);
+        ImGui::EndFrame();
+    }
+
+    // 名前の欄を打ち始めた時に欄が持っていた文字。何も打たずに離すので改名は流れない
+    std::string ReadInspectorNameField(NS::Editor::InspectorPanel& inspector, LevelEditorController& editor)
+    {
+        ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+        if (window == nullptr)
+        {
+            return {};
+        }
+        const ImGuiID nameId = window->GetID("##objectName");
+        ImGui::ActivateItemByID(nameId);
+        RenderInspectorFrame(inspector, editor);
+        RenderInspectorFrame(inspector, editor);
+        std::string text;
+        if (ImGuiInputTextState* state = ImGui::GetInputTextState(nameId))
+        {
+            text = state->TextToRevertTo.Data;
+        }
+        ImGui::NewFrame();
+        ImGui::ClearActiveID();
+        inspector.Render(editor);
+        ImGui::EndFrame();
+        return text;
+    }
+} // namespace
+
+// 一覧の道で改名しても、Undo で名前が戻っても、インスペクタの名前の欄は実体の今の名前を出す
+TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
+{
+    ImGuiContext* gui = ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.DisplaySize = ImVec2{800.0f, 600.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    NS::uint8* pixels = nullptr;
+    int width = 0;
+    int height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+    ASSERT_NE(item, nullptr);
+    editor.PlaceItem(*item);
+    const NS::uint32 id = editor.SelectedObjectId();
+    const std::string before = NS::Editor::ObjectDisplayName(*scene.Objects().FindByObjectId(id));
+
+    NS::Editor::InspectorPanel inspector;
+    RenderInspectorFrame(inspector, editor);
+    ASSERT_EQ(ReadInspectorNameField(inspector, editor), before);
+
+    editor.RenameObject(id, "Renamed");
+    RenderInspectorFrame(inspector, editor);
+    EXPECT_EQ(ReadInspectorNameField(inspector, editor), "Renamed");
+
+    ASSERT_TRUE(editor.Editor().PerformUndo());
+    RenderInspectorFrame(inspector, editor);
+    EXPECT_EQ(ReadInspectorNameField(inspector, editor), before);
+    ImGui::DestroyContext(gui);
+}
+
+// 一時物を間に挟んでも、参照先の候補は置いた物の並びのまま、その並びの番号で並ぶ
+TEST(EditorSelection, ReferenceOptionsFollowThePlacedActors)
+{
+    NS::Scene scene;
+    (void)scene.SpawnObject<GL::Level::PropActor>("a");
+    (void)scene.SpawnObject<GL::Level::PropActor>("b");
+    (void)scene.SpawnTransient<GL::Level::PropActor>();
+    (void)scene.SpawnObject<GL::Level::PropActor>("c");
+
+    const std::vector<NS::SceneActor*> placed = NS::Editor::PlacedActors(scene.Objects());
+    ASSERT_EQ(placed.size(), 3u);
+    const std::vector<NS::Editor::ObjectRefOption> options = NS::Editor::MakeObjectRefOptions(scene.Objects());
+    ASSERT_EQ(options.size(), placed.size());
+    for (std::size_t i = 0; i < placed.size(); ++i)
+    {
+        EXPECT_EQ(options[i].id, placed[i]->Id());
+        EXPECT_EQ(options[i].label.rfind("[" + std::to_string(i) + "] ", 0), 0u) << options[i].label;
+    }
 }
 
 TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)

@@ -64,11 +64,24 @@ namespace NS
             }
         } // namespace
 
+        std::vector<SceneActor*> PlacedActors(const ActorList& objects)
+        {
+            std::vector<SceneActor*> placed;
+            placed.reserve(objects.ObjectCount());
+            for (SceneActor* object : objects)
+            {
+                if (!object->IsTransient())
+                {
+                    placed.push_back(object);
+                }
+            }
+            return placed;
+        }
+
         bool IsCellBrushObject(const SceneActor& object) noexcept
         {
-            // 実行時の一時オブジェクトは配置物でないため対象外
             // 自前の振る舞いを持つ SceneActor は、ブラシの置換や削除で崩さない
-            if (object.IsTransient() || std::string_view{object.ClassName()} != "MapPartsActor")
+            if (std::string_view{object.ClassName()} != "MapPartsActor")
             {
                 return false;
             }
@@ -98,7 +111,7 @@ namespace NS
 
         uint32 FindObjectIdAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
         {
-            for (SceneActor* objPtr : objects)
+            for (SceneActor* objPtr : PlacedActors(objects))
             {
                 SceneActor& object = *objPtr;
                 if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
@@ -112,9 +125,9 @@ namespace NS
 
         bool HasPlacedObjectAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
         {
-            for (const SceneActor* object : objects)
+            for (const SceneActor* object : PlacedActors(objects))
             {
-                if (!object->IsTransient() && ObjectCellX(*object) == x && ObjectCellY(*object) == y &&
+                if (ObjectCellX(*object) == x && ObjectCellY(*object) == y &&
                     ObjectCellZ(*object) == z)
                 {
                     return true;

@@ -393,6 +393,21 @@ namespace NS
         }
 #endif
 
+        std::vector<ObjectRefOption> MakeObjectRefOptions(const ActorList& objects)
+        {
+            const std::vector<SceneActor*> placed = PlacedActors(objects);
+            std::vector<ObjectRefOption> options;
+            options.reserve(placed.size());
+            for (std::size_t i = 0; i < placed.size(); ++i)
+            {
+                const SceneActor& candidate = *placed[i];
+                char label[96];
+                std::snprintf(label, sizeof(label), "[%zu] %s (id %u)", i, ObjectDisplayName(candidate), candidate.Id());
+                options.push_back(ObjectRefOption{candidate.Id(), label});
+            }
+            return options;
+        }
+
         void InspectorPanel::Render(LevelEditorController& editor) noexcept
         {
 #if NS_EDITOR_ENABLED
@@ -408,25 +423,7 @@ namespace NS
                 {
                     editor.SelectSceneSettings();
                 }
-                // ActorRef の欄の参照先候補。個体一覧と同じ並びと表示名で全配置物を出す
-                std::vector<Editor::ObjectRefOption> refOptions;
-                refOptions.reserve(editor.Objects().ObjectCount());
-                for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
-                {
-                    SceneActor& candidate = *editor.Objects().ObjectAt(i);
-                    if (candidate.IsTransient())
-                    {
-                        continue;
-                    }
-                    char label[96];
-                    std::snprintf(label,
-                                  sizeof(label),
-                                  "[%zu] %s (id %u)",
-                                  i,
-                                  Editor::ObjectDisplayName(candidate),
-                                  candidate.Id());
-                    refOptions.push_back(Editor::ObjectRefOption{candidate.Id(), label});
-                }
+                const std::vector<ObjectRefOption> refOptions = MakeObjectRefOptions(editor.Objects());
 
                 // 素材の選択はアクターの選択と排他なので、選んでいる間はアクターの欄を出さない
                 if (Object* asset = editor.SelectedAsset())
@@ -448,10 +445,10 @@ namespace NS
                 // 直前の HasInspectableSelection で同じ識別番号の対象を確認済み
                 SceneActor* go = editor.SelectedObjectActor();
 
-                // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
+                // 名前の正は実体。一覧での改名と Undo も映すよう、打っていない間は毎回入れ直す
                 const uint32 selectedId = editor.SelectedObjectId();
                 // 打っている間は入れ直さない。打った名前は打ち始めた対象へ確定する
-                if (m_nameEditId == 0 && m_nameId != selectedId)
+                if (m_nameEditId == 0)
                 {
                     m_nameId = selectedId;
                     std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", Editor::ObjectDisplayName(*go));
@@ -471,7 +468,15 @@ namespace NS
                 {
                     m_nameEditId = 0;
                 }
-                ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), go->ClassName());
+                // 番号は参照先の候補とアクター一覧と同じ PlacedActors の並びの位置
+                for (std::size_t i = 0; i < refOptions.size(); ++i)
+                {
+                    if (refOptions[i].id == selectedId)
+                    {
+                        ImGui::Text("[%zu] %s", i, go->ClassName());
+                        break;
+                    }
+                }
                 ImGui::Separator();
 
                 // Transform は runtime が唯一の出所なので即反映し、commit が undo へ確定する

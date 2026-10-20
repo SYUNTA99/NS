@@ -7,11 +7,13 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 class LevelEditorController;
 
 namespace NS
 {
+    class ActorList;
     class Material;
     class Mesh;
     class Object;
@@ -52,10 +54,13 @@ namespace NS
             float m_previewPitch = -0.15f;
             float m_previewZoom = 1.0f;
             char m_nameBuffer[64]{};       // 最上部の名前欄
-            uint32 m_nameId = 0;       // 名前欄が今映している対象。選択が変わったら入れ直す
+            uint32 m_nameId = 0;       // 名前欄が今映している対象。打っていない間は毎回入れ直す
             uint32 m_nameCommitId = 0; // このフレームに確定した名前の対象、0 なら無し
             uint32 m_nameEditId = 0;   // 名前を打ち始めた対象。0 なら打っていない
             char m_fieldFilter[64]{};      // 欄の検索欄。空でない間は名前に含む欄だけを並べる。選択を変えても残す
         };
+
+        //! ActorRef の欄の参照先の候補。PlacedActors の並びと番号で、アクター一覧と同じ表示名を出す
+        [[nodiscard]] std::vector<ObjectRefOption> MakeObjectRefOptions(const ActorList& objects);
     } // namespace Editor
 } // namespace NS
