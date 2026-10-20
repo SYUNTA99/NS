@@ -69,6 +69,8 @@ namespace NS
                 return !SameValue<Quaternion>(comp, *defaults, field);
             case FieldType::Color:
                 return !SameValue<Color>(comp, *defaults, field);
+            case FieldType::OptionalColor:
+                return !SameValue<std::optional<Color>>(comp, *defaults, field);
             case FieldType::String:
             case FieldType::Asset:
                 return !SameValue<std::string>(comp, *defaults, field);
@@ -106,6 +108,9 @@ namespace NS
                 break;
             case FieldType::Color:
                 CopyValue<Color>(comp, defaults, field);
+                break;
+            case FieldType::OptionalColor:
+                CopyValue<std::optional<Color>>(comp, defaults, field);
                 break;
             case FieldType::String:
             case FieldType::Asset:
@@ -674,10 +679,9 @@ namespace NS
                 }
             }
 
-            void DrawColorFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
+            // 色の四角を width の幅で描き、押すと選ぶ画面を開く。選んだ色を value へ書いたら true
+            bool DrawColorPicker(const FieldDesc& field, Color& value, float width, FieldWidgetResult& result) noexcept
             {
-                Color value{};
-                field.get(owner, &value);
                 float rgba[] = {value.x, value.y, value.z, value.w};
                 // 色選択中はつまみを離しても編集を確定せず、選択画面を閉じるまでまとめる
                 ImGuiStorage* storage = ImGui::GetStateStorage();
@@ -686,7 +690,6 @@ namespace NS
                 constexpr ImGuiColorEditFlags k_Flags = ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float |
                                                        ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_PickerHueBar |
                                                        ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_AlphaBar;
-                const float width = ImGui::CalcItemWidth();
                 if (ImGui::ColorButton("##value", ImVec4{value.x, value.y, value.z, value.w},
                                        ImGuiColorEditFlags_AlphaPreviewHalf | ImGuiColorEditFlags_NoDragDrop |
                                            ImGuiColorEditFlags_NoTooltip,
@@ -714,6 +717,56 @@ namespace NS
                 if (changed)
                 {
                     value = Color{rgba[0], rgba[1], rgba[2], rgba[3]};
+                }
+                return changed;
+            }
+
+            void DrawColorFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
+            {
+                Color value{};
+                field.get(owner, &value);
+                if (DrawColorPicker(field, value, ImGui::CalcItemWidth(), result))
+                {
+                    field.set(owner, &value);
+                    result.changed = true;
+                }
+            }
+
+            // 色を入れるかのチェックボックスと色の四角を 1 つの欄に並べる。外すと空、入れると Color の既定の値から始まる
+            void DrawOptionalColorFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
+            {
+                std::optional<Color> value;
+                field.get(owner, &value);
+                const float width = ImGui::CalcItemWidth();
+                bool hasColor = value.has_value();
+                if (ImGui::Checkbox("##has-value", &hasColor))
+                {
+                    if (hasColor)
+                    {
+                        value = Color{};
+                    }
+                    else
+                    {
+                        value.reset();
+                    }
+                    field.set(owner, &value);
+                    result.changed = true;
+                }
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::SetTooltip("チェックを入れると色を入れる。外すと空に戻す");
+                }
+                ImGui::SameLine();
+                if (!value.has_value())
+                {
+                    ImGui::TextDisabled("未設定");
+                    return;
+                }
+                const float pickerWidth = width - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x;
+                Color color = *value;
+                if (DrawColorPicker(field, color, pickerWidth, result))
+                {
+                    value = color;
                     field.set(owner, &value);
                     result.changed = true;
                 }
@@ -1510,6 +1563,9 @@ namespace NS
                 }
                 case FieldType::Color:
                     DrawColorFieldWidget(owner, field, result);
+                    break;
+                case FieldType::OptionalColor:
+                    DrawOptionalColorFieldWidget(owner, field, result);
                     break;
                 case FieldType::String:
                 case FieldType::Asset:
