@@ -5,6 +5,7 @@
 
 #include "NSlib/CoreObject/ObjectJson.h"
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,11 +23,11 @@ namespace NS
         };
 
         //! @brief 置ける .actor を名前の順に並べる。地形の部品の .actor はメッシュの形ごとに分ける
-        //! @details .actor の名前かクラスが変わると組み直すので、返した参照と要素は次に呼ぶまでの間だけ使う
-        [[nodiscard]] const std::vector<PlacementItem>& PlacementItems();
+        //! @details 呼ぶたびに今の .actor から組むので、後で .actor が変わっても返した値は変わらない
+        [[nodiscard]] std::vector<PlacementItem> PlacementItems();
 
-        //! label が一致する物。無ければ nullptr。PlacementItems の要素を指すので、使える間も同じ
-        [[nodiscard]] const PlacementItem* FindPlacementItem(std::string_view label) noexcept;
+        //! label が一致する物の写し。無ければ空
+        [[nodiscard]] std::optional<PlacementItem> FindPlacementItem(std::string_view label);
 
         //! 地形の部品の立方体の名前。パレットの既定のブラシ
         inline constexpr std::string_view k_PartsCubeLabel = "地形の部品 (立方体)";

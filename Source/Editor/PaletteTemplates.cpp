@@ -2,6 +2,7 @@
 
 #include "Editor/PlacementCatalog.h"
 
+#include <optional>
 #include <string_view>
 
 namespace NS
@@ -14,7 +15,7 @@ namespace NS
             void FillSlot(PaletteTemplate& slot, const char* name, std::string_view label)
             {
                 slot.name = name;
-                if (const PlacementItem* item = FindPlacementItem(label))
+                if (const std::optional<PlacementItem> item = FindPlacementItem(label))
                 {
                     slot.rotatable = item->rotatable;
                     slot.prototype = item->prototype;

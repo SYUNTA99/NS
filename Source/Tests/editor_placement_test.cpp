@@ -20,8 +20,8 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 {
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
-    ASSERT_NE(item, nullptr);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    ASSERT_TRUE(item.has_value());
 
     editor.PlaceItem(*item);
 
@@ -36,8 +36,8 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
 {
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem(NS::Editor::k_PartsSlopeLabel);
-    ASSERT_NE(item, nullptr);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem(NS::Editor::k_PartsSlopeLabel);
+    ASSERT_TRUE(item.has_value());
 
     editor.PlaceItem(*item);
 
@@ -55,8 +55,8 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
 {
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("GoalActor");
-    ASSERT_NE(item, nullptr);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+    ASSERT_TRUE(item.has_value());
 
     editor.PlaceItem(*item);
     const NS::uint32 id = editor.SelectedObjectId();
@@ -101,8 +101,8 @@ TEST(EditorPlacement, OnlyTheBuiltInPartsCountAsCells)
 {
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
-    ASSERT_NE(cube, nullptr);
+    const std::optional<NS::Editor::PlacementItem> cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
+    ASSERT_TRUE(cube.has_value());
     editor.PlaceItem(*cube);
     const NS::SceneActor* placedCube = scene.Objects().FindByObjectId(editor.SelectedObjectId());
     ASSERT_NE(placedCube, nullptr);

@@ -19,8 +19,8 @@ namespace
     // 当たりと赤の欄を持つ置物を 1 体置く。置いた物は選ばれる
     void PlaceMapObj(LevelEditorController& editor)
     {
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
     }
 } // namespace

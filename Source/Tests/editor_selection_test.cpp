@@ -95,8 +95,8 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         ASSERT_NE(editor.SelectedObjectId(), NS::k_NoObjectId);
         NS::OS::Keyboard& keyboard = app.Input().Keyboard();
@@ -127,8 +127,8 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
     app.AddLayer(std::make_unique<SelectionTestLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedObjectId();
         const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
@@ -157,8 +157,8 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
     app.AddLayer(std::make_unique<SelectionTestLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedObjectId();
 
@@ -193,8 +193,8 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("FollowCameraActor");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("FollowCameraActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
@@ -239,8 +239,8 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 otherId = editor.SelectedObjectId();
         editor.PlaceItem(*item);
@@ -293,8 +293,8 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedObjectId();
         const NS::Vector3 placed = scene.Objects().FindByObjectId(actorId)->Root().Position();
@@ -398,8 +398,8 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
 
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
-    ASSERT_NE(item, nullptr);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 first = editor.SelectedObjectId();
     editor.PlaceItem(*item);
@@ -512,8 +512,8 @@ TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
 {
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("PropActor");
-    ASSERT_NE(item, nullptr);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 placed = editor.SelectedObjectId();
     ASSERT_NE(placed, NS::k_NoObjectId);
