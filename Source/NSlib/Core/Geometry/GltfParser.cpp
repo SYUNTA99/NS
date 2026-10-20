@@ -311,9 +311,6 @@ namespace NS
             }
 
             geom.vertices.reserve(geom.vertices.size() + vertexCount);
-            // 頂点を積むついでに軸並行境界を広げ、D3DStaticMesh 側の二度目の全走査を省く
-            Vector3 pmin{0.0f, 0.0f, 0.0f};
-            Vector3 pmax{0.0f, 0.0f, 0.0f};
             for (cgltf_size i = 0; i < vertexCount; ++i)
             {
                 float p[3] = {0.0f, 0.0f, 0.0f};
@@ -324,17 +321,7 @@ namespace NS
                 const float wz = world[2] * p[0] + world[6] * p[1] + world[10] * p[2] + world[14];
 
                 StaticVertex v{};
-                v.position = Vector3{wx, wy, -wz};
-                if (i == 0)
-                {
-                    pmin = v.position;
-                    pmax = v.position;
-                }
-                else
-                {
-                    pmin = Vector3::Min(pmin, v.position);
-                    pmax = Vector3::Max(pmax, v.position);
-                }
+                v.position = detail::MirrorZ(Vector3{wx, wy, wz});
 
                 float uv[2] = {0.0f, 0.0f};
                 if (uvAcc != nullptr)
@@ -355,18 +342,18 @@ namespace NS
                 const float nx = nm[0] * n[0] + nm[1] * n[1] + nm[2] * n[2];
                 const float ny = nm[3] * n[0] + nm[4] * n[1] + nm[5] * n[2];
                 const float nz = nm[6] * n[0] + nm[7] * n[1] + nm[8] * n[2];
-                Vector3 normal{nx, ny, -nz};
+                Vector3 normal = detail::MirrorZ(Vector3{nx, ny, nz});
                 normal.Normalize();
                 v.normal = normal;
 
                 geom.vertices.push_back(v);
             }
 
+            // 読み込みの時に箱を求め、D3DStaticMesh が頂点をもう一度全部見るのを省く
             if (vertexCount > 0)
             {
-                const Vector3 center = (pmin + pmax) * 0.5f;
-                const Vector3 extents = (pmax - pmin) * 0.5f;
-                const AABB primBox{center, extents};
+                const AABB primBox =
+                    AABBFromPositions(&geom.vertices[baseVertex].position, vertexCount, sizeof(StaticVertex));
                 if (!geom.hasBounds)
                 {
                     geom.bounds = primBox;
@@ -381,23 +368,34 @@ namespace NS
             AppendIndicesLeftHanded(prim, baseVertex, vertexCount, geom.indices);
         }
 
+        // 三角形で、Draco で圧縮されていない primitive だけを読む。断る時はログを出して false
+        // caller はログの頭に出す読み込み関数の名前
+        bool AcceptsPrimitive(const cgltf_primitive& prim, std::string_view caller, const std::string& path)
+        {
+            if (prim.type != cgltf_primitive_type_triangles)
+            {
+                NS_LOG_ERROR(Graphics,
+                             "{}: 三角形以外の primitive を skip (path={}, type={})",
+                             caller,
+                             path,
+                             static_cast<int>(prim.type));
+                return false;
+            }
+            if (prim.has_draco_mesh_compression)
+            {
+                NS_LOG_ERROR(Graphics, "{}: Draco 圧縮 primitive は未対応のため skip (path={})", caller, path);
+                return false;
+            }
+            return true;
+        }
+
         void AppendMesh(const cgltf_mesh& mesh, const float world[16], const std::string& path, MeshGeometry& geom)
         {
             for (cgltf_size p = 0; p < mesh.primitives_count; ++p)
             {
                 const cgltf_primitive& prim = mesh.primitives[p];
-                if (prim.type != cgltf_primitive_type_triangles)
+                if (!AcceptsPrimitive(prim, "LoadGltfMesh", path))
                 {
-                    NS_LOG_ERROR(Graphics,
-                                 "LoadGltfMesh: 三角形以外の primitive を skip (path={}, type={})",
-                                 path,
-                                 static_cast<int>(prim.type));
-                    continue;
-                }
-                if (prim.has_draco_mesh_compression)
-                {
-                    NS_LOG_ERROR(
-                        Graphics, "LoadGltfMesh: Draco 圧縮 primitive は未対応のため skip (path={})", path);
                     continue;
                 }
                 AppendPrimitive(prim, world, path, geom);
@@ -829,12 +827,12 @@ namespace NS
             }
         }
 
-        // 骨格に入るのはアニメの対象ノードとその祖先だけ。bones は親が子より前に並ぶ。outRootXf は骨格の根より上のノードの変換で、左手系に直してある
+        // 骨格に入るのはアニメの対象ノードとその祖先だけ。bones は親が子より前に並ぶ
+        // 祖先を全部入れるので、骨格の根はシーンの根のノードで、根より上の変換は無い
         bool BuildSourceSkeleton(const cgltf_data& model,
                                  const std::string& path,
                                  std::vector<Anim::Bone>& outBones,
-                                 std::unordered_map<const cgltf_node*, int>& outNodeToBone,
-                                 Matrix& outRootXf)
+                                 std::unordered_map<const cgltf_node*, int>& outNodeToBone)
         {
             std::unordered_set<const cgltf_node*> animated;
             for (cgltf_size a = 0; a < model.animations_count; ++a)
@@ -895,8 +893,6 @@ namespace NS
                 }
             };
 
-            outRootXf = Matrix::Identity;
-            bool rootXfSet = false;
             for (cgltf_size n = 0; n < model.nodes_count; ++n)
             {
                 const cgltf_node* node = &model.nodes[n];
@@ -908,13 +904,6 @@ namespace NS
                 if (!isRoot)
                 {
                     continue;
-                }
-                if (!rootXfSet && node->parent != nullptr)
-                {
-                    float world[16];
-                    cgltf_node_transform_world(node->parent, world);
-                    outRootXf = detail::ConjugateZMatrix(detail::ReadColumnMajorMatrix(world));
-                    rootXfSet = true;
                 }
                 visit(node);
             }
@@ -994,18 +983,8 @@ namespace NS
             for (cgltf_size p = 0; p < mesh.primitives_count; ++p)
             {
                 const cgltf_primitive& prim = mesh.primitives[p];
-                if (prim.type != cgltf_primitive_type_triangles)
+                if (!AcceptsPrimitive(prim, "LoadGltfSkinnedMesh", path))
                 {
-                    NS_LOG_ERROR(Graphics,
-                                 "LoadGltfSkinnedMesh: 三角形以外の primitive を skip (path={}, type={})",
-                                 path,
-                                 static_cast<int>(prim.type));
-                    continue;
-                }
-                if (prim.has_draco_mesh_compression)
-                {
-                    NS_LOG_ERROR(
-                        Graphics, "LoadGltfSkinnedMesh: Draco 圧縮 primitive は未対応のため skip (path={})", path);
                     continue;
                 }
                 if (!AppendSkinnedPrimitive(prim, skin.joints_count, path, vertices, indices))
@@ -1057,14 +1036,12 @@ namespace NS
 
         std::vector<Anim::Bone> bones;
         std::unordered_map<const cgltf_node*, int> nodeToBone;
-        Matrix rootXf = Matrix::Identity;
-        if (!BuildSourceSkeleton(model, path, bones, nodeToBone, rootXf))
+        if (!BuildSourceSkeleton(model, path, bones, nodeToBone))
         {
             return source;
         }
 
         source.skeleton = Anim::Skeleton(std::move(bones));
-        source.skeleton.SetRootTransform(rootXf);
         ParseAnimations(
             model,
             [&](const cgltf_node* node) -> int {

@@ -171,12 +171,7 @@ namespace NS
             }
 
             // バインドポーズ実測箱。アニメ非再生時のフォールバック境界に使う
-            AABB bounds{};
-            DirectX::BoundingBox::CreateFromPoints(bounds,
-                                                   desc.vertexCount,
-                                                   static_cast<const DirectX::XMFLOAT3*>(&desc.vertices[0].position),
-                                                   sizeof(SkinnedVertex));
-            SetLocalBounds(bounds);
+            SetLocalBounds(AABBFromPositions(&desc.vertices[0].position, desc.vertexCount, sizeof(SkinnedVertex)));
 
             if (desc.boneCount > k_MaxBones)
             {
