@@ -1,6 +1,7 @@
 #include "Editor/Editor.h"
 
 #include "Editor/LevelEditorController.h"
+#include "Editor/LevelFilePaths.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlayControls.h"
 #include "Game/Game.h"
@@ -18,6 +19,7 @@
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
+#include <imgui_internal.h>
 #endif
 
 #if NS_EDITOR_ENABLED
@@ -34,7 +36,8 @@ Editor::~Editor() = default;
 
 void Editor::OnAttach()
 {
-    // SceneManager::LoadScene が同期実行するので起動 scene は Game レイヤが既に load + OnStart 済
+    // SceneManager::LoadScene が同期実行するので、Game レイヤが立てた空の scene は既に OnStart 済
+    // 起動シーンは Setup が編集モードへ切替えた後に開く
     NS::Application* app = NS::Application::Get();
     Game* game = Game::Get();
     decltype(game->CurrentScene()) scene = nullptr;
@@ -68,7 +71,7 @@ void Editor::OnAttach()
     });
 
     m_controller = std::make_unique<LevelEditorController>(scene);
-    m_controller->Setup(m_imgui.get());
+    m_controller->Setup(NS::Editor::LevelNameOfScenePath(Game::StartScenePath()));
 
     // 初回フレームからオフスクリーンで描けるよう、ウィンドウサイズを初期の目標サイズにしておく
     const NS::Size2D viewSize = app->Window().Size();
@@ -121,6 +124,7 @@ void Editor::OnUpdate()
     HandleModeToggleInput(*m_controller);
     HandlePauseInput(*m_controller);
     HandleUiVisibilityInput(*m_controller);
+    HandleEditShortcuts(*m_controller);
 }
 
 void Editor::OnRender()
@@ -143,7 +147,7 @@ void Editor::OnRender()
     editor.Render();
 
     // 終了確認は UI 非表示やプレイ中でも必ず出すため m_uiVisible のゲート外で描く
-    m_quitModal.Render(editor);
+    m_quitModal.Render(editor, m_hitTimeline);
 
     const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
 
@@ -167,7 +171,7 @@ void Editor::OnRender()
             // で組んだドッキングがプレイ移行で崩れないようにする
             m_sceneView.Render(editor);
             m_gameView.Render(editor);
-            ImGui::BeginDisabled(playMode);
+            ImGui::BeginDisabled(!editor.IsSceneEditable());
             m_toolMode.Render(editor);
             ImGui::EndDisabled();
 
@@ -204,14 +208,13 @@ void Editor::OnRender()
         }
 
         // 保存と読み込みの窓とショートカットは、全面化の間も効かせる
-        if (!playMode)
+        if (editor.IsSceneEditable())
         {
             editor.Editor().RenderFileBrowser();
         }
-        HandleEditShortcuts(editor);
 
         // パネルの内容に重ならないショートカットで全面化と復元を切り替える
-        m_dock.RenderMaximizeButton();
+        m_dock.RenderMaximizeButton(editor.EditShortcutsBlocked());
 
         m_lastModeWasPlay = playMode;
     }
@@ -285,6 +288,8 @@ void Editor::OnRender()
                                            .uiWantsMouse = m_imgui->WantCaptureMouse(),
                                            .uiWantsKeyboard = m_imgui->WantCaptureKeyboard(),
                                            .textInput = ImGui::GetIO().WantTextInput,
+                                           .itemActive = ImGui::IsAnyItemActive(),
+                                           .modalOpen = ImGui::GetTopMostPopupModal() != nullptr,
                                            .editSceneLatched = m_sceneView.IsMouseLatched(),
                                            .gameLatched = m_gameView.IsMouseLatched(),
                                            .cursorReleased = app->Window().IsCursorVisible(),
@@ -293,6 +298,7 @@ void Editor::OnRender()
                                            .focusedPanel = focusedPanel});
     app->Input().SetUiCapture(
         {.wantMouse = owner.uiMouse, .wantKeyboard = owner.uiKeyboard, .leftButtonToGame = owner.leftButtonToGame});
+    editor.SetEditShortcutsBlocked(owner.editShortcutsBlocked);
 
     // 見回し終了時にキー状態を解除し、操作対象の切替へ押しっぱなしを持ち越さない
     if (m_sceneView.ConsumeFreeFlyReleased())
@@ -464,8 +470,7 @@ void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
 {
 #if NS_EDITOR_ENABLED
     NS::Editor::EditorMode& ed = editor.Editor();
-    const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
-    const bool editEnabled = !playMode; // プレイ中はレベルへの編集を止め、進行中のセッションを壊さない
+    const bool editEnabled = editor.IsSceneEditable();
 
     // 縦の余白を詰めてバーを細くする。横は掴みやすさのため残す
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{9.0f, 1.0f});
@@ -578,7 +583,7 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
     }
     else if (name == NS::Editor::k_PanelEditMode)
     {
-        ImGui::BeginDisabled(editor.CurrentMode() == LevelEditorController::Mode::Play);
+        ImGui::BeginDisabled(!editor.IsSceneEditable());
         m_toolMode.Render(editor);
         ImGui::EndDisabled();
     }
@@ -598,33 +603,28 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
 
 void Editor::HandleEditShortcuts(LevelEditorController& editor) noexcept
 {
-#if NS_EDITOR_ENABLED
-    // プレイ中の配置物は実体がそのまま保存対象なので、誤爆で消さないよう編集中だけ効かせる
-    if (editor.CurrentMode() != LevelEditorController::Mode::Edit)
+    if (!editor.IsSceneEditable() || editor.EditShortcutsBlocked())
+    {
+        return;
+    }
+    NS::Application* app = NS::Application::Get();
+    if (app == nullptr)
     {
         return;
     }
 
-    const ImGuiIO& io = ImGui::GetIO();
-    // 改名の入力欄に居る間は Delete も D も文字入力
-    if (io.WantTextInput)
-    {
-        return;
-    }
-
-    if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+    const NS::OS::Keyboard& keyboard = app->Input().Keyboard();
+    const bool ctrl = keyboard.IsHeld(NS::OS::Key::Ctrl);
+    if (keyboard.IsPressed(NS::OS::Key::Delete))
     {
         editor.DeleteSelectedObject();
     }
-    if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false))
+    if (ctrl && keyboard.IsPressed(NS::OS::Key::D))
     {
         editor.DuplicateSelectedObject();
     }
-    if (!io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
+    if (!ctrl && keyboard.IsPressed(NS::OS::Key::F))
     {
         editor.FocusSelectedInView();
     }
-#else
-    (void)editor;
-#endif
 }

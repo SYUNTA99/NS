@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/Core/OBB.h"
@@ -19,7 +20,7 @@ namespace
         nlohmann::json rock = NS::MakeObjectJson();
         NS::SetObjectJsonClass(rock, "PropActor");
         NS::SetObjectJsonId(rock, 1);
-        NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
+        NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         return static_cast<GL::Level::PropActor*>(scene.Objects().FindByObjectId(1));

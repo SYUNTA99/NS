@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
 #include "NSlib/CoreObject/ObjectJson.h"
@@ -37,7 +38,7 @@ namespace
         NS::SetObjectJsonId(object, id);
         NS::SetObjectJsonClass(object, "LifeBoxActor");
         NS::SetObjectJsonName(object, name);
-        NS::SetObjectPosition(object, {x, 0.0f, 0.0f});
+        NS::Editor::SetObjectPosition(object, {x, 0.0f, 0.0f});
         return object;
     }
 
@@ -133,8 +134,9 @@ TEST(ActorLifecycle, RebuildingFromJsonDropsTransients)
 TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
 {
     NS::Scene scene;
+    scene.SetSimulationEnabled(false);
     GL::Level::PropActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
-    scene.SyncPhysics();
+    scene.OnUpdate();
     const std::size_t sensors = scene.HitSensors().Sensors().size();
     ASSERT_GT(sensors, 0u);
     float distance = 0.0f;
@@ -152,10 +154,11 @@ TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
 TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
 {
     NS::Scene scene;
+    scene.SetSimulationEnabled(false);
     GL::Level::PropActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
     GL::Level::PropActor* other = scene.SpawnTransient<GL::Level::PropActor>();
     other->Root().SetPosition({10.0f, 0.0f, 0.0f});
-    scene.SyncPhysics();
+    scene.OnUpdate();
     const std::size_t renderables = scene.RenderableCount();
     const std::size_t sensors = scene.HitSensors().Sensors().size();
     const NS::uint bodies = scene.Physics().BodyCount();

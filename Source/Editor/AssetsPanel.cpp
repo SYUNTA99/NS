@@ -12,8 +12,10 @@
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DTexture.h"
+#include "NSlib/Core/Logger.h"
 #include "NSlib/Windows/Filesystem.h"
 
+#include <optional>
 #include <string>
 #include <algorithm>
 
@@ -73,16 +75,20 @@ namespace NS
                 }
                 return nullptr;
             }
-            Object* asset = nullptr;
-            const std::string root = OS::FileSystem::Normalize(OS::FileSystem::ContentRoot());
-            const std::string name = OS::FileSystem::Normalize(file).substr(root.size() + 1);
-            if (OS::FileSystem::Extension(file) == ".mat")
+            const std::optional<std::string> name = OS::FileSystem::RelativeUnder(OS::FileSystem::ContentRoot(), file);
+            if (!name)
             {
-                asset = assets.LoadMaterial(name);
+                NS_LOG_ERROR(App, "素材 {} が ContentRoot の外にあるので下見を作らない", file);
+                return nullptr;
+            }
+            Object* asset = nullptr;
+            if (IsMaterialAssetPath(file))
+            {
+                asset = assets.LoadMaterial(*name);
             }
             else
             {
-                asset = assets.LoadMesh(name);
+                asset = assets.LoadMesh(*name);
             }
             const std::optional<Gfx::DrawItem> item = MakeAssetPreviewItem(*asset);
             if (!item)
@@ -104,7 +110,6 @@ namespace NS
         void AssetsPanel::RenderTile(const std::string& file, LevelEditorController& editor, float width)
         {
             const std::string name = OS::FileSystem::FileName(file);
-            const std::string extension = OS::FileSystem::Extension(file);
             const float thumb = std::min(80.0f, width);
             const float height = thumb + ImGui::GetTextLineHeight() * 2.0f + 10.0f;
             ImGui::PushID(file.c_str());
@@ -153,11 +158,11 @@ namespace NS
                                ImGui::GetColorU32(ImGuiCol_Text), name.c_str(), nullptr, width, &clip);
             }
             const char* dragType = nullptr;
-            if (extension == ".mat")
+            if (IsMaterialAssetPath(file))
             {
                 dragType = k_MaterialDragType;
             }
-            else if (extension == ".gltf" || extension == ".glb")
+            else if (IsModelAssetPath(file))
             {
                 dragType = k_MeshDragType;
             }
@@ -187,8 +192,7 @@ namespace NS
             std::vector<std::string> previewFiles;
             for (const std::string& file : files)
             {
-                const std::string extension = OS::FileSystem::Extension(file);
-                if (extension == ".mat" || extension == ".gltf" || extension == ".glb" || IsTextureAssetPath(file))
+                if (IsMaterialAssetPath(file) || IsModelAssetPath(file) || IsTextureAssetPath(file))
                 {
                     previewFiles.push_back(file);
                 }

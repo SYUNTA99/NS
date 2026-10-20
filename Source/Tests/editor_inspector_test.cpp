@@ -1,16 +1,35 @@
+#include "Editor/InspectorPanel.h"
 #include "Editor/InspectorReflection.h"
+#include "Editor/LevelEditorController.h"
+#include "Editor/PanelIds.h"
+#include "Editor/PlacementCatalog.h"
+#include "NSlib/App/Application.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Phys/PhysicsScene.h"
+#include "NSlib/Windows/Filesystem.h"
+#include "Tests/TestArchetypeDirectory.h"
+#include "Tests/TestCheckLayer.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <cmath>
 #include <limits>
+#include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 // コンボで参照先を選ぶと、値が変わる前に編集の始まりを、変わった後に確定を返す
@@ -325,4 +344,270 @@ TEST(EditorInspector, Vector2ValueAxesEditIndependentlyAcrossPanelResizes)
     }
     EXPECT_EQ(object.offset, (NS::Vector2{12.5f, -3.25f}));
     ImGui::DestroyContext(gui);
+}
+
+namespace
+{
+    // インスペクタを、欄の行も上書きの印の選びも全部入る大きさで描く
+    class InspectorFrames
+    {
+    public:
+        explicit InspectorFrames(LevelEditorController& editor) : m_editor(editor)
+        {
+            m_gui = ImGui::CreateContext();
+            ImGuiIO& io = ImGui::GetIO();
+            io.IniFilename = nullptr;
+            io.DisplaySize = ImVec2{800.0f, 2000.0f};
+            io.DeltaTime = 1.0f / 60.0f;
+            io.ConfigInputTrickleEventQueue = false;
+            NS::uint8* pixels = nullptr;
+            int width = 0;
+            int height = 0;
+            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+        }
+        ~InspectorFrames() { ImGui::DestroyContext(m_gui); }
+        InspectorFrames(const InspectorFrames&) = delete;
+        InspectorFrames& operator=(const InspectorFrames&) = delete;
+
+        void Frame()
+        {
+            ImGui::NewFrame();
+            ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
+            ImGui::SetNextWindowSize(ImVec2{600.0f, 1900.0f});
+            m_inspector.Render(m_editor);
+            ImGui::EndFrame();
+        }
+
+    private:
+        LevelEditorController& m_editor;
+        NS::Editor::InspectorPanel m_inspector;
+        ImGuiContext* m_gui = nullptr;
+    };
+
+    // actor の表で part を持つ行
+    const NS::ClassObjInfo* RowOf(const NS::SceneActor& actor, const NS::Object* part)
+    {
+        const NS::ClassObjInfo* found = nullptr;
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* live) {
+            if (live == part)
+            {
+                found = &row;
+            }
+        });
+        return found;
+    }
+
+    // インスペクタの、部品 row の欄 fieldName の行の ID。部品は鍵で、欄の表は名前で、欄は並びの番号で ID を積む
+    ImGuiID FieldRowId(const NS::ClassObjInfo& row, const NS::Object& part, std::string_view fieldName)
+    {
+        const ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+        const NS::ReflectionInfo* info = part.GetReflection();
+        if (window == nullptr || info == nullptr)
+        {
+            return 0;
+        }
+        int index = -1;
+        for (std::size_t i = 0; i < info->fieldCount; ++i)
+        {
+            if (fieldName == info->fields[i].name)
+            {
+                index = static_cast<int>(i);
+            }
+        }
+        ImGuiID id = ImHashStr(row.key, 0, window->ID);
+        id = ImHashStr("##fields", 0, id);
+        return ImHashData(&index, sizeof(index), id);
+    }
+
+    // above から真下へ撃ち、当たった所までの距離。当たらなければ空
+    std::optional<float> DownHit(const NS::Scene& scene, const NS::Vector3& above)
+    {
+        float distance = 0.0f;
+        if (!scene.Physics().Raycast(above, -NS::Vector3::UnitY, 20.0f, distance))
+        {
+            return std::nullopt;
+        }
+        return distance;
+    }
+} // namespace
+
+// インスペクタで当たりの形の欄を変えると、世界を止めた歩の後の当たりがその形になる
+TEST(EditorInspector, FieldChangeReachesTheCollision)
+{
+    NS::Scene scene;
+    scene.SetSimulationEnabled(false);
+    LevelEditorController editor(&scene);
+    editor.PlaceItem(*NS::Editor::FindPlacementItem("置物"));
+    NS::SceneActor* prop = editor.SelectedObjectActor();
+    ASSERT_NE(prop, nullptr);
+    ASSERT_EQ(prop->Root().Scale(), NS::Vector3::One);
+    const NS::ClassObjInfo* row = RowOf(*prop, prop->CollisionClassObj());
+    ASSERT_NE(row, nullptr);
+    scene.OnUpdate();
+
+    // 中心から横へ 2 ずらした真上。半径 3 の球なら中心より上に当たる
+    const NS::Vector3 above = prop->Root().Position() + NS::Vector3{2.0f, 10.0f, 0.0f};
+    const std::optional<float> before = DownHit(scene, above);
+    EXPECT_TRUE(!before.has_value() || *before > 10.0f);
+
+    InspectorFrames frames(editor);
+    frames.Frame();
+    frames.Frame();
+    const ImGuiID input = ImHashStr("##value", 0, FieldRowId(*row, *prop->CollisionClassObj(), "半径"));
+    ImGui::ActivateItemByID(input);
+    GImGui->NavNextActivateFlags = ImGuiActivateFlags_PreferInput;
+    frames.Frame();
+    ASSERT_EQ(GImGui->ActiveId, input);
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddInputCharactersUTF8("3");
+    frames.Frame();
+    io.AddKeyEvent(ImGuiKey_Enter, true);
+    frames.Frame();
+    io.AddKeyEvent(ImGuiKey_Enter, false);
+    frames.Frame();
+
+    scene.OnUpdate();
+    const std::optional<float> after = DownHit(scene, above);
+    ASSERT_TRUE(after.has_value());
+    EXPECT_NEAR(*after, 10.0f - std::sqrt(5.0f), 0.01f);
+}
+
+// インスペクタの上書きの印から既定へ戻すと、描くメッシュも、世界を止めた歩の後のメッシュの当たりも既定の形になる
+TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
+{
+    NS::Scene scene;
+    scene.SetSimulationEnabled(false);
+    LevelEditorController editor(&scene);
+    editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
+    NS::SceneActor* parts = editor.SelectedObjectActor();
+    ASSERT_NE(parts, nullptr);
+    NS::Model* model = parts->ModelClassObj();
+    ASSERT_NE(model, nullptr);
+    const NS::ClassObjInfo* row = RowOf(*parts, model);
+    ASSERT_NE(row, nullptr);
+    scene.OnUpdate();
+    const NS::Mesh* cubeMesh = model->GetMesh();
+
+    // 坂の低い側の真上。立方体の上面と坂の面で距離が違う
+    const NS::Vector3 above = parts->Root().Position() + NS::Vector3{0.0f, 2.0f, -0.4f};
+    const std::optional<float> cubeHit = DownHit(scene, above);
+    ASSERT_TRUE(cubeHit.has_value());
+
+    // 坂にするのは前置き。確かめるのは戻す道
+    model->SetMeshRef("wedge45");
+    parts->ReloadAssets();
+    scene.OnUpdate();
+    const std::optional<float> wedgeHit = DownHit(scene, above);
+    ASSERT_TRUE(wedgeHit.has_value());
+    ASSERT_GT(*wedgeHit, *cubeHit + 0.5f);
+
+    InspectorFrames frames(editor);
+    frames.Frame();
+    frames.Frame();
+    const ImGuiID rowId = FieldRowId(*row, *model, "メッシュ");
+    ImGui::ActivateItemByID(ImHashStr("上書き", 0, rowId));
+    frames.Frame();
+    char popupName[32];
+    ImFormatString(popupName, sizeof(popupName), "##Popup_%08x", ImHashStr("##override", 0, rowId));
+    const ImGuiWindow* popup = ImGui::FindWindowByName(popupName);
+    ASSERT_NE(popup, nullptr);
+    ImGui::ActivateItemByID(ImHashStr("既定に戻す", 0, popup->ID));
+    frames.Frame();
+    frames.Frame();
+
+    EXPECT_EQ(model->GetMesh(), cubeMesh);
+    scene.OnUpdate();
+    const std::optional<float> after = DownHit(scene, above);
+    ASSERT_TRUE(after.has_value());
+    EXPECT_NEAR(*after, *cubeHit, 0.001f);
+}
+
+// 種類の既定へ上げると、付いて行くアクターの描くメッシュも、世界を止めた歩の後のメッシュの当たりも上げた形になる
+TEST(EditorInspector, FieldPromoteReachesTheFollowersMeshAndCollision)
+{
+    const ScopedArchetypeDirectory archetypes("EditorFieldPromote");
+    NS::Scene scene;
+    scene.SetSimulationEnabled(false);
+    LevelEditorController editor(&scene);
+    const NS::Editor::PlacementItem* cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
+    ASSERT_NE(cube, nullptr);
+    editor.PlaceItem(*cube);
+    NS::SceneActor* source = editor.SelectedObjectActor();
+    ASSERT_NE(source, nullptr);
+    editor.PlaceItem(*cube);
+    NS::SceneActor* follower = editor.SelectedObjectActor();
+    ASSERT_NE(follower, nullptr);
+    ASSERT_NE(follower, source);
+    follower->Root().SetPosition(source->Root().Position() + NS::Vector3{5.0f, 0.0f, 0.0f});
+    scene.OnUpdate();
+
+    const NS::Vector3 above = follower->Root().Position() + NS::Vector3{0.0f, 2.0f, -0.4f};
+    const std::optional<float> cubeHit = DownHit(scene, above);
+    ASSERT_TRUE(cubeHit.has_value());
+
+    source->ModelClassObj()->SetMeshRef("wedge45");
+    source->ReloadAssets();
+    const NS::ClassObjInfo* row = RowOf(*source, source->ModelClassObj());
+    ASSERT_NE(row, nullptr);
+    ASSERT_TRUE(editor.PromoteFieldToArchetype(*source, *row, "メッシュ"));
+
+    EXPECT_EQ(follower->ModelClassObj()->GetMesh(), source->ModelClassObj()->GetMesh());
+    scene.OnUpdate();
+    const std::optional<float> after = DownHit(scene, above);
+    ASSERT_TRUE(after.has_value());
+    EXPECT_GT(*after, *cubeHit + 0.5f);
+}
+
+// マテリアルを付けると、描くマテリアルが付けた物になる
+TEST(EditorInspector, MaterialApplyReachesTheDrawnMaterial)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "マテリアルを付ける試し";
+    desc.window.size = {160, 90};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
+        NS::Scene scene;
+        scene.SetSimulationEnabled(false);
+        LevelEditorController editor(&scene);
+        editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
+        NS::SceneActor* parts = editor.SelectedObjectActor();
+        ASSERT_NE(parts, nullptr);
+        const std::string stone = "Assets/Materials/stone.mat";
+        ASSERT_TRUE(editor.ApplyMaterialToSelected(
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), stone)));
+        EXPECT_EQ(parts->ModelClassObj()->DrawnMaterial(), app.Assets().LoadMaterial(stone));
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// シーン設定で空を外すと環境の履歴が 1 つ積まれ、Undo 1 回で空が戻る。重力の向きは変えない
+TEST(EditorInspector, SkyboxEditUndoesThroughTheEnvironmentHistory)
+{
+    NS::Scene scene;
+    scene.SetSimulationEnabled(false);
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::WriteSceneEnvironment(
+        doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt", .gravityDirection = NS::Vector3{1.0f, 0.0f, 0.0f}});
+    scene.ResetFromJson(doc);
+    LevelEditorController editor(&scene);
+    const nlohmann::json before = scene.ToJson();
+
+    InspectorFrames frames(editor);
+    frames.Frame();
+    frames.Frame();
+    const ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+    ASSERT_NE(window, nullptr);
+    ImGui::ActivateItemByID(ImHashStr("表示しない", 0, window->ID));
+    frames.Frame();
+    frames.Frame();
+
+    EXPECT_TRUE(scene.SkyboxPath().empty());
+    EXPECT_EQ(scene.GravityDirection(), (NS::Vector3{1.0f, 0.0f, 0.0f}));
+    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
+    EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+    ASSERT_TRUE(editor.Editor().PerformUndo());
+    EXPECT_EQ(scene.ToJson(), before);
+    EXPECT_EQ(NS::ReadSceneEnvironment(scene.ToJson()).skybox, "Assets/Skybox/kurt");
 }

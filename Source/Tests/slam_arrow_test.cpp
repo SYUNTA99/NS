@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"
@@ -40,15 +41,15 @@ namespace
         nlohmann::json player = NS::MakeObjectJson();
         NS::SetObjectJsonClass(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
-        NS::SetObjectPosition(player, playerPosition);
+        NS::Editor::SetObjectPosition(player, playerPosition);
         NS::SceneJsonObjects(doc).push_back(std::move(player));
         if (withTarget)
         {
             nlohmann::json rock = NS::MakeObjectJson();
             NS::SetObjectJsonClass(rock, "PropActor");
             NS::SetObjectJsonId(rock, 2);
-            NS::SetObjectPosition(rock, targetPosition);
-            NS::SetObjectScale(rock, Vector3{targetScale, targetScale, targetScale});
+            NS::Editor::SetObjectPosition(rock, targetPosition);
+            NS::Editor::SetObjectScale(rock, Vector3{targetScale, targetScale, targetScale});
             for (nlohmann::json::const_iterator it = targetParts.begin(); it != targetParts.end(); ++it)
             {
                 NS::ObjectJsonClassObjs(rock)[it.key()] = it.value();

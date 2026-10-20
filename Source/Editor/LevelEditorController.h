@@ -31,14 +31,7 @@ namespace NS
     struct SceneView;
     class AssetManager;
     class Material;
-} // namespace NS
-
-namespace NS
-{
-    namespace UI
-    {
-        class ImGuiContext;
-    }
+    enum class FieldType;
 } // namespace NS
 
 namespace NS
@@ -56,8 +49,9 @@ public:
     explicit LevelEditorController(NS::Scene* scene) noexcept;
     ~LevelEditorController();
 
-    //! scene の OnStart 完了後に呼ぶ。自由視点カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
-    void Setup(NS::UI::ImGuiContext* imgui);
+    //! scene の OnStart 完了後に呼ぶ。自由視点カメラ / EditorMode / ギズモを立ち上げ編集モードへ入り、
+    //! startLevelName のレベルを EditorMode::OpenLevel で開く。空なら開かず、今のシーンのまま編集を始める
+    void Setup(std::string_view startLevelName);
 
     //! 固定ステップ更新。編集中は自由視点カメラ / ギズモ / EditorMode を回す。プレイ中は Esc
     //! で隠したカーソルを出すだけ
@@ -81,6 +75,16 @@ public:
     };
 
     [[nodiscard]] Mode CurrentMode() const noexcept { return m_mode; }
+
+    //! @brief シーンか種類の既定を変えてよいか。編集モードの間だけ真
+    //! @details 変える関数と画面の止め方は全部これを見る。EditorMode にも同じ答えを差す。
+    //! プレイ中に欄を触る道 (MirrorPlayEditToBaseline) は断らず、プレイ開始の写しへ写す
+    [[nodiscard]] bool IsSceneEditable() const noexcept;
+
+    //! @brief 編集のショートカットを止めるか。ResolveInputOwnership の答えを毎回の描画の終わりに受ける
+    //! @details キーを読むのは次の固定ステップの更新なので、1 つ前の描画の答えを読む
+    void SetEditShortcutsBlocked(bool blocked) noexcept { m_editShortcutsBlocked = blocked; }
+    [[nodiscard]] bool EditShortcutsBlocked() const noexcept { return m_editShortcutsBlocked; }
 
     //! 編集モードからプレイモードへ移行する
     void EnterPlay() noexcept;
@@ -142,8 +146,6 @@ public:
     //! 配置ツールを Build / Object 切替える。Build へ戻す時はギズモ選択を解除する
     void SetObjectToolActive(bool active) noexcept;
 
-    //! 現在選択中の配置物の表示用添字。選択の真実は永続 id で、添字は実体から引き直す
-    [[nodiscard]] std::size_t SelectedObjectIndex() const noexcept;
     //! 永続 id で配置物を 1 体だけ選択する。0 を渡すと選択を外す
     void SelectObjectById(NS::uint32 id) noexcept;
     //! 現在の主対象の永続 id。未選択は 0。ギズモと Inspector はこの 1 体を見る
@@ -174,6 +176,7 @@ public:
     void CommitClassObjEdit() noexcept;
 
     //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
+    //! 写した欄は履歴へ 1 つずつ積まず、編集へ戻る時にプレイ開始の凍結と比べて 1 まとまりで積む
     //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
     //! row は actor のクラスの表の行
     void MirrorPlayEditToBaseline(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
@@ -182,6 +185,11 @@ public:
     //! ファイル保存に失敗してもメモリ上の変更は残し、警告する。Undo の対象外
     //! row は actor のクラスの表の行
     bool PromoteFieldToArchetype(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
+
+    //! @brief 配置物の欄を書いた後の後始末。欄を変える・既定へ戻す・種類の既定へ上げる・マテリアルを付ける の全部が呼ぶ
+    //! @details 素材の欄を書いた時だけ、描くメッシュ・描くマテリアル・メッシュの当たりの形を読み直す
+    //! 当たりの姿と形は、世界を止めた歩とプレイの歩が揃えるので、ここでは張り直さない。writtenType は書いた欄の型
+    void FinishFieldWrite(NS::SceneActor& actor, NS::FieldType writtenType);
 
     //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);
@@ -244,8 +252,12 @@ private:
     //! 編集モードでしか要らない遷移なのでエディタが持つ。組み直しで確保が起きるため noexcept にしない
     void LeavePlayForEdit();
 
-    //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
-    void PushCreateObject(nlohmann::json object);
+    //! 配置物を 1 体作り、作った物を選ぶ。置く道が使う。作るのは EditorMode::CreateObjects
+    void CreateObjectAndSelect(nlohmann::json object);
+
+    //! 素材の選択を外す。前に、選んだ素材の確定していない編集を確定して .mat に書く
+    //! 選択を外す道は全部これを通す。外してから確定すると、書く先の道が消えて編集を失う
+    void ClearAssetSelection();
 
     //! 選んだ配置物の Root を書いた後、その欄をプレイ中の凍結へも写す
     void MirrorRootEditToBaseline(NS::SceneActor& actor, std::string_view fieldName);
@@ -330,10 +342,16 @@ private:
     NS::uint32 m_classObjEditBaselineId = NS::k_NoObjectId; // 編集開始時の対象 id
     nlohmann::json m_classObjEditBaseline;                  // 編集開始時の状態スナップショット
 
+    // プレイ開始の凍結の写し。編集へ戻る時に、プレイ中に凍結へ写した欄を見つけて履歴へ積むために比べる
+    // プレイに入っていない間は空
+    std::optional<nlohmann::json> m_playStartBaseline;
+
     // 素材の窓で選んだ素材の ContentRoot からの道。アクターの選択と排他。
     // 姿のポインタを持たないのは、AssetManager::Clear の後に古いポインタを残さないため
     std::string m_selectedAssetPath;
     bool m_assetEdited = false; // 選んだ素材の値が変わり、まだ確定していない
+
+    bool m_editShortcutsBlocked = false;
 };
 
 namespace NS

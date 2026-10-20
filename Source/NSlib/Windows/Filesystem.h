@@ -62,6 +62,11 @@ namespace NS
             [[nodiscard]] static std::optional<std::string> ResolveUnder(std::string_view base,
                                                                          std::string_view relative);
 
+            //! path を base からの相対パスにし、区切りを / へ統一して返す。ResolveUnder の逆向き
+            //! 根の比べは大文字小文字を区別しない。base そのもの・base の外・相対の path は nullopt
+            [[nodiscard]] static std::optional<std::string> RelativeUnder(std::string_view base,
+                                                                          std::string_view path);
+
             //! base と relative を区切り 1 つで繋ぐ。base の末尾が区切りの場合は足さない
             //! どちらかが空の場合は残った方をそのまま返す
             //! relative がルートやドライブ指定で始まる場合は base を捨てて relative を返す

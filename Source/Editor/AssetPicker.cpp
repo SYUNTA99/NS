@@ -1,12 +1,15 @@
 #include "Editor/AssetPicker.h"
 
+#include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/Gfx/Render/Skybox.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstring>
+#include <optional>
 #include <utility>
 
 namespace NS
@@ -15,10 +18,32 @@ namespace NS
     {
         namespace
         {
-            // Skybox::LoadCubemap が読む六方向のファイル名に合わせる。
-            constexpr std::array<std::string_view, 6> k_SkyboxFaces = {
-                "space_ft.png", "space_bk.png", "space_up.png",
-                "space_dn.png", "space_rt.png", "space_lf.png"};
+            // 素材の種類は拡張子で分ける。大文字と小文字を区別しないため、比べる前に小文字へ揃える
+            std::string LowerExtension(std::string_view path)
+            {
+                std::string extension = OS::FileSystem::Extension(path);
+                std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
+                    return static_cast<char>(std::tolower(c));
+                });
+                return extension;
+            }
+
+            bool IsAssetOfKind(AssetKind kind, std::string_view path)
+            {
+                if (kind == AssetKind::Material)
+                {
+                    return IsMaterialAssetPath(path);
+                }
+                if (kind == AssetKind::Effect)
+                {
+                    return LowerExtension(path) == ".efkefc";
+                }
+                if (kind == AssetKind::Mesh || kind == AssetKind::Model || kind == AssetKind::Animation)
+                {
+                    return IsModelAssetPath(path);
+                }
+                return true;
+            }
 
             bool IsCubemapDds(std::string_view path)
             {
@@ -51,16 +76,14 @@ namespace NS
         {
             if (OS::FileSystem::IsDirectory(absolutePath))
             {
-                return std::all_of(k_SkyboxFaces.begin(), k_SkyboxFaces.end(), [&](std::string_view face) {
+                const std::array<std::string_view, 6>& faces = Gfx::Skybox::FaceFileNames();
+                return std::all_of(faces.begin(), faces.end(), [&](std::string_view face) {
                     const std::string file = OS::FileSystem::Combine(absolutePath, face);
                     return OS::FileSystem::Exists(file) && !OS::FileSystem::IsDirectory(file);
                 });
             }
-            std::string extension = OS::FileSystem::Extension(absolutePath);
-            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
-                return static_cast<char>(std::tolower(c));
-            });
-            return extension == ".dds" && OS::FileSystem::Exists(absolutePath) && IsCubemapDds(absolutePath);
+            return LowerExtension(absolutePath) == ".dds" && OS::FileSystem::Exists(absolutePath) &&
+                   IsCubemapDds(absolutePath);
         }
 
         std::vector<AssetOption> CollectSkyboxOptions(std::string_view contentRoot)
@@ -75,7 +98,7 @@ namespace NS
             for (const std::string& file : OS::FileSystem::ListFilesRecursive(assets))
             {
                 std::string candidate = file;
-                if (OS::FileSystem::FileName(file) == k_SkyboxFaces.front())
+                if (OS::FileSystem::FileName(file) == Gfx::Skybox::FaceFileNames().front())
                 {
                     candidate = OS::FileSystem::ParentDirectory(file);
                 }
@@ -83,9 +106,14 @@ namespace NS
                 {
                     continue;
                 }
-                const std::string relative = candidate.substr(root.size() + 1);
-                options.push_back(AssetOption{relative, OS::FileSystem::FileName(candidate),
-                                              OS::FileSystem::ParentDirectory(relative)});
+                const std::optional<std::string> relative = OS::FileSystem::RelativeUnder(root, candidate);
+                if (!relative)
+                {
+                    NS_LOG_ERROR(App, "空の素材 {} が ContentRoot の外にあるので候補に出さない", candidate);
+                    continue;
+                }
+                options.push_back(AssetOption{*relative, OS::FileSystem::FileName(candidate),
+                                              OS::FileSystem::ParentDirectory(*relative)});
             }
             std::sort(options.begin(), options.end(), [](const AssetOption& a, const AssetOption& b) {
                 return a.value < b.value;
@@ -93,12 +121,20 @@ namespace NS
             return options;
         }
 
+        bool IsMaterialAssetPath(std::string_view path)
+        {
+            return LowerExtension(path) == ".mat";
+        }
+
+        bool IsModelAssetPath(std::string_view path)
+        {
+            const std::string extension = LowerExtension(path);
+            return extension == ".gltf" || extension == ".glb";
+        }
+
         bool IsTextureAssetPath(std::string_view path)
         {
-            std::string extension = OS::FileSystem::Extension(path);
-            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
-                return static_cast<char>(std::tolower(c));
-            });
+            const std::string extension = LowerExtension(path);
             return extension == ".png" || extension == ".jpg" || extension == ".jpeg" ||
                    extension == ".bmp" || extension == ".tif" || extension == ".tiff" || extension == ".gif";
         }
@@ -128,18 +164,17 @@ namespace NS
             }
             for (const std::string& file : OS::FileSystem::ListFilesRecursive(directory))
             {
-                std::string extension = OS::FileSystem::Extension(file);
-                std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
-                    return static_cast<char>(std::tolower(c));
-                });
-                const bool modelFile = extension == ".gltf" || extension == ".glb";
-                if ((kind == AssetKind::Material && extension != ".mat") ||
-                    (kind == AssetKind::Effect && extension != ".efkefc") ||
-                    ((kind == AssetKind::Mesh || kind == AssetKind::Model || kind == AssetKind::Animation) && !modelFile))
+                if (!IsAssetOfKind(kind, file))
                 {
                     continue;
                 }
-                const std::string relative = file.substr(root.size() + 1);
+                const std::optional<std::string> found = OS::FileSystem::RelativeUnder(root, file);
+                if (!found)
+                {
+                    NS_LOG_ERROR(App, "素材 {} が ContentRoot の外にあるので候補に出さない", file);
+                    continue;
+                }
+                const std::string& relative = *found;
                 const std::string label = OS::FileSystem::FileName(relative);
                 const std::string location = OS::FileSystem::ParentDirectory(relative);
                 if (kind == AssetKind::Animation)
@@ -161,8 +196,15 @@ namespace NS
                 }
                 if (kind == AssetKind::Effect)
                 {
-                    std::string name = file.substr(directory.size() + 1);
-                    name.resize(name.size() - extension.size());
+                    // エフェクトは Effects のフォルダからの道を、拡張子を除いて名前にする
+                    const std::optional<std::string> underEffects = OS::FileSystem::RelativeUnder(directory, file);
+                    if (!underEffects)
+                    {
+                        NS_LOG_ERROR(App, "エフェクト {} が Effects の外にあるので候補に出さない", file);
+                        continue;
+                    }
+                    std::string name = *underEffects;
+                    name.resize(name.size() - OS::FileSystem::Extension(name).size());
                     options.push_back(AssetOption{name, name, location});
                     continue;
                 }

@@ -13,7 +13,6 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -65,15 +64,15 @@ namespace
 
     NS::Vector3 SpawnOf(const nlohmann::json& doc)
     {
-        return NS::ObjectPosition(NS::SceneJsonObjects(doc)[NS::Editor::FindPlayerObjectIndex(doc)]);
+        return NS::Editor::ObjectPosition(NS::SceneJsonObjects(doc)[NS::Editor::FindPlayerObjectIndex(doc)]);
     }
 
     // ゴールを自機の出現位置に重ねたシーン文書
     nlohmann::json CourseWithPlayerOnGoal()
     {
         nlohmann::json doc = CourseWithPlayer();
-        nlohmann::json goal = NS::MakePrototypeJson<GL::Level::GoalActor>();
-        NS::SetObjectPosition(goal, SpawnOf(doc));
+        nlohmann::json goal = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
+        NS::Editor::SetObjectPosition(goal, SpawnOf(doc));
         NS::SceneJsonObjects(doc).push_back(std::move(goal));
         NS::EnsureUniqueObjectIds(doc);
         return doc;
@@ -156,7 +155,7 @@ TEST(CourseDirector, RespawnButtonReturnsObjectsButKeepsPlayer)
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::MakeObjectJson();
     NS::SetObjectJsonClass(rock, "PropActor");
-    NS::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
+    NS::Editor::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::EnsureUniqueObjectIds(doc);
 
@@ -195,8 +194,8 @@ TEST(CourseDirector, RespawnButtonReturnsObjectsButKeepsPlayer)
 TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
 {
     nlohmann::json doc = CourseWithPlayer();
-    nlohmann::json goal = NS::MakePrototypeJson<GL::Level::GoalActor>();
-    NS::SetObjectPosition(goal, SpawnOf(doc));
+    nlohmann::json goal = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
+    NS::Editor::SetObjectPosition(goal, SpawnOf(doc));
     NS::SceneJsonObjects(doc).push_back(std::move(goal));
     NS::EnsureUniqueObjectIds(doc);
 
@@ -319,7 +318,7 @@ TEST(CourseDirector, RestartReturnsObjectsToTheirStart)
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::MakeObjectJson();
     NS::SetObjectJsonClass(rock, "PropActor");
-    NS::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
+    NS::Editor::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::EnsureUniqueObjectIds(doc);
 
@@ -357,7 +356,7 @@ TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
     const nlohmann::json& baseline = scene.PlayBaseline();
     const std::size_t index = NS::FindObjectIndexById(baseline, player->Id());
     ASSERT_NE(index, NS::k_NoObjectIndex);
-    const NS::Vector3 frozen = NS::ObjectPosition(NS::SceneJsonObjects(baseline)[index]);
+    const NS::Vector3 frozen = NS::Editor::ObjectPosition(NS::SceneJsonObjects(baseline)[index]);
     EXPECT_FLOAT_EQ(frozen.x, placedAt.x);
     EXPECT_FLOAT_EQ(frozen.y, placedAt.y);
     EXPECT_FLOAT_EQ(frozen.z, placedAt.z);
@@ -398,8 +397,8 @@ TEST(CourseDirector, RestartReturnsToThePoseAtStartEvenIfTheBaselineChanges)
 {
     NS::Scene scene;
     nlohmann::json doc = CourseWithPlayer();
-    nlohmann::json rock = NS::MakePrototypeJson<GL::Level::PropActor>();
-    NS::SetObjectPosition(rock, NS::Vector3{3.0f, 0.5f, 0.0f});
+    nlohmann::json rock = NS::Editor::MakePrototypeJson<GL::Level::PropActor>();
+    NS::Editor::SetObjectPosition(rock, NS::Vector3{3.0f, 0.5f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::EnsureUniqueObjectIds(doc);
     scene.ResetFromJson(doc);

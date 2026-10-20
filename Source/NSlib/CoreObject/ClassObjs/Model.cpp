@@ -292,6 +292,15 @@ namespace NS
         out.push_back(MakeDrawItem(context, m_drawnMaterial, DrawWorldMatrix(context.alpha)));
     }
 
+    Color Model::DrawColor() const noexcept
+    {
+        if (m_colorOverride)
+        {
+            return *m_colorOverride;
+        }
+        return m_drawnMaterial->BaseColor();
+    }
+
     bool Model::CanDraw() const noexcept
     {
         return CanDraw(m_drawnMaterial);
@@ -322,7 +331,7 @@ namespace NS
         item.constants.viewProj = context.viewProjection;
         item.constants.lightDir = settings.lightDir;
         item.constants.lightDir.Normalize();
-        item.constants.baseColor = m_baseColor.ToVector3(); // 個体色は lighting と別系統
+        item.constants.baseColor = DrawColor().ToVector3();
         item.constants.lightColor = settings.lightColor;
         item.constants.ambientColor = settings.ambientColor;
         item.constants.groundColor = settings.groundColor;

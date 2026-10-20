@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/ReboundArc.h"
@@ -28,7 +29,7 @@ namespace
         nlohmann::json player = NS::MakeObjectJson();
         NS::SetObjectJsonClass(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
-        NS::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(player));
         scene.ResetFromJson(doc);
         NS::OBB floor{};

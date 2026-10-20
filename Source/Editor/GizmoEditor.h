@@ -18,13 +18,6 @@ namespace NS
 } // namespace NS
 namespace NS
 {
-    namespace UI
-    {
-        class ImGuiContext;
-    }
-} // namespace NS
-namespace NS
-{
     class Transform;
     class SceneActor;
 } // namespace NS
@@ -73,7 +66,6 @@ namespace NS
         {
         public:
             void SetInput(OS::Input* input) noexcept { m_input = input; }
-            void SetImGui(UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
 
             //! 選択候補を非所有で参照する。配列の格納元は使用中、有効に保つ
             //! pickable は objects と同じ添字。1 に当たらない場合だけ 0 を調べ、省略時は同じ優先度
@@ -110,7 +102,12 @@ namespace NS
             //! @brief 毎フレーム入力を見て、選択とドラッグによる変形を進める
             //! @param[in] view ゲーム表示パネルの矩形。マウスはこの矩形基準のローカル座標で扱う
             //! @param[in] viewHovered マウスがそのパネル上に居るか。偽の間は選択クリックとハンドル掴みを受けない
-            void Tick(const Matrix& viewProjection, const ViewRect& view, bool viewHovered) noexcept;
+            //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
+            //! 真の間は道具と座標系を切り替えるキーを受けない
+            void Tick(const Matrix& viewProjection,
+                      const ViewRect& view,
+                      bool viewHovered,
+                      bool editShortcutsBlocked) noexcept;
 
             //! 現在の選択対象に対するギズモのUI描画コマンドを発行する。パネル外はクリップされる
             void Render(const Matrix& viewProjection, const ViewRect& view) noexcept;
@@ -186,7 +183,6 @@ namespace NS
 
         private:
             OS::Input* m_input = nullptr;
-            UI::ImGuiContext* m_imgui = nullptr;
 
             std::span<SceneActor* const> m_objects{};
             std::span<const uint8> m_pickable{}; //!< 選択の優先度。1 の配置物を先に選ぶ

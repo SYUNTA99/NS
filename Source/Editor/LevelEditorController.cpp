@@ -68,18 +68,6 @@ namespace
         return *it;
     }
 
-    std::string RelativeToRoot(std::string_view absPath, std::string_view root)
-    {
-        const std::string absNorm = NS::OS::FileSystem::Normalize(absPath);
-        const std::string rootNorm = NS::OS::FileSystem::Normalize(root);
-        if (absNorm.size() > rootNorm.size() + 1 &&
-            ::_strnicmp(absNorm.c_str(), rootNorm.c_str(), rootNorm.size()) == 0 && absNorm[rootNorm.size()] == '/')
-        {
-            return absNorm.substr(rootNorm.size() + 1);
-        }
-        return absNorm;
-    }
-
     // カメラの視錐台を描く時の far。vcam の既定 1000 のままだと錐台が画面に収まらないので近くで切る
     constexpr float k_CameraGizmoFar = 8.0f;
 
@@ -261,47 +249,73 @@ namespace
         return baseHalf * NS::Editor::ScreenConstantScale(center, vp);
     }
 
-    // 1 本なら包まずそのまま返す。CompositeCommand を挟むのは複数を 1 回の undo で往復させたい時だけ
-    std::unique_ptr<NS::Editor::ICommand> MakeUndoUnit(std::vector<std::unique_ptr<NS::Editor::ICommand>> commands)
+    // プレイ開始の凍結と編集へ戻る時の凍結を 1 体ずつ比べ、違う物を戻せる記録にする
+    // 凍結へ入るのはプレイ中にインスペクタで写した欄だけなので、プレイで動いた値は比べに出ない
+    std::vector<std::unique_ptr<NS::Editor::ICommand>> MakePlayEditCommands(const nlohmann::json& playStart,
+                                                                            const nlohmann::json& playEnd)
     {
-        if (commands.size() == 1)
+        std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
+        const nlohmann::json& startObjects = NS::SceneJsonObjects(playStart);
+        for (const nlohmann::json& after : NS::SceneJsonObjects(playEnd))
         {
-            return std::move(commands.front());
+            const NS::uint32 id = NS::ObjectJsonId(after);
+            const std::size_t index = NS::FindObjectIndexById(playStart, id);
+            if (index == NS::k_NoObjectIndex)
+            {
+                continue;
+            }
+            const nlohmann::json& before = startObjects[index];
+            if (before == after)
+            {
+                continue;
+            }
+            commands.push_back(std::make_unique<NS::Editor::ObjectSnapshotCommand>(
+                id, std::optional<nlohmann::json>{before}, std::optional<nlohmann::json>{after}));
         }
-        return std::make_unique<NS::Editor::CompositeCommand>(std::move(commands));
+        return commands;
     }
 } // namespace
 
-LevelEditorController::LevelEditorController(NS::Scene* scene) noexcept : m_scene(scene), m_applier(scene) {}
+LevelEditorController::LevelEditorController(NS::Scene* scene) noexcept : m_scene(scene), m_applier(scene)
+{
+    // 作る道と取り消しは Setup の前から使えるよう、適用処理と採番はここで差す
+    m_editor.SetApplier(&m_applier);
+    m_editor.SetAllocateIdFn([this]() { return m_scene->Objects().AllocateObjectId(); });
+    m_editor.SetSceneEditableFn([this]() { return IsSceneEditable(); });
+}
+
+bool LevelEditorController::IsSceneEditable() const noexcept
+{
+    return m_mode == Mode::Edit;
+}
 
 namespace
 {
-    class SkyboxCommand final : public NS::Editor::ICommand
+    class EnvironmentCommand final : public NS::Editor::ICommand
     {
     public:
-        SkyboxCommand(NS::Scene& scene, std::string before, std::string after)
+        EnvironmentCommand(NS::Scene& scene, NS::SceneEnvironment before, NS::SceneEnvironment after)
             : m_scene(scene), m_before(std::move(before)), m_after(std::move(after))
         {
         }
 
-        void Do(NS::Editor::IObjectSnapshotApplier&) noexcept override { m_scene.SetSkyboxPath(m_after); }
-        void Undo(NS::Editor::IObjectSnapshotApplier&) noexcept override { m_scene.SetSkyboxPath(m_before); }
+        void Do(NS::Editor::IObjectSnapshotApplier&) noexcept override { m_scene.SetEnvironment(m_after); }
+        void Undo(NS::Editor::IObjectSnapshotApplier&) noexcept override { m_scene.SetEnvironment(m_before); }
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
         {
-            return sizeof(*this) + m_before.size() + m_after.size();
+            return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size();
         }
 
     private:
         NS::Scene& m_scene;
-        std::string m_before;
-        std::string m_after;
+        NS::SceneEnvironment m_before;
+        NS::SceneEnvironment m_after;
     };
 }
 
 void LevelEditorController::SelectSceneSettings()
 {
-    CommitAssetEdit();
-    m_selectedAssetPath.clear();
+    ClearAssetSelection();
     SelectObjectById(NS::k_NoObjectId);
 }
 
@@ -317,24 +331,32 @@ const std::string& LevelEditorController::SkyboxPath() const noexcept
 
 bool LevelEditorController::SetSkyboxPath(std::string_view path)
 {
-    if (m_scene == nullptr || m_mode != Mode::Edit)
+    if (m_scene == nullptr || !IsSceneEditable())
     {
         return false;
     }
     std::string normalized;
     if (!path.empty())
     {
-        const std::string root = NS::OS::FileSystem::Normalize(NS::OS::FileSystem::ContentRoot());
+        const std::string root = NS::OS::FileSystem::ContentRoot();
         const std::optional<std::string> resolved = NS::OS::FileSystem::ResolveUnder(root, path);
         if (!resolved || !NS::Editor::IsSkyboxAssetPath(*resolved))
         {
             return false;
         }
-        normalized = resolved->substr(root.size() + 1);
+        std::optional<std::string> relative = NS::OS::FileSystem::RelativeUnder(root, *resolved);
+        if (!relative)
+        {
+            NS_LOG_ERROR(App, "空の素材 {} を ContentRoot からの道にできないので変えない", *resolved);
+            return false;
+        }
+        normalized = std::move(*relative);
     }
     if (normalized != m_scene->SkyboxPath())
     {
-        m_editor.Undo().Push(std::make_unique<SkyboxCommand>(*m_scene, m_scene->SkyboxPath(), std::move(normalized)),
+        NS::SceneEnvironment after = m_scene->Environment();
+        after.skybox = std::move(normalized);
+        m_editor.Undo().Push(std::make_unique<EnvironmentCommand>(*m_scene, m_scene->Environment(), std::move(after)),
                              m_applier);
     }
     return true;
@@ -412,7 +434,7 @@ NS::SceneCamera* LevelEditorController::MainCamera() const noexcept
     return m_scene->MainCamera();
 }
 
-void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
+void LevelEditorController::Setup(std::string_view startLevelName)
 {
     NS::Application* app = NS::Application::Get();
     if (app == nullptr || m_scene == nullptr)
@@ -426,22 +448,10 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editorCamera.SetFarPlane(5000.0f);
     m_editorCamera.SetFovY(NS::ToRadians(NS::Degrees{60.0f}));
 
-    // 初期視点はプレイヤーの位置を中心に少し引いた位置から見下ろす。不在なら原点
-    NS::SceneActor* bootPlayer = FindPlayer(m_scene->Objects());
-    NS::Vector3 startCenter{0.0f, 0.0f, 0.0f};
-    if (bootPlayer != nullptr)
-    {
-        startCenter = bootPlayer->Root().Position();
-    }
-    m_editorCamera.SetCenter(startCenter);
-    // 起動直後は出現地点の block を真ん中近めに見せる距離。1m cube が画面の十数 % を占める
-    m_editorCamera.SetDistance(5.0f);
-
     // 保存は実体から作り、読込は取込関数がデータを実体へ写して用済みにする
     m_editor.SetCaptureLevelFn([this]() { return m_scene->ToJson(); });
     m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) { m_scene->ResetFromJson(std::move(fresh)); });
-    // セル編集と取り消しは適用処理を通す。照会・採番は実体で行う
-    m_editor.SetApplier(&m_applier);
+    // セルの照会は実体で行う
     m_editor.SetFindCellObjectFn([this](NS::int16 x, NS::int16 y, NS::int16 z) {
         return NS::Editor::FindObjectIdAtCell(m_scene->Objects(), x, y, z);
     });
@@ -451,7 +461,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editor.SetCollectCellsFn([this]() {
         std::vector<NS::Editor::EditorMode::CellCoord> cells;
         cells.reserve(m_scene->Objects().ObjectCount());
-        for (NS::SceneActor* objPtr : m_scene->Objects())
+        for (NS::SceneActor* objPtr : NS::Editor::PlacedActors(m_scene->Objects()))
         {
             NS::SceneActor& object = *objPtr;
             if (!NS::Editor::IsCellBrushObject(object))
@@ -463,33 +473,36 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
         }
         return cells;
     });
-    m_editor.SetAllocateIdFn([this]() { return m_scene->Objects().AllocateObjectId(); });
     m_editor.SetInput(&app->Input());
-    m_editor.SetImGui(imgui);
     m_editor.SetSceneCamera(MainCamera());
-    m_editor.SetActive(true);
-    // 読み込みで組み上がり済なので、初回 Tick の貼り直しを省く
-    m_editor.ClearLevelDirty();
-
-    // 起動シーンが実在するのに読めていない時は印す。終了保存が元ファイルを潰さず退避名へ逃げる
-    if (const std::optional<std::string> bootPath = NS::Editor::BuildLevelPath("Scenes/new_scene"))
-    {
-        if (NS::OS::FileSystem::Exists(*bootPath))
-        {
-            nlohmann::json probe;
-            if (!NS::LoadSceneFromJsonFile(probe, *bootPath))
-            {
-                m_editor.MarkBootLevelLoadFailed();
-            }
-        }
-    }
 
     m_gizmo.SetInput(&app->Input());
-    m_gizmo.SetImGui(imgui);
 
-    // scene は読み込みからプレイが回っている。プレイを終えて操作系を休止させた編集モードへ切替える
+    // Game が立てた空のシーンはプレイが回っている。プレイを終えて編集モードへ切替えてから起動シーンを開く
+    // 先に開くと、プレイ開始の写しへ戻す組み直しが、開く時に補ったプレイヤーを消す
     LeavePlayForEdit();
     m_mode = Mode::Edit;
+    if (!startLevelName.empty())
+    {
+        if (!m_editor.OpenLevel(startLevelName))
+        {
+            NS_LOG_ERROR(App, "起動シーンを開けなかった。 空のシーンで編集を始める: {}", startLevelName);
+        }
+    }
+    // 選択候補はこの後に今の実体から集めるので、初回 Tick の貼り直しを省く
+    m_editor.ClearLevelDirty();
+
+    // 初期視点はプレイヤーの位置を中心に少し引いた位置から見下ろす。不在なら原点
+    NS::SceneActor* bootPlayer = FindPlayer(m_scene->Objects());
+    NS::Vector3 startCenter{0.0f, 0.0f, 0.0f};
+    if (bootPlayer != nullptr)
+    {
+        startCenter = bootPlayer->Root().Position();
+    }
+    m_editorCamera.SetCenter(startCenter);
+    // 起動直後は出現地点の block を真ん中近めに見せる距離。1m cube が画面の十数 % を占める
+    m_editorCamera.SetDistance(5.0f);
+
     // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
     RefreshGizmoSelectables();
 }
@@ -520,15 +533,16 @@ void LevelEditorController::EnterPlay() noexcept
     m_dragFollowers.clear();
     m_gizmoWasDragging = false;
     m_gizmo.SetActive(false);
-    // 実体が唯一の出所なので組み直しは要らない。編集で動いた当たりだけ張り直してプレイへ入る
-    m_scene->SyncPhysics();
 
+    // 実体が唯一の出所なので組み直しは要らない。編集で動いた当たりは、世界を止めた歩が揃えている
     // 凍結を取り、そこから走行を最初から。プレイの間の判定と編集復帰の姿はこの凍結を読む
     // 手順は出荷と同じ CourseDirector::StartCourse の持ち物
     if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(m_scene))
     {
         director->StartCourse();
     }
+    // 編集へ戻る時に、プレイ中に写した欄をこの凍結と比べて履歴へ記録する
+    m_playStartBaseline = m_scene->PlayBaseline();
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (NS::CameraManager* cameras = Cameras())
     {
@@ -541,7 +555,6 @@ void LevelEditorController::EnterPlay() noexcept
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
-    m_editor.SetActive(false);
 }
 
 void LevelEditorController::EnterEdit() noexcept
@@ -569,7 +582,6 @@ void LevelEditorController::EnterEdit() noexcept
     // 編集復帰の組み直しを跨いだ選択を、id から現在のオブジェクトへ貼り直してから編集へ戻る
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
-    m_editor.SetActive(true);
 }
 
 void LevelEditorController::RequestStepFrame() noexcept
@@ -591,7 +603,18 @@ void LevelEditorController::LeavePlayForEdit()
 
     // プレイで変わった配置を編集へ持ち込まないため、開始時の控えから復元する
     nlohmann::json baseline = m_scene->PlayBaseline();
+    std::vector<std::unique_ptr<NS::Editor::ICommand>> playEdits;
+    if (m_playStartBaseline)
+    {
+        playEdits = MakePlayEditCommands(*m_playStartBaseline, baseline);
+        m_playStartBaseline.reset();
+    }
     m_scene->ResetFromJson(std::move(baseline));
+    // プレイ中の変更は 1 つずつ積まず、戻る時に 1 まとまりで積む。実体は組み直しで既に変えた後の姿
+    if (!playEdits.empty())
+    {
+        m_editor.Undo().Record(MakeUndoUnit(std::move(playEdits)));
+    }
 
     if (NS::Application* app = NS::Application::Get())
     {
@@ -732,7 +755,7 @@ void LevelEditorController::TickEdit()
     }
 
     // F5 のシェーダ再読込は編集時だけ。プレイ時は UI 表示の切替に使う
-    if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::OS::Key::F5))
+    if (!m_editShortcutsBlocked && app->Input().Keyboard().IsPressed(NS::OS::Key::F5))
     {
         app->Assets().ReloadAllShaders();
     }
@@ -788,7 +811,7 @@ void LevelEditorController::TickEdit()
 
         const NS::Matrix vp = Cameras()->ViewProjection();
         const bool wasDragging = m_gizmoWasDragging;
-        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered);
+        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked);
 
         // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
         CaptureSelectionFromGizmo();
@@ -826,7 +849,7 @@ void LevelEditorController::TickEdit()
 
     // 掴んでいる間は選択の貼り直しを飛ばすので、undo が旧 Transform を指す
     m_editor.SetUndoRedoSuppressed(m_gizmo.IsDragging());
-    m_editor.Tick();
+    m_editor.Tick(m_editShortcutsBlocked);
     if (m_editor.IsLevelDirty())
     {
         // grid 編集・undo・読込は applier / reload が配置物を組み直し済。候補と gizmo を今の実体へ貼り直す
@@ -900,21 +923,6 @@ void LevelEditorController::SetObjectToolActive(bool active) noexcept
     }
 }
 
-std::size_t LevelEditorController::SelectedObjectIndex() const noexcept
-{
-    if (m_selectedObjectId == NS::k_NoObjectId)
-    {
-        return NS::k_NoObjectIndex;
-    }
-    const NS::ActorList& objects = m_scene->Objects();
-    const std::size_t index = objects.IndexOfObjectId(m_selectedObjectId);
-    if (index == objects.ObjectCount())
-    {
-        return NS::k_NoObjectIndex;
-    }
-    return index;
-}
-
 bool LevelEditorController::HasInspectableSelection() const noexcept
 {
     return m_selectedObjectId != NS::k_NoObjectId && m_scene->Objects().FindByObjectId(m_selectedObjectId) != nullptr;
@@ -945,12 +953,8 @@ void LevelEditorController::RefreshGizmoSelectables()
 
     // 可視メッシュを持つ候補は 1、見えないカメラ等は 0。ギズモは 1 の候補を先に選ぶ
     // 全配置物をギズモ候補に積む。判定箱はギズモがクリックの時に配置物から引く
-    for (NS::SceneActor* object : m_scene->Objects())
+    for (NS::SceneActor* object : NS::Editor::PlacedActors(m_scene->Objects()))
     {
-        if (object->IsTransient())
-        {
-            continue;
-        }
         m_selectablePtrs.push_back(object);
         m_selectablePickable.push_back(static_cast<NS::uint8>(object->ModelClassObj() != nullptr));
     }
@@ -1079,7 +1083,7 @@ void LevelEditorController::SetPrimarySelection(NS::uint32 id) noexcept
     }
 
     // アクターの選択と素材の選択は排他
-    m_selectedAssetPath.clear();
+    ClearAssetSelection();
 
     // ハンドルを出すため Object ツールへ切替える。Build のままだとギズモが描かれない
     SetObjectToolActive(true);
@@ -1285,7 +1289,7 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
             // ビューポートのクリックは 1 体に絞る。複数選択はアクター一覧の Ctrl / Shift で組む
             m_selectedObjectId = object->Id();
             m_selectionIds.assign(1, m_selectedObjectId);
-            m_selectedAssetPath.clear();
+            ClearAssetSelection();
             return;
         }
     }
@@ -1325,7 +1329,7 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
 
 void LevelEditorController::SetSelectedFreePosition(NS::Vector3 position)
 {
-    // 実体の Root を直接動かす。取り消し の記録は CommitTransformEdit、当たりの追従は SyncPhysics が担う
+    // 実体の Root を直接動かす。取り消し の記録は CommitTransformEdit が積み、当たりは次の歩が揃える
     if (NS::SceneActor* go = SelectedObjectActor())
     {
         go->Root().SetPosition(position);
@@ -1388,7 +1392,12 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
                                                     std::string_view fieldName)
 {
     const NS::Object* comp = row.get(&actor);
-    if (m_scene == nullptr || comp == nullptr || comp->GetReflection() == nullptr)
+    if (!IsSceneEditable() || m_scene == nullptr || comp == nullptr || comp->GetReflection() == nullptr)
+    {
+        return false;
+    }
+    const NS::FieldDesc* field = NS::FindField(comp->GetReflection(), fieldName);
+    if (field == nullptr)
     {
         return false;
     }
@@ -1403,9 +1412,9 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
 
     // 同じクラスの個体は同じ表を持つので、row をそのまま使える
     std::vector<NS::SceneActor*> followers;
-    for (NS::SceneActor* other : m_scene->Objects())
+    for (NS::SceneActor* other : NS::Editor::PlacedActors(m_scene->Objects()))
     {
-        if (other == &actor || other->IsTransient() || className != other->ClassName())
+        if (other == &actor || className != other->ClassName())
         {
             continue;
         }
@@ -1429,55 +1438,66 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
         NS_LOG_WARN(App, "種類の既定値 {} をファイルへ書けなかった。今の起動の間だけ効く", className);
     }
 
-    // 付いて行くアクターへ新しい値を写す。素材の欄は道を写すので、姿は引き直して差し替える
+    // 付いて行くアクターへ新しい値を写す
     nlohmann::json fields = nlohmann::json::object();
     fields[std::string{fieldName}] = FieldJson(*comp, fieldName);
     for (NS::SceneActor* follower : followers)
     {
         (void)NS::ApplyJsonFields(*row.get(follower), fields);
-        follower->ReloadAssets();
+        FinishFieldWrite(*follower, field->type);
     }
-    // 当たりの大きさの欄なら body を張り直す
-    m_scene->SyncPhysics();
     return true;
+}
+
+void LevelEditorController::FinishFieldWrite(NS::SceneActor& actor, NS::FieldType writtenType)
+{
+    // 素材の欄は道を書くだけで、描くメッシュの差し替え・描くマテリアル・メッシュの当たりの形は読み直しで作る
+    // 素材でない欄で読み直すと、ドラッグの間じゅう骨の差し直しとメッシュの当たりの作り直しが毎回走る
+    if (writtenType != NS::FieldType::Asset)
+    {
+        return;
+    }
+    actor.ReloadAssets();
 }
 
 void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
 {
     nlohmann::json object = item.prototype;
-    NS::SetObjectPosition(object, m_editorCamera.Center());
-    PushCreateObject(std::move(object));
+    NS::Editor::SetObjectPosition(object, m_editorCamera.Center());
+    CreateObjectAndSelect(std::move(object));
 }
 
 void LevelEditorController::AddMeshParts(std::string_view meshPath)
 {
     // 参照は ContentRoot 相対で持つ。build 時にこの文字列から実体を引く
-    const std::string meshRef = RelativeToRoot(meshPath, NS::OS::FileSystem::ContentRoot());
+    const std::optional<std::string> meshRef =
+        NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), meshPath);
+    if (!meshRef)
+    {
+        NS_LOG_ERROR(App, "メッシュ {} が ContentRoot の外にあるので置かない", meshPath);
+        return;
+    }
 
-    nlohmann::json object = NS::Editor::MakeMeshPartsPrototype(meshRef);
-    NS::SetObjectPosition(object, m_editorCamera.Center());
+    nlohmann::json object = NS::Editor::MakeMeshPartsPrototype(*meshRef);
+    NS::Editor::SetObjectPosition(object, m_editorCamera.Center());
     NS::SetObjectJsonName(object, NS::OS::FileSystem::Stem(meshPath));
-    PushCreateObject(std::move(object));
+    CreateObjectAndSelect(std::move(object));
 }
 
-void LevelEditorController::PushCreateObject(nlohmann::json object)
+void LevelEditorController::CreateObjectAndSelect(nlohmann::json object)
 {
-    // プレイ中に組み替えた物は、編集へ戻る組み直しで消える。履歴だけがプレイの姿を指して残る
-    if (m_mode != Mode::Edit)
+    std::vector<nlohmann::json> objects;
+    objects.push_back(std::move(object));
+    const std::vector<NS::uint32> created = m_editor.CreateObjects(std::move(objects));
+    if (created.empty())
     {
         return;
     }
-    const NS::uint32 id = m_scene->Objects().AllocateObjectId();
-    NS::SetObjectJsonId(object, id);
-
-    // 追加を 取り消し 履歴へ。Do がひな形から実体へ 1 体組んで入れる
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::nullopt, std::move(object)),
-                         m_applier);
 
     // 組み直し後の新規を選択する。選択候補も貼り直す
-    m_selectedObjectId = id;
-    m_selectionIds.assign(1, id);
-    m_selectedAssetPath.clear();
+    m_selectedObjectId = created.front();
+    m_selectionIds.assign(1, created.front());
+    ClearAssetSelection();
     SetObjectToolActive(true);
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -1485,7 +1505,7 @@ void LevelEditorController::PushCreateObject(nlohmann::json object)
 
 void LevelEditorController::RenameObject(NS::uint32 id, std::string_view name)
 {
-    if (m_mode != Mode::Edit || id == NS::k_NoObjectId)
+    if (!IsSceneEditable() || id == NS::k_NoObjectId)
     {
         return;
     }
@@ -1515,18 +1535,16 @@ void LevelEditorController::RenameObject(NS::uint32 id, std::string_view name)
 
 void LevelEditorController::DuplicateSelectedObject()
 {
-    if (m_mode != Mode::Edit || m_selectionIds.empty())
+    if (m_selectionIds.empty())
     {
         return;
     }
 
     const NS::SceneActor* player = FindPlayer(m_scene->Objects());
 
-    // 選択物の忠実コピーを新しい永続 id で増やす
-    // 元の id から新しい id への表を作り、コピーの中の参照を付け替えるのに使う
+    // 選択物の忠実コピーを作る。新しい id と、写した物どうしの参照の付け替えは CreateObjects が行う
     std::vector<nlohmann::json> copies;
     copies.reserve(m_selectionIds.size());
-    std::unordered_map<NS::uint32, NS::uint32> idMap;
     for (const NS::uint32 id : m_selectionIds)
     {
         // プレイヤーは必ず 1 体。複製で 2 体目を作らせない
@@ -1539,39 +1557,24 @@ void LevelEditorController::DuplicateSelectedObject()
         {
             continue;
         }
-        const NS::uint32 newId = m_scene->Objects().AllocateObjectId();
-        idMap.emplace(id, newId);
-        NS::SetObjectJsonId(*source, newId);
-
         copies.push_back(std::move(*source));
     }
-    if (copies.empty())
+
+    std::vector<NS::uint32> created = m_editor.CreateObjects(std::move(copies));
+    if (created.empty())
     {
         return;
     }
 
-    std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
-    std::vector<NS::uint32> created;
-    commands.reserve(copies.size());
-    created.reserve(copies.size());
-    for (nlohmann::json& copy : copies)
-    {
-        NS::RemapObjectRefs(copy, idMap);
-        const NS::uint32 copyId = NS::ObjectJsonId(copy);
-        created.push_back(copyId);
-        commands.push_back(std::make_unique<NS::Editor::ObjectSnapshotCommand>(copyId, std::nullopt, copy));
-    }
-
-    m_editor.Undo().Push(MakeUndoUnit(std::move(commands)), m_applier);
-
-    SelectObjects(created, created.back());
+    const NS::uint32 primary = created.back();
+    SelectObjects(std::move(created), primary);
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
 
 void LevelEditorController::DeleteSelectedObject()
 {
-    if (m_mode != Mode::Edit || m_selectionIds.empty())
+    if (!IsSceneEditable() || m_selectionIds.empty())
     {
         return;
     }
@@ -1768,7 +1771,7 @@ void LevelEditorController::CommitTransformEdit() noexcept
     }
     m_editBaselines.clear();
     // プレイ中の控えはプレイの姿。編集へ戻った後に戻すと、プレイの位置を編集の物へ書く
-    if (m_mode != Mode::Edit || commands.empty())
+    if (!IsSceneEditable() || commands.empty())
     {
         return;
     }
@@ -1803,7 +1806,7 @@ void LevelEditorController::CommitClassObjEdit() noexcept
 
     // リフレクション編集は実体の部品へ直接入っている。after は実体の忠実な写しで、baseline と同じなら積まない
     // プレイ中の控えはプレイの姿なので積まない
-    if (m_mode != Mode::Edit)
+    if (!IsSceneEditable())
     {
         return;
     }
@@ -1821,7 +1824,7 @@ void LevelEditorController::CommitClassObjEdit() noexcept
 bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
 {
     NS::Application* app = NS::Application::Get();
-    if (!m_objectToolActive || app == nullptr)
+    if (!IsSceneEditable() || !m_objectToolActive || app == nullptr)
     {
         return false;
     }
@@ -1843,8 +1846,14 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     }
 
     // .mat パスは ContentRoot 相対で持つ。材質の正データは欄の名前なので、名前を書いて欄から読み直す
-    const std::string stored = RelativeToRoot(matPath, NS::OS::FileSystem::ContentRoot());
-    const NS::Material* material = app->Assets().LoadMaterial(stored);
+    const std::optional<std::string> stored =
+        NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), matPath);
+    if (!stored)
+    {
+        NS_LOG_ERROR(App, "マテリアル {} が ContentRoot の外にあるので付けない", matPath);
+        return false;
+    }
+    const NS::Material* material = app->Assets().LoadMaterial(*stored);
     if (material->IsEmpty())
     {
         return false;
@@ -1853,9 +1862,8 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     // 差替前を忠実に写す。matRef を実体へ書き込み、差替後との差分を 取り消し 履歴へ積む
     std::optional<nlohmann::json> before = m_applier.CaptureObject(m_selectedObjectId);
 
-    mesh->SetMaterialRef(stored);
-    go->ReloadAssets();
-    mesh->SetBaseColor(material->BaseColor());
+    mesh->SetMaterialRef(*stored);
+    FinishFieldWrite(*go, NS::FieldType::Asset);
 
     std::optional<nlohmann::json> after = m_applier.CaptureObject(m_selectedObjectId);
     if (before && after && !(*before == *after))
@@ -1870,12 +1878,11 @@ namespace
 {
     [[nodiscard]] NS::Object* LoadSelectableAsset(std::string_view path)
     {
-        const std::string extension = NS::OS::FileSystem::Extension(path);
-        if (extension == ".mat")
+        if (NS::Editor::IsMaterialAssetPath(path))
         {
             return NS::AssetManager::Get().LoadMaterial(path);
         }
-        if (extension == ".gltf" || extension == ".glb")
+        if (NS::Editor::IsModelAssetPath(path))
         {
             return NS::AssetManager::Get().LoadMesh(path);
         }
@@ -1910,24 +1917,32 @@ namespace
 
 void LevelEditorController::SelectAsset(std::string_view assetPath)
 {
-    CommitAssetEdit();
-    SelectObjectById(NS::k_NoObjectId);
-    m_selectedAssetPath.clear();
-
-    const std::string stored = RelativeToRoot(assetPath, NS::OS::FileSystem::ContentRoot());
-    const NS::Object* asset = LoadSelectableAsset(stored);
-    if (asset == nullptr || !IsReadable(*asset))
+    std::optional<std::string> stored = NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), assetPath);
+    if (!stored)
     {
-        NS_LOG_WARN(App, "素材 {} を読めないので選ばない", stored);
+        NS_LOG_ERROR(App, "素材 {} が ContentRoot の外にあるので選ばない", assetPath);
         return;
     }
-    m_selectedAssetPath = stored;
+
+    ClearAssetSelection();
+    SelectObjectById(NS::k_NoObjectId);
+
+    const NS::Object* asset = LoadSelectableAsset(*stored);
+    if (asset == nullptr || !IsReadable(*asset))
+    {
+        NS_LOG_WARN(App, "素材 {} を読めないので選ばない", *stored);
+        return;
+    }
+    m_selectedAssetPath = std::move(*stored);
 }
 
 bool LevelEditorController::IsAssetSelected(std::string_view assetPath) const
 {
-    return !m_selectedAssetPath.empty() &&
-           RelativeToRoot(assetPath, NS::OS::FileSystem::ContentRoot()) == m_selectedAssetPath;
+    if (m_selectedAssetPath.empty())
+    {
+        return false;
+    }
+    return NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), assetPath) == m_selectedAssetPath;
 }
 
 NS::Object* LevelEditorController::SelectedAsset()
@@ -1937,6 +1952,12 @@ NS::Object* LevelEditorController::SelectedAsset()
         return nullptr;
     }
     return LoadSelectableAsset(m_selectedAssetPath);
+}
+
+void LevelEditorController::ClearAssetSelection()
+{
+    CommitAssetEdit();
+    m_selectedAssetPath.clear();
 }
 
 void LevelEditorController::MarkAssetEdited() noexcept

@@ -51,18 +51,18 @@ namespace NS
 #if NS_EDITOR_ENABLED
         namespace
         {
-            struct EnvironmentFields
+            // actor の根の部品に対応する、クラスの既定の 1 体の根の部品。どちらかが無ければ nullptr
+            const Transform* FindBaselineRoot(const SceneActor& actor)
             {
-                std::string skybox;
-
-                NS_REFLECT_BEGIN(EnvironmentFields, void)
-                NS_FIELD(skybox, "skybox", "スカイボックス")
-                NS_REFLECT_END_VALUE()
-            };
-
-            // 置いたばかりの配置物の姿。ここから動かした欄だけ印を出す
-            const Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
-            const Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
+                const Object* found = nullptr;
+                ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* live) {
+                    if (live == &actor.Root())
+                    {
+                        found = FindBaselineClassObj(actor, row);
+                    }
+                });
+                return static_cast<const Transform*>(found);
+            }
 
             void DrawTexturePreview(const Texture& texture)
             {
@@ -169,9 +169,9 @@ namespace NS
                 m_skyboxDraft = m_skyboxSource;
                 m_skyboxPreviewPath.clear();
             }
-            const bool playing = editor.CurrentMode() != LevelEditorController::Mode::Edit;
+            const bool playing = !editor.IsSceneEditable();
             ImGui::BeginDisabled(playing);
-            EnvironmentFields fields{m_skyboxDraft};
+            SceneEnvironment fields{.skybox = m_skyboxDraft};
             const ValueEditResult edit = DrawReflectedValue(fields);
             if (edit.changed)
             {
@@ -334,7 +334,6 @@ namespace NS
                 {
                     ImGui::TextDisabled("見るだけ (.mat に書けないマテリアル)");
                 }
-                ImGui::TextDisabled("基本の色は、ドラッグでアクターに付けた時にアクターへ写す色");
                 ImGui::Separator();
                 ImGui::BeginDisabled(!writable);
                 const ValueEditResult edit = DrawReflectedValue(material, *material->GetReflection());
@@ -393,6 +392,21 @@ namespace NS
         }
 #endif
 
+        std::vector<ObjectRefOption> MakeObjectRefOptions(const ActorList& objects)
+        {
+            const std::vector<SceneActor*> placed = PlacedActors(objects);
+            std::vector<ObjectRefOption> options;
+            options.reserve(placed.size());
+            for (std::size_t i = 0; i < placed.size(); ++i)
+            {
+                const SceneActor& candidate = *placed[i];
+                char label[96];
+                std::snprintf(label, sizeof(label), "[%zu] %s (id %u)", i, ObjectDisplayName(candidate), candidate.Id());
+                options.push_back(ObjectRefOption{candidate.Id(), label});
+            }
+            return options;
+        }
+
         void InspectorPanel::Render(LevelEditorController& editor) noexcept
         {
 #if NS_EDITOR_ENABLED
@@ -408,25 +422,7 @@ namespace NS
                 {
                     editor.SelectSceneSettings();
                 }
-                // ActorRef の欄の参照先候補。個体一覧と同じ並びと表示名で全配置物を出す
-                std::vector<Editor::ObjectRefOption> refOptions;
-                refOptions.reserve(editor.Objects().ObjectCount());
-                for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
-                {
-                    SceneActor& candidate = *editor.Objects().ObjectAt(i);
-                    if (candidate.IsTransient())
-                    {
-                        continue;
-                    }
-                    char label[96];
-                    std::snprintf(label,
-                                  sizeof(label),
-                                  "[%zu] %s (id %u)",
-                                  i,
-                                  Editor::ObjectDisplayName(candidate),
-                                  candidate.Id());
-                    refOptions.push_back(Editor::ObjectRefOption{candidate.Id(), label});
-                }
+                const std::vector<ObjectRefOption> refOptions = MakeObjectRefOptions(editor.Objects());
 
                 // 素材の選択はアクターの選択と排他なので、選んでいる間はアクターの欄を出さない
                 if (Object* asset = editor.SelectedAsset())
@@ -448,10 +444,10 @@ namespace NS
                 // 直前の HasInspectableSelection で同じ識別番号の対象を確認済み
                 SceneActor* go = editor.SelectedObjectActor();
 
-                // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
+                // 名前の正は実体。一覧での改名と Undo も映すよう、打っていない間は毎回入れ直す
                 const uint32 selectedId = editor.SelectedObjectId();
                 // 打っている間は入れ直さない。打った名前は打ち始めた対象へ確定する
-                if (m_nameEditId == 0 && m_nameId != selectedId)
+                if (m_nameEditId == 0)
                 {
                     m_nameId = selectedId;
                     std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", Editor::ObjectDisplayName(*go));
@@ -471,11 +467,19 @@ namespace NS
                 {
                     m_nameEditId = 0;
                 }
-                ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), go->ClassName());
+                // 番号は参照先の候補とアクター一覧と同じ PlacedActors の並びの位置
+                for (std::size_t i = 0; i < refOptions.size(); ++i)
+                {
+                    if (refOptions[i].id == selectedId)
+                    {
+                        ImGui::Text("[%zu] %s", i, go->ClassName());
+                        break;
+                    }
+                }
                 ImGui::Separator();
 
                 // Transform は runtime が唯一の出所なので即反映し、commit が undo へ確定する
-                ImGui::SeparatorText("Transform");
+                ImGui::SeparatorText(go->Root().ClassName());
 
                 if (ImGui::BeginTable("##transform", 2,
                                       ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings))
@@ -537,16 +541,28 @@ namespace NS
                         ImGui::PopID();
                     };
 
-                    const Vector3 posVec = go->Root().Position();
+                    // 動かしたかの印と戻す先は、クラスの既定の 1 体の姿勢。既定の 1 体が無ければ印を出さない
+                    const Transform& root = go->Root();
+                    Vector3 defaultPosition = root.Position();
+                    Quaternion defaultRotation = root.Rotation();
+                    Vector3 defaultScale = root.Scale();
+                    if (const Transform* baseline = FindBaselineRoot(*go))
+                    {
+                        defaultPosition = baseline->Position();
+                        defaultRotation = baseline->Rotation();
+                        defaultScale = baseline->Scale();
+                    }
+
+                    const Vector3 posVec = root.Position();
                     float pos[3] = {posVec.x, posVec.y, posVec.z};
                     transformRow(
                         "position",
                         "位置",
                         pos,
                         0.05f,
-                        posVec != k_DefaultPosition,
+                        posVec != defaultPosition,
                         [&] { editor.SetSelectedFreePosition(Vector3{pos[0], pos[1], pos[2]}); },
-                        [&] { editor.SetSelectedFreePosition(k_DefaultPosition); });
+                        [&] { editor.SetSelectedFreePosition(defaultPosition); });
 
                     // 回転は内部のクォータニオンを度のオイラー角へ変換して編集し、入力をクォータニオンへ戻す
                     // 滑らかに回し続けるならギズモの回転ツールが向く。ここは角度の直接入力 / 微調整用
@@ -558,12 +574,12 @@ namespace NS
                         "回転 (度)",
                         rot,
                         0.5f,
-                        q != Quaternion::Identity,
+                        q != defaultRotation,
                         [&] {
                             const Vector3 degrees{rot[0], rot[1], rot[2]};
                             editor.SetSelectedFreeRotation(EulerDegreesToQuaternion(degrees));
                         },
-                        [&] { editor.SetSelectedFreeRotation(Quaternion::Identity); });
+                        [&] { editor.SetSelectedFreeRotation(defaultRotation); });
 
                     const Vector3 sclVec = go->Root().Scale();
                     float scl[3] = {sclVec.x, sclVec.y, sclVec.z};
@@ -572,9 +588,9 @@ namespace NS
                         "スケール",
                         scl,
                         0.05f,
-                        sclVec != k_DefaultScale,
+                        sclVec != defaultScale,
                         [&] { editor.SetSelectedFreeScale(Vector3{scl[0], scl[1], scl[2]}); },
-                        [&] { editor.SetSelectedFreeScale(k_DefaultScale); });
+                        [&] { editor.SetSelectedFreeScale(defaultScale); });
 
                     Editor::EndFieldTable();
                 }
@@ -642,10 +658,7 @@ namespace NS
                         // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
                         if (r.changedTarget != nullptr && r.changedField != nullptr)
                         {
-                            if (r.changedField->type == FieldType::Asset)
-                            {
-                                go->ReloadAssets();
-                            }
+                            editor.FinishFieldWrite(*go, r.changedField->type);
                             editor.MirrorPlayEditToBaseline(*go, field, r.changedField->name);
                         }
                     }
@@ -659,6 +672,7 @@ namespace NS
                     {
                         editor.BeginClassObjEdit();
                         Editor::RevertFieldToDefault(*classObjEdit.revertTarget, *baseline, *classObjEdit.revertField);
+                        editor.FinishFieldWrite(*go, classObjEdit.revertField->type);
                         // 既定へ戻すのも手編集。プレイ中は凍結側へも写して残す
                         editor.MirrorPlayEditToBaseline(*go, *revertRow, classObjEdit.revertField->name);
                         editor.CommitClassObjEdit();

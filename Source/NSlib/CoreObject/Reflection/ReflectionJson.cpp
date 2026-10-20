@@ -35,6 +35,28 @@ namespace NS
             return true;
         }
 
+        // null は空、[r,g,b,a] は色。形式が違えば出力を変更せず false
+        bool ReadOptionalColor(const nlohmann::json& value, std::optional<Color>& out) noexcept
+        {
+            if (value.is_null())
+            {
+                out.reset();
+                return true;
+            }
+            Color color;
+            if (!ReadColor(value, color))
+            {
+                return false;
+            }
+            out = color;
+            return true;
+        }
+
+        nlohmann::json MakeColorJson(const Color& value)
+        {
+            return nlohmann::json{value.x, value.y, value.z, value.w};
+        }
+
         // ベクトルは成分数の配列、回転と色は4成分の配列で保存する
         nlohmann::json FieldToJson(const void* owner, const FieldDesc& field)
         {
@@ -57,9 +79,15 @@ namespace NS
                 // 配列の長さで Vector3 と区別できるため単キー object で包まない
                 return MakeQuaternionJson(ReadField<Quaternion>(owner, field));
             case FieldType::Color:
+                return MakeColorJson(ReadField<Color>(owner, field));
+            case FieldType::OptionalColor:
             {
-                const Color value = ReadField<Color>(owner, field);
-                return nlohmann::json{value.x, value.y, value.z, value.w};
+                const std::optional<Color> value = ReadField<std::optional<Color>>(owner, field);
+                if (!value.has_value())
+                {
+                    return nlohmann::json(nullptr);
+                }
+                return MakeColorJson(*value);
             }
             case FieldType::String:
             case FieldType::Asset:
@@ -170,6 +198,17 @@ namespace NS
                 if (!ReadColor(value, v))
                 {
                     NS_LOG_WARN(Game, "色の欄 {} は [r,g,b,a] の 4 つの数でないため読まない", field.name);
+                    return;
+                }
+                field.set(owner, &v);
+                return;
+            }
+            case FieldType::OptionalColor:
+            {
+                std::optional<Color> v;
+                if (!ReadOptionalColor(value, v))
+                {
+                    NS_LOG_WARN(Game, "色の欄 {} は null か [r,g,b,a] の 4 つの数でないため読まない", field.name);
                     return;
                 }
                 field.set(owner, &v);

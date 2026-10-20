@@ -3,7 +3,7 @@
 :: @build_tests.cmd
 :: Generate the VS solution via Premake5, then build only the test executable
 :: (Tests, googletest and the Runtime libraries Tests links) with MSBuild.
-:: Game / Editor / GameApp are not built.
+:: Game / Editor / GameApp / EditorApp are not built.
 ::
 :: Usage: Tools\@build_tests.cmd [Debug|Development|GameDebug]
 ::   Defaults to Debug when omitted.

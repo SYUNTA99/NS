@@ -7,7 +7,6 @@
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <memory>
-#include <type_traits>
 
 namespace NS
 {
@@ -24,15 +23,6 @@ namespace NS
     //! @brief obj が自分を JSON へ書き出す。欄はクラスの種類の既定値と違う物 (個体の上書き) だけを書く
     [[nodiscard]] nlohmann::json ObjectToJson(const SceneActor& obj);
 
-    //! @details transform 以外の値は写さずコード既定に任せる疎な写し。id は 0 で、置く時に振る
-    [[nodiscard]] nlohmann::json MakePrototypeJson(const SceneActor& obj);
-
-    //! @brief SceneActor 派生 T の OnInit が積む構成からひな形の JSON を作る
-    //! @details 派生クラスの構成を手書きレシピへ並記せず、クラス自身を構成と既定値の唯一の出所にする
-    template <class T> [[nodiscard]] nlohmann::json MakePrototypeJson()
-    {
-        static_assert(std::is_base_of_v<SceneActor, T>, "T は SceneActor 派生でなければならない");
-        const std::unique_ptr<T> prototype = CreateActor<T>();
-        return MakePrototypeJson(*prototype);
-    }
+    //! obj のクラス名・名前・出現を、配置物の頭の欄だけを持つ JSON に書く。保存とエディタのひな形が通す
+    [[nodiscard]] nlohmann::json MakeObjectHeaderJson(const SceneActor& obj, uint32 id);
 } // namespace NS

@@ -166,10 +166,10 @@ namespace NS
             m_maximizedPanel.clear();
         }
 
-        void DockController::RenderMaximizeButton() noexcept
+        void DockController::RenderMaximizeButton(bool shortcutsBlocked) noexcept
         {
 #if NS_EDITOR_ENABLED
-            if (ImGui::GetIO().WantTextInput || !ImGui::GetIO().KeyShift ||
+            if (shortcutsBlocked || !ImGui::GetIO().KeyShift ||
                 !ImGui::IsKeyPressed(ImGuiKey_Space, false))
             {
                 return;
@@ -193,6 +193,8 @@ namespace NS
                     break;
                 }
             }
+#else
+            (void)shortcutsBlocked;
 #endif
         }
 

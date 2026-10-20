@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/ImpactResolver.h"
@@ -12,7 +13,6 @@
 #include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
@@ -24,7 +24,7 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShapeAndSurviveSceneReload)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakePrototypeJson<PlayerActor>();
+    nlohmann::json entry = NS::Editor::MakePrototypeJson<PlayerActor>();
     NS::SetObjectJsonId(entry, 1);
     NS::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.ResetFromJson(std::move(doc));

@@ -28,7 +28,7 @@ namespace NS
         {
             // キューブマップのテクスチャファイル名
             // 素材のファイル名が示す向きは DX11 の軸から水平に 90° ずれている。継ぎ目が合う並びで置く
-            constexpr std::array<const char*, 6> k_KurtFaceFileNames = {
+            constexpr std::array<std::string_view, 6> k_KurtFaceFileNames = {
                 "space_ft.png", // 右
                 "space_bk.png", // 左
                 "space_up.png", // 上
@@ -241,6 +241,11 @@ namespace NS
         bool Skybox::IsUsingFallback() const noexcept
         {
             return m_usingFallback;
+        }
+
+        const std::array<std::string_view, 6>& Skybox::FaceFileNames() noexcept
+        {
+            return k_KurtFaceFileNames;
         }
     } // namespace Gfx
 } // namespace NS

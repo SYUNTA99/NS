@@ -1,7 +1,12 @@
+#include "Editor/EditorObjects.h"
+#include "Editor/EditorMode.h"
 #include "Editor/GameViewPanel.h"
 #include "Editor/HitTimelinePanel.h"
 #include "Editor/LevelEditorController.h"
+#include "Editor/LevelFileBrowser.h"
 #include "Editor/PanelIds.h"
+#include "Editor/PlayControls.h"
+#include "Editor/QuitModal.h"
 #include "Editor/Timeline.h"
 #include "Editor/TimelinePreview.h"
 #include "Game/PlayerActor.h"
@@ -22,16 +27,24 @@
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
 #include "NSlib/Windows/Mouse.h"
+#include "NSlib/Windows/StringUtils.h"
+#include "Tests/TestCheckLayer.h"
 #include "Tests/TestHitTimelines.h"
 
 #include "NSlib/Core/Types.h"
 #include <algorithm>
+#include <chrono>
+#include <cstddef>
+#include <filesystem>
 #include <functional>
 #include <gtest/gtest.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <limits>
 #include <memory>
+#include <span>
+#include <string>
+#include <system_error>
 #include <vector>
 
 namespace
@@ -67,20 +80,6 @@ namespace
             model->SetMaterialRef("Assets/Materials/player.mat");
         }
         void BodyStep() override { Root().SetPosition(Root().Position() + NS::Vector3{0.1f, 0.0f, 0.0f}); }
-    };
-
-    class TimelinePanelTestLayer : public NS::Layer
-    {
-    public:
-        explicit TimelinePanelTestLayer(std::function<void()> check) : m_check(std::move(check)) {}
-        void OnAttach() override
-        {
-            m_check();
-            NS::Application::Quit();
-        }
-
-    private:
-        std::function<void()> m_check;
     };
 
     std::vector<NS::uint8> ReadPixels(NS::Gfx::D3DRenderTarget& target)
@@ -497,7 +496,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<TimelinePanelTestLayer>([&app] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         TimelineGui gui;
         NS::Scene scene;
         scene.SetDevice(&app.Device());
@@ -505,19 +504,19 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         nlohmann::json floor = NS::MakeObjectJson();
         NS::SetObjectJsonClass(floor, "MapPartsActor");
         NS::SetObjectJsonId(floor, 100);
-        NS::SetObjectPosition(floor, {0.0f, -0.5f, 0.0f});
-        NS::SetObjectScale(floor, {60.0f, 1.0f, 60.0f});
+        NS::Editor::SetObjectPosition(floor, {0.0f, -0.5f, 0.0f});
+        NS::Editor::SetObjectScale(floor, {60.0f, 1.0f, 60.0f});
         NS::SceneJsonObjects(snapshot).push_back(std::move(floor));
         nlohmann::json player = NS::MakeObjectJson();
         NS::SetObjectJsonClass(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
-        NS::SetObjectPosition(player, {0.0f, 1.0f, 0.0f});
+        NS::Editor::SetObjectPosition(player, {0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(snapshot).push_back(std::move(player));
         nlohmann::json rock = NS::MakeObjectJson();
         NS::SetObjectJsonClass(rock, "PropActor");
         NS::SetObjectJsonId(rock, 2);
-        NS::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
-        NS::SetObjectScale(rock, {3.0f, 3.0f, 3.0f});
+        NS::Editor::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
+        NS::Editor::SetObjectScale(rock, {3.0f, 3.0f, 3.0f});
         NS::SceneJsonObjects(snapshot).push_back(std::move(rock));
         scene.ResetFromJson(std::move(snapshot));
         scene.SetSimulationEnabled(false);
@@ -592,7 +591,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         NS::SceneActor* target = scene.Objects().FindByObjectId(2);
         ASSERT_NE(target, nullptr);
         target->Root().SetPosition({2.0f, 1.5f, 7.0f});
-        scene.SyncPhysics();
+        scene.OnUpdate();
         begin();
         preview = timeline.Preview(editor);
         ASSERT_NE(preview, nullptr);
@@ -668,4 +667,155 @@ TEST(EditorHitTimelinePanel, SaveWritesEveryTier)
     const GL::Level::HitTimeline* saved = library.Find("miss");
     ASSERT_NE(saved, nullptr);
     EXPECT_EQ(saved->events.size(), miss.events.size());
+}
+
+namespace
+{
+    //! パネルの「再生の位置に足す」を押し、タイムラインの写しに事象を 1 つ足す
+    void AddEventThroughThePanel(LevelEditorController& editor, NS::Editor::HitTimelinePanel& timeline)
+    {
+        const auto drawPanel = [&] {
+            ImGui::SetNextWindowPos({0.0f, 0.0f});
+            ImGui::SetNextWindowSize({650.0f, 780.0f});
+            timeline.Render(editor);
+        };
+        ImGui::NewFrame();
+        drawPanel();
+        ImGui::EndFrame();
+        ImGui::NewFrame();
+        ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelHitTimeline);
+        ASSERT_NE(window, nullptr);
+        ImGuiContext& context = *ImGui::GetCurrentContext();
+        context.NavActivateId = window->GetID("再生の位置に足す");
+        context.NavActivateDownId = context.NavActivateId;
+        drawPanel();
+        ImGui::EndFrame();
+    }
+} // namespace
+
+// シーンを変えずにタイムラインだけを変えても、終了の確認は未保存と答える
+TEST(EditorQuit, TimelineEditAloneIsUnsavedWork)
+{
+    const ScopedHitTimelineDirectory directory("EditorQuitUnsaved");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::HitTimelinePanel timeline;
+    ASSERT_FALSE(NS::Editor::HasUnsavedWork(editor.Editor(), timeline));
+
+    AddEventThroughThePanel(editor, timeline);
+
+    EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
+    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor.Editor(), timeline));
+}
+
+// 終了の保存はタイムラインも書く。シーンだけを書くと、タイムラインの変更が黙って失われる
+TEST(EditorQuit, SaveAllForQuitWritesTheTimeline)
+{
+    const ScopedHitTimelineDirectory directory("EditorQuitSave");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
+    GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::HitTimelinePanel timeline;
+
+    // シーンの書き先は、Assets の下に作る試しのレベルにする。起動シーンのファイルを書かない
+    const std::string folder =
+        "EditorQuitTest" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    const std::string levelDirectory = NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), folder);
+    ASSERT_TRUE(NS::OS::FileSystem::CreateDirectories(levelDirectory));
+    const std::string levelText = NS::MakeSceneJson().dump();
+    const std::span<const std::byte> levelBytes{reinterpret_cast<const std::byte*>(levelText.data()),
+                                                levelText.size()};
+    ASSERT_TRUE(
+        NS::OS::FileSystem::WriteAllBytes(NS::OS::FileSystem::Combine(levelDirectory, "quit.scene"), levelBytes));
+    NS::Editor::EditorMode& mode = editor.Editor();
+    mode.SetLoadLevelFn([](nlohmann::json&&) {});
+    mode.SetCaptureLevelFn([] { return NS::MakeSceneJson(); });
+    const bool opened = mode.OpenLevel(folder + "/quit");
+
+    AddEventThroughThePanel(editor, timeline);
+    const bool saved = NS::Editor::SaveAllForQuit(mode, timeline);
+    const bool unsavedAfter = NS::Editor::HasUnsavedWork(mode, timeline);
+    std::error_code error;
+    std::filesystem::remove_all(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(levelDirectory)}, error);
+
+    ASSERT_TRUE(opened);
+    EXPECT_TRUE(saved);
+    EXPECT_FALSE(unsavedAfter);
+    library.Reload();
+    const GL::Level::HitTimeline* written = library.Find("center");
+    ASSERT_NE(written, nullptr);
+    EXPECT_EQ(written->events.size(), MakeLegacyHitTimeline(2).events.size() + 1);
+}
+
+// 終了の確認と Save Level・Load Level を開いている間は、編集のショートカットを止める答えが真になる。
+// 答えはモーダルを ImGui の窓の積み重ねで問うので、3 つの窓がモーダルとして開いていないと Delete で消した後のシーンを保存できてしまう
+TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
+{
+    const ScopedHitTimelineDirectory directory("EditorQuitModal");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::HitTimelinePanel timeline;
+    NS::Editor::QuitModal quit;
+    NS::Editor::LevelFileBrowser files;
+
+    // Editor の描画と同じ順で 1 フレーム描き、Editor.cpp が問いへ入れる値で答えを返す
+    const auto frame = [&](const char* activate) {
+        ImGui::NewFrame();
+        if (activate != nullptr)
+        {
+            ImGuiWindow* top = ImGui::GetTopMostPopupModal();
+            if (top != nullptr)
+            {
+                ImGuiContext& context = *ImGui::GetCurrentContext();
+                context.NavActivateId = top->GetID(activate);
+                context.NavActivateDownId = context.NavActivateId;
+            }
+        }
+        quit.Render(editor, timeline);
+        static_cast<void>(files.Render());
+        ImGuiWindow* modal = ImGui::GetTopMostPopupModal();
+        std::string name;
+        if (modal != nullptr)
+        {
+            name = modal->Name;
+        }
+        ImGui::EndFrame();
+        return name;
+    };
+    const auto blocked = [](const std::string& modalName) {
+        return NS::Editor::ResolveInputOwnership({.modalOpen = !modalName.empty()}).editShortcutsBlocked;
+    };
+
+    EXPECT_FALSE(blocked(frame(nullptr)));
+
+    ASSERT_FALSE(quit.RequestQuit());
+    EXPECT_TRUE(blocked(frame(nullptr)));
+    EXPECT_FALSE(blocked(frame("キャンセル")));
+    EXPECT_FALSE(blocked(frame(nullptr)));
+
+    files.OpenSaveModal("quit_modal_test");
+    EXPECT_TRUE(blocked(frame(nullptr)));
+    EXPECT_FALSE(blocked(frame("Cancel")));
+
+    files.OpenLoadModal();
+    EXPECT_TRUE(blocked(frame(nullptr)));
+    // 読み込めた知らせで閉じる道。知らせは描画の後に届くので、次のフレームで閉じる
+    files.NotifyLoadResult(true, "");
+    EXPECT_FALSE(blocked(frame(nullptr)));
+
+    // Save Level を開いたまま終了を求めると、終了の確認が前に出て、2 つが開き合わない
+    files.OpenSaveModal("quit_modal_test");
+    EXPECT_EQ(frame(nullptr), "Save Level");
+    ASSERT_FALSE(quit.RequestQuit());
+    EXPECT_EQ(frame(nullptr), "終了の確認");
+    EXPECT_EQ(frame(nullptr), "終了の確認");
+    EXPECT_FALSE(blocked(frame("キャンセル")));
+    EXPECT_EQ(frame(nullptr), "");
 }

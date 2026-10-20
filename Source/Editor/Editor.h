@@ -55,6 +55,7 @@ private:
     void RenderMaximizedPanel(LevelEditorController& editor, float topOffset) noexcept;
 
     //! 編集モードのキー操作を処理する。Delete = 削除、Ctrl+D = 複製、F = 選択物へ寄る
+    //! 押した瞬間は固定ステップの境で数えるので、描画からでなく更新から呼ぶ
     static void HandleEditShortcuts(LevelEditorController& editor) noexcept;
 
     std::unique_ptr<NS::UI::ImGuiContext> m_imgui;

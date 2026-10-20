@@ -52,6 +52,8 @@ namespace NS
             bool uiWantsMouse = false;             // ImGui がマウスを欲しがっているか
             bool uiWantsKeyboard = false;          // ImGui がキーボードを欲しがっているか。項目を押している間も立つ
             bool textInput = false;                // 文字の入力欄に居るか
+            bool itemActive = false;               // ImGui の項目を押したまま操作しているか
+            bool modalOpen = false;                // 曲線の編集などのモーダルの窓を開いているか
             bool editSceneLatched = false;         // 編集中の Scene の画像のラッチ
             bool gameLatched = false;              // プレイ中の Game の画像のラッチ
             bool cursorReleased = false;           // プレイ中にカーソルを出して固定を解いているか
@@ -66,6 +68,9 @@ namespace NS
             bool uiMouse = false;
             bool uiKeyboard = false;
             bool leftButtonToGame = false; // UI がマウスを持つ間も、左ボタンだけゲームへ渡すか
+            // 編集のショートカット (削除・複製・寄る・元に戻す など) を止めるか。
+            // パネルに焦点があるだけでは止めず、文字を打つ間・項目を操作する間・モーダルの窓を開いている間だけ止める
+            bool editShortcutsBlocked = false;
         };
 
         //! @brief UI とゲームの入力の取り分を決める

@@ -12,6 +12,7 @@
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
@@ -21,6 +22,86 @@ namespace NS
 {
     namespace Editor
     {
+        namespace
+        {
+            const nlohmann::json* FindTransformFields(const nlohmann::json& object) noexcept
+            {
+                return ClassObjFields(object, "Transform");
+            }
+
+            Vector3 ReadTransformVec3(const nlohmann::json& object,
+                                      std::string_view fieldName,
+                                      const Vector3& fallback) noexcept
+            {
+                const nlohmann::json* transform = FindTransformFields(object);
+                if (transform == nullptr)
+                {
+                    return fallback;
+                }
+                return FieldVector3(*transform, fieldName, fallback);
+            }
+        } // namespace
+
+        nlohmann::json& EnsureTransformClassObj(nlohmann::json& object)
+        {
+            nlohmann::json& transform = ObjectJsonClassObjs(object)["Transform"];
+            if (!transform.is_object())
+            {
+                transform = nlohmann::json::object();
+                SetField(transform, k_PositionFieldName, Vector3{0.0f, 0.0f, 0.0f});
+                SetField(transform, k_RotationFieldName, Quaternion::Identity);
+                SetField(transform, k_ScaleFieldName, Vector3{1.0f, 1.0f, 1.0f});
+            }
+            return transform;
+        }
+
+        Vector3 ObjectPosition(const nlohmann::json& object) noexcept
+        {
+            return ReadTransformVec3(object, k_PositionFieldName, Vector3{0.0f, 0.0f, 0.0f});
+        }
+
+        void SetObjectPosition(nlohmann::json& object, const Vector3& position) noexcept
+        {
+            SetField(EnsureTransformClassObj(object), k_PositionFieldName, position);
+        }
+
+        Quaternion ObjectRotation(const nlohmann::json& object) noexcept
+        {
+            const nlohmann::json* transform = FindTransformFields(object);
+            if (transform == nullptr)
+            {
+                return Quaternion::Identity;
+            }
+            return FieldQuaternion(*transform, k_RotationFieldName, Quaternion::Identity);
+        }
+
+        void SetObjectRotation(nlohmann::json& object, const Quaternion& rotation) noexcept
+        {
+            SetField(EnsureTransformClassObj(object), k_RotationFieldName, rotation);
+        }
+
+        Vector3 ObjectScale(const nlohmann::json& object) noexcept
+        {
+            return ReadTransformVec3(object, k_ScaleFieldName, Vector3{1.0f, 1.0f, 1.0f});
+        }
+
+        void SetObjectScale(nlohmann::json& object, const Vector3& scale) noexcept
+        {
+            SetField(EnsureTransformClassObj(object), k_ScaleFieldName, scale);
+        }
+
+        nlohmann::json MakePrototypeJson(const SceneActor& obj)
+        {
+            nlohmann::json object = MakeObjectHeaderJson(obj, 0u);
+            nlohmann::json& parts = ObjectJsonClassObjs(object);
+            ForEachReflectedClassObj(
+                obj, [&](const ClassObjInfo& field, Object*) { parts[field.key] = nlohmann::json::object(); });
+            SetObjectPosition(object, obj.Root().Position());
+            SetObjectRotation(object, obj.Root().Rotation());
+            SetObjectScale(object, obj.Root().Scale());
+            return object;
+        }
+
         namespace
         {
             // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
@@ -64,11 +145,24 @@ namespace NS
             }
         } // namespace
 
+        std::vector<SceneActor*> PlacedActors(const ActorList& objects)
+        {
+            std::vector<SceneActor*> placed;
+            placed.reserve(objects.ObjectCount());
+            for (SceneActor* object : objects)
+            {
+                if (!object->IsTransient())
+                {
+                    placed.push_back(object);
+                }
+            }
+            return placed;
+        }
+
         bool IsCellBrushObject(const SceneActor& object) noexcept
         {
-            // 実行時の一時オブジェクトは配置物でないため対象外
             // 自前の振る舞いを持つ SceneActor は、ブラシの置換や削除で崩さない
-            if (object.IsTransient() || std::string_view{object.ClassName()} != "MapPartsActor")
+            if (std::string_view{object.ClassName()} != "MapPartsActor")
             {
                 return false;
             }
@@ -98,7 +192,7 @@ namespace NS
 
         uint32 FindObjectIdAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
         {
-            for (SceneActor* objPtr : objects)
+            for (SceneActor* objPtr : PlacedActors(objects))
             {
                 SceneActor& object = *objPtr;
                 if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
@@ -112,9 +206,9 @@ namespace NS
 
         bool HasPlacedObjectAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
         {
-            for (const SceneActor* object : objects)
+            for (const SceneActor* object : PlacedActors(objects))
             {
-                if (!object->IsTransient() && ObjectCellX(*object) == x && ObjectCellY(*object) == y &&
+                if (ObjectCellX(*object) == x && ObjectCellY(*object) == y &&
                     ObjectCellZ(*object) == z)
                 {
                     return true;

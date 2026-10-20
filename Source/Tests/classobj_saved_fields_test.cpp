@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
@@ -9,9 +10,19 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <optional>
 
 namespace
 {
+    struct OptionalColorValue
+    {
+        std::optional<NS::Color> tint;
+
+        NS_REFLECT_BEGIN(OptionalColorValue, void)
+        NS_FIELD(tint, "色")
+        NS_REFLECT_END_VALUE()
+    };
+
     void ExpectNoEnabledKey(const nlohmann::json& object)
     {
         const nlohmann::json::const_iterator classObjs = object.find("classObjs");
@@ -27,11 +38,43 @@ TEST(ClassObjSavedFields, SavedJsonHasNoEnabledKey)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
     ExpectNoEnabledKey(NS::ObjectToJson(*player));
-    ExpectNoEnabledKey(NS::ExpandObjectJson(NS::MakePrototypeJson<PlayerActor>()));
+    ExpectNoEnabledKey(NS::ExpandObjectJson(NS::Editor::MakePrototypeJson<PlayerActor>()));
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
     ExpectNoEnabledKey(NS::ObjectToJson(*prop));
-    ExpectNoEnabledKey(NS::ExpandObjectJson(NS::MakePrototypeJson<GL::Level::PropActor>()));
+    ExpectNoEnabledKey(NS::ExpandObjectJson(NS::Editor::MakePrototypeJson<GL::Level::PropActor>()));
+}
+
+TEST(ClassObjSavedFields, OptionalColorIsSavedAsNullOrFourNumbers)
+{
+    const NS::ReflectionInfo& info = *OptionalColorValue::StaticReflection();
+    ASSERT_EQ(info.fieldCount, 1u);
+    EXPECT_EQ(info.fields[0].type, NS::FieldType::OptionalColor);
+
+    OptionalColorValue value;
+    EXPECT_TRUE(NS::SerializeReflectedFields(&value, info)["色"].is_null());
+
+    EXPECT_EQ(NS::ApplyReflectedFields(&value, info, nlohmann::json{{"色", {0.25f, 0.5f, 0.75f, 1.0f}}}), 0u);
+    ASSERT_TRUE(value.tint.has_value());
+    EXPECT_EQ(*value.tint, NS::Color(0.25f, 0.5f, 0.75f, 1.0f));
+    EXPECT_EQ(NS::SerializeReflectedFields(&value, info)["色"], (nlohmann::json{0.25f, 0.5f, 0.75f, 1.0f}));
+
+    // 長さ違いと数でない成分は、入っている値を変えない
+    const nlohmann::json broken[] = {nlohmann::json{0.1f, 0.2f, 0.3f}, nlohmann::json{0.1f, "a", 0.3f, 1.0f},
+                                     nlohmann::json("red")};
+    for (const nlohmann::json& entry : broken)
+    {
+        NS::ApplyReflectedFields(&value, info, nlohmann::json{{"色", entry}});
+        ASSERT_TRUE(value.tint.has_value()) << entry.dump();
+        EXPECT_EQ(*value.tint, NS::Color(0.25f, 0.5f, 0.75f, 1.0f)) << entry.dump();
+    }
+
+    NS::ApplyReflectedFields(&value, info, nlohmann::json{{"色", nullptr}});
+    EXPECT_FALSE(value.tint.has_value());
+
+    // 空の間も壊れた値は空のまま残す
+    NS::ApplyReflectedFields(&value, info, nlohmann::json{{"色", {0.1f, 0.2f, 0.3f}}});
+    EXPECT_FALSE(value.tint.has_value());
 }
 
 TEST(ClassObjSavedFields, EnabledKeyIsReadLikeAnyUnknownField)

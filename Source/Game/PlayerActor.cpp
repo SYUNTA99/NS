@@ -64,7 +64,7 @@ void PlayerActor::OnInit()
 {
     NS::Model* model = CreateClassObj(m_model, this);
     model->SetMaterialRef("Assets/Materials/player.mat");
-    model->SetBaseColor(NS::Color{0.5f, 0.5f, 0.5f});
+    model->SetColorOverride(NS::Color{0.5f, 0.5f, 0.5f});
     CreateClassObj(m_appearance, this);
     CreateClassObj(m_body, this);
     CreateClassObj(m_collider, this);

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <optional>
 
 namespace NS
 {
@@ -21,14 +22,20 @@ namespace NS
                 "CON",  "PRN",  "AUX",  "NUL",  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
                 "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
 
-            [[nodiscard]] bool IsReservedName(std::string_view name) noexcept
+            [[nodiscard]] std::string ToUpperAscii(std::string_view text) noexcept
             {
                 std::string upper;
-                upper.reserve(name.size());
-                for (char c : name)
+                upper.reserve(text.size());
+                for (char c : text)
                 {
                     upper.push_back(static_cast<char>(std::toupper(static_cast<uint8>(c))));
                 }
+                return upper;
+            }
+
+            [[nodiscard]] bool IsReservedName(std::string_view name) noexcept
+            {
+                const std::string upper = ToUpperAscii(name);
                 for (const std::string_view& r : k_ReservedNames)
                 {
                     if (upper == r)
@@ -129,6 +136,23 @@ namespace NS
                 QualifyLevelPath(safe) + ".scene");
         }
 
+        std::string LevelNameOfScenePath(std::string_view scenePath) noexcept
+        {
+            constexpr std::string_view k_AssetsPrefix = "Assets/";
+            if (!scenePath.starts_with(k_AssetsPrefix))
+            {
+                return "";
+            }
+            const std::string extension = OS::FileSystem::Extension(scenePath);
+            if (ToUpperAscii(extension) != ".SCENE")
+            {
+                return "";
+            }
+            const std::string_view name =
+                scenePath.substr(k_AssetsPrefix.size(), scenePath.size() - k_AssetsPrefix.size() - extension.size());
+            return SanitizeLevelPath(name);
+        }
+
         bool EnsureScenesDirectoryExists() noexcept
         {
             const std::string dir = GetScenesDirectory();
@@ -147,7 +171,8 @@ namespace NS
         std::vector<std::string> EnumerateLevelFiles() noexcept
         {
             std::vector<std::string> result;
-            const std::string assetsDir = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets");
+            const std::string root = OS::FileSystem::ContentRoot();
+            const std::string assetsDir = OS::FileSystem::Combine(root, "Assets");
             if (!OS::FileSystem::Exists(assetsDir))
             {
                 return result;
@@ -155,25 +180,26 @@ namespace NS
 
             for (const std::string& path : OS::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
             {
-                // ListFilesRecursive は assetsDir を Combine で頭に付けて返すので、先頭 + 区切り 1
-                // 文字を削ると相対になる
-                std::string relStr = path.substr(assetsDir.size() + 1);
-                const std::string extension = OS::FileSystem::Extension(relStr);
-                relStr.resize(relStr.size() - extension.size());
-                const std::string safe = SanitizeLevelPath(relStr);
-                if (safe.empty())
+                const std::optional<std::string> fromRoot = OS::FileSystem::RelativeUnder(root, path);
+                if (!fromRoot)
+                {
+                    NS_LOG_ERROR(App, "レベル一覧から除外: {} (ContentRoot の外)", path);
+                    continue;
+                }
+                std::string name = LevelNameOfScenePath(*fromRoot);
+                if (name.empty())
                 {
                     // 黙って落とすとレベル消失に見える。除外したことをログに残す
-                    NS_LOG_WARN(App, "レベル一覧から除外: {} (パスに使えない文字か長さ超過)", relStr);
+                    NS_LOG_WARN(App, "レベル一覧から除外: {} (パスに使えない文字か長さ超過)", *fromRoot);
                 }
-                else if (safe.find('/') == std::string::npos)
+                else if (name.find('/') == std::string::npos)
                 {
                     // フォルダの無い名前は Scenes/ の下で開くので、Assets 直下は開けない
-                    NS_LOG_WARN(App, "レベル一覧から除外: {} (Assets 直下の .scene は開けない)", relStr);
+                    NS_LOG_WARN(App, "レベル一覧から除外: {} (Assets 直下の .scene は開けない)", *fromRoot);
                 }
                 else
                 {
-                    result.push_back(std::move(relStr));
+                    result.push_back(std::move(name));
                 }
             }
             std::sort(result.begin(), result.end());

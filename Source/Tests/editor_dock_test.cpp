@@ -62,7 +62,7 @@ namespace
                 ImGui::TextUnformatted("content");
                 ImGui::End();
             }
-            m_dock.RenderMaximizeButton();
+            m_dock.RenderMaximizeButton(false);
             m_dock.TickTabFocus();
             ImGui::EndFrame();
         }

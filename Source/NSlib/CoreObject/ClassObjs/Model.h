@@ -10,6 +10,7 @@
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/DrawItem.h"
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -35,8 +36,12 @@ namespace NS
         //! メッシュとマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
         explicit Model(SceneActor* owner);
 
-        //! マテリアルを共有したまま配置物ごとに変える個体色。lighting とは別系統
-        void SetBaseColor(const Color& color) noexcept { m_baseColor = color; }
+        //! @brief マテリアルを共有したまま配置物ごとに変える色の上書き。空ならマテリアルの基本色で描く
+        //! @details 光の色とは別に掛かる。透明度は使わず rgb だけを描く
+        void SetColorOverride(const std::optional<Color>& color) noexcept { m_colorOverride = color; }
+        [[nodiscard]] const std::optional<Color>& ColorOverride() const noexcept { return m_colorOverride; }
+        //! 描く色。上書きが入っていればその色、空なら描くマテリアル (DrawnMaterial) の基本色。掛け合わせない
+        [[nodiscard]] Color DrawColor() const noexcept;
 
         //! @brief 欄を替えずに、描くメッシュを替える。保存する名前は欄のメッシュのまま
         //! @details nullptr で欄のメッシュに戻す。SceneActor::ReloadAssets も欄のメッシュに戻す
@@ -128,7 +133,7 @@ namespace NS
 
         //! 持ち主が出ていて、描く形と欄のマテリアルの描く D3DMaterial が揃っている場合 true
         [[nodiscard]] bool CanDraw() const noexcept;
-        //! @brief 欄のマテリアルと個体色で、world に描く DrawItem を作る
+        //! @brief 描くマテリアルと DrawColor で、world に描く DrawItem を作る
         //! @details 混ぜ方はマテリアルの物。CanDraw が true の時だけ呼ぶ
         [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept;
         //! 描く形の局所の境界。差された境界を先に、無ければメッシュの境界。どちらも無ければ nullptr
@@ -156,7 +161,7 @@ namespace NS
         void Snapshot() noexcept;
 
         NS_REFLECT_BEGIN(Model, Object)
-        NS_FIELD(m_baseColor, "基本色")
+        NS_FIELD(m_colorOverride, "基本色", "色の上書き")
         NS_FIELD(m_mesh, "メッシュ")
         NS_FIELD(m_material, "マテリアル")
         NS_REFLECT_END()
@@ -174,7 +179,7 @@ namespace NS
         Material* m_material = nullptr;
         Mesh* m_shownMesh = nullptr;         // 欄を替えずに描くメッシュ。保存しない
         Material* m_drawnMaterial = nullptr; // ChooseDrawnMaterial が選ぶ。保存しない
-        Color m_baseColor{1.0f, 1.0f, 1.0f};              // 個体色、lighting と別系統。透明度は使わず rgb だけを描く
+        std::optional<Color> m_colorOverride;
 
         // 追加 VS 定数。cpuData があれば描画ごとに転送する
         const Gfx::D3DBuffer* m_perObjectVsCb = nullptr;

@@ -3,7 +3,6 @@
 #include "Editor/PaletteTemplates.h"
 #include "Editor/PlacementCatalog.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
-#include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Gamepad.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
@@ -32,7 +31,7 @@ namespace NS
             return PartsSlopeAngleDegrees(PaletteTemplateSlots()[m_activeSlot].prototype);
         }
 
-        void CategoryPalette::TickInput(OS::Input* input, UI::ImGuiContext* imgui) noexcept
+        void CategoryPalette::TickInput(OS::Input* input, bool editShortcutsBlocked) noexcept
         {
             if (input == nullptr)
             {
@@ -53,8 +52,7 @@ namespace NS
                 }
             }
 
-            const bool wantKeyboard = imgui != nullptr && imgui->WantCaptureKeyboard();
-            if (wantKeyboard)
+            if (editShortcutsBlocked)
             {
                 return;
             }

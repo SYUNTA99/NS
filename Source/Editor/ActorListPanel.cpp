@@ -69,15 +69,8 @@ namespace NS
                     editor.SelectSceneSettings();
                 }
 
-                std::size_t shownCount = 0;
-                for (const SceneActor* obj : editor.Objects())
-                {
-                    if (!obj->IsTransient())
-                    {
-                        ++shownCount;
-                    }
-                }
-                ImGui::Text("オブジェクト %zu 個", shownCount);
+                const std::vector<SceneActor*> placed = PlacedActors(editor.Objects());
+                ImGui::Text("オブジェクト %zu 個", placed.size());
 
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputTextWithHint("##actorListFilter", "検索", m_actorListFilter, sizeof(m_actorListFilter));
@@ -100,19 +93,15 @@ namespace NS
                     }
                 }
 
-                for (SceneActor* object : editor.Objects())
+                for (SceneActor* object : placed)
                 {
-                    if (object->IsTransient())
-                    {
-                        continue;
-                    }
                     if (!filtering || NameMatches(Editor::ObjectDisplayName(*object), m_actorListFilter))
                     {
                         RenderRow(editor, *object);
                     }
                 }
 
-                if (shownCount == 0)
+                if (placed.empty())
                 {
                     ImGui::TextDisabled("(オブジェクトなし)");
                 }

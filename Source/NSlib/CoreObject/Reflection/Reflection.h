@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -68,7 +69,8 @@ namespace NS
         ActorRef,
         Curve,
         Asset, // 欄は素材の姿のポインタ。取得・設定の関数が受け渡すのは道の std::string
-        Vector2
+        Vector2,
+        OptionalColor // 欄は std::optional<NS::Color>。空は null、値は Color と同じ [r,g,b,a] で保存する
     };
 
     //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
@@ -98,6 +100,10 @@ namespace NS
         {
             return FieldType::Color;
         }
+        else if constexpr (std::is_same_v<T, std::optional<Color>>)
+        {
+            return FieldType::OptionalColor;
+        }
         else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, EffectName>)
         {
             return FieldType::String;
@@ -119,7 +125,7 @@ namespace NS
             static_assert(
                 std::is_same_v<T, Vector3>,
                 "FieldTypeOf の T は float / int / bool / NS::Vector2 / NS::Vector3 / NS::Quaternion / NS::Color / "
-                "std::string / EffectName / ActorRef / Curve / IsAssetPointer に並ぶ素材の姿のポインタ のいずれか");
+                "std::optional<NS::Color> / std::string / EffectName / ActorRef / Curve / IsAssetPointer に並ぶ素材の姿のポインタ のいずれか");
             return FieldType::Vector3;
         }
     }

@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
@@ -188,11 +189,11 @@ TEST(ActorStateMachine, SavedJsonGainsNoStateMachineFields)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
     ExpectNoStateMachineFields(NS::ObjectToJson(*player));
-    ExpectNoStateMachineFields(NS::ExpandObjectJson(NS::MakePrototypeJson<PlayerActor>()));
+    ExpectNoStateMachineFields(NS::ExpandObjectJson(NS::Editor::MakePrototypeJson<PlayerActor>()));
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
     ExpectNoStateMachineFields(NS::ObjectToJson(*prop));
-    ExpectNoStateMachineFields(NS::ExpandObjectJson(NS::MakePrototypeJson<GL::Level::PropActor>()));
+    ExpectNoStateMachineFields(NS::ExpandObjectJson(NS::Editor::MakePrototypeJson<GL::Level::PropActor>()));
 }
 
 TEST(ActorStateMachine, SecondBuildFailsAndKeepsTheFirstMachine)

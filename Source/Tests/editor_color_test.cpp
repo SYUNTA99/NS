@@ -1,12 +1,22 @@
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Windows/Filesystem.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+
+#include <map>
+#include <optional>
+#include <string>
 
 namespace
 {
@@ -38,7 +48,7 @@ namespace
             m_tableMin = ImGui::GetCursorScreenPos();
             m_tableWidth = ImGui::GetContentRegionAvail().x;
             const NS::Editor::ClassObjEditResult result =
-                NS::Editor::DrawReflectedClassObj(m_model, {}, nullptr, "基本色");
+                NS::Editor::DrawReflectedClassObj(m_model, {}, nullptr, "色の上書き");
             ImGui::End();
             ImGui::EndFrame();
             return result;
@@ -82,6 +92,122 @@ namespace
         NS_FIELD(tint, "色合い")
         NS_REFLECT_END_VALUE()
     };
+
+    // 保存された "基本色" の rgb。無ければ空
+    std::optional<NS::Vector3> SavedModelColor(const nlohmann::json& object)
+    {
+        const nlohmann::json::const_iterator classObjs = object.find("classObjs");
+        if (classObjs == object.end() || !classObjs->contains("Model") || !(*classObjs)["Model"].contains("基本色"))
+        {
+            return std::nullopt;
+        }
+        const nlohmann::json& color = (*classObjs)["Model"]["基本色"];
+        return NS::Vector3{color[0].get<float>(), color[1].get<float>(), color[2].get<float>()};
+    }
+
+    // 色の正をマテリアルへ移す前に描いていた色。配置物の "基本色"、種類の既定の "基本色"、
+    // クラスのコードが入れる色、Model の既定の白の順に引く
+    NS::Vector3 ColorBeforeTheMaterialOwnedIt(const nlohmann::json& object, const std::string& className)
+    {
+        const std::optional<NS::Vector3> placed = SavedModelColor(object);
+        if (placed)
+        {
+            return *placed;
+        }
+        const std::string archetypePath =
+            NS::OS::FileSystem::Combine(NS::ArchetypeLibrary::Get().Directory(), className + ".json");
+        if (NS::OS::FileSystem::Exists(archetypePath))
+        {
+            const std::optional<std::string> archetypeText = NS::OS::FileSystem::ReadAllText(archetypePath);
+            EXPECT_TRUE(archetypeText.has_value()) << archetypePath;
+            if (!archetypeText)
+            {
+                return NS::Vector3{};
+            }
+            const std::optional<NS::Vector3> archetype = SavedModelColor(nlohmann::json::parse(*archetypeText));
+            if (archetype)
+            {
+                return *archetype;
+            }
+        }
+        const std::map<std::string, NS::Vector3> classColors{
+            {"GoalActor", NS::Vector3{1.0f, 0.84f, 0.0f}},
+            {"PropActor", NS::Vector3{0.72f, 0.70f, 0.66f}},
+            {"PlayerActor", NS::Vector3{0.5f, 0.5f, 0.5f}},
+            {"MapPartsActor", NS::Vector3{0.70f, 0.70f, 0.75f}},
+        };
+        const std::map<std::string, NS::Vector3>::const_iterator found = classColors.find(className);
+        if (found != classColors.end())
+        {
+            return found->second;
+        }
+        return NS::Vector3{1.0f, 1.0f, 1.0f};
+    }
+}
+
+// 上書きが空なら描くマテリアルの基本色、入っていれば上書きの色で描く。掛け合わせない
+TEST(ModelDrawColor, EmptyOverrideDrawsTheMaterialColorAndAnOverrideWins)
+{
+    NS::Model model{nullptr};
+    EXPECT_FALSE(model.ColorOverride().has_value());
+    model.SetMaterialRef("Assets/Materials/stone.mat");
+    EXPECT_EQ(model.DrawColor().ToVector3(), (NS::Vector3{0.6f, 0.6f, 0.65f}));
+
+    model.SetColorOverride(NS::Color{0.2f, 0.4f, 0.7f});
+    EXPECT_EQ(model.DrawColor().ToVector3(), (NS::Vector3{0.2f, 0.4f, 0.7f}));
+
+    model.SetColorOverride(std::nullopt);
+    EXPECT_EQ(model.DrawColor().ToVector3(), (NS::Vector3{0.6f, 0.6f, 0.65f}));
+}
+
+// 出荷のシーンと種類の既定から作ったアクターは、色の正を移す前と同じ色で描く
+TEST(ModelDrawColor, ShippedScenesAndArchetypesKeepTheirColor)
+{
+    NS::ArchetypeLibrary& library = NS::ArchetypeLibrary::Get();
+    library.Reload();
+    int checked = 0;
+
+    for (const std::string& path : NS::OS::FileSystem::ListFiles(library.Directory(), ".json"))
+    {
+        const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(path);
+        ASSERT_TRUE(text.has_value()) << path;
+        const std::string className = nlohmann::json::parse(*text)["class"].get<std::string>();
+        const NS::Model* model = library.Baseline(className).ModelClassObj();
+        if (model == nullptr)
+        {
+            continue;
+        }
+        EXPECT_EQ(model->DrawColor().ToVector3(), ColorBeforeTheMaterialOwnedIt(nlohmann::json::object(), className))
+            << path;
+        ++checked;
+    }
+
+    const std::string scenes = NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes");
+    for (const std::string& path : NS::OS::FileSystem::ListFiles(scenes, ".scene"))
+    {
+        const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(path);
+        ASSERT_TRUE(text.has_value()) << path;
+        nlohmann::json doc;
+        ASSERT_TRUE(NS::DeserializeSceneFromJson(doc, *text)) << path;
+        NS::Scene scene;
+        scene.ResetFromJson(doc);
+        for (const nlohmann::json& object : NS::SceneJsonObjects(doc))
+        {
+            const NS::ObjectHeader header = NS::ReadObjectHeader(object);
+            const NS::SceneActor* actor = scene.Objects().FindByObjectId(header.id);
+            ASSERT_NE(actor, nullptr) << path << " " << header.id;
+            if (actor->ModelClassObj() == nullptr)
+            {
+                continue;
+            }
+            EXPECT_EQ(actor->ModelClassObj()->DrawColor().ToVector3(),
+                      ColorBeforeTheMaterialOwnedIt(object, header.className))
+                << path << " " << header.name;
+            ++checked;
+        }
+    }
+    EXPECT_GT(checked, 0);
 }
 
 TEST(ColorField, ColorMemberIsAColorFieldSavedWithItsAlpha)
@@ -113,7 +239,7 @@ TEST(ColorField, ThreeComponentColorWarnsAndKeepsTheValue)
 
 TEST_F(EditorColorTest, ColorSwatchOpensAPickerBeforeChangingTheValue)
 {
-    m_model.SetBaseColor(NS::Color{0.2f, 0.4f, 0.7f});
+    m_model.SetColorOverride(NS::Color{0.2f, 0.4f, 0.7f});
     const nlohmann::json before = NS::SerializeClassObjFields(m_model);
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
@@ -124,6 +250,7 @@ TEST_F(EditorColorTest, ColorSwatchOpensAPickerBeforeChangingTheValue)
 
 TEST_F(EditorColorTest, ClickingTheLeftSideOfTheSwatchOpensThePicker)
 {
+    m_model.SetColorOverride(NS::Color{0.2f, 0.4f, 0.7f});
     const nlohmann::json before = NS::SerializeClassObjFields(m_model);
     OpenPicker(true);
     EXPECT_EQ(GImGui->OpenPopupStack.Size, 1);
@@ -134,7 +261,7 @@ TEST_F(EditorColorTest, ClickingTheLeftSideOfTheSwatchOpensThePicker)
 
 TEST_F(EditorColorTest, DrawingAColorFieldPreservesHighIntensityAndSavedNumbers)
 {
-    m_model.SetBaseColor(NS::Color{2.5f, 0.3f, 0.1f});
+    m_model.SetColorOverride(NS::Color{2.5f, 0.3f, 0.1f});
     const nlohmann::json before = NS::SerializeClassObjFields(m_model);
     for (int i = 0; i < 3; ++i)
     {
@@ -147,7 +274,7 @@ TEST_F(EditorColorTest, DrawingAColorFieldPreservesHighIntensityAndSavedNumbers)
 
 TEST_F(EditorColorTest, ChoosingAColorWritesTheFieldAndCommitsWhenThePickerCloses)
 {
-    m_model.SetBaseColor(NS::Color{0.2f, 0.4f, 0.7f});
+    m_model.SetColorOverride(NS::Color{0.2f, 0.4f, 0.7f});
     const nlohmann::json before = NS::SerializeClassObjFields(m_model);
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);

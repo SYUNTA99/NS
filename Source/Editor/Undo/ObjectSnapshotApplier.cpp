@@ -45,8 +45,6 @@ namespace NS
             {
                 m_scene->DestroyObject(objectId);
             }
-            // 作り直した 1 体の当たりを張り直し、参照を引き直す側へ知らせる
-            m_scene->SyncPhysics();
         }
     } // namespace Editor
 } // namespace NS

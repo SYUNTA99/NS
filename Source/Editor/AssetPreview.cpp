@@ -52,7 +52,7 @@ namespace NS
                     return std::nullopt;
                 }
                 item.mesh = mesh->D3D();
-                item.material = AssetManager::Get().LoadMaterial("Assets/Materials/default.mat")->D3D();
+                item.material = AssetManager::Get().LoadMaterial(AssetManager::DefaultMaterialPath())->D3D();
                 item.twoSided = true;
                 item.constants.world = Matrix::CreateTranslation(-center) * Matrix::CreateScale(pose.zoom / radius) *
                                        Matrix::CreateRotationY(pose.yaw) * Matrix::CreateRotationX(pose.pitch);

@@ -4,6 +4,7 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Gfx/D3dCommon.h"
 
+#include <array>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -55,6 +56,10 @@ namespace NS
 
             //! 画像が未読み込み、または直近の読み込みに失敗したか
             [[nodiscard]] bool IsUsingFallback() const noexcept;
+
+            //! @brief 6 方向の画像を入れたディレクトリから読むファイル名
+            //! @details キューブマップの面の順 (右・左・上・下・奥・手前) に並ぶ。6 つが全部ある時だけ読める
+            [[nodiscard]] static const std::array<std::string_view, 6>& FaceFileNames() noexcept;
 
         private:
             // 描く資源を初回だけ作る

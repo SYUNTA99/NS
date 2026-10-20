@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
@@ -6,7 +7,6 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -34,7 +34,7 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     const GL::Level::MapObjParams* params = &prop->Params();
     EXPECT_FLOAT_EQ(params->Mass(), 2.0f);
     EXPECT_FLOAT_EQ(params->Toughness(), 3.0f);
-    EXPECT_EQ(NS::ClassObjFields(NS::MakePrototypeJson(*actor), "Breakable"), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(NS::Editor::MakePrototypeJson(*actor), "Breakable"), nullptr);
     GL::Level::TackleTargetAnswer answer;
     ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorClassObj(), answer));
     EXPECT_FLOAT_EQ(answer.mass, 2.0f);
@@ -50,7 +50,7 @@ TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
         nlohmann::json rock = NS::MakeObjectJson();
         NS::SetObjectJsonClass(rock, "PropActor");
         NS::SetObjectJsonId(rock, id);
-        NS::SetObjectPosition(rock, NS::Vector3{static_cast<float>(id) * 5.0f, 0.5f, 0.0f});
+        NS::Editor::SetObjectPosition(rock, NS::Vector3{static_cast<float>(id) * 5.0f, 0.5f, 0.0f});
         if (id == 2)
         {
             rock["classObjs"] = {{"Params", {{"当たりのタイムライン", "barrel"}}}};

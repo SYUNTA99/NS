@@ -1,11 +1,6 @@
 ﻿#include "Game/Game.h"
-#include "NSlib/App/Application.h"
-
-#if NS_EDITOR_ENABLED
-#include "Editor/Editor.h"
-#else
 #include "Game/StandaloneLayer.h"
-#endif
+#include "NSlib/App/Application.h"
 
 namespace NS
 {
@@ -21,12 +16,8 @@ namespace NS
         std::unique_ptr<Application> app = std::make_unique<Application>(desc);
 
         app->AddLayer(std::make_unique<::Game>());
-        // プレイ中のカーソルと Esc の持ち主を構成ごとに 1 つ積む。Game は世界だけを持つ
-#if NS_EDITOR_ENABLED
-        app->AddOverlay(std::make_unique<::Editor>());
-#else
+        // プレイ中のカーソルと Esc は StandaloneLayer が持つ。Game は世界だけを持つ
         app->AddLayer(std::make_unique<::StandaloneLayer>());
-#endif
         return app;
     }
 

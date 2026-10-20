@@ -11,11 +11,12 @@
 ::   2. Remove build/ (clean)
 ::   3. Generate the VS2022 solution via Premake5 (:generate_project)
 ::   4. Set up the MSBuild environment via VsDevCmd.bat (:setup_msbuild)
-::   5. Build Debug with MSBuild (Game.exe only; the tests are left out)
+::   5. Build Debug with MSBuild (Game.exe and Editor.exe; the tests are left out)
 ::
 :: Output:
 ::   build\NS.sln
 ::   build\bin\Debug-windows-x86_64\Game.exe
+::   build\bin\Debug-windows-x86_64\Editor.exe
 ::
 :: Tests.exe is not built here. Build it with Tools\@build_tests.cmd.
 ::
@@ -40,9 +41,9 @@ echo Debug ビルド中...
 call "%~dp0_common.cmd" :setup_msbuild
 if errorlevel 1 exit /b 1
 
-:: -t:GameApp builds Game.exe and only the projects it references.
+:: -t:GameApp;EditorApp builds Game.exe, Editor.exe and only the projects they reference.
 :: Tests and googletest are not among them, so they are skipped.
-msbuild build\NS.sln -t:GameApp -p:Configuration=Debug -p:Platform=x64 -m -nodeReuse:false -v:minimal
+msbuild build\NS.sln -t:GameApp;EditorApp -p:Configuration=Debug -p:Platform=x64 -m -nodeReuse:false -v:minimal
 if errorlevel 1 (
     echo [ERROR] ビルド失敗
     exit /b 1

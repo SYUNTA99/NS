@@ -50,9 +50,7 @@ namespace NS
 
     void Scene::ResetFromJson(nlohmann::json scene)
     {
-        const SceneEnvironment environment = ReadSceneEnvironment(scene);
-        SetSkyboxPath(environment.skybox);
-        SetGravityDirection(environment.gravityDirection);
+        SetEnvironment(ReadSceneEnvironment(scene));
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueObjectIds(scene);
         RebuildSceneFrom(scene);
@@ -76,16 +74,16 @@ namespace NS
         return scene;
     }
 
+    void Scene::SetEnvironment(const SceneEnvironment& environment) noexcept
+    {
+        m_environment.skybox = environment.skybox;
+        SetGravityDirection(environment.gravityDirection);
+    }
+
     void Scene::SetGravityDirection(const Vector3& direction) noexcept
     {
         m_environment.gravityDirection = NormalizeGravityDirection(direction);
         m_physics.Physics().SetGravity(m_environment.gravityDirection * -Phys::k_DefaultGravityY);
-    }
-
-    void Scene::SyncPhysics()
-    {
-        // ギズモで動いた実体の当たりを張り直す。object を作り直さないので選択・参照はそのまま保たれる
-        m_objects.SyncPhysics(m_physics.Physics());
     }
 
     const nlohmann::json& Scene::BeginPlayBaseline()

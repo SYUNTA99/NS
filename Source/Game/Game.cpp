@@ -13,7 +13,8 @@
 
 Game* Game::s_instance = nullptr;
 
-Game::Game(std::string_view startScenePath) : NS::Layer("Game"), m_startScenePath(startScenePath)
+Game::Game(std::string_view startScenePath, StartScene startScene)
+    : NS::Layer("Game"), m_startScenePath(startScenePath), m_startScene(startScene)
 {
     s_instance = this;
 }
@@ -40,12 +41,16 @@ void Game::OnAttach()
 
     // 同梱シーンを読む。読めなければ何も置かない空のシーンを立てる
     // 遊べる物を代わりに合成すると、パッケージの取りこぼしが遊べる風の画面に隠れて気づけない
-    if (!LoadStartScene())
+    if (m_startScene == StartScene::Load)
     {
+        if (LoadStartScene())
+        {
+            return;
+        }
         NS_LOG_ERROR(Game, "起動シーンを読めなかった。 空のシーンで立ち上げる");
-        (void)m_scenes.LoadScene(NS::MakeSceneJson());
-        StartLoadedScene();
     }
+    (void)m_scenes.LoadScene(NS::MakeSceneJson());
+    StartLoadedScene();
 }
 
 void Game::OnDetach()

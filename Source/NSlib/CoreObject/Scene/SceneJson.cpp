@@ -4,6 +4,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
@@ -190,7 +191,10 @@ namespace NS
         {
             return environment;
         }
-        environment.skybox = FieldString(*found, "skybox", "");
+        // 重力の向きはリフレクションに載らないので、欄の名前の外の鍵として警告させない
+        nlohmann::json fields = *found;
+        fields.erase("gravityDirection");
+        (void)ApplyReflectedFields(&environment, *SceneEnvironment::StaticReflection(), fields);
         environment.gravityDirection =
             NormalizeGravityDirection(FieldVector3(*found, "gravityDirection", k_DefaultGravityDirection));
         return environment;
@@ -202,8 +206,7 @@ namespace NS
         {
             scene = MakeSceneJson();
         }
-        nlohmann::json out = nlohmann::json::object();
-        out["skybox"] = environment.skybox;
+        nlohmann::json out = SerializeReflectedFields(&environment, *SceneEnvironment::StaticReflection());
         out["gravityDirection"] = MakeVector3Json(NormalizeGravityDirection(environment.gravityDirection));
         scene["environment"] = std::move(out);
     }

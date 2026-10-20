@@ -37,6 +37,7 @@ namespace NS
         InputOwnership ResolveInputOwnership(InputOwnerQuery query) noexcept
         {
             InputOwnership owner{};
+            owner.editShortcutsBlocked = query.textInput || query.itemActive || query.modalOpen;
             if (!query.playMode)
             {
                 // 編集中は Scene の画像を掴んでいる間だけマウスを編集入力へ通す

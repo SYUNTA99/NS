@@ -9,19 +9,13 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 
 #include <functional>
+#include <vector>
 
 namespace NS
 {
     namespace OS
     {
         class Input;
-    }
-} // namespace NS
-namespace NS
-{
-    namespace UI
-    {
-        class ImGuiContext;
     }
 } // namespace NS
 namespace NS
@@ -93,12 +87,11 @@ namespace NS
             //! @brief 新規配置物へ永続 id を 1 個振る関数を差す
             void SetAllocateIdFn(std::function<uint32()> fn) noexcept { m_allocateId = std::move(fn); }
             void SetInput(OS::Input* input) noexcept { m_input = input; }
-            void SetImGui(UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
             void SetSceneCamera(SceneCamera* camera) noexcept { m_camera = camera; }
 
-            //! 休止の間はプレイ中として扱い、保存も受け付けない
-            void SetActive(bool active) noexcept { m_active = active; }
-            [[nodiscard]] bool IsActive() const noexcept { return m_active; }
+            //! @brief シーンを変えてよいかを答える関数を差す。LevelEditorController::IsSceneEditable を差す
+            //! @details 偽の間は入力・カーソル・作る・筆・取り消し・開く・保存を全部断る。未設定なら変えてよい
+            void SetSceneEditableFn(std::function<bool()> fn) noexcept { m_sceneEditable = std::move(fn); }
 
             //! グリッドに対する編集入力を一時的に無効化する
             void SetInputSuppressed(bool suppressed) noexcept { m_inputSuppressed = suppressed; }
@@ -112,7 +105,10 @@ namespace NS
             //! ギズモドラッグ中だけ undo/redo を止める。旧 Transform への書込を防ぐ
             void SetUndoRedoSuppressed(bool suppressed) noexcept { m_undoRedoSuppressed = suppressed; }
 
-            void Tick() noexcept;
+            //! @brief 編集の入力を 1 固定ステップ分進める
+            //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
+            //! 真の間は R・Ctrl+Z・Ctrl+S・Ctrl+O・数字のキーを受けない
+            void Tick(bool editShortcutsBlocked) noexcept;
 
             //! @brief カーソル位置に置いた時のプレビュー枠を、Scene タブの図形として積む
             //! @param[in,out] shapes 積む先。そのビューを描いたら捨てられる
@@ -124,6 +120,12 @@ namespace NS
 
             [[nodiscard]] const Editor::UndoStack& Undo() const noexcept { return m_undo; }
             [[nodiscard]] Editor::UndoStack& Undo() noexcept { return m_undo; }
+
+            //! @brief 新しい配置物を 1 回の履歴で作る。作る道 (置く・複製・筆で空いた升へ置く) は全部ここを通す
+            //! @details 各 JSON に新しい永続 id を振り、写した元の id を指す参照を、一緒に作る物の新しい id へ付け替える。
+            //! 作った物を選ぶかは呼び手が決める
+            //! @return 作った物の id を渡した順に返す。休止の間 (プレイ中) と、適用処理か採番が無い時は作らずに空を返す
+            [[nodiscard]] std::vector<uint32> CreateObjects(std::vector<nlohmann::json> objects);
 
             //! @brief テストや自動処理向けに、入力を介さずに指定座標へ直接編集操作を実行する
             void PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept;
@@ -146,11 +148,18 @@ namespace NS
             //! 保存 / 読込のモーダルを描き、確定した操作をその場で実行する
             void RenderFileBrowser() noexcept;
 
-            //! @brief 終了する前に保存する
+            //! @brief 終了する前に保存する。書き先は QuitSaveLevelName
             [[nodiscard]] bool SaveForQuit() noexcept;
 
-            //! @brief 起動レベルが実在するのに読めなかったことを印す。終了保存が既存ファイルを上書きしないようにする
-            void MarkBootLevelLoadFailed() noexcept { m_bootLevelLoadFailed = true; }
+            //! 終了の保存の書き先のレベルの名前。今のレベルの名前、起動レベルが読めなかった時は退避の名前、
+            //! どちらも無ければ起動シーンの名前
+            [[nodiscard]] std::string QuitSaveLevelName() const noexcept;
+
+            //! @brief レベルを読み、プレイヤーと落下死の範囲が無ければ補ってから実体へ取り込む
+            //! @details 読めたら名前を控え、履歴を空にして未保存でない状態にする。起動と「開く」の両方がここを通る
+            //! @return 名前が使えない・取り込み関数が無い・読めない時は false で、今のレベルと名前を保つ。
+            //! 名前の無いまま実在するファイルを読めなかった時は、終了の保存の書き先を退避の名前にする
+            bool OpenLevel(std::string_view name) noexcept;
 
             //! 1 手戻す。戻せたら true。メニューとキーが同じ入口で呼ぶ
             bool PerformUndo() noexcept;
@@ -174,10 +183,9 @@ namespace NS
             std::function<std::vector<CellCoord>()> m_collectCells;
             std::function<uint32()> m_allocateId;
             OS::Input* m_input = nullptr;
-            UI::ImGuiContext* m_imgui = nullptr;
             SceneCamera* m_camera = nullptr;
 
-            bool m_active = true;
+            std::function<bool()> m_sceneEditable;
             bool m_inputSuppressed = false;
             bool m_undoRedoSuppressed = false; // ギズモドラッグ中だけ立てて undo/redo を止める
             bool m_levelDirty = true;
@@ -205,6 +213,9 @@ namespace NS
             void HandlePlaceDeleteInput() noexcept;
             void HandleRotationInput() noexcept;
             void HandleUndoRedoInput() noexcept;
+
+            //! 差した関数の答え。シーンを変える関数は全部、頭でこれを見る
+            [[nodiscard]] bool IsSceneEditable() const noexcept;
 
             //! セルにセルブラシ配置物があるか。実体の照会が未設定なら常に不在
             [[nodiscard]] bool HasObjectAtCell(int16 x, int16 y, int16 z) const noexcept;

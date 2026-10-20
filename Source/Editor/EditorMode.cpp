@@ -5,8 +5,10 @@
 #include "Editor/EditorUi.h"
 #include "Editor/GridMath.h"
 #include "Editor/LevelFilePaths.h"
+#include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
+#include "Game/Game.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -14,8 +16,8 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Clock.h"
+#include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Gamepad.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
@@ -26,7 +28,9 @@
 #endif
 
 #include <limits>
+#include <memory>
 #include <optional>
+#include <unordered_map>
 
 namespace NS
 {
@@ -80,19 +84,27 @@ namespace NS
             return m_cellOccupied && m_cellOccupied(x, y, z);
         }
 
-        void EditorMode::Tick() noexcept
+        bool EditorMode::IsSceneEditable() const noexcept
         {
-            if (!m_active)
+            return !m_sceneEditable || m_sceneEditable();
+        }
+
+        void EditorMode::Tick(bool editShortcutsBlocked) noexcept
+        {
+            if (!IsSceneEditable())
             {
                 return;
             }
 
             UpdateCursorFromInput();
             HandlePlaceDeleteInput();
-            HandleRotationInput();
-            HandleUndoRedoInput();
-            HandleSaveLoadInput();
-            m_palette.TickInput(m_input, m_imgui);
+            if (!editShortcutsBlocked)
+            {
+                HandleRotationInput();
+                HandleUndoRedoInput();
+                HandleSaveLoadInput();
+            }
+            m_palette.TickInput(m_input, editShortcutsBlocked);
 
             const Quaternion targetQuat = RotationToQuaternion(m_currentRotation);
             constexpr float k_RotationSpringRate = 12.0f;
@@ -104,12 +116,6 @@ namespace NS
         void EditorMode::HandleSaveLoadInput() noexcept
         {
             if (m_input == nullptr)
-            {
-                return;
-            }
-
-            const bool wantKb = (m_imgui != nullptr) && m_imgui->WantCaptureKeyboard();
-            if (wantKb)
             {
                 return;
             }
@@ -153,8 +159,8 @@ namespace NS
 
         bool EditorMode::SaveLevelToName(std::string_view name) noexcept
         {
-            // 休止中はプレイ中。実体はプレイで動いた後の姿で、編集の内容ではないので書かない
-            if (!m_active || !m_captureLevel)
+            // プレイ中の実体はプレイで動いた後の姿で、編集の内容ではないので書かない
+            if (!IsSceneEditable() || !m_captureLevel)
             {
                 return false;
             }
@@ -194,31 +200,77 @@ namespace NS
             m_statusTimer = k_StatusToastSeconds;
         }
 
-        bool EditorMode::SaveForQuit() noexcept
+        std::string EditorMode::QuitSaveLevelName() const noexcept
         {
-            // 名前付きレベルは従来どおり上書きする
             if (!m_currentLevelName.empty())
             {
-                return SaveLevelToName(m_currentLevelName);
+                return m_currentLevelName;
             }
 
             // 起動レベルが実在するのに読めず seed で立ち上がった時は、元ファイルを潰さないよう退避名へ逃がす
             if (m_bootLevelLoadFailed)
             {
-                const bool ok = SaveLevelToName("Scenes/recovered_level");
+                return "Scenes/recovered_level";
+            }
+
+            // 通常起動 / 新規は同梱の起動シーンへ書き戻す
+            return LevelNameOfScenePath(::Game::StartScenePath());
+        }
+
+        bool EditorMode::SaveForQuit() noexcept
+        {
+            const bool recovering = m_currentLevelName.empty() && m_bootLevelLoadFailed;
+            const std::string name = QuitSaveLevelName();
+            const bool ok = SaveLevelToName(name);
+            if (recovering)
+            {
                 const char* prefix = "退避保存失敗: ";
                 if (ok)
                 {
                     prefix = "退避保存: ";
                 }
-                m_statusMessage = std::string(prefix) + "Scenes/recovered_level";
+                m_statusMessage = std::string(prefix) + name;
                 m_statusError = !ok;
                 m_statusTimer = k_StatusToastSeconds;
-                return ok;
+            }
+            return ok;
+        }
+
+        bool EditorMode::OpenLevel(std::string_view name) noexcept
+        {
+            // プレイ中に組み直すと、編集へ戻る組み直しがプレイ開始の写しで上書きし、名前だけが新しいレベルを指す
+            if (!IsSceneEditable())
+            {
+                return false;
+            }
+            const std::optional<std::string> path = BuildLevelPath(name);
+            if (!path || !m_loadLevel)
+            {
+                return false;
             }
 
-            // 通常起動 / 新規は同梱シーンへ書き戻す
-            return SaveLevelToName("Scenes/new_scene");
+            nlohmann::json fresh;
+            if (!LoadSceneFromJsonFile(fresh, *path))
+            {
+                // 起動レベルが実在するのに読めない時は、終了の保存が元のファイルを潰さないよう退避の名前へ逃がす
+                if (m_currentLevelName.empty() && OS::FileSystem::Exists(*path))
+                {
+                    m_bootLevelLoadFailed = true;
+                }
+                return false;
+            }
+
+            // プレイヤー / 落下死体積が欠けたレベルには既定の 1 体を補う
+            (void)EnsurePlayerObject(fresh);
+            (void)EnsureDeathZoneObject(fresh);
+
+            // 読込済みデータを実体側へ取り込み world を組み直す。新レベルなので Undo 履歴もクリアする
+            m_loadLevel(std::move(fresh));
+            m_undo.Clear();
+            m_savedUndoVersion = m_undo.Version();
+            m_levelDirty = true;
+            m_currentLevelName = QualifyLevelPath(SanitizeLevelPath(name));
+            return true;
         }
 
         void EditorMode::RenderFileBrowser() noexcept
@@ -239,27 +291,14 @@ namespace NS
             }
             case LevelFileBrowser::Action::RequestLoad:
             {
-                std::optional<std::string> path = BuildLevelPath(result.targetName);
-                if (!path || !m_loadLevel)
+                if (!BuildLevelPath(result.targetName) || !m_loadLevel)
                 {
                     m_fileBrowser.NotifyLoadResult(false, "不正な level name");
                     break;
                 }
 
-                nlohmann::json fresh;
-                const bool ok = LoadSceneFromJsonFile(fresh, *path);
-                if (ok)
+                if (OpenLevel(result.targetName))
                 {
-                    // プレイヤー / 落下死体積が欠けたレベルには既定の 1 体を補う
-                    (void)EnsurePlayerObject(fresh);
-                    (void)EnsureDeathZoneObject(fresh);
-
-                    // 読込済みデータを実体側へ取り込み world を組み直す。新レベルなので Undo 履歴もクリアする
-                    m_loadLevel(std::move(fresh));
-                    m_undo.Clear();
-                    m_savedUndoVersion = m_undo.Version();
-                    m_levelDirty = true;
-                    m_currentLevelName = result.targetName;
                     m_fileBrowser.NotifyLoadResult(true, "読込成功");
                 }
                 else
@@ -309,7 +348,7 @@ namespace NS
 
         void EditorMode::DrawCursorShapes(Gfx::DebugShapes& shapes) const noexcept
         {
-            if (!m_active || !m_cursor.valid)
+            if (!IsSceneEditable() || !m_cursor.valid)
             {
                 return;
             }
@@ -328,7 +367,7 @@ namespace NS
 
         void EditorMode::RenderCursorPreview() noexcept
         {
-            if (!m_active || !m_cursor.valid)
+            if (!IsSceneEditable() || !m_cursor.valid)
             {
                 return;
             }
@@ -463,9 +502,46 @@ namespace NS
 #endif
         }
 
+        std::vector<uint32> EditorMode::CreateObjects(std::vector<nlohmann::json> objects)
+        {
+            // プレイ中に作った物は、編集へ戻る組み直しで消える。履歴だけがプレイの姿を指して残る
+            std::vector<uint32> created;
+            if (!IsSceneEditable() || m_applier == nullptr || !m_allocateId || objects.empty())
+            {
+                return created;
+            }
+
+            // 写した元の id から新しい id への表。一緒に作る物どうしの参照を付け替える
+            std::unordered_map<uint32, uint32> idMap;
+            created.reserve(objects.size());
+            for (nlohmann::json& object : objects)
+            {
+                const uint32 sourceId = ObjectJsonId(object);
+                const uint32 id = m_allocateId();
+                if (sourceId != k_NoObjectId)
+                {
+                    idMap.emplace(sourceId, id);
+                }
+                SetObjectJsonId(object, id);
+                created.push_back(id);
+            }
+
+            std::vector<std::unique_ptr<ICommand>> commands;
+            commands.reserve(objects.size());
+            for (std::size_t i = 0; i < objects.size(); ++i)
+            {
+                RemapObjectRefs(objects[i], idMap);
+                commands.push_back(
+                    std::make_unique<ObjectSnapshotCommand>(created[i], std::nullopt, std::move(objects[i])));
+            }
+            m_undo.Push(MakeUndoUnit(std::move(commands)), *m_applier);
+            m_levelDirty = true;
+            return created;
+        }
+
         void EditorMode::PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (m_applier == nullptr || !m_findCellObject || !m_allocateId)
+            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellObject)
             {
                 return;
             }
@@ -483,24 +559,24 @@ namespace NS
                                   Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
             Editor::SetCellRotationStep(placed, rotation);
 
-            // 既存 cell は同じ永続 id で置換、空 cell は新規採番
-            std::optional<nlohmann::json> before;
-            uint32 id = m_findCellObject(x, y, z);
-            if (id != k_NoObjectId)
-            {
-                before = m_applier->CaptureObject(id);
-            }
-            else if (IsCellOccupied(x, y, z))
+            const uint32 id = m_findCellObject(x, y, z);
+            if (id == k_NoObjectId)
             {
                 // 地形の部品でない物は筆で置き換えない
+                if (IsCellOccupied(x, y, z))
+                {
+                    return;
+                }
+                // 筆は置いた物を選ばない
+                std::vector<nlohmann::json> objects;
+                objects.push_back(std::move(placed));
+                (void)CreateObjects(std::move(objects));
                 return;
             }
-            else
-            {
-                id = m_allocateId();
-            }
-            SetObjectJsonId(placed, id);
 
+            // 今ある cell は同じ永続 id で置き換える。作るのでなく編集なので CreateObjects を通さない
+            std::optional<nlohmann::json> before = m_applier->CaptureObject(id);
+            SetObjectJsonId(placed, id);
             m_undo.Push(std::make_unique<Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(placed)),
                         *m_applier);
             m_levelDirty = true;
@@ -508,7 +584,7 @@ namespace NS
 
         void EditorMode::DeleteAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (m_applier == nullptr || !m_findCellObject)
+            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellObject)
             {
                 return;
             }
@@ -530,7 +606,7 @@ namespace NS
 
         void EditorMode::RotateAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (m_applier == nullptr || !m_findCellObject)
+            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellObject)
             {
                 return;
             }
@@ -724,10 +800,6 @@ namespace NS
             {
                 return;
             }
-            if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
-            {
-                return;
-            }
             if (m_inputSuppressed)
             {
                 return;
@@ -763,10 +835,6 @@ namespace NS
             {
                 return;
             }
-            if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
-            {
-                return;
-            }
 
             OS::Keyboard& kb = m_input->Keyboard();
             const bool ctrl = kb.IsHeld(OS::Key::Ctrl);
@@ -789,7 +857,8 @@ namespace NS
 
         bool EditorMode::PerformUndo() noexcept
         {
-            if (m_applier == nullptr || !m_undo.Undo(*m_applier))
+            // 履歴は編集の姿を指す。プレイ中の実体へ当てると、プレイの姿に編集の姿が混ざる
+            if (!IsSceneEditable() || m_applier == nullptr || !m_undo.Undo(*m_applier))
             {
                 return false;
             }
@@ -799,7 +868,7 @@ namespace NS
 
         bool EditorMode::PerformRedo() noexcept
         {
-            if (m_applier == nullptr || !m_undo.Redo(*m_applier))
+            if (!IsSceneEditable() || m_applier == nullptr || !m_undo.Redo(*m_applier))
             {
                 return false;
             }
