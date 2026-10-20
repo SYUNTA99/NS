@@ -28,6 +28,7 @@
 #include <cmath>
 #include <format>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -50,22 +51,27 @@ namespace NS
         struct BuiltinShape
         {
             const char* name;
-            MeshGeometry (*make)();
+            std::optional<float> slopeAngleDegrees; // 坂だけが持つ。頂点もこの角度で作る
+            MeshGeometry (*make)(const BuiltinShape& shape);
         };
 
+        [[nodiscard]] MeshGeometry MakeBuiltinSlope(const BuiltinShape& shape)
+        {
+            return MakeSlope(*shape.slopeAngleDegrees, Vector3{0.5f, 0.5f, 0.5f});
+        }
+
         constexpr std::array<BuiltinShape, 8> k_BuiltinShapes = {{
-            {"cube", [] { return MakeCube(Vector3{0.5f, 0.5f, 0.5f}); }},
-            {"sphere", [] { return MakeSphere(0.5f); }},
-            {"capsule", [] { return MakeCapsule(0.5f, 0.5f); }},
-            {"wedge45", [] { return MakeSlope(45.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
-            {"wedge30", [] { return MakeSlope(30.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
-            {"wedge22", [] { return MakeSlope(22.5f, Vector3{0.5f, 0.5f, 0.5f}); }},
-            {"wedge15", [] { return MakeSlope(15.0f, Vector3{0.5f, 0.5f, 0.5f}); }},
-            {"shadowQuad", [] { return MakePlane(Vector2{0.5f, 0.5f}); }},
+            {"cube", std::nullopt, [](const BuiltinShape&) { return MakeCube(Vector3{0.5f, 0.5f, 0.5f}); }},
+            {"sphere", std::nullopt, [](const BuiltinShape&) { return MakeSphere(0.5f); }},
+            {"capsule", std::nullopt, [](const BuiltinShape&) { return MakeCapsule(0.5f, 0.5f); }},
+            {"wedge45", 45.0f, MakeBuiltinSlope},
+            {"wedge30", 30.0f, MakeBuiltinSlope},
+            {"wedge22", 22.5f, MakeBuiltinSlope},
+            {"wedge15", 15.0f, MakeBuiltinSlope},
+            {"shadowQuad", std::nullopt, [](const BuiltinShape&) { return MakePlane(Vector2{0.5f, 0.5f}); }},
         }};
 
-        // 組み込みの形と空のメッシュを描く灰色の既定と、読めない物を描くピンク
-        constexpr std::string_view k_DefaultMaterialPath = "Assets/Materials/default.mat";
+        // 読めない物を描くピンク
         constexpr std::string_view k_MissingMaterialPath = "Assets/Materials/missing.mat";
 
         // 欄の名前を表の鍵にする。区切り文字や . / .. の表記揺れを 1 つの鍵にまとめる
@@ -584,7 +590,7 @@ namespace NS
     std::unique_ptr<Mesh> AssetManager::CreateMesh(const std::string& key)
     {
         // 組み込みの形と、描く形も当たりも無いメッシュは灰色。何も描かないメッシュの ERROR は読む時に出す
-        const MeshUnsetMaterial gray{LoadMaterial(k_DefaultMaterialPath), false};
+        const MeshUnsetMaterial gray{LoadMaterial(DefaultMaterialPath()), false};
         // 空の名前は「メッシュを選んでいない」で、誤りではない
         if (key.empty())
         {
@@ -596,7 +602,7 @@ namespace NS
         MeshUnsetMaterial unset = gray;
         if (const BuiltinShape* shape = FindBuiltinShape(key))
         {
-            geom = shape->make();
+            geom = shape->make(*shape);
         }
         else
         {
@@ -761,6 +767,21 @@ namespace NS
             return result;
         }();
         return names;
+    }
+
+    std::optional<float> AssetManager::BuiltinSlopeAngleDegrees(std::string_view name) noexcept
+    {
+        const BuiltinShape* shape = FindBuiltinShape(name);
+        if (shape == nullptr)
+        {
+            return std::nullopt;
+        }
+        return shape->slopeAngleDegrees;
+    }
+
+    std::string_view AssetManager::DefaultMaterialPath() noexcept
+    {
+        return "Assets/Materials/default.mat";
     }
 
     Material* AssetManager::LoadMaterial(std::string_view name)

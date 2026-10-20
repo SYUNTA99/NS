@@ -1,12 +1,16 @@
 #include "Editor/PlacementCatalog.h"
 
-#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 
 namespace NS
 {
@@ -15,31 +19,58 @@ namespace NS
         namespace
         {
             // クラスの OnInit が積む構成をそのまま写したひな形。値はコード既定に任せる
-            [[nodiscard]] nlohmann::json PrototypeOf(const TypeRegistry::Entry& entry)
+            [[nodiscard]] nlohmann::json PrototypeOf(const SceneActor& actor, std::string_view className)
             {
-                const std::unique_ptr<SceneActor> actor = CreateActorOfClass(entry.className);
-                nlohmann::json prototype = MakePrototypeJson(*actor);
-                SetObjectJsonClass(prototype, entry.className);
+                nlohmann::json prototype = MakePrototypeJson(actor);
+                SetObjectJsonClass(prototype, className);
                 return prototype;
             }
 
-            void SetPartsMesh(nlohmann::json& prototype, std::string_view meshName)
+            [[nodiscard]] nlohmann::json PrototypeOf(const TypeRegistry::Entry& entry)
             {
-                if (nlohmann::json* renderer = ClassObjFields(prototype, "Model"))
+                const std::unique_ptr<SceneActor> actor = CreateActorOfClass(entry.className);
+                return PrototypeOf(*actor, entry.className);
+            }
+
+            // 地形の部品のひな形は、コード既定に任せる欄のほかにメッシュの欄だけを持つ。
+            // メッシュはアクターの Model に書き、部品の保存の鍵と欄の名前はアクターの部品と欄の登録から引く
+            [[nodiscard]] nlohmann::json PartsPrototypeOf(const TypeRegistry::Entry& entry, std::string_view meshName)
+            {
+                const std::unique_ptr<SceneActor> actor = CreateActorOfClass(entry.className);
+                nlohmann::json prototype = PrototypeOf(*actor, entry.className);
+                Model* model = actor->ModelClassObj();
+                if (model == nullptr)
                 {
-                    SetField(*renderer, "メッシュ", meshName);
+                    return prototype;
                 }
+                model->SetMeshRef(meshName);
+                const nlohmann::json fields = SerializeClassObjFields(*model);
+                const ReflectionInfo* info = model->GetReflection();
+                ForEachReflectedClassObj(*actor, [&](const ClassObjInfo& row, Object* classObj) {
+                    if (classObj != model)
+                    {
+                        return;
+                    }
+                    nlohmann::json& part = ObjectJsonClassObjs(prototype)[row.key];
+                    for (std::size_t i = 0; i < info->fieldCount; ++i)
+                    {
+                        const FieldDesc& field = info->fields[i];
+                        if (field.assetKind == AssetKind::Mesh)
+                        {
+                            part[field.name] = fields[field.name];
+                        }
+                    }
+                });
+                return prototype;
             }
 
             // 地形の部品のメッシュ違いを並べる。当たりはメッシュに付いて来る
             [[nodiscard]] PlacementItem MakePartsItem(std::string_view label,
-                                                      const nlohmann::json& partsPrototype,
+                                                      const TypeRegistry::Entry& partsEntry,
                                                       std::string_view meshName,
                                                       bool rotatable)
             {
-                PlacementItem item{std::string(label), partsPrototype, rotatable};
-                SetPartsMesh(item.prototype, meshName);
-                return item;
+                return PlacementItem{std::string(label), PartsPrototypeOf(partsEntry, meshName), rotatable};
             }
 
             [[nodiscard]] std::vector<PlacementItem> BuildItems()
@@ -54,10 +85,9 @@ namespace NS
                     }
 
                     // 地形の部品は形ごとに並べる。組み込みの形はどれも 1m のセルに合わせた大きさ
-                    const nlohmann::json parts = PrototypeOf(*entry);
-                    items.push_back(MakePartsItem(k_PartsCubeLabel, parts, "cube", true));
-                    items.push_back(MakePartsItem("地形の部品 (球)", parts, "sphere", false));
-                    items.push_back(MakePartsItem(k_PartsSlopeLabel, parts, "wedge45", true));
+                    items.push_back(MakePartsItem(k_PartsCubeLabel, *entry, "cube", true));
+                    items.push_back(MakePartsItem("地形の部品 (球)", *entry, "sphere", false));
+                    items.push_back(MakePartsItem(k_PartsSlopeLabel, *entry, "wedge45", true));
                 }
                 return items;
             }
@@ -84,42 +114,34 @@ namespace NS
 
         nlohmann::json MakeMeshPartsPrototype(std::string_view meshRef)
         {
-            nlohmann::json prototype = MakeObjectJson();
             const TypeRegistry::Entry* entry = TypeRegistry::Get().Find("MapPartsActor");
-            if (entry != nullptr && entry->create != nullptr)
+            if (entry == nullptr || entry->create == nullptr)
             {
-                prototype = PrototypeOf(*entry);
+                return MakeObjectJson();
             }
-            SetPartsMesh(prototype, meshRef);
-            return prototype;
+            return PartsPrototypeOf(*entry, meshRef);
         }
 
         float PartsSlopeAngleDegrees(const nlohmann::json& prototype) noexcept
         {
-            const nlohmann::json* renderer = ClassObjFields(prototype, "Model");
-            if (renderer == nullptr)
+            const std::string_view className = ObjectJsonClass(prototype);
+            if (className.empty())
             {
                 return -1.0f;
             }
-            // 組み込みの坂のメッシュの名前と角度の対応。AssetManager の組み込みの形と揃える
-            const std::string mesh = FieldString(*renderer, "メッシュ", "");
-            if (mesh == "wedge45")
+            const std::unique_ptr<SceneActor> actor = CreateActorOfClass(className);
+            ApplyObjectClassObjs(*actor, prototype);
+            const Model* model = actor->ModelClassObj();
+            if (model == nullptr)
             {
-                return 45.0f;
+                return -1.0f;
             }
-            if (mesh == "wedge30")
+            const std::optional<float> angle = AssetManager::BuiltinSlopeAngleDegrees(model->MeshRef());
+            if (!angle.has_value())
             {
-                return 30.0f;
+                return -1.0f;
             }
-            if (mesh == "wedge22")
-            {
-                return 22.5f;
-            }
-            if (mesh == "wedge15")
-            {
-                return 15.0f;
-            }
-            return -1.0f;
+            return *angle;
         }
     } // namespace Editor
 } // namespace NS

@@ -1,7 +1,9 @@
+#include "Editor/CategoryPalette.h"
 #include "Editor/EditorObjects.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -12,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
+#include <optional>
 #include <string_view>
 
 // エディタの配置 (ヒエラルキーの追加メニュー・メッシュの投げ込み) が、SceneActor のクラスごと置くことを縛る
@@ -49,6 +52,23 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
     EXPECT_EQ(renderer->MeshRef(), "wedge45");
     // 当たりは見た目のメッシュに付いて来る
     EXPECT_NE(NS::Cast<NS::MeshCollision>(placed->CollisionClassObj()), nullptr);
+}
+
+// 坂の角度は組み込みの形の表だけが持つ。ひな形とパレットのブラシは、その表の角度を読む
+TEST(EditorPlacement, SlopeAnglesComeFromTheBuiltinShapes)
+{
+    for (const std::string_view name : {"wedge45", "wedge30", "wedge22", "wedge15"})
+    {
+        const std::optional<float> angle = NS::AssetManager::BuiltinSlopeAngleDegrees(name);
+        ASSERT_TRUE(angle.has_value()) << name;
+        EXPECT_FLOAT_EQ(NS::Editor::PartsSlopeAngleDegrees(NS::Editor::MakeMeshPartsPrototype(name)), *angle)
+            << name;
+    }
+    EXPECT_FALSE(NS::AssetManager::BuiltinSlopeAngleDegrees("cube").has_value());
+
+    NS::Editor::CategoryPalette palette;
+    palette.SetActiveSlot(1);
+    EXPECT_FLOAT_EQ(palette.CurrentSlopeAngleDegrees(), *NS::AssetManager::BuiltinSlopeAngleDegrees("wedge45"));
 }
 
 TEST(EditorPlacement, UndoRemovesPlacedActor)
