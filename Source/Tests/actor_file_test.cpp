@@ -44,37 +44,6 @@
 
 namespace
 {
-    // .actor の置き場を試しごとの空のディレクトリへ向け、終わったら元へ戻す
-    // 前の実行が残したファイルは消してから始める
-    class ScopedActorFileDirectory
-    {
-    public:
-        explicit ScopedActorFileDirectory(std::string_view name) : m_previous(NS::ActorFileLibrary::Get().Directory())
-        {
-            using NS::OS::FileSystem;
-            m_directory = FileSystem::Combine(
-                FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "build"), "TestActorFiles"), name);
-            (void)FileSystem::CreateDirectories(m_directory);
-            for (const std::string& path : FileSystem::ListFiles(m_directory, ".actor"))
-            {
-                std::error_code error;
-                std::filesystem::remove(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(path)}, error);
-            }
-            NS::ActorFileLibrary::Get().SetDirectory(m_directory);
-        }
-
-        ~ScopedActorFileDirectory() { NS::ActorFileLibrary::Get().SetDirectory(m_previous); }
-
-        ScopedActorFileDirectory(const ScopedActorFileDirectory&) = delete;
-        ScopedActorFileDirectory& operator=(const ScopedActorFileDirectory&) = delete;
-
-        [[nodiscard]] const std::string& Path() const noexcept { return m_directory; }
-
-    private:
-        std::string m_previous;
-        std::string m_directory;
-    };
-
     // 部品 1 つだけに値を書いた .actor の文書を作る
     nlohmann::json ActorFileWith(std::string_view className, std::string_view role, nlohmann::json entry)
     {
@@ -140,14 +109,6 @@ namespace
     const nlohmann::json* SavedFields(const nlohmann::json& object, std::string_view typeName)
     {
         return NS::ClassObjFields(object, typeName);
-    }
-
-    // directory に <name>.actor を text のまま書く
-    void WriteActorFile(const std::string& directory, std::string_view name, const std::string& text)
-    {
-        const std::string path = NS::OS::FileSystem::Combine(directory, std::string{name} + ".actor");
-        ASSERT_TRUE(
-            NS::OS::FileSystem::WriteAllBytes(path, std::as_bytes(std::span<const char>{text.data(), text.size()})));
     }
 } // namespace
 
@@ -1071,7 +1032,7 @@ TEST(ActorFile, SetRefusesWhatReloadWouldNotRead)
     const ScopedActorFileDirectory scope("SetRefuses");
     std::map<std::string, nlohmann::json> refused;
     refused["UnknownKey"] = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f));
-    refused["UnknownKey"]["hitReactions"] = nlohmann::json{{"Hit", 3}};
+    refused["UnknownKey"]["hitTimeline"] = nlohmann::json{{"Hit", 3}};
     refused["NoClass"] = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f));
     refused["NoClass"].erase("class");
     refused["Unregistered"] = ActorFileWith("NoSuchActorClass", "Collision", SphereEntry(2.0f));

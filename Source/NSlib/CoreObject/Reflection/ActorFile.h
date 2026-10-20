@@ -24,6 +24,16 @@ namespace NS
     //! .actor の文書へ class を書く
     void SetActorFileClass(nlohmann::json& actorFile, std::string_view className);
 
+    //! .actor の文書の中の名前の束の並び hitReactions。無ければ nullptr。並びの形は確かめない
+    [[nodiscard]] const nlohmann::json* ActorFileHitReactions(const nlohmann::json& actorFile) noexcept;
+    //! .actor の文書へ名前の束の並び hitReactions を書く。空の並びなら鍵ごと消す
+    void SetActorFileHitReactions(nlohmann::json& actorFile, nlohmann::json list);
+
+    //! .actor の文書の中の動作の並び actions。無ければ nullptr。並びの形は確かめない
+    [[nodiscard]] const nlohmann::json* ActorFileActions(const nlohmann::json& actorFile) noexcept;
+    //! .actor の文書へ動作の並び actions を書く。空の並びなら鍵ごと消す
+    void SetActorFileActions(nlohmann::json& actorFile, nlohmann::json list);
+
     //! 名前ごとの既定値を Directory()/<名前>.actor から読む。作るクラスはファイルの中の class
     //! ActorRef はシーン内の参照なので既定値には含めない
     class ActorFileLibrary

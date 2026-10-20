@@ -55,6 +55,9 @@ namespace NS
 
         // クラス名を書く .actor の頭の鍵。配置物は .actor の名前だけを書き、この鍵を持たない
         constexpr const char* k_ClassKey = "class";
+        // 名前の束と動作の並びの鍵。配置物は持たず、.actor だけに書く
+        constexpr const char* k_HitReactionsKey = "hitReactions";
+        constexpr const char* k_ActionsKey = "actions";
 
         // .actor の頭の鍵の表はこの 1 か所。ほかの鍵は打ち間違いか古い形で、
         // そのまま読むと値が黙って既定に戻るので、最初に見つけた 1 つを返す。無ければ nullptr
@@ -62,12 +65,42 @@ namespace NS
         {
             for (nlohmann::json::const_iterator it = root.begin(); it != root.end(); ++it)
             {
-                if (it.key() != k_ClassKey && it.key() != "classObjs")
+                if (it.key() != k_ClassKey && it.key() != "classObjs" && it.key() != k_HitReactionsKey &&
+                    it.key() != k_ActionsKey)
                 {
                     return &it.key();
                 }
             }
             return nullptr;
+        }
+
+        [[nodiscard]] const nlohmann::json* FindTopKey(const nlohmann::json& actorFile, const char* key) noexcept
+        {
+            if (!actorFile.is_object())
+            {
+                return nullptr;
+            }
+            const nlohmann::json::const_iterator it = actorFile.find(key);
+            if (it == actorFile.end())
+            {
+                return nullptr;
+            }
+            return &*it;
+        }
+
+        // 空の並びは鍵ごと消す。束も動作も持たない .actor の形を変えない
+        void SetTopList(nlohmann::json& actorFile, const char* key, nlohmann::json list)
+        {
+            if (!actorFile.is_object())
+            {
+                actorFile = nlohmann::json::object();
+            }
+            if (list.is_array() && list.empty())
+            {
+                actorFile.erase(key);
+                return;
+            }
+            actorFile[key] = std::move(list);
         }
 
         // root を .actor として持てない理由。持てるなら空
@@ -156,6 +189,26 @@ namespace NS
             actorFile = nlohmann::json::object();
         }
         actorFile[k_ClassKey] = std::string{className};
+    }
+
+    const nlohmann::json* ActorFileHitReactions(const nlohmann::json& actorFile) noexcept
+    {
+        return FindTopKey(actorFile, k_HitReactionsKey);
+    }
+
+    void SetActorFileHitReactions(nlohmann::json& actorFile, nlohmann::json list)
+    {
+        SetTopList(actorFile, k_HitReactionsKey, std::move(list));
+    }
+
+    const nlohmann::json* ActorFileActions(const nlohmann::json& actorFile) noexcept
+    {
+        return FindTopKey(actorFile, k_ActionsKey);
+    }
+
+    void SetActorFileActions(nlohmann::json& actorFile, nlohmann::json list)
+    {
+        SetTopList(actorFile, k_ActionsKey, std::move(list));
     }
 
     ActorFileLibrary& ActorFileLibrary::Get()
