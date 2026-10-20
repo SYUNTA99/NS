@@ -291,25 +291,25 @@ bool LevelEditorController::IsSceneEditable() const noexcept
 
 namespace
 {
-    class SkyboxCommand final : public NS::Editor::ICommand
+    class EnvironmentCommand final : public NS::Editor::ICommand
     {
     public:
-        SkyboxCommand(NS::Scene& scene, std::string before, std::string after)
+        EnvironmentCommand(NS::Scene& scene, NS::SceneEnvironment before, NS::SceneEnvironment after)
             : m_scene(scene), m_before(std::move(before)), m_after(std::move(after))
         {
         }
 
-        void Do(NS::Editor::IObjectSnapshotApplier&) noexcept override { m_scene.SetSkyboxPath(m_after); }
-        void Undo(NS::Editor::IObjectSnapshotApplier&) noexcept override { m_scene.SetSkyboxPath(m_before); }
+        void Do(NS::Editor::IObjectSnapshotApplier&) noexcept override { m_scene.SetEnvironment(m_after); }
+        void Undo(NS::Editor::IObjectSnapshotApplier&) noexcept override { m_scene.SetEnvironment(m_before); }
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
         {
-            return sizeof(*this) + m_before.size() + m_after.size();
+            return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size();
         }
 
     private:
         NS::Scene& m_scene;
-        std::string m_before;
-        std::string m_after;
+        NS::SceneEnvironment m_before;
+        NS::SceneEnvironment m_after;
     };
 }
 
@@ -354,7 +354,9 @@ bool LevelEditorController::SetSkyboxPath(std::string_view path)
     }
     if (normalized != m_scene->SkyboxPath())
     {
-        m_editor.Undo().Push(std::make_unique<SkyboxCommand>(*m_scene, m_scene->SkyboxPath(), std::move(normalized)),
+        NS::SceneEnvironment after = m_scene->Environment();
+        after.skybox = std::move(normalized);
+        m_editor.Undo().Push(std::make_unique<EnvironmentCommand>(*m_scene, m_scene->Environment(), std::move(after)),
                              m_applier);
     }
     return true;

@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/Reflection.h"
 
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"
@@ -36,13 +37,19 @@ namespace NS
 
     inline constexpr Vector3 k_DefaultGravityDirection{0.0f, -1.0f, 0.0f};
 
-    //! シーンの environment の欄
+    //! シーンの environment の欄。リフレクションの欄の名前を JSON の鍵に使う
     struct SceneEnvironment
     {
         //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない
         std::string skybox;
         //! 長さ 1 の重力の向き
+        // TODO: リフレクションに載せず手で読み書きしている。重力の向きを真下に決めてシーンで変えない形へ移す時に、
+        // この欄と ReadSceneEnvironment・WriteSceneEnvironment の手書きの読み書きを消す
         Vector3 gravityDirection = k_DefaultGravityDirection;
+
+        NS_REFLECT_BEGIN(SceneEnvironment, void)
+        NS_FIELD(skybox, "skybox", "スカイボックス")
+        NS_REFLECT_END_VALUE()
     };
 
     //! @brief 重力の向きを長さ 1 に揃えて返す

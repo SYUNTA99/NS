@@ -50,9 +50,7 @@ namespace NS
 
     void Scene::ResetFromJson(nlohmann::json scene)
     {
-        const SceneEnvironment environment = ReadSceneEnvironment(scene);
-        SetSkyboxPath(environment.skybox);
-        SetGravityDirection(environment.gravityDirection);
+        SetEnvironment(ReadSceneEnvironment(scene));
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueObjectIds(scene);
         RebuildSceneFrom(scene);
@@ -74,6 +72,12 @@ namespace NS
             objects.push_back(ObjectToJson(*obj));
         }
         return scene;
+    }
+
+    void Scene::SetEnvironment(const SceneEnvironment& environment) noexcept
+    {
+        m_environment.skybox = environment.skybox;
+        SetGravityDirection(environment.gravityDirection);
     }
 
     void Scene::SetGravityDirection(const Vector3& direction) noexcept

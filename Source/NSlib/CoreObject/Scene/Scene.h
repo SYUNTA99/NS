@@ -162,7 +162,10 @@ namespace NS
         //! @brief skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空なら skybox を描かない
         //! @details 描画が毎フレーム読む。保存は ToJson がここから写す
         [[nodiscard]] const std::string& SkyboxPath() const noexcept { return m_environment.skybox; }
-        void SetSkyboxPath(std::string path) noexcept { m_environment.skybox = std::move(path); }
+
+        [[nodiscard]] const SceneEnvironment& Environment() const noexcept { return m_environment; }
+        //! environment を丸ごと替える。重力の向きは SetGravityDirection と同じく揃えて物理へも書く
+        void SetEnvironment(const SceneEnvironment& environment) noexcept;
 
         //! @brief シーンの配置物の一覧
         [[nodiscard]] ActorList& Objects() noexcept { return m_objects; }

@@ -581,3 +581,33 @@ TEST(EditorInspector, MaterialApplyReachesTheDrawnMaterial)
     }));
     EXPECT_EQ(app.Run(), 0);
 }
+
+// シーン設定で空を外すと環境の履歴が 1 つ積まれ、Undo 1 回で空が戻る。重力の向きは変えない
+TEST(EditorInspector, SkyboxEditUndoesThroughTheEnvironmentHistory)
+{
+    NS::Scene scene;
+    scene.SetSimulationEnabled(false);
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::WriteSceneEnvironment(
+        doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt", .gravityDirection = NS::Vector3{1.0f, 0.0f, 0.0f}});
+    scene.ResetFromJson(doc);
+    LevelEditorController editor(&scene);
+    const nlohmann::json before = scene.ToJson();
+
+    InspectorFrames frames(editor);
+    frames.Frame();
+    frames.Frame();
+    const ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+    ASSERT_NE(window, nullptr);
+    ImGui::ActivateItemByID(ImHashStr("表示しない", 0, window->ID));
+    frames.Frame();
+    frames.Frame();
+
+    EXPECT_TRUE(scene.SkyboxPath().empty());
+    EXPECT_EQ(scene.GravityDirection(), (NS::Vector3{1.0f, 0.0f, 0.0f}));
+    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
+    EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+    ASSERT_TRUE(editor.Editor().PerformUndo());
+    EXPECT_EQ(scene.ToJson(), before);
+    EXPECT_EQ(NS::ReadSceneEnvironment(scene.ToJson()).skybox, "Assets/Skybox/kurt");
+}

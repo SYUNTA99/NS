@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -175,6 +176,32 @@ TEST(SceneActor, EnvironmentRoundTripsThroughFileAndScene)
     const NS::SceneEnvironment saved = NS::ReadSceneEnvironment(scene.ToJson());
     EXPECT_EQ(saved.skybox, "Assets/Skybox/kurt");
     EXPECT_EQ(saved.gravityDirection, (NS::Vector3{1.0f, 0.0f, 0.0f}));
+}
+
+// environment の欄の名前と値は SceneEnvironment のリフレクションが決める
+TEST(SceneActor, EnvironmentIsWrittenAndReadByTheReflectedFields)
+{
+    const NS::ReflectionInfo* info = NS::SceneEnvironment::StaticReflection();
+    ASSERT_NE(info, nullptr);
+    ASSERT_GT(info->fieldCount, 0u);
+    const NS::SceneEnvironment written{.skybox = "Assets/Skybox/kurt"};
+    const nlohmann::json fields = NS::SerializeReflectedFields(&written, *info);
+
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::WriteSceneEnvironment(doc, written);
+    for (nlohmann::json::const_iterator field = fields.begin(); field != fields.end(); ++field)
+    {
+        EXPECT_EQ(doc["environment"][field.key()], field.value()) << field.key();
+    }
+
+    // リフレクションで書いた environment を読み直すと同じ値になる。重力の向きの欄は読む時に警告を出さない
+    const TestLogCapture log;
+    nlohmann::json reflected = NS::MakeSceneJson();
+    reflected["environment"] = fields;
+    reflected["environment"]["gravityDirection"] = doc["environment"]["gravityDirection"];
+    const NS::SceneEnvironment read = NS::ReadSceneEnvironment(reflected);
+    EXPECT_EQ(NS::SerializeReflectedFields(&read, *info), fields);
+    EXPECT_EQ(log.WarningCount(), 0);
 }
 
 TEST(SceneActor, InvalidGravityDirectionFallsBackToDown)

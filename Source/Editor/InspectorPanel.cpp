@@ -51,18 +51,18 @@ namespace NS
 #if NS_EDITOR_ENABLED
         namespace
         {
-            struct EnvironmentFields
+            // actor の根の部品に対応する、クラスの既定の 1 体の根の部品。どちらかが無ければ nullptr
+            const Transform* FindBaselineRoot(const SceneActor& actor)
             {
-                std::string skybox;
-
-                NS_REFLECT_BEGIN(EnvironmentFields, void)
-                NS_FIELD(skybox, "skybox", "スカイボックス")
-                NS_REFLECT_END_VALUE()
-            };
-
-            // 置いたばかりの配置物の姿。ここから動かした欄だけ印を出す
-            const Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
-            const Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
+                const Object* found = nullptr;
+                ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* live) {
+                    if (live == &actor.Root())
+                    {
+                        found = FindBaselineClassObj(actor, row);
+                    }
+                });
+                return static_cast<const Transform*>(found);
+            }
 
             void DrawTexturePreview(const Texture& texture)
             {
@@ -171,7 +171,7 @@ namespace NS
             }
             const bool playing = !editor.IsSceneEditable();
             ImGui::BeginDisabled(playing);
-            EnvironmentFields fields{m_skyboxDraft};
+            SceneEnvironment fields{.skybox = m_skyboxDraft};
             const ValueEditResult edit = DrawReflectedValue(fields);
             if (edit.changed)
             {
@@ -479,7 +479,7 @@ namespace NS
                 ImGui::Separator();
 
                 // Transform は runtime が唯一の出所なので即反映し、commit が undo へ確定する
-                ImGui::SeparatorText("Transform");
+                ImGui::SeparatorText(go->Root().ClassName());
 
                 if (ImGui::BeginTable("##transform", 2,
                                       ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings))
@@ -541,16 +541,28 @@ namespace NS
                         ImGui::PopID();
                     };
 
-                    const Vector3 posVec = go->Root().Position();
+                    // 動かしたかの印と戻す先は、クラスの既定の 1 体の姿勢。既定の 1 体が無ければ印を出さない
+                    const Transform& root = go->Root();
+                    Vector3 defaultPosition = root.Position();
+                    Quaternion defaultRotation = root.Rotation();
+                    Vector3 defaultScale = root.Scale();
+                    if (const Transform* baseline = FindBaselineRoot(*go))
+                    {
+                        defaultPosition = baseline->Position();
+                        defaultRotation = baseline->Rotation();
+                        defaultScale = baseline->Scale();
+                    }
+
+                    const Vector3 posVec = root.Position();
                     float pos[3] = {posVec.x, posVec.y, posVec.z};
                     transformRow(
                         "position",
                         "位置",
                         pos,
                         0.05f,
-                        posVec != k_DefaultPosition,
+                        posVec != defaultPosition,
                         [&] { editor.SetSelectedFreePosition(Vector3{pos[0], pos[1], pos[2]}); },
-                        [&] { editor.SetSelectedFreePosition(k_DefaultPosition); });
+                        [&] { editor.SetSelectedFreePosition(defaultPosition); });
 
                     // 回転は内部のクォータニオンを度のオイラー角へ変換して編集し、入力をクォータニオンへ戻す
                     // 滑らかに回し続けるならギズモの回転ツールが向く。ここは角度の直接入力 / 微調整用
@@ -562,12 +574,12 @@ namespace NS
                         "回転 (度)",
                         rot,
                         0.5f,
-                        q != Quaternion::Identity,
+                        q != defaultRotation,
                         [&] {
                             const Vector3 degrees{rot[0], rot[1], rot[2]};
                             editor.SetSelectedFreeRotation(EulerDegreesToQuaternion(degrees));
                         },
-                        [&] { editor.SetSelectedFreeRotation(Quaternion::Identity); });
+                        [&] { editor.SetSelectedFreeRotation(defaultRotation); });
 
                     const Vector3 sclVec = go->Root().Scale();
                     float scl[3] = {sclVec.x, sclVec.y, sclVec.z};
@@ -576,9 +588,9 @@ namespace NS
                         "スケール",
                         scl,
                         0.05f,
-                        sclVec != k_DefaultScale,
+                        sclVec != defaultScale,
                         [&] { editor.SetSelectedFreeScale(Vector3{scl[0], scl[1], scl[2]}); },
-                        [&] { editor.SetSelectedFreeScale(k_DefaultScale); });
+                        [&] { editor.SetSelectedFreeScale(defaultScale); });
 
                     Editor::EndFieldTable();
                 }
