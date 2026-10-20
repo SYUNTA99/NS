@@ -5,12 +5,16 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
+#include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/Filesystem.h"
@@ -176,6 +180,74 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
         EXPECT_FLOAT_EQ(NS::ObjectRotation(object).y, rotation.y);
         EXPECT_FLOAT_EQ(NS::ObjectScale(object).x, 2.0f);
         editor.EnterEdit();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// プレイ中にインスペクタで変えた欄は、編集へ戻る時に 1 まとまりの履歴になり、未保存の印が付く
+// プレイで動いただけの位置は履歴にも未保存の印にも入らない
+TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "プレイ中の欄の記録の試し";
+    desc.window.size = {160, 90};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<SelectionTestLayer>([] {
+        NS::Scene scene;
+        LevelEditorController editor(&scene);
+        NS::Editor::ObjectSnapshotApplier applier(&scene);
+        editor.Editor().SetApplier(&applier);
+        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
+        ASSERT_NE(item, nullptr);
+        editor.PlaceItem(*item);
+        const NS::uint32 id = editor.SelectedObjectId();
+        editor.Editor().Undo().Clear();
+        ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
+
+        const auto colorOf = [&scene, id]() {
+            const NS::SceneActor* actor = scene.Objects().FindByObjectId(id);
+            return NS::SerializeClassObjFields(*actor->ModelClassObj())["基本色"];
+        };
+        const nlohmann::json colorBefore = colorOf();
+        const NS::Vector3 positionBefore = scene.Objects().FindByObjectId(id)->Root().Position();
+
+        // 何も変えずに戻る
+        editor.EnterPlay();
+        editor.EnterEdit();
+        EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
+
+        // 位置だけがプレイで動く
+        editor.EnterPlay();
+        scene.Objects().FindByObjectId(id)->Root().SetPosition(NS::Vector3{7.0f, 3.0f, 1.0f});
+        editor.EnterEdit();
+        EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
+        EXPECT_EQ(scene.Objects().FindByObjectId(id)->Root().Position(), positionBefore);
+
+        // インスペクタの道で色の欄を変える
+        editor.EnterPlay();
+        NS::SceneActor* actor = scene.Objects().FindByObjectId(id);
+        ASSERT_NE(actor, nullptr);
+        actor->ModelClassObj()->SetBaseColor(NS::Color{0.2f, 0.4f, 0.6f, 1.0f});
+        const NS::ClassObjInfo* modelRow = nullptr;
+        NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+            if (part == actor->ModelClassObj())
+            {
+                modelRow = &row;
+            }
+        });
+        ASSERT_NE(modelRow, nullptr);
+        editor.MirrorPlayEditToBaseline(*actor, *modelRow, "基本色");
+        const nlohmann::json colorEdited = colorOf();
+        ASSERT_NE(colorEdited, colorBefore);
+        editor.EnterEdit();
+
+        EXPECT_EQ(colorOf(), colorEdited);
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+        EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
+        EXPECT_TRUE(editor.Editor().PerformUndo());
+        EXPECT_EQ(colorOf(), colorBefore);
     }));
     EXPECT_EQ(app.Run(), 0);
 }

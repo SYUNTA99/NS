@@ -270,6 +270,32 @@ namespace
         }
         return std::make_unique<NS::Editor::CompositeCommand>(std::move(commands));
     }
+
+    // プレイ開始の凍結と編集へ戻る時の凍結を 1 体ずつ比べ、違う物を戻せる記録にする
+    // 凍結へ入るのはプレイ中にインスペクタで写した欄だけなので、プレイで動いた値は比べに出ない
+    std::vector<std::unique_ptr<NS::Editor::ICommand>> MakePlayEditCommands(const nlohmann::json& playStart,
+                                                                            const nlohmann::json& playEnd)
+    {
+        std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
+        const nlohmann::json& startObjects = NS::SceneJsonObjects(playStart);
+        for (const nlohmann::json& after : NS::SceneJsonObjects(playEnd))
+        {
+            const NS::uint32 id = NS::ObjectJsonId(after);
+            const std::size_t index = NS::FindObjectIndexById(playStart, id);
+            if (index == NS::k_NoObjectIndex)
+            {
+                continue;
+            }
+            const nlohmann::json& before = startObjects[index];
+            if (before == after)
+            {
+                continue;
+            }
+            commands.push_back(std::make_unique<NS::Editor::ObjectSnapshotCommand>(
+                id, std::optional<nlohmann::json>{before}, std::optional<nlohmann::json>{after}));
+        }
+        return commands;
+    }
 } // namespace
 
 LevelEditorController::LevelEditorController(NS::Scene* scene) noexcept : m_scene(scene), m_applier(scene) {}
@@ -525,6 +551,8 @@ void LevelEditorController::EnterPlay() noexcept
     {
         director->StartCourse();
     }
+    // 編集へ戻る時に、プレイ中に写した欄をこの凍結と比べて履歴へ記録する
+    m_playStartBaseline = m_scene->PlayBaseline();
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (NS::CameraManager* cameras = Cameras())
     {
@@ -587,7 +615,18 @@ void LevelEditorController::LeavePlayForEdit()
 
     // プレイで変わった配置を編集へ持ち込まないため、開始時の控えから復元する
     nlohmann::json baseline = m_scene->PlayBaseline();
+    std::vector<std::unique_ptr<NS::Editor::ICommand>> playEdits;
+    if (m_playStartBaseline)
+    {
+        playEdits = MakePlayEditCommands(*m_playStartBaseline, baseline);
+        m_playStartBaseline.reset();
+    }
     m_scene->ResetFromJson(std::move(baseline));
+    // プレイ中の変更は 1 つずつ積まず、戻る時に 1 まとまりで積む。実体は組み直しで既に変えた後の姿
+    if (!playEdits.empty())
+    {
+        m_editor.Undo().Record(MakeUndoUnit(std::move(playEdits)));
+    }
 
     if (NS::Application* app = NS::Application::Get())
     {

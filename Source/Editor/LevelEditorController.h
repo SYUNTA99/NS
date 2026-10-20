@@ -175,6 +175,7 @@ public:
     void CommitClassObjEdit() noexcept;
 
     //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
+    //! 写した欄は履歴へ 1 つずつ積まず、編集へ戻る時にプレイ開始の凍結と比べて 1 まとまりで積む
     //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
     //! row は actor のクラスの表の行
     void MirrorPlayEditToBaseline(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
@@ -330,6 +331,10 @@ private:
     bool m_classObjEditing = false;
     NS::uint32 m_classObjEditBaselineId = NS::k_NoObjectId; // 編集開始時の対象 id
     nlohmann::json m_classObjEditBaseline;                  // 編集開始時の状態スナップショット
+
+    // プレイ開始の凍結の写し。編集へ戻る時に、プレイ中に凍結へ写した欄を見つけて履歴へ積むために比べる
+    // プレイに入っていない間は空
+    std::optional<nlohmann::json> m_playStartBaseline;
 
     // 素材の窓で選んだ素材の ContentRoot からの道。アクターの選択と排他。
     // 姿のポインタを持たないのは、AssetManager::Clear の後に古いポインタを残さないため
