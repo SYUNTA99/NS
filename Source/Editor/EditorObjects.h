@@ -60,7 +60,7 @@ namespace NS
         //! プレイヤーのひな形の JSON を作る。構成は PlayerActor の OnInit が決め、transform 以外の欄は書かない
         [[nodiscard]] nlohmann::json MakePlayerObject(const Vector3& position, const Quaternion& rotation);
 
-        //! 不在なら種類の既定構成でプレイヤーを追加し、採番する。追加時だけ true
+        //! 不在なら PlayerActor.actor の構成でプレイヤーを追加し、採番する。追加時だけ true
         //! 足元は DefaultSpawnPosition とカプセル寸法から決める。複数いれば警告し、先頭を使う
         [[nodiscard]] bool EnsurePlayerObject(nlohmann::json& scene);
 

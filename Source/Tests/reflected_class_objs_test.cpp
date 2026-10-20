@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-// 保存・Inspector・種類の既定は、この並びで欄を書き読みする。基底の枠を先に、置物の部品を後に並べる
+// 保存・Inspector・.actor は、この並びで欄を書き読みする。基底の枠を先に、置物の部品を後に並べる
 TEST(ReflectedClassObjs, ListsBaseFramePartsBeforeTheClassPartsWithTheirSaveKeys)
 {
     const std::unique_ptr<GL::Level::PropActor> actor = NS::CreateActor<GL::Level::PropActor>();

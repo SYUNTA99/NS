@@ -116,7 +116,7 @@ TEST(PlayerChargeParams, CurvesSurviveWritingAndReadingTheFields)
     EXPECT_FLOAT_EQ(read->Params().ChargeFactorFor(0.5f), 2.0f);
 }
 
-// 消した欄の鍵が同梱の種類の既定値と場面に残ると、読むたびに知らない鍵として捨てられる
+// 消した欄の鍵が同梱の .actor と場面に残ると、読むたびに知らない鍵として捨てられる
 TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 {
     const std::vector<std::string_view> removed{"突進位置係数カーブ", "中心近くの境目"};
@@ -152,7 +152,7 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
     }
 }
 
-// クラスに無い部品の鍵が同梱の種類の既定値と場面に残ると、読むたびに読み飛ばしの警告が出る
+// クラスに無い部品の鍵が同梱の .actor と場面に残ると、読むたびに読み飛ばしの警告が出る
 TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
@@ -163,7 +163,7 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
          it != NS::ObjectJsonClassObjs(*actorFile).end();
          ++it)
     {
-        EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << "PlayerActor.json " << it.key();
+        EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << "PlayerActor.actor " << it.key();
     }
 
     for (const std::string_view sceneName : {"new_scene.scene"})

@@ -111,7 +111,7 @@ namespace NS
         //! 世界座標の形。大きさに根の世界のスケールを掛ける
         [[nodiscard]] SensorVolume WorldVolume() const noexcept override;
 
-        // 形の大きさは種類の既定値と個体の上書きで調整できる。種類と形はクラスが決めるので出さない
+        // 形の大きさは .actor の値で調整できる。種類と形はクラスが決めるので出さない
         NS_REFLECT_BEGIN(ShapeHitSensor, HitSensor)
         NS_FIELD(m_radius, "半径")
         NS_FIELD(m_halfHeight, "半分の高さ")

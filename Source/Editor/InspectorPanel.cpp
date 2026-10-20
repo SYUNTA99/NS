@@ -657,7 +657,7 @@ namespace NS
 
                     if (open)
                     {
-                        // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
+                        // 比べる相手は持ち主の .actor から作った比べる基準の部品
                         const Object* baseline = FindBaselineClassObj(*go, field);
                         const Editor::ClassObjEditResult r =
                             Editor::DrawReflectedClassObj(*live, refOptions, baseline, m_fieldFilter, go, &m_appearance);

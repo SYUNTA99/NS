@@ -40,11 +40,11 @@
 #include <utility>
 #include <vector>
 
-// 値の 3 段の重なり (コードの既定値 < 種類の既定値 < 個体の上書き) と、差分の保存と、エディタの書く先を縛る
+// 値の 3 段の重なり (コードの既定値 < .actor の値 < 配置物の印の付いた欄) と、差分の保存と、エディタの書く先を縛る
 
 namespace
 {
-    // 種類の既定値の置き場を試しごとの空のディレクトリへ向け、終わったら元へ戻す
+    // .actor の置き場を試しごとの空のディレクトリへ向け、終わったら元へ戻す
     // 前の実行が残したファイルは消してから始める
     class ScopedActorFileDirectory
     {
@@ -75,7 +75,7 @@ namespace
         std::string m_directory;
     };
 
-    // 部品 1 つの種類の既定値を作る
+    // 部品 1 つだけに値を書いた .actor の文書を作る
     nlohmann::json ActorFileWith(std::string_view className, std::string_view role, nlohmann::json entry)
     {
         nlohmann::json actorFile = nlohmann::json::object();
@@ -258,7 +258,7 @@ TEST(ActorFile, ObjectWithoutActorFileIsNotBuilt)
     EXPECT_EQ(NS::ObjectFromJson(object, scene), nullptr);
 }
 
-// 型から湧かすアクターにも種類の既定が届く。作る道で型の値が変わらない
+// 型から湧かすアクターにもクラスと同じ名前の .actor が届く。作る道で型の値が変わらない
 TEST(ActorFile, SpawnedByTypeGetsActorFile)
 {
     const ScopedActorFileDirectory scope("SpawnedByType");
@@ -289,7 +289,7 @@ TEST(ActorFile, SaveWritesOnlyOverrides)
     const nlohmann::json& plain = objects[NS::FindObjectIndexById(saved, 1)];
     const nlohmann::json& overridden = objects[NS::FindObjectIndexById(saved, 2)];
 
-    // 欄が全部既定と同じ部品も空の件として残り、種類の既定値と同じ欄は書かれない
+    // 欄が全部既定と同じ部品も空の件として残り、.actor の値と同じ欄は書かれない
     const nlohmann::json* plainParams = NS::ClassObjFields(plain, "Params");
     ASSERT_NE(plainParams, nullptr);
     EXPECT_FALSE(plainParams->contains("id"));
@@ -315,7 +315,7 @@ TEST(ActorFile, ChangedActorFileReachesInstancesWithoutOverride)
     NS::ObjectJsonClassObjs(overridden)["Params"] = MassEntry(4.0f);
     NS::SceneJsonObjects(doc).push_back(std::move(overridden));
 
-    // 種類の既定値を変えてから読むと、上書きの無い個体だけが新しい値になる
+    // .actor を変えてから読むと、上書きの無いアクターだけが新しい値になる
     NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "Params", MassEntry(6.0f)));
     NS::Scene scene;
     scene.ResetFromJson(doc);
@@ -325,7 +325,7 @@ TEST(ActorFile, ChangedActorFileReachesInstancesWithoutOverride)
 
 TEST(ActorFile, ApplyingSnapshotResetsFieldsWithoutOverride)
 {
-    // undo の控えは上書きだけを持つ。控えを当てると、控えに無い欄も種類の既定値へ戻る
+    // undo の控えは上書きだけを持つ。控えを当てると、控えに無い欄も .actor の値へ戻る
     const ScopedActorFileDirectory scope("SnapshotReset");
     NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)));
 
@@ -513,7 +513,7 @@ TEST(ActorFile, ReferenceAndRootFieldsComeFromThePlacementWithoutAMark)
 TEST(ActorFile, ReferenceFieldsAreNotActorFileValues)
 {
     const ScopedActorFileDirectory scope("References");
-    // 参照はシーンの中の相手を指すので、種類の既定値に書いても落ちる
+    // 参照はシーンの中の相手を指すので、.actor に書いても落ちる
     nlohmann::json follow = nlohmann::json::object();
     NS::SetField(follow, "追従対象", NS::ActorRef{5});
     NS::ActorFileLibrary::Get().Set("FollowCameraActor", ActorFileWith("FollowCameraActor", "Vcam", std::move(follow)));
@@ -613,7 +613,7 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
     }
 }
 
-// インスペクタの印と「既定に戻す」は、型の既定 (半径 0.5) でなく種類の既定 (半径 2) と比べて戻す
+// インスペクタの印と「既定に戻す」は、型の既定 (半径 0.5) でなく .actor の値 (半径 2) と比べて戻す
 TEST(ActorFile, InspectorMarksAndRevertsAgainstTheActorFile)
 {
     const ScopedActorFileDirectory scope("InspectorDefaults");
@@ -643,7 +643,7 @@ TEST(ActorFile, InspectorMarksAndRevertsAgainstTheActorFile)
 
 namespace
 {
-    // 登録の無いクラス。種類の既定の比べ先は素の SceneActor になり、Collision の行を持たない
+    // 登録の無いクラス。.actor の比べる基準は素の SceneActor になり、Collision の行を持たない
     class UnregisteredSphereActor final : public NS::SceneActor
     {
     public:
@@ -654,8 +654,8 @@ namespace
     };
 } // namespace
 
-// 比べ先は種類の既定の比べ先の同じ行だけ。そこに行が無い時に型の既定 (半径 0.5) と比べると、
-// 種類の既定で変えた半径 2 に印が出る
+// 比べ先は .actor の比べる基準の同じ行だけ。そこに行が無い時に型の既定 (半径 0.5) と比べると、
+// .actor で変えた半径 2 に印が出る
 TEST(ActorFile, InspectorDoesNotMarkAFieldTheActorFileChanged)
 {
     const ScopedActorFileDirectory scope("InspectorWithoutBaselineRow");
@@ -677,7 +677,7 @@ TEST(ActorFile, InspectorDoesNotMarkAFieldTheActorFileChanged)
 
 TEST(ActorFile, TransformPartIsInstanceOnlyOnEveryPath)
 {
-    // 位置・回転・拡縮は個体の物。種類の既定値の読込・保存の差分・インスペクタの 3 つの道が同じ判断を通る
+    // 位置・回転・拡縮は配置物の物。.actor の読込・保存の差分・インスペクタの 3 つの道が同じ判断を通る
     const ScopedActorFileDirectory scope("TransformInstanceOnly");
     nlohmann::json written = nlohmann::json::object();
     NS::SetField(written, NS::k_PositionFieldName, NS::Vector3{5.0f, 6.0f, 7.0f});
@@ -955,7 +955,7 @@ TEST(ActorFile, MarkedFieldEditedOnTheActorFileReachesActorsWithoutAnOverride)
 
 TEST(ActorFile, ShippedActorFilesLoad)
 {
-    // 出荷の種類の既定値はどれも登録済みのクラスの物で、置物は影を種類で足す
+    // 出荷の .actor はどれも登録済みのクラスの物で、置物はクラスが影を足す
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
     library.Reload();
     ASSERT_NE(library.Find("PropActor"), nullptr);

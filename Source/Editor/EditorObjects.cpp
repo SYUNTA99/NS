@@ -182,13 +182,13 @@ namespace NS
             bool created = false;
             if (FindPlayerObjectIndex(scene) == k_NoObjectIndex)
             {
-                // 高さはカプセルの寸法の持ち主 Collider から引く。種類の既定でカプセルを変えても足元が床の上に出る
+                // 高さはカプセルの寸法の持ち主 Collider から引く。PlayerActor.actor でカプセルを変えても足元が床の上に出る
                 const SceneActor& baseline =
                     ActorFileLibrary::Get().Baseline(::PlayerActor::StaticReflection()->typeName);
                 const ::PlayerActor* player = Cast<::PlayerActor>(&baseline);
                 if (player == nullptr)
                 {
-                    NS_LOG_ERROR(Game, "プレイヤーの種類の既定を PlayerActor として引けず、プレイヤーを補えない");
+                    NS_LOG_ERROR(Game, "PlayerActor.actor から PlayerActor を作れず、プレイヤーを補えない");
                     return false;
                 }
                 SceneJsonObjects(scene).push_back(

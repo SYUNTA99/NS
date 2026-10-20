@@ -337,7 +337,7 @@ TEST(SceneActor, NewLevelGetsOnePlayerAndOneDeathZone)
 
 namespace
 {
-    // PlayerActor の種類の既定を試しの間だけ差し替え、終わったら元へ戻す
+    // PlayerActor.actor を試しの間だけ差し替え、終わったら元へ戻す
     class ScopedPlayerActorFile
     {
     public:
@@ -374,7 +374,7 @@ namespace
 TEST(SceneActor, EnsuredPlayerStandsOnTheAssumedFloorForItsCapsule)
 {
     // 補う自機の高さはカプセルの寸法から出す。床の上面 0.5 + 半分の高さ + 半径 + 余白 1cm
-    // 種類の既定の半径を変えても、足元が床の 1cm 上に出る
+    // .actor の半径を変えても、足元が床の 1cm 上に出る
     const ScopedPlayerActorFile actorFile{nlohmann::json{
         {"class", "PlayerActor"}, {"classObjs", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::MakeSceneJson();
@@ -566,7 +566,7 @@ TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
     NS::Scene scene;
     scene.ResetFromJson(doc);
 
-    // 書き戻しは種類の既定と同じ欄を省くので、全欄へ広げてから、置いた鍵が全部残っているかを見る
+    // 書き戻しは .actor と同じ欄を省くので、全欄へ広げてから、置いた鍵が全部残っているかを見る
     const nlohmann::json written = scene.ToJson();
     const nlohmann::json& writtenObjects = NS::SceneJsonObjects(written);
     const nlohmann::json& fileObjects = NS::SceneJsonObjects(doc);

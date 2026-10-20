@@ -1,7 +1,7 @@
 #pragma once
 
-// 値はコードの既定値、種類の既定値、個体の上書きの順に重ねる。
-// 部品の追加は種類の既定値まで。保存は種類の既定値との差分だけを持つ。
+// 値はコードの既定値、.actor の値、配置物の印の付いた欄の順に重ねる。
+// 部品の構成を決めるのは .actor まで。配置物の保存は .actor の値との差分だけを持つ。
 
 #include "NSlib/CoreObject/ObjectJson.h"
 
@@ -94,7 +94,7 @@ namespace NS
     //! 配置物が値を持てない欄は KeepPlacementFields で落とし、.actor の値のままにする
     [[nodiscard]] nlohmann::json ExpandObjectJson(const nlohmann::json& object);
 
-    //! @brief 全欄を持つ配置物の JSON から、種類の既定値と同じ欄を除く
+    //! @brief 全欄を持つ配置物の JSON から、配置物の指す .actor の値と同じ欄を除く
     //! @details 欄が全部既定と同じ部品も、空の件として残す。位置・回転・拡縮の部品 Transform は個体の物なので除かない。
     //! 配置物が値を持てない欄は、値が違っても除く
     [[nodiscard]] nlohmann::json DiffObjectJson(const nlohmann::json& object);

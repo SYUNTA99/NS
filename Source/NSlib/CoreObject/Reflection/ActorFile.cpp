@@ -21,7 +21,7 @@ namespace NS
 {
     namespace
     {
-        // 種類の既定値 1 つの上限。部品の値だけなので、シーンのファイルよりずっと小さい
+        // .actor 1 つの上限。部品の値だけなので、シーンのファイルよりずっと小さい
         constexpr std::size_t k_MaxActorFileBytes = 1024u * 1024u;
 
         // .actor に持たせない参照の欄を落とした写し。参照はシーンの中の相手を指すので配置物の物
@@ -174,7 +174,7 @@ namespace NS
         const std::string& directory = Directory();
         if (!OS::FileSystem::IsDirectory(directory))
         {
-            // 種類の既定値が 1 つも無いプロジェクトもある。全てコードの既定値で組む
+            // .actor が 1 つも無いプロジェクトもある。全てコードの既定値で組む
             return;
         }
         for (const std::string& path : OS::FileSystem::ListFiles(directory, ".actor"))
@@ -257,7 +257,7 @@ namespace NS
             return;
         }
         m_actorFiles[std::string{name}] = Sanitize(actorFile);
-        // 既定の 1 体は種類の既定値から作るので、変えたら作り直す
+        // 比べる基準の 1 体は .actor から作るので、変えたら作り直す
         m_baselines.erase(std::string{name});
     }
 

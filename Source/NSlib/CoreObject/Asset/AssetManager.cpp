@@ -518,7 +518,7 @@ namespace NS
         return s_unregistered;
     }
 
-    // 種類の既定の 1 体は作った時の AssetManager の素材を指すので、差し替えるたびに捨てる
+    // .actor の比べる基準の 1 体は作った時の AssetManager の素材を指すので、差し替えるたびに捨てる
     AssetManagerScope::AssetManagerScope(AssetManager& assets) noexcept : m_previous(g_currentAssets)
     {
         g_currentAssets = &assets;
@@ -898,7 +898,7 @@ namespace NS
 
     void AssetManager::Clear() noexcept
     {
-        // 種類の既定の 1 体は素材を指すので、素材より先に捨てる
+        // .actor の比べる基準の 1 体は素材を指すので、素材より先に捨てる
         ActorFileLibrary::Get().ClearBaselines();
         // material は shader / texture を参照するので先に解放する
         m_materials.clear();

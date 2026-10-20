@@ -501,7 +501,7 @@ namespace GL
 
         [[nodiscard]] bool CanStartBeforeContact(const HitEventValue& value) noexcept;
 
-        //! @brief 種類の名前から、その種類の既定の値を作る
+        //! @brief 種類の名前から、欄が全部既定値のその種類の値を作る
         //! @return 知らない名前の場合は std::nullopt
         [[nodiscard]] std::optional<HitEventValue> MakeHitEventValue(std::string_view typeName);
 

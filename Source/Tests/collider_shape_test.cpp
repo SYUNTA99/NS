@@ -213,7 +213,7 @@ TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
 
 TEST(ColliderShape, OldMovementShapeKeysAreSkipped)
 {
-    // 古い場面に残る "Movement" の寸法は読み飛ばし、形は種類の既定の Collider から来る。保存し直すと消える
+    // 古い場面に残る "Movement" の寸法は読み飛ばし、形は PlayerActor.actor の Collider から来る。保存し直すと消える
     NS::Scene scene;
     LoadPlayerScene(scene, {{"Movement", {{"半径", 0.2f}, {"半分の高さ", 0.1f}}}});
     const NS::Collider* collider = PlayerCollider(scene);

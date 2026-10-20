@@ -217,7 +217,7 @@ namespace NS
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
         friend float GetFrameRate(const SceneActor* actor) noexcept;
         friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
-        //! @brief アクターを作る順。部品を作る → 種類の既定 → 配置の上書き → 素材
+        //! @brief アクターを作る順。部品を作る → .actor → 配置の上書き → 素材
         //! @details 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない。
         //! info が nullptr のアクターも、配置の上書きを飛ばすだけで同じ順を通る
         void Init(const ActorInitInfo* info);
@@ -271,7 +271,7 @@ namespace NS
     //! 体の 1 フレームの秒。固定フレームの秒に体の倍率を掛けた値
     [[nodiscard]] float GetFrameDelta(const SceneActor* actor) noexcept;
 
-    //! @brief T を作り、部品・種類の既定・素材まで済ませて返す
+    //! @brief T を作り、部品・クラスと同じ名前の .actor・素材まで済ませて返す
     //! @details Scene の中に作る時は Scene::SpawnObject を使う (中でこの関数を呼ぶ)。
     //! Scene に入れずに部品を触る試しは、この関数で作る
     template <class T, class... TArgs> [[nodiscard]] std::unique_ptr<T> CreateActor(TArgs&&... args)
@@ -283,7 +283,7 @@ namespace NS
         return actor;
     }
 
-    //! @brief T を作り、info で部品・種類の既定・配置の上書き・素材まで済ませて返す
+    //! @brief T を作り、info で部品・.actor・配置の上書き・素材まで済ませて返す
     //! @details シーンへ入れる口 (Scene::SpawnObject) が呼ぶ。シーンの一覧に入る前に素材を読み終える
     template <class T, class... TArgs>
     [[nodiscard]] std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args)

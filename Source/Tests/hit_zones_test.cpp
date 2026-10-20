@@ -536,7 +536,7 @@ TEST(HitZonesTest, FieldsAreClamped)
     EXPECT_FLOAT_EQ(zones.Face().remainderPowerScale, 0.0f);
 }
 
-// 種類の既定値 PropActor.json が全部の置物の赤の既定を書く
+// PropActor.actor が全部の置物の赤の既定を書く
 TEST(HitZonesTest, MapObjActorFileWritesTheRedDefaults)
 {
     const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PropActor");

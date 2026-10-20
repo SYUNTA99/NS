@@ -223,7 +223,7 @@ namespace NS
 
         //! @brief 型 T の配置物をシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
         //! @details 所有はシーンが握り、呼出側へは生ポインタだけ返す。名前は既存と重なれば番号を付ける。
-        //! 値は種類の既定で、保存と凍結に写る
+        //! 値はクラスと同じ名前の .actor の値で、保存と凍結に写る
         template <class T, class... Args> T* SpawnObject(std::string name, Args&&... args)
         {
             const ActorInitInfo info{.scene = this};

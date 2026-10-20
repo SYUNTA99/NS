@@ -1,7 +1,7 @@
 #pragma once
 
 // 配置物が自分を JSON へ書き出し、JSON から組み上がる経路
-// 値はコードの既定値 < 種類の既定値 < 個体の上書きの 3 段で重なる。種類の既定値は ActorFile.h
+// 値はコードの既定値 < .actor の値 < 配置物の印の付いた欄の 3 段で重なる。.actor の読み書きは ActorFile.h
 
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -21,7 +21,7 @@ namespace NS
     //! id と名前は設定しない。.actor が見つからなければ ERROR を出して nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> ObjectFromJson(const nlohmann::json& object, Scene& scene);
 
-    //! @brief obj が自分を JSON へ書き出す。欄はクラスの種類の既定値と違う物 (個体の上書き) だけを書く
+    //! @brief obj が自分を JSON へ書き出す。欄は配置物が持てる欄のうち、obj の .actor の値と違う物だけを書く
     [[nodiscard]] nlohmann::json ObjectToJson(const SceneActor& obj);
 
     //! @details transform 以外の値は写さずコード既定に任せる疎な写し。id は 0 で、置く時に振る

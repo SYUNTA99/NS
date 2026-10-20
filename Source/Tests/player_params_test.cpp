@@ -528,7 +528,7 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     EXPECT_FLOAT_EQ(arrow.tip, arrow.fullTip);
 }
 
-// 欄を別の部品へ移した後も、同梱の種類の既定値と場面の値は読まれる。古い部品の下に残った鍵はどの欄にも
+// 欄を別の部品へ移した後も、同梱の .actor と場面の値は読まれる。古い部品の下に残った鍵はどの欄にも
 // 照合されず、詰めた値が静かに既定へ戻る
 TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
 {
@@ -552,7 +552,7 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
     NS::ActorFileLibrary::Get().Reload();
     const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PlayerActor");
     ASSERT_NE(actorFile, nullptr);
-    expectEveryFieldRead(*actorFile, "PlayerActor.json");
+    expectEveryFieldRead(*actorFile, "PlayerActor.actor");
 
     for (const std::string_view sceneName : {"new_scene.scene"})
     {
