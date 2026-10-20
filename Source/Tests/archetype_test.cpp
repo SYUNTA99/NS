@@ -615,6 +615,39 @@ TEST(Archetype, ClassIsReadFromInsideAndTheFileIsFoundByItsName)
     EXPECT_EQ(library.Find("PropActor"), nullptr);
 }
 
+// Set は頭の鍵を判じずに丸ごと持つ。class・classObjs の他の鍵も Find で返り、Save で書かれる
+TEST(Archetype, SetKeepsEveryHeadKeyThroughFindAndSave)
+{
+    using NS::OS::FileSystem;
+    const ScopedArchetypeDirectory scope("SetKeepsHeadKeys");
+    nlohmann::json written = ArchetypeWith("PropActor", "Collision", SphereEntry(2.0f));
+    written["hitReactions"] = nlohmann::json{{"Hit", 3}};
+
+    NS::ArchetypeLibrary& library = NS::ArchetypeLibrary::Get();
+    library.Set("HeavyRock", written);
+    const nlohmann::json* found = library.Find("HeavyRock");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(*found, written);
+
+    ASSERT_TRUE(library.Save("HeavyRock"));
+    const std::optional<std::string> text = FileSystem::ReadAllText(FileSystem::Combine(scope.Path(), "HeavyRock.actor"));
+    ASSERT_TRUE(text.has_value());
+    EXPECT_EQ(nlohmann::json::parse(*text), written);
+}
+
+// .actor の名前からクラスを引く。ファイル名と違う class でも中の class を返し、無い名前は空
+TEST(Archetype, ClassNameIsLookedUpByTheActorFileName)
+{
+    const ScopedArchetypeDirectory scope("ClassNameByName");
+    WriteActorFile(scope.Path(), "HeavyRock", ArchetypeWith("PropActor", "Collision", SphereEntry(2.0f)).dump());
+
+    NS::ArchetypeLibrary& library = NS::ArchetypeLibrary::Get();
+    library.Reload();
+    EXPECT_EQ(library.ClassNameOf("HeavyRock"), "PropActor");
+    EXPECT_TRUE(library.ClassNameOf("PropActor").empty());
+    EXPECT_TRUE(library.ClassNameOf("NoSuchActor").empty());
+}
+
 // クラスの分からない .actor を読むと、どのクラスで作るかが黙って変わる。読まずに ERROR で知らせる
 TEST(Archetype, FileWithoutAClassOrWithAnUnregisteredClassIsNotRead)
 {

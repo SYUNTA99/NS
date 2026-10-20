@@ -173,6 +173,16 @@ namespace NS
         return &it->second;
     }
 
+    std::string ArchetypeLibrary::ClassNameOf(std::string_view name)
+    {
+        const nlohmann::json* actorFile = Find(name);
+        if (actorFile == nullptr)
+        {
+            return {};
+        }
+        return std::string{ObjectJsonClass(*actorFile)};
+    }
+
     void ArchetypeLibrary::Set(std::string_view name, nlohmann::json actorFile)
     {
         EnsureLoaded();

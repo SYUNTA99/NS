@@ -292,7 +292,7 @@ namespace NS
         }
         // 控えは個体の上書きだけを持つ。上書きの無い欄も種類の既定値へ戻すため、全欄の姿へ広げてから比べる
         const nlohmann::json object = ExpandObjectJson(snapshot);
-        bool same = ObjectJsonClass(object) == std::string_view{obj->ClassName()};
+        bool same = ArchetypeLibrary::Get().ClassNameOf(ObjectJsonClass(object)) == obj->ClassName();
         std::size_t classObjCount = 0;
         ForEachReflectedClassObj(*obj, [&](const ClassObjInfo& field, Object*) {
             ++classObjCount;

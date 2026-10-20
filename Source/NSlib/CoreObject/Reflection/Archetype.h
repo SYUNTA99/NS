@@ -38,6 +38,10 @@ namespace NS
         //! name の .actor の文書。頭の鍵を全部持つ。無ければ nullptr
         [[nodiscard]] const nlohmann::json* Find(std::string_view name);
 
+        //! name の .actor の中の class。.actor が無ければ空
+        //! クラス名を比べる所はここで引き、.actor の名前とクラス名を同じと見なさない
+        [[nodiscard]] std::string ClassNameOf(std::string_view name);
+
         //! name の .actor の文書を差し替える。ファイルへは書かない。参照の欄は落とす
         void Set(std::string_view name, nlohmann::json actorFile);
 

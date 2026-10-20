@@ -45,14 +45,16 @@ namespace NS
                 return entry->className;
             }
 
-            bool IsPlayerObject(const nlohmann::json& object) noexcept
+            bool IsPlayerObject(const nlohmann::json& object)
             {
-                return ObjectJsonClass(object) == ::PlayerActor::StaticReflection()->typeName;
+                return ArchetypeLibrary::Get().ClassNameOf(ObjectJsonClass(object)) ==
+                       ::PlayerActor::StaticReflection()->typeName;
             }
 
-            bool IsDeathZoneObject(const nlohmann::json& object) noexcept
+            bool IsDeathZoneObject(const nlohmann::json& object)
             {
-                return ObjectJsonClass(object) == GL::Level::DeathZoneActor::StaticReflection()->typeName;
+                return ArchetypeLibrary::Get().ClassNameOf(ObjectJsonClass(object)) ==
+                       GL::Level::DeathZoneActor::StaticReflection()->typeName;
             }
 
             nlohmann::json MakeDeathZoneObject()
