@@ -31,6 +31,7 @@ namespace NS
     struct SceneView;
     class AssetManager;
     class Material;
+    enum class FieldType;
 } // namespace NS
 
 namespace NS
@@ -184,6 +185,11 @@ public:
     //! ファイル保存に失敗してもメモリ上の変更は残し、警告する。Undo の対象外
     //! row は actor のクラスの表の行
     bool PromoteFieldToArchetype(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
+
+    //! @brief 配置物の欄を書いた後の後始末。欄を変える・既定へ戻す・種類の既定へ上げる・マテリアルを付ける の全部が呼ぶ
+    //! @details 素材の欄を書いた時だけ、描くメッシュ・描くマテリアル・メッシュの当たりの形を読み直す
+    //! 当たりの姿と形は、世界を止めた歩とプレイの歩が揃えるので、ここでは張り直さない。writtenType は書いた欄の型
+    void FinishFieldWrite(NS::SceneActor& actor, NS::FieldType writtenType);
 
     //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);

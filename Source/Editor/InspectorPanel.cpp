@@ -642,10 +642,7 @@ namespace NS
                         // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
                         if (r.changedTarget != nullptr && r.changedField != nullptr)
                         {
-                            if (r.changedField->type == FieldType::Asset)
-                            {
-                                go->ReloadAssets();
-                            }
+                            editor.FinishFieldWrite(*go, r.changedField->type);
                             editor.MirrorPlayEditToBaseline(*go, field, r.changedField->name);
                         }
                     }
@@ -659,6 +656,7 @@ namespace NS
                     {
                         editor.BeginClassObjEdit();
                         Editor::RevertFieldToDefault(*classObjEdit.revertTarget, *baseline, *classObjEdit.revertField);
+                        editor.FinishFieldWrite(*go, classObjEdit.revertField->type);
                         // 既定へ戻すのも手編集。プレイ中は凍結側へも写して残す
                         editor.MirrorPlayEditToBaseline(*go, *revertRow, classObjEdit.revertField->name);
                         editor.CommitClassObjEdit();

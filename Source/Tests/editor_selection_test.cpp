@@ -18,6 +18,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "Tests/TestCheckLayer.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -30,20 +31,6 @@
 
 namespace
 {
-    class SelectionTestLayer : public NS::Layer
-    {
-    public:
-        explicit SelectionTestLayer(std::function<void()> check) : m_check(std::move(check)) {}
-        void OnAttach() override
-        {
-            m_check();
-            NS::Application::Quit();
-        }
-
-    private:
-        std::function<void()> m_check;
-    };
-
     std::optional<NS::Vector2> FindMoveHandle(const NS::SceneActor& target,
                                               const NS::Matrix& viewProjection,
                                               const NS::Editor::ViewRect& view)
@@ -96,7 +83,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
@@ -128,7 +115,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<SelectionTestLayer>([] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
@@ -158,7 +145,7 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<SelectionTestLayer>([] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
@@ -194,7 +181,7 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<SelectionTestLayer>([] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
         NS::Editor::ObjectSnapshotApplier applier(&scene);
@@ -261,7 +248,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr, {});
@@ -307,7 +294,7 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr, {});
@@ -361,7 +348,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr, {});
@@ -411,7 +398,7 @@ TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<SelectionTestLayer>([] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr, {});
@@ -434,7 +421,7 @@ TEST(EditorBrush, RotateKeepsTheTilt)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<SelectionTestLayer>([] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup(nullptr, {});

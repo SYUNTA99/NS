@@ -25,6 +25,7 @@
 #include "NSlib/Windows/Keyboard.h"
 #include "NSlib/Windows/Mouse.h"
 #include "NSlib/Windows/StringUtils.h"
+#include "Tests/TestCheckLayer.h"
 #include "Tests/TestHitTimelines.h"
 
 #include "NSlib/Core/Types.h"
@@ -76,20 +77,6 @@ namespace
             model->SetMaterialRef("Assets/Materials/player.mat");
         }
         void BodyStep() override { Root().SetPosition(Root().Position() + NS::Vector3{0.1f, 0.0f, 0.0f}); }
-    };
-
-    class TimelinePanelTestLayer : public NS::Layer
-    {
-    public:
-        explicit TimelinePanelTestLayer(std::function<void()> check) : m_check(std::move(check)) {}
-        void OnAttach() override
-        {
-            m_check();
-            NS::Application::Quit();
-        }
-
-    private:
-        std::function<void()> m_check;
     };
 
     std::vector<NS::uint8> ReadPixels(NS::Gfx::D3DRenderTarget& target)
@@ -506,7 +493,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
     desc.window.visible = false;
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<TimelinePanelTestLayer>([&app] {
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         TimelineGui gui;
         NS::Scene scene;
         scene.SetDevice(&app.Device());

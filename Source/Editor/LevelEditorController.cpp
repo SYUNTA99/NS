@@ -542,9 +542,8 @@ void LevelEditorController::EnterPlay() noexcept
     m_dragFollowers.clear();
     m_gizmoWasDragging = false;
     m_gizmo.SetActive(false);
-    // 実体が唯一の出所なので組み直しは要らない。編集で動いた当たりだけ張り直してプレイへ入る
-    m_scene->SyncPhysics();
 
+    // 実体が唯一の出所なので組み直しは要らない。編集で動いた当たりは、世界を止めた歩が揃えている
     // 凍結を取り、そこから走行を最初から。プレイの間の判定と編集復帰の姿はこの凍結を読む
     // 手順は出荷と同じ CourseDirector::StartCourse の持ち物
     if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(m_scene))
@@ -1360,7 +1359,7 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
 
 void LevelEditorController::SetSelectedFreePosition(NS::Vector3 position)
 {
-    // 実体の Root を直接動かす。取り消し の記録は CommitTransformEdit、当たりの追従は SyncPhysics が担う
+    // 実体の Root を直接動かす。取り消し の記録は CommitTransformEdit が積み、当たりは次の歩が揃える
     if (NS::SceneActor* go = SelectedObjectActor())
     {
         go->Root().SetPosition(position);
@@ -1427,6 +1426,11 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
     {
         return false;
     }
+    const NS::FieldDesc* field = NS::FindField(comp->GetReflection(), fieldName);
+    if (field == nullptr)
+    {
+        return false;
+    }
     const std::string className{actor.ClassName()};
     const std::string_view typeName{comp->GetReflection()->typeName};
 
@@ -1464,17 +1468,26 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
         NS_LOG_WARN(App, "種類の既定値 {} をファイルへ書けなかった。今の起動の間だけ効く", className);
     }
 
-    // 付いて行くアクターへ新しい値を写す。素材の欄は道を写すので、姿は引き直して差し替える
+    // 付いて行くアクターへ新しい値を写す
     nlohmann::json fields = nlohmann::json::object();
     fields[std::string{fieldName}] = FieldJson(*comp, fieldName);
     for (NS::SceneActor* follower : followers)
     {
         (void)NS::ApplyJsonFields(*row.get(follower), fields);
-        follower->ReloadAssets();
+        FinishFieldWrite(*follower, field->type);
     }
-    // 当たりの大きさの欄なら body を張り直す
-    m_scene->SyncPhysics();
     return true;
+}
+
+void LevelEditorController::FinishFieldWrite(NS::SceneActor& actor, NS::FieldType writtenType)
+{
+    // 素材の欄は道を書くだけで、描くメッシュの差し替え・描くマテリアル・メッシュの当たりの形は読み直しで作る
+    // 素材でない欄で読み直すと、ドラッグの間じゅう骨の差し直しとメッシュの当たりの作り直しが毎回走る
+    if (writtenType != NS::FieldType::Asset)
+    {
+        return;
+    }
+    actor.ReloadAssets();
 }
 
 void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
@@ -1889,7 +1902,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     std::optional<nlohmann::json> before = m_applier.CaptureObject(m_selectedObjectId);
 
     mesh->SetMaterialRef(stored);
-    go->ReloadAssets();
+    FinishFieldWrite(*go, NS::FieldType::Asset);
     mesh->SetBaseColor(material->BaseColor());
 
     std::optional<nlohmann::json> after = m_applier.CaptureObject(m_selectedObjectId);
