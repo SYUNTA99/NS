@@ -75,7 +75,6 @@ namespace NS
 
             m_vertexShader = desc.vertexShader;
             m_pixelShader = desc.pixelShader;
-            m_cbSlot = desc.cbSlot;
             m_valid = true;
         }
 
@@ -160,8 +159,8 @@ namespace NS
 
             if (m_cb)
             {
-                device.Commands().VSSetConstantBuffer(*m_cb, m_cbSlot);
-                device.Commands().PSSetConstantBuffer(*m_cb, m_cbSlot);
+                device.Commands().VSSetConstantBuffer(*m_cb, k_DrawConstantsSlot);
+                device.Commands().PSSetConstantBuffer(*m_cb, k_DrawConstantsSlot);
             }
             if (m_materialParams)
             {

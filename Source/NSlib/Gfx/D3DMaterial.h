@@ -27,8 +27,7 @@ namespace NS
         {
             D3DShader* vertexShader = nullptr;
             D3DShader* pixelShader = nullptr;
-            std::size_t constantBufferSize = 0;  //!< 内蔵定数バッファのサイズ
-            uint cbSlot = 1;                 //!< 定数バッファのバインド先スロット
+            std::size_t constantBufferSize = 0;  //!< 内蔵定数バッファのサイズ。k_DrawConstantsSlot へ差す
             //! 材質の値のバッファ (b2) の大きさ。0 なら作らない。中身は SetMaterialParams で書く
             std::size_t materialParamsSize = 0;
             BlendMode blend = BlendMode::Opaque; //!< 描画順序の分類基準
@@ -90,7 +89,6 @@ namespace NS
             D3DShader* m_pixelShader = nullptr;  // 非所有の参照
             std::map<uint, const D3DTexture*> m_textures;
             std::unique_ptr<D3DBuffer> m_cb;
-            uint m_cbSlot = 1;
             std::unique_ptr<D3DBuffer> m_materialParams;
             std::vector<std::byte> m_materialParamBytes;
             bool m_materialParamsDirty = false;

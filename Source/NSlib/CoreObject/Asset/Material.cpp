@@ -151,12 +151,11 @@ namespace NS
                       sources.vertexShader != nullptr && sources.pixelShader != nullptr,
                       "マテリアルにシェーダーが無い");
 
-            // 定数バッファは slot 0 で Model が流す FrameCB に合わせる
+            // 定数バッファは Model が流す FrameCB に合わせる
             Gfx::D3DMaterialDesc desc{};
             desc.vertexShader = sources.vertexShader->D3D();
             desc.pixelShader = sources.pixelShader->D3D();
             desc.constantBufferSize = sizeof(Gfx::FrameCB);
-            desc.cbSlot = 0;
             desc.materialParamsSize = sources.layout->bufferSize;
             desc.blend = sources.blend;
             std::unique_ptr<Gfx::D3DMaterial> material = Gfx::D3DMaterial::Create(desc);
