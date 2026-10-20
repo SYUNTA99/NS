@@ -7,6 +7,7 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
+#include "Game/Game.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -194,31 +195,40 @@ namespace NS
             m_statusTimer = k_StatusToastSeconds;
         }
 
-        bool EditorMode::SaveForQuit() noexcept
+        std::string EditorMode::QuitSaveLevelName() const noexcept
         {
-            // 名前付きレベルは従来どおり上書きする
             if (!m_currentLevelName.empty())
             {
-                return SaveLevelToName(m_currentLevelName);
+                return m_currentLevelName;
             }
 
             // 起動レベルが実在するのに読めず seed で立ち上がった時は、元ファイルを潰さないよう退避名へ逃がす
             if (m_bootLevelLoadFailed)
             {
-                const bool ok = SaveLevelToName("Scenes/recovered_level");
+                return "Scenes/recovered_level";
+            }
+
+            // 通常起動 / 新規は同梱の起動シーンへ書き戻す
+            return LevelNameOfScenePath(::Game::StartScenePath());
+        }
+
+        bool EditorMode::SaveForQuit() noexcept
+        {
+            const bool recovering = m_currentLevelName.empty() && m_bootLevelLoadFailed;
+            const std::string name = QuitSaveLevelName();
+            const bool ok = SaveLevelToName(name);
+            if (recovering)
+            {
                 const char* prefix = "退避保存失敗: ";
                 if (ok)
                 {
                     prefix = "退避保存: ";
                 }
-                m_statusMessage = std::string(prefix) + "Scenes/recovered_level";
+                m_statusMessage = std::string(prefix) + name;
                 m_statusError = !ok;
                 m_statusTimer = k_StatusToastSeconds;
-                return ok;
             }
-
-            // 通常起動 / 新規は同梱シーンへ書き戻す
-            return SaveLevelToName("Scenes/new_scene");
+            return ok;
         }
 
         void EditorMode::RenderFileBrowser() noexcept

@@ -146,8 +146,12 @@ namespace NS
             //! 保存 / 読込のモーダルを描き、確定した操作をその場で実行する
             void RenderFileBrowser() noexcept;
 
-            //! @brief 終了する前に保存する
+            //! @brief 終了する前に保存する。書き先は QuitSaveLevelName
             [[nodiscard]] bool SaveForQuit() noexcept;
+
+            //! 終了の保存の書き先のレベルの名前。今のレベルの名前、起動レベルが読めなかった時は退避の名前、
+            //! どちらも無ければ起動シーンの名前
+            [[nodiscard]] std::string QuitSaveLevelName() const noexcept;
 
             //! @brief 起動レベルが実在するのに読めなかったことを印す。終了保存が既存ファイルを上書きしないようにする
             void MarkBootLevelLoadFailed() noexcept { m_bootLevelLoadFailed = true; }

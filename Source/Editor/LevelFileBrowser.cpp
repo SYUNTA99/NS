@@ -2,6 +2,7 @@
 
 #include "Editor/EditorUi.h"
 #include "Editor/LevelFilePaths.h"
+#include "Game/Game.h"
 
 #include <algorithm>
 #include <cstring>
@@ -45,7 +46,7 @@ namespace NS
             }
             else if (m_saveNameBuffer.empty())
             {
-                m_saveNameBuffer = "Scenes/new_scene";
+                m_saveNameBuffer = LevelNameOfScenePath(::Game::StartScenePath());
             }
         }
 

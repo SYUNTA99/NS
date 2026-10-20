@@ -20,6 +20,10 @@ namespace NS
         //! Assets 配下の .scene パスを作る。素の名前は Scenes/ 配下、無効な名前は nullopt
         [[nodiscard]] std::optional<std::string> BuildLevelPath(std::string_view name) noexcept;
 
+        //! ContentRoot からの "Assets/<名前>.scene" をレベルの名前へ直す。BuildLevelPath の逆
+        //! 拡張子は大文字と小文字を区別しない。Assets の外・.scene でない道・使えない名前は空文字列
+        [[nodiscard]] std::string LevelNameOfScenePath(std::string_view scenePath) noexcept;
+
         //! @brief レベル保存用ディレクトリが存在することを確認し、なければ作成する
         //! @return 作成に失敗した場合は false を返す
         [[nodiscard]] bool EnsureScenesDirectoryExists() noexcept;

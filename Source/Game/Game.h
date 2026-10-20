@@ -16,8 +16,11 @@ class Game : public NS::Layer
 {
 public:
     //! @brief 開始シーンのパスを控える。読み込みは OnAttach
-    explicit Game(std::string_view startScenePath = "Assets/Scenes/new_scene.scene");
+    explicit Game(std::string_view startScenePath = StartScenePath());
     ~Game() override;
+
+    //! 起動シーンの ContentRoot からの道。起動シーンの道の持ち主はここだけ
+    [[nodiscard]] static std::string_view StartScenePath() noexcept { return "Assets/Scenes/new_scene.scene"; }
 
     Game(const Game&) = delete;
     Game& operator=(const Game&) = delete;
