@@ -2,7 +2,6 @@
 
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactOutcome.h"
-#include "Game/Level/ImpactTremor.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
@@ -538,13 +537,6 @@ namespace GL
                     AdvanceTimeline(parts);
                 }
             }
-            AdvanceBodyShake();
-            // 写し取る姿は揺れを書いた後の姿
-            if (!m_ghost.startedThisStep)
-            {
-                AdvanceGhost(parts.ghost);
-            }
-            AdvanceTremor();
             AdvanceGroundWave();
             // 止めた自機を動かし直すまでは新しい衝突を見ない。止まった自機は重なったままなので、見ると毎フレーム検知し直す
             if (IsHoldingPlayer())
@@ -868,7 +860,8 @@ namespace GL
 
             void operator()(const ImpactTremorEvent& tremor) const
             {
-                resolver.StartTremor(tremor, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
+                resolver.StartTremor(
+                    tremor, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps), parts.collider);
             }
 
             void operator()(const ShakeLinesEvent& lines) const
@@ -1417,22 +1410,22 @@ namespace GL
                 }
             }
             // 種は何回目の当たりか。毎回少し違い、同じ入力の再生では同じ
-            const TackleShakeDesc self{
-                .shape = TackleShakeShape::Side,
+            const NS::DrawShakeDesc self{
+                .shape = NS::DrawShakeShape::Side,
                 .axis = axis,
-                .amplitude = ScreenPixelsToMeters(shake.selfAmplitudePixels, *pose, m_owner->Root().Position()),
+                .amplitude = NS::ScreenPixelsToMeters(shake.selfAmplitudePixels, *pose, m_owner->Root().Position()),
                 .length = length,
                 .seed = m_answer.lastImpact.sequence,
                 .firstSign = firstSign,
                 .flipFrames = shake.flipFrames};
             // 相手は逆方向へ揺らし、後ろから重なる二人を区別する
-            TackleShakeDesc other = self;
+            NS::DrawShakeDesc other = self;
             other.firstSign = -firstSign;
             other.amplitude = 0.0f;
             const NS::SceneActor* target = PendingTargetActor();
             if (target != nullptr)
             {
-                other.amplitude = ScreenPixelsToMeters(shake.amplitudePixels, *pose, target->Root().Position());
+                other.amplitude = NS::ScreenPixelsToMeters(shake.amplitudePixels, *pose, target->Root().Position());
             }
             BeginShake(self, other);
         }
@@ -1446,24 +1439,25 @@ namespace GL
             {
                 return;
             }
-            const TackleShakeDesc self{.shape = TackleShakeShape::Depth,
+            const NS::DrawShakeDesc self{.shape = NS::DrawShakeShape::Depth,
                                        .axis = -dir,
                                        .amplitude = shake.selfDepth,
                                        .length = length,
                                        .seed = m_answer.lastImpact.sequence,
                                        .pushFrames = shake.pushFrames,
                                        .returnRatio = shake.returnRatio};
-            TackleShakeDesc other = self;
+            NS::DrawShakeDesc other = self;
             other.axis = dir;
             other.amplitude = shake.depth;
             BeginShake(self, other);
         }
 
-        void ImpactResolver::BeginShake(const TackleShakeDesc& self, const TackleShakeDesc& other)
+        void ImpactResolver::BeginShake(const NS::DrawShakeDesc& self, const NS::DrawShakeDesc& other)
         {
-            m_bodyShake = BodyShakeRun{.desc = self, .startClock = m_clock, .active = true};
-            // 始めたフレームから描く。時計の 0 の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
-            AdvanceBodyShake();
+            if (NS::Model* model = m_owner->ModelClassObj())
+            {
+                model->StartDrawShake(self);
+            }
             NS::SceneActor* target = PendingTargetActor();
             if (target != nullptr)
             {
@@ -1498,7 +1492,7 @@ namespace GL
             const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(m_owner);
             const TackleGhostDesc self{
                 .axis = NS::Vector3{forward.z, 0.0f, -forward.x},
-                .spread = ScreenPixelsToMeters(ghost.selfSpreadPixels, *pose, m_owner->Root().Position()),
+                .spread = NS::ScreenPixelsToMeters(ghost.selfSpreadPixels, *pose, m_owner->Root().Position()),
                 .sideOpacity = ghost.sideOpacity,
                 .stopLength = length,
                 .releaseFrames = ghost.releaseFrames,
@@ -1512,7 +1506,7 @@ namespace GL
                 return;
             }
             TackleGhostDesc other = self;
-            other.spread = ScreenPixelsToMeters(ghost.spreadPixels, *pose, target->Root().Position());
+            other.spread = NS::ScreenPixelsToMeters(ghost.spreadPixels, *pose, target->Root().Position());
             (void)SendMsgTackleGhost(*target, other);
         }
 
@@ -1548,31 +1542,24 @@ namespace GL
                                       .gapPixels = lines.gapPixels});
         }
 
-        void ImpactResolver::AdvanceBodyShake()
+        void ImpactResolver::StopBodyShake() noexcept
         {
-            if (!m_bodyShake.active)
+            if (m_owner == nullptr)
             {
                 return;
             }
-            const TackleShakeDesc& desc = m_bodyShake.desc;
-            const int frame = m_clock - m_bodyShake.startClock + 1;
-            const NS::Vector3 offset = desc.OffsetAt(frame);
-            // 有限でないずれは描く形を消すので控えず、前のずれのまま描く
-            if (NS::IsFinite(offset))
+            if (NS::Model* model = m_owner->ModelClassObj())
             {
-                m_drawOffset = offset;
-            }
-            // 奥揺れは止めの最後のフレームまで揺れるので、長さの次のフレームで 0 を書いてから止める
-            if (frame > desc.length)
-            {
-                m_bodyShake.active = false;
+                model->StopDrawShake();
             }
         }
 
-        void ImpactResolver::StopBodyShake() noexcept
+        void ImpactResolver::StepGhost(TackleGhost* tackleGhost)
         {
-            m_bodyShake.active = false;
-            m_drawOffset = NS::Vector3{0.0f, 0.0f, 0.0f};
+            if (!m_ghost.startedThisStep)
+            {
+                AdvanceGhost(tackleGhost);
+            }
         }
 
         void ImpactResolver::AdvanceGhost(TackleGhost* tackleGhost)
@@ -1596,8 +1583,9 @@ namespace GL
             }
         }
 
-        void ImpactResolver::StartTremor(const ImpactTremorEvent& tremor, int length)
+        void ImpactResolver::StartTremor(const ImpactTremorEvent& tremor, int length, const NS::Collider* collider)
         {
+            NS_ASSERT(Game, collider != nullptr, "当たりの部品が渡されていない");
             StopTremor();
             if (m_owner == nullptr || length <= 0)
             {
@@ -1607,14 +1595,17 @@ namespace GL
             const NS::Vector3 contact = m_answer.lastImpact.surfacePoint;
             // 長さは止めに合わせて短くなる。裏まで届くのに長さを使い切ると震えが残らないので、届くのは長さの半分まで
             const int reachFrames = std::min(tremor.reachFrames, length / 2);
-            m_tremor = TremorRun{.desc = TackleTremorDesc{.contactOffset = contact - m_owner->Root().Position(),
-                                                          .amplitudePixels = tremor.amplitudePixels,
-                                                          .reachFrames = reachFrames,
-                                                          .length = length,
-                                                          .referenceHeight = tremor.referenceHeight},
-                                 .startClock = m_clock,
-                                 .elapsed = 0,
-                                 .active = true};
+            // 自機の玉の差し渡しで裏まで届く
+            const NS::DrawTremorDesc self{.contactOffset = contact - m_owner->Root().Position(),
+                                          .amplitudePixels = tremor.amplitudePixels,
+                                          .reachFrames = reachFrames,
+                                          .length = length,
+                                          .referenceHeight = tremor.referenceHeight,
+                                          .bodyLength = 2.0f * collider->CapsuleRadius()};
+            if (NS::Model* model = m_owner->ModelClassObj())
+            {
+                model->StartDrawTremor(self);
+            }
 
             NS::Scene* scene = m_owner->OwningScene();
             if (scene == nullptr)
@@ -1626,46 +1617,11 @@ namespace GL
             {
                 return;
             }
-            TackleTremorDesc other = m_tremor.desc;
+            NS::DrawTremorDesc other = self;
             other.contactOffset = contact - target->Root().Position();
             // 相手は飛んで遠ざかるので体に対する割合で震わせる
             other.amplitudeRatio = tremor.targetAmplitudeRatio;
             (void)SendMsgTackleTremor(*target, other);
-        }
-
-        void ImpactResolver::AdvanceTremor() noexcept
-        {
-            if (m_tremor.active)
-            {
-                m_tremor.elapsed = m_clock - m_tremor.startClock;
-            }
-        }
-
-        void ImpactResolver::WriteTremor(const NS::Collider* collider)
-        {
-            NS_ASSERT(Game, collider != nullptr, "当たりの部品が渡されていない");
-            if (!m_tremor.active || m_owner == nullptr)
-            {
-                return;
-            }
-            const int elapsed = m_tremor.elapsed;
-            NS::Gfx::TremorCB tremor{};
-            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(m_owner);
-            if (pose.has_value())
-            {
-                // 自機の玉の差し渡しで裏まで届く
-                tremor = MakeTremor(
-                    m_tremor.desc, elapsed, m_owner->Root().Position(), 2.0f * collider->CapsuleRadius(), *pose);
-            }
-            // 有限でない震えは描く形を消すので控えず、前の震えのまま描く
-            if (IsFiniteTremor(tremor))
-            {
-                m_drawTremor = tremor;
-            }
-            if (elapsed >= m_tremor.desc.length)
-            {
-                m_tremor.active = false;
-            }
         }
 
         void ImpactResolver::StartGroundWave(const GroundWaveEvent& wave, int length)
@@ -1746,8 +1702,14 @@ namespace GL
 
         void ImpactResolver::StopTremor() noexcept
         {
-            m_tremor.active = false;
-            m_drawTremor = NS::Gfx::TremorCB{};
+            if (m_owner == nullptr)
+            {
+                return;
+            }
+            if (NS::Model* model = m_owner->ModelClassObj())
+            {
+                model->StopDrawTremor();
+            }
         }
 
         void ImpactResolver::CancelImpact(TackleGhost* ghost, NS::HitReaction* hitReaction) noexcept

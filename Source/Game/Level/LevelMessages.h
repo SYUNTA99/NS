@@ -5,6 +5,7 @@
 #include "Game/Level/LaunchArc.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/Message/Message.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 
@@ -154,45 +155,19 @@ namespace GL
         bool SendMsgTackleFreeze(NS::SceneActor& receiver, const TackleFreezeDesc& desc);
         [[nodiscard]] bool IsMsgTackleFreeze(const NS::Message& msg) noexcept;
 
-        //! @brief 止めの間の揺れの形
-        enum class TackleShakeShape
-        {
-            Side,  //!< 左右へ振る横揺れ。BodyShakeOffset
-            Depth, //!< 押す向きへ押しては戻す奥揺れ。DepthShakeOffset
-        };
-
-        //! @brief 止めの間の揺れ。受け手は描く形だけを axis の向きへ OffsetAt のずれで揺らす
-        struct TackleShakeDesc
-        {
-            TackleShakeShape shape = TackleShakeShape::Side;
-            NS::Vector3 axis{1.0f, 0.0f, 0.0f}; //!< 揺らす世界の長さ 1 の向き。横は画面の横、奥は押す向き
-            float amplitude = 0.0f;             //!< 最初の振れ幅 (m)
-            int length = 0;                     //!< 揺れのフレーム数
-            NS::uint32 seed = 0;                //!< 振れ幅のばらつきの種
-            float firstSign = 1.0f;             //!< 横の 1 フレーム目の向き
-            int flipFrames = 1;                 //!< 横の左右を入れ替えるフレーム数
-            int pushFrames = 1;                 //!< 奥の押し直すフレーム数
-            float returnRatio = 0.0f;           //!< 奥の押してから 1 フレームごとの倍率
-
-            //! @brief frame フレーム目の、描く形の世界のずれを返す
-            //! @param[in] frame 揺れの何フレーム目か。始まりのフレームが 1
-            //! @return ずれ。frame が 1 より前、横は length 以降、奥は length より後で 0 ベクトル
-            [[nodiscard]] NS::Vector3 OffsetAt(int frame) const noexcept;
-        };
-
-        //! @brief 止めの間の揺れを知らせる。受け手は止めの間、知らせを受けたフレームを 1 フレーム目として揺れる
+        //! @brief 止めの間の揺れを知らせる。受け手は自分の Model::StartDrawShake に渡して、止めの間だけ揺れる
         class MsgTackleShake final : public NS::Message
         {
             NS_MESSAGE(MsgTackleShake)
 
         public:
-            explicit MsgTackleShake(const TackleShakeDesc& desc) noexcept : m_desc(desc) {}
-            [[nodiscard]] const TackleShakeDesc& Desc() const noexcept { return m_desc; }
+            explicit MsgTackleShake(const NS::DrawShakeDesc& desc) noexcept : m_desc(desc) {}
+            [[nodiscard]] const NS::DrawShakeDesc& Desc() const noexcept { return m_desc; }
 
         private:
-            const TackleShakeDesc& m_desc;
+            const NS::DrawShakeDesc& m_desc;
         };
-        bool SendMsgTackleShake(NS::SceneActor& receiver, const TackleShakeDesc& desc);
+        bool SendMsgTackleShake(NS::SceneActor& receiver, const NS::DrawShakeDesc& desc);
         [[nodiscard]] bool IsMsgTackleShake(const NS::Message& msg) noexcept;
 
         //! @brief 残像。止めの間は根の左右に写しを置き、明けに止めの最後の姿を残して薄める
@@ -226,30 +201,19 @@ namespace GL
         bool SendMsgTackleGhost(NS::SceneActor& receiver, const TackleGhostDesc& desc);
         [[nodiscard]] bool IsMsgTackleGhost(const NS::Message& msg) noexcept;
 
-        //! @brief 衝撃の震え。受け手は長さの間、描く所の震えを毎フレーム MakeTremor で書き直す
-        struct TackleTremorDesc
-        {
-            NS::Vector3 contactOffset{};    //!< 衝突点の、受け手の根の位置からのずれ (m)。体と一緒に動く
-            float amplitudePixels = 0.0f;   //!< 振れ幅。高さ referenceHeight 画素の画面の上の画素数
-            float amplitudeRatio = 0.0f;    //!< 振れ幅の体の半径に対する割合。正なら画素の欄より先に使う
-            int reachFrames = 0;            //!< 衝突点から体の一番遠い所へ届くまでのフレーム数
-            int length = 0;                 //!< 震えのフレーム数
-            float referenceHeight = 720.0f; //!< 画素寸法を決めた基準の画面の高さ
-        };
-
-        //! @brief 衝撃の震えを知らせる。受け手は知らせを受けたフレームを 0 フレーム目として震える
+        //! @brief 衝撃の震えを知らせる。受け手は体の長さを足して、自分の Model::StartDrawTremor に渡す
         class MsgTackleTremor final : public NS::Message
         {
             NS_MESSAGE(MsgTackleTremor)
 
         public:
-            explicit MsgTackleTremor(const TackleTremorDesc& desc) noexcept : m_desc(desc) {}
-            [[nodiscard]] const TackleTremorDesc& Desc() const noexcept { return m_desc; }
+            explicit MsgTackleTremor(const NS::DrawTremorDesc& desc) noexcept : m_desc(desc) {}
+            [[nodiscard]] const NS::DrawTremorDesc& Desc() const noexcept { return m_desc; }
 
         private:
-            const TackleTremorDesc& m_desc;
+            const NS::DrawTremorDesc& m_desc;
         };
-        bool SendMsgTackleTremor(NS::SceneActor& receiver, const TackleTremorDesc& desc);
+        bool SendMsgTackleTremor(NS::SceneActor& receiver, const NS::DrawTremorDesc& desc);
         [[nodiscard]] bool IsMsgTackleTremor(const NS::Message& msg) noexcept;
 
         //! @brief 体当たりの止めが明けた時の、相手の飛び方

@@ -4,7 +4,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/IRenderable.h"
-#include "NSlib/CoreObject/IUse/IUseDrawAdjust.h"
+#include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/Gfx/Render/DrawItem.h"
@@ -23,15 +23,16 @@ namespace NS
 
 namespace NS
 {
-
+    // 震えの定数の 16 バイト整列を値で抱えるため、想定どおりのパディングが入る。C4324 を黙らせる
+#pragma warning(push)
+#pragma warning(disable : 4324)
     //! @brief メッシュとマテリアルを描画する部品
     //! @details 描画用の姿勢変更は根の Transform と衝突形状に影響せず、保存されない
     class Model : public Object, public IRenderable
     {
     public:
-        //! @brief メッシュとマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
-        //! @param[in] drawAdjust 本体を描く時の調整を返す持ち主。nullptr なら調整なしで描く
-        explicit Model(SceneActor* owner, const IUseDrawAdjust* drawAdjust = nullptr);
+        //! メッシュとマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
+        explicit Model(SceneActor* owner);
 
         //! マテリアルを共有したまま配置物ごとに変える個体色。lighting とは別系統
         void SetBaseColor(const Color& color) noexcept { m_baseColor = color; }
@@ -93,12 +94,29 @@ namespace NS
         //! 局所の倍率を返す。書かれていなければ (1, 1, 1)
         [[nodiscard]] const Vector3& LocalScale() const noexcept { return m_localScale; }
 
-        //! @brief 本体を描く時の調整を返す
-        //! @details 持ち主が返す今の値。持ち主が調整を返さなければ、ずれ 0・倍率 1・震えなし
-        [[nodiscard]] DrawAdjust DrawAdjustment() const noexcept;
-        //! @brief 描く倍率を補間せずに、持ち主の今の倍率へ切り替える
-        //! @details 固定更新の途中で倍率を飛ばす持ち主が、倍率を書いた後に呼ぶ
-        void SnapDrawScale() noexcept;
+        //! @brief 形の下端中央を中心に世界の軸で掛ける、描く時だけの倍率を書く。固定更新の間を補間する
+        //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
+        [[nodiscard]] bool SetDrawScale(const Vector3& scale) noexcept;
+        //! @brief 描く時だけの倍率を、補間せずに切り替える
+        //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
+        bool SnapDrawScale(const Vector3& scale) noexcept;
+        //! 描く形だけの揺れを始める。次の AdvanceDraw を 1 フレーム目に数える
+        void StartDrawShake(const DrawShakeDesc& desc) noexcept;
+        //! 揺れを止めて、ずれを 0 に戻す
+        void StopDrawShake() noexcept;
+        //! 頂点の震えを始める。次の AdvanceDraw を 0 フレーム目に数え、持ち主のカメラの視点で振れ幅を決める
+        void StartDrawTremor(const DrawTremorDesc& desc) noexcept;
+        //! 震えを止めて、振れ幅を 0 に戻す
+        void StopDrawTremor() noexcept;
+        //! @brief 揺れと震えを 1 フレーム進める
+        //! @details 呼ぶのは SceneActor::Update だけで、体を動かした後・VisualStep の前。震えは動かした後の根で書く
+        void AdvanceDraw();
+        //! 描く姿勢へ足す世界のずれ (m)。補間しない
+        [[nodiscard]] const Vector3& GetDrawOffset() const noexcept { return m_drawOffset; }
+        //! 今の固定フレームの描く時だけの倍率。書かれていなければ (1, 1, 1)
+        [[nodiscard]] const Vector3& GetDrawScale() const noexcept { return m_drawScale; }
+        //! 頂点シェーダーへ渡す震え。補間しない
+        [[nodiscard]] const Gfx::TremorCB& GetDrawTremor() const noexcept { return m_drawTremor; }
 
         //! @brief 局所回転と描画倍率を補間した描画姿勢を返す。世界座標のずれは補間後に足す
         //! @details 描画倍率は形の下端中央を中心に世界の軸で掛ける。境界がなければ根を中心にする
@@ -174,10 +192,30 @@ namespace NS
         // 差したメッシュに合わせる局所の倍率。メッシュを差す部品が書くので保存しない
         Vector3 m_localScale{1.0f, 1.0f, 1.0f};
 
-        // 補間の始点。固定更新の頭と SnapDrawScale で持ち主の倍率を控える
-        Vector3 m_previousDrawScale{1.0f, 1.0f, 1.0f};
+        // 描く時だけの姿勢。根の Transform と当たりには効かず、保存しない
+        Vector3 m_drawOffset{0.0f, 0.0f, 0.0f};
+        Vector3 m_drawScale{1.0f, 1.0f, 1.0f};
+        Vector3 m_previousDrawScale{1.0f, 1.0f, 1.0f}; // 補間の始点。固定更新の頭と SnapDrawScale で控える
+        Gfx::TremorCB m_drawTremor{};
 
-        SceneActor* m_owner = nullptr;                  // 持ち主 (非所有)
-        const IUseDrawAdjust* m_drawAdjust = nullptr; // 本体を描く時の調整を返す持ち主 (非所有)。無ければ調整なし
+        // 揺れ。始めた後の最初の AdvanceDraw を 1 フレーム目に数える
+        struct ShakeRun
+        {
+            DrawShakeDesc desc{};
+            int frame = 0;
+            bool active = false;
+        };
+        ShakeRun m_shake;
+        // 震え。始めた後の最初の AdvanceDraw を 0 フレーム目に数える
+        struct TremorRun
+        {
+            DrawTremorDesc desc{};
+            int elapsed = -1;
+            bool active = false;
+        };
+        TremorRun m_tremor;
+
+        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
+#pragma warning(pop)
 } // namespace NS

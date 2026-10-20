@@ -3,7 +3,6 @@
 
 #include "Game/Level/ImpactMarkActor.h"
 #include "Game/Level/ImpactOutcome.h"
-#include "Game/Level/ImpactTremor.h"
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
@@ -74,7 +73,7 @@ namespace GL
         }
         void PropActor::OnInit()
         {
-            NS::Model* model = CreateClassObj(m_model, this, this);
+            NS::Model* model = CreateClassObj(m_model, this);
             model->SetMeshRef("sphere");
             model->SetBaseColor(NS::Color{0.72f, 0.70f, 0.66f});
             CreateClassObj(m_shadow, this);
@@ -163,9 +162,7 @@ namespace GL
             // clang-format off
             m_effects->Update(Flight());
             // clang-format on
-            // 震えは止めが明けて飛んでいく間に通り抜けるので、状態に依らず根を動かした後で進める
-            AdvanceTremor();
-            // 明けの写しは止めの後も残り、写し取る姿は揺れを書いた後の姿なので、状態の歩の後で進める
+            // 明けの写しは止めの後も残り、写し取る姿は揺れを書いた後の姿なので、Model が揺れを進めた後で進める
             AdvanceGhost();
         }
 
@@ -212,37 +209,11 @@ namespace GL
                                       NS::IsPositiveFinite(squash.z);
                     if (m_freeze.squash)
                     {
-                        SnapDrawScale(squash);
+                        (void)ModelClassObj()->SnapDrawScale(squash);
                     }
                 }
             }
             SyncCollision();
-        }
-
-        void PropActor::AdvanceShake()
-        {
-            if (!m_shake.active)
-            {
-                return;
-            }
-            ++m_shake.frame;
-            const NS::Vector3 offset = m_shake.desc.OffsetAt(m_shake.frame);
-            // 有限でないずれは描く形を消すので控えず、前のずれのまま描く
-            if (NS::IsFinite(offset))
-            {
-                m_drawAdjust.offset = offset;
-            }
-            // 奥揺れは止めの最後のフレームまで揺れるので、長さの次のフレームで 0 を書いてから止める
-            if (m_shake.frame > m_shake.desc.length)
-            {
-                m_shake.active = false;
-            }
-        }
-
-        void PropActor::StopShake()
-        {
-            m_shake.active = false;
-            m_drawAdjust.offset = NS::Vector3{0.0f, 0.0f, 0.0f};
         }
 
         void PropActor::AdvanceGhost()
@@ -262,55 +233,22 @@ namespace GL
             (void)m_tackleGhost.SetAfterimageOpacity(0.0f);
         }
 
-        void PropActor::AdvanceTremor()
-        {
-            if (!m_tremor.active)
-            {
-                return;
-            }
-            ++m_tremor.elapsed;
-            NS::Gfx::TremorCB tremor{};
-            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(this);
-            if (pose.has_value())
-            {
-                // 球の差し渡しで裏まで届く
-                tremor = MakeTremor(
-                    m_tremor.desc, m_tremor.elapsed, Root().Position(), 2.0f * Sphere().WorldSphere().radius, *pose);
-            }
-            // 有限でない震えは描く形を消すので控えず、前の震えのまま描く
-            if (IsFiniteTremor(tremor))
-            {
-                m_drawAdjust.tremor = tremor;
-            }
-            if (m_tremor.elapsed >= m_tremor.desc.length)
-            {
-                m_tremor.active = false;
-            }
-        }
-
-        void PropActor::StopTremor()
-        {
-            m_tremor.active = false;
-            m_drawAdjust.tremor = NS::Gfx::TremorCB{};
-        }
-
         void PropActor::EndFreeze()
         {
-            StopShake();
+            ModelClassObj()->StopDrawShake();
             if (m_freezePlaced)
             {
                 Root().SetPosition(m_freezeHome);
             }
             if (m_freeze.squash)
             {
-                SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
+                (void)ModelClassObj()->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
                 m_freeze.squash = false;
             }
         }
 
         void PropActor::StepFreeze()
         {
-            AdvanceShake();
             if (m_states->StepsInState() >= static_cast<NS::uint32>(std::max(m_freeze.stopSteps, 1)) + 2)
             {
                 LeaveFreeze();
@@ -570,9 +508,9 @@ namespace GL
             {
                 EndFreeze();
             }
-            StopShake();
+            ModelClassObj()->StopDrawShake();
             StopGhost();
-            StopTremor();
+            ModelClassObj()->StopDrawTremor();
             (void)m_states->Change<RestingState>();
             m_states->Reset();
             m_motion.Finish();
@@ -596,15 +534,6 @@ namespace GL
             m_motion.Finish();
             NS::SceneActor::OnEndPlay();
             m_tackleGhost.Unregister();
-        }
-
-        void PropActor::SnapDrawScale(const NS::Vector3& scale) noexcept
-        {
-            m_drawAdjust.scale = scale;
-            if (NS::Model* model = ModelClassObj())
-            {
-                model->SnapDrawScale();
-            }
         }
 
         bool PropActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver)
@@ -639,7 +568,7 @@ namespace GL
             }
             if (const MsgTackleShake* shake = NS::MsgCast<MsgTackleShake>(msg))
             {
-                m_shake = ShakeRun{.desc = shake->Desc(), .frame = 0, .active = true};
+                ModelClassObj()->StartDrawShake(shake->Desc());
                 return true;
             }
             if (const MsgTackleGhost* ghost = NS::MsgCast<MsgTackleGhost>(msg))
@@ -649,7 +578,10 @@ namespace GL
             }
             if (const MsgTackleTremor* tremor = NS::MsgCast<MsgTackleTremor>(msg))
             {
-                m_tremor = TremorRun{.desc = tremor->Desc(), .elapsed = -1, .active = true};
+                // 球の差し渡しで裏まで届く
+                NS::DrawTremorDesc desc = tremor->Desc();
+                desc.bodyLength = 2.0f * Sphere().WorldSphere().radius;
+                ModelClassObj()->StartDrawTremor(desc);
                 return true;
             }
             if (const MsgTackleRelease* release = NS::MsgCast<MsgTackleRelease>(msg))

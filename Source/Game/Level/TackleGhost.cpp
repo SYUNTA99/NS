@@ -122,7 +122,7 @@ namespace GL
             }
             // 描く形の箱を、描く時だけのずれと離れの分だけ広げる。どちらの写しも外さない
             NS::AABB out = model->WorldBounds();
-            const NS::Vector3 offset = model->DrawAdjustment().offset;
+            const NS::Vector3& offset = model->GetDrawOffset();
             out.Extents.x += std::abs(m_spread.x) + std::abs(offset.x);
             out.Extents.y += std::abs(m_spread.y) + std::abs(offset.y);
             out.Extents.z += std::abs(m_spread.z) + std::abs(offset.z);

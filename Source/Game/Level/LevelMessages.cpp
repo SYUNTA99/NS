@@ -1,6 +1,5 @@
 #include "Game/Level/LevelMessages.h"
 
-#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/TackleGhost.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -69,7 +68,7 @@ namespace GL
             return NS::IsMsg<MsgTackleFreeze>(msg);
         }
 
-        bool SendMsgTackleShake(NS::SceneActor& receiver, const TackleShakeDesc& desc)
+        bool SendMsgTackleShake(NS::SceneActor& receiver, const NS::DrawShakeDesc& desc)
         {
             return NS::SendMsgToActor(MsgTackleShake{desc}, receiver);
         }
@@ -79,19 +78,10 @@ namespace GL
             return NS::IsMsg<MsgTackleShake>(msg);
         }
 
-        NS::Vector3 TackleShakeDesc::OffsetAt(int frame) const noexcept
-        {
-            if (shape == TackleShakeShape::Depth)
-            {
-                return axis * DepthShakeOffset(frame, length, amplitude, pushFrames, returnRatio, seed);
-            }
-            return axis * BodyShakeOffset(frame, length, amplitude, seed, firstSign, flipFrames);
-        }
-
         bool TackleGhostDesc::WriteTo(TackleGhost* ghost, int frame) const noexcept
         {
             NS_ASSERT(Game, ghost != nullptr, "残像が渡されていない");
-            (void)ghost->SetSpread(axis * BodyShakeReach(frame, stopLength, spread));
+            (void)ghost->SetSpread(axis * NS::BodyShakeReach(frame, stopLength, spread));
             (void)ghost->SetSideOpacity(sideOpacity);
             if (frame == stopLength)
             {
@@ -118,7 +108,7 @@ namespace GL
             return NS::IsMsg<MsgTackleGhost>(msg);
         }
 
-        bool SendMsgTackleTremor(NS::SceneActor& receiver, const TackleTremorDesc& desc)
+        bool SendMsgTackleTremor(NS::SceneActor& receiver, const NS::DrawTremorDesc& desc)
         {
             return NS::SendMsgToActor(MsgTackleTremor{desc}, receiver);
         }

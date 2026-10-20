@@ -192,10 +192,10 @@ TEST(PlayerChargeSequence, EndPlayWhileHeldRestoresStanceAndUncurls)
     {
         player.Update(true);
     }
-    ASSERT_FLOAT_EQ(player.GetDrawAdjust().scale.y, 0.95f);
+    ASSERT_FLOAT_EQ(player.ModelClassObj()->GetDrawScale().y, 0.95f);
     player.OnEndPlay();
     EXPECT_FLOAT_EQ(player.StanceHeight(), 1.0f);
-    EXPECT_TRUE(player.GetDrawAdjust().scale == (NS::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_TRUE(player.ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     EXPECT_FALSE(player.IsCurled());
 }
 

@@ -10,7 +10,6 @@
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
-#include "NSlib/CoreObject/IUse/IUseDrawAdjust.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
@@ -59,7 +58,7 @@ namespace GL
 
 //! @brief 固定の部品を OnInit で組むプレイヤー
 //! @details 衝突の観測・裁定を身体の移動より先に行う。死とゴールは Scene の CourseDirector に通知する
-class PlayerActor : public NS::SceneActor, public NS::IUseDrawAdjust
+class PlayerActor : public NS::SceneActor
 {
 public:
     PlayerActor() noexcept;
@@ -114,8 +113,6 @@ public:
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
     [[nodiscard]] GL::Level::TackleGhost& Ghost() noexcept { return m_tackleGhost; }
     [[nodiscard]] const GL::Level::TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
-    //! 止めの揺れと震えは ImpactResolver、倍率は PlayerAppearance の値をまとめて返す
-    [[nodiscard]] NS::DrawAdjust GetDrawAdjust() const noexcept override;
 
     [[nodiscard]] NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Player; }
     void ReadInput() override;

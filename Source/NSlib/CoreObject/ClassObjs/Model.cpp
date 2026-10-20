@@ -36,7 +36,7 @@ namespace
 
 namespace NS
 {
-    Model::Model(SceneActor* owner, const IUseDrawAdjust* drawAdjust) : m_owner(owner), m_drawAdjust(drawAdjust)
+    Model::Model(SceneActor* owner) : m_owner(owner)
     {
         LoadAssetField(m_mesh, "");
         LoadAssetField(m_material, "");
@@ -121,21 +121,91 @@ namespace NS
     void Model::Snapshot() noexcept
     {
         m_previousLocalRotation = m_localRotation;
-        m_previousDrawScale = DrawAdjustment().scale;
+        m_previousDrawScale = m_drawScale;
     }
 
-    DrawAdjust Model::DrawAdjustment() const noexcept
+    bool Model::SetDrawScale(const Vector3& scale) noexcept
     {
-        if (m_drawAdjust == nullptr)
+        if (!IsPositiveFiniteScale(scale))
         {
-            return DrawAdjust{};
+            return false;
         }
-        return m_drawAdjust->GetDrawAdjust();
+        m_drawScale = scale;
+        return true;
     }
 
-    void Model::SnapDrawScale() noexcept
+    bool Model::SnapDrawScale(const Vector3& scale) noexcept
     {
-        m_previousDrawScale = DrawAdjustment().scale;
+        if (!SetDrawScale(scale))
+        {
+            return false;
+        }
+        m_previousDrawScale = scale;
+        return true;
+    }
+
+    void Model::StartDrawShake(const DrawShakeDesc& desc) noexcept
+    {
+        m_shake = ShakeRun{.desc = desc, .frame = 0, .active = true};
+    }
+
+    void Model::StopDrawShake() noexcept
+    {
+        m_shake.active = false;
+        m_drawOffset = Vector3{0.0f, 0.0f, 0.0f};
+    }
+
+    void Model::StartDrawTremor(const DrawTremorDesc& desc) noexcept
+    {
+        m_tremor = TremorRun{.desc = desc, .elapsed = -1, .active = true};
+    }
+
+    void Model::StopDrawTremor() noexcept
+    {
+        m_tremor.active = false;
+        m_drawTremor = Gfx::TremorCB{};
+    }
+
+    void Model::AdvanceDraw()
+    {
+        if (m_shake.active)
+        {
+            ++m_shake.frame;
+            const Vector3 offset = m_shake.desc.OffsetAt(m_shake.frame);
+            // 有限でないずれは描く形を消すので控えず、前のずれのまま描く
+            if (IsFinite(offset))
+            {
+                m_drawOffset = offset;
+            }
+            // 奥揺れは長さのフレームまで揺れるので、長さの次のフレームで 0 を書いてから止める
+            if (m_shake.frame > m_shake.desc.length)
+            {
+                m_shake.active = false;
+            }
+        }
+        if (m_tremor.active)
+        {
+            ++m_tremor.elapsed;
+            Gfx::TremorCB tremor{};
+            if (m_owner != nullptr)
+            {
+                // 振れ幅はカメラとの距離で決まる
+                const std::optional<CameraPose> pose = GetCameraViewPose(m_owner);
+                if (pose.has_value())
+                {
+                    tremor = MakeTremor(m_tremor.desc, m_tremor.elapsed, m_owner->Root().Position(), *pose);
+                }
+            }
+            // 有限でない震えは描く形を消すので控えず、前の震えのまま描く
+            if (IsFiniteTremor(tremor))
+            {
+                m_drawTremor = tremor;
+            }
+            if (m_tremor.elapsed >= m_tremor.desc.length)
+            {
+                m_tremor.active = false;
+            }
+        }
     }
 
     bool Model::SetLocalScale(const Vector3& scale) noexcept
@@ -159,7 +229,7 @@ namespace NS
 
     Matrix Model::DrawWorldMatrix(float alpha) const noexcept
     {
-        return DrawWorldMatrixWithOffset(alpha, DrawAdjustment().offset);
+        return DrawWorldMatrixWithOffset(alpha, m_drawOffset);
     }
 
     Matrix Model::DrawWorldMatrixWithOffset(float alpha, const Vector3& offset) const noexcept
@@ -181,7 +251,7 @@ namespace NS
         {
             shift = Matrix::CreateTranslation(offset);
         }
-        const Vector3 scale = Vector3::Lerp(m_previousDrawScale, DrawAdjustment().scale, alpha);
+        const Vector3 scale = Vector3::Lerp(m_previousDrawScale, m_drawScale, alpha);
         // 倍率が 1 でも、下端の真ん中へ移して戻す足し引きが下の桁を丸めることがある。倍率の無い間は掛けずに返す
         if (scale == k_NoDrawScale)
         {
@@ -261,7 +331,7 @@ namespace NS
         item.constants.groundWaveCenterZ = context.groundWave.centerZ;
         item.constants.groundWaveRadius = context.groundWave.radius;
         item.constants.groundWaveStrength = context.groundWave.strength;
-        item.constants.tremor = DrawAdjustment().tremor;
+        item.constants.tremor = m_drawTremor;
         item.extraVsCb = m_perObjectVsCb;
         item.extraVsData = m_perObjectVsData;
         item.extraVsSize = m_perObjectVsSize;
@@ -309,8 +379,7 @@ namespace NS
         DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, m_owner->Root().WorldMatrix()));
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
-        const DrawAdjust adjust = DrawAdjustment();
-        const Vector3 scale = Vector3::Max(m_previousDrawScale, adjust.scale);
+        const Vector3 scale = Vector3::Max(m_previousDrawScale, m_drawScale);
         if (scale != k_NoDrawScale)
         {
             const float bottom = out.Center.y - out.Extents.y;
@@ -319,9 +388,9 @@ namespace NS
             out.Extents.z *= scale.z;
             out.Center.y = bottom + out.Extents.y;
         }
-        out.Center.x += adjust.offset.x;
-        out.Center.y += adjust.offset.y;
-        out.Center.z += adjust.offset.z;
+        out.Center.x += m_drawOffset.x;
+        out.Center.y += m_drawOffset.y;
+        out.Center.z += m_drawOffset.z;
         return out;
     }
 } // namespace NS

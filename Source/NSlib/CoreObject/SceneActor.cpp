@@ -314,6 +314,10 @@ namespace NS
         DecideStep();
         StateStep();
         BodyStep();
+        // 揺れと震えは体を動かした後の根で書き、VisualStep の残像が書いた後の姿を写し取る
+        // clang-format off
+        if (m_model) { m_model->AdvanceDraw(); }
+        // clang-format on
         VisualStep();
     }
 

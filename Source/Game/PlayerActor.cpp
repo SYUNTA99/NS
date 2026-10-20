@@ -62,7 +62,7 @@ PlayerActor::PlayerActor() noexcept = default;
 PlayerActor::~PlayerActor() = default;
 void PlayerActor::OnInit()
 {
-    NS::Model* model = CreateClassObj(m_model, this, this);
+    NS::Model* model = CreateClassObj(m_model, this);
     model->SetMaterialRef("Assets/Materials/player.mat");
     model->SetBaseColor(NS::Color{0.5f, 0.5f, 0.5f});
     CreateClassObj(m_appearance, this);
@@ -270,13 +270,13 @@ void PlayerActor::BodyStep()
 
 void PlayerActor::VisualStep()
 {
+    // 写し取る姿は Model が揺れを書いた後で、見た目の部品が回転と倍率を書く前の姿
+    m_resolver->StepGhost(&m_tackleGhost);
     UpdateAnimation();
     // clang-format off
     m_targetMarker->Update(m_charge);
     m_slamArrow->Update(m_charge, m_params.get(), m_collider.get());
     // clang-format on
-    // 震えの振れ幅はカメラとの距離で決まるので、体を動かした後の根の位置で書く
-    m_resolver->WriteTremor(m_collider.get());
     const GL::Player::PlayerMotion motion = Motion();
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
@@ -403,21 +403,6 @@ void PlayerActor::OnDisappear() noexcept
 {
     NS::SceneActor::OnDisappear();
     m_tackleGhost.Unregister();
-}
-
-NS::DrawAdjust PlayerActor::GetDrawAdjust() const noexcept
-{
-    NS::DrawAdjust adjust{};
-    if (m_resolver)
-    {
-        adjust.offset = m_resolver->DrawOffset();
-        adjust.tremor = m_resolver->Tremor();
-    }
-    if (m_appearance)
-    {
-        adjust.scale = m_appearance->DrawScale();
-    }
-    return adjust;
 }
 
 void PlayerActor::InitAfterPlacement()

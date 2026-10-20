@@ -180,7 +180,7 @@ TEST(MapObjMotion, ZeroLengthFreezeStillWaitsForReleaseGrace)
     rock->UpdateMotion();
     EXPECT_FALSE(rock->IsFrozen());
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 0.0f);
-    EXPECT_FLOAT_EQ(rock->GetDrawAdjust().scale.x, 1.0f);
+    EXPECT_FLOAT_EQ(rock->ModelClassObj()->GetDrawScale().x, 1.0f);
 }
 
 TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
@@ -222,12 +222,12 @@ TEST(MapObjMotion, FreezeWithoutSquashLeavesTheDrawScale)
     freeze.squashThickness = 0.8f;
     freeze.squashHeight = 0.7f;
     ASSERT_TRUE(GL::Level::SendMsgTackleFreeze(*rock, freeze));
-    EXPECT_TRUE(rock->GetDrawAdjust().scale == (NS::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_TRUE(rock->ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     for (int step = 0; step < 4; ++step)
     {
         rock->UpdateMotion();
     }
-    EXPECT_TRUE(rock->GetDrawAdjust().scale == (NS::Vector3{1.0f, 1.0f, 1.0f}));
+    EXPECT_TRUE(rock->ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
 }
 
 TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)

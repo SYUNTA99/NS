@@ -85,25 +85,5 @@ namespace GL
         //! @param[in] exponent 減り方。大きいほど早く落ちて長く残る。有限の正でない値は 1 (直線)
         //! @return 0〜1 の倍率
         [[nodiscard]] float MissSkidSpeedScale(int elapsedSteps, int totalSteps, float exponent) noexcept;
-
-        //! @brief 止めの間の横揺れの、frame フレーム目の振れ幅の包みを返す
-        //! @details 振れ幅 × (1 − frame ÷ length)。BodyShakeOffset の大きさはこれを超えない
-        //! @param[in] frame 揺れの何フレーム目か。始まりのフレームが 1
-        //! @param[in] length 揺れのフレーム数。0 以下は揺らさない
-        //! @param[in] amplitude 最初の振れ幅
-        //! @return 包み。frame が 1 より前か length 以降は 0
-        [[nodiscard]] float BodyShakeReach(int frame, int length, float amplitude) noexcept;
-
-        //! 横揺れの符号付きのずれを返す。BodyShakeReach の範囲で弱め、同じ seed・frame では同じ値
-        //! frame は開始を 1 とする。1 未満か length 以降、length が非正なら 0
-        //! firstSign は負なら −、他は +。flipFrames ごとに左右を反転し、1 未満は 1 に補正する
-        [[nodiscard]] float BodyShakeOffset(
-            int frame, int length, float amplitude, NS::uint32 seed, float firstSign, int flipFrames) noexcept;
-
-        //! 押して戻す揺れのずれを返す。同じ seed と押し番号では同じばらつき
-        //! frame は開始を 1 とする。1 未満か length より後、length が非正なら 0
-        //! pushFrames は 1 以上に補正する。returnRatio は押した後の毎フレームの減衰倍率
-        [[nodiscard]] float DepthShakeOffset(
-            int frame, int length, float depth, int pushFrames, float returnRatio, NS::uint32 seed) noexcept;
     } // namespace Level
 } // namespace GL

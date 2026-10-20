@@ -156,7 +156,7 @@ namespace GL
 
             //! @brief タイムラインを 1 フレーム進め、ObserveImpact の結果を一度だけ裁定して、答えを書き直す
             //! @details 新しい当たりで既存の演出を打ち切る。接触前の予測と相手・段が一致した時は同じ時計を続ける。
-            //! 揺れと震えは自分に控え (DrawOffset・Tremor)、残像は ghost へ、カメラ・白・振動は hitReaction へ書く。
+            //! 揺れと震えは持ち主の Model へ頼み、残像は ghost へ、カメラ・白・振動は hitReaction へ書く。
             //! 自機を動かす事 (突進の打ち切り・反動・エフェクト) は答えに書くだけで、呼ぶのは Player
             //! @param[in] params・body・collider 空でないこと
             //! @param[in] model 震えの線で自機の形を挟むのに読む。空なら線を出さない
@@ -181,16 +181,10 @@ namespace GL
             //! 何度呼んでも同じ結果になる。プレイの終わりにも Player が呼び、止めが次のプレイへ残らない
             void CancelImpact(TackleGhost* ghost, NS::HitReaction* hitReaction) noexcept;
 
-            //! @brief 自機の衝撃の震えを、今の根の位置とカメラで組んで控える
-            //! @details 震えの経過は StepState が数える。振れ幅はカメラとの距離で決まるので、体を動かした後に呼ぶ
-            //! 震えの長さの終わりのフレームに振れ幅 0 を控えて止める。震えていない間は何もしない
-            //! @param[in] collider 空でないこと
-            void WriteTremor(const NS::Collider* collider);
-
-            //! 自機を描く時だけのずれ (m)。止めの間の揺れが書く。揺れていなければ (0, 0, 0)
-            [[nodiscard]] const NS::Vector3& DrawOffset() const noexcept { return m_drawOffset; }
-            //! 自機を描く時だけの震え。震えていなければ振れ幅 0
-            [[nodiscard]] const NS::Gfx::TremorCB& Tremor() const noexcept { return m_drawTremor; }
+            //! @brief 自機の残像を 1 フレーム進める
+            //! @details 写し取る姿は Model が揺れを書いた後の姿なので、Player の VisualStep の頭で呼ぶ。
+            //! この固定ステップの StepState で始めた残像は、始めた時に進めたので進めない
+            void StepGhost(TackleGhost* tackleGhost);
 
             //! @brief 突進の玉を掃いて、最初に触れる配置物を探す。段は裁定と同じ面判定を使う
             //! @details 赤の高さへ狙う縦速度も予測する。問い合わせに応じない相手は Wide・横ずれ 1・縦速度 0。
@@ -278,20 +272,19 @@ namespace GL
             [[nodiscard]] NS::CameraTraumaDesc TraumaDescFor(const CameraTraumaEvent& trauma) const noexcept;
             // 横揺れを始める。自機の揺れを控え、相手へ逆向きの揺れを知らせる。カメラが無い世界では揺らさない
             void StartBodyShake(const BodyShakeEvent& shake, int length);
-            void AdvanceBodyShake();
             void StopBodyShake() noexcept;
             // 奥揺れを始める。押す向きが水平に無ければ揺らさない
             void StartDepthShake(const DepthShakeEvent& shake, int length);
-            // 自機の揺れを控えて始めたフレームの分を書き、相手へ other を知らせる
-            void BeginShake(const TackleShakeDesc& self, const TackleShakeDesc& other);
+            // 自機の Model に揺れを頼み、相手へ other を知らせる
+            void BeginShake(const NS::DrawShakeDesc& self, const NS::DrawShakeDesc& other);
             [[nodiscard]] NS::SceneActor* PendingTargetActor() const noexcept;
             // 残像を始める。自機の残像を控え、相手へ知らせる。カメラが無い世界では出さない
             void StartGhost(const GhostEvent& ghost, int length, TackleGhost* tackleGhost);
             void AdvanceGhost(TackleGhost* tackleGhost);
             void StopGhost(TackleGhost* tackleGhost) noexcept;
-            // 衝撃の震えを始める。自機の震えを控え、相手へ同じ衝突点からの震えを知らせる
-            // 裏まで届くフレーム数は length の半分までに抑える
-            void StartTremor(const ImpactTremorEvent& tremor, int length);
+            // 衝撃の震えを始める。自機の Model に震えを頼み、相手へ同じ衝突点からの震えを知らせる
+            // 裏まで届くフレーム数は length の半分までに抑える。collider は空でないこと
+            void StartTremor(const ImpactTremorEvent& tremor, int length, const NS::Collider* collider);
             // 触れた点の真下を中心にした床の波を、length フレームだけ出す
             void StartGroundWave(const GroundWaveEvent& wave, int length);
             // 床の波の半径と強さを今の時計で曲線から引き、場面へ書く。長さの終わりで消す
@@ -302,8 +295,6 @@ namespace GL
             void StopDistortionRing(NS::HitReaction* hitReaction) noexcept;
             // 相手と自機の今の形をまとめて挟む震えの線を、length フレームだけ出す
             void StartShakeLines(const ShakeLinesEvent& lines, int length, const PlayerParts& parts);
-            // 自機の震えの経過を今の時計で数え直す。描く所へ書くのは WriteTremor
-            void AdvanceTremor() noexcept;
             void StopTremor() noexcept;
             // 跳ね返りは同じタイムラインの反動開始時に合わせる
             [[nodiscard]] NS::CameraSinkDesc SinkDescFor(const CameraSinkEvent& sink,
@@ -364,34 +355,15 @@ namespace GL
             float m_pendingPower = 0.0f;                      // この衝突の威力。揺れの最初の振れに掛ける
             float m_pendingMassFactor = 0.0f;                 // この衝突の質量の効き。揺れの最初の振れに掛ける
             NS::uint32 m_pendingShakeSeed = 0;                // この衝突の揺れの、入れ替わりの間隔を選ぶ種
-            struct BodyShakeRun
-            {
-                TackleShakeDesc desc{};
-                int startClock = 0;
-                bool active = false;
-            };
-            BodyShakeRun m_bodyShake;
             // 自機の残像。止めの後も明けの写しが残るので、時計でなく進めた回数で数える
             struct GhostRun
             {
                 TackleGhostDesc desc{};
                 int frame = 0;
                 bool active = false;
-                bool startedThisStep = false; // 始めた時に進めたので、この固定ステップでは StepState が進めない
+                bool startedThisStep = false; // 始めた時に進めたので、この固定ステップでは StepGhost が進めない
             };
             GhostRun m_ghost;
-            // 自機の衝撃の震え。始めた時計の値から数え、長さの終わりで止める
-            struct TremorRun
-            {
-                TackleTremorDesc desc{};
-                int startClock = 0;
-                int elapsed = 0; // 始めたフレームを 0 にした経過のフレーム数
-                bool active = false;
-            };
-            TremorRun m_tremor;
-            // 自機を描く時だけのずれと震え。自機の Model が描く時に PlayerActor を通して引く
-            NS::Vector3 m_drawOffset{0.0f, 0.0f, 0.0f};
-            NS::Gfx::TremorCB m_drawTremor{};
 
             // 出している床の波。場面へ書くのはこの裁定役だけ
             struct GroundWaveRun

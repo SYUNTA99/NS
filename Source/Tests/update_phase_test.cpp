@@ -1,5 +1,4 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/IUse/IUseDrawAdjust.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -92,15 +91,10 @@ namespace
         void StateStep() override { ++updates; }
     };
 
-    class DrawModelActor final : public NS::SceneActor, public NS::IUseDrawAdjust
+    class DrawModelActor final : public NS::SceneActor
     {
-    public:
-        [[nodiscard]] NS::DrawAdjust GetDrawAdjust() const noexcept override { return adjust; }
-
-        NS::DrawAdjust adjust{};
-
     protected:
-        void OnInit() override { CreateClassObj(m_model, this, this); }
+        void OnInit() override { CreateClassObj(m_model, this); }
     };
 
     // 描く側より先に回る自機の段で書く。補間の始点が書く前の値で控えられたかを見る
@@ -111,7 +105,7 @@ namespace
         NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Player; }
 
     protected:
-        void StateStep() override { m_target.adjust.scale = NS::Vector3{2.0f, 2.0f, 2.0f}; }
+        void StateStep() override { (void)m_target.ModelClassObj()->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}); }
 
     private:
         DrawModelActor& m_target;
@@ -291,23 +285,23 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
     scene.SetSimulationPaused(true);
-    drawn->adjust.scale = NS::Vector3{2.0f, 2.0f, 2.0f};
+    ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
 
     scene.OnUpdate();
 
     EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 2.0f);
 }
 
-TEST(InterpolationSnapshot, SnapStartsTheModelAtTheOwnersScale)
+TEST(InterpolationSnapshot, SnapStartsTheModelAtTheNewScale)
 {
     NS::Scene scene;
     DrawModelActor* drawn = scene.SpawnTransient<DrawModelActor>();
     NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
-    drawn->adjust.scale = NS::Vector3{2.0f, 2.0f, 2.0f};
+    ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
     EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
 
-    model->SnapDrawScale();
+    ASSERT_TRUE(model->SnapDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
 
     EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 2.0f);
 }
@@ -500,8 +494,7 @@ TEST(ModelLocalScale, ScalesAroundTheMeshOriginAndMovesTheDrawScalePivot)
     EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._42, 0.0f);
 
     // 倍率を掛けた形の下端は -2。縦に 2 倍すると、形の中心は下端から 2 × 2 の高さへ上がる
-    drawn->adjust.scale = NS::Vector3{1.0f, 2.0f, 1.0f};
-    model->SnapDrawScale();
+    ASSERT_TRUE(model->SnapDrawScale(NS::Vector3{1.0f, 2.0f, 1.0f}));
     EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._42, 2.0f);
 
     EXPECT_FALSE(model->SetLocalScale(NS::Vector3{0.0f, 1.0f, 1.0f}));

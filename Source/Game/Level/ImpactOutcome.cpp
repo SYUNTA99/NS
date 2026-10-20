@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 
 namespace GL
 {
@@ -102,58 +101,6 @@ namespace GL
             }
             const float left = 1.0f - static_cast<float>(std::max(elapsedSteps, 0)) / static_cast<float>(totalSteps);
             return std::pow(left, c);
-        }
-
-        float BodyShakeReach(int frame, int length, float amplitude) noexcept
-        {
-            if (length <= 0 || frame < 1 || frame >= length)
-            {
-                return 0.0f;
-            }
-            return amplitude * (1.0f - static_cast<float>(frame) / static_cast<float>(length));
-        }
-
-        float BodyShakeOffset(
-            int frame, int length, float amplitude, NS::uint32 seed, float firstSign, int flipFrames) noexcept
-        {
-            if (length <= 0 || frame < 1 || frame >= length)
-            {
-                return 0.0f;
-            }
-            const float left = 1.0f - static_cast<float>(frame) / static_cast<float>(length);
-            // 振れ幅だけをばらつかせ、左右の入れ替わりは乱さない。乱すと止まって見えるフレームができる
-            const float spread = 0.7f + 0.3f * static_cast<float>(NS::NoiseHash(frame, seed)) *
-                                            (1.0f / static_cast<float>(std::numeric_limits<NS::uint32>::max()));
-            float sign = 1.0f;
-            if (firstSign < 0.0f)
-            {
-                sign = -1.0f;
-            }
-            // 1 フレームごとの入れ替えは 1 秒に 30 往復で、ちらつきに見える。数フレーム同じ側に留めると揺れと読める
-            const int flip = std::max(flipFrames, 1);
-            if (((frame - 1) / flip) % 2 == 1)
-            {
-                sign = -sign;
-            }
-            // 直線で弱める。2 乗だと止めの半分で 4 分の 1 まで落ち、大きく振れるのが白と火花に隠れる最初だけになる
-            return amplitude * left * spread * sign;
-        }
-
-        float DepthShakeOffset(
-            int frame, int length, float depth, int pushFrames, float returnRatio, NS::uint32 seed) noexcept
-        {
-            if (length <= 0 || frame < 1 || frame > length)
-            {
-                return 0.0f;
-            }
-            const int push = std::max(pushFrames, 1);
-            const int index = (frame - 1) / push;
-            const int since = (frame - 1) % push;
-            const float left = 1.0f - static_cast<float>(index * push) / static_cast<float>(length);
-            // 1 つの押しの間はばらつきを変えない。変えると戻る途中で押し直したように跳ねる
-            const float spread = 0.75f + 0.25f * static_cast<float>(NS::NoiseHash(index, seed)) *
-                                             (1.0f / static_cast<float>(std::numeric_limits<NS::uint32>::max()));
-            return depth * left * spread * std::pow(returnRatio, static_cast<float>(since));
         }
 
         ImpactOutcome ComputeImpactOutcome(const ImpactInput& input, const ImpactTuning& tuning) noexcept

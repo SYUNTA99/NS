@@ -864,8 +864,8 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
         ++clock;
         SCOPED_TRACE(clock);
         previousSelfRoot = selfRootBefore;
-        const NS::Gfx::TremorCB self = player->GetDrawAdjust().tremor;
-        const NS::Gfx::TremorCB other = rock->GetDrawAdjust().tremor;
+        const NS::Gfx::TremorCB self = player->ModelClassObj()->GetDrawTremor();
+        const NS::Gfx::TremorCB other = rock->ModelClassObj()->GetDrawTremor();
         if (clock < 7 || clock >= 13)
         {
             EXPECT_FLOAT_EQ(self.amplitude, 0.0f);
@@ -953,8 +953,8 @@ TEST(ImpactTimelineClock, TargetTremorRatioKeepsTheSameShareOfTheBody)
         }
         const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
-        EXPECT_NEAR(rock->GetDrawAdjust().tremor.amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
-        EXPECT_NEAR(player->GetDrawAdjust().tremor.amplitude,
+        EXPECT_NEAR(rock->ModelClassObj()->GetDrawTremor().amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
+        EXPECT_NEAR(player->ModelClassObj()->GetDrawTremor().amplitude,
                     MetersForPixels(*pose, player->Root().Position(), 3.0f),
                     1.0e-5f);
         depths.push_back((rock->Root().Position() - pose->position).Length());
@@ -988,7 +988,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
         player->Update(false);
         rock->Update();
         TickHitDirectors(*player);
-        const float selfAmplitude = player->GetDrawAdjust().tremor.amplitude;
+        const float selfAmplitude = player->ModelClassObj()->GetDrawTremor().amplitude;
         if (!(selfAmplitude > 0.0f))
         {
             continue;
@@ -996,7 +996,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
         const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(selfAmplitude, MetersForPixels(*pose, player->Root().Position(), 3.0f) * 0.5f, 0.00001f);
-        EXPECT_NEAR(rock->GetDrawAdjust().tremor.amplitude,
+        EXPECT_NEAR(rock->ModelClassObj()->GetDrawTremor().amplitude,
                     MetersForPixels(*pose, rock->Root().Position(), 3.0f) * 0.5f,
                     0.00001f);
         return;
@@ -1218,8 +1218,8 @@ TEST(ImpactTimelineClock, BodyShakeSwingsBothBodiesOppositeAlongTheScreenSide)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Vector3 self = player->GetDrawAdjust().offset;
-        const NS::Vector3 other = rock->GetDrawAdjust().offset;
+        const NS::Vector3 self = player->ModelClassObj()->GetDrawOffset();
+        const NS::Vector3 other = rock->ModelClassObj()->GetDrawOffset();
         if (clock >= 1 && clock <= 5)
         {
             // 画面の横の向きだけに、逆向きに揺れる
@@ -1291,18 +1291,18 @@ TEST(ImpactTimelineClock, DepthShakePushesEachBodyAlongTheForceItTook)
         }
         ++clock;
         SCOPED_TRACE(clock);
-        const NS::Vector3 self = player->GetDrawAdjust().offset;
-        const NS::Vector3 other = rock->GetDrawAdjust().offset;
+        const NS::Vector3 self = player->ModelClassObj()->GetDrawOffset();
+        const NS::Vector3 other = rock->ModelClassObj()->GetDrawOffset();
         if (clock >= 1 && clock <= 6)
         {
             const NS::uint32 seed = player->Resolver().Answer().lastImpact.sequence;
             // 真正面から当てたので、受けた力の向きは +z
             EXPECT_NEAR(other.x, 0.0f, 1.0e-5f);
             EXPECT_NEAR(other.y, 0.0f, 1.0e-6f);
-            EXPECT_NEAR(other.z, DepthShakeOffset(clock, 6, 1.2f, 2, 0.45f, seed), 1.0e-5f);
+            EXPECT_NEAR(other.z, NS::DepthShakeOffset(clock, 6, 1.2f, 2, 0.45f, seed), 1.0e-5f);
             EXPECT_NEAR(self.x, 0.0f, 1.0e-5f);
             EXPECT_NEAR(self.y, 0.0f, 1.0e-6f);
-            EXPECT_NEAR(self.z, -DepthShakeOffset(clock, 6, 0.8f, 2, 0.45f, seed), 1.0e-5f);
+            EXPECT_NEAR(self.z, -NS::DepthShakeOffset(clock, 6, 0.8f, 2, 0.45f, seed), 1.0e-5f);
             EXPECT_GT(other.z, 0.0f);
             EXPECT_LT(self.z, 0.0f);
         }
