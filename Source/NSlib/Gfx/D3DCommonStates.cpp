@@ -26,60 +26,6 @@ namespace NS
             return m_states != nullptr;
         }
 
-        ID3D11BlendState* D3DCommonStates::Opaque() const noexcept
-        {
-            if (m_states)
-            {
-                return m_states->Opaque();
-            }
-            return nullptr;
-        }
-
-        ID3D11BlendState* D3DCommonStates::AlphaBlend() const noexcept
-        {
-            if (m_states)
-            {
-                return m_states->AlphaBlend();
-            }
-            return nullptr;
-        }
-
-        ID3D11DepthStencilState* D3DCommonStates::DepthDefault() const noexcept
-        {
-            if (m_states)
-            {
-                return m_states->DepthDefault();
-            }
-            return nullptr;
-        }
-
-        ID3D11DepthStencilState* D3DCommonStates::DepthNone() const noexcept
-        {
-            if (m_states)
-            {
-                return m_states->DepthNone();
-            }
-            return nullptr;
-        }
-
-        ID3D11RasterizerState* D3DCommonStates::CullCounterClockwise() const noexcept
-        {
-            if (m_states)
-            {
-                return m_states->CullCounterClockwise();
-            }
-            return nullptr;
-        }
-
-        ID3D11RasterizerState* D3DCommonStates::CullClockwise() const noexcept
-        {
-            if (m_states)
-            {
-                return m_states->CullClockwise();
-            }
-            return nullptr;
-        }
-
         ID3D11SamplerState* D3DCommonStates::LinearWrap() const noexcept
         {
             if (m_states)

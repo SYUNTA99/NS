@@ -19,22 +19,14 @@ namespace NS
     {
         class D3DDevice;
 
-        //! 所有は D3DDevice。DirectXTK の CommonStates を包む
+        //! 所有は D3DDevice。DirectXTK の CommonStates のサンプラーだけを包む。
+        //! 混ぜ方・深度・面の捨て方は D3DPipeline が作る
         class D3DCommonStates : public NonCopyable
         {
         public:
             ~D3DCommonStates();
 
             [[nodiscard]] bool IsValid() const noexcept;
-
-            [[nodiscard]] ID3D11BlendState* Opaque() const noexcept;     //!< 不透明
-            [[nodiscard]] ID3D11BlendState* AlphaBlend() const noexcept; //!< アルファブレンド
-
-            [[nodiscard]] ID3D11DepthStencilState* DepthDefault() const noexcept; //!< 深度テスト＋書き込みあり
-            [[nodiscard]] ID3D11DepthStencilState* DepthNone() const noexcept;    //!< 深度テスト＋書き込みなし
-
-            [[nodiscard]] ID3D11RasterizerState* CullCounterClockwise() const noexcept; //!< 反時計回りの面をカリング
-            [[nodiscard]] ID3D11RasterizerState* CullClockwise() const noexcept;        //!< 時計回りの面をカリング
 
             [[nodiscard]] ID3D11SamplerState* LinearWrap() const noexcept;  //!< 線形補間＋UV繰り返し
             [[nodiscard]] ID3D11SamplerState* LinearClamp() const noexcept; //!< 線形補間＋端で固定
