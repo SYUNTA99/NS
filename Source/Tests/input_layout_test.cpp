@@ -187,3 +187,23 @@ TEST(InputLayout, ReloadWithChangedInputsRebuildsTheLayout)
     ASSERT_NE(mesh->InputLayout(), nullptr);
     EXPECT_NE(mesh->InputLayout(), before.Get());
 }
+
+// 番号は中身だけで決まり、作った順や数に頼らない。同じ中身のシェーダーは何度作っても同じ番号になる
+TEST(InputLayout, SameBytecodeGetsTheSameId)
+{
+    const ScopedWarpGpu gpu;
+    if (!gpu.Valid())
+    {
+        GTEST_SKIP() << "WARP の描画装置を作れない";
+    }
+    const ScopedTempDirectory directory;
+    const std::string path = directory.File("same.vs.hlsl");
+    ASSERT_TRUE(WriteText(path, k_PositionNormalVs));
+    const std::unique_ptr<NS::Gfx::D3DShader> first = NS::Gfx::D3DShader::Create(path);
+    const std::unique_ptr<NS::Gfx::D3DShader> second = NS::Gfx::D3DShader::Create(path);
+    ASSERT_FALSE(first->IsUsingFallback());
+    ASSERT_FALSE(second->IsUsingFallback());
+
+    EXPECT_NE(first->BytecodeId(), 0u);
+    EXPECT_EQ(first->BytecodeId(), second->BytecodeId());
+}

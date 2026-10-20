@@ -30,7 +30,8 @@ namespace NS
 
         //! @brief 描く段がこのシェーダーで描けるか。どの段も描く度にこれで決める
         //! @details 読めずにピンクの代わりへ落ちた物も使えると答え、書き間違いを画面のピンクで見せる。
-        //! 読めなかった時の ERROR は D3DShader が出す。作る時に決めた答えを持つと、読み直しが届かない
+        //! 読めなかった時の ERROR は D3DShader が出す。作る時に決めた答えを持つと、読み直しが届かない。
+        //! 頂点の番号で形を作る頂点シェーダー (全画面の三角形・画面の矩形) は、これでなく CanDrawFromVertexId で見る
         //! @return 指していて中身がある場合 true、それ以外の場合は false
         [[nodiscard]] inline bool IsUsable(const D3DShader* shader) noexcept
         {

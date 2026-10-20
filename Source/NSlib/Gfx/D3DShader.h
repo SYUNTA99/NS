@@ -99,7 +99,7 @@ namespace NS
             [[nodiscard]] std::span<const std::byte> VertexShaderBytecode() const noexcept;
 
             //! @brief 今の中身の番号。中身を持たない間は 0
-            //! @details コンパイルに成功する度と代わりのピンクへ落ちた時に、プロセスの中で重ならない番号へ変わる。
+            //! @details バイトコードの入力シグネチャから求める。入力が変われば番号も変わり、入力が同じなら別のシェーダーでも同じ番号。
             //! 入力レイアウトのようにバイトコードから作る物は、作った時の番号と比べて作り直すかを決める
             [[nodiscard]] uint64 BytecodeId() const noexcept;
 
