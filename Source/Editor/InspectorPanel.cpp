@@ -334,7 +334,6 @@ namespace NS
                 {
                     ImGui::TextDisabled("見るだけ (.mat に書けないマテリアル)");
                 }
-                ImGui::TextDisabled("基本の色は、ドラッグでアクターに付けた時にアクターへ写す色");
                 ImGui::Separator();
                 ImGui::BeginDisabled(!writable);
                 const ValueEditResult edit = DrawReflectedValue(material, *material->GetReflection());

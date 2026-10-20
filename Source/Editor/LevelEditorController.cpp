@@ -1862,7 +1862,6 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
 
     mesh->SetMaterialRef(*stored);
     FinishFieldWrite(*go, NS::FieldType::Asset);
-    mesh->SetBaseColor(material->BaseColor());
 
     std::optional<nlohmann::json> after = m_applier.CaptureObject(m_selectedObjectId);
     if (before && after && !(*before == *after))

@@ -237,7 +237,7 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
         editor.EnterPlay();
         NS::SceneActor* actor = scene.Objects().FindByObjectId(id);
         ASSERT_NE(actor, nullptr);
-        actor->ModelClassObj()->SetBaseColor(NS::Color{0.2f, 0.4f, 0.6f, 1.0f});
+        actor->ModelClassObj()->SetColorOverride(NS::Color{0.2f, 0.4f, 0.6f, 1.0f});
         const NS::ClassObjInfo* modelRow = nullptr;
         NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
             if (part == actor->ModelClassObj())
@@ -256,6 +256,42 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
         EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
         EXPECT_TRUE(editor.Editor().PerformUndo());
         EXPECT_EQ(colorOf(), colorBefore);
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// ドラッグでマテリアルを付けても色の上書きは変えない。空なら付けたマテリアルの色で描く
+TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "マテリアルと色の上書きの試し";
+    desc.window.size = {160, 90};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
+        NS::Scene scene;
+        scene.SetSimulationEnabled(false);
+        LevelEditorController editor(&scene);
+        const std::string stone = "Assets/Materials/stone.mat";
+        const std::string stonePath = NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), stone);
+        const NS::Vector3 stoneColor = app.Assets().LoadMaterial(stone)->BaseColor().ToVector3();
+        ASSERT_EQ(stoneColor, (NS::Vector3{0.6f, 0.6f, 0.65f}));
+
+        editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
+        NS::Model* overridden = editor.SelectedObjectActor()->ModelClassObj();
+        overridden->SetColorOverride(NS::Color{0.1f, 0.2f, 0.3f});
+        ASSERT_TRUE(editor.ApplyMaterialToSelected(stonePath));
+        ASSERT_TRUE(overridden->ColorOverride().has_value());
+        EXPECT_EQ(overridden->ColorOverride()->ToVector3(), (NS::Vector3{0.1f, 0.2f, 0.3f}));
+        EXPECT_EQ(overridden->DrawColor().ToVector3(), (NS::Vector3{0.1f, 0.2f, 0.3f}));
+
+        editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
+        NS::Model* empty = editor.SelectedObjectActor()->ModelClassObj();
+        empty->SetColorOverride(std::nullopt);
+        ASSERT_TRUE(editor.ApplyMaterialToSelected(stonePath));
+        EXPECT_FALSE(empty->ColorOverride().has_value());
+        EXPECT_EQ(empty->DrawColor().ToVector3(), stoneColor);
     }));
     EXPECT_EQ(app.Run(), 0);
 }
