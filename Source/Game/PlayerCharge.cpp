@@ -185,7 +185,8 @@ void PlayerActor::AdvanceCharge(float dt)
     }
     SetMaxSpeedScale(scale);
 
-    if (judge.JustStartedCharging())
+    // 突進の間の水平は突進の側だけが書く。ここで 0 にすると通常突進が次の移動で進めずに打ち切られる
+    if (judge.JustStartedCharging() && !IsBodySlamming())
     {
         // 縦は残す。空中で溜めたフレームに 0 を書くと落下が一瞬止まって引っかかる
         const NS::Vector3 velocity = m_body->Velocity();

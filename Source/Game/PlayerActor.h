@@ -424,6 +424,9 @@ private:
     void RestoreOnLanding() noexcept;
     //! 接地している間は毎フレーム、コヨーテの猶予と空中の突進の使い切りを戻す
     void RestoreWhileGrounded() noexcept;
+    //! @brief ジャンプの縦の初速を与え、跳べる回数を 1 減らし、コヨーテと先行入力を使い切る
+    //! @details 地面からの Jump と縁からの LedgeJump が呼ぶ。跳べるかは呼び手が決める
+    void LaunchJump() noexcept;
     //! 突進の発動の判定を通れば突進を出す。状態機械を進める前に呼ぶ
     void PrepareStateStep();
     //! 状態機械を進めた後の控えの更新。丸まりを解く判定・長押しの控え・押下の消費・要求と狙いの経過を進める

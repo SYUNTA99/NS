@@ -165,12 +165,18 @@ void PlayerActor::Jump(float) noexcept
     if (GL::Player::PlayerJudgeJump::Judge(
             body.IsGrounded(), m_coyoteTimer, m_jumpsRemaining, m_input->JumpPressed(), m_bufferTimer))
     {
-        body.SetVerticalVelocity(m_params->m_jumpImpulse);
-        --m_jumpsRemaining;
-        m_bufferTimer = 0.0f;
-        m_coyoteTimer = 0.0f;
-        m_playerEvents.onJump.Invoke();
+        LaunchJump();
     }
+}
+
+void PlayerActor::LaunchJump() noexcept
+{
+    m_body->SetVerticalVelocity(m_params->m_jumpImpulse);
+    // 縁からは跳べる回数を見ずに跳ぶので、0 から先へは減らさない
+    m_jumpsRemaining = std::max(0, m_jumpsRemaining - 1);
+    m_bufferTimer = 0.0f;
+    m_coyoteTimer = 0.0f;
+    m_playerEvents.onJump.Invoke();
 }
 
 void PlayerActor::CutJumpRelease() noexcept
@@ -429,11 +435,9 @@ bool PlayerActor::LedgeJump() noexcept
         return false;
     }
 
-    NS::Body& body = *m_body;
-    body.SetVerticalVelocity(m_params->m_jumpImpulse);
-    body.SetGrounded(false);
+    LaunchJump();
+    m_body->SetGrounded(false);
     (void)m_states->Change<GL::Player::FallPlayerState>();
-    m_playerEvents.onJump.Invoke();
     return true;
 }
 
