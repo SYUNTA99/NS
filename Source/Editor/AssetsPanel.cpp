@@ -12,8 +12,10 @@
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DTexture.h"
+#include "NSlib/Core/Logger.h"
 #include "NSlib/Windows/Filesystem.h"
 
+#include <optional>
 #include <string>
 #include <algorithm>
 
@@ -73,16 +75,20 @@ namespace NS
                 }
                 return nullptr;
             }
+            const std::optional<std::string> name = OS::FileSystem::RelativeUnder(OS::FileSystem::ContentRoot(), file);
+            if (!name)
+            {
+                NS_LOG_ERROR(App, "素材 {} が ContentRoot の外にあるので下見を作らない", file);
+                return nullptr;
+            }
             Object* asset = nullptr;
-            const std::string root = OS::FileSystem::Normalize(OS::FileSystem::ContentRoot());
-            const std::string name = OS::FileSystem::Normalize(file).substr(root.size() + 1);
             if (IsMaterialAssetPath(file))
             {
-                asset = assets.LoadMaterial(name);
+                asset = assets.LoadMaterial(*name);
             }
             else
             {
-                asset = assets.LoadMesh(name);
+                asset = assets.LoadMesh(*name);
             }
             const std::optional<Gfx::DrawItem> item = MakeAssetPreviewItem(*asset);
             if (!item)

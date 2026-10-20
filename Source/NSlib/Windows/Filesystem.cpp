@@ -680,5 +680,30 @@ namespace NS
 
             return combined;
         }
+
+        std::optional<std::string> FileSystem::RelativeUnder(std::string_view base, std::string_view path)
+        {
+            const std::string baseNorm = Normalize(base);
+            const std::string pathNorm = Normalize(path);
+            if (baseNorm.empty() || pathNorm.size() <= baseNorm.size())
+            {
+                return std::nullopt;
+            }
+            if (::_strnicmp(pathNorm.c_str(), baseNorm.c_str(), baseNorm.size()) != 0)
+            {
+                return std::nullopt;
+            }
+            // 畳んだ後に区切りで終わるのはドライブの根 (C:/) だけ。ほかは区切りを見ないと C:/NS が C:/NSEvil を通す
+            std::size_t start = baseNorm.size();
+            if (baseNorm.back() != '/')
+            {
+                if (pathNorm[start] != '/')
+                {
+                    return std::nullopt;
+                }
+                ++start;
+            }
+            return pathNorm.substr(start);
+        }
     } // namespace OS
 } // namespace NS

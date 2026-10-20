@@ -68,18 +68,6 @@ namespace
         return *it;
     }
 
-    std::string RelativeToRoot(std::string_view absPath, std::string_view root)
-    {
-        const std::string absNorm = NS::OS::FileSystem::Normalize(absPath);
-        const std::string rootNorm = NS::OS::FileSystem::Normalize(root);
-        if (absNorm.size() > rootNorm.size() + 1 &&
-            ::_strnicmp(absNorm.c_str(), rootNorm.c_str(), rootNorm.size()) == 0 && absNorm[rootNorm.size()] == '/')
-        {
-            return absNorm.substr(rootNorm.size() + 1);
-        }
-        return absNorm;
-    }
-
     // カメラの視錐台を描く時の far。vcam の既定 1000 のままだと錐台が画面に収まらないので近くで切る
     constexpr float k_CameraGizmoFar = 8.0f;
 
@@ -349,13 +337,19 @@ bool LevelEditorController::SetSkyboxPath(std::string_view path)
     std::string normalized;
     if (!path.empty())
     {
-        const std::string root = NS::OS::FileSystem::Normalize(NS::OS::FileSystem::ContentRoot());
+        const std::string root = NS::OS::FileSystem::ContentRoot();
         const std::optional<std::string> resolved = NS::OS::FileSystem::ResolveUnder(root, path);
         if (!resolved || !NS::Editor::IsSkyboxAssetPath(*resolved))
         {
             return false;
         }
-        normalized = resolved->substr(root.size() + 1);
+        std::optional<std::string> relative = NS::OS::FileSystem::RelativeUnder(root, *resolved);
+        if (!relative)
+        {
+            NS_LOG_ERROR(App, "空の素材 {} を ContentRoot からの道にできないので変えない", *resolved);
+            return false;
+        }
+        normalized = std::move(*relative);
     }
     if (normalized != m_scene->SkyboxPath())
     {
@@ -1499,9 +1493,15 @@ void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
 void LevelEditorController::AddMeshParts(std::string_view meshPath)
 {
     // 参照は ContentRoot 相対で持つ。build 時にこの文字列から実体を引く
-    const std::string meshRef = RelativeToRoot(meshPath, NS::OS::FileSystem::ContentRoot());
+    const std::optional<std::string> meshRef =
+        NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), meshPath);
+    if (!meshRef)
+    {
+        NS_LOG_ERROR(App, "メッシュ {} が ContentRoot の外にあるので置かない", meshPath);
+        return;
+    }
 
-    nlohmann::json object = NS::Editor::MakeMeshPartsPrototype(meshRef);
+    nlohmann::json object = NS::Editor::MakeMeshPartsPrototype(*meshRef);
     NS::SetObjectPosition(object, m_editorCamera.Center());
     NS::SetObjectJsonName(object, NS::OS::FileSystem::Stem(meshPath));
     PushCreateObject(std::move(object));
@@ -1890,8 +1890,14 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     }
 
     // .mat パスは ContentRoot 相対で持つ。材質の正データは欄の名前なので、名前を書いて欄から読み直す
-    const std::string stored = RelativeToRoot(matPath, NS::OS::FileSystem::ContentRoot());
-    const NS::Material* material = app->Assets().LoadMaterial(stored);
+    const std::optional<std::string> stored =
+        NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), matPath);
+    if (!stored)
+    {
+        NS_LOG_ERROR(App, "マテリアル {} が ContentRoot の外にあるので付けない", matPath);
+        return false;
+    }
+    const NS::Material* material = app->Assets().LoadMaterial(*stored);
     if (material->IsEmpty())
     {
         return false;
@@ -1900,7 +1906,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     // 差替前を忠実に写す。matRef を実体へ書き込み、差替後との差分を 取り消し 履歴へ積む
     std::optional<nlohmann::json> before = m_applier.CaptureObject(m_selectedObjectId);
 
-    mesh->SetMaterialRef(stored);
+    mesh->SetMaterialRef(*stored);
     FinishFieldWrite(*go, NS::FieldType::Asset);
     mesh->SetBaseColor(material->BaseColor());
 
@@ -1956,23 +1962,32 @@ namespace
 
 void LevelEditorController::SelectAsset(std::string_view assetPath)
 {
+    std::optional<std::string> stored = NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), assetPath);
+    if (!stored)
+    {
+        NS_LOG_ERROR(App, "素材 {} が ContentRoot の外にあるので選ばない", assetPath);
+        return;
+    }
+
     ClearAssetSelection();
     SelectObjectById(NS::k_NoObjectId);
 
-    const std::string stored = RelativeToRoot(assetPath, NS::OS::FileSystem::ContentRoot());
-    const NS::Object* asset = LoadSelectableAsset(stored);
+    const NS::Object* asset = LoadSelectableAsset(*stored);
     if (asset == nullptr || !IsReadable(*asset))
     {
-        NS_LOG_WARN(App, "素材 {} を読めないので選ばない", stored);
+        NS_LOG_WARN(App, "素材 {} を読めないので選ばない", *stored);
         return;
     }
-    m_selectedAssetPath = stored;
+    m_selectedAssetPath = std::move(*stored);
 }
 
 bool LevelEditorController::IsAssetSelected(std::string_view assetPath) const
 {
-    return !m_selectedAssetPath.empty() &&
-           RelativeToRoot(assetPath, NS::OS::FileSystem::ContentRoot()) == m_selectedAssetPath;
+    if (m_selectedAssetPath.empty())
+    {
+        return false;
+    }
+    return NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), assetPath) == m_selectedAssetPath;
 }
 
 NS::Object* LevelEditorController::SelectedAsset()

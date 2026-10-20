@@ -1,5 +1,6 @@
 #include "Editor/AssetPicker.h"
 
+#include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/Windows/Filesystem.h"
 
@@ -7,6 +8,7 @@
 #include <array>
 #include <cctype>
 #include <cstring>
+#include <optional>
 #include <utility>
 
 namespace NS
@@ -28,6 +30,23 @@ namespace NS
                     return static_cast<char>(std::tolower(c));
                 });
                 return extension;
+            }
+
+            bool IsAssetOfKind(AssetKind kind, std::string_view path)
+            {
+                if (kind == AssetKind::Material)
+                {
+                    return IsMaterialAssetPath(path);
+                }
+                if (kind == AssetKind::Effect)
+                {
+                    return LowerExtension(path) == ".efkefc";
+                }
+                if (kind == AssetKind::Mesh || kind == AssetKind::Model || kind == AssetKind::Animation)
+                {
+                    return IsModelAssetPath(path);
+                }
+                return true;
             }
 
             bool IsCubemapDds(std::string_view path)
@@ -90,9 +109,14 @@ namespace NS
                 {
                     continue;
                 }
-                const std::string relative = candidate.substr(root.size() + 1);
-                options.push_back(AssetOption{relative, OS::FileSystem::FileName(candidate),
-                                              OS::FileSystem::ParentDirectory(relative)});
+                const std::optional<std::string> relative = OS::FileSystem::RelativeUnder(root, candidate);
+                if (!relative)
+                {
+                    NS_LOG_ERROR(App, "空の素材 {} が ContentRoot の外にあるので候補に出さない", candidate);
+                    continue;
+                }
+                options.push_back(AssetOption{*relative, OS::FileSystem::FileName(candidate),
+                                              OS::FileSystem::ParentDirectory(*relative)});
             }
             std::sort(options.begin(), options.end(), [](const AssetOption& a, const AssetOption& b) {
                 return a.value < b.value;
@@ -143,15 +167,17 @@ namespace NS
             }
             for (const std::string& file : OS::FileSystem::ListFilesRecursive(directory))
             {
-                const std::string extension = LowerExtension(file);
-                if ((kind == AssetKind::Material && !IsMaterialAssetPath(file)) ||
-                    (kind == AssetKind::Effect && extension != ".efkefc") ||
-                    ((kind == AssetKind::Mesh || kind == AssetKind::Model || kind == AssetKind::Animation) &&
-                     !IsModelAssetPath(file)))
+                if (!IsAssetOfKind(kind, file))
                 {
                     continue;
                 }
-                const std::string relative = file.substr(root.size() + 1);
+                const std::optional<std::string> found = OS::FileSystem::RelativeUnder(root, file);
+                if (!found)
+                {
+                    NS_LOG_ERROR(App, "素材 {} が ContentRoot の外にあるので候補に出さない", file);
+                    continue;
+                }
+                const std::string& relative = *found;
                 const std::string label = OS::FileSystem::FileName(relative);
                 const std::string location = OS::FileSystem::ParentDirectory(relative);
                 if (kind == AssetKind::Animation)
@@ -173,8 +199,15 @@ namespace NS
                 }
                 if (kind == AssetKind::Effect)
                 {
-                    std::string name = file.substr(directory.size() + 1);
-                    name.resize(name.size() - extension.size());
+                    // エフェクトは Effects のフォルダからの道を、拡張子を除いて名前にする
+                    const std::optional<std::string> underEffects = OS::FileSystem::RelativeUnder(directory, file);
+                    if (!underEffects)
+                    {
+                        NS_LOG_ERROR(App, "エフェクト {} が Effects の外にあるので候補に出さない", file);
+                        continue;
+                    }
+                    std::string name = *underEffects;
+                    name.resize(name.size() - OS::FileSystem::Extension(name).size());
                     options.push_back(AssetOption{name, name, location});
                     continue;
                 }
