@@ -80,7 +80,44 @@ namespace NS
             }
             return std::optional<nlohmann::json>{std::in_place, *it};
         }
+
+        // 配置物が値を持つ欄か。根の部品の欄・参照の欄・上書きの印の付いた欄で、ほかの欄の値は .actor だけが持つ
+        [[nodiscard]] bool IsPlacementField(const SceneActor& actor,
+                                            const Object* part,
+                                            const FieldDesc& field) noexcept
+        {
+            return part == &actor.Root() || field.type == FieldType::ActorRef || field.placement;
+        }
     } // namespace
+
+    nlohmann::json KeepPlacementFields(const SceneActor& actor, const nlohmann::json& object)
+    {
+        nlohmann::json out = object;
+        ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
+            nlohmann::json* fields = ClassObjFields(out, row.key);
+            if (fields == nullptr)
+            {
+                return;
+            }
+            for (nlohmann::json::iterator entry = fields->begin(); entry != fields->end();)
+            {
+                const FieldDesc* field = FindField(part->GetReflection(), entry.key());
+                if (field == nullptr || IsPlacementField(actor, part, *field))
+                {
+                    ++entry;
+                    continue;
+                }
+                NS_LOG_WARN(Scene,
+                            "{} の配置物の {} の欄 {} は上書きの印が無いので読まない。値は .actor {} の物を使う",
+                            actor.ClassName(),
+                            row.key,
+                            entry.key(),
+                            actor.ActorFileName());
+                entry = fields->erase(entry);
+            }
+        });
+        return out;
+    }
 
     std::string_view ActorFileClass(const nlohmann::json& actorFile) noexcept
     {
@@ -296,12 +333,13 @@ namespace NS
     nlohmann::json ExpandObjectJson(const nlohmann::json& object)
     {
         const SceneActor& baseline = ActorFileLibrary::Get().Baseline(ObjectJsonActorFile(object));
+        const nlohmann::json placement = KeepPlacementFields(baseline, object);
         nlohmann::json full = object;
         nlohmann::json& target = ObjectJsonClassObjs(full);
         target = nlohmann::json::object();
         ForEachReflectedClassObj(baseline, [&](const ClassObjInfo& field, const Object* classObj) {
             nlohmann::json fields = SerializeClassObjFields(*classObj);
-            if (const nlohmann::json* source = ClassObjFields(object, field.key))
+            if (const nlohmann::json* source = ClassObjFields(placement, field.key))
             {
                 fields.update(*source);
             }
@@ -328,6 +366,13 @@ namespace NS
             const nlohmann::json defaults = SerializeClassObjFields(*classObj);
             for (nlohmann::json::iterator field = fields->begin(); field != fields->end();)
             {
+                // 印の無い欄は、アクターの値が .actor と違っても配置物に書かない
+                const FieldDesc* desc = FindField(classObj->GetReflection(), field.key());
+                if (desc != nullptr && !IsPlacementField(baseline, classObj, *desc))
+                {
+                    field = fields->erase(field);
+                    continue;
+                }
                 const nlohmann::json::const_iterator original = defaults.find(field.key());
                 if (original != defaults.end() && *original == field.value())
                 {

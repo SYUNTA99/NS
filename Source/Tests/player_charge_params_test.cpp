@@ -100,22 +100,20 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
               static_cast<int>(std::lround(0.5f / NS::OS::FrameTimer::FixedDelta())));
 }
 
-TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
+// .actor が持つ形 (欄を書き出した JSON) を別の自機へ読むと、カーブも同じ値になる
+TEST(PlayerChargeParams, CurvesSurviveWritingAndReadingTheFields)
 {
-    NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(entry, "PlayerActor");
-    NS::SetObjectJsonId(entry, 1);
-    entry["classObjs"] = {
-        {"Params", {{"チャージ減速率", 0.25f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}}};
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
-    scene.ResetFromJson(doc);
-    scene.ResetFromJson(scene.ToJson());
-    const PlayerActor* player = static_cast<const PlayerActor*>(scene.Objects().FindByObjectId(1));
-    ASSERT_NE(player, nullptr);
-    EXPECT_FLOAT_EQ(player->Params().ChargingSpeedScale(), 0.75f);
-    EXPECT_FLOAT_EQ(player->Params().ChargeFactorFor(0.5f), 2.0f);
+    const std::unique_ptr<PlayerActor> written = NS::CreateActor<PlayerActor>();
+    ASSERT_EQ(NS::ApplyJsonFields(
+                  written->Params(),
+                  {{"チャージ減速率", 0.25f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}),
+              0u);
+    const nlohmann::json fields = NS::SerializeClassObjFields(written->Params());
+
+    const std::unique_ptr<PlayerActor> read = NS::CreateActor<PlayerActor>();
+    ASSERT_EQ(NS::ApplyJsonFields(read->Params(), fields), 0u);
+    EXPECT_FLOAT_EQ(read->Params().ChargingSpeedScale(), 0.75f);
+    EXPECT_FLOAT_EQ(read->Params().ChargeFactorFor(0.5f), 2.0f);
 }
 
 // 消した欄の鍵が同梱の種類の既定値と場面に残ると、読むたびに知らない鍵として捨てられる

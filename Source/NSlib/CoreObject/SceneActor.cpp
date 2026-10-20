@@ -217,7 +217,7 @@ namespace NS
         ApplyActorFile(*this);
         if (info != nullptr && info->placement != nullptr)
         {
-            ApplyObjectClassObjs(*this, *info->placement);
+            ApplyObjectClassObjs(*this, KeepPlacementFields(*this, *info->placement));
         }
         // 素材の参照は欄にある。欄を書き終えてから読む
         ReloadAssets();

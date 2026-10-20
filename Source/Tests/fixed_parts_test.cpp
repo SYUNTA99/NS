@@ -171,7 +171,8 @@ namespace
     public:
         float value = 0.0f;
         NS_REFLECT_BEGIN(ReflectedProbePart, NS::Object)
-        NS_FIELD(value, "値")
+        // 配置物の保存と読み直しで、部品の鍵ごとに値が戻るかを見るので、配置物で上書きできる欄にする
+        NS_PLACEMENT_FIELD(value, "値")
         NS_REFLECT_END()
     };
 
@@ -434,23 +435,21 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 
 TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
 {
-    const nlohmann::json source = {
-        {"actor", "PropActor"}, {"id", 7u}, {"classObjs", {{"Collision", {{"半径", 2.0f}}}}}};
+    const nlohmann::json source = {{"actor", "PropActor"}, {"id", 7u}, {"classObjs", {{"Params", {{"質量", 2.0f}}}}}};
     NS::Scene scene;
     std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(source, scene);
     ASSERT_NE(actor, nullptr);
-    ASSERT_NE(actor->CollisionClassObj(), nullptr);
-    const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
-    ASSERT_NE(sphere, nullptr);
-    EXPECT_FLOAT_EQ(sphere->Radius(), 2.0f);
+    const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor.get());
+    ASSERT_NE(prop, nullptr);
+    EXPECT_FLOAT_EQ(prop->Params().Mass(), 2.0f);
     const nlohmann::json saved = NS::ObjectToJson(*actor);
     EXPECT_FALSE(saved.contains("components"));
     ASSERT_TRUE(saved.contains("classObjs"));
     ASSERT_TRUE(saved["classObjs"].is_object());
-    EXPECT_FLOAT_EQ(saved["classObjs"]["Collision"]["半径"].get<float>(), 2.0f);
-    EXPECT_FALSE(saved["classObjs"]["Collision"].contains("id"));
-    EXPECT_FALSE(saved["classObjs"]["Collision"].contains("type"));
-    EXPECT_FALSE(saved["classObjs"]["Collision"].contains("fields"));
+    EXPECT_FLOAT_EQ(saved["classObjs"]["Params"]["質量"].get<float>(), 2.0f);
+    EXPECT_FALSE(saved["classObjs"]["Params"].contains("id"));
+    EXPECT_FALSE(saved["classObjs"]["Params"].contains("type"));
+    EXPECT_FALSE(saved["classObjs"]["Params"].contains("fields"));
     EXPECT_TRUE(saved["classObjs"]["Transform"].contains("位置"));
 }
 

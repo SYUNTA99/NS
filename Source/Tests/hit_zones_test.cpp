@@ -12,6 +12,7 @@
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -73,6 +74,16 @@ namespace
         return result;
     }
 
+    // parts の部品ごとの欄を、読んだ後の actor へ書く。HitZones などの欄は .actor だけが持つので、
+    // 1 体だけ違う値は配置物でなくアクターに書く
+    void WriteParts(NS::SceneActor& actor, const nlohmann::json& parts)
+    {
+        nlohmann::json values = NS::MakeObjectJson();
+        NS::ObjectJsonClassObjs(values) = parts;
+        NS::ApplyObjectClassObjs(actor, values);
+    }
+
+    // 置物を 2 体置き、id 2 の 1 体にだけ overriddenParts の値を書く
     NS::SceneActor* PlaceRocks(NS::Scene& scene, const nlohmann::json& overriddenParts)
     {
         nlohmann::json doc = NS::MakeSceneJson();
@@ -82,18 +93,15 @@ namespace
             NS::SetObjectJsonActorFile(rock, "PropActor");
             NS::SetObjectJsonId(rock, id);
             NS::SetObjectPosition(rock, Vector3{static_cast<float>(id) * 4.0f, 1.0f, 0.0f});
-            if (id == 2)
-            {
-                // 位置は Transform の件に入っているので、件ごと置き換えずに足す
-                for (nlohmann::json::const_iterator it = overriddenParts.begin(); it != overriddenParts.end(); ++it)
-                {
-                    NS::ObjectJsonClassObjs(rock)[it.key()] = it.value();
-                }
-            }
             NS::SceneJsonObjects(doc).push_back(std::move(rock));
         }
         scene.ResetFromJson(doc);
-        return scene.Objects().FindByObjectId(2);
+        NS::SceneActor* target = scene.Objects().FindByObjectId(2);
+        if (target != nullptr)
+        {
+            WriteParts(*target, overriddenParts);
+        }
+        return target;
     }
 
     const HitZones* HitZonesOf(const NS::SceneActor& actor)
@@ -120,12 +128,13 @@ namespace
         NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, 2);
         NS::SetObjectPosition(rock, Vector3{0.0f, rockHeight, 1.0f});
-        for (nlohmann::json::const_iterator it = rockParts.begin(); it != rockParts.end(); ++it)
-        {
-            NS::ObjectJsonClassObjs(rock)[it.key()] = it.value();
-        }
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
+        NS::SceneActor* target = scene.Objects().FindByObjectId(2);
+        if (target != nullptr)
+        {
+            WriteParts(*target, rockParts);
+        }
         return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     }
 
@@ -568,8 +577,8 @@ TEST(HitZonesTest, MapObjAnswersWithItsFaceAndBody)
     EXPECT_FLOAT_EQ(answer.body.b.x, expected.b.x);
 }
 
-// 個体で赤の位置を上書きすると、同じ線でもその相手だけ段が変わる
-TEST(HitZonesTest, InstanceOverrideChangesOnlyThatTarget)
+// 1 体の赤の位置を変えると、同じ線でもその相手だけ段が変わる
+TEST(HitZonesTest, RedMovedOnOneTargetChangesOnlyThatTarget)
 {
     NS::Scene scene;
     NS::SceneActor* moved = PlaceRocks(scene, {{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}}}});
@@ -592,44 +601,6 @@ TEST(HitZonesTest, InstanceOverrideChangesOnlyThatTarget)
     };
     EXPECT_EQ(judgeThroughCenter(*plain), HitTier::Center);
     EXPECT_EQ(judgeThroughCenter(*moved), HitTier::Wide);
-}
-
-// 個体の上書きは保存・再読込の往復で残る。保存に書くのは種類の既定と違う欄だけ
-TEST(HitZonesTest, InstanceOverrideSurvivesSaveAndLoad)
-{
-    nlohmann::json saved;
-    {
-        NS::Scene scene;
-        NS::SceneActor* rock = PlaceRocks(scene, {{"HitZones", {{"丸", false}, {"上下の位置", 0.3f}}}});
-        ASSERT_NE(rock, nullptr);
-        saved = scene.ToJson();
-    }
-    const nlohmann::json& objects = NS::SceneJsonObjects(saved);
-    const nlohmann::json* plainFields = NS::ClassObjFields(objects[NS::FindObjectIndexById(saved, 1)], "HitZones");
-    if (plainFields != nullptr)
-    {
-        EXPECT_FALSE(NS::HasField(*plainFields, "上下の位置"));
-        EXPECT_FALSE(NS::HasField(*plainFields, "丸"));
-    }
-    const nlohmann::json* overriddenFields = NS::ClassObjFields(objects[NS::FindObjectIndexById(saved, 2)], "HitZones");
-    ASSERT_NE(overriddenFields, nullptr);
-    EXPECT_FLOAT_EQ(NS::FieldFloat(*overriddenFields, "上下の位置", 0.0f), 0.3f);
-    EXPECT_FALSE(NS::HasField(*overriddenFields, "横幅"));
-
-    NS::Scene reloaded;
-    reloaded.ResetFromJson(saved);
-    const NS::SceneActor* rock = reloaded.Objects().FindByObjectId(2);
-    ASSERT_NE(rock, nullptr);
-    const HitZones* zones = HitZonesOf(*rock);
-    ASSERT_NE(zones, nullptr);
-    EXPECT_FALSE(zones->Face().round);
-    EXPECT_FLOAT_EQ(zones->Face().centerV, 0.3f);
-    EXPECT_FLOAT_EQ(zones->Face().width, 0.43f);
-    const NS::SceneActor* plain = reloaded.Objects().FindByObjectId(1);
-    ASSERT_NE(plain, nullptr);
-    ASSERT_NE(HitZonesOf(*plain), nullptr);
-    EXPECT_TRUE(HitZonesOf(*plain)->Face().round);
-    EXPECT_FLOAT_EQ(HitZonesOf(*plain)->Face().centerV, 0.0f);
 }
 
 // 面は相手の正面に接する平面に立ち、自機の方を向く。横と縦の半分の幅は判定と同じ「半幅 + 自機の半径」
@@ -835,7 +806,7 @@ TEST(HitZonesTest, BodyThatIsNoShapeFallsToWideWithTheRemainderPower)
 }
 
 // 裁定の段と威力の当たり位置の係数は、相手の面の同じ決まりから出る
-// 赤の位置を個体で上書きすると、同じ線でもその相手だけ外れになる
+// 相手の赤の位置を変えると、同じ線でもその相手だけ外れになる
 TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
 {
     NS::Scene plainScene;

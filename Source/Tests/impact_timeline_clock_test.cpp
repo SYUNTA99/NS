@@ -17,6 +17,7 @@
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
@@ -85,12 +86,15 @@ namespace
         {
             NS::ObjectJsonClassObjs(rock)["Params"]["質量"] = mass;
         }
-        if (!hitTimeline.empty())
-        {
-            NS::ObjectJsonClassObjs(rock)["Params"]["当たりのタイムライン"] = std::string{hitTimeline};
-        }
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
+        // 当たりのタイムラインは .actor だけが持つ欄なので、この 1 体の値は読んだ後のアクターへ書く
+        if (!hitTimeline.empty())
+        {
+            PropActor* placed = NS::Cast<PropActor>(scene.Objects().FindByObjectId(2));
+            (void)NS::ApplyJsonFields(placed->Params(),
+                                      nlohmann::json{{"当たりのタイムライン", std::string{hitTimeline}}});
+        }
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
         floor.halfExtentX = 100.0f;

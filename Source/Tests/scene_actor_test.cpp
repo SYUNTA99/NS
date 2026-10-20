@@ -5,6 +5,8 @@
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -81,11 +83,9 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
 
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
+    GL::Level::PropActor* actor = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(actor, nullptr);
-    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
-    ASSERT_NE(sphere, nullptr);
-    sphere->SetRadius(1.5f);
+    ASSERT_EQ(NS::ApplyJsonFields(actor->Params(), nlohmann::json{{"質量", 1.5f}}), 0u);
     actor->Root().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
 
     const nlohmann::json saved = scene.ToJson();
@@ -99,9 +99,9 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     NS::SceneActor* again = reloaded.Objects().FindByObjectId(1);
     ASSERT_NE(again, nullptr);
     EXPECT_EQ(std::string_view{again->ClassName()}, "PropActor");
-    const NS::SphereCollision* sphereAgain = NS::Cast<NS::SphereCollision>(again->CollisionClassObj());
-    ASSERT_NE(sphereAgain, nullptr);
-    EXPECT_FLOAT_EQ(sphereAgain->Radius(), 1.5f);
+    const GL::Level::PropActor* propAgain = NS::Cast<GL::Level::PropActor>(again);
+    ASSERT_NE(propAgain, nullptr);
+    EXPECT_FLOAT_EQ(propAgain->Params().Mass(), 1.5f);
     EXPECT_FLOAT_EQ(again->Root().Position().x, 3.0f);
     EXPECT_FLOAT_EQ(again->Root().Position().y, 4.0f);
     EXPECT_FLOAT_EQ(again->Root().Position().z, 5.0f);
@@ -114,11 +114,9 @@ TEST(SceneActor, UnknownClassObjKeyIsWarnedAndOtherClassObjsAreRead)
     AddActorObject(doc, "PropActor", 1);
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
+    GL::Level::PropActor* actor = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(actor, nullptr);
-    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
-    ASSERT_NE(sphere, nullptr);
-    sphere->SetRadius(1.5f);
+    ASSERT_EQ(NS::ApplyJsonFields(actor->Params(), nlohmann::json{{"質量", 1.5f}}), 0u);
 
     nlohmann::json saved = scene.ToJson();
     nlohmann::json& objects = NS::SceneJsonObjects(saved);
@@ -129,11 +127,9 @@ TEST(SceneActor, UnknownClassObjKeyIsWarnedAndOtherClassObjsAreRead)
     NS::Scene reloaded;
     reloaded.ResetFromJson(saved);
     EXPECT_EQ(log.WarningCount(), 1);
-    const NS::SceneActor* again = reloaded.Objects().FindByObjectId(1);
+    const GL::Level::PropActor* again = NS::Cast<GL::Level::PropActor>(reloaded.Objects().FindByObjectId(1));
     ASSERT_NE(again, nullptr);
-    const NS::SphereCollision* sphereAgain = NS::Cast<NS::SphereCollision>(again->CollisionClassObj());
-    ASSERT_NE(sphereAgain, nullptr);
-    EXPECT_FLOAT_EQ(sphereAgain->Radius(), 1.5f);
+    EXPECT_FLOAT_EQ(again->Params().Mass(), 1.5f);
 }
 
 TEST(SceneActor, FileTextRoundTripKeepsClass)
@@ -187,6 +183,44 @@ TEST(SceneLoad, EveryShippedSceneWritesBackByteForByte)
         ASSERT_TRUE(NS::DeserializeSceneFromJson(doc, *text)) << file.path().string();
         EXPECT_EQ(NS::SerializeSceneToJson(doc), *text) << file.path().string();
         ++checked;
+    }
+    EXPECT_GT(checked, 0);
+}
+
+TEST(SceneLoad, EveryShippedPlacementOverridesOnlyMarkedFields)
+{
+    // 配置物が持つ欄は、根の部品・参照の欄・上書きの印の付いた欄だけ。ほかの欄は読む時に捨てられる
+    NS::ActorFileLibrary::Get().Reload();
+    const std::filesystem::path folder = std::filesystem::path{NS::OS::FileSystem::ContentRoot()} / "Assets" / "Scenes";
+    int checked = 0;
+    for (const std::filesystem::directory_entry& file : std::filesystem::directory_iterator{folder})
+    {
+        if (file.path().extension() != ".scene")
+        {
+            continue;
+        }
+        nlohmann::json doc;
+        ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, file.path().string())) << file.path().string();
+        for (const nlohmann::json& object : NS::SceneJsonObjects(doc))
+        {
+            const NS::SceneActor& baseline = NS::ActorFileLibrary::Get().Baseline(NS::ObjectJsonActorFile(object));
+            NS::ForEachReflectedClassObj(baseline, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+                const nlohmann::json* fields = NS::ClassObjFields(object, row.key);
+                if (fields == nullptr || part == &baseline.Root())
+                {
+                    return;
+                }
+                for (nlohmann::json::const_iterator field = fields->begin(); field != fields->end(); ++field)
+                {
+                    const NS::FieldDesc* desc = NS::FindField(part->GetReflection(), field.key());
+                    ASSERT_NE(desc, nullptr) << row.key << " " << field.key();
+                    EXPECT_TRUE(desc->placement || desc->type == NS::FieldType::ActorRef)
+                        << file.path().string() << " " << NS::ObjectJsonActorFile(object) << " " << row.key << " "
+                        << field.key();
+                    ++checked;
+                }
+            });
+        }
     }
     EXPECT_GT(checked, 0);
 }

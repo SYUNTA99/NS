@@ -80,11 +80,18 @@ namespace NS
     //! actor の ActorFileName の .actor の欄の値を写す。部品は足さない
     void ApplyActorFile(SceneActor& actor);
 
+    //! @brief 配置物の JSON から、配置物が値を持てない欄を落とした写し
+    //! @details 持てるのは根の部品の欄・参照の欄・上書きの印の付いた欄。落とした欄ごとに WARN を出す。
+    //! actor のクラスに無い部品と欄は残し、値を当てる所に知らせを任せる
+    [[nodiscard]] nlohmann::json KeepPlacementFields(const SceneActor& actor, const nlohmann::json& object);
+
     //! 個体の差分を全欄へ展開する。部品構成は Baseline に揃え、個体だけの部品は除く
+    //! 配置物が値を持てない欄は KeepPlacementFields で落とし、.actor の値のままにする
     [[nodiscard]] nlohmann::json ExpandObjectJson(const nlohmann::json& object);
 
     //! @brief 全欄を持つ配置物の JSON から、種類の既定値と同じ欄を除く
-    //! @details 欄が全部既定と同じ部品も、空の件として残す。位置・回転・拡縮の部品 Transform は個体の物なので除かない
+    //! @details 欄が全部既定と同じ部品も、空の件として残す。位置・回転・拡縮の部品 Transform は個体の物なので除かない。
+    //! 配置物が値を持てない欄は、値が違っても除く
     [[nodiscard]] nlohmann::json DiffObjectJson(const nlohmann::json& object);
 
     // 下の 4 つの row は actor のクラスの表 (NS_CLASSOBJ) の行。ForEachReflectedClassObj で回した行を渡す

@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-TEST(GameTuning, GoalFadeUsesTheSavedGoalFields)
+TEST(GameTuning, GoalFadeUsesTheEditedGoalFields)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
@@ -23,8 +23,6 @@ TEST(GameTuning, GoalFadeUsesTheSavedGoalFields)
     GL::Level::GoalActor* goal = NS::Cast<GL::Level::GoalActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(goal, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(goal->Params(), {{"クリアの暗転秒", 0.1f}, {"クリアの明転秒", 0.2f}}), 0u);
-    const nlohmann::json saved = scene.ToJson();
-    scene.ResetFromJson(saved);
     (void)scene.BeginPlayBaseline();
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);

@@ -211,26 +211,6 @@ TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
               0u);
 }
 
-TEST(ColliderShape, ShapeSurvivesSaveAndReloadUnderCollider)
-{
-    NS::Scene scene;
-    LoadPlayerScene(scene, {{"Collider", {{"半径", 0.3f}, {"半分の高さ", 0.8f}}}});
-    const nlohmann::json saved = scene.ToJson();
-
-    const nlohmann::json& objects = NS::SceneJsonObjects(saved);
-    ASSERT_EQ(objects.size(), 1u);
-    const nlohmann::json& parts = NS::ObjectJsonClassObjs(objects[0]);
-    ASSERT_TRUE(parts.contains("Collider"));
-    EXPECT_FLOAT_EQ(parts["Collider"]["半径"].get<float>(), 0.3f);
-    EXPECT_FLOAT_EQ(parts["Collider"]["半分の高さ"].get<float>(), 0.8f);
-
-    scene.ResetFromJson(saved);
-    const NS::Collider* collider = PlayerCollider(scene);
-    ASSERT_NE(collider, nullptr);
-    EXPECT_FLOAT_EQ(collider->CapsuleRadius(), 0.3f);
-    EXPECT_FLOAT_EQ(collider->StandingHalfHeight(), 0.8f);
-}
-
 TEST(ColliderShape, OldMovementShapeKeysAreSkipped)
 {
     // 古い場面に残る "Movement" の寸法は読み飛ばし、形は種類の既定の Collider から来る。保存し直すと消える
