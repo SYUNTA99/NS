@@ -16,7 +16,6 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Gamepad.h"
@@ -90,7 +89,7 @@ namespace NS
             return !m_sceneEditable || m_sceneEditable();
         }
 
-        void EditorMode::Tick() noexcept
+        void EditorMode::Tick(bool editShortcutsBlocked) noexcept
         {
             if (!IsSceneEditable())
             {
@@ -99,10 +98,13 @@ namespace NS
 
             UpdateCursorFromInput();
             HandlePlaceDeleteInput();
-            HandleRotationInput();
-            HandleUndoRedoInput();
-            HandleSaveLoadInput();
-            m_palette.TickInput(m_input, m_imgui);
+            if (!editShortcutsBlocked)
+            {
+                HandleRotationInput();
+                HandleUndoRedoInput();
+                HandleSaveLoadInput();
+            }
+            m_palette.TickInput(m_input, editShortcutsBlocked);
 
             const Quaternion targetQuat = RotationToQuaternion(m_currentRotation);
             constexpr float k_RotationSpringRate = 12.0f;
@@ -114,12 +116,6 @@ namespace NS
         void EditorMode::HandleSaveLoadInput() noexcept
         {
             if (m_input == nullptr)
-            {
-                return;
-            }
-
-            const bool wantKb = (m_imgui != nullptr) && m_imgui->WantCaptureKeyboard();
-            if (wantKb)
             {
                 return;
             }
@@ -804,10 +800,6 @@ namespace NS
             {
                 return;
             }
-            if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
-            {
-                return;
-            }
             if (m_inputSuppressed)
             {
                 return;
@@ -840,10 +832,6 @@ namespace NS
             }
             // ドラッグ中は選択の貼り直しを飛ばすため、旧 Transform を指したまま undo が走らないように止める
             if (m_undoRedoSuppressed)
-            {
-                return;
-            }
-            if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
             {
                 return;
             }

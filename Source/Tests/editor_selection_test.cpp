@@ -272,7 +272,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr, {});
+        editor.Setup({});
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("追従カメラ");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
@@ -318,7 +318,7 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr, {});
+        editor.Setup({});
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
@@ -372,7 +372,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr, {});
+        editor.Setup({});
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
@@ -422,7 +422,7 @@ TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr, {});
+        editor.Setup({});
         editor.Editor().Palette().SetActiveSlot(2);
         ASSERT_STREQ(editor.Editor().Palette().CurrentTemplateName(), "ゴール");
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
@@ -445,7 +445,7 @@ TEST(EditorBrush, RotateKeepsTheTilt)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr, {});
+        editor.Setup({});
         editor.Editor().Palette().SetActiveSlot(0);
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
         ASSERT_EQ(scene.Objects().ObjectCount(), 1u);
@@ -721,7 +721,7 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
 
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr, {});
+        editor.Setup({});
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
@@ -813,7 +813,7 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr, {});
+        editor.Setup({});
         const NS::Editor::PlacementItem* prop = NS::Editor::FindPlacementItem("置物");
         const NS::Editor::PlacementItem* camera = NS::Editor::FindPlacementItem("追従カメラ");
         ASSERT_NE(prop, nullptr);
@@ -914,7 +914,7 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheArchetypes)
 
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr, {});
+        editor.Setup({});
         const NS::Editor::PlacementItem* cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
         ASSERT_NE(cube, nullptr);
         editor.PlaceItem(*cube);
@@ -991,6 +991,114 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheArchetypes)
 
         std::error_code error;
         std::filesystem::remove_all(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(directory)}, error);
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// 編集のショートカットは、渡された止めるかの答えだけで止まる。
+// 偽なら Ctrl+Z・R・番号・ギズモの道具のキーが効き、真ならどれも効かない
+TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "ショートカットを止める試し";
+    desc.window.size = {320, 200};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
+        NS::Scene scene;
+        LevelEditorController editor(&scene);
+        editor.Setup({});
+        editor.Editor().Palette().SetActiveSlot(0);
+        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
+        ASSERT_EQ(scene.Objects().ObjectCount(), 1u);
+        editor.SelectObjectById(scene.Objects().ObjectAt(0)->Id());
+        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        editor.SetGameView(view.x, view.y, view.width, view.height, true);
+        NS::OS::Keyboard& keyboard = app.Input().Keyboard();
+        NS::OS::Mouse& mouse = app.Input().Mouse();
+        const int startX = mouse.GetX();
+        const int startY = mouse.GetY();
+        keyboard.ClearState();
+        keyboard.Update();
+        mouse.ClearState();
+        editor.Tick();
+        editor.FocusSelectedInView();
+        editor.Tick();
+        // 置いた物は画面の中心に居るので、中心のカーソルで筆の R がその物を回す
+        mouse.OnMove(view.width / 2, view.height / 2);
+        mouse.Update();
+        editor.SetObjectToolActive(false);
+
+        const auto press = [&keyboard, &editor](NS::OS::Key key, bool ctrl) {
+            if (ctrl)
+            {
+                keyboard.OnKeyDown(NS::OS::Key::Ctrl);
+            }
+            keyboard.OnKeyDown(key);
+            editor.Tick();
+            keyboard.OnKeyUp(key);
+            keyboard.OnKeyUp(NS::OS::Key::Ctrl);
+            keyboard.Update();
+        };
+        const NS::Editor::UndoStack& undo = editor.Editor().Undo();
+
+        // ギズモの道具のキーは、答えを Tick で受けるギズモを直に回して見る
+        NS::Editor::GizmoEditor gizmo;
+        gizmo.SetInput(&app.Input());
+        gizmo.SetActive(true);
+        ASSERT_NE(gizmo.Tool(), NS::Editor::GizmoTool::Rotate);
+
+        for (const bool blocked : {true, false})
+        {
+            editor.SetEditShortcutsBlocked(blocked);
+
+            const std::size_t beforeRotate = undo.UndoSize();
+            press(NS::OS::Key::R, false);
+            std::size_t expected = beforeRotate + 1;
+            if (blocked)
+            {
+                expected = beforeRotate;
+            }
+            EXPECT_EQ(undo.UndoSize(), expected) << "R 止める=" << blocked;
+
+            const std::size_t beforeUndo = undo.UndoSize();
+            press(NS::OS::Key::Z, true);
+            expected = beforeUndo - 1;
+            if (blocked)
+            {
+                expected = beforeUndo;
+            }
+            EXPECT_EQ(undo.UndoSize(), expected) << "Ctrl+Z 止める=" << blocked;
+
+            editor.Editor().Palette().SetActiveSlot(0);
+            press(NS::OS::Key::Num2, false);
+            std::size_t expectedSlot = 1;
+            if (blocked)
+            {
+                expectedSlot = 0;
+            }
+            EXPECT_EQ(editor.Editor().Palette().ActiveSlot(), expectedSlot) << "番号 止める=" << blocked;
+
+            const NS::Editor::GizmoTool toolBefore = gizmo.Tool();
+            keyboard.OnKeyDown(NS::OS::Key::E);
+            gizmo.Tick(NS::Matrix::Identity, view, true, blocked);
+            keyboard.OnKeyUp(NS::OS::Key::E);
+            keyboard.Update();
+            NS::Editor::GizmoTool expectedTool = NS::Editor::GizmoTool::Rotate;
+            if (blocked)
+            {
+                expectedTool = toolBefore;
+            }
+            EXPECT_EQ(gizmo.Tool(), expectedTool) << "ギズモの道具 止める=" << blocked;
+        }
+
+        // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
+        mouse.OnMove(startX, startY);
+        mouse.ClearState();
+        mouse.Update();
+        keyboard.ClearState();
+        keyboard.Update();
     }));
     EXPECT_EQ(app.Run(), 0);
 }

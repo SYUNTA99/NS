@@ -61,7 +61,7 @@ TEST(EditorGizmo, DeactivatingEndsTheDrag)
     gizmo.SetSelected(&target);
     input.Mouse().OnMove(static_cast<int>(handle->x), static_cast<int>(handle->y));
     input.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
-    gizmo.Tick(viewProjection, view, true);
+    gizmo.Tick(viewProjection, view, true, false);
     ASSERT_TRUE(gizmo.IsDragging());
 
     gizmo.SetActive(false);

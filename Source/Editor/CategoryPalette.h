@@ -12,13 +12,6 @@ namespace NS
         class Input;
     }
 } // namespace NS
-namespace NS
-{
-    namespace UI
-    {
-        class ImGuiContext;
-    }
-} // namespace NS
 
 namespace NS
 {
@@ -28,8 +21,8 @@ namespace NS
         class CategoryPalette : public NonCopyable
         {
         public:
-            //! 数字キーで選ぶ。UI がキーボードを使っている間は無視する
-            void TickInput(OS::Input* input, UI::ImGuiContext* imgui) noexcept;
+            //! 数字キーと肩のボタンで選ぶ。editShortcutsBlocked が真の間は数字キーを受けない
+            void TickInput(OS::Input* input, bool editShortcutsBlocked) noexcept;
 
             //! Scene ビュー内に収まるツールバーを描く。viewRect はスクリーン座標
             void Render(const Editor::ViewRect& viewRect) noexcept;

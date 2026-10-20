@@ -432,7 +432,7 @@ NS::SceneCamera* LevelEditorController::MainCamera() const noexcept
     return m_scene->MainCamera();
 }
 
-void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui, std::string_view startLevelName)
+void LevelEditorController::Setup(std::string_view startLevelName)
 {
     NS::Application* app = NS::Application::Get();
     if (app == nullptr || m_scene == nullptr)
@@ -472,11 +472,9 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui, std::string_view 
         return cells;
     });
     m_editor.SetInput(&app->Input());
-    m_editor.SetImGui(imgui);
     m_editor.SetSceneCamera(MainCamera());
 
     m_gizmo.SetInput(&app->Input());
-    m_gizmo.SetImGui(imgui);
 
     // Game が立てた空のシーンはプレイが回っている。プレイを終えて編集モードへ切替えてから起動シーンを開く
     // 先に開くと、プレイ開始の写しへ戻す組み直しが、開く時に補ったプレイヤーを消す
@@ -755,7 +753,7 @@ void LevelEditorController::TickEdit()
     }
 
     // F5 のシェーダ再読込は編集時だけ。プレイ時は UI 表示の切替に使う
-    if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::OS::Key::F5))
+    if (!m_editShortcutsBlocked && app->Input().Keyboard().IsPressed(NS::OS::Key::F5))
     {
         app->Assets().ReloadAllShaders();
     }
@@ -811,7 +809,7 @@ void LevelEditorController::TickEdit()
 
         const NS::Matrix vp = Cameras()->ViewProjection();
         const bool wasDragging = m_gizmoWasDragging;
-        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered);
+        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked);
 
         // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
         CaptureSelectionFromGizmo();
@@ -849,7 +847,7 @@ void LevelEditorController::TickEdit()
 
     // 掴んでいる間は選択の貼り直しを飛ばすので、undo が旧 Transform を指す
     m_editor.SetUndoRedoSuppressed(m_gizmo.IsDragging());
-    m_editor.Tick();
+    m_editor.Tick(m_editShortcutsBlocked);
     if (m_editor.IsLevelDirty())
     {
         // grid 編集・undo・読込は applier / reload が配置物を組み直し済。候補と gizmo を今の実体へ貼り直す

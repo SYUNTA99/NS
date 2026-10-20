@@ -20,13 +20,6 @@ namespace NS
 } // namespace NS
 namespace NS
 {
-    namespace UI
-    {
-        class ImGuiContext;
-    }
-} // namespace NS
-namespace NS
-{
     class SceneCamera;
 } // namespace NS
 namespace NS
@@ -94,7 +87,6 @@ namespace NS
             //! @brief 新規配置物へ永続 id を 1 個振る関数を差す
             void SetAllocateIdFn(std::function<uint32()> fn) noexcept { m_allocateId = std::move(fn); }
             void SetInput(OS::Input* input) noexcept { m_input = input; }
-            void SetImGui(UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
             void SetSceneCamera(SceneCamera* camera) noexcept { m_camera = camera; }
 
             //! @brief シーンを変えてよいかを答える関数を差す。LevelEditorController::IsSceneEditable を差す
@@ -113,7 +105,10 @@ namespace NS
             //! ギズモドラッグ中だけ undo/redo を止める。旧 Transform への書込を防ぐ
             void SetUndoRedoSuppressed(bool suppressed) noexcept { m_undoRedoSuppressed = suppressed; }
 
-            void Tick() noexcept;
+            //! @brief 編集の入力を 1 固定ステップ分進める
+            //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
+            //! 真の間は R・Ctrl+Z・Ctrl+S・Ctrl+O・数字のキーを受けない
+            void Tick(bool editShortcutsBlocked) noexcept;
 
             //! @brief カーソル位置に置いた時のプレビュー枠を、Scene タブの図形として積む
             //! @param[in,out] shapes 積む先。そのビューを描いたら捨てられる
@@ -188,7 +183,6 @@ namespace NS
             std::function<std::vector<CellCoord>()> m_collectCells;
             std::function<uint32()> m_allocateId;
             OS::Input* m_input = nullptr;
-            UI::ImGuiContext* m_imgui = nullptr;
             SceneCamera* m_camera = nullptr;
 
             std::function<bool()> m_sceneEditable;

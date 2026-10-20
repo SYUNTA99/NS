@@ -71,7 +71,7 @@ void Editor::OnAttach()
     });
 
     m_controller = std::make_unique<LevelEditorController>(scene);
-    m_controller->Setup(m_imgui.get(), NS::Editor::LevelNameOfScenePath(Game::StartScenePath()));
+    m_controller->Setup(NS::Editor::LevelNameOfScenePath(Game::StartScenePath()));
 
     // 初回フレームからオフスクリーンで描けるよう、ウィンドウサイズを初期の目標サイズにしておく
     const NS::Size2D viewSize = app->Window().Size();

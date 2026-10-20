@@ -7,7 +7,6 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
 #include "NSlib/Windows/Mouse.h"
@@ -362,7 +361,10 @@ namespace NS
             m_pickable = pickable;
         }
 
-        void GizmoEditor::Tick(const Matrix& viewProjection, const ViewRect& view, bool viewHovered) noexcept
+        void GizmoEditor::Tick(const Matrix& viewProjection,
+                               const ViewRect& view,
+                               bool viewHovered,
+                               bool editShortcutsBlocked) noexcept
         {
             if (!m_active || m_input == nullptr)
             {
@@ -372,13 +374,11 @@ namespace NS
             OS::Keyboard& kb = m_input->Keyboard();
             OS::Mouse& mouse = m_input->Mouse();
 
-            const bool imguiWantsKeyboard = (m_imgui != nullptr) && m_imgui->WantCaptureKeyboard();
-
             // 右ドラッグ中の W/A/S/D/Q/E は編集カメラの移動なので、ツール切替に食われないようにする
             const bool cameraFlying = mouse.IsHeld(OS::MouseButton::Right);
 
             // Q/W/E/R でツール、X で局所座標系と世界座標系を切り替える
-            if (!imguiWantsKeyboard && !m_dragging && !cameraFlying)
+            if (!editShortcutsBlocked && !m_dragging && !cameraFlying)
             {
                 for (const OS::Key key : {OS::Key::Q, OS::Key::W, OS::Key::E, OS::Key::R})
                 {
