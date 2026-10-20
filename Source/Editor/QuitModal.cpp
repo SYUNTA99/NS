@@ -1,6 +1,8 @@
 #include "Editor/QuitModal.h"
 
+#include "Editor/EditorMode.h"
 #include "Editor/EditorUi.h"
+#include "Editor/HitTimelinePanel.h"
 #include "Editor/LevelEditorController.h"
 #include "NSlib/App/Application.h"
 
@@ -12,6 +14,23 @@ namespace NS
 {
     namespace Editor
     {
+        bool HasUnsavedWork(const EditorMode& editor, const HitTimelinePanel& timeline) noexcept
+        {
+            return editor.HasUnsavedChanges() || timeline.HasUnsavedChanges();
+        }
+
+        bool SaveAllForQuit(EditorMode& editor, HitTimelinePanel& timeline) noexcept
+        {
+            // シーンは変更の印が無くても書く。プレイ中にインスペクタで変えた値は履歴の版に載らないため
+            const bool sceneSaved = editor.SaveForQuit();
+            bool timelineSaved = true;
+            if (timeline.HasUnsavedChanges())
+            {
+                timelineSaved = timeline.SaveAll();
+            }
+            return sceneSaved && timelineSaved;
+        }
+
         bool QuitModal::RequestQuit() noexcept
         {
             if (m_confirmed)
@@ -24,13 +43,14 @@ namespace NS
             return false;
         }
 
-        void QuitModal::Render(LevelEditorController& editor) noexcept
+        void QuitModal::Render(LevelEditorController& editor, HitTimelinePanel& timeline) noexcept
         {
 #if NS_EDITOR_ENABLED
             if (!m_open)
             {
                 return;
             }
+            EditorMode& mode = editor.Editor();
             ImGuiViewport* const vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {
@@ -42,6 +62,18 @@ namespace NS
             if (ImGui::Begin("終了の確認", nullptr, k_QuitModalFlags))
             {
                 ImGui::TextUnformatted("変更を保存して終了しますか");
+                if (HasUnsavedWork(mode, timeline))
+                {
+                    ImGui::TextUnformatted("保存していない変更:");
+                    if (mode.HasUnsavedChanges())
+                    {
+                        ImGui::BulletText("シーン");
+                    }
+                    if (timeline.HasUnsavedChanges())
+                    {
+                        ImGui::BulletText("当たりのタイムライン");
+                    }
+                }
                 ImGui::Separator();
                 const bool playing = editor.CurrentMode() == LevelEditorController::Mode::Play;
                 ImGui::BeginDisabled(playing);
@@ -54,7 +86,7 @@ namespace NS
                 if (saveClicked)
                 {
                     // 保存成功でのみ終了する。失敗時は modal を残しデータ消失を防ぐ
-                    if (editor.Editor().SaveForQuit())
+                    if (SaveAllForQuit(mode, timeline))
                     {
                         m_confirmed = true;
                         m_open = false;
@@ -83,6 +115,7 @@ namespace NS
             ImGui::End();
 #else
             (void)editor;
+            (void)timeline;
 #endif
         }
     } // namespace Editor

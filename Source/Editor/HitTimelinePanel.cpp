@@ -128,6 +128,35 @@ namespace NS
             m_needsRun = true;
         }
 
+        bool HitTimelinePanel::SaveAll() noexcept
+        {
+            GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
+            // 変更の有無は名前の全部の段で 1 つなので、開いていない段の変更も書く
+            library.Set(WorkingFileName(), m_working);
+            std::string failed;
+            for (const GL::Level::HitTier tier : GL::Level::HitTiers())
+            {
+                const std::string file = GL::Level::HitTimelineFileName(m_name, tier);
+                if (library.Find(file) != nullptr && !library.Save(file))
+                {
+                    failed += std::format(" {}.json", file);
+                }
+            }
+            if (!failed.empty())
+            {
+                m_status = std::format("書けなかった:{}", failed);
+                return false;
+            }
+            std::string nameLabel = m_name;
+            if (m_name.empty())
+            {
+                nameLabel = "既定";
+            }
+            m_dirty = false;
+            m_status = std::format("{} へ {} の段を書いた", library.Directory(), nameLabel);
+            return true;
+        }
+
         TimelineFrameRange HitTimelinePanel::PlaybackRange() const noexcept
         {
             if (!m_result.hit || m_result.frames.empty())
@@ -436,26 +465,7 @@ namespace NS
             ImGui::SameLine();
             if (ImGui::Button("保存"))
             {
-                // 変更の有無は名前の全部の段で 1 つなので、開いていない段の変更も書く
-                library.Set(WorkingFileName(), m_working);
-                std::string failed;
-                for (const GL::Level::HitTier tier : GL::Level::HitTiers())
-                {
-                    const std::string file = GL::Level::HitTimelineFileName(m_name, tier);
-                    if (library.Find(file) != nullptr && !library.Save(file))
-                    {
-                        failed += std::format(" {}.json", file);
-                    }
-                }
-                if (failed.empty())
-                {
-                    m_dirty = false;
-                    m_status = std::format("{} へ {} の段を書いた", library.Directory(), nameLabel);
-                }
-                else
-                {
-                    m_status = std::format("書けなかった:{}", failed);
-                }
+                (void)SaveAll();
             }
             ImGui::SameLine();
             if (ImGui::Button("元に戻す"))

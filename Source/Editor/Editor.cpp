@@ -145,7 +145,7 @@ void Editor::OnRender()
     editor.Render();
 
     // 終了確認は UI 非表示やプレイ中でも必ず出すため m_uiVisible のゲート外で描く
-    m_quitModal.Render(editor);
+    m_quitModal.Render(editor, m_hitTimeline);
 
     const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
 

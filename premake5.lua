@@ -705,6 +705,8 @@ project "Tests"
         "Source/Editor/HitPreview.cpp",
         "Source/Editor/HitTimelineEdit.cpp",
         "Source/Editor/HitTimelinePanel.cpp",
+        -- 終了の確認の問いと保存を試す。Application に触るのは Render の中だけ
+        "Source/Editor/QuitModal.cpp",
         "Source/Editor/Timeline.cpp",
         "Source/Editor/DockController.cpp",
         "Source/Editor/TimelinePreview.cpp",

@@ -43,6 +43,11 @@ namespace NS
             //! @brief 下見を手放して再生を止め、編集中の次の Tick で取り直す
             void ResetPreview() noexcept;
 
+            //! @brief 編集している名前の全部の段をファイルへ書く
+            //! @return 全部書けた時だけ true で、保存していない変更の印を消す。書けなかったファイルはパネルの 1 行に出す
+            [[nodiscard]] bool SaveAll() noexcept;
+            [[nodiscard]] bool HasUnsavedChanges() const noexcept { return m_dirty; }
+
         private:
             void RenderConditions(LevelEditorController& editor) noexcept;
             void RenderFileButtons() noexcept;
