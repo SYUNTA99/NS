@@ -4,6 +4,8 @@
 #include "NSlib/Windows/Keyboard.h"
 #include "NSlib/Windows/Mouse.h"
 
+#include <windows.h>
+
 namespace NS
 {
     namespace OS
@@ -27,15 +29,58 @@ namespace NS
                 return s_instance;
             }
 
-            [[nodiscard]] OS::Keyboard& Keyboard() noexcept { return m_keyboard; }
-            [[nodiscard]] const OS::Keyboard& Keyboard() const noexcept { return m_keyboard; }
+            // 読む機器を返す。中立の間は中立の機器を返す
+            [[nodiscard]] OS::Keyboard& Keyboard() noexcept
+            {
+                if (IsNeutral())
+                {
+                    return m_neutralKeyboard;
+                }
+                return m_keyboard;
+            }
+            [[nodiscard]] const OS::Keyboard& Keyboard() const noexcept
+            {
+                if (IsNeutral())
+                {
+                    return m_neutralKeyboard;
+                }
+                return m_keyboard;
+            }
 
-            [[nodiscard]] OS::Mouse& Mouse() noexcept { return m_mouse; }
-            [[nodiscard]] const OS::Mouse& Mouse() const noexcept { return m_mouse; }
+            [[nodiscard]] OS::Mouse& Mouse() noexcept
+            {
+                if (IsNeutral())
+                {
+                    return m_neutralMouse;
+                }
+                return m_mouse;
+            }
+            [[nodiscard]] const OS::Mouse& Mouse() const noexcept
+            {
+                if (IsNeutral())
+                {
+                    return m_neutralMouse;
+                }
+                return m_mouse;
+            }
 
             //! @brief SetGamepadUserIndex で選んだ 1 台のゲームパッドを返す
-            [[nodiscard]] OS::Gamepad& Gamepad() noexcept { return m_gamepad; }
-            [[nodiscard]] const OS::Gamepad& Gamepad() const noexcept { return m_gamepad; }
+            [[nodiscard]] OS::Gamepad& Gamepad() noexcept
+            {
+                if (IsNeutral())
+                {
+                    return m_neutralGamepad;
+                }
+                return m_gamepad;
+            }
+            [[nodiscard]] const OS::Gamepad& Gamepad() const noexcept
+            {
+                if (IsNeutral())
+                {
+                    return m_neutralGamepad;
+                }
+                return m_gamepad;
+            }
 
             //! XInput の番号 0〜3 に切り替える。状態を初期化し、次の Update から読む
             //! 範囲外は変更せず false
@@ -44,11 +89,15 @@ namespace NS
             //! @brief 各入力デバイスの内部状態を更新する
             void Update() noexcept;
 
-            //! 入力を中立へ一時的に差し替える。重ねた回数だけ EndNeutral が必要
+            //! 手元のマウスの相対移動を切り替える。中立の間も手元のマウスへ書く
+            void SetMouseRelativeMode(bool enabled) noexcept { m_mouse.SetRelativeMode(enabled); }
+
+            //! 読む側へ何も押していない機器を見せる。重ねた回数だけ EndNeutral が必要
+            //! 手元の機器は入れ替えないので、中立の間の OS の入力と相対移動は手元の機器へ書かれる
             //! 中立中は Update を呼ばない。振動は実機へ送らない
             void BeginNeutral() noexcept;
 
-            //! @brief BeginNeutral で差し替えた機器の状態を元へ戻す
+            //! @brief 読む側へ手元の機器を見せる状態へ戻す
             //! @details 中立でない時は何もしない
             void EndNeutral() noexcept;
 
@@ -73,16 +122,20 @@ namespace NS
             }
 
         private:
+            // OS の入力は中立の間も手元の機器へ書くので、読む側を通さずに手元の機器へ触れる
+            friend void DispatchWin32MessageToInput(Input& input, UINT msg, WPARAM wparam, LPARAM lparam) noexcept;
+
+            // 手元の機器。OS の入力・Update・相対移動の書き先で、中立の間も替わらない
             OS::Keyboard m_keyboard;
             OS::Mouse m_mouse;
             OS::Gamepad m_gamepad;
 
             UiCaptureDesc m_uiCapture{};
 
-            // 中立の間に控える手元の機器の状態。BeginNeutral で入れ替え、EndNeutral で戻す
-            OS::Keyboard m_heldKeyboard;
-            OS::Mouse m_heldMouse;
-            OS::Gamepad m_heldGamepad;
+            // 中立の間に読む側へ見せる機器。BeginNeutral で作り直す
+            OS::Keyboard m_neutralKeyboard;
+            OS::Mouse m_neutralMouse;
+            OS::Gamepad m_neutralGamepad;
             int m_neutralDepth = 0; // BeginNeutral を重ねた数
         };
 

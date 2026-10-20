@@ -9,7 +9,6 @@
 #include <Xinput.h>
 
 #include <cmath>
-#include <utility>
 
 namespace NS
 {
@@ -436,14 +435,10 @@ namespace NS
             {
                 return;
             }
-            // 控えの側を中立の物に作り直してから入れ替える。入れ替えた後の控えが手元の状態
-            m_heldKeyboard = OS::Keyboard{};
-            m_heldMouse = OS::Mouse{};
+            m_neutralKeyboard = OS::Keyboard{};
+            m_neutralMouse = OS::Mouse{};
             // 中立のパッドは Update を受けないので機器を読まず、送った速さが 0 のまま止めても機器へ書かない
-            m_heldGamepad = OS::Gamepad{};
-            std::swap(m_keyboard, m_heldKeyboard);
-            std::swap(m_mouse, m_heldMouse);
-            std::swap(m_gamepad, m_heldGamepad);
+            m_neutralGamepad = OS::Gamepad{};
         }
 
         void Input::EndNeutral() noexcept
@@ -453,13 +448,6 @@ namespace NS
                 return;
             }
             --m_neutralDepth;
-            if (m_neutralDepth > 0)
-            {
-                return;
-            }
-            std::swap(m_keyboard, m_heldKeyboard);
-            std::swap(m_mouse, m_heldMouse);
-            std::swap(m_gamepad, m_heldGamepad);
         }
 
         namespace
@@ -530,21 +518,21 @@ namespace NS
             {
                 // lparam のスキャンコード、bit 30 のリピートフラグ、拡張キーは現状未使用
                 const Key k = MapVkToKey(static_cast<uint>(wparam));
-                input.Keyboard().OnKeyDown(k);
+                input.m_keyboard.OnKeyDown(k);
                 break;
             }
             case WM_KEYUP:
             case WM_SYSKEYUP:
             {
                 const Key k = MapVkToKey(static_cast<uint>(wparam));
-                input.Keyboard().OnKeyUp(k);
+                input.m_keyboard.OnKeyUp(k);
                 break;
             }
             // フォーカス喪失
             case WM_KILLFOCUS:
             {
-                input.Keyboard().ClearState();
-                input.Mouse().ClearState();
+                input.m_keyboard.ClearState();
+                input.m_mouse.ClearState();
                 break;
             }
             // マウス
@@ -552,37 +540,37 @@ namespace NS
             {
                 const int x = static_cast<int>(static_cast<short>(LOWORD(lparam)));
                 const int y = static_cast<int>(static_cast<short>(HIWORD(lparam)));
-                input.Mouse().OnMove(x, y);
+                input.m_mouse.OnMove(x, y);
                 break;
             }
             case WM_LBUTTONDOWN:
-                input.Mouse().OnButtonDown(MouseButton::Left);
+                input.m_mouse.OnButtonDown(MouseButton::Left);
                 break;
             case WM_LBUTTONUP:
-                input.Mouse().OnButtonUp(MouseButton::Left);
+                input.m_mouse.OnButtonUp(MouseButton::Left);
                 break;
             case WM_RBUTTONDOWN:
-                input.Mouse().OnButtonDown(MouseButton::Right);
+                input.m_mouse.OnButtonDown(MouseButton::Right);
                 break;
             case WM_RBUTTONUP:
-                input.Mouse().OnButtonUp(MouseButton::Right);
+                input.m_mouse.OnButtonUp(MouseButton::Right);
                 break;
             case WM_MBUTTONDOWN:
-                input.Mouse().OnButtonDown(MouseButton::Middle);
+                input.m_mouse.OnButtonDown(MouseButton::Middle);
                 break;
             case WM_MBUTTONUP:
-                input.Mouse().OnButtonUp(MouseButton::Middle);
+                input.m_mouse.OnButtonUp(MouseButton::Middle);
                 break;
             case WM_XBUTTONDOWN:
             {
                 const WORD xb = GET_XBUTTON_WPARAM(wparam);
                 if (xb == XBUTTON1)
                 {
-                    input.Mouse().OnButtonDown(MouseButton::X1);
+                    input.m_mouse.OnButtonDown(MouseButton::X1);
                 }
                 else if (xb == XBUTTON2)
                 {
-                    input.Mouse().OnButtonDown(MouseButton::X2);
+                    input.m_mouse.OnButtonDown(MouseButton::X2);
                 }
                 break;
             }
@@ -591,18 +579,18 @@ namespace NS
                 const WORD xb = GET_XBUTTON_WPARAM(wparam);
                 if (xb == XBUTTON1)
                 {
-                    input.Mouse().OnButtonUp(MouseButton::X1);
+                    input.m_mouse.OnButtonUp(MouseButton::X1);
                 }
                 else if (xb == XBUTTON2)
                 {
-                    input.Mouse().OnButtonUp(MouseButton::X2);
+                    input.m_mouse.OnButtonUp(MouseButton::X2);
                 }
                 break;
             }
             case WM_MOUSEWHEEL:
             {
                 const int delta = GET_WHEEL_DELTA_WPARAM(wparam);
-                input.Mouse().OnWheel(delta);
+                input.m_mouse.OnWheel(delta);
                 break;
             }
             // Raw Input の相対移動
@@ -624,7 +612,7 @@ namespace NS
                 }
                 if ((raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0)
                 {
-                    input.Mouse().OnRawMove(static_cast<int>(raw.data.mouse.lLastX),
+                    input.m_mouse.OnRawMove(static_cast<int>(raw.data.mouse.lLastX),
                                             static_cast<int>(raw.data.mouse.lLastY));
                     break;
                 }
@@ -649,7 +637,7 @@ namespace NS
                     s_absoluteReported = true;
                     NS_LOG_INFO(Platform, "絶対座標のマウスを検出、 相対移動は座標差から作る");
                 }
-                input.Mouse().OnRawMoveAbsolute(static_cast<int>(normalizedX * width),
+                input.m_mouse.OnRawMoveAbsolute(static_cast<int>(normalizedX * width),
                                                 static_cast<int>(normalizedY * height));
                 break;
             }

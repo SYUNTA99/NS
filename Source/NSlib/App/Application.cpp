@@ -120,7 +120,7 @@ namespace NS
         m_window->SetCursorVisible(!captured);
         // 固定しないとクリックが他のパネルへ落ち、押しっぱなしの体当たり入力が届かないフレームができる
         m_window->SetCursorLocked(captured);
-        OS::Input::Get().Mouse().SetRelativeMode(captured);
+        OS::Input::Get().SetMouseRelativeMode(captured);
     }
 
     AssetManager& Application::Assets() noexcept
