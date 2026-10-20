@@ -309,13 +309,7 @@ namespace NS
         m_frame = m_startFrame - 1;
         m_position = position;
         m_self = self;
-        m_other = ActorRef{};
-        m_otherAttack = false;
-        if (const SceneActor* host = other->Host())
-        {
-            m_other = ActorRef{host->Id()};
-            m_otherAttack = host->AttackSensorClassObj() == other;
-        }
+        m_other = MakeHitSensorRef(*other);
         return true;
     }
 
@@ -325,8 +319,7 @@ namespace NS
         m_current = k_NoAction;
         m_state = nullptr;
         m_self = nullptr;
-        m_other = ActorRef{};
-        m_otherAttack = false;
+        m_other = HitSensorRef{};
     }
 
     // TODO: 時計は状態の歩だけ。最初に骨付きの動作を作る時に、アニメのフレームを時計にする道を足す
@@ -458,20 +451,6 @@ namespace NS
 
     const HitSensor* ActionTimeline::OtherSensor() const noexcept
     {
-        Scene* scene = m_owner->OwningScene();
-        if (scene == nullptr)
-        {
-            return nullptr;
-        }
-        SceneActor* other = scene->Objects().FindObject(m_other);
-        if (other == nullptr)
-        {
-            return nullptr;
-        }
-        if (m_otherAttack)
-        {
-            return other->AttackSensorClassObj();
-        }
-        return other->BodySensorClassObj();
+        return FindHitSensor(m_owner->OwningScene(), m_other);
     }
 } // namespace NS

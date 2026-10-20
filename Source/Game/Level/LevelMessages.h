@@ -10,6 +10,7 @@
 #include "NSlib/CoreObject/ObjectJson.h"
 
 #include "NSlib/Core/Types.h"
+#include <optional>
 #include <string>
 
 namespace NS
@@ -129,46 +130,32 @@ namespace GL
         bool SendMsgAskTackleTarget(NS::HitSensor& receiver, TackleTargetAnswer& outAnswer);
         [[nodiscard]] bool IsMsgAskTackleTarget(const NS::Message& msg) noexcept;
 
-        //! @brief 体当たりの止めの頭の、相手の形と動き
-        struct TackleFreezeDesc
+        //! @brief 体当たりを受けた相手へ渡す、当てた側の当たり
+        //! @details 受け手は段ごとの自分の束を、触れた点と、自分と当てた側のセンサーで始める
+        struct TackleHitDesc
         {
-            NS::Vector3 impactDir{1.0f, 0.0f, 0.0f}; //!< 相手の飛ぶ水平の向き。食い込みの向き
-            float pushInDistance = 0.0f;             //!< 止めの頭で飛ぶ向きへ食い込ませる距離 (m)
-            float squashThickness = 1.0f;            //!< 飛ぶ向きの厚みの倍率
-            float squashHeight = 1.0f;               //!< 高さの倍率
-            bool squash = true;                      //!< 形を縮めるか。押し返している反発の時だけ縮める
-            int stopSteps = 0;                       //!< 止めるフレーム数
+            HitTier tier = HitTier::Center;          //!< 当たりの段。受け手は段で自分の束を選ぶ
+            NS::Vector3 contact{0.0f, 0.0f, 0.0f};   //!< 当てた側の体が受け手の表面に触れた世界の点
+            NS::Vector3 impactDir{1.0f, 0.0f, 0.0f}; //!< 受け手の飛ぶ水平の向き。食い込みと潰れの向き
+            //! 貫通の時だけ持つ止めのフレーム数。束の止めの長さを書き換え、押し勝っている側なので受け手を潰さない
+            std::optional<int> stopOverride;
         };
 
-        //! @brief 体当たりの止めの頭を知らせる。受け手は置かれていれば食い込み、止めの間だけ止まり、形を縮める
-        class MsgTackleFreeze final : public NS::Message
+        //! @brief 体当たりが当たった事を知らせる。当てた側の体のセンサーから、受け手の体のセンサーへ送る
+        //! @details 受け手は受けた状態に入り、自分の束で止まる・食い込む・潰れる・揺れる・残像を出す
+        class MsgTackleHit final : public NS::Message
         {
-            NS_MESSAGE(MsgTackleFreeze)
+            NS_MESSAGE(MsgTackleHit)
 
         public:
-            explicit MsgTackleFreeze(const TackleFreezeDesc& desc) noexcept : m_desc(desc) {}
-            [[nodiscard]] const TackleFreezeDesc& Desc() const noexcept { return m_desc; }
+            explicit MsgTackleHit(const TackleHitDesc& desc) noexcept : m_desc(desc) {}
+            [[nodiscard]] const TackleHitDesc& Desc() const noexcept { return m_desc; }
 
         private:
-            const TackleFreezeDesc& m_desc;
+            const TackleHitDesc& m_desc;
         };
-        bool SendMsgTackleFreeze(NS::SceneActor& receiver, const TackleFreezeDesc& desc);
-        [[nodiscard]] bool IsMsgTackleFreeze(const NS::Message& msg) noexcept;
-
-        //! @brief 止めの間の揺れを知らせる。受け手は自分の Model::StartDrawShake に渡して、止めの間だけ揺れる
-        class MsgTackleShake final : public NS::Message
-        {
-            NS_MESSAGE(MsgTackleShake)
-
-        public:
-            explicit MsgTackleShake(const NS::DrawShakeDesc& desc) noexcept : m_desc(desc) {}
-            [[nodiscard]] const NS::DrawShakeDesc& Desc() const noexcept { return m_desc; }
-
-        private:
-            const NS::DrawShakeDesc& m_desc;
-        };
-        bool SendMsgTackleShake(NS::SceneActor& receiver, const NS::DrawShakeDesc& desc);
-        [[nodiscard]] bool IsMsgTackleShake(const NS::Message& msg) noexcept;
+        bool SendMsgTackleHit(NS::HitSensor& receiver, NS::HitSensor& sender, const TackleHitDesc& desc);
+        [[nodiscard]] bool IsMsgTackleHit(const NS::Message& msg) noexcept;
 
         //! @brief 残像。止めの間は根の左右に写しを置き、明けに止めの最後の姿を残して薄める
         struct TackleGhostDesc
@@ -186,36 +173,6 @@ namespace GL
             bool WriteTo(TackleGhost* ghost, int frame) const noexcept;
         };
 
-        //! @brief 残像を知らせる。受け手は知らせを受けたフレームを 1 フレーム目として、止めの後も明けの写しを進める
-        class MsgTackleGhost final : public NS::Message
-        {
-            NS_MESSAGE(MsgTackleGhost)
-
-        public:
-            explicit MsgTackleGhost(const TackleGhostDesc& desc) noexcept : m_desc(desc) {}
-            [[nodiscard]] const TackleGhostDesc& Desc() const noexcept { return m_desc; }
-
-        private:
-            const TackleGhostDesc& m_desc;
-        };
-        bool SendMsgTackleGhost(NS::SceneActor& receiver, const TackleGhostDesc& desc);
-        [[nodiscard]] bool IsMsgTackleGhost(const NS::Message& msg) noexcept;
-
-        //! @brief 衝撃の震えを知らせる。受け手は体の長さを足して、自分の Model::StartDrawTremor に渡す
-        class MsgTackleTremor final : public NS::Message
-        {
-            NS_MESSAGE(MsgTackleTremor)
-
-        public:
-            explicit MsgTackleTremor(const NS::DrawTremorDesc& desc) noexcept : m_desc(desc) {}
-            [[nodiscard]] const NS::DrawTremorDesc& Desc() const noexcept { return m_desc; }
-
-        private:
-            const NS::DrawTremorDesc& m_desc;
-        };
-        bool SendMsgTackleTremor(NS::SceneActor& receiver, const NS::DrawTremorDesc& desc);
-        [[nodiscard]] bool IsMsgTackleTremor(const NS::Message& msg) noexcept;
-
         //! @brief 体当たりの止めが明けた時の、相手の飛び方
         struct TackleReleaseDesc
         {
@@ -227,7 +184,9 @@ namespace GL
             NS::uint32 hopSeed = 0;   //!< 外れで着地した後の跳ね方の種。何回目の当たりか
         };
 
-        //! @brief 体当たりの止めが明けたことを知らせる。受け手は元の位置と形へ戻ってから飛ぶか壊れ、床に跡を残す
+        //! @brief 体当たりの止めが明けたことを知らせる
+        //! @details 受け手は当たったの知らせを受けていれば自分の明けの束を出し、元の位置と形へ戻ってから
+        //! 飛ぶか壊れ、床に跡を残す
         class MsgTackleRelease final : public NS::Message
         {
             NS_MESSAGE(MsgTackleRelease)

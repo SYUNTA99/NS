@@ -801,26 +801,23 @@ namespace GL
                 resolver.m_shapeActive = true;
             }
 
-            void operator()(const TargetFreezeEvent& freeze) const
+            // 相手の止め・食い込み・潰れ・揺れ・残像は、相手が自分の束で出す。行の欄は読まない
+            void operator()(const TargetFreezeEvent&) const
             {
-                NS::Scene* scene = resolver.m_owner->OwningScene();
-                if (scene == nullptr)
+                NS::SceneActor* target = resolver.PendingTargetActor();
+                if (target == nullptr || target->BodySensorClassObj() == nullptr ||
+                    resolver.m_owner->BodySensorClassObj() == nullptr)
                 {
                     return;
                 }
-                // 力が伝わった瞬間の絵。置かれていれば食い込ませて止めさせ、押し返されている反発の時だけ縮める
-                NS::SceneActor* target = scene->Objects().FindObject(resolver.m_pendingTarget);
-                if (target == nullptr)
+                TackleHitDesc hit{.tier = resolver.m_answer.lastImpact.tier,
+                                  .contact = resolver.m_answer.lastImpact.surfacePoint,
+                                  .impactDir = resolver.m_pendingImpactDir};
+                if (resolver.m_pendingBreak)
                 {
-                    return;
+                    hit.stopOverride = StopLengthOf(event, resolver.m_breakStopSteps);
                 }
-                const TackleFreezeDesc desc{.impactDir = resolver.m_pendingImpactDir,
-                                            .pushInDistance = freeze.pushInDistance,
-                                            .squashThickness = freeze.squashThickness,
-                                            .squashHeight = freeze.squashHeight,
-                                            .squash = !resolver.m_pendingBreak,
-                                            .stopSteps = StopLengthOf(event, resolver.m_breakStopSteps)};
-                (void)SendMsgTackleFreeze(*target, desc);
+                (void)SendMsgTackleHit(*target->BodySensorClassObj(), *resolver.m_owner->BodySensorClassObj(), hit);
             }
 
             void operator()(const TargetLaunchEvent&) const { resolver.LaunchTarget(); }
@@ -1407,16 +1404,8 @@ namespace GL
                 .seed = m_answer.lastImpact.sequence,
                 .firstSign = firstSign,
                 .flipFrames = shake.flipFrames};
-            // 相手は逆方向へ揺らし、後ろから重なる二人を区別する
-            NS::DrawShakeDesc other = self;
-            other.firstSign = -firstSign;
-            other.amplitude = 0.0f;
-            const NS::SceneActor* target = PendingTargetActor();
-            if (target != nullptr)
-            {
-                other.amplitude = NS::ScreenPixelsToMeters(shake.amplitudePixels, *pose, target->Root().Position());
-            }
-            BeginShake(self, other);
+            // 相手の揺れは相手が自分の束で出す
+            StartSelfShake(self);
         }
 
         void ImpactResolver::StartDepthShake(const DepthShakeEvent& shake, int length)
@@ -1435,22 +1424,14 @@ namespace GL
                                        .seed = m_answer.lastImpact.sequence,
                                        .pushFrames = shake.pushFrames,
                                        .returnRatio = shake.returnRatio};
-            NS::DrawShakeDesc other = self;
-            other.axis = dir;
-            other.amplitude = shake.depth;
-            BeginShake(self, other);
+            StartSelfShake(self);
         }
 
-        void ImpactResolver::BeginShake(const NS::DrawShakeDesc& self, const NS::DrawShakeDesc& other)
+        void ImpactResolver::StartSelfShake(const NS::DrawShakeDesc& self)
         {
             if (NS::Model* model = m_owner->ModelClassObj())
             {
                 model->StartDrawShake(self);
-            }
-            NS::SceneActor* target = PendingTargetActor();
-            if (target != nullptr)
-            {
-                (void)SendMsgTackleShake(*target, other);
             }
         }
 
@@ -1489,14 +1470,6 @@ namespace GL
             m_ghost = GhostRun{.desc = self, .frame = 0, .active = true, .startedThisStep = true};
             // 始めたフレームから描く。startedThisStep が true の間は StepState が同じ固定ステップで進めない
             AdvanceGhost(tackleGhost);
-            NS::SceneActor* target = PendingTargetActor();
-            if (target == nullptr)
-            {
-                return;
-            }
-            TackleGhostDesc other = self;
-            other.spread = NS::ScreenPixelsToMeters(ghost.spreadPixels, *pose, target->Root().Position());
-            (void)SendMsgTackleGhost(*target, other);
         }
 
         void ImpactResolver::StartShakeLines(const ShakeLinesEvent& lines, int length, const PlayerParts& parts)
@@ -1591,26 +1564,11 @@ namespace GL
                                           .length = length,
                                           .referenceHeight = tremor.referenceHeight,
                                           .bodyLength = 2.0f * collider->CapsuleRadius()};
+            // 相手の震えは相手が自分の明けの束で出す
             if (NS::Model* model = m_owner->ModelClassObj())
             {
                 model->StartDrawTremor(self);
             }
-
-            NS::Scene* scene = m_owner->OwningScene();
-            if (scene == nullptr)
-            {
-                return;
-            }
-            NS::SceneActor* target = scene->Objects().FindObject(m_pendingTarget);
-            if (target == nullptr)
-            {
-                return;
-            }
-            NS::DrawTremorDesc other = self;
-            other.contactOffset = contact - target->Root().Position();
-            // 相手は飛んで遠ざかるので体に対する割合で震わせる
-            other.amplitudeRatio = tremor.targetAmplitudeRatio;
-            (void)SendMsgTackleTremor(*target, other);
         }
 
         void ImpactResolver::StartGroundWave(const GroundWaveEvent& wave, int length)

@@ -283,19 +283,18 @@ namespace GL
             // 一撃は外した側 (面の上の位置) へ振る。面の上の位置が無い当たりは、自機が弾かれる向きの画面の側へ振る
             // 事前条件: 威力・揺れの種・反動の向きを控え終えている
             [[nodiscard]] NS::CameraTraumaDesc TraumaDescFor(const CameraTraumaEvent& trauma) const noexcept;
-            // 横揺れを始める。自機の揺れを控え、相手へ逆向きの揺れを知らせる。カメラが無い世界では揺らさない
+            // 自機の横揺れを始める。カメラが無い世界では揺らさない
             void StartBodyShake(const BodyShakeEvent& shake, int length);
             void StopBodyShake() noexcept;
-            // 奥揺れを始める。押す向きが水平に無ければ揺らさない
+            // 自機の奥揺れを始める。押す向きが水平に無ければ揺らさない
             void StartDepthShake(const DepthShakeEvent& shake, int length);
-            // 自機の Model に揺れを頼み、相手へ other を知らせる
-            void BeginShake(const NS::DrawShakeDesc& self, const NS::DrawShakeDesc& other);
+            void StartSelfShake(const NS::DrawShakeDesc& self);
             [[nodiscard]] NS::SceneActor* PendingTargetActor() const noexcept;
-            // 残像を始める。自機の残像を控え、相手へ知らせる。カメラが無い世界では出さない
+            // 自機の残像を始める。カメラが無い世界では出さない
             void StartGhost(const GhostEvent& ghost, int length, TackleGhost* tackleGhost);
             void AdvanceGhost(TackleGhost* tackleGhost);
             void StopGhost(TackleGhost* tackleGhost) noexcept;
-            // 衝撃の震えを始める。自機の Model に震えを頼み、相手へ同じ衝突点からの震えを知らせる
+            // 自機の衝撃の震えを始める。自機の Model に震えを頼む
             // 裏まで届くフレーム数は length の半分までに抑える。collider は空でないこと
             void StartTremor(const ImpactTremorEvent& tremor, int length, const NS::Collider* collider);
             // 触れた点の真下を中心にした床の波を、length フレームだけ出す

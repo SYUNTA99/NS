@@ -1,9 +1,9 @@
 #pragma once
 
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/IUse/IUseState.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/Reflection/ActorRef.h"
 
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"
@@ -125,8 +125,7 @@ namespace NS
         int m_frame = -1;                    // 最後に進めたフレーム
         Vector3 m_position{};                // 始めた時に渡した位置
         const HitSensor* m_self = nullptr;   // 持ち主のセンサー。持ち主と同じだけ生きる
-        ActorRef m_other{};                  // 相手。フレームをまたいでポインタを持たず、使うたびに引く
-        bool m_otherAttack = false;          // 相手のセンサーが攻撃のセンサーなら true
+        HitSensorRef m_other{};              // 相手のセンサー。フレームをまたいでポインタを持たず、使うたびに引く
         std::vector<std::size_t> m_started;  // 最後の Advance で始まった事象
         std::vector<std::size_t> m_switched; // 入り切りの途中の、動作の sensors の番号
     };

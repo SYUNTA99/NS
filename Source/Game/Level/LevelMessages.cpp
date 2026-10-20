@@ -68,24 +68,14 @@ namespace GL
             return NS::IsMsg<MsgAskTackleTarget>(msg);
         }
 
-        bool SendMsgTackleFreeze(NS::SceneActor& receiver, const TackleFreezeDesc& desc)
+        bool SendMsgTackleHit(NS::HitSensor& receiver, NS::HitSensor& sender, const TackleHitDesc& desc)
         {
-            return NS::SendMsgToActor(MsgTackleFreeze{desc}, receiver);
+            return NS::SendMsg(MsgTackleHit{desc}, receiver, &sender);
         }
 
-        bool IsMsgTackleFreeze(const NS::Message& msg) noexcept
+        bool IsMsgTackleHit(const NS::Message& msg) noexcept
         {
-            return NS::IsMsg<MsgTackleFreeze>(msg);
-        }
-
-        bool SendMsgTackleShake(NS::SceneActor& receiver, const NS::DrawShakeDesc& desc)
-        {
-            return NS::SendMsgToActor(MsgTackleShake{desc}, receiver);
-        }
-
-        bool IsMsgTackleShake(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgTackleShake>(msg);
+            return NS::IsMsg<MsgTackleHit>(msg);
         }
 
         bool TackleGhostDesc::WriteTo(TackleGhost* ghost, int frame) const noexcept
@@ -106,26 +96,6 @@ namespace GL
             const float left = 1.0f - static_cast<float>(release) / static_cast<float>(releaseFrames);
             (void)ghost->SetAfterimageOpacity(releaseOpacity * left);
             return true;
-        }
-
-        bool SendMsgTackleGhost(NS::SceneActor& receiver, const TackleGhostDesc& desc)
-        {
-            return NS::SendMsgToActor(MsgTackleGhost{desc}, receiver);
-        }
-
-        bool IsMsgTackleGhost(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgTackleGhost>(msg);
-        }
-
-        bool SendMsgTackleTremor(NS::SceneActor& receiver, const NS::DrawTremorDesc& desc)
-        {
-            return NS::SendMsgToActor(MsgTackleTremor{desc}, receiver);
-        }
-
-        bool IsMsgTackleTremor(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgTackleTremor>(msg);
         }
 
         bool SendMsgTackleRelease(NS::SceneActor& receiver, const TackleReleaseDesc& desc)

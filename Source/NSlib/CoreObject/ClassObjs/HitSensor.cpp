@@ -282,6 +282,34 @@ namespace NS
         scene->HitSensors().Unregister(this);
     }
 
+    HitSensorRef MakeHitSensorRef(const HitSensor& sensor) noexcept
+    {
+        const SceneActor* host = sensor.Host();
+        if (host == nullptr)
+        {
+            return HitSensorRef{};
+        }
+        return HitSensorRef{.actor = ActorRef{host->Id()}, .attack = host->AttackSensorClassObj() == &sensor};
+    }
+
+    HitSensor* FindHitSensor(Scene* scene, const HitSensorRef& ref) noexcept
+    {
+        if (scene == nullptr)
+        {
+            return nullptr;
+        }
+        SceneActor* host = scene->Objects().FindObject(ref.actor);
+        if (host == nullptr)
+        {
+            return nullptr;
+        }
+        if (ref.attack)
+        {
+            return host->AttackSensorClassObj();
+        }
+        return host->BodySensorClassObj();
+    }
+
     void ShapeHitSensor::SetSphere(float radius) noexcept
     {
         m_shape = HitSensorShape::Sphere;

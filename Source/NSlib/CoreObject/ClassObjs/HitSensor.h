@@ -4,6 +4,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Reflection/ActorRef.h"
 
 #include "NSlib/Core/Types.h"
 #include <functional>
@@ -14,6 +15,7 @@ namespace NS
     {
         struct Capsule;
     }
+    class Scene;
 } // namespace NS
 
 namespace NS
@@ -85,6 +87,21 @@ namespace NS
         bool m_valid = true;       // 調べる対象か
         SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
+
+    //! @brief フレームをまたいでセンサーを指す値。持ち主の永続 id と、体と攻撃のどちらのセンサーかで持つ
+    //! @details 相手が消えるとポインタは壊れた番地を指すので、待ちをまたぐ時はこれを持ち、使うたびに引き直す
+    struct HitSensorRef
+    {
+        ActorRef actor{};    //!< センサーの持ち主。未設定なら何も指さない
+        bool attack = false; //!< 攻撃のセンサーなら true、体のセンサーなら false
+    };
+
+    //! sensor を指す値。持ち主の無いセンサーは何も指さない値になる
+    [[nodiscard]] HitSensorRef MakeHitSensorRef(const HitSensor& sensor) noexcept;
+
+    //! @brief ref が指すセンサーを scene から引き直す
+    //! @return scene が nullptr・持ち主が居ない・持ち主がそのセンサーを持たない場合 nullptr
+    [[nodiscard]] HitSensor* FindHitSensor(Scene* scene, const HitSensorRef& ref) noexcept;
 
     //! 独立した形状を持つセンサー。寸法は持ち主の世界スケールに従う
     class ShapeHitSensor final : public HitSensor

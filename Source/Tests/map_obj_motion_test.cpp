@@ -168,26 +168,6 @@ TEST(MapObjMotion, RestartMovesTheCollisionBeforeTheNextUpdate)
     EXPECT_NEAR(distance, 1.5f, 0.001f);
 }
 
-TEST(MapObjMotion, ZeroLengthFreezeStillWaitsForReleaseGrace)
-{
-    NS::Scene scene;
-    GL::Level::PropActor* rock = PlaceMovingRock(scene);
-    ASSERT_NE(rock, nullptr);
-    GL::Level::TackleFreezeDesc freeze;
-    freeze.pushInDistance = 0.1f;
-    freeze.squashThickness = 0.8f;
-    ASSERT_TRUE(GL::Level::SendMsgTackleFreeze(*rock, freeze));
-    for (int step = 0; step < 3; ++step)
-    {
-        rock->UpdateMotion();
-    }
-    EXPECT_TRUE(rock->IsFrozen());
-    rock->UpdateMotion();
-    EXPECT_FALSE(rock->IsFrozen());
-    EXPECT_FLOAT_EQ(rock->Root().Position().x, 0.0f);
-    EXPECT_FLOAT_EQ(rock->ModelClassObj()->GetDrawScale().x, 1.0f);
-}
-
 TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
 {
     NS::Scene scene;
@@ -215,24 +195,6 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
         }
     }
     EXPECT_EQ(dustCount, 1);
-}
-
-TEST(MapObjMotion, FreezeWithoutSquashLeavesTheDrawScale)
-{
-    NS::Scene scene;
-    GL::Level::PropActor* rock = PlaceMovingRock(scene);
-    ASSERT_NE(rock, nullptr);
-    GL::Level::TackleFreezeDesc freeze;
-    freeze.squash = false;
-    freeze.squashThickness = 0.8f;
-    freeze.squashHeight = 0.7f;
-    ASSERT_TRUE(GL::Level::SendMsgTackleFreeze(*rock, freeze));
-    EXPECT_TRUE(rock->ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
-    for (int step = 0; step < 4; ++step)
-    {
-        rock->UpdateMotion();
-    }
-    EXPECT_TRUE(rock->ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
 }
 
 TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)

@@ -16,6 +16,11 @@
 
 #include <optional>
 
+namespace NS
+{
+    struct HitOwnerRun;
+} // namespace NS
+
 namespace GL
 {
     namespace Level
@@ -69,7 +74,7 @@ namespace GL
             void OnInit() override;
             void OnAppear() override;
             void OnDisappear() noexcept override;
-            //! 発光の層を進める。HitReaction は進めない
+            //! 発光の層・残像・当たりの跡を進める
             void VisualStep() override;
 
         private:
@@ -79,11 +84,26 @@ namespace GL
             class ArcState;
             class RollingState;
 
+            // 受けた状態の頭の形と動き
+            struct TackleFreezeDesc
+            {
+                NS::Vector3 impactDir{1.0f, 0.0f, 0.0f}; // 飛ぶ水平の向き。食い込みの向き
+                float pushInDistance = 0.0f;             // 飛ぶ向きへ食い込ませる距離 (m)
+                float squashThickness = 1.0f;            // 飛ぶ向きの厚みの倍率
+                float squashHeight = 1.0f;               // 高さの倍率
+                bool squash = false;                     // 形を潰すか
+            };
+
+            // 当たったの知らせを受ける。段の自分の束を触れた点と 2 つのセンサーで始め、受けた状態に入る
+            void ReceiveHit(const TackleHitDesc& hit, const NS::HitSensor& self, const NS::HitSensor& attacker);
+            // 受けた当たりの明けの束を始める。当たっていない・当てた側が居ない時は何もしない
+            void StartReleaseSet();
             void BeginFreeze(const TackleFreezeDesc& desc);
             void EndFreeze();
             // 止めを解く。置かれていたか状態機械が終わっていれば Resting、他は Launched
             void LeaveFreeze();
-            void StepFreeze();
+            // 束の残像の項目から残像を始める。食い込んだ後の根の奥行きでピクセルを m にする
+            void StartGhost(const NS::HitOwnerRun& run);
             void AdvanceGhost();
             void StopGhost();
             void Release(const TackleReleaseDesc& desc);
@@ -108,6 +128,15 @@ namespace GL
             NS::StateMachineOf<PropActor>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
             NS::SubStateMachine<PropActor> m_motion;
             TackleFreezeDesc m_freeze;
+            // 受けた当たり。明けの知らせで明けの束を始める時に読み、使い終えると active を下ろす
+            struct ReceivedHit
+            {
+                NS::HitSensorRef attacker{};
+                NS::Vector3 contact{};
+                HitTier tier = HitTier::Center;
+                bool active = false;
+            };
+            ReceivedHit m_received;
             // 残像。知らせを受けたフレームの見た目の 1 歩を 1 フレーム目に数え、止めの後も状態に依らず進める
             struct GhostRun
             {
