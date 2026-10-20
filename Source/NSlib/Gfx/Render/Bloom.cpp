@@ -20,17 +20,6 @@ namespace NS
     {
         namespace
         {
-            // シェーダの bloom.hlsli の cbuffer b0 とバイト一致させる
-            struct alignas(16) BloomCB
-            {
-                float sourceTexel[2];
-                float destinationTexel[2];
-                float threshold;
-                float intensity;
-                float padding[2];
-            };
-            static_assert(sizeof(BloomCB) == 32, "BloomCB は HLSL の cbuffer b0 とバイト一致が必要");
-
             // 1 を超える明るさを持つ。16 ビットの浮動小数は 1 付近の刻みが 1/2048 で、8 ビットの 1/255 より細かい
             constexpr DXGI_FORMAT k_HdrFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
@@ -229,7 +218,7 @@ namespace NS
             cmd.SetPipeline(pipeline);
             cmd.VSSetShader(*m_vs);
             cmd.PSSetShader(pixelShader);
-            cmd.PSSetConstantBuffer(*m_cb, 0);
+            cmd.PSSetConstantBuffer(*m_cb, k_DrawConstantsSlot);
             cmd.PSSetShaderResource(source, 0);
             if (scene != nullptr)
             {

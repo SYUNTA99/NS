@@ -1,6 +1,8 @@
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DSkeletalMesh.h"
+#include "NSlib/Gfx/Render/Bloom.h"
 #include "NSlib/Gfx/Render/FrameConstants.h"
+#include "NSlib/Gfx/Render/ScreenOverlay.h"
 
 #include <gtest/gtest.h>
 
@@ -122,4 +124,40 @@ TEST(ShaderConstants, SkinnedVertexShaderMatchesTheDrawConstantsAndTheBones)
     EXPECT_TRUE(HasConstantBuffer(
         *shader.reflection.Get(), "BonePalette", NS::Gfx::k_BonePaletteSlot, sizeof(NS::Gfx::BonePaletteCB)));
     EXPECT_TRUE(MaterialParamsAtItsSlot(*shader.reflection.Get()));
+}
+
+TEST(ShaderConstants, BloomPixelShadersMatchTheBloomConstants)
+{
+    const wchar_t* const paths[] = {L"Shaders/bloom_threshold.ps.hlsl",
+                                    L"Shaders/bloom_down.ps.hlsl",
+                                    L"Shaders/bloom_up.ps.hlsl",
+                                    L"Shaders/bloom_composite.ps.hlsl"};
+    for (const wchar_t* path : paths)
+    {
+        const ReflectedShader shader = Reflect(path, "PSMain", "ps_5_0");
+        ASSERT_NE(shader.reflection, nullptr) << shader.error;
+        EXPECT_TRUE(
+            HasConstantBuffer(*shader.reflection.Get(), "BloomCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::BloomCB)));
+    }
+}
+
+TEST(ShaderConstants, FadePixelShaderMatchesTheFullscreenColorConstants)
+{
+    const ReflectedShader shader = Reflect(L"Shaders/fade.ps.hlsl", "PSMain", "ps_5_0");
+    ASSERT_NE(shader.reflection, nullptr) << shader.error;
+    EXPECT_TRUE(HasConstantBuffer(
+        *shader.reflection.Get(), "FadeCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::FullscreenColorCB)));
+}
+
+TEST(ShaderConstants, ScreenRectShadersMatchTheScreenRectConstants)
+{
+    const ReflectedShader vs = Reflect(L"Shaders/ui_rect.vs.hlsl", "VSMain", "vs_5_0");
+    ASSERT_NE(vs.reflection, nullptr) << vs.error;
+    EXPECT_TRUE(
+        HasConstantBuffer(*vs.reflection.Get(), "UiRectCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::ScreenRectCB)));
+
+    const ReflectedShader ps = Reflect(L"Shaders/ui_rect.ps.hlsl", "PSMain", "ps_5_0");
+    ASSERT_NE(ps.reflection, nullptr) << ps.error;
+    EXPECT_TRUE(
+        HasConstantBuffer(*ps.reflection.Get(), "UiRectCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::ScreenRectCB)));
 }

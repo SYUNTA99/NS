@@ -19,6 +19,18 @@ namespace NS
         class D3DTexture;
         struct BuiltinShaders;
 
+        //! @brief 光のにじみの 4 つのシェーダーが共有する定数
+        //! @details bloom.hlsli の cbuffer BloomCB と大きさを合わせる。照らす試しは shader_constants_test.cpp
+        struct alignas(16) BloomCB
+        {
+            float sourceTexel[2]{};      //!< 読む絵の 1 ピクセルの UV の幅と高さ
+            float destinationTexel[2]{}; //!< 書く絵の 1 ピクセルの UV の幅と高さ
+            float threshold = 0.0f;
+            float intensity = 0.0f;
+            float padding[2]{};
+        };
+        static_assert(sizeof(BloomCB) == 32, "BloomCB は HLSL の cbuffer BloomCB とバイト一致が必要");
+
         //! @brief 光のにじみの設定
         //! @details 物の絵は S 字で 1 以下に書くので、閾値 1 なら 1 を超えて書いたエフェクトだけがにじむ
         struct BloomDesc
