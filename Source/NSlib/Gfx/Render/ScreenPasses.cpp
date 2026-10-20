@@ -73,27 +73,22 @@ namespace NS
             }
 
             D3DCommandList& cmd = device.Commands();
-            ComPtr<ID3D11RenderTargetView> target;
-            ComPtr<ID3D11DepthStencilView> depth;
-            cmd->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
-            if (target == nullptr)
+            const SavedTargets saved = cmd.SaveTargets();
+            if (saved.color == nullptr)
             {
                 return;
             }
             ComPtr<ID3D11Resource> resource;
-            target->GetResource(resource.GetAddressOf());
+            saved.color->GetResource(resource.GetAddressOf());
             ComPtr<ID3D11Texture2D> texture;
             if (FAILED(resource.As(&texture)) || !EnsureCopy(*texture.Get()))
             {
                 return;
             }
-            D3D11_VIEWPORT savedViewport{};
-            UINT viewportCount = 1;
-            cmd->RSGetViewports(&viewportCount, &savedViewport);
 
             cmd->CopyResource(m_copy->Native(), texture.Get());
 
-            cmd.SetRenderTarget(target.Get(), nullptr);
+            cmd.SetRenderTarget(saved.color.Get(), nullptr);
             cmd.SetViewport(static_cast<float>(m_copyDesc.Width), static_cast<float>(m_copyDesc.Height));
 
             ScreenDistortionCB cbData{};
@@ -120,44 +115,33 @@ namespace NS
             }
             else
             {
-                ID3D11ShaderResourceView* noMask[1] = {nullptr};
-                cmd->PSSetShaderResources(1, 1, noMask);
+                cmd.UnbindPixelShaderResources(1, 1);
             }
             // 押した先は線形で拾う。端の外は端の色を伸ばす
             cmd.PSSetSampler(device.States().LinearClamp(), 0);
 
-            // 頂点は SV_VertexID から作る
-            cmd->IASetInputLayout(nullptr);
-            cmd.SetTopology(Topology::TriangleList);
-            cmd.Draw(3);
+            cmd.DrawFromVertexId(3);
 
-            ID3D11ShaderResourceView* none[2] = {nullptr, nullptr};
-            cmd->PSSetShaderResources(0, 2, none);
-            cmd.SetRenderTarget(target.Get(), depth.Get());
-            if (viewportCount > 0)
-            {
-                cmd->RSSetViewports(1, &savedViewport);
-            }
+            cmd.UnbindPixelShaderResources(0, 2);
+            cmd.RestoreTargets(saved);
         }
 
         bool ScreenPasses::BeginBodyMask(D3DDevice& device) noexcept
         {
             m_bodyMaskDrawn = false;
-            if (!m_valid || m_savedTarget != nullptr || !IsUsable(m_bodyMaskPs))
+            if (!m_valid || m_saved.color != nullptr || !IsUsable(m_bodyMaskPs))
             {
                 return false;
             }
 
             D3DCommandList& cmd = device.Commands();
-            ComPtr<ID3D11RenderTargetView> target;
-            ComPtr<ID3D11DepthStencilView> depth;
-            cmd->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
-            if (target == nullptr)
+            SavedTargets saved = cmd.SaveTargets();
+            if (saved.color == nullptr)
             {
                 return false;
             }
             ComPtr<ID3D11Resource> resource;
-            target->GetResource(resource.GetAddressOf());
+            saved.color->GetResource(resource.GetAddressOf());
             ComPtr<ID3D11Texture2D> texture;
             if (FAILED(resource.As(&texture)))
             {
@@ -170,27 +154,22 @@ namespace NS
                 return false;
             }
 
-            UINT viewportCount = 1;
-            cmd->RSGetViewports(&viewportCount, &m_savedViewport);
-            if (viewportCount == 0)
-            {
-                m_savedViewport = D3D11_VIEWPORT{
-                    0.0f, 0.0f, static_cast<float>(desc.Width), static_cast<float>(desc.Height), 0.0f, 1.0f};
-            }
             // 型を描画先にするので、先に読む側から外す
-            ID3D11ShaderResourceView* none[2] = {nullptr, nullptr};
-            cmd->PSSetShaderResources(0, 2, none);
+            cmd.UnbindPixelShaderResources(0, 2);
             cmd.ClearRenderTarget(m_bodyMask->Rtv(), 0.0f, 0.0f, 0.0f, 0.0f);
-            cmd.SetRenderTarget(m_bodyMask->Rtv(), depth.Get());
-            cmd->RSSetViewports(1, &m_savedViewport);
-            m_savedTarget = target;
-            m_savedDepth = depth;
+            // 型は描画先と同じ大きさなので、差してあるビューポートをそのまま使う
+            cmd.SetRenderTarget(m_bodyMask->Rtv(), saved.depth.Get());
+            if (!saved.hasViewport)
+            {
+                cmd.SetViewport(static_cast<float>(desc.Width), static_cast<float>(desc.Height));
+            }
+            m_saved = std::move(saved);
             return true;
         }
 
         void ScreenPasses::DrawBodyMaskItem(D3DDevice& device, const DrawItem& item) noexcept
         {
-            if (m_savedTarget == nullptr)
+            if (m_saved.color == nullptr)
             {
                 return;
             }
@@ -204,15 +183,12 @@ namespace NS
 
         void ScreenPasses::EndBodyMask(D3DDevice& device) noexcept
         {
-            if (m_savedTarget == nullptr)
+            if (m_saved.color == nullptr)
             {
                 return;
             }
-            D3DCommandList& cmd = device.Commands();
-            cmd.SetRenderTarget(m_savedTarget.Get(), m_savedDepth.Get());
-            cmd->RSSetViewports(1, &m_savedViewport);
-            m_savedTarget.Reset();
-            m_savedDepth.Reset();
+            device.Commands().RestoreTargets(m_saved);
+            m_saved = SavedTargets{};
             m_bodyMaskDrawn = true;
         }
 

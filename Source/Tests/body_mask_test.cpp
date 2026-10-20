@@ -3,7 +3,9 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
+#include "NSlib/Gfx/Render/ScreenPasses.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DDevice.h"
@@ -200,4 +202,41 @@ TEST(BodyMask, HiddenPixelsAreLeftOut)
     }
     EXPECT_GT(hidden, 50) << "alone=" << CountSet(alone) << " covered=" << CountSet(covered);
     EXPECT_GT(CountSet(covered), 50);
+}
+
+// 型を描き終えると、型を描く前の描き先・深度・ビューポートへ戻る
+TEST(BodyMask, EndReturnsToTheTargetsBeforeBegin)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "型の描き先の試し", .size = {16, 16}, .visible = false});
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
+    NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
+    NS::Gfx::ScreenPasses passes(assets.LoadBuiltinShaders());
+    ASSERT_TRUE(passes.IsValid());
+
+    device.BeginFrame();
+    NS::Gfx::D3DCommandList& cmd = device.Commands();
+    cmd.SetViewport(12.0f, 10.0f);
+    NS::Gfx::ComPtr<ID3D11RenderTargetView> firstColor;
+    NS::Gfx::ComPtr<ID3D11DepthStencilView> firstDepth;
+    cmd->OMGetRenderTargets(1, firstColor.GetAddressOf(), firstDepth.GetAddressOf());
+    ASSERT_NE(firstColor, nullptr);
+
+    ASSERT_TRUE(passes.BeginBodyMask(device));
+    NS::Gfx::ComPtr<ID3D11RenderTargetView> maskColor;
+    cmd->OMGetRenderTargets(1, maskColor.GetAddressOf(), nullptr);
+    EXPECT_NE(maskColor, firstColor);
+    passes.EndBodyMask(device);
+
+    NS::Gfx::ComPtr<ID3D11RenderTargetView> color;
+    NS::Gfx::ComPtr<ID3D11DepthStencilView> depth;
+    cmd->OMGetRenderTargets(1, color.GetAddressOf(), depth.GetAddressOf());
+    EXPECT_EQ(color, firstColor);
+    EXPECT_EQ(depth, firstDepth);
+    D3D11_VIEWPORT viewport{};
+    UINT viewportCount = 1;
+    cmd->RSGetViewports(&viewportCount, &viewport);
+    ASSERT_EQ(viewportCount, 1u);
+    EXPECT_FLOAT_EQ(viewport.Width, 12.0f);
+    EXPECT_FLOAT_EQ(viewport.Height, 10.0f);
 }

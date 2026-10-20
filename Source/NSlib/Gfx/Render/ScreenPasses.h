@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3dCommon.h"
 
 #include <memory>
@@ -98,10 +99,7 @@ namespace NS
             std::unique_ptr<D3DTexture> m_bodyMask; // 体の型。描画先と同じ大きさ
             bool m_bodyMaskDrawn = false;
 
-            // BeginBodyMask から EndBodyMask の間だけ持つ
-            ComPtr<ID3D11RenderTargetView> m_savedTarget;
-            ComPtr<ID3D11DepthStencilView> m_savedDepth;
-            D3D11_VIEWPORT m_savedViewport{};
+            SavedTargets m_saved{}; // BeginBodyMask から EndBodyMask の間だけ持つ
             bool m_valid = false;
         };
     } // namespace Gfx

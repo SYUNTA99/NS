@@ -227,16 +227,13 @@ namespace NS
             commands.PSSetShader(*m_ps);
             commands.VSSetConstantBuffer(*m_cb, 0);
 
-            ID3D11ShaderResourceView* srvs[1] = {m_cubemap->Srv()};
-            commands->PSSetShaderResources(0, 1, srvs);
+            commands.PSSetShaderResource(*m_cubemap, 0);
 
             commands.PSSetSampler(sampler, 0);
 
             DrawMesh(commands, *m_cubeMesh);
 
-            // 警告やバグを防ぐため、使用したテクスチャのバインドを解除する
-            ID3D11ShaderResourceView* nullSrv[1] = {nullptr};
-            commands->PSSetShaderResources(0, 1, nullSrv);
+            commands.UnbindPixelShaderResources(0, 1);
 
             commands->OMSetDepthStencilState(prevDss.Get(), prevStencilRef);
             commands->RSSetState(prevRs.Get());

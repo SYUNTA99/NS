@@ -106,10 +106,8 @@ namespace NS
             }
             cmd.PSSetConstantBuffer(*pass.cb, 0);
 
-            // VS が SV_VertexID から形を作るので、InputLayout を外し頂点もインデックスもバインドしない
-            cmd->IASetInputLayout(nullptr);
-            cmd.SetTopology(Topology::TriangleList);
-            cmd.Draw(vertexCount);
+            // 頂点もインデックスも差さない
+            cmd.DrawFromVertexId(vertexCount);
         }
 
         void ScreenOverlay::DrawFullscreenColor(const Color& color) noexcept
