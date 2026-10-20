@@ -16,9 +16,13 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
+#include <initializer_list>
+#include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -860,4 +864,488 @@ TEST(HitReactionStart, AnOwnerLeavingKeepsTheOthersCameraEffects)
     EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.2f);
     EXPECT_EQ(probes.Cameras().FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(false)),
               nullptr);
+}
+
+// 出荷の束と動作。自機と置物の .actor に、前の当たりのタイムライン (center と miss) の値を移した物。
+// 威力で変わっていた値は、見た目の基準の試し (impact_look_baseline_test) の当たりで出た値を固定の値にした。
+// 真ん中は溜めきり 2 × 真ん中の威力の倍率 1 の威力 2、外れは右の外れ (MissRight) の溜めきり 2 × 0.7 の威力 1.4
+
+namespace
+{
+    constexpr float k_CenterBaselinePower = 2.0f;
+    constexpr float k_MissBaselinePower = 1.4f;
+
+    struct ShippedActorFile
+    {
+        std::vector<NS::HitReactionSet> sets;
+        std::vector<NS::ActorAction> actions;
+    };
+
+    // 出荷の Assets/Actors/<name>.actor の束と動作。読めなければ空
+    ShippedActorFile ReadShippedActorFile(std::string_view name)
+    {
+        using NS::OS::FileSystem;
+        const std::string path = FileSystem::Combine(
+            FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "Assets"), "Actors"),
+            std::string{name} + ".actor");
+        const std::optional<std::string> text = FileSystem::ReadAllText(path);
+        if (!text.has_value())
+        {
+            return {};
+        }
+        const nlohmann::json actorFile = nlohmann::json::parse(*text);
+        return ShippedActorFile{.sets = NS::ReadHitReactionSets(name, actorFile),
+                                .actions = NS::ReadActorActions(name, actorFile)};
+    }
+
+    const NS::HitReactionSet* FindShippedSet(const ShippedActorFile& file, std::string_view name)
+    {
+        for (const NS::HitReactionSet& set : file.sets)
+        {
+            if (set.name == name)
+            {
+                return &set;
+            }
+        }
+        return nullptr;
+    }
+
+    const NS::ActorAction* FindShippedAction(const ShippedActorFile& file, std::string_view name)
+    {
+        for (const NS::ActorAction& action : file.actions)
+        {
+            if (action.name == name)
+            {
+                return &action;
+            }
+        }
+        return nullptr;
+    }
+
+    template <class Item> int CountItems(const NS::HitReactionSet& set)
+    {
+        int count = 0;
+        for (const NS::HitReactionEntry& entry : set.entries)
+        {
+            if (std::holds_alternative<Item>(entry.item))
+            {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    // set の中の最初の Item の種類の項目。無ければ nullptr
+    template <class Item> const NS::HitReactionEntry* FindEntry(const NS::HitReactionSet& set)
+    {
+        for (const NS::HitReactionEntry& entry : set.entries)
+        {
+            if (std::holds_alternative<Item>(entry.item))
+            {
+                return &entry;
+            }
+        }
+        return nullptr;
+    }
+
+    // set の中の、名前が name の持ち主へ渡す項目。無ければ nullptr
+    const NS::HitReactionEntry* FindOwnerEntry(const NS::HitReactionSet& set, std::string_view name)
+    {
+        for (const NS::HitReactionEntry& entry : set.entries)
+        {
+            const NS::HitOwnerItem* owner = std::get_if<NS::HitOwnerItem>(&entry.item);
+            if (owner != nullptr && owner->name == name)
+            {
+                return &entry;
+            }
+        }
+        return nullptr;
+    }
+
+    NS::Curve CurveOf(std::initializer_list<NS::Curve::Key> keys)
+    {
+        NS::Curve curve;
+        for (const NS::Curve::Key& key : keys)
+        {
+            curve.keys[curve.count] = key;
+            ++curve.count;
+        }
+        return curve;
+    }
+
+    using OwnerValues = std::map<std::string, float, std::less<>>;
+
+    constexpr NS::Curve::InterpMode k_Manual = NS::Curve::InterpMode::Manual;
+    constexpr NS::Curve::InterpMode k_Auto = NS::Curve::InterpMode::AutoSmooth;
+} // namespace
+
+// 真ん中は当たる直前の動作で、触れる 6 フレーム前から突進の向きに縮み、触れた次のフレームの束でもっと深く潰れる。
+// 触れる 2 フレーム前から触れるまで自機以外を止める。外れには当たる直前の動作が無い
+TEST(ShippedHitReactions, CenterShrinksBeforeContactAndMissDoesNot)
+{
+    const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
+    const NS::ActorAction* before = FindShippedAction(player, "BeforeContactCenter");
+    ASSERT_NE(before, nullptr);
+    ASSERT_EQ(before->events.size(), 2u);
+    EXPECT_TRUE(before->sensors.empty());
+    // 動作のフレーム 0 が触れる 6 フレーム前、6 が検知のフレーム
+    const NS::ActorActionEvent& shrink = before->events[0];
+    ASSERT_TRUE(std::holds_alternative<NS::HitShapeItem>(shrink.item));
+    EXPECT_EQ(shrink.start, 0);
+    EXPECT_EQ(shrink.length, 7);
+    const NS::HitShapeItem& shape = std::get<NS::HitShapeItem>(shrink.item);
+    EXPECT_EQ(shape.along, CurveOf({{0.0f, 1.0f, k_Manual, 0.0f, 0.0f}, {6.0f, 0.85f, k_Manual, -0.05f, -0.15f}}));
+    EXPECT_EQ(shape.height,
+              CurveOf({{0.0f, 1.0f, k_Manual, 0.0f, 0.0f}, {6.0f, 1.05f, k_Manual, 0.016666667f, 0.05f}}));
+    EXPECT_EQ(shape.side, CurveOf({{0.0f, 1.0f}}));
+    // 初めはわずかで、触れる直前にぐっと縮む
+    EXPECT_LT(1.0f - shape.along.Evaluate(3.0f), (1.0f - shape.along.Evaluate(6.0f)) * 0.5f);
+    const NS::ActorActionEvent& others = before->events[1];
+    ASSERT_TRUE(std::holds_alternative<NS::HitOthersStopItem>(others.item));
+    EXPECT_EQ(others.start, 4);
+    EXPECT_EQ(others.length, 2);
+
+    const NS::HitReactionSet* center = FindShippedSet(player, "体当たり[真ん中]");
+    ASSERT_NE(center, nullptr);
+    const NS::HitReactionEntry* squash = FindEntry<NS::HitShapeItem>(*center);
+    ASSERT_NE(squash, nullptr);
+    EXPECT_LT(std::get<NS::HitShapeItem>(squash->item).along.Evaluate(0.0f), shape.along.Evaluate(6.0f));
+
+    EXPECT_EQ(FindShippedAction(player, "BeforeContactMiss"), nullptr);
+    EXPECT_EQ(player.actions.size(), 1u);
+}
+
+// 紫で当てた時だけ、止めの明けに紫の明けの束で世界を遅くする。外れと赤の明けの束は世界の速さに触らない
+TEST(ShippedHitReactions, CenterSlowsTheWorldOnlyForPurple)
+{
+    const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
+    const NS::HitReactionSet* purple = FindShippedSet(player, "明け[真ん中・紫]");
+    ASSERT_NE(purple, nullptr);
+    EXPECT_EQ(purple->stopFrames, 0);
+    ASSERT_EQ(purple->entries.size(), 1u);
+    const NS::HitWorldSpeedItem* speed = std::get_if<NS::HitWorldSpeedItem>(&purple->entries[0].item);
+    ASSERT_NE(speed, nullptr);
+    EXPECT_FLOAT_EQ(speed->startSpeed, 0.2f);
+    EXPECT_FLOAT_EQ(speed->returnSeconds, 0.3f);
+    EXPECT_EQ(speed->shape.count, 0u);
+    for (const NS::HitReactionSet& set : player.sets)
+    {
+        if (&set == purple)
+        {
+            continue;
+        }
+        SCOPED_TRACE(set.name);
+        EXPECT_EQ(CountItems<NS::HitWorldSpeedItem>(set), 0);
+    }
+    EXPECT_EQ(FindShippedSet(player, "明け[外れ・紫]"), nullptr);
+}
+
+// 真ん中のカメラは沈む揺れが 1 つと、衝撃が背中に着く止めの 7 フレーム目に 1 回だけの傾かない寄り (押し)。
+// 沈みは反動の状態に入る時の束「反動」の沈みを戻す項目で跳ね返る
+TEST(ShippedHitReactions, CenterSinksAndPunchesOnceWhenTheShockReachesTheBack)
+{
+    const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
+    const NS::HitReactionSet* center = FindShippedSet(player, "体当たり[真ん中]");
+    ASSERT_NE(center, nullptr);
+    ASSERT_EQ(CountItems<NS::HitCameraSinkItem>(*center), 1);
+    ASSERT_EQ(CountItems<NS::HitZoomRollItem>(*center), 1);
+    const NS::HitReactionEntry* zoomEntry = FindEntry<NS::HitZoomRollItem>(*center);
+    const NS::HitZoomRollItem& zoom = std::get<NS::HitZoomRollItem>(zoomEntry->item);
+    // 束は検知の次のフレーム (前の時計の 1) に始まるので、前の時計の 7 は 6 フレーム遅らせる
+    EXPECT_EQ(zoom.delayFrames, 6);
+    EXPECT_EQ(zoomEntry->length, 7);
+    EXPECT_EQ(zoom.returnFrames, 6);
+    EXPECT_FLOAT_EQ(zoom.rollDegrees, 0.0f);
+    EXPECT_FLOAT_EQ(zoom.zoom, 1.1f);
+
+    const NS::HitReactionEntry* sinkEntry = FindEntry<NS::HitCameraSinkItem>(*center);
+    const NS::HitCameraSinkItem& sink = std::get<NS::HitCameraSinkItem>(sinkEntry->item);
+    EXPECT_EQ(sinkEntry->length, 33);
+    // 前の深さと震えは威力で頭打ちへ近づいた (1 - exp(-威力 / 威力の基準 1))。基準の当たりで出た値を固定にした
+    const float powerScale = 1.0f - std::exp(-k_CenterBaselinePower);
+    EXPECT_NEAR(sink.bottomPixels, 9.0f * powerScale, 1.0e-5f);
+    EXPECT_NEAR(sink.tremblePixels, 5.0f * powerScale, 1.0e-5f);
+    EXPECT_EQ(sink.sinkFrames, 2);
+    EXPECT_EQ(sink.trembleFrames, 6);
+    EXPECT_EQ(sink.tremblePeriodFrames, 2);
+    EXPECT_FLOAT_EQ(sink.overshootRatio, 0.5f);
+    EXPECT_EQ(sink.bouncePeriodFrames, 8);
+
+    const NS::HitReactionSet* rebound = FindShippedSet(player, "反動");
+    ASSERT_NE(rebound, nullptr);
+    EXPECT_EQ(rebound->stopFrames, 0);
+    ASSERT_EQ(rebound->entries.size(), 1u);
+    EXPECT_TRUE(std::holds_alternative<NS::HitCameraSinkReleaseItem>(rebound->entries[0].item));
+    for (const NS::HitReactionSet& set : player.sets)
+    {
+        if (&set == center)
+        {
+            continue;
+        }
+        SCOPED_TRACE(set.name);
+        EXPECT_EQ(CountItems<NS::HitCameraSinkItem>(set), 0);
+        EXPECT_EQ(CountItems<NS::HitZoomRollItem>(set), 0);
+    }
+}
+
+// 外れの振動は向き別の 1 項目。頭に重い方 (左) の一打を 2〜3 フレーム鳴らしてすぐ切り、軽い方 (右) の擦れが抜ける。
+// 相手が上 (面の下へ外した) の時だけ、擦れの頭にもう 1 度重い一打が来る。向き無しの振動は置かない
+TEST(ShippedHitReactions, MissVibratesHeavyHeadThenLightTailPerDirection)
+{
+    const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
+    const NS::HitReactionSet* miss = FindShippedSet(player, "体当たり[外れ]");
+    ASSERT_NE(miss, nullptr);
+    ASSERT_EQ(CountItems<NS::HitPadVibrationItem>(*miss), 1);
+    const NS::HitReactionEntry* entry = FindEntry<NS::HitPadVibrationItem>(*miss);
+    EXPECT_EQ(entry->length, 16);
+    const NS::HitPadVibrationItem& pad = std::get<NS::HitPadVibrationItem>(entry->item);
+    ASSERT_TRUE(pad.byDirection);
+    EXPECT_EQ(pad.left.count, 0u);
+    EXPECT_EQ(pad.right.count, 0u);
+    struct Direction
+    {
+        const char* name;
+        const NS::Curve* left;
+        const NS::Curve* right;
+    };
+    const Direction directions[] = {{"相手が右", &pad.rightLeft, &pad.rightRight},
+                                    {"相手が左", &pad.leftLeft, &pad.leftRight},
+                                    {"相手が上", &pad.upLeft, &pad.upRight},
+                                    {"相手が下", &pad.downLeft, &pad.downRight}};
+    for (const Direction& direction : directions)
+    {
+        SCOPED_TRACE(direction.name);
+        EXPECT_GT(direction.left->Evaluate(0.0f), 0.5f);
+        EXPECT_FLOAT_EQ(direction.right->Evaluate(0.0f), 0.0f);
+        EXPECT_GT(direction.right->Evaluate(4.0f), direction.left->Evaluate(5.0f));
+        EXPECT_FLOAT_EQ(direction.left->Evaluate(8.0f), 0.0f);
+        EXPECT_FLOAT_EQ(direction.right->Evaluate(static_cast<float>(entry->length)), 0.0f);
+    }
+    EXPECT_GT(pad.upLeft.Evaluate(4.0f), pad.upLeft.Evaluate(3.0f));
+
+    // 前の向きは外した面の側 (面の右に当てた = 相手は自機の左) なので、左右と上下を入れ替えて移した
+    EXPECT_EQ(pad.leftLeft, CurveOf({{0.0f, 0.75f}, {2.0f, 0.75f}, {3.0f, 0.0f}}));
+    EXPECT_EQ(pad.leftRight, CurveOf({{0.0f, 0.0f}, {2.0f, 0.0f}, {3.0f, 0.55f}, {16.0f, 0.0f}}));
+    EXPECT_EQ(pad.rightLeft, CurveOf({{0.0f, 0.85f}, {2.0f, 0.85f}, {3.0f, 0.0f}}));
+    EXPECT_EQ(pad.rightRight, CurveOf({{0.0f, 0.0f}, {2.0f, 0.0f}, {3.0f, 0.45f}, {16.0f, 0.0f}}));
+    EXPECT_EQ(pad.downLeft, CurveOf({{0.0f, 0.75f}, {2.0f, 0.75f}, {3.0f, 0.0f}}));
+    EXPECT_EQ(pad.downRight, CurveOf({{0.0f, 0.0f}, {2.0f, 0.0f}, {3.0f, 0.35f}, {12.0f, 0.0f}}));
+    EXPECT_EQ(pad.upLeft, CurveOf({{0.0f, 0.8f}, {2.0f, 0.8f}, {3.0f, 0.2f}, {4.0f, 0.55f}, {6.0f, 0.0f}}));
+    EXPECT_EQ(pad.upRight, CurveOf({{0.0f, 0.0f}, {2.0f, 0.0f}, {3.0f, 0.5f}, {16.0f, 0.0f}}));
+}
+
+// 自機の当たりの束は、前の center と miss の行の値を持つ。揺れと残像の長さは止めの長さ
+TEST(ShippedHitReactions, PlayerHitSetsCarryTheTimelineValues)
+{
+    const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
+    EXPECT_EQ(player.sets.size(), 6u);
+
+    const NS::HitReactionSet* center = FindShippedSet(player, "体当たり[真ん中]");
+    ASSERT_NE(center, nullptr);
+    EXPECT_EQ(center->stopFrames, 12);
+    EXPECT_EQ(center->entries.size(), 10u);
+    // 形は前の曲線の検知の次のフレーム (x7) から後
+    const NS::HitReactionEntry* shape = FindEntry<NS::HitShapeItem>(*center);
+    ASSERT_NE(shape, nullptr);
+    EXPECT_EQ(shape->length, 19);
+    const NS::HitShapeItem& shapeItem = std::get<NS::HitShapeItem>(shape->item);
+    EXPECT_EQ(shapeItem.along, CurveOf({{0.0f, 0.7f}, {11.0f, 0.7f}, {14.0f, 1.25f}, {18.0f, 1.0f}}));
+    EXPECT_EQ(shapeItem.height,
+              CurveOf({{0.0f, 1.1f}, {5.0f, 1.1f}, {6.0f, 1.3f}, {11.0f, 1.1f}, {14.0f, 0.9f}, {18.0f, 1.0f}}));
+    EXPECT_EQ(shapeItem.side, CurveOf({{0.0f, 1.0f}, {5.0f, 1.0f}, {6.0f, 1.3f}, {11.0f, 1.0f}}));
+    const NS::HitReactionEntry* shake = FindEntry<NS::HitBodyShakeItem>(*center);
+    ASSERT_NE(shake, nullptr);
+    EXPECT_EQ(shake->length, 12);
+    EXPECT_FLOAT_EQ(std::get<NS::HitBodyShakeItem>(shake->item).amplitudePixels, 14.0f);
+    EXPECT_EQ(std::get<NS::HitBodyShakeItem>(shake->item).flipFrames, 2);
+    const NS::HitReactionEntry* ghost = FindOwnerEntry(*center, "TackleGhost");
+    ASSERT_NE(ghost, nullptr);
+    EXPECT_EQ(ghost->length, 12);
+    EXPECT_FALSE(std::get<NS::HitOwnerItem>(ghost->item).stopsDuringHitStop);
+    const OwnerValues ghostValues{{"離れのピクセル", 35.0f},
+                                  {"左右の残像の不透明度", 0.45f},
+                                  {"明けの残像のフレーム数", 0.0f},
+                                  {"明けの残像の不透明度", 0.45f}};
+    EXPECT_EQ(std::get<NS::HitOwnerItem>(ghost->item).values, ghostValues);
+    const NS::HitReactionEntry* wave = FindEntry<NS::HitGroundWaveItem>(*center);
+    ASSERT_NE(wave, nullptr);
+    EXPECT_EQ(wave->length, 20);
+    EXPECT_EQ(std::get<NS::HitGroundWaveItem>(wave->item).radius, CurveOf({{0.0f, 0.6f}, {6.0f, 2.8f}, {20.0f, 6.5f}}));
+    EXPECT_EQ(std::get<NS::HitGroundWaveItem>(wave->item).strength,
+              CurveOf({{0.0f, 1.3f}, {8.0f, 1.0f}, {20.0f, 0.0f}}));
+    const NS::HitReactionEntry* ring = FindEntry<NS::HitDistortionRingItem>(*center);
+    ASSERT_NE(ring, nullptr);
+    EXPECT_EQ(ring->length, 14);
+    const NS::HitDistortionRingItem& ringItem = std::get<NS::HitDistortionRingItem>(ring->item);
+    EXPECT_FLOAT_EQ(ringItem.halfWidth, 0.06f);
+    EXPECT_EQ(ringItem.radius, CurveOf({{0.0f, 0.05f}, {4.0f, 0.25f}, {14.0f, 0.6f}}));
+    EXPECT_EQ(ringItem.push, CurveOf({{0.0f, 0.05f}, {6.0f, 0.04f}, {14.0f, 0.0f}}));
+    const NS::HitReactionEntry* pad = FindEntry<NS::HitPadVibrationItem>(*center);
+    ASSERT_NE(pad, nullptr);
+    EXPECT_EQ(pad->length, 12);
+    const NS::HitPadVibrationItem& padItem = std::get<NS::HitPadVibrationItem>(pad->item);
+    EXPECT_FALSE(padItem.byDirection);
+    EXPECT_EQ(padItem.left, CurveOf({{0.0f, 1.0f}, {12.0f, 0.0f}}));
+    EXPECT_EQ(padItem.right.count, 0u);
+    const NS::HitReactionEntry* flash = FindEntry<NS::HitFlashItem>(*center);
+    ASSERT_NE(flash, nullptr);
+    EXPECT_EQ(flash->length, 2);
+    EXPECT_FLOAT_EQ(std::get<NS::HitFlashItem>(flash->item).alpha, 0.9f);
+
+    const NS::HitReactionSet* miss = FindShippedSet(player, "体当たり[外れ]");
+    ASSERT_NE(miss, nullptr);
+    EXPECT_EQ(miss->stopFrames, 4);
+    EXPECT_EQ(miss->entries.size(), 7u);
+    const NS::HitReactionEntry* missShape = FindEntry<NS::HitShapeItem>(*miss);
+    ASSERT_NE(missShape, nullptr);
+    EXPECT_EQ(missShape->length, 10);
+    const NS::HitShapeItem& missShapeItem = std::get<NS::HitShapeItem>(missShape->item);
+    EXPECT_EQ(missShapeItem.along, CurveOf({{0.0f, 0.7f}, {3.0f, 0.7f}, {4.0f, 1.0f}}));
+    EXPECT_EQ(missShapeItem.height,
+              CurveOf({{0.0f, 1.1f}, {3.0f, 1.1f}, {4.0f, 1.2f}, {7.0f, 0.9f}, {10.0f, 1.0f}}));
+    EXPECT_EQ(missShapeItem.side.count, 0u);
+    const NS::HitReactionEntry* missShake = FindEntry<NS::HitBodyShakeItem>(*miss);
+    ASSERT_NE(missShake, nullptr);
+    EXPECT_EQ(missShake->length, 4);
+    EXPECT_FLOAT_EQ(std::get<NS::HitBodyShakeItem>(missShake->item).amplitudePixels, 6.0f);
+    EXPECT_EQ(std::get<NS::HitBodyShakeItem>(missShake->item).flipFrames, 1);
+    EXPECT_EQ(FindOwnerEntry(*miss, "TackleGhost"), nullptr);
+    const NS::HitReactionEntry* trauma = FindEntry<NS::HitCameraTraumaItem>(*miss);
+    ASSERT_NE(trauma, nullptr);
+    EXPECT_EQ(trauma->length, 1);
+    const NS::HitCameraTraumaItem& traumaItem = std::get<NS::HitCameraTraumaItem>(trauma->item);
+    // 前の量は 0.9 × 威力で、トラウマの上限 1 に当たっていた
+    EXPECT_FLOAT_EQ(traumaItem.trauma, std::min(0.9f * k_MissBaselinePower, 1.0f));
+    EXPECT_FLOAT_EQ(traumaItem.yawDegrees, 1.5f);
+    EXPECT_FLOAT_EQ(traumaItem.pitchDegrees, 1.0f);
+    EXPECT_FLOAT_EQ(traumaItem.rollDegrees, 0.0f);
+    EXPECT_FLOAT_EQ(traumaItem.frequency, 9.0f);
+    EXPECT_FLOAT_EQ(traumaItem.decayPerSecond, 1.8f);
+    EXPECT_FLOAT_EQ(traumaItem.exponent, 2.0f);
+    EXPECT_FLOAT_EQ(traumaItem.kickDegrees, 2.5f);
+    EXPECT_EQ(traumaItem.kickPeakFrames, 1);
+    const NS::HitReactionEntry* lurch = FindEntry<NS::HitCameraLurchItem>(*miss);
+    ASSERT_NE(lurch, nullptr);
+    EXPECT_EQ(lurch->length, 9);
+    EXPECT_EQ(std::get<NS::HitCameraLurchItem>(lurch->item).distance,
+              CurveOf({{0.0f, 0.2f}, {2.0f, 0.3f}, {8.0f, 0.0f}}));
+    const NS::HitReactionEntry* sway = FindEntry<NS::HitCameraReboundSwayItem>(*miss);
+    ASSERT_NE(sway, nullptr);
+    EXPECT_EQ(sway->length, 29);
+    EXPECT_EQ(std::get<NS::HitCameraReboundSwayItem>(sway->item).distance,
+              CurveOf({{0.0f, -0.5f, k_Auto},
+                       {3.0f, 0.25f, k_Auto},
+                       {6.0f, -0.12f, k_Auto},
+                       {9.0f, 0.0f, k_Auto},
+                       {12.0f, 0.8f, k_Auto},
+                       {28.0f, 0.0f, k_Auto}}));
+}
+
+// 当たりの絵は当たりの束、飛びの絵と衝撃の震えは明けの束に置く。震えの長さは止めの長さで、どの絵も止めの間に止めない
+TEST(ShippedHitReactions, PlayerReleaseSetsCarryTheReleaseRows)
+{
+    const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
+    struct Tier
+    {
+        const char* hit;
+        const char* release;
+        int stopFrames;
+        float tremorPixels;
+    };
+    const Tier tiers[] = {{"体当たり[真ん中]", "明け[真ん中]", 12, 10.0f},
+                          {"体当たり[外れ]", "明け[外れ]", 4, 1.5f}};
+    for (const Tier& tier : tiers)
+    {
+        SCOPED_TRACE(tier.release);
+        const NS::HitReactionSet* hit = FindShippedSet(player, tier.hit);
+        ASSERT_NE(hit, nullptr);
+        const NS::HitReactionEntry* hitEffect = FindOwnerEntry(*hit, "HitEffect");
+        ASSERT_NE(hitEffect, nullptr);
+        EXPECT_EQ(hitEffect->length, 1);
+        EXPECT_FALSE(std::get<NS::HitOwnerItem>(hitEffect->item).stopsDuringHitStop);
+        EXPECT_TRUE(std::get<NS::HitOwnerItem>(hitEffect->item).values.empty());
+
+        const NS::HitReactionSet* release = FindShippedSet(player, tier.release);
+        ASSERT_NE(release, nullptr);
+        EXPECT_EQ(release->stopFrames, 0);
+        EXPECT_EQ(release->entries.size(), 2u);
+        const NS::HitReactionEntry* tremor = FindEntry<NS::HitBodyTremorItem>(*release);
+        ASSERT_NE(tremor, nullptr);
+        EXPECT_EQ(tremor->length, tier.stopFrames);
+        const NS::HitBodyTremorItem& tremorItem = std::get<NS::HitBodyTremorItem>(tremor->item);
+        EXPECT_FLOAT_EQ(tremorItem.amplitudePixels, tier.tremorPixels);
+        EXPECT_EQ(tremorItem.reachFrames, 6);
+        EXPECT_FLOAT_EQ(tremorItem.radiusRatio, 0.0f);
+        EXPECT_FLOAT_EQ(tremorItem.referenceHeight, 720.0f);
+        const NS::HitReactionEntry* flight = FindOwnerEntry(*release, "FlightEffect");
+        ASSERT_NE(flight, nullptr);
+        EXPECT_EQ(flight->length, 1);
+        EXPECT_FALSE(std::get<NS::HitOwnerItem>(flight->item).stopsDuringHitStop);
+    }
+}
+
+// 置物の受けた束と明けの束は、前の行の相手の分 (食い込みと潰れ・横揺れ・残像・震え) を持つ。長さは止めの長さ
+TEST(ShippedHitReactions, PropSetsCarryTheTargetRows)
+{
+    const ShippedActorFile prop = ReadShippedActorFile("PropActor");
+    EXPECT_EQ(prop.sets.size(), 4u);
+    EXPECT_TRUE(prop.actions.empty());
+    struct Tier
+    {
+        const char* hit;
+        const char* release;
+        int stopFrames;
+        float shakePixels;
+        int flipFrames;
+        bool ghost;
+        float tremorPixels;
+    };
+    const Tier tiers[] = {{"受け[真ん中]", "明け[真ん中]", 12, 45.0f, 2, true, 10.0f},
+                          {"受け[外れ]", "明け[外れ]", 4, 6.0f, 1, false, 1.5f}};
+    for (const Tier& tier : tiers)
+    {
+        SCOPED_TRACE(tier.hit);
+        const NS::HitReactionSet* hit = FindShippedSet(prop, tier.hit);
+        ASSERT_NE(hit, nullptr);
+        EXPECT_EQ(hit->stopFrames, tier.stopFrames);
+        const NS::HitReactionEntry* freeze = FindOwnerEntry(*hit, "TackleFreeze");
+        ASSERT_NE(freeze, nullptr);
+        EXPECT_EQ(freeze->length, tier.stopFrames);
+        const OwnerValues freezeValues{{"食い込み距離", 0.06f}, {"潰れの厚み", 0.7f}, {"潰れの伸び上がり", 1.1f}};
+        EXPECT_EQ(std::get<NS::HitOwnerItem>(freeze->item).values, freezeValues);
+        EXPECT_FALSE(std::get<NS::HitOwnerItem>(freeze->item).stopsDuringHitStop);
+        const NS::HitReactionEntry* shake = FindEntry<NS::HitBodyShakeItem>(*hit);
+        ASSERT_NE(shake, nullptr);
+        EXPECT_EQ(shake->length, tier.stopFrames);
+        EXPECT_FLOAT_EQ(std::get<NS::HitBodyShakeItem>(shake->item).amplitudePixels, tier.shakePixels);
+        EXPECT_EQ(std::get<NS::HitBodyShakeItem>(shake->item).flipFrames, tier.flipFrames);
+        const NS::HitReactionEntry* ghost = FindOwnerEntry(*hit, "TackleGhost");
+        if (tier.ghost)
+        {
+            ASSERT_NE(ghost, nullptr);
+            EXPECT_EQ(ghost->length, tier.stopFrames);
+            const OwnerValues ghostValues{{"離れのピクセル", 112.5f},
+                                          {"左右の残像の不透明度", 0.45f},
+                                          {"明けの残像のフレーム数", 0.0f},
+                                          {"明けの残像の不透明度", 0.45f}};
+            EXPECT_EQ(std::get<NS::HitOwnerItem>(ghost->item).values, ghostValues);
+            EXPECT_EQ(hit->entries.size(), 3u);
+        }
+        else
+        {
+            EXPECT_EQ(ghost, nullptr);
+            EXPECT_EQ(hit->entries.size(), 2u);
+        }
+
+        const NS::HitReactionSet* release = FindShippedSet(prop, tier.release);
+        ASSERT_NE(release, nullptr);
+        EXPECT_EQ(release->stopFrames, 0);
+        ASSERT_EQ(release->entries.size(), 1u);
+        const NS::HitBodyTremorItem* tremor = std::get_if<NS::HitBodyTremorItem>(&release->entries[0].item);
+        ASSERT_NE(tremor, nullptr);
+        EXPECT_EQ(release->entries[0].length, tier.stopFrames);
+        EXPECT_FLOAT_EQ(tremor->amplitudePixels, tier.tremorPixels);
+        EXPECT_EQ(tremor->reachFrames, 6);
+        EXPECT_FLOAT_EQ(tremor->radiusRatio, 0.0f);
+    }
 }
