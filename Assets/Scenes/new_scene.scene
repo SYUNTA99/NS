@@ -11,8 +11,6 @@
   "objects": [
     {
       "class": "MapPartsActor",
-      "id": 1,
-      "name": "Object",
       "classObjs": {
         "Collision": {},
         "Model": {},
@@ -34,12 +32,12 @@
             1.0
           ]
         }
-      }
+      },
+      "id": 1,
+      "name": "Object"
     },
     {
       "class": "PlayerActor",
-      "id": 2,
-      "name": "Object_1",
       "classObjs": {
         "Appearance": {},
         "BodySensor": {},
@@ -74,12 +72,12 @@
             1.0
           ]
         }
-      }
+      },
+      "id": 2,
+      "name": "Object_1"
     },
     {
       "class": "FollowCameraActor",
-      "id": 3,
-      "name": "Player Camera",
       "classObjs": {
         "Transform": {
           "スケール": [
@@ -104,12 +102,12 @@
             "ref": "Object_1"
           }
         }
-      }
+      },
+      "id": 3,
+      "name": "Player Camera"
     },
     {
       "class": "LightActor",
-      "id": 4,
-      "name": "Object_2",
       "classObjs": {
         "DirectionalLight": {},
         "Transform": {
@@ -130,12 +128,12 @@
             0.6371247172355652
           ]
         }
-      }
+      },
+      "id": 4,
+      "name": "Object_2"
     },
     {
       "class": "PropActor",
-      "id": 35,
-      "name": "Object_3",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -167,12 +165,12 @@
             1.0
           ]
         }
-      }
+      },
+      "id": 35,
+      "name": "Object_3"
     },
     {
       "class": "PropActor",
-      "id": 41,
-      "name": "Object_4",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -208,12 +206,12 @@
             1.0
           ]
         }
-      }
+      },
+      "id": 41,
+      "name": "Object_4"
     },
     {
       "class": "PropActor",
-      "id": 47,
-      "name": "Object_5",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -252,12 +250,12 @@
             1.0
           ]
         }
-      }
+      },
+      "id": 47,
+      "name": "Object_5"
     },
     {
       "class": "PropActor",
-      "id": 53,
-      "name": "Object_6",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -296,7 +294,9 @@
             1.0
           ]
         }
-      }
+      },
+      "id": 53,
+      "name": "Object_6"
     }
   ],
   "version": 8

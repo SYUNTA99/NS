@@ -2,8 +2,10 @@
 
 #if NS_EDITOR_ENABLED
 
+#include <algorithm>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <span>
 
 namespace NS
 {
@@ -21,15 +23,26 @@ namespace NS
         // 欄の名前列が占める幅の割合。残りが値列
         inline constexpr float k_FieldNameColumnRatio = 0.42f;
 
-        // 名前 / 値の 2 列で欄を並べ始める。名前が左端に縦に揃うと目が滑らない
-        inline bool BeginFieldTable(const char* id) noexcept
+        inline bool BeginFieldTable(const char* id, float minimumValueWidth = 0.0f) noexcept
         {
-            if (!ImGui::BeginTable(id, 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
+            int columns = 2;
+            if (minimumValueWidth > ImGui::GetContentRegionAvail().x * (1.0f - k_FieldNameColumnRatio))
+            {
+                columns = 1;
+            }
+            if (!ImGui::BeginTable(id, columns, ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
             {
                 return false;
             }
-            ImGui::TableSetupColumn("##name", ImGuiTableColumnFlags_WidthStretch, k_FieldNameColumnRatio);
-            ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthStretch, 1.0f - k_FieldNameColumnRatio);
+            if (columns == 2)
+            {
+                ImGui::TableSetupColumn("##name", ImGuiTableColumnFlags_WidthStretch, k_FieldNameColumnRatio);
+                ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthStretch, 1.0f - k_FieldNameColumnRatio);
+            }
+            else
+            {
+                ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthStretch);
+            }
             return true;
         }
 
@@ -47,13 +60,17 @@ namespace NS
             return ImGui::CalcTextSize("上書き").x + ImGui::GetStyle().FramePadding.x * 2.0f;
         }
 
-        // 1 行の名前を左列へ書いて値列へ移り、値のウィジェットに残り幅を割り当てる
         // overridden の行は名前に色を付け、種類の既定値を上書きしていると分かるようにする
         inline void FieldRow(const char* label, bool overridden = false) noexcept
         {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGui::AlignTextToFramePadding();
+            const bool stacked = ImGui::TableGetColumnCount() == 1;
+            if (stacked)
+            {
+                ImGui::PushTextWrapPos(0.0f);
+            }
             if (overridden)
             {
                 ImGui::TextColored(k_OverriddenFieldColor, "%s", label);
@@ -62,8 +79,73 @@ namespace NS
             {
                 ImGui::TextUnformatted(label);
             }
-            ImGui::TableSetColumnIndex(1);
+            if (stacked)
+            {
+                ImGui::PopTextWrapPos();
+            }
+            else
+            {
+                ImGui::TableSetColumnIndex(1);
+            }
             ImGui::SetNextItemWidth(-(RevertButtonWidth() + ImGui::GetStyle().ItemSpacing.x));
+        }
+
+        struct AxisEditResult
+        {
+            bool changed = false;
+            bool activated = false;
+            bool committed = false;
+        };
+
+        inline float MinimumAxisFieldsWidth(int count, const char* format = "%.3f") noexcept
+        {
+            const ImGuiStyle& style = ImGui::GetStyle();
+            char number[64]{};
+            ImFormatString(number, sizeof(number), format, -100.0);
+            const float numberWidth = ImGui::CalcTextSize(number).x + style.FramePadding.x * 2.0f;
+            return (numberWidth + ImGui::CalcTextSize("X").x) * static_cast<float>(count) +
+                   style.ItemInnerSpacing.x * static_cast<float>(count * 2 - 1);
+        }
+
+        //! 2〜3成分を軸名付きで編集する。幅が足りない時は軸ごとに行を分ける
+        //! 各軸の編集開始と終了を返し、呼び出し側で取り消しの履歴をまとめられる
+        inline AxisEditResult DragAxisFloats(std::span<float> values, float speed, const char* format = "%.3f") noexcept
+        {
+            IM_ASSERT(values.size() >= 2 && values.size() <= 3);
+            const char* axes[] = {"X", "Y", "Z"};
+            const ImVec4 colors[] = {{1.0f, 0.45f, 0.45f, 1.0f}, {0.5f, 0.9f, 0.5f, 1.0f}, {0.45f, 0.7f, 1.0f, 1.0f}};
+            const int count = static_cast<int>(values.size());
+            const float width = ImGui::CalcItemWidth();
+            const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+            const float labelWidth = ImGui::CalcTextSize("X").x;
+            const bool horizontal = width >= MinimumAxisFieldsWidth(count, format);
+            float inputWidth = width - labelWidth - spacing;
+            if (horizontal)
+            {
+                inputWidth =
+                    (width - labelWidth * static_cast<float>(count) - spacing * static_cast<float>(count * 2 - 1)) /
+                    static_cast<float>(count);
+            }
+            AxisEditResult result;
+            ImGui::BeginGroup();
+            for (int axis = 0; axis < count; ++axis)
+            {
+                if (axis > 0 && horizontal)
+                {
+                    ImGui::SameLine(0.0f, spacing);
+                }
+                ImGui::PushID(axes[axis]);
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextColored(colors[axis], "%s", axes[axis]);
+                ImGui::SameLine(0.0f, spacing);
+                ImGui::SetNextItemWidth(std::max(inputWidth, 1.0f));
+                result.changed |= ImGui::DragFloat("##value", &values[axis], speed, 0.0f, 0.0f, format);
+                result.activated |= ImGui::IsItemActivated();
+                result.committed |= ImGui::IsItemDeactivated();
+                ImGui::PopID();
+            }
+            ImGui::EndGroup();
+            return result;
         }
 
         // 既定と違う行だけ右端に戻すボタンを出す。同じ値の行は幅を空けるだけで並びを保つ

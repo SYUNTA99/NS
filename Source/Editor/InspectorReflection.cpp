@@ -61,6 +61,8 @@ namespace NS
                 return !SameValue<int>(comp, *defaults, field);
             case FieldType::Bool:
                 return !SameValue<bool>(comp, *defaults, field);
+            case FieldType::Vector2:
+                return !SameValue<Vector2>(comp, *defaults, field);
             case FieldType::Vector3:
                 return !SameValue<Vector3>(comp, *defaults, field);
             case FieldType::Quaternion:
@@ -92,6 +94,9 @@ namespace NS
                 break;
             case FieldType::Bool:
                 CopyValue<bool>(comp, defaults, field);
+                break;
+            case FieldType::Vector2:
+                CopyValue<Vector2>(comp, defaults, field);
                 break;
             case FieldType::Vector3:
                 CopyValue<Vector3>(comp, defaults, field);
@@ -1453,12 +1458,31 @@ namespace NS
                     }
                     break;
                 }
+                case FieldType::Vector2:
+                {
+                    Vector2 value{};
+                    field.get(owner, &value);
+                    float xy[2] = {value.x, value.y};
+                    const AxisEditResult edit = DragAxisFloats(xy, 0.05f);
+                    result.activated |= edit.activated;
+                    result.committed |= edit.committed;
+                    if (edit.changed)
+                    {
+                        value = Vector2{xy[0], xy[1]};
+                        field.set(owner, &value);
+                        result.changed = true;
+                    }
+                    break;
+                }
                 case FieldType::Vector3:
                 {
                     Vector3 value{};
                     field.get(owner, &value);
                     float xyz[3] = {value.x, value.y, value.z};
-                    if (ImGui::DragFloat3("##value", xyz, 0.05f))
+                    const AxisEditResult edit = DragAxisFloats(xyz, 0.05f);
+                    result.activated |= edit.activated;
+                    result.committed |= edit.committed;
+                    if (edit.changed)
                     {
                         value = Vector3{xyz[0], xyz[1], xyz[2]};
                         field.set(owner, &value);
@@ -1473,7 +1497,10 @@ namespace NS
                     field.get(owner, &value);
                     const Vector3 degrees = QuaternionToEulerDegrees(value);
                     float xyz[3] = {degrees.x, degrees.y, degrees.z};
-                    if (ImGui::DragFloat3("##value", xyz, 0.5f))
+                    const AxisEditResult edit = DragAxisFloats(xyz, 0.5f, "%.3f°");
+                    result.activated |= edit.activated;
+                    result.committed |= edit.committed;
+                    if (edit.changed)
                     {
                         value = EulerDegreesToQuaternion(Vector3{xyz[0], xyz[1], xyz[2]});
                         field.set(owner, &value);
@@ -1514,6 +1541,37 @@ namespace NS
                     result.committed |= ImGui::IsItemDeactivated();
                 }
                 return result;
+            }
+
+            float MinimumFieldValueWidth(const ReflectionInfo& info, const char* filter = nullptr) noexcept
+            {
+                float width = 0.0f;
+                for (std::size_t i = 0; i < info.fieldCount; ++i)
+                {
+                    const FieldDesc& field = info.fields[i];
+                    if (filter != nullptr && !NameMatches(FieldLabel(field), filter))
+                    {
+                        continue;
+                    }
+                    if (field.type == FieldType::Quaternion)
+                    {
+                        width = std::max(width, MinimumAxisFieldsWidth(3, "%.3f°"));
+                    }
+                    else if (field.type == FieldType::Vector3)
+                    {
+                        width = std::max(width, MinimumAxisFieldsWidth(3));
+                    }
+                    else if (field.type == FieldType::Vector2)
+                    {
+                        width = std::max(width, MinimumAxisFieldsWidth(2));
+                    }
+                }
+                if (width == 0.0f)
+                {
+                    return 0.0f;
+                }
+                return width + RevertButtonWidth() + ImGui::GetStyle().ItemSpacing.x +
+                       ImGui::GetStyle().CellPadding.x * 2.0f;
             }
 
             // 見出し groupIndex が束ねる欄の終わり (含まない添字)。次の見出しの始まりか、欄の数
@@ -1603,7 +1661,7 @@ namespace NS
             {
                 return ClassObjEditResult{};
             }
-            if (!BeginFieldTable("##fields"))
+            if (!BeginFieldTable("##fields", MinimumFieldValueWidth(*info, filter)))
             {
                 return ClassObjEditResult{};
             }
@@ -1656,7 +1714,7 @@ namespace NS
             {
                 return ValueEditResult{};
             }
-            if (!BeginFieldTable("##value-fields"))
+            if (!BeginFieldTable("##value-fields", MinimumFieldValueWidth(info)))
             {
                 return ValueEditResult{};
             }

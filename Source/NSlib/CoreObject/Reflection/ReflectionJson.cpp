@@ -35,7 +35,7 @@ namespace NS
             return true;
         }
 
-        // field を JSON 値へ変換する。素の配列で書くのは Vector3=[x,y,z]、Quaternion=[x,y,z,w]、Color=[r,g,b,a]
+        // ベクトルは成分数の配列、回転と色は4成分の配列で保存する
         nlohmann::json FieldToJson(const void* owner, const FieldDesc& field)
         {
             switch (field.type)
@@ -46,6 +46,11 @@ namespace NS
                 return ReadField<int>(owner, field);
             case FieldType::Bool:
                 return ReadField<bool>(owner, field);
+            case FieldType::Vector2:
+            {
+                const Vector2 value = ReadField<Vector2>(owner, field);
+                return nlohmann::json{value.x, value.y};
+            }
             case FieldType::Vector3:
                 return MakeVector3Json(ReadField<Vector3>(owner, field));
             case FieldType::Quaternion:
@@ -125,6 +130,19 @@ namespace NS
                 }
                 bool v = value.get<bool>();
                 field.set(owner, &v);
+                return;
+            }
+            case FieldType::Vector2:
+            {
+                if (!value.is_array() || value.size() != 2u || !value[0].is_number() || !value[1].is_number())
+                {
+                    return;
+                }
+                const Vector2 v{value[0].get<float>(), value[1].get<float>()};
+                if (std::isfinite(v.x) && std::isfinite(v.y))
+                {
+                    field.set(owner, &v);
+                }
                 return;
             }
             case FieldType::Vector3:

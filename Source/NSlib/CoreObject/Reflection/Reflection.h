@@ -67,7 +67,8 @@ namespace NS
         String, // 欄は std::string か EffectName。取得・設定の関数が受け渡すのは std::string
         ActorRef,
         Curve,
-        Asset // 欄は素材の姿のポインタ。取得・設定の関数が受け渡すのは道の std::string
+        Asset, // 欄は素材の姿のポインタ。取得・設定の関数が受け渡すのは道の std::string
+        Vector2
     };
 
     //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
@@ -84,6 +85,10 @@ namespace NS
         else if constexpr (std::is_same_v<T, bool>)
         {
             return FieldType::Bool;
+        }
+        else if constexpr (std::is_same_v<T, Vector2>)
+        {
+            return FieldType::Vector2;
         }
         else if constexpr (std::is_same_v<T, Quaternion>)
         {
@@ -111,9 +116,10 @@ namespace NS
         }
         else
         {
-            static_assert(std::is_same_v<T, Vector3>,
-                          "FieldTypeOf の T は float / int / bool / NS::Vector3 / NS::Quaternion / NS::Color / "
-                          "std::string / EffectName / ActorRef / Curve / IsAssetPointer に並ぶ素材の姿のポインタ のいずれか");
+            static_assert(
+                std::is_same_v<T, Vector3>,
+                "FieldTypeOf の T は float / int / bool / NS::Vector2 / NS::Vector3 / NS::Quaternion / NS::Color / "
+                "std::string / EffectName / ActorRef / Curve / IsAssetPointer に並ぶ素材の姿のポインタ のいずれか");
             return FieldType::Vector3;
         }
     }
