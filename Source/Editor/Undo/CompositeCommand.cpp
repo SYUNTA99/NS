@@ -45,5 +45,14 @@ namespace NS
             }
             return bytes;
         }
+
+        std::unique_ptr<ICommand> MakeUndoUnit(std::vector<std::unique_ptr<ICommand>> commands)
+        {
+            if (commands.size() == 1)
+            {
+                return std::move(commands.front());
+            }
+            return std::make_unique<CompositeCommand>(std::move(commands));
+        }
     } // namespace Editor
 } // namespace NS

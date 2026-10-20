@@ -6,6 +6,7 @@
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
+#include "Game/Level/FollowCameraActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
 #include "NSlib/Core/Types.h"
@@ -79,6 +80,16 @@ namespace
         mouse.OnButtonUp(NS::OS::MouseButton::Left);
         editor.Tick();
         mouse.Update();
+    }
+
+    // 試しの組は RTTI を持たないので、リフレクションの型で確かめてから下の型へ直す
+    GL::Level::FollowCameraActor* AsFollowCamera(NS::SceneActor* actor)
+    {
+        if (actor == nullptr || actor->GetReflection() != GL::Level::FollowCameraActor::StaticReflection())
+        {
+            return nullptr;
+        }
+        return static_cast<GL::Level::FollowCameraActor*>(actor);
     }
 } // namespace
 
@@ -694,6 +705,95 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
         mouse.OnMove(startX, startY);
         mouse.ClearState();
         mouse.Update();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// 置く・筆で空いた升に置く・複製 は、どれも 1 回の履歴で作って未保存にし、Undo 1 回で消える
+// 複製の参照は一緒に写した物を指す。作った物を選ぶかは道ごとに決まり、筆は選ばない。プレイ中はどの道も作らない
+TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "作る道の試し";
+    desc.window.size = {160, 90};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        NS::Scene scene;
+        LevelEditorController editor(&scene);
+        editor.Setup(nullptr, {});
+        const NS::Editor::PlacementItem* prop = NS::Editor::FindPlacementItem("置物");
+        const NS::Editor::PlacementItem* camera = NS::Editor::FindPlacementItem("追従カメラ");
+        ASSERT_NE(prop, nullptr);
+        ASSERT_NE(camera, nullptr);
+        const NS::Editor::UndoStack& undo = editor.Editor().Undo();
+
+        // 置く: 作った物を選ぶ
+        std::size_t objectsBefore = scene.Objects().ObjectCount();
+        std::size_t undoBefore = undo.UndoSize();
+        editor.PlaceItem(*prop);
+        const NS::uint32 placed = editor.SelectedObjectId();
+        EXPECT_NE(scene.Objects().FindByObjectId(placed), nullptr);
+        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore + 1);
+        EXPECT_EQ(undo.UndoSize(), undoBefore + 1);
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+        EXPECT_TRUE(editor.Editor().PerformUndo());
+        EXPECT_EQ(scene.Objects().FindByObjectId(placed), nullptr);
+        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore);
+
+        // 筆で空いた升に置く: 今の選択を変えない
+        editor.PlaceItem(*prop);
+        const NS::uint32 kept = editor.SelectedObjectId();
+        editor.Editor().Palette().SetActiveSlot(0);
+        objectsBefore = scene.Objects().ObjectCount();
+        undoBefore = undo.UndoSize();
+        editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10);
+        EXPECT_NE(NS::Editor::FindObjectIdAtCell(scene.Objects(), 10, 0, 10), NS::k_NoObjectId);
+        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore + 1);
+        EXPECT_EQ(undo.UndoSize(), undoBefore + 1);
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+        EXPECT_EQ(editor.SelectedObjectId(), kept);
+        EXPECT_TRUE(editor.Editor().PerformUndo());
+        EXPECT_EQ(NS::Editor::FindObjectIdAtCell(scene.Objects(), 10, 0, 10), NS::k_NoObjectId);
+        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore);
+
+        // 複製: 写した物どうしの参照は写した先を指し、写した物を選ぶ
+        editor.PlaceItem(*camera);
+        const NS::uint32 follower = editor.SelectedObjectId();
+        GL::Level::FollowCameraActor* followActor = AsFollowCamera(scene.Objects().FindByObjectId(follower));
+        ASSERT_NE(followActor, nullptr);
+        ASSERT_EQ(NS::ApplyJsonFields(followActor->Vcam(), nlohmann::json{{"追従対象", {{"ref", kept}}}}), 0u);
+        editor.SelectObjects({kept, follower}, follower);
+        objectsBefore = scene.Objects().ObjectCount();
+        undoBefore = undo.UndoSize();
+        editor.DuplicateSelectedObject();
+        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore + 2);
+        EXPECT_EQ(undo.UndoSize(), undoBefore + 1);
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+        const std::vector<NS::uint32> copies = editor.SelectedObjectIds();
+        ASSERT_EQ(copies.size(), 2u);
+        EXPECT_NE(copies[0], kept);
+        EXPECT_NE(copies[1], follower);
+        const GL::Level::FollowCameraActor* followCopy = AsFollowCamera(scene.Objects().FindByObjectId(copies[1]));
+        ASSERT_NE(followCopy, nullptr);
+        EXPECT_EQ(followCopy->Vcam().TargetRef().id, copies[0]);
+        EXPECT_TRUE(editor.Editor().PerformUndo());
+        EXPECT_EQ(scene.Objects().FindByObjectId(copies[0]), nullptr);
+        EXPECT_EQ(scene.Objects().FindByObjectId(copies[1]), nullptr);
+        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore);
+
+        // プレイ中: どの道も作らず、履歴も積まない
+        editor.SelectObjects({kept}, kept);
+        editor.EnterPlay();
+        objectsBefore = scene.Objects().ObjectCount();
+        undoBefore = undo.UndoSize();
+        editor.PlaceItem(*prop);
+        editor.DuplicateSelectedObject();
+        editor.Editor().PlaceUnderCursorProgrammatic(12, 0, 12);
+        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore);
+        EXPECT_EQ(undo.UndoSize(), undoBefore);
+        editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
 }

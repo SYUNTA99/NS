@@ -252,8 +252,8 @@ private:
     //! 編集モードでしか要らない遷移なのでエディタが持つ。組み直しで確保が起きるため noexcept にしない
     void LeavePlayForEdit();
 
-    //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
-    void PushCreateObject(nlohmann::json object);
+    //! 配置物を 1 体作り、作った物を選ぶ。置く道が使う。作るのは EditorMode::CreateObjects
+    void CreateObjectAndSelect(nlohmann::json object);
 
     //! 素材の選択を外す。前に、選んだ素材の確定していない編集を確定して .mat に書く
     //! 選択を外す道は全部これを通す。外してから確定すると、書く先の道が消えて編集を失う

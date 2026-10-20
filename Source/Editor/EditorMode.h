@@ -9,6 +9,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 
 #include <functional>
+#include <vector>
 
 namespace NS
 {
@@ -124,6 +125,12 @@ namespace NS
 
             [[nodiscard]] const Editor::UndoStack& Undo() const noexcept { return m_undo; }
             [[nodiscard]] Editor::UndoStack& Undo() noexcept { return m_undo; }
+
+            //! @brief 新しい配置物を 1 回の履歴で作る。作る道 (置く・複製・筆で空いた升へ置く) は全部ここを通す
+            //! @details 各 JSON に新しい永続 id を振り、写した元の id を指す参照を、一緒に作る物の新しい id へ付け替える。
+            //! 作った物を選ぶかは呼び手が決める
+            //! @return 作った物の id を渡した順に返す。休止の間 (プレイ中) と、適用処理か採番が無い時は作らずに空を返す
+            [[nodiscard]] std::vector<uint32> CreateObjects(std::vector<nlohmann::json> objects);
 
             //! @brief テストや自動処理向けに、入力を介さずに指定座標へ直接編集操作を実行する
             void PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept;

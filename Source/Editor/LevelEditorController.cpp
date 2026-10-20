@@ -249,16 +249,6 @@ namespace
         return baseHalf * NS::Editor::ScreenConstantScale(center, vp);
     }
 
-    // 1 本なら包まずそのまま返す。CompositeCommand を挟むのは複数を 1 回の undo で往復させたい時だけ
-    std::unique_ptr<NS::Editor::ICommand> MakeUndoUnit(std::vector<std::unique_ptr<NS::Editor::ICommand>> commands)
-    {
-        if (commands.size() == 1)
-        {
-            return std::move(commands.front());
-        }
-        return std::make_unique<NS::Editor::CompositeCommand>(std::move(commands));
-    }
-
     // プレイ開始の凍結と編集へ戻る時の凍結を 1 体ずつ比べ、違う物を戻せる記録にする
     // 凍結へ入るのはプレイ中にインスペクタで写した欄だけなので、プレイで動いた値は比べに出ない
     std::vector<std::unique_ptr<NS::Editor::ICommand>> MakePlayEditCommands(const nlohmann::json& playStart,
@@ -286,7 +276,12 @@ namespace
     }
 } // namespace
 
-LevelEditorController::LevelEditorController(NS::Scene* scene) noexcept : m_scene(scene), m_applier(scene) {}
+LevelEditorController::LevelEditorController(NS::Scene* scene) noexcept : m_scene(scene), m_applier(scene)
+{
+    // 作る道と取り消しは Setup の前から使えるよう、適用処理と採番はここで差す
+    m_editor.SetApplier(&m_applier);
+    m_editor.SetAllocateIdFn([this]() { return m_scene->Objects().AllocateObjectId(); });
+}
 
 namespace
 {
@@ -448,8 +443,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui, std::string_view 
     // 保存は実体から作り、読込は取込関数がデータを実体へ写して用済みにする
     m_editor.SetCaptureLevelFn([this]() { return m_scene->ToJson(); });
     m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) { m_scene->ResetFromJson(std::move(fresh)); });
-    // セル編集と取り消しは適用処理を通す。照会・採番は実体で行う
-    m_editor.SetApplier(&m_applier);
+    // セルの照会は実体で行う
     m_editor.SetFindCellObjectFn([this](NS::int16 x, NS::int16 y, NS::int16 z) {
         return NS::Editor::FindObjectIdAtCell(m_scene->Objects(), x, y, z);
     });
@@ -471,7 +465,6 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui, std::string_view 
         }
         return cells;
     });
-    m_editor.SetAllocateIdFn([this]() { return m_scene->Objects().AllocateObjectId(); });
     m_editor.SetInput(&app->Input());
     m_editor.SetImGui(imgui);
     m_editor.SetSceneCamera(MainCamera());
@@ -1487,7 +1480,7 @@ void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
 {
     nlohmann::json object = item.prototype;
     NS::SetObjectPosition(object, m_editorCamera.Center());
-    PushCreateObject(std::move(object));
+    CreateObjectAndSelect(std::move(object));
 }
 
 void LevelEditorController::AddMeshParts(std::string_view meshPath)
@@ -1504,26 +1497,22 @@ void LevelEditorController::AddMeshParts(std::string_view meshPath)
     nlohmann::json object = NS::Editor::MakeMeshPartsPrototype(*meshRef);
     NS::SetObjectPosition(object, m_editorCamera.Center());
     NS::SetObjectJsonName(object, NS::OS::FileSystem::Stem(meshPath));
-    PushCreateObject(std::move(object));
+    CreateObjectAndSelect(std::move(object));
 }
 
-void LevelEditorController::PushCreateObject(nlohmann::json object)
+void LevelEditorController::CreateObjectAndSelect(nlohmann::json object)
 {
-    // プレイ中に組み替えた物は、編集へ戻る組み直しで消える。履歴だけがプレイの姿を指して残る
-    if (m_mode != Mode::Edit)
+    std::vector<nlohmann::json> objects;
+    objects.push_back(std::move(object));
+    const std::vector<NS::uint32> created = m_editor.CreateObjects(std::move(objects));
+    if (created.empty())
     {
         return;
     }
-    const NS::uint32 id = m_scene->Objects().AllocateObjectId();
-    NS::SetObjectJsonId(object, id);
-
-    // 追加を 取り消し 履歴へ。Do がひな形から実体へ 1 体組んで入れる
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::nullopt, std::move(object)),
-                         m_applier);
 
     // 組み直し後の新規を選択する。選択候補も貼り直す
-    m_selectedObjectId = id;
-    m_selectionIds.assign(1, id);
+    m_selectedObjectId = created.front();
+    m_selectionIds.assign(1, created.front());
     ClearAssetSelection();
     SetObjectToolActive(true);
     RefreshGizmoSelectables();
@@ -1562,18 +1551,16 @@ void LevelEditorController::RenameObject(NS::uint32 id, std::string_view name)
 
 void LevelEditorController::DuplicateSelectedObject()
 {
-    if (m_mode != Mode::Edit || m_selectionIds.empty())
+    if (m_selectionIds.empty())
     {
         return;
     }
 
     const NS::SceneActor* player = FindPlayer(m_scene->Objects());
 
-    // 選択物の忠実コピーを新しい永続 id で増やす
-    // 元の id から新しい id への表を作り、コピーの中の参照を付け替えるのに使う
+    // 選択物の忠実コピーを作る。新しい id と、写した物どうしの参照の付け替えは CreateObjects が行う
     std::vector<nlohmann::json> copies;
     copies.reserve(m_selectionIds.size());
-    std::unordered_map<NS::uint32, NS::uint32> idMap;
     for (const NS::uint32 id : m_selectionIds)
     {
         // プレイヤーは必ず 1 体。複製で 2 体目を作らせない
@@ -1586,32 +1573,17 @@ void LevelEditorController::DuplicateSelectedObject()
         {
             continue;
         }
-        const NS::uint32 newId = m_scene->Objects().AllocateObjectId();
-        idMap.emplace(id, newId);
-        NS::SetObjectJsonId(*source, newId);
-
         copies.push_back(std::move(*source));
     }
-    if (copies.empty())
+
+    std::vector<NS::uint32> created = m_editor.CreateObjects(std::move(copies));
+    if (created.empty())
     {
         return;
     }
 
-    std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
-    std::vector<NS::uint32> created;
-    commands.reserve(copies.size());
-    created.reserve(copies.size());
-    for (nlohmann::json& copy : copies)
-    {
-        NS::RemapObjectRefs(copy, idMap);
-        const NS::uint32 copyId = NS::ObjectJsonId(copy);
-        created.push_back(copyId);
-        commands.push_back(std::make_unique<NS::Editor::ObjectSnapshotCommand>(copyId, std::nullopt, copy));
-    }
-
-    m_editor.Undo().Push(MakeUndoUnit(std::move(commands)), m_applier);
-
-    SelectObjects(created, created.back());
+    const NS::uint32 primary = created.back();
+    SelectObjects(std::move(created), primary);
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }

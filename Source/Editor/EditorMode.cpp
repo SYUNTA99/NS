@@ -5,6 +5,7 @@
 #include "Editor/EditorUi.h"
 #include "Editor/GridMath.h"
 #include "Editor/LevelFilePaths.h"
+#include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
 #include "Game/Game.h"
@@ -28,7 +29,9 @@
 #endif
 
 #include <limits>
+#include <memory>
 #include <optional>
+#include <unordered_map>
 
 namespace NS
 {
@@ -493,9 +496,46 @@ namespace NS
 #endif
         }
 
+        std::vector<uint32> EditorMode::CreateObjects(std::vector<nlohmann::json> objects)
+        {
+            // プレイ中に作った物は、編集へ戻る組み直しで消える。履歴だけがプレイの姿を指して残る
+            std::vector<uint32> created;
+            if (!m_active || m_applier == nullptr || !m_allocateId || objects.empty())
+            {
+                return created;
+            }
+
+            // 写した元の id から新しい id への表。一緒に作る物どうしの参照を付け替える
+            std::unordered_map<uint32, uint32> idMap;
+            created.reserve(objects.size());
+            for (nlohmann::json& object : objects)
+            {
+                const uint32 sourceId = ObjectJsonId(object);
+                const uint32 id = m_allocateId();
+                if (sourceId != k_NoObjectId)
+                {
+                    idMap.emplace(sourceId, id);
+                }
+                SetObjectJsonId(object, id);
+                created.push_back(id);
+            }
+
+            std::vector<std::unique_ptr<ICommand>> commands;
+            commands.reserve(objects.size());
+            for (std::size_t i = 0; i < objects.size(); ++i)
+            {
+                RemapObjectRefs(objects[i], idMap);
+                commands.push_back(
+                    std::make_unique<ObjectSnapshotCommand>(created[i], std::nullopt, std::move(objects[i])));
+            }
+            m_undo.Push(MakeUndoUnit(std::move(commands)), *m_applier);
+            m_levelDirty = true;
+            return created;
+        }
+
         void EditorMode::PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (m_applier == nullptr || !m_findCellObject || !m_allocateId)
+            if (m_applier == nullptr || !m_findCellObject)
             {
                 return;
             }
@@ -513,24 +553,24 @@ namespace NS
                                   Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
             Editor::SetCellRotationStep(placed, rotation);
 
-            // 既存 cell は同じ永続 id で置換、空 cell は新規採番
-            std::optional<nlohmann::json> before;
-            uint32 id = m_findCellObject(x, y, z);
-            if (id != k_NoObjectId)
-            {
-                before = m_applier->CaptureObject(id);
-            }
-            else if (IsCellOccupied(x, y, z))
+            const uint32 id = m_findCellObject(x, y, z);
+            if (id == k_NoObjectId)
             {
                 // 地形の部品でない物は筆で置き換えない
+                if (IsCellOccupied(x, y, z))
+                {
+                    return;
+                }
+                // 筆は置いた物を選ばない
+                std::vector<nlohmann::json> objects;
+                objects.push_back(std::move(placed));
+                (void)CreateObjects(std::move(objects));
                 return;
             }
-            else
-            {
-                id = m_allocateId();
-            }
-            SetObjectJsonId(placed, id);
 
+            // 今ある cell は同じ永続 id で置き換える。作るのでなく編集なので CreateObjects を通さない
+            std::optional<nlohmann::json> before = m_applier->CaptureObject(id);
+            SetObjectJsonId(placed, id);
             m_undo.Push(std::make_unique<Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(placed)),
                         *m_applier);
             m_levelDirty = true;
