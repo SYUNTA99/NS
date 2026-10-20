@@ -394,16 +394,19 @@ namespace NS
         // 仮想カメラの付け外しは、持ち主の SceneActor が OnStart / OnEndPlay で行う
         m_objects.RebuildFromJson(
             scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, *this); });
-        m_objects.SyncPhysics(m_physics.Physics());
+        // 当たりは配置物の開始で入っている。まとめて入れた後の broadphase だけを張り直す
+        m_physics.Physics().OptimizeBroadPhase();
     }
 
     void Scene::OnUpdate()
     {
         // 世界の駆動。読み込んだら回り続けるのが既定で、編集モードのエディタだけが止める
         // 時間停止中は前の値の控えだけが残り、previous == current で補間が凍る
+        // Actor の Update が回らない歩も、編集で動いた当たりを揃える
         if (!m_simulationEnabled)
         {
             m_objects.SnapshotObjects();
+            m_objects.SyncCollisions();
             return;
         }
 
@@ -412,6 +415,7 @@ namespace NS
             if (m_simulationStepFrames <= 0)
             {
                 m_objects.SnapshotObjects();
+                m_objects.SyncCollisions();
                 return;
             }
             // コマ送りは実時間の 1 歩。遅い世界では世界が進まない歩もある

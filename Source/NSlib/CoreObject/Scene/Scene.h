@@ -176,7 +176,8 @@ namespace NS
         //! @details 一時オブジェクトを除く全配置物を、全部品の値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
 
-        //! @brief 編集で動いた実体の当たりを張り直し、一時オブジェクトへ知らせる。object は作り直さない
+        //! @brief 出ている実体の当たりを今の姿と形へ揃え、broadphase を張り直す。object は作り直さない
+        //! @details 動いた当たりは歩ごとに揃うので、まとめて入れた後に broadphase を張り直したい時だけ呼ぶ
         void SyncPhysics();
 
         //! @brief プレイ突入時に実体を JSON 文書へ凍結して返す。プレイ規則の判定と編集復帰の姿はこの凍結を読む
@@ -248,16 +249,16 @@ namespace NS
         }
 
         //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
-        //! @details 名前は既存と重なれば番号を付ける。親の id があれば親へぶら下げ、資産を引き当ててから開始する
-        //! undo の作り直しと複製が通る。当たりは呼出側が SyncPhysics で張り直す
+        //! @details 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
+        //! undo の作り直しと複製が通る
         SceneActor* SpawnFromJson(const nlohmann::json& object);
 
         //! @brief 同じ id の配置物を JSON の姿へ作り直す。並びの位置は保つ。居なければ SpawnFromJson と同じ
-        //! @details 部品の増減も含めて姿を丸ごと入れ替える。当たりは呼出側が SyncPhysics で張り直す
+        //! @details 部品の増減も含めて姿を丸ごと入れ替える
         SceneActor* ReplaceFromJson(const nlohmann::json& object);
 
         //! 同じ id の個体へ JSON を適用する。構成が同じなら実体を保ち、違えば再構築する
-        //! 未配置なら生成する。衝突の再同期は呼び手が SyncPhysics で行う
+        //! 未配置なら生成する。動いた当たりは次の歩で揃う
         SceneActor* ApplyFromJson(const nlohmann::json& object);
 
         //! @brief 配置物を 1 体消す。居なければ何もしない
@@ -302,7 +303,7 @@ namespace NS
         // 配置物が持つ画面は破棄で自分を外すので、配置物より先に宣言して後に破棄する
         UIDirector m_ui;
 
-        //! 衝突判定の PhysicsScene を持つ。ActorList::SyncPhysics が Collision の body を入れる
+        //! 衝突判定の PhysicsScene を持つ。Collision が出る時と動いた歩に body を入れる
         //! Collision が OnEndPlay で body を外し、Collider が借りるので、m_objects より先に宣言して後に破棄する
         PhysicsDirector m_physics;
         Vector3 m_gravityDirection{0.0f, -1.0f, 0.0f};

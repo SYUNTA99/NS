@@ -96,10 +96,6 @@ namespace GL
         {
             NS::SceneActor::OnStart();
             m_effects->Preload();
-            if (IsAppeared())
-            {
-                m_tackleGhost.Register();
-            }
         }
 
         void PropActor::OnAppear()
@@ -115,11 +111,6 @@ namespace GL
         {
             NS::SceneActor::OnDisappear();
             m_tackleGhost.Unregister();
-        }
-
-        void PropActor::InitAfterPlacement()
-        {
-            SyncCollision();
         }
 
         bool PropActor::IsFrozen() const noexcept
@@ -146,17 +137,6 @@ namespace GL
             return flight;
         }
 
-        void PropActor::BodyStep()
-        {
-            // 置き直すたびに形を作り直すので、球が変わらない間は置かない。止まっている置物の数だけ毎ステップ確保が走る
-            const NS::Sphere sphere = Sphere().WorldSphere();
-            if (!m_syncedSphere.has_value() || sphere.center != m_syncedSphere->center ||
-                sphere.radius != m_syncedSphere->radius)
-            {
-                SyncCollision();
-            }
-        }
-
         void PropActor::VisualStep()
         {
             // clang-format off
@@ -168,18 +148,7 @@ namespace GL
 
         void PropActor::UpdateMotion()
         {
-            StateStep();
-            BodyStep();
-        }
-
-        void PropActor::SyncCollision()
-        {
-            // Scene に居ない間は入れる先が無い。入れたと控えると、球が変わるまで入れ直さない
-            if (IsAppeared() && OwningScene() != nullptr)
-            {
-                Sphere().SyncToPhysics();
-                m_syncedSphere = Sphere().WorldSphere();
-            }
+            Update();
         }
 
         void PropActor::BeginFreeze(const TackleFreezeDesc& desc)
@@ -213,7 +182,8 @@ namespace GL
                     }
                 }
             }
-            SyncCollision();
+            // 次の歩を待たず、同じ歩の後の問いに置き直した当たりを見せる
+            Sphere().SyncToPhysics();
         }
 
         void PropActor::AdvanceGhost()
@@ -306,7 +276,8 @@ namespace GL
             m_motion.Build<ArcState, RollingState>(*this);
             (void)m_states->Change<LaunchedState>();
             m_effects->BeginTrail(desc, Flight(), m_params.get(), &Sphere());
-            SyncCollision();
+            // 次の歩を待たず、同じ歩の後の問いに置き直した当たりを見せる
+            Sphere().SyncToPhysics();
         }
 
         NS::Vector3 PropActor::ArcOffset(float seconds) const noexcept
@@ -522,7 +493,8 @@ namespace GL
             Appear();
             BodySensorClassObj()->Validate();
             m_effects->CancelTrail();
-            SyncCollision();
+            // 次の歩を待たず、同じ歩の後の問いに置き直した当たりを見せる
+            Sphere().SyncToPhysics();
         }
 
         void PropActor::OnEndPlay()
@@ -533,7 +505,6 @@ namespace GL
             }
             m_motion.Finish();
             NS::SceneActor::OnEndPlay();
-            m_tackleGhost.Unregister();
         }
 
         bool PropActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver)

@@ -360,10 +360,6 @@ void PlayerActor::OnStart()
         scene->RegisterOverlay(m_targetMarker.get());
         scene->RegisterOverlay(m_slamArrow.get());
     }
-    if (IsAppeared())
-    {
-        m_tackleGhost.Register();
-    }
     m_chargeEffects->Preload();
     m_impactEffects->Preload();
 }
@@ -386,7 +382,6 @@ void PlayerActor::OnEndPlay()
         scene->UnregisterOverlay(m_targetMarker.get());
         scene->UnregisterOverlay(m_slamArrow.get());
     }
-    m_tackleGhost.Unregister();
     EndCharge();
 }
 

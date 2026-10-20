@@ -39,6 +39,7 @@ namespace NS
 
     void BoxCollision::SetHalfExtents(const Vector3& halfExtents) noexcept
     {
+        MarkShapeChanged();
         m_halfExtents = ClampNonNegative(halfExtents);
     }
 
@@ -49,6 +50,7 @@ namespace NS
 
     void BoxCollision::SetCenterOffset(const Vector3& offset) noexcept
     {
+        MarkShapeChanged();
         m_centerOffset = offset;
     }
 
@@ -59,6 +61,7 @@ namespace NS
 
     void BoxCollision::SetLocalRotation(const Quaternion& rotation) noexcept
     {
+        MarkShapeChanged();
         m_localRotation = rotation;
     }
 
@@ -69,6 +72,7 @@ namespace NS
 
     void BoxCollision::SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept
     {
+        MarkShapeChanged();
         m_localRotation = EulerDegreesToQuaternion(eulerDegrees);
     }
 

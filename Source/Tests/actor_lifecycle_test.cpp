@@ -1,4 +1,7 @@
 #include "Game/Level/PropActor.h"
+#include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
+#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/UIActor.h"
@@ -7,6 +10,42 @@
 
 namespace
 {
+    // 自分では当たりを写さない、置く側の当たりだけを持つ Actor
+    class LifeBoxActor final : public NS::SceneActor
+    {
+    public:
+        NS_REFLECT_NONE(LifeBoxActor, NS::SceneActor)
+
+    protected:
+        void OnInit() override { CreateClassObj<NS::Collision, NS::BoxCollision>(m_collision, this); }
+    };
+} // namespace
+
+NS_PLACEABLE(LifeBoxActor, "試しの箱")
+
+namespace
+{
+    bool HitsDownAt(const NS::Scene& scene, float x)
+    {
+        float distance = 0.0f;
+        return scene.Physics().Raycast({x, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance);
+    }
+
+    nlohmann::json LifeBoxJson(NS::uint32 id, std::string_view name, float x)
+    {
+        nlohmann::json object = NS::MakeObjectJson();
+        NS::SetObjectJsonId(object, id);
+        NS::SetObjectJsonClass(object, "LifeBoxActor");
+        NS::SetObjectJsonName(object, name);
+        NS::SetObjectPosition(object, {x, 0.0f, 0.0f});
+        return object;
+    }
+
+    NS::Vector3 InterpolatedStart(const NS::SceneActor& actor)
+    {
+        return actor.Root().InterpolatedWorldMatrix(0.0f).Translation();
+    }
+
     class LifeProbeActor final : public NS::SceneActor
     {
     public:
@@ -134,6 +173,74 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
     EXPECT_EQ(scene.RenderableCount(), renderables);
     EXPECT_EQ(scene.HitSensors().Sensors().size(), sensors);
     EXPECT_EQ(scene.Physics().BodyCount(), bodies);
+}
+
+// どの道で入れても、入れた直後から置く側の当たりがある。呼び手が当たりを張り直さなくてよい
+TEST(ActorLifecycle, EveryWayInGivesTheCollisionRightAway)
+{
+    NS::Scene scene;
+    (void)scene.SpawnTransient<LifeBoxActor>();
+    EXPECT_TRUE(HitsDownAt(scene, 0.0f));
+
+    NS::SceneActor* placed = scene.SpawnObject<LifeBoxActor>("Placed");
+    placed->Root().SetPosition({10.0f, 0.0f, 0.0f});
+    scene.OnUpdate();
+    EXPECT_TRUE(HitsDownAt(scene, 10.0f));
+
+    ASSERT_NE(scene.SpawnFromJson(LifeBoxJson(50, "FromJson", 20.0f)), nullptr);
+    EXPECT_TRUE(HitsDownAt(scene, 20.0f));
+}
+
+TEST(ActorLifecycle, DisappearRemovesTheCollisionAndAppearBringsItBack)
+{
+    NS::Scene scene;
+    NS::SceneActor* actor = scene.SpawnFromJson(LifeBoxJson(50, "Box", 0.0f));
+    ASSERT_NE(actor, nullptr);
+    actor->Disappear();
+    EXPECT_FALSE(HitsDownAt(scene, 0.0f));
+    actor->Appear();
+    EXPECT_TRUE(HitsDownAt(scene, 0.0f));
+}
+
+// 入れた直後の絵は、原点から配置先へ補間しない
+TEST(ActorLifecycle, EveryWayInStartsInterpolationAtThePlacement)
+{
+    NS::Scene scene;
+    nlohmann::json sceneJson = NS::MakeSceneJson();
+    NS::SceneJsonObjects(sceneJson).push_back(LifeBoxJson(10, "Rebuilt", 3.0f));
+    scene.ResetFromJson(sceneJson);
+    EXPECT_EQ(InterpolatedStart(*scene.Objects().FindByObjectId(10)), NS::Vector3(3.0f, 0.0f, 0.0f));
+
+    const NS::SceneActor* spawned = scene.SpawnFromJson(LifeBoxJson(20, "Spawned", 4.0f));
+    ASSERT_NE(spawned, nullptr);
+    EXPECT_EQ(InterpolatedStart(*spawned), NS::Vector3(4.0f, 0.0f, 0.0f));
+
+    const NS::SceneActor* replaced = scene.ReplaceFromJson(LifeBoxJson(20, "Spawned", 5.0f));
+    ASSERT_NE(replaced, nullptr);
+    EXPECT_EQ(InterpolatedStart(*replaced), NS::Vector3(5.0f, 0.0f, 0.0f));
+
+    const NS::SceneActor* applied = scene.ApplyFromJson(LifeBoxJson(30, "Applied", 6.0f));
+    ASSERT_NE(applied, nullptr);
+    EXPECT_EQ(InterpolatedStart(*applied), NS::Vector3(6.0f, 0.0f, 0.0f));
+}
+
+// 置いた後に動かすと、次の歩で当たりが付いて来る。世界を止めた編集中も同じ
+TEST(ActorLifecycle, MovedCollisionFollowsOnTheNextStep)
+{
+    NS::Scene scene;
+    NS::SceneActor* actor = scene.SpawnFromJson(LifeBoxJson(50, "Box", 0.0f));
+    ASSERT_NE(actor, nullptr);
+
+    actor->Root().SetPosition({10.0f, 0.0f, 0.0f});
+    scene.OnUpdate();
+    EXPECT_FALSE(HitsDownAt(scene, 0.0f));
+    EXPECT_TRUE(HitsDownAt(scene, 10.0f));
+
+    scene.SetSimulationEnabled(false);
+    actor->Root().SetPosition({20.0f, 0.0f, 0.0f});
+    scene.OnUpdate();
+    EXPECT_FALSE(HitsDownAt(scene, 10.0f));
+    EXPECT_TRUE(HitsDownAt(scene, 20.0f));
 }
 
 TEST(ActorLifecycle, UICloseStopsTheUpdateAndOpenResumesIt)

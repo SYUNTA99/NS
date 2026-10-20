@@ -24,7 +24,8 @@ namespace NS
         explicit Collision(SceneActor* owner) noexcept : m_owner(owner) {}
 
         //! 世界座標の当たりを body 1 個として持ち主の Scene の PhysicsScene へ入れる。入れた body があれば置き直す
-        //! 何も入れない形状もある。持ち主が Scene に居なければ何もしない
+        //! 前に入れた時から持ち主の姿も形も変わっていなければ何もしない。何も入れない形状もある
+        //! 持ち主が Scene に居なければ何もしない
         void SyncToPhysics();
 
         //! 当たりの body の id。何も入れなかった形状では無効
@@ -45,11 +46,18 @@ namespace NS
         [[nodiscard]] Matrix ShapeWorldMatrix(const Quaternion& localRotation,
                                                   const Vector3& centerOffset) const noexcept;
 
+        //! 形を変える関数 (欄の setter と形の差し替え) が呼ぶ。次の SyncToPhysics が姿の比べを飛ばして入れ直す
+        void MarkShapeChanged() noexcept { m_shapeChanged = true; }
+
     private:
         // 無効な current は新規作成。所属と異なる PhysicsScene の id と混同しないよう、SyncToPhysics だけが呼ぶ
         [[nodiscard]] virtual JPH::BodyID SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current) = 0;
 
         JPH::BodyID m_bodyId;
         SceneActor* m_owner = nullptr; // 持ち主 (非所有)
+        // 最後に入れた時の持ち主の世界行列。入れていない間は m_synced が偽
+        Matrix m_syncedWorld;
+        bool m_synced = false;
+        bool m_shapeChanged = false;
     };
 } // namespace NS

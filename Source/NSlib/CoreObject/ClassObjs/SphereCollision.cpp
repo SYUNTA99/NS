@@ -17,6 +17,7 @@ namespace NS
 
     void SphereCollision::SetRadius(float radius) noexcept
     {
+        MarkShapeChanged();
         m_radius = std::max(radius, 0.0f);
     }
 
@@ -27,6 +28,7 @@ namespace NS
 
     void SphereCollision::SetCenterOffset(const Vector3& offset) noexcept
     {
+        MarkShapeChanged();
         m_centerOffset = offset;
     }
 

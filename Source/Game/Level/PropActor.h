@@ -34,10 +34,7 @@ namespace GL
 
             //! 尾と粉の絵を先に読む。残像は Model と同じく、出ている間だけ描く物へ入れる
             void OnStart() override;
-            //! 配置が揃った後に、当たりの球を物理へ入れる
-            void InitAfterPlacement() override;
-
-            //! 状態を 1 固定ステップ進め、動いた当たりの球を物理へ同期する
+            //! 1 固定ステップを本番と同じ順で進める。試しが段を回さずに置物を動かす
             void UpdateMotion();
             void OnEndPlay() override;
             //! 体当たりの止めの最中の場合 true、それ以外の場合は false
@@ -68,7 +65,6 @@ namespace GL
             void OnInit() override;
             void OnAppear() override;
             void OnDisappear() noexcept override;
-            void BodyStep() override;
             //! 発光の層を進める。HitReaction は進めない
             void VisualStep() override;
 
@@ -94,7 +90,6 @@ namespace GL
             void MoveLaunched(float dt);
             bool ProbeFloor(float distance, NS::Vector3& outNormal);
             void Land(const NS::Vector3& normal);
-            void SyncCollision();
             void SpawnMark();
             [[nodiscard]] NS::Vector3 ArcOffset(float seconds) const noexcept;
 
@@ -130,7 +125,6 @@ namespace GL
             int m_hopsLeft = 0; // 外れで着地した後に残っている跳ねの回数。外れでなければ 0
             int m_hopIndex = 0; // 次の跳ねが何回目か。0 から数える
             NS::uint32 m_hopSeed = 0;
-            std::optional<NS::Sphere> m_syncedSphere; // 最後に当たりへ置いた世界座標の球。置く前は空
         };
     } // namespace Level
 } // namespace GL

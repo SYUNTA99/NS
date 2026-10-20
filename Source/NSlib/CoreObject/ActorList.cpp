@@ -74,10 +74,6 @@ namespace NS
                 objPtr->InitAfterPlacement();
             }
         }
-
-        // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
-        // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる
-        SnapshotObjects();
     }
 
     SceneActor* ActorList::Append(std::unique_ptr<SceneActor> obj)
@@ -207,23 +203,20 @@ namespace NS
 
     void ActorList::SyncPhysics(Phys::PhysicsScene& physics)
     {
+        SyncCollisions();
+        physics.OptimizeBroadPhase();
+    }
+
+    void ActorList::SyncCollisions()
+    {
         for (const std::unique_ptr<SceneActor>& actor : m_objects)
         {
             Collision* collision = actor->CollisionClassObj();
-            if (collision == nullptr)
-            {
-                continue;
-            }
-            if (actor->IsAppeared())
+            if (collision != nullptr && actor->IsAppeared())
             {
                 collision->SyncToPhysics();
             }
-            else
-            {
-                collision->RemoveFromPhysics();
-            }
         }
-        physics.OptimizeBroadPhase();
     }
 
     void ActorList::SnapshotObjects()

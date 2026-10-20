@@ -260,19 +260,17 @@ namespace NS
 
     void SceneActor::OnStart()
     {
-        // 部品の登録はここで済ませる。続けて OnAppear を呼ぶと二重に登録する
+        NS_ASSERT(Scene,
+                  Phase() != UpdatePhase::Input && Phase() != UpdatePhase::RenderPrep,
+                  "{} の段が、全部の Actor を回す段になっている。Update が呼ばれない",
+                  ClassName());
+        // シーンの仕組みへのつなぎと外しは OnAppear と OnDisappear の 1 組だけが持つ。ここは出ている物をつなぐだけ
+        OnAppear();
+        // 作る時に 1 回だけの物
         // clang-format off
-        if (m_model) { m_model->Register(); }
         if (m_animation) { m_animation->BindToModel(); }
-        if (m_shadow) { m_shadow->Register(); }
-        if (m_bodySensor) { m_bodySensor->Register(); }
-        if (m_attackSensor) { m_attackSensor->Register(); }
         if (m_hitReaction) { m_hitReaction->CreateDirectors(); }
         // clang-format on
-        if (!IsAppeared())
-        {
-            OnDisappear();
-        }
     }
 
     void SceneActor::OnAppear()
@@ -288,6 +286,9 @@ namespace NS
         if (m_collision) { m_collision->SyncToPhysics(); }
         if (m_bodySensor) { m_bodySensor->Register(); }
         if (m_attackSensor) { m_attackSensor->Register(); }
+        // clang-format on
+        // 出た所から描き始める。前の値が原点や消えた所のままだと、そこから補間して見える
+        SnapshotForInterpolation();
     }
 
     void SceneActor::OnDisappear() noexcept
@@ -314,6 +315,10 @@ namespace NS
         DecideStep();
         StateStep();
         BodyStep();
+        // 置く側の当たりは体を動かした後の姿へ揃える。姿も形も変わっていなければ Collision は何もしない
+        // clang-format off
+        if (m_collision) { m_collision->SyncToPhysics(); }
+        // clang-format on
         // 揺れと震えは体を動かした後の根で書き、VisualStep の残像が書いた後の姿を写し取る
         // clang-format off
         if (m_model) { m_model->AdvanceDraw(); }
@@ -345,15 +350,8 @@ namespace NS
 
     void SceneActor::OnEndPlay()
     {
+        // 出ている物は OnDisappear で外れる。消えている物は消えた時に外れている
         Disappear();
-        // clang-format off
-        if (m_model) { m_model->Unregister(); }
-        if (m_shadow) { m_shadow->Unregister(); }
-        if (m_collision) { m_collision->Unregister(); }
-        if (m_bodySensor) { m_bodySensor->Unregister(); }
-        if (m_attackSensor) { m_attackSensor->Unregister(); }
-        if (m_hitReaction) { m_hitReaction->StopAll(); }
-        // clang-format on
     }
 
 } // namespace NS

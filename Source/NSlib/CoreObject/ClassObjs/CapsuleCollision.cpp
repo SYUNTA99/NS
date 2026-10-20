@@ -15,6 +15,7 @@ namespace NS
 
     void CapsuleCollision::SetRadius(float radius) noexcept
     {
+        MarkShapeChanged();
         if (radius < 0.0f)
         {
             m_radius = 0.0f;
@@ -32,6 +33,7 @@ namespace NS
 
     void CapsuleCollision::SetHalfHeight(float halfHeight) noexcept
     {
+        MarkShapeChanged();
         if (halfHeight < 0.0f)
         {
             m_halfHeight = 0.0f;
@@ -49,6 +51,7 @@ namespace NS
 
     void CapsuleCollision::SetCenterOffset(const Vector3& offset) noexcept
     {
+        MarkShapeChanged();
         m_centerOffset = offset;
     }
 
@@ -59,6 +62,7 @@ namespace NS
 
     void CapsuleCollision::SetLocalRotation(const Quaternion& rotation) noexcept
     {
+        MarkShapeChanged();
         m_localRotation = rotation;
     }
 
@@ -69,6 +73,7 @@ namespace NS
 
     void CapsuleCollision::SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept
     {
+        MarkShapeChanged();
         m_localRotation = EulerDegreesToQuaternion(eulerDegrees);
     }
 

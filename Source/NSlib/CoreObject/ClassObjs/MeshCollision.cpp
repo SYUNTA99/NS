@@ -38,6 +38,7 @@ namespace NS
 
     void MeshCollision::SetShape(const Phys::MeshShape* shape) noexcept
     {
+        MarkShapeChanged();
         m_shape = shape;
     }
 
