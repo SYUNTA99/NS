@@ -1917,12 +1917,11 @@ namespace
 {
     [[nodiscard]] NS::Object* LoadSelectableAsset(std::string_view path)
     {
-        const std::string extension = NS::OS::FileSystem::Extension(path);
-        if (extension == ".mat")
+        if (NS::Editor::IsMaterialAssetPath(path))
         {
             return NS::AssetManager::Get().LoadMaterial(path);
         }
-        if (extension == ".gltf" || extension == ".glb")
+        if (NS::Editor::IsModelAssetPath(path))
         {
             return NS::AssetManager::Get().LoadMesh(path);
         }

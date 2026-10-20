@@ -18,7 +18,12 @@ namespace NS
             std::string location;
         };
 
-        //! WICで表示する画像の拡張子か。大文字と小文字は区別しない
+        //! 素材の種類を拡張子で分ける。素材の窓・候補の一覧・素材の選択は、全部この判定を使う。
+        //! 大文字と小文字は区別しない
+        [[nodiscard]] bool IsMaterialAssetPath(std::string_view path);
+        //! .gltf と .glb
+        [[nodiscard]] bool IsModelAssetPath(std::string_view path);
+        //! WICで表示する画像の拡張子か
         [[nodiscard]] bool IsTextureAssetPath(std::string_view path);
 
         //! contentRoot 配下の Assets と組み込みから候補を集める。保存用の道筋は contentRoot 相対

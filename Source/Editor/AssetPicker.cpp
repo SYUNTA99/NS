@@ -20,6 +20,16 @@ namespace NS
                 "space_ft.png", "space_bk.png", "space_up.png",
                 "space_dn.png", "space_rt.png", "space_lf.png"};
 
+            // 素材の種類は拡張子で分ける。大文字と小文字を区別しないため、比べる前に小文字へ揃える
+            std::string LowerExtension(std::string_view path)
+            {
+                std::string extension = OS::FileSystem::Extension(path);
+                std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
+                    return static_cast<char>(std::tolower(c));
+                });
+                return extension;
+            }
+
             bool IsCubemapDds(std::string_view path)
             {
                 const std::optional<std::vector<std::byte>> bytes = OS::FileSystem::ReadAllBytes(path);
@@ -56,11 +66,8 @@ namespace NS
                     return OS::FileSystem::Exists(file) && !OS::FileSystem::IsDirectory(file);
                 });
             }
-            std::string extension = OS::FileSystem::Extension(absolutePath);
-            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
-                return static_cast<char>(std::tolower(c));
-            });
-            return extension == ".dds" && OS::FileSystem::Exists(absolutePath) && IsCubemapDds(absolutePath);
+            return LowerExtension(absolutePath) == ".dds" && OS::FileSystem::Exists(absolutePath) &&
+                   IsCubemapDds(absolutePath);
         }
 
         std::vector<AssetOption> CollectSkyboxOptions(std::string_view contentRoot)
@@ -93,12 +100,20 @@ namespace NS
             return options;
         }
 
+        bool IsMaterialAssetPath(std::string_view path)
+        {
+            return LowerExtension(path) == ".mat";
+        }
+
+        bool IsModelAssetPath(std::string_view path)
+        {
+            const std::string extension = LowerExtension(path);
+            return extension == ".gltf" || extension == ".glb";
+        }
+
         bool IsTextureAssetPath(std::string_view path)
         {
-            std::string extension = OS::FileSystem::Extension(path);
-            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
-                return static_cast<char>(std::tolower(c));
-            });
+            const std::string extension = LowerExtension(path);
             return extension == ".png" || extension == ".jpg" || extension == ".jpeg" ||
                    extension == ".bmp" || extension == ".tif" || extension == ".tiff" || extension == ".gif";
         }
@@ -128,14 +143,11 @@ namespace NS
             }
             for (const std::string& file : OS::FileSystem::ListFilesRecursive(directory))
             {
-                std::string extension = OS::FileSystem::Extension(file);
-                std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
-                    return static_cast<char>(std::tolower(c));
-                });
-                const bool modelFile = extension == ".gltf" || extension == ".glb";
-                if ((kind == AssetKind::Material && extension != ".mat") ||
+                const std::string extension = LowerExtension(file);
+                if ((kind == AssetKind::Material && !IsMaterialAssetPath(file)) ||
                     (kind == AssetKind::Effect && extension != ".efkefc") ||
-                    ((kind == AssetKind::Mesh || kind == AssetKind::Model || kind == AssetKind::Animation) && !modelFile))
+                    ((kind == AssetKind::Mesh || kind == AssetKind::Model || kind == AssetKind::Animation) &&
+                     !IsModelAssetPath(file)))
                 {
                     continue;
                 }

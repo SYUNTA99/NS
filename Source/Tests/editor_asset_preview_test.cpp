@@ -13,12 +13,16 @@
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Windows/StringUtils.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <algorithm>
+#include <chrono>
+#include <filesystem>
+#include <string>
 #include <vector>
 
 namespace
@@ -386,4 +390,47 @@ TEST_F(EditorAssetPreview, AssetsShowsMaterialsModelsAndTexturesBeforeSelection)
     io.AddMouseButtonEvent(0, false);
     (void)Frame(true);
     EXPECT_EQ(m_editor.SelectedAssetPath(), "Assets/Textures/cube_test.png");
+}
+
+// 拡張子が大文字でも、素材の窓の下見とアクターへ付ける素材の選択が、小文字と同じ種類に分ける
+TEST_F(EditorAssetPreview, UpperCaseExtensionsAreTheSameKindInTheAssetsAndTheSelection)
+{
+    // 素材の窓は ContentRoot の Assets の下を並べるので、Assets の下に試しのフォルダを作り、終わったら消す
+    const std::string folder =
+        "EditorAssetKindTest" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    const std::string assets = NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets");
+    const std::string directory = NS::OS::FileSystem::Combine(assets, folder);
+    ASSERT_TRUE(NS::OS::FileSystem::CreateDirectories(directory));
+    const std::pair<const char*, const char*> copies[] = {
+        {"Materials/stone.mat", "X.MAT"}, {"Models/CesiumMan.glb", "X.GLB"}, {"Textures/cube_test.png", "X.PNG"}};
+    for (const std::pair<const char*, const char*>& copy : copies)
+    {
+        const std::optional<std::vector<std::byte>> bytes =
+            NS::OS::FileSystem::ReadAllBytes(NS::OS::FileSystem::Combine(assets, copy.first));
+        ASSERT_TRUE(bytes.has_value()) << copy.first;
+        ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(NS::OS::FileSystem::Combine(directory, copy.second), *bytes));
+    }
+
+    (void)Frame(true);
+    const std::vector<ImTextureID> before = ShownImages();
+    OpenAssetFolder(folder.c_str());
+    int thumbnails = 0;
+    for (const ImTextureID image : ShownImages())
+    {
+        if (std::find(before.begin(), before.end(), image) == before.end())
+        {
+            ++thumbnails;
+        }
+    }
+    EXPECT_EQ(thumbnails, 3);
+
+    m_editor.SelectAsset(NS::OS::FileSystem::Combine(directory, "X.MAT"));
+    EXPECT_NE(NS::Cast<NS::Material>(m_editor.SelectedAsset()), nullptr);
+    m_editor.SelectAsset(NS::OS::FileSystem::Combine(directory, "X.GLB"));
+    EXPECT_NE(NS::Cast<NS::Mesh>(m_editor.SelectedAsset()), nullptr);
+    m_editor.SelectAsset(NS::OS::FileSystem::Combine(directory, "X.PNG"));
+    EXPECT_NE(NS::Cast<NS::Texture>(m_editor.SelectedAsset()), nullptr);
+
+    std::error_code error;
+    std::filesystem::remove_all(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(directory)}, error);
 }

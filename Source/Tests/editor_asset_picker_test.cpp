@@ -320,3 +320,14 @@ TEST_F(EditorAssetPickerTest, PlainStringsCanBeEditedBeyondTheOldBufferLimit)
     EXPECT_TRUE(frame(false).changed);
     EXPECT_EQ(settings.text, std::string(350, 'a') + "追加");
 }
+
+TEST(AssetPickerCatalog, AssetKindsIgnoreTheCaseOfTheExtension)
+{
+    EXPECT_TRUE(NS::Editor::IsModelAssetPath("Assets/Models/X.GLB"));
+    EXPECT_TRUE(NS::Editor::IsModelAssetPath("Assets/Models/X.gltf"));
+    EXPECT_TRUE(NS::Editor::IsMaterialAssetPath("Assets/Materials/X.MAT"));
+    EXPECT_TRUE(NS::Editor::IsTextureAssetPath("Assets/Textures/X.PNG"));
+    EXPECT_FALSE(NS::Editor::IsModelAssetPath("Assets/Materials/X.MAT"));
+    EXPECT_FALSE(NS::Editor::IsMaterialAssetPath("Assets/Models/X.GLB"));
+    EXPECT_FALSE(NS::Editor::IsTextureAssetPath("Assets/Models/X.GLB"));
+}
