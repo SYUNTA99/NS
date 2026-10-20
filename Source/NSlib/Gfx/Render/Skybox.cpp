@@ -26,13 +26,6 @@ namespace NS
     {
         namespace
         {
-            // シェーダへ渡す定数。HLSL 側の cbuffer と同じ 64 バイトに揃える
-            struct alignas(16) SkyboxCB
-            {
-                Matrix viewProj;
-            };
-            static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
-
             // キューブマップのテクスチャファイル名
             // 素材のファイル名が示す向きは DX11 の軸から水平に 90° ずれている。継ぎ目が合う並びで置く
             constexpr std::array<const char*, 6> k_KurtFaceFileNames = {
@@ -225,7 +218,7 @@ namespace NS
 
             commands.VSSetShader(*m_vs);
             commands.PSSetShader(*m_ps);
-            commands.VSSetConstantBuffer(*m_cb, 0);
+            commands.VSSetConstantBuffer(*m_cb, k_DrawConstantsSlot);
 
             commands.PSSetShaderResource(*m_cubemap, 0);
 

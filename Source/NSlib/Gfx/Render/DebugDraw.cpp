@@ -266,7 +266,7 @@ namespace NS
             cmd.VSSetShader(*m_vs);
             cmd.PSSetShader(*m_ps);
             cmd.SetInputLayout(m_inputLayout.Get());
-            cmd.VSSetConstantBuffer(*m_cb, 0u);
+            cmd.VSSetConstantBuffer(*m_cb, k_DrawConstantsSlot);
 
             // 面を先に描く。線は深度を書くので、後に描かないと面が線の奥で途切れる
             if (!shapes.m_faces.empty())

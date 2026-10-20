@@ -26,6 +26,14 @@ namespace NS
         class D3DTexture;
         struct BuiltinShaders;
 
+        //! @brief 空の頂点シェーダーの定数
+        //! @details skybox.vs.hlsl の cbuffer SkyboxCB と大きさを合わせる。照らす試しは shader_constants_test.cpp
+        struct alignas(16) SkyboxCB
+        {
+            Matrix viewProj; //!< カメラの平行移動を除いたビュー射影
+        };
+        static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL の cbuffer SkyboxCB とバイト一致が必要");
+
         //! @brief 無限遠の背景の空を描く
         //! @details 立方体のメッシュとキューブマップを持つ。描く資源は、画像を指定した初回の Draw で作る
         //! 画像を読み込むまではピンク一色のフォールバックを描く

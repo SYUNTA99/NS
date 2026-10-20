@@ -3,6 +3,8 @@
 #include "NSlib/Gfx/Render/Bloom.h"
 #include "NSlib/Gfx/Render/FrameConstants.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
+#include "NSlib/Gfx/Render/ScreenPasses.h"
+#include "NSlib/Gfx/Render/Skybox.h"
 
 #include <gtest/gtest.h>
 
@@ -160,4 +162,30 @@ TEST(ShaderConstants, ScreenRectShadersMatchTheScreenRectConstants)
     ASSERT_NE(ps.reflection, nullptr) << ps.error;
     EXPECT_TRUE(
         HasConstantBuffer(*ps.reflection.Get(), "UiRectCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::ScreenRectCB)));
+}
+
+TEST(ShaderConstants, SkyboxVertexShaderMatchesTheSkyboxConstants)
+{
+    const ReflectedShader shader = Reflect(L"Shaders/skybox.vs.hlsl", "VSMain", "vs_5_0");
+    ASSERT_NE(shader.reflection, nullptr) << shader.error;
+    EXPECT_TRUE(
+        HasConstantBuffer(*shader.reflection.Get(), "SkyboxCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::SkyboxCB)));
+}
+
+TEST(ShaderConstants, ScreenDistortionPixelShaderMatchesTheDistortionConstants)
+{
+    const ReflectedShader shader = Reflect(L"Shaders/screen_distortion.ps.hlsl", "PSMain", "ps_5_0");
+    ASSERT_NE(shader.reflection, nullptr) << shader.error;
+    EXPECT_TRUE(HasConstantBuffer(*shader.reflection.Get(),
+                                  "ScreenDistortionCB",
+                                  NS::Gfx::k_DrawConstantsSlot,
+                                  sizeof(NS::Gfx::ScreenDistortionCB)));
+}
+
+// 開発用の線は定数の型を持たず、ビュー射影の行列 1 つをそのまま差す
+TEST(ShaderConstants, DebugLineVertexShaderMatchesTheViewProjection)
+{
+    const ReflectedShader shader = Reflect(L"Shaders/debug_line.vs.hlsl", "VSMain", "vs_5_0");
+    ASSERT_NE(shader.reflection, nullptr) << shader.error;
+    EXPECT_TRUE(HasConstantBuffer(*shader.reflection.Get(), "DebugCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Matrix)));
 }

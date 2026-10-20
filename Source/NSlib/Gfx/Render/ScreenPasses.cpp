@@ -106,7 +106,7 @@ namespace NS
             cmd.SetPipeline(*m_writePipeline);
             cmd.VSSetShader(*m_vs);
             cmd.PSSetShader(*m_distortionPs);
-            cmd.PSSetConstantBuffer(*m_cb, 0);
+            cmd.PSSetConstantBuffer(*m_cb, k_DrawConstantsSlot);
             cmd.PSSetShaderResource(*m_copy, 0);
             const D3DTexture* bodyMask = BodyMask();
             if (bodyMask != nullptr)
