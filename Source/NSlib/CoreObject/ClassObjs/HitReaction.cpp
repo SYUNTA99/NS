@@ -196,7 +196,7 @@ namespace NS
         }
     } // namespace
 
-    // 束を始める時に、項目が共通に使う向きと位置。全部 Start が 1 回だけ出す
+    // 束か項目を始める時に、項目が共通に使う向きと位置。始めるたびに MakeStartContext が 1 回だけ出す
     struct HitStartContext
     {
         Vector3 position{};    // 渡した位置
@@ -209,6 +209,30 @@ namespace NS
         float bodyLength = 0.0f;               // 持ち主の体の差し渡し (m)
         uint32 seed = 0;                       // 揺れの種
     };
+
+    namespace
+    {
+        // 束か項目を始める時の向きと位置を、2 つのセンサーと渡した位置から出す
+        [[nodiscard]] HitStartContext MakeStartContext(const SceneActor* owner,
+                                                       uint32 startCount,
+                                                       const Vector3& position,
+                                                       const HitSensor& self,
+                                                       const HitSensor& other)
+        {
+            const SensorVolume selfVolume = self.WorldVolume();
+            HitStartContext context;
+            context.position = position;
+            context.toOther = other.WorldVolume().Center() - selfVolume.Center();
+            context.hasToward = TryNormalizeHorizontal(context.toOther, context.towardOther);
+            const Vector3 forward = CalcCameraForwardHorizontal(owner);
+            context.cameraRight = Vector3{forward.z, 0.0f, -forward.x};
+            context.side = Dot(context.toOther, context.cameraRight);
+            context.up = context.toOther.y;
+            context.bodyLength = BodyLengthOf(selfVolume);
+            context.seed = StartSeed(startCount, position);
+            return context;
+        }
+    } // namespace
 
     // 項目の種類ごとの始め方。種類を足して書き忘れると、std::visit が呼べずにコンパイルが止まる
     struct HitReaction::ItemStarter
@@ -506,18 +530,8 @@ namespace NS
             NS_LOG_WARN(Scene, ".actor {} に束 {} が無いので、始めなかった", m_owner->ActorFileName(), name);
             return false;
         }
-        const SensorVolume selfVolume = self->WorldVolume();
-        HitStartContext context;
-        context.position = position;
-        context.toOther = other->WorldVolume().Center() - selfVolume.Center();
-        context.hasToward = TryNormalizeHorizontal(context.toOther, context.towardOther);
-        const Vector3 forward = CalcCameraForwardHorizontal(m_owner);
-        context.cameraRight = Vector3{forward.z, 0.0f, -forward.x};
-        context.side = Dot(context.toOther, context.cameraRight);
-        context.up = context.toOther.y;
-        context.bodyLength = BodyLengthOf(selfVolume);
         ++m_startCount;
-        context.seed = StartSeed(m_startCount, position);
+        const HitStartContext context = MakeStartContext(m_owner, m_startCount, position, *self, *other);
 
         // 止めは延ばすだけ。走っている長い止めを短い束で切らない
         if (set->stopFrames > 0)
@@ -529,6 +543,19 @@ namespace NS
             std::visit(ItemStarter{.reaction = *this, .context = context, .length = entry.length}, entry.item);
         }
         return true;
+    }
+
+    void HitReaction::StartItem(const HitReactionItem& item,
+                                int length,
+                                const Vector3& position,
+                                const HitSensor* self,
+                                const HitSensor* other)
+    {
+        NS_ASSERT(Scene, m_owner != nullptr, "HitReaction::StartItem: 持ち主の無い部品で項目を始めている");
+        NS_ASSERT(Scene, self != nullptr && other != nullptr, "HitReaction::StartItem: センサーが null");
+        ++m_startCount;
+        const HitStartContext context = MakeStartContext(m_owner, m_startCount, position, *self, *other);
+        std::visit(ItemStarter{.reaction = *this, .context = context, .length = length}, item);
     }
 
     void HitReaction::AdvanceOwnerRuns(bool ownerStopping) noexcept

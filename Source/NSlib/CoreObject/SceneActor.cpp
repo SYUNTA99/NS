@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
+#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
@@ -36,6 +37,7 @@ namespace NS
     NS_CLASSOBJ(m_attackSensor, "AttackSensor")
     NS_CLASSOBJ(m_hitReaction, "HitReaction")
     NS_CLASSOBJ(m_effectKeeper, "Effect")
+    NS_CLASSOBJ(m_actionTimeline, "ActionTimeline")
     NS_CLASSOBJ(m_stateMachine, "StateMachine")
     NS_REFLECT_END_IMPL()
 
@@ -215,9 +217,10 @@ namespace NS
         }
         OnInit();
         ApplyActorFile(*this);
-        // 束は .actor だけに書き、配置物では上書きしない
+        // 束と動作は .actor だけに書き、配置物では上書きしない
         // clang-format off
         if (m_hitReaction) { m_hitReaction->ReloadSets(); }
+        if (m_actionTimeline) { m_actionTimeline->ReloadActions(); }
         // clang-format on
         if (info != nullptr && info->placement != nullptr)
         {
@@ -308,6 +311,7 @@ namespace NS
         if (m_collision) { m_collision->Unregister(); }
         if (m_bodySensor) { m_bodySensor->Unregister(); }
         if (m_attackSensor) { m_attackSensor->Unregister(); }
+        if (m_actionTimeline) { m_actionTimeline->Stop(); }
         if (m_hitReaction) { m_hitReaction->StopAll(); }
     }
 
@@ -334,6 +338,10 @@ namespace NS
         if (!IsHitStopping())
         {
             StateStep();
+            // 時計は状態の歩なので、状態を進めたフレームにだけ進める
+            // clang-format off
+            if (m_actionTimeline) { m_actionTimeline->Advance(); }
+            // clang-format on
         }
         // StateStep の中で束を始めた時は、そのフレームの身体から止める
         if (!IsHitStopping())

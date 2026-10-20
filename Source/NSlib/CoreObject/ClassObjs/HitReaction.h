@@ -444,6 +444,16 @@ namespace NS
         //! @return 始めた場合 true。その名前の束が無い場合は WARN を出して false
         bool Start(std::string_view name, const Vector3& position, const HitSensor* self, const HitSensor* other);
 
+        //! @brief 項目を 1 つ、長さ length で始める。動作のタイムラインが事象の始まりのフレームに呼ぶ
+        //! @details 向きと位置は Start と同じく self・other・position から出す。持ち主の止めには触らない
+        //! @param[in] self 持ち主のセンサー。事前条件: nullptr でない
+        //! @param[in] other 相手のセンサー。事前条件: nullptr でない
+        void StartItem(const HitReactionItem& item,
+                       int length,
+                       const Vector3& position,
+                       const HitSensor* self,
+                       const HitSensor* other);
+
         //! 始めて長さの終わっていない、持ち主へ渡す項目。始めた順
         [[nodiscard]] const std::vector<HitOwnerRun>& OwnerRuns() const noexcept { return m_ownerRuns; }
 
@@ -530,6 +540,6 @@ namespace NS
         SceneActor* m_owner = nullptr;          // 持ち主 (非所有)
         std::vector<HitReactionSet> m_sets;     // 持ち主の .actor の束
         std::vector<HitOwnerRun> m_ownerRuns;   // 進めている持ち主へ渡す項目
-        uint32 m_startCount = 0;                // 束を始めた回数。揺れの種に混ぜる
+        uint32 m_startCount = 0;                // 束か項目を始めた回数。揺れの種に混ぜる
     };
 } // namespace NS

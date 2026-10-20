@@ -1,8 +1,14 @@
 #include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <format>
 #include <set>
@@ -37,6 +43,64 @@ namespace NS
             }
             return event;
         }
+
+        // row の鍵 key の真偽を out へ読む。鍵が無ければ out は既定のまま true。真偽でなければ false
+        [[nodiscard]] bool ReadOptionalBool(const nlohmann::json& row, std::string_view key, bool& out)
+        {
+            const nlohmann::json::const_iterator value = row.find(key);
+            if (value == row.end())
+            {
+                return true;
+            }
+            if (!value->is_boolean())
+            {
+                return false;
+            }
+            out = value->get<bool>();
+            return true;
+        }
+
+        // 入り切りの行 1 つを読む
+        [[nodiscard]] std::optional<ActionSensorEvent> ParseSensorSwitch(const nlohmann::json& row,
+                                                                         std::size_t index,
+                                                                         std::string& error)
+        {
+            if (!row.is_object())
+            {
+                error = std::format("{} 番目の入り切りが object でない", index);
+                return std::nullopt;
+            }
+            ActionSensorEvent event;
+            if (!ReadHitReactionFrames(row, "start", event.start))
+            {
+                error = std::format("{} 番目の入り切りの始まり start が 0 以上の整数でない", index);
+                return std::nullopt;
+            }
+            if (!ReadHitReactionFrames(row, "length", event.length))
+            {
+                error = std::format("{} 番目の入り切りの長さ length が 0 以上の整数でない", index);
+                return std::nullopt;
+            }
+            if (!ReadOptionalBool(row, "attack", event.attack))
+            {
+                error = std::format("{} 番目の入り切りの attack が真偽でない", index);
+                return std::nullopt;
+            }
+            if (!ReadOptionalBool(row, "valid", event.valid))
+            {
+                error = std::format("{} 番目の入り切りの valid が真偽でない", index);
+                return std::nullopt;
+            }
+            for (nlohmann::json::const_iterator entry = row.begin(); entry != row.end(); ++entry)
+            {
+                const std::string& key = entry.key();
+                if (key != "attack" && key != "valid" && key != "start" && key != "length")
+                {
+                    NS_LOG_WARN(Scene, "{} 番目の入り切りに読み手のいない欄 {} があり、読まない", index, key);
+                }
+            }
+            return event;
+        }
     } // namespace
 
     std::optional<ActorAction> ParseActorAction(const nlohmann::json& doc, std::string& error)
@@ -60,11 +124,32 @@ namespace NS
             error = std::format("動作 {} の事象の並び events が配列でない", action.name);
             return std::nullopt;
         }
+        const nlohmann::json::const_iterator sensors = doc.find("sensors");
+        if (sensors != doc.end() && !sensors->is_array())
+        {
+            error = std::format("動作 {} の入り切りの並び sensors が配列でない", action.name);
+            return std::nullopt;
+        }
         for (nlohmann::json::const_iterator entry = doc.begin(); entry != doc.end(); ++entry)
         {
-            if (entry.key() != "name" && entry.key() != "events")
+            if (entry.key() != "name" && entry.key() != "events" && entry.key() != "sensors")
             {
                 NS_LOG_WARN(Scene, "動作 {} に読み手のいない欄 {} があり、読まない", action.name, entry.key());
+            }
+        }
+        if (sensors != doc.end())
+        {
+            action.sensors.reserve(sensors->size());
+            for (std::size_t i = 0; i < sensors->size(); ++i)
+            {
+                std::string reason;
+                std::optional<ActionSensorEvent> sensor = ParseSensorSwitch((*sensors)[i], i, reason);
+                if (!sensor.has_value())
+                {
+                    error = std::format("動作 {} の {}", action.name, reason);
+                    return std::nullopt;
+                }
+                action.sensors.push_back(*sensor);
             }
         }
         action.events.reserve(events->size());
@@ -97,6 +182,21 @@ namespace NS
         nlohmann::json doc;
         doc["name"] = action.name;
         doc["events"] = std::move(events);
+        // 入り切りの無い動作は鍵を書かない。入り切りを使わない .actor の形を変えない
+        if (!action.sensors.empty())
+        {
+            nlohmann::json sensors = nlohmann::json::array();
+            for (const ActionSensorEvent& sensor : action.sensors)
+            {
+                nlohmann::json row;
+                row["attack"] = sensor.attack;
+                row["valid"] = sensor.valid;
+                row["start"] = sensor.start;
+                row["length"] = sensor.length;
+                sensors.push_back(std::move(row));
+            }
+            doc["sensors"] = std::move(sensors);
+        }
         return doc;
     }
 
@@ -146,5 +246,232 @@ namespace NS
             list.push_back(ActorActionToJson(action));
         }
         SetActorFileActions(actorFile, std::move(list));
+    }
+
+    void ActionTimeline::ReloadActions()
+    {
+        Stop();
+        m_actions.clear();
+        if (m_owner == nullptr)
+        {
+            return;
+        }
+        const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(m_owner->ActorFileName());
+        if (actorFile != nullptr)
+        {
+            m_actions = ReadActorActions(m_owner->ActorFileName(), *actorFile);
+        }
+    }
+
+    bool ActionTimeline::Start(std::string_view name,
+                               int startFrame,
+                               const Vector3& position,
+                               const HitSensor* self,
+                               const HitSensor* other)
+    {
+        NS_ASSERT(Scene, m_owner != nullptr, "ActionTimeline::Start: 持ち主の無い部品で動作を始めている");
+        NS_ASSERT(Scene, self != nullptr && other != nullptr, "ActionTimeline::Start: センサーが null");
+        NS_ASSERT(Scene, startFrame >= 0, "ActionTimeline::Start: 始めるフレーム {} が負", startFrame);
+        Stop();
+        const IStateMachine* machine = m_owner->GetStateMachine();
+        NS_ASSERT(Scene, machine != nullptr, "ActionTimeline::Start: 状態機械の無い持ち主で動作を始めている");
+        if (machine == nullptr)
+        {
+            return false;
+        }
+        std::size_t found = k_NoAction;
+        for (std::size_t i = 0; i < m_actions.size(); ++i)
+        {
+            if (m_actions[i].name == name)
+            {
+                found = i;
+                break;
+            }
+        }
+        if (found == k_NoAction)
+        {
+            NS_LOG_WARN(Scene, ".actor {} に動作 {} が無いので、始めなかった", m_owner->ActorFileName(), name);
+            return false;
+        }
+        // 項目は持ち主の HitReaction が始める。部品を作らないクラスの .actor に項目の事象を書いた誤り
+        if (!m_actions[found].events.empty() && m_owner->HitReactionClassObj() == nullptr)
+        {
+            NS_LOG_ERROR(Scene,
+                         ".actor {} の動作 {} は項目の事象を持つが、{} は HitReaction を持たないので、始めなかった",
+                         m_owner->ActorFileName(),
+                         name,
+                         m_owner->ClassName());
+            return false;
+        }
+        m_current = found;
+        m_state = machine->CurrentId();
+        m_startFrame = std::max(startFrame, 0);
+        m_frame = m_startFrame - 1;
+        m_position = position;
+        m_self = self;
+        m_other = ActorRef{};
+        m_otherAttack = false;
+        if (const SceneActor* host = other->Host())
+        {
+            m_other = ActorRef{host->Id()};
+            m_otherAttack = host->AttackSensorClassObj() == other;
+        }
+        return true;
+    }
+
+    void ActionTimeline::Stop() noexcept
+    {
+        EndSensorSwitches(std::nullopt);
+        m_current = k_NoAction;
+        m_state = nullptr;
+        m_self = nullptr;
+        m_other = ActorRef{};
+        m_otherAttack = false;
+    }
+
+    // TODO: 時計は状態の歩だけ。最初に骨付きの動作を作る時に、アニメのフレームを時計にする道を足す
+    void ActionTimeline::Advance()
+    {
+        m_started.clear();
+        if (!IsRunning())
+        {
+            return;
+        }
+        const IStateMachine* machine = m_owner->GetStateMachine();
+        if (machine == nullptr || machine->CurrentId() != m_state)
+        {
+            Stop();
+            return;
+        }
+        // 状態の歩 k の OnStep が走ったフレームに、始める歩 + k の事象を起こす。入っただけで歩を
+        // 進めていないフレームと、歩の進まなかったフレームは、前と同じかそれより前のフレームになるので回さない
+        const uint32 steps = machine->StepsInState();
+        const int frame = m_startFrame + static_cast<int>(steps) - 1;
+        if (frame <= m_frame)
+        {
+            return;
+        }
+        m_frame = frame;
+        const ActorAction& action = m_actions[m_current];
+
+        // 同じ歩に終わる物と始まる物があれば、始まる物を残す
+        EndSensorSwitches(frame);
+        for (std::size_t i = 0; i < action.sensors.size(); ++i)
+        {
+            const ActionSensorEvent& event = action.sensors[i];
+            if (event.start != frame || event.length <= 0)
+            {
+                continue;
+            }
+            HitSensor* sensor = SensorOf(event);
+            if (sensor == nullptr)
+            {
+                NS_LOG_WARN(Scene,
+                            ".actor {} の動作 {} の {} 番目の入り切りは、{} が持たないセンサーを指すので、切り替えなかった",
+                            m_owner->ActorFileName(),
+                            action.name,
+                            i,
+                            m_owner->ClassName());
+                continue;
+            }
+            if (event.valid)
+            {
+                sensor->Validate();
+            }
+            else
+            {
+                sensor->Invalidate();
+            }
+            m_switched.push_back(i);
+        }
+
+        HitReaction* reaction = m_owner->HitReactionClassObj();
+        for (std::size_t i = 0; i < action.events.size(); ++i)
+        {
+            const ActorActionEvent& event = action.events[i];
+            if (event.start != frame)
+            {
+                continue;
+            }
+            const HitSensor* other = OtherSensor();
+            // 向きを出す相手が居なければ項目を起こせない。残りの事象も同じなので動作ごと止める
+            if (other == nullptr)
+            {
+                NS_LOG_WARN(Scene,
+                            ".actor {} の動作 {} の相手が居なくなったので、動作を止めた",
+                            m_owner->ActorFileName(),
+                            action.name);
+                Stop();
+                return;
+            }
+            reaction->StartItem(event.item, event.length, m_position, m_self, other);
+            m_started.push_back(i);
+        }
+    }
+
+    std::string_view ActionTimeline::CurrentName() const noexcept
+    {
+        if (!IsRunning())
+        {
+            return {};
+        }
+        return m_actions[m_current].name;
+    }
+
+    HitSensor* ActionTimeline::SensorOf(const ActionSensorEvent& event) const noexcept
+    {
+        if (event.attack)
+        {
+            return m_owner->AttackSensorClassObj();
+        }
+        return m_owner->BodySensorClassObj();
+    }
+
+    void ActionTimeline::EndSensorSwitches(std::optional<int> endingFrame) noexcept
+    {
+        if (!IsRunning())
+        {
+            m_switched.clear();
+            return;
+        }
+        const ActorAction& action = m_actions[m_current];
+        std::erase_if(m_switched, [this, &action, endingFrame](std::size_t index) {
+            const ActionSensorEvent& event = action.sensors[index];
+            if (endingFrame.has_value() && event.start + event.length != *endingFrame)
+            {
+                return false;
+            }
+            if (HitSensor* sensor = SensorOf(event))
+            {
+                if (event.valid)
+                {
+                    sensor->Invalidate();
+                }
+                else
+                {
+                    sensor->Validate();
+                }
+            }
+            return true;
+        });
+    }
+
+    const HitSensor* ActionTimeline::OtherSensor() const noexcept
+    {
+        Scene* scene = m_owner->OwningScene();
+        if (scene == nullptr)
+        {
+            return nullptr;
+        }
+        SceneActor* other = scene->Objects().FindObject(m_other);
+        if (other == nullptr)
+        {
+            return nullptr;
+        }
+        if (m_otherAttack)
+        {
+            return other->AttackSensorClassObj();
+        }
+        return other->BodySensorClassObj();
     }
 } // namespace NS

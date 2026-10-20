@@ -30,6 +30,7 @@ namespace NS
     class Collision;
     class EffectKeeper;
     class HitReaction;
+    class ActionTimeline;
     class Message;
     class Scene;
     struct ActorInitInfo;
@@ -107,6 +108,8 @@ namespace NS
         [[nodiscard]] const HitSensor* AttackSensorClassObj() const noexcept { return m_attackSensor.get(); }
         [[nodiscard]] HitReaction* HitReactionClassObj() noexcept { return m_hitReaction.get(); }
         [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
+        [[nodiscard]] ActionTimeline* ActionTimelineClassObj() noexcept { return m_actionTimeline.get(); }
+        [[nodiscard]] const ActionTimeline* ActionTimelineClassObj() const noexcept { return m_actionTimeline.get(); }
 
         //! @brief 当たりの止め (ヒットストップ) の残りを、frames が残りより長い時だけ延ばす
         //! @details 止めの間は Update が StateStep と BodyStep を飛ばす。呼んだフレームの残りの段から効き、
@@ -124,7 +127,8 @@ namespace NS
         [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
         virtual void ReadInput() {}
         //! 観測・裁定・状態・身体・見た目を固定順で更新する。部品は各段で明示的に呼ぶ
-        //! エフェクトの記録は観測前に進める。当たりの止めの間は状態と身体の段を飛ばし、最後に止めの残りを 1 減らす
+        //! エフェクトの記録は観測前に、動作のタイムラインは状態の段の直後に進める。
+        //! 当たりの止めの間は状態と身体の段を飛ばし、最後に止めの残りを 1 減らす
         void Update();
         virtual void PrepareRender();
 
@@ -267,6 +271,7 @@ namespace NS
         std::unique_ptr<HitSensor> m_attackSensor;
         std::unique_ptr<HitReaction> m_hitReaction;
         std::unique_ptr<EffectKeeper> m_effectKeeper;
+        std::unique_ptr<ActionTimeline> m_actionTimeline;
         // 状態が借りる部品より先に壊すので、部品の最後に置く。組むのは BuildStateMachine だけ
         std::unique_ptr<StateMachine> m_stateMachine;
 
