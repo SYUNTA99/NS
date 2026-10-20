@@ -17,14 +17,6 @@
 
 namespace NS
 {
-    namespace Phys
-    {
-        class PhysicsScene;
-    }
-} // namespace NS
-
-namespace NS
-{
     class Scene;
     //! 配置物の JSON 1 件から配置物を組むファクトリ。組めない JSON には nullptr を返し、RebuildFromJson が読み飛ばす
     using ObjectFactoryFn = std::function<std::unique_ptr<SceneActor>(const nlohmann::json&)>;
@@ -63,11 +55,6 @@ namespace NS
         //! 並びが変わるたびに索引を捨てるので、破棄した相手を指す参照は必ず nullptr になる
         //! 別の配置物への参照はポインタで控えず、ActorRef で持って使うたびにここで引く
         [[nodiscard]] SceneActor* FindObject(ActorRef ref) noexcept;
-
-        //! 出ている Actor の collision を今の姿と形へ揃え、physics の broadphase を張り直す
-        //! 消えている Actor の collision は消えた時に外れている
-        //! physics はこの並びを持つ Scene の物。collision は渡した物でなく、自分の持ち主の Scene へ入れる
-        void SyncPhysics(Phys::PhysicsScene& physics);
 
         //! 出ている Actor の collision を今の姿と形へ揃える。変わっていない collision は何もしない
         //! 世界が止まっていて Actor の Update が回らない歩に、編集で動いた当たりを揃える

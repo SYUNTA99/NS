@@ -179,10 +179,6 @@ namespace NS
         //! @details 一時オブジェクトを除く全配置物を、全部品の値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
 
-        //! @brief 出ている実体の当たりを今の姿と形へ揃え、broadphase を張り直す。object は作り直さない
-        //! @details 動いた当たりは歩ごとに揃うので、まとめて入れた後に broadphase を張り直したい時だけ呼ぶ
-        void SyncPhysics();
-
         //! @brief プレイ突入時に実体を JSON 文書へ凍結して返す。プレイ規則の判定と編集復帰の姿はこの凍結を読む
         const nlohmann::json& BeginPlayBaseline();
 

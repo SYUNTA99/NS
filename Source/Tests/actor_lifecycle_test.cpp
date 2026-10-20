@@ -134,8 +134,9 @@ TEST(ActorLifecycle, RebuildingFromJsonDropsTransients)
 TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
 {
     NS::Scene scene;
+    scene.SetSimulationEnabled(false);
     GL::Level::PropActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
-    scene.SyncPhysics();
+    scene.OnUpdate();
     const std::size_t sensors = scene.HitSensors().Sensors().size();
     ASSERT_GT(sensors, 0u);
     float distance = 0.0f;
@@ -153,10 +154,11 @@ TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
 TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
 {
     NS::Scene scene;
+    scene.SetSimulationEnabled(false);
     GL::Level::PropActor* actor = scene.SpawnTransient<GL::Level::PropActor>();
     GL::Level::PropActor* other = scene.SpawnTransient<GL::Level::PropActor>();
     other->Root().SetPosition({10.0f, 0.0f, 0.0f});
-    scene.SyncPhysics();
+    scene.OnUpdate();
     const std::size_t renderables = scene.RenderableCount();
     const std::size_t sensors = scene.HitSensors().Sensors().size();
     const NS::uint bodies = scene.Physics().BodyCount();

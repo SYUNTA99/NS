@@ -5,7 +5,6 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/Phys/PhysicsScene.h"
 
 #include <algorithm>
 #include <unordered_map>
@@ -191,12 +190,6 @@ namespace NS
     SceneActor* ActorList::FindObject(ActorRef ref) noexcept
     {
         return FindByObjectId(ref.id);
-    }
-
-    void ActorList::SyncPhysics(Phys::PhysicsScene& physics)
-    {
-        SyncCollisions();
-        physics.OptimizeBroadPhase();
     }
 
     void ActorList::SyncCollisions()

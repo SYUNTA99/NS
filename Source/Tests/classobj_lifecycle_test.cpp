@@ -27,7 +27,9 @@ namespace
 
     Registrations Count(NS::Scene& scene)
     {
-        scene.SyncPhysics();
+        // 世界を止めた 1 歩で当たりを今の姿へ揃えてから数える
+        scene.SetSimulationEnabled(false);
+        scene.OnUpdate();
         return Registrations{scene.RenderableCount(),
                              scene.OverlayCount(),
                              scene.LightCount(),

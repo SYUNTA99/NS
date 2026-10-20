@@ -86,12 +86,6 @@ namespace NS
         m_physics.Physics().SetGravity(m_environment.gravityDirection * -Phys::k_DefaultGravityY);
     }
 
-    void Scene::SyncPhysics()
-    {
-        // ギズモで動いた実体の当たりを張り直す。object を作り直さないので選択・参照はそのまま保たれる
-        m_objects.SyncPhysics(m_physics.Physics());
-    }
-
     const nlohmann::json& Scene::BeginPlayBaseline()
     {
         // プレイ規則の判定と編集復帰の姿はこの凍結を読む。シミュレーションが動かした値は映らず、編集へ持ち込まれない

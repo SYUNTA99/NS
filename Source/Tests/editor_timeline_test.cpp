@@ -589,7 +589,7 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         NS::SceneActor* target = scene.Objects().FindByObjectId(2);
         ASSERT_NE(target, nullptr);
         target->Root().SetPosition({2.0f, 1.5f, 7.0f});
-        scene.SyncPhysics();
+        scene.OnUpdate();
         begin();
         preview = timeline.Preview(editor);
         ASSERT_NE(preview, nullptr);
