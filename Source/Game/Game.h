@@ -15,8 +15,15 @@ namespace NS
 class Game : public NS::Layer
 {
 public:
-    //! @brief 開始シーンのパスを控える。読み込みは OnAttach
-    explicit Game(std::string_view startScenePath = StartScenePath());
+    //! 起動シーンを OnAttach で読むか
+    enum class StartScene
+    {
+        Load,  //!< 起動シーンを読む。読めなければ何も置かない空のシーンを立てる
+        Empty, //!< 読まずに空のシーンを立てる。シーンの中身を後から入れ替える exe が選ぶ
+    };
+
+    //! @brief 開始シーンのパスと読むかを控える。読み込みは OnAttach
+    explicit Game(std::string_view startScenePath = StartScenePath(), StartScene startScene = StartScene::Load);
     ~Game() override;
 
     //! 起動シーンの ContentRoot からの道。起動シーンの道の持ち主はここだけ
@@ -52,6 +59,7 @@ private:
     void StartLoadedScene();
 
     std::string m_startScenePath;
+    StartScene m_startScene = StartScene::Load;
     bool m_startSceneLoaded = false;
 
     NS::SceneManager m_scenes;

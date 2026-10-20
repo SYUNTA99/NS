@@ -56,8 +56,9 @@ public:
     explicit LevelEditorController(NS::Scene* scene) noexcept;
     ~LevelEditorController();
 
-    //! scene の OnStart 完了後に呼ぶ。自由視点カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
-    void Setup(NS::UI::ImGuiContext* imgui);
+    //! scene の OnStart 完了後に呼ぶ。自由視点カメラ / EditorMode / ギズモを立ち上げ編集モードへ入り、
+    //! startLevelName のレベルを EditorMode::OpenLevel で開く。空なら開かず、今のシーンのまま編集を始める
+    void Setup(NS::UI::ImGuiContext* imgui, std::string_view startLevelName);
 
     //! 固定ステップ更新。編集中は自由視点カメラ / ギズモ / EditorMode を回す。プレイ中は Esc
     //! で隠したカーソルを出すだけ

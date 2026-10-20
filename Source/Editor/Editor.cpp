@@ -1,6 +1,7 @@
 #include "Editor/Editor.h"
 
 #include "Editor/LevelEditorController.h"
+#include "Editor/LevelFilePaths.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlayControls.h"
 #include "Game/Game.h"
@@ -34,7 +35,8 @@ Editor::~Editor() = default;
 
 void Editor::OnAttach()
 {
-    // SceneManager::LoadScene が同期実行するので起動 scene は Game レイヤが既に load + OnStart 済
+    // SceneManager::LoadScene が同期実行するので、Game レイヤが立てた空の scene は既に OnStart 済
+    // 起動シーンは Setup が編集モードへ切替えた後に開く
     NS::Application* app = NS::Application::Get();
     Game* game = Game::Get();
     decltype(game->CurrentScene()) scene = nullptr;
@@ -68,7 +70,7 @@ void Editor::OnAttach()
     });
 
     m_controller = std::make_unique<LevelEditorController>(scene);
-    m_controller->Setup(m_imgui.get());
+    m_controller->Setup(m_imgui.get(), NS::Editor::LevelNameOfScenePath(Game::StartScenePath()));
 
     // 初回フレームからオフスクリーンで描けるよう、ウィンドウサイズを初期の目標サイズにしておく
     const NS::Size2D viewSize = app->Window().Size();

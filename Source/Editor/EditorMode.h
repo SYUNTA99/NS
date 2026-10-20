@@ -153,8 +153,11 @@ namespace NS
             //! どちらも無ければ起動シーンの名前
             [[nodiscard]] std::string QuitSaveLevelName() const noexcept;
 
-            //! @brief 起動レベルが実在するのに読めなかったことを印す。終了保存が既存ファイルを上書きしないようにする
-            void MarkBootLevelLoadFailed() noexcept { m_bootLevelLoadFailed = true; }
+            //! @brief レベルを読み、プレイヤーと落下死の範囲が無ければ補ってから実体へ取り込む
+            //! @details 読めたら名前を控え、履歴を空にして未保存でない状態にする。起動と「開く」の両方がここを通る
+            //! @return 名前が使えない・取り込み関数が無い・読めない時は false で、今のレベルと名前を保つ。
+            //! 名前の無いまま実在するファイルを読めなかった時は、終了の保存の書き先を退避の名前にする
+            bool OpenLevel(std::string_view name) noexcept;
 
             //! 1 手戻す。戻せたら true。メニューとキーが同じ入口で呼ぶ
             bool PerformUndo() noexcept;

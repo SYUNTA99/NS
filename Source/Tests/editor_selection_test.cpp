@@ -192,7 +192,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
     app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr);
+        editor.Setup(nullptr, {});
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("追従カメラ");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
@@ -238,7 +238,7 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
     app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr);
+        editor.Setup(nullptr, {});
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
@@ -292,7 +292,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
     app.AddLayer(std::make_unique<SelectionTestLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr);
+        editor.Setup(nullptr, {});
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
         ASSERT_NE(item, nullptr);
         editor.PlaceItem(*item);
@@ -342,7 +342,7 @@ TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
     app.AddLayer(std::make_unique<SelectionTestLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr);
+        editor.Setup(nullptr, {});
         editor.Editor().Palette().SetActiveSlot(2);
         ASSERT_STREQ(editor.Editor().Palette().CurrentTemplateName(), "ゴール");
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
@@ -365,7 +365,7 @@ TEST(EditorBrush, RotateKeepsTheTilt)
     app.AddLayer(std::make_unique<SelectionTestLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        editor.Setup(nullptr);
+        editor.Setup(nullptr, {});
         editor.Editor().Palette().SetActiveSlot(0);
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
         ASSERT_EQ(scene.Objects().ObjectCount(), 1u);

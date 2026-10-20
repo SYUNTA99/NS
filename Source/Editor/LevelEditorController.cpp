@@ -412,7 +412,7 @@ NS::SceneCamera* LevelEditorController::MainCamera() const noexcept
     return m_scene->MainCamera();
 }
 
-void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
+void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui, std::string_view startLevelName)
 {
     NS::Application* app = NS::Application::Get();
     if (app == nullptr || m_scene == nullptr)
@@ -425,17 +425,6 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editorCamera.SetNearPlane(0.1f);
     m_editorCamera.SetFarPlane(5000.0f);
     m_editorCamera.SetFovY(NS::ToRadians(NS::Degrees{60.0f}));
-
-    // 初期視点はプレイヤーの位置を中心に少し引いた位置から見下ろす。不在なら原点
-    NS::SceneActor* bootPlayer = FindPlayer(m_scene->Objects());
-    NS::Vector3 startCenter{0.0f, 0.0f, 0.0f};
-    if (bootPlayer != nullptr)
-    {
-        startCenter = bootPlayer->Root().Position();
-    }
-    m_editorCamera.SetCenter(startCenter);
-    // 起動直後は出現地点の block を真ん中近めに見せる距離。1m cube が画面の十数 % を占める
-    m_editorCamera.SetDistance(5.0f);
 
     // 保存は実体から作り、読込は取込関数がデータを実体へ写して用済みにする
     m_editor.SetCaptureLevelFn([this]() { return m_scene->ToJson(); });
@@ -468,28 +457,35 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editor.SetImGui(imgui);
     m_editor.SetSceneCamera(MainCamera());
     m_editor.SetActive(true);
-    // 読み込みで組み上がり済なので、初回 Tick の貼り直しを省く
-    m_editor.ClearLevelDirty();
-
-    // 起動シーンが実在するのに読めていない時は印す。終了保存が元ファイルを潰さず退避名へ逃げる
-    if (const std::optional<std::string> bootPath = NS::Editor::BuildLevelPath("Scenes/new_scene"))
-    {
-        if (NS::OS::FileSystem::Exists(*bootPath))
-        {
-            nlohmann::json probe;
-            if (!NS::LoadSceneFromJsonFile(probe, *bootPath))
-            {
-                m_editor.MarkBootLevelLoadFailed();
-            }
-        }
-    }
 
     m_gizmo.SetInput(&app->Input());
     m_gizmo.SetImGui(imgui);
 
-    // scene は読み込みからプレイが回っている。プレイを終えて操作系を休止させた編集モードへ切替える
+    // Game が立てた空のシーンはプレイが回っている。プレイを終えて編集モードへ切替えてから起動シーンを開く
+    // 先に開くと、プレイ開始の写しへ戻す組み直しが、開く時に補ったプレイヤーを消す
     LeavePlayForEdit();
     m_mode = Mode::Edit;
+    if (!startLevelName.empty())
+    {
+        if (!m_editor.OpenLevel(startLevelName))
+        {
+            NS_LOG_ERROR(App, "起動シーンを開けなかった。 空のシーンで編集を始める: {}", startLevelName);
+        }
+    }
+    // 選択候補はこの後に今の実体から集めるので、初回 Tick の貼り直しを省く
+    m_editor.ClearLevelDirty();
+
+    // 初期視点はプレイヤーの位置を中心に少し引いた位置から見下ろす。不在なら原点
+    NS::SceneActor* bootPlayer = FindPlayer(m_scene->Objects());
+    NS::Vector3 startCenter{0.0f, 0.0f, 0.0f};
+    if (bootPlayer != nullptr)
+    {
+        startCenter = bootPlayer->Root().Position();
+    }
+    m_editorCamera.SetCenter(startCenter);
+    // 起動直後は出現地点の block を真ん中近めに見せる距離。1m cube が画面の十数 % を占める
+    m_editorCamera.SetDistance(5.0f);
+
     // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
     RefreshGizmoSelectables();
 }

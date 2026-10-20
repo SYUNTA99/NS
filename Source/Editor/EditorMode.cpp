@@ -17,6 +17,7 @@
 #include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/UI/ImGuiContext.h"
 #include "NSlib/Windows/Clock.h"
+#include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Gamepad.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
@@ -231,6 +232,38 @@ namespace NS
             return ok;
         }
 
+        bool EditorMode::OpenLevel(std::string_view name) noexcept
+        {
+            const std::optional<std::string> path = BuildLevelPath(name);
+            if (!path || !m_loadLevel)
+            {
+                return false;
+            }
+
+            nlohmann::json fresh;
+            if (!LoadSceneFromJsonFile(fresh, *path))
+            {
+                // 起動レベルが実在するのに読めない時は、終了の保存が元のファイルを潰さないよう退避の名前へ逃がす
+                if (m_currentLevelName.empty() && OS::FileSystem::Exists(*path))
+                {
+                    m_bootLevelLoadFailed = true;
+                }
+                return false;
+            }
+
+            // プレイヤー / 落下死体積が欠けたレベルには既定の 1 体を補う
+            (void)EnsurePlayerObject(fresh);
+            (void)EnsureDeathZoneObject(fresh);
+
+            // 読込済みデータを実体側へ取り込み world を組み直す。新レベルなので Undo 履歴もクリアする
+            m_loadLevel(std::move(fresh));
+            m_undo.Clear();
+            m_savedUndoVersion = m_undo.Version();
+            m_levelDirty = true;
+            m_currentLevelName = QualifyLevelPath(SanitizeLevelPath(name));
+            return true;
+        }
+
         void EditorMode::RenderFileBrowser() noexcept
         {
             const LevelFileBrowser::Result result = m_fileBrowser.Render();
@@ -249,27 +282,14 @@ namespace NS
             }
             case LevelFileBrowser::Action::RequestLoad:
             {
-                std::optional<std::string> path = BuildLevelPath(result.targetName);
-                if (!path || !m_loadLevel)
+                if (!BuildLevelPath(result.targetName) || !m_loadLevel)
                 {
                     m_fileBrowser.NotifyLoadResult(false, "不正な level name");
                     break;
                 }
 
-                nlohmann::json fresh;
-                const bool ok = LoadSceneFromJsonFile(fresh, *path);
-                if (ok)
+                if (OpenLevel(result.targetName))
                 {
-                    // プレイヤー / 落下死体積が欠けたレベルには既定の 1 体を補う
-                    (void)EnsurePlayerObject(fresh);
-                    (void)EnsureDeathZoneObject(fresh);
-
-                    // 読込済みデータを実体側へ取り込み world を組み直す。新レベルなので Undo 履歴もクリアする
-                    m_loadLevel(std::move(fresh));
-                    m_undo.Clear();
-                    m_savedUndoVersion = m_undo.Version();
-                    m_levelDirty = true;
-                    m_currentLevelName = result.targetName;
                     m_fileBrowser.NotifyLoadResult(true, "読込成功");
                 }
                 else
