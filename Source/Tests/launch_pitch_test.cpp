@@ -26,18 +26,29 @@ namespace
     // 二分探索は 1 mm まで詰める。浮動小数の丸めを足して 2 mm で見る
     constexpr float k_HeightTolerance = 0.002f;
 
+    // 写しの型の既定は 0 なので、本番と同じく自機の欄の既定から入れる。private の欄は保存の形で読む
+    nlohmann::json DefaultParamsFields()
+    {
+        const GL::Player::PlayerParams params;
+        return NS::SerializeClassObjFields(params);
+    }
+
     // 同梱の自機の玉の中心の高さ (床 0 の上の半径 0.65 の玉) から、突進速度 20 m/s で放つ
     LaunchPitchDesc GroundDesc(float targetHeight, float contactDistance)
     {
+        const nlohmann::json fields = DefaultParamsFields();
         LaunchPitchDesc desc;
         desc.ballHeight = 0.65f;
         desc.targetHeight = targetHeight;
         desc.contactDistance = contactDistance;
         desc.horizontalSpeed = 20.0f;
-        desc.gravity = PlayerGravity{};
-        desc.maxAngleDegrees = 40.0f;
+        desc.gravity = GL::Player::PlayerParams{}.Gravity();
+        desc.maxAngleDegrees = fields.at("放つ角度の上限").get<float>();
         desc.grounded = true;
         desc.dt = k_Dt;
+        desc.heightTolerance = fields.at("突進の高さ探索の誤差").get<float>();
+        desc.angleGuardDegrees = fields.at("突進の角度計算の上限").get<float>();
+        desc.maxFrames = fields.at("突進の予測フレーム上限").get<int>();
         return desc;
     }
 
@@ -48,7 +59,8 @@ namespace
                               .verticalSpeed = verticalSpeed,
                               .gravity = desc.gravity,
                               .dt = desc.dt,
-                              .grounded = desc.grounded};
+                              .grounded = desc.grounded,
+                              .maxFrames = desc.maxFrames};
         return desc.ballHeight + LaunchHeightAt(path, desc.contactDistance);
     }
 
@@ -61,7 +73,7 @@ namespace
 // 重力の強さの選び方: 上りは上昇重力、下りは下降重力、縦の速さの大きさが頂点滞空 Vy 未満の間は頂点滞空倍率を掛ける
 TEST(LaunchPitchTest, ChooseGravityPicksRiseFallAndTheApexBand)
 {
-    const PlayerGravity gravity{};
+    const PlayerGravity gravity = GL::Player::PlayerParams{}.Gravity();
     EXPECT_FLOAT_EQ(ChooseGravity(gravity, 5.0f), -25.0f);
     EXPECT_FLOAT_EQ(ChooseGravity(gravity, 0.5f), -12.5f);
     EXPECT_FLOAT_EQ(ChooseGravity(gravity, -0.5f), -17.5f);
@@ -171,7 +183,11 @@ TEST(LaunchPitchTest, GroundNeverAimsDownButTheAirDoes)
 // 縦の速さ 0 の道筋: 地上は床の上を水平に、空中は放った高さから落ちる
 TEST(LaunchPitchTest, LevelPathStaysOnTheFloorOrFallsInTheAir)
 {
-    LaunchPath path{.horizontalSpeed = 20.0f, .verticalSpeed = 0.0f, .gravity = PlayerGravity{}, .dt = k_Dt};
+    LaunchPath path{.horizontalSpeed = 20.0f,
+                    .verticalSpeed = 0.0f,
+                    .gravity = GL::Player::PlayerParams{}.Gravity(),
+                    .dt = k_Dt,
+                    .maxFrames = DefaultParamsFields().at("突進の予測フレーム上限").get<int>()};
     path.grounded = true;
     EXPECT_FLOAT_EQ(LaunchHeightAt(path, 0.0f), 0.0f);
     EXPECT_FLOAT_EQ(LaunchHeightAt(path, 6.0f), 0.0f);

@@ -61,10 +61,11 @@ namespace GL
             //! @details 出るのを待っている間だけ、放すまでの使い切りへ移す。それ以外は何もしない
             void MarkLaunched() noexcept;
 
-            // 秒でなくフレーム数で持つのは、固定ステップの整数で数えると同じ入力列が必ず同じ判定になるため
-            int chargeThresholdSteps = 12;
-            int chargeMaxSteps = 60;
-            int overchargeSteps = 180; // 満タンから押したままで出るまで
+            // 秒でなくフレーム数で持つのは、固定ステップの整数で数えると同じ入力列が必ず同じ判定になるため。
+            // 自機が欄「チャージしきい値秒」「チャージ満タン秒」「溜めすぎの秒数」から、Step の前に毎回入れる
+            int chargeThresholdSteps = 0;
+            int chargeMaxSteps = 0;
+            int overchargeSteps = 0; // 満タンから押したままで出るまで
 
         private:
             //! 押している間の段階。放すと Charging へ戻る

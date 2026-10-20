@@ -179,9 +179,9 @@ namespace GL
             float m_spawnFloorTop = 0.5f;
             float m_spawnClearance = 0.01f;
             float m_contactTolerance = 0.001f;
-            float m_launchHeightTolerance = LaunchPitchDesc{}.heightTolerance;
-            float m_launchAngleGuardDegrees = LaunchPitchDesc{}.angleGuardDegrees;
-            int m_launchMaxFrames = LaunchPath{}.maxFrames;
+            float m_launchHeightTolerance = 0.001f;
+            float m_launchAngleGuardDegrees = 89.0f;
+            int m_launchMaxFrames = 600;
             friend class GL::Level::ImpactResolver;
             friend class GL::Level::SlamArrow;
             friend GL::Level::ImpactTuning GL::Level::MakeImpactTuning(const PlayerParams& params) noexcept;

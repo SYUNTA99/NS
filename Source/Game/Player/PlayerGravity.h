@@ -10,10 +10,10 @@ namespace GL
         //! @details 自機の移動と突進の予測で、同じ重力を選ぶために使う
         struct PlayerGravity
         {
-            float rise = -25.0f;    //!< 上向きの間の重力 (m/s²)。下向きが負。欄「上昇重力」
-            float fall = -35.0f;    //!< 上向きでない間の重力 (m/s²)。下向きが負。欄「下降重力」
-            float apexSpeed = 1.0f; //!< 縦の速さの大きさがこれ未満の間を頂点付近とする (m/s)。欄「頂点滞空 Vy」
-            float apexScale = 0.5f; //!< 頂点付近で重力へ掛ける倍率。欄「頂点滞空倍率」
+            float rise = 0.0f;      //!< 上向きの間の重力 (m/s²)。下向きが負。欄「上昇重力」
+            float fall = 0.0f;      //!< 上向きでない間の重力 (m/s²)。下向きが負。欄「下降重力」
+            float apexSpeed = 0.0f; //!< 縦の速さの大きさがこれ未満の間を頂点付近とする (m/s)。欄「頂点滞空 Vy」
+            float apexScale = 0.0f; //!< 頂点付近で重力へ掛ける倍率。欄「頂点滞空倍率」
         };
 
         //! 上昇中は rise、それ以外は fall を選ぶ。頂点付近は apexScale を掛ける

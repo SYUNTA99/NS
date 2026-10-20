@@ -15,8 +15,8 @@ namespace GL
             PlayerGravity gravity{};      //!< 重力の強さを選ぶ欄の写し
             float dt = 0.0f;              //!< 1 フレームの秒
             bool grounded = false;        //!< 接地して放つか。真なら道筋は放った高さより下へ行かない
-            //! 道筋を予測するフレーム数の上限
-            int maxFrames = 600;
+            //! 道筋を予測するフレーム数の上限。欄「突進の予測フレーム上限」
+            int maxFrames = 0;
         };
 
         //! @brief 放った玉の中心が水平に distance 進んだ所での、放った高さからの高さを返す
@@ -36,15 +36,16 @@ namespace GL
             float contactDistance = 0.0f;  //!< 玉の中心が相手に触れる所までの水平の距離 (m)
             float horizontalSpeed = 0.0f;  //!< 突進の水平の速さ (m/s)
             PlayerGravity gravity{};       //!< 重力の強さを選ぶ欄の写し
-            float maxAngleDegrees = 40.0f; //!< 放つ角度の上限 (度)。上向きも下向きもこの角度で切る
-            bool grounded = false;         //!< 接地しているか。真なら下へ向けない
-            float dt = 0.0f;               //!< 1 フレームの秒
-            //! 着きたい高さに対する誤差の許容幅
-            float heightTolerance = 0.001f;
-            //! 直角で計算が発散する手前の角度上限
-            float angleGuardDegrees = 89.0f;
-            //! 道筋を予測するフレーム数の上限
-            int maxFrames = LaunchPath{}.maxFrames;
+            //! 放つ角度の上限 (度)。上向きも下向きもこの角度で切る。欄「放つ角度の上限」
+            float maxAngleDegrees = 0.0f;
+            bool grounded = false; //!< 接地しているか。真なら下へ向けない
+            float dt = 0.0f;       //!< 1 フレームの秒
+            //! 着きたい高さに対する誤差の許容幅。欄「突進の高さ探索の誤差」
+            float heightTolerance = 0.0f;
+            //! 直角で計算が発散する手前の角度上限。欄「突進の角度計算の上限」
+            float angleGuardDegrees = 0.0f;
+            //! 道筋を予測するフレーム数の上限。欄「突進の予測フレーム上限」
+            int maxFrames = 0;
         };
 
         //! @brief LaunchPitch の結果
