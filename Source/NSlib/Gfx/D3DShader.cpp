@@ -282,6 +282,14 @@ namespace NS
             {
                 return a.name == b.name && a.type == b.type && a.offset == b.offset && a.size == b.size;
             }
+
+            // シェーダーを捨てて同じ番地に作り直しても、番号では見分けられるよう、プロセスの中で 1 つずつ増やす
+            [[nodiscard]] uint64 NextBytecodeId() noexcept
+            {
+                static uint64 s_lastId = 0;
+                ++s_lastId;
+                return s_lastId;
+            }
         } // namespace
 
         std::optional<ShaderParamLayout> ReflectMaterialParams(std::span<const std::byte> bytecode)
@@ -420,6 +428,7 @@ namespace NS
             {
                 m_vsBytecode = std::move(fb);
             }
+            m_bytecodeId = NextBytecodeId();
             m_fallback = true;
         }
 
@@ -473,6 +482,7 @@ namespace NS
             {
                 m_vsBytecode = std::move(bytecode);
             }
+            m_bytecodeId = NextBytecodeId();
         }
 
         bool D3DShader::Reload(std::string_view hlslPath)
@@ -508,6 +518,10 @@ namespace NS
         const ShaderParamLayout& D3DShader::MaterialParams() const noexcept
         {
             return m_materialParams;
+        }
+        uint64 D3DShader::BytecodeId() const noexcept
+        {
+            return m_bytecodeId;
         }
         std::span<const std::byte> D3DShader::VertexShaderBytecode() const noexcept
         {

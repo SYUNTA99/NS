@@ -8,6 +8,7 @@
 #include "NSlib/Core/Types.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace NS
 {
@@ -61,12 +62,16 @@ namespace NS
             //! @details 派生が build 時に頂点から算出して登録する。未登録なら原点の単位ボックス
             [[nodiscard]] const AABB& LocalBounds() const noexcept;
 
-            //! @brief 頂点シェーダーを利用して入力レイアウトを生成する
-            //! @note 生成済みの場合や、グラフィックスデバイスが無効な場合は何もしない
+            //! @brief 頂点シェーダーに合う入力レイアウトを選ぶ。無ければ作る
+            //! @details レイアウトは頂点シェーダーごとに持ち、そのシェーダーの BytecodeId が作った時と違えば作り直す。
+            //! 描く度に呼べば、読み直しも、入力の違う別の頂点シェーダーで描く事も、選んだレイアウトに届く。
+            //! 作れなかった時は空を選び、番号が変わるまで作り直さない
+            //! @note グラフィックスデバイスが無効な場合は何もしない
             void CreateInputLayout(const D3DShader& vertexShader) noexcept;
 
             [[nodiscard]] const D3DBuffer* VertexBuffer() const noexcept;
             [[nodiscard]] const D3DBuffer* IndexBuffer() const noexcept;
+            //! 直前の CreateInputLayout で選んだレイアウト
             [[nodiscard]] ID3D11InputLayout* InputLayout() const noexcept;
             [[nodiscard]] Topology GetTopology() const noexcept;
 
@@ -90,9 +95,18 @@ namespace NS
             void SetLocalBounds(const AABB& bounds) noexcept;
 
         private:
+            // 頂点シェーダー 1 つに作ったレイアウト。shader は見分けるだけで、指す先を読まない
+            struct ShaderInputLayout
+            {
+                const D3DShader* shader = nullptr;
+                uint64 bytecodeId = 0;
+                ComPtr<ID3D11InputLayout> layout;
+            };
+
             std::unique_ptr<D3DBuffer> m_vb;
             std::unique_ptr<D3DBuffer> m_ib;
-            ComPtr<ID3D11InputLayout> m_inputLayout;
+            std::vector<ShaderInputLayout> m_inputLayouts;
+            ID3D11InputLayout* m_selectedLayout = nullptr; // m_inputLayouts の中の 1 つ
             std::vector<InputElement> m_layoutElements; // 派生クラスから登録されたレイアウト記述
             Topology m_topology = Topology::TriangleList;
             std::size_t m_vertexCount = 0;

@@ -124,16 +124,36 @@ namespace NS
 
         void D3DMesh::CreateInputLayout(const D3DShader& vertexShader) noexcept
         {
-            if (m_inputLayout)
+            ShaderInputLayout* entry = nullptr;
+            for (ShaderInputLayout& candidate : m_inputLayouts)
             {
+                if (candidate.shader == &vertexShader)
+                {
+                    entry = &candidate;
+                    break;
+                }
+            }
+            // 同じ番地でも番号が違えば、読み直したか、捨てた後に作られた別のシェーダー
+            if (entry != nullptr && entry->bytecodeId == vertexShader.BytecodeId())
+            {
+                m_selectedLayout = entry->layout.Get();
                 return;
             }
+
             ID3D11Device* device = Gpu().device;
             if (device == nullptr || m_layoutElements.empty())
             {
                 NS_LOG_ERROR(Graphics, "D3DMesh::CreateInputLayout: device が無効か、レイアウト要素が空");
                 return;
             }
+            if (entry == nullptr)
+            {
+                entry = &m_inputLayouts.emplace_back();
+                entry->shader = &vertexShader;
+            }
+            entry->bytecodeId = vertexShader.BytecodeId();
+            entry->layout.Reset();
+            m_selectedLayout = nullptr;
 
             const std::span<const std::byte> bytecode = vertexShader.VertexShaderBytecode();
             if (bytecode.empty())
@@ -141,11 +161,9 @@ namespace NS
                 NS_LOG_ERROR(Graphics, "D3DMesh::CreateInputLayout: VS バイトコードが空");
                 return;
             }
-
-            ComPtr<ID3D11InputLayout> layout;
-            if (CreateInputLayoutFromDesc(device, bytecode.data(), bytecode.size(), m_layoutElements, layout))
+            if (CreateInputLayoutFromDesc(device, bytecode.data(), bytecode.size(), m_layoutElements, entry->layout))
             {
-                m_inputLayout = std::move(layout);
+                m_selectedLayout = entry->layout.Get();
             }
         }
 
@@ -207,7 +225,7 @@ namespace NS
 
         ID3D11InputLayout* D3DMesh::InputLayout() const noexcept
         {
-            return m_inputLayout.Get();
+            return m_selectedLayout;
         }
     } // namespace Gfx
 } // namespace NS

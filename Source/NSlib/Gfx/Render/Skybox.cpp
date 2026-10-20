@@ -292,8 +292,6 @@ namespace NS
                 return;
             }
 
-            m_cubeMesh->CreateInputLayout(*m_vs);
-
             D3DBufferDesc cbDesc = MakeConstantBufferDesc(sizeof(SkyboxCB));
             m_cb = D3DBuffer::Create(cbDesc);
             if (!m_cb->IsValid())
@@ -337,6 +335,8 @@ namespace NS
                 return;
             }
             UpdateCubemap(cubemapPath);
+            // 頂点シェーダーを読み直した時に、入力の並びを新しい中身に合わせる
+            m_cubeMesh->CreateInputLayout(*m_vs);
 
             // view の平行移動成分を 0 化して camera 中心に空を固定する
             Matrix viewNoTranslate = camera.View();

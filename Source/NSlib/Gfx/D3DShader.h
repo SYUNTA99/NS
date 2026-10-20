@@ -91,6 +91,11 @@ namespace NS
             //! 頂点レイアウト生成用のバイナリコードを取得する
             [[nodiscard]] std::span<const std::byte> VertexShaderBytecode() const noexcept;
 
+            //! @brief 今の中身の番号。中身を持たない間は 0
+            //! @details コンパイルに成功する度と代わりのピンクへ落ちた時に、プロセスの中で重ならない番号へ変わる。
+            //! 入力レイアウトのようにバイトコードから作る物は、作った時の番号と比べて作り直すかを決める
+            [[nodiscard]] uint64 BytecodeId() const noexcept;
+
             //! 今の中身の MaterialParams の並び。代わりのピンクと、取り出せなかった時は空
             [[nodiscard]] const ShaderParamLayout& MaterialParams() const noexcept;
 
@@ -112,6 +117,7 @@ namespace NS
             ComPtr<ID3D11DeviceChild> m_shader;
             ComPtr<ID3DBlob> m_vsBytecode;
             ShaderParamLayout m_materialParams;
+            uint64 m_bytecodeId = 0;
             bool m_fallback = false;
         };
     } // namespace Gfx
