@@ -17,7 +17,7 @@ namespace NS
     class Object;
     struct ClassObjInfo;
 
-    //! クラスごとの既定値を Directory()/<クラス名>.json から読む
+    //! 名前ごとの既定値を Directory()/<名前>.actor から読む。作るクラスはファイルの中の class
     //! ActorRef はシーン内の参照なので既定値には含めない
     class ArchetypeLibrary
     {
@@ -31,20 +31,21 @@ namespace NS
         //! ディレクトリを差し替えて読み直す。試しは一時ディレクトリへ向ける
         void SetDirectory(std::string directory);
 
-        //! Directory() の *.json を全て読み直す。読めないファイルはログを出して飛ばす
+        //! @brief Directory() の *.actor を全て読み直す
+        //! @details 読めない JSON・知らない頭の鍵・class が無いか登録されていない物は ERROR を出して飛ばす
         void Reload();
 
-        //! className の種類の既定値。無ければ nullptr
-        [[nodiscard]] const nlohmann::json* Find(std::string_view className);
+        //! name の .actor の文書。頭の鍵を全部持つ。無ければ nullptr
+        [[nodiscard]] const nlohmann::json* Find(std::string_view name);
 
-        //! className の種類の既定値を差し替える。ファイルへは書かない。参照の欄は落とす
-        void Set(std::string_view className, nlohmann::json archetype);
+        //! name の .actor の文書を差し替える。ファイルへは書かない。参照の欄は落とす
+        void Set(std::string_view name, nlohmann::json actorFile);
 
-        //! className の種類の既定値を消す。ファイルは消さない
-        void Erase(std::string_view className);
+        //! name の .actor の文書を消す。ファイルは消さない
+        void Erase(std::string_view name);
 
-        //! className の種類の既定値を Directory() へ書く。無いか書けなければ false
-        [[nodiscard]] bool Save(std::string_view className);
+        //! name の .actor の文書を丸ごと Directory() へ書く。無いか書けなければ false
+        [[nodiscard]] bool Save(std::string_view name);
 
         //! 個体の上書き前の比較用 SceneActor。シーンへ入らず、種類の既定値変更で参照は無効になる
         [[nodiscard]] const SceneActor& Baseline(std::string_view className);
@@ -59,7 +60,7 @@ namespace NS
         void EnsureLoaded();
 
         std::string m_directory;                                                     // 空なら既定のディレクトリ
-        std::map<std::string, nlohmann::json, std::less<>> m_archetypes;             // クラス名から種類の既定値
+        std::map<std::string, nlohmann::json, std::less<>> m_archetypes;             // 名前から .actor の文書
         std::map<std::string, std::unique_ptr<SceneActor>, std::less<>> m_baselines; // クラス名から既定の 1 体
         bool m_loaded = false;
     };

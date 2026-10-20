@@ -23,13 +23,14 @@ namespace NS
         // 種類の既定値 1 つの上限。部品の値だけなので、シーンのファイルよりずっと小さい
         constexpr std::size_t k_MaxArchetypeFileBytes = 1024u * 1024u;
 
-        // 種類の既定値に持たせない物を落とした写し。参照の欄と id は個体の物
-        [[nodiscard]] nlohmann::json Sanitize(std::string_view className, const nlohmann::json& archetype)
+        // .actor に持たせない参照の欄を落とした写し。参照はシーンの中の相手を指すので配置物の物
+        // 頭の鍵は全部残し、Save で丸ごと書く
+        [[nodiscard]] nlohmann::json Sanitize(const nlohmann::json& actorFile)
         {
-            nlohmann::json out = nlohmann::json::object();
-            SetObjectJsonClass(out, className);
+            nlohmann::json out = actorFile;
             nlohmann::json& parts = ObjectJsonClassObjs(out);
-            const nlohmann::json& source = ObjectJsonClassObjs(archetype);
+            parts = nlohmann::json::object();
+            const nlohmann::json& source = ObjectJsonClassObjs(actorFile);
             for (nlohmann::json::const_iterator entry = source.begin(); entry != source.end(); ++entry)
             {
                 if (!entry.value().is_object())
@@ -50,7 +51,7 @@ namespace NS
             return out;
         }
 
-        // 種類の既定値のファイルが持つのはクラス名と持ち物の鍵だけ。ほかの鍵は打ち間違いか古い形で、
+        // .actor の頭の鍵の表はこの 1 か所。ほかの鍵は打ち間違いか古い形で、
         // そのまま読むと値が黙って既定に戻るので、最初に見つけた 1 つを返す。無ければ nullptr
         [[nodiscard]] const std::string* FindUnknownArchetypeKey(const nlohmann::json& root)
         {
@@ -91,7 +92,7 @@ namespace NS
         if (m_directory.empty())
         {
             m_directory = OS::FileSystem::Combine(
-                OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"), "Archetypes");
+                OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"), "Actors");
         }
         return m_directory;
     }
@@ -122,7 +123,7 @@ namespace NS
             // 種類の既定値が 1 つも無いプロジェクトもある。全てコードの既定値で組む
             return;
         }
-        for (const std::string& path : OS::FileSystem::ListFiles(directory, ".json"))
+        for (const std::string& path : OS::FileSystem::ListFiles(directory, ".actor"))
         {
             const std::optional<std::string> text = OS::FileSystem::ReadAllText(path);
             if (!text.has_value())
@@ -131,43 +132,40 @@ namespace NS
             }
             if (text->size() > k_MaxArchetypeFileBytes)
             {
-                NS_LOG_ERROR(
-                    Scene, "種類の既定値 {} が上限 ({} byte) を超えるので読まない", path, k_MaxArchetypeFileBytes);
+                NS_LOG_ERROR(Scene, ".actor {} が上限 ({} byte) を超えるので読まない", path, k_MaxArchetypeFileBytes);
                 continue;
             }
             const nlohmann::json root = nlohmann::json::parse(*text, nullptr, false);
             if (root.is_discarded() || !root.is_object())
             {
-                NS_LOG_ERROR(Scene, "種類の既定値 {} の JSON を読めない", path);
+                NS_LOG_ERROR(Scene, ".actor {} の JSON を読めない", path);
                 continue;
             }
             if (const std::string* unknown = FindUnknownArchetypeKey(root))
             {
-                NS_LOG_ERROR(Scene, "種類の既定値 {} に知らない鍵 {} があるので読まない", path, *unknown);
+                NS_LOG_ERROR(Scene, ".actor {} に知らない鍵 {} があるので読まない", path, *unknown);
                 continue;
             }
-            // クラス名はファイル名が正。中の class と食い違えばファイル名を使う
-            const std::string className = OS::FileSystem::Stem(path);
-            const std::string_view written = ObjectJsonClass(root);
-            if (!written.empty() && written != className)
+            // 名前はファイル名、クラスは中の class。クラスが分からないまま読むと作る型が黙って変わる
+            const std::string_view className = ObjectJsonClass(root);
+            if (className.empty())
             {
-                NS_LOG_WARN(Scene,
-                            "種類の既定値 {} の class {} がファイル名と違うので、ファイル名のクラスとして読む",
-                            path,
-                            written);
+                NS_LOG_ERROR(Scene, ".actor {} に class が無いので読まない", path);
+                continue;
             }
             if (TypeRegistry::Get().Find(className) == nullptr)
             {
-                NS_LOG_WARN(Scene, "種類の既定値 {} のクラスが登録されていない", path);
+                NS_LOG_ERROR(Scene, ".actor {} の class {} が登録されていないので読まない", path, className);
+                continue;
             }
-            m_archetypes[className] = Sanitize(className, root);
+            m_archetypes[OS::FileSystem::Stem(path)] = Sanitize(root);
         }
     }
 
-    const nlohmann::json* ArchetypeLibrary::Find(std::string_view className)
+    const nlohmann::json* ArchetypeLibrary::Find(std::string_view name)
     {
         EnsureLoaded();
-        const std::map<std::string, nlohmann::json, std::less<>>::const_iterator it = m_archetypes.find(className);
+        const std::map<std::string, nlohmann::json, std::less<>>::const_iterator it = m_archetypes.find(name);
         if (it == m_archetypes.end())
         {
             return nullptr;
@@ -175,39 +173,39 @@ namespace NS
         return &it->second;
     }
 
-    void ArchetypeLibrary::Set(std::string_view className, nlohmann::json archetype)
+    void ArchetypeLibrary::Set(std::string_view name, nlohmann::json actorFile)
     {
         EnsureLoaded();
-        if (className.empty())
+        if (name.empty())
         {
             return;
         }
-        m_archetypes[std::string{className}] = Sanitize(className, archetype);
+        m_archetypes[std::string{name}] = Sanitize(actorFile);
         // 既定の 1 体は種類の既定値から作るので、変えたら作り直す
-        m_baselines.erase(std::string{className});
+        m_baselines.erase(std::string{name});
     }
 
-    void ArchetypeLibrary::Erase(std::string_view className)
+    void ArchetypeLibrary::Erase(std::string_view name)
     {
         EnsureLoaded();
-        m_archetypes.erase(std::string{className});
-        m_baselines.erase(std::string{className});
+        m_archetypes.erase(std::string{name});
+        m_baselines.erase(std::string{name});
     }
 
-    bool ArchetypeLibrary::Save(std::string_view className)
+    bool ArchetypeLibrary::Save(std::string_view name)
     {
-        const nlohmann::json* archetype = Find(className);
-        if (archetype == nullptr)
+        const nlohmann::json* actorFile = Find(name);
+        if (actorFile == nullptr)
         {
             return false;
         }
         // シーンのファイルと同じく辞書順のキーで書く。同じ中身の 2 回の保存はバイト一致になる
-        const std::string text = archetype->dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
-        const std::string path = OS::FileSystem::Combine(Directory(), std::string{className} + ".json");
+        const std::string text = actorFile->dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
+        const std::string path = OS::FileSystem::Combine(Directory(), std::string{name} + ".actor");
         const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
         if (!OS::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size())))
         {
-            NS_LOG_ERROR(Scene, "種類の既定値 {} を書けない", path);
+            NS_LOG_ERROR(Scene, ".actor {} を書けない", path);
             return false;
         }
         return true;
@@ -374,6 +372,10 @@ namespace NS
         if (const nlohmann::json* current = library.Find(actor.ClassName()))
         {
             archetype = *current;
+        }
+        else
+        {
+            SetObjectJsonClass(archetype, actor.ClassName());
         }
         nlohmann::json& fields = ObjectJsonClassObjs(archetype)[std::string{row.key}];
         if (!fields.is_object())

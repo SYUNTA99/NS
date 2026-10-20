@@ -25,11 +25,15 @@
 
 #include "NSlib/Core/Types.h"
 #include <filesystem>
+#include <map>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <utility>
+#include <vector>
 
 // 値の 3 段の重なり (コードの既定値 < 種類の既定値 < 個体の上書き) と、差分の保存と、種類の既定にする操作を縛る
 
@@ -46,7 +50,7 @@ namespace
             m_directory = FileSystem::Combine(
                 FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "build"), "TestArchetypes"), name);
             (void)FileSystem::CreateDirectories(m_directory);
-            for (const std::string& path : FileSystem::ListFiles(m_directory, ".json"))
+            for (const std::string& path : FileSystem::ListFiles(m_directory, ".actor"))
             {
                 std::error_code error;
                 std::filesystem::remove(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(path)}, error);
@@ -115,6 +119,14 @@ namespace
     const nlohmann::json* SavedFields(const nlohmann::json& object, std::string_view typeName)
     {
         return NS::ClassObjFields(object, typeName);
+    }
+
+    // directory に <name>.actor を text のまま書く
+    void WriteActorFile(const std::string& directory, std::string_view name, const std::string& text)
+    {
+        const std::string path = NS::OS::FileSystem::Combine(directory, std::string{name} + ".actor");
+        ASSERT_TRUE(
+            NS::OS::FileSystem::WriteAllBytes(path, std::as_bytes(std::span<const char>{text.data(), text.size()})));
     }
 } // namespace
 
@@ -471,7 +483,7 @@ TEST(Archetype, SavedArchetypeIsReadBack)
     NS::ArchetypeLibrary& library = NS::ArchetypeLibrary::Get();
     library.Set("PropActor", ArchetypeWith("PropActor", "Collision", SphereEntry(1.25f)));
     ASSERT_TRUE(library.Save("PropActor"));
-    EXPECT_TRUE(NS::OS::FileSystem::Exists(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.json")));
+    EXPECT_TRUE(NS::OS::FileSystem::Exists(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor")));
 
     library.Erase("PropActor");
     EXPECT_EQ(library.Find("PropActor"), nullptr);
@@ -488,9 +500,7 @@ TEST(Archetype, FileWithAnUnknownKeyIsNotRead)
     const ScopedArchetypeDirectory scope("UnknownKey");
     nlohmann::json archetype = ArchetypeWith("PropActor", "Collision", SphereEntry(1.25f));
     archetype["classObj"] = nlohmann::json::object();
-    const std::string text = archetype.dump();
-    ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.json"),
-                                                  std::as_bytes(std::span<const char>{text.data(), text.size()})));
+    WriteActorFile(scope.Path(), "PropActor", archetype.dump());
 
     const TestLogCapture log;
     NS::ArchetypeLibrary::Get().Reload();
@@ -522,7 +532,7 @@ TEST(Archetype, PromoteReachesOtherInstancesAndFile)
     EXPECT_FALSE(NS::IsFieldOverridden(actor, *row, "半径"));
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 1.75f);
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(3)), 4.0f);
-    EXPECT_TRUE(NS::OS::FileSystem::Exists(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.json")));
+    EXPECT_TRUE(NS::OS::FileSystem::Exists(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor")));
 }
 
 TEST(Archetype, PromoteRejectsReferenceField)
@@ -555,4 +565,69 @@ TEST(Archetype, ShippedArchetypesLoad)
     ASSERT_NE(library.Find("PlayerActor"), nullptr);
     const NS::SceneActor& rock = library.Baseline("PropActor");
     EXPECT_NE(rock.ShadowClassObj(), nullptr);
+}
+
+// 出荷の .actor は Save の形で書いてある。読んで書き直すとバイトまで同じで、前の置き場は残っていない
+TEST(Archetype, ShippedActorFilesRoundTripByteForByte)
+{
+    using NS::OS::FileSystem;
+    const std::string assets = FileSystem::Combine(FileSystem::ContentRoot(), "Assets");
+    EXPECT_FALSE(FileSystem::IsDirectory(FileSystem::Combine(assets, "Archetypes")));
+    const std::vector<std::string> paths = FileSystem::ListFiles(FileSystem::Combine(assets, "Actors"), ".actor");
+    ASSERT_FALSE(paths.empty());
+
+    const ScopedArchetypeDirectory scope("ShippedRoundTrip");
+    std::map<std::string, std::string> originals;
+    for (const std::string& path : paths)
+    {
+        const std::optional<std::string> text = FileSystem::ReadAllText(path);
+        ASSERT_TRUE(text.has_value()) << path;
+        const std::string name = FileSystem::Stem(path);
+        WriteActorFile(scope.Path(), name, *text);
+        originals.emplace(name, *text);
+    }
+    NS::ArchetypeLibrary& library = NS::ArchetypeLibrary::Get();
+    library.Reload();
+    for (const std::pair<const std::string, std::string>& original : originals)
+    {
+        ASSERT_TRUE(library.Save(original.first)) << original.first;
+        const std::optional<std::string> written =
+            FileSystem::ReadAllText(FileSystem::Combine(scope.Path(), original.first + ".actor"));
+        ASSERT_TRUE(written.has_value()) << original.first;
+        EXPECT_EQ(*written, original.second) << original.first;
+    }
+}
+
+// 名前はファイル名、クラスは中の class から読む。同じクラスに名前の違う既定を持てる
+TEST(Archetype, ClassIsReadFromInsideAndTheFileIsFoundByItsName)
+{
+    const ScopedArchetypeDirectory scope("ClassFromInside");
+    const nlohmann::json written = ArchetypeWith("PropActor", "Collision", SphereEntry(2.0f));
+    WriteActorFile(scope.Path(), "HeavyRock", written.dump());
+
+    NS::ArchetypeLibrary& library = NS::ArchetypeLibrary::Get();
+    library.Reload();
+    const nlohmann::json* found = library.Find("HeavyRock");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(NS::ObjectJsonClass(*found), "PropActor");
+    // 読んだ文書は頭の鍵を全部持ったまま返る
+    EXPECT_EQ(*found, written);
+    EXPECT_EQ(library.Find("PropActor"), nullptr);
+}
+
+// クラスの分からない .actor を読むと、どのクラスで作るかが黙って変わる。読まずに ERROR で知らせる
+TEST(Archetype, FileWithoutAClassOrWithAnUnregisteredClassIsNotRead)
+{
+    const ScopedArchetypeDirectory scope("BadClass");
+    nlohmann::json noClass = ArchetypeWith("PropActor", "Collision", SphereEntry(2.0f));
+    noClass.erase("class");
+    WriteActorFile(scope.Path(), "NoClass", noClass.dump());
+    WriteActorFile(
+        scope.Path(), "Unregistered", ArchetypeWith("NoSuchActorClass", "Collision", SphereEntry(2.0f)).dump());
+
+    const TestLogCapture log;
+    NS::ArchetypeLibrary::Get().Reload();
+    EXPECT_EQ(NS::ArchetypeLibrary::Get().Find("NoClass"), nullptr);
+    EXPECT_EQ(NS::ArchetypeLibrary::Get().Find("Unregistered"), nullptr);
+    EXPECT_EQ(log.ErrorCount(), 2);
 }
