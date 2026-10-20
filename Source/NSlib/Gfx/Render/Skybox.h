@@ -23,6 +23,7 @@ namespace NS
         class D3DBuffer;
         class D3DPipeline;
         class D3DDevice;
+        class D3DTexture;
         struct BuiltinShaders;
 
         //! @brief 無限遠の背景の空を描く
@@ -67,7 +68,7 @@ namespace NS
             D3DShader* m_ps = nullptr;
             std::unique_ptr<D3DBuffer> m_cb;
             std::unique_ptr<D3DPipeline> m_pipeline;
-            ComPtr<ID3D11ShaderResourceView> m_cubemapSrv;
+            std::unique_ptr<D3DTexture> m_cubemap;
             std::string m_loadedPath;
             bool m_usingFallback = true;
             bool m_tried = false;
