@@ -247,9 +247,37 @@ namespace NS
         obj.InitAfterPlacement();
     }
 
-    SceneActor* Scene::SpawnFromJson(const nlohmann::json& object)
+    std::unique_ptr<SceneActor> Scene::BuildOrKeepUnresolved(const nlohmann::json& object)
     {
         std::unique_ptr<SceneActor> built = ObjectFromJson(object, *this);
+        const uint32 id = ObjectJsonId(object);
+        std::vector<nlohmann::json>::iterator kept = std::find_if(
+            m_unresolvedObjects.begin(), m_unresolvedObjects.end(), [id](const nlohmann::json& unresolved) {
+                return ObjectJsonId(unresolved) == id;
+            });
+        if (built)
+        {
+            if (kept != m_unresolvedObjects.end())
+            {
+                m_unresolvedObjects.erase(kept);
+            }
+            return built;
+        }
+        // 同じ id の物は 1 つだけ持つ。戻しの控えを何度当てても保存の配置物は増えない
+        if (kept != m_unresolvedObjects.end())
+        {
+            *kept = object;
+        }
+        else
+        {
+            m_unresolvedObjects.push_back(object);
+        }
+        return nullptr;
+    }
+
+    SceneActor* Scene::SpawnFromJson(const nlohmann::json& object)
+    {
+        std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(object);
         if (!built)
         {
             return nullptr;
@@ -274,15 +302,14 @@ namespace NS
             return SpawnFromJson(object);
         }
 
-        std::unique_ptr<SceneActor> built = ObjectFromJson(object, *this);
+        std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(object);
+        // 組めない姿は居ない姿として扱い、JSON は BuildOrKeepUnresolved が持つ。
+        // DestroyObject は持った JSON も捨てるので、アクターだけを外す
+        m_objects.RemoveByObjectId(id);
         if (!built)
         {
-            // 組める部品が無い姿は、居ない姿として扱う
-            DestroyObject(id);
             return nullptr;
         }
-
-        DestroyObject(id);
         built->AttachScene(this);
         SceneActor* raw = m_objects.InsertFromJson(std::move(built), object, index);
         if (raw == nullptr)
@@ -342,6 +369,9 @@ namespace NS
     void Scene::DestroyObject(uint32 objectId)
     {
         m_objects.RemoveByObjectId(objectId);
+        std::erase_if(m_unresolvedObjects, [objectId](const nlohmann::json& unresolved) {
+            return ObjectJsonId(unresolved) == objectId;
+        });
     }
 
     void Scene::ClearEffects() noexcept
@@ -374,14 +404,8 @@ namespace NS
         ClearWorld();
         // 仮想カメラの付け外しは、持ち主の SceneActor が OnStart / OnEndPlay で行う
         // .actor の見つからない配置物は作らず、保存で消さないように JSON のまま持つ
-        m_objects.RebuildFromJson(scene, *this, [this](const nlohmann::json& entry) {
-            std::unique_ptr<SceneActor> built = ObjectFromJson(entry, *this);
-            if (!built)
-            {
-                m_unresolvedObjects.push_back(entry);
-            }
-            return built;
-        });
+        m_objects.RebuildFromJson(
+            scene, *this, [this](const nlohmann::json& entry) { return BuildOrKeepUnresolved(entry); });
         // 当たりは配置物の開始で入っている。まとめて入れた後の broadphase だけを張り直す
         m_physics.Physics().OptimizeBroadPhase();
     }

@@ -367,9 +367,10 @@ namespace
     }
 
     // name の .actor を document に差し替えてファイルへ書き、scene の同じ .actor のアクターの全部へ写す
+    // document が無ければ .actor の文書とファイルを消し、アクターはコードの既定へ戻る
     // 配置物へ書く欄は、書く前の .actor と同じ値のアクターだけが付いて来る。上書きしたアクターの値は残る
     // 直し終えた時・取り消し・やり直しの全部がこの 1 本を通る
-    void WriteActorFile(NS::Scene& scene, const std::string& name, const nlohmann::json& document)
+    void WriteActorFile(NS::Scene& scene, const std::string& name, const std::optional<nlohmann::json>& document)
     {
         std::vector<std::pair<NS::SceneActor*, FieldKeys>> actors;
         for (NS::SceneActor* actor : scene.Objects())
@@ -380,8 +381,18 @@ namespace
             }
         }
         NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
-        library.Set(name, document);
-        if (!library.Save(name))
+        if (!document.has_value())
+        {
+            if (!library.Delete(name))
+            {
+                NS_LOG_WARN(App, ".actor {} のファイルを消せなかった。次の起動で読まれる", name);
+            }
+        }
+        else if (!library.Set(name, *document))
+        {
+            return;
+        }
+        else if (!library.Save(name))
         {
             NS_LOG_WARN(App, ".actor {} をファイルへ書けなかった。今の起動の間だけ効く", name);
         }
@@ -392,13 +403,18 @@ namespace
     }
 
     // .actor の 1 欄の書き換え。配置物でないので IObjectSnapshotApplier を使わず、シーンと前後の文書を自分で持つ
+    // before が無いのは .actor の無かったアクターの 1 手目で、戻すと .actor を消す
     class ActorFileCommand final : public NS::Editor::ICommand
     {
     public:
-        ActorFileCommand(NS::Scene& scene, std::string name, nlohmann::json before, nlohmann::json after)
+        ActorFileCommand(NS::Scene& scene, std::string name, std::optional<nlohmann::json> before, nlohmann::json after)
             : m_scene(scene), m_name(std::move(name)), m_before(std::move(before)), m_after(std::move(after)),
-              m_bytes(sizeof(*this) + m_name.size() + m_before.dump().size() + m_after.dump().size())
+              m_bytes(sizeof(*this) + m_name.size() + m_after.dump().size())
         {
+            if (m_before.has_value())
+            {
+                m_bytes += m_before->dump().size();
+            }
         }
 
         void Do(NS::Editor::IObjectSnapshotApplier&) noexcept override { WriteActorFile(m_scene, m_name, m_after); }
@@ -411,7 +427,7 @@ namespace
     private:
         NS::Scene& m_scene;
         std::string m_name;
-        nlohmann::json m_before;
+        std::optional<nlohmann::json> m_before;
         nlohmann::json m_after;
         std::size_t m_bytes = 0;
     };
@@ -1581,19 +1597,20 @@ void LevelEditorController::CommitActorFileEdits()
             continue;
         }
         const std::string name = actor->ActorFileName();
-        nlohmann::json before = nlohmann::json::object();
+        std::optional<nlohmann::json> before;
+        nlohmann::json after = nlohmann::json::object();
         if (const nlohmann::json* current = library.Find(name))
         {
             before = *current;
+            after = *current;
         }
         else
         {
             // .actor の無いアクターは型から作った物で、名前はクラス名
-            NS::SetActorFileClass(before, actor->ClassName());
+            NS::SetActorFileClass(after, actor->ClassName());
         }
-        nlohmann::json after = before;
         NS::ObjectJsonClassObjs(after)[std::string{edit.row->key}][edit.fieldName] = FieldJson(*part, edit.fieldName);
-        if (after == before)
+        if (before.has_value() && after == *before)
         {
             continue;
         }

@@ -13,6 +13,7 @@
 #include "NSlib/Windows/Filesystem.h"
 
 #include <cstddef>
+#include <format>
 #include <optional>
 #include <span>
 #include <utility>
@@ -67,6 +68,31 @@ namespace NS
                 }
             }
             return nullptr;
+        }
+
+        // root を .actor として持てない理由。持てるなら空
+        // 外から読む Reload と文書を入れる Set が同じ決まりで断る。Set だけが通すと、Save で書いた物を次の起動で読めない
+        [[nodiscard]] std::string FindActorFileProblem(const nlohmann::json& root)
+        {
+            if (!root.is_object())
+            {
+                return "JSON の object でない";
+            }
+            if (const std::string* unknown = FindUnknownActorFileKey(root))
+            {
+                return std::format("知らない鍵 {} がある", *unknown);
+            }
+            // クラスが分からないまま持つと、作る型が黙って変わる
+            const std::string_view className = ActorFileClass(root);
+            if (className.empty())
+            {
+                return "class が無い";
+            }
+            if (TypeRegistry::Get().Find(className) == nullptr)
+            {
+                return std::format("class {} が登録されていない", className);
+            }
+            return {};
         }
 
     } // namespace
@@ -182,6 +208,7 @@ namespace NS
             const std::optional<std::string> text = OS::FileSystem::ReadAllText(path);
             if (!text.has_value())
             {
+                NS_LOG_ERROR(Scene, ".actor {} のファイルを開けないので読まない", path);
                 continue;
             }
             if (text->size() > k_MaxActorFileBytes)
@@ -190,28 +217,18 @@ namespace NS
                 continue;
             }
             const nlohmann::json root = nlohmann::json::parse(*text, nullptr, false);
-            if (root.is_discarded() || !root.is_object())
+            if (root.is_discarded())
             {
                 NS_LOG_ERROR(Scene, ".actor {} の JSON を読めない", path);
                 continue;
             }
-            if (const std::string* unknown = FindUnknownActorFileKey(root))
+            const std::string problem = FindActorFileProblem(root);
+            if (!problem.empty())
             {
-                NS_LOG_ERROR(Scene, ".actor {} に知らない鍵 {} があるので読まない", path, *unknown);
+                NS_LOG_ERROR(Scene, ".actor {} を読まない。{}", path, problem);
                 continue;
             }
-            // 名前はファイル名、クラスは中の class。クラスが分からないまま読むと作る型が黙って変わる
-            const std::string_view className = ActorFileClass(root);
-            if (className.empty())
-            {
-                NS_LOG_ERROR(Scene, ".actor {} に class が無いので読まない", path);
-                continue;
-            }
-            if (TypeRegistry::Get().Find(className) == nullptr)
-            {
-                NS_LOG_ERROR(Scene, ".actor {} の class {} が登録されていないので読まない", path, className);
-                continue;
-            }
+            // 名前はファイル名、クラスは中の class
             m_actorFiles[OS::FileSystem::Stem(path)] = Sanitize(root);
         }
     }
@@ -249,16 +266,23 @@ namespace NS
         return std::string{ActorFileClass(*actorFile)};
     }
 
-    void ActorFileLibrary::Set(std::string_view name, nlohmann::json actorFile)
+    bool ActorFileLibrary::Set(std::string_view name, nlohmann::json actorFile)
     {
         EnsureLoaded();
         if (name.empty())
         {
-            return;
+            return false;
+        }
+        const std::string problem = FindActorFileProblem(actorFile);
+        if (!problem.empty())
+        {
+            NS_LOG_ERROR(Scene, ".actor {} の文書を入れない。{}", name, problem);
+            return false;
         }
         m_actorFiles[std::string{name}] = Sanitize(actorFile);
         // 比べる基準の 1 体は .actor から作るので、変えたら作り直す
         m_baselines.erase(std::string{name});
+        return true;
     }
 
     void ActorFileLibrary::Erase(std::string_view name)
@@ -266,6 +290,18 @@ namespace NS
         EnsureLoaded();
         m_actorFiles.erase(std::string{name});
         m_baselines.erase(std::string{name});
+    }
+
+    bool ActorFileLibrary::Delete(std::string_view name)
+    {
+        Erase(name);
+        const std::string path = OS::FileSystem::Combine(Directory(), std::string{name} + ".actor");
+        if (!OS::FileSystem::RemoveFile(path))
+        {
+            NS_LOG_ERROR(Scene, ".actor {} のファイルを消せない", path);
+            return false;
+        }
+        return true;
     }
 
     bool ActorFileLibrary::Save(std::string_view name)
@@ -279,7 +315,8 @@ namespace NS
         const std::string text = actorFile->dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
         const std::string path = OS::FileSystem::Combine(Directory(), std::string{name} + ".actor");
         const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
-        if (!OS::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size())))
+        // 書く途中で失敗しても前のファイルを残す。壊れると、それを指す配置物が全部組めなくなる
+        if (!OS::FileSystem::ReplaceAllBytes(path, std::span<const std::byte>(raw, text.size())))
         {
             NS_LOG_ERROR(Scene, ".actor {} を書けない", path);
             return false;

@@ -655,17 +655,14 @@ namespace
 } // namespace
 
 // 比べ先は .actor の比べる基準の同じ行だけ。そこに行が無い時に型の既定 (半径 0.5) と比べると、
-// .actor で変えた半径 2 に印が出る
-TEST(ActorFile, InspectorDoesNotMarkAFieldTheActorFileChanged)
+// 型の既定と違う半径 2 に印が出る
+TEST(ActorFile, InspectorDoesNotMarkAFieldTheBaselineDoesNotHave)
 {
     const ScopedActorFileDirectory scope("InspectorWithoutBaselineRow");
-    NS::ActorFileLibrary::Get().Set(
-        "UnregisteredSphereActor", ActorFileWith("UnregisteredSphereActor", "Collision", SphereEntry(2.0f)));
-
     const std::unique_ptr<UnregisteredSphereActor> actor = NS::CreateActor<UnregisteredSphereActor>();
-    NS::ApplyActorFile(*actor);
     NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
+    sphere->SetRadius(2.0f);
     ASSERT_FLOAT_EQ(sphere->Radius(), 2.0f);
     const NS::FieldDesc* radius = NS::FindField(sphere->GetReflection(), "半径");
     ASSERT_NE(radius, nullptr);
@@ -715,6 +712,31 @@ TEST(ActorFile, SavedActorFileIsReadBack)
     const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 1.25f);
+}
+
+// 書く途中で失敗しても前の .actor を壊さない。壊れると、それを指す配置物が全部組めなくなる
+TEST(ActorFile, SaveThatCannotFinishLeavesTheFileAsItWas)
+{
+    using NS::OS::FileSystem;
+    const ScopedActorFileDirectory scope("SaveKeepsOldFile");
+    const std::string original = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)).dump();
+    WriteActorFile(scope.Path(), "HeavyRock", original);
+    // 書く途中の失敗を、一時のファイルの置き場をディレクトリで塞いで作る
+    const std::string blocker = FileSystem::Combine(scope.Path(), "HeavyRock.actor.tmp");
+    ASSERT_TRUE(FileSystem::CreateDirectories(blocker));
+
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    library.Set("HeavyRock", ActorFileWith("PropActor", "Collision", SphereEntry(5.0f)));
+    {
+        const TestLogCapture log;
+        EXPECT_FALSE(library.Save("HeavyRock"));
+    }
+    const std::optional<std::string> text = FileSystem::ReadAllText(FileSystem::Combine(scope.Path(), "HeavyRock.actor"));
+    ASSERT_TRUE(text.has_value());
+    EXPECT_EQ(*text, original);
+
+    std::error_code error;
+    std::filesystem::remove(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(blocker)}, error);
 }
 
 TEST(ActorFile, FileWithAnUnknownKeyIsNotRead)
@@ -803,6 +825,36 @@ TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(1)), 3.0f);
     EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 3.0f);
+}
+
+// .actor の無いアクターの欄を直して戻すと、.actor は直す前と同じく無い。class だけの .actor を残さない
+TEST(ActorFile, UndoingTheFirstEditOfAnActorWithoutAFileLeavesNoFile)
+{
+    using NS::OS::FileSystem;
+    const ScopedActorFileDirectory scope("UndoFirstActorFile");
+    NS::Scene scene;
+    const NS::uint32 id = scene.SpawnObject<GL::Level::PropActor>("Rock")->Id();
+    ASSERT_EQ(NS::ActorFileLibrary::Get().Find("PropActor"), nullptr);
+    LevelEditorController editor(&scene);
+    NS::SceneActor* rock = scene.Objects().FindByObjectId(id);
+    ASSERT_NE(rock, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(rock->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
+    const float codeDefault = sphere->Radius();
+
+    sphere->SetRadius(codeDefault + 1.0f);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, *rock, sphere, "半径"));
+    const std::string path = FileSystem::Combine(scope.Path(), "PropActor.actor");
+    ASSERT_TRUE(FileSystem::Exists(path));
+
+    NS::Editor::ObjectSnapshotApplier applier{&scene};
+    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    EXPECT_EQ(NS::ActorFileLibrary::Get().Find("PropActor"), nullptr);
+    EXPECT_FALSE(FileSystem::Exists(path));
+    EXPECT_FLOAT_EQ(RadiusOf(*rock), codeDefault);
+
+    ASSERT_TRUE(editor.Editor().Undo().Redo(applier));
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), codeDefault + 1.0f);
 }
 
 // 印の付いた欄を直すと、その 1 体だけが変わり、.actor は変わらない
@@ -1012,24 +1064,28 @@ TEST(ActorFile, ClassIsReadFromInsideAndTheFileIsFoundByItsName)
     EXPECT_EQ(library.Find("PropActor"), nullptr);
 }
 
-// Set は頭の鍵を判じずに丸ごと持つ。class・classObjs の他の鍵も Find で返り、Save で書かれる
-TEST(ActorFile, SetKeepsEveryHeadKeyThroughFindAndSave)
+// Set は Reload と同じ決まりで断る。入れると Save で書いた .actor を次の起動で読めない
+TEST(ActorFile, SetRefusesWhatReloadWouldNotRead)
 {
     using NS::OS::FileSystem;
-    const ScopedActorFileDirectory scope("SetKeepsHeadKeys");
-    nlohmann::json written = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f));
-    written["hitReactions"] = nlohmann::json{{"Hit", 3}};
+    const ScopedActorFileDirectory scope("SetRefuses");
+    std::map<std::string, nlohmann::json> refused;
+    refused["UnknownKey"] = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f));
+    refused["UnknownKey"]["hitReactions"] = nlohmann::json{{"Hit", 3}};
+    refused["NoClass"] = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f));
+    refused["NoClass"].erase("class");
+    refused["Unregistered"] = ActorFileWith("NoSuchActorClass", "Collision", SphereEntry(2.0f));
 
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
-    library.Set("HeavyRock", written);
-    const nlohmann::json* found = library.Find("HeavyRock");
-    ASSERT_NE(found, nullptr);
-    EXPECT_EQ(*found, written);
-
-    ASSERT_TRUE(library.Save("HeavyRock"));
-    const std::optional<std::string> text = FileSystem::ReadAllText(FileSystem::Combine(scope.Path(), "HeavyRock.actor"));
-    ASSERT_TRUE(text.has_value());
-    EXPECT_EQ(nlohmann::json::parse(*text), written);
+    const TestLogCapture log;
+    for (const std::pair<const std::string, nlohmann::json>& entry : refused)
+    {
+        library.Set(entry.first, entry.second);
+        EXPECT_EQ(library.Find(entry.first), nullptr) << entry.first;
+        EXPECT_FALSE(library.Save(entry.first)) << entry.first;
+        EXPECT_FALSE(FileSystem::Exists(FileSystem::Combine(scope.Path(), entry.first + ".actor"))) << entry.first;
+    }
+    EXPECT_EQ(log.ErrorCount(), 3);
 }
 
 // .actor の名前からクラスを引く。ファイル名と違う class でも中の class を返し、無い名前は空

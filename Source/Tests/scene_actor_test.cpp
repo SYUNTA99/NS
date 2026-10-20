@@ -536,6 +536,48 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
     EXPECT_GT(added->Id(), 7u);
 }
 
+// 1 体だけ入れる道 (戻しの控えを当てる・入れる) も、.actor の見つからない配置物を読む時と同じく JSON のまま持つ。
+// 持つ JSON は id ごとに 1 つで、その id を消すと消え、組めた時は持たない
+TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptOnEveryWayIn)
+{
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddActorObject(doc, "PropActor", 1);
+    AddActorObject(doc, "PropActor", 2);
+    NS::SetSceneJsonNextObjectId(doc, 3);
+    const TestLogCapture log;
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    ASSERT_EQ(scene.Objects().ObjectCount(), 2u);
+
+    nlohmann::json lostFirst = NS::SceneJsonObjects(doc)[0];
+    NS::SetObjectJsonActorFile(lostFirst, "NoSuchActor");
+    nlohmann::json lostSecond = NS::SceneJsonObjects(doc)[1];
+    NS::SetObjectJsonActorFile(lostSecond, "NoSuchActor");
+
+    // 作り直す道: アクターは消え、JSON が保存に残る。同じ id を 2 回当てても 1 つ
+    EXPECT_EQ(scene.ApplyFromJson(lostFirst), nullptr);
+    EXPECT_EQ(scene.ApplyFromJson(lostFirst), nullptr);
+    // 入れる道
+    scene.DestroyObject(2);
+    EXPECT_EQ(scene.SpawnFromJson(lostSecond), nullptr);
+    EXPECT_EQ(scene.Objects().ObjectCount(), 0u);
+    {
+        const nlohmann::json kept = scene.ToJson();
+        const nlohmann::json& saved = NS::SceneJsonObjects(kept);
+        ASSERT_EQ(saved.size(), 2u);
+        EXPECT_EQ(saved[0], lostFirst);
+        EXPECT_EQ(saved[1], lostSecond);
+    }
+
+    // 消すと持たない。組める控えを当てると、アクターに戻り JSON を持たない
+    scene.DestroyObject(1);
+    EXPECT_NE(scene.ApplyFromJson(NS::SceneJsonObjects(doc)[1]), nullptr);
+    const nlohmann::json saved = scene.ToJson();
+    ASSERT_EQ(NS::SceneJsonObjects(saved).size(), 1u);
+    EXPECT_EQ(NS::ObjectJsonActorFile(NS::SceneJsonObjects(saved)[0]), "PropActor");
+    EXPECT_EQ(NS::ObjectJsonId(NS::SceneJsonObjects(saved)[0]), 2u);
+}
+
 TEST(SceneActor, ActorMadeFromATypeAnswersTheActorFileOfItsClass)
 {
     // 型から作るアクターは、クラスと同じ名前の .actor を敷く

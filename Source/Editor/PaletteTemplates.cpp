@@ -23,7 +23,7 @@ namespace NS
             }
         } // namespace
 
-        const std::array<PaletteTemplate, k_PaletteSlotCount>& PaletteTemplateSlots() noexcept
+        const std::array<PaletteTemplate, k_PaletteSlotCount>& PaletteTemplateSlots()
         {
             static const std::array<PaletteTemplate, k_PaletteSlotCount> slots = []() {
                 std::array<PaletteTemplate, k_PaletteSlotCount> result{};

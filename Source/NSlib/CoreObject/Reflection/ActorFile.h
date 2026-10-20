@@ -39,7 +39,7 @@ namespace NS
         void SetDirectory(std::string directory);
 
         //! @brief Directory() の *.actor を全て読み直す
-        //! @details 読めない JSON・知らない頭の鍵・class が無いか登録されていない物は ERROR を出して飛ばす
+        //! @details 開けないファイル・読めない JSON・知らない頭の鍵・class が無いか登録されていない物は ERROR を出して飛ばす
         void Reload();
 
         //! 持っている .actor の名前。名前の順
@@ -52,11 +52,15 @@ namespace NS
         //! クラス名を比べる所はここで引き、.actor の名前とクラス名を同じと見なさない
         [[nodiscard]] std::string ClassNameOf(std::string_view name);
 
-        //! name の .actor の文書を差し替える。ファイルへは書かない。参照の欄は落とす
-        void Set(std::string_view name, nlohmann::json actorFile);
+        //! @brief name の .actor の文書を差し替える。ファイルへは書かない。参照の欄は落とす
+        //! @details Reload が読まない文書 (知らない頭の鍵・class が無いか登録されていない) は ERROR を出して入れず、false を返す
+        bool Set(std::string_view name, nlohmann::json actorFile);
 
         //! name の .actor の文書を消す。ファイルは消さない
         void Erase(std::string_view name);
+
+        //! name の .actor の文書を消し、Directory() のファイルも消す。ファイルを消せなければ false
+        [[nodiscard]] bool Delete(std::string_view name);
 
         //! name の .actor の文書を丸ごと Directory() へ書く。無いか書けなければ false
         [[nodiscard]] bool Save(std::string_view name);

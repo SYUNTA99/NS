@@ -235,11 +235,12 @@ namespace NS
 
         //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! @details 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
-        //! undo の作り直しと複製が通る
+        //! undo の作り直しと複製が通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
         SceneActor* SpawnFromJson(const nlohmann::json& object);
 
         //! @brief 同じ id の配置物を JSON の姿へ作り直す。並びの位置は保つ。居なければ SpawnFromJson と同じ
-        //! @details 部品の増減も含めて姿を丸ごと入れ替える
+        //! @details 部品の増減も含めて姿を丸ごと入れ替える。.actor が見つからなければ、
+        //! 前のアクターを外して JSON のまま持ち、nullptr を返す
         SceneActor* ReplaceFromJson(const nlohmann::json& object);
 
         //! 同じ id の個体へ JSON を適用する。構成が同じなら実体を保ち、違えば再構築する
@@ -247,7 +248,7 @@ namespace NS
         SceneActor* ApplyFromJson(const nlohmann::json& object);
 
         //! @brief 配置物を 1 体消す。居なければ何もしない
-        //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
+        //! @details 当たり箱も揃うので、走っている世界を止めずに消せる。.actor が見つからずに持っている同じ id の JSON も捨てる
         void DestroyObject(uint32 objectId);
 
         //! 固定更新の段を順に実行する。同じ段では SceneActor の後にシステムを更新する
@@ -277,6 +278,11 @@ namespace NS
         //! シーンに 1 つの物・暗転・配置物・エフェクト・開発用の図形を捨てる。組み直しと終わりが呼ぶ
         void ClearWorld();
 
+        //! @brief 配置物の JSON 1 件からアクターを作る。組み直しと 1 体だけ入れる道の全部が通る
+        //! @details .actor が見つからなければ作らず、JSON を m_unresolvedObjects に id ごとに 1 つ持つ。
+        //! 作れた時は同じ id の持っていた JSON を捨てる
+        [[nodiscard]] std::unique_ptr<SceneActor> BuildOrKeepUnresolved(const nlohmann::json& object);
+
         // SpawnObject の中身。外から個体を受けると、OnInit を通っていない個体が入る
         SceneActor* AdoptObject(std::unique_ptr<SceneActor> obj, std::string name);
 
@@ -301,8 +307,9 @@ namespace NS
         // 仮想カメラは持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         CameraManager m_cameraManager;
         ActorList m_objects; // 配置物の一覧
-        // .actor が見つからず作らなかった配置物の JSON。読んだ順に持ち、保存ではアクターの後に書く。
-        // id は m_objects の次の id が読んだ時に数えているので、新しいアクターに振られない
+        // .actor が見つからず作らなかった配置物の JSON。id ごとに 1 つ、持った順に並べ、保存ではアクターの後に書く。
+        // id は、読む時は m_objects の次の id が数え、1 体だけ入れる道ではこのシーンの控えの id なので数え済み。
+        // 新しいアクターに振られない
         std::vector<nlohmann::json> m_unresolvedObjects;
         // 更新へ登録した管理役 1 件
         struct SystemEntry
