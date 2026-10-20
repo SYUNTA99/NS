@@ -278,8 +278,9 @@ void PlayerActor::VisualStep()
     const GL::Player::PlayerMotion motion = Motion();
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
-    m_appearance->Update(motion, m_charge, m_slam, m_rebound, m_skid, AimDirection(), impact);
-    m_chargeEffects->Update(m_charge, m_slam, motion, ChargeAimDirection(), m_appearance.get(), impact);
+    const NS::Vector3 release = ReleaseDirection();
+    m_appearance->Update(motion, m_charge, m_slam, m_rebound, m_skid, release, impact);
+    m_chargeEffects->Update(m_charge, m_slam, motion, release, m_appearance.get(), impact);
     m_impactEffects->Update(m_slam, motion, m_body.get(), m_collider.get(), impact);
     // clang-format on
 #if !defined(NS_SHIPPING)
@@ -371,23 +372,19 @@ void PlayerActor::OnStart()
 
 void PlayerActor::OnEndPlay()
 {
-    m_states->Reset();
+    // 戻す物はやり直しと同じ組。走っている当たりのタイムラインも捨て、止めが次のプレイへ残らない
+    ResetState();
     // 次のプレイで選んだクリップを頭から流す
     if (NS::Animation* animation = AnimationClassObj())
     {
         animation->Play(nullptr);
     }
     NS::SceneActor::OnEndPlay();
-    // 走っている当たりのタイムラインを捨てる。プレイの途中で外れても止めが次のプレイへ残らない
-    m_resolver->CancelImpact(&m_tackleGhost, HitReactionClassObj());
-    m_appearance->ResetDrawScale();
-    m_chargeEffects->Clear();
     if (NS::Scene* scene = OwningScene())
     {
         scene->UnregisterOverlay(m_targetMarker.get());
         scene->UnregisterOverlay(m_slamArrow.get());
     }
-    EndCharge();
 }
 
 void PlayerActor::OnAppear()
@@ -649,13 +646,10 @@ void PlayerActor::ResetState() noexcept
     m_ledgeMantleTimer = 0.0f;
     m_facingDir = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_lastMoveDistance = 0.0f;
-    m_request.bufferRemaining = 0.0f;
-    m_request.spent = false;
-    m_request.charge01 = 0.0f;
-    m_request.overcharge01 = 0.0f;
-    m_request.dir = NS::Vector3{0.0f, 0.0f, 0.0f};
-    m_request.hasDir = false;
-    m_request.verticalSpeed = 0.0f;
+    m_request = BodySlamRequest{};
+    // 押したまま出直すと、次の押しのフレームから溜め直す。残すと、出直した後に放したフレームで前の溜めの突進が出る
+    CancelCharge();
+    m_chargeEffects->Clear();
     m_slam = GL::Player::BodySlamStatus{};
     m_rebound.m_direction = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_rebound.m_spinSpeed = 0.0f;

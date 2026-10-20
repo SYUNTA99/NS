@@ -1,8 +1,11 @@
+#include "Game/Player/ChargeEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
@@ -12,6 +15,8 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <string_view>
+#include <utility>
 
 namespace
 {
@@ -20,7 +25,109 @@ namespace
     {
         return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
     }
+
+    // +Z を向くカメラと一緒に置いた、床の無いシーンの自機
+    PlayerActor* PlaceChargePlayer(NS::Scene& scene)
+    {
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json entry = NS::MakeObjectJson();
+        NS::SetObjectJsonActorFile(entry, "PlayerActor");
+        NS::SetObjectJsonId(entry, 1);
+        NS::SceneJsonObjects(doc).push_back(std::move(entry));
+        scene.ResetFromJson(doc);
+        if (PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f}) == nullptr)
+        {
+            return nullptr;
+        }
+        return static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
+    }
+
+    const NS::EffectRecord* LiveEffect(const PlayerActor& player, std::string_view name)
+    {
+        for (const NS::EffectRecord& record : player.GetEffectKeeper()->Records())
+        {
+            if (record.name == name && !record.endStep.has_value())
+            {
+                return &record;
+            }
+        }
+        return nullptr;
+    }
 } // namespace
+
+// しきい値の前・溜めの間・溜めすぎの間のどのフレームでも、玉の回る軸・溜まる光の根の向き・次のフレームに放した突進の
+// 向きが同じ。押したフレームは +X へ倒し、押している間は -X へ倒す。カメラは +Z を向く
+TEST(PlayerChargeSequence, SpinAxisChargeEffectAndReleaseShareOneDirection)
+{
+    for (const float heldSeconds : {0.05f, 0.5f, 1.2f})
+    {
+        SCOPED_TRACE(heldSeconds);
+        NS::Scene scene;
+        PlayerActor* player = PlaceChargePlayer(scene);
+        ASSERT_NE(player, nullptr);
+        ASSERT_EQ(
+            NS::ApplyJsonFields(player->Params(),
+                                {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}, {"溜めすぎの秒数", 0.5f}}),
+            0u);
+        player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+        player->Update(true);
+        player->SetDesiredMove(NS::Vector3{-1.0f, 0.0f, 0.0f}, 1.0f);
+        for (int held = 1; held < FramesFor(heldSeconds); ++held)
+        {
+            player->Update(true);
+        }
+        ASSERT_TRUE(player->ChargeJudge().IsHoldingCharge());
+        const NS::Vector3 axis = player->Appearance().SpinAxis();
+        const NS::EffectRecord* gather = LiveEffect(*player, "charge.gather");
+        ASSERT_NE(gather, nullptr);
+        ASSERT_TRUE(gather->rotation.has_value());
+        const NS::Quaternion gatherRotation = *gather->rotation;
+
+        player->Update(false);
+        ASSERT_TRUE(player->IsBodySlamming());
+        const NS::Vector3 released = player->BodySlamDirection();
+        // 玉は 軸 × 上 の向きへ倒れるので、出る向き (x, z) の軸は (z, −x)
+        EXPECT_NEAR(axis.x, released.z, 0.0001f);
+        EXPECT_NEAR(axis.z, -released.x, 0.0001f);
+        const NS::Quaternion expected = GL::Player::ChargeEffects::YawToward(released);
+        EXPECT_NEAR(gatherRotation.x, expected.x, 0.0001f);
+        EXPECT_NEAR(gatherRotation.y, expected.y, 0.0001f);
+        EXPECT_NEAR(gatherRotation.z, expected.z, 0.0001f);
+        EXPECT_NEAR(gatherRotation.w, expected.w, 0.0001f);
+    }
+}
+
+// 溜めている途中でやり直すと、溜め量は 0 で、押したフレームの狙いの控えも走る速さの倍率も残らない。
+// 押したフレームは +X へ倒し、カメラは +Z を向く。やり直しで入力は消えるので、控えが無ければカメラの正面へ出る
+TEST(PlayerChargeSequence, RestartWhileChargingDropsTheChargeTheAimAndTheSlowdown)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceChargePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    // しきい値を狙いの巻き戻し秒より短くし、控えが効いている間に溜めへ入る
+    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.05f}, {"狙いの巻き戻し秒", 0.11f}}),
+              0u);
+    const float runMaxSpeed = player->MaxSpeed();
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    for (int held = 0; held < FramesFor(0.08f); ++held)
+    {
+        player->Update(true);
+    }
+    ASSERT_TRUE(player->ChargeJudge().IsCharging());
+    ASSERT_GT(player->ChargeJudge().Charge01(), 0.0f);
+    ASSERT_LT(player->MaxSpeed(), runMaxSpeed);
+
+    player->Restart();
+    EXPECT_FALSE(player->ChargeJudge().IsHeld());
+    EXPECT_FLOAT_EQ(player->ChargeJudge().Charge01(), 0.0f);
+    EXPECT_FLOAT_EQ(player->MaxSpeed(), runMaxSpeed);
+    const NS::Vector3 release = player->ReleaseDirection();
+    EXPECT_NEAR(release.x, 0.0f, 0.0001f);
+    EXPECT_NEAR(release.z, 1.0f, 0.0001f);
+    // 押さずに進めても、やり直しの前の溜めが放されて突進が出る事は無い
+    player->Update(false);
+    EXPECT_FALSE(player->IsBodySlamming());
+}
 
 // 押したフレームに丸まり、しきい値のフレームに減速して横を止め、放したフレームに発動する
 TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
@@ -105,7 +212,7 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
     EXPECT_TRUE(player.ChargeJudge().JustStartedCharging());
 }
 
-TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
+TEST(PlayerChargeSequence, LiveTimingAppliesAndRestartStartsTheHeldDurationOver)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
@@ -114,10 +221,10 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
     player.Restart();
     EXPECT_FALSE(player.IsCurled());
     ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 0.3f}}), 0u);
-    // 出直しの前に押した 1 フレームも数え、しきい値と満タンの真ん中まで押す
+    // 出直しの前に押した 1 フレームは数えず、出直した後の押しからしきい値と満タンの真ん中まで押す
     const int threshold = FramesFor(0.1f);
     const int full = FramesFor(0.3f);
-    for (int held = 1; held < (threshold + full) / 2; ++held)
+    for (int held = 0; held < (threshold + full) / 2; ++held)
     {
         player.Update(true);
     }
@@ -130,7 +237,8 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.5f);
 }
 
-TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
+// 押したまま出直すと、出直した後の押しから溜め直す。消えて出直すだけ (Die と Appear) では溜めは途切れない
+TEST(PlayerChargeSequence, ChargeStartsOverAtARestartAndCountsThroughADisappear)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
@@ -149,7 +257,7 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
     {
         player.Update(true);
     }
-    EXPECT_FLOAT_EQ(player.ChargeJudge().Charge01(), static_cast<float>(threshold * 4) / span);
+    EXPECT_FLOAT_EQ(player.ChargeJudge().Charge01(), static_cast<float>(threshold) / span);
     player.Die();
     player.Appear();
     for (int frame = 0; frame < threshold * 2; ++frame)
@@ -157,7 +265,7 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
         player.Update(true);
     }
     EXPECT_TRUE(player.ChargeJudge().IsHeld());
-    EXPECT_FLOAT_EQ(player.ChargeJudge().Charge01(), static_cast<float>(threshold * 6) / span);
+    EXPECT_FLOAT_EQ(player.ChargeJudge().Charge01(), static_cast<float>(threshold * 3) / span);
 }
 
 // 構えは縦の倍率を答えるだけで、根のスケールは押しても溜めても放しても配置の値のまま

@@ -146,7 +146,7 @@ public:
     //! @details 負のまま返すと EndBodySlam の頭打ちが cap / speed で負の倍率になり、突進明けに水平の向きが反転する
     [[nodiscard]] float MaxSpeed() const noexcept;
     [[nodiscard]] float RunSpeed() const noexcept;
-    //! 先に根を出現位置へ置いて呼ぶ。移動・命中・丸まりを初期状態へ戻す
+    //! 先に根を出現位置へ置いて呼ぶ。移動・溜め・命中・丸まりを初期状態へ戻す。プレイの終わりも同じ組を戻す
     //! 根は動かさず、描く形は前フレームの倍率も含めて 1 に戻す
     void ResetState() noexcept;
     //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
@@ -278,6 +278,11 @@ public:
     //! @details 入力・カメラの前・速度の順に見て、どれも無ければゼロ。
     //! 溜めて放した突進は、狙いの線を控えていればその向きを添えるので、この向きへは出ない
     [[nodiscard]] NS::Vector3 AimDirection() const noexcept;
+    //! @brief このフレームの終わりに放したら、次のフレームに出る突進の水平の向きを返す
+    //! @details 溜めの間は狙いの線の向き、しきい値の前と線の無い時は BlendedAimDirection。
+    //! 玉の回る軸と溜めの演出はこの向きを読む
+    //! @return 正規化済みの向き。決まらない場合はゼロ
+    [[nodiscard]] NS::Vector3 ReleaseDirection() const noexcept;
     //! 反動の初速を与え、反動状態へ移る。無効な軌道なら false で何も変えない
     //! 反動中はジャンプできず、専用の空中加速度を使う。着地後は真ん中なら立ち、外れなら滑りへ移る
     [[nodiscard]] bool BeginRebound(const GL::Player::ReboundArc& arc) noexcept;
@@ -379,8 +384,9 @@ private:
     [[nodiscard]] float BodySlamAimBlend01() const noexcept;
     //! 通常・溜めた突進の水平速度 (m/s) を返す。初速と更新に同じ値を使う
     [[nodiscard]] float BodySlamSpeed() const noexcept;
-    //! 押している間に狙っている水平の向き。狙いの線があればその向き、無ければ AimDirection
-    [[nodiscard]] NS::Vector3 ChargeAimDirection() const noexcept;
+    //! @brief 向きを添えない突進が出る水平の向き。AimDirection に押したフレームの控えを BodySlamAimBlend01 で混ぜる
+    //! @return 正規化済みの向き。決まらない場合はゼロ
+    [[nodiscard]] NS::Vector3 BlendedAimDirection() const noexcept;
     //! @brief 裁定の答えにある、このフレームに自機がする事をする
     //! @details 突進を打ち切ってから、止めた自機を動かし直す。反動の曲線があれば反動を始め、
     //! 曲線にならない時と貫通は答えの速度を身体へ書く
@@ -414,8 +420,6 @@ private:
     //! @details 判定と狙いの控えを初めの値へ戻し、押しの印を偽、最高速度の倍率を 1 へ戻す。
     //! 構えは判定から答えるので 1 に戻る。丸まりは解かず、着地で解ける
     void CancelCharge() noexcept;
-    //! プレイを終える時に溜めを捨て (CancelCharge)、丸まりを解く
-    void EndCharge() noexcept;
 #if !defined(NS_SHIPPING)
     //! 溜めている間、当たりの足元に溜め量で広がる輪を描く
     void DrawChargeRing() const;

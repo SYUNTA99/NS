@@ -38,7 +38,7 @@ namespace GL
             void Preload();
 
             //! @brief 押し・溜め・放しに合わせて演出を出し、玉へ付いていかせる。持ち主の見た目の段が呼ぶ
-            //! @param[in] aimDirection 押している間に狙っている水平の向き
+            //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
             //! @param[in] appearance 玉の回転の正。このフレームに玉が回った角度を読む。空でないこと
             //! @param[in] impact 当たりの裁定の答え。止めの頭と接触の見込みを読む
             void Update(const ChargeStatus& charge,
@@ -48,7 +48,7 @@ namespace GL
                         const PlayerAppearance* appearance,
                         const GL::Level::ImpactAnswer& impact);
 
-            //! 番号を控えている溜めと放しのエフェクトを消す。持ち主の OnEndPlay が呼ぶ
+            //! 番号を控えている溜めと放しのエフェクトを消す。持ち主の ResetState が呼ぶ
             void Clear();
 
             //! @brief 溜まる光へ動的入力 1 番で渡す、溜めきってからの数

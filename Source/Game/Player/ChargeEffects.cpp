@@ -230,7 +230,8 @@ namespace GL
             Place(m_curl, center, NS::Quaternion::Identity);
             Place(m_spin, center, spinBoard);
             Place(m_grind, center, YawToward(aimDirection));
-            // 溜まる光の根は狙いの線 (カメラの正面の水平の向き) へ回す。定義は根の手前に低く、奥に高く光の点を生む
+            // 溜まる光の根は今放せば出る向きへ回す。溜めている間は狙いの線の向きになる。
+            // 定義は根の手前に低く、奥に高く光の点を生む
             Place(m_gather, center, YawToward(aimDirection));
             Place(m_full, center, NS::Quaternion::Identity);
             SetCharge(m_spin, charge01);

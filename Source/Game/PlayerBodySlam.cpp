@@ -228,39 +228,59 @@ float PlayerActor::BodySlamAimBlend01() const noexcept
     return (fade - age) / (fade - hold);
 }
 
+NS::Vector3 PlayerActor::BlendedAimDirection() const noexcept
+{
+    const NS::Vector3 dir = AimDirection();
+    const float aimLength =
+        std::sqrt(m_request.aimDir.x * m_request.aimDir.x + m_request.aimDir.z * m_request.aimDir.z);
+    if (aimLength < NS::k_Epsilon)
+    {
+        return dir;
+    }
+    const float blend = BodySlamAimBlend01();
+    if (!(blend > 0.0f))
+    {
+        return dir;
+    }
+    const NS::Vector3 mixed{dir.x * (1.0f - blend) + m_request.aimDir.x * blend,
+                            0.0f,
+                            dir.z * (1.0f - blend) + m_request.aimDir.z * blend};
+    const float mixedLength = std::sqrt(mixed.x * mixed.x + mixed.z * mixed.z);
+    // 正反対の向きを同じくらいの重みで混ぜると長さが 0 近くになる。その時は濃い側をそのまま採る
+    if (mixedLength >= NS::k_Epsilon)
+    {
+        return NS::Vector3{mixed.x / mixedLength, 0.0f, mixed.z / mixedLength};
+    }
+    if (blend >= 0.5f)
+    {
+        return m_request.aimDir;
+    }
+    return dir;
+}
+
+NS::Vector3 PlayerActor::ReleaseDirection() const noexcept
+{
+    // しきい値を越えて放すと、AdvanceCharge が控えた狙いの線の向きを添えて頼む。越える前に放すと通常突進になる
+    GL::Level::AimLine line{};
+    NS::Vector3 lineDirection{};
+    if (m_charge.m_judge.IsCharging() && m_charge.TryGetAimLine(line) &&
+        NS::TryNormalizeHorizontal(line.direction, lineDirection))
+    {
+        return lineDirection;
+    }
+    return BlendedAimDirection();
+}
+
 bool PlayerActor::BodySlam() noexcept
 {
     NS::Body& body = *m_body;
     // 速度を書く前に読む。発動のフレームはまだ前のフレームの接地のまま
     const bool launchedInAir = !body.IsGrounded();
-    NS::Vector3 dir = AimDirection();
-
-    const float aimLength =
-        std::sqrt(m_request.aimDir.x * m_request.aimDir.x + m_request.aimDir.z * m_request.aimDir.z);
     // 添えた向きは放す前に見せていた狙いなので、入力も押したフレームの控えも混ぜない
-    if (m_request.hasDir)
+    NS::Vector3 dir = m_request.dir;
+    if (!m_request.hasDir)
     {
-        dir = m_request.dir;
-    }
-    else if (aimLength >= NS::k_Epsilon)
-    {
-        const float blend = BodySlamAimBlend01();
-        if (blend > 0.0f)
-        {
-            NS::Vector3 mixed{dir.x * (1.0f - blend) + m_request.aimDir.x * blend,
-                              0.0f,
-                              dir.z * (1.0f - blend) + m_request.aimDir.z * blend};
-            const float mixedLength = std::sqrt(mixed.x * mixed.x + mixed.z * mixed.z);
-            // 正反対の向きを同じくらいの重みで混ぜると長さが 0 近くになる。その時は濃い側をそのまま採る
-            if (mixedLength >= NS::k_Epsilon)
-            {
-                dir = NS::Vector3{mixed.x / mixedLength, 0.0f, mixed.z / mixedLength};
-            }
-            else if (blend >= 0.5f)
-            {
-                dir = m_request.aimDir;
-            }
-        }
+        dir = BlendedAimDirection();
     }
 
     if (std::sqrt(dir.x * dir.x + dir.z * dir.z) < NS::k_Epsilon)

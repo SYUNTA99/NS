@@ -44,7 +44,7 @@ namespace GL
             void Uncurl() noexcept;
 
             //! @brief 丸まりに合わせて玉を回し、描く形の倍率を書く。持ち主の見た目の段が呼ぶ
-            //! @param[in] aimDirection 狙いの線が無い時に、放せば出る水平の向き
+            //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
             //! @param[in] impact 当たりの裁定の答え。当たりの潰れと伸びと、何回目の当たりかを読む
             void Update(const PlayerMotion& motion,
                         const ChargeStatus& charge,

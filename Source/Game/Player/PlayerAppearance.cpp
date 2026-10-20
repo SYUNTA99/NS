@@ -2,7 +2,6 @@
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/SlamAim.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
@@ -128,15 +127,8 @@ namespace GL
             }
             else if (charge.Judge().IsHoldingCharge())
             {
-                // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、通常突進と線の無い時は
-                // aimDirection の向きへ出る。狙いが決まらないフレームは前の軸で回し続ける
-                NS::Vector3 aim = aimDirection;
-                GL::Level::AimLine line{};
-                if (charge.Judge().IsCharging() && charge.TryGetAimLine(line))
-                {
-                    aim = line.direction;
-                }
-                SetRollAxisToward(aim, m_spinAxis);
+                // 今放せば出る向きへ回す。向きが決まらないフレームは前の軸で回し続ける
+                SetRollAxisToward(aimDirection, m_spinAxis);
                 m_spinSpeed = m_emptyChargeSpinSpeed +
                               (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * charge.Judge().Charge01();
             }

@@ -64,16 +64,6 @@ bool PlayerActor::TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
     return m_charge.TryGetAimLine(outLine);
 }
 
-NS::Vector3 PlayerActor::ChargeAimDirection() const noexcept
-{
-    GL::Level::AimLine line{};
-    if (m_charge.TryGetAimLine(line))
-    {
-        return line.direction;
-    }
-    return AimDirection();
-}
-
 bool PlayerActor::TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
 {
     return m_charge.TryGetAimTarget(outTarget);
@@ -284,13 +274,6 @@ void PlayerActor::CancelCharge() noexcept
     m_charge = GL::Player::ChargeStatus{};
     m_chargeObserved = ChargeObservation{};
     SetMaxSpeedScale(1.0f);
-}
-
-void PlayerActor::EndCharge() noexcept
-{
-    CancelCharge();
-    // 外れた後は着地で丸まりを解く歩が来ないので、ここで解く。ResetState は速度と状態機械まで戻すので呼ばない
-    SetCurled(false);
 }
 
 #if !defined(NS_SHIPPING)

@@ -1,5 +1,6 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/Clock.h"
 
@@ -126,8 +127,9 @@ TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
         EXPECT_FALSE(player.IsBodySlamming());
     }
     EXPECT_TRUE(player.ChargeJudge().IsAwaitingLaunch());
-    // やり直しで空中の 1 発の印が消えて出せるようになったフレームに出る
-    player.ResetState();
+    // 着地で空中の 1 発の印が消えて出せるようになったフレームに出る
+    player.Body().SetGrounded(true);
+    player.SyncGroundState();
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.Update(true);
     EXPECT_TRUE(player.IsBodySlamming());
