@@ -346,8 +346,15 @@ float PlayerActor::ChoosePlaybackSpeed(const NS::Anim::AnimClip* clip, float lat
 void PlayerActor::OnAssetsLoaded()
 {
     NS::SceneActor::OnAssetsLoaded();
-    // Model は自分のメッシュの欄を読み直したところなので、今の姿のメッシュを差し直す
-    m_appearance->ShowCurrentLook();
+    // Model は自分のメッシュの欄を読み直したところなので、当たりの形に合う姿のメッシュを差し直す
+    if (IsCurled())
+    {
+        m_appearance->Curl();
+    }
+    else
+    {
+        m_appearance->Uncurl();
+    }
 }
 
 void PlayerActor::OnStart()
@@ -617,7 +624,7 @@ GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
         .bodySlamming = IsBodySlamming(),
         .rebounding = IsRebounding(),
         .skidding = IsSkidding(),
-        .curled = m_curled,
+        .curled = IsCurled(),
         .canMoveBody = CanMoveBody(),
     };
 }
@@ -650,8 +657,8 @@ void PlayerActor::ResetState() noexcept
     m_skid = GL::Player::SkidStatus{};
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
-    m_curled = false;
     m_collider->SetSphereShape(false);
+    m_appearance->Uncurl();
     m_states->Reset();
     // 止めの最中か反動を待つ間のやり直しで、出現位置で明けて弾かれないよう、走っている当たりのタイムラインを持ち主に打ち切らせる
     m_resolver->CancelImpact(&m_tackleGhost, HitReactionClassObj());

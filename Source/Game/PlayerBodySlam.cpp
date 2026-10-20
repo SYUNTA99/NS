@@ -2,6 +2,7 @@
 
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LaunchArc.h"
+#include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/SlamBall.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
@@ -370,15 +371,27 @@ void PlayerActor::SetCurled(bool curled) noexcept
     ChangeCurled(curled);
 }
 
+bool PlayerActor::IsCurled() const noexcept
+{
+    return m_collider->IsSphereShape();
+}
+
 void PlayerActor::ChangeCurled(bool curled) noexcept
 {
     NS::Collider& collider = *m_collider;
-    if (curled == m_curled)
+    if (curled == IsCurled())
     {
         return;
     }
-    m_curled = curled;
     collider.SetSphereShape(curled);
+    if (curled)
+    {
+        m_appearance->Curl();
+    }
+    else
+    {
+        m_appearance->Uncurl();
+    }
     // 半長ぶん根を上げ下げして、立ち姿と玉の当たりの下端を揃える
     float rise = collider.StandingHalfHeight();
     if (curled)
@@ -398,7 +411,7 @@ NS::Sphere PlayerActor::SlamBallAt(const NS::Vector3& rootPosition) const noexce
 void PlayerActor::UncurlWhenSettled() noexcept
 {
     NS::Body& body = *m_body;
-    if (!m_curled)
+    if (!IsCurled())
     {
         return;
     }

@@ -1,4 +1,5 @@
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/IdlePlayerState.h"
@@ -9,9 +10,11 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
@@ -214,6 +217,43 @@ TEST(PlayerStateSequence, SlamBallStaysPutWhenCurling)
     EXPECT_FLOAT_EQ(curled.center.y, standing.center.y);
     EXPECT_FLOAT_EQ(curled.center.z, standing.center.z);
     EXPECT_FLOAT_EQ(curled.radius, standing.radius);
+}
+
+// 丸まりの正は当たりの形。丸まる・解く・やり直しの直後に、丸まりの答え・当たりの形・描くメッシュが揃う
+TEST(PlayerStateSequence, CurledAnswerShapeAndDrawnMeshAgree)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const NS::Model* model = player->ModelClassObj();
+    ASSERT_NE(model, nullptr);
+    const nlohmann::json looks = NS::SerializeClassObjFields(player->Appearance());
+    NS::Mesh* standingMesh = nullptr;
+    NS::Mesh* ballMesh = nullptr;
+    NS::LoadAssetField(standingMesh, looks["立ち姿のメッシュ"].get<std::string>());
+    NS::LoadAssetField(ballMesh, looks["玉のメッシュ"].get<std::string>());
+    ASSERT_NE(standingMesh, ballMesh);
+
+    const auto expectAgree = [&](bool curled, const char* when)
+    {
+        EXPECT_EQ(player->IsCurled(), curled) << when;
+        EXPECT_EQ(player->Collider().CapsuleHalfHeight() == 0.0f, curled) << when;
+        const NS::Mesh* expected = standingMesh;
+        if (curled)
+        {
+            expected = ballMesh;
+        }
+        EXPECT_EQ(model->GetMesh(), expected) << when;
+    };
+
+    expectAgree(false, "置いた直後");
+    player->SetCurled(true);
+    expectAgree(true, "丸まった直後");
+    player->SetCurled(false);
+    expectAgree(false, "解いた直後");
+    player->SetCurled(true);
+    player->ResetState();
+    expectAgree(false, "やり直しの直後");
 }
 
 TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)

@@ -190,7 +190,8 @@ public:
     //! @brief こすって止まる間の、着いた水平の速さに掛けている今の倍率を返す
     //! @return 0〜1。こすって止まる状態でない間は 1
     [[nodiscard]] float SkidSpeedScale() const noexcept;
-    [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
+    //! 丸まっているか。正は当たりの部品の形で、当たりを球にしている間は真
+    [[nodiscard]] bool IsCurled() const noexcept;
     //! 今の状態から、突進中・反動中・こすり中・丸まり・動けるかを組んで返す
     [[nodiscard]] GL::Player::PlayerMotion Motion() const noexcept;
     //! 世界の rootPosition にある当たりのカプセルの下の球を返す
@@ -384,7 +385,7 @@ private:
     //! @brief 体当たりの要求を覚えてよい場合 true、それ以外の場合は false
     //! @details 突進中と CanMoveBody が偽の間は偽。ここで覚えた押しは止めの間に減らず、明けや空振りの後に 2 本目になる
     [[nodiscard]] bool AcceptsBodySlamRequest() const noexcept;
-    //! 当たりの下端を保ち、立ち姿と球を切り替える
+    //! 当たりの下端を保ち、立ち姿と球を切り替え、見た目の姿も同じフレームに持ち替えさせる
     //! 描画で動きに見えないよう、根は前フレームの位置も一緒にずらす
     void ChangeCurled(bool curled) noexcept;
     //! @brief 丸まりを解く
@@ -450,8 +451,6 @@ private:
     float m_bufferTimer = 0.0f; // 先行ジャンプ入力の残り秒
 
     float m_maxSpeedScale = 1.0f; // 走行速度に掛ける倍率。書くのは AdvanceCharge と CancelCharge
-
-    bool m_curled = false;
 
     GL::Player::BodySlamStatus m_slam;
     BodySlamRequest m_request;

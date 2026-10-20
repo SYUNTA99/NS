@@ -60,6 +60,8 @@ namespace NS
         //! @details 真の間は CapsuleHalfHeight が 0 を返し、移動と裁定が同じ球で当たる。半径は変えない。
         //! 根の位置は動かさないので、足元を揃えるのは呼び手の仕事
         void SetSphereShape(bool sphere) noexcept;
+        //! 当たりを球にしているか。SetSphereShape で最後に置いた値
+        [[nodiscard]] bool IsSphereShape() const noexcept { return m_sphereShape; }
 
         //! 持ち主の Scene の衝突の PhysicsScene。持ち主が無いか Scene に居なければ nullptr
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
@@ -81,7 +83,7 @@ namespace NS
     private:
         float m_radius = 0.4f;             // 当たりのカプセルの半径 (m)
         float m_standingHalfHeight = 0.5f; // 立ち姿の円柱の半分の高さ (m)。半球を除く
-        bool m_sphereShape = false;        // 当たりを球にしているか。書くのは SetSphereShape だけ
+        bool m_sphereShape = false;        // 書くのは SetSphereShape だけ
         std::unique_ptr<Phys::JoltCharacter> m_character;
         SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };

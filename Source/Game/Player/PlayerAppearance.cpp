@@ -48,22 +48,12 @@ namespace GL
 
         void PlayerAppearance::Curl() noexcept
         {
-            if (m_curled)
-            {
-                return;
-            }
-            m_curled = true;
-            ShowCurrentLook();
+            ShowLook(m_ballMesh, m_ballScale);
         }
 
         void PlayerAppearance::Uncurl() noexcept
         {
-            if (!m_curled)
-            {
-                return;
-            }
-            m_curled = false;
-            ShowCurrentLook();
+            ShowLook(m_standingMesh, m_standingScale);
         }
 
         float PlayerAppearance::StanceHeight(const ChargeStatus& charge) const noexcept
@@ -111,7 +101,7 @@ namespace GL
                 dt = NS::GetFrameDelta(m_owner);
             }
 
-            if (!m_curled)
+            if (!motion.curled)
             {
                 // 立ち姿は回さず、玉の回転と軸と速さも捨てる。丸まり直した玉へ前の玉の値を持ち越さない
                 m_spin = NS::Quaternion::Identity;
@@ -256,14 +246,6 @@ namespace GL
                                       const GL::Level::ImpactAnswer& impact)
         {
             NS_ASSERT(Game, body != nullptr, "体の部品が渡されていない");
-            if (motion.curled)
-            {
-                Curl();
-            }
-            else
-            {
-                Uncurl();
-            }
             AdvanceSpin(motion, charge, slam, rebound, skid, aimDirection, impact);
             AdvanceLandingSquash(motion, body);
             WriteDrawScale(charge, impact);
@@ -355,7 +337,7 @@ namespace GL
             m_drawScaleRejected = true;
         }
 
-        void PlayerAppearance::ShowCurrentLook() noexcept
+        void PlayerAppearance::ShowLook(NS::Mesh* mesh, const NS::Vector3& scale) noexcept
         {
             if (m_owner == nullptr)
             {
@@ -367,13 +349,6 @@ namespace GL
                 return;
             }
 
-            NS::Mesh* mesh = m_standingMesh;
-            NS::Vector3 scale = m_standingScale;
-            if (m_curled)
-            {
-                mesh = m_ballMesh;
-                scale = m_ballScale;
-            }
             if (!renderer->SetLocalScale(scale))
             {
                 NS_LOG_WARN(Game,
