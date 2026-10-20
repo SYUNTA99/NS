@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/GoalActor.h"
@@ -20,7 +21,6 @@
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 
 #include <gtest/gtest.h>
 
@@ -45,7 +45,7 @@ TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
     GL::Level::PropActor& obj = *objOwned;
     EXPECT_NE(obj.ModelClassObj(), nullptr);
     EXPECT_NE(NS::Cast<NS::SphereCollision>(obj.CollisionClassObj()), nullptr);
-    const nlohmann::json prototype = NS::MakePrototypeJson(obj);
+    const nlohmann::json prototype = NS::Editor::MakePrototypeJson(obj);
     EXPECT_EQ(NS::ClassObjFields(prototype, "Breakable"), nullptr);
     EXPECT_EQ(NS::ClassObjFields(prototype, "LaunchedBody"), nullptr);
     EXPECT_NE(obj.ShadowClassObj(), nullptr);
@@ -86,14 +86,14 @@ TEST(ActorClass, FollowCameraHasFollowAndFeed)
 {
     const std::unique_ptr<GL::Level::FollowCameraActor> cameraOwned = NS::CreateActor<GL::Level::FollowCameraActor>();
     GL::Level::FollowCameraActor& camera = *cameraOwned;
-    EXPECT_NE(NS::ClassObjFields(NS::MakePrototypeJson(camera), "Vcam"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(NS::Editor::MakePrototypeJson(camera), "Vcam"), nullptr);
 }
 
 TEST(ActorClass, LightHasDirectionalLight)
 {
     const std::unique_ptr<NS::LightActor> lightOwned = NS::CreateActor<NS::LightActor>();
     NS::LightActor& light = *lightOwned;
-    EXPECT_NE(NS::ClassObjFields(NS::MakePrototypeJson(light), "DirectionalLight"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(NS::Editor::MakePrototypeJson(light), "DirectionalLight"), nullptr);
 }
 
 TEST(ActorClass, LightShinesAlongItsRotation)
@@ -121,7 +121,7 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
     // 以前はシーンのデータが足していた体当たりと当たりの部品も、クラスが組み立てる
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const nlohmann::json prototype = NS::MakePrototypeJson(player);
+    const nlohmann::json prototype = NS::Editor::MakePrototypeJson(player);
     EXPECT_NE(NS::ClassObjFields(prototype, "Movement"), nullptr);
     EXPECT_NE(NS::ClassObjFields(prototype, "Input"), nullptr);
     EXPECT_EQ(NS::ClassObjFields(prototype, "PlayerInputRelay"), nullptr);

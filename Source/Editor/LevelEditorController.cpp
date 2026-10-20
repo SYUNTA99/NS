@@ -1461,7 +1461,7 @@ void LevelEditorController::FinishFieldWrite(NS::SceneActor& actor, NS::FieldTyp
 void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
 {
     nlohmann::json object = item.prototype;
-    NS::SetObjectPosition(object, m_editorCamera.Center());
+    NS::Editor::SetObjectPosition(object, m_editorCamera.Center());
     CreateObjectAndSelect(std::move(object));
 }
 
@@ -1477,7 +1477,7 @@ void LevelEditorController::AddMeshParts(std::string_view meshPath)
     }
 
     nlohmann::json object = NS::Editor::MakeMeshPartsPrototype(*meshRef);
-    NS::SetObjectPosition(object, m_editorCamera.Center());
+    NS::Editor::SetObjectPosition(object, m_editorCamera.Center());
     NS::SetObjectJsonName(object, NS::OS::FileSystem::Stem(meshPath));
     CreateObjectAndSelect(std::move(object));
 }

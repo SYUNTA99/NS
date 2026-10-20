@@ -1,5 +1,7 @@
 #include "Editor/PlacementCatalog.h"
 
+#include "Editor/EditorObjects.h"
+
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"

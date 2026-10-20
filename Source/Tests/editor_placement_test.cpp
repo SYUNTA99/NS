@@ -3,6 +3,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
+#include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -69,6 +70,32 @@ TEST(EditorPlacement, SlopeAnglesComeFromTheBuiltinShapes)
     NS::Editor::CategoryPalette palette;
     palette.SetActiveSlot(1);
     EXPECT_FLOAT_EQ(palette.CurrentSlopeAngleDegrees(), *NS::AssetManager::BuiltinSlopeAngleDegrees("wedge45"));
+}
+
+// エディタの姿勢の関数で JSON に書いた姿が、そのまま組んだアクターの根の姿になる
+TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
+{
+    nlohmann::json bare = NS::MakeObjectJson();
+    EXPECT_FLOAT_EQ(NS::Editor::ObjectScale(bare).y, 1.0f);
+    NS::Editor::EnsureTransformClassObj(bare);
+    EXPECT_FLOAT_EQ(NS::Editor::ObjectScale(bare).y, 1.0f);
+    EXPECT_FLOAT_EQ(NS::Editor::ObjectPosition(bare).y, 0.0f);
+
+    nlohmann::json object = NS::Editor::MakePrototypeJson<GL::Level::PropActor>();
+    const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(0.5f, 0.0f, 0.0f);
+    NS::Editor::SetObjectPosition(object, NS::Vector3{1.0f, 2.0f, 3.0f});
+    NS::Editor::SetObjectRotation(object, rotation);
+    NS::Editor::SetObjectScale(object, NS::Vector3{2.0f, 2.0f, 2.0f});
+    EXPECT_FLOAT_EQ(NS::Editor::ObjectPosition(object).z, 3.0f);
+    EXPECT_FLOAT_EQ(NS::Editor::ObjectRotation(object).y, rotation.y);
+    EXPECT_FLOAT_EQ(NS::Editor::ObjectScale(object).x, 2.0f);
+
+    NS::Scene scene;
+    NS::SceneActor* actor = scene.SpawnFromJson(object);
+    ASSERT_NE(actor, nullptr);
+    EXPECT_FLOAT_EQ(actor->Root().Position().z, 3.0f);
+    EXPECT_FLOAT_EQ(actor->Root().Rotation().y, rotation.y);
+    EXPECT_FLOAT_EQ(actor->Root().Scale().x, 2.0f);
 }
 
 TEST(EditorPlacement, UndoRemovesPlacedActor)

@@ -366,7 +366,7 @@ TEST(SceneActor, EnsuredPlayerStandsOnTheAssumedFloorForItsCapsule)
 
     const nlohmann::json& objects = NS::SceneJsonObjects(doc);
     ASSERT_EQ(objects.size(), std::size_t{1});
-    EXPECT_NEAR(NS::ObjectPosition(objects[0]).y, 0.5f + 0.5f + 0.65f + 0.01f, 1e-5f);
+    EXPECT_NEAR(NS::Editor::ObjectPosition(objects[0]).y, 0.5f + 0.5f + 0.65f + 0.01f, 1e-5f);
 }
 
 TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosition)
@@ -376,7 +376,7 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
         {"class", "PlayerActor"}, {"classObjs", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::MakeSceneJson();
     ASSERT_TRUE(NS::Editor::EnsurePlayerObject(doc));
-    const NS::Vector3 ensured = NS::ObjectPosition(NS::SceneJsonObjects(doc)[0]);
+    const NS::Vector3 ensured = NS::Editor::ObjectPosition(NS::SceneJsonObjects(doc)[0]);
 
     NS::Scene scene;
     scene.ResetFromJson(doc);

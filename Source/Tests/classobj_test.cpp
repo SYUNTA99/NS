@@ -1,10 +1,10 @@
+#include "Editor/EditorObjects.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -235,7 +235,7 @@ TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
     EXPECT_EQ(loose->inits, 1);
 
     const ClassObjInitProbeActor* fromJson =
-        NS::Cast<ClassObjInitProbeActor>(scene.SpawnFromJson(NS::MakePrototypeJson<ClassObjInitProbeActor>()));
+        NS::Cast<ClassObjInitProbeActor>(scene.SpawnFromJson(NS::Editor::MakePrototypeJson<ClassObjInitProbeActor>()));
     ASSERT_NE(fromJson, nullptr);
     EXPECT_EQ(fromJson->inits, 1);
 
@@ -262,7 +262,7 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
         EXPECT_TRUE(actor->started);
     };
 
-    nlohmann::json placed = NS::MakePrototypeJson<AssetTimingProbeActor>();
+    nlohmann::json placed = NS::Editor::MakePrototypeJson<AssetTimingProbeActor>();
     NS::SetObjectJsonId(placed, 1);
     nlohmann::json doc = NS::MakeSceneJson();
     NS::SceneJsonObjects(doc).push_back(placed);
@@ -270,7 +270,7 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
     check(scene.Objects().FindByObjectId(1), "組み直し");
 
     check(scene.ReplaceFromJson(placed), "作り直す");
-    check(scene.SpawnFromJson(NS::MakePrototypeJson<AssetTimingProbeActor>()), "JSON から湧かす");
+    check(scene.SpawnFromJson(NS::Editor::MakePrototypeJson<AssetTimingProbeActor>()), "JSON から湧かす");
     check(scene.SpawnTransient<AssetTimingProbeActor>(), "型から湧かす (一時)");
     check(scene.SpawnObject<AssetTimingProbeActor>("Placed"), "型から湧かす (配置)");
 }
@@ -286,6 +286,6 @@ TEST(ClassObj, ActorLoadsAssetsWithoutAssetManagerScope)
 
 TEST(ClassObj, PrototypeJsonListsTheClassObjsInit)
 {
-    const nlohmann::json prototype = NS::MakePrototypeJson<ClassObjInitProbeActor>();
+    const nlohmann::json prototype = NS::Editor::MakePrototypeJson<ClassObjInitProbeActor>();
     EXPECT_NE(NS::ClassObjFields(prototype, "Model"), nullptr);
 }

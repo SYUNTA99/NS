@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObjParams.h"
@@ -55,12 +56,12 @@ namespace
         nlohmann::json player = NS::MakeObjectJson();
         NS::SetObjectJsonClass(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
-        NS::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::MakeObjectJson();
         NS::SetObjectJsonClass(rock, "PropActor");
         NS::SetObjectJsonId(rock, 2);
-        NS::SetObjectPosition(rock, NS::Vector3{targetX, 0.5f, targetZ});
+        NS::Editor::SetObjectPosition(rock, NS::Vector3{targetX, 0.5f, targetZ});
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         NS::OBB floor{};

@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
@@ -37,11 +38,11 @@ TEST(ClassObjSavedFields, SavedJsonHasNoEnabledKey)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
     ExpectNoEnabledKey(NS::ObjectToJson(*player));
-    ExpectNoEnabledKey(NS::ExpandObjectJson(NS::MakePrototypeJson<PlayerActor>()));
+    ExpectNoEnabledKey(NS::ExpandObjectJson(NS::Editor::MakePrototypeJson<PlayerActor>()));
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
     ExpectNoEnabledKey(NS::ObjectToJson(*prop));
-    ExpectNoEnabledKey(NS::ExpandObjectJson(NS::MakePrototypeJson<GL::Level::PropActor>()));
+    ExpectNoEnabledKey(NS::ExpandObjectJson(NS::Editor::MakePrototypeJson<GL::Level::PropActor>()));
 }
 
 TEST(ClassObjSavedFields, OptionalColorIsSavedAsNullOrFourNumbers)

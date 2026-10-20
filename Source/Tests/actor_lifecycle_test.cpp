@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
 #include "NSlib/CoreObject/ObjectJson.h"
@@ -37,7 +38,7 @@ namespace
         NS::SetObjectJsonId(object, id);
         NS::SetObjectJsonClass(object, "LifeBoxActor");
         NS::SetObjectJsonName(object, name);
-        NS::SetObjectPosition(object, {x, 0.0f, 0.0f});
+        NS::Editor::SetObjectPosition(object, {x, 0.0f, 0.0f});
         return object;
     }
 

@@ -1,10 +1,10 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -158,7 +158,7 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    const nlohmann::json prototype = NS::MakePrototypeJson(*playerOwned);
+    const nlohmann::json prototype = NS::Editor::MakePrototypeJson(*playerOwned);
     const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
     ASSERT_NE(archetype, nullptr);
     for (nlohmann::json::const_iterator it = NS::ObjectJsonClassObjs(*archetype).begin();

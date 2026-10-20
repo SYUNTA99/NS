@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Editor/EditorMode.h"
 #include "Editor/GameViewPanel.h"
 #include "Editor/HitTimelinePanel.h"
@@ -501,19 +502,19 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         nlohmann::json floor = NS::MakeObjectJson();
         NS::SetObjectJsonClass(floor, "MapPartsActor");
         NS::SetObjectJsonId(floor, 100);
-        NS::SetObjectPosition(floor, {0.0f, -0.5f, 0.0f});
-        NS::SetObjectScale(floor, {60.0f, 1.0f, 60.0f});
+        NS::Editor::SetObjectPosition(floor, {0.0f, -0.5f, 0.0f});
+        NS::Editor::SetObjectScale(floor, {60.0f, 1.0f, 60.0f});
         NS::SceneJsonObjects(snapshot).push_back(std::move(floor));
         nlohmann::json player = NS::MakeObjectJson();
         NS::SetObjectJsonClass(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
-        NS::SetObjectPosition(player, {0.0f, 1.0f, 0.0f});
+        NS::Editor::SetObjectPosition(player, {0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(snapshot).push_back(std::move(player));
         nlohmann::json rock = NS::MakeObjectJson();
         NS::SetObjectJsonClass(rock, "PropActor");
         NS::SetObjectJsonId(rock, 2);
-        NS::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
-        NS::SetObjectScale(rock, {3.0f, 3.0f, 3.0f});
+        NS::Editor::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
+        NS::Editor::SetObjectScale(rock, {3.0f, 3.0f, 3.0f});
         NS::SceneJsonObjects(snapshot).push_back(std::move(rock));
         scene.ResetFromJson(std::move(snapshot));
         scene.SetSimulationEnabled(false);

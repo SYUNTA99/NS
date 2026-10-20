@@ -1,7 +1,6 @@
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 
 #include <string>
@@ -223,74 +222,5 @@ namespace NS
                 target = mapped->second;
             }
         });
-    }
-
-    // 下の関数はエディタと試しのために JSON のまま姿勢を扱う。Actor を通す所は Root() を使い、鍵を知らない
-    namespace
-    {
-        const nlohmann::json* FindTransformFields(const nlohmann::json& object) noexcept
-        {
-            return ClassObjFields(object, "Transform");
-        }
-
-        Vector3 ReadTransformVec3(const nlohmann::json& object,
-                                      std::string_view fieldName,
-                                      const Vector3& fallback) noexcept
-        {
-            const nlohmann::json* transform = FindTransformFields(object);
-            if (transform == nullptr)
-            {
-                return fallback;
-            }
-            return FieldVector3(*transform, fieldName, fallback);
-        }
-    } // namespace
-
-    nlohmann::json& EnsureTransformClassObj(nlohmann::json& object)
-    {
-        nlohmann::json& transform = ObjectJsonClassObjs(object)["Transform"];
-        if (!transform.is_object())
-        {
-            transform = nlohmann::json::object();
-            SetField(transform, k_PositionFieldName, Vector3{0.0f, 0.0f, 0.0f});
-            SetField(transform, k_RotationFieldName, Quaternion::Identity);
-            SetField(transform, k_ScaleFieldName, Vector3{1.0f, 1.0f, 1.0f});
-        }
-        return transform;
-    }
-
-    Vector3 ObjectPosition(const nlohmann::json& object) noexcept
-    {
-        return ReadTransformVec3(object, k_PositionFieldName, Vector3{0.0f, 0.0f, 0.0f});
-    }
-
-    void SetObjectPosition(nlohmann::json& object, const Vector3& position) noexcept
-    {
-        SetField(EnsureTransformClassObj(object), k_PositionFieldName, position);
-    }
-
-    Quaternion ObjectRotation(const nlohmann::json& object) noexcept
-    {
-        const nlohmann::json* transform = FindTransformFields(object);
-        if (transform == nullptr)
-        {
-            return Quaternion::Identity;
-        }
-        return FieldQuaternion(*transform, k_RotationFieldName, Quaternion::Identity);
-    }
-
-    void SetObjectRotation(nlohmann::json& object, const Quaternion& rotation) noexcept
-    {
-        SetField(EnsureTransformClassObj(object), k_RotationFieldName, rotation);
-    }
-
-    Vector3 ObjectScale(const nlohmann::json& object) noexcept
-    {
-        return ReadTransformVec3(object, k_ScaleFieldName, Vector3{1.0f, 1.0f, 1.0f});
-    }
-
-    void SetObjectScale(nlohmann::json& object, const Vector3& scale) noexcept
-    {
-        SetField(EnsureTransformClassObj(object), k_ScaleFieldName, scale);
     }
 } // namespace NS

@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Game/Level/FollowCameraActor.h"
@@ -182,7 +183,7 @@ TEST(Archetype, InstanceCannotAddParts)
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(object, scene);
     ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(NS::ClassObjFields(NS::MakePrototypeJson(*actor), "DirectionalLight"), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(NS::Editor::MakePrototypeJson(*actor), "DirectionalLight"), nullptr);
 }
 
 TEST(Archetype, ObjectWithoutClassIsNotBuilt)

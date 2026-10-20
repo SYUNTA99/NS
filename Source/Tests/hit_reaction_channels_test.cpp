@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -20,7 +21,7 @@ namespace
         nlohmann::json entry = NS::MakeObjectJson();
         NS::SetObjectJsonClass(entry, "PlayerActor");
         NS::SetObjectJsonId(entry, 1);
-        NS::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::Editor::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(entry));
         scene.ResetFromJson(doc);
         return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));

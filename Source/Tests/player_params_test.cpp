@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"
@@ -12,7 +13,6 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -422,13 +422,13 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     nlohmann::json entry = NS::MakeObjectJson();
     NS::SetObjectJsonClass(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
-    NS::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
+    NS::Editor::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(entry));
     nlohmann::json rock = NS::MakeObjectJson();
     NS::SetObjectJsonClass(rock, "PropActor");
     NS::SetObjectJsonId(rock, 2);
     // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
-    NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
+    NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
     // 位置は部品の件 Transform に入っているので、件ごと置き換えずに足す
     // 飛び方の高さは相手の欄に書く
     NS::ObjectJsonClassObjs(rock)["Params"] = {{"質量", 1.0f}, {"押し飛ばしの高さ", 3.0f}};
@@ -513,7 +513,7 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     nlohmann::json rock = NS::MakeObjectJson();
     NS::SetObjectJsonClass(rock, "PropActor");
     NS::SetObjectJsonId(rock, 2);
-    NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
+    NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
     PlayerActor* player = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
@@ -555,7 +555,7 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
         const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
         PlayerActor& player = *playerOwned;
         const nlohmann::json& parts = NS::ObjectJsonClassObjs(entry);
-        const nlohmann::json prototype = NS::MakePrototypeJson(player);
+        const nlohmann::json prototype = NS::Editor::MakePrototypeJson(player);
         for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
         {
             EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << source << " " << it.key();

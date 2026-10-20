@@ -184,9 +184,9 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
         const std::size_t index = NS::FindObjectIndexById(baseline, id);
         ASSERT_NE(index, NS::k_NoObjectIndex);
         const nlohmann::json& object = NS::SceneJsonObjects(baseline)[index];
-        EXPECT_FLOAT_EQ(NS::ObjectPosition(object).x, 5.0f);
-        EXPECT_FLOAT_EQ(NS::ObjectRotation(object).y, rotation.y);
-        EXPECT_FLOAT_EQ(NS::ObjectScale(object).x, 2.0f);
+        EXPECT_FLOAT_EQ(NS::Editor::ObjectPosition(object).x, 5.0f);
+        EXPECT_FLOAT_EQ(NS::Editor::ObjectRotation(object).y, rotation.y);
+        EXPECT_FLOAT_EQ(NS::Editor::ObjectScale(object).x, 2.0f);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);

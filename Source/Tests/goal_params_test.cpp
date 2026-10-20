@@ -1,8 +1,8 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Gfx/Render/ScreenFade.h"
@@ -13,10 +13,10 @@ TEST(GameTuning, GoalFadeUsesTheSavedGoalFields)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json playerDoc = NS::MakePrototypeJson<PlayerActor>();
+    nlohmann::json playerDoc = NS::Editor::MakePrototypeJson<PlayerActor>();
     NS::SetObjectJsonId(playerDoc, 1);
     NS::SceneJsonObjects(doc).push_back(std::move(playerDoc));
-    nlohmann::json goalDoc = NS::MakePrototypeJson<GL::Level::GoalActor>();
+    nlohmann::json goalDoc = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
     NS::SetObjectJsonId(goalDoc, 2);
     NS::SceneJsonObjects(doc).push_back(std::move(goalDoc));
     scene.ResetFromJson(std::move(doc));

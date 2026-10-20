@@ -3,7 +3,6 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/Archetype.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -17,19 +16,16 @@
 
 namespace NS
 {
-    namespace
+    nlohmann::json MakeObjectHeaderJson(const SceneActor& obj, uint32 id)
     {
-        nlohmann::json MakeObjectHeaderJson(const SceneActor& obj, uint32 id)
-        {
-            nlohmann::json object = nlohmann::json::object();
-            WriteObjectHeader(object,
-                              ObjectHeader{.id = id,
-                                           .className = std::string{obj.ClassName()},
-                                           .name = obj.Name(),
-                                           .active = obj.IsAppeared()});
-            return object;
-        }
-    } // namespace
+        nlohmann::json object = nlohmann::json::object();
+        WriteObjectHeader(object,
+                          ObjectHeader{.id = id,
+                                       .className = std::string{obj.ClassName()},
+                                       .name = obj.Name(),
+                                       .active = obj.IsAppeared()});
+        return object;
+    }
 
     void ApplyObjectClassObjs(SceneActor& obj, const nlohmann::json& object)
     {
@@ -60,18 +56,6 @@ namespace NS
             return nullptr;
         }
         return CreateRegisteredObject(object, scene);
-    }
-
-    nlohmann::json MakePrototypeJson(const SceneActor& obj)
-    {
-        nlohmann::json object = MakeObjectHeaderJson(obj, 0u);
-        nlohmann::json& parts = ObjectJsonClassObjs(object);
-        ForEachReflectedClassObj(
-            obj, [&](const ClassObjInfo& field, Object*) { parts[field.key] = nlohmann::json::object(); });
-        SetObjectPosition(object, obj.Root().Position());
-        SetObjectRotation(object, obj.Root().Rotation());
-        SetObjectScale(object, obj.Root().Scale());
-        return object;
     }
 
     nlohmann::json ObjectToJson(const SceneActor& obj)

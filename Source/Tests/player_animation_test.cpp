@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Player/PlayerClips.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
@@ -5,7 +6,6 @@
 #include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/Clock.h"
 #include "TestAnimatedPlayerActor.h"
@@ -76,7 +76,7 @@ TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
         EXPECT_FALSE(paramFields.contains(it.key())) << it.key();
     }
-    EXPECT_EQ(NS::ClassObjFields(NS::MakePrototypeJson(player), "PlayerAnimator"), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(NS::Editor::MakePrototypeJson(player), "PlayerAnimator"), nullptr);
 }
 
 TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)

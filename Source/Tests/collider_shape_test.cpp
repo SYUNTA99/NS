@@ -1,3 +1,4 @@
+#include "Editor/EditorObjects.h"
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/PropActor.h"
@@ -8,7 +9,6 @@
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -104,7 +104,7 @@ TEST(ColliderShape, PlayerOwnsAFixedColliderPart)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    EXPECT_NE(NS::ClassObjFields(NS::MakePrototypeJson(player), "Collider"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(NS::Editor::MakePrototypeJson(player), "Collider"), nullptr);
 }
 
 TEST(ColliderShape, BodyHasNoShapeFields)
@@ -163,7 +163,7 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     nlohmann::json rock = NS::MakeObjectJson();
     NS::SetObjectJsonClass(rock, "PropActor");
     NS::SetObjectJsonId(rock, 1);
-    NS::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
+    NS::Editor::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
     NS::SceneActor* placed = scene.Objects().FindByObjectId(1);
