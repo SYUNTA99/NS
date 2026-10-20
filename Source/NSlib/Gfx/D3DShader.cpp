@@ -10,6 +10,8 @@
 
 #include <d3dcompiler.h>
 
+#include <algorithm>
+#include <cstring>
 #include <string>
 
 namespace NS
@@ -212,7 +214,161 @@ namespace NS
                 }
                 return true;
             }
+
+            constexpr const char* k_MaterialParamsName = "MaterialParams";
+
+            // 配列と行列と構造体は欄で触れる形にしないので Unsupported
+            [[nodiscard]] ShaderParamType ToParamType(const D3D11_SHADER_TYPE_DESC& type) noexcept
+            {
+                if (type.Elements != 0 || (type.Class != D3D_SVC_SCALAR && type.Class != D3D_SVC_VECTOR))
+                {
+                    return ShaderParamType::Unsupported;
+                }
+                if (type.Type == D3D_SVT_FLOAT)
+                {
+                    switch (type.Columns)
+                    {
+                    case 1:
+                        return ShaderParamType::Float;
+                    case 2:
+                        return ShaderParamType::Float2;
+                    case 3:
+                        return ShaderParamType::Float3;
+                    case 4:
+                        return ShaderParamType::Float4;
+                    default:
+                        return ShaderParamType::Unsupported;
+                    }
+                }
+                if (type.Columns != 1)
+                {
+                    return ShaderParamType::Unsupported;
+                }
+                switch (type.Type)
+                {
+                case D3D_SVT_INT:
+                    return ShaderParamType::Int;
+                case D3D_SVT_UINT:
+                    return ShaderParamType::Uint;
+                case D3D_SVT_BOOL:
+                    return ShaderParamType::Bool;
+                default:
+                    return ShaderParamType::Unsupported;
+                }
+            }
+
+            [[nodiscard]] bool ReadParam(ID3D11ShaderReflectionVariable* variable, ShaderParam& out) noexcept
+            {
+                D3D11_SHADER_VARIABLE_DESC desc{};
+                D3D11_SHADER_TYPE_DESC type{};
+                if (FAILED(variable->GetDesc(&desc)) || FAILED(variable->GetType()->GetDesc(&type)))
+                {
+                    return false;
+                }
+                out.name = desc.Name;
+                out.offset = desc.StartOffset;
+                out.size = desc.Size;
+                out.used = (desc.uFlags & D3D_SVF_USED) != 0;
+                out.type = ToParamType(type);
+                if (out.type != ShaderParamType::Unsupported && desc.DefaultValue != nullptr)
+                {
+                    const std::size_t bytes = std::min<std::size_t>(desc.Size, sizeof(out.initialBits));
+                    std::memcpy(out.initialBits.data(), desc.DefaultValue, bytes);
+                }
+                return true;
+            }
+
+            [[nodiscard]] bool IsSameParam(const ShaderParam& a, const ShaderParam& b) noexcept
+            {
+                return a.name == b.name && a.type == b.type && a.offset == b.offset && a.size == b.size;
+            }
         } // namespace
+
+        std::optional<ShaderParamLayout> ReflectMaterialParams(std::span<const std::byte> bytecode)
+        {
+            ComPtr<ID3D11ShaderReflection> reflection;
+            const HRESULT hr = D3DReflect(bytecode.data(), bytecode.size(), IID_PPV_ARGS(reflection.GetAddressOf()));
+            if (FAILED(hr))
+            {
+                NS_LOG_ERROR(Graphics, "MaterialParams: バイトコードを読めない (hr=0x{:X})", static_cast<uint>(hr));
+                return std::nullopt;
+            }
+            // 宣言が無いか、どの項目も読まれずに消えたシェーダーは、材質の値を持たない
+            D3D11_SHADER_INPUT_BIND_DESC bind{};
+            if (FAILED(reflection->GetResourceBindingDescByName(k_MaterialParamsName, &bind)))
+            {
+                return ShaderParamLayout{};
+            }
+            if (bind.Type != D3D_SIT_CBUFFER || bind.BindPoint != k_MaterialParamsSlot)
+            {
+                NS_LOG_ERROR(Graphics,
+                             "MaterialParams が b{} にある。材質の値は b{} の cbuffer にだけ書ける",
+                             bind.BindPoint,
+                             k_MaterialParamsSlot);
+                return std::nullopt;
+            }
+            ID3D11ShaderReflectionConstantBuffer* buffer = reflection->GetConstantBufferByName(k_MaterialParamsName);
+            D3D11_SHADER_BUFFER_DESC bufferDesc{};
+            if (FAILED(buffer->GetDesc(&bufferDesc)))
+            {
+                NS_LOG_ERROR(Graphics, "MaterialParams: cbuffer の記述を読めない");
+                return std::nullopt;
+            }
+
+            ShaderParamLayout layout;
+            layout.bufferSize = bufferDesc.Size;
+            layout.params.reserve(bufferDesc.Variables);
+            for (UINT i = 0; i < bufferDesc.Variables; ++i)
+            {
+                ShaderParam param;
+                if (!ReadParam(buffer->GetVariableByIndex(i), param))
+                {
+                    NS_LOG_ERROR(Graphics, "MaterialParams: {} 番目の項目の記述を読めない", i);
+                    return std::nullopt;
+                }
+                layout.params.push_back(std::move(param));
+            }
+            return layout;
+        }
+
+        std::optional<ShaderParamLayout> MergeMaterialParams(const ShaderParamLayout& vertex,
+                                                             const ShaderParamLayout& pixel)
+        {
+            if (vertex.bufferSize == 0)
+            {
+                return pixel;
+            }
+            if (pixel.bufferSize == 0)
+            {
+                return vertex;
+            }
+            if (vertex.bufferSize != pixel.bufferSize || vertex.params.size() != pixel.params.size())
+            {
+                NS_LOG_ERROR(Graphics,
+                             "MaterialParams: 頂点 ({} バイト・{} 項目) と画素 ({} バイト・{} 項目) で並びが違う",
+                             vertex.bufferSize,
+                             vertex.params.size(),
+                             pixel.bufferSize,
+                             pixel.params.size());
+                return std::nullopt;
+            }
+            ShaderParamLayout merged = vertex;
+            for (std::size_t i = 0; i < merged.params.size(); ++i)
+            {
+                if (!IsSameParam(vertex.params[i], pixel.params[i]))
+                {
+                    NS_LOG_ERROR(Graphics,
+                                 "MaterialParams: 頂点の {} (位置 {}) と画素の {} (位置 {}) で、名前・型・位置のどれかが違う",
+                                 vertex.params[i].name,
+                                 vertex.params[i].offset,
+                                 pixel.params[i].name,
+                                 pixel.params[i].offset);
+                    return std::nullopt;
+                }
+                merged.params[i].used = vertex.params[i].used || pixel.params[i].used;
+            }
+            return merged;
+        }
 
         std::unique_ptr<D3DShader> D3DShader::Create(std::string_view hlslPath)
         {
@@ -245,7 +401,7 @@ namespace NS
             if (Compile(hlslPath, shader, bytecode))
             {
                 m_shader = std::move(shader);
-                m_vsBytecode = std::move(bytecode);
+                TakeBytecode(std::move(bytecode), hlslPath);
                 return;
             }
 
@@ -269,7 +425,7 @@ namespace NS
 
         bool D3DShader::Compile(std::string_view hlslPath,
                                 ComPtr<ID3D11DeviceChild>& outShader,
-                                ComPtr<ID3DBlob>& outVsBytecode) const noexcept
+                                ComPtr<ID3DBlob>& outBytecode) const noexcept
         {
             ID3D11Device* device = Gpu().device;
             if (device == nullptr)
@@ -298,11 +454,25 @@ namespace NS
                 return false;
             }
             outShader = std::move(shader);
-            if (info->stage == ShaderType::Vertex)
-            {
-                outVsBytecode = std::move(blob);
-            }
+            outBytecode = std::move(blob);
             return true;
+        }
+
+        void D3DShader::TakeBytecode(ComPtr<ID3DBlob> bytecode, std::string_view hlslPath)
+        {
+            const std::span<const std::byte> bytes(static_cast<const std::byte*>(bytecode->GetBufferPointer()),
+                                                   bytecode->GetBufferSize());
+            // 並びを取り出せないシェーダーも描く事はできるので、材質の値なしで使う
+            std::optional<ShaderParamLayout> layout = ReflectMaterialParams(bytes);
+            if (!layout)
+            {
+                NS_LOG_ERROR(Graphics, "{} の MaterialParams を取り出せないので、材質の値なしで描く", hlslPath);
+            }
+            m_materialParams = std::move(layout).value_or(ShaderParamLayout{});
+            if (m_type == ShaderType::Vertex)
+            {
+                m_vsBytecode = std::move(bytecode);
+            }
         }
 
         bool D3DShader::Reload(std::string_view hlslPath)
@@ -314,10 +484,7 @@ namespace NS
                 return false;
             }
             m_shader = std::move(shader);
-            if (m_type == ShaderType::Vertex)
-            {
-                m_vsBytecode = std::move(bytecode);
-            }
+            TakeBytecode(std::move(bytecode), hlslPath);
             m_fallback = false;
             return true;
         }
@@ -337,6 +504,10 @@ namespace NS
         ID3D11DeviceChild* D3DShader::Native() const noexcept
         {
             return m_shader.Get();
+        }
+        const ShaderParamLayout& D3DShader::MaterialParams() const noexcept
+        {
+            return m_materialParams;
         }
         std::span<const std::byte> D3DShader::VertexShaderBytecode() const noexcept
         {

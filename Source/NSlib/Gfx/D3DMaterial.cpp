@@ -1,6 +1,7 @@
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Core/Types.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
@@ -51,6 +52,23 @@ namespace NS
                     return;
                 }
                 m_cb = std::move(cb);
+            }
+
+            // 材質の値のバッファを作れなくても描く事はできるので、材質の値なしで描く
+            if (desc.materialParamsSize > 0u)
+            {
+                std::unique_ptr<D3DBuffer> params = D3DBuffer::Create(MakeConstantBufferDesc(desc.materialParamsSize));
+                if (params->IsValid())
+                {
+                    m_materialParams = std::move(params);
+                    m_materialParamsSize = desc.materialParamsSize;
+                }
+                else
+                {
+                    NS_LOG_ERROR(Graphics,
+                                 "D3DMaterial: 材質の値のバッファ ({} バイト) を作れないので、材質の値なしで描く",
+                                 desc.materialParamsSize);
+                }
             }
 
             m_vertexShader = desc.vertexShader;
@@ -104,6 +122,24 @@ namespace NS
             device.Commands().UpdateSubresource(*m_cb, data, bytes);
         }
 
+        void D3DMaterial::UpdateMaterialParams(D3DDevice& device, std::span<const std::byte> bytes) noexcept
+        {
+            if (!IsValid() || !m_materialParams)
+            {
+                return;
+            }
+            NS_ASSERT(Graphics,
+                      bytes.size() == m_materialParamsSize,
+                      "材質の値の大きさ {} がバッファの {} と違う",
+                      bytes.size(),
+                      m_materialParamsSize);
+            if (bytes.size() != m_materialParamsSize)
+            {
+                return;
+            }
+            device.Commands().UpdateSubresource(*m_materialParams, bytes.data(), bytes.size());
+        }
+
         void D3DMaterial::Bind(D3DDevice& device) noexcept
         {
             if (!IsValid())
@@ -123,6 +159,11 @@ namespace NS
             {
                 device.Commands().VSSetConstantBuffer(*m_cb, m_cbSlot);
                 device.Commands().PSSetConstantBuffer(*m_cb, m_cbSlot);
+            }
+            if (m_materialParams)
+            {
+                device.Commands().VSSetConstantBuffer(*m_materialParams, k_MaterialParamsSlot);
+                device.Commands().PSSetConstantBuffer(*m_materialParams, k_MaterialParamsSlot);
             }
 
             // テクスチャのサンプリング設定は、描画時にシステム共通のものを利用する
