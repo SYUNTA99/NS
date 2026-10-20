@@ -3,6 +3,7 @@
 
 #include "Editor/EditorObjects.h"
 #include "Editor/HitTimelineEdit.h"
+#include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
@@ -46,12 +47,17 @@ namespace NS
                 return nlohmann::ordered_json{v.x, v.y, v.z};
             }
 
-            // 写しから場面を組む。描かない下見では資産と描き手は空
+            // 写しから場面を組み、ゲームと同じ手順でコースを始める。描かない下見では資産と描き手は空
             std::unique_ptr<Scene> MakeScene(const nlohmann::json& scene, const HitPreviewWorld& world)
             {
                 std::unique_ptr<Scene> made = std::make_unique<Scene>();
                 made->SetDevice(world.device);
                 made->ResetFromJson(scene);
+                if (GL::Level::CourseDirector* director =
+                        GetOrCreateSceneSystem<GL::Level::CourseDirector>(made.get()))
+                {
+                    director->StartCourse();
+                }
                 return made;
             }
 

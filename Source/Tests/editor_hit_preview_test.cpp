@@ -3,6 +3,7 @@
 #include "Editor/TimelinePreview.h"
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/LevelMessages.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
@@ -18,6 +19,7 @@
 #include "NSlib/Core/Types.h"
 #include <algorithm>
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -367,6 +369,33 @@ TEST(EditorHitPreview, PlaybackEvaluatesTheSceneAtTheRecordedFrameAndCanRewind)
         EXPECT_TRUE(scene->IsSimulationPaused());
     }
     EXPECT_EQ(snapshot, MakePreviewSceneJson());
+}
+
+// 下見の場面はゲームと同じ始まりを通る。プレイ開始の写しを持ち、置いた物は開始の姿を控えている
+TEST(EditorHitPreview, StartsTheSceneLikeTheGame)
+{
+    const ScopedHitTimelineDirectory directory("EditorHitPreviewCourseStart");
+    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    PreviewAssets assets;
+    const nlohmann::json snapshot = MakePreviewSceneJson();
+    const NS::Editor::HitPreviewResult result =
+        NS::Editor::RunHitPreview(snapshot, MakeDesc(0.0f, 0.0f), assets.World());
+    ASSERT_TRUE(result.hit) << result.error;
+    const std::unique_ptr<NS::Scene> scene = NS::Editor::MakeHitPreviewScene(snapshot, result, assets.World());
+    ASSERT_NE(scene, nullptr);
+    EXPECT_EQ(NS::SceneJsonObjects(scene->PlayBaseline()).size(), NS::SceneJsonObjects(snapshot).size());
+
+    // 動かしてからやり直しを送ると、開始の時の姿へ戻る。開始の姿を控えていない物は戻らない
+    PlayerActor* player = FindPlayer(scene->Objects());
+    ASSERT_NE(player, nullptr);
+    const NS::Vector3 playerStart = player->Root().Position();
+    player->Root().SetPosition(playerStart + NS::Vector3{4.0f, 3.0f, -5.0f});
+    EXPECT_TRUE(SendMsgCourseRestart(*player));
+    EXPECT_TRUE(player->Root().Position() == playerStart);
+
+    NS::SceneActor* rock = scene->Objects().FindByObjectId(k_RockId);
+    ASSERT_NE(rock, nullptr);
+    EXPECT_TRUE(SendMsgCourseRestart(*rock));
 }
 
 TEST(EditorHitPreview, RecordsUntilTheLastEventEvenWhenTheReboundHasAlreadyEnded)
