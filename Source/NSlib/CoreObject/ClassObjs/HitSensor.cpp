@@ -256,7 +256,7 @@ namespace NS
 
     void HitSensor::Register()
     {
-        if (m_registered || m_owner == nullptr)
+        if (m_owner == nullptr)
         {
             return;
         }
@@ -266,12 +266,11 @@ namespace NS
             return;
         }
         scene->HitSensors().Register(this);
-        m_registered = true;
     }
 
     void HitSensor::Unregister()
     {
-        if (!m_registered || m_owner == nullptr)
+        if (m_owner == nullptr)
         {
             return;
         }
@@ -281,7 +280,6 @@ namespace NS
             return;
         }
         scene->HitSensors().Unregister(this);
-        m_registered = false;
     }
 
     void ShapeHitSensor::SetSphere(float radius) noexcept

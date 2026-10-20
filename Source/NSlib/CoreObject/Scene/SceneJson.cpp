@@ -7,7 +7,6 @@
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
-#include <cmath>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -167,17 +166,6 @@ namespace NS
         scene["nextObjectId"] = nextObjectId;
     }
 
-    Vector3 NormalizeGravityDirection(const Vector3& direction) noexcept
-    {
-        const float lengthSquared = direction.LengthSquared();
-        if (!IsFinite(direction) || !std::isfinite(lengthSquared) ||
-            !(lengthSquared > k_Epsilon * k_Epsilon))
-        {
-            return k_DefaultGravityDirection;
-        }
-        return direction / std::sqrt(lengthSquared);
-    }
-
     SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene)
     {
         SceneEnvironment environment{};
@@ -191,8 +179,6 @@ namespace NS
             return environment;
         }
         environment.skybox = FieldString(*found, "skybox", "");
-        environment.gravityDirection =
-            NormalizeGravityDirection(FieldVector3(*found, "gravityDirection", k_DefaultGravityDirection));
         return environment;
     }
 
@@ -204,7 +190,6 @@ namespace NS
         }
         nlohmann::json out = nlohmann::json::object();
         out["skybox"] = environment.skybox;
-        out["gravityDirection"] = MakeVector3Json(NormalizeGravityDirection(environment.gravityDirection));
         scene["environment"] = std::move(out);
     }
 

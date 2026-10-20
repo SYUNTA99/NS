@@ -157,36 +157,19 @@ TEST(SceneActor, FileTextRoundTripKeepsClass)
 TEST(SceneActor, EnvironmentRoundTripsThroughFileAndScene)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    NS::WriteSceneEnvironment(
-        doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt", .gravityDirection = NS::Vector3{3.0f, 0.0f, 0.0f}});
+    NS::WriteSceneEnvironment(doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt"});
 
     const std::string text = NS::SerializeSceneToJson(doc);
     nlohmann::json decoded;
     ASSERT_TRUE(NS::DeserializeSceneFromJson(decoded, text));
     const NS::SceneEnvironment read = NS::ReadSceneEnvironment(decoded);
     EXPECT_EQ(read.skybox, "Assets/Skybox/kurt");
-    EXPECT_EQ(read.gravityDirection, (NS::Vector3{1.0f, 0.0f, 0.0f}));
 
     NS::Scene scene;
     scene.ResetFromJson(decoded);
     EXPECT_EQ(scene.SkyboxPath(), "Assets/Skybox/kurt");
-    EXPECT_EQ(scene.GravityDirection(), (NS::Vector3{1.0f, 0.0f, 0.0f}));
-    EXPECT_EQ(scene.Physics().Gravity(), (NS::Vector3{25.0f, 0.0f, 0.0f}));
     const NS::SceneEnvironment saved = NS::ReadSceneEnvironment(scene.ToJson());
     EXPECT_EQ(saved.skybox, "Assets/Skybox/kurt");
-    EXPECT_EQ(saved.gravityDirection, (NS::Vector3{1.0f, 0.0f, 0.0f}));
-}
-
-TEST(SceneActor, InvalidGravityDirectionFallsBackToDown)
-{
-    nlohmann::json doc = NS::MakeSceneJson();
-    doc["environment"]["gravityDirection"] = nlohmann::json::array({0.0f, 0.0f, 0.0f});
-    EXPECT_EQ(NS::ReadSceneEnvironment(doc).gravityDirection, (NS::Vector3{0.0f, -1.0f, 0.0f}));
-
-    NS::Scene scene;
-    scene.SetGravityDirection(NS::Vector3{0.0f, 0.0f, 0.0f});
-    EXPECT_EQ(scene.GravityDirection(), (NS::Vector3{0.0f, -1.0f, 0.0f}));
-    EXPECT_EQ(scene.Physics().Gravity(), (NS::Vector3{0.0f, -25.0f, 0.0f}));
 }
 
 TEST(SceneLoad, EveryShippedSceneWritesBackByteForByte)

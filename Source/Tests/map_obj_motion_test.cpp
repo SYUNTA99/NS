@@ -128,22 +128,6 @@ TEST(MapObjMotion, UnobstructedFlightKeepsAnalyticArc)
     }
 }
 
-TEST(MapObjMotion, SceneGravityRotatesTheFlightPlane)
-{
-    NS::Scene scene;
-    GL::Level::PropActor* rock = PlaceMovingRock(scene);
-    ASSERT_NE(rock, nullptr);
-    scene.SetGravityDirection(NS::Vector3{0.0f, 0.0f, 1.0f});
-    ReleaseRock(*rock);
-    for (int step = 0; step < 10; ++step)
-    {
-        rock->UpdateMotion();
-    }
-    EXPECT_GT(rock->Root().Position().x, 1.0f);
-    EXPECT_LT(rock->Root().Position().z, -0.5f);
-    EXPECT_FLOAT_EQ(rock->Root().Position().y, 0.5f);
-}
-
 TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
 {
     NS::Scene scene;

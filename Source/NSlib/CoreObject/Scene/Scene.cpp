@@ -52,7 +52,6 @@ namespace NS
     {
         const SceneEnvironment environment = ReadSceneEnvironment(scene);
         SetSkyboxPath(environment.skybox);
-        SetGravityDirection(environment.gravityDirection);
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueObjectIds(scene);
         RebuildSceneFrom(scene);
@@ -74,12 +73,6 @@ namespace NS
             objects.push_back(ObjectToJson(*obj));
         }
         return scene;
-    }
-
-    void Scene::SetGravityDirection(const Vector3& direction) noexcept
-    {
-        m_environment.gravityDirection = NormalizeGravityDirection(direction);
-        m_physics.Physics().SetGravity(m_environment.gravityDirection * -Phys::k_DefaultGravityY);
     }
 
     void Scene::SyncPhysics()

@@ -82,10 +82,9 @@ namespace NS
         [[nodiscard]] IStateMachine* GetStateMachine() noexcept override;
         [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override;
 
-        //! @brief 居るシーンの重力の向きを返す
-        //! @return シーンに居なければ (0, -1, 0)
+        //! 重力の向き。シーンによらず真下で、Jolt の重力と同じ向き
         [[nodiscard]] Vector3 GravityDirection() const noexcept;
-        //! シーンの重力方向へ加速する。strength は m/s²、dt は秒
+        //! 重力の向きへ加速する。strength は m/s²、dt は秒
         //! 非有限値または dt が 0 以下なら変更しない
         void AddGravity(Vector3& velocity, float strength, float dt) const noexcept;
 

@@ -58,7 +58,7 @@ namespace NS
         //! このセンサーを持つアクター。重なりを知らせる宛先
         [[nodiscard]] SceneActor* Host() const noexcept { return m_owner; }
 
-        //! シーンの調べ役へ入る。入っていれば何もしない
+        //! シーンの調べ役へ入る。入っていれば何もしない。入っているかは調べ役の並びだけが持つ
         void Register();
         //! シーンの調べ役から出る
         void Unregister();
@@ -83,7 +83,6 @@ namespace NS
     private:
         uint8 m_kind = 0;      // 種類の値。0 は未設定で、どの受け手も応じない
         bool m_valid = true;       // 調べる対象か
-        bool m_registered = false; // 調べ役へ入っているか
         SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 

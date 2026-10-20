@@ -6,23 +6,20 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Phys/detail/JoltConversion.h"
+#include "NSlib/Phys/ShapePart.h"
 #include "NSlib/Phys/detail/JoltRuntime.h"
 
 #include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Body/BodyLockInterface.h>
-#include <Jolt/Physics/Body/MotionProperties.h>
 #include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
-#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
-#include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 
 #include <algorithm>
-#include <cmath>
 
 namespace NS
 {
@@ -35,109 +32,6 @@ namespace NS
             constexpr uint k_MaxContactConstraints = 4096;
             constexpr uint k_MaxJobs = 1024;
             constexpr std::size_t k_TempAllocatorBytes = 10 * 1024 * 1024;
-
-            [[nodiscard]] float FiniteOr(float value, float fallback) noexcept
-            {
-                if (!std::isfinite(value))
-                {
-                    return fallback;
-                }
-                return value;
-            }
-
-            // Jolt は負の減衰と 0 以下の質量で assert する。受け取る所で揃えて、呼出側に同じ確かめを書かせない
-            [[nodiscard]] BodyMotion Sanitized(const BodyMotion& motion) noexcept
-            {
-                const BodyMotion defaults;
-                BodyMotion out = motion;
-                if (!IsPositiveFinite(out.mass))
-                {
-                    out.mass = defaults.mass;
-                }
-                out.friction = std::max(0.0f, FiniteOr(motion.friction, defaults.friction));
-                out.restitution = std::max(0.0f, FiniteOr(motion.restitution, defaults.restitution));
-                out.linearDamping = std::max(0.0f, FiniteOr(motion.linearDamping, defaults.linearDamping));
-                out.angularDamping = std::max(0.0f, FiniteOr(motion.angularDamping, defaults.angularDamping));
-                out.gravityFactor = FiniteOr(motion.gravityFactor, defaults.gravityFactor);
-                return out;
-            }
-
-            // 軸を全部塞いだ動的 body は Jolt が 0 で割って落ちる。力で動かせないので、キネマティックとして作る
-            [[nodiscard]] JPH::EMotionType MotionTypeOf(const BodyMotion& motion) noexcept
-            {
-                if (motion.kinematic || motion.allowedDOFs == JPH::EAllowedDOFs::None)
-                {
-                    return JPH::EMotionType::Kinematic;
-                }
-                return JPH::EMotionType::Dynamic;
-            }
-
-            [[nodiscard]] JPH::EAllowedDOFs AllowedDOFsOf(const BodyMotion& motion) noexcept
-            {
-                if (MotionTypeOf(motion) == JPH::EMotionType::Kinematic)
-                {
-                    return JPH::EAllowedDOFs::All;
-                }
-                return motion.allowedDOFs;
-            }
-
-            [[nodiscard]] JPH::EMotionQuality MotionQualityOf(const BodyMotion& motion) noexcept
-            {
-                if (motion.continuousCollision)
-                {
-                    return JPH::EMotionQuality::LinearCast;
-                }
-                return JPH::EMotionQuality::Discrete;
-            }
-
-            // body の原点を基準に形をまとめる。部品なし・生成失敗時は空
-            [[nodiscard]] JPH::ShapeRefC BuildMovingShape(std::span<const ShapePart> parts,
-                                                          JPH::Vec3Arg origin,
-                                                          JPH::QuatArg rotation)
-            {
-                const JPH::Quat toLocal = rotation.Conjugated();
-
-                JPH::StaticCompoundShapeSettings compound;
-                JPH::ShapeRefC single;
-                JPH::Vec3 singlePosition = JPH::Vec3::sZero();
-                JPH::Quat singleRotation = JPH::Quat::sIdentity();
-                std::size_t count = 0;
-                for (const ShapePart& part : parts)
-                {
-                    // 三角形の形は動く body に入れられない。1 つでも混ぜると合成形状ごと静的専用になる
-                    if (part.shape == nullptr || part.shape->MustBeStatic())
-                    {
-                        continue;
-                    }
-
-                    const JPH::Vec3 localPosition = toLocal * (ToJolt(part.position) - origin);
-                    const JPH::Quat localRotation = (toLocal * ToJolt(part.rotation).Normalized()).Normalized();
-                    compound.AddShape(localPosition, localRotation, part.shape.GetPtr());
-                    single = part.shape;
-                    singlePosition = localPosition;
-                    singleRotation = localRotation;
-                    ++count;
-                }
-
-                if (count == 0)
-                {
-                    return nullptr;
-                }
-
-                // Jolt の合成形状は部品を 2 つ以上要る。1 つならずらした形で包む
-                if (count == 1)
-                {
-                    // body の原点にぴったり重なっていれば包まずにそのまま使う
-                    if (singlePosition.IsNearZero() && singleRotation.IsClose(JPH::Quat::sIdentity()))
-                    {
-                        return single;
-                    }
-                    const JPH::RotatedTranslatedShapeSettings shifted{singlePosition, singleRotation, single.GetPtr()};
-                    return ShapeOrNull(shifted.Create());
-                }
-
-                return ShapeOrNull(compound.Create());
-            }
         } // namespace
 
         PhysicsScene::RuntimeInit::RuntimeInit()
@@ -313,118 +207,6 @@ namespace NS
             return SyncStatic(id, ShapeOrNull(collision.shape->ScaleShape(ToJolt(scale))), position, rotation, layer);
         }
 
-        JPH::BodyID PhysicsScene::AddDynamic(const JPH::ShapeRefC& shape,
-                                             const Vector3& position,
-                                             const Quaternion& rotation,
-                                             const DynamicBodyDesc& desc)
-        {
-            if (shape == nullptr || shape->MustBeStatic())
-            {
-                return JPH::BodyID{};
-            }
-
-            JPH::BodyCreationSettings settings{
-                shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Dynamic, desc.layer};
-            settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
-            settings.mMassPropertiesOverride.mMass = 1.0f;
-            if (desc.mass > 0.0f)
-            {
-                settings.mMassPropertiesOverride.mMass = desc.mass;
-            }
-            settings.mRestitution = desc.restitution;
-            settings.mFriction = desc.friction;
-            return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::Activate);
-        }
-
-        JPH::BodyID PhysicsScene::AddDynamicBox(const OBB& box, const DynamicBodyDesc& desc)
-        {
-            const ShapePart part = MakeBoxPart(box);
-            return AddDynamic(part.shape, part.position, part.rotation, desc);
-        }
-
-        JPH::BodyID PhysicsScene::AddDynamicSphere(const Sphere& sphere, const DynamicBodyDesc& desc)
-        {
-            const ShapePart part = MakeSpherePart(sphere);
-            return AddDynamic(part.shape, part.position, part.rotation, desc);
-        }
-
-        JPH::BodyID PhysicsScene::SyncMovingBody(JPH::BodyID id,
-                                                 std::span<const ShapePart> parts,
-                                                 const Vector3& position,
-                                                 const Quaternion& rotation,
-                                                 const BodyMotion& motion,
-                                                 JPH::ObjectLayer layer)
-        {
-            const JPH::Vec3 origin = ToJolt(position);
-            const JPH::Quat orientation = ToJolt(rotation).Normalized();
-            const JPH::ShapeRefC shape = BuildMovingShape(parts, origin, orientation);
-            if (shape == nullptr)
-            {
-                return JPH::BodyID{};
-            }
-
-            JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
-            // 静的な body は動き方を持たないので、動く body へ切り替えられない。作り直す
-            if (!id.IsInvalid() && bodies.GetMotionType(id) != JPH::EMotionType::Static)
-            {
-                bodies.SetShape(id, shape, false, JPH::EActivation::DontActivate);
-                bodies.SetPositionAndRotation(id, origin, orientation, JPH::EActivation::DontActivate);
-                bodies.SetObjectLayer(id, layer);
-                // 形を替えた後に質量を形から計り直す。SetShape に計らせると上書きした質量が消える
-                SetBodyMotion(id, motion);
-                return id;
-            }
-
-            const BodyMotion safe = Sanitized(motion);
-            JPH::BodyCreationSettings settings{shape, origin, orientation, MotionTypeOf(safe), layer};
-            settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
-            settings.mMassPropertiesOverride.mMass = safe.mass;
-            settings.mFriction = safe.friction;
-            settings.mRestitution = safe.restitution;
-            settings.mLinearDamping = safe.linearDamping;
-            settings.mAngularDamping = safe.angularDamping;
-            settings.mGravityFactor = safe.gravityFactor;
-            settings.mMotionQuality = MotionQualityOf(safe);
-            settings.mAllowedDOFs = AllowedDOFsOf(safe);
-            return bodies.CreateAndAddBody(settings, JPH::EActivation::Activate);
-        }
-
-        void PhysicsScene::SetBodyMotion(JPH::BodyID id, const BodyMotion& motion)
-        {
-            if (id.IsInvalid())
-            {
-                return;
-            }
-
-            JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
-            if (bodies.GetMotionType(id) == JPH::EMotionType::Static)
-            {
-                return;
-            }
-
-            const BodyMotion safe = Sanitized(motion);
-            bodies.SetMotionType(id, MotionTypeOf(safe), JPH::EActivation::DontActivate);
-            bodies.SetFriction(id, safe.friction);
-            bodies.SetRestitution(id, safe.restitution);
-            bodies.SetGravityFactor(id, safe.gravityFactor);
-            bodies.SetMotionQuality(id, MotionQualityOf(safe));
-            {
-                // 減衰と質量は BodyInterface に口が無い。ロックは BodyInterface を呼ぶ前に外す
-                const JPH::BodyLockWrite lock{m_physicsSystem.GetBodyLockInterface(), id};
-                if (lock.Succeeded())
-                {
-                    JPH::Body& body = lock.GetBody();
-                    JPH::MotionProperties* properties = body.GetMotionProperties();
-                    properties->SetLinearDamping(safe.linearDamping);
-                    properties->SetAngularDamping(safe.angularDamping);
-                    JPH::MassProperties mass = body.GetShape()->GetMassProperties();
-                    mass.ScaleToMass(safe.mass);
-                    properties->SetMassProperties(AllowedDOFsOf(safe), mass);
-                }
-            }
-            bodies.ActivateBody(id);
-        }
-
         void PhysicsScene::MoveKinematic(JPH::BodyID id,
                                          const Vector3& position,
                                          const Quaternion& rotation,
@@ -498,16 +280,6 @@ namespace NS
             }
 
             m_physicsSystem.GetBodyInterface().ActivateBody(id);
-        }
-
-        void PhysicsScene::SetGravity(const Vector3& gravity)
-        {
-            if (!IsFinite(gravity))
-            {
-                return;
-            }
-
-            m_physicsSystem.SetGravity(ToJolt(gravity));
         }
 
         Vector3 PhysicsScene::Gravity() const

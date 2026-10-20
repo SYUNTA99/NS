@@ -1,10 +1,5 @@
 {
   "environment": {
-    "gravityDirection": [
-      0.0,
-      -1.0,
-      0.0
-    ],
     "skybox": "Assets/Skybox/kurt/"
   },
   "nextObjectId": 94,

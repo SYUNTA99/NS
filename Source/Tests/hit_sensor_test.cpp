@@ -274,6 +274,18 @@ TEST(HitSensorDirector, SensorLeavesDirectorWhenDestroyed)
     EXPECT_EQ(scene.HitSensors().Sensors().size(), before);
 }
 
+// 登録されているかは調べ役の並びだけが持つ。調べ役から直に外されても、次の Register で戻る
+TEST(HitSensorDirector, SensorRejoinsAfterTheDirectorDroppedIt)
+{
+    NS::Scene scene;
+    SensorProbeActor* rock = scene.SpawnTransient<SensorProbeActor>(SensorKind::MapObjBody, 0.5f);
+    const std::size_t joined = scene.HitSensors().Sensors().size();
+    scene.HitSensors().Unregister(rock->m_sensor);
+    ASSERT_EQ(scene.HitSensors().Sensors().size(), joined - 1);
+    rock->m_sensor->Register();
+    EXPECT_EQ(scene.HitSensors().Sensors().size(), joined);
+}
+
 TEST(Message, KindsAreDistinctPerType)
 {
     const MsgPing ping;

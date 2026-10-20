@@ -116,10 +116,6 @@ namespace NS
         [[nodiscard]] Phys::PhysicsScene& Physics() noexcept { return m_physics.Physics(); }
         [[nodiscard]] const Phys::PhysicsScene& Physics() const noexcept { return m_physics.Physics(); }
 
-        [[nodiscard]] const Vector3& GravityDirection() const noexcept { return m_environment.gravityDirection; }
-        //! 重力方向を正規化して、物理の重力方向も揃える
-        void SetGravityDirection(const Vector3& direction) noexcept;
-
         //! 装置を非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
         void SetDevice(Gfx::D3DDevice* device) noexcept { m_sceneRenderer.SetDevice(device); }
 

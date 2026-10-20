@@ -17,6 +17,7 @@
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/Phys/PhysicsScene.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
@@ -167,12 +168,7 @@ namespace NS
 
     Vector3 SceneActor::GravityDirection() const noexcept
     {
-        const Scene* scene = OwningScene();
-        if (scene == nullptr)
-        {
-            return Vector3{0.0f, -1.0f, 0.0f};
-        }
-        return scene->GravityDirection();
+        return Phys::k_GravityDirection;
     }
 
     void SceneActor::AddGravity(Vector3& velocity, float strength, float dt) const noexcept
