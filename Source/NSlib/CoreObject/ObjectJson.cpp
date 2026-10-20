@@ -108,14 +108,14 @@ namespace NS
         WriteOrErase(object, "id", false, id);
     }
 
-    std::string_view ObjectJsonClass(const nlohmann::json& object) noexcept
+    std::string_view ObjectJsonActorFile(const nlohmann::json& object) noexcept
     {
-        return ReadString(object, "class");
+        return ReadString(object, "actor");
     }
 
-    void SetObjectJsonClass(nlohmann::json& object, std::string_view className)
+    void SetObjectJsonActorFile(nlohmann::json& object, std::string_view actorFile)
     {
-        WriteOrErase(object, "class", className.empty(), std::string{className});
+        WriteOrErase(object, "actor", actorFile.empty(), std::string{actorFile});
     }
 
     std::string_view ObjectJsonName(const nlohmann::json& object) noexcept
@@ -150,7 +150,7 @@ namespace NS
     ObjectHeader ReadObjectHeader(const nlohmann::json& object)
     {
         return ObjectHeader{.id = ObjectJsonId(object),
-                            .className = std::string{ObjectJsonClass(object)},
+                            .actorFile = std::string{ObjectJsonActorFile(object)},
                             .name = std::string{ObjectJsonName(object)},
                             .active = ObjectJsonActive(object)};
     }
@@ -158,7 +158,7 @@ namespace NS
     void WriteObjectHeader(nlohmann::json& object, const ObjectHeader& header)
     {
         SetObjectJsonId(object, header.id);
-        SetObjectJsonClass(object, header.className);
+        SetObjectJsonActorFile(object, header.actorFile);
         SetObjectJsonName(object, header.name);
         SetObjectJsonActive(object, header.active);
     }

@@ -17,8 +17,8 @@ namespace NS
     // 既存の部品へ値を適用する。クラスに無い部品名は警告して読み飛ばす
     void ApplyObjectClassObjs(SceneActor& obj, const nlohmann::json& object);
 
-    //! 型登録から scene に置くアクターを作り、種類の既定値と配置の上書きを書いて素材を読む。id と名前は設定しない
-    //! class がなければ nullptr
+    //! 配置物の指す .actor のクラスで scene に置くアクターを作り、.actor と配置の上書きを書いて素材を読む。
+    //! id と名前は設定しない。.actor が見つからなければ ERROR を出して nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> ObjectFromJson(const nlohmann::json& object, Scene& scene);
 
     //! @brief obj が自分を JSON へ書き出す。欄はクラスの種類の既定値と違う物 (個体の上書き) だけを書く

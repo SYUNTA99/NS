@@ -226,7 +226,7 @@ namespace NS
         //! 値は種類の既定で、保存と凍結に写る
         template <class T, class... Args> T* SpawnObject(std::string name, Args&&... args)
         {
-            const ActorInitInfo info{.scene = *this};
+            const ActorInitInfo info{.scene = this};
             std::unique_ptr<T> obj = CreateActorWithInfo<T>(info, std::forward<Args>(args)...);
             T* raw = obj.get();
             AdoptObject(std::move(obj), std::move(name));
@@ -301,6 +301,9 @@ namespace NS
         // 仮想カメラは持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         CameraManager m_cameraManager;
         ActorList m_objects; // 配置物の一覧
+        // .actor が見つからず作らなかった配置物の JSON。読んだ順に持ち、保存ではアクターの後に書く。
+        // id は m_objects の次の id が読んだ時に数えているので、新しいアクターに振られない
+        std::vector<nlohmann::json> m_unresolvedObjects;
         // 更新へ登録した管理役 1 件
         struct SystemEntry
         {

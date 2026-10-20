@@ -2,6 +2,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
@@ -51,13 +52,16 @@ namespace NS
             return out;
         }
 
+        // クラス名を書く .actor の頭の鍵。配置物は .actor の名前だけを書き、この鍵を持たない
+        constexpr const char* k_ClassKey = "class";
+
         // .actor の頭の鍵の表はこの 1 か所。ほかの鍵は打ち間違いか古い形で、
         // そのまま読むと値が黙って既定に戻るので、最初に見つけた 1 つを返す。無ければ nullptr
         [[nodiscard]] const std::string* FindUnknownActorFileKey(const nlohmann::json& root)
         {
             for (nlohmann::json::const_iterator it = root.begin(); it != root.end(); ++it)
             {
-                if (it.key() != "class" && it.key() != "classObjs")
+                if (it.key() != k_ClassKey && it.key() != "classObjs")
                 {
                     return &it.key();
                 }
@@ -77,6 +81,29 @@ namespace NS
             return std::optional<nlohmann::json>{std::in_place, *it};
         }
     } // namespace
+
+    std::string_view ActorFileClass(const nlohmann::json& actorFile) noexcept
+    {
+        if (!actorFile.is_object())
+        {
+            return {};
+        }
+        const nlohmann::json::const_iterator it = actorFile.find(k_ClassKey);
+        if (it == actorFile.end() || !it->is_string())
+        {
+            return {};
+        }
+        return it->get_ref<const std::string&>();
+    }
+
+    void SetActorFileClass(nlohmann::json& actorFile, std::string_view className)
+    {
+        if (!actorFile.is_object())
+        {
+            actorFile = nlohmann::json::object();
+        }
+        actorFile[k_ClassKey] = std::string{className};
+    }
 
     ActorFileLibrary& ActorFileLibrary::Get()
     {
@@ -147,7 +174,7 @@ namespace NS
                 continue;
             }
             // 名前はファイル名、クラスは中の class。クラスが分からないまま読むと作る型が黙って変わる
-            const std::string_view className = ObjectJsonClass(root);
+            const std::string_view className = ActorFileClass(root);
             if (className.empty())
             {
                 NS_LOG_ERROR(Scene, ".actor {} に class が無いので読まない", path);
@@ -180,7 +207,7 @@ namespace NS
         {
             return {};
         }
-        return std::string{ObjectJsonClass(*actorFile)};
+        return std::string{ActorFileClass(*actorFile)};
     }
 
     void ActorFileLibrary::Set(std::string_view name, nlohmann::json actorFile)
@@ -221,18 +248,25 @@ namespace NS
         return true;
     }
 
-    const SceneActor& ActorFileLibrary::Baseline(std::string_view className)
+    const SceneActor& ActorFileLibrary::Baseline(std::string_view name)
     {
         EnsureLoaded();
         const std::map<std::string, std::unique_ptr<SceneActor>, std::less<>>::const_iterator it =
-            m_baselines.find(className);
+            m_baselines.find(name);
         if (it != m_baselines.end())
         {
             return *it->second;
         }
-        std::unique_ptr<SceneActor> actor = CreateActorOfClass(className);
+        // .actor の無い名前を持つのは型から作ったアクターだけで、その名前はクラス名
+        std::string className = ClassNameOf(name);
+        if (className.empty())
+        {
+            className = std::string{name};
+        }
+        const ActorInitInfo info{.actorFile = name};
+        std::unique_ptr<SceneActor> actor = CreateActorOfClass(className, info);
         const SceneActor& result = *actor;
-        m_baselines.emplace(std::string{className}, std::move(actor));
+        m_baselines.emplace(std::string{name}, std::move(actor));
         return result;
     }
 
@@ -243,7 +277,7 @@ namespace NS
 
     void ApplyActorFile(SceneActor& actor)
     {
-        const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(actor.ClassName());
+        const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(actor.ActorFileName());
         if (actorFile == nullptr)
         {
             return;
@@ -261,7 +295,7 @@ namespace NS
 
     nlohmann::json ExpandObjectJson(const nlohmann::json& object)
     {
-        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(ObjectJsonClass(object));
+        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(ObjectJsonActorFile(object));
         nlohmann::json full = object;
         nlohmann::json& target = ObjectJsonClassObjs(full);
         target = nlohmann::json::object();
@@ -278,7 +312,7 @@ namespace NS
 
     nlohmann::json DiffObjectJson(const nlohmann::json& object)
     {
-        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(ObjectJsonClass(object));
+        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(ObjectJsonActorFile(object));
         nlohmann::json out = object;
         ForEachReflectedClassObj(baseline, [&](const ClassObjInfo& member, const Object* classObj) {
             // 位置・回転・拡縮は個体の物なので、既定と同じ値でも差分から落とさない
@@ -332,7 +366,7 @@ namespace NS
         {
             return nullptr;
         }
-        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(actor.ClassName());
+        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(actor.ActorFileName());
         const Object* found = FindRowPart(baseline, row);
         if (found != nullptr && std::string_view{found->ClassName()} == live->ClassName())
         {
@@ -379,13 +413,13 @@ namespace NS
         }
         ActorFileLibrary& library = ActorFileLibrary::Get();
         nlohmann::json actorFile = nlohmann::json::object();
-        if (const nlohmann::json* current = library.Find(actor.ClassName()))
+        if (const nlohmann::json* current = library.Find(actor.ActorFileName()))
         {
             actorFile = *current;
         }
         else
         {
-            SetObjectJsonClass(actorFile, actor.ClassName());
+            SetActorFileClass(actorFile, actor.ClassName());
         }
         nlohmann::json& fields = ObjectJsonClassObjs(actorFile)[std::string{row.key}];
         if (!fields.is_object())
@@ -393,7 +427,7 @@ namespace NS
             fields = nlohmann::json::object();
         }
         fields[std::string{fieldName}] = *value;
-        library.Set(actor.ClassName(), std::move(actorFile));
+        library.Set(actor.ActorFileName(), std::move(actorFile));
         return true;
     }
 } // namespace NS

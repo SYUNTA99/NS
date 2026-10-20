@@ -208,6 +208,11 @@ namespace NS
 
     void SceneActor::Init(const ActorInitInfo* info)
     {
+        m_actorFileName = ClassName();
+        if (info != nullptr && !info->actorFile.empty())
+        {
+            m_actorFileName = std::string{info->actorFile};
+        }
         OnInit();
         ApplyActorFile(*this);
         if (info != nullptr && info->placement != nullptr)

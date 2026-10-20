@@ -21,12 +21,12 @@ TEST(PlacementCatalog, EveryPlaceableClassAppears)
         }
         const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem(entry->label);
         ASSERT_NE(item, nullptr) << entry->label;
-        EXPECT_EQ(NS::ObjectJsonClass(item->prototype), std::string_view{entry->className});
+        EXPECT_EQ(NS::ObjectJsonActorFile(item->prototype), std::string_view{entry->className});
     }
     // プレイヤーは置く一覧に出ない
     for (const NS::Editor::PlacementItem& item : NS::Editor::PlacementItems())
     {
-        EXPECT_NE(NS::ObjectJsonClass(item.prototype), "PlayerActor") << item.label;
+        EXPECT_NE(NS::ObjectJsonActorFile(item.prototype), "PlayerActor") << item.label;
     }
 }
 
@@ -41,7 +41,7 @@ TEST(PlacementCatalog, MapPartsIsSplitByMesh)
     ASSERT_NE(slope, nullptr);
     for (const NS::Editor::PlacementItem* item : {cube, sphere, slope})
     {
-        EXPECT_EQ(NS::ObjectJsonClass(item->prototype), "MapPartsActor");
+        EXPECT_EQ(NS::ObjectJsonActorFile(item->prototype), "MapPartsActor");
         // 個体のデータは部品を足せないので、ひな形も当たりの件を持たない
         EXPECT_EQ(NS::ClassObjFields(item->prototype, "BoxCollision"), nullptr);
     }
@@ -93,7 +93,7 @@ TEST(PlacementCatalog, MeshPartsUsesTheDroppedMesh)
 {
     // メッシュ資産から置く部品は、描いた三角形そのもので当たる
     const nlohmann::json prototype = NS::Editor::MakeMeshPartsPrototype("Assets/Models/terrain.glb");
-    EXPECT_EQ(NS::ObjectJsonClass(prototype), "MapPartsActor");
+    EXPECT_EQ(NS::ObjectJsonActorFile(prototype), "MapPartsActor");
     const nlohmann::json* renderer = NS::ClassObjFields(prototype, "Model");
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(NS::FieldString(*renderer, "メッシュ", ""), "Assets/Models/terrain.glb");

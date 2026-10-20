@@ -47,7 +47,8 @@ namespace NS
     //! クラス名から SceneActor を作り、info で種類の既定・配置の上書き・素材まで済ませて返す
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
 
-    //! object を配置として scene の中に置くアクターを作り、欄と素材まで済ませて返す
+    //! @brief object を配置として scene の中に置くアクターを作り、欄と素材まで済ませて返す
+    //! @details クラスは object の指す .actor の中の class。.actor が見つからなければ ERROR を出して nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object, Scene& scene);
 
     //! @brief エディタで置ける SceneActor の登録の一覧。表示名の順で安定

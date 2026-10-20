@@ -34,7 +34,7 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonActorFile(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
     entry["classObjs"] = {{"Params", {{"体力", 5}}}};
     NS::SceneJsonObjects(doc).push_back(std::move(entry));
@@ -154,7 +154,7 @@ TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonActorFile(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
     entry["classObjs"] = {
         {"Params",
@@ -420,12 +420,12 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonActorFile(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
     NS::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(entry));
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 2);
     // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
     NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
@@ -507,11 +507,11 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonActorFile(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
     NS::SceneJsonObjects(doc).push_back(std::move(entry));
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 2);
     NS::SetObjectPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -583,7 +583,7 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
         ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
         for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
-            if (NS::ObjectJsonClass(entry) == "PlayerActor")
+            if (NS::ObjectJsonActorFile(entry) == "PlayerActor")
             {
                 expectEveryFieldRead(entry, sceneName);
             }

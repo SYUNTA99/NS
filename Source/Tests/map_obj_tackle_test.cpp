@@ -17,7 +17,7 @@ namespace
     {
         nlohmann::json doc = NS::MakeSceneJson();
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, 1);
         NS::SetObjectPosition(rock, position);
         NS::SceneJsonObjects(doc).push_back(std::move(rock));

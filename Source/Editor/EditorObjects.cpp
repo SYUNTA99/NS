@@ -47,13 +47,13 @@ namespace NS
 
             bool IsPlayerObject(const nlohmann::json& object)
             {
-                return ActorFileLibrary::Get().ClassNameOf(ObjectJsonClass(object)) ==
+                return ActorFileLibrary::Get().ClassNameOf(ObjectJsonActorFile(object)) ==
                        ::PlayerActor::StaticReflection()->typeName;
             }
 
             bool IsDeathZoneObject(const nlohmann::json& object)
             {
-                return ActorFileLibrary::Get().ClassNameOf(ObjectJsonClass(object)) ==
+                return ActorFileLibrary::Get().ClassNameOf(ObjectJsonActorFile(object)) ==
                        GL::Level::DeathZoneActor::StaticReflection()->typeName;
             }
 

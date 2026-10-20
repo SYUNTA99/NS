@@ -19,7 +19,7 @@ namespace NS
     namespace
     {
         // 保存形式を変えたら上げる。読み込みは一致する版だけを受け付ける
-        constexpr int k_FormatVersion = 8;
+        constexpr int k_FormatVersion = 9;
 
         //! 読込時の上限。巨大 size / 要素数による メモリ枯渇を防ぐ
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;

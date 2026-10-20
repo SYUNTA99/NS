@@ -11,6 +11,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/FileSystem.h"
+#include "TestActorFile.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -220,6 +221,7 @@ TEST(ClassObj, OnlyTheBuildersCanInitAndEnterAnActor)
 
 TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
 {
+    const ScopedActorFile probeFile{"ClassObjInitProbeActor", ClassOnlyActorFile("ClassObjInitProbeActor")};
     NS::Scene scene;
     const ClassObjInitProbeActor* placed = scene.SpawnObject<ClassObjInitProbeActor>("Placed");
     EXPECT_EQ(placed->inits, 1);
@@ -245,6 +247,7 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
+    const ScopedActorFile probeFile{"AssetTimingProbeActor", ClassOnlyActorFile("AssetTimingProbeActor")};
     NS::Scene scene;
     const auto check = [](const NS::SceneActor* built, const char* path) {
         SCOPED_TRACE(path);

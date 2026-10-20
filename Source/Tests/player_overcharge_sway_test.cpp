@@ -33,7 +33,7 @@ namespace
         {
             nlohmann::json doc = NS::MakeSceneJson();
             nlohmann::json entry = NS::MakeObjectJson();
-            NS::SetObjectJsonClass(entry, "PlayerActor");
+            NS::SetObjectJsonActorFile(entry, "PlayerActor");
             NS::SetObjectJsonId(entry, 1);
             NS::SceneJsonObjects(doc).push_back(std::move(entry));
             scene.ResetFromJson(doc);

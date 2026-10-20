@@ -14,13 +14,11 @@ namespace NS
     {
         namespace
         {
-            // クラスの OnInit が積む構成をそのまま写したひな形。値はコード既定に任せる
+            // クラスの OnInit が積む構成をそのまま写したひな形。クラスと同じ名前の .actor を指す
             [[nodiscard]] nlohmann::json PrototypeOf(const TypeRegistry::Entry& entry)
             {
                 const std::unique_ptr<SceneActor> actor = CreateActorOfClass(entry.className);
-                nlohmann::json prototype = MakePrototypeJson(*actor);
-                SetObjectJsonClass(prototype, entry.className);
-                return prototype;
+                return MakePrototypeJson(*actor);
             }
 
             void SetPartsMesh(nlohmann::json& prototype, std::string_view meshName)

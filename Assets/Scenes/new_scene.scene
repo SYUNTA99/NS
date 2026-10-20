@@ -5,7 +5,7 @@
   "nextObjectId": 94,
   "objects": [
     {
-      "class": "MapPartsActor",
+      "actor": "MapPartsActor",
       "classObjs": {
         "Collision": {},
         "Model": {},
@@ -32,7 +32,7 @@
       "name": "Object"
     },
     {
-      "class": "PlayerActor",
+      "actor": "PlayerActor",
       "classObjs": {
         "Appearance": {},
         "BodySensor": {},
@@ -72,7 +72,7 @@
       "name": "Object_1"
     },
     {
-      "class": "FollowCameraActor",
+      "actor": "FollowCameraActor",
       "classObjs": {
         "Transform": {
           "スケール": [
@@ -102,7 +102,7 @@
       "name": "Player Camera"
     },
     {
-      "class": "LightActor",
+      "actor": "LightActor",
       "classObjs": {
         "DirectionalLight": {},
         "Transform": {
@@ -128,7 +128,7 @@
       "name": "Object_2"
     },
     {
-      "class": "PropActor",
+      "actor": "PropActor",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -165,7 +165,7 @@
       "name": "Object_3"
     },
     {
-      "class": "PropActor",
+      "actor": "PropActor",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -206,7 +206,7 @@
       "name": "Object_4"
     },
     {
-      "class": "PropActor",
+      "actor": "PropActor",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -250,7 +250,7 @@
       "name": "Object_5"
     },
     {
-      "class": "PropActor",
+      "actor": "PropActor",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -294,5 +294,5 @@
       "name": "Object_6"
     }
   ],
-  "version": 8
+  "version": 9
 }

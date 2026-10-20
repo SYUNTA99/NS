@@ -79,7 +79,7 @@ namespace
         for (NS::uint32 id = 1; id <= 2; ++id)
         {
             nlohmann::json rock = NS::MakeObjectJson();
-            NS::SetObjectJsonClass(rock, "PropActor");
+            NS::SetObjectJsonActorFile(rock, "PropActor");
             NS::SetObjectJsonId(rock, id);
             NS::SetObjectPosition(rock, Vector3{static_cast<float>(id) * 4.0f, 1.0f, 0.0f});
             if (id == 2)
@@ -112,12 +112,12 @@ namespace
     {
         nlohmann::json doc = NS::MakeSceneJson();
         nlohmann::json entry = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(entry, "PlayerActor");
+        NS::SetObjectJsonActorFile(entry, "PlayerActor");
         NS::SetObjectJsonId(entry, 1);
         NS::SetObjectPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(entry));
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, 2);
         NS::SetObjectPosition(rock, Vector3{0.0f, rockHeight, 1.0f});
         for (nlohmann::json::const_iterator it = rockParts.begin(); it != rockParts.end(); ++it)
@@ -771,12 +771,12 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonActorFile(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
     NS::SetObjectPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(entry));
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 2);
     NS::SetObjectPosition(rock, Vector3{0.0f, 1.0f, 1.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));

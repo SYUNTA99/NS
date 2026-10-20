@@ -48,6 +48,8 @@ namespace NS
         virtual ~SceneActor() noexcept;
         [[nodiscard]] uint32 Id() const noexcept { return m_id; }
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
+        //! 作る時に敷いた .actor の名前。型から作ったアクターはクラスと同じ名前で、その .actor が無くても変わらない
+        [[nodiscard]] const std::string& ActorFileName() const noexcept { return m_actorFileName; }
         NS_REFLECT_DECLARE()
 
         //! @brief 世界に出す。更新の段・描画・当たり・センサーへ登録する。出ていれば何もしない
@@ -239,7 +241,8 @@ namespace NS
         };
         uint32 m_id = 0;
         std::string m_name;
-        Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr
+        std::string m_actorFileName; // 書くのは Init だけ
+        Scene* m_scene = nullptr;    // 所有 Scene、attach 前後は nullptr
         Presence m_presence = Presence::Disappeared;
         std::unique_ptr<Transform> m_transform;
 

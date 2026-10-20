@@ -22,7 +22,7 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 1);
     rock["classObjs"] = {{"Params", {{"質量", 2.0f}, {"耐久", 3.0f}}}};
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -48,7 +48,7 @@ TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
     for (const NS::uint32 id : {1u, 2u})
     {
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, id);
         NS::SetObjectPosition(rock, NS::Vector3{static_cast<float>(id) * 5.0f, 0.5f, 0.0f});
         if (id == 2)
@@ -94,7 +94,7 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
         std::vector<float> toughnesses;
         for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
-            if (NS::ObjectJsonClass(entry) != "PropActor")
+            if (NS::ObjectJsonActorFile(entry) != "PropActor")
             {
                 continue;
             }
@@ -117,7 +117,7 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 1);
     rock["classObjs"] = {{"Params", {{"質量", -2.0f}, {"耐久", -3.0f}, {"摩擦", -1.0f}, {"跳ね返り", -1.0f}}}};
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -165,7 +165,7 @@ TEST(MapObjParams, TackleAnswerCarriesTheLaunchShape)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 1);
     rock["classObjs"] = {{"Params", {{"押し飛ばしの高さ", 3.0f}, {"外れで飛ばす相手の距離の割合", 0.5f}}}};
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -204,7 +204,7 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 1);
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);

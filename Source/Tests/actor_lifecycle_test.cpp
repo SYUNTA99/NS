@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/UIActor.h"
+#include "TestActorFile.h"
 
 #include <gtest/gtest.h>
 
@@ -35,7 +36,7 @@ namespace
     {
         nlohmann::json object = NS::MakeObjectJson();
         NS::SetObjectJsonId(object, id);
-        NS::SetObjectJsonClass(object, "LifeBoxActor");
+        NS::SetObjectJsonActorFile(object, "LifeBoxActor");
         NS::SetObjectJsonName(object, name);
         NS::SetObjectPosition(object, {x, 0.0f, 0.0f});
         return object;
@@ -157,6 +158,7 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
 // どの道で入れても、入れた直後から置く側の当たりがある。呼び手が当たりを張り直さなくてよい
 TEST(ActorLifecycle, EveryWayInGivesTheCollisionRightAway)
 {
+    const ScopedActorFile lifeBox{"LifeBoxActor", ClassOnlyActorFile("LifeBoxActor")};
     NS::Scene scene;
     (void)scene.SpawnObject<LifeBoxActor>("LifeBoxActor");
     EXPECT_TRUE(HitsDownAt(scene, 0.0f));
@@ -172,6 +174,7 @@ TEST(ActorLifecycle, EveryWayInGivesTheCollisionRightAway)
 
 TEST(ActorLifecycle, DisappearRemovesTheCollisionAndAppearBringsItBack)
 {
+    const ScopedActorFile lifeBox{"LifeBoxActor", ClassOnlyActorFile("LifeBoxActor")};
     NS::Scene scene;
     NS::SceneActor* actor = scene.SpawnFromJson(LifeBoxJson(50, "Box", 0.0f));
     ASSERT_NE(actor, nullptr);
@@ -184,6 +187,7 @@ TEST(ActorLifecycle, DisappearRemovesTheCollisionAndAppearBringsItBack)
 // 入れた直後の絵は、原点から配置先へ補間しない
 TEST(ActorLifecycle, EveryWayInStartsInterpolationAtThePlacement)
 {
+    const ScopedActorFile lifeBox{"LifeBoxActor", ClassOnlyActorFile("LifeBoxActor")};
     NS::Scene scene;
     nlohmann::json sceneJson = NS::MakeSceneJson();
     NS::SceneJsonObjects(sceneJson).push_back(LifeBoxJson(10, "Rebuilt", 3.0f));
@@ -206,6 +210,7 @@ TEST(ActorLifecycle, EveryWayInStartsInterpolationAtThePlacement)
 // 置いた後に動かすと、次の歩で当たりが付いて来る。世界を止めた編集中も同じ
 TEST(ActorLifecycle, MovedCollisionFollowsOnTheNextStep)
 {
+    const ScopedActorFile lifeBox{"LifeBoxActor", ClassOnlyActorFile("LifeBoxActor")};
     NS::Scene scene;
     NS::SceneActor* actor = scene.SpawnFromJson(LifeBoxJson(50, "Box", 0.0f));
     ASSERT_NE(actor, nullptr);

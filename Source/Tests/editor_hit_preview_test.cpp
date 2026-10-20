@@ -43,18 +43,18 @@ namespace
     {
         nlohmann::json doc = NS::MakeSceneJson();
         nlohmann::json floor = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(floor, "MapPartsActor");
+        NS::SetObjectJsonActorFile(floor, "MapPartsActor");
         NS::SetObjectJsonId(floor, 100);
         NS::SetObjectPosition(floor, NS::Vector3{0.0f, -0.5f, 0.0f});
         NS::SetObjectScale(floor, NS::Vector3{60.0f, 1.0f, 60.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(floor));
         nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonActorFile(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
         NS::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, k_RockId);
         NS::SetObjectPosition(rock, NS::Vector3{0.0f, 1.5f, 7.0f});
         NS::SetObjectScale(rock, NS::Vector3{3.0f, 3.0f, 3.0f});
@@ -303,7 +303,7 @@ TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
     ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
     nlohmann::json snapshot = MakePreviewSceneJson();
     nlohmann::json distant = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(distant, "PropActor");
+    NS::SetObjectJsonActorFile(distant, "PropActor");
     NS::SetObjectJsonId(distant, 3);
     NS::SetObjectPosition(distant, NS::Vector3{0.0f, 0.5f, 25.0f});
     NS::SceneJsonObjects(snapshot).push_back(std::move(distant));

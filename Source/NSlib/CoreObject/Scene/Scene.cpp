@@ -67,6 +67,10 @@ namespace NS
         {
             objects.push_back(ObjectToJson(*obj));
         }
+        for (const nlohmann::json& object : m_unresolvedObjects)
+        {
+            objects.push_back(object);
+        }
         return scene;
     }
 
@@ -290,9 +294,14 @@ namespace NS
         {
             return SpawnFromJson(snapshot);
         }
-        // 控えは個体の上書きだけを持つ。上書きの無い欄も種類の既定値へ戻すため、全欄の姿へ広げてから比べる
+        // 同じクラスでも .actor が違えば敷く既定が違うので、作り直す
+        if (ObjectJsonActorFile(snapshot) != obj->ActorFileName())
+        {
+            return ReplaceFromJson(snapshot);
+        }
+        // 控えは個体の上書きだけを持つ。上書きの無い欄も .actor の値へ戻すため、全欄の姿へ広げてから比べる
         const nlohmann::json object = ExpandObjectJson(snapshot);
-        bool same = ActorFileLibrary::Get().ClassNameOf(ObjectJsonClass(object)) == obj->ClassName();
+        bool same = true;
         std::size_t classObjCount = 0;
         ForEachReflectedClassObj(*obj, [&](const ClassObjInfo& field, Object*) {
             ++classObjCount;
@@ -346,6 +355,7 @@ namespace NS
         m_sceneObjs.Clear();
         Fade().Cancel();
         m_objects.Clear();
+        m_unresolvedObjects.clear();
         ClearEffects();
 #if !defined(NS_SHIPPING)
         // 図形は前の世界の姿で、溜め場は静的な 1 つ。残すと、次の歩が来るまで消えた物の線が出る
@@ -357,8 +367,15 @@ namespace NS
     {
         ClearWorld();
         // 仮想カメラの付け外しは、持ち主の SceneActor が OnStart / OnEndPlay で行う
-        m_objects.RebuildFromJson(
-            scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, *this); });
+        // .actor の見つからない配置物は作らず、保存で消さないように JSON のまま持つ
+        m_objects.RebuildFromJson(scene, *this, [this](const nlohmann::json& entry) {
+            std::unique_ptr<SceneActor> built = ObjectFromJson(entry, *this);
+            if (!built)
+            {
+                m_unresolvedObjects.push_back(entry);
+            }
+            return built;
+        });
         // 当たりは配置物の開始で入っている。まとめて入れた後の broadphase だけを張り直す
         m_physics.Physics().OptimizeBroadPhase();
     }

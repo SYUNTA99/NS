@@ -1388,7 +1388,7 @@ bool LevelEditorController::PromoteFieldToActorFile(const NS::SceneActor& actor,
     {
         return false;
     }
-    const std::string className{actor.ClassName()};
+    const std::string actorFileName = actor.ActorFileName();
     const std::string_view typeName{comp->GetReflection()->typeName};
 
     // 上げる前の既定の値。これと同じ値の個体は上書きしていないので、新しい既定値へ付いて行く
@@ -1397,11 +1397,11 @@ bool LevelEditorController::PromoteFieldToActorFile(const NS::SceneActor& actor,
         return false;
     }
 
-    // 同じクラスの個体は同じ表を持つので、row をそのまま使える
+    // 同じ .actor のアクターは同じクラスで同じ表を持つので、row をそのまま使える
     std::vector<NS::SceneActor*> followers;
     for (NS::SceneActor* other : m_scene->Objects())
     {
-        if (other == &actor || className != other->ClassName())
+        if (other == &actor || actorFileName != other->ActorFileName())
         {
             continue;
         }
@@ -1420,9 +1420,9 @@ bool LevelEditorController::PromoteFieldToActorFile(const NS::SceneActor& actor,
     {
         return false;
     }
-    if (!NS::ActorFileLibrary::Get().Save(className))
+    if (!NS::ActorFileLibrary::Get().Save(actorFileName))
     {
-        NS_LOG_WARN(App, "種類の既定値 {} をファイルへ書けなかった。今の起動の間だけ効く", className);
+        NS_LOG_WARN(App, "種類の既定値 {} をファイルへ書けなかった。今の起動の間だけ効く", actorFileName);
     }
 
     // 付いて行くアクターへ新しい値を写す。素材の欄は道を写すので、姿は引き直して差し替える

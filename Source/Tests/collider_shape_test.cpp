@@ -26,7 +26,7 @@ namespace
     {
         nlohmann::json doc = NS::MakeSceneJson();
         nlohmann::json entry = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(entry, "PlayerActor");
+        NS::SetObjectJsonActorFile(entry, "PlayerActor");
         NS::SetObjectJsonId(entry, 1);
         entry["classObjs"] = parts;
         NS::SceneJsonObjects(doc).push_back(std::move(entry));
@@ -161,7 +161,7 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 1);
     NS::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));

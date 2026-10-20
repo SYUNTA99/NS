@@ -105,7 +105,7 @@ TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonActorFile(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
     entry["classObjs"] = {
         {"Params", {{"チャージ減速率", 0.25f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}}};
@@ -142,7 +142,7 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
         for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
             const nlohmann::json* fields = NS::ClassObjFields(entry, "Params");
-            if (NS::ObjectJsonClass(entry) != "PlayerActor" || fields == nullptr)
+            if (NS::ObjectJsonActorFile(entry) != "PlayerActor" || fields == nullptr)
             {
                 continue;
             }
@@ -178,7 +178,7 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
         ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
         for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
-            if (NS::ObjectJsonClass(entry) != "PlayerActor")
+            if (NS::ObjectJsonActorFile(entry) != "PlayerActor")
             {
                 continue;
             }

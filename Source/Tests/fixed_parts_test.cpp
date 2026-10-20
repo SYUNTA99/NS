@@ -15,6 +15,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "TestActorFile.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -272,6 +273,7 @@ TEST(ReflectedParts, SameTypedMembersSaveAndReloadThroughTheirRegisteredKeys)
     EXPECT_FLOAT_EQ(saved["classObjs"]["ParentPart"]["値"].get<float>(), 2.0f);
     EXPECT_FLOAT_EQ(saved["classObjs"]["ChildPart"]["値"].get<float>(), 7.0f);
     EXPECT_FALSE(saved["classObjs"].contains("AbsentPart"));
+    const ScopedActorFile hierarchyFile{"ReflectedHierarchyActor", ClassOnlyActorFile("ReflectedHierarchyActor")};
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> loaded = NS::ObjectFromJson(saved, scene);
     const ReflectedHierarchyActor* restored = NS::Cast<ReflectedHierarchyActor>(loaded.get());
@@ -433,7 +435,7 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
 {
     const nlohmann::json source = {
-        {"class", "PropActor"}, {"id", 7u}, {"classObjs", {{"Collision", {{"半径", 2.0f}}}}}};
+        {"actor", "PropActor"}, {"id", 7u}, {"classObjs", {{"Collision", {{"半径", 2.0f}}}}}};
     NS::Scene scene;
     std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(source, scene);
     ASSERT_NE(actor, nullptr);
@@ -456,8 +458,8 @@ TEST(FixedParts, FileReferencesUseNamesAndClonesRemapIds)
 {
     nlohmann::json scene = NS::MakeSceneJson();
     NS::SceneJsonObjects(scene) = {
-        {{"class", "PropActor"}, {"id", 1u}, {"name", "target"}, {"classObjs", {{"Model", nlohmann::json::object()}}}},
-        {{"class", "PropActor"}, {"id", 2u}, {"classObjs", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
+        {{"actor", "PropActor"}, {"id", 1u}, {"name", "target"}, {"classObjs", {{"Model", nlohmann::json::object()}}}},
+        {{"actor", "PropActor"}, {"id", 2u}, {"classObjs", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
     const std::string text = NS::SerializeSceneToJson(scene);
     const nlohmann::json file = nlohmann::json::parse(text);
     EXPECT_EQ(file["objects"][1]["classObjs"]["Model"]["reference"]["ref"], "target");

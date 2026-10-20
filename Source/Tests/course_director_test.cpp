@@ -155,7 +155,7 @@ TEST(CourseDirector, RespawnButtonReturnsObjectsButKeepsPlayer)
 {
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::EnsureUniqueObjectIds(doc);
@@ -318,7 +318,7 @@ TEST(CourseDirector, RestartReturnsObjectsToTheirStart)
 {
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::EnsureUniqueObjectIds(doc);

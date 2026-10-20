@@ -19,6 +19,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
+#include "TestActorFile.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -74,7 +75,7 @@ namespace
     nlohmann::json ActorFileWith(std::string_view className, std::string_view role, nlohmann::json entry)
     {
         nlohmann::json actorFile = nlohmann::json::object();
-        NS::SetObjectJsonClass(actorFile, className);
+        NS::SetActorFileClass(actorFile, className);
         NS::ObjectJsonClassObjs(actorFile)[std::string{role}] = std::move(entry);
         return actorFile;
     }
@@ -87,7 +88,7 @@ namespace
     nlohmann::json MapObjJson(NS::uint32 id)
     {
         nlohmann::json object = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(object, "PropActor");
+        NS::SetObjectJsonActorFile(object, "PropActor");
         NS::SetObjectJsonId(object, id);
         return object;
     }
@@ -169,9 +170,10 @@ TEST(ActorFile, ClearingAssetsRebuildsTheBaseline)
     EXPECT_EQ(BaselineLoadProbeActor::s_loads, before + 1);
 }
 
-TEST(ActorFile, CodeDefaultWithoutActorFile)
+TEST(ActorFile, CodeDefaultWhenTheActorFileHasNoValues)
 {
     const ScopedActorFileDirectory scope("CodeDefault");
+    const ScopedActorFile classOnly{"PropActor", ClassOnlyActorFile("PropActor")};
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
@@ -218,6 +220,7 @@ TEST(ActorFile, ActorFileCannotAddParts)
 TEST(ActorFile, InstanceCannotAddParts)
 {
     const ScopedActorFileDirectory scope("InstanceParts");
+    const ScopedActorFile classOnly{"PropActor", ClassOnlyActorFile("PropActor")};
     nlohmann::json object = MapObjJson(1);
     NS::ObjectJsonClassObjs(object)["DirectionalLight"] = nlohmann::json::object();
 
@@ -227,7 +230,7 @@ TEST(ActorFile, InstanceCannotAddParts)
     EXPECT_EQ(NS::ClassObjFields(NS::MakePrototypeJson(*actor), "DirectionalLight"), nullptr);
 }
 
-TEST(ActorFile, ObjectWithoutClassIsNotBuilt)
+TEST(ActorFile, ObjectWithoutActorFileIsNotBuilt)
 {
     nlohmann::json object = NS::MakeObjectJson();
     NS::ObjectJsonClassObjs(object)["Collision"] = SphereEntry(1.0f);
@@ -345,6 +348,32 @@ TEST(ActorFile, ExpandThenDiffGivesBackOverrides)
     ASSERT_NE(backSphere, nullptr);
     EXPECT_FLOAT_EQ(NS::FieldFloat(*backSphere, "半径", 0.0f), 3.0f);
     EXPECT_FALSE(NS::HasField(*backSphere, "中心オフセット"));
+}
+
+TEST(ActorFile, BaselineAndDiffFollowTheActorFileThePlacementNames)
+{
+    // 比べる基準は .actor の名前ごと。同じクラスでも、指す .actor の値と同じ欄だけが差分から落ちる
+    const ScopedActorFileDirectory scope("DiffByName");
+    NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)));
+    const ScopedActorFile heavy{"HeavyRock", ActorFileWith("PropActor", "Collision", SphereEntry(3.0f))};
+
+    const NS::SceneActor& baseline = NS::ActorFileLibrary::Get().Baseline("HeavyRock");
+    EXPECT_EQ(std::string_view{baseline.ClassName()}, "PropActor");
+    EXPECT_EQ(baseline.ActorFileName(), "HeavyRock");
+    EXPECT_FLOAT_EQ(RadiusOf(baseline), 3.0f);
+
+    nlohmann::json object = MapObjJson(1);
+    NS::ObjectJsonClassObjs(object)["Collision"] = SphereEntry(3.0f);
+    const nlohmann::json diffProp = NS::DiffObjectJson(object);
+    const nlohmann::json* againstProp = NS::ClassObjFields(diffProp, "Collision");
+    ASSERT_NE(againstProp, nullptr);
+    EXPECT_TRUE(NS::HasField(*againstProp, "半径"));
+
+    NS::SetObjectJsonActorFile(object, "HeavyRock");
+    const nlohmann::json diffHeavy = NS::DiffObjectJson(object);
+    const nlohmann::json* againstHeavy = NS::ClassObjFields(diffHeavy, "Collision");
+    ASSERT_NE(againstHeavy, nullptr);
+    EXPECT_FALSE(NS::HasField(*againstHeavy, "半径"));
 }
 
 TEST(ActorFile, ReferenceFieldsAreNotActorFileValues)
@@ -511,6 +540,7 @@ TEST(ActorFile, FileWithAnUnknownKeyIsNotRead)
 TEST(ActorFile, PromoteReachesOtherInstancesAndFile)
 {
     const ScopedActorFileDirectory scope("Promote");
+    const ScopedActorFile classOnly{"PropActor", ClassOnlyActorFile("PropActor")};
     nlohmann::json doc = NS::MakeSceneJson();
     NS::SceneJsonObjects(doc).push_back(MapObjJson(1));
     NS::SceneJsonObjects(doc).push_back(MapObjJson(2));
@@ -538,9 +568,10 @@ TEST(ActorFile, PromoteReachesOtherInstancesAndFile)
 TEST(ActorFile, PromoteRejectsReferenceField)
 {
     const ScopedActorFileDirectory scope("PromoteReference");
+    const ScopedActorFile classOnly{"FollowCameraActor", ClassOnlyActorFile("FollowCameraActor")};
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json camera = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(camera, "FollowCameraActor");
+    NS::SetObjectJsonActorFile(camera, "FollowCameraActor");
     NS::SetObjectJsonId(camera, 1);
     NS::SceneJsonObjects(doc).push_back(std::move(camera));
     NS::Scene scene;
@@ -553,7 +584,9 @@ TEST(ActorFile, PromoteRejectsReferenceField)
     const NS::ClassObjInfo* row = RowOf(*placed, &placed->Vcam());
     ASSERT_NE(row, nullptr);
     EXPECT_FALSE(editor.PromoteFieldToActorFile(*placed, *row, "追従対象"));
-    EXPECT_EQ(NS::ActorFileLibrary::Get().Find("FollowCameraActor"), nullptr);
+    const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("FollowCameraActor");
+    ASSERT_NE(actorFile, nullptr);
+    EXPECT_EQ(NS::ClassObjFields(*actorFile, "Vcam"), nullptr);
 }
 
 TEST(ActorFile, ShippedActorFilesLoad)
@@ -609,7 +642,7 @@ TEST(ActorFile, ClassIsReadFromInsideAndTheFileIsFoundByItsName)
     library.Reload();
     const nlohmann::json* found = library.Find("HeavyRock");
     ASSERT_NE(found, nullptr);
-    EXPECT_EQ(NS::ObjectJsonClass(*found), "PropActor");
+    EXPECT_EQ(NS::ActorFileClass(*found), "PropActor");
     // 読んだ文書は頭の鍵を全部持ったまま返る
     EXPECT_EQ(*found, written);
     EXPECT_EQ(library.Find("PropActor"), nullptr);
