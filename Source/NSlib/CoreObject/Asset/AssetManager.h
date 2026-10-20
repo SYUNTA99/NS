@@ -157,7 +157,7 @@ namespace NS
         // 表に無い key の骨付きのモデルを skinned glTF から作る。読めなければ中身の空のモデル
         [[nodiscard]] std::unique_ptr<SkinnedModel> CreateSkinnedModel(const std::string& key);
         // name のクリップを作る。読めなければ中身の空のクリップにする
-        [[nodiscard]] std::unique_ptr<AnimClip> CreateAnimClip(std::string_view name);
+        [[nodiscard]] std::unique_ptr<AnimClip> CreateAnimClip(const std::string& key);
         // アニメーションの glTF を path キーで 1 回だけ読む。読めなかった path も覚え、Clear まで読み直さない
         [[nodiscard]] const AnimSource* GetOrLoadAnimationSource(std::string_view path);
 
@@ -168,8 +168,8 @@ namespace NS
         std::map<std::string, std::unique_ptr<Material>> m_materials;
         std::map<std::string, std::unique_ptr<SkinnedModel>> m_skinnedModels;
         std::map<std::string, std::unique_ptr<AnimSource>>  m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録
-        // 欄の字面キー。読めなかった名前の中身の空のクリップも覚える
-        std::map<std::string, std::unique_ptr<AnimClip>, std::less<>> m_animClips;
+        // 読めなかった名前も、中身の空のクリップとして覚える
+        std::map<std::string, std::unique_ptr<AnimClip>> m_animClips;
     };
 
     //! @brief 生きている間だけ AssetManager::Get() が assets を返すようにし、壊れる時に前の物へ戻す

@@ -78,6 +78,17 @@ namespace NS
             return OS::FileSystem::Normalize(name);
         }
 
+        // クリップの名前は「ファイル#動きの名前」。揃えるのはファイルの部分だけで、動きの名前は glTF の字面のまま
+        [[nodiscard]] std::string ClipKey(std::string_view name)
+        {
+            const std::size_t hash = name.find('#');
+            if (hash == std::string_view::npos)
+            {
+                return NameKey(name);
+            }
+            return NameKey(name.substr(0, hash)) + std::string{name.substr(hash)};
+        }
+
         // create は同じ表へ別の鍵を足してよい
         template <class T, class Create>
         [[nodiscard]] T& FindOrAdd(std::map<std::string, std::unique_ptr<T>>& table, const std::string& key, Create create)
@@ -195,7 +206,28 @@ namespace NS
 
     namespace
     {
-        // .mat の params の値 1 つ。bool か、有限の数か、有限の数 1〜4 個の配列だけを読む
+        // .mat に書いて読み直せる値の決まり。読む側と書く側の両方がこれで断り、決まりを写さない
+        [[nodiscard]] bool IsValidParamValue(const MaterialParamValue& value) noexcept
+        {
+            if (value.numbers.empty() || value.numbers.size() > 4u)
+            {
+                return false;
+            }
+            if (value.isBool && value.numbers.size() != 1u)
+            {
+                return false;
+            }
+            for (const double number : value.numbers)
+            {
+                if (!std::isfinite(number))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // .mat の params の値 1 つ。ここで見るのは JSON の型だけで、数と個数の範囲は IsValidParamValue が断る
         [[nodiscard]] std::optional<MaterialParamValue> ParseParamValue(const nlohmann::json& j)
         {
             if (j.is_boolean())
@@ -216,7 +248,7 @@ namespace NS
             {
                 value.numbers.push_back(j.get<double>());
             }
-            else if (j.is_array() && !j.empty() && j.size() <= 4u)
+            else if (j.is_array())
             {
                 for (const nlohmann::json& element : j)
                 {
@@ -231,12 +263,9 @@ namespace NS
             {
                 return std::nullopt;
             }
-            for (const double number : value.numbers)
+            if (!IsValidParamValue(value))
             {
-                if (!std::isfinite(number))
-                {
-                    return std::nullopt;
-                }
+                return std::nullopt;
             }
             return value;
         }
@@ -344,27 +373,6 @@ namespace NS
             return text;
         }
 
-        // 読み直せない値は書かない。ParseParamValue が断る値と同じ決まり
-        [[nodiscard]] bool IsWritableParam(const MaterialParamValue& value) noexcept
-        {
-            if (value.numbers.empty() || value.numbers.size() > 4u)
-            {
-                return false;
-            }
-            if (value.isBool)
-            {
-                return value.numbers.size() == 1u;
-            }
-            for (const double number : value.numbers)
-            {
-                if (!std::isfinite(number))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
         [[nodiscard]] std::string ParamJson(const MaterialParamValue& value)
         {
             if (value.isBool)
@@ -411,7 +419,7 @@ namespace NS
         }
         for (const std::pair<const std::string, MaterialParamValue>& param : file.params)
         {
-            if (!IsWritableParam(param.second))
+            if (!IsValidParamValue(param.second))
             {
                 return std::nullopt;
             }
@@ -705,16 +713,13 @@ namespace NS
 
     AnimClip* AssetManager::LoadAnimClip(std::string_view name)
     {
-        if (const std::map<std::string, std::unique_ptr<AnimClip>, std::less<>>::iterator it = m_animClips.find(name);
-            it != m_animClips.end())
-        {
-            return it->second.get();
-        }
-        return m_animClips.emplace(std::string{name}, CreateAnimClip(name)).first->second.get();
+        const std::string key = ClipKey(name);
+        return &FindOrAdd(m_animClips, key, [this, &key] { return CreateAnimClip(key); });
     }
 
-    std::unique_ptr<AnimClip> AssetManager::CreateAnimClip(std::string_view name)
+    std::unique_ptr<AnimClip> AssetManager::CreateAnimClip(const std::string& key)
     {
+        const std::string_view name = key;
         if (name.empty())
         {
             return std::make_unique<AnimClip>(std::string{}, nullptr);
