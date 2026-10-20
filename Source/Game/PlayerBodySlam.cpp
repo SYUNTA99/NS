@@ -402,7 +402,8 @@ void PlayerActor::UncurlWhenSettled() noexcept
     {
         return;
     }
-    if (m_bodySlamHeld || IsBodySlamming() || !body.IsGrounded())
+    // 押している間は着地しても丸まりを解かない
+    if (m_charge.m_judge.IsHeld() || IsBodySlamming() || !body.IsGrounded())
     {
         return;
     }

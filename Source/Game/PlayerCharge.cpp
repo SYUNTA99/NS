@@ -145,7 +145,6 @@ void PlayerActor::AdvanceCharge(float dt)
     {
         SetCurled(true);
     }
-    m_bodySlamHeld = judge.IsHeld();
 
     // 控えた線は放す前のフレームに矢印を貼った線で、放したフレームはまだ引き直していない。溜めて放した突進は
     // スティックを見ずにその向きへ出す。通常突進は矢印が出ないので入力の向きへ出す
@@ -283,8 +282,6 @@ void PlayerActor::CancelCharge() noexcept
     // 判定のしきい値の歩数は AdvanceCharge が毎回入れ直すので失われない
     m_charge = GL::Player::ChargeStatus{};
     m_chargeObserved = ChargeObservation{};
-    // 押しの印が真の間、自機は着地しても丸まりを解かない。印を書くのは押しを裁いた歩だけなので、ここで偽へ戻す
-    m_bodySlamHeld = false;
     SetMaxSpeedScale(1.0f);
 }
 

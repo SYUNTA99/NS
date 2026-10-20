@@ -116,6 +116,10 @@ namespace GL
             //! 身体を動かしてよいかは PlayerActor::CanMoveBody が答える
             bool hitStopping = false;
             bool awaitingRebound = false; //!< 止めが明けた後、反動の事象を待って自機を止めている間
+
+            //! 自機を止めている間 true。身体を動かさない間と、出直しを受け付けない間はこれを読む
+            [[nodiscard]] bool IsStopping() const noexcept { return hitStopping || awaitingRebound; }
+
             //! 当たりを検知したフレームから、止めた自機を動かし直すまで。止めの事象のある当たりだけが true になる
             bool holdingPlayer = false;
             //! 突進の線の先の相手に当たると予測して、触れる前の事象を始めてから検知するまで true

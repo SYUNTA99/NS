@@ -115,6 +115,7 @@ namespace
     {
         bool hitStopping = false;
         bool awaitingRebound = false;
+        bool stopping = false;
         bool canMoveBody = true;
         bool freezeBegan = false;
         bool released = false;
@@ -164,6 +165,7 @@ namespace
             ClockFrame now;
             now.hitStopping = player.Resolver().Answer().hitStopping;
             now.awaitingRebound = player.Resolver().Answer().awaitingRebound;
+            now.stopping = player.Resolver().Answer().IsStopping();
             now.canMoveBody = player.CanMoveBody();
             now.freezeBegan = player.Resolver().Answer().freezeBegan;
             now.released = player.Resolver().Answer().released;
@@ -236,6 +238,25 @@ TEST(ImpactTimelineClock, EventsStartTheStopReleaseAndReboundOnTheirFrames)
         EXPECT_EQ(frame.rebounding, k >= 8);
     }
     EXPECT_EQ(player->Resolver().Answer().lastImpact.hitStopSteps, 5);
+}
+
+// 止めの間は、止めの事象の始まりから反動を待ち終えるまで。身体を動かせないのはこの間だけ
+TEST(ImpactTimelineClock, TheAnswerSaysStoppingFromTheStopUntilTheRebound)
+{
+    const ScopedHitTimelineDirectory directory("Stopping");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeSplitReleaseTimeline());
+    NS::Scene scene;
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    const std::vector<ClockFrame> trace = RunHit(*player, *RockOf(scene), 1.0f, 10);
+    ASSERT_EQ(trace.size(), 10u);
+    for (int k = 0; k < 10; ++k)
+    {
+        SCOPED_TRACE(k);
+        const ClockFrame& frame = trace[static_cast<std::size_t>(k)];
+        EXPECT_EQ(frame.stopping, k >= 1 && k <= 7);
+        EXPECT_EQ(frame.canMoveBody, !frame.stopping);
+    }
 }
 
 // 止めの長さを決めるのはタイムラインだけ。12 を 8 にすると止めが 8 になる

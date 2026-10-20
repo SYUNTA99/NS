@@ -190,9 +190,7 @@ void PlayerActor::ObserveStep()
     NS::SceneActor::ObserveStep();
     // 当たりの途中は受け付けない。相手だけが戻ると、走っている当たりのタイムラインが戻った相手を飛ばす
     // 押しは同じ歩の状態の段で消費されるので、当たりの途中の押しは持ち越さない
-    const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
-    const bool inImpact = impact.hitStopping || impact.awaitingRebound;
-    if (m_input->RespawnPressed() && !inImpact)
+    if (m_input->RespawnPressed() && !m_resolver->Answer().IsStopping())
     {
         if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
         {
@@ -610,8 +608,7 @@ float PlayerActor::SkidSpeedScale() const noexcept
 bool PlayerActor::CanMoveBody() const noexcept
 {
     // 当たりの止めの正は裁定役の時計。身体の active へ写すと、やり直しが写しを戻し忘れた時に正と食い違う
-    const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
-    return IsAppeared() && !impact.hitStopping && !impact.awaitingRebound;
+    return IsAppeared() && !m_resolver->Answer().IsStopping();
 }
 
 GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
@@ -655,7 +652,6 @@ void PlayerActor::ResetState() noexcept
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_curled = false;
     m_collider->SetSphereShape(false);
-    m_bodySlamHeld = false;
     m_states->Reset();
     // 止めの最中か反動を待つ間のやり直しで、出現位置で明けて弾かれないよう、走っている当たりのタイムラインを持ち主に打ち切らせる
     m_resolver->CancelImpact(&m_tackleGhost, HitReactionClassObj());

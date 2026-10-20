@@ -452,7 +452,6 @@ private:
     float m_maxSpeedScale = 1.0f; // 走行速度に掛ける倍率。書くのは AdvanceCharge と CancelCharge
 
     bool m_curled = false;
-    bool m_bodySlamHeld = false;
 
     GL::Player::BodySlamStatus m_slam;
     BodySlamRequest m_request;
