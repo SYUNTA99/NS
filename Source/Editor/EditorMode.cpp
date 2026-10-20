@@ -85,9 +85,14 @@ namespace NS
             return m_cellOccupied && m_cellOccupied(x, y, z);
         }
 
+        bool EditorMode::IsSceneEditable() const noexcept
+        {
+            return !m_sceneEditable || m_sceneEditable();
+        }
+
         void EditorMode::Tick() noexcept
         {
-            if (!m_active)
+            if (!IsSceneEditable())
             {
                 return;
             }
@@ -158,8 +163,8 @@ namespace NS
 
         bool EditorMode::SaveLevelToName(std::string_view name) noexcept
         {
-            // 休止中はプレイ中。実体はプレイで動いた後の姿で、編集の内容ではないので書かない
-            if (!m_active || !m_captureLevel)
+            // プレイ中の実体はプレイで動いた後の姿で、編集の内容ではないので書かない
+            if (!IsSceneEditable() || !m_captureLevel)
             {
                 return false;
             }
@@ -237,6 +242,11 @@ namespace NS
 
         bool EditorMode::OpenLevel(std::string_view name) noexcept
         {
+            // プレイ中に組み直すと、編集へ戻る組み直しがプレイ開始の写しで上書きし、名前だけが新しいレベルを指す
+            if (!IsSceneEditable())
+            {
+                return false;
+            }
             const std::optional<std::string> path = BuildLevelPath(name);
             if (!path || !m_loadLevel)
             {
@@ -342,7 +352,7 @@ namespace NS
 
         void EditorMode::DrawCursorShapes(Gfx::DebugShapes& shapes) const noexcept
         {
-            if (!m_active || !m_cursor.valid)
+            if (!IsSceneEditable() || !m_cursor.valid)
             {
                 return;
             }
@@ -361,7 +371,7 @@ namespace NS
 
         void EditorMode::RenderCursorPreview() noexcept
         {
-            if (!m_active || !m_cursor.valid)
+            if (!IsSceneEditable() || !m_cursor.valid)
             {
                 return;
             }
@@ -500,7 +510,7 @@ namespace NS
         {
             // プレイ中に作った物は、編集へ戻る組み直しで消える。履歴だけがプレイの姿を指して残る
             std::vector<uint32> created;
-            if (!m_active || m_applier == nullptr || !m_allocateId || objects.empty())
+            if (!IsSceneEditable() || m_applier == nullptr || !m_allocateId || objects.empty())
             {
                 return created;
             }
@@ -535,7 +545,7 @@ namespace NS
 
         void EditorMode::PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (m_applier == nullptr || !m_findCellObject)
+            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellObject)
             {
                 return;
             }
@@ -578,7 +588,7 @@ namespace NS
 
         void EditorMode::DeleteAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (m_applier == nullptr || !m_findCellObject)
+            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellObject)
             {
                 return;
             }
@@ -600,7 +610,7 @@ namespace NS
 
         void EditorMode::RotateAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (m_applier == nullptr || !m_findCellObject)
+            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellObject)
             {
                 return;
             }
@@ -859,7 +869,8 @@ namespace NS
 
         bool EditorMode::PerformUndo() noexcept
         {
-            if (m_applier == nullptr || !m_undo.Undo(*m_applier))
+            // 履歴は編集の姿を指す。プレイ中の実体へ当てると、プレイの姿に編集の姿が混ざる
+            if (!IsSceneEditable() || m_applier == nullptr || !m_undo.Undo(*m_applier))
             {
                 return false;
             }
@@ -869,7 +880,7 @@ namespace NS
 
         bool EditorMode::PerformRedo() noexcept
         {
-            if (m_applier == nullptr || !m_undo.Redo(*m_applier))
+            if (!IsSceneEditable() || m_applier == nullptr || !m_undo.Redo(*m_applier))
             {
                 return false;
             }

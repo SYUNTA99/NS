@@ -169,7 +169,7 @@ void Editor::OnRender()
             // で組んだドッキングがプレイ移行で崩れないようにする
             m_sceneView.Render(editor);
             m_gameView.Render(editor);
-            ImGui::BeginDisabled(playMode);
+            ImGui::BeginDisabled(!editor.IsSceneEditable());
             m_toolMode.Render(editor);
             ImGui::EndDisabled();
 
@@ -206,7 +206,7 @@ void Editor::OnRender()
         }
 
         // 保存と読み込みの窓とショートカットは、全面化の間も効かせる
-        if (!playMode)
+        if (editor.IsSceneEditable())
         {
             editor.Editor().RenderFileBrowser();
         }
@@ -466,8 +466,7 @@ void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
 {
 #if NS_EDITOR_ENABLED
     NS::Editor::EditorMode& ed = editor.Editor();
-    const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
-    const bool editEnabled = !playMode; // プレイ中はレベルへの編集を止め、進行中のセッションを壊さない
+    const bool editEnabled = editor.IsSceneEditable();
 
     // 縦の余白を詰めてバーを細くする。横は掴みやすさのため残す
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{9.0f, 1.0f});
@@ -580,7 +579,7 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
     }
     else if (name == NS::Editor::k_PanelEditMode)
     {
-        ImGui::BeginDisabled(editor.CurrentMode() == LevelEditorController::Mode::Play);
+        ImGui::BeginDisabled(!editor.IsSceneEditable());
         m_toolMode.Render(editor);
         ImGui::EndDisabled();
     }
@@ -601,8 +600,7 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
 void Editor::HandleEditShortcuts(LevelEditorController& editor) noexcept
 {
 #if NS_EDITOR_ENABLED
-    // プレイ中の配置物は実体がそのまま保存対象なので、誤爆で消さないよう編集中だけ効かせる
-    if (editor.CurrentMode() != LevelEditorController::Mode::Edit)
+    if (!editor.IsSceneEditable())
     {
         return;
     }

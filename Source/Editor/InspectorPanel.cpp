@@ -169,7 +169,7 @@ namespace NS
                 m_skyboxDraft = m_skyboxSource;
                 m_skyboxPreviewPath.clear();
             }
-            const bool playing = editor.CurrentMode() != LevelEditorController::Mode::Edit;
+            const bool playing = !editor.IsSceneEditable();
             ImGui::BeginDisabled(playing);
             EnvironmentFields fields{m_skyboxDraft};
             const ValueEditResult edit = DrawReflectedValue(fields);

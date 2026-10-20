@@ -21,6 +21,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
+#include "Tests/TestArchetypeDirectory.h"
 #include "Tests/TestCheckLayer.h"
 
 #include <gtest/gtest.h>
@@ -794,6 +795,112 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
         EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore);
         EXPECT_EQ(undo.UndoSize(), undoBefore);
         editor.EnterEdit();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// プレイ中は、シーンか種類の既定を変える道をどれも断る。シーンも履歴も種類の既定のファイルも変わらない
+// 欄を触る道 (プレイ開始の写しへ写す) は断らない
+TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheArchetypes)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "プレイ中に断る試し";
+    desc.window.size = {160, 90};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        const ScopedArchetypeDirectory archetypes("EditorPlayEdit");
+        // 開くレベルは Assets の下に限られるので、試しのフォルダを作り、終わったら消す
+        const std::string folder =
+            "EditorPlayEditTest" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+        const std::string directory = NS::OS::FileSystem::Combine(
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), folder);
+        ASSERT_TRUE(NS::OS::FileSystem::CreateDirectories(directory));
+        const std::string levelText = NS::MakeSceneJson().dump();
+        ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(
+            NS::OS::FileSystem::Combine(directory, "other.scene"),
+            std::as_bytes(std::span<const char>{levelText.data(), levelText.size()})));
+
+        NS::Scene scene;
+        LevelEditorController editor(&scene);
+        editor.Setup(nullptr, {});
+        const NS::Editor::PlacementItem* cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
+        ASSERT_NE(cube, nullptr);
+        editor.PlaceItem(*cube);
+        const NS::uint32 followerId = editor.SelectedObjectId();
+        editor.PlaceItem(*cube);
+        const NS::uint32 sourceId = editor.SelectedObjectId();
+        editor.Editor().Palette().SetActiveSlot(0);
+        editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10);
+        ASSERT_NE(NS::Editor::FindObjectIdAtCell(scene.Objects(), 10, 0, 10), NS::k_NoObjectId);
+        // やり直しの履歴も 1 つ持たせる
+        editor.PlaceItem(*cube);
+        ASSERT_TRUE(editor.Editor().PerformUndo());
+        ASSERT_TRUE(editor.Editor().CanRedo());
+        editor.SelectObjectById(sourceId);
+
+        editor.EnterPlay();
+        // インスペクタの道でメッシュの欄を変えてから上げる。欄を触るのはプレイ中も許す
+        NS::SceneActor* source = scene.Objects().FindByObjectId(sourceId);
+        ASSERT_NE(source, nullptr);
+        ASSERT_NE(scene.Objects().FindByObjectId(followerId), nullptr);
+        source->ModelClassObj()->SetMeshRef("wedge45");
+        source->ReloadAssets();
+        const NS::ClassObjInfo* modelRow = nullptr;
+        NS::ForEachReflectedClassObj(*source, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+            if (part == source->ModelClassObj())
+            {
+                modelRow = &row;
+            }
+        });
+        ASSERT_NE(modelRow, nullptr);
+        const std::string stone =
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Materials/stone.mat");
+
+        struct EditPath
+        {
+            const char* name;
+            std::function<void()> edit;
+        };
+        const std::vector<EditPath> paths{
+            {"種類の既定へ上げる",
+             [&editor, source, modelRow] {
+                 EXPECT_FALSE(editor.PromoteFieldToArchetype(*source, *modelRow, "メッシュ"));
+             }},
+            {"マテリアルを付ける", [&editor, &stone] { EXPECT_FALSE(editor.ApplyMaterialToSelected(stone)); }},
+            {"置く", [&editor, cube] { editor.PlaceItem(*cube); }},
+            {"複製", [&editor] { editor.DuplicateSelectedObject(); }},
+            {"消す", [&editor] { editor.DeleteSelectedObject(); }},
+            {"改名", [&editor, sourceId] { editor.RenameObject(sourceId, "改名した"); }},
+            {"空の設定", [&editor] { EXPECT_FALSE(editor.SetSkyboxPath("Assets/Skybox/none.png")); }},
+            {"筆で置き換える", [&editor] { editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10); }},
+            {"筆で回す", [&editor] { editor.Editor().RotateAtProgrammatic(10, 0, 10); }},
+            {"筆で消す", [&editor] { editor.Editor().DeleteAtProgrammatic(10, 0, 10); }},
+            {"元に戻す", [&editor] { EXPECT_FALSE(editor.Editor().PerformUndo()); }},
+            {"やり直す", [&editor] { EXPECT_FALSE(editor.Editor().PerformRedo()); }},
+            {"レベルを開く",
+             [&editor, &folder] { EXPECT_FALSE(editor.Editor().OpenLevel(folder + "/other")); }},
+        };
+        const NS::Editor::UndoStack& undo = editor.Editor().Undo();
+        for (const EditPath& path : paths)
+        {
+            const nlohmann::json sceneBefore = scene.ToJson();
+            const std::size_t undoBefore = undo.UndoSize();
+            const std::size_t redoBefore = undo.RedoSize();
+            const std::vector<std::string> archetypesBefore = NS::OS::FileSystem::ListFiles(archetypes.Path(), ".json");
+
+            path.edit();
+
+            EXPECT_EQ(scene.ToJson(), sceneBefore) << path.name;
+            EXPECT_EQ(undo.UndoSize(), undoBefore) << path.name;
+            EXPECT_EQ(undo.RedoSize(), redoBefore) << path.name;
+            EXPECT_EQ(NS::OS::FileSystem::ListFiles(archetypes.Path(), ".json"), archetypesBefore) << path.name;
+        }
+        editor.EnterEdit();
+
+        std::error_code error;
+        std::filesystem::remove_all(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(directory)}, error);
     }));
     EXPECT_EQ(app.Run(), 0);
 }

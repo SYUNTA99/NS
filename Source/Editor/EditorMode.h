@@ -97,9 +97,9 @@ namespace NS
             void SetImGui(UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
             void SetSceneCamera(SceneCamera* camera) noexcept { m_camera = camera; }
 
-            //! 休止の間はプレイ中として扱い、保存も受け付けない
-            void SetActive(bool active) noexcept { m_active = active; }
-            [[nodiscard]] bool IsActive() const noexcept { return m_active; }
+            //! @brief シーンを変えてよいかを答える関数を差す。LevelEditorController::IsSceneEditable を差す
+            //! @details 偽の間は入力・カーソル・作る・筆・取り消し・開く・保存を全部断る。未設定なら変えてよい
+            void SetSceneEditableFn(std::function<bool()> fn) noexcept { m_sceneEditable = std::move(fn); }
 
             //! グリッドに対する編集入力を一時的に無効化する
             void SetInputSuppressed(bool suppressed) noexcept { m_inputSuppressed = suppressed; }
@@ -191,7 +191,7 @@ namespace NS
             UI::ImGuiContext* m_imgui = nullptr;
             SceneCamera* m_camera = nullptr;
 
-            bool m_active = true;
+            std::function<bool()> m_sceneEditable;
             bool m_inputSuppressed = false;
             bool m_undoRedoSuppressed = false; // ギズモドラッグ中だけ立てて undo/redo を止める
             bool m_levelDirty = true;
@@ -219,6 +219,9 @@ namespace NS
             void HandlePlaceDeleteInput() noexcept;
             void HandleRotationInput() noexcept;
             void HandleUndoRedoInput() noexcept;
+
+            //! 差した関数の答え。シーンを変える関数は全部、頭でこれを見る
+            [[nodiscard]] bool IsSceneEditable() const noexcept;
 
             //! セルにセルブラシ配置物があるか。実体の照会が未設定なら常に不在
             [[nodiscard]] bool HasObjectAtCell(int16 x, int16 y, int16 z) const noexcept;

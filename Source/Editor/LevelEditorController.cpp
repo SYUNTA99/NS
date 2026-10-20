@@ -281,6 +281,12 @@ LevelEditorController::LevelEditorController(NS::Scene* scene) noexcept : m_scen
     // 作る道と取り消しは Setup の前から使えるよう、適用処理と採番はここで差す
     m_editor.SetApplier(&m_applier);
     m_editor.SetAllocateIdFn([this]() { return m_scene->Objects().AllocateObjectId(); });
+    m_editor.SetSceneEditableFn([this]() { return IsSceneEditable(); });
+}
+
+bool LevelEditorController::IsSceneEditable() const noexcept
+{
+    return m_mode == Mode::Edit;
 }
 
 namespace
@@ -325,7 +331,7 @@ const std::string& LevelEditorController::SkyboxPath() const noexcept
 
 bool LevelEditorController::SetSkyboxPath(std::string_view path)
 {
-    if (m_scene == nullptr || m_mode != Mode::Edit)
+    if (m_scene == nullptr || !IsSceneEditable())
     {
         return false;
     }
@@ -468,7 +474,6 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui, std::string_view 
     m_editor.SetInput(&app->Input());
     m_editor.SetImGui(imgui);
     m_editor.SetSceneCamera(MainCamera());
-    m_editor.SetActive(true);
 
     m_gizmo.SetInput(&app->Input());
     m_gizmo.SetImGui(imgui);
@@ -550,7 +555,6 @@ void LevelEditorController::EnterPlay() noexcept
 
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
-    m_editor.SetActive(false);
 }
 
 void LevelEditorController::EnterEdit() noexcept
@@ -578,7 +582,6 @@ void LevelEditorController::EnterEdit() noexcept
     // 編集復帰の組み直しを跨いだ選択を、id から現在のオブジェクトへ貼り直してから編集へ戻る
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
-    m_editor.SetActive(true);
 }
 
 void LevelEditorController::RequestStepFrame() noexcept
@@ -1408,7 +1411,7 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
                                                     std::string_view fieldName)
 {
     const NS::Object* comp = row.get(&actor);
-    if (m_scene == nullptr || comp == nullptr || comp->GetReflection() == nullptr)
+    if (!IsSceneEditable() || m_scene == nullptr || comp == nullptr || comp->GetReflection() == nullptr)
     {
         return false;
     }
@@ -1521,7 +1524,7 @@ void LevelEditorController::CreateObjectAndSelect(nlohmann::json object)
 
 void LevelEditorController::RenameObject(NS::uint32 id, std::string_view name)
 {
-    if (m_mode != Mode::Edit || id == NS::k_NoObjectId)
+    if (!IsSceneEditable() || id == NS::k_NoObjectId)
     {
         return;
     }
@@ -1590,7 +1593,7 @@ void LevelEditorController::DuplicateSelectedObject()
 
 void LevelEditorController::DeleteSelectedObject()
 {
-    if (m_mode != Mode::Edit || m_selectionIds.empty())
+    if (!IsSceneEditable() || m_selectionIds.empty())
     {
         return;
     }
@@ -1787,7 +1790,7 @@ void LevelEditorController::CommitTransformEdit() noexcept
     }
     m_editBaselines.clear();
     // プレイ中の控えはプレイの姿。編集へ戻った後に戻すと、プレイの位置を編集の物へ書く
-    if (m_mode != Mode::Edit || commands.empty())
+    if (!IsSceneEditable() || commands.empty())
     {
         return;
     }
@@ -1822,7 +1825,7 @@ void LevelEditorController::CommitClassObjEdit() noexcept
 
     // リフレクション編集は実体の部品へ直接入っている。after は実体の忠実な写しで、baseline と同じなら積まない
     // プレイ中の控えはプレイの姿なので積まない
-    if (m_mode != Mode::Edit)
+    if (!IsSceneEditable())
     {
         return;
     }
@@ -1840,7 +1843,7 @@ void LevelEditorController::CommitClassObjEdit() noexcept
 bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
 {
     NS::Application* app = NS::Application::Get();
-    if (!m_objectToolActive || app == nullptr)
+    if (!IsSceneEditable() || !m_objectToolActive || app == nullptr)
     {
         return false;
     }

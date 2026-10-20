@@ -44,7 +44,7 @@ namespace NS
                 }
 
                 // Assets からの持ち込み口。メッシュは 1 体として置き、材質は選択中へ塗る
-                if (!playMode && ImGui::BeginDragDropTarget())
+                if (editor.IsSceneEditable() && ImGui::BeginDragDropTarget())
                 {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_MeshDragType))
                     {

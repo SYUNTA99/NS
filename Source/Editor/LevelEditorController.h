@@ -84,6 +84,11 @@ public:
 
     [[nodiscard]] Mode CurrentMode() const noexcept { return m_mode; }
 
+    //! @brief シーンか種類の既定を変えてよいか。編集モードの間だけ真
+    //! @details 変える関数と画面の止め方は全部これを見る。EditorMode にも同じ答えを差す。
+    //! プレイ中に欄を触る道 (MirrorPlayEditToBaseline) は断らず、プレイ開始の写しへ写す
+    [[nodiscard]] bool IsSceneEditable() const noexcept;
+
     //! 編集モードからプレイモードへ移行する
     void EnterPlay() noexcept;
 
