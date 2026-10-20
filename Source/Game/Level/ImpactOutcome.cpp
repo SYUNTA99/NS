@@ -113,6 +113,14 @@ namespace GL
             const TierScales tierScales = TierScalesFor(input.tier, tuning);
             const float hitStopScale = tierScales.hitStop;
 
+            // 面の向きは貫通の当たりにも出す。外れの火花は貫通でも面に沿って流れる
+            float sharpness = 2.0f;
+            if (input.bodyShape == NS::HitSensorShape::Box)
+            {
+                sharpness = tuning.missBoxEdgeSharpness;
+            }
+            outcome.faceNormal = MissSurfaceNormal(input.faceU, input.faceV, sharpness, input.slamVelocity);
+
             // 壊れない相手は押し飛ばしへ回す。貫通させると残った当たりへ自機がめり込む
             if (tuning.breakEnabled && input.breakable && input.toughness <= power)
             {
@@ -140,12 +148,7 @@ namespace GL
             // 水平だけ反射する。縦も映すと上の縁を越え、低い反動の弧で相手に再衝突する
             if (input.tier == HitTier::Wide)
             {
-                float sharpness = 2.0f;
-                if (input.bodyShape == NS::HitSensorShape::Box)
-                {
-                    sharpness = tuning.missBoxEdgeSharpness;
-                }
-                const NS::Vector3 normal = MissSurfaceNormal(input.faceU, input.faceV, sharpness, input.slamVelocity);
+                const NS::Vector3 normal = outcome.faceNormal;
                 const float slamSpeed = input.slamVelocity.Length();
                 if (slamSpeed > NS::k_Epsilon)
                 {

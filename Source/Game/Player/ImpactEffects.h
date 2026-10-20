@@ -134,9 +134,11 @@ namespace GL
             [[nodiscard]] const ImpactAim& LastAim() const noexcept { return m_aim; }
 
             //! 外した側と面に沿う滑りを混ぜ、火花の単位方向を返す。u は右、v は上が正
+            //! surfaceNormal は反動の配分が使った面の向き (ImpactRecord::faceNormal)。滑りはこの面に沿う
             //! slamDirection は水平成分を使う。面の原点か水平の向きが決まらない時は (0, 0, 0)
             [[nodiscard]] NS::Vector3 MissSparkHeading(float u,
                                                        float v,
+                                                       const NS::Vector3& surfaceNormal,
                                                        const NS::Vector3& slamDirection) const noexcept;
 
             NS_REFLECT_BEGIN(ImpactEffects, NS::Object)

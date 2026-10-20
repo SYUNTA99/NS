@@ -147,7 +147,9 @@ TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
 {
     GL::Player::ImpactEffects effects{nullptr};
     ASSERT_EQ(NS::ApplyJsonFields(effects, {{"外れの火花の横の割合", 1.0f}}), 0u);
-    const NS::Vector3 heading = effects.MissSparkHeading(0.8f, 0.0f, {0.0f, 0.0f, 1.0f});
+    const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
+    const NS::Vector3 heading =
+        effects.MissSparkHeading(0.8f, 0.0f, GL::Level::MissSurfaceNormal(0.8f, 0.0f, 2.0f, forward), forward);
     EXPECT_NEAR(heading.x, 1.0f, 0.001f);
     EXPECT_NEAR(heading.z, 0.0f, 0.001f);
     GL::Level::TargetMarker marker{nullptr};

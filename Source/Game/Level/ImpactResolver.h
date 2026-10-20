@@ -62,6 +62,8 @@ namespace GL
             HitDirection direction = HitDirection::Any;
             float faceU = 0.0f;        //!< 段を決めた面の上の左右の位置。自機から見て右が正。判定できない体は 0
             float faceV = 0.0f;        //!< 段を決めた面の上の上下の位置。上が正。判定できない体は 0
+            //! 反動の配分が使った面の向き (ImpactOutcome::faceNormal)。外れの火花もこの面に沿って流す
+            NS::Vector3 faceNormal;
             float cameraShake = 0.0f;  //!< 揺れの最初の振れの大きさ。横と縦を合わせた長さで、単位は m
             float cameraTrauma = 0.0f; //!< トラウマの揺れで足すトラウマ。トラウマの揺れの無い当たりは 0
             int flashStart = 0;        //!< 白の残りフレーム数の始めの値。白の無い当たりは 0

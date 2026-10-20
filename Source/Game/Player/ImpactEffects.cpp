@@ -1,7 +1,6 @@
 #include "Game/Player/ImpactEffects.h"
 #include "NSlib/Core/Types.h"
 
-#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/AABB.h"
@@ -203,7 +202,10 @@ namespace GL
             return shape;
         }
 
-        Vector3 ImpactEffects::MissSparkHeading(float u, float v, const Vector3& slamDirection) const noexcept
+        Vector3 ImpactEffects::MissSparkHeading(float u,
+                                                float v,
+                                                const Vector3& surfaceNormal,
+                                                const Vector3& slamDirection) const noexcept
         {
             Vector3 forward{};
             if (!NS::TryNormalizeHorizontal(slamDirection, forward))
@@ -216,8 +218,7 @@ namespace GL
             {
                 return Vector3{};
             }
-            const Vector3 normal = GL::Level::MissSurfaceNormal(u, v, 2.0f, forward);
-            const Vector3 slide = NormalizedOr(forward - normal * NS::Dot(forward, normal), side);
+            const Vector3 slide = NormalizedOr(forward - surfaceNormal * NS::Dot(forward, surfaceNormal), side);
             const float sideShare = std::clamp(m_missSparkSideShare, 0.0f, 1.0f);
             return NormalizedOr(side * sideShare + slide * (1.0f - sideShare), side);
         }
@@ -305,7 +306,7 @@ namespace GL
                                           plan.sideDir);
             // 外れは、どこで、どっちへ力がそれたかを読ませる。面の上の位置から外した側を取り、段と逸れ方と向きを揃える
             // 位置の無い当たり (面で判定できない体) は前の擦れの向きのまま
-            const Vector3 missHeading = MissSparkHeading(impact.faceU, impact.faceV, slam.Direction());
+            const Vector3 missHeading = MissSparkHeading(impact.faceU, impact.faceV, impact.faceNormal, slam.Direction());
             if (missHeading.Length() > 0.5f)
             {
                 plan.scrapeDir = missHeading;

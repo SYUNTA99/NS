@@ -4,6 +4,7 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
+#include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
@@ -198,6 +199,82 @@ TEST(PlayerStateSequence, LedgeJumpSpendsTheJumpLikeAGroundJump)
     player->SetJumpPressed();
     player->Jump(0.0f);
     EXPECT_FLOAT_EQ(player->Body().VerticalVelocity(), 0.0f);
+}
+
+namespace
+{
+    // 上面が y = 0、手前の面が z = 1 の縁の前に、手を上面より 0.2 m 上にして奥へ向かって落ちる自機を置く
+    PlayerActor* PlaceBelowLedge(NS::Scene& scene)
+    {
+        PlayerActor* player = PlaceSequencePlayer(scene);
+        if (player == nullptr)
+        {
+            return nullptr;
+        }
+        NS::OBB ledge{};
+        ledge.center = NS::Vector3{0.0f, -1.0f, 2.0f};
+        ledge.halfExtentX = 2.0f;
+        ledge.halfExtentY = 1.0f;
+        ledge.halfExtentZ = 1.0f;
+        scene.Physics().AddBox(ledge, NS::Phys::ObjectLayers::Terrain);
+        const NS::Collider& collider = player->Collider();
+        player->Root().SetPosition(NS::Vector3{0.0f, 0.2f - collider.CapsuleHalfHeight(), 0.3f});
+        player->Body().SetGrounded(false);
+        player->Body().SetLateralVelocity(NS::Vector3{0.0f, 0.0f, 1.0f});
+        return player;
+    }
+
+    // 縁の上を、上面に立った立ち姿の中心の高さより少し下から上だけ塞ぐ。
+    // 上面から半分の高さの所は空いている
+    void BlockAboveLedgeTop(NS::Scene& scene, const NS::Collider& collider)
+    {
+        const float bottom = collider.StandingHalfHeight() + 0.5f * collider.CapsuleRadius();
+        NS::OBB blocker{};
+        blocker.center = NS::Vector3{0.0f, bottom + 1.0f, 2.0f};
+        blocker.halfExtentX = 2.0f;
+        blocker.halfExtentY = 1.0f;
+        blocker.halfExtentZ = 1.0f;
+        scene.Physics().AddBox(blocker, NS::Phys::ObjectLayers::Terrain);
+    }
+
+    bool FallUntilHanging(PlayerActor& player)
+    {
+        for (int frame = 0; frame < 30; ++frame)
+        {
+            player.Update(false);
+            if (player.States().IsCurrent<GL::Player::LedgeHangingPlayerState>())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+} // namespace
+
+// 縁が塞がっているかは、登り終えた体の中心で確かめる。
+// 立ち姿の中心が入る所が塞がっていれば、掴みもせず、掴まっていれば手を放す
+TEST(PlayerStateSequence, LedgeIsRefusedWhereTheClimbEndIsBlocked)
+{
+    for (const bool blocked : {false, true})
+    {
+        SCOPED_TRACE(blocked);
+        NS::Scene scene;
+        PlayerActor* player = PlaceBelowLedge(scene);
+        ASSERT_NE(player, nullptr);
+        if (blocked)
+        {
+            BlockAboveLedgeTop(scene, player->Collider());
+        }
+        EXPECT_EQ(FallUntilHanging(*player), !blocked);
+    }
+
+    NS::Scene scene;
+    PlayerActor* player = PlaceBelowLedge(scene);
+    ASSERT_NE(player, nullptr);
+    ASSERT_TRUE(FallUntilHanging(*player));
+    BlockAboveLedgeTop(scene, player->Collider());
+    player->Update(false);
+    EXPECT_FALSE(player->States().IsCurrent<GL::Player::LedgeHangingPlayerState>());
 }
 
 TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)

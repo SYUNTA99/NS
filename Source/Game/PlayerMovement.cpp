@@ -317,6 +317,27 @@ namespace
         }
         return false;
     }
+
+    // 掴む縁の 1 か所
+    struct LedgeSpot
+    {
+        NS::Vector3 hangPos;    // ぶら下がりの体の中心
+        NS::Vector3 faceNormal; // 掴む面の、自機の側を向く水平の向き
+        float topY = 0.0f;      // 縁の上面の高さ
+    };
+
+    // よじ登りを終えた体の中心。塞がっているかの確かめと登る先の両方がこの点を使う
+    // ぶら下がりの中心は面から半径ぶん外。直径ぶん奥へ進めると中心が縁から半径ぶん内側に入り、体が上面に乗る
+    // halfHeight は円柱の半分の高さで、掴む時は立ち姿、掴まった後は今の当たりの形で測る
+    [[nodiscard]] NS::Vector3 MantleEnd(const NS::Collider& collider, float halfHeight, const LedgeSpot& ledge) noexcept
+    {
+        const float mantleStep = 2.0f * collider.CapsuleRadius();
+        return NS::Vector3{
+            ledge.hangPos.x - ledge.faceNormal.x * mantleStep,
+            ledge.topY + halfHeight + collider.CapsuleRadius(),
+            ledge.hangPos.z - ledge.faceNormal.z * mantleStep,
+        };
+    }
 } // namespace
 
 bool PlayerActor::LedgeGrab() noexcept
@@ -385,13 +406,7 @@ bool PlayerActor::LedgeGrab() noexcept
         hang.y = top - halfHeight;
 
         // 上面手前の登り先が別ブロックで塞がっているなら縁ではない。掴まない
-        const float mantleStep = 2.0f * collider.CapsuleRadius();
-        const NS::Vector3 mantleCheck{
-            hang.x - faceNormal.x * mantleStep,
-            top + halfHeight,
-            hang.z - faceNormal.z * mantleStep,
-        };
-        if (IsBlockedAt(collider, mantleCheck))
+        if (IsBlockedAt(collider, MantleEnd(collider, halfHeight, LedgeSpot{hang, faceNormal, top})))
         {
             continue;
         }
@@ -446,14 +461,8 @@ void PlayerActor::ClimbLedge() noexcept
     NS::Body& body = *m_body;
     const NS::Collider& collider = *m_collider;
     const NS::Vector3 pos = Root().Position();
-    // ぶら下がりの中心は面から半径ぶん外。直径ぶん奥へ進めると中心が縁から半径ぶん内側に入り、体が上面に乗る
-    const float mantleStep = 2.0f * collider.CapsuleRadius();
     m_ledgeMantleStart = pos;
-    m_ledgeMantleEnd = NS::Vector3{
-        pos.x - m_ledgeFaceNormal.x * mantleStep,
-        m_ledgeTopY + collider.CapsuleHalfHeight() + collider.CapsuleRadius(),
-        pos.z - m_ledgeFaceNormal.z * mantleStep,
-    };
+    m_ledgeMantleEnd = MantleEnd(collider, collider.CapsuleHalfHeight(), LedgeSpot{pos, m_ledgeFaceNormal, m_ledgeTopY});
     m_ledgeMantleTimer = 0.0f;
     (void)m_states->Change<GL::Player::LedgeClimbingPlayerState>();
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
@@ -548,13 +557,8 @@ bool PlayerActor::FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) cons
         const float top = box.Center.y + box.Extents.y;
 
         // 乗り上がり先が別ブロックで塞がっていたら縁とみなさない。オーバーハングの下では掴めない
-        const float mantleStep = 2.0f * collider.CapsuleRadius();
-        const NS::Vector3 mantleCheck{
-            hangPos.x - m_ledgeFaceNormal.x * mantleStep,
-            top + collider.CapsuleHalfHeight(),
-            hangPos.z - m_ledgeFaceNormal.z * mantleStep,
-        };
-        if (IsBlockedAt(collider, mantleCheck))
+        const LedgeSpot ledge{hangPos, m_ledgeFaceNormal, top};
+        if (IsBlockedAt(collider, MantleEnd(collider, collider.CapsuleHalfHeight(), ledge)))
         {
             continue;
         }

@@ -746,6 +746,7 @@ namespace GL
             m_answer.lastImpact.direction = direction;
             m_answer.lastImpact.faceU = judgement.u;
             m_answer.lastImpact.faceV = judgement.v;
+            m_answer.lastImpact.faceNormal = outcome.faceNormal;
             m_answer.lastImpact.hitStopSteps = stopSteps;
             m_answer.lastImpact.localStop = stopSteps > 0;
             m_answer.lastImpact.overcharge01 = motion.overcharge01;

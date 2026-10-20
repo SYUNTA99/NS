@@ -826,14 +826,16 @@ TEST(ImpactTimelineClock, MissSparksFlowTowardTheSideThatWasMissed)
     GL::Player::ImpactEffects effects{nullptr};
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     // 右の縁: 外した側 +X、滑る向き (0.6, 0, 0.8)。0.7 × (1, 0, 0) + 0.3 × (0.6, 0, 0.8) を正規化
-    const NS::Vector3 right = effects.MissSparkHeading(0.8f, 0.0f, forward);
+    const NS::Vector3 right =
+        effects.MissSparkHeading(0.8f, 0.0f, MissSurfaceNormal(0.8f, 0.0f, 2.0f, forward), forward);
     EXPECT_NEAR(right.x, 0.9648f, 0.0005f);
     EXPECT_NEAR(right.y, 0.0f, 0.0005f);
     EXPECT_NEAR(right.z, 0.2631f, 0.0005f);
-    const NS::Vector3 top = effects.MissSparkHeading(0.0f, 0.8f, forward);
+    const NS::Vector3 top = effects.MissSparkHeading(0.0f, 0.8f, MissSurfaceNormal(0.0f, 0.8f, 2.0f, forward), forward);
     EXPECT_NEAR(top.y, 0.9648f, 0.0005f);
     EXPECT_NEAR(top.z, 0.2631f, 0.0005f);
-    const NS::Vector3 middle = effects.MissSparkHeading(0.0f, 0.0f, forward);
+    const NS::Vector3 middle =
+        effects.MissSparkHeading(0.0f, 0.0f, MissSurfaceNormal(0.0f, 0.0f, 2.0f, forward), forward);
     EXPECT_FLOAT_EQ(middle.Length(), 0.0f);
 }
 
@@ -875,8 +877,11 @@ TEST(ImpactTimelineClock, MissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
     ASSERT_NE(sparks, nullptr);
     ASSERT_TRUE(sparks->rotation.has_value());
     const NS::Vector3 heading = NS::Vector3::Transform(NS::Vector3{0.0f, 1.0f, 0.0f}, sparks->rotation.value());
-    const NS::Vector3 expected =
-        player->ImpactVisuals().MissSparkHeading(impact.faceU, impact.faceV, player->BodySlamDirection());
+    // 記録の面の向きは反動の配分が置物の球の面として読んだ向き
+    const NS::Vector3 round = MissSurfaceNormal(impact.faceU, impact.faceV, 2.0f, player->BodySlamDirection());
+    EXPECT_NEAR(impact.faceNormal.Dot(round), 1.0f, 1.0e-4f);
+    const NS::Vector3 expected = player->ImpactVisuals().MissSparkHeading(
+        impact.faceU, impact.faceV, impact.faceNormal, player->BodySlamDirection());
     ASSERT_GT(expected.Length(), 0.5f);
     EXPECT_NEAR(heading.Dot(expected), 1.0f, 1.0e-4f);
 }
