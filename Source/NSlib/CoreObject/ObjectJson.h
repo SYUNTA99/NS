@@ -8,6 +8,7 @@
 #pragma warning(pop)
 
 #include "NSlib/Core/Types.h"
+#include <string>
 #include <string_view>
 #include <unordered_map>
 
@@ -48,13 +49,34 @@ namespace NS
     //! active 値を書く。有効は既定なので消す
     void SetObjectJsonActive(nlohmann::json& object, bool active);
 
-    //! 参照の欄の値の形 {"ref": …} の場合 true、それ以外の場合は false
-    [[nodiscard]] inline bool IsRefValue(const nlohmann::json& value) noexcept
+    //! 配置物の頭の欄。保存の形は欄ごとの読み書きの関数と同じ
+    struct ObjectHeader
     {
-        return value.is_object() && value.contains("ref");
-    }
+        uint32 id = 0;
+        std::string className;
+        std::string name;
+        bool active = true;
+    };
 
-    //! fn はその object を受け取る。値はメモリ上では id、ファイル上では名前
+    //! 頭の欄をまとめて読む。無い欄と壊れた欄は各欄の読む関数と同じ既定になる
+    [[nodiscard]] ObjectHeader ReadObjectHeader(const nlohmann::json& object);
+    //! 頭の欄をまとめて書く。既定の欄は各欄の書く関数と同じく消す
+    void WriteObjectHeader(nlohmann::json& object, const ObjectHeader& header);
+
+    // 参照の欄の値は鍵 ref を 1 つ持つ object で書く。素の数値だと読む時に Int と区別できない。
+    // 値はメモリ上では id、ファイル上では名前。この形を知るのは ObjectJson.cpp だけにする
+
+    //! 参照の欄の値の形の場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsRefValue(const nlohmann::json& value) noexcept;
+    //! id を指す参照の欄の値を作る
+    [[nodiscard]] nlohmann::json MakeRefValue(ActorRef ref);
+    //! @brief 参照の欄の値から id を読む
+    //! @return id が負でない整数で書かれている場合 true。名前で書かれた値と壊れた形は false で、out を変えない
+    [[nodiscard]] bool ReadRefValue(const nlohmann::json& value, ActorRef& out) noexcept;
+    //! 参照の欄の値の中の、id か名前の入る所。参照の形でなければ nullptr
+    [[nodiscard]] nlohmann::json* FindRefTarget(nlohmann::json& value) noexcept;
+
+    //! fn は参照の欄ごとに、id か名前の入る所を受け取る
     //! 参照の欄を辿る処理はここだけに置き、欄の形を知る場所を 1 つにする
     template <class Fn> void ForEachRefValue(nlohmann::json& object, Fn&& fn)
     {
@@ -67,9 +89,10 @@ namespace NS
             }
             for (nlohmann::json& value : entry)
             {
-                if (IsRefValue(value))
+                nlohmann::json* target = FindRefTarget(value);
+                if (target != nullptr)
                 {
-                    fn(value);
+                    fn(*target);
                 }
             }
         }
@@ -80,7 +103,7 @@ namespace NS
     void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<uint32, uint32>& idMap);
 
     //! 配置物の JSON の姿勢を読み書きする。
-    //! 実体は classObjs 内の k_TransformClassObjName の欄
+    //! 実体は classObjs 内の姿勢の部品の欄。エディタと試しが Actor を作らずに置き場所を書くための関数
     //! Set は対象エントリが無ければ EnsureTransformClassObj で 1 つ作る
     [[nodiscard]] Vector3 ObjectPosition(const nlohmann::json& object) noexcept;
     void SetObjectPosition(nlohmann::json& object, const Vector3& position) noexcept;

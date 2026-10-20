@@ -23,14 +23,7 @@ namespace NS
         // 種類の既定値 1 つの上限。部品の値だけなので、シーンのファイルよりずっと小さい
         constexpr std::size_t k_MaxArchetypeFileBytes = 1024u * 1024u;
 
-        // 位置・回転・拡縮は個体の物。種類の既定値に持たせず、保存の差分でも落とさない
-        // 保存側は JSON の件しか持たないので、型でなく保存の鍵の部品名で見分ける
-        [[nodiscard]] bool IsInstanceOnlyClassObj(std::string_view partName) noexcept
-        {
-            return partName == k_TransformClassObjName;
-        }
-
-        // 種類の既定値に持たせない物を落とした写し。参照の欄・id・位置と回転と拡縮は個体の物
+        // 種類の既定値に持たせない物を落とした写し。参照の欄と id は個体の物
         [[nodiscard]] nlohmann::json Sanitize(std::string_view className, const nlohmann::json& archetype)
         {
             nlohmann::json out = nlohmann::json::object();
@@ -39,7 +32,7 @@ namespace NS
             const nlohmann::json& source = ObjectJsonClassObjs(archetype);
             for (nlohmann::json::const_iterator entry = source.begin(); entry != source.end(); ++entry)
             {
-                if (IsInstanceOnlyClassObj(entry.key()) || !entry.value().is_object())
+                if (!entry.value().is_object())
                 {
                     continue;
                 }
@@ -243,7 +236,15 @@ namespace NS
         {
             return;
         }
-        ApplyObjectClassObjs(actor, *archetype);
+        // 位置・回転・拡縮は個体の物なので、ファイルに書かれていても根の部品へは写さない
+        nlohmann::json values = *archetype;
+        ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
+            if (part == &actor.Root())
+            {
+                ObjectJsonClassObjs(values).erase(row.key);
+            }
+        });
+        ApplyObjectClassObjs(actor, values);
     }
 
     nlohmann::json ExpandObjectJson(const nlohmann::json& object)
@@ -268,7 +269,8 @@ namespace NS
         const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
         ForEachReflectedClassObj(baseline, [&](const ClassObjInfo& member, const Object* classObj) {
-            if (IsInstanceOnlyClassObj(member.key))
+            // 位置・回転・拡縮は個体の物なので、既定と同じ値でも差分から落とさない
+            if (classObj == &baseline.Root())
             {
                 return;
             }
@@ -340,7 +342,7 @@ namespace NS
     bool IsArchetypeField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
     {
         const Object* live = FindRowPart(actor, row);
-        if (live == nullptr || IsInstanceOnlyClassObj(row.key))
+        if (live == nullptr || live == &actor.Root())
         {
             return false;
         }

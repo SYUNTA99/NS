@@ -116,7 +116,7 @@ namespace NS
         [[nodiscard]] Phys::PhysicsScene& Physics() noexcept { return m_physics.Physics(); }
         [[nodiscard]] const Phys::PhysicsScene& Physics() const noexcept { return m_physics.Physics(); }
 
-        [[nodiscard]] const Vector3& GravityDirection() const noexcept { return m_gravityDirection; }
+        [[nodiscard]] const Vector3& GravityDirection() const noexcept { return m_environment.gravityDirection; }
         //! 重力方向を正規化して、物理の重力方向も揃える
         void SetGravityDirection(const Vector3& direction) noexcept;
 
@@ -161,8 +161,8 @@ namespace NS
 
         //! @brief skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空なら skybox を描かない
         //! @details 描画が毎フレーム読む。保存は ToJson がここから写す
-        [[nodiscard]] const std::string& SkyboxPath() const noexcept { return m_skyboxPath; }
-        void SetSkyboxPath(std::string path) noexcept { m_skyboxPath = std::move(path); }
+        [[nodiscard]] const std::string& SkyboxPath() const noexcept { return m_environment.skybox; }
+        void SetSkyboxPath(std::string path) noexcept { m_environment.skybox = std::move(path); }
 
         //! @brief シーンの配置物の一覧
         [[nodiscard]] ActorList& Objects() noexcept { return m_objects; }
@@ -263,7 +263,6 @@ namespace NS
 
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
-        //! 子は根として残る。まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
         void DestroyObject(uint32 objectId);
 
         //! 固定更新の段を順に実行する。同じ段では SceneActor の後にシステムを更新する
@@ -290,6 +289,9 @@ namespace NS
         //! @brief 渡されたシーンの JSON 文書から配置物と当たりの body を組み直す
         void RebuildSceneFrom(const nlohmann::json& scene);
 
+        //! シーンに 1 つの物・暗転・配置物・エフェクト・開発用の図形を捨てる。組み直しと終わりが呼ぶ
+        void ClearWorld();
+
         // SpawnTransient と SpawnObject の中身。外から個体を受けると、OnInit を通っていない個体が入る
         SceneActor* AdoptTransient(std::unique_ptr<SceneActor> obj);
         SceneActor* AdoptObject(std::unique_ptr<SceneActor> obj, std::string name);
@@ -306,7 +308,8 @@ namespace NS
         //! 衝突判定の PhysicsScene を持つ。Collision が出る時と動いた歩に body を入れる
         //! Collision が OnEndPlay で body を外し、Collider が借りるので、m_objects より先に宣言して後に破棄する
         PhysicsDirector m_physics;
-        Vector3 m_gravityDirection{0.0f, -1.0f, 0.0f};
+        // skybox と重力の向き。実体側の唯一の出所で、描画が毎フレーム読み、保存は ToJson がここから写す
+        SceneEnvironment m_environment;
 
         // ヒットセンサーの調べ役。配置物の部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         HitSensorDirector m_hitSensors;
@@ -325,7 +328,6 @@ namespace NS
         // シーンに 1 つの物。配置物と画面の一覧を借りるので、それより後に宣言して先に破棄する
         // const の窓口からも作れるよう mutable にする。作っても見かけのシーンの状態は変わらない
         mutable SceneSystemHolder m_sceneObjs{*this};
-        std::string m_skyboxPath; // skybox のパス。実体側の唯一の出所
 
         nlohmann::json m_playBaseline = MakeSceneJson(); // プレイ突入時の凍結
 

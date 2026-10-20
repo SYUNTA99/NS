@@ -30,18 +30,31 @@ namespace NS
     [[nodiscard]] uint32 SceneJsonNextObjectId(const nlohmann::json& scene) noexcept;
     void SetSceneJsonNextObjectId(nlohmann::json& scene, uint32 nextObjectId);
 
-    //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない
-    [[nodiscard]] std::string_view SceneJsonSkybox(const nlohmann::json& scene) noexcept;
-    void SetSceneJsonSkybox(nlohmann::json& scene, std::string_view path);
+    //! @brief 次に置く配置物の id。nextObjectId と、配置物の最大の id の次の大きい方
+    //! @details 手編集で nextObjectId が配置物の id より小さいファイルもある。1 より小さくならない
+    [[nodiscard]] uint32 NextFreeObjectId(const nlohmann::json& scene) noexcept;
+
+    inline constexpr Vector3 k_DefaultGravityDirection{0.0f, -1.0f, 0.0f};
+
+    //! シーンの environment の欄
+    struct SceneEnvironment
+    {
+        //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない
+        std::string skybox;
+        //! 長さ 1 の重力の向き
+        Vector3 gravityDirection = k_DefaultGravityDirection;
+    };
 
     //! @brief 重力の向きを長さ 1 に揃えて返す
-    //! @return 有限でない成分を含むか長さがほぼ 0 なら (0, -1, 0)
+    //! @return 有限でない成分を含むか長さがほぼ 0 なら k_DefaultGravityDirection
     [[nodiscard]] Vector3 NormalizeGravityDirection(const Vector3& direction) noexcept;
-    //! @brief environment.gravityDirection を長さ 1 に揃えて返す
-    //! @return 無いか 3 つの数でなければ (0, -1, 0)
-    [[nodiscard]] Vector3 SceneJsonGravityDirection(const nlohmann::json& scene) noexcept;
-    //! 長さ 1 に揃えた重力の向きを environment.gravityDirection へ書く。environment が無ければ作る
-    void SetSceneJsonGravityDirection(nlohmann::json& scene, const Vector3& direction);
+    //! @brief environment を読む。無い欄と壊れた欄は SceneEnvironment の既定
+    //! @details 重力の向きは長さ 1 に揃える
+    [[nodiscard]] SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene);
+    //! environment を丸ごと書き換える。重力の向きは長さ 1 に揃えて書く
+    void WriteSceneEnvironment(nlohmann::json& scene, const SceneEnvironment& environment);
+    //! ReadSceneEnvironment の skybox
+    [[nodiscard]] std::string SceneJsonSkybox(const nlohmann::json& scene);
 
     //! objects 配列で「該当無し」を表す添字
     inline constexpr std::size_t k_NoObjectIndex = static_cast<std::size_t>(-1);

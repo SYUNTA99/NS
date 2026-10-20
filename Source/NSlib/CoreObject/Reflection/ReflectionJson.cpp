@@ -3,6 +3,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -46,16 +47,10 @@ namespace NS
             case FieldType::Bool:
                 return ReadField<bool>(owner, field);
             case FieldType::Vector3:
-            {
-                const Vector3 value = ReadField<Vector3>(owner, field);
-                return nlohmann::json{value.x, value.y, value.z};
-            }
+                return MakeVector3Json(ReadField<Vector3>(owner, field));
             case FieldType::Quaternion:
-            {
                 // 配列の長さで Vector3 と区別できるため単キー object で包まない
-                const Quaternion value = ReadField<Quaternion>(owner, field);
-                return nlohmann::json{value.x, value.y, value.z, value.w};
-            }
+                return MakeQuaternionJson(ReadField<Quaternion>(owner, field));
             case FieldType::Color:
             {
                 const Color value = ReadField<Color>(owner, field);
@@ -65,12 +60,7 @@ namespace NS
             case FieldType::Asset:
                 return ReadField<std::string>(owner, field);
             case FieldType::ActorRef:
-            {
-                // 素の数値だと読み込み時に Int と区別できないため {"ref": id} の単キー object で書く
-                nlohmann::json out;
-                out["ref"] = ReadField<ActorRef>(owner, field).id;
-                return out;
-            }
+                return MakeRefValue(ReadField<ActorRef>(owner, field));
             case FieldType::Curve:
             {
                 // 素の配列だと読み込み時に Vector3 と区別できないため {"curve": [[x,y], ...]} の単キー object で書く
@@ -180,18 +170,12 @@ namespace NS
             }
             case FieldType::ActorRef:
             {
-                if (!value.is_object())
+                // 手編集の壊れた値は既定 0 のまま
+                ActorRef v{};
+                if (ReadRefValue(value, v))
                 {
-                    return;
+                    field.set(owner, &v);
                 }
-                const nlohmann::json::const_iterator it = value.find("ref");
-                // 負数は id として不正なので unsigned のみ受ける。手編集の壊れた値は既定 0 のまま
-                if (it == value.end() || !it->is_number_unsigned())
-                {
-                    return;
-                }
-                ActorRef v{it->get<uint32>()};
-                field.set(owner, &v);
                 return;
             }
             case FieldType::Curve:

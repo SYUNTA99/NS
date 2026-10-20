@@ -34,10 +34,7 @@ namespace NS
             {
                 return object;
             }
-            SetObjectJsonId(object, ObjectJsonId(json));
-            SetObjectJsonClass(object, ObjectJsonClass(json));
-            SetObjectJsonName(object, ObjectJsonName(json));
-            SetObjectJsonActive(object, ObjectJsonActive(json));
+            WriteObjectHeader(object, ReadObjectHeader(json));
             nlohmann::json& parts = ObjectJsonClassObjs(object);
             const nlohmann::json& source = ObjectJsonClassObjs(json);
             for (nlohmann::json::const_iterator part = source.begin(); part != source.end(); ++part)
@@ -47,7 +44,6 @@ namespace NS
                     parts[part.key()] = part.value();
                 }
             }
-            (void)EnsureTransformClassObj(object);
             return object;
         }
 
@@ -71,8 +67,7 @@ namespace NS
             }
             for (nlohmann::json& object : objects)
             {
-                ForEachRefValue(object, [&names](nlohmann::json& value) {
-                    nlohmann::json& ref = value["ref"];
+                ForEachRefValue(object, [&names](nlohmann::json& ref) {
                     if (!ref.is_number_unsigned())
                     {
                         return;
@@ -98,8 +93,7 @@ namespace NS
             }
             for (nlohmann::json& object : objects)
             {
-                ForEachRefValue(object, [&ids](nlohmann::json& value) {
-                    nlohmann::json& ref = value["ref"];
+                ForEachRefValue(object, [&ids](nlohmann::json& ref) {
                     if (!ref.is_string())
                     {
                         return;
@@ -118,29 +112,13 @@ namespace NS
             }
         }
 
-        nlohmann::json& EnsureEnvironment(nlohmann::json& scene)
-        {
-            if (!scene.is_object())
-            {
-                scene = MakeSceneJson();
-            }
-            nlohmann::json& environment = scene["environment"];
-            if (!environment.is_object())
-            {
-                environment = nlohmann::json::object();
-            }
-            return environment;
-        }
     } // namespace
 
     nlohmann::json MakeSceneJson()
     {
         nlohmann::json scene = nlohmann::json::object();
         scene["version"] = k_FormatVersion;
-        nlohmann::json environment = nlohmann::json::object();
-        environment["skybox"] = "";
-        environment["gravityDirection"] = nlohmann::json::array({0.0f, -1.0f, 0.0f});
-        scene["environment"] = std::move(environment);
+        WriteSceneEnvironment(scene, SceneEnvironment{});
         scene["objects"] = nlohmann::json::array();
         scene["nextObjectId"] = 1u;
         return scene;
@@ -189,61 +167,60 @@ namespace NS
         scene["nextObjectId"] = nextObjectId;
     }
 
-    std::string_view SceneJsonSkybox(const nlohmann::json& scene) noexcept
-    {
-        if (!scene.is_object())
-        {
-            return {};
-        }
-        const nlohmann::json::const_iterator environmentIt = scene.find("environment");
-        if (environmentIt == scene.end() || !environmentIt->is_object())
-        {
-            return {};
-        }
-        const nlohmann::json::const_iterator skyboxIt = environmentIt->find("skybox");
-        if (skyboxIt == environmentIt->end() || !skyboxIt->is_string())
-        {
-            return {};
-        }
-        return skyboxIt->get_ref<const std::string&>();
-    }
-
-    void SetSceneJsonSkybox(nlohmann::json& scene, std::string_view path)
-    {
-        EnsureEnvironment(scene)["skybox"] = std::string{path};
-    }
-
     Vector3 NormalizeGravityDirection(const Vector3& direction) noexcept
     {
         const float lengthSquared = direction.LengthSquared();
         if (!IsFinite(direction) || !std::isfinite(lengthSquared) ||
             !(lengthSquared > k_Epsilon * k_Epsilon))
         {
-            return Vector3{0.0f, -1.0f, 0.0f};
+            return k_DefaultGravityDirection;
         }
         return direction / std::sqrt(lengthSquared);
     }
 
-    Vector3 SceneJsonGravityDirection(const nlohmann::json& scene) noexcept
+    SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene)
+    {
+        SceneEnvironment environment{};
+        if (!scene.is_object())
+        {
+            return environment;
+        }
+        const nlohmann::json::const_iterator found = scene.find("environment");
+        if (found == scene.end() || !found->is_object())
+        {
+            return environment;
+        }
+        environment.skybox = FieldString(*found, "skybox", "");
+        environment.gravityDirection =
+            NormalizeGravityDirection(FieldVector3(*found, "gravityDirection", k_DefaultGravityDirection));
+        return environment;
+    }
+
+    void WriteSceneEnvironment(nlohmann::json& scene, const SceneEnvironment& environment)
     {
         if (!scene.is_object())
         {
-            return Vector3{0.0f, -1.0f, 0.0f};
+            scene = MakeSceneJson();
         }
-        const nlohmann::json::const_iterator environmentIt = scene.find("environment");
-        if (environmentIt == scene.end() || !environmentIt->is_object())
-        {
-            return Vector3{0.0f, -1.0f, 0.0f};
-        }
-        return NormalizeGravityDirection(
-            FieldVector3(*environmentIt, "gravityDirection", Vector3{0.0f, -1.0f, 0.0f}));
+        nlohmann::json out = nlohmann::json::object();
+        out["skybox"] = environment.skybox;
+        out["gravityDirection"] = MakeVector3Json(NormalizeGravityDirection(environment.gravityDirection));
+        scene["environment"] = std::move(out);
     }
 
-    void SetSceneJsonGravityDirection(nlohmann::json& scene, const Vector3& direction)
+    std::string SceneJsonSkybox(const nlohmann::json& scene)
     {
-        const Vector3 normalized = NormalizeGravityDirection(direction);
-        EnsureEnvironment(scene)["gravityDirection"] =
-            nlohmann::json::array({normalized.x, normalized.y, normalized.z});
+        return ReadSceneEnvironment(scene).skybox;
+    }
+
+    uint32 NextFreeObjectId(const nlohmann::json& scene) noexcept
+    {
+        uint32 next = std::max(SceneJsonNextObjectId(scene), 1u);
+        for (const nlohmann::json& object : SceneJsonObjects(scene))
+        {
+            next = std::max(next, ObjectJsonId(object) + 1);
+        }
+        return next;
     }
 
     std::size_t FindObjectIndexById(const nlohmann::json& scene, uint32 id) noexcept
@@ -299,8 +276,7 @@ namespace NS
             std::size_t pruned = 0;
             for (nlohmann::json& object : objects)
             {
-                ForEachRefValue(object, [&ids, &pruned](nlohmann::json& value) {
-                    nlohmann::json& ref = value["ref"];
+                ForEachRefValue(object, [&ids, &pruned](nlohmann::json& ref) {
                     if (!ref.is_number_unsigned())
                     {
                         return;
@@ -322,11 +298,7 @@ namespace NS
     void EnsureUniqueObjectIds(nlohmann::json& scene)
     {
         nlohmann::json& objects = SceneJsonObjects(scene);
-        uint32 nextObjectId = std::max(SceneJsonNextObjectId(scene), 1u);
-        for (const nlohmann::json& object : objects)
-        {
-            nextObjectId = std::max(nextObjectId, ObjectJsonId(object) + 1);
-        }
+        uint32 nextObjectId = NextFreeObjectId(scene);
         std::unordered_set<uint32> seen;
         for (nlohmann::json& object : objects)
         {
@@ -366,8 +338,7 @@ namespace NS
     std::string SerializeSceneToJson(const nlohmann::json& scene)
     {
         nlohmann::json out = MakeSceneJson();
-        SetSceneJsonSkybox(out, SceneJsonSkybox(scene));
-        SetSceneJsonGravityDirection(out, SceneJsonGravityDirection(scene));
+        WriteSceneEnvironment(out, ReadSceneEnvironment(scene));
         SetSceneJsonNextObjectId(out, SceneJsonNextObjectId(scene));
         out["objects"] = SceneJsonObjects(scene);
         WriteRefsByName(out);
@@ -413,9 +384,8 @@ namespace NS
             outObjects.push_back(NormalizeObject(objectJson));
         }
 
-        // environment 欄は skybox だけを所有する。旧形式の照明の欄は DirectionalLight へ移ったので読み飛ばす
-        SetSceneJsonSkybox(outScene, SceneJsonSkybox(root));
-        SetSceneJsonGravityDirection(outScene, SceneJsonGravityDirection(root));
+        // environment の知らない欄は読み飛ばす。旧形式の照明の欄は DirectionalLight へ移った
+        WriteSceneEnvironment(outScene, ReadSceneEnvironment(root));
         SetSceneJsonNextObjectId(outScene, SceneJsonNextObjectId(root));
 
         // 手編集ファイルは id 未割当・重複があり得る。読込直後に必ず一意化し、以降の経路は id を信頼できる

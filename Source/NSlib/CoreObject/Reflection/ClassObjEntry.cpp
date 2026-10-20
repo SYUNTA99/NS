@@ -1,6 +1,8 @@
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/Core/Types.h"
 
+#include "NSlib/CoreObject/ObjectJson.h"
+
 namespace NS
 {
     namespace
@@ -126,16 +128,22 @@ namespace NS
     ActorRef FieldObjectRef(const nlohmann::json& entry, std::string_view name) noexcept
     {
         const nlohmann::json* value = FindFieldValue(entry, name);
-        if (value == nullptr || !value->is_object())
+        ActorRef out{};
+        if (value != nullptr)
         {
-            return ActorRef{};
+            (void)ReadRefValue(*value, out);
         }
-        const nlohmann::json::const_iterator refIt = value->find("ref");
-        if (refIt == value->end() || !refIt->is_number_unsigned())
-        {
-            return ActorRef{};
-        }
-        return ActorRef{refIt->get<uint32>()};
+        return out;
+    }
+
+    nlohmann::json MakeVector3Json(const Vector3& value)
+    {
+        return nlohmann::json{value.x, value.y, value.z};
+    }
+
+    nlohmann::json MakeQuaternionJson(const Quaternion& value)
+    {
+        return nlohmann::json{value.x, value.y, value.z, value.w};
     }
 
     bool HasField(const nlohmann::json& entry, std::string_view name) noexcept
@@ -160,12 +168,12 @@ namespace NS
 
     void SetField(nlohmann::json& entry, std::string_view name, const Vector3& value)
     {
-        EnsureObject(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z};
+        EnsureObject(entry)[std::string(name)] = MakeVector3Json(value);
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, const Quaternion& value)
     {
-        EnsureObject(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z, value.w};
+        EnsureObject(entry)[std::string(name)] = MakeQuaternionJson(value);
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, std::string_view value)
@@ -180,10 +188,7 @@ namespace NS
 
     void SetField(nlohmann::json& entry, std::string_view name, ActorRef value)
     {
-        // 素の数値だと読込時に Int と区別できないため {"ref": id} の単キー object で書く
-        nlohmann::json ref;
-        ref["ref"] = value.id;
-        EnsureObject(entry)[std::string(name)] = std::move(ref);
+        EnsureObject(entry)[std::string(name)] = MakeRefValue(value);
     }
 
 } // namespace NS

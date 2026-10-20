@@ -33,15 +33,7 @@ namespace NS
 
         // カウンタは 1 始まりでファイルの id を知らない。読込値まで上げないと次に置く 1 個目が既存とぶつかる
         const nlohmann::json& objects = SceneJsonObjects(scene);
-        m_nextObjectId = std::max(m_nextObjectId, SceneJsonNextObjectId(scene));
-        // 手編集でカウンタが既存 id より小さいファイルもあるので配置物の id の最大を見る
-        for (const nlohmann::json& entry : objects)
-        {
-            if (ObjectJsonId(entry) >= m_nextObjectId)
-            {
-                m_nextObjectId = ObjectJsonId(entry) + 1;
-            }
-        }
+        m_nextObjectId = std::max(m_nextObjectId, NextFreeObjectId(scene));
 
         m_objects.reserve(objects.size());
 
@@ -59,7 +51,7 @@ namespace NS
                 }
 
                 obj->AttachScene(&owner);
-                ApplyIdentity(*obj, entry);
+                ApplyIdentity(*obj, ReadObjectHeader(entry));
                 m_objects.push_back(std::move(obj));
             }
 
@@ -275,11 +267,11 @@ namespace NS
         }
     }
 
-    void ActorList::ApplyIdentity(SceneActor& obj, const nlohmann::json& entry)
+    void ActorList::ApplyIdentity(SceneActor& obj, const ObjectHeader& header)
     {
-        obj.SetId(ObjectJsonId(entry));
-        obj.SetName(std::string{ObjectJsonName(entry)});
-        if (ObjectJsonActive(entry))
+        obj.SetId(header.id);
+        RenameObject(obj, header.name);
+        if (header.active)
         {
             obj.Appear();
         }
@@ -297,9 +289,8 @@ namespace NS
         {
             return nullptr;
         }
-        ApplyIdentity(*obj, entry);
-        // 名前はシーンの中で一意に保つ。組み直さずに 1 体だけ入れるので、読込の一意化を通らない
-        RenameObject(*obj, obj->Name());
+        // 組み直さずに 1 体だけ入れるので、読込の一意化を通らない。名前の一意は ApplyIdentity が保つ
+        ApplyIdentity(*obj, ReadObjectHeader(entry));
         // 入れた物の id より先へカウンタを進める。進めないと次に置く 1 個目と重なる
         m_nextObjectId = std::max(m_nextObjectId, obj->Id() + 1);
 

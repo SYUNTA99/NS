@@ -147,29 +147,97 @@ namespace NS
         WriteOrErase(object, "active", active, active);
     }
 
-    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<uint32, uint32>& idMap)
+    ObjectHeader ReadObjectHeader(const nlohmann::json& object)
     {
-        ForEachRefValue(object, [&idMap](nlohmann::json& value) {
-            const nlohmann::json::iterator it = value.find("ref");
-            if (it == value.end() || !it->is_number_unsigned())
-            {
-                return;
-            }
-            const std::unordered_map<uint32, uint32>::const_iterator mapped = idMap.find(it->get<uint32>());
-            if (mapped != idMap.end())
-            {
-                *it = mapped->second;
-            }
-        });
+        return ObjectHeader{.id = ObjectJsonId(object),
+                            .className = std::string{ObjectJsonClass(object)},
+                            .name = std::string{ObjectJsonName(object)},
+                            .active = ObjectJsonActive(object)};
+    }
+
+    void WriteObjectHeader(nlohmann::json& object, const ObjectHeader& header)
+    {
+        SetObjectJsonId(object, header.id);
+        SetObjectJsonClass(object, header.className);
+        SetObjectJsonName(object, header.name);
+        SetObjectJsonActive(object, header.active);
     }
 
     namespace
     {
+        constexpr const char* k_RefKey = "ref";
+    } // namespace
+
+    bool IsRefValue(const nlohmann::json& value) noexcept
+    {
+        return value.is_object() && value.contains(k_RefKey);
+    }
+
+    nlohmann::json MakeRefValue(ActorRef ref)
+    {
+        nlohmann::json value = nlohmann::json::object();
+        value[k_RefKey] = ref.id;
+        return value;
+    }
+
+    bool ReadRefValue(const nlohmann::json& value, ActorRef& out) noexcept
+    {
+        if (!value.is_object())
+        {
+            return false;
+        }
+        const nlohmann::json::const_iterator it = value.find(k_RefKey);
+        // 負の数は id として不正なので、負でない整数だけを受ける
+        if (it == value.end() || !it->is_number_unsigned())
+        {
+            return false;
+        }
+        out = ActorRef{it->get<uint32>()};
+        return true;
+    }
+
+    nlohmann::json* FindRefTarget(nlohmann::json& value) noexcept
+    {
+        if (!value.is_object())
+        {
+            return nullptr;
+        }
+        const nlohmann::json::iterator it = value.find(k_RefKey);
+        if (it == value.end())
+        {
+            return nullptr;
+        }
+        return &*it;
+    }
+
+    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<uint32, uint32>& idMap)
+    {
+        ForEachRefValue(object, [&idMap](nlohmann::json& target) {
+            if (!target.is_number_unsigned())
+            {
+                return;
+            }
+            const std::unordered_map<uint32, uint32>::const_iterator mapped = idMap.find(target.get<uint32>());
+            if (mapped != idMap.end())
+            {
+                target = mapped->second;
+            }
+        });
+    }
+
+    // 下の関数はエディタと試しのために JSON のまま姿勢を扱う。Actor を通す所は Root() を使い、鍵を知らない
+    namespace
+    {
+        const nlohmann::json* FindTransformFields(const nlohmann::json& object) noexcept
+        {
+            return ClassObjFields(object, "Transform");
+        }
+
         Vector3 ReadTransformVec3(const nlohmann::json& object,
                                       std::string_view fieldName,
                                       const Vector3& fallback) noexcept
         {
-            const nlohmann::json* transform = ClassObjFields(object, k_TransformClassObjName);
+            const nlohmann::json* transform = FindTransformFields(object);
             if (transform == nullptr)
             {
                 return fallback;
@@ -180,7 +248,7 @@ namespace NS
 
     nlohmann::json& EnsureTransformClassObj(nlohmann::json& object)
     {
-        nlohmann::json& transform = ObjectJsonClassObjs(object)[std::string{k_TransformClassObjName}];
+        nlohmann::json& transform = ObjectJsonClassObjs(object)["Transform"];
         if (!transform.is_object())
         {
             transform = nlohmann::json::object();
@@ -203,7 +271,7 @@ namespace NS
 
     Quaternion ObjectRotation(const nlohmann::json& object) noexcept
     {
-        const nlohmann::json* transform = ClassObjFields(object, k_TransformClassObjName);
+        const nlohmann::json* transform = FindTransformFields(object);
         if (transform == nullptr)
         {
             return Quaternion::Identity;

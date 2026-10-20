@@ -67,7 +67,4 @@ namespace NS
         Quaternion m_previousRotation{};
         Vector3 m_previousScale{1.0f, 1.0f, 1.0f};
     };
-
-    //! 根の部品 Transform の部品名。保存の鍵そのもので、名指す所は全てこれを使う
-    inline constexpr std::string_view k_TransformClassObjName = "Transform";
 } // namespace NS

@@ -22,10 +22,11 @@ namespace NS
         nlohmann::json MakeObjectHeaderJson(const SceneActor& obj, uint32 id)
         {
             nlohmann::json object = nlohmann::json::object();
-            SetObjectJsonId(object, id);
-            SetObjectJsonClass(object, obj.ClassName());
-            SetObjectJsonName(object, obj.Name());
-            SetObjectJsonActive(object, obj.IsAppeared());
+            WriteObjectHeader(object,
+                              ObjectHeader{.id = id,
+                                           .className = std::string{obj.ClassName()},
+                                           .name = obj.Name(),
+                                           .active = obj.IsAppeared()});
             return object;
         }
     } // namespace

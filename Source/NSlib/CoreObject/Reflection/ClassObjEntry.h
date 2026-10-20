@@ -17,6 +17,10 @@ namespace NS
     [[nodiscard]] bool ReadVector3(const nlohmann::json& value, Vector3& out) noexcept;
     //! 数 4 個の [x,y,z,w] を読む。形式が違えば出力を変更せず false
     [[nodiscard]] bool ReadQuaternion(const nlohmann::json& value, Quaternion& out) noexcept;
+    //! ReadVector3 が読む [x,y,z] を作る
+    [[nodiscard]] nlohmann::json MakeVector3Json(const Vector3& value);
+    //! ReadQuaternion が読む [x,y,z,w] を作る
+    [[nodiscard]] nlohmann::json MakeQuaternionJson(const Quaternion& value);
 
     //! entry から値を型付きで読む。不在・型不一致は fallback
     [[nodiscard]] float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept;
@@ -33,7 +37,7 @@ namespace NS
     [[nodiscard]] std::string FieldString(const nlohmann::json& entry,
                                           std::string_view name,
                                           std::string_view fallback);
-    //! {"ref": id} を読む。不在・壊れた形は未設定 0
+    //! 参照の欄の id を読む。不在・名前で書かれた値・壊れた形は未設定 0
     [[nodiscard]] ActorRef FieldObjectRef(const nlohmann::json& entry, std::string_view name) noexcept;
     [[nodiscard]] bool HasField(const nlohmann::json& entry, std::string_view name) noexcept;
 

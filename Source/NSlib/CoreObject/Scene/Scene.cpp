@@ -50,8 +50,9 @@ namespace NS
 
     void Scene::ResetFromJson(nlohmann::json scene)
     {
-        m_skyboxPath = std::string{SceneJsonSkybox(scene)};
-        SetGravityDirection(SceneJsonGravityDirection(scene));
+        const SceneEnvironment environment = ReadSceneEnvironment(scene);
+        SetSkyboxPath(environment.skybox);
+        SetGravityDirection(environment.gravityDirection);
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueObjectIds(scene);
         RebuildSceneFrom(scene);
@@ -60,8 +61,7 @@ namespace NS
     nlohmann::json Scene::ToJson() const
     {
         nlohmann::json scene = MakeSceneJson();
-        SetSceneJsonSkybox(scene, m_skyboxPath);
-        SetSceneJsonGravityDirection(scene, m_gravityDirection);
+        WriteSceneEnvironment(scene, m_environment);
         SetSceneJsonNextObjectId(scene, m_objects.NextObjectId());
         nlohmann::json& objects = SceneJsonObjects(scene);
         for (const SceneActor* obj : m_objects)
@@ -78,8 +78,8 @@ namespace NS
 
     void Scene::SetGravityDirection(const Vector3& direction) noexcept
     {
-        m_gravityDirection = NormalizeGravityDirection(direction);
-        m_physics.Physics().SetGravity(m_gravityDirection * -Phys::k_DefaultGravityY);
+        m_environment.gravityDirection = NormalizeGravityDirection(direction);
+        m_physics.Physics().SetGravity(m_environment.gravityDirection * -Phys::k_DefaultGravityY);
     }
 
     void Scene::SyncPhysics()
@@ -335,19 +335,7 @@ namespace NS
         {
             return ReplaceFromJson(snapshot);
         }
-        const std::string_view name = ObjectJsonName(object);
-        if (!name.empty() && obj->Name() != name)
-        {
-            m_objects.RenameObject(*obj, name);
-        }
-        if (ObjectJsonActive(object))
-        {
-            obj->Appear();
-        }
-        else
-        {
-            obj->Disappear();
-        }
+        m_objects.ApplyIdentity(*obj, ReadObjectHeader(object));
         bool written = false;
         ForEachReflectedClassObj(*obj, [&](const ClassObjInfo& field, Object* classObj) {
             const nlohmann::json* fields = ClassObjFields(object, field.key);
@@ -381,16 +369,23 @@ namespace NS
         }
     }
 
-    void Scene::RebuildSceneFrom(const nlohmann::json& scene)
+    void Scene::ClearWorld()
     {
-        ClearEffects();
-#if !defined(NS_SHIPPING)
-        // ステップの図形は前の世界の姿。組み直した世界へ残すと、次の歩が来るまで消えた物の線が出る
-        Gfx::DebugDraw::Clear();
-#endif
-        // シーンに 1 つの物 (進行役など) は最初の状態から作り直させる。組み直した配置物の開始が必要な物を作る
+        // シーンに 1 つの物 (進行役など) は配置物と画面の一覧を借りるので先に捨てる。
+        // 組み直しでは、組み直した配置物の開始が要る物が最初の状態から作り直す
         m_sceneObjs.Clear();
         Fade().Cancel();
+        m_objects.Clear();
+        ClearEffects();
+#if !defined(NS_SHIPPING)
+        // 図形は前の世界の姿で、溜め場は静的な 1 つ。残すと、次の歩が来るまで消えた物の線が出る
+        Gfx::DebugDraw::Clear();
+#endif
+    }
+
+    void Scene::RebuildSceneFrom(const nlohmann::json& scene)
+    {
+        ClearWorld();
         // 仮想カメラの付け外しは、持ち主の SceneActor が OnStart / OnEndPlay で行う
         m_objects.RebuildFromJson(
             scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, *this); });
@@ -458,16 +453,8 @@ namespace NS
 
     void Scene::OnShutdown()
     {
-        // シーンに 1 つの物は配置物と画面の一覧を借りるので先に捨てる
-        m_sceneObjs.Clear();
-        Fade().Cancel();
-        m_objects.Clear();
-        ClearEffects();
+        ClearWorld();
         m_cameraManager.SetCamera(nullptr);
-#if !defined(NS_SHIPPING)
-        // 溜め場は静的な 1 つなので、畳んだ世界の線が次のシーンの描画へ残る
-        Gfx::DebugDraw::Clear();
-#endif
     }
 
     void Scene::OnRender()
@@ -483,7 +470,7 @@ namespace NS
         {
             m_cameraManager.Evaluate(alpha);
         }
-        m_sceneRenderer.Render(m_cameraManager, m_mainCamera, m_ui, m_fade.Fade(), m_skyboxPath, alpha);
+        m_sceneRenderer.Render(m_cameraManager, m_mainCamera, m_ui, m_fade.Fade(), m_environment.skybox, alpha);
     }
 
     void Scene::RegisterRenderable(IRenderable* renderable)

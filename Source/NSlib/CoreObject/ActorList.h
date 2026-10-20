@@ -144,7 +144,8 @@ namespace NS
         //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄した配置物を索引に残さない
         void MarkIndexDirty() noexcept;
 
-        void ApplyIdentity(SceneActor& obj, const nlohmann::json& entry);
+        //! 頭の欄の id・名前・出現を obj へ写す。名前は他の配置物と重なれば番号を付ける
+        void ApplyIdentity(SceneActor& obj, const ObjectHeader& header);
 
         std::vector<std::unique_ptr<SceneActor>> m_objects; // 配置物の単一所有リスト
         std::vector<SceneActor*> m_scheduled; // ExecutePhase がその段で呼ぶ SceneActor を呼ぶ順に積む作業用の並び

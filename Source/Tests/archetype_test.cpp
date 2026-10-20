@@ -405,7 +405,7 @@ TEST(Archetype, TransformPartIsInstanceOnlyOnEveryPath)
     nlohmann::json written = nlohmann::json::object();
     NS::SetField(written, NS::k_PositionFieldName, NS::Vector3{5.0f, 6.0f, 7.0f});
     NS::ArchetypeLibrary::Get().Set("PropActor",
-                                    ArchetypeWith("PropActor", NS::k_TransformClassObjName, std::move(written)));
+                                    ArchetypeWith("PropActor", "Transform", std::move(written)));
     const NS::SceneActor& baseline = NS::ArchetypeLibrary::Get().Baseline("PropActor");
     const NS::Vector3 position = baseline.Root().Position();
     EXPECT_FLOAT_EQ(position.x, 0.0f);
@@ -414,7 +414,7 @@ TEST(Archetype, TransformPartIsInstanceOnlyOnEveryPath)
 
     // 既定と同じ位置でも保存の差分から落とさない
     const nlohmann::json back = NS::DiffObjectJson(NS::ExpandObjectJson(MapObjJson(1)));
-    const nlohmann::json* transform = NS::ClassObjFields(back, NS::k_TransformClassObjName);
+    const nlohmann::json* transform = NS::ClassObjFields(back, "Transform");
     ASSERT_NE(transform, nullptr);
     EXPECT_TRUE(NS::HasField(*transform, NS::k_PositionFieldName));
 

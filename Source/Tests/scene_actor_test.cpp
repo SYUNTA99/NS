@@ -15,6 +15,7 @@
 
 #include "NSlib/Core/Types.h"
 #include <cstddef>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -153,33 +154,116 @@ TEST(SceneActor, FileTextRoundTripKeepsClass)
     EXPECT_EQ(NS::ObjectJsonClass(objects[NS::FindObjectIndexById(back, 2)]), "GoalActor");
 }
 
-TEST(SceneActor, GravityDirectionRoundTripsThroughFileAndScene)
+TEST(SceneActor, EnvironmentRoundTripsThroughFileAndScene)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    NS::SetSceneJsonGravityDirection(doc, NS::Vector3{3.0f, 0.0f, 0.0f});
+    NS::WriteSceneEnvironment(
+        doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt", .gravityDirection = NS::Vector3{3.0f, 0.0f, 0.0f}});
 
     const std::string text = NS::SerializeSceneToJson(doc);
     nlohmann::json decoded;
     ASSERT_TRUE(NS::DeserializeSceneFromJson(decoded, text));
-    EXPECT_EQ(NS::SceneJsonGravityDirection(decoded), (NS::Vector3{1.0f, 0.0f, 0.0f}));
+    const NS::SceneEnvironment read = NS::ReadSceneEnvironment(decoded);
+    EXPECT_EQ(read.skybox, "Assets/Skybox/kurt");
+    EXPECT_EQ(read.gravityDirection, (NS::Vector3{1.0f, 0.0f, 0.0f}));
 
     NS::Scene scene;
     scene.ResetFromJson(decoded);
+    EXPECT_EQ(scene.SkyboxPath(), "Assets/Skybox/kurt");
     EXPECT_EQ(scene.GravityDirection(), (NS::Vector3{1.0f, 0.0f, 0.0f}));
     EXPECT_EQ(scene.Physics().Gravity(), (NS::Vector3{25.0f, 0.0f, 0.0f}));
-    EXPECT_EQ(NS::SceneJsonGravityDirection(scene.ToJson()), (NS::Vector3{1.0f, 0.0f, 0.0f}));
+    const NS::SceneEnvironment saved = NS::ReadSceneEnvironment(scene.ToJson());
+    EXPECT_EQ(saved.skybox, "Assets/Skybox/kurt");
+    EXPECT_EQ(saved.gravityDirection, (NS::Vector3{1.0f, 0.0f, 0.0f}));
 }
 
 TEST(SceneActor, InvalidGravityDirectionFallsBackToDown)
 {
     nlohmann::json doc = NS::MakeSceneJson();
     doc["environment"]["gravityDirection"] = nlohmann::json::array({0.0f, 0.0f, 0.0f});
-    EXPECT_EQ(NS::SceneJsonGravityDirection(doc), (NS::Vector3{0.0f, -1.0f, 0.0f}));
+    EXPECT_EQ(NS::ReadSceneEnvironment(doc).gravityDirection, (NS::Vector3{0.0f, -1.0f, 0.0f}));
 
     NS::Scene scene;
     scene.SetGravityDirection(NS::Vector3{0.0f, 0.0f, 0.0f});
     EXPECT_EQ(scene.GravityDirection(), (NS::Vector3{0.0f, -1.0f, 0.0f}));
     EXPECT_EQ(scene.Physics().Gravity(), (NS::Vector3{0.0f, -25.0f, 0.0f}));
+}
+
+TEST(SceneLoad, EveryShippedSceneWritesBackByteForByte)
+{
+    // 読んで書き戻すとファイルと同じ文字になる。形をまとめ直しても保存の形は変えない
+    const std::filesystem::path folder = std::filesystem::path{NS::OS::FileSystem::ContentRoot()} / "Assets" / "Scenes";
+    int checked = 0;
+    for (const std::filesystem::directory_entry& file : std::filesystem::directory_iterator{folder})
+    {
+        if (file.path().extension() != ".scene")
+        {
+            continue;
+        }
+        const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(file.path().string());
+        ASSERT_TRUE(text.has_value()) << file.path().string();
+        nlohmann::json doc;
+        ASSERT_TRUE(NS::DeserializeSceneFromJson(doc, *text)) << file.path().string();
+        EXPECT_EQ(NS::SerializeSceneToJson(doc), *text) << file.path().string();
+        ++checked;
+    }
+    EXPECT_GT(checked, 0);
+}
+
+TEST(SceneJson, RefValueRoundTripsAndRejectsOtherShapes)
+{
+    // 参照の欄は {"ref": id}。名前で書かれた参照と壊れた形は id として読まない
+    const nlohmann::json value = NS::MakeRefValue(NS::ActorRef{7});
+    EXPECT_TRUE(NS::IsRefValue(value));
+    NS::ActorRef read{};
+    ASSERT_TRUE(NS::ReadRefValue(value, read));
+    EXPECT_EQ(read.id, 7u);
+
+    NS::ActorRef untouched{3};
+    EXPECT_FALSE(NS::ReadRefValue(nlohmann::json{{"ref", "Goal"}}, untouched));
+    EXPECT_FALSE(NS::ReadRefValue(nlohmann::json{{"ref", -1}}, untouched));
+    EXPECT_FALSE(NS::ReadRefValue(nlohmann::json(7), untouched));
+    EXPECT_EQ(untouched.id, 3u);
+}
+
+TEST(SceneJson, ObjectHeaderRoundTrips)
+{
+    nlohmann::json object = NS::MakeObjectJson();
+    NS::WriteObjectHeader(object, NS::ObjectHeader{.id = 4, .className = "PropActor", .name = "Ball", .active = false});
+    const NS::ObjectHeader header = NS::ReadObjectHeader(object);
+    EXPECT_EQ(header.id, 4u);
+    EXPECT_EQ(header.className, "PropActor");
+    EXPECT_EQ(header.name, "Ball");
+    EXPECT_FALSE(header.active);
+}
+
+TEST(SceneJson, NextFreeObjectIdStepsPastTheLargestId)
+{
+    // 手編集で nextObjectId が配置物の id より小さいファイルもある。次の id は最大の id の次より前に戻らない
+    nlohmann::json doc = NS::MakeSceneJson();
+    EXPECT_EQ(NS::NextFreeObjectId(doc), 1u);
+    AddClassObject(doc, "PropActor", 5);
+    NS::SetSceneJsonNextObjectId(doc, 2);
+    EXPECT_EQ(NS::NextFreeObjectId(doc), 6u);
+    NS::SetSceneJsonNextObjectId(doc, 10);
+    EXPECT_EQ(NS::NextFreeObjectId(doc), 10u);
+}
+
+TEST(SceneActor, ApplyFromJsonNumbersANameThatIsAlreadyUsed)
+{
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddClassObject(doc, "PropActor", 1);
+    AddClassObject(doc, "PropActor", 2);
+    NS::SetObjectJsonName(NS::SceneJsonObjects(doc)[0], "Ball");
+    NS::SetObjectJsonName(NS::SceneJsonObjects(doc)[1], "Other");
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+
+    nlohmann::json snapshot = NS::SceneJsonObjects(scene.ToJson())[1];
+    NS::SetObjectJsonName(snapshot, "Ball");
+    const NS::SceneActor* applied = scene.ApplyFromJson(snapshot);
+    ASSERT_NE(applied, nullptr);
+    EXPECT_EQ(applied->Name(), "Ball_1");
 }
 
 TEST(SceneActor, PhysicsSettingsIsNotAPlaceableClassObj)
