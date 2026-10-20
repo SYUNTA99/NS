@@ -89,6 +89,11 @@ public:
     //! プレイ中に欄を触る道 (MirrorPlayEditToBaseline) は断らず、プレイ開始の写しへ写す
     [[nodiscard]] bool IsSceneEditable() const noexcept;
 
+    //! @brief 編集のショートカットを止めるか。ResolveInputOwnership の答えを毎回の描画の終わりに受ける
+    //! @details キーを読むのは次の固定ステップの更新なので、1 つ前の描画の答えを読む
+    void SetEditShortcutsBlocked(bool blocked) noexcept { m_editShortcutsBlocked = blocked; }
+    [[nodiscard]] bool EditShortcutsBlocked() const noexcept { return m_editShortcutsBlocked; }
+
     //! 編集モードからプレイモードへ移行する
     void EnterPlay() noexcept;
 
@@ -353,6 +358,8 @@ private:
     // 姿のポインタを持たないのは、AssetManager::Clear の後に古いポインタを残さないため
     std::string m_selectedAssetPath;
     bool m_assetEdited = false; // 選んだ素材の値が変わり、まだ確定していない
+
+    bool m_editShortcutsBlocked = false;
 };
 
 namespace NS

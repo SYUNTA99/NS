@@ -38,7 +38,8 @@ namespace NS
             [[nodiscard]] bool LoadLayout(const char* path);
 
             //! ポインター下のパネルを Shift+Space で全面化し、全面化中は元へ戻す
-            void RenderMaximizeButton() noexcept;
+            //! shortcutsBlocked は ResolveInputOwnership の答え。真の間はキーを読まない
+            void RenderMaximizeButton(bool shortcutsBlocked) noexcept;
 
             //! レイアウトを組み直した次フレームで前面タブを確定させる
             void TickTabFocus() noexcept;

@@ -19,6 +19,7 @@
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
+#include <imgui_internal.h>
 #endif
 
 #if NS_EDITOR_ENABLED
@@ -123,6 +124,7 @@ void Editor::OnUpdate()
     HandleModeToggleInput(*m_controller);
     HandlePauseInput(*m_controller);
     HandleUiVisibilityInput(*m_controller);
+    HandleEditShortcuts(*m_controller);
 }
 
 void Editor::OnRender()
@@ -210,10 +212,9 @@ void Editor::OnRender()
         {
             editor.Editor().RenderFileBrowser();
         }
-        HandleEditShortcuts(editor);
 
         // パネルの内容に重ならないショートカットで全面化と復元を切り替える
-        m_dock.RenderMaximizeButton();
+        m_dock.RenderMaximizeButton(editor.EditShortcutsBlocked());
 
         m_lastModeWasPlay = playMode;
     }
@@ -287,6 +288,8 @@ void Editor::OnRender()
                                            .uiWantsMouse = m_imgui->WantCaptureMouse(),
                                            .uiWantsKeyboard = m_imgui->WantCaptureKeyboard(),
                                            .textInput = ImGui::GetIO().WantTextInput,
+                                           .itemActive = ImGui::IsAnyItemActive(),
+                                           .modalOpen = ImGui::GetTopMostPopupModal() != nullptr,
                                            .editSceneLatched = m_sceneView.IsMouseLatched(),
                                            .gameLatched = m_gameView.IsMouseLatched(),
                                            .cursorReleased = app->Window().IsCursorVisible(),
@@ -295,6 +298,7 @@ void Editor::OnRender()
                                            .focusedPanel = focusedPanel});
     app->Input().SetUiCapture(
         {.wantMouse = owner.uiMouse, .wantKeyboard = owner.uiKeyboard, .leftButtonToGame = owner.leftButtonToGame});
+    editor.SetEditShortcutsBlocked(owner.editShortcutsBlocked);
 
     // 見回し終了時にキー状態を解除し、操作対象の切替へ押しっぱなしを持ち越さない
     if (m_sceneView.ConsumeFreeFlyReleased())
@@ -599,32 +603,28 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
 
 void Editor::HandleEditShortcuts(LevelEditorController& editor) noexcept
 {
-#if NS_EDITOR_ENABLED
-    if (!editor.IsSceneEditable())
+    if (!editor.IsSceneEditable() || editor.EditShortcutsBlocked())
+    {
+        return;
+    }
+    NS::Application* app = NS::Application::Get();
+    if (app == nullptr)
     {
         return;
     }
 
-    const ImGuiIO& io = ImGui::GetIO();
-    // 改名の入力欄に居る間は Delete も D も文字入力
-    if (io.WantTextInput)
-    {
-        return;
-    }
-
-    if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+    const NS::OS::Keyboard& keyboard = app->Input().Keyboard();
+    const bool ctrl = keyboard.IsHeld(NS::OS::Key::Ctrl);
+    if (keyboard.IsPressed(NS::OS::Key::Delete))
     {
         editor.DeleteSelectedObject();
     }
-    if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false))
+    if (ctrl && keyboard.IsPressed(NS::OS::Key::D))
     {
         editor.DuplicateSelectedObject();
     }
-    if (!io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
+    if (!ctrl && keyboard.IsPressed(NS::OS::Key::F))
     {
         editor.FocusSelectedInView();
     }
-#else
-    (void)editor;
-#endif
 }
