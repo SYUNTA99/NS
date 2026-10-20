@@ -30,7 +30,7 @@ namespace NS
                                        std::size_t constantBytes,
                                        std::string_view label) noexcept
         {
-            if (!IsUsable(vs) || !IsUsable(ps))
+            if (!CanDrawFromVertexId(vs) || !IsUsable(ps))
             {
                 return false;
             }

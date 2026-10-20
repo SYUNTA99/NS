@@ -67,7 +67,7 @@ namespace NS
             {
                 return;
             }
-            if (!IsUsable(m_vs) || !IsUsable(m_distortionPs))
+            if (!CanDrawFromVertexId(m_vs) || !IsUsable(m_distortionPs))
             {
                 return;
             }

@@ -3,6 +3,7 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/Gfx/Render/FrameConstants.h"
 #include "NSlib/Gfx/D3DPipeline.h"
+#include "NSlib/Gfx/D3DShader.h"
 
 #include <cstddef>
 
@@ -34,7 +35,7 @@ namespace NS
             const D3DBuffer* extraVsCb = nullptr;
             const void* extraVsData = nullptr;
             std::size_t extraVsSize = 0;
-            uint extraVsSlot = 1;
+            uint extraVsSlot = k_BonePaletteSlot;
         };
 #pragma warning(pop)
 

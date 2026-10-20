@@ -1,5 +1,6 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/Bloom.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
@@ -163,6 +164,39 @@ TEST(BuiltinShaders, BloomDrawsPinkWhileCompositeFailsAndRecoversOnReload)
         const std::vector<NS::uint8> recovered = DrawBloomAndReadCenter(device, bloom);
         ASSERT_EQ(recovered.size(), 4u);
         EXPECT_FALSE(IsPink(recovered));
+    }
+
+    std::error_code error;
+    std::filesystem::remove_all(directory, error);
+}
+
+// 全画面の頂点シェーダーの代わりは POSITION を読むので、頂点の番号では形が出ない。
+// その間に光のにじみが世界の描き先を浮動小数へ替えると、合成が出ずに世界の絵が画面から消える
+TEST(BuiltinShaders, WorldStaysOnScreenWhileFullscreenVertexShaderFails)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "描く段のシェーダーの試し", .size = {16, 16}, .visible = false});
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
+
+    const std::filesystem::path directory = CopyShadersToTemp();
+    ASSERT_FALSE(directory.empty());
+    ASSERT_TRUE(WriteText((directory / "Shaders" / "fade.vs.hlsl").generic_string(), k_BrokenHlsl));
+
+    {
+        NS::AssetManager assets{directory.generic_string()};
+        NS::Gfx::Bloom bloom(NS::Gfx::BloomDesc{}, assets.LoadBuiltinShaders());
+        device.BeginFrame(0.0f, 0.0f, 0.0f, 1.0f);
+        bloom.BeginWorld(device, NS::Color{0.0f, 0.0f, 0.0f, 1.0f});
+        // 世界の絵の代わりに、今の描き先を緑で塗る
+        NS::Gfx::D3DCommandList& cmd = device.Commands();
+        const NS::Gfx::SavedTargets world = cmd.SaveTargets();
+        ASSERT_NE(world.color, nullptr);
+        cmd.ClearRenderTarget(world.color.Get(), 0.0f, 1.0f, 0.0f, 1.0f);
+        bloom.EndWorld(device);
+
+        const std::vector<NS::uint8> center = ReadCenter(device);
+        ASSERT_EQ(center.size(), 4u);
+        EXPECT_EQ(center[1], 255);
     }
 
     std::error_code error;

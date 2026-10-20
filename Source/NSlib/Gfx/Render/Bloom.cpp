@@ -90,7 +90,7 @@ namespace NS
             {
                 return;
             }
-            if (!IsUsable(m_vs) || !IsUsable(m_thresholdPs) || !IsUsable(m_downPs) || !IsUsable(m_upPs) ||
+            if (!CanDrawFromVertexId(m_vs) || !IsUsable(m_thresholdPs) || !IsUsable(m_downPs) || !IsUsable(m_upPs) ||
                 !IsUsable(m_compositePs))
             {
                 return;

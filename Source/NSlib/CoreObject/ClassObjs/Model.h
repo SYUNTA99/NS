@@ -7,6 +7,7 @@
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/DrawItem.h"
 
 #include <string>
@@ -179,7 +180,7 @@ namespace NS
         const Gfx::D3DBuffer* m_perObjectVsCb = nullptr;
         const void* m_perObjectVsData = nullptr;
         std::size_t m_perObjectVsSize = 0;
-        uint m_perObjectVsSlot = 1;
+        uint m_perObjectVsSlot = Gfx::k_BonePaletteSlot;
 
         // Animation が現在ポーズから与える局所境界
         AABB m_localBoundsOverride{};

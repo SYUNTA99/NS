@@ -1,6 +1,7 @@
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DSkeletalMesh.h"
 #include "NSlib/Gfx/Render/Bloom.h"
+#include "NSlib/Gfx/Render/DrawItem.h"
 #include "NSlib/Gfx/Render/FrameConstants.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Render/ScreenPasses.h"
@@ -126,6 +127,12 @@ TEST(ShaderConstants, SkinnedVertexShaderMatchesTheDrawConstantsAndTheBones)
     EXPECT_TRUE(HasConstantBuffer(
         *shader.reflection.Get(), "BonePalette", NS::Gfx::k_BonePaletteSlot, sizeof(NS::Gfx::BonePaletteCB)));
     EXPECT_TRUE(MaterialParamsAtItsSlot(*shader.reflection.Get()));
+}
+
+// 頂点シェーダーへ足す定数を差す場所の既定は骨の場所。骨の場所を変えた時に一緒に動く
+TEST(ShaderConstants, DrawItemExtraVertexConstantsDefaultToTheBoneSlot)
+{
+    EXPECT_EQ(NS::Gfx::DrawItem{}.extraVsSlot, NS::Gfx::k_BonePaletteSlot);
 }
 
 TEST(ShaderConstants, BloomPixelShadersMatchTheBloomConstants)
