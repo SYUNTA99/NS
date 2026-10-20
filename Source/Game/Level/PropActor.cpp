@@ -560,16 +560,19 @@ namespace GL
                 Release(release->Desc());
                 return true;
             }
-            if (const MsgCourseRestart* restart = NS::MsgCast<MsgCourseRestart>(msg))
+            if (IsMsgCourseStart(msg))
             {
-                const nlohmann::json& baseline = restart->Baseline();
-                const std::size_t index = NS::FindObjectIndexById(baseline, Id());
-                if (index == NS::k_NoObjectIndex)
+                m_coursePose = CoursePose{.position = Root().Position(), .rotation = Root().Rotation()};
+                return true;
+            }
+            if (IsMsgCourseRestart(msg))
+            {
+                // コースが始まった後に置かれた物は、戻る先を持たない
+                if (!m_coursePose.has_value())
                 {
                     return false;
                 }
-                const nlohmann::json& placed = NS::SceneJsonObjects(baseline)[index];
-                ResetTo(NS::ObjectPosition(placed), NS::ObjectRotation(placed));
+                ResetTo(m_coursePose->position, m_coursePose->rotation);
                 return true;
             }
             return false;

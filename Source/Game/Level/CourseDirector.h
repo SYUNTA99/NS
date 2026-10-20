@@ -4,6 +4,8 @@
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/System/SceneSystem.h"
 
+#include <vector>
+
 namespace NS
 {
     class SceneActor;
@@ -42,14 +44,15 @@ namespace GL
 
             [[nodiscard]] bool IsClearing() const noexcept { return m_sequences.IsRunning(); }
 
-            //! 現在の配置を戻り先として保存し、RestartCourse と同じ処理で始める
+            //! @brief 全ての配置物へ MsgCourseStart を送って今の姿を控えさせ、RestartCourse と同じ処理で始める
+            //! @details エディタがプレイの終わりに読む凍結もここで取る
             void StartCourse();
 
             //! @brief コースを最初からやり直す。全ての配置物へ MsgCourseRestart を送る
-            //! @details 凍結 (StartCourse が取ったシーンの JSON 文書) にある姿へ、受け手が自分で戻る
+            //! @details 受け手は StartCourse の時に控えた姿へ自分で戻る
             void RestartCourse();
 
-            //! @brief 自機の他の配置物へ MsgCourseRestart を送り、凍結の姿へ戻す。自機の位置と状態は変えない
+            //! @brief 自機の他の配置物へ MsgCourseRestart を送り、開始の時の姿へ戻す。自機の位置と状態は変えない
             void RespawnObjects();
 
             //! 知らせを受けた分だけ流れを進める
@@ -60,7 +63,10 @@ namespace GL
 
             void SendInputLock(bool locked);
 
-            //! skip の他の、一時オブジェクトでない配置物へ MsgCourseRestart を送る。skip が nullptr なら全員へ
+            //! skip の他の、一時オブジェクトでない配置物。skip が nullptr なら全員
+            [[nodiscard]] std::vector<NS::SceneActor*> PlacedActors(const NS::SceneActor* skip) const;
+
+            //! PlacedActors の全員へ MsgCourseRestart を送る
             void SendRestart(const NS::SceneActor* skip);
 
             float m_fadeOutSeconds = 0.0f;

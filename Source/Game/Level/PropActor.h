@@ -111,6 +111,12 @@ namespace GL
                 bool active = false;
             };
             GhostRun m_ghost;
+            struct CoursePose
+            {
+                NS::Vector3 position;
+                NS::Quaternion rotation;
+            };
+            std::optional<CoursePose> m_coursePose; // MsgCourseStart の時の姿。やり直しで戻る先
             TackleGhost m_tackleGhost{this}; // 体当たりの残像。Model を借りて描く
             NS::Vector3 m_freezeHome{};
             bool m_freezePlaced = true;

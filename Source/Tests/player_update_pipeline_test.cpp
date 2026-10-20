@@ -259,13 +259,13 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
         NS::Scene scene;
         PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
         ASSERT_NE(player, nullptr);
-        (void)scene.BeginPlayBaseline();
+        GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
+        ASSERT_NE(director, nullptr);
+        director->StartCourse();
         GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
         ASSERT_NE(rock, nullptr);
         const NS::Vector3 rockHome = rock->Root().Position();
         ASSERT_TRUE(SlamIntoTheRock(*player, *rock, waitForFreeze));
-        GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
-        ASSERT_NE(director, nullptr);
         director->RestartCourse();
         for (int frame = 0; frame < 20; ++frame)
         {

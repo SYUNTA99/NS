@@ -56,8 +56,12 @@ namespace GL
 
         void CourseDirector::StartCourse()
         {
-            // 凍結がやり直しの戻り先なので、取ってからやり直す
+            // 凍結はエディタがプレイの終わりに編集の姿へ戻すために読む。やり直しの戻り先は各自の控え
             (void)m_scene.BeginPlayBaseline();
+            for (NS::SceneActor* actor : PlacedActors(nullptr))
+            {
+                (void)SendMsgCourseStart(*actor);
+            }
             RestartCourse();
         }
 
@@ -71,11 +75,10 @@ namespace GL
             SendRestart(FindPlayer(m_scene.Objects()));
         }
 
-        void CourseDirector::SendRestart(const NS::SceneActor* skip)
+        std::vector<NS::SceneActor*> CourseDirector::PlacedActors(const NS::SceneActor* skip) const
         {
             // 送る先は控えた並びで回す。受け手が戻る間に配置物の並びが変わっても崩れない
-            // 一時オブジェクト (跡) は凍結に無いので送らない
-            const nlohmann::json& baseline = m_scene.PlayBaseline();
+            // 一時オブジェクト (跡) は開始の時の姿を持たないので送らない
             std::vector<NS::SceneActor*> receivers;
             receivers.reserve(m_scene.Objects().ObjectCount());
             for (NS::SceneActor* actor : m_scene.Objects())
@@ -85,9 +88,14 @@ namespace GL
                     receivers.push_back(actor);
                 }
             }
-            for (NS::SceneActor* actor : receivers)
+            return receivers;
+        }
+
+        void CourseDirector::SendRestart(const NS::SceneActor* skip)
+        {
+            for (NS::SceneActor* actor : PlacedActors(skip))
             {
-                (void)SendMsgCourseRestart(*actor, baseline);
+                (void)SendMsgCourseRestart(*actor);
             }
         }
 

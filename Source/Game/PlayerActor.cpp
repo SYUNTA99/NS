@@ -428,9 +428,14 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
         }
         return true;
     }
-    if (const GL::Level::MsgCourseRestart* restart = NS::MsgCast<GL::Level::MsgCourseRestart>(msg))
+    if (GL::Level::IsMsgCourseStart(msg))
     {
-        RestartFrom(restart->Baseline());
+        m_courseStartPosition = Root().Position();
+        return true;
+    }
+    if (GL::Level::IsMsgCourseRestart(msg))
+    {
+        Restart();
         return true;
     }
     if (const GL::Level::MsgInputLock* lock = NS::MsgCast<GL::Level::MsgInputLock>(msg))
@@ -446,15 +451,13 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
     return false;
 }
 
-void PlayerActor::RestartFrom(const nlohmann::json& baseline) noexcept
+void PlayerActor::Restart() noexcept
 {
-    // 出現位置は配置したプレイヤーのカプセル中心の世界座標
-    // 凍結に既にある値なので写しは持たず、その都度読む。居なければ新規レベルで補う位置へ戻す
+    // 出現位置はカプセル中心の世界座標。コースが始まる前は、新規レベルで補う位置へ戻す
     NS::Vector3 spawn = DefaultSpawnPosition();
-    const std::size_t index = NS::FindObjectIndexById(baseline, Id());
-    if (index != NS::k_NoObjectIndex)
+    if (m_courseStartPosition.has_value())
     {
-        spawn = NS::ObjectPosition(NS::SceneJsonObjects(baseline)[index]);
+        spawn = *m_courseStartPosition;
     }
 
     Root().SetPosition(spawn);

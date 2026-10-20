@@ -60,22 +60,22 @@ namespace GL
         bool SendMsgGoal(NS::HitSensor& receiver, NS::HitSensor& sender, float fadeOutSeconds, float fadeInSeconds);
         [[nodiscard]] bool IsMsgGoal(const NS::Message& msg) noexcept;
 
+        //! @brief コースが始まった知らせ。進行役がやり直しの前に全ての配置物へ 1 回送る
+        //! @details 受け手は今の姿をやり直しの戻り先として控える。配置のデータは読み直さない
+        class MsgCourseStart final : public NS::Message
+        {
+            NS_MESSAGE(MsgCourseStart)
+        };
+        bool SendMsgCourseStart(NS::SceneActor& receiver);
+        [[nodiscard]] bool IsMsgCourseStart(const NS::Message& msg) noexcept;
+
         //! @brief コースを最初からやり直す知らせ。進行役が全ての配置物へ送る
-        //! @details 受け手はプレイ開始時の凍結 (baseline) にある自分の姿へ戻る。凍結に無い物は応じなくてよい
+        //! @details 受け手は MsgCourseStart で控えた姿へ戻る。控えの無い物は応じなくてよい
         class MsgCourseRestart final : public NS::Message
         {
             NS_MESSAGE(MsgCourseRestart)
-
-        public:
-            explicit MsgCourseRestart(const nlohmann::json& baseline) noexcept : m_baseline(baseline) {}
-
-            //! プレイ開始時に凍結したシーンの JSON 文書
-            [[nodiscard]] const nlohmann::json& Baseline() const noexcept { return m_baseline; }
-
-        private:
-            const nlohmann::json& m_baseline;
         };
-        bool SendMsgCourseRestart(NS::SceneActor& receiver, const nlohmann::json& baseline);
+        bool SendMsgCourseRestart(NS::SceneActor& receiver);
         [[nodiscard]] bool IsMsgCourseRestart(const NS::Message& msg) noexcept;
 
         //! @brief 操作を止めるか戻す知らせ。進行役がクリアの演出の間だけプレイヤーの操作を止める

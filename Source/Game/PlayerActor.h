@@ -291,9 +291,9 @@ public:
     //! コースの進行役を用意する。全ての配置物が揃った後に呼ばれる
     void InitAfterPlacement() override;
 
-    //! @brief プレイ開始時の凍結 (baseline) の自分の位置へ戻り、動きと命を最初の状態へ戻す
-    //! @details 凍結に自分が居なければ、DefaultSpawnPosition の位置へ戻す
-    void RestartFrom(const nlohmann::json& baseline) noexcept;
+    //! @brief MsgCourseStart の時の位置へ戻り、動きと命を最初の状態へ戻す
+    //! @details コースが始まる前は、DefaultSpawnPosition の位置へ戻す
+    void Restart() noexcept;
     [[nodiscard]] NS::Vector3 DefaultSpawnPosition() const noexcept;
 
     //! 命を amount 削る。下限 0
@@ -442,6 +442,7 @@ private:
     GL::Level::TackleGhost m_tackleGhost{this}; // 体当たりの残像。Model を借りて描く
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
     GL::Level::Health m_health;
+    std::optional<NS::Vector3> m_courseStartPosition; // MsgCourseStart の時の位置。やり直しで戻る先
 
     bool m_prevJumpHeld = false;
     int m_jumpsRemaining = 1;

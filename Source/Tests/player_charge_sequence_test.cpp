@@ -111,7 +111,7 @@ TEST(PlayerChargeSequence, LiveTimingAndRestartPreserveHeldDuration)
     PlayerActor& player = *playerOwned;
     GL::Player::PlayerParams* params = &player.Params();
     player.Update(true);
-    player.RestartFrom(NS::MakeSceneJson());
+    player.Restart();
     EXPECT_FALSE(player.IsCurled());
     ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 0.3f}}), 0u);
     // 出直しの前に押した 1 フレームも数え、しきい値と満タンの真ん中まで押す
@@ -144,7 +144,7 @@ TEST(PlayerChargeSequence, ChargeCountsEveryFrameThroughARestartWhileHeld)
     {
         player.Update(true);
     }
-    player.RestartFrom(NS::MakeSceneJson());
+    player.Restart();
     for (int frame = 0; frame < threshold * 2; ++frame)
     {
         player.Update(true);

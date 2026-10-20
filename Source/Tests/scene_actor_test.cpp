@@ -385,9 +385,9 @@ TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosit
     const NS::Vector3 fallback = player->DefaultSpawnPosition();
     EXPECT_FLOAT_EQ(ensured.y, fallback.y);
 
-    // 凍結に自機が居ないやり直しは、補う位置と同じ高さへ戻る
+    // コースが始まる前のやり直しは、補う位置と同じ高さへ戻る
     player->Root().SetPosition(NS::Vector3{3.0f, 40.0f, 3.0f});
-    player->RestartFrom(NS::MakeSceneJson());
+    player->Restart();
     EXPECT_FLOAT_EQ(player->Root().Position().x, fallback.x);
     EXPECT_FLOAT_EQ(player->Root().Position().y, fallback.y);
     EXPECT_FLOAT_EQ(player->Root().Position().z, fallback.z);

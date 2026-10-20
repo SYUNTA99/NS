@@ -6,6 +6,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
@@ -13,6 +14,7 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -160,11 +162,11 @@ TEST(CourseDirector, RespawnButtonReturnsObjectsButKeepsPlayer)
 
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    (void)scene.BeginPlayBaseline();
     PlayerActor* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
+    director->StartCourse();
     NS::SceneActor* placed = nullptr;
     for (NS::SceneActor* actor : scene.Objects())
     {
@@ -312,7 +314,7 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
     EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, impacts);
 }
 
-TEST(CourseDirector, RestartReturnsObjectsToBaseline)
+TEST(CourseDirector, RestartReturnsObjectsToTheirStart)
 {
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::MakeObjectJson();
@@ -323,7 +325,7 @@ TEST(CourseDirector, RestartReturnsObjectsToBaseline)
 
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    (void)scene.BeginPlayBaseline();
+    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->StartCourse();
     NS::SceneActor* placed = nullptr;
     for (NS::SceneActor* actor : scene.Objects())
     {
@@ -389,4 +391,50 @@ TEST(CourseDirector, GameLoadSceneFreezesTheNewlyLoadedScene)
     const PlayerActor* player = FindPlayer(scene->Objects());
     ASSERT_NE(player, nullptr);
     EXPECT_NE(NS::FindObjectIndexById(scene->PlayBaseline(), player->Id()), NS::k_NoObjectIndex);
+}
+
+// 開始の後に凍結の位置を書き換えても (プレイ中のインスペクタの道)、やり直しは開始の時の位置へ戻る
+TEST(CourseDirector, RestartReturnsToThePoseAtStartEvenIfTheBaselineChanges)
+{
+    NS::Scene scene;
+    nlohmann::json doc = CourseWithPlayer();
+    nlohmann::json rock = NS::MakePrototypeJson<GL::Level::PropActor>();
+    NS::SetObjectPosition(rock, NS::Vector3{3.0f, 0.5f, 0.0f});
+    NS::SceneJsonObjects(doc).push_back(std::move(rock));
+    NS::EnsureUniqueObjectIds(doc);
+    scene.ResetFromJson(doc);
+    PlayerActor* player = FindPlayer(scene.Objects());
+    ASSERT_NE(player, nullptr);
+    GL::Level::PropActor* prop = nullptr;
+    for (NS::SceneActor* actor : scene.Objects())
+    {
+        if (GL::Level::PropActor* found = NS::Cast<GL::Level::PropActor>(actor))
+        {
+            prop = found;
+        }
+    }
+    ASSERT_NE(prop, nullptr);
+    GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
+    director->StartCourse();
+    const NS::Vector3 playerAtStart = player->Root().Position();
+    const NS::Vector3 propAtStart = prop->Root().Position();
+
+    // 動かした位置を、プレイ中のインスペクタと同じ口で凍結へ写す
+    const NS::Vector3 moved{9.0f, 9.0f, 9.0f};
+    for (NS::SceneActor* actor : std::initializer_list<NS::SceneActor*>{player, prop})
+    {
+        actor->Root().SetPosition(moved);
+        NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, NS::Object* part) {
+            if (part == &actor->Root())
+            {
+                scene.WritePlayBaselineField(*actor, row, "位置");
+            }
+        });
+    }
+
+    director->RestartCourse();
+    EXPECT_FLOAT_EQ(player->Root().Position().x, playerAtStart.x);
+    EXPECT_FLOAT_EQ(player->Root().Position().y, playerAtStart.y);
+    EXPECT_FLOAT_EQ(prop->Root().Position().x, propAtStart.x);
+    EXPECT_FLOAT_EQ(prop->Root().Position().y, propAtStart.y);
 }

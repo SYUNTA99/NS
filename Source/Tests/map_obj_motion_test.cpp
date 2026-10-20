@@ -149,13 +149,13 @@ TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    const nlohmann::json baseline = scene.ToJson();
+    ASSERT_TRUE(GL::Level::SendMsgCourseStart(*rock));
     ReleaseRock(*rock);
     for (int step = 0; step < 10; ++step)
     {
         rock->UpdateMotion();
     }
-    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(*rock, baseline));
+    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(*rock));
     EXPECT_FALSE(rock->IsFlying());
     rock->UpdateMotion();
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 0.0f);

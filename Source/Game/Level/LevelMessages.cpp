@@ -28,9 +28,19 @@ namespace GL
             return NS::IsMsg<MsgGoal>(msg);
         }
 
-        bool SendMsgCourseRestart(NS::SceneActor& receiver, const nlohmann::json& baseline)
+        bool SendMsgCourseStart(NS::SceneActor& receiver)
         {
-            return NS::SendMsgToActor(MsgCourseRestart{baseline}, receiver);
+            return NS::SendMsgToActor(MsgCourseStart{}, receiver);
+        }
+
+        bool IsMsgCourseStart(const NS::Message& msg) noexcept
+        {
+            return NS::IsMsg<MsgCourseStart>(msg);
+        }
+
+        bool SendMsgCourseRestart(NS::SceneActor& receiver)
+        {
+            return NS::SendMsgToActor(MsgCourseRestart{}, receiver);
         }
 
         bool IsMsgCourseRestart(const NS::Message& msg) noexcept
