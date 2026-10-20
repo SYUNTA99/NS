@@ -12,7 +12,7 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
@@ -209,7 +209,7 @@ namespace NS
     void SceneActor::Init(const ActorInitInfo* info)
     {
         OnInit();
-        ApplyArchetype(*this);
+        ApplyActorFile(*this);
         if (info != nullptr && info->placement != nullptr)
         {
             ApplyObjectClassObjs(*this, *info->placement);

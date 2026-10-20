@@ -17,7 +17,7 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -663,7 +663,7 @@ namespace NS
                 // 種類の既定にするのは、同じ種類の全ての個体とファイルを書き換える。既定の部品を作り直すので描画の後で行う
                 if (classObjEdit.promoteField != nullptr && promoteRow != nullptr)
                 {
-                    (void)editor.PromoteFieldToArchetype(*go, *promoteRow, classObjEdit.promoteField->name);
+                    (void)editor.PromoteFieldToActorFile(*go, *promoteRow, classObjEdit.promoteField->name);
                 }
                 if (classObjEdit.activated)
                 {

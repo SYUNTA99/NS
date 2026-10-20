@@ -36,7 +36,7 @@
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -1379,7 +1379,7 @@ void LevelEditorController::MirrorPlayEditToBaseline(const NS::SceneActor& actor
     m_scene->WritePlayBaselineField(actor, row, fieldName);
 }
 
-bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
+bool LevelEditorController::PromoteFieldToActorFile(const NS::SceneActor& actor,
                                                     const NS::ClassObjInfo& row,
                                                     std::string_view fieldName)
 {
@@ -1416,11 +1416,11 @@ bool LevelEditorController::PromoteFieldToArchetype(const NS::SceneActor& actor,
         }
     }
 
-    if (!NS::WriteFieldToArchetype(actor, row, fieldName))
+    if (!NS::WriteFieldToActorFile(actor, row, fieldName))
     {
         return false;
     }
-    if (!NS::ArchetypeLibrary::Get().Save(className))
+    if (!NS::ActorFileLibrary::Get().Save(className))
     {
         NS_LOG_WARN(App, "種類の既定値 {} をファイルへ書けなかった。今の起動の間だけ効く", className);
     }

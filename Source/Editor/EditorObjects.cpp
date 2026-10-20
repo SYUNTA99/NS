@@ -9,7 +9,7 @@
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -47,13 +47,13 @@ namespace NS
 
             bool IsPlayerObject(const nlohmann::json& object)
             {
-                return ArchetypeLibrary::Get().ClassNameOf(ObjectJsonClass(object)) ==
+                return ActorFileLibrary::Get().ClassNameOf(ObjectJsonClass(object)) ==
                        ::PlayerActor::StaticReflection()->typeName;
             }
 
             bool IsDeathZoneObject(const nlohmann::json& object)
             {
-                return ArchetypeLibrary::Get().ClassNameOf(ObjectJsonClass(object)) ==
+                return ActorFileLibrary::Get().ClassNameOf(ObjectJsonClass(object)) ==
                        GL::Level::DeathZoneActor::StaticReflection()->typeName;
             }
 
@@ -184,7 +184,7 @@ namespace NS
             {
                 // 高さはカプセルの寸法の持ち主 Collider から引く。種類の既定でカプセルを変えても足元が床の上に出る
                 const SceneActor& baseline =
-                    ArchetypeLibrary::Get().Baseline(::PlayerActor::StaticReflection()->typeName);
+                    ActorFileLibrary::Get().Baseline(::PlayerActor::StaticReflection()->typeName);
                 const ::PlayerActor* player = Cast<::PlayerActor>(&baseline);
                 if (player == nullptr)
                 {

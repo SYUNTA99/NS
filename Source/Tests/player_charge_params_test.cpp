@@ -2,7 +2,7 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -122,13 +122,13 @@ TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
 TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 {
     const std::vector<std::string_view> removed{"突進位置係数カーブ", "中心近くの境目"};
-    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
-    ASSERT_NE(archetype, nullptr);
-    const nlohmann::json* archetypeFields = NS::ClassObjFields(*archetype, "Params");
-    ASSERT_NE(archetypeFields, nullptr);
+    const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PlayerActor");
+    ASSERT_NE(actorFile, nullptr);
+    const nlohmann::json* actorFileFields = NS::ClassObjFields(*actorFile, "Params");
+    ASSERT_NE(actorFileFields, nullptr);
     for (const std::string_view key : removed)
     {
-        EXPECT_FALSE(NS::HasField(*archetypeFields, key)) << key;
+        EXPECT_FALSE(NS::HasField(*actorFileFields, key)) << key;
     }
 
     for (const std::string_view sceneName : {"new_scene.scene"})
@@ -159,10 +159,10 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     const nlohmann::json prototype = NS::MakePrototypeJson(*playerOwned);
-    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
-    ASSERT_NE(archetype, nullptr);
-    for (nlohmann::json::const_iterator it = NS::ObjectJsonClassObjs(*archetype).begin();
-         it != NS::ObjectJsonClassObjs(*archetype).end();
+    const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PlayerActor");
+    ASSERT_NE(actorFile, nullptr);
+    for (nlohmann::json::const_iterator it = NS::ObjectJsonClassObjs(*actorFile).begin();
+         it != NS::ObjectJsonClassObjs(*actorFile).end();
          ++it)
     {
         EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << "PlayerActor.json " << it.key();

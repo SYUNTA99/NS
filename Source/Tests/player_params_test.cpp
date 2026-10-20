@@ -11,7 +11,7 @@
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -568,10 +568,10 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
             }
         });
     };
-    NS::ArchetypeLibrary::Get().Reload();
-    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
-    ASSERT_NE(archetype, nullptr);
-    expectEveryFieldRead(*archetype, "PlayerActor.json");
+    NS::ActorFileLibrary::Get().Reload();
+    const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PlayerActor");
+    ASSERT_NE(actorFile, nullptr);
+    expectEveryFieldRead(*actorFile, "PlayerActor.json");
 
     for (const std::string_view sceneName : {"new_scene.scene"})
     {

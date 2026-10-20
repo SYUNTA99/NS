@@ -117,7 +117,7 @@ TEST(ColliderShape, BodyHasNoShapeFields)
     EXPECT_EQ(movement->GetReflection()->fieldCount, 0u);
 }
 
-TEST(ColliderShape, PlayerArchetypeShapeLandsOnCollider)
+TEST(ColliderShape, PlayerActorFileShapeLandsOnCollider)
 {
     NS::Scene scene;
     LoadPlayerScene(scene, nlohmann::json::object());

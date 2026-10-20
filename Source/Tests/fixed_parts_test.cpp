@@ -314,7 +314,7 @@ TEST(FixedParts, MemberTypeCanOwnADerivedPartWithoutASlot)
     EXPECT_EQ(PartAt(*actor, "Shape"), actor->shape.get());
 }
 
-TEST(FixedParts, MapObjCreatesShadowBeforeArchetypeIsApplied)
+TEST(FixedParts, MapObjCreatesShadowBeforeActorFileIsApplied)
 {
     const std::unique_ptr<GL::Level::PropActor> actor = NS::CreateActor<GL::Level::PropActor>();
     ASSERT_NE(actor->ShadowClassObj(), nullptr);

@@ -2,7 +2,7 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -292,7 +292,7 @@ namespace NS
         }
         // 控えは個体の上書きだけを持つ。上書きの無い欄も種類の既定値へ戻すため、全欄の姿へ広げてから比べる
         const nlohmann::json object = ExpandObjectJson(snapshot);
-        bool same = ArchetypeLibrary::Get().ClassNameOf(ObjectJsonClass(object)) == obj->ClassName();
+        bool same = ActorFileLibrary::Get().ClassNameOf(ObjectJsonClass(object)) == obj->ClassName();
         std::size_t classObjCount = 0;
         ForEachReflectedClassObj(*obj, [&](const ClassObjInfo& field, Object*) {
             ++classObjCount;

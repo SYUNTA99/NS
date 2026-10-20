@@ -19,12 +19,12 @@ namespace NS
 
     //! 名前ごとの既定値を Directory()/<名前>.actor から読む。作るクラスはファイルの中の class
     //! ActorRef はシーン内の参照なので既定値には含めない
-    class ArchetypeLibrary
+    class ActorFileLibrary
     {
     public:
-        [[nodiscard]] static ArchetypeLibrary& Get();
+        [[nodiscard]] static ActorFileLibrary& Get();
 
-        ~ArchetypeLibrary();
+        ~ActorFileLibrary();
 
         [[nodiscard]] const std::string& Directory();
 
@@ -59,18 +59,18 @@ namespace NS
         void ClearBaselines() noexcept;
 
     private:
-        ArchetypeLibrary();
+        ActorFileLibrary();
         // まだ読んでいなければ Directory() を読む
         void EnsureLoaded();
 
         std::string m_directory;                                                     // 空なら既定のディレクトリ
-        std::map<std::string, nlohmann::json, std::less<>> m_archetypes;             // 名前から .actor の文書
+        std::map<std::string, nlohmann::json, std::less<>> m_actorFiles;             // 名前から .actor の文書
         std::map<std::string, std::unique_ptr<SceneActor>, std::less<>> m_baselines; // クラス名から既定の 1 体
         bool m_loaded = false;
     };
 
     //! actor のクラスの種類の既定値を当てる。足す部品を作り、欄の値を写す
-    void ApplyArchetype(SceneActor& actor);
+    void ApplyActorFile(SceneActor& actor);
 
     //! 個体の差分を全欄へ展開する。部品構成は Baseline に揃え、個体だけの部品は除く
     [[nodiscard]] nlohmann::json ExpandObjectJson(const nlohmann::json& object);
@@ -90,11 +90,11 @@ namespace NS
 
     //! 種類の既定値へ上げてよい欄か。参照の欄と位置・回転・拡縮は個体の物なので上げられない
     //! 行の部品が作られていなければ上げられない
-    [[nodiscard]] bool IsArchetypeField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
+    [[nodiscard]] bool IsActorFileField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
 
     //! @brief actor の行 row の部品の欄 fieldName の今の値を、actor のクラスの種類の既定値へ書く
     //! @details ファイルへは書かない。上げられない欄は何もせず false
-    [[nodiscard]] bool WriteFieldToArchetype(const SceneActor& actor,
+    [[nodiscard]] bool WriteFieldToActorFile(const SceneActor& actor,
                                              const ClassObjInfo& row,
                                              std::string_view fieldName);
 } // namespace NS

@@ -3,7 +3,7 @@
 
 #include "Editor/EditorUi.h"
 #include "Editor/AssetPicker.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -1687,7 +1687,7 @@ namespace NS
 
                 // 種類の既定にできるのは、種類を持つ配置物の、個体の物でない欄だけ
                 const bool promotable = actor != nullptr && row != nullptr && actor->ClassName()[0] != '\0' &&
-                                        IsArchetypeField(*actor, *row, field.name);
+                                        IsActorFileField(*actor, *row, field.name);
                 const OverrideAction action = OverrideButton(changed, promotable);
                 if (action == OverrideAction::Revert && defaults != nullptr)
                 {

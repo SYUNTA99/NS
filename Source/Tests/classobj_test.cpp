@@ -3,7 +3,7 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ObjectJson.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -233,7 +233,7 @@ TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
     ASSERT_NE(fromJson, nullptr);
     EXPECT_EQ(fromJson->inits, 1);
 
-    const NS::SceneActor& baseline = NS::ArchetypeLibrary::Get().Baseline("ClassObjInitProbeActor");
+    const NS::SceneActor& baseline = NS::ActorFileLibrary::Get().Baseline("ClassObjInitProbeActor");
     const ClassObjInitProbeActor* probe = NS::Cast<ClassObjInitProbeActor>(&baseline);
     ASSERT_NE(probe, nullptr);
     EXPECT_EQ(probe->inits, 1);

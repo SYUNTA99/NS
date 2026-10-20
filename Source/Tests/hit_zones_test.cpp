@@ -10,7 +10,7 @@
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -528,11 +528,11 @@ TEST(HitZonesTest, FieldsAreClamped)
 }
 
 // 種類の既定値 PropActor.json が全部の置物の赤の既定を書く
-TEST(HitZonesTest, MapObjArchetypeWritesTheRedDefaults)
+TEST(HitZonesTest, MapObjActorFileWritesTheRedDefaults)
 {
-    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PropActor");
-    ASSERT_NE(archetype, nullptr);
-    const nlohmann::json* fields = NS::ClassObjFields(*archetype, "HitZones");
+    const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PropActor");
+    ASSERT_NE(actorFile, nullptr);
+    const nlohmann::json* fields = NS::ClassObjFields(*actorFile, "HitZones");
     ASSERT_NE(fields, nullptr);
     EXPECT_EQ((*fields)["丸"], true);
     EXPECT_FLOAT_EQ(NS::FieldFloat(*fields, "横幅", -1.0f), 0.43f);

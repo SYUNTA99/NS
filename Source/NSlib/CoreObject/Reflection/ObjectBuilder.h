@@ -1,7 +1,7 @@
 #pragma once
 
 // 配置物が自分を JSON へ書き出し、JSON から組み上がる経路
-// 値はコードの既定値 < 種類の既定値 < 個体の上書きの 3 段で重なる。種類の既定値は Archetype.h
+// 値はコードの既定値 < 種類の既定値 < 個体の上書きの 3 段で重なる。種類の既定値は ActorFile.h
 
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/SceneActor.h"

@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/Core/Logger.h"
@@ -21,7 +21,7 @@ namespace NS
     namespace
     {
         // 種類の既定値 1 つの上限。部品の値だけなので、シーンのファイルよりずっと小さい
-        constexpr std::size_t k_MaxArchetypeFileBytes = 1024u * 1024u;
+        constexpr std::size_t k_MaxActorFileBytes = 1024u * 1024u;
 
         // .actor に持たせない参照の欄を落とした写し。参照はシーンの中の相手を指すので配置物の物
         // 頭の鍵は全部残し、Save で丸ごと書く
@@ -53,7 +53,7 @@ namespace NS
 
         // .actor の頭の鍵の表はこの 1 か所。ほかの鍵は打ち間違いか古い形で、
         // そのまま読むと値が黙って既定に戻るので、最初に見つけた 1 つを返す。無ければ nullptr
-        [[nodiscard]] const std::string* FindUnknownArchetypeKey(const nlohmann::json& root)
+        [[nodiscard]] const std::string* FindUnknownActorFileKey(const nlohmann::json& root)
         {
             for (nlohmann::json::const_iterator it = root.begin(); it != root.end(); ++it)
             {
@@ -78,16 +78,16 @@ namespace NS
         }
     } // namespace
 
-    ArchetypeLibrary& ArchetypeLibrary::Get()
+    ActorFileLibrary& ActorFileLibrary::Get()
     {
-        static ArchetypeLibrary instance;
+        static ActorFileLibrary instance;
         return instance;
     }
 
-    ArchetypeLibrary::ArchetypeLibrary() = default;
-    ArchetypeLibrary::~ArchetypeLibrary() = default;
+    ActorFileLibrary::ActorFileLibrary() = default;
+    ActorFileLibrary::~ActorFileLibrary() = default;
 
-    const std::string& ArchetypeLibrary::Directory()
+    const std::string& ActorFileLibrary::Directory()
     {
         if (m_directory.empty())
         {
@@ -97,13 +97,13 @@ namespace NS
         return m_directory;
     }
 
-    void ArchetypeLibrary::SetDirectory(std::string directory)
+    void ActorFileLibrary::SetDirectory(std::string directory)
     {
         m_directory = std::move(directory);
         Reload();
     }
 
-    void ArchetypeLibrary::EnsureLoaded()
+    void ActorFileLibrary::EnsureLoaded()
     {
         if (!m_loaded)
         {
@@ -111,9 +111,9 @@ namespace NS
         }
     }
 
-    void ArchetypeLibrary::Reload()
+    void ActorFileLibrary::Reload()
     {
-        m_archetypes.clear();
+        m_actorFiles.clear();
         m_baselines.clear();
         m_loaded = true;
 
@@ -130,9 +130,9 @@ namespace NS
             {
                 continue;
             }
-            if (text->size() > k_MaxArchetypeFileBytes)
+            if (text->size() > k_MaxActorFileBytes)
             {
-                NS_LOG_ERROR(Scene, ".actor {} が上限 ({} byte) を超えるので読まない", path, k_MaxArchetypeFileBytes);
+                NS_LOG_ERROR(Scene, ".actor {} が上限 ({} byte) を超えるので読まない", path, k_MaxActorFileBytes);
                 continue;
             }
             const nlohmann::json root = nlohmann::json::parse(*text, nullptr, false);
@@ -141,7 +141,7 @@ namespace NS
                 NS_LOG_ERROR(Scene, ".actor {} の JSON を読めない", path);
                 continue;
             }
-            if (const std::string* unknown = FindUnknownArchetypeKey(root))
+            if (const std::string* unknown = FindUnknownActorFileKey(root))
             {
                 NS_LOG_ERROR(Scene, ".actor {} に知らない鍵 {} があるので読まない", path, *unknown);
                 continue;
@@ -158,22 +158,22 @@ namespace NS
                 NS_LOG_ERROR(Scene, ".actor {} の class {} が登録されていないので読まない", path, className);
                 continue;
             }
-            m_archetypes[OS::FileSystem::Stem(path)] = Sanitize(root);
+            m_actorFiles[OS::FileSystem::Stem(path)] = Sanitize(root);
         }
     }
 
-    const nlohmann::json* ArchetypeLibrary::Find(std::string_view name)
+    const nlohmann::json* ActorFileLibrary::Find(std::string_view name)
     {
         EnsureLoaded();
-        const std::map<std::string, nlohmann::json, std::less<>>::const_iterator it = m_archetypes.find(name);
-        if (it == m_archetypes.end())
+        const std::map<std::string, nlohmann::json, std::less<>>::const_iterator it = m_actorFiles.find(name);
+        if (it == m_actorFiles.end())
         {
             return nullptr;
         }
         return &it->second;
     }
 
-    std::string ArchetypeLibrary::ClassNameOf(std::string_view name)
+    std::string ActorFileLibrary::ClassNameOf(std::string_view name)
     {
         const nlohmann::json* actorFile = Find(name);
         if (actorFile == nullptr)
@@ -183,26 +183,26 @@ namespace NS
         return std::string{ObjectJsonClass(*actorFile)};
     }
 
-    void ArchetypeLibrary::Set(std::string_view name, nlohmann::json actorFile)
+    void ActorFileLibrary::Set(std::string_view name, nlohmann::json actorFile)
     {
         EnsureLoaded();
         if (name.empty())
         {
             return;
         }
-        m_archetypes[std::string{name}] = Sanitize(actorFile);
+        m_actorFiles[std::string{name}] = Sanitize(actorFile);
         // 既定の 1 体は種類の既定値から作るので、変えたら作り直す
         m_baselines.erase(std::string{name});
     }
 
-    void ArchetypeLibrary::Erase(std::string_view name)
+    void ActorFileLibrary::Erase(std::string_view name)
     {
         EnsureLoaded();
-        m_archetypes.erase(std::string{name});
+        m_actorFiles.erase(std::string{name});
         m_baselines.erase(std::string{name});
     }
 
-    bool ArchetypeLibrary::Save(std::string_view name)
+    bool ActorFileLibrary::Save(std::string_view name)
     {
         const nlohmann::json* actorFile = Find(name);
         if (actorFile == nullptr)
@@ -221,7 +221,7 @@ namespace NS
         return true;
     }
 
-    const SceneActor& ArchetypeLibrary::Baseline(std::string_view className)
+    const SceneActor& ActorFileLibrary::Baseline(std::string_view className)
     {
         EnsureLoaded();
         const std::map<std::string, std::unique_ptr<SceneActor>, std::less<>>::const_iterator it =
@@ -236,20 +236,20 @@ namespace NS
         return result;
     }
 
-    void ArchetypeLibrary::ClearBaselines() noexcept
+    void ActorFileLibrary::ClearBaselines() noexcept
     {
         m_baselines.clear();
     }
 
-    void ApplyArchetype(SceneActor& actor)
+    void ApplyActorFile(SceneActor& actor)
     {
-        const nlohmann::json* archetype = ArchetypeLibrary::Get().Find(actor.ClassName());
-        if (archetype == nullptr)
+        const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(actor.ClassName());
+        if (actorFile == nullptr)
         {
             return;
         }
         // 位置・回転・拡縮は個体の物なので、ファイルに書かれていても根の部品へは写さない
-        nlohmann::json values = *archetype;
+        nlohmann::json values = *actorFile;
         ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
             if (part == &actor.Root())
             {
@@ -261,7 +261,7 @@ namespace NS
 
     nlohmann::json ExpandObjectJson(const nlohmann::json& object)
     {
-        const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
+        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json full = object;
         nlohmann::json& target = ObjectJsonClassObjs(full);
         target = nlohmann::json::object();
@@ -278,7 +278,7 @@ namespace NS
 
     nlohmann::json DiffObjectJson(const nlohmann::json& object)
     {
-        const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(ObjectJsonClass(object));
+        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(ObjectJsonClass(object));
         nlohmann::json out = object;
         ForEachReflectedClassObj(baseline, [&](const ClassObjInfo& member, const Object* classObj) {
             // 位置・回転・拡縮は個体の物なので、既定と同じ値でも差分から落とさない
@@ -332,7 +332,7 @@ namespace NS
         {
             return nullptr;
         }
-        const SceneActor& baseline = ArchetypeLibrary::Get().Baseline(actor.ClassName());
+        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(actor.ClassName());
         const Object* found = FindRowPart(baseline, row);
         if (found != nullptr && std::string_view{found->ClassName()} == live->ClassName())
         {
@@ -351,7 +351,7 @@ namespace NS
         return FieldValue(*FindRowPart(actor, row), fieldName) != FieldValue(*part, fieldName);
     }
 
-    bool IsArchetypeField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
+    bool IsActorFileField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
     {
         const Object* live = FindRowPart(actor, row);
         if (live == nullptr || live == &actor.Root())
@@ -366,9 +366,9 @@ namespace NS
         return field->type != FieldType::ActorRef;
     }
 
-    bool WriteFieldToArchetype(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
+    bool WriteFieldToActorFile(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
     {
-        if (!IsArchetypeField(actor, row, fieldName))
+        if (!IsActorFileField(actor, row, fieldName))
         {
             return false;
         }
@@ -377,23 +377,23 @@ namespace NS
         {
             return false;
         }
-        ArchetypeLibrary& library = ArchetypeLibrary::Get();
-        nlohmann::json archetype = nlohmann::json::object();
+        ActorFileLibrary& library = ActorFileLibrary::Get();
+        nlohmann::json actorFile = nlohmann::json::object();
         if (const nlohmann::json* current = library.Find(actor.ClassName()))
         {
-            archetype = *current;
+            actorFile = *current;
         }
         else
         {
-            SetObjectJsonClass(archetype, actor.ClassName());
+            SetObjectJsonClass(actorFile, actor.ClassName());
         }
-        nlohmann::json& fields = ObjectJsonClassObjs(archetype)[std::string{row.key}];
+        nlohmann::json& fields = ObjectJsonClassObjs(actorFile)[std::string{row.key}];
         if (!fields.is_object())
         {
             fields = nlohmann::json::object();
         }
         fields[std::string{fieldName}] = *value;
-        library.Set(actor.ClassName(), std::move(archetype));
+        library.Set(actor.ClassName(), std::move(actorFile));
         return true;
     }
 } // namespace NS

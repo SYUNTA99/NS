@@ -181,7 +181,7 @@ public:
     //! 種類の既定値と未上書きの個体を更新する。変更できた場合 true、参照・姿勢など対象外の欄は false
     //! ファイル保存に失敗してもメモリ上の変更は残し、警告する。Undo の対象外
     //! row は actor のクラスの表の行
-    bool PromoteFieldToArchetype(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
+    bool PromoteFieldToActorFile(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
     //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);

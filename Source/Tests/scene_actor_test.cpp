@@ -3,7 +3,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -301,33 +301,33 @@ TEST(SceneActor, NewLevelGetsOnePlayerAndOneDeathZone)
 namespace
 {
     // PlayerActor の種類の既定を試しの間だけ差し替え、終わったら元へ戻す
-    class ScopedPlayerArchetype
+    class ScopedPlayerActorFile
     {
     public:
-        explicit ScopedPlayerArchetype(nlohmann::json archetype)
+        explicit ScopedPlayerActorFile(nlohmann::json actorFile)
         {
-            const nlohmann::json* current = NS::ArchetypeLibrary::Get().Find("PlayerActor");
+            const nlohmann::json* current = NS::ActorFileLibrary::Get().Find("PlayerActor");
             if (current != nullptr)
             {
                 m_previous = *current;
             }
-            NS::ArchetypeLibrary::Get().Set("PlayerActor", std::move(archetype));
+            NS::ActorFileLibrary::Get().Set("PlayerActor", std::move(actorFile));
         }
 
-        ~ScopedPlayerArchetype()
+        ~ScopedPlayerActorFile()
         {
             if (m_previous.has_value())
             {
-                NS::ArchetypeLibrary::Get().Set("PlayerActor", std::move(*m_previous));
+                NS::ActorFileLibrary::Get().Set("PlayerActor", std::move(*m_previous));
             }
             else
             {
-                NS::ArchetypeLibrary::Get().Erase("PlayerActor");
+                NS::ActorFileLibrary::Get().Erase("PlayerActor");
             }
         }
 
-        ScopedPlayerArchetype(const ScopedPlayerArchetype&) = delete;
-        ScopedPlayerArchetype& operator=(const ScopedPlayerArchetype&) = delete;
+        ScopedPlayerActorFile(const ScopedPlayerActorFile&) = delete;
+        ScopedPlayerActorFile& operator=(const ScopedPlayerActorFile&) = delete;
 
     private:
         std::optional<nlohmann::json> m_previous;
@@ -338,7 +338,7 @@ TEST(SceneActor, EnsuredPlayerStandsOnTheAssumedFloorForItsCapsule)
 {
     // 補う自機の高さはカプセルの寸法から出す。床の上面 0.5 + 半分の高さ + 半径 + 余白 1cm
     // 種類の既定の半径を変えても、足元が床の 1cm 上に出る
-    const ScopedPlayerArchetype archetype{nlohmann::json{
+    const ScopedPlayerActorFile actorFile{nlohmann::json{
         {"class", "PlayerActor"}, {"classObjs", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::MakeSceneJson();
     EXPECT_TRUE(NS::Editor::EnsurePlayerObject(doc));
@@ -351,7 +351,7 @@ TEST(SceneActor, EnsuredPlayerStandsOnTheAssumedFloorForItsCapsule)
 TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosition)
 {
     // 補う位置とやり直しの落ち先は同じ DefaultSpawnPosition から出る。数字の写しが戻ると片方だけずれる
-    const ScopedPlayerArchetype archetype{nlohmann::json{
+    const ScopedPlayerActorFile actorFile{nlohmann::json{
         {"class", "PlayerActor"}, {"classObjs", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
     nlohmann::json doc = NS::MakeSceneJson();
     ASSERT_TRUE(NS::Editor::EnsurePlayerObject(doc));
@@ -415,7 +415,7 @@ TEST(SceneLoad, RegisteredClassBuildsItsTypeAndUnregisteredFallsBackToPlainActor
 TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
 {
     // 置けるクラスを 1 体ずつ、全欄を書いた形で置く。読んで書き戻し、全欄へ広げると、置いた鍵が全部残る
-    NS::ArchetypeLibrary::Get().Reload();
+    NS::ActorFileLibrary::Get().Reload();
     nlohmann::json doc = NS::MakeSceneJson();
     NS::uint32 id = 1;
     for (const NS::TypeRegistry::Entry* entry : NS::PlaceableEntries())
