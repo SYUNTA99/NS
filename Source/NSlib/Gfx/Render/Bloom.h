@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3dCommon.h"
 
 #include <memory>
@@ -12,7 +13,6 @@ namespace NS
     namespace Gfx
     {
         class D3DBuffer;
-        class D3DCommandList;
         class D3DPipeline;
         class D3DDevice;
         class D3DShader;
@@ -83,9 +83,7 @@ namespace NS
             std::unique_ptr<D3DTexture> m_bright;              // 閾値を超えた分。世界と同じ大きさ
             std::vector<std::unique_ptr<D3DTexture>> m_levels; // 縮めた段。先頭が半分の大きさ
 
-            ComPtr<ID3D11RenderTargetView> m_savedTarget; // BeginWorld で控えた描画先
-            ComPtr<ID3D11DepthStencilView> m_savedDepth;  // BeginWorld で控えた深度
-            D3D11_VIEWPORT m_savedViewport{};
+            SavedTargets m_saved{}; // BeginWorld で控えた描画先・深度・ビューポート
             bool m_active = false; // BeginWorld が差し替えて EndWorld を待っているか
             bool m_valid = false;
         };

@@ -99,6 +99,33 @@ namespace NS
             m_context->RSSetViewports(1u, &vp);
         }
 
+        SavedTargets D3DCommandList::SaveTargets() const noexcept
+        {
+            SavedTargets saved{};
+            if (m_context == nullptr)
+            {
+                return saved;
+            }
+            m_context->OMGetRenderTargets(1u, saved.color.GetAddressOf(), saved.depth.GetAddressOf());
+            UINT viewportCount = 1u;
+            m_context->RSGetViewports(&viewportCount, &saved.viewport);
+            saved.hasViewport = viewportCount > 0u;
+            return saved;
+        }
+
+        void D3DCommandList::RestoreTargets(const SavedTargets& saved) noexcept
+        {
+            if (m_context == nullptr)
+            {
+                return;
+            }
+            SetRenderTarget(saved.color.Get(), saved.depth.Get());
+            if (saved.hasViewport)
+            {
+                m_context->RSSetViewports(1u, &saved.viewport);
+            }
+        }
+
         void D3DCommandList::SetPipeline(const D3DPipeline& pipeline) noexcept
         {
             if (m_context == nullptr || !pipeline.IsValid())
@@ -344,6 +371,25 @@ namespace NS
             m_context->PSSetConstantBuffers(slot, 1u, buffers);
         }
 
+        void D3DCommandList::UnbindPixelShaderResources(uint first, uint count) noexcept
+        {
+            if (m_context == nullptr || count == 0u)
+            {
+                return;
+            }
+            ID3D11ShaderResourceView* none[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT] = {};
+            if (first >= D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT ||
+                count > D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT - first)
+            {
+                NS_LOG_ERROR(Graphics,
+                             "D3DCommandList::UnbindPixelShaderResources: 場所が範囲の外 (first={}, count={})",
+                             first,
+                             count);
+                return;
+            }
+            m_context->PSSetShaderResources(first, count, none);
+        }
+
         void D3DCommandList::GSSetShader(const D3DShader& shader) noexcept
         {
             if (m_context == nullptr)
@@ -462,6 +508,17 @@ namespace NS
             {
                 m_context->Draw(vertexCount, 0u);
             }
+        }
+
+        void D3DCommandList::DrawFromVertexId(uint vertexCount) noexcept
+        {
+            if (m_context == nullptr)
+            {
+                return;
+            }
+            m_context->IASetInputLayout(nullptr);
+            SetTopology(Topology::TriangleList);
+            Draw(vertexCount);
         }
 
         ID3D11DeviceContext* D3DCommandList::Native() const noexcept

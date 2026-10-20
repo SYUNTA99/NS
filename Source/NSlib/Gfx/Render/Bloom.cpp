@@ -5,7 +5,6 @@
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
 #include "NSlib/Gfx/D3DGlobal.h"
-#include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/D3DDevice.h"
@@ -13,6 +12,7 @@
 #include "NSlib/Gfx/D3DTexture.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace NS
 {
@@ -49,13 +49,6 @@ namespace NS
             {
                 const int shift = level + 1;
                 return Size2D{std::max(1, size.width >> shift), std::max(1, size.height >> shift)};
-            }
-
-            void UnbindShaderResources(D3DCommandList& cmd)
-            {
-                // 次の段で描画先にする絵が読む側に残っていると、描画装置は書き込みを捨てる
-                ID3D11ShaderResourceView* none[2] = {nullptr, nullptr};
-                cmd->PSSetShaderResources(0, 2, none);
             }
         } // namespace
 
@@ -115,16 +108,14 @@ namespace NS
             }
 
             D3DCommandList& cmd = device.Commands();
-            ComPtr<ID3D11RenderTargetView> target;
-            ComPtr<ID3D11DepthStencilView> depth;
-            cmd->OMGetRenderTargets(1, target.GetAddressOf(), depth.GetAddressOf());
-            if (target == nullptr)
+            SavedTargets saved = cmd.SaveTargets();
+            if (saved.color == nullptr)
             {
                 return;
             }
 
             ComPtr<ID3D11Resource> resource;
-            target->GetResource(resource.GetAddressOf());
+            saved.color->GetResource(resource.GetAddressOf());
             ComPtr<ID3D11Texture2D> texture;
             if (FAILED(resource.As(&texture)))
             {
@@ -138,20 +129,11 @@ namespace NS
                 return;
             }
 
-            UINT viewportCount = 1;
-            cmd->RSGetViewports(&viewportCount, &m_savedViewport);
-            if (viewportCount == 0)
-            {
-                m_savedViewport = D3D11_VIEWPORT{
-                    0.0f, 0.0f, static_cast<float>(size.width), static_cast<float>(size.height), 0.0f, 1.0f};
-            }
-
             cmd.ClearRenderTarget(m_scene->Rtv(), clearColor.R(), clearColor.G(), clearColor.B(), clearColor.A());
-            cmd.SetRenderTarget(m_scene->Rtv(), depth.Get());
+            cmd.SetRenderTarget(m_scene->Rtv(), saved.depth.Get());
             cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
 
-            m_savedTarget = target;
-            m_savedDepth = depth;
+            m_saved = std::move(saved);
             m_active = true;
         }
 
@@ -187,13 +169,11 @@ namespace NS
             }
 
             DrawPass(
-                cmd, *m_compositePs, *m_writePipeline, *m_levels.front(), m_scene.get(), m_savedTarget.Get(), m_size);
-            UnbindShaderResources(cmd);
+                cmd, *m_compositePs, *m_writePipeline, *m_levels.front(), m_scene.get(), m_saved.color.Get(), m_size);
+            cmd.UnbindPixelShaderResources(0, 2);
 
-            cmd.SetRenderTarget(m_savedTarget.Get(), m_savedDepth.Get());
-            cmd->RSSetViewports(1, &m_savedViewport);
-            m_savedTarget.Reset();
-            m_savedDepth.Reset();
+            cmd.RestoreTargets(m_saved);
+            m_saved = SavedTargets{};
         }
 
         bool Bloom::EnsureTargets(Size2D size) noexcept
@@ -232,7 +212,7 @@ namespace NS
                              ID3D11RenderTargetView* destination,
                              Size2D destinationSize) noexcept
         {
-            UnbindShaderResources(cmd);
+            cmd.UnbindPixelShaderResources(0, 2);
             cmd.SetRenderTarget(destination, nullptr);
             cmd.SetViewport(static_cast<float>(destinationSize.width), static_cast<float>(destinationSize.height));
 
@@ -256,10 +236,7 @@ namespace NS
                 cmd.PSSetShaderResource(*scene, 1);
             }
 
-            // 頂点は SV_VertexID から作るので、入力レイアウトも頂点も差さずに 3 頂点を投げる
-            cmd->IASetInputLayout(nullptr);
-            cmd.SetTopology(Topology::TriangleList);
-            cmd.Draw(3);
+            cmd.DrawFromVertexId(3);
         }
     } // namespace Gfx
 } // namespace NS

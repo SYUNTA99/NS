@@ -16,6 +16,15 @@ namespace NS
         class D3DPipeline;
         enum class Topology;
 
+        //! SaveTargets で控えた描画先・深度・ビューポート。RestoreTargets へそのまま渡す
+        struct SavedTargets
+        {
+            ComPtr<ID3D11RenderTargetView> color;
+            ComPtr<ID3D11DepthStencilView> depth;
+            D3D11_VIEWPORT viewport{};
+            bool hasViewport = false; //!< 控えた時にビューポートが差されていたか
+        };
+
         //! D3DDevice が所有する描画コンテキスト。変換や一括設定はメソッド、それ以外は operator-> を使う
         class D3DCommandList : public NonCopyable
         {
@@ -30,6 +39,10 @@ namespace NS
             //! 深度・ステンシルバッファをクリアする
             void ClearDepth(ID3D11DepthStencilView* dsv, float depth = 1.0f) noexcept;
             void SetViewport(float width, float height) noexcept;
+            //! 今差している 1 枚目の描画先・深度・ビューポートを控える。描画先を差し替える段の前に呼ぶ
+            [[nodiscard]] SavedTargets SaveTargets() const noexcept;
+            //! 控えた描画先と深度を差し直す。控えた時にビューポートが無ければビューポートは差さない
+            void RestoreTargets(const SavedTargets& saved) noexcept;
 
             //!@}
             //--------------------------------------------------------
@@ -68,6 +81,8 @@ namespace NS
             void PSSetShaderResource(const D3DTexture& texture, uint slot) noexcept;
             void PSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept;
             void PSSetConstantBuffer(const D3DBuffer& buffer, uint slot) noexcept;
+            //! first から count 個の場所の読む絵を外す。読む側に残った絵を描画先にすると、書き込みは捨てられる
+            void UnbindPixelShaderResources(uint first, uint count) noexcept;
             //!@}
 
             //! @name ジオメトリシェーダー (GS)
@@ -94,6 +109,8 @@ namespace NS
             void DrawIndexed(uint indexCount) noexcept;
             //! インデックスを使わない描画。線分の並びなどインデックスを持たない形に使う
             void Draw(uint vertexCount) noexcept;
+            //! 頂点シェーダーが SV_VertexID から形を作る描画。入力レイアウトを外し、三角形の並びで vertexCount 頂点を描く
+            void DrawFromVertexId(uint vertexCount) noexcept;
 
             //!@}
             //--------------------------------------------------------
