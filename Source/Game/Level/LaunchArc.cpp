@@ -173,5 +173,14 @@ namespace GL
             }
             return arc.distance / shape.horizontalSpeed;
         }
+
+        AirGravity LaunchArcGravity(const LaunchArc& arc) noexcept
+        {
+            // 下りは上りの重力に倍率を掛けてから符号を返す。閉じた式と同じ順で掛ける
+            return AirGravity{.rise = -arc.riseGravity,
+                              .fall = -(arc.riseGravity * arc.fallGravityScale),
+                              .apexSpeed = arc.apexBandSpeed,
+                              .apexScale = arc.apexBandGravityScale};
+        }
     } // namespace Level
 } // namespace GL

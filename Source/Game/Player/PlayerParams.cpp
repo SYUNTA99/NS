@@ -52,7 +52,7 @@ namespace GL
         GL::Level::LaunchArc PlayerParams::ReboundLaunchArc(const ReboundArc& arc) const noexcept
         {
             // LaunchArc には正の上昇重力と下降倍率を渡す
-            const PlayerGravity gravity = ReboundGravity();
+            const GL::Level::AirGravity gravity = ReboundGravity();
             const float riseGravity = -gravity.rise;
             return GL::Level::LaunchArc{.direction = arc.direction,
                                         .distance = arc.distance,

@@ -1,7 +1,7 @@
 #include "Game/PlayerActor.h"
 
+#include "Game/Level/AirGravity.h"
 #include "Game/Level/ImpactOutcome.h"
-#include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -186,7 +186,7 @@ void PlayerActor::Gravity(float dt) noexcept
 {
     // 強さの選び方は LaunchPitch と同じ関数。写すと欄を変えた時に放つ角度の予測と実際の落ち方が割れる
     NS::Body& body = *m_body;
-    body.Gravity(GL::Player::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
+    body.Gravity(GL::Level::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
 }
 
 void PlayerActor::TapSlamGravity(float dt) noexcept
@@ -215,7 +215,7 @@ void PlayerActor::ReboundGravity(float dt) noexcept
 {
     // 上りだけ倍率付きの組を PlayerParams が持つ。選び方は普段の重力と同じ ChooseGravity 1 つ
     NS::Body& body = *m_body;
-    body.Gravity(GL::Player::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
+    body.Gravity(GL::Level::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
 }
 
 void PlayerActor::AccelerateDuringRebound(float dt) noexcept

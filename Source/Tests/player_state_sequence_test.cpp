@@ -1,6 +1,6 @@
+#include "Game/Level/AirGravity.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerAppearance.h"
-#include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
@@ -258,14 +258,14 @@ TEST(PlayerStateSequence, ReboundGravityIsTheChoiceWithTheReboundRise)
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"頂点滞空 Vy", 3.0f}, {"頂点滞空倍率", 0.3f}}), 0u);
     constexpr float k_Dt = 1.0f / 60.0f;
-    const GL::Player::PlayerGravity gravity = player->Params().ReboundGravity();
+    const GL::Level::AirGravity gravity = player->Params().ReboundGravity();
     for (const float vertical : {5.0f, 1.0f, -1.0f, -5.0f})
     {
         SCOPED_TRACE(vertical);
         player->Body().SetVerticalVelocity(vertical);
         player->ReboundGravity(k_Dt);
         EXPECT_FLOAT_EQ(player->Body().VerticalVelocity(),
-                        vertical + GL::Player::ChooseGravity(gravity, vertical) * k_Dt);
+                        vertical + GL::Level::ChooseGravity(gravity, vertical) * k_Dt);
     }
 }
 

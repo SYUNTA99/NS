@@ -310,17 +310,9 @@ namespace GL
             }
             else
             {
+                // 曲がった後も曲線と同じ重力を自機と同じ選び方で積む。AddGravity は下向きを正で受ける
                 const float vertical = NS::Dot(m_velocity, m_arcUp);
-                float gravity = m_arc.riseGravity;
-                if (vertical <= 0.0f)
-                {
-                    gravity *= m_arc.fallGravityScale;
-                }
-                if (std::abs(vertical) <= m_arc.apexBandSpeed)
-                {
-                    gravity *= m_arc.apexBandGravityScale;
-                }
-                AddGravity(m_velocity, gravity, dt);
+                AddGravity(m_velocity, -ChooseGravity(LaunchArcGravity(m_arc), vertical), dt);
             }
             MoveLaunched(dt);
             if (!m_motion.Machine().IsCurrent<ArcState>())

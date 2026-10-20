@@ -1,8 +1,8 @@
+#include "Game/Level/AirGravity.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
-#include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
@@ -116,10 +116,10 @@ TEST(SlamArrowTest, ArcArrowFollowsTheBallThatIsActuallyLaunched)
             // 放した瞬間の縦の速さは狙いの段で控えた値。同じフレームの重力を 1 回当てた後を読む
             ASSERT_TRUE(player->IsBodySlamming());
             const float dt = NS::OS::FrameTimer::FixedDelta();
-            const GL::Player::PlayerGravity gravity = player->Params().Gravity();
+            const GL::Level::AirGravity gravity = player->Params().Gravity();
             EXPECT_NEAR(player->Body().VerticalVelocity(),
                         target.launchVerticalSpeed +
-                            GL::Player::ChooseGravity(gravity, target.launchVerticalSpeed) * dt,
+                            GL::Level::ChooseGravity(gravity, target.launchVerticalSpeed) * dt,
                         0.0001f);
         }
         if (player->Resolver().Answer().lastImpact.sequence > 0 || !player->IsBodySlamming())
@@ -219,7 +219,7 @@ TEST(SlamArrowTest, AirArrowWithoutTargetFallsAndTheReleaseStartsLevel)
     ASSERT_TRUE(player->IsBodySlamming());
     const float dt = NS::OS::FrameTimer::FixedDelta();
     EXPECT_NEAR(
-        player->Body().VerticalVelocity(), GL::Player::ChooseGravity(player->Params().Gravity(), 0.0f) * dt, 0.0001f);
+        player->Body().VerticalVelocity(), GL::Level::ChooseGravity(player->Params().Gravity(), 0.0f) * dt, 0.0001f);
 }
 
 // 溜めきりの後は、溜めすぎの深さで溜めきりの赤から溜めすぎの紫へ移る。赤のうちと溜めきる前は今の色のまま
