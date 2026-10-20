@@ -147,6 +147,27 @@ TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
     EXPECT_FLOAT_EQ(rock->Velocity().Length(), 0.0f);
 }
 
+// やり直しの知らせはコースの段で届き、次の歩の自機の段は置物の段より前に回る。
+// 置き直した当たりは、置物の次の更新を待たずに知らせを受けたその場で戻った位置にある
+TEST(MapObjMotion, RestartMovesTheCollisionBeforeTheNextUpdate)
+{
+    NS::Scene scene;
+    GL::Level::PropActor* rock = PlaceMovingRock(scene);
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(GL::Level::SendMsgCourseStart(*rock));
+    ReleaseRock(*rock);
+    for (int step = 0; step < 10; ++step)
+    {
+        rock->UpdateMotion();
+    }
+    const NS::Vector3 aboveHome{0.0f, 2.5f, 0.0f};
+    float distance = 0.0f;
+    ASSERT_FALSE(scene.Physics().Raycast(aboveHome, NS::Vector3{0.0f, -1.0f, 0.0f}, 3.0f, distance));
+    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(*rock));
+    ASSERT_TRUE(scene.Physics().Raycast(aboveHome, NS::Vector3{0.0f, -1.0f, 0.0f}, 3.0f, distance));
+    EXPECT_NEAR(distance, 1.5f, 0.001f);
+}
+
 TEST(MapObjMotion, ZeroLengthFreezeStillWaitsForReleaseGrace)
 {
     NS::Scene scene;

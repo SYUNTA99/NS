@@ -714,6 +714,60 @@ TEST(ImpactTimelineClock, AMissShowsNoReboundTrailOrRecoilLines)
     EXPECT_EQ(CountLayers(*player, "impact.recoil"), 0);
 }
 
+// 反動の着地は 1 つの問いが答え、答えが真のフレームに潰れが始まり、粉が出て、尾は消えている。
+// 状態は次のフレームの頭で同じ問いを読み、立ちか滑りへ移る
+TEST(ImpactTimelineClock, TheReboundLandingFrameSquashesDustsAndEndsTheTrail)
+{
+    HitTimeline timeline;
+    timeline.events = {
+        {HitStopEvent{}, 1, 2, HitDirection::Any},
+        {HitEffectEvent{}, 1, 1, HitDirection::Any},
+        {TargetLaunchEvent{}, 3, 1, HitDirection::Any},
+        {ReboundEvent{}, 3, 1, HitDirection::Any},
+        {FlightEffectEvent{}, 4, 1, HitDirection::Any},
+    };
+    const ScopedHitTimelineDirectory directory("ReboundLanding");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Scene scene;
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    PropActor* rock = RockOf(scene);
+    const std::vector<ClockFrame> trace = RunHit(*player, *rock, 1.0f, 6);
+    ASSERT_EQ(trace.size(), 6u);
+    ASSERT_TRUE(trace.back().rebounding);
+    ASSERT_EQ(trace.back().flightLayers, 1);
+
+    bool landed = false;
+    for (int frame = 0; frame < 240 && !landed; ++frame)
+    {
+        const int dustBefore = CountLayers(*player, "land.dust");
+        const float heightBefore = player->ModelClassObj()->GetDrawScale().y;
+        player->Update(false);
+        rock->Update();
+        TickHitDirectors(*player);
+        if (!player->Motion().reboundLanded)
+        {
+            EXPECT_EQ(CountLayers(*player, "land.dust"), dustBefore);
+            continue;
+        }
+        landed = true;
+        EXPECT_EQ(CountLayers(*player, "land.dust"), dustBefore + 1);
+        EXPECT_LT(player->ModelClassObj()->GetDrawScale().y, heightBefore);
+        for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
+        {
+            if (record.name == "rebound.trail")
+            {
+                EXPECT_TRUE(record.rootStopStep.has_value() || record.endStep.has_value());
+            }
+        }
+        EXPECT_TRUE(player->IsRebounding());
+        player->Update(false);
+        EXPECT_FALSE(player->IsRebounding());
+        EXPECT_FALSE(player->Motion().reboundLanded);
+    }
+    EXPECT_TRUE(landed);
+}
+
 // 外れのカメラ: つんのめりは突進の水平の向きのまま押し、反動の揺れは反動の水平の向きをカメラから見た向きへ写す
 TEST(ImpactTimelineClock, MissCameraLurchesAlongTheSlamAndSwaysAlongTheRebound)
 {

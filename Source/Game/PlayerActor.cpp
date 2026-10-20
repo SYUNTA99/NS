@@ -278,7 +278,7 @@ void PlayerActor::VisualStep()
     const GL::Player::PlayerMotion motion = Motion();
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
-    m_appearance->Update(motion, m_charge, m_slam, m_rebound, m_skid, AimDirection(), m_body.get(), impact);
+    m_appearance->Update(motion, m_charge, m_slam, m_rebound, m_skid, AimDirection(), impact);
     m_chargeEffects->Update(m_charge, m_slam, motion, ChargeAimDirection(), m_appearance.get(), impact);
     m_impactEffects->Update(m_slam, motion, m_body.get(), m_collider.get(), impact);
     // clang-format on
@@ -593,6 +593,11 @@ bool PlayerActor::IsRebounding() const noexcept
     return m_states != nullptr && m_states->IsCurrent<GL::Player::ReboundPlayerState>();
 }
 
+bool PlayerActor::IsReboundLanded() const noexcept
+{
+    return IsRebounding() && GL::Player::PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity());
+}
+
 bool PlayerActor::IsSkidding() const noexcept
 {
     return m_states != nullptr && m_states->IsCurrent<GL::Player::SkidPlayerState>();
@@ -623,6 +628,7 @@ GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
     return GL::Player::PlayerMotion{
         .bodySlamming = IsBodySlamming(),
         .rebounding = IsRebounding(),
+        .reboundLanded = IsReboundLanded(),
         .skidding = IsSkidding(),
         .curled = IsCurled(),
         .canMoveBody = CanMoveBody(),

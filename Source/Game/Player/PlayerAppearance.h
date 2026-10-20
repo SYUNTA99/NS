@@ -8,11 +8,6 @@
 #include "NSlib/Core/Types.h"
 #include <string>
 
-namespace NS
-{
-    class Body;
-}
-
 namespace GL
 {
     namespace Level
@@ -50,7 +45,6 @@ namespace GL
 
             //! @brief 丸まりに合わせて玉を回し、描く形の倍率を書く。持ち主の見た目の段が呼ぶ
             //! @param[in] aimDirection 狙いの線が無い時に、放せば出る水平の向き
-            //! @param[in] body 反動の着地の判定に接地と縦の速さを読む。空でないこと
             //! @param[in] impact 当たりの裁定の答え。当たりの潰れと伸びと、何回目の当たりかを読む
             void Update(const PlayerMotion& motion,
                         const ChargeStatus& charge,
@@ -58,7 +52,6 @@ namespace GL
                         const ReboundStatus& rebound,
                         const SkidStatus& skid,
                         const NS::Vector3& aimDirection,
-                        const NS::Body* body,
                         const GL::Level::ImpactAnswer& impact);
 
             //! @brief 持ち主の Model の描く倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
@@ -113,7 +106,7 @@ namespace GL
                                    float skidScale,
                                    const GL::Level::ImpactAnswer& impact) noexcept;
             // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
-            void AdvanceLandingSquash(const PlayerMotion& motion, const NS::Body* body) noexcept;
+            void AdvanceLandingSquash(const PlayerMotion& motion) noexcept;
             // 当たりの形か構えの縮みに着地の潰れを掛け、描く時だけの倍率に控える
             void WriteDrawScale(const ChargeStatus& charge, const GL::Level::ImpactAnswer& impact) noexcept;
             // 姿のメッシュを Model へ差し、姿の倍率を Model の局所の倍率へ書く。読めていない姿は Model の今のメッシュを残す

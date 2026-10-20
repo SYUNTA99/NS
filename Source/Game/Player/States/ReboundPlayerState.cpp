@@ -1,10 +1,8 @@
 #include "Game/Player/States/ReboundPlayerState.h"
 
-#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/ClassObjs/Body.h"
 
 namespace GL
 {
@@ -29,7 +27,7 @@ namespace GL
                     co_return;
                 }
 
-                if (PlayerJudgeLand::Judge(player.Body().IsGrounded(), player.Body().VerticalVelocity()))
+                if (player.IsReboundLanded())
                 {
                     // 外れは着いた後もこすって止まるまで操作が戻らない。真ん中は着いたフレームに立ちへ戻る
                     if (player.SkidsOnLanding())

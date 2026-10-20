@@ -47,6 +47,51 @@ namespace
         scene.ResetFromJson(doc);
         return static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     }
+
+    // 上面が y = 0 の床の上 10 m で、宙で突進を出して空中の 1 発を使い切った自機を、よじ登りか落ちて着地させる
+    // 着いたフレームを終えた自機を返す
+    PlayerActor* LandAfterAirSlam(NS::Scene& scene, bool byClimb)
+    {
+        PlayerActor* player = PlaceSequencePlayer(scene);
+        if (player == nullptr)
+        {
+            return nullptr;
+        }
+        NS::OBB floor{};
+        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
+        floor.halfExtentX = 100.0f;
+        floor.halfExtentY = 0.5f;
+        floor.halfExtentZ = 100.0f;
+        scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+        player->Root().SetPosition(NS::Vector3{0.0f, 10.0f, 0.0f});
+        player->Body().SetGrounded(false);
+        player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+        if (!player->BodySlam())
+        {
+            return nullptr;
+        }
+        if (byClimb)
+        {
+            // 縁の上面は y = 0。登り終えた体は床の上に立つ
+            player->ClimbLedge();
+            for (int step = 0; step < 20 && !player->States().IsCurrent<GL::Player::IdlePlayerState>(); ++step)
+            {
+                player->States().Step(0.125f);
+            }
+        }
+        else
+        {
+            for (int frame = 0; frame < 600 && !player->Body().IsGrounded(); ++frame)
+            {
+                player->Update(false);
+            }
+        }
+        if (!player->Body().IsGrounded())
+        {
+            return nullptr;
+        }
+        return player;
+    }
 } // namespace
 
 TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
@@ -80,6 +125,34 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
     player->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
     player->States().Step(0.0625f);
     EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
+}
+
+// 着地で戻す物 (跳べる回数・コヨーテ・空中の突進の使い切り) は、よじ登りの終わりでも普通の着地でも同じ。
+// どちらも着いた次のフレームに、宙を離れて跳べ、突進の頼みで突進が出る
+TEST(PlayerStateSequence, ClimbEndRestoresWhatALandingRestores)
+{
+    for (const bool byClimb : {false, true})
+    {
+        SCOPED_TRACE(byClimb);
+        {
+            NS::Scene scene;
+            PlayerActor* player = LandAfterAirSlam(scene, byClimb);
+            ASSERT_NE(player, nullptr);
+            EXPECT_EQ(player->JumpsRemaining(), 1);
+            player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+            player->Update(false);
+            EXPECT_TRUE(player->IsBodySlamming());
+        }
+        {
+            NS::Scene scene;
+            PlayerActor* player = LandAfterAirSlam(scene, byClimb);
+            ASSERT_NE(player, nullptr);
+            player->Body().SetGrounded(false);
+            player->SetJumpPressed();
+            player->Jump(0.0f);
+            EXPECT_GT(player->Body().VerticalVelocity(), 0.0f);
+        }
+    }
 }
 
 TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)

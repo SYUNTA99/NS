@@ -22,6 +22,7 @@ namespace GL
         {
             bool bodySlamming = false;
             bool rebounding = false;
+            bool reboundLanded = false; // 反動のまま着いたか。答えるのは PlayerActor::IsReboundLanded
             bool skidding = false;
             bool curled = false;
             bool canMoveBody = false; // 身体が有効で、当たりの止め・反動待ちの外か

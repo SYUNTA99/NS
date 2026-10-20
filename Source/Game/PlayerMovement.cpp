@@ -77,17 +77,31 @@ void PlayerActor::MoveBody(float dt) noexcept
 
 void PlayerActor::SyncGroundState() noexcept
 {
-    if (!m_body->WasGrounded() && m_body->IsGrounded())
+    if (!m_body->IsGrounded())
     {
-        m_jumpsRemaining = 1;
+        return;
     }
+    if (!m_body->WasGrounded())
+    {
+        RestoreOnLanding();
+    }
+    else
+    {
+        RestoreWhileGrounded();
+    }
+}
 
-    if (m_body->IsGrounded())
-    {
-        m_coyoteTimer = m_params->m_coyoteTime;
-        // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
-        m_request.spent = false;
-    }
+void PlayerActor::RestoreOnLanding() noexcept
+{
+    m_jumpsRemaining = 1;
+    RestoreWhileGrounded();
+}
+
+void PlayerActor::RestoreWhileGrounded() noexcept
+{
+    m_coyoteTimer = m_params->m_coyoteTime;
+    // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
+    m_request.spent = false;
 }
 
 void PlayerActor::TickTimers(float dt) noexcept
@@ -505,8 +519,8 @@ void PlayerActor::UpdateLedgeClimb(float dt) noexcept
         Root().SetPosition(m_ledgeMantleEnd);
         (void)m_states->Change<GL::Player::IdlePlayerState>();
         body.SetGrounded(true);
-        m_jumpsRemaining = 1;
-        m_coyoteTimer = m_params->m_coyoteTime;
+        // SetGrounded は前の接地も真にするので、次の移動は着地と読まない。ここで着地の分を戻す
+        RestoreOnLanding();
     }
 }
 

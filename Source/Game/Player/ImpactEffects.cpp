@@ -3,7 +3,6 @@
 
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Assert.h"
@@ -619,7 +618,7 @@ namespace GL
             if (m_flight.reboundTrail != 0 && step != m_flight.reboundStartStep)
             {
                 // 頂点の前に反動を抜けた時 (縁を掴んだ時など) は、そこで輪ごと消す
-                if (!motion.rebounding || PlayerJudgeLand::Judge(body->IsGrounded(), body->VerticalVelocity()))
+                if (!motion.rebounding || motion.reboundLanded)
                 {
                     NS::StopEffect(m_owner, m_flight.reboundTrail);
                     m_flight.reboundTrail = 0;
@@ -649,10 +648,9 @@ namespace GL
             {
                 m_landingDustPlayed = false;
             }
-            else if (!m_landingDustPlayed && PlayerJudgeLand::Judge(body->IsGrounded(), body->VerticalVelocity()))
+            else if (!m_landingDustPlayed && motion.reboundLanded)
             {
-                // 着地の潰れ (PlayerAppearance) と同じ条件。このフレームの縦の速さは既に 0
-                // なので、前のフレームの控えで測る
+                // このフレームの縦の速さは既に 0 なので、前のフレームの控えで測る
                 m_landingDustPlayed = true;
                 const float radius = LandDustRadiusFor(-m_lastVerticalVelocity);
                 // 足元は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径))

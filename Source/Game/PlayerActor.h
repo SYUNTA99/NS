@@ -167,6 +167,9 @@ public:
     //! @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
     [[nodiscard]] NS::Vector3 BodySlamDirection() const noexcept { return m_slam.Direction(); }
     [[nodiscard]] bool IsRebounding() const noexcept;
+    //! @brief 反動のまま着いた場合 true、それ以外の場合は false
+    //! @details 反動の着地を判定するのはここだけ。見た目と演出は移動の後に、反動の状態は次のフレームの頭に読む
+    [[nodiscard]] bool IsReboundLanded() const noexcept;
     [[nodiscard]] bool IsSkidding() const noexcept;
     //! 外れで着地後に滑って止まる場合 true、それ以外の場合は false。滑るフレーム数が 0 なら直後に立つ
     [[nodiscard]] bool SkidsOnLanding() const noexcept;
@@ -417,6 +420,10 @@ private:
     //! 溜めている間、当たりの足元に溜め量で広がる輪を描く
     void DrawChargeRing() const;
 #endif
+    //! 着地で戻す物を戻す。跳べる回数を 1 にし、RestoreWhileGrounded も行う。普通の着地とよじ登りの終わりが呼ぶ
+    void RestoreOnLanding() noexcept;
+    //! 接地している間は毎フレーム、コヨーテの猶予と空中の突進の使い切りを戻す
+    void RestoreWhileGrounded() noexcept;
     //! 突進の発動の判定を通れば突進を出す。状態機械を進める前に呼ぶ
     void PrepareStateStep();
     //! 状態機械を進めた後の控えの更新。丸まりを解く判定・長押しの控え・押下の消費・要求と狙いの経過を進める

@@ -3,11 +3,9 @@
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/SlamAim.h"
-#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Clock.h"
@@ -242,16 +240,14 @@ namespace GL
                                       const ReboundStatus& rebound,
                                       const SkidStatus& skid,
                                       const NS::Vector3& aimDirection,
-                                      const NS::Body* body,
                                       const GL::Level::ImpactAnswer& impact)
         {
-            NS_ASSERT(Game, body != nullptr, "体の部品が渡されていない");
             AdvanceSpin(motion, charge, slam, rebound, skid, aimDirection, impact);
-            AdvanceLandingSquash(motion, body);
+            AdvanceLandingSquash(motion);
             WriteDrawScale(charge, impact);
         }
 
-        void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion, const NS::Body* body) noexcept
+        void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion) noexcept
         {
             if (!motion.canMoveBody)
             {
@@ -259,11 +255,9 @@ namespace GL
                 return;
             }
 
-            // 反動の出口の条件が成り立ったフレームが着地。移動の後に回るので、このフレームの接地を見る
-            // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
+            // 移動の後に回るので、このフレームの着地を見る。次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
             // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
-            if (motion.rebounding && PlayerJudgeLand::Judge(body->IsGrounded(), body->VerticalVelocity()) &&
-                m_landingSquashRecoverSteps > 0)
+            if (motion.reboundLanded && m_landingSquashRecoverSteps > 0)
             {
                 m_landingSquashRemaining = m_landingSquashRecoverSteps;
                 m_landingSquashVertical = m_landingSquash;
