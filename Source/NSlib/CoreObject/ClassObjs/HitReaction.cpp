@@ -217,9 +217,24 @@ namespace NS
         const HitStartContext& context;
         int length;
 
-        void operator()(const HitShapeItem&) const
+        void operator()(const HitShapeItem& shape) const
         {
-            // TODO: 描く倍率の曲線の再生を Model に足す時に、ここから始める
+            Model* model = reaction.m_owner->ModelClassObj();
+            if (model == nullptr || length <= 0)
+            {
+                return;
+            }
+            // 向きが決まらない時は水平の倍率を掛けず、高さだけを変える
+            Vector3 alongDirection{};
+            if (context.hasToward)
+            {
+                alongDirection = context.towardOther;
+            }
+            model->StartDrawShape(DrawShapeDesc{.along = shape.along,
+                                                .height = shape.height,
+                                                .side = shape.side,
+                                                .alongDirection = alongDirection,
+                                                .length = length});
         }
 
         void operator()(const HitBodyShakeItem& shake) const
@@ -356,9 +371,16 @@ namespace NS
                                                                .frames = length});
         }
 
-        void operator()(const HitGroundWaveItem&) const
+        void operator()(const HitGroundWaveItem& wave) const
         {
-            // TODO: 床の波を画面の係で進める時に、ここから始める
+            if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(reaction.m_owner))
+            {
+                screen->StartGroundWave(*reaction.m_owner,
+                                        HitGroundWaveDesc{.center = context.position,
+                                                          .radius = wave.radius,
+                                                          .strength = wave.strength,
+                                                          .frames = length});
+            }
         }
 
         void operator()(const HitPadVibrationItem& pad) const
@@ -649,6 +671,14 @@ namespace NS
         if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
         {
             screen->StopDistortionRing(*m_owner);
+        }
+    }
+
+    void HitReaction::StopGroundWave() noexcept
+    {
+        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
+        {
+            screen->StopGroundWave(*m_owner);
         }
     }
 

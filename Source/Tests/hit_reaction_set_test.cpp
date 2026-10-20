@@ -736,6 +736,113 @@ TEST(HitReactionStart, TraumaStacksOnTheNextSet)
     EXPECT_NEAR(probes.Cameras().Trauma(), 0.6f, 1.0e-5f);
 }
 
+// 形の項目は、描く倍率を始めたフレームを 0 にした曲線の値で長さのフレーム数だけ変え、長さを過ぎると元へ戻す
+// 相手へ向かう向きの倍率と横の倍率は、自機のセンサーから相手のセンサーへの水平の向きで x と z に分かれる
+// 持ち主が書いた倍率に掛かり、止めの間も進む
+TEST(HitReactionStart, TheShapeFollowsItsCurvesForItsLength)
+{
+    NS::HitShapeItem shape;
+    shape.along = ConstantCurve(0.8f);
+    shape.height.count = 2;
+    shape.height.keys[0] = NS::Curve::Key{0.0f, 2.0f};
+    shape.height.keys[1] = NS::Curve::Key{3.0f, 1.25f};
+    shape.side = ConstantCurve(1.5f);
+    const std::vector<NS::HitReactionSet> sets = {SetOf("Hit", 2, {{shape, 4}})};
+    struct Case
+    {
+        NS::Vector3 otherPosition;
+        NS::Vector3 first;
+    };
+    // 相手が前なら向きの倍率は z、横は x。相手が右なら逆
+    for (const Case& c : {Case{NS::Vector3{0.0f, 1.0f, 4.0f}, NS::Vector3{1.5f, 2.0f, 0.8f}},
+                          Case{NS::Vector3{4.0f, 1.0f, 0.0f}, NS::Vector3{0.8f, 2.0f, 1.5f}}})
+    {
+        SCOPED_TRACE(c.otherPosition.x);
+        ProbeScene probes(sets, c.otherPosition);
+        ASSERT_NE(probes.self, nullptr);
+        NS::Model& model = *probes.self->ModelClassObj();
+        ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+        probes.Step();
+        EXPECT_FLOAT_EQ(model.GetDrawScale().x, c.first.x);
+        EXPECT_FLOAT_EQ(model.GetDrawScale().y, c.first.y);
+        EXPECT_FLOAT_EQ(model.GetDrawScale().z, c.first.z);
+        probes.Step();
+        EXPECT_FLOAT_EQ(model.GetDrawScale().y, 1.75f);
+        // 持ち主の書いた倍率に掛ける
+        ASSERT_TRUE(model.SetDrawScale(NS::Vector3{1.0f, 0.5f, 1.0f}));
+        probes.Step();
+        EXPECT_FLOAT_EQ(model.GetDrawScale().y, 1.5f * 0.5f);
+        probes.Step();
+        EXPECT_FLOAT_EQ(model.GetDrawScale().y, 1.25f * 0.5f);
+        probes.Step();
+        EXPECT_TRUE(model.GetDrawScale() == (NS::Vector3{1.0f, 0.5f, 1.0f}));
+    }
+}
+
+// 形を止めると、描く倍率は持ち主の書いた倍率へその場で戻る
+TEST(HitReactionStart, StoppingTheShapeRestoresTheDrawScale)
+{
+    NS::HitShapeItem shape;
+    shape.height = ConstantCurve(2.0f);
+    ProbeScene probes({SetOf("Hit", 0, {{shape, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
+    ASSERT_NE(probes.self, nullptr);
+    NS::Model& model = *probes.self->ModelClassObj();
+    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    probes.Step();
+    ASSERT_FLOAT_EQ(model.GetDrawScale().y, 2.0f);
+    model.StopDrawShape();
+    EXPECT_TRUE(model.GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
+    probes.Step();
+    EXPECT_TRUE(model.GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
+}
+
+// 床の波は項目の長さだけ、渡した位置の真下を中心に、始めたフレームを 0 にした曲線の半径と強さで広がり、長さの終わりで消える
+TEST(HitReactionStart, GroundWaveSpreadsFromThePositionForItsLength)
+{
+    NS::HitGroundWaveItem wave;
+    wave.radius.count = 2;
+    wave.radius.keys[0] = NS::Curve::Key{0.0f, 0.0f};
+    wave.radius.keys[1] = NS::Curve::Key{8.0f, 4.0f};
+    wave.strength = ConstantCurve(0.8f);
+    ProbeScene probes({SetOf("Hit", 3, {{wave, 8}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
+    ASSERT_NE(probes.self, nullptr);
+    const NS::Vector3 contact{0.3f, 1.2f, 3.5f};
+    ASSERT_TRUE(probes.Start(*probes.self, "Hit", contact));
+    for (int frame = 0; frame < 10; ++frame)
+    {
+        SCOPED_TRACE(frame);
+        probes.Step();
+        const NS::Gfx::GroundWave& shown = probes.scene.GroundWaveShown();
+        if (frame >= 8)
+        {
+            EXPECT_FLOAT_EQ(shown.strength, 0.0f);
+            continue;
+        }
+        EXPECT_FLOAT_EQ(shown.centerX, contact.x);
+        EXPECT_FLOAT_EQ(shown.centerZ, contact.z);
+        EXPECT_FLOAT_EQ(shown.strength, 0.8f);
+        EXPECT_FLOAT_EQ(shown.radius, 0.5f * static_cast<float>(frame));
+    }
+}
+
+// 床の波を止めると消える。ほかの持ち主が止めても消えない
+TEST(HitReactionStart, StoppingTheGroundWaveClearsOnlyTheOwnersWave)
+{
+    NS::HitGroundWaveItem wave;
+    wave.radius = ConstantCurve(1.0f);
+    wave.strength = ConstantCurve(0.8f);
+    ProbeScene probes({SetOf("Hit", 0, {{wave, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
+    ASSERT_NE(probes.self, nullptr);
+    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    probes.Step();
+    probes.other->HitReactionClassObj()->StopGroundWave();
+    EXPECT_FLOAT_EQ(probes.scene.GroundWaveShown().strength, 0.8f);
+    probes.self->HitReactionClassObj()->StopGroundWave();
+    EXPECT_FLOAT_EQ(probes.scene.GroundWaveShown().strength, 0.0f);
+    probes.Step();
+    EXPECT_FLOAT_EQ(probes.scene.GroundWaveShown().strength, 0.0f);
+}
+
 // 持ち主が消えても、ほかの持ち主が頼んだカメラの効果は残る
 TEST(HitReactionStart, AnOwnerLeavingKeepsTheOthersCameraEffects)
 {

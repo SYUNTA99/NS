@@ -143,6 +143,51 @@ namespace NS
         m_scene.SetDistortionRing(Gfx::DistortionRing{});
     }
 
+    void HitScreenDirector::StartGroundWave(const SceneActor& requester, const HitGroundWaveDesc& desc) noexcept
+    {
+        EndGroundWave();
+        if (desc.frames <= 0)
+        {
+            return;
+        }
+        m_waveRequester = &requester;
+        m_wave = desc;
+        m_waveElapsed = 0;
+        m_waveActive = true;
+        m_waveJustStarted = true;
+        WriteGroundWave();
+    }
+
+    void HitScreenDirector::StopGroundWave(const SceneActor& requester) noexcept
+    {
+        if (m_waveRequester == &requester)
+        {
+            EndGroundWave();
+        }
+    }
+
+    void HitScreenDirector::WriteGroundWave() noexcept
+    {
+        const float frame = static_cast<float>(m_waveElapsed);
+        m_scene.SetGroundWave(Gfx::GroundWave{.centerX = m_wave.center.x,
+                                              .centerZ = m_wave.center.z,
+                                              .radius = m_wave.radius.Evaluate(frame),
+                                              .strength = m_wave.strength.Evaluate(frame)});
+    }
+
+    void HitScreenDirector::EndGroundWave() noexcept
+    {
+        // 波を出していない時は、場面の波に触らない
+        if (!m_waveActive)
+        {
+            return;
+        }
+        m_waveActive = false;
+        m_waveJustStarted = false;
+        m_waveRequester = nullptr;
+        m_scene.SetGroundWave(Gfx::GroundWave{});
+    }
+
     float HitScreenDirector::FlashAlpha() const noexcept
     {
         if (m_flashRemaining <= 0 || m_flashFrames <= 0)
@@ -185,6 +230,22 @@ namespace NS
             else
             {
                 WriteDistortionRing();
+            }
+        }
+        if (m_waveJustStarted)
+        {
+            m_waveJustStarted = false;
+        }
+        else if (m_waveActive)
+        {
+            ++m_waveElapsed;
+            if (m_waveElapsed >= m_wave.frames)
+            {
+                EndGroundWave();
+            }
+            else
+            {
+                WriteGroundWave();
             }
         }
     }

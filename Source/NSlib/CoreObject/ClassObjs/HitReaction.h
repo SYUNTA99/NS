@@ -418,8 +418,8 @@ namespace NS
     class HitSensor;
 
     //! @brief 当たりの演出を頼む部品。.actor の名前の束を持ち、名前で始める
-    //! @details 揺れと寄りは CameraManager、白・震えの線・歪みの輪は HitScreenDirector、振動は PadRumbleDirector、
-    //! 描く揺れと震えは持ち主の Model が進める。止めの残りは持ち主の SceneActor が数える。
+    //! @details 揺れと寄りは CameraManager、白・震えの線・歪みの輪・床の波は HitScreenDirector、振動は PadRumbleDirector、
+    //! 描く揺れ・形・震えは持ち主の Model が進める。止めの残りは持ち主の SceneActor が数える。
     //! 持ち主へ渡す項目の進みはここに持ち、持ち主の SceneActor::Update が進める
     class HitReaction : public Object
     {
@@ -495,6 +495,10 @@ namespace NS
         //! @brief この部品が頼んだ歪みの輪を消す
         //! @details Stop は輪を消さない
         void StopDistortionRing() noexcept;
+
+        //! @brief この部品が頼んだ床の波を消す
+        //! @details Stop は波を消さない
+        void StopGroundWave() noexcept;
 
         //! @brief パッドの振動を頼む。前の振動が残っていても始め直す
         //! @param[in] pad 振動の設定

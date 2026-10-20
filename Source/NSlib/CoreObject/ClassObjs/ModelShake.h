@@ -3,6 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
+#include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/Gfx/Render/FrameConstants.h"
 
 namespace NS
@@ -43,6 +44,21 @@ namespace NS
         int length = 0;                 //!< 震えのフレーム数
         float referenceHeight = 720.0f; //!< ピクセルの寸法を決めた基準の画面の高さ
         float bodyLength = 0.0f;        //!< 衝突点から裏まで届く長さ (m)。0 以下なら全体が同時に震え始める
+    };
+
+    //! @brief 描く倍率の曲線の再生。Model::StartDrawShape で頼む
+    //! @details 曲線の横軸は始めたフレームを 0 にしたフレーム数。点の無い曲線は 1
+    struct DrawShapeDesc
+    {
+        Curve along{};             //!< alongDirection の向きの倍率
+        Curve height{};            //!< 高さの倍率
+        Curve side{};              //!< alongDirection に直角な水平の向きの倍率
+        Vector3 alongDirection{};  //!< 水平の長さ 1 の向き。0 ベクトルなら水平の倍率は掛けない
+        int length = 0;            //!< 再生するフレーム数
+
+        //! @brief frame フレーム目の世界の軸ごとの倍率を返す
+        //! @details 水平の向きの成分の 2 乗で along と side を x と z に混ぜる。軸に沿う向きでは元の倍率のまま
+        [[nodiscard]] Vector3 ScaleAt(int frame) const noexcept;
     };
 
     //! @brief 横揺れの、frame フレーム目の振れ幅の包みを返す
