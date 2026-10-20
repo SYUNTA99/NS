@@ -6,11 +6,14 @@
 #include "NSlib/CoreObject/Reflection/Curve.h"
 
 #include "NSlib/Core/Types.h"
+#include <array>
 #include <memory>
 #include <vector>
 
 namespace NS
 {
+    class IUseCamera;
+
     //! 効果を掛ける時の姿勢の軸。仮想カメラとブレンドまで済んだ姿勢の視線から作る。どちらも長さ 1
     struct CameraAxes
     {
@@ -44,6 +47,11 @@ namespace NS
         //! 揺れの効果の場合 true、それ以外の場合は false。揺れには管理役が設定の倍率 (SetShakeScale) を掛ける
         [[nodiscard]] virtual bool IsShake() const noexcept { return false; }
 
+        //! @brief 頼んだ物を書く。管理役は同じ種類の印と同じ頼んだ物の効果だけを置き換え、頼んだ物ごとに外せる
+        //! @details 見分けるだけで指す先は読まない。nullptr は頼んだ物を問わない効果
+        void SetRequester(const IUseCamera* requester) noexcept { m_requester = requester; }
+        [[nodiscard]] const IUseCamera* Requester() const noexcept { return m_requester; }
+
     protected:
         //! @brief Frame を 1 つ進めた後に呼ぶ。番号のほかに進める物がある効果だけが上書きする
         virtual void Advance() noexcept {}
@@ -54,6 +62,7 @@ namespace NS
     private:
         bool m_justAdded = true; // 積んだ後まだ Tick を通っていないか
         int m_frame = 0;
+        const IUseCamera* m_requester = nullptr; // 頼んだ物 (非所有)
     };
 
     //! カメラの右と上へずらす揺れ。振れ幅は直線で減り、seed から反転間隔を決める
@@ -69,14 +78,15 @@ namespace NS
     };
 
     //! @brief 寄りと傾きの設定
-    //! @details 始めたフレームから倍率と傾きを全部入れ、holdFrames の間保ち、returnFrames で滑らかに元へ戻す
+    //! @details delayFrames の後に倍率と傾きを全部入れ、holdFrames の間保ち、returnFrames で滑らかに元へ戻す
     struct CameraZoomRollDesc
     {
         float zoom = 1.0f;                           // 画面に写る大きさの倍率。1 で寄らない
         float rollDegrees = 0.0f;                    // 視線の軸まわりの傾き (度)
         Vector3 rollDirection{1.0f, 0.0f, 0.0f}; // 画面の上端を倒す側を決める世界の向き
-        int holdFrames = 0;                          // 倍率と傾きを保つフレーム数。始めたフレームを含む
+        int holdFrames = 0;                          // 倍率と傾きを保つフレーム数。寄せ始めたフレームを含む
         int returnFrames = 0;                        // 元へ戻すフレーム数
+        int delayFrames = 0;                         // 積んでから寄せ始めるまでのフレーム数。その間は寄らない
     };
 
     //! @brief 今のフレームの寄りと傾き
@@ -145,9 +155,13 @@ namespace NS
     private:
         CameraZoomRollModifier() noexcept = default;
 
+        // 寄せ始めてからのフレーム。始めるまでは負
+        [[nodiscard]] int ZoomFrame() const noexcept { return Frame() - m_delayFrames; }
+
         CameraZoomRoll m_full{}; // 保つ間の倍率と向きを付けた傾き
         int m_holdFrames = 0;    // 保つフレーム数
         int m_returnFrames = 0;  // 戻すフレーム数
+        int m_delayFrames = 0;   // 寄せ始めるまでのフレーム数
     };
 
     //! 沈む・震える・保持・跳ね返りの縦揺れ。高さ 1080 基準の画素で、下が負
@@ -190,10 +204,16 @@ namespace NS
         //! 今のフレームの縦のずれ (画素、下が負)。描き終えたら 0
         [[nodiscard]] float Pixels() const noexcept;
 
+        //! @brief 跳ね返りを始める。次に進めたフレームが跳ね返りの始まりになる
+        //! @details 設定の跳ね返りの始まりより遅くはしない。描き終えるフレーム数は変えない
+        void Release() noexcept { m_releasePending = true; }
+
     private:
         CameraSinkModifier() noexcept = default;
+        void Advance() noexcept override;
 
-        CameraSinkDesc m_desc{}; // 4 拍の形
+        CameraSinkDesc m_desc{};       // 4 拍の形
+        bool m_releasePending = false; // 跳ね返りを頼まれ、まだ進めていないか
     };
 
     //! @brief トラウマの揺れの形。場面ごとに持つ (外れ・溜め)
@@ -310,4 +330,8 @@ namespace NS
 
         CameraNudgeDesc m_desc{}; // 作った時の設定
     };
+
+    //! @brief 当たりで始める揺れ・沈み・寄り・ずれの種類の印。当たりの演出を止める所はこれを外す
+    //! @details トラウマは続けて当てると足すので入れない
+    [[nodiscard]] std::array<const void*, 5> CameraHitEffectKinds() noexcept;
 } // namespace NS

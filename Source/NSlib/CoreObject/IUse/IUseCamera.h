@@ -22,6 +22,9 @@ namespace NS
         ~IUseCamera() = default;
     };
 
+    // 効果を始める関数は user を頼んだ物 (CameraModifier::Requester) として積む。
+    // 管理役は同じ頼んだ物の同じ種類だけを置き換え、頼んだ物ごとに外せる
+
     //! モディファイアを積む。管理役が無ければ何もせず false
     bool AddCameraModifier(const IUseCamera* user, std::unique_ptr<CameraModifier> modifier);
 
@@ -31,7 +34,7 @@ namespace NS
     //! 寄りと傾きを始める。管理役が無いか壊れた設定なら false
     bool StartCameraZoomRoll(const IUseCamera* user, const CameraZoomRollDesc& desc);
 
-    //! 積んだ効果を全て止める
+    //! 積んだ効果を、頼んだ物を問わず全て止める
     void StopCameraEffects(const IUseCamera* user) noexcept;
 
     //! トラウマを足す。管理役が無いか壊れた量なら false
@@ -40,7 +43,7 @@ namespace NS
     //! このフレームのトラウマを少なくとも level に保つ。管理役が無いか壊れた量なら false
     bool HoldCameraTrauma(const IUseCamera* user, float level, const CameraTraumaShape& shape);
 
-    //! @brief 当たりで始めた揺れ・ずれ・寄りを止める。トラウマは残す
+    //! @brief 当たりで始めた揺れ・ずれ・寄りを、頼んだ物を問わず止める。トラウマは残す
     //! @details 次の当たりは前の当たりの揺れと寄りを止めてから始めるが、トラウマは続けて当てると足される
     void StopCameraHitEffects(const IUseCamera* user) noexcept;
 

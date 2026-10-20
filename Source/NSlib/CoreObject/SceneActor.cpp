@@ -215,6 +215,10 @@ namespace NS
         }
         OnInit();
         ApplyActorFile(*this);
+        // 束は .actor だけに書き、配置物では上書きしない
+        // clang-format off
+        if (m_hitReaction) { m_hitReaction->ReloadSets(); }
+        // clang-format on
         if (info != nullptr && info->placement != nullptr)
         {
             ApplyObjectClassObjs(*this, KeepPlacementFields(*this, *info->placement));
@@ -307,15 +311,35 @@ namespace NS
         if (m_hitReaction) { m_hitReaction->StopAll(); }
     }
 
+    void SceneActor::RequestHitStop(int frames) noexcept
+    {
+        m_hitStopFrames = std::max(m_hitStopFrames, frames);
+    }
+
+    void SceneActor::OverrideHitStop(int frames) noexcept
+    {
+        NS_ASSERT(Scene, frames >= 0, "OverrideHitStop: 止めの長さ {} が負", frames);
+        m_hitStopFrames = std::max(frames, 0);
+    }
+
     void SceneActor::Update()
     {
         // clang-format off
         if (m_effectKeeper) { m_effectKeeper->BeginStep(); }
+        if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(IsHitStopping()); }
         // clang-format on
         ObserveStep();
         DecideStep();
-        StateStep();
-        BodyStep();
+        // 止めは状態の時計だけを止める。束で始めた演出は頼まれた係と模型が自分の歩で進める
+        if (!IsHitStopping())
+        {
+            StateStep();
+        }
+        // StateStep の中で束を始めた時は、そのフレームの身体から止める
+        if (!IsHitStopping())
+        {
+            BodyStep();
+        }
         // 置く側の当たりは体を動かした後の姿へ揃える。姿も形も変わっていなければ Collision は何もしない
         // clang-format off
         if (m_collision) { m_collision->SyncToPhysics(); }
@@ -325,6 +349,10 @@ namespace NS
         if (m_model) { m_model->AdvanceDraw(); }
         // clang-format on
         VisualStep();
+        if (m_hitStopFrames > 0)
+        {
+            --m_hitStopFrames;
+        }
     }
 
     void SceneActor::SnapshotForInterpolation() noexcept

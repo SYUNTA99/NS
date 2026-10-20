@@ -196,19 +196,6 @@ namespace GL
                 return 0;
             }
 
-            // 曲線の値を scale 倍にする。点の値と傾きを同じ倍率で掛けるので、補間の形は変わらない
-            [[nodiscard]] NS::Curve ScaledCurve(const NS::Curve& curve, float scale) noexcept
-            {
-                NS::Curve scaled = curve;
-                for (NS::uint32 i = 0; i < scaled.count; ++i)
-                {
-                    scaled.keys[i].y *= scale;
-                    scaled.keys[i].inTangent *= scale;
-                    scaled.keys[i].outTangent *= scale;
-                }
-                return scaled;
-            }
-
             // timeline のうち、面の上の位置 face の当たりで起きる事象。並びの順は保つ
             // 向きの付いた振動は、位置の角度で隣り合う 2 つの向きを混ぜるので、重みが 0 でない行を重みを掛けて残す
             // 他の種類の向きの付いた行は、HitDirectionOf の向きの行だけ残す。face が無ければ向きの付いた行は起こさない
@@ -249,8 +236,8 @@ namespace GL
                         continue;
                     }
                     HitEvent weighted = event;
-                    weighted.value = PadVibrationEvent{.left = ScaledCurve(pad->left, weight),
-                                                       .right = ScaledCurve(pad->right, weight)};
+                    weighted.value =
+                        PadVibrationEvent{.left = pad->left.Scaled(weight), .right = pad->right.Scaled(weight)};
                     events.push_back(weighted);
                     outRows.push_back(row);
                 }

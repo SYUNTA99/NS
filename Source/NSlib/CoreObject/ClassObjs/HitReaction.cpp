@@ -1,15 +1,25 @@
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/System/CameraManager.h"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstddef>
 #include <format>
+#include <optional>
+#include <random>
 #include <set>
 #include <type_traits>
 #include <utility>
@@ -154,7 +164,363 @@ namespace NS
             }
             return FindSceneSystem<T>(owner);
         }
+
+        // 丸めた整数を 32 ビットの符号なしへ写す。負の値も同じ値なら同じビットになる
+        [[nodiscard]] uint32 RoundedBits(float value) noexcept
+        {
+            return static_cast<uint32>(static_cast<int32>(std::lround(value)));
+        }
+
+        // 束を始めた回数と渡した位置から揺れの種を作る。毎回少し違い、同じ入力の再生では同じになる
+        // 位置は丸めて、浮動小数の末尾の差で揺れが変わらないようにする。seed_seq の混ぜ方は規格で決まっている
+        [[nodiscard]] uint32 StartSeed(uint32 startCount, const Vector3& position)
+        {
+            std::seed_seq values{startCount,
+                                 RoundedBits(position.x * 100.0f),
+                                 RoundedBits(position.y * 100.0f),
+                                 RoundedBits(position.z * 100.0f)};
+            std::array<uint32, 1> seed{};
+            values.generate(seed.begin(), seed.end());
+            return seed[0];
+        }
+
+        // 渡した位置から体の一番遠い所までの長さ。震えが裏まで届く長さに使う
+        [[nodiscard]] float BodyLengthOf(const SensorVolume& volume) noexcept
+        {
+            if (volume.isBox)
+            {
+                const AABB bounds = volume.Bounds();
+                return 2.0f * std::max({bounds.Extents.x, bounds.Extents.y, bounds.Extents.z});
+            }
+            return 2.0f * volume.radius;
+        }
     } // namespace
+
+    // 束を始める時に、項目が共通に使う向きと位置。全部 Start が 1 回だけ出す
+    struct HitStartContext
+    {
+        Vector3 position{};    // 渡した位置
+        Vector3 toOther{};     // 持ち主のセンサーの中心から相手のセンサーの中心まで
+        Vector3 towardOther{}; // toOther の水平の長さ 1 の向き。決まらなければ hasToward が偽
+        bool hasToward = false;
+        Vector3 cameraRight{1.0f, 0.0f, 0.0f}; // 効果を掛ける前の視点の水平の右
+        float side = 0.0f;                     // toOther の cameraRight の成分
+        float up = 0.0f;                       // toOther の上の成分
+        float bodyLength = 0.0f;               // 持ち主の体の差し渡し (m)
+        uint32 seed = 0;                       // 揺れの種
+    };
+
+    // 項目の種類ごとの始め方。種類を足して書き忘れると、std::visit が呼べずにコンパイルが止まる
+    struct HitReaction::ItemStarter
+    {
+        HitReaction& reaction;
+        const HitStartContext& context;
+        int length;
+
+        void operator()(const HitShapeItem&) const
+        {
+            // TODO: 描く倍率の曲線の再生を Model に足す時に、ここから始める
+        }
+
+        void operator()(const HitBodyShakeItem& shake) const
+        {
+            SceneActor* owner = reaction.m_owner;
+            Model* model = owner->ModelClassObj();
+            if (model == nullptr || length <= 0 || !std::isfinite(shake.amplitudePixels))
+            {
+                return;
+            }
+            const std::optional<CameraPose> pose = GetCameraViewPose(owner);
+            if (!pose.has_value())
+            {
+                return;
+            }
+            // 画面の横を床に沿わせた向きで揺らし、最初は相手と逆の側へ振る。正面の相手は右から
+            float firstSign = 1.0f;
+            if (Dot(context.toOther, context.cameraRight) > k_Epsilon)
+            {
+                firstSign = -1.0f;
+            }
+            model->StartDrawShake(DrawShakeDesc{
+                .shape = DrawShakeShape::Side,
+                .axis = context.cameraRight,
+                .amplitude = ScreenPixelsToMeters(shake.amplitudePixels, *pose, owner->Root().Position()),
+                .length = length,
+                .seed = context.seed,
+                .firstSign = firstSign,
+                .flipFrames = shake.flipFrames});
+        }
+
+        void operator()(const HitBodyTremorItem& tremor) const
+        {
+            SceneActor* owner = reaction.m_owner;
+            Model* model = owner->ModelClassObj();
+            if (model == nullptr || length <= 0)
+            {
+                return;
+            }
+            // 裏まで届くのに長さを使い切ると震えが残らないので、届くのは長さの半分まで
+            model->StartDrawTremor(DrawTremorDesc{.contactOffset = context.position - owner->Root().Position(),
+                                                  .amplitudePixels = tremor.amplitudePixels,
+                                                  .amplitudeRatio = tremor.radiusRatio,
+                                                  .reachFrames = std::min(tremor.reachFrames, length / 2),
+                                                  .length = length,
+                                                  .referenceHeight = tremor.referenceHeight,
+                                                  .bodyLength = context.bodyLength});
+        }
+
+        void operator()(const HitCameraSinkItem& sink) const
+        {
+            // 跳ね返りは同じ持ち主の「沈みを戻す」で始まる。来なければ底のまま長さで終わる
+            (void)reaction.StartSink(CameraSinkDesc{.bottomPixels = sink.bottomPixels,
+                                                    .sinkFrames = sink.sinkFrames,
+                                                    .tremblePixels = sink.tremblePixels,
+                                                    .trembleFrames = sink.trembleFrames,
+                                                    .tremblePeriodFrames = sink.tremblePeriodFrames,
+                                                    .bounceStartFrame = length,
+                                                    .overshootRatio = sink.overshootRatio,
+                                                    .bouncePeriodFrames = sink.bouncePeriodFrames,
+                                                    .frames = length});
+        }
+
+        void operator()(const HitCameraSinkReleaseItem&) const
+        {
+            if (CameraManager* cameras = reaction.m_owner->GetCameraManager())
+            {
+                cameras->ReleaseSink(reaction.m_owner);
+            }
+        }
+
+        void operator()(const HitZoomRollItem& zoomRoll) const
+        {
+            const int frames = std::max(length, 0);
+            CameraZoomRollDesc desc;
+            desc.zoom = zoomRoll.zoom;
+            desc.rollDegrees = zoomRoll.rollDegrees;
+            if (context.hasToward)
+            {
+                desc.rollDirection = context.towardOther;
+            }
+            desc.returnFrames = std::clamp(zoomRoll.returnFrames, 0, frames);
+            desc.holdFrames = frames - desc.returnFrames;
+            desc.delayFrames = zoomRoll.delayFrames;
+            (void)reaction.StartZoomRoll(desc);
+        }
+
+        void operator()(const HitCameraTraumaItem& trauma) const
+        {
+            CameraTraumaDesc desc;
+            desc.trauma = trauma.trauma;
+            desc.shape.yawDegrees = trauma.yawDegrees;
+            desc.shape.pitchDegrees = trauma.pitchDegrees;
+            desc.shape.rollDegrees = trauma.rollDegrees;
+            desc.shape.frequency = trauma.frequency;
+            desc.shape.decayPerSecond = trauma.decayPerSecond;
+            desc.shape.exponent = trauma.exponent;
+            desc.seed = context.seed;
+            desc.kick.degrees = trauma.kickDegrees;
+            desc.kick.peakFrames = trauma.kickPeakFrames;
+            // 一撃は相手から自分へ向かう画面の向きへ振る。相手が真正面で向きが決まらなければ振らない
+            desc.kick.direction = Vector2{-context.side, -context.up};
+            (void)reaction.AddTrauma(desc);
+        }
+
+        void operator()(const HitCameraLurchItem& lurch) const
+        {
+            if (!context.hasToward)
+            {
+                return;
+            }
+            (void)reaction.StartNudge(CameraNudgeDesc{
+                .direction = context.towardOther, .distance = lurch.distance, .frames = length, .onScreen = false});
+        }
+
+        void operator()(const HitCameraReboundSwayItem& sway) const
+        {
+            if (!context.hasToward)
+            {
+                return;
+            }
+            (void)reaction.StartNudge(CameraNudgeDesc{
+                .direction = -context.towardOther, .distance = sway.distance, .frames = length, .onScreen = true});
+        }
+
+        void operator()(const HitFlashItem& flash) const { reaction.StartFlash(length, flash.alpha); }
+
+        void operator()(const HitDistortionRingItem& ring) const
+        {
+            reaction.StartDistortionRing(HitDistortionRingDesc{.center = context.position,
+                                                               .radius = ring.radius,
+                                                               .push = ring.push,
+                                                               .halfWidth = ring.halfWidth,
+                                                               .frames = length});
+        }
+
+        void operator()(const HitGroundWaveItem&) const
+        {
+            // TODO: 床の波を画面の係で進める時に、ここから始める
+        }
+
+        void operator()(const HitPadVibrationItem& pad) const
+        {
+            if (!pad.byDirection)
+            {
+                reaction.StartPadVibration(HitPadVibration{.left = pad.left, .right = pad.right, .frames = length});
+                return;
+            }
+            struct Directed
+            {
+                float weight;
+                const Curve* left;
+                const Curve* right;
+            };
+            const HitDirectionWeights weights = BlendHitDirectionWeights(context.side, context.up);
+            const std::array<Directed, 4> directed{{{weights.right, &pad.rightLeft, &pad.rightRight},
+                                                    {weights.left, &pad.leftLeft, &pad.leftRight},
+                                                    {weights.up, &pad.upLeft, &pad.upRight},
+                                                    {weights.down, &pad.downLeft, &pad.downRight}}};
+            // 重みのある 2 本を同じフレームに重ねて鳴らす
+            bool started = false;
+            for (const Directed& direction : directed)
+            {
+                if (!(direction.weight > 0.0f))
+                {
+                    continue;
+                }
+                const HitPadVibration vibration{.left = direction.left->Scaled(direction.weight),
+                                                .right = direction.right->Scaled(direction.weight),
+                                                .frames = length};
+                if (started)
+                {
+                    reaction.BlendPadVibration(vibration);
+                    continue;
+                }
+                reaction.StartPadVibration(vibration);
+                started = true;
+            }
+        }
+
+        void operator()(const HitWorldSpeedItem& speed) const
+        {
+            if (Scene* scene = reaction.m_owner->OwningScene())
+            {
+                scene->StartWorldSpeedRamp(speed.startSpeed, speed.returnSeconds, speed.shape);
+            }
+        }
+
+        void operator()(const HitOthersStopItem&) const
+        {
+            if (Scene* scene = reaction.m_owner->OwningScene())
+            {
+                scene->HoldOthers(length);
+            }
+        }
+
+        void operator()(const HitOwnerItem& owner) const
+        {
+            reaction.m_ownerRuns.push_back(
+                HitOwnerRun{.item = owner, .length = length, .frame = 0, .position = context.position});
+        }
+    };
+
+    HitDirectionWeights BlendHitDirectionWeights(float side, float up) noexcept
+    {
+        // 真ん中は角度が決まらない。右へ全部を渡す
+        if (side == 0.0f && up == 0.0f)
+        {
+            return HitDirectionWeights{.right = 1.0f};
+        }
+        const float angle = ToDegrees(Radians{std::atan2(up, side)}).value;
+        const auto weightAt = [angle](float center) {
+            // 向きの角度からのずれを -180〜180 へ畳む。90 度離れると 0
+            float difference = std::fmod(angle - center, 360.0f);
+            if (difference > 180.0f)
+            {
+                difference -= 360.0f;
+            }
+            if (difference < -180.0f)
+            {
+                difference += 360.0f;
+            }
+            return std::max(1.0f - std::abs(difference) / 90.0f, 0.0f);
+        };
+        return HitDirectionWeights{
+            .right = weightAt(0.0f), .left = weightAt(180.0f), .up = weightAt(90.0f), .down = weightAt(270.0f)};
+    }
+
+    void HitReaction::ReloadSets()
+    {
+        m_sets.clear();
+        if (m_owner == nullptr)
+        {
+            return;
+        }
+        const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(m_owner->ActorFileName());
+        if (actorFile != nullptr)
+        {
+            m_sets = ReadHitReactionSets(m_owner->ActorFileName(), *actorFile);
+        }
+    }
+
+    const HitReactionSet* HitReaction::FindSet(std::string_view name) const noexcept
+    {
+        for (const HitReactionSet& set : m_sets)
+        {
+            if (set.name == name)
+            {
+                return &set;
+            }
+        }
+        return nullptr;
+    }
+
+    bool HitReaction::Start(std::string_view name, const Vector3& position, const HitSensor* self, const HitSensor* other)
+    {
+        NS_ASSERT(Scene, m_owner != nullptr, "HitReaction::Start: 持ち主の無い部品で束を始めている");
+        NS_ASSERT(Scene, self != nullptr && other != nullptr, "HitReaction::Start: センサーが null");
+        const HitReactionSet* set = FindSet(name);
+        if (set == nullptr)
+        {
+            NS_LOG_WARN(Scene, ".actor {} に束 {} が無いので、始めなかった", m_owner->ActorFileName(), name);
+            return false;
+        }
+        const SensorVolume selfVolume = self->WorldVolume();
+        HitStartContext context;
+        context.position = position;
+        context.toOther = other->WorldVolume().Center() - selfVolume.Center();
+        context.hasToward = TryNormalizeHorizontal(context.toOther, context.towardOther);
+        const Vector3 forward = CalcCameraForwardHorizontal(m_owner);
+        context.cameraRight = Vector3{forward.z, 0.0f, -forward.x};
+        context.side = Dot(context.toOther, context.cameraRight);
+        context.up = context.toOther.y;
+        context.bodyLength = BodyLengthOf(selfVolume);
+        ++m_startCount;
+        context.seed = StartSeed(m_startCount, position);
+
+        // 止めは延ばすだけ。走っている長い止めを短い束で切らない
+        if (set->stopFrames > 0)
+        {
+            m_owner->RequestHitStop(set->stopFrames);
+        }
+        for (const HitReactionEntry& entry : set->entries)
+        {
+            std::visit(ItemStarter{.reaction = *this, .context = context, .length = entry.length}, entry.item);
+        }
+        return true;
+    }
+
+    void HitReaction::AdvanceOwnerRuns(bool ownerStopping) noexcept
+    {
+        for (HitOwnerRun& run : m_ownerRuns)
+        {
+            if (ownerStopping && run.item.stopsDuringHitStop)
+            {
+                continue;
+            }
+            ++run.frame;
+        }
+        std::erase_if(m_ownerRuns, [](const HitOwnerRun& run) { return run.frame >= run.length; });
+    }
 
     void HitReaction::CreateDirectors()
     {
@@ -316,7 +682,14 @@ namespace NS
         {
             rumble->Stop(*m_owner);
         }
-        StopCameraHitEffects(m_owner);
+        if (CameraManager* cameras = m_owner->GetCameraManager())
+        {
+            for (const void* kind : CameraHitEffectKinds())
+            {
+                cameras->RemoveModifiersOf(m_owner, kind);
+            }
+        }
+        m_ownerRuns.clear();
     }
 
     bool HitReaction::AddTrauma(const CameraTraumaDesc& desc)
@@ -340,10 +713,14 @@ namespace NS
     void HitReaction::StopAll()
     {
         Stop();
-        // プレイを終えた後の視点にトラウマを残さない
-        if (m_owner != nullptr)
+        // プレイを終えた後の視点にトラウマを残さない。ほかの物が頼んだ効果は、その物が外す
+        if (m_owner == nullptr)
         {
-            StopCameraEffects(m_owner);
+            return;
+        }
+        if (CameraManager* cameras = m_owner->GetCameraManager())
+        {
+            cameras->RemoveModifiersOf(m_owner);
         }
     }
 

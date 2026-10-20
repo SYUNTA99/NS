@@ -392,9 +392,35 @@ namespace NS
     //! .actor の文書へ束の並びを書く。並びが空なら鍵ごと消す
     void WriteHitReactionSets(nlohmann::json& actorFile, const std::vector<HitReactionSet>& sets);
 
-    //! @brief 当たりの演出を頼む部品
-    //! @details 並びと始めるフレームは当たりのタイムラインが決める。揺れと寄りは CameraManager、
-    //! 白・震えの線・歪みの輪は HitScreenDirector、振動は PadRumbleDirector が進める
+    //! 向き別の振動の 4 つの向きの重み。足すと 1
+    struct HitDirectionWeights
+    {
+        float right = 0.0f;
+        float left = 0.0f;
+        float up = 0.0f;
+        float down = 0.0f;
+    };
+
+    //! @brief 右を side、上を up とした向きの角度で、隣り合う 2 つの向きを直線に混ぜた重み
+    //! @details 向きの角度から 90 度離れると 0。side と up が両方 0 なら角度が決まらないので右を 1 にする
+    [[nodiscard]] HitDirectionWeights BlendHitDirectionWeights(float side, float up) noexcept;
+
+    //! @brief 束から始めた、持ち主へ渡す項目 1 つの進み
+    //! @details 持ち主は名前で演出を選び、frame と値で描く。frame は始めたフレームが 0
+    struct HitOwnerRun
+    {
+        HitOwnerItem item{};
+        int length = 0;     //!< 長さ (フレーム数)。frame がこれに届いたフレームの頭で外れる
+        int frame = 0;      //!< 始めてから進めたフレーム数
+        Vector3 position{}; //!< 束を始めた時に渡した位置
+    };
+
+    class HitSensor;
+
+    //! @brief 当たりの演出を頼む部品。.actor の名前の束を持ち、名前で始める
+    //! @details 揺れと寄りは CameraManager、白・震えの線・歪みの輪は HitScreenDirector、振動は PadRumbleDirector、
+    //! 描く揺れと震えは持ち主の Model が進める。止めの残りは持ち主の SceneActor が数える。
+    //! 持ち主へ渡す項目の進みはここに持ち、持ち主の SceneActor::Update が進める
     class HitReaction : public Object
     {
     public:
@@ -403,6 +429,27 @@ namespace NS
         //! シーンに 1 つの HitScreenDirector と PadRumbleDirector
         //! を作る。更新の最中に作ると、そのフレームの段に間に合わない
         void CreateDirectors();
+
+        //! @brief 持ち主の .actor (SceneActor::ActorFileName) から束を読み直す
+        //! @details .actor が無ければ束は空。壊れた束は ReadHitReactionSets が ERROR を出して読まない
+        void ReloadSets();
+
+        //! @brief 名前の束を始める。全部の項目が呼んだフレームに始まり、項目の値は束に書いた値のまま使う
+        //! @details 束の止めの長さを持ち主の止めの残りに頼む (残りより長い時だけ延ばす)。向きを使う項目は、
+        //! self の中心から other の中心への向きで決め、位置を使う項目は position を使う
+        //! @param[in] name 束の名前
+        //! @param[in] position 触れた位置などの世界の点
+        //! @param[in] self 持ち主のセンサー。事前条件: nullptr でない
+        //! @param[in] other 相手のセンサー。事前条件: nullptr でない
+        //! @return 始めた場合 true。その名前の束が無い場合は WARN を出して false
+        bool Start(std::string_view name, const Vector3& position, const HitSensor* self, const HitSensor* other);
+
+        //! 始めて長さの終わっていない、持ち主へ渡す項目。始めた順
+        [[nodiscard]] const std::vector<HitOwnerRun>& OwnerRuns() const noexcept { return m_ownerRuns; }
+
+        //! @brief 持ち主へ渡す項目を 1 フレーム進め、長さの終わった物を外す
+        //! @details 呼ぶのは SceneActor::Update の頭だけ。ownerStopping の間は、止めの間も止める項目を進めない
+        void AdvanceOwnerRuns(bool ownerStopping) noexcept;
 
         //! @brief 白の光を頼む。前の白が残っていても始め直す
         //! @param[in] frames 白の光のフレーム数。0 以下なら光らない
@@ -458,17 +505,27 @@ namespace NS
         //! @param[in] pad 重ねる振動
         void BlendPadVibration(const HitPadVibration& pad);
 
-        //! @brief この部品が頼んだ演出を止める。白と震えの線を消し、振動を 0 にし、揺れ・ずれ・寄りを外す
-        //! @details トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される
+        //! @brief この部品が頼んだ演出を止める。白と震えの線を消し、振動を 0 にし、揺れ・ずれ・寄りを外し、
+        //! 持ち主へ渡す項目を外す
+        //! @details トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される。
+        //! ほかの物が頼んだカメラの効果は残す
         void Stop();
 
-        //! Stop に加えて、カメラに積んだ効果をトラウマも含めて全部外す。途中で外れても効果を残さない
+        //! Stop に加えて、この部品が頼んだカメラの効果をトラウマも含めて全部外す。途中で外れても効果を残さない
         void StopAll();
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する
         NS_REFLECT_NONE(HitReaction, Object)
 
     private:
-        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
+        struct ItemStarter;
+
+        // 名前の束。無ければ nullptr
+        [[nodiscard]] const HitReactionSet* FindSet(std::string_view name) const noexcept;
+
+        SceneActor* m_owner = nullptr;          // 持ち主 (非所有)
+        std::vector<HitReactionSet> m_sets;     // 持ち主の .actor の束
+        std::vector<HitOwnerRun> m_ownerRuns;   // 進めている持ち主へ渡す項目
+        uint32 m_startCount = 0;                // 束を始めた回数。揺れの種に混ぜる
     };
 } // namespace NS

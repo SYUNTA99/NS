@@ -2,6 +2,7 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Windows/FileSystem.h"
 
@@ -199,46 +200,21 @@ namespace GL
 
         float HitDirectionWeight(HitDirection direction, float u, float v) noexcept
         {
-            if (direction == HitDirection::Any)
-            {
-                return 1.0f;
-            }
-            // 真ん中は角度が決まらない。帯の行を引く向きと同じ 1 つに全部を渡す
-            if (u == 0.0f && v == 0.0f)
-            {
-                if (direction == HitDirectionOf(u, v))
-                {
-                    return 1.0f;
-                }
-                return 0.0f;
-            }
-            float center = 0.0f;
+            // 重みの式は振動の項目と同じ 1 つ。真ん中は右へ全部を渡し、HitDirectionOf の向きと揃う
+            const NS::HitDirectionWeights weights = NS::BlendHitDirectionWeights(u, v);
             switch (direction)
             {
-            case HitDirection::Up:
-                center = 90.0f;
-                break;
+            case HitDirection::Right:
+                return weights.right;
             case HitDirection::Left:
-                center = 180.0f;
-                break;
+                return weights.left;
+            case HitDirection::Up:
+                return weights.up;
             case HitDirection::Down:
-                center = 270.0f;
-                break;
+                return weights.down;
             default:
-                break;
+                return 1.0f;
             }
-            const float angle = NS::ToDegrees(NS::Radians{std::atan2(v, u)}).value;
-            // 向きの角度からのずれを -180〜180 へ畳む。90 度離れると 0
-            float difference = std::fmod(angle - center, 360.0f);
-            if (difference > 180.0f)
-            {
-                difference -= 360.0f;
-            }
-            if (difference < -180.0f)
-            {
-                difference += 360.0f;
-            }
-            return std::max(1.0f - std::abs(difference) / 90.0f, 0.0f);
         }
 
         std::string_view HitDirectionName(HitDirection direction) noexcept

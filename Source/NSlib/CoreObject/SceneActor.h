@@ -108,11 +108,23 @@ namespace NS
         [[nodiscard]] HitReaction* HitReactionClassObj() noexcept { return m_hitReaction.get(); }
         [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
 
+        //! @brief 当たりの止め (ヒットストップ) の残りを、frames が残りより長い時だけ延ばす
+        //! @details 止めの間は Update が StateStep と BodyStep を飛ばす。呼んだフレームの残りの段から効き、
+        //! そのフレームも数える。束を始める口 (HitReaction::Start) が束の止めの長さで呼ぶ
+        void RequestHitStop(int frames) noexcept;
+        //! @brief 当たりの止めの残りを frames に書き換える。短くもする
+        //! @details 束を始めた後に、束と違う長さで止める当たり (貫通) が呼ぶ。事前条件: frames が 0 以上
+        void OverrideHitStop(int frames) noexcept;
+        //! 当たりの止めの残りのフレーム数。止めていなければ 0
+        [[nodiscard]] int HitStopFramesRemaining() const noexcept { return m_hitStopFrames; }
+        //! 当たりの止めの間なら true
+        [[nodiscard]] bool IsHitStopping() const noexcept { return m_hitStopFrames > 0; }
+
         //! @brief Update を呼ばれる段を返す
         [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
         virtual void ReadInput() {}
         //! 観測・裁定・状態・身体・見た目を固定順で更新する。部品は各段で明示的に呼ぶ
-        //! エフェクトの記録は観測前に進める
+        //! エフェクトの記録は観測前に進める。当たりの止めの間は状態と身体の段を飛ばし、最後に止めの残りを 1 減らす
         void Update();
         virtual void PrepareRender();
 
@@ -260,6 +272,7 @@ namespace NS
 
     private:
         float m_frameRate = 1.0f; // 体の倍率。読み書きは GetFrameRate・SetFrameRate だけ
+        int m_hitStopFrames = 0;  // 当たりの止めの残り。書くのは RequestHitStop・OverrideHitStop・Update だけ
     };
 
     //! @brief 体の倍率を返す。1 が等速
