@@ -22,6 +22,7 @@ namespace NS
             ImVec2 rectMin{};
             ImVec2 rectMax{};
             bool hovered = false;
+            bool imageClicked = false;
             if (m_surface.BeginView(k_PanelGame, rectMin, rectMax, hovered))
             {
                 // 入力を受け持つのはプレイ中だけ。編集中はゲームカメラを映すが操作は Scene 側
@@ -33,9 +34,12 @@ namespace NS
                                        static_cast<int>(rectMax.x - rectMin.x),
                                        static_cast<int>(rectMax.y - rectMin.y),
                                        hovered);
-                    // Esc で出したカーソルは、画像の左クリックで視点の操作へ戻す
-                    editor.RecaptureCursorOnGameClick(hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left));
+                    imageClicked = hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
                 }
+            }
+            if (playMode && m_surface.IsVisible())
+            {
+                editor.RecaptureCursorOnGameClick(imageClicked || m_surface.WasTabClicked());
             }
             m_surface.EndView();
 

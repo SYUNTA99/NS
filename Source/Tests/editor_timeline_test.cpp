@@ -19,6 +19,9 @@
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Window.h"
+#include "NSlib/Windows/Input.h"
+#include "NSlib/Windows/Keyboard.h"
+#include "NSlib/Windows/Mouse.h"
 #include "Tests/TestHitTimelines.h"
 
 #include "NSlib/Core/Types.h"
@@ -327,6 +330,161 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     EXPECT_FALSE(game.RenderPreview(preview));
     device.SetSceneTarget(nullptr);
     device.BindBackbuffer();
+}
+
+TEST(EditorGameCursor, EscapeThenGameImageClickRecapturesTheCursor)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "Game のカーソル復帰の試し";
+    desc.window.size = {640, 400};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
+    const NS::AssetManagerScope useAssets{assets};
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::GameViewPanel game;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({0.0f, 0.0f});
+        ImGui::SetNextWindowSize({640.0f, 400.0f});
+        game.Render(editor);
+        ImGui::EndFrame();
+        (void)game.CollectView(editor);
+    };
+    editor.EnterPlay();
+    ASSERT_FALSE(app.Window().IsCursorVisible());
+    NS::OS::Keyboard& keyboard = app.Input().Keyboard();
+    keyboard.OnKeyDown(NS::OS::Key::Escape);
+    editor.Tick();
+    keyboard.OnKeyUp(NS::OS::Key::Escape);
+    ASSERT_TRUE(app.Window().IsCursorVisible());
+    ASSERT_FALSE(app.Window().IsCursorLocked());
+    ASSERT_FALSE(app.Input().Mouse().IsRelativeMode());
+    for (int i = 0; i < 3; ++i)
+    {
+        frame();
+    }
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddMousePosEvent(320.0f, 200.0f);
+    frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    frame();
+    EXPECT_FALSE(app.Window().IsCursorVisible());
+    EXPECT_TRUE(app.Window().IsCursorLocked());
+    EXPECT_TRUE(app.Input().Mouse().IsRelativeMode());
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    frame();
+    app.SetCursorCaptured(false);
+}
+
+TEST(EditorGameCursor, EscapeThenGameTabClickRecapturesTheCursor)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "Game タブのカーソル復帰の試し";
+    desc.window.size = {640, 400};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
+    const NS::AssetManagerScope useAssets{assets};
+    TimelineGui gui;
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::GameViewPanel game;
+    const ImGuiID dock = ImHashStr("カーソル復帰のドック");
+    bool built = false;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        if (!built)
+        {
+            ImGui::DockBuilderAddNode(dock, ImGuiDockNodeFlags_DockSpace);
+            ImGui::DockBuilderSetNodeSize(dock, io.DisplaySize);
+            ImGui::DockBuilderDockWindow(NS::Editor::k_PanelGame, dock);
+            ImGui::DockBuilderDockWindow(NS::Editor::k_PanelScene, dock);
+            ImGui::DockBuilderFinish(dock);
+            built = true;
+        }
+        ImGui::DockSpaceOverViewport(dock, ImGui::GetMainViewport());
+        ImGui::Begin(NS::Editor::k_PanelScene);
+        ImGui::End();
+        game.Render(editor);
+        ImGui::EndFrame();
+        (void)game.CollectView(editor);
+    };
+    editor.EnterPlay();
+    for (int i = 0; i < 3; ++i)
+    {
+        frame();
+    }
+    ImGui::SetWindowFocus(NS::Editor::k_PanelGame);
+    frame();
+    frame();
+    NS::OS::Keyboard& keyboard = app.Input().Keyboard();
+    keyboard.OnKeyDown(NS::OS::Key::Escape);
+    editor.Tick();
+    keyboard.OnKeyUp(NS::OS::Key::Escape);
+    ASSERT_TRUE(app.Window().IsCursorVisible());
+    ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelGame);
+    ASSERT_NE(window, nullptr);
+    ASSERT_NE(window->DockNode, nullptr);
+    const ImVec2 tab = window->DC.DockTabItemRect.GetCenter();
+    io.AddMousePosEvent(tab.x, tab.y);
+    frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    frame();
+    EXPECT_FALSE(app.Window().IsCursorVisible());
+    EXPECT_TRUE(app.Window().IsCursorLocked());
+    EXPECT_TRUE(app.Input().Mouse().IsRelativeMode());
+    app.SetCursorCaptured(false);
+
+    const auto clickTab = [&] {
+        const ImVec2 at = window->DC.DockTabItemRect.GetCenter();
+        io.AddMousePosEvent(at.x, at.y);
+        frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+        frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+        frame();
+    };
+    scene.SetSimulationPaused(true);
+    clickTab();
+    EXPECT_TRUE(app.Window().IsCursorVisible());
+    EXPECT_FALSE(app.Window().IsCursorLocked());
+    EXPECT_FALSE(app.Input().Mouse().IsRelativeMode());
+    scene.SetSimulationPaused(false);
+
+    ImGui::SetWindowFocus(NS::Editor::k_PanelScene);
+    frame();
+    frame();
+    clickTab();
+    EXPECT_FALSE(app.Window().IsCursorVisible());
+    EXPECT_TRUE(app.Window().IsCursorLocked());
+    EXPECT_TRUE(app.Input().Mouse().IsRelativeMode());
+    app.SetCursorCaptured(false);
+
+    const ImVec2 start = window->DC.DockTabItemRect.GetCenter();
+    io.AddMousePosEvent(start.x, start.y);
+    frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    frame();
+    EXPECT_TRUE(app.Window().IsCursorVisible());
+    io.AddMousePosEvent(start.x + 35.0f, start.y + 80.0f);
+    frame();
+    frame();
+    EXPECT_TRUE(app.Window().IsCursorVisible());
+    EXPECT_NE(ImGui::GetDragDropPayload(), nullptr);
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    frame();
+    EXPECT_TRUE(app.Window().IsCursorVisible());
+    EXPECT_FALSE(app.Window().IsCursorLocked());
+    EXPECT_FALSE(app.Input().Mouse().IsRelativeMode());
 }
 
 TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)

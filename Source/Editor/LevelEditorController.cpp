@@ -293,7 +293,7 @@ void LevelEditorController::TogglePlayPause() noexcept
     }
 }
 
-void LevelEditorController::RecaptureCursorOnGameClick(bool gameImageClicked) noexcept
+void LevelEditorController::RecaptureCursorOnGameClick(bool gameViewClicked) noexcept
 {
     NS::Application* app = NS::Application::Get();
     if (app == nullptr)
@@ -303,7 +303,7 @@ void LevelEditorController::RecaptureCursorOnGameClick(bool gameImageClicked) no
     const bool recapture = NS::Editor::ShouldRecaptureCursor({.playMode = m_mode == Mode::Play,
                                                               .paused = PlayPaused(),
                                                               .cursorReleased = app->Window().IsCursorVisible(),
-                                                              .gameImageClicked = gameImageClicked});
+                                                              .gameViewClicked = gameViewClicked});
     if (recapture)
     {
         ApplyPlayCursor(NS::Editor::PlayCursor::Captured);

@@ -45,6 +45,7 @@ namespace NS
             {
                 m_visible = false;
                 m_focused = false;
+                m_tabClicked = false;
             }
 
             //! パネルに画像を貼れた時だけ矩形とカーソルの重なりを更新し、true を返す
@@ -75,12 +76,17 @@ namespace NS
             //! このフレームにパネルへ焦点があったか。プレイ中のキーボードをゲームへ渡す条件に使う
             [[nodiscard]] bool IsFocused() const noexcept { return m_focused; }
 
+            //! タブの移動を妨げないよう、ドラッグせず見出し上で左ボタンを離したフレームだけ true。
+            [[nodiscard]] bool WasTabClicked() const noexcept { return m_tabClicked; }
+
         private:
             std::unique_ptr<Gfx::D3DRenderTarget> m_target;
             Size2D m_size{0, 0}; // content 領域。次フレームの描画先サイズ
             float m_fixedAspect = 0.0f;
             bool m_visible = false;
             bool m_focused = false;
+            bool m_tabPressed = false;
+            bool m_tabClicked = false;
         };
     } // namespace Editor
 } // namespace NS

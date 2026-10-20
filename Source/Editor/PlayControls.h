@@ -95,7 +95,7 @@ namespace NS
             bool playMode = false;
             bool paused = false;
             bool cursorReleased = false;   // カーソルを出して固定を解いているか
-            bool gameImageClicked = false; // このフレームに Game の画像を左クリックしたか
+            bool gameViewClicked = false; // このフレームに Game の画像か見出しを左クリックしたか
         };
 
         //! 出したカーソルを固定へ戻す場合 true、それ以外の場合は false。止めている間は戻さない

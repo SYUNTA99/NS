@@ -81,7 +81,7 @@ namespace NS
             {
                 return false;
             }
-            return query.cursorReleased && query.gameImageClicked;
+            return query.cursorReleased && query.gameViewClicked;
         }
     } // namespace Editor
 } // namespace NS

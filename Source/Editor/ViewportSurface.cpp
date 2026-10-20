@@ -30,6 +30,27 @@ namespace NS
             constexpr ImGuiWindowFlags k_PanelFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
             const bool open = ImGui::Begin(windowName, nullptr, k_PanelFlags);
 
+            // 画像を貼ると直前の項目が変わるため、Begin の直後に見出しを調べる。
+            const bool tabHovered = ImGui::IsItemHovered();
+            m_tabClicked = false;
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            {
+                m_tabPressed = tabHovered;
+            }
+            if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            {
+                m_tabPressed = false;
+            }
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+            {
+                const ImVec2 drag = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+                m_tabClicked = m_tabPressed && tabHovered && drag.x == 0.0f && drag.y == 0.0f;
+            }
+            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                m_tabPressed = false;
+            }
+
             bool imaged = false;
             m_visible = false;
             m_focused = false;

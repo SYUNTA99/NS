@@ -125,8 +125,8 @@ public:
     [[nodiscard]] bool PlayPaused() const noexcept;
     void TogglePlayPause() noexcept;
 
-    //! Game 画像の左クリックで視点操作を再開する。一時停止中か捕捉中なら何もしない
-    void RecaptureCursorOnGameClick(bool gameImageClicked) noexcept;
+    //! Game の画像か見出しの左クリックで視点操作を再開する。一時停止中か捕捉中なら何もしない
+    void RecaptureCursorOnGameClick(bool gameViewClicked) noexcept;
 
     //! 編集対象の ActorList。一覧と参照候補はここから直接取得する
     [[nodiscard]] const NS::ActorList& Objects() const noexcept;
