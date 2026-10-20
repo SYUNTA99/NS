@@ -173,7 +173,7 @@ namespace GL
                 return curve.Evaluate(frame);
             }
 
-            // 止めの事象の長さ。貫通の当たりは breakStopSteps (0 以上) に置き換える
+            // 止めの長さを持つ事象 (自機の止め・相手の凍結) の長さ。貫通の当たりは breakStopSteps (0 以上) に置き換える
             [[nodiscard]] int StopLengthOf(const HitEvent& event, int breakStopSteps) noexcept
             {
                 if (breakStopSteps >= 0)
@@ -708,11 +708,7 @@ namespace GL
                                                 m_beforeContactTarget == m_pendingTarget && m_beforeContactTier == tier;
             if (!continuesBeforeContact)
             {
-                if (m_clockRunning && parts.hitReaction != nullptr)
-                {
-                    parts.hitReaction->Stop();
-                }
-                AbortTimeline(parts.ghost, parts.hitReaction);
+                AbortRunningTimeline(parts.ghost, parts.hitReaction);
             }
             m_beforeContact = false;
             std::vector<HitEvent> events;
@@ -836,7 +832,7 @@ namespace GL
                                             .squashThickness = freeze.squashThickness,
                                             .squashHeight = freeze.squashHeight,
                                             .squash = !resolver.m_pendingBreak,
-                                            .stopSteps = event.length};
+                                            .stopSteps = StopLengthOf(event, resolver.m_breakStopSteps)};
                 (void)SendMsgTackleFreeze(*target, desc);
             }
 
@@ -1060,7 +1056,7 @@ namespace GL
             SlamLineTarget predicted{};
             if (!NS::TryNormalizeHorizontal(velocity, direction) || !(stepLength > 0.0f) ||
                 !FindSlamLineTarget(
-                    direction, parts.params->m_bodySlamDistance, parts.params, parts.body, parts.collider, predicted))
+                    direction, motion.remainingDistance, parts.params, parts.body, parts.collider, predicted))
             {
                 DropBeforeContact(parts.ghost, parts.hitReaction);
                 return;
@@ -1097,12 +1093,7 @@ namespace GL
                 return;
             }
 
-            // 前の当たりの返りが残っていれば、検知の時と同じく止めてから始める
-            if (m_clockRunning && parts.hitReaction != nullptr)
-            {
-                parts.hitReaction->Stop();
-            }
-            AbortTimeline(parts.ghost, parts.hitReaction);
+            AbortRunningTimeline(parts.ghost, parts.hitReaction);
             m_events = std::move(events);
             m_eventRows = std::move(rows);
             m_clock = -untilDetect;
@@ -1136,8 +1127,18 @@ namespace GL
         {
             if (m_beforeContact)
             {
-                AbortTimeline(ghost, hitReaction);
+                AbortRunningTimeline(ghost, hitReaction);
             }
+        }
+
+        void ImpactResolver::AbortRunningTimeline(TackleGhost* ghost, NS::HitReaction* hitReaction) noexcept
+        {
+            // 走っている時計が頼んだ白・振動・揺れは HitReaction に残るので、時計と一緒に止める
+            if (m_clockRunning && hitReaction != nullptr)
+            {
+                hitReaction->Stop();
+            }
+            AbortTimeline(ghost, hitReaction);
         }
 
         void ImpactResolver::AbortTimeline(TackleGhost* ghost, NS::HitReaction* hitReaction) noexcept

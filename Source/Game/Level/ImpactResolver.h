@@ -102,6 +102,9 @@ namespace GL
             NS::Vector3 velocity;
             float charge01 = 0.0f;     //!< 突進を出した時の溜め量 0..1
             float overcharge01 = 0.0f; //!< 突進を出した時の溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
+            //! 突進を終えるまでに進む残りの水平距離 (m)。突進の状態でない時は 0
+            //! 触れる前の予測は、この長さで線を引く
+            float remainingDistance = 0.0f;
         };
 
         //! @brief 当たりの裁定の、直近の StepState の答え
@@ -261,6 +264,10 @@ namespace GL
             void UpdateBeforeContact(const BodySlamMotion& motion, const PlayerParts& parts);
 
             void DropBeforeContact(TackleGhost* ghost, NS::HitReaction* hitReaction) noexcept;
+
+            // 時計が走っていれば HitReaction の返りを止めてから、タイムラインを打ち切る
+            // CancelImpact は自機を止めていない時に前の当たりの薄れを残すので、これを通さない
+            void AbortRunningTimeline(TackleGhost* ghost, NS::HitReaction* hitReaction) noexcept;
 
             // 時計の今のフレームに始まる事象を並びの順に起こし、止めの明けを数える
             void AdvanceTimeline(const PlayerParts& parts);

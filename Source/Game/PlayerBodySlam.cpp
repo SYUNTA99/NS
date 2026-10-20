@@ -15,6 +15,7 @@
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace
@@ -113,10 +114,17 @@ NS::Vector3 PlayerActor::BodySlamVelocity() const noexcept
 
 GL::Level::BodySlamMotion PlayerActor::SlamMotion() const noexcept
 {
-    return GL::Level::BodySlamMotion{.slamming = IsBodySlamming(),
+    const bool slamming = IsBodySlamming();
+    float remaining = 0.0f;
+    if (slamming)
+    {
+        remaining = std::max(m_slam.m_distanceTarget - m_slam.m_travelled, 0.0f);
+    }
+    return GL::Level::BodySlamMotion{.slamming = slamming,
                                      .velocity = BodySlamVelocity(),
                                      .charge01 = m_slam.Charge01(),
-                                     .overcharge01 = m_slam.Overcharge01()};
+                                     .overcharge01 = m_slam.Overcharge01(),
+                                     .remainingDistance = remaining};
 }
 
 void PlayerActor::CancelBodySlam() noexcept

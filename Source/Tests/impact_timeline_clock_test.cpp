@@ -1,9 +1,11 @@
 #include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
 #include "Game/Level/TackleGhost.h"
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
+#include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
@@ -1753,6 +1755,128 @@ TEST(ImpactTimelineClock, AMissedPredictionStopsTheEarlyEvents)
     EXPECT_FALSE(player->Resolver().Answer().shapeAnimating);
     EXPECT_FLOAT_EQ(player->Resolver().Answer().shapeFactors.y, 1.0f);
     EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
+}
+
+// 予測が外れたら、触れる前に始めた返りも止める。触れる前に置いた白の光で見る
+TEST(ImpactTimelineClock, AMissedPredictionStopsTheReturns)
+{
+    HitTimeline timeline = MakeBeforeContactTimeline();
+    FlashEvent flash;
+    flash.beforeContact = true;
+    timeline.events.push_back({flash, -3, 30, HitDirection::Any});
+    const ScopedHitTimelineDirectory directory("BeforeContactFlashMiss");
+    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::Scene scene;
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 4.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    PropActor* rock = RockOf(scene);
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+    bool flashing = false;
+    for (int frame = 0; frame < 60 && !flashing; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        TickHitDirectors(*player);
+        flashing = FlashRemaining(*player) > 0;
+    }
+    ASSERT_TRUE(flashing);
+    ASSERT_TRUE(player->Resolver().Answer().beforeContact);
+    ASSERT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
+    rock->Root().SetPosition(rock->Root().Position() + NS::Vector3{10.0f, 0.0f, 0.0f});
+    player->Update(false);
+    rock->Update();
+    TickHitDirectors(*player);
+    EXPECT_FALSE(player->Resolver().Answer().beforeContact);
+    EXPECT_EQ(FlashRemaining(*player), 0);
+}
+
+// 突進の残りの距離で届かない相手は、線の先にいても触れる見込みに入れず、触れる前の事象を始めない
+TEST(ImpactTimelineClock, ATargetBeyondTheRemainingSlamIsNotPredicted)
+{
+    const ScopedHitTimelineDirectory directory("BeyondTheSlam");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeBeforeContactTimeline());
+    NS::Scene scene;
+    PlayerActor* player = PlaceClockScene(scene, 0.0f, 9.0f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    PropActor* rock = RockOf(scene);
+    const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
+    SlamLineTarget reachable{};
+    ASSERT_TRUE(player->Resolver().FindSlamLineTarget(
+        forward, player->BodySlamDistance(), &player->Params(), &player->Body(), &player->Collider(), reachable))
+        << "溜めた突進の距離なら線の先に入る相手で見る";
+    // 溜め量 0 の通常突進は、溜めた突進より短い距離で終わる
+    player->RequestBodySlam(0.0f, forward, 0.0f);
+    int slammingFrames = 0;
+    int mostFramesToContact = -1;
+    int beforeContactFrames = 0;
+    for (int frame = 0; frame < 60; ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+        TickHitDirectors(*player);
+        if (player->IsBodySlamming())
+        {
+            ++slammingFrames;
+        }
+        mostFramesToContact = std::max(mostFramesToContact, player->Resolver().Answer().framesToPredictedContact);
+        if (player->Resolver().Answer().beforeContact || player->Resolver().Answer().shapeAnimating)
+        {
+            ++beforeContactFrames;
+        }
+    }
+    ASSERT_GT(slammingFrames, 0);
+    ASSERT_FALSE(player->IsBodySlamming());
+    ASSERT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u) << "通常突進が届かない所に置いた相手で見る";
+    EXPECT_EQ(mostFramesToContact, -1);
+    EXPECT_EQ(beforeContactFrames, 0);
+}
+
+namespace
+{
+    // 壊れる動きを持つと答え、送られた凍結の長さを控える置物。今の置物は壊れないと答える
+    class BreakableRock final : public PropActor
+    {
+    public:
+        int freezeSteps = -1;
+
+    protected:
+        bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override
+        {
+            if (const MsgTackleFreeze* freeze = NS::MsgCast<MsgTackleFreeze>(msg))
+            {
+                freezeSteps = freeze->Desc().stopSteps;
+            }
+            const bool answered = PropActor::ReceiveMsg(msg, sender, receiver);
+            if (const MsgAskTackleTarget* ask = NS::MsgCast<MsgAskTackleTarget>(msg))
+            {
+                ask->Answer().breakable = true;
+            }
+            return answered;
+        }
+    };
+} // namespace
+
+// 貫通の当たりは、置物の凍結も貫通の止めと同じフレーム数にする。タイムラインの凍結の行の長さは使わない
+TEST(ImpactTimelineClock, ABreakFreezesTheTargetForTheBreakStop)
+{
+    const ScopedHitTimelineDirectory directory("BreakFreeze");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeSplitReleaseTimeline());
+    NS::Scene scene;
+    // 置いた岩は線の外へ退け、壊れる岩で見る
+    PlayerActor* player = PlaceClockScene(scene, 50.0f, 0.6f, 0.0f);
+    ASSERT_NE(player, nullptr);
+    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), nlohmann::json{{"破壊を許可", true}, {"貫通の止め秒", 2.0f / 60.0f}}),
+              0u);
+    BreakableRock* rock = scene.SpawnObject<BreakableRock>("BreakableRock");
+    ASSERT_NE(rock, nullptr);
+    ASSERT_EQ(NS::ApplyJsonFields(rock->Params(), nlohmann::json{{"耐久", 0.0f}}), 0u);
+    rock->Root().SetPosition(NS::Vector3{0.0f, 0.5f, 0.6f});
+    const std::vector<ClockFrame> trace = RunHit(*player, *rock, 1.0f, 10);
+    ASSERT_FALSE(trace.empty());
+    const ImpactRecord& impact = player->Resolver().Answer().lastImpact;
+    ASSERT_TRUE(impact.broke);
+    ASSERT_NE(impact.hitStopSteps, 5) << "凍結の行の長さ (5) と違う貫通の止めで見る";
+    EXPECT_EQ(rock->freezeSteps, impact.hitStopSteps);
 }
 
 namespace
