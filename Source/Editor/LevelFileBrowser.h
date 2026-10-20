@@ -42,6 +42,9 @@ namespace NS
             void NotifyLoadResult(bool ok, std::string_view message) noexcept;
 
         private:
+            [[nodiscard]] Result RenderSaveModal() noexcept;
+            [[nodiscard]] Result RenderLoadModal() noexcept;
+
             bool m_saveModalOpen = false;
             bool m_loadModalOpen = false;
 

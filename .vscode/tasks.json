@@ -103,6 +103,22 @@
                 "reveal": "always",
                 "panel": "shared"
             }
+        },
+        {
+            "label": "run-editor",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/bin/Debug-windows-x86_64/Editor.exe",
+            "options": {
+                "cwd": "${workspaceFolder}/build/bin/Debug-windows-x86_64"
+            },
+            "dependsOn": [
+                "build-debug"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
         }
     ]
 }

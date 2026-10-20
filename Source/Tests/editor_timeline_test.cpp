@@ -3,7 +3,9 @@
 #include "Editor/GameViewPanel.h"
 #include "Editor/HitTimelinePanel.h"
 #include "Editor/LevelEditorController.h"
+#include "Editor/LevelFileBrowser.h"
 #include "Editor/PanelIds.h"
+#include "Editor/PlayControls.h"
 #include "Editor/QuitModal.h"
 #include "Editor/Timeline.h"
 #include "Editor/TimelinePreview.h"
@@ -748,4 +750,72 @@ TEST(EditorQuit, SaveAllForQuitWritesTheTimeline)
     const GL::Level::HitTimeline* written = library.Find("center");
     ASSERT_NE(written, nullptr);
     EXPECT_EQ(written->events.size(), MakeLegacyHitTimeline(2).events.size() + 1);
+}
+
+// 終了の確認と Save Level・Load Level を開いている間は、編集のショートカットを止める答えが真になる。
+// 答えはモーダルを ImGui の窓の積み重ねで問うので、3 つの窓がモーダルとして開いていないと Delete で消した後のシーンを保存できてしまう
+TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
+{
+    const ScopedHitTimelineDirectory directory("EditorQuitModal");
+    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::HitTimelinePanel timeline;
+    NS::Editor::QuitModal quit;
+    NS::Editor::LevelFileBrowser files;
+
+    // Editor の描画と同じ順で 1 フレーム描き、Editor.cpp が問いへ入れる値で答えを返す
+    const auto frame = [&](const char* activate) {
+        ImGui::NewFrame();
+        if (activate != nullptr)
+        {
+            ImGuiWindow* top = ImGui::GetTopMostPopupModal();
+            if (top != nullptr)
+            {
+                ImGuiContext& context = *ImGui::GetCurrentContext();
+                context.NavActivateId = top->GetID(activate);
+                context.NavActivateDownId = context.NavActivateId;
+            }
+        }
+        quit.Render(editor, timeline);
+        static_cast<void>(files.Render());
+        ImGuiWindow* modal = ImGui::GetTopMostPopupModal();
+        std::string name;
+        if (modal != nullptr)
+        {
+            name = modal->Name;
+        }
+        ImGui::EndFrame();
+        return name;
+    };
+    const auto blocked = [](const std::string& modalName) {
+        return NS::Editor::ResolveInputOwnership({.modalOpen = !modalName.empty()}).editShortcutsBlocked;
+    };
+
+    EXPECT_FALSE(blocked(frame(nullptr)));
+
+    ASSERT_FALSE(quit.RequestQuit());
+    EXPECT_TRUE(blocked(frame(nullptr)));
+    EXPECT_FALSE(blocked(frame("キャンセル")));
+    EXPECT_FALSE(blocked(frame(nullptr)));
+
+    files.OpenSaveModal("quit_modal_test");
+    EXPECT_TRUE(blocked(frame(nullptr)));
+    EXPECT_FALSE(blocked(frame("Cancel")));
+
+    files.OpenLoadModal();
+    EXPECT_TRUE(blocked(frame(nullptr)));
+    // 読み込めた知らせで閉じる道。知らせは描画の後に届くので、次のフレームで閉じる
+    files.NotifyLoadResult(true, "");
+    EXPECT_FALSE(blocked(frame(nullptr)));
+
+    // Save Level を開いたまま終了を求めると、終了の確認が前に出て、2 つが開き合わない
+    files.OpenSaveModal("quit_modal_test");
+    EXPECT_EQ(frame(nullptr), "Save Level");
+    ASSERT_FALSE(quit.RequestQuit());
+    EXPECT_EQ(frame(nullptr), "終了の確認");
+    EXPECT_EQ(frame(nullptr), "終了の確認");
+    EXPECT_FALSE(blocked(frame("キャンセル")));
+    EXPECT_EQ(frame(nullptr), "");
 }

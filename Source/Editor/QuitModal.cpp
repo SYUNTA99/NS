@@ -51,6 +51,13 @@ namespace NS
                 return;
             }
             EditorMode& mode = editor.Editor();
+            // モーダルにして、開いている間は編集のショートカットと他の窓の操作を止める。
+            // 他のモーダル (Save Level など) が開いていても、同じ段で開き直して前に出す
+            constexpr const char* k_QuitModalTitle = "終了の確認";
+            if (!ImGui::IsPopupOpen(k_QuitModalTitle))
+            {
+                ImGui::OpenPopup(k_QuitModalTitle);
+            }
             ImGuiViewport* const vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {
@@ -59,7 +66,7 @@ namespace NS
             constexpr ImGuiWindowFlags k_QuitModalFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                                                           ImGuiWindowFlags_NoCollapse |
                                                           ImGuiWindowFlags_AlwaysAutoResize;
-            if (ImGui::Begin("終了の確認", nullptr, k_QuitModalFlags))
+            if (ImGui::BeginPopupModal(k_QuitModalTitle, nullptr, k_QuitModalFlags))
             {
                 ImGui::TextUnformatted("変更を保存して終了しますか");
                 if (HasUnsavedWork(mode, timeline))
@@ -111,8 +118,12 @@ namespace NS
                 {
                     ImGui::TextColored(k_MsgErrorColor, "保存に失敗しました");
                 }
+                if (!m_open)
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
             }
-            ImGui::End();
 #else
             (void)editor;
             (void)timeline;
