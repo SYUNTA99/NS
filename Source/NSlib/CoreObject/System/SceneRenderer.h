@@ -56,7 +56,6 @@ namespace NS
 
 namespace NS
 {
-    class CameraManager;
     class SceneCamera;
     class DirectionalLight;
     class IRenderable;
@@ -64,12 +63,12 @@ namespace NS
     class UIDirector;
 
     //! @brief 指定の描画先へ指定の視点でシーンを描く単位
-    //! @details target が未指定ならウィンドウへ、viewPose が空なら CameraManager のカメラで描く
+    //! @details target が未指定ならウィンドウへ、viewPose が空なら実カメラで描く
     //! drawShapes を持つビューだけ、描く直前に使い捨ての DebugShapes へ図形を積ませて描く
     struct SceneView
     {
         Gfx::D3DRenderTarget* target = nullptr; // 非所有の描画先。未指定ならウィンドウへ描く
-        std::optional<CameraPose> viewPose;      // 描画視点。空なら CameraManager の選ぶカメラ
+        std::optional<CameraPose> viewPose;      // 描画視点。空なら実カメラ
 
         //! そのビューを描く間だけ要る開発用の図形を積む口。空なら積まない
         //! 渡される DebugShapes は空で、描いた後に捨てられる。行列はそのビューのビュー射影
@@ -102,7 +101,7 @@ namespace NS
         //! エフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ何もしない
         void OnTick() override;
 
-        //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
+        //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ実カメラの視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneViews = std::move(views); }
 
@@ -151,8 +150,7 @@ namespace NS
         //! ビューを順に描く。未指定なら現在の描画先、装置なしなら描画しない
         //! カメラの姿勢は呼ぶ前に確定する。alpha は固定更新間の割合 0〜1
         //! skyboxPath は ContentRoot 内の相対パス。空なら空を描かない
-        void Render(CameraManager& cameras,
-                    SceneCamera& camera,
+        void Render(SceneCamera& camera,
                     UIDirector& ui,
                     const Gfx::ScreenFade& fade,
                     std::string_view skyboxPath,
@@ -183,8 +181,7 @@ namespace NS
         //! @brief 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
         //! @details デバッグ描画は、この固定ステップの図形、view.drawShapes が積んだ図形の順に描く
         //! view.viewPose が空なら実カメラで描く
-        void RenderViewWithOverlays(CameraManager& cameras,
-                                    SceneCamera& camera,
+        void RenderViewWithOverlays(SceneCamera& camera,
                                     UIDirector& ui,
                                     const Gfx::ScreenFade& fade,
                                     std::string_view skyboxPath,
@@ -195,8 +192,8 @@ namespace NS
         //! 不透明→空→半透明→エフェクトの順に 1 ビュー分を bloom の描画先へ描く
         //! にじみを足して今の描画先へ書き戻し、画面の段を掛ける
         //! 組んだ RenderContext を返す。viewOverride が空なら実カメラで描く
-        [[nodiscard]] Gfx::RenderContext RenderWorld(CameraManager& cameras,
-                                                         SceneCamera& camera,
+        //! 物の行列・カメラの位置・空・エフェクトは、このビューで決めた 1 つのカメラから引く
+        [[nodiscard]] Gfx::RenderContext RenderWorld(SceneCamera& camera,
                                                          std::string_view skyboxPath,
                                                          const std::optional<CameraPose>& viewOverride,
                                                          float alpha,
@@ -228,6 +225,8 @@ namespace NS
         std::vector<SceneView> m_sceneViews; // 描くビュー列。空なら現描画先へ 1 回だけ描く
 
         Gfx::DebugShapes m_viewShapes; // ビューの図形の使い捨ての溜め場。1 ビューを描く間だけ中身がある
+        // 開発用の図形を描く段。装置を差す度に作り直す。装置未設定の間と出荷では空
+        std::unique_ptr<Gfx::DebugShapePass> m_debugShapes;
 
         std::unique_ptr<Gfx::EffectScene> m_effects; // エフェクトの再生と描画。装置未設定の間は空
 

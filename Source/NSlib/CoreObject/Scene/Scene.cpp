@@ -470,7 +470,7 @@ namespace NS
         {
             m_cameraManager.Evaluate(alpha);
         }
-        m_sceneRenderer.Render(m_cameraManager, m_mainCamera, m_ui, m_fade.Fade(), m_environment.skybox, alpha);
+        m_sceneRenderer.Render(m_mainCamera, m_ui, m_fade.Fade(), m_environment.skybox, alpha);
     }
 
     void Scene::RegisterRenderable(IRenderable* renderable)
