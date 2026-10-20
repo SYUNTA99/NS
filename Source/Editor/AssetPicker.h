@@ -18,8 +18,17 @@ namespace NS
             std::string location;
         };
 
+        //! WICで表示する画像の拡張子か。大文字と小文字は区別しない
+        [[nodiscard]] bool IsTextureAssetPath(std::string_view path);
+
         //! contentRoot 配下の Assets と組み込みから候補を集める。保存用の道筋は contentRoot 相対
         //! アニメーションはファイル内の動きごと、エフェクトは Effects 相対の拡張子なしの名前を返す
         [[nodiscard]] std::vector<AssetOption> CollectAssetOptions(AssetKind kind, std::string_view contentRoot);
+
+        //! 六方向の PNG の存在、または単一の DDS キューブマップのヘッダーを確認する。
+        //! 画像本体の読み込み結果はプレビューで確認する。
+        [[nodiscard]] bool IsSkyboxAssetPath(std::string_view absolutePath);
+        //! Assets 内の対応するフォルダと DDS を、プロジェクトからの相対パスで返す。
+        [[nodiscard]] std::vector<AssetOption> CollectSkyboxOptions(std::string_view contentRoot);
     }
 }

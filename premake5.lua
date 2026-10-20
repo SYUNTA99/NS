@@ -637,6 +637,8 @@ project "Tests"
         "Source/Editor/EditorMode.cpp",
         "Source/Editor/InspectorReflection.cpp",
         "Source/Editor/AssetPicker.cpp",
+        "Source/Editor/AssetPreview.cpp",
+        "Source/Editor/AssetsPanel.cpp",
         "Source/Editor/InspectorPanel.cpp",
         "Source/Editor/GizmoEditor.cpp",
         "Source/Editor/GridMath.cpp",

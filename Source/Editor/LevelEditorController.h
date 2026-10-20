@@ -118,6 +118,13 @@ public:
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
 
+    //! 素材の編集中の値を確定し、配置物と素材の選択を外してシーン設定を表示する。
+    void SelectSceneSettings();
+    [[nodiscard]] const std::string& SkyboxPath() const noexcept;
+    //! プロジェクトからの相対パスを適用し、取り消しの履歴へ積む。空なら非表示。
+    //! 参照先の形式が対応外、シーン未設定、プレイ中の場合は変更せず false。
+    bool SetSkyboxPath(std::string_view path);
+
     //! 編集の自由視点カメラ。Inspector が感度をライブ編集する
     [[nodiscard]] NS::Editor::EditorCamera& EditorFreeCamera() noexcept { return m_editorCamera; }
 
@@ -209,7 +216,7 @@ public:
     //! 選択中の配置物の Model に材質を割り当てて undo へ積む。対象外なら false
     bool ApplyMaterialToSelected(std::string_view matPath);
 
-    //! @brief 素材の窓で押した素材 (.mat かメッシュ) を選ぶ。アクターの選択は外れる
+    //! @brief 素材の窓で押したマテリアル・メッシュ・画像を選ぶ。アクターの選択は外れる
     //! @details 道は ContentRoot からの道で覚え、SelectedAsset が引くたびに AssetManager から引く
     //! 読めない素材は選ばない。選ぶ前に、前の素材の確定していない編集を確定する
     //! @param[in] assetPath 素材のファイルの絶対パス
@@ -218,7 +225,7 @@ public:
     [[nodiscard]] const std::string& SelectedAssetPath() const noexcept { return m_selectedAssetPath; }
     //! 素材の窓の行が選んだ素材か。assetPath は素材のファイルの絶対パス
     [[nodiscard]] bool IsAssetSelected(std::string_view assetPath) const;
-    //! 選んだ素材 (NS::Material か NS::Mesh)。選んでいなければ nullptr
+    //! 選んだ素材 (NS::Material・NS::Mesh・NS::Texture)。選んでいなければ nullptr
     [[nodiscard]] NS::Object* SelectedAsset();
     //! Inspector で選んだ素材の値が変わったフレームに呼ぶ
     void MarkAssetEdited() noexcept;

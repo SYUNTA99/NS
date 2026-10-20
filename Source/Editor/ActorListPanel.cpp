@@ -64,6 +64,11 @@ namespace NS
                 }
                 ImGui::Separator();
 
+                if (ImGui::SmallButton("シーン設定"))
+                {
+                    editor.SelectSceneSettings();
+                }
+
                 std::size_t shownCount = 0;
                 for (const SceneActor* obj : editor.Objects())
                 {

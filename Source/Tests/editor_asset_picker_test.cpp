@@ -11,6 +11,7 @@
 #include <imgui_internal.h>
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <filesystem>
 #include <span>
 
@@ -229,6 +230,52 @@ TEST_F(AssetPickerCatalogTest, EffectChoicesKeepTheNamesExpectedByTheEffectLoade
     ASSERT_EQ(options.size(), 2);
     EXPECT_EQ(options[0].value, "charge.curl");
     EXPECT_EQ(options[1].value, "group/impact");
+}
+
+TEST_F(AssetPickerCatalogTest, SkyboxesRequireSixFacesOrACubemapDds)
+{
+    const char* faces[] = {"space_ft.png", "space_bk.png", "space_up.png",
+                           "space_dn.png", "space_rt.png", "space_lf.png"};
+    for (const char* face : faces)
+    {
+        const std::string relative = "Assets/Skybox/complete/" + std::string{face};
+        File(relative.c_str());
+    }
+    File("Assets/Skybox/incomplete/space_ft.png");
+    File("Assets/Skybox/invalid.dds");
+    std::vector<std::byte> bytes(152);
+    const auto word = [&](std::size_t offset, NS::uint32 value) {
+        std::memcpy(bytes.data() + offset, &value, sizeof(value));
+    };
+    word(0, 0x20534444);
+    word(4, 124);
+    word(12, 1);
+    word(16, 1);
+    word(76, 32);
+    const std::string flat = (m_root / "Assets/Skybox/flat.dds").generic_string();
+    ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(flat, bytes));
+    EXPECT_FALSE(NS::Editor::IsSkyboxAssetPath(flat));
+    word(112, 0xfe00);
+    const std::string cube = (m_root / "Assets/Skybox/cube.DDS").generic_string();
+    ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(cube, bytes));
+    EXPECT_TRUE(NS::Editor::IsSkyboxAssetPath(cube));
+    word(84, 0x30315844);
+    word(132, 3);
+    word(136, 4);
+    word(140, 1);
+    const std::string dx10 = (m_root / "Assets/Skybox/cube10.dds").generic_string();
+    ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(dx10, bytes));
+    EXPECT_TRUE(NS::Editor::IsSkyboxAssetPath(dx10));
+    word(140, 2);
+    const std::string array = (m_root / "Assets/Skybox/array.dds").generic_string();
+    ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(array, bytes));
+    EXPECT_FALSE(NS::Editor::IsSkyboxAssetPath(array));
+    const std::vector<NS::Editor::AssetOption> options =
+        NS::Editor::CollectSkyboxOptions(m_root.generic_string());
+    ASSERT_EQ(options.size(), 3);
+    EXPECT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Editor::AssetOption& option) {
+        return option.value == "Assets/Skybox/complete";
+    }));
 }
 
 TEST(AssetPickerCatalog, AnimationChoicesIncludeTheNamedClipsInsideFiles)

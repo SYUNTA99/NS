@@ -3,6 +3,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "Editor/EditorObjects.h"
+#include "Editor/AssetPicker.h"
 #include "Editor/GridMath.h"
 #include "Editor/HitZoneColors.h"
 #include "Editor/LevelFilePaths.h"
@@ -24,6 +25,7 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
+#include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
 #include "NSlib/CoreObject/ClassObjs/CapsuleCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
@@ -42,6 +44,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
+#include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/Input.h"
@@ -270,6 +273,72 @@ namespace
 } // namespace
 
 LevelEditorController::LevelEditorController(NS::Scene* scene) noexcept : m_scene(scene), m_applier(scene) {}
+
+namespace
+{
+    class SkyboxCommand final : public NS::Editor::ICommand
+    {
+    public:
+        SkyboxCommand(NS::Scene& scene, std::string before, std::string after)
+            : m_scene(scene), m_before(std::move(before)), m_after(std::move(after))
+        {
+        }
+
+        void Do(NS::Editor::IObjectSnapshotApplier&) noexcept override { m_scene.SetSkyboxPath(m_after); }
+        void Undo(NS::Editor::IObjectSnapshotApplier&) noexcept override { m_scene.SetSkyboxPath(m_before); }
+        [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
+        {
+            return sizeof(*this) + m_before.size() + m_after.size();
+        }
+
+    private:
+        NS::Scene& m_scene;
+        std::string m_before;
+        std::string m_after;
+    };
+}
+
+void LevelEditorController::SelectSceneSettings()
+{
+    CommitAssetEdit();
+    m_selectedAssetPath.clear();
+    SelectObjectById(NS::k_NoObjectId);
+}
+
+const std::string& LevelEditorController::SkyboxPath() const noexcept
+{
+    if (m_scene != nullptr)
+    {
+        return m_scene->SkyboxPath();
+    }
+    static const std::string empty;
+    return empty;
+}
+
+bool LevelEditorController::SetSkyboxPath(std::string_view path)
+{
+    if (m_scene == nullptr || m_mode != Mode::Edit)
+    {
+        return false;
+    }
+    std::string normalized;
+    if (!path.empty())
+    {
+        const std::string root = NS::OS::FileSystem::Normalize(NS::OS::FileSystem::ContentRoot());
+        const std::optional<std::string> resolved = NS::OS::FileSystem::ResolveUnder(root, path);
+        if (!resolved || !NS::Editor::IsSkyboxAssetPath(*resolved))
+        {
+            return false;
+        }
+        normalized = resolved->substr(root.size() + 1);
+    }
+    if (normalized != m_scene->SkyboxPath())
+    {
+        m_editor.Undo().Push(std::make_unique<SkyboxCommand>(*m_scene, m_scene->SkyboxPath(), std::move(normalized)),
+                             m_applier);
+    }
+    return true;
+}
 
 LevelEditorController::~LevelEditorController() = default;
 
@@ -1810,6 +1879,14 @@ namespace
         {
             return NS::AssetManager::Get().LoadMesh(path);
         }
+        if (NS::Editor::IsTextureAssetPath(path))
+        {
+            const std::optional<std::string> resolved = NS::ResolveContentPath(std::string{path});
+            if (resolved)
+            {
+                return NS::AssetManager::Get().LoadTexture(*resolved);
+            }
+        }
         return nullptr;
     }
 
@@ -1822,6 +1899,10 @@ namespace
         if (const NS::Mesh* mesh = NS::Cast<NS::Mesh>(&asset))
         {
             return !mesh->IsEmpty();
+        }
+        if (const NS::Texture* texture = NS::Cast<NS::Texture>(&asset))
+        {
+            return texture->D3D()->IsValid() && !texture->D3D()->IsUsingFallback();
         }
         return false;
     }
