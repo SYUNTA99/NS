@@ -436,6 +436,10 @@ namespace NS
                 if (!editor.HasInspectableSelection())
                 {
                     DrawSceneSettings(editor);
+                    if (ImGui::CollapsingHeader("エディタの見た目", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        (void)DrawReflectedValue(m_appearance);
+                    }
                     ImGui::End();
                     ImGui::PopStyleVar(2);
                     return;
@@ -583,9 +587,8 @@ namespace NS
                 ImGui::InputTextWithHint("##fieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
 
                 Editor::ClassObjEditResult classObjEdit{};
-                // 戻すと種類の既定にするは描いた後に行うので、対象の部品の行を控える
+                // 戻すは描いた後に行うので、対象の部品の行を控える
                 const ClassObjInfo* revertRow = nullptr;
-                const ClassObjInfo* promoteRow = nullptr;
                 ForEachReflectedClassObj(*go, [&](const ClassObjInfo& field, Object* live) {
                     if (live->GetReflection() == nullptr)
                     {
@@ -619,7 +622,7 @@ namespace NS
                         // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
                         const Object* baseline = FindBaselineClassObj(*go, field);
                         const Editor::ClassObjEditResult r =
-                            Editor::DrawReflectedClassObj(*live, refOptions, baseline, m_fieldFilter, go, &field);
+                            Editor::DrawReflectedClassObj(*live, refOptions, baseline, m_fieldFilter, go, &m_appearance);
                         classObjEdit.activated |= r.activated;
                         classObjEdit.committed |= r.committed;
                         classObjEdit.changed |= r.changed;
@@ -629,20 +632,14 @@ namespace NS
                             classObjEdit.revertField = r.revertField;
                             revertRow = &field;
                         }
-                        if (r.promoteField != nullptr)
-                        {
-                            classObjEdit.promoteTarget = r.promoteTarget;
-                            classObjEdit.promoteField = r.promoteField;
-                            promoteRow = &field;
-                        }
-                        // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
+                        // 書く先は欄の印で決まる。.actor へ書く欄は確定の時に書くので、直した欄を伝えておく
                         if (r.changedTarget != nullptr && r.changedField != nullptr)
                         {
                             if (r.changedField->type == FieldType::Asset)
                             {
                                 go->ReloadAssets();
                             }
-                            editor.MirrorPlayEditToBaseline(*go, field, r.changedField->name);
+                            editor.NoteFieldEdit(*go, field, r.changedField->name);
                         }
                     }
                     ImGui::PopID();
@@ -659,11 +656,6 @@ namespace NS
                         editor.MirrorPlayEditToBaseline(*go, *revertRow, classObjEdit.revertField->name);
                         editor.CommitClassObjEdit();
                     }
-                }
-                // 種類の既定にするのは、同じ種類の全ての個体とファイルを書き換える。既定の部品を作り直すので描画の後で行う
-                if (classObjEdit.promoteField != nullptr && promoteRow != nullptr)
-                {
-                    (void)editor.PromoteFieldToActorFile(*go, *promoteRow, classObjEdit.promoteField->name);
                 }
                 if (classObjEdit.activated)
                 {

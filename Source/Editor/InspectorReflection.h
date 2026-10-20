@@ -21,6 +21,8 @@ namespace NS
 {
     namespace Editor
     {
+        struct EditorAppearance;
+
         //! @brief ActorRef の欄で参照可能なオブジェクトの選択肢
         struct ObjectRefOption
         {
@@ -41,11 +43,6 @@ namespace NS
             Object* revertTarget = nullptr;
             const FieldDesc* revertField = nullptr;
 
-            // 種類の既定にする要求。選ばれたフレームだけ対象と欄が入る
-            // 同じ種類の他の個体とファイルも書き換えるので、適用は呼び出し側へ預ける
-            Object* promoteTarget = nullptr;
-            const FieldDesc* promoteField = nullptr;
-
             // 値が編集された対象と欄。編集が起きたフレームだけ入る
             // 凍結スナップショットへの写しが欄単位で要るので、changed の集約とは別に持つ
             Object* changedTarget = nullptr;
@@ -63,16 +60,24 @@ namespace NS
                                   const Object& defaults,
                                   const FieldDesc& field) noexcept;
 
+        //! @brief 欄の名前に上書きの色を付け、戻すを出すか
+        //! @details 配置物へ書く欄で、値が defaults と違う時だけ真。.actor へ書く欄は値の出所が .actor だけなので偽。
+        //! actor は comp の持ち主。nullptr なら値の比べだけで決める
+        [[nodiscard]] bool ShowsOverride(const Object& comp,
+                                         const Object* defaults,
+                                         const FieldDesc& field,
+                                         const SceneActor* actor) noexcept;
+
         //! リフレクション欄を編集し、Undo に必要な編集開始・終了と変更内容を返す
         //! refOptions が空なら参照は数値入力、defaults があれば上書きの表示と復元を使える
         //! filter は欄の見せる名前の部分一致。空か nullptr なら絞らない
-        //! actor と row は comp の持ち主とその表の行。どちらかが nullptr なら種類の既定にする操作を出さない
+        //! actor は comp の持ち主。actor と appearance があれば、行の地を書く先の色で塗る
         [[nodiscard]] ClassObjEditResult DrawReflectedClassObj(Object& comp,
                                                                std::span<const ObjectRefOption> refOptions = {},
                                                                const Object* defaults = nullptr,
                                                                const char* filter = nullptr,
                                                                const SceneActor* actor = nullptr,
-                                                               const ClassObjInfo* row = nullptr) noexcept;
+                                                               const EditorAppearance* appearance = nullptr) noexcept;
 
         //! @brief 部品でない値型の 1 フレームの編集で起きた事
         struct ValueEditResult

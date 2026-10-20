@@ -1,5 +1,7 @@
+#include "Editor/EditorAppearance.h"
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
+#include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
@@ -38,7 +40,7 @@
 #include <utility>
 #include <vector>
 
-// 値の 3 段の重なり (コードの既定値 < 種類の既定値 < 個体の上書き) と、差分の保存と、種類の既定にする操作を縛る
+// 値の 3 段の重なり (コードの既定値 < 種類の既定値 < 個体の上書き) と、差分の保存と、エディタの書く先を縛る
 
 namespace
 {
@@ -522,33 +524,93 @@ TEST(ActorFile, ReferenceFieldsAreNotActorFileValues)
     ASSERT_NE(entry, nullptr);
     EXPECT_FALSE(NS::HasField(*entry, "追従対象"));
 
-    // インスペクタでも種類の既定にできない
+    // インスペクタで直しても .actor へは書かず、配置物へ書く
     const NS::SceneActor& baseline = NS::ActorFileLibrary::Get().Baseline("FollowCameraActor");
     const GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(&baseline);
     ASSERT_NE(camera, nullptr);
-    const NS::ClassObjInfo* row = RowOf(*camera, &camera->Vcam());
-    ASSERT_NE(row, nullptr);
-    EXPECT_FALSE(NS::IsActorFileField(*camera, *row, "追従対象"));
+    const NS::FieldDesc* target = NS::FindField(camera->Vcam().GetReflection(), "追従対象");
+    ASSERT_NE(target, nullptr);
+    EXPECT_EQ(NS::FieldDestinationOf(*camera, camera->Vcam(), *target), NS::FieldDestination::Placement);
 }
 
-TEST(ActorFile, OverrideIsDetectedAgainstBaseline)
+// 字の色の印は、配置物へ書く欄の値が .actor と違う時だけ付く。.actor へ書く欄には付かない
+TEST(ActorFile, OverrideIsShownOnlyOnFieldsThePlacementWrites)
 {
     const ScopedActorFileDirectory scope("OverrideDetect");
-    NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)));
+    nlohmann::json actorFile = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f));
+    NS::ObjectJsonClassObjs(actorFile)["Params"] = MassEntry(2.0f);
+    NS::ActorFileLibrary::Get().Set("PropActor", std::move(actorFile));
 
     nlohmann::json doc = NS::MakeSceneJson();
     NS::SceneJsonObjects(doc).push_back(MapObjJson(1));
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(scene.Objects().FindByObjectId(1)->CollisionClassObj());
+    GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
+    ASSERT_NE(prop, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(prop->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
-    const NS::SceneActor& actor = *scene.Objects().FindByObjectId(1);
-    const NS::ClassObjInfo* row = RowOf(actor, sphere);
-    ASSERT_NE(row, nullptr);
-    EXPECT_FALSE(NS::IsFieldOverridden(actor, *row, "半径"));
+    const NS::ClassObjInfo* sphereRow = RowOf(*prop, sphere);
+    const NS::ClassObjInfo* paramsRow = RowOf(*prop, &prop->Params());
+    ASSERT_NE(sphereRow, nullptr);
+    ASSERT_NE(paramsRow, nullptr);
+    const NS::FieldDesc* radius = NS::FindField(sphere->GetReflection(), "半径");
+    const NS::FieldDesc* mass = NS::FindField(prop->Params().GetReflection(), "質量");
+    ASSERT_NE(radius, nullptr);
+    ASSERT_NE(mass, nullptr);
+    const NS::Object* sphereBaseline = NS::FindBaselineClassObj(*prop, *sphereRow);
+    const NS::Object* paramsBaseline = NS::FindBaselineClassObj(*prop, *paramsRow);
+
+    EXPECT_FALSE(NS::Editor::ShowsOverride(prop->Params(), paramsBaseline, *mass, prop));
+    ASSERT_EQ(NS::ApplyJsonFields(prop->Params(), MassEntry(4.0f)), 0u);
+    EXPECT_TRUE(NS::Editor::ShowsOverride(prop->Params(), paramsBaseline, *mass, prop));
+
     sphere->SetRadius(2.5f);
-    EXPECT_TRUE(NS::IsFieldOverridden(actor, *row, "半径"));
-    EXPECT_TRUE(NS::IsActorFileField(actor, *row, "半径"));
+    EXPECT_FALSE(NS::Editor::ShowsOverride(*sphere, sphereBaseline, *radius, prop));
+}
+
+// 欄の書く先は 1 つの関数が決め、行の地の色は同じ答えの方の色になる
+TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
+{
+    const ScopedActorFileDirectory scope("FieldDestination");
+    const ScopedActorFile propFile{"PropActor", ClassOnlyActorFile("PropActor")};
+    const ScopedActorFile cameraFile{"FollowCameraActor", ClassOnlyActorFile("FollowCameraActor")};
+    const NS::SceneActor& prop = NS::ActorFileLibrary::Get().Baseline("PropActor");
+    const GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(&prop);
+    const NS::SceneActor& cameraActor = NS::ActorFileLibrary::Get().Baseline("FollowCameraActor");
+    const GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(&cameraActor);
+    ASSERT_NE(rock, nullptr);
+    ASSERT_NE(camera, nullptr);
+    ASSERT_NE(rock->CollisionClassObj(), nullptr);
+
+    struct Case
+    {
+        const NS::SceneActor* actor;
+        const NS::Object* part;
+        const char* field;
+        NS::FieldDestination expected;
+    };
+    const Case cases[] = {
+        {rock, rock->CollisionClassObj(), "半径", NS::FieldDestination::ActorFile},
+        {rock, &rock->Params(), "質量", NS::FieldDestination::Placement},
+        {camera, &camera->Vcam(), "追従対象", NS::FieldDestination::Placement},
+        {rock, &rock->Root(), NS::k_PositionFieldName, NS::FieldDestination::Placement},
+    };
+    NS::Editor::EditorAppearance appearance;
+    ASSERT_NE(appearance.actorFileRowColor, appearance.placementRowColor);
+    for (const Case& c : cases)
+    {
+        SCOPED_TRACE(c.field);
+        const NS::FieldDesc* field = NS::FindField(c.part->GetReflection(), c.field);
+        ASSERT_NE(field, nullptr);
+        const NS::FieldDestination destination = NS::FieldDestinationOf(*c.actor, *c.part, *field);
+        EXPECT_EQ(destination, c.expected);
+        NS::Color expectedColor = appearance.placementRowColor;
+        if (destination == NS::FieldDestination::ActorFile)
+        {
+            expectedColor = appearance.actorFileRowColor;
+        }
+        EXPECT_EQ(NS::Editor::FieldRowColor(appearance, *c.actor, *c.part, *field), expectedColor);
+    }
 }
 
 // インスペクタの印と「既定に戻す」は、型の既定 (半径 0.5) でなく種類の既定 (半径 2) と比べて戻す
@@ -633,9 +695,9 @@ TEST(ActorFile, TransformPartIsInstanceOnlyOnEveryPath)
     ASSERT_NE(transform, nullptr);
     EXPECT_TRUE(NS::HasField(*transform, NS::k_PositionFieldName));
 
-    const NS::ClassObjInfo* row = RowOf(baseline, &baseline.Root());
-    ASSERT_NE(row, nullptr);
-    EXPECT_FALSE(NS::IsActorFileField(baseline, *row, NS::k_PositionFieldName));
+    const NS::FieldDesc* field = NS::FindField(baseline.Root().GetReflection(), NS::k_PositionFieldName);
+    ASSERT_NE(field, nullptr);
+    EXPECT_EQ(NS::FieldDestinationOf(baseline, baseline.Root(), *field), NS::FieldDestination::Placement);
 }
 
 TEST(ActorFile, SavedActorFileIsReadBack)
@@ -669,57 +731,129 @@ TEST(ActorFile, FileWithAnUnknownKeyIsNotRead)
     EXPECT_EQ(log.ErrorCount(), 1);
 }
 
-TEST(ActorFile, PromoteReachesOtherInstancesAndFile)
+namespace
 {
-    const ScopedActorFileDirectory scope("Promote");
-    const ScopedActorFile classOnly{"PropActor", ClassOnlyActorFile("PropActor")};
-    nlohmann::json doc = NS::MakeSceneJson();
-    NS::SceneJsonObjects(doc).push_back(MapObjJson(1));
-    NS::SceneJsonObjects(doc).push_back(MapObjJson(2));
-    nlohmann::json keeps = MapObjJson(3);
-    NS::ObjectJsonClassObjs(keeps)["Params"] = MassEntry(4.0f);
-    NS::SceneJsonObjects(doc).push_back(std::move(keeps));
+    // 置物 2 体のシーン。.actor の半径は 2
+    void ResetTwoProps(NS::Scene& scene)
+    {
+        NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)));
+        nlohmann::json doc = NS::MakeSceneJson();
+        NS::SceneJsonObjects(doc).push_back(MapObjJson(1));
+        NS::SceneJsonObjects(doc).push_back(MapObjJson(2));
+        scene.ResetFromJson(doc);
+    }
+
+    // インスペクタと同じ順で、actor の part の欄 fieldName を直し終える。値は呼ぶ前に part へ書いておく
+    void EditField(LevelEditorController& editor,
+                   const NS::SceneActor& actor,
+                   const NS::Object* part,
+                   std::string_view fieldName)
+    {
+        const NS::ClassObjInfo* row = RowOf(actor, part);
+        ASSERT_NE(row, nullptr);
+        editor.SelectObjectById(actor.Id());
+        editor.BeginClassObjEdit();
+        editor.NoteFieldEdit(actor, *row, fieldName);
+        editor.CommitClassObjEdit();
+    }
+
+    // Directory() に書かれた PropActor.actor の Collision の半径。読めなければ -1
+    float SavedRadius(const std::string& directory)
+    {
+        const std::optional<std::string> text =
+            NS::OS::FileSystem::ReadAllText(NS::OS::FileSystem::Combine(directory, "PropActor.actor"));
+        if (!text.has_value())
+        {
+            return -1.0f;
+        }
+        const nlohmann::json written = nlohmann::json::parse(*text);
+        const nlohmann::json* fields = NS::ClassObjFields(written, "Collision");
+        if (fields == nullptr)
+        {
+            return -1.0f;
+        }
+        return NS::FieldFloat(*fields, "半径", -1.0f);
+    }
+} // namespace
+
+// 印の無い欄を直し終えると .actor のファイルへ書き、同じ .actor のアクターの全部に効く。戻すと全部が前の値へ戻る
+TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
+{
+    const ScopedActorFileDirectory scope("EditorWritesActorFile");
     NS::Scene scene;
-    scene.ResetFromJson(doc);
+    ResetTwoProps(scene);
     LevelEditorController editor(&scene);
+    NS::SceneActor* first = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(first, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
 
-    GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
-    ASSERT_NE(prop, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(prop->Params(), MassEntry(1.75f)), 0u);
-    const NS::SceneActor& actor = *prop;
-    const NS::ClassObjInfo* row = RowOf(actor, &prop->Params());
-    ASSERT_NE(row, nullptr);
-    ASSERT_TRUE(editor.PromoteFieldToActorFile(actor, *row, "質量"));
+    sphere->SetRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, sphere, "半径"));
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 3.0f);
 
-    // 上げた個体は上書きでなくなり、上書きしていなかった個体は付いて来て、上書きしていた個体はそのまま
-    EXPECT_FALSE(NS::IsFieldOverridden(actor, *row, "質量"));
-    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(2)), 1.75f);
-    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(3)), 4.0f);
-    EXPECT_TRUE(NS::OS::FileSystem::Exists(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor")));
+    NS::Editor::ObjectSnapshotApplier applier{&scene};
+    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(1)), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 2.0f);
+
+    ASSERT_TRUE(editor.Editor().Undo().Redo(applier));
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(1)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 3.0f);
 }
 
-TEST(ActorFile, PromoteRejectsReferenceField)
+// 印の付いた欄を直すと、その 1 体だけが変わり、.actor は変わらない
+TEST(ActorFile, EditorWritesAMarkedFieldToThatActorOnly)
 {
-    const ScopedActorFileDirectory scope("PromoteReference");
-    const ScopedActorFile classOnly{"FollowCameraActor", ClassOnlyActorFile("FollowCameraActor")};
-    nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json camera = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(camera, "FollowCameraActor");
-    NS::SetObjectJsonId(camera, 1);
-    NS::SceneJsonObjects(doc).push_back(std::move(camera));
+    const ScopedActorFileDirectory scope("EditorWritesPlacement");
     NS::Scene scene;
-    scene.ResetFromJson(doc);
+    ResetTwoProps(scene);
     LevelEditorController editor(&scene);
+    GL::Level::PropActor* first = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
+    ASSERT_NE(first, nullptr);
+    const nlohmann::json before = *NS::ActorFileLibrary::Get().Find("PropActor");
+    const float otherMass = MassOf(*scene.Objects().FindByObjectId(2));
 
-    GL::Level::FollowCameraActor* placed =
-        NS::Cast<GL::Level::FollowCameraActor>(scene.Objects().FindByObjectId(1));
-    ASSERT_NE(placed, nullptr);
-    const NS::ClassObjInfo* row = RowOf(*placed, &placed->Vcam());
+    ASSERT_EQ(NS::ApplyJsonFields(first->Params(), MassEntry(otherMass + 3.0f)), 0u);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, &first->Params(), "質量"));
+    EXPECT_EQ(*NS::ActorFileLibrary::Get().Find("PropActor"), before);
+    EXPECT_FALSE(NS::OS::FileSystem::Exists(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor")));
+    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(2)), otherMass);
+    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(1)), otherMass + 3.0f);
+}
+
+// プレイ中に印の無い欄を直しても .actor に書き、プレイ開始の凍結は変えない。編集へ戻っても値が残り、WARN は出ない
+TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningToEdit)
+{
+    const ScopedActorFileDirectory scope("PlayEditActorFile");
+    NS::Scene scene;
+    ResetTwoProps(scene);
+    LevelEditorController editor(&scene);
+    editor.EnterPlay();
+    const nlohmann::json frozen = scene.PlayBaseline();
+    NS::SceneActor* first = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(first, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
+
+    sphere->SetRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, sphere, "半径"));
+    // 凍結へ写す口に直に渡しても、.actor へ書く欄は写さない
+    const NS::ClassObjInfo* row = RowOf(*first, sphere);
     ASSERT_NE(row, nullptr);
-    EXPECT_FALSE(editor.PromoteFieldToActorFile(*placed, *row, "追従対象"));
-    const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("FollowCameraActor");
-    ASSERT_NE(actorFile, nullptr);
-    EXPECT_EQ(NS::ClassObjFields(*actorFile, "Vcam"), nullptr);
+    scene.WritePlayBaselineField(*first, *row, "半径");
+    EXPECT_EQ(scene.PlayBaseline(), frozen);
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 3.0f);
+
+    const TestLogCapture log;
+    editor.EnterEdit();
+    EXPECT_EQ(log.WarningCount(), 0);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(1)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 3.0f);
 }
 
 TEST(ActorFile, ShippedActorFilesLoad)

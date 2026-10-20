@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Editor/EditorAppearance.h"
 #include "Editor/InspectorReflection.h"
 #include "NSlib/Core/NonCopyable.h"
 
@@ -56,6 +57,7 @@ namespace NS
             uint32 m_nameCommitId = 0; // このフレームに確定した名前の対象、0 なら無し
             uint32 m_nameEditId = 0;   // 名前を打ち始めた対象。0 なら打っていない
             char m_fieldFilter[64]{};      // 欄の検索欄。空でない間は名前に含む欄だけを並べる。選択を変えても残す
+            EditorAppearance m_appearance; // 欄の行の地の色。シーン設定の下で直す
         };
     } // namespace Editor
 } // namespace NS

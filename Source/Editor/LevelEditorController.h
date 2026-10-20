@@ -178,10 +178,10 @@ public:
     //! row は actor のクラスの表の行
     void MirrorPlayEditToBaseline(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
-    //! 種類の既定値と未上書きの個体を更新する。変更できた場合 true、参照・姿勢など対象外の欄は false
-    //! ファイル保存に失敗してもメモリ上の変更は残し、警告する。Undo の対象外
-    //! row は actor のクラスの表の行
-    bool PromoteFieldToActorFile(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
+    //! @brief Inspector で actor の欄の値が変わったフレームに呼ぶ。row は actor のクラスの表の行
+    //! @details 配置物へ書く欄はプレイ中の凍結へ写す。.actor へ書く欄は覚えておき、
+    //! CommitClassObjEdit で .actor のファイルへ書いて、同じ .actor のアクターの全部へ写す。プレイ中も同じ
+    void NoteFieldEdit(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
     //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);
@@ -329,6 +329,18 @@ private:
     bool m_classObjEditing = false;
     NS::uint32 m_classObjEditBaselineId = NS::k_NoObjectId; // 編集開始時の対象 id
     nlohmann::json m_classObjEditBaseline;                  // 編集開始時の状態スナップショット
+
+    //! 直したが、まだ .actor へ書いていない欄。CommitClassObjEdit で書いて空にする
+    struct ActorFileEdit
+    {
+        NS::uint32 actorId = NS::k_NoObjectId;
+        const NS::ClassObjInfo* row = nullptr;
+        std::string fieldName;
+    };
+    std::vector<ActorFileEdit> m_actorFileEdits;
+
+    //! m_actorFileEdits を .actor へ書き、1 欄ずつ取り消しの履歴へ積む
+    void CommitActorFileEdits();
 
     // 素材の窓で選んだ素材の ContentRoot からの道。アクターの選択と排他。
     // 姿のポインタを持たないのは、AssetManager::Clear の後に古いポインタを残さないため

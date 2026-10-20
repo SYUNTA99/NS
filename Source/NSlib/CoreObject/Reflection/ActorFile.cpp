@@ -69,26 +69,16 @@ namespace NS
             return nullptr;
         }
 
-        // comp の欄 fieldName の値を JSON で読む。無ければ nullopt
-        [[nodiscard]] std::optional<nlohmann::json> FieldValue(const Object& comp, std::string_view fieldName)
-        {
-            const nlohmann::json fields = SerializeClassObjFields(comp);
-            const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
-            if (it == fields.end())
-            {
-                return std::nullopt;
-            }
-            return std::optional<nlohmann::json>{std::in_place, *it};
-        }
-
-        // 配置物が値を持つ欄か。根の部品の欄・参照の欄・上書きの印の付いた欄で、ほかの欄の値は .actor だけが持つ
-        [[nodiscard]] bool IsPlacementField(const SceneActor& actor,
-                                            const Object* part,
-                                            const FieldDesc& field) noexcept
-        {
-            return part == &actor.Root() || field.type == FieldType::ActorRef || field.placement;
-        }
     } // namespace
+
+    FieldDestination FieldDestinationOf(const SceneActor& actor, const Object& part, const FieldDesc& field) noexcept
+    {
+        if (&part == &actor.Root() || field.type == FieldType::ActorRef || field.placement)
+        {
+            return FieldDestination::Placement;
+        }
+        return FieldDestination::ActorFile;
+    }
 
     nlohmann::json KeepPlacementFields(const SceneActor& actor, const nlohmann::json& object)
     {
@@ -102,7 +92,7 @@ namespace NS
             for (nlohmann::json::iterator entry = fields->begin(); entry != fields->end();)
             {
                 const FieldDesc* field = FindField(part->GetReflection(), entry.key());
-                if (field == nullptr || IsPlacementField(actor, part, *field))
+                if (field == nullptr || FieldDestinationOf(actor, *part, *field) == FieldDestination::Placement)
                 {
                     ++entry;
                     continue;
@@ -368,7 +358,8 @@ namespace NS
             {
                 // 印の無い欄は、アクターの値が .actor と違っても配置物に書かない
                 const FieldDesc* desc = FindField(classObj->GetReflection(), field.key());
-                if (desc != nullptr && !IsPlacementField(baseline, classObj, *desc))
+                if (desc != nullptr &&
+                    FieldDestinationOf(baseline, *classObj, *desc) == FieldDestination::ActorFile)
                 {
                     field = fields->erase(field);
                     continue;
@@ -418,61 +409,5 @@ namespace NS
             return found;
         }
         return nullptr;
-    }
-
-    bool IsFieldOverridden(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
-    {
-        const Object* part = FindBaselineClassObj(actor, row);
-        if (part == nullptr)
-        {
-            return false;
-        }
-        return FieldValue(*FindRowPart(actor, row), fieldName) != FieldValue(*part, fieldName);
-    }
-
-    bool IsActorFileField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
-    {
-        const Object* live = FindRowPart(actor, row);
-        if (live == nullptr || live == &actor.Root())
-        {
-            return false;
-        }
-        const FieldDesc* field = FindField(live->GetReflection(), fieldName);
-        if (field == nullptr)
-        {
-            return false;
-        }
-        return field->type != FieldType::ActorRef;
-    }
-
-    bool WriteFieldToActorFile(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
-    {
-        if (!IsActorFileField(actor, row, fieldName))
-        {
-            return false;
-        }
-        const std::optional<nlohmann::json> value = FieldValue(*FindRowPart(actor, row), fieldName);
-        if (!value.has_value())
-        {
-            return false;
-        }
-        ActorFileLibrary& library = ActorFileLibrary::Get();
-        nlohmann::json actorFile = nlohmann::json::object();
-        if (const nlohmann::json* current = library.Find(actor.ActorFileName()))
-        {
-            actorFile = *current;
-        }
-        else
-        {
-            SetActorFileClass(actorFile, actor.ClassName());
-        }
-        nlohmann::json& fields = ObjectJsonClassObjs(actorFile)[std::string{row.key}];
-        if (!fields.is_object())
-        {
-            fields = nlohmann::json::object();
-        }
-        fields[std::string{fieldName}] = *value;
-        library.Set(actor.ActorFileName(), std::move(actorFile));
-        return true;
     }
 } // namespace NS

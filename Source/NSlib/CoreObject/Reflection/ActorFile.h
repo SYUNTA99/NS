@@ -16,6 +16,7 @@ namespace NS
     class SceneActor;
     class Object;
     struct ClassObjInfo;
+    struct FieldDesc;
 
     //! .actor の文書の中の class。無いか文字列でなければ空
     [[nodiscard]] std::string_view ActorFileClass(const nlohmann::json& actorFile) noexcept;
@@ -94,22 +95,21 @@ namespace NS
     //! 配置物が値を持てない欄は、値が違っても除く
     [[nodiscard]] nlohmann::json DiffObjectJson(const nlohmann::json& object);
 
-    // 下の 4 つの row は actor のクラスの表 (NS_CLASSOBJ) の行。ForEachReflectedClassObj で回した行を渡す
+    //! 欄の値を持つ所。.actor だけが持つか、配置物が持つか
+    enum class FieldDestination
+    {
+        ActorFile, // 同じ .actor を指すアクターの全部が同じ値を使う
+        Placement, // 配置物ごとに値を持つ
+    };
 
-    //! actor の行 row の部品に対応する、actor のクラスの Baseline の部品。どちらかが作られていないか型が違えば nullptr
-    //! 種類の既定値を変えると指す先が作り直されるので、そのフレームの間だけ使う
+    //! @brief actor の部品 part の欄 field の値を持つ所
+    //! @details 根の部品の欄・参照の欄・上書きの印の付いた欄は配置物、ほかは .actor。
+    //! 配置物の読み書き・エディタの書く先・行の地の色は、どれもこの答えで分ける
+    [[nodiscard]] FieldDestination FieldDestinationOf(const SceneActor& actor,
+                                                      const Object& part,
+                                                      const FieldDesc& field) noexcept;
+
+    //! actor の行 row の部品に対応する、actor の .actor の Baseline の部品。どちらかが作られていないか型が違えば nullptr
+    //! row は actor のクラスの表 (NS_CLASSOBJ) の行。.actor を変えると指す先が作り直されるので、そのフレームの間だけ使う
     [[nodiscard]] const Object* FindBaselineClassObj(const SceneActor& actor, const ClassObjInfo& row);
-
-    //! actor の行 row の部品の欄 fieldName が、actor のクラスの種類の既定値と違うか
-    [[nodiscard]] bool IsFieldOverridden(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
-
-    //! 種類の既定値へ上げてよい欄か。参照の欄と位置・回転・拡縮は個体の物なので上げられない
-    //! 行の部品が作られていなければ上げられない
-    [[nodiscard]] bool IsActorFileField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
-
-    //! @brief actor の行 row の部品の欄 fieldName の今の値を、actor のクラスの種類の既定値へ書く
-    //! @details ファイルへは書かない。上げられない欄は何もせず false
-    [[nodiscard]] bool WriteFieldToActorFile(const SceneActor& actor,
-                                             const ClassObjInfo& row,
-                                             std::string_view fieldName);
 } // namespace NS
