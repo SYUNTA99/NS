@@ -109,7 +109,7 @@ namespace NS
         return keeper->Find(id);
     }
 
-    int EffectStep(const IUseEffect* user) noexcept
+    int GetEffectStep(const IUseEffect* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const EffectKeeper* keeper = user->GetEffectKeeper();

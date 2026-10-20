@@ -270,7 +270,7 @@ namespace GL
             }
             ++m_tremor.elapsed;
             NS::Gfx::TremorCB tremor{};
-            const std::optional<NS::CameraPose> pose = NS::CameraViewPose(this);
+            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(this);
             if (pose.has_value())
             {
                 // 球の差し渡しで裏まで届く

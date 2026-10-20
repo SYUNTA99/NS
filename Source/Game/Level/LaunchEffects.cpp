@@ -104,7 +104,7 @@ namespace GL
 
             // 置物が自分を動かす Triggers の段より前に走るので、帯の頭は放した時の速度で 1 フレーム先へ置く
             // 帯の点の +Y を飛ぶ向きへ回す。揃えないと、横から見た時に幅が道に沿って潰れる
-            const Vector3 head = flight.position + flight.velocity * m_owner->BodyDelta();
+            const Vector3 head = flight.position + flight.velocity * NS::GetFrameDelta(m_owner);
             NS::Gfx::EffectPlayDesc desc =
                 PlayAt(head, TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)), Uniform(m_trailScale));
             // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
@@ -115,12 +115,12 @@ namespace GL
             desc.dynamicInputs[3] = 0.0f;
             m_trail = NS::PlayEffect(m_owner, m_launchTrailAsset, desc);
             NS::SetEffectAmount(m_owner, m_trail, static_cast<float>(m_trailFrames));
-            m_trailStartStep = NS::EffectStep(m_owner);
+            m_trailStartStep = NS::GetEffectStep(m_owner);
         }
 
         void LaunchEffects::Update(const PropFlight& flight)
         {
-            if (m_trail == 0 || NS::EffectStep(m_owner) == m_trailStartStep)
+            if (m_trail == 0 || NS::GetEffectStep(m_owner) == m_trailStartStep)
             {
                 return;
             }

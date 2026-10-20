@@ -233,8 +233,8 @@ TEST(PlayerStateSequence, TheBaseOwnsTheMachineFromInit)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    ASSERT_NE(player.GetStates(), nullptr);
-    EXPECT_EQ(player.GetStates()->CurrentId(), NS::StateIdOf<GL::Player::IdlePlayerState>());
+    ASSERT_NE(player.GetStateMachine(), nullptr);
+    EXPECT_EQ(player.GetStateMachine()->CurrentId(), NS::StateIdOf<GL::Player::IdlePlayerState>());
     EXPECT_TRUE(NS::IsState<GL::Player::IdlePlayerState>(&player));
 }
 

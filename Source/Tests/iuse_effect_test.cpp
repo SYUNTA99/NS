@@ -35,7 +35,7 @@ TEST(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
     TestEffectActor& actor = *owned;
     const NS::uint32 id = NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{});
     actor.Update();
-    ASSERT_EQ(NS::EffectStep(&actor), 1);
+    ASSERT_EQ(NS::GetEffectStep(&actor), 1);
 
     NS::SetEffectAmount(&actor, id, 3.0f);
     NS::StopEffectRoot(&actor, id);
@@ -79,5 +79,5 @@ TEST(IUseEffectTest, ActorWithoutTheSlotDoesNothing)
     NS::SetEffectAmount(&actor, 1, 1.0f);
     NS::SetEffectRotation(&actor, 1, NS::Quaternion::Identity);
     EXPECT_EQ(NS::FindEffect(&actor, 1), nullptr);
-    EXPECT_EQ(NS::EffectStep(&actor), 0);
+    EXPECT_EQ(NS::GetEffectStep(&actor), 0);
 }

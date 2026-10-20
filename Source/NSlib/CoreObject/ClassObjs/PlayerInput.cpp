@@ -83,7 +83,7 @@ namespace NS
         // camera 相対移動の基準 forward は CameraManager から自分で読む。CameraManager 不在 (テスト等) は注入値のまま
         if (m_owner != nullptr && m_owner->GetCameraManager() != nullptr)
         {
-            m_cameraForward = NormalizeHorizontal(CameraForwardHorizontal(m_owner));
+            m_cameraForward = NormalizeHorizontal(CalcCameraForwardHorizontal(m_owner));
         }
 
         OS::Input& input = OS::Input::Get();

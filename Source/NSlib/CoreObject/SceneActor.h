@@ -8,7 +8,6 @@
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/IUse/IUseState.h"
-#include "NSlib/CoreObject/IUse/IUseTime.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
@@ -42,8 +41,7 @@ namespace NS
                        public IUseSceneSystem,
                        public IUseCollision,
                        public IUseEffect,
-                       public IUseState,
-                       public IUseTime
+                       public IUseState
     {
     public:
         SceneActor() noexcept;
@@ -81,13 +79,8 @@ namespace NS
         //! 個体の位置・回転・大きさを持つ部品
         [[nodiscard]] Transform& Root() noexcept;
         [[nodiscard]] const Transform& Root() const noexcept;
-        [[nodiscard]] IStateMachine* GetStates() noexcept override;
-        [[nodiscard]] const IStateMachine* GetStates() const noexcept override;
-        [[nodiscard]] float BodyDelta() const noexcept override;
-        [[nodiscard]] float BodyTimeScale() const noexcept override { return m_bodyTimeScale; }
-        //! @brief 体の倍率を書く
-        //! @return 書いた場合 true、非有限か 0 以下で断って前の値を残した場合は false
-        [[nodiscard]] bool SetBodyTimeScale(float scale) noexcept;
+        [[nodiscard]] IStateMachine* GetStateMachine() noexcept override;
+        [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override;
 
         //! @brief 居るシーンの重力の向きを返す
         //! @return シーンに居なければ (0, -1, 0)
@@ -227,6 +220,8 @@ namespace NS
         friend std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
+        friend float GetFrameRate(const SceneActor* actor) noexcept;
+        friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
         // 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない
         void Init() { OnInit(); }
         //! アクターを作る順。部品を作る → 種類の既定 → 配置の上書き → 素材
@@ -269,8 +264,17 @@ namespace NS
 
     private:
         bool m_transient = false; // 一時オブジェクトの印。保存・凍結に写らない
-        float m_bodyTimeScale = 1.0f;
+        float m_frameRate = 1.0f; // 体の倍率。読み書きは GetFrameRate・SetFrameRate だけ
     };
+
+    //! @brief 体の倍率を返す。1 が等速
+    //! @details 体の動きと見た目 (状態機械・自機の体・アニメ) だけに掛かる。シーン全体の止めと遅くは含めない
+    [[nodiscard]] float GetFrameRate(const SceneActor* actor) noexcept;
+    //! @brief 体の倍率を書く
+    //! @return 書いた場合 true、非有限か 0 以下で断って前の値を残した場合は false
+    bool SetFrameRate(SceneActor* actor, float rate) noexcept;
+    //! 体の 1 フレームの秒。固定フレームの秒に体の倍率を掛けた値
+    [[nodiscard]] float GetFrameDelta(const SceneActor* actor) noexcept;
 
     //! @brief T を作り、OnInit で部品を組んでから返す
     //! @details Scene の中に作る時は Scene::SpawnTransient か Scene::SpawnObject を使う (中でこの関数を呼ぶ)。

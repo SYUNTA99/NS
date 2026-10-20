@@ -107,7 +107,7 @@ namespace GL
             // 同じフレームに置かれた 2 つの頼みは、当たりの絵の後に飛びの絵を出す
             if (m_plan.active && impact.flightEffect)
             {
-                m_plan.releaseStep = NS::EffectStep(m_owner);
+                m_plan.releaseStep = NS::GetEffectStep(m_owner);
                 BeginFlight(motion, body, impact.lastImpact);
             }
             AdvanceHit(collider);
@@ -283,7 +283,7 @@ namespace GL
 
             HitPlan plan;
             plan.active = true;
-            plan.freezeStep = NS::EffectStep(m_owner);
+            plan.freezeStep = NS::GetEffectStep(m_owner);
             plan.shape = ShapeFor(impact);
             plan.targetId = impact.targetId;
 
@@ -398,7 +398,7 @@ namespace GL
             {
                 return;
             }
-            const int step = NS::EffectStep(m_owner);
+            const int step = NS::GetEffectStep(m_owner);
             const int frame = step - m_plan.freezeStep;
             const ImpactShape& shape = m_plan.shape;
 
@@ -592,7 +592,7 @@ namespace GL
                                         const NS::Body* body,
                                         const GL::Level::ImpactRecord& impact)
         {
-            const int step = NS::EffectStep(m_owner);
+            const int step = NS::GetEffectStep(m_owner);
             // 前の当たりの尾が残っていれば、ここで消す。尾は 1 本ずつ持つ
             if (m_flight.reboundTrail != 0)
             {
@@ -615,7 +615,7 @@ namespace GL
 
         void ImpactEffects::AdvanceFlight(const PlayerMotion& motion, const NS::Body* body)
         {
-            const int step = NS::EffectStep(m_owner);
+            const int step = NS::GetEffectStep(m_owner);
             if (m_flight.reboundTrail != 0 && step != m_flight.reboundStartStep)
             {
                 // 頂点の前に反動を抜けた時 (縁を掴んだ時など) は、そこで輪ごと消す
@@ -672,7 +672,7 @@ namespace GL
         std::optional<Vector3> ImpactEffects::CameraPosition() const
         {
             // 揺れを掛ける前の位置。輪と尾は世界に置く物なので、揺れの間に向きが震えない
-            const std::optional<NS::CameraPose> pose = NS::CameraViewPose(m_owner);
+            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(m_owner);
             if (!pose.has_value())
             {
                 return std::nullopt;

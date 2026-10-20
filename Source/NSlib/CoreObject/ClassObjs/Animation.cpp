@@ -164,7 +164,7 @@ namespace NS
             float dt = OS::FrameTimer::FixedDelta();
             if (m_owner != nullptr)
             {
-                dt = m_owner->BodyDelta();
+                dt = GetFrameDelta(m_owner);
             }
             m_time += dt * m_speed;
             if (m_looping)

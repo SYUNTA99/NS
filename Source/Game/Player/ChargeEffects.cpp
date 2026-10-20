@@ -73,7 +73,7 @@ namespace GL
             m_framesSinceFull = 0;
             if (held && m_fullShown)
             {
-                m_framesSinceFull = NS::EffectStep(m_owner) - m_fullStep + 1;
+                m_framesSinceFull = NS::GetEffectStep(m_owner) - m_fullStep + 1;
             }
             if (held)
             {
@@ -180,7 +180,7 @@ namespace GL
         void ChargeEffects::StartFullFlash(const NS::Vector3& center)
         {
             m_fullShown = true;
-            m_fullStep = NS::EffectStep(m_owner);
+            m_fullStep = NS::GetEffectStep(m_owner);
             StopAndClear(m_full);
             m_full = NS::PlayEffect(m_owner, m_fullAsset, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
             NS::StopEffectAfter(m_owner, m_full, std::max(m_fullFlashSteps, 1));

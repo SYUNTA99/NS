@@ -103,7 +103,7 @@ void PlayerActor::ObserveCharge(bool held)
     {
         return;
     }
-    const NS::Vector3 direction = NS::CameraForwardHorizontal(this);
+    const NS::Vector3 direction = NS::CalcCameraForwardHorizontal(this);
     if (!std::isfinite(direction.x) || !std::isfinite(direction.z))
     {
         return;

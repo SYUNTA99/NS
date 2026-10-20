@@ -67,5 +67,5 @@ namespace NS
     [[nodiscard]] const EffectRecord* FindEffect(const IUseEffect* user, uint32 id) noexcept;
 
     //! 今のフレームの番号。SceneActor::Update の回数。EffectKeeper が無い時は 0
-    [[nodiscard]] int EffectStep(const IUseEffect* user) noexcept;
+    [[nodiscard]] int GetEffectStep(const IUseEffect* user) noexcept;
 } // namespace NS

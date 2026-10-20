@@ -38,16 +38,16 @@ namespace NS
     };
 
     //! @brief 自分の状態機械を返す口。状態機械を持つ物が実装する
-    //! @details SetState / IsState / IsFirstStep / StepsInState は IUseState だけを受け取る
+    //! @details SetState / IsState / IsFirstStep / GetStateStep は IUseState だけを受け取る
     class IUseState
     {
     public:
         //! @brief 自分の状態機械を返す
         //! @return 状態機械を持たなければ nullptr
-        [[nodiscard]] virtual IStateMachine* GetStates() noexcept = 0;
+        [[nodiscard]] virtual IStateMachine* GetStateMachine() noexcept = 0;
         //! @brief 自分の状態機械を返す
         //! @return 状態機械を持たなければ nullptr
-        [[nodiscard]] virtual const IStateMachine* GetStates() const noexcept = 0;
+        [[nodiscard]] virtual const IStateMachine* GetStateMachine() const noexcept = 0;
 
     protected:
         ~IUseState() = default;
@@ -58,7 +58,7 @@ namespace NS
     template <typename TState> bool SetState(IUseState* user)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        IStateMachine* machine = user->GetStates();
+        IStateMachine* machine = user->GetStateMachine();
         return machine != nullptr && machine->Change(StateIdOf<TState>());
     }
 
@@ -66,7 +66,7 @@ namespace NS
     template <typename TState> [[nodiscard]] bool IsState(const IUseState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        const IStateMachine* machine = user->GetStates();
+        const IStateMachine* machine = user->GetStateMachine();
         return machine != nullptr && machine->CurrentId() == StateIdOf<TState>();
     }
 
@@ -74,16 +74,16 @@ namespace NS
     [[nodiscard]] inline bool IsFirstStep(const IUseState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        const IStateMachine* machine = user->GetStates();
+        const IStateMachine* machine = user->GetStateMachine();
         return machine != nullptr && machine->CurrentId() != nullptr && machine->StepsInState() == 0;
     }
 
     //! @brief user が今の状態に入ってから進めたフレーム数を返す
     //! @return 状態機械を持たなければ 0
-    [[nodiscard]] inline uint32 StepsInState(const IUseState* user) noexcept
+    [[nodiscard]] inline uint32 GetStateStep(const IUseState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        const IStateMachine* machine = user->GetStates();
+        const IStateMachine* machine = user->GetStateMachine();
         if (machine == nullptr)
         {
             return 0;

@@ -88,8 +88,8 @@ namespace
 TEST(ActorBodyTime, ScaleOneGivesTheFixedStep)
 {
     NS::SceneActor actor;
-    EXPECT_FLOAT_EQ(actor.BodyTimeScale(), 1.0f);
-    EXPECT_EQ(actor.BodyDelta(), NS::OS::FrameTimer::FixedDelta());
+    EXPECT_FLOAT_EQ(NS::GetFrameRate(&actor), 1.0f);
+    EXPECT_EQ(NS::GetFrameDelta(&actor), NS::OS::FrameTimer::FixedDelta());
 }
 
 TEST(ActorBodyTime, RockAtScaleTwoFliesTwoStepsInOne)
@@ -104,7 +104,7 @@ TEST(ActorBodyTime, RockAtScaleTwoFliesTwoStepsInOne)
     ASSERT_NE(slowRock, nullptr);
     ASSERT_NE(fastRock, nullptr);
     ASSERT_NE(player, nullptr);
-    ASSERT_TRUE(fastRock->SetBodyTimeScale(2.0f));
+    ASSERT_TRUE(NS::SetFrameRate(fastRock, 2.0f));
     ReleaseRock(*slowRock);
     ReleaseRock(*fastRock);
     for (int step = 0; step < 4; ++step)
@@ -119,7 +119,7 @@ TEST(ActorBodyTime, RockAtScaleTwoFliesTwoStepsInOne)
         EXPECT_NEAR(fastPosition.z, slow.z, 1.0e-3f) << step;
     }
     EXPECT_GT(slowRock->Root().Position().x, 0.5f);
-    EXPECT_EQ(player->BodyDelta(), NS::OS::FrameTimer::FixedDelta());
+    EXPECT_EQ(NS::GetFrameDelta(player), NS::OS::FrameTimer::FixedDelta());
 }
 
 TEST(ActorBodyTime, PlayerAtScaleTwoMovesAndSpinsTwoStepsInOne)
@@ -132,7 +132,7 @@ TEST(ActorBodyTime, PlayerAtScaleTwoMovesAndSpinsTwoStepsInOne)
     PlayerActor* fastPlayer = PlayerOf(fast);
     ASSERT_NE(slowPlayer, nullptr);
     ASSERT_NE(fastPlayer, nullptr);
-    ASSERT_TRUE(fastPlayer->SetBodyTimeScale(2.0f));
+    ASSERT_TRUE(NS::SetFrameRate(fastPlayer, 2.0f));
     const SlamStep slow = SecondSlamStep(*slowPlayer);
     const SlamStep fastStep = SecondSlamStep(*fastPlayer);
     ASSERT_GT(slow.moved.z, 0.0f);
@@ -141,7 +141,7 @@ TEST(ActorBodyTime, PlayerAtScaleTwoMovesAndSpinsTwoStepsInOne)
     EXPECT_NEAR(fastStep.spinDegrees, slow.spinDegrees * 2.0f, slow.spinDegrees * 0.01f);
     GL::Level::PropActor* rock = RockOf(fast);
     ASSERT_NE(rock, nullptr);
-    EXPECT_EQ(rock->BodyDelta(), NS::OS::FrameTimer::FixedDelta());
+    EXPECT_EQ(NS::GetFrameDelta(rock), NS::OS::FrameTimer::FixedDelta());
 }
 
 TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
@@ -154,7 +154,7 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
         NS::Animation* animation = player.AnimationClassObj();
         ASSERT_NE(animation, nullptr);
         ASSERT_EQ(UseTestClips(player, {{"走りのクリップ", "Assets/Models/Xbot.glb#run"}}), 0u);
-        ASSERT_TRUE(player.SetBodyTimeScale(static_cast<float>(index + 1)));
+        ASSERT_TRUE(NS::SetFrameRate(&player, static_cast<float>(index + 1)));
         player.Body().SetGrounded(true);
         player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
         player.UpdateAnimation();
@@ -168,13 +168,13 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
 TEST(ActorBodyTime, RejectsScalesThatAreNotFiniteAndPositive)
 {
     NS::SceneActor actor;
-    ASSERT_TRUE(actor.SetBodyTimeScale(2.0f));
+    ASSERT_TRUE(NS::SetFrameRate(&actor, 2.0f));
     const TestLogCapture log;
     for (const float bad :
          {0.0f, -1.0f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()})
     {
-        EXPECT_FALSE(actor.SetBodyTimeScale(bad)) << bad;
-        EXPECT_FLOAT_EQ(actor.BodyTimeScale(), 2.0f) << bad;
+        EXPECT_FALSE(NS::SetFrameRate(&actor, bad)) << bad;
+        EXPECT_FLOAT_EQ(NS::GetFrameRate(&actor), 2.0f) << bad;
     }
     EXPECT_EQ(log.ErrorCount(), 4);
 }

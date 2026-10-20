@@ -205,7 +205,7 @@ void PlayerActor::ObserveStep()
 
 void PlayerActor::DecideStep()
 {
-    AdvanceCharge(BodyDelta());
+    AdvanceCharge(NS::GetFrameDelta(this));
     m_resolver->StepState(SlamMotion(),
                           m_params.get(),
                           m_body.get(),
@@ -243,7 +243,7 @@ void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexc
 
 void PlayerActor::StateStep()
 {
-    const float dt = BodyDelta();
+    const float dt = NS::GetFrameDelta(this);
     if (CanMoveBody() && dt > 0.0f)
     {
         PrepareStateStep();
@@ -261,7 +261,7 @@ void PlayerActor::StateStep()
 
 void PlayerActor::BodyStep()
 {
-    const float dt = BodyDelta();
+    const float dt = NS::GetFrameDelta(this);
     if (CanMoveBody() && dt > 0.0f)
     {
         MoveBody(dt);

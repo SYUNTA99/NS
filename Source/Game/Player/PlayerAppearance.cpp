@@ -109,7 +109,7 @@ namespace GL
             if (m_owner != nullptr)
             {
                 renderer = m_owner->ModelClassObj();
-                dt = m_owner->BodyDelta();
+                dt = NS::GetFrameDelta(m_owner);
             }
 
             if (!m_curled)
@@ -233,7 +233,7 @@ namespace GL
             float dt = NS::OS::FrameTimer::FixedDelta();
             if (m_owner != nullptr)
             {
-                dt = m_owner->BodyDelta();
+                dt = NS::GetFrameDelta(m_owner);
             }
             // TODO: 歩の数に今の歩の秒を掛けるので、倍率が途中で変わると位相が跳ぶ
             // 外した反動の間に倍率を動かす時に、経過の秒を足し込む形へ変える

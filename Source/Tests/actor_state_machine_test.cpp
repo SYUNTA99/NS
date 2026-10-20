@@ -116,7 +116,7 @@ namespace
         void VisualStep() override
         {
             NS::SceneActor::VisualStep();
-            stepsSeenInVisual = StepsInState(this);
+            stepsSeenInVisual = GetStateStep(this);
         }
     };
 } // namespace
@@ -124,9 +124,9 @@ namespace
 TEST(ActorStateMachine, ActorWithoutMachineUpdatesQuietly)
 {
     NS::SceneActor actor;
-    EXPECT_EQ(actor.GetStates(), nullptr);
+    EXPECT_EQ(actor.GetStateMachine(), nullptr);
     actor.Update();
-    EXPECT_EQ(actor.GetStates(), nullptr);
+    EXPECT_EQ(actor.GetStateMachine(), nullptr);
     EXPECT_FALSE(NS::IsState<OwnedState>(&actor));
 }
 
@@ -135,14 +135,14 @@ TEST(ActorStateMachine, BaseOwnsTheMachineAndUpdateStepsIt)
     MachineActor actor;
     NS::StateMachineOf<NS::SceneActor>* machine = actor.BuildOwned();
 
-    ASSERT_NE(actor.GetStates(), nullptr);
-    EXPECT_EQ(actor.GetStates(), machine);
+    ASSERT_NE(actor.GetStateMachine(), nullptr);
+    EXPECT_EQ(actor.GetStateMachine(), machine);
     EXPECT_TRUE(NS::IsState<OwnedState>(&actor));
     EXPECT_TRUE(NS::IsFirstStep(&actor));
     actor.Update();
-    EXPECT_EQ(NS::StepsInState(&actor), 1u);
+    EXPECT_EQ(NS::GetStateStep(&actor), 1u);
     actor.Update();
-    EXPECT_EQ(NS::StepsInState(&actor), 2u);
+    EXPECT_EQ(NS::GetStateStep(&actor), 2u);
     EXPECT_TRUE(NS::SetState<OwnedState>(&actor));
 }
 
@@ -164,7 +164,7 @@ TEST(ActorStateMachine, TypedPointerIsReadableFromFirstStateOnEnter)
 
     ASSERT_NE(actor.machine, nullptr);
     EXPECT_EQ(actor.machineSeenInEnter, actor.machine);
-    EXPECT_EQ(actor.GetStates(), actor.machine);
+    EXPECT_EQ(actor.GetStateMachine(), actor.machine);
 }
 
 TEST(ActorStateMachine, MachineIsListedAsTheStateMachineClassObj)
@@ -173,15 +173,15 @@ TEST(ActorStateMachine, MachineIsListedAsTheStateMachineClassObj)
     EXPECT_EQ(CountClassObjKey(*player, "StateMachine"), 1);
     const NS::StateMachine* playerPart = NS::Cast<NS::StateMachine>(ListedClassObj(*player, "StateMachine"));
     ASSERT_NE(playerPart, nullptr);
-    ASSERT_NE(player->GetStates(), nullptr);
-    EXPECT_EQ(playerPart->Machine(), player->GetStates());
+    ASSERT_NE(player->GetStateMachine(), nullptr);
+    EXPECT_EQ(playerPart->Machine(), player->GetStateMachine());
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
     EXPECT_EQ(CountClassObjKey(*prop, "StateMachine"), 1);
     const NS::StateMachine* propPart = NS::Cast<NS::StateMachine>(ListedClassObj(*prop, "StateMachine"));
     ASSERT_NE(propPart, nullptr);
-    ASSERT_NE(prop->GetStates(), nullptr);
-    EXPECT_EQ(propPart->Machine(), prop->GetStates());
+    ASSERT_NE(prop->GetStateMachine(), nullptr);
+    EXPECT_EQ(propPart->Machine(), prop->GetStateMachine());
 }
 
 TEST(ActorStateMachine, SavedJsonGainsNoStateMachineFields)
@@ -206,6 +206,6 @@ TEST(ActorStateMachine, SecondBuildFailsAndKeepsTheFirstMachine)
     EXPECT_EQ(log.ErrorCount(), 1);
 
     EXPECT_EQ(actor.machine, first);
-    EXPECT_EQ(actor.GetStates(), first);
+    EXPECT_EQ(actor.GetStateMachine(), first);
     EXPECT_TRUE(NS::IsState<ProbeState>(&actor));
 }

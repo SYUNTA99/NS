@@ -208,7 +208,7 @@ TEST(IUseCamera, ForwardFollowsTheVirtualCameraNotTheDrawnCamera)
     NS::SceneActor* actor = scene.SpawnTransient<NS::SceneActor>();
     ASSERT_NE(actor, nullptr);
 
-    const NS::Vector3 forward = NS::CameraForwardHorizontal(actor);
+    const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(actor);
 
     EXPECT_FLOAT_EQ(forward.x, 0.0f);
     EXPECT_FLOAT_EQ(forward.z, 1.0f);
@@ -223,7 +223,7 @@ TEST(IUseCamera, ForwardWithoutAVirtualCameraIsPlusZ)
     NS::SceneActor* actor = scene.SpawnTransient<NS::SceneActor>();
     ASSERT_NE(actor, nullptr);
 
-    const NS::Vector3 forward = NS::CameraForwardHorizontal(actor);
+    const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(actor);
 
     EXPECT_FLOAT_EQ(forward.x, 0.0f);
     EXPECT_FLOAT_EQ(forward.z, 1.0f);
@@ -294,7 +294,7 @@ TEST(IUseCamera, ViewPoseLeavesOutTheShake)
     ASSERT_TRUE(drawn.has_value());
     ASSERT_NE(drawn->position.x, 0.0f);
 
-    const std::optional<NS::CameraPose> view = NS::CameraViewPose(actor);
+    const std::optional<NS::CameraPose> view = NS::GetCameraViewPose(actor);
 
     ASSERT_TRUE(view.has_value());
     EXPECT_FLOAT_EQ(view->position.x, 0.0f);

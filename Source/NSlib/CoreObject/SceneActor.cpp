@@ -93,7 +93,7 @@ namespace NS
         return created;
     }
 
-    IStateMachine* SceneActor::GetStates() noexcept
+    IStateMachine* SceneActor::GetStateMachine() noexcept
     {
         if (m_stateMachine == nullptr)
         {
@@ -102,18 +102,13 @@ namespace NS
         return m_stateMachine->Machine();
     }
 
-    const IStateMachine* SceneActor::GetStates() const noexcept
+    const IStateMachine* SceneActor::GetStateMachine() const noexcept
     {
         if (m_stateMachine == nullptr)
         {
             return nullptr;
         }
         return m_stateMachine->Machine();
-    }
-
-    float SceneActor::BodyDelta() const noexcept
-    {
-        return OS::FrameTimer::FixedDelta() * m_bodyTimeScale;
     }
 
     void SceneActor::Appear()
@@ -189,18 +184,28 @@ namespace NS
         velocity += GravityDirection() * (strength * dt);
     }
 
-    bool SceneActor::SetBodyTimeScale(float scale) noexcept
+    float GetFrameRate(const SceneActor* actor) noexcept
     {
-        if (!std::isfinite(scale) || !(scale > 0.0f))
+        NS_ASSERT(Scene, actor != nullptr, "GetFrameRate: アクターが null");
+        return actor->m_frameRate;
+    }
+
+    bool SetFrameRate(SceneActor* actor, float rate) noexcept
+    {
+        NS_ASSERT(Scene, actor != nullptr, "SetFrameRate: アクターが null");
+        if (!std::isfinite(rate) || !(rate > 0.0f))
         {
-            NS_LOG_ERROR(Scene,
-                         "SceneActor::SetBodyTimeScale: 体の倍率 {} は正の有限値でない。前の {} を残す",
-                         scale,
-                         m_bodyTimeScale);
+            NS_LOG_ERROR(
+                Scene, "SetFrameRate: 体の倍率 {} は正の有限値でない。前の {} を残す", rate, actor->m_frameRate);
             return false;
         }
-        m_bodyTimeScale = scale;
+        actor->m_frameRate = rate;
         return true;
+    }
+
+    float GetFrameDelta(const SceneActor* actor) noexcept
+    {
+        return OS::FrameTimer::FixedDelta() * GetFrameRate(actor);
     }
 
     SceneActor::~SceneActor() noexcept = default;

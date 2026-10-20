@@ -872,7 +872,7 @@ TEST(ImpactTimelineClock, TremorRunsFromTheReleaseThroughItsLength)
             EXPECT_FLOAT_EQ(other.amplitude, 0.0f);
             continue;
         }
-        const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
+        const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         NS::Vector3 forward = pose->target - pose->position;
         forward.Normalize();
@@ -951,7 +951,7 @@ TEST(ImpactTimelineClock, TargetTremorRatioKeepsTheSameShareOfTheBody)
         {
             continue;
         }
-        const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
+        const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(rock->GetDrawAdjust().tremor.amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
         EXPECT_NEAR(player->GetDrawAdjust().tremor.amplitude,
@@ -993,7 +993,7 @@ TEST(ImpactTimelineClock, InstancePixelReferenceReachesBothRenderedBodies)
         {
             continue;
         }
-        const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
+        const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(player);
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(selfAmplitude, MetersForPixels(*pose, player->Root().Position(), 3.0f) * 0.5f, 0.00001f);
         EXPECT_NEAR(rock->GetDrawAdjust().tremor.amplitude,
@@ -1361,7 +1361,7 @@ TEST(ImpactTimelineClock, GhostSpreadsSideCopiesThenLeavesTheStoppedPose)
         const GL::Level::TackleGhost& other = rock->Ghost();
         if (clock == 1)
         {
-            const std::optional<NS::CameraPose> pose = NS::CameraViewPose(player);
+            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(player);
             ASSERT_TRUE(pose.has_value());
             selfSpread = MetersForPixels(*pose, player->Root().Position(), 35.0f);
             otherSpread = MetersForPixels(*pose, rock->Root().Position(), 112.5f);

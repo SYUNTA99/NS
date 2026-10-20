@@ -276,8 +276,8 @@ namespace NS
         [[nodiscard]] bool IsDead() const noexcept { return m_dead; }
         [[nodiscard]] StateMachineOf<TOwner>& Machine() noexcept { return m_machine; }
         [[nodiscard]] const StateMachineOf<TOwner>& Machine() const noexcept { return m_machine; }
-        [[nodiscard]] IStateMachine* GetStates() noexcept override { return &m_machine; }
-        [[nodiscard]] const IStateMachine* GetStates() const noexcept override { return &m_machine; }
+        [[nodiscard]] IStateMachine* GetStateMachine() noexcept override { return &m_machine; }
+        [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override { return &m_machine; }
 
     private:
         StateMachineOf<TOwner> m_machine;
