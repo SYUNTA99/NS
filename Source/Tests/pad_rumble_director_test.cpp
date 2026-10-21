@@ -101,3 +101,21 @@ TEST(PadRumbleDirector, DiscardingTheDirectorWritesZero)
     scene.GetSceneSystemHolder()->Clear();
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
 }
+
+// 重ねた振動の和が 1 を超えても 1 で書き、振動を止めない
+TEST(PadRumbleDirector, BlendedSumAboveOneWritesOneAndKeepsRunning)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlacePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
+    ASSERT_NE(pad, nullptr);
+
+    pad->Start(*player, FadingLeft(0.75f, 4));
+    pad->Blend(*player, FadingLeft(0.5f, 4));
+    EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
+    pad->OnTick();
+    pad->OnTick();
+    // 和が 0.9375 へ下がったフレームも書く
+    EXPECT_FLOAT_EQ(PadLeft(), 0.9375f);
+}

@@ -6,6 +6,8 @@
 #include "NSlib/CoreObject/UpdatePhase.h"
 #include "NSlib/Windows/Input.h"
 
+#include <algorithm>
+
 namespace NS
 {
     PadRumbleDirector::PadRumbleDirector(Scene& scene)
@@ -91,11 +93,14 @@ namespace NS
             // 終わりのフレームも 0 を書く。書かないと次の Input::Update までは前の値が読める
             m_running = false;
         }
-        // 曲線が範囲の外へ出て書けなかったら、以後は書かない
+        // 重ねた和と、キーの値を行き過ぎた曲線は 1 を超えるので、モーターの範囲 0〜1 に収める
+        speed.left = std::clamp(speed.left, 0.0f, 1.0f);
+        speed.right = std::clamp(speed.right, 0.0f, 1.0f);
+        // 非数は clamp を通り抜けて書けないので、以後は書かない
         if (!OS::Input::Get().Gamepad().SetVibration(speed.left, speed.right))
         {
             NS_LOG_WARN(
-                Scene, "パッドの振動の速さが 0〜1 の外で、震わせなかった: 左 {} 右 {}", speed.left, speed.right);
+                Scene, "パッドの振動の速さが非数で、震わせなかった: 左 {} 右 {}", speed.left, speed.right);
             m_running = false;
         }
     }
