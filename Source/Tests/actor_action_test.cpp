@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include <cstddef>
+#include <limits>
 #include <optional>
 #include <string>
 #include <utility>
@@ -165,6 +166,42 @@ TEST(ActorAction, ActorFileSkipsBrokenAndDuplicateActions)
     EXPECT_TRUE(actions[0].events.empty());
     EXPECT_EQ(actions[1].name, "Hit");
     EXPECT_EQ(log.ErrorCount(), 2);
+}
+
+// 読めた動作を直して書き戻しても、読めなかった動作と名前の重なった動作は .actor の同じ位置に元の字面のまま残る
+TEST(ActorAction, WritingBackKeepsTheActionsThatWereNotRead)
+{
+    const nlohmann::json original = nlohmann::json::parse(R"([
+        {"name": "BeforeContact", "events": []},
+        {"name": "Broken", "events": [{"type": "Flash", "start": -1, "length": 1}]},
+        {"name": "BeforeContact", "events": [{"type": "Flash", "start": 0, "length": 1}]},
+        {"name": "Hit", "events": []}
+    ])");
+    nlohmann::json actorFile = ClassOnlyActorFile("PlayerActor");
+    NS::SetActorFileActions(actorFile, original);
+    const TestLogCapture log;
+    std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
+    ASSERT_EQ(actions.size(), 2u);
+    actions[1].events.push_back(NS::ActorActionEvent{.item = NS::HitFlashItem{}, .start = 2, .length = 3});
+    NS::WriteActorActions(actorFile, actions);
+    const nlohmann::json* list = NS::ActorFileActions(actorFile);
+    ASSERT_NE(list, nullptr);
+    ASSERT_EQ(list->size(), 4u);
+    EXPECT_EQ((*list)[0], original[0]);
+    EXPECT_EQ((*list)[1], original[1]);
+    EXPECT_EQ((*list)[2], original[2]);
+    EXPECT_EQ((*list)[3]["name"], "Hit");
+    ASSERT_EQ((*list)[3]["events"].size(), 1u);
+    EXPECT_EQ((*list)[3]["events"][0]["start"], 2);
+}
+
+// 動作の長さは、始まりと長さを足すと int を越える事象でも負に回らない
+TEST(ActorAction, TheLengthDoesNotWrapPastInt)
+{
+    NS::ActorAction action;
+    action.events.push_back(
+        NS::ActorActionEvent{.item = NS::HitFlashItem{}, .start = std::numeric_limits<int>::max(), .length = 1});
+    EXPECT_EQ(NS::ActionLength(action), std::numeric_limits<int>::max());
 }
 
 // 動作が 1 つも無い時は鍵を書かない。束と動作を持たない .actor の形を変えない

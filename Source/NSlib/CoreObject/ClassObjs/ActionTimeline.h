@@ -59,10 +59,14 @@ namespace NS
     [[nodiscard]] std::vector<ActorAction> ReadActorActions(std::string_view actorFileName,
                                                             const nlohmann::json& actorFile);
 
-    //! .actor の文書へ動作の並びを書く。並びが空なら鍵ごと消す
+    //! @brief .actor の文書へ動作の並びを書く。書く物が無ければ鍵ごと消す
+    //! @details 今の並びのうち ReadActorActions が読まない動作は、字面のまま同じ位置に残す。読む動作の位置へ
+    //! actions を並びの順に書き、余った actions は末尾へ足し、足りない位置は消す。今の並びが配列でなければ
+    //! actions だけを書く
     void WriteActorActions(nlohmann::json& actorFile, const std::vector<ActorAction>& actions);
 
-    //! 動作の長さ (フレーム数)。一番遅く終わる事象と入り切りの、始まり + 長さ。どちらも無ければ 0
+    //! 動作の長さ (フレーム数)。一番遅く終わる事象と入り切りの、始まり + 長さ。どちらも無ければ 0。
+    //! int を越える長さは int の最大
     [[nodiscard]] int ActionLength(const ActorAction& action) noexcept;
 
     //! @brief 持ち主の .actor の動作を持ち、状態に入る時に始めた動作を、状態の歩を時計にして進める部品

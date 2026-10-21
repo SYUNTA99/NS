@@ -8,7 +8,9 @@
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
+#include <cmath>
 #include <functional>
+#include <limits>
 #include <map>
 
 namespace GL
@@ -125,7 +127,7 @@ namespace GL
                     NS::ScreenPixelsToMeters(HitOwnerValue(item, "離れのピクセル", 0.0f), *pose, owner->Root().Position()),
                 .sideOpacity = HitOwnerValue(item, "左右の残像の不透明度", 0.0f),
                 .stopLength = run.length,
-                .releaseFrames = static_cast<int>(HitOwnerValue(item, "明けの残像のフレーム数", 0.0f)),
+                .releaseFrames = HitOwnerFrames(item, "明けの残像のフレーム数", 0),
                 .releaseOpacity = HitOwnerValue(item, "明けの残像の不透明度", 0.0f)};
             frame = 0;
             active = true;
@@ -158,6 +160,19 @@ namespace GL
                 return fallback;
             }
             return found->second;
+        }
+
+        int HitOwnerFrames(const NS::HitOwnerItem& item, std::string_view name, int fallback)
+        {
+            const float value = HitOwnerValue(item, name, static_cast<float>(fallback));
+            // int の最大を float にすると 2^31 に丸まるので、その値は等号でも断る
+            if (!std::isfinite(value) || value < 0.0f || value >= static_cast<float>(std::numeric_limits<int>::max()))
+            {
+                NS_LOG_WARN(
+                    Game, "束の項目 {} の値 {} が 0 以上の int のフレーム数でないので {} を使う", item.name, name, fallback);
+                return fallback;
+            }
+            return static_cast<int>(value);
         }
 
         std::string TackleSetName(std::string_view base, HitTier tier, std::string_view variant)

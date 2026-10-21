@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <format>
+#include <limits>
 #include <set>
 #include <utility>
 #include <variant>
@@ -201,6 +202,46 @@ namespace NS
         return doc;
     }
 
+    namespace
+    {
+        // 動作の並びの要素 1 つを読んだ結果。読まない要素は action が空で、reason に理由を持つ
+        struct ListedActorAction
+        {
+            std::optional<ActorAction> action;
+            std::string reason;
+        };
+
+        // 動作の並びを要素ごとに読む。読むか読まないかの決まりは、読む時と書き戻す時でこの 1 か所を通す
+        std::vector<ListedActorAction> ListActorActions(const nlohmann::json& list)
+        {
+            std::vector<ListedActorAction> listed(list.size());
+            std::set<std::string, std::less<>> names;
+            for (std::size_t i = 0; i < list.size(); ++i)
+            {
+                std::optional<ActorAction> action = ParseActorAction(list[i], listed[i].reason);
+                if (!action.has_value())
+                {
+                    continue;
+                }
+                // 同じ名前を 2 つ持つと、状態が始める動作が並びの順で黙って決まる
+                if (!names.insert(action->name).second)
+                {
+                    listed[i].reason = std::format("名前 {} が前の動作と重なる", action->name);
+                    continue;
+                }
+                listed[i].action = std::move(action);
+            }
+            return listed;
+        }
+
+        // 始まりと長さを足した終わりのフレーム。int を越える終わりは int の最大にする
+        int EndFrame(int start, int length) noexcept
+        {
+            const int64 end = static_cast<int64>(start) + static_cast<int64>(length);
+            return static_cast<int>(std::min<int64>(end, std::numeric_limits<int>::max()));
+        }
+    } // namespace
+
     std::vector<ActorAction> ReadActorActions(std::string_view actorFileName, const nlohmann::json& actorFile)
     {
         std::vector<ActorAction> actions;
@@ -214,27 +255,15 @@ namespace NS
             NS_LOG_ERROR(Scene, ".actor {} の動作の並び actions が配列でないので、動作を読まない", actorFileName);
             return actions;
         }
-        std::set<std::string, std::less<>> names;
-        for (std::size_t i = 0; i < list->size(); ++i)
+        std::vector<ListedActorAction> listed = ListActorActions(*list);
+        for (std::size_t i = 0; i < listed.size(); ++i)
         {
-            std::string error;
-            std::optional<ActorAction> action = ParseActorAction((*list)[i], error);
-            if (!action.has_value())
+            if (!listed[i].action.has_value())
             {
-                NS_LOG_ERROR(Scene, ".actor {} の {} 番目の動作を読まない。{}", actorFileName, i, error);
+                NS_LOG_ERROR(Scene, ".actor {} の {} 番目の動作を読まない。{}", actorFileName, i, listed[i].reason);
                 continue;
             }
-            // 同じ名前を 2 つ持つと、状態が始める動作が並びの順で黙って決まる
-            if (!names.insert(action->name).second)
-            {
-                NS_LOG_ERROR(Scene,
-                             ".actor {} の {} 番目の動作を読まない。名前 {} が前の動作と重なる",
-                             actorFileName,
-                             i,
-                             action->name);
-                continue;
-            }
-            actions.push_back(std::move(*action));
+            actions.push_back(std::move(*listed[i].action));
         }
         return actions;
     }
@@ -242,9 +271,29 @@ namespace NS
     void WriteActorActions(nlohmann::json& actorFile, const std::vector<ActorAction>& actions)
     {
         nlohmann::json list = nlohmann::json::array();
-        for (const ActorAction& action : actions)
+        std::size_t next = 0;
+        const nlohmann::json* current = ActorFileActions(actorFile);
+        if (current != nullptr && current->is_array())
         {
-            list.push_back(ActorActionToJson(action));
+            // 読まなかった動作は字面のまま同じ位置に残す。捨てると、直していない本人の値が .actor から消える
+            const std::vector<ListedActorAction> listed = ListActorActions(*current);
+            for (std::size_t i = 0; i < listed.size(); ++i)
+            {
+                if (!listed[i].action.has_value())
+                {
+                    list.push_back((*current)[i]);
+                    continue;
+                }
+                if (next < actions.size())
+                {
+                    list.push_back(ActorActionToJson(actions[next]));
+                    ++next;
+                }
+            }
+        }
+        for (; next < actions.size(); ++next)
+        {
+            list.push_back(ActorActionToJson(actions[next]));
         }
         SetActorFileActions(actorFile, std::move(list));
     }
@@ -254,11 +303,11 @@ namespace NS
         int length = 0;
         for (const ActorActionEvent& event : action.events)
         {
-            length = std::max(length, event.start + event.length);
+            length = std::max(length, EndFrame(event.start, event.length));
         }
         for (const ActionSensorEvent& event : action.sensors)
         {
-            length = std::max(length, event.start + event.length);
+            length = std::max(length, EndFrame(event.start, event.length));
         }
         return length;
     }

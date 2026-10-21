@@ -217,6 +217,7 @@ TEST(PlayerStateSequence, LedgeJumpSpendsTheJumpLikeAGroundJump)
     player->SetJumpPressed();
     ASSERT_TRUE(player->LedgeJump());
     EXPECT_EQ(player->JumpsRemaining(), 0);
+    EXPECT_EQ(player->CoyoteRemaining(), 0.0f);
     player->Body().SetVerticalVelocity(0.0f);
     player->SetJumpPressed();
     player->Jump(0.0f);
@@ -1059,13 +1060,18 @@ TEST(PlayerTackleHit, TheReboundLandingFrameSquashesDustsAndEndsTheTrail)
         landed = true;
         EXPECT_EQ(CountPlayerEffects(*player, "land.dust"), dustBefore + 1);
         EXPECT_LT(player->ModelClassObj()->GetDrawScale().y, heightBefore);
+        const NS::EffectRecord* trail = nullptr;
+        int trails = 0;
         for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
         {
             if (record.name == "rebound.trail")
             {
-                EXPECT_TRUE(record.rootStopStep.has_value() || record.endStep.has_value());
+                trail = &record;
+                ++trails;
             }
         }
+        ASSERT_EQ(trails, 1) << "反動の尾を 1 本出した当たりで見る";
+        EXPECT_TRUE(trail->rootStopStep.has_value() || trail->endStep.has_value());
         EXPECT_TRUE(player->IsRebounding());
         scene.OnUpdate();
         EXPECT_FALSE(player->IsRebounding());

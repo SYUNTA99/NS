@@ -197,6 +197,10 @@ namespace GL
         //! 持ち主へ渡す項目の値。.actor に書き忘れた値は WARN を出して fallback を使う
         [[nodiscard]] float HitOwnerValue(const NS::HitOwnerItem& item, std::string_view name, float fallback);
 
+        //! @brief 持ち主へ渡す項目の値をフレーム数として読む。小数は 0 の側へ切り捨てる
+        //! @details 書き忘れた値と、非数・無限・負・int に入らない値は WARN を出して fallback を使う
+        [[nodiscard]] int HitOwnerFrames(const NS::HitOwnerItem& item, std::string_view name, int fallback);
+
         //! @brief 段ごとの束の名前。base[段の名前] の形で、variant は段の名前の後ろに添える
         //! @details 段の名前は真ん中・外れ。.actor の束の名前と同じ綴りにする (例 明け[真ん中・紫])
         [[nodiscard]] std::string TackleSetName(std::string_view base, HitTier tier, std::string_view variant = {});

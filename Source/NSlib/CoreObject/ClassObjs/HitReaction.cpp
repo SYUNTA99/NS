@@ -17,7 +17,9 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <format>
+#include <limits>
 #include <optional>
 #include <random>
 #include <set>
@@ -829,12 +831,28 @@ namespace NS
     bool ReadHitReactionFrames(const nlohmann::json& row, std::string_view key, int& out)
     {
         const nlohmann::json::const_iterator value = row.find(key);
-        // 1.5 のような整数でない数と、整数の外の値も断る
-        if (value == row.end() || !value->is_number_integer() || value->get<int>() < 0)
+        // 1.5 のような整数でない数を断る
+        if (value == row.end() || !value->is_number_integer())
         {
             return false;
         }
-        out = value->get<int>();
+        // int へ写す前に範囲を見る。写してから比べると、int の外の数が切り詰められて別の長さで通る
+        if (value->is_number_unsigned())
+        {
+            const std::uint64_t frames = value->get<std::uint64_t>();
+            if (frames > static_cast<std::uint64_t>(std::numeric_limits<int>::max()))
+            {
+                return false;
+            }
+            out = static_cast<int>(frames);
+            return true;
+        }
+        const std::int64_t frames = value->get<std::int64_t>();
+        if (frames < 0 || frames > std::numeric_limits<int>::max())
+        {
+            return false;
+        }
+        out = static_cast<int>(frames);
         return true;
     }
 
@@ -958,6 +976,39 @@ namespace NS
         return doc;
     }
 
+    namespace
+    {
+        // 束の並びの要素 1 つを読んだ結果。読まない要素は set が空で、reason に理由を持つ
+        struct ListedHitReactionSet
+        {
+            std::optional<HitReactionSet> set;
+            std::string reason;
+        };
+
+        // 束の並びを要素ごとに読む。読むか読まないかの決まりは、読む時と書き戻す時でこの 1 か所を通す
+        std::vector<ListedHitReactionSet> ListHitReactionSets(const nlohmann::json& list)
+        {
+            std::vector<ListedHitReactionSet> listed(list.size());
+            std::set<std::string, std::less<>> names;
+            for (std::size_t i = 0; i < list.size(); ++i)
+            {
+                std::optional<HitReactionSet> set = ParseHitReactionSet(list[i], listed[i].reason);
+                if (!set.has_value())
+                {
+                    continue;
+                }
+                // 同じ名前を 2 つ持つと、始める束が並びの順で黙って決まる
+                if (!names.insert(set->name).second)
+                {
+                    listed[i].reason = std::format("名前 {} が前の束と重なる", set->name);
+                    continue;
+                }
+                listed[i].set = std::move(set);
+            }
+            return listed;
+        }
+    } // namespace
+
     std::vector<HitReactionSet> ReadHitReactionSets(std::string_view actorFileName, const nlohmann::json& actorFile)
     {
         std::vector<HitReactionSet> sets;
@@ -971,24 +1022,15 @@ namespace NS
             NS_LOG_ERROR(Scene, ".actor {} の束の並び hitReactions が配列でないので、束を読まない", actorFileName);
             return sets;
         }
-        std::set<std::string, std::less<>> names;
-        for (std::size_t i = 0; i < list->size(); ++i)
+        std::vector<ListedHitReactionSet> listed = ListHitReactionSets(*list);
+        for (std::size_t i = 0; i < listed.size(); ++i)
         {
-            std::string error;
-            std::optional<HitReactionSet> set = ParseHitReactionSet((*list)[i], error);
-            if (!set.has_value())
+            if (!listed[i].set.has_value())
             {
-                NS_LOG_ERROR(Scene, ".actor {} の {} 番目の束を読まない。{}", actorFileName, i, error);
+                NS_LOG_ERROR(Scene, ".actor {} の {} 番目の束を読まない。{}", actorFileName, i, listed[i].reason);
                 continue;
             }
-            // 同じ名前を 2 つ持つと、始める束が並びの順で黙って決まる
-            if (!names.insert(set->name).second)
-            {
-                NS_LOG_ERROR(
-                    Scene, ".actor {} の {} 番目の束を読まない。名前 {} が前の束と重なる", actorFileName, i, set->name);
-                continue;
-            }
-            sets.push_back(std::move(*set));
+            sets.push_back(std::move(*listed[i].set));
         }
         return sets;
     }
@@ -996,9 +1038,29 @@ namespace NS
     void WriteHitReactionSets(nlohmann::json& actorFile, const std::vector<HitReactionSet>& sets)
     {
         nlohmann::json list = nlohmann::json::array();
-        for (const HitReactionSet& set : sets)
+        std::size_t next = 0;
+        const nlohmann::json* current = ActorFileHitReactions(actorFile);
+        if (current != nullptr && current->is_array())
         {
-            list.push_back(HitReactionSetToJson(set));
+            // 読まなかった束は字面のまま同じ位置に残す。捨てると、直していない本人の値が .actor から消える
+            const std::vector<ListedHitReactionSet> listed = ListHitReactionSets(*current);
+            for (std::size_t i = 0; i < listed.size(); ++i)
+            {
+                if (!listed[i].set.has_value())
+                {
+                    list.push_back((*current)[i]);
+                    continue;
+                }
+                if (next < sets.size())
+                {
+                    list.push_back(HitReactionSetToJson(sets[next]));
+                    ++next;
+                }
+            }
+        }
+        for (; next < sets.size(); ++next)
+        {
+            list.push_back(HitReactionSetToJson(sets[next]));
         }
         SetActorFileHitReactions(actorFile, std::move(list));
     }

@@ -362,7 +362,8 @@ namespace NS
     [[nodiscard]] void* HitReactionItemFields(HitReactionItem& item) noexcept;
     [[nodiscard]] const void* HitReactionItemFields(const HitReactionItem& item) noexcept;
 
-    //! row の鍵 key の値を 0 以上の整数のフレーム数として out へ読む。無い・整数でない・負の場合は false で、out は変えない
+    //! row の鍵 key の値を 0 以上の整数のフレーム数として out へ読む。無い・整数でない・負・int に入らない場合は
+    //! false で、out は変えない
     [[nodiscard]] bool ReadHitReactionFrames(const nlohmann::json& row, std::string_view key, int& out);
 
     //! @brief 1 行の JSON から項目の種類 type と欄 fields を読む
@@ -389,7 +390,9 @@ namespace NS
     [[nodiscard]] std::vector<HitReactionSet> ReadHitReactionSets(std::string_view actorFileName,
                                                                   const nlohmann::json& actorFile);
 
-    //! .actor の文書へ束の並びを書く。並びが空なら鍵ごと消す
+    //! @brief .actor の文書へ束の並びを書く。書く物が無ければ鍵ごと消す
+    //! @details 今の並びのうち ReadHitReactionSets が読まない束は、字面のまま同じ位置に残す。読む束の位置へ
+    //! sets を並びの順に書き、余った sets は末尾へ足し、足りない位置は消す。今の並びが配列でなければ sets だけを書く
     void WriteHitReactionSets(nlohmann::json& actorFile, const std::vector<HitReactionSet>& sets);
 
     //! 向き別の振動の 4 つの向きの重み。足すと 1

@@ -234,6 +234,54 @@ TEST(HitReactionSet, ActorFileSkipsBrokenAndDuplicateSets)
     EXPECT_EQ(log.ErrorCount(), 2);
 }
 
+// 読めた束を直して書き戻しても、読めなかった束と名前の重なった束は .actor の同じ位置に元の字面のまま残る
+TEST(HitReactionSet, WritingBackKeepsTheSetsThatWereNotRead)
+{
+    const nlohmann::json original = nlohmann::json::parse(R"([
+        {"name": "Hit", "stopFrames": 12, "items": []},
+        {"name": "Broken", "stopFrames": -1, "items": []},
+        {"name": "Hit", "stopFrames": 4, "items": []},
+        {"name": "Release", "stopFrames": 0, "items": []}
+    ])");
+    nlohmann::json actorFile = ClassOnlyActorFile("PropActor");
+    NS::SetActorFileHitReactions(actorFile, original);
+    const TestLogCapture log;
+    std::vector<NS::HitReactionSet> sets = NS::ReadHitReactionSets("PropActor", actorFile);
+    ASSERT_EQ(sets.size(), 2u);
+    sets[1].stopFrames = 3;
+    NS::WriteHitReactionSets(actorFile, sets);
+    const nlohmann::json* list = NS::ActorFileHitReactions(actorFile);
+    ASSERT_NE(list, nullptr);
+    ASSERT_EQ(list->size(), 4u);
+    EXPECT_EQ((*list)[0], original[0]);
+    EXPECT_EQ((*list)[1], original[1]);
+    EXPECT_EQ((*list)[2], original[2]);
+    EXPECT_EQ((*list)[3]["name"], "Release");
+    EXPECT_EQ((*list)[3]["stopFrames"], 3);
+}
+
+// フレーム数は int に入る 0 以上の整数だけを読む。入らない整数を切り詰めて別の長さにしない
+TEST(HitReactionSet, FrameCountsOutsideIntAreRejected)
+{
+    const nlohmann::json row = nlohmann::json::parse(R"({
+        "max": 2147483647,
+        "over": 2147483648,
+        "wrapsToOne": 4294967297,
+        "huge": 18446744073709551615,
+        "below": -2147483649
+    })");
+    int frames = 7;
+    EXPECT_TRUE(NS::ReadHitReactionFrames(row, "max", frames));
+    EXPECT_EQ(frames, 2147483647);
+    for (const char* key : {"over", "wrapsToOne", "huge", "below"})
+    {
+        SCOPED_TRACE(key);
+        frames = 7;
+        EXPECT_FALSE(NS::ReadHitReactionFrames(row, key, frames));
+        EXPECT_EQ(frames, 7);
+    }
+}
+
 // 束と動作を書いた .actor を読んで書くと、バイトまで同じ。型へ読んで書き戻しても同じ
 TEST(HitReactionSet, ActorFileWithSetsAndActionsRoundTripsByteForByte)
 {

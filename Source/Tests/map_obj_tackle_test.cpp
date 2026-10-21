@@ -16,10 +16,12 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "Tests/TestActorFile.h"
+#include "Tests/TestLogCapture.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <optional>
 #include <string_view>
 
@@ -434,4 +436,26 @@ TEST(MapObjTackle, ARockDisappearingKeepsThePlayersCameraEffects)
     ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Center));
     rock->Disappear();
     EXPECT_NE(player->GetCameraManager()->FindModifier<NS::CameraSinkModifier>(), nullptr);
+}
+
+// 束の値をフレーム数に読む時、非数・無限・負・int に入らない値は WARN を出して既定の数にする。
+// 小数は 0 の側へ切り捨てる
+TEST(HitOwnerFrames, ValuesOutsideTheFrameRangeFallBack)
+{
+    NS::HitOwnerItem item;
+    item.name = "TackleGhost";
+    item.values = {{"half", 2.7f},
+                   {"nan", std::numeric_limits<float>::quiet_NaN()},
+                   {"inf", std::numeric_limits<float>::infinity()},
+                   {"negative", -1.0f},
+                   {"over", 2147483648.0f}};
+    const TestLogCapture log;
+    EXPECT_EQ(GL::Level::HitOwnerFrames(item, "half", 5), 2);
+    EXPECT_EQ(log.WarningCount(), 0);
+    for (const char* name : {"nan", "inf", "negative", "over"})
+    {
+        SCOPED_TRACE(name);
+        EXPECT_EQ(GL::Level::HitOwnerFrames(item, name, 5), 5);
+    }
+    EXPECT_EQ(log.WarningCount(), 4);
 }

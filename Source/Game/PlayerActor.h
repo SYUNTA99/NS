@@ -144,6 +144,8 @@ public:
     void SetJumpHeld(bool held) noexcept;
 
     [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
+    //! コヨーテ猶予の残り秒。0 以下なら宙からは跳べない
+    [[nodiscard]] float CoyoteRemaining() const noexcept { return m_coyoteTimer; }
     //! @brief 走行速度に SetMaxSpeedScale の倍率を掛けた最高速度。負になる場合は 0
     //! @details 負のまま返すと EndBodySlam の頭打ちが cap / speed で負の倍率になり、突進明けに水平の向きが反転する
     [[nodiscard]] float MaxSpeed() const noexcept;
@@ -457,7 +459,7 @@ private:
     //! 溜めすぎの横揺れを狙いに足し、線上の相手を再検索する。dt は秒
     void ApplyChargeSway(float dt);
     //! @brief 溜めを捨てる。放した扱いにはしないので、通常突進も溜めた突進も出ない
-    //! @details 判定と狙いの控えを初めの値へ戻し、押しの印を偽、最高速度の倍率を 1 へ戻す。
+    //! @details 判定と狙いの控えを初めの値へ戻し、最高速度の倍率を 1 へ戻す。
     //! 構えは判定から答えるので 1 に戻る。丸まりは解かず、着地で解ける
     void CancelCharge() noexcept;
 #if !defined(NS_SHIPPING)
