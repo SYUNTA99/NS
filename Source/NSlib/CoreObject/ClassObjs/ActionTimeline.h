@@ -62,6 +62,9 @@ namespace NS
     //! .actor の文書へ動作の並びを書く。並びが空なら鍵ごと消す
     void WriteActorActions(nlohmann::json& actorFile, const std::vector<ActorAction>& actions);
 
+    //! 動作の長さ (フレーム数)。一番遅く終わる事象と入り切りの、始まり + 長さ。どちらも無ければ 0
+    [[nodiscard]] int ActionLength(const ActorAction& action) noexcept;
+
     //! @brief 持ち主の .actor の動作を持ち、状態に入る時に始めた動作を、状態の歩を時計にして進める部品
     //! @details 時計は持ち主の状態に入ってから進めたフレーム数で、止めの間は状態と一緒に止まる。
     //! 始めた時と違う状態へ移ると止まり、残りの事象は起きない。項目は持ち主の HitReaction が始める。
@@ -77,8 +80,9 @@ namespace NS
 
         //! @brief 名前の動作を、持ち主の今の状態に結んで始める。状態に入る時 (OnEnter) に呼ぶ
         //! @details 走っている動作は止めてから始める。状態の最初の歩が startFrame に当たり、
-        //! それより前に始まる事象は起きない。項目の向きと位置は HitReaction::Start と同じく
-        //! self・other・position から出す
+        //! それより前に始まる事象は起きない。ただし startFrame の途中にある形は、startFrame の姿から描く
+        //! (形は動作のフレームに合わせて描く姿で、始まりのフレームに起こす事象と違う)。
+        //! 項目の向きと位置は HitReaction::Start と同じく self・other・position から出す
         //! @param[in] startFrame 状態の最初の歩に当てる動作のフレーム。事前条件: 0 以上
         //! @param[in] self 持ち主のセンサー。事前条件: nullptr でない
         //! @param[in] other 相手のセンサー。事前条件: nullptr でない
@@ -88,6 +92,9 @@ namespace NS
                    const Vector3& position,
                    const HitSensor* self,
                    const HitSensor* other);
+
+        //! 持ち主の .actor の名前の動作。無ければ nullptr
+        [[nodiscard]] const ActorAction* FindAction(std::string_view name) const noexcept;
 
         //! 走っている動作を止める。入り切りの途中のセンサーは戻す
         void Stop() noexcept;
@@ -110,6 +117,8 @@ namespace NS
     private:
         static constexpr std::size_t k_NoAction = static_cast<std::size_t>(-1);
 
+        // 名前の動作の m_actions の番号。無ければ k_NoAction
+        [[nodiscard]] std::size_t IndexOf(std::string_view name) const noexcept;
         // 入り切りの事象が切り替えるセンサー。持たなければ nullptr
         [[nodiscard]] HitSensor* SensorOf(const ActionSensorEvent& event) const noexcept;
         // 入り切りの途中の物を戻す。endingFrame を渡すと、その歩に終わる物だけを戻す

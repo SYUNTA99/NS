@@ -94,19 +94,23 @@ namespace GL
                                    const PlayerMotion& motion,
                                    const NS::Body* body,
                                    const NS::Collider* collider,
-                                   const GL::Level::ImpactAnswer& impact)
+                                   const GL::Level::ImpactRecord& impact)
         {
             NS_ASSERT(Game, body != nullptr && collider != nullptr, "体か当たりの部品が渡されていない");
-            // 頼みは同じフレームの決定の段で裁定が答えに書き、次のフレームの裁定が空にする
-            if (impact.hitEffect)
+            // TODO: 項目の「止めの間も止める」は絵の進みに効かない。欄を真にした束を作る時に、絵を止めの間止める
+            if (m_hitRequested)
             {
-                BeginHit(impact.lastImpact, slam, collider);
+                m_hitRequested = false;
+                BeginHit(impact, slam, collider);
             }
-            // 同じフレームに置かれた 2 つの頼みは、当たりの絵の後に飛びの絵を出す
-            if (m_plan.active && impact.flightEffect)
+            if (m_flightRequested)
             {
-                m_plan.releaseStep = NS::GetEffectStep(m_owner);
-                BeginFlight(motion, body, impact.lastImpact);
+                m_flightRequested = false;
+                if (m_plan.active)
+                {
+                    m_plan.releaseStep = NS::GetEffectStep(m_owner);
+                    BeginFlight(motion, body, impact);
+                }
             }
             AdvanceHit(collider);
             AdvanceFlight(motion, body);

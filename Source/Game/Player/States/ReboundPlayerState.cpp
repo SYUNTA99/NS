@@ -10,6 +10,8 @@ namespace GL
     {
         void ReboundPlayerState::OnEnter(::PlayerActor& player)
         {
+            // 沈みの跳ね返りは反動に入るフレームに始まる (束「反動」)
+            player.StartReboundReaction();
             StartCoroutine(Run(player));
         }
 

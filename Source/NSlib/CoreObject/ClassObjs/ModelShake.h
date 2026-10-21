@@ -55,6 +55,8 @@ namespace NS
         Curve side{};              //!< alongDirection に直角な水平の向きの倍率
         Vector3 alongDirection{};  //!< 水平の長さ 1 の向き。0 ベクトルなら水平の倍率は掛けない
         int length = 0;            //!< 再生するフレーム数
+        //! 始めた後の最初の AdvanceDraw で読むフレーム。途中のフレームから入った動作の形を、そのフレームの姿から描く
+        int firstFrame = 0;
 
         //! @brief frame フレーム目の世界の軸ごとの倍率を返す
         //! @details 水平の向きの成分の 2 乗で along と side を x と z に混ぜる。軸に沿う向きでは元の倍率のまま

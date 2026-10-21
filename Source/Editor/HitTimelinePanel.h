@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Editor/HitPreview.h"
-#include "Editor/HitTimelineEdit.h"
 #include "Editor/Timeline.h"
 #include "Editor/TimelinePreview.h"
 #include "Game/Level/HitTier.h"

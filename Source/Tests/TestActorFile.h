@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
+#include <functional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -78,4 +79,42 @@ public:
 
 private:
     std::string m_name;
+};
+
+//! @brief 試しの間だけ、読んである name の .actor を edit で書き替えた物に替え、壊す時に元へ戻す
+//! @details 出荷の .actor の一部だけを変えて試す時に使う。アクターは .actor を作る時に読むので、シーンに置く前に作る。
+//! 元が無い場合と、書き替えた物を断られた場合は試しを落とす
+class ScopedActorFileEdit
+{
+public:
+    ScopedActorFileEdit(std::string_view name, const std::function<void(nlohmann::json&)>& edit) : m_name(name)
+    {
+        const nlohmann::json* original = NS::ActorFileLibrary::Get().Find(m_name);
+        EXPECT_NE(original, nullptr) << m_name;
+        if (original == nullptr)
+        {
+            return;
+        }
+        m_original = *original;
+        nlohmann::json edited = m_original;
+        edit(edited);
+        m_replaced = NS::ActorFileLibrary::Get().Set(m_name, std::move(edited));
+        EXPECT_TRUE(m_replaced) << m_name;
+    }
+
+    ~ScopedActorFileEdit()
+    {
+        if (m_replaced)
+        {
+            (void)NS::ActorFileLibrary::Get().Set(m_name, std::move(m_original));
+        }
+    }
+
+    ScopedActorFileEdit(const ScopedActorFileEdit&) = delete;
+    ScopedActorFileEdit& operator=(const ScopedActorFileEdit&) = delete;
+
+private:
+    std::string m_name;
+    nlohmann::json m_original;
+    bool m_replaced = false;
 };

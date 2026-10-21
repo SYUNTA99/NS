@@ -1,5 +1,5 @@
 #include "Editor/InspectorReflection.h"
-#include "Game/Level/HitTimeline.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 
@@ -7,7 +7,7 @@
 
 #include <imgui.h>
 
-// 部品でない値型 (タイムラインの事象) の欄を、Inspector と同じウィジェットで描いて書き換えられる事を縛る
+// 部品でない値型 (束と動作の項目) の欄を、Inspector と同じウィジェットで描いて書き換えられる事を縛る
 
 namespace
 {
@@ -33,8 +33,8 @@ namespace
         HeadlessImGui(const HeadlessImGui&) = delete;
         HeadlessImGui& operator=(const HeadlessImGui&) = delete;
 
-        // 窓を 1 つ開いて事象の欄を描く。focusFirst なら最初の欄を打ち込みの状態にする
-        NS::Editor::ValueEditResult Frame(GL::Level::FlashEvent& flash, bool focusFirst)
+        // 窓を 1 つ開いて項目の欄を描く。focusFirst なら最初の欄を打ち込みの状態にする
+        NS::Editor::ValueEditResult Frame(NS::HitFlashItem& flash, bool focusFirst)
         {
             ImGui::NewFrame();
             ImGui::Begin("値の欄");
@@ -53,11 +53,11 @@ namespace
     };
 } // namespace
 
-// 事象の欄 (白の濃さ) へ打ち込むと、値が書き換わり、編集した欄が返る
+// 項目の欄 (白の濃さ) へ打ち込むと、値が書き換わり、編集した欄が返る
 TEST(EditorValueFields, TypingIntoAnEventFieldWritesTheValue)
 {
     HeadlessImGui gui;
-    GL::Level::FlashEvent flash;
+    NS::HitFlashItem flash;
     flash.alpha = 0.5f;
 
     // フォーカスの頼みは次のフレームの頭で効き、欄が打ち込みの状態になる。打つのはその後
@@ -85,7 +85,7 @@ TEST(EditorValueFields, TypingIntoAnEventFieldWritesTheValue)
 TEST(EditorValueFields, DrawingAloneLeavesTheValue)
 {
     HeadlessImGui gui;
-    GL::Level::FlashEvent flash;
+    NS::HitFlashItem flash;
     flash.alpha = 0.5f;
     const NS::Editor::ValueEditResult result = gui.Frame(flash, false);
     EXPECT_FALSE(result.changed);
@@ -93,7 +93,7 @@ TEST(EditorValueFields, DrawingAloneLeavesTheValue)
     EXPECT_FLOAT_EQ(flash.alpha, 0.5f);
 }
 
-// 曲線のグラフの横軸。点が 0〜1 に収まる曲線は 0〜1 のまま、横軸がフレーム数の事象の曲線は点を全部含める
+// 曲線のグラフの横軸。点が 0〜1 に収まる曲線は 0〜1 のまま、横軸がフレーム数の項目の曲線は点を全部含める
 TEST(EditorValueFields, CurveGraphCoversFrameCurves)
 {
     NS::Curve unit;

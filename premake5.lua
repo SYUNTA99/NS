@@ -651,7 +651,7 @@ project "Tests"
         "Source/Editor/HitZoneColors.cpp",
         -- 当たりの下見は写しの場面を組んで進めるだけで、Application に触らない
         "Source/Editor/HitPreview.cpp",
-        "Source/Editor/HitTimelineEdit.cpp",
+        "Source/Editor/ActionTimelineEdit.cpp",
         "Source/Editor/HitTimelinePanel.cpp",
         "Source/Editor/Timeline.cpp",
         "Source/Editor/DockController.cpp",

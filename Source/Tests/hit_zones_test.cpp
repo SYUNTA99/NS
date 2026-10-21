@@ -157,7 +157,6 @@ namespace
                                     &player.Body(),
                                     &player.Collider(),
                                     player.ModelClassObj(),
-                                    &player.Ghost(),
                                     player.HitReactionClassObj());
     }
 

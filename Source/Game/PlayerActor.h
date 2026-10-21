@@ -2,6 +2,7 @@
 
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactInputJudge.h"
+#include "Game/Level/LevelMessages.h"
 #include "Game/Level/SlamAim.h"
 #include "Game/Level/TackleGhost.h"
 #include "Game/Player/CameraTargetState.h"
@@ -53,6 +54,7 @@ namespace GL
         class SlamArrow;
         struct BodySlamMotion;
         struct ImpactAnswer;
+        struct ImpactRecord;
     } // namespace Level
 } // namespace GL
 
@@ -154,7 +156,18 @@ public:
     //! 自機だけの通知の受け口。身体の Events() は接地の 2 件を返すので名前を分ける
     [[nodiscard]] GL::Player::PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
 
+    //! 突進の状態か、突進を続ける当たる直前の状態に居る場合 true、それ以外の場合は false
     [[nodiscard]] bool IsBodySlamming() const noexcept;
+    //! @brief 当たる直前の状態に居る場合 true、それ以外の場合は false
+    //! @details 突進の線の先に予測した相手に触れる前で、その段の当たる直前の動作を始めてから、検知か予測の外れで
+    //! 出るまで。移る予約の間も数える
+    [[nodiscard]] bool IsInBeforeContact() const noexcept;
+    //! @brief 当たる直前の状態に入った時に呼ぶ。予測した相手の段の当たる直前の動作を、残りの歩に合うフレームから始める
+    //! @details 相手が居ない時は WARN を出して動作を始めない
+    void BeginBeforeContact() noexcept;
+    //! @brief 当たる直前の状態を出る時に呼ぶ。検知で出る時は何もせず、予測が外れて出る時は形と自機以外の止めと
+    //! 返りを戻す
+    void EndBeforeContact() noexcept;
     //! 突進の進み具合 0..1。突進中でなければ 0
     [[nodiscard]] float BodySlamProgress01() const noexcept;
     [[nodiscard]] float BodySlamCharge01() const noexcept { return m_slam.Charge01(); } //!< 発動時の溜め量 0..1
@@ -173,8 +186,18 @@ public:
     [[nodiscard]] bool IsSkidding() const noexcept;
     //! 外れで着地後に滑って止まる場合 true、それ以外の場合は false。滑るフレーム数が 0 なら直後に立つ
     [[nodiscard]] bool SkidsOnLanding() const noexcept;
-    //! 身体が有効で、命中の止め・反動待ちの外なら true、それ以外の場合は false
+    //! 出ていて、当たりの止めの外で、当たりの状態に居ない場合 true、それ以外の場合は false
     [[nodiscard]] bool CanMoveBody() const noexcept;
+    //! @brief 当たりの状態に居る場合 true、それ以外の場合は false
+    //! @details 検知の次のフレームに入り、止めが明けたフレームの決定の段で反動へ移るまで。移る予約の間も数える
+    [[nodiscard]] bool IsInTackleHit() const noexcept;
+    //! @brief 当たりの状態に入った時に呼ぶ。段の束を触れた点と 2 つのセンサーで始め、相手へ当たったを知らせる
+    //! @details 貫通は束を始めた後に、止めの残りを欄「貫通の止め秒」の長さで上書きし、形を変えない。
+    //! 相手が居ない時は WARN を出して束を始めず、止めないので次のフレームに明ける
+    void BeginTackleHit() noexcept;
+    //! @brief 反動の状態に入った時に呼ぶ。束「反動」を最後の当たりの触れた点と 2 つのセンサーで始める
+    //! @details 束は同じ持ち主の沈みを跳ね返す。最後の当たりの相手が居なければ始めない
+    void StartReboundReaction() noexcept;
     //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
     [[nodiscard]] NS::Vector3 ReboundDirection() const noexcept { return m_rebound.Direction(); }
     //! 最後に出した突進の角速度 (度/秒)。突進を出す前と ResetState 後は 0
@@ -388,9 +411,27 @@ private:
     //! @return 正規化済みの向き。決まらない場合はゼロ
     [[nodiscard]] NS::Vector3 BlendedAimDirection() const noexcept;
     //! @brief 裁定の答えにある、このフレームに自機がする事をする
-    //! @details 突進を打ち切ってから、止めた自機を動かし直す。反動の曲線があれば反動を始め、
-    //! 曲線にならない時と貫通は答えの速度を身体へ書く
+    //! @details 検知したら前の当たりの演出を止めて突進を打ち切り、検知の次のフレームに当たりの状態へ移る。
+    //! 明けでは反動の曲線があれば反動を始め、曲線にならない時と貫通は答えの速度を身体へ書いて当たりの状態を出る
     void ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexcept;
+    //! @brief 止めが明けたフレームの決定の段に呼ぶ。明けの束 (紫で放した時は紫の明けの束も) を始め、
+    //! 相手へ明けを知らせて、反動の曲線を裁定の答えに書かせる
+    void ReleaseTackleHit() noexcept;
+    //! @brief 当たりの束で始めた演出のうち、白・振動・カメラの返り以外を止める
+    //! @details 描く揺れ・震え・形・残像・床の波・歪みの輪を止め、紫の明けで遅くした世界を普段の速さへ戻す
+    void StopTackleHitEffects() noexcept;
+    //! 当たりを検知してから、止めが明けて反動へ移るまで true
+    [[nodiscard]] bool IsHeldByTackleHit() const noexcept;
+    //! 最後の当たりの相手の体のセンサー。相手が居なければ nullptr
+    [[nodiscard]] NS::HitSensor* LastTackleTargetSensor() const noexcept;
+    //! 接地していれば歩きへ、空中なら落下へ移す
+    void ChangeToWalkOrFall() noexcept;
+    //! @brief 裁定の予測から、当たる直前の状態へ入るか、外れた予測で突進へ戻るかを決める。ApplyImpactOrders の後に呼ぶ
+    //! @details 入るのは突進の線の先に予測した相手の段に当たる直前の動作があり、検知まで動作の長さ以内の時。
+    //! 入る時は前の当たりの演出を打ち切る。検知したフレームは何もしない
+    void DecideBeforeContact(const GL::Level::ImpactAnswer& answer) noexcept;
+    //! 当たる直前の状態に居て、その予測の相手と段が検知した当たりと同じ場合 true、それ以外の場合は false
+    [[nodiscard]] bool ContinuesBeforeContact(const GL::Level::ImpactRecord& impact) const noexcept;
     //! @brief 体当たりの要求を覚えてよい場合 true、それ以外の場合は false
     //! @details 突進中と CanMoveBody が偽の間は偽。ここで覚えた押しは止めの間に減らず、明けや空振りの後に 2 本目になる
     [[nodiscard]] bool AcceptsBodySlamRequest() const noexcept;
@@ -455,6 +496,18 @@ private:
     std::unique_ptr<GL::Player::ChargeEffects> m_chargeEffects;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     GL::Level::TackleGhost m_tackleGhost{this}; // 体当たりの残像。Model を借りて描く
+    // 残像の進み。当たりの状態に入ったフレームの見た目の段を 1 フレーム目に数え、止めの後も状態に依らず進める
+    GL::Level::TackleGhostRun m_ghostRun;
+    bool m_slowedWorld = false; // 紫の明けの束で世界を遅くしたか。演出を止める時に普段の速さへ戻す
+    // 当たる直前の状態に入った予測。入る予約で書き、状態の OnEnter と検知のフレームが読む
+    struct BeforeContactEntry
+    {
+        NS::ActorRef target{};
+        GL::Level::HitTier tier = GL::Level::HitTier::Center;
+        int startFrame = 0;  // 状態の最初の歩に当てる動作のフレーム
+        NS::Vector3 point{}; // 予測した玉が相手に触れる時の、玉の中心
+    };
+    BeforeContactEntry m_beforeContact;
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
     GL::Level::Health m_health;
     std::optional<NS::Vector3> m_courseStartPosition; // MsgCourseStart の時の位置。やり直しで戻る先

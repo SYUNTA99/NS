@@ -25,47 +25,6 @@ namespace GL
 {
     namespace Level
     {
-        namespace
-        {
-            // 段ごとの受けた時の束。名前は PropActor.actor の束の名前
-            [[nodiscard]] std::string_view ReceiveSetName(HitTier tier) noexcept
-            {
-                switch (tier)
-                {
-                case HitTier::Wide:
-                    return "受け[外れ]";
-                case HitTier::Center:
-                    break;
-                }
-                return "受け[真ん中]";
-            }
-
-            // 段ごとの明けの束
-            [[nodiscard]] std::string_view ReleaseSetName(HitTier tier) noexcept
-            {
-                switch (tier)
-                {
-                case HitTier::Wide:
-                    return "明け[外れ]";
-                case HitTier::Center:
-                    break;
-                }
-                return "明け[真ん中]";
-            }
-
-            // 持ち主へ渡す項目の値。.actor に書き忘れた値は WARN を出して fallback を使う
-            [[nodiscard]] float OwnerValue(const NS::HitOwnerItem& item, std::string_view name, float fallback)
-            {
-                const std::map<std::string, float, std::less<>>::const_iterator found = item.values.find(name);
-                if (found == item.values.end())
-                {
-                    NS_LOG_WARN(Game, "置物の束の項目 {} に値 {} が無いので {} を使う", item.name, name, fallback);
-                    return fallback;
-                }
-                return found->second;
-            }
-        } // namespace
-
         class PropActor::RestingState : public NS::StateOf<RestingState, PropActor>
         {
             void OnEnter(PropActor& owner) override
@@ -196,7 +155,7 @@ namespace GL
             m_effects->Update(Flight());
             // clang-format on
             // 明けの写しは止めの後も残り、写し取る姿は揺れを書いた後の姿なので、Model が揺れを進めた後で進める
-            AdvanceGhost();
+            m_ghost.Advance(&m_tackleGhost);
             m_marks->Step(NS::OS::FrameTimer::FixedDelta());
         }
 
@@ -247,7 +206,7 @@ namespace GL
                 .attacker = NS::MakeHitSensorRef(attacker), .contact = hit.contact, .tier = hit.tier, .active = true};
             // 束が足した持ち主へ渡す項目は、走っている項目の後ろに並ぶ
             const std::size_t first = m_hitReaction->OwnerRuns().size();
-            (void)m_hitReaction->Start(ReceiveSetName(hit.tier), hit.contact, &self, &attacker);
+            (void)m_hitReaction->Start(TackleSetName("受け", hit.tier), hit.contact, &self, &attacker);
             if (hit.stopOverride.has_value())
             {
                 OverrideHitStop(std::max(*hit.stopOverride, 0));
@@ -260,9 +219,9 @@ namespace GL
                 const NS::HitOwnerItem& item = runs[i].item;
                 if (item.name == "TackleFreeze")
                 {
-                    freeze.pushInDistance = OwnerValue(item, "食い込み距離", 0.0f);
-                    freeze.squashThickness = OwnerValue(item, "潰れの厚み", 1.0f);
-                    freeze.squashHeight = OwnerValue(item, "潰れの伸び上がり", 1.0f);
+                    freeze.pushInDistance = HitOwnerValue(item, "食い込み距離", 0.0f);
+                    freeze.squashThickness = HitOwnerValue(item, "潰れの厚み", 1.0f);
+                    freeze.squashHeight = HitOwnerValue(item, "潰れの伸び上がり", 1.0f);
                     // 貫通は押し勝っている側なので潰さない
                     freeze.squash = !hit.stopOverride.has_value();
                 }
@@ -275,7 +234,7 @@ namespace GL
             // 残像の離れは食い込んだ所の奥行きで出す
             if (ghost.has_value())
             {
-                StartGhost(*ghost);
+                m_ghost.Start(*ghost, this);
             }
         }
 
@@ -292,48 +251,7 @@ namespace GL
                 return;
             }
             (void)m_hitReaction->Start(
-                ReleaseSetName(m_received.tier), m_received.contact, BodySensorClassObj(), attacker);
-        }
-
-        void PropActor::StartGhost(const NS::HitOwnerRun& run)
-        {
-            if (run.length <= 0)
-            {
-                return;
-            }
-            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(this);
-            if (!pose.has_value())
-            {
-                return;
-            }
-            const NS::HitOwnerItem& item = run.item;
-            // 写しは画面の横を床に沿わせた向きへ離す
-            const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(this);
-            const TackleGhostDesc desc{
-                .axis = NS::Vector3{forward.z, 0.0f, -forward.x},
-                .spread = NS::ScreenPixelsToMeters(OwnerValue(item, "離れのピクセル", 0.0f), *pose, Root().Position()),
-                .sideOpacity = OwnerValue(item, "左右の残像の不透明度", 0.0f),
-                .stopLength = run.length,
-                .releaseFrames = static_cast<int>(OwnerValue(item, "明けの残像のフレーム数", 0.0f)),
-                .releaseOpacity = OwnerValue(item, "明けの残像の不透明度", 0.0f)};
-            m_ghost = GhostRun{.desc = desc, .frame = 0, .active = true};
-        }
-
-        void PropActor::AdvanceGhost()
-        {
-            if (!m_ghost.active)
-            {
-                return;
-            }
-            ++m_ghost.frame;
-            m_ghost.active = m_ghost.desc.WriteTo(&m_tackleGhost, m_ghost.frame);
-        }
-
-        void PropActor::StopGhost()
-        {
-            m_ghost.active = false;
-            (void)m_tackleGhost.SetSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
-            (void)m_tackleGhost.SetAfterimageOpacity(0.0f);
+                TackleSetName("明け", m_received.tier), m_received.contact, BodySensorClassObj(), attacker);
         }
 
         void PropActor::EndFreeze()
@@ -597,7 +515,7 @@ namespace GL
                 EndFreeze();
             }
             ModelClassObj()->StopDrawShake();
-            StopGhost();
+            m_ghost.Stop(&m_tackleGhost);
             ModelClassObj()->StopDrawTremor();
             // 止めの途中のやり直しでも、置いた所で動ける姿へ戻す。受けた当たりの明けの束は出さない
             OverrideHitStop(0);

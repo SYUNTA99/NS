@@ -240,6 +240,7 @@ namespace NS
         HitReaction& reaction;
         const HitStartContext& context;
         int length;
+        int shapeFrame = 0; // 形を描き始めるフレーム
 
         void operator()(const HitShapeItem& shape) const
         {
@@ -258,7 +259,8 @@ namespace NS
                                                 .height = shape.height,
                                                 .side = shape.side,
                                                 .alongDirection = alongDirection,
-                                                .length = length});
+                                                .length = length,
+                                                .firstFrame = shapeFrame});
         }
 
         void operator()(const HitBodyShakeItem& shake) const
@@ -549,13 +551,15 @@ namespace NS
                                 int length,
                                 const Vector3& position,
                                 const HitSensor* self,
-                                const HitSensor* other)
+                                const HitSensor* other,
+                                int shapeFrame)
     {
         NS_ASSERT(Scene, m_owner != nullptr, "HitReaction::StartItem: 持ち主の無い部品で項目を始めている");
+        NS_ASSERT(Scene, shapeFrame >= 0, "HitReaction::StartItem: 形を描き始めるフレーム {} が負", shapeFrame);
         NS_ASSERT(Scene, self != nullptr && other != nullptr, "HitReaction::StartItem: センサーが null");
         ++m_startCount;
         const HitStartContext context = MakeStartContext(m_owner, m_startCount, position, *self, *other);
-        std::visit(ItemStarter{.reaction = *this, .context = context, .length = length}, item);
+        std::visit(ItemStarter{.reaction = *this, .context = context, .length = length, .shapeFrame = shapeFrame}, item);
     }
 
     void HitReaction::AdvanceOwnerRuns(bool ownerStopping) noexcept

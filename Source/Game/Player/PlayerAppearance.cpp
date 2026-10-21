@@ -236,7 +236,7 @@ namespace GL
         {
             AdvanceSpin(motion, charge, slam, rebound, skid, aimDirection, impact);
             AdvanceLandingSquash(motion);
-            WriteDrawScale(charge, impact);
+            WriteDrawScale(charge);
         }
 
         void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion) noexcept
@@ -280,23 +280,8 @@ namespace GL
             }
         }
 
-        void PlayerAppearance::WriteDrawScale(const ChargeStatus& charge,
-                                              const GL::Level::ImpactAnswer& impact) noexcept
+        void PlayerAppearance::WriteDrawScale(const ChargeStatus& charge) noexcept
         {
-            // 当たりの潰れと伸びの間は構えを混ぜない。構えの最中に来た止めも元の形から潰す
-            NS::Vector3 shape{1.0f, 1.0f, 1.0f};
-            if (impact.shapeAnimating)
-            {
-                shape = impact.shapeFactors;
-            }
-            else
-            {
-                shape.y = StanceHeight(charge);
-            }
-            // 着地の潰れの水平は体積を保つ 1 ÷ √縦
-            const float vertical = m_landingSquashVertical;
-            const float horizontal = 1.0f / std::sqrt(vertical);
-            const NS::Vector3 scale{shape.x * horizontal, shape.y * vertical, shape.z * horizontal};
             NS::Model* renderer = nullptr;
             if (m_owner != nullptr)
             {
@@ -306,6 +291,17 @@ namespace GL
             {
                 return;
             }
+            // 当たりの潰れと伸びは Model の形の再生が描く倍率に掛ける。その間は構えを混ぜず、
+            // 構えの最中に来た止めも元の形から潰す
+            float stance = 1.0f;
+            if (!renderer->IsDrawingShape())
+            {
+                stance = StanceHeight(charge);
+            }
+            // 着地の潰れの水平は体積を保つ 1 ÷ √縦
+            const float vertical = m_landingSquashVertical;
+            const float horizontal = 1.0f / std::sqrt(vertical);
+            const NS::Vector3 scale{horizontal, stance * vertical, horizontal};
             if (renderer->SetDrawScale(scale))
             {
                 m_drawScaleRejected = false;

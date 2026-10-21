@@ -2,12 +2,15 @@
 #include "NSlib/Core/Types.h"
 
 #include "Editor/EditorObjects.h"
-#include "Editor/HitTimelineEdit.h"
 #include "Game/Level/FollowCameraActor.h"
+#include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -94,6 +97,56 @@ namespace NS
                 return scene;
             }
 
+            // 束の項目の一番長い長さ。項目が無ければ 0
+            int LongestEntry(const HitReactionSet& set) noexcept
+            {
+                int longest = 0;
+                for (const HitReactionEntry& entry : set.entries)
+                {
+                    longest = std::max(longest, entry.length);
+                }
+                return longest;
+            }
+
+            // 検知のフレームを 0 として、自機の当たりの束と明けの束の項目が一番遅く終わるフレーム
+            // 当たりの束は検知の次のフレームに、明けの束は止めの後のフレームに始まる
+            int LastHitSetFrame(const PlayerActor& player, const GL::Level::ImpactRecord& impact)
+            {
+                const HitReaction* reaction = player.HitReactionClassObj();
+                if (reaction == nullptr)
+                {
+                    return 0;
+                }
+                int last = 0;
+                if (const HitReactionSet* hit = reaction->FindSet(impact.timeline))
+                {
+                    last = LongestEntry(*hit);
+                }
+                if (const HitReactionSet* release = reaction->FindSet(GL::Level::TackleSetName("明け", impact.tier)))
+                {
+                    last = std::max(last, impact.hitStopSteps + LongestEntry(*release));
+                }
+                return last;
+            }
+
+            // 自機の走っている動作を frame へ写す
+            // 止めの間は動作が進まず、前に進めたフレームに始まった事象が残るので、進んだフレームだけ始まりを写す
+            void RecordAction(const PlayerActor& player, const HitPreviewFrame* previous, HitPreviewFrame& frame)
+            {
+                const ActionTimeline* actions = player.ActionTimelineClassObj();
+                if (actions == nullptr || !actions->IsRunning())
+                {
+                    return;
+                }
+                frame.action = std::string{actions->CurrentName()};
+                frame.actionFrame = actions->Frame();
+                if (previous != nullptr && previous->action == frame.action && previous->actionFrame == frame.actionFrame)
+                {
+                    return;
+                }
+                frame.startedEvents = actions->StartedEvents();
+            }
+
             // 置き直しを 1 回走らせ、frames・impact・detectionIndex を埋める
             void RunOnce(const nlohmann::json& snapshot, const HitPreviewWorld& world, HitPreviewResult& result)
             {
@@ -115,7 +168,7 @@ namespace NS
                 }
                 bool sawRebound = false;
                 int afterRebound = -1;
-                int lastEventClock = 0;
+                int lastSetFrame = 0;
                 for (int step = 0; step < result.desc.maxFrames; ++step)
                 {
                     // ゲームでは書かれなかったフレームの振動を Input::Update が 0 に戻す。中立のパッドは Update
@@ -125,12 +178,19 @@ namespace NS
                     HitPreviewFrame frame;
                     frame.pad = pad.Vibration();
                     frame.playerPosition = player->Root().Position();
-                    frame.shape = player->Resolver().Answer().shapeFactors;
-                    frame.hitStopping = player->Resolver().Answer().hitStopping;
-                    frame.awaitingRebound = player->Resolver().Answer().awaitingRebound;
+                    if (const Model* model = player->ModelClassObj())
+                    {
+                        frame.shape = model->GetDrawScale();
+                    }
+                    frame.hitStopping = player->IsHitStopping();
                     frame.rebounding = player->IsRebounding();
-                    frame.startedRows = player->Resolver().Answer().rowsStarted;
                     frame.worldSpeed = scene->WorldSpeed();
+                    const HitPreviewFrame* previous = nullptr;
+                    if (!result.frames.empty())
+                    {
+                        previous = &result.frames.back();
+                    }
+                    RecordAction(*player, previous, frame);
                     if (const CameraManager* cameras = scene->GetCameraManager())
                     {
                         frame.trauma = cameras->Trauma();
@@ -149,11 +209,7 @@ namespace NS
                     {
                         result.detectionIndex = step;
                         result.impact = player->Resolver().Answer().lastImpact;
-                        if (const GL::Level::HitTimeline* timeline =
-                                GL::Level::HitTimelineLibrary::Get().Find(result.impact.timeline))
-                        {
-                            lastEventClock = HitTimelineFrameRange(*timeline, nullptr).last;
-                        }
+                        lastSetFrame = LastHitSetFrame(*player, result.impact);
                     }
                     if (result.frames.back().rebounding)
                     {
@@ -166,7 +222,7 @@ namespace NS
                     if (afterRebound >= 0)
                     {
                         if (afterRebound >= result.desc.framesAfterRebound &&
-                            step - result.detectionIndex >= lastEventClock)
+                            step - result.detectionIndex >= lastSetFrame)
                         {
                             break;
                         }

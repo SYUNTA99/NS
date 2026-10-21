@@ -448,11 +448,17 @@ namespace NS
         //! @details 向きと位置は Start と同じく self・other・position から出す。持ち主の止めには触らない
         //! @param[in] self 持ち主のセンサー。事前条件: nullptr でない
         //! @param[in] other 相手のセンサー。事前条件: nullptr でない
+        //! @param[in] shapeFrame 形の項目を何フレーム目の姿から描くか。途中のフレームから入った動作の形に使い、
+        //! ほかの項目は読まない。事前条件: 0 以上
         void StartItem(const HitReactionItem& item,
                        int length,
                        const Vector3& position,
                        const HitSensor* self,
-                       const HitSensor* other);
+                       const HitSensor* other,
+                       int shapeFrame = 0);
+
+        //! 持ち主の .actor の名前の束。無ければ nullptr
+        [[nodiscard]] const HitReactionSet* FindSet(std::string_view name) const noexcept;
 
         //! 始めて長さの終わっていない、持ち主へ渡す項目。始めた順
         [[nodiscard]] const std::vector<HitOwnerRun>& OwnerRuns() const noexcept { return m_ownerRuns; }
@@ -533,9 +539,6 @@ namespace NS
 
     private:
         struct ItemStarter;
-
-        // 名前の束。無ければ nullptr
-        [[nodiscard]] const HitReactionSet* FindSet(std::string_view name) const noexcept;
 
         SceneActor* m_owner = nullptr;          // 持ち主 (非所有)
         std::vector<HitReactionSet> m_sets;     // 持ち主の .actor の束

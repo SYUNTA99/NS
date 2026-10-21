@@ -45,7 +45,7 @@ namespace GL
 
             //! @brief 丸まりに合わせて玉を回し、描く形の倍率を書く。持ち主の見た目の段が呼ぶ
             //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
-            //! @param[in] impact 当たりの裁定の答え。当たりの潰れと伸びと、何回目の当たりかを読む
+            //! @param[in] impact 当たりの裁定の答え。何回目の当たりかを読む
             void Update(const PlayerMotion& motion,
                         const ChargeStatus& charge,
                         const BodySlamStatus& slam,
@@ -107,8 +107,8 @@ namespace GL
                                    const GL::Level::ImpactAnswer& impact) noexcept;
             // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
             void AdvanceLandingSquash(const PlayerMotion& motion) noexcept;
-            // 当たりの形か構えの縮みに着地の潰れを掛け、描く時だけの倍率に控える
-            void WriteDrawScale(const ChargeStatus& charge, const GL::Level::ImpactAnswer& impact) noexcept;
+            // 構えの縮みに着地の潰れを掛け、描く時だけの倍率に控える。当たりの形の再生の間は構えを混ぜない
+            void WriteDrawScale(const ChargeStatus& charge) noexcept;
             // 姿のメッシュを Model へ差し、姿の倍率を Model の局所の倍率へ書く。読めていない姿は Model の今のメッシュを残す
             void ShowLook(NS::Mesh* mesh, const NS::Vector3& scale) noexcept;
 

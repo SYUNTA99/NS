@@ -13,6 +13,7 @@
 #include <format>
 #include <set>
 #include <utility>
+#include <variant>
 
 namespace NS
 {
@@ -248,6 +249,20 @@ namespace NS
         SetActorFileActions(actorFile, std::move(list));
     }
 
+    int ActionLength(const ActorAction& action) noexcept
+    {
+        int length = 0;
+        for (const ActorActionEvent& event : action.events)
+        {
+            length = std::max(length, event.start + event.length);
+        }
+        for (const ActionSensorEvent& event : action.sensors)
+        {
+            length = std::max(length, event.start + event.length);
+        }
+        return length;
+    }
+
     void ActionTimeline::ReloadActions()
     {
         Stop();
@@ -279,15 +294,7 @@ namespace NS
         {
             return false;
         }
-        std::size_t found = k_NoAction;
-        for (std::size_t i = 0; i < m_actions.size(); ++i)
-        {
-            if (m_actions[i].name == name)
-            {
-                found = i;
-                break;
-            }
-        }
+        const std::size_t found = IndexOf(name);
         if (found == k_NoAction)
         {
             NS_LOG_WARN(Scene, ".actor {} に動作 {} が無いので、始めなかった", m_owner->ActorFileName(), name);
@@ -311,6 +318,28 @@ namespace NS
         m_self = self;
         m_other = MakeHitSensorRef(*other);
         return true;
+    }
+
+    const ActorAction* ActionTimeline::FindAction(std::string_view name) const noexcept
+    {
+        const std::size_t index = IndexOf(name);
+        if (index == k_NoAction)
+        {
+            return nullptr;
+        }
+        return &m_actions[index];
+    }
+
+    std::size_t ActionTimeline::IndexOf(std::string_view name) const noexcept
+    {
+        for (std::size_t i = 0; i < m_actions.size(); ++i)
+        {
+            if (m_actions[i].name == name)
+            {
+                return i;
+            }
+        }
+        return k_NoAction;
     }
 
     void ActionTimeline::Stop() noexcept
@@ -344,6 +373,7 @@ namespace NS
         {
             return;
         }
+        const bool firstFrame = m_frame < m_startFrame;
         m_frame = frame;
         const ActorAction& action = m_actions[m_current];
 
@@ -382,7 +412,14 @@ namespace NS
         for (std::size_t i = 0; i < action.events.size(); ++i)
         {
             const ActorActionEvent& event = action.events[i];
-            if (event.start != frame)
+            // 途中のフレームから入った最初の歩は、そのフレームの途中にある形をそのフレームの姿から描く
+            int shapeFrame = 0;
+            if (firstFrame && event.start < frame && frame < event.start + event.length &&
+                std::holds_alternative<HitShapeItem>(event.item))
+            {
+                shapeFrame = frame - event.start;
+            }
+            else if (event.start != frame)
             {
                 continue;
             }
@@ -397,7 +434,7 @@ namespace NS
                 Stop();
                 return;
             }
-            reaction->StartItem(event.item, event.length, m_position, m_self, other);
+            reaction->StartItem(event.item, event.length, m_position, m_self, other, shapeFrame);
             m_started.push_back(i);
         }
     }

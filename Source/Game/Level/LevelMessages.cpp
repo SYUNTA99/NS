@@ -1,8 +1,15 @@
 #include "Game/Level/LevelMessages.h"
 
 #include "Game/Level/TackleGhost.h"
+#include "NSlib/Core/Assert.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/SceneActor.h"
+
+#include <functional>
+#include <map>
 
 namespace GL
 {
@@ -96,6 +103,92 @@ namespace GL
             const float left = 1.0f - static_cast<float>(release) / static_cast<float>(releaseFrames);
             (void)ghost->SetAfterimageOpacity(releaseOpacity * left);
             return true;
+        }
+
+        void TackleGhostRun::Start(const NS::HitOwnerRun& run, const NS::SceneActor* owner)
+        {
+            NS_ASSERT(Game, owner != nullptr, "残像を出すアクターが渡されていない");
+            if (run.length <= 0)
+            {
+                return;
+            }
+            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(owner);
+            if (!pose.has_value())
+            {
+                return;
+            }
+            const NS::HitOwnerItem& item = run.item;
+            const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(owner);
+            desc = TackleGhostDesc{
+                .axis = NS::Vector3{forward.z, 0.0f, -forward.x},
+                .spread =
+                    NS::ScreenPixelsToMeters(HitOwnerValue(item, "離れのピクセル", 0.0f), *pose, owner->Root().Position()),
+                .sideOpacity = HitOwnerValue(item, "左右の残像の不透明度", 0.0f),
+                .stopLength = run.length,
+                .releaseFrames = static_cast<int>(HitOwnerValue(item, "明けの残像のフレーム数", 0.0f)),
+                .releaseOpacity = HitOwnerValue(item, "明けの残像の不透明度", 0.0f)};
+            frame = 0;
+            active = true;
+        }
+
+        void TackleGhostRun::Advance(TackleGhost* ghost) noexcept
+        {
+            if (!active)
+            {
+                return;
+            }
+            ++frame;
+            active = desc.WriteTo(ghost, frame);
+        }
+
+        void TackleGhostRun::Stop(TackleGhost* ghost) noexcept
+        {
+            NS_ASSERT(Game, ghost != nullptr, "残像が渡されていない");
+            active = false;
+            (void)ghost->SetSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)ghost->SetAfterimageOpacity(0.0f);
+        }
+
+        float HitOwnerValue(const NS::HitOwnerItem& item, std::string_view name, float fallback)
+        {
+            const std::map<std::string, float, std::less<>>::const_iterator found = item.values.find(name);
+            if (found == item.values.end())
+            {
+                NS_LOG_WARN(Game, "束の項目 {} に値 {} が無いので {} を使う", item.name, name, fallback);
+                return fallback;
+            }
+            return found->second;
+        }
+
+        std::string TackleSetName(std::string_view base, HitTier tier, std::string_view variant)
+        {
+            std::string_view label = "真ん中";
+            switch (tier)
+            {
+            case HitTier::Wide:
+                label = "外れ";
+                break;
+            case HitTier::Center:
+                break;
+            }
+            std::string name{base};
+            name += "[";
+            name += label;
+            name += variant;
+            name += "]";
+            return name;
+        }
+
+        std::string_view BeforeContactActionName(HitTier tier) noexcept
+        {
+            switch (tier)
+            {
+            case HitTier::Wide:
+                return "BeforeContactMiss";
+            case HitTier::Center:
+                break;
+            }
+            return "BeforeContactCenter";
         }
 
         bool SendMsgTackleRelease(NS::SceneActor& receiver, const TackleReleaseDesc& desc)

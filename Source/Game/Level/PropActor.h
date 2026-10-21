@@ -16,11 +16,6 @@
 
 #include <optional>
 
-namespace NS
-{
-    struct HitOwnerRun;
-} // namespace NS
-
 namespace GL
 {
     namespace Level
@@ -102,10 +97,6 @@ namespace GL
             void EndFreeze();
             // 止めを解く。置かれていたか状態機械が終わっていれば Resting、他は Launched
             void LeaveFreeze();
-            // 束の残像の項目から残像を始める。食い込んだ後の根の奥行きでピクセルを m にする
-            void StartGhost(const NS::HitOwnerRun& run);
-            void AdvanceGhost();
-            void StopGhost();
             void Release(const TackleReleaseDesc& desc);
             void ResetTo(const NS::Vector3& position, const NS::Quaternion& rotation);
             void StepLaunched(float dt);
@@ -137,14 +128,8 @@ namespace GL
                 bool active = false;
             };
             ReceivedHit m_received;
-            // 残像。知らせを受けたフレームの見た目の 1 歩を 1 フレーム目に数え、止めの後も状態に依らず進める
-            struct GhostRun
-            {
-                TackleGhostDesc desc{};
-                int frame = 0;
-                bool active = false;
-            };
-            GhostRun m_ghost;
+            // 残像。知らせを受けたフレームの見た目の 1 歩を 1 フレーム目に数える。離れは食い込んだ後の根の奥行きで出す
+            TackleGhostRun m_ghost;
             struct CoursePose
             {
                 NS::Vector3 position;

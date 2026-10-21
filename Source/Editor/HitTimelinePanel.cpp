@@ -28,6 +28,54 @@ namespace NS
     {
         namespace
         {
+            // TODO: 当たりのタイムラインの事象の足し引きと帯の範囲は、この窓だけが使う。
+            // 窓を動作のタイムラインの窓に作り直す時に、ActionTimelineEdit の関数へ替えて消す
+
+            // 末尾に事象を足し、行番号を返す。接触前に開始できない種類は、負の start を 0 にする
+            std::size_t AddHitEvent(GL::Level::HitTimeline& timeline, const GL::Level::HitEventValue& value, int start)
+            {
+                GL::Level::HitEvent event;
+                event.value = value;
+                event.start = start;
+                if (start < 0 && !GL::Level::CanStartBeforeContact(value))
+                {
+                    event.start = 0;
+                }
+                timeline.events.push_back(event);
+                return timeline.events.size() - 1;
+            }
+
+            // row の行の事象を消し、後ろの行を詰める。row が範囲の外の場合は false
+            bool RemoveHitEvent(GL::Level::HitTimeline& timeline, std::size_t row) noexcept
+            {
+                if (row >= timeline.events.size())
+                {
+                    return false;
+                }
+                timeline.events.erase(timeline.events.begin() + static_cast<std::ptrdiff_t>(row));
+                return true;
+            }
+
+            // 事象と命中した下見の全フレームを含む範囲。下見がなければ事象だけ、両方なければ 0〜0
+            TimelineFrameRange HitTimelineFrameRange(const GL::Level::HitTimeline& timeline,
+                                                     const HitPreviewResult* preview) noexcept
+            {
+                TimelineFrameRange range;
+                for (const GL::Level::HitEvent& event : timeline.events)
+                {
+                    range.first = std::min(range.first, event.start);
+                    // 長さ 1 の事象は始まりのフレームだけを占める
+                    range.last = std::max(range.last, event.start + std::max(event.length, 1) - 1);
+                }
+                if (preview != nullptr && preview->hit && !preview->frames.empty())
+                {
+                    range.first = std::min(range.first, -preview->detectionIndex);
+                    range.last =
+                        std::max(range.last, static_cast<int>(preview->frames.size()) - 1 - preview->detectionIndex);
+                }
+                return range;
+            }
+
             // 事象の種類の並び。HitEventValue の選択肢の順で、種類を足すとここにも出る
             const std::vector<GL::Level::HitEventValue>& EventTypes()
             {
@@ -533,7 +581,6 @@ namespace NS
                 preview = &m_result;
             }
             const TimelineFrameRange range = HitTimelineFrameRange(m_working, preview);
-            const bool overlay = m_result.hit && m_result.impact.timeline == WorkingFileName();
             std::vector<TimelineTrack> tracks;
             tracks.reserve(m_working.events.size());
             for (std::size_t row = 0; row < m_working.events.size(); ++row)
@@ -547,10 +594,6 @@ namespace NS
                 }
                 track.start = event.start;
                 track.length = event.length;
-                if (overlay)
-                {
-                    track.startedFrames = RowStartFrames(m_result, row);
-                }
                 tracks.push_back(std::move(track));
             }
             float graphsHeight = 0.0f;

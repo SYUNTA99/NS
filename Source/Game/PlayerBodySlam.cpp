@@ -5,15 +5,22 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/SlamBall.h"
+#include "Game/Player/States/BeforeContactPlayerState.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -120,11 +127,110 @@ GL::Level::BodySlamMotion PlayerActor::SlamMotion() const noexcept
     {
         remaining = std::max(m_slam.m_distanceTarget - m_slam.m_travelled, 0.0f);
     }
+    // 当たる直前の動作がどの段にも無ければ、入る先が無いので線を引かない
+    const NS::ActionTimeline* actions = ActionTimelineClassObj();
+    const bool predicts =
+        actions != nullptr &&
+        (actions->FindAction(GL::Level::BeforeContactActionName(GL::Level::HitTier::Center)) != nullptr ||
+         actions->FindAction(GL::Level::BeforeContactActionName(GL::Level::HitTier::Wide)) != nullptr);
     return GL::Level::BodySlamMotion{.slamming = slamming,
                                      .velocity = BodySlamVelocity(),
                                      .charge01 = m_slam.Charge01(),
                                      .overcharge01 = m_slam.Overcharge01(),
-                                     .remainingDistance = remaining};
+                                     .remainingDistance = remaining,
+                                     .predictsContact = predicts};
+}
+
+void PlayerActor::DecideBeforeContact(const GL::Level::ImpactAnswer& answer) noexcept
+{
+    // 検知したフレームは、突進を打ち切った所で当たる直前を出ている
+    if (answer.cancelBodySlam)
+    {
+        return;
+    }
+    const std::optional<GL::Level::SlamLineTarget>& predicted = answer.predicted;
+    if (IsInBeforeContact())
+    {
+        if (predicted.has_value() && predicted->target == m_beforeContact.target &&
+            predicted->tier == m_beforeContact.tier)
+        {
+            return;
+        }
+        // 予測が外れたか、相手か段が変わった。形と自機以外の止めは出る時に戻る
+        (void)m_states->Change<GL::Player::BodySlamPlayerState>();
+        return;
+    }
+    if (!IsBodySlamming() || !predicted.has_value())
+    {
+        return;
+    }
+    const NS::ActorAction* action =
+        ActionTimelineClassObj()->FindAction(GL::Level::BeforeContactActionName(predicted->tier));
+    if (action == nullptr)
+    {
+        return;
+    }
+    // 動作の最後のフレームが検知のフレーム。予測が遅れた時は、残りの歩に合うフレームから入る
+    const int contactFrame = NS::ActionLength(*action) - 1;
+    const int frames = answer.framesToPredictedContact;
+    if (frames > contactFrame)
+    {
+        return;
+    }
+    m_beforeContact = BeforeContactEntry{.target = predicted->target,
+                                         .tier = predicted->tier,
+                                         .startFrame = contactFrame - frames,
+                                         .point = predicted->origin + predicted->direction * predicted->contact};
+    // 新しい当たりは、前の当たりの束で走っている演出を打ち切る
+    StopTackleHitEffects();
+    if (NS::HitReaction* reaction = HitReactionClassObj())
+    {
+        reaction->Stop();
+    }
+    (void)m_states->Change<GL::Player::BeforeContactPlayerState>();
+}
+
+bool PlayerActor::ContinuesBeforeContact(const GL::Level::ImpactRecord& impact) const noexcept
+{
+    return IsInBeforeContact() && m_beforeContact.target.id == impact.targetId && m_beforeContact.tier == impact.tier;
+}
+
+void PlayerActor::BeginBeforeContact() noexcept
+{
+    NS::SceneActor* target = nullptr;
+    if (OwningScene() != nullptr)
+    {
+        target = OwningScene()->Objects().FindObject(m_beforeContact.target);
+    }
+    if (target == nullptr || target->BodySensorClassObj() == nullptr)
+    {
+        NS_LOG_WARN(Game, "予測した相手が居ないので、当たる直前の動作を始めない: 相手 {}", m_beforeContact.target.id);
+        return;
+    }
+    (void)ActionTimelineClassObj()->Start(GL::Level::BeforeContactActionName(m_beforeContact.tier),
+                                          m_beforeContact.startFrame,
+                                          m_beforeContact.point,
+                                          BodySensorClassObj(),
+                                          target->BodySensorClassObj());
+}
+
+void PlayerActor::EndBeforeContact() noexcept
+{
+    // 検知で当たりへ移る時は、形と自機以外の止めを触れる瞬間まで残す
+    if (m_resolver->IsHitAwaitingEntry())
+    {
+        return;
+    }
+    ActionTimelineClassObj()->Stop();
+    StopTackleHitEffects();
+    if (NS::HitReaction* reaction = HitReactionClassObj())
+    {
+        reaction->Stop();
+    }
+    if (OwningScene() != nullptr)
+    {
+        OwningScene()->HoldOthers(0);
+    }
 }
 
 void PlayerActor::CancelBodySlam() noexcept
@@ -152,7 +258,13 @@ void PlayerActor::EndBodySlam() noexcept
         body.SetLateralVelocity(NS::Vector3{lateral.x * scale, 0.0f, lateral.z * scale});
     }
 
-    if (body.IsGrounded())
+    ChangeToWalkOrFall();
+    m_playerEvents.onBodySlamEnded.Invoke();
+}
+
+void PlayerActor::ChangeToWalkOrFall() noexcept
+{
+    if (m_body->IsGrounded())
     {
         (void)m_states->Change<GL::Player::WalkPlayerState>();
     }
@@ -160,7 +272,6 @@ void PlayerActor::EndBodySlam() noexcept
     {
         (void)m_states->Change<GL::Player::FallPlayerState>();
     }
-    m_playerEvents.onBodySlamEnded.Invoke();
 }
 
 void PlayerActor::AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept

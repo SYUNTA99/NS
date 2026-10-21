@@ -292,6 +292,26 @@ TEST(ImpactOutcome, BoxMissSparksSlideAlongTheFaceTheReboundUsed)
     EXPECT_LT(spark.Dot(roundSlide), 0.99f);
 }
 
+// 外れの火花は外した側へ 7 割、相手の表面に沿って滑る向きへ 3 割で流す。面の真ん中は向きが決まらない
+TEST(ImpactOutcome, MissSparksFlowTowardTheSideThatWasMissed)
+{
+    GL::Player::ImpactEffects effects{nullptr};
+    const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
+    // 右の縁: 外した側 +X、滑る向き (0.6, 0, 0.8)。0.7 × (1, 0, 0) + 0.3 × (0.6, 0, 0.8) を正規化
+    const NS::Vector3 right =
+        effects.MissSparkHeading(0.8f, 0.0f, GL::Level::MissSurfaceNormal(0.8f, 0.0f, 2.0f, forward), forward);
+    EXPECT_NEAR(right.x, 0.9648f, 0.0005f);
+    EXPECT_NEAR(right.y, 0.0f, 0.0005f);
+    EXPECT_NEAR(right.z, 0.2631f, 0.0005f);
+    const NS::Vector3 top =
+        effects.MissSparkHeading(0.0f, 0.8f, GL::Level::MissSurfaceNormal(0.0f, 0.8f, 2.0f, forward), forward);
+    EXPECT_NEAR(top.y, 0.9648f, 0.0005f);
+    EXPECT_NEAR(top.z, 0.2631f, 0.0005f);
+    const NS::Vector3 middle =
+        effects.MissSparkHeading(0.0f, 0.0f, GL::Level::MissSurfaceNormal(0.0f, 0.0f, 2.0f, forward), forward);
+    EXPECT_FLOAT_EQ(middle.Length(), 0.0f);
+}
+
 // 外れの相手は押し込む成分の 2 乗で短く飛び、弧は外れの高さの割合でさらに低い。真ん中の段は縮めない
 TEST(ImpactOutcome, MissLaunchShrinksWithTheSquareOfThePushAndStaysLow)
 {

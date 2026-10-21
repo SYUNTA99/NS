@@ -20,7 +20,8 @@ namespace GL
         //! が呼ばれた時の状態機械から組む。状態は状態の段の途中で変わるので、控えて持たない
         struct PlayerMotion
         {
-            bool bodySlamming = false;
+            bool bodySlamming = false;  // 突進か、突進を続ける当たる直前の状態に居るか
+            bool beforeContact = false; // 当たる直前の状態に居るか
             bool rebounding = false;
             bool reboundLanded = false; // 反動のまま着いたか。答えるのは PlayerActor::IsReboundLanded
             bool skidding = false;

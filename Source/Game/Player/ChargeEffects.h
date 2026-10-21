@@ -40,7 +40,7 @@ namespace GL
             //! @brief 押し・溜め・放しに合わせて演出を出し、玉へ付いていかせる。持ち主の見た目の段が呼ぶ
             //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
             //! @param[in] appearance 玉の回転の正。このフレームに玉が回った角度を読む。空でないこと
-            //! @param[in] impact 当たりの裁定の答え。止めの頭と接触の見込みを読む
+            //! @param[in] impact 当たりの裁定の答え。当たりの状態へ移るフレームと接触の見込みを読む
             void Update(const ChargeStatus& charge,
                         const BodySlamStatus& slam,
                         const PlayerMotion& motion,
@@ -160,7 +160,6 @@ namespace GL
             bool m_fullShown = false;  // この押しで溜めきりの閃きを出したか。押し直すまで 2 回目を出さない
             bool m_wasHeld = false;
             bool m_wasSlamming = false;
-            bool m_trailAwaitsFreeze = false; // 当たりを検知して突進が終わった。次のフレームの止めの頭で尾の親を止める
             float m_spinDegrees = 0.0f;       // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
             NS::Vector3 m_slamDirection;
             NS::SceneActor* m_owner = nullptr; // 持ち主 (非所有)

@@ -5,7 +5,6 @@
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
-#include "Game/Level/TackleGhost.h"
 #include "Game/Player/LaunchPitch.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/SlamBall.h"
@@ -163,16 +162,6 @@ namespace GL
                     position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt};
             }
 
-            // 曲線の倍率。点の無い曲線は元の形の 1。0 を返すと描く形が消える
-            [[nodiscard]] float CurveFactor(const NS::Curve& curve, float frame) noexcept
-            {
-                if (curve.count == 0)
-                {
-                    return 1.0f;
-                }
-                return curve.Evaluate(frame);
-            }
-
             // 止めの長さを持つ事象 (自機の止め・相手の凍結) の長さ。貫通の当たりは breakStopSteps (0 以上) に置き換える
             [[nodiscard]] int StopLengthOf(const HitEvent& event, int breakStopSteps) noexcept
             {
@@ -242,6 +231,38 @@ namespace GL
                     outRows.push_back(row);
                 }
                 return events;
+            }
+
+            // 当たりの止めのフレーム数。自機の段の束の止めの長さで、束が無ければ 0
+            // 貫通は欄「貫通の止め秒」の長さで、自機が束を始めた後に止めの残りを上書きする
+            [[nodiscard]] int HitStopStepsFor(const NS::HitReaction* reaction,
+                                              std::string_view setName,
+                                              const ImpactOutcome& outcome) noexcept
+            {
+                if (outcome.broke)
+                {
+                    return std::max(outcome.stopSteps, 0);
+                }
+                if (reaction == nullptr)
+                {
+                    return 0;
+                }
+                const NS::HitReactionSet* set = reaction->FindSet(setName);
+                if (set == nullptr)
+                {
+                    return 0;
+                }
+                return set->stopFrames;
+            }
+
+            // 明けに紫の明けの束で世界を遅くするか。溜めすぎて放した突進の当たりで、段にその束がある時だけ
+            [[nodiscard]] bool UsesGradualRelease(const NS::HitReaction* reaction, HitTier tier, float overcharge01)
+            {
+                if (!(overcharge01 > 0.0f) || reaction == nullptr)
+                {
+                    return false;
+                }
+                return reaction->FindSet(TackleSetName("明け", tier, "・紫")) != nullptr;
             }
 
             // 体当たりの相手を決める唯一の所。置物の体だけを相手にする
@@ -479,7 +500,6 @@ namespace GL
                                        const NS::Body* body,
                                        const NS::Collider* collider,
                                        const NS::Model* model,
-                                       TackleGhost* ghost,
                                        NS::HitReaction* hitReaction)
         {
             NS_ASSERT(Game,
@@ -488,13 +508,14 @@ namespace GL
             ClearOrders();
             AdvanceState(
                 motion,
-                PlayerParts{.params = params,
-                            .body = body,
-                            .collider = collider,
-                            .model = model,
-                            .ghost = ghost,
-                            .hitReaction = hitReaction});
-            WriteAnswer();
+                PlayerParts{
+                    .params = params, .body = body, .collider = collider, .model = model, .hitReaction = hitReaction});
+        }
+
+        void ImpactResolver::Release()
+        {
+            ApplyRebound();
+            LaunchTarget();
         }
 
         void ImpactResolver::AdvanceState(const BodySlamMotion& motion, const PlayerParts& parts)
@@ -508,60 +529,35 @@ namespace GL
             m_hasObservedTarget = false;
             m_answer.rebounded = false;
             m_answer.broke = false;
-            m_answer.freezeBegan = false;
-            m_answer.released = false;
             m_answer.framesToPredictedContact = -1;
-            m_answer.rowsStarted.clear();
-            m_ghost.startedThisStep = false;
-            // 白の光と振動の進みは HitReaction が持つ。止まっている間も薄れる
-
-            if (m_clockRunning)
+            m_answer.predicted.reset();
+            // 検知の次のフレームに、自機が当たりの状態へ移って段の束を始める
+            if (m_hitAwaitsEntry)
             {
-                // 触れる前の時計は検知を待つ間 -1 で留まる。0 は検知のフレームが置く
-                if (!m_beforeContact || m_clock < -1)
-                {
-                    ++m_clock;
-                    AdvanceTimeline(parts);
-                }
-            }
-            AdvanceGroundWave();
-            // 止めた自機を動かし直すまでは新しい衝突を見ない。止まった自機は重なったままなので、見ると毎フレーム検知し直す
-            if (IsHoldingPlayer())
-            {
-                return;
+                m_hitAwaitsEntry = false;
+                m_answer.beginHit = true;
             }
 
             // 押していない接触は物理の停止だけで済ませるため、体当たり中でないフレームは裁定しない
+            // 当たりの状態の自機は突進を打ち切っているので、止めの間に重なったままの相手を検知し直さない
             if (!motion.slamming)
             {
-                DropBeforeContact(parts.ghost, parts.hitReaction);
                 return;
             }
             if (ResolveObservedHit(hadObservation, motion, parts))
             {
                 return;
             }
-            UpdateBeforeContact(motion, parts);
+            PredictContact(motion, parts);
         }
 
         void ImpactResolver::ClearOrders() noexcept
         {
             // Player は答えを読んだフレームにする。次のフレームへ残すと、同じ事を 2 回する
             m_answer.cancelBodySlam = false;
+            m_answer.beginHit = false;
             m_answer.releaseVelocity.reset();
             m_answer.reboundArc.reset();
-            m_answer.hitEffect = false;
-            m_answer.flightEffect = false;
-        }
-
-        void ImpactResolver::WriteAnswer() noexcept
-        {
-            m_answer.hitStopping = IsHitStopping();
-            m_answer.awaitingRebound = IsAwaitingRebound();
-            m_answer.holdingPlayer = IsHoldingPlayer();
-            m_answer.beforeContact = m_beforeContact;
-            m_answer.shapeAnimating = IsShapeAnimating();
-            m_answer.shapeFactors = ShapeFactors();
         }
 
         bool ImpactResolver::ResolveObservedHit(bool hadObservation,
@@ -688,29 +684,16 @@ namespace GL
             }
 
             const HitDirection direction = HitDirectionOf(judgement.u, judgement.v);
-            const std::string timelineName = HitTimelineLibrary::Get().NameFor(answer.hitTimeline, tier);
             const HitTimeline* timeline = HitTimelineLibrary::Get().FindFor(answer.hitTimeline, tier);
-            // 同じ相手・段の接触前予測は時計を続ける。それ以外は前の演出を止め、新しい当たりだけを出す
-            const bool continuesBeforeContact = m_beforeContact && timeline != nullptr &&
-                                                m_beforeContactTarget == m_pendingTarget && m_beforeContactTier == tier;
-            if (!continuesBeforeContact)
-            {
-                AbortRunningTimeline(parts.ghost, parts.hitReaction);
-            }
-            m_beforeContact = false;
             std::vector<HitEvent> events;
             std::vector<std::size_t> rows;
             if (timeline != nullptr)
             {
                 events = EventsFor(*timeline, NS::Vector2{judgement.u, judgement.v}, rows);
             }
-            // 貫通の止めはタイムラインへ移さず、欄「貫通の止め秒」の長さのまま
-            int breakStopSteps = -1;
-            if (outcome.broke)
-            {
-                breakStopSteps = outcome.stopSteps;
-            }
-            const int stopSteps = StopStepsOf(events, breakStopSteps);
+            const std::string setName = TackleSetName("体当たり", tier);
+            const int stopSteps = HitStopStepsFor(parts.hitReaction, setName, outcome);
+            const bool gradualRelease = UsesGradualRelease(parts.hitReaction, tier, motion.overcharge01);
 
             m_pendingPower = power;
             m_pendingMassFactor = outcome.massFactor;
@@ -725,7 +708,7 @@ namespace GL
             m_answer.lastImpact.positionFactor = positionFactor;
             m_answer.lastImpact.offset01 = offset01;
             m_answer.lastImpact.tier = tier;
-            m_answer.lastImpact.timeline = timelineName;
+            m_answer.lastImpact.timeline = setName;
             m_answer.lastImpact.direction = direction;
             m_answer.lastImpact.faceU = judgement.u;
             m_answer.lastImpact.faceV = judgement.v;
@@ -733,12 +716,7 @@ namespace GL
             m_answer.lastImpact.hitStopSteps = stopSteps;
             m_answer.lastImpact.localStop = stopSteps > 0;
             m_answer.lastImpact.overcharge01 = motion.overcharge01;
-            const bool overcharged = m_answer.lastImpact.overcharge01 > 0.0f;
-            m_answer.lastImpact.gradualRelease =
-                std::any_of(events.begin(), events.end(), [overcharged](const HitEvent& event) noexcept {
-                    const GradualReleaseEvent* release = std::get_if<GradualReleaseEvent>(&event.value);
-                    return release != nullptr && (overcharged || !release->overchargedOnly);
-                });
+            m_answer.lastImpact.gradualRelease = gradualRelease;
             m_answer.lastImpact.centerHit = centerHit;
             m_answer.lastImpact.broke = m_pendingBreak;
             m_answer.lastImpact.selfVelocity = m_pendingSelfVelocity;
@@ -756,14 +734,7 @@ namespace GL
             m_answer.lastImpact.launchScale = launchScale;
             m_answer.lastImpact.reboundScale = reboundScale;
 
-            // 遊びの結果は配分で決まっているので、返りを置けない当たりも反動と飛ばしだけは出す
-            if (timeline == nullptr)
-            {
-                ApplyRebound();
-                LaunchTarget();
-                return true;
-            }
-            StartTimeline(std::move(events), std::move(rows), breakStopSteps, !continuesBeforeContact, parts);
+            m_hitAwaitsEntry = true;
             return true;
         }
 
@@ -784,7 +755,6 @@ namespace GL
                 // PlayerActor の StateStep と BodyStep はこの後に CanMoveBody で止めを見るので、同じフレームから効く
                 resolver.m_stopStarted = true;
                 resolver.m_stopEnd = resolver.m_clock + length - 1;
-                resolver.m_answer.freezeBegan = true;
                 NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", length);
             }
 
@@ -834,10 +804,8 @@ namespace GL
                 resolver.StartDepthShake(shake, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
             }
 
-            void operator()(const GhostEvent& ghost) const
-            {
-                resolver.StartGhost(ghost, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps), parts.ghost);
-            }
+            // 自機の残像は、自機が段の束の項目で出す。行の欄は読まない
+            void operator()(const GhostEvent&) const {}
 
             void operator()(const ImpactTremorEvent& tremor) const
             {
@@ -922,8 +890,8 @@ namespace GL
                 }
             }
 
-            // 絵は ImpactEffects が見た目の段で出す。ここは答えに書くだけ
-            void operator()(const HitEffectEvent&) const { resolver.m_answer.hitEffect = true; }
+            // 当たりと飛びの絵は、自機が束の持ち主へ渡す項目から出す。行は読まない
+            void operator()(const HitEffectEvent&) const {}
 
             void operator()(const CameraTraumaEvent& trauma) const
             {
@@ -960,7 +928,7 @@ namespace GL
                 resolver.m_heldOthers = true;
             }
 
-            void operator()(const FlightEffectEvent&) const { resolver.m_answer.flightEffect = true; }
+            void operator()(const FlightEffectEvent&) const {}
         };
 
         void ImpactResolver::RunEvent(const HitEvent& event, const PlayerParts& parts)
@@ -968,71 +936,12 @@ namespace GL
             std::visit(EventRunner{.resolver = *this, .event = event, .parts = parts}, event.value);
         }
 
-        void ImpactResolver::StartTimeline(std::vector<HitEvent> events,
-                                           std::vector<std::size_t> rows,
-                                           int breakStopSteps,
-                                           bool startEarlyEvents,
-                                           const PlayerParts& parts)
+        void ImpactResolver::PredictContact(const BodySlamMotion& motion, const PlayerParts& parts)
         {
-            m_events = std::move(events);
-            m_eventRows = std::move(rows);
-            m_breakStopSteps = breakStopSteps;
-            // 前の当たりの揺れ・震え・床の波は、新しい時計で数えると長さの終わりが来ない
-            StopBodyShake();
-            StopGhost(parts.ghost);
-            StopTremor();
-            StopGroundWave();
-            StopDistortionRing(parts.hitReaction);
-            m_clock = 0;
-            m_padStartClock.reset();
-            m_clockEnd = 0;
-            m_holdArmed = false;
-            m_holdReleased = false;
-            m_hasReboundEvent = false;
-            m_stopStarted = false;
-            for (const HitEvent& event : m_events)
+            if (!motion.predictsContact)
             {
-                // 長さ 0 の事象も始まりのフレームには起きるので、そのフレームまで時計を回す
-                m_clockEnd = std::max(m_clockEnd, event.start + std::max(event.length, 1));
-                if (std::holds_alternative<HitStopEvent>(event.value) && StopLengthOf(event, breakStopSteps) > 0)
-                {
-                    m_holdArmed = true;
-                }
-                if (std::holds_alternative<ReboundEvent>(event.value))
-                {
-                    m_hasReboundEvent = true;
-                }
-            }
-            m_clockRunning = true;
-            // 触れる前の時計を回せなかった当たり (接した所から放した時・予測より先に触れた時) でも、触れた後まで続く
-            // 形を落とすと潰れごと消える。触れる前の分は飛ばし、置いたフレームを始まりにして途中から起こす
-            if (startEarlyEvents)
-            {
-                for (std::size_t i = 0; i < m_events.size(); ++i)
-                {
-                    const HitEvent& event = m_events[i];
-                    if (event.start < 0 && event.start + std::max(event.length, 1) > 0 &&
-                        CanStartBeforeContact(event.value))
-                    {
-                        m_clock = event.start;
-                        m_answer.rowsStarted.push_back(m_eventRows[i]);
-                        RunEvent(event, parts);
-                    }
-                }
-                m_clock = 0;
-            }
-            AdvanceTimeline(parts);
-        }
-
-        void ImpactResolver::UpdateBeforeContact(const BodySlamMotion& motion, const PlayerParts& parts)
-        {
-            // 触れる前の事象を置いたタイムラインが無ければ、線を掃かない。相手の名前は掃くまで分からないので全部を見る
-            if (HitTimelineLibrary::Get().EarliestStart() >= 0)
-            {
-                DropBeforeContact(parts.ghost, parts.hitReaction);
                 return;
             }
-
             const NS::Vector3 velocity = motion.velocity;
             NS::Vector3 direction{};
             const float stepLength =
@@ -1042,90 +951,16 @@ namespace GL
                 !FindSlamLineTarget(
                     direction, motion.remainingDistance, parts.params, parts.body, parts.collider, predicted))
             {
-                DropBeforeContact(parts.ghost, parts.hitReaction);
                 return;
             }
             // 観測の段は、今の位置から 1 歩進んだ玉の重なりで当たりを見る。触れるまでの距離を k 歩目に越えるなら、
             // 検知はこのフレームから k - 1 フレーム後。このフレームで検知しなかったので 1 以上
             m_answer.framesToPredictedContact =
                 std::max(static_cast<int>(std::ceil(predicted.contact / stepLength)) - 1, 1);
-            if (m_beforeContact)
-            {
-                if (predicted.target == m_beforeContactTarget && predicted.tier == m_beforeContactTier)
-                {
-                    return;
-                }
-                DropBeforeContact(parts.ghost, parts.hitReaction);
-            }
-
-            const HitTimeline* timeline = HitTimelineLibrary::Get().FindFor(predicted.hitTimeline, predicted.tier);
-            if (timeline == nullptr)
-            {
-                return;
-            }
-            // 触れる前は外れの向きが決まらないので、向きの付いた行は起こさない
-            std::vector<std::size_t> rows;
-            std::vector<HitEvent> events = EventsFor(*timeline, std::nullopt, rows);
-            int first = 0;
-            for (const HitEvent& event : events)
-            {
-                first = std::min(first, event.start);
-            }
-            const int untilDetect = m_answer.framesToPredictedContact;
-            if (first >= 0 || untilDetect > -first)
-            {
-                return;
-            }
-
-            AbortRunningTimeline(parts.ghost, parts.hitReaction);
-            m_events = std::move(events);
-            m_eventRows = std::move(rows);
-            m_clock = -untilDetect;
-            for (const HitEvent& event : m_events)
-            {
-                m_clockEnd = std::max(m_clockEnd, event.start + std::max(event.length, 1));
-            }
-            m_clockRunning = true;
-            m_beforeContact = true;
-            m_beforeContactTarget = predicted.target;
-            m_beforeContactTier = predicted.tier;
-            // 形は相手の飛ぶ向き (突進の向き) で混ぜる。検知のフレームに当たりの向きで置き直す
-            m_pendingImpactDir = direction;
-            m_pendingBreak = false;
-            // 予測が遅れて今のフレームより前に始まるはずだった事象は、置いたフレームを始まりにして今起こす
-            const int now = m_clock;
-            for (std::size_t i = 0; i < m_events.size(); ++i)
-            {
-                const HitEvent& event = m_events[i];
-                if (event.start <= now && event.start < 0 && CanStartBeforeContact(event.value))
-                {
-                    m_clock = event.start;
-                    m_answer.rowsStarted.push_back(m_eventRows[i]);
-                    RunEvent(event, parts);
-                }
-            }
-            m_clock = now;
+            m_answer.predicted = std::move(predicted);
         }
 
-        void ImpactResolver::DropBeforeContact(TackleGhost* ghost, NS::HitReaction* hitReaction) noexcept
-        {
-            if (m_beforeContact)
-            {
-                AbortRunningTimeline(ghost, hitReaction);
-            }
-        }
-
-        void ImpactResolver::AbortRunningTimeline(TackleGhost* ghost, NS::HitReaction* hitReaction) noexcept
-        {
-            // 走っている時計が頼んだ白・振動・揺れは HitReaction に残るので、時計と一緒に止める
-            if (m_clockRunning && hitReaction != nullptr)
-            {
-                hitReaction->Stop();
-            }
-            AbortTimeline(ghost, hitReaction);
-        }
-
-        void ImpactResolver::AbortTimeline(TackleGhost* ghost, NS::HitReaction* hitReaction) noexcept
+        void ImpactResolver::AbortTimeline(NS::HitReaction* hitReaction) noexcept
         {
             // 段階的な明けは時計より長く続く。打ち切る当たりが遅くした世界を普段の速さへ戻す
             if (m_startedGradualRelease)
@@ -1145,9 +980,7 @@ namespace GL
                     m_owner->OwningScene()->HoldOthers(0);
                 }
             }
-            m_beforeContact = false;
             StopBodyShake();
-            StopGhost(ghost);
             StopTremor();
             StopGroundWave();
             StopDistortionRing(hitReaction);
@@ -1174,13 +1007,11 @@ namespace GL
                 // 触れる前に置けない種類は、ファイルの読み込みで弾いている。手で組んだ並びでもマイナスでは起こさない
                 if (event.start == m_clock && (m_clock >= 0 || CanStartBeforeContact(event.value)))
                 {
-                    m_answer.rowsStarted.push_back(m_eventRows[i]);
                     RunEvent(event, parts);
                 }
             }
             if (m_stopStarted && m_clock == m_stopEnd + 1)
             {
-                m_answer.released = true;
                 // 反動の事象の無いタイムラインは、止めの終わりで自機を動かし直す
                 if (!m_hasReboundEvent)
                 {
@@ -1193,22 +1024,6 @@ namespace GL
                 // 反動の事象が止めより前に置かれていても、時計が止まったら自機を動かし直す
                 m_holdReleased = true;
             }
-        }
-
-        bool ImpactResolver::IsHitStopping() const noexcept
-        {
-            return m_stopStarted && !m_holdReleased && m_clock <= m_stopEnd;
-        }
-
-        bool ImpactResolver::IsAwaitingRebound() const noexcept
-        {
-            return m_stopStarted && !m_holdReleased && m_clock > m_stopEnd;
-        }
-
-        bool ImpactResolver::IsShapeAnimating() const noexcept
-        {
-            const int frame = m_clock - m_shapeStart;
-            return m_shapeActive && frame >= 0 && frame < m_shapeLength;
         }
 
         NS::CameraSinkDesc ImpactResolver::SinkDescFor(const CameraSinkEvent& sink,
@@ -1444,34 +1259,6 @@ namespace GL
             return m_owner->OwningScene()->Objects().FindObject(m_pendingTarget);
         }
 
-        void ImpactResolver::StartGhost(const GhostEvent& ghost, int length, TackleGhost* tackleGhost)
-        {
-            StopGhost(tackleGhost);
-            if (m_owner == nullptr || length <= 0 || !std::isfinite(ghost.spreadPixels) ||
-                !std::isfinite(ghost.selfSpreadPixels) || !std::isfinite(ghost.sideOpacity) ||
-                !std::isfinite(ghost.releaseOpacity))
-            {
-                return;
-            }
-            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(m_owner);
-            if (!pose.has_value())
-            {
-                return;
-            }
-            // 写しは画面の横を床に沿わせた向きへ離す
-            const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(m_owner);
-            const TackleGhostDesc self{
-                .axis = NS::Vector3{forward.z, 0.0f, -forward.x},
-                .spread = NS::ScreenPixelsToMeters(ghost.selfSpreadPixels, *pose, m_owner->Root().Position()),
-                .sideOpacity = ghost.sideOpacity,
-                .stopLength = length,
-                .releaseFrames = ghost.releaseFrames,
-                .releaseOpacity = ghost.releaseOpacity};
-            m_ghost = GhostRun{.desc = self, .frame = 0, .active = true, .startedThisStep = true};
-            // 始めたフレームから描く。startedThisStep が true の間は StepState が同じ固定ステップで進めない
-            AdvanceGhost(tackleGhost);
-        }
-
         void ImpactResolver::StartShakeLines(const ShakeLinesEvent& lines, int length, const PlayerParts& parts)
         {
             if (parts.hitReaction == nullptr || parts.model == nullptr || m_owner == nullptr || length <= 0)
@@ -1513,35 +1300,6 @@ namespace GL
             if (NS::Model* model = m_owner->ModelClassObj())
             {
                 model->StopDrawShake();
-            }
-        }
-
-        void ImpactResolver::StepGhost(TackleGhost* tackleGhost)
-        {
-            if (!m_ghost.startedThisStep)
-            {
-                AdvanceGhost(tackleGhost);
-            }
-        }
-
-        void ImpactResolver::AdvanceGhost(TackleGhost* tackleGhost)
-        {
-            if (!m_ghost.active || tackleGhost == nullptr)
-            {
-                return;
-            }
-            // 明けの写しは時計が止まった後も残るので、時計でなく進めた回数で数える
-            ++m_ghost.frame;
-            m_ghost.active = m_ghost.desc.WriteTo(tackleGhost, m_ghost.frame);
-        }
-
-        void ImpactResolver::StopGhost(TackleGhost* tackleGhost) noexcept
-        {
-            m_ghost.active = false;
-            if (tackleGhost != nullptr)
-            {
-                (void)tackleGhost->SetSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
-                (void)tackleGhost->SetAfterimageOpacity(0.0f);
             }
         }
 
@@ -1659,27 +1417,20 @@ namespace GL
             }
         }
 
-        void ImpactResolver::CancelImpact(TackleGhost* ghost, NS::HitReaction* hitReaction) noexcept
+        void ImpactResolver::CancelImpact(NS::HitReaction* hitReaction) noexcept
         {
-            // 自機を止めていない時は、前の当たりの薄れを残す
-            const bool hadStop = IsHoldingPlayer();
-            AbortTimeline(ghost, hitReaction);
+            AbortTimeline(hitReaction);
+            m_hitAwaitsEntry = false;
             m_pendingBreak = false;
             m_hasObservedTarget = false;
             m_stateReady = false;
             m_answer.rebounded = false;
             m_answer.broke = false;
-            m_answer.freezeBegan = false;
-            m_answer.released = false;
             m_answer.framesToPredictedContact = -1;
+            m_answer.predicted.reset();
             ClearOrders();
             // 相手へは明けを送らない。相手はやり直しの知らせで自分の位置へ戻り、凍結は相手の数えで明ける
             m_pendingTarget = NS::ActorRef{};
-            if (hadStop && hitReaction != nullptr)
-            {
-                hitReaction->Stop();
-            }
-            WriteAnswer();
         }
 
         ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams& params) noexcept
@@ -1734,29 +1485,6 @@ namespace GL
                                             .launchScale = m_answer.lastImpact.launchScale,
                                             .hopSeed = m_answer.lastImpact.sequence};
             (void)SendMsgTackleRelease(*target, release);
-        }
-
-        NS::Vector3 ImpactResolver::ShapeFactors() const noexcept
-        {
-            // 事象の外は補間の残差を残さず、ちょうど 1 を返す
-            if (!IsShapeAnimating())
-            {
-                return NS::Vector3{1.0f, 1.0f, 1.0f};
-            }
-            const float frame = static_cast<float>(m_clock - m_shapeStart);
-            return AlongImpactFactors(CurveFactor(m_shape.along, frame),
-                                      CurveFactor(m_shape.height, frame),
-                                      CurveFactor(m_shape.side, frame));
-        }
-
-        NS::Vector3 ImpactResolver::AlongImpactFactors(float along, float height, float side) const noexcept
-        {
-            // 水平軸の 2 乗で along と side を混ぜ、軸に沿う衝突では元の倍率を保つ
-            const float dx2 = m_pendingImpactDir.x * m_pendingImpactDir.x;
-            const float dz2 = m_pendingImpactDir.z * m_pendingImpactDir.z;
-            return NS::Vector3{1.0f + (along - 1.0f) * dx2 + (side - 1.0f) * dz2,
-                               height,
-                               1.0f + (along - 1.0f) * dz2 + (side - 1.0f) * dx2};
         }
     } // namespace Level
 } // namespace GL

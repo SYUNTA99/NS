@@ -171,7 +171,7 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
             player->Update(false);
             rock->Update();
             // 体当たりと止めの間は、カメラに距離と溜めの締めを保たせる
-            if (player->IsBodySlamming() || player->Resolver().Answer().holdingPlayer)
+            if (player->IsBodySlamming() || player->Resolver().IsHitAwaitingEntry() || player->IsInTackleHit())
             {
                 EXPECT_TRUE(player->GetCameraTargetState().framingHeld);
                 ++held;

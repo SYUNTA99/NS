@@ -12,11 +12,14 @@
 #include "NSlib/Core/Types.h"
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace NS
 {
     class SceneActor;
     class HitSensor;
+    struct HitOwnerItem;
+    struct HitOwnerRun;
 } // namespace NS
 
 namespace GL
@@ -172,6 +175,36 @@ namespace GL
             //! @return まだ続く場合 true、明けの写しが消えて終わった場合は false
             bool WriteTo(TackleGhost* ghost, int frame) const noexcept;
         };
+
+        //! @brief 残像の進み。明けの写しは止めの後も残るので、状態に依らず進めた回数で数える
+        //! @details 始めた後の最初の Advance が 1 フレーム目。持ち主は見た目の段で Advance を呼ぶ
+        struct TackleGhostRun
+        {
+            TackleGhostDesc desc{};
+            int frame = 0;
+            bool active = false;
+
+            //! @brief 束が始めた持ち主へ渡す項目 TackleGhost の値で残像を始める
+            //! @details 写しは画面の横を床に沿わせた向きへ離し、離れのピクセルは owner の今の根の所でゲームの中の
+            //! 距離にする。項目の長さが 0 以下か、カメラの管理役が無い場合は始めない
+            //! @param[in] owner 残像を出すアクター。事前条件: nullptr でない
+            void Start(const NS::HitOwnerRun& run, const NS::SceneActor* owner);
+            //! 動いていれば 1 フレーム進めて ghost へ書く
+            void Advance(TackleGhost* ghost) noexcept;
+            //! 止めて、左右の写しと明けの写しを消す
+            void Stop(TackleGhost* ghost) noexcept;
+        };
+
+        //! 持ち主へ渡す項目の値。.actor に書き忘れた値は WARN を出して fallback を使う
+        [[nodiscard]] float HitOwnerValue(const NS::HitOwnerItem& item, std::string_view name, float fallback);
+
+        //! @brief 段ごとの束の名前。base[段の名前] の形で、variant は段の名前の後ろに添える
+        //! @details 段の名前は真ん中・外れ。.actor の束の名前と同じ綴りにする (例 明け[真ん中・紫])
+        [[nodiscard]] std::string TackleSetName(std::string_view base, HitTier tier, std::string_view variant = {});
+
+        //! @brief 段ごとの、自機が当たる直前の状態で始める動作の名前。.actor の動作の名前と同じ綴りにする
+        //! @details 動作は検知のフレームで終わり、最後のフレームが検知のフレームに当たる
+        [[nodiscard]] std::string_view BeforeContactActionName(HitTier tier) noexcept;
 
         //! @brief 体当たりの止めが明けた時の、相手の飛び方
         struct TackleReleaseDesc

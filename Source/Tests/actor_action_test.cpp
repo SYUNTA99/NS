@@ -1,6 +1,8 @@
 #include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -215,6 +217,7 @@ namespace
             body->SetSphere(0.5f);
             NS::ShapeHitSensor* attack = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_attackSensor, this);
             attack->SetSphere(0.8f);
+            CreateClassObj(m_model, this);
             CreateClassObj(m_hitReaction, this);
             CreateClassObj(m_actionTimeline, this);
             NS::StateMachineOf<ActionProbeActor>* machine = nullptr;
@@ -378,6 +381,30 @@ TEST(ActionTimeline, AStartFrameSkipsTheEarlierEvents)
     EXPECT_EQ(probes.Started(), Names{"At"});
     probes.Step();
     EXPECT_EQ(probes.Started(), (Names{"At", "Late"}));
+}
+
+// 始める歩の途中にある形は、その歩の姿から描く。形は動作のフレームに合わせて描く姿で、始まりの歩に起こす事象と違う
+TEST(ActionTimeline, AStartFrameDrawsTheShapeFromThatFrame)
+{
+    NS::HitShapeItem shape;
+    shape.height.count = 2;
+    shape.height.keys[0] = NS::Curve::Key{0.0f, 1.0f};
+    shape.height.keys[1] = NS::Curve::Key{6.0f, 0.4f};
+    NS::ActorAction action;
+    action.name = "Run";
+    action.events = {{shape, 0, 7}};
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    const NS::DrawShapeDesc drawn{.height = shape.height, .alongDirection = NS::Vector3{0.0f, 0.0f, 1.0f}, .length = 7};
+    probes.Enter("Run", 3);
+    for (int frame = 3; frame < 7; ++frame)
+    {
+        SCOPED_TRACE(frame);
+        probes.Step();
+        EXPECT_NEAR(probes.self->ModelClassObj()->GetDrawScale().y, drawn.ScaleAt(frame).y, 1.0e-6f);
+    }
+    probes.Step();
+    EXPECT_FLOAT_EQ(probes.self->ModelClassObj()->GetDrawScale().y, 1.0f);
 }
 
 // センサーの入り切りは始まりの歩に効き、終わりの歩に戻る。途中で状態を出ても戻る

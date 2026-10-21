@@ -119,7 +119,7 @@ TEST(PlayerSlamPress, PressDuringTheHitStopDoesNotFireOnTheRelease)
         {
             ++starts;
         }
-        if (!pressed && player->Resolver().Answer().hitStopping)
+        if (!pressed && player->IsHitStopping())
         {
             player->RequestBodySlam(0.0f);
             pressed = true;
