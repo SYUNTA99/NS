@@ -866,8 +866,8 @@ TEST(HitReactionStart, AnOwnerLeavingKeepsTheOthersCameraEffects)
               nullptr);
 }
 
-// 出荷の束と動作。自機と置物の .actor に、前の当たりのタイムライン (center と miss) の値を移した物。
-// 威力で変わっていた値は、見た目の基準の試し (impact_look_baseline_test) の当たりで出た値を固定の値にした。
+// 出荷の束と動作 (自機と置物の .actor)。沈みの深さと震えの幅・トラウマの量は威力に依らない固定の値で、
+// 見た目の基準の試し (impact_look_baseline_test) の当たりの威力を、威力を掛ける式に入れた値と同じ。
 // 真ん中は溜めきり 2 × 真ん中の威力の倍率 1 の威力 2、外れは右の外れ (MissRight) の溜めきり 2 × 0.7 の威力 1.4
 
 namespace
