@@ -135,7 +135,7 @@ namespace GL
             //! 赤の外の当たり位置の係数を置く。負は 0。非数と無限は 0
             void SetRemainderPowerScale(float scale) noexcept;
 
-            // 種類の既定値と個体の Inspector で赤を決める
+            // 赤は .actor の値で決まり、Inspector で直せる
             NS_REFLECT_BEGIN(HitZones, NS::Object)
             NS_ACCESSOR(bool, "丸", Face().round, SetRound)
             NS_ACCESSOR(float, "横幅", Face().width, SetWidth)

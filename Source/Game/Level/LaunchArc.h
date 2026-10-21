@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Level/AirGravity.h"
 #include "NSlib/Core/Math.h"
 
 namespace GL
@@ -43,5 +44,8 @@ namespace GL
 
         //! 発射の高さへ戻るまでの秒を返す。曲線が不正なら 0
         [[nodiscard]] float LaunchArcFlightSeconds(const LaunchArc& arc) noexcept;
+
+        //! 曲線の重力を、ChooseGravity へ渡す組 (下向きが負) にして返す
+        [[nodiscard]] AirGravity LaunchArcGravity(const LaunchArc& arc) noexcept;
     } // namespace Level
 } // namespace GL

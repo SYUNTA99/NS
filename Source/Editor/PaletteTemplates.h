@@ -21,6 +21,7 @@ namespace NS
 
         inline constexpr std::size_t k_PaletteSlotCount = 3;
 
-        [[nodiscard]] const std::array<PaletteTemplate, k_PaletteSlotCount>& PaletteTemplateSlots() noexcept;
+        //! 初めの 1 回だけ置く物の一覧から組む。組む時に .actor を読むので投げうる
+        [[nodiscard]] const std::array<PaletteTemplate, k_PaletteSlotCount>& PaletteTemplateSlots();
     } // namespace Editor
 } // namespace NS

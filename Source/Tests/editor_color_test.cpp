@@ -2,7 +2,7 @@
 #include "Editor/InspectorReflection.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ObjectJson.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -105,31 +105,32 @@ namespace
         return NS::Vector3{color[0].get<float>(), color[1].get<float>(), color[2].get<float>()};
     }
 
-    // 色の正をマテリアルへ移す前に描いていた色。配置物の "基本色"、種類の既定の "基本色"、
+    // 色の正をマテリアルへ移す前に描いていた色。配置物の "基本色"、.actor の "基本色"、
     // クラスのコードが入れる色、Model の既定の白の順に引く
-    NS::Vector3 ColorBeforeTheMaterialOwnedIt(const nlohmann::json& object, const std::string& className)
+    NS::Vector3 ColorBeforeTheMaterialOwnedIt(const nlohmann::json& object, const std::string& actorFileName)
     {
         const std::optional<NS::Vector3> placed = SavedModelColor(object);
         if (placed)
         {
             return *placed;
         }
-        const std::string archetypePath =
-            NS::OS::FileSystem::Combine(NS::ArchetypeLibrary::Get().Directory(), className + ".json");
-        if (NS::OS::FileSystem::Exists(archetypePath))
+        const std::string actorFilePath =
+            NS::OS::FileSystem::Combine(NS::ActorFileLibrary::Get().Directory(), actorFileName + ".actor");
+        if (NS::OS::FileSystem::Exists(actorFilePath))
         {
-            const std::optional<std::string> archetypeText = NS::OS::FileSystem::ReadAllText(archetypePath);
-            EXPECT_TRUE(archetypeText.has_value()) << archetypePath;
-            if (!archetypeText)
+            const std::optional<std::string> actorFileText = NS::OS::FileSystem::ReadAllText(actorFilePath);
+            EXPECT_TRUE(actorFileText.has_value()) << actorFilePath;
+            if (!actorFileText)
             {
                 return NS::Vector3{};
             }
-            const std::optional<NS::Vector3> archetype = SavedModelColor(nlohmann::json::parse(*archetypeText));
-            if (archetype)
+            const std::optional<NS::Vector3> actorFile = SavedModelColor(nlohmann::json::parse(*actorFileText));
+            if (actorFile)
             {
-                return *archetype;
+                return *actorFile;
             }
         }
+        const std::string className = NS::ActorFileLibrary::Get().ClassNameOf(actorFileName);
         const std::map<std::string, NS::Vector3> classColors{
             {"GoalActor", NS::Vector3{1.0f, 0.84f, 0.0f}},
             {"PropActor", NS::Vector3{0.72f, 0.70f, 0.66f}},
@@ -160,25 +161,22 @@ TEST(ModelDrawColor, EmptyOverrideDrawsTheMaterialColorAndAnOverrideWins)
     EXPECT_EQ(model.DrawColor().ToVector3(), (NS::Vector3{0.6f, 0.6f, 0.65f}));
 }
 
-// 出荷のシーンと種類の既定から作ったアクターは、色の正を移す前と同じ色で描く
-TEST(ModelDrawColor, ShippedScenesAndArchetypesKeepTheirColor)
+// 出荷のシーンと .actor から作ったアクターは、色の正を移す前と同じ色で描く
+TEST(ModelDrawColor, ShippedScenesAndActorFilesKeepTheirColor)
 {
-    NS::ArchetypeLibrary& library = NS::ArchetypeLibrary::Get();
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
     library.Reload();
     int checked = 0;
 
-    for (const std::string& path : NS::OS::FileSystem::ListFiles(library.Directory(), ".json"))
+    for (const std::string& name : library.Names())
     {
-        const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(path);
-        ASSERT_TRUE(text.has_value()) << path;
-        const std::string className = nlohmann::json::parse(*text)["class"].get<std::string>();
-        const NS::Model* model = library.Baseline(className).ModelClassObj();
+        const NS::Model* model = library.Baseline(name).ModelClassObj();
         if (model == nullptr)
         {
             continue;
         }
-        EXPECT_EQ(model->DrawColor().ToVector3(), ColorBeforeTheMaterialOwnedIt(nlohmann::json::object(), className))
-            << path;
+        EXPECT_EQ(model->DrawColor().ToVector3(), ColorBeforeTheMaterialOwnedIt(nlohmann::json::object(), name))
+            << name;
         ++checked;
     }
 
@@ -202,7 +200,7 @@ TEST(ModelDrawColor, ShippedScenesAndArchetypesKeepTheirColor)
                 continue;
             }
             EXPECT_EQ(actor->ModelClassObj()->DrawColor().ToVector3(),
-                      ColorBeforeTheMaterialOwnedIt(object, header.className))
+                      ColorBeforeTheMaterialOwnedIt(object, header.actorFile))
                 << path << " " << header.name;
             ++checked;
         }

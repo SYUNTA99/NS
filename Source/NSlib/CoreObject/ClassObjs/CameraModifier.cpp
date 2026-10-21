@@ -212,6 +212,16 @@ namespace NS
         return CameraSinkPixelsAt(m_desc, Frame());
     }
 
+    void CameraSinkModifier::Advance() noexcept
+    {
+        if (!m_releasePending)
+        {
+            return;
+        }
+        m_releasePending = false;
+        m_desc.bounceStartFrame = std::min(m_desc.bounceStartFrame, Frame());
+    }
+
     void CameraSinkModifier::Modify(CameraPose& pose, const CameraAxes& axes) const noexcept
     {
         (void)axes;
@@ -228,7 +238,7 @@ namespace NS
     {
         const bool finite =
             std::isfinite(desc.zoom) && std::isfinite(desc.rollDegrees) && IsFinite(desc.rollDirection);
-        if (!finite || desc.zoom < 1.0f || desc.holdFrames < 0 || desc.returnFrames < 0)
+        if (!finite || desc.zoom < 1.0f || desc.holdFrames < 0 || desc.returnFrames < 0 || desc.delayFrames < 0)
         {
             return nullptr;
         }
@@ -245,6 +255,7 @@ namespace NS
         };
         zoomRoll->m_holdFrames = desc.holdFrames;
         zoomRoll->m_returnFrames = desc.returnFrames;
+        zoomRoll->m_delayFrames = desc.delayFrames;
         return zoomRoll;
     }
 
@@ -256,17 +267,18 @@ namespace NS
 
     CameraZoomRoll CameraZoomRollModifier::Current() const noexcept
     {
-        if (Frame() >= m_holdFrames + m_returnFrames)
+        const int frame = ZoomFrame();
+        if (frame < 0 || frame >= m_holdFrames + m_returnFrames)
         {
             return CameraZoomRoll{};
         }
-        if (Frame() < m_holdFrames)
+        if (frame < m_holdFrames)
         {
             return m_full;
         }
 
         // 重みを 1 - weight と weight に分けて掛けるので、戻しの最後のフレームで倍率 1・傾き 0 ちょうどになる
-        const float t = static_cast<float>(Frame() - m_holdFrames + 1) / static_cast<float>(m_returnFrames);
+        const float t = static_cast<float>(frame - m_holdFrames + 1) / static_cast<float>(m_returnFrames);
         const float weight = SmoothStep(t);
         return CameraZoomRoll{
             .zoom = m_full.zoom * (1.0f - weight) + weight,
@@ -290,7 +302,7 @@ namespace NS
 
     bool CameraZoomRollModifier::IsFinished() const noexcept
     {
-        return Frame() >= m_holdFrames + m_returnFrames;
+        return ZoomFrame() >= m_holdFrames + m_returnFrames;
     }
 
     const void* CameraTraumaModifier::StaticKind() noexcept
@@ -459,5 +471,14 @@ namespace NS
     bool CameraNudgeModifier::IsFinished() const noexcept
     {
         return Frame() >= m_desc.frames;
+    }
+
+    std::array<const void*, 5> CameraHitEffectKinds() noexcept
+    {
+        return {CameraShakeModifier::StaticKind(),
+                CameraSinkModifier::StaticKind(),
+                CameraZoomRollModifier::StaticKind(),
+                CameraNudgeModifier::KindFor(false),
+                CameraNudgeModifier::KindFor(true)};
     }
 } // namespace NS

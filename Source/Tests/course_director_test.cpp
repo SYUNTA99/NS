@@ -154,7 +154,7 @@ TEST(CourseDirector, RespawnButtonReturnsObjectsButKeepsPlayer)
 {
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::Editor::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::EnsureUniqueObjectIds(doc);
@@ -317,7 +317,7 @@ TEST(CourseDirector, RestartReturnsObjectsToTheirStart)
 {
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::Editor::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     NS::EnsureUniqueObjectIds(doc);
@@ -377,14 +377,7 @@ TEST(CourseDirector, GameLoadSceneFreezesTheNewlyLoadedScene)
     ASSERT_NE(scene, nullptr);
 
     // やり直しの戻り先が読み直したシーンの配置になっている
-    std::size_t placed = 0;
-    for (const NS::SceneActor* actor : scene->Objects())
-    {
-        if (!actor->IsTransient())
-        {
-            ++placed;
-        }
-    }
+    const std::size_t placed = scene->Objects().ObjectCount();
     ASSERT_GT(placed, 0u);
     EXPECT_EQ(NS::SceneJsonObjects(scene->PlayBaseline()).size(), placed);
     const PlayerActor* player = FindPlayer(scene->Objects());

@@ -3,6 +3,7 @@
 #include "Editor/Undo/CompositeCommand.h"
 #include "Game/Game.h"
 #include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
@@ -60,7 +61,7 @@ namespace
         int count = 0;
         for (const nlohmann::json& object : NS::SceneJsonObjects(scene))
         {
-            if (NS::ObjectJsonClass(object) == className)
+            if (NS::ActorFileLibrary::Get().ClassNameOf(NS::ObjectJsonActorFile(object)) == className)
             {
                 ++count;
             }

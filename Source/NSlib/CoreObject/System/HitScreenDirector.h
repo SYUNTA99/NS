@@ -36,6 +36,15 @@ namespace NS
         int frames = 0;         //!< 出すフレーム数。0 以下なら出さない
     };
 
+    //! @brief 床の波 1 回。center の真下から、上を向いた面へ光の輪を広げる
+    struct HitGroundWaveDesc
+    {
+        Vector3 center{};   //!< 輪の中心の真上の世界の点。水平の位置だけを使う
+        Curve radius{};     //!< 輪の半径 (m)。始めたフレームを 0 にしたフレーム数で引く
+        Curve strength{};   //!< 輪の強さ。0 以下のフレームは出さない
+        int frames = 0;     //!< 出すフレーム数。0 以下なら出さない
+    };
+
     //! @brief 線で挟む物が画面の上で占める横の幅と、縦の中心。座標は描画先の画素で左上が原点
     struct HitShakeLineSpan
     {
@@ -89,6 +98,14 @@ namespace NS
         //! requester が頼んだ歪みの輪を消す。ほかの物が頼んだ輪と、白と震えの線は残す
         void StopDistortionRing(const SceneActor& requester) noexcept;
 
+        //! @brief 床の波を始め、始まりの姿を場面へ書く。前の波が残っていても始め直す
+        //! @param[in] requester 頼んだ物。StopGroundWave で同じ物を渡すと消える
+        //! @param[in] desc 床の波の設定。フレーム数が 0 以下なら出さない
+        void StartGroundWave(const SceneActor& requester, const HitGroundWaveDesc& desc) noexcept;
+
+        //! requester が頼んだ床の波を消す。ほかの物が頼んだ波は残す
+        void StopGroundWave(const SceneActor& requester) noexcept;
+
         //! 白の残りフレーム数。出していない場合 0
         [[nodiscard]] int FlashFramesRemaining() const noexcept { return m_flashRemaining; }
         //! 今の白の濃さ。始めの濃さ × 残りのフレーム数 ÷ 始めのフレーム数
@@ -98,7 +115,7 @@ namespace NS
         //! 最後に始めた震えの線の設定
         [[nodiscard]] const HitShakeLinesDesc& ShakeLines() const noexcept { return m_lines; }
 
-        //! 白を 1 フレーム薄め、震えの線と歪みの輪を 1 フレーム進める
+        //! 白を 1 フレーム薄め、震えの線・歪みの輪・床の波を 1 フレーム進める
         void OnTick() override;
 
         [[nodiscard]] int OverlayOrder() const noexcept override { return 1; }
@@ -110,6 +127,8 @@ namespace NS
         void RenderShakeLines(const Gfx::RenderContext& context) const noexcept;
         void WriteDistortionRing() noexcept;
         void EndDistortionRing() noexcept;
+        void WriteGroundWave() noexcept;
+        void EndGroundWave() noexcept;
 
         Scene& m_scene;
         // 頼んだ物は見分けるだけで、指す先は読まない
@@ -127,5 +146,10 @@ namespace NS
         int m_ringElapsed = 0;
         bool m_ringActive = false;
         bool m_ringJustStarted = false;
+        const SceneActor* m_waveRequester = nullptr;
+        HitGroundWaveDesc m_wave{};
+        int m_waveElapsed = 0;
+        bool m_waveActive = false;
+        bool m_waveJustStarted = false;
     };
 } // namespace NS

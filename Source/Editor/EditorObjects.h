@@ -49,13 +49,12 @@ namespace NS
             return MakePrototypeJson(*prototype);
         }
 
-        //! @brief エディタが並べて番号を振る配置物。一時物を除き、objects の並びのまま
+        //! @brief エディタが並べて番号を振る配置物。objects の並びのまま
         //! @details アクター一覧・その数・参照先の候補はこの並びと番号で出す
         [[nodiscard]] std::vector<SceneActor*> PlacedActors(const ActorList& objects);
 
         //! @brief cell ブラシが置換・削除・回転できる 1 m の升の配置物か
         //! @details 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。
-        //! 一時物かは見ないので、PlacedActors で並べた物を渡す
         [[nodiscard]] bool IsCellBrushObject(const SceneActor& object) noexcept;
 
         //! 実体のセル座標。Root の位置を最も近い整数へ丸めた値
@@ -94,7 +93,7 @@ namespace NS
         //! プレイヤーのひな形の JSON を作る。構成は PlayerActor の OnInit が決め、transform 以外の欄は書かない
         [[nodiscard]] nlohmann::json MakePlayerObject(const Vector3& position, const Quaternion& rotation);
 
-        //! 不在なら種類の既定構成でプレイヤーを追加し、採番する。追加時だけ true
+        //! 不在なら PlayerActor.actor の構成でプレイヤーを追加し、採番する。追加時だけ true
         //! 足元は DefaultSpawnPosition とカプセル寸法から決める。複数いれば警告し、先頭を使う
         [[nodiscard]] bool EnsurePlayerObject(nlohmann::json& scene);
 

@@ -22,8 +22,8 @@ namespace NS
         namespace
         {
             const char* const k_Panels[] = {k_PanelScene, k_PanelGame, k_PanelActorList, k_PanelInspector,
-                                             k_PanelConsole, k_PanelAssets, k_PanelEditMode, k_PanelHitTimeline};
-            const ImGuiID k_DockspaceId = ImHashStr("EditorDockSpaceV11");
+                                             k_PanelConsole, k_PanelAssets, k_PanelEditMode, k_PanelActionTimeline};
+            const ImGuiID k_DockspaceId = ImHashStr("EditorDockSpaceV12");
 
             void SelectDefaultTab(ImGuiID nodeId, const char* windowName)
             {
@@ -60,7 +60,7 @@ namespace NS
                 ImGui::DockBuilderDockWindow(k_PanelInspector, rightId);
                 ImGui::DockBuilderDockWindow(k_PanelConsole, bottomId);
                 ImGui::DockBuilderDockWindow(k_PanelAssets, bottomId);
-                ImGui::DockBuilderDockWindow(k_PanelHitTimeline, bottomId);
+                ImGui::DockBuilderDockWindow(k_PanelActionTimeline, bottomId);
                 // Scene と Game の初期配置は同じタブ群にする。分割後は両方の映像を描ける
                 ImGui::DockBuilderDockWindow(k_PanelScene, centerId);
                 ImGui::DockBuilderDockWindow(k_PanelGame, centerId);

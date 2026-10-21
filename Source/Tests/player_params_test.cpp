@@ -1,6 +1,7 @@
 #include "Editor/EditorObjects.h"
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/PropActor.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
 #include "Game/Player/ChargeEffects.h"
@@ -12,7 +13,7 @@
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -34,13 +35,15 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonActorFile(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
-    entry["classObjs"] = {{"Params", {{"体力", 5}}}};
     NS::SceneJsonObjects(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
     PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
+    // 体力は .actor だけが持つ欄なので、読んだ後のアクターへ書いて満たす
+    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), nlohmann::json{{"体力", 5}}), 0u);
+    player->ResetHealth();
     EXPECT_EQ(player->Health(), 5);
     player->ApplyDamage(2);
     EXPECT_EQ(player->Health(), 3);
@@ -147,31 +150,6 @@ TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
     EXPECT_NEAR(movement->VerticalVelocity(), 0.5f, 0.00001f);
     EXPECT_EQ(NS::ApplyJsonFields(*params, {{"走行速度", 11.0f}}), 0u);
     EXPECT_FLOAT_EQ(player.RunSpeed(), 11.0f);
-}
-
-TEST(PlayerParams, SceneOverridesSurviveSaveAndReload)
-{
-    NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
-    NS::SetObjectJsonId(entry, 1);
-    entry["classObjs"] = {
-        {"Params",
-         {{"走行速度", 9.0f}, {"チャージ突進の距離", 14.0f}, {"上昇重力", -21.0f}, {"下降重力", -39.0f}, {"体力", 6}}}};
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
-    scene.ResetFromJson(doc);
-    const nlohmann::json saved = scene.ToJson();
-    scene.ResetFromJson(saved);
-    const PlayerActor* player = static_cast<const PlayerActor*>(scene.Objects().FindByObjectId(1));
-    ASSERT_NE(player, nullptr);
-    EXPECT_FLOAT_EQ(player->RunSpeed(), 9.0f);
-    EXPECT_FLOAT_EQ(player->BodySlamDistance(), 14.0f);
-    EXPECT_EQ(player->Health(), 6);
-    const GL::Player::PlayerParams* params = &player->Params();
-    const nlohmann::json fields = NS::SerializeClassObjFields(*params);
-    EXPECT_FLOAT_EQ(fields["上昇重力"].get<float>(), -21.0f);
-    EXPECT_FLOAT_EQ(fields["下降重力"].get<float>(), -39.0f);
 }
 
 // part の欄に expected の名前が全部あり、値も同じことを確かめる
@@ -420,22 +398,25 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonActorFile(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
     NS::Editor::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(entry));
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 2);
     // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
     NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
     // 位置は部品の件 Transform に入っているので、件ごと置き換えずに足す
-    // 飛び方の高さは相手の欄に書く
-    NS::ObjectJsonClassObjs(rock)["Params"] = {{"質量", 1.0f}, {"押し飛ばしの高さ", 3.0f}};
+    NS::ObjectJsonClassObjs(rock)["Params"] = {{"質量", 1.0f}};
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
     PlayerActor* player = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(player, nullptr);
+    // 飛び方の高さは相手の欄に書く。.actor だけが持つ欄なので、読んだ後のアクターへ書く
+    GL::Level::PropActor* target = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    ASSERT_NE(target, nullptr);
+    ASSERT_EQ(NS::ApplyJsonFields(target->Params(), nlohmann::json{{"押し飛ばしの高さ", 3.0f}}), 0u);
     EXPECT_FALSE(NS::SerializeClassObjFields(player->Params()).contains("押し飛ばしの高さ"));
     EXPECT_EQ(NS::ApplyJsonFields(
                   player->Params(),
@@ -507,11 +488,11 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
+    NS::SetObjectJsonActorFile(entry, "PlayerActor");
     NS::SetObjectJsonId(entry, 1);
     NS::SceneJsonObjects(doc).push_back(std::move(entry));
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 2);
     NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -547,7 +528,7 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     EXPECT_FLOAT_EQ(arrow.tip, arrow.fullTip);
 }
 
-// 欄を別の部品へ移した後も、同梱の種類の既定値と場面の値は読まれる。古い部品の下に残った鍵はどの欄にも
+// 欄を別の部品へ移した後も、同梱の .actor と場面の値は読まれる。古い部品の下に残った鍵はどの欄にも
 // 照合されず、詰めた値が静かに既定へ戻る
 TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
 {
@@ -568,10 +549,10 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
             }
         });
     };
-    NS::ArchetypeLibrary::Get().Reload();
-    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
-    ASSERT_NE(archetype, nullptr);
-    expectEveryFieldRead(*archetype, "PlayerActor.json");
+    NS::ActorFileLibrary::Get().Reload();
+    const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PlayerActor");
+    ASSERT_NE(actorFile, nullptr);
+    expectEveryFieldRead(*actorFile, "PlayerActor.actor");
 
     for (const std::string_view sceneName : {"new_scene.scene"})
     {
@@ -583,7 +564,7 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
         ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
         for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
-            if (NS::ObjectJsonClass(entry) == "PlayerActor")
+            if (NS::ObjectJsonActorFile(entry) == "PlayerActor")
             {
                 expectEveryFieldRead(entry, sceneName);
             }

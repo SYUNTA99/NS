@@ -51,7 +51,7 @@ namespace NS
             ImGui::EndTable();
         }
 
-        // 種類の既定値を上書きしている欄の名前の色。値を変えた欄が一覧の中で目に留まる
+        // 配置物の値が .actor と違う欄の名前の色。値を変えた欄が一覧の中で目に留まる
         inline const ImVec4 k_OverriddenFieldColor{1.0f, 0.78f, 0.35f, 1.0f};
 
         // 値列の右端に置くボタンの幅。戻すボタンと上書きボタンの広い方に揃え、どの行も値の幅を揃える
@@ -60,10 +60,15 @@ namespace NS
             return ImGui::CalcTextSize("上書き").x + ImGui::GetStyle().FramePadding.x * 2.0f;
         }
 
-        // overridden の行は名前に色を付け、種類の既定値を上書きしていると分かるようにする
-        inline void FieldRow(const char* label, bool overridden = false) noexcept
+        // overridden の行は名前に色を付け、この 1 体の値が .actor と違うと分かるようにする
+        // background が 0 でなければ行の地をその色で塗る
+        inline void FieldRow(const char* label, bool overridden = false, ImU32 background = 0) noexcept
         {
             ImGui::TableNextRow();
+            if (background != 0)
+            {
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, background);
+            }
             ImGui::TableSetColumnIndex(0);
             ImGui::AlignTextToFramePadding();
             const bool stacked = ImGui::TableGetColumnCount() == 1;
@@ -164,13 +169,12 @@ namespace NS
         enum class OverrideAction
         {
             None,
-            Revert,  // 既定に戻す。種類の既定値へ戻して上書きをやめる
-            Promote, // 種類の既定にする。今の値を種類の既定値へ書き、同じ種類の全ての個体へ広げる
+            Revert, // 既定に戻す。.actor の値へ戻して上書きをやめる
         };
 
-        // 種類の既定値と違う行だけ右端に上書きの印を出し、押すと戻すか種類の既定にするかを選ばせる
-        // 同じ値の行は幅を空けるだけで並びを保つ。promotable が偽の欄 (参照など個体の物) は種類の既定にできない
-        inline OverrideAction OverrideButton(bool overridden, bool promotable) noexcept
+        // .actor の値と違う行だけ右端に上書きの印を出し、押すと戻すかを選ばせる
+        // 同じ値の行は幅を空けるだけで並びを保つ
+        inline OverrideAction OverrideButton(bool overridden) noexcept
         {
             ImGui::SameLine();
             if (!overridden)
@@ -184,7 +188,7 @@ namespace NS
             }
             if (ImGui::IsItemHovered())
             {
-                ImGui::SetTooltip("種類の既定値と違う値");
+                ImGui::SetTooltip(".actor と違う値");
             }
             OverrideAction action = OverrideAction::None;
             if (ImGui::BeginPopup("##override"))
@@ -192,10 +196,6 @@ namespace NS
                 if (ImGui::MenuItem("既定に戻す"))
                 {
                     action = OverrideAction::Revert;
-                }
-                if (ImGui::MenuItem("種類の既定にする", nullptr, false, promotable))
-                {
-                    action = OverrideAction::Promote;
                 }
                 ImGui::EndPopup();
             }

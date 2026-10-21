@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Game/Player/LaunchPitch.h"
-#include "Game/Player/PlayerGravity.h"
+#include "Game/Level/AirGravity.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Object.h"
 
@@ -54,20 +53,20 @@ namespace GL
             //! 入力方向への水平速度成分がこの値未満ならブレーキに入る
             [[nodiscard]] float BrakeThreshold() const noexcept { return m_brakeThreshold; }
             //! 欄「上昇重力」「下降重力」「頂点滞空 Vy」「頂点滞空倍率」の写し。重力の強さを選ぶ ChooseGravity へ渡す
-            [[nodiscard]] PlayerGravity Gravity() const noexcept
+            [[nodiscard]] GL::Level::AirGravity Gravity() const noexcept
             {
-                return PlayerGravity{.rise = m_gravityUp,
-                                     .fall = m_gravityDown,
-                                     .apexSpeed = m_apexHangVy,
-                                     .apexScale = m_apexHangScale};
+                return GL::Level::AirGravity{.rise = m_gravityUp,
+                                             .fall = m_gravityDown,
+                                             .apexSpeed = m_apexHangVy,
+                                             .apexScale = m_apexHangScale};
             }
             //! 上りだけ反動の倍率を掛けた重力を返す。移動と初速の計算に同じ値を使う
-            [[nodiscard]] PlayerGravity ReboundGravity() const noexcept
+            [[nodiscard]] GL::Level::AirGravity ReboundGravity() const noexcept
             {
-                return PlayerGravity{.rise = m_gravityUp * m_reboundRiseGravityScale,
-                                     .fall = m_gravityDown,
-                                     .apexSpeed = m_apexHangVy,
-                                     .apexScale = m_apexHangScale};
+                return GL::Level::AirGravity{.rise = m_gravityUp * m_reboundRiseGravityScale,
+                                             .fall = m_gravityDown,
+                                             .apexSpeed = m_apexHangVy,
+                                             .apexScale = m_apexHangScale};
             }
             //! 当たりが決めた反動の向き・高さ・距離を、ReboundGravity の重力で飛ぶ曲線にする
             //! 反動の初速と滞空の秒は、自機が弾く時も裁定が記録に書く時もこの曲線から引く
@@ -179,9 +178,9 @@ namespace GL
             float m_spawnFloorTop = 0.5f;
             float m_spawnClearance = 0.01f;
             float m_contactTolerance = 0.001f;
-            float m_launchHeightTolerance = LaunchPitchDesc{}.heightTolerance;
-            float m_launchAngleGuardDegrees = LaunchPitchDesc{}.angleGuardDegrees;
-            int m_launchMaxFrames = LaunchPath{}.maxFrames;
+            float m_launchHeightTolerance = 0.001f;
+            float m_launchAngleGuardDegrees = 89.0f;
+            int m_launchMaxFrames = 600;
             friend class GL::Level::ImpactResolver;
             friend class GL::Level::SlamArrow;
             friend GL::Level::ImpactTuning GL::Level::MakeImpactTuning(const PlayerParams& params) noexcept;

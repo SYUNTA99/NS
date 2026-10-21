@@ -94,8 +94,8 @@ namespace GL
                 StartRelease(center, slam);
             }
             UpdateTrail(center, slam, slamming, impact);
-            // 接触前の縮みや止めを光で隠さないよう、接触が近づいたら放しの弾けを消す
-            if (m_burst != 0 && (impact.beforeContact || IsContactNear(impact)))
+            // 接触前の縮みや止めを光で隠さないよう、当たる直前に入るか接触が近づいたら放しの弾けを消す
+            if (m_burst != 0 && (motion.beforeContact || IsContactNear(impact)))
             {
                 StopAndClear(m_burst);
             }
@@ -111,7 +111,6 @@ namespace GL
             StopAndClear(m_burst);
             m_wasHeld = false;
             m_wasSlamming = false;
-            m_trailAwaitsFreeze = false;
             m_framesSinceFull = 0;
         }
 
@@ -230,7 +229,8 @@ namespace GL
             Place(m_curl, center, NS::Quaternion::Identity);
             Place(m_spin, center, spinBoard);
             Place(m_grind, center, YawToward(aimDirection));
-            // 溜まる光の根は狙いの線 (カメラの正面の水平の向き) へ回す。定義は根の手前に低く、奥に高く光の点を生む
+            // 溜まる光の根は今放せば出る向きへ回す。溜めている間は狙いの線の向きになる。
+            // 定義は根の手前に低く、奥に高く光の点を生む
             Place(m_gather, center, YawToward(aimDirection));
             Place(m_full, center, NS::Quaternion::Identity);
             SetCharge(m_spin, charge01);
@@ -270,7 +270,6 @@ namespace GL
             {
                 StopTrailRoot();
             }
-            m_trailAwaitsFreeze = false;
             m_trail = NS::PlayEffect(m_owner, m_trailAsset, PlayDesc(center, facing, charge01));
         }
 
@@ -289,27 +288,15 @@ namespace GL
                 return;
             }
 
+            // 尾を止めるのは当たりの状態に入ったフレーム。当たりで突進が打ち切られた検知のフレームは残す
             bool stop = false;
-            if (impact.freezeBegan)
+            if (impact.beginHit)
             {
                 stop = true;
             }
-            else if (m_trailAwaitsFreeze)
+            else if (!slamming && !impact.rebounded && !impact.broke)
             {
-                // 当たりを検知した次のフレームに止めが始まらなかった (止めが 0 の当たり)
                 stop = true;
-            }
-            else if (!slamming)
-            {
-                // 当たりで突進が打ち切られたフレームは、次のフレームの止めの頭まで尾を残す
-                if (impact.rebounded || impact.broke)
-                {
-                    m_trailAwaitsFreeze = true;
-                }
-                else
-                {
-                    stop = true;
-                }
             }
             if (stop)
             {
@@ -328,7 +315,6 @@ namespace GL
         {
             NS::StopEffectRoot(m_owner, m_trail);
             NS::StopEffectAfter(m_owner, m_trail, std::max(m_trailFadeSteps, 1));
-            m_trailAwaitsFreeze = false;
         }
 
         void ChargeEffects::Place(NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept

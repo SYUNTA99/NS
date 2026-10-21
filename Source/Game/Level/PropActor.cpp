@@ -1,18 +1,25 @@
 #include "Game/Level/PropActor.h"
 #include "NSlib/Core/Types.h"
 
-#include "Game/Level/ImpactMarkActor.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/Core/Assert.h"
+#include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <string_view>
+#include <vector>
 
 namespace GL
 {
@@ -40,6 +47,7 @@ namespace GL
             }
         };
 
+        // 受けた状態。止めの間は基底が状態の段を飛ばすので、OnStep が回るのは自分の束の止めが明けた後
         class PropActor::FreezeState : public NS::StateOf<FreezeState, PropActor>
         {
             void OnStep(PropActor& owner, float dt) override
@@ -48,7 +56,7 @@ namespace GL
                 {
                     owner.m_motion.Step(dt);
                 }
-                owner.StepFreeze();
+                owner.LeaveFreeze();
             }
         };
 
@@ -81,7 +89,9 @@ namespace GL
             CreateClassObj(m_params);
             CreateClassObj(m_hitZones);
             CreateClassObj(m_effectKeeper, this);
+            CreateClassObj(m_hitReaction, this);
             CreateClassObj(m_effects, this);
+            CreateClassObj(m_marks, this);
             // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
             NS::FollowHitSensor* bodySensor =
                 CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [sphere] {
@@ -104,6 +114,7 @@ namespace GL
             if (IsAppeared())
             {
                 m_tackleGhost.Register();
+                m_marks->Register();
             }
         }
 
@@ -111,6 +122,7 @@ namespace GL
         {
             NS::SceneActor::OnDisappear();
             m_tackleGhost.Unregister();
+            m_marks->Unregister();
         }
 
         bool PropActor::IsFrozen() const noexcept
@@ -143,7 +155,8 @@ namespace GL
             m_effects->Update(Flight());
             // clang-format on
             // 明けの写しは止めの後も残り、写し取る姿は揺れを書いた後の姿なので、Model が揺れを進めた後で進める
-            AdvanceGhost();
+            m_ghost.Advance(&m_tackleGhost);
+            m_marks->Step(NS::OS::FrameTimer::FixedDelta());
         }
 
         void PropActor::UpdateMotion()
@@ -153,15 +166,11 @@ namespace GL
 
         void PropActor::BeginFreeze(const TackleFreezeDesc& desc)
         {
-            if (IsFrozen())
-            {
-                LeaveFreeze();
-            }
+            NS_ASSERT(Game, !IsFrozen(), "受けた状態のまま次の受けを始めた。前の受けは ReceiveHit が解く");
             m_freezePlaced = !IsFlying();
             m_freezeHome = Root().Position();
             m_freeze = desc;
             m_freeze.squash = false;
-            m_freeze.stopSteps = std::max(desc.stopSteps, 0);
             (void)m_states->Change<FreezeState>();
             if (m_freezePlaced)
             {
@@ -186,21 +195,63 @@ namespace GL
             Sphere().SyncToPhysics();
         }
 
-        void PropActor::AdvanceGhost()
+        void PropActor::ReceiveHit(const TackleHitDesc& hit, const NS::HitSensor& self, const NS::HitSensor& attacker)
         {
-            if (!m_ghost.active)
+            // 前の受けを先に解く。解くと揺れが止まるので、新しい束の揺れより前に置く
+            if (IsFrozen())
+            {
+                LeaveFreeze();
+            }
+            m_received = ReceivedHit{
+                .attacker = NS::MakeHitSensorRef(attacker), .contact = hit.contact, .tier = hit.tier, .active = true};
+            // 束が足した持ち主へ渡す項目は、走っている項目の後ろに並ぶ
+            const std::size_t first = m_hitReaction->OwnerRuns().size();
+            (void)m_hitReaction->Start(TackleSetName("受け", hit.tier), hit.contact, &self, &attacker);
+            if (hit.stopOverride.has_value())
+            {
+                OverrideHitStop(std::max(*hit.stopOverride, 0));
+            }
+            TackleFreezeDesc freeze{.impactDir = hit.impactDir};
+            std::optional<NS::HitOwnerRun> ghost;
+            const std::vector<NS::HitOwnerRun>& runs = m_hitReaction->OwnerRuns();
+            for (std::size_t i = first; i < runs.size(); ++i)
+            {
+                const NS::HitOwnerItem& item = runs[i].item;
+                if (item.name == "TackleFreeze")
+                {
+                    freeze.pushInDistance = HitOwnerValue(item, "食い込み距離", 0.0f);
+                    freeze.squashThickness = HitOwnerValue(item, "潰れの厚み", 1.0f);
+                    freeze.squashHeight = HitOwnerValue(item, "潰れの伸び上がり", 1.0f);
+                    // 貫通は押し勝っている側なので潰さない
+                    freeze.squash = !hit.stopOverride.has_value();
+                }
+                if (item.name == "TackleGhost")
+                {
+                    ghost = runs[i];
+                }
+            }
+            BeginFreeze(freeze);
+            // 残像の離れは食い込んだ所の奥行きで出す
+            if (ghost.has_value())
+            {
+                m_ghost.Start(*ghost, this);
+            }
+        }
+
+        void PropActor::StartReleaseSet()
+        {
+            if (!m_received.active)
             {
                 return;
             }
-            ++m_ghost.frame;
-            m_ghost.active = m_ghost.desc.WriteTo(&m_tackleGhost, m_ghost.frame);
-        }
-
-        void PropActor::StopGhost()
-        {
-            m_ghost.active = false;
-            (void)m_tackleGhost.SetSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
-            (void)m_tackleGhost.SetAfterimageOpacity(0.0f);
+            m_received.active = false;
+            const NS::HitSensor* attacker = NS::FindHitSensor(OwningScene(), m_received.attacker);
+            if (attacker == nullptr)
+            {
+                return;
+            }
+            (void)m_hitReaction->Start(
+                TackleSetName("明け", m_received.tier), m_received.contact, BodySensorClassObj(), attacker);
         }
 
         void PropActor::EndFreeze()
@@ -214,14 +265,6 @@ namespace GL
             {
                 (void)ModelClassObj()->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
                 m_freeze.squash = false;
-            }
-        }
-
-        void PropActor::StepFreeze()
-        {
-            if (m_states->StepsInState() >= static_cast<NS::uint32>(std::max(m_freeze.stopSteps, 1)) + 2)
-            {
-                LeaveFreeze();
             }
         }
 
@@ -306,17 +349,9 @@ namespace GL
             }
             else
             {
+                // 曲がった後も曲線と同じ重力を自機と同じ選び方で積む。AddGravity は下向きを正で受ける
                 const float vertical = NS::Dot(m_velocity, m_arcUp);
-                float gravity = m_arc.riseGravity;
-                if (vertical <= 0.0f)
-                {
-                    gravity *= m_arc.fallGravityScale;
-                }
-                if (std::abs(vertical) <= m_arc.apexBandSpeed)
-                {
-                    gravity *= m_arc.apexBandGravityScale;
-                }
-                AddGravity(m_velocity, gravity, dt);
+                AddGravity(m_velocity, -ChooseGravity(LaunchArcGravity(m_arc), vertical), dt);
             }
             MoveLaunched(dt);
             if (!m_motion.Machine().IsCurrent<ArcState>())
@@ -469,7 +504,7 @@ namespace GL
             if (NS::RaycastCollision(
                     this, sphere.center, down, m_params->MarkProbeDistance(), distance, normal, Sphere().BodyId()))
             {
-                (void)ImpactMarkActor::SpawnAt(OwningScene(), sphere.center + down * distance + normal * 0.02f);
+                m_marks->Spawn(sphere.center + down * distance + normal * 0.02f);
             }
         }
 
@@ -480,8 +515,11 @@ namespace GL
                 EndFreeze();
             }
             ModelClassObj()->StopDrawShake();
-            StopGhost();
+            m_ghost.Stop(&m_tackleGhost);
             ModelClassObj()->StopDrawTremor();
+            // 止めの途中のやり直しでも、置いた所で動ける姿へ戻す。受けた当たりの明けの束は出さない
+            OverrideHitStop(0);
+            m_received = ReceivedHit{};
             (void)m_states->Change<RestingState>();
             m_states->Reset();
             m_motion.Finish();
@@ -509,8 +547,6 @@ namespace GL
 
         bool PropActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver)
         {
-            (void)sender;
-            (void)receiver;
             if (const MsgAskTackleTarget* ask = NS::MsgCast<MsgAskTackleTarget>(msg))
             {
                 if (!IsAppeared() || !BodySensorClassObj()->IsValid())
@@ -529,34 +565,23 @@ namespace GL
                 answer.face = m_hitZones->Face();
                 answer.body = body;
                 answer.launch = m_params->Launch();
-                answer.hitTimeline = m_params->HitTimelineName();
                 return true;
             }
-            if (const MsgTackleFreeze* freeze = NS::MsgCast<MsgTackleFreeze>(msg))
+            if (const MsgTackleHit* hit = NS::MsgCast<MsgTackleHit>(msg))
             {
-                BeginFreeze(freeze->Desc());
-                return true;
-            }
-            if (const MsgTackleShake* shake = NS::MsgCast<MsgTackleShake>(msg))
-            {
-                ModelClassObj()->StartDrawShake(shake->Desc());
-                return true;
-            }
-            if (const MsgTackleGhost* ghost = NS::MsgCast<MsgTackleGhost>(msg))
-            {
-                m_ghost = GhostRun{.desc = ghost->Desc(), .frame = 0, .active = true};
-                return true;
-            }
-            if (const MsgTackleTremor* tremor = NS::MsgCast<MsgTackleTremor>(msg))
-            {
-                // 球の差し渡しで裏まで届く
-                NS::DrawTremorDesc desc = tremor->Desc();
-                desc.bodyLength = 2.0f * Sphere().WorldSphere().radius;
-                ModelClassObj()->StartDrawTremor(desc);
+                // 送る関数はセンサーからセンサーへ送るので、どちらも空でない
+                NS_ASSERT(Game, sender != nullptr && receiver != nullptr, "当たったの知らせがセンサーを通らずに届いた");
+                if (sender == nullptr || receiver == nullptr)
+                {
+                    return false;
+                }
+                ReceiveHit(hit->Desc(), *receiver, *sender);
                 return true;
             }
             if (const MsgTackleRelease* release = NS::MsgCast<MsgTackleRelease>(msg))
             {
+                // 震えは食い込んだ所から伝わるので、元の位置へ戻す前に始める
+                StartReleaseSet();
                 Release(release->Desc());
                 return true;
             }

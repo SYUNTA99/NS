@@ -227,6 +227,21 @@ namespace NS
             return true;
         }
 
+        bool FileSystem::RemoveFile(std::string_view path)
+        {
+            if (::DeleteFileW(OS::StringUtils::WideFromUtf8(path).c_str()) != 0)
+            {
+                return true;
+            }
+            const DWORD error = ::GetLastError();
+            if (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND)
+            {
+                return true;
+            }
+            NS_LOG_ERROR(Core, "FileSystem::RemoveFile: {} を消せない ({})", path, ErrorText(error));
+            return false;
+        }
+
         std::optional<std::string> FileSystem::ReadAllText(std::string_view path)
         {
             const std::optional<std::vector<std::byte>> bytes = ReadAllBytes(path);

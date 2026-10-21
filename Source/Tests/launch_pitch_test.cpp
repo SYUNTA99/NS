@@ -1,43 +1,57 @@
+#include "Game/Level/AirGravity.h"
+#include "Game/Level/LaunchArc.h"
 #include "Game/Player/LaunchPitch.h"
-#include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/ReboundArc.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
-// 溜めて放つ突進の上下の速さ (LaunchPitch) と、自機の重力の強さの選び方を縛る
+// 溜めて放つ突進の上下の速さ (LaunchPitch) と、空中の重力の強さの選び方を縛る
 
 namespace
 {
-    using GL::Player::ChooseGravity;
+    using GL::Level::AirGravity;
+    using GL::Level::ChooseGravity;
     using GL::Player::LaunchHeightAt;
     using GL::Player::LaunchPath;
     using GL::Player::LaunchPitch;
     using GL::Player::LaunchPitchDesc;
     using GL::Player::LaunchPitchResult;
-    using GL::Player::PlayerGravity;
 
     constexpr float k_Dt = 1.0f / 60.0f;
     // 二分探索は 1 mm まで詰める。浮動小数の丸めを足して 2 mm で見る
     constexpr float k_HeightTolerance = 0.002f;
 
+    // 写しの型の既定は 0 なので、本番と同じく自機の欄の既定から入れる。private の欄は保存の形で読む
+    nlohmann::json DefaultParamsFields()
+    {
+        const GL::Player::PlayerParams params;
+        return NS::SerializeClassObjFields(params);
+    }
+
     // 同梱の自機の玉の中心の高さ (床 0 の上の半径 0.65 の玉) から、突進速度 20 m/s で放つ
     LaunchPitchDesc GroundDesc(float targetHeight, float contactDistance)
     {
+        const nlohmann::json fields = DefaultParamsFields();
         LaunchPitchDesc desc;
         desc.ballHeight = 0.65f;
         desc.targetHeight = targetHeight;
         desc.contactDistance = contactDistance;
         desc.horizontalSpeed = 20.0f;
-        desc.gravity = PlayerGravity{};
-        desc.maxAngleDegrees = 40.0f;
+        desc.gravity = GL::Player::PlayerParams{}.Gravity();
+        desc.maxAngleDegrees = fields.at("放つ角度の上限").get<float>();
         desc.grounded = true;
         desc.dt = k_Dt;
+        desc.heightTolerance = fields.at("突進の高さ探索の誤差").get<float>();
+        desc.angleGuardDegrees = fields.at("突進の角度計算の上限").get<float>();
+        desc.maxFrames = fields.at("突進の予測フレーム上限").get<int>();
         return desc;
     }
 
@@ -48,7 +62,8 @@ namespace
                               .verticalSpeed = verticalSpeed,
                               .gravity = desc.gravity,
                               .dt = desc.dt,
-                              .grounded = desc.grounded};
+                              .grounded = desc.grounded,
+                              .maxFrames = desc.maxFrames};
         return desc.ballHeight + LaunchHeightAt(path, desc.contactDistance);
     }
 
@@ -61,11 +76,72 @@ namespace
 // 重力の強さの選び方: 上りは上昇重力、下りは下降重力、縦の速さの大きさが頂点滞空 Vy 未満の間は頂点滞空倍率を掛ける
 TEST(LaunchPitchTest, ChooseGravityPicksRiseFallAndTheApexBand)
 {
-    const PlayerGravity gravity{};
+    const AirGravity gravity = GL::Player::PlayerParams{}.Gravity();
     EXPECT_FLOAT_EQ(ChooseGravity(gravity, 5.0f), -25.0f);
     EXPECT_FLOAT_EQ(ChooseGravity(gravity, 0.5f), -12.5f);
     EXPECT_FLOAT_EQ(ChooseGravity(gravity, -0.5f), -17.5f);
     EXPECT_FLOAT_EQ(ChooseGravity(gravity, -5.0f), -35.0f);
+}
+
+// 帯の境目の速さは帯の外。自機も置物もこの 1 つの選び方を使う
+TEST(LaunchPitchTest, ChooseGravityLeavesTheBandEdgeOutside)
+{
+    const AirGravity gravity = GL::Player::PlayerParams{}.Gravity();
+    EXPECT_FLOAT_EQ(ChooseGravity(gravity, gravity.apexSpeed), gravity.rise);
+    EXPECT_FLOAT_EQ(ChooseGravity(gravity, -gravity.apexSpeed), gravity.fall);
+}
+
+// 飛ばされた置物は、曲がるまで閉じた式 (LaunchArcOffsetAt) で、曲がった後は ChooseGravity を固定フレームで積んで飛ぶ。
+// 2 つは同じ曲線の決まりなので、積んだ道筋の頂点の高さと着く距離は閉じた式と 1 固定フレームに進む距離の内で合う
+TEST(LaunchPitchTest, SteppedAirGravityFollowsTheClosedArc)
+{
+    const GL::Player::PlayerParams params;
+    for (const float apexHeight : {0.6f, 2.5f})
+    {
+        SCOPED_TRACE(apexHeight);
+        GL::Player::ReboundArc rebound;
+        rebound.apexHeight = apexHeight;
+        rebound.distance = apexHeight * 3.0f;
+        const GL::Level::LaunchArc arc = params.ReboundLaunchArc(rebound);
+        const AirGravity gravity = GL::Level::LaunchArcGravity(arc);
+        const NS::Vector3 initial = GL::Level::LaunchArcInitialVelocity(arc);
+        ASSERT_GT(initial.y, 0.0f);
+        const float frameDistance = initial.Length() * k_Dt;
+
+        // 置物と同じく、重力を速度へ加えてから位置を進める
+        float vertical = initial.y;
+        float steppedHeight = 0.0f;
+        float steppedPeak = 0.0f;
+        float steppedLanding = -1.0f;
+        float closedPeak = 0.0f;
+        float closedLanding = -1.0f;
+        NS::Vector3 closedBefore{};
+        for (int frame = 1; frame < 600 && (steppedLanding < 0.0f || closedLanding < 0.0f); ++frame)
+        {
+            const float before = steppedHeight;
+            vertical += ChooseGravity(gravity, vertical) * k_Dt;
+            steppedHeight += vertical * k_Dt;
+            steppedPeak = std::max(steppedPeak, steppedHeight);
+            if (steppedLanding < 0.0f && vertical < 0.0f && steppedHeight <= 0.0f)
+            {
+                const float t = before / (before - steppedHeight);
+                steppedLanding = initial.x * k_Dt * (static_cast<float>(frame - 1) + t);
+            }
+
+            const NS::Vector3 closed = GL::Level::LaunchArcOffsetAt(arc, static_cast<float>(frame) * k_Dt);
+            closedPeak = std::max(closedPeak, closed.y);
+            if (closedLanding < 0.0f && closed.y < closedBefore.y && closed.y <= 0.0f)
+            {
+                const float t = closedBefore.y / (closedBefore.y - closed.y);
+                closedLanding = closedBefore.x + (closed.x - closedBefore.x) * t;
+            }
+            closedBefore = closed;
+        }
+        ASSERT_GT(steppedLanding, 0.0f);
+        ASSERT_GT(closedLanding, 0.0f);
+        EXPECT_NEAR(steppedPeak, closedPeak, frameDistance);
+        EXPECT_NEAR(steppedLanding, closedLanding, frameDistance);
+    }
 }
 
 TEST(LaunchPitchTest, PredictionBudgetBelongsToThePath)
@@ -73,7 +149,7 @@ TEST(LaunchPitchTest, PredictionBudgetBelongsToThePath)
     LaunchPath path;
     path.horizontalSpeed = 1.0f;
     path.verticalSpeed = 1.0f;
-    path.gravity = PlayerGravity{.rise = 0.0f, .fall = 0.0f, .apexSpeed = 0.0f, .apexScale = 1.0f};
+    path.gravity = AirGravity{.rise = 0.0f, .fall = 0.0f, .apexSpeed = 0.0f, .apexScale = 1.0f};
     path.dt = 0.1f;
     path.maxFrames = 2;
     EXPECT_NEAR(LaunchHeightAt(path, 1.0f), 0.2f, 0.00001f);
@@ -105,7 +181,7 @@ TEST(LaunchPitchTest, PlayerGravityMatchesTheSharedChoice)
                           {{"上昇重力", -18.0f}, {"下降重力", -41.0f}, {"頂点滞空 Vy", 2.0f}, {"頂点滞空倍率", 0.3f}}),
                       0u);
         }
-        const PlayerGravity gravity = player.Params().Gravity();
+        const AirGravity gravity = player.Params().Gravity();
         for (const float vertical : {6.0f, 1.5f, 0.5f, -0.5f, -1.5f, -6.0f})
         {
             SCOPED_TRACE(pass);
@@ -171,7 +247,11 @@ TEST(LaunchPitchTest, GroundNeverAimsDownButTheAirDoes)
 // 縦の速さ 0 の道筋: 地上は床の上を水平に、空中は放った高さから落ちる
 TEST(LaunchPitchTest, LevelPathStaysOnTheFloorOrFallsInTheAir)
 {
-    LaunchPath path{.horizontalSpeed = 20.0f, .verticalSpeed = 0.0f, .gravity = PlayerGravity{}, .dt = k_Dt};
+    LaunchPath path{.horizontalSpeed = 20.0f,
+                    .verticalSpeed = 0.0f,
+                    .gravity = GL::Player::PlayerParams{}.Gravity(),
+                    .dt = k_Dt,
+                    .maxFrames = DefaultParamsFields().at("突進の予測フレーム上限").get<int>()};
     path.grounded = true;
     EXPECT_FLOAT_EQ(LaunchHeightAt(path, 0.0f), 0.0f);
     EXPECT_FLOAT_EQ(LaunchHeightAt(path, 6.0f), 0.0f);

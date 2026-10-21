@@ -9,3 +9,7 @@
 # binary は -text -diff -merge のマクロで eol を消さないため、!eol を併記して
 # 属性を読む道具が eol=crlf と誤読しないようにする
 *.scene binary !eol
+
+# .actor も EOL 変換禁止。 保存の形 (LF) で書き直してもバイトまで同じかを試しで見る。
+# 中身は手で読む JSON なので binary にせず差分は見せる。 !eol の理由は上と同じ
+*.actor -text !eol

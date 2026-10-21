@@ -4,13 +4,14 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ObjectJson.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/FileSystem.h"
+#include "TestActorFile.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -99,9 +100,6 @@ namespace
     template <class TScene = NS::Scene> void CheckSceneBuildsItsOwnActors()
     {
         static_assert(!requires(TScene& scene, std::unique_ptr<NS::SceneActor> actor) {
-            scene.SpawnTransient(std::move(actor));
-        });
-        static_assert(!requires(TScene& scene, std::unique_ptr<NS::SceneActor> actor) {
             scene.SpawnObject(std::move(actor), std::string{});
         });
     }
@@ -146,7 +144,7 @@ protected:
         NS::SceneActor::OnAssetsLoaded();
         ++loads;
         startedAtLoad = started;
-        // 一時のアクターは id を持たないので、一覧を端から見る
+        // 型から湧かす道は一覧へ入る時に id を振るので、id で引かずに一覧を端から見る
         inListAtLoad = false;
         const NS::Scene* scene = OwningScene();
         if (scene == nullptr)
@@ -223,13 +221,11 @@ TEST(ClassObj, OnlyTheBuildersCanInitAndEnterAnActor)
 
 TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
 {
+    const ScopedActorFile probeFile{"ClassObjInitProbeActor", ClassOnlyActorFile("ClassObjInitProbeActor")};
     NS::Scene scene;
-    const ClassObjInitProbeActor* transient = scene.SpawnTransient<ClassObjInitProbeActor>();
-    EXPECT_EQ(transient->inits, 1);
-    EXPECT_NE(transient->ModelClassObj(), nullptr);
-
     const ClassObjInitProbeActor* placed = scene.SpawnObject<ClassObjInitProbeActor>("Placed");
     EXPECT_EQ(placed->inits, 1);
+    EXPECT_NE(placed->ModelClassObj(), nullptr);
 
     const std::unique_ptr<ClassObjInitProbeActor> loose = NS::CreateActor<ClassObjInitProbeActor>();
     EXPECT_EQ(loose->inits, 1);
@@ -239,7 +235,7 @@ TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
     ASSERT_NE(fromJson, nullptr);
     EXPECT_EQ(fromJson->inits, 1);
 
-    const NS::SceneActor& baseline = NS::ArchetypeLibrary::Get().Baseline("ClassObjInitProbeActor");
+    const NS::SceneActor& baseline = NS::ActorFileLibrary::Get().Baseline("ClassObjInitProbeActor");
     const ClassObjInitProbeActor* probe = NS::Cast<ClassObjInitProbeActor>(&baseline);
     ASSERT_NE(probe, nullptr);
     EXPECT_EQ(probe->inits, 1);
@@ -251,6 +247,7 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
+    const ScopedActorFile probeFile{"AssetTimingProbeActor", ClassOnlyActorFile("AssetTimingProbeActor")};
     NS::Scene scene;
     const auto check = [](const NS::SceneActor* built, const char* path) {
         SCOPED_TRACE(path);
@@ -271,15 +268,14 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
 
     check(scene.ReplaceFromJson(placed), "作り直す");
     check(scene.SpawnFromJson(NS::Editor::MakePrototypeJson<AssetTimingProbeActor>()), "JSON から湧かす");
-    check(scene.SpawnTransient<AssetTimingProbeActor>(), "型から湧かす (一時)");
-    check(scene.SpawnObject<AssetTimingProbeActor>("Placed"), "型から湧かす (配置)");
+    check(scene.SpawnObject<AssetTimingProbeActor>("Placed"), "型から湧かす");
 }
 
 // AssetManager を差していない間も素材を読む道を通る。試しも本番と同じ順を通る
 TEST(ClassObj, ActorLoadsAssetsWithoutAssetManagerScope)
 {
     NS::Scene scene;
-    const AssetTimingProbeActor* actor = scene.SpawnTransient<AssetTimingProbeActor>();
+    const AssetTimingProbeActor* actor = scene.SpawnObject<AssetTimingProbeActor>("AssetTimingProbeActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->loads, 1);
 }

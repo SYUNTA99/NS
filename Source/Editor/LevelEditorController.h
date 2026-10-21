@@ -32,6 +32,7 @@ namespace NS
     class AssetManager;
     class Material;
     enum class FieldType;
+    struct HitReactionSet;
 } // namespace NS
 
 namespace NS
@@ -76,9 +77,10 @@ public:
 
     [[nodiscard]] Mode CurrentMode() const noexcept { return m_mode; }
 
-    //! @brief シーンか種類の既定を変えてよいか。編集モードの間だけ真
+    //! @brief シーンを変えてよいか。編集モードの間だけ真
     //! @details 変える関数と画面の止め方は全部これを見る。EditorMode にも同じ答えを差す。
-    //! プレイ中に欄を触る道 (MirrorPlayEditToBaseline) は断らず、プレイ開始の写しへ写す
+    //! プレイ中にインスペクタで欄を触る道 (NoteFieldEdit) は断らない。配置物へ書く欄はプレイ開始の写しへ写し、
+    //! .actor へ書く欄はプレイ中も .actor へ書く
     [[nodiscard]] bool IsSceneEditable() const noexcept;
 
     //! @brief 編集のショートカットを止めるか。ResolveInputOwnership の答えを毎回の描画の終わりに受ける
@@ -181,12 +183,12 @@ public:
     //! row は actor のクラスの表の行
     void MirrorPlayEditToBaseline(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
-    //! 種類の既定値と未上書きの個体を更新する。変更できた場合 true、参照・姿勢など対象外の欄は false
-    //! ファイル保存に失敗してもメモリ上の変更は残し、警告する。Undo の対象外
-    //! row は actor のクラスの表の行
-    bool PromoteFieldToArchetype(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
+    //! @brief Inspector で actor の欄の値が変わったフレームに呼ぶ。row は actor のクラスの表の行
+    //! @details 配置物へ書く欄はプレイ中の凍結へ写す。.actor へ書く欄は覚えておき、
+    //! CommitClassObjEdit で .actor のファイルへ書いて、同じ .actor のアクターの全部へ写す。プレイ中も同じ
+    void NoteFieldEdit(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
-    //! @brief 配置物の欄を書いた後の後始末。欄を変える・既定へ戻す・種類の既定へ上げる・マテリアルを付ける の全部が呼ぶ
+    //! @brief アクターの欄を書いた後の後始末。欄を変える・既定へ戻す・.actor の欄を直す・マテリアルを付ける の全部が呼ぶ
     //! @details 素材の欄を書いた時だけ、描くメッシュ・描くマテリアル・メッシュの当たりの形を読み直す
     //! 当たりの姿と形は、世界を止めた歩とプレイの歩が揃えるので、ここでは張り直さない。writtenType は書いた欄の型
     void FinishFieldWrite(NS::SceneActor& actor, NS::FieldType writtenType);
@@ -224,7 +226,7 @@ public:
     //! 選択中の配置物の Model に材質を割り当てて undo へ積む。対象外なら false
     bool ApplyMaterialToSelected(std::string_view matPath);
 
-    //! @brief 素材の窓で押したマテリアル・メッシュ・画像を選ぶ。アクターの選択は外れる
+    //! @brief 素材の窓で押したマテリアル・メッシュ・画像・.actor を選ぶ。アクターの選択は外れる
     //! @details 道は ContentRoot からの道で覚え、SelectedAsset が引くたびに AssetManager から引く
     //! 読めない素材は選ばない。選ぶ前に、前の素材の確定していない編集を確定する
     //! @param[in] assetPath 素材のファイルの絶対パス
@@ -233,13 +235,25 @@ public:
     [[nodiscard]] const std::string& SelectedAssetPath() const noexcept { return m_selectedAssetPath; }
     //! 素材の窓の行が選んだ素材か。assetPath は素材のファイルの絶対パス
     [[nodiscard]] bool IsAssetSelected(std::string_view assetPath) const;
-    //! 選んだ素材 (NS::Material・NS::Mesh・NS::Texture)。選んでいなければ nullptr
+    //! @brief 選んだ素材 (NS::Material・NS::Mesh・NS::Texture、.actor ならそれを敷いた NS::SceneActor)。選んでいなければ nullptr
+    //! @details .actor の 1 体はインスペクタで直すための物で、シーンへ入らない。
+    //! .actor の文書が変わると (確定・取り消し) 次に引いた時に作り直すので、引いたフレームの間だけ使う
     [[nodiscard]] NS::Object* SelectedAsset();
     //! Inspector で選んだ素材の値が変わったフレームに呼ぶ
     void MarkAssetEdited() noexcept;
-    //! @brief 値が変わった後の確定で、選んだ .mat のマテリアルを作り直して .mat に書く
-    //! @details 値が変わっていなければ何もしない。作り直せなくても値は .mat に書き、前の絵で描き続ける
+    //! @brief Inspector で選んだ .actor の 1 体の欄の値が変わったフレームに呼ぶ。row はその 1 体のクラスの表の行
+    //! @details 印の付いた欄も .actor の値を直す。参照の欄と根の部品は .actor が持たないので覚えない
+    void NoteActorFileFieldEdit(const NS::ClassObjInfo& row, std::string_view fieldName);
+    //! @brief 値が変わった後の確定で、選んだ素材のファイルへ書く
+    //! @details .mat はマテリアルを作り直して書き、作り直せなくても値は書いて前の絵で描き続ける。
+    //! .actor は直した欄を書き、シーンの同じ .actor のアクターの全部へ写して、取り消しの履歴へ積む。
+    //! 値が変わっていなければ何もしない
     void CommitAssetEdit();
+
+    //! @brief actorFileName の .actor の名前の束を sets に替えてファイルへ書き、取り消しの履歴へ積む
+    //! @details シーンの同じ .actor のアクターの全部が束を読み直すので、次の当たりから効く。プレイ中も同じ。
+    //! .actor が読まれていない時は WARN を出して書かない。束が変わっていなければ何もしない
+    void WriteActorFileHitReactions(std::string_view actorFileName, const std::vector<NS::HitReactionSet>& sets);
 
 private:
     void TickEdit();
@@ -346,12 +360,32 @@ private:
     // プレイに入っていない間は空
     std::optional<nlohmann::json> m_playStartBaseline;
 
+    //! 直したが、まだ .actor へ書いていない欄。CommitClassObjEdit・CommitAssetEdit で書いて空にする
+    struct ActorFileEdit
+    {
+        NS::uint32 actorId = NS::k_NoObjectId; // k_NoObjectId なら素材の窓で選んだ .actor の 1 体
+        const NS::ClassObjInfo* row = nullptr;
+        std::string fieldName;
+    };
+    std::vector<ActorFileEdit> m_actorFileEdits;
+
+    //! m_actorFileEdits を .actor へ書き、1 欄ずつ取り消しの履歴へ積む
+    void CommitActorFileEdits();
+
     // 素材の窓で選んだ素材の ContentRoot からの道。アクターの選択と排他。
     // 姿のポインタを持たないのは、AssetManager::Clear の後に古いポインタを残さないため
     std::string m_selectedAssetPath;
     bool m_assetEdited = false; // 選んだ素材の値が変わり、まだ確定していない
 
     bool m_editShortcutsBlocked = false;
+
+    //! 選んだ .actor を敷いた 1 体。比べる基準の 1 体 (ActorFileLibrary::Baseline) は書いた時に
+    //! アクターが上書きしていたかを見分ける基準なので、直す途中の値を入れず、こちらで直す
+    std::unique_ptr<NS::SceneActor> m_actorFileDraft;
+    nlohmann::json m_actorFileDraftSource; // m_actorFileDraft を作った時の .actor の文書
+
+    //! 選んだ素材が .actor なら、今の文書を敷いた 1 体。文書が変わっていれば作り直す。.actor でなければ nullptr
+    [[nodiscard]] NS::SceneActor* SelectedActorFile();
 };
 
 namespace NS

@@ -216,7 +216,7 @@ TEST(MaterialFile, SetParamValueKeepsOnlyValuesThatFitTheParam)
     EXPECT_EQ(reread.params.at("tileLength").numbers, std::vector<double>{3.125});
 }
 
-// Inspector の枠より多いテクスチャと、JSON に書けない色は書かない。書くと枠に出ない道や読めない .mat が残る
+// Inspector の枠より多いテクスチャと、JSON に書けない色と、読む時に捨てる材質の値は書かない。書くと枠に出ない道や読めない .mat が残る
 TEST(MaterialFile, ValuesTheFieldsCannotHoldAreNotWritten)
 {
     NS::MaterialFileDesc file{.vertexShader = "Shaders/standard.vs.hlsl", .pixelShader = "Shaders/player.ps.hlsl"};
@@ -228,6 +228,17 @@ TEST(MaterialFile, ValuesTheFieldsCannotHoldAreNotWritten)
     file.textures.clear();
     file.baseColor.y = std::numeric_limits<float>::quiet_NaN();
     EXPECT_FALSE(NS::MakeMaterialJson(file).has_value());
+
+    file.baseColor.y = 1.0f;
+    for (const NS::MaterialParamValue& bad :
+         {NS::MaterialParamValue{},
+          NS::MaterialParamValue{.numbers = {1.0, 2.0, 3.0, 4.0, 5.0}},
+          NS::MaterialParamValue{.numbers = {std::numeric_limits<double>::infinity()}},
+          NS::MaterialParamValue{.isBool = true, .numbers = {1.0, 0.0}}})
+    {
+        file.params["bad"] = bad;
+        EXPECT_FALSE(NS::MakeMaterialJson(file).has_value()) << bad.numbers.size();
+    }
 }
 
 TEST(MaterialFile, OnlyMaterialsReadFromAFileAreWritten)

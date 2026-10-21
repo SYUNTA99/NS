@@ -45,7 +45,7 @@ namespace
             const char* panels[] = {NS::Editor::k_PanelScene, NS::Editor::k_PanelGame,
                                     NS::Editor::k_PanelActorList, NS::Editor::k_PanelInspector,
                                     NS::Editor::k_PanelConsole, NS::Editor::k_PanelAssets,
-                                    NS::Editor::k_PanelEditMode, NS::Editor::k_PanelHitTimeline};
+                                    NS::Editor::k_PanelEditMode, NS::Editor::k_PanelActionTimeline};
             for (const char* panel : panels)
             {
                 if (m_dock.IsMaximized() && m_dock.MaximizedPanel() != panel)
@@ -313,21 +313,21 @@ TEST_F(EditorDockTest, MaximizeRestoresCustomDockingAndSuspendsAutomaticSaving)
 {
     Frame();
     Frame();
-    Frame([&]() { m_dock.MovePanel(NS::Editor::k_PanelHitTimeline, NS::Editor::k_PanelScene,
+    Frame([&]() { m_dock.MovePanel(NS::Editor::k_PanelActionTimeline, NS::Editor::k_PanelScene,
                                  NS::Editor::DockController::Placement::Below); });
     Frame();
-    const ImGuiID originalId = ImGui::FindWindowByName(NS::Editor::k_PanelHitTimeline)->DockId;
+    const ImGuiID originalId = ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline)->DockId;
     ImGui::GetIO().IniFilename = "unused-editor-dock-test.ini";
-    Frame([&]() { m_dock.EnterMaximize(NS::Editor::k_PanelHitTimeline); });
+    Frame([&]() { m_dock.EnterMaximize(NS::Editor::k_PanelActionTimeline); });
     Frame();
     EXPECT_TRUE(m_dock.IsMaximized());
     EXPECT_EQ(ImGui::GetIO().IniFilename, nullptr);
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelHitTimeline)->DockId, 0u);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline)->DockId, 0u);
     Frame([&]() { m_dock.ExitMaximize(); });
     Frame();
     EXPECT_FALSE(m_dock.IsMaximized());
     EXPECT_STREQ(ImGui::GetIO().IniFilename, "unused-editor-dock-test.ini");
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelHitTimeline)->DockId, originalId);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline)->DockId, originalId);
 }
 
 TEST_F(EditorDockTest, SavedLayoutSurvivesANewContextAndRejectsAnInvalidFile)

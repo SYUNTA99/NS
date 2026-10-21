@@ -9,16 +9,16 @@ namespace NS
     namespace Editor
     {
         class EditorMode;
-        class HitTimelinePanel;
+        class ActionTimelinePanel;
 
         //! @brief 終了の前に問う、保存していない変更があるか
-        //! @details シーンは履歴の版、当たりのタイムラインはパネルの印で答える。終了の確認はこの問いだけを見る
-        [[nodiscard]] bool HasUnsavedWork(const EditorMode& editor, const HitTimelinePanel& timeline) noexcept;
+        //! @details シーンは履歴の版、動作のタイムラインはパネルの印で答える。終了の確認はこの問いだけを見る
+        [[nodiscard]] bool HasUnsavedWork(const EditorMode& editor, const ActionTimelinePanel& timeline) noexcept;
 
-        //! @brief 終了の前の保存。シーンと、保存していない当たりのタイムラインを書く
+        //! @brief 終了の前の保存。シーンと、動作のタイムラインで保存していない .actor を書く
         //! @details 片方が書けなくても、もう片方は書く
         //! @return 両方とも書けた時だけ true
-        [[nodiscard]] bool SaveAllForQuit(EditorMode& editor, HitTimelinePanel& timeline) noexcept;
+        [[nodiscard]] bool SaveAllForQuit(EditorMode& editor, ActionTimelinePanel& timeline) noexcept;
 
         //! @brief 終了時に保存を確認するモーダル。終了ガードと保存確認の状態を持つ
         class QuitModal : public NonCopyable
@@ -29,7 +29,7 @@ namespace NS
             bool RequestQuit() noexcept;
 
             //! 保存確認 modal を描く。開いていなければ何もしない
-            void Render(LevelEditorController& editor, HitTimelinePanel& timeline) noexcept;
+            void Render(LevelEditorController& editor, ActionTimelinePanel& timeline) noexcept;
 
         private:
             bool m_open = false;

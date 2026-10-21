@@ -8,7 +8,6 @@
 #include "NSlib/Windows/Filesystem.h"
 
 #include <algorithm>
-#include <cmath>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -21,7 +20,7 @@ namespace NS
     namespace
     {
         // 保存形式を変えたら上げる。読み込みは一致する版だけを受け付ける
-        constexpr int k_FormatVersion = 8;
+        constexpr int k_FormatVersion = 9;
 
         //! 読込時の上限。巨大 size / 要素数による メモリ枯渇を防ぐ
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;
@@ -168,17 +167,6 @@ namespace NS
         scene["nextObjectId"] = nextObjectId;
     }
 
-    Vector3 NormalizeGravityDirection(const Vector3& direction) noexcept
-    {
-        const float lengthSquared = direction.LengthSquared();
-        if (!IsFinite(direction) || !std::isfinite(lengthSquared) ||
-            !(lengthSquared > k_Epsilon * k_Epsilon))
-        {
-            return k_DefaultGravityDirection;
-        }
-        return direction / std::sqrt(lengthSquared);
-    }
-
     SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene)
     {
         SceneEnvironment environment{};
@@ -191,12 +179,7 @@ namespace NS
         {
             return environment;
         }
-        // 重力の向きはリフレクションに載らないので、欄の名前の外の鍵として警告させない
-        nlohmann::json fields = *found;
-        fields.erase("gravityDirection");
-        (void)ApplyReflectedFields(&environment, *SceneEnvironment::StaticReflection(), fields);
-        environment.gravityDirection =
-            NormalizeGravityDirection(FieldVector3(*found, "gravityDirection", k_DefaultGravityDirection));
+        (void)ApplyReflectedFields(&environment, *SceneEnvironment::StaticReflection(), *found);
         return environment;
     }
 
@@ -207,7 +190,6 @@ namespace NS
             scene = MakeSceneJson();
         }
         nlohmann::json out = SerializeReflectedFields(&environment, *SceneEnvironment::StaticReflection());
-        out["gravityDirection"] = MakeVector3Json(NormalizeGravityDirection(environment.gravityDirection));
         scene["environment"] = std::move(out);
     }
 

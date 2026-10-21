@@ -3,6 +3,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <algorithm>
@@ -87,9 +88,16 @@ namespace NS
 
     std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object, Scene& scene)
     {
-        const std::string_view className = ObjectJsonClass(object);
+        // クラスは配置物の指す .actor の中の class だけが持つ。.actor が無ければ作るクラスが決まらない
+        const std::string_view actorFile = ObjectJsonActorFile(object);
+        const std::string className = ActorFileLibrary::Get().ClassNameOf(actorFile);
+        if (className.empty())
+        {
+            NS_LOG_ERROR(Scene, "配置物 {} の .actor {} が見つからないので作らない", ObjectJsonId(object), actorFile);
+            return nullptr;
+        }
         WarnIfUnregistered(className);
-        const ActorInitInfo info{.placement = &object, .scene = scene};
+        const ActorInitInfo info{.placement = &object, .scene = &scene, .actorFile = actorFile};
         return CreateActorOfClass(className, info);
     }
 

@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
+#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
@@ -12,11 +13,12 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/Phys/PhysicsScene.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
@@ -35,6 +37,7 @@ namespace NS
     NS_CLASSOBJ(m_attackSensor, "AttackSensor")
     NS_CLASSOBJ(m_hitReaction, "HitReaction")
     NS_CLASSOBJ(m_effectKeeper, "Effect")
+    NS_CLASSOBJ(m_actionTimeline, "ActionTimeline")
     NS_CLASSOBJ(m_stateMachine, "StateMachine")
     NS_REFLECT_END_IMPL()
 
@@ -167,12 +170,7 @@ namespace NS
 
     Vector3 SceneActor::GravityDirection() const noexcept
     {
-        const Scene* scene = OwningScene();
-        if (scene == nullptr)
-        {
-            return Vector3{0.0f, -1.0f, 0.0f};
-        }
-        return scene->GravityDirection();
+        return Phys::k_GravityDirection;
     }
 
     void SceneActor::AddGravity(Vector3& velocity, float strength, float dt) const noexcept
@@ -212,11 +210,21 @@ namespace NS
 
     void SceneActor::Init(const ActorInitInfo* info)
     {
+        m_actorFileName = ClassName();
+        if (info != nullptr && !info->actorFile.empty())
+        {
+            m_actorFileName = std::string{info->actorFile};
+        }
         OnInit();
-        ApplyArchetype(*this);
+        ApplyActorFile(*this);
+        // 束と動作は .actor だけに書き、配置物では上書きしない
+        // clang-format off
+        if (m_hitReaction) { m_hitReaction->ReloadSets(); }
+        if (m_actionTimeline) { m_actionTimeline->ReloadActions(); }
+        // clang-format on
         if (info != nullptr && info->placement != nullptr)
         {
-            ApplyObjectClassObjs(*this, *info->placement);
+            ApplyObjectClassObjs(*this, KeepPlacementFields(*this, *info->placement));
         }
         // 素材の参照は欄にある。欄を書き終えてから読む
         ReloadAssets();
@@ -303,18 +311,43 @@ namespace NS
         if (m_collision) { m_collision->Unregister(); }
         if (m_bodySensor) { m_bodySensor->Unregister(); }
         if (m_attackSensor) { m_attackSensor->Unregister(); }
+        if (m_actionTimeline) { m_actionTimeline->Stop(); }
         if (m_hitReaction) { m_hitReaction->StopAll(); }
+    }
+
+    void SceneActor::RequestHitStop(int frames) noexcept
+    {
+        m_hitStopFrames = std::max(m_hitStopFrames, frames);
+    }
+
+    void SceneActor::OverrideHitStop(int frames) noexcept
+    {
+        NS_ASSERT(Scene, frames >= 0, "OverrideHitStop: 止めの長さ {} が負", frames);
+        m_hitStopFrames = std::max(frames, 0);
     }
 
     void SceneActor::Update()
     {
         // clang-format off
         if (m_effectKeeper) { m_effectKeeper->BeginStep(); }
+        if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(IsHitStopping()); }
         // clang-format on
         ObserveStep();
         DecideStep();
-        StateStep();
-        BodyStep();
+        // 止めは状態の時計だけを止める。束で始めた演出は頼まれた係と模型が自分の歩で進める
+        if (!IsHitStopping())
+        {
+            StateStep();
+            // 時計は状態の歩なので、状態を進めたフレームにだけ進める
+            // clang-format off
+            if (m_actionTimeline) { m_actionTimeline->Advance(); }
+            // clang-format on
+        }
+        // StateStep の中で束を始めた時は、そのフレームの身体から止める
+        if (!IsHitStopping())
+        {
+            BodyStep();
+        }
         // 置く側の当たりは体を動かした後の姿へ揃える。姿も形も変わっていなければ Collision は何もしない
         // clang-format off
         if (m_collision) { m_collision->SyncToPhysics(); }
@@ -324,6 +357,10 @@ namespace NS
         if (m_model) { m_model->AdvanceDraw(); }
         // clang-format on
         VisualStep();
+        if (m_hitStopFrames > 0)
+        {
+            --m_hitStopFrames;
+        }
     }
 
     void SceneActor::SnapshotForInterpolation() noexcept

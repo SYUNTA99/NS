@@ -4,7 +4,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -19,11 +19,9 @@ namespace NS
     nlohmann::json MakeObjectHeaderJson(const SceneActor& obj, uint32 id)
     {
         nlohmann::json object = nlohmann::json::object();
-        WriteObjectHeader(object,
-                          ObjectHeader{.id = id,
-                                       .className = std::string{obj.ClassName()},
-                                       .name = obj.Name(),
-                                       .active = obj.IsAppeared()});
+        WriteObjectHeader(
+            object,
+            ObjectHeader{.id = id, .actorFile = obj.ActorFileName(), .name = obj.Name(), .active = obj.IsAppeared()});
         return object;
     }
 
@@ -50,11 +48,6 @@ namespace NS
 
     std::unique_ptr<SceneActor> ObjectFromJson(const nlohmann::json& object, Scene& scene)
     {
-        // 部品構成はクラスの OnInit で決まる。クラスの無い JSON は配置物でない
-        if (ObjectJsonClass(object).empty())
-        {
-            return nullptr;
-        }
         return CreateRegisteredObject(object, scene);
     }
 

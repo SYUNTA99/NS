@@ -15,6 +15,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "TestActorFile.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -170,7 +171,8 @@ namespace
     public:
         float value = 0.0f;
         NS_REFLECT_BEGIN(ReflectedProbePart, NS::Object)
-        NS_FIELD(value, "値")
+        // 配置物の保存と読み直しで、部品の鍵ごとに値が戻るかを見るので、配置物で上書きできる欄にする
+        NS_PLACEMENT_FIELD(value, "値")
         NS_REFLECT_END()
     };
 
@@ -272,6 +274,7 @@ TEST(ReflectedParts, SameTypedMembersSaveAndReloadThroughTheirRegisteredKeys)
     EXPECT_FLOAT_EQ(saved["classObjs"]["ParentPart"]["値"].get<float>(), 2.0f);
     EXPECT_FLOAT_EQ(saved["classObjs"]["ChildPart"]["値"].get<float>(), 7.0f);
     EXPECT_FALSE(saved["classObjs"].contains("AbsentPart"));
+    const ScopedActorFile hierarchyFile{"ReflectedHierarchyActor", ClassOnlyActorFile("ReflectedHierarchyActor")};
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> loaded = NS::ObjectFromJson(saved, scene);
     const ReflectedHierarchyActor* restored = NS::Cast<ReflectedHierarchyActor>(loaded.get());
@@ -314,7 +317,7 @@ TEST(FixedParts, MemberTypeCanOwnADerivedPartWithoutASlot)
     EXPECT_EQ(PartAt(*actor, "Shape"), actor->shape.get());
 }
 
-TEST(FixedParts, MapObjCreatesShadowBeforeArchetypeIsApplied)
+TEST(FixedParts, MapObjCreatesShadowBeforeActorFileIsApplied)
 {
     const std::unique_ptr<GL::Level::PropActor> actor = NS::CreateActor<GL::Level::PropActor>();
     ASSERT_NE(actor->ShadowClassObj(), nullptr);
@@ -432,23 +435,21 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 
 TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
 {
-    const nlohmann::json source = {
-        {"class", "PropActor"}, {"id", 7u}, {"classObjs", {{"Collision", {{"半径", 2.0f}}}}}};
+    const nlohmann::json source = {{"actor", "PropActor"}, {"id", 7u}, {"classObjs", {{"Params", {{"質量", 2.0f}}}}}};
     NS::Scene scene;
     std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(source, scene);
     ASSERT_NE(actor, nullptr);
-    ASSERT_NE(actor->CollisionClassObj(), nullptr);
-    const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
-    ASSERT_NE(sphere, nullptr);
-    EXPECT_FLOAT_EQ(sphere->Radius(), 2.0f);
+    const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor.get());
+    ASSERT_NE(prop, nullptr);
+    EXPECT_FLOAT_EQ(prop->Params().Mass(), 2.0f);
     const nlohmann::json saved = NS::ObjectToJson(*actor);
     EXPECT_FALSE(saved.contains("components"));
     ASSERT_TRUE(saved.contains("classObjs"));
     ASSERT_TRUE(saved["classObjs"].is_object());
-    EXPECT_FLOAT_EQ(saved["classObjs"]["Collision"]["半径"].get<float>(), 2.0f);
-    EXPECT_FALSE(saved["classObjs"]["Collision"].contains("id"));
-    EXPECT_FALSE(saved["classObjs"]["Collision"].contains("type"));
-    EXPECT_FALSE(saved["classObjs"]["Collision"].contains("fields"));
+    EXPECT_FLOAT_EQ(saved["classObjs"]["Params"]["質量"].get<float>(), 2.0f);
+    EXPECT_FALSE(saved["classObjs"]["Params"].contains("id"));
+    EXPECT_FALSE(saved["classObjs"]["Params"].contains("type"));
+    EXPECT_FALSE(saved["classObjs"]["Params"].contains("fields"));
     EXPECT_TRUE(saved["classObjs"]["Transform"].contains("位置"));
 }
 
@@ -456,8 +457,8 @@ TEST(FixedParts, FileReferencesUseNamesAndClonesRemapIds)
 {
     nlohmann::json scene = NS::MakeSceneJson();
     NS::SceneJsonObjects(scene) = {
-        {{"class", "PropActor"}, {"id", 1u}, {"name", "target"}, {"classObjs", {{"Model", nlohmann::json::object()}}}},
-        {{"class", "PropActor"}, {"id", 2u}, {"classObjs", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
+        {{"actor", "PropActor"}, {"id", 1u}, {"name", "target"}, {"classObjs", {{"Model", nlohmann::json::object()}}}},
+        {{"actor", "PropActor"}, {"id", 2u}, {"classObjs", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
     const std::string text = NS::SerializeSceneToJson(scene);
     const nlohmann::json file = nlohmann::json::parse(text);
     EXPECT_EQ(file["objects"][1]["classObjs"]["Model"]["reference"]["ref"], "target");

@@ -50,6 +50,19 @@ namespace NS
         //! AutoSmooth の点の接線 dy/dx を返す。隣り合う点の y の間から飛び出さない傾きへ抑える
         [[nodiscard]] float AutoTangentAt(uint32 i) const noexcept;
 
+        //! 値を scale 倍にした曲線。点の値と傾きを同じ倍率で掛けるので、補間の形は変わらない
+        [[nodiscard]] constexpr Curve Scaled(float scale) const noexcept
+        {
+            Curve scaled = *this;
+            for (uint32 i = 0; i < scaled.count; ++i)
+            {
+                scaled.keys[i].y *= scale;
+                scaled.keys[i].inTangent *= scale;
+                scaled.keys[i].outTangent *= scale;
+            }
+            return scaled;
+        }
+
         [[nodiscard]] constexpr bool operator==(const Curve&) const noexcept = default;
     };
 

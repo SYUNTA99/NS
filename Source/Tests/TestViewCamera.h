@@ -72,7 +72,7 @@ private:
 //! @return 湧かした仮想カメラ。湧かせなかった場合は nullptr
 inline TestViewCamera* PlaceViewCamera(NS::Scene& scene, const NS::Vector3& position, const NS::Vector3& target)
 {
-    TestViewCameraHostActor* host = scene.SpawnTransient<TestViewCameraHostActor>();
+    TestViewCameraHostActor* host = scene.SpawnObject<TestViewCameraHostActor>("TestViewCameraHostActor");
     if (host == nullptr)
     {
         return nullptr;

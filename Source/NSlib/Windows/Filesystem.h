@@ -32,6 +32,9 @@ namespace NS
             //! @details 途中で失敗した場合は path の前の中身を残し、一時のファイルを消す
             [[nodiscard]] static bool ReplaceAllBytes(std::string_view path, std::span<const std::byte> bytes);
 
+            //! path のファイルを消す。無い場合も成功扱いとなる
+            [[nodiscard]] static bool RemoveFile(std::string_view path);
+
             //! 文字コードは UTF-8 を想定している
             [[nodiscard]] static std::optional<std::string> ReadAllText(std::string_view path);
 

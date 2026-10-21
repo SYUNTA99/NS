@@ -23,7 +23,7 @@ namespace GL
             for (int frame = 0; frame < path.maxFrames; ++frame)
             {
                 // 実際の突進と同じく、重力を速度へ加えてから位置を進める
-                vertical += ChooseGravity(path.gravity, vertical) * path.dt;
+                vertical += GL::Level::ChooseGravity(path.gravity, vertical) * path.dt;
                 float next = height + vertical * path.dt;
                 // 接地して放った玉は床で止まり、床の上を水平に進む
                 if (path.grounded && next < 0.0f)

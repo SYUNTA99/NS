@@ -83,10 +83,10 @@ namespace NS
         {
             return false;
         }
-        // 同じ種類の効果は 1 つだけ残す。積み直すと前の物の途中から始め直さず、新しい設定の頭から描く
+        // 頼んだ物ごとに同じ種類の効果は 1 つだけ残す。積み直すと前の物の途中から始め直さず、新しい設定の頭から描く
         if (const void* kind = modifier->Kind(); kind != nullptr)
         {
-            RemoveModifiers(kind);
+            RemoveModifiersOf(modifier->Requester(), kind);
         }
         const int order = modifier->Order();
         const std::vector<std::unique_ptr<CameraModifier>>::iterator at =
@@ -102,14 +102,44 @@ namespace NS
         std::erase_if(m_modifiers, [kind](const std::unique_ptr<CameraModifier>& m) { return m->Kind() == kind; });
     }
 
+    void CameraManager::RemoveModifiersOf(const IUseCamera* requester, const void* kind) noexcept
+    {
+        std::erase_if(m_modifiers, [requester, kind](const std::unique_ptr<CameraModifier>& m) {
+            return m->Requester() == requester && m->Kind() == kind;
+        });
+    }
+
+    void CameraManager::RemoveModifiersOf(const IUseCamera* requester) noexcept
+    {
+        std::erase_if(m_modifiers,
+                      [requester](const std::unique_ptr<CameraModifier>& m) { return m->Requester() == requester; });
+    }
+
+    void CameraManager::ReleaseSink(const IUseCamera* requester) noexcept
+    {
+        for (const std::unique_ptr<CameraModifier>& modifier : m_modifiers)
+        {
+            if (modifier->Kind() == CameraSinkModifier::StaticKind() && modifier->Requester() == requester)
+            {
+                static_cast<CameraSinkModifier*>(modifier.get())->Release();
+            }
+        }
+    }
+
     void CameraManager::ClearModifiers() noexcept
     {
         m_modifiers.clear();
     }
 
-    bool CameraManager::StartShake(const CameraShakeDesc& desc)
+    bool CameraManager::StartShake(const CameraShakeDesc& desc, const IUseCamera* requester)
     {
-        return AddModifier(CameraShakeModifier::Create(desc, SideSignOf(desc.firstSideDirection)));
+        std::unique_ptr<CameraShakeModifier> shake =
+            CameraShakeModifier::Create(desc, SideSignOf(desc.firstSideDirection));
+        if (shake != nullptr)
+        {
+            shake->SetRequester(requester);
+        }
+        return AddModifier(std::move(shake));
     }
 
     Vector2 CameraManager::ShakeOffset() const noexcept
@@ -121,9 +151,15 @@ namespace NS
         return Vector2{0.0f, 0.0f};
     }
 
-    bool CameraManager::StartZoomRoll(const CameraZoomRollDesc& desc)
+    bool CameraManager::StartZoomRoll(const CameraZoomRollDesc& desc, const IUseCamera* requester)
     {
-        return AddModifier(CameraZoomRollModifier::Create(desc, SideSignOf(desc.rollDirection)));
+        std::unique_ptr<CameraZoomRollModifier> zoomRoll =
+            CameraZoomRollModifier::Create(desc, SideSignOf(desc.rollDirection));
+        if (zoomRoll != nullptr)
+        {
+            zoomRoll->SetRequester(requester);
+        }
+        return AddModifier(std::move(zoomRoll));
     }
 
     CameraZoomRoll CameraManager::ZoomRoll() const noexcept
@@ -150,14 +186,16 @@ namespace NS
         return raw;
     }
 
-    bool CameraManager::AddTrauma(const CameraTraumaDesc& desc)
+    bool CameraManager::AddTrauma(const CameraTraumaDesc& desc, const IUseCamera* requester)
     {
         if (!IsNonNegativeFinite(desc.trauma) || !IsValidTraumaShape(desc.shape) ||
             !std::isfinite(desc.kick.degrees))
         {
             return false;
         }
-        TraumaModifier()->AddTrauma(desc);
+        CameraTraumaModifier* trauma = TraumaModifier();
+        trauma->AddTrauma(desc);
+        trauma->SetRequester(requester);
         return true;
     }
 

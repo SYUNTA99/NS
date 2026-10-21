@@ -195,6 +195,9 @@ namespace NS
         void (*load)(void* obj) = nullptr;                    // 素材の欄の素材を引き直す。ほかの型の欄では何もしない
         AssetKind assetKind = AssetKind::None;
         const char* label = nullptr; // インスペクタに見せる名前。変えても保存の鍵は変わらない
+        // 配置物で値を上書きできるか。印の無い欄の値は .actor だけが持つ。
+        // 参照の欄と根の部品の欄は、印が無くても配置物が持つ
+        bool placement = false;
     };
 
     //! インスペクタに見せる名前。label を書かない欄は name を返す
@@ -334,7 +337,13 @@ namespace NS
 //! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectName の型で欄の種類が決まる
 //! float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
 //! name は保存の鍵。3 つ目に見せる名前を書くと、インスペクタは name の代わりにそれを見せる
-#define NS_FIELD(member, name, ...)                                                                                    \
+#define NS_FIELD(member, name, ...) NS_FIELD_ENTRY(member, name, false, __VA_ARGS__)
+
+//! NS_FIELD に、配置物で値を上書きできる印を付けて登録する。引数は NS_FIELD と同じ
+#define NS_PLACEMENT_FIELD(member, name, ...) NS_FIELD_ENTRY(member, name, true, __VA_ARGS__)
+
+// NS_FIELD と NS_PLACEMENT_FIELD の中身。直には書かない
+#define NS_FIELD_ENTRY(member, name, isPlacement, ...)                                                                 \
     NS::ReflectEntry{                                                                                                  \
         NS::FieldDesc{                                                                                                 \
             name,                                                                                                      \
@@ -343,7 +352,8 @@ namespace NS
             +[](void* c, const void* in) noexcept { NS::AssignFieldValue(static_cast<Self*>(c)->member, in); },        \
             +[](void* c) { NS::LoadFieldAsset(static_cast<Self*>(c)->member); },                                       \
             NS::AssetKindOf<decltype(Self::member)>(),                                                                 \
-            {__VA_ARGS__}},                                                                                            \
+            {__VA_ARGS__},                                                                                             \
+            isPlacement},                                                                                              \
         nullptr},
 
 //! 欄の見出しを置く。次の見出しまでに並べた欄がこの見出しの下に入る。見出しは欄の配列に入らず、保存の鍵にならない

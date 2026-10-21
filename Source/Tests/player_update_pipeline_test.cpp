@@ -1,20 +1,25 @@
 #include "Editor/EditorObjects.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
+#include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
 #include "Game/Level/PropActor.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/States/BeforeContactPlayerState.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
+#include "Game/Player/States/TackleHitPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -23,13 +28,14 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
-#include "Tests/TestHitTimelines.h"
+#include "Tests/TestActorFile.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace
 {
@@ -45,8 +51,6 @@ namespace
                                     &player.Params(),
                                     &player.Body(),
                                     &player.Collider(),
-                                    player.ModelClassObj(),
-                                    &player.Ghost(),
                                     player.HitReactionClassObj());
     }
 
@@ -54,12 +58,12 @@ namespace
     {
         nlohmann::json doc = NS::MakeSceneJson();
         nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonActorFile(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
         NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, 2);
         NS::Editor::SetObjectPosition(rock, NS::Vector3{targetX, 0.5f, targetZ});
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -97,6 +101,14 @@ namespace
         {
             return "BodySlam";
         }
+        if (player.States().IsCurrent<GL::Player::BeforeContactPlayerState>())
+        {
+            return "BeforeContact";
+        }
+        if (player.States().IsCurrent<GL::Player::TackleHitPlayerState>())
+        {
+            return "TackleHit";
+        }
         if (player.States().IsCurrent<GL::Player::ReboundPlayerState>())
         {
             return "Rebound";
@@ -111,8 +123,8 @@ namespace
         EXPECT_NEAR(actual.z, expected.z, 0.00001f);
     }
 
-    // 手前の置物へ溜めた突進を出し、止めの頭まで回す。届いた場合 true
-    // waitForFreeze が偽なら、止めの頭を待つ検知のフレームで止める
+    // 手前の置物へ溜めた突進を出し、当たりの状態に入って止めが始まった歩まで回す。届いた場合 true
+    // waitForFreeze が偽なら、当たりの状態に入る前の検知のフレームで止める
     // 突進は 1 フレームの入口から出す。BodySlam を直に呼ぶと先行入力が残り、止めが明けた後にもう 1 度出る
     bool SlamIntoTheRock(PlayerActor& player, GL::Level::PropActor& rock, bool waitForFreeze)
     {
@@ -121,7 +133,7 @@ namespace
         {
             player.Update(false);
             rock.Update();
-            if (waitForFreeze && player.Resolver().Answer().freezeBegan)
+            if (waitForFreeze && player.IsInTackleHit())
             {
                 return true;
             }
@@ -131,6 +143,59 @@ namespace
             }
         }
         return false;
+    }
+
+    // 1 歩回し、当たりの状態に居た自機がその歩で出た (止めが明けた) 場合 true
+    bool StepAndSeeTheRelease(PlayerActor& player, GL::Level::PropActor& rock)
+    {
+        const bool wasInHit = player.IsInTackleHit();
+        player.Update(false);
+        rock.Update();
+        return wasInHit && !player.IsInTackleHit();
+    }
+
+    // 移す前の式が出した止めの長さ stopSteps の当たりを写した段の束。形は止めの間潰れ、明けに伸びて戻る
+    NS::HitReactionSet MakeLegacyHitSet(std::string name, int stopSteps)
+    {
+        const float n = static_cast<float>(stopSteps);
+        NS::HitShapeItem shape;
+        shape.along.count = 3;
+        shape.along.keys[0] = NS::Curve::Key{0.0f, 0.7f};
+        shape.along.keys[1] = NS::Curve::Key{n - 1.0f, 0.7f};
+        shape.along.keys[2] = NS::Curve::Key{n, 1.0f};
+        shape.height.count = 5;
+        shape.height.keys[0] = NS::Curve::Key{0.0f, 1.1f};
+        shape.height.keys[1] = NS::Curve::Key{n - 1.0f, 1.1f};
+        shape.height.keys[2] = NS::Curve::Key{n, 1.2f};
+        shape.height.keys[3] = NS::Curve::Key{n + 3.0f, 0.9f};
+        shape.height.keys[4] = NS::Curve::Key{n + 6.0f, 1.0f};
+        NS::HitReactionSet set;
+        set.name = std::move(name);
+        set.stopFrames = stopSteps;
+        set.entries.push_back(NS::HitReactionEntry{.item = shape, .length = stopSteps + 6});
+        return set;
+    }
+
+    // 自機の .actor の段の束 2 つを MakeLegacyHitSet に替え、当たる直前の動作を外す (予測の線を引かない)
+    void UseLegacyHitSets(nlohmann::json& actorFile, int stopSteps)
+    {
+        std::vector<NS::HitReactionSet> sets = NS::ReadHitReactionSets("PlayerActor", actorFile);
+        for (const GL::Level::HitTier tier : {GL::Level::HitTier::Center, GL::Level::HitTier::Wide})
+        {
+            const std::string name = GL::Level::TackleSetName("体当たり", tier);
+            bool replaced = false;
+            for (NS::HitReactionSet& set : sets)
+            {
+                if (set.name == name)
+                {
+                    set = MakeLegacyHitSet(name, stopSteps);
+                    replaced = true;
+                }
+            }
+            EXPECT_TRUE(replaced) << name;
+        }
+        NS::WriteHitReactionSets(actorFile, sets);
+        NS::WriteActorActions(actorFile, {});
     }
 } // namespace
 
@@ -185,7 +250,8 @@ TEST(PlayerUpdatePipeline, SquashedSlamRegainsItsHeadingFromTheState)
     EXPECT_NEAR(player->Body().Velocity().z, expected.z, 0.00001f);
 }
 
-TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
+// 当たりの状態へ移る頼みは、検知の次の観測と裁定の組で出る。観測の無い裁定は進まないので出ない
+TEST(PlayerUpdatePipeline, OneObservationCannotBeginTheHitTwice)
 {
     NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
@@ -195,14 +261,14 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginFreezeTwice)
     ObserveImpact(*player);
     StepImpact(*player);
     ASSERT_EQ(player->Resolver().Answer().lastImpact.sequence, 1u);
-    ASSERT_FALSE(player->Resolver().Answer().freezeBegan);
+    ASSERT_FALSE(player->Resolver().Answer().beginHit);
     StepImpact(*player);
-    EXPECT_FALSE(player->Resolver().Answer().freezeBegan);
-    EXPECT_FALSE(player->Resolver().Answer().hitStopping);
+    EXPECT_FALSE(player->Resolver().Answer().beginHit);
+    EXPECT_TRUE(player->Resolver().IsHitAwaitingEntry());
+    EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 1u);
     ObserveImpact(*player);
     StepImpact(*player);
-    EXPECT_TRUE(player->Resolver().Answer().freezeBegan);
-    EXPECT_TRUE(player->Resolver().Answer().hitStopping);
+    EXPECT_TRUE(player->Resolver().Answer().beginHit);
 }
 
 TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
@@ -217,10 +283,10 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     StepImpact(*player);
     EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
     EXPECT_TRUE(player->IsBodySlamming());
-    EXPECT_FALSE(player->Resolver().Answer().hitStopping);
+    EXPECT_FALSE(player->Resolver().IsHitAwaitingEntry());
 }
 
-// 止めの持ち主は裁定役の数え。身体の部品は外さず、止めの間は位置も状態の歩も進まない
+// 止めの持ち主は基底の止めの残りと当たりの状態。身体の部品は外さず、止めの間は位置も状態の歩も進まない
 TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
 {
     NS::Scene scene;
@@ -229,16 +295,16 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
-    EXPECT_TRUE(player->Resolver().Answer().hitStopping);
+    EXPECT_TRUE(player->IsHitStopping());
     EXPECT_FALSE(player->CanMoveBody());
     const NS::Vector3 position = player->Root().Position();
     const NS::uint32 stateStep = player->States().StepsInState();
-    // 真ん中は止めが明けた後、伸びきって反動の事象が来るまでも止まったまま
-    for (int frame = 0; frame < 30; ++frame)
+    // 止めが明けて反動へ移る歩までは止まったまま
+    bool released = false;
+    for (int frame = 0; frame < 30 && !released; ++frame)
     {
-        player->Update(false);
-        rock->Update();
-        if (!player->Resolver().Answer().hitStopping && !player->Resolver().Answer().awaitingRebound)
+        released = StepAndSeeTheRelease(*player, *rock);
+        if (released)
         {
             break;
         }
@@ -246,12 +312,12 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
         ExpectSameVector(player->Root().Position(), position);
         EXPECT_EQ(player->States().StepsInState(), stateStep);
     }
-    EXPECT_FALSE(player->Resolver().Answer().hitStopping);
-    EXPECT_FALSE(player->Resolver().Answer().awaitingRebound);
+    EXPECT_TRUE(released);
+    EXPECT_FALSE(player->IsHitStopping());
     EXPECT_TRUE(player->CanMoveBody());
 }
 
-// やり直しは走っている当たりのタイムラインを捨てる。出現位置で弾かれず、元の位置へ戻った置物へ明けも止めの頭も届かない
+// やり直しは当たりの状態と止めと当たりの状態へ移る待ちを捨てる。出現位置で弾かれず、元の位置へ戻った置物へ明けも当たったも届かない
 TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
 {
     for (const bool waitForFreeze : {true, false})
@@ -274,9 +340,9 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
             rock->Update();
             SCOPED_TRACE(frame);
             EXPECT_FALSE(player->IsRebounding());
-            EXPECT_FALSE(player->Resolver().Answer().freezeBegan);
-            EXPECT_FALSE(player->Resolver().Answer().released);
-            EXPECT_FALSE(player->Resolver().Answer().hitStopping);
+            EXPECT_FALSE(player->IsInTackleHit());
+            EXPECT_FALSE(player->IsHitStopping());
+            EXPECT_FALSE(rock->IsFrozen());
             ExpectSameVector(rock->Root().Position(), rockHome);
             ExpectSameVector(player->ModelClassObj()->GetDrawScale(), NS::Vector3{1.0f, 1.0f, 1.0f});
         }
@@ -292,12 +358,13 @@ TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
     GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
-    ASSERT_TRUE(player->Resolver().Answer().shapeAnimating);
+    ASSERT_TRUE(player->ModelClassObj()->IsDrawingShape());
     ASSERT_LT(player->ModelClassObj()->GetDrawScale().z, 1.0f);
     player->OnEndPlay();
     EXPECT_TRUE(player->ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
-    EXPECT_FALSE(player->Resolver().Answer().hitStopping);
-    EXPECT_FALSE(player->Resolver().Answer().shapeAnimating);
+    EXPECT_FALSE(player->IsHitStopping());
+    EXPECT_FALSE(player->IsInTackleHit());
+    EXPECT_FALSE(player->ModelClassObj()->IsDrawingShape());
 }
 
 // 溜めの構えは描く形の倍率に出る
@@ -349,9 +416,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         ExpectSameVector(
             player->ModelClassObj()->GetDrawScale(),
             NS::Vector3{squash.x + side * dir.z * dir.z, squash.y + 0.2f * left, squash.z + side * dir.x * dir.x});
-        player->Update(false);
-        rock->Update();
-        released = player->Resolver().Answer().released;
+        released = StepAndSeeTheRelease(*player, *rock);
     }
     ASSERT_TRUE(released);
     // 膨らみは止めの途中 (止めの 12 フレームの 7 フレーム目) に来る
@@ -361,14 +426,14 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     const float height = 1.1f - 0.2f / 3.0f;
     ExpectSameVector(player->ModelClassObj()->GetDrawScale(),
                      NS::Vector3{1.0f - (1.0f - along) * dir.x * dir.x, height, 1.0f - (1.0f - along) * dir.z * dir.z});
-    for (int frame = 0; frame < 30 && player->Resolver().Answer().shapeAnimating; ++frame)
+    for (int frame = 0; frame < 30 && player->ModelClassObj()->IsDrawingShape(); ++frame)
     {
         SCOPED_TRACE(frame);
         ExpectSameVector(player->Root().Scale(), one);
         player->Update(false);
         rock->Update();
     }
-    ASSERT_FALSE(player->Resolver().Answer().shapeAnimating);
+    ASSERT_FALSE(player->ModelClassObj()->IsDrawingShape());
     EXPECT_TRUE(player->ModelClassObj()->GetDrawScale() == one);
     EXPECT_TRUE(player->Root().Scale() == one);
 }
@@ -391,13 +456,11 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     bool released = false;
     for (int frame = 0; frame < 30 && !released; ++frame)
     {
-        player->Update(false);
-        rock->Update();
-        released = player->Resolver().Answer().released;
+        released = StepAndSeeTheRelease(*player, *rock);
     }
     ASSERT_TRUE(released);
     ASSERT_FALSE(player->Resolver().Answer().lastImpact.broke);
-    ASSERT_TRUE(player->Resolver().Answer().shapeAnimating);
+    ASSERT_TRUE(player->ModelClassObj()->IsDrawingShape());
     NS::Model* model = player->ModelClassObj();
     // 試しには mesh が無いので、組み込みの sphere (半径 0.5) の局所の境界を差し、回転を外して形の伸びだけを測る
     // 玉の倍率は当たりの半径に合わせてあるので、描く玉の下端は当たりの下端に乗る
@@ -412,6 +475,51 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     const float bottom = drawn.Center.y - drawn.Extents.y;
     EXPECT_NEAR(bottom, player->Root().Position().y - radius, 0.001f);
     EXPECT_GE(bottom, -0.001f);
+}
+
+// 当たりの形の再生の間は構えを混ぜない。溜めを押したまま当てても、描く倍率は押していない当たりと同じ
+TEST(PlayerAppearance, TheHitShapeDoesNotMixTheStance)
+{
+    // 通常突進で当て、当たりの状態に入った歩から 12 歩の描く倍率を並べる
+    const auto drawScalesOfTheHit = [](bool held, bool& stanceShown) {
+        std::vector<NS::Vector3> scales;
+        NS::Scene scene;
+        PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
+        EXPECT_NE(player, nullptr);
+        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+        EXPECT_NE(rock, nullptr);
+        if (player == nullptr || rock == nullptr)
+        {
+            return scales;
+        }
+        player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+        for (int frame = 0; frame < 40 && scales.size() < 12; ++frame)
+        {
+            player->Update(held);
+            rock->Update();
+            if (!player->IsInTackleHit())
+            {
+                continue;
+            }
+            EXPECT_TRUE(player->ModelClassObj()->IsDrawingShape());
+            stanceShown = stanceShown || player->StanceHeight() < 1.0f;
+            scales.push_back(player->ModelClassObj()->GetDrawScale());
+        }
+        return scales;
+    };
+    bool releasedStance = false;
+    bool heldStance = false;
+    const std::vector<NS::Vector3> released = drawScalesOfTheHit(false, releasedStance);
+    const std::vector<NS::Vector3> held = drawScalesOfTheHit(true, heldStance);
+    ASSERT_EQ(released.size(), 12u);
+    ASSERT_EQ(held.size(), released.size());
+    ASSERT_FALSE(releasedStance);
+    ASSERT_TRUE(heldStance) << "押している当たりは構えの縮みを持つ";
+    for (std::size_t k = 0; k < held.size(); ++k)
+    {
+        SCOPED_TRACE(k);
+        ExpectSameVector(held[k], released[k]);
+    }
 }
 
 // 編集の休止の持ち主は世界の駆動だけ。身体と入力の部品を起こしたままでも、止めた世界では自機が動かない
@@ -454,7 +562,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             [11, "Idle", 1, 0.9499999881, 1, true],
             [90, "BodySlam", 1, 1, 1, true],
             [94, "Walk", 1, 1, 1, true],
-            [95, "Walk", 1, 1.100000024, 0.6999999881, false],
+            [95, "TackleHit", 0.994802475, 1.100000024, 0.7051975131, false],
             [107, "Rebound", 1, 1.200000048, 1, true],
             [108, "Rebound", 1, 1.100000024, 1, true],
             [109, "Rebound", 1, 1, 1, true],
@@ -475,14 +583,14 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             [3, 0, 0.6973332763, 0.1666666716, 0, 2.839999914, 10, 0, 0.5, 3],
             [4, 0, 0.7419999242, 0.3333333433, 0, 2.679999828, 10, 0, 0.5, 3],
             [10, 0, 0.953999877, 1.333333254, 0, 1.719999552, 10, 0, 0.5, 3],
-            [30, 0, 1.669279456, 1.836697578, 0, 1.664880991, -0.5998571515, 0, 0.8225040436, 11.16357231],
-            [60, 0, 1.149999976, 1.53676939, 0, 0, -0.5998571515, -1.718793631, 1.164163589, 25.88497925],
-            [89, 0, 1.149999738, 1.53676939, 0, 0, 0, -3.944962502, 0.5009999275, 37.63197327]
+            [30, 0, 1.669279456, 1.836697578, 0, 1.664880991, -0.5998571515, 0, 0.8259615898, 10.53560448],
+            [60, 0, 1.149999976, 1.53676939, 0, 0, -0.5998571515, -1.636946321, 1.185097575, 25.45308876],
+            [89, 0, 1.149999738, 1.53676939, 0, 0, 0, -3.877855778, 0.5009999275, 37.27786636]
         ], [
             [0, "Idle", 1, 0.9700000286, 1, true],
             [3, "BodySlam", 1, 1, 1, true],
             [14, "Fall", 1, 1, 1, true],
-            [15, "Fall", 1, 1.100000024, 0.6999999881, false],
+            [15, "TackleHit", 1, 1.100000024, 0.6999999881, false],
             [18, "Rebound", 1, 1.200000048, 1, true],
             [19, "Rebound", 1, 1.100000024, 1, true],
             [20, "Rebound", 1, 1, 1, true],
@@ -502,14 +610,14 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
     for (int scenario = 0; scenario < 2; ++scenario)
     {
         const bool charge = scenario == 0;
-        // 止めの長さは移す前の式が出した長さ (溜め 12・通常突進 3) を、移す前の返りを写したタイムラインに置く
-        const ScopedHitTimelineDirectory timelines("Trajectories");
+        // 止めの長さは移す前の式が出した長さ (溜め 12・通常突進 3) を、移す前の返りを写した段の束に置く
         int legacyStopSteps = 3;
         if (charge)
         {
             legacyStopSteps = 12;
         }
-        ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(legacyStopSteps));
+        const ScopedActorFileEdit legacySets(
+            "PlayerActor", [legacyStopSteps](nlohmann::json& actorFile) { UseLegacyHitSets(actorFile, legacyStopSteps); });
         NS::Scene scene;
         float targetX = 0.0f;
         float targetZ = 3.0f;
@@ -527,7 +635,10 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
         // 基準は通常突進の初速 10 で、紫の揺れと紫の威力が無い時に採った
         // 外れの反動は真ん中と同じ高さと距離で、着いた後にこすらない。外れの相手は押し込む成分だけで飛ぶ距離を縮める
         // 止めの間の置物の位置は、根を往復させていた頃から食い込みの距離だけの値へ直した
+        // 置物は自分の束 (PropActor.actor) の止めの長さだけ止まるので、通常突進の組の置物は自機の止め 3 より長く止まってから飛ぶ
         // 溜めは 1.5 秒押して紫に入ってから放す
+        // 溜めの組の止めの間の潰れは、突進の向きでなく自機と置物のセンサーの水平の向きで横と奥に分ける。
+        // 置物を横へずらしてから当てるので、横の倍率も 1 から少し縮む
         // 見るのは状態の移り方なので、欄の既定を触っても基準を取り直さずに済むよう留める
         EXPECT_EQ(NS::ApplyJsonFields(player->Params(),
                                       nlohmann::json{{"通常突進の初速", 10.0f},
@@ -558,16 +669,17 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             {
                 rock->Root().ShiftPosition(NS::Vector3{0.1f, 0.0f, 0.0f});
             }
+            const bool wasInHit = player->IsInTackleHit();
             player->Update(held);
             if (impact < 0 && player->Resolver().Answer().lastImpact.sequence > 0)
             {
                 impact = frame;
             }
-            if (freeze < 0 && player->Resolver().Answer().freezeBegan)
+            if (freeze < 0 && player->IsInTackleHit())
             {
                 freeze = frame;
             }
-            if (release < 0 && player->Resolver().Answer().released)
+            if (release < 0 && wasInHit && !player->IsInTackleHit())
             {
                 release = frame;
             }

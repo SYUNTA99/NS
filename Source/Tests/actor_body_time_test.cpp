@@ -27,14 +27,14 @@ namespace
     {
         nlohmann::json doc = NS::MakeSceneJson();
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, 1);
         NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 20.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
         if (withPlayer)
         {
             nlohmann::json player = NS::MakeObjectJson();
-            NS::SetObjectJsonClass(player, "PlayerActor");
+            NS::SetObjectJsonActorFile(player, "PlayerActor");
             NS::SetObjectJsonId(player, 2);
             NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
             NS::SceneJsonObjects(doc).push_back(std::move(player));

@@ -139,6 +139,11 @@ namespace NS
                    extension == ".bmp" || extension == ".tif" || extension == ".tiff" || extension == ".gif";
         }
 
+        bool IsActorFileAssetPath(std::string_view path)
+        {
+            return LowerExtension(path) == ".actor";
+        }
+
         std::vector<AssetOption> CollectAssetOptions(AssetKind kind, std::string_view contentRoot)
         {
             std::vector<AssetOption> options;

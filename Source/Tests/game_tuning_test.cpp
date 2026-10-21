@@ -20,7 +20,7 @@
 #include <cmath>
 #include <gtest/gtest.h>
 
-TEST(GameTuning, ImpactTimingEditsChangeTheShapeAndSurviveSceneReload)
+TEST(GameTuning, ImpactTimingEditsChangeTheShape)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
@@ -38,18 +38,12 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShapeAndSurviveSceneReload)
     impact.hitStopSteps = 12;
     EXPECT_EQ(player->ImpactVisuals().ShapeFor(impact).holdLastFrame, 2);
     EXPECT_EQ(player->ImpactVisuals().ShapeFor(impact).sparkStartFrame, 5);
-    const nlohmann::json saved = scene.ToJson();
-    scene.ResetFromJson(saved);
-    player = FindPlayer(scene.Objects());
-    ASSERT_NE(player, nullptr);
-    EXPECT_EQ(player->ImpactVisuals().ShapeFor(impact).holdLastFrame, 2);
-    EXPECT_EQ(player->ImpactVisuals().ShapeFor(impact).sparkStartFrame, 5);
 }
 
 TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnTransient<PlayerActor>();
+    PlayerActor* player = scene.SpawnObject<PlayerActor>("PlayerActor");
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->ChargeVisuals(), {{"丸まりの殻の寿命フレーム", 2}}), 0u);
     for (int i = 0; i < 3; ++i)
@@ -68,7 +62,7 @@ TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
 TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnTransient<PlayerActor>();
+    PlayerActor* player = scene.SpawnObject<PlayerActor>("PlayerActor");
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->ChargeVisuals(), {{"丸まりの殻の資産", "custom.curl"}}), 0u);
     player->Update(true);
@@ -111,7 +105,7 @@ TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
 {
     NS::Scene scene;
-    GL::Level::PropActor* rock = scene.SpawnTransient<GL::Level::PropActor>();
+    GL::Level::PropActor* rock = scene.SpawnObject<GL::Level::PropActor>("PropActor");
     ASSERT_NE(rock, nullptr);
     GL::Level::LaunchEffects* effects = &rock->Effects();
     ASSERT_EQ(NS::ApplyJsonFields(*effects, {{"着地の粉の寿命フレーム", 2}}), 0u);
@@ -153,7 +147,9 @@ TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
 {
     GL::Player::ImpactEffects effects{nullptr};
     ASSERT_EQ(NS::ApplyJsonFields(effects, {{"外れの火花の横の割合", 1.0f}}), 0u);
-    const NS::Vector3 heading = effects.MissSparkHeading(0.8f, 0.0f, {0.0f, 0.0f, 1.0f});
+    const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
+    const NS::Vector3 heading =
+        effects.MissSparkHeading(0.8f, 0.0f, GL::Level::MissSurfaceNormal(0.8f, 0.0f, 2.0f, forward), forward);
     EXPECT_NEAR(heading.x, 1.0f, 0.001f);
     EXPECT_NEAR(heading.z, 0.0f, 0.001f);
     GL::Level::TargetMarker marker{nullptr};

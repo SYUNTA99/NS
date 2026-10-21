@@ -1,7 +1,7 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/ActionTimelinePanel.h"
 #include "Editor/EditorMode.h"
+#include "Editor/EditorObjects.h"
 #include "Editor/GameViewPanel.h"
-#include "Editor/HitTimelinePanel.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/LevelFileBrowser.h"
 #include "Editor/PanelIds.h"
@@ -13,6 +13,7 @@
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
@@ -28,8 +29,8 @@
 #include "NSlib/Windows/Keyboard.h"
 #include "NSlib/Windows/Mouse.h"
 #include "NSlib/Windows/StringUtils.h"
+#include "Tests/TestActorFile.h"
 #include "Tests/TestCheckLayer.h"
-#include "Tests/TestHitTimelines.h"
 
 #include "NSlib/Core/Types.h"
 #include <algorithm>
@@ -42,6 +43,7 @@
 #include <imgui_internal.h>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <system_error>
@@ -158,7 +160,7 @@ TEST(EditorTimelinePreview, RewindsTheEntireSceneAndDoesNotStepWhilePaused)
         [&builds] {
             ++builds;
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SpawnTransient<TimelineMovingActor>();
+            scene->SpawnObject<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
         {-2, 10});
@@ -201,7 +203,7 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
         [&device] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
             scene->SetDevice(&device);
-            scene->SpawnTransient<TimelineMovingActor>();
+            scene->SpawnObject<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
         {0, 20});
@@ -297,7 +299,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
             scene->SetDevice(&device);
             scene->MainCamera()->ApplyPose(pose);
-            scene->SpawnTransient<TimelineMovingActor>();
+            scene->SpawnObject<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
         {0, 20});
@@ -486,10 +488,11 @@ TEST(EditorGameCursor, EscapeThenGameTabClickRecapturesTheCursor)
     EXPECT_FALSE(app.Input().Mouse().IsRelativeMode());
 }
 
-TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
+// 選んだアクターの .actor の動作を出し、足した事象と数で直した始まりが下見の動作に効く
+TEST(EditorActionTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
 {
-    const ScopedHitTimelineDirectory directory("EditorTimelinePanel");
-    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
+    // 窓は読んである .actor の文書を直すので、終わったら元の文書へ戻す
+    const ScopedActorFileEdit restore("PlayerActor", [](nlohmann::json&) {});
     NS::ApplicationDesc desc;
     desc.window.title = "タイムラインの接続の試し";
     desc.window.size = {160, 90};
@@ -502,18 +505,18 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         scene.SetDevice(&app.Device());
         nlohmann::json snapshot = NS::MakeSceneJson();
         nlohmann::json floor = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(floor, "MapPartsActor");
+        NS::SetObjectJsonActorFile(floor, "MapPartsActor");
         NS::SetObjectJsonId(floor, 100);
         NS::Editor::SetObjectPosition(floor, {0.0f, -0.5f, 0.0f});
         NS::Editor::SetObjectScale(floor, {60.0f, 1.0f, 60.0f});
         NS::SceneJsonObjects(snapshot).push_back(std::move(floor));
         nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonActorFile(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
         NS::Editor::SetObjectPosition(player, {0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(snapshot).push_back(std::move(player));
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, 2);
         NS::Editor::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
         NS::Editor::SetObjectScale(rock, {3.0f, 3.0f, 3.0f});
@@ -521,8 +524,9 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         scene.ResetFromJson(std::move(snapshot));
         scene.SetSimulationEnabled(false);
         LevelEditorController editor(&scene);
+        editor.SelectObjectById(1);
         NS::Editor::GameViewPanel game;
-        NS::Editor::HitTimelinePanel timeline;
+        NS::Editor::ActionTimelinePanel timeline;
         const auto begin = [&] {
             ImGui::NewFrame();
             timeline.Tick(editor, 0.0f);
@@ -541,15 +545,73 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
             timeline.Render(editor);
         };
         const auto activate = [](const char* label) {
-            ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelHitTimeline);
+            ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline);
             ASSERT_NE(window, nullptr);
             ImGuiContext& context = *ImGui::GetCurrentContext();
             context.NavActivateId = window->GetID(label);
             context.NavActivateDownId = context.NavActivateId;
         };
+        // 選んだ行の数の欄へ打ち込んで決める。欄は行の欄の表 ##event-row の中にある
+        const auto typeInto = [&](const char* field, const char* text) {
+            ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline);
+            ASSERT_NE(window, nullptr);
+            const ImGuiID id = ImHashStr(field, 0, ImHashStr("##event-row", 0, window->ID));
+            ImGui::ActivateItemByID(id);
+            GImGui->NavNextActivateFlags = ImGuiActivateFlags_PreferInput;
+            begin();
+            drawPanel();
+            ImGui::EndFrame();
+            ASSERT_EQ(GImGui->ActiveId, id);
+            ImGui::GetIO().AddInputCharactersUTF8(text);
+            begin();
+            drawPanel();
+            ImGui::EndFrame();
+            ImGui::GetIO().AddKeyEvent(ImGuiKey_Enter, true);
+            begin();
+            drawPanel();
+            ImGui::EndFrame();
+            ImGui::GetIO().AddKeyEvent(ImGuiKey_Enter, false);
+            begin();
+            drawPanel();
+            ImGui::EndFrame();
+        };
+        // 下見を frame まで進め、自機の当たる直前の動作がそのフレームに row の事象を始めたか
+        const auto startedAt = [&](int frame, std::size_t row) {
+            NS::Editor::TimelinePreview* seeking = timeline.Preview(editor);
+            EXPECT_NE(seeking, nullptr);
+            if (seeking == nullptr)
+            {
+                return false;
+            }
+            NS::Scene* seeked = seeking->Seek(frame);
+            EXPECT_NE(seeked, nullptr);
+            if (seeked == nullptr)
+            {
+                return false;
+            }
+            const NS::SceneActor* player = seeked->Objects().FindByObjectId(1);
+            EXPECT_NE(player, nullptr);
+            if (player == nullptr || player->ActionTimelineClassObj() == nullptr)
+            {
+                return false;
+            }
+            const NS::ActionTimeline& actions = *player->ActionTimelineClassObj();
+            EXPECT_EQ(actions.CurrentName(), "BeforeContactCenter");
+            EXPECT_EQ(actions.Frame(), frame);
+            const std::vector<std::size_t>& started = actions.StartedEvents();
+            return std::find(started.begin(), started.end(), row) != started.end();
+        };
         begin();
         drawPanel();
         ImGui::EndFrame();
+        // 一覧は選んだ自機の .actor の動作
+        EXPECT_EQ(timeline.EditingActorFile(), "PlayerActor");
+        const std::vector<NS::ActorAction> shipped =
+            NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
+        ASSERT_FALSE(shipped.empty());
+        ASSERT_NE(timeline.EditingAction(), nullptr);
+        EXPECT_EQ(timeline.EditingAction()->name, shipped.front().name);
+        EXPECT_EQ(timeline.EditingAction()->events.size(), shipped.front().events.size());
         const std::optional<NS::SceneView> view = game.CollectView(editor);
         ASSERT_TRUE(view.has_value());
         begin();
@@ -599,27 +661,59 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         ASSERT_NE(updated, nullptr);
         ASSERT_NE(updated->Objects().FindByObjectId(2), nullptr);
         EXPECT_NEAR(updated->Objects().FindByObjectId(2)->Root().Position().x, 2.0f, 0.01f);
-        PlayerActor* previewPlayer = FindPlayer(preview->Scene()->Objects());
-        ASSERT_NE(previewPlayer, nullptr);
-        const std::size_t addedRow = MakeLegacyHitTimeline(2).events.size();
-        const std::vector<std::size_t>& beforeRows = previewPlayer->Resolver().Answer().rowsStarted;
-        EXPECT_EQ(std::find(beforeRows.begin(), beforeRows.end(), addedRow), beforeRows.end());
+        activate("<");
+        drawPanel();
+        ImGui::EndFrame();
+        begin();
+        activate("<");
+        drawPanel();
+        ImGui::EndFrame();
+        begin();
+        ASSERT_NE(timeline.Preview(editor), nullptr);
+        // 当たる直前の動作は 0〜6 フレームで、6 は検知のフレーム。足す所はその前に置く
+        const int addFrame = *timeline.Preview(editor)->Frame();
+        ASSERT_GE(addFrame, 3);
+        ASSERT_LT(addFrame, 6);
+        const std::size_t addedRow = timeline.EditingAction()->events.size();
         activate("再生の位置に足す");
         drawPanel();
         ASSERT_NE(timeline.Preview(editor), nullptr);
-        const int editingFrame = *preview->Frame();
+        const int editingFrame = *timeline.Preview(editor)->Frame();
         timeline.Tick(editor, 0.5f);
         EXPECT_EQ(*timeline.Preview(editor)->Frame(), editingFrame);
         ImGui::EndFrame();
+        ASSERT_EQ(timeline.EditingAction()->events.size(), addedRow + 1);
+        EXPECT_EQ(timeline.EditingAction()->events[addedRow].start, addFrame);
         begin();
         drawPanel();
         ImGui::EndFrame();
         begin();
+        EXPECT_TRUE(startedAt(addFrame, addedRow));
+        EXPECT_FALSE(startedAt(1, addedRow));
+        drawPanel();
+        ImGui::EndFrame();
+        // 選んだ行の始まりと長さを数で直すと、その場で .actor の文書と下見の動作に効く
+        typeInto("##start", "1");
+        typeInto("##length", "3");
+        ASSERT_EQ(timeline.EditingAction()->events.size(), addedRow + 1);
+        EXPECT_EQ(timeline.EditingAction()->events[addedRow].start, 1);
+        EXPECT_EQ(timeline.EditingAction()->events[addedRow].length, 3);
+        const std::vector<NS::ActorAction> edited =
+            NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
+        ASSERT_FALSE(edited.empty());
+        ASSERT_EQ(edited.front().events.size(), addedRow + 1);
+        EXPECT_EQ(edited.front().events[addedRow].start, 1);
+        EXPECT_EQ(edited.front().events[addedRow].length, 3);
+        begin();
+        drawPanel();
+        ImGui::EndFrame();
+        begin();
+        EXPECT_TRUE(startedAt(1, addedRow));
+        EXPECT_FALSE(startedAt(addFrame, addedRow));
+        drawPanel();
+        ImGui::EndFrame();
+        begin();
         ASSERT_NE(timeline.Preview(editor), nullptr);
-        previewPlayer = FindPlayer(timeline.Preview(editor)->Scene()->Objects());
-        ASSERT_NE(previewPlayer, nullptr);
-        const std::vector<std::size_t>& afterRows = previewPlayer->Resolver().Answer().rowsStarted;
-        EXPECT_NE(std::find(afterRows.begin(), afterRows.end(), addedRow), afterRows.end());
         EXPECT_EQ(scene.Objects().FindByObjectId(2)->Root().Position().x, 2.0f);
         activate("Game に下見を表示");
         drawPanel();
@@ -630,49 +724,114 @@ TEST(EditorHitTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// 「保存」は開いていない段の変更も書く。今の段だけ書いて印を消すと、もう片方の段の変更が黙って失われる
-TEST(EditorHitTimelinePanel, SaveWritesEveryTier)
+// 「保存」は開いていない .actor の変更も書く。今の .actor だけ書いて印を消すと、選び直す前の変更が黙って失われる
+TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
 {
-    const ScopedHitTimelineDirectory directory("EditorTimelineSave");
-    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
-    GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
+    const ScopedActorFileDirectory directory("EditorActionTimelineSave");
+    const std::string shippedDirectory =
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Actors");
+    for (const char* name : {"PlayerActor", "PropActor"})
+    {
+        const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(
+            NS::OS::FileSystem::Combine(shippedDirectory, std::string{name} + ".actor"));
+        ASSERT_TRUE(text.has_value()) << name;
+        WriteActorFile(directory.Path(), name, *text);
+    }
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    library.Reload();
+    ASSERT_NE(library.Find("PlayerActor"), nullptr);
+    const std::vector<NS::ActorAction> before = NS::ReadActorActions("PlayerActor", *library.Find("PlayerActor"));
+    ASSERT_FALSE(before.empty());
+
     TimelineGui gui;
     NS::Scene scene;
+    nlohmann::json snapshot = NS::MakeSceneJson();
+    nlohmann::json player = NS::MakeObjectJson();
+    NS::SetObjectJsonActorFile(player, "PlayerActor");
+    NS::SetObjectJsonId(player, 1);
+    NS::SceneJsonObjects(snapshot).push_back(std::move(player));
+    nlohmann::json rock = NS::MakeObjectJson();
+    NS::SetObjectJsonActorFile(rock, "PropActor");
+    NS::SetObjectJsonId(rock, 2);
+    NS::Editor::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
+    NS::SceneJsonObjects(snapshot).push_back(std::move(rock));
+    scene.ResetFromJson(std::move(snapshot));
+    scene.SetSimulationEnabled(false);
     LevelEditorController editor(&scene);
-    NS::Editor::HitTimelinePanel timeline;
-    // パネルは真ん中の段を開いている。外れの段は置き場にだけ変更がある
-    GL::Level::HitTimeline miss = MakeLegacyHitTimeline(2);
-    miss.events.pop_back();
-    library.Set("miss", miss);
+    NS::Editor::ActionTimelinePanel timeline;
 
-    const auto drawPanel = [&] {
+    const auto frame = [&](const char* press) {
+        ImGui::NewFrame();
+        if (press != nullptr)
+        {
+            ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline);
+            ASSERT_NE(window, nullptr);
+            ImGuiContext& context = *ImGui::GetCurrentContext();
+            context.NavActivateId = window->GetID(press);
+            context.NavActivateDownId = context.NavActivateId;
+        }
         ImGui::SetNextWindowPos({0.0f, 0.0f});
         ImGui::SetNextWindowSize({650.0f, 780.0f});
         timeline.Render(editor);
+        ImGui::EndFrame();
     };
-    ImGui::NewFrame();
-    drawPanel();
-    ImGui::EndFrame();
-    ImGui::NewFrame();
-    ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelHitTimeline);
-    ASSERT_NE(window, nullptr);
-    ImGuiContext& context = *ImGui::GetCurrentContext();
-    context.NavActivateId = window->GetID("保存");
-    context.NavActivateDownId = context.NavActivateId;
-    drawPanel();
-    ImGui::EndFrame();
+    // 自機の .actor の動作に事象を足してから置物を選び直し、置物の .actor を開いた窓で保存する
+    editor.SelectObjectById(1);
+    frame(nullptr);
+    frame("再生の位置に足す");
+    editor.SelectObjectById(2);
+    frame(nullptr);
+    EXPECT_EQ(timeline.EditingActorFile(), "PropActor");
+    frame("保存");
 
     library.Reload();
-    ASSERT_NE(library.Find("center"), nullptr);
-    const GL::Level::HitTimeline* saved = library.Find("miss");
-    ASSERT_NE(saved, nullptr);
-    EXPECT_EQ(saved->events.size(), miss.events.size());
+    ASSERT_NE(library.Find("PlayerActor"), nullptr);
+    const std::vector<NS::ActorAction> saved = NS::ReadActorActions("PlayerActor", *library.Find("PlayerActor"));
+    ASSERT_EQ(saved.size(), before.size());
+    EXPECT_EQ(saved.front().events.size(), before.front().events.size() + 1);
 }
 
 namespace
 {
-    //! パネルの「再生の位置に足す」を押し、タイムラインの写しに事象を 1 つ足す
-    void AddEventThroughThePanel(LevelEditorController& editor, NS::Editor::HitTimelinePanel& timeline)
+    //! 出荷の PlayerActor.actor を試しの置き場へ写して読み直し、自機 1 体を置いて選ぶ
+    void PlaceEditedPlayer(const ScopedActorFileDirectory& directory, NS::Scene& scene, LevelEditorController& editor)
+    {
+        const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Actors/PlayerActor.actor"));
+        ASSERT_TRUE(text.has_value());
+        WriteActorFile(directory.Path(), "PlayerActor", *text);
+        NS::ActorFileLibrary::Get().Reload();
+        ASSERT_NE(NS::ActorFileLibrary::Get().Find("PlayerActor"), nullptr);
+        nlohmann::json snapshot = NS::MakeSceneJson();
+        nlohmann::json player = NS::MakeObjectJson();
+        NS::SetObjectJsonActorFile(player, "PlayerActor");
+        NS::SetObjectJsonId(player, 1);
+        NS::SceneJsonObjects(snapshot).push_back(std::move(player));
+        scene.ResetFromJson(std::move(snapshot));
+        scene.SetSimulationEnabled(false);
+        editor.SelectObjectById(1);
+    }
+
+    //! 置いた自機の PlayerActor.actor の最初の動作の事象の数
+    std::size_t FirstActionEventCount()
+    {
+        const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PlayerActor");
+        EXPECT_NE(actorFile, nullptr);
+        if (actorFile == nullptr)
+        {
+            return 0;
+        }
+        const std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", *actorFile);
+        EXPECT_FALSE(actions.empty());
+        if (actions.empty())
+        {
+            return 0;
+        }
+        return actions.front().events.size();
+    }
+
+    //! パネルの「再生の位置に足す」を押し、選んだアクターの .actor の動作に事象を 1 つ足す
+    void AddEventThroughThePanel(LevelEditorController& editor, NS::Editor::ActionTimelinePanel& timeline)
     {
         const auto drawPanel = [&] {
             ImGui::SetNextWindowPos({0.0f, 0.0f});
@@ -683,7 +842,7 @@ namespace
         drawPanel();
         ImGui::EndFrame();
         ImGui::NewFrame();
-        ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelHitTimeline);
+        ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline);
         ASSERT_NE(window, nullptr);
         ImGuiContext& context = *ImGui::GetCurrentContext();
         context.NavActivateId = window->GetID("再生の位置に足す");
@@ -693,15 +852,15 @@ namespace
     }
 } // namespace
 
-// シーンを変えずにタイムラインだけを変えても、終了の確認は未保存と答える
+// シーンを変えずに動作のタイムラインだけを変えても、終了の確認は未保存と答える
 TEST(EditorQuit, TimelineEditAloneIsUnsavedWork)
 {
-    const ScopedHitTimelineDirectory directory("EditorQuitUnsaved");
-    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
+    const ScopedActorFileDirectory directory("EditorQuitUnsaved");
     TimelineGui gui;
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Editor::HitTimelinePanel timeline;
+    PlaceEditedPlayer(directory, scene, editor);
+    NS::Editor::ActionTimelinePanel timeline;
     ASSERT_FALSE(NS::Editor::HasUnsavedWork(editor.Editor(), timeline));
 
     AddEventThroughThePanel(editor, timeline);
@@ -710,16 +869,16 @@ TEST(EditorQuit, TimelineEditAloneIsUnsavedWork)
     EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor.Editor(), timeline));
 }
 
-// 終了の保存はタイムラインも書く。シーンだけを書くと、タイムラインの変更が黙って失われる
+// 終了の保存は動作のタイムラインで直した .actor も書く。シーンだけを書くと、動作の変更が黙って失われる
 TEST(EditorQuit, SaveAllForQuitWritesTheTimeline)
 {
-    const ScopedHitTimelineDirectory directory("EditorQuitSave");
-    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
-    GL::Level::HitTimelineLibrary& library = GL::Level::HitTimelineLibrary::Get();
+    const ScopedActorFileDirectory directory("EditorQuitSave");
     TimelineGui gui;
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Editor::HitTimelinePanel timeline;
+    PlaceEditedPlayer(directory, scene, editor);
+    const std::size_t before = FirstActionEventCount();
+    NS::Editor::ActionTimelinePanel timeline;
 
     // シーンの書き先は、Assets の下に作る試しのレベルにする。起動シーンのファイルを書かない
     const std::string folder =
@@ -746,22 +905,18 @@ TEST(EditorQuit, SaveAllForQuitWritesTheTimeline)
     ASSERT_TRUE(opened);
     EXPECT_TRUE(saved);
     EXPECT_FALSE(unsavedAfter);
-    library.Reload();
-    const GL::Level::HitTimeline* written = library.Find("center");
-    ASSERT_NE(written, nullptr);
-    EXPECT_EQ(written->events.size(), MakeLegacyHitTimeline(2).events.size() + 1);
+    NS::ActorFileLibrary::Get().Reload();
+    EXPECT_EQ(FirstActionEventCount(), before + 1);
 }
 
 // 終了の確認と Save Level・Load Level を開いている間は、編集のショートカットを止める答えが真になる。
 // 答えはモーダルを ImGui の窓の積み重ねで問うので、3 つの窓がモーダルとして開いていないと Delete で消した後のシーンを保存できてしまう
 TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
 {
-    const ScopedHitTimelineDirectory directory("EditorQuitModal");
-    ScopedHitTimelineDirectory::SetBothTiers(MakeLegacyHitTimeline(2));
     TimelineGui gui;
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Editor::HitTimelinePanel timeline;
+    NS::Editor::ActionTimelinePanel timeline;
     NS::Editor::QuitModal quit;
     NS::Editor::LevelFileBrowser files;
 

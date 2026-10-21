@@ -1,8 +1,17 @@
 #include "Game/Level/LevelMessages.h"
 
 #include "Game/Level/TackleGhost.h"
+#include "NSlib/Core/Assert.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/SceneActor.h"
+
+#include <cmath>
+#include <functional>
+#include <limits>
+#include <map>
 
 namespace GL
 {
@@ -68,24 +77,14 @@ namespace GL
             return NS::IsMsg<MsgAskTackleTarget>(msg);
         }
 
-        bool SendMsgTackleFreeze(NS::SceneActor& receiver, const TackleFreezeDesc& desc)
+        bool SendMsgTackleHit(NS::HitSensor& receiver, NS::HitSensor& sender, const TackleHitDesc& desc)
         {
-            return NS::SendMsgToActor(MsgTackleFreeze{desc}, receiver);
+            return NS::SendMsg(MsgTackleHit{desc}, receiver, &sender);
         }
 
-        bool IsMsgTackleFreeze(const NS::Message& msg) noexcept
+        bool IsMsgTackleHit(const NS::Message& msg) noexcept
         {
-            return NS::IsMsg<MsgTackleFreeze>(msg);
-        }
-
-        bool SendMsgTackleShake(NS::SceneActor& receiver, const NS::DrawShakeDesc& desc)
-        {
-            return NS::SendMsgToActor(MsgTackleShake{desc}, receiver);
-        }
-
-        bool IsMsgTackleShake(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgTackleShake>(msg);
+            return NS::IsMsg<MsgTackleHit>(msg);
         }
 
         bool TackleGhostDesc::WriteTo(TackleGhost* ghost, int frame) const noexcept
@@ -108,24 +107,103 @@ namespace GL
             return true;
         }
 
-        bool SendMsgTackleGhost(NS::SceneActor& receiver, const TackleGhostDesc& desc)
+        void TackleGhostRun::Start(const NS::HitOwnerRun& run, const NS::SceneActor* owner)
         {
-            return NS::SendMsgToActor(MsgTackleGhost{desc}, receiver);
+            NS_ASSERT(Game, owner != nullptr, "残像を出すアクターが渡されていない");
+            if (run.length <= 0)
+            {
+                return;
+            }
+            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(owner);
+            if (!pose.has_value())
+            {
+                return;
+            }
+            const NS::HitOwnerItem& item = run.item;
+            const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(owner);
+            desc = TackleGhostDesc{
+                .axis = NS::Vector3{forward.z, 0.0f, -forward.x},
+                .spread =
+                    NS::ScreenPixelsToMeters(HitOwnerValue(item, "離れのピクセル", 0.0f), *pose, owner->Root().Position()),
+                .sideOpacity = HitOwnerValue(item, "左右の残像の不透明度", 0.0f),
+                .stopLength = run.length,
+                .releaseFrames = HitOwnerFrames(item, "明けの残像のフレーム数", 0),
+                .releaseOpacity = HitOwnerValue(item, "明けの残像の不透明度", 0.0f)};
+            frame = 0;
+            active = true;
         }
 
-        bool IsMsgTackleGhost(const NS::Message& msg) noexcept
+        void TackleGhostRun::Advance(TackleGhost* ghost) noexcept
         {
-            return NS::IsMsg<MsgTackleGhost>(msg);
+            if (!active)
+            {
+                return;
+            }
+            ++frame;
+            active = desc.WriteTo(ghost, frame);
         }
 
-        bool SendMsgTackleTremor(NS::SceneActor& receiver, const NS::DrawTremorDesc& desc)
+        void TackleGhostRun::Stop(TackleGhost* ghost) noexcept
         {
-            return NS::SendMsgToActor(MsgTackleTremor{desc}, receiver);
+            NS_ASSERT(Game, ghost != nullptr, "残像が渡されていない");
+            active = false;
+            (void)ghost->SetSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
+            (void)ghost->SetAfterimageOpacity(0.0f);
         }
 
-        bool IsMsgTackleTremor(const NS::Message& msg) noexcept
+        float HitOwnerValue(const NS::HitOwnerItem& item, std::string_view name, float fallback)
         {
-            return NS::IsMsg<MsgTackleTremor>(msg);
+            const std::map<std::string, float, std::less<>>::const_iterator found = item.values.find(name);
+            if (found == item.values.end())
+            {
+                NS_LOG_WARN(Game, "束の項目 {} に値 {} が無いので {} を使う", item.name, name, fallback);
+                return fallback;
+            }
+            return found->second;
+        }
+
+        int HitOwnerFrames(const NS::HitOwnerItem& item, std::string_view name, int fallback)
+        {
+            const float value = HitOwnerValue(item, name, static_cast<float>(fallback));
+            // int の最大を float にすると 2^31 に丸まるので、その値は等号でも断る
+            if (!std::isfinite(value) || value < 0.0f || value >= static_cast<float>(std::numeric_limits<int>::max()))
+            {
+                NS_LOG_WARN(
+                    Game, "束の項目 {} の値 {} が 0 以上の int のフレーム数でないので {} を使う", item.name, name, fallback);
+                return fallback;
+            }
+            return static_cast<int>(value);
+        }
+
+        std::string TackleSetName(std::string_view base, HitTier tier, std::string_view variant)
+        {
+            std::string_view label = "真ん中";
+            switch (tier)
+            {
+            case HitTier::Wide:
+                label = "外れ";
+                break;
+            case HitTier::Center:
+                break;
+            }
+            std::string name{base};
+            name += "[";
+            name += label;
+            name += variant;
+            name += "]";
+            return name;
+        }
+
+        std::string_view BeforeContactActionName(HitTier tier) noexcept
+        {
+            switch (tier)
+            {
+            case HitTier::Wide:
+                return "BeforeContactMiss";
+            case HitTier::Center:
+                break;
+            }
+            return "BeforeContactCenter";
         }
 
         bool SendMsgTackleRelease(NS::SceneActor& receiver, const TackleReleaseDesc& desc)

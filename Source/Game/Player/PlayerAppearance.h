@@ -8,11 +8,6 @@
 #include "NSlib/Core/Types.h"
 #include <string>
 
-namespace NS
-{
-    class Body;
-}
-
 namespace GL
 {
     namespace Level
@@ -41,29 +36,22 @@ namespace GL
             //! 姿のメッシュの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
             explicit PlayerAppearance(NS::SceneActor* owner);
 
-            //! @brief 玉の見た目へ持ち替える。既に玉なら何もしない
-            //! @details 次の Update で、持ち主の丸まりに合わせ直す
+            //! @brief 玉のメッシュを同居する Model へ差し、玉の倍率を Model の局所の倍率へ書く
+            //! @details 丸まっているかは持たない。持ち主が当たりの形を変えた時と OnAssetsLoaded で、形に合う方を呼ぶ
             void Curl() noexcept;
-            //! @brief 立ち姿へ戻す。既に立ち姿なら何もしない
-            //! @details 次の Update で、持ち主の丸まりに合わせ直す
+            //! @brief 立ち姿のメッシュを同居する Model へ差し、立ち姿の倍率を Model の局所の倍率へ書く
+            //! @details 呼ぶ時は Curl と同じ
             void Uncurl() noexcept;
-            [[nodiscard]] bool IsCurled() const noexcept { return m_curled; }
 
-            //! @brief 今の姿のメッシュを同居する Model へ差し、姿の倍率を Model の局所の倍率へ書く
-            //! @details 持ち主の OnAssetsLoaded と、丸まる・戻るが呼ぶ。読めていない姿は Model の今のメッシュを残す
-            void ShowCurrentLook() noexcept;
-
-            //! @brief 丸まりに合わせて姿を持ち替え、玉を回し、描く形の倍率を書く。持ち主の見た目の段が呼ぶ
-            //! @param[in] aimDirection 狙いの線が無い時に、放せば出る水平の向き
-            //! @param[in] body 反動の着地の判定に接地と縦の速さを読む。空でないこと
-            //! @param[in] impact 当たりの裁定の答え。当たりの潰れと伸びと、何回目の当たりかを読む
+            //! @brief 丸まりに合わせて玉を回し、描く形の倍率を書く。持ち主の見た目の段が呼ぶ
+            //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
+            //! @param[in] impact 当たりの裁定の答え。何回目の当たりかを読む
             void Update(const PlayerMotion& motion,
                         const ChargeStatus& charge,
                         const BodySlamStatus& slam,
                         const ReboundStatus& rebound,
                         const SkidStatus& skid,
                         const NS::Vector3& aimDirection,
-                        const NS::Body* body,
                         const GL::Level::ImpactAnswer& impact);
 
             //! @brief 持ち主の Model の描く倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
@@ -118,16 +106,17 @@ namespace GL
                                    float skidScale,
                                    const GL::Level::ImpactAnswer& impact) noexcept;
             // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
-            void AdvanceLandingSquash(const PlayerMotion& motion, const NS::Body* body) noexcept;
-            // 当たりの形か構えの縮みに着地の潰れを掛け、描く時だけの倍率に控える
-            void WriteDrawScale(const ChargeStatus& charge, const GL::Level::ImpactAnswer& impact) noexcept;
+            void AdvanceLandingSquash(const PlayerMotion& motion) noexcept;
+            // 構えの縮みに着地の潰れを掛け、描く時だけの倍率に控える。当たりの形の再生の間は構えを混ぜない
+            void WriteDrawScale(const ChargeStatus& charge) noexcept;
+            // 姿のメッシュを Model へ差し、姿の倍率を Model の局所の倍率へ書く。読めていない姿は Model の今のメッシュを残す
+            void ShowLook(NS::Mesh* mesh, const NS::Vector3& scale) noexcept;
 
             // 素材は AssetManager が持つ。欄は nullptr にならない
             NS::Mesh* m_standingMesh = nullptr;
             NS::Mesh* m_ballMesh = nullptr;
             NS::Vector3 m_standingScale{1.3f, 1.15f, 1.3f};
             NS::Vector3 m_ballScale{1.3f, 1.3f, 1.3f};
-            bool m_curled = false;
 
             // 回る速さは 3 つとも 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の
             // 補間が短い側を通り、逆回りに見える

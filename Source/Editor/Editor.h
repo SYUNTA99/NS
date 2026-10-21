@@ -5,7 +5,7 @@
 #include "Editor/ConsolePanel.h"
 #include "Editor/DockController.h"
 #include "Editor/GameViewPanel.h"
-#include "Editor/HitTimelinePanel.h"
+#include "Editor/ActionTimelinePanel.h"
 #include "Editor/InspectorPanel.h"
 #include "Editor/QuitModal.h"
 #include "Editor/SceneViewPanel.h"
@@ -70,7 +70,7 @@ private:
     NS::Editor::DockController m_dock;
     NS::Editor::SceneViewPanel m_sceneView;
     NS::Editor::GameViewPanel m_gameView;
-    NS::Editor::HitTimelinePanel m_hitTimeline;
+    NS::Editor::ActionTimelinePanel m_actionTimeline;
 
     bool m_uiVisible = true;
     bool m_lastModeWasPlay = false; // 前フレームがプレイモードだったか。タブ自動フォーカスの切替検知に使う

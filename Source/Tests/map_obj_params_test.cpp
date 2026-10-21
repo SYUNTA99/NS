@@ -22,7 +22,7 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 1);
     rock["classObjs"] = {{"Params", {{"質量", 2.0f}, {"耐久", 3.0f}}}};
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -41,43 +41,6 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     EXPECT_FLOAT_EQ(answer.toughness, 3.0f);
 }
 
-TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
-{
-    NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    for (const NS::uint32 id : {1u, 2u})
-    {
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
-        NS::SetObjectJsonId(rock, id);
-        NS::Editor::SetObjectPosition(rock, NS::Vector3{static_cast<float>(id) * 5.0f, 0.5f, 0.0f});
-        if (id == 2)
-        {
-            rock["classObjs"] = {{"Params", {{"当たりのタイムライン", "barrel"}}}};
-        }
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
-    }
-    scene.ResetFromJson(doc);
-    for (const NS::uint32 id : {1u, 2u})
-    {
-        SCOPED_TRACE(id);
-        std::string_view expected;
-        if (id == 2)
-        {
-            expected = "barrel";
-        }
-        NS::SceneActor* actor = scene.Objects().FindByObjectId(id);
-        ASSERT_NE(actor, nullptr);
-        const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor);
-        ASSERT_NE(prop, nullptr);
-        const GL::Level::MapObjParams* params = &prop->Params();
-        EXPECT_EQ(params->HitTimelineName(), expected);
-        GL::Level::TackleTargetAnswer answer;
-        ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorClassObj(), answer));
-        EXPECT_EQ(answer.hitTimeline, expected);
-    }
-}
-
 TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
 {
     for (const std::string_view sceneName : {"new_scene.scene"})
@@ -94,7 +57,7 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
         std::vector<float> toughnesses;
         for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
-            if (NS::ObjectJsonClass(entry) != "PropActor")
+            if (NS::ObjectJsonActorFile(entry) != "PropActor")
             {
                 continue;
             }
@@ -117,15 +80,15 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 1);
-    rock["classObjs"] = {{"Params", {{"質量", -2.0f}, {"耐久", -3.0f}, {"摩擦", -1.0f}, {"跳ね返り", -1.0f}}}};
+    rock["classObjs"] = {{"Params", {{"質量", -2.0f}, {"耐久", -3.0f}}}};
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    const NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
-    ASSERT_NE(actor, nullptr);
-    const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor);
+    GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(prop, nullptr);
+    // 摩擦と跳ね返りは .actor だけが持つ欄なので、読んだ後のアクターへ書く
+    ASSERT_EQ(NS::ApplyJsonFields(prop->Params(), nlohmann::json{{"摩擦", -1.0f}, {"跳ね返り", -1.0f}}), 0u);
     const GL::Level::MapObjParams* params = &prop->Params();
     EXPECT_FLOAT_EQ(params->Mass(), 1.0f);
     EXPECT_FLOAT_EQ(params->Toughness(), 0.0f);
@@ -165,13 +128,16 @@ TEST(MapObjParams, TackleAnswerCarriesTheLaunchShape)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 1);
-    rock["classObjs"] = {{"Params", {{"押し飛ばしの高さ", 3.0f}, {"外れで飛ばす相手の距離の割合", 0.5f}}}};
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
+    GL::Level::PropActor* actor = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(actor, nullptr);
+    // 飛び方の欄は .actor だけが持つ欄なので、読んだ後のアクターへ書く
+    ASSERT_EQ(NS::ApplyJsonFields(actor->Params(),
+                                  nlohmann::json{{"押し飛ばしの高さ", 3.0f}, {"外れで飛ばす相手の距離の割合", 0.5f}}),
+              0u);
     GL::Level::TackleTargetAnswer answer;
     ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorClassObj(), answer));
     EXPECT_FLOAT_EQ(answer.launch.apexHeight, 3.0f);
@@ -204,7 +170,7 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(rock, "PropActor");
+    NS::SetObjectJsonActorFile(rock, "PropActor");
     NS::SetObjectJsonId(rock, 1);
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);

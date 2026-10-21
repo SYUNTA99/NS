@@ -9,21 +9,26 @@ namespace NS
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         CameraManager* cameras = user->GetCameraManager();
-        return cameras != nullptr && cameras->AddModifier(std::move(modifier));
+        if (cameras == nullptr || modifier == nullptr)
+        {
+            return false;
+        }
+        modifier->SetRequester(user);
+        return cameras->AddModifier(std::move(modifier));
     }
 
     bool StartCameraShake(const IUseCamera* user, const CameraShakeDesc& desc)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         CameraManager* cameras = user->GetCameraManager();
-        return cameras != nullptr && cameras->StartShake(desc);
+        return cameras != nullptr && cameras->StartShake(desc, user);
     }
 
     bool StartCameraZoomRoll(const IUseCamera* user, const CameraZoomRollDesc& desc)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         CameraManager* cameras = user->GetCameraManager();
-        return cameras != nullptr && cameras->StartZoomRoll(desc);
+        return cameras != nullptr && cameras->StartZoomRoll(desc, user);
     }
 
     void StopCameraEffects(const IUseCamera* user) noexcept
@@ -39,7 +44,7 @@ namespace NS
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         CameraManager* cameras = user->GetCameraManager();
-        return cameras != nullptr && cameras->AddTrauma(desc);
+        return cameras != nullptr && cameras->AddTrauma(desc, user);
     }
 
     bool HoldCameraTrauma(const IUseCamera* user, float level, const CameraTraumaShape& shape)
@@ -54,11 +59,10 @@ namespace NS
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (CameraManager* cameras = user->GetCameraManager())
         {
-            cameras->RemoveModifiers(CameraShakeModifier::StaticKind());
-            cameras->RemoveModifiers(CameraSinkModifier::StaticKind());
-            cameras->RemoveModifiers(CameraZoomRollModifier::StaticKind());
-            cameras->RemoveModifiers(CameraNudgeModifier::KindFor(false));
-            cameras->RemoveModifiers(CameraNudgeModifier::KindFor(true));
+            for (const void* kind : CameraHitEffectKinds())
+            {
+                cameras->RemoveModifiers(kind);
+            }
         }
     }
 

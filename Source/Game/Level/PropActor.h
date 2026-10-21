@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game/Level/HitZones.h"
+#include "Game/Level/ImpactMarks.h"
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
@@ -30,6 +31,7 @@ namespace GL
             NS_CLASSOBJ(m_params, "Params")
             NS_CLASSOBJ(m_hitZones, "HitZones")
             NS_CLASSOBJ(m_effects, "LaunchEffects")
+            NS_CLASSOBJ(m_marks, "ImpactMarks")
             NS_REFLECT_END()
 
             //! 尾と粉の絵を先に読む。残像は Model と同じく、出ている間だけ描く物へ入れる
@@ -55,6 +57,8 @@ namespace GL
             [[nodiscard]] const HitZones& Zones() const noexcept { return *m_hitZones; }
             [[nodiscard]] LaunchEffects& Effects() noexcept { return *m_effects; }
             [[nodiscard]] const LaunchEffects& Effects() const noexcept { return *m_effects; }
+            [[nodiscard]] ImpactMarks& Marks() noexcept { return *m_marks; }
+            [[nodiscard]] const ImpactMarks& Marks() const noexcept { return *m_marks; }
             [[nodiscard]] const TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
 
         protected:
@@ -65,7 +69,7 @@ namespace GL
             void OnInit() override;
             void OnAppear() override;
             void OnDisappear() noexcept override;
-            //! 発光の層を進める。HitReaction は進めない
+            //! 発光の層・残像・当たりの跡を進める
             void VisualStep() override;
 
         private:
@@ -75,13 +79,24 @@ namespace GL
             class ArcState;
             class RollingState;
 
+            // 受けた状態の頭の形と動き
+            struct TackleFreezeDesc
+            {
+                NS::Vector3 impactDir{1.0f, 0.0f, 0.0f}; // 飛ぶ水平の向き。食い込みの向き
+                float pushInDistance = 0.0f;             // 飛ぶ向きへ食い込ませる距離 (m)
+                float squashThickness = 1.0f;            // 飛ぶ向きの厚みの倍率
+                float squashHeight = 1.0f;               // 高さの倍率
+                bool squash = false;                     // 形を潰すか
+            };
+
+            // 当たったの知らせを受ける。段の自分の束を触れた点と 2 つのセンサーで始め、受けた状態に入る
+            void ReceiveHit(const TackleHitDesc& hit, const NS::HitSensor& self, const NS::HitSensor& attacker);
+            // 受けた当たりの明けの束を始める。当たっていない・当てた側が居ない時は何もしない
+            void StartReleaseSet();
             void BeginFreeze(const TackleFreezeDesc& desc);
             void EndFreeze();
             // 止めを解く。置かれていたか状態機械が終わっていれば Resting、他は Launched
             void LeaveFreeze();
-            void StepFreeze();
-            void AdvanceGhost();
-            void StopGhost();
             void Release(const TackleReleaseDesc& desc);
             void ResetTo(const NS::Vector3& position, const NS::Quaternion& rotation);
             void StepLaunched(float dt);
@@ -100,17 +115,21 @@ namespace GL
             std::unique_ptr<MapObjParams> m_params;
             std::unique_ptr<HitZones> m_hitZones;
             std::unique_ptr<LaunchEffects> m_effects;
+            std::unique_ptr<ImpactMarks> m_marks;
             NS::StateMachineOf<PropActor>* m_states = nullptr; // 基底が所有する。OnInit が預けた直後から有効
             NS::SubStateMachine<PropActor> m_motion;
             TackleFreezeDesc m_freeze;
-            // 残像。知らせを受けたフレームの見た目の 1 歩を 1 フレーム目に数え、止めの後も状態に依らず進める
-            struct GhostRun
+            // 受けた当たり。明けの知らせで明けの束を始める時に読み、使い終えると active を下ろす
+            struct ReceivedHit
             {
-                TackleGhostDesc desc{};
-                int frame = 0;
+                NS::HitSensorRef attacker{};
+                NS::Vector3 contact{};
+                HitTier tier = HitTier::Center;
                 bool active = false;
             };
-            GhostRun m_ghost;
+            ReceivedHit m_received;
+            // 残像。知らせを受けたフレームの見た目の 1 歩を 1 フレーム目に数える。離れは食い込んだ後の根の奥行きで出す
+            TackleGhostRun m_ghost;
             struct CoursePose
             {
                 NS::Vector3 position;

@@ -2,7 +2,7 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -64,26 +64,18 @@ namespace NS
         nlohmann::json& objects = SceneJsonObjects(scene);
         for (const SceneActor* obj : m_objects)
         {
-            // 一時オブジェクトは保存にも凍結にも写さない
-            if (obj->IsTransient())
-            {
-                continue;
-            }
             objects.push_back(ObjectToJson(*obj));
+        }
+        for (const nlohmann::json& object : m_unresolvedObjects)
+        {
+            objects.push_back(object);
         }
         return scene;
     }
 
     void Scene::SetEnvironment(const SceneEnvironment& environment) noexcept
     {
-        m_environment.skybox = environment.skybox;
-        SetGravityDirection(environment.gravityDirection);
-    }
-
-    void Scene::SetGravityDirection(const Vector3& direction) noexcept
-    {
-        m_environment.gravityDirection = NormalizeGravityDirection(direction);
-        m_physics.Physics().SetGravity(m_environment.gravityDirection * -Phys::k_DefaultGravityY);
+        m_environment = environment;
     }
 
     const nlohmann::json& Scene::BeginPlayBaseline()
@@ -102,6 +94,12 @@ namespace NS
         }
         const Object* part = row.get(&actor);
         if (part == nullptr)
+        {
+            return;
+        }
+        // .actor へ書く欄は凍結が持たない。写すと編集へ戻る時に配置物の値として捨てられる
+        const FieldDesc* field = FindField(part->GetReflection(), fieldName);
+        if (field == nullptr || FieldDestinationOf(actor, *part, *field) == FieldDestination::ActorFile)
         {
             return;
         }
@@ -222,24 +220,6 @@ namespace NS
         return true;
     }
 
-    SceneActor* Scene::AdoptTransient(std::unique_ptr<SceneActor> obj)
-    {
-        if (!obj)
-        {
-            return nullptr;
-        }
-
-        obj->SetTransient(true);
-        obj->AttachScene(this);
-        SceneActor* raw = m_objects.Append(std::move(obj));
-        if (raw == nullptr)
-        {
-            return nullptr;
-        }
-        StartSpawned(*raw);
-        return raw;
-    }
-
     SceneActor* Scene::AdoptObject(std::unique_ptr<SceneActor> obj, std::string name)
     {
         if (!obj)
@@ -265,9 +245,37 @@ namespace NS
         obj.InitAfterPlacement();
     }
 
-    SceneActor* Scene::SpawnFromJson(const nlohmann::json& object)
+    std::unique_ptr<SceneActor> Scene::BuildOrKeepUnresolved(const nlohmann::json& object)
     {
         std::unique_ptr<SceneActor> built = ObjectFromJson(object, *this);
+        const uint32 id = ObjectJsonId(object);
+        std::vector<nlohmann::json>::iterator kept = std::find_if(
+            m_unresolvedObjects.begin(), m_unresolvedObjects.end(), [id](const nlohmann::json& unresolved) {
+                return ObjectJsonId(unresolved) == id;
+            });
+        if (built)
+        {
+            if (kept != m_unresolvedObjects.end())
+            {
+                m_unresolvedObjects.erase(kept);
+            }
+            return built;
+        }
+        // 同じ id の物は 1 つだけ持つ。戻しの控えを何度当てても保存の配置物は増えない
+        if (kept != m_unresolvedObjects.end())
+        {
+            *kept = object;
+        }
+        else
+        {
+            m_unresolvedObjects.push_back(object);
+        }
+        return nullptr;
+    }
+
+    SceneActor* Scene::SpawnFromJson(const nlohmann::json& object)
+    {
+        std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(object);
         if (!built)
         {
             return nullptr;
@@ -292,15 +300,14 @@ namespace NS
             return SpawnFromJson(object);
         }
 
-        std::unique_ptr<SceneActor> built = ObjectFromJson(object, *this);
+        std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(object);
+        // 組めない姿は居ない姿として扱い、JSON は BuildOrKeepUnresolved が持つ。
+        // DestroyObject は持った JSON も捨てるので、アクターだけを外す
+        m_objects.RemoveByObjectId(id);
         if (!built)
         {
-            // 組める部品が無い姿は、居ない姿として扱う
-            DestroyObject(id);
             return nullptr;
         }
-
-        DestroyObject(id);
         built->AttachScene(this);
         SceneActor* raw = m_objects.InsertFromJson(std::move(built), object, index);
         if (raw == nullptr)
@@ -318,9 +325,14 @@ namespace NS
         {
             return SpawnFromJson(snapshot);
         }
-        // 控えは個体の上書きだけを持つ。上書きの無い欄も種類の既定値へ戻すため、全欄の姿へ広げてから比べる
+        // 同じクラスでも .actor が違えば敷く既定が違うので、作り直す
+        if (ObjectJsonActorFile(snapshot) != obj->ActorFileName())
+        {
+            return ReplaceFromJson(snapshot);
+        }
+        // 控えは個体の上書きだけを持つ。上書きの無い欄も .actor の値へ戻すため、全欄の姿へ広げてから比べる
         const nlohmann::json object = ExpandObjectJson(snapshot);
-        bool same = ObjectJsonClass(object) == std::string_view{obj->ClassName()};
+        bool same = true;
         std::size_t classObjCount = 0;
         ForEachReflectedClassObj(*obj, [&](const ClassObjInfo& field, Object*) {
             ++classObjCount;
@@ -355,6 +367,9 @@ namespace NS
     void Scene::DestroyObject(uint32 objectId)
     {
         m_objects.RemoveByObjectId(objectId);
+        std::erase_if(m_unresolvedObjects, [objectId](const nlohmann::json& unresolved) {
+            return ObjectJsonId(unresolved) == objectId;
+        });
     }
 
     void Scene::ClearEffects() noexcept
@@ -374,6 +389,7 @@ namespace NS
         m_sceneObjs.Clear();
         Fade().Cancel();
         m_objects.Clear();
+        m_unresolvedObjects.clear();
         ClearEffects();
 #if !defined(NS_SHIPPING)
         // 図形は前の世界の姿で、溜め場は静的な 1 つ。残すと、次の歩が来るまで消えた物の線が出る
@@ -385,8 +401,9 @@ namespace NS
     {
         ClearWorld();
         // 仮想カメラの付け外しは、持ち主の SceneActor が OnStart / OnEndPlay で行う
+        // .actor の見つからない配置物は作らず、保存で消さないように JSON のまま持つ
         m_objects.RebuildFromJson(
-            scene, *this, [this](const nlohmann::json& entry) { return ObjectFromJson(entry, *this); });
+            scene, *this, [this](const nlohmann::json& entry) { return BuildOrKeepUnresolved(entry); });
         // 当たりは配置物の開始で入っている。まとめて入れた後の broadphase だけを張り直す
         m_physics.Physics().OptimizeBroadPhase();
     }

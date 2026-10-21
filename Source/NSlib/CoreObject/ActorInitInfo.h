@@ -4,17 +4,22 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
+#include <string_view>
+
 namespace NS
 {
     class Scene;
 
     //! @brief SceneActor::Init が受ける、アクターを作る時の情報
-    //! @details 作る道 (シーンの組み直し・JSON から湧かす・作り直す・型から湧かす) で同じ形を渡す
+    //! @details 作る道 (シーンの組み直し・JSON から湧かす・作り直す・型から湧かす・比べる基準) で同じ形を渡す
     struct ActorInitInfo
     {
-        //! 型から湧かすアクターは配置の JSON が無いので nullptr。そのアクターには種類の既定だけが書かれる
+        //! 型から湧かすアクターと比べる基準の 1 体は配置の JSON が無いので nullptr。.actor の値だけが書かれる
         const nlohmann::json* placement = nullptr;
-        Scene& scene;
+        //! 入るシーン。比べる基準の 1 体のようにシーンへ入らない物は nullptr
+        Scene* scene = nullptr;
+        //! 敷く .actor の名前。空なら作るクラスと同じ名前の .actor を敷く
+        std::string_view actorFile;
     };
 
 } // namespace NS

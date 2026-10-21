@@ -33,10 +33,10 @@ namespace NS
     //! 配置物の永続 id を書く
     void SetObjectJsonId(nlohmann::json& object, uint32 id);
 
-    //! 生成する SceneActor のクラス名。空は素の SceneActor
-    [[nodiscard]] std::string_view ObjectJsonClass(const nlohmann::json& object) noexcept;
-    //! クラス名を書く。空は素の SceneActor の印なので消す
-    void SetObjectJsonClass(nlohmann::json& object, std::string_view className);
+    //! 配置物が敷く .actor の名前。作るクラスはその .actor の中の class。無ければ空
+    [[nodiscard]] std::string_view ObjectJsonActorFile(const nlohmann::json& object) noexcept;
+    //! .actor の名前を書く。空は消す
+    void SetObjectJsonActorFile(nlohmann::json& object, std::string_view actorFile);
 
     //! 配置物の名前。空は未設定で、読込の一意化が名前を振る
     [[nodiscard]] std::string_view ObjectJsonName(const nlohmann::json& object) noexcept;
@@ -52,7 +52,7 @@ namespace NS
     struct ObjectHeader
     {
         uint32 id = 0;
-        std::string className;
+        std::string actorFile;
         std::string name;
         bool active = true;
     };

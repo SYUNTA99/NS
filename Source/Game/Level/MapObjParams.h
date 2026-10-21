@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <string>
 
 namespace GL
 {
@@ -77,15 +76,13 @@ namespace GL
             [[nodiscard]] float ContactSkin() const noexcept { return std::max(m_contactSkin, 0.0f); }
             [[nodiscard]] float StopSpeed() const noexcept { return std::max(m_stopSpeed, 0.0f); }
             [[nodiscard]] int MaxContacts() const noexcept { return std::max(m_maxContacts, 1); }
-            //! 欄「当たりのタイムライン」の値。空なら段の既定のタイムラインを使う
-            [[nodiscard]] const std::string& HitTimelineName() const noexcept { return m_hitTimeline; }
 
             NS_REFLECT_BEGIN(MapObjParams, NS::Object)
-            NS_FIELD(m_mass, "質量")
+            NS_PLACEMENT_FIELD(m_mass, "質量")
             NS_FIELD(m_friction, "摩擦")
             NS_FIELD(m_restitution, "跳ね返り")
             NS_FIELD(m_spinPerSpeed, "回転の強さ")
-            NS_FIELD(m_toughness, "耐久")
+            NS_PLACEMENT_FIELD(m_toughness, "耐久")
             NS_FIELD(m_restLifeSeconds, "止まってから消える秒")
             NS_FIELD(m_floorDot, "床とみなす法線の上向き成分")
             NS_FIELD(m_markProbeDistance, "跡の床探しの距離")
@@ -103,7 +100,6 @@ namespace GL
             NS_FIELD(m_contactSkin, "接触の余白")
             NS_FIELD(m_stopSpeed, "停止とみなす速さ")
             NS_FIELD(m_maxContacts, "接触を解く回数")
-            NS_FIELD(m_hitTimeline, "当たりのタイムライン")
             NS_REFLECT_END()
 
         private:
@@ -132,7 +128,6 @@ namespace GL
             float m_missHopHeightRatio = 0.35f;
             float m_missHopTurnDegrees = 30.0f;
             float m_missHopKeep = 0.7f;
-            std::string m_hitTimeline;
         };
     } // namespace Level
 } // namespace GL

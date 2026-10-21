@@ -10,6 +10,7 @@
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
+#include <algorithm>
 #include <cmath>
 
 namespace
@@ -121,7 +122,7 @@ namespace NS
     void Model::Snapshot() noexcept
     {
         m_previousLocalRotation = m_localRotation;
-        m_previousDrawScale = m_drawScale;
+        m_previousDrawScale = GetDrawScale();
     }
 
     bool Model::SetDrawScale(const Vector3& scale) noexcept
@@ -140,7 +141,7 @@ namespace NS
         {
             return false;
         }
-        m_previousDrawScale = scale;
+        m_previousDrawScale = GetDrawScale();
         return true;
     }
 
@@ -153,6 +154,17 @@ namespace NS
     {
         m_shake.active = false;
         m_drawOffset = Vector3{0.0f, 0.0f, 0.0f};
+    }
+
+    void Model::StartDrawShape(const DrawShapeDesc& desc) noexcept
+    {
+        m_shape = ShapeRun{.desc = desc, .frame = std::max(desc.firstFrame, 0) - 1, .active = true};
+    }
+
+    void Model::StopDrawShape() noexcept
+    {
+        m_shape.active = false;
+        m_drawShapeScale = k_NoDrawScale;
     }
 
     void Model::StartDrawTremor(const DrawTremorDesc& desc) noexcept
@@ -181,6 +193,23 @@ namespace NS
             if (m_shake.frame > m_shake.desc.length)
             {
                 m_shake.active = false;
+            }
+        }
+        if (m_shape.active)
+        {
+            ++m_shape.frame;
+            if (m_shape.frame >= m_shape.desc.length)
+            {
+                StopDrawShape();
+            }
+            else
+            {
+                const Vector3 scale = m_shape.desc.ScaleAt(m_shape.frame);
+                // 有限の正でない倍率は描く形を消すので控えず、前の倍率のまま描く
+                if (IsPositiveFiniteScale(scale))
+                {
+                    m_drawShapeScale = scale;
+                }
             }
         }
         if (m_tremor.active)
@@ -251,7 +280,7 @@ namespace NS
         {
             shift = Matrix::CreateTranslation(offset);
         }
-        const Vector3 scale = Vector3::Lerp(m_previousDrawScale, m_drawScale, alpha);
+        const Vector3 scale = Vector3::Lerp(m_previousDrawScale, GetDrawScale(), alpha);
         // 倍率が 1 でも、下端の真ん中へ移して戻す足し引きが下の桁を丸めることがある。倍率の無い間は掛けずに返す
         if (scale == k_NoDrawScale)
         {
@@ -388,7 +417,7 @@ namespace NS
         DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, m_owner->Root().WorldMatrix()));
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
-        const Vector3 scale = Vector3::Max(m_previousDrawScale, m_drawScale);
+        const Vector3 scale = Vector3::Max(m_previousDrawScale, GetDrawScale());
         if (scale != k_NoDrawScale)
         {
             const float bottom = out.Center.y - out.Extents.y;

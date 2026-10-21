@@ -3,13 +3,18 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
+#include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -17,19 +22,22 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/PhysicsScene.h"
 #include "NSlib/Windows/Filesystem.h"
-#include "Tests/TestArchetypeDirectory.h"
 #include "Tests/TestCheckLayer.h"
+#include "TestActorFile.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
 #include <cmath>
+#include <functional>
 #include <limits>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 // コンボで参照先を選ぶと、値が変わる前に編集の始まりを、変わった後に確定を返す
@@ -384,6 +392,140 @@ namespace
         ImGuiContext* m_gui = nullptr;
     };
 
+    // 出荷の PropActor.actor の文書。試しの置き場へ敷いて、出荷のファイルは書き換えない
+    nlohmann::json ShippedPropActorFile()
+    {
+        using NS::OS::FileSystem;
+        const std::optional<std::string> text = FileSystem::ReadAllText(
+            FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "Assets/Actors"), "PropActor.actor"));
+        EXPECT_TRUE(text.has_value());
+        if (!text.has_value())
+        {
+            return nlohmann::json::object();
+        }
+        return nlohmann::json::parse(*text);
+    }
+
+    // directory に書かれた PropActor.actor の束。読めなければ空
+    std::vector<NS::HitReactionSet> SavedPropSets(const std::string& directory)
+    {
+        const std::optional<std::string> text =
+            NS::OS::FileSystem::ReadAllText(NS::OS::FileSystem::Combine(directory, "PropActor.actor"));
+        if (!text.has_value())
+        {
+            return {};
+        }
+        return NS::ReadHitReactionSets("PropActor", nlohmann::json::parse(*text));
+    }
+
+    const NS::HitReactionSet* FindSetIn(const std::vector<NS::HitReactionSet>& sets, std::string_view name)
+    {
+        for (const NS::HitReactionSet& set : sets)
+        {
+            if (set.name == name)
+            {
+                return &set;
+            }
+        }
+        return nullptr;
+    }
+
+    // 持ち主へ渡す項目の値。束・項目・値のどれかが無ければ -1
+    float OwnerValueOf(const NS::HitReactionSet* set, std::size_t entry, std::string_view valueName)
+    {
+        if (set == nullptr || entry >= set->entries.size())
+        {
+            return -1.0f;
+        }
+        const NS::HitOwnerItem* owner = std::get_if<NS::HitOwnerItem>(&set->entries[entry].item);
+        if (owner == nullptr)
+        {
+            return -1.0f;
+        }
+        const std::map<std::string, float, std::less<>>::const_iterator it = owner->values.find(valueName);
+        if (it == owner->values.end())
+        {
+            return -1.0f;
+        }
+        return it->second;
+    }
+
+    // インスペクタを描く ImGui の場。束の欄が全部入る高さの窓にする
+    class InspectorFrame
+    {
+    public:
+        explicit InspectorFrame(LevelEditorController& editor) : m_editor(editor)
+        {
+            m_gui = ImGui::CreateContext();
+            ImGuiIO& io = ImGui::GetIO();
+            io.IniFilename = nullptr;
+            io.DisplaySize = ImVec2{800.0f, 6000.0f};
+            io.DeltaTime = 1.0f / 60.0f;
+            io.ConfigInputTrickleEventQueue = false;
+            NS::uint8* pixels = nullptr;
+            int width = 0;
+            int height = 0;
+            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+        }
+
+        ~InspectorFrame() { ImGui::DestroyContext(m_gui); }
+
+        InspectorFrame(const InspectorFrame&) = delete;
+        InspectorFrame& operator=(const InspectorFrame&) = delete;
+
+        // 1 フレーム描き、描いた文字を返す
+        std::string Draw()
+        {
+            ImGui::NewFrame();
+            ImGui::LogToBuffer();
+            ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
+            ImGui::SetNextWindowSize(ImVec2{600.0f, 5900.0f});
+            m_inspector.Render(m_editor);
+            // 字の途中に 0 が入っても、そこで切らずに全部を読む
+            std::string text{GImGui->LogBuffer.begin(), static_cast<std::size_t>(GImGui->LogBuffer.size())};
+            ImGui::LogFinish();
+            ImGui::EndFrame();
+            return text;
+        }
+
+        // 束の欄の識別番号。path は束の欄の並びの識別番号から、欄までの識別を積む
+        ImGuiID FieldId(const std::function<ImGuiID(ImGuiID)>& path) const
+        {
+            ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+            EXPECT_NE(window, nullptr);
+            if (window == nullptr)
+            {
+                return 0;
+            }
+            return path(ImHashStr("##hitReactions", 0, window->ID));
+        }
+
+        // 欄 id に text を打って確定する。欄が無く打てなかった場合 false
+        bool Type(ImGuiID id, const char* text)
+        {
+            ImGuiIO& io = ImGui::GetIO();
+            ImGui::ActivateItemByID(id);
+            GImGui->NavNextActivateFlags = ImGuiActivateFlags_PreferInput;
+            (void)Draw();
+            if (GImGui->ActiveId != id)
+            {
+                return false;
+            }
+            io.AddInputCharactersUTF8(text);
+            (void)Draw();
+            io.AddKeyEvent(ImGuiKey_Enter, true);
+            (void)Draw();
+            io.AddKeyEvent(ImGuiKey_Enter, false);
+            (void)Draw();
+            return true;
+        }
+
+    private:
+        LevelEditorController& m_editor;
+        NS::Editor::InspectorPanel m_inspector;
+        ImGuiContext* m_gui = nullptr;
+    };
+
     // actor の表で part を持つ行
     const NS::ClassObjInfo* RowOf(const NS::SceneActor& actor, const NS::Object* part)
     {
@@ -429,15 +571,23 @@ namespace
         }
         return distance;
     }
+    ImGuiID HashIndex(int index, ImGuiID seed)
+    {
+        return ImHashData(&index, sizeof(index), seed);
+    }
 } // namespace
 
 // インスペクタで当たりの形の欄を変えると、世界を止めた歩の後の当たりがその形になる
 TEST(EditorInspector, FieldChangeReachesTheCollision)
 {
+    // 半径は印の無い欄で、確定すると .actor へ書く。出荷のファイルを書かないよう試しの置き場へ敷く
+    const nlohmann::json shipped = ShippedPropActorFile();
+    const ScopedActorFileDirectory scope("InspectorFieldChange");
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(&scene);
-    editor.PlaceItem(*NS::Editor::FindPlacementItem("置物"));
+    editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
     NS::SceneActor* prop = editor.SelectedObjectActor();
     ASSERT_NE(prop, nullptr);
     ASSERT_EQ(prop->Root().Scale(), NS::Vector3::One);
@@ -522,40 +672,47 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
     EXPECT_NEAR(*after, *cubeHit, 0.001f);
 }
 
-// 種類の既定へ上げると、付いて行くアクターの描くメッシュも、世界を止めた歩の後のメッシュの当たりも上げた形になる
-TEST(EditorInspector, FieldPromoteReachesTheFollowersMeshAndCollision)
+// 印の無い欄を直し終えて .actor へ書くと、同じ .actor のほかのアクターの、世界を止めた歩の後の当たりも直した形になる
+TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
 {
-    const ScopedArchetypeDirectory archetypes("EditorFieldPromote");
+    const nlohmann::json shipped = ShippedPropActorFile();
+    const ScopedActorFileDirectory scope("InspectorActorFileFollowers");
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
-    ASSERT_NE(cube, nullptr);
-    editor.PlaceItem(*cube);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    ASSERT_TRUE(item.has_value());
+    editor.PlaceItem(*item);
     NS::SceneActor* source = editor.SelectedObjectActor();
     ASSERT_NE(source, nullptr);
-    editor.PlaceItem(*cube);
+    editor.PlaceItem(*item);
     NS::SceneActor* follower = editor.SelectedObjectActor();
     ASSERT_NE(follower, nullptr);
     ASSERT_NE(follower, source);
+    ASSERT_EQ(follower->Root().Scale(), NS::Vector3::One);
     follower->Root().SetPosition(source->Root().Position() + NS::Vector3{5.0f, 0.0f, 0.0f});
     scene.OnUpdate();
 
-    const NS::Vector3 above = follower->Root().Position() + NS::Vector3{0.0f, 2.0f, -0.4f};
-    const std::optional<float> cubeHit = DownHit(scene, above);
-    ASSERT_TRUE(cubeHit.has_value());
+    // 中心から横へ 2 ずらした真上。半径 3 の球なら中心より上に当たる
+    const NS::Vector3 above = follower->Root().Position() + NS::Vector3{2.0f, 10.0f, 0.0f};
+    const std::optional<float> before = DownHit(scene, above);
+    EXPECT_TRUE(!before.has_value() || *before > 10.0f);
 
-    source->ModelClassObj()->SetMeshRef("wedge45");
-    source->ReloadAssets();
-    const NS::ClassObjInfo* row = RowOf(*source, source->ModelClassObj());
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(source->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
+    const NS::ClassObjInfo* row = RowOf(*source, sphere);
     ASSERT_NE(row, nullptr);
-    ASSERT_TRUE(editor.PromoteFieldToArchetype(*source, *row, "メッシュ"));
+    editor.SelectObjectById(source->Id());
+    editor.BeginClassObjEdit();
+    sphere->SetRadius(3.0f);
+    editor.NoteFieldEdit(*source, *row, "半径");
+    editor.CommitClassObjEdit();
 
-    EXPECT_EQ(follower->ModelClassObj()->GetMesh(), source->ModelClassObj()->GetMesh());
     scene.OnUpdate();
     const std::optional<float> after = DownHit(scene, above);
     ASSERT_TRUE(after.has_value());
-    EXPECT_GT(*after, *cubeHit + 0.5f);
+    EXPECT_NEAR(*after, 10.0f - std::sqrt(5.0f), 0.01f);
 }
 
 // マテリアルを付けると、描くマテリアルが付けた物になる
@@ -582,14 +739,13 @@ TEST(EditorInspector, MaterialApplyReachesTheDrawnMaterial)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// シーン設定で空を外すと環境の履歴が 1 つ積まれ、Undo 1 回で空が戻る。重力の向きは変えない
+// シーン設定で空を外すと環境の履歴が 1 つ積まれ、Undo 1 回で空が戻る
 TEST(EditorInspector, SkyboxEditUndoesThroughTheEnvironmentHistory)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     nlohmann::json doc = NS::MakeSceneJson();
-    NS::WriteSceneEnvironment(
-        doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt", .gravityDirection = NS::Vector3{1.0f, 0.0f, 0.0f}});
+    NS::WriteSceneEnvironment(doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt"});
     scene.ResetFromJson(doc);
     LevelEditorController editor(&scene);
     const nlohmann::json before = scene.ToJson();
@@ -604,10 +760,110 @@ TEST(EditorInspector, SkyboxEditUndoesThroughTheEnvironmentHistory)
     frames.Frame();
 
     EXPECT_TRUE(scene.SkyboxPath().empty());
-    EXPECT_EQ(scene.GravityDirection(), (NS::Vector3{1.0f, 0.0f, 0.0f}));
     EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
     EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
     ASSERT_TRUE(editor.Editor().PerformUndo());
     EXPECT_EQ(scene.ToJson(), before);
     EXPECT_EQ(NS::ReadSceneEnvironment(scene.ToJson()).skybox, "Assets/Skybox/kurt");
+}
+
+
+// シーンで選んだアクターの .actor の束が欄に出る。止めの長さを直すと、同じ .actor のアクターの束に効き、.actor の hitReactions に書く
+TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitAndTheFile)
+{
+    const nlohmann::json shipped = ShippedPropActorFile();
+    const ScopedActorFileDirectory scope("InspectorHitSets");
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::ObjectSnapshotApplier applier(&scene);
+    editor.Editor().SetApplier(&applier);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    ASSERT_TRUE(item.has_value());
+    editor.PlaceItem(*item);
+    const NS::uint32 other = editor.SelectedObjectId();
+    editor.PlaceItem(*item);
+    const NS::uint32 selected = editor.SelectedObjectId();
+    ASSERT_NE(other, selected);
+    const std::vector<NS::HitReactionSet> before = NS::ReadHitReactionSets("PropActor", shipped);
+    ASSERT_FALSE(before.empty());
+    const NS::HitReactionSet& first = before.front();
+    ASSERT_NE(first.stopFrames, 20);
+
+    InspectorFrame inspector(editor);
+    (void)inspector.Draw();
+    const std::string text = inspector.Draw();
+    EXPECT_NE(text.find(first.name), std::string::npos) << text;
+    EXPECT_NE(text.find("止めのフレーム数"), std::string::npos) << text;
+
+    const ImGuiID stopId =
+        inspector.FieldId([](ImGuiID seed) { return ImHashStr("##stopFrames", 0, HashIndex(0, seed)); });
+    ASSERT_TRUE(inspector.Type(stopId, "20"));
+
+    // 当たりは束を引いて始めるので、引く先の束が直した長さなら次の当たりに効く
+    for (const NS::uint32 id : {other, selected})
+    {
+        const NS::HitReaction* reaction = scene.Objects().FindByObjectId(id)->HitReactionClassObj();
+        ASSERT_NE(reaction, nullptr);
+        const NS::HitReactionSet* set = reaction->FindSet(first.name);
+        ASSERT_NE(set, nullptr);
+        EXPECT_EQ(set->stopFrames, 20);
+    }
+    const std::vector<NS::HitReactionSet> saved = SavedPropSets(scope.Path());
+    const NS::HitReactionSet* savedSet = FindSetIn(saved, first.name);
+    ASSERT_NE(savedSet, nullptr);
+    EXPECT_EQ(savedSet->stopFrames, 20);
+    EXPECT_EQ(saved.size(), before.size());
+
+    // 戻すとファイルとアクターの束が前の長さへ戻る
+    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    const std::vector<NS::HitReactionSet> undoneSets = SavedPropSets(scope.Path());
+    const NS::HitReactionSet* undone = FindSetIn(undoneSets, first.name);
+    ASSERT_NE(undone, nullptr);
+    EXPECT_EQ(undone->stopFrames, first.stopFrames);
+    const NS::HitReactionSet* live =
+        scene.Objects().FindByObjectId(selected)->HitReactionClassObj()->FindSet(first.name);
+    ASSERT_NE(live, nullptr);
+    EXPECT_EQ(live->stopFrames, first.stopFrames);
+}
+
+// 素材の窓で選んだ .actor でも束の欄が出る。持ち主へ渡す項目の値を直すと、シーンのアクターの束と .actor に書く
+TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
+{
+    const nlohmann::json shipped = ShippedPropActorFile();
+    const ScopedActorFileDirectory scope("InspectorOwnerValues");
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::ObjectSnapshotApplier applier(&scene);
+    editor.Editor().SetApplier(&applier);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    ASSERT_TRUE(item.has_value());
+    editor.PlaceItem(*item);
+    const NS::uint32 placed = editor.SelectedObjectId();
+    editor.SelectAsset(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor"));
+    ASSERT_NE(NS::Cast<NS::SceneActor>(editor.SelectedAsset()), nullptr);
+
+    // 受けの束の頭の項目は、置物の食い込みと潰れを持ち主へ渡す項目
+    const std::vector<NS::HitReactionSet> before = NS::ReadHitReactionSets("PropActor", shipped);
+    ASSERT_FALSE(before.empty());
+    const std::string setName = before.front().name;
+    ASSERT_GT(OwnerValueOf(&before.front(), 0, "食い込み距離"), 0.0f);
+
+    InspectorFrame inspector(editor);
+    (void)inspector.Draw();
+    const std::string text = inspector.Draw();
+    EXPECT_NE(text.find(setName), std::string::npos) << text;
+    EXPECT_NE(text.find("食い込み距離"), std::string::npos) << text;
+
+    const ImGuiID valueId = inspector.FieldId([](ImGuiID seed) {
+        return ImHashStr("##ownerValue", 0, ImHashStr("食い込み距離", 0, HashIndex(0, HashIndex(0, seed))));
+    });
+    ASSERT_TRUE(inspector.Type(valueId, "0.25"));
+
+    const NS::HitReaction* reaction = scene.Objects().FindByObjectId(placed)->HitReactionClassObj();
+    ASSERT_NE(reaction, nullptr);
+    EXPECT_FLOAT_EQ(OwnerValueOf(reaction->FindSet(setName), 0, "食い込み距離"), 0.25f);
+    const std::vector<NS::HitReactionSet> saved = SavedPropSets(scope.Path());
+    EXPECT_FLOAT_EQ(OwnerValueOf(FindSetIn(saved, setName), 0, "食い込み距離"), 0.25f);
 }

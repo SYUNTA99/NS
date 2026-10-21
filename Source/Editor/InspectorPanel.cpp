@@ -17,7 +17,7 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -34,7 +34,10 @@
 #include <algorithm>
 #include <cstdio>
 #include <functional>
+#include <limits>
 #include <string>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #if NS_EDITOR_ENABLED
@@ -95,6 +98,18 @@ namespace NS
                 }
                 const ImTextureID handle = static_cast<ImTextureID>(reinterpret_cast<uintptr>(image->Srv()));
                 ImGui::Image(handle, display);
+            }
+
+            // 名前 label の 0 以上のフレーム数の欄。直し終えたフレームに true
+            bool DrawFrameCount(const char* label, const char* id, int& frames, bool& changed)
+            {
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(label);
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(-1.0f);
+                changed |= ImGui::DragInt(id, &frames, 0.2f, 0, std::numeric_limits<int>::max(), "%d",
+                                          ImGuiSliderFlags_AlwaysClamp);
+                return ImGui::IsItemDeactivatedAfterEdit();
             }
         } // namespace
 
@@ -322,6 +337,86 @@ namespace NS
             }
         }
 
+        void InspectorPanel::DrawHitReactionSets(LevelEditorController& editor, const std::string& actorFileName)
+        {
+            const nlohmann::json* document = ActorFileLibrary::Get().Find(actorFileName);
+            if (document == nullptr)
+            {
+                return;
+            }
+            nlohmann::json source = nlohmann::json::array();
+            if (const nlohmann::json* list = ActorFileHitReactions(*document))
+            {
+                source = *list;
+            }
+            // 取り消しやほかの窓で文書が変わったら読み直す。直している途中は打った値を残す
+            if (m_hitSetsActorFile != actorFileName || (!m_hitSetsEditing && m_hitSetsSource != source))
+            {
+                m_hitSetsActorFile = actorFileName;
+                m_hitSetsSource = std::move(source);
+                m_hitSets = ReadHitReactionSets(actorFileName, *document);
+                m_hitSetsEditing = false;
+            }
+            if (m_hitSets.empty() || !ImGui::CollapsingHeader("当たりの束 (.actor)", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                return;
+            }
+            ImGui::TextDisabled("直し終えた束は .actor に書き、この .actor を指すアクターの全部の次の当たりに効く");
+            bool committed = false;
+            ImGui::PushID("##hitReactions");
+            for (int s = 0; s < static_cast<int>(m_hitSets.size()); ++s)
+            {
+                HitReactionSet& set = m_hitSets[s];
+                ImGui::PushID(s);
+                // 識別の並びを束の番号だけにするため、開いても木の識別を積まない
+                if (ImGui::TreeNodeEx("##set",
+                                      ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_NoTreePushOnOpen,
+                                      "%s",
+                                      set.name.c_str()))
+                {
+                    ImGui::Indent();
+                    committed |= DrawFrameCount("止めのフレーム数", "##stopFrames", set.stopFrames, m_hitSetsEditing);
+                    for (int e = 0; e < static_cast<int>(set.entries.size()); ++e)
+                    {
+                        HitReactionEntry& entry = set.entries[e];
+                        ImGui::PushID(e);
+                        ImGui::SeparatorText(std::string{HitReactionItemLabel(entry.item)}.c_str());
+                        committed |= DrawFrameCount("長さ", "##length", entry.length, m_hitSetsEditing);
+                        if (const ReflectionInfo* info = HitReactionItemReflection(entry.item))
+                        {
+                            const ValueEditResult fields = DrawReflectedValue(HitReactionItemFields(entry.item), *info);
+                            m_hitSetsEditing |= fields.changed;
+                            committed |= fields.committed;
+                        }
+                        // 値の表は欄の表に載らないので、名前ごとに数の欄を出す。名前の足し引きはしない
+                        if (HitOwnerItem* owner = std::get_if<HitOwnerItem>(&entry.item))
+                        {
+                            for (std::pair<const std::string, float>& value : owner->values)
+                            {
+                                ImGui::PushID(value.first.c_str());
+                                ImGui::AlignTextToFramePadding();
+                                ImGui::TextUnformatted(value.first.c_str());
+                                ImGui::SameLine();
+                                ImGui::SetNextItemWidth(-1.0f);
+                                m_hitSetsEditing |= ImGui::DragFloat("##ownerValue", &value.second, 0.01f);
+                                committed |= ImGui::IsItemDeactivatedAfterEdit();
+                                ImGui::PopID();
+                            }
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::Unindent();
+                }
+                ImGui::PopID();
+            }
+            ImGui::PopID();
+            if (committed)
+            {
+                editor.WriteActorFileHitReactions(m_hitSetsActorFile, m_hitSets);
+                m_hitSetsEditing = false;
+            }
+        }
+
         void InspectorPanel::DrawSelectedAsset(LevelEditorController& editor, Object& asset)
         {
             if (Material* material = Cast<Material>(&asset))
@@ -366,6 +461,42 @@ namespace NS
                     {
                         ImGui::TextDisabled("画像ファイルが見つかりません");
                     }
+                }
+                return;
+            }
+            if (SceneActor* actorFile = Cast<SceneActor>(&asset))
+            {
+                // .actor の欄は、印の付いた欄も含めて全部 .actor へ書く。直し終えた時にファイルへ書き、同じ .actor のアクターへ写す
+                ImGui::Text("%s.actor (%s)", actorFile->ActorFileName().c_str(), actorFile->ClassName());
+                ImGui::TextDisabled("ここで直した値は、この .actor を指すアクターの全部に効く");
+                ImGui::Separator();
+                ImGui::SetNextItemWidth(-1.0f);
+                ImGui::InputTextWithHint("##actorFileFieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
+                bool committed = false;
+                ForEachReflectedClassObj(*actorFile, [&](const ClassObjInfo& row, Object* part) {
+                    // 根の部品は配置物の物なので .actor には書かない
+                    if (part->GetReflection() == nullptr || part == &actorFile->Root())
+                    {
+                        return;
+                    }
+                    ImGui::PushID(row.key);
+                    if (ImGui::CollapsingHeader(row.key, ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        const ClassObjEditResult edit = DrawReflectedClassObj(*part, {}, nullptr, m_fieldFilter);
+                        if (edit.changedTarget != nullptr && edit.changedField != nullptr)
+                        {
+                            editor.FinishFieldWrite(*actorFile, edit.changedField->type);
+                            editor.NoteActorFileFieldEdit(row, edit.changedField->name);
+                        }
+                        committed |= edit.committed;
+                    }
+                    ImGui::PopID();
+                });
+                DrawHitReactionSets(editor, actorFile->ActorFileName());
+                // 確定で .actor の文書が変わると、この 1 体は次に引いた時に作り直される
+                if (committed)
+                {
+                    editor.CommitAssetEdit();
                 }
                 return;
             }
@@ -436,6 +567,10 @@ namespace NS
                 if (!editor.HasInspectableSelection())
                 {
                     DrawSceneSettings(editor);
+                    if (ImGui::CollapsingHeader("エディタの見た目", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        (void)DrawReflectedValue(m_appearance);
+                    }
                     ImGui::End();
                     ImGui::PopStyleVar(2);
                     return;
@@ -603,9 +738,8 @@ namespace NS
                 ImGui::InputTextWithHint("##fieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
 
                 Editor::ClassObjEditResult classObjEdit{};
-                // 戻すと種類の既定にするは描いた後に行うので、対象の部品の行を控える
+                // 戻すは描いた後に行うので、対象の部品の行を控える
                 const ClassObjInfo* revertRow = nullptr;
-                const ClassObjInfo* promoteRow = nullptr;
                 ForEachReflectedClassObj(*go, [&](const ClassObjInfo& field, Object* live) {
                     if (live->GetReflection() == nullptr)
                     {
@@ -636,10 +770,10 @@ namespace NS
 
                     if (open)
                     {
-                        // 比べる相手は持ち主のクラスの既定の部品。種類の既定値まで当たっている
+                        // 比べる相手は持ち主の .actor から作った比べる基準の部品
                         const Object* baseline = FindBaselineClassObj(*go, field);
                         const Editor::ClassObjEditResult r =
-                            Editor::DrawReflectedClassObj(*live, refOptions, baseline, m_fieldFilter, go, &field);
+                            Editor::DrawReflectedClassObj(*live, refOptions, baseline, m_fieldFilter, go, &m_appearance);
                         classObjEdit.activated |= r.activated;
                         classObjEdit.committed |= r.committed;
                         classObjEdit.changed |= r.changed;
@@ -649,21 +783,16 @@ namespace NS
                             classObjEdit.revertField = r.revertField;
                             revertRow = &field;
                         }
-                        if (r.promoteField != nullptr)
-                        {
-                            classObjEdit.promoteTarget = r.promoteTarget;
-                            classObjEdit.promoteField = r.promoteField;
-                            promoteRow = &field;
-                        }
-                        // プレイ中の手編集は編集復帰の組み直しで消えるので、編集された欄だけ凍結側へも写す
+                        // 書く先は欄の印で決まる。.actor へ書く欄は確定の時に書くので、直した欄を伝えておく
                         if (r.changedTarget != nullptr && r.changedField != nullptr)
                         {
                             editor.FinishFieldWrite(*go, r.changedField->type);
-                            editor.MirrorPlayEditToBaseline(*go, field, r.changedField->name);
+                            editor.NoteFieldEdit(*go, field, r.changedField->name);
                         }
                     }
                     ImGui::PopID();
                 });
+                DrawHitReactionSets(editor, go->ActorFileName());
                 // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
                 if (classObjEdit.revertTarget != nullptr && revertRow != nullptr)
                 {
@@ -677,11 +806,6 @@ namespace NS
                         editor.MirrorPlayEditToBaseline(*go, *revertRow, classObjEdit.revertField->name);
                         editor.CommitClassObjEdit();
                     }
-                }
-                // 種類の既定にするのは、同じ種類の全ての個体とファイルを書き換える。既定の部品を作り直すので描画の後で行う
-                if (classObjEdit.promoteField != nullptr && promoteRow != nullptr)
-                {
-                    (void)editor.PromoteFieldToArchetype(*go, *promoteRow, classObjEdit.promoteField->name);
                 }
                 if (classObjEdit.activated)
                 {

@@ -2,7 +2,7 @@
 
 #include "Editor/EditorMode.h"
 #include "Editor/EditorUi.h"
-#include "Editor/HitTimelinePanel.h"
+#include "Editor/ActionTimelinePanel.h"
 #include "Editor/LevelEditorController.h"
 #include "NSlib/App/Application.h"
 
@@ -14,12 +14,12 @@ namespace NS
 {
     namespace Editor
     {
-        bool HasUnsavedWork(const EditorMode& editor, const HitTimelinePanel& timeline) noexcept
+        bool HasUnsavedWork(const EditorMode& editor, const ActionTimelinePanel& timeline) noexcept
         {
             return editor.HasUnsavedChanges() || timeline.HasUnsavedChanges();
         }
 
-        bool SaveAllForQuit(EditorMode& editor, HitTimelinePanel& timeline) noexcept
+        bool SaveAllForQuit(EditorMode& editor, ActionTimelinePanel& timeline) noexcept
         {
             // シーンは変更の印が無くても書く。プレイ中にインスペクタで変えた値は履歴の版に載らないため
             const bool sceneSaved = editor.SaveForQuit();
@@ -43,7 +43,7 @@ namespace NS
             return false;
         }
 
-        void QuitModal::Render(LevelEditorController& editor, HitTimelinePanel& timeline) noexcept
+        void QuitModal::Render(LevelEditorController& editor, ActionTimelinePanel& timeline) noexcept
         {
 #if NS_EDITOR_ENABLED
             if (!m_open)
@@ -78,7 +78,7 @@ namespace NS
                     }
                     if (timeline.HasUnsavedChanges())
                     {
-                        ImGui::BulletText("当たりのタイムライン");
+                        ImGui::BulletText("動作のタイムライン");
                     }
                 }
                 ImGui::Separator();

@@ -180,7 +180,7 @@ TEST(SceneSystemHolder, ClearRemovesTheSystemFromTheUpdate)
 TEST(SceneSystemHolder, ActorReachesSceneObjectsThroughWindow)
 {
     NS::Scene scene;
-    NS::SceneActor* actor = scene.SpawnTransient<NS::SceneActor>();
+    NS::SceneActor* actor = scene.SpawnObject<NS::SceneActor>("SceneActor");
     CountedSceneObj* made = NS::GetOrCreateSceneSystem<CountedSceneObj>(actor);
     EXPECT_EQ(made, NS::FindSceneSystem<CountedSceneObj>(&scene));
     NS::SceneActor loose;
@@ -207,7 +207,7 @@ TEST(ActorListTicker, TickerRunsAfterClassObjsOfSameBand)
 {
     NS::Scene scene;
     TickLog log;
-    scene.SpawnTransient<LoggingActor>(log);
+    scene.SpawnObject<LoggingActor>("LoggingActor", log);
     LoggingTicker ticker(log);
     scene.AddSystemTick(ticker, NS::UpdatePhase::Triggers);
 
@@ -229,7 +229,7 @@ TEST(ActorListTicker, ActorTickFollowsBands)
 {
     NS::Scene scene;
     TickLog log;
-    scene.SpawnTransient<LoggingActor>(log);
+    scene.SpawnObject<LoggingActor>("LoggingActor", log);
 
     scene.OnUpdate();
     ASSERT_EQ(log.order.size(), 2u);

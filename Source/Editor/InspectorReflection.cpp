@@ -1,9 +1,10 @@
 #include "Editor/InspectorReflection.h"
 #include "NSlib/Core/Types.h"
 
+#include "Editor/EditorAppearance.h"
 #include "Editor/EditorUi.h"
 #include "Editor/AssetPicker.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -123,6 +124,18 @@ namespace NS
                 CopyValue<Curve>(comp, defaults, field);
                 break;
             }
+        }
+
+        bool ShowsOverride(const Object& comp,
+                           const Object* defaults,
+                           const FieldDesc& field,
+                           const SceneActor* actor) noexcept
+        {
+            if (actor != nullptr && FieldDestinationOf(*actor, comp, field) == FieldDestination::ActorFile)
+            {
+                return false;
+            }
+            return FieldDiffersFromDefault(comp, defaults, field);
         }
 
         void CurveGraphXRange(const Curve& curve, float& outMin, float& outMax) noexcept
@@ -1710,7 +1723,7 @@ namespace NS
                                                  const Object* defaults,
                                                  const char* filter,
                                                  const SceneActor* actor,
-                                                 const ClassObjInfo* row) noexcept
+                                                 const EditorAppearance* appearance) noexcept
         {
             const ReflectionInfo* info = comp.GetReflection();
             if (info == nullptr || info->fieldCount == 0)
@@ -1725,10 +1738,16 @@ namespace NS
             ClassObjEditResult result;
             const auto drawRow = [&](std::size_t i) {
                 const FieldDesc& field = info->fields[i];
-                const bool changed = FieldDiffersFromDefault(comp, defaults, field);
+                const bool changed = ShowsOverride(comp, defaults, field, actor);
                 const bool wasChanged = result.changed;
+                ImU32 background = 0;
+                if (actor != nullptr && appearance != nullptr)
+                {
+                    const Color color = FieldRowColor(*appearance, *actor, comp, field);
+                    background = ImGui::ColorConvertFloat4ToU32(ImVec4{color.x, color.y, color.z, color.w});
+                }
                 ImGui::PushID(static_cast<int>(i));
-                FieldRow(FieldLabel(field), changed);
+                FieldRow(FieldLabel(field), changed, background);
 
                 const FieldWidgetResult widget = DrawFieldWidget(&comp, field, refOptions);
                 result.changed |= widget.changed;
@@ -1741,19 +1760,11 @@ namespace NS
                     result.changedField = &field;
                 }
 
-                // 種類の既定にできるのは、種類を持つ配置物の、個体の物でない欄だけ
-                const bool promotable = actor != nullptr && row != nullptr && actor->ClassName()[0] != '\0' &&
-                                        IsArchetypeField(*actor, *row, field.name);
-                const OverrideAction action = OverrideButton(changed, promotable);
+                const OverrideAction action = OverrideButton(changed);
                 if (action == OverrideAction::Revert && defaults != nullptr)
                 {
                     result.revertTarget = &comp;
                     result.revertField = &field;
-                }
-                else if (action == OverrideAction::Promote)
-                {
-                    result.promoteTarget = &comp;
-                    result.promoteField = &field;
                 }
                 ImGui::PopID();
             };
@@ -1788,7 +1799,7 @@ namespace NS
                 }
                 result.changed |= widget.changed;
                 // 部品の行と値の幅を揃えるため、上書きの印の幅だけ空ける
-                (void)OverrideButton(false, false);
+                (void)OverrideButton(false);
                 ImGui::PopID();
             };
             DrawGroupedRows(info, nullptr, drawRow);
@@ -1802,7 +1813,7 @@ namespace NS
                                                  const Object*,
                                                  const char*,
                                                  const SceneActor*,
-                                                 const ClassObjInfo*) noexcept
+                                                 const EditorAppearance*) noexcept
         {
             return ClassObjEditResult{};
         }

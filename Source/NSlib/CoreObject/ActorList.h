@@ -101,7 +101,7 @@ namespace NS
         // 段を回す口も Scene だけに開く。同じ段の管理役を Scene が続けて回す
         friend class Scene;
 
-        //! scene の objects から配置物を組み直す。既存の配置物は一時オブジェクトも含めて先に空へ戻す
+        //! scene の objects から配置物を組み直す。既存の配置物は先に空へ戻す
         //! 出ている配置物の当たりは開始の時に入る。broadphase の張り直しは呼出側がする
         //! factory は CreateActorOfClass で作った個体を返す。factory が空なら物を組まない。
         //! 段の更新の最中は断る
@@ -115,10 +115,6 @@ namespace NS
         //! Input は ReadInput、RenderPrep は PrepareRender、他は対応する段の Update
         //! 途中で無効になった個体は呼ばない
         void ExecutePhase(UpdatePhase phase);
-
-        //! 組み上がった配置物を id を振らずに 1 体加える
-        //! シーンへの付けと開始は呼び手が済ませる
-        SceneActor* Append(std::unique_ptr<SceneActor> obj);
 
         //! 永続 id を振り、名前が既存と重なれば番号を付けて 1 体加える
         //! シーンへの付けと開始は呼び手が済ませる

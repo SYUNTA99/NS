@@ -71,7 +71,7 @@ TEST(CollisionWindow, OverlapBoxAnswersLikeThePhysicsScene)
 {
     NS::Scene scene;
     AddFloor(scene);
-    CollisionProbeActor* placed = scene.SpawnTransient<CollisionProbeActor>();
+    CollisionProbeActor* placed = scene.SpawnObject<CollisionProbeActor>("CollisionProbeActor");
 
     const std::vector<NS::AABB> expected = scene.Physics().OverlapBox(BandAcrossFloorTop());
     const std::vector<NS::AABB> actual = NS::OverlapBoxCollision(placed, BandAcrossFloorTop());
@@ -100,7 +100,7 @@ TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
     EXPECT_EQ(looseWindow.GetPhysicsScene(), nullptr);
 
     NS::Scene scene;
-    CollisionProbeActor* placed = scene.SpawnTransient<CollisionProbeActor>();
+    CollisionProbeActor* placed = scene.SpawnObject<CollisionProbeActor>("CollisionProbeActor");
     const NS::IUseCollision& placedWindow = *placed->collider;
     EXPECT_EQ(placedWindow.GetPhysicsScene(), &scene.Physics());
 }
@@ -113,7 +113,7 @@ TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
     EXPECT_TRUE(loose.sphere->BodyId().IsInvalid());
 
     NS::Scene scene;
-    CollisionProbeActor* placed = scene.SpawnTransient<CollisionProbeActor>();
+    CollisionProbeActor* placed = scene.SpawnObject<CollisionProbeActor>("CollisionProbeActor");
     const NS::Vector3 above{0.0f, 2.0f, 0.0f};
     placed->sphere->RemoveFromPhysics();
     EXPECT_TRUE(placed->sphere->BodyId().IsInvalid());

@@ -9,7 +9,7 @@
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
@@ -126,14 +126,16 @@ namespace NS
                 return entry->className;
             }
 
-            bool IsPlayerObject(const nlohmann::json& object) noexcept
+            bool IsPlayerObject(const nlohmann::json& object)
             {
-                return ObjectJsonClass(object) == ::PlayerActor::StaticReflection()->typeName;
+                return ActorFileLibrary::Get().ClassNameOf(ObjectJsonActorFile(object)) ==
+                       ::PlayerActor::StaticReflection()->typeName;
             }
 
-            bool IsDeathZoneObject(const nlohmann::json& object) noexcept
+            bool IsDeathZoneObject(const nlohmann::json& object)
             {
-                return ObjectJsonClass(object) == GL::Level::DeathZoneActor::StaticReflection()->typeName;
+                return ActorFileLibrary::Get().ClassNameOf(ObjectJsonActorFile(object)) ==
+                       GL::Level::DeathZoneActor::StaticReflection()->typeName;
             }
 
             nlohmann::json MakeDeathZoneObject()
@@ -151,10 +153,7 @@ namespace NS
             placed.reserve(objects.ObjectCount());
             for (SceneActor* object : objects)
             {
-                if (!object->IsTransient())
-                {
-                    placed.push_back(object);
-                }
+                placed.push_back(object);
             }
             return placed;
         }
@@ -208,8 +207,7 @@ namespace NS
         {
             for (const SceneActor* object : PlacedActors(objects))
             {
-                if (ObjectCellX(*object) == x && ObjectCellY(*object) == y &&
-                    ObjectCellZ(*object) == z)
+                if (ObjectCellX(*object) == x && ObjectCellY(*object) == y && ObjectCellZ(*object) == z)
                 {
                     return true;
                 }
@@ -276,13 +274,13 @@ namespace NS
             bool created = false;
             if (FindPlayerObjectIndex(scene) == k_NoObjectIndex)
             {
-                // 高さはカプセルの寸法の持ち主 Collider から引く。種類の既定でカプセルを変えても足元が床の上に出る
+                // 高さはカプセルの寸法の持ち主 Collider から引く。PlayerActor.actor でカプセルを変えても足元が床の上に出る
                 const SceneActor& baseline =
-                    ArchetypeLibrary::Get().Baseline(::PlayerActor::StaticReflection()->typeName);
+                    ActorFileLibrary::Get().Baseline(::PlayerActor::StaticReflection()->typeName);
                 const ::PlayerActor* player = Cast<::PlayerActor>(&baseline);
                 if (player == nullptr)
                 {
-                    NS_LOG_ERROR(Game, "プレイヤーの種類の既定を PlayerActor として引けず、プレイヤーを補えない");
+                    NS_LOG_ERROR(Game, "PlayerActor.actor から PlayerActor を作れず、プレイヤーを補えない");
                     return false;
                 }
                 SceneJsonObjects(scene).push_back(

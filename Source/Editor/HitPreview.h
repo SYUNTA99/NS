@@ -41,7 +41,7 @@ namespace NS
             float faceV = 0.0f;          //!< 当てる面の上の上下の位置。上が正。-1..1 が面の端
             float charge01 = 1.0f;       //!< 溜め量 0..1。0 は通常突進
             int leadFrames = 10;         //!< 突進を出してから検知するまでのフレーム数の狙い。触れる前の事象を見る間合い
-            int framesAfterRebound = 20; //!< 反動が終わってから記録を続けるフレーム数
+            int framesAfterRebound = 20; //!< 反動が終わってから記録を続けるフレーム数。当たりの束が終わるまでは続ける
             int maxFrames = 300;         //!< 記録するフレーム数の上限
         };
 
@@ -49,9 +49,8 @@ namespace NS
         struct HitPreviewFrame
         {
             Vector3 playerPosition{};         //!< 自機の根の位置
-            Vector3 shape{1.0f, 1.0f, 1.0f};  //!< 自機の形の倍率
-            bool hitStopping = false;             //!< 止めの事象の最中
-            bool awaitingRebound = false;         //!< 止めが明けて反動を待っている
+            Vector3 shape{1.0f, 1.0f, 1.0f};  //!< 自機の描く倍率 (Model::GetDrawScale)
+            bool hitStopping = false;             //!< 自機の止めの残りがある
             bool rebounding = false;              //!< 自機が反動で弾かれている
             OS::GamepadVibration pad{};       //!< 下見が控えたパッドの振動。手元のパッドへは送らない
             float trauma = 0.0f;                  //!< カメラのトラウマ 0〜1
@@ -59,7 +58,9 @@ namespace NS
             Vector2 shakeOffset{};            //!< 平行移動の揺れのずれ (m)。カメラの右と上
             float sinkPixels = 0.0f;              //!< 沈む揺れの縦のずれ (高さ 1080 の画面の画素、下が負)
             float worldSpeed = 1.0f;              //!< 世界の速さ 0〜1
-            std::vector<std::size_t> startedRows; //!< このフレームに始まった事象の、段のタイムラインの行の番号
+            std::string action;                     //!< 自機の走っている動作の名前。走っていなければ空
+            int actionFrame = -1;                   //!< 走っている動作の最後に進めたフレーム。状態に入った歩が 0
+            std::vector<std::size_t> startedEvents; //!< このフレームに始まった、動作の events の並びでの番号
         };
 
         //! @brief 下見の結果

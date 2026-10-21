@@ -30,6 +30,7 @@ namespace NS
     class Collision;
     class EffectKeeper;
     class HitReaction;
+    class ActionTimeline;
     class Message;
     class Scene;
     struct ActorInitInfo;
@@ -48,6 +49,8 @@ namespace NS
         virtual ~SceneActor() noexcept;
         [[nodiscard]] uint32 Id() const noexcept { return m_id; }
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
+        //! 作る時に敷いた .actor の名前。型から作ったアクターはクラスと同じ名前で、その .actor が無くても変わらない
+        [[nodiscard]] const std::string& ActorFileName() const noexcept { return m_actorFileName; }
         NS_REFLECT_DECLARE()
 
         //! @brief 世界に出す。更新の段・描画・当たり・センサーへ登録する。出ていれば何もしない
@@ -82,10 +85,9 @@ namespace NS
         [[nodiscard]] IStateMachine* GetStateMachine() noexcept override;
         [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override;
 
-        //! @brief 居るシーンの重力の向きを返す
-        //! @return シーンに居なければ (0, -1, 0)
+        //! 重力の向き。シーンによらず真下で、Jolt の重力と同じ向き
         [[nodiscard]] Vector3 GravityDirection() const noexcept;
-        //! シーンの重力方向へ加速する。strength は m/s²、dt は秒
+        //! 重力の向きへ加速する。strength は m/s²、dt は秒
         //! 非有限値または dt が 0 以下なら変更しない
         void AddGravity(Vector3& velocity, float strength, float dt) const noexcept;
 
@@ -106,20 +108,29 @@ namespace NS
         [[nodiscard]] const HitSensor* AttackSensorClassObj() const noexcept { return m_attackSensor.get(); }
         [[nodiscard]] HitReaction* HitReactionClassObj() noexcept { return m_hitReaction.get(); }
         [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
+        [[nodiscard]] ActionTimeline* ActionTimelineClassObj() noexcept { return m_actionTimeline.get(); }
+        [[nodiscard]] const ActionTimeline* ActionTimelineClassObj() const noexcept { return m_actionTimeline.get(); }
+
+        //! @brief 当たりの止め (ヒットストップ) の残りを、frames が残りより長い時だけ延ばす
+        //! @details 止めの間は Update が StateStep と BodyStep を飛ばす。呼んだフレームの残りの段から効き、
+        //! そのフレームも数える。束を始める口 (HitReaction::Start) が束の止めの長さで呼ぶ
+        void RequestHitStop(int frames) noexcept;
+        //! @brief 当たりの止めの残りを frames に書き換える。短くもする
+        //! @details 束を始めた後に、束と違う長さで止める当たり (貫通) が呼ぶ。事前条件: frames が 0 以上
+        void OverrideHitStop(int frames) noexcept;
+        //! 当たりの止めの残りのフレーム数。止めていなければ 0
+        [[nodiscard]] int HitStopFramesRemaining() const noexcept { return m_hitStopFrames; }
+        //! 当たりの止めの間なら true
+        [[nodiscard]] bool IsHitStopping() const noexcept { return m_hitStopFrames > 0; }
 
         //! @brief Update を呼ばれる段を返す
         [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
         virtual void ReadInput() {}
         //! 観測・裁定・状態・身体・見た目を固定順で更新する。部品は各段で明示的に呼ぶ
-        //! エフェクトの記録は観測前に進める
+        //! エフェクトの記録は観測前に、動作のタイムラインは状態の段の直後に進める。
+        //! 当たりの止めの間は状態と身体の段を飛ばし、最後に止めの残りを 1 減らす
         void Update();
         virtual void PrepareRender();
-
-        //! 実行時にコードが足す一時オブジェクトか。true は保存・凍結・作業データに写らない
-        [[nodiscard]] bool IsTransient() const noexcept { return m_transient; }
-
-        //! 一時オブジェクトの印。Scene::SpawnTransient が立てる。テストは直接立ててよい
-        void SetTransient(bool transient) noexcept { m_transient = transient; }
 
         //! 全配置物の初期化後に一度呼ぶ。他の配置物を必要とする初期化を行う
         virtual void InitAfterPlacement() {}
@@ -222,7 +233,7 @@ namespace NS
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
         friend float GetFrameRate(const SceneActor* actor) noexcept;
         friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
-        //! @brief アクターを作る順。部品を作る → 種類の既定 → 配置の上書き → 素材
+        //! @brief アクターを作る順。部品を作る → .actor → 配置の上書き → 素材
         //! @details 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない。
         //! info が nullptr のアクターも、配置の上書きを飛ばすだけで同じ順を通る
         void Init(const ActorInitInfo* info);
@@ -246,7 +257,8 @@ namespace NS
         };
         uint32 m_id = 0;
         std::string m_name;
-        Scene* m_scene = nullptr; // 所有 Scene、attach 前後は nullptr
+        std::string m_actorFileName; // 書くのは Init だけ
+        Scene* m_scene = nullptr;    // 所有 Scene、attach 前後は nullptr
         Presence m_presence = Presence::Disappeared;
         std::unique_ptr<Transform> m_transform;
 
@@ -259,12 +271,13 @@ namespace NS
         std::unique_ptr<HitSensor> m_attackSensor;
         std::unique_ptr<HitReaction> m_hitReaction;
         std::unique_ptr<EffectKeeper> m_effectKeeper;
+        std::unique_ptr<ActionTimeline> m_actionTimeline;
         // 状態が借りる部品より先に壊すので、部品の最後に置く。組むのは BuildStateMachine だけ
         std::unique_ptr<StateMachine> m_stateMachine;
 
     private:
-        bool m_transient = false; // 一時オブジェクトの印。保存・凍結に写らない
         float m_frameRate = 1.0f; // 体の倍率。読み書きは GetFrameRate・SetFrameRate だけ
+        int m_hitStopFrames = 0;  // 当たりの止めの残り。書くのは RequestHitStop・OverrideHitStop・Update だけ
     };
 
     //! @brief 体の倍率を返す。1 が等速
@@ -276,8 +289,8 @@ namespace NS
     //! 体の 1 フレームの秒。固定フレームの秒に体の倍率を掛けた値
     [[nodiscard]] float GetFrameDelta(const SceneActor* actor) noexcept;
 
-    //! @brief T を作り、部品・種類の既定・素材まで済ませて返す
-    //! @details Scene の中に作る時は Scene::SpawnTransient か Scene::SpawnObject を使う (中でこの関数を呼ぶ)。
+    //! @brief T を作り、部品・クラスと同じ名前の .actor・素材まで済ませて返す
+    //! @details Scene の中に作る時は Scene::SpawnObject を使う (中でこの関数を呼ぶ)。
     //! Scene に入れずに部品を触る試しは、この関数で作る
     template <class T, class... TArgs> [[nodiscard]] std::unique_ptr<T> CreateActor(TArgs&&... args)
     {
@@ -288,8 +301,8 @@ namespace NS
         return actor;
     }
 
-    //! @brief T を作り、info で部品・種類の既定・配置の上書き・素材まで済ませて返す
-    //! @details シーンへ入れる口 (Scene::SpawnTransient・SpawnObject) が呼ぶ。シーンの一覧に入る前に素材を読み終える
+    //! @brief T を作り、info で部品・.actor・配置の上書き・素材まで済ませて返す
+    //! @details シーンへ入れる口 (Scene::SpawnObject) が呼ぶ。シーンの一覧に入る前に素材を読み終える
     template <class T, class... TArgs>
     [[nodiscard]] std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args)
     {

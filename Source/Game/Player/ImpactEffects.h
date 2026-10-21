@@ -21,7 +21,6 @@ namespace GL
 {
     namespace Level
     {
-        struct ImpactAnswer;
         struct ImpactRecord;
     } // namespace Level
 } // namespace GL
@@ -93,7 +92,7 @@ namespace GL
         };
 
         //! @brief 自機の命中・反動・着地のエフェクトを出す部品
-        //! @details 当たりの裁定の答えにある頼みを、移動後の VisualStep で読む。頼みの無い命中では出さない
+        //! @details 持ち主が束の項目を始めた時の頼みを、移動後の VisualStep で読む。頼みの無い命中では出さない
         //! 相手の飛行・着地の演出は相手の LaunchEffects に任せる
         class ImpactEffects : public NS::Object
         {
@@ -103,17 +102,24 @@ namespace GL
             //! 当たり・反動・着地の絵を先に読む。持ち主の OnStart が呼ぶ
             void Preload();
 
+            //! @brief 当たりの絵を、次の Update で最後の当たりの内訳から始める
+            //! @details 持ち主が段の束の持ち主へ渡す項目 HitEffect を始めたフレームに呼ぶ
+            void RequestHit() noexcept { m_hitRequested = true; }
+            //! @brief 飛びの絵を、次の Update で始める。当たりの絵が出ていなければ始めない
+            //! @details 持ち主が明けの束の持ち主へ渡す項目 FlightEffect を始めたフレームに呼ぶ
+            void RequestFlight() noexcept { m_flightRequested = true; }
+
             //! @brief 頼まれた当たりと飛びの絵を始め、出ている絵を進める。持ち主の見た目の段が呼ぶ
+            //! @details 同じフレームに両方を頼まれた時は、当たりの絵の後に飛びの絵を始める
             //! @param[in] slam 外れの火花の向きに突進の向きを読む
             //! @param[in] body 反動の尾の向きと、頂点と着地の判定に速度と接地を読む。空でないこと
             //! @param[in] collider 接触点と足元を、当たりのカプセルから作る。空でないこと
-            //! @param[in] impact 当たりの裁定の答え。当たりと飛びの絵の頼みと、最後の当たりを読む。
-            //! 飛びの絵は当たりの絵が出ている間だけ始める
+            //! @param[in] impact 最後の当たりの内訳。絵の置き所と大きさを決める
             void Update(const BodySlamStatus& slam,
                         const PlayerMotion& motion,
                         const NS::Body* body,
                         const NS::Collider* collider,
-                        const GL::Level::ImpactAnswer& impact);
+                        const GL::Level::ImpactRecord& impact);
 
             //! 当たりの内訳から、演出の大きさと量を決める
             [[nodiscard]] ImpactShape ShapeFor(const GL::Level::ImpactRecord& impact) const noexcept;
@@ -134,9 +140,11 @@ namespace GL
             [[nodiscard]] const ImpactAim& LastAim() const noexcept { return m_aim; }
 
             //! 外した側と面に沿う滑りを混ぜ、火花の単位方向を返す。u は右、v は上が正
+            //! surfaceNormal は反動の配分が使った面の向き (ImpactRecord::faceNormal)。滑りはこの面に沿う
             //! slamDirection は水平成分を使う。面の原点か水平の向きが決まらない時は (0, 0, 0)
             [[nodiscard]] NS::Vector3 MissSparkHeading(float u,
                                                        float v,
+                                                       const NS::Vector3& surfaceNormal,
                                                        const NS::Vector3& slamDirection) const noexcept;
 
             NS_REFLECT_BEGIN(ImpactEffects, NS::Object)
@@ -287,6 +295,9 @@ namespace GL
 
             HitPlan m_plan;
             Flight m_flight;
+            // RequestHit・RequestFlight の頼み。次の Update が読んで空にする
+            bool m_hitRequested = false;
+            bool m_flightRequested = false;
             float m_lastVerticalVelocity = 0.0f; // 前のフレームの自機の縦の速さ (m/s)。着地のフレームは既に 0
             bool m_landingDustPlayed = false;    // この反動の着地の粉を出した。反動を抜けたら戻す
             ImpactAim m_aim;

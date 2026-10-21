@@ -116,10 +116,6 @@ namespace NS
         [[nodiscard]] Phys::PhysicsScene& Physics() noexcept { return m_physics.Physics(); }
         [[nodiscard]] const Phys::PhysicsScene& Physics() const noexcept { return m_physics.Physics(); }
 
-        [[nodiscard]] const Vector3& GravityDirection() const noexcept { return m_environment.gravityDirection; }
-        //! 重力方向を正規化して、物理の重力方向も揃える
-        void SetGravityDirection(const Vector3& direction) noexcept;
-
         //! 装置を非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
         void SetDevice(Gfx::D3DDevice* device) noexcept { m_sceneRenderer.SetDevice(device); }
 
@@ -164,7 +160,7 @@ namespace NS
         [[nodiscard]] const std::string& SkyboxPath() const noexcept { return m_environment.skybox; }
 
         [[nodiscard]] const SceneEnvironment& Environment() const noexcept { return m_environment; }
-        //! environment を丸ごと替える。重力の向きは SetGravityDirection と同じく揃えて物理へも書く
+        //! environment を丸ごと替える
         void SetEnvironment(const SceneEnvironment& environment) noexcept;
 
         //! @brief シーンの配置物の一覧
@@ -176,7 +172,7 @@ namespace NS
         void ResetFromJson(nlohmann::json scene);
 
         //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
-        //! @details 一時オブジェクトを除く全配置物を、全部品の値まで忠実に写す
+        //! @details 全配置物を、全部品の値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
 
         //! @brief プレイ突入時に実体を JSON 文書へ凍結して返す。プレイ規則の判定と編集復帰の姿はこの凍結を読む
@@ -186,7 +182,7 @@ namespace NS
         [[nodiscard]] const nlohmann::json& PlayBaseline() const noexcept { return m_playBaseline; }
 
         //! 手編集した欄だけを凍結へ写し、編集復帰後も残す。実行で動いた値は写さない
-        //! row は actor のクラスの表の行。凍結にない個体、作られていない行、存在しない欄は変更しない
+        //! row は actor のクラスの表の行。凍結にない個体、作られていない行、存在しない欄、.actor へ書く欄は変更しない
         void WritePlayBaselineField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
 
         //! シミュレーションを切り替え、一時停止とコマ送りを解除する
@@ -224,23 +220,12 @@ namespace NS
         //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneRenderer.SetSceneViews(std::move(views)); }
 
-        //! @brief 型 T の一時オブジェクトをシーンの中で作って入れ、開始する。呼出側へは生ポインタだけ返す
-        //! @details 所有はシーンが握る。保存・凍結に写らず、データからの組み直しで捨てる。
-        //! 更新は配置物と同じく自分の段で回る。値は種類の既定で、入れた後に変える時は返ったアクターへ書く
-        template <class T, class... Args> T* SpawnTransient(Args&&... args)
-        {
-            const ActorInitInfo info{.scene = *this};
-            std::unique_ptr<T> obj = CreateActorWithInfo<T>(info, std::forward<Args>(args)...);
-            T* raw = obj.get();
-            AdoptTransient(std::move(obj));
-            return raw;
-        }
-
         //! @brief 型 T の配置物をシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
-        //! @details 名前は既存と重なれば番号を付ける。値は種類の既定。一時オブジェクトと違い保存に写る
+        //! @details 所有はシーンが握り、呼出側へは生ポインタだけ返す。名前は既存と重なれば番号を付ける。
+        //! 値はクラスと同じ名前の .actor の値で、保存と凍結に写る
         template <class T, class... Args> T* SpawnObject(std::string name, Args&&... args)
         {
-            const ActorInitInfo info{.scene = *this};
+            const ActorInitInfo info{.scene = this};
             std::unique_ptr<T> obj = CreateActorWithInfo<T>(info, std::forward<Args>(args)...);
             T* raw = obj.get();
             AdoptObject(std::move(obj), std::move(name));
@@ -249,11 +234,12 @@ namespace NS
 
         //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! @details 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
-        //! undo の作り直しと複製が通る
+        //! undo の作り直しと複製が通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
         SceneActor* SpawnFromJson(const nlohmann::json& object);
 
         //! @brief 同じ id の配置物を JSON の姿へ作り直す。並びの位置は保つ。居なければ SpawnFromJson と同じ
-        //! @details 部品の増減も含めて姿を丸ごと入れ替える
+        //! @details 部品の増減も含めて姿を丸ごと入れ替える。.actor が見つからなければ、
+        //! 前のアクターを外して JSON のまま持ち、nullptr を返す
         SceneActor* ReplaceFromJson(const nlohmann::json& object);
 
         //! 同じ id の個体へ JSON を適用する。構成が同じなら実体を保ち、違えば再構築する
@@ -261,7 +247,7 @@ namespace NS
         SceneActor* ApplyFromJson(const nlohmann::json& object);
 
         //! @brief 配置物を 1 体消す。居なければ何もしない
-        //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
+        //! @details 当たり箱も揃うので、走っている世界を止めずに消せる。.actor が見つからずに持っている同じ id の JSON も捨てる
         void DestroyObject(uint32 objectId);
 
         //! 固定更新の段を順に実行する。同じ段では SceneActor の後にシステムを更新する
@@ -291,8 +277,12 @@ namespace NS
         //! シーンに 1 つの物・暗転・配置物・エフェクト・開発用の図形を捨てる。組み直しと終わりが呼ぶ
         void ClearWorld();
 
-        // SpawnTransient と SpawnObject の中身。外から個体を受けると、OnInit を通っていない個体が入る
-        SceneActor* AdoptTransient(std::unique_ptr<SceneActor> obj);
+        //! @brief 配置物の JSON 1 件からアクターを作る。組み直しと 1 体だけ入れる道の全部が通る
+        //! @details .actor が見つからなければ作らず、JSON を m_unresolvedObjects に id ごとに 1 つ持つ。
+        //! 作れた時は同じ id の持っていた JSON を捨てる
+        [[nodiscard]] std::unique_ptr<SceneActor> BuildOrKeepUnresolved(const nlohmann::json& object);
+
+        // SpawnObject の中身。外から個体を受けると、OnInit を通っていない個体が入る
         SceneActor* AdoptObject(std::unique_ptr<SceneActor> obj, std::string name);
 
         //! 実行時に入れた配置物の資産を引き当ててから開始する
@@ -316,6 +306,10 @@ namespace NS
         // 仮想カメラは持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         CameraManager m_cameraManager;
         ActorList m_objects; // 配置物の一覧
+        // .actor が見つからず作らなかった配置物の JSON。id ごとに 1 つ、持った順に並べ、保存ではアクターの後に書く。
+        // id は、読む時は m_objects の次の id が数え、1 体だけ入れる道ではこのシーンの控えの id なので数え済み。
+        // 新しいアクターに振られない
+        std::vector<nlohmann::json> m_unresolvedObjects;
         // 更新へ登録した管理役 1 件
         struct SystemEntry
         {

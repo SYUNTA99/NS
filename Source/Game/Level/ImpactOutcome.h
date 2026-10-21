@@ -60,8 +60,11 @@ namespace GL
             float launchScale = 0.0f;  //!< 相手の曲線の距離と高さに掛けた比
             GL::Player::ReboundArc reboundArc{};
             LaunchArc launchArc{};
+            //! 段を決めた面の上の位置を相手の形で読んだ、自機の側を向く単位法線。MissSurfaceNormal の値
+            //! 外れの反動とねじれ、外れの火花がこの向きを使う。突進の水平の向きが決まらない時は (0, 0, 0)
+            NS::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
             NS::Vector3 breakSelfVelocity{0.0f, 0.0f, 0.0f}; //!< 貫通で明けに自機が持つ速度。貫通しない当たりは 0
-            //! 貫通の当たりの止めるフレーム数。押し飛ばしの当たりの止めはタイムラインが持つので 0
+            //! 貫通の当たりの止めるフレーム数。押し飛ばしの当たりの止めは自機の段の束が持つので 0
             int stopSteps = 0;
         };
 

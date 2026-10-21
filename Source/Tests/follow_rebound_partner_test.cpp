@@ -54,7 +54,7 @@ namespace
             target = scene.SpawnObject<PartnerTargetProbeActor>("target");
             target->partner = partner;
             target->pullBack = pullBack;
-            camera = scene.SpawnTransient<GL::Level::FollowCameraActor>();
+            camera = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
             NS::ApplyJsonFields(camera->Vcam(),
                                 nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
                                                {"反動の間に相手を収める重み", 0.3f},
@@ -132,12 +132,12 @@ namespace
     {
         nlohmann::json doc = NS::MakeSceneJson();
         nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonActorFile(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
         NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, 2);
         NS::Editor::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -172,7 +172,7 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
             player->Update(false);
             rock->Update();
             // 体当たりと止めの間は、カメラに距離と溜めの締めを保たせる
-            if (player->IsBodySlamming() || player->Resolver().Answer().holdingPlayer)
+            if (player->IsBodySlamming() || player->Resolver().IsHitAwaitingEntry() || player->IsInTackleHit())
             {
                 EXPECT_TRUE(player->GetCameraTargetState().framingHeld);
                 ++held;

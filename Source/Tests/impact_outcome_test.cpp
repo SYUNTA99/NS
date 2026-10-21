@@ -2,7 +2,9 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/MapObjParams.h"
+#include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerParams.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 
 #include <gtest/gtest.h>
 
@@ -252,6 +254,62 @@ TEST(ImpactOutcome, MissDeflectsTowardTheSideItSlidesOff)
     const ImpactOutcome centerOutcome = ComputeImpactOutcome(center, tuning);
     EXPECT_FLOAT_EQ(centerOutcome.reboundArc.direction.z, -1.0f);
     EXPECT_FLOAT_EQ(centerOutcome.launchArc.direction.z, 1.0f);
+}
+
+// 箱に外した時、火花が沿って滑る面は、反動を映してねじった面と同じ。どちらも欄「四角の角の鋭さ」で読んだ箱の面
+TEST(ImpactOutcome, BoxMissSparksSlideAlongTheFaceTheReboundUsed)
+{
+    const ImpactTuning tuning = DefaultTuning();
+    constexpr float k_U = 0.85f;
+    constexpr float k_V = 0.4f;
+    const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
+    const ImpactOutcome box = ComputeImpactOutcome(MissAlongZ(k_U, k_V, NS::HitSensorShape::Box), tuning);
+    const NS::Vector3 normal = box.faceNormal;
+    ASSERT_NEAR(normal.Length(), 1.0f, 0.0001f);
+
+    // 反動は来た向きを面の水平の向きで映し、ねじれの軸は 面の向き × 来た向き
+    NS::Vector3 flat{normal.x, 0.0f, normal.z};
+    flat.Normalize();
+    const NS::Vector3 mirrored = forward - flat * (2.0f * forward.Dot(flat));
+    EXPECT_NEAR(box.reboundArc.direction.x, mirrored.x, 0.0001f);
+    EXPECT_NEAR(box.reboundArc.direction.z, mirrored.z, 0.0001f);
+    ASSERT_TRUE(box.reboundArc.missTumble.has_value());
+    const NS::Vector3 twist = normal.Cross(forward);
+    EXPECT_NEAR(box.reboundArc.missTumble->twist.x, twist.x, 0.0001f);
+    EXPECT_NEAR(box.reboundArc.missTumble->twist.y, twist.y, 0.0001f);
+    EXPECT_NEAR(box.reboundArc.missTumble->twist.z, twist.z, 0.0001f);
+
+    // 横の割合 0 の火花は面に沿う滑りだけを向く。箱の面は球の面より上へ逸れない
+    GL::Player::ImpactEffects effects{nullptr};
+    ASSERT_EQ(NS::ApplyJsonFields(effects, {{"外れの火花の横の割合", 0.0f}}), 0u);
+    const NS::Vector3 spark = effects.MissSparkHeading(k_U, k_V, normal, forward);
+    NS::Vector3 slide = forward - normal * forward.Dot(normal);
+    slide.Normalize();
+    EXPECT_NEAR(spark.Dot(slide), 1.0f, 0.0001f);
+    const NS::Vector3 round = GL::Level::MissSurfaceNormal(k_U, k_V, 2.0f, forward);
+    NS::Vector3 roundSlide = forward - round * forward.Dot(round);
+    roundSlide.Normalize();
+    EXPECT_LT(spark.Dot(roundSlide), 0.99f);
+}
+
+// 外れの火花は外した側へ 7 割、相手の表面に沿って滑る向きへ 3 割で流す。面の真ん中は向きが決まらない
+TEST(ImpactOutcome, MissSparksFlowTowardTheSideThatWasMissed)
+{
+    GL::Player::ImpactEffects effects{nullptr};
+    const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
+    // 右の縁: 外した側 +X、滑る向き (0.6, 0, 0.8)。0.7 × (1, 0, 0) + 0.3 × (0.6, 0, 0.8) を正規化
+    const NS::Vector3 right =
+        effects.MissSparkHeading(0.8f, 0.0f, GL::Level::MissSurfaceNormal(0.8f, 0.0f, 2.0f, forward), forward);
+    EXPECT_NEAR(right.x, 0.9648f, 0.0005f);
+    EXPECT_NEAR(right.y, 0.0f, 0.0005f);
+    EXPECT_NEAR(right.z, 0.2631f, 0.0005f);
+    const NS::Vector3 top =
+        effects.MissSparkHeading(0.0f, 0.8f, GL::Level::MissSurfaceNormal(0.0f, 0.8f, 2.0f, forward), forward);
+    EXPECT_NEAR(top.y, 0.9648f, 0.0005f);
+    EXPECT_NEAR(top.z, 0.2631f, 0.0005f);
+    const NS::Vector3 middle =
+        effects.MissSparkHeading(0.0f, 0.0f, GL::Level::MissSurfaceNormal(0.0f, 0.0f, 2.0f, forward), forward);
+    EXPECT_FLOAT_EQ(middle.Length(), 0.0f);
 }
 
 // 外れの相手は押し込む成分の 2 乗で短く飛び、弧は外れの高さの割合でさらに低い。真ん中の段は縮めない

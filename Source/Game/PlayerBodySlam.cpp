@@ -2,18 +2,27 @@
 
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LaunchArc.h"
+#include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/SlamBall.h"
+#include "Game/Player/States/BeforeContactPlayerState.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace
@@ -112,10 +121,116 @@ NS::Vector3 PlayerActor::BodySlamVelocity() const noexcept
 
 GL::Level::BodySlamMotion PlayerActor::SlamMotion() const noexcept
 {
-    return GL::Level::BodySlamMotion{.slamming = IsBodySlamming(),
+    const bool slamming = IsBodySlamming();
+    float remaining = 0.0f;
+    if (slamming)
+    {
+        remaining = std::max(m_slam.m_distanceTarget - m_slam.m_travelled, 0.0f);
+    }
+    // 当たる直前の動作がどの段にも無ければ、入る先が無いので線を引かない
+    const NS::ActionTimeline* actions = ActionTimelineClassObj();
+    const bool predicts =
+        actions != nullptr &&
+        (actions->FindAction(GL::Level::BeforeContactActionName(GL::Level::HitTier::Center)) != nullptr ||
+         actions->FindAction(GL::Level::BeforeContactActionName(GL::Level::HitTier::Wide)) != nullptr);
+    return GL::Level::BodySlamMotion{.slamming = slamming,
                                      .velocity = BodySlamVelocity(),
                                      .charge01 = m_slam.Charge01(),
-                                     .overcharge01 = m_slam.Overcharge01()};
+                                     .overcharge01 = m_slam.Overcharge01(),
+                                     .remainingDistance = remaining,
+                                     .predictsContact = predicts};
+}
+
+void PlayerActor::DecideBeforeContact(const GL::Level::ImpactAnswer& answer) noexcept
+{
+    // 検知したフレームは、突進を打ち切った所で当たる直前を出ている
+    if (answer.cancelBodySlam)
+    {
+        return;
+    }
+    const std::optional<GL::Level::SlamLineTarget>& predicted = answer.predicted;
+    if (IsInBeforeContact())
+    {
+        if (predicted.has_value() && predicted->target == m_beforeContact.target &&
+            predicted->tier == m_beforeContact.tier)
+        {
+            return;
+        }
+        // 予測が外れたか、相手か段が変わった。形と自機以外の止めは出る時に戻る
+        (void)m_states->Change<GL::Player::BodySlamPlayerState>();
+        return;
+    }
+    if (!IsBodySlamming() || !predicted.has_value())
+    {
+        return;
+    }
+    const NS::ActorAction* action =
+        ActionTimelineClassObj()->FindAction(GL::Level::BeforeContactActionName(predicted->tier));
+    if (action == nullptr)
+    {
+        return;
+    }
+    // 動作の最後のフレームが検知のフレーム。予測が遅れた時は、残りの歩に合うフレームから入る
+    const int contactFrame = NS::ActionLength(*action) - 1;
+    const int frames = answer.framesToPredictedContact;
+    if (frames > contactFrame)
+    {
+        return;
+    }
+    m_beforeContact = BeforeContactEntry{.target = predicted->target,
+                                         .tier = predicted->tier,
+                                         .startFrame = contactFrame - frames,
+                                         .point = predicted->origin + predicted->direction * predicted->contact};
+    // 新しい当たりは、前の当たりの束で走っている演出を打ち切る
+    StopTackleHitEffects();
+    if (NS::HitReaction* reaction = HitReactionClassObj())
+    {
+        reaction->Stop();
+    }
+    (void)m_states->Change<GL::Player::BeforeContactPlayerState>();
+}
+
+bool PlayerActor::ContinuesBeforeContact(const GL::Level::ImpactRecord& impact) const noexcept
+{
+    return IsInBeforeContact() && m_beforeContact.target.id == impact.targetId && m_beforeContact.tier == impact.tier;
+}
+
+void PlayerActor::BeginBeforeContact() noexcept
+{
+    NS::SceneActor* target = nullptr;
+    if (OwningScene() != nullptr)
+    {
+        target = OwningScene()->Objects().FindObject(m_beforeContact.target);
+    }
+    if (target == nullptr || target->BodySensorClassObj() == nullptr)
+    {
+        NS_LOG_WARN(Game, "予測した相手が居ないので、当たる直前の動作を始めない: 相手 {}", m_beforeContact.target.id);
+        return;
+    }
+    (void)ActionTimelineClassObj()->Start(GL::Level::BeforeContactActionName(m_beforeContact.tier),
+                                          m_beforeContact.startFrame,
+                                          m_beforeContact.point,
+                                          BodySensorClassObj(),
+                                          target->BodySensorClassObj());
+}
+
+void PlayerActor::EndBeforeContact() noexcept
+{
+    // 検知で当たりへ移る時は、形と自機以外の止めを触れる瞬間まで残す
+    if (m_resolver->IsHitAwaitingEntry())
+    {
+        return;
+    }
+    ActionTimelineClassObj()->Stop();
+    StopTackleHitEffects();
+    if (NS::HitReaction* reaction = HitReactionClassObj())
+    {
+        reaction->Stop();
+    }
+    if (OwningScene() != nullptr)
+    {
+        OwningScene()->HoldOthers(0);
+    }
 }
 
 void PlayerActor::CancelBodySlam() noexcept
@@ -143,7 +258,13 @@ void PlayerActor::EndBodySlam() noexcept
         body.SetLateralVelocity(NS::Vector3{lateral.x * scale, 0.0f, lateral.z * scale});
     }
 
-    if (body.IsGrounded())
+    ChangeToWalkOrFall();
+    m_playerEvents.onBodySlamEnded.Invoke();
+}
+
+void PlayerActor::ChangeToWalkOrFall() noexcept
+{
+    if (m_body->IsGrounded())
     {
         (void)m_states->Change<GL::Player::WalkPlayerState>();
     }
@@ -151,7 +272,6 @@ void PlayerActor::EndBodySlam() noexcept
     {
         (void)m_states->Change<GL::Player::FallPlayerState>();
     }
-    m_playerEvents.onBodySlamEnded.Invoke();
 }
 
 void PlayerActor::AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept
@@ -227,39 +347,59 @@ float PlayerActor::BodySlamAimBlend01() const noexcept
     return (fade - age) / (fade - hold);
 }
 
+NS::Vector3 PlayerActor::BlendedAimDirection() const noexcept
+{
+    const NS::Vector3 dir = AimDirection();
+    const float aimLength =
+        std::sqrt(m_request.aimDir.x * m_request.aimDir.x + m_request.aimDir.z * m_request.aimDir.z);
+    if (aimLength < NS::k_Epsilon)
+    {
+        return dir;
+    }
+    const float blend = BodySlamAimBlend01();
+    if (!(blend > 0.0f))
+    {
+        return dir;
+    }
+    const NS::Vector3 mixed{dir.x * (1.0f - blend) + m_request.aimDir.x * blend,
+                            0.0f,
+                            dir.z * (1.0f - blend) + m_request.aimDir.z * blend};
+    const float mixedLength = std::sqrt(mixed.x * mixed.x + mixed.z * mixed.z);
+    // 正反対の向きを同じくらいの重みで混ぜると長さが 0 近くになる。その時は濃い側をそのまま採る
+    if (mixedLength >= NS::k_Epsilon)
+    {
+        return NS::Vector3{mixed.x / mixedLength, 0.0f, mixed.z / mixedLength};
+    }
+    if (blend >= 0.5f)
+    {
+        return m_request.aimDir;
+    }
+    return dir;
+}
+
+NS::Vector3 PlayerActor::ReleaseDirection() const noexcept
+{
+    // しきい値を越えて放すと、AdvanceCharge が控えた狙いの線の向きを添えて頼む。越える前に放すと通常突進になる
+    GL::Level::AimLine line{};
+    NS::Vector3 lineDirection{};
+    if (m_charge.m_judge.IsCharging() && m_charge.TryGetAimLine(line) &&
+        NS::TryNormalizeHorizontal(line.direction, lineDirection))
+    {
+        return lineDirection;
+    }
+    return BlendedAimDirection();
+}
+
 bool PlayerActor::BodySlam() noexcept
 {
     NS::Body& body = *m_body;
     // 速度を書く前に読む。発動のフレームはまだ前のフレームの接地のまま
     const bool launchedInAir = !body.IsGrounded();
-    NS::Vector3 dir = AimDirection();
-
-    const float aimLength =
-        std::sqrt(m_request.aimDir.x * m_request.aimDir.x + m_request.aimDir.z * m_request.aimDir.z);
     // 添えた向きは放す前に見せていた狙いなので、入力も押したフレームの控えも混ぜない
-    if (m_request.hasDir)
+    NS::Vector3 dir = m_request.dir;
+    if (!m_request.hasDir)
     {
-        dir = m_request.dir;
-    }
-    else if (aimLength >= NS::k_Epsilon)
-    {
-        const float blend = BodySlamAimBlend01();
-        if (blend > 0.0f)
-        {
-            NS::Vector3 mixed{dir.x * (1.0f - blend) + m_request.aimDir.x * blend,
-                              0.0f,
-                              dir.z * (1.0f - blend) + m_request.aimDir.z * blend};
-            const float mixedLength = std::sqrt(mixed.x * mixed.x + mixed.z * mixed.z);
-            // 正反対の向きを同じくらいの重みで混ぜると長さが 0 近くになる。その時は濃い側をそのまま採る
-            if (mixedLength >= NS::k_Epsilon)
-            {
-                dir = NS::Vector3{mixed.x / mixedLength, 0.0f, mixed.z / mixedLength};
-            }
-            else if (blend >= 0.5f)
-            {
-                dir = m_request.aimDir;
-            }
-        }
+        dir = BlendedAimDirection();
     }
 
     if (std::sqrt(dir.x * dir.x + dir.z * dir.z) < NS::k_Epsilon)
@@ -370,15 +510,27 @@ void PlayerActor::SetCurled(bool curled) noexcept
     ChangeCurled(curled);
 }
 
+bool PlayerActor::IsCurled() const noexcept
+{
+    return m_collider->IsSphereShape();
+}
+
 void PlayerActor::ChangeCurled(bool curled) noexcept
 {
     NS::Collider& collider = *m_collider;
-    if (curled == m_curled)
+    if (curled == IsCurled())
     {
         return;
     }
-    m_curled = curled;
     collider.SetSphereShape(curled);
+    if (curled)
+    {
+        m_appearance->Curl();
+    }
+    else
+    {
+        m_appearance->Uncurl();
+    }
     // 半長ぶん根を上げ下げして、立ち姿と玉の当たりの下端を揃える
     float rise = collider.StandingHalfHeight();
     if (curled)
@@ -398,11 +550,12 @@ NS::Sphere PlayerActor::SlamBallAt(const NS::Vector3& rootPosition) const noexce
 void PlayerActor::UncurlWhenSettled() noexcept
 {
     NS::Body& body = *m_body;
-    if (!m_curled)
+    if (!IsCurled())
     {
         return;
     }
-    if (m_bodySlamHeld || IsBodySlamming() || !body.IsGrounded())
+    // 押している間は着地しても丸まりを解かない
+    if (m_charge.m_judge.IsHeld() || IsBodySlamming() || !body.IsGrounded())
     {
         return;
     }

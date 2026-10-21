@@ -1,6 +1,6 @@
 #include "Editor/EditorObjects.h"
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/HitTimeline.h"
+#include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
@@ -26,7 +26,7 @@
 
 // 同じ当たりと同じ溜めで、カメラの揺れのずれと角度をフレームごとに書き出す
 // 揺れを作り直す前と後で同じ場面を書き出し、隣り合うフレームのずれの差の最大を並べる
-// 書き出し先は build/ShakeTrace/trace.json。タイムラインは置き場の既定 (Assets/HitTimelines) を読む
+// 書き出し先は build/ShakeTrace/trace.json。演出は自機と置物の .actor の束を読む
 
 namespace
 {
@@ -40,12 +40,12 @@ namespace
     {
         nlohmann::json doc = NS::MakeSceneJson();
         nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonActorFile(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
         NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, 2);
         NS::Editor::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -140,7 +140,7 @@ namespace
         std::vector<NS::Vector3> offsets;
         NS::Scene scene;
         ChargingTargetActor* target = scene.SpawnObject<ChargingTargetActor>("target");
-        GL::Level::FollowCameraActor* actor = scene.SpawnTransient<GL::Level::FollowCameraActor>();
+        GL::Level::FollowCameraActor* actor = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
         if (target == nullptr || actor == nullptr)
         {
             return offsets;

@@ -1,7 +1,7 @@
 #include "Game/PlayerActor.h"
 
+#include "Game/Level/AirGravity.h"
 #include "Game/Level/ImpactOutcome.h"
-#include "Game/Player/PlayerGravity.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -77,17 +77,31 @@ void PlayerActor::MoveBody(float dt) noexcept
 
 void PlayerActor::SyncGroundState() noexcept
 {
-    if (!m_body->WasGrounded() && m_body->IsGrounded())
+    if (!m_body->IsGrounded())
     {
-        m_jumpsRemaining = 1;
+        return;
     }
+    if (!m_body->WasGrounded())
+    {
+        RestoreOnLanding();
+    }
+    else
+    {
+        RestoreWhileGrounded();
+    }
+}
 
-    if (m_body->IsGrounded())
-    {
-        m_coyoteTimer = m_params->m_coyoteTime;
-        // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
-        m_request.spent = false;
-    }
+void PlayerActor::RestoreOnLanding() noexcept
+{
+    m_jumpsRemaining = 1;
+    RestoreWhileGrounded();
+}
+
+void PlayerActor::RestoreWhileGrounded() noexcept
+{
+    m_coyoteTimer = m_params->m_coyoteTime;
+    // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
+    m_request.spent = false;
 }
 
 void PlayerActor::TickTimers(float dt) noexcept
@@ -151,12 +165,18 @@ void PlayerActor::Jump(float) noexcept
     if (GL::Player::PlayerJudgeJump::Judge(
             body.IsGrounded(), m_coyoteTimer, m_jumpsRemaining, m_input->JumpPressed(), m_bufferTimer))
     {
-        body.SetVerticalVelocity(m_params->m_jumpImpulse);
-        --m_jumpsRemaining;
-        m_bufferTimer = 0.0f;
-        m_coyoteTimer = 0.0f;
-        m_playerEvents.onJump.Invoke();
+        LaunchJump();
     }
+}
+
+void PlayerActor::LaunchJump() noexcept
+{
+    m_body->SetVerticalVelocity(m_params->m_jumpImpulse);
+    // 縁からは跳べる回数を見ずに跳ぶので、0 から先へは減らさない
+    m_jumpsRemaining = std::max(0, m_jumpsRemaining - 1);
+    m_bufferTimer = 0.0f;
+    m_coyoteTimer = 0.0f;
+    m_playerEvents.onJump.Invoke();
 }
 
 void PlayerActor::CutJumpRelease() noexcept
@@ -172,7 +192,7 @@ void PlayerActor::Gravity(float dt) noexcept
 {
     // 強さの選び方は LaunchPitch と同じ関数。写すと欄を変えた時に放つ角度の予測と実際の落ち方が割れる
     NS::Body& body = *m_body;
-    body.Gravity(GL::Player::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
+    body.Gravity(GL::Level::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
 }
 
 void PlayerActor::TapSlamGravity(float dt) noexcept
@@ -201,7 +221,7 @@ void PlayerActor::ReboundGravity(float dt) noexcept
 {
     // 上りだけ倍率付きの組を PlayerParams が持つ。選び方は普段の重力と同じ ChooseGravity 1 つ
     NS::Body& body = *m_body;
-    body.Gravity(GL::Player::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
+    body.Gravity(GL::Level::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
 }
 
 void PlayerActor::AccelerateDuringRebound(float dt) noexcept
@@ -297,6 +317,27 @@ namespace
         }
         return false;
     }
+
+    // 掴む縁の 1 か所
+    struct LedgeSpot
+    {
+        NS::Vector3 hangPos;    // ぶら下がりの体の中心
+        NS::Vector3 faceNormal; // 掴む面の、自機の側を向く水平の向き
+        float topY = 0.0f;      // 縁の上面の高さ
+    };
+
+    // よじ登りを終えた体の中心。塞がっているかの確かめと登る先の両方がこの点を使う
+    // ぶら下がりの中心は面から半径ぶん外。直径ぶん奥へ進めると中心が縁から半径ぶん内側に入り、体が上面に乗る
+    // halfHeight は円柱の半分の高さで、掴む時は立ち姿、掴まった後は今の当たりの形で測る
+    [[nodiscard]] NS::Vector3 MantleEnd(const NS::Collider& collider, float halfHeight, const LedgeSpot& ledge) noexcept
+    {
+        const float mantleStep = 2.0f * collider.CapsuleRadius();
+        return NS::Vector3{
+            ledge.hangPos.x - ledge.faceNormal.x * mantleStep,
+            ledge.topY + halfHeight + collider.CapsuleRadius(),
+            ledge.hangPos.z - ledge.faceNormal.z * mantleStep,
+        };
+    }
 } // namespace
 
 bool PlayerActor::LedgeGrab() noexcept
@@ -365,13 +406,7 @@ bool PlayerActor::LedgeGrab() noexcept
         hang.y = top - halfHeight;
 
         // 上面手前の登り先が別ブロックで塞がっているなら縁ではない。掴まない
-        const float mantleStep = 2.0f * collider.CapsuleRadius();
-        const NS::Vector3 mantleCheck{
-            hang.x - faceNormal.x * mantleStep,
-            top + halfHeight,
-            hang.z - faceNormal.z * mantleStep,
-        };
-        if (IsBlockedAt(collider, mantleCheck))
+        if (IsBlockedAt(collider, MantleEnd(collider, halfHeight, LedgeSpot{hang, faceNormal, top})))
         {
             continue;
         }
@@ -415,11 +450,9 @@ bool PlayerActor::LedgeJump() noexcept
         return false;
     }
 
-    NS::Body& body = *m_body;
-    body.SetVerticalVelocity(m_params->m_jumpImpulse);
-    body.SetGrounded(false);
+    LaunchJump();
+    m_body->SetGrounded(false);
     (void)m_states->Change<GL::Player::FallPlayerState>();
-    m_playerEvents.onJump.Invoke();
     return true;
 }
 
@@ -428,14 +461,8 @@ void PlayerActor::ClimbLedge() noexcept
     NS::Body& body = *m_body;
     const NS::Collider& collider = *m_collider;
     const NS::Vector3 pos = Root().Position();
-    // ぶら下がりの中心は面から半径ぶん外。直径ぶん奥へ進めると中心が縁から半径ぶん内側に入り、体が上面に乗る
-    const float mantleStep = 2.0f * collider.CapsuleRadius();
     m_ledgeMantleStart = pos;
-    m_ledgeMantleEnd = NS::Vector3{
-        pos.x - m_ledgeFaceNormal.x * mantleStep,
-        m_ledgeTopY + collider.CapsuleHalfHeight() + collider.CapsuleRadius(),
-        pos.z - m_ledgeFaceNormal.z * mantleStep,
-    };
+    m_ledgeMantleEnd = MantleEnd(collider, collider.CapsuleHalfHeight(), LedgeSpot{pos, m_ledgeFaceNormal, m_ledgeTopY});
     m_ledgeMantleTimer = 0.0f;
     (void)m_states->Change<GL::Player::LedgeClimbingPlayerState>();
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
@@ -505,8 +532,8 @@ void PlayerActor::UpdateLedgeClimb(float dt) noexcept
         Root().SetPosition(m_ledgeMantleEnd);
         (void)m_states->Change<GL::Player::IdlePlayerState>();
         body.SetGrounded(true);
-        m_jumpsRemaining = 1;
-        m_coyoteTimer = m_params->m_coyoteTime;
+        // SetGrounded は前の接地も真にするので、次の移動は着地と読まない。ここで着地の分を戻す
+        RestoreOnLanding();
     }
 }
 
@@ -530,13 +557,8 @@ bool PlayerActor::FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) cons
         const float top = box.Center.y + box.Extents.y;
 
         // 乗り上がり先が別ブロックで塞がっていたら縁とみなさない。オーバーハングの下では掴めない
-        const float mantleStep = 2.0f * collider.CapsuleRadius();
-        const NS::Vector3 mantleCheck{
-            hangPos.x - m_ledgeFaceNormal.x * mantleStep,
-            top + collider.CapsuleHalfHeight(),
-            hangPos.z - m_ledgeFaceNormal.z * mantleStep,
-        };
-        if (IsBlockedAt(collider, mantleCheck))
+        const LedgeSpot ledge{hangPos, m_ledgeFaceNormal, top};
+        if (IsBlockedAt(collider, MantleEnd(collider, collider.CapsuleHalfHeight(), ledge)))
         {
             continue;
         }

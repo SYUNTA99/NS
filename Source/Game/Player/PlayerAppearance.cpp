@@ -2,12 +2,9 @@
 
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/SlamAim.h"
-#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Clock.h"
@@ -48,22 +45,12 @@ namespace GL
 
         void PlayerAppearance::Curl() noexcept
         {
-            if (m_curled)
-            {
-                return;
-            }
-            m_curled = true;
-            ShowCurrentLook();
+            ShowLook(m_ballMesh, m_ballScale);
         }
 
         void PlayerAppearance::Uncurl() noexcept
         {
-            if (!m_curled)
-            {
-                return;
-            }
-            m_curled = false;
-            ShowCurrentLook();
+            ShowLook(m_standingMesh, m_standingScale);
         }
 
         float PlayerAppearance::StanceHeight(const ChargeStatus& charge) const noexcept
@@ -111,7 +98,7 @@ namespace GL
                 dt = NS::GetFrameDelta(m_owner);
             }
 
-            if (!m_curled)
+            if (!motion.curled)
             {
                 // 立ち姿は回さず、玉の回転と軸と速さも捨てる。丸まり直した玉へ前の玉の値を持ち越さない
                 m_spin = NS::Quaternion::Identity;
@@ -140,15 +127,8 @@ namespace GL
             }
             else if (charge.Judge().IsHoldingCharge())
             {
-                // 放せば出る向きへ回す。溜めて放した突進は狙いの線の向きへ、通常突進と線の無い時は
-                // aimDirection の向きへ出る。狙いが決まらないフレームは前の軸で回し続ける
-                NS::Vector3 aim = aimDirection;
-                GL::Level::AimLine line{};
-                if (charge.Judge().IsCharging() && charge.TryGetAimLine(line))
-                {
-                    aim = line.direction;
-                }
-                SetRollAxisToward(aim, m_spinAxis);
+                // 今放せば出る向きへ回す。向きが決まらないフレームは前の軸で回し続ける
+                SetRollAxisToward(aimDirection, m_spinAxis);
                 m_spinSpeed = m_emptyChargeSpinSpeed +
                               (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * charge.Judge().Charge01();
             }
@@ -252,24 +232,14 @@ namespace GL
                                       const ReboundStatus& rebound,
                                       const SkidStatus& skid,
                                       const NS::Vector3& aimDirection,
-                                      const NS::Body* body,
                                       const GL::Level::ImpactAnswer& impact)
         {
-            NS_ASSERT(Game, body != nullptr, "体の部品が渡されていない");
-            if (motion.curled)
-            {
-                Curl();
-            }
-            else
-            {
-                Uncurl();
-            }
             AdvanceSpin(motion, charge, slam, rebound, skid, aimDirection, impact);
-            AdvanceLandingSquash(motion, body);
-            WriteDrawScale(charge, impact);
+            AdvanceLandingSquash(motion);
+            WriteDrawScale(charge);
         }
 
-        void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion, const NS::Body* body) noexcept
+        void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion) noexcept
         {
             if (!motion.canMoveBody)
             {
@@ -277,11 +247,9 @@ namespace GL
                 return;
             }
 
-            // 反動の出口の条件が成り立ったフレームが着地。移動の後に回るので、このフレームの接地を見る
-            // 次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
+            // 移動の後に回るので、このフレームの着地を見る。次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
             // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
-            if (motion.rebounding && PlayerJudgeLand::Judge(body->IsGrounded(), body->VerticalVelocity()) &&
-                m_landingSquashRecoverSteps > 0)
+            if (motion.reboundLanded && m_landingSquashRecoverSteps > 0)
             {
                 m_landingSquashRemaining = m_landingSquashRecoverSteps;
                 m_landingSquashVertical = m_landingSquash;
@@ -312,23 +280,8 @@ namespace GL
             }
         }
 
-        void PlayerAppearance::WriteDrawScale(const ChargeStatus& charge,
-                                              const GL::Level::ImpactAnswer& impact) noexcept
+        void PlayerAppearance::WriteDrawScale(const ChargeStatus& charge) noexcept
         {
-            // 当たりの潰れと伸びの間は構えを混ぜない。構えの最中に来た止めも元の形から潰す
-            NS::Vector3 shape{1.0f, 1.0f, 1.0f};
-            if (impact.shapeAnimating)
-            {
-                shape = impact.shapeFactors;
-            }
-            else
-            {
-                shape.y = StanceHeight(charge);
-            }
-            // 着地の潰れの水平は体積を保つ 1 ÷ √縦
-            const float vertical = m_landingSquashVertical;
-            const float horizontal = 1.0f / std::sqrt(vertical);
-            const NS::Vector3 scale{shape.x * horizontal, shape.y * vertical, shape.z * horizontal};
             NS::Model* renderer = nullptr;
             if (m_owner != nullptr)
             {
@@ -338,6 +291,17 @@ namespace GL
             {
                 return;
             }
+            // 当たりの潰れと伸びは Model の形の再生が描く倍率に掛ける。その間は構えを混ぜず、
+            // 構えの最中に来た止めも元の形から潰す
+            float stance = 1.0f;
+            if (!renderer->IsDrawingShape())
+            {
+                stance = StanceHeight(charge);
+            }
+            // 着地の潰れの水平は体積を保つ 1 ÷ √縦
+            const float vertical = m_landingSquashVertical;
+            const float horizontal = 1.0f / std::sqrt(vertical);
+            const NS::Vector3 scale{horizontal, stance * vertical, horizontal};
             if (renderer->SetDrawScale(scale))
             {
                 m_drawScaleRejected = false;
@@ -355,7 +319,7 @@ namespace GL
             m_drawScaleRejected = true;
         }
 
-        void PlayerAppearance::ShowCurrentLook() noexcept
+        void PlayerAppearance::ShowLook(NS::Mesh* mesh, const NS::Vector3& scale) noexcept
         {
             if (m_owner == nullptr)
             {
@@ -367,13 +331,6 @@ namespace GL
                 return;
             }
 
-            NS::Mesh* mesh = m_standingMesh;
-            NS::Vector3 scale = m_standingScale;
-            if (m_curled)
-            {
-                mesh = m_ballMesh;
-                scale = m_ballScale;
-            }
             if (!renderer->SetLocalScale(scale))
             {
                 NS_LOG_WARN(Game,

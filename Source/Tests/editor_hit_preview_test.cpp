@@ -1,18 +1,21 @@
+#include "Editor/ActionTimelineEdit.h"
 #include "Editor/EditorObjects.h"
 #include "Editor/HitPreview.h"
 #include "Editor/TimelinePreview.h"
-#include "Game/Level/HitTimeline.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ObjectJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "NSlib/Windows/Input.h"
-#include "Tests/TestHitTimelines.h"
+#include "Tests/TestActorFile.h"
 
 #include <gtest/gtest.h>
 
@@ -45,18 +48,18 @@ namespace
     {
         nlohmann::json doc = NS::MakeSceneJson();
         nlohmann::json floor = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(floor, "MapPartsActor");
+        NS::SetObjectJsonActorFile(floor, "MapPartsActor");
         NS::SetObjectJsonId(floor, 100);
         NS::Editor::SetObjectPosition(floor, NS::Vector3{0.0f, -0.5f, 0.0f});
         NS::Editor::SetObjectScale(floor, NS::Vector3{60.0f, 1.0f, 60.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(floor));
         nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(player, "PlayerActor");
+        NS::SetObjectJsonActorFile(player, "PlayerActor");
         NS::SetObjectJsonId(player, 1);
         NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(player));
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, k_RockId);
         NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 1.5f, 7.0f});
         NS::Editor::SetObjectScale(rock, NS::Vector3{3.0f, 3.0f, 3.0f});
@@ -64,21 +67,59 @@ namespace
         return doc;
     }
 
-    // 縮みの形 (検知から 4 フレーム)・止め 2 フレーム・反動と相手を飛ばす。行の番号は 0 から 3
-    HitTimeline MakePreviewTimeline()
+    // 下見の自機の資料。当たりの束 (止め 2 フレーム) に足す項目と、明けの束に足す項目
+    struct PreviewData
     {
-        ShapeEvent shrink;
-        shrink.along.count = 1;
-        shrink.along.keys[0] = NS::Curve::Key{0.0f, 0.8f};
-        shrink.height.count = 1;
-        shrink.height.keys[0] = NS::Curve::Key{0.0f, 1.0f};
-        HitTimeline timeline;
-        timeline.events = {{shrink, 0, 4, HitDirection::Any},
-                           {HitStopEvent{}, 1, 2, HitDirection::Any},
-                           {ReboundEvent{}, 3, 1, HitDirection::Any},
-                           {TargetLaunchEvent{}, 3, 1, HitDirection::Any}};
-        return timeline;
+        std::vector<NS::HitReactionEntry> hitItems;
+        std::vector<NS::HitReactionEntry> releaseItems;
+    };
+
+    // 当たる直前の動作の白 4 つ。始まりは 0・2・4・4 で、動作の最後のフレーム 6 が検知のフレーム
+    NS::ActorAction MakePreviewAction()
+    {
+        NS::ActorAction action;
+        action.name = std::string{BeforeContactActionName(HitTier::Center)};
+        action.events = {{NS::HitFlashItem{}, 0, 1},
+                         {NS::HitFlashItem{}, 2, 1},
+                         {NS::HitFlashItem{}, 4, 1},
+                         {NS::HitFlashItem{}, 4, 3}};
+        return action;
     }
+
+    // 試しの間だけ、自機の .actor の当たりの束を止め 2 フレームと data の項目に、当たる直前の動作を白 4 つに替える
+    // 明けの束は出荷の物の後ろに data の項目を足す。明けは検知の 3 フレーム後
+    class ScopedPreviewActorFile
+    {
+    public:
+        explicit ScopedPreviewActorFile(const PreviewData& data = {})
+            : m_edit("PlayerActor", [&data](nlohmann::json& actorFile) {
+                  std::vector<NS::HitReactionSet> sets = NS::ReadHitReactionSets("PlayerActor", actorFile);
+                  for (const HitTier tier : {HitTier::Center, HitTier::Wide})
+                  {
+                      const std::string hit = TackleSetName("体当たり", tier);
+                      const std::string release = TackleSetName("明け", tier);
+                      for (NS::HitReactionSet& set : sets)
+                      {
+                          if (set.name == hit)
+                          {
+                              set.stopFrames = 2;
+                              set.entries = data.hitItems;
+                          }
+                          if (set.name == release)
+                          {
+                              set.entries.insert(set.entries.end(), data.releaseItems.begin(), data.releaseItems.end());
+                          }
+                      }
+                  }
+                  NS::WriteHitReactionSets(actorFile, sets);
+                  NS::WriteActorActions(actorFile, {MakePreviewAction()});
+              })
+        {
+        }
+
+    private:
+        ScopedActorFileEdit m_edit;
+    };
 
     NS::Editor::HitPreviewDesc MakeDesc(float faceU, float faceV)
     {
@@ -94,8 +135,7 @@ namespace
 // 選んだ面の位置へ当たり、段は面の判定のとおりに決まる。検知は狙ったフレーム数の後
 TEST(EditorHitPreview, HitsThePickedPointOnTheFace)
 {
-    const ScopedHitTimelineDirectory directory("EditorHitPreview");
-    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    const ScopedPreviewActorFile actorFile;
     const nlohmann::json snapshot = MakePreviewSceneJson();
     PreviewAssets assets;
 
@@ -118,20 +158,17 @@ TEST(EditorHitPreview, HitsThePickedPointOnTheFace)
 // 帯に重ねるため、揺れ・トラウマ・世界の速さをフレームごとに記録する
 TEST(EditorHitPreview, RecordsTheShakeAndTheWorldSpeedEachFrame)
 {
-    HitTimeline timeline = MakePreviewTimeline();
-    CameraTraumaEvent trauma;
+    NS::HitCameraTraumaItem trauma;
     trauma.trauma = 0.8f;
-    GradualReleaseEvent release;
-    release.startSpeed = 0.25f;
-    timeline.events.push_back({trauma, 1, 1, HitDirection::Any});
-    timeline.events.push_back({release, 3, 1, HitDirection::Any});
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewShake");
-    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    NS::HitWorldSpeedItem slow;
+    slow.startSpeed = 0.25f;
+    const ScopedPreviewActorFile actorFile(PreviewData{.hitItems = {{trauma, 1}}, .releaseItems = {{slow, 1}}});
     PreviewAssets assets;
     const NS::Editor::HitPreviewResult result =
         NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.6f, 0.0f), assets.World());
     ASSERT_TRUE(result.hit) << result.error;
     ASSERT_GE(result.detectionIndex, 0);
+    // 当たりの束は検知の次のフレーム、明けの束は止め 2 フレームの後に始まる
     const std::size_t traumaFrame = static_cast<std::size_t>(result.detectionIndex + 1);
     const std::size_t releaseFrame = static_cast<std::size_t>(result.detectionIndex + 3);
     ASSERT_GT(result.frames.size(), releaseFrame);
@@ -142,28 +179,27 @@ TEST(EditorHitPreview, RecordsTheShakeAndTheWorldSpeedEachFrame)
     EXPECT_LT(result.frames[releaseFrame].worldSpeed, 1.0f);
 }
 
-// 帯へ重ねるため、事象が実際に始まったフレームを行の番号で記録する
+// 帯へ重ねるため、動作の事象が実際に始まったフレームを、動作に入った歩を 0 にして行の番号で記録する
 TEST(EditorHitPreview, RecordsTheFrameEachRowStarted)
 {
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewRows");
-    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    const ScopedPreviewActorFile actorFile;
     PreviewAssets assets;
     const NS::Editor::HitPreviewResult result =
         NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.0f, 0.0f), assets.World());
     ASSERT_TRUE(result.hit) << result.error;
     ASSERT_GE(result.detectionIndex, 0);
 
-    // 行ごとに、始まったフレームを検知のフレームから数える
-    std::vector<int> startedAt(4, -100);
-    for (std::size_t i = 0; i < result.frames.size(); ++i)
+    const std::string name{BeforeContactActionName(HitTier::Center)};
+    EXPECT_EQ(NS::Editor::RowStartFrames(result, name, 0), (std::vector<int>{0}));
+    EXPECT_EQ(NS::Editor::RowStartFrames(result, name, 1), (std::vector<int>{2}));
+    EXPECT_EQ(NS::Editor::RowStartFrames(result, name, 2), (std::vector<int>{4}));
+    EXPECT_EQ(NS::Editor::RowStartFrames(result, name, 3), (std::vector<int>{4}));
+    // 動作の事象は、当たる直前の状態を出る検知のフレームより後に始まらない
+    for (std::size_t i = static_cast<std::size_t>(result.detectionIndex) + 1; i < result.frames.size(); ++i)
     {
-        for (const std::size_t row : result.frames[i].startedRows)
-        {
-            ASSERT_LT(row, startedAt.size());
-            startedAt[row] = static_cast<int>(i) - result.detectionIndex;
-        }
+        SCOPED_TRACE(i);
+        EXPECT_TRUE(result.frames[i].startedEvents.empty());
     }
-    EXPECT_EQ(startedAt, (std::vector<int>{0, 1, 3, 3}));
     // 反動が終わるまで記録が続く
     const bool rebounded = std::any_of(result.frames.begin(),
                                        result.frames.end(),
@@ -175,8 +211,7 @@ TEST(EditorHitPreview, RecordsTheFrameEachRowStarted)
 // 下見は写しの中で閉じ、同じ条件なら毎回同じ記録になる
 TEST(EditorHitPreview, LeavesTheEditedSceneAloneAndRepeats)
 {
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewRepeat");
-    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    const ScopedPreviewActorFile actorFile;
     NS::Scene edited;
     edited.ResetFromJson(MakePreviewSceneJson());
     edited.SetSimulationEnabled(false);
@@ -193,7 +228,9 @@ TEST(EditorHitPreview, LeavesTheEditedSceneAloneAndRepeats)
     {
         SCOPED_TRACE(i);
         EXPECT_TRUE(second.frames[i].playerPosition == first.frames[i].playerPosition);
-        EXPECT_EQ(second.frames[i].startedRows, first.frames[i].startedRows);
+        EXPECT_EQ(second.frames[i].action, first.frames[i].action);
+        EXPECT_EQ(second.frames[i].actionFrame, first.frames[i].actionFrame);
+        EXPECT_EQ(second.frames[i].startedEvents, first.frames[i].startedEvents);
     }
 }
 
@@ -211,13 +248,10 @@ TEST(EditorHitPreview, MissingTargetIsAnError)
 // 下見の振動は手元のパッドへ送らず、フレームごとの記録に残す
 TEST(EditorHitPreview, HoldsPadVibrationInTheRecord)
 {
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewPad");
-    HitTimeline timeline = MakePreviewTimeline();
-    PadVibrationEvent pad;
+    NS::HitPadVibrationItem pad;
     pad.left.count = 1;
     pad.left.keys[0] = NS::Curve::Key{0.0f, 0.7f};
-    timeline.events.push_back({pad, 0, 4, HitDirection::Any});
-    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    const ScopedPreviewActorFile actorFile(PreviewData{.hitItems = {{pad, 4}}});
     NS::OS::Input& input = NS::OS::Input::Get();
     ASSERT_TRUE(input.Gamepad().SetVibration(0.1f, 0.0f));
     PreviewAssets assets;
@@ -225,7 +259,8 @@ TEST(EditorHitPreview, HoldsPadVibrationInTheRecord)
     const NS::Editor::HitPreviewResult result =
         NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.0f, 0.0f), assets.World());
     ASSERT_TRUE(result.hit) << result.error;
-    EXPECT_FLOAT_EQ(result.frames[static_cast<std::size_t>(result.detectionIndex)].pad.left, 0.7f);
+    // 当たりの束は検知の次のフレームに始まる
+    EXPECT_FLOAT_EQ(result.frames[static_cast<std::size_t>(result.detectionIndex + 1)].pad.left, 0.7f);
     EXPECT_FLOAT_EQ(input.Gamepad().Vibration().left, 0.1f);
     EXPECT_FALSE(input.IsNeutral());
     input.Gamepad().StopVibration();
@@ -234,8 +269,7 @@ TEST(EditorHitPreview, HoldsPadVibrationInTheRecord)
 // 記録の 1 行は当たりの記録 hits.jsonl と同じ鍵を同じ並びで持ち、f は検知のフレーム
 TEST(EditorHitPreview, HitLineHasTheRecordKeys)
 {
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewLine");
-    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    const ScopedPreviewActorFile actorFile;
     PreviewAssets assets;
     const NS::Editor::HitPreviewResult result =
         NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.0f, 0.0f), assets.World());
@@ -254,13 +288,17 @@ TEST(EditorHitPreview, HitLineHasTheRecordKeys)
     EXPECT_EQ(keys, expected);
     EXPECT_EQ(line["f"].get<int>(), result.detectionIndex);
     EXPECT_EQ(line["victim"].get<NS::uint32>(), k_RockId);
+    // 返りの始めの値は束の項目が持ち、当たりの記録に写さない
+    for (const char* key : {"cameraShake", "flashStart", "zoomStart", "rollStart", "padStart"})
+    {
+        EXPECT_TRUE(line[key].is_null()) << key;
+    }
 }
 
 // 下見は試しの道 (入力を止めて突進を直接頼み、場面の 1 歩で進める) と同じ記録を出す
 TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
 {
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewDirect");
-    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    const ScopedPreviewActorFile actorFile;
     PreviewAssets assets;
     const nlohmann::json snapshot = MakePreviewSceneJson();
     const NS::Editor::HitPreviewResult preview =
@@ -301,11 +339,10 @@ TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
 // 相手を選んでいない時は、自機に一番近い、突進が当たる体と面を持つ配置物を相手にする
 TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
 {
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewNearest");
-    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    const ScopedPreviewActorFile actorFile;
     nlohmann::json snapshot = MakePreviewSceneJson();
     nlohmann::json distant = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(distant, "PropActor");
+    NS::SetObjectJsonActorFile(distant, "PropActor");
     NS::SetObjectJsonId(distant, 3);
     NS::Editor::SetObjectPosition(distant, NS::Vector3{0.0f, 0.5f, 25.0f});
     NS::SceneJsonObjects(snapshot).push_back(std::move(distant));
@@ -322,10 +359,7 @@ TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
 // 沈む揺れも下見の記録に載る。帯の下の折れ線が読む
 TEST(EditorHitPreview, RecordsTheSinkShakeEachFrame)
 {
-    HitTimeline timeline = MakePreviewTimeline();
-    timeline.events.push_back({CameraSinkEvent{}, 1, 20, HitDirection::Any});
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewSink");
-    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    const ScopedPreviewActorFile actorFile(PreviewData{.hitItems = {{NS::HitCameraSinkItem{}, 20}}});
     PreviewAssets assets;
     const NS::Editor::HitPreviewResult result =
         NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.0f, 0.0f), assets.World());
@@ -340,8 +374,7 @@ TEST(EditorHitPreview, RecordsTheSinkShakeEachFrame)
 
 TEST(EditorHitPreview, PlaybackEvaluatesTheSceneAtTheRecordedFrameAndCanRewind)
 {
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewPlayback");
-    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    const ScopedPreviewActorFile actorFile;
     PreviewAssets assets;
     const nlohmann::json snapshot = MakePreviewSceneJson();
     const NS::Editor::HitPreviewResult result =
@@ -362,8 +395,8 @@ TEST(EditorHitPreview, PlaybackEvaluatesTheSceneAtTheRecordedFrameAndCanRewind)
         ASSERT_NE(player, nullptr);
         const NS::Editor::HitPreviewFrame& frame = result.frames[static_cast<std::size_t>(index)];
         EXPECT_TRUE(player->Root().Position() == frame.playerPosition);
-        EXPECT_TRUE(player->Resolver().Answer().shapeFactors == frame.shape);
-        EXPECT_EQ(player->Resolver().Answer().hitStopping, frame.hitStopping);
+        EXPECT_TRUE(player->ModelClassObj()->GetDrawScale() == frame.shape);
+        EXPECT_EQ(player->IsHitStopping(), frame.hitStopping);
         EXPECT_EQ(player->IsRebounding(), frame.rebounding);
         EXPECT_FLOAT_EQ(scene->WorldSpeed(), frame.worldSpeed);
         EXPECT_TRUE(scene->IsSimulationPaused());
@@ -374,8 +407,7 @@ TEST(EditorHitPreview, PlaybackEvaluatesTheSceneAtTheRecordedFrameAndCanRewind)
 // 下見の場面はゲームと同じ始まりを通る。プレイ開始の写しを持ち、置いた物は開始の姿を控えている
 TEST(EditorHitPreview, StartsTheSceneLikeTheGame)
 {
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewCourseStart");
-    ScopedHitTimelineDirectory::SetBothTiers(MakePreviewTimeline());
+    const ScopedPreviewActorFile actorFile;
     PreviewAssets assets;
     const nlohmann::json snapshot = MakePreviewSceneJson();
     const NS::Editor::HitPreviewResult result =
@@ -398,12 +430,10 @@ TEST(EditorHitPreview, StartsTheSceneLikeTheGame)
     EXPECT_TRUE(SendMsgCourseRestart(*rock));
 }
 
+// 反動が先に終わっても、当たりの束の一番長い項目が終わるまで記録する
 TEST(EditorHitPreview, RecordsUntilTheLastEventEvenWhenTheReboundHasAlreadyEnded)
 {
-    const ScopedHitTimelineDirectory directory("EditorHitPreviewLateEvent");
-    HitTimeline timeline = MakePreviewTimeline();
-    timeline.events.push_back({CameraSinkEvent{}, 100, 60, HitDirection::Any});
-    ScopedHitTimelineDirectory::SetBothTiers(timeline);
+    const ScopedPreviewActorFile actorFile(PreviewData{.hitItems = {{NS::HitCameraSinkItem{}, 160}}});
     PreviewAssets assets;
     const NS::Editor::HitPreviewResult result =
         NS::Editor::RunHitPreview(MakePreviewSceneJson(), MakeDesc(0.0f, 0.0f), assets.World());

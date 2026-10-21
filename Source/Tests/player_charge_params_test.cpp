@@ -3,7 +3,7 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ObjectJson.h"
-#include "NSlib/CoreObject/Reflection/Archetype.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -100,35 +100,33 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
               static_cast<int>(std::lround(0.5f / NS::OS::FrameTimer::FixedDelta())));
 }
 
-TEST(PlayerChargeParams, SceneOverridesKeepTheirCurvesAfterReload)
+// .actor が持つ形 (欄を書き出した JSON) を別の自機へ読むと、カーブも同じ値になる
+TEST(PlayerChargeParams, CurvesSurviveWritingAndReadingTheFields)
 {
-    NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonClass(entry, "PlayerActor");
-    NS::SetObjectJsonId(entry, 1);
-    entry["classObjs"] = {
-        {"Params", {{"チャージ減速率", 0.25f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}}};
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
-    scene.ResetFromJson(doc);
-    scene.ResetFromJson(scene.ToJson());
-    const PlayerActor* player = static_cast<const PlayerActor*>(scene.Objects().FindByObjectId(1));
-    ASSERT_NE(player, nullptr);
-    EXPECT_FLOAT_EQ(player->Params().ChargingSpeedScale(), 0.75f);
-    EXPECT_FLOAT_EQ(player->Params().ChargeFactorFor(0.5f), 2.0f);
+    const std::unique_ptr<PlayerActor> written = NS::CreateActor<PlayerActor>();
+    ASSERT_EQ(NS::ApplyJsonFields(
+                  written->Params(),
+                  {{"チャージ減速率", 0.25f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}),
+              0u);
+    const nlohmann::json fields = NS::SerializeClassObjFields(written->Params());
+
+    const std::unique_ptr<PlayerActor> read = NS::CreateActor<PlayerActor>();
+    ASSERT_EQ(NS::ApplyJsonFields(read->Params(), fields), 0u);
+    EXPECT_FLOAT_EQ(read->Params().ChargingSpeedScale(), 0.75f);
+    EXPECT_FLOAT_EQ(read->Params().ChargeFactorFor(0.5f), 2.0f);
 }
 
-// 消した欄の鍵が同梱の種類の既定値と場面に残ると、読むたびに知らない鍵として捨てられる
+// 消した欄の鍵が同梱の .actor と場面に残ると、読むたびに知らない鍵として捨てられる
 TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 {
     const std::vector<std::string_view> removed{"突進位置係数カーブ", "中心近くの境目"};
-    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
-    ASSERT_NE(archetype, nullptr);
-    const nlohmann::json* archetypeFields = NS::ClassObjFields(*archetype, "Params");
-    ASSERT_NE(archetypeFields, nullptr);
+    const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PlayerActor");
+    ASSERT_NE(actorFile, nullptr);
+    const nlohmann::json* actorFileFields = NS::ClassObjFields(*actorFile, "Params");
+    ASSERT_NE(actorFileFields, nullptr);
     for (const std::string_view key : removed)
     {
-        EXPECT_FALSE(NS::HasField(*archetypeFields, key)) << key;
+        EXPECT_FALSE(NS::HasField(*actorFileFields, key)) << key;
     }
 
     for (const std::string_view sceneName : {"new_scene.scene"})
@@ -142,7 +140,7 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
         for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
             const nlohmann::json* fields = NS::ClassObjFields(entry, "Params");
-            if (NS::ObjectJsonClass(entry) != "PlayerActor" || fields == nullptr)
+            if (NS::ObjectJsonActorFile(entry) != "PlayerActor" || fields == nullptr)
             {
                 continue;
             }
@@ -154,18 +152,18 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
     }
 }
 
-// クラスに無い部品の鍵が同梱の種類の既定値と場面に残ると、読むたびに読み飛ばしの警告が出る
+// クラスに無い部品の鍵が同梱の .actor と場面に残ると、読むたびに読み飛ばしの警告が出る
 TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     const nlohmann::json prototype = NS::Editor::MakePrototypeJson(*playerOwned);
-    const nlohmann::json* archetype = NS::ArchetypeLibrary::Get().Find("PlayerActor");
-    ASSERT_NE(archetype, nullptr);
-    for (nlohmann::json::const_iterator it = NS::ObjectJsonClassObjs(*archetype).begin();
-         it != NS::ObjectJsonClassObjs(*archetype).end();
+    const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PlayerActor");
+    ASSERT_NE(actorFile, nullptr);
+    for (nlohmann::json::const_iterator it = NS::ObjectJsonClassObjs(*actorFile).begin();
+         it != NS::ObjectJsonClassObjs(*actorFile).end();
          ++it)
     {
-        EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << "PlayerActor.json " << it.key();
+        EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << "PlayerActor.actor " << it.key();
     }
 
     for (const std::string_view sceneName : {"new_scene.scene"})
@@ -178,7 +176,7 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
         ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
         for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
         {
-            if (NS::ObjectJsonClass(entry) != "PlayerActor")
+            if (NS::ObjectJsonActorFile(entry) != "PlayerActor")
             {
                 continue;
             }

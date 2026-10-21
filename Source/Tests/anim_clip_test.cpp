@@ -33,6 +33,15 @@ TEST(AnimClip, LoadsTheNamedClipOrTheFirstOneInTheFile)
     EXPECT_EQ(first->Clip()->tracks.size(), named->Clip()->tracks.size());
 }
 
+// ほかの素材と同じく、区切り文字と . の表記だけ違う名前は 1 つの姿を返す
+TEST(AnimClip, NamesThatDifferOnlyInSeparatorsShareOneClip)
+{
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const NS::AnimClip* slashed = assets.LoadAnimClip("Assets/Models/Xbot.glb#run");
+    EXPECT_EQ(slashed, assets.LoadAnimClip("Assets\\Models\\Xbot.glb#run"));
+    EXPECT_EQ(slashed, assets.LoadAnimClip("Assets/./Models/Xbot.glb#run"));
+}
+
 // 欄が保存し直す時に字面を失わないよう、どの名前でも字面を持つ。名前は順に、選んでいない・無い動き・読めないファイル・ContentRoot の外
 TEST(AnimClip, UnreadableNamesGiveAnEmptyClipWithTheName)
 {

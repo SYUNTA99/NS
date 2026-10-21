@@ -256,7 +256,7 @@ namespace NS
 
     void HitSensor::Register()
     {
-        if (m_registered || m_owner == nullptr)
+        if (m_owner == nullptr)
         {
             return;
         }
@@ -266,12 +266,11 @@ namespace NS
             return;
         }
         scene->HitSensors().Register(this);
-        m_registered = true;
     }
 
     void HitSensor::Unregister()
     {
-        if (!m_registered || m_owner == nullptr)
+        if (m_owner == nullptr)
         {
             return;
         }
@@ -281,7 +280,34 @@ namespace NS
             return;
         }
         scene->HitSensors().Unregister(this);
-        m_registered = false;
+    }
+
+    HitSensorRef MakeHitSensorRef(const HitSensor& sensor) noexcept
+    {
+        const SceneActor* host = sensor.Host();
+        if (host == nullptr)
+        {
+            return HitSensorRef{};
+        }
+        return HitSensorRef{.actor = ActorRef{host->Id()}, .attack = host->AttackSensorClassObj() == &sensor};
+    }
+
+    HitSensor* FindHitSensor(Scene* scene, const HitSensorRef& ref) noexcept
+    {
+        if (scene == nullptr)
+        {
+            return nullptr;
+        }
+        SceneActor* host = scene->Objects().FindObject(ref.actor);
+        if (host == nullptr)
+        {
+            return nullptr;
+        }
+        if (ref.attack)
+        {
+            return host->AttackSensorClassObj();
+        }
+        return host->BodySensorClassObj();
     }
 
     void ShapeHitSensor::SetSphere(float radius) noexcept

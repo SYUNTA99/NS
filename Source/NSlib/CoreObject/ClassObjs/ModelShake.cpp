@@ -15,6 +15,31 @@ namespace NS
         return axis * BodyShakeOffset(frame, length, amplitude, seed, firstSign, flipFrames);
     }
 
+    namespace
+    {
+        // 点の無い曲線は元の形の 1。0 を返すと描く形が消える
+        [[nodiscard]] float ShapeFactor(const Curve& curve, float frame) noexcept
+        {
+            if (curve.count == 0)
+            {
+                return 1.0f;
+            }
+            return curve.Evaluate(frame);
+        }
+    } // namespace
+
+    Vector3 DrawShapeDesc::ScaleAt(int frame) const noexcept
+    {
+        const float x = static_cast<float>(frame);
+        const float alongFactor = ShapeFactor(along, x);
+        const float sideFactor = ShapeFactor(side, x);
+        const float dx2 = alongDirection.x * alongDirection.x;
+        const float dz2 = alongDirection.z * alongDirection.z;
+        return Vector3{1.0f + (alongFactor - 1.0f) * dx2 + (sideFactor - 1.0f) * dz2,
+                       ShapeFactor(height, x),
+                       1.0f + (alongFactor - 1.0f) * dz2 + (sideFactor - 1.0f) * dx2};
+    }
+
     float BodyShakeReach(int frame, int length, float amplitude) noexcept
     {
         if (length <= 0 || frame < 1 || frame >= length)

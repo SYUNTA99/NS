@@ -25,6 +25,8 @@ namespace NS
         [[nodiscard]] bool IsModelAssetPath(std::string_view path);
         //! WICで表示する画像の拡張子か
         [[nodiscard]] bool IsTextureAssetPath(std::string_view path);
+        //! .actor
+        [[nodiscard]] bool IsActorFileAssetPath(std::string_view path);
 
         //! contentRoot 配下の Assets と組み込みから候補を集める。保存用の道筋は contentRoot 相対
         //! アニメーションはファイル内の動きごと、エフェクトは Effects 相対の拡張子なしの名前を返す

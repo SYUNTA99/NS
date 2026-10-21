@@ -22,7 +22,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/Filesystem.h"
 #include "NSlib/Windows/StringUtils.h"
-#include "Tests/TestArchetypeDirectory.h"
+#include "Tests/TestActorFile.h"
 #include "Tests/TestCheckLayer.h"
 
 #include <gtest/gtest.h>
@@ -107,8 +107,8 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         ASSERT_NE(editor.SelectedObjectId(), NS::k_NoObjectId);
         NS::OS::Keyboard& keyboard = app.Input().Keyboard();
@@ -139,8 +139,8 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedObjectId();
         const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
@@ -169,8 +169,8 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedObjectId();
 
@@ -207,8 +207,8 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
         LevelEditorController editor(&scene);
         NS::Editor::ObjectSnapshotApplier applier(&scene);
         editor.Editor().SetApplier(&applier);
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedObjectId();
         editor.Editor().Undo().Clear();
@@ -246,7 +246,7 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
             }
         });
         ASSERT_NE(modelRow, nullptr);
-        editor.MirrorPlayEditToBaseline(*actor, *modelRow, "基本色");
+        editor.NoteFieldEdit(*actor, *modelRow, "基本色");
         const nlohmann::json colorEdited = colorOf();
         ASSERT_NE(colorEdited, colorBefore);
         editor.EnterEdit();
@@ -309,8 +309,8 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup({});
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("追従カメラ");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("FollowCameraActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
@@ -355,8 +355,8 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup({});
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 otherId = editor.SelectedObjectId();
         editor.PlaceItem(*item);
@@ -409,8 +409,8 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup({});
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedObjectId();
         const NS::Vector3 placed = scene.Objects().FindByObjectId(actorId)->Root().Position();
@@ -514,8 +514,8 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
 
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
-    ASSERT_NE(item, nullptr);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 first = editor.SelectedObjectId();
     editor.PlaceItem(*item);
@@ -600,8 +600,8 @@ TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
 
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
-    ASSERT_NE(item, nullptr);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 id = editor.SelectedObjectId();
     const std::string before = NS::Editor::ObjectDisplayName(*scene.Objects().FindByObjectId(id));
@@ -620,13 +620,12 @@ TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
     ImGui::DestroyContext(gui);
 }
 
-// 一時物を間に挟んでも、参照先の候補は置いた物の並びのまま、その並びの番号で並ぶ
+// 参照先の候補は置いた物の並びのまま、その並びの番号で並ぶ
 TEST(EditorSelection, ReferenceOptionsFollowThePlacedActors)
 {
     NS::Scene scene;
     (void)scene.SpawnObject<GL::Level::PropActor>("a");
     (void)scene.SpawnObject<GL::Level::PropActor>("b");
-    (void)scene.SpawnTransient<GL::Level::PropActor>();
     (void)scene.SpawnObject<GL::Level::PropActor>("c");
 
     const std::vector<NS::SceneActor*> placed = NS::Editor::PlacedActors(scene.Objects());
@@ -657,7 +656,7 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
     LevelEditorController editor(&scene);
     NS::Editor::ObjectSnapshotApplier applier(&scene);
     editor.Editor().SetApplier(&applier);
-    editor.PlaceItem(*NS::Editor::FindPlacementItem("置物"));
+    editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
     const NS::uint32 id = editor.SelectedObjectId();
     const NS::Vector3 beforePosition = editor.SelectedObjectActor()->Root().Position();
     const NS::Vector3 beforeScale = editor.SelectedObjectActor()->Root().Scale();
@@ -717,8 +716,8 @@ TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
 {
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
-    ASSERT_NE(item, nullptr);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 placed = editor.SelectedObjectId();
     ASSERT_NE(placed, NS::k_NoObjectId);
@@ -758,8 +757,8 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup({});
-        const NS::Editor::PlacementItem* item = NS::Editor::FindPlacementItem("置物");
-        ASSERT_NE(item, nullptr);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedObjectId();
         ASSERT_NE(actorId, NS::k_NoObjectId);
@@ -850,10 +849,10 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup({});
-        const NS::Editor::PlacementItem* prop = NS::Editor::FindPlacementItem("置物");
-        const NS::Editor::PlacementItem* camera = NS::Editor::FindPlacementItem("追従カメラ");
-        ASSERT_NE(prop, nullptr);
-        ASSERT_NE(camera, nullptr);
+        const std::optional<NS::Editor::PlacementItem> prop = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> camera = NS::Editor::FindPlacementItem("FollowCameraActor");
+        ASSERT_TRUE(prop.has_value());
+        ASSERT_TRUE(camera.has_value());
         const NS::Editor::UndoStack& undo = editor.Editor().Undo();
 
         // 置く: 作った物を選ぶ
@@ -925,9 +924,10 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// プレイ中は、シーンか種類の既定を変える道をどれも断る。シーンも履歴も種類の既定のファイルも変わらない
-// 欄を触る道 (プレイ開始の写しへ写す) は断らない
-TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheArchetypes)
+// プレイ中は、シーンを変える道をどれも断る。シーンも履歴も .actor のファイルも変わらない
+// インスペクタで欄を触る道は断らない。配置物へ書く欄はプレイ開始の写しへ写し、印の無い欄は .actor へ書く
+// (.actor へ書く道は ActorFile.PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningToEdit が見張る)
+TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
 {
     NS::ApplicationDesc desc;
     desc.window.title = "プレイ中に断る試し";
@@ -936,7 +936,21 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheArchetypes)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
-        const ScopedArchetypeDirectory archetypes("EditorPlayEdit");
+        // 置く地形の部品の .actor を試しの置き場へ写す。プレイ中の道がどれも .actor のファイルを書かない事を中身で比べる
+        const ScopedActorFileDirectory actorFiles("EditorPlayEdit");
+        const std::optional<std::string> partsText = NS::OS::FileSystem::ReadAllText(
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Actors/MapPartsActor.actor"));
+        ASSERT_TRUE(partsText.has_value());
+        WriteActorFile(actorFiles.Path(), "MapPartsActor", *partsText);
+        NS::ActorFileLibrary::Get().Reload();
+        const auto actorFileTexts = [&actorFiles] {
+            std::vector<std::string> texts;
+            for (const std::string& path : NS::OS::FileSystem::ListFiles(actorFiles.Path(), ".actor"))
+            {
+                texts.push_back(path + "\n" + NS::OS::FileSystem::ReadAllText(path).value_or(""));
+            }
+            return texts;
+        };
         // 開くレベルは Assets の下に限られるので、試しのフォルダを作り、終わったら消す
         const std::string folder =
             "EditorPlayEditTest" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
@@ -951,8 +965,9 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheArchetypes)
         NS::Scene scene;
         LevelEditorController editor(&scene);
         editor.Setup({});
-        const NS::Editor::PlacementItem* cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
-        ASSERT_NE(cube, nullptr);
+        const std::optional<NS::Editor::PlacementItem> cube =
+            NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
+        ASSERT_TRUE(cube.has_value());
         editor.PlaceItem(*cube);
         const NS::uint32 followerId = editor.SelectedObjectId();
         editor.PlaceItem(*cube);
@@ -967,20 +982,8 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheArchetypes)
         editor.SelectObjectById(sourceId);
 
         editor.EnterPlay();
-        // インスペクタの道でメッシュの欄を変えてから上げる。欄を触るのはプレイ中も許す
-        NS::SceneActor* source = scene.Objects().FindByObjectId(sourceId);
-        ASSERT_NE(source, nullptr);
+        ASSERT_NE(scene.Objects().FindByObjectId(sourceId), nullptr);
         ASSERT_NE(scene.Objects().FindByObjectId(followerId), nullptr);
-        source->ModelClassObj()->SetMeshRef("wedge45");
-        source->ReloadAssets();
-        const NS::ClassObjInfo* modelRow = nullptr;
-        NS::ForEachReflectedClassObj(*source, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
-            if (part == source->ModelClassObj())
-            {
-                modelRow = &row;
-            }
-        });
-        ASSERT_NE(modelRow, nullptr);
         const std::string stone =
             NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Materials/stone.mat");
 
@@ -990,12 +993,8 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheArchetypes)
             std::function<void()> edit;
         };
         const std::vector<EditPath> paths{
-            {"種類の既定へ上げる",
-             [&editor, source, modelRow] {
-                 EXPECT_FALSE(editor.PromoteFieldToArchetype(*source, *modelRow, "メッシュ"));
-             }},
             {"マテリアルを付ける", [&editor, &stone] { EXPECT_FALSE(editor.ApplyMaterialToSelected(stone)); }},
-            {"置く", [&editor, cube] { editor.PlaceItem(*cube); }},
+            {"置く", [&editor, &cube] { editor.PlaceItem(*cube); }},
             {"複製", [&editor] { editor.DuplicateSelectedObject(); }},
             {"消す", [&editor] { editor.DeleteSelectedObject(); }},
             {"改名", [&editor, sourceId] { editor.RenameObject(sourceId, "改名した"); }},
@@ -1014,14 +1013,14 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheArchetypes)
             const nlohmann::json sceneBefore = scene.ToJson();
             const std::size_t undoBefore = undo.UndoSize();
             const std::size_t redoBefore = undo.RedoSize();
-            const std::vector<std::string> archetypesBefore = NS::OS::FileSystem::ListFiles(archetypes.Path(), ".json");
+            const std::vector<std::string> actorFilesBefore = actorFileTexts();
 
             path.edit();
 
             EXPECT_EQ(scene.ToJson(), sceneBefore) << path.name;
             EXPECT_EQ(undo.UndoSize(), undoBefore) << path.name;
             EXPECT_EQ(undo.RedoSize(), redoBefore) << path.name;
-            EXPECT_EQ(NS::OS::FileSystem::ListFiles(archetypes.Path(), ".json"), archetypesBefore) << path.name;
+            EXPECT_EQ(actorFileTexts(), actorFilesBefore) << path.name;
         }
         editor.EnterEdit();
 

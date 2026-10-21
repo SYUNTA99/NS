@@ -1,9 +1,7 @@
 #include "Game/Player/ImpactEffects.h"
 #include "NSlib/Core/Types.h"
 
-#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Assert.h"
@@ -96,19 +94,23 @@ namespace GL
                                    const PlayerMotion& motion,
                                    const NS::Body* body,
                                    const NS::Collider* collider,
-                                   const GL::Level::ImpactAnswer& impact)
+                                   const GL::Level::ImpactRecord& impact)
         {
             NS_ASSERT(Game, body != nullptr && collider != nullptr, "体か当たりの部品が渡されていない");
-            // 頼みは同じフレームの決定の段で裁定が答えに書き、次のフレームの裁定が空にする
-            if (impact.hitEffect)
+            // TODO: 項目の「止めの間も止める」は絵の進みに効かない。欄を真にした束を作る時に、絵を止めの間止める
+            if (m_hitRequested)
             {
-                BeginHit(impact.lastImpact, slam, collider);
+                m_hitRequested = false;
+                BeginHit(impact, slam, collider);
             }
-            // 同じフレームに置かれた 2 つの頼みは、当たりの絵の後に飛びの絵を出す
-            if (m_plan.active && impact.flightEffect)
+            if (m_flightRequested)
             {
-                m_plan.releaseStep = NS::GetEffectStep(m_owner);
-                BeginFlight(motion, body, impact.lastImpact);
+                m_flightRequested = false;
+                if (m_plan.active)
+                {
+                    m_plan.releaseStep = NS::GetEffectStep(m_owner);
+                    BeginFlight(motion, body, impact);
+                }
             }
             AdvanceHit(collider);
             AdvanceFlight(motion, body);
@@ -204,7 +206,10 @@ namespace GL
             return shape;
         }
 
-        Vector3 ImpactEffects::MissSparkHeading(float u, float v, const Vector3& slamDirection) const noexcept
+        Vector3 ImpactEffects::MissSparkHeading(float u,
+                                                float v,
+                                                const Vector3& surfaceNormal,
+                                                const Vector3& slamDirection) const noexcept
         {
             Vector3 forward{};
             if (!NS::TryNormalizeHorizontal(slamDirection, forward))
@@ -217,8 +222,7 @@ namespace GL
             {
                 return Vector3{};
             }
-            const Vector3 normal = GL::Level::MissSurfaceNormal(u, v, 2.0f, forward);
-            const Vector3 slide = NormalizedOr(forward - normal * NS::Dot(forward, normal), side);
+            const Vector3 slide = NormalizedOr(forward - surfaceNormal * NS::Dot(forward, surfaceNormal), side);
             const float sideShare = std::clamp(m_missSparkSideShare, 0.0f, 1.0f);
             return NormalizedOr(side * sideShare + slide * (1.0f - sideShare), side);
         }
@@ -306,7 +310,7 @@ namespace GL
                                           plan.sideDir);
             // 外れは、どこで、どっちへ力がそれたかを読ませる。面の上の位置から外した側を取り、段と逸れ方と向きを揃える
             // 位置の無い当たり (面で判定できない体) は前の擦れの向きのまま
-            const Vector3 missHeading = MissSparkHeading(impact.faceU, impact.faceV, slam.Direction());
+            const Vector3 missHeading = MissSparkHeading(impact.faceU, impact.faceV, impact.faceNormal, slam.Direction());
             if (missHeading.Length() > 0.5f)
             {
                 plan.scrapeDir = missHeading;
@@ -619,7 +623,7 @@ namespace GL
             if (m_flight.reboundTrail != 0 && step != m_flight.reboundStartStep)
             {
                 // 頂点の前に反動を抜けた時 (縁を掴んだ時など) は、そこで輪ごと消す
-                if (!motion.rebounding || PlayerJudgeLand::Judge(body->IsGrounded(), body->VerticalVelocity()))
+                if (!motion.rebounding || motion.reboundLanded)
                 {
                     NS::StopEffect(m_owner, m_flight.reboundTrail);
                     m_flight.reboundTrail = 0;
@@ -649,10 +653,9 @@ namespace GL
             {
                 m_landingDustPlayed = false;
             }
-            else if (!m_landingDustPlayed && PlayerJudgeLand::Judge(body->IsGrounded(), body->VerticalVelocity()))
+            else if (!m_landingDustPlayed && motion.reboundLanded)
             {
-                // 着地の潰れ (PlayerAppearance) と同じ条件。このフレームの縦の速さは既に 0
-                // なので、前のフレームの控えで測る
+                // このフレームの縦の速さは既に 0 なので、前のフレームの控えで測る
                 m_landingDustPlayed = true;
                 const float radius = LandDustRadiusFor(-m_lastVerticalVelocity);
                 // 足元は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径))

@@ -239,8 +239,8 @@ namespace NS
         std::vector<ViewPasses> m_viewPasses;
 
         std::string m_effectRoot;                       // .efkefc を探すディレクトリ。空なら既定の Assets/Effects
-        Gfx::GroundWave m_groundWave{};             // 描く床の波。書くのは当たりの裁定役だけ
-        Gfx::DistortionRing m_distortionRing{};     // 描く歪みの輪。書くのは当たりの裁定役だけ
+        Gfx::GroundWave m_groundWave{};             // 描く床の波。書くのは HitScreenDirector だけ
+        Gfx::DistortionRing m_distortionRing{};     // 描く歪みの輪。書くのは HitScreenDirector だけ
         std::vector<IRenderable*> m_bodyMask;           // 体の型に写す描く物、非所有
         std::vector<Gfx::DrawItem> m_bodyMaskItems; // 体の型に描く物。描くたびに組み直す
     };

@@ -18,7 +18,7 @@ namespace
     {
         nlohmann::json doc = NS::MakeSceneJson();
         nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonClass(rock, "PropActor");
+        NS::SetObjectJsonActorFile(rock, "PropActor");
         NS::SetObjectJsonId(rock, 1);
         NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
         NS::SceneJsonObjects(doc).push_back(std::move(rock));
@@ -129,22 +129,6 @@ TEST(MapObjMotion, UnobstructedFlightKeepsAnalyticArc)
     }
 }
 
-TEST(MapObjMotion, SceneGravityRotatesTheFlightPlane)
-{
-    NS::Scene scene;
-    GL::Level::PropActor* rock = PlaceMovingRock(scene);
-    ASSERT_NE(rock, nullptr);
-    scene.SetGravityDirection(NS::Vector3{0.0f, 0.0f, 1.0f});
-    ReleaseRock(*rock);
-    for (int step = 0; step < 10; ++step)
-    {
-        rock->UpdateMotion();
-    }
-    EXPECT_GT(rock->Root().Position().x, 1.0f);
-    EXPECT_LT(rock->Root().Position().z, -0.5f);
-    EXPECT_FLOAT_EQ(rock->Root().Position().y, 0.5f);
-}
-
 TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
 {
     NS::Scene scene;
@@ -164,24 +148,25 @@ TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
     EXPECT_FLOAT_EQ(rock->Velocity().Length(), 0.0f);
 }
 
-TEST(MapObjMotion, ZeroLengthFreezeStillWaitsForReleaseGrace)
+// やり直しの知らせはコースの段で届き、次の歩の自機の段は置物の段より前に回る。
+// 置き直した当たりは、置物の次の更新を待たずに知らせを受けたその場で戻った位置にある
+TEST(MapObjMotion, RestartMovesTheCollisionBeforeTheNextUpdate)
 {
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    GL::Level::TackleFreezeDesc freeze;
-    freeze.pushInDistance = 0.1f;
-    freeze.squashThickness = 0.8f;
-    ASSERT_TRUE(GL::Level::SendMsgTackleFreeze(*rock, freeze));
-    for (int step = 0; step < 3; ++step)
+    ASSERT_TRUE(GL::Level::SendMsgCourseStart(*rock));
+    ReleaseRock(*rock);
+    for (int step = 0; step < 10; ++step)
     {
         rock->UpdateMotion();
     }
-    EXPECT_TRUE(rock->IsFrozen());
-    rock->UpdateMotion();
-    EXPECT_FALSE(rock->IsFrozen());
-    EXPECT_FLOAT_EQ(rock->Root().Position().x, 0.0f);
-    EXPECT_FLOAT_EQ(rock->ModelClassObj()->GetDrawScale().x, 1.0f);
+    const NS::Vector3 aboveHome{0.0f, 2.5f, 0.0f};
+    float distance = 0.0f;
+    ASSERT_FALSE(scene.Physics().Raycast(aboveHome, NS::Vector3{0.0f, -1.0f, 0.0f}, 3.0f, distance));
+    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(*rock));
+    ASSERT_TRUE(scene.Physics().Raycast(aboveHome, NS::Vector3{0.0f, -1.0f, 0.0f}, 3.0f, distance));
+    EXPECT_NEAR(distance, 1.5f, 0.001f);
 }
 
 TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
@@ -211,24 +196,6 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
         }
     }
     EXPECT_EQ(dustCount, 1);
-}
-
-TEST(MapObjMotion, FreezeWithoutSquashLeavesTheDrawScale)
-{
-    NS::Scene scene;
-    GL::Level::PropActor* rock = PlaceMovingRock(scene);
-    ASSERT_NE(rock, nullptr);
-    GL::Level::TackleFreezeDesc freeze;
-    freeze.squash = false;
-    freeze.squashThickness = 0.8f;
-    freeze.squashHeight = 0.7f;
-    ASSERT_TRUE(GL::Level::SendMsgTackleFreeze(*rock, freeze));
-    EXPECT_TRUE(rock->ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
-    for (int step = 0; step < 4; ++step)
-    {
-        rock->UpdateMotion();
-    }
-    EXPECT_TRUE(rock->ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
 }
 
 TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)

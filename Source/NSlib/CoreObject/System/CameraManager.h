@@ -55,13 +55,23 @@ namespace NS
         [[nodiscard]] const CameraPose& LastPose() const noexcept { return m_lastPose; }
 
         //! @brief モディファイアを積む
-        //! @details 同じ Kind があれば置き換える。参照先がなければ何もしない
+        //! @details 同じ Kind と同じ頼んだ物 (CameraModifier::Requester) があれば置き換える。参照先がなければ何もしない
         //! 積んだ後に初めて来る OnTick ではフレームを進めない。積んだフレームに最初の姿を描く
         //! @return 積んだ場合 true、参照先がなく処理しなかった場合は false
         bool AddModifier(std::unique_ptr<CameraModifier> modifier);
 
-        //! 種類の印が kind のモディファイアを外す
+        //! 種類の印が kind のモディファイアを、頼んだ物を問わず外す
         void RemoveModifiers(const void* kind) noexcept;
+
+        //! requester が頼んだ、種類の印が kind のモディファイアを外す。ほかの物が頼んだ物は残す
+        void RemoveModifiersOf(const IUseCamera* requester, const void* kind) noexcept;
+
+        //! requester が頼んだモディファイアを全て外す。ほかの物が頼んだ物は残す
+        void RemoveModifiersOf(const IUseCamera* requester) noexcept;
+
+        //! @brief requester が頼んだ沈む揺れを跳ね返す。requester の沈みが無ければ何もしない
+        //! @details 跳ね返りは次に進めたフレームから始まる
+        void ReleaseSink(const IUseCamera* requester) noexcept;
 
         //! 積んだモディファイアを全て外す。プレイを終えた後の視点に効果が残らないようにする
         void ClearModifiers() noexcept;
@@ -82,8 +92,9 @@ namespace NS
         //! @brief 画面揺れを始める。揺れの途中なら新しい設定の最初の振れから始め直す
         //! @details 揺れのモディファイアを作って積む補助。最初の横の振れは、始めた時のカメラの右と
         //! firstSideDirection の内積が負なら左、それ以外は右へ向く
+        //! @param[in] requester 頼んだ物。nullptr は頼んだ物を問わない揺れ
         //! @return 揺れを始めた場合 true、壊れた設定で何も変えなかった場合は false
-        bool StartShake(const CameraShakeDesc& desc);
+        bool StartShake(const CameraShakeDesc& desc, const IUseCamera* requester = nullptr);
 
         //! 今のフレームの揺れのずれ。x がカメラの右、y が上 (m)。揺れていない時は 0
         [[nodiscard]] Vector2 ShakeOffset() const noexcept;
@@ -91,16 +102,18 @@ namespace NS
         //! @brief 寄りと傾きを始める。戻しの途中なら新しい倍率と傾きから始め直す
         //! @details 寄りと傾きのモディファイアを作って積む補助。傾きの向きは、始めた時のカメラの右と
         //! rollDirection の内積が負なら上端を左へ、それ以外は右へ倒す
+        //! @param[in] requester 頼んだ物。nullptr は頼んだ物を問わない寄り
         //! @return 始めた場合 true、壊れた設定で何も変えなかった場合は false
-        bool StartZoomRoll(const CameraZoomRollDesc& desc);
+        bool StartZoomRoll(const CameraZoomRollDesc& desc, const IUseCamera* requester = nullptr);
 
         //! 今のフレームの寄りと傾き。始めていない時と戻し終えた後は倍率 1・傾き 0
         [[nodiscard]] CameraZoomRoll ZoomRoll() const noexcept;
 
         //! @brief トラウマを足す。トラウマの揺れが積まれていなければ積む
-        //! @details 揺れの途中なら今のトラウマに足す (上限 1)。続けて当てた時に揺れが重なる
+        //! @details 揺れの途中なら今のトラウマに足す (上限 1)。続けて当てた時に揺れが重なる。
+        //! トラウマの揺れは頼んだ物を問わず 1 つで、最後に足した requester を頼んだ物にする
         //! @return 足した場合 true、量か形が壊れていて何も変えなかった場合は false
-        bool AddTrauma(const CameraTraumaDesc& desc);
+        bool AddTrauma(const CameraTraumaDesc& desc, const IUseCamera* requester = nullptr);
 
         //! @brief このフレームのトラウマを少なくとも level に保つ。トラウマの揺れが積まれていなければ積む
         //! @details 溜めのように続く揺れが毎フレーム呼ぶ。呼ばなかったフレームから減り始める

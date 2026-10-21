@@ -78,12 +78,11 @@ namespace GL
         std::vector<NS::SceneActor*> CourseDirector::PlacedActors(const NS::SceneActor* skip) const
         {
             // 送る先は控えた並びで回す。受け手が戻る間に配置物の並びが変わっても崩れない
-            // 一時オブジェクト (跡) は開始の時の姿を持たないので送らない
             std::vector<NS::SceneActor*> receivers;
             receivers.reserve(m_scene.Objects().ObjectCount());
             for (NS::SceneActor* actor : m_scene.Objects())
             {
-                if (!actor->IsTransient() && actor != skip)
+                if (actor != skip)
                 {
                     receivers.push_back(actor);
                 }

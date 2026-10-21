@@ -87,7 +87,7 @@ void Editor::OnAttach()
 void Editor::OnDetach()
 {
     m_dock.ExitMaximize();
-    m_hitTimeline.ResetPreview();
+    m_actionTimeline.ResetPreview();
     // overlay は逆順で OnDetach されるので、scene を破棄する Game::OnDetach より先にここが走る
     if (m_controller)
     {
@@ -147,11 +147,11 @@ void Editor::OnRender()
     editor.Render();
 
     // 終了確認は UI 非表示やプレイ中でも必ず出すため m_uiVisible のゲート外で描く
-    m_quitModal.Render(editor, m_hitTimeline);
+    m_quitModal.Render(editor, m_actionTimeline);
 
     const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
 
-    m_hitTimeline.Tick(editor, ImGui::GetIO().DeltaTime);
+    m_actionTimeline.Tick(editor, ImGui::GetIO().DeltaTime);
 
     // プレイ中は F5 でエディタ UI を丸ごと隠せる。隠している間も 3D 描画とゲーム進行はそのまま走る
     if (m_uiVisible)
@@ -177,7 +177,7 @@ void Editor::OnRender()
 
             m_actorList.Render(editor);
             m_inspector.Render(editor);
-            m_hitTimeline.Render(editor);
+            m_actionTimeline.Render(editor);
 
             // Assets はプレイ中も出し続け Console と同じタブに重ねる
             m_assets.Render(editor);
@@ -229,7 +229,7 @@ void Editor::OnRender()
     // 貼っている描画先を今の再生位置へ描き直す。リサイズは画像の実描画後
     if (m_uiVisible)
     {
-        preview = m_hitTimeline.Preview(editor);
+        preview = m_actionTimeline.Preview(editor);
         if (preview != nullptr)
         {
             (void)m_gameView.RenderPreview(*preview);
@@ -587,9 +587,9 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
         m_toolMode.Render(editor);
         ImGui::EndDisabled();
     }
-    else if (name == NS::Editor::k_PanelHitTimeline)
+    else if (name == NS::Editor::k_PanelActionTimeline)
     {
-        m_hitTimeline.Render(editor);
+        m_actionTimeline.Render(editor);
     }
     else
     {

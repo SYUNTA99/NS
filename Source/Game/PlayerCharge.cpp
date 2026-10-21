@@ -64,16 +64,6 @@ bool PlayerActor::TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
     return m_charge.TryGetAimLine(outLine);
 }
 
-NS::Vector3 PlayerActor::ChargeAimDirection() const noexcept
-{
-    GL::Level::AimLine line{};
-    if (m_charge.TryGetAimLine(line))
-    {
-        return line.direction;
-    }
-    return AimDirection();
-}
-
 bool PlayerActor::TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
 {
     return m_charge.TryGetAimTarget(outTarget);
@@ -145,7 +135,6 @@ void PlayerActor::AdvanceCharge(float dt)
     {
         SetCurled(true);
     }
-    m_bodySlamHeld = judge.IsHeld();
 
     // 控えた線は放す前のフレームに矢印を貼った線で、放したフレームはまだ引き直していない。溜めて放した突進は
     // スティックを見ずにその向きへ出す。通常突進は矢印が出ないので入力の向きへ出す
@@ -186,7 +175,8 @@ void PlayerActor::AdvanceCharge(float dt)
     }
     SetMaxSpeedScale(scale);
 
-    if (judge.JustStartedCharging())
+    // 突進の間の水平は突進の側だけが書く。ここで 0 にすると通常突進が次の移動で進めずに打ち切られる
+    if (judge.JustStartedCharging() && !IsBodySlamming())
     {
         // 縦は残す。空中で溜めたフレームに 0 を書くと落下が一瞬止まって引っかかる
         const NS::Vector3 velocity = m_body->Velocity();
@@ -283,16 +273,7 @@ void PlayerActor::CancelCharge() noexcept
     // 判定のしきい値の歩数は AdvanceCharge が毎回入れ直すので失われない
     m_charge = GL::Player::ChargeStatus{};
     m_chargeObserved = ChargeObservation{};
-    // 押しの印が真の間、自機は着地しても丸まりを解かない。印を書くのは押しを裁いた歩だけなので、ここで偽へ戻す
-    m_bodySlamHeld = false;
     SetMaxSpeedScale(1.0f);
-}
-
-void PlayerActor::EndCharge() noexcept
-{
-    CancelCharge();
-    // 外れた後は着地で丸まりを解く歩が来ないので、ここで解く。ResetState は速度と状態機械まで戻すので呼ばない
-    SetCurled(false);
 }
 
 #if !defined(NS_SHIPPING)
