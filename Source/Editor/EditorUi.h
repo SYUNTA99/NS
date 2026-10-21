@@ -23,6 +23,18 @@ namespace NS
         // 欄の名前列が占める幅の割合。残りが値列
         inline constexpr float k_FieldNameColumnRatio = 0.42f;
 
+        // 欄の行の地の色の上下の端から、欄の中身までの余白 (ピクセル)
+        inline constexpr float k_FieldRowPaddingY = 4.5f;
+        // 欄の行の上端に残す、塗らない隙間 (ピクセル)。続けて塗った行が 1 枚の帯に見えないようにする
+        // 中身は全部の行でこの分だけ下げ、地の色の上下の余白を揃えて文字を地の色の真ん中に置く
+        inline constexpr float k_FieldRowGap = 5.0f;
+
+        // 今の列の中身を、行の上端の隙間の分だけ下げる
+        inline void SkipFieldRowGap() noexcept
+        {
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + k_FieldRowGap);
+        }
+
         inline bool BeginFieldTable(const char* id, float minimumValueWidth = 0.0f) noexcept
         {
             int columns = 2;
@@ -30,7 +42,13 @@ namespace NS
             {
                 columns = 1;
             }
-            if (!ImGui::BeginTable(id, columns, ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
+            // 表は始めた時の余白を覚えるので、BeginTable の間だけ変える
+            ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
+                                ImVec2{ImGui::GetStyle().CellPadding.x, k_FieldRowPaddingY});
+            const bool begun =
+                ImGui::BeginTable(id, columns, ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp);
+            ImGui::PopStyleVar();
+            if (!begun)
             {
                 return false;
             }
@@ -60,8 +78,23 @@ namespace NS
             return ImGui::CalcTextSize("上書き").x + ImGui::GetStyle().FramePadding.x * 2.0f;
         }
 
+        // 今の表の今の列の、行の上端の k_FieldRowGap をパネルの地の色で塗り直す
+        // 行の地は表が行の終わりに中身の下へ描くので、中身と同じ層に描けば地の上に重なる
+        inline void DrawFieldRowGap() noexcept
+        {
+            const ImGuiTable* table = ImGui::GetCurrentTable();
+            if (table == nullptr)
+            {
+                return;
+            }
+            const ImRect cell = ImGui::TableGetCellBgRect(table, table->CurrentColumn);
+            ImGui::GetWindowDrawList()->AddRectFilled(ImVec2{cell.Min.x, table->RowPosY1},
+                                                      ImVec2{cell.Max.x, table->RowPosY1 + k_FieldRowGap},
+                                                      ImGui::GetColorU32(ImGuiCol_WindowBg));
+        }
+
         // overridden の行は名前に色を付け、この 1 体の値が .actor と違うと分かるようにする
-        // background が 0 でなければ行の地をその色で塗る
+        // background が 0 でなければ行の地をその色で塗り、上端に隙間を残す
         inline void FieldRow(const char* label, bool overridden = false, ImU32 background = 0) noexcept
         {
             ImGui::TableNextRow();
@@ -70,6 +103,11 @@ namespace NS
                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, background);
             }
             ImGui::TableSetColumnIndex(0);
+            if (background != 0)
+            {
+                DrawFieldRowGap();
+            }
+            SkipFieldRowGap();
             ImGui::AlignTextToFramePadding();
             const bool stacked = ImGui::TableGetColumnCount() == 1;
             if (stacked)
@@ -91,6 +129,11 @@ namespace NS
             else
             {
                 ImGui::TableSetColumnIndex(1);
+                if (background != 0)
+                {
+                    DrawFieldRowGap();
+                }
+                SkipFieldRowGap();
             }
             ImGui::SetNextItemWidth(-(RevertButtonWidth() + ImGui::GetStyle().ItemSpacing.x));
         }

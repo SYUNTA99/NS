@@ -100,16 +100,21 @@ namespace NS
                 ImGui::Image(handle, display);
             }
 
-            // 名前 label の 0 以上のフレーム数の欄。直し終えたフレームに true
+            // 名前 label の 0 以上のフレーム数の欄を、欄の表の 1 行で描く。直し終えたフレームに true
+            // 表で描くのは、同じまとまりの反射の欄と名前の列と値の幅を揃えるため
             bool DrawFrameCount(const char* label, const char* id, int& frames, bool& changed)
             {
-                ImGui::AlignTextToFramePadding();
-                ImGui::TextUnformatted(label);
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(-1.0f);
-                changed |= ImGui::DragInt(id, &frames, 0.2f, 0, std::numeric_limits<int>::max(), "%d",
+                if (!BeginFieldTable(id))
+                {
+                    return false;
+                }
+                FieldRow(label);
+                changed |= ImGui::DragInt("##frames", &frames, 0.2f, 0, std::numeric_limits<int>::max(), "%d",
                                           ImGuiSliderFlags_AlwaysClamp);
-                return ImGui::IsItemDeactivatedAfterEdit();
+                const bool committed = ImGui::IsItemDeactivatedAfterEdit();
+                (void)OverrideButton(false);
+                EndFieldTable();
+                return committed;
             }
         } // namespace
 
@@ -380,28 +385,39 @@ namespace NS
                     {
                         HitReactionEntry& entry = set.entries[e];
                         ImGui::PushID(e);
-                        ImGui::SeparatorText(std::string{HitReactionItemLabel(entry.item)}.c_str());
-                        committed |= DrawFrameCount("長さ", "##length", entry.length, m_hitSetsEditing);
-                        if (const ReflectionInfo* info = HitReactionItemReflection(entry.item))
+                        // 項目は畳める見出しにし、閉じていても長さが読めるようにする
+                        const std::string label{HitReactionItemLabel(entry.item)};
+                        if (ImGui::TreeNodeEx("##entry",
+                                              ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_NoTreePushOnOpen,
+                                              "%s (%d フレーム)",
+                                              label.c_str(),
+                                              entry.length))
                         {
-                            const ValueEditResult fields = DrawReflectedValue(HitReactionItemFields(entry.item), *info);
-                            m_hitSetsEditing |= fields.changed;
-                            committed |= fields.committed;
-                        }
-                        // 値の表は欄の表に載らないので、名前ごとに数の欄を出す。名前の足し引きはしない
-                        if (HitOwnerItem* owner = std::get_if<HitOwnerItem>(&entry.item))
-                        {
-                            for (std::pair<const std::string, float>& value : owner->values)
+                            ImGui::Indent();
+                            committed |= DrawFrameCount("長さ", "##length", entry.length, m_hitSetsEditing);
+                            if (const ReflectionInfo* info = HitReactionItemReflection(entry.item))
                             {
-                                ImGui::PushID(value.first.c_str());
-                                ImGui::AlignTextToFramePadding();
-                                ImGui::TextUnformatted(value.first.c_str());
-                                ImGui::SameLine();
-                                ImGui::SetNextItemWidth(-1.0f);
-                                m_hitSetsEditing |= ImGui::DragFloat("##ownerValue", &value.second, 0.01f);
-                                committed |= ImGui::IsItemDeactivatedAfterEdit();
-                                ImGui::PopID();
+                                const ValueEditResult fields =
+                                    DrawReflectedValue(HitReactionItemFields(entry.item), *info);
+                                m_hitSetsEditing |= fields.changed;
+                                committed |= fields.committed;
                             }
+                            // 値の表は欄の表に載らないので、名前ごとに数の欄を出す。名前の足し引きはしない
+                            HitOwnerItem* owner = std::get_if<HitOwnerItem>(&entry.item);
+                            if (owner != nullptr && !owner->values.empty() && BeginFieldTable("##ownerValues"))
+                            {
+                                for (std::pair<const std::string, float>& value : owner->values)
+                                {
+                                    ImGui::PushID(value.first.c_str());
+                                    FieldRow(value.first.c_str());
+                                    m_hitSetsEditing |= ImGui::DragFloat("##ownerValue", &value.second, 0.01f);
+                                    committed |= ImGui::IsItemDeactivatedAfterEdit();
+                                    (void)OverrideButton(false);
+                                    ImGui::PopID();
+                                }
+                                EndFieldTable();
+                            }
+                            ImGui::Unindent();
                         }
                         ImGui::PopID();
                     }

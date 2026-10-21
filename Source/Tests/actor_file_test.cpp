@@ -558,8 +558,8 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
         {camera, &camera->Vcam(), "追従対象", NS::FieldDestination::Placement},
         {rock, &rock->Root(), NS::k_PositionFieldName, NS::FieldDestination::Placement},
     };
+    // 書く先は 2 つしか無いので、配置物へ書く欄だけを塗り、.actor へ書く欄は塗らない
     NS::Editor::EditorAppearance appearance;
-    ASSERT_NE(appearance.actorFileRowColor, appearance.placementRowColor);
     for (const Case& c : cases)
     {
         SCOPED_TRACE(c.field);
@@ -567,12 +567,16 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
         ASSERT_NE(field, nullptr);
         const NS::FieldDestination destination = NS::FieldDestinationOf(*c.actor, *c.part, *field);
         EXPECT_EQ(destination, c.expected);
-        NS::Color expectedColor = appearance.placementRowColor;
+        const std::optional<NS::Color> color = NS::Editor::FieldRowColor(appearance, *c.actor, *c.part, *field);
         if (destination == NS::FieldDestination::ActorFile)
         {
-            expectedColor = appearance.actorFileRowColor;
+            EXPECT_FALSE(color.has_value());
         }
-        EXPECT_EQ(NS::Editor::FieldRowColor(appearance, *c.actor, *c.part, *field), expectedColor);
+        else
+        {
+            ASSERT_TRUE(color.has_value());
+            EXPECT_EQ(*color, appearance.placementRowColor);
+        }
     }
 }
 

@@ -614,11 +614,6 @@ namespace NS
                     ImGui::PopTextWrapPos();
                     ImGui::EndTooltip();
                 }
-                const std::string location = OS::FileSystem::ParentDirectory(value);
-                if (!location.empty())
-                {
-                    ImGui::TextDisabled("%s", location.c_str());
-                }
                 ImGui::SetNextWindowSize(ImVec2{640.0f, 480.0f}, ImGuiCond_Appearing);
                 if (ImGui::BeginPopup("asset-picker"))
                 {
@@ -1743,8 +1738,10 @@ namespace NS
                 ImU32 background = 0;
                 if (actor != nullptr && appearance != nullptr)
                 {
-                    const Color color = FieldRowColor(*appearance, *actor, comp, field);
-                    background = ImGui::ColorConvertFloat4ToU32(ImVec4{color.x, color.y, color.z, color.w});
+                    if (const std::optional<Color> color = FieldRowColor(*appearance, *actor, comp, field))
+                    {
+                        background = ImGui::ColorConvertFloat4ToU32(ImVec4{color->x, color->y, color->z, color->w});
+                    }
                 }
                 ImGui::PushID(static_cast<int>(i));
                 FieldRow(FieldLabel(field), changed, background);

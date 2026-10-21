@@ -500,6 +500,15 @@ namespace
             return path(ImHashStr("##hitReactions", 0, window->ID));
         }
 
+        // 識別番号 id の木を開いたままにする。束の項目の見出しは最初は閉じている
+        void Open(ImGuiID id)
+        {
+            ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+            ASSERT_NE(window, nullptr);
+            window->StateStorage.SetInt(id, 1);
+            (void)Draw();
+        }
+
         // 欄 id に text を打って確定する。欄が無く打てなかった場合 false
         bool Type(ImGuiID id, const char* text)
         {
@@ -797,7 +806,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     EXPECT_NE(text.find("止めのフレーム数"), std::string::npos) << text;
 
     const ImGuiID stopId =
-        inspector.FieldId([](ImGuiID seed) { return ImHashStr("##stopFrames", 0, HashIndex(0, seed)); });
+        inspector.FieldId([](ImGuiID seed) { return ImHashStr("##frames", 0, ImHashStr("##stopFrames", 0, HashIndex(0, seed))); });
     ASSERT_TRUE(inspector.Type(stopId, "20"));
 
     // 当たりは束を引いて始めるので、引く先の束が直した長さなら次の当たりに効く
@@ -856,8 +865,12 @@ TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
     EXPECT_NE(text.find(setName), std::string::npos) << text;
     EXPECT_NE(text.find("食い込み距離"), std::string::npos) << text;
 
+    // 頭の項目の見出しを開いてから、値の表の欄を打つ
+    inspector.Open(
+        inspector.FieldId([](ImGuiID seed) { return ImHashStr("##entry", 0, HashIndex(0, HashIndex(0, seed))); }));
     const ImGuiID valueId = inspector.FieldId([](ImGuiID seed) {
-        return ImHashStr("##ownerValue", 0, ImHashStr("食い込み距離", 0, HashIndex(0, HashIndex(0, seed))));
+        const ImGuiID table = ImHashStr("##ownerValues", 0, HashIndex(0, HashIndex(0, seed)));
+        return ImHashStr("##ownerValue", 0, ImHashStr("食い込み距離", 0, table));
     });
     ASSERT_TRUE(inspector.Type(valueId, "0.25"));
 
