@@ -330,7 +330,7 @@ namespace NS
     {
         // clang-format off
         if (m_effectKeeper) { m_effectKeeper->BeginStep(); }
-        if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(IsHitStopping()); }
+        if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(); }
         // clang-format on
         ObserveStep();
         DecideStep();

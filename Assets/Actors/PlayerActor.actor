@@ -296,8 +296,7 @@
               "明けの残像の不透明度": 0.44999998807907104,
               "離れのピクセル": 35.0
             },
-            "名前": "TackleGhost",
-            "止めの間も止める": false
+            "名前": "TackleGhost"
           },
           "length": 12,
           "type": "Owner"
@@ -382,8 +381,7 @@
         {
           "fields": {
             "値": {},
-            "名前": "HitEffect",
-            "止めの間も止める": false
+            "名前": "HitEffect"
           },
           "length": 1,
           "type": "Owner"
@@ -483,8 +481,7 @@
         {
           "fields": {
             "値": {},
-            "名前": "FlightEffect",
-            "止めの間も止める": false
+            "名前": "FlightEffect"
           },
           "length": 1,
           "type": "Owner"
@@ -572,8 +569,7 @@
         {
           "fields": {
             "値": {},
-            "名前": "HitEffect",
-            "止めの間も止める": false
+            "名前": "HitEffect"
           },
           "length": 1,
           "type": "Owner"
@@ -839,8 +835,7 @@
         {
           "fields": {
             "値": {},
-            "名前": "FlightEffect",
-            "止めの間も止める": false
+            "名前": "FlightEffect"
           },
           "length": 1,
           "type": "Owner"

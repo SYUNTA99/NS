@@ -97,7 +97,6 @@ namespace GL
                                    const GL::Level::ImpactRecord& impact)
         {
             NS_ASSERT(Game, body != nullptr && collider != nullptr, "体か当たりの部品が渡されていない");
-            // TODO: 項目の「止めの間も止める」は絵の進みに効かない。欄を真にした束を作る時に、絵を止めの間止める
             if (m_hitRequested)
             {
                 m_hitRequested = false;

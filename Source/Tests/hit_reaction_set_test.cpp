@@ -84,7 +84,6 @@ namespace
         speed.returnSeconds = 0.3f;
         NS::HitOwnerItem ghost;
         ghost.name = "Ghost";
-        ghost.stopsDuringHitStop = true;
         ghost.values = {{"離れの画素", 112.5f}, {"明けの残像のフレーム数", 0.0f}};
 
         set.entries = {
@@ -162,7 +161,6 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     const NS::HitOwnerItem* ghost = std::get_if<NS::HitOwnerItem>(&read->entries[15].item);
     ASSERT_NE(ghost, nullptr);
     EXPECT_EQ(ghost->name, "Ghost");
-    EXPECT_TRUE(ghost->stopsDuringHitStop);
     EXPECT_EQ(ghost->values, std::get<NS::HitOwnerItem>(written.entries[15].item).values);
 }
 
@@ -182,7 +180,6 @@ TEST(HitReactionSet, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
     EXPECT_EQ(std::get<NS::HitZoomRollItem>(read->entries[1].item).delayFrames, NS::HitZoomRollItem{}.delayFrames);
     const NS::HitOwnerItem& owner = std::get<NS::HitOwnerItem>(read->entries[2].item);
     EXPECT_EQ(owner.name, "HitEffect");
-    EXPECT_EQ(owner.stopsDuringHitStop, NS::HitOwnerItem{}.stopsDuringHitStop);
     EXPECT_TRUE(owner.values.empty());
     // 知らない欄は束の頭と項目の欄の 2 か所で知らせて飛ばす
     EXPECT_EQ(log.WarningCount(), 2);
@@ -551,36 +548,33 @@ TEST(HitReactionStart, TheStopHoldsStateAndBodyButNotTheDirectors)
     EXPECT_EQ(probes.self->bodySteps, 1);
 }
 
-// 持ち主へ渡す項目は、止めの間も止めるかの欄が立つ物だけが止めの間に進まない
-TEST(HitReactionStart, OwnerItemsHoldDuringTheStopOnlyWhenAsked)
+TEST(HitReactionStart, OwnerItemsAdvanceThroughTheStop)
 {
-    NS::HitOwnerItem held;
-    held.name = "Held";
-    held.stopsDuringHitStop = true;
-    NS::HitOwnerItem running;
-    running.name = "Running";
-    ProbeScene probes({SetOf("Hit", 3, {{held, 10}, {running, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
+    NS::HitOwnerItem shortItem;
+    shortItem.name = "Short";
+    NS::HitOwnerItem longItem;
+    longItem.name = "Long";
+    ProbeScene probes({SetOf("Hit", 3, {{shortItem, 5}, {longItem, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
     const NS::HitReaction& reaction = *probes.self->HitReactionClassObj();
     ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    for (int frame = 0; frame < 2; ++frame)
+    {
+        probes.Step();
+    }
+    ASSERT_TRUE(probes.self->IsHitStopping());
+    ASSERT_NE(FindOwnerRun(reaction, "Short"), nullptr);
+    ASSERT_NE(FindOwnerRun(reaction, "Long"), nullptr);
+    EXPECT_EQ(FindOwnerRun(reaction, "Short")->frame, 2);
+    EXPECT_EQ(FindOwnerRun(reaction, "Long")->frame, 2);
     for (int frame = 0; frame < 3; ++frame)
     {
         probes.Step();
     }
-    ASSERT_NE(FindOwnerRun(reaction, "Held"), nullptr);
-    ASSERT_NE(FindOwnerRun(reaction, "Running"), nullptr);
-    EXPECT_EQ(FindOwnerRun(reaction, "Held")->frame, 0);
-    EXPECT_EQ(FindOwnerRun(reaction, "Running")->frame, 3);
-    probes.Step();
-    EXPECT_EQ(FindOwnerRun(reaction, "Held")->frame, 1);
-    EXPECT_EQ(FindOwnerRun(reaction, "Running")->frame, 4);
-    for (int frame = 0; frame < 6; ++frame)
-    {
-        probes.Step();
-    }
     // 長さを過ぎた項目は外れる
-    EXPECT_EQ(FindOwnerRun(reaction, "Running"), nullptr);
-    EXPECT_NE(FindOwnerRun(reaction, "Held"), nullptr);
+    EXPECT_EQ(FindOwnerRun(reaction, "Short"), nullptr);
+    ASSERT_NE(FindOwnerRun(reaction, "Long"), nullptr);
+    EXPECT_EQ(FindOwnerRun(reaction, "Long")->frame, 5);
 }
 
 // 寄りは始めるまでのフレーム数を数えてから寄せる。束を始めたフレームのカメラの段は、始めたフレームの姿を描く
@@ -1209,7 +1203,6 @@ TEST(ShippedHitReactions, PlayerHitSetsCarryTheTimelineValues)
     const NS::HitReactionEntry* ghost = FindOwnerEntry(*center, "TackleGhost");
     ASSERT_NE(ghost, nullptr);
     EXPECT_EQ(ghost->length, 12);
-    EXPECT_FALSE(std::get<NS::HitOwnerItem>(ghost->item).stopsDuringHitStop);
     const OwnerValues ghostValues{{"離れのピクセル", 35.0f},
                                   {"左右の残像の不透明度", 0.45f},
                                   {"明けの残像のフレーム数", 0.0f},
@@ -1310,7 +1303,6 @@ TEST(ShippedHitReactions, PlayerReleaseSetsCarryTheReleaseRows)
         const NS::HitReactionEntry* hitEffect = FindOwnerEntry(*hit, "HitEffect");
         ASSERT_NE(hitEffect, nullptr);
         EXPECT_EQ(hitEffect->length, 1);
-        EXPECT_FALSE(std::get<NS::HitOwnerItem>(hitEffect->item).stopsDuringHitStop);
         EXPECT_TRUE(std::get<NS::HitOwnerItem>(hitEffect->item).values.empty());
 
         const NS::HitReactionSet* release = FindShippedSet(player, tier.release);
@@ -1328,7 +1320,6 @@ TEST(ShippedHitReactions, PlayerReleaseSetsCarryTheReleaseRows)
         const NS::HitReactionEntry* flight = FindOwnerEntry(*release, "FlightEffect");
         ASSERT_NE(flight, nullptr);
         EXPECT_EQ(flight->length, 1);
-        EXPECT_FALSE(std::get<NS::HitOwnerItem>(flight->item).stopsDuringHitStop);
     }
 }
 
@@ -1361,7 +1352,6 @@ TEST(ShippedHitReactions, PropSetsCarryTheTargetRows)
         EXPECT_EQ(freeze->length, tier.stopFrames);
         const OwnerValues freezeValues{{"食い込み距離", 0.06f}, {"潰れの厚み", 0.7f}, {"潰れの伸び上がり", 1.1f}};
         EXPECT_EQ(std::get<NS::HitOwnerItem>(freeze->item).values, freezeValues);
-        EXPECT_FALSE(std::get<NS::HitOwnerItem>(freeze->item).stopsDuringHitStop);
         const NS::HitReactionEntry* shake = FindEntry<NS::HitBodyShakeItem>(*hit);
         ASSERT_NE(shake, nullptr);
         EXPECT_EQ(shake->length, tier.stopFrames);

@@ -564,14 +564,10 @@ namespace NS
         std::visit(ItemStarter{.reaction = *this, .context = context, .length = length, .shapeFrame = shapeFrame}, item);
     }
 
-    void HitReaction::AdvanceOwnerRuns(bool ownerStopping) noexcept
+    void HitReaction::AdvanceOwnerRuns() noexcept
     {
         for (HitOwnerRun& run : m_ownerRuns)
         {
-            if (ownerStopping && run.item.stopsDuringHitStop)
-            {
-                continue;
-            }
             ++run.frame;
         }
         std::erase_if(m_ownerRuns, [](const HitOwnerRun& run) { return run.frame >= run.length; });

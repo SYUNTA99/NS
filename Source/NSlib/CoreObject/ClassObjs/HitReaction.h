@@ -302,14 +302,12 @@ namespace NS
         std::string_view typeName = "Owner";
         std::string_view label = "持ち主へ渡す項目";
 
-        std::string name;                //!< 持ち主が始める演出の名前
-        bool stopsDuringHitStop = false; //!< 持ち主の止めの間は進めない場合 true
+        std::string name; //!< 持ち主が始める演出の名前
         //! 値の名前から値。ファイルでは欄の「値」に書き、インスペクタの欄の表には載らない
         std::map<std::string, float, std::less<>> values;
 
         NS_REFLECT_BEGIN(HitOwnerItem, void)
         NS_FIELD(name, "名前")
-        NS_FIELD(stopsDuringHitStop, "止めの間も止める")
         NS_REFLECT_END_VALUE()
     };
 
@@ -467,8 +465,8 @@ namespace NS
         [[nodiscard]] const std::vector<HitOwnerRun>& OwnerRuns() const noexcept { return m_ownerRuns; }
 
         //! @brief 持ち主へ渡す項目を 1 フレーム進め、長さの終わった物を外す
-        //! @details 呼ぶのは SceneActor::Update の頭だけ。ownerStopping の間は、止めの間も止める項目を進めない
-        void AdvanceOwnerRuns(bool ownerStopping) noexcept;
+        //! @details 呼ぶのは SceneActor::Update の頭だけ。持ち主の止めの間も進める
+        void AdvanceOwnerRuns() noexcept;
 
         //! @brief 白の光を頼む。前の白が残っていても始め直す
         //! @param[in] frames 白の光のフレーム数。0 以下なら光らない
