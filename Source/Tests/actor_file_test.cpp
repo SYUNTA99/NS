@@ -6,6 +6,7 @@
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
@@ -817,6 +818,66 @@ TEST(ActorFile, UndoingTheFirstEditOfAnActorWithoutAFileLeavesNoFile)
 
     ASSERT_TRUE(editor.Editor().Undo().Redo(applier));
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), codeDefault + 1.0f);
+}
+
+// 欄を直した後に動作の窓が .actor の動作を書いても、欄の取り消しとやり直しは欄だけを戻し、動作は残る
+TEST(ActorFile, UndoingAFieldEditKeepsActionsWrittenAfterIt)
+{
+    const ScopedActorFileDirectory scope("UndoKeepsActions");
+    NS::Scene scene;
+    ResetTwoProps(scene);
+    LevelEditorController editor(&scene);
+    NS::SceneActor* first = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(first, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
+    sphere->SetRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, sphere, "半径"));
+
+    // 動作の窓は取り消しの履歴を通さずに .actor の文書を書く
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    nlohmann::json document = *library.Find("PropActor");
+    NS::WriteActorActions(document, {NS::ActorAction{"Jump", {}, {}}});
+    ASSERT_TRUE(library.Set("PropActor", std::move(document)));
+
+    NS::Editor::ObjectSnapshotApplier applier{&scene};
+    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
+    std::vector<NS::ActorAction> actions = NS::ReadActorActions("PropActor", *library.Find("PropActor"));
+    ASSERT_EQ(actions.size(), 1u);
+    EXPECT_EQ(actions[0].name, "Jump");
+
+    ASSERT_TRUE(editor.Editor().Undo().Redo(applier));
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+    actions = NS::ReadActorActions("PropActor", *library.Find("PropActor"));
+    ASSERT_EQ(actions.size(), 1u);
+    EXPECT_EQ(actions[0].name, "Jump");
+}
+
+// 直した欄が間に文書から消えていたら、取り消しは当てずに WARN を出し、今の文書を残す
+TEST(ActorFile, UndoingAFieldEditWhoseFieldWasRemovedLeavesTheDocument)
+{
+    const ScopedActorFileDirectory scope("UndoRemovedField");
+    NS::Scene scene;
+    ResetTwoProps(scene);
+    LevelEditorController editor(&scene);
+    NS::SceneActor* first = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(first, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
+    sphere->SetRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, sphere, "半径"));
+
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    nlohmann::json document = *library.Find("PropActor");
+    NS::ObjectJsonClassObjs(document).erase("Collision");
+    ASSERT_TRUE(library.Set("PropActor", document));
+
+    const TestLogCapture log;
+    NS::Editor::ObjectSnapshotApplier applier{&scene};
+    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    EXPECT_EQ(log.WarningCount(), 1);
+    EXPECT_EQ(*library.Find("PropActor"), document);
 }
 
 // 印の付いた欄を直すと、その 1 体だけが変わり、.actor は変わらない
