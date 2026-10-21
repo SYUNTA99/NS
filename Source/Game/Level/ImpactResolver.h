@@ -172,9 +172,6 @@ namespace GL
             //! @details 呼ぶのは Player の決定の段で、StepState の後。答えの速度と曲線は同じフレームに Player が読む
             void Release();
 
-            //! 白フラッシュの残りフレーム数。出していない場合 0
-            [[nodiscard]] int CenterHitFlashStepsRemaining() const noexcept;
-
             //! @brief 控えた相手と、当たりの状態へ移る待ちを捨てる
             //! @details 相手へ明けを送らない。世界の速さと自機以外の止めは時計が変えた時だけ戻し、形も元へ戻す。
             //! 束で始めた演出は止めない (Player が止める)。最後の当たりの記録は残し、答えの Player がする事は空にする。

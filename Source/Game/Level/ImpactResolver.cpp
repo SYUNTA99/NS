@@ -21,7 +21,6 @@
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
 #include "NSlib/Phys/Capsule.h"
 #include "NSlib/Windows/Clock.h"
@@ -272,20 +271,6 @@ namespace GL
                 return IsSensorKind(sensor, SensorKind::MapObjBody);
             }
         } // namespace
-
-        int ImpactResolver::CenterHitFlashStepsRemaining() const noexcept
-        {
-            if (m_owner == nullptr)
-            {
-                return 0;
-            }
-            const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(m_owner);
-            if (screen == nullptr)
-            {
-                return 0;
-            }
-            return screen->FlashFramesRemaining();
-        }
 
         NS::HitSensor* ImpactResolver::FindOverlapped(const NS::Vector3& predictedVelocity,
                                                       const NS::Collider& collider) const
