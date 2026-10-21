@@ -1,5 +1,5 @@
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/HitTimeline.h"
+#include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
@@ -25,7 +25,7 @@
 
 // 同じ当たりと同じ溜めで、カメラの揺れのずれと角度をフレームごとに書き出す
 // 揺れを作り直す前と後で同じ場面を書き出し、隣り合うフレームのずれの差の最大を並べる
-// 書き出し先は build/ShakeTrace/trace.json。タイムラインは置き場の既定 (Assets/HitTimelines) を読む
+// 書き出し先は build/ShakeTrace/trace.json。演出は自機と置物の .actor の束を読む
 
 namespace
 {

@@ -565,7 +565,6 @@ namespace GL
                 answer.face = m_hitZones->Face();
                 answer.body = body;
                 answer.launch = m_params->Launch();
-                answer.hitTimeline = m_params->HitTimelineName();
                 return true;
             }
             if (const MsgTackleHit* hit = NS::MsgCast<MsgTackleHit>(msg))

@@ -41,43 +41,6 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     EXPECT_FLOAT_EQ(answer.toughness, 3.0f);
 }
 
-TEST(MapObjParams, HitTimelineNameIsEmptyByDefaultAndReachesTheAnswer)
-{
-    NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    for (const NS::uint32 id : {1u, 2u})
-    {
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, id);
-        NS::SetObjectPosition(rock, NS::Vector3{static_cast<float>(id) * 5.0f, 0.5f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
-    }
-    scene.ResetFromJson(doc);
-    // 当たりのタイムラインは .actor だけが持つ欄なので、id 2 の値は読んだ後のアクターへ書く
-    GL::Level::PropActor* named = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
-    ASSERT_NE(named, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(named->Params(), nlohmann::json{{"当たりのタイムライン", "barrel"}}), 0u);
-    for (const NS::uint32 id : {1u, 2u})
-    {
-        SCOPED_TRACE(id);
-        std::string_view expected;
-        if (id == 2)
-        {
-            expected = "barrel";
-        }
-        NS::SceneActor* actor = scene.Objects().FindByObjectId(id);
-        ASSERT_NE(actor, nullptr);
-        const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor);
-        ASSERT_NE(prop, nullptr);
-        const GL::Level::MapObjParams* params = &prop->Params();
-        EXPECT_EQ(params->HitTimelineName(), expected);
-        GL::Level::TackleTargetAnswer answer;
-        ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorClassObj(), answer));
-        EXPECT_EQ(answer.hitTimeline, expected);
-    }
-}
-
 TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
 {
     for (const std::string_view sceneName : {"new_scene.scene"})

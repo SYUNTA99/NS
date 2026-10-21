@@ -1032,7 +1032,7 @@ TEST(ActorFile, SetRefusesWhatReloadWouldNotRead)
     const ScopedActorFileDirectory scope("SetRefuses");
     std::map<std::string, nlohmann::json> refused;
     refused["UnknownKey"] = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f));
-    refused["UnknownKey"]["hitTimeline"] = nlohmann::json{{"Hit", 3}};
+    refused["UnknownKey"]["timelines"] = nlohmann::json{{"Hit", 3}};
     refused["NoClass"] = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f));
     refused["NoClass"].erase("class");
     refused["Unregistered"] = ActorFileWith("NoSuchActorClass", "Collision", SphereEntry(2.0f));

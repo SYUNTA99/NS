@@ -212,8 +212,7 @@ void PlayerActor::DecideStep()
     AdvanceCharge(NS::GetFrameDelta(this));
     // 止めの後に初めて回るフレームが明け。状態の段より前に反動へ移すと、反動の 1 歩目が明けのフレームに回る
     const bool releasing = IsInTackleHit() && !IsHitStopping();
-    m_resolver->StepState(
-        SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), ModelClassObj(), HitReactionClassObj());
+    m_resolver->StepState(SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), HitReactionClassObj());
     if (releasing)
     {
         ReleaseTackleHit();
@@ -831,7 +830,7 @@ void PlayerActor::ResetState() noexcept
     // 止めの最中か明けを待つ間のやり直しで、出現位置で明けて弾かれないよう、止めと当たりの状態を捨てる。
     // StateMachineOf::Reset は OnExit を呼ばないので、当たりの演出もここで止める
     OverrideHitStop(0);
-    m_resolver->CancelImpact(HitReactionClassObj());
+    m_resolver->CancelImpact();
     StopTackleHitEffects();
     if (heldByHit && HitReactionClassObj() != nullptr)
     {

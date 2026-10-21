@@ -287,6 +287,11 @@ TEST(EditorHitPreview, HitLineHasTheRecordKeys)
     EXPECT_EQ(keys, expected);
     EXPECT_EQ(line["f"].get<int>(), result.detectionIndex);
     EXPECT_EQ(line["victim"].get<NS::uint32>(), k_RockId);
+    // 返りの始めの値は束の項目が持ち、当たりの記録に写さない
+    for (const char* key : {"cameraShake", "flashStart", "zoomStart", "rollStart", "padStart"})
+    {
+        EXPECT_TRUE(line[key].is_null()) << key;
+    }
 }
 
 // 下見は試しの道 (入力を止めて突進を直接頼み、場面の 1 歩で進める) と同じ記録を出す

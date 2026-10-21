@@ -423,11 +423,12 @@ namespace NS
             root["selfApex"] = impact.reboundApexHeight;
             root["dir"] = Vec3Json(impact.impactDir);
             root["targetPos"] = Vec3Json(impact.targetPos);
-            root["cameraShake"] = impact.cameraShake;
-            root["flashStart"] = impact.flashStart;
-            root["zoomStart"] = impact.zoomStart;
-            root["rollStart"] = impact.rollStart;
-            root["padStart"] = Json{impact.padStart.left, impact.padStart.right};
+            // 返りの始めの値は束の項目が持ち、当たりの記録に写さない。hits.jsonl と鍵を揃えるため null で書く
+            root["cameraShake"] = nullptr;
+            root["flashStart"] = nullptr;
+            root["zoomStart"] = nullptr;
+            root["rollStart"] = nullptr;
+            root["padStart"] = nullptr;
             return root.dump(-1, ' ', false, Json::error_handler_t::replace);
         }
     } // namespace Editor

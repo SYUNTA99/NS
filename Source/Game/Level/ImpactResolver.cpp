@@ -16,9 +16,6 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
-#include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
@@ -27,11 +24,8 @@
 
 #include "NSlib/Core/Types.h"
 #include <algorithm>
-#include <array>
 #include <cmath>
-#include <random>
 #include <utility>
-#include <variant>
 #include <vector>
 
 namespace GL
@@ -40,33 +34,6 @@ namespace GL
     {
         namespace
         {
-            // 丸めた整数を 32 ビットの符号なしへ写す。負の値も同じ値なら同じビットになる
-            [[nodiscard]] NS::uint32 RoundedBits(float value) noexcept
-            {
-                return static_cast<NS::uint32>(static_cast<NS::int32>(std::lround(value)));
-            }
-
-            // 横ずれ・角度・位置を丸めて種を作り、浮動小数の末尾の差で揺れが変わらないようにする
-            // seed_seq の混ぜ方は規格で決まるため、同じ値から同じ種になる
-            [[nodiscard]] NS::uint32 ShakeSeed(NS::uint32 targetId,
-                                               float offset01,
-                                               const NS::Vector3& impactDir,
-                                               const NS::Vector3& targetPos)
-            {
-                const float headingDegrees = NS::RadiansToDegrees(std::atan2(impactDir.z, impactDir.x));
-                std::seed_seq values{
-                    targetId,
-                    RoundedBits(offset01 * 1000.0f),
-                    RoundedBits(headingDegrees * 10.0f),
-                    RoundedBits(targetPos.x * 100.0f),
-                    RoundedBits(targetPos.y * 100.0f),
-                    RoundedBits(targetPos.z * 100.0f),
-                };
-                std::array<NS::uint32, 1> seed{};
-                values.generate(seed.begin(), seed.end());
-                return seed[0];
-            }
-
             // 自機の位置から向きの線を引いた時の、相手の外接箱の中心の測り
             struct LineOffset
             {
@@ -159,77 +126,6 @@ namespace GL
                 const float dt = NS::OS::FrameTimer::FixedDelta();
                 return NS::Vector3{
                     position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt};
-            }
-
-            // 止めの長さを持つ事象 (自機の止め・相手の凍結) の長さ。貫通の当たりは breakStopSteps (0 以上) に置き換える
-            [[nodiscard]] int StopLengthOf(const HitEvent& event, int breakStopSteps) noexcept
-            {
-                if (breakStopSteps >= 0)
-                {
-                    return breakStopSteps;
-                }
-                return event.length;
-            }
-
-            // 当たりの記録へ書く止めのフレーム数。最初の止めの事象の長さで、止めの事象が無ければ 0
-            [[nodiscard]] int StopStepsOf(const std::vector<HitEvent>& events, int breakStopSteps) noexcept
-            {
-                for (const HitEvent& event : events)
-                {
-                    if (std::holds_alternative<HitStopEvent>(event.value))
-                    {
-                        return std::max(StopLengthOf(event, breakStopSteps), 0);
-                    }
-                }
-                return 0;
-            }
-
-            // timeline のうち、面の上の位置 face の当たりで起きる事象。並びの順は保つ
-            // 向きの付いた振動は、位置の角度で隣り合う 2 つの向きを混ぜるので、重みが 0 でない行を重みを掛けて残す
-            // 他の種類の向きの付いた行は、HitDirectionOf の向きの行だけ残す。face が無ければ向きの付いた行は起こさない
-            // outRows に、選んだ事象のそれぞれのファイルの並びでの番号を同じ並びで入れる
-            [[nodiscard]] std::vector<HitEvent> EventsFor(const HitTimeline& timeline,
-                                                          const std::optional<NS::Vector2>& face,
-                                                          std::vector<std::size_t>& outRows)
-            {
-                std::vector<HitEvent> events;
-                events.reserve(timeline.events.size());
-                outRows.clear();
-                for (std::size_t row = 0; row < timeline.events.size(); ++row)
-                {
-                    const HitEvent& event = timeline.events[row];
-                    if (event.direction == HitDirection::Any)
-                    {
-                        events.push_back(event);
-                        outRows.push_back(row);
-                        continue;
-                    }
-                    if (!face.has_value())
-                    {
-                        continue;
-                    }
-                    const PadVibrationEvent* pad = std::get_if<PadVibrationEvent>(&event.value);
-                    if (pad == nullptr)
-                    {
-                        if (event.direction == HitDirectionOf(face->x, face->y))
-                        {
-                            events.push_back(event);
-                            outRows.push_back(row);
-                        }
-                        continue;
-                    }
-                    const float weight = HitDirectionWeight(event.direction, face->x, face->y);
-                    if (weight <= 0.0f)
-                    {
-                        continue;
-                    }
-                    HitEvent weighted = event;
-                    weighted.value =
-                        PadVibrationEvent{.left = pad->left.Scaled(weight), .right = pad->right.Scaled(weight)};
-                    events.push_back(weighted);
-                    outRows.push_back(row);
-                }
-                return events;
             }
 
             // 当たりの止めのフレーム数。自機の段の束の止めの長さで、束が無ければ 0
@@ -445,7 +341,6 @@ namespace GL
                 const NS::Vector3 arrival{
                     ballCenter.x, ballCenter.y + GL::Player::LaunchHeightAt(path, first.launchContact), ballCenter.z};
                 judgement = JudgeHitFaceOrWide(answer.face, answer.body, arrival, lineDir, playerRadius);
-                first.hitTimeline = answer.hitTimeline;
             }
             first.offset = judgement.offset01;
             first.tier = judgement.tier;
@@ -458,7 +353,7 @@ namespace GL
             NS_ASSERT(Game, collider != nullptr, "当たりの部品が渡されていない");
             m_stateReady = true;
             m_hasObservedTarget = false;
-            if (!motion.slamming || IsHoldingPlayer())
+            if (!motion.slamming)
             {
                 return;
             }
@@ -484,8 +379,7 @@ namespace GL
                                        const GL::Player::PlayerParams* params,
                                        const NS::Body* body,
                                        const NS::Collider* collider,
-                                       const NS::Model* model,
-                                       NS::HitReaction* hitReaction)
+                                       const NS::HitReaction* hitReaction)
         {
             NS_ASSERT(Game,
                       params != nullptr && body != nullptr && collider != nullptr,
@@ -494,7 +388,7 @@ namespace GL
             AdvanceState(
                 motion,
                 PlayerParts{
-                    .params = params, .body = body, .collider = collider, .model = model, .hitReaction = hitReaction});
+                    .params = params, .body = body, .collider = collider, .hitReaction = hitReaction});
         }
 
         void ImpactResolver::Release()
@@ -668,24 +562,11 @@ namespace GL
                             centerHit);
             }
 
-            const HitDirection direction = HitDirectionOf(judgement.u, judgement.v);
-            const HitTimeline* timeline = HitTimelineLibrary::Get().FindFor(answer.hitTimeline, tier);
-            std::vector<HitEvent> events;
-            std::vector<std::size_t> rows;
-            if (timeline != nullptr)
-            {
-                events = EventsFor(*timeline, NS::Vector2{judgement.u, judgement.v}, rows);
-            }
             const std::string setName = TackleSetName("体当たり", tier);
             const int stopSteps = HitStopStepsFor(parts.hitReaction, setName, outcome);
             const bool gradualRelease = UsesGradualRelease(parts.hitReaction, tier, motion.overcharge01);
 
-            m_pendingPower = power;
-            m_pendingMassFactor = outcome.massFactor;
-            m_pendingShakeSeed = ShakeSeed(m_pendingTarget.id, offset01, m_pendingImpactDir, answer.position);
-            RecordReturns(events);
-
-            // 止めるフレーム数が決まってから控える。タイムラインの引けない当たりも残すので、下の return より手前に置く
+            // 止めるフレーム数が決まってから控える
             m_answer.lastImpact.sequence += 1;
             m_answer.lastImpact.targetId = m_pendingTarget.id;
             m_answer.lastImpact.power = power;
@@ -694,7 +575,6 @@ namespace GL
             m_answer.lastImpact.offset01 = offset01;
             m_answer.lastImpact.tier = tier;
             m_answer.lastImpact.timeline = setName;
-            m_answer.lastImpact.direction = direction;
             m_answer.lastImpact.faceU = judgement.u;
             m_answer.lastImpact.faceV = judgement.v;
             m_answer.lastImpact.faceNormal = outcome.faceNormal;
@@ -723,204 +603,6 @@ namespace GL
             return true;
         }
 
-        // 事象の種類ごとの受け持ち。種類を足して受け持ちを書き忘れると、std::visit が呼べずにコンパイルが止まる
-        struct ImpactResolver::EventRunner
-        {
-            ImpactResolver& resolver;
-            const HitEvent& event;
-            const PlayerParts& parts;
-
-            void operator()(const HitStopEvent&) const
-            {
-                const int length = StopLengthOf(event, resolver.m_breakStopSteps);
-                if (length <= 0)
-                {
-                    return;
-                }
-                // PlayerActor の StateStep と BodyStep はこの後に CanMoveBody で止めを見るので、同じフレームから効く
-                resolver.m_stopStarted = true;
-                resolver.m_stopEnd = resolver.m_clock + length - 1;
-                NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", length);
-            }
-
-            void operator()(const ShapeEvent& shape) const
-            {
-                // 貫通は押し勝っている側なので形を変えない
-                if (resolver.m_pendingBreak)
-                {
-                    return;
-                }
-                resolver.m_shape = shape;
-                resolver.m_shapeStart = resolver.m_clock;
-                resolver.m_shapeLength = event.length;
-                resolver.m_shapeActive = true;
-            }
-
-            // 相手の止め・食い込み・潰れ・揺れ・残像は、相手が自分の束で出す。行の欄は読まない
-            void operator()(const TargetFreezeEvent&) const
-            {
-                NS::SceneActor* target = resolver.PendingTargetActor();
-                if (target == nullptr || target->BodySensorClassObj() == nullptr ||
-                    resolver.m_owner->BodySensorClassObj() == nullptr)
-                {
-                    return;
-                }
-                TackleHitDesc hit{.tier = resolver.m_answer.lastImpact.tier,
-                                  .contact = resolver.m_answer.lastImpact.surfacePoint,
-                                  .impactDir = resolver.m_pendingImpactDir};
-                if (resolver.m_pendingBreak)
-                {
-                    hit.stopOverride = StopLengthOf(event, resolver.m_breakStopSteps);
-                }
-                (void)SendMsgTackleHit(*target->BodySensorClassObj(), *resolver.m_owner->BodySensorClassObj(), hit);
-            }
-
-            void operator()(const TargetLaunchEvent&) const { resolver.LaunchTarget(); }
-
-            // 横揺れと震えは行の長さを使わず、この当たりで効く止めと同じフレーム数だけ出す。止めの長さを変えても
-            // (貫通の止めを含む) 揺れだけが残る・先に切れる事が無い
-            void operator()(const BodyShakeEvent& shake) const
-            {
-                resolver.StartBodyShake(shake, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
-            }
-
-            void operator()(const DepthShakeEvent& shake) const
-            {
-                resolver.StartDepthShake(shake, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps));
-            }
-
-            // 自機の残像は、自機が段の束の項目で出す。行の欄は読まない
-            void operator()(const GhostEvent&) const {}
-
-            void operator()(const ImpactTremorEvent& tremor) const
-            {
-                resolver.StartTremor(
-                    tremor, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps), parts.collider);
-            }
-
-            void operator()(const ShakeLinesEvent& lines) const
-            {
-                resolver.StartShakeLines(lines, StopStepsOf(resolver.m_events, resolver.m_breakStopSteps), parts);
-            }
-
-            void operator()(const GroundWaveEvent& wave) const { resolver.StartGroundWave(wave, event.length); }
-
-            void operator()(const DistortionRingEvent& ring) const
-            {
-                resolver.StartDistortionRing(ring, event.length, parts.hitReaction);
-            }
-
-            void operator()(const ReboundEvent&) const { resolver.ApplyRebound(); }
-
-            void operator()(const CameraShakeEvent& shake) const
-            {
-                if (parts.hitReaction != nullptr)
-                {
-                    (void)parts.hitReaction->StartShake(resolver.ShakeDescFor(shake, event.length));
-                }
-            }
-
-            void operator()(const CameraLurchEvent& lurch) const
-            {
-                // 突進の向きへ世界の向きのまま押す。外した事を、体が前へ持って行かれる事で見せる
-                resolver.StartCameraNudge(
-                    resolver.m_pendingImpactDir, lurch.distance, event.length, false, parts.hitReaction);
-            }
-
-            void operator()(const CameraReboundSwayEvent& sway) const
-            {
-                // カメラから見た反動の向きで、逆へ大きく振れて縮み、最後に反動の側へ速く送る
-                resolver.StartCameraNudge(
-                    resolver.m_pendingReboundArc.direction, sway.distance, event.length, true, parts.hitReaction);
-            }
-
-            void operator()(const CameraSinkEvent& sink) const
-            {
-                if (parts.hitReaction != nullptr)
-                {
-                    (void)parts.hitReaction->StartSink(resolver.SinkDescFor(sink, event));
-                }
-            }
-
-            void operator()(const ZoomRollEvent& zoomRoll) const
-            {
-                if (parts.hitReaction != nullptr)
-                {
-                    (void)parts.hitReaction->StartZoomRoll(resolver.ZoomRollDescFor(zoomRoll, event.length));
-                }
-            }
-
-            void operator()(const PadVibrationEvent& pad) const
-            {
-                if (parts.hitReaction == nullptr)
-                {
-                    return;
-                }
-                const NS::HitPadVibration vibration{.left = pad.left, .right = pad.right, .frames = event.length};
-                // 同じフレームに始まる振動 (向きごとに重みを掛けた行) は重ねて鳴らす
-                if (resolver.m_padStartClock == resolver.m_clock)
-                {
-                    parts.hitReaction->BlendPadVibration(vibration);
-                    return;
-                }
-                parts.hitReaction->StartPadVibration(vibration);
-                resolver.m_padStartClock = resolver.m_clock;
-            }
-
-            void operator()(const FlashEvent& flash) const
-            {
-                if (parts.hitReaction != nullptr)
-                {
-                    parts.hitReaction->StartFlash(event.length, flash.alpha);
-                }
-            }
-
-            // 当たりと飛びの絵は、自機が束の持ち主へ渡す項目から出す。行は読まない
-            void operator()(const HitEffectEvent&) const {}
-
-            void operator()(const CameraTraumaEvent& trauma) const
-            {
-                if (parts.hitReaction != nullptr)
-                {
-                    (void)parts.hitReaction->AddTrauma(resolver.TraumaDescFor(trauma));
-                }
-            }
-
-            void operator()(const GradualReleaseEvent& release) const
-            {
-                NS::Scene* scene = resolver.m_owner->OwningScene();
-                if (scene == nullptr)
-                {
-                    return;
-                }
-                // 紫で上がった威力を当たった結果で見せる遅さなので、赤で放した当たりには出さない
-                if (release.overchargedOnly && !(resolver.m_answer.lastImpact.overcharge01 > 0.0f))
-                {
-                    return;
-                }
-                scene->StartWorldSpeedRamp(release.startSpeed, release.returnSeconds, release.shape);
-                resolver.m_startedGradualRelease = true;
-            }
-
-            void operator()(const OthersStopEvent&) const
-            {
-                NS::Scene* scene = resolver.m_owner->OwningScene();
-                if (scene == nullptr)
-                {
-                    return;
-                }
-                scene->HoldOthers(event.length);
-                resolver.m_heldOthers = true;
-            }
-
-            void operator()(const FlightEffectEvent&) const {}
-        };
-
-        void ImpactResolver::RunEvent(const HitEvent& event, const PlayerParts& parts)
-        {
-            std::visit(EventRunner{.resolver = *this, .event = event, .parts = parts}, event.value);
-        }
-
         void ImpactResolver::PredictContact(const BodySlamMotion& motion, const PlayerParts& parts)
         {
             if (!motion.predictsContact)
@@ -945,466 +627,8 @@ namespace GL
             m_answer.predicted = std::move(predicted);
         }
 
-        void ImpactResolver::AbortTimeline(NS::HitReaction* hitReaction) noexcept
+        void ImpactResolver::CancelImpact() noexcept
         {
-            // 段階的な明けは時計より長く続く。打ち切る当たりが遅くした世界を普段の速さへ戻す
-            if (m_startedGradualRelease)
-            {
-                m_startedGradualRelease = false;
-                if (m_owner != nullptr && m_owner->OwningScene() != nullptr)
-                {
-                    m_owner->OwningScene()->SetWorldSpeed(1.0f);
-                }
-            }
-            // 外れた予測の止めを残すと、当たらないのに世界が止まったままになる
-            if (m_heldOthers)
-            {
-                m_heldOthers = false;
-                if (m_owner != nullptr && m_owner->OwningScene() != nullptr)
-                {
-                    m_owner->OwningScene()->HoldOthers(0);
-                }
-            }
-            StopBodyShake();
-            StopTremor();
-            StopGroundWave();
-            StopDistortionRing(hitReaction);
-            m_events.clear();
-            m_eventRows.clear();
-            m_padStartClock.reset();
-            m_clock = 0;
-            m_clockEnd = 0;
-            m_clockRunning = false;
-            m_holdArmed = false;
-            m_holdReleased = false;
-            m_hasReboundEvent = false;
-            m_stopStarted = false;
-            m_stopEnd = 0;
-            m_breakStopSteps = -1;
-            m_shapeActive = false;
-        }
-
-        void ImpactResolver::AdvanceTimeline(const PlayerParts& parts)
-        {
-            for (std::size_t i = 0; i < m_events.size(); ++i)
-            {
-                const HitEvent& event = m_events[i];
-                // 触れる前に置けない種類は、ファイルの読み込みで弾いている。手で組んだ並びでもマイナスでは起こさない
-                if (event.start == m_clock && (m_clock >= 0 || CanStartBeforeContact(event.value)))
-                {
-                    RunEvent(event, parts);
-                }
-            }
-            if (m_stopStarted && m_clock == m_stopEnd + 1)
-            {
-                // 反動の事象の無いタイムラインは、止めの終わりで自機を動かし直す
-                if (!m_hasReboundEvent)
-                {
-                    m_holdReleased = true;
-                }
-            }
-            if (m_clock >= m_clockEnd)
-            {
-                m_clockRunning = false;
-                // 反動の事象が止めより前に置かれていても、時計が止まったら自機を動かし直す
-                m_holdReleased = true;
-            }
-        }
-
-        NS::CameraSinkDesc ImpactResolver::SinkDescFor(const CameraSinkEvent& sink,
-                                                       const HitEvent& event) const noexcept
-        {
-            // 頭打ちの曲線。威力の基準が 0 以下か非数なら、どの威力でも頭打ちの深さにする
-            float scale = 1.0f;
-            if (sink.powerBase > 0.0f && std::isfinite(m_pendingPower))
-            {
-                scale = 1.0f - std::exp(-m_pendingPower / sink.powerBase);
-            }
-            // 跳ね返りは同じタイムラインの反動の事象の始まりから。無ければ跳ね返らずに底のまま終わる
-            int bounceStart = event.length;
-            for (const HitEvent& other : m_events)
-            {
-                if (std::holds_alternative<ReboundEvent>(other.value) && other.start >= event.start)
-                {
-                    bounceStart = std::min(bounceStart, other.start - event.start);
-                }
-            }
-            return NS::CameraSinkDesc{.bottomPixels = sink.maxPixels * scale,
-                                      .sinkFrames = sink.sinkFrames,
-                                      .tremblePixels = sink.tremblePixels * scale,
-                                      .trembleFrames = sink.trembleFrames,
-                                      .tremblePeriodFrames = sink.tremblePeriodFrames,
-                                      .bounceStartFrame = bounceStart,
-                                      .overshootRatio = sink.overshootRatio,
-                                      .bouncePeriodFrames = sink.bouncePeriodFrames,
-                                      .frames = event.length};
-        }
-
-        void ImpactResolver::StartCameraNudge(const NS::Vector3& direction,
-                                              const NS::Curve& distance,
-                                              int length,
-                                              bool onScreen,
-                                              NS::HitReaction* hitReaction)
-        {
-            NS::Vector3 horizontal{};
-            if (hitReaction == nullptr || !NS::TryNormalizeHorizontal(direction, horizontal))
-            {
-                return;
-            }
-            (void)hitReaction->StartNudge(NS::CameraNudgeDesc{
-                .direction = horizontal, .distance = distance, .frames = length, .onScreen = onScreen});
-        }
-
-        NS::CameraShakeDesc ImpactResolver::ShakeDescFor(const CameraShakeEvent& shake, int length) const noexcept
-        {
-            NS::CameraShakeDesc desc;
-            desc.longestFlipFrames = shake.longestFlipFrames;
-            desc.firstSideDirection = m_pendingReboundArc.direction;
-            desc.seed = m_pendingShakeSeed;
-            const float weight = std::sqrt(shake.sideWeight * shake.sideWeight + shake.upWeight * shake.upWeight);
-            // 非数の重みも向きが決まらないので揺らさない
-            if (!(weight > 0.0f))
-            {
-                return desc;
-            }
-            desc.frames = length;
-            // 威力の手応えは振れ幅で出す。事象の強さに威力と、反発と同じ質量の効きを掛ける
-            // 横と縦を合わせた長さが最初の振れの大きさになるよう、重みの比で分ける
-            const float amplitude = shake.strength * m_pendingPower * m_pendingMassFactor;
-            const float perWeight = amplitude / weight;
-            desc.sideAmplitude = shake.sideWeight * perWeight;
-            desc.upAmplitude = shake.upWeight * perWeight;
-            return desc;
-        }
-
-        NS::CameraTraumaDesc ImpactResolver::TraumaDescFor(const CameraTraumaEvent& trauma) const noexcept
-        {
-            NS::CameraTraumaDesc desc;
-            // 外れは自分でしくじった手応え。相手の重さでなく、出した威力で揺らす
-            desc.trauma = std::max(trauma.trauma * m_pendingPower, 0.0f);
-            desc.shape.yawDegrees = trauma.yawDegrees;
-            desc.shape.pitchDegrees = trauma.pitchDegrees;
-            desc.shape.rollDegrees = trauma.rollDegrees;
-            desc.shape.frequency = trauma.frequency;
-            desc.shape.decayPerSecond = trauma.decayPerSecond;
-            desc.shape.exponent = trauma.exponent;
-            desc.seed = m_pendingShakeSeed;
-            desc.kick.degrees = trauma.kickDegrees;
-            desc.kick.peakFrames = trauma.kickPeakFrames;
-            desc.kick.direction = NS::Vector2{m_answer.lastImpact.faceU, m_answer.lastImpact.faceV};
-            if (desc.kick.direction.LengthSquared() <= NS::k_Epsilon * NS::k_Epsilon)
-            {
-                desc.kick.direction = NS::Vector2{NS::CalcCameraSideSign(m_owner, m_pendingReboundArc.direction), 0.0f};
-            }
-            return desc;
-        }
-
-        NS::CameraZoomRollDesc ImpactResolver::ZoomRollDescFor(const ZoomRollEvent& zoomRoll, int length) const noexcept
-        {
-            const int frames = std::max(length, 0);
-            NS::CameraZoomRollDesc desc;
-            desc.zoom = zoomRoll.zoom;
-            desc.rollDegrees = zoomRoll.rollDegrees;
-            desc.rollDirection = m_pendingImpactDir;
-            desc.returnFrames = std::clamp(zoomRoll.returnFrames, 0, frames);
-            desc.holdFrames = frames - desc.returnFrames;
-            return desc;
-        }
-
-        void ImpactResolver::RecordReturns(const std::vector<HitEvent>& events)
-        {
-            m_answer.lastImpact.cameraShake = 0.0f;
-            m_answer.lastImpact.cameraTrauma = 0.0f;
-            m_answer.lastImpact.flashStart = 0;
-            m_answer.lastImpact.zoomStart = 1.0f;
-            m_answer.lastImpact.rollStart = 0.0f;
-            m_answer.lastImpact.padStart = NS::OS::GamepadVibration{};
-            bool shakeRecorded = false;
-            bool traumaRecorded = false;
-            bool flashRecorded = false;
-            bool zoomRollRecorded = false;
-            bool padRecorded = false;
-            int padStartFrame = 0;
-            for (const HitEvent& event : events)
-            {
-                const CameraShakeEvent* shake = std::get_if<CameraShakeEvent>(&event.value);
-                if (shake != nullptr && !shakeRecorded)
-                {
-                    const NS::CameraShakeDesc desc = ShakeDescFor(*shake, event.length);
-                    m_answer.lastImpact.cameraShake = NS::Vector2{desc.sideAmplitude, desc.upAmplitude}.Length();
-                    shakeRecorded = true;
-                }
-                const CameraTraumaEvent* trauma = std::get_if<CameraTraumaEvent>(&event.value);
-                if (trauma != nullptr && !traumaRecorded)
-                {
-                    m_answer.lastImpact.cameraTrauma = TraumaDescFor(*trauma).trauma;
-                    traumaRecorded = true;
-                }
-                const FlashEvent* flash = std::get_if<FlashEvent>(&event.value);
-                if (flash != nullptr && !flashRecorded)
-                {
-                    m_answer.lastImpact.flashStart = std::max(event.length, 0);
-                    flashRecorded = true;
-                }
-                const ZoomRollEvent* zoomRoll = std::get_if<ZoomRollEvent>(&event.value);
-                if (zoomRoll != nullptr && !zoomRollRecorded)
-                {
-                    // 当たりの記録は検知のフレームに読まれるので、傾きの向きもここで今のカメラから決める
-                    const float rollSign = NS::CalcCameraSideSign(m_owner, m_pendingImpactDir);
-                    m_answer.lastImpact.zoomStart = zoomRoll->zoom;
-                    m_answer.lastImpact.rollStart = zoomRoll->rollDegrees * rollSign;
-                    zoomRollRecorded = true;
-                }
-                // 最初の振動と同じフレームに始まる振動は重ねて鳴らすので、始めの値も足す
-                const PadVibrationEvent* pad = std::get_if<PadVibrationEvent>(&event.value);
-                if (pad != nullptr && (!padRecorded || event.start == padStartFrame))
-                {
-                    m_answer.lastImpact.padStart.left += pad->left.Evaluate(0.0f);
-                    m_answer.lastImpact.padStart.right += pad->right.Evaluate(0.0f);
-                    padStartFrame = event.start;
-                    padRecorded = true;
-                }
-            }
-        }
-
-        void ImpactResolver::StartBodyShake(const BodyShakeEvent& shake, int length)
-        {
-            StopBodyShake();
-            if (m_owner == nullptr || length <= 0 || !std::isfinite(shake.amplitudePixels) ||
-                !std::isfinite(shake.selfAmplitudePixels))
-            {
-                return;
-            }
-            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(m_owner);
-            if (!pose.has_value())
-            {
-                return;
-            }
-            // 画面の横を床に沿わせた向き。後ろから見る NS では、地上でも空中でも視線に直角でよく見える
-            const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(m_owner);
-            const NS::Vector3 axis{forward.z, 0.0f, -forward.x};
-            // 外れは面の u の側へ逃がし、カメラ・火花・逸れる方向を揃える。真ん中は画面右から
-            float firstSign = 1.0f;
-            NS::Vector3 slam{};
-            if (m_answer.lastImpact.tier == HitTier::Wide && m_answer.lastImpact.faceU != 0.0f &&
-                NS::TryNormalizeHorizontal(m_pendingImpactDir, slam))
-            {
-                const NS::Vector3 faceRight{slam.z, 0.0f, -slam.x};
-                if (NS::Dot(faceRight * m_answer.lastImpact.faceU, axis) < 0.0f)
-                {
-                    firstSign = -1.0f;
-                }
-            }
-            // 種は何回目の当たりか。毎回少し違い、同じ入力の再生では同じ
-            const NS::DrawShakeDesc self{
-                .shape = NS::DrawShakeShape::Side,
-                .axis = axis,
-                .amplitude = NS::ScreenPixelsToMeters(shake.selfAmplitudePixels, *pose, m_owner->Root().Position()),
-                .length = length,
-                .seed = m_answer.lastImpact.sequence,
-                .firstSign = firstSign,
-                .flipFrames = shake.flipFrames};
-            // 相手の揺れは相手が自分の束で出す
-            StartSelfShake(self);
-        }
-
-        void ImpactResolver::StartDepthShake(const DepthShakeEvent& shake, int length)
-        {
-            StopBodyShake();
-            NS::Vector3 dir{};
-            if (m_owner == nullptr || length <= 0 || !std::isfinite(shake.depth) || !std::isfinite(shake.selfDepth) ||
-                !std::isfinite(shake.returnRatio) || !NS::TryNormalizeHorizontal(m_pendingImpactDir, dir))
-            {
-                return;
-            }
-            const NS::DrawShakeDesc self{.shape = NS::DrawShakeShape::Depth,
-                                       .axis = -dir,
-                                       .amplitude = shake.selfDepth,
-                                       .length = length,
-                                       .seed = m_answer.lastImpact.sequence,
-                                       .pushFrames = shake.pushFrames,
-                                       .returnRatio = shake.returnRatio};
-            StartSelfShake(self);
-        }
-
-        void ImpactResolver::StartSelfShake(const NS::DrawShakeDesc& self)
-        {
-            if (NS::Model* model = m_owner->ModelClassObj())
-            {
-                model->StartDrawShake(self);
-            }
-        }
-
-        NS::SceneActor* ImpactResolver::PendingTargetActor() const noexcept
-        {
-            if (m_owner == nullptr || m_owner->OwningScene() == nullptr)
-            {
-                return nullptr;
-            }
-            return m_owner->OwningScene()->Objects().FindObject(m_pendingTarget);
-        }
-
-        void ImpactResolver::StartShakeLines(const ShakeLinesEvent& lines, int length, const PlayerParts& parts)
-        {
-            if (parts.hitReaction == nullptr || parts.model == nullptr || m_owner == nullptr || length <= 0)
-            {
-                return;
-            }
-            NS::Scene* scene = m_owner->OwningScene();
-            if (scene == nullptr)
-            {
-                return;
-            }
-            NS::SceneActor* target = scene->Objects().FindObject(m_pendingTarget);
-            if (target == nullptr || target->ModelClassObj() == nullptr)
-            {
-                return;
-            }
-            // 止めの間の二人は食い込んだ所に留まり、描く形が揺れるだけなので、始めた時の形で挟めば最後まで外れない
-            // 真後ろのカメラでは自機が相手に重なるので、二人をまとめて挟む
-            const NS::AABB other = target->ModelClassObj()->WorldBounds();
-            const NS::AABB self = parts.model->WorldBounds();
-            parts.hitReaction->StartShakeLines(
-                NS::HitShakeLinesDesc{.center = NS::Vector3{other.Center.x, other.Center.y, other.Center.z},
-                                      .radius = std::max({other.Extents.x, other.Extents.y, other.Extents.z}),
-                                      .otherCenter = NS::Vector3{self.Center.x, self.Center.y, self.Center.z},
-                                      .otherRadius = std::max({self.Extents.x, self.Extents.y, self.Extents.z}),
-                                      .frames = length,
-                                      .flipFrames = lines.flipFrames,
-                                      .lengthPixels = lines.lengthPixels,
-                                      .widthPixels = lines.widthPixels,
-                                      .gapPixels = lines.gapPixels});
-        }
-
-        void ImpactResolver::StopBodyShake() noexcept
-        {
-            if (m_owner == nullptr)
-            {
-                return;
-            }
-            if (NS::Model* model = m_owner->ModelClassObj())
-            {
-                model->StopDrawShake();
-            }
-        }
-
-        void ImpactResolver::StartTremor(const ImpactTremorEvent& tremor, int length, const NS::Collider* collider)
-        {
-            NS_ASSERT(Game, collider != nullptr, "当たりの部品が渡されていない");
-            StopTremor();
-            if (m_owner == nullptr || length <= 0)
-            {
-                return;
-            }
-            // 震えは自機の玉が相手の表面に触れた点から両方の体へ伝わる
-            const NS::Vector3 contact = m_answer.lastImpact.surfacePoint;
-            // 長さは止めに合わせて短くなる。裏まで届くのに長さを使い切ると震えが残らないので、届くのは長さの半分まで
-            const int reachFrames = std::min(tremor.reachFrames, length / 2);
-            // 自機の玉の差し渡しで裏まで届く
-            const NS::DrawTremorDesc self{.contactOffset = contact - m_owner->Root().Position(),
-                                          .amplitudePixels = tremor.amplitudePixels,
-                                          .reachFrames = reachFrames,
-                                          .length = length,
-                                          .referenceHeight = tremor.referenceHeight,
-                                          .bodyLength = 2.0f * collider->CapsuleRadius()};
-            // 相手の震えは相手が自分の明けの束で出す
-            if (NS::Model* model = m_owner->ModelClassObj())
-            {
-                model->StartDrawTremor(self);
-            }
-        }
-
-        void ImpactResolver::StartGroundWave(const GroundWaveEvent& wave, int length)
-        {
-            StopGroundWave();
-            if (length <= 0)
-            {
-                return;
-            }
-            // 中心は自機の玉が相手の表面に触れた点。床の上の水平の位置だけを使う
-            const NS::Vector3 contact = m_answer.lastImpact.surfacePoint;
-            m_groundWave = GroundWaveRun{.event = wave,
-                                         .centerX = contact.x,
-                                         .centerZ = contact.z,
-                                         .length = length,
-                                         .startClock = m_clock,
-                                         .active = true};
-            // 始めたフレームから描く。時計の事象は時計を進めた後に起きるので、ここで書かないと 1 フレーム遅れる
-            AdvanceGroundWave();
-        }
-
-        void ImpactResolver::AdvanceGroundWave()
-        {
-            if (!m_groundWave.active || m_owner == nullptr || m_owner->OwningScene() == nullptr)
-            {
-                return;
-            }
-            const int elapsed = m_clock - m_groundWave.startClock;
-            if (elapsed >= m_groundWave.length)
-            {
-                StopGroundWave();
-                return;
-            }
-            const float frame = static_cast<float>(elapsed);
-            m_owner->OwningScene()->SetGroundWave(
-                NS::Gfx::GroundWave{.centerX = m_groundWave.centerX,
-                                    .centerZ = m_groundWave.centerZ,
-                                    .radius = m_groundWave.event.radius.Evaluate(frame),
-                                    .strength = m_groundWave.event.strength.Evaluate(frame)});
-        }
-
-        void ImpactResolver::StopGroundWave() noexcept
-        {
-            // 書いた時だけ消す。床の波を出していない裁定役が、他の物の波を消さない
-            if (!m_groundWave.active)
-            {
-                return;
-            }
-            m_groundWave.active = false;
-            if (m_owner != nullptr && m_owner->OwningScene() != nullptr)
-            {
-                m_owner->OwningScene()->SetGroundWave(NS::Gfx::GroundWave{});
-            }
-        }
-
-        void ImpactResolver::StartDistortionRing(const DistortionRingEvent& ring,
-                                                 int length,
-                                                 NS::HitReaction* hitReaction)
-        {
-            if (hitReaction == nullptr)
-            {
-                return;
-            }
-            hitReaction->StartDistortionRing(NS::HitDistortionRingDesc{.center = m_answer.lastImpact.surfacePoint,
-                                                                       .radius = ring.radius,
-                                                                       .push = ring.push,
-                                                                       .halfWidth = ring.halfWidth,
-                                                                       .frames = length});
-        }
-
-        void ImpactResolver::StopDistortionRing(NS::HitReaction* hitReaction) noexcept
-        {
-            if (hitReaction != nullptr)
-            {
-                hitReaction->StopDistortionRing();
-            }
-        }
-
-        void ImpactResolver::StopTremor() noexcept
-        {
-            if (m_owner == nullptr)
-            {
-                return;
-            }
-            if (NS::Model* model = m_owner->ModelClassObj())
-            {
-                model->StopDrawTremor();
-            }
-        }
-
-        void ImpactResolver::CancelImpact(NS::HitReaction* hitReaction) noexcept
-        {
-            AbortTimeline(hitReaction);
             m_hitAwaitsEntry = false;
             m_pendingBreak = false;
             m_hasObservedTarget = false;
@@ -1440,7 +664,6 @@ namespace GL
 
         void ImpactResolver::ApplyRebound()
         {
-            m_holdReleased = true;
             m_answer.releaseVelocity = m_pendingSelfVelocity;
             if (!m_pendingBreak)
             {

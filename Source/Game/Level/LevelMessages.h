@@ -112,7 +112,6 @@ namespace GL
             HitFace face{};                         //!< 面の赤の欄の写し。段と威力の倍率を JudgeHitFace で決める
             NS::SensorVolume body{};                //!< 体のセンサーの世界の形。面の大きさを出す
             LaunchShape launch{};
-            std::string hitTimeline; //!< 当たりのタイムラインの名前。空なら段の既定
         };
 
         //! @brief 体当たりを受けるかを問う知らせ。体当たりの裁定が、重なった物の体のセンサーへ送る

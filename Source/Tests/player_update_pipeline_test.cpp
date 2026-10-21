@@ -50,7 +50,6 @@ namespace
                                     &player.Params(),
                                     &player.Body(),
                                     &player.Collider(),
-                                    player.ModelClassObj(),
                                     player.HitReactionClassObj());
     }
 
