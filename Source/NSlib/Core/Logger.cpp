@@ -2,8 +2,8 @@
 
 #include <windows.h>
 
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
-#include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
@@ -63,6 +63,41 @@ namespace NS
             ::CreateDirectoryW(wide.c_str(), nullptr);
         }
 
+        std::string LogFilePath(const std::string& logsDir, const std::string& logName, std::size_t backupIndex)
+        {
+            if (backupIndex == 0)
+            {
+                return logsDir + "/" + logName + ".log";
+            }
+            return logsDir + "/" + logName + "." + std::to_string(backupIndex) + ".log";
+        }
+
+        // 前のログを logName.1.log へ、それまでの控えを 1 つ後ろへずらす。
+        // 他のプログラムが開いていて名前を変えられない時は、そのまま今のファイルへ追記する。
+        // spdlog の回転は名前の変更の失敗で abort するので使わない
+        void RotateLogFiles(const std::string& logsDir, const std::string& logName)
+        {
+            for (std::size_t index = k_RotatingMaxFiles; index > 0; --index)
+            {
+                const std::wstring from = WidenPath(LogFilePath(logsDir, logName, index - 1));
+                const std::wstring to = WidenPath(LogFilePath(logsDir, logName, index));
+                ::MoveFileExW(from.c_str(), to.c_str(), MOVEFILE_REPLACE_EXISTING);
+            }
+        }
+
+        bool IsLargerThan(std::string_view path, std::size_t bytes)
+        {
+            WIN32_FILE_ATTRIBUTE_DATA data{};
+            if (!::GetFileAttributesExW(WidenPath(path).c_str(), GetFileExInfoStandard, &data))
+            {
+                return false;
+            }
+            ULARGE_INTEGER size{};
+            size.LowPart = data.nFileSizeLow;
+            size.HighPart = data.nFileSizeHigh;
+            return size.QuadPart > bytes;
+        }
+
         bool CanAppendTo(std::string_view path)
         {
             const HANDLE handle = ::CreateFileW(WidenPath(path).c_str(),
@@ -112,13 +147,17 @@ namespace NS
             sinks.push_back(console);
 
             const std::string logsDir = LogsDirectory(desc);
-            const std::string logFilePath = logsDir + "/" + desc.logName + ".log";
+            const std::string logFilePath = LogFilePath(logsDir, desc.logName, 0);
+            // 実行中は大きさで回さないので、大きくなったログは次の起動で控えへ回す
+            if (desc.rotateOnOpen || IsLargerThan(logFilePath, k_RotatingMaxBytes))
+            {
+                RotateLogFiles(logsDir, desc.logName);
+            }
             // 例外を切った spdlog は開けないファイルで abort するので、書けない場所ではファイルへ出さない
             if (CanAppendTo(logFilePath))
             {
-                std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> file =
-                    std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                        logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, desc.rotateOnOpen);
+                std::shared_ptr<spdlog::sinks::basic_file_sink_mt> file =
+                    std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath);
                 file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
                 sinks.push_back(file);
             }
