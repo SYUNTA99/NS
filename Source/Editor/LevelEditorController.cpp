@@ -29,6 +29,7 @@
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
 #include "NSlib/CoreObject/ClassObjs/CapsuleCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -399,6 +400,11 @@ namespace
         for (const std::pair<NS::SceneActor*, FieldKeys>& actor : actors)
         {
             CopyActorFileFields(*actor.first, actor.second);
+            // 束はアクターを作る時に .actor から読むので、読み直させて次の当たりに効かせる
+            if (NS::HitReaction* reaction = actor.first->HitReactionClassObj())
+            {
+                reaction->ReloadSets();
+            }
         }
     }
 
@@ -1618,6 +1624,32 @@ void LevelEditorController::CommitActorFileEdits()
         m_editor.Undo().Push(
             std::make_unique<ActorFileCommand>(*m_scene, name, std::move(before), std::move(after)), m_applier);
     }
+}
+
+void LevelEditorController::WriteActorFileHitReactions(std::string_view actorFileName,
+                                                       const std::vector<NS::HitReactionSet>& sets)
+{
+    if (m_scene == nullptr)
+    {
+        return;
+    }
+    const std::string name{actorFileName};
+    const nlohmann::json* current = NS::ActorFileLibrary::Get().Find(name);
+    if (current == nullptr)
+    {
+        NS_LOG_WARN(App, ".actor {} が読まれていないので、束を書かない", name);
+        return;
+    }
+    nlohmann::json before = *current;
+    nlohmann::json after = before;
+    NS::WriteHitReactionSets(after, sets);
+    if (after == before)
+    {
+        return;
+    }
+    // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
+    m_editor.Undo().Push(
+        std::make_unique<ActorFileCommand>(*m_scene, name, std::move(before), std::move(after)), m_applier);
 }
 
 void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)

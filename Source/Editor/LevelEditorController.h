@@ -31,6 +31,7 @@ namespace NS
     struct SceneView;
     class AssetManager;
     class Material;
+    struct HitReactionSet;
 } // namespace NS
 
 namespace NS
@@ -239,6 +240,11 @@ public:
     //! .actor は直した欄を書き、シーンの同じ .actor のアクターの全部へ写して、取り消しの履歴へ積む。
     //! 値が変わっていなければ何もしない
     void CommitAssetEdit();
+
+    //! @brief actorFileName の .actor の名前の束を sets に替えてファイルへ書き、取り消しの履歴へ積む
+    //! @details シーンの同じ .actor のアクターの全部が束を読み直すので、次の当たりから効く。プレイ中も同じ。
+    //! .actor が読まれていない時は WARN を出して書かない。束が変わっていなければ何もしない
+    void WriteActorFileHitReactions(std::string_view actorFileName, const std::vector<NS::HitReactionSet>& sets);
 
 private:
     void TickEdit();

@@ -34,7 +34,10 @@
 #include <algorithm>
 #include <cstdio>
 #include <functional>
+#include <limits>
 #include <string>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #if NS_EDITOR_ENABLED
@@ -95,6 +98,18 @@ namespace NS
                 }
                 const ImTextureID handle = static_cast<ImTextureID>(reinterpret_cast<uintptr>(image->Srv()));
                 ImGui::Image(handle, display);
+            }
+
+            // 名前 label の 0 以上のフレーム数の欄。直し終えたフレームに true
+            bool DrawFrameCount(const char* label, const char* id, int& frames, bool& changed)
+            {
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(label);
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(-1.0f);
+                changed |= ImGui::DragInt(id, &frames, 0.2f, 0, std::numeric_limits<int>::max(), "%d",
+                                          ImGuiSliderFlags_AlwaysClamp);
+                return ImGui::IsItemDeactivatedAfterEdit();
             }
         } // namespace
 
@@ -322,6 +337,86 @@ namespace NS
             }
         }
 
+        void InspectorPanel::DrawHitReactionSets(LevelEditorController& editor, const std::string& actorFileName)
+        {
+            const nlohmann::json* document = ActorFileLibrary::Get().Find(actorFileName);
+            if (document == nullptr)
+            {
+                return;
+            }
+            nlohmann::json source = nlohmann::json::array();
+            if (const nlohmann::json* list = ActorFileHitReactions(*document))
+            {
+                source = *list;
+            }
+            // 取り消しやほかの窓で文書が変わったら読み直す。直している途中は打った値を残す
+            if (m_hitSetsActorFile != actorFileName || (!m_hitSetsEditing && m_hitSetsSource != source))
+            {
+                m_hitSetsActorFile = actorFileName;
+                m_hitSetsSource = std::move(source);
+                m_hitSets = ReadHitReactionSets(actorFileName, *document);
+                m_hitSetsEditing = false;
+            }
+            if (m_hitSets.empty() || !ImGui::CollapsingHeader("当たりの束 (.actor)", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                return;
+            }
+            ImGui::TextDisabled("直し終えた束は .actor に書き、この .actor を指すアクターの全部の次の当たりに効く");
+            bool committed = false;
+            ImGui::PushID("##hitReactions");
+            for (int s = 0; s < static_cast<int>(m_hitSets.size()); ++s)
+            {
+                HitReactionSet& set = m_hitSets[s];
+                ImGui::PushID(s);
+                // 識別の並びを束の番号だけにするため、開いても木の識別を積まない
+                if (ImGui::TreeNodeEx("##set",
+                                      ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_NoTreePushOnOpen,
+                                      "%s",
+                                      set.name.c_str()))
+                {
+                    ImGui::Indent();
+                    committed |= DrawFrameCount("止めのフレーム数", "##stopFrames", set.stopFrames, m_hitSetsEditing);
+                    for (int e = 0; e < static_cast<int>(set.entries.size()); ++e)
+                    {
+                        HitReactionEntry& entry = set.entries[e];
+                        ImGui::PushID(e);
+                        ImGui::SeparatorText(std::string{HitReactionItemLabel(entry.item)}.c_str());
+                        committed |= DrawFrameCount("長さ", "##length", entry.length, m_hitSetsEditing);
+                        if (const ReflectionInfo* info = HitReactionItemReflection(entry.item))
+                        {
+                            const ValueEditResult fields = DrawReflectedValue(HitReactionItemFields(entry.item), *info);
+                            m_hitSetsEditing |= fields.changed;
+                            committed |= fields.committed;
+                        }
+                        // 値の表は欄の表に載らないので、名前ごとに数の欄を出す。名前の足し引きはしない
+                        if (HitOwnerItem* owner = std::get_if<HitOwnerItem>(&entry.item))
+                        {
+                            for (std::pair<const std::string, float>& value : owner->values)
+                            {
+                                ImGui::PushID(value.first.c_str());
+                                ImGui::AlignTextToFramePadding();
+                                ImGui::TextUnformatted(value.first.c_str());
+                                ImGui::SameLine();
+                                ImGui::SetNextItemWidth(-1.0f);
+                                m_hitSetsEditing |= ImGui::DragFloat("##ownerValue", &value.second, 0.01f);
+                                committed |= ImGui::IsItemDeactivatedAfterEdit();
+                                ImGui::PopID();
+                            }
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::Unindent();
+                }
+                ImGui::PopID();
+            }
+            ImGui::PopID();
+            if (committed)
+            {
+                editor.WriteActorFileHitReactions(m_hitSetsActorFile, m_hitSets);
+                m_hitSetsEditing = false;
+            }
+        }
+
         void InspectorPanel::DrawSelectedAsset(LevelEditorController& editor, Object& asset)
         {
             if (Material* material = Cast<Material>(&asset))
@@ -401,6 +496,7 @@ namespace NS
                     }
                     ImGui::PopID();
                 });
+                DrawHitReactionSets(editor, actorFile->ActorFileName());
                 // 確定で .actor の文書が変わると、この 1 体は次に引いた時に作り直される
                 if (committed)
                 {
@@ -682,6 +778,7 @@ namespace NS
                     }
                     ImGui::PopID();
                 });
+                DrawHitReactionSets(editor, go->ActorFileName());
                 // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
                 if (classObjEdit.revertTarget != nullptr && revertRow != nullptr)
                 {
