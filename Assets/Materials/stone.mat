@@ -1,7 +1,9 @@
 {
   "vs": "Shaders/standard.vs.hlsl",
-  "ps": "Shaders/player.ps.hlsl",
-  "textures": ["Assets/Textures/cube_test.png"],
+  "ps": "Shaders/floor.ps.hlsl",
   "baseColor": [0.6, 0.6, 0.65],
-  "blend": "Opaque"
+  "blend": "Opaque",
+  "params": {
+    "tileLength": 3.125
+  }
 }

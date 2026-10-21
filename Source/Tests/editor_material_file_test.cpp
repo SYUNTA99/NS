@@ -73,7 +73,7 @@ TEST(EditorMaterialFile, WritingPutsTheCurrentValuesInTheFile)
     std::string error;
     ASSERT_TRUE(NS::ParseMaterialJson(*text, written, error)) << error;
     EXPECT_EQ(written.blend, NS::Gfx::BlendMode::Additive);
-    EXPECT_EQ(written.pixelShader, "Shaders/player.ps.hlsl");
+    EXPECT_EQ(written.pixelShader, "Shaders/floor.ps.hlsl");
 }
 
 // 置き換えられなかった時は前の .mat が残り、一時のファイルも残らない
