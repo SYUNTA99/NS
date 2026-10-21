@@ -53,7 +53,7 @@ namespace GL
             float positionFactor = 0.0f;
             float offset01 = 0.0f;          //!< 面の判定の横ずれ。相手の半幅と自機の半径の和で割った 0..1
             HitTier tier = HitTier::Center; //!< 当たりの段。相手の面の判定で決まる
-            std::string timeline;           //!< 自機が始める段の束の名前。例 体当たり[真ん中]
+            std::string setName;            //!< 自機が始める段の束の名前。例 体当たり[真ん中]
             float faceU = 0.0f;        //!< 段を決めた面の上の左右の位置。自機から見て右が正。判定できない体は 0
             float faceV = 0.0f;        //!< 段を決めた面の上の上下の位置。上が正。判定できない体は 0
             //! 反動の配分が使った面の向き (ImpactOutcome::faceNormal)。外れの火花もこの面に沿って流す

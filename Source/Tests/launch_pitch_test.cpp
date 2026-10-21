@@ -168,7 +168,7 @@ TEST(LaunchPitchTest, SearchStopsAtRepresentablePrecisionWithTinyTolerance)
 }
 
 // PlayerActor::Gravity と切り出した関数は同じ値を当てる。欄を変えても両方が一緒に変わる
-TEST(LaunchPitchTest, PlayerGravityMatchesTheSharedChoice)
+TEST(LaunchPitchTest, PlayerActorGravityMatchesTheSharedChoice)
 {
     for (int pass = 0; pass < 2; ++pass)
     {

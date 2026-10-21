@@ -402,7 +402,7 @@ namespace NS
             {
                 const GL::Level::ImpactRecord& impact = m_result.impact;
                 ImGui::Text("当たった束: %s / 面の位置 (%.2f, %.2f) / 突進を出して %d フレーム目に検知 / 威力 %.2f",
-                            impact.timeline.c_str(),
+                            impact.setName.c_str(),
                             impact.faceU,
                             impact.faceV,
                             m_result.detectionIndex,

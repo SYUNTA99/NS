@@ -124,7 +124,7 @@ namespace NS
                     return 0;
                 }
                 int last = 0;
-                if (const HitReactionSet* hit = reaction->FindSet(impact.timeline))
+                if (const HitReactionSet* hit = reaction->FindSet(impact.setName))
                 {
                     last = LongestEntry(*hit);
                 }

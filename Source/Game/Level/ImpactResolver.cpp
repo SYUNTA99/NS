@@ -574,7 +574,7 @@ namespace GL
             m_answer.lastImpact.positionFactor = positionFactor;
             m_answer.lastImpact.offset01 = offset01;
             m_answer.lastImpact.tier = tier;
-            m_answer.lastImpact.timeline = setName;
+            m_answer.lastImpact.setName = setName;
             m_answer.lastImpact.faceU = judgement.u;
             m_answer.lastImpact.faceV = judgement.v;
             m_answer.lastImpact.faceNormal = outcome.faceNormal;
