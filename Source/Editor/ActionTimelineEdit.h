@@ -8,6 +8,7 @@
 #include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 
 #include <cstddef>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -28,6 +29,13 @@ namespace NS
         //! @details 下見が無いか、下見でその動作が走らなかった場合は事象だけ。事象も無ければ 0〜0
         [[nodiscard]] TimelineFrameRange ActionFrameRange(const ActorAction& action,
                                                           const HitPreviewResult* preview) noexcept;
+
+        //! @brief 下見の記録で、名前 actionName の動作の 0 フレーム目に当たる frames の添字
+        //! @details 途中のフレームから入った動作は 0 フレーム目を通らないので、最初に記録したフレームから戻して出す。
+        //! 戻した添字は負になる事がある
+        //! @return その動作が走らなかった場合は std::nullopt
+        [[nodiscard]] std::optional<int> ActionOriginIndex(const HitPreviewResult& preview,
+                                                           std::string_view actionName) noexcept;
 
         //! @brief 下見で、名前 actionName の動作の row の行の事象が実際に始まったフレームを返す
         //! @return 動作のフレーム (状態に入った歩が 0) で、始まった順に並ぶ。始まらなかった行は空

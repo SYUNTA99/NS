@@ -3,29 +3,23 @@
 #include "Editor/HitPreview.h"
 
 #include <algorithm>
-#include <optional>
 
 namespace NS
 {
     namespace Editor
     {
-        namespace
+        std::optional<int> ActionOriginIndex(const HitPreviewResult& preview, std::string_view actionName) noexcept
         {
-            // 下見の記録で、名前の動作の 0 フレーム目に当たる frames の添字。その動作が走らなかった場合は std::nullopt
-            // 途中のフレームから入った動作は 0 フレーム目を通らないので、最初に記録したフレームから戻して出す
-            std::optional<int> ActionOriginIndex(const HitPreviewResult& preview, std::string_view actionName) noexcept
+            for (std::size_t i = 0; i < preview.frames.size(); ++i)
             {
-                for (std::size_t i = 0; i < preview.frames.size(); ++i)
+                const HitPreviewFrame& frame = preview.frames[i];
+                if (frame.action == actionName && frame.actionFrame >= 0)
                 {
-                    const HitPreviewFrame& frame = preview.frames[i];
-                    if (frame.action == actionName && frame.actionFrame >= 0)
-                    {
-                        return static_cast<int>(i) - frame.actionFrame;
-                    }
+                    return static_cast<int>(i) - frame.actionFrame;
                 }
-                return std::nullopt;
             }
-        } // namespace
+            return std::nullopt;
+        }
 
         std::size_t AddActionEvent(ActorAction& action, const HitReactionItem& item, int start)
         {
