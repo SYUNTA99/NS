@@ -58,6 +58,7 @@ namespace NS
                 float forwardAxis, float strafeAxis, float verticalAxis, float dt, float speedScale = 1.0f) noexcept;
 
             //! 自由視点入力を 1 フレーム分適用する。感度・ズームバネは自分の設定値で処理する
+            //! 設定値に 0 以下・非数・無限が 1 つでもあれば、姿勢を変えずに断る
             void ApplyInput(const EditorCameraInput& input) noexcept;
 
             // 注視対象の内側へ入り込まないための距離の下限 (m)
@@ -90,6 +91,9 @@ namespace NS
             [[nodiscard]] const FeelTuning& Tuning() const noexcept { return m_tuning; }
 
         private:
+            // Inspector の手入力は欄の範囲を越えるため、使う前に全部の欄が正の有限か確かめる
+            [[nodiscard]] bool HasValidTuning() const noexcept;
+
             Vector3 m_center{0.0f, 0.0f, 0.0f}; // orbit の中心 pivot
             float m_yaw = 0.0f;                     // 方位角 (ラジアン)
             float m_pitch = -0.5236f;               // 仰角 (ラジアン)

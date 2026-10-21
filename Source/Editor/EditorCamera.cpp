@@ -87,8 +87,21 @@ namespace NS
             m_center.z += (forward.z * forwardAxis + right.z * strafeAxis) * step;
         }
 
+        bool EditorCamera::HasValidTuning() const noexcept
+        {
+            return IsPositiveFinite(m_tuning.springOmega) && IsPositiveFinite(m_tuning.mouseSensOrbit) &&
+                   IsPositiveFinite(m_tuning.mouseSensPan) && IsPositiveFinite(m_tuning.mouseSensZoom) &&
+                   IsPositiveFinite(m_tuning.padSensOrbit) && IsPositiveFinite(m_tuning.padSensPan) &&
+                   IsPositiveFinite(m_tuning.padSensZoom) && IsPositiveFinite(m_tuning.keyMoveSpeed) &&
+                   IsPositiveFinite(m_tuning.boostMoveScale);
+        }
+
         void EditorCamera::ApplyInput(const EditorCameraInput& input) noexcept
         {
+            if (!HasValidTuning())
+            {
+                return;
+            }
             if (input.flying)
             {
                 ApplyLook(input.lookYawPixels * m_tuning.mouseSensOrbit,
@@ -127,6 +140,11 @@ namespace NS
 
         void EditorCamera::Tick() noexcept
         {
+            // パッドの入力は ApplyInput より前に設定値を使うため、ここでも断る
+            if (!HasValidTuning())
+            {
+                return;
+            }
             const float dt = OS::FrameTimer::FixedDelta();
             OS::Input& input = OS::Input::Get();
 
