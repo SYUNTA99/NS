@@ -59,7 +59,14 @@ namespace NS
         [[nodiscard]] Radians FovY() const noexcept { return m_fovY; }
         void SetNearPlane(float nearPlane) noexcept { m_nearPlane = nearPlane; }
         [[nodiscard]] float NearPlane() const noexcept { return m_nearPlane; }
-        void SetFarPlane(float farPlane) noexcept { m_farPlane = farPlane; }
+        //! 非有限と近い面以下の値は投影行列を壊すので、捨てて元の値を残す。値は JSON と Inspector の欄から来る
+        void SetFarPlane(float farPlane) noexcept
+        {
+            if (std::isfinite(farPlane) && farPlane > m_nearPlane + k_Epsilon)
+            {
+                m_farPlane = farPlane;
+            }
+        }
         [[nodiscard]] float FarPlane() const noexcept { return m_farPlane; }
 
         // 姿勢は派生と CameraManager

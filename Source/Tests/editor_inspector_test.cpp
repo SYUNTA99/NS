@@ -289,6 +289,25 @@ TEST(EditorInspector, Vector2SavesBothComponentsRejectsBrokenValuesAndReverts)
     }
 }
 
+// ファークリップの欄は setter を直に呼ぶ。非有限と近い面以下の値は投影行列を壊すので、捨てて元の値を残す
+TEST(EditorInspector, FarPlaneFieldRejectsValuesThatBreakTheProjection)
+{
+    NS::ThirdPersonFollow follow{nullptr};
+    const float kept = follow.FarPlane();
+    const float broken[] = {0.0f,
+                            -1.0f,
+                            follow.NearPlane(),
+                            std::numeric_limits<float>::infinity(),
+                            std::numeric_limits<float>::quiet_NaN()};
+    for (const float value : broken)
+    {
+        (void)NS::ApplyJsonFields(follow, nlohmann::json{{"ファークリップ", value}});
+        EXPECT_EQ(follow.FarPlane(), kept);
+    }
+    (void)NS::ApplyJsonFields(follow, nlohmann::json{{"ファークリップ", 250.0f}});
+    EXPECT_EQ(follow.FarPlane(), 250.0f);
+}
+
 TEST(EditorInspector, Vector2ValueAxesEditIndependentlyAcrossPanelResizes)
 {
     ImGuiContext* gui = ImGui::CreateContext();
