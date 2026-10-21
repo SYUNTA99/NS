@@ -130,12 +130,32 @@ namespace NS
         }
     }
 
-    //! 有限値のときだけ target へ書く。非有限値は捨てて元の値を残す
-    inline void AssignIfFinite(float& target, float value) noexcept
+    //! 欄へ書く値の float の成分が全部有限なら true。float を持たない型は常に true
+    template <class Value> [[nodiscard]] bool IsFiniteFieldValue(const Value& value) noexcept
     {
-        if (std::isfinite(value))
+        if constexpr (std::is_same_v<Value, float>)
         {
-            target = value;
+            return std::isfinite(value);
+        }
+        else if constexpr (std::is_same_v<Value, Vector2>)
+        {
+            return std::isfinite(value.x) && std::isfinite(value.y);
+        }
+        else if constexpr (std::is_same_v<Value, Vector3>)
+        {
+            return IsFinite(value);
+        }
+        else if constexpr (std::is_same_v<Value, Quaternion> || std::is_same_v<Value, Color>)
+        {
+            return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) && std::isfinite(value.w);
+        }
+        else if constexpr (std::is_same_v<Value, std::optional<Color>>)
+        {
+            return !value.has_value() || IsFiniteFieldValue(*value);
+        }
+        else
+        {
+            return true;
         }
     }
 
@@ -167,11 +187,7 @@ namespace NS
 
     template <class Field> void AssignFieldValue(Field& target, const void* in) noexcept
     {
-        if constexpr (std::is_same_v<Field, float>)
-        {
-            AssignIfFinite(target, *static_cast<const float*>(in));
-        }
-        else if constexpr (IsAssetPointer<Field>::value)
+        if constexpr (IsAssetPointer<Field>::value)
         {
             LoadAssetField(target, *static_cast<const std::string*>(in));
         }
@@ -181,7 +197,11 @@ namespace NS
         }
         else
         {
-            target = *static_cast<const Field*>(in);
+            const Field& value = *static_cast<const Field*>(in);
+            if (IsFiniteFieldValue(value))
+            {
+                target = value;
+            }
         }
     }
 
@@ -335,7 +355,7 @@ namespace NS
 //! 宣言済みのメンバを 1 フィールドとして登録する。メンバの宣言はしないので、クラスに別に書く
 //! private も入れ子の struct のメンバ (m_tuning.speed) も書ける
 //! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectName の型で欄の種類が決まる
-//! float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
+//! float と float の組の欄は IsFiniteFieldValue を通るので、非有限値の書き込みは捨てて元の値が残る (NS_ACCESSOR も同じ)
 //! name は保存の鍵。3 つ目に見せる名前を書くと、インスペクタは name の代わりにそれを見せる
 #define NS_FIELD(member, name, ...) NS_FIELD_ENTRY(member, name, false, __VA_ARGS__)
 
@@ -368,7 +388,11 @@ namespace NS
                                        *static_cast<ValueType*>(out) = static_cast<const Self*>(c)->getterCall;        \
                                    },                                                                                  \
                                    +[](void* c, const void* in) noexcept {                                             \
-                                       static_cast<Self*>(c)->setterCall(*static_cast<const ValueType*>(in));          \
+                                       const ValueType& value = *static_cast<const ValueType*>(in);                    \
+                                       if (NS::IsFiniteFieldValue(value))                                              \
+                                       {                                                                               \
+                                           static_cast<Self*>(c)->setterCall(value);                                   \
+                                       }                                                                               \
                                    },                                                                                  \
                                    nullptr,                                                                            \
                                    NS::AssetKind::None,                                                                \
