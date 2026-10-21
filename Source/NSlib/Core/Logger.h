@@ -27,7 +27,8 @@ namespace NS
         //! ログの識別名。ログファイル名に使う
         std::string logName = "ns";
 
-        //! true の場合、Init のたびに新しいログファイルへ切り替える
+        //! true の場合、Init のたびに前のログを logName.1.log へずらして新しいファイルへ書く
+        //! 他のプログラムが開いていてずらせない時は、前のファイルへ追記する
         bool rotateOnOpen = false;
 
         //! ログ出力先の親ディレクトリ。空の場合は logs だけを使う
