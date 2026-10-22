@@ -1,6 +1,6 @@
 {
   "environment": {
-    "skybox": "Assets/Skybox/kurt/"
+    "skybox": "Assets/Skybox/blue-sky/"
   },
   "nextObjectId": 94,
   "objects": [
@@ -8,7 +8,9 @@
       "actor": "MapPartsActor",
       "classObjs": {
         "Collision": {},
-        "Model": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
         "Transform": {
           "スケール": [
             50.0,
@@ -39,6 +41,7 @@
         "ChargeEffects": {},
         "Clips": {},
         "Collider": {},
+        "Effect": {},
         "HitReaction": {},
         "ImpactEffects": {},
         "ImpactResolver": {},
@@ -48,6 +51,7 @@
         "Params": {},
         "Shadow": {},
         "SlamArrow": {},
+        "StateMachine": {},
         "TargetMarker": {},
         "Transform": {
           "スケール": [
@@ -132,6 +136,7 @@
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
+        "Effect": {},
         "HitZones": {},
         "LaunchEffects": {},
         "Model": {},
@@ -142,6 +147,7 @@
         "Shadow": {
           "基本直径": 1.0
         },
+        "StateMachine": {},
         "Transform": {
           "スケール": [
             1.0,
@@ -169,6 +175,7 @@
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
+        "Effect": {},
         "HitZones": {},
         "LaunchEffects": {},
         "Model": {
@@ -176,13 +183,14 @@
             0.6200000047683716,
             0.6000000238418579,
             0.5600000023841858,
-            1
+            1.0
           ]
         },
         "Params": {},
         "Shadow": {
           "基本直径": 1.5
         },
+        "StateMachine": {},
         "Transform": {
           "スケール": [
             1.5,
@@ -210,6 +218,7 @@
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
+        "Effect": {},
         "HitZones": {},
         "LaunchEffects": {},
         "Model": {
@@ -217,7 +226,7 @@
             0.5,
             0.47999998927116394,
             0.44999998807907104,
-            1
+            1.0
           ]
         },
         "Params": {
@@ -227,6 +236,7 @@
         "Shadow": {
           "基本直径": 2.0
         },
+        "StateMachine": {},
         "Transform": {
           "スケール": [
             2.0,
@@ -254,6 +264,7 @@
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
+        "Effect": {},
         "HitZones": {},
         "LaunchEffects": {},
         "Model": {
@@ -261,7 +272,7 @@
             0.36000001430511475,
             0.3400000035762787,
             0.3199999928474426,
-            1
+            1.0
           ]
         },
         "Params": {
@@ -271,6 +282,7 @@
         "Shadow": {
           "基本直径": 3.0
         },
+        "StateMachine": {},
         "Transform": {
           "スケール": [
             3.0,
