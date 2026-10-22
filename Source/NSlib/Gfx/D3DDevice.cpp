@@ -11,6 +11,7 @@
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DTexture.h"
+#include "NSlib/Gfx/detail/CommonPipelines.h"
 #include "ThirdParty/DirectXTex/ScreenGrab/ScreenGrab11.h"
 
 #include <cstring>
@@ -219,19 +220,11 @@ namespace NS
                 return;
             }
 
-            // 共通 D3DPipeline を 1 回だけ生成して使い回す。D3DPipeline::Create は Gpu() を引くので公開の後に呼ぶ
-            // [0] は裏を向いた面を描かない、[1] は裏も描く
-            const CullMode culls[2] = {CullMode::Back, CullMode::None};
-            for (int sided = 0; sided < 2; ++sided)
+            // 共通 D3DPipeline を 1 回だけ生成して使い回す
+            if (!detail::CreateCommonPipelines(m_commonPipelines, m_occludedPipelines))
             {
-                const CullMode cull = culls[sided];
-                m_commonPipelines[sided][0] = D3DPipeline::Create(D3DPipelineDesc{.cull = cull});
-                m_commonPipelines[sided][1] = D3DPipeline::Create(
-                    D3DPipelineDesc{.cull = cull, .blend = BlendMode::Alpha, .depth = DepthMode::ReadOnly});
-                m_commonPipelines[sided][2] = D3DPipeline::Create(
-                    D3DPipelineDesc{.cull = cull, .blend = BlendMode::Additive, .depth = DepthMode::ReadOnly});
-                m_occludedPipelines[sided] = D3DPipeline::Create(
-                    D3DPipelineDesc{.cull = cull, .blend = BlendMode::Alpha, .depth = DepthMode::Occluded});
+                NS_LOG_ERROR(Graphics, "共通 D3DPipeline の構築失敗");
+                return;
             }
 
             window.SetResizeCallback([this](Size2D rs) { this->Resize(rs); });
