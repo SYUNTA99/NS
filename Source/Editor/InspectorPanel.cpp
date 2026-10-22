@@ -116,6 +116,102 @@ namespace NS
                 EndFieldTable();
                 return committed;
             }
+
+            // material のシェーダーの MaterialParams のうち、読まれている項目の欄を描く
+            // 値は SetParamValue がその場で D3DMaterial へ送るので、球のプレビューとシーンは次の描画から変わる
+            ValueEditResult DrawMaterialParams(Material& material)
+            {
+                ValueEditResult result;
+                const Gfx::ShaderParamLayout& layout = material.ParamLayout();
+                // 読まれない項目は変えても見た目が変わらないので出さない
+                const bool anyUsed = std::ranges::any_of(layout.params, &Gfx::ShaderParam::used);
+                if (!anyUsed)
+                {
+                    return result;
+                }
+                ImGui::SeparatorText("シェーダーの値");
+                if (!BeginFieldTable("##materialParams"))
+                {
+                    return result;
+                }
+                for (const Gfx::ShaderParam& param : layout.params)
+                {
+                    if (!param.used)
+                    {
+                        continue;
+                    }
+                    ImGui::PushID(param.name.c_str());
+                    FieldRow(param.name.c_str());
+                    MaterialParamValue value = material.ParamValue(param);
+                    bool changed = false;
+                    switch (param.type)
+                    {
+                    case Gfx::ShaderParamType::Float:
+                    case Gfx::ShaderParamType::Float2:
+                    case Gfx::ShaderParamType::Float3:
+                    case Gfx::ShaderParamType::Float4:
+                    {
+                        float before[4]{};
+                        const int count = static_cast<int>(value.numbers.size());
+                        for (int i = 0; i < count; ++i)
+                        {
+                            before[i] = static_cast<float>(value.numbers[i]);
+                        }
+                        float numbers[4]{before[0], before[1], before[2], before[3]};
+                        changed = ImGui::DragScalarN("##value", ImGuiDataType_Float, numbers, count, 0.01f);
+                        // 触っていない成分を float へ丸めて書き戻すと、.mat の値が変わってしまう
+                        for (int i = 0; i < count; ++i)
+                        {
+                            if (numbers[i] != before[i])
+                            {
+                                value.numbers[i] = static_cast<double>(numbers[i]);
+                            }
+                        }
+                        break;
+                    }
+                    case Gfx::ShaderParamType::Int:
+                    {
+                        int32 number = static_cast<int32>(value.numbers[0]);
+                        const int32 lowest = std::numeric_limits<int32>::min();
+                        const int32 highest = std::numeric_limits<int32>::max();
+                        changed = ImGui::DragScalar("##value", ImGuiDataType_S32, &number, 0.2f, &lowest, &highest,
+                                                    "%d", ImGuiSliderFlags_AlwaysClamp);
+                        value.numbers[0] = static_cast<double>(number);
+                        break;
+                    }
+                    case Gfx::ShaderParamType::Uint:
+                    {
+                        uint32 number = static_cast<uint32>(value.numbers[0]);
+                        const uint32 lowest = 0;
+                        const uint32 highest = std::numeric_limits<uint32>::max();
+                        changed = ImGui::DragScalar("##value", ImGuiDataType_U32, &number, 0.2f, &lowest, &highest,
+                                                    "%u", ImGuiSliderFlags_AlwaysClamp);
+                        value.numbers[0] = static_cast<double>(number);
+                        break;
+                    }
+                    case Gfx::ShaderParamType::Bool:
+                    {
+                        bool flag = value.numbers[0] != 0.0;
+                        changed = ImGui::Checkbox("##value", &flag);
+                        value.numbers[0] = static_cast<double>(flag);
+                        break;
+                    }
+                    case Gfx::ShaderParamType::Unsupported:
+                        ImGui::TextDisabled("配列・構造体・行列は欄で触れない");
+                        break;
+                    }
+                    result.activated |= ImGui::IsItemActivated();
+                    result.committed |= ImGui::IsItemDeactivated();
+                    // 非数や範囲の外の値は SetParamValue が受けないので、前の値が残る
+                    if (changed && material.SetParamValue(param, value))
+                    {
+                        result.changed = true;
+                    }
+                    ImGui::PopID();
+                }
+                EndFieldTable();
+                return result;
+            }
         } // namespace
 
         bool InspectorPanel::DrawSkyboxPreview(std::string_view path)
@@ -448,12 +544,13 @@ namespace NS
                 ImGui::Separator();
                 ImGui::BeginDisabled(!writable);
                 const ValueEditResult edit = DrawReflectedValue(material, *material->GetReflection());
+                const ValueEditResult paramEdit = DrawMaterialParams(*material);
                 ImGui::EndDisabled();
-                if (edit.changed)
+                if (edit.changed || paramEdit.changed)
                 {
                     editor.MarkAssetEdited();
                 }
-                if (edit.committed)
+                if (edit.committed || paramEdit.committed)
                 {
                     editor.CommitAssetEdit();
                 }
