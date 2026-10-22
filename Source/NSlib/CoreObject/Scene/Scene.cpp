@@ -227,7 +227,7 @@ namespace NS
             return nullptr;
         }
 
-        obj->AttachScene(this);
+        // シーンは SpawnObject の作る関数が OnInit の前に決めている
         SceneActor* raw = m_objects.AppendWithNewId(std::move(obj), std::move(name));
         if (raw == nullptr)
         {
@@ -280,7 +280,6 @@ namespace NS
         {
             return nullptr;
         }
-        built->AttachScene(this);
         SceneActor* raw = m_objects.InsertFromJson(std::move(built), object, m_objects.ObjectCount());
         if (raw == nullptr)
         {
@@ -308,7 +307,6 @@ namespace NS
         {
             return nullptr;
         }
-        built->AttachScene(this);
         SceneActor* raw = m_objects.InsertFromJson(std::move(built), object, index);
         if (raw == nullptr)
         {

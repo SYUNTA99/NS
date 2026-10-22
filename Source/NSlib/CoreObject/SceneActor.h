@@ -68,10 +68,8 @@ namespace NS
         //! Destroy を呼ばれて、段の後の解放を待っている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsPendingDestroy() const noexcept { return m_presence == Presence::PendingDestroy; }
 
-        //! 所有 Scene。Scene attach 前 / 破棄後は nullptr
+        //! 入るシーン。作る時の ActorInitInfo::scene で、OnInit の前から決まっている。シーンへ入らない物は nullptr
         [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
-        //! Scene 側が attach 時に呼ぶ。派生から手動で呼ばない
-        void AttachScene(Scene* scene) noexcept { m_scene = scene; }
 
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
@@ -164,7 +162,7 @@ namespace NS
         }
 
         // 基底の部品の型を替える派生は、基底の OnInit を呼ばずに自分で作る
-        //! 所属の Scene は入る道によって付いていないので、ここでは読まない
+        //! 入るシーンはもう決まっているので、部品へシーンの仕組みを渡せる。id と名前はまだ付いていない
         virtual void OnInit() {}
         //! @brief 素材の欄を引いた直後に呼ぶ。読んだ物から作る物を、部品を名指しで呼んで作る
         //! @details 作る時と ReloadAssets の両方で呼ぶので、何回呼ばれても同じ姿になるように書く。上書きする派生は基底も呼ぶ
@@ -258,7 +256,7 @@ namespace NS
         uint32 m_id = 0;
         std::string m_name;
         std::string m_actorFileName; // 書くのは Init だけ
-        Scene* m_scene = nullptr;    // 所有 Scene、attach 前後は nullptr
+        Scene* m_scene = nullptr;    // 入るシーン。書くのは Init だけ
         Presence m_presence = Presence::Disappeared;
         std::unique_ptr<Transform> m_transform;
 

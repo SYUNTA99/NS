@@ -70,7 +70,8 @@ void PlayerActor::OnInit()
     model->SetColorOverride(NS::Color{0.5f, 0.5f, 0.5f});
     CreateClassObj(m_appearance, this);
     CreateClassObj(m_body, this);
-    CreateClassObj(m_collider, this);
+    // シーンは OnInit の前に決まっている。当たりは作る時に地形と根を受け取り、持ち主を持たない
+    CreateClassObj(m_collider, GetPhysicsScene(), &Root());
     CreateClassObj(m_input, this);
     CreateClassObj(m_params);
     CreateClassObj(m_clips);

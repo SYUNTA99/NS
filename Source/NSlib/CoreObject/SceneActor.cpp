@@ -215,6 +215,11 @@ namespace NS
         {
             m_actorFileName = std::string{info->actorFile};
         }
+        // 部品は作る時にシーンの仕組みを受け取るので、OnInit より前にシーンを決める。書くのはここだけ
+        if (info != nullptr)
+        {
+            m_scene = info->scene;
+        }
         OnInit();
         ApplyActorFile(*this);
         // 束と動作は .actor だけに書き、配置物では上書きしない

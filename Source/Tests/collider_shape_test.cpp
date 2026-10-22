@@ -47,7 +47,7 @@ namespace
 TEST(ColliderShape, AnswersFromItsOwnFieldsWithoutOwner)
 {
     // 持ち主も OnStart も無い当たりでも、既定と書いた値をそのまま返す
-    NS::Collider collider{nullptr};
+    NS::Collider collider{nullptr, nullptr};
     EXPECT_FLOAT_EQ(collider.CapsuleRadius(), 0.4f);
     EXPECT_FLOAT_EQ(collider.StandingHalfHeight(), 0.5f);
     EXPECT_EQ(collider.GetPhysicsScene(), nullptr);
@@ -61,7 +61,7 @@ TEST(ColliderShape, AnswersFromItsOwnFieldsWithoutOwner)
 // 当たりの形は根を中心にした縦のカプセル。球にしている間は円柱の半分の高さが 0 になる
 TEST(ColliderShape, CapsuleAtPutsTheCurrentShapeAroundTheRoot)
 {
-    NS::Collider collider{nullptr};
+    NS::Collider collider{nullptr, nullptr};
     ASSERT_EQ(NS::ApplyJsonFields(collider, {{"半径", 0.3f}, {"半分の高さ", 0.7f}}), 0u);
     const NS::Vector3 root{1.0f, 2.0f, 3.0f};
     NS::Phys::Capsule capsule = collider.CapsuleAt(root);
@@ -83,7 +83,7 @@ TEST(ColliderShape, CapsuleAtPutsTheCurrentShapeAroundTheRoot)
 TEST(ColliderShape, ShapeFieldsRejectNegativeAndNonFinite)
 {
     // 半径は 0 以下を、半長は負を受けない。半長 0 は球で、半径 0 は形を作れない
-    NS::Collider collider{nullptr};
+    NS::Collider collider{nullptr, nullptr};
     const float radiusBefore = collider.CapsuleRadius();
     collider.SetCapsuleRadius(0.0f);
     EXPECT_FLOAT_EQ(collider.CapsuleRadius(), radiusBefore);

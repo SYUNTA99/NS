@@ -28,7 +28,7 @@ namespace
     protected:
         void OnInit() override
         {
-            CreateClassObj(collider, this);
+            CreateClassObj(collider, GetPhysicsScene(), &Root());
             CreateClassObj(sphere, this);
         }
     };
@@ -90,7 +90,7 @@ TEST(CollisionWindow, OverlapBoxAnswersLikeThePhysicsScene)
 
 TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
 {
-    NS::Collider bare{nullptr};
+    NS::Collider bare{nullptr, nullptr};
     const NS::IUseCollision& bareWindow = bare;
     EXPECT_EQ(bareWindow.GetPhysicsScene(), nullptr);
 
