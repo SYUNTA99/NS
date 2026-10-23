@@ -379,6 +379,48 @@ namespace NS
         }
     }
 
+    std::optional<nlohmann::json> ReadActorFileAt(const std::string& path)
+    {
+        const std::optional<std::string> text = OS::FileSystem::ReadAllText(path);
+        if (!text.has_value())
+        {
+            NS_LOG_ERROR(Scene, ".actor {} のファイルを開けないので読まない", path);
+            return std::nullopt;
+        }
+        if (text->size() > k_MaxActorFileBytes)
+        {
+            NS_LOG_ERROR(Scene, ".actor {} が上限 ({} byte) を超えるので読まない", path, k_MaxActorFileBytes);
+            return std::nullopt;
+        }
+        const nlohmann::json root = nlohmann::json::parse(*text, nullptr, false);
+        if (root.is_discarded())
+        {
+            NS_LOG_ERROR(Scene, ".actor {} の JSON を読めない", path);
+            return std::nullopt;
+        }
+        const std::string problem = FindActorFileProblem(root);
+        if (!problem.empty())
+        {
+            NS_LOG_ERROR(Scene, ".actor {} を読まない。{}", path, problem);
+            return std::nullopt;
+        }
+        return Sanitize(root);
+    }
+
+    bool WriteActorFileAt(const std::string& path, const nlohmann::json& actorFile)
+    {
+        // シーンのファイルと同じく辞書順のキーで書く。同じ中身の 2 回の保存はバイト一致になる
+        const std::string text = actorFile.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
+        const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
+        // 書く途中で失敗しても前のファイルを残す。壊れると、それを指すアクターが全部組めなくなる
+        if (!OS::FileSystem::ReplaceAllBytes(path, std::span<const std::byte>(raw, text.size())))
+        {
+            NS_LOG_ERROR(Scene, ".actor {} を書けない", path);
+            return false;
+        }
+        return true;
+    }
+
     void ActorFileLibrary::Reload()
     {
         m_actorFiles.clear();
@@ -393,31 +435,13 @@ namespace NS
         }
         for (const std::string& path : OS::FileSystem::ListFiles(directory, ".actor"))
         {
-            const std::optional<std::string> text = OS::FileSystem::ReadAllText(path);
-            if (!text.has_value())
+            std::optional<nlohmann::json> actorFile = ReadActorFileAt(path);
+            if (!actorFile.has_value())
             {
-                NS_LOG_ERROR(Scene, ".actor {} のファイルを開けないので読まない", path);
-                continue;
-            }
-            if (text->size() > k_MaxActorFileBytes)
-            {
-                NS_LOG_ERROR(Scene, ".actor {} が上限 ({} byte) を超えるので読まない", path, k_MaxActorFileBytes);
-                continue;
-            }
-            const nlohmann::json root = nlohmann::json::parse(*text, nullptr, false);
-            if (root.is_discarded())
-            {
-                NS_LOG_ERROR(Scene, ".actor {} の JSON を読めない", path);
-                continue;
-            }
-            const std::string problem = FindActorFileProblem(root);
-            if (!problem.empty())
-            {
-                NS_LOG_ERROR(Scene, ".actor {} を読まない。{}", path, problem);
                 continue;
             }
             // 名前はファイル名、クラスは中の class
-            m_actorFiles[OS::FileSystem::Stem(path)] = Sanitize(root);
+            m_actorFiles[OS::FileSystem::Stem(path)] = std::move(*actorFile);
         }
     }
 
@@ -499,17 +523,7 @@ namespace NS
         {
             return false;
         }
-        // シーンのファイルと同じく辞書順のキーで書く。同じ中身の 2 回の保存はバイト一致になる
-        const std::string text = actorFile->dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
-        const std::string path = OS::FileSystem::Combine(Directory(), std::string{name} + ".actor");
-        const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
-        // 書く途中で失敗しても前のファイルを残す。壊れると、それを指す配置物が全部組めなくなる
-        if (!OS::FileSystem::ReplaceAllBytes(path, std::span<const std::byte>(raw, text.size())))
-        {
-            NS_LOG_ERROR(Scene, ".actor {} を書けない", path);
-            return false;
-        }
-        return true;
+        return WriteActorFileAt(OS::FileSystem::Combine(Directory(), std::string{name} + ".actor"), *actorFile);
     }
 
     const SceneActor& ActorFileLibrary::Baseline(std::string_view name)

@@ -40,6 +40,12 @@ namespace NS
     //! .actor の文書へ動作の並び actions を書く。空の並びなら鍵ごと消す
     void SetActorFileActions(nlohmann::json& actorFile, nlohmann::json list);
 
+    //! @brief path の .actor を読み、参照の欄を落とした文書を返す
+    //! @details 開けない・大きすぎる・JSON でない・知らない頭の鍵・class が無いか登録されていない物は ERROR で std::nullopt
+    [[nodiscard]] std::optional<nlohmann::json> ReadActorFileAt(const std::string& path);
+    //! path へ .actor の文書を辞書順の鍵で書く。書けなければ ERROR で false で、前のファイルは残る
+    [[nodiscard]] bool WriteActorFileAt(const std::string& path, const nlohmann::json& actorFile);
+
     //! 名前ごとの既定値を Directory()/<名前>.actor から読む。作るクラスはファイルの中の class
     //! ActorRef はシーン内の参照なので既定値には含めない
     class ActorFileLibrary

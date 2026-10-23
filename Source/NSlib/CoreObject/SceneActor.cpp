@@ -208,6 +208,12 @@ namespace NS
 
     SceneActor::~SceneActor() noexcept = default;
 
+    void SceneActor::InitWithCodeValues()
+    {
+        m_actorFileName = ClassName();
+        OnInit();
+    }
+
     void SceneActor::Init(const ActorInitInfo* info)
     {
         m_actorFileName = ClassName();

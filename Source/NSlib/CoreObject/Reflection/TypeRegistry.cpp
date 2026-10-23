@@ -115,6 +115,18 @@ namespace NS
         return actor;
     }
 
+    std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className)
+    {
+        const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
+        if (entry == nullptr || entry->create == nullptr)
+        {
+            return nullptr;
+        }
+        std::unique_ptr<SceneActor> actor = entry->create();
+        actor->InitWithCodeValues();
+        return actor;
+    }
+
     const std::vector<const TypeRegistry::Entry*>& PlaceableEntries()
     {
         // 登録は全て main 前の静的初期化で済むので、初回呼び出し時に確定した一覧を組める

@@ -229,12 +229,15 @@ namespace NS
         friend std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
+        friend std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className);
         friend float GetFrameRate(const SceneActor* actor) noexcept;
         friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
         //! @brief アクターを作る順。部品を作る → .actor → 配置の上書き → 素材
         //! @details 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない。
         //! info が nullptr のアクターも、配置の上書きを飛ばすだけで同じ順を通る
         void Init(const ActorInitInfo* info);
+        //! 部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物
+        void InitWithCodeValues();
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
         //! @details ActorList::SnapshotObjects が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
