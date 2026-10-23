@@ -5,6 +5,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -12,6 +13,7 @@
 #include <algorithm>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace NS
@@ -55,9 +57,25 @@ namespace NS
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonClassObjs(object);
-        ForEachReflectedClassObj(obj, [&](const ClassObjInfo& field, const Object* classObj) {
-            parts[field.key] = SerializeClassObjFields(*classObj);
+        // 値は .actor と比べない。シーンに書くのは根の姿勢・参照の欄・上書きの一覧の項目で、ほかは .actor の値を使う
+        ForEachReflectedClassObj(obj, [&](const ClassObjInfo& row, const Object* classObj) {
+            nlohmann::json fields = SerializeClassObjFields(*classObj);
+            if (classObj != &obj.Root())
+            {
+                for (nlohmann::json::iterator entry = fields.begin(); entry != fields.end();)
+                {
+                    const FieldDesc* field = FindField(classObj->GetReflection(), entry.key());
+                    const bool reference = field != nullptr && field->type == FieldType::ActorRef;
+                    if (reference || obj.IsSceneOverride(row.key, entry.key()))
+                    {
+                        ++entry;
+                        continue;
+                    }
+                    entry = fields.erase(entry);
+                }
+            }
+            parts[row.key] = std::move(fields);
         });
-        return DiffObjectJson(object);
+        return object;
     }
 } // namespace NS

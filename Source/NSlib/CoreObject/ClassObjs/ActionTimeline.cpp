@@ -320,7 +320,7 @@ namespace NS
         {
             return;
         }
-        const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(m_owner->ActorFileName());
+        const nlohmann::json* actorFile = ActorFileLibrary::Get().Values(m_owner->ActorFileName());
         if (actorFile != nullptr)
         {
             m_actions = ReadActorActions(m_owner->ActorFileName(), *actorFile);

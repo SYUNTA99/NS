@@ -76,7 +76,7 @@ namespace NS
             std::vector<PlacementItem> items;
             for (const std::string& name : library.Names())
             {
-                // 置けるのは NS_PLACEABLE で登録したクラスの .actor だけ。自機の .actor は並べない
+                // 置けるのは NS_PLACEABLE で登録したクラスの .actor だけ
                 const std::string className = library.ClassNameOf(name);
                 const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
                 if (entry == nullptr || entry->label == nullptr)
@@ -86,7 +86,7 @@ namespace NS
                 // 型から作る地形の部品と同じ .actor だけを、メッシュの形ごとに並べる
                 if (name != "MapPartsActor")
                 {
-                    items.push_back(PlacementItem{name, MakePrototypeJson(library.Baseline(name)), false});
+                    items.push_back(PlacementItem{name, MakePrototypeJson(name), false});
                     continue;
                 }
 

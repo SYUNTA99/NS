@@ -7,7 +7,7 @@
 
 #include <functional>
 #include <map>
-#include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -24,6 +24,11 @@ namespace NS
     //! .actor の文書へ class を書く
     void SetActorFileClass(nlohmann::json& actorFile, std::string_view className);
 
+    //! 派生の .actor の文書の中の、元にする .actor の名前 base。元の .actor の文書か、文字列でなければ空
+    [[nodiscard]] std::string_view ActorFileBase(const nlohmann::json& actorFile) noexcept;
+    //! .actor の文書へ、元にする .actor の名前 base を書く
+    void SetActorFileBase(nlohmann::json& actorFile, std::string_view baseName);
+
     //! .actor の文書の中の名前の束の並び hitReactions。無ければ nullptr。並びの形は確かめない
     [[nodiscard]] const nlohmann::json* ActorFileHitReactions(const nlohmann::json& actorFile) noexcept;
     //! .actor の文書へ名前の束の並び hitReactions を書く。空の並びなら鍵ごと消す
@@ -33,6 +38,12 @@ namespace NS
     [[nodiscard]] const nlohmann::json* ActorFileActions(const nlohmann::json& actorFile) noexcept;
     //! .actor の文書へ動作の並び actions を書く。空の並びなら鍵ごと消す
     void SetActorFileActions(nlohmann::json& actorFile, nlohmann::json list);
+
+    //! @brief path の .actor を読み、参照の欄を落とした文書を返す
+    //! @details 開けない・大きすぎる・JSON でない・知らない頭の鍵・class が無いか登録されていない物は ERROR で std::nullopt
+    [[nodiscard]] std::optional<nlohmann::json> ReadActorFileAt(const std::string& path);
+    //! path へ .actor の文書を辞書順の鍵で書く。書けなければ ERROR で false で、前のファイルは残る
+    [[nodiscard]] bool WriteActorFileAt(const std::string& path, const nlohmann::json& actorFile);
 
     //! 名前ごとの既定値を Directory()/<名前>.actor から読む。作るクラスはファイルの中の class
     //! ActorRef はシーン内の参照なので既定値には含めない
@@ -48,25 +59,30 @@ namespace NS
         //! ディレクトリを差し替えて読み直す。試しは一時ディレクトリへ向ける
         void SetDirectory(std::string directory);
 
-        //! @brief Directory() の *.actor を全て読み直す
-        //! @details 開けないファイル・読めない JSON・知らない頭の鍵・class が無いか登録されていない物は ERROR を出して飛ばす
+        //! @brief Directory() の *.actor を全て読み直し、元 → 派生の順に全部の値を作る
+        //! @details 開けないファイル・読めない JSON・知らない頭の鍵・class が無いか登録されていない物は ERROR を出して飛ばす。
+        //! 全部の値に登録した項目の行が欠けた物と、元に重ねられない派生も ERROR を出して飛ばす
         void Reload();
 
         //! 持っている .actor の名前。名前の順
         [[nodiscard]] std::vector<std::string> Names();
 
-        //! name の .actor の文書。頭の鍵を全部持つ。無ければ nullptr
+        //! name の .actor の文書。頭の鍵を全部持つ。派生なら書いた項目だけ。無ければ nullptr
         [[nodiscard]] const nlohmann::json* Find(std::string_view name);
+
+        //! @brief name の全部の値。元ならその文書、派生なら元の全部の値に派生の項目を重ねた物
+        //! @details 登録した項目の行を全部持つ。無ければ nullptr。Set・Erase・Reload の後は前に返した物を使わない
+        [[nodiscard]] const nlohmann::json* Values(std::string_view name);
 
         //! name の .actor の中の class。.actor が無ければ空
         //! クラス名を比べる所はここで引き、.actor の名前とクラス名を同じと見なさない
         [[nodiscard]] std::string ClassNameOf(std::string_view name);
 
-        //! @brief name の .actor の文書を差し替える。ファイルへは書かない。参照の欄は落とす
-        //! @details Reload が読まない文書 (知らない頭の鍵・class が無いか登録されていない) は ERROR を出して入れず、false を返す
+        //! @brief name の .actor の文書を差し替え、全部の値を作り直す。ファイルへは書かない。参照の欄は落とす
+        //! @details Reload が読まない文書は ERROR を出して入れず、false を返す。元を差し替えると、その派生の全部の値も変わる
         bool Set(std::string_view name, nlohmann::json actorFile);
 
-        //! name の .actor の文書を消す。ファイルは消さない
+        //! name の .actor の文書を消し、全部の値を作り直す。ファイルは消さない
         void Erase(std::string_view name);
 
         //! name の .actor の文書を消し、Directory() のファイルも消す。ファイルを消せなければ false
@@ -75,59 +91,67 @@ namespace NS
         //! name の .actor の文書を丸ごと Directory() へ書く。無いか書けなければ false
         [[nodiscard]] bool Save(std::string_view name);
 
-        //! @brief name の .actor を敷いた、配置の上書きの無い比較用 SceneActor。シーンへ入らない
-        //! @details クラスは .actor の中の class。
-        //! .actor の無い name は型から作ったアクターの物なので、クラス名として作る。
-        //! .actor を変えると作り直すので、返した参照はそのフレームの間だけ使う
-        [[nodiscard]] const SceneActor& Baseline(std::string_view name);
-
-        //! @brief 既定の 1 体を全部捨てる。次の Baseline で作り直す
-        //! @details 既定の 1 体は作った時の AssetManager の素材を指すので、その表を空にする時と差し替える時に呼ぶ
-        void ClearBaselines() noexcept;
 
     private:
         ActorFileLibrary();
         // まだ読んでいなければ Directory() を読む
         void EnsureLoaded();
+        // m_actorFiles の全部から、元 → 派生の順に m_mergedValues を作り直す。作れない名前は入れない
+        void RebuildValues();
+        // name の文書から全部の値を作る。派生は m_mergedValues の元に重ねる。作れなければ ERROR を出して std::nullopt
+        [[nodiscard]] std::optional<nlohmann::json> BuildValues(std::string_view name, const nlohmann::json& actorFile);
 
         std::string m_directory;                                                     // 空なら既定のディレクトリ
         std::map<std::string, nlohmann::json, std::less<>> m_actorFiles;             // 名前から .actor の文書
-        std::map<std::string, std::unique_ptr<SceneActor>, std::less<>> m_baselines; // .actor の名前から既定の 1 体
+        std::map<std::string, nlohmann::json, std::less<>> m_mergedValues;           // 名前から全部の値
         bool m_loaded = false;
     };
 
-    //! actor の ActorFileName の .actor の欄の値を写す。部品は足さない
+    //! actor の ActorFileName の .actor の全部の値を写す。根の部品とシーンで上書きした項目は写さず、部品は足さない
     void ApplyActorFile(SceneActor& actor);
 
-    //! @brief 配置物の JSON から、配置物が値を持てない欄を落とした写し
-    //! @details 持てるのは根の部品の欄・参照の欄・上書きの印の付いた欄。落とした欄ごとに WARN を出す。
-    //! actor のクラスに無い部品と欄は残し、値を当てる所に知らせを任せる
-    [[nodiscard]] nlohmann::json KeepPlacementFields(const SceneActor& actor, const nlohmann::json& object);
+    //! @brief シーンに置いたアクターの JSON に書いた項目で、actor のシーンの上書きの一覧を作り直す
+    //! @details 根の部品と参照の欄は一覧に入れない。項目が書いてよいかは見ないので、先に MergeLayer で確かめる
+    void ReadSceneOverrides(SceneActor& actor, const nlohmann::json& object);
 
-    //! 個体の差分を全欄へ展開する。部品構成は Baseline に揃え、個体だけの部品は除く
-    //! 配置物が値を持てない欄は KeepPlacementFields で落とし、.actor の値のままにする
-    [[nodiscard]] nlohmann::json ExpandObjectJson(const nlohmann::json& object);
+    //! @brief actor の行 row の部品の欄 fieldName をシーンの上書きの一覧から外し、.actor の全部の値の同じ項目を写す
+    //! @details 全部の値か、その項目が無ければ ERROR を出し、一覧も値も変えずに false
+    [[nodiscard]] bool RevertSceneOverride(SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
 
-    //! @brief 全欄を持つ配置物の JSON から、配置物の指す .actor の値と同じ欄を除く
-    //! @details 欄が全部既定と同じ部品も、空の件として残す。位置・回転・拡縮の部品 Transform は個体の物なので除かない。
-    //! 配置物が値を持てない欄は、値が違っても除く
-    [[nodiscard]] nlohmann::json DiffObjectJson(const nlohmann::json& object);
-
-    //! 欄の値を持つ所。.actor だけが持つか、配置物が持つか
+    //! 欄の値を書く所
     enum class FieldDestination
     {
-        ActorFile, // 同じ .actor を指すアクターの全部が同じ値を使う
-        Placement, // 配置物ごとに値を持つ
+        ActorFile,        // 元の .actor。派生も含めて、元を指すアクターの全部が同じ値を使う
+        DerivedActorFile, // 派生の .actor。その派生を指すアクターの全部が同じ値を使う
+        Scene,            // シーンに置いたアクターごとに値を持つ
     };
 
-    //! @brief actor の部品 part の欄 field の値を持つ所
-    //! @details 根の部品の欄・参照の欄・上書きの印の付いた欄は配置物、ほかは .actor。
-    //! 配置物の読み書き・エディタの書く先・行の地の色は、どれもこの答えで分ける
+    //! @brief actor の部品 part の欄 field の値を書く所
+    //! @details 根の部品の欄・参照の欄・グローバルの項目はシーン。
+    //! プロテクトの項目は、actor が派生の .actor を指していれば派生、ほかは元の .actor。
+    //! シーンの読み書き・エディタの書く先・行の地の色は、どれもこの答えで分ける
     [[nodiscard]] FieldDestination FieldDestinationOf(const SceneActor& actor,
                                                       const Object& part,
                                                       const FieldDesc& field) noexcept;
 
-    //! actor の行 row の部品に対応する、actor の .actor の Baseline の部品。どちらかが作られていないか型が違えば nullptr
-    //! row は actor のクラスの表 (NS_CLASSOBJ) の行。.actor を変えると指す先が作り直されるので、そのフレームの間だけ使う
-    [[nodiscard]] const Object* FindBaselineClassObj(const SceneActor& actor, const ClassObjInfo& row);
+    //! @brief actor の欄を destination へ書く時の .actor の名前
+    //! @details 元の .actor は、actor が派生を指していればその元の名前、ほかは actor が指す名前。
+    //! 派生の .actor は actor が指す名前。シーンは空
+    [[nodiscard]] std::string ActorFileToWrite(const SceneActor& actor, FieldDestination destination);
+
+    //! @brief layer の上書きに、actor の部品 part の欄 field を書いてよいか
+    //! @details 元の .actor は根の部品と参照の欄の他の全部、派生の .actor はプロテクトとグローバルの項目、
+    //! シーンはグローバルの項目と根の部品と参照の欄を書ける
+    [[nodiscard]] bool CanWriteField(FieldDestination layer,
+                                     const SceneActor& actor,
+                                     const Object& part,
+                                     const FieldDesc& field) noexcept;
+
+    //! @brief 全部の値 base に、上書き written の "classObjs" に書いた項目を重ねる
+    //! @details 元の .actor・派生の .actor・シーンの上書きは、どれもこの関数で重ねる。written の頭の鍵は見ない。
+    //! layer に書いてよくない項目か、actor に無い部品・欄が 1 つでもあれば ERROR を出して std::nullopt
+    [[nodiscard]] std::optional<nlohmann::json> MergeLayer(const nlohmann::json& base,
+                                                           const nlohmann::json& written,
+                                                           FieldDestination layer,
+                                                           const SceneActor& actor);
 } // namespace NS

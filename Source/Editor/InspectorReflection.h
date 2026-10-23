@@ -49,32 +49,21 @@ namespace NS
             const FieldDesc* changedField = nullptr;
         };
 
-        //! @brief リフレクション欄 1 つの値が既定と違うか
-        //! @param[in] defaults 既定インスタンス。nullptr なら常に false
-        [[nodiscard]] bool FieldDiffersFromDefault(const Object& comp,
-                                                   const Object* defaults,
-                                                   const FieldDesc& field) noexcept;
-
-        //! @brief リフレクション欄 1 つを既定値へ戻す
-        void RevertFieldToDefault(Object& comp,
-                                  const Object& defaults,
-                                  const FieldDesc& field) noexcept;
-
         //! @brief 欄の名前に上書きの色を付け、戻すを出すか
-        //! @details 配置物へ書く欄で、値が defaults と違う時だけ真。.actor へ書く欄は値の出所が .actor だけなので偽。
-        //! actor は comp の持ち主。nullptr なら値の比べだけで決める
+        //! @details シーンへ書く欄で、actor のシーンの上書きの一覧にある時だけ真。値は比べない。
+        //! actor は comp の持ち主、partKey は comp の部品のキー。どちらかが nullptr なら偽
         [[nodiscard]] bool ShowsOverride(const Object& comp,
-                                         const Object* defaults,
+                                         const char* partKey,
                                          const FieldDesc& field,
-                                         const SceneActor* actor) noexcept;
+                                         const SceneActor* actor);
 
         //! リフレクション欄を編集し、Undo に必要な編集開始・終了と変更内容を返す
-        //! refOptions が空なら参照は数値入力、defaults があれば上書きの表示と復元を使える
+        //! refOptions が空なら参照は数値入力。partKey と actor があれば上書きの表示と既定に戻すを使える
         //! filter は欄の見せる名前の部分一致。空か nullptr なら絞らない
         //! actor は comp の持ち主。actor と appearance があれば、行の地を書く先の色で塗る
         [[nodiscard]] ClassObjEditResult DrawReflectedClassObj(Object& comp,
                                                                std::span<const ObjectRefOption> refOptions = {},
-                                                               const Object* defaults = nullptr,
+                                                               const char* partKey = nullptr,
                                                                const char* filter = nullptr,
                                                                const SceneActor* actor = nullptr,
                                                                const EditorAppearance* appearance = nullptr) noexcept;

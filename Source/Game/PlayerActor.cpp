@@ -58,19 +58,18 @@ NS_CLASSOBJ(m_chargeEffects, "ChargeEffects")
 NS_CLASSOBJ(m_impactEffects, "ImpactEffects")
 NS_REFLECT_END_IMPL()
 
-NS_CLASS(PlayerActor)
+NS_PLACEABLE(PlayerActor, "自機")
 
 PlayerActor::PlayerActor() noexcept = default;
 
 PlayerActor::~PlayerActor() = default;
 void PlayerActor::OnInit()
 {
-    NS::Model* model = CreateClassObj(m_model, this);
-    model->SetMaterialRef("Assets/Materials/player.mat");
-    model->SetColorOverride(NS::Color{0.5f, 0.5f, 0.5f});
+    CreateClassObj(m_model, this);
     CreateClassObj(m_appearance, this);
     CreateClassObj(m_body, this);
-    CreateClassObj(m_collider, this);
+    // シーンは OnInit の前に決まっている。当たりは作る時に地形と根を受け取り、持ち主を持たない
+    CreateClassObj(m_collider, GetPhysicsScene(), &Root());
     CreateClassObj(m_input, this);
     CreateClassObj(m_params);
     CreateClassObj(m_clips);
@@ -488,14 +487,11 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
 
 void PlayerActor::Restart() noexcept
 {
-    // 出現位置はカプセル中心の世界座標。コースが始まる前は、新規レベルで補う位置へ戻す
-    NS::Vector3 spawn = DefaultSpawnPosition();
+    // 出現位置はカプセル中心の世界座標。コースが始まる前は、シーンに置いた位置のまま
     if (m_courseStartPosition.has_value())
     {
-        spawn = *m_courseStartPosition;
+        Root().SetPosition(*m_courseStartPosition);
     }
-
-    Root().SetPosition(spawn);
     ResetState();
     ResetHealth();
     Appear();
@@ -897,11 +893,3 @@ PlayerActor* FindPlayer(NS::ActorList& objects) noexcept
     return nullptr;
 }
 
-// TODO: 床の上面を仮定している。床の高さが違うレベルを作ったら、補う時に下向きに引いて置く
-NS::Vector3 PlayerActor::DefaultSpawnPosition() const noexcept
-{
-    return NS::Vector3{0.0f,
-                       m_params->m_spawnFloorTop + Collider().StandingHalfHeight() + Collider().CapsuleRadius() +
-                           m_params->m_spawnClearance,
-                       0.0f};
-}

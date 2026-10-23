@@ -1,9 +1,7 @@
 #include "Editor/EditorObjects.h"
 #include "NSlib/Core/Types.h"
 
-#include "Game/Level/DeathZoneActor.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
@@ -15,8 +13,6 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
-
-#include <algorithm>
 
 namespace NS
 {
@@ -102,6 +98,17 @@ namespace NS
             return object;
         }
 
+        nlohmann::json MakePrototypeJson(std::string_view actorFileName)
+        {
+            nlohmann::json object = MakeObjectJson();
+            SetObjectJsonActorFile(object, actorFileName);
+            const Transform initial;
+            SetObjectPosition(object, initial.Position());
+            SetObjectRotation(object, initial.Rotation());
+            SetObjectScale(object, initial.Scale());
+            return object;
+        }
+
         namespace
         {
             // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
@@ -130,20 +137,6 @@ namespace NS
             {
                 return ActorFileLibrary::Get().ClassNameOf(ObjectJsonActorFile(object)) ==
                        ::PlayerActor::StaticReflection()->typeName;
-            }
-
-            bool IsDeathZoneObject(const nlohmann::json& object)
-            {
-                return ActorFileLibrary::Get().ClassNameOf(ObjectJsonActorFile(object)) ==
-                       GL::Level::DeathZoneActor::StaticReflection()->typeName;
-            }
-
-            nlohmann::json MakeDeathZoneObject()
-            {
-                nlohmann::json object = MakePrototypeJson<GL::Level::DeathZoneActor>();
-                // 上面 y=-50 は従来の落下死の高さ
-                SetObjectPosition(object, Vector3{0.0f, -55.0f, 0.0f});
-                return object;
             }
         } // namespace
 
@@ -267,49 +260,6 @@ namespace NS
             SetObjectPosition(object, position);
             SetObjectRotation(object, rotation);
             return object;
-        }
-
-        bool EnsurePlayerObject(nlohmann::json& scene)
-        {
-            bool created = false;
-            if (FindPlayerObjectIndex(scene) == k_NoObjectIndex)
-            {
-                // 高さはカプセルの寸法の持ち主 Collider から引く。PlayerActor.actor でカプセルを変えても足元が床の上に出る
-                const SceneActor& baseline =
-                    ActorFileLibrary::Get().Baseline(::PlayerActor::StaticReflection()->typeName);
-                const ::PlayerActor* player = Cast<::PlayerActor>(&baseline);
-                if (player == nullptr)
-                {
-                    NS_LOG_ERROR(Game, "PlayerActor.actor から PlayerActor を作れず、プレイヤーを補えない");
-                    return false;
-                }
-                SceneJsonObjects(scene).push_back(
-                    MakePlayerObject(player->DefaultSpawnPosition(), Quaternion{}));
-                created = true;
-            }
-
-            const nlohmann::json& objects = SceneJsonObjects(scene);
-            const std::ptrdiff_t count = std::count_if(objects.begin(), objects.end(), IsPlayerObject);
-            if (count > 1)
-            {
-                NS_LOG_WARN(Game, "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う", count);
-            }
-
-            // 追従カメラの追従先の欄が id で結ぶので、ここで採番まで済ませる
-            EnsureUniqueObjectIds(scene);
-            return created;
-        }
-
-        bool EnsureDeathZoneObject(nlohmann::json& scene)
-        {
-            const nlohmann::json& objects = SceneJsonObjects(scene);
-            if (std::any_of(objects.begin(), objects.end(), IsDeathZoneObject))
-            {
-                return false;
-            }
-            SceneJsonObjects(scene).push_back(MakeDeathZoneObject());
-            EnsureUniqueObjectIds(scene);
-            return true;
         }
     } // namespace Editor
 } // namespace NS

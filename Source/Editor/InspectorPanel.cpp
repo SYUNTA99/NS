@@ -30,9 +30,13 @@
 #include "NSlib/Gfx/Render/Skybox.h"
 #include "NSlib/Windows/Filesystem.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 #include <algorithm>
+#include <array>
+#include <charconv>
 #include <cstdio>
+#include <format>
 #include <functional>
 #include <limits>
 #include <string>
@@ -54,19 +58,6 @@ namespace NS
 #if NS_EDITOR_ENABLED
         namespace
         {
-            // actor の根の部品に対応する、クラスの既定の 1 体の根の部品。どちらかが無ければ nullptr
-            const Transform* FindBaselineRoot(const SceneActor& actor)
-            {
-                const Object* found = nullptr;
-                ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* live) {
-                    if (live == &actor.Root())
-                    {
-                        found = FindBaselineClassObj(actor, row);
-                    }
-                });
-                return static_cast<const Transform*>(found);
-            }
-
             void DrawTexturePreview(const Texture& texture)
             {
                 const Gfx::D3DTexture* image = texture.D3D();
@@ -115,6 +106,143 @@ namespace NS
                 (void)OverrideButton(false);
                 EndFieldTable();
                 return committed;
+            }
+
+            // 浮動小数の項目の書式。表の最小の幅もこの書式で測る
+            constexpr const char* k_MaterialFloatFormat = "%.3f";
+
+            // float の一番短い綴りを double に読み直す。0.3 と打った値が .mat に 0.3 と残る
+            double ToShortestDouble(float number)
+            {
+                const std::string text = std::format("{}", number);
+                double parsed = 0.0;
+                const std::from_chars_result read = std::from_chars(text.data(), text.data() + text.size(), parsed);
+                if (read.ec != std::errc{})
+                {
+                    return static_cast<double>(number);
+                }
+                return parsed;
+            }
+
+            // 1〜4 成分の浮動小数の欄。値を変えたフレームに true
+            // 触っていない成分を float へ丸めて書き戻すと .mat の値が変わるので、触った成分だけを書き戻す
+            bool DragParamFloats(MaterialParamValue& value)
+            {
+                const int count = static_cast<int>(value.numbers.size());
+                NS_ASSERT(App, count >= 1 && count <= 4, "浮動小数の項目の成分の数が 1〜4 でない");
+                std::array<float, 4> before{};
+                for (int i = 0; i < count; ++i)
+                {
+                    before[i] = static_cast<float>(value.numbers[i]);
+                }
+                std::array<float, 4> numbers = before;
+                const bool changed = ImGui::DragScalarN("##value", ImGuiDataType_Float, numbers.data(), count, 0.01f,
+                                                        nullptr, nullptr, k_MaterialFloatFormat);
+                for (int i = 0; i < count; ++i)
+                {
+                    if (numbers[i] != before[i])
+                    {
+                        value.numbers[i] = ToShortestDouble(numbers[i]);
+                    }
+                }
+                return changed;
+            }
+
+            // 整数の欄。符号なしの回り込みを FitsParam が通すので、型の下限と上限で止める。値を変えたフレームに true
+            template <typename T>
+            bool DragParamInteger(ImGuiDataType dataType, const char* format, MaterialParamValue& value)
+            {
+                T number = static_cast<T>(value.numbers[0]);
+                const T lowest = std::numeric_limits<T>::min();
+                const T highest = std::numeric_limits<T>::max();
+                const bool changed = ImGui::DragScalar("##value", dataType, &number, 0.2f, &lowest, &highest, format,
+                                                       ImGuiSliderFlags_AlwaysClamp);
+                value.numbers[0] = static_cast<double>(number);
+                return changed;
+            }
+
+            bool DrawParamBool(MaterialParamValue& value)
+            {
+                bool flag = value.numbers[0] != 0.0;
+                const bool changed = ImGui::Checkbox("##value", &flag);
+                value.numbers[0] = static_cast<double>(flag);
+                return changed;
+            }
+
+            // material のシェーダーの MaterialParams のうち、読まれている項目の欄を描く
+            // 値は SetParamValue がその場で D3DMaterial へ送るので、球のプレビューとシーンは次の描画から変わる
+            ValueEditResult DrawMaterialParams(Material& material)
+            {
+                ValueEditResult result;
+                const Gfx::ShaderParamLayout& layout = material.ParamLayout();
+                // 読まれない項目は変えても見た目が変わらないので出さない
+                const bool anyUsed = std::ranges::any_of(layout.params, &Gfx::ShaderParam::used);
+                if (!anyUsed)
+                {
+                    return result;
+                }
+                float minimumWidth = 0.0f;
+                for (const Gfx::ShaderParam& param : layout.params)
+                {
+                    if (!param.used)
+                    {
+                        continue;
+                    }
+                    const int count = static_cast<int>(material.ParamValue(param).numbers.size());
+                    if (count > 0)
+                    {
+                        minimumWidth = std::max(minimumWidth, MinimumAxisFieldsWidth(count, k_MaterialFloatFormat));
+                    }
+                }
+                ImGui::SeparatorText("シェーダーの値");
+                if (!BeginFieldTable("##materialParams", minimumWidth))
+                {
+                    return result;
+                }
+                for (const Gfx::ShaderParam& param : layout.params)
+                {
+                    if (!param.used)
+                    {
+                        continue;
+                    }
+                    ImGui::PushID(param.name.c_str());
+                    FieldRow(param.name.c_str());
+                    MaterialParamValue value = material.ParamValue(param);
+                    bool changed = false;
+                    switch (param.type)
+                    {
+                    case Gfx::ShaderParamType::Float:
+                    case Gfx::ShaderParamType::Float2:
+                    case Gfx::ShaderParamType::Float3:
+                    case Gfx::ShaderParamType::Float4:
+                        changed = DragParamFloats(value);
+                        break;
+                    case Gfx::ShaderParamType::Int:
+                        changed = DragParamInteger<int32>(ImGuiDataType_S32, "%d", value);
+                        break;
+                    case Gfx::ShaderParamType::Uint:
+                        changed = DragParamInteger<uint32>(ImGuiDataType_U32, "%u", value);
+                        break;
+                    case Gfx::ShaderParamType::Bool:
+                        changed = DrawParamBool(value);
+                        break;
+                    case Gfx::ShaderParamType::Unsupported:
+                        ImGui::TextDisabled("配列・構造体・行列は欄で触れない");
+                        ImGui::PopID();
+                        continue;
+                    }
+                    result.activated |= ImGui::IsItemActivated();
+                    result.committed |= ImGui::IsItemDeactivated();
+                    (void)OverrideButton(false);
+                    // 非数や範囲の外の値は SetParamValue が受けないので、前の値が残る
+                    if (changed && material.SetParamValue(param, value))
+                    {
+                        result.changed = true;
+                    }
+                    ImGui::PopID();
+                }
+                EndFieldTable();
+                return result;
             }
         } // namespace
 
@@ -448,12 +576,13 @@ namespace NS
                 ImGui::Separator();
                 ImGui::BeginDisabled(!writable);
                 const ValueEditResult edit = DrawReflectedValue(material, *material->GetReflection());
+                const ValueEditResult paramEdit = DrawMaterialParams(*material);
                 ImGui::EndDisabled();
-                if (edit.changed)
+                if (edit.changed || paramEdit.changed)
                 {
                     editor.MarkAssetEdited();
                 }
-                if (edit.committed)
+                if (edit.committed || paramEdit.committed)
                 {
                     editor.CommitAssetEdit();
                 }
@@ -485,6 +614,15 @@ namespace NS
                 // .actor の欄は、印の付いた欄も含めて全部 .actor へ書く。直し終えた時にファイルへ書き、同じ .actor のアクターへ写す
                 ImGui::Text("%s.actor (%s)", actorFile->ActorFileName().c_str(), actorFile->ClassName());
                 ImGui::TextDisabled("ここで直した値は、この .actor を指すアクターの全部に効く");
+                ImGui::SetNextItemWidth(-ImGui::CalcTextSize("派生を作る").x - ImGui::GetStyle().ItemSpacing.x * 3.0f);
+                ImGui::InputTextWithHint("##derivedName", "派生の名前", m_derivedNameBuffer, sizeof(m_derivedNameBuffer));
+                ImGui::SameLine();
+                // 作れない訳はエディタが WARN で出す。作れた時だけ名前の欄を空にする
+                if (ImGui::Button("派生を作る") &&
+                    editor.CreateDerivedActorFile(actorFile->ActorFileName(), m_derivedNameBuffer))
+                {
+                    m_derivedNameBuffer[0] = '\0';
+                }
                 ImGui::Separator();
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputTextWithHint("##actorFileFieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
@@ -554,10 +692,48 @@ namespace NS
             return options;
         }
 
+        void InspectorPanel::DrawActorFileChoice(const SceneActor& actor)
+        {
+#if NS_EDITOR_ENABLED
+            // 替える先は同じクラスの .actor だけを並べる。アクターを作り直すので、描き終えてから替える
+            ImGui::SetNextItemWidth(-1.0f);
+            if (ImGui::BeginCombo("##actorFile", (actor.ActorFileName() + ".actor").c_str()))
+            {
+                ActorFileLibrary& library = ActorFileLibrary::Get();
+                for (const std::string& name : library.Names())
+                {
+                    if (library.ClassNameOf(name) != actor.ClassName())
+                    {
+                        continue;
+                    }
+                    const std::string label = name + ".actor";
+                    if (ImGui::Selectable(label.c_str(), name == actor.ActorFileName()) && name != actor.ActorFileName())
+                    {
+                        m_actorFileChange = name;
+                        m_actorFileTargetId = actor.Id();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::SetNextItemWidth(-ImGui::CalcTextSize("上書きから派生を作る").x - ImGui::GetStyle().ItemSpacing.x * 3.0f);
+            ImGui::InputTextWithHint("##derivedName", "派生の名前", m_derivedNameBuffer, sizeof(m_derivedNameBuffer));
+            ImGui::SameLine();
+            if (ImGui::Button("上書きから派生を作る"))
+            {
+                m_deriveRequested = true;
+                m_actorFileTargetId = actor.Id();
+            }
+#else
+            (void)actor;
+#endif
+        }
+
         void InspectorPanel::Render(LevelEditorController& editor) noexcept
         {
 #if NS_EDITOR_ENABLED
             m_nameCommitId = 0;
+            m_actorFileChange.clear();
+            m_deriveRequested = false;
             const ImGuiStyle& style = ImGui::GetStyle();
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
                                 ImVec2{style.ItemSpacing.x, style.ItemSpacing.y + 3.0f});
@@ -627,6 +803,7 @@ namespace NS
                         break;
                     }
                 }
+                DrawActorFileChoice(*go);
                 ImGui::Separator();
 
                 // Transform は runtime が唯一の出所なので即反映し、commit が undo へ確定する
@@ -692,17 +869,12 @@ namespace NS
                         ImGui::PopID();
                     };
 
-                    // 動かしたかの印と戻す先は、クラスの既定の 1 体の姿勢。既定の 1 体が無ければ印を出さない
+                    // 動かしたかの表示と戻す先は Transform の初期値。.actor は根の姿勢を持たない
                     const Transform& root = go->Root();
-                    Vector3 defaultPosition = root.Position();
-                    Quaternion defaultRotation = root.Rotation();
-                    Vector3 defaultScale = root.Scale();
-                    if (const Transform* baseline = FindBaselineRoot(*go))
-                    {
-                        defaultPosition = baseline->Position();
-                        defaultRotation = baseline->Rotation();
-                        defaultScale = baseline->Scale();
-                    }
+                    const Transform initial;
+                    const Vector3 defaultPosition = initial.Position();
+                    const Quaternion defaultRotation = initial.Rotation();
+                    const Vector3 defaultScale = initial.Scale();
 
                     const Vector3 posVec = root.Position();
                     float pos[3] = {posVec.x, posVec.y, posVec.z};
@@ -786,10 +958,8 @@ namespace NS
 
                     if (open)
                     {
-                        // 比べる相手は持ち主の .actor から作った比べる基準の部品
-                        const Object* baseline = FindBaselineClassObj(*go, field);
                         const Editor::ClassObjEditResult r =
-                            Editor::DrawReflectedClassObj(*live, refOptions, baseline, m_fieldFilter, go, &m_appearance);
+                            Editor::DrawReflectedClassObj(*live, refOptions, field.key, m_fieldFilter, go, &m_appearance);
                         classObjEdit.activated |= r.activated;
                         classObjEdit.committed |= r.committed;
                         classObjEdit.changed |= r.changed;
@@ -812,16 +982,15 @@ namespace NS
                 // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
                 if (classObjEdit.revertTarget != nullptr && revertRow != nullptr)
                 {
-                    const Object* baseline = FindBaselineClassObj(*go, *revertRow);
-                    if (baseline != nullptr)
+                    editor.BeginClassObjEdit();
+                    // 上書きの一覧から外し、.actor の全部の値の同じ項目を写す
+                    if (RevertSceneOverride(*go, *revertRow, classObjEdit.revertField->name))
                     {
-                        editor.BeginClassObjEdit();
-                        Editor::RevertFieldToDefault(*classObjEdit.revertTarget, *baseline, *classObjEdit.revertField);
                         editor.FinishFieldWrite(*go, classObjEdit.revertField->type);
-                        // 既定へ戻すのも手編集。プレイ中は凍結側へも写して残す
+                        // 既定へ戻すのも手編集。プレイ中は凍結からも項目を消す
                         editor.MirrorPlayEditToBaseline(*go, *revertRow, classObjEdit.revertField->name);
-                        editor.CommitClassObjEdit();
                     }
+                    editor.CommitClassObjEdit();
                 }
                 if (classObjEdit.activated)
                 {
@@ -838,6 +1007,15 @@ namespace NS
             if (m_nameCommitId != 0)
             {
                 editor.RenameObject(m_nameCommitId, m_nameBuffer);
+            }
+            if (!m_actorFileChange.empty())
+            {
+                (void)editor.ChangeActorFile(m_actorFileTargetId, m_actorFileChange);
+            }
+            // 作れない訳はエディタが WARN で出す。作れた時だけ名前の欄を空にする
+            if (m_deriveRequested && editor.DeriveActorFileFromActor(m_actorFileTargetId, m_derivedNameBuffer))
+            {
+                m_derivedNameBuffer[0] = '\0';
             }
 #else
             (void)editor;

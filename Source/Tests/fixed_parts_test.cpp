@@ -10,6 +10,7 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -172,7 +173,7 @@ namespace
         float value = 0.0f;
         NS_REFLECT_BEGIN(ReflectedProbePart, NS::Object)
         // 配置物の保存と読み直しで、部品の鍵ごとに値が戻るかを見るので、配置物で上書きできる欄にする
-        NS_PLACEMENT_FIELD(value, "値")
+        NS_GLOBAL_FIELD(value, "値")
         NS_REFLECT_END()
     };
 
@@ -267,14 +268,18 @@ TEST(ReflectedParts, InheritedMembersDriveEnumerationWithoutAnOverride)
 
 TEST(ReflectedParts, SameTypedMembersSaveAndReloadThroughTheirRegisteredKeys)
 {
+    // 同じ型の 2 つの部品の値は、それぞれの鍵で .actor から入り、保存と読み直しでも鍵が入れ替わらない
+    nlohmann::json actorFile = CodeValuesActorFile("ReflectedHierarchyActor");
+    NS::ObjectJsonClassObjs(actorFile)["ParentPart"]["値"] = 2.0f;
+    NS::ObjectJsonClassObjs(actorFile)["ChildPart"]["値"] = 7.0f;
+    const ScopedActorFile hierarchyFile{"ReflectedHierarchyActor", actorFile};
     const std::unique_ptr<ReflectedHierarchyActor> actor = NS::CreateActor<ReflectedHierarchyActor>();
-    actor->parentPart->value = 2.0f;
-    actor->childPart->value = 7.0f;
+    EXPECT_FLOAT_EQ(actor->parentPart->value, 2.0f);
+    EXPECT_FLOAT_EQ(actor->childPart->value, 7.0f);
     const nlohmann::json saved = NS::ObjectToJson(*actor);
-    EXPECT_FLOAT_EQ(saved["classObjs"]["ParentPart"]["値"].get<float>(), 2.0f);
-    EXPECT_FLOAT_EQ(saved["classObjs"]["ChildPart"]["値"].get<float>(), 7.0f);
-    EXPECT_FALSE(saved["classObjs"].contains("AbsentPart"));
-    const ScopedActorFile hierarchyFile{"ReflectedHierarchyActor", ClassOnlyActorFile("ReflectedHierarchyActor")};
+    EXPECT_TRUE(NS::ObjectJsonClassObjs(saved).contains("ParentPart"));
+    EXPECT_TRUE(NS::ObjectJsonClassObjs(saved).contains("ChildPart"));
+    EXPECT_FALSE(NS::ObjectJsonClassObjs(saved).contains("AbsentPart"));
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> loaded = NS::ObjectFromJson(saved, scene);
     const ReflectedHierarchyActor* restored = NS::Cast<ReflectedHierarchyActor>(loaded.get());
@@ -435,21 +440,20 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 
 TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
 {
-    const nlohmann::json source = {{"actor", "PropActor"}, {"id", 7u}, {"classObjs", {{"Params", {{"質量", 2.0f}}}}}};
+    const nlohmann::json source = {{"actor", "PropActor"}, {"id", 7u}, {"classObjs", {{"Shadow", {{"基本直径", 2.0f}}}}}};
     NS::Scene scene;
     std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(source, scene);
     ASSERT_NE(actor, nullptr);
-    const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor.get());
-    ASSERT_NE(prop, nullptr);
-    EXPECT_FLOAT_EQ(prop->Params().Mass(), 2.0f);
+    ASSERT_NE(actor->ShadowClassObj(), nullptr);
+    EXPECT_FLOAT_EQ(NS::FieldFloat(NS::SerializeClassObjFields(*actor->ShadowClassObj()), "基本直径", 0.0f), 2.0f);
     const nlohmann::json saved = NS::ObjectToJson(*actor);
     EXPECT_FALSE(saved.contains("components"));
     ASSERT_TRUE(saved.contains("classObjs"));
     ASSERT_TRUE(saved["classObjs"].is_object());
-    EXPECT_FLOAT_EQ(saved["classObjs"]["Params"]["質量"].get<float>(), 2.0f);
-    EXPECT_FALSE(saved["classObjs"]["Params"].contains("id"));
-    EXPECT_FALSE(saved["classObjs"]["Params"].contains("type"));
-    EXPECT_FALSE(saved["classObjs"]["Params"].contains("fields"));
+    EXPECT_FLOAT_EQ(saved["classObjs"]["Shadow"]["基本直径"].get<float>(), 2.0f);
+    EXPECT_FALSE(saved["classObjs"]["Shadow"].contains("id"));
+    EXPECT_FALSE(saved["classObjs"]["Shadow"].contains("type"));
+    EXPECT_FALSE(saved["classObjs"]["Shadow"].contains("fields"));
     EXPECT_TRUE(saved["classObjs"]["Transform"].contains("位置"));
 }
 

@@ -326,9 +326,8 @@ public:
     void InitAfterPlacement() override;
 
     //! @brief MsgCourseStart の時の位置へ戻り、動きと命を最初の状態へ戻す
-    //! @details コースが始まる前は、DefaultSpawnPosition の位置へ戻す
+    //! @details コースが始まる前は、位置を動かさない
     void Restart() noexcept;
-    [[nodiscard]] NS::Vector3 DefaultSpawnPosition() const noexcept;
 
     //! 命を amount 削る。下限 0
     void ApplyDamage(int amount) noexcept;

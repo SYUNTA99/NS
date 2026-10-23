@@ -103,15 +103,39 @@ namespace NS
 
     std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className)
     {
-        std::unique_ptr<SceneActor> actor = ConstructOfClass(className);
-        actor->Init(nullptr);
-        return actor;
+        return CreateActorOfClass(className, ActorInitInfo{.actorFile = className});
     }
 
     std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info)
     {
+        // コードの値だけで組むと、どの値で動くかがファイルから分からない。名前の無いアクターの .actor はクラスと同じ名前
+        std::string_view actorFile = info.actorFile;
+        if (actorFile.empty())
+        {
+            actorFile = className;
+        }
+        if (ActorFileLibrary::Get().Values(actorFile) == nullptr)
+        {
+            NS_LOG_ERROR(Scene, "クラス {} のアクターの .actor {} が読まれていないので作らない", className, actorFile);
+            return nullptr;
+        }
         std::unique_ptr<SceneActor> actor = ConstructOfClass(className);
-        actor->Init(&info);
+        if (!actor->Init(&info))
+        {
+            return nullptr;
+        }
+        return actor;
+    }
+
+    std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className)
+    {
+        const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
+        if (entry == nullptr || entry->create == nullptr)
+        {
+            return nullptr;
+        }
+        std::unique_ptr<SceneActor> actor = entry->create();
+        actor->InitWithCodeValues();
         return actor;
     }
 

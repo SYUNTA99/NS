@@ -41,11 +41,16 @@ namespace NS
         std::vector<Entry> m_entries; // 登録順のまま持つ。型の種類は少数なので線形照合で足りる
     };
 
-    //! クラス名から配置の無い SceneActor を作り、クラスと同じ名前の .actor と素材まで済ませて返す。未登録のクラスと空の名前は素の SceneActor
+    //! クラス名から配置の無い SceneActor を作り、クラスと同じ名前の .actor と素材まで済ませて返す。.actor が無ければ ERROR を出して nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
 
-    //! クラス名から SceneActor を作り、info で .actor・配置の上書き・素材まで済ませて返す
+    //! @brief クラス名から SceneActor を作り、info で .actor・配置の上書き・素材まで済ませて返す
+    //! @details info.actorFile が空ならクラスと同じ名前の .actor を使う。.actor が読まれていなければ ERROR を出して nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
+
+    //! @brief クラス名から、.actor を写さずにコンストラクタと OnInit の値だけで SceneActor を作る
+    //! @details .actor の全部の項目を生成する時だけ使う。シーンへ入らず、素材も読まない。未登録のクラスは nullptr
+    [[nodiscard]] std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className);
 
     //! @brief object を配置として scene の中に置くアクターを作り、欄と素材まで済ませて返す
     //! @details クラスは object の指す .actor の中の class。.actor が見つからなければ ERROR を出して nullptr

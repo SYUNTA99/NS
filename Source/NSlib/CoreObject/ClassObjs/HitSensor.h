@@ -115,6 +115,8 @@ namespace NS
         void SetCapsule(float radius, float halfHeight) noexcept;
         //! 根の向きの箱にする。halfExtents は中心から各面まで
         void SetBox(const Vector3& halfExtents) noexcept;
+        //! 形だけを決める。大きさは .actor の欄の値のまま
+        void SetShape(HitSensorShape shape) noexcept { m_shape = shape; }
 
         [[nodiscard]] HitSensorShape Shape() const noexcept { return m_shape; }
         [[nodiscard]] float Radius() const noexcept { return m_radius; }

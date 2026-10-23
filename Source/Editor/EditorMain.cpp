@@ -1,12 +1,17 @@
+#include "Editor/ActorFileGenerator.h"
 #include "Editor/Editor.h"
 #include "Game/Game.h"
 #include "NSlib/App/Application.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
 
 namespace NS
 {
 
     std::unique_ptr<Application> CreateApplication()
     {
+        // コードに足した項目を .actor へ書き足してから読む。ActorFileLibrary が初めて読むのは Game の層を積んだ後
+        (void)Editor::GenerateActorFiles(ActorFileLibrary::Get().Directory());
+
         ApplicationDesc desc{};
         desc.window.title = "NS Editor";
         desc.window.size = Size2D{1920, 1080};

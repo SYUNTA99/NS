@@ -39,7 +39,7 @@ namespace NS
         NS_REFLECT_BEGIN(Shadow, Object)
         NS_FIELD(m_mesh, "メッシュ")
         NS_FIELD(m_material, "マテリアル")
-        NS_PLACEMENT_FIELD(m_baseDiameter, "基本直径")
+        NS_GLOBAL_FIELD(m_baseDiameter, "基本直径")
         NS_FIELD(m_maxDrop, "最大投影距離")
         NS_FIELD(m_surfaceOffset, "表面オフセット")
         NS_FIELD(m_baseAlpha, "基本不透明度")

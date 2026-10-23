@@ -14,6 +14,7 @@ namespace NS
     {
         class PhysicsScene;
     }
+    class Transform;
 } // namespace NS
 
 namespace NS
@@ -24,7 +25,7 @@ namespace NS
         Vector3 position{0.0f, 0.0f, 0.0f}; //!< 地形に当てて押し返した後の根の位置
         Vector3 velocity{0.0f, 0.0f, 0.0f}; //!< 接触面へ射影した後の速度
         bool grounded = false;                  //!< 移動の後に足場に立っているか
-        bool inWorld = false;                   //!< 地形を見たか。持ち主が Scene に居なければ偽
+        bool inWorld = false;                   //!< 地形を見たか。PhysicsScene を受け取っていなければ偽
     };
 
     //! @brief カプセルを地形に当てて移動する部品。位置・速度への反映は Body が行う
@@ -32,7 +33,9 @@ namespace NS
     class Collider : public Object, public IUseCollision
     {
     public:
-        explicit Collider(SceneActor* owner) noexcept : m_owner(owner) {}
+        //! @param[in] physics 当たる地形の PhysicsScene。シーンへ入らないアクターは nullptr で、Move は地形を見ない
+        //! @param[in] pose 根の姿勢。WorldCapsule の中心を引く。nullptr なら原点
+        Collider(Phys::PhysicsScene* physics, const Transform* pose) noexcept : m_physics(physics), m_pose(pose) {}
 
         //! 当たりのカプセルの半径 (m)。欄「半径」の値で、球にしている間も変わらない
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_radius; }
@@ -46,7 +49,7 @@ namespace NS
         //! @brief 移動判定と同じカプセルを返す。中心は根、軸は +Y
         //! @param[in] rootPosition 根の位置 (ワールド)
         [[nodiscard]] Phys::Capsule CapsuleAt(const Vector3& rootPosition) const noexcept;
-        //! @brief 現在の根の位置に置いたカプセル。持ち主がなければ原点を使う
+        //! @brief 現在の根の位置に置いたカプセル。姿勢を受け取っていなければ原点を使う
         [[nodiscard]] Phys::Capsule WorldCapsule() const noexcept;
         //! 立ち姿の円柱の半分の高さ (m)。欄「半分の高さ」の値。
         //! 球にしている間も変わらないので、立ち姿の寸法はここから引く
@@ -63,8 +66,8 @@ namespace NS
         //! 当たりを球にしているか。SetSphereShape で最後に置いた値
         [[nodiscard]] bool IsSphereShape() const noexcept { return m_sphereShape; }
 
-        //! 持ち主の Scene の衝突の PhysicsScene。持ち主が無いか Scene に居なければ nullptr
-        [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
+        //! 作る時に受け取った PhysicsScene。シーンへ入らないアクターの物は nullptr
+        [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override { return m_physics; }
 
         //! 位置 from から地形に当てた移動結果を返す。個体の姿勢と速度は変更しない
         //! velocity は m/s、dt は秒、maxStepHeight は登れる段差 m
@@ -85,6 +88,7 @@ namespace NS
         float m_standingHalfHeight = 0.5f; // 立ち姿の円柱の半分の高さ (m)。半球を除く
         bool m_sphereShape = false;        // 書くのは SetSphereShape だけ
         std::unique_ptr<Phys::JoltCharacter> m_character;
-        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
+        Phys::PhysicsScene* m_physics = nullptr; // 当たる地形 (非所有)。シーンが Collider より後に壊す
+        const Transform* m_pose = nullptr;       // 持ち主の根 (非所有)
     };
 } // namespace NS

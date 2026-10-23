@@ -15,6 +15,7 @@
 #include "NSlib/Core/Types.h"
 #include <concepts>
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -51,6 +52,16 @@ namespace NS
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
         //! 作る時に敷いた .actor の名前。型から作ったアクターはクラスと同じ名前で、その .actor が無くても変わらない
         [[nodiscard]] const std::string& ActorFileName() const noexcept { return m_actorFileName; }
+
+        //! @brief part の部品の欄 field をシーンで上書きしているか
+        //! @details 一覧に入るのは NS_GLOBAL_FIELD の項目だけ。根の部品と参照の欄は一覧に入れず、保存でいつも書く
+        [[nodiscard]] bool IsSceneOverride(std::string_view part, std::string_view field) const;
+        //! 項目をシーンの上書きの一覧に足す。保存はこの一覧の項目を書く
+        void AddSceneOverride(std::string_view part, std::string_view field);
+        //! 項目をシーンの上書きの一覧から外す。値は変えないので、.actor の値へ戻すのは RevertSceneOverride
+        void RemoveSceneOverride(std::string_view part, std::string_view field);
+        //! シーンの上書きの一覧を空にする
+        void ClearSceneOverrides() noexcept { m_sceneOverrides.clear(); }
         NS_REFLECT_DECLARE()
 
         //! @brief 世界に出す。更新の段・描画・当たり・センサーへ登録する。出ていれば何もしない
@@ -68,10 +79,8 @@ namespace NS
         //! Destroy を呼ばれて、段の後の解放を待っている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsPendingDestroy() const noexcept { return m_presence == Presence::PendingDestroy; }
 
-        //! 所有 Scene。Scene attach 前 / 破棄後は nullptr
+        //! 入るシーン。作る時の ActorInitInfo::scene で、OnInit の前から決まっている。シーンへ入らない物は nullptr
         [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
-        //! Scene 側が attach 時に呼ぶ。派生から手動で呼ばない
-        void AttachScene(Scene* scene) noexcept { m_scene = scene; }
 
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
@@ -164,7 +173,7 @@ namespace NS
         }
 
         // 基底の部品の型を替える派生は、基底の OnInit を呼ばずに自分で作る
-        //! 所属の Scene は入る道によって付いていないので、ここでは読まない
+        //! 入るシーンはもう決まっているので、部品へシーンの仕組みを渡せる。id と名前はまだ付いていない
         virtual void OnInit() {}
         //! @brief 素材の欄を引いた直後に呼ぶ。読んだ物から作る物を、部品を名指しで呼んで作る
         //! @details 作る時と ReloadAssets の両方で呼ぶので、何回呼ばれても同じ姿になるように書く。上書きする派生は基底も呼ぶ
@@ -231,12 +240,16 @@ namespace NS
         friend std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
+        friend std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className);
         friend float GetFrameRate(const SceneActor* actor) noexcept;
         friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
-        //! @brief アクターを作る順。部品を作る → .actor → 配置の上書き → 素材
+        //! @brief アクターを作る順。部品を作る → .actor の全部の値 → シーンの上書き → 素材
         //! @details 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない。
-        //! info が nullptr のアクターも、配置の上書きを飛ばすだけで同じ順を通る
-        void Init(const ActorInitInfo* info);
+        //! info が nullptr のアクターも、シーンの上書きを飛ばすだけで同じ順を通る。
+        //! シーンの上書きに書いてよくない項目があれば ERROR を出して false を返し、作る関数はアクターを捨てる
+        [[nodiscard]] bool Init(const ActorInitInfo* info);
+        //! 部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物
+        void InitWithCodeValues();
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
         //! @details ActorList::SnapshotObjects が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
@@ -258,7 +271,8 @@ namespace NS
         uint32 m_id = 0;
         std::string m_name;
         std::string m_actorFileName; // 書くのは Init だけ
-        Scene* m_scene = nullptr;    // 所有 Scene、attach 前後は nullptr
+        std::set<std::pair<std::string, std::string>> m_sceneOverrides; // シーンで上書きしている (部品の鍵, 欄の名前)
+        Scene* m_scene = nullptr;    // 入るシーン。書くのは Init だけ
         Presence m_presence = Presence::Disappeared;
         std::unique_ptr<Transform> m_transform;
 
@@ -297,7 +311,10 @@ namespace NS
         static_assert(std::derived_from<T, SceneActor>, "T は SceneActor の派生でなければならない");
         std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
         SceneActor& base = *actor;
-        base.Init(nullptr);
+        if (!base.Init(nullptr))
+        {
+            return nullptr;
+        }
         return actor;
     }
 
@@ -309,7 +326,10 @@ namespace NS
         static_assert(std::derived_from<T, SceneActor>, "T は SceneActor の派生でなければならない");
         std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
         SceneActor& base = *actor;
-        base.Init(&info);
+        if (!base.Init(&info))
+        {
+            return nullptr;
+        }
         return actor;
     }
 

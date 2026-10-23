@@ -13,13 +13,11 @@ namespace GL
         void GoalActor::OnInit()
         {
             CreateClassObj(m_params);
-            NS::Model* mesh = CreateClassObj(m_model, this);
-            mesh->SetMeshRef("cube");
-            mesh->SetColorOverride(NS::Color{1.0f, 0.84f, 0.0f});
-            // ゴールの半径 0.9 m にプレイヤーの体が重なれば触れたとみなす
+            CreateClassObj(m_model, this);
+            // ゴールの球にプレイヤーの体が重なれば触れたとみなす。半径は .actor の欄
             NS::ShapeHitSensor* area = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
             SetSensorKind(*area, SensorKind::Area);
-            area->SetSphere(0.9f);
+            area->SetShape(NS::HitSensorShape::Sphere);
         }
 
         void GoalActor::AttackSensor(NS::HitSensor& self, NS::HitSensor& other)

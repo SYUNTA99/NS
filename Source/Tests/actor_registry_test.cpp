@@ -1,5 +1,6 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -40,10 +41,10 @@ TEST(ActorRegistry, PlaceableClassesHaveLabels)
     }
 }
 
-TEST(ActorRegistry, PlayerAndClassObjsAreNotPlaceable)
+TEST(ActorRegistry, PlayerIsPlaceableAndClassObjsAreNot)
 {
-    // プレイヤーは新しいレベルに自動で 1 体入るので置く一覧に出さない。部品も置く物ではない
-    EXPECT_EQ(FindPlaceable("PlayerActor"), nullptr);
+    // 自機は自動で置かないので、ほかのアクターと同じく置く一覧に出す。部品は置く物ではない
+    EXPECT_NE(FindPlaceable("PlayerActor"), nullptr);
     EXPECT_EQ(FindPlaceable("Model"), nullptr);
     EXPECT_EQ(FindPlaceable("GoalParams"), nullptr);
 }
@@ -76,11 +77,12 @@ TEST(ActorRegistry, CreateActorOfClassUsesClass)
     EXPECT_EQ(std::string_view{actor->ClassName()}, "PropActor");
 }
 
-TEST(ActorRegistry, UnknownClassFallsBackToPlainActor)
+// 登録の無いクラスには .actor が無いので作らない
+TEST(ActorRegistry, UnknownClassIsNotCreated)
 {
-    const std::unique_ptr<NS::SceneActor> actor = NS::CreateActorOfClass("NoSuchActor");
-    ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(std::string_view{actor->ClassName()}, "SceneActor");
+    const TestLogCapture log;
+    EXPECT_EQ(NS::CreateActorOfClass("NoSuchActor"), nullptr);
+    EXPECT_EQ(log.ErrorCount(), 1);
 }
 
 TEST(ActorRegistry, RetiredMapObjectAbilitiesCannotBeCreated)

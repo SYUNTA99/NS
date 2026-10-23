@@ -38,7 +38,7 @@ namespace NS
                 {".cs.", "CSMain", "cs_5_0", ShaderType::Compute},
             };
 
-            // 該当するステージが無ければ nullptr
+            // 該当するステージが無ければ ERROR を出して nullptr を返す
             [[nodiscard]] const ShaderTypeInfo* DetectStage(std::string_view path) noexcept
             {
                 const std::string name = OS::FileSystem::FileName(path);
@@ -49,6 +49,9 @@ namespace NS
                         return &info;
                     }
                 }
+                NS_LOG_ERROR(Graphics,
+                             "D3DShader: ファイル名からステージを判定できない (.vs./.ps./.gs./.hs./.ds./.cs. を含まない): {}",
+                             path);
                 return nullptr;
             }
 
@@ -400,10 +403,6 @@ namespace NS
             const ShaderTypeInfo* info = DetectStage(hlslPath);
             if (info == nullptr)
             {
-                NS_LOG_ERROR(
-                    Graphics,
-                    "D3DShader: ファイル名からステージを判定できない (.vs./.ps./.gs./.hs./.ds./.cs. を含まない): {}",
-                    hlslPath);
                 return;
             }
             m_type = info->stage;

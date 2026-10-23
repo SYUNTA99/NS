@@ -8,6 +8,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "TestActorFile.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -15,6 +16,7 @@
 #include <imgui_internal.h>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -93,7 +95,7 @@ namespace
         NS_REFLECT_END_VALUE()
     };
 
-    // 保存された "基本色" の rgb。無ければ空
+    // 保存された "基本色" の rgb。無いか、上書きの無い null なら空
     std::optional<NS::Vector3> SavedModelColor(const nlohmann::json& object)
     {
         const nlohmann::json::const_iterator classObjs = object.find("classObjs");
@@ -102,6 +104,10 @@ namespace
             return std::nullopt;
         }
         const nlohmann::json& color = (*classObjs)["Model"]["基本色"];
+        if (!color.is_array())
+        {
+            return std::nullopt;
+        }
         return NS::Vector3{color[0].get<float>(), color[1].get<float>(), color[2].get<float>()};
     }
 
@@ -170,7 +176,9 @@ TEST(ModelDrawColor, ShippedScenesAndActorFilesKeepTheirColor)
 
     for (const std::string& name : library.Names())
     {
-        const NS::Model* model = library.Baseline(name).ModelClassObj();
+        const std::unique_ptr<NS::SceneActor> actor = ActorFromFile(name);
+        ASSERT_NE(actor, nullptr) << name;
+        const NS::Model* model = actor->ModelClassObj();
         if (model == nullptr)
         {
             continue;

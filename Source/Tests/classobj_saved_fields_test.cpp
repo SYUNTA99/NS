@@ -38,11 +38,11 @@ TEST(ClassObjSavedFields, SavedJsonHasNoEnabledKey)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
     ExpectNoEnabledKey(NS::ObjectToJson(*player));
-    ExpectNoEnabledKey(NS::ExpandObjectJson(NS::Editor::MakePrototypeJson<PlayerActor>()));
+    ExpectNoEnabledKey(*NS::ActorFileLibrary::Get().Values("PlayerActor"));
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
     ExpectNoEnabledKey(NS::ObjectToJson(*prop));
-    ExpectNoEnabledKey(NS::ExpandObjectJson(NS::Editor::MakePrototypeJson<GL::Level::PropActor>()));
+    ExpectNoEnabledKey(*NS::ActorFileLibrary::Get().Values("PropActor"));
 }
 
 TEST(ClassObjSavedFields, OptionalColorIsSavedAsNullOrFourNumbers)

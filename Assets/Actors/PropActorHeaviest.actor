@@ -1,0 +1,10 @@
+{
+  "base": "PropActor",
+  "class": "PropActor",
+  "classObjs": {
+    "Params": {
+      "耐久": 5.0,
+      "質量": 8.0
+    }
+  }
+}

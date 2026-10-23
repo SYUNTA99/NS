@@ -1,7 +1,6 @@
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/JoltCharacter.h"
 
 #include <cmath>
@@ -57,25 +56,16 @@ namespace NS
 
     Phys::Capsule Collider::WorldCapsule() const noexcept
     {
-        if (m_owner == nullptr)
+        if (m_pose == nullptr)
         {
             return CapsuleAt(Vector3{0.0f, 0.0f, 0.0f});
         }
-        return CapsuleAt(m_owner->Root().Position());
+        return CapsuleAt(m_pose->Position());
     }
 
     void Collider::SetSphereShape(bool sphere) noexcept
     {
         m_sphereShape = sphere;
-    }
-
-    Phys::PhysicsScene* Collider::GetPhysicsScene() const noexcept
-    {
-        if (m_owner == nullptr)
-        {
-            return nullptr;
-        }
-        return m_owner->GetPhysicsScene();
     }
 
     ColliderMove Collider::Move(const Vector3& from,
@@ -94,7 +84,7 @@ namespace NS
 
         const float radius = CapsuleRadius();
         const float halfHeight = CapsuleHalfHeight();
-        // AttachScene は新しく組んだ配置物にしか呼ばれない。Scene が変わらないので m_character を作り直さない
+        // 当たる PhysicsScene は作る時に決まって変わらないので、m_character を作り直さない
         if (m_character == nullptr)
         {
             m_character = std::make_unique<Phys::JoltCharacter>(*physics, radius, halfHeight);

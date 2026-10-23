@@ -48,7 +48,12 @@ namespace NS
                     continue; // 組み立てる部品が無いオブジェクトはファクトリが nullptr を返す
                 }
 
-                obj->AttachScene(&owner);
+                // 部品はシーンの仕組みを OnInit で受け取り済み。別のシーンで作った物を入れると、その仕組みを指したまま動く
+                if (obj->OwningScene() != &owner)
+                {
+                    NS_LOG_ERROR(Scene, "ActorList::RebuildFromJson: {} はこのシーンで作られていないので入れない", obj->ClassName());
+                    continue;
+                }
                 ApplyIdentity(*obj, ReadObjectHeader(entry));
                 m_objects.push_back(std::move(obj));
             }
