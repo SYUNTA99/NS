@@ -1,5 +1,6 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -76,11 +77,12 @@ TEST(ActorRegistry, CreateActorOfClassUsesClass)
     EXPECT_EQ(std::string_view{actor->ClassName()}, "PropActor");
 }
 
-TEST(ActorRegistry, UnknownClassFallsBackToPlainActor)
+// 登録の無いクラスには .actor が無いので作らない
+TEST(ActorRegistry, UnknownClassIsNotCreated)
 {
-    const std::unique_ptr<NS::SceneActor> actor = NS::CreateActorOfClass("NoSuchActor");
-    ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(std::string_view{actor->ClassName()}, "SceneActor");
+    const TestLogCapture log;
+    EXPECT_EQ(NS::CreateActorOfClass("NoSuchActor"), nullptr);
+    EXPECT_EQ(log.ErrorCount(), 1);
 }
 
 TEST(ActorRegistry, RetiredMapObjectAbilitiesCannotBeCreated)

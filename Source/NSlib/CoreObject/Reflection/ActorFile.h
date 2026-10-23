@@ -60,25 +60,30 @@ namespace NS
         //! ディレクトリを差し替えて読み直す。試しは一時ディレクトリへ向ける
         void SetDirectory(std::string directory);
 
-        //! @brief Directory() の *.actor を全て読み直す
-        //! @details 開けないファイル・読めない JSON・知らない頭の鍵・class が無いか登録されていない物は ERROR を出して飛ばす
+        //! @brief Directory() の *.actor を全て読み直し、元 → 派生の順に全部の値を作る
+        //! @details 開けないファイル・読めない JSON・知らない頭の鍵・class が無いか登録されていない物は ERROR を出して飛ばす。
+        //! 全部の値に登録した項目の行が欠けた物と、元に重ねられない派生も ERROR を出して飛ばす
         void Reload();
 
         //! 持っている .actor の名前。名前の順
         [[nodiscard]] std::vector<std::string> Names();
 
-        //! name の .actor の文書。頭の鍵を全部持つ。無ければ nullptr
+        //! name の .actor の文書。頭の鍵を全部持つ。派生なら書いた項目だけ。無ければ nullptr
         [[nodiscard]] const nlohmann::json* Find(std::string_view name);
+
+        //! @brief name の全部の値。元ならその文書、派生なら元の全部の値に派生の項目を重ねた物
+        //! @details 登録した項目の行を全部持つ。無ければ nullptr。Set・Erase・Reload の後は前に返した物を使わない
+        [[nodiscard]] const nlohmann::json* Values(std::string_view name);
 
         //! name の .actor の中の class。.actor が無ければ空
         //! クラス名を比べる所はここで引き、.actor の名前とクラス名を同じと見なさない
         [[nodiscard]] std::string ClassNameOf(std::string_view name);
 
-        //! @brief name の .actor の文書を差し替える。ファイルへは書かない。参照の欄は落とす
-        //! @details Reload が読まない文書 (知らない頭の鍵・class が無いか登録されていない) は ERROR を出して入れず、false を返す
+        //! @brief name の .actor の文書を差し替え、全部の値を作り直す。ファイルへは書かない。参照の欄は落とす
+        //! @details Reload が読まない文書は ERROR を出して入れず、false を返す。元を差し替えると、その派生の全部の値も変わる
         bool Set(std::string_view name, nlohmann::json actorFile);
 
-        //! name の .actor の文書を消す。ファイルは消さない
+        //! name の .actor の文書を消し、全部の値を作り直す。ファイルは消さない
         void Erase(std::string_view name);
 
         //! name の .actor の文書を消し、Directory() のファイルも消す。ファイルを消せなければ false
@@ -101,9 +106,14 @@ namespace NS
         ActorFileLibrary();
         // まだ読んでいなければ Directory() を読む
         void EnsureLoaded();
+        // m_actorFiles の全部から、元 → 派生の順に m_mergedValues を作り直す。作れない名前は入れない
+        void RebuildValues();
+        // name の文書から全部の値を作る。派生は m_mergedValues の元に重ねる。作れなければ ERROR を出して std::nullopt
+        [[nodiscard]] std::optional<nlohmann::json> BuildValues(std::string_view name, const nlohmann::json& actorFile);
 
         std::string m_directory;                                                     // 空なら既定のディレクトリ
         std::map<std::string, nlohmann::json, std::less<>> m_actorFiles;             // 名前から .actor の文書
+        std::map<std::string, nlohmann::json, std::less<>> m_mergedValues;           // 名前から全部の値
         std::map<std::string, std::unique_ptr<SceneActor>, std::less<>> m_baselines; // .actor の名前から既定の 1 体
         bool m_loaded = false;
     };

@@ -443,6 +443,126 @@ namespace NS
             // 名前はファイル名、クラスは中の class
             m_actorFiles[OS::FileSystem::Stem(path)] = std::move(*actorFile);
         }
+        RebuildValues();
+        // 全部の値を作れなかった文書は読まなかった物とする。Save で書き戻すと、次の起動でも読めない
+        for (std::map<std::string, nlohmann::json, std::less<>>::iterator it = m_actorFiles.begin();
+             it != m_actorFiles.end();)
+        {
+            if (m_mergedValues.contains(it->first))
+            {
+                ++it;
+                continue;
+            }
+            it = m_actorFiles.erase(it);
+        }
+    }
+
+    void ActorFileLibrary::RebuildValues()
+    {
+        m_mergedValues.clear();
+        // 派生は元の全部の値に重ねるので、元を先に作る
+        for (const bool derived : {false, true})
+        {
+            for (const std::pair<const std::string, nlohmann::json>& entry : m_actorFiles)
+            {
+                if (ActorFileBase(entry.second).empty() == derived)
+                {
+                    continue;
+                }
+                std::optional<nlohmann::json> values = BuildValues(entry.first, entry.second);
+                if (values.has_value())
+                {
+                    m_mergedValues.emplace(entry.first, std::move(*values));
+                }
+            }
+        }
+    }
+
+    std::optional<nlohmann::json> ActorFileLibrary::BuildValues(std::string_view name, const nlohmann::json& actorFile)
+    {
+        // 項目の一覧は部品を作らないと分からないので、.actor を写さずに 1 体作って聞く。シーンへは入れない
+        const std::unique_ptr<SceneActor> actor = CreateActorWithCodeValues(ActorFileClass(actorFile));
+        if (actor == nullptr)
+        {
+            NS_LOG_ERROR(Scene, ".actor {} の class {} のアクターを作れないので読まない", name, ActorFileClass(actorFile));
+            return std::nullopt;
+        }
+        nlohmann::json values = actorFile;
+        const std::string_view baseName = ActorFileBase(actorFile);
+        if (!baseName.empty())
+        {
+            const std::map<std::string, nlohmann::json, std::less<>>::const_iterator base =
+                m_mergedValues.find(baseName);
+            if (base == m_mergedValues.end() || !ActorFileBase(base->second).empty())
+            {
+                NS_LOG_ERROR(Scene, "派生の .actor {} の元 {} が、読んだ元の .actor に無いので読まない", name, baseName);
+                return std::nullopt;
+            }
+            if (ActorFileClass(base->second) != ActorFileClass(actorFile))
+            {
+                NS_LOG_ERROR(Scene,
+                             "派生の .actor {} の class {} が、元 {} の class {} と違うので読まない",
+                             name,
+                             ActorFileClass(actorFile),
+                             baseName,
+                             ActorFileClass(base->second));
+                return std::nullopt;
+            }
+            std::optional<nlohmann::json> merged =
+                MergeLayer(base->second, actorFile, FieldDestination::DerivedActorFile, *actor);
+            if (!merged.has_value())
+            {
+                NS_LOG_ERROR(Scene, "派生の .actor {} を元 {} に重ねられないので読まない", name, baseName);
+                return std::nullopt;
+            }
+            values = std::move(*merged);
+            // 束と動作は派生に書いてあれば派生の物を使う
+            for (const char* key : {k_HitReactionsKey, k_ActionsKey})
+            {
+                if (const nlohmann::json* list = FindTopKey(actorFile, key))
+                {
+                    values[key] = *list;
+                }
+            }
+        }
+
+        std::vector<std::string> missing;
+        ForEachReflectedClassObj(*actor, [&](const ClassObjInfo& row, const Object* part) {
+            // 根の姿勢はシーンに置いたアクターの物なので .actor に書かない
+            if (part == &actor->Root())
+            {
+                return;
+            }
+            const nlohmann::json* fields = ClassObjFields(values, row.key);
+            const nlohmann::json code = SerializeClassObjFields(*part);
+            for (nlohmann::json::const_iterator field = code.begin(); field != code.end(); ++field)
+            {
+                const FieldDesc* desc = FindField(part->GetReflection(), field.key());
+                if (desc == nullptr || desc->type == FieldType::ActorRef)
+                {
+                    continue;
+                }
+                if (fields == nullptr || !fields->contains(field.key()))
+                {
+                    missing.push_back(std::format("{}/{}", row.key, field.key()));
+                }
+            }
+        });
+        if (!missing.empty())
+        {
+            std::string items = missing.front();
+            for (std::size_t i = 1; i < missing.size(); ++i)
+            {
+                items += "、" + missing[i];
+            }
+            NS_LOG_ERROR(Scene,
+                         ".actor {} に登録した項目の行が {} 個無いので読まない。エディタを起動すると書き足す: {}",
+                         name,
+                         missing.size(),
+                         items);
+            return std::nullopt;
+        }
+        return values;
     }
 
     std::vector<std::string> ActorFileLibrary::Names()
@@ -462,6 +582,17 @@ namespace NS
         EnsureLoaded();
         const std::map<std::string, nlohmann::json, std::less<>>::const_iterator it = m_actorFiles.find(name);
         if (it == m_actorFiles.end())
+        {
+            return nullptr;
+        }
+        return &it->second;
+    }
+
+    const nlohmann::json* ActorFileLibrary::Values(std::string_view name)
+    {
+        EnsureLoaded();
+        const std::map<std::string, nlohmann::json, std::less<>>::const_iterator it = m_mergedValues.find(name);
+        if (it == m_mergedValues.end())
         {
             return nullptr;
         }
@@ -491,9 +622,31 @@ namespace NS
             NS_LOG_ERROR(Scene, ".actor {} の文書を入れない。{}", name, problem);
             return false;
         }
-        m_actorFiles[std::string{name}] = Sanitize(actorFile);
-        // 比べる基準の 1 体は .actor から作るので、変えたら作り直す
-        m_baselines.erase(std::string{name});
+        const std::string key{name};
+        std::optional<nlohmann::json> previous;
+        if (const std::map<std::string, nlohmann::json, std::less<>>::const_iterator it = m_actorFiles.find(key);
+            it != m_actorFiles.end())
+        {
+            previous = it->second;
+        }
+        m_actorFiles[key] = Sanitize(actorFile);
+        RebuildValues();
+        // 作れない訳は BuildValues が ERROR で出している
+        if (!m_mergedValues.contains(key))
+        {
+            if (previous.has_value())
+            {
+                m_actorFiles[key] = std::move(*previous);
+            }
+            else
+            {
+                m_actorFiles.erase(key);
+            }
+            RebuildValues();
+            return false;
+        }
+        // 比べる基準の 1 体は全部の値から作るので、元を変えたら派生の分も作り直す
+        m_baselines.clear();
         return true;
     }
 
@@ -501,7 +654,8 @@ namespace NS
     {
         EnsureLoaded();
         m_actorFiles.erase(std::string{name});
-        m_baselines.erase(std::string{name});
+        RebuildValues();
+        m_baselines.clear();
     }
 
     bool ActorFileLibrary::Delete(std::string_view name)
@@ -543,6 +697,11 @@ namespace NS
         }
         const ActorInitInfo info{.actorFile = name};
         std::unique_ptr<SceneActor> actor = CreateActorOfClass(className, info);
+        // .actor の無い名前ではアクターを作らないので、比べる基準は部品の無い素の SceneActor にする
+        if (actor == nullptr)
+        {
+            actor = std::make_unique<SceneActor>();
+        }
         const SceneActor& result = *actor;
         m_baselines.emplace(std::string{name}, std::move(actor));
         return result;
@@ -555,7 +714,7 @@ namespace NS
 
     void ApplyActorFile(SceneActor& actor)
     {
-        const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(actor.ActorFileName());
+        const nlohmann::json* actorFile = ActorFileLibrary::Get().Values(actor.ActorFileName());
         if (actorFile == nullptr)
         {
             return;

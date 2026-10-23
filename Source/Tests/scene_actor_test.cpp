@@ -468,8 +468,8 @@ namespace
     // PropActor の半径だけを変えた、クラス名と違う名前で敷く .actor の中身
     nlohmann::json HeavyRockActorFile()
     {
-        nlohmann::json actorFile = ClassOnlyActorFile("PropActor");
-        NS::ObjectJsonClassObjs(actorFile)["Collision"] = nlohmann::json{{"半径", 2.5f}};
+        nlohmann::json actorFile = CodeValuesActorFile("PropActor");
+        NS::ObjectJsonClassObjs(actorFile)["Collision"]["半径"] = 2.5f;
         return actorFile;
     }
 

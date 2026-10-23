@@ -274,7 +274,7 @@ TEST(ReflectedParts, SameTypedMembersSaveAndReloadThroughTheirRegisteredKeys)
     EXPECT_FLOAT_EQ(saved["classObjs"]["ParentPart"]["値"].get<float>(), 2.0f);
     EXPECT_FLOAT_EQ(saved["classObjs"]["ChildPart"]["値"].get<float>(), 7.0f);
     EXPECT_FALSE(saved["classObjs"].contains("AbsentPart"));
-    const ScopedActorFile hierarchyFile{"ReflectedHierarchyActor", ClassOnlyActorFile("ReflectedHierarchyActor")};
+    const ScopedActorFile hierarchyFile{"ReflectedHierarchyActor", CodeValuesActorFile("ReflectedHierarchyActor")};
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> loaded = NS::ObjectFromJson(saved, scene);
     const ReflectedHierarchyActor* restored = NS::Cast<ReflectedHierarchyActor>(loaded.get());

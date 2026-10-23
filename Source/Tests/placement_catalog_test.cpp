@@ -41,7 +41,7 @@ TEST(PlacementCatalog, ActorFilesOfPlaceableClassesAppearByTheirName)
 TEST(PlacementCatalog, ActorFileAddedLaterAppearsUnderItsName)
 {
     // クラスと違う名前の .actor も、敷いた後の一覧に並ぶ
-    const ScopedActorFile heavy{"HeavyProp", ClassOnlyActorFile("PropActor")};
+    const ScopedActorFile heavy{"HeavyProp", CodeValuesActorFile("PropActor")};
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("HeavyProp");
     ASSERT_TRUE(item.has_value());
     EXPECT_EQ(NS::ObjectJsonActorFile(item->prototype), "HeavyProp");
@@ -52,7 +52,7 @@ TEST(PlacementCatalog, ItemFoundBeforeActorFileIsAddedStaysReadable)
     // 引いた物は、後で .actor が増えて一覧が組み直されても、引いた時の中身のまま読める
     const std::optional<NS::Editor::PlacementItem> prop = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(prop.has_value());
-    const ScopedActorFile heavy{"HeavyProp", ClassOnlyActorFile("PropActor")};
+    const ScopedActorFile heavy{"HeavyProp", CodeValuesActorFile("PropActor")};
     ASSERT_TRUE(NS::Editor::FindPlacementItem("HeavyProp").has_value());
     EXPECT_EQ(prop->label, "PropActor");
     EXPECT_EQ(NS::ObjectJsonActorFile(prop->prototype), "PropActor");

@@ -152,7 +152,7 @@ TEST(ActorAction, BrokenActionsAreRejectedWithAReason)
 // .actor の動作の並びは、壊れた動作と名前の重なった動作を ERROR で知らせて読まず、残りを読む
 TEST(ActorAction, ActorFileSkipsBrokenAndDuplicateActions)
 {
-    nlohmann::json actorFile = ClassOnlyActorFile("PlayerActor");
+    nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     NS::SetActorFileActions(actorFile, nlohmann::json::parse(R"([
         {"name": "BeforeContact", "events": []},
         {"name": "Broken", "events": [{"type": "Flash", "start": -1, "length": 1}]},
@@ -177,7 +177,7 @@ TEST(ActorAction, WritingBackKeepsTheActionsThatWereNotRead)
         {"name": "BeforeContact", "events": [{"type": "Flash", "start": 0, "length": 1}]},
         {"name": "Hit", "events": []}
     ])");
-    nlohmann::json actorFile = ClassOnlyActorFile("PlayerActor");
+    nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     NS::SetActorFileActions(actorFile, original);
     const TestLogCapture log;
     std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
@@ -207,12 +207,12 @@ TEST(ActorAction, TheLengthDoesNotWrapPastInt)
 // 動作が 1 つも無い時は鍵を書かない。束と動作を持たない .actor の形を変えない
 TEST(ActorAction, NoActionsWriteNoKey)
 {
-    nlohmann::json actorFile = ClassOnlyActorFile("PlayerActor");
+    nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     NS::WriteActorActions(actorFile, {MakeBeforeContactAction()});
     ASSERT_NE(NS::ActorFileActions(actorFile), nullptr);
     NS::WriteActorActions(actorFile, {});
     NS::WriteHitReactionSets(actorFile, {});
-    EXPECT_EQ(actorFile, ClassOnlyActorFile("PlayerActor"));
+    EXPECT_EQ(actorFile, CodeValuesActorFile("PlayerActor"));
 }
 
 // 動作のタイムラインの部品。状態に入る時に動作を始め、状態の歩を時計にして事象を起こす
@@ -295,7 +295,7 @@ namespace
 
         explicit ActionScene(const std::vector<NS::ActorAction>& actions)
         {
-            nlohmann::json actorFile = ClassOnlyActorFile(k_ActionProbeName);
+            nlohmann::json actorFile = CodeValuesActorFile(k_ActionProbeName);
             NS::WriteActorActions(actorFile, actions);
             const ScopedActorFile scoped(k_ActionProbeName, std::move(actorFile));
             self = scene.SpawnObject<ActionProbeActor>("Self");

@@ -221,7 +221,7 @@ TEST(ClassObj, OnlyTheBuildersCanInitAndEnterAnActor)
 
 TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
 {
-    const ScopedActorFile probeFile{"ClassObjInitProbeActor", ClassOnlyActorFile("ClassObjInitProbeActor")};
+    const ScopedActorFile probeFile{"ClassObjInitProbeActor", CodeValuesActorFile("ClassObjInitProbeActor")};
     NS::Scene scene;
     const ClassObjInitProbeActor* placed = scene.SpawnObject<ClassObjInitProbeActor>("Placed");
     EXPECT_EQ(placed->inits, 1);
@@ -247,7 +247,7 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
-    const ScopedActorFile probeFile{"AssetTimingProbeActor", ClassOnlyActorFile("AssetTimingProbeActor")};
+    const ScopedActorFile probeFile{"AssetTimingProbeActor", CodeValuesActorFile("AssetTimingProbeActor")};
     NS::Scene scene;
     const auto check = [](const NS::SceneActor* built, const char* path) {
         SCOPED_TRACE(path);
