@@ -166,8 +166,6 @@ namespace GL
             NS_FIELD(m_chargedReboundTurns, "溜めて当てた反動の回転数")
             NS_FIELD(m_tapReboundTurns, "通常突進で当てた反動の回転数")
             NS_GROUP("計算の内部")
-            NS_FIELD(m_spawnFloorTop, "補う床の上面")
-            NS_FIELD(m_spawnClearance, "補う足元の余白")
             NS_FIELD(m_contactTolerance, "突進の接触探索の誤差")
             NS_FIELD(m_launchHeightTolerance, "突進の高さ探索の誤差")
             NS_FIELD(m_launchAngleGuardDegrees, "突進の角度計算の上限")
@@ -175,8 +173,6 @@ namespace GL
             NS_REFLECT_END()
 
         private:
-            float m_spawnFloorTop = 0.5f;
-            float m_spawnClearance = 0.01f;
             float m_contactTolerance = 0.001f;
             float m_launchHeightTolerance = 0.001f;
             float m_launchAngleGuardDegrees = 89.0f;

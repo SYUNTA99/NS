@@ -76,15 +76,6 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
     EXPECT_EQ(NS::SerializeClassObjFields(restored)["丸まりの殻の資産"], "custom.curl");
 }
 
-TEST(GameTuning, DefaultSpawnReadsThePlayerInstance)
-{
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
-    const float before = player.DefaultSpawnPosition().y;
-    ASSERT_EQ(NS::ApplyJsonFields(player.Params(), {{"補う床の上面", 2.5f}, {"補う足元の余白", 0.11f}}), 0u);
-    EXPECT_NEAR(player.DefaultSpawnPosition().y - before, 2.1f, 0.0001f);
-}
-
 TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 {
     NS::EffectKeeper shortHistory{nullptr, 2};

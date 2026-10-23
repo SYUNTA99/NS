@@ -87,18 +87,10 @@ namespace NS
         [[nodiscard]] AABB PickLocalBounds(const SceneActor& object) noexcept;
 
         //! シーンの JSON 文書からプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
-        //! 複数居ても先頭を正とする。2 体以上の警告は EnsurePlayerObject を通した時だけ出る
+        //! 複数居ても先頭を正とする
         [[nodiscard]] std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept;
 
         //! プレイヤーのひな形の JSON を作る。構成は PlayerActor の OnInit が決め、transform 以外の欄は書かない
         [[nodiscard]] nlohmann::json MakePlayerObject(const Vector3& position, const Quaternion& rotation);
-
-        //! 不在なら PlayerActor.actor の構成でプレイヤーを追加し、採番する。追加時だけ true
-        //! 足元は DefaultSpawnPosition とカプセル寸法から決める。複数いれば警告し、先頭を使う
-        [[nodiscard]] bool EnsurePlayerObject(nlohmann::json& scene);
-
-        //! 落下死の範囲が 1 つも無ければ既定の物を敷き、永続 id まで振る
-        //! 無いレベルは奈落で死ねず落ち続けてしまうので、新しいレベルを作る時に通す
-        [[nodiscard]] bool EnsureDeathZoneObject(nlohmann::json& scene);
     } // namespace Editor
 } // namespace NS

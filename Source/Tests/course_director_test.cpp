@@ -57,8 +57,11 @@ namespace
     nlohmann::json CourseWithPlayer()
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        (void)NS::Editor::EnsurePlayerObject(doc);
-        (void)NS::Editor::EnsureDeathZoneObject(doc);
+        NS::SceneJsonObjects(doc).push_back(NS::Editor::MakePlayerObject(NS::Vector3{0.0f, 2.0f, 0.0f}, NS::Quaternion{}));
+        nlohmann::json zone = NS::Editor::MakePrototypeJson<GL::Level::DeathZoneActor>();
+        NS::Editor::SetObjectPosition(zone, NS::Vector3{0.0f, -55.0f, 0.0f});
+        NS::SceneJsonObjects(doc).push_back(std::move(zone));
+        NS::EnsureUniqueObjectIds(doc);
         return doc;
     }
 
@@ -132,7 +135,9 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
     const nlohmann::json doc = CourseWithPlayer();
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    (void)scene.BeginPlayBaseline();
+    GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
+    ASSERT_NE(director, nullptr);
+    director->StartCourse();
     PlayerActor* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
 
@@ -141,8 +146,6 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
     scene.HitSensors().OnTick();
     EXPECT_TRUE(player->IsDead());
 
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
     director->OnTick();
     // 出現位置へ戻り、命も満タンへ戻る
     EXPECT_FALSE(player->IsDead());

@@ -260,10 +260,6 @@ namespace NS
                 return false;
             }
 
-            // プレイヤー / 落下死体積が欠けたレベルには既定の 1 体を補う
-            (void)EnsurePlayerObject(fresh);
-            (void)EnsureDeathZoneObject(fresh);
-
             // 読込済みデータを実体側へ取り込み world を組み直す。新レベルなので Undo 履歴もクリアする
             m_loadLevel(std::move(fresh));
             m_undo.Clear();

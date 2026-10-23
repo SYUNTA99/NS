@@ -323,105 +323,26 @@ TEST(SceneActor, ShippedSceneUsesRegisteredClasses)
     }
 }
 
-TEST(SceneActor, NewLevelGetsOnePlayerAndOneDeathZone)
+// コースが始まる前のやり直しは位置を動かさず、動きと体力だけを最初へ戻す
+TEST(SceneActor, RestartBeforeTheCourseStartsKeepsThePosition)
 {
-    // 新しいレベルにはプレイヤーと落下死の範囲が 1 つずつ入り、2 度呼んでも増えない
+    const NS::Vector3 placed{3.0f, 40.0f, 3.0f};
     nlohmann::json doc = NS::MakeSceneJson();
-    EXPECT_TRUE(NS::Editor::EnsurePlayerObject(doc));
-    EXPECT_TRUE(NS::Editor::EnsureDeathZoneObject(doc));
-    EXPECT_FALSE(NS::Editor::EnsurePlayerObject(doc));
-    EXPECT_FALSE(NS::Editor::EnsureDeathZoneObject(doc));
-
-    int players = 0;
-    int zones = 0;
-    for (const nlohmann::json& object : NS::SceneJsonObjects(doc))
-    {
-        if (NS::ObjectJsonActorFile(object) == "PlayerActor")
-        {
-            ++players;
-        }
-        if (NS::ObjectJsonActorFile(object) == "DeathZoneActor")
-        {
-            ++zones;
-        }
-        EXPECT_NE(NS::ObjectJsonId(object), NS::k_NoObjectId);
-    }
-    EXPECT_EQ(players, 1);
-    EXPECT_EQ(zones, 1);
-}
-
-namespace
-{
-    // PlayerActor.actor を試しの間だけ差し替え、終わったら元へ戻す
-    class ScopedPlayerActorFile
-    {
-    public:
-        explicit ScopedPlayerActorFile(nlohmann::json actorFile)
-        {
-            const nlohmann::json* current = NS::ActorFileLibrary::Get().Find("PlayerActor");
-            if (current != nullptr)
-            {
-                m_previous = *current;
-            }
-            NS::ActorFileLibrary::Get().Set("PlayerActor", std::move(actorFile));
-        }
-
-        ~ScopedPlayerActorFile()
-        {
-            if (m_previous.has_value())
-            {
-                NS::ActorFileLibrary::Get().Set("PlayerActor", std::move(*m_previous));
-            }
-            else
-            {
-                NS::ActorFileLibrary::Get().Erase("PlayerActor");
-            }
-        }
-
-        ScopedPlayerActorFile(const ScopedPlayerActorFile&) = delete;
-        ScopedPlayerActorFile& operator=(const ScopedPlayerActorFile&) = delete;
-
-    private:
-        std::optional<nlohmann::json> m_previous;
-    };
-} // namespace
-
-TEST(SceneActor, EnsuredPlayerStandsOnTheAssumedFloorForItsCapsule)
-{
-    // 補う自機の高さはカプセルの寸法から出す。床の上面 0.5 + 半分の高さ + 半径 + 余白 1cm
-    // .actor の半径を変えても、足元が床の 1cm 上に出る
-    const ScopedPlayerActorFile actorFile{nlohmann::json{
-        {"class", "PlayerActor"}, {"classObjs", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
-    nlohmann::json doc = NS::MakeSceneJson();
-    EXPECT_TRUE(NS::Editor::EnsurePlayerObject(doc));
-
-    const nlohmann::json& objects = NS::SceneJsonObjects(doc);
-    ASSERT_EQ(objects.size(), std::size_t{1});
-    EXPECT_NEAR(NS::Editor::ObjectPosition(objects[0]).y, 0.5f + 0.5f + 0.65f + 0.01f, 1e-5f);
-}
-
-TEST(SceneActor, EnsuredPlayerAndRestartWithoutBaselineShareTheDefaultSpawnPosition)
-{
-    // 補う位置とやり直しの落ち先は同じ DefaultSpawnPosition から出る。数字の写しが戻ると片方だけずれる
-    const ScopedPlayerActorFile actorFile{nlohmann::json{
-        {"class", "PlayerActor"}, {"classObjs", {{"Collider", {{"半径", 0.65f}, {"半分の高さ", 0.5f}}}}}}};
-    nlohmann::json doc = NS::MakeSceneJson();
-    ASSERT_TRUE(NS::Editor::EnsurePlayerObject(doc));
-    const NS::Vector3 ensured = NS::Editor::ObjectPosition(NS::SceneJsonObjects(doc)[0]);
-
+    NS::SceneJsonObjects(doc).push_back(NS::Editor::MakePlayerObject(placed, NS::Quaternion{}));
+    NS::EnsureUniqueObjectIds(doc);
     NS::Scene scene;
     scene.ResetFromJson(doc);
     PlayerActor* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    const NS::Vector3 fallback = player->DefaultSpawnPosition();
-    EXPECT_FLOAT_EQ(ensured.y, fallback.y);
+    const int fullHealth = player->Health();
+    player->ApplyDamage(1);
+    ASSERT_LT(player->Health(), fullHealth);
 
-    // コースが始まる前のやり直しは、補う位置と同じ高さへ戻る
-    player->Root().SetPosition(NS::Vector3{3.0f, 40.0f, 3.0f});
     player->Restart();
-    EXPECT_FLOAT_EQ(player->Root().Position().x, fallback.x);
-    EXPECT_FLOAT_EQ(player->Root().Position().y, fallback.y);
-    EXPECT_FLOAT_EQ(player->Root().Position().z, fallback.z);
+    EXPECT_FLOAT_EQ(player->Root().Position().x, placed.x);
+    EXPECT_FLOAT_EQ(player->Root().Position().y, placed.y);
+    EXPECT_FLOAT_EQ(player->Root().Position().z, placed.z);
+    EXPECT_EQ(player->Health(), fullHealth);
 }
 
 TEST(SceneLoad, RejectsPreviousHierarchySchema)

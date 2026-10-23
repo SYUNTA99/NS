@@ -30,12 +30,7 @@ TEST(PlacementCatalog, ActorFilesOfPlaceableClassesAppearByTheirName)
         EXPECT_EQ(NS::ObjectJsonActorFile(item->prototype), name);
         ++listed;
     }
-    EXPECT_GE(listed, 5u);
-    // プレイヤーは .actor があっても置く一覧に出ない
-    for (const NS::Editor::PlacementItem& item : NS::Editor::PlacementItems())
-    {
-        EXPECT_NE(NS::ObjectJsonActorFile(item.prototype), "PlayerActor") << item.label;
-    }
+    EXPECT_GE(listed, 6u);
 }
 
 TEST(PlacementCatalog, ActorFileAddedLaterAppearsUnderItsName)

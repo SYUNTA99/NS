@@ -95,7 +95,7 @@ TEST(EditorLevelOpen, LevelNameOfScenePathRejectsPathsOutsideAssetsOrNotScenes)
 }
 
 // 自機の居ないレベルを開くと、自機と落下死の範囲を 1 体ずつ補い、名前を控え、前の履歴を捨てて未保存でない
-TEST_F(LevelOpenTest, OpenLevelFillsPlayerAndDeathZoneAndStartsCleanHistory)
+TEST_F(LevelOpenTest, OpenLevelLoadsTheFileAsWrittenAndStartsCleanHistory)
 {
     const std::string name = WriteLevel("empty", NS::MakeSceneJson().dump());
 
@@ -109,8 +109,9 @@ TEST_F(LevelOpenTest, OpenLevelFillsPlayerAndDeathZoneAndStartsCleanHistory)
 
     ASSERT_TRUE(editor.OpenLevel(name));
 
-    EXPECT_EQ(CountObjectsOfClass(loaded, "PlayerActor"), 1);
-    EXPECT_EQ(CountObjectsOfClass(loaded, "DeathZoneActor"), 1);
+    // 自機と落下死の範囲は自動で足さない
+    EXPECT_EQ(CountObjectsOfClass(loaded, "PlayerActor"), 0);
+    EXPECT_EQ(CountObjectsOfClass(loaded, "DeathZoneActor"), 0);
     EXPECT_EQ(editor.CurrentLevelName(), name);
     EXPECT_EQ(editor.Undo().UndoSize(), 0u);
     EXPECT_FALSE(editor.HasUnsavedChanges());

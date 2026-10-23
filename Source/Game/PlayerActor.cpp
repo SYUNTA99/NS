@@ -58,7 +58,7 @@ NS_CLASSOBJ(m_chargeEffects, "ChargeEffects")
 NS_CLASSOBJ(m_impactEffects, "ImpactEffects")
 NS_REFLECT_END_IMPL()
 
-NS_CLASS(PlayerActor)
+NS_PLACEABLE(PlayerActor, "自機")
 
 PlayerActor::PlayerActor() noexcept = default;
 
@@ -487,14 +487,11 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
 
 void PlayerActor::Restart() noexcept
 {
-    // 出現位置はカプセル中心の世界座標。コースが始まる前は、新規レベルで補う位置へ戻す
-    NS::Vector3 spawn = DefaultSpawnPosition();
+    // 出現位置はカプセル中心の世界座標。コースが始まる前は、シーンに置いた位置のまま
     if (m_courseStartPosition.has_value())
     {
-        spawn = *m_courseStartPosition;
+        Root().SetPosition(*m_courseStartPosition);
     }
-
-    Root().SetPosition(spawn);
     ResetState();
     ResetHealth();
     Appear();
@@ -896,11 +893,3 @@ PlayerActor* FindPlayer(NS::ActorList& objects) noexcept
     return nullptr;
 }
 
-// TODO: 床の上面を仮定している。床の高さが違うレベルを作ったら、補う時に下向きに引いて置く
-NS::Vector3 PlayerActor::DefaultSpawnPosition() const noexcept
-{
-    return NS::Vector3{0.0f,
-                       m_params->m_spawnFloorTop + Collider().StandingHalfHeight() + Collider().CapsuleRadius() +
-                           m_params->m_spawnClearance,
-                       0.0f};
-}

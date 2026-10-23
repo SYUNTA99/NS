@@ -41,10 +41,10 @@ TEST(ActorRegistry, PlaceableClassesHaveLabels)
     }
 }
 
-TEST(ActorRegistry, PlayerAndClassObjsAreNotPlaceable)
+TEST(ActorRegistry, PlayerIsPlaceableAndClassObjsAreNot)
 {
-    // プレイヤーは新しいレベルに自動で 1 体入るので置く一覧に出さない。部品も置く物ではない
-    EXPECT_EQ(FindPlaceable("PlayerActor"), nullptr);
+    // 自機は自動で置かないので、ほかのアクターと同じく置く一覧に出す。部品は置く物ではない
+    EXPECT_NE(FindPlaceable("PlayerActor"), nullptr);
     EXPECT_EQ(FindPlaceable("Model"), nullptr);
     EXPECT_EQ(FindPlaceable("GoalParams"), nullptr);
 }
