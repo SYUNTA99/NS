@@ -617,11 +617,11 @@ void Editor::HandleEditShortcuts(LevelEditorController& editor) noexcept
     const bool ctrl = keyboard.IsHeld(NS::OS::Key::Ctrl);
     if (keyboard.IsPressed(NS::OS::Key::Delete))
     {
-        editor.DeleteSelectedObject();
+        editor.DeleteSelectedActor();
     }
     if (ctrl && keyboard.IsPressed(NS::OS::Key::D))
     {
-        editor.DuplicateSelectedObject();
+        editor.DuplicateSelectedActor();
     }
     if (!ctrl && keyboard.IsPressed(NS::OS::Key::F))
     {

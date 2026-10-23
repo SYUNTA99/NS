@@ -24,19 +24,19 @@ namespace NS
 
         //! 読込時の上限。巨大 size / 要素数による メモリ枯渇を防ぐ
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;
-        constexpr std::size_t k_MaxObjectCount = 100'000u;
+        constexpr std::size_t k_MaxActorCount = 100'000u;
 
         //! ファイルの配置物 1 体を、知っている欄だけの形へ整える。未知の欄は捨て、fields の中身は素通し
-        nlohmann::json NormalizeObject(const nlohmann::json& json)
+        nlohmann::json NormalizeActorJson(const nlohmann::json& json)
         {
-            nlohmann::json object = MakeObjectJson();
+            nlohmann::json object = MakeActorJson();
             if (!json.is_object())
             {
                 return object;
             }
-            WriteObjectHeader(object, ReadObjectHeader(json));
-            nlohmann::json& parts = ObjectJsonClassObjs(object);
-            const nlohmann::json& source = ObjectJsonClassObjs(json);
+            WriteActorHeader(object, ReadActorHeader(json));
+            nlohmann::json& parts = ActorJsonClassObjs(object);
+            const nlohmann::json& source = ActorJsonClassObjs(json);
             for (nlohmann::json::const_iterator part = source.begin(); part != source.end(); ++part)
             {
                 if (part.value().is_object())
@@ -50,19 +50,19 @@ namespace NS
         // ファイルの参照は相手の名前で書く。空と重複した名前は相手が 1 つに決まらないので id のまま残す
         void WriteRefsByName(nlohmann::json& scene)
         {
-            nlohmann::json& objects = SceneJsonObjects(scene);
+            nlohmann::json& objects = SceneJsonActors(scene);
             std::unordered_map<std::string, int> counts;
             std::unordered_map<uint32, std::string> names;
             for (const nlohmann::json& object : objects)
             {
-                ++counts[std::string{ObjectJsonName(object)}];
+                ++counts[std::string{ActorJsonName(object)}];
             }
             for (const nlohmann::json& object : objects)
             {
-                const std::string name{ObjectJsonName(object)};
+                const std::string name{ActorJsonName(object)};
                 if (!name.empty() && counts[name] == 1)
                 {
-                    names.emplace(ObjectJsonId(object), name);
+                    names.emplace(ActorJsonId(object), name);
                 }
             }
             for (nlohmann::json& object : objects)
@@ -85,11 +85,11 @@ namespace NS
         // ファイルの参照は相手の名前で書かれている。名前を一意にした後で id へ直す。旧形式の数値はそのまま通す
         void ReadRefsByName(nlohmann::json& scene)
         {
-            nlohmann::json& objects = SceneJsonObjects(scene);
+            nlohmann::json& objects = SceneJsonActors(scene);
             std::unordered_map<std::string, uint32> ids;
             for (const nlohmann::json& object : objects)
             {
-                ids.emplace(std::string{ObjectJsonName(object)}, ObjectJsonId(object));
+                ids.emplace(std::string{ActorJsonName(object)}, ActorJsonId(object));
             }
             for (nlohmann::json& object : objects)
             {
@@ -124,7 +124,7 @@ namespace NS
         return scene;
     }
 
-    const nlohmann::json& SceneJsonObjects(const nlohmann::json& scene) noexcept
+    const nlohmann::json& SceneJsonActors(const nlohmann::json& scene) noexcept
     {
         static const nlohmann::json k_Empty = nlohmann::json::array();
         if (!scene.is_object())
@@ -139,7 +139,7 @@ namespace NS
         return *it;
     }
 
-    nlohmann::json& SceneJsonObjects(nlohmann::json& scene)
+    nlohmann::json& SceneJsonActors(nlohmann::json& scene)
     {
         if (!scene.is_object())
         {
@@ -153,12 +153,12 @@ namespace NS
         return objects;
     }
 
-    uint32 SceneJsonNextObjectId(const nlohmann::json& scene) noexcept
+    uint32 SceneJsonNextActorId(const nlohmann::json& scene) noexcept
     {
         return FieldUnsigned(scene, "nextObjectId", 1);
     }
 
-    void SetSceneJsonNextObjectId(nlohmann::json& scene, uint32 nextObjectId)
+    void SetSceneJsonNextActorId(nlohmann::json& scene, uint32 nextObjectId)
     {
         if (!scene.is_object())
         {
@@ -198,44 +198,44 @@ namespace NS
         return ReadSceneEnvironment(scene).skybox;
     }
 
-    uint32 NextFreeObjectId(const nlohmann::json& scene) noexcept
+    uint32 NextFreeActorId(const nlohmann::json& scene) noexcept
     {
-        uint32 next = std::max(SceneJsonNextObjectId(scene), 1u);
-        for (const nlohmann::json& object : SceneJsonObjects(scene))
+        uint32 next = std::max(SceneJsonNextActorId(scene), 1u);
+        for (const nlohmann::json& object : SceneJsonActors(scene))
         {
-            next = std::max(next, ObjectJsonId(object) + 1);
+            next = std::max(next, ActorJsonId(object) + 1);
         }
         return next;
     }
 
-    std::size_t FindObjectIndexById(const nlohmann::json& scene, uint32 id) noexcept
+    std::size_t FindActorIndexById(const nlohmann::json& scene, uint32 id) noexcept
     {
-        if (id == k_NoObjectId)
+        if (id == k_NoActorId)
         {
-            return k_NoObjectIndex;
+            return k_NoActorIndex;
         }
-        const nlohmann::json& objects = SceneJsonObjects(scene);
+        const nlohmann::json& objects = SceneJsonActors(scene);
         for (std::size_t i = 0; i < objects.size(); ++i)
         {
-            if (ObjectJsonId(objects[i]) == id)
+            if (ActorJsonId(objects[i]) == id)
             {
                 return i;
             }
         }
-        return k_NoObjectIndex;
+        return k_NoActorIndex;
     }
 
     namespace
     {
         // ファイルの参照は名前で書くので、名前が 1 つに決まることを保存と読込が当てにする
-        void EnsureUniqueObjectNames(nlohmann::json& scene)
+        void EnsureUniqueActorNames(nlohmann::json& scene)
         {
-            nlohmann::json& objects = SceneJsonObjects(scene);
+            nlohmann::json& objects = SceneJsonActors(scene);
             std::unordered_set<std::string> used;
             std::vector<nlohmann::json*> pending;
             for (nlohmann::json& object : objects)
             {
-                const std::string name{ObjectJsonName(object)};
+                const std::string name{ActorJsonName(object)};
                 if (name.empty() || !used.insert(name).second)
                 {
                     pending.push_back(&object);
@@ -243,20 +243,20 @@ namespace NS
             }
             for (nlohmann::json* object : pending)
             {
-                const std::string name = MakeUniqueActorName(ObjectJsonName(*object), used);
-                SetObjectJsonName(*object, name);
+                const std::string name = MakeUniqueActorName(ActorJsonName(*object), used);
+                SetActorJsonName(*object, name);
                 used.insert(name);
             }
         }
 
         // 存在しない object を指す参照を 0 へ戻した件数を返す。0 は元から未設定なので数えない
-        std::size_t PruneDanglingObjectRefs(nlohmann::json& scene)
+        std::size_t PruneDanglingActorRefs(nlohmann::json& scene)
         {
-            nlohmann::json& objects = SceneJsonObjects(scene);
+            nlohmann::json& objects = SceneJsonActors(scene);
             std::unordered_set<uint32> ids;
             for (const nlohmann::json& object : objects)
             {
-                ids.insert(ObjectJsonId(object));
+                ids.insert(ActorJsonId(object));
             }
             std::size_t pruned = 0;
             for (nlohmann::json& object : objects)
@@ -280,28 +280,28 @@ namespace NS
 
     } // namespace
 
-    void EnsureUniqueObjectIds(nlohmann::json& scene)
+    void EnsureUniqueActorIds(nlohmann::json& scene)
     {
-        nlohmann::json& objects = SceneJsonObjects(scene);
-        uint32 nextObjectId = NextFreeObjectId(scene);
+        nlohmann::json& objects = SceneJsonActors(scene);
+        uint32 nextObjectId = NextFreeActorId(scene);
         std::unordered_set<uint32> seen;
         for (nlohmann::json& object : objects)
         {
-            const uint32 id = ObjectJsonId(object);
+            const uint32 id = ActorJsonId(object);
             if (id == 0 || !seen.insert(id).second)
             {
                 const uint32 fresh = nextObjectId++;
-                SetObjectJsonId(object, fresh);
+                SetActorJsonId(object, fresh);
                 seen.insert(fresh);
             }
         }
-        SetSceneJsonNextObjectId(scene, nextObjectId);
-        EnsureUniqueObjectNames(scene);
+        SetSceneJsonNextActorId(scene, nextObjectId);
+        EnsureUniqueActorNames(scene);
     }
 
     std::string MakeUniqueActorName(std::string_view base, const std::unordered_set<std::string>& used)
     {
-        std::string name{"Object"};
+        std::string name{"Actor"};
         if (!base.empty())
         {
             name = std::string{base};
@@ -324,8 +324,8 @@ namespace NS
     {
         nlohmann::json out = MakeSceneJson();
         WriteSceneEnvironment(out, ReadSceneEnvironment(scene));
-        SetSceneJsonNextObjectId(out, SceneJsonNextObjectId(scene));
-        out["objects"] = SceneJsonObjects(scene);
+        SetSceneJsonNextActorId(out, SceneJsonNextActorId(scene));
+        out["objects"] = SceneJsonActors(scene);
         WriteRefsByName(out);
 
         // 不正 UTF-8 は replace で握り、dump が例外を投げないようにして noexcept 経路を保つ
@@ -356,29 +356,29 @@ namespace NS
             return false;
         }
 
-        const nlohmann::json& objects = SceneJsonObjects(root);
-        if (objects.size() > k_MaxObjectCount)
+        const nlohmann::json& objects = SceneJsonActors(root);
+        if (objects.size() > k_MaxActorCount)
         {
             NS_LOG_ERROR(
-                Scene, "DeserializeSceneFromJson: object 数 {} が上限 {} を超過", objects.size(), k_MaxObjectCount);
+                Scene, "DeserializeSceneFromJson: object 数 {} が上限 {} を超過", objects.size(), k_MaxActorCount);
             return false;
         }
-        nlohmann::json& outObjects = SceneJsonObjects(outScene);
+        nlohmann::json& outObjects = SceneJsonActors(outScene);
         for (const nlohmann::json& objectJson : objects)
         {
-            outObjects.push_back(NormalizeObject(objectJson));
+            outObjects.push_back(NormalizeActorJson(objectJson));
         }
 
         // environment の知らない欄は読み飛ばす。旧形式の照明の欄は DirectionalLight へ移った
         WriteSceneEnvironment(outScene, ReadSceneEnvironment(root));
-        SetSceneJsonNextObjectId(outScene, SceneJsonNextObjectId(root));
+        SetSceneJsonNextActorId(outScene, SceneJsonNextActorId(root));
 
         // 手編集ファイルは id 未割当・重複があり得る。読込直後に必ず一意化し、以降の経路は id を信頼できる
-        EnsureUniqueObjectIds(outScene);
+        EnsureUniqueActorIds(outScene);
         ReadRefsByName(outScene);
 
         // 手編集や参照先削除で宙に浮いた参照は入口で未設定へ戻す。実行時は id 照合の失敗を考えずに済む
-        const std::size_t prunedRefs = PruneDanglingObjectRefs(outScene);
+        const std::size_t prunedRefs = PruneDanglingActorRefs(outScene);
         if (prunedRefs > 0)
         {
             NS_LOG_WARN(Scene, "存在しない object を指す参照を {} 件未設定に戻した", prunedRefs);
@@ -390,10 +390,10 @@ namespace NS
     bool SaveSceneToJsonFile(const nlohmann::json& scene, std::string_view path) noexcept
     {
         // 保存前の上限ガード
-        const std::size_t objectCount = SceneJsonObjects(scene).size();
-        if (objectCount > k_MaxObjectCount)
+        const std::size_t objectCount = SceneJsonActors(scene).size();
+        if (objectCount > k_MaxActorCount)
         {
-            NS_LOG_ERROR(Scene, "SaveSceneToJsonFile: object 数が上限超過 ({} > {})", objectCount, k_MaxObjectCount);
+            NS_LOG_ERROR(Scene, "SaveSceneToJsonFile: object 数が上限超過 ({} > {})", objectCount, k_MaxActorCount);
             return false;
         }
         const std::string text = SerializeSceneToJson(scene);

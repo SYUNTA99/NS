@@ -4,7 +4,7 @@ namespace NS
 {
     namespace Editor
     {
-        void UndoStack::Push(std::unique_ptr<ICommand> cmd, IObjectSnapshotApplier& target) noexcept
+        void UndoStack::Push(std::unique_ptr<ICommand> cmd, IActorSnapshotApplier& target) noexcept
         {
             if (!cmd)
             {
@@ -40,7 +40,7 @@ namespace NS
             TrimOldest();
         }
 
-        bool UndoStack::Undo(IObjectSnapshotApplier& target) noexcept
+        bool UndoStack::Undo(IActorSnapshotApplier& target) noexcept
         {
             if (m_undo.empty())
             {
@@ -57,7 +57,7 @@ namespace NS
             return true;
         }
 
-        bool UndoStack::Redo(IObjectSnapshotApplier& target) noexcept
+        bool UndoStack::Redo(IActorSnapshotApplier& target) noexcept
         {
             if (m_redo.empty())
             {

@@ -1,11 +1,11 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
 #include "NSlib/CoreObject/IUse/IUseState.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
@@ -188,11 +188,11 @@ TEST(ActorStateMachine, MachineIsListedAsTheStateMachineClassObj)
 TEST(ActorStateMachine, SavedJsonGainsNoStateMachineFields)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
-    ExpectNoStateMachineFields(NS::ObjectToJson(*player));
+    ExpectNoStateMachineFields(NS::ActorToJson(*player));
     ExpectNoStateMachineFields(*NS::ActorFileLibrary::Get().Values("PlayerActor"));
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
-    ExpectNoStateMachineFields(NS::ObjectToJson(*prop));
+    ExpectNoStateMachineFields(NS::ActorToJson(*prop));
     ExpectNoStateMachineFields(*NS::ActorFileLibrary::Get().Values("PropActor"));
 }
 

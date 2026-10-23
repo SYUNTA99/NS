@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/ImpactMarks.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
@@ -16,11 +16,11 @@ namespace
     GL::Level::PropActor* PlaceRockOnFloor(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 1);
-        NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 1);
+        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         NS::OBB floor;
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -28,7 +28,7 @@ namespace
         floor.halfExtentY = 0.5f;
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-        return static_cast<GL::Level::PropActor*>(scene.Objects().FindByObjectId(1));
+        return static_cast<GL::Level::PropActor*>(scene.Actors().FindByActorId(1));
     }
 } // namespace
 
@@ -38,7 +38,7 @@ TEST(ImpactMarks, ReleasedPropLeavesAMarkOnTheFloorBelowIt)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceRockOnFloor(scene);
     ASSERT_NE(rock, nullptr);
-    const std::size_t actors = scene.Objects().ObjectCount();
+    const std::size_t actors = scene.Actors().ActorCount();
     ASSERT_EQ(rock->Marks().LiveCount(), 0u);
 
     GL::Level::TackleReleaseDesc release;
@@ -46,7 +46,7 @@ TEST(ImpactMarks, ReleasedPropLeavesAMarkOnTheFloorBelowIt)
     release.arc.apexHeight = 1.0f;
     ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*rock, release));
 
-    EXPECT_EQ(scene.Objects().ObjectCount(), actors);
+    EXPECT_EQ(scene.Actors().ActorCount(), actors);
     ASSERT_EQ(rock->Marks().LiveCount(), 1u);
     // 跡は補間しないので、出たフレームの絵も出した位置にある (原点から滑って来ない)
     const std::vector<NS::Matrix> drawn = rock->Marks().MarkWorldMatrices();

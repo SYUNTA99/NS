@@ -11,7 +11,7 @@
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -270,18 +270,18 @@ TEST(ReflectedParts, SameTypedMembersSaveAndReloadThroughTheirRegisteredKeys)
 {
     // 同じ型の 2 つの部品の値は、それぞれの鍵で .actor から入り、保存と読み直しでも鍵が入れ替わらない
     nlohmann::json actorFile = CodeValuesActorFile("ReflectedHierarchyActor");
-    NS::ObjectJsonClassObjs(actorFile)["ParentPart"]["値"] = 2.0f;
-    NS::ObjectJsonClassObjs(actorFile)["ChildPart"]["値"] = 7.0f;
+    NS::ActorJsonClassObjs(actorFile)["ParentPart"]["値"] = 2.0f;
+    NS::ActorJsonClassObjs(actorFile)["ChildPart"]["値"] = 7.0f;
     const ScopedActorFile hierarchyFile{"ReflectedHierarchyActor", actorFile};
     const std::unique_ptr<ReflectedHierarchyActor> actor = NS::CreateActor<ReflectedHierarchyActor>();
     EXPECT_FLOAT_EQ(actor->parentPart->value, 2.0f);
     EXPECT_FLOAT_EQ(actor->childPart->value, 7.0f);
-    const nlohmann::json saved = NS::ObjectToJson(*actor);
-    EXPECT_TRUE(NS::ObjectJsonClassObjs(saved).contains("ParentPart"));
-    EXPECT_TRUE(NS::ObjectJsonClassObjs(saved).contains("ChildPart"));
-    EXPECT_FALSE(NS::ObjectJsonClassObjs(saved).contains("AbsentPart"));
+    const nlohmann::json saved = NS::ActorToJson(*actor);
+    EXPECT_TRUE(NS::ActorJsonClassObjs(saved).contains("ParentPart"));
+    EXPECT_TRUE(NS::ActorJsonClassObjs(saved).contains("ChildPart"));
+    EXPECT_FALSE(NS::ActorJsonClassObjs(saved).contains("AbsentPart"));
     NS::Scene scene;
-    const std::unique_ptr<NS::SceneActor> loaded = NS::ObjectFromJson(saved, scene);
+    const std::unique_ptr<NS::SceneActor> loaded = NS::ActorFromJson(saved, scene);
     const ReflectedHierarchyActor* restored = NS::Cast<ReflectedHierarchyActor>(loaded.get());
     ASSERT_NE(restored, nullptr);
     EXPECT_FLOAT_EQ(restored->parentPart->value, 2.0f);
@@ -358,7 +358,7 @@ TEST(FixedParts, TransformUsesTheSamePartLookupAndFieldEditing)
     EXPECT_EQ(actor.Root().Position(), (NS::Vector3{2.0f, 3.0f, 4.0f}));
     // 姿勢はグローバルの項目なので、シーンの上書きの一覧に載せた物を保存で書く
     actor.AddSceneOverride("Transform", "位置");
-    EXPECT_EQ(NS::ObjectToJson(actor)["classObjs"]["Transform"]["位置"], (nlohmann::json::array({2.0f, 3.0f, 4.0f})));
+    EXPECT_EQ(NS::ActorToJson(actor)["classObjs"]["Transform"]["位置"], (nlohmann::json::array({2.0f, 3.0f, 4.0f})));
 }
 
 // 外から来る大きさだけを下限で止める。コードからの値は跡を 0 まで縮めるので止めない
@@ -440,15 +440,15 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
     EXPECT_NE(terrain.CollisionClassObj(), nullptr);
 }
 
-TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
+TEST(FixedParts, SavedActorsUseRoleKeysAndDirectFields)
 {
     const nlohmann::json source = {{"actor", "PropActor"}, {"id", 7u}, {"classObjs", {{"Shadow", {{"基本直径", 2.0f}}}}}};
     NS::Scene scene;
-    std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(source, scene);
+    std::unique_ptr<NS::SceneActor> actor = NS::ActorFromJson(source, scene);
     ASSERT_NE(actor, nullptr);
     ASSERT_NE(actor->ShadowClassObj(), nullptr);
     EXPECT_FLOAT_EQ(NS::FieldFloat(NS::SerializeClassObjFields(*actor->ShadowClassObj()), "基本直径", 0.0f), 2.0f);
-    const nlohmann::json saved = NS::ObjectToJson(*actor);
+    const nlohmann::json saved = NS::ActorToJson(*actor);
     EXPECT_FALSE(saved.contains("components"));
     ASSERT_TRUE(saved.contains("classObjs"));
     ASSERT_TRUE(saved["classObjs"].is_object());
@@ -461,7 +461,7 @@ TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
 TEST(FixedParts, FileReferencesUseNamesAndClonesRemapIds)
 {
     nlohmann::json scene = NS::MakeSceneJson();
-    NS::SceneJsonObjects(scene) = {
+    NS::SceneJsonActors(scene) = {
         {{"actor", "PropActor"}, {"id", 1u}, {"name", "target"}, {"classObjs", {{"Model", nlohmann::json::object()}}}},
         {{"actor", "PropActor"}, {"id", 2u}, {"classObjs", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
     const std::string text = NS::SerializeSceneToJson(scene);
@@ -469,7 +469,7 @@ TEST(FixedParts, FileReferencesUseNamesAndClonesRemapIds)
     EXPECT_EQ(file["objects"][1]["classObjs"]["Model"]["reference"]["ref"], "target");
     nlohmann::json restored;
     ASSERT_TRUE(NS::DeserializeSceneFromJson(restored, text));
-    nlohmann::json& copy = NS::SceneJsonObjects(restored)[1];
-    NS::RemapObjectRefs(copy, {{1u, 9u}});
+    nlohmann::json& copy = NS::SceneJsonActors(restored)[1];
+    NS::RemapActorRefs(copy, {{1u, 9u}});
     EXPECT_EQ(copy["classObjs"]["Model"]["reference"], (nlohmann::json{{"ref", 9u}}));
 }

@@ -11,7 +11,7 @@ namespace NS
 {
     namespace Editor
     {
-        class IObjectSnapshotApplier;
+        class IActorSnapshotApplier;
 
         //! Undo・Redo の履歴。200 操作か 50 MB を超えた分は古い履歴から捨てる
         class UndoStack : public NonCopyable
@@ -24,16 +24,16 @@ namespace NS
             ~UndoStack() = default;
 
             //! @brief コマンドを実行して Undo 履歴へ積む。Redo 履歴は捨てる
-            void Push(std::unique_ptr<ICommand> cmd, IObjectSnapshotApplier& target) noexcept;
+            void Push(std::unique_ptr<ICommand> cmd, IActorSnapshotApplier& target) noexcept;
 
             //! @brief 既に適用済みの編集を Do を呼ばずに履歴へ積む。ドラッグ確定など実体を先に動かした編集用
             void Record(std::unique_ptr<ICommand> cmd) noexcept;
 
             //! @brief 最新の Undo 操作を戻し、Redo 履歴へ移動する
-            bool Undo(IObjectSnapshotApplier& target) noexcept;
+            bool Undo(IActorSnapshotApplier& target) noexcept;
 
             //! @brief 最新の Redo 操作を実行し、Undo 履歴へ移動する
-            bool Redo(IObjectSnapshotApplier& target) noexcept;
+            bool Redo(IActorSnapshotApplier& target) noexcept;
 
             //! @brief 履歴を全消去する。レベル遷移時に使用
             void Clear() noexcept;

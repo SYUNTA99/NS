@@ -1,8 +1,8 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -137,10 +137,10 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
             sceneName);
         nlohmann::json doc;
         ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
-        for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
+        for (const nlohmann::json& entry : NS::SceneJsonActors(doc))
         {
             const nlohmann::json* fields = NS::ClassObjFields(entry, "Params");
-            if (NS::ObjectJsonActorFile(entry) != "PlayerActor" || fields == nullptr)
+            if (NS::ActorJsonFile(entry) != "PlayerActor" || fields == nullptr)
             {
                 continue;
             }
@@ -159,8 +159,8 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
     const nlohmann::json prototype = NS::Editor::MakePrototypeJson(*playerOwned);
     const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PlayerActor");
     ASSERT_NE(actorFile, nullptr);
-    for (nlohmann::json::const_iterator it = NS::ObjectJsonClassObjs(*actorFile).begin();
-         it != NS::ObjectJsonClassObjs(*actorFile).end();
+    for (nlohmann::json::const_iterator it = NS::ActorJsonClassObjs(*actorFile).begin();
+         it != NS::ActorJsonClassObjs(*actorFile).end();
          ++it)
     {
         EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << "PlayerActor.actor " << it.key();
@@ -174,13 +174,13 @@ TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
             sceneName);
         nlohmann::json doc;
         ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
-        for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
+        for (const nlohmann::json& entry : NS::SceneJsonActors(doc))
         {
-            if (NS::ObjectJsonActorFile(entry) != "PlayerActor")
+            if (NS::ActorJsonFile(entry) != "PlayerActor")
             {
                 continue;
             }
-            const nlohmann::json& parts = NS::ObjectJsonClassObjs(entry);
+            const nlohmann::json& parts = NS::ActorJsonClassObjs(entry);
             for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
             {
                 EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << sceneName << " " << it.key();

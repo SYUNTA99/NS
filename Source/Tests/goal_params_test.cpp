@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/PlayerActor.h"
@@ -14,13 +14,13 @@ TEST(GameTuning, GoalFadeUsesTheEditedGoalFields)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json playerDoc = NS::Editor::MakePrototypeJson<PlayerActor>();
-    NS::SetObjectJsonId(playerDoc, 1);
-    NS::SceneJsonObjects(doc).push_back(std::move(playerDoc));
+    NS::SetActorJsonId(playerDoc, 1);
+    NS::SceneJsonActors(doc).push_back(std::move(playerDoc));
     nlohmann::json goalDoc = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
-    NS::SetObjectJsonId(goalDoc, 2);
-    NS::SceneJsonObjects(doc).push_back(std::move(goalDoc));
+    NS::SetActorJsonId(goalDoc, 2);
+    NS::SceneJsonActors(doc).push_back(std::move(goalDoc));
     scene.ResetFromJson(std::move(doc));
-    GL::Level::GoalActor* goal = NS::Cast<GL::Level::GoalActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::GoalActor* goal = NS::Cast<GL::Level::GoalActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(goal, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(goal->Params(), {{"クリアの暗転秒", 0.1f}, {"クリアの明転秒", 0.2f}}), 0u);
     (void)scene.BeginPlayBaseline();

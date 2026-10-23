@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/GoalActor.h"

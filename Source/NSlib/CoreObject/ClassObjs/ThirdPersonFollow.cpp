@@ -129,7 +129,7 @@ namespace NS
         {
             return nullptr;
         }
-        SceneActor* target = m_owner->OwningScene()->Objects().FindObject(m_targetRef);
+        SceneActor* target = m_owner->OwningScene()->Actors().FindActor(m_targetRef);
         if (target == nullptr)
         {
             return nullptr;

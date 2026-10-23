@@ -1,11 +1,11 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Editor/GizmoEditor.h"
 #include "Editor/GridMath.h"
 #include "Editor/InspectorPanel.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
-#include "Editor/Undo/ObjectSnapshotApplier.h"
+#include "Editor/Undo/ActorSnapshotApplier.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/App/Application.h"
@@ -131,7 +131,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
-        ASSERT_NE(editor.SelectedObjectId(), NS::k_NoObjectId);
+        ASSERT_NE(editor.SelectedActorId(), NS::k_NoActorId);
         NS::OS::Keyboard& keyboard = app.Input().Keyboard();
         keyboard.ClearState();
         keyboard.Update();
@@ -142,8 +142,8 @@ TEST(EditorSelection, EscapeClearsTheSelection)
         keyboard.OnKeyUp(NS::OS::Key::Escape);
         keyboard.Update();
         editor.Tick();
-        EXPECT_EQ(editor.SelectedObjectId(), NS::k_NoObjectId);
-        EXPECT_TRUE(editor.SelectedObjectIds().empty());
+        EXPECT_EQ(editor.SelectedActorId(), NS::k_NoActorId);
+        EXPECT_TRUE(editor.SelectedActorIds().empty());
     }));
     EXPECT_EQ(app.Run(), 0);
 }
@@ -163,14 +163,14 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
-        const NS::uint32 id = editor.SelectedObjectId();
+        const NS::uint32 id = editor.SelectedActorId();
         const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
 
         editor.EnterPlay();
-        editor.DeleteSelectedObject();
-        EXPECT_NE(scene.Objects().FindByObjectId(id), nullptr);
+        editor.DeleteSelectedActor();
+        EXPECT_NE(scene.Actors().FindByActorId(id), nullptr);
         editor.BeginTransformEdit();
-        WritePoseField(editor, *scene.Objects().FindByObjectId(id), NS::k_PositionFieldName, NS::Vector3{5.0f, 0.0f, 0.0f});
+        WritePoseField(editor, *scene.Actors().FindByActorId(id), NS::k_PositionFieldName, NS::Vector3{5.0f, 0.0f, 0.0f});
         editor.CommitTransformEdit();
         EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore);
         editor.EnterEdit();
@@ -193,22 +193,22 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
-        const NS::uint32 id = editor.SelectedObjectId();
+        const NS::uint32 id = editor.SelectedActorId();
 
         editor.EnterPlay();
         const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(0.5f, 0.0f, 0.0f);
-        NS::SceneActor& actor = *scene.Objects().FindByObjectId(id);
+        NS::SceneActor& actor = *scene.Actors().FindByActorId(id);
         WritePoseField(editor, actor, NS::k_PositionFieldName, NS::Vector3{5.0f, 1.0f, 2.0f});
         WritePoseField(editor, actor, NS::k_RotationFieldName, rotation);
         WritePoseField(editor, actor, NS::k_ScaleFieldName, NS::Vector3{2.0f, 2.0f, 2.0f});
 
         const nlohmann::json& baseline = scene.PlayBaseline();
-        const std::size_t index = NS::FindObjectIndexById(baseline, id);
-        ASSERT_NE(index, NS::k_NoObjectIndex);
-        const nlohmann::json& object = NS::SceneJsonObjects(baseline)[index];
-        EXPECT_FLOAT_EQ(NS::Editor::ObjectPosition(object).x, 5.0f);
-        EXPECT_FLOAT_EQ(NS::Editor::ObjectRotation(object).y, rotation.y);
-        EXPECT_FLOAT_EQ(NS::Editor::ObjectScale(object).x, 2.0f);
+        const std::size_t index = NS::FindActorIndexById(baseline, id);
+        ASSERT_NE(index, NS::k_NoActorIndex);
+        const nlohmann::json& object = NS::SceneJsonActors(baseline)[index];
+        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).x, 5.0f);
+        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonRotation(object).y, rotation.y);
+        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(object).x, 2.0f);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
@@ -217,18 +217,18 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
 // ギズモで変えた姿勢の項目だけが上書きの一覧に載り、保存したシーンに書かれる。取り消すと一覧からも外れる
 TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
 {
-    nlohmann::json object = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(object, "PropActor");
-    NS::SetObjectJsonId(object, 1);
+    nlohmann::json object = NS::MakeActorJson();
+    NS::SetActorJsonFile(object, "PropActor");
+    NS::SetActorJsonId(object, 1);
     nlohmann::json doc = NS::MakeSceneJson();
-    NS::SceneJsonObjects(doc).push_back(std::move(object));
+    NS::SceneJsonActors(doc).push_back(std::move(object));
     NS::Scene scene;
     scene.ResetFromJson(doc);
     LevelEditorController editor(&scene);
-    NS::Editor::ObjectSnapshotApplier applier(&scene);
+    NS::Editor::ActorSnapshotApplier applier(&scene);
     editor.Editor().SetApplier(&applier);
-    editor.SelectObjectById(1);
-    NS::SceneActor* prop = scene.Objects().FindByObjectId(1);
+    editor.SelectActorById(1);
+    NS::SceneActor* prop = scene.Actors().FindByActorId(1);
     ASSERT_NE(prop, nullptr);
     ASSERT_FALSE(prop->IsSceneOverride("Transform", NS::k_ScaleFieldName));
 
@@ -239,14 +239,14 @@ TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
     EXPECT_TRUE(prop->IsSceneOverride("Transform", NS::k_ScaleFieldName));
     EXPECT_FALSE(prop->IsSceneOverride("Transform", NS::k_RotationFieldName));
     const nlohmann::json saved = scene.ToJson();
-    const nlohmann::json& entry = NS::SceneJsonObjects(saved)[NS::FindObjectIndexById(saved, 1)];
+    const nlohmann::json& entry = NS::SceneJsonActors(saved)[NS::FindActorIndexById(saved, 1)];
     const nlohmann::json* transform = NS::ClassObjFields(entry, "Transform");
     ASSERT_NE(transform, nullptr);
-    EXPECT_FLOAT_EQ(NS::Editor::ObjectScale(entry).x, 2.0f);
+    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(entry).x, 2.0f);
     EXPECT_FALSE(NS::HasField(*transform, NS::k_RotationFieldName));
 
     ASSERT_TRUE(editor.Editor().PerformUndo());
-    prop = scene.Objects().FindByObjectId(1);
+    prop = scene.Actors().FindByActorId(1);
     ASSERT_NE(prop, nullptr);
     EXPECT_EQ(prop->Root().Scale(), NS::Vector3::One);
     EXPECT_FALSE(prop->IsSceneOverride("Transform", NS::k_ScaleFieldName));
@@ -265,21 +265,21 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
         LevelEditorController editor(&scene);
-        NS::Editor::ObjectSnapshotApplier applier(&scene);
+        NS::Editor::ActorSnapshotApplier applier(&scene);
         editor.Editor().SetApplier(&applier);
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
-        const NS::uint32 id = editor.SelectedObjectId();
+        const NS::uint32 id = editor.SelectedActorId();
         editor.Editor().Undo().Clear();
         ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
 
         const auto colorOf = [&scene, id]() {
-            const NS::SceneActor* actor = scene.Objects().FindByObjectId(id);
+            const NS::SceneActor* actor = scene.Actors().FindByActorId(id);
             return NS::SerializeClassObjFields(*actor->ModelClassObj())["基本色"];
         };
         const nlohmann::json colorBefore = colorOf();
-        const NS::Vector3 positionBefore = scene.Objects().FindByObjectId(id)->Root().Position();
+        const NS::Vector3 positionBefore = scene.Actors().FindByActorId(id)->Root().Position();
 
         // 何も変えずに戻る
         editor.EnterPlay();
@@ -288,14 +288,14 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
 
         // 位置だけがプレイで動く
         editor.EnterPlay();
-        scene.Objects().FindByObjectId(id)->Root().SetPosition(NS::Vector3{7.0f, 3.0f, 1.0f});
+        scene.Actors().FindByActorId(id)->Root().SetPosition(NS::Vector3{7.0f, 3.0f, 1.0f});
         editor.EnterEdit();
         EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
-        EXPECT_EQ(scene.Objects().FindByObjectId(id)->Root().Position(), positionBefore);
+        EXPECT_EQ(scene.Actors().FindByActorId(id)->Root().Position(), positionBefore);
 
         // インスペクタの道で色の欄を変える
         editor.EnterPlay();
-        NS::SceneActor* actor = scene.Objects().FindByObjectId(id);
+        NS::SceneActor* actor = scene.Actors().FindByActorId(id);
         ASSERT_NE(actor, nullptr);
         actor->ModelClassObj()->SetColorOverride(NS::Color{0.2f, 0.4f, 0.6f, 1.0f});
         const NS::ClassObjInfo* modelRow = nullptr;
@@ -339,7 +339,7 @@ TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
         ASSERT_EQ(stoneColor, (NS::Vector3{0.6f, 0.6f, 0.65f}));
 
         editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
-        NS::Model* overridden = editor.SelectedObjectActor()->ModelClassObj();
+        NS::Model* overridden = editor.SelectedActor()->ModelClassObj();
         overridden->SetColorOverride(NS::Color{0.1f, 0.2f, 0.3f});
         ASSERT_TRUE(editor.ApplyMaterialToSelected(stonePath));
         ASSERT_TRUE(overridden->ColorOverride().has_value());
@@ -347,7 +347,7 @@ TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
         EXPECT_EQ(overridden->DrawColor().ToVector3(), (NS::Vector3{0.1f, 0.2f, 0.3f}));
 
         editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
-        NS::Model* empty = editor.SelectedObjectActor()->ModelClassObj();
+        NS::Model* empty = editor.SelectedActor()->ModelClassObj();
         empty->SetColorOverride(std::nullopt);
         ASSERT_TRUE(editor.ApplyMaterialToSelected(stonePath));
         EXPECT_FALSE(empty->ColorOverride().has_value());
@@ -383,7 +383,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
         editor.FocusSelectedInView();
         editor.Tick();
 
-        const NS::SceneActor* camera = editor.SelectedObjectActor();
+        const NS::SceneActor* camera = editor.SelectedActor();
         ASSERT_NE(camera, nullptr);
         const std::optional<NS::Vector2> handle =
             FindMoveHandle(*camera, scene.GetCameraManager()->ViewProjection(), view);
@@ -392,7 +392,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
         const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
         const NS::Vector3 before = camera->Root().Position();
         DragHandle(editor, mouse, *handle);
-        EXPECT_NE(editor.SelectedObjectActor()->Root().Position(), before);
+        EXPECT_NE(editor.SelectedActor()->Root().Position(), before);
         EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
 
         // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
@@ -418,10 +418,10 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
-        const NS::uint32 otherId = editor.SelectedObjectId();
+        const NS::uint32 otherId = editor.SelectedActorId();
         editor.PlaceItem(*item);
-        const NS::uint32 actorId = editor.SelectedObjectId();
-        editor.SelectObjects({otherId, actorId}, actorId);
+        const NS::uint32 actorId = editor.SelectedActorId();
+        editor.SelectActors({otherId, actorId}, actorId);
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Mouse& mouse = app.Input().Mouse();
@@ -434,9 +434,9 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
         editor.Tick();
 
         const auto worldPosition = [&scene](NS::uint32 id) {
-            return scene.Objects().FindByObjectId(id)->Root().WorldMatrix().Translation();
+            return scene.Actors().FindByActorId(id)->Root().WorldMatrix().Translation();
         };
-        const NS::SceneActor* actor = scene.Objects().FindByObjectId(actorId);
+        const NS::SceneActor* actor = scene.Actors().FindByActorId(actorId);
         ASSERT_NE(actor, nullptr);
         const std::optional<NS::Vector2> handle =
             FindMoveHandle(*actor, scene.GetCameraManager()->ViewProjection(), view);
@@ -472,10 +472,10 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
-        const NS::uint32 actorId = editor.SelectedObjectId();
-        const NS::Vector3 placed = scene.Objects().FindByObjectId(actorId)->Root().Position();
+        const NS::uint32 actorId = editor.SelectedActorId();
+        const NS::Vector3 placed = scene.Actors().FindByActorId(actorId)->Root().Position();
         WritePoseField(editor,
-                       *scene.Objects().FindByObjectId(actorId),
+                       *scene.Actors().FindByActorId(actorId),
                        NS::k_PositionFieldName,
                        NS::Vector3{placed + NS::Vector3{3.0f, 0.0f, 0.0f}});
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
@@ -489,7 +489,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         editor.FocusSelectedInView();
         editor.Tick();
 
-        const NS::SceneActor* actor = scene.Objects().FindByObjectId(actorId);
+        const NS::SceneActor* actor = scene.Actors().FindByActorId(actorId);
         ASSERT_NE(actor, nullptr);
         ASSERT_EQ(actor->Root().Position(), actor->Root().WorldMatrix().Translation());
         const std::optional<NS::Vector2> handle =
@@ -498,7 +498,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
 
         const NS::Vector3 before = actor->Root().WorldMatrix().Translation();
         DragHandle(editor, mouse, *handle);
-        const NS::Vector3 after = scene.Objects().FindByObjectId(actorId)->Root().WorldMatrix().Translation();
+        const NS::Vector3 after = scene.Actors().FindByActorId(actorId)->Root().WorldMatrix().Translation();
         EXPECT_NE(after, before);
 
         // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
@@ -525,9 +525,9 @@ TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
         editor.Editor().Palette().SetActiveSlot(2);
         ASSERT_STREQ(editor.Editor().Palette().CurrentTemplateName(), "ゴール");
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        const std::size_t placed = scene.Objects().ObjectCount();
+        const std::size_t placed = scene.Actors().ActorCount();
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        EXPECT_EQ(scene.Objects().ObjectCount(), placed);
+        EXPECT_EQ(scene.Actors().ActorCount(), placed);
     }));
     EXPECT_EQ(app.Run(), 0);
 }
@@ -547,13 +547,13 @@ TEST(EditorBrush, RotateKeepsTheTilt)
         editor.Setup({});
         editor.Editor().Palette().SetActiveSlot(0);
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        ASSERT_EQ(scene.Objects().ObjectCount(), 1u);
-        const NS::uint32 id = scene.Objects().ObjectAt(0)->Id();
-        editor.SelectObjectById(id);
+        ASSERT_EQ(scene.Actors().ActorCount(), 1u);
+        const NS::uint32 id = scene.Actors().ActorAt(0)->Id();
+        editor.SelectActorById(id);
         WritePoseField(
-            editor, *scene.Objects().FindByObjectId(id), NS::k_RotationFieldName, NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.5f, 0.0f));
+            editor, *scene.Actors().FindByActorId(id), NS::k_RotationFieldName, NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.5f, 0.0f));
         const auto up = [&scene, id] {
-            return NS::Vector3::Transform(NS::Vector3::UnitY, scene.Objects().FindByObjectId(id)->Root().Rotation());
+            return NS::Vector3::Transform(NS::Vector3::UnitY, scene.Actors().FindByActorId(id)->Root().Rotation());
         };
         const float tiltBefore = up().y;
 
@@ -564,7 +564,7 @@ TEST(EditorBrush, RotateKeepsTheTilt)
 }
 
 // 名前を打つ途中で選択を変えても、打った名前は打ち始めた物へ入る。後から選んだ物は改名しない
-TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
+TEST(EditorSelection, RenameGoesToTheActorBeingTyped)
 {
     ImGuiContext* gui = ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -581,12 +581,12 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
-    const NS::uint32 first = editor.SelectedObjectId();
+    const NS::uint32 first = editor.SelectedActorId();
     editor.PlaceItem(*item);
-    const NS::uint32 second = editor.SelectedObjectId();
+    const NS::uint32 second = editor.SelectedActorId();
     ASSERT_NE(first, second);
-    const std::string secondName = NS::Editor::ObjectDisplayName(*scene.Objects().FindByObjectId(second));
-    editor.SelectObjectById(first);
+    const std::string secondName = NS::Editor::ActorDisplayName(*scene.Actors().FindByActorId(second));
+    editor.SelectActorById(first);
 
     NS::Editor::InspectorPanel inspector;
     const auto frame = [&] {
@@ -597,21 +597,21 @@ TEST(EditorSelection, RenameGoesToTheObjectBeingTyped)
     frame();
     ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
     ASSERT_NE(window, nullptr);
-    ImGui::ActivateItemByID(window->GetID("##objectName"));
+    ImGui::ActivateItemByID(window->GetID("##actorName"));
     frame();
     frame();
     io.AddInputCharactersUTF8("Typed");
     frame();
 
-    editor.SelectObjectById(second);
+    editor.SelectActorById(second);
     ImGui::NewFrame();
     ImGui::ClearActiveID();
     inspector.Render(editor);
     ImGui::EndFrame();
 
-    EXPECT_NE(std::string{NS::Editor::ObjectDisplayName(*scene.Objects().FindByObjectId(first))}.find("Typed"),
+    EXPECT_NE(std::string{NS::Editor::ActorDisplayName(*scene.Actors().FindByActorId(first))}.find("Typed"),
               std::string::npos);
-    EXPECT_EQ(NS::Editor::ObjectDisplayName(*scene.Objects().FindByObjectId(second)), secondName);
+    EXPECT_EQ(NS::Editor::ActorDisplayName(*scene.Actors().FindByActorId(second)), secondName);
     ImGui::DestroyContext(gui);
 }
 
@@ -632,7 +632,7 @@ namespace
         {
             return {};
         }
-        const ImGuiID nameId = window->GetID("##objectName");
+        const ImGuiID nameId = window->GetID("##actorName");
         ImGui::ActivateItemByID(nameId);
         RenderInspectorFrame(inspector, editor);
         RenderInspectorFrame(inspector, editor);
@@ -667,14 +667,14 @@ TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
-    const NS::uint32 id = editor.SelectedObjectId();
-    const std::string before = NS::Editor::ObjectDisplayName(*scene.Objects().FindByObjectId(id));
+    const NS::uint32 id = editor.SelectedActorId();
+    const std::string before = NS::Editor::ActorDisplayName(*scene.Actors().FindByActorId(id));
 
     NS::Editor::InspectorPanel inspector;
     RenderInspectorFrame(inspector, editor);
     ASSERT_EQ(ReadInspectorNameField(inspector, editor), before);
 
-    editor.RenameObject(id, "Renamed");
+    editor.RenameActor(id, "Renamed");
     RenderInspectorFrame(inspector, editor);
     EXPECT_EQ(ReadInspectorNameField(inspector, editor), "Renamed");
 
@@ -688,13 +688,13 @@ TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
 TEST(EditorSelection, ReferenceOptionsFollowThePlacedActors)
 {
     NS::Scene scene;
-    (void)scene.SpawnObject<GL::Level::PropActor>("a");
-    (void)scene.SpawnObject<GL::Level::PropActor>("b");
-    (void)scene.SpawnObject<GL::Level::PropActor>("c");
+    (void)scene.SpawnActor<GL::Level::PropActor>("a");
+    (void)scene.SpawnActor<GL::Level::PropActor>("b");
+    (void)scene.SpawnActor<GL::Level::PropActor>("c");
 
-    const std::vector<NS::SceneActor*> placed = NS::Editor::PlacedActors(scene.Objects());
+    const std::vector<NS::SceneActor*> placed = NS::Editor::PlacedActors(scene.Actors());
     ASSERT_EQ(placed.size(), 3u);
-    const std::vector<NS::Editor::ObjectRefOption> options = NS::Editor::MakeObjectRefOptions(scene.Objects());
+    const std::vector<NS::Editor::ActorRefOption> options = NS::Editor::MakeActorRefOptions(scene.Actors());
     ASSERT_EQ(options.size(), placed.size());
     for (std::size_t i = 0; i < placed.size(); ++i)
     {
@@ -718,13 +718,13 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
 
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Editor::ObjectSnapshotApplier applier(&scene);
+    NS::Editor::ActorSnapshotApplier applier(&scene);
     editor.Editor().SetApplier(&applier);
     editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
-    const NS::uint32 id = editor.SelectedObjectId();
-    const NS::Vector3 beforePosition = editor.SelectedObjectActor()->Root().Position();
-    const NS::Vector3 beforeScale = editor.SelectedObjectActor()->Root().Scale();
-    const NS::Quaternion beforeRotation = editor.SelectedObjectActor()->Root().Rotation();
+    const NS::uint32 id = editor.SelectedActorId();
+    const NS::Vector3 beforePosition = editor.SelectedActor()->Root().Position();
+    const NS::Vector3 beforeScale = editor.SelectedActor()->Root().Scale();
+    const NS::Quaternion beforeRotation = editor.SelectedActor()->Root().Rotation();
     const std::size_t beforeUndo = editor.Editor().Undo().UndoSize();
     NS::Editor::InspectorPanel inspector;
     const auto frame = [&] {
@@ -768,7 +768,7 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
         frame();
         EXPECT_EQ(editor.Editor().Undo().UndoSize(), beforeUndo + row + 1);
     }
-    const NS::Transform& edited = scene.Objects().FindByObjectId(id)->Root();
+    const NS::Transform& edited = scene.Actors().FindByActorId(id)->Root();
     EXPECT_FLOAT_EQ(edited.Position().x, beforePosition.x);
     EXPECT_FLOAT_EQ(edited.Position().y, 12.5f);
     EXPECT_FLOAT_EQ(edited.Position().z, beforePosition.z);
@@ -780,7 +780,7 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
     {
         EXPECT_TRUE(editor.Editor().PerformUndo());
     }
-    const NS::Transform& restored = scene.Objects().FindByObjectId(id)->Root();
+    const NS::Transform& restored = scene.Actors().FindByActorId(id)->Root();
     EXPECT_EQ(restored.Position(), beforePosition);
     EXPECT_EQ(restored.Rotation(), beforeRotation);
     EXPECT_EQ(restored.Scale(), beforeScale);
@@ -794,16 +794,16 @@ TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
-    const NS::uint32 placed = editor.SelectedObjectId();
-    ASSERT_NE(placed, NS::k_NoObjectId);
+    const NS::uint32 placed = editor.SelectedActorId();
+    ASSERT_NE(placed, NS::k_NoActorId);
 
     editor.SelectAsset(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Materials/stone.mat"));
-    EXPECT_EQ(editor.SelectedObjectId(), NS::k_NoObjectId);
-    EXPECT_TRUE(editor.SelectedObjectIds().empty());
+    EXPECT_EQ(editor.SelectedActorId(), NS::k_NoActorId);
+    EXPECT_TRUE(editor.SelectedActorIds().empty());
     EXPECT_EQ(editor.SelectedAssetPath(), "Assets/Materials/stone.mat");
     EXPECT_NE(NS::Cast<NS::Material>(editor.SelectedAsset()), nullptr);
 
-    editor.SelectObjectById(placed);
+    editor.SelectActorById(placed);
     EXPECT_TRUE(editor.SelectedAssetPath().empty());
     EXPECT_EQ(editor.SelectedAsset(), nullptr);
 }
@@ -835,8 +835,8 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
-        const NS::uint32 actorId = editor.SelectedObjectId();
-        ASSERT_NE(actorId, NS::k_NoObjectId);
+        const NS::uint32 actorId = editor.SelectedActorId();
+        ASSERT_NE(actorId, NS::k_NoActorId);
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Mouse& mouse = app.Input().Mouse();
@@ -854,7 +854,7 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
             std::function<void()> clear;
         };
         const std::vector<ClearPath> paths{
-            {"アクターの選択", [&editor, actorId] { editor.SelectObjectById(actorId); }},
+            {"アクターの選択", [&editor, actorId] { editor.SelectActorById(actorId); }},
             {"ギズモの選択",
              [&editor, &mouse, &view] {
                  // 選んだアクターは画面の中心に居るので、中心のクリックでギズモが拾う
@@ -865,7 +865,7 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
                  mouse.OnButtonUp(NS::OS::MouseButton::Left);
                  editor.Tick();
                  mouse.Update();
-                 EXPECT_NE(editor.SelectedObjectId(), NS::k_NoObjectId);
+                 EXPECT_NE(editor.SelectedActorId(), NS::k_NoActorId);
              }},
             {"置く", [&editor, item] { editor.PlaceItem(*item); }},
             {"シーン設定", [&editor] { editor.SelectSceneSettings(); }},
@@ -931,68 +931,68 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
         const NS::Editor::UndoStack& undo = editor.Editor().Undo();
 
         // 置く: 作った物を選ぶ
-        std::size_t objectsBefore = scene.Objects().ObjectCount();
+        std::size_t objectsBefore = scene.Actors().ActorCount();
         std::size_t undoBefore = undo.UndoSize();
         editor.PlaceItem(*prop);
-        const NS::uint32 placed = editor.SelectedObjectId();
-        EXPECT_NE(scene.Objects().FindByObjectId(placed), nullptr);
-        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore + 1);
+        const NS::uint32 placed = editor.SelectedActorId();
+        EXPECT_NE(scene.Actors().FindByActorId(placed), nullptr);
+        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore + 1);
         EXPECT_EQ(undo.UndoSize(), undoBefore + 1);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
         EXPECT_TRUE(editor.Editor().PerformUndo());
-        EXPECT_EQ(scene.Objects().FindByObjectId(placed), nullptr);
-        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore);
+        EXPECT_EQ(scene.Actors().FindByActorId(placed), nullptr);
+        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore);
 
         // 筆で空いた升に置く: 今の選択を変えない
         editor.PlaceItem(*prop);
-        const NS::uint32 kept = editor.SelectedObjectId();
+        const NS::uint32 kept = editor.SelectedActorId();
         editor.Editor().Palette().SetActiveSlot(0);
-        objectsBefore = scene.Objects().ObjectCount();
+        objectsBefore = scene.Actors().ActorCount();
         undoBefore = undo.UndoSize();
         editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10);
-        EXPECT_NE(NS::Editor::FindObjectIdAtCell(scene.Objects(), 10, 0, 10), NS::k_NoObjectId);
-        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore + 1);
+        EXPECT_NE(NS::Editor::FindActorIdAtCell(scene.Actors(), 10, 0, 10), NS::k_NoActorId);
+        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore + 1);
         EXPECT_EQ(undo.UndoSize(), undoBefore + 1);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
-        EXPECT_EQ(editor.SelectedObjectId(), kept);
+        EXPECT_EQ(editor.SelectedActorId(), kept);
         EXPECT_TRUE(editor.Editor().PerformUndo());
-        EXPECT_EQ(NS::Editor::FindObjectIdAtCell(scene.Objects(), 10, 0, 10), NS::k_NoObjectId);
-        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore);
+        EXPECT_EQ(NS::Editor::FindActorIdAtCell(scene.Actors(), 10, 0, 10), NS::k_NoActorId);
+        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore);
 
         // 複製: 写した物どうしの参照は写した先を指し、写した物を選ぶ
         editor.PlaceItem(*camera);
-        const NS::uint32 follower = editor.SelectedObjectId();
-        GL::Level::FollowCameraActor* followActor = AsFollowCamera(scene.Objects().FindByObjectId(follower));
+        const NS::uint32 follower = editor.SelectedActorId();
+        GL::Level::FollowCameraActor* followActor = AsFollowCamera(scene.Actors().FindByActorId(follower));
         ASSERT_NE(followActor, nullptr);
         ASSERT_EQ(NS::ApplyJsonFields(followActor->Vcam(), nlohmann::json{{"追従対象", {{"ref", kept}}}}), 0u);
-        editor.SelectObjects({kept, follower}, follower);
-        objectsBefore = scene.Objects().ObjectCount();
+        editor.SelectActors({kept, follower}, follower);
+        objectsBefore = scene.Actors().ActorCount();
         undoBefore = undo.UndoSize();
-        editor.DuplicateSelectedObject();
-        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore + 2);
+        editor.DuplicateSelectedActor();
+        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore + 2);
         EXPECT_EQ(undo.UndoSize(), undoBefore + 1);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
-        const std::vector<NS::uint32> copies = editor.SelectedObjectIds();
+        const std::vector<NS::uint32> copies = editor.SelectedActorIds();
         ASSERT_EQ(copies.size(), 2u);
         EXPECT_NE(copies[0], kept);
         EXPECT_NE(copies[1], follower);
-        const GL::Level::FollowCameraActor* followCopy = AsFollowCamera(scene.Objects().FindByObjectId(copies[1]));
+        const GL::Level::FollowCameraActor* followCopy = AsFollowCamera(scene.Actors().FindByActorId(copies[1]));
         ASSERT_NE(followCopy, nullptr);
         EXPECT_EQ(followCopy->Vcam().TargetRef().id, copies[0]);
         EXPECT_TRUE(editor.Editor().PerformUndo());
-        EXPECT_EQ(scene.Objects().FindByObjectId(copies[0]), nullptr);
-        EXPECT_EQ(scene.Objects().FindByObjectId(copies[1]), nullptr);
-        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore);
+        EXPECT_EQ(scene.Actors().FindByActorId(copies[0]), nullptr);
+        EXPECT_EQ(scene.Actors().FindByActorId(copies[1]), nullptr);
+        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore);
 
         // プレイ中: どの道も作らず、履歴も積まない
-        editor.SelectObjects({kept}, kept);
+        editor.SelectActors({kept}, kept);
         editor.EnterPlay();
-        objectsBefore = scene.Objects().ObjectCount();
+        objectsBefore = scene.Actors().ActorCount();
         undoBefore = undo.UndoSize();
         editor.PlaceItem(*prop);
-        editor.DuplicateSelectedObject();
+        editor.DuplicateSelectedActor();
         editor.Editor().PlaceUnderCursorProgrammatic(12, 0, 12);
-        EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore);
+        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore);
         EXPECT_EQ(undo.UndoSize(), undoBefore);
         editor.EnterEdit();
     }));
@@ -1044,21 +1044,21 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
             NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
         ASSERT_TRUE(cube.has_value());
         editor.PlaceItem(*cube);
-        const NS::uint32 followerId = editor.SelectedObjectId();
+        const NS::uint32 followerId = editor.SelectedActorId();
         editor.PlaceItem(*cube);
-        const NS::uint32 sourceId = editor.SelectedObjectId();
+        const NS::uint32 sourceId = editor.SelectedActorId();
         editor.Editor().Palette().SetActiveSlot(0);
         editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10);
-        ASSERT_NE(NS::Editor::FindObjectIdAtCell(scene.Objects(), 10, 0, 10), NS::k_NoObjectId);
+        ASSERT_NE(NS::Editor::FindActorIdAtCell(scene.Actors(), 10, 0, 10), NS::k_NoActorId);
         // やり直しの履歴も 1 つ持たせる
         editor.PlaceItem(*cube);
         ASSERT_TRUE(editor.Editor().PerformUndo());
         ASSERT_TRUE(editor.Editor().CanRedo());
-        editor.SelectObjectById(sourceId);
+        editor.SelectActorById(sourceId);
 
         editor.EnterPlay();
-        ASSERT_NE(scene.Objects().FindByObjectId(sourceId), nullptr);
-        ASSERT_NE(scene.Objects().FindByObjectId(followerId), nullptr);
+        ASSERT_NE(scene.Actors().FindByActorId(sourceId), nullptr);
+        ASSERT_NE(scene.Actors().FindByActorId(followerId), nullptr);
         const std::string stone =
             NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Materials/stone.mat");
 
@@ -1070,9 +1070,9 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
         const std::vector<EditPath> paths{
             {"マテリアルを付ける", [&editor, &stone] { EXPECT_FALSE(editor.ApplyMaterialToSelected(stone)); }},
             {"置く", [&editor, &cube] { editor.PlaceItem(*cube); }},
-            {"複製", [&editor] { editor.DuplicateSelectedObject(); }},
-            {"消す", [&editor] { editor.DeleteSelectedObject(); }},
-            {"改名", [&editor, sourceId] { editor.RenameObject(sourceId, "改名した"); }},
+            {"複製", [&editor] { editor.DuplicateSelectedActor(); }},
+            {"消す", [&editor] { editor.DeleteSelectedActor(); }},
+            {"改名", [&editor, sourceId] { editor.RenameActor(sourceId, "改名した"); }},
             {"空の設定", [&editor] { EXPECT_FALSE(editor.SetSkyboxPath("Assets/Skybox/none.png")); }},
             {"筆で置き換える", [&editor] { editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10); }},
             {"筆で回す", [&editor] { editor.Editor().RotateAtProgrammatic(10, 0, 10); }},
@@ -1121,8 +1121,8 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
         editor.Setup({});
         editor.Editor().Palette().SetActiveSlot(0);
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        ASSERT_EQ(scene.Objects().ObjectCount(), 1u);
-        editor.SelectObjectById(scene.Objects().ObjectAt(0)->Id());
+        ASSERT_EQ(scene.Actors().ActorCount(), 1u);
+        editor.SelectActorById(scene.Actors().ActorAt(0)->Id());
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Keyboard& keyboard = app.Input().Keyboard();
@@ -1138,7 +1138,7 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
         // 置いた物は画面の中心に居るので、中心のカーソルで筆の R がその物を回す
         mouse.OnMove(view.width / 2, view.height / 2);
         mouse.Update();
-        editor.SetObjectToolActive(false);
+        editor.SetGizmoToolActive(false);
 
         const auto press = [&keyboard, &editor](NS::OS::Key key, bool ctrl) {
             if (ctrl)

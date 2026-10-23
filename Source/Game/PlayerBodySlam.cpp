@@ -200,7 +200,7 @@ void PlayerActor::BeginBeforeContact() noexcept
     NS::SceneActor* target = nullptr;
     if (OwningScene() != nullptr)
     {
-        target = OwningScene()->Objects().FindObject(m_beforeContact.target);
+        target = OwningScene()->Actors().FindActor(m_beforeContact.target);
     }
     if (target == nullptr || target->BodySensorClassObj() == nullptr)
     {

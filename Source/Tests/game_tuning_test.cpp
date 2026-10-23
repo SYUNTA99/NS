@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/ImpactResolver.h"
@@ -12,7 +12,7 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
@@ -25,10 +25,10 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShape)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json entry = NS::Editor::MakePrototypeJson<PlayerActor>();
-    NS::SetObjectJsonId(entry, 1);
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
+    NS::SetActorJsonId(entry, 1);
+    NS::SceneJsonActors(doc).push_back(std::move(entry));
     scene.ResetFromJson(std::move(doc));
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->ImpactVisuals(),
                                   {{"核の留まりの上限フレーム", 2}, {"中心の火花の開始フレーム", 5}}),
@@ -43,7 +43,7 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShape)
 TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnObject<PlayerActor>("PlayerActor");
+    PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->ChargeVisuals(), {{"丸まりの殻の寿命フレーム", 2}}), 0u);
     for (int i = 0; i < 3; ++i)
@@ -62,7 +62,7 @@ TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
 TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnObject<PlayerActor>("PlayerActor");
+    PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->ChargeVisuals(), {{"丸まりの殻の資産", "custom.curl"}}), 0u);
     player->Update(true);
@@ -96,7 +96,7 @@ TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
 {
     NS::Scene scene;
-    GL::Level::PropActor* rock = scene.SpawnObject<GL::Level::PropActor>("PropActor");
+    GL::Level::PropActor* rock = scene.SpawnActor<GL::Level::PropActor>("PropActor");
     ASSERT_NE(rock, nullptr);
     GL::Level::LaunchEffects* effects = &rock->Effects();
     ASSERT_EQ(NS::ApplyJsonFields(*effects, {{"着地の粉の寿命フレーム", 2}}), 0u);

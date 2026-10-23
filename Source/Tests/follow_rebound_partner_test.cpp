@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
@@ -6,7 +6,7 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -51,10 +51,10 @@ namespace
 
         explicit PartnerScene(const std::optional<NS::Vector3>& partner, bool pullBack = true)
         {
-            target = scene.SpawnObject<PartnerTargetProbeActor>("target");
+            target = scene.SpawnActor<PartnerTargetProbeActor>("target");
             target->partner = partner;
             target->pullBack = pullBack;
-            camera = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
+            camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
             NS::ApplyJsonFields(camera->Vcam(),
                                 nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
                                                {"反動の間に相手を収める重み", 0.3f},
@@ -131,16 +131,16 @@ namespace
     PlayerActor* PlacePartnerScene(NS::Scene& scene, float rockX)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(player, "PlayerActor");
-        NS::SetObjectJsonId(player, 1);
-        NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 2);
-        NS::Editor::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json player = NS::MakeActorJson();
+        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonId(player, 1);
+        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 2);
+        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -149,7 +149,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 } // namespace
 
@@ -162,7 +162,7 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
         NS::Scene scene;
         PlayerActor* player = PlacePartnerScene(scene, rockX);
         ASSERT_NE(player, nullptr);
-        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
         ASSERT_NE(rock, nullptr);
         player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         int checked = 0;

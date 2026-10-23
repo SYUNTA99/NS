@@ -1,5 +1,5 @@
 #include "Editor/ActionTimelineEdit.h"
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Editor/HitPreview.h"
 #include "Editor/TimelinePreview.h"
 #include "Game/Level/ImpactResolver.h"
@@ -11,7 +11,7 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "NSlib/Windows/Input.h"
@@ -47,23 +47,23 @@ namespace
     nlohmann::json MakePreviewSceneJson()
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json floor = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(floor, "MapPartsActor");
-        NS::SetObjectJsonId(floor, 100);
-        NS::Editor::SetObjectPosition(floor, NS::Vector3{0.0f, -0.5f, 0.0f});
-        NS::Editor::SetObjectScale(floor, NS::Vector3{60.0f, 1.0f, 60.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(floor));
-        nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(player, "PlayerActor");
-        NS::SetObjectJsonId(player, 1);
-        NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, k_RockId);
-        NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 1.5f, 7.0f});
-        NS::Editor::SetObjectScale(rock, NS::Vector3{3.0f, 3.0f, 3.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json floor = NS::MakeActorJson();
+        NS::SetActorJsonFile(floor, "MapPartsActor");
+        NS::SetActorJsonId(floor, 100);
+        NS::Editor::SetActorJsonPosition(floor, NS::Vector3{0.0f, -0.5f, 0.0f});
+        NS::Editor::SetActorJsonScale(floor, NS::Vector3{60.0f, 1.0f, 60.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(floor));
+        nlohmann::json player = NS::MakeActorJson();
+        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonId(player, 1);
+        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, k_RockId);
+        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 1.5f, 7.0f});
+        NS::Editor::SetActorJsonScale(rock, NS::Vector3{3.0f, 3.0f, 3.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         return doc;
     }
 
@@ -306,12 +306,12 @@ TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
     ASSERT_TRUE(preview.hit) << preview.error;
 
     nlohmann::json placed = snapshot;
-    const std::size_t playerIndex = NS::Editor::FindPlayerObjectIndex(placed);
-    ASSERT_NE(playerIndex, NS::k_NoObjectIndex);
-    NS::Editor::SetObjectPosition(NS::SceneJsonObjects(placed)[playerIndex], preview.playerStart);
+    const std::size_t playerIndex = NS::Editor::FindPlayerActorIndex(placed);
+    ASSERT_NE(playerIndex, NS::k_NoActorIndex);
+    NS::Editor::SetActorJsonPosition(NS::SceneJsonActors(placed)[playerIndex], preview.playerStart);
     NS::Scene scene;
     scene.ResetFromJson(placed);
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     player->Input().SetLocked(true);
     player->RequestBodySlam(preview.desc.charge01, preview.direction);
@@ -341,11 +341,11 @@ TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
 {
     const ScopedPreviewActorFile actorFile;
     nlohmann::json snapshot = MakePreviewSceneJson();
-    nlohmann::json distant = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(distant, "PropActor");
-    NS::SetObjectJsonId(distant, 3);
-    NS::Editor::SetObjectPosition(distant, NS::Vector3{0.0f, 0.5f, 25.0f});
-    NS::SceneJsonObjects(snapshot).push_back(std::move(distant));
+    nlohmann::json distant = NS::MakeActorJson();
+    NS::SetActorJsonFile(distant, "PropActor");
+    NS::SetActorJsonId(distant, 3);
+    NS::Editor::SetActorJsonPosition(distant, NS::Vector3{0.0f, 0.5f, 25.0f});
+    NS::SceneJsonActors(snapshot).push_back(std::move(distant));
     PreviewAssets assets;
     NS::Editor::HitPreviewDesc desc = MakeDesc(0.0f, 0.0f);
     desc.targetId = 0;
@@ -391,7 +391,7 @@ TEST(EditorHitPreview, PlaybackEvaluatesTheSceneAtTheRecordedFrameAndCanRewind)
         SCOPED_TRACE(index);
         NS::Scene* scene = playback.Seek(index - result.detectionIndex);
         ASSERT_NE(scene, nullptr);
-        PlayerActor* player = FindPlayer(scene->Objects());
+        PlayerActor* player = FindPlayer(scene->Actors());
         ASSERT_NE(player, nullptr);
         const NS::Editor::HitPreviewFrame& frame = result.frames[static_cast<std::size_t>(index)];
         EXPECT_TRUE(player->Root().Position() == frame.playerPosition);
@@ -415,17 +415,17 @@ TEST(EditorHitPreview, StartsTheSceneLikeTheGame)
     ASSERT_TRUE(result.hit) << result.error;
     const std::unique_ptr<NS::Scene> scene = NS::Editor::MakeHitPreviewScene(snapshot, result, assets.World());
     ASSERT_NE(scene, nullptr);
-    EXPECT_EQ(NS::SceneJsonObjects(scene->PlayBaseline()).size(), NS::SceneJsonObjects(snapshot).size());
+    EXPECT_EQ(NS::SceneJsonActors(scene->PlayBaseline()).size(), NS::SceneJsonActors(snapshot).size());
 
     // 動かしてからやり直しを送ると、開始の時の姿へ戻る。開始の姿を控えていない物は戻らない
-    PlayerActor* player = FindPlayer(scene->Objects());
+    PlayerActor* player = FindPlayer(scene->Actors());
     ASSERT_NE(player, nullptr);
     const NS::Vector3 playerStart = player->Root().Position();
     player->Root().SetPosition(playerStart + NS::Vector3{4.0f, 3.0f, -5.0f});
     EXPECT_TRUE(SendMsgCourseRestart(*player));
     EXPECT_TRUE(player->Root().Position() == playerStart);
 
-    NS::SceneActor* rock = scene->Objects().FindByObjectId(k_RockId);
+    NS::SceneActor* rock = scene->Actors().FindByActorId(k_RockId);
     ASSERT_NE(rock, nullptr);
     EXPECT_TRUE(SendMsgCourseRestart(*rock));
 }

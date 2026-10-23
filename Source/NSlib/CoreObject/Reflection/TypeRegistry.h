@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <memory>
@@ -51,10 +51,6 @@ namespace NS
     //! @brief クラス名から、.actor を写さずにコンストラクタと OnInit の値だけで SceneActor を作る
     //! @details .actor の全部の項目を生成する時だけ使う。シーンへ入らず、素材も読まない。未登録のクラスは nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className);
-
-    //! @brief object を配置として scene の中に置くアクターを作り、欄と素材まで済ませて返す
-    //! @details クラスは object の指す .actor の中の class。.actor が見つからなければ ERROR を出して nullptr
-    [[nodiscard]] std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object, Scene& scene);
 
     //! @brief エディタで置ける SceneActor の登録の一覧。表示名の順で安定
     //! @details ヒエラルキーの追加メニューとパレットが、置ける種類の列挙に使う

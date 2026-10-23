@@ -32,12 +32,12 @@ namespace
         void Load()
         {
             nlohmann::json doc = NS::MakeSceneJson();
-            nlohmann::json entry = NS::MakeObjectJson();
-            NS::SetObjectJsonActorFile(entry, "PlayerActor");
-            NS::SetObjectJsonId(entry, 1);
-            NS::SceneJsonObjects(doc).push_back(std::move(entry));
+            nlohmann::json entry = NS::MakeActorJson();
+            NS::SetActorJsonFile(entry, "PlayerActor");
+            NS::SetActorJsonId(entry, 1);
+            NS::SceneJsonActors(doc).push_back(std::move(entry));
             scene.ResetFromJson(doc);
-            player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
+            player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
             ASSERT_NE(player, nullptr);
             ASSERT_EQ(NS::ApplyJsonFields(player->Params(),
                                           {{"チャージしきい値秒", 0.2f},

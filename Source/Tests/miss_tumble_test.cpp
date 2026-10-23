@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/ReboundArc.h"
@@ -6,7 +6,7 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"
@@ -26,11 +26,11 @@ namespace
     PlayerActor* PlaceTumblePlayer(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(player, "PlayerActor");
-        NS::SetObjectJsonId(player, 1);
-        NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json player = NS::MakeActorJson();
+        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonId(player, 1);
+        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(player));
         scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -39,7 +39,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        PlayerActor* placed = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        PlayerActor* placed = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
         if (placed == nullptr)
         {
             return nullptr;

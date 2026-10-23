@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
@@ -24,7 +24,7 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
@@ -57,16 +57,16 @@ namespace
     PlayerActor* PlacePipelinePlayer(NS::Scene& scene, float targetX = 0.0f, float targetZ = 3.0f)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(player, "PlayerActor");
-        NS::SetObjectJsonId(player, 1);
-        NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 2);
-        NS::Editor::SetObjectPosition(rock, NS::Vector3{targetX, 0.5f, targetZ});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json player = NS::MakeActorJson();
+        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonId(player, 1);
+        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 2);
+        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{targetX, 0.5f, targetZ});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -75,7 +75,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
     // 見本の列に書く状態の綴り。表に無い状態は Other
@@ -279,7 +279,7 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
     ObserveImpact(*player);
-    scene.Objects().RemoveByObjectId(2);
+    scene.Actors().RemoveByActorId(2);
     StepImpact(*player);
     EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
     EXPECT_TRUE(player->IsBodySlamming());
@@ -292,7 +292,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     EXPECT_TRUE(player->IsHitStopping());
@@ -329,7 +329,7 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
         GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
         ASSERT_NE(director, nullptr);
         director->StartCourse();
-        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
         ASSERT_NE(rock, nullptr);
         const NS::Vector3 rockHome = rock->Root().Position();
         ASSERT_TRUE(SlamIntoTheRock(*player, *rock, waitForFreeze));
@@ -355,7 +355,7 @@ TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
     NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     ASSERT_TRUE(player->ModelClassObj()->IsDrawingShape());
@@ -388,7 +388,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
     ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
     ASSERT_FALSE(player->Resolver().Answer().lastImpact.broke);
@@ -444,7 +444,7 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     NS::Scene scene;
     PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 2.5f);
     ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(rock, nullptr);
     for (int frame = 0; frame < 60; ++frame)
     {
@@ -486,7 +486,7 @@ TEST(PlayerAppearance, TheHitShapeDoesNotMixTheStance)
         NS::Scene scene;
         PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
         EXPECT_NE(player, nullptr);
-        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
         EXPECT_NE(rock, nullptr);
         if (player == nullptr || rock == nullptr)
         {
@@ -651,7 +651,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                                                      {"中心近くの当たりの反動の距離の倍率", 2.0f},
                                                      {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
                   0u);
-        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+        GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
         ASSERT_NE(rock, nullptr);
         EXPECT_EQ(NS::ApplyJsonFields(rock->Params(), nlohmann::json{{"外れで飛ばす相手の距離の割合", 1.0f}}), 0u);
         int impact = -1;

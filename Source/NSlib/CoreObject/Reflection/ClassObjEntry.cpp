@@ -1,7 +1,7 @@
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 
 namespace NS
 {
@@ -125,7 +125,7 @@ namespace NS
         return value->get<std::string>();
     }
 
-    ActorRef FieldObjectRef(const nlohmann::json& entry, std::string_view name) noexcept
+    ActorRef FieldActorRef(const nlohmann::json& entry, std::string_view name) noexcept
     {
         const nlohmann::json* value = FindFieldValue(entry, name);
         ActorRef out{};

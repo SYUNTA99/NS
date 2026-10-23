@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/Core/OBB.h"
@@ -17,13 +17,13 @@ namespace
     GL::Level::PropActor* PlaceMovingRock(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 1);
-        NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 1);
+        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
-        return static_cast<GL::Level::PropActor*>(scene.Objects().FindByObjectId(1));
+        return static_cast<GL::Level::PropActor*>(scene.Actors().FindByActorId(1));
     }
 
     void ReleaseRock(GL::Level::PropActor& rock)

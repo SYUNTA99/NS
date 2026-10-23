@@ -36,7 +36,7 @@ namespace NS
             if (ImGui::Begin(k_PanelAssets))
             {
                 // 適用にはギズモ選択が要るので枠は Object モード時だけ出す
-                if (editor.ObjectToolActive())
+                if (editor.GizmoToolActive())
                 {
                     const bool hasSelection = editor.HasGizmoSelection();
                     const char* selectionLabel = "オブジェクトが未選択。クリックで選ぶ";

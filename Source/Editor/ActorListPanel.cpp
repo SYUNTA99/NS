@@ -1,6 +1,6 @@
 #include "Editor/ActorListPanel.h"
 
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Editor/EditorUi.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
@@ -69,8 +69,8 @@ namespace NS
                     editor.SelectSceneSettings();
                 }
 
-                const std::vector<SceneActor*> placed = PlacedActors(editor.Objects());
-                ImGui::Text("オブジェクト %zu 個", placed.size());
+                const std::vector<SceneActor*> placed = PlacedActors(editor.Actors());
+                ImGui::Text("アクター %zu 個", placed.size());
 
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputTextWithHint("##actorListFilter", "検索", m_actorListFilter, sizeof(m_actorListFilter));
@@ -87,7 +87,7 @@ namespace NS
 
                 if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_F2))
                 {
-                    if (SceneActor* target = editor.SelectedObjectActor())
+                    if (SceneActor* target = editor.SelectedActor())
                     {
                         BeginRename(*target);
                     }
@@ -95,7 +95,7 @@ namespace NS
 
                 for (SceneActor* object : placed)
                 {
-                    if (!filtering || NameMatches(Editor::ObjectDisplayName(*object), m_actorListFilter))
+                    if (!filtering || NameMatches(Editor::ActorDisplayName(*object), m_actorListFilter))
                     {
                         RenderRow(editor, *object);
                     }
@@ -132,8 +132,8 @@ namespace NS
                 // 一覧を触り終えてから適用する。永続 id 越しなので組み直しを跨いでも同じ 1 体に届く
                 if (m_renameCommitId != 0)
                 {
-                    editor.RenameObject(m_renameCommitId, m_renameBuffer);
-                    m_renamingObjectId = 0;
+                    editor.RenameActor(m_renameCommitId, m_renameBuffer);
+                    m_renamingActorId = 0;
                 }
                 // Shift クリックは起点から今の行までを丸ごと選ぶ。並びは描いた順が正
                 if (m_rangeSelectToId != 0)
@@ -159,7 +159,7 @@ namespace NS
                         }
                         std::vector<uint32> range(m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(from),
                                                       m_visibleOrder.begin() + static_cast<std::ptrdiff_t>(to) + 1);
-                        editor.SelectObjects(std::move(range), m_rangeSelectToId);
+                        editor.SelectActors(std::move(range), m_rangeSelectToId);
                     }
                 }
                 // 選んだ物を見失わないよう視点を寄せる。範囲選択を流した後なので選択は確定している
@@ -170,13 +170,13 @@ namespace NS
 
                 if (m_duplicateRequestId != 0)
                 {
-                    editor.SelectObjectById(m_duplicateRequestId);
-                    editor.DuplicateSelectedObject();
+                    editor.SelectActorById(m_duplicateRequestId);
+                    editor.DuplicateSelectedActor();
                 }
                 if (m_deleteRequestId != 0)
                 {
-                    editor.SelectObjectById(m_deleteRequestId);
-                    editor.DeleteSelectedObject();
+                    editor.SelectActorById(m_deleteRequestId);
+                    editor.DeleteSelectedActor();
                 }
             }
             ImGui::End();
@@ -192,7 +192,7 @@ namespace NS
 
             ImGui::PushID(static_cast<int>(id));
 
-            if (m_renamingObjectId != 0 && m_renamingObjectId == id)
+            if (m_renamingActorId != 0 && m_renamingActorId == id)
             {
                 if (m_renameFocusPending)
                 {
@@ -211,7 +211,7 @@ namespace NS
                 }
                 else if (ImGui::IsItemDeactivated())
                 {
-                    m_renamingObjectId = 0; // Esc は入力欄が値を戻すのでそのまま捨てる
+                    m_renamingActorId = 0; // Esc は入力欄が値を戻すのでそのまま捨てる
                 }
 
                 ImGui::PopID();
@@ -220,8 +220,8 @@ namespace NS
 
             m_visibleOrder.push_back(id);
 
-            ImGui::Selectable(Editor::ObjectDisplayName(object),
-                              editor.IsObjectSelected(id),
+            ImGui::Selectable(Editor::ActorDisplayName(object),
+                              editor.IsActorSelected(id),
                               ImGuiSelectableFlags_AllowDoubleClick);
 
             if (ImGui::IsItemClicked())
@@ -229,7 +229,7 @@ namespace NS
                 const ImGuiIO& io = ImGui::GetIO();
                 if (io.KeyCtrl)
                 {
-                    editor.ToggleObjectSelection(id);
+                    editor.ToggleActorSelection(id);
                     m_selectionAnchorId = id;
                 }
                 else if (io.KeyShift && m_selectionAnchorId != 0)
@@ -238,7 +238,7 @@ namespace NS
                 }
                 else
                 {
-                    editor.SelectObjectById(id);
+                    editor.SelectActorById(id);
                     m_selectionAnchorId = id;
                 }
             }
@@ -256,7 +256,7 @@ namespace NS
                 }
                 if (ImGui::MenuItem("フォーカス", "F"))
                 {
-                    editor.SelectObjectById(id);
+                    editor.SelectActorById(id);
                     editor.FocusSelectedInView();
                 }
                 if (ImGui::MenuItem("複製", "Ctrl+D"))
@@ -280,9 +280,9 @@ namespace NS
         void ActorListPanel::BeginRename(SceneActor& object) noexcept
         {
 #if NS_EDITOR_ENABLED
-            m_renamingObjectId = object.Id();
+            m_renamingActorId = object.Id();
             // 導出名から始めるので、そのまま確定すると今見えている名前がそのまま実体になる
-            std::snprintf(m_renameBuffer, sizeof(m_renameBuffer), "%s", Editor::ObjectDisplayName(object));
+            std::snprintf(m_renameBuffer, sizeof(m_renameBuffer), "%s", Editor::ActorDisplayName(object));
             m_renameFocusPending = true;
 #else
             (void)object;

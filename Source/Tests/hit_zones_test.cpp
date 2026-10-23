@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/HitZones.h"
@@ -10,10 +10,10 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -79,9 +79,9 @@ namespace
     // 1 体だけ違う値は配置物でなくアクターに書く
     void WriteParts(NS::SceneActor& actor, const nlohmann::json& parts)
     {
-        nlohmann::json values = NS::MakeObjectJson();
-        NS::ObjectJsonClassObjs(values) = parts;
-        NS::ApplyObjectClassObjs(actor, values);
+        nlohmann::json values = NS::MakeActorJson();
+        NS::ActorJsonClassObjs(values) = parts;
+        NS::ApplyActorClassObjs(actor, values);
     }
 
     // 置物を 2 体置き、id 2 の 1 体にだけ overriddenParts の値を書く
@@ -90,14 +90,14 @@ namespace
         nlohmann::json doc = NS::MakeSceneJson();
         for (NS::uint32 id = 1; id <= 2; ++id)
         {
-            nlohmann::json rock = NS::MakeObjectJson();
-            NS::SetObjectJsonActorFile(rock, "PropActor");
-            NS::SetObjectJsonId(rock, id);
-            NS::Editor::SetObjectPosition(rock, Vector3{static_cast<float>(id) * 4.0f, 1.0f, 0.0f});
-            NS::SceneJsonObjects(doc).push_back(std::move(rock));
+            nlohmann::json rock = NS::MakeActorJson();
+            NS::SetActorJsonFile(rock, "PropActor");
+            NS::SetActorJsonId(rock, id);
+            NS::Editor::SetActorJsonPosition(rock, Vector3{static_cast<float>(id) * 4.0f, 1.0f, 0.0f});
+            NS::SceneJsonActors(doc).push_back(std::move(rock));
         }
         scene.ResetFromJson(doc);
-        NS::SceneActor* target = scene.Objects().FindByObjectId(2);
+        NS::SceneActor* target = scene.Actors().FindByActorId(2);
         if (target != nullptr)
         {
             WriteParts(*target, overriddenParts);
@@ -120,23 +120,23 @@ namespace
     PlayerActor* PlaceSlamTarget(NS::Scene& scene, const nlohmann::json& rockParts, float rockHeight = 0.5f)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(entry, "PlayerActor");
-        NS::SetObjectJsonId(entry, 1);
-        NS::Editor::SetObjectPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(entry));
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 2);
-        NS::Editor::SetObjectPosition(rock, Vector3{0.0f, rockHeight, 1.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json entry = NS::MakeActorJson();
+        NS::SetActorJsonFile(entry, "PlayerActor");
+        NS::SetActorJsonId(entry, 1);
+        NS::Editor::SetActorJsonPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(entry));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 2);
+        NS::Editor::SetActorJsonPosition(rock, Vector3{0.0f, rockHeight, 1.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
-        NS::SceneActor* target = scene.Objects().FindByObjectId(2);
+        NS::SceneActor* target = scene.Actors().FindByActorId(2);
         if (target != nullptr)
         {
             WriteParts(*target, rockParts);
         }
-        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
     // 溜め 0 で +z へ突進させ、本番の 1 フレームを 1 回回す。裁定は決定の段で身体が動く前に記録される
@@ -582,7 +582,7 @@ TEST(HitZonesTest, RedMovedOnOneTargetChangesOnlyThatTarget)
     NS::Scene scene;
     NS::SceneActor* moved = PlaceRocks(scene, {{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}}}});
     ASSERT_NE(moved, nullptr);
-    NS::SceneActor* plain = scene.Objects().FindByObjectId(1);
+    NS::SceneActor* plain = scene.Actors().FindByActorId(1);
     ASSERT_NE(plain, nullptr);
 
     const auto judgeThroughCenter = [&](NS::SceneActor& target) {
@@ -740,20 +740,20 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(entry, "PlayerActor");
-    NS::SetObjectJsonId(entry, 1);
-    NS::Editor::SetObjectPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::SetObjectJsonId(rock, 2);
-    NS::Editor::SetObjectPosition(rock, Vector3{0.0f, 1.0f, 1.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
+    nlohmann::json entry = NS::MakeActorJson();
+    NS::SetActorJsonFile(entry, "PlayerActor");
+    NS::SetActorJsonId(entry, 1);
+    NS::Editor::SetActorJsonPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(entry));
+    nlohmann::json rock = NS::MakeActorJson();
+    NS::SetActorJsonFile(rock, "PropActor");
+    NS::SetActorJsonId(rock, 2);
+    NS::Editor::SetActorJsonPosition(rock, Vector3{0.0f, 1.0f, 1.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    PlayerActor* player = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
-    const NS::SceneActor* target = scene.Objects().FindByObjectId(2);
+    const NS::SceneActor* target = scene.Actors().FindByActorId(2);
     ASSERT_NE(target, nullptr);
     const SensorVolume body = target->BodySensorClassObj()->WorldVolume();
 
@@ -923,7 +923,7 @@ TEST(ImpactResolver, TackleSkipsANearerAreaSensor)
     NS::Scene scene;
     PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object());
     ASSERT_NE(player, nullptr);
-    GL::Level::GoalActor* goal = scene.SpawnObject<GL::Level::GoalActor>("GoalActor");
+    GL::Level::GoalActor* goal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
     goal->Root().SetPosition(Vector3{0.0f, 1.0f, 0.3f});
 
     const GL::Level::ImpactRecord& impact = SlamOnce(*player);
@@ -937,10 +937,10 @@ TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
     NS::Scene scene;
     PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object());
     ASSERT_NE(player, nullptr);
-    NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
+    NS::SceneActor* rock = scene.Actors().FindByActorId(2);
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(Vector3{0.0f, 0.5f, 3.0f});
-    GL::Level::GoalActor* goal = scene.SpawnObject<GL::Level::GoalActor>("GoalActor");
+    GL::Level::GoalActor* goal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
     goal->Root().SetPosition(Vector3{0.0f, 0.5f, 1.5f});
 
     GL::Level::SlamLineTarget predicted{};
@@ -969,10 +969,10 @@ TEST(HitSensor, UnsetKindIsNotATackleTarget)
     PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object());
     ASSERT_NE(player, nullptr);
     // 岩は線の後ろへ退ける
-    NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
+    NS::SceneActor* rock = scene.Actors().FindByActorId(2);
     ASSERT_NE(rock, nullptr);
     rock->Root().SetPosition(Vector3{0.0f, 0.5f, -5.0f});
-    UnsetKindSensorActor* unset = scene.SpawnObject<UnsetKindSensorActor>("UnsetKindSensorActor");
+    UnsetKindSensorActor* unset = scene.SpawnActor<UnsetKindSensorActor>("UnsetKindSensorActor");
     unset->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});
 
     GL::Level::SlamLineTarget predicted{};

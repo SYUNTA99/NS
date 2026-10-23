@@ -1,7 +1,7 @@
 #include "Editor/GizmoEditor.h"
 #include "NSlib/Core/Types.h"
 
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Editor/GridMath.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -354,7 +354,7 @@ namespace NS
             };
         } // namespace
 
-        void GizmoEditor::SetSelectableObjects(std::span<SceneActor* const> objects,
+        void GizmoEditor::SetSelectableActors(std::span<SceneActor* const> objects,
                                                std::span<const uint8> pickable) noexcept
         {
             m_objects = objects;

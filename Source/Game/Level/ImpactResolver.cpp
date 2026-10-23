@@ -448,7 +448,7 @@ namespace GL
             {
                 return false;
             }
-            const NS::SceneActor* target = scene->Objects().FindObject(m_observedTarget);
+            const NS::SceneActor* target = scene->Actors().FindActor(m_observedTarget);
             if (target == nullptr || !target->IsAppeared())
             {
                 return false;
@@ -681,7 +681,7 @@ namespace GL
 
             // 相手は id で引き直す。止まっている数フレームの間に消されていたら残りだけ諦める
             // 元の位置と形へ戻り、跡を残し、飛ぶか壊れるかは相手が決める
-            NS::SceneActor* target = scene->Objects().FindObject(m_pendingTarget);
+            NS::SceneActor* target = scene->Actors().FindActor(m_pendingTarget);
             if (target == nullptr)
             {
                 return;

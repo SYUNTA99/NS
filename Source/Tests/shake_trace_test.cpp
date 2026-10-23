@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactResolver.h"
@@ -6,7 +6,7 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
@@ -39,16 +39,16 @@ namespace
     PlayerActor* PlaceShakeScene(NS::Scene& scene, float rockX)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(player, "PlayerActor");
-        NS::SetObjectJsonId(player, 1);
-        NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 2);
-        NS::Editor::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json player = NS::MakeActorJson();
+        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonId(player, 1);
+        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 2);
+        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -57,7 +57,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
     // 当たりの揺れ。平行移動の揺れのずれ (x が右、y が上、m)・トラウマの揺れの角度 (横・縦・傾き、度)・
@@ -139,8 +139,8 @@ namespace
     {
         std::vector<NS::Vector3> offsets;
         NS::Scene scene;
-        ChargingTargetActor* target = scene.SpawnObject<ChargingTargetActor>("target");
-        GL::Level::FollowCameraActor* actor = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
+        ChargingTargetActor* target = scene.SpawnActor<ChargingTargetActor>("target");
+        GL::Level::FollowCameraActor* actor = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
         if (target == nullptr || actor == nullptr)
         {
             return offsets;

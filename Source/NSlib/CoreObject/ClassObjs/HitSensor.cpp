@@ -298,7 +298,7 @@ namespace NS
         {
             return nullptr;
         }
-        SceneActor* host = scene->Objects().FindObject(ref.actor);
+        SceneActor* host = scene->Actors().FindActor(ref.actor);
         if (host == nullptr)
         {
             return nullptr;

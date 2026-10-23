@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "NSlib/Core/Types.h"
 
 #include "Game/PlayerActor.h"
@@ -9,7 +9,7 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -38,9 +38,9 @@ namespace NS
             }
         } // namespace
 
-        nlohmann::json& EnsureTransformClassObj(nlohmann::json& object)
+        nlohmann::json& EnsureTransformClassObj(nlohmann::json& actorJson)
         {
-            nlohmann::json& transform = ObjectJsonClassObjs(object)["Transform"];
+            nlohmann::json& transform = ActorJsonClassObjs(actorJson)["Transform"];
             if (!transform.is_object())
             {
                 transform = nlohmann::json::object();
@@ -48,19 +48,19 @@ namespace NS
             return transform;
         }
 
-        Vector3 ObjectPosition(const nlohmann::json& object) noexcept
+        Vector3 ActorJsonPosition(const nlohmann::json& actorJson) noexcept
         {
-            return ReadTransformVec3(object, k_PositionFieldName, Vector3{0.0f, 0.0f, 0.0f});
+            return ReadTransformVec3(actorJson, k_PositionFieldName, Vector3{0.0f, 0.0f, 0.0f});
         }
 
-        void SetObjectPosition(nlohmann::json& object, const Vector3& position) noexcept
+        void SetActorJsonPosition(nlohmann::json& actorJson, const Vector3& position) noexcept
         {
-            SetField(EnsureTransformClassObj(object), k_PositionFieldName, position);
+            SetField(EnsureTransformClassObj(actorJson), k_PositionFieldName, position);
         }
 
-        Quaternion ObjectRotation(const nlohmann::json& object) noexcept
+        Quaternion ActorJsonRotation(const nlohmann::json& actorJson) noexcept
         {
-            const nlohmann::json* transform = FindTransformFields(object);
+            const nlohmann::json* transform = FindTransformFields(actorJson);
             if (transform == nullptr)
             {
                 return Quaternion::Identity;
@@ -68,37 +68,37 @@ namespace NS
             return FieldQuaternion(*transform, k_RotationFieldName, Quaternion::Identity);
         }
 
-        void SetObjectRotation(nlohmann::json& object, const Quaternion& rotation) noexcept
+        void SetActorJsonRotation(nlohmann::json& actorJson, const Quaternion& rotation) noexcept
         {
-            SetField(EnsureTransformClassObj(object), k_RotationFieldName, rotation);
+            SetField(EnsureTransformClassObj(actorJson), k_RotationFieldName, rotation);
         }
 
-        Vector3 ObjectScale(const nlohmann::json& object) noexcept
+        Vector3 ActorJsonScale(const nlohmann::json& actorJson) noexcept
         {
-            return ReadTransformVec3(object, k_ScaleFieldName, Vector3{1.0f, 1.0f, 1.0f});
+            return ReadTransformVec3(actorJson, k_ScaleFieldName, Vector3{1.0f, 1.0f, 1.0f});
         }
 
-        void SetObjectScale(nlohmann::json& object, const Vector3& scale) noexcept
+        void SetActorJsonScale(nlohmann::json& actorJson, const Vector3& scale) noexcept
         {
-            SetField(EnsureTransformClassObj(object), k_ScaleFieldName, scale);
+            SetField(EnsureTransformClassObj(actorJson), k_ScaleFieldName, scale);
         }
 
         nlohmann::json MakePrototypeJson(const SceneActor& obj)
         {
-            nlohmann::json object = MakeObjectHeaderJson(obj, 0u);
-            nlohmann::json& parts = ObjectJsonClassObjs(object);
+            nlohmann::json object = MakeActorHeaderJson(obj, 0u);
+            nlohmann::json& parts = ActorJsonClassObjs(object);
             ForEachReflectedClassObj(
                 obj, [&](const ClassObjInfo& field, Object*) { parts[field.key] = nlohmann::json::object(); });
-            SetObjectPosition(object, obj.Root().Position());
+            SetActorJsonPosition(object, obj.Root().Position());
             return object;
         }
 
         nlohmann::json MakePrototypeJson(std::string_view actorFileName)
         {
-            nlohmann::json object = MakeObjectJson();
-            SetObjectJsonActorFile(object, actorFileName);
+            nlohmann::json object = MakeActorJson();
+            SetActorJsonFile(object, actorFileName);
             const Transform initial;
-            SetObjectPosition(object, initial.Position());
+            SetActorJsonPosition(object, initial.Position());
             return object;
         }
 
@@ -126,9 +126,9 @@ namespace NS
                 return entry->className;
             }
 
-            bool IsPlayerObject(const nlohmann::json& object)
+            bool IsPlayerActorJson(const nlohmann::json& object)
             {
-                return ActorFileLibrary::Get().ClassNameOf(ObjectJsonActorFile(object)) ==
+                return ActorFileLibrary::Get().ClassNameOf(ActorJsonFile(object)) ==
                        ::PlayerActor::StaticReflection()->typeName;
             }
         } // namespace
@@ -136,7 +136,7 @@ namespace NS
         std::vector<SceneActor*> PlacedActors(const ActorList& objects)
         {
             std::vector<SceneActor*> placed;
-            placed.reserve(objects.ObjectCount());
+            placed.reserve(objects.ActorCount());
             for (SceneActor* object : objects)
             {
                 placed.push_back(object);
@@ -144,7 +144,7 @@ namespace NS
             return placed;
         }
 
-        bool IsCellBrushObject(const SceneActor& object) noexcept
+        bool IsCellBrushActor(const SceneActor& object) noexcept
         {
             // 自前の振る舞いを持つ SceneActor は、ブラシの置換や削除で崩さない
             if (std::string_view{object.ClassName()} != "MapPartsActor")
@@ -160,40 +160,40 @@ namespace NS
             return mesh == "cube" || mesh == "wedge45";
         }
 
-        int16 ObjectCellX(const SceneActor& object) noexcept
+        int16 ActorCellX(const SceneActor& object) noexcept
         {
             return static_cast<int16>(std::lround(object.Root().Position().x));
         }
 
-        int16 ObjectCellY(const SceneActor& object) noexcept
+        int16 ActorCellY(const SceneActor& object) noexcept
         {
             return static_cast<int16>(std::lround(object.Root().Position().y));
         }
 
-        int16 ObjectCellZ(const SceneActor& object) noexcept
+        int16 ActorCellZ(const SceneActor& object) noexcept
         {
             return static_cast<int16>(std::lround(object.Root().Position().z));
         }
 
-        uint32 FindObjectIdAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
+        uint32 FindActorIdAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
         {
             for (SceneActor* objPtr : PlacedActors(objects))
             {
                 SceneActor& object = *objPtr;
-                if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
-                    ObjectCellZ(object) == z)
+                if (IsCellBrushActor(object) && ActorCellX(object) == x && ActorCellY(object) == y &&
+                    ActorCellZ(object) == z)
                 {
                     return object.Id();
                 }
             }
-            return k_NoObjectId;
+            return k_NoActorId;
         }
 
-        bool HasPlacedObjectAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
+        bool HasPlacedActorAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
         {
             for (const SceneActor* object : PlacedActors(objects))
             {
-                if (ObjectCellX(*object) == x && ObjectCellY(*object) == y && ObjectCellZ(*object) == z)
+                if (ActorCellX(*object) == x && ActorCellY(*object) == y && ActorCellZ(*object) == z)
                 {
                     return true;
                 }
@@ -201,21 +201,21 @@ namespace NS
             return false;
         }
 
-        void AddCellQuarterTurn(nlohmann::json& object) noexcept
+        void AddCellQuarterTurn(nlohmann::json& actorJson) noexcept
         {
             // 今の回転の後に世界の Y 軸まわりを掛ける。段へ丸めると傾きが消える
             const Quaternion quarter = Quaternion::CreateFromYawPitchRoll(k_QuarterTurnYaw, 0.0f, 0.0f);
-            SetObjectRotation(object, ObjectRotation(object) * quarter);
+            SetActorJsonRotation(actorJson, ActorJsonRotation(actorJson) * quarter);
         }
 
-        void SetCellRotationStep(nlohmann::json& object, uint8 rotationStep) noexcept
+        void SetCellRotationStep(nlohmann::json& actorJson, uint8 rotationStep) noexcept
         {
             const float yaw = static_cast<float>(rotationStep & 0x03) * k_QuarterTurnYaw;
             const Quaternion rotation = Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
-            SetObjectRotation(object, rotation);
+            SetActorJsonRotation(actorJson, rotation);
         }
 
-        const char* ObjectDisplayName(const SceneActor& object)
+        const char* ActorDisplayName(const SceneActor& object)
         {
             if (!object.Name().empty())
             {
@@ -234,25 +234,17 @@ namespace NS
             return AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}};
         }
 
-        std::size_t FindPlayerObjectIndex(const nlohmann::json& scene) noexcept
+        std::size_t FindPlayerActorIndex(const nlohmann::json& scene) noexcept
         {
-            const nlohmann::json& objects = SceneJsonObjects(scene);
+            const nlohmann::json& objects = SceneJsonActors(scene);
             for (std::size_t i = 0; i < objects.size(); ++i)
             {
-                if (IsPlayerObject(objects[i]))
+                if (IsPlayerActorJson(objects[i]))
                 {
                     return i;
                 }
             }
-            return k_NoObjectIndex;
-        }
-
-        nlohmann::json MakePlayerObject(const Vector3& position, const Quaternion& rotation)
-        {
-            nlohmann::json object = MakePrototypeJson<::PlayerActor>();
-            SetObjectPosition(object, position);
-            SetObjectRotation(object, rotation);
-            return object;
+            return k_NoActorIndex;
         }
     } // namespace Editor
 } // namespace NS

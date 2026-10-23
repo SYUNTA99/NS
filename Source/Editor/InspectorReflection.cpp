@@ -684,7 +684,7 @@ namespace NS
             // ActorRef の欄。参照候補が無ければ id を打たせ、あれば候補から選ばせる。値を変えたら true
             bool DrawActorRefFieldWidget(void* owner,
                                          const FieldDesc& field,
-                                         std::span<const ObjectRefOption> refOptions) noexcept
+                                         std::span<const ActorRefOption> refOptions) noexcept
             {
                 bool changed = false;
                 ActorRef value{};
@@ -720,7 +720,7 @@ namespace NS
                 {
                     currentLabel = "(消えた参照)";
                 }
-                for (const ObjectRefOption& option : refOptions)
+                for (const ActorRefOption& option : refOptions)
                 {
                     if (option.id == value.id)
                     {
@@ -736,7 +736,7 @@ namespace NS
                         field.set(owner, &value);
                         changed = true;
                     }
-                    for (const ObjectRefOption& option : refOptions)
+                    for (const ActorRefOption& option : refOptions)
                     {
                         ImGui::PushID(static_cast<int>(option.id));
                         if (ImGui::Selectable(option.label.c_str(), option.id == value.id))
@@ -1380,7 +1380,7 @@ namespace NS
             // owner の欄 field を、型に合ったウィジェット 1 つで描く。部品と値型の両方が使う
             FieldWidgetResult DrawFieldWidget(void* owner,
                                               const FieldDesc& field,
-                                              std::span<const ObjectRefOption> refOptions) noexcept
+                                              std::span<const ActorRefOption> refOptions) noexcept
             {
                 FieldWidgetResult result;
                 // 1 つの欄が部品を幾つも出す。まとめないと始まりと確定を最後の部品からしか拾えない
@@ -1615,7 +1615,7 @@ namespace NS
         } // namespace
 
         ClassObjEditResult DrawReflectedClassObj(Object& comp,
-                                                 std::span<const ObjectRefOption> refOptions,
+                                                 std::span<const ActorRefOption> refOptions,
                                                  const char* partKey,
                                                  const char* filter,
                                                  const SceneActor* actor,
@@ -1673,7 +1673,7 @@ namespace NS
 
         ValueEditResult DrawReflectedValue(void* value,
                                            const ReflectionInfo& info,
-                                           std::span<const ObjectRefOption> refOptions) noexcept
+                                           std::span<const ActorRefOption> refOptions) noexcept
         {
             if (value == nullptr || info.fieldCount == 0)
             {
@@ -1707,7 +1707,7 @@ namespace NS
 
 #else
         ClassObjEditResult DrawReflectedClassObj(Object&,
-                                                 std::span<const ObjectRefOption>,
+                                                 std::span<const ActorRefOption>,
                                                  const char*,
                                                  const char*,
                                                  const SceneActor*,
@@ -1716,7 +1716,7 @@ namespace NS
             return ClassObjEditResult{};
         }
 
-        ValueEditResult DrawReflectedValue(void*, const ReflectionInfo&, std::span<const ObjectRefOption>) noexcept
+        ValueEditResult DrawReflectedValue(void*, const ReflectionInfo&, std::span<const ActorRefOption>) noexcept
         {
             return ValueEditResult{};
         }

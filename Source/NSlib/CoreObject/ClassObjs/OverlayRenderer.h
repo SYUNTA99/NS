@@ -38,7 +38,7 @@ namespace NS
     public:
         explicit OverlayRenderer(SceneActor* owner) noexcept : m_owner(owner) {}
 
-        //! 更新・当たりと同じ IsActive で切る。自分の値だけ見ると親を寝かせても描き続ける
+        //! 持ち主が出ている間だけ描く。自分の値だけ見ると、持ち主を外しても描き続ける
         //! 持ち主の無い物は出ていると見る
         [[nodiscard]] bool IsOverlayVisible() const noexcept override
         {

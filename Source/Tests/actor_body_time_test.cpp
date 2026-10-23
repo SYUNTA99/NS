@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
 #include "Game/Player/PlayerAppearance.h"
@@ -26,18 +26,18 @@ namespace
     void PlaceBodies(NS::Scene& scene, bool withPlayer)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 1);
-        NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 20.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 1);
+        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 20.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         if (withPlayer)
         {
-            nlohmann::json player = NS::MakeObjectJson();
-            NS::SetObjectJsonActorFile(player, "PlayerActor");
-            NS::SetObjectJsonId(player, 2);
-            NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-            NS::SceneJsonObjects(doc).push_back(std::move(player));
+            nlohmann::json player = NS::MakeActorJson();
+            NS::SetActorJsonFile(player, "PlayerActor");
+            NS::SetActorJsonId(player, 2);
+            NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+            NS::SceneJsonActors(doc).push_back(std::move(player));
         }
         scene.ResetFromJson(doc);
         NS::OBB floor{};
@@ -51,12 +51,12 @@ namespace
 
     GL::Level::PropActor* RockOf(NS::Scene& scene)
     {
-        return NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
     }
 
     PlayerActor* PlayerOf(NS::Scene& scene)
     {
-        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(2));
+        return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(2));
     }
 
     void ReleaseRock(GL::Level::PropActor& rock)

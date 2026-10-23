@@ -1,7 +1,7 @@
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -198,10 +198,10 @@ TEST(ModelDrawColor, ShippedScenesAndActorFilesKeepTheirColor)
         ASSERT_TRUE(NS::DeserializeSceneFromJson(doc, *text)) << path;
         NS::Scene scene;
         scene.ResetFromJson(doc);
-        for (const nlohmann::json& object : NS::SceneJsonObjects(doc))
+        for (const nlohmann::json& object : NS::SceneJsonActors(doc))
         {
-            const NS::ObjectHeader header = NS::ReadObjectHeader(object);
-            const NS::SceneActor* actor = scene.Objects().FindByObjectId(header.id);
+            const NS::ActorHeader header = NS::ReadActorHeader(object);
+            const NS::SceneActor* actor = scene.Actors().FindByActorId(header.id);
             ASSERT_NE(actor, nullptr) << path << " " << header.id;
             if (actor->ModelClassObj() == nullptr)
             {

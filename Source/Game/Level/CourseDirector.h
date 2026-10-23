@@ -28,7 +28,7 @@ namespace GL
             void NotifyPlayerDead() noexcept { m_playerDead = true; }
 
             //! 次の OnTick で、自機以外の配置物を開始時の姿へ戻す
-            void RequestRespawnObjects() noexcept { m_respawnPending = true; }
+            void RequestRespawnActors() noexcept { m_respawnPending = true; }
 
             //! 次の OnTick でクリア演出を始める。演出中は無視する
             void NotifyGoal(float fadeOutSeconds, float fadeInSeconds) noexcept
@@ -53,7 +53,7 @@ namespace GL
             void RestartCourse();
 
             //! @brief 自機の他の配置物へ MsgCourseRestart を送り、開始の時の姿へ戻す。自機の位置と状態は変えない
-            void RespawnObjects();
+            void RespawnActors();
 
             //! 知らせを受けた分だけ流れを進める
             void OnTick() override;

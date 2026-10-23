@@ -83,12 +83,12 @@ TEST(EditorSceneViewShapes, SelectionOutlinesLeaveOutThePrimary)
     NS::Scene scene;
     LevelEditorController editor(&scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
-    const NS::uint32 first = editor.SelectedObjectId();
+    const NS::uint32 first = editor.SelectedActorId();
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
-    const NS::uint32 second = editor.SelectedObjectId();
+    const NS::uint32 second = editor.SelectedActorId();
 
     const auto countLines = [&editor](std::vector<NS::uint32> ids) {
-        editor.SelectObjects(std::move(ids), NS::k_NoObjectId);
+        editor.SelectActors(std::move(ids), NS::k_NoActorId);
         NS::Gfx::DebugShapes shapes;
         editor.DrawSceneViewShapes(shapes, NS::Matrix::Identity);
         return shapes.VertexCount();
@@ -96,7 +96,7 @@ TEST(EditorSceneViewShapes, SelectionOutlinesLeaveOutThePrimary)
     const std::size_t none = countLines({});
     const std::size_t onlyFirst = countLines({first});
     const std::size_t onlySecond = countLines({second});
-    editor.SelectObjects({first, second}, second);
+    editor.SelectActors({first, second}, second);
     NS::Gfx::DebugShapes both;
     editor.DrawSceneViewShapes(both, NS::Matrix::Identity);
 
