@@ -57,22 +57,19 @@ namespace NS
     {
         nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
         nlohmann::json& parts = ObjectJsonClassObjs(object);
-        // 値は .actor と比べない。シーンに書くのは根の姿勢・参照の欄・上書きの一覧の項目で、ほかは .actor の値を使う
+        // 値は .actor と比べない。シーンに書くのは参照の欄と上書きの一覧の項目で、ほかは .actor の値を使う
         ForEachReflectedClassObj(obj, [&](const ClassObjInfo& row, const Object* classObj) {
             nlohmann::json fields = SerializeClassObjFields(*classObj);
-            if (classObj != &obj.Root())
+            for (nlohmann::json::iterator entry = fields.begin(); entry != fields.end();)
             {
-                for (nlohmann::json::iterator entry = fields.begin(); entry != fields.end();)
+                const FieldDesc* field = FindField(classObj->GetReflection(), entry.key());
+                const bool reference = field != nullptr && field->type == FieldType::ActorRef;
+                if (reference || obj.IsSceneOverride(row.key, entry.key()))
                 {
-                    const FieldDesc* field = FindField(classObj->GetReflection(), entry.key());
-                    const bool reference = field != nullptr && field->type == FieldType::ActorRef;
-                    if (reference || obj.IsSceneOverride(row.key, entry.key()))
-                    {
-                        ++entry;
-                        continue;
-                    }
-                    entry = fields.erase(entry);
+                    ++entry;
+                    continue;
                 }
+                entry = fields.erase(entry);
             }
             parts[row.key] = std::move(fields);
         });

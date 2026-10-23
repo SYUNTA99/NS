@@ -15,6 +15,8 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
+#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -643,6 +645,44 @@ TEST(EditorInspector, FieldChangeReachesTheCollision)
     const std::optional<float> after = DownHit(scene, above);
     ASSERT_TRUE(after.has_value());
     EXPECT_NEAR(*after, 10.0f - std::sqrt(5.0f), 0.01f);
+}
+
+// インスペクタの部品の一覧の行で姿勢を変えると、その項目が上書きの一覧に載り、保存したシーンに書かれる
+TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
+{
+    NS::Scene scene;
+    scene.SetSimulationEnabled(false);
+    LevelEditorController editor(&scene);
+    editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
+    NS::SceneActor* prop = editor.SelectedObjectActor();
+    ASSERT_NE(prop, nullptr);
+    const NS::ClassObjInfo* row = RowOf(*prop, &prop->Root());
+    ASSERT_NE(row, nullptr);
+    ASSERT_FALSE(prop->IsSceneOverride(row->key, NS::k_ScaleFieldName));
+
+    InspectorFrames frames(editor);
+    frames.Frame();
+    frames.Frame();
+    const ImGuiID input =
+        ImHashStr("##value", 0, ImHashStr("X", 0, FieldRowId(*row, prop->Root(), NS::k_ScaleFieldName)));
+    ImGui::ActivateItemByID(input);
+    GImGui->NavNextActivateFlags = ImGuiActivateFlags_PreferInput;
+    frames.Frame();
+    ASSERT_EQ(GImGui->ActiveId, input);
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddInputCharactersUTF8("2");
+    frames.Frame();
+    io.AddKeyEvent(ImGuiKey_Enter, true);
+    frames.Frame();
+    io.AddKeyEvent(ImGuiKey_Enter, false);
+    frames.Frame();
+
+    EXPECT_FLOAT_EQ(prop->Root().Scale().x, 2.0f);
+    EXPECT_TRUE(prop->IsSceneOverride(row->key, NS::k_ScaleFieldName));
+    const nlohmann::json saved = NS::ObjectToJson(*prop);
+    const nlohmann::json* transform = NS::ClassObjFields(saved, row->key);
+    ASSERT_NE(transform, nullptr);
+    EXPECT_FLOAT_EQ(NS::FieldVector3(*transform, NS::k_ScaleFieldName, NS::Vector3::Zero).x, 2.0f);
 }
 
 // インスペクタの上書きの印から既定へ戻すと、描くメッシュも、世界を止めた歩の後のメッシュの当たりも既定の形になる

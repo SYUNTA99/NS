@@ -106,7 +106,7 @@ namespace NS
         }
         nlohmann::json& frozenParts = ObjectJsonClassObjs(SceneJsonObjects(m_playBaseline)[index]);
         // 上書きの一覧から外した項目は、凍結からも消す。残すと編集へ戻る時に上書きとして読み直される
-        if (part != &actor.Root() && field->type != FieldType::ActorRef && !actor.IsSceneOverride(row.key, fieldName))
+        if (field->type != FieldType::ActorRef && !actor.IsSceneOverride(row.key, fieldName))
         {
             const nlohmann::json::iterator frozen = frozenParts.find(row.key);
             if (frozen != frozenParts.end())

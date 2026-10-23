@@ -54,7 +54,7 @@ namespace NS
         [[nodiscard]] const std::string& ActorFileName() const noexcept { return m_actorFileName; }
 
         //! @brief part の部品の欄 field をシーンで上書きしているか
-        //! @details 一覧に入るのは NS_GLOBAL_FIELD の項目だけ。根の部品と参照の欄は一覧に入れず、保存でいつも書く
+        //! @details 一覧に入るのはグローバルの項目 (NS_GLOBAL_FIELD・NS_GLOBAL_ACCESSOR) だけ。参照の欄は一覧に入れず、保存でいつも書く
         [[nodiscard]] bool IsSceneOverride(std::string_view part, std::string_view field) const;
         //! 項目をシーンの上書きの一覧に足す。保存はこの一覧の項目を書く
         void AddSceneOverride(std::string_view part, std::string_view field);

@@ -25,7 +25,8 @@ namespace NS
     {
         //! 配置物の JSON の姿勢を読み書きする。
         //! 実体は classObjs 内の姿勢の部品の欄。エディタと試しが Actor を作らずに置き場所を書くための関数
-        //! Set は対象エントリが無ければ EnsureTransformClassObj で 1 つ作る
+        //! Set は対象エントリが無ければ EnsureTransformClassObj で 1 つ作り、その項目だけを書く。書いた項目はシーンの上書きになる
+        //! 読む側は、書いていない項目に Transform の初期値を返す
         [[nodiscard]] Vector3 ObjectPosition(const nlohmann::json& object) noexcept;
         void SetObjectPosition(nlohmann::json& object, const Vector3& position) noexcept;
         [[nodiscard]] Quaternion ObjectRotation(const nlohmann::json& object) noexcept;
@@ -33,15 +34,15 @@ namespace NS
         [[nodiscard]] Vector3 ObjectScale(const nlohmann::json& object) noexcept;
         void SetObjectScale(nlohmann::json& object, const Vector3& scale) noexcept;
 
-        //! object に Transform のエントリが無ければ既定値(位置0 / 回転なし / スケール1)で 1 つ足して返す
-        //! 既にあればそれを返す
+        //! object に Transform のエントリが無ければ、項目を持たない空のエントリを 1 つ足して返す
+        //! 既にあればそれを返す。書かない項目は .actor の値になる
         nlohmann::json& EnsureTransformClassObj(nlohmann::json& object);
 
-        //! @details transform 以外の値は写さずコード既定に任せる疎な写し。id は 0 で、置く時に振る
+        //! @details 位置のほかの値は写さず .actor の値に任せる疎な写し。id は 0 で、置く時に振る
         [[nodiscard]] nlohmann::json MakePrototypeJson(const SceneActor& obj);
 
         //! @brief .actor の名前 actorFileName を指すひな形の JSON。アクターを作らずに組む
-        //! @details 根の姿勢は Transform の初期値で、ほかの値は書かない。id は 0 で、置く時に振る
+        //! @details 位置だけを Transform の初期値で書き、回転とスケールを含むほかの値は書かない。id は 0 で、置く時に振る
         [[nodiscard]] nlohmann::json MakePrototypeJson(std::string_view actorFileName);
 
         //! @brief SceneActor 派生 T の OnInit が積む構成からひな形の JSON を作る

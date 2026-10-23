@@ -50,7 +50,7 @@ namespace
     }
 } // namespace
 
-// 書いてある項目は値のまま残し、書いていない項目をコードの値で足す。根の姿勢と参照の欄は書かない
+// 書いてある項目は値のまま残し、書いていない項目をコードの値で足す。姿勢の項目も同じ
 TEST(ActorFileGenerator, CompletesMissingFieldsFromTheCodeAndKeepsWrittenValues)
 {
     nlohmann::json actorFile = ClassOnlyActorFile("PropActor");
@@ -64,19 +64,19 @@ TEST(ActorFileGenerator, CompletesMissingFieldsFromTheCodeAndKeepsWrittenValues)
     const nlohmann::json* params = NS::ClassObjFields(full, "Params");
     ASSERT_NE(params, nullptr);
     EXPECT_FLOAT_EQ(params->at("摩擦").get<float>(), 0.25f);
-    EXPECT_EQ(NS::ClassObjFields(full, "Transform"), nullptr);
+    const nlohmann::json* transform = NS::ClassObjFields(full, "Transform");
+    ASSERT_NE(transform, nullptr);
+    EXPECT_EQ(transform->at(NS::k_PositionFieldName), (nlohmann::json{1.0f, 2.0f, 3.0f}));
     EXPECT_TRUE(Contains(added, "Params/跳ね返り"));
     EXPECT_FALSE(Contains(added, "Params/摩擦"));
+    EXPECT_TRUE(Contains(added, std::string{"Transform/"} + NS::k_ScaleFieldName));
+    EXPECT_FALSE(Contains(added, std::string{"Transform/"} + NS::k_PositionFieldName));
 
-    // 根の他の部品の、参照でない欄は全部ある
+    // 全部の部品の、参照でない欄は全部ある
     const std::unique_ptr<NS::SceneActor> rock = NS::CreateActorWithCodeValues("PropActor");
     ASSERT_NE(rock, nullptr);
     int checked = 0;
     NS::ForEachReflectedClassObj(*rock, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
-        if (part == &rock->Root())
-        {
-            return;
-        }
         const nlohmann::json* written = NS::ClassObjFields(full, row.key);
         ASSERT_NE(written, nullptr) << row.key;
         const nlohmann::json code = NS::SerializeClassObjFields(*part);
@@ -149,7 +149,7 @@ TEST(ActorFileGenerator, EveryAssetActorFileHasEveryRegisteredField)
     EXPECT_GE(checked, 7);
 }
 
-// Assets/Actors の .actor から作ったアクターは、根の他の全部の項目が .actor に書いた値になる。OnInit は項目へ値を書かない
+// Assets/Actors の .actor から作ったアクターは、全部の項目が .actor に書いた値になる。OnInit は項目へ値を書かない
 // 元の .actor は全部の部品を書く。派生は書いた部品だけを持ち、残りは元から受け継ぐ
 TEST(ActorFileGenerator, ActorsTakeEveryFieldFromTheAssetActorFile)
 {
@@ -164,10 +164,6 @@ TEST(ActorFileGenerator, ActorsTakeEveryFieldFromTheAssetActorFile)
         const std::unique_ptr<NS::SceneActor> actor = ActorFromFile(NS::OS::FileSystem::Stem(path));
         ASSERT_NE(actor, nullptr) << path;
         NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
-            if (part == &actor->Root())
-            {
-                return;
-            }
             const nlohmann::json* written = NS::ClassObjFields(*actorFile, row.key);
             if (written == nullptr)
             {

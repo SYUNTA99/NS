@@ -44,9 +44,6 @@ namespace NS
             if (!transform.is_object())
             {
                 transform = nlohmann::json::object();
-                SetField(transform, k_PositionFieldName, Vector3{0.0f, 0.0f, 0.0f});
-                SetField(transform, k_RotationFieldName, Quaternion::Identity);
-                SetField(transform, k_ScaleFieldName, Vector3{1.0f, 1.0f, 1.0f});
             }
             return transform;
         }
@@ -93,8 +90,6 @@ namespace NS
             ForEachReflectedClassObj(
                 obj, [&](const ClassObjInfo& field, Object*) { parts[field.key] = nlohmann::json::object(); });
             SetObjectPosition(object, obj.Root().Position());
-            SetObjectRotation(object, obj.Root().Rotation());
-            SetObjectScale(object, obj.Root().Scale());
             return object;
         }
 
@@ -104,8 +99,6 @@ namespace NS
             SetObjectJsonActorFile(object, actorFileName);
             const Transform initial;
             SetObjectPosition(object, initial.Position());
-            SetObjectRotation(object, initial.Rotation());
-            SetObjectScale(object, initial.Scale());
             return object;
         }
 

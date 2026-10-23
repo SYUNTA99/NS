@@ -16,7 +16,9 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
+#include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -37,11 +39,30 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <vector>
 
 namespace
 {
+    // インスペクタの部品の一覧の行と同じ道で、actor の姿勢の項目 fieldName に value を書く
+    template <class Value>
+    void WritePoseField(LevelEditorController& editor, NS::SceneActor& actor, const char* fieldName, const Value& value)
+    {
+        const NS::ClassObjInfo* row = nullptr;
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& candidate, const NS::Object* part) {
+            if (part == &actor.Root())
+            {
+                row = &candidate;
+            }
+        });
+        ASSERT_NE(row, nullptr);
+        const NS::FieldDesc* field = NS::FindField(actor.Root().GetReflection(), fieldName);
+        ASSERT_NE(field, nullptr);
+        field->set(&actor.Root(), &value);
+        editor.NoteFieldEdit(actor, *row, fieldName);
+    }
+
     std::optional<NS::Vector2> FindMoveHandle(const NS::SceneActor& target,
                                               const NS::Matrix& viewProjection,
                                               const NS::Editor::ViewRect& view)
@@ -149,7 +170,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
         editor.DeleteSelectedObject();
         EXPECT_NE(scene.Objects().FindByObjectId(id), nullptr);
         editor.BeginTransformEdit();
-        editor.SetSelectedFreePosition(NS::Vector3{5.0f, 0.0f, 0.0f});
+        WritePoseField(editor, *scene.Objects().FindByObjectId(id), NS::k_PositionFieldName, NS::Vector3{5.0f, 0.0f, 0.0f});
         editor.CommitTransformEdit();
         EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore);
         editor.EnterEdit();
@@ -176,9 +197,10 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
 
         editor.EnterPlay();
         const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(0.5f, 0.0f, 0.0f);
-        editor.SetSelectedFreePosition(NS::Vector3{5.0f, 1.0f, 2.0f});
-        editor.SetSelectedFreeRotation(rotation);
-        editor.SetSelectedFreeScale(NS::Vector3{2.0f, 2.0f, 2.0f});
+        NS::SceneActor& actor = *scene.Objects().FindByObjectId(id);
+        WritePoseField(editor, actor, NS::k_PositionFieldName, NS::Vector3{5.0f, 1.0f, 2.0f});
+        WritePoseField(editor, actor, NS::k_RotationFieldName, rotation);
+        WritePoseField(editor, actor, NS::k_ScaleFieldName, NS::Vector3{2.0f, 2.0f, 2.0f});
 
         const nlohmann::json& baseline = scene.PlayBaseline();
         const std::size_t index = NS::FindObjectIndexById(baseline, id);
@@ -190,6 +212,44 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
+}
+
+// ギズモで変えた姿勢の項目だけが上書きの一覧に載り、保存したシーンに書かれる。取り消すと一覧からも外れる
+TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
+{
+    nlohmann::json object = NS::MakeObjectJson();
+    NS::SetObjectJsonActorFile(object, "PropActor");
+    NS::SetObjectJsonId(object, 1);
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::SceneJsonObjects(doc).push_back(std::move(object));
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    LevelEditorController editor(&scene);
+    NS::Editor::ObjectSnapshotApplier applier(&scene);
+    editor.Editor().SetApplier(&applier);
+    editor.SelectObjectById(1);
+    NS::SceneActor* prop = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(prop, nullptr);
+    ASSERT_FALSE(prop->IsSceneOverride("Transform", NS::k_ScaleFieldName));
+
+    // ギズモは掴んでいる間に実体の姿勢を直に書き、離した時に CommitTransformEdit で閉じる
+    editor.BeginTransformEdit();
+    prop->Root().SetScale(NS::Vector3{2.0f, 2.0f, 2.0f});
+    editor.CommitTransformEdit();
+    EXPECT_TRUE(prop->IsSceneOverride("Transform", NS::k_ScaleFieldName));
+    EXPECT_FALSE(prop->IsSceneOverride("Transform", NS::k_RotationFieldName));
+    const nlohmann::json saved = scene.ToJson();
+    const nlohmann::json& entry = NS::SceneJsonObjects(saved)[NS::FindObjectIndexById(saved, 1)];
+    const nlohmann::json* transform = NS::ClassObjFields(entry, "Transform");
+    ASSERT_NE(transform, nullptr);
+    EXPECT_FLOAT_EQ(NS::Editor::ObjectScale(entry).x, 2.0f);
+    EXPECT_FALSE(NS::HasField(*transform, NS::k_RotationFieldName));
+
+    ASSERT_TRUE(editor.Editor().PerformUndo());
+    prop = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(prop, nullptr);
+    EXPECT_EQ(prop->Root().Scale(), NS::Vector3::One);
+    EXPECT_FALSE(prop->IsSceneOverride("Transform", NS::k_ScaleFieldName));
 }
 
 // プレイ中にインスペクタで変えた欄は、編集へ戻る時に 1 まとまりの履歴になり、未保存の印が付く
@@ -414,7 +474,10 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedObjectId();
         const NS::Vector3 placed = scene.Objects().FindByObjectId(actorId)->Root().Position();
-        editor.SetSelectedFreePosition(placed + NS::Vector3{3.0f, 0.0f, 0.0f});
+        WritePoseField(editor,
+                       *scene.Objects().FindByObjectId(actorId),
+                       NS::k_PositionFieldName,
+                       NS::Vector3{placed + NS::Vector3{3.0f, 0.0f, 0.0f}});
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Mouse& mouse = app.Input().Mouse();
@@ -487,7 +550,8 @@ TEST(EditorBrush, RotateKeepsTheTilt)
         ASSERT_EQ(scene.Objects().ObjectCount(), 1u);
         const NS::uint32 id = scene.Objects().ObjectAt(0)->Id();
         editor.SelectObjectById(id);
-        editor.SetSelectedFreeRotation(NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.5f, 0.0f));
+        WritePoseField(
+            editor, *scene.Objects().FindByObjectId(id), NS::k_RotationFieldName, NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.5f, 0.0f));
         const auto up = [&scene, id] {
             return NS::Vector3::Transform(NS::Vector3::UnitY, scene.Objects().FindByObjectId(id)->Root().Rotation());
         };
@@ -672,13 +736,24 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
     };
     frame();
     frame();
-    const char* rows[] = {"position", "rotation", "scale"};
+    // 姿勢は部品の一覧の Transform の行で描く。部品は鍵で、欄の表は名前で、欄は並びの番号で ID を積む
+    const char* rows[] = {NS::k_PositionFieldName, NS::k_RotationFieldName, NS::k_ScaleFieldName};
     const char* values[] = {"12.5", "30", "2.5"};
+    const NS::ReflectionInfo* transformInfo = NS::Transform::StaticReflection();
     for (int row = 0; row < 3; ++row)
     {
+        int fieldIndex = -1;
+        for (std::size_t i = 0; i < transformInfo->fieldCount; ++i)
+        {
+            if (std::string_view{rows[row]} == transformInfo->fields[i].name)
+            {
+                fieldIndex = static_cast<int>(i);
+            }
+        }
         ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
-        ImGuiID inputId = ImHashStr("##transform", 0, window->ID);
-        inputId = ImHashStr(rows[row], 0, inputId);
+        ImGuiID inputId = ImHashStr("Transform", 0, window->ID);
+        inputId = ImHashStr("##fields", 0, inputId);
+        inputId = ImHashData(&fieldIndex, sizeof(fieldIndex), inputId);
         inputId = ImHashStr("Y", 0, inputId);
         inputId = ImHashStr("##value", 0, inputId);
         ImGui::ActivateItemByID(inputId);

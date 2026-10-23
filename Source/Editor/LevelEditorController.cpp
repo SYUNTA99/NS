@@ -353,6 +353,42 @@ namespace
         }
     }
 
+    // actor の全部の部品の全部の欄の値。シーンの JSON と同じく classObjs の下に部品の鍵で並べる
+    nlohmann::json AllFieldValues(const NS::SceneActor& actor)
+    {
+        nlohmann::json values = nlohmann::json::object();
+        nlohmann::json& parts = NS::ObjectJsonClassObjs(values);
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+            parts[std::string{row.key}] = NS::SerializeClassObjFields(*part);
+        });
+        return values;
+    }
+
+    // before (AllFieldValues の形) から値が変わった、シーンに書く項目を actor の上書きの一覧に足す
+    // 参照の欄はいつも保存するので足さない。.actor へ書く項目は変わっていても触らない
+    void AddChangedSceneOverrides(NS::SceneActor& actor, const nlohmann::json& before)
+    {
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+            const nlohmann::json now = NS::SerializeClassObjFields(*part);
+            const nlohmann::json* was = NS::ClassObjFields(before, row.key);
+            for (nlohmann::json::const_iterator entry = now.begin(); entry != now.end(); ++entry)
+            {
+                // 触ったかを見る比べなので、値の写しどうしを == で比べる
+                if (was != nullptr && was->contains(entry.key()) && was->at(entry.key()) == entry.value())
+                {
+                    continue;
+                }
+                const NS::FieldDesc* field = NS::FindField(part->GetReflection(), entry.key());
+                if (field == nullptr || field->type == NS::FieldType::ActorRef ||
+                    NS::FieldDestinationOf(actor, *part, *field) != NS::FieldDestination::Scene)
+                {
+                    continue;
+                }
+                actor.AddSceneOverride(row.key, entry.key());
+            }
+        });
+    }
+
     // baseName の .actor から作る、name の派生の .actor の文書。元なら元を指して何も書いていない派生、派生なら同じ元を指す写し
     // name が空・ファイルの名前に使えない字を含む・既にある時と、baseName が読まれていない時は WARN を出して std::nullopt
     std::optional<nlohmann::json> NewDerivedActorFile(std::string_view baseName, std::string_view name)
@@ -1505,54 +1541,6 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
     m_lastGizmoSelected = nullptr;
 }
 
-void LevelEditorController::SetSelectedFreePosition(NS::Vector3 position)
-{
-    // 実体の Root を直接動かす。取り消し の記録は CommitTransformEdit が積み、当たりは次の歩が揃える
-    if (NS::SceneActor* go = SelectedObjectActor())
-    {
-        go->Root().SetPosition(position);
-        MirrorRootEditToBaseline(*go, NS::k_PositionFieldName);
-    }
-}
-
-void LevelEditorController::SetSelectedFreeRotation(NS::Quaternion rotation)
-{
-    if (NS::SceneActor* go = SelectedObjectActor())
-    {
-        go->Root().SetRotation(rotation);
-        MirrorRootEditToBaseline(*go, NS::k_RotationFieldName);
-    }
-}
-
-void LevelEditorController::SetSelectedFreeScale(NS::Vector3 scale)
-{
-    // ImGui の入力で 0 / 負になると描画と当たり判定が壊れるため最小正値で止める
-    constexpr float k_MinScale = 0.01f;
-    scale.x = std::max(scale.x, k_MinScale);
-    scale.y = std::max(scale.y, k_MinScale);
-    scale.z = std::max(scale.z, k_MinScale);
-    if (NS::SceneActor* go = SelectedObjectActor())
-    {
-        go->Root().SetScale(scale);
-        MirrorRootEditToBaseline(*go, NS::k_ScaleFieldName);
-    }
-}
-
-void LevelEditorController::MirrorRootEditToBaseline(NS::SceneActor& actor, std::string_view fieldName)
-{
-    const NS::ClassObjInfo* rootRow = nullptr;
-    NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, const NS::Object* part) {
-        if (part == &actor.Root())
-        {
-            rootRow = &field;
-        }
-    });
-    if (rootRow != nullptr)
-    {
-        MirrorPlayEditToBaseline(actor, *rootRow, fieldName);
-    }
-}
-
 void LevelEditorController::MirrorPlayEditToBaseline(const NS::SceneActor& actor,
                                                      const NS::ClassObjInfo& row,
                                                      std::string_view fieldName)
@@ -1581,13 +1569,13 @@ void LevelEditorController::NoteFieldEdit(const NS::SceneActor& actor,
     }
     if (NS::FieldDestinationOf(actor, *part, *field) == NS::FieldDestination::Scene)
     {
-        // 保存は上書きの一覧の項目だけを書くので、直したら一覧に足す。根の部品と参照の欄はいつも書く
+        // 保存は上書きの一覧の項目だけを書くので、直したら一覧に足す。参照の欄はいつも書く
         NS::SceneActor* edited = nullptr;
         if (m_scene != nullptr)
         {
             edited = m_scene->Objects().FindByObjectId(actor.Id());
         }
-        if (edited != nullptr && part != &actor.Root() && field->type != NS::FieldType::ActorRef)
+        if (edited != nullptr && field->type != NS::FieldType::ActorRef)
         {
             edited->AddSceneOverride(row.key, fieldName);
         }
@@ -1611,7 +1599,7 @@ void LevelEditorController::NoteActorFileFieldEdit(const NS::ClassObjInfo& row, 
         return;
     }
     const NS::Object* part = row.get(m_actorFileDraft.get());
-    if (part == nullptr || part == &m_actorFileDraft->Root())
+    if (part == nullptr)
     {
         return;
     }
@@ -1742,7 +1730,7 @@ bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::st
     {
         return false;
     }
-    // 保存の JSON はシーンの上書きと根の部品と参照の欄だけを持つ。派生に書ける項目を移し、残りはシーンに残す
+    // 保存の JSON はシーンの上書きと参照の欄だけを持つ。派生に書ける項目を移し、残りはシーンに残す
     nlohmann::json after = *before;
     NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
         nlohmann::json* fields = NS::ClassObjFields(after, row.key);
@@ -2105,9 +2093,15 @@ void LevelEditorController::BeginTransformEdit() noexcept
     for (const NS::uint32 id : m_selectionIds)
     {
         std::optional<nlohmann::json> baseline = m_applier.CaptureObject(id);
-        if (baseline)
+        if (!baseline)
         {
-            m_editBaselines.emplace_back(id, std::move(*baseline));
+            continue;
+        }
+        // 控えが取れたので、m_applier と同じシーンにこのアクターが居る
+        const NS::SceneActor* actor = m_scene->Objects().FindByObjectId(id);
+        if (actor != nullptr)
+        {
+            m_editBaselines.push_back(TransformEditBaseline{id, std::move(*baseline), AllFieldValues(*actor)});
         }
     }
     if (m_editBaselines.empty())
@@ -2127,10 +2121,15 @@ void LevelEditorController::CommitTransformEdit() noexcept
 
     // ドラッグは実体の Root を既に動かしている。after は実体の忠実な写し。baseline と同じなら履歴に積まない
     std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
-    for (std::pair<NS::uint32, nlohmann::json>& entry : m_editBaselines)
+    for (TransformEditBaseline& entry : m_editBaselines)
     {
-        const NS::uint32& id = entry.first;
-        nlohmann::json& baseline = entry.second;
+        const NS::uint32 id = entry.id;
+        nlohmann::json& baseline = entry.snapshot;
+        // 保存は上書きの一覧の項目だけを書くので、動かした姿勢の項目を一覧に足してから後の姿を控える
+        if (NS::SceneActor* actor = m_scene->Objects().FindByObjectId(id))
+        {
+            AddChangedSceneOverrides(*actor, entry.fields);
+        }
         std::optional<nlohmann::json> after = m_applier.CaptureObject(id);
         if (!after || *after == baseline)
         {

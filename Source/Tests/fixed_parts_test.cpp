@@ -356,6 +356,8 @@ TEST(FixedParts, TransformUsesTheSamePartLookupAndFieldEditing)
     EXPECT_EQ(&actor.Root(), transform);
     NS::ApplyJsonFields(*transform, nlohmann::json{{"位置", {2.0f, 3.0f, 4.0f}}});
     EXPECT_EQ(actor.Root().Position(), (NS::Vector3{2.0f, 3.0f, 4.0f}));
+    // 姿勢はグローバルの項目なので、シーンの上書きの一覧に載せた物を保存で書く
+    actor.AddSceneOverride("Transform", "位置");
     EXPECT_EQ(NS::ObjectToJson(actor)["classObjs"]["Transform"]["位置"], (nlohmann::json::array({2.0f, 3.0f, 4.0f})));
 }
 
@@ -454,7 +456,6 @@ TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
     EXPECT_FALSE(saved["classObjs"]["Shadow"].contains("id"));
     EXPECT_FALSE(saved["classObjs"]["Shadow"].contains("type"));
     EXPECT_FALSE(saved["classObjs"]["Shadow"].contains("fields"));
-    EXPECT_TRUE(saved["classObjs"]["Transform"].contains("位置"));
 }
 
 TEST(FixedParts, FileReferencesUseNamesAndClonesRemapIds)
