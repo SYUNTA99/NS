@@ -26,116 +26,17 @@ namespace NS
 {
     namespace Editor
     {
-        namespace
-        {
-            template <class T>
-            bool SameValue(const Object& a, const Object& b, const FieldDesc& field)
-            {
-                T lhs{};
-                T rhs{};
-                field.get(&a, &lhs);
-                field.get(&b, &rhs);
-                return lhs == rhs;
-            }
-
-            template <class T> void CopyValue(Object& dst, const Object& src, const FieldDesc& field)
-            {
-                T value{};
-                field.get(&src, &value);
-                field.set(&dst, &value);
-            }
-        } // namespace
-
-        bool FieldDiffersFromDefault(const Object& comp,
-                                     const Object* defaults,
-                                     const FieldDesc& field) noexcept
-        {
-            if (defaults == nullptr)
-            {
-                return false;
-            }
-            switch (field.type)
-            {
-            case FieldType::Float:
-                return !SameValue<float>(comp, *defaults, field);
-            case FieldType::Int:
-                return !SameValue<int>(comp, *defaults, field);
-            case FieldType::Bool:
-                return !SameValue<bool>(comp, *defaults, field);
-            case FieldType::Vector2:
-                return !SameValue<Vector2>(comp, *defaults, field);
-            case FieldType::Vector3:
-                return !SameValue<Vector3>(comp, *defaults, field);
-            case FieldType::Quaternion:
-                return !SameValue<Quaternion>(comp, *defaults, field);
-            case FieldType::Color:
-                return !SameValue<Color>(comp, *defaults, field);
-            case FieldType::OptionalColor:
-                return !SameValue<std::optional<Color>>(comp, *defaults, field);
-            case FieldType::String:
-            case FieldType::Asset:
-                return !SameValue<std::string>(comp, *defaults, field);
-            case FieldType::ActorRef:
-                return !SameValue<ActorRef>(comp, *defaults, field);
-            case FieldType::Curve:
-                return !SameValue<Curve>(comp, *defaults, field);
-            }
-            return false;
-        }
-
-        void RevertFieldToDefault(Object& comp,
-                                  const Object& defaults,
-                                  const FieldDesc& field) noexcept
-        {
-            switch (field.type)
-            {
-            case FieldType::Float:
-                CopyValue<float>(comp, defaults, field);
-                break;
-            case FieldType::Int:
-                CopyValue<int>(comp, defaults, field);
-                break;
-            case FieldType::Bool:
-                CopyValue<bool>(comp, defaults, field);
-                break;
-            case FieldType::Vector2:
-                CopyValue<Vector2>(comp, defaults, field);
-                break;
-            case FieldType::Vector3:
-                CopyValue<Vector3>(comp, defaults, field);
-                break;
-            case FieldType::Quaternion:
-                CopyValue<Quaternion>(comp, defaults, field);
-                break;
-            case FieldType::Color:
-                CopyValue<Color>(comp, defaults, field);
-                break;
-            case FieldType::OptionalColor:
-                CopyValue<std::optional<Color>>(comp, defaults, field);
-                break;
-            case FieldType::String:
-            case FieldType::Asset:
-                CopyValue<std::string>(comp, defaults, field);
-                break;
-            case FieldType::ActorRef:
-                CopyValue<ActorRef>(comp, defaults, field);
-                break;
-            case FieldType::Curve:
-                CopyValue<Curve>(comp, defaults, field);
-                break;
-            }
-        }
-
         bool ShowsOverride(const Object& comp,
-                           const Object* defaults,
+                           const char* partKey,
                            const FieldDesc& field,
-                           const SceneActor* actor) noexcept
+                           const SceneActor* actor)
         {
-            if (actor != nullptr && FieldDestinationOf(*actor, comp, field) != FieldDestination::Scene)
+            if (actor == nullptr || partKey == nullptr ||
+                FieldDestinationOf(*actor, comp, field) != FieldDestination::Scene)
             {
                 return false;
             }
-            return FieldDiffersFromDefault(comp, defaults, field);
+            return actor->IsSceneOverride(partKey, field.name);
         }
 
         void CurveGraphXRange(const Curve& curve, float& outMin, float& outMax) noexcept
@@ -1715,7 +1616,7 @@ namespace NS
 
         ClassObjEditResult DrawReflectedClassObj(Object& comp,
                                                  std::span<const ObjectRefOption> refOptions,
-                                                 const Object* defaults,
+                                                 const char* partKey,
                                                  const char* filter,
                                                  const SceneActor* actor,
                                                  const EditorAppearance* appearance) noexcept
@@ -1733,7 +1634,7 @@ namespace NS
             ClassObjEditResult result;
             const auto drawRow = [&](std::size_t i) {
                 const FieldDesc& field = info->fields[i];
-                const bool changed = ShowsOverride(comp, defaults, field, actor);
+                const bool changed = ShowsOverride(comp, partKey, field, actor);
                 const bool wasChanged = result.changed;
                 ImU32 background = 0;
                 if (actor != nullptr && appearance != nullptr)
@@ -1758,7 +1659,7 @@ namespace NS
                 }
 
                 const OverrideAction action = OverrideButton(changed);
-                if (action == OverrideAction::Revert && defaults != nullptr)
+                if (action == OverrideAction::Revert)
                 {
                     result.revertTarget = &comp;
                     result.revertField = &field;

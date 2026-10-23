@@ -500,8 +500,9 @@ TEST(ActorFile, ReferenceFieldsAreNotActorFileValues)
     EXPECT_EQ(NS::FieldDestinationOf(*camera, camera->Vcam(), *target), NS::FieldDestination::Scene);
 }
 
-// 字の色の印は、配置物へ書く欄の値が .actor と違う時だけ付く。.actor へ書く欄には付かない
-TEST(ActorFile, OverrideIsShownOnlyOnFieldsThePlacementWrites)
+// 字の色の上書きの表示は、シーンへ書く欄が上書きの一覧にある時だけ付く。値が .actor と違うだけでは付かない。
+// .actor へ書く欄には付かない
+TEST(ActorFile, OverrideIsShownOnlyOnFieldsInTheSceneOverrides)
 {
     const ScopedActorFileDirectory scope("OverrideDetect");
     nlohmann::json actorFile = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f));
@@ -524,15 +525,16 @@ TEST(ActorFile, OverrideIsShownOnlyOnFieldsThePlacementWrites)
     const NS::FieldDesc* mass = NS::FindField(prop->Params().GetReflection(), "質量");
     ASSERT_NE(radius, nullptr);
     ASSERT_NE(mass, nullptr);
-    const NS::Object* sphereBaseline = NS::FindBaselineClassObj(*prop, *sphereRow);
-    const NS::Object* paramsBaseline = NS::FindBaselineClassObj(*prop, *paramsRow);
 
-    EXPECT_FALSE(NS::Editor::ShowsOverride(prop->Params(), paramsBaseline, *mass, prop));
+    EXPECT_FALSE(NS::Editor::ShowsOverride(prop->Params(), paramsRow->key, *mass, prop));
     ASSERT_EQ(NS::ApplyJsonFields(prop->Params(), MassEntry(4.0f)), 0u);
-    EXPECT_TRUE(NS::Editor::ShowsOverride(prop->Params(), paramsBaseline, *mass, prop));
+    EXPECT_FALSE(NS::Editor::ShowsOverride(prop->Params(), paramsRow->key, *mass, prop));
+    prop->AddSceneOverride(paramsRow->key, "質量");
+    EXPECT_TRUE(NS::Editor::ShowsOverride(prop->Params(), paramsRow->key, *mass, prop));
 
     sphere->SetRadius(2.5f);
-    EXPECT_FALSE(NS::Editor::ShowsOverride(*sphere, sphereBaseline, *radius, prop));
+    prop->AddSceneOverride(sphereRow->key, "半径");
+    EXPECT_FALSE(NS::Editor::ShowsOverride(*sphere, sphereRow->key, *radius, prop));
 }
 
 // 欄の書く先は 1 つの関数が決め、行の地の色は同じ答えの方の色になる
@@ -718,63 +720,61 @@ TEST(ActorFile, MergeLayerOverlaysWrittenFieldsAndRejectsFieldsTheLayerCannotWri
     }
 }
 
-// インスペクタの印と「既定に戻す」は、型の既定 (半径 0.5) でなく .actor の値 (半径 2) と比べて戻す
-TEST(ActorFile, InspectorMarksAndRevertsAgainstTheActorFile)
+// 「既定に戻す」は上書きの一覧から項目を外し、.actor の全部の値の同じ項目 (質量 2) を写す。保存にも書かない
+TEST(ActorFile, RevertingASceneOverrideRemovesItAndCopiesTheActorFileValue)
 {
-    const ScopedActorFileDirectory scope("InspectorDefaults");
-    NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)));
+    const ScopedActorFileDirectory scope("RevertSceneOverride");
+    nlohmann::json actorFile = ActorFileWith("PropActor", "Params", MassEntry(2.0f));
+    NS::ActorFileLibrary::Get().Set("PropActor", std::move(actorFile));
 
+    nlohmann::json object = MapObjJson(1);
+    NS::ObjectJsonClassObjs(object)["Params"] = MassEntry(4.0f);
     nlohmann::json doc = NS::MakeSceneJson();
-    NS::SceneJsonObjects(doc).push_back(MapObjJson(1));
+    NS::SceneJsonObjects(doc).push_back(std::move(object));
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(scene.Objects().FindByObjectId(1)->CollisionClassObj());
-    ASSERT_NE(sphere, nullptr);
-    const NS::FieldDesc* radius = NS::FindField(sphere->GetReflection(), "半径");
-    ASSERT_NE(radius, nullptr);
-
-    const NS::SceneActor& actor = *scene.Objects().FindByObjectId(1);
-    const NS::ClassObjInfo* row = RowOf(actor, sphere);
+    NS::SceneActor* prop = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(prop, nullptr);
+    const NS::ClassObjInfo* row = RowOf(*prop, &NS::Cast<GL::Level::PropActor>(prop)->Params());
     ASSERT_NE(row, nullptr);
+    ASSERT_TRUE(prop->IsSceneOverride(row->key, "質量"));
+    ASSERT_FLOAT_EQ(MassOf(*prop), 4.0f);
 
-    const NS::Object* baseline = NS::FindBaselineClassObj(actor, *row);
-    ASSERT_NE(baseline, nullptr);
-    EXPECT_FALSE(NS::Editor::FieldDiffersFromDefault(*sphere, baseline, *radius));
-    sphere->SetRadius(2.5f);
-    EXPECT_TRUE(NS::Editor::FieldDiffersFromDefault(*sphere, baseline, *radius));
-    NS::Editor::RevertFieldToDefault(*sphere, *baseline, *radius);
-    EXPECT_FLOAT_EQ(sphere->Radius(), 2.0f);
+    EXPECT_TRUE(NS::RevertSceneOverride(*prop, *row, "質量"));
+    EXPECT_FALSE(prop->IsSceneOverride(row->key, "質量"));
+    EXPECT_FLOAT_EQ(MassOf(*prop), 2.0f);
+    const nlohmann::json saved = NS::ObjectToJson(*prop);
+    const nlohmann::json* fields = NS::ClassObjFields(saved, "Params");
+    EXPECT_TRUE(fields == nullptr || !fields->contains("質量"));
 }
 
-namespace
+// プレイ中に戻すと、プレイ開始の凍結からもその項目を消す。編集へ戻っても上書きは戻らない
+TEST(ActorFile, RevertingDuringPlayRemovesTheFieldFromThePlayBaseline)
 {
-    // 登録の無いクラス。.actor の比べる基準は素の SceneActor になり、Collision の行を持たない
-    class UnregisteredSphereActor final : public NS::SceneActor
-    {
-    public:
-        NS_REFLECT_NONE(UnregisteredSphereActor, NS::SceneActor)
+    const ScopedActorFileDirectory scope("RevertDuringPlay");
+    NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "Params", MassEntry(2.0f)));
 
-    protected:
-        void OnInit() override { CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision, this); }
-    };
-} // namespace
-
-// 比べ先は .actor の比べる基準の同じ行だけ。そこに行が無い時に型の既定 (半径 0.5) と比べると、
-// 型の既定と違う半径 2 に印が出る
-TEST(ActorFile, InspectorDoesNotMarkAFieldTheBaselineDoesNotHave)
-{
-    const ScopedActorFileDirectory scope("InspectorWithoutBaselineRow");
-    const std::unique_ptr<UnregisteredSphereActor> actor = NS::CreateActor<UnregisteredSphereActor>();
-    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
-    ASSERT_NE(sphere, nullptr);
-    sphere->SetRadius(2.0f);
-    ASSERT_FLOAT_EQ(sphere->Radius(), 2.0f);
-    const NS::FieldDesc* radius = NS::FindField(sphere->GetReflection(), "半径");
-    ASSERT_NE(radius, nullptr);
-    const NS::ClassObjInfo* row = RowOf(*actor, sphere);
+    nlohmann::json object = MapObjJson(1);
+    NS::ObjectJsonClassObjs(object)["Params"] = MassEntry(4.0f);
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::SceneJsonObjects(doc).push_back(std::move(object));
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    LevelEditorController editor(&scene);
+    editor.EnterPlay();
+    NS::SceneActor* prop = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(prop, nullptr);
+    const NS::ClassObjInfo* row = RowOf(*prop, &NS::Cast<GL::Level::PropActor>(prop)->Params());
     ASSERT_NE(row, nullptr);
 
-    EXPECT_FALSE(NS::Editor::FieldDiffersFromDefault(*sphere, NS::FindBaselineClassObj(*actor, *row), *radius));
+    ASSERT_TRUE(NS::RevertSceneOverride(*prop, *row, "質量"));
+    editor.MirrorPlayEditToBaseline(*prop, *row, "質量");
+    editor.EnterEdit();
+
+    prop = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(prop, nullptr);
+    EXPECT_FALSE(prop->IsSceneOverride(row->key, "質量"));
+    EXPECT_FLOAT_EQ(MassOf(*prop), 2.0f);
 }
 
 TEST(ActorFile, TransformPartIsInstanceOnlyOnEveryPath)

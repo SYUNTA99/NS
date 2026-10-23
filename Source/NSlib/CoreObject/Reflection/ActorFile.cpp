@@ -721,6 +721,26 @@ namespace NS
         ApplyObjectClassObjs(actor, values);
     }
 
+    bool RevertSceneOverride(SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
+    {
+        Object* part = row.get(&actor);
+        const nlohmann::json* values = ActorFileLibrary::Get().Values(actor.ActorFileName());
+        const nlohmann::json* fields = nullptr;
+        if (values != nullptr)
+        {
+            fields = ClassObjFields(*values, row.key);
+        }
+        const std::string name{fieldName};
+        if (part == nullptr || fields == nullptr || !fields->contains(name))
+        {
+            NS_LOG_ERROR(Scene, "{} の全部の値に部品 {} の欄 {} が無いので戻せない", actor.ActorFileName(), row.key, name);
+            return false;
+        }
+        actor.RemoveSceneOverride(row.key, fieldName);
+        (void)ApplyJsonFields(*part, nlohmann::json{{name, fields->at(name)}});
+        return true;
+    }
+
     namespace
     {
         // row が actor の表に無ければ nullptr。Baseline は登録の無いクラスでは素の SceneActor なので、

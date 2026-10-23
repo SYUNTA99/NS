@@ -125,6 +125,10 @@ namespace NS
     //! @details 根の部品と参照の欄は一覧に入れない。項目が書いてよいかは見ないので、先に MergeLayer で確かめる
     void ReadSceneOverrides(SceneActor& actor, const nlohmann::json& object);
 
+    //! @brief actor の行 row の部品の欄 fieldName をシーンの上書きの一覧から外し、.actor の全部の値の同じ項目を写す
+    //! @details 全部の値か、その項目が無ければ ERROR を出し、一覧も値も変えずに false
+    [[nodiscard]] bool RevertSceneOverride(SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
+
     //! 欄の値を書く所
     enum class FieldDestination
     {

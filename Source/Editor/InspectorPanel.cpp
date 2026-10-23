@@ -58,19 +58,6 @@ namespace NS
 #if NS_EDITOR_ENABLED
         namespace
         {
-            // actor の根の部品に対応する、クラスの既定の 1 体の根の部品。どちらかが無ければ nullptr
-            const Transform* FindBaselineRoot(const SceneActor& actor)
-            {
-                const Object* found = nullptr;
-                ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* live) {
-                    if (live == &actor.Root())
-                    {
-                        found = FindBaselineClassObj(actor, row);
-                    }
-                });
-                return static_cast<const Transform*>(found);
-            }
-
             void DrawTexturePreview(const Texture& texture)
             {
                 const Gfx::D3DTexture* image = texture.D3D();
@@ -834,17 +821,12 @@ namespace NS
                         ImGui::PopID();
                     };
 
-                    // 動かしたかの印と戻す先は、クラスの既定の 1 体の姿勢。既定の 1 体が無ければ印を出さない
+                    // 動かしたかの表示と戻す先は Transform の初期値。.actor は根の姿勢を持たない
                     const Transform& root = go->Root();
-                    Vector3 defaultPosition = root.Position();
-                    Quaternion defaultRotation = root.Rotation();
-                    Vector3 defaultScale = root.Scale();
-                    if (const Transform* baseline = FindBaselineRoot(*go))
-                    {
-                        defaultPosition = baseline->Position();
-                        defaultRotation = baseline->Rotation();
-                        defaultScale = baseline->Scale();
-                    }
+                    const Transform initial;
+                    const Vector3 defaultPosition = initial.Position();
+                    const Quaternion defaultRotation = initial.Rotation();
+                    const Vector3 defaultScale = initial.Scale();
 
                     const Vector3 posVec = root.Position();
                     float pos[3] = {posVec.x, posVec.y, posVec.z};
@@ -928,10 +910,8 @@ namespace NS
 
                     if (open)
                     {
-                        // 比べる相手は持ち主の .actor から作った比べる基準の部品
-                        const Object* baseline = FindBaselineClassObj(*go, field);
                         const Editor::ClassObjEditResult r =
-                            Editor::DrawReflectedClassObj(*live, refOptions, baseline, m_fieldFilter, go, &m_appearance);
+                            Editor::DrawReflectedClassObj(*live, refOptions, field.key, m_fieldFilter, go, &m_appearance);
                         classObjEdit.activated |= r.activated;
                         classObjEdit.committed |= r.committed;
                         classObjEdit.changed |= r.changed;
@@ -954,16 +934,15 @@ namespace NS
                 // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
                 if (classObjEdit.revertTarget != nullptr && revertRow != nullptr)
                 {
-                    const Object* baseline = FindBaselineClassObj(*go, *revertRow);
-                    if (baseline != nullptr)
+                    editor.BeginClassObjEdit();
+                    // 上書きの一覧から外し、.actor の全部の値の同じ項目を写す
+                    if (RevertSceneOverride(*go, *revertRow, classObjEdit.revertField->name))
                     {
-                        editor.BeginClassObjEdit();
-                        Editor::RevertFieldToDefault(*classObjEdit.revertTarget, *baseline, *classObjEdit.revertField);
                         editor.FinishFieldWrite(*go, classObjEdit.revertField->type);
-                        // 既定へ戻すのも手編集。プレイ中は凍結側へも写して残す
+                        // 既定へ戻すのも手編集。プレイ中は凍結からも項目を消す
                         editor.MirrorPlayEditToBaseline(*go, *revertRow, classObjEdit.revertField->name);
-                        editor.CommitClassObjEdit();
                     }
+                    editor.CommitClassObjEdit();
                 }
                 if (classObjEdit.activated)
                 {

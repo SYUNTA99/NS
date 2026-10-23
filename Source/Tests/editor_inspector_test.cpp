@@ -264,7 +264,7 @@ namespace
     };
 } // namespace
 
-TEST(EditorInspector, Vector2SavesBothComponentsRejectsBrokenValuesAndReverts)
+TEST(EditorInspector, Vector2SavesBothComponentsAndRejectsBrokenValues)
 {
     TwoAxisFieldObject object;
     const TwoAxisFieldObject defaults;
@@ -272,11 +272,6 @@ TEST(EditorInspector, Vector2SavesBothComponentsRejectsBrokenValuesAndReverts)
     ASSERT_NE(field, nullptr);
     const nlohmann::json saved = NS::SerializeClassObjFields(object);
     EXPECT_EQ(saved, (nlohmann::json{{"offset", {0.25f, 0.75f}}}));
-    object.offset = NS::Vector2{4.0f, 5.0f};
-    EXPECT_TRUE(NS::Editor::FieldDiffersFromDefault(object, &defaults, *field));
-    NS::Editor::RevertFieldToDefault(object, defaults, *field);
-    EXPECT_EQ(object.offset, defaults.offset);
-    EXPECT_FALSE(NS::Editor::FieldDiffersFromDefault(object, &defaults, *field));
     object.offset = NS::Vector2{4.0f, 5.0f};
     EXPECT_EQ(NS::ApplyJsonFields(object, saved), 0u);
     EXPECT_EQ(object.offset, defaults.offset);

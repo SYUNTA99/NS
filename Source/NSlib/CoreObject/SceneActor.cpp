@@ -224,6 +224,11 @@ namespace NS
         m_sceneOverrides.emplace(std::string{part}, std::string{field});
     }
 
+    void SceneActor::RemoveSceneOverride(std::string_view part, std::string_view field)
+    {
+        m_sceneOverrides.erase({std::string{part}, std::string{field}});
+    }
+
     bool SceneActor::Init(const ActorInitInfo* info)
     {
         m_actorFileName = ClassName();

@@ -58,6 +58,8 @@ namespace NS
         [[nodiscard]] bool IsSceneOverride(std::string_view part, std::string_view field) const;
         //! 項目をシーンの上書きの一覧に足す。保存はこの一覧の項目を書く
         void AddSceneOverride(std::string_view part, std::string_view field);
+        //! 項目をシーンの上書きの一覧から外す。値は変えないので、.actor の値へ戻すのは RevertSceneOverride
+        void RemoveSceneOverride(std::string_view part, std::string_view field);
         //! シーンの上書きの一覧を空にする
         void ClearSceneOverrides() noexcept { m_sceneOverrides.clear(); }
         NS_REFLECT_DECLARE()
