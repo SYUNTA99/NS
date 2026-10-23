@@ -2,7 +2,6 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
@@ -415,7 +414,6 @@ namespace NS
     void ActorFileLibrary::Reload()
     {
         m_actorFiles.clear();
-        m_baselines.clear();
         m_loaded = true;
 
         const std::string& directory = Directory();
@@ -636,8 +634,6 @@ namespace NS
             RebuildValues();
             return false;
         }
-        // 比べる基準の 1 体は全部の値から作るので、元を変えたら派生の分も作り直す
-        m_baselines.clear();
         return true;
     }
 
@@ -646,7 +642,6 @@ namespace NS
         EnsureLoaded();
         m_actorFiles.erase(std::string{name});
         RebuildValues();
-        m_baselines.clear();
     }
 
     bool ActorFileLibrary::Delete(std::string_view name)
@@ -669,38 +664,6 @@ namespace NS
             return false;
         }
         return WriteActorFileAt(OS::FileSystem::Combine(Directory(), std::string{name} + ".actor"), *actorFile);
-    }
-
-    const SceneActor& ActorFileLibrary::Baseline(std::string_view name)
-    {
-        EnsureLoaded();
-        const std::map<std::string, std::unique_ptr<SceneActor>, std::less<>>::const_iterator it =
-            m_baselines.find(name);
-        if (it != m_baselines.end())
-        {
-            return *it->second;
-        }
-        // .actor の無い名前を持つのは型から作ったアクターだけで、その名前はクラス名
-        std::string className = ClassNameOf(name);
-        if (className.empty())
-        {
-            className = std::string{name};
-        }
-        const ActorInitInfo info{.actorFile = name};
-        std::unique_ptr<SceneActor> actor = CreateActorOfClass(className, info);
-        // .actor の無い名前ではアクターを作らないので、比べる基準は部品の無い素の SceneActor にする
-        if (actor == nullptr)
-        {
-            actor = std::make_unique<SceneActor>();
-        }
-        const SceneActor& result = *actor;
-        m_baselines.emplace(std::string{name}, std::move(actor));
-        return result;
-    }
-
-    void ActorFileLibrary::ClearBaselines() noexcept
-    {
-        m_baselines.clear();
     }
 
     void ApplyActorFile(SceneActor& actor)
@@ -757,38 +720,5 @@ namespace NS
         actor.RemoveSceneOverride(row.key, fieldName);
         (void)ApplyJsonFields(*part, nlohmann::json{{name, fields->at(name)}});
         return true;
-    }
-
-    namespace
-    {
-        // row が actor の表に無ければ nullptr。Baseline は登録の無いクラスでは素の SceneActor なので、
-        // 行の関数を直に呼ばず、actor の表を回して同じ行を探す
-        [[nodiscard]] const Object* FindRowPart(const SceneActor& actor, const ClassObjInfo& row)
-        {
-            const Object* found = nullptr;
-            ForEachReflectedClassObj(actor, [&](const ClassObjInfo& field, const Object* part) {
-                if (&field == &row)
-                {
-                    found = part;
-                }
-            });
-            return found;
-        }
-    } // namespace
-
-    const Object* FindBaselineClassObj(const SceneActor& actor, const ClassObjInfo& row)
-    {
-        const Object* live = FindRowPart(actor, row);
-        if (live == nullptr)
-        {
-            return nullptr;
-        }
-        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(actor.ActorFileName());
-        const Object* found = FindRowPart(baseline, row);
-        if (found != nullptr && std::string_view{found->ClassName()} == live->ClassName())
-        {
-            return found;
-        }
-        return nullptr;
     }
 } // namespace NS

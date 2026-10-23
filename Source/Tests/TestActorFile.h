@@ -1,7 +1,10 @@
 #pragma once
 
 #include "Editor/ActorFileGenerator.h"
+#include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "NSlib/Windows/StringUtils.h"
 
@@ -9,6 +12,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -87,6 +91,12 @@ inline nlohmann::json CodeValuesActorFile(std::string_view className)
 {
     std::vector<std::string> added;
     return NS::Editor::CompleteActorFile(ClassOnlyActorFile(className), added);
+}
+
+//! name の .actor の全部の値で、シーンに入れずに作ったアクター。.actor が読まれていなければ nullptr
+[[nodiscard]] inline std::unique_ptr<NS::SceneActor> ActorFromFile(std::string_view name)
+{
+    return NS::CreateActorOfClass(NS::ActorFileLibrary::Get().ClassNameOf(name), NS::ActorInitInfo{.actorFile = name});
 }
 
 //! @brief 試しの間だけ name の .actor を読んだ物として敷き、壊す時に前の文書へ戻す

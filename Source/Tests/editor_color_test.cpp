@@ -8,6 +8,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "TestActorFile.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -15,6 +16,7 @@
 #include <imgui_internal.h>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -174,7 +176,9 @@ TEST(ModelDrawColor, ShippedScenesAndActorFilesKeepTheirColor)
 
     for (const std::string& name : library.Names())
     {
-        const NS::Model* model = library.Baseline(name).ModelClassObj();
+        const std::unique_ptr<NS::SceneActor> actor = ActorFromFile(name);
+        ASSERT_NE(actor, nullptr) << name;
+        const NS::Model* model = actor->ModelClassObj();
         if (model == nullptr)
         {
             continue;

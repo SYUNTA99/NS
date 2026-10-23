@@ -235,7 +235,9 @@ TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
     ASSERT_NE(fromJson, nullptr);
     EXPECT_EQ(fromJson->inits, 1);
 
-    const NS::SceneActor& baseline = NS::ActorFileLibrary::Get().Baseline("ClassObjInitProbeActor");
+    const std::unique_ptr<NS::SceneActor> baselineOwned = ActorFromFile("ClassObjInitProbeActor");
+    ASSERT_NE(baselineOwned, nullptr);
+    const NS::SceneActor& baseline = *baselineOwned;
     const ClassObjInitProbeActor* probe = NS::Cast<ClassObjInitProbeActor>(&baseline);
     ASSERT_NE(probe, nullptr);
     EXPECT_EQ(probe->inits, 1);

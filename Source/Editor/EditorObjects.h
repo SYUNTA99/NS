@@ -40,6 +40,10 @@ namespace NS
         //! @details transform 以外の値は写さずコード既定に任せる疎な写し。id は 0 で、置く時に振る
         [[nodiscard]] nlohmann::json MakePrototypeJson(const SceneActor& obj);
 
+        //! @brief .actor の名前 actorFileName を指すひな形の JSON。アクターを作らずに組む
+        //! @details 根の姿勢は Transform の初期値で、ほかの値は書かない。id は 0 で、置く時に振る
+        [[nodiscard]] nlohmann::json MakePrototypeJson(std::string_view actorFileName);
+
         //! @brief SceneActor 派生 T の OnInit が積む構成からひな形の JSON を作る
         //! @details 派生クラスの構成を手書きレシピへ並記せず、クラス自身を構成と既定値の唯一の出所にする
         template <class T> [[nodiscard]] nlohmann::json MakePrototypeJson()

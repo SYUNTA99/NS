@@ -218,7 +218,9 @@ TEST(SceneLoad, EveryShippedPlacementOverridesOnlyMarkedFields)
         ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, file.path().string())) << file.path().string();
         for (const nlohmann::json& object : NS::SceneJsonObjects(doc))
         {
-            const NS::SceneActor& baseline = NS::ActorFileLibrary::Get().Baseline(NS::ObjectJsonActorFile(object));
+            const std::unique_ptr<NS::SceneActor> baselineOwned = ActorFromFile(NS::ObjectJsonActorFile(object));
+            ASSERT_NE(baselineOwned, nullptr);
+            const NS::SceneActor& baseline = *baselineOwned;
             NS::ForEachReflectedClassObj(baseline, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
                 const nlohmann::json* fields = NS::ClassObjFields(object, row.key);
                 if (fields == nullptr || part == &baseline.Root())
@@ -413,7 +415,7 @@ TEST(SceneLoad, PlacementBuildsTheClassAndValuesOfTheActorFileItNames)
     EXPECT_EQ(actor->ActorFileName(), "HeavyRock");
     EXPECT_FLOAT_EQ(RadiusOf(*actor), 2.5f);
 
-    // 保存は同じ .actor を指す。比べる基準は .actor の名前ごとなので、.actor と同じ値は書かない
+    // 保存は同じ .actor を指す。上書きしていない項目は書かない
     const nlohmann::json saved = scene.ToJson();
     const nlohmann::json& object = NS::SceneJsonObjects(saved)[0];
     EXPECT_EQ(NS::ObjectJsonActorFile(object), "HeavyRock");

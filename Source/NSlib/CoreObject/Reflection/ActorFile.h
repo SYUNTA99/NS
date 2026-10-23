@@ -7,7 +7,6 @@
 
 #include <functional>
 #include <map>
-#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -92,15 +91,6 @@ namespace NS
         //! name の .actor の文書を丸ごと Directory() へ書く。無いか書けなければ false
         [[nodiscard]] bool Save(std::string_view name);
 
-        //! @brief name の .actor を敷いた、配置の上書きの無い比較用 SceneActor。シーンへ入らない
-        //! @details クラスは .actor の中の class。
-        //! .actor の無い name は型から作ったアクターの物なので、クラス名として作る。
-        //! .actor を変えると作り直すので、返した参照はそのフレームの間だけ使う
-        [[nodiscard]] const SceneActor& Baseline(std::string_view name);
-
-        //! @brief 既定の 1 体を全部捨てる。次の Baseline で作り直す
-        //! @details 既定の 1 体は作った時の AssetManager の素材を指すので、その表を空にする時と差し替える時に呼ぶ
-        void ClearBaselines() noexcept;
 
     private:
         ActorFileLibrary();
@@ -114,7 +104,6 @@ namespace NS
         std::string m_directory;                                                     // 空なら既定のディレクトリ
         std::map<std::string, nlohmann::json, std::less<>> m_actorFiles;             // 名前から .actor の文書
         std::map<std::string, nlohmann::json, std::less<>> m_mergedValues;           // 名前から全部の値
-        std::map<std::string, std::unique_ptr<SceneActor>, std::less<>> m_baselines; // .actor の名前から既定の 1 体
         bool m_loaded = false;
     };
 
@@ -160,8 +149,4 @@ namespace NS
                                                            const nlohmann::json& written,
                                                            FieldDestination layer,
                                                            const SceneActor& actor);
-
-    //! actor の行 row の部品に対応する、actor の .actor の Baseline の部品。どちらかが作られていないか型が違えば nullptr
-    //! row は actor のクラスの表 (NS_CLASSOBJ) の行。.actor を変えると指す先が作り直されるので、そのフレームの間だけ使う
-    [[nodiscard]] const Object* FindBaselineClassObj(const SceneActor& actor, const ClassObjInfo& row);
 } // namespace NS

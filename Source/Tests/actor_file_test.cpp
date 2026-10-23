@@ -122,45 +122,6 @@ namespace
     }
 } // namespace
 
-// 素材を読み終えた回数を数える。既定の 1 体が配置と同じ初期化を通るかを見る
-class BaselineLoadProbeActor final : public NS::SceneActor
-{
-public:
-    static inline int s_loads = 0;
-
-    NS_REFLECT_NONE(BaselineLoadProbeActor, NS::SceneActor)
-
-protected:
-    void OnAssetsLoaded() override
-    {
-        NS::SceneActor::OnAssetsLoaded();
-        ++s_loads;
-    }
-};
-NS_CLASS(BaselineLoadProbeActor)
-
-TEST(ActorFile, BaselineLoadsAssetsLikeAPlacedActor)
-{
-    const ScopedActorFileDirectory scope("BaselineLoadsAssets");
-    const int before = BaselineLoadProbeActor::s_loads;
-    (void)NS::ActorFileLibrary::Get().Baseline("BaselineLoadProbeActor");
-    EXPECT_EQ(BaselineLoadProbeActor::s_loads, before + 1);
-}
-
-TEST(ActorFile, ClearingAssetsRebuildsTheBaseline)
-{
-    // 既定の 1 体は読んだ素材を指すので、素材の表を空にした後は作り直す
-    const ScopedActorFileDirectory scope("ClearingAssetsRebuildsTheBaseline");
-    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    const NS::AssetManagerScope useAssets{assets};
-    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
-    (void)library.Baseline("BaselineLoadProbeActor");
-    const int before = BaselineLoadProbeActor::s_loads;
-    assets.Clear();
-    (void)library.Baseline("BaselineLoadProbeActor");
-    EXPECT_EQ(BaselineLoadProbeActor::s_loads, before + 1);
-}
-
 TEST(ActorFile, CodeDefaultWhenTheActorFileHasNoValues)
 {
     const ScopedActorFileDirectory scope("CodeDefault");
@@ -492,7 +453,9 @@ TEST(ActorFile, ReferenceFieldsAreNotActorFileValues)
     EXPECT_FALSE(NS::HasField(*entry, "追従対象"));
 
     // インスペクタで直しても .actor へは書かず、配置物へ書く
-    const NS::SceneActor& baseline = NS::ActorFileLibrary::Get().Baseline("FollowCameraActor");
+    const std::unique_ptr<NS::SceneActor> baselineOwned = ActorFromFile("FollowCameraActor");
+    ASSERT_NE(baselineOwned, nullptr);
+    const NS::SceneActor& baseline = *baselineOwned;
     const GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(&baseline);
     ASSERT_NE(camera, nullptr);
     const NS::FieldDesc* target = NS::FindField(camera->Vcam().GetReflection(), "追従対象");
@@ -543,9 +506,13 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
     const ScopedActorFileDirectory scope("FieldDestination");
     const ScopedActorFile propFile{"PropActor", CodeValuesActorFile("PropActor")};
     const ScopedActorFile cameraFile{"FollowCameraActor", CodeValuesActorFile("FollowCameraActor")};
-    const NS::SceneActor& prop = NS::ActorFileLibrary::Get().Baseline("PropActor");
+    const std::unique_ptr<NS::SceneActor> propOwned = ActorFromFile("PropActor");
+    ASSERT_NE(propOwned, nullptr);
+    const NS::SceneActor& prop = *propOwned;
     const GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(&prop);
-    const NS::SceneActor& cameraActor = NS::ActorFileLibrary::Get().Baseline("FollowCameraActor");
+    const std::unique_ptr<NS::SceneActor> cameraActorOwned = ActorFromFile("FollowCameraActor");
+    ASSERT_NE(cameraActorOwned, nullptr);
+    const NS::SceneActor& cameraActor = *cameraActorOwned;
     const GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(&cameraActor);
     ASSERT_NE(rock, nullptr);
     ASSERT_NE(camera, nullptr);
@@ -622,8 +589,12 @@ TEST(ActorFile, FieldScopeAndTheDerivedActorFileDecideTheDestination)
     nlohmann::json derivedDocument = ClassOnlyActorFile("PropActor");
     NS::SetActorFileBase(derivedDocument, "PropActor");
     const ScopedActorFile derivedFile{"PropActorHeavy", derivedDocument};
-    const NS::SceneActor& origin = NS::ActorFileLibrary::Get().Baseline("PropActor");
-    const NS::SceneActor& derived = NS::ActorFileLibrary::Get().Baseline("PropActorHeavy");
+    const std::unique_ptr<NS::SceneActor> originOwned = ActorFromFile("PropActor");
+    ASSERT_NE(originOwned, nullptr);
+    const NS::SceneActor& origin = *originOwned;
+    const std::unique_ptr<NS::SceneActor> derivedOwned = ActorFromFile("PropActorHeavy");
+    ASSERT_NE(derivedOwned, nullptr);
+    const NS::SceneActor& derived = *derivedOwned;
     EXPECT_EQ(NS::ActorFileBase(*NS::ActorFileLibrary::Get().Find("PropActorHeavy")), "PropActor");
 
     const FieldScopeProbePart part;
@@ -642,8 +613,12 @@ TEST(ActorFile, EachLayerCanWriteOnlyItsFieldKinds)
     const ScopedActorFileDirectory scope("CanWriteField");
     const ScopedActorFile propFile{"PropActor", CodeValuesActorFile("PropActor")};
     const ScopedActorFile cameraFile{"FollowCameraActor", CodeValuesActorFile("FollowCameraActor")};
-    const NS::SceneActor& rock = NS::ActorFileLibrary::Get().Baseline("PropActor");
-    const NS::SceneActor& cameraActor = NS::ActorFileLibrary::Get().Baseline("FollowCameraActor");
+    const std::unique_ptr<NS::SceneActor> rockOwned = ActorFromFile("PropActor");
+    ASSERT_NE(rockOwned, nullptr);
+    const NS::SceneActor& rock = *rockOwned;
+    const std::unique_ptr<NS::SceneActor> cameraActorOwned = ActorFromFile("FollowCameraActor");
+    ASSERT_NE(cameraActorOwned, nullptr);
+    const NS::SceneActor& cameraActor = *cameraActorOwned;
     const GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(&cameraActor);
     ASSERT_NE(camera, nullptr);
     const FieldScopeProbePart part;
@@ -680,7 +655,9 @@ TEST(ActorFile, MergeLayerOverlaysWrittenFieldsAndRejectsFieldsTheLayerCannotWri
 {
     const ScopedActorFileDirectory scope("MergeLayer");
     const ScopedActorFile propFile{"PropActor", CodeValuesActorFile("PropActor")};
-    const NS::SceneActor& rock = NS::ActorFileLibrary::Get().Baseline("PropActor");
+    const std::unique_ptr<NS::SceneActor> rockOwned = ActorFromFile("PropActor");
+    ASSERT_NE(rockOwned, nullptr);
+    const NS::SceneActor& rock = *rockOwned;
     nlohmann::json base = nlohmann::json::object();
     NS::ObjectJsonClassObjs(base) = {{"Params", {{"質量", 1.0f}, {"耐久", 1.0f}}}, {"Collision", {{"半径", 0.5f}}}};
 
@@ -785,7 +762,9 @@ TEST(ActorFile, TransformPartIsInstanceOnlyOnEveryPath)
     NS::SetField(written, NS::k_PositionFieldName, NS::Vector3{5.0f, 6.0f, 7.0f});
     NS::ActorFileLibrary::Get().Set("PropActor",
                                     ActorFileWith("PropActor", "Transform", std::move(written)));
-    const NS::SceneActor& baseline = NS::ActorFileLibrary::Get().Baseline("PropActor");
+    const std::unique_ptr<NS::SceneActor> baselineOwned = ActorFromFile("PropActor");
+    ASSERT_NE(baselineOwned, nullptr);
+    const NS::SceneActor& baseline = *baselineOwned;
     const NS::Vector3 position = baseline.Root().Position();
     EXPECT_FLOAT_EQ(position.x, 0.0f);
     EXPECT_FLOAT_EQ(position.y, 0.0f);
@@ -1126,7 +1105,9 @@ TEST(ActorFile, ShippedActorFilesLoad)
     library.Reload();
     ASSERT_NE(library.Find("PropActor"), nullptr);
     ASSERT_NE(library.Find("PlayerActor"), nullptr);
-    const NS::SceneActor& rock = library.Baseline("PropActor");
+    const std::unique_ptr<NS::SceneActor> rockOwned = ActorFromFile("PropActor");
+    ASSERT_NE(rockOwned, nullptr);
+    const NS::SceneActor& rock = *rockOwned;
     EXPECT_NE(rock.ShadowClassObj(), nullptr);
 }
 

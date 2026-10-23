@@ -98,6 +98,17 @@ namespace NS
             return object;
         }
 
+        nlohmann::json MakePrototypeJson(std::string_view actorFileName)
+        {
+            nlohmann::json object = MakeObjectJson();
+            SetObjectJsonActorFile(object, actorFileName);
+            const Transform initial;
+            SetObjectPosition(object, initial.Position());
+            SetObjectRotation(object, initial.Rotation());
+            SetObjectScale(object, initial.Scale());
+            return object;
+        }
+
         namespace
         {
             // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
