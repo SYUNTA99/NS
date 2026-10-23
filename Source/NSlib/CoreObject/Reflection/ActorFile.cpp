@@ -149,6 +149,27 @@ namespace NS
         return FieldDestination::ActorFile;
     }
 
+    std::string ActorFileToWrite(const SceneActor& actor, FieldDestination destination)
+    {
+        switch (destination)
+        {
+        case FieldDestination::ActorFile:
+        {
+            const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(actor.ActorFileName());
+            if (actorFile != nullptr && !ActorFileBase(*actorFile).empty())
+            {
+                return std::string{ActorFileBase(*actorFile)};
+            }
+            return actor.ActorFileName();
+        }
+        case FieldDestination::DerivedActorFile:
+            return actor.ActorFileName();
+        case FieldDestination::Scene:
+            return {};
+        }
+        return {};
+    }
+
     bool CanWriteField(FieldDestination layer, const SceneActor& actor, const Object& part, const FieldDesc& field) noexcept
     {
         const bool sceneOnly = &part == &actor.Root() || field.type == FieldType::ActorRef;

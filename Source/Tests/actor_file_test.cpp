@@ -1374,3 +1374,180 @@ TEST(ActorFile, WritingTheBaseUpdatesDerivedActorsAndKeepsSceneOverrides)
     EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(2)), 4.0f);
     EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(3)), 9.0f);
 }
+
+// 書く先が元の .actor なら、派生を指すアクターでも元の名前へ書く。派生の .actor なら指す名前、シーンなら空
+TEST(ActorFile, ActorFileToWriteFollowsTheDestination)
+{
+    const ScopedActorFileDirectory scope("ActorFileToWrite");
+    const ScopedActorFile originFile{"PropActor", CodeValuesActorFile("PropActor")};
+    const ScopedActorFile derivedFile{"HeavyRock", DerivedActorFileWith("PropActor", "Params", MassEntry(4.0f))};
+    const std::unique_ptr<NS::SceneActor> origin = ActorFromFile("PropActor");
+    const std::unique_ptr<NS::SceneActor> derived = ActorFromFile("HeavyRock");
+    ASSERT_NE(origin, nullptr);
+    ASSERT_NE(derived, nullptr);
+
+    EXPECT_EQ(NS::ActorFileToWrite(*origin, NS::FieldDestination::ActorFile), "PropActor");
+    EXPECT_EQ(NS::ActorFileToWrite(*derived, NS::FieldDestination::ActorFile), "PropActor");
+    EXPECT_EQ(NS::ActorFileToWrite(*derived, NS::FieldDestination::DerivedActorFile), "HeavyRock");
+    EXPECT_EQ(NS::ActorFileToWrite(*derived, NS::FieldDestination::Scene), "");
+}
+
+namespace
+{
+    // PropActor.actor (半径 2) と、それを元にする HeavyRock.actor (質量 4) を置き場へ書き、
+    // 1 番に PropActor・2 番に HeavyRock を指す置物を置いたシーン
+    void ResetPropAndHeavyRock(NS::Scene& scene)
+    {
+        NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+        ASSERT_TRUE(library.Set("PropActor", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f))));
+        ASSERT_TRUE(library.Save("PropActor"));
+        ASSERT_TRUE(library.Set("HeavyRock", DerivedActorFileWith("PropActor", "Params", MassEntry(4.0f))));
+        ASSERT_TRUE(library.Save("HeavyRock"));
+        nlohmann::json heavy = MapObjJson(2);
+        NS::SetObjectJsonActorFile(heavy, "HeavyRock");
+        nlohmann::json doc = NS::MakeSceneJson();
+        NS::SceneJsonObjects(doc).push_back(MapObjJson(1));
+        NS::SceneJsonObjects(doc).push_back(std::move(heavy));
+        scene.ResetFromJson(doc);
+    }
+
+    // directory/name.actor を読んだ文書。読めなければ null
+    nlohmann::json SavedActorFile(const std::string& directory, std::string_view name)
+    {
+        const std::optional<std::string> text =
+            NS::OS::FileSystem::ReadAllText(NS::OS::FileSystem::Combine(directory, std::string{name} + ".actor"));
+        if (!text.has_value())
+        {
+            return nullptr;
+        }
+        return nlohmann::json::parse(*text);
+    }
+} // namespace
+
+// 派生を指すアクターで共有の項目を直すと、元の .actor へ書き、派生の .actor は変えない
+TEST(ActorFile, SharedFieldEditedOnADerivedActorIsWrittenToTheBase)
+{
+    const ScopedActorFileDirectory scope("SharedFieldOnDerived");
+    NS::Scene scene;
+    ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
+    LevelEditorController editor(&scene);
+    const nlohmann::json derivedBefore = *NS::ActorFileLibrary::Get().Find("HeavyRock");
+    NS::SceneActor* heavy = scene.Objects().FindByObjectId(2);
+    ASSERT_NE(heavy, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(heavy->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
+
+    sphere->SetRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, *heavy, sphere, "半径"));
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+    EXPECT_EQ(*NS::ActorFileLibrary::Get().Find("HeavyRock"), derivedBefore);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(1)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(2)), 3.0f);
+}
+
+// 素材の窓で .actor から派生を作ると、元を指して何も書いていない .actor をファイルへ書く。
+// 派生から作ると、同じ元を指し、その派生が書いた項目を写す。ある名前と、ファイルの名前に使えない名前では作らない
+TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
+{
+    const ScopedActorFileDirectory scope("CreateDerived");
+    NS::Scene scene;
+    ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
+    LevelEditorController editor(&scene);
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+
+    ASSERT_TRUE(editor.CreateDerivedActorFile("PropActor", "WideRock"));
+    const nlohmann::json wide = SavedActorFile(scope.Path(), "WideRock");
+    EXPECT_EQ(NS::ActorFileBase(wide), "PropActor");
+    EXPECT_EQ(NS::ActorFileClass(wide), "PropActor");
+    EXPECT_TRUE(NS::ObjectJsonClassObjs(wide).empty());
+    ASSERT_NE(library.Values("WideRock"), nullptr);
+    EXPECT_EQ(*library.Values("WideRock"), *library.Values("PropActor"));
+
+    ASSERT_TRUE(editor.CreateDerivedActorFile("HeavyRock", "HeavierRock"));
+    const nlohmann::json heavier = SavedActorFile(scope.Path(), "HeavierRock");
+    EXPECT_EQ(NS::ActorFileBase(heavier), "PropActor");
+    EXPECT_FLOAT_EQ(ValueOf(heavier, "Params", "質量"), 4.0f);
+
+    const TestLogCapture log;
+    EXPECT_FALSE(editor.CreateDerivedActorFile("PropActor", "HeavyRock"));
+    EXPECT_FALSE(editor.CreateDerivedActorFile("PropActor", ""));
+    EXPECT_FALSE(editor.CreateDerivedActorFile("PropActor", "Bad/Rock"));
+    EXPECT_FALSE(editor.CreateDerivedActorFile("NoSuchActor", "LostRock"));
+    EXPECT_FLOAT_EQ(ValueOf(*library.Find("HeavyRock"), "Params", "質量"), 4.0f);
+    EXPECT_EQ(library.Find("LostRock"), nullptr);
+    EXPECT_EQ(log.WarningCount(), 4);
+}
+
+// シーンで詰めたアクターから派生を作ると、上書きを派生の .actor へ移し、アクターをその派生に切り替える。
+// 値と位置は変わらず、保存は上書きを書かない。取り消すと元の .actor と上書きへ戻る
+TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
+{
+    const ScopedActorFileDirectory scope("DeriveFromActor");
+    NS::Scene scene;
+    ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
+    LevelEditorController editor(&scene);
+    GL::Level::PropActor* first = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
+    ASSERT_NE(first, nullptr);
+    ASSERT_EQ(NS::ApplyJsonFields(first->Params(), MassEntry(9.0f)), 0u);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, &first->Params(), "質量"));
+    const nlohmann::json before = scene.ToJson();
+    const nlohmann::json& beforeObject = NS::SceneJsonObjects(before)[NS::FindObjectIndexById(before, 1)];
+
+    ASSERT_TRUE(editor.DeriveActorFileFromActor(1, "TunedRock"));
+    const nlohmann::json tuned = SavedActorFile(scope.Path(), "TunedRock");
+    EXPECT_EQ(NS::ActorFileBase(tuned), "PropActor");
+    EXPECT_FLOAT_EQ(ValueOf(tuned, "Params", "質量"), 9.0f);
+    const NS::SceneActor* moved = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(moved, nullptr);
+    EXPECT_EQ(moved->ActorFileName(), "TunedRock");
+    EXPECT_FALSE(moved->IsSceneOverride("Params", "質量"));
+    EXPECT_FLOAT_EQ(MassOf(*moved), 9.0f);
+    const nlohmann::json after = scene.ToJson();
+    const nlohmann::json& afterObject = NS::SceneJsonObjects(after)[NS::FindObjectIndexById(after, 1)];
+    EXPECT_FALSE(NS::HasField(*NS::ClassObjFields(afterObject, "Params"), "質量"));
+    EXPECT_EQ(*SavedFields(afterObject, "Transform"), *SavedFields(beforeObject, "Transform"));
+
+    NS::Editor::ObjectSnapshotApplier applier{&scene};
+    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    const NS::SceneActor* restored = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(restored->ActorFileName(), "PropActor");
+    EXPECT_TRUE(restored->IsSceneOverride("Params", "質量"));
+    EXPECT_FLOAT_EQ(MassOf(*restored), 9.0f);
+}
+
+// 選んだアクターの .actor を同じクラスの別の .actor に替えると、その全部の値になり、シーンの上書きは残る。
+// クラスの違う .actor と無い名前には替えない。取り消すと前の .actor へ戻る
+TEST(ActorFile, ChangingTheActorFileKeepsSceneOverridesAndRefusesAnotherClass)
+{
+    const ScopedActorFileDirectory scope("ChangeActorFile");
+    NS::Scene scene;
+    ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
+    LevelEditorController editor(&scene);
+    GL::Level::PropActor* first = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
+    ASSERT_NE(first, nullptr);
+    const ScopedActorFile goalFile{"GoalActor", CodeValuesActorFile("GoalActor")};
+
+    ASSERT_TRUE(editor.ChangeActorFile(2, "PropActor"));
+    EXPECT_EQ(scene.Objects().FindByObjectId(2)->ActorFileName(), "PropActor");
+    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(2)), MassOf(*first));
+
+    ASSERT_EQ(NS::ApplyJsonFields(first->Params(), MassEntry(9.0f)), 0u);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, &first->Params(), "質量"));
+    ASSERT_TRUE(editor.ChangeActorFile(1, "HeavyRock"));
+    const NS::SceneActor* changed = scene.Objects().FindByObjectId(1);
+    ASSERT_NE(changed, nullptr);
+    EXPECT_EQ(changed->ActorFileName(), "HeavyRock");
+    EXPECT_TRUE(changed->IsSceneOverride("Params", "質量"));
+    EXPECT_FLOAT_EQ(MassOf(*changed), 9.0f);
+
+    const TestLogCapture log;
+    EXPECT_FALSE(editor.ChangeActorFile(1, "GoalActor"));
+    EXPECT_FALSE(editor.ChangeActorFile(1, "NoSuchRock"));
+    EXPECT_EQ(scene.Objects().FindByObjectId(1)->ActorFileName(), "HeavyRock");
+    EXPECT_EQ(log.WarningCount(), 2);
+
+    NS::Editor::ObjectSnapshotApplier applier{&scene};
+    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    EXPECT_EQ(scene.Objects().FindByObjectId(1)->ActorFileName(), "PropActor");
+}

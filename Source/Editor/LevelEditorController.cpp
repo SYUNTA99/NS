@@ -353,6 +353,57 @@ namespace
         }
     }
 
+    // baseName の .actor から作る、name の派生の .actor の文書。元なら元を指して何も書いていない派生、派生なら同じ元を指す写し
+    // name が空・ファイルの名前に使えない字を含む・既にある時と、baseName が読まれていない時は WARN を出して std::nullopt
+    std::optional<nlohmann::json> NewDerivedActorFile(std::string_view baseName, std::string_view name)
+    {
+        NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+        if (name.empty() || name.find_first_of("\\/:*?\"<>|.") != std::string_view::npos)
+        {
+            NS_LOG_WARN(App, "派生の .actor の名前 \"{}\" はファイルの名前に使えないので作らない", name);
+            return std::nullopt;
+        }
+        if (library.Find(name) != nullptr)
+        {
+            NS_LOG_WARN(App, ".actor {} は既にあるので派生を作らない", name);
+            return std::nullopt;
+        }
+        const nlohmann::json* baseFile = library.Find(baseName);
+        if (baseFile == nullptr)
+        {
+            NS_LOG_WARN(App, ".actor {} が読まれていないので派生 {} を作らない", baseName, name);
+            return std::nullopt;
+        }
+        // 派生は元を 1 つだけ受け継ぐので、派生から作る時は同じ元を指す
+        if (!NS::ActorFileBase(*baseFile).empty())
+        {
+            return std::optional<nlohmann::json>{*baseFile};
+        }
+        nlohmann::json derived = nlohmann::json::object();
+        NS::SetActorFileClass(derived, NS::ActorFileClass(*baseFile));
+        NS::SetActorFileBase(derived, baseName);
+        NS::ObjectJsonClassObjs(derived) = nlohmann::json::object();
+        return derived;
+    }
+
+    // name の .actor を document で足してファイルへ書く。読めない文書か書けなければ足さずに false
+    bool AddActorFile(std::string_view name, const nlohmann::json& document)
+    {
+        NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+        // 読めない訳は Set が ERROR で出している
+        if (!library.Set(name, document))
+        {
+            return false;
+        }
+        if (!library.Save(name))
+        {
+            NS_LOG_WARN(App, ".actor {} をファイルへ書けなかったので足さない", name);
+            library.Erase(name);
+            return false;
+        }
+        return true;
+    }
+
     // nlohmann::json::diff が作る 1 つの操作 (add・remove・replace) を document に当てられるか
     // add は親が要り、配列の親なら位置が末尾以下。remove と replace は当てる所が要る
     bool CanApplyPatchOperation(const nlohmann::json& document, const nlohmann::json& operation)
@@ -1606,7 +1657,19 @@ void LevelEditorController::CommitActorFileEdits()
         {
             continue;
         }
-        const std::string name = actor->ActorFileName();
+        const NS::FieldDesc* field = NS::FindField(part->GetReflection(), edit.fieldName);
+        if (field == nullptr)
+        {
+            continue;
+        }
+        // 共有の項目は派生を指すアクターでも元へ書く。派生へ書くと、派生を読む時に書けない項目として断られる
+        // 選んだ .actor の 1 体はシーンに居ないので、グローバルの項目はその .actor 自身へ書く
+        NS::FieldDestination destination = NS::FieldDestinationOf(*actor, *part, *field);
+        if (destination == NS::FieldDestination::Scene)
+        {
+            destination = NS::FieldDestination::DerivedActorFile;
+        }
+        const std::string name = NS::ActorFileToWrite(*actor, destination);
         const nlohmann::json* current = library.Find(name);
         if (current == nullptr)
         {
@@ -1648,6 +1711,111 @@ void LevelEditorController::WriteActorFileHitReactions(std::string_view actorFil
     }
     // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
     m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, name, before, after), m_applier);
+}
+
+bool LevelEditorController::CreateDerivedActorFile(std::string_view baseName, std::string_view name)
+{
+    const std::optional<nlohmann::json> document = NewDerivedActorFile(baseName, name);
+    if (!document.has_value())
+    {
+        return false;
+    }
+    return AddActorFile(name, *document);
+}
+
+bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::string_view name)
+{
+    if (!IsSceneEditable())
+    {
+        NS_LOG_WARN(App, "編集モードでないので、アクターから派生 {} を作らない", name);
+        return false;
+    }
+    const NS::SceneActor* actor = m_scene->Objects().FindByObjectId(actorId);
+    if (actor == nullptr)
+    {
+        NS_LOG_WARN(App, "アクター {} が居ないので派生 {} を作らない", actorId, name);
+        return false;
+    }
+    std::optional<nlohmann::json> document = NewDerivedActorFile(actor->ActorFileName(), name);
+    std::optional<nlohmann::json> before = m_applier.CaptureObject(actorId);
+    if (!document.has_value() || !before.has_value())
+    {
+        return false;
+    }
+    // 保存の JSON はシーンの上書きと根の部品と参照の欄だけを持つ。派生に書ける項目を移し、残りはシーンに残す
+    nlohmann::json after = *before;
+    NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+        nlohmann::json* fields = NS::ClassObjFields(after, row.key);
+        if (fields == nullptr)
+        {
+            return;
+        }
+        for (nlohmann::json::iterator entry = fields->begin(); entry != fields->end();)
+        {
+            const NS::FieldDesc* field = NS::FindField(part->GetReflection(), entry.key());
+            if (field == nullptr || !NS::CanWriteField(NS::FieldDestination::DerivedActorFile, *actor, *part, *field))
+            {
+                ++entry;
+                continue;
+            }
+            NS::ObjectJsonClassObjs(*document)[std::string{row.key}][entry.key()] = entry.value();
+            entry = fields->erase(entry);
+        }
+    });
+    if (!AddActorFile(name, *document))
+    {
+        return false;
+    }
+    NS::SetObjectJsonActorFile(after, name);
+    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(actorId, std::move(before), std::move(after)),
+                         m_applier);
+    RefreshGizmoSelectables();
+    ResolveSelectionFromId();
+    return true;
+}
+
+bool LevelEditorController::ChangeActorFile(NS::uint32 actorId, std::string_view name)
+{
+    if (!IsSceneEditable())
+    {
+        NS_LOG_WARN(App, "編集モードでないので、アクターの .actor を {} に替えない", name);
+        return false;
+    }
+    const NS::SceneActor* actor = m_scene->Objects().FindByObjectId(actorId);
+    if (actor == nullptr)
+    {
+        NS_LOG_WARN(App, "アクター {} が居ないので .actor を {} に替えない", actorId, name);
+        return false;
+    }
+    const std::string className = NS::ActorFileLibrary::Get().ClassNameOf(name);
+    if (className.empty())
+    {
+        NS_LOG_WARN(App, ".actor {} が読まれていないので、アクター {} の .actor を替えない", name, actorId);
+        return false;
+    }
+    if (className != actor->ClassName())
+    {
+        NS_LOG_WARN(App, ".actor {} のクラス {} はアクター {} のクラス {} と違うので替えない", name, className, actorId,
+                    actor->ClassName());
+        return false;
+    }
+    if (actor->ActorFileName() == name)
+    {
+        return false;
+    }
+    std::optional<nlohmann::json> before = m_applier.CaptureObject(actorId);
+    if (!before.has_value())
+    {
+        return false;
+    }
+    // シーンの上書きはグローバルの項目だけなので、替えた先の .actor の全部の値にもそのまま重なる
+    nlohmann::json after = *before;
+    NS::SetObjectJsonActorFile(after, name);
+    m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(actorId, std::move(before), std::move(after)),
+                         m_applier);
+    RefreshGizmoSelectables();
+    ResolveSelectionFromId();
+    return true;
 }
 
 void LevelEditorController::FinishFieldWrite(NS::SceneActor& actor, NS::FieldType writtenType)

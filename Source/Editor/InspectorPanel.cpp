@@ -614,6 +614,15 @@ namespace NS
                 // .actor の欄は、印の付いた欄も含めて全部 .actor へ書く。直し終えた時にファイルへ書き、同じ .actor のアクターへ写す
                 ImGui::Text("%s.actor (%s)", actorFile->ActorFileName().c_str(), actorFile->ClassName());
                 ImGui::TextDisabled("ここで直した値は、この .actor を指すアクターの全部に効く");
+                ImGui::SetNextItemWidth(-ImGui::CalcTextSize("派生を作る").x - ImGui::GetStyle().ItemSpacing.x * 3.0f);
+                ImGui::InputTextWithHint("##derivedName", "派生の名前", m_derivedNameBuffer, sizeof(m_derivedNameBuffer));
+                ImGui::SameLine();
+                // 作れない訳はエディタが WARN で出す。作れた時だけ名前の欄を空にする
+                if (ImGui::Button("派生を作る") &&
+                    editor.CreateDerivedActorFile(actorFile->ActorFileName(), m_derivedNameBuffer))
+                {
+                    m_derivedNameBuffer[0] = '\0';
+                }
                 ImGui::Separator();
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputTextWithHint("##actorFileFieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
@@ -683,10 +692,48 @@ namespace NS
             return options;
         }
 
+        void InspectorPanel::DrawActorFileChoice(const SceneActor& actor)
+        {
+#if NS_EDITOR_ENABLED
+            // 替える先は同じクラスの .actor だけを並べる。アクターを作り直すので、描き終えてから替える
+            ImGui::SetNextItemWidth(-1.0f);
+            if (ImGui::BeginCombo("##actorFile", (actor.ActorFileName() + ".actor").c_str()))
+            {
+                ActorFileLibrary& library = ActorFileLibrary::Get();
+                for (const std::string& name : library.Names())
+                {
+                    if (library.ClassNameOf(name) != actor.ClassName())
+                    {
+                        continue;
+                    }
+                    const std::string label = name + ".actor";
+                    if (ImGui::Selectable(label.c_str(), name == actor.ActorFileName()) && name != actor.ActorFileName())
+                    {
+                        m_actorFileChange = name;
+                        m_actorFileTargetId = actor.Id();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::SetNextItemWidth(-ImGui::CalcTextSize("上書きから派生を作る").x - ImGui::GetStyle().ItemSpacing.x * 3.0f);
+            ImGui::InputTextWithHint("##derivedName", "派生の名前", m_derivedNameBuffer, sizeof(m_derivedNameBuffer));
+            ImGui::SameLine();
+            if (ImGui::Button("上書きから派生を作る"))
+            {
+                m_deriveRequested = true;
+                m_actorFileTargetId = actor.Id();
+            }
+#else
+            (void)actor;
+#endif
+        }
+
         void InspectorPanel::Render(LevelEditorController& editor) noexcept
         {
 #if NS_EDITOR_ENABLED
             m_nameCommitId = 0;
+            m_actorFileChange.clear();
+            m_deriveRequested = false;
             const ImGuiStyle& style = ImGui::GetStyle();
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
                                 ImVec2{style.ItemSpacing.x, style.ItemSpacing.y + 3.0f});
@@ -756,6 +803,7 @@ namespace NS
                         break;
                     }
                 }
+                DrawActorFileChoice(*go);
                 ImGui::Separator();
 
                 // Transform は runtime が唯一の出所なので即反映し、commit が undo へ確定する
@@ -959,6 +1007,15 @@ namespace NS
             if (m_nameCommitId != 0)
             {
                 editor.RenameObject(m_nameCommitId, m_nameBuffer);
+            }
+            if (!m_actorFileChange.empty())
+            {
+                (void)editor.ChangeActorFile(m_actorFileTargetId, m_actorFileChange);
+            }
+            // 作れない訳はエディタが WARN で出す。作れた時だけ名前の欄を空にする
+            if (m_deriveRequested && editor.DeriveActorFileFromActor(m_actorFileTargetId, m_derivedNameBuffer))
+            {
+                m_derivedNameBuffer[0] = '\0';
             }
 #else
             (void)editor;

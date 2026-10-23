@@ -134,6 +134,11 @@ namespace NS
                                                       const Object& part,
                                                       const FieldDesc& field) noexcept;
 
+    //! @brief actor の欄を destination へ書く時の .actor の名前
+    //! @details 元の .actor は、actor が派生を指していればその元の名前、ほかは actor が指す名前。
+    //! 派生の .actor は actor が指す名前。シーンは空
+    [[nodiscard]] std::string ActorFileToWrite(const SceneActor& actor, FieldDestination destination);
+
     //! @brief layer の上書きに、actor の部品 part の欄 field を書いてよいか
     //! @details 元の .actor は根の部品と参照の欄の他の全部、派生の .actor はプロテクトとグローバルの項目、
     //! シーンはグローバルの項目と根の部品と参照の欄を書ける
