@@ -223,7 +223,7 @@ namespace NS
         void (*load)(void* obj) = nullptr;                    // 素材の欄の素材を引き直す。ほかの型の欄では何もしない
         AssetKind assetKind = AssetKind::None;
         const char* label = nullptr; // インスペクタに見せる名前。変えても保存の鍵は変わらない
-        // 参照の欄と根の部品の欄は、種類にかかわらずシーンが持つ
+        // 参照の欄は、種類にかかわらずシーンが持つ
         FieldScope scope = FieldScope::Shared;
     };
 
@@ -392,6 +392,14 @@ namespace NS
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
 //! 見せる名前は NS_FIELD と同じく、最後の引数に書く
 #define NS_ACCESSOR(ValueType, name, getterCall, setterCall, ...)                                                      \
+    NS_ACCESSOR_ENTRY(ValueType, name, getterCall, setterCall, NS::FieldScope::Shared, __VA_ARGS__)
+
+//! NS_ACCESSOR に、シーンに置いたアクターでも値を変えてよい項目として登録する。引数は NS_ACCESSOR と同じ
+#define NS_GLOBAL_ACCESSOR(ValueType, name, getterCall, setterCall, ...)                                               \
+    NS_ACCESSOR_ENTRY(ValueType, name, getterCall, setterCall, NS::FieldScope::Global, __VA_ARGS__)
+
+// NS_ACCESSOR・NS_GLOBAL_ACCESSOR の中身。直には書かない
+#define NS_ACCESSOR_ENTRY(ValueType, name, getterCall, setterCall, fieldScope, ...)                                    \
     NS::ReflectEntry{NS::FieldDesc{name,                                                                               \
                                    NS::FieldTypeOf<ValueType>(),                                                       \
                                    +[](const void* c, void* out) noexcept {                                            \
@@ -406,7 +414,8 @@ namespace NS
                                    },                                                                                  \
                                    nullptr,                                                                            \
                                    NS::AssetKind::None,                                                                \
-                                   {__VA_ARGS__}},                                                                     \
+                                   {__VA_ARGS__},                                                                      \
+                                   fieldScope},                                                                        \
                      nullptr},
 
 //! フィールド宣言の終了。static なリフレクション情報を組み立てて返し、仮想の GetReflection はそこへ転送する

@@ -107,11 +107,11 @@ namespace NS
         bool m_loaded = false;
     };
 
-    //! actor の ActorFileName の .actor の全部の値を写す。根の部品とシーンで上書きした項目は写さず、部品は足さない
+    //! actor の ActorFileName の .actor の全部の値を写す。シーンで上書きした項目は写さず、部品は足さない
     void ApplyActorFile(SceneActor& actor);
 
     //! @brief シーンに置いたアクターの JSON に書いた項目で、actor のシーンの上書きの一覧を作り直す
-    //! @details 根の部品と参照の欄は一覧に入れない。項目が書いてよいかは見ないので、先に MergeLayer で確かめる
+    //! @details 参照の欄は一覧に入れない。項目が書いてよいかは見ないので、先に MergeLayer で確かめる
     void ReadSceneOverrides(SceneActor& actor, const nlohmann::json& actorJson);
 
     //! @brief actor の行 row の部品の欄 fieldName をシーンの上書きの一覧から外し、.actor の全部の値の同じ項目を写す
@@ -127,9 +127,9 @@ namespace NS
     };
 
     //! @brief actor の部品 part の欄 field の値を書く所
-    //! @details 根の部品の欄・参照の欄・グローバルの項目はシーン。
+    //! @details 参照の欄とグローバルの項目 (姿勢の位置・回転・スケールを含む) はシーン。
     //! プロテクトの項目は、actor が派生の .actor を指していれば派生、ほかは元の .actor。
-    //! シーンの読み書き・エディタの書く先・行の地の色は、どれもこの答えで分ける
+    //! シーンの読み書き・エディタの書く先・行の地の色は、どれもこの答えで分ける。part は見ない
     [[nodiscard]] FieldDestination FieldDestinationOf(const SceneActor& actor,
                                                       const Object& part,
                                                       const FieldDesc& field) noexcept;
@@ -140,8 +140,8 @@ namespace NS
     [[nodiscard]] std::string ActorFileToWrite(const SceneActor& actor, FieldDestination destination);
 
     //! @brief layer の上書きに、actor の部品 part の欄 field を書いてよいか
-    //! @details 元の .actor は根の部品と参照の欄の他の全部、派生の .actor はプロテクトとグローバルの項目、
-    //! シーンはグローバルの項目と根の部品と参照の欄を書ける
+    //! @details 元の .actor は参照の欄の他の全部、派生の .actor はプロテクトとグローバルの項目、
+    //! シーンはグローバルの項目と参照の欄を書ける。actor と part は見ない
     [[nodiscard]] bool CanWriteField(FieldDestination layer,
                                      const SceneActor& actor,
                                      const Object& part,

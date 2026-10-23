@@ -33,6 +33,7 @@
 
 #include "NSlib/Core/Types.h"
 #include <filesystem>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <optional>
@@ -248,10 +249,10 @@ TEST(ActorFile, SaveWritesOnlyOverrides)
     const nlohmann::json* overriddenShadow = NS::ClassObjFields(overridden, "Shadow");
     ASSERT_NE(overriddenShadow, nullptr);
     EXPECT_FLOAT_EQ(NS::FieldFloat(*overriddenShadow, "基本直径", 0.0f), 4.0f);
-    // 位置は個体の物なので、既定と同じでも書く
+    // 姿勢もほかのグローバルの項目と同じく、上書きしていなければ書かない
     const nlohmann::json* transform = SavedFields(plain, "Transform");
     ASSERT_NE(transform, nullptr);
-    EXPECT_TRUE(transform->contains("位置"));
+    EXPECT_FALSE(transform->contains(NS::k_PositionFieldName));
 }
 
 TEST(ActorFile, ChangedActorFileReachesInstancesWithoutOverride)
@@ -429,8 +430,8 @@ TEST(ActorFile, PlacementWithAFieldTheSceneCannotWriteIsKeptAsJson)
     EXPECT_TRUE(keptRefused);
 }
 
-// 参照の欄と根の部品の値は、印が無くても配置物から読み書きされる
-TEST(ActorFile, ReferenceAndRootFieldsComeFromThePlacementWithoutAMark)
+// 参照の欄は印が無くても配置物から読み書きされ、シーンに書いた位置は上書きとして読み書きされる
+TEST(ActorFile, ReferenceAndPoseFieldsComeFromThePlacement)
 {
     const ScopedActorFileDirectory scope("PlacementRefAndRoot");
     const ScopedActorFile classOnly{"FollowCameraActor", CodeValuesActorFile("FollowCameraActor")};
@@ -632,7 +633,7 @@ TEST(ActorFile, FieldScopeAndTheDerivedActorFileDecideTheDestination)
     EXPECT_EQ(NS::FieldDestinationOf(derived, part, *global), NS::FieldDestination::Scene);
 }
 
-// 上書きの種類ごとに書いてよい項目が決まる。根の部品と参照の欄はシーンだけが書く
+// 上書きの種類ごとに書いてよい項目が決まる。参照の欄はシーンだけが書く
 TEST(ActorFile, EachLayerCanWriteOnlyItsFieldKinds)
 {
     const ScopedActorFileDirectory scope("CanWriteField");
@@ -662,7 +663,7 @@ TEST(ActorFile, EachLayerCanWriteOnlyItsFieldKinds)
         {&rock, &part, NS::FindField(info, "共有"), true, false, false},
         {&rock, &part, NS::FindField(info, "派生ごと"), true, true, false},
         {&rock, &part, NS::FindField(info, "シーンごと"), true, true, true},
-        {&rock, &rock.Root(), NS::FindField(rock.Root().GetReflection(), NS::k_PositionFieldName), false, false, true},
+        {&rock, &rock.Root(), NS::FindField(rock.Root().GetReflection(), NS::k_PositionFieldName), true, true, true},
         {camera, &camera->Vcam(), NS::FindField(camera->Vcam().GetReflection(), "追従対象"), false, false, true},
     };
     for (const Case& c : cases)
@@ -780,34 +781,96 @@ TEST(ActorFile, RevertingDuringPlayRemovesTheFieldFromThePlayBaseline)
     EXPECT_FLOAT_EQ(DiameterOf(*prop), 2.0f);
 }
 
-TEST(ActorFile, TransformPartIsInstanceOnlyOnEveryPath)
+// 姿勢の位置・回転・スケールは、元と派生の .actor とシーンのどれにも書けるグローバルの項目
+TEST(ActorFile, PoseFieldsAreGlobalItems)
 {
-    // 位置・回転・拡縮は配置物の物。.actor の読込・保存の差分・インスペクタの 3 つの道が同じ判断を通る
-    const ScopedActorFileDirectory scope("TransformInstanceOnly");
-    nlohmann::json written = nlohmann::json::object();
-    NS::SetField(written, NS::k_PositionFieldName, NS::Vector3{5.0f, 6.0f, 7.0f});
-    NS::ActorFileLibrary::Get().Set("PropActor",
-                                    ActorFileWith("PropActor", "Transform", std::move(written)));
-    const std::unique_ptr<NS::SceneActor> baselineOwned = ActorFromFile("PropActor");
-    ASSERT_NE(baselineOwned, nullptr);
-    const NS::SceneActor& baseline = *baselineOwned;
-    const NS::Vector3 position = baseline.Root().Position();
-    EXPECT_FLOAT_EQ(position.x, 0.0f);
-    EXPECT_FLOAT_EQ(position.y, 0.0f);
-    EXPECT_FLOAT_EQ(position.z, 0.0f);
+    const NS::ReflectionInfo* info = NS::Transform::StaticReflection();
+    for (const char* name : {NS::k_PositionFieldName, NS::k_RotationFieldName, NS::k_ScaleFieldName})
+    {
+        SCOPED_TRACE(name);
+        const NS::FieldDesc* field = NS::FindField(info, name);
+        ASSERT_NE(field, nullptr);
+        EXPECT_EQ(field->scope, NS::FieldScope::Global);
+    }
+}
 
-    // 既定と同じ位置でも保存で書く
+// 元の .actor のスケールを変えると、シーンでスケールを上書きしていないアクターに届き、上書きしたアクターには届かない
+TEST(ActorFile, ActorFileScaleReachesOnlyActorsThatDoNotOverrideIt)
+{
+    const ScopedActorFileDirectory scope("PoseFromActorFile");
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    ASSERT_TRUE(library.Set("PropActor", CodeValuesActorFile("PropActor")));
+    nlohmann::json overridden = MapObjJson(1);
+    NS::Editor::SetActorJsonScale(overridden, NS::Vector3{3.0f, 3.0f, 3.0f});
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::SceneJsonActors(doc).push_back(std::move(overridden));
+    NS::SceneJsonActors(doc).push_back(MapObjJson(2));
     NS::Scene scene;
-    const std::unique_ptr<NS::SceneActor> placed = NS::ActorFromJson(MapObjJson(1), scene);
-    ASSERT_NE(placed, nullptr);
-    const nlohmann::json back = NS::ActorToJson(*placed);
-    const nlohmann::json* transform = NS::ClassObjFields(back, "Transform");
-    ASSERT_NE(transform, nullptr);
-    EXPECT_TRUE(NS::HasField(*transform, NS::k_PositionFieldName));
+    scene.ResetFromJson(doc);
 
-    const NS::FieldDesc* field = NS::FindField(baseline.Root().GetReflection(), NS::k_PositionFieldName);
-    ASSERT_NE(field, nullptr);
-    EXPECT_EQ(NS::FieldDestinationOf(baseline, baseline.Root(), *field), NS::FieldDestination::Scene);
+    nlohmann::json scale = nlohmann::json::object();
+    NS::SetField(scale, NS::k_ScaleFieldName, NS::Vector3{2.0f, 2.0f, 2.0f});
+    ASSERT_TRUE(library.Set("PropActor", ActorFileWith("PropActor", "Transform", scale)));
+    for (NS::SceneActor* actor : scene.Actors())
+    {
+        NS::ApplyActorFile(*actor);
+    }
+
+    const NS::SceneActor* kept = scene.Actors().FindByActorId(1);
+    const NS::SceneActor* reached = scene.Actors().FindByActorId(2);
+    ASSERT_NE(kept, nullptr);
+    ASSERT_NE(reached, nullptr);
+    EXPECT_EQ(kept->Root().Scale(), (NS::Vector3{3.0f, 3.0f, 3.0f}));
+    EXPECT_EQ(reached->Root().Scale(), (NS::Vector3{2.0f, 2.0f, 2.0f}));
+}
+
+// new_scene の 8 体は、直す前と同じ姿勢で立つ。回転とスケールは既定と違う物だけをシーンに書く
+TEST(ActorFile, ShippedSceneKeepsThePosesAndWritesOnlyRotationsAndScalesThatDifferFromTheDefault)
+{
+    using NS::OS::FileSystem;
+    const std::string path = FileSystem::Combine(
+        FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "Assets"), "Scenes"), "new_scene.scene");
+    nlohmann::json doc;
+    ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path));
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+
+    struct Expected
+    {
+        NS::uint32 id;
+        NS::Vector3 position;
+        NS::Quaternion rotation;
+        NS::Vector3 scale;
+    };
+    const NS::Quaternion none = NS::Quaternion::Identity;
+    const NS::Vector3 one{1.0f, 1.0f, 1.0f};
+    const Expected expected[] = {
+        {1, {16.999433517456055f, 0.0f, 0.0f}, none, {50.0f, 1.0f, 50.0f}},
+        {2, {23.228139877319336f, 1.649999976158142f, -2.528921604156494f}, none, one},
+        {3, {23.228139877319336f, 4.144098281860352f, -7.358550071716309f}, none, one},
+        {4, {0.0f, 0.0f, 0.0f}, {0.7382549047470093f, -0.2214764654636383f, 0.0f, 0.6371247172355652f}, one},
+        {35, {18.0f, 1.0f, -7.5f}, none, one},
+        {41, {18.08530616760254f, 1.25f, -2.7366538047790527f}, none, {1.5f, 1.5f, 1.5f}},
+        {47, {18.0f, 1.5f, 2.5f}, none, {2.0f, 2.0f, 2.0f}},
+        {53, {18.0f, 2.0f, 7.5f}, none, {3.0f, 3.0f, 3.0f}},
+    };
+    ASSERT_EQ(NS::SceneJsonActors(doc).size(), std::size(expected));
+    for (const Expected& e : expected)
+    {
+        SCOPED_TRACE(e.id);
+        const NS::SceneActor* actor = scene.Actors().FindByActorId(e.id);
+        ASSERT_NE(actor, nullptr);
+        EXPECT_EQ(actor->Root().Position(), e.position);
+        EXPECT_EQ(actor->Root().Rotation(), e.rotation);
+        EXPECT_EQ(actor->Root().Scale(), e.scale);
+
+        const nlohmann::json& entry = NS::SceneJsonActors(doc)[NS::FindActorIndexById(doc, e.id)];
+        const nlohmann::json* transform = NS::ClassObjFields(entry, "Transform");
+        ASSERT_NE(transform, nullptr);
+        EXPECT_TRUE(NS::HasField(*transform, NS::k_PositionFieldName));
+        EXPECT_EQ(NS::HasField(*transform, NS::k_RotationFieldName), e.rotation != none);
+        EXPECT_EQ(NS::HasField(*transform, NS::k_ScaleFieldName), e.scale != one);
+    }
 }
 
 TEST(ActorFile, SavedActorFileIsReadBack)

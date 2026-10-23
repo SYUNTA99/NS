@@ -50,9 +50,9 @@ namespace NS
         [[nodiscard]] Matrix InterpolatedWorldMatrix(float alpha) const noexcept;
 
         NS_REFLECT_BEGIN(Transform, Object)
-        NS_ACCESSOR(Vector3, k_PositionFieldName, Position(), SetPosition)
-        NS_ACCESSOR(Quaternion, k_RotationFieldName, Rotation(), SetRotation)
-        NS_ACCESSOR(Vector3, k_ScaleFieldName, Scale(), SetScaleField)
+        NS_GLOBAL_ACCESSOR(Vector3, k_PositionFieldName, Position(), SetPosition)
+        NS_GLOBAL_ACCESSOR(Quaternion, k_RotationFieldName, Rotation(), SetRotation)
+        NS_GLOBAL_ACCESSOR(Vector3, k_ScaleFieldName, Scale(), SetScaleField)
         NS_REFLECT_END()
 
     private:

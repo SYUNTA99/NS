@@ -2,7 +2,6 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -132,9 +131,9 @@ namespace NS
 
     } // namespace
 
-    FieldDestination FieldDestinationOf(const SceneActor& actor, const Object& part, const FieldDesc& field) noexcept
+    FieldDestination FieldDestinationOf(const SceneActor& actor, const Object&, const FieldDesc& field) noexcept
     {
-        if (&part == &actor.Root() || field.type == FieldType::ActorRef || field.scope == FieldScope::Global)
+        if (field.type == FieldType::ActorRef || field.scope == FieldScope::Global)
         {
             return FieldDestination::Scene;
         }
@@ -170,9 +169,9 @@ namespace NS
         return {};
     }
 
-    bool CanWriteField(FieldDestination layer, const SceneActor& actor, const Object& part, const FieldDesc& field) noexcept
+    bool CanWriteField(FieldDestination layer, const SceneActor&, const Object&, const FieldDesc& field) noexcept
     {
-        const bool sceneOnly = &part == &actor.Root() || field.type == FieldType::ActorRef;
+        const bool sceneOnly = field.type == FieldType::ActorRef;
         switch (layer)
         {
         case FieldDestination::ActorFile:
@@ -280,7 +279,7 @@ namespace NS
         actor.ClearSceneOverrides();
         ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
             const nlohmann::json* fields = ClassObjFields(actorJson, row.key);
-            if (fields == nullptr || part == &actor.Root())
+            if (fields == nullptr)
             {
                 return;
             }
@@ -539,11 +538,6 @@ namespace NS
 
         std::vector<std::string> missing;
         ForEachReflectedClassObj(*actor, [&](const ClassObjInfo& row, const Object* part) {
-            // 根の姿勢はシーンに置いたアクターの物なので .actor に書かない
-            if (part == &actor->Root())
-            {
-                return;
-            }
             const nlohmann::json* fields = ClassObjFields(values, row.key);
             const nlohmann::json code = SerializeClassObjFields(*part);
             for (nlohmann::json::const_iterator field = code.begin(); field != code.end(); ++field)
@@ -695,15 +689,9 @@ namespace NS
         {
             return;
         }
-        // 位置・回転・拡縮は個体の物なので、ファイルに書かれていても根の部品へは写さない
         // シーンで上書きした項目はアクターの値が正なので写さない
         nlohmann::json values = *actorFile;
-        ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
-            if (part == &actor.Root())
-            {
-                ActorJsonClassObjs(values).erase(row.key);
-                return;
-            }
+        ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object*) {
             nlohmann::json* fields = ClassObjFields(values, row.key);
             if (fields == nullptr)
             {

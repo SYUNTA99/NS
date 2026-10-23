@@ -164,12 +164,8 @@ public:
     //! Inspector が編集 / 表示できる選択を持つか
     [[nodiscard]] bool HasInspectableSelection() const noexcept;
 
-    //! 選択中の配置物の位置 / 回転 / スケールを実体へ直接設定する。非選択時は何もしない
-    void SetSelectedFreePosition(NS::Vector3 position);
-    void SetSelectedFreeRotation(NS::Quaternion rotation);
-    void SetSelectedFreeScale(NS::Vector3 scale);
-
-    //! ドラッグでの変形を始める / 確定する
+    //! @brief ドラッグでの変形を始める / 確定する
+    //! @details 確定では、始めた時から値が変わったシーンに書く項目 (姿勢の位置・回転・スケールなど) を上書きの一覧に足す
     void BeginTransformEdit() noexcept;
     void CommitTransformEdit() noexcept;
 
@@ -179,7 +175,7 @@ public:
 
     //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
     //! 写した欄は履歴へ 1 つずつ積まず、編集へ戻る時にプレイ開始の凍結と比べて 1 まとまりで積む
-    //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
+    //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所が呼ぶ
     //! row は actor のクラスの表の行
     void MirrorPlayEditToBaseline(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
@@ -242,7 +238,7 @@ public:
     //! Inspector で選んだ素材の値が変わったフレームに呼ぶ
     void MarkAssetEdited() noexcept;
     //! @brief Inspector で選んだ .actor の 1 体の欄の値が変わったフレームに呼ぶ。row はその 1 体のクラスの表の行
-    //! @details 印の付いた欄も .actor の値を直す。参照の欄と根の部品は .actor が持たないので覚えない
+    //! @details 印の付いた欄も .actor の値を直す。参照の欄は .actor が持たないので覚えない
     void NoteActorFileFieldEdit(const NS::ClassObjInfo& row, std::string_view fieldName);
     //! @brief 値が変わった後の確定で、選んだ素材のファイルへ書く
     //! @details .mat はマテリアルを作り直して書き、作り直せなくても値は書いて前の絵で描き続ける。
@@ -290,9 +286,6 @@ private:
     //! 素材の選択を外す。前に、選んだ素材の確定していない編集を確定して .mat に書く
     //! 選択を外す道は全部これを通す。外してから確定すると、書く先の道が消えて編集を失う
     void ClearAssetSelection();
-
-    //! 選んだ配置物の Root を書いた後、その欄をプレイ中の凍結へも写す
-    void MirrorRootEditToBaseline(NS::SceneActor& actor, std::string_view fieldName);
 
     void RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
                             const NS::Matrix& viewProjection,
@@ -367,8 +360,15 @@ private:
     bool m_gizmoWasDragging = false;
     bool m_transformEditing = false;
 
-    // 編集開始時の状態スナップショット。選択している分だけ並ぶ
-    std::vector<std::pair<NS::uint32, nlohmann::json>> m_editBaselines;
+    // 変形を始めた時の 1 体の控え
+    struct TransformEditBaseline
+    {
+        NS::uint32 id = NS::k_NoActorId;
+        nlohmann::json snapshot; // 履歴に積む前の姿。保存と同じ形で、上書きの一覧の項目だけを持つ
+        nlohmann::json fields;   // 全部の部品の全部の欄の値。確定の時に比べ、変わった項目を上書きの一覧に足す
+    };
+    // 選択している分だけ並ぶ
+    std::vector<TransformEditBaseline> m_editBaselines;
 
     bool m_classObjEditing = false;
     NS::uint32 m_classObjEditBaselineId = NS::k_NoActorId; // 編集開始時の対象 id

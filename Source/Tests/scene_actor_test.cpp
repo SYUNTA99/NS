@@ -90,6 +90,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     ASSERT_EQ(NS::ApplyJsonFields(*actor->ShadowClassObj(), nlohmann::json{{"基本直径", 1.5f}}), 0u);
     actor->AddSceneOverride("Shadow", "基本直径");
     actor->Root().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
+    actor->AddSceneOverride("Transform", NS::k_PositionFieldName);
 
     const nlohmann::json saved = scene.ToJson();
     const nlohmann::json& objects = NS::SceneJsonActors(saved);
@@ -237,7 +238,7 @@ TEST(SceneLoad, EveryShippedSceneWritesBackByteForByte)
 
 TEST(SceneLoad, EveryShippedPlacementOverridesOnlyMarkedFields)
 {
-    // 配置物が持つ欄は、根の部品・参照の欄・上書きの印の付いた欄だけ。ほかの欄は読む時に捨てられる
+    // 配置物が持つ欄は、参照の欄とグローバルの項目 (姿勢を含む) だけ。ほかの欄は読む時に捨てられる
     NS::ActorFileLibrary::Get().Reload();
     const std::filesystem::path folder = std::filesystem::path{NS::OS::FileSystem::ContentRoot()} / "Assets" / "Scenes";
     int checked = 0;
@@ -256,7 +257,7 @@ TEST(SceneLoad, EveryShippedPlacementOverridesOnlyMarkedFields)
             const NS::SceneActor& baseline = *baselineOwned;
             NS::ForEachReflectedClassObj(baseline, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
                 const nlohmann::json* fields = NS::ClassObjFields(object, row.key);
-                if (fields == nullptr || part == &baseline.Root())
+                if (fields == nullptr)
                 {
                     return;
                 }

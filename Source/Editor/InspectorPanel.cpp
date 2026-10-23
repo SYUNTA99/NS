@@ -16,7 +16,6 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -37,7 +36,6 @@
 #include <charconv>
 #include <cstdio>
 #include <format>
-#include <functional>
 #include <limits>
 #include <string>
 #include <utility>
@@ -628,8 +626,7 @@ namespace NS
                 ImGui::InputTextWithHint("##actorFileFieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
                 bool committed = false;
                 ForEachReflectedClassObj(*actorFile, [&](const ClassObjInfo& row, Object* part) {
-                    // 根の部品は配置物の物なので .actor には書かない
-                    if (part->GetReflection() == nullptr || part == &actorFile->Root())
+                    if (part->GetReflection() == nullptr)
                     {
                         return;
                     }
@@ -806,120 +803,6 @@ namespace NS
                 DrawActorFileChoice(*go);
                 ImGui::Separator();
 
-                // Transform は runtime が唯一の出所なので即反映し、commit が undo へ確定する
-                ImGui::SeparatorText(go->Root().ClassName());
-
-                if (ImGui::BeginTable("##transform", 2,
-                                      ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings))
-                {
-                    ImGui::TableSetupColumn("##name", ImGuiTableColumnFlags_WidthFixed,
-                                            ImGui::CalcTextSize("回転 (度)").x);
-                    ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthStretch);
-                    const auto transformRow = [&](const char* id,
-                                                  const char* label,
-                                                  float(&values)[3],
-                                                  float speed,
-                                                  bool moved,
-                                                  const std::function<void()>& apply,
-                                                  const std::function<void()>& revert) {
-                        ImGui::PushID(id);
-                        Editor::FieldRow(label);
-                        const char* axes[] = {"X", "Y", "Z"};
-                        const ImVec4 colors[] = {{1.0f, 0.45f, 0.45f, 1.0f},
-                                                 {0.5f, 0.9f, 0.5f, 1.0f},
-                                                 {0.45f, 0.7f, 1.0f, 1.0f}};
-                        const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-                        const float axisWidth = ImGui::CalcTextSize("X").x;
-                        const float inputWidth =
-                            (ImGui::CalcItemWidth() - axisWidth * 3.0f - spacing * 5.0f) / 3.0f;
-                        ImGui::BeginGroup();
-                        for (int axis = 0; axis < 3; ++axis)
-                        {
-                            if (axis > 0)
-                            {
-                                ImGui::SameLine(0.0f, spacing);
-                            }
-                            ImGui::PushID(axes[axis]);
-                            ImGui::AlignTextToFramePadding();
-                            ImGui::TextColored(colors[axis], "%s", axes[axis]);
-                            ImGui::SameLine(0.0f, spacing);
-                            ImGui::SetNextItemWidth(std::max(inputWidth, 1.0f));
-                            const bool changed = ImGui::DragFloat("##value", &values[axis], speed);
-                            if (ImGui::IsItemActivated())
-                            {
-                                editor.BeginTransformEdit();
-                            }
-                            if (changed)
-                            {
-                                apply();
-                            }
-                            if (ImGui::IsItemDeactivated())
-                            {
-                                editor.CommitTransformEdit();
-                            }
-                            ImGui::PopID();
-                        }
-                        ImGui::EndGroup();
-                        if (Editor::RevertButton(moved))
-                        {
-                            editor.BeginTransformEdit();
-                            revert();
-                            editor.CommitTransformEdit();
-                        }
-                        ImGui::PopID();
-                    };
-
-                    // 動かしたかの表示と戻す先は Transform の初期値。.actor は根の姿勢を持たない
-                    const Transform& root = go->Root();
-                    const Transform initial;
-                    const Vector3 defaultPosition = initial.Position();
-                    const Quaternion defaultRotation = initial.Rotation();
-                    const Vector3 defaultScale = initial.Scale();
-
-                    const Vector3 posVec = root.Position();
-                    float pos[3] = {posVec.x, posVec.y, posVec.z};
-                    transformRow(
-                        "position",
-                        "位置",
-                        pos,
-                        0.05f,
-                        posVec != defaultPosition,
-                        [&] { editor.SetSelectedFreePosition(Vector3{pos[0], pos[1], pos[2]}); },
-                        [&] { editor.SetSelectedFreePosition(defaultPosition); });
-
-                    // 回転は内部のクォータニオンを度のオイラー角へ変換して編集し、入力をクォータニオンへ戻す
-                    // 滑らかに回し続けるならギズモの回転ツールが向く。ここは角度の直接入力 / 微調整用
-                    const Quaternion q = go->Root().Rotation();
-                    const Vector3 euler = QuaternionToEulerDegrees(q);
-                    float rot[3] = {euler.x, euler.y, euler.z};
-                    transformRow(
-                        "rotation",
-                        "回転 (度)",
-                        rot,
-                        0.5f,
-                        q != defaultRotation,
-                        [&] {
-                            const Vector3 degrees{rot[0], rot[1], rot[2]};
-                            editor.SetSelectedFreeRotation(EulerDegreesToQuaternion(degrees));
-                        },
-                        [&] { editor.SetSelectedFreeRotation(defaultRotation); });
-
-                    const Vector3 sclVec = go->Root().Scale();
-                    float scl[3] = {sclVec.x, sclVec.y, sclVec.z};
-                    transformRow(
-                        "scale",
-                        "スケール",
-                        scl,
-                        0.05f,
-                        sclVec != defaultScale,
-                        [&] { editor.SetSelectedFreeScale(Vector3{scl[0], scl[1], scl[2]}); },
-                        [&] { editor.SetSelectedFreeScale(defaultScale); });
-
-                    Editor::EndFieldTable();
-                }
-
-                ImGui::Separator();
-
                 // 部品はクラスが決めるので、ここでは値だけを変える。足し引きはできない
 
                 ImGui::SetNextItemWidth(-1.0f);
@@ -934,11 +817,6 @@ namespace NS
                         return;
                     }
                     const std::string typeName{live->ClassName()};
-                    // 根の部品は上の専用パネルが編集するので一覧に出さない
-                    if (live == &go->Root())
-                    {
-                        return;
-                    }
 
                     ImGui::PushID(field.key);
 
