@@ -11,22 +11,50 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/FileSystem.h"
+#include "TestActorFile.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <vector>
 
-TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
+namespace
 {
+    // PropActor を元にして、Params に fields を書いた派生の .actor の文書
+    nlohmann::json DerivedPropActorFile(const nlohmann::json& fields)
+    {
+        nlohmann::json actorFile = ClassOnlyActorFile("PropActor");
+        NS::SetActorFileBase(actorFile, "PropActor");
+        NS::ObjectJsonClassObjs(actorFile)["Params"] = fields;
+        return actorFile;
+    }
+
+    // actorFile の .actor を指す置物 1 体を、1 番に置いたシーンへ組み直す
+    void ResetOneRock(NS::Scene& scene, std::string_view actorFile, const nlohmann::json& classObjs)
+    {
+        nlohmann::json doc = NS::MakeSceneJson();
+        nlohmann::json rock = NS::MakeObjectJson();
+        NS::SetObjectJsonActorFile(rock, actorFile);
+        NS::SetObjectJsonId(rock, 1);
+        rock["classObjs"] = classObjs;
+        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        scene.ResetFromJson(doc);
+    }
+} // namespace
+
+// 質量と耐久はプロテクトの項目で、派生の .actor が決める。シーンでは書けない
+TEST(MapObjParams, DerivedActorFileControlsMassAndToughness)
+{
+    const NS::FieldDesc* mass = NS::FindField(GL::Level::MapObjParams::StaticReflection(), "質量");
+    const NS::FieldDesc* toughness = NS::FindField(GL::Level::MapObjParams::StaticReflection(), "耐久");
+    ASSERT_NE(mass, nullptr);
+    ASSERT_NE(toughness, nullptr);
+    EXPECT_EQ(mass->scope, NS::FieldScope::Protected);
+    EXPECT_EQ(toughness->scope, NS::FieldScope::Protected);
+
+    const ScopedActorFile heavy{"HeavyRock", DerivedPropActorFile({{"質量", 2.0f}, {"耐久", 3.0f}})};
     NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::SetObjectJsonId(rock, 1);
-    rock["classObjs"] = {{"Params", {{"質量", 2.0f}, {"耐久", 3.0f}}}};
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
-    scene.ResetFromJson(doc);
+    ResetOneRock(scene, "HeavyRock", nlohmann::json::object());
     NS::SceneActor* actor = scene.Objects().FindByObjectId(1);
     ASSERT_NE(actor, nullptr);
     const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor);
@@ -39,8 +67,15 @@ TEST(MapObjParams, SceneOverrideControlsMassAndToughness)
     ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*actor->BodySensorClassObj(), answer));
     EXPECT_FLOAT_EQ(answer.mass, 2.0f);
     EXPECT_FLOAT_EQ(answer.toughness, 3.0f);
+
+    // シーンに書いた質量は、書いてよくない項目なので ERROR を出してアクターを作らない
+    const TestLogCapture log;
+    ResetOneRock(scene, "PropActor", {{"Params", {{"質量", 2.0f}}}});
+    EXPECT_EQ(scene.Objects().FindByObjectId(1), nullptr);
+    EXPECT_GE(log.ErrorCount(), 1);
 }
 
+// 出荷シーンの置物は、質量と耐久を派生の .actor から受け取り、シーンには書かない。値は派生へ移す前と同じ
 TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
 {
     for (const std::string_view sceneName : {"new_scene.scene"})
@@ -53,38 +88,33 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
         ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path));
         NS::Scene scene;
         scene.ResetFromJson(doc);
-        std::vector<float> masses;
-        std::vector<float> toughnesses;
-        for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
+        struct Expected
         {
-            if (NS::ObjectJsonActorFile(entry) != "PropActor")
-            {
-                continue;
-            }
-            const NS::SceneActor* rock = scene.Objects().FindByObjectId(NS::ObjectJsonId(entry));
-            ASSERT_NE(rock, nullptr);
-            const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(rock);
+            NS::uint32 id;
+            float mass;
+            float toughness;
+        };
+        for (const Expected& expected : {Expected{35, 0.5f, 0.5f}, Expected{41, 1.0f, 1.0f},
+                                         Expected{47, 2.0f, 2.0f}, Expected{53, 8.0f, 5.0f}})
+        {
+            SCOPED_TRACE(expected.id);
+            const GL::Level::PropActor* prop =
+                NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(expected.id));
             ASSERT_NE(prop, nullptr);
-            masses.push_back(prop->Params().Mass());
-            toughnesses.push_back(prop->Params().Toughness());
+            EXPECT_FLOAT_EQ(prop->Params().Mass(), expected.mass);
+            EXPECT_FLOAT_EQ(prop->Params().Toughness(), expected.toughness);
+            const nlohmann::json& entry = NS::SceneJsonObjects(doc)[NS::FindObjectIndexById(doc, expected.id)];
+            const nlohmann::json* params = NS::ClassObjFields(entry, "Params");
+            EXPECT_TRUE(params == nullptr || params->empty());
         }
-        std::sort(masses.begin(), masses.end());
-        std::sort(toughnesses.begin(), toughnesses.end());
-        EXPECT_EQ(masses, (std::vector<float>{0.5f, 1.0f, 2.0f, 8.0f}));
-        EXPECT_EQ(toughnesses, (std::vector<float>{0.5f, 1.0f, 2.0f, 5.0f}));
     }
 }
 
 TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
 {
+    const ScopedActorFile broken{"BrokenRock", DerivedPropActorFile({{"質量", -2.0f}, {"耐久", -3.0f}})};
     NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::SetObjectJsonId(rock, 1);
-    rock["classObjs"] = {{"Params", {{"質量", -2.0f}, {"耐久", -3.0f}}}};
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
-    scene.ResetFromJson(doc);
+    ResetOneRock(scene, "BrokenRock", nlohmann::json::object());
     GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(prop, nullptr);
     // 摩擦と跳ね返りは .actor だけが持つ欄なので、読んだ後のアクターへ書く

@@ -407,8 +407,6 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     NS::SetObjectJsonId(rock, 2);
     // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
     NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
-    // 位置は部品の件 Transform に入っているので、件ごと置き換えずに足す
-    NS::ObjectJsonClassObjs(rock)["Params"] = {{"質量", 1.0f}};
     NS::SceneJsonObjects(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
     PlayerActor* player = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));

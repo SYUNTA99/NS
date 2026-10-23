@@ -78,6 +78,25 @@ inline void RemoveActorFile(const std::string& directory, std::string_view name)
     ASSERT_FALSE(error) << path;
 }
 
+//! @brief directory の派生の .actor ("base" を持つ物) を全部消す。ライブラリは読み直さない
+//! @details 元の .actor を壊すと、それを元にする派生も ERROR で読まないので、元の ERROR だけを数える時に消す
+inline void RemoveDerivedActorFiles(const std::string& directory)
+{
+    for (const std::string& path : NS::OS::FileSystem::ListFiles(directory, ".actor"))
+    {
+        const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(path);
+        ASSERT_TRUE(text.has_value()) << path;
+        const nlohmann::json actorFile = nlohmann::json::parse(*text, nullptr, false);
+        if (NS::ActorFileBase(actorFile).empty())
+        {
+            continue;
+        }
+        std::error_code error;
+        std::filesystem::remove(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(path)}, error);
+        ASSERT_FALSE(error) << path;
+    }
+}
+
 //! 中身がクラスだけの .actor の文書。欄の値はコードの既定のまま
 inline nlohmann::json ClassOnlyActorFile(std::string_view className)
 {

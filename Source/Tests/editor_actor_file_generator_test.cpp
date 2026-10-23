@@ -150,6 +150,7 @@ TEST(ActorFileGenerator, EveryAssetActorFileHasEveryRegisteredField)
 }
 
 // Assets/Actors の .actor から作ったアクターは、根の他の全部の項目が .actor に書いた値になる。OnInit は項目へ値を書かない
+// 元の .actor は全部の部品を書く。派生は書いた部品だけを持ち、残りは元から受け継ぐ
 TEST(ActorFileGenerator, ActorsTakeEveryFieldFromTheAssetActorFile)
 {
     const std::string directory = NS::OS::FileSystem::Combine(
@@ -159,7 +160,8 @@ TEST(ActorFileGenerator, ActorsTakeEveryFieldFromTheAssetActorFile)
     {
         const std::optional<nlohmann::json> actorFile = NS::ReadActorFileAt(path);
         ASSERT_TRUE(actorFile.has_value()) << path;
-        const std::unique_ptr<NS::SceneActor> actor = NS::CreateActorOfClass(NS::ActorFileClass(*actorFile));
+        const bool derived = !NS::ActorFileBase(*actorFile).empty();
+        const std::unique_ptr<NS::SceneActor> actor = ActorFromFile(NS::OS::FileSystem::Stem(path));
         ASSERT_NE(actor, nullptr) << path;
         NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
             if (part == &actor->Root())
@@ -167,7 +169,11 @@ TEST(ActorFileGenerator, ActorsTakeEveryFieldFromTheAssetActorFile)
                 return;
             }
             const nlohmann::json* written = NS::ClassObjFields(*actorFile, row.key);
-            ASSERT_NE(written, nullptr) << path << " " << row.key;
+            if (written == nullptr)
+            {
+                EXPECT_TRUE(derived) << path << " " << row.key;
+                return;
+            }
             const nlohmann::json values = NS::SerializeClassObjFields(*part);
             for (nlohmann::json::const_iterator field = written->begin(); field != written->end(); ++field)
             {

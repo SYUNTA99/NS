@@ -132,7 +132,7 @@
       "name": "Object_2"
     },
     {
-      "actor": "PropActor",
+      "actor": "PropActorLight",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -140,10 +140,7 @@
         "HitZones": {},
         "LaunchEffects": {},
         "Model": {},
-        "Params": {
-          "耐久": 0.5,
-          "質量": 0.5
-        },
+        "Params": {},
         "Shadow": {
           "基本直径": 1.0
         },
@@ -214,7 +211,7 @@
       "name": "Object_4"
     },
     {
-      "actor": "PropActor",
+      "actor": "PropActorHeavy",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -229,10 +226,7 @@
             1.0
           ]
         },
-        "Params": {
-          "耐久": 2.0,
-          "質量": 2.0
-        },
+        "Params": {},
         "Shadow": {
           "基本直径": 2.0
         },
@@ -260,7 +254,7 @@
       "name": "Object_5"
     },
     {
-      "actor": "PropActor",
+      "actor": "PropActorHeaviest",
       "classObjs": {
         "BodySensor": {},
         "Collision": {},
@@ -275,10 +269,7 @@
             1.0
           ]
         },
-        "Params": {
-          "耐久": 5.0,
-          "質量": 8.0
-        },
+        "Params": {},
         "Shadow": {
           "基本直径": 3.0
         },

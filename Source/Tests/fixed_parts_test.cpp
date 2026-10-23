@@ -10,6 +10,7 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -439,21 +440,20 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 
 TEST(FixedParts, SavedObjectsUseRoleKeysAndDirectFields)
 {
-    const nlohmann::json source = {{"actor", "PropActor"}, {"id", 7u}, {"classObjs", {{"Params", {{"質量", 2.0f}}}}}};
+    const nlohmann::json source = {{"actor", "PropActor"}, {"id", 7u}, {"classObjs", {{"Shadow", {{"基本直径", 2.0f}}}}}};
     NS::Scene scene;
     std::unique_ptr<NS::SceneActor> actor = NS::ObjectFromJson(source, scene);
     ASSERT_NE(actor, nullptr);
-    const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor.get());
-    ASSERT_NE(prop, nullptr);
-    EXPECT_FLOAT_EQ(prop->Params().Mass(), 2.0f);
+    ASSERT_NE(actor->ShadowClassObj(), nullptr);
+    EXPECT_FLOAT_EQ(NS::FieldFloat(NS::SerializeClassObjFields(*actor->ShadowClassObj()), "基本直径", 0.0f), 2.0f);
     const nlohmann::json saved = NS::ObjectToJson(*actor);
     EXPECT_FALSE(saved.contains("components"));
     ASSERT_TRUE(saved.contains("classObjs"));
     ASSERT_TRUE(saved["classObjs"].is_object());
-    EXPECT_FLOAT_EQ(saved["classObjs"]["Params"]["質量"].get<float>(), 2.0f);
-    EXPECT_FALSE(saved["classObjs"]["Params"].contains("id"));
-    EXPECT_FALSE(saved["classObjs"]["Params"].contains("type"));
-    EXPECT_FALSE(saved["classObjs"]["Params"].contains("fields"));
+    EXPECT_FLOAT_EQ(saved["classObjs"]["Shadow"]["基本直径"].get<float>(), 2.0f);
+    EXPECT_FALSE(saved["classObjs"]["Shadow"].contains("id"));
+    EXPECT_FALSE(saved["classObjs"]["Shadow"].contains("type"));
+    EXPECT_FALSE(saved["classObjs"]["Shadow"].contains("fields"));
     EXPECT_TRUE(saved["classObjs"]["Transform"].contains("位置"));
 }
 

@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -85,8 +86,8 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     scene.ResetFromJson(doc);
     GL::Level::PropActor* actor = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(actor, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(actor->Params(), nlohmann::json{{"質量", 1.5f}}), 0u);
-    actor->AddSceneOverride("Params", "質量");
+    ASSERT_EQ(NS::ApplyJsonFields(*actor->ShadowClassObj(), nlohmann::json{{"基本直径", 1.5f}}), 0u);
+    actor->AddSceneOverride("Shadow", "基本直径");
     actor->Root().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
 
     const nlohmann::json saved = scene.ToJson();
@@ -100,9 +101,8 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     NS::SceneActor* again = reloaded.Objects().FindByObjectId(1);
     ASSERT_NE(again, nullptr);
     EXPECT_EQ(std::string_view{again->ClassName()}, "PropActor");
-    const GL::Level::PropActor* propAgain = NS::Cast<GL::Level::PropActor>(again);
-    ASSERT_NE(propAgain, nullptr);
-    EXPECT_FLOAT_EQ(propAgain->Params().Mass(), 1.5f);
+    ASSERT_NE(again->ShadowClassObj(), nullptr);
+    EXPECT_FLOAT_EQ(NS::FieldFloat(NS::SerializeClassObjFields(*again->ShadowClassObj()), "基本直径", 0.0f), 1.5f);
     EXPECT_FLOAT_EQ(again->Root().Position().x, 3.0f);
     EXPECT_FLOAT_EQ(again->Root().Position().y, 4.0f);
     EXPECT_FLOAT_EQ(again->Root().Position().z, 5.0f);
