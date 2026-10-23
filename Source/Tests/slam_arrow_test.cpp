@@ -14,6 +14,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
+#include "TestActorFile.h"
 
 #include <gtest/gtest.h>
 
@@ -159,9 +160,14 @@ TEST(SlamArrowTest, ArrowIsOverlaidBeforeTheLockOnFrame)
 // 赤を上へずらした背の高い相手は、今の玉の高さの線では外れでも、弧で赤に着くので真ん中
 TEST(SlamArrowTest, PredictedTierUsesTheArcHeightAtContact)
 {
+    // 当たり所の形は置物の .actor の値で、シーンでは上書きできない
+    const ScopedActorFileEdit raised{"PropActor", [](nlohmann::json& actorFile) {
+                                         nlohmann::json& zones = NS::ObjectJsonClassObjs(actorFile)["HitZones"];
+                                         zones["上下の位置"] = 0.5f;
+                                         zones["縦の幅"] = 0.2f;
+                                     }};
     NS::Scene scene;
-    const nlohmann::json raised{{"HitZones", {{"上下の位置", 0.5f}, {"縦の幅", 0.2f}}}};
-    PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, true, 3.0f, Vector3{0.0f, 1.5f, 8.0f}, raised);
+    PlayerActor* player = PlaceOnFloor(scene, Vector3{0.0f, 1.0f, 0.0f}, true, 3.0f, Vector3{0.0f, 1.5f, 8.0f});
     ASSERT_NE(player, nullptr);
     for (int frame = 0; frame < 20; ++frame)
     {

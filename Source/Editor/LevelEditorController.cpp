@@ -1621,6 +1621,16 @@ void LevelEditorController::NoteFieldEdit(const NS::SceneActor& actor,
     }
     if (NS::FieldDestinationOf(actor, *part, *field) == NS::FieldDestination::Scene)
     {
+        // 保存は上書きの一覧の項目だけを書くので、直したら一覧に足す。根の部品と参照の欄はいつも書く
+        NS::SceneActor* edited = nullptr;
+        if (m_scene != nullptr)
+        {
+            edited = m_scene->Objects().FindByObjectId(actor.Id());
+        }
+        if (edited != nullptr && part != &actor.Root() && field->type != NS::FieldType::ActorRef)
+        {
+            edited->AddSceneOverride(row.key, fieldName);
+        }
         MirrorPlayEditToBaseline(actor, row, fieldName);
         return;
     }

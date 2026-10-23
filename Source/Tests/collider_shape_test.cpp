@@ -12,6 +12,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
@@ -211,23 +212,18 @@ TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
               0u);
 }
 
-TEST(ColliderShape, OldMovementShapeKeysAreSkipped)
+TEST(ColliderShape, OldMovementShapeKeysRefuseThePlayer)
 {
-    // 古い場面に残る "Movement" の寸法は読み飛ばし、形は PlayerActor.actor の Collider から来る。保存し直すと消える
+    // 古い場面に残る "Movement" の寸法は今の欄に無いので、自機を作らずに欄ごとの ERROR を出し、JSON のまま持つ
     NS::Scene scene;
-    LoadPlayerScene(scene, {{"Movement", {{"半径", 0.2f}, {"半分の高さ", 0.1f}}}});
-    const NS::Collider* collider = PlayerCollider(scene);
-    ASSERT_NE(collider, nullptr);
-    EXPECT_FLOAT_EQ(collider->CapsuleRadius(), 0.65f);
-    EXPECT_FLOAT_EQ(collider->StandingHalfHeight(), 0.5f);
-
-    const nlohmann::json saved = scene.ToJson();
-    const nlohmann::json& objects = NS::SceneJsonObjects(saved);
-    ASSERT_EQ(objects.size(), 1u);
-    const nlohmann::json& parts = NS::ObjectJsonClassObjs(objects[0]);
-    if (parts.contains("Movement"))
     {
-        EXPECT_FALSE(parts["Movement"].contains("半径"));
-        EXPECT_FALSE(parts["Movement"].contains("半分の高さ"));
+        const TestLogCapture log;
+        LoadPlayerScene(scene, {{"Movement", {{"半径", 0.2f}, {"半分の高さ", 0.1f}}}});
+        EXPECT_EQ(log.ErrorCount(), 2);
     }
+    EXPECT_EQ(PlayerCollider(scene), nullptr);
+    const nlohmann::json kept = scene.ToJson();
+    ASSERT_EQ(NS::SceneJsonObjects(kept).size(), 1u);
+    EXPECT_TRUE(NS::ObjectJsonClassObjs(NS::SceneJsonObjects(kept)[0])["Movement"].contains("半径"));
 }
+

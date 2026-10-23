@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -328,22 +329,20 @@ namespace NS
         {
             return ReplaceFromJson(snapshot);
         }
-        // 控えは個体の上書きだけを持つ。上書きの無い欄も .actor の値へ戻すため、全欄の姿へ広げてから比べる
-        const nlohmann::json object = ExpandObjectJson(snapshot);
-        bool same = true;
-        std::size_t classObjCount = 0;
-        ForEachReflectedClassObj(*obj, [&](const ClassObjInfo& field, Object*) {
-            ++classObjCount;
-            if (ClassObjFields(object, field.key) == nullptr)
-            {
-                same = false;
-            }
-        });
-        if (!same || classObjCount != ObjectJsonClassObjs(object).size())
+        // 控えはシーンの上書きだけを持つ。上書きの無い項目も .actor の値へ戻すため、全部の値に重ねてから写す
+        const nlohmann::json* values = ActorFileLibrary::Get().Values(obj->ActorFileName());
+        if (values == nullptr)
         {
             return ReplaceFromJson(snapshot);
         }
-        m_objects.ApplyIdentity(*obj, ReadObjectHeader(object));
+        const std::optional<nlohmann::json> merged = MergeLayer(*values, snapshot, FieldDestination::Scene, *obj);
+        if (!merged.has_value())
+        {
+            return ReplaceFromJson(snapshot);
+        }
+        const nlohmann::json& object = *merged;
+        m_objects.ApplyIdentity(*obj, ReadObjectHeader(snapshot));
+        ReadSceneOverrides(*obj, snapshot);
         bool written = false;
         ForEachReflectedClassObj(*obj, [&](const ClassObjInfo& field, Object* classObj) {
             const nlohmann::json* fields = ClassObjFields(object, field.key);

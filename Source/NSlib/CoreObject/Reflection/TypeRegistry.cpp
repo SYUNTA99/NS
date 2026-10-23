@@ -120,7 +120,10 @@ namespace NS
             return nullptr;
         }
         std::unique_ptr<SceneActor> actor = ConstructOfClass(className);
-        actor->Init(&info);
+        if (!actor->Init(&info))
+        {
+            return nullptr;
+        }
         return actor;
     }
 

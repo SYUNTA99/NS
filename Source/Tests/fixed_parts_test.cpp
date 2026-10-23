@@ -267,14 +267,18 @@ TEST(ReflectedParts, InheritedMembersDriveEnumerationWithoutAnOverride)
 
 TEST(ReflectedParts, SameTypedMembersSaveAndReloadThroughTheirRegisteredKeys)
 {
+    // 同じ型の 2 つの部品の値は、それぞれの鍵で .actor から入り、保存と読み直しでも鍵が入れ替わらない
+    nlohmann::json actorFile = CodeValuesActorFile("ReflectedHierarchyActor");
+    NS::ObjectJsonClassObjs(actorFile)["ParentPart"]["値"] = 2.0f;
+    NS::ObjectJsonClassObjs(actorFile)["ChildPart"]["値"] = 7.0f;
+    const ScopedActorFile hierarchyFile{"ReflectedHierarchyActor", actorFile};
     const std::unique_ptr<ReflectedHierarchyActor> actor = NS::CreateActor<ReflectedHierarchyActor>();
-    actor->parentPart->value = 2.0f;
-    actor->childPart->value = 7.0f;
+    EXPECT_FLOAT_EQ(actor->parentPart->value, 2.0f);
+    EXPECT_FLOAT_EQ(actor->childPart->value, 7.0f);
     const nlohmann::json saved = NS::ObjectToJson(*actor);
-    EXPECT_FLOAT_EQ(saved["classObjs"]["ParentPart"]["値"].get<float>(), 2.0f);
-    EXPECT_FLOAT_EQ(saved["classObjs"]["ChildPart"]["値"].get<float>(), 7.0f);
-    EXPECT_FALSE(saved["classObjs"].contains("AbsentPart"));
-    const ScopedActorFile hierarchyFile{"ReflectedHierarchyActor", CodeValuesActorFile("ReflectedHierarchyActor")};
+    EXPECT_TRUE(NS::ObjectJsonClassObjs(saved).contains("ParentPart"));
+    EXPECT_TRUE(NS::ObjectJsonClassObjs(saved).contains("ChildPart"));
+    EXPECT_FALSE(NS::ObjectJsonClassObjs(saved).contains("AbsentPart"));
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> loaded = NS::ObjectFromJson(saved, scene);
     const ReflectedHierarchyActor* restored = NS::Cast<ReflectedHierarchyActor>(loaded.get());

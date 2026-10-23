@@ -255,33 +255,24 @@ namespace NS
         return merged;
     }
 
-    nlohmann::json KeepPlacementFields(const SceneActor& actor, const nlohmann::json& object)
+    void ReadSceneOverrides(SceneActor& actor, const nlohmann::json& object)
     {
-        nlohmann::json out = object;
+        actor.ClearSceneOverrides();
         ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
-            nlohmann::json* fields = ClassObjFields(out, row.key);
-            if (fields == nullptr)
+            const nlohmann::json* fields = ClassObjFields(object, row.key);
+            if (fields == nullptr || part == &actor.Root())
             {
                 return;
             }
-            for (nlohmann::json::iterator entry = fields->begin(); entry != fields->end();)
+            for (nlohmann::json::const_iterator entry = fields->begin(); entry != fields->end(); ++entry)
             {
                 const FieldDesc* field = FindField(part->GetReflection(), entry.key());
-                if (field == nullptr || FieldDestinationOf(actor, *part, *field) == FieldDestination::Scene)
+                if (field != nullptr && field->type != FieldType::ActorRef)
                 {
-                    ++entry;
-                    continue;
+                    actor.AddSceneOverride(row.key, entry.key());
                 }
-                NS_LOG_WARN(Scene,
-                            "{} の配置物の {} の欄 {} は上書きの印が無いので読まない。値は .actor {} の物を使う",
-                            actor.ClassName(),
-                            row.key,
-                            entry.key(),
-                            actor.ActorFileName());
-                entry = fields->erase(entry);
             }
         });
-        return out;
     }
 
     std::string_view ActorFileClass(const nlohmann::json& actorFile) noexcept
@@ -728,64 +719,6 @@ namespace NS
             }
         });
         ApplyObjectClassObjs(actor, values);
-    }
-
-    nlohmann::json ExpandObjectJson(const nlohmann::json& object)
-    {
-        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(ObjectJsonActorFile(object));
-        const nlohmann::json placement = KeepPlacementFields(baseline, object);
-        nlohmann::json full = object;
-        nlohmann::json& target = ObjectJsonClassObjs(full);
-        target = nlohmann::json::object();
-        ForEachReflectedClassObj(baseline, [&](const ClassObjInfo& field, const Object* classObj) {
-            nlohmann::json fields = SerializeClassObjFields(*classObj);
-            if (const nlohmann::json* source = ClassObjFields(placement, field.key))
-            {
-                fields.update(*source);
-            }
-            target[field.key] = std::move(fields);
-        });
-        return full;
-    }
-
-    nlohmann::json DiffObjectJson(const nlohmann::json& object)
-    {
-        const SceneActor& baseline = ActorFileLibrary::Get().Baseline(ObjectJsonActorFile(object));
-        nlohmann::json out = object;
-        ForEachReflectedClassObj(baseline, [&](const ClassObjInfo& member, const Object* classObj) {
-            // 位置・回転・拡縮は個体の物なので、既定と同じ値でも差分から落とさない
-            if (classObj == &baseline.Root())
-            {
-                return;
-            }
-            nlohmann::json* fields = ClassObjFields(out, member.key);
-            if (fields == nullptr)
-            {
-                return;
-            }
-            const nlohmann::json defaults = SerializeClassObjFields(*classObj);
-            for (nlohmann::json::iterator field = fields->begin(); field != fields->end();)
-            {
-                // 印の無い欄は、アクターの値が .actor と違っても配置物に書かない
-                const FieldDesc* desc = FindField(classObj->GetReflection(), field.key());
-                if (desc != nullptr &&
-                    FieldDestinationOf(baseline, *classObj, *desc) != FieldDestination::Scene)
-                {
-                    field = fields->erase(field);
-                    continue;
-                }
-                const nlohmann::json::const_iterator original = defaults.find(field.key());
-                if (original != defaults.end() && *original == field.value())
-                {
-                    field = fields->erase(field);
-                }
-                else
-                {
-                    ++field;
-                }
-            }
-        });
-        return out;
     }
 
     namespace

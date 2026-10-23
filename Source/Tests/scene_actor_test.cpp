@@ -86,6 +86,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     GL::Level::PropActor* actor = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
     ASSERT_NE(actor, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(actor->Params(), nlohmann::json{{"質量", 1.5f}}), 0u);
+    actor->AddSceneOverride("Params", "質量");
     actor->Root().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
 
     const nlohmann::json saved = scene.ToJson();
@@ -107,29 +108,21 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     EXPECT_FLOAT_EQ(again->Root().Position().z, 5.0f);
 }
 
-TEST(SceneActor, UnknownClassObjKeyIsWarnedAndOtherClassObjsAreRead)
+TEST(SceneActor, UnknownClassObjKeyKeepsThePlacementAsJson)
 {
-    // クラスの表に無い鍵は警告して読み飛ばし、表にある部品の値は読む
+    // クラスの表に無い鍵があれば、黙って捨てずにアクターを作らず ERROR を出し、JSON のまま書き戻す
     nlohmann::json doc = NS::MakeSceneJson();
     AddActorObject(doc, "PropActor", 1);
-    NS::Scene scene;
-    scene.ResetFromJson(doc);
-    GL::Level::PropActor* actor = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(1));
-    ASSERT_NE(actor, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(actor->Params(), nlohmann::json{{"質量", 1.5f}}), 0u);
-
-    nlohmann::json saved = scene.ToJson();
-    nlohmann::json& objects = NS::SceneJsonObjects(saved);
-    ASSERT_EQ(objects.size(), 1u);
-    NS::ObjectJsonClassObjs(objects[0])["NotInTheClass"] = nlohmann::json{{"Radius", 9.0f}};
+    NS::ObjectJsonClassObjs(NS::SceneJsonObjects(doc)[0])["NotInTheClass"] = nlohmann::json{{"Radius", 9.0f}};
 
     const TestLogCapture log;
-    NS::Scene reloaded;
-    reloaded.ResetFromJson(saved);
-    EXPECT_EQ(log.WarningCount(), 1);
-    const GL::Level::PropActor* again = NS::Cast<GL::Level::PropActor>(reloaded.Objects().FindByObjectId(1));
-    ASSERT_NE(again, nullptr);
-    EXPECT_FLOAT_EQ(again->Params().Mass(), 1.5f);
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    EXPECT_EQ(log.ErrorCount(), 1);
+    EXPECT_EQ(scene.Objects().FindByObjectId(1), nullptr);
+    const nlohmann::json saved = scene.ToJson();
+    ASSERT_EQ(NS::SceneJsonObjects(saved).size(), 1u);
+    EXPECT_TRUE(NS::ObjectJsonClassObjs(NS::SceneJsonObjects(saved)[0]).contains("NotInTheClass"));
 }
 
 TEST(SceneActor, FileTextRoundTripKeepsClass)
@@ -614,31 +607,44 @@ TEST(SceneActor, ActorMadeFromATypeAnswersTheActorFileOfItsClass)
 // 欄の表示名と部品の登録が保存の鍵なので、鍵が変わると読み直した値が静かに既定へ戻る
 TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
 {
-    // Assets/Actors の .actor を 1 本ずつ、全欄を書いた形で置く。読んで書き戻し、全欄へ広げると、置いた鍵が全部残る
+    // Assets/Actors の .actor を 1 本ずつ、シーンで上書きできる項目を全部書いて置く。読んで書き戻すと、置いた鍵が全部残る
     NS::ActorFileLibrary::Get().Reload();
     nlohmann::json doc = NS::MakeSceneJson();
     NS::uint32 id = 1;
     for (const std::string& name : NS::ActorFileLibrary::Get().Names())
     {
+        const std::unique_ptr<NS::SceneActor> actor =
+            NS::CreateActorOfClass(NS::ActorFileLibrary::Get().ClassNameOf(name), NS::ActorInitInfo{.actorFile = name});
+        ASSERT_NE(actor, nullptr) << name;
         nlohmann::json object = NS::MakeObjectJson();
         NS::SetObjectJsonActorFile(object, name);
         NS::SetObjectJsonId(object, id);
         ++id;
-        NS::SceneJsonObjects(doc).push_back(NS::ExpandObjectJson(object));
+        NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+            const nlohmann::json values = NS::SerializeClassObjFields(*part);
+            for (nlohmann::json::const_iterator field = values.begin(); field != values.end(); ++field)
+            {
+                const NS::FieldDesc* desc = NS::FindField(part->GetReflection(), field.key());
+                if (desc != nullptr && NS::CanWriteField(NS::FieldDestination::Scene, *actor, *part, *desc))
+                {
+                    NS::ObjectJsonClassObjs(object)[std::string{row.key}][field.key()] = field.value();
+                }
+            }
+        });
+        NS::SceneJsonObjects(doc).push_back(std::move(object));
     }
     ASSERT_FALSE(NS::SceneJsonObjects(doc).empty());
     NS::Scene scene;
     scene.ResetFromJson(doc);
 
-    // 書き戻しは .actor と同じ欄を省くので、全欄へ広げてから、置いた鍵が全部残っているかを見る
     const nlohmann::json written = scene.ToJson();
     const nlohmann::json& writtenObjects = NS::SceneJsonObjects(written);
     const nlohmann::json& fileObjects = NS::SceneJsonObjects(doc);
     ASSERT_EQ(writtenObjects.size(), fileObjects.size());
+    int checked = 0;
     for (std::size_t i = 0; i < fileObjects.size(); ++i)
     {
-        const nlohmann::json expanded = NS::ExpandObjectJson(writtenObjects[i]);
-        const nlohmann::json& writtenParts = NS::ObjectJsonClassObjs(expanded);
+        const nlohmann::json& writtenParts = NS::ObjectJsonClassObjs(writtenObjects[i]);
         const nlohmann::json& fileParts = NS::ObjectJsonClassObjs(fileObjects[i]);
         for (nlohmann::json::const_iterator part = fileParts.begin(); part != fileParts.end(); ++part)
         {
@@ -647,7 +653,9 @@ TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
             for (nlohmann::json::const_iterator field = part->begin(); field != part->end(); ++field)
             {
                 EXPECT_TRUE(writtenParts[part.key()].contains(field.key())) << where << " " << field.key();
+                ++checked;
             }
         }
     }
+    EXPECT_GT(checked, 0);
 }

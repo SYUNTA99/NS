@@ -214,7 +214,17 @@ namespace NS
         OnInit();
     }
 
-    void SceneActor::Init(const ActorInitInfo* info)
+    bool SceneActor::IsSceneOverride(std::string_view part, std::string_view field) const
+    {
+        return m_sceneOverrides.contains({std::string{part}, std::string{field}});
+    }
+
+    void SceneActor::AddSceneOverride(std::string_view part, std::string_view field)
+    {
+        m_sceneOverrides.emplace(std::string{part}, std::string{field});
+    }
+
+    bool SceneActor::Init(const ActorInitInfo* info)
     {
         m_actorFileName = ClassName();
         if (info != nullptr && !info->actorFile.empty())
@@ -235,10 +245,17 @@ namespace NS
         // clang-format on
         if (info != nullptr && info->placement != nullptr)
         {
-            ApplyObjectClassObjs(*this, KeepPlacementFields(*this, *info->placement));
+            // シーンの上書きは書いてよい項目だけを持つ。書いてよくない項目を捨てて作ると、保存で黙って消える
+            if (!MergeLayer(nlohmann::json::object(), *info->placement, FieldDestination::Scene, *this).has_value())
+            {
+                return false;
+            }
+            ApplyObjectClassObjs(*this, *info->placement);
+            ReadSceneOverrides(*this, *info->placement);
         }
         // 素材の参照は欄にある。欄を書き終えてから読む
         ReloadAssets();
+        return true;
     }
 
     void SceneActor::ReloadAssets()

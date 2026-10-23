@@ -15,6 +15,7 @@
 #include "NSlib/Core/Types.h"
 #include <concepts>
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -51,6 +52,14 @@ namespace NS
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
         //! 作る時に敷いた .actor の名前。型から作ったアクターはクラスと同じ名前で、その .actor が無くても変わらない
         [[nodiscard]] const std::string& ActorFileName() const noexcept { return m_actorFileName; }
+
+        //! @brief part の部品の欄 field をシーンで上書きしているか
+        //! @details 一覧に入るのは NS_GLOBAL_FIELD の項目だけ。根の部品と参照の欄は一覧に入れず、保存でいつも書く
+        [[nodiscard]] bool IsSceneOverride(std::string_view part, std::string_view field) const;
+        //! 項目をシーンの上書きの一覧に足す。保存はこの一覧の項目を書く
+        void AddSceneOverride(std::string_view part, std::string_view field);
+        //! シーンの上書きの一覧を空にする
+        void ClearSceneOverrides() noexcept { m_sceneOverrides.clear(); }
         NS_REFLECT_DECLARE()
 
         //! @brief 世界に出す。更新の段・描画・当たり・センサーへ登録する。出ていれば何もしない
@@ -232,10 +241,11 @@ namespace NS
         friend std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className);
         friend float GetFrameRate(const SceneActor* actor) noexcept;
         friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
-        //! @brief アクターを作る順。部品を作る → .actor → 配置の上書き → 素材
+        //! @brief アクターを作る順。部品を作る → .actor の全部の値 → シーンの上書き → 素材
         //! @details 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない。
-        //! info が nullptr のアクターも、配置の上書きを飛ばすだけで同じ順を通る
-        void Init(const ActorInitInfo* info);
+        //! info が nullptr のアクターも、シーンの上書きを飛ばすだけで同じ順を通る。
+        //! シーンの上書きに書いてよくない項目があれば ERROR を出して false を返し、作る関数はアクターを捨てる
+        [[nodiscard]] bool Init(const ActorInitInfo* info);
         //! 部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物
         void InitWithCodeValues();
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
@@ -259,6 +269,7 @@ namespace NS
         uint32 m_id = 0;
         std::string m_name;
         std::string m_actorFileName; // 書くのは Init だけ
+        std::set<std::pair<std::string, std::string>> m_sceneOverrides; // シーンで上書きしている (部品の鍵, 欄の名前)
         Scene* m_scene = nullptr;    // 入るシーン。書くのは Init だけ
         Presence m_presence = Presence::Disappeared;
         std::unique_ptr<Transform> m_transform;
@@ -298,7 +309,10 @@ namespace NS
         static_assert(std::derived_from<T, SceneActor>, "T は SceneActor の派生でなければならない");
         std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
         SceneActor& base = *actor;
-        base.Init(nullptr);
+        if (!base.Init(nullptr))
+        {
+            return nullptr;
+        }
         return actor;
     }
 
@@ -310,7 +324,10 @@ namespace NS
         static_assert(std::derived_from<T, SceneActor>, "T は SceneActor の派生でなければならない");
         std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
         SceneActor& base = *actor;
-        base.Init(&info);
+        if (!base.Init(&info))
+        {
+            return nullptr;
+        }
         return actor;
     }
 

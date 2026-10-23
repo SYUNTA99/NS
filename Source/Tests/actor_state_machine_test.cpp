@@ -189,11 +189,11 @@ TEST(ActorStateMachine, SavedJsonGainsNoStateMachineFields)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
     ExpectNoStateMachineFields(NS::ObjectToJson(*player));
-    ExpectNoStateMachineFields(NS::ExpandObjectJson(NS::Editor::MakePrototypeJson<PlayerActor>()));
+    ExpectNoStateMachineFields(*NS::ActorFileLibrary::Get().Values("PlayerActor"));
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
     ExpectNoStateMachineFields(NS::ObjectToJson(*prop));
-    ExpectNoStateMachineFields(NS::ExpandObjectJson(NS::Editor::MakePrototypeJson<GL::Level::PropActor>()));
+    ExpectNoStateMachineFields(*NS::ActorFileLibrary::Get().Values("PropActor"));
 }
 
 TEST(ActorStateMachine, SecondBuildFailsAndKeepsTheFirstMachine)
