@@ -8,6 +8,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -133,6 +134,22 @@ namespace NS
     [[nodiscard]] FieldDestination FieldDestinationOf(const SceneActor& actor,
                                                       const Object& part,
                                                       const FieldDesc& field) noexcept;
+
+    //! @brief layer の上書きに、actor の部品 part の欄 field を書いてよいか
+    //! @details 元の .actor は根の部品と参照の欄の他の全部、派生の .actor はプロテクトとグローバルの項目、
+    //! シーンはグローバルの項目と根の部品と参照の欄を書ける
+    [[nodiscard]] bool CanWriteField(FieldDestination layer,
+                                     const SceneActor& actor,
+                                     const Object& part,
+                                     const FieldDesc& field) noexcept;
+
+    //! @brief 全部の値 base に、上書き written の "classObjs" に書いた項目を重ねる
+    //! @details 元の .actor・派生の .actor・シーンの上書きは、どれもこの関数で重ねる。written の頭の鍵は見ない。
+    //! layer に書いてよくない項目か、actor に無い部品・欄が 1 つでもあれば ERROR を出して std::nullopt
+    [[nodiscard]] std::optional<nlohmann::json> MergeLayer(const nlohmann::json& base,
+                                                           const nlohmann::json& written,
+                                                           FieldDestination layer,
+                                                           const SceneActor& actor);
 
     //! actor の行 row の部品に対応する、actor の .actor の Baseline の部品。どちらかが作られていないか型が違えば nullptr
     //! row は actor のクラスの表 (NS_CLASSOBJ) の行。.actor を変えると指す先が作り直されるので、そのフレームの間だけ使う

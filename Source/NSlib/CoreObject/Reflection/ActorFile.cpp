@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <format>
 #include <optional>
+#include <set>
 #include <span>
 #include <utility>
 
@@ -147,6 +148,111 @@ namespace NS
             }
         }
         return FieldDestination::ActorFile;
+    }
+
+    bool CanWriteField(FieldDestination layer, const SceneActor& actor, const Object& part, const FieldDesc& field) noexcept
+    {
+        const bool sceneOnly = &part == &actor.Root() || field.type == FieldType::ActorRef;
+        switch (layer)
+        {
+        case FieldDestination::ActorFile:
+            return !sceneOnly;
+        case FieldDestination::DerivedActorFile:
+            return !sceneOnly && field.scope != FieldScope::Shared;
+        case FieldDestination::Scene:
+            return sceneOnly || field.scope == FieldScope::Global;
+        }
+        return false;
+    }
+
+    namespace
+    {
+        [[nodiscard]] const char* LayerName(FieldDestination layer) noexcept
+        {
+            switch (layer)
+            {
+            case FieldDestination::ActorFile:
+                return "元の .actor";
+            case FieldDestination::DerivedActorFile:
+                return "派生の .actor";
+            case FieldDestination::Scene:
+                return "シーン";
+            }
+            return "";
+        }
+    } // namespace
+
+    std::optional<nlohmann::json> MergeLayer(const nlohmann::json& base,
+                                             const nlohmann::json& written,
+                                             FieldDestination layer,
+                                             const SceneActor& actor)
+    {
+        nlohmann::json merged = base;
+        nlohmann::json& target = ObjectJsonClassObjs(merged);
+        bool writable = true;
+        std::set<std::string_view> partKeys;
+        ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
+            partKeys.insert(row.key);
+            const nlohmann::json* fields = ClassObjFields(written, row.key);
+            if (fields == nullptr)
+            {
+                return;
+            }
+            for (nlohmann::json::const_iterator entry = fields->begin(); entry != fields->end(); ++entry)
+            {
+                const FieldDesc* field = FindField(part->GetReflection(), entry.key());
+                if (field == nullptr)
+                {
+                    NS_LOG_ERROR(Scene,
+                                 "{} の {} の上書きの部品 {} に欄 {} が無い",
+                                 actor.ActorFileName(),
+                                 LayerName(layer),
+                                 row.key,
+                                 entry.key());
+                    writable = false;
+                    continue;
+                }
+                if (!CanWriteField(layer, actor, *part, *field))
+                {
+                    NS_LOG_ERROR(Scene,
+                                 "{} の部品 {} の欄 {} は {} に書けない",
+                                 actor.ActorFileName(),
+                                 row.key,
+                                 entry.key(),
+                                 LayerName(layer));
+                    writable = false;
+                    continue;
+                }
+                target[row.key][entry.key()] = entry.value();
+            }
+        });
+        const nlohmann::json& source = ObjectJsonClassObjs(written);
+        for (nlohmann::json::const_iterator entry = source.begin(); entry != source.end(); ++entry)
+        {
+            if (!partKeys.contains(entry.key()))
+            {
+                NS_LOG_ERROR(Scene,
+                             "{} の {} の上書きに、アクターに無い部品 {} がある",
+                             actor.ActorFileName(),
+                             LayerName(layer),
+                             entry.key());
+                writable = false;
+            }
+            else if (!entry->is_object())
+            {
+                NS_LOG_ERROR(Scene,
+                             "{} の {} の上書きの部品 {} が JSON の object でない",
+                             actor.ActorFileName(),
+                             LayerName(layer),
+                             entry.key());
+                writable = false;
+            }
+        }
+        if (!writable)
+        {
+            return std::nullopt;
+        }
+        return merged;
     }
 
     nlohmann::json KeepPlacementFields(const SceneActor& actor, const nlohmann::json& object)

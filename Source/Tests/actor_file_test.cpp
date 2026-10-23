@@ -630,6 +630,90 @@ TEST(ActorFile, FieldScopeAndTheDerivedActorFileDecideTheDestination)
     EXPECT_EQ(NS::FieldDestinationOf(derived, part, *global), NS::FieldDestination::Scene);
 }
 
+// 上書きの種類ごとに書いてよい項目が決まる。根の部品と参照の欄はシーンだけが書く
+TEST(ActorFile, EachLayerCanWriteOnlyItsFieldKinds)
+{
+    const ScopedActorFileDirectory scope("CanWriteField");
+    const ScopedActorFile propFile{"PropActor", ClassOnlyActorFile("PropActor")};
+    const ScopedActorFile cameraFile{"FollowCameraActor", ClassOnlyActorFile("FollowCameraActor")};
+    const NS::SceneActor& rock = NS::ActorFileLibrary::Get().Baseline("PropActor");
+    const NS::SceneActor& cameraActor = NS::ActorFileLibrary::Get().Baseline("FollowCameraActor");
+    const GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(&cameraActor);
+    ASSERT_NE(camera, nullptr);
+    const FieldScopeProbePart part;
+    const NS::ReflectionInfo* info = FieldScopeProbePart::StaticReflection();
+
+    struct Case
+    {
+        const NS::SceneActor* actor;
+        const NS::Object* part;
+        const NS::FieldDesc* field;
+        bool actorFile;
+        bool derived;
+        bool scene;
+    };
+    const Case cases[] = {
+        {&rock, &part, NS::FindField(info, "共有"), true, false, false},
+        {&rock, &part, NS::FindField(info, "派生ごと"), true, true, false},
+        {&rock, &part, NS::FindField(info, "シーンごと"), true, true, true},
+        {&rock, &rock.Root(), NS::FindField(rock.Root().GetReflection(), NS::k_PositionFieldName), false, false, true},
+        {camera, &camera->Vcam(), NS::FindField(camera->Vcam().GetReflection(), "追従対象"), false, false, true},
+    };
+    for (const Case& c : cases)
+    {
+        ASSERT_NE(c.field, nullptr);
+        SCOPED_TRACE(c.field->name);
+        EXPECT_EQ(NS::CanWriteField(NS::FieldDestination::ActorFile, *c.actor, *c.part, *c.field), c.actorFile);
+        EXPECT_EQ(NS::CanWriteField(NS::FieldDestination::DerivedActorFile, *c.actor, *c.part, *c.field), c.derived);
+        EXPECT_EQ(NS::CanWriteField(NS::FieldDestination::Scene, *c.actor, *c.part, *c.field), c.scene);
+    }
+}
+
+// 上書きに書いた項目だけが全部の値に重なり、書いてよくない項目・無い部品・無い欄があれば ERROR で重ねない
+TEST(ActorFile, MergeLayerOverlaysWrittenFieldsAndRejectsFieldsTheLayerCannotWrite)
+{
+    const ScopedActorFileDirectory scope("MergeLayer");
+    const ScopedActorFile propFile{"PropActor", ClassOnlyActorFile("PropActor")};
+    const NS::SceneActor& rock = NS::ActorFileLibrary::Get().Baseline("PropActor");
+    nlohmann::json base = nlohmann::json::object();
+    NS::ObjectJsonClassObjs(base) = {{"Params", {{"質量", 1.0f}, {"耐久", 1.0f}}}, {"Collision", {{"半径", 0.5f}}}};
+
+    const auto layer = [](nlohmann::json classObjs) {
+        nlohmann::json written = nlohmann::json::object();
+        NS::ObjectJsonClassObjs(written) = std::move(classObjs);
+        return written;
+    };
+
+    {
+        const TestLogCapture log;
+        const std::optional<nlohmann::json> merged =
+            NS::MergeLayer(base, layer({{"Params", {{"質量", 0.5f}}}}), NS::FieldDestination::Scene, rock);
+        ASSERT_TRUE(merged.has_value());
+        EXPECT_EQ(log.ErrorCount(), 0);
+        const nlohmann::json* params = NS::ClassObjFields(*merged, "Params");
+        ASSERT_NE(params, nullptr);
+        EXPECT_FLOAT_EQ(params->at("質量").get<float>(), 0.5f);
+        EXPECT_FLOAT_EQ(params->at("耐久").get<float>(), 1.0f);
+        EXPECT_EQ(*NS::ClassObjFields(*merged, "Collision"), *NS::ClassObjFields(base, "Collision"));
+    }
+    {
+        // 共有の項目は元の .actor には書けるが、シーンには書けない
+        const nlohmann::json radius = layer({{"Collision", {{"半径", 2.0f}}}});
+        const TestLogCapture log;
+        EXPECT_TRUE(NS::MergeLayer(base, radius, NS::FieldDestination::ActorFile, rock).has_value());
+        EXPECT_FALSE(NS::MergeLayer(base, radius, NS::FieldDestination::Scene, rock).has_value());
+        EXPECT_EQ(log.ErrorCount(), 1);
+    }
+    {
+        const TestLogCapture log;
+        EXPECT_FALSE(NS::MergeLayer(base, layer({{"無い部品", {{"質量", 0.5f}}}}), NS::FieldDestination::Scene, rock)
+                         .has_value());
+        EXPECT_FALSE(NS::MergeLayer(base, layer({{"Params", {{"無い欄", 0.5f}}}}), NS::FieldDestination::Scene, rock)
+                         .has_value());
+        EXPECT_EQ(log.ErrorCount(), 2);
+    }
+}
+
 // インスペクタの印と「既定に戻す」は、型の既定 (半径 0.5) でなく .actor の値 (半径 2) と比べて戻す
 TEST(ActorFile, InspectorMarksAndRevertsAgainstTheActorFile)
 {
