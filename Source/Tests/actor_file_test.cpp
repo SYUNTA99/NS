@@ -360,11 +360,11 @@ TEST(ActorFile, BaselineAndDiffFollowTheActorFileThePlacementNames)
 
 namespace
 {
-    // info の欄 name に配置物の上書きの印が付いているか。欄が無ければ偽
+    // info の欄 name がシーンでも上書きできるグローバルの項目か。欄が無ければ偽
     bool IsMarked(const NS::ReflectionInfo* info, std::string_view name)
     {
         const NS::FieldDesc* field = NS::FindField(info, name);
-        return field != nullptr && field->placement;
+        return field != nullptr && field->scope == NS::FieldScope::Global;
     }
 
     int MarkedCount(const NS::ReflectionInfo* info)
@@ -372,7 +372,7 @@ namespace
         int count = 0;
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
-            if (info->fields[i].placement)
+            if (info->fields[i].scope == NS::FieldScope::Global)
             {
                 ++count;
             }
@@ -493,7 +493,7 @@ TEST(ActorFile, ReferenceFieldsAreNotActorFileValues)
     ASSERT_NE(camera, nullptr);
     const NS::FieldDesc* target = NS::FindField(camera->Vcam().GetReflection(), "追従対象");
     ASSERT_NE(target, nullptr);
-    EXPECT_EQ(NS::FieldDestinationOf(*camera, camera->Vcam(), *target), NS::FieldDestination::Placement);
+    EXPECT_EQ(NS::FieldDestinationOf(*camera, camera->Vcam(), *target), NS::FieldDestination::Scene);
 }
 
 // 字の色の印は、配置物へ書く欄の値が .actor と違う時だけ付く。.actor へ書く欄には付かない
@@ -554,11 +554,11 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
     };
     const Case cases[] = {
         {rock, rock->CollisionClassObj(), "半径", NS::FieldDestination::ActorFile},
-        {rock, &rock->Params(), "質量", NS::FieldDestination::Placement},
-        {camera, &camera->Vcam(), "追従対象", NS::FieldDestination::Placement},
-        {rock, &rock->Root(), NS::k_PositionFieldName, NS::FieldDestination::Placement},
+        {rock, &rock->Params(), "質量", NS::FieldDestination::Scene},
+        {camera, &camera->Vcam(), "追従対象", NS::FieldDestination::Scene},
+        {rock, &rock->Root(), NS::k_PositionFieldName, NS::FieldDestination::Scene},
     };
-    // 書く先は 2 つしか無いので、配置物へ書く欄だけを塗り、.actor へ書く欄は塗らない
+    // シーンへ書く欄だけを塗り、.actor へ書く欄は塗らない
     NS::Editor::EditorAppearance appearance;
     for (const Case& c : cases)
     {
@@ -568,7 +568,7 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
         const NS::FieldDestination destination = NS::FieldDestinationOf(*c.actor, *c.part, *field);
         EXPECT_EQ(destination, c.expected);
         const std::optional<NS::Color> color = NS::Editor::FieldRowColor(appearance, *c.actor, *c.part, *field);
-        if (destination == NS::FieldDestination::ActorFile)
+        if (destination != NS::FieldDestination::Scene)
         {
             EXPECT_FALSE(color.has_value());
         }
@@ -578,6 +578,56 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
             EXPECT_EQ(*color, appearance.placementRowColor);
         }
     }
+}
+
+namespace
+{
+    // 項目の種類を 1 つずつ持つ部品
+    class FieldScopeProbePart final : public NS::Object
+    {
+    public:
+        float shared = 0.0f;
+        float protectedValue = 0.0f;
+        float global = 0.0f;
+        NS_REFLECT_BEGIN(FieldScopeProbePart, NS::Object)
+        NS_FIELD(shared, "共有")
+        NS_PROTECTED_FIELD(protectedValue, "派生ごと")
+        NS_GLOBAL_FIELD(global, "シーンごと")
+        NS_REFLECT_END()
+    };
+} // namespace
+
+// 登録のマクロが項目の種類を決め、種類と指す .actor が元か派生かで書く先が決まる
+TEST(ActorFile, FieldScopeAndTheDerivedActorFileDecideTheDestination)
+{
+    const NS::ReflectionInfo* info = FieldScopeProbePart::StaticReflection();
+    const NS::FieldDesc* shared = NS::FindField(info, "共有");
+    const NS::FieldDesc* protectedField = NS::FindField(info, "派生ごと");
+    const NS::FieldDesc* global = NS::FindField(info, "シーンごと");
+    ASSERT_NE(shared, nullptr);
+    ASSERT_NE(protectedField, nullptr);
+    ASSERT_NE(global, nullptr);
+    EXPECT_EQ(shared->scope, NS::FieldScope::Shared);
+    EXPECT_EQ(protectedField->scope, NS::FieldScope::Protected);
+    EXPECT_EQ(global->scope, NS::FieldScope::Global);
+
+    const ScopedActorFileDirectory scope("FieldScope");
+    const ScopedActorFile originFile{"PropActor", ClassOnlyActorFile("PropActor")};
+    nlohmann::json derivedDocument = ClassOnlyActorFile("PropActor");
+    NS::SetActorFileBase(derivedDocument, "PropActor");
+    const ScopedActorFile derivedFile{"PropActorHeavy", derivedDocument};
+    const NS::SceneActor& origin = NS::ActorFileLibrary::Get().Baseline("PropActor");
+    const NS::SceneActor& derived = NS::ActorFileLibrary::Get().Baseline("PropActorHeavy");
+    EXPECT_EQ(NS::ActorFileBase(*NS::ActorFileLibrary::Get().Find("PropActorHeavy")), "PropActor");
+
+    const FieldScopeProbePart part;
+    EXPECT_EQ(NS::FieldDestinationOf(origin, part, *shared), NS::FieldDestination::ActorFile);
+    EXPECT_EQ(NS::FieldDestinationOf(origin, part, *protectedField), NS::FieldDestination::ActorFile);
+    EXPECT_EQ(NS::FieldDestinationOf(origin, part, *global), NS::FieldDestination::Scene);
+    // 派生を指すアクターでも、共有の項目は元へ書く
+    EXPECT_EQ(NS::FieldDestinationOf(derived, part, *shared), NS::FieldDestination::ActorFile);
+    EXPECT_EQ(NS::FieldDestinationOf(derived, part, *protectedField), NS::FieldDestination::DerivedActorFile);
+    EXPECT_EQ(NS::FieldDestinationOf(derived, part, *global), NS::FieldDestination::Scene);
 }
 
 // インスペクタの印と「既定に戻す」は、型の既定 (半径 0.5) でなく .actor の値 (半径 2) と比べて戻す
@@ -661,7 +711,7 @@ TEST(ActorFile, TransformPartIsInstanceOnlyOnEveryPath)
 
     const NS::FieldDesc* field = NS::FindField(baseline.Root().GetReflection(), NS::k_PositionFieldName);
     ASSERT_NE(field, nullptr);
-    EXPECT_EQ(NS::FieldDestinationOf(baseline, baseline.Root(), *field), NS::FieldDestination::Placement);
+    EXPECT_EQ(NS::FieldDestinationOf(baseline, baseline.Root(), *field), NS::FieldDestination::Scene);
 }
 
 TEST(ActorFile, SavedActorFileIsReadBack)

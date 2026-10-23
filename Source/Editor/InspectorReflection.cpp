@@ -131,7 +131,7 @@ namespace NS
                            const FieldDesc& field,
                            const SceneActor* actor) noexcept
         {
-            if (actor != nullptr && FieldDestinationOf(*actor, comp, field) == FieldDestination::ActorFile)
+            if (actor != nullptr && FieldDestinationOf(*actor, comp, field) != FieldDestination::Scene)
             {
                 return false;
             }

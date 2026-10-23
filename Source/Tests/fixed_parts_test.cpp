@@ -172,7 +172,7 @@ namespace
         float value = 0.0f;
         NS_REFLECT_BEGIN(ReflectedProbePart, NS::Object)
         // 配置物の保存と読み直しで、部品の鍵ごとに値が戻るかを見るので、配置物で上書きできる欄にする
-        NS_PLACEMENT_FIELD(value, "値")
+        NS_GLOBAL_FIELD(value, "値")
         NS_REFLECT_END()
     };
 

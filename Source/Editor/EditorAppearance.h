@@ -22,13 +22,13 @@ namespace NS
         };
 
         //! actor の部品 part の欄 field の行の地の色。書く先を決める FieldDestinationOf の答えで選ぶ
-        //! 書く先は .actor と配置物の 2 つなので、配置物へ書く欄だけを塗り、.actor へ書く欄は std::nullopt
+        //! シーンへ書く欄だけを塗り、元と派生の .actor へ書く欄は std::nullopt
         [[nodiscard]] inline std::optional<Color> FieldRowColor(const EditorAppearance& appearance,
                                                                 const SceneActor& actor,
                                                                 const Object& part,
                                                                 const FieldDesc& field) noexcept
         {
-            if (FieldDestinationOf(actor, part, field) == FieldDestination::ActorFile)
+            if (FieldDestinationOf(actor, part, field) != FieldDestination::Scene)
             {
                 return std::nullopt;
             }

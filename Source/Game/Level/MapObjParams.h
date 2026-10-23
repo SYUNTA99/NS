@@ -78,11 +78,11 @@ namespace GL
             [[nodiscard]] int MaxContacts() const noexcept { return std::max(m_maxContacts, 1); }
 
             NS_REFLECT_BEGIN(MapObjParams, NS::Object)
-            NS_PLACEMENT_FIELD(m_mass, "質量")
+            NS_GLOBAL_FIELD(m_mass, "質量")
             NS_FIELD(m_friction, "摩擦")
             NS_FIELD(m_restitution, "跳ね返り")
             NS_FIELD(m_spinPerSpeed, "回転の強さ")
-            NS_PLACEMENT_FIELD(m_toughness, "耐久")
+            NS_GLOBAL_FIELD(m_toughness, "耐久")
             NS_FIELD(m_restLifeSeconds, "止まってから消える秒")
             NS_FIELD(m_floorDot, "床とみなす法線の上向き成分")
             NS_FIELD(m_markProbeDistance, "跡の床探しの距離")

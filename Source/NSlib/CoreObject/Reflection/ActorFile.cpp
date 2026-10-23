@@ -58,6 +58,8 @@ namespace NS
         // 名前の束と動作の並びの鍵。配置物は持たず、.actor だけに書く
         constexpr const char* k_HitReactionsKey = "hitReactions";
         constexpr const char* k_ActionsKey = "actions";
+        // 派生の .actor が元にする .actor の名前の鍵。元の .actor は持たない
+        constexpr const char* k_BaseKey = "base";
 
         // .actor の頭の鍵の表はこの 1 か所。ほかの鍵は打ち間違いか古い形で、
         // そのまま読むと値が黙って既定に戻るので、最初に見つけた 1 つを返す。無ければ nullptr
@@ -65,8 +67,8 @@ namespace NS
         {
             for (nlohmann::json::const_iterator it = root.begin(); it != root.end(); ++it)
             {
-                if (it.key() != k_ClassKey && it.key() != "classObjs" && it.key() != k_HitReactionsKey &&
-                    it.key() != k_ActionsKey)
+                if (it.key() != k_ClassKey && it.key() != k_BaseKey && it.key() != "classObjs" &&
+                    it.key() != k_HitReactionsKey && it.key() != k_ActionsKey)
                 {
                     return &it.key();
                 }
@@ -132,9 +134,17 @@ namespace NS
 
     FieldDestination FieldDestinationOf(const SceneActor& actor, const Object& part, const FieldDesc& field) noexcept
     {
-        if (&part == &actor.Root() || field.type == FieldType::ActorRef || field.placement)
+        if (&part == &actor.Root() || field.type == FieldType::ActorRef || field.scope == FieldScope::Global)
         {
-            return FieldDestination::Placement;
+            return FieldDestination::Scene;
+        }
+        if (field.scope == FieldScope::Protected)
+        {
+            const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(actor.ActorFileName());
+            if (actorFile != nullptr && !ActorFileBase(*actorFile).empty())
+            {
+                return FieldDestination::DerivedActorFile;
+            }
         }
         return FieldDestination::ActorFile;
     }
@@ -151,7 +161,7 @@ namespace NS
             for (nlohmann::json::iterator entry = fields->begin(); entry != fields->end();)
             {
                 const FieldDesc* field = FindField(part->GetReflection(), entry.key());
-                if (field == nullptr || FieldDestinationOf(actor, *part, *field) == FieldDestination::Placement)
+                if (field == nullptr || FieldDestinationOf(actor, *part, *field) == FieldDestination::Scene)
                 {
                     ++entry;
                     continue;
@@ -189,6 +199,25 @@ namespace NS
             actorFile = nlohmann::json::object();
         }
         actorFile[k_ClassKey] = std::string{className};
+    }
+
+    std::string_view ActorFileBase(const nlohmann::json& actorFile) noexcept
+    {
+        const nlohmann::json* base = FindTopKey(actorFile, k_BaseKey);
+        if (base == nullptr || !base->is_string())
+        {
+            return {};
+        }
+        return base->get_ref<const std::string&>();
+    }
+
+    void SetActorFileBase(nlohmann::json& actorFile, std::string_view baseName)
+    {
+        if (!actorFile.is_object())
+        {
+            actorFile = nlohmann::json::object();
+        }
+        actorFile[k_BaseKey] = std::string{baseName};
     }
 
     const nlohmann::json* ActorFileHitReactions(const nlohmann::json& actorFile) noexcept
@@ -461,7 +490,7 @@ namespace NS
                 // 印の無い欄は、アクターの値が .actor と違っても配置物に書かない
                 const FieldDesc* desc = FindField(classObj->GetReflection(), field.key());
                 if (desc != nullptr &&
-                    FieldDestinationOf(baseline, *classObj, *desc) == FieldDestination::ActorFile)
+                    FieldDestinationOf(baseline, *classObj, *desc) != FieldDestination::Scene)
                 {
                     field = fields->erase(field);
                     continue;

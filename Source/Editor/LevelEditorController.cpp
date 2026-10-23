@@ -340,7 +340,7 @@ namespace
             {
                 const NS::FieldDesc* field = NS::FindField(part->GetReflection(), it.key());
                 if (field == nullptr || field->type == NS::FieldType::ActorRef ||
-                    NS::FieldDestinationOf(actor, *part, *field) != NS::FieldDestination::Placement)
+                    NS::FieldDestinationOf(actor, *part, *field) != NS::FieldDestination::Scene)
                 {
                     continue;
                 }
@@ -369,7 +369,7 @@ namespace
                 const NS::FieldDesc* field = NS::FindField(part->GetReflection(), it.key());
                 const bool kept =
                     field != nullptr &&
-                    (NS::FieldDestinationOf(actor, *part, *field) == NS::FieldDestination::ActorFile ||
+                    (NS::FieldDestinationOf(actor, *part, *field) != NS::FieldDestination::Scene ||
                      following.contains(std::pair<std::string, std::string>{std::string{row.key}, it.key()}));
                 if (kept)
                 {
@@ -1619,7 +1619,7 @@ void LevelEditorController::NoteFieldEdit(const NS::SceneActor& actor,
     {
         return;
     }
-    if (NS::FieldDestinationOf(actor, *part, *field) == NS::FieldDestination::Placement)
+    if (NS::FieldDestinationOf(actor, *part, *field) == NS::FieldDestination::Scene)
     {
         MirrorPlayEditToBaseline(actor, row, fieldName);
         return;

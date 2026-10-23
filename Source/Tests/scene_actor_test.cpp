@@ -236,7 +236,7 @@ TEST(SceneLoad, EveryShippedPlacementOverridesOnlyMarkedFields)
                 {
                     const NS::FieldDesc* desc = NS::FindField(part->GetReflection(), field.key());
                     ASSERT_NE(desc, nullptr) << row.key << " " << field.key();
-                    EXPECT_TRUE(desc->placement || desc->type == NS::FieldType::ActorRef)
+                    EXPECT_TRUE(desc->scope == NS::FieldScope::Global || desc->type == NS::FieldType::ActorRef)
                         << file.path().string() << " " << NS::ObjectJsonActorFile(object) << " " << row.key << " "
                         << field.key();
                     ++checked;

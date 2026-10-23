@@ -24,6 +24,11 @@ namespace NS
     //! .actor の文書へ class を書く
     void SetActorFileClass(nlohmann::json& actorFile, std::string_view className);
 
+    //! 派生の .actor の文書の中の、元にする .actor の名前 base。元の .actor の文書か、文字列でなければ空
+    [[nodiscard]] std::string_view ActorFileBase(const nlohmann::json& actorFile) noexcept;
+    //! .actor の文書へ、元にする .actor の名前 base を書く
+    void SetActorFileBase(nlohmann::json& actorFile, std::string_view baseName);
+
     //! .actor の文書の中の名前の束の並び hitReactions。無ければ nullptr。並びの形は確かめない
     [[nodiscard]] const nlohmann::json* ActorFileHitReactions(const nlohmann::json& actorFile) noexcept;
     //! .actor の文書へ名前の束の並び hitReactions を書く。空の並びなら鍵ごと消す
@@ -113,16 +118,18 @@ namespace NS
     //! 配置物が値を持てない欄は、値が違っても除く
     [[nodiscard]] nlohmann::json DiffObjectJson(const nlohmann::json& object);
 
-    //! 欄の値を持つ所。.actor だけが持つか、配置物が持つか
+    //! 欄の値を書く所
     enum class FieldDestination
     {
-        ActorFile, // 同じ .actor を指すアクターの全部が同じ値を使う
-        Placement, // 配置物ごとに値を持つ
+        ActorFile,        // 元の .actor。派生も含めて、元を指すアクターの全部が同じ値を使う
+        DerivedActorFile, // 派生の .actor。その派生を指すアクターの全部が同じ値を使う
+        Scene,            // シーンに置いたアクターごとに値を持つ
     };
 
-    //! @brief actor の部品 part の欄 field の値を持つ所
-    //! @details 根の部品の欄・参照の欄・上書きの印の付いた欄は配置物、ほかは .actor。
-    //! 配置物の読み書き・エディタの書く先・行の地の色は、どれもこの答えで分ける
+    //! @brief actor の部品 part の欄 field の値を書く所
+    //! @details 根の部品の欄・参照の欄・グローバルの項目はシーン。
+    //! プロテクトの項目は、actor が派生の .actor を指していれば派生、ほかは元の .actor。
+    //! シーンの読み書き・エディタの書く先・行の地の色は、どれもこの答えで分ける
     [[nodiscard]] FieldDestination FieldDestinationOf(const SceneActor& actor,
                                                       const Object& part,
                                                       const FieldDesc& field) noexcept;

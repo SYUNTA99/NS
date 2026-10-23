@@ -169,9 +169,9 @@ namespace NS
         void Snapshot() noexcept;
 
         NS_REFLECT_BEGIN(Model, Object)
-        NS_PLACEMENT_FIELD(m_colorOverride, "基本色", "色の上書き")
-        NS_PLACEMENT_FIELD(m_mesh, "メッシュ")
-        NS_PLACEMENT_FIELD(m_material, "マテリアル")
+        NS_GLOBAL_FIELD(m_colorOverride, "基本色", "色の上書き")
+        NS_GLOBAL_FIELD(m_mesh, "メッシュ")
+        NS_GLOBAL_FIELD(m_material, "マテリアル")
         NS_REFLECT_END()
 
     private:

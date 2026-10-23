@@ -99,7 +99,7 @@ namespace NS
         }
         // .actor へ書く欄は凍結が持たない。写すと編集へ戻る時に配置物の値として捨てられる
         const FieldDesc* field = FindField(part->GetReflection(), fieldName);
-        if (field == nullptr || FieldDestinationOf(actor, *part, *field) == FieldDestination::ActorFile)
+        if (field == nullptr || FieldDestinationOf(actor, *part, *field) != FieldDestination::Scene)
         {
             return;
         }
