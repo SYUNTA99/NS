@@ -102,3 +102,36 @@ TEST(ActorFileGenerator, WritesTheCompletedActorFilesBackToTheDirectory)
 
     EXPECT_EQ(NS::Editor::GenerateActorFiles(scope.Path()), 0);
 }
+
+// Assets/Actors の .actor は、そのクラスで登録した項目を全部書いている。項目を足したら生成で書き足す
+TEST(ActorFileGenerator, EveryAssetActorFileHasEveryRegisteredField)
+{
+    const std::string directory = NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Actors");
+    int checked = 0;
+    for (const std::string& path : NS::OS::FileSystem::ListFiles(directory, ".actor"))
+    {
+        const std::optional<nlohmann::json> actorFile = NS::ReadActorFileAt(path);
+        ASSERT_TRUE(actorFile.has_value()) << path;
+        std::vector<std::string> added;
+        (void)NS::Editor::CompleteActorFile(*actorFile, added);
+        for (const std::string& item : added)
+        {
+            ADD_FAILURE() << path << " に項目 " << item << " が無い";
+        }
+        ++checked;
+    }
+    EXPECT_GE(checked, 7);
+}
+
+// テストの起動は、登録した全部のクラスの .actor を一時ディレクトリに揃えてから走る
+TEST(ActorFileGenerator, TestsRunWithAnActorFileForEveryRegisteredClass)
+{
+    const std::string assets = NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Actors");
+    EXPECT_NE(NS::ActorFileLibrary::Get().Directory(), assets);
+    for (const NS::TypeRegistry::Entry& entry : NS::TypeRegistry::Get().Entries())
+    {
+        EXPECT_EQ(NS::ActorFileLibrary::Get().ClassNameOf(entry.className), entry.className) << entry.className;
+    }
+}
