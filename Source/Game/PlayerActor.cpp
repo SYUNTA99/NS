@@ -65,9 +65,7 @@ PlayerActor::PlayerActor() noexcept = default;
 PlayerActor::~PlayerActor() = default;
 void PlayerActor::OnInit()
 {
-    NS::Model* model = CreateClassObj(m_model, this);
-    model->SetMaterialRef("Assets/Materials/player.mat");
-    model->SetColorOverride(NS::Color{0.5f, 0.5f, 0.5f});
+    CreateClassObj(m_model, this);
     CreateClassObj(m_appearance, this);
     CreateClassObj(m_body, this);
     // シーンは OnInit の前に決まっている。当たりは作る時に地形と根を受け取り、持ち主を持たない

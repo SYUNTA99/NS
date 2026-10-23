@@ -8,10 +8,7 @@ namespace NS
 {
     void MapPartsActor::OnInit()
     {
-        // 色はテクスチャが無い時の見た目。床の既定の灰色
-        Model* mesh = CreateClassObj(m_model, this);
-        mesh->SetMeshRef("cube");
-        mesh->SetColorOverride(Color{0.70f, 0.70f, 0.75f});
+        CreateClassObj(m_model, this);
         // 当たりは見た目のメッシュの三角形そのもの。メッシュを差し替えると当たりも付いて来る
         CreateClassObj<Collision, MeshCollision>(m_collision, this);
     }

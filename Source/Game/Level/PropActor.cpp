@@ -81,9 +81,7 @@ namespace GL
         }
         void PropActor::OnInit()
         {
-            NS::Model* model = CreateClassObj(m_model, this);
-            model->SetMeshRef("sphere");
-            model->SetColorOverride(NS::Color{0.72f, 0.70f, 0.66f});
+            CreateClassObj(m_model, this);
             CreateClassObj(m_shadow, this);
             NS::SphereCollision* sphere = CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision, this);
             CreateClassObj(m_params);

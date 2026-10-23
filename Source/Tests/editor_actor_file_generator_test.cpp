@@ -23,6 +23,31 @@ namespace
     {
         return std::find(added.begin(), added.end(), item) != added.end();
     }
+
+    // .actor に手で書いた 0.43 は、float に読むと 0.4300000071525574 で書き出される。数は float で比べる
+    bool SameFieldValue(const nlohmann::json& read, const nlohmann::json& written)
+    {
+        if (read.is_number() && written.is_number())
+        {
+            return read.get<float>() == written.get<float>();
+        }
+        if (read.is_array() && written.is_array())
+        {
+            if (read.size() != written.size())
+            {
+                return false;
+            }
+            for (std::size_t i = 0; i < read.size(); ++i)
+            {
+                if (!SameFieldValue(read[i], written[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return read == written;
+    }
 } // namespace
 
 // 書いてある項目は値のまま残し、書いていない項目をコードの値で足す。根の姿勢と参照の欄は書かない
@@ -122,6 +147,39 @@ TEST(ActorFileGenerator, EveryAssetActorFileHasEveryRegisteredField)
         ++checked;
     }
     EXPECT_GE(checked, 7);
+}
+
+// Assets/Actors の .actor から作ったアクターは、根の他の全部の項目が .actor に書いた値になる。OnInit は項目へ値を書かない
+TEST(ActorFileGenerator, ActorsTakeEveryFieldFromTheAssetActorFile)
+{
+    const std::string directory = NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Actors");
+    int checked = 0;
+    for (const std::string& path : NS::OS::FileSystem::ListFiles(directory, ".actor"))
+    {
+        const std::optional<nlohmann::json> actorFile = NS::ReadActorFileAt(path);
+        ASSERT_TRUE(actorFile.has_value()) << path;
+        const std::unique_ptr<NS::SceneActor> actor = NS::CreateActorOfClass(NS::ActorFileClass(*actorFile));
+        ASSERT_NE(actor, nullptr) << path;
+        NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+            if (part == &actor->Root())
+            {
+                return;
+            }
+            const nlohmann::json* written = NS::ClassObjFields(*actorFile, row.key);
+            ASSERT_NE(written, nullptr) << path << " " << row.key;
+            const nlohmann::json values = NS::SerializeClassObjFields(*part);
+            for (nlohmann::json::const_iterator field = written->begin(); field != written->end(); ++field)
+            {
+                ASSERT_TRUE(values.contains(field.key())) << path << " " << row.key << " " << field.key();
+                EXPECT_TRUE(SameFieldValue(values.at(field.key()), field.value()))
+                    << path << " " << row.key << " " << field.key() << ": " << values.at(field.key()).dump() << " と "
+                    << field.value().dump();
+                ++checked;
+            }
+        });
+    }
+    EXPECT_GT(checked, 0);
 }
 
 // テストの起動は、登録した全部のクラスの .actor を一時ディレクトリに揃えてから走る
