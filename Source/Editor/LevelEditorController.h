@@ -379,8 +379,7 @@ private:
 
     bool m_editShortcutsBlocked = false;
 
-    //! 選んだ .actor を敷いた 1 体。比べる基準の 1 体 (ActorFileLibrary::Baseline) は書いた時に
-    //! アクターが上書きしていたかを見分ける基準なので、直す途中の値を入れず、こちらで直す
+    //! 選んだ .actor の値で作った 1 体。素材の窓で直す値はこの 1 体に入れ、確定の時に .actor へ書く
     std::unique_ptr<NS::SceneActor> m_actorFileDraft;
     nlohmann::json m_actorFileDraftSource; // m_actorFileDraft を作った時の .actor の文書
 

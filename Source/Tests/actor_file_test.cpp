@@ -1355,3 +1355,41 @@ TEST(ActorFile, NoActorIsCreatedWithoutItsActorFile)
     EXPECT_EQ(NS::CreateActorOfClass("PropActor", NS::ActorInitInfo{.actorFile = "NoSuchRock"}), nullptr);
     EXPECT_EQ(log.ErrorCount(), 2);
 }
+
+// 元の .actor を書くと、元を指すアクターと派生を指すアクターの全部に全部の値が写る。
+// 派生が書いた項目 (質量 4) と、シーンで上書きした項目 (質量 9) は残る
+TEST(ActorFile, WritingTheBaseUpdatesDerivedActorsAndKeepsSceneOverrides)
+{
+    const ScopedActorFileDirectory scope("WriteBaseToDerived");
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    ASSERT_TRUE(library.Set("HeavyRock", DerivedActorFileWith("PropActor", "Params", MassEntry(4.0f))));
+
+    nlohmann::json derived = MapObjJson(2);
+    NS::SetObjectJsonActorFile(derived, "HeavyRock");
+    nlohmann::json overridden = MapObjJson(3);
+    NS::ObjectJsonClassObjs(overridden)["Params"] = MassEntry(9.0f);
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::SceneJsonObjects(doc).push_back(MapObjJson(1));
+    NS::SceneJsonObjects(doc).push_back(std::move(derived));
+    NS::SceneJsonObjects(doc).push_back(std::move(overridden));
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    LevelEditorController editor(&scene);
+    GL::Level::PropActor* selected = NS::Cast<GL::Level::PropActor>(SelectActorFile(editor, scope.Path(), "PropActor"));
+    ASSERT_NE(selected, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(selected->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
+
+    sphere->SetRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, *selected, sphere, "半径"));
+    ASSERT_EQ(NS::ApplyJsonFields(selected->Params(), MassEntry(5.0f)), 0u);
+    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, *selected, &selected->Params(), "質量"));
+
+    for (NS::uint32 id : {1u, 2u, 3u})
+    {
+        EXPECT_FLOAT_EQ(RadiusOf(*scene.Objects().FindByObjectId(id)), 3.0f) << id;
+    }
+    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(1)), 5.0f);
+    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(2)), 4.0f);
+    EXPECT_FLOAT_EQ(MassOf(*scene.Objects().FindByObjectId(3)), 9.0f);
+}

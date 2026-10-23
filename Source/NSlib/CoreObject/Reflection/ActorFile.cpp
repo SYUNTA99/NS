@@ -711,11 +711,29 @@ namespace NS
             return;
         }
         // 位置・回転・拡縮は個体の物なので、ファイルに書かれていても根の部品へは写さない
+        // シーンで上書きした項目はアクターの値が正なので写さない
         nlohmann::json values = *actorFile;
         ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
             if (part == &actor.Root())
             {
                 ObjectJsonClassObjs(values).erase(row.key);
+                return;
+            }
+            nlohmann::json* fields = ClassObjFields(values, row.key);
+            if (fields == nullptr)
+            {
+                return;
+            }
+            for (nlohmann::json::iterator field = fields->begin(); field != fields->end();)
+            {
+                if (actor.IsSceneOverride(row.key, field.key()))
+                {
+                    field = fields->erase(field);
+                }
+                else
+                {
+                    ++field;
+                }
             }
         });
         ApplyObjectClassObjs(actor, values);

@@ -321,105 +321,32 @@ namespace
         NS::SceneEnvironment m_after;
     };
 
-    // 部品の表の鍵と欄の名前の組
-    using FieldKeys = std::set<std::pair<std::string, std::string>>;
-
-    // actor の配置物へ書く欄のうち、値が .actor の基準の 1 体と同じ欄。上書きしていない欄で、.actor の値に付いて行く
-    [[nodiscard]] FieldKeys PlacementFieldsAtActorFile(const NS::SceneActor& actor)
-    {
-        FieldKeys keys;
-        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
-            const NS::Object* baseline = NS::FindBaselineClassObj(actor, row);
-            if (part == &actor.Root() || baseline == nullptr)
-            {
-                return;
-            }
-            const nlohmann::json fields = NS::SerializeClassObjFields(*part);
-            const nlohmann::json baselineFields = NS::SerializeClassObjFields(*baseline);
-            for (nlohmann::json::const_iterator it = fields.begin(); it != fields.end(); ++it)
-            {
-                const NS::FieldDesc* field = NS::FindField(part->GetReflection(), it.key());
-                if (field == nullptr || field->type == NS::FieldType::ActorRef ||
-                    NS::FieldDestinationOf(actor, *part, *field) != NS::FieldDestination::Scene)
-                {
-                    continue;
-                }
-                const nlohmann::json::const_iterator same = baselineFields.find(it.key());
-                if (same != baselineFields.end() && *same == it.value())
-                {
-                    keys.emplace(std::string{row.key}, it.key());
-                }
-            }
-        });
-        return keys;
-    }
-
-    // actor の .actor へ書く欄と、following に入れた配置物へ書く欄を、.actor の基準の 1 体の値へ揃える
-    void CopyActorFileFields(NS::SceneActor& actor, const FieldKeys& following)
-    {
-        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, NS::Object* part) {
-            const NS::Object* baseline = NS::FindBaselineClassObj(actor, row);
-            if (part == &actor.Root() || baseline == nullptr)
-            {
-                return;
-            }
-            nlohmann::json fields = NS::SerializeClassObjFields(*baseline);
-            for (nlohmann::json::iterator it = fields.begin(); it != fields.end();)
-            {
-                const NS::FieldDesc* field = NS::FindField(part->GetReflection(), it.key());
-                const bool kept =
-                    field != nullptr &&
-                    (NS::FieldDestinationOf(actor, *part, *field) != NS::FieldDestination::Scene ||
-                     following.contains(std::pair<std::string, std::string>{std::string{row.key}, it.key()}));
-                if (kept)
-                {
-                    ++it;
-                }
-                else
-                {
-                    it = fields.erase(it);
-                }
-            }
-            (void)NS::ApplyJsonFields(*part, fields);
-        });
-        actor.ReloadAssets();
-    }
-
-    // name の .actor を document に差し替えてファイルへ書き、scene の同じ .actor のアクターの全部へ写す
-    // document が無ければ .actor の文書とファイルを消し、アクターはコードの既定へ戻る
-    // 配置物へ書く欄は、書く前の .actor と同じ値のアクターだけが付いて来る。上書きしたアクターの値は残る
+    // name の .actor を document に差し替えてファイルへ書き、name を指すアクターと name の派生を指すアクターの全部へ、
+    // 全部の値を写し直す。シーンで上書きした項目はアクターの値が残る
     // 直し終えた時・取り消し・やり直しの全部がこの 1 本を通る
-    void WriteActorFile(NS::Scene& scene, const std::string& name, const std::optional<nlohmann::json>& document)
+    void WriteActorFile(NS::Scene& scene, const std::string& name, const nlohmann::json& document)
     {
-        std::vector<std::pair<NS::SceneActor*, FieldKeys>> actors;
-        for (NS::SceneActor* actor : scene.Objects())
-        {
-            if (actor->ActorFileName() == name)
-            {
-                actors.emplace_back(actor, PlacementFieldsAtActorFile(*actor));
-            }
-        }
         NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
-        if (!document.has_value())
-        {
-            if (!library.Delete(name))
-            {
-                NS_LOG_WARN(App, ".actor {} のファイルを消せなかった。次の起動で読まれる", name);
-            }
-        }
-        else if (!library.Set(name, *document))
+        if (!library.Set(name, document))
         {
             return;
         }
-        else if (!library.Save(name))
+        if (!library.Save(name))
         {
             NS_LOG_WARN(App, ".actor {} をファイルへ書けなかった。今の起動の間だけ効く", name);
         }
-        for (const std::pair<NS::SceneActor*, FieldKeys>& actor : actors)
+        for (NS::SceneActor* actor : scene.Objects())
         {
-            CopyActorFileFields(*actor.first, actor.second);
+            const nlohmann::json* actorFile = library.Find(actor->ActorFileName());
+            if (actorFile == nullptr ||
+                (actor->ActorFileName() != name && NS::ActorFileBase(*actorFile) != name))
+            {
+                continue;
+            }
+            NS::ApplyActorFile(*actor);
+            actor->ReloadAssets();
             // 束はアクターを作る時に .actor から読むので、読み直させて次の当たりに効かせる
-            if (NS::HitReaction* reaction = actor.first->HitReactionClassObj())
+            if (NS::HitReaction* reaction = actor->HitReactionClassObj())
             {
                 reaction->ReloadSets();
             }
@@ -466,24 +393,14 @@ namespace
     // .actor の 1 欄の書き換え。配置物でないので IObjectSnapshotApplier を使わず、シーンと前後の差分を自分で持つ
     // 戻す・やり直す時は、その時の文書に差分だけを当てる。動作の窓は取り消しの履歴を通さずに文書を書くので、
     // 文書の全部を戻すと窓の直しが消える
-    // hadFile が偽なのは .actor の無かったアクターの 1 手目で、before はその時に作った文書。戻して before と同じなら .actor を消す
     class ActorFileCommand final : public NS::Editor::ICommand
     {
     public:
-        ActorFileCommand(NS::Scene& scene, std::string name, bool hadFile, nlohmann::json before,
-                         const nlohmann::json& after)
+        ActorFileCommand(NS::Scene& scene, std::string name, const nlohmann::json& before, const nlohmann::json& after)
             : m_scene(scene), m_name(std::move(name)), m_redo(nlohmann::json::diff(before, after)),
               m_undo(nlohmann::json::diff(after, before))
         {
-            if (!hadFile)
-            {
-                m_created = std::move(before);
-            }
             m_bytes = sizeof(*this) + m_name.size() + m_redo.dump().size() + m_undo.dump().size();
-            if (m_created.has_value())
-            {
-                m_bytes += m_created->dump().size();
-            }
         }
 
         void Do(NS::Editor::IObjectSnapshotApplier&) noexcept override { Apply(m_redo); }
@@ -493,15 +410,13 @@ namespace
     private:
         void Apply(const nlohmann::json& patch) noexcept
         {
-            nlohmann::json document = nlohmann::json::object();
-            if (const nlohmann::json* current = NS::ActorFileLibrary::Get().Find(m_name))
+            const nlohmann::json* current = NS::ActorFileLibrary::Get().Find(m_name);
+            if (current == nullptr)
             {
-                document = *current;
+                NS_LOG_WARN(App, ".actor {} が読まれていないので、取り消しかやり直しを当てない", m_name);
+                return;
             }
-            else if (m_created.has_value())
-            {
-                document = *m_created;
-            }
+            nlohmann::json document = *current;
             // 例外を切ってあるので、当てられない差分を patch に渡すと止まる。1 つずつ確かめて当てる
             for (const nlohmann::json& operation : patch)
             {
@@ -514,11 +429,6 @@ namespace
                 }
                 document = document.patch(nlohmann::json::array({operation}));
             }
-            if (m_created.has_value() && document == *m_created)
-            {
-                WriteActorFile(m_scene, m_name, std::nullopt);
-                return;
-            }
             WriteActorFile(m_scene, m_name, document);
         }
 
@@ -526,7 +436,6 @@ namespace
         std::string m_name;
         nlohmann::json m_redo;
         nlohmann::json m_undo;
-        std::optional<nlohmann::json> m_created;
         std::size_t m_bytes = 0;
     };
 }
@@ -1698,27 +1607,21 @@ void LevelEditorController::CommitActorFileEdits()
             continue;
         }
         const std::string name = actor->ActorFileName();
-        nlohmann::json before = nlohmann::json::object();
         const nlohmann::json* current = library.Find(name);
-        const bool hadFile = current != nullptr;
-        if (hadFile)
+        if (current == nullptr)
         {
-            before = *current;
+            NS_LOG_WARN(App, ".actor {} が読まれていないので、欄 {} を書かない", name, edit.fieldName);
+            continue;
         }
-        else
-        {
-            // .actor の無いアクターは型から作った物で、名前はクラス名
-            NS::SetActorFileClass(before, actor->ClassName());
-        }
+        const nlohmann::json before = *current;
         nlohmann::json after = before;
         NS::ObjectJsonClassObjs(after)[std::string{edit.row->key}][edit.fieldName] = FieldJson(*part, edit.fieldName);
-        if (hadFile && after == before)
+        if (after == before)
         {
             continue;
         }
         // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-        m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, name, hadFile, std::move(before), after),
-                             m_applier);
+        m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, name, before, after), m_applier);
     }
 }
 
@@ -1744,8 +1647,7 @@ void LevelEditorController::WriteActorFileHitReactions(std::string_view actorFil
         return;
     }
     // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-    m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, name, true, std::move(before), after),
-                         m_applier);
+    m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, name, before, after), m_applier);
 }
 
 void LevelEditorController::FinishFieldWrite(NS::SceneActor& actor, NS::FieldType writtenType)

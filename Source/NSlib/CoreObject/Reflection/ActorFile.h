@@ -118,7 +118,7 @@ namespace NS
         bool m_loaded = false;
     };
 
-    //! actor の ActorFileName の .actor の欄の値を写す。部品は足さない
+    //! actor の ActorFileName の .actor の全部の値を写す。根の部品とシーンで上書きした項目は写さず、部品は足さない
     void ApplyActorFile(SceneActor& actor);
 
     //! @brief シーンに置いたアクターの JSON に書いた項目で、actor のシーンの上書きの一覧を作り直す
