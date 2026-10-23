@@ -13,6 +13,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Windows/StringUtils.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
 
@@ -139,6 +140,38 @@ TEST(SceneActor, FileTextRoundTripKeepsClass)
     ASSERT_EQ(objects.size(), 2u);
     EXPECT_EQ(NS::ObjectJsonActorFile(objects[NS::FindObjectIndexById(back, 1)]), "MapPartsActor");
     EXPECT_EQ(NS::ObjectJsonActorFile(objects[NS::FindObjectIndexById(back, 2)]), "GoalActor");
+}
+
+// 書く途中で失敗しても前の .scene を壊さない。壊れると、そのシーンに置いた全部のアクターを失う
+TEST(SceneJson, SaveThatCannotFinishLeavesTheFileAsItWas)
+{
+    using NS::OS::FileSystem;
+    const std::string directory = FileSystem::Combine(
+        FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "build"), "TestSceneFiles"), "SaveKeepsOldFile");
+    ASSERT_TRUE(FileSystem::CreateDirectories(directory));
+    const std::string path = FileSystem::Combine(directory, "level.scene");
+
+    nlohmann::json original = NS::MakeSceneJson();
+    AddActorObject(original, "GoalActor", 1);
+    ASSERT_TRUE(NS::SaveSceneToJsonFile(original, path));
+    const std::optional<std::string> before = FileSystem::ReadAllText(path);
+    ASSERT_TRUE(before.has_value());
+
+    // 書く途中の失敗を、一時のファイルの置き場をディレクトリで塞いで作る
+    const std::string blocker = path + ".tmp";
+    ASSERT_TRUE(FileSystem::CreateDirectories(blocker));
+    nlohmann::json edited = NS::MakeSceneJson();
+    AddActorObject(edited, "MapPartsActor", 2);
+    {
+        const TestLogCapture log;
+        EXPECT_FALSE(NS::SaveSceneToJsonFile(edited, path));
+    }
+    const std::optional<std::string> after = FileSystem::ReadAllText(path);
+    ASSERT_TRUE(after.has_value());
+    EXPECT_EQ(*after, *before);
+
+    std::error_code error;
+    std::filesystem::remove_all(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(directory)}, error);
 }
 
 TEST(SceneActor, EnvironmentRoundTripsThroughFileAndScene)

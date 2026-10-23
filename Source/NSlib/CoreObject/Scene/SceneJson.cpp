@@ -407,7 +407,8 @@ namespace NS
         }
 
         const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
-        return OS::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size()));
+        // 書く途中で失敗しても前の .scene を残す
+        return OS::FileSystem::ReplaceAllBytes(path, std::span<const std::byte>(raw, text.size()));
     }
 
     bool LoadSceneFromJsonFile(nlohmann::json& outScene, std::string_view path) noexcept
