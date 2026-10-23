@@ -296,19 +296,19 @@ namespace NS
         UIDirector m_ui;
 
         //! 衝突判定の PhysicsScene を持つ。Collision が出る時と動いた歩に body を入れる
-        //! Collision が OnEndPlay で body を外し、Collider が借りるので、m_objects より先に宣言して後に破棄する
+        //! Collision が持ち主の OnDisappear で body を外し、Collider が借りるので、m_actors より先に宣言して後に破棄する
         PhysicsDirector m_physics;
         // skybox と重力の向き。実体側の唯一の出所で、描画が毎フレーム読み、保存は ToJson がここから写す
         SceneEnvironment m_environment;
 
-        // ヒットセンサーの調べ役。配置物の部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
+        // ヒットセンサーの調べ役。配置物の部品が持ち主の OnDisappear で外れるので、配置物より先に宣言して後に破棄する
         HitSensorDirector m_hitSensors;
         SceneCamera m_mainCamera;
         // 仮想カメラは持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         CameraManager m_cameraManager;
         ActorList m_actors; // 配置物の一覧
         // .actor が見つからず作らなかった配置物の JSON。id ごとに 1 つ、持った順に並べ、保存ではアクターの後に書く。
-        // id は、読む時は m_objects の次の id が数え、1 体だけ入れる道ではこのシーンの控えの id なので数え済み。
+        // id は、読む時は m_actors の次の id が数え、1 体だけ入れる道ではこのシーンの控えの id なので数え済み。
         // 新しいアクターに振られない
         std::vector<nlohmann::json> m_unresolvedActors;
         // 更新へ登録した管理役 1 件
