@@ -1,13 +1,13 @@
 #include "Editor/EditorMode.h"
 #include "NSlib/Core/Types.h"
 
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Editor/EditorUi.h"
 #include "Editor/GridMath.h"
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
-#include "Editor/Undo/IObjectSnapshotApplier.h"
-#include "Editor/Undo/ObjectSnapshotCommand.h"
+#include "Editor/Undo/IActorSnapshotApplier.h"
+#include "Editor/Undo/ActorSnapshotCommand.h"
 #include "Game/Game.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
@@ -74,9 +74,9 @@ namespace NS
             };
         } // namespace
 
-        bool EditorMode::HasObjectAtCell(int16 x, int16 y, int16 z) const noexcept
+        bool EditorMode::HasActorAtCell(int16 x, int16 y, int16 z) const noexcept
         {
-            return m_findCellObject && m_findCellObject(x, y, z) != k_NoObjectId;
+            return m_findCellActor && m_findCellActor(x, y, z) != k_NoActorId;
         }
 
         bool EditorMode::IsCellOccupied(int16 x, int16 y, int16 z) const noexcept
@@ -498,7 +498,7 @@ namespace NS
 #endif
         }
 
-        std::vector<uint32> EditorMode::CreateObjects(std::vector<nlohmann::json> objects)
+        std::vector<uint32> EditorMode::CreateActors(std::vector<nlohmann::json> objects)
         {
             // プレイ中に作った物は、編集へ戻る組み直しで消える。履歴だけがプレイの姿を指して残る
             std::vector<uint32> created;
@@ -512,13 +512,13 @@ namespace NS
             created.reserve(objects.size());
             for (nlohmann::json& object : objects)
             {
-                const uint32 sourceId = ObjectJsonId(object);
+                const uint32 sourceId = ActorJsonId(object);
                 const uint32 id = m_allocateId();
-                if (sourceId != k_NoObjectId)
+                if (sourceId != k_NoActorId)
                 {
                     idMap.emplace(sourceId, id);
                 }
-                SetObjectJsonId(object, id);
+                SetActorJsonId(object, id);
                 created.push_back(id);
             }
 
@@ -526,9 +526,9 @@ namespace NS
             commands.reserve(objects.size());
             for (std::size_t i = 0; i < objects.size(); ++i)
             {
-                RemapObjectRefs(objects[i], idMap);
+                RemapActorRefs(objects[i], idMap);
                 commands.push_back(
-                    std::make_unique<ObjectSnapshotCommand>(created[i], std::nullopt, std::move(objects[i])));
+                    std::make_unique<ActorSnapshotCommand>(created[i], std::nullopt, std::move(objects[i])));
             }
             m_undo.Push(MakeUndoUnit(std::move(commands)), *m_applier);
             m_levelDirty = true;
@@ -537,7 +537,7 @@ namespace NS
 
         void EditorMode::PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellObject)
+            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellActor)
             {
                 return;
             }
@@ -551,12 +551,12 @@ namespace NS
             }();
 
             nlohmann::json placed = m_palette.CurrentTemplate();
-            SetObjectPosition(placed,
+            SetActorJsonPosition(placed,
                                   Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
             Editor::SetCellRotationStep(placed, rotation);
 
-            const uint32 id = m_findCellObject(x, y, z);
-            if (id == k_NoObjectId)
+            const uint32 id = m_findCellActor(x, y, z);
+            if (id == k_NoActorId)
             {
                 // 地形の部品でない物は筆で置き換えない
                 if (IsCellOccupied(x, y, z))
@@ -566,60 +566,60 @@ namespace NS
                 // 筆は置いた物を選ばない
                 std::vector<nlohmann::json> objects;
                 objects.push_back(std::move(placed));
-                (void)CreateObjects(std::move(objects));
+                (void)CreateActors(std::move(objects));
                 return;
             }
 
-            // 今ある cell は同じ永続 id で置き換える。作るのでなく編集なので CreateObjects を通さない
-            std::optional<nlohmann::json> before = m_applier->CaptureObject(id);
-            SetObjectJsonId(placed, id);
-            m_undo.Push(std::make_unique<Editor::ObjectSnapshotCommand>(id, std::move(before), std::move(placed)),
+            // 今ある cell は同じ永続 id で置き換える。作るのでなく編集なので CreateActors を通さない
+            std::optional<nlohmann::json> before = m_applier->CaptureActor(id);
+            SetActorJsonId(placed, id);
+            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(id, std::move(before), std::move(placed)),
                         *m_applier);
             m_levelDirty = true;
         }
 
         void EditorMode::DeleteAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellObject)
+            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellActor)
             {
                 return;
             }
 
-            const uint32 id = m_findCellObject(x, y, z);
-            if (id == k_NoObjectId)
+            const uint32 id = m_findCellActor(x, y, z);
+            if (id == k_NoActorId)
             {
                 return;
             }
-            std::optional<nlohmann::json> before = m_applier->CaptureObject(id);
+            std::optional<nlohmann::json> before = m_applier->CaptureActor(id);
             if (!before)
             {
                 return;
             }
-            m_undo.Push(std::make_unique<Editor::ObjectSnapshotCommand>(id, std::move(before), std::nullopt),
+            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(id, std::move(before), std::nullopt),
                         *m_applier);
             m_levelDirty = true;
         }
 
         void EditorMode::RotateAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellObject)
+            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellActor)
             {
                 return;
             }
 
-            const uint32 id = m_findCellObject(x, y, z);
-            if (id == k_NoObjectId)
+            const uint32 id = m_findCellActor(x, y, z);
+            if (id == k_NoActorId)
             {
                 return;
             }
-            std::optional<nlohmann::json> before = m_applier->CaptureObject(id);
+            std::optional<nlohmann::json> before = m_applier->CaptureActor(id);
             if (!before)
             {
                 return;
             }
             nlohmann::json after = *before;
             Editor::AddCellQuarterTurn(after);
-            m_undo.Push(std::make_unique<Editor::ObjectSnapshotCommand>(id, std::move(*before), std::move(after)),
+            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(id, std::move(*before), std::move(after)),
                         *m_applier);
             m_levelDirty = true;
         }
@@ -768,7 +768,7 @@ namespace NS
                 PlaceUnderCursorProgrammatic(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
             }
             if (mouse.IsPressed(OS::MouseButton::Right) &&
-                HasObjectAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
+                HasActorAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
             {
                 DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
             }
@@ -784,7 +784,7 @@ namespace NS
                 PlaceUnderCursorProgrammatic(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
             }
             if (gp.IsPressed(OS::GamepadButton::B) &&
-                HasObjectAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
+                HasActorAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
             {
                 DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
             }
@@ -810,7 +810,7 @@ namespace NS
                 return;
             }
 
-            if (HasObjectAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
+            if (HasActorAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
             {
                 RotateAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
             }

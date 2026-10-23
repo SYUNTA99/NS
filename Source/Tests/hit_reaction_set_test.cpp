@@ -285,7 +285,7 @@ TEST(HitReactionSet, ActorFileWithSetsAndActionsRoundTripsByteForByte)
     using NS::OS::FileSystem;
     // 読み込みは部品の欄 classObjs を必ず持たせるので、初めから持つ形で書く
     nlohmann::json actorFile = CodeValuesActorFile("PropActor");
-    (void)NS::ObjectJsonClassObjs(actorFile);
+    (void)NS::ActorJsonClassObjs(actorFile);
     NS::WriteHitReactionSets(actorFile, {MakeEveryKindSet()});
     NS::ActorAction action;
     action.name = "BeforeContact";
@@ -394,7 +394,7 @@ namespace
         nlohmann::json actorFile = CodeValuesActorFile(k_ProbeName);
         NS::WriteHitReactionSets(actorFile, sets);
         const ScopedActorFile scoped(k_ProbeName, std::move(actorFile));
-        ReactionProbeActor* probe = scene.SpawnObject<ReactionProbeActor>(k_ProbeName);
+        ReactionProbeActor* probe = scene.SpawnActor<ReactionProbeActor>(k_ProbeName);
         if (probe != nullptr)
         {
             probe->Root().SetPosition(position);

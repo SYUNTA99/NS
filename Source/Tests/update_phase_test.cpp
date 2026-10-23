@@ -74,11 +74,11 @@ namespace
         void SetTarget(NS::uint32 objectId) noexcept { m_target = objectId; }
 
     protected:
-        void StateStep() override { m_scene.DestroyObject(m_target); }
+        void StateStep() override { m_scene.RemoveActor(m_target); }
 
     private:
         NS::Scene& m_scene;
-        NS::uint32 m_target = NS::k_NoObjectId;
+        NS::uint32 m_target = NS::k_NoActorId;
     };
 
     class CountingActor final : public NS::SceneActor
@@ -150,11 +150,11 @@ namespace
     public:
         explicit DestroyerSystem(NS::Scene& scene) : m_scene(scene) {}
         void SetTarget(NS::uint32 objectId) noexcept { m_target = objectId; }
-        void OnTick() override { m_scene.DestroyObject(m_target); }
+        void OnTick() override { m_scene.RemoveActor(m_target); }
 
     private:
         NS::Scene& m_scene;
-        NS::uint32 m_target = NS::k_NoObjectId;
+        NS::uint32 m_target = NS::k_NoActorId;
     };
 } // namespace
 
@@ -163,7 +163,7 @@ TEST(UpdatePhase, SystemAddedDuringItsPhaseWaitsForTheNextFrame)
     // 段で呼ぶ物は段の始まりに決める。段の SceneActor が足した管理役をその段で呼ぶと、登録の時期で呼ぶ回数が変わる
     NS::Scene scene;
     CountingTicker late;
-    scene.SpawnObject<LateRegisterActor>("LateRegisterActor", scene, late);
+    scene.SpawnActor<LateRegisterActor>("LateRegisterActor", scene, late);
 
     scene.OnUpdate();
     EXPECT_EQ(late.ticks, 0);
@@ -176,7 +176,7 @@ TEST(UpdatePhase, DestroyingFromASystemTickIsRefused)
 {
     // 管理役の更新も段の中。ここで配置物を解放すると、同じ段で後に呼ぶ管理役が破棄済みの相手を読む
     NS::Scene scene;
-    CountingActor* victim = scene.SpawnObject<CountingActor>("Victim");
+    CountingActor* victim = scene.SpawnActor<CountingActor>("Victim");
     const NS::uint32 victimId = victim->Id();
     DestroyerSystem destroyer(scene);
     destroyer.SetTarget(victimId);
@@ -186,7 +186,7 @@ TEST(UpdatePhase, DestroyingFromASystemTickIsRefused)
     scene.OnUpdate();
     EXPECT_EQ(log.ErrorCount(), 1);
 
-    EXPECT_EQ(scene.Objects().FindByObjectId(victimId), victim);
+    EXPECT_EQ(scene.Actors().FindByActorId(victimId), victim);
     scene.RemoveSystemTick(destroyer);
 }
 
@@ -194,10 +194,10 @@ TEST(UpdatePhase, SceneRunsTheNamedTableAroundPhysics)
 {
     NS::Scene scene;
     std::vector<std::string> log;
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Camera, log, "camera");
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "triggers");
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Enemy, log, "enemy");
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Camera, log, "camera");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "triggers");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Enemy, log, "enemy");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
     PhaseTicker sensors(log, "sensors");
     PhaseTicker course(log, "course");
     PhaseTicker ui(log, "ui");
@@ -232,8 +232,8 @@ TEST(UpdatePhase, StableActorOrderAndRemovedTickerArePreserved)
 {
     NS::Scene scene;
     std::vector<std::string> log;
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "first");
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "second");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "first");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "second");
     PhaseTicker ticker(log, "ticker");
     scene.AddSystemTick(ticker, NS::UpdatePhase::Triggers);
     scene.ExecutePhase(NS::UpdatePhase::Triggers);
@@ -249,8 +249,8 @@ TEST(UpdatePhase, DestroyingDuringAPhaseIsRefused)
 {
     // 段の最中に配置物を解放すると、その段で後に呼ぶ予定の生ポインタが破棄済みになる。解放の口は段の間は断る
     NS::Scene scene;
-    DestroyerActor* destroyer = scene.SpawnObject<DestroyerActor>("Destroyer", scene);
-    CountingActor* victim = scene.SpawnObject<CountingActor>("Victim");
+    DestroyerActor* destroyer = scene.SpawnActor<DestroyerActor>("Destroyer", scene);
+    CountingActor* victim = scene.SpawnActor<CountingActor>("Victim");
     const NS::uint32 victimId = victim->Id();
     destroyer->SetTarget(victimId);
 
@@ -258,7 +258,7 @@ TEST(UpdatePhase, DestroyingDuringAPhaseIsRefused)
     scene.ExecutePhase(NS::UpdatePhase::Triggers);
     EXPECT_EQ(log.ErrorCount(), 1);
 
-    ASSERT_EQ(scene.Objects().FindByObjectId(victimId), victim);
+    ASSERT_EQ(scene.Actors().FindByActorId(victimId), victim);
     EXPECT_EQ(victim->updates, 1);
 }
 
@@ -266,10 +266,10 @@ TEST(InterpolationSnapshot, ModelWrittenByAnEarlierPhaseStartsFromTheValueBefore
 {
     // 前の値を書き手より後の段で控えると、先の段で書いた倍率が始点にもなり補間されずに飛ぶ
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnObject<DrawModelActor>("DrawModelActor");
+    DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
-    scene.SpawnObject<DrawScaleWriterActor>("DrawScaleWriterActor", *drawn);
+    scene.SpawnActor<DrawScaleWriterActor>("DrawScaleWriterActor", *drawn);
 
     scene.OnUpdate();
 
@@ -281,7 +281,7 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
 {
     // 止めている間は段が回らない。前の値の控えも段に置くと、止める前に書いた倍率から補間し続けて絵が揺れる
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnObject<DrawModelActor>("DrawModelActor");
+    DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
     scene.SetSimulationPaused(true);
@@ -295,7 +295,7 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
 TEST(InterpolationSnapshot, SnapStartsTheModelAtTheNewScale)
 {
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnObject<DrawModelActor>("DrawModelActor");
+    DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
     NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
     ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
@@ -322,7 +322,7 @@ TEST(WorldSpeed, SlowWorldStepsOnceInFiveAndRealTimePhasesEveryStep)
     // 遅い世界は 1 歩の中身を変えず、世界の時計の段を間引く。入力と UI は毎歩回る
     NS::Scene scene;
     std::vector<std::string> log;
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
     PhaseTicker physics(log, "physics");
     PhaseTicker ui(log, "ui");
     PhaseTicker effects(log, "effects");
@@ -356,10 +356,10 @@ TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
 {
     // 世界を進めない歩に前の値を控えると補間が止まる。割合は前に世界を進めてからの溜めで出す
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnObject<DrawModelActor>("DrawModelActor");
+    DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
-    scene.SpawnObject<DrawScaleWriterActor>("DrawScaleWriterActor", *drawn);
+    scene.SpawnActor<DrawScaleWriterActor>("DrawScaleWriterActor", *drawn);
     scene.SetWorldSpeed(0.5f);
 
     scene.OnUpdate();
@@ -432,10 +432,10 @@ TEST(OthersHold, HoldingOthersRunsOnlyThePlayerSideForItsSteps)
     // 真ん中で触れる前の数フレーム、自機以外の世界を止める。自機・入力・カメラ・UI は回す
     NS::Scene scene;
     std::vector<std::string> log;
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Enemy, log, "enemy");
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "triggers");
-    scene.SpawnObject<PhaseActor>("PhaseActor", NS::UpdatePhase::Camera, log, "camera");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Enemy, log, "enemy");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Triggers, log, "triggers");
+    scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Camera, log, "camera");
     PhaseTicker physics(log, "physics");
     PhaseTicker sensors(log, "sensors");
     PhaseTicker course(log, "course");
@@ -485,7 +485,7 @@ TEST(OthersHold, ZeroStepsAndRestartingThePlayReleaseTheHold)
 TEST(ModelLocalScale, ScalesAroundTheMeshOriginAndMovesTheDrawScalePivot)
 {
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnObject<DrawModelActor>("DrawModelActor");
+    DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
     NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
     model->SetLocalBoundsOverride(NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 1.0f, 1.0f}});

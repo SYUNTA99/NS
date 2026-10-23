@@ -7,7 +7,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/Message/Message.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 
 #include "NSlib/Core/Types.h"
 #include <optional>

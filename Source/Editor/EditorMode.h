@@ -33,7 +33,7 @@ namespace NS
 {
     namespace Editor
     {
-        class IObjectSnapshotApplier;
+        class IActorSnapshotApplier;
 
         //! グリッド配置・保存・Undo の編集機能。非アクティブ中は編集入力と描画を止める
         class EditorMode : public NonCopyable
@@ -61,15 +61,15 @@ namespace NS
             void SetCaptureLevelFn(std::function<nlohmann::json()> fn) noexcept { m_captureLevel = std::move(fn); }
 
             //! @brief セル編集・取り消しを実体へ適用する処理を設定する。未設定ならセル編集は何もしない
-            void SetApplier(IObjectSnapshotApplier* applier) noexcept { m_applier = applier; }
+            void SetApplier(IActorSnapshotApplier* applier) noexcept { m_applier = applier; }
 
             //! @brief 読込済みシーンデータを実体側へ取り込む関数を差す。読込の完了時に呼ぶ
             void SetLoadLevelFn(std::function<void(nlohmann::json&&)> fn) noexcept { m_loadLevel = std::move(fn); }
 
-            //! @brief セルにあるセルブラシ配置物の永続識別番号を取得する処理を設定する。不在は k_NoObjectId
-            void SetFindCellObjectFn(std::function<uint32(int16, int16, int16)> fn) noexcept
+            //! @brief セルにあるセルブラシ配置物の永続識別番号を取得する処理を設定する。不在は k_NoActorId
+            void SetFindCellActorFn(std::function<uint32(int16, int16, int16)> fn) noexcept
             {
-                m_findCellObject = std::move(fn);
+                m_findCellActor = std::move(fn);
             }
 
             //! @brief cell に種類を問わず配置物が居るかを引く関数を差す
@@ -125,7 +125,7 @@ namespace NS
             //! @details 各 JSON に新しい永続 id を振り、写した元の id を指す参照を、一緒に作る物の新しい id へ付け替える。
             //! 作った物を選ぶかは呼び手が決める
             //! @return 作った物の id を渡した順に返す。休止の間 (プレイ中) と、適用処理か採番が無い時は作らずに空を返す
-            [[nodiscard]] std::vector<uint32> CreateObjects(std::vector<nlohmann::json> objects);
+            [[nodiscard]] std::vector<uint32> CreateActors(std::vector<nlohmann::json> objects);
 
             //! @brief テストや自動処理向けに、入力を介さずに指定座標へ直接編集操作を実行する
             void PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept;
@@ -176,9 +176,9 @@ namespace NS
 
         private:
             std::function<nlohmann::json()> m_captureLevel;
-            IObjectSnapshotApplier* m_applier = nullptr;
+            IActorSnapshotApplier* m_applier = nullptr;
             std::function<void(nlohmann::json&&)> m_loadLevel;
-            std::function<uint32(int16, int16, int16)> m_findCellObject;
+            std::function<uint32(int16, int16, int16)> m_findCellActor;
             std::function<bool(int16, int16, int16)> m_cellOccupied;
             std::function<std::vector<CellCoord>()> m_collectCells;
             std::function<uint32()> m_allocateId;
@@ -218,7 +218,7 @@ namespace NS
             [[nodiscard]] bool IsSceneEditable() const noexcept;
 
             //! セルにセルブラシ配置物があるか。実体の照会が未設定なら常に不在
-            [[nodiscard]] bool HasObjectAtCell(int16 x, int16 y, int16 z) const noexcept;
+            [[nodiscard]] bool HasActorAtCell(int16 x, int16 y, int16 z) const noexcept;
             //! cell に種類を問わず配置物が居るか。置けるかの判定だけが読む
             [[nodiscard]] bool IsCellOccupied(int16 x, int16 y, int16 z) const noexcept;
 

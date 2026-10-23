@@ -1,7 +1,7 @@
 #include "Editor/HitPreview.h"
 #include "NSlib/Core/Types.h"
 
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/LevelMessages.h"
@@ -68,10 +68,10 @@ namespace NS
             nlohmann::json PlacePlayer(const nlohmann::json& snapshot, const Vector3& rootPosition)
             {
                 nlohmann::json placed = snapshot;
-                const std::size_t index = FindPlayerObjectIndex(placed);
-                if (index != k_NoObjectIndex)
+                const std::size_t index = FindPlayerActorIndex(placed);
+                if (index != k_NoActorIndex)
                 {
-                    SetObjectPosition(SceneJsonObjects(placed)[index], rootPosition);
+                    SetActorJsonPosition(SceneJsonActors(placed)[index], rootPosition);
                 }
                 return placed;
             }
@@ -83,14 +83,14 @@ namespace NS
                                                 PlayerActor*& outPlayer)
             {
                 std::unique_ptr<Scene> scene = MakeScene(PlacePlayer(snapshot, placement.playerStart), world);
-                outPlayer = FindPlayer(scene->Objects());
+                outPlayer = FindPlayer(scene->Actors());
                 if (outPlayer != nullptr)
                 {
                     // 追従カメラは置いた時の向きのままだと、突進の横や前から映る。ゲームでは狙う向きの後ろから見ているので、
                     // 自機の後ろ上へ置き直す。当たりの動きはカメラを読まないので、記録は変わらない
                     const Vector3 behind = placement.playerStart - placement.direction * k_CameraBehindDistance +
                                                Vector3{0.0f, k_CameraHeight, 0.0f};
-                    for (SceneActor* object : scene->Objects())
+                    for (SceneActor* object : scene->Actors())
                     {
                         if (GL::Level::FollowCameraActor* camera = Cast<GL::Level::FollowCameraActor>(object))
                         {
@@ -262,7 +262,7 @@ namespace NS
                 const Vector3 from = player.Root().Position();
                 uint32 nearest = 0;
                 float nearestDistance = 0.0f;
-                for (SceneActor* object : scene.Objects())
+                for (SceneActor* object : scene.Actors())
                 {
                     if (object == &player || !object->IsAppeared() || !IsHitTarget(*object))
                     {
@@ -304,7 +304,7 @@ namespace NS
             const OS::ScopedNeutralInput neutral;
             // 置き直しの前の自機と相手を、写しをそのまま組んだ場面から読む
             std::unique_ptr<Scene> original = MakeScene(snapshot, world);
-            PlayerActor* player = FindPlayer(original->Objects());
+            PlayerActor* player = FindPlayer(original->Actors());
             if (player == nullptr)
             {
                 result.error = "場面に自機が居ない";
@@ -319,7 +319,7 @@ namespace NS
                     return result;
                 }
             }
-            SceneActor* target = original->Objects().FindByObjectId(result.desc.targetId);
+            SceneActor* target = original->Actors().FindByActorId(result.desc.targetId);
             if (target == nullptr)
             {
                 result.error = std::format("id {} の配置物が場面に無い", result.desc.targetId);

@@ -60,7 +60,7 @@ namespace
     }
 } // namespace
 
-TEST(SceneRendererCamera, ObjectsDrawTheSameAfterTheManagerDropsTheRealCamera)
+TEST(SceneRendererCamera, ActorsDrawTheSameAfterTheManagerDropsTheRealCamera)
 {
     NS::OS::Window window(
         NS::OS::WindowDesc{.title = "描く側のカメラの試し", .size = {k_Width, k_Height}, .visible = false});
@@ -72,7 +72,7 @@ TEST(SceneRendererCamera, ObjectsDrawTheSameAfterTheManagerDropsTheRealCamera)
     {
         NS::Scene scene;
         scene.SetDevice(&device);
-        (void)scene.SpawnObject<BoxActor>("Box");
+        (void)scene.SpawnActor<BoxActor>("Box");
         // 世界を止め、管理役が実カメラを書き換えずに、補間も掛けずに描く
         scene.SetSimulationEnabled(false);
         NS::SceneCamera* camera = scene.MainCamera();

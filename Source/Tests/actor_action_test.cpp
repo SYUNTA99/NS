@@ -298,8 +298,8 @@ namespace
             nlohmann::json actorFile = CodeValuesActorFile(k_ActionProbeName);
             NS::WriteActorActions(actorFile, actions);
             const ScopedActorFile scoped(k_ActionProbeName, std::move(actorFile));
-            self = scene.SpawnObject<ActionProbeActor>("Self");
-            other = scene.SpawnObject<ActionProbeActor>("Other");
+            self = scene.SpawnActor<ActionProbeActor>("Self");
+            other = scene.SpawnActor<ActionProbeActor>("Other");
             if (self != nullptr && other != nullptr)
             {
                 other->Root().SetPosition(NS::Vector3{0.0f, 0.0f, 3.0f});

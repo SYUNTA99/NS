@@ -1,8 +1,8 @@
 #include "Editor/CategoryPalette.h"
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
-#include "Editor/Undo/ObjectSnapshotApplier.h"
+#include "Editor/Undo/ActorSnapshotApplier.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
@@ -29,9 +29,9 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 
     editor.PlaceItem(*item);
 
-    const NS::uint32 id = editor.SelectedObjectId();
-    ASSERT_NE(id, NS::k_NoObjectId);
-    NS::SceneActor* placed = scene.Objects().FindByObjectId(id);
+    const NS::uint32 id = editor.SelectedActorId();
+    ASSERT_NE(id, NS::k_NoActorId);
+    NS::SceneActor* placed = scene.Actors().FindByActorId(id);
     ASSERT_NE(placed, nullptr);
     EXPECT_EQ(std::string_view{placed->ClassName()}, "PropActor");
 }
@@ -45,7 +45,7 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
 
     editor.PlaceItem(*item);
 
-    NS::SceneActor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
+    NS::SceneActor* placed = scene.Actors().FindByActorId(editor.SelectedActorId());
     ASSERT_NE(placed, nullptr);
     EXPECT_EQ(std::string_view{placed->ClassName()}, "MapPartsActor");
     const NS::Model* renderer = placed->ModelClassObj();
@@ -75,20 +75,20 @@ TEST(EditorPlacement, SlopeAnglesComeFromTheBuiltinShapes)
 // エディタの姿勢の関数で JSON に書いた姿が、そのまま組んだアクターの根の姿になる
 TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
 {
-    nlohmann::json bare = NS::MakeObjectJson();
-    EXPECT_FLOAT_EQ(NS::Editor::ObjectScale(bare).y, 1.0f);
+    nlohmann::json bare = NS::MakeActorJson();
+    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(bare).y, 1.0f);
     NS::Editor::EnsureTransformClassObj(bare);
-    EXPECT_FLOAT_EQ(NS::Editor::ObjectScale(bare).y, 1.0f);
-    EXPECT_FLOAT_EQ(NS::Editor::ObjectPosition(bare).y, 0.0f);
+    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(bare).y, 1.0f);
+    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(bare).y, 0.0f);
 
     nlohmann::json object = NS::Editor::MakePrototypeJson<GL::Level::PropActor>();
     const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(0.5f, 0.0f, 0.0f);
-    NS::Editor::SetObjectPosition(object, NS::Vector3{1.0f, 2.0f, 3.0f});
-    NS::Editor::SetObjectRotation(object, rotation);
-    NS::Editor::SetObjectScale(object, NS::Vector3{2.0f, 2.0f, 2.0f});
-    EXPECT_FLOAT_EQ(NS::Editor::ObjectPosition(object).z, 3.0f);
-    EXPECT_FLOAT_EQ(NS::Editor::ObjectRotation(object).y, rotation.y);
-    EXPECT_FLOAT_EQ(NS::Editor::ObjectScale(object).x, 2.0f);
+    NS::Editor::SetActorJsonPosition(object, NS::Vector3{1.0f, 2.0f, 3.0f});
+    NS::Editor::SetActorJsonRotation(object, rotation);
+    NS::Editor::SetActorJsonScale(object, NS::Vector3{2.0f, 2.0f, 2.0f});
+    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).z, 3.0f);
+    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonRotation(object).y, rotation.y);
+    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(object).x, 2.0f);
 
     NS::Scene scene;
     NS::SceneActor* actor = scene.SpawnFromJson(object);
@@ -106,16 +106,16 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
     ASSERT_TRUE(item.has_value());
 
     editor.PlaceItem(*item);
-    const NS::uint32 id = editor.SelectedObjectId();
-    ASSERT_NE(scene.Objects().FindByObjectId(id), nullptr);
+    const NS::uint32 id = editor.SelectedActorId();
+    ASSERT_NE(scene.Actors().FindByActorId(id), nullptr);
 
-    NS::Editor::ObjectSnapshotApplier applier{&scene};
+    NS::Editor::ActorSnapshotApplier applier{&scene};
     ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
-    EXPECT_EQ(scene.Objects().FindByObjectId(id), nullptr);
+    EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
 
     // やり直すと同じ id・同じクラスで戻る
     ASSERT_TRUE(editor.Editor().Undo().Redo(applier));
-    NS::SceneActor* again = scene.Objects().FindByObjectId(id);
+    NS::SceneActor* again = scene.Actors().FindByActorId(id);
     ASSERT_NE(again, nullptr);
     EXPECT_EQ(std::string_view{again->ClassName()}, "GoalActor");
 }
@@ -132,7 +132,7 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
         "__ns_missing_terrain__.glb"));
     EXPECT_EQ(log.ErrorCount(), 2);
 
-    NS::SceneActor* placed = scene.Objects().FindByObjectId(editor.SelectedObjectId());
+    NS::SceneActor* placed = scene.Actors().FindByActorId(editor.SelectedActorId());
     ASSERT_NE(placed, nullptr);
     EXPECT_EQ(std::string_view{placed->ClassName()}, "MapPartsActor");
     const NS::Model* renderer = placed->ModelClassObj();
@@ -151,14 +151,14 @@ TEST(EditorPlacement, OnlyTheBuiltInPartsCountAsCells)
     const std::optional<NS::Editor::PlacementItem> cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
     ASSERT_TRUE(cube.has_value());
     editor.PlaceItem(*cube);
-    const NS::SceneActor* placedCube = scene.Objects().FindByObjectId(editor.SelectedObjectId());
+    const NS::SceneActor* placedCube = scene.Actors().FindByActorId(editor.SelectedActorId());
     ASSERT_NE(placedCube, nullptr);
     editor.AddMeshParts(NS::OS::FileSystem::Combine(
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Models"),
         "__ns_missing_terrain__.glb"));
-    const NS::SceneActor* dropped = scene.Objects().FindByObjectId(editor.SelectedObjectId());
+    const NS::SceneActor* dropped = scene.Actors().FindByActorId(editor.SelectedActorId());
     ASSERT_NE(dropped, nullptr);
 
-    EXPECT_TRUE(NS::Editor::IsCellBrushObject(*placedCube));
-    EXPECT_FALSE(NS::Editor::IsCellBrushObject(*dropped));
+    EXPECT_TRUE(NS::Editor::IsCellBrushActor(*placedCube));
+    EXPECT_FALSE(NS::Editor::IsCellBrushActor(*dropped));
 }

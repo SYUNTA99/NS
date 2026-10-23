@@ -118,7 +118,7 @@ namespace NS
 
         void ActionTimelinePanel::FollowSelection(LevelEditorController& editor)
         {
-            const SceneActor* selected = editor.SelectedObjectActor();
+            const SceneActor* selected = editor.SelectedActor();
             if (selected == nullptr || selected->ActorFileName() == m_actorFile)
             {
                 return;
@@ -148,7 +148,7 @@ namespace NS
             }
             m_dirty.insert(m_actorFile);
             // 動作は作る時に .actor から写すので、同じ .actor のアクターに読み直させてプレイにも効かせる
-            for (SceneActor* actor : editor.Objects())
+            for (SceneActor* actor : editor.Actors())
             {
                 if (actor->ActorFileName() == m_actorFile && actor->ActionTimelineClassObj() != nullptr)
                 {
@@ -331,9 +331,9 @@ namespace NS
             ImGui::SeparatorText("当てる条件");
             bool changed = false;
 
-            SceneActor* selected = editor.SelectedObjectActor();
+            SceneActor* selected = editor.SelectedActor();
             const bool selectable =
-                selected != nullptr && !editor.SelectedIsPlayerObject() && selected->BodySensorClassObj() != nullptr;
+                selected != nullptr && !editor.SelectedIsPlayerActor() && selected->BodySensorClassObj() != nullptr;
             if (m_desc.targetId == 0)
             {
                 ImGui::TextUnformatted("相手: 自機に一番近い配置物");
@@ -421,7 +421,7 @@ namespace NS
         {
 #if NS_EDITOR_ENABLED
             ImGui::SeparatorText("動作");
-            if (const SceneActor* selected = editor.SelectedObjectActor())
+            if (const SceneActor* selected = editor.SelectedActor())
             {
                 if (ActorFileLibrary::Get().Find(selected->ActorFileName()) == nullptr)
                 {
@@ -512,7 +512,7 @@ namespace NS
             {
                 // 置き場ごと読み直すので、ほかの .actor の保存していない変更も戻る
                 ActorFileLibrary::Get().Reload();
-                for (SceneActor* actor : editor.Objects())
+                for (SceneActor* actor : editor.Actors())
                 {
                     if (m_dirty.contains(actor->ActorFileName()) && actor->ActionTimelineClassObj() != nullptr)
                     {

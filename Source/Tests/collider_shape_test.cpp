@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/PropActor.h"
@@ -8,7 +8,7 @@
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -26,17 +26,17 @@ namespace
     void LoadPlayerScene(NS::Scene& scene, const nlohmann::json& parts)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(entry, "PlayerActor");
-        NS::SetObjectJsonId(entry, 1);
+        nlohmann::json entry = NS::MakeActorJson();
+        NS::SetActorJsonFile(entry, "PlayerActor");
+        NS::SetActorJsonId(entry, 1);
         entry["classObjs"] = parts;
-        NS::SceneJsonObjects(doc).push_back(std::move(entry));
+        NS::SceneJsonActors(doc).push_back(std::move(entry));
         scene.ResetFromJson(doc);
     }
 
     const NS::Collider* PlayerCollider(NS::Scene& scene)
     {
-        const PlayerActor* player = static_cast<const PlayerActor*>(scene.Objects().FindByObjectId(1));
+        const PlayerActor* player = static_cast<const PlayerActor*>(scene.Actors().FindByActorId(1));
         if (player == nullptr)
         {
             return nullptr;
@@ -133,7 +133,7 @@ TEST(ColliderShape, PlayerBodySensorFollowsARadiusEditWithoutRestart)
     // インスペクタで寸法を変えたその場で、体のセンサーは移動と同じ形を返す。開始し直しを待たない
     NS::Scene scene;
     LoadPlayerScene(scene, nlohmann::json::object());
-    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->Collider(), {{"半径", 0.8f}}), 0u);
     const NS::SensorVolume volume = player->BodySensorClassObj()->WorldVolume();
@@ -145,7 +145,7 @@ TEST(ColliderShape, ScaledPlayerRootDoesNotScaleTheBodySensor)
     // 移動の当たりは根のスケールに依らない。範囲が照合する体も同じ寸法のまま
     NS::Scene scene;
     LoadPlayerScene(scene, nlohmann::json::object());
-    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
 
     player->Root().SetScale(NS::Vector3{1.2f, 1.2f, 1.2f});
@@ -161,13 +161,13 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     // 置物の体のセンサーは当たりの球をその場で映す。配置の後に半径を変えても割れない
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::SetObjectJsonId(rock, 1);
-    NS::Editor::SetObjectPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
+    nlohmann::json rock = NS::MakeActorJson();
+    NS::SetActorJsonFile(rock, "PropActor");
+    NS::SetActorJsonId(rock, 1);
+    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    NS::SceneActor* placed = scene.Objects().FindByObjectId(1);
+    NS::SceneActor* placed = scene.Actors().FindByActorId(1);
     ASSERT_NE(placed, nullptr);
     NS::SphereCollision* collision = NS::Cast<NS::SphereCollision>(placed->CollisionClassObj());
     ASSERT_NE(collision, nullptr);
@@ -223,7 +223,7 @@ TEST(ColliderShape, OldMovementShapeKeysRefuseThePlayer)
     }
     EXPECT_EQ(PlayerCollider(scene), nullptr);
     const nlohmann::json kept = scene.ToJson();
-    ASSERT_EQ(NS::SceneJsonObjects(kept).size(), 1u);
-    EXPECT_TRUE(NS::ObjectJsonClassObjs(NS::SceneJsonObjects(kept)[0])["Movement"].contains("半径"));
+    ASSERT_EQ(NS::SceneJsonActors(kept).size(), 1u);
+    EXPECT_TRUE(NS::ActorJsonClassObjs(NS::SceneJsonActors(kept)[0])["Movement"].contains("半径"));
 }
 

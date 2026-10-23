@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/PropActor.h"
 #include "Game/Level/TackleGhost.h"
 #include "Game/PlayerActor.h"
@@ -8,7 +8,7 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
@@ -413,16 +413,16 @@ namespace
     PlayerActor* PlaceLookScene(NS::Scene& scene, const NS::Vector3& rockPosition)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(player, "PlayerActor");
-        NS::SetObjectJsonId(player, 1);
-        NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 2);
-        NS::Editor::SetObjectPosition(rock, rockPosition);
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json player = NS::MakeActorJson();
+        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonId(player, 1);
+        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 2);
+        NS::Editor::SetActorJsonPosition(rock, rockPosition);
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         NS::OBB floor{};
         floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
@@ -431,7 +431,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, NS::Vector3{0.0f, 3.0f, -6.0f}, NS::Vector3{0.0f, 0.5f, 4.0f});
-        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
     LookRow ReadLookRow(NS::Scene& scene, PlayerActor& player, PropActor& rock)
@@ -551,7 +551,7 @@ namespace
         LookTrace trace;
         NS::Scene scene;
         PlayerActor* player = PlaceLookScene(scene, look.rock);
-        PropActor* rock = NS::Cast<PropActor>(scene.Objects().FindByObjectId(2));
+        PropActor* rock = NS::Cast<PropActor>(scene.Actors().FindByActorId(2));
         EXPECT_NE(player, nullptr);
         EXPECT_NE(rock, nullptr);
         if (player == nullptr || rock == nullptr)

@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
@@ -12,7 +12,7 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -34,12 +34,12 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(entry, "PlayerActor");
-    NS::SetObjectJsonId(entry, 1);
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
+    nlohmann::json entry = NS::MakeActorJson();
+    NS::SetActorJsonFile(entry, "PlayerActor");
+    NS::SetActorJsonId(entry, 1);
+    NS::SceneJsonActors(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
-    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
     // 体力は .actor だけが持つ欄なので、読んだ後のアクターへ書いて満たす
     ASSERT_EQ(NS::ApplyJsonFields(player->Params(), nlohmann::json{{"体力", 5}}), 0u);
@@ -397,22 +397,22 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(entry, "PlayerActor");
-    NS::SetObjectJsonId(entry, 1);
-    NS::Editor::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::SetObjectJsonId(rock, 2);
+    nlohmann::json entry = NS::MakeActorJson();
+    NS::SetActorJsonFile(entry, "PlayerActor");
+    NS::SetActorJsonId(entry, 1);
+    NS::Editor::SetActorJsonPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(entry));
+    nlohmann::json rock = NS::MakeActorJson();
+    NS::SetActorJsonFile(rock, "PropActor");
+    NS::SetActorJsonId(rock, 2);
     // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
-    NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
+    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    PlayerActor* player = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
     // 飛び方の高さは相手の欄に書く。.actor だけが持つ欄なので、読んだ後のアクターへ書く
-    GL::Level::PropActor* target = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* target = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(target, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(target->Params(), nlohmann::json{{"押し飛ばしの高さ", 3.0f}}), 0u);
     EXPECT_FALSE(NS::SerializeClassObjFields(player->Params()).contains("押し飛ばしの高さ"));
@@ -485,17 +485,17 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(entry, "PlayerActor");
-    NS::SetObjectJsonId(entry, 1);
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::SetObjectJsonId(rock, 2);
-    NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
+    nlohmann::json entry = NS::MakeActorJson();
+    NS::SetActorJsonFile(entry, "PlayerActor");
+    NS::SetActorJsonId(entry, 1);
+    NS::SceneJsonActors(doc).push_back(std::move(entry));
+    nlohmann::json rock = NS::MakeActorJson();
+    NS::SetActorJsonFile(rock, "PropActor");
+    NS::SetActorJsonId(rock, 2);
+    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
-    PlayerActor* player = NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
     const NS::Vector3 eye{0.0f, 0.0f, -6.0f};
     const NS::Vector3 lookAt{0.0f, 0.0f, 4.0f};
@@ -533,7 +533,7 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
     const auto expectEveryFieldRead = [](const nlohmann::json& entry, std::string_view source) {
         const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
         PlayerActor& player = *playerOwned;
-        const nlohmann::json& parts = NS::ObjectJsonClassObjs(entry);
+        const nlohmann::json& parts = NS::ActorJsonClassObjs(entry);
         const nlohmann::json prototype = NS::Editor::MakePrototypeJson(player);
         for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
         {
@@ -560,9 +560,9 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
             sceneName);
         nlohmann::json doc;
         ASSERT_TRUE(NS::LoadSceneFromJsonFile(doc, path)) << sceneName;
-        for (const nlohmann::json& entry : NS::SceneJsonObjects(doc))
+        for (const nlohmann::json& entry : NS::SceneJsonActors(doc))
         {
-            if (NS::ObjectJsonActorFile(entry) == "PlayerActor")
+            if (NS::ActorJsonFile(entry) == "PlayerActor")
             {
                 expectEveryFieldRead(entry, sceneName);
             }

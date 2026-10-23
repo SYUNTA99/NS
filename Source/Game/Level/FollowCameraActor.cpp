@@ -27,7 +27,7 @@ namespace GL
         {
             if (NS::Scene* scene = OwningScene())
             {
-                NS::SceneActor* target = scene->Objects().FindObject(m_vcam->TargetRef());
+                NS::SceneActor* target = scene->Actors().FindActor(m_vcam->TargetRef());
                 if (target != nullptr)
                 {
                     if (const ::PlayerActor* player = NS::Cast<::PlayerActor>(target))

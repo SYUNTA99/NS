@@ -7,7 +7,7 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
@@ -35,16 +35,16 @@ namespace
     PlayerActor* PlaceChargePlayer(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(entry, "PlayerActor");
-        NS::SetObjectJsonId(entry, 1);
-        NS::SceneJsonObjects(doc).push_back(std::move(entry));
+        nlohmann::json entry = NS::MakeActorJson();
+        NS::SetActorJsonFile(entry, "PlayerActor");
+        NS::SetActorJsonId(entry, 1);
+        NS::SceneJsonActors(doc).push_back(std::move(entry));
         scene.ResetFromJson(doc);
         if (PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f}) == nullptr)
         {
             return nullptr;
         }
-        return static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
+        return static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     }
 
     const NS::EffectRecord* LiveEffect(const PlayerActor& player, std::string_view name)
@@ -316,12 +316,12 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(entry, "PlayerActor");
-    NS::SetObjectJsonId(entry, 1);
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
+    nlohmann::json entry = NS::MakeActorJson();
+    NS::SetActorJsonFile(entry, "PlayerActor");
+    NS::SetActorJsonId(entry, 1);
+    NS::SceneJsonActors(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
-    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     TestViewCamera* camera = PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -347,12 +347,12 @@ TEST(PlayerChargeSequence, AimLineFollowsTheViewCameraNotTheDrawnCamera)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(entry, "PlayerActor");
-    NS::SetObjectJsonId(entry, 1);
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
+    nlohmann::json entry = NS::MakeActorJson();
+    NS::SetActorJsonFile(entry, "PlayerActor");
+    NS::SetActorJsonId(entry, 1);
+    NS::SceneJsonActors(doc).push_back(std::move(entry));
     scene.ResetFromJson(doc);
-    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{-5.0f, 0.0f, 0.0f}, NS::Vector3{}), nullptr);

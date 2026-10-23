@@ -1,7 +1,7 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -35,11 +35,11 @@ namespace
 
     nlohmann::json LifeBoxJson(NS::uint32 id, std::string_view name, float x)
     {
-        nlohmann::json object = NS::MakeObjectJson();
-        NS::SetObjectJsonId(object, id);
-        NS::SetObjectJsonActorFile(object, "LifeBoxActor");
-        NS::SetObjectJsonName(object, name);
-        NS::Editor::SetObjectPosition(object, {x, 0.0f, 0.0f});
+        nlohmann::json object = NS::MakeActorJson();
+        NS::SetActorJsonId(object, id);
+        NS::SetActorJsonFile(object, "LifeBoxActor");
+        NS::SetActorJsonName(object, name);
+        NS::Editor::SetActorJsonPosition(object, {x, 0.0f, 0.0f});
         return object;
     }
 
@@ -71,7 +71,7 @@ TEST(ActorLifecycle, StartRegistersEachPartOnce)
 {
     NS::Scene scene;
     const std::size_t renderables = scene.RenderableCount();
-    (void)scene.SpawnObject<GL::Level::PropActor>("PropActor");
+    (void)scene.SpawnActor<GL::Level::PropActor>("PropActor");
     EXPECT_EQ(scene.RenderableCount(), renderables + 4);
     EXPECT_EQ(scene.HitSensors().Sensors().size(), 1u);
 }
@@ -79,8 +79,8 @@ TEST(ActorLifecycle, StartRegistersEachPartOnce)
 TEST(ActorLifecycle, DisappearStopsUpdatesAndAppearResumesOnce)
 {
     NS::Scene scene;
-    LifeProbeActor* actor = scene.SpawnObject<LifeProbeActor>("LifeProbeActor");
-    LifeProbeActor* other = scene.SpawnObject<LifeProbeActor>("LifeProbeActor");
+    LifeProbeActor* actor = scene.SpawnActor<LifeProbeActor>("LifeProbeActor");
+    LifeProbeActor* other = scene.SpawnActor<LifeProbeActor>("LifeProbeActor");
     EXPECT_TRUE(actor->IsAppeared());
     scene.ExecutePhase(NS::UpdatePhase::Triggers);
     EXPECT_EQ(actor->updates, 1);
@@ -101,21 +101,21 @@ TEST(ActorLifecycle, DisappearStopsUpdatesAndAppearResumesOnce)
 TEST(ActorLifecycle, DestroyedPlacedActorLeavesAfterTheStep)
 {
     NS::Scene scene;
-    const std::size_t before = scene.Objects().ObjectCount();
-    NS::SceneActor* actor = scene.SpawnObject<LifeProbeActor>("Probe");
+    const std::size_t before = scene.Actors().ActorCount();
+    NS::SceneActor* actor = scene.SpawnActor<LifeProbeActor>("Probe");
     actor->Destroy();
     EXPECT_FALSE(actor->IsAppeared());
     // 段を回している途中の呼び手がまだ指しているので、その場では解放しない
-    EXPECT_EQ(scene.Objects().ObjectCount(), before + 1);
+    EXPECT_EQ(scene.Actors().ActorCount(), before + 1);
     scene.OnUpdate();
-    EXPECT_EQ(scene.Objects().ObjectCount(), before);
+    EXPECT_EQ(scene.Actors().ActorCount(), before);
 }
 
 TEST(ActorLifecycle, PhysicsAndSensorsLeaveTheirRegistries)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    GL::Level::PropActor* actor = scene.SpawnObject<GL::Level::PropActor>("PropActor");
+    GL::Level::PropActor* actor = scene.SpawnActor<GL::Level::PropActor>("PropActor");
     scene.OnUpdate();
     const std::size_t sensors = scene.HitSensors().Sensors().size();
     ASSERT_GT(sensors, 0u);
@@ -135,8 +135,8 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    GL::Level::PropActor* actor = scene.SpawnObject<GL::Level::PropActor>("PropActor");
-    GL::Level::PropActor* other = scene.SpawnObject<GL::Level::PropActor>("PropActor");
+    GL::Level::PropActor* actor = scene.SpawnActor<GL::Level::PropActor>("PropActor");
+    GL::Level::PropActor* other = scene.SpawnActor<GL::Level::PropActor>("PropActor");
     other->Root().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     const std::size_t renderables = scene.RenderableCount();
@@ -163,10 +163,10 @@ TEST(ActorLifecycle, EveryWayInGivesTheCollisionRightAway)
 {
     const ScopedActorFile lifeBox{"LifeBoxActor", CodeValuesActorFile("LifeBoxActor")};
     NS::Scene scene;
-    (void)scene.SpawnObject<LifeBoxActor>("LifeBoxActor");
+    (void)scene.SpawnActor<LifeBoxActor>("LifeBoxActor");
     EXPECT_TRUE(HitsDownAt(scene, 0.0f));
 
-    NS::SceneActor* placed = scene.SpawnObject<LifeBoxActor>("Placed");
+    NS::SceneActor* placed = scene.SpawnActor<LifeBoxActor>("Placed");
     placed->Root().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     EXPECT_TRUE(HitsDownAt(scene, 10.0f));
@@ -193,9 +193,9 @@ TEST(ActorLifecycle, EveryWayInStartsInterpolationAtThePlacement)
     const ScopedActorFile lifeBox{"LifeBoxActor", CodeValuesActorFile("LifeBoxActor")};
     NS::Scene scene;
     nlohmann::json sceneJson = NS::MakeSceneJson();
-    NS::SceneJsonObjects(sceneJson).push_back(LifeBoxJson(10, "Rebuilt", 3.0f));
+    NS::SceneJsonActors(sceneJson).push_back(LifeBoxJson(10, "Rebuilt", 3.0f));
     scene.ResetFromJson(sceneJson);
-    EXPECT_EQ(InterpolatedStart(*scene.Objects().FindByObjectId(10)), NS::Vector3(3.0f, 0.0f, 0.0f));
+    EXPECT_EQ(InterpolatedStart(*scene.Actors().FindByActorId(10)), NS::Vector3(3.0f, 0.0f, 0.0f));
 
     const NS::SceneActor* spawned = scene.SpawnFromJson(LifeBoxJson(20, "Spawned", 4.0f));
     ASSERT_NE(spawned, nullptr);

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorRef.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
@@ -19,7 +19,7 @@ namespace NS
 {
     class Scene;
     //! 配置物の JSON 1 件から配置物を組むファクトリ。組めない JSON には nullptr を返し、RebuildFromJson が読み飛ばす
-    using ObjectFactoryFn = std::function<std::unique_ptr<SceneActor>(const nlohmann::json&)>;
+    using ActorFactoryFn = std::function<std::unique_ptr<SceneActor>(const nlohmann::json&)>;
 
     //! 配置物を所有し、永続 id から参照を解決する一覧。個体の構築は渡された生成関数が行う
     class ActorList : public NonCopyable
@@ -28,11 +28,11 @@ namespace NS
         ActorList();
         ~ActorList();
 
-        //! objectId の配置物の並びの位置。居なければ ObjectCount()
-        [[nodiscard]] std::size_t IndexOfObjectId(uint32 objectId) const noexcept;
+        //! objectId の配置物の並びの位置。居なければ ActorCount()
+        [[nodiscard]] std::size_t IndexOfActorId(uint32 objectId) const noexcept;
 
         //! obj の名前を変える。他の配置物と重なれば番号を付ける。名前を書けるのはシーンの配置物を持つここだけ
-        void RenameObject(SceneActor& obj, std::string_view name);
+        void RenameActor(SceneActor& obj, std::string_view name);
 
         //! 配置物の OnEndPlay を逆順に呼んでから所有物を空へ戻す。scene の OnShutdown と RebuildFromJson の冒頭が呼ぶ
         //! 段の更新の最中は断る。その段で後に呼ぶ予定の配置物を解放しない
@@ -41,7 +41,7 @@ namespace NS
         //! objectId 一致の配置物を破棄して所有リストから外す。居なければ何もしない
         //! 当たり箱もここで揃えるので、組み直さずに 1 体だけ消せる
         //! 0 は未採番の印なので何もしない。段の更新の最中は断る
-        void RemoveByObjectId(uint32 objectId);
+        void RemoveByActorId(uint32 objectId);
 
         //! @brief SceneActor::Destroy を呼ばれた配置物を破棄して所有リストから外す
         //! @details 段の更新の最中は断るので、段を回し終えた後に呼ぶ
@@ -49,31 +49,31 @@ namespace NS
 
         //! objectId 一致の配置物を返す。居なければ nullptr。選択・編集の実体索引
         //! 0 は未採番の印なので常に nullptr。索引から引くので、毎フレーム引いても全配置物を辿らない
-        [[nodiscard]] SceneActor* FindByObjectId(uint32 objectId) noexcept;
+        [[nodiscard]] SceneActor* FindByActorId(uint32 objectId) noexcept;
 
         //! ActorRef の指す配置物を返す。未設定と該当なしは nullptr
         //! 並びが変わるたびに索引を捨てるので、破棄した相手を指す参照は必ず nullptr になる
         //! 別の配置物への参照はポインタで控えず、ActorRef で持って使うたびにここで引く
-        [[nodiscard]] SceneActor* FindObject(ActorRef ref) noexcept;
+        [[nodiscard]] SceneActor* FindActor(ActorRef ref) noexcept;
 
         //! 出ている Actor の collision を今の姿と形へ揃える。変わっていない collision は何もしない
         //! 世界が止まっていて Actor の Update が回らない歩に、編集で動いた当たりを揃える
         void SyncCollisions();
 
         //! 全配置物の補間の前の値を控える。根の Transform と Model の previous を current へ揃える
-        void SnapshotObjects();
+        void SnapshotActors();
 
         //! 永続 object id を 1 個割り当ててカウンタを進める
-        [[nodiscard]] uint32 AllocateObjectId() noexcept { return m_nextObjectId++; }
+        [[nodiscard]] uint32 AllocateActorId() noexcept { return m_nextActorId++; }
 
         //! 次に割り当てる永続 id。保存がファイルへ書き戻すために読む
-        [[nodiscard]] uint32 NextObjectId() const noexcept { return m_nextObjectId; }
+        [[nodiscard]] uint32 NextActorId() const noexcept { return m_nextActorId; }
 
         //! 抱えている配置物の数
-        [[nodiscard]] std::size_t ObjectCount() const noexcept { return m_objects.size(); }
+        [[nodiscard]] std::size_t ActorCount() const noexcept { return m_actors.size(); }
 
         //! index 番目の配置物。範囲外は nullptr。所有は ActorList が持ったまま外へ出さない
-        [[nodiscard]] SceneActor* ObjectAt(std::size_t index) const noexcept;
+        [[nodiscard]] SceneActor* ActorAt(std::size_t index) const noexcept;
 
         //! 所有を渡さず、配置物を生ポインタで辿る反復子
         class Iterator
@@ -93,8 +93,8 @@ namespace NS
             const std::unique_ptr<SceneActor>* m_slot = nullptr;
         };
 
-        [[nodiscard]] Iterator begin() const noexcept { return Iterator{m_objects.data()}; }
-        [[nodiscard]] Iterator end() const noexcept { return Iterator{m_objects.data() + m_objects.size()}; }
+        [[nodiscard]] Iterator begin() const noexcept { return Iterator{m_actors.data()}; }
+        [[nodiscard]] Iterator end() const noexcept { return Iterator{m_actors.data() + m_actors.size()}; }
 
     private:
         // 入れる口は開始の手前で止まるので、開始まで済ませる Scene だけに開く
@@ -105,7 +105,7 @@ namespace NS
         //! 出ている配置物の当たりは開始の時に入る。broadphase の張り直しは呼出側がする
         //! factory は CreateActorOfClass で作った個体を返す。factory が空なら物を組まない。
         //! 段の更新の最中は断る
-        void RebuildFromJson(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory);
+        void RebuildFromJson(const nlohmann::json& scene, Scene& owner, const ActorFactoryFn& factory);
 
         //! 段の更新を始める。EndPhase まで解放の口を断る。再入は禁止
         void BeginPhase() noexcept;
@@ -128,14 +128,14 @@ namespace NS
         void MarkIndexDirty() noexcept;
 
         //! 頭の欄の id・名前・出現を obj へ写す。名前は他の配置物と重なれば番号を付ける
-        void ApplyIdentity(SceneActor& obj, const ObjectHeader& header);
+        void ApplyIdentity(SceneActor& obj, const ActorHeader& header);
 
-        std::vector<std::unique_ptr<SceneActor>> m_objects; // 配置物の単一所有リスト
+        std::vector<std::unique_ptr<SceneActor>> m_actors; // 配置物の単一所有リスト
         std::vector<SceneActor*> m_scheduled; // ExecutePhase がその段で呼ぶ SceneActor を呼ぶ順に積む作業用の並び
         std::unordered_map<uint32, SceneActor*>
             m_index;                   // 永続 id から配置物への索引。汚れていれば次に引く時に作り直す
         bool m_indexDirty = true;      // 索引が所有リストと食い違っているか
-        uint32 m_nextObjectId = 1; // 次に割り当てる永続 id。単調増加で欠番は再利用しない
+        uint32 m_nextActorId = 1; // 次に割り当てる永続 id。単調増加で欠番は再利用しない
         bool m_updating = false;       // BeginPhase から EndPhase の間か。入れ子の検知と、段の最中の解放を断るのに使う
     };
 

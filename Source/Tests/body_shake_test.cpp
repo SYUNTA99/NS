@@ -81,7 +81,7 @@ TEST(BodyShake, OffsetHoldsEachSideForTheFlipFramesAndFallsLinearly)
 TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnObject<ModelActor>("ModelActor");
+    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
     actor->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
@@ -106,7 +106,7 @@ TEST(BodyShake, DrawOffsetMovesOnlyTheDrawnShape)
 TEST(BodyShake, ModelWithoutRequestsDrawsUnadjusted)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnObject<ModelActor>("ModelActor");
+    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
     model->AdvanceDraw();
@@ -119,7 +119,7 @@ TEST(BodyShake, ModelWithoutRequestsDrawsUnadjusted)
 TEST(BodyShake, ShakeStartsOnTheNextAdvanceAndEndsAfterTheLength)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnObject<ModelActor>("ModelActor");
+    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
     constexpr int k_Length = 4;
@@ -154,7 +154,7 @@ TEST(BodyShake, TremorStartsAtFrameZeroAndEndsAtTheLength)
 {
     NS::Scene scene;
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
-    ModelActor* actor = scene.SpawnObject<ModelActor>("ModelActor");
+    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
     constexpr int k_Length = 3;
@@ -183,7 +183,7 @@ TEST(BodyShake, TremorStartsAtFrameZeroAndEndsAtTheLength)
 TEST(BodyShake, DrawScaleInterpolatesAndSnapDoesNot)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnObject<ModelActor>("ModelActor");
+    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
     model->Snapshot();
@@ -204,7 +204,7 @@ TEST(BodyShake, DrawScaleInterpolatesAndSnapDoesNot)
 TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnObject<ModelActor>("ModelActor");
+    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
     actor->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);

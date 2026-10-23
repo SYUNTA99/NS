@@ -1,9 +1,9 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -100,7 +100,7 @@ namespace
     template <class TScene = NS::Scene> void CheckSceneBuildsItsOwnActors()
     {
         static_assert(!requires(TScene& scene, std::unique_ptr<NS::SceneActor> actor) {
-            scene.SpawnObject(std::move(actor), std::string{});
+            scene.SpawnActor(std::move(actor), std::string{});
         });
     }
 
@@ -151,7 +151,7 @@ protected:
         {
             return;
         }
-        for (const NS::SceneActor* actor : scene->Objects())
+        for (const NS::SceneActor* actor : scene->Actors())
         {
             if (actor == this)
             {
@@ -223,7 +223,7 @@ TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
 {
     const ScopedActorFile probeFile{"ClassObjInitProbeActor", CodeValuesActorFile("ClassObjInitProbeActor")};
     NS::Scene scene;
-    const ClassObjInitProbeActor* placed = scene.SpawnObject<ClassObjInitProbeActor>("Placed");
+    const ClassObjInitProbeActor* placed = scene.SpawnActor<ClassObjInitProbeActor>("Placed");
     EXPECT_EQ(placed->inits, 1);
     EXPECT_NE(placed->ModelClassObj(), nullptr);
 
@@ -262,22 +262,22 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
     };
 
     nlohmann::json placed = NS::Editor::MakePrototypeJson<AssetTimingProbeActor>();
-    NS::SetObjectJsonId(placed, 1);
+    NS::SetActorJsonId(placed, 1);
     nlohmann::json doc = NS::MakeSceneJson();
-    NS::SceneJsonObjects(doc).push_back(placed);
+    NS::SceneJsonActors(doc).push_back(placed);
     scene.ResetFromJson(doc);
-    check(scene.Objects().FindByObjectId(1), "組み直し");
+    check(scene.Actors().FindByActorId(1), "組み直し");
 
     check(scene.ReplaceFromJson(placed), "作り直す");
     check(scene.SpawnFromJson(NS::Editor::MakePrototypeJson<AssetTimingProbeActor>()), "JSON から湧かす");
-    check(scene.SpawnObject<AssetTimingProbeActor>("Placed"), "型から湧かす");
+    check(scene.SpawnActor<AssetTimingProbeActor>("Placed"), "型から湧かす");
 }
 
 // AssetManager を差していない間も素材を読む道を通る。試しも本番と同じ順を通る
 TEST(ClassObj, ActorLoadsAssetsWithoutAssetManagerScope)
 {
     NS::Scene scene;
-    const AssetTimingProbeActor* actor = scene.SpawnObject<AssetTimingProbeActor>("AssetTimingProbeActor");
+    const AssetTimingProbeActor* actor = scene.SpawnActor<AssetTimingProbeActor>("AssetTimingProbeActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->loads, 1);
 }

@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Game.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/DeathZoneActor.h"
@@ -57,17 +57,19 @@ namespace
     nlohmann::json CourseWithPlayer()
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        NS::SceneJsonObjects(doc).push_back(NS::Editor::MakePlayerObject(NS::Vector3{0.0f, 2.0f, 0.0f}, NS::Quaternion{}));
+        nlohmann::json player = NS::Editor::MakePrototypeJson<PlayerActor>();
+        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 2.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(player));
         nlohmann::json zone = NS::Editor::MakePrototypeJson<GL::Level::DeathZoneActor>();
-        NS::Editor::SetObjectPosition(zone, NS::Vector3{0.0f, -55.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(zone));
-        NS::EnsureUniqueObjectIds(doc);
+        NS::Editor::SetActorJsonPosition(zone, NS::Vector3{0.0f, -55.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(zone));
+        NS::EnsureUniqueActorIds(doc);
         return doc;
     }
 
     NS::Vector3 SpawnOf(const nlohmann::json& doc)
     {
-        return NS::Editor::ObjectPosition(NS::SceneJsonObjects(doc)[NS::Editor::FindPlayerObjectIndex(doc)]);
+        return NS::Editor::ActorJsonPosition(NS::SceneJsonActors(doc)[NS::Editor::FindPlayerActorIndex(doc)]);
     }
 
     // ゴールを自機の出現位置に重ねたシーン文書
@@ -75,9 +77,9 @@ namespace
     {
         nlohmann::json doc = CourseWithPlayer();
         nlohmann::json goal = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
-        NS::Editor::SetObjectPosition(goal, SpawnOf(doc));
-        NS::SceneJsonObjects(doc).push_back(std::move(goal));
-        NS::EnsureUniqueObjectIds(doc);
+        NS::Editor::SetActorJsonPosition(goal, SpawnOf(doc));
+        NS::SceneJsonActors(doc).push_back(std::move(goal));
+        NS::EnsureUniqueActorIds(doc);
         return doc;
     }
 } // namespace
@@ -100,7 +102,7 @@ TEST(CourseDirector, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
     director->StartCourse();
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     const NS::PlayerInput* input = &player->Input();
     const float duration = NS::OS::FrameTimer::FixedDelta() * 2.0f;
@@ -138,7 +140,7 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
     GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
     director->StartCourse();
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
 
     // 落下死の範囲 (上面 y=-50) の中へ落とす
@@ -153,24 +155,24 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
 }
 
 // 置物の出し直しのボタンを押すと、次の進行役の段で岩だけが置いた所へ戻り、自機はその場に残る
-TEST(CourseDirector, RespawnButtonReturnsObjectsButKeepsPlayer)
+TEST(CourseDirector, RespawnButtonReturnsActorsButKeepsPlayer)
 {
     nlohmann::json doc = CourseWithPlayer();
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::Editor::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
-    NS::EnsureUniqueObjectIds(doc);
+    nlohmann::json rock = NS::MakeActorJson();
+    NS::SetActorJsonFile(rock, "PropActor");
+    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(rock));
+    NS::EnsureUniqueActorIds(doc);
 
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
     director->StartCourse();
     NS::SceneActor* placed = nullptr;
-    for (NS::SceneActor* actor : scene.Objects())
+    for (NS::SceneActor* actor : scene.Actors())
     {
         if (std::string_view{actor->ClassName()} == "PropActor")
         {
@@ -198,14 +200,14 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
 {
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json goal = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
-    NS::Editor::SetObjectPosition(goal, SpawnOf(doc));
-    NS::SceneJsonObjects(doc).push_back(std::move(goal));
-    NS::EnsureUniqueObjectIds(doc);
+    NS::Editor::SetActorJsonPosition(goal, SpawnOf(doc));
+    NS::SceneJsonActors(doc).push_back(std::move(goal));
+    NS::EnsureUniqueActorIds(doc);
 
     NS::Scene scene;
     scene.ResetFromJson(doc);
     (void)scene.BeginPlayBaseline();
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
@@ -230,7 +232,7 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
     NS::Scene scene;
     scene.ResetFromJson(doc);
     (void)scene.BeginPlayBaseline();
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
@@ -263,7 +265,7 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
     NS::Scene scene;
     scene.ResetFromJson(doc);
     (void)scene.BeginPlayBaseline();
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
@@ -297,7 +299,7 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
     NS::Scene scene;
     scene.ResetFromJson(CourseWithPlayer());
     (void)scene.BeginPlayBaseline();
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
 
     for (int i = 0; i < 60 && !player->ChargeJudge().IsCharging(); ++i)
@@ -316,20 +318,20 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
     EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, impacts);
 }
 
-TEST(CourseDirector, RestartReturnsObjectsToTheirStart)
+TEST(CourseDirector, RestartReturnsActorsToTheirStart)
 {
     nlohmann::json doc = CourseWithPlayer();
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::Editor::SetObjectPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
-    NS::EnsureUniqueObjectIds(doc);
+    nlohmann::json rock = NS::MakeActorJson();
+    NS::SetActorJsonFile(rock, "PropActor");
+    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(rock));
+    NS::EnsureUniqueActorIds(doc);
 
     NS::Scene scene;
     scene.ResetFromJson(doc);
     NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->StartCourse();
     NS::SceneActor* placed = nullptr;
-    for (NS::SceneActor* actor : scene.Objects())
+    for (NS::SceneActor* actor : scene.Actors())
     {
         if (std::string_view{actor->ClassName()} == "PropActor")
         {
@@ -347,7 +349,7 @@ TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
 {
     NS::Scene scene;
     scene.ResetFromJson(CourseWithPlayer());
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     const NS::Vector3 placedAt{5.0f, 5.0f, 5.0f};
     player->Root().SetPosition(placedAt);
@@ -357,9 +359,9 @@ TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
 
     // 凍結は呼んだ時の配置を写し、自機はそこからやり直しと同じ姿で始まる
     const nlohmann::json& baseline = scene.PlayBaseline();
-    const std::size_t index = NS::FindObjectIndexById(baseline, player->Id());
-    ASSERT_NE(index, NS::k_NoObjectIndex);
-    const NS::Vector3 frozen = NS::Editor::ObjectPosition(NS::SceneJsonObjects(baseline)[index]);
+    const std::size_t index = NS::FindActorIndexById(baseline, player->Id());
+    ASSERT_NE(index, NS::k_NoActorIndex);
+    const NS::Vector3 frozen = NS::Editor::ActorJsonPosition(NS::SceneJsonActors(baseline)[index]);
     EXPECT_FLOAT_EQ(frozen.x, placedAt.x);
     EXPECT_FLOAT_EQ(frozen.y, placedAt.y);
     EXPECT_FLOAT_EQ(frozen.z, placedAt.z);
@@ -380,12 +382,12 @@ TEST(CourseDirector, GameLoadSceneFreezesTheNewlyLoadedScene)
     ASSERT_NE(scene, nullptr);
 
     // やり直しの戻り先が読み直したシーンの配置になっている
-    const std::size_t placed = scene->Objects().ObjectCount();
+    const std::size_t placed = scene->Actors().ActorCount();
     ASSERT_GT(placed, 0u);
-    EXPECT_EQ(NS::SceneJsonObjects(scene->PlayBaseline()).size(), placed);
-    const PlayerActor* player = FindPlayer(scene->Objects());
+    EXPECT_EQ(NS::SceneJsonActors(scene->PlayBaseline()).size(), placed);
+    const PlayerActor* player = FindPlayer(scene->Actors());
     ASSERT_NE(player, nullptr);
-    EXPECT_NE(NS::FindObjectIndexById(scene->PlayBaseline(), player->Id()), NS::k_NoObjectIndex);
+    EXPECT_NE(NS::FindActorIndexById(scene->PlayBaseline(), player->Id()), NS::k_NoActorIndex);
 }
 
 // 開始の後に凍結の位置を書き換えても (プレイ中のインスペクタの道)、やり直しは開始の時の位置へ戻る
@@ -394,14 +396,14 @@ TEST(CourseDirector, RestartReturnsToThePoseAtStartEvenIfTheBaselineChanges)
     NS::Scene scene;
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::Editor::MakePrototypeJson<GL::Level::PropActor>();
-    NS::Editor::SetObjectPosition(rock, NS::Vector3{3.0f, 0.5f, 0.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
-    NS::EnsureUniqueObjectIds(doc);
+    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{3.0f, 0.5f, 0.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(rock));
+    NS::EnsureUniqueActorIds(doc);
     scene.ResetFromJson(doc);
-    PlayerActor* player = FindPlayer(scene.Objects());
+    PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     GL::Level::PropActor* prop = nullptr;
-    for (NS::SceneActor* actor : scene.Objects())
+    for (NS::SceneActor* actor : scene.Actors())
     {
         if (GL::Level::PropActor* found = NS::Cast<GL::Level::PropActor>(actor))
         {

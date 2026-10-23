@@ -1,12 +1,12 @@
 #include "Editor/PlacementCatalog.h"
 
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -43,7 +43,7 @@ namespace NS
                     {
                         return;
                     }
-                    nlohmann::json& part = ObjectJsonClassObjs(prototype)[row.key];
+                    nlohmann::json& part = ActorJsonClassObjs(prototype)[row.key];
                     for (std::size_t i = 0; i < info->fieldCount; ++i)
                     {
                         const FieldDesc& field = info->fields[i];
@@ -114,7 +114,7 @@ namespace NS
             const TypeRegistry::Entry* entry = TypeRegistry::Get().Find("MapPartsActor");
             if (entry == nullptr || entry->create == nullptr)
             {
-                return MakeObjectJson();
+                return MakeActorJson();
             }
             // 型から作るのでクラスと同じ名前の .actor を敷く
             const std::unique_ptr<SceneActor> actor = CreateActorOfClass(entry->className);
@@ -123,7 +123,7 @@ namespace NS
 
         float PartsSlopeAngleDegrees(const nlohmann::json& prototype) noexcept
         {
-            const std::string_view actorFileName = ObjectJsonActorFile(prototype);
+            const std::string_view actorFileName = ActorJsonFile(prototype);
             const std::string className = ActorFileLibrary::Get().ClassNameOf(actorFileName);
             if (className.empty())
             {
@@ -135,7 +135,7 @@ namespace NS
             {
                 return -1.0f;
             }
-            ApplyObjectClassObjs(*actor, prototype);
+            ApplyActorClassObjs(*actor, prototype);
             const Model* model = actor->ModelClassObj();
             if (model == nullptr)
             {

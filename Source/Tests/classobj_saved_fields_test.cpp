@@ -1,9 +1,9 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
@@ -37,11 +37,11 @@ namespace
 TEST(ClassObjSavedFields, SavedJsonHasNoEnabledKey)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
-    ExpectNoEnabledKey(NS::ObjectToJson(*player));
+    ExpectNoEnabledKey(NS::ActorToJson(*player));
     ExpectNoEnabledKey(*NS::ActorFileLibrary::Get().Values("PlayerActor"));
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
-    ExpectNoEnabledKey(NS::ObjectToJson(*prop));
+    ExpectNoEnabledKey(NS::ActorToJson(*prop));
     ExpectNoEnabledKey(*NS::ActorFileLibrary::Get().Values("PropActor"));
 }
 

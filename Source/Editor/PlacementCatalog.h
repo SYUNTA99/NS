@@ -3,7 +3,7 @@
 // エディタで置ける物の一覧。ヒエラルキーの追加メニューとパレットが同じ一覧を読む
 // 置ける物は Assets/Actors の .actor のうち、中の class が NS_PLACEABLE で登録したクラスの物。出荷ビルドには載らない
 
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 
 #include <optional>
 #include <string>

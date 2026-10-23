@@ -1,5 +1,5 @@
 #include "Editor/ActorFileGenerator.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -54,8 +54,8 @@ namespace
 TEST(ActorFileGenerator, CompletesMissingFieldsFromTheCodeAndKeepsWrittenValues)
 {
     nlohmann::json actorFile = ClassOnlyActorFile("PropActor");
-    NS::ObjectJsonClassObjs(actorFile)["Params"] = {{"摩擦", 0.25f}};
-    NS::ObjectJsonClassObjs(actorFile)["Transform"] = {{NS::k_PositionFieldName, {1.0f, 2.0f, 3.0f}}};
+    NS::ActorJsonClassObjs(actorFile)["Params"] = {{"摩擦", 0.25f}};
+    NS::ActorJsonClassObjs(actorFile)["Transform"] = {{NS::k_PositionFieldName, {1.0f, 2.0f, 3.0f}}};
 
     std::vector<std::string> added;
     const nlohmann::json full = NS::Editor::CompleteActorFile(actorFile, added);
@@ -104,7 +104,7 @@ TEST(ActorFileGenerator, LeavesTheDerivedActorFileAsWritten)
 {
     nlohmann::json derived = ClassOnlyActorFile("PropActor");
     NS::SetActorFileBase(derived, "PropActor");
-    NS::ObjectJsonClassObjs(derived)["Params"] = {{"質量", 2.0f}};
+    NS::ActorJsonClassObjs(derived)["Params"] = {{"質量", 2.0f}};
     std::vector<std::string> added;
     EXPECT_EQ(NS::Editor::CompleteActorFile(derived, added), derived);
     EXPECT_TRUE(added.empty());

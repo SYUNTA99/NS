@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
@@ -7,28 +7,28 @@
 
 namespace NS
 {
-    const nlohmann::json& ObjectJsonClassObjs(const nlohmann::json& object) noexcept
+    const nlohmann::json& ActorJsonClassObjs(const nlohmann::json& actorJson) noexcept
     {
         static const nlohmann::json empty = nlohmann::json::object();
-        if (!object.is_object())
+        if (!actorJson.is_object())
         {
             return empty;
         }
-        const nlohmann::json::const_iterator found = object.find("classObjs");
-        if (found == object.end() || !found->is_object())
+        const nlohmann::json::const_iterator found = actorJson.find("classObjs");
+        if (found == actorJson.end() || !found->is_object())
         {
             return empty;
         }
         return *found;
     }
 
-    nlohmann::json& ObjectJsonClassObjs(nlohmann::json& object)
+    nlohmann::json& ActorJsonClassObjs(nlohmann::json& actorJson)
     {
-        if (!object.is_object())
+        if (!actorJson.is_object())
         {
-            object = nlohmann::json::object();
+            actorJson = nlohmann::json::object();
         }
-        nlohmann::json& parts = object["classObjs"];
+        nlohmann::json& parts = actorJson["classObjs"];
         if (!parts.is_object())
         {
             parts = nlohmann::json::object();
@@ -36,9 +36,9 @@ namespace NS
         return parts;
     }
 
-    const nlohmann::json* ClassObjFields(const nlohmann::json& object, std::string_view partName) noexcept
+    const nlohmann::json* ClassObjFields(const nlohmann::json& actorJson, std::string_view partName) noexcept
     {
-        const nlohmann::json& parts = ObjectJsonClassObjs(object);
+        const nlohmann::json& parts = ActorJsonClassObjs(actorJson);
         const nlohmann::json::const_iterator found = parts.find(std::string{partName});
         if (found == parts.end() || !found->is_object())
         {
@@ -47,14 +47,14 @@ namespace NS
         return &*found;
     }
 
-    nlohmann::json* ClassObjFields(nlohmann::json& object, std::string_view partName) noexcept
+    nlohmann::json* ClassObjFields(nlohmann::json& actorJson, std::string_view partName) noexcept
     {
-        const nlohmann::json* found = ClassObjFields(static_cast<const nlohmann::json&>(object), partName);
+        const nlohmann::json* found = ClassObjFields(static_cast<const nlohmann::json&>(actorJson), partName);
         if (found == nullptr)
         {
             return nullptr;
         }
-        return &ObjectJsonClassObjs(object)[std::string{partName}];
+        return &ActorJsonClassObjs(actorJson)[std::string{partName}];
     }
     namespace
     {
@@ -89,7 +89,7 @@ namespace NS
         }
     } // namespace
 
-    nlohmann::json MakeObjectJson()
+    nlohmann::json MakeActorJson()
     {
         nlohmann::json object = nlohmann::json::object();
         object["id"] = 0u;
@@ -97,69 +97,69 @@ namespace NS
         return object;
     }
 
-    uint32 ObjectJsonId(const nlohmann::json& object) noexcept
+    uint32 ActorJsonId(const nlohmann::json& actorJson) noexcept
     {
-        return FieldUnsigned(object, "id", 0);
+        return FieldUnsigned(actorJson, "id", 0);
     }
 
-    void SetObjectJsonId(nlohmann::json& object, uint32 id)
+    void SetActorJsonId(nlohmann::json& actorJson, uint32 id)
     {
-        WriteOrErase(object, "id", false, id);
+        WriteOrErase(actorJson, "id", false, id);
     }
 
-    std::string_view ObjectJsonActorFile(const nlohmann::json& object) noexcept
+    std::string_view ActorJsonFile(const nlohmann::json& actorJson) noexcept
     {
-        return ReadString(object, "actor");
+        return ReadString(actorJson, "actor");
     }
 
-    void SetObjectJsonActorFile(nlohmann::json& object, std::string_view actorFile)
+    void SetActorJsonFile(nlohmann::json& actorJson, std::string_view actorFile)
     {
-        WriteOrErase(object, "actor", actorFile.empty(), std::string{actorFile});
+        WriteOrErase(actorJson, "actor", actorFile.empty(), std::string{actorFile});
     }
 
-    std::string_view ObjectJsonName(const nlohmann::json& object) noexcept
+    std::string_view ActorJsonName(const nlohmann::json& actorJson) noexcept
     {
-        return ReadString(object, "name");
+        return ReadString(actorJson, "name");
     }
 
-    void SetObjectJsonName(nlohmann::json& object, std::string_view name)
+    void SetActorJsonName(nlohmann::json& actorJson, std::string_view name)
     {
-        WriteOrErase(object, "name", name.empty(), std::string{name});
+        WriteOrErase(actorJson, "name", name.empty(), std::string{name});
     }
 
-    bool ObjectJsonActive(const nlohmann::json& object) noexcept
+    bool ActorJsonActive(const nlohmann::json& actorJson) noexcept
     {
-        if (!object.is_object())
+        if (!actorJson.is_object())
         {
             return true;
         }
-        const nlohmann::json::const_iterator it = object.find("active");
-        if (it == object.end() || !it->is_boolean())
+        const nlohmann::json::const_iterator it = actorJson.find("active");
+        if (it == actorJson.end() || !it->is_boolean())
         {
             return true;
         }
         return it->get<bool>();
     }
 
-    void SetObjectJsonActive(nlohmann::json& object, bool active)
+    void SetActorJsonActive(nlohmann::json& actorJson, bool active)
     {
-        WriteOrErase(object, "active", active, active);
+        WriteOrErase(actorJson, "active", active, active);
     }
 
-    ObjectHeader ReadObjectHeader(const nlohmann::json& object)
+    ActorHeader ReadActorHeader(const nlohmann::json& actorJson)
     {
-        return ObjectHeader{.id = ObjectJsonId(object),
-                            .actorFile = std::string{ObjectJsonActorFile(object)},
-                            .name = std::string{ObjectJsonName(object)},
-                            .active = ObjectJsonActive(object)};
+        return ActorHeader{.id = ActorJsonId(actorJson),
+                            .actorFile = std::string{ActorJsonFile(actorJson)},
+                            .name = std::string{ActorJsonName(actorJson)},
+                            .active = ActorJsonActive(actorJson)};
     }
 
-    void WriteObjectHeader(nlohmann::json& object, const ObjectHeader& header)
+    void WriteActorHeader(nlohmann::json& actorJson, const ActorHeader& header)
     {
-        SetObjectJsonId(object, header.id);
-        SetObjectJsonActorFile(object, header.actorFile);
-        SetObjectJsonName(object, header.name);
-        SetObjectJsonActive(object, header.active);
+        SetActorJsonId(actorJson, header.id);
+        SetActorJsonFile(actorJson, header.actorFile);
+        SetActorJsonName(actorJson, header.name);
+        SetActorJsonActive(actorJson, header.active);
     }
 
     namespace
@@ -209,9 +209,9 @@ namespace NS
         return &*it;
     }
 
-    void RemapObjectRefs(nlohmann::json& object, const std::unordered_map<uint32, uint32>& idMap)
+    void RemapActorRefs(nlohmann::json& actorJson, const std::unordered_map<uint32, uint32>& idMap)
     {
-        ForEachRefValue(object, [&idMap](nlohmann::json& target) {
+        ForEachRefValue(actorJson, [&idMap](nlohmann::json& target) {
             if (!target.is_number_unsigned())
             {
                 return;

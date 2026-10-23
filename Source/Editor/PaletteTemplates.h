@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 
 #include <array>
 

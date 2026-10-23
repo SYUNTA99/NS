@@ -27,7 +27,7 @@ TEST(PlacementCatalog, ActorFilesOfPlaceableClassesAppearByTheirName)
         }
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem(name);
         ASSERT_TRUE(item.has_value()) << name;
-        EXPECT_EQ(NS::ObjectJsonActorFile(item->prototype), name);
+        EXPECT_EQ(NS::ActorJsonFile(item->prototype), name);
         ++listed;
     }
     EXPECT_GE(listed, 6u);
@@ -39,7 +39,7 @@ TEST(PlacementCatalog, ActorFileAddedLaterAppearsUnderItsName)
     const ScopedActorFile heavy{"HeavyProp", CodeValuesActorFile("PropActor")};
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("HeavyProp");
     ASSERT_TRUE(item.has_value());
-    EXPECT_EQ(NS::ObjectJsonActorFile(item->prototype), "HeavyProp");
+    EXPECT_EQ(NS::ActorJsonFile(item->prototype), "HeavyProp");
 }
 
 TEST(PlacementCatalog, ItemFoundBeforeActorFileIsAddedStaysReadable)
@@ -50,7 +50,7 @@ TEST(PlacementCatalog, ItemFoundBeforeActorFileIsAddedStaysReadable)
     const ScopedActorFile heavy{"HeavyProp", CodeValuesActorFile("PropActor")};
     ASSERT_TRUE(NS::Editor::FindPlacementItem("HeavyProp").has_value());
     EXPECT_EQ(prop->label, "PropActor");
-    EXPECT_EQ(NS::ObjectJsonActorFile(prop->prototype), "PropActor");
+    EXPECT_EQ(NS::ActorJsonFile(prop->prototype), "PropActor");
 }
 
 TEST(PlacementCatalog, MapPartsIsSplitByMesh)
@@ -64,7 +64,7 @@ TEST(PlacementCatalog, MapPartsIsSplitByMesh)
     ASSERT_TRUE(slope.has_value());
     for (const NS::Editor::PlacementItem& item : {*cube, *sphere, *slope})
     {
-        EXPECT_EQ(NS::ObjectJsonActorFile(item.prototype), "MapPartsActor");
+        EXPECT_EQ(NS::ActorJsonFile(item.prototype), "MapPartsActor");
         // 個体のデータは部品を足せないので、ひな形も当たりの件を持たない
         EXPECT_EQ(NS::ClassObjFields(item.prototype, "BoxCollision"), nullptr);
     }
@@ -108,7 +108,7 @@ TEST(PlacementCatalog, PaletteSlotsComeFromCatalog)
     // 3 つのブラシはどれも置く物を持つ
     for (const NS::Editor::PaletteTemplate& slot : slots)
     {
-        EXPECT_FALSE(NS::ObjectJsonActorFile(slot.prototype).empty()) << slot.name;
+        EXPECT_FALSE(NS::ActorJsonFile(slot.prototype).empty()) << slot.name;
     }
     EXPECT_EQ(slots[0].prototype, cube->prototype);
     EXPECT_EQ(slots[1].prototype, slope->prototype);
@@ -121,7 +121,7 @@ TEST(PlacementCatalog, MeshPartsUsesTheDroppedMesh)
 {
     // メッシュ資産から置く部品は、描いた三角形そのもので当たる
     const nlohmann::json prototype = NS::Editor::MakeMeshPartsPrototype("Assets/Models/terrain.glb");
-    EXPECT_EQ(NS::ObjectJsonActorFile(prototype), "MapPartsActor");
+    EXPECT_EQ(NS::ActorJsonFile(prototype), "MapPartsActor");
     const nlohmann::json* renderer = NS::ClassObjFields(prototype, "Model");
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(NS::FieldString(*renderer, "メッシュ", ""), "Assets/Models/terrain.glb");

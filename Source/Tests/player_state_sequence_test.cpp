@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/AirGravity.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
@@ -24,7 +24,7 @@
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -65,12 +65,12 @@ namespace
     PlayerActor* PlaceSequencePlayer(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(entry, "PlayerActor");
-        NS::SetObjectJsonId(entry, 1);
-        NS::SceneJsonObjects(doc).push_back(std::move(entry));
+        nlohmann::json entry = NS::MakeActorJson();
+        NS::SetActorJsonFile(entry, "PlayerActor");
+        NS::SetActorJsonId(entry, 1);
+        NS::SceneJsonActors(doc).push_back(std::move(entry));
         scene.ResetFromJson(doc);
-        return static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
+        return static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     }
 
     // 上面が y = 0 の床の上 10 m で、宙で突進を出して空中の 1 発を使い切った自機を、よじ登りか落ちて着地させる
@@ -335,16 +335,16 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
 TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(entry, "PlayerActor");
-    NS::SetObjectJsonId(entry, 1);
-    NS::Editor::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::SetObjectJsonId(rock, 2);
-    NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
+    nlohmann::json entry = NS::MakeActorJson();
+    NS::SetActorJsonFile(entry, "PlayerActor");
+    NS::SetActorJsonId(entry, 1);
+    NS::Editor::SetActorJsonPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(entry));
+    nlohmann::json rock = NS::MakeActorJson();
+    NS::SetActorJsonFile(rock, "PropActor");
+    NS::SetActorJsonId(rock, 2);
+    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
+    NS::SceneJsonActors(doc).push_back(std::move(rock));
     NS::Scene scene;
     scene.ResetFromJson(doc);
     NS::OBB floor{};
@@ -353,7 +353,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
     floor.halfExtentY = 0.5f;
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-    PlayerActor* player = static_cast<PlayerActor*>(scene.Objects().FindByObjectId(1));
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -913,7 +913,7 @@ TEST(PlayerTackleHit, ABreakOverridesTheStopWithTheBreakStop)
     ASSERT_EQ(
         NS::ApplyJsonFields(player->Params(), nlohmann::json{{"破壊を許可", true}, {"貫通の止め秒", 2.0f / 60.0f}}),
         0u);
-    BreakableTackleRock* rock = scene.SpawnObject<BreakableTackleRock>("BreakableTackleRock");
+    BreakableTackleRock* rock = scene.SpawnActor<BreakableTackleRock>("BreakableTackleRock");
     ASSERT_NE(rock, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(rock->Params(), nlohmann::json{{"耐久", 0.0f}}), 0u);
     rock->Root().SetPosition(NS::Vector3{0.0f, 0.5f, 0.6f});

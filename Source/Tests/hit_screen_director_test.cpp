@@ -1,9 +1,9 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 
@@ -19,18 +19,18 @@ namespace
     PlayerActor* PlaceTwo(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(entry, "PlayerActor");
-        NS::SetObjectJsonId(entry, 1);
-        NS::Editor::SetObjectPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(entry));
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 2);
-        NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 5.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json entry = NS::MakeActorJson();
+        NS::SetActorJsonFile(entry, "PlayerActor");
+        NS::SetActorJsonId(entry, 1);
+        NS::Editor::SetActorJsonPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(entry));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 2);
+        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 5.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
-        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 } // namespace
 
@@ -84,7 +84,7 @@ TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
     NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
+    NS::SceneActor* rock = scene.Actors().FindByActorId(2);
     ASSERT_NE(rock, nullptr);
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
@@ -214,7 +214,7 @@ TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
     NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::SceneActor* rock = scene.Objects().FindByObjectId(2);
+    NS::SceneActor* rock = scene.Actors().FindByActorId(2);
     ASSERT_NE(rock, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);

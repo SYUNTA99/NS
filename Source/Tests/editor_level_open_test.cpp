@@ -2,7 +2,7 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Game/Game.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Windows/Filesystem.h"
@@ -56,12 +56,12 @@ namespace
         std::string m_directory;
     };
 
-    int CountObjectsOfClass(const nlohmann::json& scene, std::string_view className)
+    int CountActorsOfClass(const nlohmann::json& scene, std::string_view className)
     {
         int count = 0;
-        for (const nlohmann::json& object : NS::SceneJsonObjects(scene))
+        for (const nlohmann::json& object : NS::SceneJsonActors(scene))
         {
-            if (NS::ActorFileLibrary::Get().ClassNameOf(NS::ObjectJsonActorFile(object)) == className)
+            if (NS::ActorFileLibrary::Get().ClassNameOf(NS::ActorJsonFile(object)) == className)
             {
                 ++count;
             }
@@ -110,8 +110,8 @@ TEST_F(LevelOpenTest, OpenLevelLoadsTheFileAsWrittenAndStartsCleanHistory)
     ASSERT_TRUE(editor.OpenLevel(name));
 
     // 自機と落下死の範囲は自動で足さない
-    EXPECT_EQ(CountObjectsOfClass(loaded, "PlayerActor"), 0);
-    EXPECT_EQ(CountObjectsOfClass(loaded, "DeathZoneActor"), 0);
+    EXPECT_EQ(CountActorsOfClass(loaded, "PlayerActor"), 0);
+    EXPECT_EQ(CountActorsOfClass(loaded, "DeathZoneActor"), 0);
     EXPECT_EQ(editor.CurrentLevelName(), name);
     EXPECT_EQ(editor.Undo().UndoSize(), 0u);
     EXPECT_FALSE(editor.HasUnsavedChanges());

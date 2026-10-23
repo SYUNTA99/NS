@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/AirGravity.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactResolver.h"
@@ -10,7 +10,7 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
@@ -39,23 +39,23 @@ namespace
                               const nlohmann::json& targetParts = nlohmann::json::object())
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(player, "PlayerActor");
-        NS::SetObjectJsonId(player, 1);
-        NS::Editor::SetObjectPosition(player, playerPosition);
-        NS::SceneJsonObjects(doc).push_back(std::move(player));
+        nlohmann::json player = NS::MakeActorJson();
+        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonId(player, 1);
+        NS::Editor::SetActorJsonPosition(player, playerPosition);
+        NS::SceneJsonActors(doc).push_back(std::move(player));
         if (withTarget)
         {
-            nlohmann::json rock = NS::MakeObjectJson();
-            NS::SetObjectJsonActorFile(rock, "PropActor");
-            NS::SetObjectJsonId(rock, 2);
-            NS::Editor::SetObjectPosition(rock, targetPosition);
-            NS::Editor::SetObjectScale(rock, Vector3{targetScale, targetScale, targetScale});
+            nlohmann::json rock = NS::MakeActorJson();
+            NS::SetActorJsonFile(rock, "PropActor");
+            NS::SetActorJsonId(rock, 2);
+            NS::Editor::SetActorJsonPosition(rock, targetPosition);
+            NS::Editor::SetActorJsonScale(rock, Vector3{targetScale, targetScale, targetScale});
             for (nlohmann::json::const_iterator it = targetParts.begin(); it != targetParts.end(); ++it)
             {
-                NS::ObjectJsonClassObjs(rock)[it.key()] = it.value();
+                NS::ActorJsonClassObjs(rock)[it.key()] = it.value();
             }
-            NS::SceneJsonObjects(doc).push_back(std::move(rock));
+            NS::SceneJsonActors(doc).push_back(std::move(rock));
         }
         scene.ResetFromJson(doc);
         NS::OBB floor{};
@@ -65,7 +65,7 @@ namespace
         floor.halfExtentZ = 100.0f;
         scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
         PlaceViewCamera(scene, Vector3{0.0f, playerPosition.y, -1.0f}, Vector3{0.0f, playerPosition.y, 1.0f});
-        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
     // 線に沿った距離 along での帯の高さ。板の中は近い端から遠い端へ直線で上がる
@@ -162,7 +162,7 @@ TEST(SlamArrowTest, PredictedTierUsesTheArcHeightAtContact)
 {
     // 当たり所の形は置物の .actor の値で、シーンでは上書きできない
     const ScopedActorFileEdit raised{"PropActor", [](nlohmann::json& actorFile) {
-                                         nlohmann::json& zones = NS::ObjectJsonClassObjs(actorFile)["HitZones"];
+                                         nlohmann::json& zones = NS::ActorJsonClassObjs(actorFile)["HitZones"];
                                          zones["上下の位置"] = 0.5f;
                                          zones["縦の幅"] = 0.2f;
                                      }};

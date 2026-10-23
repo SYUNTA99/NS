@@ -15,7 +15,7 @@
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Phys/PhysicsScene.h"
@@ -255,7 +255,7 @@ namespace NS
             {
                 return false;
             }
-            ApplyObjectClassObjs(*this, *info->placement);
+            ApplyActorClassObjs(*this, *info->placement);
             ReadSceneOverrides(*this, *info->placement);
         }
         // 素材の参照は欄にある。欄を書き終えてから読む

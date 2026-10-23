@@ -1,7 +1,7 @@
 #include "Game/Level/FollowCameraActor.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -49,8 +49,8 @@ namespace
 
         FramingScene()
         {
-            target = scene.SpawnObject<FramingTargetProbeActor>("target");
-            camera = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
+            target = scene.SpawnActor<FramingTargetProbeActor>("target");
+            camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
             NS::ApplyJsonFields(camera->Vcam(), nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
         }
 

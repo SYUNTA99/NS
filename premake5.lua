@@ -685,7 +685,7 @@ project "Tests"
         "Source/Game/Player/**.cpp",
         "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (Editor は Application 依存のため除外)
-        "Source/Editor/EditorObjects.cpp",
+        "Source/Editor/EditorActors.cpp",
         "Source/Editor/EditorMode.cpp",
         "Source/Editor/InspectorReflection.cpp",
         "Source/Editor/ActorFileGenerator.cpp",

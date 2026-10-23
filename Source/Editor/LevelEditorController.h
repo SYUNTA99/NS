@@ -2,11 +2,11 @@
 
 #include "Editor/EditorCamera.h"
 #include "Editor/EditorMode.h"
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Editor/GizmoEditor.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/PlayControls.h"
-#include "Editor/Undo/ObjectSnapshotApplier.h"
+#include "Editor/Undo/ActorSnapshotApplier.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 
@@ -142,24 +142,24 @@ public:
     void RecaptureCursorOnGameClick(bool gameViewClicked) noexcept;
 
     //! 編集対象の ActorList。一覧と参照候補はここから直接取得する
-    [[nodiscard]] const NS::ActorList& Objects() const noexcept;
+    [[nodiscard]] const NS::ActorList& Actors() const noexcept;
 
-    [[nodiscard]] bool ObjectToolActive() const noexcept { return m_objectToolActive; }
+    [[nodiscard]] bool GizmoToolActive() const noexcept { return m_gizmoToolActive; }
     //! 配置ツールを Build / Object 切替える。Build へ戻す時はギズモ選択を解除する
-    void SetObjectToolActive(bool active) noexcept;
+    void SetGizmoToolActive(bool active) noexcept;
 
     //! 永続 id で配置物を 1 体だけ選択する。0 を渡すと選択を外す
-    void SelectObjectById(NS::uint32 id) noexcept;
+    void SelectActorById(NS::uint32 id) noexcept;
     //! 現在の主対象の永続 id。未選択は 0。ギズモと Inspector はこの 1 体を見る
-    [[nodiscard]] NS::uint32 SelectedObjectId() const noexcept { return m_selectedObjectId; }
+    [[nodiscard]] NS::uint32 SelectedActorId() const noexcept { return m_selectedActorId; }
 
     //! 選択中の全配置物の永続 id。主対象も含む
-    [[nodiscard]] const std::vector<NS::uint32>& SelectedObjectIds() const noexcept { return m_selectionIds; }
-    [[nodiscard]] bool IsObjectSelected(NS::uint32 id) const noexcept;
+    [[nodiscard]] const std::vector<NS::uint32>& SelectedActorIds() const noexcept { return m_selectionIds; }
+    [[nodiscard]] bool IsActorSelected(NS::uint32 id) const noexcept;
     //! 選択へ足す / 選択から外す。足した物が主対象になる
-    void ToggleObjectSelection(NS::uint32 id) noexcept;
+    void ToggleActorSelection(NS::uint32 id) noexcept;
     //! 選択を差し替える。primary が ids に含まれていなければ追加する
-    void SelectObjects(std::vector<NS::uint32> ids, NS::uint32 primary) noexcept;
+    void SelectActors(std::vector<NS::uint32> ids, NS::uint32 primary) noexcept;
 
     //! Inspector が編集 / 表示できる選択を持つか
     [[nodiscard]] bool HasInspectableSelection() const noexcept;
@@ -201,19 +201,19 @@ public:
     void AddMeshParts(std::string_view meshPath);
 
     //! 選択中の配置物に対応する runtime SceneActor。未選択 / 未構築は nullptr
-    [[nodiscard]] NS::SceneActor* SelectedObjectActor() noexcept;
+    [[nodiscard]] NS::SceneActor* SelectedActor() noexcept;
     //! 選択中の配置物がプレイヤー実体か
-    [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
+    [[nodiscard]] bool SelectedIsPlayerActor() const noexcept;
 
     //! 改名して Undo 履歴へ追加する。不在なら何もしない。重複には番号を付け、空名は Object にする
-    void RenameObject(NS::uint32 id, std::string_view name);
+    void RenameActor(NS::uint32 id, std::string_view name);
 
     //! 選択中の配置物を新しい永続 id で複製して undo へ積む。プレイヤーは複製の対象から外す
-    void DuplicateSelectedObject();
+    void DuplicateSelectedActor();
 
     //! @brief 選択中の配置物を削除して取り消しの履歴へ 1 単位で積む
     //! @details プレイヤーを含む選択の場合は何もしない
-    void DeleteSelectedObject();
+    void DeleteSelectedActor();
 
     //! 編集カメラの注視点を選択中の配置物へ寄せる。広がりに応じて距離も取り直す
     void FocusSelectedInView() noexcept;
@@ -221,7 +221,7 @@ public:
     //! Object ツール中にギズモが配置物を選択しているか
     [[nodiscard]] bool HasGizmoSelection() const noexcept
     {
-        return ObjectToolActive() && m_gizmo.Selected() != nullptr;
+        return GizmoToolActive() && m_gizmo.Selected() != nullptr;
     }
     //! 選択中の配置物の Model に材質を割り当てて undo へ積む。対象外なら false
     bool ApplyMaterialToSelected(std::string_view matPath);
@@ -284,8 +284,8 @@ private:
     //! 編集モードでしか要らない遷移なのでエディタが持つ。組み直しで確保が起きるため noexcept にしない
     void LeavePlayForEdit();
 
-    //! 配置物を 1 体作り、作った物を選ぶ。置く道が使う。作るのは EditorMode::CreateObjects
-    void CreateObjectAndSelect(nlohmann::json object);
+    //! 配置物を 1 体作り、作った物を選ぶ。置く道が使う。作るのは EditorMode::CreateActors
+    void CreateActorAndSelect(nlohmann::json object);
 
     //! 素材の選択を外す。前に、選んだ素材の確定していない編集を確定して .mat に書く
     //! 選択を外す道は全部これを通す。外してから確定すると、書く先の道が消えて編集を失う
@@ -326,7 +326,7 @@ private:
     [[nodiscard]] NS::SceneCamera* MainCamera() const noexcept;
 
     NS::Scene* m_scene = nullptr;                // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
-    NS::Editor::ObjectSnapshotApplier m_applier; // 履歴の操作を実体へ適用する
+    NS::Editor::ActorSnapshotApplier m_applier; // 履歴の操作を実体へ適用する
 
     // 前面のパネルの表示矩形。未設定時は CurrentViewRect が全画面の予備矩形を返す
     NS::Editor::ViewRect m_gameViewRect{};
@@ -344,14 +344,14 @@ private:
     NS::Editor::EditorMode m_editor{};
     Mode m_mode = Mode::Edit;
 
-    bool m_objectToolActive = true; // false の時は Build
+    bool m_gizmoToolActive = true; // false の時は Build
 
     NS::Editor::GizmoEditor m_gizmo{};
 
     std::vector<NS::SceneActor*> m_selectablePtrs;
     std::vector<NS::uint8> m_selectablePickable; // 1 は Model を持つ配置物。ギズモが先に選ぶ
 
-    NS::uint32 m_selectedObjectId = NS::k_NoObjectId; // 主対象の永続 id。選択の一次情報
+    NS::uint32 m_selectedActorId = NS::k_NoActorId; // 主対象の永続 id。選択の一次情報
     std::vector<NS::uint32> m_selectionIds;           // 選択中の全配置物。主対象も含む
     NS::Transform* m_lastGizmoSelected = nullptr;     // 前フレームの選択対象
 
@@ -371,7 +371,7 @@ private:
     std::vector<std::pair<NS::uint32, nlohmann::json>> m_editBaselines;
 
     bool m_classObjEditing = false;
-    NS::uint32 m_classObjEditBaselineId = NS::k_NoObjectId; // 編集開始時の対象 id
+    NS::uint32 m_classObjEditBaselineId = NS::k_NoActorId; // 編集開始時の対象 id
     nlohmann::json m_classObjEditBaseline;                  // 編集開始時の状態スナップショット
 
     // プレイ開始の凍結の写し。編集へ戻る時に、プレイ中に凍結へ写した欄を見つけて履歴へ積むために比べる
@@ -381,7 +381,7 @@ private:
     //! 直したが、まだ .actor へ書いていない欄。CommitClassObjEdit・CommitAssetEdit で書いて空にする
     struct ActorFileEdit
     {
-        NS::uint32 actorId = NS::k_NoObjectId; // k_NoObjectId なら素材の窓で選んだ .actor の 1 体
+        NS::uint32 actorId = NS::k_NoActorId; // k_NoActorId なら素材の窓で選んだ .actor の 1 体
         const NS::ClassObjInfo* row = nullptr;
         std::string fieldName;
     };

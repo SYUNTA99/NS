@@ -50,7 +50,7 @@ namespace GL
             if (m_respawnPending)
             {
                 m_respawnPending = false;
-                RespawnObjects();
+                RespawnActors();
             }
         }
 
@@ -70,17 +70,17 @@ namespace GL
             SendRestart(nullptr);
         }
 
-        void CourseDirector::RespawnObjects()
+        void CourseDirector::RespawnActors()
         {
-            SendRestart(FindPlayer(m_scene.Objects()));
+            SendRestart(FindPlayer(m_scene.Actors()));
         }
 
         std::vector<NS::SceneActor*> CourseDirector::PlacedActors(const NS::SceneActor* skip) const
         {
             // 送る先は控えた並びで回す。受け手が戻る間に配置物の並びが変わっても崩れない
             std::vector<NS::SceneActor*> receivers;
-            receivers.reserve(m_scene.Objects().ObjectCount());
-            for (NS::SceneActor* actor : m_scene.Objects())
+            receivers.reserve(m_scene.Actors().ActorCount());
+            for (NS::SceneActor* actor : m_scene.Actors())
             {
                 if (actor != skip)
                 {
@@ -100,7 +100,7 @@ namespace GL
 
         void CourseDirector::SendInputLock(bool locked)
         {
-            if (::PlayerActor* player = FindPlayer(m_scene.Objects()))
+            if (::PlayerActor* player = FindPlayer(m_scene.Actors()))
             {
                 (void)SendMsgInputLock(*player, locked);
             }

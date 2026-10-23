@@ -1,6 +1,6 @@
 #include "Editor/ActionTimelinePanel.h"
 #include "Editor/EditorMode.h"
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Editor/GameViewPanel.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/LevelFileBrowser.h"
@@ -16,7 +16,7 @@
 #include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
@@ -160,23 +160,23 @@ TEST(EditorTimelinePreview, RewindsTheEntireSceneAndDoesNotStepWhilePaused)
         [&builds] {
             ++builds;
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SpawnObject<TimelineMovingActor>("TimelineMovingActor");
+            scene->SpawnActor<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
         {-2, 10});
     NS::Scene* scene = preview.Seek(-2);
     ASSERT_NE(scene, nullptr);
     EXPECT_TRUE(scene->IsSimulationPaused());
-    NS::SceneActor* actor = *scene->Objects().begin();
+    NS::SceneActor* actor = *scene->Actors().begin();
     EXPECT_NEAR(actor->Root().Position().x, 0.1f, 1.0e-6f);
     scene = preview.Seek(8);
     ASSERT_NE(scene, nullptr);
-    actor = *scene->Objects().begin();
+    actor = *scene->Actors().begin();
     EXPECT_NEAR(actor->Root().Position().x, 1.1f, 1.0e-6f);
     EXPECT_EQ(builds, 1);
     scene = preview.Seek(-1);
     ASSERT_NE(scene, nullptr);
-    actor = *scene->Objects().begin();
+    actor = *scene->Actors().begin();
     EXPECT_NEAR(actor->Root().Position().x, 0.2f, 1.0e-6f);
     EXPECT_EQ(builds, 2);
     (void)preview.Seek(-1);
@@ -203,7 +203,7 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
         [&device] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
             scene->SetDevice(&device);
-            scene->SpawnObject<TimelineMovingActor>("TimelineMovingActor");
+            scene->SpawnActor<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
         {0, 20});
@@ -299,7 +299,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
             scene->SetDevice(&device);
             scene->MainCamera()->ApplyPose(pose);
-            scene->SpawnObject<TimelineMovingActor>("TimelineMovingActor");
+            scene->SpawnActor<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
         {0, 20});
@@ -504,27 +504,27 @@ TEST(EditorActionTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         NS::Scene scene;
         scene.SetDevice(&app.Device());
         nlohmann::json snapshot = NS::MakeSceneJson();
-        nlohmann::json floor = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(floor, "MapPartsActor");
-        NS::SetObjectJsonId(floor, 100);
-        NS::Editor::SetObjectPosition(floor, {0.0f, -0.5f, 0.0f});
-        NS::Editor::SetObjectScale(floor, {60.0f, 1.0f, 60.0f});
-        NS::SceneJsonObjects(snapshot).push_back(std::move(floor));
-        nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(player, "PlayerActor");
-        NS::SetObjectJsonId(player, 1);
-        NS::Editor::SetObjectPosition(player, {0.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(snapshot).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 2);
-        NS::Editor::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
-        NS::Editor::SetObjectScale(rock, {3.0f, 3.0f, 3.0f});
-        NS::SceneJsonObjects(snapshot).push_back(std::move(rock));
+        nlohmann::json floor = NS::MakeActorJson();
+        NS::SetActorJsonFile(floor, "MapPartsActor");
+        NS::SetActorJsonId(floor, 100);
+        NS::Editor::SetActorJsonPosition(floor, {0.0f, -0.5f, 0.0f});
+        NS::Editor::SetActorJsonScale(floor, {60.0f, 1.0f, 60.0f});
+        NS::SceneJsonActors(snapshot).push_back(std::move(floor));
+        nlohmann::json player = NS::MakeActorJson();
+        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonId(player, 1);
+        NS::Editor::SetActorJsonPosition(player, {0.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(snapshot).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 2);
+        NS::Editor::SetActorJsonPosition(rock, {0.0f, 1.5f, 7.0f});
+        NS::Editor::SetActorJsonScale(rock, {3.0f, 3.0f, 3.0f});
+        NS::SceneJsonActors(snapshot).push_back(std::move(rock));
         scene.ResetFromJson(std::move(snapshot));
         scene.SetSimulationEnabled(false);
         LevelEditorController editor(&scene);
-        editor.SelectObjectById(1);
+        editor.SelectActorById(1);
         NS::Editor::GameViewPanel game;
         NS::Editor::ActionTimelinePanel timeline;
         const auto begin = [&] {
@@ -589,7 +589,7 @@ TEST(EditorActionTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
             {
                 return false;
             }
-            const NS::SceneActor* player = seeked->Objects().FindByObjectId(1);
+            const NS::SceneActor* player = seeked->Actors().FindByActorId(1);
             EXPECT_NE(player, nullptr);
             if (player == nullptr || player->ActionTimelineClassObj() == nullptr)
             {
@@ -650,7 +650,7 @@ TEST(EditorActionTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         begin();
         drawPanelCollapsed();
         ImGui::EndFrame();
-        NS::SceneActor* target = scene.Objects().FindByObjectId(2);
+        NS::SceneActor* target = scene.Actors().FindByActorId(2);
         ASSERT_NE(target, nullptr);
         target->Root().SetPosition({2.0f, 1.5f, 7.0f});
         scene.OnUpdate();
@@ -659,8 +659,8 @@ TEST(EditorActionTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         ASSERT_NE(preview, nullptr);
         NS::Scene* updated = preview->Seek(0);
         ASSERT_NE(updated, nullptr);
-        ASSERT_NE(updated->Objects().FindByObjectId(2), nullptr);
-        EXPECT_NEAR(updated->Objects().FindByObjectId(2)->Root().Position().x, 2.0f, 0.01f);
+        ASSERT_NE(updated->Actors().FindByActorId(2), nullptr);
+        EXPECT_NEAR(updated->Actors().FindByActorId(2)->Root().Position().x, 2.0f, 0.01f);
         activate("<");
         drawPanel();
         ImGui::EndFrame();
@@ -714,7 +714,7 @@ TEST(EditorActionTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
         ImGui::EndFrame();
         begin();
         ASSERT_NE(timeline.Preview(editor), nullptr);
-        EXPECT_EQ(scene.Objects().FindByObjectId(2)->Root().Position().x, 2.0f);
+        EXPECT_EQ(scene.Actors().FindByActorId(2)->Root().Position().x, 2.0f);
         activate("Game に下見を表示");
         drawPanel();
         EXPECT_EQ(timeline.Preview(editor), nullptr);
@@ -746,15 +746,15 @@ TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
     TimelineGui gui;
     NS::Scene scene;
     nlohmann::json snapshot = NS::MakeSceneJson();
-    nlohmann::json player = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(player, "PlayerActor");
-    NS::SetObjectJsonId(player, 1);
-    NS::SceneJsonObjects(snapshot).push_back(std::move(player));
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::SetObjectJsonId(rock, 2);
-    NS::Editor::SetObjectPosition(rock, {0.0f, 1.5f, 7.0f});
-    NS::SceneJsonObjects(snapshot).push_back(std::move(rock));
+    nlohmann::json player = NS::MakeActorJson();
+    NS::SetActorJsonFile(player, "PlayerActor");
+    NS::SetActorJsonId(player, 1);
+    NS::SceneJsonActors(snapshot).push_back(std::move(player));
+    nlohmann::json rock = NS::MakeActorJson();
+    NS::SetActorJsonFile(rock, "PropActor");
+    NS::SetActorJsonId(rock, 2);
+    NS::Editor::SetActorJsonPosition(rock, {0.0f, 1.5f, 7.0f});
+    NS::SceneJsonActors(snapshot).push_back(std::move(rock));
     scene.ResetFromJson(std::move(snapshot));
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(&scene);
@@ -776,10 +776,10 @@ TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
         ImGui::EndFrame();
     };
     // 自機の .actor の動作に事象を足してから置物を選び直し、置物の .actor を開いた窓で保存する
-    editor.SelectObjectById(1);
+    editor.SelectActorById(1);
     frame(nullptr);
     frame("再生の位置に足す");
-    editor.SelectObjectById(2);
+    editor.SelectActorById(2);
     frame(nullptr);
     EXPECT_EQ(timeline.EditingActorFile(), "PropActor");
     frame("保存");
@@ -803,13 +803,13 @@ namespace
         NS::ActorFileLibrary::Get().Reload();
         ASSERT_NE(NS::ActorFileLibrary::Get().Find("PlayerActor"), nullptr);
         nlohmann::json snapshot = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(player, "PlayerActor");
-        NS::SetObjectJsonId(player, 1);
-        NS::SceneJsonObjects(snapshot).push_back(std::move(player));
+        nlohmann::json player = NS::MakeActorJson();
+        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonId(player, 1);
+        NS::SceneJsonActors(snapshot).push_back(std::move(player));
         scene.ResetFromJson(std::move(snapshot));
         scene.SetSimulationEnabled(false);
-        editor.SelectObjectById(1);
+        editor.SelectActorById(1);
     }
 
     //! 置いた自機の PlayerActor.actor の最初の動作の事象の数

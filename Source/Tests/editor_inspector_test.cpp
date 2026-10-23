@@ -3,7 +3,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
-#include "Editor/Undo/ObjectSnapshotApplier.h"
+#include "Editor/Undo/ActorSnapshotApplier.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ActorList.h"
@@ -56,7 +56,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
     NS::ThirdPersonFollow follow{nullptr};
-    const std::vector<NS::Editor::ObjectRefOption> options{{7u, "相手"}};
+    const std::vector<NS::Editor::ActorRefOption> options{{7u, "相手"}};
     ImVec2 tableMin{};
     float tableWidth = 0.0f;
     const auto frame = [&] {
@@ -611,7 +611,7 @@ TEST(EditorInspector, FieldChangeReachesTheCollision)
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(&scene);
     editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
-    NS::SceneActor* prop = editor.SelectedObjectActor();
+    NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
     ASSERT_EQ(prop->Root().Scale(), NS::Vector3::One);
     const NS::ClassObjInfo* row = RowOf(*prop, prop->CollisionClassObj());
@@ -652,7 +652,7 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(&scene);
     editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
-    NS::SceneActor* parts = editor.SelectedObjectActor();
+    NS::SceneActor* parts = editor.SelectedActor();
     ASSERT_NE(parts, nullptr);
     NS::Model* model = parts->ModelClassObj();
     ASSERT_NE(model, nullptr);
@@ -707,10 +707,10 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
-    NS::SceneActor* source = editor.SelectedObjectActor();
+    NS::SceneActor* source = editor.SelectedActor();
     ASSERT_NE(source, nullptr);
     editor.PlaceItem(*item);
-    NS::SceneActor* follower = editor.SelectedObjectActor();
+    NS::SceneActor* follower = editor.SelectedActor();
     ASSERT_NE(follower, nullptr);
     ASSERT_NE(follower, source);
     ASSERT_EQ(follower->Root().Scale(), NS::Vector3::One);
@@ -726,7 +726,7 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
     ASSERT_NE(sphere, nullptr);
     const NS::ClassObjInfo* row = RowOf(*source, sphere);
     ASSERT_NE(row, nullptr);
-    editor.SelectObjectById(source->Id());
+    editor.SelectActorById(source->Id());
     editor.BeginClassObjEdit();
     sphere->SetRadius(3.0f);
     editor.NoteFieldEdit(*source, *row, "半径");
@@ -752,7 +752,7 @@ TEST(EditorInspector, MaterialApplyReachesTheDrawnMaterial)
         scene.SetSimulationEnabled(false);
         LevelEditorController editor(&scene);
         editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
-        NS::SceneActor* parts = editor.SelectedObjectActor();
+        NS::SceneActor* parts = editor.SelectedActor();
         ASSERT_NE(parts, nullptr);
         const std::string stone = "Assets/Materials/stone.mat";
         ASSERT_TRUE(editor.ApplyMaterialToSelected(
@@ -799,14 +799,14 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Editor::ObjectSnapshotApplier applier(&scene);
+    NS::Editor::ActorSnapshotApplier applier(&scene);
     editor.Editor().SetApplier(&applier);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
-    const NS::uint32 other = editor.SelectedObjectId();
+    const NS::uint32 other = editor.SelectedActorId();
     editor.PlaceItem(*item);
-    const NS::uint32 selected = editor.SelectedObjectId();
+    const NS::uint32 selected = editor.SelectedActorId();
     ASSERT_NE(other, selected);
     const std::vector<NS::HitReactionSet> before = NS::ReadHitReactionSets("PropActor", shipped);
     ASSERT_FALSE(before.empty());
@@ -826,7 +826,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     // 当たりは束を引いて始めるので、引く先の束が直した長さなら次の当たりに効く
     for (const NS::uint32 id : {other, selected})
     {
-        const NS::HitReaction* reaction = scene.Objects().FindByObjectId(id)->HitReactionClassObj();
+        const NS::HitReaction* reaction = scene.Actors().FindByActorId(id)->HitReactionClassObj();
         ASSERT_NE(reaction, nullptr);
         const NS::HitReactionSet* set = reaction->FindSet(first.name);
         ASSERT_NE(set, nullptr);
@@ -845,7 +845,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     ASSERT_NE(undone, nullptr);
     EXPECT_EQ(undone->stopFrames, first.stopFrames);
     const NS::HitReactionSet* live =
-        scene.Objects().FindByObjectId(selected)->HitReactionClassObj()->FindSet(first.name);
+        scene.Actors().FindByActorId(selected)->HitReactionClassObj()->FindSet(first.name);
     ASSERT_NE(live, nullptr);
     EXPECT_EQ(live->stopFrames, first.stopFrames);
 }
@@ -858,12 +858,12 @@ TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     LevelEditorController editor(&scene);
-    NS::Editor::ObjectSnapshotApplier applier(&scene);
+    NS::Editor::ActorSnapshotApplier applier(&scene);
     editor.Editor().SetApplier(&applier);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
-    const NS::uint32 placed = editor.SelectedObjectId();
+    const NS::uint32 placed = editor.SelectedActorId();
     editor.SelectAsset(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor"));
     ASSERT_NE(NS::Cast<NS::SceneActor>(editor.SelectedAsset()), nullptr);
 
@@ -888,7 +888,7 @@ TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
     });
     ASSERT_TRUE(inspector.Type(valueId, "0.25"));
 
-    const NS::HitReaction* reaction = scene.Objects().FindByObjectId(placed)->HitReactionClassObj();
+    const NS::HitReaction* reaction = scene.Actors().FindByActorId(placed)->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
     EXPECT_FLOAT_EQ(OwnerValueOf(reaction->FindSet(setName), 0, "食い込み距離"), 0.25f);
     const std::vector<NS::HitReactionSet> saved = SavedPropSets(scope.Path());

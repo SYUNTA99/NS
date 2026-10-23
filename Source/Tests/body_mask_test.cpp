@@ -111,10 +111,10 @@ namespace
             NS::Scene scene;
             const NS::AssetManagerScope useAssets{m_assets};
             scene.SetDevice(&m_device);
-            BoxActor* maskedBox = scene.SpawnObject<BoxActor>("BoxActor", masked);
+            BoxActor* maskedBox = scene.SpawnActor<BoxActor>("BoxActor", masked);
             if (other.has_value())
             {
-                (void)scene.SpawnObject<BoxActor>("BoxActor", *other);
+                (void)scene.SpawnActor<BoxActor>("BoxActor", *other);
             }
             scene.SetBodyMask({maskedBox->Body()});
             // 有効な間は前の固定ステップとの補間で描くので、無効にして今の位置で描く

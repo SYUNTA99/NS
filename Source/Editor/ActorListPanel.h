@@ -29,7 +29,7 @@ namespace NS
             //! 対象を改名待ちにして、入力欄へ現在の表示名を入れる
             void BeginRename(SceneActor& object) noexcept;
 
-            uint32 m_renamingObjectId = 0; // 改名中の配置物の永続 id、0 なら改名していない
+            uint32 m_renamingActorId = 0; // 改名中の配置物の永続 id、0 なら改名していない
             char m_renameBuffer[64]{};         // 改名の入力欄
             bool m_renameFocusPending = false; // 入力欄を出した最初のフレームでキーボード焦点を渡す
 

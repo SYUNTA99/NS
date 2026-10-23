@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "Tests/TestViewCamera.h"
@@ -16,19 +16,19 @@
 inline PlayerActor* PlaceTackleScene(NS::Scene& scene, float rockX, float rockZ = 4.0f, float mass = 0.0f)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json player = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(player, "PlayerActor");
-    NS::SetObjectJsonId(player, 1);
-    NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-    NS::SceneJsonObjects(doc).push_back(std::move(player));
-    nlohmann::json rock = NS::MakeObjectJson();
-    NS::SetObjectJsonActorFile(rock, "PropActor");
-    NS::SetObjectJsonId(rock, 2);
-    NS::Editor::SetObjectPosition(rock, NS::Vector3{rockX, 0.5f, rockZ});
-    NS::SceneJsonObjects(doc).push_back(std::move(rock));
+    nlohmann::json player = NS::MakeActorJson();
+    NS::SetActorJsonFile(player, "PlayerActor");
+    NS::SetActorJsonId(player, 1);
+    NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(player));
+    nlohmann::json rock = NS::MakeActorJson();
+    NS::SetActorJsonFile(rock, "PropActor");
+    NS::SetActorJsonId(rock, 2);
+    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{rockX, 0.5f, rockZ});
+    NS::SceneJsonActors(doc).push_back(std::move(rock));
     scene.ResetFromJson(doc);
     // 質量は派生の .actor が持つ項目でシーンには書けないので、作ったアクターへ書く
-    GL::Level::PropActor* placed = NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    GL::Level::PropActor* placed = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     if (mass > 0.0f && placed != nullptr)
     {
         (void)NS::ApplyJsonFields(placed->Params(), nlohmann::json{{"質量", mass}});
@@ -44,11 +44,11 @@ inline PlayerActor* PlaceTackleScene(NS::Scene& scene, float rockX, float rockZ 
     {
         scene.OnUpdate();
     }
-    return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+    return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
 }
 
 //! PlaceTackleScene が置いた置物
 inline GL::Level::PropActor* TackleRockOf(NS::Scene& scene)
 {
-    return NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+    return NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
 }

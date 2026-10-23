@@ -153,7 +153,7 @@ namespace NS
         }
 
         virtual void OnStart();
-        //! 世界から外し、全ての部品の OnEndPlay を呼ぶ
+        //! Disappear で世界から外す。基底の部品は OnDisappear で登録から外れる
         virtual void OnEndPlay();
 
         //! @brief 部品の素材の欄を引き直し、続けて OnAssetsLoaded を呼ぶ
@@ -251,7 +251,7 @@ namespace NS
         //! 部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物
         void InitWithCodeValues();
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
-        //! @details ActorList::SnapshotObjects が固定ステップの頭で全ての SceneActor
+        //! @details ActorList::SnapshotActors が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
         void SnapshotForInterpolation() noexcept;
         void SetId(uint32 id) noexcept { m_id = id; }
@@ -304,7 +304,7 @@ namespace NS
     [[nodiscard]] float GetFrameDelta(const SceneActor* actor) noexcept;
 
     //! @brief T を作り、部品・クラスと同じ名前の .actor・素材まで済ませて返す
-    //! @details Scene の中に作る時は Scene::SpawnObject を使う (中でこの関数を呼ぶ)。
+    //! @details Scene の中に作る時は Scene::SpawnActor を使う (中でこの関数を呼ぶ)。
     //! Scene に入れずに部品を触る試しは、この関数で作る
     template <class T, class... TArgs> [[nodiscard]] std::unique_ptr<T> CreateActor(TArgs&&... args)
     {
@@ -319,7 +319,7 @@ namespace NS
     }
 
     //! @brief T を作り、info で部品・.actor・配置の上書き・素材まで済ませて返す
-    //! @details シーンへ入れる口 (Scene::SpawnObject) が呼ぶ。シーンの一覧に入る前に素材を読み終える
+    //! @details シーンへ入れる口 (Scene::SpawnActor) が呼ぶ。シーンの一覧に入る前に素材を読み終える
     template <class T, class... TArgs>
     [[nodiscard]] std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args)
     {

@@ -24,7 +24,7 @@ namespace NS
         struct EditorAppearance;
 
         //! @brief ActorRef の欄で参照可能なオブジェクトの選択肢
-        struct ObjectRefOption
+        struct ActorRefOption
         {
             uint32 id = 0;
             std::string label;
@@ -62,7 +62,7 @@ namespace NS
         //! filter は欄の見せる名前の部分一致。空か nullptr なら絞らない
         //! actor は comp の持ち主。actor と appearance があれば、行の地を書く先の色で塗る
         [[nodiscard]] ClassObjEditResult DrawReflectedClassObj(Object& comp,
-                                                               std::span<const ObjectRefOption> refOptions = {},
+                                                               std::span<const ActorRefOption> refOptions = {},
                                                                const char* partKey = nullptr,
                                                                const char* filter = nullptr,
                                                                const SceneActor* actor = nullptr,
@@ -82,7 +82,7 @@ namespace NS
         //! refOptions が空なら参照は数値入力
         [[nodiscard]] ValueEditResult DrawReflectedValue(void* value,
                                                          const ReflectionInfo& info,
-                                                         std::span<const ObjectRefOption> refOptions = {}) noexcept;
+                                                         std::span<const ActorRefOption> refOptions = {}) noexcept;
 
         //! 点の x が 0〜1 なら表示も 0〜1。範囲外の点があれば全点と右側の 1 割の余白を含める
         //! outMax は outMin より大きい

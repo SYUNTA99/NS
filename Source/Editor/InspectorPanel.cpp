@@ -1,7 +1,7 @@
 #include "Editor/InspectorPanel.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Editor/AssetPicker.h"
 #include "Editor/AssetPreview.h"
 #include "Editor/EditorUi.h"
@@ -677,17 +677,17 @@ namespace NS
         }
 #endif
 
-        std::vector<ObjectRefOption> MakeObjectRefOptions(const ActorList& objects)
+        std::vector<ActorRefOption> MakeActorRefOptions(const ActorList& objects)
         {
             const std::vector<SceneActor*> placed = PlacedActors(objects);
-            std::vector<ObjectRefOption> options;
+            std::vector<ActorRefOption> options;
             options.reserve(placed.size());
             for (std::size_t i = 0; i < placed.size(); ++i)
             {
                 const SceneActor& candidate = *placed[i];
                 char label[96];
-                std::snprintf(label, sizeof(label), "[%zu] %s (id %u)", i, ObjectDisplayName(candidate), candidate.Id());
-                options.push_back(ObjectRefOption{candidate.Id(), label});
+                std::snprintf(label, sizeof(label), "[%zu] %s (id %u)", i, ActorDisplayName(candidate), candidate.Id());
+                options.push_back(ActorRefOption{candidate.Id(), label});
             }
             return options;
         }
@@ -745,7 +745,7 @@ namespace NS
                 {
                     editor.SelectSceneSettings();
                 }
-                const std::vector<ObjectRefOption> refOptions = MakeObjectRefOptions(editor.Objects());
+                const std::vector<ActorRefOption> refOptions = MakeActorRefOptions(editor.Actors());
 
                 // 素材の選択はアクターの選択と排他なので、選んでいる間はアクターの欄を出さない
                 if (Object* asset = editor.SelectedAsset())
@@ -769,18 +769,18 @@ namespace NS
                 }
 
                 // 直前の HasInspectableSelection で同じ識別番号の対象を確認済み
-                SceneActor* go = editor.SelectedObjectActor();
+                SceneActor* go = editor.SelectedActor();
 
                 // 名前の正は実体。一覧での改名と Undo も映すよう、打っていない間は毎回入れ直す
-                const uint32 selectedId = editor.SelectedObjectId();
+                const uint32 selectedId = editor.SelectedActorId();
                 // 打っている間は入れ直さない。打った名前は打ち始めた対象へ確定する
                 if (m_nameEditId == 0)
                 {
                     m_nameId = selectedId;
-                    std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", Editor::ObjectDisplayName(*go));
+                    std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", Editor::ActorDisplayName(*go));
                 }
                 ImGui::SetNextItemWidth(-1.0f);
-                ImGui::InputText("##objectName", m_nameBuffer, sizeof(m_nameBuffer));
+                ImGui::InputText("##actorName", m_nameBuffer, sizeof(m_nameBuffer));
                 if (ImGui::IsItemActivated())
                 {
                     m_nameEditId = m_nameId;
@@ -1006,7 +1006,7 @@ namespace NS
 
             if (m_nameCommitId != 0)
             {
-                editor.RenameObject(m_nameCommitId, m_nameBuffer);
+                editor.RenameActor(m_nameCommitId, m_nameBuffer);
             }
             if (!m_actorFileChange.empty())
             {

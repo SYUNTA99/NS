@@ -4,7 +4,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -30,9 +30,9 @@ namespace NS
         [[nodiscard]] nlohmann::json Sanitize(const nlohmann::json& actorFile)
         {
             nlohmann::json out = actorFile;
-            nlohmann::json& parts = ObjectJsonClassObjs(out);
+            nlohmann::json& parts = ActorJsonClassObjs(out);
             parts = nlohmann::json::object();
-            const nlohmann::json& source = ObjectJsonClassObjs(actorFile);
+            const nlohmann::json& source = ActorJsonClassObjs(actorFile);
             for (nlohmann::json::const_iterator entry = source.begin(); entry != source.end(); ++entry)
             {
                 if (!entry.value().is_object())
@@ -208,7 +208,7 @@ namespace NS
                                              const SceneActor& actor)
     {
         nlohmann::json merged = base;
-        nlohmann::json& target = ObjectJsonClassObjs(merged);
+        nlohmann::json& target = ActorJsonClassObjs(merged);
         bool writable = true;
         std::set<std::string_view> partKeys;
         ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
@@ -246,7 +246,7 @@ namespace NS
                 target[row.key][entry.key()] = entry.value();
             }
         });
-        const nlohmann::json& source = ObjectJsonClassObjs(written);
+        const nlohmann::json& source = ActorJsonClassObjs(written);
         for (nlohmann::json::const_iterator entry = source.begin(); entry != source.end(); ++entry)
         {
             if (!partKeys.contains(entry.key()))
@@ -275,11 +275,11 @@ namespace NS
         return merged;
     }
 
-    void ReadSceneOverrides(SceneActor& actor, const nlohmann::json& object)
+    void ReadSceneOverrides(SceneActor& actor, const nlohmann::json& actorJson)
     {
         actor.ClearSceneOverrides();
         ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
-            const nlohmann::json* fields = ClassObjFields(object, row.key);
+            const nlohmann::json* fields = ClassObjFields(actorJson, row.key);
             if (fields == nullptr || part == &actor.Root())
             {
                 return;
@@ -701,7 +701,7 @@ namespace NS
         ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
             if (part == &actor.Root())
             {
-                ObjectJsonClassObjs(values).erase(row.key);
+                ActorJsonClassObjs(values).erase(row.key);
                 return;
             }
             nlohmann::json* fields = ClassObjFields(values, row.key);
@@ -721,7 +721,7 @@ namespace NS
                 }
             }
         });
-        ApplyObjectClassObjs(actor, values);
+        ApplyActorClassObjs(actor, values);
     }
 
     bool RevertSceneOverride(SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)

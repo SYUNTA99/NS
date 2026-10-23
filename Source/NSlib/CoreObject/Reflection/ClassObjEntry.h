@@ -38,7 +38,7 @@ namespace NS
                                           std::string_view name,
                                           std::string_view fallback);
     //! 参照の欄の id を読む。不在・名前で書かれた値・壊れた形は未設定 0
-    [[nodiscard]] ActorRef FieldObjectRef(const nlohmann::json& entry, std::string_view name) noexcept;
+    [[nodiscard]] ActorRef FieldActorRef(const nlohmann::json& entry, std::string_view name) noexcept;
     [[nodiscard]] bool HasField(const nlohmann::json& entry, std::string_view name) noexcept;
 
     //! entry へ値を書く。Vector3 は [x,y,z]、Quaternion は [x,y,z,w]

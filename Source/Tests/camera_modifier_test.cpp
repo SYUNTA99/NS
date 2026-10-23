@@ -27,7 +27,7 @@ TEST(CameraManager, SceneOwnsCameraWithoutActorHost)
 {
     NS::Scene scene;
     ASSERT_NE(scene.MainCamera(), nullptr);
-    EXPECT_EQ(scene.Objects().ObjectCount(), 0u);
+    EXPECT_EQ(scene.Actors().ActorCount(), 0u);
 }
 
 // 管理役はカメラの段の登録物。段の表を回すだけで仮想カメラを選び、シーンに直書きの呼び出しは要らない
@@ -205,7 +205,7 @@ TEST(IUseCamera, ForwardFollowsTheVirtualCameraNotTheDrawnCamera)
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     scene.MainCamera()->SetPosition(NS::Vector3{});
     scene.MainCamera()->SetTarget(NS::Vector3{1.0f, 0.0f, 0.0f});
-    NS::SceneActor* actor = scene.SpawnObject<NS::SceneActor>("SceneActor");
+    NS::SceneActor* actor = scene.SpawnActor<NS::SceneActor>("SceneActor");
     ASSERT_NE(actor, nullptr);
 
     const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(actor);
@@ -220,7 +220,7 @@ TEST(IUseCamera, ForwardWithoutAVirtualCameraIsPlusZ)
     NS::Scene scene;
     scene.MainCamera()->SetPosition(NS::Vector3{});
     scene.MainCamera()->SetTarget(NS::Vector3{1.0f, 0.0f, 0.0f});
-    NS::SceneActor* actor = scene.SpawnObject<NS::SceneActor>("SceneActor");
+    NS::SceneActor* actor = scene.SpawnActor<NS::SceneActor>("SceneActor");
     ASSERT_NE(actor, nullptr);
 
     const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(actor);
@@ -287,7 +287,7 @@ TEST(IUseCamera, ViewPoseLeavesOutTheShake)
 {
     NS::Scene scene;
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
-    NS::SceneActor* actor = scene.SpawnObject<NS::SceneActor>("SceneActor");
+    NS::SceneActor* actor = scene.SpawnActor<NS::SceneActor>("SceneActor");
     ASSERT_NE(actor, nullptr);
     ASSERT_TRUE(NS::StartCameraShake(actor, ShakeOf(5)));
     const std::optional<NS::CameraPose> drawn = scene.GetCameraManager()->ComposePose(1.0f);
@@ -305,7 +305,7 @@ TEST(IUseCamera, ViewPoseLeavesOutTheShake)
 TEST(IUseCamera, ActorReachesSceneCameraManager)
 {
     NS::Scene scene;
-    NS::SceneActor* actor = scene.SpawnObject<NS::SceneActor>("SceneActor");
+    NS::SceneActor* actor = scene.SpawnActor<NS::SceneActor>("SceneActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->GetCameraManager(), scene.GetCameraManager());
     EXPECT_TRUE(NS::StartCameraShake(actor, ShakeOf(5)));
@@ -323,10 +323,10 @@ TEST(IUseCamera, ActorReachesSceneCameraManager)
 TEST(FollowCameraActor, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnObject<PlayerActor>("player");
+    PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}), 0u);
-    GL::Level::FollowCameraActor* actor = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
+    GL::Level::FollowCameraActor* actor = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
     NS::ThirdPersonFollow& vcam = actor->Vcam();
     NS::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", player->Id()}}}});
     // しきい値を越えるまで押し続ける
@@ -343,7 +343,7 @@ TEST(FollowCameraActor, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
     player->Update(true);
     actor->Update();
     EXPECT_GT(vcam.ChargeNarrowDegrees(), 0.0f);
-    scene.DestroyObject(player->Id());
+    scene.RemoveActor(player->Id());
     actor->Update();
 }
 
@@ -351,7 +351,7 @@ TEST(FollowCameraActor, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
 TEST(SceneCameraOnRender, RunningWorldWritesTheFollowPoseOnRender)
 {
     NS::Scene scene;
-    GL::Level::FollowCameraActor* follow = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
+    GL::Level::FollowCameraActor* follow = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
     ASSERT_NE(follow, nullptr);
     // 追う相手の居ない追従カメラは (0, 0, -5) から原点を見る
     const NS::CameraPose expected = follow->Vcam().EvaluatePose(1.0f);
@@ -369,7 +369,7 @@ TEST(SceneCameraOnRender, RunningWorldWritesTheFollowPoseOnRender)
 TEST(SceneCameraOnRender, StoppedWorldLeavesTheRealCameraToWhoeverStoppedIt)
 {
     NS::Scene scene;
-    ASSERT_NE(scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor"), nullptr);
+    ASSERT_NE(scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor"), nullptr);
     scene.SetSimulationEnabled(false);
     scene.MainCamera()->SetPosition(NS::Vector3{100.0f, 0.0f, 0.0f});
 

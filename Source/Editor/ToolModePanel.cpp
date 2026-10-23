@@ -17,17 +17,17 @@ namespace NS
             // 固定座標を置くとドッキング配置と競合するので位置はドッキング / imgui.ini 任せ
             if (ImGui::Begin(k_PanelEditMode))
             {
-                const bool objectActive = editor.ObjectToolActive();
-                if (ImGui::RadioButton("Build (Grid place)", !objectActive))
+                const bool gizmoActive = editor.GizmoToolActive();
+                if (ImGui::RadioButton("Build (Grid place)", !gizmoActive))
                 {
-                    editor.SetObjectToolActive(false);
+                    editor.SetGizmoToolActive(false);
                 }
-                if (ImGui::RadioButton("Object (Gizmo)", objectActive))
+                if (ImGui::RadioButton("Gizmo", gizmoActive))
                 {
-                    editor.SetObjectToolActive(true);
+                    editor.SetGizmoToolActive(true);
                 }
                 ImGui::Separator();
-                if (objectActive)
+                if (gizmoActive)
                 {
                     ImGui::TextUnformatted("Click orange box to select. Q/W/E/R = Select/Move/Rotate/Scale");
                 }

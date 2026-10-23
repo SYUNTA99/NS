@@ -61,7 +61,7 @@ namespace
 TEST(ClassObjLifecycle, BaseFramePartsRegisterOnlyWhileAppeared)
 {
     NS::Scene scene;
-    GL::Level::PropActor* actor = scene.SpawnObject<GL::Level::PropActor>("PropActor");
+    GL::Level::PropActor* actor = scene.SpawnActor<GL::Level::PropActor>("PropActor");
     // 模型・残像・影・跡を 1 つずつ描く物に入れる
     EXPECT_EQ(RegisteredWhileAppeared(scene, *actor), (Registrations{.renderables = 4, .sensors = 1, .bodies = 1}));
 }
@@ -72,7 +72,7 @@ TEST(ClassObjLifecycle, BaseFramePartsRegisterOnlyWhileAppeared)
 TEST(ClassObjLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnObject<PlayerActor>("PlayerActor");
+    PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
     EXPECT_EQ(RegisteredWhileAppeared(scene, *player), (Registrations{.renderables = 3, .sensors = 1}));
     EXPECT_FALSE(player->TargetIndicator().IsOverlayVisible());
     EXPECT_FALSE(player->SlamIndicator().IsOverlayVisible());
@@ -90,7 +90,7 @@ TEST(ClassObjLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
 TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
 {
     NS::Scene scene;
-    NS::LightActor* light = scene.SpawnObject<NS::LightActor>("LightActor");
+    NS::LightActor* light = scene.SpawnActor<NS::LightActor>("LightActor");
     const NS::DirectionalLight* sun = &light->Light();
     EXPECT_EQ(RegisteredWhileAppeared(scene, *light), Registrations{});
     EXPECT_EQ(scene.LightCount(), 1u);
@@ -103,7 +103,7 @@ TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
 TEST(ClassObjLifecycle, FollowCameraStaysRegisteredAndIsSkippedWhileDisappeared)
 {
     NS::Scene scene;
-    GL::Level::FollowCameraActor* camera = scene.SpawnObject<GL::Level::FollowCameraActor>("FollowCameraActor");
+    GL::Level::FollowCameraActor* camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
     const NS::CameraManager* cameras = scene.GetCameraManager();
     EXPECT_EQ(RegisteredWhileAppeared(scene, *camera), Registrations{});
     EXPECT_EQ(cameras->VirtualCameraCount(), 1u);

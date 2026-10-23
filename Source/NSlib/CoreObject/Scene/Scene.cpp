@@ -4,7 +4,7 @@
 
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
@@ -53,7 +53,7 @@ namespace NS
     {
         SetEnvironment(ReadSceneEnvironment(scene));
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
-        EnsureUniqueObjectIds(scene);
+        EnsureUniqueActorIds(scene);
         RebuildSceneFrom(scene);
     }
 
@@ -61,13 +61,13 @@ namespace NS
     {
         nlohmann::json scene = MakeSceneJson();
         WriteSceneEnvironment(scene, m_environment);
-        SetSceneJsonNextObjectId(scene, m_objects.NextObjectId());
-        nlohmann::json& objects = SceneJsonObjects(scene);
-        for (const SceneActor* obj : m_objects)
+        SetSceneJsonNextActorId(scene, m_actors.NextActorId());
+        nlohmann::json& objects = SceneJsonActors(scene);
+        for (const SceneActor* obj : m_actors)
         {
-            objects.push_back(ObjectToJson(*obj));
+            objects.push_back(ActorToJson(*obj));
         }
-        for (const nlohmann::json& object : m_unresolvedObjects)
+        for (const nlohmann::json& object : m_unresolvedActors)
         {
             objects.push_back(object);
         }
@@ -88,8 +88,8 @@ namespace NS
 
     void Scene::WritePlayBaselineField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
     {
-        const std::size_t index = FindObjectIndexById(m_playBaseline, actor.Id());
-        if (index == k_NoObjectIndex)
+        const std::size_t index = FindActorIndexById(m_playBaseline, actor.Id());
+        if (index == k_NoActorIndex)
         {
             return;
         }
@@ -104,7 +104,7 @@ namespace NS
         {
             return;
         }
-        nlohmann::json& frozenParts = ObjectJsonClassObjs(SceneJsonObjects(m_playBaseline)[index]);
+        nlohmann::json& frozenParts = ActorJsonClassObjs(SceneJsonActors(m_playBaseline)[index]);
         // 上書きの一覧から外した項目は、凍結からも消す。残すと編集へ戻る時に上書きとして読み直される
         if (part != &actor.Root() && field->type != FieldType::ActorRef && !actor.IsSceneOverride(row.key, fieldName))
         {
@@ -231,15 +231,15 @@ namespace NS
         return true;
     }
 
-    SceneActor* Scene::AdoptObject(std::unique_ptr<SceneActor> obj, std::string name)
+    SceneActor* Scene::AdoptActor(std::unique_ptr<SceneActor> obj, std::string name)
     {
         if (!obj)
         {
             return nullptr;
         }
 
-        // シーンは SpawnObject の作る関数が OnInit の前に決めている
-        SceneActor* raw = m_objects.AppendWithNewId(std::move(obj), std::move(name));
+        // シーンは SpawnActor の作る関数が OnInit の前に決めている
+        SceneActor* raw = m_actors.AppendWithNewId(std::move(obj), std::move(name));
         if (raw == nullptr)
         {
             return nullptr;
@@ -256,42 +256,42 @@ namespace NS
         obj.InitAfterPlacement();
     }
 
-    std::unique_ptr<SceneActor> Scene::BuildOrKeepUnresolved(const nlohmann::json& object)
+    std::unique_ptr<SceneActor> Scene::BuildOrKeepUnresolved(const nlohmann::json& actorJson)
     {
-        std::unique_ptr<SceneActor> built = ObjectFromJson(object, *this);
-        const uint32 id = ObjectJsonId(object);
+        std::unique_ptr<SceneActor> built = ActorFromJson(actorJson, *this);
+        const uint32 id = ActorJsonId(actorJson);
         std::vector<nlohmann::json>::iterator kept = std::find_if(
-            m_unresolvedObjects.begin(), m_unresolvedObjects.end(), [id](const nlohmann::json& unresolved) {
-                return ObjectJsonId(unresolved) == id;
+            m_unresolvedActors.begin(), m_unresolvedActors.end(), [id](const nlohmann::json& unresolved) {
+                return ActorJsonId(unresolved) == id;
             });
         if (built)
         {
-            if (kept != m_unresolvedObjects.end())
+            if (kept != m_unresolvedActors.end())
             {
-                m_unresolvedObjects.erase(kept);
+                m_unresolvedActors.erase(kept);
             }
             return built;
         }
         // 同じ id の物は 1 つだけ持つ。戻しの控えを何度当てても保存の配置物は増えない
-        if (kept != m_unresolvedObjects.end())
+        if (kept != m_unresolvedActors.end())
         {
-            *kept = object;
+            *kept = actorJson;
         }
         else
         {
-            m_unresolvedObjects.push_back(object);
+            m_unresolvedActors.push_back(actorJson);
         }
         return nullptr;
     }
 
-    SceneActor* Scene::SpawnFromJson(const nlohmann::json& object)
+    SceneActor* Scene::SpawnFromJson(const nlohmann::json& actorJson)
     {
-        std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(object);
+        std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(actorJson);
         if (!built)
         {
             return nullptr;
         }
-        SceneActor* raw = m_objects.InsertFromJson(std::move(built), object, m_objects.ObjectCount());
+        SceneActor* raw = m_actors.InsertFromJson(std::move(built), actorJson, m_actors.ActorCount());
         if (raw == nullptr)
         {
             return nullptr;
@@ -300,25 +300,25 @@ namespace NS
         return raw;
     }
 
-    SceneActor* Scene::ReplaceFromJson(const nlohmann::json& object)
+    SceneActor* Scene::ReplaceFromJson(const nlohmann::json& actorJson)
     {
-        const uint32 id = ObjectJsonId(object);
-        const std::size_t index = m_objects.IndexOfObjectId(id);
-        SceneActor* old = m_objects.FindByObjectId(id);
+        const uint32 id = ActorJsonId(actorJson);
+        const std::size_t index = m_actors.IndexOfActorId(id);
+        SceneActor* old = m_actors.FindByActorId(id);
         if (old == nullptr)
         {
-            return SpawnFromJson(object);
+            return SpawnFromJson(actorJson);
         }
 
-        std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(object);
+        std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(actorJson);
         // 組めない姿は居ない姿として扱い、JSON は BuildOrKeepUnresolved が持つ。
-        // DestroyObject は持った JSON も捨てるので、アクターだけを外す
-        m_objects.RemoveByObjectId(id);
+        // RemoveActor は持った JSON も捨てるので、アクターだけを外す
+        m_actors.RemoveByActorId(id);
         if (!built)
         {
             return nullptr;
         }
-        SceneActor* raw = m_objects.InsertFromJson(std::move(built), object, index);
+        SceneActor* raw = m_actors.InsertFromJson(std::move(built), actorJson, index);
         if (raw == nullptr)
         {
             return nullptr;
@@ -329,13 +329,13 @@ namespace NS
 
     SceneActor* Scene::ApplyFromJson(const nlohmann::json& snapshot)
     {
-        SceneActor* obj = m_objects.FindByObjectId(ObjectJsonId(snapshot));
+        SceneActor* obj = m_actors.FindByActorId(ActorJsonId(snapshot));
         if (obj == nullptr)
         {
             return SpawnFromJson(snapshot);
         }
         // 同じクラスでも .actor が違えば敷く既定が違うので、作り直す
-        if (ObjectJsonActorFile(snapshot) != obj->ActorFileName())
+        if (ActorJsonFile(snapshot) != obj->ActorFileName())
         {
             return ReplaceFromJson(snapshot);
         }
@@ -351,7 +351,7 @@ namespace NS
             return ReplaceFromJson(snapshot);
         }
         const nlohmann::json& object = *merged;
-        m_objects.ApplyIdentity(*obj, ReadObjectHeader(snapshot));
+        m_actors.ApplyIdentity(*obj, ReadActorHeader(snapshot));
         ReadSceneOverrides(*obj, snapshot);
         bool written = false;
         ForEachReflectedClassObj(*obj, [&](const ClassObjInfo& field, Object* classObj) {
@@ -371,11 +371,11 @@ namespace NS
         return obj;
     }
 
-    void Scene::DestroyObject(uint32 objectId)
+    void Scene::RemoveActor(uint32 objectId)
     {
-        m_objects.RemoveByObjectId(objectId);
-        std::erase_if(m_unresolvedObjects, [objectId](const nlohmann::json& unresolved) {
-            return ObjectJsonId(unresolved) == objectId;
+        m_actors.RemoveByActorId(objectId);
+        std::erase_if(m_unresolvedActors, [objectId](const nlohmann::json& unresolved) {
+            return ActorJsonId(unresolved) == objectId;
         });
     }
 
@@ -395,8 +395,8 @@ namespace NS
         // 組み直しでは、組み直した配置物の開始が要る物が最初の状態から作り直す
         m_sceneObjs.Clear();
         Fade().Cancel();
-        m_objects.Clear();
-        m_unresolvedObjects.clear();
+        m_actors.Clear();
+        m_unresolvedActors.clear();
         ClearEffects();
 #if !defined(NS_SHIPPING)
         // 図形は前の世界の姿で、溜め場は静的な 1 つ。残すと、次の歩が来るまで消えた物の線が出る
@@ -409,7 +409,7 @@ namespace NS
         ClearWorld();
         // 仮想カメラの付け外しは、持ち主の SceneActor が OnStart / OnEndPlay で行う
         // .actor の見つからない配置物は作らず、保存で消さないように JSON のまま持つ
-        m_objects.RebuildFromJson(
+        m_actors.RebuildFromJson(
             scene, *this, [this](const nlohmann::json& entry) { return BuildOrKeepUnresolved(entry); });
         // 当たりは配置物の開始で入っている。まとめて入れた後の broadphase だけを張り直す
         m_physics.Physics().OptimizeBroadPhase();
@@ -422,8 +422,8 @@ namespace NS
         // Actor の Update が回らない歩も、編集で動いた当たりを揃える
         if (!m_simulationEnabled)
         {
-            m_objects.SnapshotObjects();
-            m_objects.SyncCollisions();
+            m_actors.SnapshotActors();
+            m_actors.SyncCollisions();
             return;
         }
 
@@ -431,8 +431,8 @@ namespace NS
         {
             if (m_simulationStepFrames <= 0)
             {
-                m_objects.SnapshotObjects();
-                m_objects.SyncCollisions();
+                m_actors.SnapshotActors();
+                m_actors.SyncCollisions();
                 return;
             }
             // コマ送りは実時間の 1 歩。遅い世界では世界が進まない歩もある
@@ -444,7 +444,7 @@ namespace NS
         {
             // 補間描画用。全配置物の根の Transform と Model の前の値を控える
             // 世界を進めない歩に控えると previous == current になり、遅い世界の補間が止まる
-            m_objects.SnapshotObjects();
+            m_actors.SnapshotActors();
 #if !defined(NS_SHIPPING)
             // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
             Gfx::DebugDraw::BeginStep();
@@ -463,7 +463,7 @@ namespace NS
             }
             ExecutePhase(phase);
         }
-        m_objects.RemoveDestroyed();
+        m_actors.RemoveDestroyed();
         // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ自機が進む
         if (worldStep && m_othersHeldSteps > 0)
         {
@@ -566,7 +566,7 @@ namespace NS
 
     void Scene::ExecutePhase(UpdatePhase phase)
     {
-        m_objects.BeginPhase();
+        m_actors.BeginPhase();
         // 段で呼ぶ管理役は SceneActor を回す前に決める。段の SceneActor が足した管理役はこの段では呼ばない
         m_scheduledSystems.clear();
         for (const SystemEntry& entry : m_systems)
@@ -576,7 +576,7 @@ namespace NS
                 m_scheduledSystems.push_back(entry.system);
             }
         }
-        m_objects.ExecutePhase(phase);
+        m_actors.ExecutePhase(phase);
         // 管理役は段の SceneActor が出した物を受けてまとめるので、SceneActor の後に回す
         for (SceneSystem* system : m_scheduledSystems)
         {
@@ -590,7 +590,7 @@ namespace NS
                 system->OnTick();
             }
         }
-        m_objects.EndPhase();
+        m_actors.EndPhase();
     }
 
     SceneCamera* Scene::MainCamera() noexcept

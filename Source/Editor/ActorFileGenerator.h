@@ -2,7 +2,7 @@
 
 // 全部の項目を書いた .actor を、クラスのコードの値から作る。エディタの起動とテストの起動が呼び、出荷ビルドには載らない
 
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 
 #include <string>
 #include <vector>

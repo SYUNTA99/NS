@@ -3,7 +3,7 @@
 #include "Editor/GridMath.h"
 #include "Editor/PaletteTemplates.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 
 namespace NS
 {

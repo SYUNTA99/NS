@@ -1,4 +1,4 @@
-#include "Editor/EditorObjects.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
@@ -33,37 +33,37 @@ namespace
     NS::SceneActor* PlaceRock(NS::Scene& scene, const NS::Vector3& position)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, "PropActor");
-        NS::SetObjectJsonId(rock, 1);
-        NS::Editor::SetObjectPosition(rock, position);
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::SetActorJsonId(rock, 1);
+        NS::Editor::SetActorJsonPosition(rock, position);
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
-        return scene.Objects().FindByObjectId(1);
+        return scene.Actors().FindByActorId(1);
     }
 
     // 自機を原点の上に、置物を z 4 に置き、後ろ上の固定のカメラから置物を見る
     GL::Level::PropActor* PlaceRockBeforePlayer(NS::Scene& scene, std::string_view actorFile = "PropActor")
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(player, "PlayerActor");
-        NS::SetObjectJsonId(player, 1);
-        NS::Editor::SetObjectPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeObjectJson();
-        NS::SetObjectJsonActorFile(rock, actorFile);
-        NS::SetObjectJsonId(rock, 2);
-        NS::Editor::SetObjectPosition(rock, NS::Vector3{0.0f, 0.5f, 4.0f});
-        NS::SceneJsonObjects(doc).push_back(std::move(rock));
+        nlohmann::json player = NS::MakeActorJson();
+        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonId(player, 1);
+        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(player));
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, actorFile);
+        NS::SetActorJsonId(rock, 2);
+        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 4.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
         scene.ResetFromJson(doc);
         PlaceViewCamera(scene, NS::Vector3{0.0f, 3.0f, -6.0f}, NS::Vector3{0.0f, 0.5f, 4.0f});
-        return NS::Cast<GL::Level::PropActor>(scene.Objects().FindByObjectId(2));
+        return NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     }
 
     PlayerActor* PlayerOf(NS::Scene& scene)
     {
-        return NS::Cast<PlayerActor>(scene.Objects().FindByObjectId(1));
+        return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
     // 自機の体のセンサーから、置物の手前の面を +z へ押した当たり

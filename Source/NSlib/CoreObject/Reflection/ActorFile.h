@@ -3,7 +3,7 @@
 // 値はコードの既定値、.actor の値、配置物の印の付いた欄の順に重ねる。
 // 部品の構成を決めるのは .actor まで。配置物の保存は .actor の値との差分だけを持つ。
 
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 
 #include <functional>
 #include <map>
@@ -112,7 +112,7 @@ namespace NS
 
     //! @brief シーンに置いたアクターの JSON に書いた項目で、actor のシーンの上書きの一覧を作り直す
     //! @details 根の部品と参照の欄は一覧に入れない。項目が書いてよいかは見ないので、先に MergeLayer で確かめる
-    void ReadSceneOverrides(SceneActor& actor, const nlohmann::json& object);
+    void ReadSceneOverrides(SceneActor& actor, const nlohmann::json& actorJson);
 
     //! @brief actor の行 row の部品の欄 fieldName をシーンの上書きの一覧から外し、.actor の全部の値の同じ項目を写す
     //! @details 全部の値か、その項目が無ければ ERROR を出し、一覧も値も変えずに false

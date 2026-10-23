@@ -30,7 +30,7 @@ namespace NS
             }
 
             nlohmann::json full = actorFile;
-            nlohmann::json& parts = ObjectJsonClassObjs(full);
+            nlohmann::json& parts = ActorJsonClassObjs(full);
             ForEachReflectedClassObj(*actor, [&](const ClassObjInfo& row, const Object* part) {
                 // 根の姿勢はシーンに置いたアクターの物
                 if (part == &actor->Root())

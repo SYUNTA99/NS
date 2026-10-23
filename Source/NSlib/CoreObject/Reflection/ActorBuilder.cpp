@@ -1,8 +1,9 @@
-#include "NSlib/CoreObject/Reflection/ObjectBuilder.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -18,18 +19,18 @@
 
 namespace NS
 {
-    nlohmann::json MakeObjectHeaderJson(const SceneActor& obj, uint32 id)
+    nlohmann::json MakeActorHeaderJson(const SceneActor& obj, uint32 id)
     {
         nlohmann::json object = nlohmann::json::object();
-        WriteObjectHeader(
+        WriteActorHeader(
             object,
-            ObjectHeader{.id = id, .actorFile = obj.ActorFileName(), .name = obj.Name(), .active = obj.IsAppeared()});
+            ActorHeader{.id = id, .actorFile = obj.ActorFileName(), .name = obj.Name(), .active = obj.IsAppeared()});
         return object;
     }
 
-    void ApplyObjectClassObjs(SceneActor& obj, const nlohmann::json& object)
+    void ApplyActorClassObjs(SceneActor& obj, const nlohmann::json& actorJson)
     {
-        const nlohmann::json& parts = ObjectJsonClassObjs(object);
+        const nlohmann::json& parts = ActorJsonClassObjs(actorJson);
         std::vector<std::string_view> knownKeys;
         ForEachReflectedClassObj(obj, [&](const ClassObjInfo& field, Object* classObj) {
             knownKeys.push_back(field.key);
@@ -48,15 +49,42 @@ namespace NS
         }
     }
 
-    std::unique_ptr<SceneActor> ObjectFromJson(const nlohmann::json& object, Scene& scene)
+    namespace
     {
-        return CreateRegisteredObject(object, scene);
+        // class が正。登録の無い class は素の SceneActor で組むので、データの誤りとして知らせる
+        void WarnIfUnregistered(std::string_view className)
+        {
+            if (className.empty())
+            {
+                return;
+            }
+            const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
+            if (entry == nullptr || entry->create == nullptr)
+            {
+                NS_LOG_WARN(Scene, "ActorFromJson: 未登録クラス {} を素の SceneActor で組む", className);
+            }
+        }
+    } // namespace
+
+    std::unique_ptr<SceneActor> ActorFromJson(const nlohmann::json& actorJson, Scene& scene)
+    {
+        // クラスは配置物の指す .actor の中の class だけが持つ。.actor が無ければ作るクラスが決まらない
+        const std::string_view actorFile = ActorJsonFile(actorJson);
+        const std::string className = ActorFileLibrary::Get().ClassNameOf(actorFile);
+        if (className.empty())
+        {
+            NS_LOG_ERROR(Scene, "配置物 {} の .actor {} が見つからないので作らない", ActorJsonId(actorJson), actorFile);
+            return nullptr;
+        }
+        WarnIfUnregistered(className);
+        const ActorInitInfo info{.placement = &actorJson, .scene = &scene, .actorFile = actorFile};
+        return CreateActorOfClass(className, info);
     }
 
-    nlohmann::json ObjectToJson(const SceneActor& obj)
+    nlohmann::json ActorToJson(const SceneActor& obj)
     {
-        nlohmann::json object = MakeObjectHeaderJson(obj, obj.Id());
-        nlohmann::json& parts = ObjectJsonClassObjs(object);
+        nlohmann::json object = MakeActorHeaderJson(obj, obj.Id());
+        nlohmann::json& parts = ActorJsonClassObjs(object);
         // 値は .actor と比べない。シーンに書くのは根の姿勢・参照の欄・上書きの一覧の項目で、ほかは .actor の値を使う
         ForEachReflectedClassObj(obj, [&](const ClassObjInfo& row, const Object* classObj) {
             nlohmann::json fields = SerializeClassObjFields(*classObj);

@@ -133,7 +133,7 @@ TEST(ScreenFade, SceneAdvancesOncePerStepWithoutWorldTimeOrAnActor)
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.25f);
     scene.OnUpdate();
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.5f);
-    EXPECT_EQ(scene.Objects().ObjectCount(), 0u);
+    EXPECT_EQ(scene.Actors().ActorCount(), 0u);
 
     NS::ScreenFadeDirector director;
     director.Fade().BeginOut(0.0f);

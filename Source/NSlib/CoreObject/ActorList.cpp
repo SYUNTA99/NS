@@ -18,7 +18,7 @@ namespace NS
         Clear();
     }
 
-    void ActorList::RebuildFromJson(const nlohmann::json& scene, Scene& owner, const ObjectFactoryFn& factory)
+    void ActorList::RebuildFromJson(const nlohmann::json& scene, Scene& owner, const ActorFactoryFn& factory)
     {
         // Clear が断った後に組むと古い配置物の後ろへ新しい配置物が並ぶので、組む前にここで断る
         if (m_updating)
@@ -30,10 +30,10 @@ namespace NS
         Clear();
 
         // カウンタは 1 始まりでファイルの id を知らない。読込値まで上げないと次に置く 1 個目が既存とぶつかる
-        const nlohmann::json& objects = SceneJsonObjects(scene);
-        m_nextObjectId = std::max(m_nextObjectId, NextFreeObjectId(scene));
+        const nlohmann::json& objects = SceneJsonActors(scene);
+        m_nextActorId = std::max(m_nextActorId, NextFreeActorId(scene));
 
-        m_objects.reserve(objects.size());
+        m_actors.reserve(objects.size());
 
         // 配置物の組み立ては呼出側の知識。ファクトリの無い起動前 / テストでは何も組まない
         if (factory)
@@ -54,17 +54,17 @@ namespace NS
                     NS_LOG_ERROR(Scene, "ActorList::RebuildFromJson: {} はこのシーンで作られていないので入れない", obj->ClassName());
                     continue;
                 }
-                ApplyIdentity(*obj, ReadObjectHeader(entry));
-                m_objects.push_back(std::move(obj));
+                ApplyIdentity(*obj, ReadActorHeader(entry));
+                m_actors.push_back(std::move(obj));
             }
 
             MarkIndexDirty();
-            for (std::unique_ptr<SceneActor>& objPtr : m_objects)
+            for (std::unique_ptr<SceneActor>& objPtr : m_actors)
             {
                 objPtr->OnStart();
             }
             // 全ての配置物が開始してから、揃っている前提の用意をさせる
-            for (std::unique_ptr<SceneActor>& objPtr : m_objects)
+            for (std::unique_ptr<SceneActor>& objPtr : m_actors)
             {
                 objPtr->InitAfterPlacement();
             }
@@ -77,33 +77,33 @@ namespace NS
         {
             return nullptr;
         }
-        obj->SetId(AllocateObjectId());
+        obj->SetId(AllocateActorId());
 
         // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
-        RenameObject(*obj, name);
+        RenameActor(*obj, name);
         SceneActor* raw = obj.get();
-        m_objects.push_back(std::move(obj));
+        m_actors.push_back(std::move(obj));
         MarkIndexDirty();
         return raw;
     }
 
-    void ActorList::RemoveByObjectId(uint32 objectId)
+    void ActorList::RemoveByActorId(uint32 objectId)
     {
         // 段の最中に解放すると、その段で後に呼ぶ予定の生ポインタが破棄済みになる
         if (m_updating)
         {
             NS_LOG_ERROR(
-                Scene, "ActorList::RemoveByObjectId: 段の更新の最中に呼ばれたので id {} の解放を断った", objectId);
+                Scene, "ActorList::RemoveByActorId: 段の更新の最中に呼ばれたので id {} の解放を断った", objectId);
             return;
         }
 
         // 0 は未採番の印。id の無い JSON から入れた配置物は 0 のままなので、素通しするとその 1 体が消える
-        if (objectId == k_NoObjectId)
+        if (objectId == k_NoActorId)
         {
             return;
         }
 
-        for (std::vector<std::unique_ptr<SceneActor>>::iterator it = m_objects.begin(); it != m_objects.end(); ++it)
+        for (std::vector<std::unique_ptr<SceneActor>>::iterator it = m_actors.begin(); it != m_actors.end(); ++it)
         {
             if ((*it)->Id() != objectId)
             {
@@ -112,7 +112,7 @@ namespace NS
 
             (*it)->OnEndPlay();
             MarkIndexDirty();
-            m_objects.erase(it);
+            m_actors.erase(it);
             return;
         }
     }
@@ -125,7 +125,7 @@ namespace NS
                          "ActorList::RemoveDestroyed: 段の更新の最中に呼ばれたので Destroy した個体の解放を断った");
             return;
         }
-        const std::size_t removed = std::erase_if(m_objects, [](const std::unique_ptr<SceneActor>& obj) {
+        const std::size_t removed = std::erase_if(m_actors, [](const std::unique_ptr<SceneActor>& obj) {
             if (!obj->IsPendingDestroy())
             {
                 return false;
@@ -139,28 +139,28 @@ namespace NS
         }
     }
 
-    SceneActor* ActorList::ObjectAt(std::size_t index) const noexcept
+    SceneActor* ActorList::ActorAt(std::size_t index) const noexcept
     {
-        if (index >= m_objects.size())
+        if (index >= m_actors.size())
         {
             return nullptr;
         }
-        return m_objects[index].get();
+        return m_actors[index].get();
     }
 
-    SceneActor* ActorList::FindByObjectId(uint32 objectId) noexcept
+    SceneActor* ActorList::FindByActorId(uint32 objectId) noexcept
     {
         // 0 は未採番の印。id の無い JSON から入れた配置物は 0 のままなので、素通しするとその 1 体が引ける
-        if (objectId == k_NoObjectId)
+        if (objectId == k_NoActorId)
         {
             return nullptr;
         }
 
         if (m_indexDirty)
         {
-            for (std::unique_ptr<SceneActor>& obj : m_objects)
+            for (std::unique_ptr<SceneActor>& obj : m_actors)
             {
-                if (obj->Id() != k_NoObjectId)
+                if (obj->Id() != k_NoActorId)
                 {
                     m_index.emplace(obj->Id(), obj.get());
                 }
@@ -182,14 +182,14 @@ namespace NS
         m_indexDirty = true;
     }
 
-    SceneActor* ActorList::FindObject(ActorRef ref) noexcept
+    SceneActor* ActorList::FindActor(ActorRef ref) noexcept
     {
-        return FindByObjectId(ref.id);
+        return FindByActorId(ref.id);
     }
 
     void ActorList::SyncCollisions()
     {
-        for (const std::unique_ptr<SceneActor>& actor : m_objects)
+        for (const std::unique_ptr<SceneActor>& actor : m_actors)
         {
             Collision* collision = actor->CollisionClassObj();
             if (collision != nullptr && actor->IsAppeared())
@@ -199,9 +199,9 @@ namespace NS
         }
     }
 
-    void ActorList::SnapshotObjects()
+    void ActorList::SnapshotActors()
     {
-        for (std::unique_ptr<SceneActor>& obj : m_objects)
+        for (std::unique_ptr<SceneActor>& obj : m_actors)
         {
             obj->SnapshotForInterpolation();
         }
@@ -222,7 +222,7 @@ namespace NS
     {
         NS_ASSERT(Scene, m_updating, "BeginPhase の前に段を回している");
         m_scheduled.clear();
-        for (const std::unique_ptr<SceneActor>& obj : m_objects)
+        for (const std::unique_ptr<SceneActor>& obj : m_actors)
         {
             if (!obj->IsAppeared())
             {
@@ -255,10 +255,10 @@ namespace NS
         }
     }
 
-    void ActorList::ApplyIdentity(SceneActor& obj, const ObjectHeader& header)
+    void ActorList::ApplyIdentity(SceneActor& obj, const ActorHeader& header)
     {
         obj.SetId(header.id);
-        RenameObject(obj, header.name);
+        RenameActor(obj, header.name);
         if (header.active)
         {
             obj.Appear();
@@ -278,38 +278,38 @@ namespace NS
             return nullptr;
         }
         // 組み直さずに 1 体だけ入れるので、読込の一意化を通らない。名前の一意は ApplyIdentity が保つ
-        ApplyIdentity(*obj, ReadObjectHeader(entry));
+        ApplyIdentity(*obj, ReadActorHeader(entry));
         // 入れた物の id より先へカウンタを進める。進めないと次に置く 1 個目と重なる
-        m_nextObjectId = std::max(m_nextObjectId, obj->Id() + 1);
+        m_nextActorId = std::max(m_nextActorId, obj->Id() + 1);
 
         SceneActor* raw = obj.get();
-        index = std::min(index, m_objects.size());
-        m_objects.insert(m_objects.begin() + static_cast<std::ptrdiff_t>(index), std::move(obj));
+        index = std::min(index, m_actors.size());
+        m_actors.insert(m_actors.begin() + static_cast<std::ptrdiff_t>(index), std::move(obj));
         MarkIndexDirty();
         return raw;
     }
 
-    std::size_t ActorList::IndexOfObjectId(uint32 objectId) const noexcept
+    std::size_t ActorList::IndexOfActorId(uint32 objectId) const noexcept
     {
-        if (objectId == k_NoObjectId)
+        if (objectId == k_NoActorId)
         {
-            return m_objects.size();
+            return m_actors.size();
         }
-        for (std::size_t i = 0; i < m_objects.size(); ++i)
+        for (std::size_t i = 0; i < m_actors.size(); ++i)
         {
-            if (m_objects[i]->Id() == objectId)
+            if (m_actors[i]->Id() == objectId)
             {
                 return i;
             }
         }
-        return m_objects.size();
+        return m_actors.size();
     }
 
-    void ActorList::RenameObject(SceneActor& obj, std::string_view name)
+    void ActorList::RenameActor(SceneActor& obj, std::string_view name)
     {
         std::unordered_set<std::string> used;
-        used.reserve(m_objects.size());
-        for (const std::unique_ptr<SceneActor>& existing : m_objects)
+        used.reserve(m_actors.size());
+        for (const std::unique_ptr<SceneActor>& existing : m_actors)
         {
             if (existing.get() != &obj)
             {
@@ -328,13 +328,13 @@ namespace NS
         }
 
         // OnEndPlay は生成の逆順で呼ぶ。依存し合う部品の後始末を生成と対称にする
-        for (std::vector<std::unique_ptr<SceneActor>>::reverse_iterator it = m_objects.rbegin(); it != m_objects.rend();
+        for (std::vector<std::unique_ptr<SceneActor>>::reverse_iterator it = m_actors.rbegin(); it != m_actors.rend();
              ++it)
         {
             (*it)->OnEndPlay();
         }
         MarkIndexDirty();
-        m_objects.clear();
+        m_actors.clear();
     }
 
 } // namespace NS

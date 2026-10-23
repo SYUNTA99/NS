@@ -130,7 +130,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     }
     if (IsRebounding() && impact.tier == GL::Level::HitTier::Center && OwningScene() != nullptr)
     {
-        if (const NS::SceneActor* partner = OwningScene()->Objects().FindByObjectId(impact.targetId))
+        if (const NS::SceneActor* partner = OwningScene()->Actors().FindByActorId(impact.targetId))
         {
             state.rebound.partnerPosition = partner->Root().Position();
         }
@@ -199,7 +199,7 @@ void PlayerActor::ObserveStep()
     {
         if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
         {
-            director->RequestRespawnObjects();
+            director->RequestRespawnActors();
         }
     }
     ObserveCharge(m_input->SlamHeld());
@@ -672,7 +672,7 @@ NS::HitSensor* PlayerActor::LastTackleTargetSensor() const noexcept
     {
         return nullptr;
     }
-    NS::SceneActor* target = OwningScene()->Objects().FindObject(NS::ActorRef{targetId});
+    NS::SceneActor* target = OwningScene()->Actors().FindActor(NS::ActorRef{targetId});
     if (target == nullptr)
     {
         return nullptr;

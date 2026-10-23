@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
-#include "NSlib/CoreObject/ObjectJson.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
@@ -70,36 +70,7 @@ namespace NS
             }
             return std::make_unique<SceneActor>();
         }
-
-        // class が正。登録の無い class は素の SceneActor で組むので、データの誤りとして知らせる
-        void WarnIfUnregistered(std::string_view className)
-        {
-            if (className.empty())
-            {
-                return;
-            }
-            const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
-            if (entry == nullptr || entry->create == nullptr)
-            {
-                NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の SceneActor で組む", className);
-            }
-        }
     } // namespace
-
-    std::unique_ptr<SceneActor> CreateRegisteredObject(const nlohmann::json& object, Scene& scene)
-    {
-        // クラスは配置物の指す .actor の中の class だけが持つ。.actor が無ければ作るクラスが決まらない
-        const std::string_view actorFile = ObjectJsonActorFile(object);
-        const std::string className = ActorFileLibrary::Get().ClassNameOf(actorFile);
-        if (className.empty())
-        {
-            NS_LOG_ERROR(Scene, "配置物 {} の .actor {} が見つからないので作らない", ObjectJsonId(object), actorFile);
-            return nullptr;
-        }
-        WarnIfUnregistered(className);
-        const ActorInitInfo info{.placement = &object, .scene = &scene, .actorFile = actorFile};
-        return CreateActorOfClass(className, info);
-    }
 
     std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className)
     {

@@ -58,10 +58,10 @@ namespace NS
         //! @details 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
         void OnRender();
 
-        //! IRenderable の部品の自己登録。Model 等が OnStart で呼ぶ。二重登録は無視する
-        //! 登録簿は SceneRenderer が持つ
+        //! 描く部品の登録。部品が自分の Register の中で呼ぶ。二重登録は無視する
+        //! 基底の部品 (Model・Shadow) の Register は、持ち主の SceneActor が OnAppear で呼ぶ。登録簿は SceneRenderer が持つ
         void RegisterRenderable(IRenderable* renderable);
-        //! IRenderable の部品の自己解除。Model 等が OnEndPlay で呼ぶ
+        //! 描く部品の解除。基底の部品の Unregister は、持ち主の SceneActor が OnDisappear で呼ぶ
         void UnregisterRenderable(IRenderable* renderable);
 
         //! 重ね描きの登録。部品は持ち主の SceneActor が OnStart で 1 回呼ぶ。二重登録は無視する
@@ -71,7 +71,7 @@ namespace NS
         void UnregisterOverlay(IOverlay* overlay);
 
         //! 平行光の登録。持ち主の LightActor が OnStart で 1 回呼ぶ。二重登録は無視する
-        //! 並びは登録順。ResolveSceneSettings はこの順に読み、IsActive が偽の光は飛ばす
+        //! 並びは登録順。ResolveSceneSettings はこの順に読み、持ち主が出ていない光は飛ばす
         void RegisterLight(DirectionalLight* light);
         //! 平行光の解除。持ち主の LightActor が OnEndPlay で呼ぶ
         void UnregisterLight(DirectionalLight* light);
@@ -88,12 +88,13 @@ namespace NS
 
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
 
+        //! Physics() と同じ物を、IUseCollision の形 (ポインタ) で返す
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
 
         //! エフェクトの EffectScene。描画を持たないシーン (試し) では nullptr
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept;
 
-        //! シーンのヒットセンサーの調べ役。HitSensor が OnStart で入り OnEndPlay で出る
+        //! シーンのヒットセンサーの一覧。HitSensor は持ち主の SceneActor の OnAppear で入り、OnDisappear で出る
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
 
@@ -164,8 +165,8 @@ namespace NS
         void SetEnvironment(const SceneEnvironment& environment) noexcept;
 
         //! @brief シーンの配置物の一覧
-        [[nodiscard]] ActorList& Objects() noexcept { return m_objects; }
-        [[nodiscard]] const ActorList& Objects() const noexcept { return m_objects; }
+        [[nodiscard]] ActorList& Actors() noexcept { return m_actors; }
+        [[nodiscard]] const ActorList& Actors() const noexcept { return m_actors; }
 
         //! @brief シーンの JSON 文書を取り込み配置物を組み直す。文書は取込後に用済みになる
         //! @details 組む前に id と名前を一意に揃える。前の世界の固定ステップで積んだ開発用の図形は捨てる
@@ -223,32 +224,32 @@ namespace NS
         //! @brief 型 T の配置物をシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
         //! @details 所有はシーンが握り、呼出側へは生ポインタだけ返す。名前は既存と重なれば番号を付ける。
         //! 値はクラスと同じ名前の .actor の値で、保存と凍結に写る
-        template <class T, class... Args> T* SpawnObject(std::string name, Args&&... args)
+        template <class T, class... Args> T* SpawnActor(std::string name, Args&&... args)
         {
             const ActorInitInfo info{.scene = this};
             std::unique_ptr<T> obj = CreateActorWithInfo<T>(info, std::forward<Args>(args)...);
             T* raw = obj.get();
-            AdoptObject(std::move(obj), std::move(name));
+            AdoptActor(std::move(obj), std::move(name));
             return raw;
         }
 
         //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! @details 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
         //! undo の作り直しと複製が通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
-        SceneActor* SpawnFromJson(const nlohmann::json& object);
+        SceneActor* SpawnFromJson(const nlohmann::json& actorJson);
 
         //! @brief 同じ id の配置物を JSON の姿へ作り直す。並びの位置は保つ。居なければ SpawnFromJson と同じ
         //! @details 部品の増減も含めて姿を丸ごと入れ替える。.actor が見つからなければ、
         //! 前のアクターを外して JSON のまま持ち、nullptr を返す
-        SceneActor* ReplaceFromJson(const nlohmann::json& object);
+        SceneActor* ReplaceFromJson(const nlohmann::json& actorJson);
 
         //! 同じ id の個体へ JSON を適用する。構成が同じなら実体を保ち、違えば再構築する
         //! 未配置なら生成する。動いた当たりは次の歩で揃う
-        SceneActor* ApplyFromJson(const nlohmann::json& object);
+        SceneActor* ApplyFromJson(const nlohmann::json& actorJson);
 
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる。.actor が見つからずに持っている同じ id の JSON も捨てる
-        void DestroyObject(uint32 objectId);
+        void RemoveActor(uint32 objectId);
 
         //! 固定更新の段を順に実行する。同じ段では SceneActor の後にシステムを更新する
         void OnUpdate();
@@ -278,12 +279,12 @@ namespace NS
         void ClearWorld();
 
         //! @brief 配置物の JSON 1 件からアクターを作る。組み直しと 1 体だけ入れる道の全部が通る
-        //! @details .actor が見つからなければ作らず、JSON を m_unresolvedObjects に id ごとに 1 つ持つ。
+        //! @details .actor が見つからなければ作らず、JSON を m_unresolvedActors に id ごとに 1 つ持つ。
         //! 作れた時は同じ id の持っていた JSON を捨てる
-        [[nodiscard]] std::unique_ptr<SceneActor> BuildOrKeepUnresolved(const nlohmann::json& object);
+        [[nodiscard]] std::unique_ptr<SceneActor> BuildOrKeepUnresolved(const nlohmann::json& actorJson);
 
-        // SpawnObject の中身。外から個体を受けると、OnInit を通っていない個体が入る
-        SceneActor* AdoptObject(std::unique_ptr<SceneActor> obj, std::string name);
+        // SpawnActor の中身。外から個体を受けると、OnInit を通っていない個体が入る
+        SceneActor* AdoptActor(std::unique_ptr<SceneActor> obj, std::string name);
 
         //! 実行時に入れた配置物の資産を引き当ててから開始する
         void StartSpawned(SceneActor& obj);
@@ -305,11 +306,11 @@ namespace NS
         SceneCamera m_mainCamera;
         // 仮想カメラは持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         CameraManager m_cameraManager;
-        ActorList m_objects; // 配置物の一覧
+        ActorList m_actors; // 配置物の一覧
         // .actor が見つからず作らなかった配置物の JSON。id ごとに 1 つ、持った順に並べ、保存ではアクターの後に書く。
         // id は、読む時は m_objects の次の id が数え、1 体だけ入れる道ではこのシーンの控えの id なので数え済み。
         // 新しいアクターに振られない
-        std::vector<nlohmann::json> m_unresolvedObjects;
+        std::vector<nlohmann::json> m_unresolvedActors;
         // 更新へ登録した管理役 1 件
         struct SystemEntry
         {
