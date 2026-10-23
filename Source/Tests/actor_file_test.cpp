@@ -1355,6 +1355,20 @@ TEST(ActorFile, DerivedActorFileThatCannotOverlayItsBaseIsNotRead)
 }
 
 // .actor の無い名前ではアクターを作らない。コードの値だけで組むと、どの値で動くかがファイルから分からない
+// 置き場が無いディレクトリへ替えると、前の置き場の文書も全部の値も残さず、アクターを作らない
+TEST(ActorFile, DirectoryThatDoesNotExistLeavesNoValuesOfThePreviousOne)
+{
+    const ScopedActorFileDirectory scope("MissingDirectory");
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    ASSERT_NE(library.Values("PropActor"), nullptr);
+
+    library.SetDirectory(NS::OS::FileSystem::Combine(scope.Path(), "NoSuchDirectory"));
+    EXPECT_EQ(library.Find("PropActor"), nullptr);
+    EXPECT_EQ(library.Values("PropActor"), nullptr);
+    const TestLogCapture log;
+    EXPECT_EQ(NS::CreateActorOfClass("PropActor"), nullptr);
+}
+
 TEST(ActorFile, NoActorIsCreatedWithoutItsActorFile)
 {
     const ScopedActorFileDirectory scope("NoActorFile");

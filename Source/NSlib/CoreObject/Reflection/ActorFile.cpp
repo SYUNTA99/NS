@@ -435,12 +435,13 @@ namespace NS
     void ActorFileLibrary::Reload()
     {
         m_actorFiles.clear();
+        m_mergedValues.clear();
         m_loaded = true;
 
         const std::string& directory = Directory();
         if (!OS::FileSystem::IsDirectory(directory))
         {
-            // .actor が 1 つも無いプロジェクトもある。全てコードの既定値で組む
+            // .actor が 1 つも無い。.actor を指すアクターは作らない
             return;
         }
         for (const std::string& path : OS::FileSystem::ListFiles(directory, ".actor"))

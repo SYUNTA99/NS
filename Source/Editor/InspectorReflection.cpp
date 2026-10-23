@@ -1708,7 +1708,7 @@ namespace NS
 #else
         ClassObjEditResult DrawReflectedClassObj(Object&,
                                                  std::span<const ObjectRefOption>,
-                                                 const Object*,
+                                                 const char*,
                                                  const char*,
                                                  const SceneActor*,
                                                  const EditorAppearance*) noexcept
