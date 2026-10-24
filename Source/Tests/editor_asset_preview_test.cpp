@@ -12,8 +12,8 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/UI/ImGuiContext.h"
-#include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/StringUtils.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/StringUtils.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>

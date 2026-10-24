@@ -12,7 +12,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/Input.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>

@@ -308,7 +308,7 @@ project "NSlib"
         "Source/ThirdParty/JoltPhysics"
     }
     includedirs(effekseerIncludeDirs)
-    defines { "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_NO_EXCEPTIONS" }
+    defines { "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_UTF8_TO_WCHAR_CONSOLE", "SPDLOG_NO_EXCEPTIONS" }
     applyJoltDefines()
     dependson { "directxtk_simplemath", "jolt", "effekseer" }
     filter "configurations:Debug or Development or GameDebug"
@@ -349,7 +349,7 @@ project "Game"
     applyJoltDefines()
 
     defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_UTF8_TO_WCHAR_CONSOLE",
         "SPDLOG_NO_EXCEPTIONS"
     }
 
@@ -400,7 +400,7 @@ project "Editor"
     applyJoltDefines()
 
     defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_UTF8_TO_WCHAR_CONSOLE",
         "SPDLOG_NO_EXCEPTIONS"
     }
 
@@ -456,7 +456,7 @@ project "GameApp"
     applyJoltDefines()
 
     defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_UTF8_TO_WCHAR_CONSOLE",
         "SPDLOG_NO_EXCEPTIONS"
     }
 
@@ -526,7 +526,7 @@ project "EditorApp"
     applyJoltDefines()
 
     defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_UTF8_TO_WCHAR_CONSOLE",
         "SPDLOG_NO_EXCEPTIONS"
     }
 
@@ -644,7 +644,7 @@ project "NSlibLinkTests"
     includedirs(effekseerIncludeDirs)
     applyJoltDefines()
     links { "googletest", "NSlib" }
-    defines { "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_NO_EXCEPTIONS" }
+    defines { "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_UTF8_TO_WCHAR_CONSOLE", "SPDLOG_NO_EXCEPTIONS" }
     filter "configurations:GameRelease"
         kind "None"
     filter {}
@@ -733,7 +733,7 @@ project "Tests"
     applyJoltDefines()
 
     defines {
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT", "SPDLOG_UTF8_TO_WCHAR_CONSOLE",
         "SPDLOG_NO_EXCEPTIONS"
     }
 

@@ -11,7 +11,7 @@
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>

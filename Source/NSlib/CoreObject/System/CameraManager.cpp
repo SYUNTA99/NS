@@ -3,7 +3,7 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>

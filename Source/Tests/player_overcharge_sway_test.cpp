@@ -2,7 +2,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>

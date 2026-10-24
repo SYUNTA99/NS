@@ -1,6 +1,6 @@
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
-#include "NSlib/Windows/Window.h"
+#include "NSlib/Core/Windows/Window.h"
 
 #include <gtest/gtest.h>
 

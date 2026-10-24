@@ -3,7 +3,7 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 #include <gtest/gtest.h>
 

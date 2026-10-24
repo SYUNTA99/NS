@@ -4,10 +4,10 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Windows/Clock.h"
-#include "NSlib/Windows/Gamepad.h"
-#include "NSlib/Windows/Input.h"
-#include "NSlib/Windows/Mouse.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/Gamepad.h"
+#include "NSlib/Core/Windows/Input.h"
+#include "NSlib/Core/Windows/Mouse.h"
 
 #include <algorithm>
 #include <cmath>

@@ -9,7 +9,7 @@
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/UI/ColorRect.h"
 #include "NSlib/UI/UICanvas.h"
-#include "NSlib/Windows/Window.h"
+#include "NSlib/Core/Windows/Window.h"
 
 #include <gtest/gtest.h>
 

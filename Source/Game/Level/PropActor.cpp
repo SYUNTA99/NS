@@ -13,7 +13,7 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>

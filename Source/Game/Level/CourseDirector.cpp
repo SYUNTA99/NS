@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 #include <vector>
 

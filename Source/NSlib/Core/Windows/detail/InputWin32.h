@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/Input.h"
 
 #include <windows.h>
 

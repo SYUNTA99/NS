@@ -6,7 +6,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/Windows/Gamepad.h"
+#include "NSlib/Core/Windows/Gamepad.h"
 
 #include "NSlib/Core/Types.h"
 #include <cstddef>

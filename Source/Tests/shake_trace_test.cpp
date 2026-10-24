@@ -10,7 +10,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/Windows/FileSystem.h"
+#include "NSlib/Core/Windows/FileSystem.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>

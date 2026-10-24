@@ -1,7 +1,7 @@
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>

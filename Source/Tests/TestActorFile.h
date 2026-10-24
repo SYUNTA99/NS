@@ -6,8 +6,8 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Windows/FileSystem.h"
-#include "NSlib/Windows/StringUtils.h"
+#include "NSlib/Core/Windows/FileSystem.h"
+#include "NSlib/Core/Windows/StringUtils.h"
 
 #include <gtest/gtest.h>
 

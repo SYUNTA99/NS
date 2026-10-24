@@ -1,4 +1,4 @@
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 #include <gtest/gtest.h>
 

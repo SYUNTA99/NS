@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 
 #include <algorithm>
 #include <span>

@@ -16,7 +16,7 @@
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/detail/TextureFile.h"
-#include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 
 #include <array>
 

@@ -1,6 +1,6 @@
 #include "Editor/DockController.h"
 #include "Editor/PanelIds.h"
-#include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 
 #include <filesystem>
 #include <functional>

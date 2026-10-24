@@ -15,7 +15,7 @@
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/Render/FrameConstants.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>

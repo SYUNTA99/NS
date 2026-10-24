@@ -1,8 +1,8 @@
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DDevice.h"
-#include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/Window.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Window.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>

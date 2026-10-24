@@ -1,7 +1,7 @@
 #include "Editor/ConsolePanel.h"
 
 #include "Editor/PanelIds.h"
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>

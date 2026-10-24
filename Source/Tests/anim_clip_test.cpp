@@ -3,12 +3,12 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/Gfx/D3DDevice.h"
-#include "NSlib/Windows/Window.h"
+#include "NSlib/Core/Windows/Window.h"
 #include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Geometry/GltfParser.h"
 #include "NSlib/Core/Animation/Retarget.h"
 #include "NSlib/Core/Animation/Skeleton.h"
-#include "NSlib/Windows/FileSystem.h"
+#include "NSlib/Core/Windows/FileSystem.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>

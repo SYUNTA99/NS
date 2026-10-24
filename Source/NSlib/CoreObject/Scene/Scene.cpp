@@ -15,7 +15,7 @@
 #include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/EffectScene.h"
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 #include <magic_enum/magic_enum.hpp>
 

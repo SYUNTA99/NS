@@ -1,5 +1,5 @@
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 
 #include <windows.h>
 
@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <share.h>
 #include <string>
 #include <system_error>
@@ -96,6 +97,48 @@ TEST(Logger, RotateOnOpenMovesPreviousLogToBackup)
         std::getline(backup, line);
     }
     EXPECT_EQ(line, "previous run");
+    std::error_code error;
+    std::filesystem::remove_all(dir, error);
+}
+
+TEST(Logger, InitCreatesMissingNestedDirectories)
+{
+    const std::filesystem::path dir = TestLogDirectory(L"nested");
+    const std::filesystem::path logPath = dir / "a" / "b" / "logs" / "nested.log";
+
+    ::NS::Logger::Shutdown();
+    ::NS::LoggerDesc desc;
+    desc.logName = "nested";
+    desc.logDirectory = ToUtf8(dir / "a" / "b");
+    ::NS::Logger::Init(desc);
+    NS_LOG_INFO(App, "nested");
+    ::NS::Logger::Shutdown();
+    RestoreTestsLogger();
+
+    const std::optional<std::string> text = ::NS::OS::FileSystem::ReadAllText(ToUtf8(logPath));
+    ASSERT_TRUE(text.has_value());
+    EXPECT_NE(text->find("nested"), std::string::npos);
+    std::error_code error;
+    std::filesystem::remove_all(dir, error);
+}
+
+// ログのファイルの場所にフォルダがあって開けない時も、ファイルへ出さずに続ける
+TEST(Logger, InitKeepsRunningWhenLogFileCannotBeOpened)
+{
+    const std::filesystem::path dir = TestLogDirectory(L"blocked");
+    const std::filesystem::path logPath = dir / "logs" / "blocked.log";
+    std::filesystem::create_directories(logPath);
+
+    ::NS::Logger::Shutdown();
+    ::NS::LoggerDesc desc;
+    desc.logName = "blocked";
+    desc.logDirectory = ToUtf8(dir);
+    ::NS::Logger::Init(desc);
+    NS_LOG_INFO(App, "blocked");
+    ::NS::Logger::Shutdown();
+    RestoreTestsLogger();
+
+    EXPECT_TRUE(std::filesystem::is_directory(logPath));
     std::error_code error;
     std::filesystem::remove_all(dir, error);
 }

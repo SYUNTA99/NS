@@ -1,8 +1,8 @@
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/Input.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Windows/detail/InputWin32.h"
+#include "NSlib/Core/Windows/detail/InputWin32.h"
 
 #include <windows.h>
 

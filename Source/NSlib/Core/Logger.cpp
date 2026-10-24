@@ -1,16 +1,21 @@
 ﻿#include "NSlib/Core/Logger.h"
 
-#include <windows.h>
+#include "NSlib/Core/Windows/Filesystem.h"
 
-#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/base_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 #include <atomic>
 #include <cassert>
-#include <cstdio>
 #include <cstdlib>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <span>
+#include <string>
+#include <vector>
 
 namespace NS
 {
@@ -19,7 +24,7 @@ namespace NS
     {
 
         constexpr const char* k_LoggerName = "ns";
-        constexpr std::size_t k_RotatingMaxBytes = 5 * 1024 * 1024;
+        constexpr uint64 k_RotatingMaxBytes = 5 * 1024 * 1024;
         // ログファイルのバックアップ数。2 なら最新と過去 2 回の 3 ファイルが残る
         constexpr std::size_t k_RotatingMaxFiles = 2;
 
@@ -32,35 +37,6 @@ namespace NS
                 return "logs";
             }
             return desc.logDirectory + "/logs";
-        }
-
-        // Core は Platform に依存できないので、StringUtils を使わずここで変換する
-        std::wstring WidenPath(std::string_view utf8)
-        {
-            if (utf8.empty())
-            {
-                return {};
-            }
-            const int srcLen = static_cast<int>(utf8.size());
-            const int dstLen = ::MultiByteToWideChar(CP_UTF8, 0, utf8.data(), srcLen, nullptr, 0);
-            if (dstLen <= 0)
-            {
-                return {};
-            }
-            std::wstring result(static_cast<std::size_t>(dstLen), L'\0');
-            ::MultiByteToWideChar(CP_UTF8, 0, utf8.data(), srcLen, result.data(), dstLen);
-            return result;
-        }
-
-        void CreateDirectoryRecursive(std::string_view path)
-        {
-            const std::wstring wide = WidenPath(path);
-            for (std::size_t pos = wide.find_first_of(L"\\/", 1); pos != std::wstring::npos;
-                 pos = wide.find_first_of(L"\\/", pos + 1))
-            {
-                ::CreateDirectoryW(wide.substr(0, pos).c_str(), nullptr);
-            }
-            ::CreateDirectoryW(wide.c_str(), nullptr);
         }
 
         std::string LogFilePath(const std::string& logsDir, const std::string& logName, std::size_t backupIndex)
@@ -79,41 +55,48 @@ namespace NS
         {
             for (std::size_t index = k_RotatingMaxFiles; index > 0; --index)
             {
-                const std::wstring from = WidenPath(LogFilePath(logsDir, logName, index - 1));
-                const std::wstring to = WidenPath(LogFilePath(logsDir, logName, index));
-                ::MoveFileExW(from.c_str(), to.c_str(), MOVEFILE_REPLACE_EXISTING);
+                const std::string from = LogFilePath(logsDir, logName, index - 1);
+                if (OS::FileSystem::Exists(from))
+                {
+                    (void)OS::FileSystem::RenameFile(from, LogFilePath(logsDir, logName, index));
+                }
             }
         }
 
-        bool IsLargerThan(std::string_view path, std::size_t bytes)
+        // 実行中は大きさで回さないので、大きくなったログは次の起動で控えへ回す
+        bool IsLargerThan(const std::string& path, uint64 bytes)
         {
-            WIN32_FILE_ATTRIBUTE_DATA data{};
-            if (!::GetFileAttributesExW(WidenPath(path).c_str(), GetFileExInfoStandard, &data))
+            if (!OS::FileSystem::Exists(path))
             {
                 return false;
             }
-            ULARGE_INTEGER size{};
-            size.LowPart = data.nFileSizeLow;
-            size.HighPart = data.nFileSizeHigh;
-            return size.QuadPart > bytes;
+            const std::optional<uint64> size = OS::FileSystem::FileSize(path);
+            return size.has_value() && *size > bytes;
         }
 
-        bool CanAppendTo(std::string_view path)
+        // spdlog の basic_file_sink は開けないファイルで abort し、ほかのプログラムとの共有も選べないので、
+        // 開くのと書くのを FileAppender に任せる
+        class FileAppenderSink : public spdlog::sinks::base_sink<std::mutex>
         {
-            const HANDLE handle = ::CreateFileW(WidenPath(path).c_str(),
-                                                FILE_APPEND_DATA,
-                                                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                                nullptr,
-                                                OPEN_ALWAYS,
-                                                FILE_ATTRIBUTE_NORMAL,
-                                                nullptr);
-            if (handle == INVALID_HANDLE_VALUE)
+        public:
+            explicit FileAppenderSink(std::unique_ptr<OS::FileAppender> file) noexcept : m_file(std::move(file)) {}
+
+        protected:
+            void sink_it_(const spdlog::details::log_msg& msg) override
             {
-                return false;
+                spdlog::memory_buf_t formatted;
+                formatter_->format(msg, formatted);
+                // 書けなかった事をログに出すと、この出力先のロックを持ったまま同じ出力先へ戻ってきて止まる
+                (void)m_file->Append(std::as_bytes(std::span<const char>(formatted.data(), formatted.size())));
             }
-            ::CloseHandle(handle);
-            return true;
-        }
+
+            // FileAppender は書くたびに OS へ渡すので、プログラムが止まっても書いた分は残る。
+            // ディスクへの書き込みを待つと、警告のたびにフレームが止まる
+            void flush_() override {}
+
+        private:
+            std::unique_ptr<OS::FileAppender> m_file;
+        };
 
         spdlog::level::level_enum ToSpdLevel(LogLevel level)
         {
@@ -148,23 +131,17 @@ namespace NS
 
             const std::string logsDir = LogsDirectory(desc);
             const std::string logFilePath = LogFilePath(logsDir, desc.logName, 0);
-            // 実行中は大きさで回さないので、大きくなったログは次の起動で控えへ回す
             if (desc.rotateOnOpen || IsLargerThan(logFilePath, k_RotatingMaxBytes))
             {
                 RotateLogFiles(logsDir, desc.logName);
             }
-            // 例外を切った spdlog は開けないファイルで abort するので、書けない場所ではファイルへ出さない
-            if (CanAppendTo(logFilePath))
+            // 開けない時のエラーは FileAppender が出す。ファイルへは出さずに続ける
+            std::unique_ptr<OS::FileAppender> file = std::make_unique<OS::FileAppender>(logFilePath);
+            if (file->IsValid())
             {
-                std::shared_ptr<spdlog::sinks::basic_file_sink_mt> file =
-                    std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath);
-                file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
-                sinks.push_back(file);
-            }
-            else
-            {
-                std::fprintf(
-                    stderr, "Logger: ログファイルを開けないのでファイルへは出さない (%s)\n", logFilePath.c_str());
+                std::shared_ptr<FileAppenderSink> fileSink = std::make_shared<FileAppenderSink>(std::move(file));
+                fileSink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
+                sinks.push_back(fileSink);
             }
 
             std::shared_ptr<spdlog::sinks::msvc_sink_mt> msvc = std::make_shared<spdlog::sinks::msvc_sink_mt>();
@@ -190,10 +167,7 @@ namespace NS
             return;
         }
 
-        // Windowsのコンソールで日本語ログが文字化けしないようにUTF-8に強制する
-        ::SetConsoleOutputCP(CP_UTF8);
-
-        CreateDirectoryRecursive(LogsDirectory(desc));
+        (void)OS::FileSystem::CreateDirectories(LogsDirectory(desc));
 
         std::vector<spdlog::sink_ptr> sinks = BuildSinks(desc);
         std::shared_ptr<spdlog::logger> logger =

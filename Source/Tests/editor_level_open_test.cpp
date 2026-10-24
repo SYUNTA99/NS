@@ -5,8 +5,8 @@
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/StringUtils.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/StringUtils.h"
 
 #include <gtest/gtest.h>
 

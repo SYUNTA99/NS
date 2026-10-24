@@ -2,7 +2,7 @@
 #include "Editor/GridMath.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/Input.h"
 
 #include <gtest/gtest.h>
 

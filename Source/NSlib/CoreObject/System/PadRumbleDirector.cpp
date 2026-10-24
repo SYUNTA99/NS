@@ -4,7 +4,7 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/Input.h"
 
 #include <algorithm>
 

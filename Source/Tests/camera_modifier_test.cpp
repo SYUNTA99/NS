@@ -8,7 +8,7 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>

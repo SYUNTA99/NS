@@ -2,7 +2,7 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 
 #include <algorithm>
 #include <array>

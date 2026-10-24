@@ -4,9 +4,9 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/Windows/Clock.h"
-#include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Input.h"
 
 #include <chrono>
 #include <memory>
