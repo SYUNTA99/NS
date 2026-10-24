@@ -402,7 +402,7 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
     const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
     if (ImGui::Begin("##PlayToolbar", nullptr, k_ToolbarFlags))
     {
-        // レベル名と未保存の表示 (*) はメニューバー右端に出すので、この帯は再生操作だけを中央に置く
+        // レベル名と未保存の表示 (*) はアクターの一覧の見出しに出すので、この帯は再生操作だけを中央に置く
         const NS::Editor::PlayToolbarState state =
             NS::Editor::MakePlayToolbarState({.playMode = playMode, .paused = editor.PlayPaused()});
         const float buttonWidth = ImGui::GetFrameHeight() * 1.6f;
