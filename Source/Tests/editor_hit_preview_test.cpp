@@ -404,7 +404,7 @@ TEST(EditorHitPreview, PlaybackEvaluatesTheSceneAtTheRecordedFrameAndCanRewind)
     EXPECT_EQ(snapshot, MakePreviewSceneJson());
 }
 
-// 下見の場面はゲームと同じ始まりを通る。プレイ開始の写しを持ち、置いた物は開始の姿を控えている
+// 下見の場面はゲームと同じ始まりを通る。置いた物は開始の姿を控えている
 TEST(EditorHitPreview, StartsTheSceneLikeTheGame)
 {
     const ScopedPreviewActorFile actorFile;
@@ -415,7 +415,6 @@ TEST(EditorHitPreview, StartsTheSceneLikeTheGame)
     ASSERT_TRUE(result.hit) << result.error;
     const std::unique_ptr<NS::Scene> scene = NS::Editor::MakeHitPreviewScene(snapshot, result, assets.World());
     ASSERT_NE(scene, nullptr);
-    EXPECT_EQ(NS::SceneJsonActors(scene->PlayBaseline()).size(), NS::SceneJsonActors(snapshot).size());
 
     // 動かしてからやり直しを送ると、開始の時の姿へ戻る。開始の姿を控えていない物は戻らない
     PlayerActor* player = FindPlayer(scene->Actors());

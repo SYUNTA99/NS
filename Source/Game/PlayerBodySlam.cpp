@@ -230,10 +230,7 @@ void PlayerActor::EndBeforeContact() noexcept
     {
         reaction->Stop(this);
     }
-    if (OwningScene() != nullptr)
-    {
-        OwningScene()->HoldOthers(0);
-    }
+    OwningScene()->HoldOthers(0);
 }
 
 void PlayerActor::CancelBodySlam() noexcept
@@ -307,7 +304,7 @@ NS::Vector3 PlayerActor::AimDirection() const noexcept
     float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
 
     // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
-    if (length < NS::k_Epsilon && GetCameraManager() != nullptr)
+    if (length < NS::k_Epsilon)
     {
         const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(this);
         dir = NS::Vector3{forward.x, 0.0f, forward.z};

@@ -34,7 +34,7 @@ private:
 };
 
 //! @brief 試し用の仮想カメラの持ち主
-//! @details シーンへ湧かすと作る時に仮想カメラが管理役へ登録される。シーンの外で使う時は管理役へ直に登録する
+//! @details シーンへ湧かすと作る時に仮想カメラがシーンの管理役へ登録される
 //! 依存: NS::SceneActor, TestViewCamera
 class TestViewCameraHostActor final : public NS::SceneActor
 {

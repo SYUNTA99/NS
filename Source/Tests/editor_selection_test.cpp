@@ -204,13 +204,47 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
         WritePoseField(editor, &actor, NS::k_RotationFieldName, rotation);
         WritePoseField(editor, &actor, NS::k_ScaleFieldName, NS::Vector3{2.0f, 2.0f, 2.0f});
 
-        const nlohmann::json& baseline = scene.PlayBaseline();
+        const nlohmann::json& baseline = editor.PlayBaseline();
         const std::size_t index = NS::FindActorIndexById(baseline, id);
         ASSERT_NE(index, NS::k_NoActorIndex);
         const nlohmann::json& object = NS::SceneJsonActors(baseline)[index];
         EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).x, 5.0f);
         EXPECT_FLOAT_EQ(NS::Editor::ActorJsonRotation(object).y, rotation.y);
         EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(object).x, 2.0f);
+        editor.EnterEdit();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// プレイを始めた時のシーンの JSON は、プレイに入る前に動かしたアクターの位置を持つ
+TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "プレイ開始の JSON の試し";
+    desc.window.size = {160, 90};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        NS::Scene scene;
+        LevelEditorController editor(&scene);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
+        editor.PlaceItem(*item);
+        const NS::uint32 id = editor.SelectedActorId();
+        NS::SceneActor* prop = scene.Actors().FindByActorId(id);
+        ASSERT_NE(prop, nullptr);
+        editor.BeginTransformEdit();
+        prop->Root().SetPosition(NS::Vector3{3.0f, 0.0f, 7.0f});
+        editor.CommitTransformEdit();
+
+        editor.EnterPlay();
+        const nlohmann::json& baseline = editor.PlayBaseline();
+        const std::size_t index = NS::FindActorIndexById(baseline, id);
+        ASSERT_NE(index, NS::k_NoActorIndex);
+        const nlohmann::json& object = NS::SceneJsonActors(baseline)[index];
+        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).x, 3.0f);
+        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).z, 7.0f);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);

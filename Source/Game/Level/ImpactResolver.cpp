@@ -173,10 +173,6 @@ namespace GL
                                                       const NS::Collider* collider) const
         {
             NS_ASSERT(Game, collider != nullptr, "FindOverlapped: 渡したアクターか部品が無い");
-            if (self.sensors == nullptr)
-            {
-                return nullptr;
-            }
 
             const NS::Vector3 position = self.position;
 
@@ -228,11 +224,6 @@ namespace GL
             {
                 return false;
             }
-            if (self.sensors == nullptr)
-            {
-                return false;
-            }
-
             if (!(maxDistance >= 0.0f) || !std::isfinite(maxDistance))
             {
                 return false;
@@ -450,7 +441,7 @@ namespace GL
                                                 const BodySlamMotion& motion,
                                                 const PlayerParts& parts)
         {
-            if (!hadObservation || self.sensors == nullptr)
+            if (!hadObservation)
             {
                 return false;
             }

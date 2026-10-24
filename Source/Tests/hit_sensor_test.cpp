@@ -133,8 +133,10 @@ TEST(MakeScaledCapsule, RadiusTakesTheLargerSideScale)
 
 TEST(HitSensor, WorldVolumeFollowsRootScale)
 {
-    const std::unique_ptr<SensorProbeActor> owned = NS::CreateActor<SensorProbeActor>(SensorKind::Area, 0.5f);
-    SensorProbeActor& actor = *owned;
+    NS::Scene scene;
+    SensorProbeActor* spawned = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::Area, 0.5f);
+    ASSERT_NE(spawned, nullptr);
+    SensorProbeActor& actor = *spawned;
     NS::ShapeHitSensor* sensor = actor.m_sensor;
     ASSERT_NE(sensor, nullptr);
     sensor->SetSphere(0.5f);

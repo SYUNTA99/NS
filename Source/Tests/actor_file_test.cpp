@@ -1088,7 +1088,7 @@ TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningT
     ResetTwoProps(scene);
     LevelEditorController editor(&scene);
     editor.EnterPlay();
-    const nlohmann::json frozen = scene.PlayBaseline();
+    const nlohmann::json frozen = editor.PlayBaseline();
     NS::SceneActor* first = scene.Actors().FindByActorId(1);
     ASSERT_NE(first, nullptr);
     NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
@@ -1096,11 +1096,13 @@ TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningT
 
     sphere->SetRadius(3.0f);
     ASSERT_NO_FATAL_FAILURE(EditField(editor, first, sphere, "半径"));
-    // 凍結へ写す口に直に渡しても、.actor へ書く欄は写さない
+    // プレイを始めた時の JSON へ写す口に直に渡しても、.actor へ書く欄は写さない
+    // 上書きの一覧に載せてから渡す。載っていないと、写さずに JSON から消す道へ入り、書く所を見る前に戻る
     const NS::ClassObjInfo* row = RowOf(first, sphere);
     ASSERT_NE(row, nullptr);
-    scene.WritePlayBaselineField(first, *row, "半径");
-    EXPECT_EQ(scene.PlayBaseline(), frozen);
+    first->AddSceneOverride(row->key, "半径");
+    editor.MirrorPlayEditToBaseline(first, *row, "半径");
+    EXPECT_EQ(editor.PlayBaseline(), frozen);
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 

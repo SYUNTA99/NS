@@ -82,52 +82,6 @@ namespace NS
         m_environment = environment;
     }
 
-    const nlohmann::json& Scene::BeginPlayBaseline()
-    {
-        // プレイ規則の判定と編集復帰の姿はこの凍結を読む。シミュレーションが動かした値は映らず、編集へ持ち込まれない
-        m_playBaseline = ToJson();
-        return m_playBaseline;
-    }
-
-    void Scene::WritePlayBaselineField(const SceneActor* actor, const ClassObjInfo& row, std::string_view fieldName)
-    {
-        NS_ASSERT(Scene, actor != nullptr, "Scene::WritePlayBaselineField: 欄を写すアクターが無い");
-        const std::size_t index = FindActorIndexById(m_playBaseline, actor->Id());
-        if (index == k_NoActorIndex)
-        {
-            return;
-        }
-        const Object* part = row.get(actor);
-        if (part == nullptr)
-        {
-            return;
-        }
-        // .actor へ書く欄は凍結が持たない。写すと編集へ戻る時に配置物の値として捨てられる
-        const FieldDesc* field = FindField(part->GetReflection(), fieldName);
-        if (field == nullptr || FieldDestinationOf(actor, *field) != FieldDestination::Scene)
-        {
-            return;
-        }
-        nlohmann::json& frozenParts = ActorJsonClassObjs(SceneJsonActors(m_playBaseline)[index]);
-        // 上書きの一覧から外した項目は、凍結からも消す。残すと編集へ戻る時に上書きとして読み直される
-        if (field->type != FieldType::ActorRef && !actor->IsSceneOverride(row.key, fieldName))
-        {
-            const nlohmann::json::iterator frozen = frozenParts.find(row.key);
-            if (frozen != frozenParts.end())
-            {
-                frozen->erase(std::string{fieldName});
-            }
-            return;
-        }
-        const nlohmann::json fields = SerializeClassObjFields(part);
-        const nlohmann::json::const_iterator value = fields.find(std::string{fieldName});
-        if (value == fields.end())
-        {
-            return;
-        }
-        frozenParts[std::string{row.key}][std::string{fieldName}] = *value;
-    }
-
     void Scene::SetSimulationEnabled(bool enabled) noexcept
     {
         m_simulationEnabled = enabled;

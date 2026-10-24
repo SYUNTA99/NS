@@ -56,8 +56,6 @@ namespace GL
 
         void CourseDirector::StartCourse()
         {
-            // 凍結はエディタがプレイの終わりに編集の姿へ戻すために読む。やり直しの戻り先は各自の控え
-            (void)m_scene.BeginPlayBaseline();
             for (NS::SceneActor* actor : PlacedActors(nullptr))
             {
                 (void)SendMsgCourseStart(actor);

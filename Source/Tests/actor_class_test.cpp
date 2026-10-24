@@ -21,6 +21,7 @@
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 
 #include <gtest/gtest.h>
 
@@ -98,8 +99,10 @@ TEST(ActorClass, LightHasDirectionalLight)
 
 TEST(ActorClass, LightShinesAlongItsRotation)
 {
-    const std::unique_ptr<NS::LightActor> lightOwned = NS::CreateActor<NS::LightActor>();
-    NS::LightActor& light = *lightOwned;
+    NS::Scene scene;
+    NS::LightActor* lightActor = scene.SpawnActor<NS::LightActor>("LightActor");
+    ASSERT_NE(lightActor, nullptr);
+    NS::LightActor& light = *lightActor;
     const NS::DirectionalLight* sun = &light.Light();
 
     NS::Vector3 initial{-0.3f, -1.0f, -0.2f};

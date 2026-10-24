@@ -21,7 +21,6 @@
 #include "NSlib/Core/Types.h"
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -41,7 +40,6 @@ namespace NS
 {
     class AssetManager;
     class Object;
-    struct ClassObjInfo;
     class IRenderable;
     class UIActor;
 
@@ -174,16 +172,6 @@ namespace NS
         //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
         //! @details 全配置物を、全部品の値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
-
-        //! @brief プレイ突入時に実体を JSON 文書へ凍結して返す。プレイ規則の判定と編集復帰の姿はこの凍結を読む
-        const nlohmann::json& BeginPlayBaseline();
-
-        //! @brief 直近の凍結。プレイ中に限り意味を持つ
-        [[nodiscard]] const nlohmann::json& PlayBaseline() const noexcept { return m_playBaseline; }
-
-        //! 手編集した欄だけを凍結へ写し、編集復帰後も残す。実行で動いた値は写さない
-        //! row は actor のクラスの表の行。凍結にない個体、作られていない行、存在しない欄、.actor へ書く欄は変更しない
-        void WritePlayBaselineField(const SceneActor* actor, const ClassObjInfo& row, std::string_view fieldName);
 
         //! シミュレーションを切り替え、一時停止とコマ送りを解除する
         //! 無効中はカメラも更新せず、部品の有効状態には反映しない
@@ -332,8 +320,6 @@ namespace NS
         // シーンに 1 つの物。配置物と画面の一覧を借りるので、それより後に宣言して先に破棄する
         // const の窓口からも作れるよう mutable にする。作っても見かけのシーンの状態は変わらない
         mutable SceneSystemHolder m_sceneObjs{*this};
-
-        nlohmann::json m_playBaseline = MakeSceneJson(); // プレイ突入時の凍結
 
         bool m_simulationEnabled = true;      // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;      // 時間停止中か

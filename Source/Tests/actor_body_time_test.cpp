@@ -152,8 +152,11 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
     float times[2] = {};
     for (int index = 0; index < 2; ++index)
     {
-        const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
-        PlayerActor& player = *playerOwned;
+        // 回ごとにシーンを分け、前の回の自機の状態を持ち越さない
+        NS::Scene scene;
+        PlayerActor* spawned = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
+        ASSERT_NE(spawned, nullptr);
+        PlayerActor& player = *spawned;
         NS::Animation* animation = player.AnimationClassObj();
         ASSERT_NE(animation, nullptr);
         ASSERT_EQ(UseTestClips(&player, {{"走りのクリップ", "Assets/Models/Xbot.glb#run"}}), 0u);

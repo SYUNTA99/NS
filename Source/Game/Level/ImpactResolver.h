@@ -128,7 +128,7 @@ namespace GL
         //! @details 自機が呼ぶたびに組んで渡し、ImpactResolver は控えない
         struct ImpactSelf
         {
-            //! 自機のシーンのセンサーの管理クラス。シーンに居ない間は空で、裁定も予測も相手を見つけない
+            //! 自機のシーンのセンサーの管理クラス
             const NS::HitSensorDirector* sensors = nullptr;
             NS::Vector3 position;                   //!< 自機のルートの位置。世界座標
             const NS::SceneActor* ignore = nullptr; //!< 重なりの問いから除く相手。自機

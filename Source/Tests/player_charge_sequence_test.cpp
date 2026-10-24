@@ -138,8 +138,10 @@ TEST(PlayerChargeSequence, RestartWhileChargingDropsTheChargeTheAimAndTheSlowdow
 // 押したフレームに丸まり、しきい値のフレームに減速して横を止め、放したフレームに発動する
 TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
     ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}), 0u);
     const int threshold = FramesFor(0.2f);
     const int full = FramesFor(1.0f);
@@ -194,8 +196,10 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 
 TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
     ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const int threshold = FramesFor(0.2f);
     player.Update(true);
@@ -220,8 +224,10 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 
 TEST(PlayerChargeSequence, LiveTimingAppliesAndRestartStartsTheHeldDurationOver)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
     GL::Player::PlayerParams* params = &player.Params();
     player.Update(true);
     player.Restart();
@@ -246,8 +252,10 @@ TEST(PlayerChargeSequence, LiveTimingAppliesAndRestartStartsTheHeldDurationOver)
 // 押したまま出直すと、出直した後の押しから溜め直す。消えて出直すだけ (Die と Appear) では溜めは途切れない
 TEST(PlayerChargeSequence, ChargeStartsOverAtARestartAndCountsThroughADisappear)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
     GL::Player::PlayerParams* params = &player.Params();
     ASSERT_EQ(NS::ApplyJsonFields(params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 1.0f}}), 0u);
     // 溜め量は (押したフレーム数 − しきい値) / (満タン − しきい値)
@@ -277,8 +285,10 @@ TEST(PlayerChargeSequence, ChargeStartsOverAtARestartAndCountsThroughADisappear)
 // 構えは縦の倍率を答えるだけで、根のスケールは押しても溜めても放しても配置の値のまま
 TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
     ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const NS::Vector3 one{1.0f, 1.0f, 1.0f};
     player.Update(true);
@@ -299,8 +309,10 @@ TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 
 TEST(PlayerChargeSequence, EndPlayWhileHeldRestoresStanceAndUncurls)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
     ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
     {

@@ -2,6 +2,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
@@ -30,8 +31,10 @@ namespace
 // 溜めきりの後は溜めすぎが 0 から 1 へ進み、1 になったフレームに押したままでも 1 回だけ出る
 TEST(PlayerOvercharge, ForcedLaunchFiresOnceAndThenStopsTheChargeShow)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     UseShortOvercharge(&player);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     const int full = FramesFor(1.0f);
@@ -98,8 +101,10 @@ TEST(PlayerOvercharge, ForcedLaunchFiresOnceAndThenStopsTheChargeShow)
 // 出せない間に溜めすぎきった時は消えずに待ち、出せるようになったフレームに出る
 TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     UseShortOvercharge(&player);
     ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -142,8 +147,10 @@ TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
 // 待つ間に放した時は何も控えず、判定は使い切りへ移らない
 TEST(PlayerOvercharge, ReleasingWhileWaitingFiresNothingNew)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     UseShortOvercharge(&player);
     ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);

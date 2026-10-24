@@ -38,8 +38,10 @@
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
+#include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
@@ -694,6 +696,8 @@ void LevelEditorController::Setup(std::string_view startLevelName)
 
     // Game が立てた空のシーンはプレイが回っている。プレイを終えて編集モードへ切替えてから起動シーンを開く
     // 先に開くと、プレイ開始の写しへ戻す組み直しが、開く時に補ったプレイヤーを消す
+    // Game はプレイを始める前のシーンを JSON に残さないので、今のシーンを書き出して戻る姿にする
+    m_playBaseline = m_scene->ToJson();
     LeavePlayForEdit();
     m_mode = Mode::Edit;
     if (!startLevelName.empty())
@@ -749,14 +753,15 @@ void LevelEditorController::EnterPlay() noexcept
     m_gizmo.SetActive(false);
 
     // 実体が唯一の出所なので組み直しは要らない。編集で動いた当たりは、世界を止めた歩が揃えている
-    // 凍結を取り、そこから走行を最初から。プレイの間の判定と編集復帰の姿はこの凍結を読む
+    // 編集へ戻る時の姿として、コースを始めてメッセージが値を動かす前のシーンを JSON に書き出す
+    // 1 回だけ書き出して写すので、組み直す JSON と比べる写しはずれない
+    m_playBaseline = m_scene->ToJson();
+    m_playStartBaseline = m_playBaseline;
     // 手順は出荷と同じ CourseDirector::StartCourse の持ち物
     if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(m_scene))
     {
         director->StartCourse();
     }
-    // 編集へ戻る時に、プレイ中に写した欄をこの凍結と比べて履歴へ記録する
-    m_playStartBaseline = m_scene->PlayBaseline();
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (NS::CameraManager* cameras = Cameras())
     {
@@ -784,7 +789,7 @@ void LevelEditorController::EnterEdit() noexcept
         app->Input().Keyboard().ClearState();
         app->Input().Mouse().ClearState();
     }
-    // プレイを終え、凍結スナップショットから編集の姿へ組み直す
+    // プレイを終え、プレイを始めた時の JSON から編集の姿へ組み直す
     LeavePlayForEdit();
     // プレイ視点から自由視点へ繋ぐ。始点は直前まで実カメラに書かれていた pose
     if (NS::CameraManager* cameras = Cameras())
@@ -815,8 +820,14 @@ void LevelEditorController::LeavePlayForEdit()
     }
     m_scene->SetSimulationEnabled(false);
 
-    // プレイで変わった配置を編集へ持ち込まないため、開始時の控えから復元する
-    nlohmann::json baseline = m_scene->PlayBaseline();
+    // プレイで変わった配置を編集へ持ち込まないため、プレイを始めた時の JSON から復元する
+    NS_ASSERT(App, m_playBaseline.has_value(), "LeavePlayForEdit: プレイを始めた時の JSON が無い");
+    if (!m_playBaseline)
+    {
+        return;
+    }
+    nlohmann::json baseline = std::move(*m_playBaseline);
+    m_playBaseline.reset();
     std::vector<std::unique_ptr<NS::Editor::ICommand>> playEdits;
     if (m_playStartBaseline)
     {
@@ -1549,11 +1560,50 @@ void LevelEditorController::MirrorPlayEditToBaseline(const NS::SceneActor* actor
 {
     NS_ASSERT(App, actor != nullptr, "MirrorPlayEditToBaseline: アクターが null");
     // 写すのはプレイ中だけ。編集モードで写すと次のプレイ突入の捕捉と二重管理になる
-    if (m_mode != Mode::Play || m_scene == nullptr)
+    if (m_mode != Mode::Play || !m_playBaseline)
     {
         return;
     }
-    m_scene->WritePlayBaselineField(actor, row, fieldName);
+    const std::size_t index = NS::FindActorIndexById(*m_playBaseline, actor->Id());
+    if (index == NS::k_NoActorIndex)
+    {
+        return;
+    }
+    const NS::Object* part = row.get(actor);
+    if (part == nullptr)
+    {
+        return;
+    }
+    // .actor へ書く欄はプレイを始めた時の JSON が持たない。写すと編集へ戻る時にシーンに置いたアクターの値として捨てられる
+    const NS::FieldDesc* field = NS::FindField(part->GetReflection(), fieldName);
+    if (field == nullptr || NS::FieldDestinationOf(actor, *field) != NS::FieldDestination::Scene)
+    {
+        return;
+    }
+    nlohmann::json& baselineParts = NS::ActorJsonClassObjs(NS::SceneJsonActors(*m_playBaseline)[index]);
+    // 上書きの一覧から外した項目は、JSON からも消す。残すと編集へ戻る時に上書きとして読み直される
+    if (field->type != NS::FieldType::ActorRef && !actor->IsSceneOverride(row.key, fieldName))
+    {
+        const nlohmann::json::iterator baselinePart = baselineParts.find(row.key);
+        if (baselinePart != baselineParts.end())
+        {
+            baselinePart->erase(std::string{fieldName});
+        }
+        return;
+    }
+    const nlohmann::json fields = NS::SerializeClassObjFields(part);
+    const nlohmann::json::const_iterator value = fields.find(std::string{fieldName});
+    if (value == fields.end())
+    {
+        return;
+    }
+    baselineParts[std::string{row.key}][std::string{fieldName}] = *value;
+}
+
+const nlohmann::json& LevelEditorController::PlayBaseline() const
+{
+    NS_ASSERT(App, m_playBaseline.has_value(), "PlayBaseline: プレイ中でないので、プレイを始めた時の JSON が無い");
+    return *m_playBaseline;
 }
 
 void LevelEditorController::NoteFieldEdit(const NS::SceneActor* actor,

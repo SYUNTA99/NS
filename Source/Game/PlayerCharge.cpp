@@ -89,10 +89,6 @@ void PlayerActor::ObserveCharge(bool held)
         return;
     }
     // 向きは効果を掛ける前の遊びの視点から読む。描画の割合と実カメラに依らない
-    if (GetCameraManager() == nullptr)
-    {
-        return;
-    }
     const NS::Vector3 direction = NS::CalcCameraForwardHorizontal(this);
     if (!std::isfinite(direction.x) || !std::isfinite(direction.z))
     {

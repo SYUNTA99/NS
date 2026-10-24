@@ -7,6 +7,7 @@
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
 #include "TestAnimatedPlayerActor.h"
 
@@ -30,8 +31,10 @@ namespace
 
 TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     ASSERT_EQ(UseTestClips(&player,
                            {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},
                             {"歩きのクリップ", "Assets/Models/Xbot.glb#walk"},
@@ -82,8 +85,10 @@ TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
 
 TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     NS::Animation* animation = player.AnimationClassObj();
     ASSERT_EQ(UseTestClips(&player,
                            {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},
@@ -106,8 +111,10 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
 // 字面はあるが読めないクリップは、立ちのクリップへ戻す
 TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     NS::Animation* animation = player.AnimationClassObj();
     ASSERT_EQ(UseTestClips(&player,
                            {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},

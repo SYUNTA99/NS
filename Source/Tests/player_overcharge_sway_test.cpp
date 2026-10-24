@@ -133,8 +133,9 @@ TEST(PlayerOverchargeSway, ForcedLaunchLeavesAtAnEdgeThatAlternates)
 // 紫の威力は溜めきりの倍率に、紫の深さで 1 から欄「紫の威力の上限」まで上がる倍率を掛ける
 TEST(PlayerOverchargeSway, PurplePowerRisesToTheCapFromTheFullCharge)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    SwayScene s;
+    s.Load();
+    PlayerActor& player = *s.player;
     ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"紫の威力の上限", 1.5f}}), 0u);
     const GL::Player::PlayerParams& params = player.Params();
     const float full = params.ChargeFactorFor(1.0f);

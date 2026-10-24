@@ -55,8 +55,10 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 // 溜めの倍率と溜め中の減速は欄の持ち主 PlayerParams が答える。裁定役と自機の溜めは同じ答えを読む
 TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     GL::Player::PlayerParams* params = &player.Params();
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 1.5f);
 
@@ -84,8 +86,10 @@ TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 
 TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     GL::Player::PlayerParams* params = &player.Params();
     ASSERT_EQ(NS::ApplyJsonFields(params,
                                   {{"チャージ減速率", 0.4f},
@@ -103,14 +107,18 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 // .actor が持つ形 (欄を書き出した JSON) を別の自機へ読むと、カーブも同じ値になる
 TEST(PlayerChargeParams, CurvesSurviveWritingAndReadingTheFields)
 {
-    const std::unique_ptr<PlayerActor> written = NS::CreateActor<PlayerActor>();
+    NS::Scene writtenScene;
+    PlayerActor* written = writtenScene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(written, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(
                   &written->Params(),
                   {{"チャージ減速率", 0.25f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}),
               0u);
     const nlohmann::json fields = NS::SerializeClassObjFields(&written->Params());
 
-    const std::unique_ptr<PlayerActor> read = NS::CreateActor<PlayerActor>();
+    NS::Scene readScene;
+    PlayerActor* read = readScene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(read, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(&read->Params(), fields), 0u);
     EXPECT_FLOAT_EQ(read->Params().ChargingSpeedScale(), 0.75f);
     EXPECT_FLOAT_EQ(read->Params().ChargeFactorFor(0.5f), 2.0f);

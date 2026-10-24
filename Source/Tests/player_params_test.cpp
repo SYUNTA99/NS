@@ -59,8 +59,10 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
 
 TEST(PlayerParams, DeactivatingPlayerKeepsHealth)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     player.ResetHealth();
     const int full = player.Health();
 
@@ -135,8 +137,10 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 
 TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     GL::Player::PlayerParams* params = &player.Params();
     NS::Body* movement = &player.Body();
     EXPECT_EQ(NS::ApplyJsonFields(params, {{"走行速度", 10.0f}, {"加速度", 7.0f}, {"上昇重力", -15.0f}}), 0u);
@@ -210,8 +214,10 @@ TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem
 
 TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     EXPECT_EQ(NS::ApplyJsonFields(&player.ChargeVisuals(),
                                   {{"通常突進の弾けの大きさ", 0.5f}, {"溜めきりで足す弾けの大きさ", 0.4f}}),
               0u);
@@ -316,8 +322,10 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortyTwoDisplayNamesAndValues)
 
 TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     EXPECT_EQ(NS::ApplyJsonFields(&player.ImpactVisuals(),
                                   {{"核の直径の基準", 0.4f},
                                    {"核の直径の威力あたり", 0.3f},
@@ -344,8 +352,10 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     using GL::Player::CoreHoldMotion;
     using GL::Player::ImpactShape;
     using GL::Player::SparkHeading;
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
     ASSERT_EQ(NS::ApplyJsonFields(
                   &player.ImpactVisuals(),

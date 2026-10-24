@@ -1,6 +1,7 @@
 #include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "TestEffectActor.h"
 
@@ -109,8 +110,10 @@ TEST(EffectKeeperTest, AmountAndRotationAreWrittenToTheRecord)
 
 TEST(EffectKeeperTest, ActorUpdateAdvancesTheSlotKeeperOnce)
 {
-    const std::unique_ptr<TestEffectActor> owned = NS::CreateActor<TestEffectActor>();
-    TestEffectActor& actor = *owned;
+    NS::Scene scene;
+    TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
+    ASSERT_NE(spawned, nullptr);
+    TestEffectActor& actor = *spawned;
     EffectKeeper* keeper = actor.GetEffectKeeper();
     ASSERT_NE(keeper, nullptr);
     ASSERT_EQ(keeper->Step(), 0);

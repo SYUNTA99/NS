@@ -24,12 +24,7 @@ namespace GL
 
         void FollowCameraActor::ResolveActorRefs()
         {
-            const NS::SceneActor* target = nullptr;
-            if (NS::Scene* scene = OwningScene())
-            {
-                target = scene->Actors().FindActor(m_vcam->TargetRef());
-            }
-            m_vcam->SetTarget(target);
+            m_vcam->SetTarget(OwningScene()->Actors().FindActor(m_vcam->TargetRef()));
         }
 
         void FollowCameraActor::OnAppear()

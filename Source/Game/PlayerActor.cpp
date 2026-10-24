@@ -136,7 +136,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
         state.rebound.slamDirection = NS::Vector3{};
         state.rebound.pullBack = false;
     }
-    if (IsRebounding() && impact.tier == GL::Level::HitTier::Center && OwningScene() != nullptr)
+    if (IsRebounding() && impact.tier == GL::Level::HitTier::Center)
     {
         if (const NS::SceneActor* partner = OwningScene()->Actors().FindByActorId(impact.targetId))
         {
@@ -672,7 +672,7 @@ bool PlayerActor::IsHeldByTackleHit() const noexcept
 NS::HitSensor* PlayerActor::LastTackleTargetSensor() const noexcept
 {
     const NS::uint32 targetId = m_resolver->Answer().lastImpact.targetId;
-    if (OwningScene() == nullptr || targetId == 0)
+    if (targetId == 0)
     {
         return nullptr;
     }
@@ -778,10 +778,7 @@ void PlayerActor::StopTackleHitEffects() noexcept
     if (m_slowedWorld)
     {
         m_slowedWorld = false;
-        if (OwningScene() != nullptr)
-        {
-            OwningScene()->SetWorldSpeed(1.0f);
-        }
+        OwningScene()->SetWorldSpeed(1.0f);
     }
 }
 
@@ -840,10 +837,7 @@ void PlayerActor::ResetState() noexcept
     // 当たる直前の動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
     ActionTimelineClassObj()->Stop();
     m_beforeContact = BeforeContactEntry{};
-    if (OwningScene() != nullptr)
-    {
-        OwningScene()->HoldOthers(0);
-    }
+    OwningScene()->HoldOthers(0);
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale(m_model.get());
 }

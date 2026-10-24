@@ -1,14 +1,17 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Input.h"
 
 #include <gtest/gtest.h>
 
 TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     NS::PlayerInput* input = &player.Input();
     NS::Body& movement = player.Body();
     input->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -27,8 +30,10 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
 
 TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     NS::PlayerInput* input = &player.Input();
     NS::Body& movement = player.Body();
     movement.SetGrounded(true);
@@ -51,8 +56,10 @@ TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 
 TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     NS::PlayerInput* input = &player.Input();
     NS::Body& movement = player.Body();
     input->SetJumpHeld(true);
@@ -76,8 +83,10 @@ TEST(PlayerInputOwnership, SlamTappedBetweenPlayerStepsIsSeenOnce)
 {
     // 遅い世界では入力の段だけが毎歩回る。自機が読まない歩に押して放した突進を、次に読む歩で 1 回押したと見せる
     NS::OS::Input& platform = NS::OS::Input::Get();
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     NS::PlayerInput* input = &player.Input();
     platform.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
     input->Update(&player);
