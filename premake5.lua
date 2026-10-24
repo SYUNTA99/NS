@@ -688,6 +688,7 @@ project "Tests"
         "Source/Editor/EditorActors.cpp",
         "Source/Editor/EditorMode.cpp",
         "Source/Editor/InspectorReflection.cpp",
+        "Source/Editor/MaterialParamFields.cpp",
         "Source/Editor/ActorFileGenerator.cpp",
         "Source/Editor/AssetPicker.cpp",
         "Source/Editor/AssetPreview.cpp",

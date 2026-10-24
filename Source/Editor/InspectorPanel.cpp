@@ -7,6 +7,7 @@
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
+#include "Editor/MaterialParamFields.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/AABB.h"
@@ -29,13 +30,11 @@
 #include "NSlib/Gfx/Render/Skybox.h"
 #include "NSlib/Windows/Filesystem.h"
 
-#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 #include <algorithm>
-#include <array>
-#include <charconv>
 #include <cstdio>
 #include <format>
+#include <functional>
 #include <limits>
 #include <string>
 #include <utility>
@@ -106,67 +105,6 @@ namespace NS
                 return committed;
             }
 
-            // 浮動小数の項目の書式。表の最小の幅もこの書式で測る
-            constexpr const char* k_MaterialFloatFormat = "%.3f";
-
-            // float の一番短い綴りを double に読み直す。0.3 と打った値が .mat に 0.3 と残る
-            double ToShortestDouble(float number)
-            {
-                const std::string text = std::format("{}", number);
-                double parsed = 0.0;
-                const std::from_chars_result read = std::from_chars(text.data(), text.data() + text.size(), parsed);
-                if (read.ec != std::errc{})
-                {
-                    return static_cast<double>(number);
-                }
-                return parsed;
-            }
-
-            // 1〜4 成分の浮動小数の欄。値を変えたフレームに true
-            // 触っていない成分を float へ丸めて書き戻すと .mat の値が変わるので、触った成分だけを書き戻す
-            bool DragParamFloats(MaterialParamValue& value)
-            {
-                const int count = static_cast<int>(value.numbers.size());
-                NS_ASSERT(App, count >= 1 && count <= 4, "浮動小数の項目の成分の数が 1〜4 でない");
-                std::array<float, 4> before{};
-                for (int i = 0; i < count; ++i)
-                {
-                    before[i] = static_cast<float>(value.numbers[i]);
-                }
-                std::array<float, 4> numbers = before;
-                const bool changed = ImGui::DragScalarN("##value", ImGuiDataType_Float, numbers.data(), count, 0.01f,
-                                                        nullptr, nullptr, k_MaterialFloatFormat);
-                for (int i = 0; i < count; ++i)
-                {
-                    if (numbers[i] != before[i])
-                    {
-                        value.numbers[i] = ToShortestDouble(numbers[i]);
-                    }
-                }
-                return changed;
-            }
-
-            // 整数の欄。符号なしの回り込みを FitsParam が通すので、型の下限と上限で止める。値を変えたフレームに true
-            template <typename T>
-            bool DragParamInteger(ImGuiDataType dataType, const char* format, MaterialParamValue& value)
-            {
-                T number = static_cast<T>(value.numbers[0]);
-                const T lowest = std::numeric_limits<T>::min();
-                const T highest = std::numeric_limits<T>::max();
-                const bool changed = ImGui::DragScalar("##value", dataType, &number, 0.2f, &lowest, &highest, format,
-                                                       ImGuiSliderFlags_AlwaysClamp);
-                value.numbers[0] = static_cast<double>(number);
-                return changed;
-            }
-
-            bool DrawParamBool(MaterialParamValue& value)
-            {
-                bool flag = value.numbers[0] != 0.0;
-                const bool changed = ImGui::Checkbox("##value", &flag);
-                value.numbers[0] = static_cast<double>(flag);
-                return changed;
-            }
-
             // material のシェーダーの MaterialParams のうち、読まれている項目の欄を描く
             // 値は SetParamValue がその場で D3DMaterial へ送るので、球のプレビューとシーンは次の描画から変わる
             ValueEditResult DrawMaterialParams(Material& material)
@@ -216,10 +154,11 @@ namespace NS
                         changed = DragParamFloats(value);
                         break;
                     case Gfx::ShaderParamType::Int:
-                        changed = DragParamInteger<int32>(ImGuiDataType_S32, "%d", value);
+                        changed = DragParamInteger(std::numeric_limits<int32>::min(), std::numeric_limits<int32>::max(),
+                                                   value);
                         break;
                     case Gfx::ShaderParamType::Uint:
-                        changed = DragParamInteger<uint32>(ImGuiDataType_U32, "%u", value);
+                        changed = DragParamInteger(0, std::numeric_limits<uint32>::max(), value);
                         break;
                     case Gfx::ShaderParamType::Bool:
                         changed = DrawParamBool(value);

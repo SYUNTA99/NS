@@ -102,7 +102,8 @@ namespace NS
 
         //! 頂点と画素のシェーダーの MaterialParams を合わせた並び。作った時と Rebuild の時に取り直す
         [[nodiscard]] const Gfx::ShaderParamLayout& ParamLayout() const noexcept;
-        //! param に当てている値。持っている値が合わなければシェーダーの初期値
+        //! @brief param に当てている値。持っている値が合わなければシェーダーの初期値
+        //! @details numbers の数はいつも param の型の成分の数で、対応しない型だけ空
         [[nodiscard]] MaterialParamValue ParamValue(const Gfx::ShaderParam& param) const;
         //! @brief param の値を value にし、D3DMaterial へ送る。作り直さずに次の描画から効く
         //! @return FitsParam で合わない値は受けずに false
