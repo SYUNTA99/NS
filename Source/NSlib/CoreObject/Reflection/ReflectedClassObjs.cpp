@@ -28,7 +28,7 @@ namespace NS
 
     void ForEachReflectedClassObj(const SceneActor* actor, const ClassObjFieldVisitor& visit)
     {
-        NS_ASSERT(Game, actor != nullptr, "ForEachReflectedClassObj: アクターが null");
+        NS_ASSERT(Scene, actor != nullptr, "ForEachReflectedClassObj: アクターが null");
         VisitReflectedClassObjs(*actor, actor->GetReflection(), visit);
     }
 

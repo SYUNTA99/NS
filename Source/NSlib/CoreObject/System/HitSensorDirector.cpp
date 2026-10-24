@@ -27,6 +27,7 @@ namespace NS
 
     bool HitSensorDirector::IsPresent(const HitSensor* sensor) const noexcept
     {
+        NS_ASSERT(Scene, sensor != nullptr, "IsPresent: センサーが null");
         return IsRegistered(sensor) && sensor->IsValidBySystem();
     }
 

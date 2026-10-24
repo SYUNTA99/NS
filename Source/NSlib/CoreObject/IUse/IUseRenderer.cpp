@@ -32,6 +32,7 @@ namespace NS
     void ShowModel(const IUseRenderer* user, const IRenderable* renderable) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, renderable != nullptr, "ShowModel: 描く物が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
             renderer->SetRenderableEnabled(renderable, true);
@@ -41,6 +42,7 @@ namespace NS
     void HideModel(const IUseRenderer* user, const IRenderable* renderable) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, renderable != nullptr, "HideModel: 描く物が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
             renderer->SetRenderableEnabled(renderable, false);
@@ -50,6 +52,7 @@ namespace NS
     void EndDraw(const IUseRenderer* user, const IRenderable* renderable) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, renderable != nullptr, "EndDraw: 描く物が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
             renderer->UnregisterRenderable(renderable);
@@ -69,6 +72,7 @@ namespace NS
     void ShowOverlay(const IUseRenderer* user, const IOverlay* overlay) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, overlay != nullptr, "ShowOverlay: 重ね描きが null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
             renderer->SetOverlayEnabled(overlay, true);
@@ -78,6 +82,7 @@ namespace NS
     void HideOverlay(const IUseRenderer* user, const IOverlay* overlay) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, overlay != nullptr, "HideOverlay: 重ね描きが null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
             renderer->SetOverlayEnabled(overlay, false);
@@ -87,6 +92,7 @@ namespace NS
     void EndOverlay(const IUseRenderer* user, const IOverlay* overlay) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, overlay != nullptr, "EndOverlay: 重ね描きが null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
             renderer->UnregisterOverlay(overlay);
@@ -107,6 +113,7 @@ namespace NS
     void EnableLight(const IUseRenderer* user, const DirectionalLight* light) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, light != nullptr, "EnableLight: 平行光が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
             renderer->SetLightEnabled(light, true);
@@ -116,6 +123,7 @@ namespace NS
     void DisableLight(const IUseRenderer* user, const DirectionalLight* light) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, light != nullptr, "DisableLight: 平行光が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
             renderer->SetLightEnabled(light, false);
@@ -125,6 +133,7 @@ namespace NS
     void EndLight(const IUseRenderer* user, const DirectionalLight* light) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, light != nullptr, "EndLight: 平行光が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
             renderer->UnregisterLight(light);

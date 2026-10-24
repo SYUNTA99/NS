@@ -79,12 +79,7 @@ namespace NS
 
     void Body::Gravity(float gravity, float dt) noexcept
     {
-        // 非有限値で速度が壊れると戻せないので、SceneActor::AddGravity と同じく変更しない
-        if (!std::isfinite(gravity) || !std::isfinite(dt) || !(dt > 0.0f))
-        {
-            return;
-        }
-        m_velocity += Phys::k_GravityDirection * (-gravity * dt);
+        Phys::AddGravity(m_velocity, -gravity, dt);
     }
 
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、

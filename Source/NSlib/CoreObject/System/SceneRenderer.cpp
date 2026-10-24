@@ -89,6 +89,7 @@ namespace NS
 
     SceneRenderer::RenderEntry* SceneRenderer::FindEntry(const IRenderable* renderable) const noexcept
     {
+        NS_ASSERT(Scene, renderable != nullptr, "FindEntry: 描く物が null");
         for (const std::unique_ptr<RenderEntry>& entry : m_renderables)
         {
             if (entry->renderable == renderable)
@@ -156,6 +157,7 @@ namespace NS
 
     void SceneRenderer::SetRenderableEnabled(const IRenderable* renderable, bool enabled) noexcept
     {
+        NS_ASSERT(Scene, renderable != nullptr, "SetRenderableEnabled: 描く物が null");
         if (RenderEntry* entry = FindEntry(renderable))
         {
             entry->enabled = enabled;
@@ -209,6 +211,7 @@ namespace NS
 
     void SceneRenderer::SetOverlayEnabled(const IOverlay* overlay, bool enabled) noexcept
     {
+        NS_ASSERT(Scene, overlay != nullptr, "SetOverlayEnabled: 重ね描きが null");
         for (OverlayEntry& entry : m_overlays)
         {
             if (entry.overlay == overlay)
@@ -248,6 +251,7 @@ namespace NS
 
     void SceneRenderer::SetLightEnabled(const DirectionalLight* light, bool enabled) noexcept
     {
+        NS_ASSERT(Scene, light != nullptr, "SetLightEnabled: 平行光が null");
         for (LightEntry& entry : m_lights)
         {
             if (entry.light == light)

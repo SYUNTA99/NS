@@ -112,6 +112,7 @@ namespace NS
     void EnableVirtualCamera(const IUseCamera* user, const VirtualCamera* vcam) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, vcam != nullptr, "EnableVirtualCamera: 仮想カメラが null");
         if (CameraManager* cameras = user->GetCameraManager())
         {
             cameras->SetVirtualCameraEnabled(vcam, true);
@@ -121,6 +122,7 @@ namespace NS
     void DisableVirtualCamera(const IUseCamera* user, const VirtualCamera* vcam) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, vcam != nullptr, "DisableVirtualCamera: 仮想カメラが null");
         if (CameraManager* cameras = user->GetCameraManager())
         {
             cameras->SetVirtualCameraEnabled(vcam, false);
@@ -130,6 +132,7 @@ namespace NS
     void EndVirtualCamera(const IUseCamera* user, const VirtualCamera* vcam) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        NS_ASSERT(Scene, vcam != nullptr, "EndVirtualCamera: 仮想カメラが null");
         if (CameraManager* cameras = user->GetCameraManager())
         {
             cameras->RemoveVirtualCamera(vcam);

@@ -58,6 +58,17 @@ namespace NS
         //! 重力の向き。真下に決めて、シーンでは変えない
         inline constexpr Vector3 k_GravityDirection{0.0f, -1.0f, 0.0f};
 
+        //! 速度を重力の向きへ strength × dt だけ加速する。strength は m/s²、dt は秒
+        //! 非有限値で速度が壊れると戻せないので、非有限値か dt が 0 以下なら変更しない
+        inline void AddGravity(Vector3& velocity, float strength, float dt) noexcept
+        {
+            if (!std::isfinite(strength) || !std::isfinite(dt) || !(dt > 0.0f))
+            {
+                return;
+            }
+            velocity += k_GravityDirection * (strength * dt);
+        }
+
         //! 重力の既定値。真下へ k_DefaultGravityY
         [[nodiscard]] inline Vector3 DefaultGravity() noexcept
         {

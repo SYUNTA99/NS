@@ -203,11 +203,7 @@ namespace NS
 
     void SceneActor::AddGravity(Vector3& velocity, float strength, float dt) const noexcept
     {
-        if (!std::isfinite(strength) || !std::isfinite(dt) || !(dt > 0.0f))
-        {
-            return;
-        }
-        velocity += GravityDirection() * (strength * dt);
+        Phys::AddGravity(velocity, strength, dt);
     }
 
     float GetFrameRate(const SceneActor* actor) noexcept

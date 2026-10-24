@@ -323,7 +323,7 @@ namespace NS
 
     nlohmann::json SerializeClassObjFields(const Object* comp)
     {
-        NS_ASSERT(Game, comp != nullptr, "SerializeClassObjFields: 部品が null");
+        NS_ASSERT(Scene, comp != nullptr, "SerializeClassObjFields: 部品が null");
         const ReflectionInfo* info = comp->GetReflection();
         if (info == nullptr)
         {
@@ -346,7 +346,7 @@ namespace NS
 
     std::size_t ApplyJsonFields(Object* comp, const nlohmann::json& fields)
     {
-        NS_ASSERT(Game, comp != nullptr, "ApplyJsonFields: 部品が null");
+        NS_ASSERT(Scene, comp != nullptr, "ApplyJsonFields: 部品が null");
         const ReflectionInfo* info = comp->GetReflection();
         if (info == nullptr)
         {

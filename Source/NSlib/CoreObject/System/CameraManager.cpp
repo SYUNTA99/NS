@@ -1,5 +1,6 @@
 #include "NSlib/CoreObject/System/CameraManager.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/Windows/Clock.h"
@@ -75,6 +76,7 @@ namespace NS
 
     void CameraManager::SetVirtualCameraEnabled(const VirtualCamera* vcam, bool enabled) noexcept
     {
+        NS_ASSERT(Scene, vcam != nullptr, "SetVirtualCameraEnabled: 仮想カメラが null");
         for (VirtualCameraEntry& entry : m_vcams)
         {
             if (entry.vcam == vcam)
