@@ -273,7 +273,7 @@ namespace NS
         if (!className.empty() && className != obj->ClassName())
         {
             NS_LOG_ERROR(Scene,
-                         "配置物 {} の控えの .actor {} はクラス {} で、アクターのクラス {} と違うので当てない",
+                         "id {} のアクターの控えの .actor {} はクラス {} で、今のクラス {} と違うので当てない",
                          obj->Id(),
                          actorFile,
                          className,
@@ -375,7 +375,7 @@ namespace NS
     {
         NS_ASSERT(Scene,
                   !detached.actor || detached.actor->OwningScene() == this,
-                  "別のシーンから外した配置物を戻そうとしている");
+                  "別のシーンから外したアクターを戻そうとしている");
         return m_actors.Reattach(std::move(detached));
     }
 

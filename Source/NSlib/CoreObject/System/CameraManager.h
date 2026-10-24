@@ -33,6 +33,7 @@ namespace NS
         void RemoveVirtualCamera(const VirtualCamera* vcam) noexcept;
 
         //! 登録済み vcam の組の有効と無効を書く。無効の組は選ばない。未登録は何もしない
+        //! SceneRenderer の Set〜Enabled と組の型が違うので、関数を分けている
         void SetVirtualCameraEnabled(const VirtualCamera* vcam, bool enabled) noexcept;
 
         //! 登録済み vcam の数。無効の組も数える

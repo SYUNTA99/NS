@@ -154,7 +154,7 @@ namespace NS
         }
         NS_ASSERT(Scene,
                   FindByActorId(detached.actor->Id()) == nullptr,
-                  "id {} の配置物が一覧に居るのに、外した物を戻そうとしている",
+                  "id {} のアクターが一覧に居るのに、外した物を戻そうとしている",
                   detached.actor->Id());
 
         SceneActor* raw = detached.actor.get();

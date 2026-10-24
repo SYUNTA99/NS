@@ -420,6 +420,8 @@ namespace NS
     class Model;
 
     //! @brief 束か項目を始める 1 回の呼び出しに渡す、持ち主の読む物と書く先。呼び出しの中だけ使い、覚えない
+    //! @details 組む所は SceneActor・PropActor・ActionTimeline の 3 つ。ActionTimeline は ActionTimelineSelf の
+    //! const SceneActor* から写すので、SceneActor の関数 1 つには寄らない。項目を足す時は 3 か所を揃える
     struct HitReactionSelf
     {
         //! .actor の名前・カメラ・シーンを読み、管理クラスへの依頼の主にする。事前条件: nullptr でない

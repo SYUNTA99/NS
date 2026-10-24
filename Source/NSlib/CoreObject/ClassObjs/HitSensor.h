@@ -75,7 +75,7 @@ namespace NS
         void ValidateBySystem() noexcept { m_validBySystem = true; }
         void InvalidateBySystem() noexcept { m_validBySystem = false; }
 
-        //! 世界座標の形。rootWorld は持ち主の根の世界行列で、管理クラスと問う側が毎回渡して読む
+        //! 世界座標の形。rootWorld は持ち主の根の世界行列。持ち主を手元に持たない呼び手は HitSensorDirector::VolumeOf を使う
         [[nodiscard]] virtual SensorVolume WorldVolume(const Matrix& rootWorld) const noexcept = 0;
 
         NS_REFLECT_NONE(HitSensor, Object)

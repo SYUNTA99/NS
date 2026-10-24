@@ -43,7 +43,7 @@ namespace NS
             {
                 continue;
             }
-            const SensorVolume firstVolume = first->WorldVolume(first->Host()->Root().WorldMatrix());
+            const SensorVolume firstVolume = VolumeOf(first);
             for (std::size_t j = i + 1; j < m_sensors.size(); ++j)
             {
                 HitSensor* second = m_sensors[j];
@@ -51,7 +51,7 @@ namespace NS
                 {
                     continue;
                 }
-                if (VolumesOverlap(firstVolume, second->WorldVolume(second->Host()->Root().WorldMatrix())))
+                if (VolumesOverlap(firstVolume, VolumeOf(second)))
                 {
                     pairs.emplace_back(first, second);
                     pairs.emplace_back(second, first);
@@ -82,11 +82,18 @@ namespace NS
             {
                 continue;
             }
-            if (VolumesOverlap(volume, sensor->WorldVolume(sensor->Host()->Root().WorldMatrix())))
+            if (VolumesOverlap(volume, VolumeOf(sensor)))
             {
                 found.push_back(sensor);
             }
         }
         return found;
+    }
+
+    SensorVolume HitSensorDirector::VolumeOf(const HitSensor* sensor) noexcept
+    {
+        NS_ASSERT(Scene, sensor != nullptr, "VolumeOf: センサーが null");
+        NS_ASSERT(Scene, sensor->Host() != nullptr, "VolumeOf: センサーの持ち主が null");
+        return sensor->WorldVolume(sensor->Host()->Root().WorldMatrix());
     }
 } // namespace NS

@@ -132,6 +132,8 @@ namespace NS
         void RegisterRenderable(IRenderable* renderable, const Transform* root, const Model* model);
         //! 描く物の組を外す。入れていない物は何もしない
         void UnregisterRenderable(const IRenderable* renderable) noexcept;
+        // 組の有効と無効を書く関数は、この 3 つと CameraManager::SetVirtualCameraEnabled で 4 つある。
+        // 組の型と、無効の時に止める物が組ごとに違うので、1 つの関数にしない
         //! 描く物の組の有効と無効を書く。無効の組は描かず、境界も写さない。入れていない物は何もしない
         void SetRenderableEnabled(const IRenderable* renderable, bool enabled) noexcept;
 

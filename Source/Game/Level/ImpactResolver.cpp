@@ -189,7 +189,7 @@ namespace GL
                 {
                     continue;
                 }
-                const NS::AABB bounds = sensor->WorldVolume(sensor->Host()->Root().WorldMatrix()).Bounds();
+                const NS::AABB bounds = NS::HitSensorDirector::VolumeOf(sensor).Bounds();
                 const float dx = bounds.Center.x - position.x;
                 const float dy = bounds.Center.y - position.y;
                 const float dz = bounds.Center.z - position.z;
@@ -248,7 +248,7 @@ namespace GL
                 {
                     continue;
                 }
-                const NS::SensorVolume volume = sensor->WorldVolume(sensor->Host()->Root().WorldMatrix());
+                const NS::SensorVolume volume = NS::HitSensorDirector::VolumeOf(sensor);
                 const NS::AABB bounds = volume.Bounds();
 
                 const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
@@ -294,11 +294,12 @@ namespace GL
                 // 所まで寄ってしまい、弧の着く所と実際に触れる所がずれる。その高さで触れない時は今の高さの値のまま
                 const NS::Vector3 aimedCenter{ballCenter.x, aimHeight, ballCenter.z};
                 float aimedContact = first.contact;
+                const NS::SensorVolume firstVolume = NS::HitSensorDirector::VolumeOf(firstSensor);
                 if (NS::VolumesOverlap(
                         NS::SensorVolume::Capsule(SweptBall(aimedCenter, lineDir, maxDistance, playerRadius)),
-                        firstSensor->WorldVolume(firstSensor->Host()->Root().WorldMatrix())))
+                        firstVolume))
                 {
-                    aimedContact = FirstTouchDistance(firstSensor->WorldVolume(firstSensor->Host()->Root().WorldMatrix()),
+                    aimedContact = FirstTouchDistance(firstVolume,
                                                       aimedCenter,
                                                       lineDir,
                                                       maxDistance,
