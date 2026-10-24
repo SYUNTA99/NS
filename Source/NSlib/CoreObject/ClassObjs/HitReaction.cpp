@@ -12,6 +12,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
+#include "NSlib/CoreObject/System/HitSensorDirector.h"
 
 #include <algorithm>
 #include <array>
@@ -210,10 +211,10 @@ namespace NS
                                                        const HitSensor& self,
                                                        const HitSensor& other)
         {
-            const SensorVolume selfVolume = self.WorldVolume(self.Host()->Root().WorldMatrix());
+            const SensorVolume selfVolume = HitSensorDirector::VolumeOf(&self);
             HitStartContext context;
             context.position = position;
-            context.toOther = other.WorldVolume(other.Host()->Root().WorldMatrix()).Center() - selfVolume.Center();
+            context.toOther = HitSensorDirector::VolumeOf(&other).Center() - selfVolume.Center();
             context.hasToward = TryNormalizeHorizontal(context.toOther, context.towardOther);
             const Vector3 forward = CalcCameraForwardHorizontal(owner);
             context.cameraRight = Vector3{forward.z, 0.0f, -forward.x};

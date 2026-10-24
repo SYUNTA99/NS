@@ -27,6 +27,9 @@ namespace NS
         //! ignore の持ち主を除き、種類は絞らない。ignore が nullptr なら除外なし
         [[nodiscard]] std::vector<HitSensor*> FindOverlaps(const SensorVolume& volume, const SceneActor* ignore) const;
 
+        //! 登録されたセンサーの世界座標の形を、持ち主の根の世界行列で出す。sensor と持ち主は null でない事
+        [[nodiscard]] static SensorVolume VolumeOf(const HitSensor* sensor) noexcept;
+
         //! 登録中のセンサー。登録順、非所有
         [[nodiscard]] const std::vector<HitSensor*>& Sensors() const noexcept { return m_sensors; }
 
