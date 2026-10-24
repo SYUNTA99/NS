@@ -5,8 +5,8 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DTexture.h"
-#include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/StringUtils.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/StringUtils.h"
 
 #include <EffekseerRendererDX11.h>
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "NSlib/Windows/Gamepad.h"
-#include "NSlib/Windows/Keyboard.h"
-#include "NSlib/Windows/Mouse.h"
+#include "NSlib/Core/Windows/Gamepad.h"
+#include "NSlib/Core/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Mouse.h"
 
 #include <windows.h>
 

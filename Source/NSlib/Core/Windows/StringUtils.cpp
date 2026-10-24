@@ -1,4 +1,4 @@
-#include "NSlib/Windows/StringUtils.h"
+#include "NSlib/Core/Windows/StringUtils.h"
 
 #include "NSlib/Core/Logger.h"
 

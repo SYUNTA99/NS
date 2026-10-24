@@ -51,10 +51,10 @@
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/D3DTexture.h"
-#include "NSlib/Windows/Clock.h"
-#include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/Input.h"
-#include "NSlib/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Input.h"
+#include "NSlib/Core/Windows/Keyboard.h"
 
 #include <algorithm>
 #include <charconv>

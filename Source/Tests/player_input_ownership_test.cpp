@@ -2,7 +2,7 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/Input.h"
 
 #include <gtest/gtest.h>
 

@@ -18,7 +18,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/Input.h"
 
 #include <algorithm>
 #include <cmath>

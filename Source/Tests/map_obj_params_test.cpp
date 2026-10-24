@@ -10,7 +10,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/Windows/FileSystem.h"
+#include "NSlib/Core/Windows/FileSystem.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
 

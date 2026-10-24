@@ -1,9 +1,9 @@
-#include "NSlib/Windows/Window.h"
+#include "NSlib/Core/Windows/Window.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Windows/Input.h"
-#include "NSlib/Windows/StringUtils.h"
-#include "NSlib/Windows/detail/InputWin32.h"
+#include "NSlib/Core/Windows/Input.h"
+#include "NSlib/Core/Windows/StringUtils.h"
+#include "NSlib/Core/Windows/detail/InputWin32.h"
 
 namespace NS
 {

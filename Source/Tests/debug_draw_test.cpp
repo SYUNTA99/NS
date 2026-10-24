@@ -3,8 +3,8 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
-#include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/Window.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Window.h"
 
 #include <gtest/gtest.h>
 

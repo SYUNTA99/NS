@@ -1,8 +1,8 @@
-#include "NSlib/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Windows/StringUtils.h"
+#include "NSlib/Core/Windows/StringUtils.h"
 
 #include <algorithm>
 #include <array>
@@ -213,18 +213,89 @@ namespace NS
                 ::DeleteFileW(temporaryWide.c_str());
                 return false;
             }
-            if (::MoveFileExW(temporaryWide.c_str(),
-                              OS::StringUtils::WideFromUtf8(path).c_str(),
-                              MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == 0)
+            // 失敗の ERROR は RenameFile が出す。path の前の中身は残っている
+            if (!RenameFile(temporary, path))
             {
-                NS_LOG_ERROR(Core,
-                             "FileSystem::ReplaceAllBytes: {} を置き換えられないので前の中身を残す ({})",
-                             path,
-                             ErrorText(::GetLastError()));
                 ::DeleteFileW(temporaryWide.c_str());
                 return false;
             }
             return true;
+        }
+
+        bool FileSystem::RenameFile(std::string_view from, std::string_view to) noexcept
+        {
+            if (::MoveFileExW(OS::StringUtils::WideFromUtf8(from).c_str(),
+                              OS::StringUtils::WideFromUtf8(to).c_str(),
+                              MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == 0)
+            {
+                NS_LOG_ERROR(
+                    Core, "FileSystem::RenameFile: {} を {} にできない ({})", from, to, ErrorText(::GetLastError()));
+                return false;
+            }
+            return true;
+        }
+
+        // 開いたファイルの大きさを読む ReadAllBytes の GetFileSizeEx とは別に持つ。こちらは開かずに聞くので、
+        // ほかのプログラムが共有を許さずに開いているファイルでも答えられる
+        std::optional<uint64> FileSystem::FileSize(std::string_view path) noexcept
+        {
+            WIN32_FILE_ATTRIBUTE_DATA data{};
+            if (::GetFileAttributesExW(OS::StringUtils::WideFromUtf8(path).c_str(), GetFileExInfoStandard, &data) ==
+                0)
+            {
+                NS_LOG_ERROR(Core, "FileSystem::FileSize: {} を読めない ({})", path, ErrorText(::GetLastError()));
+                return std::nullopt;
+            }
+            ULARGE_INTEGER size{};
+            size.LowPart = data.nFileSizeLow;
+            size.HighPart = data.nFileSizeHigh;
+            return static_cast<uint64>(size.QuadPart);
+        }
+
+        FileAppender::FileAppender(std::string_view path) noexcept
+            : m_handle(::CreateFileW(OS::StringUtils::WideFromUtf8(path).c_str(),
+                                     FILE_APPEND_DATA,
+                                     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                     nullptr,
+                                     OPEN_ALWAYS,
+                                     FILE_ATTRIBUTE_NORMAL,
+                                     nullptr))
+        {
+            if (m_handle == INVALID_HANDLE_VALUE)
+            {
+                NS_LOG_ERROR(Core, "FileAppender: {} を開けない ({})", path, ErrorText(::GetLastError()));
+            }
+        }
+
+        FileAppender::~FileAppender() noexcept
+        {
+            if (m_handle != INVALID_HANDLE_VALUE)
+            {
+                ::CloseHandle(m_handle);
+            }
+        }
+
+        bool FileAppender::IsValid() const noexcept
+        {
+            return m_handle != INVALID_HANDLE_VALUE;
+        }
+
+        bool FileAppender::Append(std::span<const std::byte> bytes) noexcept
+        {
+            if (m_handle == INVALID_HANDLE_VALUE)
+            {
+                return false;
+            }
+            if (bytes.empty())
+            {
+                return true;
+            }
+            DWORD written = 0;
+            if (::WriteFile(m_handle, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr) == 0)
+            {
+                return false;
+            }
+            return written == static_cast<DWORD>(bytes.size());
         }
 
         bool FileSystem::RemoveFile(std::string_view path)

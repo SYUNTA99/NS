@@ -1,8 +1,8 @@
 #include "Editor/EditorCamera.h"
 
-#include "NSlib/Windows/Clock.h"
-#include "NSlib/Windows/Input.h"
-#include "NSlib/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/Input.h"
+#include "NSlib/Core/Windows/Keyboard.h"
 
 #include <algorithm>
 #include <cmath>

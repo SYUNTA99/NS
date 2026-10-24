@@ -15,10 +15,10 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Windows/Clock.h"
-#include "NSlib/Windows/Input.h"
-#include "NSlib/Windows/Keyboard.h"
-#include "NSlib/Windows/Mouse.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/Input.h"
+#include "NSlib/Core/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Mouse.h"
 
 #include <gtest/gtest.h>
 

@@ -1,6 +1,6 @@
 #include "NSlib/CoreObject/System/ScreenFadeDirector.h"
 
-#include "NSlib/Windows/Clock.h"
+#include "NSlib/Core/Windows/Clock.h"
 
 namespace NS
 {

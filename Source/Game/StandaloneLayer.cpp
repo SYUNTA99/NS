@@ -1,7 +1,7 @@
 #include "Game/StandaloneLayer.h"
 
 #include "NSlib/App/Application.h"
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/Input.h"
 
 StandaloneLayer::StandaloneLayer() : NS::Layer("Standalone") {}
 

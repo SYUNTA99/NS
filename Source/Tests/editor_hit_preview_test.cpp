@@ -13,8 +13,8 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Windows/FileSystem.h"
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/FileSystem.h"
+#include "NSlib/Core/Windows/Input.h"
 #include "Tests/TestActorFile.h"
 
 #include <gtest/gtest.h>

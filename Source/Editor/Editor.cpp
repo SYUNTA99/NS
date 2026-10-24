@@ -8,9 +8,9 @@
 #include "NSlib/App/Application.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/UI/ImGuiContext.h"
-#include "NSlib/Windows/Gamepad.h"
-#include "NSlib/Windows/Input.h"
-#include "NSlib/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Gamepad.h"
+#include "NSlib/Core/Windows/Input.h"
+#include "NSlib/Core/Windows/Keyboard.h"
 
 #include <memory>
 #include <optional>

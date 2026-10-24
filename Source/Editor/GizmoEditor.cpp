@@ -7,9 +7,9 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Windows/Input.h"
-#include "NSlib/Windows/Keyboard.h"
-#include "NSlib/Windows/Mouse.h"
+#include "NSlib/Core/Windows/Input.h"
+#include "NSlib/Core/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Mouse.h"
 
 #include <limits>
 

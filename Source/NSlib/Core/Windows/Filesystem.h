@@ -1,5 +1,8 @@
 #pragma once
 
+#include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Core/Types.h"
+
 #include <cstddef>
 #include <optional>
 #include <span>
@@ -34,6 +37,12 @@ namespace NS
 
             //! path のファイルを消す。無い場合も成功扱いとなる
             [[nodiscard]] static bool RemoveFile(std::string_view path);
+
+            //! from の名前を to に変える。to が既にあれば置き換える
+            [[nodiscard]] static bool RenameFile(std::string_view from, std::string_view to) noexcept;
+
+            //! ファイルの大きさをバイトで返す。無いか読めない場合は nullopt
+            [[nodiscard]] static std::optional<uint64> FileSize(std::string_view path) noexcept;
 
             //! 文字コードは UTF-8 を想定している
             [[nodiscard]] static std::optional<std::string> ReadAllText(std::string_view path);
@@ -91,6 +100,26 @@ namespace NS
             //! 最後の区切りより前を返す。区切りが無い場合は空文字列を返す
             //! ルート直下の場合は "/" や "C:/" のように区切りまで残す
             [[nodiscard]] static std::string ParentDirectory(std::string_view path);
+        };
+
+        //! @brief ファイルを開いたまま持ち、末尾へ書き足していく
+        //! @details ほかの FileAppender やプログラムが同じファイルを開いていても書ける。無いファイルは作る
+        class FileAppender : public NonCopyable
+        {
+        public:
+            //! 開けない場合はエラーログを出力し、IsValid が false を返す
+            explicit FileAppender(std::string_view path) noexcept;
+            ~FileAppender() noexcept;
+
+            [[nodiscard]] bool IsValid() const noexcept;
+
+            //! 末尾へ書き足す。失敗した場合は false を返し、ログを出さない
+            //! @note ログの出力先の中から呼ばれる。そこで NS_LOG を呼ぶと同じロックを取りに行き、止まったままになる
+            [[nodiscard]] bool Append(std::span<const std::byte> bytes) noexcept;
+
+        private:
+            // Win32 の HANDLE と同じ型。<windows.h> をこのヘッダの読み手へ広げないために void* で持つ
+            void* m_handle;
         };
     } // namespace OS
 } // namespace NS

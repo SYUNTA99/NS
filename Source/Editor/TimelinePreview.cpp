@@ -1,6 +1,6 @@
 #include "Editor/TimelinePreview.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Windows/Input.h"
+#include "NSlib/Core/Windows/Input.h"
 
 #include <algorithm>
 #include <utility>

@@ -8,8 +8,8 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/Windows/Clock.h"
-#include "NSlib/Windows/FileSystem.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/FileSystem.h"
 
 #include <gtest/gtest.h>
 

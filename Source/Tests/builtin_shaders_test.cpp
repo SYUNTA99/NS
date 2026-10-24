@@ -6,8 +6,8 @@
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/D3DDevice.h"
-#include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/Window.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Window.h"
 
 #include <gtest/gtest.h>
 

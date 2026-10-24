@@ -3,8 +3,8 @@
 #include "NSlib/App/Layers.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Gfx/D3DDevice.h"
-#include "NSlib/Windows/Clock.h"
-#include "NSlib/Windows/Window.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/Window.h"
 
 #include <chrono>
 #include <functional>

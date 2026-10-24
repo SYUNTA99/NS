@@ -5,7 +5,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Keyboard.h"
 
 #include <span>
 

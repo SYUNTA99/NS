@@ -17,9 +17,9 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/EffectScene.h"
-#include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/StringUtils.h"
-#include "NSlib/Windows/Window.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/StringUtils.h"
+#include "NSlib/Core/Windows/Window.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
 

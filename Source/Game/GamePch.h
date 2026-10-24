@@ -8,7 +8,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Gfx/Gfx.h"
 #include "NSlib/Phys/Phys.h"
-#include "NSlib/Windows/Windows.h"
+#include "NSlib/Core/Windows/Windows.h"
 
 // Object 層は一括ヘッダを持たないため、層の公開ヘッダを直接並べる
 #include "NSlib/CoreObject/Asset/AssetManager.h"

@@ -3,7 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Windows/Window.h"
+#include "NSlib/Core/Windows/Window.h"
 
 #include "NSlib/Core/Types.h"
 #include <filesystem>

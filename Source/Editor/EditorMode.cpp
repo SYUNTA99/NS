@@ -16,12 +16,12 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Windows/Clock.h"
-#include "NSlib/Windows/Filesystem.h"
-#include "NSlib/Windows/Gamepad.h"
-#include "NSlib/Windows/Input.h"
-#include "NSlib/Windows/Keyboard.h"
-#include "NSlib/Windows/Mouse.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Gamepad.h"
+#include "NSlib/Core/Windows/Input.h"
+#include "NSlib/Core/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Mouse.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
