@@ -54,7 +54,7 @@ namespace NS
 
         // クラス名を書く .actor の頭の鍵。配置物は .actor の名前だけを書き、この鍵を持たない
         constexpr const char* k_ClassKey = "class";
-        // 名前の束と動作の並びの鍵。配置物は持たず、.actor だけに書く
+        // 名前の束と動作の並びの鍵。配置物と派生は持たず、元の .actor だけに書く。派生は元の物を使う
         constexpr const char* k_HitReactionsKey = "hitReactions";
         constexpr const char* k_ActionsKey = "actions";
         // 派生の .actor が元にする .actor の名前の鍵。元の .actor は持たない
@@ -115,6 +115,17 @@ namespace NS
             if (const std::string* unknown = FindUnknownActorFileKey(root))
             {
                 return std::format("知らない鍵 {} がある", *unknown);
+            }
+            // 派生に書いた束と動作は効かないので、書いた理由が分からないまま残さない
+            if (!ActorFileBase(root).empty())
+            {
+                for (const char* key : {k_HitReactionsKey, k_ActionsKey})
+                {
+                    if (root.contains(key))
+                    {
+                        return std::format("派生なのに {} がある。束と動作は元の .actor だけに書く", key);
+                    }
+                }
             }
             // クラスが分からないまま持つと、作る型が黙って変わる
             const std::string_view className = ActorFileClass(root);
@@ -526,14 +537,6 @@ namespace NS
                 return std::nullopt;
             }
             values = std::move(*merged);
-            // 束と動作は派生に書いてあれば派生の物を使う
-            for (const char* key : {k_HitReactionsKey, k_ActionsKey})
-            {
-                if (const nlohmann::json* list = FindTopKey(actorFile, key))
-                {
-                    values[key] = *list;
-                }
-            }
         }
 
         std::vector<std::string> missing;

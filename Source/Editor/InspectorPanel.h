@@ -43,8 +43,8 @@ namespace NS
             void DrawMaterialPreview(const Material& material);
             void DrawMeshPreview(const Mesh& mesh);
             void DrawAssetPreview(const Gfx::DrawItem& item);
-            //! actorFileName の .actor の名前の束の欄を描き、直し終えた束を .actor へ書く。.actor が無ければ何も描かない
-            void DrawHitReactionSets(LevelEditorController& editor, const std::string& actorFileName);
+            //! actor の元の .actor の名前の束の欄を描き、直し終えた束をその .actor へ書く。.actor が無ければ何も描かない
+            void DrawHitReactionSets(LevelEditorController& editor, const SceneActor* actor);
             //! actor の .actor を替える一覧と、上書きから派生を作る欄を描く。押した操作は Render を描き終えてから流す
             void DrawActorFileChoice(const SceneActor& actor);
 

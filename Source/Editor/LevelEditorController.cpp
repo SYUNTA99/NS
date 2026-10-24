@@ -389,7 +389,7 @@ namespace
         });
     }
 
-    // baseName の .actor から作る、name の派生の .actor の文書。元なら元を指して何も書いていない派生、派生なら同じ元を指す写し
+    // baseName の .actor から作る、name の派生の .actor の文書。何も書かず、baseName が派生ならその元を指す
     // name が空・ファイルの名前に使えない字を含む・既にある時と、baseName が読まれていない時は WARN を出して std::nullopt
     std::optional<nlohmann::json> NewDerivedActorFile(std::string_view baseName, std::string_view name)
     {
@@ -410,14 +410,15 @@ namespace
             NS_LOG_WARN(App, ".actor {} が読まれていないので派生 {} を作らない", baseName, name);
             return std::nullopt;
         }
-        // 派生は元を 1 つだけ受け継ぐので、派生から作る時は同じ元を指す
+        // 派生は元を 1 つだけ受け継ぎ、部品は元と同じなので、派生から作る時もその元から作り、派生の値は写さない
+        std::string_view origin = baseName;
         if (!NS::ActorFileBase(*baseFile).empty())
         {
-            return std::optional<nlohmann::json>{*baseFile};
+            origin = NS::ActorFileBase(*baseFile);
         }
         nlohmann::json derived = nlohmann::json::object();
         NS::SetActorFileClass(derived, NS::ActorFileClass(*baseFile));
-        NS::SetActorFileBase(derived, baseName);
+        NS::SetActorFileBase(derived, origin);
         NS::ActorJsonClassObjs(derived) = nlohmann::json::object();
         return derived;
     }
