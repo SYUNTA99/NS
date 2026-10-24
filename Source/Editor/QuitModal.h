@@ -12,7 +12,7 @@ namespace NS
         class ActionTimelinePanel;
 
         //! @brief 終了の前に問う、保存していない変更があるか
-        //! @details シーンは履歴の版、動作のタイムラインはパネルの印で答える。終了の確認はこの問いだけを見る
+        //! @details シーンは履歴の版、動作のタイムラインはパネルの未保存の記録で答える。終了の確認はこの問いだけを見る
         [[nodiscard]] bool HasUnsavedWork(const EditorMode& editor, const ActionTimelinePanel& timeline) noexcept;
 
         //! @brief 終了の前の保存。シーンと、動作のタイムラインで保存していない .actor を書く

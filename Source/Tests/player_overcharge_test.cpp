@@ -133,7 +133,7 @@ TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
         EXPECT_FALSE(player.IsBodySlamming());
     }
     EXPECT_TRUE(player.ChargeJudge().IsAwaitingLaunch());
-    // 着地で空中の 1 発の印が消えて出せるようになったフレームに出る
+    // 着地で空中の 1 発の制限が解けて出せるようになったフレームに出る
     player.Body().SetGrounded(true);
     player.SyncGroundState();
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);

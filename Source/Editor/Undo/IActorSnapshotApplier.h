@@ -16,7 +16,7 @@ namespace NS
         public:
             virtual ~IActorSnapshotApplier() = default;
 
-            //! objectId の現在状態を配置物の JSON へ写す。居なければ nullopt
+            //! objectId の現在状態をアクターの JSON へ写す。居なければ nullopt
             [[nodiscard]] virtual std::optional<nlohmann::json> CaptureActor(uint32 objectId) const = 0;
 
             //! @brief objectId を desired の姿へ揃える。居なければ desired から作る

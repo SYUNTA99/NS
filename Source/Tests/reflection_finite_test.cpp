@@ -55,7 +55,7 @@ namespace
     }
 } // namespace
 
-// インスペクタ・.actor・配置物の値は欄の set を通る。非有限の半径は捨て、前の半径を残す
+// インスペクタ・.actor・シーンに置いたアクターの値は欄の set を通る。非有限の半径は捨て、前の半径を残す
 TEST(ReflectionFinite, BoxHalfExtentsFieldKeepsPreviousValueOnNonFinite)
 {
     NS::Scene scene;

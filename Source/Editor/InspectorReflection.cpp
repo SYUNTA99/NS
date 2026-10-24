@@ -1698,7 +1698,7 @@ namespace NS
                     result.changedField = &field;
                 }
                 result.changed |= widget.changed;
-                // 部品の行と値の幅を揃えるため、上書きの印の幅だけ空ける
+                // 部品の行と値の幅を揃えるため、上書きボタンの幅だけ空ける
                 (void)OverrideButton(false);
                 ImGui::PopID();
             };

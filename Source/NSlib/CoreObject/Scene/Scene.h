@@ -43,7 +43,7 @@ namespace NS
     class IRenderable;
     class UIActor;
 
-    //! @brief 配置物と共有システムを所有し、固定更新と描画を行うシーン
+    //! @brief アクターと共有システムを所有し、固定更新と描画を行うシーン
     //! @details JSON は保存・凍結・編集履歴に使い、実行中の状態は SceneActor と部品が持つ
     class Scene : public NonCopyable,
                   public IUseCamera,
@@ -161,16 +161,16 @@ namespace NS
         //! environment を丸ごと替える
         void SetEnvironment(const SceneEnvironment& environment) noexcept;
 
-        //! @brief シーンの配置物の一覧
+        //! @brief シーンのアクターの一覧
         [[nodiscard]] ActorList& Actors() noexcept { return m_actors; }
         [[nodiscard]] const ActorList& Actors() const noexcept { return m_actors; }
 
-        //! @brief シーンの JSON 文書を取り込み配置物を組み直す。文書は取込後に用済みになる
+        //! @brief シーンの JSON 文書を取り込みアクターを組み直す。文書は取込後に用済みになる
         //! @details 組む前に id と名前を一意に揃える。前の世界の固定ステップで積んだ開発用の図形は捨てる
         void ResetFromJson(nlohmann::json scene);
 
         //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
-        //! @details 全配置物を、全部品の値まで忠実に写す
+        //! @details 全アクターを、全部品の値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
 
         //! シミュレーションを切り替え、一時停止とコマ送りを解除する
@@ -208,7 +208,7 @@ namespace NS
         //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneRenderer.SetSceneViews(std::move(views)); }
 
-        //! @brief 型 T の配置物をシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
+        //! @brief 型 T のアクターをシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
         //! @details 所有はシーンが握り、呼出側へは生ポインタだけ返す。名前は既存と重なれば番号を付ける。
         //! 値はクラスと同じ名前の .actor の値で、保存と凍結に写る
         template <class T, class... Args> T* SpawnActor(std::string name, Args&&... args)
@@ -220,7 +220,7 @@ namespace NS
             return raw;
         }
 
-        //! @brief 配置物の JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
+        //! @brief アクターの JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! @details 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
         //! undo の作り直しと複製が通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
         SceneActor* SpawnFromJson(const nlohmann::json& actorJson);
@@ -233,16 +233,16 @@ namespace NS
         //! @param[out] replaced 作り直した時の古いアクター。作り直さなければ触らない。nullptr は渡さない
         SceneActor* ApplyFromJson(const nlohmann::json& actorJson, std::unique_ptr<SceneActor>* replaced);
 
-        //! @brief 配置物を 1 体消す。居なければ何もしない
+        //! @brief アクターを 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる。.actor が見つからずに持っている同じ id の JSON も捨てる
         void RemoveActor(uint32 objectId);
 
-        //! @brief 配置物を 1 体、解放せずにシーンから外して返す。.actor が見つからずに持っている同じ id の JSON は捨てる
+        //! @brief アクターを 1 体、解放せずにシーンから外して返す。.actor が見つからずに持っている同じ id の JSON は捨てる
         //! @details Disappear で登録の組が無効になるが、OnEndPlay は呼ばない。返した物を捨てる時は、呼び手が先に
         //! OnEndPlay を呼ぶ。居なければ空を返す。段の更新の最中は断る
         [[nodiscard]] DetachedActor DetachActor(uint32 objectId);
 
-        //! DetachActor で外した配置物を外す前の並びの位置へ戻す。外す前に出ていた物は Appear する
+        //! DetachActor で外したアクターを外す前の並びの位置へ戻す。外す前に出ていた物は Appear する
         SceneActor* ReattachActor(DetachedActor detached);
 
         //! 固定更新の段を順に実行する。同じ段では SceneActor の後にシステムを更新する
@@ -250,10 +250,10 @@ namespace NS
 
         //! @brief 段 phase を 1 回だけ回す。OnUpdate が段ごとに呼ぶ
         //! @details 有効な SceneActor を配置順に、続いてその段に登録した管理役を登録順に更新する
-        //! 回している間は配置物を解放する口を断る。再入は禁止
+        //! 回している間はアクターを解放する口を断る。再入は禁止
         void ExecutePhase(UpdatePhase phase);
 
-        //! 配置物と、配置物から借りている物と、固定ステップで積んだ開発用の図形を捨てる
+        //! アクターと、アクターから借りている物と、固定ステップで積んだ開発用の図形を捨てる
         void OnShutdown();
 
     private:
@@ -266,13 +266,13 @@ namespace NS
         //! 戻りの曲線を実時間の 1 歩だけ進め、世界の速さを書く
         void AdvanceWorldSpeedRamp() noexcept;
 
-        //! @brief 渡されたシーンの JSON 文書から配置物と当たりの body を組み直す
+        //! @brief 渡されたシーンの JSON 文書からアクターと当たりの body を組み直す
         void RebuildSceneFrom(const nlohmann::json& scene);
 
-        //! シーンに 1 つの物・暗転・配置物・エフェクト・開発用の図形を捨てる。組み直しと終わりが呼ぶ
+        //! シーンに 1 つの物・暗転・アクター・エフェクト・開発用の図形を捨てる。組み直しと終わりが呼ぶ
         void ClearWorld();
 
-        //! @brief 配置物の JSON 1 件からアクターを作る。組み直しと 1 体だけ入れる道の全部が通る
+        //! @brief アクターの JSON 1 件からアクターを作る。組み直しと 1 体だけ入れる道の全部が通る
         //! @details .actor が見つからなければ作らず、JSON を m_unresolvedActors に id ごとに 1 つ持つ。
         //! 作れた時は同じ id の持っていた JSON を捨てる
         [[nodiscard]] std::unique_ptr<SceneActor> BuildOrKeepUnresolved(const nlohmann::json& actorJson);
@@ -283,14 +283,14 @@ namespace NS
         // SpawnActor の中身。外から個体を受けると、OnInit を通っていない個体が入る
         SceneActor* AdoptActor(std::unique_ptr<SceneActor> obj, std::string name);
 
-        //! 実行時に入れた配置物の資産を引き当ててから開始する
+        //! 実行時に入れたアクターの資産を引き当ててから開始する
         void StartSpawned(SceneActor* obj);
 
-        // 描く物は持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
+        // 描く物は持ち主の OnEndPlay で外れるので、アクターより先に宣言して後に破棄する
         SceneRenderer m_sceneRenderer;
         // m_sceneObjs が持つ CourseDirector が破棄で暗転を取り消すので、m_sceneObjs より先に宣言して後に破棄する
         ScreenFadeDirector m_fade;
-        // 配置物が持つ画面は破棄で自分を外すので、配置物より先に宣言して後に破棄する
+        // アクターが持つ画面は破棄で自分を外すので、アクターより先に宣言して後に破棄する
         UIDirector m_ui;
 
         //! 衝突判定の PhysicsScene を持つ。Collision が出る時と動いた歩に body を入れる
@@ -299,13 +299,13 @@ namespace NS
         // skybox と重力の向き。実体側の唯一の出所で、描画が毎フレーム読み、保存は ToJson がここから写す
         SceneEnvironment m_environment;
 
-        // ヒットセンサーの調べ役。配置物の部品が持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
+        // ヒットセンサーの調べ役。アクターの部品が持ち主の OnEndPlay で外れるので、アクターより先に宣言して後に破棄する
         HitSensorDirector m_hitSensors;
         SceneCamera m_mainCamera;
-        // 仮想カメラは持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
+        // 仮想カメラは持ち主の OnEndPlay で外れるので、アクターより先に宣言して後に破棄する
         CameraManager m_cameraManager;
-        ActorList m_actors; // 配置物の一覧
-        // .actor が見つからず作らなかった配置物の JSON。id ごとに 1 つ、持った順に並べ、保存ではアクターの後に書く。
+        ActorList m_actors; // アクターの一覧
+        // .actor が見つからず作らなかったアクターの JSON。id ごとに 1 つ、持った順に並べ、保存ではアクターの後に書く。
         // id は、読む時は m_actors の次の id が数え、1 体だけ入れる道ではこのシーンの控えの id なので数え済み。
         // 新しいアクターに振られない
         std::vector<nlohmann::json> m_unresolvedActors;
@@ -317,7 +317,7 @@ namespace NS
         };
         std::vector<SystemEntry> m_systems;           // このシーンが回す管理役と段。登録順
         std::vector<SceneSystem*> m_scheduledSystems; // ExecutePhase がその段で呼ぶ管理役を積む作業用の並び
-        // シーンに 1 つの物。配置物と画面の一覧を借りるので、それより後に宣言して先に破棄する
+        // シーンに 1 つの物。アクターと画面の一覧を借りるので、それより後に宣言して先に破棄する
         // const の窓口からも作れるよう mutable にする。作っても見かけのシーンの状態は変わらない
         mutable SceneSystemHolder m_sceneObjs{*this};
 

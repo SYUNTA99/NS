@@ -242,7 +242,7 @@ public:
     //! PlayerParams::ReboundGravity を使って重力を当てる。初速の計算と同じ値を使う
     void ReboundGravity(float dt) noexcept;
     //! @brief 反動の間、入力の向きへ反動中の空中の加速度で加速する。入力が無ければ何もしない
-    //! @details 接地の印に依らずこの加速度を使い、入力の向きからずれた速度は減らさない
+    //! @details 接地のフラグに依らずこの加速度を使い、入力の向きからずれた速度は減らさない
     void AccelerateDuringRebound(float dt) noexcept;
     //! 外れの着地からこすって止まり始める。今の水平の速度を着いた速度として控え、経過を 0 にする
     void BeginSkid() noexcept;
@@ -320,7 +320,7 @@ public:
 
     [[nodiscard]] GL::Player::CameraTargetState GetCameraTargetState() const;
 
-    //! コースの進行役を用意する。全ての配置物が揃った後に呼ばれる
+    //! コースの進行役を用意する。全てのアクターが揃った後に呼ばれる
     void InitAfterPlacement() override;
 
     //! @brief MsgCourseStart の時の位置へ戻り、動きと命を最初の状態へ戻す
@@ -535,6 +535,6 @@ private:
     GL::Player::PlayerEvents m_playerEvents;
 };
 
-//! 実体の配置物からプレイヤーを引く。無ければ nullptr
-//! @param[in,out] objects 探す先の配置物。返した PlayerActor* から中身が書き換わる
+//! 実体のアクターからプレイヤーを引く。無ければ nullptr
+//! @param[in,out] objects 探す先のアクター。返した PlayerActor* から中身が書き換わる
 [[nodiscard]] PlayerActor* FindPlayer(NS::ActorList& objects) noexcept;

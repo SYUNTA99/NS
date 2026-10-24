@@ -20,7 +20,7 @@ namespace GL
 {
     namespace Level
     {
-        //! @brief 押し飛ばされた配置物の尾と、着地の粉を出す部品
+        //! @brief 押し飛ばされたアクターの尾と、着地の粉を出す部品
         //! @details 尾は曲線を離れた時に消す。段で色、飛ばしの比で長さ、威力と質量で粉の大きさを決める
         class LaunchEffects : public NS::Object
         {

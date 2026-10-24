@@ -551,7 +551,7 @@ namespace NS
             }
             if (SceneActor* actorFile = Cast<SceneActor>(&asset))
             {
-                // .actor の欄は、印の付いた欄も含めて全部 .actor へ書く。直し終えた時にファイルへ書き、同じ .actor のアクターへ写す
+                // .actor の欄は、NS_GLOBAL_FIELD の欄も含めて全部 .actor へ書く。直し終えた時にファイルへ書き、同じ .actor のアクターへ写す
                 ImGui::Text("%s.actor (%s)", actorFile->ActorFileName().c_str(), actorFile->ClassName());
                 ImGui::TextDisabled("ここで直した値は、この .actor を指すアクターの全部に効く");
                 ImGui::SetNextItemWidth(-ImGui::CalcTextSize("派生を作る").x - ImGui::GetStyle().ItemSpacing.x * 3.0f);
@@ -705,7 +705,7 @@ namespace NS
                 {
                     m_nameEditId = m_nameId;
                 }
-                // 改名は配置物を組み直すので、このパネルを描き終えてから流す
+                // 改名はアクターを組み直すので、このパネルを描き終えてから流す
                 if (ImGui::IsItemDeactivatedAfterEdit())
                 {
                     m_nameCommitId = m_nameEditId;
@@ -770,7 +770,7 @@ namespace NS
                             classObjEdit.revertField = r.revertField;
                             revertRow = &field;
                         }
-                        // 書く先は欄の印で決まる。.actor へ書く欄は確定の時に書くので、直した欄を伝えておく
+                        // 書く先は欄の種類で決まる。.actor へ書く欄は確定の時に書くので、直した欄を伝えておく
                         if (r.changedTarget != nullptr && r.changedField != nullptr)
                         {
                             editor.FinishFieldWrite(go, r.changedField->type);

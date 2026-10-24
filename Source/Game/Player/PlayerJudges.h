@@ -108,7 +108,7 @@ namespace GL
         {
         public:
             //! @brief 接地していて上昇していない場合 true、それ以外の場合は false
-            //! @details 反動の明けのフレームは止める前の接地の印が残ったまま上向きの速度が入る。
+            //! @details 反動の明けのフレームは止める前の接地のフラグが残ったまま上向きの速度が入る。
             //! 接地だけを見ると宙へ出る前に立ちへ移る
             [[nodiscard]] static bool Judge(bool grounded, float verticalVelocity) noexcept
             {

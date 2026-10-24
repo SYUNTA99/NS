@@ -76,7 +76,7 @@ namespace
     }
 
     // parts の部品ごとの欄を、読んだ後の actor へ書く。HitZones などの欄は .actor だけが持つので、
-    // 1 体だけ違う値は配置物でなくアクターに書く
+    // 1 体だけ違う値はシーンのファイルでなくアクターに書く
     void WriteParts(NS::SceneActor* actor, const nlohmann::json& parts)
     {
         NS_ASSERT(Game, actor != nullptr, "WriteParts: 渡したアクターか部品が無い");
@@ -742,7 +742,7 @@ TEST(HitZonesTest, RedOutlineAgreesWithTheJudgement)
     EXPECT_GT(checked, 0);
 }
 
-// 直近の当たりの記録に、自機の玉が相手の表面に触れた点が載る。エディタはこの点に印を描く
+// 直近の当たりの記録に、自機の玉が相手の表面に触れた点が載る。エディタはこの点にマーカーを描く
 TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
 {
     NS::Scene scene;

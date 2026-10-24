@@ -250,7 +250,7 @@ namespace GL
             float m_landDustAssetRadius = 1.2f;
             // 段で変わる層の形を段ごとの 1 行から埋める。段を足したら行を足す
             void ApplyTierRow(ImpactShape& shape, const GL::Level::ImpactRecord& impact, float power) const noexcept;
-            // 当たりの絵の頭から数えた当たり 1 回の段取り。層の番号 0 はまだ出していない印
+            // 当たりの絵の頭から数えた当たり 1 回の段取り。層の番号 0 はまだ出していない事を表す
             struct HitPlan
             {
                 bool active = false;
@@ -265,7 +265,7 @@ namespace GL
                 NS::Vector3 ringNormal;
                 NS::Vector3 floor;       // 相手が置かれていた床の上の点
                 NS::Vector3 awayDir;     // 自機から相手への水平の向き。当たりの粉を自機から離す側
-                NS::uint32 targetId = 0; // 当たった相手の配置物の id
+                NS::uint32 targetId = 0; // 当たった相手のアクターの id
                 NS::uint32 core = 0;
                 NS::uint32 streak = 0;
                 NS::uint32 ring = 0;
@@ -276,7 +276,7 @@ namespace GL
                 bool dustPlayed = false;
             };
 
-            // 飛びの絵の頭から、自機の反動が終わるまでの尾。当たりの段取りより長く残る。層の番号 0 は無い印
+            // 飛びの絵の頭から、自機の反動が終わるまでの尾。当たりの段取りより長く残る。層の番号 0 は無い事を表す
             struct Flight
             {
                 NS::uint32 reboundTrail = 0; // 反動の尾。親を止めたか消したら 0
@@ -378,7 +378,7 @@ namespace GL
             float m_glowDiameterBase = 2.0f;
             float m_glowDiameterPerPower = 1.6f;
             int m_recoilCount = 8;
-            // 外れには弾き返された印となる線を出さない
+            // 外れには弾き返された事を表す線を出さない
             int m_wideRecoilCount = 0;
             float m_recoilLengthBase = 0.6f;
             float m_recoilLengthPerRebound = 0.5f;

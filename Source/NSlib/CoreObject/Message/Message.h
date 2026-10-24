@@ -11,7 +11,7 @@ namespace NS
     public:
         virtual ~Message() noexcept = default;
 
-        //! 型ごとの印。NS_MESSAGE が実装する
+        //! 型ごとのタグ。NS_MESSAGE が実装する
         [[nodiscard]] virtual const void* Kind() const noexcept = 0;
     };
 
@@ -42,7 +42,7 @@ namespace NS
     bool SendMsgToActor(const Message& msg, SceneActor* receiver);
 } // namespace NS
 
-//! 知らせの型の中に 1 度だけ書く。型ごとの印を作る
+//! 知らせの型の中に 1 度だけ書く。型ごとのタグを作る
 #define NS_MESSAGE(Type)                                                                                               \
 public:                                                                                                                \
     [[nodiscard]] static const void* StaticKind() noexcept                                                             \

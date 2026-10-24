@@ -449,9 +449,9 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyFiveFields)
     const GL::Level::TargetMarkerDesc marker{};
     const GL::Level::SlamArrowDesc arrow{};
     const nlohmann::json markerFields = {
-        {"印の色", {marker.color.x, marker.color.y, marker.color.z, marker.color.w}},
-        {"印の太さ", marker.lineThickness},
-        {"印の腕の割合", marker.armRatio},
+        {"ロックオンの枠の色", {marker.color.x, marker.color.y, marker.color.z, marker.color.w}},
+        {"ロックオンの枠の太さ", marker.lineThickness},
+        {"ロックオンの枠の腕の割合", marker.armRatio},
         {"枠と輪郭の間", marker.frameGap},
         {"枠の一辺の下限", marker.frameMinSide},
         {"枠が出る時の倍率", marker.appearScale},
@@ -513,7 +513,7 @@ TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
     const NS::Vector3 lookAt{0.0f, 0.0f, 4.0f};
     ASSERT_NE(PlaceViewCamera(scene, eye, lookAt), nullptr);
     EXPECT_EQ(NS::ApplyJsonFields(&player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
-    EXPECT_EQ(NS::ApplyJsonFields(&player->TargetIndicator(), {{"印の太さ", 7.0f}}), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(&player->TargetIndicator(), {{"ロックオンの枠の太さ", 7.0f}}), 0u);
     EXPECT_EQ(NS::ApplyJsonFields(&player->SlamIndicator(),
                                   {{"溜めの前半の色", {0.2f, 0.3f, 0.4f, 1.0f}}, {"矢印が伸びるフレーム数", 1}}),
               0u);

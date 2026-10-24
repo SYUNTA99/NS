@@ -211,7 +211,7 @@ namespace NS
         NS_ASSERT(Scene, obj != nullptr, "Scene::StartSpawned: 開始するアクターが無い");
         // 素材は作る関数の Init が読み終えている
         obj->OnStart();
-        // 後から入る物は他の配置物が既に揃っている
+        // 後から入る物は他のアクターが既に揃っている
         obj->InitAfterPlacement();
     }
 
@@ -231,7 +231,7 @@ namespace NS
             }
             return built;
         }
-        // 同じ id の物は 1 つだけ持つ。戻しの控えを何度当てても保存の配置物は増えない
+        // 同じ id の物は 1 つだけ持つ。戻しの控えを何度当てても保存のアクターは増えない
         if (kept != m_unresolvedActors.end())
         {
             *kept = actorJson;
@@ -391,8 +391,8 @@ namespace NS
 
     void Scene::ClearWorld()
     {
-        // シーンに 1 つの物 (進行役など) は配置物と画面の一覧を借りるので先に捨てる。
-        // 組み直しでは、組み直した配置物の開始が要る物が最初の状態から作り直す
+        // シーンに 1 つの物 (進行役など) はアクターと画面の一覧を借りるので先に捨てる。
+        // 組み直しでは、組み直したアクターの開始が要る物が最初の状態から作り直す
         m_sceneObjs.Clear();
         Fade().Cancel();
         m_actors.Clear();
@@ -408,10 +408,10 @@ namespace NS
     {
         ClearWorld();
         // 仮想カメラの付け外しは、持ち主の SceneActor が OnInit / OnEndPlay で行う
-        // .actor の見つからない配置物は作らず、保存で消さないように JSON のまま持つ
+        // .actor の見つからないアクターは作らず、保存で消さないように JSON のまま持つ
         m_actors.RebuildFromJson(
             scene, *this, [this](const nlohmann::json& entry) { return BuildOrKeepUnresolved(entry); });
-        // 当たりは配置物の開始で入っている。まとめて入れた後の broadphase だけを張り直す
+        // 当たりはアクターの開始で入っている。まとめて入れた後の broadphase だけを張り直す
         m_physics.Physics().OptimizeBroadPhase();
     }
 
@@ -442,7 +442,7 @@ namespace NS
         const bool worldStep = AdvanceWorldClock();
         if (worldStep)
         {
-            // 補間描画用。全配置物の根の Transform と Model の前の値を控える
+            // 補間描画用。全アクターの根の Transform と Model の前の値を控える
             // 世界を進めない歩に控えると previous == current になり、遅い世界の補間が止まる
             m_actors.SnapshotActors();
 #if !defined(NS_SHIPPING)

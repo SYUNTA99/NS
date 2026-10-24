@@ -8,7 +8,7 @@ namespace NS
     //! ActorRef の欄の「0 は未設定」と同じ約束
     inline constexpr uint32 k_NoActorId = 0;
 
-    //! 保存・並べ替えをまたいで配置物を指す永続 id。0 は未設定
+    //! 保存・並べ替えをまたいでアクターを指す永続 id。0 は未設定
     struct ActorRef
     {
         uint32 id = 0; // 永続 id、0 は未設定

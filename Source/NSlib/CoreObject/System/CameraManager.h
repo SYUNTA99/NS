@@ -68,10 +68,10 @@ namespace NS
         //! @return 積んだ場合 true、参照先がなく処理しなかった場合は false
         bool AddModifier(std::unique_ptr<CameraModifier> modifier);
 
-        //! 種類の印が kind のモディファイアを、頼んだ物を問わず外す
+        //! 種類のタグが kind のモディファイアを、頼んだ物を問わず外す
         void RemoveModifiers(const void* kind) noexcept;
 
-        //! requester が頼んだ、種類の印が kind のモディファイアを外す。ほかの物が頼んだ物は残す
+        //! requester が頼んだ、種類のタグが kind のモディファイアを外す。ほかの物が頼んだ物は残す
         void RemoveModifiersOf(const IUseCamera* requester, const void* kind) noexcept;
 
         //! requester が頼んだモディファイアを全て外す。ほかの物が頼んだ物は残す

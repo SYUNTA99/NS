@@ -6,7 +6,7 @@
 
 namespace NS
 {
-    //! 状態の型ごとに 1 つの印。中身は型ごとの静的変数の番地で、nullptr は状態が無い印
+    //! 状態の型ごとに 1 つのタグ。中身は型ごとの静的変数の番地で、nullptr は状態が無いことを表す
     using StateId = const void*;
 
     template <typename TState> struct StateTag
@@ -14,7 +14,7 @@ namespace NS
         static constexpr char k_Marker = 0;
     };
 
-    //! @brief 状態の型 TState の印を返す
+    //! @brief 状態の型 TState の StateId を返す
     template <typename TState> [[nodiscard]] constexpr StateId StateIdOf() noexcept
     {
         return &StateTag<TState>::k_Marker;
@@ -25,8 +25,8 @@ namespace NS
     {
     public:
         virtual ~IStateMachine() = default;
-        //! @brief 今の状態の印を返す
-        //! @return 移る予約があれば移る先の印。組んでいなければ nullptr
+        //! @brief 今の状態の StateId を返す
+        //! @return 移る予約があれば移る先の StateId。組んでいなければ nullptr
         [[nodiscard]] virtual StateId CurrentId() const noexcept = 0;
         //! @brief 今の状態に入ってから進めたフレーム数を返す
         //! @return 入った最初のフレームは 0

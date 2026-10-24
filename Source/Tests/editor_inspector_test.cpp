@@ -372,7 +372,7 @@ TEST(EditorInspector, Vector2ValueAxesEditIndependentlyAcrossPanelResizes)
 
 namespace
 {
-    // インスペクタを、欄の行も上書きの印の選びも全部入る大きさで描く
+    // インスペクタを、欄の行も上書きの選びも全部入る大きさで描く
     class InspectorFrames
     {
     public:
@@ -607,7 +607,7 @@ namespace
 // インスペクタで当たりの形の欄を変えると、世界を止めた歩の後の当たりがその形になる
 TEST(EditorInspector, FieldChangeReachesTheCollision)
 {
-    // 半径は印の無い欄で、確定すると .actor へ書く。出荷のファイルを書かないよう試しの置き場へ敷く
+    // 半径はシーンで上書きできない欄で、確定すると .actor へ書く。出荷のファイルを書かないよう試しの置き場へ敷く
     const nlohmann::json shipped = ShippedPropActorFile();
     const ScopedActorFileDirectory scope("InspectorFieldChange");
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
@@ -687,7 +687,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
     EXPECT_FLOAT_EQ(NS::FieldVector3(*transform, NS::k_ScaleFieldName, NS::Vector3::Zero).x, 2.0f);
 }
 
-// インスペクタの上書きの印から既定へ戻すと、描くメッシュも、世界を止めた歩の後のメッシュの当たりも既定の形になる
+// インスペクタの上書きの項目から既定へ戻すと、描くメッシュも、世界を止めた歩の後のメッシュの当たりも既定の形になる
 TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
 {
     NS::Scene scene;
@@ -737,7 +737,7 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
     EXPECT_NEAR(*after, *cubeHit, 0.001f);
 }
 
-// 印の無い欄を直し終えて .actor へ書くと、同じ .actor のほかのアクターの、世界を止めた歩の後の当たりも直した形になる
+// シーンで上書きできない欄を直し終えて .actor へ書くと、同じ .actor のほかのアクターの、世界を止めた歩の後の当たりも直した形になる
 TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
 {
     const nlohmann::json shipped = ShippedPropActorFile();

@@ -236,7 +236,7 @@ void PlayerActor::AccelerateDuringRebound(float dt) noexcept
 
     // 横入力で反動方向を消さないよう、入力からずれた速度は削らない
     const float turningDrag = 0.0f;
-    // 明けのフレームは止める前の接地の印が残っている。接地を見て地上の加速度を選ぶと、そのフレームだけ大きく曲がる
+    // 明けのフレームは止める前の接地のフラグが残っている。接地を見て地上の加速度を選ぶと、そのフレームだけ大きく曲がる
     body.Accelerate(direction, turningDrag, m_params->m_reboundAirAcceleration, topSpeed, dt);
 }
 

@@ -49,7 +49,7 @@ namespace NS
         void Clear() noexcept;
 
     private:
-        // 型ごとに 1 つの印。関数内の static の番地は型ごとに 1 つに決まり、RTTI を使わずに型を見分けられる
+        // 型ごとに 1 つのタグ。関数内の static の番地は型ごとに 1 つに決まり、RTTI を使わずに型を見分けられる
         template <class T> [[nodiscard]] static const void* KeyOf() noexcept
         {
             static const char key = 0;

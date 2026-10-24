@@ -339,7 +339,7 @@ namespace NS
                 selected != nullptr && !editor.SelectedIsPlayerActor() && selected->BodySensorClassObj() != nullptr;
             if (m_desc.targetId == 0)
             {
-                ImGui::TextUnformatted("相手: 自機に一番近い配置物");
+                ImGui::TextUnformatted("相手: 自機に一番近いアクター");
             }
             else
             {
@@ -347,14 +347,14 @@ namespace NS
             }
             ImGui::SameLine();
             ImGui::BeginDisabled(!selectable);
-            if (ImGui::SmallButton("選択中の配置物を相手にする"))
+            if (ImGui::SmallButton("選択中のアクターを相手にする"))
             {
                 m_desc.targetId = selected->Id();
                 changed = true;
             }
             ImGui::EndDisabled();
             ImGui::SameLine();
-            if (ImGui::SmallButton("一番近い配置物にする"))
+            if (ImGui::SmallButton("一番近いアクターにする"))
             {
                 m_desc.targetId = 0;
                 changed = true;

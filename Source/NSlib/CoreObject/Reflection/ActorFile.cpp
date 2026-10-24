@@ -24,7 +24,7 @@ namespace NS
         // .actor 1 つの上限。部品の値だけなので、シーンのファイルよりずっと小さい
         constexpr std::size_t k_MaxActorFileBytes = 1024u * 1024u;
 
-        // .actor に持たせない参照の欄を落とした写し。参照はシーンの中の相手を指すので配置物の物
+        // .actor に持たせない参照の欄を落とした写し。参照はシーンの中の相手を指すのでシーンのファイルのアクターの物
         // 頭の鍵は全部残し、Save で丸ごと書く
         [[nodiscard]] nlohmann::json Sanitize(const nlohmann::json& actorFile)
         {
@@ -52,9 +52,9 @@ namespace NS
             return out;
         }
 
-        // クラス名を書く .actor の頭の鍵。配置物は .actor の名前だけを書き、この鍵を持たない
+        // クラス名を書く .actor の頭の鍵。シーンのファイルのアクターは .actor の名前だけを書き、この鍵を持たない
         constexpr const char* k_ClassKey = "class";
-        // 名前の束と動作の並びの鍵。配置物と派生は持たず、元の .actor だけに書く。派生は元の物を使う
+        // 名前の束と動作の並びの鍵。シーンのファイルのアクターと派生は持たず、元の .actor だけに書く。派生は元の物を使う
         constexpr const char* k_HitReactionsKey = "hitReactions";
         constexpr const char* k_ActionsKey = "actions";
         // 派生の .actor が元にする .actor の名前の鍵。元の .actor は持たない

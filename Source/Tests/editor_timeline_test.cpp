@@ -725,7 +725,7 @@ TEST(EditorActionTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// 「保存」は開いていない .actor の変更も書く。今の .actor だけ書いて印を消すと、選び直す前の変更が黙って失われる
+// 「保存」は開いていない .actor の変更も書く。今の .actor だけ書いて未保存のフラグを消すと、選び直す前の変更が黙って失われる
 TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
 {
     const ScopedActorFileDirectory directory("EditorActionTimelineSave");

@@ -128,7 +128,7 @@ namespace NS
 
             [[nodiscard]] bool IsDragging() const noexcept { return m_dragging; }
 
-            //! @brief 視線レイを配置物の OBB へ当て、最も手前の添字を返す
+            //! @brief 視線レイをアクターの OBB へ当て、最も手前の添字を返す
             //! @param[in] localBounds worldMatrices と同じ添字の判定箱。行列のローカル空間で、中心は原点でなくてよい
             //! @param[in] pickMask 0 の添字を飛ばす。空なら全部を見る
             //! @return ヒットした場合はそのインデックス、ヒットしなかった場合は -1
@@ -185,7 +185,7 @@ namespace NS
             OS::Input* m_input = nullptr;
 
             std::span<SceneActor* const> m_objects{};
-            std::span<const uint8> m_pickable{}; //!< 選択の優先度。1 の配置物を先に選ぶ
+            std::span<const uint8> m_pickable{}; //!< 選択の優先度。1 のアクターを先に選ぶ
 
             bool m_active = false;
             GizmoTool m_tool = GizmoTool::Move;

@@ -99,7 +99,7 @@ namespace
         return found;
     }
 
-    // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
+    // アクター 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
     void DrawCollisionWireframe(NS::Gfx::DebugShapes& shapes, NS::SceneActor& object, const NS::Color& color) noexcept
     {
         if (NS::BoxCollision* box = NS::Cast<NS::BoxCollision>(object.CollisionClassObj()))
@@ -142,7 +142,7 @@ namespace
         }
     }
 
-    // 配置物 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
+    // アクター 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
     void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes, NS::SceneActor& object, const NS::Color& color) noexcept
     {
         for (const NS::HitSensor* sensor : {object.BodySensorClassObj(), object.AttackSensorClassObj()})
@@ -172,7 +172,7 @@ namespace
 
     // 正面の面の塗りの不透明度。外れの青に赤を重ねても、向こうの相手と床が透けて見える濃さ
     constexpr float k_HitFaceAlpha = 0.35f;
-    // 直近の当たりの触れた点の印。相手の表面に出るので、玉の模様を隠さない小ささ
+    // 直近の当たりの触れた点のマーカー。相手の表面に出るので、玉の模様を隠さない小ささ
     constexpr float k_HitTouchMarkerRadius = 0.08f;
 
     // 面の上の形を 1 つ描く。中心から縁の点へ扇に塗り、縁の点を線で結ぶ
@@ -481,7 +481,7 @@ namespace
         return parsed.ec == std::errc{} && parsed.ptr == last.data() + last.size() && index <= parent.size();
     }
 
-    // .actor の 1 欄の書き換え。配置物でないので IActorSnapshotApplier を使わず、シーンと前後の差分を自分で持つ
+    // .actor の 1 欄の書き換え。アクターでないので IActorSnapshotApplier を使わず、シーンと前後の差分を自分で持つ
     // 戻す・やり直す時は、その時の文書に差分だけを当てる。動作の窓は取り消しの履歴を通さずに文書を書くので、
     // 文書の全部を戻すと窓の直しが消える
     class ActorFileCommand final : public NS::Editor::ICommand
@@ -728,7 +728,7 @@ void LevelEditorController::Setup(std::string_view startLevelName)
 
 void LevelEditorController::Teardown()
 {
-    // ギズモは配置物の Transform を非所有参照するので、scene 破棄前に選択を外す
+    // ギズモはアクターの Transform を非所有参照するので、scene 破棄前に選択を外す
     m_gizmo.ClearSelection();
     m_selectablePtrs.clear();
     m_selectablePickable.clear();
@@ -1033,7 +1033,7 @@ void LevelEditorController::TickEdit()
         // 追従カメラの Root を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
         SyncFollowCameraPoses();
 
-        // 組み直しで破棄された配置物を参照しないよう、候補と選択を現在の実体へ引き直す
+        // 組み直しで破棄されたアクターを参照しないよう、候補と選択を現在の実体へ引き直す
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
 
@@ -1080,7 +1080,7 @@ void LevelEditorController::TickEdit()
     m_editor.Tick(m_editShortcutsBlocked);
     if (m_editor.IsLevelDirty())
     {
-        // grid 編集・undo・読込は applier / reload が配置物を組み直し済。候補と gizmo を今の実体へ貼り直す
+        // grid 編集・undo・読込は applier / reload がアクターを組み直し済。候補と gizmo を今の実体へ貼り直す
         // 消えた選択や読込での id 振り直しは解決が自然に外す
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
@@ -1158,7 +1158,7 @@ bool LevelEditorController::HasInspectableSelection() const noexcept
 
 NS::SceneActor* LevelEditorController::SelectedActor() noexcept
 {
-    // 選択の真実は永続 id。player も含め全配置物が ActorList に居るので id で引く
+    // 選択の真実は永続 id。player も含め全アクターが ActorList に居るので id で引く
     if (m_selectedActorId == NS::k_NoActorId)
     {
         return nullptr;
@@ -1180,7 +1180,7 @@ void LevelEditorController::RefreshGizmoSelectables()
     m_selectablePickable.reserve(m_scene->Actors().ActorCount());
 
     // 可視メッシュを持つ候補は 1、見えないカメラ等は 0。ギズモは 1 の候補を先に選ぶ
-    // 全配置物をギズモ候補に積む。判定箱はギズモがクリックの時に配置物から引く
+    // 全アクターをギズモ候補に積む。判定箱はギズモがクリックの時にアクターから引く
     for (NS::SceneActor* object : NS::Editor::PlacedActors(m_scene->Actors()))
     {
         m_selectablePtrs.push_back(object);
@@ -1316,7 +1316,7 @@ void LevelEditorController::SetPrimarySelection(NS::uint32 id) noexcept
     // ハンドルを出すため Object ツールへ切替える。Build のままだとギズモが描かれない
     SetGizmoToolActive(true);
 
-    // player も含め全配置物が ActorList に居る。選択した Root を id で引いてギズモへ貼る
+    // player も含め全アクターが ActorList に居る。選択した Root を id で引いてギズモへ貼る
     if (NS::SceneActor* go = m_scene->Actors().FindByActorId(id))
     {
         m_gizmo.SetSelected(&go->Root());
@@ -1533,7 +1533,7 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
         return;
     }
 
-    // 選択 id が現存する配置物を指すなら gizmo に貼り直す。不在なら gizmo を外す
+    // 選択 id が現存するアクターを指すなら gizmo に貼り直す。不在なら gizmo を外す
     // player も ActorList に居るので id で引ける。rebuild を跨いでも掴める状態を保つ
     if (m_selectedActorId != NS::k_NoActorId)
     {
@@ -1891,7 +1891,7 @@ void LevelEditorController::RenameActor(NS::uint32 id, std::string_view name)
         return;
     }
 
-    // 実体の名前を直接変える。他の配置物と重なれば番号が付く。参照は id で持つので切れない
+    // 実体の名前を直接変える。他のアクターと重なれば番号が付く。参照は id で持つので切れない
     const std::string previous = object->Name();
     m_scene->Actors().RenameActor(object, name);
     if (object->Name() == previous)

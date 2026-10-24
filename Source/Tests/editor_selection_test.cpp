@@ -150,7 +150,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// プレイ中は配置物を消さず、履歴も積まない。編集へ戻る組み直しで消え、履歴だけがプレイの姿を指して残る
+// プレイ中はシーンに置いたアクターを消さず、履歴も積まない。編集へ戻る組み直しで消え、履歴だけがプレイの姿を指して残る
 TEST(EditorSelection, PlayDoesNotEditTheLevel)
 {
     NS::ApplicationDesc desc;
@@ -288,8 +288,8 @@ TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
     EXPECT_FALSE(prop->IsSceneOverride("Transform", NS::k_ScaleFieldName));
 }
 
-// プレイ中にインスペクタで変えた欄は、編集へ戻る時に 1 まとまりの履歴になり、未保存の印が付く
-// プレイで動いただけの位置は履歴にも未保存の印にも入らない
+// プレイ中にインスペクタで変えた欄は、編集へ戻る時に 1 まとまりの履歴になり、未保存のフラグが立つ
+// プレイで動いただけの位置は履歴にも未保存のフラグにも入らない
 TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
 {
     NS::ApplicationDesc desc;
@@ -1036,7 +1036,7 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
 }
 
 // プレイ中は、シーンを変える道をどれも断る。シーンも履歴も .actor のファイルも変わらない
-// インスペクタで欄を触る道は断らない。配置物へ書く欄はプレイ開始の写しへ写し、印の無い欄は .actor へ書く
+// インスペクタで欄を触る道は断らない。シーンのアクターへ書く欄はプレイ開始の写しへ写し、シーンで上書きできない欄は .actor へ書く
 // (.actor へ書く道は ActorFile.PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningToEdit が見張る)
 TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
 {

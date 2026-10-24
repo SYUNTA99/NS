@@ -336,7 +336,7 @@ TEST(EditorHitPreview, MatchesADirectRunFromTheSamePlacement)
     EXPECT_TRUE(direct.launchVelocity == preview.impact.launchVelocity);
 }
 
-// 相手を選んでいない時は、自機に一番近い、突進が当たる体と面を持つ配置物を相手にする
+// 相手を選んでいない時は、自機に一番近い、突進が当たる体と面を持つアクターを相手にする
 TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
 {
     const ScopedPreviewActorFile actorFile;

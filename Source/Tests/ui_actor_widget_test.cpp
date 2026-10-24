@@ -117,7 +117,7 @@ TEST(UIActorWidgets, OpenScreensDrawInAscendingDrawOrder)
     EXPECT_EQ(order[2], &frontLater);
 }
 
-// 配置物を組み直しても、開いている画面は開いたまま動く
+// シーンのアクターを組み直しても、開いている画面は開いたまま動く
 TEST(UIActorWidgets, OpenScreenKeepsTickingAfterTheWorldIsRebuilt)
 {
     NS::Scene scene;

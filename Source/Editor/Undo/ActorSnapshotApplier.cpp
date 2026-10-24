@@ -23,7 +23,7 @@ namespace NS
             {
                 return std::nullopt;
             }
-            // undo は編集値ごと戻すため、配置物が自分を全部品の値まで忠実に書き出す
+            // undo は編集値ごと戻すため、アクターが自分を全部品の値まで忠実に書き出す
             return ActorToJson(obj);
         }
 
@@ -53,7 +53,7 @@ namespace NS
 
         void ActorSnapshotApplier::ReattachActor(DetachedActor detached)
         {
-            NS_ASSERT(App, m_scene != nullptr, "シーンの無い適用先へ、外した配置物を戻そうとしている");
+            NS_ASSERT(App, m_scene != nullptr, "シーンの無い適用先へ、外したアクターを戻そうとしている");
             (void)m_scene->ReattachActor(std::move(detached));
         }
     } // namespace Editor

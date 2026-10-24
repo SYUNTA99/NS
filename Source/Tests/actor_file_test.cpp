@@ -46,7 +46,7 @@
 #include <utility>
 #include <vector>
 
-// 値の 3 段の重なり (コードの既定値 < .actor の値 < 配置物の印の付いた欄) と、差分の保存と、エディタの書く先を縛る
+// 値の 3 段の重なり (コードの既定値 < .actor の値 < シーンのアクターの上書きできる欄) と、差分の保存と、エディタの書く先を縛る
 
 namespace
 {
@@ -139,7 +139,7 @@ namespace
         return row;
     }
 
-    // 保存した配置物の JSON から、部品の件の fields を引く。無ければ nullptr
+    // 保存したシーンのアクターの JSON から、部品の件の fields を引く。無ければ nullptr
     const nlohmann::json* SavedFields(const nlohmann::json& object, std::string_view typeName)
     {
         return NS::ClassObjFields(object, typeName);
@@ -454,7 +454,7 @@ TEST(ActorFile, PlacementWithAFieldTheSceneCannotWriteIsKeptAsJson)
     EXPECT_TRUE(keptRefused);
 }
 
-// 参照の欄は印が無くても配置物から読み書きされ、シーンに書いた位置は上書きとして読み書きされる
+// 参照の欄は上書きできる項目でなくてもシーンのアクターから読み書きされ、シーンに書いた位置は上書きとして読み書きされる
 TEST(ActorFile, ReferenceAndPoseFieldsComeFromThePlacement)
 {
     const ScopedActorFileDirectory scope("PlacementRefAndRoot");
@@ -499,7 +499,7 @@ TEST(ActorFile, ReferenceFieldsAreNotActorFileValues)
     ASSERT_NE(entry, nullptr);
     EXPECT_FALSE(NS::HasField(*entry, "追従対象"));
 
-    // インスペクタで直しても .actor へは書かず、配置物へ書く
+    // インスペクタで直しても .actor へは書かず、シーンのアクターへ書く
     const std::unique_ptr<NS::SceneActor> baselineOwned = ActorFromFile("FollowCameraActor");
     ASSERT_NE(baselineOwned, nullptr);
     const NS::SceneActor& baseline = *baselineOwned;
@@ -910,7 +910,7 @@ TEST(ActorFile, SavedActorFileIsReadBack)
     EXPECT_FLOAT_EQ(RadiusOf(actor.get()), 1.25f);
 }
 
-// 書く途中で失敗しても前の .actor を壊さない。壊れると、それを指す配置物が全部組めなくなる
+// 書く途中で失敗しても前の .actor を壊さない。壊れると、それを指すシーンのアクターが全部組めなくなる
 TEST(ActorFile, SaveThatCannotFinishLeavesTheFileAsItWas)
 {
     using NS::OS::FileSystem;
@@ -996,7 +996,7 @@ namespace
     }
 } // namespace
 
-// 印の無い欄を直し終えると .actor のファイルへ書き、同じ .actor のアクターの全部に効く。戻すと全部が前の値へ戻る
+// シーンで上書きできない欄を直し終えると .actor のファイルへ書き、同じ .actor のアクターの全部に効く。戻すと全部が前の値へ戻る
 TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
 {
     const ScopedActorFileDirectory scope("EditorWritesActorFile");
@@ -1059,7 +1059,7 @@ TEST(ActorFile, UndoingAFieldEditKeepsActionsWrittenAfterIt)
     EXPECT_EQ(actions[0].name, "Jump");
 }
 
-// 印の付いた欄を直すと、その 1 体だけが変わり、.actor は変わらない
+// シーンで上書きできる欄を直すと、その 1 体だけが変わり、.actor は変わらない
 TEST(ActorFile, EditorWritesAMarkedFieldToThatActorOnly)
 {
     const ScopedActorFileDirectory scope("EditorWritesPlacement");
@@ -1081,7 +1081,7 @@ TEST(ActorFile, EditorWritesAMarkedFieldToThatActorOnly)
     EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(1)), otherDiameter + 3.0f);
 }
 
-// プレイ中に印の無い欄を直しても .actor に書き、プレイ開始の凍結は変えない。編集へ戻っても値が残り、WARN は出ない
+// プレイ中にシーンで上書きできない欄を直しても .actor に書き、プレイ開始の凍結は変えない。編集へ戻っても値が残り、WARN は出ない
 TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningToEdit)
 {
     const ScopedActorFileDirectory scope("PlayEditActorFile");
@@ -1169,7 +1169,7 @@ TEST(ActorFile, ActorFileSelectedInTheAssetWindowIsEditedForEveryActor)
     EXPECT_FLOAT_EQ(RadiusOf(again), 2.0f);
 }
 
-// 素材の窓では印の付いた欄の .actor の値も直せる。上書きの無いアクターは付いて来て、上書きのあるアクターは残る
+// 素材の窓ではシーンで上書きできる欄の .actor の値も直せる。上書きの無いアクターは付いて来て、上書きのあるアクターは残る
 TEST(ActorFile, MarkedFieldEditedOnTheActorFileReachesActorsWithoutAnOverride)
 {
     const ScopedActorFileDirectory scope("AssetWindowMarkedField");

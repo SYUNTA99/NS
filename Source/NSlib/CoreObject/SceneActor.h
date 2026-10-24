@@ -80,7 +80,7 @@ namespace NS
         //! @details その場では解放しないので、同じ段の中では指したまま読める。やり直しの知らせは
         //! 届かず戻らないので、戻す物は Disappear を使う
         void Destroy() noexcept;
-        //! この配置物がシーンに出ているか
+        //! このアクターがシーンに出ているか
         [[nodiscard]] bool IsAppeared() const noexcept { return m_presence == Presence::Appeared; }
         //! Destroy を呼ばれて、段の後の解放を待っている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsPendingDestroy() const noexcept { return m_presence == Presence::PendingDestroy; }
@@ -161,7 +161,7 @@ namespace NS
         void Update();
         virtual void PrepareRender();
 
-        //! 全配置物の初期化後に一度呼ぶ。他の配置物を必要とする初期化を行う
+        //! 全アクターの初期化後に一度呼ぶ。他のアクターを必要とする初期化を行う
         virtual void InitAfterPlacement() {}
 
         //! @brief シーンに保存する項目の ActorRef から、指す相手を取得し直して部品へ渡す

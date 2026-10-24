@@ -50,7 +50,7 @@ namespace NS
             [[nodiscard]] const ActorAction* EditingAction() const noexcept;
 
             //! @brief 保存していない変更のある .actor を全部ファイルへ書く
-            //! @return 全部書けた時だけ true で、保存していない変更の印を消す。書けなかったファイルはパネルの 1 行に出す
+            //! @return 全部書けた時だけ true で、保存していない変更の記録を空にする。書けなかったファイルはパネルの 1 行に出す
             [[nodiscard]] bool SaveAll() noexcept;
             [[nodiscard]] bool HasUnsavedChanges() const noexcept { return !m_dirty.empty(); }
 
@@ -65,7 +65,7 @@ namespace NS
             void RenderFileButtons(LevelEditorController& editor) noexcept;
             // 再生の位置に事象か入り切りを足す
             void RenderAddButtons(LevelEditorController& editor) noexcept;
-            // 事象と入り切りの帯と、下見で実際に始まったフレームの印と、再生の位置
+            // 事象と入り切りの帯と、下見で実際に始まったフレームのマーカーと、再生の位置
             void RenderBands() noexcept;
             // 下見の揺れ・トラウマ・世界の速さを帯の下に折れ線で描く。横は帯と同じフレームの並び
             void RenderPreviewGraphs(ImDrawList& draw, const TimelineLayout& layout) noexcept;

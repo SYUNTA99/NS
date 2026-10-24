@@ -271,7 +271,7 @@ namespace NS
         }
         OnInit();
         ApplyActorFile(this);
-        // 束と動作は .actor だけに書き、配置物では上書きしない
+        // 束と動作は .actor だけに書き、シーンでは上書きしない
         // clang-format off
         if (m_hitReaction) { m_hitReaction->ReloadSets(this); }
         if (m_actionTimeline) { m_actionTimeline->ReloadActions(this); }
@@ -332,7 +332,7 @@ namespace NS
         // clang-format off
         if (m_collision) { InitCollision(this, m_collision.get(), Root().WorldMatrix()); }
         // clang-format on
-        // 一覧には全部の配置物が入っているので、自分より後ろの配置物も取得できる
+        // 一覧には全部のアクターが入っているので、自分より後ろのアクターも取得できる
         ResolveActorRefs();
         OnAppear();
         // 作る時に 1 回だけの物

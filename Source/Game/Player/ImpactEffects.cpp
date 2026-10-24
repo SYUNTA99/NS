@@ -608,7 +608,7 @@ namespace GL
                 m_flight.reboundTrail = 0;
             }
             // 貫通した時と反動の初速が 0 の時は反動に入らないので、尾は出さない
-            // 外れは弾かれた手応えを出さない。尾の輪と筋は弾き返された印に見える
+            // 外れは弾かれた手応えを出さない。尾の輪と筋は弾き返された絵に見える
             const bool missed = impact.tier == GL::Level::HitTier::Wide;
             if (motion.rebounding && !missed)
             {

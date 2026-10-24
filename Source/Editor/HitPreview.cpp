@@ -162,7 +162,7 @@ namespace NS
                 result.impact = GL::Level::ImpactRecord{};
                 result.detectionIndex = -1;
                 // 手元の機器を読まず、振動を手元のパッドへ送らない。組む前から入れる
-                // (配置物が組む時に機器を読んでも中立)
+                // (アクターが組む時に機器を読んでも中立)
                 const OS::ScopedNeutralInput neutral;
                 OS::Gamepad& pad = OS::Input::Get().Gamepad();
                 PlayerActor* player = nullptr;
@@ -249,14 +249,14 @@ namespace NS
                 result.hit = true;
             }
 
-            // 突進が当たる体と面を持つ配置物か。下見の相手になれる
+            // 突進が当たる体と面を持つアクターか。下見の相手になれる
             bool IsHitTarget(SceneActor& object)
             {
                 const HitSensor* bodySensor = object.BodySensorClassObj();
                 return bodySensor != nullptr && bodySensor->IsValid() && Cast<GL::Level::PropActor>(&object) != nullptr;
             }
 
-            // 自機の根に一番近い、下見の相手になれる配置物の id。居なければ 0
+            // 自機の根に一番近い、下見の相手になれるアクターの id。居なければ 0
             uint32 FindNearestTarget(Scene& scene, const PlayerActor& player)
             {
                 const Vector3 from = player.Root().Position();
@@ -315,20 +315,20 @@ namespace NS
                 result.desc.targetId = FindNearestTarget(*original, *player);
                 if (result.desc.targetId == 0)
                 {
-                    result.error = "突進が当たる体と面を持つ配置物が場面に無い";
+                    result.error = "突進が当たる体と面を持つアクターが場面に無い";
                     return result;
                 }
             }
             SceneActor* target = original->Actors().FindByActorId(result.desc.targetId);
             if (target == nullptr)
             {
-                result.error = std::format("id {} の配置物が場面に無い", result.desc.targetId);
+                result.error = std::format("id {} のアクターが場面に無い", result.desc.targetId);
                 return result;
             }
             const HitSensor* bodySensor = target->BodySensorClassObj();
             if (bodySensor == nullptr || !bodySensor->IsValid())
             {
-                result.error = std::format("id {} の配置物に突進が当たる体が無い", result.desc.targetId);
+                result.error = std::format("id {} のアクターに突進が当たる体が無い", result.desc.targetId);
                 return result;
             }
             const SensorVolume body = bodySensor->WorldVolume(target->Root().WorldMatrix());
@@ -339,7 +339,7 @@ namespace NS
             GL::Level::HitFaceFrame face;
             if (!GL::Level::MakeHitFaceFrame(body, body.Center() - ball.center, ball.radius, face))
             {
-                result.error = std::format("id {} の配置物の面を置けない (真上か真下に居るか、体の形が分からない)",
+                result.error = std::format("id {} のアクターの面を置けない (真上か真下に居るか、体の形が分からない)",
                                            result.desc.targetId);
                 return result;
             }

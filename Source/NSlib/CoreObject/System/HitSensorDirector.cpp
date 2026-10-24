@@ -34,7 +34,7 @@ namespace NS
     void HitSensorDirector::OnTick()
     {
         // TODO: 組を総当たりで見ている。センサーが数十を超えたら格子で絞る
-        // 先に組を全部集めてから呼ぶ。呼んだ先で配置物が増えたり消えたりしても、調べる並びが崩れない
+        // 先に組を全部集めてから呼ぶ。呼んだ先でアクターが増えたり消えたりしても、調べる並びが崩れない
         std::vector<std::pair<HitSensor*, HitSensor*>> pairs;
         for (std::size_t i = 0; i < m_sensors.size(); ++i)
         {

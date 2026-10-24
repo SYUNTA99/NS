@@ -38,7 +38,7 @@
 
 namespace
 {
-    // .actor の名前と id だけを持つ配置物を doc へ足す
+    // .actor の名前と id だけを持つアクターを doc へ足す
     void AddActorJson(nlohmann::json& doc, std::string_view actorFile, NS::uint32 id)
     {
         nlohmann::json object = NS::MakeActorJson();
@@ -63,7 +63,7 @@ namespace
 
 TEST(SceneActor, SpawningGoesThroughTheSceneOnly)
 {
-    // 配置物を湧かすのは開始まで済ませる Scene の口だけ。開始を飛ばして並びへ入れる道を外へ開けない
+    // シーンのアクターを湧かすのは開始まで済ませる Scene の口だけ。開始を飛ばして並びへ入れる道を外へ開けない
     static_assert(!CanAppendWithNewIdFromOutside<NS::ActorList>);
     static_assert(!CanInsertFromJsonFromOutside<NS::ActorList>);
     static_assert(!CanSpawnFromOutside<NS::ActorList>);
@@ -244,7 +244,7 @@ TEST(SceneLoad, EveryShippedSceneWritesBackByteForByte)
 
 TEST(SceneLoad, EveryShippedPlacementOverridesOnlyMarkedFields)
 {
-    // 配置物が持つ欄は、参照の欄とグローバルの項目 (姿勢を含む) だけ。ほかの欄は読む時に捨てられる
+    // シーンのアクターが持つ欄は、参照の欄とグローバルの項目 (姿勢を含む) だけ。ほかの欄は読む時に捨てられる
     NS::ActorFileLibrary::Get().Reload();
     const std::filesystem::path folder = std::filesystem::path{NS::OS::FileSystem::ContentRoot()} / "Assets" / "Scenes";
     int checked = 0;
@@ -311,7 +311,7 @@ TEST(SceneJson, ActorHeaderRoundTrips)
 
 TEST(SceneJson, NextFreeActorIdStepsPastTheLargestId)
 {
-    // 手編集で nextObjectId が配置物の id より小さいファイルもある。次の id は最大の id の次より前に戻らない
+    // 手編集で nextObjectId がアクターの id より小さいファイルもある。次の id は最大の id の次より前に戻らない
     nlohmann::json doc = NS::MakeSceneJson();
     EXPECT_EQ(NS::NextFreeActorId(doc), 1u);
     AddActorJson(doc, "PropActor", 5);
@@ -345,7 +345,7 @@ TEST(SceneActor, PhysicsSettingsIsNotAPlaceableClassObj)
 
 TEST(SceneActor, ShippedSceneUsesRegisteredClasses)
 {
-    // 出荷シーンの配置物はどれも見つかる .actor を指し、そのクラスは登録済み。作られない配置物が無い
+    // 出荷シーンのアクターはどれも見つかる .actor を指し、そのクラスは登録済み。作られないアクターが無い
     const std::string path = NS::OS::FileSystem::Combine(
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Scenes"),
         "new_scene.scene");
@@ -412,7 +412,7 @@ TEST(SceneLoad, RejectsVersionBeforeTheClassObjsKey)
 
 TEST(SceneLoad, RejectsVersionWhosePlacementsNameTheClass)
 {
-    // 版 8 の配置物は class にクラス名を書いていた。読むと .actor を指さない配置物が全部作られない
+    // 版 8 のアクターは class にクラス名を書いていた。読むと .actor を指さないアクターが全部作られない
     nlohmann::json previous = NS::MakeSceneJson();
     previous["version"] = 8;
     nlohmann::json loaded;
@@ -445,7 +445,7 @@ namespace
 
 TEST(SceneLoad, PlacementBuildsTheClassAndValuesOfTheActorFileItNames)
 {
-    // 配置物の actor は .actor の名前。クラスは .actor の中の class から引き、.actor の値が敷かれる
+    // シーンのアクターの actor は .actor の名前。クラスは .actor の中の class から引き、.actor の値が敷かれる
     const ScopedActorFile heavy{"HeavyRock", HeavyRockActorFile()};
     nlohmann::json doc = NS::MakeSceneJson();
     AddActorJson(doc, "HeavyRock", 1);
@@ -593,7 +593,7 @@ TEST(SceneActor, SnapshotReloadsEffectPreload)
 
 TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
 {
-    // .actor の見つからない配置物は作らずに ERROR を出す。保存で消さず、その id を新しいアクターに振らない
+    // .actor の見つからないアクターは作らずに ERROR を出す。保存で消さず、その id を新しいアクターに振らない
     nlohmann::json doc = NS::MakeSceneJson();
     AddActorJson(doc, "PropActor", 1);
     AddActorJson(doc, "NoSuchActor", 7);
@@ -621,7 +621,7 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
     EXPECT_GT(added->Id(), 7u);
 }
 
-// 1 体だけ入れる道 (戻しの控えを当てる・入れる) も、.actor の見つからない配置物を読む時と同じく JSON のまま持つ。
+// 1 体だけ入れる道 (戻しの控えを当てる・入れる) も、.actor の見つからないアクターを読む時と同じく JSON のまま持つ。
 // 持つ JSON は id ごとに 1 つで、その id を消すと消え、組めた時は持たない
 TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptOnEveryWayIn)
 {

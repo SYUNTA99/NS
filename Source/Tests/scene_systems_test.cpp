@@ -47,7 +47,7 @@ static_assert(CanAddSystemTick<NS::UIDirector>);
 static_assert(!CanAddSystemTick<NS::SceneActor>);
 static_assert(!CanAddSystemTick<NS::UIActor>);
 
-// 段を回す口も Scene の 1 つ。配置物の一覧を直に回すと、同じ段の管理役が呼ばれない
+// 段を回す口も Scene の 1 つ。アクターの一覧を直に回すと、同じ段の管理役が呼ばれない
 template <class T>
 concept CanExecutePhase = requires(T& target) { target.ExecutePhase(NS::UpdatePhase::Triggers); };
 static_assert(CanExecutePhase<NS::Scene>);
@@ -157,7 +157,7 @@ TEST(SceneSystemHolder, OneInstancePerTypeAndClearDestroys)
     EXPECT_EQ(NS::FindSceneSystem<CountedSceneObj>(&scene), first);
     EXPECT_EQ(CountedSceneObj::s_alive, 1);
 
-    // 配置物を組み直すと最初の状態から作り直させる
+    // シーンのアクターを組み直すと最初の状態から作り直させる
     scene.ResetFromJson(NS::MakeSceneJson());
     EXPECT_EQ(CountedSceneObj::s_alive, 0);
     EXPECT_EQ(NS::FindSceneSystem<CountedSceneObj>(&scene), nullptr);
