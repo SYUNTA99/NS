@@ -124,7 +124,7 @@ namespace NS
                 return;
             }
             // 動作は元の .actor だけが持つので、派生を指すアクターでも元の .actor を開く
-            const std::string actorFile = ActorFileToWrite(*selected, FieldDestination::ActorFile);
+            const std::string actorFile = ActorFileToWrite(selected, FieldDestination::ActorFile);
             if (actorFile == m_actorFile || ActorFileLibrary::Get().Find(actorFile) == nullptr)
             {
                 return;
@@ -152,10 +152,10 @@ namespace NS
             // 動作は作る時に .actor から写すので、この .actor と派生のアクターに読み直させてプレイにも効かせる
             for (SceneActor* actor : editor.Actors())
             {
-                if (ActorFileToWrite(*actor, FieldDestination::ActorFile) == m_actorFile &&
+                if (ActorFileToWrite(actor, FieldDestination::ActorFile) == m_actorFile &&
                     actor->ActionTimelineClassObj() != nullptr)
                 {
-                    actor->ActionTimelineClassObj()->ReloadActions();
+                    actor->ActionTimelineClassObj()->ReloadActions(actor);
                 }
             }
             m_needsRun = true;
@@ -519,7 +519,7 @@ namespace NS
                 {
                     if (m_dirty.contains(actor->ActorFileName()) && actor->ActionTimelineClassObj() != nullptr)
                     {
-                        actor->ActionTimelineClassObj()->ReloadActions();
+                        actor->ActionTimelineClassObj()->ReloadActions(actor);
                     }
                 }
                 std::string actionName;

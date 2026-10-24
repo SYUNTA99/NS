@@ -6,6 +6,8 @@
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseCollision.h"
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
+#include "NSlib/CoreObject/IUse/IUseHitSensor.h"
+#include "NSlib/CoreObject/IUse/IUseRenderer.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/IUse/IUseState.h"
 #include "NSlib/CoreObject/Object.h"
@@ -32,6 +34,7 @@ namespace NS
     class EffectKeeper;
     class HitReaction;
     class ActionTimeline;
+    struct ActionTimelineSelf;
     class Message;
     class Scene;
     struct ActorInitInfo;
@@ -43,6 +46,8 @@ namespace NS
                        public IUseSceneSystem,
                        public IUseCollision,
                        public IUseEffect,
+                       public IUseHitSensor,
+                       public IUseRenderer,
                        public IUseState
     {
     public:
@@ -50,7 +55,8 @@ namespace NS
         virtual ~SceneActor() noexcept;
         [[nodiscard]] uint32 Id() const noexcept { return m_id; }
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
-        //! 作る時に敷いた .actor の名前。型から作ったアクターはクラスと同じ名前で、その .actor が無くても変わらない
+        //! 敷いている .actor の名前。型から作ったアクターはクラスと同じ名前で、その .actor が無くても変わらない。
+        //! 同じクラスの別の .actor を指す控えを当てると、その名前に替わる
         [[nodiscard]] const std::string& ActorFileName() const noexcept { return m_actorFileName; }
 
         //! @brief part の部品の欄 field をシーンで上書きしているか
@@ -64,11 +70,11 @@ namespace NS
         void ClearSceneOverrides() noexcept { m_sceneOverrides.clear(); }
         NS_REFLECT_DECLARE()
 
-        //! @brief 世界に出す。更新の段・描画・当たり・センサーへ登録する。出ていれば何もしない
+        //! @brief 世界に出す。更新の段・当たりへ入れ、入れてある描く物を描き始め、センサーを調べる対象にする。出ていれば何もしない
         //! @details Destroy の後に呼ぶのは呼び手のバグで、NS_ASSERT が止める。出荷版では何もしない
         void Appear();
         //! @brief 世界から外す。出ていなければ何もしない
-        //! @details 解放はしないので Appear で戻せる
+        //! @details 解放はしないので Appear で戻せる。描く物とセンサーは入れたまま、描かず調べない
         void Disappear() noexcept;
         //! @brief 世界から外し、段を回し終えた後に解放させる。2 回目からは何もしない
         //! @details その場では解放しないので、同じ段の中では指したまま読める。やり直しの知らせは
@@ -85,8 +91,11 @@ namespace NS
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
+        [[nodiscard]] HitSensorDirector* GetHitSensorDirector() const noexcept override;
+        [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
         // 出したエフェクトを記録する部品。持たなければ nullptr
         [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept override { return m_effectKeeper.get(); }
+        [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept override;
 
         //! 個体の位置・回転・大きさを持つ部品
         [[nodiscard]] Transform& Root() noexcept;
@@ -119,14 +128,25 @@ namespace NS
         [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
         [[nodiscard]] ActionTimeline* ActionTimelineClassObj() noexcept { return m_actionTimeline.get(); }
         [[nodiscard]] const ActionTimeline* ActionTimelineClassObj() const noexcept { return m_actionTimeline.get(); }
+        //! 自分の ActionTimeline の Start と Advance に渡す、自分と自分の部品
+        [[nodiscard]] ActionTimelineSelf ActionTimelineSelfOf() noexcept;
 
         //! @brief 当たりの止め (ヒットストップ) の残りを、frames が残りより長い時だけ延ばす
         //! @details 止めの間は Update が StateStep と BodyStep を飛ばす。呼んだフレームの残りの段から効き、
-        //! そのフレームも数える。束を始める口 (HitReaction::Start) が束の止めの長さで呼ぶ
+        //! そのフレームも数える。束を始めたアクターが、HitReaction::Start の返した束の止めの長さで呼ぶ
         void RequestHitStop(int frames) noexcept;
         //! @brief 当たりの止めの残りを frames に書き換える。短くもする
-        //! @details 束を始めた後に、束と違う長さで止める当たり (貫通) が呼ぶ。事前条件: frames が 0 以上
+        //! @details 束と違う長さで止める当たり (貫通) が、束を始めた後に呼ぶ。事前条件: frames が 0 以上
         void OverrideHitStop(int frames) noexcept;
+        //! @brief 自分の HitReaction で名前の束を始め、束の止めの長さで RequestHitStop を呼ぶ
+        //! @details 形・揺れ・震えは自分の Model に書く。束と違う長さで止める当たりは HitReaction::Start を直に呼ぶ
+        //! @param[in] self 自分のセンサー。事前条件: nullptr でない
+        //! @param[in] other 相手のセンサー。事前条件: nullptr でない
+        //! @return 始めた場合 true。HitReaction が無い・その名前の束が無い場合 false
+        bool StartHitReaction(std::string_view name,
+                              const Vector3& position,
+                              const HitSensor* self,
+                              const HitSensor* other);
         //! 当たりの止めの残りのフレーム数。止めていなければ 0
         [[nodiscard]] int HitStopFramesRemaining() const noexcept { return m_hitStopFrames; }
         //! 当たりの止めの間なら true
@@ -144,16 +164,21 @@ namespace NS
         //! 全配置物の初期化後に一度呼ぶ。他の配置物を必要とする初期化を行う
         virtual void InitAfterPlacement() {}
 
+        //! @brief シーンに保存する項目の ActorRef から、指す相手を取得し直して部品へ渡す
+        //! @details OnStart と、エディタがアクターの並びか ActorRef の欄を書き換えた後に呼ぶ。上書きは何回呼ばれてもよい形で書く
+        virtual void ResolveActorRefs() {}
+
         //! 異なる持ち主のセンサーが重なる間、互いに毎歩呼ばれる
         //! センサーの種類を判断し、必要なメッセージを送る
-        virtual void AttackSensor(HitSensor& self, HitSensor& other)
+        virtual void AttackSensor(HitSensor* self, HitSensor* other)
         {
             (void)self;
             (void)other;
         }
 
         virtual void OnStart();
-        //! Disappear で世界から外す。基底の部品は OnDisappear で登録から外れる
+        //! @brief Disappear で世界から外し、基底の部品 (Model・Shadow・当たり・センサー) をシーンの仕組みから外す
+        //! @details 消えたままでも外し、当たりの body は壊す。入れていない部品は何もしないので、2 回呼ばれてもよい
         virtual void OnEndPlay();
 
         //! @brief 部品の素材の欄を引き直し、続けて OnAssetsLoaded を呼ぶ
@@ -212,13 +237,13 @@ namespace NS
         //! OnEnter が使う部品を先に用意する。outMachine は OnEnter 前に設定する
         //! 機械は基底の部品 StateMachine が持ち、型付きポインタは非所有。既に構築済みなら変更せず false
         template <typename TOwner, typename... TStates>
-        bool BuildStateMachine(TOwner& owner, StateMachineOf<TOwner>*& outMachine)
+        bool BuildStateMachine(TOwner* owner, StateMachineOf<TOwner>*& outMachine)
         {
             static_assert(std::is_base_of_v<SceneActor, TOwner>, "持ち主は SceneActor の派生");
             NS_ASSERT(Scene,
-                      static_cast<const SceneActor*>(&owner) == this,
+                      static_cast<const SceneActor*>(owner) == this,
                       "SceneActor::BuildStateMachine: 持ち主に自分以外の SceneActor を渡している");
-            StateMachine* part = CreateClassObj(m_stateMachine, this);
+            StateMachine* part = CreateClassObj(m_stateMachine);
             if (part == nullptr)
             {
                 return false;
@@ -233,23 +258,25 @@ namespace NS
 
     private:
         friend class ActorList;
-        friend bool SendMsg(const Message& msg, HitSensor& receiver, HitSensor* sender);
-        friend bool SendMsgToActor(const Message& msg, SceneActor& receiver);
+        friend bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
+        friend bool SendMsgToActor(const Message& msg, SceneActor* receiver);
         template <class T, class... TArgs> friend std::unique_ptr<T> CreateActor(TArgs&&... args);
         template <class T, class... TArgs>
         friend std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
-        friend std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className);
+        friend std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className,
+                                                                     std::string_view actorFile);
         friend float GetFrameRate(const SceneActor* actor) noexcept;
         friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
         //! @brief アクターを作る順。部品を作る → .actor の全部の値 → シーンの上書き → 素材
         //! @details 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない。
         //! info が nullptr のアクターも、シーンの上書きを飛ばすだけで同じ順を通る。
-        //! シーンの上書きに書いてよくない項目があれば ERROR を出して false を返し、作る関数はアクターを捨てる
-        [[nodiscard]] bool Init(const ActorInitInfo* info);
-        //! 部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物
-        void InitWithCodeValues();
+        //! 断らない。シーンの上書きが書いてよい項目だけを持つかは、作る前に ActorFromJson が確かめる
+        void Init(const ActorInitInfo* info);
+        //! 部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
+        //! actorFile は .actor の名前として持つだけで、空ならクラスと同じ名前
+        void InitWithCodeValues(std::string_view actorFile);
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
         //! @details ActorList::SnapshotActors が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
@@ -270,7 +297,7 @@ namespace NS
         };
         uint32 m_id = 0;
         std::string m_name;
-        std::string m_actorFileName; // 書くのは Init だけ
+        std::string m_actorFileName; // 書くのは Init と、一覧へ入れる時と控えを当てる時の ActorList::ApplyIdentity
         std::set<std::pair<std::string, std::string>> m_sceneOverrides; // シーンで上書きしている (部品の鍵, 欄の名前)
         Scene* m_scene = nullptr;    // 入るシーン。書くのは Init だけ
         Presence m_presence = Presence::Disappeared;
@@ -311,10 +338,7 @@ namespace NS
         static_assert(std::derived_from<T, SceneActor>, "T は SceneActor の派生でなければならない");
         std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
         SceneActor& base = *actor;
-        if (!base.Init(nullptr))
-        {
-            return nullptr;
-        }
+        base.Init(nullptr);
         return actor;
     }
 
@@ -326,10 +350,7 @@ namespace NS
         static_assert(std::derived_from<T, SceneActor>, "T は SceneActor の派生でなければならない");
         std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
         SceneActor& base = *actor;
-        if (!base.Init(&info))
-        {
-            return nullptr;
-        }
+        base.Init(&info);
         return actor;
     }
 

@@ -21,6 +21,7 @@ namespace NS
     {
         class D3DBuffer;
     }
+    class IUseCamera;
 } // namespace NS
 
 namespace NS
@@ -29,12 +30,13 @@ namespace NS
 #pragma warning(push)
 #pragma warning(disable : 4324)
     //! @brief メッシュとマテリアルを描画する部品
-    //! @details 描画用の姿勢変更は根の Transform と衝突形状に影響せず、保存されない
+    //! @details 描画用の姿勢変更は根の Transform と衝突形状に影響せず、保存されない。
+    //! 根の行列は覚えず、描く物の管理クラスと持ち主のアクターが渡す
     class Model : public Object, public IRenderable
     {
     public:
         //! メッシュとマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
-        explicit Model(SceneActor* owner);
+        Model();
 
         //! @brief マテリアルを共有したまま配置物ごとに変える色の上書き。空ならマテリアルの基本色で描く
         //! @details 光の色とは別に掛かる。透明度は使わず rgb だけを描く
@@ -118,13 +120,14 @@ namespace NS
         void StopDrawShape() noexcept;
         //! 形の再生の途中の場合 true。StartDrawShape から、長さを過ぎた AdvanceDraw か StopDrawShape までの間
         [[nodiscard]] bool IsDrawingShape() const noexcept { return m_shape.active; }
-        //! 頂点の震えを始める。次の AdvanceDraw を 0 フレーム目に数え、持ち主のカメラの視点で振れ幅を決める
+        //! 頂点の震えを始める。次の AdvanceDraw を 0 フレーム目に数え、AdvanceDraw が受けるカメラの視点で振れ幅を決める
         void StartDrawTremor(const DrawTremorDesc& desc) noexcept;
         //! 震えを止めて、振れ幅を 0 に戻す
         void StopDrawTremor() noexcept;
         //! @brief 揺れ・形の再生・震えを 1 フレーム進める
-        //! @details 呼ぶのは SceneActor::Update だけで、体を動かした後・VisualStep の前。震えは動かした後の根で書く
-        void AdvanceDraw();
+        //! @details 呼ぶのは SceneActor::Update だけで、体を動かした後・VisualStep の前。震えは動かした後の根で書く。
+        //! 震えの振れ幅は camera の視点から rootPosition (持ち主の根の位置) までの距離で決める
+        void AdvanceDraw(const IUseCamera* camera, const Vector3& rootPosition);
         //! 描く姿勢へ足す世界のずれ (m)。補間しない
         [[nodiscard]] const Vector3& GetDrawOffset() const noexcept { return m_drawOffset; }
         //! 今の固定フレームの描く時だけの倍率。SetDrawScale で書いた倍率と形の再生の倍率の積で、どちらも無ければ (1, 1, 1)
@@ -134,12 +137,13 @@ namespace NS
 
         //! @brief 局所回転と描画倍率を補間した描画姿勢を返す。世界座標のずれは補間後に足す
         //! @details 描画倍率は形の下端中央を中心に世界の軸で掛ける。境界がなければ根を中心にする
+        //! @param[in] root 持ち主の根の世界行列。alpha で補間した物を渡す
         //! @param[in] alpha 固定更新間の補間割合 0〜1
-        [[nodiscard]] Matrix DrawWorldMatrix(float alpha) const noexcept;
+        [[nodiscard]] Matrix DrawWorldMatrix(const Matrix& root, float alpha) const noexcept;
         //! DrawWorldMatrix の描く時だけのずれを offset に置き換えた描画姿勢を返す
-        [[nodiscard]] Matrix DrawWorldMatrixWithOffset(float alpha, const Vector3& offset) const noexcept;
+        [[nodiscard]] Matrix DrawWorldMatrixWithOffset(const Matrix& root, float alpha, const Vector3& offset) const noexcept;
 
-        //! 持ち主が出ていて、描く形と欄のマテリアルの描く D3DMaterial が揃っている場合 true
+        //! 描く形と欄のマテリアルの描く D3DMaterial が揃っている場合 true
         [[nodiscard]] bool CanDraw() const noexcept;
         //! @brief 描くマテリアルと DrawColor で、world に描く DrawItem を作る
         //! @details 混ぜ方はマテリアルの物。CanDraw が true の時だけ呼ぶ
@@ -147,24 +151,22 @@ namespace NS
         //! 描く形の局所の境界。差された境界を先に、無ければメッシュの境界。どちらも無ければ nullptr
         [[nodiscard]] const AABB* DrawnLocalBounds() const noexcept;
 
-        //! DrawWorldMatrix(context.alpha) を詰めた DrawItem を out に積む。持ち主が出ていなければ何も積まない
-        void Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out) override;
+        //! DrawWorldMatrix(source.root, context.alpha) を詰めた DrawItem を out に積む
+        void Collect(const Gfx::RenderContext& context,
+                     const RenderSource& source,
+                     std::vector<Gfx::DrawItem>& out) override;
 
         //! D3DMaterial の BlendMode から bucket を返し、Opaque 以外は Transparent。D3DMaterial 不在は Opaque
         [[nodiscard]] RenderBucket Bucket() const noexcept override;
-        //! Owner の世界行列の平行移動成分で半透明ソート用の中心
-        [[nodiscard]] Vector3 SortCenter() const noexcept override;
+        //! 根の世界行列の平行移動成分で半透明ソート用の中心
+        [[nodiscard]] Vector3 SortCenter(const RenderSource& source) const noexcept override;
         //! D3DMaterial の renderPriority で距離同値時のタイブレークに使う
         [[nodiscard]] int SortPriority() const noexcept override;
 
-        //! @brief 上書き境界を優先し、メッシュの境界を世界座標で包む
-        //! @details 描画倍率は前後の大きい方で包み、描画用のずれを加える。メッシュか持ち主がなければ原点の半幅 1
-        [[nodiscard]] AABB WorldBounds() const noexcept override;
+        //! @brief 上書き境界を優先し、メッシュの境界を根の世界行列で包む
+        //! @details 描画倍率は前後の大きい方で包み、描画用のずれを加える。描くメッシュがなければ原点の半幅 1
+        [[nodiscard]] AABB WorldBounds(const RenderSource& source) const noexcept override;
 
-        //! OwningScene に自身を IRenderable として登録する。持ち主かシーンがなければ何もしない
-        void Register();
-        //! Owner の OwningScene から self を解除する。無効ポインタを残さないよう Scene 破棄前に呼ぶ
-        void Unregister();
         //! 固定更新の先頭で補間用の姿勢を控える。時間停止中も前後の値を揃える
         void Snapshot() noexcept;
 
@@ -175,7 +177,7 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        // 持ち主が出ていて、描く形と material の描く D3DMaterial が揃っている場合 true
+        // 描く形と material の描く D3DMaterial が揃っている場合 true
         [[nodiscard]] bool CanDraw(const Material* material) const noexcept;
         // CanDraw が true の時だけ呼ぶ
         [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Gfx::RenderContext& context,
@@ -238,8 +240,6 @@ namespace NS
             bool active = false;
         };
         TremorRun m_tremor;
-
-        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 #pragma warning(pop)
 } // namespace NS

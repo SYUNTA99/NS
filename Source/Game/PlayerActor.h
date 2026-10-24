@@ -55,6 +55,7 @@ namespace GL
         struct BodySlamMotion;
         struct ImpactAnswer;
         struct ImpactRecord;
+        struct ImpactSelf;
     } // namespace Level
 } // namespace GL
 
@@ -65,11 +66,6 @@ class PlayerActor : public NS::SceneActor
 public:
     PlayerActor() noexcept;
     ~PlayerActor() override;
-
-    PlayerActor(const PlayerActor&) = delete;
-    PlayerActor& operator=(const PlayerActor&) = delete;
-    PlayerActor(PlayerActor&&) = delete;
-    PlayerActor& operator=(PlayerActor&&) = delete;
 
     NS_REFLECT_DECLARE()
     //! 基底が所有する自機の状態機械。OnInit が組むので、Init の後から立ちの状態に居る
@@ -290,6 +286,8 @@ public:
     [[nodiscard]] NS::Vector3 BodySlamVelocity() const noexcept;
     //! 当たりの裁定へ渡す突進の今。突進中か・BodySlamVelocity・突進を出した時の溜めと溜めすぎ
     [[nodiscard]] GL::Level::BodySlamMotion SlamMotion() const noexcept;
+    //! 当たりの裁定へ渡す自機のシーンのセンサー・ルートの位置・除く相手 (自分)
+    [[nodiscard]] GL::Level::ImpactSelf SelfForImpact() const noexcept;
     //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
     void CancelBodySlam() noexcept;
     //! @brief 向きを解決して突進を始める
@@ -349,11 +347,9 @@ protected:
     bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
     void OnInit() override;
-    //! 基底の作る物に続けて、読んだ姿のメッシュと倍率を Model へ差す
+    //! 基底の作る物に続けて、読んだ姿のメッシュと倍率を Model へ差し、溜めと当たりの絵を先に読む
     void OnAssetsLoaded() override;
-    //! ロックオンの枠と突進の矢印を重ね描きへ入れる。消えている間は描く側が IsOverlayVisible で飛ばす
-    //! 残像は Model と同じく、出ている間だけ描く物へ入れる
-    void OnStart() override;
+    //! 残像・ロックオンの枠・突進の矢印は、入れたまま出ている間だけ描く
     void OnAppear() override;
     void OnDisappear() noexcept override;
     //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
@@ -495,14 +491,14 @@ private:
     std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
     std::unique_ptr<GL::Player::ChargeEffects> m_chargeEffects;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
-    GL::Level::TackleGhost m_tackleGhost{this}; // 体当たりの残像。Model を借りて描く
+    GL::Level::TackleGhost m_tackleGhost; // 体当たりの残像。描く時に Model を渡されて描く
     // 残像の進み。当たりの状態に入ったフレームの見た目の段を 1 フレーム目に数え、止めの後も状態に依らず進める
     GL::Level::TackleGhostRun m_ghostRun;
     bool m_slowedWorld = false; // 紫の明けの束で世界を遅くしたか。演出を止める時に普段の速さへ戻す
     // 当たる直前の状態に入った予測。入る予約で書き、状態の OnEnter と検知のフレームが読む
     struct BeforeContactEntry
     {
-        NS::ActorRef target{};
+        NS::SceneActor* target = nullptr;
         GL::Level::HitTier tier = GL::Level::HitTier::Center;
         int startFrame = 0;  // 状態の最初の歩に当てる動作のフレーム
         NS::Vector3 point{}; // 予測した玉が相手に触れる時の、玉の中心

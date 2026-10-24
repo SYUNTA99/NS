@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NSlib/CoreObject/ActorJson.h"
+#include "NSlib/CoreObject/ActorList.h"
 
 #include "NSlib/Core/Types.h"
 #include <optional>
@@ -18,8 +19,16 @@ namespace NS
             //! objectId の現在状態を配置物の JSON へ写す。居なければ nullopt
             [[nodiscard]] virtual std::optional<nlohmann::json> CaptureActor(uint32 objectId) const = 0;
 
-            //! objectId を desired の姿へ揃える。desired 有=姿を書き戻す/新規、nullopt=除去
-            virtual void ApplyActorSnapshot(uint32 objectId, const std::optional<nlohmann::json>& desired) = 0;
+            //! @brief objectId を desired の姿へ揃える。居なければ desired から作る
+            //! @return 作り直した時に外した古いアクター。作り直さなければ空。捨てる時は呼び手が先に OnEndPlay を呼ぶ
+            [[nodiscard]] virtual std::unique_ptr<SceneActor> ApplyActorSnapshot(uint32 objectId,
+                                                                                 const nlohmann::json& desired) = 0;
+
+            //! objectId を解放せずにシーンから外して返す。返した物を捨てる時は呼び手が先に OnEndPlay を呼ぶ
+            [[nodiscard]] virtual DetachedActor DetachActor(uint32 objectId) = 0;
+
+            //! DetachActor で外した物を外す前の並びの位置へ戻す
+            virtual void ReattachActor(DetachedActor detached) = 0;
         };
     } // namespace Editor
 } // namespace NS

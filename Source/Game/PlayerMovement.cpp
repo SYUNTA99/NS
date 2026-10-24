@@ -67,7 +67,7 @@ void PlayerActor::MoveBody(float dt) noexcept
     }
 
     const NS::Vector3 before = Root().Position();
-    m_body->Move(*m_collider, dt, m_params->m_maxStepHeight);
+    m_body->Move(&Root(), m_collider.get(), dt, m_params->m_maxStepHeight);
     const NS::Vector3 delta = Root().Position() - before;
     m_lastMoveDistance = delta.Length();
     SyncGroundState();

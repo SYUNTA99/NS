@@ -1,5 +1,6 @@
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <gtest/gtest.h>
@@ -18,7 +19,7 @@ namespace
         NS_REFLECT_NONE(FiniteBoxActor, NS::SceneActor)
 
     protected:
-        void OnInit() override { CreateClassObj<NS::Collision, NS::BoxCollision>(m_collision, this); }
+        void OnInit() override { CreateClassObj<NS::Collision, NS::BoxCollision>(m_collision); }
     };
 
     // float の組を持つ欄の型を、メンバの欄と getter/setter の欄で 1 つずつ持つ値型
@@ -57,7 +58,9 @@ namespace
 // インスペクタ・.actor・配置物の値は欄の set を通る。非有限の半径は捨て、前の半径を残す
 TEST(ReflectionFinite, BoxHalfExtentsFieldKeepsPreviousValueOnNonFinite)
 {
-    const std::unique_ptr<FiniteBoxActor> actor = NS::CreateActor<FiniteBoxActor>();
+    NS::Scene scene;
+    FiniteBoxActor* actor = scene.SpawnActor<FiniteBoxActor>("FiniteBoxActor");
+    ASSERT_NE(actor, nullptr);
     NS::BoxCollision* box = NS::Cast<NS::BoxCollision>(actor->CollisionClassObj());
     ASSERT_NE(box, nullptr);
     const NS::FieldDesc* field = NS::FindField(box->GetReflection(), "半径");

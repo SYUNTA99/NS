@@ -27,12 +27,12 @@ namespace NS
         [[nodiscard]] virtual StateId Id() const noexcept = 0;
 
         //! 状態に入った時に 1 回呼ばれる。Build の先頭と、予約の確定の時
-        virtual void OnEnter(TOwner&) {}
+        virtual void OnEnter(TOwner*) {}
         //! @brief 状態の中で 1 フレーム進める
         //! @details 同じフレームのコルーチンの後に呼ばれる。コルーチンが移る予約をしたフレームは呼ばれない
-        virtual void OnStep(TOwner& owner, float dt) = 0;
+        virtual void OnStep(TOwner* owner, float dt) = 0;
         //! 他の状態へ移る予約が入った時に 1 回呼ばれる
-        virtual void OnExit(TOwner&) {}
+        virtual void OnExit(TOwner*) {}
 
     protected:
         void StartCoroutine(Coroutine&& coroutine) { m_coroutines.Start(std::move(coroutine)); }
@@ -66,8 +66,9 @@ namespace NS
     {
     public:
         //! 先頭の状態へ入る。この後の Step と Change は、ここで渡した owner を状態へ渡す
-        template <typename... TStates> void Build(TOwner& owner)
+        template <typename... TStates> void Build(TOwner* owner)
         {
+            NS_ASSERT(Scene, owner != nullptr, "StateMachineOf: 持ち主を渡さずに組もうとした");
             static_assert(sizeof...(TStates) > 0, "状態を 1 つ以上並べる");
             static_assert((std::is_base_of_v<StateOf<TStates, TOwner>, TStates> && ...),
                           "状態は StateOf<自分の型, 所有者> から派生する");
@@ -81,7 +82,7 @@ namespace NS
             m_states.reserve(sizeof...(TStates));
             (m_states.push_back(std::make_unique<TStates>()), ...);
             m_current = m_states.front().get();
-            m_owner = &owner;
+            m_owner = owner;
             m_step = 0;
             m_current->OnEnter(owner);
         }
@@ -170,7 +171,7 @@ namespace NS
                 stepped->TickCoroutines(dt);
                 if (m_current == stepped && m_next == nullptr && !m_stepCancelled)
                 {
-                    stepped->OnStep(*m_owner, dt);
+                    stepped->OnStep(m_owner, dt);
                     if (m_current == stepped && m_next == nullptr && !m_stepCancelled)
                     {
                         ++m_step;
@@ -204,7 +205,7 @@ namespace NS
             m_next = next;
             if (!alreadyPending && m_current != nullptr)
             {
-                m_current->OnExit(*m_owner);
+                m_current->OnExit(m_owner);
                 m_current->CancelCoroutines();
             }
             return true;
@@ -222,7 +223,7 @@ namespace NS
             m_current = m_next;
             m_next = nullptr;
             m_step = 0;
-            m_current->OnEnter(*m_owner);
+            m_current->OnEnter(m_owner);
         }
 
         [[nodiscard]] State<TOwner>* Find(StateId id) noexcept
@@ -251,8 +252,9 @@ namespace NS
     {
     public:
         //! Finish の後でも、組み直すとまた進む
-        template <typename... TStates> void Build(TOwner& owner)
+        template <typename... TStates> void Build(TOwner* owner)
         {
+            NS_ASSERT(Scene, owner != nullptr, "SubStateMachine: 持ち主を渡さずに組もうとした");
             m_dead = false;
             m_machine.template Build<TStates...>(owner);
         }

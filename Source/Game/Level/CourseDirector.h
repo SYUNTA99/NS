@@ -45,7 +45,6 @@ namespace GL
             [[nodiscard]] bool IsClearing() const noexcept { return m_sequences.IsRunning(); }
 
             //! @brief 全ての配置物へ MsgCourseStart を送って今の姿を控えさせ、RestartCourse と同じ処理で始める
-            //! @details エディタがプレイの終わりに読む凍結もここで取る
             void StartCourse();
 
             //! @brief コースを最初からやり直す。全ての配置物へ MsgCourseRestart を送る

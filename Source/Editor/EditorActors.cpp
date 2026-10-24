@@ -1,4 +1,5 @@
 #include "Editor/EditorActors.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 
 #include "Game/PlayerActor.h"
@@ -83,13 +84,14 @@ namespace NS
             SetField(EnsureTransformClassObj(actorJson), k_ScaleFieldName, scale);
         }
 
-        nlohmann::json MakePrototypeJson(const SceneActor& obj)
+        nlohmann::json MakePrototypeJson(const SceneActor* obj)
         {
+            NS_ASSERT(App, obj != nullptr, "MakePrototypeJson: アクターが null");
             nlohmann::json object = MakeActorHeaderJson(obj, 0u);
             nlohmann::json& parts = ActorJsonClassObjs(object);
             ForEachReflectedClassObj(
                 obj, [&](const ClassObjInfo& field, Object*) { parts[field.key] = nlohmann::json::object(); });
-            SetActorJsonPosition(object, obj.Root().Position());
+            SetActorJsonPosition(object, obj->Root().Position());
             return object;
         }
 
@@ -144,14 +146,15 @@ namespace NS
             return placed;
         }
 
-        bool IsCellBrushActor(const SceneActor& object) noexcept
+        bool IsCellBrushActor(const SceneActor* object) noexcept
         {
+            NS_ASSERT(App, object != nullptr, "IsCellBrushActor: アクターが null");
             // 自前の振る舞いを持つ SceneActor は、ブラシの置換や削除で崩さない
-            if (std::string_view{object.ClassName()} != "MapPartsActor")
+            if (std::string_view{object->ClassName()} != "MapPartsActor")
             {
                 return false;
             }
-            const Model* model = object.ModelClassObj();
+            const Model* model = object->ModelClassObj();
             if (model == nullptr)
             {
                 return false;
@@ -160,30 +163,32 @@ namespace NS
             return mesh == "cube" || mesh == "wedge45";
         }
 
-        int16 ActorCellX(const SceneActor& object) noexcept
+        int16 ActorCellX(const SceneActor* object) noexcept
         {
-            return static_cast<int16>(std::lround(object.Root().Position().x));
+            NS_ASSERT(App, object != nullptr, "ActorCellX: アクターが null");
+            return static_cast<int16>(std::lround(object->Root().Position().x));
         }
 
-        int16 ActorCellY(const SceneActor& object) noexcept
+        int16 ActorCellY(const SceneActor* object) noexcept
         {
-            return static_cast<int16>(std::lround(object.Root().Position().y));
+            NS_ASSERT(App, object != nullptr, "ActorCellY: アクターが null");
+            return static_cast<int16>(std::lround(object->Root().Position().y));
         }
 
-        int16 ActorCellZ(const SceneActor& object) noexcept
+        int16 ActorCellZ(const SceneActor* object) noexcept
         {
-            return static_cast<int16>(std::lround(object.Root().Position().z));
+            NS_ASSERT(App, object != nullptr, "ActorCellZ: アクターが null");
+            return static_cast<int16>(std::lround(object->Root().Position().z));
         }
 
         uint32 FindActorIdAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
         {
-            for (SceneActor* objPtr : PlacedActors(objects))
+            for (const SceneActor* object : PlacedActors(objects))
             {
-                SceneActor& object = *objPtr;
                 if (IsCellBrushActor(object) && ActorCellX(object) == x && ActorCellY(object) == y &&
                     ActorCellZ(object) == z)
                 {
-                    return object.Id();
+                    return object->Id();
                 }
             }
             return k_NoActorId;
@@ -193,7 +198,7 @@ namespace NS
         {
             for (const SceneActor* object : PlacedActors(objects))
             {
-                if (ActorCellX(*object) == x && ActorCellY(*object) == y && ActorCellZ(*object) == z)
+                if (ActorCellX(object) == x && ActorCellY(object) == y && ActorCellZ(object) == z)
                 {
                     return true;
                 }
@@ -215,18 +220,20 @@ namespace NS
             SetActorJsonRotation(actorJson, rotation);
         }
 
-        const char* ActorDisplayName(const SceneActor& object)
+        const char* ActorDisplayName(const SceneActor* object)
         {
-            if (!object.Name().empty())
+            NS_ASSERT(App, object != nullptr, "ActorDisplayName: アクターが null");
+            if (!object->Name().empty())
             {
-                return object.Name().c_str();
+                return object->Name().c_str();
             }
-            return ClassDisplayName(object.ClassName());
+            return ClassDisplayName(object->ClassName());
         }
 
-        AABB PickLocalBounds(const SceneActor& object) noexcept
+        AABB PickLocalBounds(const SceneActor* object) noexcept
         {
-            const Model* renderer = object.ModelClassObj();
+            NS_ASSERT(App, object != nullptr, "PickLocalBounds: アクターが null");
+            const Model* renderer = object->ModelClassObj();
             if (renderer != nullptr && renderer->GetMesh()->LocalBounds() != nullptr)
             {
                 return *renderer->GetMesh()->LocalBounds();

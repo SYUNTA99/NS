@@ -53,8 +53,8 @@ TEST(PadRumbleDirector, BlendedVibrationsAddAndEndOnTheirOwnLength)
 
     const NS::HitPadVibration first = FadingLeft(0.5f, 4);
     const NS::HitPadVibration second = FadingLeft(0.25f, 2);
-    pad->Start(*player, first);
-    pad->Blend(*player, second);
+    pad->Start(player, first);
+    pad->Blend(player, second);
     EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
     // 頼んだフレームの更新は最初の姿のまま
     pad->OnTick();
@@ -69,9 +69,9 @@ TEST(PadRumbleDirector, BlendedVibrationsAddAndEndOnTheirOwnLength)
     pad->OnTick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
 
-    pad->Start(*player, first);
-    pad->Blend(*player, second);
-    pad->Start(*player, FadingLeft(0.2f, 4));
+    pad->Start(player, first);
+    pad->Blend(player, second);
+    pad->Start(player, FadingLeft(0.2f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 0.2f);
 }
 
@@ -82,9 +82,9 @@ TEST(PadRumbleDirector, HitReactionStopWritesZero)
     ASSERT_NE(player, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    reaction->StartPadVibration(FadingLeft(1.0f, 4));
+    reaction->StartPadVibration(player, FadingLeft(1.0f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
-    reaction->Stop();
+    reaction->Stop(player);
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
 }
 
@@ -96,7 +96,7 @@ TEST(PadRumbleDirector, DiscardingTheDirectorWritesZero)
     ASSERT_NE(player, nullptr);
     NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
     ASSERT_NE(pad, nullptr);
-    pad->Start(*player, FadingLeft(1.0f, 30));
+    pad->Start(player, FadingLeft(1.0f, 30));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
     scene.GetSceneSystemHolder()->Clear();
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
@@ -111,8 +111,8 @@ TEST(PadRumbleDirector, BlendedSumAboveOneWritesOneAndKeepsRunning)
     NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
     ASSERT_NE(pad, nullptr);
 
-    pad->Start(*player, FadingLeft(0.75f, 4));
-    pad->Blend(*player, FadingLeft(0.5f, 4));
+    pad->Start(player, FadingLeft(0.75f, 4));
+    pad->Blend(player, FadingLeft(0.5f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
     pad->OnTick();
     pad->OnTick();

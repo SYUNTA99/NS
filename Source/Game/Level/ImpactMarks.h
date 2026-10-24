@@ -9,11 +9,6 @@
 #include <cstddef>
 #include <vector>
 
-namespace NS
-{
-    class SceneActor;
-} // namespace NS
-
 namespace GL
 {
     namespace Level
@@ -24,12 +19,7 @@ namespace GL
         {
         public:
             //! 板とマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
-            explicit ImpactMarks(NS::SceneActor* owner);
-
-            //! 持ち主のシーンへ描く物として登録する。シーンが無ければ何もしない
-            void Register();
-            //! 持ち主のシーンから外す。シーンが無ければ何もしない
-            void Unregister();
+            ImpactMarks();
 
             //! @brief position に跡を 1 つ出す
             //! @details 跡の数の欄が埋まっていれば一番古い跡を置き換える。欄が 0 以下なら出さない
@@ -44,12 +34,14 @@ namespace GL
             [[nodiscard]] int Capacity() const noexcept { return m_capacity; }
             [[nodiscard]] float LifeSeconds() const noexcept { return m_lifeSeconds; }
 
-            void Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out) override;
-            //! 出ている跡を全部包む箱。跡が無ければ持ち主の位置の大きさ 0 の箱
-            [[nodiscard]] NS::AABB WorldBounds() const noexcept override;
+            void Collect(const NS::Gfx::RenderContext& context,
+                         const NS::RenderSource& source,
+                         std::vector<NS::Gfx::DrawItem>& out) override;
+            //! 出ている跡を全部包む箱。跡が無ければ持ち主の根の位置の大きさ 0 の箱
+            [[nodiscard]] NS::AABB WorldBounds(const NS::RenderSource& source) const noexcept override;
             [[nodiscard]] NS::RenderBucket Bucket() const noexcept override { return NS::RenderBucket::Transparent; }
-            //! 一番新しい跡の位置。跡が無ければ持ち主の位置
-            [[nodiscard]] NS::Vector3 SortCenter() const noexcept override;
+            //! 一番新しい跡の位置。跡が無ければ持ち主の根の位置
+            [[nodiscard]] NS::Vector3 SortCenter(const NS::RenderSource& source) const noexcept override;
 
             NS_REFLECT_BEGIN(ImpactMarks, NS::Object)
             NS_FIELD(m_mesh, "メッシュ")
@@ -80,8 +72,7 @@ namespace GL
             float m_opacity = 1.0f; // 0..1
             std::vector<Mark> m_marks;
             std::size_t m_next = 0;            // 次に書く置き場
-            std::size_t m_newest = 0;          // 一番新しく書いた置き場
-            NS::SceneActor* m_owner = nullptr; // 持ち主 (非所有)
+            std::size_t m_newest = 0; // 一番新しく書いた置き場
         };
     } // namespace Level
 } // namespace GL

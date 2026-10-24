@@ -28,15 +28,16 @@ namespace
     {
     public:
         // 空中と反動の状態を仮想カメラの口へ渡す
-        void Feed(NS::ThirdPersonFollow& vcam) const
+        void Feed(NS::ThirdPersonFollow* vcam) const
         {
-            vcam.SetFollowMotion(false, NS::Vector3{});
+            NS_ASSERT(Game, vcam != nullptr, "Feed: 渡したアクターか部品が無い");
+            vcam->SetFollowMotion(false, NS::Vector3{});
             NS::FollowReboundDesc rebound{};
             rebound.rebounding = true;
             rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
             rebound.partnerPosition = partner;
             rebound.pullBack = pullBack;
-            (void)vcam.SetFollowRebound(rebound);
+            (void)vcam->SetFollowRebound(rebound);
         }
 
         std::optional<NS::Vector3> partner;
@@ -55,7 +56,7 @@ namespace
             target->partner = partner;
             target->pullBack = pullBack;
             camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
-            NS::ApplyJsonFields(camera->Vcam(),
+            NS::ApplyJsonFields(&camera->Vcam(),
                                 nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
                                                {"反動の間に相手を収める重み", 0.3f},
                                                {"相手を見送る距離", 30.0f},
@@ -63,10 +64,12 @@ namespace
                                                {"二人の距離 1 m あたりに引く距離", 0.3f},
                                                {"相手を収める引きの上限", 4.0f},
                                                {"相手を収めるばねの半分の秒", 0.15f}});
+            // 欄を書いた後に、エディタと同じく相手を取得し直す
+            camera->ResolveActorRefs();
             // 反動の間は遅れて追う形のまま 3 秒回し、ばねを落ち着かせる
             for (int frame = 0; frame < 180; ++frame)
             {
-                target->Feed(camera->Vcam());
+                target->Feed(&camera->Vcam());
                 camera->Update();
             }
         }

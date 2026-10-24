@@ -76,10 +76,10 @@ TEST(ActorFileGenerator, CompletesMissingFieldsFromTheCodeAndKeepsWrittenValues)
     const std::unique_ptr<NS::SceneActor> rock = NS::CreateActorWithCodeValues("PropActor");
     ASSERT_NE(rock, nullptr);
     int checked = 0;
-    NS::ForEachReflectedClassObj(*rock, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+    NS::ForEachReflectedClassObj(rock.get(), [&](const NS::ClassObjInfo& row, const NS::Object* part) {
         const nlohmann::json* written = NS::ClassObjFields(full, row.key);
         ASSERT_NE(written, nullptr) << row.key;
-        const nlohmann::json code = NS::SerializeClassObjFields(*part);
+        const nlohmann::json code = NS::SerializeClassObjFields(part);
         for (nlohmann::json::const_iterator field = code.begin(); field != code.end(); ++field)
         {
             EXPECT_TRUE(written->contains(field.key())) << row.key << " " << field.key();
@@ -163,14 +163,14 @@ TEST(ActorFileGenerator, ActorsTakeEveryFieldFromTheAssetActorFile)
         const bool derived = !NS::ActorFileBase(*actorFile).empty();
         const std::unique_ptr<NS::SceneActor> actor = ActorFromFile(NS::OS::FileSystem::Stem(path));
         ASSERT_NE(actor, nullptr) << path;
-        NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+        NS::ForEachReflectedClassObj(actor.get(), [&](const NS::ClassObjInfo& row, const NS::Object* part) {
             const nlohmann::json* written = NS::ClassObjFields(*actorFile, row.key);
             if (written == nullptr)
             {
                 EXPECT_TRUE(derived) << path << " " << row.key;
                 return;
             }
-            const nlohmann::json values = NS::SerializeClassObjFields(*part);
+            const nlohmann::json values = NS::SerializeClassObjFields(part);
             for (nlohmann::json::const_iterator field = written->begin(); field != written->end(); ++field)
             {
                 ASSERT_TRUE(values.contains(field.key())) << path << " " << row.key << " " << field.key();

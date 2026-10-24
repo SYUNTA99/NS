@@ -1,9 +1,6 @@
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/System/HitSensorDirector.h"
 #include "NSlib/Phys/Capsule.h"
 
 #include <algorithm>
@@ -244,72 +241,6 @@ namespace NS
         return SegmentSegmentDistanceSq(lhs.a, lhs.b, rhs.a, rhs.b) <= reach * reach;
     }
 
-    bool HitSensor::IsValid() const noexcept
-    {
-        // 持ち主の無いセンサーは出ていると見る
-        if (m_owner == nullptr)
-        {
-            return m_valid;
-        }
-        return m_valid && m_owner->IsAppeared();
-    }
-
-    void HitSensor::Register()
-    {
-        if (m_owner == nullptr)
-        {
-            return;
-        }
-        Scene* scene = m_owner->OwningScene();
-        if (scene == nullptr)
-        {
-            return;
-        }
-        scene->HitSensors().Register(this);
-    }
-
-    void HitSensor::Unregister()
-    {
-        if (m_owner == nullptr)
-        {
-            return;
-        }
-        Scene* scene = m_owner->OwningScene();
-        if (scene == nullptr)
-        {
-            return;
-        }
-        scene->HitSensors().Unregister(this);
-    }
-
-    HitSensorRef MakeHitSensorRef(const HitSensor& sensor) noexcept
-    {
-        const SceneActor* host = sensor.Host();
-        if (host == nullptr)
-        {
-            return HitSensorRef{};
-        }
-        return HitSensorRef{.actor = ActorRef{host->Id()}, .attack = host->AttackSensorClassObj() == &sensor};
-    }
-
-    HitSensor* FindHitSensor(Scene* scene, const HitSensorRef& ref) noexcept
-    {
-        if (scene == nullptr)
-        {
-            return nullptr;
-        }
-        SceneActor* host = scene->Actors().FindActor(ref.actor);
-        if (host == nullptr)
-        {
-            return nullptr;
-        }
-        if (ref.attack)
-        {
-            return host->AttackSensorClassObj();
-        }
-        return host->BodySensorClassObj();
-    }
-
     void ShapeHitSensor::SetSphere(float radius) noexcept
     {
         m_shape = HitSensorShape::Sphere;
@@ -330,15 +261,10 @@ namespace NS
             Vector3{std::max(halfExtents.x, 0.0f), std::max(halfExtents.y, 0.0f), std::max(halfExtents.z, 0.0f)};
     }
 
-    SensorVolume ShapeHitSensor::WorldVolume() const noexcept
+    SensorVolume ShapeHitSensor::WorldVolume(const Matrix& rootWorld) const noexcept
     {
-        Matrix world = Matrix::Identity;
-        if (const SceneActor* owner = Host())
-        {
-            world = owner->Root().WorldMatrix();
-        }
-        const AffineDecomposition parts = DecomposeAffine(world);
-        const Vector3 center = Vector3::Transform(m_centerOffset, world);
+        const AffineDecomposition parts = DecomposeAffine(rootWorld);
+        const Vector3 center = Vector3::Transform(m_centerOffset, rootWorld);
         switch (m_shape)
         {
         case HitSensorShape::Capsule:
@@ -357,22 +283,18 @@ namespace NS
         }
     }
 
-    FollowHitSensor::FollowHitSensor(SceneActor* owner, std::function<SensorVolume()> volume) noexcept
+    FollowHitSensor::FollowHitSensor(SceneActor* owner,
+                                     std::function<SensorVolume(const Matrix& rootWorld)> volume) noexcept
         : HitSensor(owner), m_volume(std::move(volume))
     {}
 
-    SensorVolume FollowHitSensor::WorldVolume() const noexcept
+    SensorVolume FollowHitSensor::WorldVolume(const Matrix& rootWorld) const noexcept
     {
         if (m_volume)
         {
-            return m_volume();
+            return m_volume(rootWorld);
         }
         NS_LOG_ERROR(Scene, "FollowHitSensor: 形を答える関数が空。根に長さ 0 の球を返す");
-        Vector3 root{0.0f, 0.0f, 0.0f};
-        if (const SceneActor* owner = Host())
-        {
-            root = owner->Root().Position();
-        }
-        return SensorVolume::Sphere(root, 0.0f);
+        return SensorVolume::Sphere(rootWorld.Translation(), 0.0f);
     }
 } // namespace NS

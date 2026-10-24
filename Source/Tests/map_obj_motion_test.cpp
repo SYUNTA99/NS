@@ -26,8 +26,9 @@ namespace
         return static_cast<GL::Level::PropActor*>(scene.Actors().FindByActorId(1));
     }
 
-    void ReleaseRock(GL::Level::PropActor& rock)
+    void ReleaseRock(GL::Level::PropActor* rock)
     {
+        NS_ASSERT(Game, rock != nullptr, "ReleaseRock: 渡したアクターか部品が無い");
         GL::Level::TackleReleaseDesc release;
         release.arc.distance = 5.0f;
         release.arc.apexHeight = 1.0f;
@@ -41,7 +42,7 @@ TEST(MapObjMotion, ActorMovesAndUpdatesStaticCollision)
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
     ASSERT_NE(rock->GetStateMachine(), nullptr);
-    ReleaseRock(*rock);
+    ReleaseRock(rock);
     for (int step = 0; step < 10; ++step)
     {
         rock->UpdateMotion();
@@ -65,13 +66,13 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
     floor.halfExtentY = 0.5f;
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-    ReleaseRock(*rock);
+    ReleaseRock(rock);
     for (int step = 0; step < 300; ++step)
     {
         rock->UpdateMotion();
     }
     GL::Level::TackleTargetAnswer answer;
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorClassObj(), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(rock->BodySensorClassObj(), answer));
     EXPECT_TRUE(answer.placed);
     EXPECT_GT(rock->Root().Position().x, 5.0f);
     EXPECT_NEAR(rock->Root().Position().y, 0.5f, 0.002f);
@@ -92,7 +93,7 @@ TEST(MapObjMotion, WallReflectsFlightBeforeItCanTunnel)
     wall.halfExtentY = 4.0f;
     wall.halfExtentZ = 4.0f;
     scene.Physics().AddBox(wall, NS::Phys::ObjectLayers::Terrain);
-    ReleaseRock(*rock);
+    ReleaseRock(rock);
     float previous = rock->Root().Position().x;
     bool reflected = false;
     for (int step = 0; step < 35; ++step)
@@ -114,7 +115,7 @@ TEST(MapObjMotion, UnobstructedFlightKeepsAnalyticArc)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    ReleaseRock(*rock);
+    ReleaseRock(rock);
     GL::Level::LaunchArc arc;
     arc.distance = 5.0f;
     arc.apexHeight = 1.0f;
@@ -134,13 +135,13 @@ TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(GL::Level::SendMsgCourseStart(*rock));
-    ReleaseRock(*rock);
+    ASSERT_TRUE(GL::Level::SendMsgCourseStart(rock));
+    ReleaseRock(rock);
     for (int step = 0; step < 10; ++step)
     {
         rock->UpdateMotion();
     }
-    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(*rock));
+    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(rock));
     EXPECT_FALSE(rock->IsFlying());
     rock->UpdateMotion();
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 0.0f);
@@ -155,8 +156,8 @@ TEST(MapObjMotion, RestartMovesTheCollisionBeforeTheNextUpdate)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(GL::Level::SendMsgCourseStart(*rock));
-    ReleaseRock(*rock);
+    ASSERT_TRUE(GL::Level::SendMsgCourseStart(rock));
+    ReleaseRock(rock);
     for (int step = 0; step < 10; ++step)
     {
         rock->UpdateMotion();
@@ -164,7 +165,7 @@ TEST(MapObjMotion, RestartMovesTheCollisionBeforeTheNextUpdate)
     const NS::Vector3 aboveHome{0.0f, 2.5f, 0.0f};
     float distance = 0.0f;
     ASSERT_FALSE(scene.Physics().Raycast(aboveHome, NS::Vector3{0.0f, -1.0f, 0.0f}, 3.0f, distance));
-    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(*rock));
+    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(rock));
     ASSERT_TRUE(scene.Physics().Raycast(aboveHome, NS::Vector3{0.0f, -1.0f, 0.0f}, 3.0f, distance));
     EXPECT_NEAR(distance, 1.5f, 0.001f);
 }
@@ -179,7 +180,7 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
     floor.halfExtentX = 100.0f;
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-    ReleaseRock(*rock);
+    ReleaseRock(rock);
     for (int step = 0; step < 55; ++step)
     {
         rock->UpdateMotion();
@@ -208,7 +209,7 @@ TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)
     GL::Level::LaunchEffects* effects = &rock->Effects();
     rock->Update();
     EXPECT_EQ(keeper->Step(), 1);
-    effects->Update(rock->Flight());
+    effects->Update(rock, rock->Flight());
     EXPECT_EQ(keeper->Step(), 1);
 }
 
@@ -222,7 +223,7 @@ TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
     floor.halfExtentX = 100.0f;
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-    ReleaseRock(*rock);
+    ReleaseRock(rock);
     const NS::EffectKeeper* keeper = rock->GetEffectKeeper();
     ASSERT_NE(keeper, nullptr);
     bool landed = false;

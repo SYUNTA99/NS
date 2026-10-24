@@ -2,6 +2,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Windows/Clock.h"
 
 #include <gtest/gtest.h>
@@ -17,10 +18,11 @@ namespace
     }
 
     // しきい値 0.2 秒・満タン 1 秒・溜めすぎ 0.5 秒。強制で出るのは押し始めから 1.5 秒のフレーム
-    void UseShortOvercharge(PlayerActor& player)
+    void UseShortOvercharge(PlayerActor* player)
     {
+        NS_ASSERT(Game, player != nullptr, "UseShortOvercharge: 渡したアクターか部品が無い");
         ASSERT_EQ(
-            NS::ApplyJsonFields(player.Params(),
+            NS::ApplyJsonFields(&player->Params(),
                                 {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}, {"溜めすぎの秒数", 0.5f}}),
             0u);
     }
@@ -29,9 +31,11 @@ namespace
 // 溜めきりの後は溜めすぎが 0 から 1 へ進み、1 になったフレームに押したままでも 1 回だけ出る
 TEST(PlayerOvercharge, ForcedLaunchFiresOnceAndThenStopsTheChargeShow)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
-    UseShortOvercharge(player);
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
+    UseShortOvercharge(&player);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     const int full = FramesFor(1.0f);
     const int forced = full + FramesFor(0.5f);
@@ -97,10 +101,12 @@ TEST(PlayerOvercharge, ForcedLaunchFiresOnceAndThenStopsTheChargeShow)
 // 出せない間に溜めすぎきった時は消えずに待ち、出せるようになったフレームに出る
 TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
-    UseShortOvercharge(player);
-    ASSERT_EQ(NS::ApplyJsonFields(player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
+    UseShortOvercharge(&player);
+    ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     // 溜めて放した長い突進の間に押し直し、突進の最中に溜めすぎきらせる
     for (int held = 0; held < FramesFor(1.0f); ++held)
@@ -141,10 +147,12 @@ TEST(PlayerOvercharge, ForcedLaunchWaitsUntilASlamCanStart)
 // 待つ間に放した時は何も控えず、判定は使い切りへ移らない
 TEST(PlayerOvercharge, ReleasingWhileWaitingFiresNothingNew)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
-    UseShortOvercharge(player);
-    ASSERT_EQ(NS::ApplyJsonFields(player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
+    UseShortOvercharge(&player);
+    ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージ突進の距離", 1000.0f}}), 0u);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     for (int held = 0; held < FramesFor(1.0f); ++held)
     {

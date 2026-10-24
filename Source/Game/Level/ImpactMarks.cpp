@@ -2,9 +2,6 @@
 
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
@@ -15,30 +12,10 @@ namespace GL
 {
     namespace Level
     {
-        ImpactMarks::ImpactMarks(NS::SceneActor* owner) : m_owner(owner)
+        ImpactMarks::ImpactMarks()
         {
             NS::LoadAssetField(m_mesh, "shadowQuad");
             NS::LoadAssetField(m_material, "Assets/Materials/shadow.mat");
-        }
-
-        void ImpactMarks::Register()
-        {
-            NS::Scene* scene = m_owner->OwningScene();
-            if (scene == nullptr)
-            {
-                return;
-            }
-            scene->RegisterRenderable(this);
-        }
-
-        void ImpactMarks::Unregister()
-        {
-            NS::Scene* scene = m_owner->OwningScene();
-            if (scene == nullptr)
-            {
-                return;
-            }
-            scene->UnregisterRenderable(this);
         }
 
         void ImpactMarks::Spawn(const NS::Vector3& position)
@@ -119,9 +96,13 @@ namespace GL
             return worlds;
         }
 
-        void ImpactMarks::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
+        void ImpactMarks::Collect(const NS::Gfx::RenderContext& context,
+                                  const NS::RenderSource& source,
+                                  std::vector<NS::Gfx::DrawItem>& out)
         {
-            if (!m_owner->IsAppeared() || m_mesh->D3D() == nullptr || m_material->D3D() == nullptr)
+            // 跡は出した位置に描くので、持ち主の根は読まない
+            (void)source;
+            if (m_mesh->D3D() == nullptr || m_material->D3D() == nullptr)
             {
                 return;
             }
@@ -139,9 +120,9 @@ namespace GL
             }
         }
 
-        NS::AABB ImpactMarks::WorldBounds() const noexcept
+        NS::AABB ImpactMarks::WorldBounds(const NS::RenderSource& source) const noexcept
         {
-            NS::AABB bounds{m_owner->Root().WorldMatrix().Translation(), NS::Vector3{}};
+            NS::AABB bounds{source.root.Translation(), NS::Vector3{}};
             bool first = true;
             for (const Mark& mark : m_marks)
             {
@@ -163,13 +144,13 @@ namespace GL
             return bounds;
         }
 
-        NS::Vector3 ImpactMarks::SortCenter() const noexcept
+        NS::Vector3 ImpactMarks::SortCenter(const NS::RenderSource& source) const noexcept
         {
             if (m_newest < m_marks.size() && m_marks[m_newest].live)
             {
                 return m_marks[m_newest].position;
             }
-            return m_owner->Root().WorldMatrix().Translation();
+            return source.root.Translation();
         }
     } // namespace Level
 } // namespace GL

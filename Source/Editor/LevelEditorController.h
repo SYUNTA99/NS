@@ -173,21 +173,25 @@ public:
     void BeginClassObjEdit() noexcept;
     void CommitClassObjEdit() noexcept;
 
-    //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
-    //! 写した欄は履歴へ 1 つずつ積まず、編集へ戻る時にプレイ開始の凍結と比べて 1 まとまりで積む
+    //! プレイ中の手編集を、プレイを始めた時のシーンの JSON へも写す。編集復帰の組み直しを跨いで調整値が残る
+    //! 写した欄は履歴へ 1 つずつ積まず、編集へ戻る時にプレイ開始の写しと比べて 1 まとまりで積む
     //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所が呼ぶ
-    //! row は actor のクラスの表の行
-    void MirrorPlayEditToBaseline(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
+    //! row は actor のクラスの表の行。JSON に無いアクター、作られていない行、存在しない欄、.actor へ書く欄は写さない
+    void MirrorPlayEditToBaseline(const NS::SceneActor* actor, const NS::ClassObjInfo& row, std::string_view fieldName);
+
+    //! @brief プレイを始めた時のシーンの JSON。プレイ中の手編集を写した後の姿で、編集へ戻る時にこれでシーンを組み直す
+    //! @details プレイ中でない時に呼ぶと NS_ASSERT で止まる
+    [[nodiscard]] const nlohmann::json& PlayBaseline() const;
 
     //! @brief Inspector で actor の欄の値が変わったフレームに呼ぶ。row は actor のクラスの表の行
     //! @details 配置物へ書く欄はプレイ中の凍結へ写す。.actor へ書く欄は覚えておき、
     //! CommitClassObjEdit で .actor のファイルへ書いて、同じ .actor のアクターの全部へ写す。プレイ中も同じ
-    void NoteFieldEdit(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
+    void NoteFieldEdit(const NS::SceneActor* actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
     //! @brief アクターの欄を書いた後の後始末。欄を変える・既定へ戻す・.actor の欄を直す・マテリアルを付ける の全部が呼ぶ
     //! @details 素材の欄を書いた時だけ、描くメッシュ・描くマテリアル・メッシュの当たりの形を読み直す
     //! 当たりの姿と形は、世界を止めた歩とプレイの歩が揃えるので、ここでは張り直さない。writtenType は書いた欄の型
-    void FinishFieldWrite(NS::SceneActor& actor, NS::FieldType writtenType);
+    void FinishFieldWrite(NS::SceneActor* actor, NS::FieldType writtenType);
 
     //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);
@@ -264,11 +268,6 @@ public:
     //! アクターの切り替えは取り消しの履歴へ積み、ファイルは取り消しても残す。編集モードでない時と、作れない時は WARN を出して何もしない
     //! @return 切り替えた場合 true、それ以外の場合は false
     bool DeriveActorFileFromActor(NS::uint32 actorId, std::string_view name);
-
-    //! @brief actorId のアクターの .actor を、同じクラスの name の .actor に替えて、取り消しの履歴へ積む
-    //! @details シーンの上書きは残る。編集モードでない時・アクターか name の .actor が無い時・クラスが違う時は WARN を出して替えない
-    //! @return 替えた場合 true、それ以外の場合は false
-    bool ChangeActorFile(NS::uint32 actorId, std::string_view name);
 
 private:
     void TickEdit();
@@ -375,7 +374,10 @@ private:
     NS::uint32 m_classObjEditBaselineId = NS::k_NoActorId; // 編集開始時の対象 id
     nlohmann::json m_classObjEditBaseline;                  // 編集開始時の状態スナップショット
 
-    // プレイ開始の凍結の写し。編集へ戻る時に、プレイ中に凍結へ写した欄を見つけて履歴へ積むために比べる
+    // プレイを始めた時のシーンの JSON。プレイ中の手編集を写していき、編集へ戻る時にこれでシーンを組み直す
+    // プレイに入っていない間は空
+    std::optional<nlohmann::json> m_playBaseline;
+    // m_playBaseline の、手編集を写す前の写し。編集へ戻る時に、プレイ中に写した欄を見つけて履歴へ積むために比べる
     // プレイに入っていない間は空
     std::optional<nlohmann::json> m_playStartBaseline;
 

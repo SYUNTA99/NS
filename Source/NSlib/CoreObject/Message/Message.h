@@ -34,12 +34,12 @@ namespace NS
     //! @brief センサーからセンサーへ知らせを送る。受け手は receiver の持ち主の ReceiveMsg
     //! @details 自分宛ては送らない。receiver が無効か持ち主が無ければ送らない
     //! @return 受け手が応じた場合 true
-    bool SendMsg(const Message& msg, HitSensor& receiver, HitSensor* sender);
+    bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
 
     //! @brief センサーを介さずに SceneActor
     //! へ直接知らせを送る。進行役からの一斉の知らせなど、重なりと関係の無い知らせに使う
     //! @return 受け手が応じた場合 true
-    bool SendMsgToActor(const Message& msg, SceneActor& receiver);
+    bool SendMsgToActor(const Message& msg, SceneActor* receiver);
 } // namespace NS
 
 //! 知らせの型の中に 1 度だけ書く。型ごとの印を作る

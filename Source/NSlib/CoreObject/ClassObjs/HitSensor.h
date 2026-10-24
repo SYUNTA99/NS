@@ -4,7 +4,6 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/Reflection/ActorRef.h"
 
 #include "NSlib/Core/Types.h"
 #include <functional>
@@ -15,7 +14,6 @@ namespace NS
     {
         struct Capsule;
     }
-    class Scene;
 } // namespace NS
 
 namespace NS
@@ -60,48 +58,34 @@ namespace NS
         //! このセンサーを持つアクター。重なりを知らせる宛先
         [[nodiscard]] SceneActor* Host() const noexcept { return m_owner; }
 
-        //! シーンの調べ役へ入る。入っていれば何もしない。入っているかは調べ役の並びだけが持つ
-        void Register();
-        //! シーンの調べ役から出る
-        void Unregister();
-
         //! 0 は未設定。種類の意味はゲーム側が定義する
         void SetKind(uint8 kind) noexcept { m_kind = kind; }
         //! 種類の値。0 は未設定
         [[nodiscard]] uint8 Kind() const noexcept { return m_kind; }
 
-        //! 調べる対象か。部品が効いていて、無効にされていない時だけ真
-        [[nodiscard]] bool IsValid() const noexcept;
+        //! 調べる対象か。持ち主が出ていて (ValidateBySystem)、ゲームが Invalidate していない時だけ真
+        [[nodiscard]] bool IsValid() const noexcept { return m_valid && m_validBySystem; }
         //! 調べる対象へ戻す
         void Validate() noexcept { m_valid = true; }
         //! 調べる対象から外す。飛んでいる間だけ当たらない物などに使う
         void Invalidate() noexcept { m_valid = false; }
 
-        //! 世界座標の形。調べ役と問う側が毎回これを読む
-        [[nodiscard]] virtual SensorVolume WorldVolume() const noexcept = 0;
+        //! 持ち主が出ているか。作った時は偽で、EnableHitSensor・DisableHitSensor が出入りに合わせて切り替える
+        [[nodiscard]] bool IsValidBySystem() const noexcept { return m_validBySystem; }
+        void ValidateBySystem() noexcept { m_validBySystem = true; }
+        void InvalidateBySystem() noexcept { m_validBySystem = false; }
+
+        //! 世界座標の形。rootWorld は持ち主の根の世界行列で、管理クラスと問う側が毎回渡して読む
+        [[nodiscard]] virtual SensorVolume WorldVolume(const Matrix& rootWorld) const noexcept = 0;
 
         NS_REFLECT_NONE(HitSensor, Object)
 
     private:
         uint8 m_kind = 0;      // 種類の値。0 は未設定で、どの受け手も応じない
-        bool m_valid = true;       // 調べる対象か
+        bool m_valid = true;       // ゲームが外していないか
+        bool m_validBySystem = false; // 持ち主が出ているか
         SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
-
-    //! @brief フレームをまたいでセンサーを指す値。持ち主の永続 id と、体と攻撃のどちらのセンサーかで持つ
-    //! @details 相手が消えるとポインタは壊れた番地を指すので、待ちをまたぐ時はこれを持ち、使うたびに引き直す
-    struct HitSensorRef
-    {
-        ActorRef actor{};    //!< センサーの持ち主。未設定なら何も指さない
-        bool attack = false; //!< 攻撃のセンサーなら true、体のセンサーなら false
-    };
-
-    //! sensor を指す値。持ち主の無いセンサーは何も指さない値になる
-    [[nodiscard]] HitSensorRef MakeHitSensorRef(const HitSensor& sensor) noexcept;
-
-    //! @brief ref が指すセンサーを scene から引き直す
-    //! @return scene が nullptr・持ち主が居ない・持ち主がそのセンサーを持たない場合 nullptr
-    [[nodiscard]] HitSensor* FindHitSensor(Scene* scene, const HitSensorRef& ref) noexcept;
 
     //! 独立した形状を持つセンサー。寸法は持ち主の世界スケールに従う
     class ShapeHitSensor final : public HitSensor
@@ -128,7 +112,7 @@ namespace NS
         [[nodiscard]] const Vector3& CenterOffset() const noexcept { return m_centerOffset; }
 
         //! 世界座標の形。大きさに根の世界のスケールを掛ける
-        [[nodiscard]] SensorVolume WorldVolume() const noexcept override;
+        [[nodiscard]] SensorVolume WorldVolume(const Matrix& rootWorld) const noexcept override;
 
         // 形の大きさは .actor の値で調整できる。種類と形はクラスが決めるので出さない
         NS_REFLECT_BEGIN(ShapeHitSensor, HitSensor)
@@ -151,16 +135,16 @@ namespace NS
     {
     public:
         //! @brief 形を答える関数を受けて作る
-        //! @param[in] volume 世界座標の形を返す関数。事前条件: 空でない。空なら WorldVolume は根に長さ 0 の球を返し
-        //! NS_LOG_ERROR で知らせる
-        FollowHitSensor(SceneActor* owner, std::function<SensorVolume()> volume) noexcept;
+        //! @param[in] volume 持ち主の root の世界行列から世界座標の形を返す関数。事前条件: 空でない。
+        //! 空なら WorldVolume は根に長さ 0 の球を返し、NS_LOG_ERROR で知らせる
+        FollowHitSensor(SceneActor* owner, std::function<SensorVolume(const Matrix& rootWorld)> volume) noexcept;
 
-        //! 世界座標の形。受けた関数の答えをそのまま返す
-        [[nodiscard]] SensorVolume WorldVolume() const noexcept override;
+        //! 世界座標の形。受けた関数へ rootWorld を渡し、その答えをそのまま返す
+        [[nodiscard]] SensorVolume WorldVolume(const Matrix& rootWorld) const noexcept override;
 
         NS_REFLECT_NONE(FollowHitSensor, HitSensor)
 
     private:
-        std::function<SensorVolume()> m_volume; // 持ち主の当たりの形を世界座標で返す関数
+        std::function<SensorVolume(const Matrix& rootWorld)> m_volume; // 持ち主の当たりの形を世界座標で返す関数
     };
 } // namespace NS

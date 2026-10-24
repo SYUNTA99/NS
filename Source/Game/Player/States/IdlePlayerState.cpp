@@ -11,25 +11,26 @@ namespace GL
 {
     namespace Player
     {
-        void IdlePlayerState::OnStep(::PlayerActor& player, float dt)
+        void IdlePlayerState::OnStep(::PlayerActor* player, float dt)
         {
-            player.TickTimers(dt);
-            player.ApplyFriction(dt);
-            player.Jump(dt);
-            player.CutJumpRelease();
-            player.Gravity(dt);
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            player->TickTimers(dt);
+            player->ApplyFriction(dt);
+            player->Jump(dt);
+            player->CutJumpRelease();
+            player->Gravity(dt);
 
-            const NS::Body& body = player.Body();
+            const NS::Body& body = player->Body();
             if (PlayerJudgeFall::Judge(body.IsGrounded()))
             {
-                player.States().Change<FallPlayerState>();
+                player->States().Change<FallPlayerState>();
             }
             else if (PlayerJudgeWalk::Judge(
                          body.IsGrounded(),
-                         PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), player.Params().StickDeadzone()),
+                         PlayerJudgeMoveInput::Judge(player->DesiredSpeedScale(), player->Params().StickDeadzone()),
                          PlayerJudgeStopped::Judge(body.LateralVelocity())))
             {
-                player.States().Change<WalkPlayerState>();
+                player->States().Change<WalkPlayerState>();
             }
         }
     } // namespace Player

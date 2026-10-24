@@ -51,46 +51,49 @@ namespace NS
     HitScreenDirector::HitScreenDirector(Scene& scene) : m_scene(scene)
     {
         m_scene.AddSystemTick(*this, UpdatePhase::RenderPrep);
-        m_scene.RegisterOverlay(this);
+        InitOverlay(&m_scene, this);
     }
 
     HitScreenDirector::~HitScreenDirector() noexcept
     {
-        m_scene.UnregisterOverlay(this);
+        EndOverlay(&m_scene, this);
     }
 
-    void HitScreenDirector::StartFlash(const SceneActor& requester, int frames, float alpha) noexcept
+    void HitScreenDirector::StartFlash(const SceneActor* requester, int frames, float alpha) noexcept
     {
-        m_flashRequester = &requester;
+        NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::StartFlash: 頼んだ物が null");
+        m_flashRequester = requester;
         m_flashRemaining = std::max(frames, 0);
         m_flashFrames = m_flashRemaining;
         m_flashAlpha = alpha;
         m_flashJustStarted = true;
     }
 
-    void HitScreenDirector::StartShakeLines(const SceneActor& requester, const HitShakeLinesDesc& desc) noexcept
+    void HitScreenDirector::StartShakeLines(const SceneActor* requester, const HitShakeLinesDesc& desc) noexcept
     {
+        NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::StartShakeLines: 頼んだ物が null");
         if (!(desc.radius > 0.0f) || desc.frames <= 0)
         {
             m_linesRemaining = 0;
             m_linesJustStarted = false;
             return;
         }
-        m_linesRequester = &requester;
+        m_linesRequester = requester;
         m_lines = desc;
         m_linesRemaining = desc.frames;
         m_linesJustStarted = true;
     }
 
-    void HitScreenDirector::Stop(const SceneActor& requester) noexcept
+    void HitScreenDirector::Stop(const SceneActor* requester) noexcept
     {
-        if (m_flashRequester == &requester)
+        NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::Stop: 頼んだ物が null");
+        if (m_flashRequester == requester)
         {
             m_flashRemaining = 0;
             m_flashJustStarted = false;
             m_flashRequester = nullptr;
         }
-        if (m_linesRequester == &requester)
+        if (m_linesRequester == requester)
         {
             m_linesRemaining = 0;
             m_linesJustStarted = false;
@@ -98,14 +101,15 @@ namespace NS
         }
     }
 
-    void HitScreenDirector::StartDistortionRing(const SceneActor& requester, const HitDistortionRingDesc& desc) noexcept
+    void HitScreenDirector::StartDistortionRing(const SceneActor* requester, const HitDistortionRingDesc& desc) noexcept
     {
+        NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::StartDistortionRing: 頼んだ物が null");
         EndDistortionRing();
         if (desc.frames <= 0)
         {
             return;
         }
-        m_ringRequester = &requester;
+        m_ringRequester = requester;
         m_ring = desc;
         m_ringElapsed = 0;
         m_ringActive = true;
@@ -113,9 +117,10 @@ namespace NS
         WriteDistortionRing();
     }
 
-    void HitScreenDirector::StopDistortionRing(const SceneActor& requester) noexcept
+    void HitScreenDirector::StopDistortionRing(const SceneActor* requester) noexcept
     {
-        if (m_ringRequester == &requester)
+        NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::StopDistortionRing: 頼んだ物が null");
+        if (m_ringRequester == requester)
         {
             EndDistortionRing();
         }
@@ -143,14 +148,15 @@ namespace NS
         m_scene.SetDistortionRing(Gfx::DistortionRing{});
     }
 
-    void HitScreenDirector::StartGroundWave(const SceneActor& requester, const HitGroundWaveDesc& desc) noexcept
+    void HitScreenDirector::StartGroundWave(const SceneActor* requester, const HitGroundWaveDesc& desc) noexcept
     {
+        NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::StartGroundWave: 頼んだ物が null");
         EndGroundWave();
         if (desc.frames <= 0)
         {
             return;
         }
-        m_waveRequester = &requester;
+        m_waveRequester = requester;
         m_wave = desc;
         m_waveElapsed = 0;
         m_waveActive = true;
@@ -158,9 +164,10 @@ namespace NS
         WriteGroundWave();
     }
 
-    void HitScreenDirector::StopGroundWave(const SceneActor& requester) noexcept
+    void HitScreenDirector::StopGroundWave(const SceneActor* requester) noexcept
     {
-        if (m_waveRequester == &requester)
+        NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::StopGroundWave: 頼んだ物が null");
+        if (m_waveRequester == requester)
         {
             EndGroundWave();
         }

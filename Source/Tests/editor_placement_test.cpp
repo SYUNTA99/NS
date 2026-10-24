@@ -159,6 +159,6 @@ TEST(EditorPlacement, OnlyTheBuiltInPartsCountAsCells)
     const NS::SceneActor* dropped = scene.Actors().FindByActorId(editor.SelectedActorId());
     ASSERT_NE(dropped, nullptr);
 
-    EXPECT_TRUE(NS::Editor::IsCellBrushActor(*placedCube));
-    EXPECT_FALSE(NS::Editor::IsCellBrushActor(*dropped));
+    EXPECT_TRUE(NS::Editor::IsCellBrushActor(placedCube));
+    EXPECT_FALSE(NS::Editor::IsCellBrushActor(dropped));
 }

@@ -34,19 +34,22 @@ namespace GL
         {
         public:
             //! 姿のメッシュの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
-            explicit PlayerAppearance(NS::SceneActor* owner);
+            PlayerAppearance();
 
-            //! @brief 玉のメッシュを同居する Model へ差し、玉の倍率を Model の局所の倍率へ書く
+            //! @brief 玉のメッシュを renderer (持ち主の Model) へ差し、玉の倍率を局所の倍率へ書く
             //! @details 丸まっているかは持たない。持ち主が当たりの形を変えた時と OnAssetsLoaded で、形に合う方を呼ぶ
-            void Curl() noexcept;
-            //! @brief 立ち姿のメッシュを同居する Model へ差し、立ち姿の倍率を Model の局所の倍率へ書く
+            void Curl(NS::Model* renderer) noexcept;
+            //! @brief 立ち姿のメッシュを renderer へ差し、立ち姿の倍率を局所の倍率へ書く
             //! @details 呼ぶ時は Curl と同じ
-            void Uncurl() noexcept;
+            void Uncurl(NS::Model* renderer) noexcept;
 
-            //! @brief 丸まりに合わせて玉を回し、描く形の倍率を書く。持ち主の見た目の段が呼ぶ
+            //! @brief 丸まりに合わせて玉を回し、回転と描く形の倍率を renderer へ書く。持ち主の見た目の段が呼ぶ
+            //! @param[in] dt 持ち主の 1 フレームの秒。玉を回す角度と外れのぶれの位相に掛ける
             //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
             //! @param[in] impact 当たりの裁定の答え。何回目の当たりかを読む
-            void Update(const PlayerMotion& motion,
+            void Update(NS::Model* renderer,
+                        float dt,
+                        const PlayerMotion& motion,
                         const ChargeStatus& charge,
                         const BodySlamStatus& slam,
                         const ReboundStatus& rebound,
@@ -54,9 +57,9 @@ namespace GL
                         const NS::Vector3& aimDirection,
                         const GL::Level::ImpactAnswer& impact);
 
-            //! @brief 持ち主の Model の描く倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
+            //! @brief renderer (持ち主の Model) の描く倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
             //! @details やり直しとプレイの終わりで持ち主が呼ぶ。次の Update からはその時の構えと当たりの形で組み直す
-            void ResetDrawScale() noexcept;
+            void ResetDrawScale(NS::Model* renderer) noexcept;
 
             //! 押している間の構えの縦の倍率。押していない間は 1、溜めている間は構えの縮み、その前は押しの構えの縮み
             [[nodiscard]] float StanceHeight(const ChargeStatus& charge) const noexcept;
@@ -93,7 +96,9 @@ namespace GL
             NS_REFLECT_END()
 
         private:
-            void AdvanceSpin(const PlayerMotion& motion,
+            void AdvanceSpin(NS::Model* renderer,
+                             float dt,
+                             const PlayerMotion& motion,
                              const ChargeStatus& charge,
                              const BodySlamStatus& slam,
                              const ReboundStatus& rebound,
@@ -101,16 +106,17 @@ namespace GL
                              const NS::Vector3& aimDirection,
                              const GL::Level::ImpactAnswer& impact) noexcept;
             // skidScale はこすって止まる間の身体の速さの倍率。こすっていない間は 1
-            void AdvanceMissTumble(const MissTumble& tumble,
+            void AdvanceMissTumble(float dt,
+                                   const MissTumble& tumble,
                                    const ReboundStatus& rebound,
                                    float skidScale,
                                    const GL::Level::ImpactAnswer& impact) noexcept;
             // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
             void AdvanceLandingSquash(const PlayerMotion& motion) noexcept;
             // 構えの縮みに着地の潰れを掛け、描く時だけの倍率に控える。当たりの形の再生の間は構えを混ぜない
-            void WriteDrawScale(const ChargeStatus& charge) noexcept;
+            void WriteDrawScale(NS::Model* renderer, const ChargeStatus& charge) noexcept;
             // 姿のメッシュを Model へ差し、姿の倍率を Model の局所の倍率へ書く。読めていない姿は Model の今のメッシュを残す
-            void ShowLook(NS::Mesh* mesh, const NS::Vector3& scale) noexcept;
+            void ShowLook(NS::Model* renderer, NS::Mesh* mesh, const NS::Vector3& scale) noexcept;
 
             // 素材は AssetManager が持つ。欄は nullptr にならない
             NS::Mesh* m_standingMesh = nullptr;
@@ -150,7 +156,6 @@ namespace GL
             int m_landingSquashRecoverSteps = 6; // 着地の潰れを 1 へ戻すまでのフレーム数
             float m_chargeSquashScale = 0.95f;
             float m_pressSquashScale = 0.97f;
-            NS::SceneActor* m_owner = nullptr; // 持ち主 (非所有)
         };
     } // namespace Player
 } // namespace GL

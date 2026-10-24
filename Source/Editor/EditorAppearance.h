@@ -21,14 +21,14 @@ namespace NS
             NS_REFLECT_END_VALUE()
         };
 
-        //! actor の部品 part の欄 field の行の地の色。書く先を決める FieldDestinationOf の答えで選ぶ
+        //! actor の欄 field の行の地の色。書く先を決める FieldDestinationOf の答えで選ぶ
         //! シーンへ書く欄だけを塗り、元と派生の .actor へ書く欄は std::nullopt
         [[nodiscard]] inline std::optional<Color> FieldRowColor(const EditorAppearance& appearance,
-                                                                const SceneActor& actor,
-                                                                const Object& part,
+                                                                const SceneActor* actor,
                                                                 const FieldDesc& field) noexcept
         {
-            if (FieldDestinationOf(actor, part, field) != FieldDestination::Scene)
+            NS_ASSERT(App, actor != nullptr, "FieldRowColor: アクターが null");
+            if (FieldDestinationOf(actor, field) != FieldDestination::Scene)
             {
                 return std::nullopt;
             }

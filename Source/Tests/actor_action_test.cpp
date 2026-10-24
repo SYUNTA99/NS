@@ -225,15 +225,23 @@ namespace
     class ActionIdleState final : public NS::StateOf<ActionIdleState, ActionProbeActor>
     {
     public:
-        void OnStep(ActionProbeActor&, float) override {}
+        void OnStep(ActionProbeActor* owner, float) override
+        {
+            NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+            (void)owner;
+        }
     };
 
     // 入る時に持ち主の actionName の動作を startFrame から始める状態
     class ActionRunState final : public NS::StateOf<ActionRunState, ActionProbeActor>
     {
     public:
-        void OnEnter(ActionProbeActor& owner) override;
-        void OnStep(ActionProbeActor&, float) override {}
+        void OnEnter(ActionProbeActor* owner) override;
+        void OnStep(ActionProbeActor* owner, float) override
+        {
+            NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+            (void)owner;
+        }
     };
 
     // 体と攻撃のセンサー・当たりの返り・動作のタイムラインと、2 つの状態を持つアクター
@@ -251,24 +259,28 @@ namespace
         void OnInit() override
         {
             NS::ShapeHitSensor* body = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
+            NS::InitHitSensor(this, body);
             body->SetSphere(0.5f);
             NS::ShapeHitSensor* attack = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_attackSensor, this);
+            NS::InitHitSensor(this, attack);
             attack->SetSphere(0.8f);
-            CreateClassObj(m_model, this);
-            CreateClassObj(m_hitReaction, this);
-            CreateClassObj(m_actionTimeline, this);
+            CreateClassObj(m_model);
+            CreateClassObj(m_hitReaction);
+            CreateClassObj(m_actionTimeline);
             NS::StateMachineOf<ActionProbeActor>* machine = nullptr;
-            (void)BuildStateMachine<ActionProbeActor, ActionIdleState, ActionRunState>(*this, machine);
+            (void)BuildStateMachine<ActionProbeActor, ActionIdleState, ActionRunState>(this, machine);
         }
     };
 
-    void ActionRunState::OnEnter(ActionProbeActor& owner)
+    void ActionRunState::OnEnter(ActionProbeActor* owner)
     {
-        owner.started = owner.ActionTimelineClassObj()->Start(owner.actionName,
-                                                               owner.startFrame,
-                                                               owner.Root().Position(),
-                                                               owner.BodySensorClassObj(),
-                                                               owner.partner->BodySensorClassObj());
+        NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+        owner->started = owner->ActionTimelineClassObj()->Start(owner->ActionTimelineSelfOf(),
+                                                               owner->actionName,
+                                                               owner->startFrame,
+                                                               owner->Root().Position(),
+                                                               owner->BodySensorClassObj(),
+                                                               owner->partner->BodySensorClassObj());
     }
 } // namespace
 

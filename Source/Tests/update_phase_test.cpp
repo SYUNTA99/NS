@@ -94,21 +94,24 @@ namespace
     class DrawModelActor final : public NS::SceneActor
     {
     protected:
-        void OnInit() override { CreateClassObj(m_model, this); }
+        void OnInit() override { CreateClassObj(m_model); }
     };
 
     // 描く側より先に回る自機の段で書く。補間の始点が書く前の値で控えられたかを見る
     class DrawScaleWriterActor final : public NS::SceneActor
     {
     public:
-        explicit DrawScaleWriterActor(DrawModelActor& target) : m_target(target) {}
+        explicit DrawScaleWriterActor(DrawModelActor* target) : m_target(target)
+        {
+            NS_ASSERT(Game, target != nullptr, "DrawScaleWriterActor: 書く先のアクターが無い");
+        }
         NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Player; }
 
     protected:
-        void StateStep() override { (void)m_target.ModelClassObj()->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}); }
+        void StateStep() override { (void)m_target->ModelClassObj()->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}); }
 
     private:
-        DrawModelActor& m_target;
+        DrawModelActor* m_target = nullptr;
     };
 
     class PhaseTicker final : public NS::SceneSystem
@@ -269,12 +272,12 @@ TEST(InterpolationSnapshot, ModelWrittenByAnEarlierPhaseStartsFromTheValueBefore
     DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
-    scene.SpawnActor<DrawScaleWriterActor>("DrawScaleWriterActor", *drawn);
+    scene.SpawnActor<DrawScaleWriterActor>("DrawScaleWriterActor", drawn);
 
     scene.OnUpdate();
 
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._11, 2.0f);
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 1.0f);
 }
 
 TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
@@ -289,7 +292,7 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
 
     scene.OnUpdate();
 
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 2.0f);
 }
 
 TEST(InterpolationSnapshot, SnapStartsTheModelAtTheNewScale)
@@ -299,11 +302,11 @@ TEST(InterpolationSnapshot, SnapStartsTheModelAtTheNewScale)
     NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
     ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 1.0f);
 
     ASSERT_TRUE(model->SnapDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
 
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 2.0f);
 }
 
 TEST(ActorStepOrder, UpdateCallsEachStepOnceInTheFixedOrder)
@@ -359,19 +362,19 @@ TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
     DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
-    scene.SpawnActor<DrawScaleWriterActor>("DrawScaleWriterActor", *drawn);
+    scene.SpawnActor<DrawScaleWriterActor>("DrawScaleWriterActor", drawn);
     scene.SetWorldSpeed(0.5f);
 
     scene.OnUpdate();
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._11, 1.0f);
     scene.OnUpdate();
     // 世界を進めた歩。前の値は進める前の倍率
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._11, 2.0f);
     EXPECT_FLOAT_EQ(scene.RenderAlpha(0.5f), 0.25f);
     scene.OnUpdate();
     // 世界を進めない歩でも前の値を取り直さない
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(0.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 1.0f);
     EXPECT_FLOAT_EQ(scene.RenderAlpha(0.5f), 0.75f);
 }
 
@@ -490,12 +493,12 @@ TEST(ModelLocalScale, ScalesAroundTheMeshOriginAndMovesTheDrawScalePivot)
     ASSERT_NE(model, nullptr);
     model->SetLocalBoundsOverride(NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 1.0f, 1.0f}});
     ASSERT_TRUE(model->SetLocalScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._11, 2.0f);
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._42, 0.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._42, 0.0f);
 
     // 倍率を掛けた形の下端は -2。縦に 2 倍すると、形の中心は下端から 2 × 2 の高さへ上がる
     ASSERT_TRUE(model->SnapDrawScale(NS::Vector3{1.0f, 2.0f, 1.0f}));
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(1.0f)._42, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._42, 2.0f);
 
     EXPECT_FALSE(model->SetLocalScale(NS::Vector3{0.0f, 1.0f, 1.0f}));
     EXPECT_FLOAT_EQ(model->LocalScale().x, 2.0f);

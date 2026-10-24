@@ -24,10 +24,10 @@ namespace NS
             void Render(LevelEditorController& editor) noexcept;
 
         private:
-            void RenderRow(LevelEditorController& editor, SceneActor& object) noexcept;
+            void RenderRow(LevelEditorController& editor, SceneActor* object) noexcept;
 
             //! 対象を改名待ちにして、入力欄へ現在の表示名を入れる
-            void BeginRename(SceneActor& object) noexcept;
+            void BeginRename(SceneActor* object) noexcept;
 
             uint32 m_renamingActorId = 0; // 改名中の配置物の永続 id、0 なら改名していない
             char m_renameBuffer[64]{};         // 改名の入力欄

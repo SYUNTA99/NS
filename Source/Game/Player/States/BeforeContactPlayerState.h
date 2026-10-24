@@ -14,9 +14,9 @@ namespace GL
         class BeforeContactPlayerState final : public PlayerState<BeforeContactPlayerState>
         {
         public:
-            void OnEnter(::PlayerActor& player) override;
-            void OnStep(::PlayerActor& player, float dt) override;
-            void OnExit(::PlayerActor& player) override;
+            void OnEnter(::PlayerActor* player) override;
+            void OnStep(::PlayerActor* player, float dt) override;
+            void OnExit(::PlayerActor* player) override;
         };
     } // namespace Player
 } // namespace GL

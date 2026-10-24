@@ -80,31 +80,31 @@ namespace NS
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
         //! @param[in] frames 白の光のフレーム数。0 以下なら光らない
         //! @param[in] alpha 始めの濃さ。残りのフレーム数に比例して薄くなる
-        void StartFlash(const SceneActor& requester, int frames, float alpha) noexcept;
+        void StartFlash(const SceneActor* requester, int frames, float alpha) noexcept;
 
         //! @brief 震えの線を始める。前の線が残っていても始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
         //! @param[in] desc 震えの線の設定。半径かフレーム数が 0 以下なら出さない
-        void StartShakeLines(const SceneActor& requester, const HitShakeLinesDesc& desc) noexcept;
+        void StartShakeLines(const SceneActor* requester, const HitShakeLinesDesc& desc) noexcept;
 
         //! requester が頼んだ白と震えの線を消す。ほかの物が頼んだ物は残す
-        void Stop(const SceneActor& requester) noexcept;
+        void Stop(const SceneActor* requester) noexcept;
 
         //! @brief 歪みの輪を始め、始まりの姿を場面へ書く。前の輪が残っていても始め直す
         //! @param[in] requester 頼んだ物。StopDistortionRing で同じ物を渡すと消える
         //! @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない
-        void StartDistortionRing(const SceneActor& requester, const HitDistortionRingDesc& desc) noexcept;
+        void StartDistortionRing(const SceneActor* requester, const HitDistortionRingDesc& desc) noexcept;
 
         //! requester が頼んだ歪みの輪を消す。ほかの物が頼んだ輪と、白と震えの線は残す
-        void StopDistortionRing(const SceneActor& requester) noexcept;
+        void StopDistortionRing(const SceneActor* requester) noexcept;
 
         //! @brief 床の波を始め、始まりの姿を場面へ書く。前の波が残っていても始め直す
         //! @param[in] requester 頼んだ物。StopGroundWave で同じ物を渡すと消える
         //! @param[in] desc 床の波の設定。フレーム数が 0 以下なら出さない
-        void StartGroundWave(const SceneActor& requester, const HitGroundWaveDesc& desc) noexcept;
+        void StartGroundWave(const SceneActor* requester, const HitGroundWaveDesc& desc) noexcept;
 
         //! requester が頼んだ床の波を消す。ほかの物が頼んだ波は残す
-        void StopGroundWave(const SceneActor& requester) noexcept;
+        void StopGroundWave(const SceneActor* requester) noexcept;
 
         //! 白の残りフレーム数。出していない場合 0
         [[nodiscard]] int FlashFramesRemaining() const noexcept { return m_flashRemaining; }

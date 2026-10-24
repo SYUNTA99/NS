@@ -47,27 +47,29 @@ namespace
 {
     // インスペクタの部品の一覧の行と同じ道で、actor の姿勢の項目 fieldName に value を書く
     template <class Value>
-    void WritePoseField(LevelEditorController& editor, NS::SceneActor& actor, const char* fieldName, const Value& value)
+    void WritePoseField(LevelEditorController& editor, NS::SceneActor* actor, const char* fieldName, const Value& value)
     {
+        NS_ASSERT(Game, actor != nullptr, "WritePoseField: 渡したアクターか部品が無い");
         const NS::ClassObjInfo* row = nullptr;
         NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& candidate, const NS::Object* part) {
-            if (part == &actor.Root())
+            if (part == &actor->Root())
             {
                 row = &candidate;
             }
         });
         ASSERT_NE(row, nullptr);
-        const NS::FieldDesc* field = NS::FindField(actor.Root().GetReflection(), fieldName);
+        const NS::FieldDesc* field = NS::FindField(actor->Root().GetReflection(), fieldName);
         ASSERT_NE(field, nullptr);
-        field->set(&actor.Root(), &value);
+        field->set(&actor->Root(), &value);
         editor.NoteFieldEdit(actor, *row, fieldName);
     }
 
-    std::optional<NS::Vector2> FindMoveHandle(const NS::SceneActor& target,
+    std::optional<NS::Vector2> FindMoveHandle(const NS::SceneActor* target,
                                               const NS::Matrix& viewProjection,
                                               const NS::Editor::ViewRect& view)
     {
-        const NS::AffineDecomposition world = NS::DecomposeAffine(target.Root().WorldMatrix());
+        NS_ASSERT(Game, target != nullptr, "FindMoveHandle: 渡したアクターか部品が無い");
+        const NS::AffineDecomposition world = NS::DecomposeAffine(target->Root().WorldMatrix());
         for (int y = 0; y < view.height; ++y)
         {
             for (int x = 0; x < view.width; ++x)
@@ -170,7 +172,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
         editor.DeleteSelectedActor();
         EXPECT_NE(scene.Actors().FindByActorId(id), nullptr);
         editor.BeginTransformEdit();
-        WritePoseField(editor, *scene.Actors().FindByActorId(id), NS::k_PositionFieldName, NS::Vector3{5.0f, 0.0f, 0.0f});
+        WritePoseField(editor, scene.Actors().FindByActorId(id), NS::k_PositionFieldName, NS::Vector3{5.0f, 0.0f, 0.0f});
         editor.CommitTransformEdit();
         EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore);
         editor.EnterEdit();
@@ -198,17 +200,51 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
         editor.EnterPlay();
         const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(0.5f, 0.0f, 0.0f);
         NS::SceneActor& actor = *scene.Actors().FindByActorId(id);
-        WritePoseField(editor, actor, NS::k_PositionFieldName, NS::Vector3{5.0f, 1.0f, 2.0f});
-        WritePoseField(editor, actor, NS::k_RotationFieldName, rotation);
-        WritePoseField(editor, actor, NS::k_ScaleFieldName, NS::Vector3{2.0f, 2.0f, 2.0f});
+        WritePoseField(editor, &actor, NS::k_PositionFieldName, NS::Vector3{5.0f, 1.0f, 2.0f});
+        WritePoseField(editor, &actor, NS::k_RotationFieldName, rotation);
+        WritePoseField(editor, &actor, NS::k_ScaleFieldName, NS::Vector3{2.0f, 2.0f, 2.0f});
 
-        const nlohmann::json& baseline = scene.PlayBaseline();
+        const nlohmann::json& baseline = editor.PlayBaseline();
         const std::size_t index = NS::FindActorIndexById(baseline, id);
         ASSERT_NE(index, NS::k_NoActorIndex);
         const nlohmann::json& object = NS::SceneJsonActors(baseline)[index];
         EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).x, 5.0f);
         EXPECT_FLOAT_EQ(NS::Editor::ActorJsonRotation(object).y, rotation.y);
         EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(object).x, 2.0f);
+        editor.EnterEdit();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// プレイを始めた時のシーンの JSON は、プレイに入る前に動かしたアクターの位置を持つ
+TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "プレイ開始の JSON の試し";
+    desc.window.size = {160, 90};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        NS::Scene scene;
+        LevelEditorController editor(&scene);
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        ASSERT_TRUE(item.has_value());
+        editor.PlaceItem(*item);
+        const NS::uint32 id = editor.SelectedActorId();
+        NS::SceneActor* prop = scene.Actors().FindByActorId(id);
+        ASSERT_NE(prop, nullptr);
+        editor.BeginTransformEdit();
+        prop->Root().SetPosition(NS::Vector3{3.0f, 0.0f, 7.0f});
+        editor.CommitTransformEdit();
+
+        editor.EnterPlay();
+        const nlohmann::json& baseline = editor.PlayBaseline();
+        const std::size_t index = NS::FindActorIndexById(baseline, id);
+        ASSERT_NE(index, NS::k_NoActorIndex);
+        const nlohmann::json& object = NS::SceneJsonActors(baseline)[index];
+        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).x, 3.0f);
+        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).z, 7.0f);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
@@ -276,7 +312,7 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
 
         const auto colorOf = [&scene, id]() {
             const NS::SceneActor* actor = scene.Actors().FindByActorId(id);
-            return NS::SerializeClassObjFields(*actor->ModelClassObj())["基本色"];
+            return NS::SerializeClassObjFields(actor->ModelClassObj())["基本色"];
         };
         const nlohmann::json colorBefore = colorOf();
         const NS::Vector3 positionBefore = scene.Actors().FindByActorId(id)->Root().Position();
@@ -299,14 +335,14 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
         ASSERT_NE(actor, nullptr);
         actor->ModelClassObj()->SetColorOverride(NS::Color{0.2f, 0.4f, 0.6f, 1.0f});
         const NS::ClassObjInfo* modelRow = nullptr;
-        NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
             if (part == actor->ModelClassObj())
             {
                 modelRow = &row;
             }
         });
         ASSERT_NE(modelRow, nullptr);
-        editor.NoteFieldEdit(*actor, *modelRow, "基本色");
+        editor.NoteFieldEdit(actor, *modelRow, "基本色");
         const nlohmann::json colorEdited = colorOf();
         ASSERT_NE(colorEdited, colorBefore);
         editor.EnterEdit();
@@ -386,7 +422,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
         const NS::SceneActor* camera = editor.SelectedActor();
         ASSERT_NE(camera, nullptr);
         const std::optional<NS::Vector2> handle =
-            FindMoveHandle(*camera, scene.GetCameraManager()->ViewProjection(), view);
+            FindMoveHandle(camera, scene.GetCameraManager()->ViewProjection(), view);
         ASSERT_TRUE(handle.has_value());
 
         const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
@@ -439,7 +475,7 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
         const NS::SceneActor* actor = scene.Actors().FindByActorId(actorId);
         ASSERT_NE(actor, nullptr);
         const std::optional<NS::Vector2> handle =
-            FindMoveHandle(*actor, scene.GetCameraManager()->ViewProjection(), view);
+            FindMoveHandle(actor, scene.GetCameraManager()->ViewProjection(), view);
         ASSERT_TRUE(handle.has_value());
 
         const NS::Vector3 otherBefore = worldPosition(otherId);
@@ -475,7 +511,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         const NS::uint32 actorId = editor.SelectedActorId();
         const NS::Vector3 placed = scene.Actors().FindByActorId(actorId)->Root().Position();
         WritePoseField(editor,
-                       *scene.Actors().FindByActorId(actorId),
+                       scene.Actors().FindByActorId(actorId),
                        NS::k_PositionFieldName,
                        NS::Vector3{placed + NS::Vector3{3.0f, 0.0f, 0.0f}});
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
@@ -493,7 +529,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         ASSERT_NE(actor, nullptr);
         ASSERT_EQ(actor->Root().Position(), actor->Root().WorldMatrix().Translation());
         const std::optional<NS::Vector2> handle =
-            FindMoveHandle(*actor, scene.GetCameraManager()->ViewProjection(), view);
+            FindMoveHandle(actor, scene.GetCameraManager()->ViewProjection(), view);
         ASSERT_TRUE(handle.has_value());
 
         const NS::Vector3 before = actor->Root().WorldMatrix().Translation();
@@ -551,7 +587,7 @@ TEST(EditorBrush, RotateKeepsTheTilt)
         const NS::uint32 id = scene.Actors().ActorAt(0)->Id();
         editor.SelectActorById(id);
         WritePoseField(
-            editor, *scene.Actors().FindByActorId(id), NS::k_RotationFieldName, NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.5f, 0.0f));
+            editor, scene.Actors().FindByActorId(id), NS::k_RotationFieldName, NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.5f, 0.0f));
         const auto up = [&scene, id] {
             return NS::Vector3::Transform(NS::Vector3::UnitY, scene.Actors().FindByActorId(id)->Root().Rotation());
         };
@@ -585,7 +621,7 @@ TEST(EditorSelection, RenameGoesToTheActorBeingTyped)
     editor.PlaceItem(*item);
     const NS::uint32 second = editor.SelectedActorId();
     ASSERT_NE(first, second);
-    const std::string secondName = NS::Editor::ActorDisplayName(*scene.Actors().FindByActorId(second));
+    const std::string secondName = NS::Editor::ActorDisplayName(scene.Actors().FindByActorId(second));
     editor.SelectActorById(first);
 
     NS::Editor::InspectorPanel inspector;
@@ -609,9 +645,9 @@ TEST(EditorSelection, RenameGoesToTheActorBeingTyped)
     inspector.Render(editor);
     ImGui::EndFrame();
 
-    EXPECT_NE(std::string{NS::Editor::ActorDisplayName(*scene.Actors().FindByActorId(first))}.find("Typed"),
+    EXPECT_NE(std::string{NS::Editor::ActorDisplayName(scene.Actors().FindByActorId(first))}.find("Typed"),
               std::string::npos);
-    EXPECT_EQ(NS::Editor::ActorDisplayName(*scene.Actors().FindByActorId(second)), secondName);
+    EXPECT_EQ(NS::Editor::ActorDisplayName(scene.Actors().FindByActorId(second)), secondName);
     ImGui::DestroyContext(gui);
 }
 
@@ -668,7 +704,7 @@ TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 id = editor.SelectedActorId();
-    const std::string before = NS::Editor::ActorDisplayName(*scene.Actors().FindByActorId(id));
+    const std::string before = NS::Editor::ActorDisplayName(scene.Actors().FindByActorId(id));
 
     NS::Editor::InspectorPanel inspector;
     RenderInspectorFrame(inspector, editor);
@@ -964,7 +1000,7 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
         const NS::uint32 follower = editor.SelectedActorId();
         GL::Level::FollowCameraActor* followActor = AsFollowCamera(scene.Actors().FindByActorId(follower));
         ASSERT_NE(followActor, nullptr);
-        ASSERT_EQ(NS::ApplyJsonFields(followActor->Vcam(), nlohmann::json{{"追従対象", {{"ref", kept}}}}), 0u);
+        ASSERT_EQ(NS::ApplyJsonFields(&followActor->Vcam(), nlohmann::json{{"追従対象", {{"ref", kept}}}}), 0u);
         editor.SelectActors({kept, follower}, follower);
         objectsBefore = scene.Actors().ActorCount();
         undoBefore = undo.UndoSize();

@@ -3,7 +3,11 @@
 #include "Game/Level/HitTier.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/Reflection/ActorRef.h"
+
+namespace NS
+{
+    class SceneActor;
+} // namespace NS
 
 namespace GL
 {
@@ -25,7 +29,7 @@ namespace GL
         //! @brief 突進の線で最初に触れる相手の予測
         struct SlamLineTarget
         {
-            NS::ActorRef target{};
+            NS::SceneActor* target = nullptr;
             NS::AABB bounds{};     //!< 相手の当たりの外接箱。世界座標
             NS::Vector3 origin;    //!< 探した時の自機の位置。世界座標
             NS::Vector3 direction; //!< 探した水平の向き。正規化済みで y は 0

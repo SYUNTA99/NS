@@ -62,9 +62,10 @@ namespace
             .missTumble = GL::Player::MissTumble{.twist = NS::Vector3{0.0f, -0.8f, 0.0f}, .power = 1.0f}};
     }
 
-    float LateralSpeed(const PlayerActor& player)
+    float LateralSpeed(const PlayerActor* player)
     {
-        return player.Body().LateralVelocity().Length();
+        NS_ASSERT(Game, player != nullptr, "LateralSpeed: 渡したアクターか部品が無い");
+        return player->Body().LateralVelocity().Length();
     }
 } // namespace
 
@@ -79,7 +80,7 @@ TEST(MissTumble, MissReboundSkidsToAStopInTheSkidFrames)
         PlayerActor* player = PlaceTumblePlayer(scene);
         ASSERT_NE(player, nullptr);
         ASSERT_EQ(
-            NS::ApplyJsonFields(player->Params(),
+            NS::ApplyJsonFields(&player->Params(),
                                 {{"外れのこすって止まるまでのフレーム数", 10}, {"外れのこすって止まる減り方", 2.0f}}),
             0u);
         ASSERT_TRUE(player->BeginRebound(MissArc(distance)));
@@ -97,7 +98,7 @@ TEST(MissTumble, MissReboundSkidsToAStopInTheSkidFrames)
         while (player->IsSkidding() && speeds.size() < 30)
         {
             player->Update(false);
-            speeds.push_back(LateralSpeed(*player));
+            speeds.push_back(LateralSpeed(player));
             // 止まりきったフレームに立ちへ移り、丸まりも解ける
             EXPECT_EQ(player->IsCurled(), player->IsSkidding());
         }
@@ -127,7 +128,7 @@ TEST(MissTumble, CenterReboundAndZeroSkidFramesLandWithoutSkidding)
         GL::Player::ReboundArc arc = MissArc(3.0f);
         if (miss)
         {
-            ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"外れのこすって止まるまでのフレーム数", 0}}), 0u);
+            ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"外れのこすって止まるまでのフレーム数", 0}}), 0u);
         }
         else
         {
@@ -155,7 +156,7 @@ TEST(MissTumble, TumbleBlendsIntoTheTwistAndTiltsByTheWobble)
         NS::Scene scene;
         PlayerActor* player = PlaceTumblePlayer(scene);
         ASSERT_NE(player, nullptr);
-        ASSERT_EQ(NS::ApplyJsonFields(player->Appearance(),
+        ASSERT_EQ(NS::ApplyJsonFields(&player->Appearance(),
                                       {{"外れの縁でのねじれの回転数", 2.0f},
                                        {"外れで当たる前の回転を引き継ぐ割合", 0.0f},
                                        {"外れの回転を寄せるフレーム数", 4},
@@ -185,7 +186,7 @@ TEST(MissTumble, TumbleCarriesTheSlamSpin)
     NS::Scene scene;
     PlayerActor* player = PlaceTumblePlayer(scene);
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->Appearance(),
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Appearance(),
                                   {{"外れの縁でのねじれの回転数", 0.0f},
                                    {"外れで当たる前の回転を引き継ぐ割合", 0.5f},
                                    {"外れの回転を寄せるフレーム数", 1},

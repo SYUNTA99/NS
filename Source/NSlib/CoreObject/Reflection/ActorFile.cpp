@@ -142,15 +142,16 @@ namespace NS
 
     } // namespace
 
-    FieldDestination FieldDestinationOf(const SceneActor& actor, const Object&, const FieldDesc& field) noexcept
+    FieldDestination FieldDestinationOf(const SceneActor* actor, const FieldDesc& field) noexcept
     {
+        NS_ASSERT(Scene, actor != nullptr, "FieldDestinationOf: アクターが null");
         if (field.type == FieldType::ActorRef || field.scope == FieldScope::Global)
         {
             return FieldDestination::Scene;
         }
         if (field.scope == FieldScope::Protected)
         {
-            const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(actor.ActorFileName());
+            const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(actor->ActorFileName());
             if (actorFile != nullptr && !ActorFileBase(*actorFile).empty())
             {
                 return FieldDestination::DerivedActorFile;
@@ -159,28 +160,29 @@ namespace NS
         return FieldDestination::ActorFile;
     }
 
-    std::string ActorFileToWrite(const SceneActor& actor, FieldDestination destination)
+    std::string ActorFileToWrite(const SceneActor* actor, FieldDestination destination)
     {
+        NS_ASSERT(Scene, actor != nullptr, "ActorFileToWrite: アクターが null");
         switch (destination)
         {
         case FieldDestination::ActorFile:
         {
-            const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(actor.ActorFileName());
+            const nlohmann::json* actorFile = ActorFileLibrary::Get().Find(actor->ActorFileName());
             if (actorFile != nullptr && !ActorFileBase(*actorFile).empty())
             {
                 return std::string{ActorFileBase(*actorFile)};
             }
-            return actor.ActorFileName();
+            return actor->ActorFileName();
         }
         case FieldDestination::DerivedActorFile:
-            return actor.ActorFileName();
+            return actor->ActorFileName();
         case FieldDestination::Scene:
             return {};
         }
         return {};
     }
 
-    bool CanWriteField(FieldDestination layer, const SceneActor&, const Object&, const FieldDesc& field) noexcept
+    bool CanWriteField(FieldDestination layer, const FieldDesc& field) noexcept
     {
         const bool sceneOnly = field.type == FieldType::ActorRef;
         switch (layer)
@@ -215,8 +217,9 @@ namespace NS
     std::optional<nlohmann::json> MergeLayer(const nlohmann::json& base,
                                              const nlohmann::json& written,
                                              FieldDestination layer,
-                                             const SceneActor& actor)
+                                             const SceneActor* actor)
     {
+        NS_ASSERT(Scene, actor != nullptr, "MergeLayer: 渡したアクターか部品が無い");
         nlohmann::json merged = base;
         nlohmann::json& target = ActorJsonClassObjs(merged);
         bool writable = true;
@@ -235,18 +238,18 @@ namespace NS
                 {
                     NS_LOG_ERROR(Scene,
                                  "{} の {} の上書きの部品 {} に欄 {} が無い",
-                                 actor.ActorFileName(),
+                                 actor->ActorFileName(),
                                  LayerName(layer),
                                  row.key,
                                  entry.key());
                     writable = false;
                     continue;
                 }
-                if (!CanWriteField(layer, actor, *part, *field))
+                if (!CanWriteField(layer, *field))
                 {
                     NS_LOG_ERROR(Scene,
                                  "{} の部品 {} の欄 {} は {} に書けない",
-                                 actor.ActorFileName(),
+                                 actor->ActorFileName(),
                                  row.key,
                                  entry.key(),
                                  LayerName(layer));
@@ -263,7 +266,7 @@ namespace NS
             {
                 NS_LOG_ERROR(Scene,
                              "{} の {} の上書きに、アクターに無い部品 {} がある",
-                             actor.ActorFileName(),
+                             actor->ActorFileName(),
                              LayerName(layer),
                              entry.key());
                 writable = false;
@@ -272,7 +275,7 @@ namespace NS
             {
                 NS_LOG_ERROR(Scene,
                              "{} の {} の上書きの部品 {} が JSON の object でない",
-                             actor.ActorFileName(),
+                             actor->ActorFileName(),
                              LayerName(layer),
                              entry.key());
                 writable = false;
@@ -285,9 +288,10 @@ namespace NS
         return merged;
     }
 
-    void ReadSceneOverrides(SceneActor& actor, const nlohmann::json& actorJson)
+    void ReadSceneOverrides(SceneActor* actor, const nlohmann::json& actorJson)
     {
-        actor.ClearSceneOverrides();
+        NS_ASSERT(Scene, actor != nullptr, "ReadSceneOverrides: アクターが null");
+        actor->ClearSceneOverrides();
         ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
             const nlohmann::json* fields = ClassObjFields(actorJson, row.key);
             if (fields == nullptr)
@@ -299,7 +303,7 @@ namespace NS
                 const FieldDesc* field = FindField(part->GetReflection(), entry.key());
                 if (field != nullptr && field->type != FieldType::ActorRef)
                 {
-                    actor.AddSceneOverride(row.key, entry.key());
+                    actor->AddSceneOverride(row.key, entry.key());
                 }
             }
         });
@@ -530,7 +534,7 @@ namespace NS
                 return std::nullopt;
             }
             std::optional<nlohmann::json> merged =
-                MergeLayer(base->second, actorFile, FieldDestination::DerivedActorFile, *actor);
+                MergeLayer(base->second, actorFile, FieldDestination::DerivedActorFile, actor.get());
             if (!merged.has_value())
             {
                 NS_LOG_ERROR(Scene, "派生の .actor {} を元 {} に重ねられないので読まない", name, baseName);
@@ -540,9 +544,9 @@ namespace NS
         }
 
         std::vector<std::string> missing;
-        ForEachReflectedClassObj(*actor, [&](const ClassObjInfo& row, const Object* part) {
+        ForEachReflectedClassObj(actor.get(), [&](const ClassObjInfo& row, const Object* part) {
             const nlohmann::json* fields = ClassObjFields(values, row.key);
-            const nlohmann::json code = SerializeClassObjFields(*part);
+            const nlohmann::json code = SerializeClassObjFields(part);
             for (nlohmann::json::const_iterator field = code.begin(); field != code.end(); ++field)
             {
                 const FieldDesc* desc = FindField(part->GetReflection(), field.key());
@@ -685,9 +689,10 @@ namespace NS
         return WriteActorFileAt(OS::FileSystem::Combine(Directory(), std::string{name} + ".actor"), *actorFile);
     }
 
-    void ApplyActorFile(SceneActor& actor)
+    void ApplyActorFile(SceneActor* actor)
     {
-        const nlohmann::json* actorFile = ActorFileLibrary::Get().Values(actor.ActorFileName());
+        NS_ASSERT(Scene, actor != nullptr, "ApplyActorFile: アクターが null");
+        const nlohmann::json* actorFile = ActorFileLibrary::Get().Values(actor->ActorFileName());
         if (actorFile == nullptr)
         {
             return;
@@ -702,7 +707,7 @@ namespace NS
             }
             for (nlohmann::json::iterator field = fields->begin(); field != fields->end();)
             {
-                if (actor.IsSceneOverride(row.key, field.key()))
+                if (actor->IsSceneOverride(row.key, field.key()))
                 {
                     field = fields->erase(field);
                 }
@@ -715,10 +720,11 @@ namespace NS
         ApplyActorClassObjs(actor, values);
     }
 
-    bool RevertSceneOverride(SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName)
+    bool RevertSceneOverride(SceneActor* actor, const ClassObjInfo& row, std::string_view fieldName)
     {
-        Object* part = row.get(&actor);
-        const nlohmann::json* values = ActorFileLibrary::Get().Values(actor.ActorFileName());
+        NS_ASSERT(Scene, actor != nullptr, "RevertSceneOverride: アクターが null");
+        Object* part = row.get(actor);
+        const nlohmann::json* values = ActorFileLibrary::Get().Values(actor->ActorFileName());
         const nlohmann::json* fields = nullptr;
         if (values != nullptr)
         {
@@ -727,11 +733,11 @@ namespace NS
         const std::string name{fieldName};
         if (part == nullptr || fields == nullptr || !fields->contains(name))
         {
-            NS_LOG_ERROR(Scene, "{} の全部の値に部品 {} の欄 {} が無いので戻せない", actor.ActorFileName(), row.key, name);
+            NS_LOG_ERROR(Scene, "{} の全部の値に部品 {} の欄 {} が無いので戻せない", actor->ActorFileName(), row.key, name);
             return false;
         }
-        actor.RemoveSceneOverride(row.key, fieldName);
-        (void)ApplyJsonFields(*part, nlohmann::json{{name, fields->at(name)}});
+        actor->RemoveSceneOverride(row.key, fieldName);
+        (void)ApplyJsonFields(part, nlohmann::json{{name, fields->at(name)}});
         return true;
     }
 } // namespace NS

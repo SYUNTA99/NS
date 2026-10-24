@@ -1,8 +1,8 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/Windows/Gamepad.h"
 #include "NSlib/Windows/Input.h"
 #include "NSlib/Windows/Keyboard.h"
@@ -72,18 +72,14 @@ namespace NS
         }
     }
 
-    void PlayerInput::Update()
+    void PlayerInput::Update(const IUseCamera* camera)
     {
-        // 持ち主の無い部品は出ていると見る
-        if (m_owner != nullptr && !m_owner->IsAppeared())
-        {
-            return;
-        }
+        NS_ASSERT(Scene, camera != nullptr, "PlayerInput::Update: カメラを引くアクターが空");
 
-        // camera 相対移動の基準 forward は CameraManager から自分で読む。CameraManager 不在 (テスト等) は注入値のまま
-        if (m_owner != nullptr && m_owner->GetCameraManager() != nullptr)
+        // camera 相対移動の基準 forward は CameraManager から読む。CameraManager 不在 (テスト等) は注入値のまま
+        if (camera->GetCameraManager() != nullptr)
         {
-            m_cameraForward = NormalizeHorizontal(CalcCameraForwardHorizontal(m_owner));
+            m_cameraForward = NormalizeHorizontal(CalcCameraForwardHorizontal(camera));
         }
 
         OS::Input& input = OS::Input::Get();

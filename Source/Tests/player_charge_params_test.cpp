@@ -24,7 +24,7 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     GL::Player::PlayerParams* params = &player.Params();
-    const nlohmann::json fields = NS::SerializeClassObjFields(*params);
+    const nlohmann::json fields = NS::SerializeClassObjFields(params);
     const nlohmann::json expected = {
         {"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}, {"チャージ減速率", 0.7f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -33,7 +33,7 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
     }
     // 構えの縮みは体の形を描く PlayerAppearance の欄
-    const nlohmann::json appearance = NS::SerializeClassObjFields(player.Appearance());
+    const nlohmann::json appearance = NS::SerializeClassObjFields(&player.Appearance());
     const nlohmann::json squash = {{"構えの縮み", 0.95f}, {"押しの構えの縮み", 0.97f}};
     for (nlohmann::json::const_iterator it = squash.begin(); it != squash.end(); ++it)
     {
@@ -55,14 +55,16 @@ TEST(PlayerChargeParams, DefaultsKeepEveryFieldAndCurve)
 // 溜めの倍率と溜め中の減速は欄の持ち主 PlayerParams が答える。裁定役と自機の溜めは同じ答えを読む
 TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     GL::Player::PlayerParams* params = &player.Params();
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 1.5f);
 
     ASSERT_EQ(
         NS::ApplyJsonFields(
-            *params, {{"チャージ減速率", 0.4f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}),
+            params, {{"チャージ減速率", 0.4f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}),
         0u);
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 2.0f);
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(-1.0f), 1.0f);
@@ -72,22 +74,24 @@ TEST(PlayerChargeParams, ChargeFactorComesFromTheParamsCurve)
     EXPECT_NEAR(params->ChargingSpeedScale(), 0.6f, 0.00001f);
 
     // 減速率は 0..1 の外でも倍率が 0..1 に収まる
-    ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージ減速率", 1.5f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(params, {{"チャージ減速率", 1.5f}}), 0u);
     EXPECT_FLOAT_EQ(params->ChargingSpeedScale(), 0.0f);
-    ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージ減速率", -0.5f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(params, {{"チャージ減速率", -0.5f}}), 0u);
     EXPECT_FLOAT_EQ(params->ChargingSpeedScale(), 1.0f);
 
     // Inspector で点を全部消すとカーブは 0 を返す。威力が消えないよう 1 とみなす
-    ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージ倍率カーブ", {{"curve", nlohmann::json::array()}}}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(params, {{"チャージ倍率カーブ", {{"curve", nlohmann::json::array()}}}}), 0u);
     EXPECT_FLOAT_EQ(params->ChargeFactorFor(0.5f), 1.0f);
 }
 
 TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    PlayerActor& player = *spawned;
     GL::Player::PlayerParams* params = &player.Params();
-    ASSERT_EQ(NS::ApplyJsonFields(*params,
+    ASSERT_EQ(NS::ApplyJsonFields(params,
                                   {{"チャージ減速率", 0.4f},
                                    {"チャージしきい値秒", 0.1f},
                                    {"チャージ満タン秒", 0.5f},
@@ -103,15 +107,19 @@ TEST(PlayerChargeParams, LiveParamsDriveTheJudgeCurves)
 // .actor が持つ形 (欄を書き出した JSON) を別の自機へ読むと、カーブも同じ値になる
 TEST(PlayerChargeParams, CurvesSurviveWritingAndReadingTheFields)
 {
-    const std::unique_ptr<PlayerActor> written = NS::CreateActor<PlayerActor>();
+    NS::Scene writtenScene;
+    PlayerActor* written = writtenScene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(written, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(
-                  written->Params(),
+                  &written->Params(),
                   {{"チャージ減速率", 0.25f}, {"チャージ倍率カーブ", {{"curve", {{0.0f, 1.0f}, {1.0f, 3.0f}}}}}}),
               0u);
-    const nlohmann::json fields = NS::SerializeClassObjFields(written->Params());
+    const nlohmann::json fields = NS::SerializeClassObjFields(&written->Params());
 
-    const std::unique_ptr<PlayerActor> read = NS::CreateActor<PlayerActor>();
-    ASSERT_EQ(NS::ApplyJsonFields(read->Params(), fields), 0u);
+    NS::Scene readScene;
+    PlayerActor* read = readScene.SpawnActor<PlayerActor>("PlayerActor");
+    ASSERT_NE(read, nullptr);
+    ASSERT_EQ(NS::ApplyJsonFields(&read->Params(), fields), 0u);
     EXPECT_FLOAT_EQ(read->Params().ChargingSpeedScale(), 0.75f);
     EXPECT_FLOAT_EQ(read->Params().ChargeFactorFor(0.5f), 2.0f);
 }
@@ -156,7 +164,7 @@ TEST(PlayerChargeParams, ShippedAssetsCarryNoRemovedTierKeys)
 TEST(PlayerChargeParams, ShippedAssetsNameOnlyPartsTheClassHas)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    const nlohmann::json prototype = NS::Editor::MakePrototypeJson(*playerOwned);
+    const nlohmann::json prototype = NS::Editor::MakePrototypeJson(playerOwned.get());
     const nlohmann::json* actorFile = NS::ActorFileLibrary::Get().Find("PlayerActor");
     ASSERT_NE(actorFile, nullptr);
     for (nlohmann::json::const_iterator it = NS::ActorJsonClassObjs(*actorFile).begin();

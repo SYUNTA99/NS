@@ -69,18 +69,28 @@ namespace NS
     //! int を越える長さは int の最大
     [[nodiscard]] int ActionLength(const ActorAction& action) noexcept;
 
+    //! @brief 動作を始める・進める 1 回の呼び出しに渡す、持ち主の読む物と書く先。呼び出しの中だけ使い、覚えない
+    //! @details 書く先は持ち主が持たなければ nullptr
+    struct ActionTimelineSelf
+    {
+        const SceneActor* actor = nullptr;  //!< .actor の名前と状態機械を読む。事前条件: nullptr でない
+        HitReaction* reaction = nullptr;    //!< 項目の事象を始める
+        Model* model = nullptr;             //!< 項目が形・揺れ・震えを書く
+        HitSensor* bodySensor = nullptr;    //!< 入り切りの事象が切り替える体のセンサー
+        HitSensor* attackSensor = nullptr;  //!< 入り切りの事象が切り替える攻撃のセンサー
+    };
+
     //! @brief 持ち主の .actor の動作を持ち、状態に入る時に始めた動作を、状態の歩を時計にして進める部品
     //! @details 時計は持ち主の状態に入ってから進めたフレーム数で、止めの間は状態と一緒に止まる。
     //! 始めた時と違う状態へ移ると止まり、残りの事象は起きない。項目は持ち主の HitReaction が始める。
-    //! 進めるのは持ち主の SceneActor::Update だけ
+    //! 持ち主は覚えず、呼ぶたびに受ける。進めるのは持ち主の SceneActor::Update だけ
     class ActionTimeline : public Object
     {
     public:
-        explicit ActionTimeline(SceneActor* owner) noexcept : m_owner(owner) {}
-
         //! @brief 持ち主の .actor (SceneActor::ActorFileName) から動作を読み直す。走っている動作は止める
         //! @details .actor が無ければ動作は空。壊れた動作は ReadActorActions が ERROR を出して読まない
-        void ReloadActions();
+        //! @param[in] owner 持ち主。事前条件: nullptr でない
+        void ReloadActions(const SceneActor* owner);
 
         //! @brief 名前の動作を、持ち主の今の状態に結んで始める。状態に入る時 (OnEnter) に呼ぶ
         //! @details 走っている動作は止めてから始める。状態の最初の歩が startFrame に当たり、
@@ -91,7 +101,8 @@ namespace NS
         //! @param[in] self 持ち主のセンサー。事前条件: nullptr でない
         //! @param[in] other 相手のセンサー。事前条件: nullptr でない
         //! @return 始めた場合 true。その名前の動作が無い場合は WARN を出して false
-        bool Start(std::string_view name,
+        bool Start(const ActionTimelineSelf& owner,
+                   std::string_view name,
                    int startFrame,
                    const Vector3& position,
                    const HitSensor* self,
@@ -105,7 +116,7 @@ namespace NS
 
         //! @brief 持ち主の状態の歩で 1 フレーム進め、その歩に始まる事象を起こす
         //! @details 呼ぶのは SceneActor::Update の StateStep の直後だけ。状態の歩が進んでいなければ何もしない
-        void Advance();
+        void Advance(const ActionTimelineSelf& owner);
 
         [[nodiscard]] bool IsRunning() const noexcept { return m_current != k_NoAction; }
         //! 走っている動作の名前。走っていなければ空
@@ -121,16 +132,18 @@ namespace NS
     private:
         static constexpr std::size_t k_NoAction = static_cast<std::size_t>(-1);
 
+        // 入り切りの途中の事象と、切り替えたセンサー
+        struct SensorSwitch
+        {
+            std::size_t index = 0;      // 動作の sensors の番号
+            HitSensor* sensor = nullptr; // 持ち主のセンサー。持ち主と同じだけ生きる
+        };
+
         // 名前の動作の m_actions の番号。無ければ k_NoAction
         [[nodiscard]] std::size_t IndexOf(std::string_view name) const noexcept;
-        // 入り切りの事象が切り替えるセンサー。持たなければ nullptr
-        [[nodiscard]] HitSensor* SensorOf(const ActionSensorEvent& event) const noexcept;
         // 入り切りの途中の物を戻す。endingFrame を渡すと、その歩に終わる物だけを戻す
         void EndSensorSwitches(std::optional<int> endingFrame) noexcept;
-        // 相手のセンサー。相手が居なくなっていれば nullptr
-        [[nodiscard]] const HitSensor* OtherSensor() const noexcept;
 
-        SceneActor* m_owner = nullptr;       // 持ち主 (非所有)
         std::vector<ActorAction> m_actions;  // 持ち主の .actor の動作
         std::size_t m_current = k_NoAction;  // 走っている動作の m_actions の番号
         StateId m_state = nullptr;           // 動作を始めた時の持ち主の状態
@@ -138,8 +151,8 @@ namespace NS
         int m_frame = -1;                    // 最後に進めたフレーム
         Vector3 m_position{};                // 始めた時に渡した位置
         const HitSensor* m_self = nullptr;   // 持ち主のセンサー。持ち主と同じだけ生きる
-        HitSensorRef m_other{};              // 相手のセンサー。フレームをまたいでポインタを持たず、使うたびに引く
+        const HitSensor* m_other = nullptr;  // 相手のセンサー
         std::vector<std::size_t> m_started;  // 最後の Advance で始まった事象
-        std::vector<std::size_t> m_switched; // 入り切りの途中の、動作の sensors の番号
+        std::vector<SensorSwitch> m_switched; // 入り切りの途中の事象
     };
 } // namespace NS

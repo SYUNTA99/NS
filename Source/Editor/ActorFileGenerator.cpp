@@ -31,13 +31,13 @@ namespace NS
 
             nlohmann::json full = actorFile;
             nlohmann::json& parts = ActorJsonClassObjs(full);
-            ForEachReflectedClassObj(*actor, [&](const ClassObjInfo& row, const Object* part) {
+            ForEachReflectedClassObj(actor.get(), [&](const ClassObjInfo& row, const Object* part) {
                 nlohmann::json& fields = parts[row.key];
                 if (!fields.is_object())
                 {
                     fields = nlohmann::json::object();
                 }
-                const nlohmann::json code = SerializeClassObjFields(*part);
+                const nlohmann::json code = SerializeClassObjFields(part);
                 for (nlohmann::json::const_iterator field = code.begin(); field != code.end(); ++field)
                 {
                     const FieldDesc* desc = FindField(part->GetReflection(), field.key());

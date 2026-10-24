@@ -331,7 +331,7 @@ namespace NS
                 result.error = std::format("id {} の配置物に突進が当たる体が無い", result.desc.targetId);
                 return result;
             }
-            const SensorVolume body = bodySensor->WorldVolume();
+            const SensorVolume body = bodySensor->WorldVolume(target->Root().WorldMatrix());
             const Vector3 root = player->Root().Position();
             const Sphere ball = player->SlamBallAt(root);
             const Vector3 ballOffset = ball.center - root;

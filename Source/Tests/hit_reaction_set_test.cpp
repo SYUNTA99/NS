@@ -353,10 +353,11 @@ namespace
     protected:
         void OnInit() override
         {
-            CreateClassObj(m_model, this);
+            CreateClassObj(m_model);
             NS::ShapeHitSensor* sensor = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
+            NS::InitHitSensor(this, sensor);
             sensor->SetSphere(0.5f);
-            CreateClassObj(m_hitReaction, this);
+            CreateClassObj(m_hitReaction);
         }
         void StateStep() override { ++stateSteps; }
         void BodyStep() override { ++bodySteps; }
@@ -416,15 +417,15 @@ namespace
             other = SpawnProbe(scene, sets, otherPosition);
         }
 
-        bool Start(ReactionProbeActor& owner, std::string_view name, const NS::Vector3& position)
+        bool Start(ReactionProbeActor* owner, std::string_view name, const NS::Vector3& position)
         {
+            NS_ASSERT(Game, owner != nullptr, "Start: 渡したアクターか部品が無い");
             ReactionProbeActor* partner = self;
-            if (&owner == self)
+            if (owner == self)
             {
                 partner = other;
             }
-            return owner.HitReactionClassObj()->Start(
-                name, position, owner.BodySensorClassObj(), partner->BodySensorClassObj());
+            return owner->StartHitReaction(name, position, owner->BodySensorClassObj(), partner->BodySensorClassObj());
         }
 
         // 1 固定フレーム。アクター・カメラ・画面とパッドの係の順に回す
@@ -453,9 +454,10 @@ namespace
         return NS::OS::Input::Get().Gamepad().Vibration().left;
     }
 
-    const NS::HitOwnerRun* FindOwnerRun(const NS::HitReaction& reaction, std::string_view name)
+    const NS::HitOwnerRun* FindOwnerRun(const NS::HitReaction* reaction, std::string_view name)
     {
-        for (const NS::HitOwnerRun& run : reaction.OwnerRuns())
+        NS_ASSERT(Game, reaction != nullptr, "FindOwnerRun: 渡したアクターか部品が無い");
+        for (const NS::HitOwnerRun& run : reaction->OwnerRuns())
         {
             if (run.item.name == name)
             {
@@ -493,7 +495,7 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
                       NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
     const NS::Vector3 contact{0.0f, 1.0f, 3.5f};
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", contact));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", contact));
 
     const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(probes.self);
     ASSERT_NE(screen, nullptr);
@@ -505,7 +507,7 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
               nullptr);
     EXPECT_FLOAT_EQ(probes.SinkPixels(), -9.0f);
     EXPECT_FLOAT_EQ(probes.Cameras().Trauma(), 0.3f);
-    const NS::HitOwnerRun* run = FindOwnerRun(*probes.self->HitReactionClassObj(), "Spark");
+    const NS::HitOwnerRun* run = FindOwnerRun(probes.self->HitReactionClassObj(), "Spark");
     ASSERT_NE(run, nullptr);
     EXPECT_EQ(run->frame, 0);
     EXPECT_EQ(run->length, 2);
@@ -514,7 +516,7 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
 
     // 名前の無い束は始めず、知らせる
     const TestLogCapture log;
-    EXPECT_FALSE(probes.Start(*probes.self, "Nothing", contact));
+    EXPECT_FALSE(probes.Start(probes.self, "Nothing", contact));
     EXPECT_EQ(log.WarningCount(), 1);
 }
 
@@ -529,7 +531,7 @@ TEST(HitReactionStart, TheStopHoldsStateAndBodyButNotTheDirectors)
     ASSERT_NE(probes.self, nullptr);
     const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(probes.self);
     ASSERT_NE(screen, nullptr);
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{0.0f, 1.0f, 3.5f}));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{0.0f, 1.0f, 3.5f}));
     EXPECT_TRUE(probes.self->IsHitStopping());
     for (int frame = 1; frame <= 3; ++frame)
     {
@@ -557,24 +559,24 @@ TEST(HitReactionStart, OwnerItemsAdvanceThroughTheStop)
     ProbeScene probes({SetOf("Hit", 3, {{shortItem, 5}, {longItem, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
     const NS::HitReaction& reaction = *probes.self->HitReactionClassObj();
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     for (int frame = 0; frame < 2; ++frame)
     {
         probes.Step();
     }
     ASSERT_TRUE(probes.self->IsHitStopping());
-    ASSERT_NE(FindOwnerRun(reaction, "Short"), nullptr);
-    ASSERT_NE(FindOwnerRun(reaction, "Long"), nullptr);
-    EXPECT_EQ(FindOwnerRun(reaction, "Short")->frame, 2);
-    EXPECT_EQ(FindOwnerRun(reaction, "Long")->frame, 2);
+    ASSERT_NE(FindOwnerRun(&reaction, "Short"), nullptr);
+    ASSERT_NE(FindOwnerRun(&reaction, "Long"), nullptr);
+    EXPECT_EQ(FindOwnerRun(&reaction, "Short")->frame, 2);
+    EXPECT_EQ(FindOwnerRun(&reaction, "Long")->frame, 2);
     for (int frame = 0; frame < 3; ++frame)
     {
         probes.Step();
     }
     // 長さを過ぎた項目は外れる
-    EXPECT_EQ(FindOwnerRun(reaction, "Short"), nullptr);
-    ASSERT_NE(FindOwnerRun(reaction, "Long"), nullptr);
-    EXPECT_EQ(FindOwnerRun(reaction, "Long")->frame, 5);
+    EXPECT_EQ(FindOwnerRun(&reaction, "Short"), nullptr);
+    ASSERT_NE(FindOwnerRun(&reaction, "Long"), nullptr);
+    EXPECT_EQ(FindOwnerRun(&reaction, "Long")->frame, 5);
 }
 
 // 寄りは始めるまでのフレーム数を数えてから寄せる。束を始めたフレームのカメラの段は、始めたフレームの姿を描く
@@ -586,7 +588,7 @@ TEST(HitReactionStart, TheZoomWaitsItsDelayFrames)
     zoom.delayFrames = 2;
     ProbeScene probes({SetOf("Hit", 0, {{zoom, 3}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.0f);
     probes.Step();
     EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.0f);
@@ -624,7 +626,7 @@ TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
         ProbeScene probes(sets, NS::Vector3{side, 1.0f, 4.0f});
         ASSERT_NE(probes.self, nullptr);
         const NS::Vector3 contact{side * 0.2f, 1.2f, 3.5f};
-        ASSERT_TRUE(probes.Start(*probes.self, "Hit", contact));
+        ASSERT_TRUE(probes.Start(probes.self, "Hit", contact));
         NS::Vector3 toward{side, 0.0f, 4.0f};
         toward.Normalize();
         const NS::CameraNudgeModifier* world =
@@ -656,7 +658,7 @@ TEST(HitReactionStart, DirectedVibrationBlendsTheTwoNeighborsTowardTheOther)
     pad.downLeft = ConstantCurve(0.1f);
     ProbeScene probes({SetOf("Hit", 0, {{pad, 8}})}, NS::Vector3{1.0f, 2.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     EXPECT_NEAR(PadLeft(), 0.5f * 1.0f + 0.5f * 0.3f, 1.0e-4f);
     probes.Step();
     probes.Step();
@@ -705,7 +707,7 @@ TEST(HitReactionStart, OverridingTheStopChangesOnlyTheStop)
     shake.amplitudePixels = 20.0f;
     ProbeScene probes({SetOf("Hit", 2, {{shake, 2}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     probes.self->OverrideHitStop(5);
     probes.Step();
     EXPECT_NE(probes.self->ModelClassObj()->GetDrawOffset().x, 0.0f);
@@ -730,17 +732,17 @@ TEST(HitReactionStart, TheSinkBouncesOnlyOnItsOwnersRelease)
                                                   SetOf("Rebound", 0, {{NS::HitCameraSinkReleaseItem{}, 1}})};
     ProbeScene probes(sets, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     for (int frame = 0; frame < 5; ++frame)
     {
         probes.Step();
     }
     EXPECT_FLOAT_EQ(probes.SinkPixels(), -9.0f);
-    ASSERT_TRUE(probes.Start(*probes.other, "Rebound", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.other, "Rebound", NS::Vector3{}));
     probes.Step();
     probes.Step();
     EXPECT_FLOAT_EQ(probes.SinkPixels(), -9.0f);
-    ASSERT_TRUE(probes.Start(*probes.self, "Rebound", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Rebound", NS::Vector3{}));
     probes.Step();
     EXPECT_FLOAT_EQ(probes.SinkPixels(), -9.0f);
     probes.Step();
@@ -755,7 +757,7 @@ TEST(HitReactionStart, AnUnreleasedSinkEndsWithItsLength)
     sink.tremblePixels = 0.0f;
     ProbeScene probes({SetOf("Hit", 0, {{sink, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     // 始めたフレームを含めて 10 フレーム描く
     for (int frame = 0; frame < 10; ++frame)
     {
@@ -775,10 +777,10 @@ TEST(HitReactionStart, TraumaStacksOnTheNextSet)
     trauma.decayPerSecond = 1.0e-6f;
     ProbeScene probes({SetOf("Miss", 0, {{trauma, 1}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    ASSERT_TRUE(probes.Start(*probes.self, "Miss", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Miss", NS::Vector3{}));
     probes.Step();
     EXPECT_NEAR(probes.Cameras().Trauma(), 0.3f, 1.0e-5f);
-    ASSERT_TRUE(probes.Start(*probes.self, "Miss", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Miss", NS::Vector3{}));
     EXPECT_NEAR(probes.Cameras().Trauma(), 0.6f, 1.0e-5f);
 }
 
@@ -807,7 +809,7 @@ TEST(HitReactionStart, TheShapeFollowsItsCurvesForItsLength)
         ProbeScene probes(sets, c.otherPosition);
         ASSERT_NE(probes.self, nullptr);
         NS::Model& model = *probes.self->ModelClassObj();
-        ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+        ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
         probes.Step();
         EXPECT_FLOAT_EQ(model.GetDrawScale().x, c.first.x);
         EXPECT_FLOAT_EQ(model.GetDrawScale().y, c.first.y);
@@ -833,7 +835,7 @@ TEST(HitReactionStart, StoppingTheShapeRestoresTheDrawScale)
     ProbeScene probes({SetOf("Hit", 0, {{shape, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
     NS::Model& model = *probes.self->ModelClassObj();
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     probes.Step();
     ASSERT_FLOAT_EQ(model.GetDrawScale().y, 2.0f);
     model.StopDrawShape();
@@ -853,7 +855,7 @@ TEST(HitReactionStart, GroundWaveSpreadsFromThePositionForItsLength)
     ProbeScene probes({SetOf("Hit", 3, {{wave, 8}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
     const NS::Vector3 contact{0.3f, 1.2f, 3.5f};
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", contact));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", contact));
     for (int frame = 0; frame < 10; ++frame)
     {
         SCOPED_TRACE(frame);
@@ -879,11 +881,11 @@ TEST(HitReactionStart, StoppingTheGroundWaveClearsOnlyTheOwnersWave)
     wave.strength = ConstantCurve(0.8f);
     ProbeScene probes({SetOf("Hit", 0, {{wave, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    ASSERT_TRUE(probes.Start(*probes.self, "Hit", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     probes.Step();
-    probes.other->HitReactionClassObj()->StopGroundWave();
+    probes.other->HitReactionClassObj()->StopGroundWave(probes.other);
     EXPECT_FLOAT_EQ(probes.scene.GroundWaveShown().strength, 0.8f);
-    probes.self->HitReactionClassObj()->StopGroundWave();
+    probes.self->HitReactionClassObj()->StopGroundWave(probes.self);
     EXPECT_FLOAT_EQ(probes.scene.GroundWaveShown().strength, 0.0f);
     probes.Step();
     EXPECT_FLOAT_EQ(probes.scene.GroundWaveShown().strength, 0.0f);
@@ -900,8 +902,8 @@ TEST(HitReactionStart, AnOwnerLeavingKeepsTheOthersCameraEffects)
     ProbeScene probes({SetOf("Zoom", 0, {{zoom, 10}}), SetOf("Lurch", 0, {{lurch, 10}})},
                       NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    ASSERT_TRUE(probes.Start(*probes.self, "Zoom", NS::Vector3{}));
-    ASSERT_TRUE(probes.Start(*probes.other, "Lurch", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.self, "Zoom", NS::Vector3{}));
+    ASSERT_TRUE(probes.Start(probes.other, "Lurch", NS::Vector3{}));
     probes.other->Disappear();
     EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.2f);
     EXPECT_EQ(probes.Cameras().FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(false)),

@@ -1,9 +1,8 @@
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 
-#include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/Clock.h"
 #include "NSlib/Windows/Gamepad.h"
@@ -116,25 +115,19 @@ namespace
 namespace NS
 {
 
-    ThirdPersonFollow::ThirdPersonFollow(SceneActor* owner) noexcept : VirtualCamera(owner), m_owner(owner)
+    ThirdPersonFollow::ThirdPersonFollow() noexcept
     {
         // 追う相手を中心に見るので遠景は要らない。編集カメラの 5000 と違いプレイ視点は 100 で足りる
         SetFarPlane(100.0f);
     }
 
-    Transform* ThirdPersonFollow::Target() const noexcept
+    const Transform* ThirdPersonFollow::Target() const noexcept
     {
-        // 追う相手は控えず使うたびに引く。控えると、消された相手を指したまま次のフレームへ持ち越す
-        if (!m_targetRef.IsSet() || m_owner == nullptr || m_owner->OwningScene() == nullptr)
+        if (m_target == nullptr)
         {
             return nullptr;
         }
-        SceneActor* target = m_owner->OwningScene()->Actors().FindActor(m_targetRef);
-        if (target == nullptr)
-        {
-            return nullptr;
-        }
-        return &target->Root();
+        return &m_target->Root();
     }
 
     void ThirdPersonFollow::SetFollowMotion(bool grounded, const Vector3& velocity) noexcept
@@ -448,12 +441,14 @@ namespace NS
         return m_look;
     }
 
-    void ThirdPersonFollow::UpdateCharge(const FollowChargeDesc& charge,
+    void ThirdPersonFollow::UpdateCharge(const IUseCamera* user,
+                                         const FollowChargeDesc& charge,
                                          bool framingHeld,
-                                         const Transform& target,
+                                         const Transform* target,
                                          const Vector3& look,
                                          float dt) noexcept
     {
+        NS_ASSERT(Scene, target != nullptr, "UpdateCharge: 渡したアクターか部品が無い");
         // 溜め量は放した後も残るので、押していないフレームは 0 として読む
         float holdCharge = 0.0f;
         if (charge.held)
@@ -510,14 +505,14 @@ namespace NS
 
         // 溜めの揺れはカメラの管理役のトラウマに保たせる。揺れの持ち主を当たりの揺れと 1 つにする
         // 締めと同じ溜め量から作り、変わり始めのフレームを締めと揃える。トラウマの 2 乗で、溜めきりに近いほど強まる
-        if (holdCharge > 0.0f && m_owner != nullptr)
+        if (holdCharge > 0.0f)
         {
             CameraTraumaShape shape;
             shape.yawDegrees = m_chargeShakeYawDegrees;
             shape.pitchDegrees = m_chargeShakePitchDegrees;
             shape.frequency = m_chargeShakeFrequency;
             shape.decayPerSecond = m_chargeShakeDecayPerSecond;
-            (void)HoldCameraTrauma(m_owner, holdCharge, shape);
+            (void)HoldCameraTrauma(user, holdCharge, shape);
         }
 
         // 構図は押したフレームから動かし、溜めに入った時には相手を枠へ入れておく
@@ -528,7 +523,7 @@ namespace NS
         if (framing)
         {
             const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
-            const Vector3 root = target.Position();
+            const Vector3 root = target->Position();
             const Vector3 camPos = look - axes.forward * m_distance;
             const float frameTanHalf = m_chargeFrameRatio * std::tan(frameFov * 0.5f);
 
@@ -637,8 +632,9 @@ namespace NS
         m_distance = distance;
     }
 
-    void ThirdPersonFollow::Update()
+    void ThirdPersonFollow::Update(const IUseCamera* user)
     {
+        NS_ASSERT(Scene, user != nullptr, "ThirdPersonFollow::Update: カメラの管理クラスの窓口が null");
         // 受けた溜めと反動の状態はこのフレームだけ使う。渡されなかったフレームは押していない・反動でないのと同じ
         const FollowChargeDesc charge = m_charge;
         m_charge = FollowChargeDesc{};
@@ -649,9 +645,7 @@ namespace NS
 
         const float dt = OS::FrameTimer::FixedDelta();
         const Transform* target = Target();
-        // 持ち主の無い部品は出ていると見る
-        const bool ownerAppeared = m_owner == nullptr || m_owner->IsAppeared();
-        if (!ownerAppeared || target == nullptr || dt <= 0.0f)
+        if (target == nullptr || dt <= 0.0f)
         {
             // 休止の間は注視点を控えないので、反動の間の追い方も捨てる
             // 再開した時に古い注視点から留めない
@@ -742,7 +736,7 @@ namespace NS
         m_distance = SpringApproach(m_distance, desiredDistance, m_springOmega, dt);
 
         const Vector3 look = UpdateReboundLook(head, root, dt);
-        UpdateCharge(charge, framingHeld, *target, look, dt);
+        UpdateCharge(user, charge, framingHeld, target, look, dt);
     }
 
     CameraPose ThirdPersonFollow::EvaluatePose(float alpha) const noexcept

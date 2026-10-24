@@ -5,13 +5,13 @@
 
 namespace NS
 {
+    class IUseCamera;
+
     //! 機器の入力をカメラ相対の移動方向と操作状態へ変換する部品
     //! 操作ロック中は中立値を保持する
     class PlayerInput : public Object
     {
     public:
-        explicit PlayerInput(SceneActor* owner) noexcept : m_owner(owner) {}
-
         //! 水平の基準方向。シーンにカメラがあれば更新時に上書きし、未指定なら +Z
         void SetCameraForward(const Vector3& cameraForwardHorizontal) noexcept;
 
@@ -52,8 +52,9 @@ namespace NS
         //! 置物の出し直しのボタン (R かゲームパッドの Back) を押した場合 true、それ以外の場合は false
         [[nodiscard]] bool RespawnPressed() const noexcept { return m_respawnPressed; }
 
-        //! キーボードとゲームパッドから今の入力を読む。有効でない間は何もしない
-        void Update();
+        //! キーボードとゲームパッドから今の入力を読み、camera のシーンのカメラから水平の前を取る
+        //! 呼ぶのはアクターが出ている間だけ。消えている間は ActorList が入力の段を回さない
+        void Update(const IUseCamera* camera);
 
         // 入力を渡すだけで保存する調整値は無い。型名だけ登録する
         NS_REFLECT_NONE(PlayerInput, Object)
@@ -74,6 +75,5 @@ namespace NS
         bool m_slamSeen = false; // ConsumePressed の後に突進を押したか
         bool m_respawnPressed = false;
         bool m_locked = false; // 操作の停止中か。保存しない
-        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

@@ -18,6 +18,7 @@ namespace NS
 {
     class SceneActor;
     class HitSensor;
+    class Model;
     struct HitOwnerItem;
     struct HitOwnerRun;
 } // namespace NS
@@ -42,7 +43,7 @@ namespace GL
         {
             NS_MESSAGE(MsgInstantDeath)
         };
-        bool SendMsgInstantDeath(NS::HitSensor& receiver, NS::HitSensor& sender);
+        bool SendMsgInstantDeath(NS::HitSensor* receiver, NS::HitSensor* sender);
         [[nodiscard]] bool IsMsgInstantDeath(const NS::Message& msg) noexcept;
 
         //! ゴールに着いた知らせ。ゴールの範囲がプレイヤーの体へ送る
@@ -61,7 +62,7 @@ namespace GL
             float m_fadeOutSeconds;
             float m_fadeInSeconds;
         };
-        bool SendMsgGoal(NS::HitSensor& receiver, NS::HitSensor& sender, float fadeOutSeconds, float fadeInSeconds);
+        bool SendMsgGoal(NS::HitSensor* receiver, NS::HitSensor* sender, float fadeOutSeconds, float fadeInSeconds);
         [[nodiscard]] bool IsMsgGoal(const NS::Message& msg) noexcept;
 
         //! @brief コースが始まった知らせ。進行役がやり直しの前に全ての配置物へ 1 回送る
@@ -70,7 +71,7 @@ namespace GL
         {
             NS_MESSAGE(MsgCourseStart)
         };
-        bool SendMsgCourseStart(NS::SceneActor& receiver);
+        bool SendMsgCourseStart(NS::SceneActor* receiver);
         [[nodiscard]] bool IsMsgCourseStart(const NS::Message& msg) noexcept;
 
         //! @brief コースを最初からやり直す知らせ。進行役が全ての配置物へ送る
@@ -79,7 +80,7 @@ namespace GL
         {
             NS_MESSAGE(MsgCourseRestart)
         };
-        bool SendMsgCourseRestart(NS::SceneActor& receiver);
+        bool SendMsgCourseRestart(NS::SceneActor* receiver);
         [[nodiscard]] bool IsMsgCourseRestart(const NS::Message& msg) noexcept;
 
         //! @brief 操作を止めるか戻す知らせ。進行役がクリアの演出の間だけプレイヤーの操作を止める
@@ -97,7 +98,7 @@ namespace GL
         private:
             bool m_locked = false;
         };
-        bool SendMsgInputLock(NS::SceneActor& receiver, bool locked);
+        bool SendMsgInputLock(NS::SceneActor* receiver, bool locked);
         [[nodiscard]] bool IsMsgInputLock(const NS::Message& msg) noexcept;
 
         //! @brief 体当たりの相手の答え。MsgAskTackleTarget の受け手が書く
@@ -129,7 +130,7 @@ namespace GL
         private:
             TackleTargetAnswer& m_answer;
         };
-        bool SendMsgAskTackleTarget(NS::HitSensor& receiver, TackleTargetAnswer& outAnswer);
+        bool SendMsgAskTackleTarget(NS::HitSensor* receiver, TackleTargetAnswer& outAnswer);
         [[nodiscard]] bool IsMsgAskTackleTarget(const NS::Message& msg) noexcept;
 
         //! @brief 体当たりを受けた相手へ渡す、当てた側の当たり
@@ -156,7 +157,7 @@ namespace GL
         private:
             const TackleHitDesc& m_desc;
         };
-        bool SendMsgTackleHit(NS::HitSensor& receiver, NS::HitSensor& sender, const TackleHitDesc& desc);
+        bool SendMsgTackleHit(NS::HitSensor* receiver, NS::HitSensor* sender, const TackleHitDesc& desc);
         [[nodiscard]] bool IsMsgTackleHit(const NS::Message& msg) noexcept;
 
         //! @brief 残像。止めの間は根の左右に写しを置き、明けに止めの最後の姿を残して薄める
@@ -171,8 +172,9 @@ namespace GL
 
             //! @brief frame フレーム目の左右の写しの離れと不透明度、写し取り、明けの写しの不透明度を ghost へ書く
             //! @param[in] frame 残像の何フレーム目か。始まりのフレームが 1
+            //! @param[in] model 写し取る本体の Model。root は持ち主の根の今の固定フレームの世界行列
             //! @return まだ続く場合 true、明けの写しが消えて終わった場合は false
-            bool WriteTo(TackleGhost* ghost, int frame) const noexcept;
+            bool WriteTo(TackleGhost* ghost, int frame, const NS::Model* model, const NS::Matrix& root) const noexcept;
         };
 
         //! @brief 残像の進み。明けの写しは止めの後も残るので、状態に依らず進めた回数で数える
@@ -188,8 +190,8 @@ namespace GL
             //! 距離にする。項目の長さが 0 以下か、カメラの管理役が無い場合は始めない
             //! @param[in] owner 残像を出すアクター。事前条件: nullptr でない
             void Start(const NS::HitOwnerRun& run, const NS::SceneActor* owner);
-            //! 動いていれば 1 フレーム進めて ghost へ書く
-            void Advance(TackleGhost* ghost) noexcept;
+            //! 動いていれば 1 フレーム進めて ghost へ書く。model と root は WriteTo へ渡す
+            void Advance(TackleGhost* ghost, const NS::Model* model, const NS::Matrix& root) noexcept;
             //! 止めて、左右の写しと明けの写しを消す
             void Stop(TackleGhost* ghost) noexcept;
         };
@@ -234,7 +236,7 @@ namespace GL
         private:
             const TackleReleaseDesc& m_desc;
         };
-        bool SendMsgTackleRelease(NS::SceneActor& receiver, const TackleReleaseDesc& desc);
+        bool SendMsgTackleRelease(NS::SceneActor* receiver, const TackleReleaseDesc& desc);
         [[nodiscard]] bool IsMsgTackleRelease(const NS::Message& msg) noexcept;
     } // namespace Level
 } // namespace GL

@@ -37,39 +37,38 @@ namespace NS
         std::optional<Quaternion> rotation;
     };
 
-    //! 個体のエフェクト再生と記録。描画先がなくても記録を残す
-    //! 利用側は IUseEffect の関数を使う
+    //! @brief 個体のエフェクト再生と記録。描画先がなくても記録を残す
+    //! @details 持ち主を覚えない。再生の置き場 effects は呼ぶたびに受け、nullptr は描画の無い世界。
+    //!          利用側は IUseEffect の関数を使う
     class EffectKeeper : public Object
     {
     public:
         //! @param[in] keepEndedSteps 消えた記録を残すフレーム数。過ぎた記録は BeginStep が捨てる
-        explicit EffectKeeper(SceneActor* owner, int keepEndedSteps = 600) noexcept
-            : m_keepEndedSteps(keepEndedSteps), m_owner(owner)
-        {}
+        explicit EffectKeeper(int keepEndedSteps = 600) noexcept : m_keepEndedSteps(keepEndedSteps) {}
 
         //! @brief フレームを 1 つ進め、前のフレームの更新で Effekseer から消えた記録に消えたフレームを書く
         //! @details SceneActor::Update が頭で 1 回呼ぶ。残すフレーム数を過ぎた記録を捨て、StopAfter の予約を消す
-        void BeginStep();
+        void BeginStep(Gfx::EffectScene* effects);
 
         //! 今のフレームの番号。BeginStep を呼ぶ前は 0
         [[nodiscard]] int Step() const noexcept { return m_step; }
 
         //! 絵を先に読む。描画の無い世界では何もしない
-        void Preload(std::string_view name);
+        void Preload(Gfx::EffectScene* effects, std::string_view name);
 
         //! @brief エフェクトを 1 つ出し、今のフレームに出した記録を残す
         //! @details 絵を読めていない名前は再生されず、記録は無効なハンドルで残る
         //! @param[in] name Preload に渡した名前
         //! @return 記録の番号
-        [[nodiscard]] uint32 Play(std::string_view name, const Gfx::EffectPlayDesc& desc);
+        [[nodiscard]] uint32 Play(Gfx::EffectScene* effects, std::string_view name, const Gfx::EffectPlayDesc& desc);
 
         //! @brief 親を止める。出ていた子は寿命まで残る
         //! @details 無い番号、親を止めた後、消えた後なら何もしない
-        void StopRoot(uint32 id) noexcept;
+        void StopRoot(Gfx::EffectScene* effects, uint32 id) noexcept;
 
         //! @brief 子も含めて消し、消えたフレームを今のフレームにする
         //! @details 無い番号、消えた後なら何もしない
-        void Stop(uint32 id) noexcept;
+        void Stop(Gfx::EffectScene* effects, uint32 id) noexcept;
 
         //! @brief 今から steps フレーム後の BeginStep で、子も含めて消す
         //! @details steps が 0 以下なら次の BeginStep で消す。その時に消えた後なら何もしない
@@ -77,14 +76,15 @@ namespace NS
 
         //! @brief 位置・向き・大きさを置き直す。無い番号と再生していない記録では何もしない
         //! @param[in] position ワールド座標の位置
-        void SetTransform(uint32 id,
+        void SetTransform(Gfx::EffectScene* effects,
+                          uint32 id,
                           const Vector3& position,
                           const Quaternion& rotation,
                           const Vector3& scale) noexcept;
 
         //! @brief 動的入力を 1 つ書き換える。無い番号と再生していない記録では何もしない
         //! @param[in] index 動的入力の番号。0 から 3
-        void SetDynamicInput(uint32 id, int index, float value) noexcept;
+        void SetDynamicInput(Gfx::EffectScene* effects, uint32 id, int index, float value) noexcept;
 
         //! 大きさか量を記録に書く。無い番号なら何もしない。2 回書くと後の値が残る
         void SetAmount(uint32 id, float amount) noexcept;
@@ -109,7 +109,7 @@ namespace NS
         //! @brief 残っている名前を、出した順に out の末尾へ足す
         //! @details 同じ名前が 2 つ残っていれば 2 回足す。描画の無い世界では Stop していない全部を足す
         //! @param[out] out 名前を足す先。中身は消さない
-        void AppendLiveNames(std::vector<std::string>& out) const;
+        void AppendLiveNames(const Gfx::EffectScene* effects, std::vector<std::string>& out) const;
 
         NS_REFLECT_NONE(EffectKeeper, Object)
 
@@ -120,8 +120,6 @@ namespace NS
             int step = 0;
         };
 
-        //! 持ち主の居るシーンの EffectScene。持ち主が無いか描画の無い世界なら nullptr
-        [[nodiscard]] Gfx::EffectScene* Effects() const noexcept;
         [[nodiscard]] EffectRecord* FindMutable(uint32 id) noexcept;
 
         int m_keepEndedSteps;
@@ -129,6 +127,5 @@ namespace NS
         std::vector<ScheduledStop> m_scheduledStops;
         int m_step = 0;
         uint32 m_nextId = 1;
-        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 } // namespace NS

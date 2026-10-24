@@ -1,4 +1,5 @@
 #include "Editor/LevelEditorController.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
@@ -37,8 +38,10 @@
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
+#include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
@@ -68,7 +71,7 @@ namespace
     // 部品の欄の値を JSON で読む。欄が無ければ値なしを返す
     nlohmann::json FieldJson(const NS::Object& comp, std::string_view fieldName)
     {
-        const nlohmann::json fields = NS::SerializeClassObjFields(comp);
+        const nlohmann::json fields = NS::SerializeClassObjFields(&comp);
         const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
         if (it == fields.end())
         {
@@ -87,7 +90,7 @@ namespace
     const NS::Collider* ColliderOf(const NS::SceneActor& object) noexcept
     {
         const NS::Collider* found = nullptr;
-        NS::ForEachReflectedClassObj(object, [&](const NS::ClassObjInfo&, const NS::Object* classObj) {
+        NS::ForEachReflectedClassObj(&object, [&](const NS::ClassObjInfo&, const NS::Object* classObj) {
             if (found == nullptr)
             {
                 found = NS::Cast<NS::Collider>(classObj);
@@ -101,15 +104,15 @@ namespace
     {
         if (NS::BoxCollision* box = NS::Cast<NS::BoxCollision>(object.CollisionClassObj()))
         {
-            shapes.OBB(box->WorldOBB(), color);
+            shapes.OBB(box->WorldOBB(object.Root().WorldMatrix()), color);
         }
         else if (NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(object.CollisionClassObj()))
         {
-            shapes.Sphere(sphere->WorldSphere(), color);
+            shapes.Sphere(sphere->WorldSphere(object.Root().WorldMatrix()), color);
         }
         else if (NS::CapsuleCollision* capsule = NS::Cast<NS::CapsuleCollision>(object.CollisionClassObj()))
         {
-            NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
+            NS::Phys::Capsule worldCapsule = capsule->WorldCapsule(object.Root().WorldMatrix());
             worldCapsule.axis.Normalize();
             shapes.Capsule(
                 worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
@@ -148,7 +151,7 @@ namespace
             {
                 continue;
             }
-            const NS::SensorVolume volume = sensor->WorldVolume();
+            const NS::SensorVolume volume = sensor->WorldVolume(object.Root().WorldMatrix());
             if (volume.isBox)
             {
                 shapes.OBB(volume.box, color);
@@ -343,12 +346,12 @@ namespace
             {
                 continue;
             }
-            NS::ApplyActorFile(*actor);
+            NS::ApplyActorFile(actor);
             actor->ReloadAssets();
             // 束はアクターを作る時に .actor から読むので、読み直させて次の当たりに効かせる
             if (NS::HitReaction* reaction = actor->HitReactionClassObj())
             {
-                reaction->ReloadSets();
+                reaction->ReloadSets(actor);
             }
         }
     }
@@ -358,8 +361,8 @@ namespace
     {
         nlohmann::json values = nlohmann::json::object();
         nlohmann::json& parts = NS::ActorJsonClassObjs(values);
-        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
-            parts[std::string{row.key}] = NS::SerializeClassObjFields(*part);
+        NS::ForEachReflectedClassObj(&actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+            parts[std::string{row.key}] = NS::SerializeClassObjFields(part);
         });
         return values;
     }
@@ -368,8 +371,8 @@ namespace
     // 参照の欄はいつも保存するので足さない。.actor へ書く項目は変わっていても触らない
     void AddChangedSceneOverrides(NS::SceneActor& actor, const nlohmann::json& before)
     {
-        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
-            const nlohmann::json now = NS::SerializeClassObjFields(*part);
+        NS::ForEachReflectedClassObj(&actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+            const nlohmann::json now = NS::SerializeClassObjFields(part);
             const nlohmann::json* was = NS::ClassObjFields(before, row.key);
             for (nlohmann::json::const_iterator entry = now.begin(); entry != now.end(); ++entry)
             {
@@ -380,7 +383,7 @@ namespace
                 }
                 const NS::FieldDesc* field = NS::FindField(part->GetReflection(), entry.key());
                 if (field == nullptr || field->type == NS::FieldType::ActorRef ||
-                    NS::FieldDestinationOf(actor, *part, *field) != NS::FieldDestination::Scene)
+                    NS::FieldDestinationOf(&actor, *field) != NS::FieldDestination::Scene)
                 {
                     continue;
                 }
@@ -676,9 +679,8 @@ void LevelEditorController::Setup(std::string_view startLevelName)
     m_editor.SetCollectCellsFn([this]() {
         std::vector<NS::Editor::EditorMode::CellCoord> cells;
         cells.reserve(m_scene->Actors().ActorCount());
-        for (NS::SceneActor* objPtr : NS::Editor::PlacedActors(m_scene->Actors()))
+        for (const NS::SceneActor* object : NS::Editor::PlacedActors(m_scene->Actors()))
         {
-            NS::SceneActor& object = *objPtr;
             if (!NS::Editor::IsCellBrushActor(object))
             {
                 continue;
@@ -695,6 +697,8 @@ void LevelEditorController::Setup(std::string_view startLevelName)
 
     // Game が立てた空のシーンはプレイが回っている。プレイを終えて編集モードへ切替えてから起動シーンを開く
     // 先に開くと、プレイ開始の写しへ戻す組み直しが、開く時に補ったプレイヤーを消す
+    // Game はプレイを始める前のシーンを JSON に残さないので、今のシーンを書き出して戻る姿にする
+    m_playBaseline = m_scene->ToJson();
     LeavePlayForEdit();
     m_mode = Mode::Edit;
     if (!startLevelName.empty())
@@ -750,14 +754,15 @@ void LevelEditorController::EnterPlay() noexcept
     m_gizmo.SetActive(false);
 
     // 実体が唯一の出所なので組み直しは要らない。編集で動いた当たりは、世界を止めた歩が揃えている
-    // 凍結を取り、そこから走行を最初から。プレイの間の判定と編集復帰の姿はこの凍結を読む
+    // 編集へ戻る時の姿として、コースを始めてメッセージが値を動かす前のシーンを JSON に書き出す
+    // 1 回だけ書き出して写すので、組み直す JSON と比べる写しはずれない
+    m_playBaseline = m_scene->ToJson();
+    m_playStartBaseline = m_playBaseline;
     // 手順は出荷と同じ CourseDirector::StartCourse の持ち物
     if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(m_scene))
     {
         director->StartCourse();
     }
-    // 編集へ戻る時に、プレイ中に写した欄をこの凍結と比べて履歴へ記録する
-    m_playStartBaseline = m_scene->PlayBaseline();
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (NS::CameraManager* cameras = Cameras())
     {
@@ -785,7 +790,7 @@ void LevelEditorController::EnterEdit() noexcept
         app->Input().Keyboard().ClearState();
         app->Input().Mouse().ClearState();
     }
-    // プレイを終え、凍結スナップショットから編集の姿へ組み直す
+    // プレイを終え、プレイを始めた時の JSON から編集の姿へ組み直す
     LeavePlayForEdit();
     // プレイ視点から自由視点へ繋ぐ。始点は直前まで実カメラに書かれていた pose
     if (NS::CameraManager* cameras = Cameras())
@@ -816,14 +821,22 @@ void LevelEditorController::LeavePlayForEdit()
     }
     m_scene->SetSimulationEnabled(false);
 
-    // プレイで変わった配置を編集へ持ち込まないため、開始時の控えから復元する
-    nlohmann::json baseline = m_scene->PlayBaseline();
+    // プレイで変わった配置を編集へ持ち込まないため、プレイを始めた時の JSON から復元する
+    NS_ASSERT(App, m_playBaseline.has_value(), "LeavePlayForEdit: プレイを始めた時の JSON が無い");
+    if (!m_playBaseline)
+    {
+        return;
+    }
+    nlohmann::json baseline = std::move(*m_playBaseline);
+    m_playBaseline.reset();
     std::vector<std::unique_ptr<NS::Editor::ICommand>> playEdits;
     if (m_playStartBaseline)
     {
         playEdits = MakePlayEditCommands(*m_playStartBaseline, baseline);
         m_playStartBaseline.reset();
     }
+    // 履歴は残す。持っているアクターは組み直しが捨てる管理クラスを指すので、先に解放して JSON から戻す形にする
+    m_editor.Undo().ReleaseHeldActors();
     m_scene->ResetFromJson(std::move(baseline));
     // プレイ中の変更は 1 つずつ積まず、戻る時に 1 まとまりで積む。実体は組み直しで既に変えた後の姿
     if (!playEdits.empty())
@@ -1447,13 +1460,13 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
         {
             continue;
         }
-        const NS::SensorVolume body = bodySensor->WorldVolume();
+        const NS::SensorVolume body = bodySensor->WorldVolume(object->Root().WorldMatrix());
         NS::Vector3 direction = body.Center() - cameraPosition;
         if (player != nullptr)
         {
             direction = body.Center() - ballCenter;
         }
-        if (aiming && aim.target.id == object->Id())
+        if (aiming && aim.target == object)
         {
             direction = aim.direction;
         }
@@ -1542,23 +1555,64 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
     m_lastGizmoSelected = nullptr;
 }
 
-void LevelEditorController::MirrorPlayEditToBaseline(const NS::SceneActor& actor,
+void LevelEditorController::MirrorPlayEditToBaseline(const NS::SceneActor* actor,
                                                      const NS::ClassObjInfo& row,
                                                      std::string_view fieldName)
 {
+    NS_ASSERT(App, actor != nullptr, "MirrorPlayEditToBaseline: アクターが null");
     // 写すのはプレイ中だけ。編集モードで写すと次のプレイ突入の捕捉と二重管理になる
-    if (m_mode != Mode::Play || m_scene == nullptr)
+    if (m_mode != Mode::Play || !m_playBaseline)
     {
         return;
     }
-    m_scene->WritePlayBaselineField(actor, row, fieldName);
+    const std::size_t index = NS::FindActorIndexById(*m_playBaseline, actor->Id());
+    if (index == NS::k_NoActorIndex)
+    {
+        return;
+    }
+    const NS::Object* part = row.get(actor);
+    if (part == nullptr)
+    {
+        return;
+    }
+    // .actor へ書く欄はプレイを始めた時の JSON が持たない。写すと編集へ戻る時にシーンに置いたアクターの値として捨てられる
+    const NS::FieldDesc* field = NS::FindField(part->GetReflection(), fieldName);
+    if (field == nullptr || NS::FieldDestinationOf(actor, *field) != NS::FieldDestination::Scene)
+    {
+        return;
+    }
+    nlohmann::json& baselineParts = NS::ActorJsonClassObjs(NS::SceneJsonActors(*m_playBaseline)[index]);
+    // 上書きの一覧から外した項目は、JSON からも消す。残すと編集へ戻る時に上書きとして読み直される
+    if (field->type != NS::FieldType::ActorRef && !actor->IsSceneOverride(row.key, fieldName))
+    {
+        const nlohmann::json::iterator baselinePart = baselineParts.find(row.key);
+        if (baselinePart != baselineParts.end())
+        {
+            baselinePart->erase(std::string{fieldName});
+        }
+        return;
+    }
+    const nlohmann::json fields = NS::SerializeClassObjFields(part);
+    const nlohmann::json::const_iterator value = fields.find(std::string{fieldName});
+    if (value == fields.end())
+    {
+        return;
+    }
+    baselineParts[std::string{row.key}][std::string{fieldName}] = *value;
 }
 
-void LevelEditorController::NoteFieldEdit(const NS::SceneActor& actor,
+const nlohmann::json& LevelEditorController::PlayBaseline() const
+{
+    NS_ASSERT(App, m_playBaseline.has_value(), "PlayBaseline: プレイ中でないので、プレイを始めた時の JSON が無い");
+    return *m_playBaseline;
+}
+
+void LevelEditorController::NoteFieldEdit(const NS::SceneActor* actor,
                                           const NS::ClassObjInfo& row,
                                           std::string_view fieldName)
 {
-    const NS::Object* part = row.get(&actor);
+    NS_ASSERT(App, actor != nullptr, "NoteFieldEdit: アクターが null");
+    const NS::Object* part = row.get(actor);
     if (part == nullptr)
     {
         return;
@@ -1568,13 +1622,13 @@ void LevelEditorController::NoteFieldEdit(const NS::SceneActor& actor,
     {
         return;
     }
-    if (NS::FieldDestinationOf(actor, *part, *field) == NS::FieldDestination::Scene)
+    if (NS::FieldDestinationOf(actor, *field) == NS::FieldDestination::Scene)
     {
         // 保存は上書きの一覧の項目だけを書くので、直したら一覧に足す。参照の欄はいつも書く
         NS::SceneActor* edited = nullptr;
         if (m_scene != nullptr)
         {
-            edited = m_scene->Actors().FindByActorId(actor.Id());
+            edited = m_scene->Actors().FindByActorId(actor->Id());
         }
         if (edited != nullptr && field->type != NS::FieldType::ActorRef)
         {
@@ -1585,12 +1639,12 @@ void LevelEditorController::NoteFieldEdit(const NS::SceneActor& actor,
     }
     for (const ActorFileEdit& edit : m_actorFileEdits)
     {
-        if (edit.actorId == actor.Id() && edit.row == &row && edit.fieldName == fieldName)
+        if (edit.actorId == actor->Id() && edit.row == &row && edit.fieldName == fieldName)
         {
             return;
         }
     }
-    m_actorFileEdits.push_back(ActorFileEdit{actor.Id(), &row, std::string{fieldName}});
+    m_actorFileEdits.push_back(ActorFileEdit{actor->Id(), &row, std::string{fieldName}});
 }
 
 void LevelEditorController::NoteActorFileFieldEdit(const NS::ClassObjInfo& row, std::string_view fieldName)
@@ -1653,12 +1707,12 @@ void LevelEditorController::CommitActorFileEdits()
         }
         // 共有の項目は派生を指すアクターでも元へ書く。派生へ書くと、派生を読む時に書けない項目として断られる
         // 選んだ .actor の 1 体はシーンに居ないので、グローバルの項目はその .actor 自身へ書く
-        NS::FieldDestination destination = NS::FieldDestinationOf(*actor, *part, *field);
+        NS::FieldDestination destination = NS::FieldDestinationOf(actor, *field);
         if (destination == NS::FieldDestination::Scene)
         {
             destination = NS::FieldDestination::DerivedActorFile;
         }
-        const std::string name = NS::ActorFileToWrite(*actor, destination);
+        const std::string name = NS::ActorFileToWrite(actor, destination);
         const nlohmann::json* current = library.Find(name);
         if (current == nullptr)
         {
@@ -1733,7 +1787,7 @@ bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::st
     }
     // 保存の JSON はシーンの上書きと参照の欄だけを持つ。派生に書ける項目を移し、残りはシーンに残す
     nlohmann::json after = *before;
-    NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+    NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
         nlohmann::json* fields = NS::ClassObjFields(after, row.key);
         if (fields == nullptr)
         {
@@ -1742,7 +1796,7 @@ bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::st
         for (nlohmann::json::iterator entry = fields->begin(); entry != fields->end();)
         {
             const NS::FieldDesc* field = NS::FindField(part->GetReflection(), entry.key());
-            if (field == nullptr || !NS::CanWriteField(NS::FieldDestination::DerivedActorFile, *actor, *part, *field))
+            if (field == nullptr || !NS::CanWriteField(NS::FieldDestination::DerivedActorFile, *field))
             {
                 ++entry;
                 continue;
@@ -1763,59 +1817,22 @@ bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::st
     return true;
 }
 
-bool LevelEditorController::ChangeActorFile(NS::uint32 actorId, std::string_view name)
+void LevelEditorController::FinishFieldWrite(NS::SceneActor* actor, NS::FieldType writtenType)
 {
-    if (!IsSceneEditable())
+    NS_ASSERT(App, actor != nullptr, "FinishFieldWrite: アクターが null");
+    // 部品は ActorRef の指す相手を取得して持つので、欄を書き換えた時に取得し直す
+    if (writtenType == NS::FieldType::ActorRef)
     {
-        NS_LOG_WARN(App, "編集モードでないので、アクターの .actor を {} に替えない", name);
-        return false;
+        actor->ResolveActorRefs();
+        return;
     }
-    const NS::SceneActor* actor = m_scene->Actors().FindByActorId(actorId);
-    if (actor == nullptr)
-    {
-        NS_LOG_WARN(App, "アクター {} が居ないので .actor を {} に替えない", actorId, name);
-        return false;
-    }
-    const std::string className = NS::ActorFileLibrary::Get().ClassNameOf(name);
-    if (className.empty())
-    {
-        NS_LOG_WARN(App, ".actor {} が読まれていないので、アクター {} の .actor を替えない", name, actorId);
-        return false;
-    }
-    if (className != actor->ClassName())
-    {
-        NS_LOG_WARN(App, ".actor {} のクラス {} はアクター {} のクラス {} と違うので替えない", name, className, actorId,
-                    actor->ClassName());
-        return false;
-    }
-    if (actor->ActorFileName() == name)
-    {
-        return false;
-    }
-    std::optional<nlohmann::json> before = m_applier.CaptureActor(actorId);
-    if (!before.has_value())
-    {
-        return false;
-    }
-    // シーンの上書きはグローバルの項目だけなので、替えた先の .actor の全部の値にもそのまま重なる
-    nlohmann::json after = *before;
-    NS::SetActorJsonFile(after, name);
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ActorSnapshotCommand>(actorId, std::move(before), std::move(after)),
-                         m_applier);
-    RefreshGizmoSelectables();
-    ResolveSelectionFromId();
-    return true;
-}
-
-void LevelEditorController::FinishFieldWrite(NS::SceneActor& actor, NS::FieldType writtenType)
-{
     // 素材の欄は道を書くだけで、描くメッシュの差し替え・描くマテリアル・メッシュの当たりの形は読み直しで作る
     // 素材でない欄で読み直すと、ドラッグの間じゅう骨の差し直しとメッシュの当たりの作り直しが毎回走る
     if (writtenType != NS::FieldType::Asset)
     {
         return;
     }
-    actor.ReloadAssets();
+    actor->ReloadAssets();
 }
 
 void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
@@ -1876,7 +1893,7 @@ void LevelEditorController::RenameActor(NS::uint32 id, std::string_view name)
 
     // 実体の名前を直接変える。他の配置物と重なれば番号が付く。参照は id で持つので切れない
     const std::string previous = object->Name();
-    m_scene->Actors().RenameActor(*object, name);
+    m_scene->Actors().RenameActor(object, name);
     if (object->Name() == previous)
     {
         return; // 同じ名前で履歴を汚さない
@@ -2233,7 +2250,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     std::optional<nlohmann::json> before = m_applier.CaptureActor(m_selectedActorId);
 
     mesh->SetMaterialRef(*stored);
-    FinishFieldWrite(*go, NS::FieldType::Asset);
+    FinishFieldWrite(go, NS::FieldType::Asset);
 
     std::optional<nlohmann::json> after = m_applier.CaptureActor(m_selectedActorId);
     if (before && after && !(*before == *after))

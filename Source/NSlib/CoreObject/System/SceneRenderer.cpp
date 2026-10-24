@@ -1,9 +1,11 @@
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
@@ -27,12 +29,6 @@ namespace NS
 {
     namespace
     {
-        // RenderProxyList の proxy を IRenderable::Collect へつなぐ。owner は登録元の IRenderable
-        void CollectRenderable(void* owner, const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
-        {
-            static_cast<IRenderable*>(owner)->Collect(context, out);
-        }
-
         // effectRoot が空ならここを見る
         std::string DefaultEffectRoot()
         {
@@ -91,94 +87,200 @@ namespace NS
         m_effects->Update(OS::FrameTimer::FixedDelta());
     }
 
-    void SceneRenderer::RegisterRenderable(IRenderable* renderable)
+    SceneRenderer::RenderEntry* SceneRenderer::FindEntry(const IRenderable* renderable) const noexcept
     {
-        if (renderable == nullptr)
+        NS_ASSERT(Scene, renderable != nullptr, "FindEntry: 描く物が null");
+        for (const std::unique_ptr<RenderEntry>& entry : m_renderables)
         {
-            return;
+            if (entry->renderable == renderable)
+            {
+                return entry.get();
+            }
         }
-        const auto isSame = [renderable](const RenderEntry& entry) { return entry.renderable == renderable; };
-        if (std::any_of(m_renderables.begin(), m_renderables.end(), isSame))
-        {
-            return;
-        }
-
-        Gfx::RenderProxyDesc desc{};
-        desc.bounds = renderable->WorldBounds();
-        desc.sortCenter = renderable->SortCenter();
-        desc.sortPriority = renderable->SortPriority();
-        desc.transparent = renderable->Bucket() == RenderBucket::Transparent;
-        desc.collect = &CollectRenderable;
-        desc.owner = renderable;
-        m_renderables.push_back({renderable, m_renderScene.Register(desc)});
+        return nullptr;
     }
 
-    void SceneRenderer::UnregisterRenderable(IRenderable* renderable)
+    void SceneRenderer::CollectEntry(void* entry, const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
     {
-        const std::vector<RenderEntry>::iterator it =
-            std::find_if(m_renderables.begin(), m_renderables.end(), [renderable](const RenderEntry& entry) {
-                return entry.renderable == renderable;
+        const RenderEntry* drawn = static_cast<const RenderEntry*>(entry);
+        if (!drawn->enabled)
+        {
+            return;
+        }
+        const RenderSource source{.root = drawn->root->InterpolatedWorldMatrix(context.alpha), .model = drawn->model};
+        drawn->renderable->Collect(context, source, out);
+    }
+
+    RenderSource SceneRenderer::CurrentSource(const RenderEntry& entry) noexcept
+    {
+        return RenderSource{.root = entry.root->WorldMatrix(), .model = entry.model};
+    }
+
+    void SceneRenderer::RegisterRenderable(IRenderable* renderable, const Transform* root, const Model* model)
+    {
+        NS_ASSERT(Graphics, renderable != nullptr, "SceneRenderer::RegisterRenderable: 描く物が null");
+        NS_ASSERT(Graphics, root != nullptr, "SceneRenderer::RegisterRenderable: 持ち主の根が null");
+        if (renderable == nullptr || root == nullptr || FindEntry(renderable) != nullptr)
+        {
+            return;
+        }
+
+        std::unique_ptr<RenderEntry> entry = std::make_unique<RenderEntry>();
+        entry->renderable = renderable;
+        entry->root = root;
+        entry->model = model;
+        const RenderSource source = CurrentSource(*entry);
+        Gfx::RenderProxyDesc desc{};
+        desc.bounds = renderable->WorldBounds(source);
+        desc.sortCenter = renderable->SortCenter(source);
+        desc.sortPriority = renderable->SortPriority();
+        desc.transparent = renderable->Bucket() == RenderBucket::Transparent;
+        desc.collect = &CollectEntry;
+        desc.owner = entry.get();
+        entry->handle = m_renderScene.Register(desc);
+        m_renderables.push_back(std::move(entry));
+    }
+
+    void SceneRenderer::UnregisterRenderable(const IRenderable* renderable) noexcept
+    {
+        const std::vector<std::unique_ptr<RenderEntry>>::iterator it =
+            std::find_if(m_renderables.begin(), m_renderables.end(), [renderable](const std::unique_ptr<RenderEntry>& entry) {
+                return entry->renderable == renderable;
             });
         if (it != m_renderables.end())
         {
-            m_renderScene.Unregister(it->handle);
+            m_renderScene.Unregister((*it)->handle);
             m_renderables.erase(it);
         }
         m_bodyMask.erase(std::remove(m_bodyMask.begin(), m_bodyMask.end(), renderable), m_bodyMask.end());
     }
 
+    void SceneRenderer::SetRenderableEnabled(const IRenderable* renderable, bool enabled) noexcept
+    {
+        NS_ASSERT(Scene, renderable != nullptr, "SetRenderableEnabled: 描く物が null");
+        if (RenderEntry* entry = FindEntry(renderable))
+        {
+            entry->enabled = enabled;
+        }
+    }
+
+    std::size_t SceneRenderer::EnabledRenderableCount() const noexcept
+    {
+        return static_cast<std::size_t>(std::count_if(m_renderables.begin(),
+                                                      m_renderables.end(),
+                                                      [](const std::unique_ptr<RenderEntry>& entry) { return entry->enabled; }));
+    }
+
+    std::vector<IRenderable*> SceneRenderer::Renderables() const
+    {
+        std::vector<IRenderable*> renderables;
+        renderables.reserve(m_renderables.size());
+        for (const std::unique_ptr<RenderEntry>& entry : m_renderables)
+        {
+            renderables.push_back(entry->renderable);
+        }
+        return renderables;
+    }
+
     void SceneRenderer::RegisterOverlay(IOverlay* overlay)
     {
+        NS_ASSERT(Graphics, overlay != nullptr, "SceneRenderer::RegisterOverlay: 重ね描きが null");
         if (overlay == nullptr)
         {
             return;
         }
-        if (std::find(m_overlays.begin(), m_overlays.end(), overlay) != m_overlays.end())
+        if (std::any_of(m_overlays.begin(), m_overlays.end(), [overlay](const OverlayEntry& entry) {
+                return entry.overlay == overlay;
+            }))
         {
             return;
         }
 
         // 挿入の時点で priority 昇順を保つ。同値は後から来た方が後ろ
-        const std::vector<IOverlay*>::iterator at =
-            std::upper_bound(m_overlays.begin(), m_overlays.end(), overlay, [](const IOverlay* a, const IOverlay* b) {
-                return a->OverlayOrder() < b->OverlayOrder();
+        const std::vector<OverlayEntry>::iterator at = std::upper_bound(
+            m_overlays.begin(), m_overlays.end(), overlay, [](const IOverlay* a, const OverlayEntry& b) {
+                return a->OverlayOrder() < b.overlay->OverlayOrder();
             });
-        m_overlays.insert(at, overlay);
+        m_overlays.insert(at, OverlayEntry{.overlay = overlay});
     }
 
-    void SceneRenderer::UnregisterOverlay(IOverlay* overlay)
+    void SceneRenderer::UnregisterOverlay(const IOverlay* overlay) noexcept
     {
-        std::erase(m_overlays, overlay);
+        std::erase_if(m_overlays, [overlay](const OverlayEntry& entry) { return entry.overlay == overlay; });
     }
 
-    void SceneRenderer::RegisterLight(DirectionalLight* light)
+    void SceneRenderer::SetOverlayEnabled(const IOverlay* overlay, bool enabled) noexcept
     {
-        if (light == nullptr)
+        NS_ASSERT(Scene, overlay != nullptr, "SetOverlayEnabled: 重ね描きが null");
+        for (OverlayEntry& entry : m_overlays)
+        {
+            if (entry.overlay == overlay)
+            {
+                entry.enabled = enabled;
+            }
+        }
+    }
+
+    std::size_t SceneRenderer::EnabledOverlayCount() const noexcept
+    {
+        return static_cast<std::size_t>(
+            std::count_if(m_overlays.begin(), m_overlays.end(), [](const OverlayEntry& entry) { return entry.enabled; }));
+    }
+
+    void SceneRenderer::RegisterLight(DirectionalLight* light, const Transform* root)
+    {
+        NS_ASSERT(Graphics, light != nullptr, "SceneRenderer::RegisterLight: 平行光が null");
+        NS_ASSERT(Graphics, root != nullptr, "SceneRenderer::RegisterLight: 持ち主の根が null");
+        if (light == nullptr || root == nullptr)
         {
             return;
         }
         // 二重に積むと UnregisterLight が片方しか消さず、外したはずの光が残る
-        if (std::find(m_lights.begin(), m_lights.end(), light) != m_lights.end())
+        if (std::any_of(
+                m_lights.begin(), m_lights.end(), [light](const LightEntry& entry) { return entry.light == light; }))
         {
             return;
         }
-        m_lights.push_back(light);
+        m_lights.push_back(LightEntry{.light = light, .root = root});
     }
 
-    void SceneRenderer::UnregisterLight(DirectionalLight* light)
+    void SceneRenderer::UnregisterLight(const DirectionalLight* light) noexcept
     {
-        std::erase(m_lights, light);
+        std::erase_if(m_lights, [light](const LightEntry& entry) { return entry.light == light; });
+    }
+
+    void SceneRenderer::SetLightEnabled(const DirectionalLight* light, bool enabled) noexcept
+    {
+        NS_ASSERT(Scene, light != nullptr, "SetLightEnabled: 平行光が null");
+        for (LightEntry& entry : m_lights)
+        {
+            if (entry.light == light)
+            {
+                entry.enabled = enabled;
+            }
+        }
+    }
+
+    std::size_t SceneRenderer::EnabledLightCount() const noexcept
+    {
+        return static_cast<std::size_t>(
+            std::count_if(m_lights.begin(), m_lights.end(), [](const LightEntry& entry) { return entry.enabled; }));
     }
 
     void SceneRenderer::SyncRenderBounds()
     {
-        // proxy 側の bounds はコピーなので、描画前に登録元の現在値へ揃える
-        for (const RenderEntry& entry : m_renderables)
+        // proxy 側の bounds はコピーなので、描画前に登録元の現在値へ揃える。無効の組は描かないので写さない
+        for (const std::unique_ptr<RenderEntry>& entry : m_renderables)
         {
-            IRenderable* r = entry.renderable;
-            m_renderScene.Update(entry.handle,
-                                 r->WorldBounds(),
-                                 r->SortCenter(),
+            if (!entry->enabled)
+            {
+                continue;
+            }
+            const IRenderable* r = entry->renderable;
+            const RenderSource source = CurrentSource(*entry);
+            m_renderScene.Update(entry->handle,
+                                 r->WorldBounds(source),
+                                 r->SortCenter(source),
                                  r->SortPriority(),
                                  r->Bucket() == RenderBucket::Transparent);
         }
@@ -198,11 +300,11 @@ namespace NS
                                      UIDirector& ui,
                                      const Gfx::ScreenFade& fade)
     {
-        for (IOverlay* overlay : m_overlays)
+        for (const OverlayEntry& entry : m_overlays)
         {
-            if (overlay != nullptr && overlay->IsOverlayVisible())
+            if (entry.enabled)
             {
-                overlay->OnRenderOverlay(context);
+                entry.overlay->OnRenderOverlay(context);
             }
         }
         // 画面に出す物は世界の上の重ね描きよりさらに上
@@ -217,16 +319,18 @@ namespace NS
     Gfx::RenderSettings SceneRenderer::ResolveSceneSettings(const Gfx::RenderSettings& projectDefaults)
     {
         Gfx::RenderSettings resolved = projectDefaults;
-        for (DirectionalLight* light : m_lights)
+        for (const LightEntry& entry : m_lights)
         {
-            if (!light->IsOwnerAppeared())
+            if (!entry.enabled)
             {
                 continue;
             }
+            const DirectionalLight* light = entry.light;
+            const Vector3 direction = light->Direction(entry.root->WorldMatrix());
             // 0 ベクトルはシェーダ側の正規化で拡散光が消えるため、上書きせず既定の lightDir に残す
-            if (light->Direction().LengthSquared() > 1e-6f)
+            if (direction.LengthSquared() > 1e-6f)
             {
-                resolved.lightDir = light->Direction();
+                resolved.lightDir = direction;
             }
             else if (!m_warnedZeroLightDirection)
             {
@@ -285,9 +389,12 @@ namespace NS
             return;
         }
         m_bodyMaskItems.clear();
-        for (IRenderable* renderable : m_bodyMask)
+        for (const IRenderable* renderable : m_bodyMask)
         {
-            renderable->Collect(context, m_bodyMaskItems);
+            if (RenderEntry* entry = FindEntry(renderable))
+            {
+                CollectEntry(entry, context, m_bodyMaskItems);
+            }
         }
         for (const Gfx::DrawItem& item : m_bodyMaskItems)
         {

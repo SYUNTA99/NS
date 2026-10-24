@@ -48,13 +48,13 @@ namespace NS
                     continue; // 組み立てる部品が無いオブジェクトはファクトリが nullptr を返す
                 }
 
-                // 部品はシーンの仕組みを OnInit で受け取り済み。別のシーンで作った物を入れると、その仕組みを指したまま動く
-                if (obj->OwningScene() != &owner)
-                {
-                    NS_LOG_ERROR(Scene, "ActorList::RebuildFromJson: {} はこのシーンで作られていないので入れない", obj->ClassName());
-                    continue;
-                }
-                ApplyIdentity(*obj, ReadActorHeader(entry));
+                // 部品はシーンの仕組みを OnInit で受け取り済み。別のシーンで作った物を入れると、その仕組みを指したまま動く。
+                // Init を通ったアクターは一覧に入れないと OnEndPlay が呼ばれないので、断らずに止める
+                NS_ASSERT(Scene,
+                          obj->OwningScene() == &owner,
+                          "ActorList::RebuildFromJson: {} はこのシーンで作られていない",
+                          obj->ClassName());
+                ApplyIdentity(obj.get(), ReadActorHeader(entry));
                 m_actors.push_back(std::move(obj));
             }
 
@@ -80,10 +80,11 @@ namespace NS
         obj->SetId(AllocateActorId());
 
         // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
-        RenameActor(*obj, name);
+        RenameActor(obj.get(), name);
         SceneActor* raw = obj.get();
         m_actors.push_back(std::move(obj));
         MarkIndexDirty();
+        ResolveActorRefs();
         return raw;
     }
 
@@ -113,8 +114,59 @@ namespace NS
             (*it)->OnEndPlay();
             MarkIndexDirty();
             m_actors.erase(it);
+            ResolveActorRefs();
             return;
         }
+    }
+
+    DetachedActor ActorList::DetachByActorId(uint32 objectId)
+    {
+        // 段の最中に外すと、その段で後に呼ぶ予定の生ポインタが一覧の外を指す
+        if (m_updating)
+        {
+            NS_LOG_ERROR(
+                Scene, "ActorList::DetachByActorId: 段の更新の最中に呼ばれたので id {} を外すのを断った", objectId);
+            return DetachedActor{};
+        }
+
+        const std::size_t index = IndexOfActorId(objectId);
+        if (index >= m_actors.size())
+        {
+            return DetachedActor{};
+        }
+
+        DetachedActor detached;
+        detached.index = index;
+        detached.wasAppeared = m_actors[index]->IsAppeared();
+        m_actors[index]->Disappear();
+        detached.actor = std::move(m_actors[index]);
+        m_actors.erase(m_actors.begin() + static_cast<std::ptrdiff_t>(index));
+        MarkIndexDirty();
+        ResolveActorRefs();
+        return detached;
+    }
+
+    SceneActor* ActorList::Reattach(DetachedActor detached)
+    {
+        if (!detached.actor)
+        {
+            return nullptr;
+        }
+        NS_ASSERT(Scene,
+                  FindByActorId(detached.actor->Id()) == nullptr,
+                  "id {} の配置物が一覧に居るのに、外した物を戻そうとしている",
+                  detached.actor->Id());
+
+        SceneActor* raw = detached.actor.get();
+        const std::size_t index = std::min(detached.index, m_actors.size());
+        m_actors.insert(m_actors.begin() + static_cast<std::ptrdiff_t>(index), std::move(detached.actor));
+        MarkIndexDirty();
+        ResolveActorRefs();
+        if (detached.wasAppeared)
+        {
+            raw->Appear();
+        }
+        return raw;
     }
 
     void ActorList::RemoveDestroyed()
@@ -136,6 +188,7 @@ namespace NS
         if (removed > 0)
         {
             MarkIndexDirty();
+            ResolveActorRefs();
         }
     }
 
@@ -182,6 +235,14 @@ namespace NS
         m_indexDirty = true;
     }
 
+    void ActorList::ResolveActorRefs()
+    {
+        for (const std::unique_ptr<SceneActor>& actor : m_actors)
+        {
+            actor->ResolveActorRefs();
+        }
+    }
+
     SceneActor* ActorList::FindActor(ActorRef ref) noexcept
     {
         return FindByActorId(ref.id);
@@ -194,7 +255,7 @@ namespace NS
             Collision* collision = actor->CollisionClassObj();
             if (collision != nullptr && actor->IsAppeared())
             {
-                collision->SyncToPhysics();
+                collision->SyncToPhysics(actor->Root().WorldMatrix(), actor.get());
             }
         }
     }
@@ -255,17 +316,19 @@ namespace NS
         }
     }
 
-    void ActorList::ApplyIdentity(SceneActor& obj, const ActorHeader& header)
+    void ActorList::ApplyIdentity(SceneActor* obj, const ActorHeader& header)
     {
-        obj.SetId(header.id);
+        NS_ASSERT(Scene, obj != nullptr, "ActorList::ApplyIdentity: 写す先のアクターが無い");
+        obj->SetId(header.id);
+        obj->m_actorFileName = header.actorFile;
         RenameActor(obj, header.name);
         if (header.active)
         {
-            obj.Appear();
+            obj->Appear();
         }
         else
         {
-            obj.Disappear();
+            obj->Disappear();
         }
     }
 
@@ -278,7 +341,7 @@ namespace NS
             return nullptr;
         }
         // 組み直さずに 1 体だけ入れるので、読込の一意化を通らない。名前の一意は ApplyIdentity が保つ
-        ApplyIdentity(*obj, ReadActorHeader(entry));
+        ApplyIdentity(obj.get(), ReadActorHeader(entry));
         // 入れた物の id より先へカウンタを進める。進めないと次に置く 1 個目と重なる
         m_nextActorId = std::max(m_nextActorId, obj->Id() + 1);
 
@@ -286,6 +349,7 @@ namespace NS
         index = std::min(index, m_actors.size());
         m_actors.insert(m_actors.begin() + static_cast<std::ptrdiff_t>(index), std::move(obj));
         MarkIndexDirty();
+        ResolveActorRefs();
         return raw;
     }
 
@@ -305,18 +369,19 @@ namespace NS
         return m_actors.size();
     }
 
-    void ActorList::RenameActor(SceneActor& obj, std::string_view name)
+    void ActorList::RenameActor(SceneActor* obj, std::string_view name)
     {
+        NS_ASSERT(Scene, obj != nullptr, "ActorList::RenameActor: 名前を変えるアクターが無い");
         std::unordered_set<std::string> used;
         used.reserve(m_actors.size());
         for (const std::unique_ptr<SceneActor>& existing : m_actors)
         {
-            if (existing.get() != &obj)
+            if (existing.get() != obj)
             {
                 used.insert(existing->Name());
             }
         }
-        obj.SetName(MakeUniqueActorName(name, used));
+        obj->SetName(MakeUniqueActorName(name, used));
     }
 
     void ActorList::Clear()

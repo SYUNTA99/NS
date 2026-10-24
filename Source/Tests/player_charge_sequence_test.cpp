@@ -47,9 +47,10 @@ namespace
         return static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     }
 
-    const NS::EffectRecord* LiveEffect(const PlayerActor& player, std::string_view name)
+    const NS::EffectRecord* LiveEffect(const PlayerActor* player, std::string_view name)
     {
-        for (const NS::EffectRecord& record : player.GetEffectKeeper()->Records())
+        NS_ASSERT(Game, player != nullptr, "LiveEffect: 渡したアクターか部品が無い");
+        for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
         {
             if (record.name == name && !record.endStep.has_value())
             {
@@ -71,7 +72,7 @@ TEST(PlayerChargeSequence, SpinAxisChargeEffectAndReleaseShareOneDirection)
         PlayerActor* player = PlaceChargePlayer(scene);
         ASSERT_NE(player, nullptr);
         ASSERT_EQ(
-            NS::ApplyJsonFields(player->Params(),
+            NS::ApplyJsonFields(&player->Params(),
                                 {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}, {"溜めすぎの秒数", 0.5f}}),
             0u);
         player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -83,7 +84,7 @@ TEST(PlayerChargeSequence, SpinAxisChargeEffectAndReleaseShareOneDirection)
         }
         ASSERT_TRUE(player->ChargeJudge().IsHoldingCharge());
         const NS::Vector3 axis = player->Appearance().SpinAxis();
-        const NS::EffectRecord* gather = LiveEffect(*player, "charge.gather");
+        const NS::EffectRecord* gather = LiveEffect(player, "charge.gather");
         ASSERT_NE(gather, nullptr);
         ASSERT_TRUE(gather->rotation.has_value());
         const NS::Quaternion gatherRotation = *gather->rotation;
@@ -110,7 +111,7 @@ TEST(PlayerChargeSequence, RestartWhileChargingDropsTheChargeTheAimAndTheSlowdow
     PlayerActor* player = PlaceChargePlayer(scene);
     ASSERT_NE(player, nullptr);
     // しきい値を狙いの巻き戻し秒より短くし、控えが効いている間に溜めへ入る
-    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.05f}, {"狙いの巻き戻し秒", 0.11f}}),
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"チャージしきい値秒", 0.05f}, {"狙いの巻き戻し秒", 0.11f}}),
               0u);
     const float runMaxSpeed = player->MaxSpeed();
     player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -137,9 +138,11 @@ TEST(PlayerChargeSequence, RestartWhileChargingDropsTheChargeTheAimAndTheSlowdow
 // 押したフレームに丸まり、しきい値のフレームに減速して横を止め、放したフレームに発動する
 TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
-    ASSERT_EQ(NS::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}), 0u);
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
+    ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}), 0u);
     const int threshold = FramesFor(0.2f);
     const int full = FramesFor(1.0f);
     NS::Body& movement = player.Body();
@@ -193,9 +196,11 @@ TEST(PlayerChargeSequence, PressThresholdAndReleaseKeepTheSameFrameOrder)
 
 TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
-    ASSERT_EQ(NS::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
+    ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const int threshold = FramesFor(0.2f);
     player.Update(true);
     player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -219,13 +224,15 @@ TEST(PlayerChargeSequence, TapAndRepeatedPressDoNotSkipOrDuplicateAFrame)
 
 TEST(PlayerChargeSequence, LiveTimingAppliesAndRestartStartsTheHeldDurationOver)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
     GL::Player::PlayerParams* params = &player.Params();
     player.Update(true);
     player.Restart();
     EXPECT_FALSE(player.IsCurled());
-    ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 0.3f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 0.3f}}), 0u);
     // 出直しの前に押した 1 フレームは数えず、出直した後の押しからしきい値と満タンの真ん中まで押す
     const int threshold = FramesFor(0.1f);
     const int full = FramesFor(0.3f);
@@ -245,10 +252,12 @@ TEST(PlayerChargeSequence, LiveTimingAppliesAndRestartStartsTheHeldDurationOver)
 // 押したまま出直すと、出直した後の押しから溜め直す。消えて出直すだけ (Die と Appear) では溜めは途切れない
 TEST(PlayerChargeSequence, ChargeStartsOverAtARestartAndCountsThroughADisappear)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
     GL::Player::PlayerParams* params = &player.Params();
-    ASSERT_EQ(NS::ApplyJsonFields(*params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 1.0f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(params, {{"チャージしきい値秒", 0.1f}, {"チャージ満タン秒", 1.0f}}), 0u);
     // 溜め量は (押したフレーム数 − しきい値) / (満タン − しきい値)
     const int threshold = FramesFor(0.1f);
     const int full = FramesFor(1.0f);
@@ -276,9 +285,11 @@ TEST(PlayerChargeSequence, ChargeStartsOverAtARestartAndCountsThroughADisappear)
 // 構えは縦の倍率を答えるだけで、根のスケールは押しても溜めても放しても配置の値のまま
 TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
-    ASSERT_EQ(NS::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
+    ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     const NS::Vector3 one{1.0f, 1.0f, 1.0f};
     player.Update(true);
     EXPECT_FLOAT_EQ(player.StanceHeight(), 0.97f);
@@ -298,9 +309,11 @@ TEST(PlayerChargeSequence, StanceLeavesTheRootScaleAndAnswersTheHeight)
 
 TEST(PlayerChargeSequence, EndPlayWhileHeldRestoresStanceAndUncurls)
 {
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
-    ASSERT_EQ(NS::ApplyJsonFields(player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    NS::Scene scene;
+    PlayerActor* placed = PlaceChargePlayer(scene);
+    ASSERT_NE(placed, nullptr);
+    PlayerActor& player = *placed;
+    ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
     {
         player.Update(true);
@@ -323,7 +336,7 @@ TEST(PlayerChargeSequence, ChargedReleaseUsesTheLastHeldAimBeforeClearingIt)
     scene.ResetFromJson(doc);
     PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     TestViewCamera* camera = PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_NE(camera, nullptr);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
@@ -354,7 +367,7 @@ TEST(PlayerChargeSequence, AimLineFollowsTheViewCameraNotTheDrawnCamera)
     scene.ResetFromJson(doc);
     PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{-5.0f, 0.0f, 0.0f}, NS::Vector3{}), nullptr);
     NS::SceneCamera* camera = scene.MainCamera();
     ASSERT_NE(camera, nullptr);
@@ -375,10 +388,11 @@ TEST(PlayerChargeSequence, AimLineFollowsTheViewCameraNotTheDrawnCamera)
 namespace
 {
     // 放しの弾けの記録。出していなければ nullptr
-    const NS::EffectRecord* ReleaseBurstOf(const PlayerActor& player)
+    const NS::EffectRecord* ReleaseBurstOf(const PlayerActor* player)
     {
+        NS_ASSERT(Game, player != nullptr, "ReleaseBurstOf: 渡したアクターか部品が無い");
         const NS::EffectRecord* burst = nullptr;
-        for (const NS::EffectRecord& record : player.GetEffectKeeper()->Records())
+        for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
         {
             if (record.name == "release.burst")
             {
@@ -395,20 +409,21 @@ namespace
         int beforeContactStep = -1;
     };
 
-    BurstRun RunBurstUntilContact(NS::Scene& scene, PlayerActor& player)
+    BurstRun RunBurstUntilContact(NS::Scene& scene, PlayerActor* player)
     {
+        NS_ASSERT(Game, player != nullptr, "RunBurstUntilContact: 渡したアクターか部品が無い");
         BurstRun run;
-        player.RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+        player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         for (int frame = 0; frame < 120 && run.contactStep < 0; ++frame)
         {
             scene.OnUpdate();
-            if (run.beforeContactStep < 0 && player.IsInBeforeContact())
+            if (run.beforeContactStep < 0 && player->IsInBeforeContact())
             {
-                run.beforeContactStep = static_cast<int>(player.GetEffectKeeper()->Step());
+                run.beforeContactStep = static_cast<int>(player->GetEffectKeeper()->Step());
             }
-            if (player.Resolver().Answer().lastImpact.sequence != 0)
+            if (player->Resolver().Answer().lastImpact.sequence != 0)
             {
-                run.contactStep = static_cast<int>(player.GetEffectKeeper()->Step());
+                run.contactStep = static_cast<int>(player->GetEffectKeeper()->Step());
             }
         }
         return run;
@@ -421,10 +436,10 @@ TEST(PlayerChargeSequence, ReleaseBurstEndsWhenTheBeforeContactStateStarts)
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f);
     ASSERT_NE(player, nullptr);
-    const BurstRun run = RunBurstUntilContact(scene, *player);
+    const BurstRun run = RunBurstUntilContact(scene, player);
     ASSERT_GE(run.contactStep, 0);
     ASSERT_GE(run.beforeContactStep, 0);
-    const NS::EffectRecord* burst = ReleaseBurstOf(*player);
+    const NS::EffectRecord* burst = ReleaseBurstOf(player);
     ASSERT_NE(burst, nullptr);
     ASSERT_TRUE(burst->endStep.has_value());
     EXPECT_EQ(static_cast<int>(*burst->endStep), run.beforeContactStep);
@@ -439,10 +454,10 @@ TEST(PlayerChargeSequence, ReleaseBurstEndsOnTheContactFrameWithoutABeforeContac
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f);
     ASSERT_NE(player, nullptr);
-    const BurstRun run = RunBurstUntilContact(scene, *player);
+    const BurstRun run = RunBurstUntilContact(scene, player);
     ASSERT_GE(run.contactStep, 0);
     EXPECT_LT(run.beforeContactStep, 0);
-    const NS::EffectRecord* burst = ReleaseBurstOf(*player);
+    const NS::EffectRecord* burst = ReleaseBurstOf(player);
     ASSERT_NE(burst, nullptr);
     ASSERT_TRUE(burst->endStep.has_value());
     EXPECT_EQ(static_cast<int>(*burst->endStep), run.contactStep);
@@ -454,11 +469,11 @@ TEST(PlayerChargeSequence, ReleaseBurstEndsThreeFramesBeforeThePredictedContact)
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.75f);
     ASSERT_NE(player, nullptr);
-    const BurstRun run = RunBurstUntilContact(scene, *player);
+    const BurstRun run = RunBurstUntilContact(scene, player);
     ASSERT_GE(run.contactStep, 0);
     ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, GL::Level::HitTier::Wide);
     EXPECT_LT(run.beforeContactStep, 0);
-    const NS::EffectRecord* burst = ReleaseBurstOf(*player);
+    const NS::EffectRecord* burst = ReleaseBurstOf(player);
     ASSERT_NE(burst, nullptr);
     ASSERT_TRUE(burst->endStep.has_value());
     EXPECT_EQ(static_cast<int>(*burst->endStep), run.contactStep - 3);

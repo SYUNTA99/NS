@@ -13,7 +13,7 @@ namespace GL
         public:
             NS_REFLECT_NONE(DeathZoneActor, NS::SceneActor)
 
-            void AttackSensor(NS::HitSensor& self, NS::HitSensor& other) override;
+            void AttackSensor(NS::HitSensor* self, NS::HitSensor* other) override;
 
         protected:
             void OnInit() override;

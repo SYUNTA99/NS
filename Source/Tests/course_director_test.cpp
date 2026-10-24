@@ -1,5 +1,4 @@
 #include "Editor/EditorActors.h"
-#include "Game/Game.h"
 #include "Game/Level/CourseDirector.h"
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/GoalActor.h"
@@ -13,7 +12,6 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
-#include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -47,10 +45,11 @@ namespace
     };
 
     // 本番の入力の段と PlayerActor の段を 1 歩ずつ回す
-    void StepPlayer(PlayerActor& player)
+    void StepPlayer(PlayerActor* player)
     {
-        player.ReadInput();
-        player.Update();
+        NS_ASSERT(Game, player != nullptr, "StepPlayer: 渡したアクターか部品が無い");
+        player->ReadInput();
+        player->Update();
     }
 
     // プレイヤーと落下死の範囲を敷いたシーン文書
@@ -187,7 +186,7 @@ TEST(CourseDirector, RespawnButtonReturnsActorsButKeepsPlayer)
 
     {
         const KeyPress press{NS::OS::Key::R};
-        StepPlayer(*player);
+        StepPlayer(player);
     }
     director->OnTick();
 
@@ -206,7 +205,6 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
 
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    (void)scene.BeginPlayBaseline();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
@@ -231,7 +229,6 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
     const nlohmann::json doc = CourseWithPlayerOnGoal();
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    (void)scene.BeginPlayBaseline();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
@@ -240,7 +237,7 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
     MouseLeftPress press;
     for (int i = 0; i < 60 && !player->ChargeJudge().IsCharging(); ++i)
     {
-        StepPlayer(*player);
+        StepPlayer(player);
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
 
@@ -252,7 +249,7 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
 
     for (int i = 0; i < 10; ++i)
     {
-        StepPlayer(*player);
+        StepPlayer(player);
         EXPECT_FALSE(player->ChargeJudge().IsCharging()) << "歩 " << i;
         EXPECT_FALSE(player->IsBodySlamming()) << "歩 " << i;
     }
@@ -264,7 +261,6 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
     const nlohmann::json doc = CourseWithPlayerOnGoal();
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    (void)scene.BeginPlayBaseline();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
@@ -285,7 +281,7 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
 
     for (int i = 0; i < 10; ++i)
     {
-        StepPlayer(*player);
+        StepPlayer(player);
     }
     EXPECT_FLOAT_EQ(player->DesiredDirection().Length(), 0.0f);
     EXPECT_FLOAT_EQ(player->DesiredSpeedScale(), 0.0f);
@@ -298,7 +294,6 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
 {
     NS::Scene scene;
     scene.ResetFromJson(CourseWithPlayer());
-    (void)scene.BeginPlayBaseline();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
 
@@ -309,7 +304,7 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
     const NS::uint32 impacts = player->Resolver().Answer().lastImpact.sequence;
 
-    EXPECT_TRUE(GL::Level::SendMsgInputLock(*player, true));
+    EXPECT_TRUE(GL::Level::SendMsgInputLock(player, true));
     EXPECT_FALSE(player->ChargeJudge().IsCharging());
     EXPECT_FLOAT_EQ(player->StanceHeight(), 1.0f);
 
@@ -345,7 +340,7 @@ TEST(CourseDirector, RestartReturnsActorsToTheirStart)
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
 }
 
-TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
+TEST(CourseDirector, StartCourseStartsThePlayerAtRestFromThePlacedPose)
 {
     NS::Scene scene;
     scene.ResetFromJson(CourseWithPlayer());
@@ -357,81 +352,11 @@ TEST(CourseDirector, StartCourseFreezesThePlacedSceneAndStartsEveryoneFromIt)
 
     NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->StartCourse();
 
-    // 凍結は呼んだ時の配置を写し、自機はそこからやり直しと同じ姿で始まる
-    const nlohmann::json& baseline = scene.PlayBaseline();
-    const std::size_t index = NS::FindActorIndexById(baseline, player->Id());
-    ASSERT_NE(index, NS::k_NoActorIndex);
-    const NS::Vector3 frozen = NS::Editor::ActorJsonPosition(NS::SceneJsonActors(baseline)[index]);
-    EXPECT_FLOAT_EQ(frozen.x, placedAt.x);
-    EXPECT_FLOAT_EQ(frozen.y, placedAt.y);
-    EXPECT_FLOAT_EQ(frozen.z, placedAt.z);
+    // 自機は呼んだ時の姿から、やり直しと同じく速さ 0 で始まる
     EXPECT_FLOAT_EQ(player->Body().Velocity().x, 0.0f);
     EXPECT_FLOAT_EQ(player->Body().Velocity().y, 0.0f);
     EXPECT_FLOAT_EQ(player->Body().Velocity().z, 0.0f);
     EXPECT_FLOAT_EQ(player->Root().Position().x, placedAt.x);
     EXPECT_FLOAT_EQ(player->Root().Position().y, placedAt.y);
     EXPECT_FLOAT_EQ(player->Root().Position().z, placedAt.z);
-}
-
-TEST(CourseDirector, GameLoadSceneFreezesTheNewlyLoadedScene)
-{
-    // ServeLayer の台本の差し替えと同じく、立ち上がった後にシーンを読み直す
-    ::Game game{"Assets/Scenes/new_scene.scene"};
-    ASSERT_TRUE(game.LoadScene("Assets/Scenes/new_scene.scene"));
-    NS::Scene* scene = game.CurrentScene();
-    ASSERT_NE(scene, nullptr);
-
-    // やり直しの戻り先が読み直したシーンの配置になっている
-    const std::size_t placed = scene->Actors().ActorCount();
-    ASSERT_GT(placed, 0u);
-    EXPECT_EQ(NS::SceneJsonActors(scene->PlayBaseline()).size(), placed);
-    const PlayerActor* player = FindPlayer(scene->Actors());
-    ASSERT_NE(player, nullptr);
-    EXPECT_NE(NS::FindActorIndexById(scene->PlayBaseline(), player->Id()), NS::k_NoActorIndex);
-}
-
-// 開始の後に凍結の位置を書き換えても (プレイ中のインスペクタの道)、やり直しは開始の時の位置へ戻る
-TEST(CourseDirector, RestartReturnsToThePoseAtStartEvenIfTheBaselineChanges)
-{
-    NS::Scene scene;
-    nlohmann::json doc = CourseWithPlayer();
-    nlohmann::json rock = NS::Editor::MakePrototypeJson<GL::Level::PropActor>();
-    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{3.0f, 0.5f, 0.0f});
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
-    NS::EnsureUniqueActorIds(doc);
-    scene.ResetFromJson(doc);
-    PlayerActor* player = FindPlayer(scene.Actors());
-    ASSERT_NE(player, nullptr);
-    GL::Level::PropActor* prop = nullptr;
-    for (NS::SceneActor* actor : scene.Actors())
-    {
-        if (GL::Level::PropActor* found = NS::Cast<GL::Level::PropActor>(actor))
-        {
-            prop = found;
-        }
-    }
-    ASSERT_NE(prop, nullptr);
-    GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
-    director->StartCourse();
-    const NS::Vector3 playerAtStart = player->Root().Position();
-    const NS::Vector3 propAtStart = prop->Root().Position();
-
-    // 動かした位置を、プレイ中のインスペクタと同じ口で凍結へ写す
-    const NS::Vector3 moved{9.0f, 9.0f, 9.0f};
-    for (NS::SceneActor* actor : std::initializer_list<NS::SceneActor*>{player, prop})
-    {
-        actor->Root().SetPosition(moved);
-        NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, NS::Object* part) {
-            if (part == &actor->Root())
-            {
-                scene.WritePlayBaselineField(*actor, row, "位置");
-            }
-        });
-    }
-
-    director->RestartCourse();
-    EXPECT_FLOAT_EQ(player->Root().Position().x, playerAtStart.x);
-    EXPECT_FLOAT_EQ(player->Root().Position().y, playerAtStart.y);
-    EXPECT_FLOAT_EQ(prop->Root().Position().x, propAtStart.x);
-    EXPECT_FLOAT_EQ(prop->Root().Position().y, propAtStart.y);
 }

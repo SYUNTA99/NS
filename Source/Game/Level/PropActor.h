@@ -34,8 +34,8 @@ namespace GL
             NS_CLASSOBJ(m_marks, "ImpactMarks")
             NS_REFLECT_END()
 
-            //! 尾と粉の絵を先に読む。残像は Model と同じく、出ている間だけ描く物へ入れる
-            void OnStart() override;
+            //! 基底の作る物に続けて、尾と粉の絵を先に読む。.actor が替わって絵の名前が替わった時も読む
+            void OnAssetsLoaded() override;
             //! 1 固定ステップを本番と同じ順で進める。試しが段を回さずに置物を動かす
             void UpdateMotion();
             void OnEndPlay() override;
@@ -67,6 +67,7 @@ namespace GL
             bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
             void OnInit() override;
+            //! 残像は Model と同じく、出ている間だけ描く物へ入れる
             void OnAppear() override;
             void OnDisappear() noexcept override;
             //! 発光の層・残像・当たりの跡を進める
@@ -90,7 +91,7 @@ namespace GL
             };
 
             // 当たったの知らせを受ける。段の自分の束を触れた点と 2 つのセンサーで始め、受けた状態に入る
-            void ReceiveHit(const TackleHitDesc& hit, const NS::HitSensor& self, const NS::HitSensor& attacker);
+            void ReceiveHit(const TackleHitDesc& hit, const NS::HitSensor* self, const NS::HitSensor* attacker);
             // 受けた当たりの明けの束を始める。当たっていない・当てた側が居ない時は何もしない
             void StartReleaseSet();
             void BeginFreeze(const TackleFreezeDesc& desc);
@@ -122,7 +123,7 @@ namespace GL
             // 受けた当たり。明けの知らせで明けの束を始める時に読み、使い終えると active を下ろす
             struct ReceivedHit
             {
-                NS::HitSensorRef attacker{};
+                const NS::HitSensor* attacker = nullptr;
                 NS::Vector3 contact{};
                 HitTier tier = HitTier::Center;
                 bool active = false;
@@ -136,7 +137,7 @@ namespace GL
                 NS::Quaternion rotation;
             };
             std::optional<CoursePose> m_coursePose; // MsgCourseStart の時の姿。やり直しで戻る先
-            TackleGhost m_tackleGhost{this}; // 体当たりの残像。Model を借りて描く
+            TackleGhost m_tackleGhost; // 体当たりの残像。描く時に Model を渡されて描く
             NS::Vector3 m_freezeHome{};
             bool m_freezePlaced = true;
             LaunchArc m_arc;

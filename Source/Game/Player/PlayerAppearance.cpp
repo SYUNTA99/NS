@@ -6,8 +6,6 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Windows/Clock.h"
 #include <algorithm>
 #include <cmath>
 
@@ -37,20 +35,22 @@ namespace GL
 {
     namespace Player
     {
-        PlayerAppearance::PlayerAppearance(NS::SceneActor* owner) : m_owner(owner)
+        PlayerAppearance::PlayerAppearance()
         {
             NS::LoadAssetField(m_standingMesh, "capsule");
             NS::LoadAssetField(m_ballMesh, "sphere");
         }
 
-        void PlayerAppearance::Curl() noexcept
+        void PlayerAppearance::Curl(NS::Model* renderer) noexcept
         {
-            ShowLook(m_ballMesh, m_ballScale);
+            NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::Curl: 姿を差す Model が空");
+            ShowLook(renderer, m_ballMesh, m_ballScale);
         }
 
-        void PlayerAppearance::Uncurl() noexcept
+        void PlayerAppearance::Uncurl(NS::Model* renderer) noexcept
         {
-            ShowLook(m_standingMesh, m_standingScale);
+            NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::Uncurl: 姿を差す Model が空");
+            ShowLook(renderer, m_standingMesh, m_standingScale);
         }
 
         float PlayerAppearance::StanceHeight(const ChargeStatus& charge) const noexcept
@@ -66,21 +66,17 @@ namespace GL
             return m_pressSquashScale;
         }
 
-        void PlayerAppearance::ResetDrawScale() noexcept
+        void PlayerAppearance::ResetDrawScale(NS::Model* renderer) noexcept
         {
+            NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::ResetDrawScale: 倍率を戻す Model が空");
             m_landingSquashRemaining = 0;
             m_landingSquashVertical = 1.0f;
-            if (m_owner == nullptr)
-            {
-                return;
-            }
-            if (NS::Model* renderer = m_owner->ModelClassObj())
-            {
-                (void)renderer->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
-            }
+            (void)renderer->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
         }
 
-        void PlayerAppearance::AdvanceSpin(const PlayerMotion& motion,
+        void PlayerAppearance::AdvanceSpin(NS::Model* renderer,
+                                           float dt,
+                                           const PlayerMotion& motion,
                                            const ChargeStatus& charge,
                                            const BodySlamStatus& slam,
                                            const ReboundStatus& rebound,
@@ -89,14 +85,6 @@ namespace GL
                                            const GL::Level::ImpactAnswer& impact) noexcept
         {
             m_spinDegreesThisFrame = 0.0f;
-            NS::Model* renderer = nullptr;
-            // 持ち主の無い部品は固定フレームの秒で回す
-            float dt = NS::OS::FrameTimer::FixedDelta();
-            if (m_owner != nullptr)
-            {
-                renderer = m_owner->ModelClassObj();
-                dt = NS::GetFrameDelta(m_owner);
-            }
 
             if (!motion.curled)
             {
@@ -106,10 +94,7 @@ namespace GL
                 m_spinSpeed = 0.0f;
                 // 前のフレームの値も揃える。今の値だけを戻すと、持ち替えたフレームの立ち姿が、玉の姿勢から戻る途中の
                 // 傾きで描かれる
-                if (renderer != nullptr)
-                {
-                    renderer->SnapLocalRotation(m_spin);
-                }
+                renderer->SnapLocalRotation(m_spin);
                 return;
             }
             if (!motion.canMoveBody)
@@ -139,7 +124,7 @@ namespace GL
                 {
                     skidScale = skid.SpeedScale();
                 }
-                AdvanceMissTumble(*rebound.Tumble(), rebound, skidScale, impact);
+                AdvanceMissTumble(dt, *rebound.Tumble(), rebound, skidScale, impact);
             }
             else if (motion.rebounding)
             {
@@ -158,13 +143,11 @@ namespace GL
             m_spin.Normalize();
             m_spinDegreesThisFrame = degrees;
 
-            if (renderer != nullptr)
-            {
-                renderer->SetLocalRotation(m_spin);
-            }
+            renderer->SetLocalRotation(m_spin);
         }
 
-        void PlayerAppearance::AdvanceMissTumble(const MissTumble& tumble,
+        void PlayerAppearance::AdvanceMissTumble(float dt,
+                                                 const MissTumble& tumble,
                                                  const ReboundStatus& rebound,
                                                  float skidScale,
                                                  const GL::Level::ImpactAnswer& impact) noexcept
@@ -209,11 +192,6 @@ namespace GL
             NS::Vector3 side = axis.Cross(helper);
             side.Normalize();
             const NS::Vector3 other = axis.Cross(side);
-            float dt = NS::OS::FrameTimer::FixedDelta();
-            if (m_owner != nullptr)
-            {
-                dt = NS::GetFrameDelta(m_owner);
-            }
             // TODO: 歩の数に今の歩の秒を掛けるので、倍率が途中で変わると位相が跳ぶ
             // 外した反動の間に倍率を動かす時に、経過の秒を足し込む形へ変える
             const float phase = m_tumbleWobblePhase + 2.0f * NS::k_Pi * m_missWobbleTurnsPerSecond *
@@ -226,7 +204,9 @@ namespace GL
             m_spinSpeed = speed;
         }
 
-        void PlayerAppearance::Update(const PlayerMotion& motion,
+        void PlayerAppearance::Update(NS::Model* renderer,
+                                      float dt,
+                                      const PlayerMotion& motion,
                                       const ChargeStatus& charge,
                                       const BodySlamStatus& slam,
                                       const ReboundStatus& rebound,
@@ -234,9 +214,10 @@ namespace GL
                                       const NS::Vector3& aimDirection,
                                       const GL::Level::ImpactAnswer& impact)
         {
-            AdvanceSpin(motion, charge, slam, rebound, skid, aimDirection, impact);
+            NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::Update: 姿を書く Model が空");
+            AdvanceSpin(renderer, dt, motion, charge, slam, rebound, skid, aimDirection, impact);
             AdvanceLandingSquash(motion);
-            WriteDrawScale(charge);
+            WriteDrawScale(renderer, charge);
         }
 
         void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion) noexcept
@@ -280,17 +261,8 @@ namespace GL
             }
         }
 
-        void PlayerAppearance::WriteDrawScale(const ChargeStatus& charge) noexcept
+        void PlayerAppearance::WriteDrawScale(NS::Model* renderer, const ChargeStatus& charge) noexcept
         {
-            NS::Model* renderer = nullptr;
-            if (m_owner != nullptr)
-            {
-                renderer = m_owner->ModelClassObj();
-            }
-            if (renderer == nullptr)
-            {
-                return;
-            }
             // 当たりの潰れと伸びは Model の形の再生が描く倍率に掛ける。その間は構えを混ぜず、
             // 構えの最中に来た止めも元の形から潰す
             float stance = 1.0f;
@@ -319,18 +291,8 @@ namespace GL
             m_drawScaleRejected = true;
         }
 
-        void PlayerAppearance::ShowLook(NS::Mesh* mesh, const NS::Vector3& scale) noexcept
+        void PlayerAppearance::ShowLook(NS::Model* renderer, NS::Mesh* mesh, const NS::Vector3& scale) noexcept
         {
-            if (m_owner == nullptr)
-            {
-                return;
-            }
-            NS::Model* renderer = m_owner->ModelClassObj();
-            if (renderer == nullptr)
-            {
-                return;
-            }
-
             if (!renderer->SetLocalScale(scale))
             {
                 NS_LOG_WARN(Game,

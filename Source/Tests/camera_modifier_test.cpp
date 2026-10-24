@@ -58,8 +58,6 @@ namespace
     class AlphaCamera final : public NS::VirtualCamera
     {
     public:
-        using NS::VirtualCamera::VirtualCamera;
-
         [[nodiscard]] NS::CameraPose EvaluatePose(float alpha) const noexcept override
         {
             return MakePose(
@@ -80,15 +78,14 @@ namespace
         void OnEndPlay() override
         {
             NS::SceneActor::OnEndPlay();
-            NS::UnregisterVirtualCamera(this, vcam.get());
+            NS::EndVirtualCamera(this, vcam.get());
         }
 
     protected:
-        void OnInit() override { CreateClassObj(vcam, this); }
-        void OnStart() override
+        void OnInit() override
         {
-            NS::SceneActor::OnStart();
-            NS::RegisterVirtualCamera(this, vcam.get());
+            CreateClassObj(vcam);
+            NS::InitVirtualCamera(this, vcam.get());
         }
     };
 
@@ -184,15 +181,15 @@ TEST(CameraManager, FinishedModifiersAreRemovedOnTick)
 
 TEST(CameraManager, ModifiersApplyInOrder)
 {
-    const std::unique_ptr<TestViewCameraHostActor> hostOwned = NS::CreateActor<TestViewCameraHostActor>();
-    TestViewCameraHostActor& host = *hostOwned;
-    host.Vcam().SetPose(NS::Vector3{1.0f, 0.0f, -5.0f}, NS::Vector3{1.0f, 0.0f, 0.0f});
-    NS::CameraManager cameras;
-    cameras.AddVirtualCamera(&host.Vcam());
+    // 仮想カメラは湧いた時にシーンの管理役へ入る。同じ管理役へ効果を積む
+    NS::Scene scene;
+    TestViewCamera* vcam = PlaceViewCamera(scene, NS::Vector3{1.0f, 0.0f, -5.0f}, NS::Vector3{1.0f, 0.0f, 0.0f});
+    ASSERT_NE(vcam, nullptr);
+    NS::CameraManager* cameras = scene.GetCameraManager();
     // 積んだ順と逆でも Order の小さい方が先に掛かる
-    ASSERT_TRUE(cameras.AddModifier(std::make_unique<OrderProbe>(200, 1.0f)));
-    ASSERT_TRUE(cameras.AddModifier(std::make_unique<OrderProbe>(100, 10.0f)));
-    const std::optional<NS::CameraPose> pose = cameras.ComposePose(1.0f);
+    ASSERT_TRUE(cameras->AddModifier(std::make_unique<OrderProbe>(200, 1.0f)));
+    ASSERT_TRUE(cameras->AddModifier(std::make_unique<OrderProbe>(100, 10.0f)));
+    const std::optional<NS::CameraPose> pose = cameras->ComposePose(1.0f);
     ASSERT_TRUE(pose.has_value());
     // Order 100 (x*2+10) が先、200 (x*2+1) が後: (1*2+10)*2+1 = 25
     EXPECT_FLOAT_EQ(pose->position.x, 25.0f);
@@ -232,29 +229,26 @@ TEST(IUseCamera, ForwardWithoutAVirtualCameraIsPlusZ)
 // 描画が割合 0 で実カメラを書いても、遊びの向きはその歩のブレンドの値 (割合 1) のまま
 TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
 {
-    NS::SceneCamera drawn;
-    NS::CameraManager cameras;
-    cameras.SetCamera(&drawn);
+    // 仮想カメラは湧いた時にシーンの管理役へ入る。管理役はシーンの実カメラへ書く
+    NS::Scene scene;
+    NS::CameraManager* cameras = scene.GetCameraManager();
     // 1 歩で半分まで進むブレンド
-    cameras.SetBlendDuration(NS::OS::FrameTimer::FixedDelta() * 2.0f);
-    const std::unique_ptr<TestViewCameraHostActor> fromOwned = NS::CreateActor<TestViewCameraHostActor>();
-    TestViewCameraHostActor& from = *fromOwned;
-    cameras.AddVirtualCamera(&from.Vcam());
-    cameras.OnTick();
-    cameras.Evaluate(1.0f);
-    const std::unique_ptr<AlphaCameraHostActor> toOwned = NS::CreateActor<AlphaCameraHostActor>();
-    AlphaCameraHostActor& to = *toOwned;
-    to.vcam->SetVcamPriority(1);
-    cameras.AddVirtualCamera(to.vcam.get());
-    cameras.OnTick();
-    cameras.Evaluate(0.0f);
+    cameras->SetBlendDuration(NS::OS::FrameTimer::FixedDelta() * 2.0f);
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
+    cameras->OnTick();
+    cameras->Evaluate(1.0f);
+    AlphaCameraHostActor* to = scene.SpawnActor<AlphaCameraHostActor>("AlphaCameraHostActor");
+    ASSERT_NE(to, nullptr);
+    to->vcam->SetVcamPriority(1);
+    cameras->OnTick();
+    cameras->Evaluate(0.0f);
 
-    const std::optional<NS::CameraPose> view = cameras.ViewPose();
+    const std::optional<NS::CameraPose> view = cameras->ViewPose();
     ASSERT_TRUE(view.has_value());
     NS::Vector3 expected{};
     ASSERT_TRUE(NS::TryNormalizeHorizontal(view->target - view->position, expected));
     ASSERT_GT(expected.x, 0.1f);
-    const NS::Vector3 forward = cameras.ForwardHorizontal();
+    const NS::Vector3 forward = cameras->ForwardHorizontal();
     EXPECT_NEAR(forward.x, expected.x, 1e-5f);
     EXPECT_NEAR(forward.z, expected.z, 1e-5f);
 }
@@ -262,22 +256,20 @@ TEST(CameraManager, ForwardIgnoresTheDrawAlphaDuringABlend)
 // 効果は描く絵にだけ掛かる。揺れや傾きの間も、入力と狙いが読む向きは揺らさない
 TEST(CameraManager, ForwardLeavesOutTheModifiers)
 {
-    NS::SceneCamera drawn;
-    NS::CameraManager cameras;
-    cameras.SetCamera(&drawn);
-    const std::unique_ptr<TestViewCameraHostActor> hostOwned = NS::CreateActor<TestViewCameraHostActor>();
-    TestViewCameraHostActor& host = *hostOwned;
-    cameras.AddVirtualCamera(&host.Vcam());
+    // 仮想カメラは湧いた時にシーンの管理役へ入る。管理役はシーンの実カメラへ書く
+    NS::Scene scene;
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
+    NS::CameraManager* cameras = scene.GetCameraManager();
     // 位置の x を 0*2+10 = 10 へずらし、描く視線を斜めにする
-    ASSERT_TRUE(cameras.AddModifier(std::make_unique<OrderProbe>(100, 10.0f)));
-    cameras.Evaluate(1.0f);
-    ASSERT_FLOAT_EQ(drawn.Position().x, 10.0f);
+    ASSERT_TRUE(cameras->AddModifier(std::make_unique<OrderProbe>(100, 10.0f)));
+    cameras->Evaluate(1.0f);
+    ASSERT_FLOAT_EQ(scene.MainCamera()->Position().x, 10.0f);
 
-    const NS::Vector3 forward = cameras.ForwardHorizontal();
+    const NS::Vector3 forward = cameras->ForwardHorizontal();
 
     EXPECT_FLOAT_EQ(forward.x, 0.0f);
     EXPECT_FLOAT_EQ(forward.z, 1.0f);
-    const std::optional<NS::CameraPose> view = cameras.ViewPose();
+    const std::optional<NS::CameraPose> view = cameras->ViewPose();
     ASSERT_TRUE(view.has_value());
     EXPECT_FLOAT_EQ(view->position.x, 0.0f);
 }
@@ -325,10 +317,12 @@ TEST(FollowCameraActor, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}), 0u);
     GL::Level::FollowCameraActor* actor = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
     NS::ThirdPersonFollow& vcam = actor->Vcam();
-    NS::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", player->Id()}}}});
+    NS::ApplyJsonFields(&vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", player->Id()}}}});
+    // 欄を書いた後に、エディタと同じく相手を取得し直す
+    actor->ResolveActorRefs();
     // しきい値を越えるまで押し続ける
     for (int held = 0; held < 30; ++held)
     {

@@ -12,7 +12,7 @@ TEST(ReflectedClassObjs, ListsBaseFramePartsBeforeTheClassPartsWithTheirSaveKeys
 {
     const std::unique_ptr<GL::Level::PropActor> actor = NS::CreateActor<GL::Level::PropActor>();
     std::vector<std::string> keys;
-    NS::ForEachReflectedClassObj(*actor,
+    NS::ForEachReflectedClassObj(actor.get(),
                                  [&](const NS::ClassObjInfo& field, NS::Object*) { keys.emplace_back(field.key); });
     ASSERT_GE(keys.size(), 4u);
     EXPECT_EQ(keys.front(), "Transform");

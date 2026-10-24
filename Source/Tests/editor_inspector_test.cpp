@@ -57,7 +57,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     int height = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-    NS::ThirdPersonFollow follow{nullptr};
+    NS::ThirdPersonFollow follow;
     const std::vector<NS::Editor::ActorRefOption> options{{7u, "相手"}};
     ImVec2 tableMin{};
     float tableWidth = 0.0f;
@@ -69,7 +69,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
         tableMin = ImGui::GetCursorScreenPos();
         tableWidth = ImGui::GetContentRegionAvail().x;
         const NS::Editor::ClassObjEditResult result =
-            NS::Editor::DrawReflectedClassObj(follow, options, nullptr, "追従対象");
+            NS::Editor::DrawReflectedClassObj(&follow, options, nullptr, "追従対象");
         ImGui::End();
         ImGui::EndFrame();
         return result;
@@ -168,7 +168,7 @@ TEST(EditorInspector, LabeledFieldSavesByNameAndShowsTheLabel)
         {
             ImGui::LogToBuffer();
         }
-        (void)NS::Editor::DrawReflectedClassObj(object);
+        (void)NS::Editor::DrawReflectedClassObj(&object);
         if (capture)
         {
             drawnText = GImGui->LogBuffer.c_str();
@@ -208,7 +208,7 @@ TEST(EditorInspector, VectorAxesStayReadableWhenThePanelNarrows)
     int height = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     VectorFieldObject object;
-    const nlohmann::json before = NS::SerializeClassObjFields(object);
+    const nlohmann::json before = NS::SerializeClassObjFields(&object);
     const float widths[] = {760.0f, 360.0f, 170.0f};
     float heights[3]{};
     for (int size = 0; size < 3; ++size)
@@ -222,7 +222,7 @@ TEST(EditorInspector, VectorAxesStayReadableWhenThePanelNarrows)
             ImGui::Begin("Vector fields", nullptr, ImGuiWindowFlags_NoSavedSettings);
             const float top = ImGui::GetCursorScreenPos().y;
             ImGui::LogToBuffer();
-            const NS::Editor::ClassObjEditResult edit = NS::Editor::DrawReflectedClassObj(object);
+            const NS::Editor::ClassObjEditResult edit = NS::Editor::DrawReflectedClassObj(&object);
             const std::string text = GImGui->LogBuffer.c_str();
             ImGui::LogFinish();
             EXPECT_FALSE(edit.changed);
@@ -249,7 +249,7 @@ TEST(EditorInspector, VectorAxesStayReadableWhenThePanelNarrows)
     }
     EXPECT_GT(heights[1], heights[0]);
     EXPECT_GT(heights[2], heights[1]);
-    EXPECT_EQ(NS::SerializeClassObjFields(object), before);
+    EXPECT_EQ(NS::SerializeClassObjFields(&object), before);
     ImGui::DestroyContext(gui);
 }
 
@@ -272,16 +272,16 @@ TEST(EditorInspector, Vector2SavesBothComponentsAndRejectsBrokenValues)
     const TwoAxisFieldObject defaults;
     const NS::FieldDesc* field = NS::FindField(object.GetReflection(), "offset");
     ASSERT_NE(field, nullptr);
-    const nlohmann::json saved = NS::SerializeClassObjFields(object);
+    const nlohmann::json saved = NS::SerializeClassObjFields(&object);
     EXPECT_EQ(saved, (nlohmann::json{{"offset", {0.25f, 0.75f}}}));
     object.offset = NS::Vector2{4.0f, 5.0f};
-    EXPECT_EQ(NS::ApplyJsonFields(object, saved), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(&object, saved), 0u);
     EXPECT_EQ(object.offset, defaults.offset);
     const nlohmann::json broken[] = {
         nullptr, 3, {1.0f}, {1.0f, 2.0f, 3.0f}, {1.0f, "bad"}, {1.0f, std::numeric_limits<double>::max()}};
     for (const nlohmann::json& value : broken)
     {
-        (void)NS::ApplyJsonFields(object, nlohmann::json{{"offset", value}});
+        (void)NS::ApplyJsonFields(&object, nlohmann::json{{"offset", value}});
         EXPECT_EQ(object.offset, defaults.offset);
     }
 }
@@ -289,7 +289,7 @@ TEST(EditorInspector, Vector2SavesBothComponentsAndRejectsBrokenValues)
 // ファークリップの欄は setter を直に呼ぶ。非有限と近い面以下の値は投影行列を壊すので、捨てて元の値を残す
 TEST(EditorInspector, FarPlaneFieldRejectsValuesThatBreakTheProjection)
 {
-    NS::ThirdPersonFollow follow{nullptr};
+    NS::ThirdPersonFollow follow;
     const float kept = follow.FarPlane();
     const float broken[] = {0.0f,
                             -1.0f,
@@ -298,10 +298,10 @@ TEST(EditorInspector, FarPlaneFieldRejectsValuesThatBreakTheProjection)
                             std::numeric_limits<float>::quiet_NaN()};
     for (const float value : broken)
     {
-        (void)NS::ApplyJsonFields(follow, nlohmann::json{{"ファークリップ", value}});
+        (void)NS::ApplyJsonFields(&follow, nlohmann::json{{"ファークリップ", value}});
         EXPECT_EQ(follow.FarPlane(), kept);
     }
-    (void)NS::ApplyJsonFields(follow, nlohmann::json{{"ファークリップ", 250.0f}});
+    (void)NS::ApplyJsonFields(&follow, nlohmann::json{{"ファークリップ", 250.0f}});
     EXPECT_EQ(follow.FarPlane(), 250.0f);
 }
 
@@ -552,8 +552,9 @@ namespace
     };
 
     // actor の表で part を持つ行
-    const NS::ClassObjInfo* RowOf(const NS::SceneActor& actor, const NS::Object* part)
+    const NS::ClassObjInfo* RowOf(const NS::SceneActor* actor, const NS::Object* part)
     {
+        NS_ASSERT(Game, actor != nullptr, "RowOf: 渡したアクターか部品が無い");
         const NS::ClassObjInfo* found = nullptr;
         NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* live) {
             if (live == part)
@@ -565,10 +566,11 @@ namespace
     }
 
     // インスペクタの、部品 row の欄 fieldName の行の ID。部品は鍵で、欄の表は名前で、欄は並びの番号で ID を積む
-    ImGuiID FieldRowId(const NS::ClassObjInfo& row, const NS::Object& part, std::string_view fieldName)
+    ImGuiID FieldRowId(const NS::ClassObjInfo& row, const NS::Object* part, std::string_view fieldName)
     {
+        NS_ASSERT(Game, part != nullptr, "FieldRowId: 渡したアクターか部品が無い");
         const ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
-        const NS::ReflectionInfo* info = part.GetReflection();
+        const NS::ReflectionInfo* info = part->GetReflection();
         if (window == nullptr || info == nullptr)
         {
             return 0;
@@ -616,7 +618,7 @@ TEST(EditorInspector, FieldChangeReachesTheCollision)
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
     ASSERT_EQ(prop->Root().Scale(), NS::Vector3::One);
-    const NS::ClassObjInfo* row = RowOf(*prop, prop->CollisionClassObj());
+    const NS::ClassObjInfo* row = RowOf(prop, prop->CollisionClassObj());
     ASSERT_NE(row, nullptr);
     scene.OnUpdate();
 
@@ -628,7 +630,7 @@ TEST(EditorInspector, FieldChangeReachesTheCollision)
     InspectorFrames frames(editor);
     frames.Frame();
     frames.Frame();
-    const ImGuiID input = ImHashStr("##value", 0, FieldRowId(*row, *prop->CollisionClassObj(), "半径"));
+    const ImGuiID input = ImHashStr("##value", 0, FieldRowId(*row, prop->CollisionClassObj(), "半径"));
     ImGui::ActivateItemByID(input);
     GImGui->NavNextActivateFlags = ImGuiActivateFlags_PreferInput;
     frames.Frame();
@@ -656,7 +658,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
     editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
-    const NS::ClassObjInfo* row = RowOf(*prop, &prop->Root());
+    const NS::ClassObjInfo* row = RowOf(prop, &prop->Root());
     ASSERT_NE(row, nullptr);
     ASSERT_FALSE(prop->IsSceneOverride(row->key, NS::k_ScaleFieldName));
 
@@ -664,7 +666,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
     frames.Frame();
     frames.Frame();
     const ImGuiID input =
-        ImHashStr("##value", 0, ImHashStr("X", 0, FieldRowId(*row, prop->Root(), NS::k_ScaleFieldName)));
+        ImHashStr("##value", 0, ImHashStr("X", 0, FieldRowId(*row, &prop->Root(), NS::k_ScaleFieldName)));
     ImGui::ActivateItemByID(input);
     GImGui->NavNextActivateFlags = ImGuiActivateFlags_PreferInput;
     frames.Frame();
@@ -679,7 +681,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
 
     EXPECT_FLOAT_EQ(prop->Root().Scale().x, 2.0f);
     EXPECT_TRUE(prop->IsSceneOverride(row->key, NS::k_ScaleFieldName));
-    const nlohmann::json saved = NS::ActorToJson(*prop);
+    const nlohmann::json saved = NS::ActorToJson(prop);
     const nlohmann::json* transform = NS::ClassObjFields(saved, row->key);
     ASSERT_NE(transform, nullptr);
     EXPECT_FLOAT_EQ(NS::FieldVector3(*transform, NS::k_ScaleFieldName, NS::Vector3::Zero).x, 2.0f);
@@ -696,7 +698,7 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
     ASSERT_NE(parts, nullptr);
     NS::Model* model = parts->ModelClassObj();
     ASSERT_NE(model, nullptr);
-    const NS::ClassObjInfo* row = RowOf(*parts, model);
+    const NS::ClassObjInfo* row = RowOf(parts, model);
     ASSERT_NE(row, nullptr);
     scene.OnUpdate();
     const NS::Mesh* cubeMesh = model->GetMesh();
@@ -717,7 +719,7 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
     InspectorFrames frames(editor);
     frames.Frame();
     frames.Frame();
-    const ImGuiID rowId = FieldRowId(*row, *model, "メッシュ");
+    const ImGuiID rowId = FieldRowId(*row, model, "メッシュ");
     ImGui::ActivateItemByID(ImHashStr("上書き", 0, rowId));
     frames.Frame();
     char popupName[32];
@@ -764,12 +766,12 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
 
     NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(source->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
-    const NS::ClassObjInfo* row = RowOf(*source, sphere);
+    const NS::ClassObjInfo* row = RowOf(source, sphere);
     ASSERT_NE(row, nullptr);
     editor.SelectActorById(source->Id());
     editor.BeginClassObjEdit();
     sphere->SetRadius(3.0f);
-    editor.NoteFieldEdit(*source, *row, "半径");
+    editor.NoteFieldEdit(source, *row, "半径");
     editor.CommitClassObjEdit();
 
     scene.OnUpdate();

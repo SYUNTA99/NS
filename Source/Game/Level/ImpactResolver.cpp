@@ -164,25 +164,22 @@ namespace GL
             // 有効か・自分かの絞りは FindOverlaps が持つ。当たりの裁定と狙う相手の探索が同じ絞りを通る
             [[nodiscard]] bool IsTackleTarget(const NS::HitSensor& sensor) noexcept
             {
-                return IsSensorKind(sensor, SensorKind::MapObjBody);
+                return IsSensorKind(&sensor, SensorKind::MapObjBody);
             }
         } // namespace
 
-        NS::HitSensor* ImpactResolver::FindOverlapped(const NS::Vector3& predictedVelocity,
-                                                      const NS::Collider& collider) const
+        NS::HitSensor* ImpactResolver::FindOverlapped(const ImpactSelf& self,
+                                                      const NS::Vector3& predictedVelocity,
+                                                      const NS::Collider* collider) const
         {
-            NS::Scene* scene = m_owner->OwningScene();
-            if (scene == nullptr)
-            {
-                return nullptr;
-            }
+            NS_ASSERT(Game, collider != nullptr, "FindOverlapped: 渡したアクターか部品が無い");
 
-            const NS::Vector3 position = m_owner->Root().Position();
+            const NS::Vector3 position = self.position;
 
             // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
-            const NS::Phys::Capsule capsule = collider.CapsuleAt(PositionAfterStep(position, predictedVelocity));
+            const NS::Phys::Capsule capsule = collider->CapsuleAt(PositionAfterStep(position, predictedVelocity));
             const std::vector<NS::HitSensor*> touching =
-                scene->HitSensors().FindOverlaps(NS::SensorVolume::Capsule(capsule), m_owner);
+                self.sensors->FindOverlaps(NS::SensorVolume::Capsule(capsule), self.ignore);
 
             NS::HitSensor* nearest = nullptr;
             float nearestDistanceSq = 0.0f;
@@ -192,7 +189,7 @@ namespace GL
                 {
                     continue;
                 }
-                const NS::AABB bounds = sensor->WorldVolume().Bounds();
+                const NS::AABB bounds = sensor->WorldVolume(sensor->Host()->Root().WorldMatrix()).Bounds();
                 const float dx = bounds.Center.x - position.x;
                 const float dy = bounds.Center.y - position.y;
                 const float dz = bounds.Center.z - position.z;
@@ -206,7 +203,8 @@ namespace GL
             return nearest;
         }
 
-        bool ImpactResolver::FindSlamLineTarget(const NS::Vector3& direction,
+        bool ImpactResolver::FindSlamLineTarget(const ImpactSelf& self,
+                                                const NS::Vector3& direction,
                                                 float maxDistance,
                                                 const GL::Player::PlayerParams* params,
                                                 const NS::Body* body,
@@ -217,7 +215,7 @@ namespace GL
                       params != nullptr && body != nullptr && collider != nullptr,
                       "自機の調整値・体・当たりの部品のどれかが渡されていない");
             NS::Vector3 lineDir{};
-            if (m_owner == nullptr || !NS::TryNormalizeHorizontal(direction, lineDir))
+            if (!NS::TryNormalizeHorizontal(direction, lineDir))
             {
                 return false;
             }
@@ -226,21 +224,15 @@ namespace GL
             {
                 return false;
             }
-            NS::Scene* scene = m_owner->OwningScene();
-            if (scene == nullptr)
-            {
-                return false;
-            }
-
             if (!(maxDistance >= 0.0f) || !std::isfinite(maxDistance))
             {
                 return false;
             }
 
-            const NS::Vector3 position = m_owner->Root().Position();
+            const NS::Vector3 position = self.position;
             const float playerRadius = collider->CapsuleRadius();
             // 突進は丸まった玉で進む。玉の決まりは SlamBallAt が持つ
-            const NS::Vector3 ballCenter = GL::Player::SlamBallAt(*collider, position).center;
+            const NS::Vector3 ballCenter = GL::Player::SlamBallAt(collider, position).center;
             // 届くかは裁定と同じく、自機の当たりの玉と相手の体のセンサーの形で見る。外接箱を水平に見ると、中心の高い
             // 大きな球の端では、玉が触れずに横を通るのに届くと出る
             const NS::SensorVolume swept =
@@ -250,13 +242,13 @@ namespace GL
             SlamLineTarget first{};
             NS::HitSensor* firstSensor = nullptr;
             // 掃いた玉に触れる相手だけを先に問う。下の線の条件はどれも順に依らないので、選ぶ相手は絞る順で変わらない
-            for (NS::HitSensor* sensor : scene->HitSensors().FindOverlaps(swept, m_owner))
+            for (NS::HitSensor* sensor : self.sensors->FindOverlaps(swept, self.ignore))
             {
                 if (!IsTackleTarget(*sensor))
                 {
                     continue;
                 }
-                const NS::SensorVolume volume = sensor->WorldVolume();
+                const NS::SensorVolume volume = sensor->WorldVolume(sensor->Host()->Root().WorldMatrix());
                 const NS::AABB bounds = volume.Bounds();
 
                 const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
@@ -276,7 +268,7 @@ namespace GL
                 if (!found || contact < first.contact)
                 {
                     found = true;
-                    first = SlamLineTarget{.target = NS::ActorRef{sensor->Host()->Id()},
+                    first = SlamLineTarget{.target = sensor->Host(),
                                            .bounds = bounds,
                                            .origin = position,
                                            .direction = lineDir,
@@ -294,7 +286,7 @@ namespace GL
             first.launchContact = first.contact;
             HitFaceJudgement judgement;
             TackleTargetAnswer answer{};
-            if (SendMsgAskTackleTarget(*firstSensor, answer))
+            if (SendMsgAskTackleTarget(firstSensor, answer))
             {
                 float aimHeight = ballCenter.y;
                 (void)HitFaceAimHeight(answer.face, answer.body, lineDir, playerRadius, aimHeight);
@@ -304,9 +296,9 @@ namespace GL
                 float aimedContact = first.contact;
                 if (NS::VolumesOverlap(
                         NS::SensorVolume::Capsule(SweptBall(aimedCenter, lineDir, maxDistance, playerRadius)),
-                        firstSensor->WorldVolume()))
+                        firstSensor->WorldVolume(firstSensor->Host()->Root().WorldMatrix())))
                 {
-                    aimedContact = FirstTouchDistance(firstSensor->WorldVolume(),
+                    aimedContact = FirstTouchDistance(firstSensor->WorldVolume(firstSensor->Host()->Root().WorldMatrix()),
                                                       aimedCenter,
                                                       lineDir,
                                                       maxDistance,
@@ -348,7 +340,9 @@ namespace GL
             return true;
         }
 
-        void ImpactResolver::ObserveImpact(const BodySlamMotion& motion, const NS::Collider* collider)
+        void ImpactResolver::ObserveImpact(const ImpactSelf& self,
+                                           const BodySlamMotion& motion,
+                                           const NS::Collider* collider)
         {
             NS_ASSERT(Game, collider != nullptr, "当たりの部品が渡されていない");
             m_stateReady = true;
@@ -358,24 +352,24 @@ namespace GL
                 return;
             }
             const NS::Vector3 predictedVelocity = motion.velocity;
-            NS::HitSensor* hit = FindOverlapped(predictedVelocity, *collider);
+            NS::HitSensor* hit = FindOverlapped(self, predictedVelocity, collider);
             if (hit == nullptr || hit->Host() == nullptr)
             {
                 return;
             }
-            const NS::ActorRef target{hit->Host()->Id()};
             TackleTargetAnswer answer{};
-            if (!SendMsgAskTackleTarget(*hit, answer))
+            if (!SendMsgAskTackleTarget(hit, answer))
             {
                 return;
             }
-            m_observedTarget = target;
+            m_observedTarget = hit->Host();
             m_observedAnswer = answer;
             m_observedVelocity = predictedVelocity;
             m_hasObservedTarget = true;
         }
 
-        void ImpactResolver::StepState(const BodySlamMotion& motion,
+        void ImpactResolver::StepState(const ImpactSelf& self,
+                                       const BodySlamMotion& motion,
                                        const GL::Player::PlayerParams* params,
                                        const NS::Body* body,
                                        const NS::Collider* collider,
@@ -386,6 +380,7 @@ namespace GL
                       "自機の調整値・体・当たりの部品のどれかが渡されていない");
             ClearOrders();
             AdvanceState(
+                self,
                 motion,
                 PlayerParts{
                     .params = params, .body = body, .collider = collider, .hitReaction = hitReaction});
@@ -397,7 +392,9 @@ namespace GL
             LaunchTarget();
         }
 
-        void ImpactResolver::AdvanceState(const BodySlamMotion& motion, const PlayerParts& parts)
+        void ImpactResolver::AdvanceState(const ImpactSelf& self,
+                                          const BodySlamMotion& motion,
+                                          const PlayerParts& parts)
         {
             if (!m_stateReady)
             {
@@ -423,11 +420,11 @@ namespace GL
             {
                 return;
             }
-            if (ResolveObservedHit(hadObservation, motion, parts))
+            if (ResolveObservedHit(self, hadObservation, motion, parts))
             {
                 return;
             }
-            PredictContact(motion, parts);
+            PredictContact(self, motion, parts);
         }
 
         void ImpactResolver::ClearOrders() noexcept
@@ -439,24 +436,23 @@ namespace GL
             m_answer.reboundArc.reset();
         }
 
-        bool ImpactResolver::ResolveObservedHit(bool hadObservation,
+        bool ImpactResolver::ResolveObservedHit(const ImpactSelf& self,
+                                                bool hadObservation,
                                                 const BodySlamMotion& motion,
                                                 const PlayerParts& parts)
         {
-            NS::Scene* scene = m_owner->OwningScene();
-            if (!hadObservation || scene == nullptr)
+            if (!hadObservation)
             {
                 return false;
             }
-            const NS::SceneActor* target = scene->Actors().FindActor(m_observedTarget);
-            if (target == nullptr || !target->IsAppeared())
+            if (!m_observedTarget->IsAppeared())
             {
                 return false;
             }
             const TackleTargetAnswer& answer = m_observedAnswer;
             const NS::AABB bounds = answer.bounds;
 
-            const NS::Vector3 position = m_owner->Root().Position();
+            const NS::Vector3 position = self.position;
             // 箱へ押し付けられたフレームは実速度が 0 に潰されるため、突進の狙いの速度で向きと貫通後の速度を決める
             const NS::Vector3 velocity = m_observedVelocity;
 
@@ -483,7 +479,7 @@ namespace GL
 
             // 重なりと面の判定を同じステップ先で見る。現在位置を使うと、縦移動中の段がずれる
             const NS::Vector3 stepped = PositionAfterStep(position, velocity);
-            const NS::Vector3 ballCenter = GL::Player::SlamBallAt(*parts.collider, stepped).center;
+            const NS::Vector3 ballCenter = GL::Player::SlamBallAt(parts.collider, stepped).center;
             const HitFaceJudgement judgement =
                 JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, parts.collider->CapsuleRadius());
             const float offset01 = judgement.offset01;
@@ -528,7 +524,7 @@ namespace GL
             impactInput.faceU = judgement.u;
             impactInput.faceV = judgement.v;
             impactInput.bodyShape = judgement.bodyShape;
-            const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(*parts.params));
+            const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(parts.params));
 
             const float reboundScale = outcome.reboundScale;
             const float launchScale = outcome.launchScale;
@@ -568,7 +564,7 @@ namespace GL
 
             // 止めるフレーム数が決まってから控える
             m_answer.lastImpact.sequence += 1;
-            m_answer.lastImpact.targetId = m_pendingTarget.id;
+            m_answer.lastImpact.targetId = m_pendingTarget->Id();
             m_answer.lastImpact.power = power;
             m_answer.lastImpact.charge01 = charge01;
             m_answer.lastImpact.positionFactor = positionFactor;
@@ -603,7 +599,9 @@ namespace GL
             return true;
         }
 
-        void ImpactResolver::PredictContact(const BodySlamMotion& motion, const PlayerParts& parts)
+        void ImpactResolver::PredictContact(const ImpactSelf& self,
+                                            const BodySlamMotion& motion,
+                                            const PlayerParts& parts)
         {
             if (!motion.predictsContact)
             {
@@ -616,6 +614,7 @@ namespace GL
             SlamLineTarget predicted{};
             if (!NS::TryNormalizeHorizontal(velocity, direction) || !(stepLength > 0.0f) ||
                 !FindSlamLineTarget(
+                    self,
                     direction, motion.remainingDistance, parts.params, parts.body, parts.collider, predicted))
             {
                 return;
@@ -639,27 +638,28 @@ namespace GL
             m_answer.predicted.reset();
             ClearOrders();
             // 相手へは明けを送らない。相手はやり直しの知らせで自分の位置へ戻り、凍結は相手の数えで明ける
-            m_pendingTarget = NS::ActorRef{};
+            m_pendingTarget = nullptr;
         }
 
-        ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams& params) noexcept
+        ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams* params) noexcept
         {
-            return ImpactTuning{.centerHitStopScale = params.m_centerHitStopScale,
-                                .breakEnabled = params.m_breakEnabled,
-                                .breakSpeedScale = params.m_breakSpeedScale,
-                                .breakStopSeconds = params.m_breakStopSeconds,
-                                .reboundDistance = params.m_reboundDistance,
-                                .reboundApexHeight = params.m_reboundApexHeight,
-                                .centerHitReboundDistanceScale = params.m_centerHitReboundDistanceScale,
-                                .centerHitReboundHeightScale = params.m_centerHitReboundHeightScale,
-                                .missReboundDistanceScale = params.m_missReboundDistanceScale,
-                                .launchDistance = params.m_launchDistance,
-                                .launchMassExponent = params.m_launchMassExponent,
-                                .hitStopMaxSeconds = params.m_hitStopMaxSeconds,
+            NS_ASSERT(Game, params != nullptr, "MakeImpactTuning: 渡したアクターか部品が無い");
+            return ImpactTuning{.centerHitStopScale = params->m_centerHitStopScale,
+                                .breakEnabled = params->m_breakEnabled,
+                                .breakSpeedScale = params->m_breakSpeedScale,
+                                .breakStopSeconds = params->m_breakStopSeconds,
+                                .reboundDistance = params->m_reboundDistance,
+                                .reboundApexHeight = params->m_reboundApexHeight,
+                                .centerHitReboundDistanceScale = params->m_centerHitReboundDistanceScale,
+                                .centerHitReboundHeightScale = params->m_centerHitReboundHeightScale,
+                                .missReboundDistanceScale = params->m_missReboundDistanceScale,
+                                .launchDistance = params->m_launchDistance,
+                                .launchMassExponent = params->m_launchMassExponent,
+                                .hitStopMaxSeconds = params->m_hitStopMaxSeconds,
                                 .fixedDelta = NS::OS::FrameTimer::FixedDelta(),
-                                .missReboundHeightRatio = params.m_missReboundHeightRatio,
-                                .missSlamBounce = params.m_missSlamBounce,
-                                .missBoxEdgeSharpness = params.m_missBoxEdgeSharpness};
+                                .missReboundHeightRatio = params->m_missReboundHeightRatio,
+                                .missSlamBounce = params->m_missSlamBounce,
+                                .missBoxEdgeSharpness = params->m_missBoxEdgeSharpness};
         }
 
         void ImpactResolver::ApplyRebound()
@@ -673,26 +673,19 @@ namespace GL
 
         void ImpactResolver::LaunchTarget()
         {
-            NS::Scene* scene = m_owner->OwningScene();
-            if (scene == nullptr)
+            // やり直しで当たりを捨てた後は知らせる相手が無い
+            if (m_pendingTarget == nullptr)
             {
                 return;
             }
-
-            // 相手は id で引き直す。止まっている数フレームの間に消されていたら残りだけ諦める
             // 元の位置と形へ戻り、跡を残し、飛ぶか壊れるかは相手が決める
-            NS::SceneActor* target = scene->Actors().FindActor(m_pendingTarget);
-            if (target == nullptr)
-            {
-                return;
-            }
             const TackleReleaseDesc release{.arc = m_pendingLaunchArc,
                                             .breaks = m_pendingBreak,
                                             .tier = m_answer.lastImpact.tier,
                                             .power = m_answer.lastImpact.power,
                                             .launchScale = m_answer.lastImpact.launchScale,
                                             .hopSeed = m_answer.lastImpact.sequence};
-            (void)SendMsgTackleRelease(*target, release);
+            (void)SendMsgTackleRelease(m_pendingTarget, release);
         }
     } // namespace Level
 } // namespace GL

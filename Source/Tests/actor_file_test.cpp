@@ -29,6 +29,7 @@
 #include "NSlib/Windows/StringUtils.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
+#include "TestRegistrations.h"
 
 #include <gtest/gtest.h>
 
@@ -83,19 +84,21 @@ namespace
     }
 
     // actor の影の基本直径。影が無ければ -1
-    float DiameterOf(const NS::SceneActor& actor)
+    float DiameterOf(const NS::SceneActor* actor)
     {
-        const NS::Shadow* shadow = actor.ShadowClassObj();
+        NS_ASSERT(Game, actor != nullptr, "DiameterOf: 渡したアクターか部品が無い");
+        const NS::Shadow* shadow = actor->ShadowClassObj();
         if (shadow == nullptr)
         {
             return -1.0f;
         }
-        return NS::FieldFloat(NS::SerializeClassObjFields(*shadow), "基本直径", -1.0f);
+        return NS::FieldFloat(NS::SerializeClassObjFields(shadow), "基本直径", -1.0f);
     }
 
-    float MassOf(const NS::SceneActor& actor)
+    float MassOf(const NS::SceneActor* actor)
     {
-        const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(&actor);
+        NS_ASSERT(Game, actor != nullptr, "MassOf: 渡したアクターか部品が無い");
+        const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor);
         if (prop == nullptr)
         {
             return -1.0f;
@@ -111,9 +114,10 @@ namespace
         return object;
     }
 
-    float RadiusOf(const NS::SceneActor& actor)
+    float RadiusOf(const NS::SceneActor* actor)
     {
-        const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor.CollisionClassObj());
+        NS_ASSERT(Game, actor != nullptr, "RadiusOf: 渡したアクターか部品が無い");
+        const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
         if (sphere == nullptr)
         {
             return -1.0f;
@@ -122,8 +126,9 @@ namespace
     }
 
     // actor の表で part を持つ行。無ければ nullptr
-    const NS::ClassObjInfo* RowOf(const NS::SceneActor& actor, const NS::Object* part)
+    const NS::ClassObjInfo* RowOf(const NS::SceneActor* actor, const NS::Object* part)
     {
+        NS_ASSERT(Game, actor != nullptr, "RowOf: 渡したアクターか部品が無い");
         const NS::ClassObjInfo* row = nullptr;
         NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, const NS::Object* candidate) {
             if (candidate == part)
@@ -148,7 +153,7 @@ TEST(ActorFile, CodeDefaultWhenTheActorFileHasNoValues)
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> actor = NS::ActorFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
-    EXPECT_FLOAT_EQ(RadiusOf(*actor), 0.5f);
+    EXPECT_FLOAT_EQ(RadiusOf(actor.get()), 0.5f);
     EXPECT_NE(actor->ShadowClassObj(), nullptr);
 }
 
@@ -160,7 +165,7 @@ TEST(ActorFile, ActorFileOverridesCodeDefault)
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> actor = NS::ActorFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
-    EXPECT_FLOAT_EQ(RadiusOf(*actor), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(actor.get()), 2.0f);
 }
 
 TEST(ActorFile, InstanceOverridesActorFile)
@@ -173,7 +178,7 @@ TEST(ActorFile, InstanceOverridesActorFile)
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> actor = NS::ActorFromJson(object, scene);
     ASSERT_NE(actor, nullptr);
-    EXPECT_FLOAT_EQ(DiameterOf(*actor), 3.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(actor.get()), 3.0f);
 }
 
 TEST(ActorFile, ActorFileCannotAddParts)
@@ -201,6 +206,24 @@ TEST(ActorFile, InstanceCannotAddParts)
     EXPECT_EQ(log.ErrorCount(), 1);
 }
 
+// シーンの上書きで断ったアクターは、部品をシーンの管理クラスへ 1 つも残さない。
+// 残すと、捨てたアクターの部品を管理クラスが指したまま次の描画と当たりの判定で使う
+TEST(ActorFile, RejectedPlacementLeavesNoRegistration)
+{
+    const ScopedActorFileDirectory scope("RejectedRegistration");
+    nlohmann::json refused = MapObjJson(1);
+    NS::ActorJsonClassObjs(refused)["Collision"] = SphereEntry(3.0f);
+
+    NS::Scene scene;
+    const Registrations before = CountRegistrations(scene);
+    {
+        const TestLogCapture log;
+        EXPECT_EQ(NS::ActorFromJson(refused, scene), nullptr);
+        EXPECT_GE(log.ErrorCount(), 1);
+    }
+    EXPECT_EQ(CountRegistrations(scene), before);
+}
+
 TEST(ActorFile, ActorWithoutActorFileIsNotBuilt)
 {
     nlohmann::json object = NS::MakeActorJson();
@@ -218,7 +241,7 @@ TEST(ActorFile, SpawnedByTypeGetsActorFile)
     NS::Scene scene;
     const NS::SceneActor* actor = scene.SpawnActor<GL::Level::PropActor>("PropActor");
     ASSERT_NE(actor, nullptr);
-    EXPECT_FLOAT_EQ(RadiusOf(*actor), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(actor), 2.0f);
 }
 
 TEST(ActorFile, SaveWritesOnlyOverrides)
@@ -233,7 +256,7 @@ TEST(ActorFile, SaveWritesOnlyOverrides)
     scene.ResetFromJson(doc);
     GL::Level::PropActor* changed = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(changed, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(*changed->ShadowClassObj(), DiameterEntry(4.0f)), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(changed->ShadowClassObj(), DiameterEntry(4.0f)), 0u);
     changed->AddSceneOverride("Shadow", "基本直径");
 
     const nlohmann::json saved = scene.ToJson();
@@ -271,8 +294,8 @@ TEST(ActorFile, ChangedActorFileReachesInstancesWithoutOverride)
     NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "Shadow", DiameterEntry(6.0f)));
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(1)), 6.0f);
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(2)), 4.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(1)), 6.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(2)), 4.0f);
 }
 
 TEST(ActorFile, ApplyingSnapshotResetsFieldsWithoutOverride)
@@ -287,12 +310,12 @@ TEST(ActorFile, ApplyingSnapshotResetsFieldsWithoutOverride)
     scene.ResetFromJson(doc);
     NS::SceneActor* actor = scene.Actors().FindByActorId(1);
     ASSERT_NE(actor, nullptr);
-    const nlohmann::json snapshot = NS::ActorToJson(*actor);
+    const nlohmann::json snapshot = NS::ActorToJson(actor);
 
     NS::Cast<NS::SphereCollision>(actor->CollisionClassObj())->SetRadius(9.0f);
-    NS::SceneActor* applied = scene.ApplyFromJson(snapshot);
-    ASSERT_EQ(applied, actor); // 構成が同じなので作り直さない
-    EXPECT_FLOAT_EQ(RadiusOf(*actor), 2.0f);
+    NS::SceneActor* applied = ApplySnapshot(scene, snapshot);
+    ASSERT_EQ(applied, actor); // 同じクラスなので作り直さない
+    EXPECT_FLOAT_EQ(RadiusOf(actor), 2.0f);
 }
 
 // 保存は値を比べず、上書きの一覧の項目を書く。.actor と同じ値の上書きも残り、書いていない項目は書かない
@@ -310,7 +333,7 @@ TEST(ActorFile, OverrideWithTheActorFileValueIsKeptOnSave)
     EXPECT_TRUE(actor->IsSceneOverride("Shadow", "基本直径"));
     EXPECT_FALSE(actor->IsSceneOverride("Model", "基本色"));
 
-    const nlohmann::json saved = NS::ActorToJson(*actor);
+    const nlohmann::json saved = NS::ActorToJson(actor.get());
     const nlohmann::json* shadow = NS::ClassObjFields(saved, "Shadow");
     ASSERT_NE(shadow, nullptr);
     EXPECT_FLOAT_EQ(NS::FieldFloat(*shadow, "基本直径", 0.0f), 2.0f);
@@ -329,12 +352,12 @@ TEST(ActorFile, FieldOutsideTheOverridesIsNotSavedEvenWhenItDiffers)
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> actor = NS::ActorFromJson(object, scene);
     ASSERT_NE(actor, nullptr);
-    EXPECT_FLOAT_EQ(MassOf(*actor), 3.0f);
+    EXPECT_FLOAT_EQ(MassOf(actor.get()), 3.0f);
 
     GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor.get());
     ASSERT_NE(prop, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(prop->Params(), MassEntry(5.0f)), 0u);
-    const nlohmann::json saved = NS::ActorToJson(*actor);
+    ASSERT_EQ(NS::ApplyJsonFields(&prop->Params(), MassEntry(5.0f)), 0u);
+    const nlohmann::json saved = NS::ActorToJson(actor.get());
     const nlohmann::json* params = NS::ClassObjFields(saved, "Params");
     ASSERT_NE(params, nullptr);
     EXPECT_FALSE(NS::HasField(*params, "質量"));
@@ -410,8 +433,8 @@ TEST(ActorFile, PlacementWithAFieldTheSceneCannotWriteIsKeptAsJson)
     }
     GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(prop, nullptr);
-    EXPECT_FLOAT_EQ(DiameterOf(*prop), 8.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*prop), 2.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(prop), 8.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(prop), 2.0f);
     EXPECT_EQ(scene.Actors().FindByActorId(2), nullptr);
 
     const nlohmann::json savedScene = scene.ToJson();
@@ -455,7 +478,7 @@ TEST(ActorFile, ReferenceAndPoseFieldsComeFromThePlacement)
     EXPECT_EQ(camera->Vcam().TargetRef(), NS::ActorRef{1});
     EXPECT_FLOAT_EQ(actor->Root().Position().y, 2.0f);
 
-    const nlohmann::json saved = NS::ActorToJson(*actor);
+    const nlohmann::json saved = NS::ActorToJson(actor.get());
     const nlohmann::json* savedVcam = NS::ClassObjFields(saved, "Vcam");
     ASSERT_NE(savedVcam, nullptr);
     EXPECT_TRUE(NS::HasField(*savedVcam, "追従対象"));
@@ -484,7 +507,7 @@ TEST(ActorFile, ReferenceFieldsAreNotActorFileValues)
     ASSERT_NE(camera, nullptr);
     const NS::FieldDesc* target = NS::FindField(camera->Vcam().GetReflection(), "追従対象");
     ASSERT_NE(target, nullptr);
-    EXPECT_EQ(NS::FieldDestinationOf(*camera, camera->Vcam(), *target), NS::FieldDestination::Scene);
+    EXPECT_EQ(NS::FieldDestinationOf(camera, *target), NS::FieldDestination::Scene);
 }
 
 // 字の色の上書きの表示は、シーンへ書く欄が上書きの一覧にある時だけ付く。値が .actor と違うだけでは付かない。
@@ -504,10 +527,10 @@ TEST(ActorFile, OverrideIsShownOnlyOnFieldsInTheSceneOverrides)
     ASSERT_NE(prop, nullptr);
     NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(prop->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
-    const NS::ClassObjInfo* sphereRow = RowOf(*prop, sphere);
+    const NS::ClassObjInfo* sphereRow = RowOf(prop, sphere);
     NS::Shadow* shadow = prop->ShadowClassObj();
     ASSERT_NE(shadow, nullptr);
-    const NS::ClassObjInfo* shadowRow = RowOf(*prop, shadow);
+    const NS::ClassObjInfo* shadowRow = RowOf(prop, shadow);
     ASSERT_NE(sphereRow, nullptr);
     ASSERT_NE(shadowRow, nullptr);
     const NS::FieldDesc* radius = NS::FindField(sphere->GetReflection(), "半径");
@@ -515,15 +538,15 @@ TEST(ActorFile, OverrideIsShownOnlyOnFieldsInTheSceneOverrides)
     ASSERT_NE(radius, nullptr);
     ASSERT_NE(diameter, nullptr);
 
-    EXPECT_FALSE(NS::Editor::ShowsOverride(*shadow, shadowRow->key, *diameter, prop));
-    ASSERT_EQ(NS::ApplyJsonFields(*shadow, DiameterEntry(4.0f)), 0u);
-    EXPECT_FALSE(NS::Editor::ShowsOverride(*shadow, shadowRow->key, *diameter, prop));
+    EXPECT_FALSE(NS::Editor::ShowsOverride(shadow, shadowRow->key, *diameter, prop));
+    ASSERT_EQ(NS::ApplyJsonFields(shadow, DiameterEntry(4.0f)), 0u);
+    EXPECT_FALSE(NS::Editor::ShowsOverride(shadow, shadowRow->key, *diameter, prop));
     prop->AddSceneOverride(shadowRow->key, "基本直径");
-    EXPECT_TRUE(NS::Editor::ShowsOverride(*shadow, shadowRow->key, *diameter, prop));
+    EXPECT_TRUE(NS::Editor::ShowsOverride(shadow, shadowRow->key, *diameter, prop));
 
     sphere->SetRadius(2.5f);
     prop->AddSceneOverride(sphereRow->key, "半径");
-    EXPECT_FALSE(NS::Editor::ShowsOverride(*sphere, sphereRow->key, *radius, prop));
+    EXPECT_FALSE(NS::Editor::ShowsOverride(sphere, sphereRow->key, *radius, prop));
 }
 
 // 欄の書く先は 1 つの関数が決め、行の地の色は同じ答えの方の色になる
@@ -565,9 +588,9 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
         SCOPED_TRACE(c.field);
         const NS::FieldDesc* field = NS::FindField(c.part->GetReflection(), c.field);
         ASSERT_NE(field, nullptr);
-        const NS::FieldDestination destination = NS::FieldDestinationOf(*c.actor, *c.part, *field);
+        const NS::FieldDestination destination = NS::FieldDestinationOf(c.actor, *field);
         EXPECT_EQ(destination, c.expected);
-        const std::optional<NS::Color> color = NS::Editor::FieldRowColor(appearance, *c.actor, *c.part, *field);
+        const std::optional<NS::Color> color = NS::Editor::FieldRowColor(appearance, c.actor, *field);
         if (destination != NS::FieldDestination::Scene)
         {
             EXPECT_FALSE(color.has_value());
@@ -624,14 +647,13 @@ TEST(ActorFile, FieldScopeAndTheDerivedActorFileDecideTheDestination)
     const NS::SceneActor& derived = *derivedOwned;
     EXPECT_EQ(NS::ActorFileBase(*NS::ActorFileLibrary::Get().Find("PropActorHeavy")), "PropActor");
 
-    const FieldScopeProbePart part;
-    EXPECT_EQ(NS::FieldDestinationOf(origin, part, *shared), NS::FieldDestination::ActorFile);
-    EXPECT_EQ(NS::FieldDestinationOf(origin, part, *protectedField), NS::FieldDestination::ActorFile);
-    EXPECT_EQ(NS::FieldDestinationOf(origin, part, *global), NS::FieldDestination::Scene);
+    EXPECT_EQ(NS::FieldDestinationOf(&origin, *shared), NS::FieldDestination::ActorFile);
+    EXPECT_EQ(NS::FieldDestinationOf(&origin, *protectedField), NS::FieldDestination::ActorFile);
+    EXPECT_EQ(NS::FieldDestinationOf(&origin, *global), NS::FieldDestination::Scene);
     // 派生を指すアクターでも、共有の項目は元へ書く
-    EXPECT_EQ(NS::FieldDestinationOf(derived, part, *shared), NS::FieldDestination::ActorFile);
-    EXPECT_EQ(NS::FieldDestinationOf(derived, part, *protectedField), NS::FieldDestination::DerivedActorFile);
-    EXPECT_EQ(NS::FieldDestinationOf(derived, part, *global), NS::FieldDestination::Scene);
+    EXPECT_EQ(NS::FieldDestinationOf(&derived, *shared), NS::FieldDestination::ActorFile);
+    EXPECT_EQ(NS::FieldDestinationOf(&derived, *protectedField), NS::FieldDestination::DerivedActorFile);
+    EXPECT_EQ(NS::FieldDestinationOf(&derived, *global), NS::FieldDestination::Scene);
 }
 
 // 上書きの種類ごとに書いてよい項目が決まる。参照の欄はシーンだけが書く
@@ -648,32 +670,29 @@ TEST(ActorFile, EachLayerCanWriteOnlyItsFieldKinds)
     const NS::SceneActor& cameraActor = *cameraActorOwned;
     const GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(&cameraActor);
     ASSERT_NE(camera, nullptr);
-    const FieldScopeProbePart part;
     const NS::ReflectionInfo* info = FieldScopeProbePart::StaticReflection();
 
     struct Case
     {
-        const NS::SceneActor* actor;
-        const NS::Object* part;
         const NS::FieldDesc* field;
         bool actorFile;
         bool derived;
         bool scene;
     };
     const Case cases[] = {
-        {&rock, &part, NS::FindField(info, "共有"), true, false, false},
-        {&rock, &part, NS::FindField(info, "派生ごと"), true, true, false},
-        {&rock, &part, NS::FindField(info, "シーンごと"), true, true, true},
-        {&rock, &rock.Root(), NS::FindField(rock.Root().GetReflection(), NS::k_PositionFieldName), true, true, true},
-        {camera, &camera->Vcam(), NS::FindField(camera->Vcam().GetReflection(), "追従対象"), false, false, true},
+        {NS::FindField(info, "共有"), true, false, false},
+        {NS::FindField(info, "派生ごと"), true, true, false},
+        {NS::FindField(info, "シーンごと"), true, true, true},
+        {NS::FindField(rock.Root().GetReflection(), NS::k_PositionFieldName), true, true, true},
+        {NS::FindField(camera->Vcam().GetReflection(), "追従対象"), false, false, true},
     };
     for (const Case& c : cases)
     {
         ASSERT_NE(c.field, nullptr);
         SCOPED_TRACE(c.field->name);
-        EXPECT_EQ(NS::CanWriteField(NS::FieldDestination::ActorFile, *c.actor, *c.part, *c.field), c.actorFile);
-        EXPECT_EQ(NS::CanWriteField(NS::FieldDestination::DerivedActorFile, *c.actor, *c.part, *c.field), c.derived);
-        EXPECT_EQ(NS::CanWriteField(NS::FieldDestination::Scene, *c.actor, *c.part, *c.field), c.scene);
+        EXPECT_EQ(NS::CanWriteField(NS::FieldDestination::ActorFile, *c.field), c.actorFile);
+        EXPECT_EQ(NS::CanWriteField(NS::FieldDestination::DerivedActorFile, *c.field), c.derived);
+        EXPECT_EQ(NS::CanWriteField(NS::FieldDestination::Scene, *c.field), c.scene);
     }
 }
 
@@ -698,7 +717,7 @@ TEST(ActorFile, MergeLayerOverlaysWrittenFieldsAndRejectsFieldsTheLayerCannotWri
     {
         const TestLogCapture log;
         const std::optional<nlohmann::json> merged =
-            NS::MergeLayer(base, layer({{"Shadow", {{"基本直径", 0.5f}}}}), NS::FieldDestination::Scene, rock);
+            NS::MergeLayer(base, layer({{"Shadow", {{"基本直径", 0.5f}}}}), NS::FieldDestination::Scene, &rock);
         ASSERT_TRUE(merged.has_value());
         EXPECT_EQ(log.ErrorCount(), 0);
         const nlohmann::json* shadow = NS::ClassObjFields(*merged, "Shadow");
@@ -711,15 +730,15 @@ TEST(ActorFile, MergeLayerOverlaysWrittenFieldsAndRejectsFieldsTheLayerCannotWri
         // 共有の項目は元の .actor には書けるが、シーンには書けない
         const nlohmann::json radius = layer({{"Collision", {{"半径", 2.0f}}}});
         const TestLogCapture log;
-        EXPECT_TRUE(NS::MergeLayer(base, radius, NS::FieldDestination::ActorFile, rock).has_value());
-        EXPECT_FALSE(NS::MergeLayer(base, radius, NS::FieldDestination::Scene, rock).has_value());
+        EXPECT_TRUE(NS::MergeLayer(base, radius, NS::FieldDestination::ActorFile, &rock).has_value());
+        EXPECT_FALSE(NS::MergeLayer(base, radius, NS::FieldDestination::Scene, &rock).has_value());
         EXPECT_EQ(log.ErrorCount(), 1);
     }
     {
         const TestLogCapture log;
-        EXPECT_FALSE(NS::MergeLayer(base, layer({{"無い部品", {{"基本直径", 0.5f}}}}), NS::FieldDestination::Scene, rock)
+        EXPECT_FALSE(NS::MergeLayer(base, layer({{"無い部品", {{"基本直径", 0.5f}}}}), NS::FieldDestination::Scene, &rock)
                          .has_value());
-        EXPECT_FALSE(NS::MergeLayer(base, layer({{"Params", {{"無い欄", 0.5f}}}}), NS::FieldDestination::Scene, rock)
+        EXPECT_FALSE(NS::MergeLayer(base, layer({{"Params", {{"無い欄", 0.5f}}}}), NS::FieldDestination::Scene, &rock)
                          .has_value());
         EXPECT_EQ(log.ErrorCount(), 2);
     }
@@ -740,15 +759,15 @@ TEST(ActorFile, RevertingASceneOverrideRemovesItAndCopiesTheActorFileValue)
     scene.ResetFromJson(doc);
     NS::SceneActor* prop = scene.Actors().FindByActorId(1);
     ASSERT_NE(prop, nullptr);
-    const NS::ClassObjInfo* row = RowOf(*prop, prop->ShadowClassObj());
+    const NS::ClassObjInfo* row = RowOf(prop, prop->ShadowClassObj());
     ASSERT_NE(row, nullptr);
     ASSERT_TRUE(prop->IsSceneOverride(row->key, "基本直径"));
-    ASSERT_FLOAT_EQ(DiameterOf(*prop), 4.0f);
+    ASSERT_FLOAT_EQ(DiameterOf(prop), 4.0f);
 
-    EXPECT_TRUE(NS::RevertSceneOverride(*prop, *row, "基本直径"));
+    EXPECT_TRUE(NS::RevertSceneOverride(prop, *row, "基本直径"));
     EXPECT_FALSE(prop->IsSceneOverride(row->key, "基本直径"));
-    EXPECT_FLOAT_EQ(DiameterOf(*prop), 2.0f);
-    const nlohmann::json saved = NS::ActorToJson(*prop);
+    EXPECT_FLOAT_EQ(DiameterOf(prop), 2.0f);
+    const nlohmann::json saved = NS::ActorToJson(prop);
     const nlohmann::json* fields = NS::ClassObjFields(saved, "Shadow");
     EXPECT_TRUE(fields == nullptr || !fields->contains("基本直径"));
 }
@@ -769,17 +788,17 @@ TEST(ActorFile, RevertingDuringPlayRemovesTheFieldFromThePlayBaseline)
     editor.EnterPlay();
     NS::SceneActor* prop = scene.Actors().FindByActorId(1);
     ASSERT_NE(prop, nullptr);
-    const NS::ClassObjInfo* row = RowOf(*prop, prop->ShadowClassObj());
+    const NS::ClassObjInfo* row = RowOf(prop, prop->ShadowClassObj());
     ASSERT_NE(row, nullptr);
 
-    ASSERT_TRUE(NS::RevertSceneOverride(*prop, *row, "基本直径"));
-    editor.MirrorPlayEditToBaseline(*prop, *row, "基本直径");
+    ASSERT_TRUE(NS::RevertSceneOverride(prop, *row, "基本直径"));
+    editor.MirrorPlayEditToBaseline(prop, *row, "基本直径");
     editor.EnterEdit();
 
     prop = scene.Actors().FindByActorId(1);
     ASSERT_NE(prop, nullptr);
     EXPECT_FALSE(prop->IsSceneOverride(row->key, "基本直径"));
-    EXPECT_FLOAT_EQ(DiameterOf(*prop), 2.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(prop), 2.0f);
 }
 
 // 姿勢の位置・回転・スケールは、元と派生の .actor とシーンのどれにも書けるグローバルの項目
@@ -814,7 +833,7 @@ TEST(ActorFile, ActorFileScaleReachesOnlyActorsThatDoNotOverrideIt)
     ASSERT_TRUE(library.Set("PropActor", ActorFileWith("PropActor", "Transform", scale)));
     for (NS::SceneActor* actor : scene.Actors())
     {
-        NS::ApplyActorFile(*actor);
+        NS::ApplyActorFile(actor);
     }
 
     const NS::SceneActor* kept = scene.Actors().FindByActorId(1);
@@ -888,7 +907,7 @@ TEST(ActorFile, SavedActorFileIsReadBack)
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> actor = NS::ActorFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
-    EXPECT_FLOAT_EQ(RadiusOf(*actor), 1.25f);
+    EXPECT_FLOAT_EQ(RadiusOf(actor.get()), 1.25f);
 }
 
 // 書く途中で失敗しても前の .actor を壊さない。壊れると、それを指す配置物が全部組めなくなる
@@ -945,13 +964,14 @@ namespace
 
     // インスペクタと同じ順で、actor の part の欄 fieldName を直し終える。値は呼ぶ前に part へ書いておく
     void EditField(LevelEditorController& editor,
-                   const NS::SceneActor& actor,
+                   const NS::SceneActor* actor,
                    const NS::Object* part,
                    std::string_view fieldName)
     {
+        NS_ASSERT(Game, actor != nullptr, "EditField: 渡したアクターか部品が無い");
         const NS::ClassObjInfo* row = RowOf(actor, part);
         ASSERT_NE(row, nullptr);
-        editor.SelectActorById(actor.Id());
+        editor.SelectActorById(actor->Id());
         editor.BeginClassObjEdit();
         editor.NoteFieldEdit(actor, *row, fieldName);
         editor.CommitClassObjEdit();
@@ -989,20 +1009,20 @@ TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
     ASSERT_NE(sphere, nullptr);
 
     sphere->SetRadius(3.0f);
-    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, sphere, "半径"));
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, first, sphere, "半径"));
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(2)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 
     NS::Editor::ActorSnapshotApplier applier{&scene};
     ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(1)), 2.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(2)), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 2.0f);
 
     ASSERT_TRUE(editor.Editor().Undo().Redo(applier));
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(1)), 3.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(2)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 }
 
 // 欄を直した後に動作の窓が .actor の動作を書いても、欄の取り消しとやり直しは欄だけを戻し、動作は残る
@@ -1017,7 +1037,7 @@ TEST(ActorFile, UndoingAFieldEditKeepsActionsWrittenAfterIt)
     NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
     sphere->SetRadius(3.0f);
-    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, sphere, "半径"));
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, first, sphere, "半径"));
 
     // 動作の窓は取り消しの履歴を通さずに .actor の文書を書く
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
@@ -1051,14 +1071,14 @@ TEST(ActorFile, EditorWritesAMarkedFieldToThatActorOnly)
     const nlohmann::json before = *NS::ActorFileLibrary::Get().Find("PropActor");
     const std::string path = NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor");
     const std::optional<std::string> fileBefore = NS::OS::FileSystem::ReadAllText(path);
-    const float otherDiameter = DiameterOf(*scene.Actors().FindByActorId(2));
+    const float otherDiameter = DiameterOf(scene.Actors().FindByActorId(2));
 
-    ASSERT_EQ(NS::ApplyJsonFields(*first->ShadowClassObj(), DiameterEntry(otherDiameter + 3.0f)), 0u);
-    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, first->ShadowClassObj(), "基本直径"));
+    ASSERT_EQ(NS::ApplyJsonFields(first->ShadowClassObj(), DiameterEntry(otherDiameter + 3.0f)), 0u);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, first, first->ShadowClassObj(), "基本直径"));
     EXPECT_EQ(*NS::ActorFileLibrary::Get().Find("PropActor"), before);
     EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), fileBefore);
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(2)), otherDiameter);
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(1)), otherDiameter + 3.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(2)), otherDiameter);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(1)), otherDiameter + 3.0f);
 }
 
 // プレイ中に印の無い欄を直しても .actor に書き、プレイ開始の凍結は変えない。編集へ戻っても値が残り、WARN は出ない
@@ -1069,27 +1089,29 @@ TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningT
     ResetTwoProps(scene);
     LevelEditorController editor(&scene);
     editor.EnterPlay();
-    const nlohmann::json frozen = scene.PlayBaseline();
+    const nlohmann::json frozen = editor.PlayBaseline();
     NS::SceneActor* first = scene.Actors().FindByActorId(1);
     ASSERT_NE(first, nullptr);
     NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
 
     sphere->SetRadius(3.0f);
-    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, sphere, "半径"));
-    // 凍結へ写す口に直に渡しても、.actor へ書く欄は写さない
-    const NS::ClassObjInfo* row = RowOf(*first, sphere);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, first, sphere, "半径"));
+    // プレイを始めた時の JSON へ写す口に直に渡しても、.actor へ書く欄は写さない
+    // 上書きの一覧に載せてから渡す。載っていないと、写さずに JSON から消す道へ入り、書く所を見る前に戻る
+    const NS::ClassObjInfo* row = RowOf(first, sphere);
     ASSERT_NE(row, nullptr);
-    scene.WritePlayBaselineField(*first, *row, "半径");
-    EXPECT_EQ(scene.PlayBaseline(), frozen);
+    first->AddSceneOverride(row->key, "半径");
+    editor.MirrorPlayEditToBaseline(first, *row, "半径");
+    EXPECT_EQ(editor.PlayBaseline(), frozen);
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(2)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 
     const TestLogCapture log;
     editor.EnterEdit();
     EXPECT_EQ(log.WarningCount(), 0);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(1)), 3.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(2)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 }
 
 namespace
@@ -1103,10 +1125,11 @@ namespace
 
     // インスペクタと同じ順で、素材の窓で選んだ .actor の part の欄 fieldName を直し終える。値は呼ぶ前に part へ書いておく
     void EditActorFileField(LevelEditorController& editor,
-                            const NS::SceneActor& actorFile,
+                            const NS::SceneActor* actorFile,
                             const NS::Object* part,
                             std::string_view fieldName)
     {
+        NS_ASSERT(Game, actorFile != nullptr, "EditActorFileField: 渡したアクターか部品が無い");
         const NS::ClassObjInfo* row = RowOf(actorFile, part);
         ASSERT_NE(row, nullptr);
         editor.NoteActorFileFieldEdit(*row, fieldName);
@@ -1125,25 +1148,25 @@ TEST(ActorFile, ActorFileSelectedInTheAssetWindowIsEditedForEveryActor)
     ASSERT_NE(selected, nullptr);
     EXPECT_FALSE(editor.SelectedAssetPath().empty());
     EXPECT_EQ(selected->ActorFileName(), "PropActor");
-    EXPECT_FLOAT_EQ(RadiusOf(*selected), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(selected), 2.0f);
     NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(selected->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
 
     sphere->SetRadius(3.0f);
-    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, *selected, sphere, "半径"));
+    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, selected, sphere, "半径"));
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(1)), 3.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(2)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 
     // 戻すと .actor とアクターの全部が前の値へ戻り、選んだ .actor も前の値を見せる
     NS::Editor::ActorSnapshotApplier applier{&scene};
     ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(1)), 2.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(2)), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 2.0f);
     NS::SceneActor* again = NS::Cast<NS::SceneActor>(editor.SelectedAsset());
     ASSERT_NE(again, nullptr);
-    EXPECT_FLOAT_EQ(RadiusOf(*again), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(again), 2.0f);
 }
 
 // 素材の窓では印の付いた欄の .actor の値も直せる。上書きの無いアクターは付いて来て、上書きのあるアクターは残る
@@ -1162,15 +1185,15 @@ TEST(ActorFile, MarkedFieldEditedOnTheActorFileReachesActorsWithoutAnOverride)
     GL::Level::PropActor* selected = NS::Cast<GL::Level::PropActor>(SelectActorFile(editor, scope.Path(), "PropActor"));
     ASSERT_NE(selected, nullptr);
 
-    ASSERT_EQ(NS::ApplyJsonFields(*selected->ShadowClassObj(), DiameterEntry(4.0f)), 0u);
-    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, *selected, selected->ShadowClassObj(), "基本直径"));
+    ASSERT_EQ(NS::ApplyJsonFields(selected->ShadowClassObj(), DiameterEntry(4.0f)), 0u);
+    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, selected, selected->ShadowClassObj(), "基本直径"));
     const nlohmann::json* written = NS::ActorFileLibrary::Get().Find("PropActor");
     ASSERT_NE(written, nullptr);
     const nlohmann::json* params = NS::ClassObjFields(*written, "Shadow");
     ASSERT_NE(params, nullptr);
     EXPECT_FLOAT_EQ(NS::FieldFloat(*params, "基本直径", 0.0f), 4.0f);
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(1)), 4.0f);
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(2)), 5.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(1)), 4.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(2)), 5.0f);
     // 付いて来たアクターは上書きを持たないまま保存される
     const nlohmann::json saved = scene.ToJson();
     for (const nlohmann::json& object : NS::SceneJsonActors(saved))
@@ -1185,8 +1208,8 @@ TEST(ActorFile, MarkedFieldEditedOnTheActorFileReachesActorsWithoutAnOverride)
 
     NS::Editor::ActorSnapshotApplier applier{&scene};
     ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(1)), 2.0f);
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(2)), 5.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(1)), 2.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(2)), 5.0f);
 }
 
 TEST(ActorFile, ShippedActorFilesLoad)
@@ -1373,8 +1396,8 @@ TEST(ActorFile, DerivedActorFileOverlaysItsBase)
     const std::unique_ptr<NS::SceneActor> rock =
         NS::CreateActorOfClass("PropActor", NS::ActorInitInfo{.actorFile = "HeavyRock"});
     ASSERT_NE(rock, nullptr);
-    EXPECT_FLOAT_EQ(MassOf(*rock), 4.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*rock), 2.0f);
+    EXPECT_FLOAT_EQ(MassOf(rock.get()), 4.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(rock.get()), 2.0f);
 }
 
 // 元を Set すると、その元の派生の全部の値も作り直す。派生に書いた項目は派生の値のまま
@@ -1486,17 +1509,17 @@ TEST(ActorFile, WritingTheBaseUpdatesDerivedActorsAndKeepsSceneOverrides)
     ASSERT_NE(sphere, nullptr);
 
     sphere->SetRadius(3.0f);
-    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, *selected, sphere, "半径"));
-    ASSERT_EQ(NS::ApplyJsonFields(*selected->ShadowClassObj(), DiameterEntry(5.0f)), 0u);
-    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, *selected, selected->ShadowClassObj(), "基本直径"));
+    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, selected, sphere, "半径"));
+    ASSERT_EQ(NS::ApplyJsonFields(selected->ShadowClassObj(), DiameterEntry(5.0f)), 0u);
+    ASSERT_NO_FATAL_FAILURE(EditActorFileField(editor, selected, selected->ShadowClassObj(), "基本直径"));
 
     for (NS::uint32 id : {1u, 2u, 3u})
     {
-        EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(id)), 3.0f) << id;
+        EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(id)), 3.0f) << id;
     }
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(1)), 5.0f);
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(2)), 4.0f);
-    EXPECT_FLOAT_EQ(DiameterOf(*scene.Actors().FindByActorId(3)), 9.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(1)), 5.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(2)), 4.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(3)), 9.0f);
 }
 
 // 書く先が元の .actor なら、派生を指すアクターでも元の名前へ書く。派生の .actor なら指す名前、シーンなら空
@@ -1510,10 +1533,10 @@ TEST(ActorFile, ActorFileToWriteFollowsTheDestination)
     ASSERT_NE(origin, nullptr);
     ASSERT_NE(derived, nullptr);
 
-    EXPECT_EQ(NS::ActorFileToWrite(*origin, NS::FieldDestination::ActorFile), "PropActor");
-    EXPECT_EQ(NS::ActorFileToWrite(*derived, NS::FieldDestination::ActorFile), "PropActor");
-    EXPECT_EQ(NS::ActorFileToWrite(*derived, NS::FieldDestination::DerivedActorFile), "HeavyRock");
-    EXPECT_EQ(NS::ActorFileToWrite(*derived, NS::FieldDestination::Scene), "");
+    EXPECT_EQ(NS::ActorFileToWrite(origin.get(), NS::FieldDestination::ActorFile), "PropActor");
+    EXPECT_EQ(NS::ActorFileToWrite(derived.get(), NS::FieldDestination::ActorFile), "PropActor");
+    EXPECT_EQ(NS::ActorFileToWrite(derived.get(), NS::FieldDestination::DerivedActorFile), "HeavyRock");
+    EXPECT_EQ(NS::ActorFileToWrite(derived.get(), NS::FieldDestination::Scene), "");
 }
 
 namespace
@@ -1562,11 +1585,11 @@ TEST(ActorFile, SharedFieldEditedOnADerivedActorIsWrittenToTheBase)
     ASSERT_NE(sphere, nullptr);
 
     sphere->SetRadius(3.0f);
-    ASSERT_NO_FATAL_FAILURE(EditField(editor, *heavy, sphere, "半径"));
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, heavy, sphere, "半径"));
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
     EXPECT_EQ(*NS::ActorFileLibrary::Get().Find("HeavyRock"), derivedBefore);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(1)), 3.0f);
-    EXPECT_FLOAT_EQ(RadiusOf(*scene.Actors().FindByActorId(2)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 }
 
 // 素材の窓で .actor から派生を作ると、元を指して何も書いていない .actor をファイルへ書く。
@@ -1603,11 +1626,11 @@ TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
     EXPECT_EQ(NS::ActorFileBase(tuned), "PropActor");
     EXPECT_TRUE(NS::ActorJsonClassObjs(tuned).empty());
     EXPECT_EQ(scene.Actors().FindByActorId(2)->ActorFileName(), "TunedHeavyRock");
-    EXPECT_FLOAT_EQ(MassOf(*scene.Actors().FindByActorId(2)), baseMass);
+    EXPECT_FLOAT_EQ(MassOf(scene.Actors().FindByActorId(2)), baseMass);
     NS::Editor::ActorSnapshotApplier applier{&scene};
     ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
     EXPECT_EQ(scene.Actors().FindByActorId(2)->ActorFileName(), "HeavyRock");
-    EXPECT_FLOAT_EQ(MassOf(*scene.Actors().FindByActorId(2)), 4.0f);
+    EXPECT_FLOAT_EQ(MassOf(scene.Actors().FindByActorId(2)), 4.0f);
 
     const TestLogCapture log;
     EXPECT_FALSE(editor.CreateDerivedActorFile("PropActor", "HeavyRock"));
@@ -1629,8 +1652,8 @@ TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
     LevelEditorController editor(&scene);
     GL::Level::PropActor* first = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(first, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(*first->ShadowClassObj(), DiameterEntry(9.0f)), 0u);
-    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, first->ShadowClassObj(), "基本直径"));
+    ASSERT_EQ(NS::ApplyJsonFields(first->ShadowClassObj(), DiameterEntry(9.0f)), 0u);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, first, first->ShadowClassObj(), "基本直径"));
     const nlohmann::json before = scene.ToJson();
     const nlohmann::json& beforeObject = NS::SceneJsonActors(before)[NS::FindActorIndexById(before, 1)];
 
@@ -1640,9 +1663,10 @@ TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
     EXPECT_FLOAT_EQ(ValueOf(tuned, "Shadow", "基本直径"), 9.0f);
     const NS::SceneActor* moved = scene.Actors().FindByActorId(1);
     ASSERT_NE(moved, nullptr);
+    EXPECT_EQ(moved, first);
     EXPECT_EQ(moved->ActorFileName(), "TunedRock");
     EXPECT_FALSE(moved->IsSceneOverride("Shadow", "基本直径"));
-    EXPECT_FLOAT_EQ(DiameterOf(*moved), 9.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(moved), 9.0f);
     const nlohmann::json after = scene.ToJson();
     const nlohmann::json& afterObject = NS::SceneJsonActors(after)[NS::FindActorIndexById(after, 1)];
     EXPECT_FALSE(NS::HasField(*NS::ClassObjFields(afterObject, "Shadow"), "基本直径"));
@@ -1652,46 +1676,10 @@ TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
     ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
     const NS::SceneActor* restored = scene.Actors().FindByActorId(1);
     ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(restored, first);
     EXPECT_EQ(restored->ActorFileName(), "PropActor");
     EXPECT_TRUE(restored->IsSceneOverride("Shadow", "基本直径"));
-    EXPECT_FLOAT_EQ(DiameterOf(*restored), 9.0f);
-}
-
-// 選んだアクターの .actor を同じクラスの別の .actor に替えると、その全部の値になり、シーンの上書きは残る。
-// クラスの違う .actor と無い名前には替えない。取り消すと前の .actor へ戻る
-TEST(ActorFile, ChangingTheActorFileKeepsSceneOverridesAndRefusesAnotherClass)
-{
-    const ScopedActorFileDirectory scope("ChangeActorFile");
-    NS::Scene scene;
-    ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
-    LevelEditorController editor(&scene);
-    GL::Level::PropActor* first = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
-    ASSERT_NE(first, nullptr);
-    const ScopedActorFile goalFile{"GoalActor", CodeValuesActorFile("GoalActor")};
-
-    ASSERT_TRUE(editor.ChangeActorFile(2, "PropActor"));
-    EXPECT_EQ(scene.Actors().FindByActorId(2)->ActorFileName(), "PropActor");
-    EXPECT_FLOAT_EQ(MassOf(*scene.Actors().FindByActorId(2)), MassOf(*first));
-
-    ASSERT_EQ(NS::ApplyJsonFields(*first->ShadowClassObj(), DiameterEntry(9.0f)), 0u);
-    ASSERT_NO_FATAL_FAILURE(EditField(editor, *first, first->ShadowClassObj(), "基本直径"));
-    ASSERT_TRUE(editor.ChangeActorFile(1, "HeavyRock"));
-    const NS::SceneActor* changed = scene.Actors().FindByActorId(1);
-    ASSERT_NE(changed, nullptr);
-    EXPECT_EQ(changed->ActorFileName(), "HeavyRock");
-    EXPECT_TRUE(changed->IsSceneOverride("Shadow", "基本直径"));
-    EXPECT_FLOAT_EQ(DiameterOf(*changed), 9.0f);
-    EXPECT_FLOAT_EQ(MassOf(*changed), 4.0f);
-
-    const TestLogCapture log;
-    EXPECT_FALSE(editor.ChangeActorFile(1, "GoalActor"));
-    EXPECT_FALSE(editor.ChangeActorFile(1, "NoSuchRock"));
-    EXPECT_EQ(scene.Actors().FindByActorId(1)->ActorFileName(), "HeavyRock");
-    EXPECT_EQ(log.WarningCount(), 2);
-
-    NS::Editor::ActorSnapshotApplier applier{&scene};
-    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
-    EXPECT_EQ(scene.Actors().FindByActorId(1)->ActorFileName(), "PropActor");
+    EXPECT_FLOAT_EQ(DiameterOf(restored), 9.0f);
 }
 
 // 元の .actor の束を書き替えると、元を指すアクターにも派生を指すアクターにも新しい束が効く

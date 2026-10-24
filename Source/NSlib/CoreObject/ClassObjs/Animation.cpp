@@ -6,16 +6,15 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Gfx/D3DBuffer.h"
-#include "NSlib/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
 
 namespace NS
 {
-    Animation::Animation(SceneActor* owner) : m_owner(owner)
+    Animation::Animation()
     {
         LoadAssetField(m_model, "");
     }
@@ -109,8 +108,9 @@ namespace NS
         }
     }
 
-    void Animation::UseModel()
+    void Animation::UseModel(Model* renderer)
     {
+        NS_ASSERT(Scene, renderer != nullptr, "Animation::UseModel: メッシュを差す Model が空");
         // 欄を書き換えるたびに読み直すので、前のモデルの骨格とメッシュを残さない
         SetSkeleton(nullptr);
         SetMesh(nullptr);
@@ -121,19 +121,14 @@ namespace NS
             SetMesh(mesh->D3DSkeletal());
 
             // Model のメッシュの欄は空なので、ここで差さないと骨付きのメッシュが見た目に出ない
-            if (m_owner != nullptr)
-            {
-                if (Model* renderer = m_owner->ModelClassObj())
-                {
-                    renderer->SetMesh(mesh);
-                }
-            }
+            renderer->SetMesh(mesh);
         }
         FindClipBones();
     }
 
-    void Animation::BindToModel()
+    void Animation::BindToModel(Model* renderer)
     {
+        NS_ASSERT(Scene, renderer != nullptr, "Animation::BindToModel: パレットを差す Model が空");
         Gfx::D3DBufferDesc cbDesc = Gfx::MakeConstantBufferDesc(sizeof(Gfx::BonePaletteCB));
         m_bonePaletteCB = Gfx::D3DBuffer::Create(cbDesc);
         for (std::size_t i = 0; i < k_MaxBones; ++i)
@@ -142,30 +137,20 @@ namespace NS
         }
 
         // 描画する Model にパレットを差す。現在ポーズ境界は ApplyPose が毎フレーム差す
-        if (m_owner != nullptr)
+        if (m_bonePaletteCB->IsValid())
         {
-            m_renderer = m_owner->ModelClassObj();
-        }
-
-        if (m_renderer != nullptr && m_bonePaletteCB->IsValid())
-        {
-            m_renderer->SetPerObjectVsConstant(
+            renderer->SetPerObjectVsConstant(
                 m_bonePaletteCB.get(), &m_palette, sizeof(Gfx::BonePaletteCB), Gfx::k_BonePaletteSlot);
         }
-        ApplyPose(m_time);
+        ApplyPose(renderer, m_time);
     }
 
-    void Animation::Update()
+    void Animation::Update(Model* renderer, float dt)
     {
+        NS_ASSERT(Scene, renderer != nullptr, "Animation::Update: 姿勢を書く Model が空");
         const float duration = Duration();
         if (m_playing && duration > 0.0f)
         {
-            // 持ち主の無い部品は固定の 1 歩の秒で進む
-            float dt = OS::FrameTimer::FixedDelta();
-            if (m_owner != nullptr)
-            {
-                dt = GetFrameDelta(m_owner);
-            }
             m_time += dt * m_speed;
             if (m_looping)
             {
@@ -181,10 +166,10 @@ namespace NS
                 m_playing = false;
             }
         }
-        ApplyPose(m_time);
+        ApplyPose(renderer, m_time);
     }
 
-    void Animation::ApplyPose(float time)
+    void Animation::ApplyPose(Model* renderer, float time)
     {
         if (m_mesh == nullptr)
         {
@@ -220,11 +205,8 @@ namespace NS
         }
 
         // 現在ポーズの締まった境界を描画側へ差し、カリングをポーズ追従させる
-        if (m_renderer != nullptr)
-        {
-            const AABB localBounds = Gfx::MergeSkinnedBounds(
-                m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
-            m_renderer->SetLocalBoundsOverride(localBounds);
-        }
+        const AABB localBounds = Gfx::MergeSkinnedBounds(
+            m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
+        renderer->SetLocalBoundsOverride(localBounds);
     }
 } // namespace NS

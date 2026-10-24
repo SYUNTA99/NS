@@ -25,6 +25,12 @@ namespace NS
         return std::find(m_sensors.begin(), m_sensors.end(), sensor) != m_sensors.end();
     }
 
+    bool HitSensorDirector::IsPresent(const HitSensor* sensor) const noexcept
+    {
+        NS_ASSERT(Scene, sensor != nullptr, "IsPresent: センサーが null");
+        return IsRegistered(sensor) && sensor->IsValidBySystem();
+    }
+
     void HitSensorDirector::OnTick()
     {
         // TODO: 組を総当たりで見ている。センサーが数十を超えたら格子で絞る
@@ -37,7 +43,7 @@ namespace NS
             {
                 continue;
             }
-            const SensorVolume firstVolume = first->WorldVolume();
+            const SensorVolume firstVolume = first->WorldVolume(first->Host()->Root().WorldMatrix());
             for (std::size_t j = i + 1; j < m_sensors.size(); ++j)
             {
                 HitSensor* second = m_sensors[j];
@@ -45,7 +51,7 @@ namespace NS
                 {
                     continue;
                 }
-                if (VolumesOverlap(firstVolume, second->WorldVolume()))
+                if (VolumesOverlap(firstVolume, second->WorldVolume(second->Host()->Root().WorldMatrix())))
                 {
                     pairs.emplace_back(first, second);
                     pairs.emplace_back(second, first);
@@ -55,13 +61,13 @@ namespace NS
 
         for (const std::pair<HitSensor*, HitSensor*>& pair : pairs)
         {
-            if (!IsRegistered(pair.first) || !IsRegistered(pair.second))
+            if (!IsPresent(pair.first) || !IsPresent(pair.second))
             {
                 continue;
             }
             if (SceneActor* owner = pair.first->Host())
             {
-                owner->AttackSensor(*pair.first, *pair.second);
+                owner->AttackSensor(pair.first, pair.second);
             }
         }
     }
@@ -76,7 +82,7 @@ namespace NS
             {
                 continue;
             }
-            if (VolumesOverlap(volume, sensor->WorldVolume()))
+            if (VolumesOverlap(volume, sensor->WorldVolume(sensor->Host()->Root().WorldMatrix())))
             {
                 found.push_back(sensor);
             }

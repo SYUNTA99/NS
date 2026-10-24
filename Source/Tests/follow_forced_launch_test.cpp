@@ -17,14 +17,15 @@ namespace
     {
     public:
         // 接地と反動の状態を仮想カメラの口へ渡す
-        void Feed(NS::ThirdPersonFollow& vcam) const
+        void Feed(NS::ThirdPersonFollow* vcam) const
         {
-            vcam.SetFollowMotion(true, NS::Vector3{});
+            NS_ASSERT(Game, vcam != nullptr, "Feed: 渡したアクターか部品が無い");
+            vcam->SetFollowMotion(true, NS::Vector3{});
             NS::FollowReboundDesc rebound{};
             rebound.rebounding = rebounding;
             rebound.forcedSlamming = forcedSlamming;
             rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
-            (void)vcam.SetFollowRebound(rebound);
+            (void)vcam->SetFollowRebound(rebound);
         }
 
         bool rebounding = false;
@@ -32,10 +33,11 @@ namespace
     };
 
     // 頭から注視点までの水平の遅れ (m)
-    float HorizontalLag(const NS::ThirdPersonFollow& vcam, const NS::SceneActor& target)
+    float HorizontalLag(const NS::ThirdPersonFollow* vcam, const NS::SceneActor* target)
     {
-        const NS::CameraPose pose = vcam.EvaluatePose(1.0f);
-        const NS::Vector3 root = target.Root().Position();
+        NS_ASSERT(Game, vcam != nullptr && target != nullptr, "HorizontalLag: 渡したアクターか部品が無い");
+        const NS::CameraPose pose = vcam->EvaluatePose(1.0f);
+        const NS::Vector3 root = target->Root().Position();
         const float dx = pose.target.x - root.x;
         const float dz = pose.target.z - root.z;
         return std::sqrt(dx * dx + dz * dz);
@@ -51,10 +53,12 @@ namespace
         {
             target = scene.SpawnActor<LaunchTargetProbeActor>("target");
             camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
-            NS::ApplyJsonFields(camera->Vcam(),
+            NS::ApplyJsonFields(&camera->Vcam(),
                                 nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}},
                                                {"強制発射の追う速さ", 4.0f},
                                                {"強制発射の遅れの上限", 3.0f}});
+            // 欄を書いた後に、エディタと同じく相手を取得し直す
+            camera->ResolveActorRefs();
             // 止まった所から始める
             for (int frame = 0; frame < 30; ++frame)
             {
@@ -65,7 +69,7 @@ namespace
         // 追われる物の状態を渡してから、カメラを 1 フレーム進める
         void Tick()
         {
-            target->Feed(camera->Vcam());
+            target->Feed(&camera->Vcam());
             camera->Update();
         }
 
@@ -88,12 +92,12 @@ TEST(FollowForcedLaunch, LookIsLeftBehindThenPulledWithinTheCap)
     s.Step();
     const NS::ThirdPersonFollow& vcam = s.camera->Vcam();
     // バネは止まった所から動き出すので、出た最初のフレームはほぼ取り残される
-    EXPECT_GT(HorizontalLag(vcam, *s.target), 0.5f);
+    EXPECT_GT(HorizontalLag(&vcam, s.target), 0.5f);
     float maxLag = 0.0f;
     for (int frame = 0; frame < 40; ++frame)
     {
         s.Step();
-        maxLag = std::max(maxLag, HorizontalLag(vcam, *s.target));
+        maxLag = std::max(maxLag, HorizontalLag(&vcam, s.target));
     }
     EXPECT_GT(maxLag, 2.0f);
     EXPECT_LE(maxLag, 3.0f + 0.0001f);
@@ -107,7 +111,7 @@ TEST(FollowForcedLaunch, OrdinarySlamDoesNotLag)
     for (int frame = 0; frame < 10; ++frame)
     {
         s.Step();
-        EXPECT_LT(HorizontalLag(s.camera->Vcam(), *s.target), 0.0001f);
+        EXPECT_LT(HorizontalLag(&s.camera->Vcam(), s.target), 0.0001f);
     }
 }
 

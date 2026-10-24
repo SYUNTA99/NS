@@ -40,18 +40,21 @@
 namespace
 {
     // 裁定の観測と決定を、自機の段と同じ引数で単独に呼ぶ。答えにある自機を動かす事はしない
-    void ObserveImpact(PlayerActor& player)
+    void ObserveImpact(PlayerActor* player)
     {
-        player.Resolver().ObserveImpact(player.SlamMotion(), &player.Collider());
+        NS_ASSERT(Game, player != nullptr, "ObserveImpact: 渡したアクターか部品が無い");
+        player->Resolver().ObserveImpact(player->SelfForImpact(), player->SlamMotion(), &player->Collider());
     }
 
-    void StepImpact(PlayerActor& player)
+    void StepImpact(PlayerActor* player)
     {
-        player.Resolver().StepState(player.SlamMotion(),
-                                    &player.Params(),
-                                    &player.Body(),
-                                    &player.Collider(),
-                                    player.HitReactionClassObj());
+        NS_ASSERT(Game, player != nullptr, "StepImpact: 渡したアクターか部品が無い");
+        player->Resolver().StepState(player->SelfForImpact(),
+                                    player->SlamMotion(),
+                                    &player->Params(),
+                                    &player->Body(),
+                                    &player->Collider(),
+                                    player->HitReactionClassObj());
     }
 
     PlayerActor* PlacePipelinePlayer(NS::Scene& scene, float targetX = 0.0f, float targetZ = 3.0f)
@@ -79,37 +82,38 @@ namespace
     }
 
     // 見本の列に書く状態の綴り。表に無い状態は Other
-    std::string_view StateName(const PlayerActor& player)
+    std::string_view StateName(const PlayerActor* player)
     {
-        if (player.States().IsCurrent<GL::Player::IdlePlayerState>())
+        NS_ASSERT(Game, player != nullptr, "StateName: 渡したアクターか部品が無い");
+        if (player->States().IsCurrent<GL::Player::IdlePlayerState>())
         {
             return "Idle";
         }
-        if (player.States().IsCurrent<GL::Player::WalkPlayerState>())
+        if (player->States().IsCurrent<GL::Player::WalkPlayerState>())
         {
             return "Walk";
         }
-        if (player.States().IsCurrent<GL::Player::BrakePlayerState>())
+        if (player->States().IsCurrent<GL::Player::BrakePlayerState>())
         {
             return "Brake";
         }
-        if (player.States().IsCurrent<GL::Player::FallPlayerState>())
+        if (player->States().IsCurrent<GL::Player::FallPlayerState>())
         {
             return "Fall";
         }
-        if (player.States().IsCurrent<GL::Player::BodySlamPlayerState>())
+        if (player->States().IsCurrent<GL::Player::BodySlamPlayerState>())
         {
             return "BodySlam";
         }
-        if (player.States().IsCurrent<GL::Player::BeforeContactPlayerState>())
+        if (player->States().IsCurrent<GL::Player::BeforeContactPlayerState>())
         {
             return "BeforeContact";
         }
-        if (player.States().IsCurrent<GL::Player::TackleHitPlayerState>())
+        if (player->States().IsCurrent<GL::Player::TackleHitPlayerState>())
         {
             return "TackleHit";
         }
-        if (player.States().IsCurrent<GL::Player::ReboundPlayerState>())
+        if (player->States().IsCurrent<GL::Player::ReboundPlayerState>())
         {
             return "Rebound";
         }
@@ -126,18 +130,19 @@ namespace
     // 手前の置物へ溜めた突進を出し、当たりの状態に入って止めが始まった歩まで回す。届いた場合 true
     // waitForFreeze が偽なら、当たりの状態に入る前の検知のフレームで止める
     // 突進は 1 フレームの入口から出す。BodySlam を直に呼ぶと先行入力が残り、止めが明けた後にもう 1 度出る
-    bool SlamIntoTheRock(PlayerActor& player, GL::Level::PropActor& rock, bool waitForFreeze)
+    bool SlamIntoTheRock(PlayerActor* player, GL::Level::PropActor* rock, bool waitForFreeze)
     {
-        player.RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+        NS_ASSERT(Game, player != nullptr && rock != nullptr, "SlamIntoTheRock: 渡したアクターか部品が無い");
+        player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         for (int frame = 0; frame < 10; ++frame)
         {
-            player.Update(false);
-            rock.Update();
-            if (waitForFreeze && player.IsInTackleHit())
+            player->Update(false);
+            rock->Update();
+            if (waitForFreeze && player->IsInTackleHit())
             {
                 return true;
             }
-            if (!waitForFreeze && player.Resolver().Answer().lastImpact.sequence > 0)
+            if (!waitForFreeze && player->Resolver().Answer().lastImpact.sequence > 0)
             {
                 return true;
             }
@@ -146,12 +151,13 @@ namespace
     }
 
     // 1 歩回し、当たりの状態に居た自機がその歩で出た (止めが明けた) 場合 true
-    bool StepAndSeeTheRelease(PlayerActor& player, GL::Level::PropActor& rock)
+    bool StepAndSeeTheRelease(PlayerActor* player, GL::Level::PropActor* rock)
     {
-        const bool wasInHit = player.IsInTackleHit();
-        player.Update(false);
-        rock.Update();
-        return wasInHit && !player.IsInTackleHit();
+        NS_ASSERT(Game, player != nullptr && rock != nullptr, "StepAndSeeTheRelease: 渡したアクターか部品が無い");
+        const bool wasInHit = player->IsInTackleHit();
+        player->Update(false);
+        rock->Update();
+        return wasInHit && !player->IsInTackleHit();
     }
 
     // 移す前の式が出した止めの長さ stopSteps の当たりを写した段の束。形は止めの間潰れ、明けに伸びて戻る
@@ -207,7 +213,7 @@ TEST(PlayerUpdatePipeline, ImpactObservationDoesNotJudgeOrMoveThePlayer)
     player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
     const NS::Vector3 position = player->Root().Position();
     const NS::Vector3 velocity = player->Body().Velocity();
-    ObserveImpact(*player);
+    ObserveImpact(player);
     EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
     ExpectSameVector(player->Root().Position(), position);
     ExpectSameVector(player->Body().Velocity(), velocity);
@@ -258,16 +264,16 @@ TEST(PlayerUpdatePipeline, OneObservationCannotBeginTheHitTwice)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    ObserveImpact(*player);
-    StepImpact(*player);
+    ObserveImpact(player);
+    StepImpact(player);
     ASSERT_EQ(player->Resolver().Answer().lastImpact.sequence, 1u);
     ASSERT_FALSE(player->Resolver().Answer().beginHit);
-    StepImpact(*player);
+    StepImpact(player);
     EXPECT_FALSE(player->Resolver().Answer().beginHit);
     EXPECT_TRUE(player->Resolver().IsHitAwaitingEntry());
     EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 1u);
-    ObserveImpact(*player);
-    StepImpact(*player);
+    ObserveImpact(player);
+    StepImpact(player);
     EXPECT_TRUE(player->Resolver().Answer().beginHit);
 }
 
@@ -278,9 +284,9 @@ TEST(PlayerUpdatePipeline, RemovingTheObservedTargetCannotApplyAStaleImpact)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
-    ObserveImpact(*player);
+    ObserveImpact(player);
     scene.Actors().RemoveByActorId(2);
-    StepImpact(*player);
+    StepImpact(player);
     EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
     EXPECT_TRUE(player->IsBodySlamming());
     EXPECT_FALSE(player->Resolver().IsHitAwaitingEntry());
@@ -294,7 +300,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     ASSERT_NE(player, nullptr);
     GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    ASSERT_TRUE(SlamIntoTheRock(player, rock, true));
     EXPECT_TRUE(player->IsHitStopping());
     EXPECT_FALSE(player->CanMoveBody());
     const NS::Vector3 position = player->Root().Position();
@@ -303,7 +309,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     bool released = false;
     for (int frame = 0; frame < 30 && !released; ++frame)
     {
-        released = StepAndSeeTheRelease(*player, *rock);
+        released = StepAndSeeTheRelease(player, rock);
         if (released)
         {
             break;
@@ -332,7 +338,7 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
         GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
         ASSERT_NE(rock, nullptr);
         const NS::Vector3 rockHome = rock->Root().Position();
-        ASSERT_TRUE(SlamIntoTheRock(*player, *rock, waitForFreeze));
+        ASSERT_TRUE(SlamIntoTheRock(player, rock, waitForFreeze));
         director->RestartCourse();
         for (int frame = 0; frame < 20; ++frame)
         {
@@ -357,7 +363,7 @@ TEST(PlayerUpdatePipeline, EndingPlayDuringHitStopRestoresTheShape)
     ASSERT_NE(player, nullptr);
     GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    ASSERT_TRUE(SlamIntoTheRock(player, rock, true));
     ASSERT_TRUE(player->ModelClassObj()->IsDrawingShape());
     ASSERT_LT(player->ModelClassObj()->GetDrawScale().z, 1.0f);
     player->OnEndPlay();
@@ -390,7 +396,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
     ASSERT_NE(player, nullptr);
     GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(SlamIntoTheRock(*player, *rock, true));
+    ASSERT_TRUE(SlamIntoTheRock(player, rock, true));
     ASSERT_FALSE(player->Resolver().Answer().lastImpact.broke);
     // 欄「潰れの厚み」0.7 を進む向きの成分の 2 乗で混ぜ、縦は欄「潰れの伸び上がり」1.1
     const NS::Vector3 dir = player->Resolver().Answer().lastImpact.impactDir;
@@ -416,7 +422,7 @@ TEST(CollisionImpact, HitStopSquashIsDrawnAndTheRootStaysOne)
         ExpectSameVector(
             player->ModelClassObj()->GetDrawScale(),
             NS::Vector3{squash.x + side * dir.z * dir.z, squash.y + 0.2f * left, squash.z + side * dir.x * dir.x});
-        released = StepAndSeeTheRelease(*player, *rock);
+        released = StepAndSeeTheRelease(player, rock);
     }
     ASSERT_TRUE(released);
     // 膨らみは止めの途中 (止めの 12 フレームの 7 フレーム目) に来る
@@ -456,7 +462,7 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     bool released = false;
     for (int frame = 0; frame < 30 && !released; ++frame)
     {
-        released = StepAndSeeTheRelease(*player, *rock);
+        released = StepAndSeeTheRelease(player, rock);
     }
     ASSERT_TRUE(released);
     ASSERT_FALSE(player->Resolver().Answer().lastImpact.broke);
@@ -471,7 +477,7 @@ TEST(PlayerAppearance, ReleaseStretchKeepsTheDrawnBottomOnTheFloor)
     model->SetLocalBoundsOverride(local);
     model->SnapLocalRotation(NS::Quaternion::Identity);
     NS::AABB drawn{};
-    local.Transform(drawn, model->DrawWorldMatrix(1.0f));
+    local.Transform(drawn, model->DrawWorldMatrix(player->Root().WorldMatrix(), 1.0f));
     const float bottom = drawn.Center.y - drawn.Extents.y;
     EXPECT_NEAR(bottom, player->Root().Position().y - radius, 0.001f);
     EXPECT_GE(bottom, -0.001f);
@@ -640,7 +646,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
         // 溜めの組の止めの間の潰れは、突進の向きでなく自機と置物のセンサーの水平の向きで横と奥に分ける。
         // 置物を横へずらしてから当てるので、横の倍率も 1 から少し縮む
         // 見るのは状態の移り方なので、欄の既定を触っても基準を取り直さずに済むよう留める
-        EXPECT_EQ(NS::ApplyJsonFields(player->Params(),
+        EXPECT_EQ(NS::ApplyJsonFields(&player->Params(),
                                       nlohmann::json{{"通常突進の初速", 10.0f},
                                                      {"紫の揺れの最大のずれ", 0.0f},
                                                      {"紫の威力の上限", 1.0f},
@@ -653,7 +659,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
                   0u);
         GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
         ASSERT_NE(rock, nullptr);
-        EXPECT_EQ(NS::ApplyJsonFields(rock->Params(), nlohmann::json{{"外れで飛ばす相手の距離の割合", 1.0f}}), 0u);
+        EXPECT_EQ(NS::ApplyJsonFields(&rock->Params(), nlohmann::json{{"外れで飛ばす相手の距離の割合", 1.0f}}), 0u);
         int impact = -1;
         int freeze = -1;
         int release = -1;
@@ -696,7 +702,7 @@ TEST(PlayerUpdatePipeline, StateTransitionPreservesChargeAndTapTrajectories)
             {
                 SCOPED_TRACE(scenario);
                 SCOPED_TRACE(frame);
-                EXPECT_EQ(StateName(*player), (*pose)[1].get<std::string>());
+                EXPECT_EQ(StateName(player), (*pose)[1].get<std::string>());
                 ExpectSameVector(
                     player->ModelClassObj()->GetDrawScale(),
                     NS::Vector3{(*pose)[2].get<float>(), (*pose)[3].get<float>(), (*pose)[4].get<float>()});

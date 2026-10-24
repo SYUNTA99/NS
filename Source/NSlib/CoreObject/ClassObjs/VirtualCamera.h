@@ -35,18 +35,11 @@ namespace NS
         }
     };
 
-    class SceneActor;
-
     //! 実カメラを変更せず、CameraManager が選ぶ目標姿勢を返す部品
     //! 状態は固定更新で進め、描画時の EvaluatePose で補間する
     class VirtualCamera : public Object
     {
     public:
-        explicit VirtualCamera(SceneActor* owner) noexcept : m_owner(owner) {}
-
-        //! 持ち主が出ているか。持ち主の無い物は出ていると答える
-        [[nodiscard]] bool IsOwnerAppeared() const noexcept;
-
         //! 最終姿勢を返す。alpha は追従対象の補間係数で、自由視点では使わない
         [[nodiscard]] virtual CameraPose EvaluatePose(float alpha) const noexcept = 0;
 
@@ -90,7 +83,6 @@ namespace NS
         }
 
     private:
-        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
         int m_vcamPriority = 0;
         Radians m_fovY{ToRadians(Degrees{60.0f})};
         float m_nearPlane = 0.1f;

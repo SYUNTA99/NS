@@ -6,9 +6,10 @@ namespace GL
 {
     namespace Player
     {
-        void BodySlamPlayerState::OnStep(::PlayerActor& player, float dt)
+        void BodySlamPlayerState::OnStep(::PlayerActor* player, float dt)
         {
-            player.UpdateBodySlam(dt);
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            player->UpdateBodySlam(dt);
         }
     } // namespace Player
 } // namespace GL

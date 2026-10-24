@@ -49,8 +49,10 @@ namespace NS
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
 
     //! @brief クラス名から、.actor を写さずにコンストラクタと OnInit の値だけで SceneActor を作る
-    //! @details .actor の全部の項目を生成する時だけ使う。シーンへ入らず、素材も読まない。未登録のクラスは nullptr
-    [[nodiscard]] std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className);
+    //! @details .actor の全部の項目を生成する時と、作る前にシーンの上書きを確かめる時に使う。シーンへ入らず、素材も読まない。
+    //! actorFile は ERROR の文に出す .actor の名前で、空ならクラスと同じ名前。未登録のクラスは nullptr
+    [[nodiscard]] std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className,
+                                                                        std::string_view actorFile = {});
 
     //! @brief エディタで置ける SceneActor の登録の一覧。表示名の順で安定
     //! @details ヒエラルキーの追加メニューとパレットが、置ける種類の列挙に使う

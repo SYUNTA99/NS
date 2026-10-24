@@ -82,7 +82,7 @@ TEST(AssetField, ReloadAssetsReadsTheNewName)
     AssetFieldProbeActor* actor = scene.SpawnActor<AssetFieldProbeActor>("AssetFieldProbeActor");
     ASSERT_NE(actor, nullptr);
     const NS::Mesh* cube = NS::AssetManager::Get().LoadMesh("cube");
-    (void)NS::ApplyJsonFields(*actor->part, nlohmann::json{{"素材", "cube"}});
+    (void)NS::ApplyJsonFields(actor->part.get(), nlohmann::json{{"素材", "cube"}});
     EXPECT_EQ(actor->part->asset, cube);
 
     actor->ReloadAssets();
@@ -93,12 +93,12 @@ TEST(AssetField, ReloadAssetsReadsTheNewName)
 TEST(AssetField, JsonIsTheNameString)
 {
     const AssetFieldProbePart part;
-    const nlohmann::json saved = NS::SerializeClassObjFields(part);
+    const nlohmann::json saved = NS::SerializeClassObjFields(&part);
     EXPECT_EQ(saved["素材"], nlohmann::json("sphere"));
 
     AssetFieldProbePart loaded;
     NS::LoadAssetField(loaded.asset, "cube");
-    EXPECT_EQ(NS::ApplyJsonFields(loaded, saved), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(&loaded, saved), 0u);
     EXPECT_EQ(NS::AssetFieldName(loaded.asset), "sphere");
 }
 
@@ -125,8 +125,8 @@ TEST(AssetField, ModelAndShadowHoldTheirAssetsInAssetFields)
         EXPECT_EQ(field->type, NS::FieldType::Asset) << key;
     }
 
-    const NS::Shadow shadow{nullptr};
-    const nlohmann::json shadowFields = NS::SerializeClassObjFields(shadow);
+    const NS::Shadow shadow;
+    const nlohmann::json shadowFields = NS::SerializeClassObjFields(&shadow);
     EXPECT_EQ(shadowFields["メッシュ"], nlohmann::json("shadowQuad"));
     EXPECT_EQ(shadowFields["マテリアル"], nlohmann::json("Assets/Materials/shadow.mat"));
 }
@@ -138,16 +138,16 @@ TEST(AssetField, UnreadableNamesStayWhenSavedAgain)
     const TestLogCapture log;
     const nlohmann::json written{{"メッシュ", "Assets/Models/__ns_missing_mesh__.glb"},
                                  {"マテリアル", "Assets/Materials/__ns_missing__.mat"}};
-    NS::Model model{nullptr};
-    EXPECT_EQ(NS::ApplyJsonFields(model, written), 0u);
+    NS::Model model;
+    EXPECT_EQ(NS::ApplyJsonFields(&model, written), 0u);
     const nlohmann::json outside{{"マテリアル", "../__ns_outside__.mat"}};
-    NS::Shadow shadow{nullptr};
-    EXPECT_EQ(NS::ApplyJsonFields(shadow, outside), 0u);
+    NS::Shadow shadow;
+    EXPECT_EQ(NS::ApplyJsonFields(&shadow, outside), 0u);
 
-    const nlohmann::json saved = NS::SerializeClassObjFields(model);
+    const nlohmann::json saved = NS::SerializeClassObjFields(&model);
     EXPECT_EQ(saved["メッシュ"], written["メッシュ"]);
     EXPECT_EQ(saved["マテリアル"], written["マテリアル"]);
-    EXPECT_EQ(NS::SerializeClassObjFields(shadow)["マテリアル"], outside["マテリアル"]);
+    EXPECT_EQ(NS::SerializeClassObjFields(&shadow)["マテリアル"], outside["マテリアル"]);
     EXPECT_TRUE(assets.LoadMaterial("Assets/Materials/__ns_missing__.mat")->IsEmpty());
     EXPECT_EQ(log.ErrorCount(), 5);
 }
@@ -159,16 +159,16 @@ TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
     const TestLogCapture log;
 
     const nlohmann::json model{{"モデル", "Assets/Models/__ns_missing_model__.glb"}};
-    NS::Animation animation{nullptr};
-    EXPECT_EQ(NS::ApplyJsonFields(animation, model), 0u);
-    EXPECT_EQ(NS::SerializeClassObjFields(animation)["モデル"], model["モデル"]);
+    NS::Animation animation;
+    EXPECT_EQ(NS::ApplyJsonFields(&animation, model), 0u);
+    EXPECT_EQ(NS::SerializeClassObjFields(&animation)["モデル"], model["モデル"]);
 
     const nlohmann::json clips{{"立ちのクリップ", "Assets/Models/__ns_missing_clip__.glb"},
                                {"走りのクリップ", "Assets/Models/Xbot.glb#__ns_missing__"},
                                {"跳ぶクリップ", "../__ns_outside__.glb"}};
     GL::Player::PlayerClips playerClips;
-    EXPECT_EQ(NS::ApplyJsonFields(playerClips, clips), 0u);
-    const nlohmann::json saved = NS::SerializeClassObjFields(playerClips);
+    EXPECT_EQ(NS::ApplyJsonFields(&playerClips, clips), 0u);
+    const nlohmann::json saved = NS::SerializeClassObjFields(&playerClips);
     EXPECT_EQ(saved["立ちのクリップ"], clips["立ちのクリップ"]);
     EXPECT_EQ(saved["走りのクリップ"], clips["走りのクリップ"]);
     EXPECT_EQ(saved["跳ぶクリップ"], clips["跳ぶクリップ"]);
@@ -340,7 +340,9 @@ TEST(AssetField, EmptyModelLeavesNoSkeleton)
     ASSERT_NE(field, nullptr);
     EXPECT_EQ(field->type, NS::FieldType::Asset);
 
-    const std::unique_ptr<PlayerActor> player = NS::CreateActor<TestAnimatedPlayerActor>();
+    NS::Scene scene;
+    PlayerActor* player = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
+    ASSERT_NE(player, nullptr);
     NS::Animation* animation = player->AnimationClassObj();
     const NS::Anim::Skeleton skeleton;
     animation->SetSkeleton(&skeleton);
@@ -374,15 +376,15 @@ TEST(AssetField, PlayerLookWritesItsScaleToTheModel)
     ASSERT_NE(player, nullptr);
     GL::Player::PlayerAppearance* appearance = &player->Appearance();
     const NS::Model* model = player->ModelClassObj();
-    const nlohmann::json fields = NS::SerializeClassObjFields(*appearance);
+    const nlohmann::json fields = NS::SerializeClassObjFields(appearance);
     const nlohmann::json standing = fields["立ち姿の倍率"];
     const nlohmann::json ball = fields["玉の倍率"];
     ASSERT_TRUE(standing.is_array());
     ASSERT_TRUE(ball.is_array());
 
     EXPECT_FLOAT_EQ(model->LocalScale().y, standing[1].get<float>());
-    appearance->Curl();
+    appearance->Curl(player->ModelClassObj());
     EXPECT_FLOAT_EQ(model->LocalScale().y, ball[1].get<float>());
-    appearance->Uncurl();
+    appearance->Uncurl(player->ModelClassObj());
     EXPECT_FLOAT_EQ(model->LocalScale().y, standing[1].get<float>());
 }

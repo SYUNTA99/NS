@@ -22,8 +22,7 @@ TEST(GameTuning, GoalFadeUsesTheEditedGoalFields)
     scene.ResetFromJson(std::move(doc));
     GL::Level::GoalActor* goal = NS::Cast<GL::Level::GoalActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(goal, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(goal->Params(), {{"クリアの暗転秒", 0.1f}, {"クリアの明転秒", 0.2f}}), 0u);
-    (void)scene.BeginPlayBaseline();
+    ASSERT_EQ(NS::ApplyJsonFields(&goal->Params(), {{"クリアの暗転秒", 0.1f}, {"クリアの明転秒", 0.2f}}), 0u);
     GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
     ASSERT_NE(director, nullptr);
     scene.HitSensors().OnTick();

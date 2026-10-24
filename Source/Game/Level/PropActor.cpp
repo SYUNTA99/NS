@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -27,21 +28,22 @@ namespace GL
     {
         class PropActor::RestingState : public NS::StateOf<RestingState, PropActor>
         {
-            void OnEnter(PropActor& owner) override
+            void OnEnter(PropActor* owner) override
             {
-                owner.m_velocity = NS::Vector3{};
-                owner.m_restAge = 0.0f;
+                NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+                owner->m_velocity = NS::Vector3{};
+                owner->m_restAge = 0.0f;
             }
-            void OnStep(PropActor& owner, float dt) override
+            void OnStep(PropActor* owner, float dt) override
             {
-                if (owner.m_hasLaunched && owner.m_params->RestLifeSeconds() > 0.0f)
+                NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+                if (owner->m_hasLaunched && owner->m_params->RestLifeSeconds() > 0.0f)
                 {
-                    owner.m_restAge += dt;
-                    if (owner.m_restAge >= owner.m_params->RestLifeSeconds())
+                    owner->m_restAge += dt;
+                    if (owner->m_restAge >= owner->m_params->RestLifeSeconds())
                     {
-                        owner.BodySensorClassObj()->Invalidate();
-                        owner.Sphere().RemoveFromPhysics();
-                        owner.Disappear();
+                        owner->BodySensorClassObj()->Invalidate();
+                        owner->Disappear();
                     }
                 }
             }
@@ -50,29 +52,42 @@ namespace GL
         // 受けた状態。止めの間は基底が状態の段を飛ばすので、OnStep が回るのは自分の束の止めが明けた後
         class PropActor::FreezeState : public NS::StateOf<FreezeState, PropActor>
         {
-            void OnStep(PropActor& owner, float dt) override
+            void OnStep(PropActor* owner, float dt) override
             {
-                if (!owner.m_freezePlaced)
+                NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+                if (!owner->m_freezePlaced)
                 {
-                    owner.m_motion.Step(dt);
+                    owner->m_motion.Step(dt);
                 }
-                owner.LeaveFreeze();
+                owner->LeaveFreeze();
             }
         };
 
         class PropActor::LaunchedState : public NS::StateOf<LaunchedState, PropActor>
         {
-            void OnStep(PropActor& owner, float dt) override { owner.StepLaunched(dt); }
+            void OnStep(PropActor* owner, float dt) override
+            {
+                NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+                owner->StepLaunched(dt);
+            }
         };
 
         class PropActor::ArcState : public NS::StateOf<ArcState, PropActor>
         {
-            void OnStep(PropActor& owner, float dt) override { owner.StepArc(dt); }
+            void OnStep(PropActor* owner, float dt) override
+            {
+                NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+                owner->StepArc(dt);
+            }
         };
 
         class PropActor::RollingState : public NS::StateOf<RollingState, PropActor>
         {
-            void OnStep(PropActor& owner, float dt) override { owner.StepRolling(dt); }
+            void OnStep(PropActor* owner, float dt) override
+            {
+                NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+                owner->StepRolling(dt);
+            }
         };
 
         PropActor::PropActor() noexcept
@@ -81,29 +96,36 @@ namespace GL
         }
         void PropActor::OnInit()
         {
-            CreateClassObj(m_model, this);
-            CreateClassObj(m_shadow, this);
-            NS::SphereCollision* sphere = CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision, this);
+            CreateClassObj(m_model);
+            NS::InitDraw(this, m_model.get(), &Root());
+            CreateClassObj(m_shadow);
+            NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
+            NS::SphereCollision* sphere = CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision);
             CreateClassObj(m_params);
             CreateClassObj(m_hitZones);
-            CreateClassObj(m_effectKeeper, this);
-            CreateClassObj(m_hitReaction, this);
-            CreateClassObj(m_effects, this);
-            CreateClassObj(m_marks, this);
+            CreateClassObj(m_effectKeeper);
+            CreateClassObj(m_hitReaction);
+            CreateClassObj(m_effects);
+            // 残像は本体の Model を元に描く
+            NS::InitDraw(this, &m_tackleGhost, &Root(), m_model.get());
+            CreateClassObj(m_marks);
+            NS::InitDraw(this, m_marks.get(), &Root());
             // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
             NS::FollowHitSensor* bodySensor =
-                CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [sphere] {
-                    const NS::Sphere world = sphere->WorldSphere();
-                    return NS::SensorVolume::Sphere(world.center, world.radius);
-                });
-            SetSensorKind(*bodySensor, SensorKind::MapObjBody);
-            (void)BuildStateMachine<PropActor, RestingState, FreezeState, LaunchedState>(*this, m_states);
+                CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(
+                    m_bodySensor, this, [sphere](const NS::Matrix& rootWorld) {
+                        const NS::Sphere world = sphere->WorldSphere(rootWorld);
+                        return NS::SensorVolume::Sphere(world.center, world.radius);
+                    });
+            NS::InitHitSensor(this, bodySensor);
+            SetSensorKind(bodySensor, SensorKind::MapObjBody);
+            (void)BuildStateMachine<PropActor, RestingState, FreezeState, LaunchedState>(this, m_states);
         }
 
-        void PropActor::OnStart()
+        void PropActor::OnAssetsLoaded()
         {
-            NS::SceneActor::OnStart();
-            m_effects->Preload();
+            NS::SceneActor::OnAssetsLoaded();
+            m_effects->Preload(this);
         }
 
         void PropActor::OnAppear()
@@ -111,16 +133,16 @@ namespace GL
             NS::SceneActor::OnAppear();
             if (IsAppeared())
             {
-                m_tackleGhost.Register();
-                m_marks->Register();
+                NS::ShowModel(this, &m_tackleGhost);
+                NS::ShowModel(this, m_marks.get());
             }
         }
 
         void PropActor::OnDisappear() noexcept
         {
             NS::SceneActor::OnDisappear();
-            m_tackleGhost.Unregister();
-            m_marks->Unregister();
+            NS::HideModel(this, &m_tackleGhost);
+            NS::HideModel(this, m_marks.get());
         }
 
         bool PropActor::IsFrozen() const noexcept
@@ -150,10 +172,10 @@ namespace GL
         void PropActor::VisualStep()
         {
             // clang-format off
-            m_effects->Update(Flight());
+            m_effects->Update(this, Flight());
             // clang-format on
             // 明けの写しは止めの後も残り、写し取る姿は揺れを書いた後の姿なので、Model が揺れを進めた後で進める
-            m_ghost.Advance(&m_tackleGhost);
+            m_ghost.Advance(&m_tackleGhost, ModelClassObj(), Root().WorldMatrix());
             m_marks->Step(NS::OS::FrameTimer::FixedDelta());
         }
 
@@ -190,24 +212,35 @@ namespace GL
                 }
             }
             // 次の歩を待たず、同じ歩の後の問いに置き直した当たりを見せる
-            Sphere().SyncToPhysics();
+            Sphere().SyncToPhysics(Root().WorldMatrix(), this);
         }
 
-        void PropActor::ReceiveHit(const TackleHitDesc& hit, const NS::HitSensor& self, const NS::HitSensor& attacker)
+        void PropActor::ReceiveHit(const TackleHitDesc& hit, const NS::HitSensor* self, const NS::HitSensor* attacker)
         {
+            NS_ASSERT(Game, self != nullptr && attacker != nullptr, "当たったセンサーが渡されていない");
             // 前の受けを先に解く。解くと揺れが止まるので、新しい束の揺れより前に置く
             if (IsFrozen())
             {
                 LeaveFreeze();
             }
             m_received = ReceivedHit{
-                .attacker = NS::MakeHitSensorRef(attacker), .contact = hit.contact, .tier = hit.tier, .active = true};
+                .attacker = attacker, .contact = hit.contact, .tier = hit.tier, .active = true};
             // 束が足した持ち主へ渡す項目は、走っている項目の後ろに並ぶ
             const std::size_t first = m_hitReaction->OwnerRuns().size();
-            (void)m_hitReaction->Start(TackleSetName("受け", hit.tier), hit.contact, &self, &attacker);
+            const std::optional<int> stopFrames = m_hitReaction->Start(
+                NS::HitReactionSelf{.actor = this, .model = ModelClassObj()},
+                TackleSetName("受け", hit.tier),
+                hit.contact,
+                self,
+                attacker);
+            // 貫通の止めは、束の止めの長さを短くもする上書き
             if (hit.stopOverride.has_value())
             {
                 OverrideHitStop(std::max(*hit.stopOverride, 0));
+            }
+            else if (stopFrames.has_value())
+            {
+                RequestHitStop(*stopFrames);
             }
             TackleFreezeDesc freeze{.impactDir = hit.impactDir};
             std::optional<NS::HitOwnerRun> ghost;
@@ -243,13 +276,8 @@ namespace GL
                 return;
             }
             m_received.active = false;
-            const NS::HitSensor* attacker = NS::FindHitSensor(OwningScene(), m_received.attacker);
-            if (attacker == nullptr)
-            {
-                return;
-            }
-            (void)m_hitReaction->Start(
-                TackleSetName("明け", m_received.tier), m_received.contact, BodySensorClassObj(), attacker);
+            (void)StartHitReaction(
+                TackleSetName("明け", m_received.tier), m_received.contact, BodySensorClassObj(), m_received.attacker);
         }
 
         void PropActor::EndFreeze()
@@ -314,11 +342,16 @@ namespace GL
             m_hopSeed = desc.hopSeed;
             m_velocity = m_arcForward * initial.x + m_arcUp * initial.y;
             m_hasLaunched = true;
-            m_motion.Build<ArcState, RollingState>(*this);
+            m_motion.Build<ArcState, RollingState>(this);
             (void)m_states->Change<LaunchedState>();
-            m_effects->BeginTrail(desc, Flight(), m_params.get(), &Sphere());
+            m_effects->BeginTrail(this,
+                                  NS::GetFrameDelta(this),
+                                  desc,
+                                  Flight(),
+                                  m_params.get(),
+                                  Sphere().WorldSphere(Root().WorldMatrix()));
             // 次の歩を待たず、同じ歩の後の問いに置き直した当たりを見せる
-            Sphere().SyncToPhysics();
+            Sphere().SyncToPhysics(Root().WorldMatrix(), this);
         }
 
         NS::Vector3 PropActor::ArcOffset(float seconds) const noexcept
@@ -359,7 +392,8 @@ namespace GL
             if (NS::Dot(m_velocity, m_arcUp) <= 0.0f)
             {
                 NS::Vector3 normal{};
-                if (ProbeFloor(Sphere().WorldSphere().radius / m_params->FloorDot() + m_params->ContactSkin(), normal))
+                const float radius = Sphere().WorldSphere(Root().WorldMatrix()).radius;
+                if (ProbeFloor(radius / m_params->FloorDot() + m_params->ContactSkin(), normal))
                 {
                     Land(normal);
                 }
@@ -368,7 +402,7 @@ namespace GL
 
         bool PropActor::ProbeFloor(float distance, NS::Vector3& outNormal)
         {
-            const NS::Sphere sphere = Sphere().WorldSphere();
+            const NS::Sphere sphere = Sphere().WorldSphere(Root().WorldMatrix());
             float hitDistance = 0.0f;
             const NS::Vector3 down = GravityDirection();
             if (!NS::RaycastCollision(this, sphere.center, down, distance, hitDistance, outNormal, Sphere().BodyId()) ||
@@ -388,6 +422,7 @@ namespace GL
 
         void PropActor::Land(const NS::Vector3& normal)
         {
+            const NS::Sphere sphere = Sphere().WorldSphere(Root().WorldMatrix());
             // 外れの跳ねが残っていれば、向きを変えて跳ね直し、曲線の重力で落ちる
             if (m_hopsLeft > 0)
             {
@@ -399,21 +434,20 @@ namespace GL
                     m_arcDeflected = true;
                     --m_hopsLeft;
                     ++m_hopIndex;
-                    m_effects->NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius,
-                                             normal);
+                    m_effects->NotifyLanding(this, sphere.center - normal * sphere.radius, normal);
                     return;
                 }
                 m_hopsLeft = 0;
             }
             m_velocity -= normal * NS::Dot(m_velocity, normal);
             (void)m_motion.Machine().Change<RollingState>();
-            m_effects->NotifyLanding(Sphere().WorldSphere().center - normal * Sphere().WorldSphere().radius, normal);
+            m_effects->NotifyLanding(this, sphere.center - normal * sphere.radius, normal);
         }
 
         void PropActor::StepRolling(float dt)
         {
             NS::Vector3 normal{};
-            if (!ProbeFloor(Sphere().WorldSphere().radius / m_params->FloorDot() + 0.01f, normal))
+            if (!ProbeFloor(Sphere().WorldSphere(Root().WorldMatrix()).radius / m_params->FloorDot() + 0.01f, normal))
             {
                 m_arcDeflected = true;
                 (void)m_motion.Machine().Change<ArcState>();
@@ -445,7 +479,7 @@ namespace GL
                     break;
                 }
                 const NS::Vector3 direction = m_velocity / speed;
-                const NS::Sphere sphere = Sphere().WorldSphere();
+                const NS::Sphere sphere = Sphere().WorldSphere(Root().WorldMatrix());
                 const float travel = speed * remaining;
                 float distance = 0.0f;
                 NS::Vector3 normal{};
@@ -496,7 +530,7 @@ namespace GL
         void PropActor::SpawnMark()
         {
             const NS::Vector3 down = GravityDirection();
-            const NS::Sphere sphere = Sphere().WorldSphere();
+            const NS::Sphere sphere = Sphere().WorldSphere(Root().WorldMatrix());
             float distance = 0.0f;
             NS::Vector3 normal{};
             if (NS::RaycastCollision(
@@ -528,9 +562,9 @@ namespace GL
             Root().SetRotation(rotation);
             Appear();
             BodySensorClassObj()->Validate();
-            m_effects->CancelTrail();
+            m_effects->CancelTrail(this);
             // 次の歩を待たず、同じ歩の後の問いに置き直した当たりを見せる
-            Sphere().SyncToPhysics();
+            Sphere().SyncToPhysics(Root().WorldMatrix(), this);
         }
 
         void PropActor::OnEndPlay()
@@ -541,6 +575,8 @@ namespace GL
             }
             m_motion.Finish();
             NS::SceneActor::OnEndPlay();
+            NS::EndDraw(this, &m_tackleGhost);
+            NS::EndDraw(this, m_marks.get());
         }
 
         bool PropActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver)
@@ -558,7 +594,7 @@ namespace GL
                 answer.breakable = false;
                 answer.placed = !IsFlying();
                 answer.position = Root().Position();
-                const NS::SensorVolume body = BodySensorClassObj()->WorldVolume();
+                const NS::SensorVolume body = BodySensorClassObj()->WorldVolume(Root().WorldMatrix());
                 answer.bounds = body.Bounds();
                 answer.face = m_hitZones->Face();
                 answer.body = body;
@@ -573,7 +609,7 @@ namespace GL
                 {
                     return false;
                 }
-                ReceiveHit(hit->Desc(), *receiver, *sender);
+                ReceiveHit(hit->Desc(), receiver, sender);
                 return true;
             }
             if (const MsgTackleRelease* release = NS::MsgCast<MsgTackleRelease>(msg))

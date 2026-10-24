@@ -68,10 +68,11 @@ namespace
 
     // 自機の体のセンサーから、置物の手前の面を +z へ押した当たり
     bool SendHit(NS::Scene& scene,
-                 GL::Level::PropActor& rock,
+                 GL::Level::PropActor* rock,
                  GL::Level::HitTier tier,
                  std::optional<int> stopOverride = std::nullopt)
     {
+        NS_ASSERT(Game, rock != nullptr, "SendHit: 渡したアクターか部品が無い");
         PlayerActor* player = PlayerOf(scene);
         if (player == nullptr)
         {
@@ -81,7 +82,7 @@ namespace
                                            .contact = NS::Vector3{0.0f, 0.5f, 3.5f},
                                            .impactDir = NS::Vector3{0.0f, 0.0f, 1.0f},
                                            .stopOverride = stopOverride};
-        return GL::Level::SendMsgTackleHit(*rock.BodySensorClassObj(), *player->BodySensorClassObj(), hit);
+        return GL::Level::SendMsgTackleHit(rock->BodySensorClassObj(), player->BodySensorClassObj(), hit);
     }
 
     GL::Level::TackleReleaseDesc ForwardRelease()
@@ -109,7 +110,7 @@ TEST(MapObjTackle, RockAnswersTheAsk)
     ASSERT_NE(body, nullptr);
 
     GL::Level::TackleTargetAnswer answer{};
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*body, answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(body, answer));
     EXPECT_TRUE(answer.placed);
     // 壊れる動きはまだ無いので、破壊を許しても自機を貫通させない
     EXPECT_FALSE(answer.breakable);
@@ -127,7 +128,7 @@ TEST(MapObjTackle, AHitStopsTheRockForItsOwnSet)
     ASSERT_NE(rock, nullptr);
     ASSERT_FALSE(RayHitsTheRockAt(scene, 4.53f));
 
-    ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Center));
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
     EXPECT_TRUE(rock->IsFrozen());
     EXPECT_EQ(rock->HitStopFramesRemaining(), 12);
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.06f);
@@ -157,7 +158,7 @@ TEST(MapObjTackle, AMissStopsTheRockForItsMissSet)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Wide));
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Wide));
     EXPECT_TRUE(rock->IsFrozen());
     EXPECT_EQ(rock->HitStopFramesRemaining(), 4);
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.06f);
@@ -170,7 +171,7 @@ TEST(MapObjTackle, TheRockShakesAndSpreadsGhostsFromItsOwnSet)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Center));
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
     const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(rock);
     ASSERT_TRUE(pose.has_value());
     const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(rock);
@@ -204,13 +205,13 @@ TEST(MapObjTackle, TheReleaseTremblesFromItsOwnSetThenLaunches)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Center));
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
     for (int frame = 0; frame < 12; ++frame)
     {
         rock->UpdateMotion();
     }
     const NS::Vector3 pushedIn = rock->Root().Position();
-    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*rock, ForwardRelease()));
+    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
     EXPECT_FALSE(rock->IsFrozen());
     EXPECT_TRUE(rock->IsArc());
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.0f);
@@ -229,7 +230,7 @@ TEST(MapObjTackle, AReleaseWithoutAHitDoesNotTremble)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*rock, ForwardRelease()));
+    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
     rock->UpdateMotion();
     EXPECT_TRUE(rock->IsArc());
     EXPECT_FLOAT_EQ(rock->ModelClassObj()->GetDrawTremor().amplitude, 0.0f);
@@ -237,20 +238,23 @@ TEST(MapObjTackle, AReleaseWithoutAHitDoesNotTremble)
 
 namespace
 {
-    float RockRadius(const GL::Level::PropActor& rock)
+    float RockRadius(const GL::Level::PropActor* rock)
     {
-        return static_cast<const NS::SphereCollision*>(rock.CollisionClassObj())->WorldSphere().radius;
+        NS_ASSERT(Game, rock != nullptr, "RockRadius: 渡したアクターか部品が無い");
+        const NS::SphereCollision* sphere = static_cast<const NS::SphereCollision*>(rock->CollisionClassObj());
+        return sphere->WorldSphere(rock->Root().WorldMatrix()).radius;
     }
 
     // 当てて止めを明けさせ、明けの知らせを送る。返すのは震えを始めた時の根
-    NS::Vector3 HitAndRelease(NS::Scene& scene, GL::Level::PropActor& rock)
+    NS::Vector3 HitAndRelease(NS::Scene& scene, GL::Level::PropActor* rock)
     {
+        NS_ASSERT(Game, rock != nullptr, "HitAndRelease: 渡したアクターか部品が無い");
         EXPECT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
         for (int frame = 0; frame < 12; ++frame)
         {
-            rock.UpdateMotion();
+            rock->UpdateMotion();
         }
-        const NS::Vector3 pushedIn = rock.Root().Position();
+        const NS::Vector3 pushedIn = rock->Root().Position();
         EXPECT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
         return pushedIn;
     }
@@ -283,7 +287,7 @@ TEST(MapObjTackle, TheReleaseTremorRunsForItsSetLength)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
     ASSERT_NE(rock, nullptr);
-    (void)HitAndRelease(scene, *rock);
+    (void)HitAndRelease(scene, rock);
     NS::Vector3 contact{};
     for (int frame = 1; frame <= 14; ++frame)
     {
@@ -299,7 +303,7 @@ TEST(MapObjTackle, TheReleaseTremorRunsForItsSetLength)
         ASSERT_TRUE(pose.has_value());
         EXPECT_FLOAT_EQ(tremor.elapsedFrames, static_cast<float>(frame - 1));
         EXPECT_FLOAT_EQ(tremor.ringFrames, 6.0f);
-        EXPECT_NEAR(tremor.framesPerMeter, 6.0f / (2.0f * RockRadius(*rock)), 1.0e-4f);
+        EXPECT_NEAR(tremor.framesPerMeter, 6.0f / (2.0f * RockRadius(rock)), 1.0e-4f);
         EXPECT_NEAR(tremor.amplitude, NS::ScreenPixelsToMeters(10.0f, *pose, rock->Root().Position()), 1.0e-5f);
         if (frame == 1)
         {
@@ -318,13 +322,13 @@ TEST(MapObjTackle, TheReleaseTremorReadsItsSetFields)
         NS::Scene scene;
         GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene, "RatioTremorRock");
         ASSERT_NE(rock, nullptr);
-        (void)HitAndRelease(scene, *rock);
+        (void)HitAndRelease(scene, rock);
         const float startZ = rock->Root().Position().z;
         for (int frame = 1; frame <= 12; ++frame)
         {
             SCOPED_TRACE(frame);
             rock->UpdateMotion();
-            EXPECT_NEAR(rock->ModelClassObj()->GetDrawTremor().amplitude, 0.14f * RockRadius(*rock), 1.0e-6f);
+            EXPECT_NEAR(rock->ModelClassObj()->GetDrawTremor().amplitude, 0.14f * RockRadius(rock), 1.0e-6f);
         }
         // 震えの間に遠ざかっている。ピクセルの欄なら振れ幅が伸びる場面
         EXPECT_GT(rock->Root().Position().z, startZ + 0.5f);
@@ -334,7 +338,7 @@ TEST(MapObjTackle, TheReleaseTremorReadsItsSetFields)
         NS::Scene scene;
         GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene, "ReferenceTremorRock");
         ASSERT_NE(rock, nullptr);
-        (void)HitAndRelease(scene, *rock);
+        (void)HitAndRelease(scene, rock);
         rock->UpdateMotion();
         const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(rock);
         ASSERT_TRUE(pose.has_value());
@@ -350,7 +354,7 @@ TEST(MapObjTackle, AStopOverrideReplacesTheSetsStopAndDoesNotSquash)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Center, 20));
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center, 20));
     EXPECT_TRUE(rock->IsFrozen());
     EXPECT_EQ(rock->HitStopFramesRemaining(), 20);
     EXPECT_TRUE(rock->ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
@@ -363,18 +367,28 @@ TEST(MapObjTackle, AStopOverrideReplacesTheSetsStopAndDoesNotSquash)
     EXPECT_FALSE(rock->IsFrozen());
 }
 
+// 束の長さ 12 より短い上書きも、長い方を残さずに上書きの 2 フレームだけ止める
+TEST(MapObjTackle, AShorterStopOverrideShortensTheSetsStop)
+{
+    NS::Scene scene;
+    GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center, 2));
+    EXPECT_EQ(rock->HitStopFramesRemaining(), 2);
+}
+
 TEST(MapObjTackle, FlyingRockIsNotPushedIn)
 {
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*rock, ForwardRelease()));
+    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
 
     GL::Level::TackleTargetAnswer answer{};
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorClassObj(), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(rock->BodySensorClassObj(), answer));
     EXPECT_FALSE(answer.placed);
 
-    ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Center));
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.0f);
     EXPECT_TRUE(rock->IsFlying());
 }
@@ -386,7 +400,7 @@ TEST(MapObjTackle, DestructionRemainsDisabled)
     ASSERT_NE(rock, nullptr);
     GL::Level::TackleReleaseDesc release{};
     release.breaks = true;
-    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*rock, release));
+    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, release));
     EXPECT_TRUE(rock->BodySensorClassObj()->IsValid());
     EXPECT_TRUE(rock->IsAppeared());
 }
@@ -396,11 +410,11 @@ TEST(MapObjTackle, ANewHitDoesNotAccumulatePushIn)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Center));
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.06f);
-    ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Center));
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.06f);
-    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*rock, ForwardRelease()));
+    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.0f);
     EXPECT_TRUE(rock->IsArc());
 }
@@ -411,14 +425,14 @@ TEST(MapObjTackle, ARestartClearsTheRocksStopAndHit)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
     ASSERT_NE(rock, nullptr);
-    ASSERT_TRUE(GL::Level::SendMsgCourseStart(*rock));
-    ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Center));
+    ASSERT_TRUE(GL::Level::SendMsgCourseStart(rock));
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
     rock->UpdateMotion();
-    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(*rock));
+    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(rock));
     EXPECT_FALSE(rock->IsFrozen());
     EXPECT_EQ(rock->HitStopFramesRemaining(), 0);
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.0f);
-    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*rock, ForwardRelease()));
+    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
     rock->UpdateMotion();
     EXPECT_FLOAT_EQ(rock->ModelClassObj()->GetDrawTremor().amplitude, 0.0f);
 }
@@ -433,8 +447,8 @@ TEST(MapObjTackle, ARockDisappearingKeepsThePlayersCameraEffects)
     ASSERT_NE(player, nullptr);
     ASSERT_NE(rock->HitReactionClassObj(), nullptr);
     ASSERT_TRUE(player->HitReactionClassObj()->StartSink(
-        NS::CameraSinkDesc{.bottomPixels = 9.0f, .bounceStartFrame = 30, .frames = 30}));
-    ASSERT_TRUE(SendHit(scene, *rock, GL::Level::HitTier::Center));
+        player, NS::CameraSinkDesc{.bottomPixels = 9.0f, .bounceStartFrame = 30, .frames = 30}));
+    ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
     rock->Disappear();
     EXPECT_NE(player->GetCameraManager()->FindModifier<NS::CameraSinkModifier>(), nullptr);
 }

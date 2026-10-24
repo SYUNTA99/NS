@@ -91,14 +91,11 @@ namespace NS
             return nullptr;
         }
         std::unique_ptr<SceneActor> actor = ConstructOfClass(className);
-        if (!actor->Init(&info))
-        {
-            return nullptr;
-        }
+        actor->Init(&info);
         return actor;
     }
 
-    std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className)
+    std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className, std::string_view actorFile)
     {
         const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(className);
         if (entry == nullptr || entry->create == nullptr)
@@ -106,7 +103,7 @@ namespace NS
             return nullptr;
         }
         std::unique_ptr<SceneActor> actor = entry->create();
-        actor->InitWithCodeValues();
+        actor->InitWithCodeValues(actorFile);
         return actor;
     }
 

@@ -111,7 +111,7 @@ void Game::StartLoadedScene()
         NS_LOG_ERROR(Game, "StartLoadedScene: シーンが立っていない");
         return;
     }
-    // 自機の居ないシーンでも CourseDirector を作って凍結を取る。読み直しの後に前のシーンの凍結が残らない
+    // 自機の居ないシーンでも CourseDirector を作り、置いたアクターに始めの姿を控えさせる
     if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(scene))
     {
         director->StartCourse();

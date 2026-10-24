@@ -472,7 +472,7 @@ namespace NS
         {
             NS_ASSERT(App, actor != nullptr, "束の欄を描くアクターが無い");
             // 束は元の .actor だけが持つので、派生を指すアクターでも元の .actor を読んで書く
-            const std::string actorFileName = ActorFileToWrite(*actor, FieldDestination::ActorFile);
+            const std::string actorFileName = ActorFileToWrite(actor, FieldDestination::ActorFile);
             const nlohmann::json* document = ActorFileLibrary::Get().Find(actorFileName);
             if (document == nullptr)
             {
@@ -628,7 +628,7 @@ namespace NS
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputTextWithHint("##actorFileFieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
                 bool committed = false;
-                ForEachReflectedClassObj(*actorFile, [&](const ClassObjInfo& row, Object* part) {
+                ForEachReflectedClassObj(actorFile, [&](const ClassObjInfo& row, Object* part) {
                     if (part->GetReflection() == nullptr)
                     {
                         return;
@@ -636,10 +636,10 @@ namespace NS
                     ImGui::PushID(row.key);
                     if (ImGui::CollapsingHeader(row.key, ImGuiTreeNodeFlags_DefaultOpen))
                     {
-                        const ClassObjEditResult edit = DrawReflectedClassObj(*part, {}, nullptr, m_fieldFilter);
+                        const ClassObjEditResult edit = DrawReflectedClassObj(part, {}, nullptr, m_fieldFilter);
                         if (edit.changedTarget != nullptr && edit.changedField != nullptr)
                         {
-                            editor.FinishFieldWrite(*actorFile, edit.changedField->type);
+                            editor.FinishFieldWrite(actorFile, edit.changedField->type);
                             editor.NoteActorFileFieldEdit(row, edit.changedField->name);
                         }
                         committed |= edit.committed;
@@ -684,44 +684,26 @@ namespace NS
             options.reserve(placed.size());
             for (std::size_t i = 0; i < placed.size(); ++i)
             {
-                const SceneActor& candidate = *placed[i];
+                const SceneActor* candidate = placed[i];
                 char label[96];
-                std::snprintf(label, sizeof(label), "[%zu] %s (id %u)", i, ActorDisplayName(candidate), candidate.Id());
-                options.push_back(ActorRefOption{candidate.Id(), label});
+                std::snprintf(label, sizeof(label), "[%zu] %s (id %u)", i, ActorDisplayName(candidate), candidate->Id());
+                options.push_back(ActorRefOption{candidate->Id(), label});
             }
             return options;
         }
 
-        void InspectorPanel::DrawActorFileChoice(const SceneActor& actor)
+        void InspectorPanel::DrawActorFileChoice(const SceneActor* actor)
         {
+            NS_ASSERT(App, actor != nullptr, "DrawActorFileChoice: 渡したアクターか部品が無い");
 #if NS_EDITOR_ENABLED
-            // 替える先は同じクラスの .actor だけを並べる。アクターを作り直すので、描き終えてから替える
-            ImGui::SetNextItemWidth(-1.0f);
-            if (ImGui::BeginCombo("##actorFile", (actor.ActorFileName() + ".actor").c_str()))
-            {
-                ActorFileLibrary& library = ActorFileLibrary::Get();
-                for (const std::string& name : library.Names())
-                {
-                    if (library.ClassNameOf(name) != actor.ClassName())
-                    {
-                        continue;
-                    }
-                    const std::string label = name + ".actor";
-                    if (ImGui::Selectable(label.c_str(), name == actor.ActorFileName()) && name != actor.ActorFileName())
-                    {
-                        m_actorFileChange = name;
-                        m_actorFileTargetId = actor.Id();
-                    }
-                }
-                ImGui::EndCombo();
-            }
+            ImGui::TextUnformatted((actor->ActorFileName() + ".actor").c_str());
             ImGui::SetNextItemWidth(-ImGui::CalcTextSize("上書きから派生を作る").x - ImGui::GetStyle().ItemSpacing.x * 3.0f);
             ImGui::InputTextWithHint("##derivedName", "派生の名前", m_derivedNameBuffer, sizeof(m_derivedNameBuffer));
             ImGui::SameLine();
             if (ImGui::Button("上書きから派生を作る"))
             {
                 m_deriveRequested = true;
-                m_actorFileTargetId = actor.Id();
+                m_actorFileTargetId = actor->Id();
             }
 #else
             (void)actor;
@@ -732,7 +714,6 @@ namespace NS
         {
 #if NS_EDITOR_ENABLED
             m_nameCommitId = 0;
-            m_actorFileChange.clear();
             m_deriveRequested = false;
             const ImGuiStyle& style = ImGui::GetStyle();
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
@@ -777,7 +758,7 @@ namespace NS
                 if (m_nameEditId == 0)
                 {
                     m_nameId = selectedId;
-                    std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", Editor::ActorDisplayName(*go));
+                    std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", Editor::ActorDisplayName(go));
                 }
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputText("##actorName", m_nameBuffer, sizeof(m_nameBuffer));
@@ -803,7 +784,7 @@ namespace NS
                         break;
                     }
                 }
-                DrawActorFileChoice(*go);
+                DrawActorFileChoice(go);
                 ImGui::Separator();
 
                 // 部品はクラスが決めるので、ここでは値だけを変える。足し引きはできない
@@ -814,7 +795,7 @@ namespace NS
                 Editor::ClassObjEditResult classObjEdit{};
                 // 戻すは描いた後に行うので、対象の部品の行を控える
                 const ClassObjInfo* revertRow = nullptr;
-                ForEachReflectedClassObj(*go, [&](const ClassObjInfo& field, Object* live) {
+                ForEachReflectedClassObj(go, [&](const ClassObjInfo& field, Object* live) {
                     if (live->GetReflection() == nullptr)
                     {
                         return;
@@ -840,7 +821,7 @@ namespace NS
                     if (open)
                     {
                         const Editor::ClassObjEditResult r =
-                            Editor::DrawReflectedClassObj(*live, refOptions, field.key, m_fieldFilter, go, &m_appearance);
+                            Editor::DrawReflectedClassObj(live, refOptions, field.key, m_fieldFilter, go, &m_appearance);
                         classObjEdit.activated |= r.activated;
                         classObjEdit.committed |= r.committed;
                         classObjEdit.changed |= r.changed;
@@ -853,8 +834,8 @@ namespace NS
                         // 書く先は欄の印で決まる。.actor へ書く欄は確定の時に書くので、直した欄を伝えておく
                         if (r.changedTarget != nullptr && r.changedField != nullptr)
                         {
-                            editor.FinishFieldWrite(*go, r.changedField->type);
-                            editor.NoteFieldEdit(*go, field, r.changedField->name);
+                            editor.FinishFieldWrite(go, r.changedField->type);
+                            editor.NoteFieldEdit(go, field, r.changedField->name);
                         }
                     }
                     ImGui::PopID();
@@ -865,11 +846,11 @@ namespace NS
                 {
                     editor.BeginClassObjEdit();
                     // 上書きの一覧から外し、.actor の全部の値の同じ項目を写す
-                    if (RevertSceneOverride(*go, *revertRow, classObjEdit.revertField->name))
+                    if (RevertSceneOverride(go, *revertRow, classObjEdit.revertField->name))
                     {
-                        editor.FinishFieldWrite(*go, classObjEdit.revertField->type);
+                        editor.FinishFieldWrite(go, classObjEdit.revertField->type);
                         // 既定へ戻すのも手編集。プレイ中は凍結からも項目を消す
-                        editor.MirrorPlayEditToBaseline(*go, *revertRow, classObjEdit.revertField->name);
+                        editor.MirrorPlayEditToBaseline(go, *revertRow, classObjEdit.revertField->name);
                     }
                     editor.CommitClassObjEdit();
                 }
@@ -888,10 +869,6 @@ namespace NS
             if (m_nameCommitId != 0)
             {
                 editor.RenameActor(m_nameCommitId, m_nameBuffer);
-            }
-            if (!m_actorFileChange.empty())
-            {
-                (void)editor.ChangeActorFile(m_actorFileTargetId, m_actorFileChange);
             }
             // 作れない訳はエディタが WARN で出す。作れた時だけ名前の欄を空にする
             if (m_deriveRequested && editor.DeriveActorFileFromActor(m_actorFileTargetId, m_derivedNameBuffer))

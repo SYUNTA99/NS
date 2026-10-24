@@ -22,7 +22,7 @@ namespace NS
     class Animation : public Object
     {
     public:
-        explicit Animation(SceneActor* owner);
+        Animation();
         ~Animation();
 
         //! 非所有の D3DSkeletalMesh を差し替える。参照先がない間は ApplyPose を行わない
@@ -53,16 +53,17 @@ namespace NS
         [[nodiscard]] float Duration() const noexcept;
         [[nodiscard]] bool IsPlaying() const noexcept;
 
-        //! 骨の定数バッファを作り、持ち主の Model へ差して今の時刻の姿勢を書く
-        void BindToModel();
-        //! 再生中なら体の時間ぶん時刻を進め、今の時刻の姿勢を書く
-        void Update();
+        //! 骨の定数バッファを作り、renderer へ差して今の時刻の姿勢を書く
+        void BindToModel(Model* renderer);
+        //! 再生中なら dt (体の倍率を掛けた 1 フレームの秒) ぶん時刻を進め、
+        //! 今の時刻の姿勢と描く範囲を renderer へ書く
+        void Update(Model* renderer, float dt);
 
-        //! @brief モデルの欄で読んだ骨付きのモデルの骨格とメッシュを使い、持ち主の Model に同じメッシュを差す
+        //! @brief モデルの欄で読んだ骨付きのモデルの骨格とメッシュを使い、renderer に同じメッシュを差す
         //! @details 呼ぶのは持ち主の OnAssetsLoaded だけ。モデルが空・読めなければ、骨格もメッシュも空にする
         //! 今のクリップは残し、トラックの骨を新しい骨格で引き直す
         //! 骨付きのアクターは Model のメッシュの欄を空のままにする。差すのはこちら
-        void UseModel();
+        void UseModel(Model* renderer);
 
         // 再生速度 / ループを Inspector へ公開する。毎フレーム読まれるのでライブで効き、負速度なら逆再生になる
         NS_REFLECT_BEGIN(Animation, Object)
@@ -72,7 +73,7 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        void ApplyPose(float time);
+        void ApplyPose(Model* renderer, float time);
         // 今のクリップのトラックの骨を、今の骨格で名前から引き直す
         void FindClipBones();
 
@@ -91,9 +92,6 @@ namespace NS
         // ボーンパレットはオブジェクト単位の状態なので mesh でなく本部品が所有する
         std::unique_ptr<Gfx::D3DBuffer> m_bonePaletteCB; // VS b1 用の定数バッファ
         Gfx::BonePaletteCB m_palette;                 // CPU 側パレット、描画側が毎描画 GPU へ上げる
-
-        Model* m_renderer = nullptr; // 同じ object の描画部品。パレットと境界の差し先 (非所有)
-        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 
 } // namespace NS

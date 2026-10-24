@@ -13,14 +13,15 @@ protected:
     void OnInit() override
     {
         PlayerActor::OnInit();
-        CreateClassObj(m_animation, this);
+        CreateClassObj(m_animation);
     }
 };
 
 // 自機の役の欄に字面を書いて読み直す。返すのは書けなかった欄の数
-inline std::size_t UseTestClips(PlayerActor& player, const nlohmann::json& fields)
+inline std::size_t UseTestClips(PlayerActor* player, const nlohmann::json& fields)
 {
-    const std::size_t failed = NS::ApplyJsonFields(player.Clips(), fields);
-    player.ReloadAssets();
+    NS_ASSERT(Game, player != nullptr, "UseTestClips: 渡したアクターか部品が無い");
+    const std::size_t failed = NS::ApplyJsonFields(&player->Clips(), fields);
+    player->ReloadAssets();
     return failed;
 }

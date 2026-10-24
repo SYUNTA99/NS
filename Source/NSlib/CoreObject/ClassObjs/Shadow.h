@@ -10,27 +10,33 @@
 
 namespace NS
 {
+    class IUseCollision;
+} // namespace NS
+
+namespace NS
+{
     //! 真下の地形へ丸影を描く。地面がなければ描かず、高さに応じて薄く小さくする
     //! 位置は描画時に衝突へ問い合わせ、過去の命中位置を保持しない
     class Shadow : public Object, public IRenderable
     {
     public:
         //! 板とマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
-        explicit Shadow(SceneActor* owner);
+        Shadow();
 
-        //! 真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
-        void Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out) override;
+        //! @brief 描くたびに真下の地面を探すシーンを書く。書くのは補助関数 InitDraw だけ
+        //! @details collision は影を外すまで生きていること。書かずに描くのは呼び手のバグで、NS_ASSERT が止める
+        void UseCollision(const IUseCollision* collision) noexcept { m_collision = collision; }
+
+        //! 根の真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
+        void Collect(const Gfx::RenderContext& context,
+                     const RenderSource& source,
+                     std::vector<Gfx::DrawItem>& out) override;
         [[nodiscard]] RenderBucket Bucket() const noexcept override { return RenderBucket::Transparent; }
-        //! 半透明の並べ替えに使う中心として、持ち主の世界座標の位置を返す
-        [[nodiscard]] Vector3 SortCenter() const noexcept override;
+        //! 半透明の並べ替えに使う中心として、根の世界座標の位置を返す
+        [[nodiscard]] Vector3 SortCenter(const RenderSource& source) const noexcept override;
 
-        //! owner 直下の落下可動域を丸ごと覆う AABB。影がどこに落ちても視錐台判定で外さない
-        [[nodiscard]] AABB WorldBounds() const noexcept override;
-
-        //! OwningScene に自分を IRenderable として登録する
-        void Register();
-        //! OwningScene から自分を解除する
-        void Unregister();
+        //! 根の直下の落下可動域を丸ごと覆う AABB。影がどこに落ちても視錐台判定で外さない
+        [[nodiscard]] AABB WorldBounds(const RenderSource& source) const noexcept override;
 
         //! 落下距離 dist に対する高さフェード係数 [0,1]。dist=0 で 1、dist>=maxDist で 0
         [[nodiscard]] static float ComputeFade(float dist, float maxDist) noexcept;
@@ -54,6 +60,6 @@ namespace NS
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離
         float m_surfaceOffset = 0.02f; // 地面へめり込ませない浮かせ量
         float m_baseAlpha = 0.5f;      // 接地時の不透明度
-        SceneActor* m_owner = nullptr; // 持ち主 (非所有)
+        const IUseCollision* m_collision = nullptr; // 真下の地面を探すシーン (非所有)
     };
 } // namespace NS

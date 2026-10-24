@@ -12,7 +12,7 @@ namespace GL
         class BrakePlayerState final : public PlayerState<BrakePlayerState>
         {
         public:
-            void OnStep(::PlayerActor& player, float dt) override;
+            void OnStep(::PlayerActor* player, float dt) override;
         };
     } // namespace Player
 } // namespace GL

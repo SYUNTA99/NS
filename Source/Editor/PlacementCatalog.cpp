@@ -29,16 +29,16 @@ namespace NS
             // メッシュはアクターの Model に書き、部品の保存の鍵と欄の名前はアクターの部品と欄の登録から引く
             [[nodiscard]] nlohmann::json PartsPrototypeOf(SceneActor& actor, std::string_view meshName)
             {
-                nlohmann::json prototype = MakePrototypeJson(actor);
+                nlohmann::json prototype = MakePrototypeJson(&actor);
                 Model* model = actor.ModelClassObj();
                 if (model == nullptr)
                 {
                     return prototype;
                 }
                 model->SetMeshRef(meshName);
-                const nlohmann::json fields = SerializeClassObjFields(*model);
+                const nlohmann::json fields = SerializeClassObjFields(model);
                 const ReflectionInfo* info = model->GetReflection();
-                ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, Object* classObj) {
+                ForEachReflectedClassObj(&actor, [&](const ClassObjInfo& row, Object* classObj) {
                     if (classObj != model)
                     {
                         return;
@@ -135,7 +135,7 @@ namespace NS
             {
                 return -1.0f;
             }
-            ApplyActorClassObjs(*actor, prototype);
+            ApplyActorClassObjs(actor.get(), prototype);
             const Model* model = actor->ModelClassObj();
             if (model == nullptr)
             {

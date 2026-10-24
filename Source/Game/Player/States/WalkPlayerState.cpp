@@ -12,40 +12,41 @@ namespace GL
 {
     namespace Player
     {
-        void WalkPlayerState::OnStep(::PlayerActor& player, float dt)
+        void WalkPlayerState::OnStep(::PlayerActor* player, float dt)
         {
-            player.TickTimers(dt);
-            const NS::Body& body = player.Body();
-            const PlayerParams& params = player.Params();
-            const bool hasInput = PlayerJudgeMoveInput::Judge(player.DesiredSpeedScale(), params.StickDeadzone());
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            player->TickTimers(dt);
+            const NS::Body& body = player->Body();
+            const PlayerParams& params = player->Params();
+            const bool hasInput = PlayerJudgeMoveInput::Judge(player->DesiredSpeedScale(), params.StickDeadzone());
             const bool brake = PlayerJudgeBrake::Judge(
-                hasInput, player.DesiredDirection(), body.LateralVelocity(), params.BrakeThreshold());
+                hasInput, player->DesiredDirection(), body.LateralVelocity(), params.BrakeThreshold());
             if (!brake && hasInput)
             {
-                player.AccelerateToInputDirection(dt);
+                player->AccelerateToInputDirection(dt);
             }
             else if (!brake)
             {
-                player.ApplyFriction(dt);
+                player->ApplyFriction(dt);
             }
-            player.Jump(dt);
-            player.CutJumpRelease();
-            player.Gravity(dt);
+            player->Jump(dt);
+            player->CutJumpRelease();
+            player->Gravity(dt);
 
             if (PlayerJudgeFall::Judge(body.IsGrounded()))
             {
-                player.States().Change<FallPlayerState>();
+                player->States().Change<FallPlayerState>();
             }
             else if (brake)
             {
-                player.States().Change<BrakePlayerState>();
+                player->States().Change<BrakePlayerState>();
             }
             else if (PlayerJudgeIdle::Judge(body.IsGrounded(),
                                             PlayerJudgeWalk::Judge(body.IsGrounded(),
                                                                    hasInput,
                                                                    PlayerJudgeStopped::Judge(body.LateralVelocity()))))
             {
-                player.States().Change<IdlePlayerState>();
+                player->States().Change<IdlePlayerState>();
             }
         }
     } // namespace Player

@@ -31,7 +31,7 @@ inline PlayerActor* PlaceTackleScene(NS::Scene& scene, float rockX, float rockZ 
     GL::Level::PropActor* placed = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
     if (mass > 0.0f && placed != nullptr)
     {
-        (void)NS::ApplyJsonFields(placed->Params(), nlohmann::json{{"質量", mass}});
+        (void)NS::ApplyJsonFields(&placed->Params(), nlohmann::json{{"質量", mass}});
     }
     NS::OBB floor{};
     floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};

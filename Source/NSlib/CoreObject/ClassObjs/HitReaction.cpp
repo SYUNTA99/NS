@@ -153,18 +153,7 @@ namespace NS
                     Scene, "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった", frames, k_MaxShakeFrames);
                 return false;
             }
-            return owner != nullptr && owner->GetCameraManager() != nullptr;
-        }
-
-        // 持ち主が nullptr の間は引かない。FindSceneSystem に nullptr を渡すと NS_ASSERT
-        // で止まり、出荷版では検査されない
-        template <class T> T* FindDirector(SceneActor* owner)
-        {
-            if (owner == nullptr)
-            {
-                return nullptr;
-            }
-            return FindSceneSystem<T>(owner);
+            return owner->GetCameraManager() != nullptr;
         }
 
         // 丸めた整数を 32 ビットの符号なしへ写す。負の値も同じ値なら同じビットになる
@@ -221,10 +210,10 @@ namespace NS
                                                        const HitSensor& self,
                                                        const HitSensor& other)
         {
-            const SensorVolume selfVolume = self.WorldVolume();
+            const SensorVolume selfVolume = self.WorldVolume(self.Host()->Root().WorldMatrix());
             HitStartContext context;
             context.position = position;
-            context.toOther = other.WorldVolume().Center() - selfVolume.Center();
+            context.toOther = other.WorldVolume(other.Host()->Root().WorldMatrix()).Center() - selfVolume.Center();
             context.hasToward = TryNormalizeHorizontal(context.toOther, context.towardOther);
             const Vector3 forward = CalcCameraForwardHorizontal(owner);
             context.cameraRight = Vector3{forward.z, 0.0f, -forward.x};
@@ -240,13 +229,14 @@ namespace NS
     struct HitReaction::ItemStarter
     {
         HitReaction& reaction;
+        const HitReactionSelf& owner;
         const HitStartContext& context;
         int length;
         int shapeFrame = 0; // 形を描き始めるフレーム
 
         void operator()(const HitShapeItem& shape) const
         {
-            Model* model = reaction.m_owner->ModelClassObj();
+            Model* model = owner.model;
             if (model == nullptr || length <= 0)
             {
                 return;
@@ -267,13 +257,13 @@ namespace NS
 
         void operator()(const HitBodyShakeItem& shake) const
         {
-            SceneActor* owner = reaction.m_owner;
-            Model* model = owner->ModelClassObj();
+            const SceneActor* actor = owner.actor;
+            Model* model = owner.model;
             if (model == nullptr || length <= 0 || !std::isfinite(shake.amplitudePixels))
             {
                 return;
             }
-            const std::optional<CameraPose> pose = GetCameraViewPose(owner);
+            const std::optional<CameraPose> pose = GetCameraViewPose(actor);
             if (!pose.has_value())
             {
                 return;
@@ -287,7 +277,7 @@ namespace NS
             model->StartDrawShake(DrawShakeDesc{
                 .shape = DrawShakeShape::Side,
                 .axis = context.cameraRight,
-                .amplitude = ScreenPixelsToMeters(shake.amplitudePixels, *pose, owner->Root().Position()),
+                .amplitude = ScreenPixelsToMeters(shake.amplitudePixels, *pose, actor->Root().Position()),
                 .length = length,
                 .seed = context.seed,
                 .firstSign = firstSign,
@@ -296,14 +286,13 @@ namespace NS
 
         void operator()(const HitBodyTremorItem& tremor) const
         {
-            SceneActor* owner = reaction.m_owner;
-            Model* model = owner->ModelClassObj();
+            Model* model = owner.model;
             if (model == nullptr || length <= 0)
             {
                 return;
             }
             // 裏まで届くのに長さを使い切ると震えが残らないので、届くのは長さの半分まで
-            model->StartDrawTremor(DrawTremorDesc{.contactOffset = context.position - owner->Root().Position(),
+            model->StartDrawTremor(DrawTremorDesc{.contactOffset = context.position - owner.actor->Root().Position(),
                                                   .amplitudePixels = tremor.amplitudePixels,
                                                   .amplitudeRatio = tremor.radiusRatio,
                                                   .reachFrames = std::min(tremor.reachFrames, length / 2),
@@ -315,7 +304,8 @@ namespace NS
         void operator()(const HitCameraSinkItem& sink) const
         {
             // 跳ね返りは同じ持ち主の「沈みを戻す」で始まる。来なければ底のまま長さで終わる
-            (void)reaction.StartSink(CameraSinkDesc{.bottomPixels = sink.bottomPixels,
+            (void)reaction.StartSink(owner.actor,
+                                     CameraSinkDesc{.bottomPixels = sink.bottomPixels,
                                                     .sinkFrames = sink.sinkFrames,
                                                     .tremblePixels = sink.tremblePixels,
                                                     .trembleFrames = sink.trembleFrames,
@@ -328,9 +318,9 @@ namespace NS
 
         void operator()(const HitCameraSinkReleaseItem&) const
         {
-            if (CameraManager* cameras = reaction.m_owner->GetCameraManager())
+            if (CameraManager* cameras = owner.actor->GetCameraManager())
             {
-                cameras->ReleaseSink(reaction.m_owner);
+                cameras->ReleaseSink(owner.actor);
             }
         }
 
@@ -347,7 +337,7 @@ namespace NS
             desc.returnFrames = std::clamp(zoomRoll.returnFrames, 0, frames);
             desc.holdFrames = frames - desc.returnFrames;
             desc.delayFrames = zoomRoll.delayFrames;
-            (void)reaction.StartZoomRoll(desc);
+            (void)reaction.StartZoomRoll(owner.actor, desc);
         }
 
         void operator()(const HitCameraTraumaItem& trauma) const
@@ -365,7 +355,7 @@ namespace NS
             desc.kick.peakFrames = trauma.kickPeakFrames;
             // 一撃は相手から自分へ向かう画面の向きへ振る。相手が真正面で向きが決まらなければ振らない
             desc.kick.direction = Vector2{-context.side, -context.up};
-            (void)reaction.AddTrauma(desc);
+            (void)reaction.AddTrauma(owner.actor, desc);
         }
 
         void operator()(const HitCameraLurchItem& lurch) const
@@ -374,8 +364,11 @@ namespace NS
             {
                 return;
             }
-            (void)reaction.StartNudge(CameraNudgeDesc{
-                .direction = context.towardOther, .distance = lurch.distance, .frames = length, .onScreen = false});
+            (void)reaction.StartNudge(owner.actor,
+                                      CameraNudgeDesc{.direction = context.towardOther,
+                                                      .distance = lurch.distance,
+                                                      .frames = length,
+                                                      .onScreen = false});
         }
 
         void operator()(const HitCameraReboundSwayItem& sway) const
@@ -384,15 +377,19 @@ namespace NS
             {
                 return;
             }
-            (void)reaction.StartNudge(CameraNudgeDesc{
-                .direction = -context.towardOther, .distance = sway.distance, .frames = length, .onScreen = true});
+            (void)reaction.StartNudge(owner.actor,
+                                      CameraNudgeDesc{.direction = -context.towardOther,
+                                                      .distance = sway.distance,
+                                                      .frames = length,
+                                                      .onScreen = true});
         }
 
-        void operator()(const HitFlashItem& flash) const { reaction.StartFlash(length, flash.alpha); }
+        void operator()(const HitFlashItem& flash) const { reaction.StartFlash(owner.actor, length, flash.alpha); }
 
         void operator()(const HitDistortionRingItem& ring) const
         {
-            reaction.StartDistortionRing(HitDistortionRingDesc{.center = context.position,
+            reaction.StartDistortionRing(owner.actor,
+                                         HitDistortionRingDesc{.center = context.position,
                                                                .radius = ring.radius,
                                                                .push = ring.push,
                                                                .halfWidth = ring.halfWidth,
@@ -401,9 +398,9 @@ namespace NS
 
         void operator()(const HitGroundWaveItem& wave) const
         {
-            if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(reaction.m_owner))
+            if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner.actor))
             {
-                screen->StartGroundWave(*reaction.m_owner,
+                screen->StartGroundWave(owner.actor,
                                         HitGroundWaveDesc{.center = context.position,
                                                           .radius = wave.radius,
                                                           .strength = wave.strength,
@@ -415,7 +412,8 @@ namespace NS
         {
             if (!pad.byDirection)
             {
-                reaction.StartPadVibration(HitPadVibration{.left = pad.left, .right = pad.right, .frames = length});
+                reaction.StartPadVibration(owner.actor,
+                                           HitPadVibration{.left = pad.left, .right = pad.right, .frames = length});
                 return;
             }
             struct Directed
@@ -442,17 +440,17 @@ namespace NS
                                                 .frames = length};
                 if (started)
                 {
-                    reaction.BlendPadVibration(vibration);
+                    reaction.BlendPadVibration(owner.actor, vibration);
                     continue;
                 }
-                reaction.StartPadVibration(vibration);
+                reaction.StartPadVibration(owner.actor, vibration);
                 started = true;
             }
         }
 
         void operator()(const HitWorldSpeedItem& speed) const
         {
-            if (Scene* scene = reaction.m_owner->OwningScene())
+            if (Scene* scene = owner.actor->OwningScene())
             {
                 scene->StartWorldSpeedRamp(speed.startSpeed, speed.returnSeconds, speed.shape);
             }
@@ -460,16 +458,16 @@ namespace NS
 
         void operator()(const HitOthersStopItem&) const
         {
-            if (Scene* scene = reaction.m_owner->OwningScene())
+            if (Scene* scene = owner.actor->OwningScene())
             {
                 scene->HoldOthers(length);
             }
         }
 
-        void operator()(const HitOwnerItem& owner) const
+        void operator()(const HitOwnerItem& ownerItem) const
         {
             reaction.m_ownerRuns.push_back(
-                HitOwnerRun{.item = owner, .length = length, .frame = 0, .position = context.position});
+                HitOwnerRun{.item = ownerItem, .length = length, .frame = 0, .position = context.position});
         }
     };
 
@@ -498,17 +496,14 @@ namespace NS
             .right = weightAt(0.0f), .left = weightAt(180.0f), .up = weightAt(90.0f), .down = weightAt(270.0f)};
     }
 
-    void HitReaction::ReloadSets()
+    void HitReaction::ReloadSets(const SceneActor* owner)
     {
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::ReloadSets: 持ち主が null");
         m_sets.clear();
-        if (m_owner == nullptr)
-        {
-            return;
-        }
-        const nlohmann::json* actorFile = ActorFileLibrary::Get().Values(m_owner->ActorFileName());
+        const nlohmann::json* actorFile = ActorFileLibrary::Get().Values(owner->ActorFileName());
         if (actorFile != nullptr)
         {
-            m_sets = ReadHitReactionSets(m_owner->ActorFileName(), *actorFile);
+            m_sets = ReadHitReactionSets(owner->ActorFileName(), *actorFile);
         }
     }
 
@@ -524,44 +519,47 @@ namespace NS
         return nullptr;
     }
 
-    bool HitReaction::Start(std::string_view name, const Vector3& position, const HitSensor* self, const HitSensor* other)
+    std::optional<int> HitReaction::Start(const HitReactionSelf& owner,
+                                          std::string_view name,
+                                          const Vector3& position,
+                                          const HitSensor* self,
+                                          const HitSensor* other)
     {
-        NS_ASSERT(Scene, m_owner != nullptr, "HitReaction::Start: 持ち主の無い部品で束を始めている");
+        NS_ASSERT(Scene, owner.actor != nullptr, "HitReaction::Start: 持ち主が null");
         NS_ASSERT(Scene, self != nullptr && other != nullptr, "HitReaction::Start: センサーが null");
         const HitReactionSet* set = FindSet(name);
         if (set == nullptr)
         {
-            NS_LOG_WARN(Scene, ".actor {} に束 {} が無いので、始めなかった", m_owner->ActorFileName(), name);
-            return false;
+            NS_LOG_WARN(Scene, ".actor {} に束 {} が無いので、始めなかった", owner.actor->ActorFileName(), name);
+            return std::nullopt;
         }
         ++m_startCount;
-        const HitStartContext context = MakeStartContext(m_owner, m_startCount, position, *self, *other);
-
-        // 止めは延ばすだけ。走っている長い止めを短い束で切らない
-        if (set->stopFrames > 0)
-        {
-            m_owner->RequestHitStop(set->stopFrames);
-        }
+        const HitStartContext context = MakeStartContext(owner.actor, m_startCount, position, *self, *other);
         for (const HitReactionEntry& entry : set->entries)
         {
-            std::visit(ItemStarter{.reaction = *this, .context = context, .length = entry.length}, entry.item);
+            std::visit(ItemStarter{.reaction = *this, .owner = owner, .context = context, .length = entry.length},
+                       entry.item);
         }
-        return true;
+        return set->stopFrames;
     }
 
-    void HitReaction::StartItem(const HitReactionItem& item,
+    void HitReaction::StartItem(const HitReactionSelf& owner,
+                                const HitReactionItem& item,
                                 int length,
                                 const Vector3& position,
                                 const HitSensor* self,
                                 const HitSensor* other,
                                 int shapeFrame)
     {
-        NS_ASSERT(Scene, m_owner != nullptr, "HitReaction::StartItem: 持ち主の無い部品で項目を始めている");
+        NS_ASSERT(Scene, owner.actor != nullptr, "HitReaction::StartItem: 持ち主が null");
         NS_ASSERT(Scene, shapeFrame >= 0, "HitReaction::StartItem: 形を描き始めるフレーム {} が負", shapeFrame);
         NS_ASSERT(Scene, self != nullptr && other != nullptr, "HitReaction::StartItem: センサーが null");
         ++m_startCount;
-        const HitStartContext context = MakeStartContext(m_owner, m_startCount, position, *self, *other);
-        std::visit(ItemStarter{.reaction = *this, .context = context, .length = length, .shapeFrame = shapeFrame}, item);
+        const HitStartContext context = MakeStartContext(owner.actor, m_startCount, position, *self, *other);
+        std::visit(
+            ItemStarter{
+                .reaction = *this, .owner = owner, .context = context, .length = length, .shapeFrame = shapeFrame},
+            item);
     }
 
     void HitReaction::AdvanceOwnerRuns() noexcept
@@ -573,35 +571,34 @@ namespace NS
         std::erase_if(m_ownerRuns, [](const HitOwnerRun& run) { return run.frame >= run.length; });
     }
 
-    void HitReaction::CreateDirectors()
+    void HitReaction::CreateDirectors(const SceneActor* owner)
     {
-        if (m_owner == nullptr)
-        {
-            return;
-        }
-        (void)GetOrCreateSceneSystem<HitScreenDirector>(m_owner);
-        (void)GetOrCreateSceneSystem<PadRumbleDirector>(m_owner);
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::CreateDirectors: 持ち主が null");
+        (void)GetOrCreateSceneSystem<HitScreenDirector>(owner);
+        (void)GetOrCreateSceneSystem<PadRumbleDirector>(owner);
     }
 
-    void HitReaction::StartFlash(int frames, float alpha) noexcept
+    void HitReaction::StartFlash(const SceneActor* owner, int frames, float alpha) noexcept
     {
-        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartFlash: 持ち主が null");
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
         {
-            screen->StartFlash(*m_owner, frames, alpha);
+            screen->StartFlash(owner, frames, alpha);
         }
     }
 
-    bool HitReaction::StartShake(const CameraShakeDesc& desc)
+    bool HitReaction::StartShake(const SceneActor* owner, const CameraShakeDesc& desc)
     {
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartShake: 持ち主が null");
         if (desc.frames <= 0)
         {
             return true;
         }
-        if (!CanStartCameraMotion(m_owner, desc.frames))
+        if (!CanStartCameraMotion(owner, desc.frames))
         {
             return false;
         }
-        if (!StartCameraShake(m_owner, desc))
+        if (!StartCameraShake(owner, desc))
         {
             NS_LOG_WARN(Scene,
                         "揺れの設定が壊れていて、揺らさなかった: 横 {} 縦 {} フレーム数 {} 最長 {}",
@@ -614,17 +611,18 @@ namespace NS
         return true;
     }
 
-    bool HitReaction::StartSink(const CameraSinkDesc& desc)
+    bool HitReaction::StartSink(const SceneActor* owner, const CameraSinkDesc& desc)
     {
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartSink: 持ち主が null");
         if (desc.frames <= 0)
         {
             return true;
         }
-        if (!CanStartCameraMotion(m_owner, desc.frames))
+        if (!CanStartCameraMotion(owner, desc.frames))
         {
             return false;
         }
-        if (!AddCameraModifier(m_owner, CameraSinkModifier::Create(desc)))
+        if (!AddCameraModifier(owner, CameraSinkModifier::Create(desc)))
         {
             NS_LOG_WARN(Scene,
                         "沈む揺れの設定が壊れていて、揺らさなかった: 深さ {} 震え {} 行き過ぎ {} フレーム数 {}",
@@ -637,17 +635,18 @@ namespace NS
         return true;
     }
 
-    bool HitReaction::StartNudge(const CameraNudgeDesc& desc)
+    bool HitReaction::StartNudge(const SceneActor* owner, const CameraNudgeDesc& desc)
     {
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartNudge: 持ち主が null");
         if (desc.frames <= 0)
         {
             return true;
         }
-        if (!CanStartCameraMotion(m_owner, desc.frames))
+        if (!CanStartCameraMotion(owner, desc.frames))
         {
             return false;
         }
-        if (!AddCameraModifier(m_owner, CameraNudgeModifier::Create(desc)))
+        if (!AddCameraModifier(owner, CameraNudgeModifier::Create(desc)))
         {
             NS_LOG_WARN(Scene,
                         "ずれの設定が壊れていて、ずらさなかった: 向き ({}, {}, {}) フレーム数 {}",
@@ -660,13 +659,14 @@ namespace NS
         return true;
     }
 
-    bool HitReaction::StartZoomRoll(const CameraZoomRollDesc& desc)
+    bool HitReaction::StartZoomRoll(const SceneActor* owner, const CameraZoomRollDesc& desc)
     {
-        if (m_owner == nullptr || m_owner->GetCameraManager() == nullptr)
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartZoomRoll: 持ち主が null");
+        if (owner->GetCameraManager() == nullptr)
         {
             return false;
         }
-        if (!StartCameraZoomRoll(m_owner, desc))
+        if (!StartCameraZoomRoll(owner, desc))
         {
             NS_LOG_WARN(Scene,
                         "寄りと傾きの設定が壊れていて、寄せなかった: 倍率 {} 傾き {} 保つ {} 戻す {}",
@@ -679,86 +679,90 @@ namespace NS
         return true;
     }
 
-    void HitReaction::StartShakeLines(const HitShakeLinesDesc& desc) noexcept
+    void HitReaction::StartShakeLines(const SceneActor* owner, const HitShakeLinesDesc& desc) noexcept
     {
-        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartShakeLines: 持ち主が null");
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
         {
-            screen->StartShakeLines(*m_owner, desc);
+            screen->StartShakeLines(owner, desc);
         }
     }
 
-    void HitReaction::StartDistortionRing(const HitDistortionRingDesc& desc) noexcept
+    void HitReaction::StartDistortionRing(const SceneActor* owner, const HitDistortionRingDesc& desc) noexcept
     {
-        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartDistortionRing: 持ち主が null");
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
         {
-            screen->StartDistortionRing(*m_owner, desc);
+            screen->StartDistortionRing(owner, desc);
         }
     }
 
-    void HitReaction::StopDistortionRing() noexcept
+    void HitReaction::StopDistortionRing(const SceneActor* owner) noexcept
     {
-        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StopDistortionRing: 持ち主が null");
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
         {
-            screen->StopDistortionRing(*m_owner);
+            screen->StopDistortionRing(owner);
         }
     }
 
-    void HitReaction::StopGroundWave() noexcept
+    void HitReaction::StopGroundWave(const SceneActor* owner) noexcept
     {
-        if (HitScreenDirector* screen = FindDirector<HitScreenDirector>(m_owner))
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StopGroundWave: 持ち主が null");
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
         {
-            screen->StopGroundWave(*m_owner);
+            screen->StopGroundWave(owner);
         }
     }
 
-    void HitReaction::StartPadVibration(const HitPadVibration& pad)
+    void HitReaction::StartPadVibration(const SceneActor* owner, const HitPadVibration& pad)
     {
-        if (PadRumbleDirector* rumble = FindDirector<PadRumbleDirector>(m_owner))
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartPadVibration: 持ち主が null");
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(owner))
         {
-            rumble->Start(*m_owner, pad);
+            rumble->Start(owner, pad);
         }
     }
 
-    void HitReaction::BlendPadVibration(const HitPadVibration& pad)
+    void HitReaction::BlendPadVibration(const SceneActor* owner, const HitPadVibration& pad)
     {
-        if (PadRumbleDirector* rumble = FindDirector<PadRumbleDirector>(m_owner))
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::BlendPadVibration: 持ち主が null");
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(owner))
         {
-            rumble->Blend(*m_owner, pad);
+            rumble->Blend(owner, pad);
         }
     }
 
-    void HitReaction::Stop()
+    void HitReaction::Stop(const SceneActor* owner)
     {
-        if (m_owner == nullptr)
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::Stop: 持ち主が null");
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
         {
-            return;
+            screen->Stop(owner);
         }
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(m_owner))
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(owner))
         {
-            screen->Stop(*m_owner);
+            rumble->Stop(owner);
         }
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(m_owner))
-        {
-            rumble->Stop(*m_owner);
-        }
-        if (CameraManager* cameras = m_owner->GetCameraManager())
+        if (CameraManager* cameras = owner->GetCameraManager())
         {
             for (const void* kind : CameraHitEffectKinds())
             {
-                cameras->RemoveModifiersOf(m_owner, kind);
+                cameras->RemoveModifiersOf(owner, kind);
             }
         }
         m_ownerRuns.clear();
     }
 
-    bool HitReaction::AddTrauma(const CameraTraumaDesc& desc)
+    bool HitReaction::AddTrauma(const SceneActor* owner, const CameraTraumaDesc& desc)
     {
+        NS_ASSERT(Scene, owner != nullptr, "HitReaction::AddTrauma: 持ち主が null");
         // カメラの無い場面 (試しの台) では揺らす先が無い。設定の誤りではないので黙って返す
-        if (m_owner == nullptr || m_owner->GetCameraManager() == nullptr)
+        if (owner->GetCameraManager() == nullptr)
         {
             return false;
         }
-        if (!AddCameraTrauma(m_owner, desc))
+        if (!AddCameraTrauma(owner, desc))
         {
             NS_LOG_WARN(Scene,
                         "トラウマの量か形が壊れていて、揺らさなかった: 量 {} 減る速さ {}",
@@ -769,17 +773,13 @@ namespace NS
         return true;
     }
 
-    void HitReaction::StopAll()
+    void HitReaction::StopAll(const SceneActor* owner)
     {
-        Stop();
+        Stop(owner);
         // プレイを終えた後の視点にトラウマを残さない。ほかの物が頼んだ効果は、その物が外す
-        if (m_owner == nullptr)
+        if (CameraManager* cameras = owner->GetCameraManager())
         {
-            return;
-        }
-        if (CameraManager* cameras = m_owner->GetCameraManager())
-        {
-            cameras->RemoveModifiersOf(m_owner);
+            cameras->RemoveModifiersOf(owner);
         }
     }
 

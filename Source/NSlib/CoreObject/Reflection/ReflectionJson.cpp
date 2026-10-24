@@ -1,6 +1,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Core/Types.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ActorJson.h"
@@ -320,15 +321,16 @@ namespace NS
         }
     } // namespace
 
-    nlohmann::json SerializeClassObjFields(const Object& comp)
+    nlohmann::json SerializeClassObjFields(const Object* comp)
     {
-        const ReflectionInfo* info = comp.GetReflection();
+        NS_ASSERT(Scene, comp != nullptr, "SerializeClassObjFields: 部品が null");
+        const ReflectionInfo* info = comp->GetReflection();
         if (info == nullptr)
         {
             NS_LOG_WARN(Game, "リフレクションの無い部品を直列化しようとした");
             return nlohmann::json::object();
         }
-        return SerializeReflectedFields(&comp, *info);
+        return SerializeReflectedFields(comp, *info);
     }
 
     nlohmann::json SerializeReflectedFields(const void* owner, const ReflectionInfo& info)
@@ -342,14 +344,15 @@ namespace NS
         return fields;
     }
 
-    std::size_t ApplyJsonFields(Object& comp, const nlohmann::json& fields)
+    std::size_t ApplyJsonFields(Object* comp, const nlohmann::json& fields)
     {
-        const ReflectionInfo* info = comp.GetReflection();
+        NS_ASSERT(Scene, comp != nullptr, "ApplyJsonFields: 部品が null");
+        const ReflectionInfo* info = comp->GetReflection();
         if (info == nullptr)
         {
             return 0;
         }
-        return ApplyReflectedFields(&comp, *info, fields);
+        return ApplyReflectedFields(comp, *info, fields);
     }
 
     std::size_t ApplyReflectedFields(void* owner, const ReflectionInfo& info, const nlohmann::json& fields)

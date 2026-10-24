@@ -12,9 +12,9 @@ namespace NS
     {
     public:
         //! 既定 halfExtents {0.5,0.5,0.5} で構築する
-        explicit BoxCollision(SceneActor* owner) noexcept : Collision(owner) {}
+        BoxCollision() noexcept = default;
         //! halfExtents を指定して構築する。負の成分は 0 にクランプ
-        BoxCollision(SceneActor* owner, const Vector3& halfExtents) noexcept;
+        explicit BoxCollision(const Vector3& halfExtents) noexcept;
 
         //! 当たり箱の各軸の半径を設定する。負の成分は 0 にクランプ
         void SetHalfExtents(const Vector3& halfExtents) noexcept;
@@ -34,13 +34,12 @@ namespace NS
         void SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept;
         [[nodiscard]] Vector3 RotationEulerDegrees() const noexcept;
 
-        //! Owner の世界変換に当たり箱の局所のずれと回転を重ねた AABB を返す。回転時は内包する軸並行にする
-        //! Owner が未登録の場合は局所のずれと回転だけを反映した AABB を返す。例外は投げない
-        [[nodiscard]] AABB WorldAABB() const noexcept;
+        //! 持ち主の root の世界行列 world に当たり箱の局所のずれと回転を重ねた AABB を返す。回転時は内包する軸並行にする
+        [[nodiscard]] AABB WorldAABB(const Matrix& world) const noexcept;
 
-        //! Owner の世界変換に当たり箱の局所のずれと回転を重ねた有向境界ボックスを返す
-        //! 回転・非一様 scale を厳密に保持する。Owner 未登録時は局所のずれと回転だけを反映する
-        [[nodiscard]] OBB WorldOBB() const noexcept;
+        //! 持ち主の root の世界行列 world に当たり箱の局所のずれと回転を重ねた有向境界ボックスを返す
+        //! 回転・非一様 scale を厳密に保持する
+        [[nodiscard]] OBB WorldOBB(const Matrix& world) const noexcept;
 
         // 当たり箱の形状の半径と Transform からの独立オフセット / 回転を Inspector へ公開する
         // 半径は負を 0 にクランプし、回転は Euler 度で受けるため setter 経由で書く
@@ -52,7 +51,9 @@ namespace NS
 
     private:
         // 固形の body として OBB のまま入れる
-        [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics,
+                                           JPH::BodyID current,
+                                           const Matrix& world) override;
 
         Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};               // 当たり箱の各軸半径
         Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};              // 持ち主の局所座標系での中心オフセット

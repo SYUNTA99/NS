@@ -20,7 +20,7 @@ namespace NS
         //! センサーを外す
         void Unregister(HitSensor* sensor) noexcept;
 
-        //! 重なった組を集め、両方の持ち主の AttackSensor を呼ぶ。呼ぶ間に外れたセンサーは飛ばす
+        //! 重なった組を集め、両方の持ち主の AttackSensor を呼ぶ。呼ぶ間に外れたか持ち主が消えたセンサーは飛ばす
         void OnTick() override;
 
         //! 世界座標の volume に重なる有効なセンサーを登録順に返す。参照は非所有
@@ -32,6 +32,9 @@ namespace NS
 
     private:
         [[nodiscard]] bool IsRegistered(const HitSensor* sensor) const noexcept;
+        // 入っていて、持ち主が出ているか。持ち主が消えてもセンサーは入ったままなので、呼ぶ途中で消えた物をこれで飛ばす。
+        // 呼ぶ途中の Invalidate では組を飛ばさないので IsValid は読まない
+        [[nodiscard]] bool IsPresent(const HitSensor* sensor) const noexcept;
 
         std::vector<HitSensor*> m_sensors; // 登録順、非所有
     };

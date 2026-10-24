@@ -20,8 +20,9 @@
 
 namespace
 {
-    int CountClassObjKey(const NS::SceneActor& actor, std::string_view key)
+    int CountClassObjKey(const NS::SceneActor* actor, std::string_view key)
     {
+        NS_ASSERT(Game, actor != nullptr, "CountClassObjKey: 渡したアクターか部品が無い");
         int count = 0;
         NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, const NS::Object*) {
             if (std::string_view(field.key) == key)
@@ -33,8 +34,9 @@ namespace
     }
 
     // 並びに鍵 key で出た部品。出なければ nullptr
-    const NS::Object* ListedClassObj(const NS::SceneActor& actor, std::string_view key)
+    const NS::Object* ListedClassObj(const NS::SceneActor* actor, std::string_view key)
     {
+        NS_ASSERT(Game, actor != nullptr, "ListedClassObj: 渡したアクターか部品が無い");
         const NS::Object* listed = nullptr;
         NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, const NS::Object* part) {
             if (std::string_view(field.key) == key)
@@ -57,7 +59,11 @@ namespace
     class OwnedState final : public NS::StateOf<OwnedState, NS::SceneActor>
     {
     public:
-        void OnStep(NS::SceneActor&, float) override {}
+        void OnStep(NS::SceneActor* owner, float) override
+        {
+            NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+            (void)owner;
+        }
     };
 
     // BuildStateMachine は派生が自分の組み立ての中で呼ぶ口なので、試しの派生が開ける
@@ -67,7 +73,7 @@ namespace
         NS::StateMachineOf<NS::SceneActor>* BuildOwned()
         {
             NS::StateMachineOf<NS::SceneActor>* machine = nullptr;
-            (void)BuildStateMachine<NS::SceneActor, OwnedState>(*this, machine);
+            (void)BuildStateMachine<NS::SceneActor, OwnedState>(this, machine);
             return machine;
         }
     };
@@ -78,28 +84,37 @@ namespace
     class ProbeState final : public NS::StateOf<ProbeState, ProbeActor>
     {
     public:
-        void OnEnter(ProbeActor& owner) override;
-        void OnStep(ProbeActor&, float) override {}
+        void OnEnter(ProbeActor* owner) override;
+        void OnStep(ProbeActor* owner, float) override
+        {
+            NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+            (void)owner;
+        }
     };
 
     class SecondProbeState final : public NS::StateOf<SecondProbeState, ProbeActor>
     {
     public:
-        void OnStep(ProbeActor&, float) override {}
+        void OnStep(ProbeActor* owner, float) override
+        {
+            NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+            (void)owner;
+        }
     };
 
     class ProbeActor final : public NS::SceneActor
     {
     public:
-        bool BuildProbe() { return BuildStateMachine<ProbeActor, ProbeState>(*this, machine); }
-        bool BuildSecond() { return BuildStateMachine<ProbeActor, SecondProbeState>(*this, machine); }
+        bool BuildProbe() { return BuildStateMachine<ProbeActor, ProbeState>(this, machine); }
+        bool BuildSecond() { return BuildStateMachine<ProbeActor, SecondProbeState>(this, machine); }
         NS::StateMachineOf<ProbeActor>* machine = nullptr;
         NS::StateMachineOf<ProbeActor>* machineSeenInEnter = nullptr;
     };
 
-    void ProbeState::OnEnter(ProbeActor& owner)
+    void ProbeState::OnEnter(ProbeActor* owner)
     {
-        owner.machineSeenInEnter = owner.machine;
+        NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+        owner->machineSeenInEnter = owner->machine;
     }
 
     // 段のメンバーの中から、歩数の問いを修飾なしで呼ぶ
@@ -109,7 +124,7 @@ namespace
         void BuildOwned()
         {
             NS::StateMachineOf<NS::SceneActor>* machine = nullptr;
-            (void)BuildStateMachine<NS::SceneActor, OwnedState>(*this, machine);
+            (void)BuildStateMachine<NS::SceneActor, OwnedState>(this, machine);
         }
         NS::uint32 stepsSeenInVisual = 0;
 
@@ -171,15 +186,15 @@ TEST(ActorStateMachine, TypedPointerIsReadableFromFirstStateOnEnter)
 TEST(ActorStateMachine, MachineIsListedAsTheStateMachineClassObj)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
-    EXPECT_EQ(CountClassObjKey(*player, "StateMachine"), 1);
-    const NS::StateMachine* playerPart = NS::Cast<NS::StateMachine>(ListedClassObj(*player, "StateMachine"));
+    EXPECT_EQ(CountClassObjKey(player.get(), "StateMachine"), 1);
+    const NS::StateMachine* playerPart = NS::Cast<NS::StateMachine>(ListedClassObj(player.get(), "StateMachine"));
     ASSERT_NE(playerPart, nullptr);
     ASSERT_NE(player->GetStateMachine(), nullptr);
     EXPECT_EQ(playerPart->Machine(), player->GetStateMachine());
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
-    EXPECT_EQ(CountClassObjKey(*prop, "StateMachine"), 1);
-    const NS::StateMachine* propPart = NS::Cast<NS::StateMachine>(ListedClassObj(*prop, "StateMachine"));
+    EXPECT_EQ(CountClassObjKey(prop.get(), "StateMachine"), 1);
+    const NS::StateMachine* propPart = NS::Cast<NS::StateMachine>(ListedClassObj(prop.get(), "StateMachine"));
     ASSERT_NE(propPart, nullptr);
     ASSERT_NE(prop->GetStateMachine(), nullptr);
     EXPECT_EQ(propPart->Machine(), prop->GetStateMachine());
@@ -188,11 +203,11 @@ TEST(ActorStateMachine, MachineIsListedAsTheStateMachineClassObj)
 TEST(ActorStateMachine, SavedJsonGainsNoStateMachineFields)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
-    ExpectNoStateMachineFields(NS::ActorToJson(*player));
+    ExpectNoStateMachineFields(NS::ActorToJson(player.get()));
     ExpectNoStateMachineFields(*NS::ActorFileLibrary::Get().Values("PlayerActor"));
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
-    ExpectNoStateMachineFields(NS::ActorToJson(*prop));
+    ExpectNoStateMachineFields(NS::ActorToJson(prop.get()));
     ExpectNoStateMachineFields(*NS::ActorFileLibrary::Get().Values("PropActor"));
 }
 

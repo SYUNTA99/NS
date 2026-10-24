@@ -1,8 +1,7 @@
 #include "Game/Level/TackleGhost.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
 
 #include <algorithm>
@@ -12,24 +11,6 @@ namespace GL
 {
     namespace Level
     {
-        void TackleGhost::Register()
-        {
-            if (m_owner->OwningScene() == nullptr)
-            {
-                return;
-            }
-            m_owner->OwningScene()->RegisterRenderable(this);
-        }
-
-        void TackleGhost::Unregister()
-        {
-            if (m_owner->OwningScene() == nullptr)
-            {
-                return;
-            }
-            m_owner->OwningScene()->UnregisterRenderable(this);
-        }
-
         bool TackleGhost::SetSpread(const NS::Vector3& spread) noexcept
         {
             if (!NS::IsFinite(spread))
@@ -50,24 +31,19 @@ namespace GL
             return true;
         }
 
-        NS::Matrix TackleGhost::SideWorldMatrix(float alpha, float side) const noexcept
+        NS::Matrix TackleGhost::SideWorldMatrix(const NS::Model* model,
+                                                const NS::Matrix& root,
+                                                float alpha,
+                                                float side) const noexcept
         {
-            const NS::Model* model = m_owner->ModelClassObj();
-            if (model == nullptr)
-            {
-                return NS::Matrix::Identity;
-            }
-            return model->DrawWorldMatrixWithOffset(alpha, m_spread * side);
+            NS_ASSERT(Game, model != nullptr, "残像の元の Model が渡されていない");
+            return model->DrawWorldMatrixWithOffset(root, alpha, m_spread * side);
         }
 
-        void TackleGhost::CaptureAfterimage() noexcept
+        void TackleGhost::CaptureAfterimage(const NS::Model* model, const NS::Matrix& root) noexcept
         {
-            const NS::Model* model = m_owner->ModelClassObj();
-            if (model == nullptr)
-            {
-                return;
-            }
-            m_afterimageWorld = model->DrawWorldMatrix(1.0f);
+            NS_ASSERT(Game, model != nullptr, "残像の元の Model が渡されていない");
+            m_afterimageWorld = model->DrawWorldMatrix(root, 1.0f);
         }
 
         bool TackleGhost::SetAfterimageOpacity(float opacity) noexcept
@@ -80,9 +56,12 @@ namespace GL
             return true;
         }
 
-        void TackleGhost::Collect(const NS::Gfx::RenderContext& context, std::vector<NS::Gfx::DrawItem>& out)
+        void TackleGhost::Collect(const NS::Gfx::RenderContext& context,
+                                  const NS::RenderSource& source,
+                                  std::vector<NS::Gfx::DrawItem>& out)
         {
-            const NS::Model* model = m_owner->ModelClassObj();
+            const NS::Model* model = source.model;
+            NS_ASSERT(Game, model != nullptr, "残像は InitDraw で元の Model と一緒に入れていない");
             if (model == nullptr || !model->CanDraw())
             {
                 return;
@@ -94,7 +73,7 @@ namespace GL
             {
                 for (const float side : {1.0f, -1.0f})
                 {
-                    NS::Gfx::DrawItem item = model->MakeDrawItem(context, SideWorldMatrix(context.alpha, side));
+                    NS::Gfx::DrawItem item = model->MakeDrawItem(context, SideWorldMatrix(model, source.root, context.alpha, side));
                     item.blend = NS::Gfx::BlendMode::Alpha;
                     item.constants.groundWaveStrength = 0.0f;
                     item.constants.opacity = m_sideOpacity;
@@ -113,15 +92,15 @@ namespace GL
             }
         }
 
-        NS::AABB TackleGhost::WorldBounds() const noexcept
+        NS::AABB TackleGhost::WorldBounds(const NS::RenderSource& source) const noexcept
         {
-            const NS::Model* model = m_owner->ModelClassObj();
+            const NS::Model* model = source.model;
             if (model == nullptr)
             {
                 return {};
             }
             // 描く形の箱を、描く時だけのずれと離れの分だけ広げる。どちらの写しも外さない
-            NS::AABB out = model->WorldBounds();
+            NS::AABB out = model->WorldBounds(source);
             const NS::Vector3& offset = model->GetDrawOffset();
             out.Extents.x += std::abs(m_spread.x) + std::abs(offset.x);
             out.Extents.y += std::abs(m_spread.y) + std::abs(offset.y);
@@ -139,14 +118,14 @@ namespace GL
             return out;
         }
 
-        NS::Vector3 TackleGhost::SortCenter() const noexcept
+        NS::Vector3 TackleGhost::SortCenter(const NS::RenderSource& source) const noexcept
         {
-            const NS::Model* model = m_owner->ModelClassObj();
+            const NS::Model* model = source.model;
             if (model == nullptr)
             {
                 return {};
             }
-            return model->SortCenter();
+            return model->SortCenter(source);
         }
     } // namespace Level
 } // namespace GL

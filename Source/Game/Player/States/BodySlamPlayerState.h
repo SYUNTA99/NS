@@ -11,7 +11,7 @@ namespace GL
         class BodySlamPlayerState final : public PlayerState<BodySlamPlayerState>
         {
         public:
-            void OnStep(::PlayerActor& player, float dt) override;
+            void OnStep(::PlayerActor* player, float dt) override;
         };
     } // namespace Player
 } // namespace GL
