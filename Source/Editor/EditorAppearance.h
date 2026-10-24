@@ -17,7 +17,7 @@ namespace NS
             Color placementRowColor{0.30f, 0.85f, 0.60f, 0.22f};
 
             NS_REFLECT_BEGIN(EditorAppearance, void)
-            NS_FIELD(placementRowColor, "placementRowColor", "配置物へ書く欄の地の色")
+            NS_FIELD(placementRowColor, "placementRowColor", "シーンのファイルのアクターへ書く欄の地の色")
             NS_REFLECT_END_VALUE()
         };
 

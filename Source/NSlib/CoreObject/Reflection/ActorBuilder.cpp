@@ -71,12 +71,12 @@ namespace NS
 
     std::unique_ptr<SceneActor> ActorFromJson(const nlohmann::json& actorJson, Scene& scene)
     {
-        // クラスは配置物の指す .actor の中の class だけが持つ。.actor が無ければ作るクラスが決まらない
+        // クラスはアクターの指す .actor の中の class だけが持つ。.actor が無ければ作るクラスが決まらない
         const std::string_view actorFile = ActorJsonFile(actorJson);
         const std::string className = ActorFileLibrary::Get().ClassNameOf(actorFile);
         if (className.empty())
         {
-            NS_LOG_ERROR(Scene, "配置物 {} の .actor {} が見つからないので作らない", ActorJsonId(actorJson), actorFile);
+            NS_LOG_ERROR(Scene, "アクター {} の .actor {} が見つからないので作らない", ActorJsonId(actorJson), actorFile);
             return nullptr;
         }
         WarnIfUnregistered(className);

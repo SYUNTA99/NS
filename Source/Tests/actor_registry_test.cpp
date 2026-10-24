@@ -9,7 +9,7 @@
 #include <string_view>
 #include <vector>
 
-// 名前からクラスを引く表と、エディタで置ける印を縛る
+// 名前からクラスを引く表と、エディタで置けるクラスの登録を縛る
 
 namespace
 {

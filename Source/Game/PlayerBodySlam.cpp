@@ -564,7 +564,7 @@ void PlayerActor::UncurlWhenSettled() noexcept
     {
         return;
     }
-    // 反動が明けたフレームは接地の印が残ったまま上向きの速度が入る。速度を見ないと宙へ出る前に解ける
+    // 反動が明けたフレームは接地のフラグが残ったまま上向きの速度が入る。速度を見ないと宙へ出る前に解ける
     if (body.VerticalVelocity() > 0.0f)
     {
         return;

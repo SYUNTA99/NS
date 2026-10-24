@@ -69,7 +69,7 @@ namespace NS
             ImGui::EndTable();
         }
 
-        // 配置物の値が .actor と違う欄の名前の色。値を変えた欄が一覧の中で目に留まる
+        // アクターの値が .actor と違う欄の名前の色。値を変えた欄が一覧の中で目に留まる
         inline const ImVec4 k_OverriddenFieldColor{1.0f, 0.78f, 0.35f, 1.0f};
 
         // 値列の右端に置くボタンの幅。戻すボタンと上書きボタンの広い方に揃え、どの行も値の幅を揃える
@@ -208,14 +208,14 @@ namespace NS
             return ImGui::SmallButton("戻す");
         }
 
-        // 上書きの印のボタンで選ばれた操作
+        // 上書きボタンで選ばれた操作
         enum class OverrideAction
         {
             None,
             Revert, // 既定に戻す。.actor の値へ戻して上書きをやめる
         };
 
-        // .actor の値と違う行だけ右端に上書きの印を出し、押すと戻すかを選ばせる
+        // .actor の値と違う行だけ右端に上書きボタンを出し、押すと戻すかを選ばせる
         // 同じ値の行は幅を空けるだけで並びを保つ
         inline OverrideAction OverrideButton(bool overridden) noexcept
         {

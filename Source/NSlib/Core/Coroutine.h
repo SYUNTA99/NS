@@ -21,7 +21,7 @@ namespace NS
         {
             float waitSeconds = 0.0f;            // 残り待ち秒。正の間は待つ
             std::function<bool()> waitPredicate; // 条件待ち。真を返したら起きる
-            bool waitNextFrame = false;          // 次の Tick まで待つ印
+            bool waitNextFrame = false;          // 次の Tick まで待つフラグ
 
             Coroutine get_return_object()
             {

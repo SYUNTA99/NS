@@ -16,7 +16,7 @@ namespace NS
 {
     namespace Editor
     {
-        //! 配置物を平らな一覧で表示する。改名などの適用は描画後に行う
+        //! アクターを平らな一覧で表示する。改名などの適用は描画後に行う
         class ActorListPanel : public NonCopyable
         {
         public:
@@ -29,7 +29,7 @@ namespace NS
             //! 対象を改名待ちにして、入力欄へ現在の表示名を入れる
             void BeginRename(SceneActor* object) noexcept;
 
-            uint32 m_renamingActorId = 0; // 改名中の配置物の永続 id、0 なら改名していない
+            uint32 m_renamingActorId = 0; // 改名中のアクターの永続 id、0 なら改名していない
             char m_renameBuffer[64]{};         // 改名の入力欄
             bool m_renameFocusPending = false; // 入力欄を出した最初のフレームでキーボード焦点を渡す
 

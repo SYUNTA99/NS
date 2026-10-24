@@ -78,7 +78,7 @@ namespace NS
                 const bool filtering = m_actorListFilter[0] != '\0';
                 ImGui::Separator();
 
-                // 改名は配置物を組み直して一覧を入れ替えるので、描き終えるまで適用を待つ
+                // 改名はアクターを組み直して一覧を入れ替えるので、描き終えるまで適用を待つ
                 m_renameCommitId = 0;
                 m_duplicateRequestId = 0;
                 m_deleteRequestId = 0;
@@ -123,7 +123,7 @@ namespace NS
                 rest.y = std::max(rest.y, ImGui::GetTextLineHeight());
                 ImGui::Dummy(rest);
 
-                // 余白の右クリックからも同じ一覧で置く。描き終えた後なので配置物を組み直しても崩れない
+                // 余白の右クリックからも同じ一覧で置く。描き終えた後なのでアクターを組み直しても崩れない
                 if (ImGui::BeginPopupContextItem("##actorListAdd"))
                 {
                     RenderPlacementMenu(editor);

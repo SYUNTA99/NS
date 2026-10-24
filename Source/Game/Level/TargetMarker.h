@@ -79,10 +79,10 @@ namespace GL
                                                LockOnFrameShape& outFrame) const;
 
             NS_REFLECT_BEGIN(TargetMarker, NS::OverlayRenderer)
-            NS_GROUP("印")
-            NS_FIELD(m_desc.color, "印の色")
-            NS_FIELD(m_desc.lineThickness, "印の太さ")
-            NS_FIELD(m_desc.armRatio, "印の腕の割合")
+            NS_GROUP("ロックオンの枠")
+            NS_FIELD(m_desc.color, "ロックオンの枠の色")
+            NS_FIELD(m_desc.lineThickness, "ロックオンの枠の太さ")
+            NS_FIELD(m_desc.armRatio, "ロックオンの枠の腕の割合")
             NS_GROUP("枠")
             NS_FIELD(m_desc.frameGap, "枠と輪郭の間")
             NS_FIELD(m_desc.frameMinSide, "枠の一辺の下限")

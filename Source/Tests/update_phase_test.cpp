@@ -65,7 +65,7 @@ namespace
         std::vector<std::string>& m_log;
     };
 
-    // 自分の段の中で、控えた id の配置物をシーンから消しに行く
+    // 自分の段の中で、控えた id のアクターをシーンから消しに行く
     class DestroyerActor final : public NS::SceneActor
     {
     public:
@@ -147,7 +147,7 @@ namespace
         NS::SceneSystem& m_system;
     };
 
-    // 自分の更新の中で、控えた id の配置物をシーンから消しに行く
+    // 自分の更新の中で、控えた id のアクターをシーンから消しに行く
     class DestroyerSystem final : public NS::SceneSystem
     {
     public:
@@ -177,7 +177,7 @@ TEST(UpdatePhase, SystemAddedDuringItsPhaseWaitsForTheNextFrame)
 
 TEST(UpdatePhase, DestroyingFromASystemTickIsRefused)
 {
-    // 管理役の更新も段の中。ここで配置物を解放すると、同じ段で後に呼ぶ管理役が破棄済みの相手を読む
+    // 管理役の更新も段の中。ここでアクターを解放すると、同じ段で後に呼ぶ管理役が破棄済みの相手を読む
     NS::Scene scene;
     CountingActor* victim = scene.SpawnActor<CountingActor>("Victim");
     const NS::uint32 victimId = victim->Id();
@@ -250,7 +250,7 @@ TEST(UpdatePhase, StableActorOrderAndRemovedTickerArePreserved)
 
 TEST(UpdatePhase, DestroyingDuringAPhaseIsRefused)
 {
-    // 段の最中に配置物を解放すると、その段で後に呼ぶ予定の生ポインタが破棄済みになる。解放の口は段の間は断る
+    // 段の最中にアクターを解放すると、その段で後に呼ぶ予定の生ポインタが破棄済みになる。解放の口は段の間は断る
     NS::Scene scene;
     DestroyerActor* destroyer = scene.SpawnActor<DestroyerActor>("Destroyer", scene);
     CountingActor* victim = scene.SpawnActor<CountingActor>("Victim");

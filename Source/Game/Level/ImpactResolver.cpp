@@ -587,7 +587,7 @@ namespace GL
             m_answer.lastImpact.launchDistance = m_pendingLaunchArc.distance;
             m_answer.lastImpact.launchApexHeight = m_pendingLaunchArc.apexHeight;
             m_answer.lastImpact.impactDir = m_pendingImpactDir;
-            // 触れた点は記録とエディタの印だけが読む。段と威力を決めた判定の結果を使う
+            // 触れた点は記録とエディタのマーカーだけが読む。段と威力を決めた判定の結果を使う
             m_answer.lastImpact.surfacePoint = judgement.surfacePoint;
             m_answer.lastImpact.targetPos = answer.position;
             m_answer.lastImpact.targetBottom = bounds.Center.y - bounds.Extents.y;

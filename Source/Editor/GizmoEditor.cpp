@@ -459,13 +459,13 @@ namespace NS
                 }
             }
 
-            // ハンドルに当たらなければ配置物を拾う
+            // ハンドルに当たらなければアクターを拾う
             const Ray ray = Editor::ScreenToWorldRay(viewProjection, viewport, localX, localY);
             std::vector<Matrix> worldMatrices;
             std::vector<AABB> localBounds;
             worldMatrices.reserve(m_objects.size());
             localBounds.reserve(m_objects.size());
-            // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大した配置物の箱が
+            // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大したアクターの箱が
             // 拡縮の 2 乗に膨らみ、近くのクリックを先に取る
             for (const SceneActor* obj : m_objects)
             {
@@ -515,7 +515,7 @@ namespace NS
             // ProjectToScreen はパネルローカルを返すので、drawlist へ渡す直前に原点を加算する
             const PanelToScreenPx toPx{panelX, panelY};
 
-            // 選択ツールは何も出さない。掴む物が無い状態で印だけ置いても操作の手がかりにならない
+            // 選択ツールは何も出さない。掴む物が無い状態でマーカーだけ置いても操作の手がかりにならない
             if (m_tool == GizmoTool::Select)
             {
                 return;

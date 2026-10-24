@@ -40,7 +40,7 @@ namespace NS
             std::string label;
             int start = 0;
             int length = 1;
-            std::vector<int> startedFrames; //!< 実際に始まったフレームの印
+            std::vector<int> startedFrames; //!< 実際に始まったフレーム
         };
 
         //! 追加の折れ線を帯と同じ目盛りに合わせる寸法

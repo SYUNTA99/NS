@@ -22,17 +22,17 @@ namespace NS
     //! 既定の空文書を作る。nextObjectId は単調増加し、削除済み id を再利用しない
     [[nodiscard]] nlohmann::json MakeSceneJson();
 
-    //! 配置物の JSON の配列。無いか壊れていれば空の配列
+    //! アクターの JSON の配列。無いか壊れていれば空の配列
     [[nodiscard]] const nlohmann::json& SceneJsonActors(const nlohmann::json& scene) noexcept;
-    //! 配置物の JSON の配列を返し、無ければ作る
+    //! アクターの JSON の配列を返し、無ければ作る
     [[nodiscard]] nlohmann::json& SceneJsonActors(nlohmann::json& scene);
 
     //! 次に割り当てる永続 id。無ければ 1
     [[nodiscard]] uint32 SceneJsonNextActorId(const nlohmann::json& scene) noexcept;
     void SetSceneJsonNextActorId(nlohmann::json& scene, uint32 nextObjectId);
 
-    //! @brief 次に置く配置物の id。nextObjectId と、配置物の最大の id の次の大きい方
-    //! @details 手編集で nextObjectId が配置物の id より小さいファイルもある。1 より小さくならない
+    //! @brief 次に置くアクターの id。nextObjectId と、アクターの最大の id の次の大きい方
+    //! @details 手編集で nextObjectId がアクターの id より小さいファイルもある。1 より小さくならない
     [[nodiscard]] uint32 NextFreeActorId(const nlohmann::json& scene) noexcept;
 
     //! シーンの environment の欄。リフレクションの欄の名前を JSON の鍵に使う
@@ -56,7 +56,7 @@ namespace NS
     //! objects 配列で「該当無し」を表す添字
     inline constexpr std::size_t k_NoActorIndex = static_cast<std::size_t>(-1);
 
-    //! 永続 id が id の配置物の添字。無ければ k_NoActorIndex、k_NoActorId は常に該当無し
+    //! 永続 id が id のアクターの添字。無ければ k_NoActorIndex、k_NoActorId は常に該当無し
     [[nodiscard]] std::size_t FindActorIndexById(const nlohmann::json& scene, uint32 id) noexcept;
 
     //! @details 未割当と重複には新 id を振り、nextObjectId を既存最大 id より先へ進める。重複は先勝ち

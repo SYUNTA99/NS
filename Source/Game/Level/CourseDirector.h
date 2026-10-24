@@ -27,7 +27,7 @@ namespace GL
             //! 次の OnTick でコースをやり直す
             void NotifyPlayerDead() noexcept { m_playerDead = true; }
 
-            //! 次の OnTick で、自機以外の配置物を開始時の姿へ戻す
+            //! 次の OnTick で、自機以外のアクターを開始時の姿へ戻す
             void RequestRespawnActors() noexcept { m_respawnPending = true; }
 
             //! 次の OnTick でクリア演出を始める。演出中は無視する
@@ -44,14 +44,14 @@ namespace GL
 
             [[nodiscard]] bool IsClearing() const noexcept { return m_sequences.IsRunning(); }
 
-            //! @brief 全ての配置物へ MsgCourseStart を送って今の姿を控えさせ、RestartCourse と同じ処理で始める
+            //! @brief 全てのアクターへ MsgCourseStart を送って今の姿を控えさせ、RestartCourse と同じ処理で始める
             void StartCourse();
 
-            //! @brief コースを最初からやり直す。全ての配置物へ MsgCourseRestart を送る
+            //! @brief コースを最初からやり直す。全てのアクターへ MsgCourseRestart を送る
             //! @details 受け手は StartCourse の時に控えた姿へ自分で戻る
             void RestartCourse();
 
-            //! @brief 自機の他の配置物へ MsgCourseRestart を送り、開始の時の姿へ戻す。自機の位置と状態は変えない
+            //! @brief 自機の他のアクターへ MsgCourseRestart を送り、開始の時の姿へ戻す。自機の位置と状態は変えない
             void RespawnActors();
 
             //! 知らせを受けた分だけ流れを進める
@@ -62,7 +62,7 @@ namespace GL
 
             void SendInputLock(bool locked);
 
-            //! skip の他の配置物。skip が nullptr なら全員
+            //! skip の他のアクター。skip が nullptr なら全員
             [[nodiscard]] std::vector<NS::SceneActor*> PlacedActors(const NS::SceneActor* skip) const;
 
             //! PlacedActors の全員へ MsgCourseRestart を送る

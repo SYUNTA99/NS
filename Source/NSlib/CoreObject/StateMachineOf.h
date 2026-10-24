@@ -23,7 +23,7 @@ namespace NS
         State(State&&) = delete;
         State& operator=(State&&) = delete;
 
-        //! 自分の型を指す印。Change の突き合わせに使う
+        //! 自分の型を指す StateId。Change の突き合わせに使う
         [[nodiscard]] virtual StateId Id() const noexcept = 0;
 
         //! 状態に入った時に 1 回呼ばれる。Build の先頭と、予約の確定の時
@@ -51,8 +51,8 @@ namespace NS
         float m_stepDelta = 0.0f;
     };
 
-    //! @brief 状態の印を埋める中間クラス。状態は StateOf<自分の型, 所有者> から派生する
-    //! @details Id を派生に書かせると、状態を複製した時に型名を直し忘れてもビルドが通り、印が元の状態と重なる
+    //! @brief 状態の StateId を埋める中間クラス。状態は StateOf<自分の型, 所有者> から派生する
+    //! @details Id を派生に書かせると、状態を複製した時に型名を直し忘れてもビルドが通り、StateId が元の状態と重なる
     template <typename TState, typename TOwner> class StateOf : public State<TOwner>
     {
     public:
@@ -109,7 +109,7 @@ namespace NS
         //! 状態を 1 つでも組めているか
         [[nodiscard]] bool IsBuilt() const noexcept { return m_current != nullptr; }
 
-        //! 現在状態の印。未組立は nullptr
+        //! 現在状態の StateId。未組立は nullptr
         [[nodiscard]] StateId CurrentId() const noexcept override
         {
             if (m_next != nullptr)

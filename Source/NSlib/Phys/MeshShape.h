@@ -13,7 +13,7 @@ namespace NS
 {
     namespace Phys
     {
-        //! 静的 body 用の三角形と Jolt 形状。歪みのない配置物間で形状を共有する
+        //! 静的 body 用の三角形と Jolt 形状。歪みのないアクター間で形状を共有する
         struct MeshShape
         {
             std::vector<Triangle> triangles; // 資産の座標。法線 (v1 - v0) × (v2 - v0) が外を向く並び

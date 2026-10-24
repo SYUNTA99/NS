@@ -26,7 +26,7 @@ namespace NS
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;
         constexpr std::size_t k_MaxActorCount = 100'000u;
 
-        //! ファイルの配置物 1 体を、知っている欄だけの形へ整える。未知の欄は捨て、fields の中身は素通し
+        //! ファイルのアクター 1 体を、知っている欄だけの形へ整える。未知の欄は捨て、fields の中身は素通し
         nlohmann::json NormalizeActorJson(const nlohmann::json& json)
         {
             nlohmann::json object = MakeActorJson();

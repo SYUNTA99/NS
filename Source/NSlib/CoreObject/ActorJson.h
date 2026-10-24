@@ -13,10 +13,10 @@
 
 namespace NS
 {
-    //! @brief 配置物の "classObjs" を返す
+    //! @brief アクターの "classObjs" を返す
     //! @return 無いか object でなければ空の object
     [[nodiscard]] const nlohmann::json& ActorJsonClassObjs(const nlohmann::json& actorJson) noexcept;
-    //! @brief 配置物の "classObjs" を返す。無いか object でなければ空の object を作って入れる
+    //! @brief アクターの "classObjs" を返す。無いか object でなければ空の object を作って入れる
     [[nodiscard]] nlohmann::json& ActorJsonClassObjs(nlohmann::json& actorJson);
     //! @brief 部品名 partName の欄の object を返す
     //! @return 無いか object でなければ nullptr
@@ -25,30 +25,30 @@ namespace NS
     //! @brief 部品名 partName の欄の object を返す。無い部品は作らない
     //! @return 無いか object でなければ nullptr
     [[nodiscard]] nlohmann::json* ClassObjFields(nlohmann::json& actorJson, std::string_view partName) noexcept;
-    //! 配置物の保存・凍結・編集履歴で共用する JSON。参照はメモリ上では id、ファイルでは名前
+    //! アクターの保存・凍結・編集履歴で共用する JSON。参照はメモリ上では id、ファイルでは名前
     [[nodiscard]] nlohmann::json MakeActorJson();
 
-    //! 配置物の永続 id。未採番と壊れた形は 0
+    //! アクターの永続 id。未採番と壊れた形は 0
     [[nodiscard]] uint32 ActorJsonId(const nlohmann::json& actorJson) noexcept;
-    //! 配置物の永続 id を書く
+    //! アクターの永続 id を書く
     void SetActorJsonId(nlohmann::json& actorJson, uint32 id);
 
-    //! 配置物が敷く .actor の名前。作るクラスはその .actor の中の class。無ければ空
+    //! アクターが敷く .actor の名前。作るクラスはその .actor の中の class。無ければ空
     [[nodiscard]] std::string_view ActorJsonFile(const nlohmann::json& actorJson) noexcept;
     //! .actor の名前を書く。空は消す
     void SetActorJsonFile(nlohmann::json& actorJson, std::string_view actorFile);
 
-    //! 配置物の名前。空は未設定で、読込の一意化が名前を振る
+    //! アクターの名前。空は未設定で、読込の一意化が名前を振る
     [[nodiscard]] std::string_view ActorJsonName(const nlohmann::json& actorJson) noexcept;
-    //! 名前を書く。空は未設定の印なので消す
+    //! 名前を書く。空は未設定を表すので消す
     void SetActorJsonName(nlohmann::json& actorJson, std::string_view name);
 
-    //! 配置物自身の active 値。欄が無ければ有効
+    //! アクター自身の active 値。欄が無ければ有効
     [[nodiscard]] bool ActorJsonActive(const nlohmann::json& actorJson) noexcept;
     //! active 値を書く。有効は既定なので消す
     void SetActorJsonActive(nlohmann::json& actorJson, bool active);
 
-    //! 配置物の頭の欄。保存の形は欄ごとの読み書きの関数と同じ
+    //! アクターの頭の欄。保存の形は欄ごとの読み書きの関数と同じ
     struct ActorHeader
     {
         uint32 id = 0;

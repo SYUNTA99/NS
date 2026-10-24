@@ -115,7 +115,7 @@ namespace GL
         [[nodiscard]] std::vector<NS::Vector2> HitFaceShapeOutline(const HitFaceShape& shape) noexcept;
 #endif
 
-        //! @brief 配置物ごとの赤領域と威力倍率を保持する部品
+        //! @brief アクターごとの赤領域と威力倍率を保持する部品
         class HitZones : public NS::Object
         {
         public:

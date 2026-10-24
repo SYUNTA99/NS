@@ -75,7 +75,7 @@ namespace GL
 
         std::vector<NS::SceneActor*> CourseDirector::PlacedActors(const NS::SceneActor* skip) const
         {
-            // 送る先は控えた並びで回す。受け手が戻る間に配置物の並びが変わっても崩れない
+            // 送る先は控えた並びで回す。受け手が戻る間にアクターの並びが変わっても崩れない
             std::vector<NS::SceneActor*> receivers;
             receivers.reserve(m_scene.Actors().ActorCount());
             for (NS::SceneActor* actor : m_scene.Actors())

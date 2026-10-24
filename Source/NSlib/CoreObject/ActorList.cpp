@@ -20,7 +20,7 @@ namespace NS
 
     void ActorList::RebuildFromJson(const nlohmann::json& scene, Scene& owner, const ActorFactoryFn& factory)
     {
-        // Clear が断った後に組むと古い配置物の後ろへ新しい配置物が並ぶので、組む前にここで断る
+        // Clear が断った後に組むと古いアクターの後ろへ新しいアクターが並ぶので、組む前にここで断る
         if (m_updating)
         {
             NS_LOG_ERROR(Scene, "ActorList::RebuildFromJson: 段の更新の最中に呼ばれたので組み直しを断った");
@@ -35,7 +35,7 @@ namespace NS
 
         m_actors.reserve(objects.size());
 
-        // 配置物の組み立ては呼出側の知識。ファクトリの無い起動前 / テストでは何も組まない
+        // アクターの組み立ては呼出側の知識。ファクトリの無い起動前 / テストでは何も組まない
         if (factory)
         {
             // 先に全 object を組んで、開始は後段でまとめて行う
@@ -63,7 +63,7 @@ namespace NS
             {
                 objPtr->OnStart();
             }
-            // 全ての配置物が開始してから、揃っている前提の用意をさせる
+            // 全てのアクターが開始してから、揃っている前提の用意をさせる
             for (std::unique_ptr<SceneActor>& objPtr : m_actors)
             {
                 objPtr->InitAfterPlacement();
@@ -98,7 +98,7 @@ namespace NS
             return;
         }
 
-        // 0 は未採番の印。id の無い JSON から入れた配置物は 0 のままなので、素通しするとその 1 体が消える
+        // 0 は未採番を表す値。id の無い JSON から入れたアクターは 0 のままなので、素通しするとその 1 体が消える
         if (objectId == k_NoActorId)
         {
             return;
@@ -203,7 +203,7 @@ namespace NS
 
     SceneActor* ActorList::FindByActorId(uint32 objectId) noexcept
     {
-        // 0 は未採番の印。id の無い JSON から入れた配置物は 0 のままなので、素通しするとその 1 体が引ける
+        // 0 は未採番を表す値。id の無い JSON から入れたアクターは 0 のままなので、素通しするとその 1 体が引ける
         if (objectId == k_NoActorId)
         {
             return nullptr;
@@ -388,7 +388,7 @@ namespace NS
     {
         if (m_updating)
         {
-            NS_LOG_ERROR(Scene, "ActorList::Clear: 段の更新の最中に呼ばれたので配置物の解放を断った");
+            NS_LOG_ERROR(Scene, "ActorList::Clear: 段の更新の最中に呼ばれたのでアクターの解放を断った");
             return;
         }
 

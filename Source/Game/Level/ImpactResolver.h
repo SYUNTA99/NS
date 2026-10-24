@@ -175,7 +175,7 @@ namespace GL
             //! 何度呼んでも同じ結果になる。プレイの終わりにも Player が呼び、控えが次のプレイへ残らない
             void CancelImpact() noexcept;
 
-            //! @brief 突進の玉を掃いて、最初に触れる配置物を探す。段は裁定と同じ面判定を使う
+            //! @brief 突進の玉を掃いて、最初に触れるアクターを探す。段は裁定と同じ面判定を使う
             //! @details 赤の高さへ狙う縦速度も予測する。問い合わせに応じない相手は Wide・横ずれ 1・縦速度 0。
             //! 壁や地形による停止は考慮しない。direction は水平成分、maxDistance は m
             //! @param[in] params・body・collider 空でないこと

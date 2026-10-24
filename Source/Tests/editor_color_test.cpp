@@ -111,7 +111,7 @@ namespace
         return NS::Vector3{color[0].get<float>(), color[1].get<float>(), color[2].get<float>()};
     }
 
-    // 色の正をマテリアルへ移す前に描いていた色。配置物の "基本色"、.actor の "基本色"、
+    // 色の正をマテリアルへ移す前に描いていた色。シーンのアクターの "基本色"、.actor の "基本色"、
     // クラスのコードが入れる色、Model の既定の白の順に引く
     NS::Vector3 ColorBeforeTheMaterialOwnedIt(const nlohmann::json& object, const std::string& actorFileName)
     {

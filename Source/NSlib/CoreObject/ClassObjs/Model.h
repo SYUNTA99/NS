@@ -38,7 +38,7 @@ namespace NS
         //! メッシュとマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
         Model();
 
-        //! @brief マテリアルを共有したまま配置物ごとに変える色の上書き。空ならマテリアルの基本色で描く
+        //! @brief マテリアルを共有したままアクターごとに変える色の上書き。空ならマテリアルの基本色で描く
         //! @details 光の色とは別に掛かる。透明度は使わず rgb だけを描く
         void SetColorOverride(const std::optional<Color>& color) noexcept { m_colorOverride = color; }
         [[nodiscard]] const std::optional<Color>& ColorOverride() const noexcept { return m_colorOverride; }

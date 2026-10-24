@@ -28,8 +28,8 @@ namespace NS
     public:
         virtual ~CameraModifier() noexcept;
 
-        //! @brief 同じ種類の効果かを見分ける印
-        //! @details 管理役は同じ印の効果を積み直すと前の物を外す。nullptr の効果は幾つでも重ねて積める
+        //! @brief 同じ種類の効果かを見分けるタグ
+        //! @details 管理役は同じタグの効果を積み直すと前の物を外す。nullptr の効果は幾つでも重ねて積める
         [[nodiscard]] virtual const void* Kind() const noexcept { return nullptr; }
 
         //! 掛ける順。小さいほど先に掛かる
@@ -47,7 +47,7 @@ namespace NS
         //! 揺れの効果の場合 true、それ以外の場合は false。揺れには管理役が設定の倍率 (SetShakeScale) を掛ける
         [[nodiscard]] virtual bool IsShake() const noexcept { return false; }
 
-        //! @brief 頼んだ物を書く。管理役は同じ種類の印と同じ頼んだ物の効果だけを置き換え、頼んだ物ごとに外せる
+        //! @brief 頼んだ物を書く。管理役は同じ種類のタグと同じ頼んだ物の効果だけを置き換え、頼んだ物ごとに外せる
         //! @details 見分けるだけで指す先は読まない。nullptr は頼んだ物を問わない効果
         void SetRequester(const IUseCamera* requester) noexcept { m_requester = requester; }
         [[nodiscard]] const IUseCamera* Requester() const noexcept { return m_requester; }
@@ -108,7 +108,7 @@ namespace NS
         [[nodiscard]] static std::unique_ptr<CameraShakeModifier> Create(const CameraShakeDesc& desc,
                                                                          float firstSideSign);
 
-        //! 揺れの種類の印
+        //! 揺れの種類のタグ
         [[nodiscard]] static const void* StaticKind() noexcept;
         [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
 
@@ -139,7 +139,7 @@ namespace NS
         [[nodiscard]] static std::unique_ptr<CameraZoomRollModifier> Create(const CameraZoomRollDesc& desc,
                                                                             float rollSign);
 
-        //! 寄りと傾きの種類の印
+        //! 寄りと傾きの種類のタグ
         [[nodiscard]] static const void* StaticKind() noexcept;
         [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
 
@@ -190,7 +190,7 @@ namespace NS
         //! nullptr
         [[nodiscard]] static std::unique_ptr<CameraSinkModifier> Create(const CameraSinkDesc& desc);
 
-        //! 沈む揺れの種類の印
+        //! 沈む揺れの種類のタグ
         [[nodiscard]] static const void* StaticKind() noexcept;
         [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
 
@@ -251,7 +251,7 @@ namespace NS
     public:
         CameraTraumaModifier() noexcept = default;
 
-        //! トラウマの揺れの種類の印
+        //! トラウマの揺れの種類のタグ
         [[nodiscard]] static const void* StaticKind() noexcept;
         [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
 
@@ -331,7 +331,7 @@ namespace NS
         CameraNudgeDesc m_desc{}; // 作った時の設定
     };
 
-    //! @brief 当たりで始める揺れ・沈み・寄り・ずれの種類の印。当たりの演出を止める所はこれを外す
+    //! @brief 当たりで始める揺れ・沈み・寄り・ずれの種類のタグ。当たりの演出を止める所はこれを外す
     //! @details トラウマは続けて当てると足すので入れない
     [[nodiscard]] std::array<const void*, 5> CameraHitEffectKinds() noexcept;
 } // namespace NS

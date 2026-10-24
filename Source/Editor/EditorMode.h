@@ -52,8 +52,8 @@ namespace NS
             {
                 bool valid = false;            //!< ブロック面か地面に当たったか
                 Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
-                bool placementBlocked = false; //!< 配置予定地に種類を問わず配置物が居るか
-                CellCoord hit{};               //!< ヒットしたセル
+                bool placementBlocked = false; //!< 配置予定地に種類を問わずアクターが居るか
+    CellCoord hit{};               //!< ヒットしたセル
                 CellCoord place{};             //!< 配置先セル
             };
 
@@ -66,25 +66,25 @@ namespace NS
             //! @brief 読込済みシーンデータを実体側へ取り込む関数を差す。読込の完了時に呼ぶ
             void SetLoadLevelFn(std::function<void(nlohmann::json&&)> fn) noexcept { m_loadLevel = std::move(fn); }
 
-            //! @brief セルにあるセルブラシ配置物の永続識別番号を取得する処理を設定する。不在は k_NoActorId
+            //! @brief セルにあるセルブラシのアクターの永続識別番号を取得する処理を設定する。不在は k_NoActorId
             void SetFindCellActorFn(std::function<uint32(int16, int16, int16)> fn) noexcept
             {
                 m_findCellActor = std::move(fn);
             }
 
-            //! @brief cell に種類を問わず配置物が居るかを引く関数を差す
+            //! @brief cell に種類を問わずアクターが居るかを引く関数を差す
             void SetCellOccupiedFn(std::function<bool(int16, int16, int16)> fn) noexcept
             {
                 m_cellOccupied = std::move(fn);
             }
 
-            //! @brief 全セルブラシ配置物の座標を実体から取得する処理を設定する。カーソルの光線判定で使う
+            //! @brief 全セルブラシのアクターの座標を実体から取得する処理を設定する。カーソルの光線判定で使う
             void SetCollectCellsFn(std::function<std::vector<CellCoord>()> fn) noexcept
             {
                 m_collectCells = std::move(fn);
             }
 
-            //! @brief 新規配置物へ永続 id を 1 個振る関数を差す
+            //! @brief 新規アクターへ永続 id を 1 個振る関数を差す
             void SetAllocateIdFn(std::function<uint32()> fn) noexcept { m_allocateId = std::move(fn); }
             void SetInput(OS::Input* input) noexcept { m_input = input; }
             void SetSceneCamera(SceneCamera* camera) noexcept { m_camera = camera; }
@@ -121,7 +121,7 @@ namespace NS
             [[nodiscard]] const Editor::UndoStack& Undo() const noexcept { return m_undo; }
             [[nodiscard]] Editor::UndoStack& Undo() noexcept { return m_undo; }
 
-            //! @brief 新しい配置物を 1 回の履歴で作る。作る道 (置く・複製・筆で空いた升へ置く) は全部ここを通す
+            //! @brief 新しいアクターを 1 回の履歴で作る。作る道 (置く・複製・筆で空いた升へ置く) は全部ここを通す
             //! @details 各 JSON に新しい永続 id を振り、写した元の id を指す参照を、一緒に作る物の新しい id へ付け替える。
             //! 作った物を選ぶかは呼び手が決める
             //! @return 作った物の id を渡した順に返す。休止の間 (プレイ中) と、適用処理か採番が無い時は作らずに空を返す
@@ -217,9 +217,9 @@ namespace NS
             //! 差した関数の答え。シーンを変える関数は全部、頭でこれを見る
             [[nodiscard]] bool IsSceneEditable() const noexcept;
 
-            //! セルにセルブラシ配置物があるか。実体の照会が未設定なら常に不在
+            //! セルにセルブラシのアクターがあるか。実体の照会が未設定なら常に不在
             [[nodiscard]] bool HasActorAtCell(int16 x, int16 y, int16 z) const noexcept;
-            //! cell に種類を問わず配置物が居るか。置けるかの判定だけが読む
+            //! cell に種類を問わずアクターが居るか。置けるかの判定だけが読む
             [[nodiscard]] bool IsCellOccupied(int16 x, int16 y, int16 z) const noexcept;
 
             [[nodiscard]] bool SaveLevelToName(std::string_view name) noexcept;

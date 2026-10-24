@@ -21,7 +21,7 @@ namespace NS
 
         bool SaveAllForQuit(EditorMode& editor, ActionTimelinePanel& timeline) noexcept
         {
-            // シーンは変更の印が無くても書く。プレイ中にインスペクタで変えた値は履歴の版に載らないため
+            // シーンは変更があるか問わず書く。プレイ中にインスペクタで変えた値は履歴の版に載らないため
             const bool sceneSaved = editor.SaveForQuit();
             bool timelineSaved = true;
             if (timeline.HasUnsavedChanges())

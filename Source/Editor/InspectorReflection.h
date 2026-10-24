@@ -31,7 +31,7 @@ namespace NS
         };
 
         //! @brief 1フレームのアクターの持ち物の編集で起きた相互作用の集約
-        //! @details activated/committed はドラッグを1つのundo単位へまとめるための開始・終了フレームの印
+        //! @details activated/committed はドラッグを1つのundo単位へまとめるための開始・終了フレームのフラグ
         struct ClassObjEditResult
         {
             bool changed = false;   // いずれかの値が編集された
