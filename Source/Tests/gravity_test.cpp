@@ -26,6 +26,5 @@ TEST(Gravity, SceneFileCannotTurnGravity)
     NS::Vector3 velocity{1.0f, 2.0f, 3.0f};
     actor->AddGravity(velocity, 35.0f, 0.5f);
     EXPECT_EQ(velocity, (NS::Vector3{1.0f, -15.5f, 3.0f}));
-    EXPECT_EQ(scene.Physics().Gravity(), (NS::Vector3{0.0f, -25.0f, 0.0f}));
     EXPECT_FALSE(scene.ToJson()["environment"].contains("gravityDirection"));
 }

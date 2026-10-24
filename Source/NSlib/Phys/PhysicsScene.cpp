@@ -14,12 +14,9 @@
 #include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Body/BodyLockInterface.h>
 #include <Jolt/Physics/Collision/CastResult.h>
-#include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
-
-#include <algorithm>
 
 namespace NS
 {
@@ -28,8 +25,9 @@ namespace NS
         namespace
         {
             constexpr uint k_MaxBodies = 4096;
-            constexpr uint k_MaxBodyPairs = 16384;
-            constexpr uint k_MaxContactConstraints = 4096;
+            // body はどれも動かず、body どうしは当たらないので、接触の組と拘束は作られない
+            constexpr uint k_MaxBodyPairs = 0;
+            constexpr uint k_MaxContactConstraints = 0;
             constexpr uint k_MaxJobs = 1024;
             constexpr std::size_t k_TempAllocatorBytes = 10 * 1024 * 1024;
         } // namespace
@@ -52,15 +50,9 @@ namespace NS
 
         bool PhysicsScene::ObjLayerPairFilter::ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const
         {
-            if (first == ObjectLayers::Terrain)
-            {
-                return second == ObjectLayers::Rock;
-            }
-            if (first == ObjectLayers::Rock)
-            {
-                return second == ObjectLayers::Terrain || second == ObjectLayers::Rock;
-            }
-
+            // body どうしの当たりは剛体を進める時だけに使われる。光線・バウンディングボックスの問い合わせと自機の掃引は、この判定を見ない
+            (void)first;
+            (void)second;
             return false;
         }
 
@@ -68,36 +60,6 @@ namespace NS
                                                              JPH::BroadPhaseLayer broadPhase) const
         {
             return ObjLayerPairFilter{}.ShouldCollide(object, static_cast<JPH::ObjectLayer>(broadPhase.GetValue()));
-        }
-
-        void PhysicsScene::ContactRecorder::OnContactAdded(const JPH::Body& first,
-                                                           const JPH::Body& second,
-                                                           const JPH::ContactManifold& manifold,
-                                                           JPH::ContactSettings& settings)
-        {
-            (void)settings;
-            // 法線は second を押し出す向き。first から見ると逆なので、記録する側で外向きへ揃える
-            const JPH::Vec3 outward = manifold.mWorldSpaceNormal;
-            m_records.push_back(Record{first.GetID(), BodyContact{second.GetID(), FromJolt(-outward)}});
-            m_records.push_back(Record{second.GetID(), BodyContact{first.GetID(), FromJolt(outward)}});
-        }
-
-        void PhysicsScene::ContactRecorder::Clear() noexcept
-        {
-            m_records.clear();
-        }
-
-        std::vector<BodyContact> PhysicsScene::ContactRecorder::Of(JPH::BodyID id) const
-        {
-            std::vector<BodyContact> found;
-            for (const Record& record : m_records)
-            {
-                if (record.owner == id)
-                {
-                    found.push_back(record.contact);
-                }
-            }
-            return found;
         }
 
         PhysicsScene::PhysicsScene() : m_tempAllocator(k_TempAllocatorBytes), m_jobSystem(k_MaxJobs)
@@ -109,8 +71,6 @@ namespace NS
                                  m_broadPhaseLayerInterface,
                                  m_objectVsBroadPhaseLayerFilter,
                                  m_objectLayerPairFilter);
-            m_physicsSystem.SetContactListener(&m_contactRecorder);
-            m_physicsSystem.SetGravity(ToJolt(DefaultGravity()));
         }
 
         PhysicsScene::~PhysicsScene() = default;
@@ -223,86 +183,6 @@ namespace NS
             return SyncStatic(id, ShapeOrNull(collision.shape->ScaleShape(ToJolt(scale))), position, rotation, layer);
         }
 
-        void PhysicsScene::MoveKinematic(JPH::BodyID id,
-                                         const Vector3& position,
-                                         const Quaternion& rotation,
-                                         float deltaTime)
-        {
-            if (id.IsInvalid() || !(deltaTime > 0.0f))
-            {
-                return;
-            }
-
-            m_physicsSystem.GetBodyInterface().MoveKinematic(
-                id, ToJolt(position), ToJolt(rotation).Normalized(), deltaTime);
-        }
-
-        void PhysicsScene::TeleportBody(JPH::BodyID id, const Vector3& position, const Quaternion& rotation)
-        {
-            if (id.IsInvalid())
-            {
-                return;
-            }
-
-            m_physicsSystem.GetBodyInterface().SetPositionAndRotation(
-                id, ToJolt(position), ToJolt(rotation).Normalized(), JPH::EActivation::Activate);
-        }
-
-        void PhysicsScene::AddBodyForce(JPH::BodyID id, const Vector3& force)
-        {
-            if (id.IsInvalid())
-            {
-                return;
-            }
-
-            m_physicsSystem.GetBodyInterface().AddForce(id, ToJolt(force));
-        }
-
-        void PhysicsScene::AddBodyImpulse(JPH::BodyID id, const Vector3& impulse)
-        {
-            if (id.IsInvalid())
-            {
-                return;
-            }
-
-            m_physicsSystem.GetBodyInterface().AddImpulse(id, ToJolt(impulse));
-        }
-
-        void PhysicsScene::AddBodyTorque(JPH::BodyID id, const Vector3& torque)
-        {
-            if (id.IsInvalid())
-            {
-                return;
-            }
-
-            m_physicsSystem.GetBodyInterface().AddTorque(id, ToJolt(torque));
-        }
-
-        void PhysicsScene::AddBodyAngularImpulse(JPH::BodyID id, const Vector3& angularImpulse)
-        {
-            if (id.IsInvalid())
-            {
-                return;
-            }
-
-            m_physicsSystem.GetBodyInterface().AddAngularImpulse(id, ToJolt(angularImpulse));
-        }
-
-        void PhysicsScene::WakeBody(JPH::BodyID id)
-        {
-            if (id.IsInvalid())
-            {
-                return;
-            }
-
-            m_physicsSystem.GetBodyInterface().ActivateBody(id);
-        }
-
-        Vector3 PhysicsScene::Gravity() const
-        {
-            return FromJolt(m_physicsSystem.GetGravity());
-        }
-
         void PhysicsScene::OptimizeBroadPhase()
         {
             m_physicsSystem.OptimizeBroadPhase();
@@ -310,45 +190,8 @@ namespace NS
 
         void PhysicsScene::Update(float deltaTime)
         {
-            // 前の Update の接触を残すと、離れた後も当たり続けて見える
-            m_contactRecorder.Clear();
-            // NS の固定更新が 1/60 秒なので分割は 1
+            // 動いている体が無いので、Jolt はシミュレーションを飛ばして broadphase の木だけを組み直す
             m_physicsSystem.Update(deltaTime, 1, &m_tempAllocator, &m_jobSystem);
-        }
-
-        void PhysicsScene::SetBodyAngularVelocity(JPH::BodyID id, const Vector3& angularVelocity)
-        {
-            if (id.IsInvalid())
-            {
-                return;
-            }
-
-            m_physicsSystem.GetBodyInterface().SetAngularVelocity(id, ToJolt(angularVelocity));
-        }
-
-        Vector3 PhysicsScene::BodyAngularVelocity(JPH::BodyID id) const
-        {
-            return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetAngularVelocity(id));
-        }
-
-        bool PhysicsScene::IsBodyAwake(JPH::BodyID id) const
-        {
-            if (id.IsInvalid())
-            {
-                return false;
-            }
-
-            return m_physicsSystem.GetBodyInterfaceNoLock().IsActive(id);
-        }
-
-        std::vector<BodyContact> PhysicsScene::ContactsOf(JPH::BodyID id) const
-        {
-            if (id.IsInvalid())
-            {
-                return {};
-            }
-
-            return m_contactRecorder.Of(id);
         }
 
         void PhysicsScene::RemoveBody(JPH::BodyID id)
@@ -448,33 +291,6 @@ namespace NS
             return true;
         }
 
-        std::vector<JPH::BodyID> PhysicsScene::OverlapCapsule(const Capsule& capsule) const
-        {
-            const ShapePart part = MakeCapsulePart(capsule);
-            if (part.shape == nullptr)
-            {
-                return {};
-            }
-            const JPH::RMat44 transform =
-                JPH::RMat44::sRotationTranslation(ToJolt(part.rotation), ToJolt(part.position));
-
-            JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
-            m_physicsSystem.GetNarrowPhaseQueryNoLock().CollideShape(
-                part.shape, JPH::Vec3::sOne(), transform, JPH::CollideShapeSettings{}, JPH::RVec3::sZero(), collector);
-
-            // mesh の body は三角形ごとに当たりを返すので、同じ id を落としてから返す
-            std::vector<JPH::BodyID> found;
-            found.reserve(collector.mHits.size());
-            for (const JPH::CollideShapeResult& hit : collector.mHits)
-            {
-                if (std::find(found.begin(), found.end(), hit.mBodyID2) == found.end())
-                {
-                    found.push_back(hit.mBodyID2);
-                }
-            }
-            return found;
-        }
-
         std::vector<AABB> PhysicsScene::OverlapBox(const AABB& region) const
         {
             const JPH::Vec3 center = ToJolt(region.Center);
@@ -499,31 +315,6 @@ namespace NS
                 found.push_back(AABB{FromJolt(bounds.GetCenter()), FromJolt(bounds.GetExtent())});
             }
             return found;
-        }
-
-        void PhysicsScene::SetBodyVelocity(JPH::BodyID id, const Vector3& velocity)
-        {
-            if (id.IsInvalid())
-            {
-                return;
-            }
-
-            m_physicsSystem.GetBodyInterface().SetLinearVelocity(id, ToJolt(velocity));
-        }
-
-        Vector3 PhysicsScene::BodyVelocity(JPH::BodyID id) const
-        {
-            return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetLinearVelocity(id));
-        }
-
-        Vector3 PhysicsScene::BodyPosition(JPH::BodyID id) const
-        {
-            return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetPosition(id));
-        }
-
-        Quaternion PhysicsScene::BodyRotation(JPH::BodyID id) const
-        {
-            return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetRotation(id));
         }
     } // namespace Phys
 } // namespace NS

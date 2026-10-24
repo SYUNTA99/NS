@@ -16,7 +16,6 @@
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
-#include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
@@ -27,12 +26,11 @@ namespace NS
 {
     namespace Phys
     {
-        //! body の種別を表す ObjectLayer。どの組み合わせが当たるかは ObjLayerPairFilter が持つ
+        //! body の種別を表す ObjectLayer。body はどれも動かないので、body どうしは当たらない
         namespace ObjectLayers
         {
             inline constexpr JPH::ObjectLayer Terrain = 0;
-            inline constexpr JPH::ObjectLayer Rock = 1;
-            inline constexpr uint Count = 2;
+            inline constexpr uint Count = 1;
         } // namespace ObjectLayers
 
         namespace BroadPhaseLayers
@@ -46,14 +44,8 @@ namespace NS
             }
 
             inline constexpr JPH::BroadPhaseLayer Terrain = FromObjectLayer(ObjectLayers::Terrain);
-            inline constexpr JPH::BroadPhaseLayer Rock = FromObjectLayer(ObjectLayers::Rock);
             inline constexpr uint Count = ObjectLayers::Count;
         } // namespace BroadPhaseLayers
-
-        //! @brief 重力の既定の Y 成分 (m/s^2)
-        //! @details 自機の上昇重力と同じ値。下降の -35
-        //! は頂点から早く落として操作を返すための値で、操作の無い物には掛けない
-        inline constexpr float k_DefaultGravityY = -25.0f;
 
         //! 重力の向き。真下に決めて、シーンでは変えない
         inline constexpr Vector3 k_GravityDirection{0.0f, -1.0f, 0.0f};
@@ -68,19 +60,6 @@ namespace NS
             }
             velocity += k_GravityDirection * (strength * dt);
         }
-
-        //! 重力の既定値。真下へ k_DefaultGravityY
-        [[nodiscard]] inline Vector3 DefaultGravity() noexcept
-        {
-            return k_GravityDirection * -k_DefaultGravityY;
-        }
-
-        //! @brief 直近の Update で記録した接触 1 件
-        struct BodyContact
-        {
-            JPH::BodyID other;  // ぶつかった相手の body
-            Vector3 normal; // 接触面の法線。持ち主を相手から離す向き
-        };
 
         //! Jolt の物理世界。初回の構築かメッシュ形状の生成時に共通の型登録を行う
         //! Add 系で形状を作れなければ無効な BodyID
@@ -123,44 +102,12 @@ namespace NS
                                       const Vector3& scale,
                                       JPH::ObjectLayer layer);
 
-            //! @brief キネマティックの body を、次の Update の deltaTime 秒で position・rotation へ着くよう動かす
-            //! @details 瞬間移動ではなく速度を持たせて運ぶので、途中で触れた相手を押す
-            //! 無効な BodyID と、deltaTime が正でない時は何もしない
-            void MoveKinematic(JPH::BodyID id,
-                               const Vector3& position,
-                               const Quaternion& rotation,
-                               float deltaTime);
-
-            //! body を position・rotation へ瞬間移動させて起こす。速度はそのまま。無効な BodyID は何もしない
-            void TeleportBody(JPH::BodyID id, const Vector3& position, const Quaternion& rotation);
-
-            //! 次の Update の間、重心へ力 (N) を掛け続ける。無効な BodyID は何もしない
-            void AddBodyForce(JPH::BodyID id, const Vector3& force);
-            //! 重心へ力積 (N·s) を与え、速度を即座に変える。無効な BodyID は何もしない
-            void AddBodyImpulse(JPH::BodyID id, const Vector3& impulse);
-            //! 次の Update の間、トルク (N·m) を掛け続ける。無効な BodyID は何もしない
-            void AddBodyTorque(JPH::BodyID id, const Vector3& torque);
-            //! 角力積 (N·m·s) を与え、角速度を即座に変える。無効な BodyID は何もしない
-            void AddBodyAngularImpulse(JPH::BodyID id, const Vector3& angularImpulse);
-            //! 眠っている body を起こす。無効な BodyID は何もしない
-            void WakeBody(JPH::BodyID id);
-
-            //! 世界の重力 (m/s^2)。作る時に DefaultGravity へ決め、後から変えない
-            [[nodiscard]] Vector3 Gravity() const;
-
-            //! body の角速度を置く。無効な BodyID は何もしない
-            void SetBodyAngularVelocity(JPH::BodyID id, const Vector3& angularVelocity);
-            //! body の角速度
-            [[nodiscard]] Vector3 BodyAngularVelocity(JPH::BodyID id) const;
-            //! body が起きている場合 true、それ以外の場合は false。無効な BodyID は false
-            [[nodiscard]] bool IsBodyAwake(JPH::BodyID id) const;
-            //! 直近の Update で記録した id の接触。前の Update の分は残らない。無効な BodyID は空
-            [[nodiscard]] std::vector<BodyContact> ContactsOf(JPH::BodyID id) const;
-
             //! broadphase の木を組み直す。Add 完了後に 1 度呼ぶ
             void OptimizeBroadPhase();
 
-            //! この PhysicsScene を deltaTime 秒ぶん進める。衝突の分割は 1 で、渡した時間を刻まない
+            //! @brief broadphase の木を組み直す。固定更新ごとに 1 度呼ぶ
+            //! @details body は動かないので進める物は無い。Sync 系で置き直した body は置いた時から問い合わせに出るが、
+            //! 木の境界は広がるだけなので、ここで締める。進める物が無いので、deltaTime の値で結果は変わらない
             void Update(float deltaTime);
 
             //! 光線上の最も近い命中までの世界距離を返す。direction の長さは問わず、全 body を調べる
@@ -179,21 +126,10 @@ namespace NS
                                        Vector3& outNormal,
                                        JPH::BodyID ignoredBody) const;
 
-            //! @brief capsule に重なっている body の id を集めて返す
-            //! @details 形の実物どうしで見るので、回転した box は外接箱ではなく本当の形で判定する
-            //! layer は問わない。同じ body は 1 度だけ返る
-            [[nodiscard]] std::vector<JPH::BodyID> OverlapCapsule(const Capsule& capsule) const;
-
             //! @brief region に重なる body の世界座標の境界箱を集めて返す
             //! @details 重なりを見るのも返すのも軸並行の境界箱で、shape の形は見ない
             //! 回転した box や mesh では形より大きい箱が返る
             [[nodiscard]] std::vector<AABB> OverlapBox(const AABB& region) const;
-
-            //! body の線速度を置く。無効な BodyID は何もしない
-            void SetBodyVelocity(JPH::BodyID id, const Vector3& velocity);
-
-            //! body の線速度
-            [[nodiscard]] Vector3 BodyVelocity(JPH::BodyID id) const;
 
             //! body をこの PhysicsScene から外して壊す。DetachBody で外してある body も壊す。無効な BodyID は何もしない
             void RemoveBody(JPH::BodyID id);
@@ -201,11 +137,6 @@ namespace NS
             void DetachBody(JPH::BodyID id);
             //! DetachBody で外した body を戻す。無効な BodyID と入っている body は何もしない
             void AttachBody(JPH::BodyID id);
-
-            //! body の世界座標の位置
-            [[nodiscard]] Vector3 BodyPosition(JPH::BodyID id) const;
-            //! body の世界座標の回転
-            [[nodiscard]] Quaternion BodyRotation(JPH::BodyID id) const;
 
         private:
             friend class JoltCharacter;
@@ -242,33 +173,11 @@ namespace NS
                                                  JPH::BroadPhaseLayer broadPhase) const override;
             };
 
-            class ContactRecorder final : public JPH::ContactListener
-            {
-            public:
-                void OnContactAdded(const JPH::Body& first,
-                                    const JPH::Body& second,
-                                    const JPH::ContactManifold& manifold,
-                                    JPH::ContactSettings& settings) override;
-
-                void Clear() noexcept;
-                [[nodiscard]] std::vector<BodyContact> Of(JPH::BodyID id) const;
-
-            private:
-                struct Record
-                {
-                    JPH::BodyID owner;
-                    BodyContact contact;
-                };
-
-                std::vector<Record> m_records;
-            };
-
             // m_tempAllocator より前に置く。構築が呼ぶ Jolt の確保関数は RegisterDefaultAllocator まで nullptr
             RuntimeInit m_runtimeInitialization;
             BPLayerInterface m_broadPhaseLayerInterface;
             ObjLayerPairFilter m_objectLayerPairFilter;
             ObjVsBPLayerFilter m_objectVsBroadPhaseLayerFilter;
-            ContactRecorder m_contactRecorder;
             JPH::TempAllocatorImpl m_tempAllocator;
             JPH::JobSystemSingleThreaded m_jobSystem;
             JPH::PhysicsSystem m_physicsSystem;

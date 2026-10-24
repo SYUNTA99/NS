@@ -37,7 +37,7 @@ namespace NS
     {
         m_mainCamera.SetUp({0.0f, 1.0f, 0.0f});
         m_cameraManager.SetCamera(&m_mainCamera);
-        // Jolt は物理の段に置いた個体の後で進む
+        // Jolt の broadphase の木は、物理の段に置いた個体の後で組み直す
         AddSystemTick(m_physics, UpdatePhase::Physics);
         // 当たりの調べ役はセンサーの段 (物理の後、仕掛けとゴールの前) で回る
         AddSystemTick(m_hitSensors, UpdatePhase::Sensors);
