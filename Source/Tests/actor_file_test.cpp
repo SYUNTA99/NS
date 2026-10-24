@@ -9,6 +9,7 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
@@ -1440,6 +1441,24 @@ TEST(ActorFile, DerivedActorFileThatCannotOverlayItsBaseIsNotRead)
     EXPECT_EQ(log.ErrorCount(), 5);
 }
 
+// 演出と動作は元の .actor だけが持つ。派生に書いてあると効かない理由が分からないので、ERROR で読まない
+TEST(ActorFile, DerivedActorFileWithHitReactionsOrActionsIsNotRead)
+{
+    const ScopedActorFileDirectory scope("DerivedLists");
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    for (const char* key : {"hitReactions", "actions"})
+    {
+        SCOPED_TRACE(key);
+        nlohmann::json derived = DerivedActorFileWith("PropActor", "Params", MassEntry(4.0f));
+        derived[key] = nlohmann::json::array();
+        const TestLogCapture log;
+        EXPECT_FALSE(library.Set("HeavyRock", derived));
+        EXPECT_EQ(library.Find("HeavyRock"), nullptr);
+        EXPECT_EQ(library.Values("HeavyRock"), nullptr);
+        EXPECT_EQ(log.ErrorCount(), 1);
+    }
+}
+
 // .actor の無い名前ではアクターを作らない。コードの値だけで組むと、どの値で動くかがファイルから分からない
 // 置き場が無いディレクトリへ替えると、前の置き場の文書も全部の値も残さず、アクターを作らない
 TEST(ActorFile, DirectoryThatDoesNotExistLeavesNoValuesOfThePreviousOne)
@@ -1574,7 +1593,9 @@ TEST(ActorFile, SharedFieldEditedOnADerivedActorIsWrittenToTheBase)
 }
 
 // 素材の窓で .actor から派生を作ると、元を指して何も書いていない .actor をファイルへ書く。
-// 派生から作ると、同じ元を指し、その派生が書いた項目を写す。ある名前と、ファイルの名前に使えない名前では作らない
+// 派生から作っても、その派生の元を指して何も書いていない .actor になり、派生が書いた項目は写さない。
+// 派生を指すアクターから作ると、アクターの値は元の値に戻り、取り消すと前の派生と値へ戻る。
+// ある名前と、ファイルの名前に使えない名前では作らない
 TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
 {
     const ScopedActorFileDirectory scope("CreateDerived");
@@ -1594,7 +1615,22 @@ TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
     ASSERT_TRUE(editor.CreateDerivedActorFile("HeavyRock", "HeavierRock"));
     const nlohmann::json heavier = SavedActorFile(scope.Path(), "HeavierRock");
     EXPECT_EQ(NS::ActorFileBase(heavier), "PropActor");
-    EXPECT_FLOAT_EQ(ValueOf(heavier, "Params", "質量"), 4.0f);
+    EXPECT_TRUE(NS::ActorJsonClassObjs(heavier).empty());
+    ASSERT_NE(library.Values("HeavierRock"), nullptr);
+    EXPECT_EQ(*library.Values("HeavierRock"), *library.Values("PropActor"));
+
+    const float baseMass = ValueOf(*library.Values("PropActor"), "Params", "質量");
+    ASSERT_NE(baseMass, 4.0f);
+    ASSERT_TRUE(editor.DeriveActorFileFromActor(2, "TunedHeavyRock"));
+    const nlohmann::json tuned = SavedActorFile(scope.Path(), "TunedHeavyRock");
+    EXPECT_EQ(NS::ActorFileBase(tuned), "PropActor");
+    EXPECT_TRUE(NS::ActorJsonClassObjs(tuned).empty());
+    EXPECT_EQ(scene.Actors().FindByActorId(2)->ActorFileName(), "TunedHeavyRock");
+    EXPECT_FLOAT_EQ(MassOf(scene.Actors().FindByActorId(2)), baseMass);
+    NS::Editor::ActorSnapshotApplier applier{&scene};
+    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    EXPECT_EQ(scene.Actors().FindByActorId(2)->ActorFileName(), "HeavyRock");
+    EXPECT_FLOAT_EQ(MassOf(scene.Actors().FindByActorId(2)), 4.0f);
 
     const TestLogCapture log;
     EXPECT_FALSE(editor.CreateDerivedActorFile("PropActor", "HeavyRock"));
@@ -1644,4 +1680,28 @@ TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
     EXPECT_EQ(restored->ActorFileName(), "PropActor");
     EXPECT_TRUE(restored->IsSceneOverride("Shadow", "基本直径"));
     EXPECT_FLOAT_EQ(DiameterOf(restored), 9.0f);
+}
+
+// 元の .actor の束を書き替えると、元を指すアクターにも派生を指すアクターにも新しい束が効く
+TEST(ActorFile, WritingTheBaseHitReactionsReachesActorsOfItsDerived)
+{
+    const ScopedActorFileDirectory scope("BaseHitReactions");
+    NS::Scene scene;
+    ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
+    LevelEditorController editor(&scene);
+    NS::HitReactionSet set;
+    set.name = "Hit";
+    set.stopFrames = 12;
+    editor.WriteActorFileHitReactions("PropActor", {set});
+    set.stopFrames = 20;
+    editor.WriteActorFileHitReactions("PropActor", {set});
+
+    for (NS::uint32 id : {1u, 2u})
+    {
+        const NS::HitReaction* reaction = scene.Actors().FindByActorId(id)->HitReactionClassObj();
+        ASSERT_NE(reaction, nullptr) << id;
+        const NS::HitReactionSet* found = reaction->FindSet("Hit");
+        ASSERT_NE(found, nullptr) << id;
+        EXPECT_EQ(found->stopFrames, 20) << id;
+    }
 }

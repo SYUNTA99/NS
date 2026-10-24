@@ -256,14 +256,15 @@ public:
     void WriteActorFileHitReactions(std::string_view actorFileName, const std::vector<NS::HitReactionSet>& sets);
 
     //! @brief baseName の .actor から、name の派生の .actor を作ってファイルへ書く
-    //! @details baseName が元なら、それを指して何も書いていない派生。派生なら、同じ元を指し、その派生が書いた項目を写す。
+    //! @details 何も書いていない派生で、baseName が元ならそれを、派生ならその元を指す。派生が書いた項目は写さない。
     //! name が空・ファイルの名前に使えない字を含む・既にある時と、baseName が読まれていない時は WARN を出して作らない。
     //! ファイルを作る事は取り消しの履歴へ積まない
     //! @return 作れた場合 true、それ以外の場合は false
     bool CreateDerivedActorFile(std::string_view baseName, std::string_view name);
 
     //! @brief actorId のアクターのシーンの上書きのうち派生に書ける項目を、name の派生の .actor へ移し、アクターをその派生に切り替える
-    //! @details 派生は CreateDerivedActorFile と同じ形で作る。アクターの値と位置は変わらない。
+    //! @details 派生は CreateDerivedActorFile と同じ形で作るので、移るのはシーンの上書きだけ。
+    //! アクターが派生を指していれば、その派生が書いた値は元の値に戻る。位置は変わらない。
     //! アクターの切り替えは取り消しの履歴へ積み、ファイルは取り消しても残す。編集モードでない時と、作れない時は WARN を出して何もしない
     //! @return 切り替えた場合 true、それ以外の場合は false
     bool DeriveActorFileFromActor(NS::uint32 actorId, std::string_view name);
