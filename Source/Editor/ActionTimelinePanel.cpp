@@ -119,15 +119,17 @@ namespace NS
         void ActionTimelinePanel::FollowSelection(LevelEditorController& editor)
         {
             const SceneActor* selected = editor.SelectedActor();
-            if (selected == nullptr || selected->ActorFileName() == m_actorFile)
+            if (selected == nullptr)
             {
                 return;
             }
-            if (ActorFileLibrary::Get().Find(selected->ActorFileName()) == nullptr)
+            // 動作は元の .actor だけが持つので、派生を指すアクターでも元の .actor を開く
+            const std::string actorFile = ActorFileToWrite(*selected, FieldDestination::ActorFile);
+            if (actorFile == m_actorFile || ActorFileLibrary::Get().Find(actorFile) == nullptr)
             {
                 return;
             }
-            LoadWorking(selected->ActorFileName(), "");
+            LoadWorking(actorFile, "");
         }
 
         void ActionTimelinePanel::ApplyWorking(LevelEditorController& editor)
@@ -147,10 +149,11 @@ namespace NS
                 return;
             }
             m_dirty.insert(m_actorFile);
-            // 動作は作る時に .actor から写すので、同じ .actor のアクターに読み直させてプレイにも効かせる
+            // 動作は作る時に .actor から写すので、この .actor と派生のアクターに読み直させてプレイにも効かせる
             for (SceneActor* actor : editor.Actors())
             {
-                if (actor->ActorFileName() == m_actorFile && actor->ActionTimelineClassObj() != nullptr)
+                if (ActorFileToWrite(*actor, FieldDestination::ActorFile) == m_actorFile &&
+                    actor->ActionTimelineClassObj() != nullptr)
                 {
                     actor->ActionTimelineClassObj()->ReloadActions();
                 }

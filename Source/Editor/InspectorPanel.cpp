@@ -468,8 +468,11 @@ namespace NS
             }
         }
 
-        void InspectorPanel::DrawHitReactionSets(LevelEditorController& editor, const std::string& actorFileName)
+        void InspectorPanel::DrawHitReactionSets(LevelEditorController& editor, const SceneActor* actor)
         {
+            NS_ASSERT(App, actor != nullptr, "束の欄を描くアクターが無い");
+            // 束は元の .actor だけが持つので、派生を指すアクターでも元の .actor を読んで書く
+            const std::string actorFileName = ActorFileToWrite(*actor, FieldDestination::ActorFile);
             const nlohmann::json* document = ActorFileLibrary::Get().Find(actorFileName);
             if (document == nullptr)
             {
@@ -492,7 +495,7 @@ namespace NS
             {
                 return;
             }
-            ImGui::TextDisabled("直し終えた束は .actor に書き、この .actor を指すアクターの全部の次の当たりに効く");
+            ImGui::TextDisabled("直し終えた束は元の .actor に書き、元と派生を指すアクターの全部の次の当たりに効く");
             bool committed = false;
             ImGui::PushID("##hitReactions");
             for (int s = 0; s < static_cast<int>(m_hitSets.size()); ++s)
@@ -643,7 +646,7 @@ namespace NS
                     }
                     ImGui::PopID();
                 });
-                DrawHitReactionSets(editor, actorFile->ActorFileName());
+                DrawHitReactionSets(editor, actorFile);
                 // 確定で .actor の文書が変わると、この 1 体は次に引いた時に作り直される
                 if (committed)
                 {
@@ -856,7 +859,7 @@ namespace NS
                     }
                     ImGui::PopID();
                 });
-                DrawHitReactionSets(editor, go->ActorFileName());
+                DrawHitReactionSets(editor, go);
                 // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
                 if (classObjEdit.revertTarget != nullptr && revertRow != nullptr)
                 {
