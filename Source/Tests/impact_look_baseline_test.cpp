@@ -434,17 +434,18 @@ namespace
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
-    LookRow ReadLookRow(NS::Scene& scene, PlayerActor& player, PropActor& rock)
+    LookRow ReadLookRow(NS::Scene& scene, PlayerActor* player, PropActor* rock)
     {
+        NS_ASSERT(Game, player != nullptr && rock != nullptr, "ReadLookRow: 渡したアクターか部品が無い");
         LookRow row{};
         int i = 0;
-        const NS::Vector3 self = player.Root().Position();
+        const NS::Vector3 self = player->Root().Position();
         row[i++] = self.x;
         row[i++] = self.y;
         row[i++] = self.z;
-        row[i++] = AsFloat(player.CanMoveBody());
-        row[i++] = AsFloat(player.IsRebounding());
-        const NS::Model& selfModel = *player.ModelClassObj();
+        row[i++] = AsFloat(player->CanMoveBody());
+        row[i++] = AsFloat(player->IsRebounding());
+        const NS::Model& selfModel = *player->ModelClassObj();
         row[i++] = selfModel.GetDrawScale().x;
         row[i++] = selfModel.GetDrawScale().y;
         row[i++] = selfModel.GetDrawScale().z;
@@ -453,10 +454,10 @@ namespace
         row[i++] = selfModel.GetDrawOffset().z;
         row[i++] = selfModel.GetDrawTremor().amplitude;
         row[i++] = selfModel.GetDrawTremor().elapsedFrames;
-        row[i++] = player.Ghost().Spread().Length();
-        row[i++] = player.Ghost().SideOpacity();
-        row[i++] = player.Ghost().AfterimageOpacity();
-        const NS::CameraManager& cameras = *player.GetCameraManager();
+        row[i++] = player->Ghost().Spread().Length();
+        row[i++] = player->Ghost().SideOpacity();
+        row[i++] = player->Ghost().AfterimageOpacity();
+        const NS::CameraManager& cameras = *player->GetCameraManager();
         float sink = 0.0f;
         if (const NS::CameraSinkModifier* modifier = cameras.FindModifier<NS::CameraSinkModifier>())
         {
@@ -472,7 +473,7 @@ namespace
         row[i++] = pose.position.z;
         row[i++] = pose.screenOffset.x;
         row[i++] = pose.screenOffset.y;
-        const NS::HitScreenDirector& screen = *NS::FindSceneSystem<NS::HitScreenDirector>(&player);
+        const NS::HitScreenDirector& screen = *NS::FindSceneSystem<NS::HitScreenDirector>(player);
         row[i++] = static_cast<float>(screen.FlashFramesRemaining());
         row[i++] = screen.FlashAlpha();
         const NS::OS::GamepadVibration pad = NS::OS::Input::Get().Gamepad().Vibration();
@@ -486,13 +487,13 @@ namespace
         row[i++] = scene.GroundWaveShown().centerZ;
         row[i++] = scene.DistortionRingShown().radius;
         row[i++] = scene.DistortionRingShown().push;
-        const NS::Vector3 other = rock.Root().Position();
+        const NS::Vector3 other = rock->Root().Position();
         row[i++] = other.x;
         row[i++] = other.y;
         row[i++] = other.z;
-        row[i++] = AsFloat(rock.IsFrozen());
-        row[i++] = AsFloat(rock.IsFlying());
-        const NS::Model& rockModel = *rock.ModelClassObj();
+        row[i++] = AsFloat(rock->IsFrozen());
+        row[i++] = AsFloat(rock->IsFlying());
+        const NS::Model& rockModel = *rock->ModelClassObj();
         row[i++] = rockModel.GetDrawScale().x;
         row[i++] = rockModel.GetDrawScale().y;
         row[i++] = rockModel.GetDrawScale().z;
@@ -500,8 +501,8 @@ namespace
         row[i++] = rockModel.GetDrawOffset().y;
         row[i++] = rockModel.GetDrawOffset().z;
         row[i++] = rockModel.GetDrawTremor().amplitude;
-        row[i++] = rock.Ghost().Spread().Length();
-        row[i++] = rock.Ghost().AfterimageOpacity();
+        row[i++] = rock->Ghost().Spread().Length();
+        row[i++] = rock->Ghost().AfterimageOpacity();
         EXPECT_EQ(i, k_ColumnCount);
         return row;
     }
@@ -528,9 +529,10 @@ namespace
 
     // keeper の記録のうち番号が lastId より大きい物を、歩 k に出したエフェクトとして out へ足す
     void CollectStartedEffects(
-        const NS::EffectKeeper& keeper, LookActor actor, int k, NS::uint32& lastId, std::vector<std::string>& out)
+        const NS::EffectKeeper* keeper, LookActor actor, int k, NS::uint32& lastId, std::vector<std::string>& out)
     {
-        for (const NS::EffectRecord& record : keeper.Records())
+        NS_ASSERT(Game, keeper != nullptr, "CollectStartedEffects: 渡したアクターか部品が無い");
+        for (const NS::EffectRecord& record : keeper->Records())
         {
             if (record.id <= lastId)
             {
@@ -566,18 +568,18 @@ namespace
         NS::uint32 rockId = 0;
         // 突進の前に出ていた記録は数えない
         CollectStartedEffects(
-            *player->GetEffectKeeper(), LookActor::Self, -k_StepsBefore - 1, selfId, trace.effects);
-        CollectStartedEffects(*rock->GetEffectKeeper(), LookActor::Rock, -k_StepsBefore - 1, rockId, trace.effects);
+            player->GetEffectKeeper(), LookActor::Self, -k_StepsBefore - 1, selfId, trace.effects);
+        CollectStartedEffects(rock->GetEffectKeeper(), LookActor::Rock, -k_StepsBefore - 1, rockId, trace.effects);
         player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         for (int step = 0; step <= look.detectionStep + k_StepsAfter; ++step)
         {
             scene.OnUpdate();
             const int k = step - look.detectionStep;
-            CollectStartedEffects(*player->GetEffectKeeper(), LookActor::Self, k, selfId, trace.effects);
-            CollectStartedEffects(*rock->GetEffectKeeper(), LookActor::Rock, k, rockId, trace.effects);
+            CollectStartedEffects(player->GetEffectKeeper(), LookActor::Self, k, selfId, trace.effects);
+            CollectStartedEffects(rock->GetEffectKeeper(), LookActor::Rock, k, rockId, trace.effects);
             if (k >= -k_StepsBefore)
             {
-                trace.rows.push_back(ReadLookRow(scene, *player, *rock));
+                trace.rows.push_back(ReadLookRow(scene, player, rock));
             }
         }
         (void)NS::OS::Input::Get().Gamepad().SetVibration(0.0f, 0.0f);

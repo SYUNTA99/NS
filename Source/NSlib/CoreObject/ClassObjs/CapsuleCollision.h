@@ -13,9 +13,9 @@ namespace NS
     {
     public:
         //! 既定 半径 0.4 / 半高 0.5 の縦 capsule で構築する
-        explicit CapsuleCollision(SceneActor* owner) noexcept : Collision(owner) {}
+        CapsuleCollision() noexcept = default;
         //! 半径 / 半高を指定して構築する。負は 0 にクランプ
-        CapsuleCollision(SceneActor* owner, float radius, float halfHeight) noexcept;
+        CapsuleCollision(float radius, float halfHeight) noexcept;
 
         //! 負は 0 にクランプ
         void SetRadius(float radius) noexcept;
@@ -39,11 +39,11 @@ namespace NS
         void SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept;
         [[nodiscard]] Vector3 RotationEulerDegrees() const noexcept;
 
-        //! 持ち主の世界変換と局所変換を重ねる。持ち主がなければ局所変換だけを使う
-        [[nodiscard]] Phys::Capsule WorldCapsule() const noexcept;
+        //! 持ち主の root の世界行列 world と局所変換を重ねる
+        [[nodiscard]] Phys::Capsule WorldCapsule(const Matrix& world) const noexcept;
 
-        //! owner の世界変換を反映した世界軸並行 AABB を返す。Owner 未登録時は局所の値だけを反映する
-        [[nodiscard]] AABB WorldAABB() const noexcept;
+        //! 持ち主の root の世界行列 world を反映した世界軸並行 AABB を返す
+        [[nodiscard]] AABB WorldAABB(const Matrix& world) const noexcept;
 
         NS_REFLECT_BEGIN(CapsuleCollision, Collision)
         NS_ACCESSOR(float, "半径", Radius(), SetRadius)
@@ -53,7 +53,9 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics,
+                                           JPH::BodyID current,
+                                           const Matrix& world) override;
 
         float m_radius = 0.4f;                                     // capsule 半径
         float m_halfHeight = 0.5f;                                 // 円柱部の半長、半球を除く

@@ -12,8 +12,8 @@ namespace GL
         class SkidPlayerState final : public PlayerState<SkidPlayerState>
         {
         public:
-            void OnEnter(::PlayerActor& player) override;
-            void OnStep(::PlayerActor& player, float dt) override;
+            void OnEnter(::PlayerActor* player) override;
+            void OnStep(::PlayerActor* player, float dt) override;
         };
     } // namespace Player
 } // namespace GL

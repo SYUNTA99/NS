@@ -21,7 +21,7 @@ namespace
     ImpactTuning DefaultTuning()
     {
         const GL::Player::PlayerParams params;
-        return MakeImpactTuning(params);
+        return MakeImpactTuning(&params);
     }
 
     // 質量 1・威力 1・中心から外れた当たり。軸に沿って当てた形
@@ -280,8 +280,8 @@ TEST(ImpactOutcome, BoxMissSparksSlideAlongTheFaceTheReboundUsed)
     EXPECT_NEAR(box.reboundArc.missTumble->twist.z, twist.z, 0.0001f);
 
     // 横の割合 0 の火花は面に沿う滑りだけを向く。箱の面は球の面より上へ逸れない
-    GL::Player::ImpactEffects effects{nullptr};
-    ASSERT_EQ(NS::ApplyJsonFields(effects, {{"外れの火花の横の割合", 0.0f}}), 0u);
+    GL::Player::ImpactEffects effects;
+    ASSERT_EQ(NS::ApplyJsonFields(&effects, {{"外れの火花の横の割合", 0.0f}}), 0u);
     const NS::Vector3 spark = effects.MissSparkHeading(k_U, k_V, normal, forward);
     NS::Vector3 slide = forward - normal * forward.Dot(normal);
     slide.Normalize();
@@ -295,7 +295,7 @@ TEST(ImpactOutcome, BoxMissSparksSlideAlongTheFaceTheReboundUsed)
 // 外れの火花は外した側へ 7 割、相手の表面に沿って滑る向きへ 3 割で流す。面の真ん中は向きが決まらない
 TEST(ImpactOutcome, MissSparksFlowTowardTheSideThatWasMissed)
 {
-    GL::Player::ImpactEffects effects{nullptr};
+    GL::Player::ImpactEffects effects;
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     // 右の縁: 外した側 +X、滑る向き (0.6, 0, 0.8)。0.7 × (1, 0, 0) + 0.3 × (0.6, 0, 0.8) を正規化
     const NS::Vector3 right =

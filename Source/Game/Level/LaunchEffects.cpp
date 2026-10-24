@@ -1,8 +1,8 @@
 #include "Game/Level/LaunchEffects.h"
 #include "NSlib/Core/Types.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
-#include "NSlib/CoreObject/SceneActor.h"
 
 #include <algorithm>
 #include <cmath>
@@ -63,23 +63,25 @@ namespace GL
             }
         } // namespace
 
-        LaunchEffects::LaunchEffects(NS::SceneActor* owner) noexcept : m_owner(owner) {}
-
-        void LaunchEffects::Preload()
+        void LaunchEffects::Preload(const NS::IUseEffect* user)
         {
-            NS::PreloadEffects(m_owner, {m_launchTrailAsset, m_launchLandDustAsset});
+            NS_ASSERT(Game, user != nullptr, "LaunchEffects::Preload: 絵を出すアクターが空");
+            NS::PreloadEffects(user, {m_launchTrailAsset, m_launchLandDustAsset});
         }
 
-        void LaunchEffects::BeginTrail(const TackleReleaseDesc& release,
+        void LaunchEffects::BeginTrail(const NS::IUseEffect* user,
+                                       float dt,
+                                       const TackleReleaseDesc& release,
                                        const PropFlight& flight,
                                        const MapObjParams* params,
-                                       const NS::SphereCollision* sphere)
+                                       const NS::Sphere& sphere)
         {
-            NS_ASSERT(Game, params != nullptr && sphere != nullptr, "置物の調整値か当たりの球が渡されていない");
+            NS_ASSERT(Game, user != nullptr, "LaunchEffects::BeginTrail: 絵を出すアクターが空");
+            NS_ASSERT(Game, params != nullptr, "置物の調整値が渡されていない");
             // 尾は 1 本ずつ持つ。前の尾が残っていればここで消す
             if (m_trail != 0)
             {
-                NS::StopEffect(m_owner, m_trail);
+                NS::StopEffect(user, m_trail);
                 m_trail = 0;
             }
             if (!flight.arc)
@@ -98,13 +100,13 @@ namespace GL
             m_landDustScale = (m_landDustBase + m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) * powerGrowth;
 
             // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ。物理への登録に依らず、変換と欄から作る
-            m_trailScale = 2.0f * sphere->WorldSphere().radius;
+            m_trailScale = 2.0f * sphere.radius;
             const Vector3& launchDir = release.arc.direction;
             m_launchDir = NormalizedOr(Vector3{launchDir.x, 0.0f, launchDir.z}, Vector3{1.0f, 0.0f, 0.0f});
 
             // 置物が自分を動かす Triggers の段より前に走るので、帯の頭は放した時の速度で 1 フレーム先へ置く
             // 帯の点の +Y を飛ぶ向きへ回す。揃えないと、横から見た時に幅が道に沿って潰れる
-            const Vector3 head = flight.position + flight.velocity * NS::GetFrameDelta(m_owner);
+            const Vector3 head = flight.position + flight.velocity * dt;
             NS::Gfx::EffectPlayDesc desc =
                 PlayAt(head, TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)), Uniform(m_trailScale));
             // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
@@ -113,52 +115,55 @@ namespace GL
             desc.dynamicInputs[TrailColorInputFor(release.tier)] = 1.0f;
             desc.dynamicInputs[2] = static_cast<float>(m_trailFrames);
             desc.dynamicInputs[3] = 0.0f;
-            m_trail = NS::PlayEffect(m_owner, m_launchTrailAsset, desc);
-            NS::SetEffectAmount(m_owner, m_trail, static_cast<float>(m_trailFrames));
-            m_trailStartStep = NS::GetEffectStep(m_owner);
+            m_trail = NS::PlayEffect(user, m_launchTrailAsset, desc);
+            NS::SetEffectAmount(user, m_trail, static_cast<float>(m_trailFrames));
+            m_trailStartStep = NS::GetEffectStep(user);
         }
 
-        void LaunchEffects::Update(const PropFlight& flight)
+        void LaunchEffects::Update(const NS::IUseEffect* user, const PropFlight& flight)
         {
-            if (m_trail == 0 || NS::GetEffectStep(m_owner) == m_trailStartStep)
+            NS_ASSERT(Game, user != nullptr, "LaunchEffects::Update: 絵を出すアクターが空");
+            if (m_trail == 0 || NS::GetEffectStep(user) == m_trailStartStep)
             {
                 return;
             }
             if (flight.arc)
             {
-                NS::SetEffectTransform(m_owner,
+                NS::SetEffectTransform(user,
                                        m_trail,
                                        flight.position,
                                        TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)),
                                        Uniform(m_trailScale));
                 return;
             }
-            EndTrail();
+            EndTrail(user);
         }
 
-        void LaunchEffects::EndTrail()
+        void LaunchEffects::EndTrail(const NS::IUseEffect* user)
         {
             // 帯と輪はここで消す。点は世界に残るので、通った道が柱のように残る
-            NS::StopEffect(m_owner, m_trail);
+            NS::StopEffect(user, m_trail);
             m_trail = 0;
         }
 
-        void LaunchEffects::CancelTrail()
+        void LaunchEffects::CancelTrail(const NS::IUseEffect* user)
         {
-            EndTrail();
+            NS_ASSERT(Game, user != nullptr, "LaunchEffects::CancelTrail: 絵を出すアクターが空");
+            EndTrail(user);
         }
 
-        void LaunchEffects::NotifyLanding(const Vector3& position, const Vector3& normal)
+        void LaunchEffects::NotifyLanding(const NS::IUseEffect* user, const Vector3& position, const Vector3& normal)
         {
-            EndTrail();
+            NS_ASSERT(Game, user != nullptr, "LaunchEffects::NotifyLanding: 絵を出すアクターが空");
+            EndTrail(user);
             const Vector3 at = position + normal * m_dustRingLift;
             const NS::uint32 dust = NS::PlayEffect(
-                m_owner,
+                user,
                 m_launchLandDustAsset,
                 PlayAt(
                     at, TurnUpTo(normal), Uniform(m_landDustScale / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
-            NS::SetEffectAmount(m_owner, dust, m_landDustScale);
-            NS::StopEffectAfter(m_owner, dust, std::max(m_landDustLife, 1));
+            NS::SetEffectAmount(user, dust, m_landDustScale);
+            NS::StopEffectAfter(user, dust, std::max(m_landDustLife, 1));
         }
     } // namespace Level
 } // namespace GL

@@ -43,10 +43,10 @@ namespace
         void OnInit() override
         {
             CreateClassObj(first);
-            box = CreateClassObj<NS::Collision, NS::BoxCollision>(m_collision, this);
+            box = CreateClassObj<NS::Collision, NS::BoxCollision>(m_collision);
             CreateClassObj(second);
-            CreateClassObj(m_model, this);
-            refused = CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision, this);
+            CreateClassObj(m_model);
+            refused = CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision);
         }
     };
 
@@ -64,7 +64,7 @@ namespace
         void OnInit() override
         {
             CreateClassObj(clash);
-            model = CreateClassObj(m_model, this);
+            model = CreateClassObj(m_model);
         }
     };
 
@@ -75,9 +75,9 @@ namespace
         void OnInit() override
         {
             InitShape();
-            CreateClassObj<NS::Collision, NS::BoxCollision>(m_collision, this);
+            CreateClassObj<NS::Collision, NS::BoxCollision>(m_collision);
         }
-        void InitShape() { CreateClassObj(m_model, this); }
+        void InitShape() { CreateClassObj(m_model); }
     };
 
     class GrandActor final : public MiddleActor
@@ -86,7 +86,7 @@ namespace
         void OnInit() override
         {
             InitShape();
-            CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision, this);
+            CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision);
         }
     };
 
@@ -116,7 +116,7 @@ protected:
     void OnInit() override
     {
         ++inits;
-        CreateClassObj(m_model, this);
+        CreateClassObj(m_model);
     }
 };
 NS_CLASS(ClassObjInitProbeActor)
@@ -171,7 +171,7 @@ TEST(ClassObj, CreateEnumeratesRootThenSlotsThenDerivedInCreationOrder)
     ASSERT_NE(actor->second, nullptr);
     ASSERT_NE(actor->CollisionClassObj(), nullptr);
     std::vector<std::string> names;
-    NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& field, const NS::Object* part) {
+    NS::ForEachReflectedClassObj(actor.get(), [&](const NS::ClassObjInfo& field, const NS::Object* part) {
         if (std::string_view{field.key} == "First")
         {
             EXPECT_EQ(part, actor->first.get());
@@ -268,7 +268,6 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
     scene.ResetFromJson(doc);
     check(scene.Actors().FindByActorId(1), "組み直し");
 
-    check(scene.ReplaceFromJson(placed), "作り直す");
     check(scene.SpawnFromJson(NS::Editor::MakePrototypeJson<AssetTimingProbeActor>()), "JSON から湧かす");
     check(scene.SpawnActor<AssetTimingProbeActor>("Placed"), "型から湧かす");
 }

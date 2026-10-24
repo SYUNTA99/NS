@@ -1,13 +1,11 @@
 #include "NSlib/CoreObject/ClassObjs/CapsuleCollision.h"
 #include "NSlib/Core/AABB.h"
 
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/PhysicsScene.h"
 
 namespace NS
 {
-    CapsuleCollision::CapsuleCollision(SceneActor* owner, float radius, float halfHeight) noexcept : Collision(owner)
+    CapsuleCollision::CapsuleCollision(float radius, float halfHeight) noexcept
     {
         SetRadius(radius);
         SetHalfHeight(halfHeight);
@@ -82,17 +80,17 @@ namespace NS
         return QuaternionToEulerDegrees(m_localRotation);
     }
 
-    Phys::Capsule CapsuleCollision::WorldCapsule() const noexcept
+    Phys::Capsule CapsuleCollision::WorldCapsule(const Matrix& world) const noexcept
     {
         const AffineDecomposition decomposed =
-            DecomposeAffine(ShapeWorldMatrix(m_localRotation, m_centerOffset));
+            DecomposeAffine(ShapeWorldMatrix(world, m_localRotation, m_centerOffset));
         return Phys::MakeScaledCapsule(
             decomposed.translation, decomposed.rotation, decomposed.scale, m_radius, m_halfHeight);
     }
 
-    AABB CapsuleCollision::WorldAABB() const noexcept
+    AABB CapsuleCollision::WorldAABB(const Matrix& world) const noexcept
     {
-        const Phys::Capsule capsule = WorldCapsule();
+        const Phys::Capsule capsule = WorldCapsule(world);
         const Vector3 tip = capsule.center + capsule.axis * capsule.halfHeight;
         const Vector3 base = capsule.center - capsule.axis * capsule.halfHeight;
         const Vector3 r{capsule.radius, capsule.radius, capsule.radius};
@@ -101,8 +99,8 @@ namespace NS
         return AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
 
-    JPH::BodyID CapsuleCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID CapsuleCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current, const Matrix& world)
     {
-        return physics.SyncCapsule(current, WorldCapsule(), Phys::ObjectLayers::Terrain);
+        return physics.SyncCapsule(current, WorldCapsule(world), Phys::ObjectLayers::Terrain);
     }
 } // namespace NS

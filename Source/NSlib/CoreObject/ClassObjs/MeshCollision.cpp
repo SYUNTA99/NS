@@ -1,7 +1,5 @@
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/MeshShape.h"
 #include "NSlib/Phys/PhysicsScene.h"
 
@@ -47,18 +45,13 @@ namespace NS
         return m_shape;
     }
 
-    std::vector<Phys::Triangle> MeshCollision::WorldTriangles() const
+    std::vector<Phys::Triangle> MeshCollision::WorldTriangles(const Matrix& world) const
     {
         if (m_shape == nullptr)
         {
             return {};
         }
-        if (m_owner == nullptr)
-        {
-            return m_shape->triangles;
-        }
 
-        const Matrix world = m_owner->Root().WorldMatrix();
         std::vector<Phys::Triangle> result;
         result.reserve(m_shape->triangles.size());
         for (const Phys::Triangle& tri : m_shape->triangles)
@@ -70,23 +63,18 @@ namespace NS
         return result;
     }
 
-    JPH::BodyID MeshCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID MeshCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current, const Matrix& world)
     {
         if (m_shape == nullptr)
         {
             return JPH::BodyID{};
         }
 
-        Matrix world = Matrix::Identity;
-        if (m_owner != nullptr)
-        {
-            world = m_owner->Root().WorldMatrix();
-        }
         const AffineDecomposition parts = DecomposeAffine(world);
         // 描画は 4x4 の行列で歪みまで出すので、形の共有をやめて世界座標の三角形から作り、描画と当たりを揃える
         if (HasShear(world, parts))
         {
-            return physics.SyncMesh(current, WorldTriangles(), Phys::ObjectLayers::Terrain);
+            return physics.SyncMesh(current, WorldTriangles(world), Phys::ObjectLayers::Terrain);
         }
 
         const Phys::MeshShape& shared = *m_shape;

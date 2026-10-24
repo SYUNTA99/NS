@@ -20,7 +20,9 @@ namespace NS
 
     protected:
         void OnInit() override;
-        void OnStart() override;
+        //! 光は入れたまま、出ている間だけシーンを照らす
+        void OnAppear() override;
+        void OnDisappear() noexcept override;
 
     private:
         std::unique_ptr<DirectionalLight> m_light;

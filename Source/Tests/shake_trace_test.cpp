@@ -123,13 +123,14 @@ namespace
     {
     public:
         // 接地と溜めを仮想カメラの口へ渡す
-        void Feed(NS::ThirdPersonFollow& vcam) const
+        void Feed(NS::ThirdPersonFollow* vcam) const
         {
-            vcam.SetFollowMotion(true, NS::Vector3{});
+            NS_ASSERT(Game, vcam != nullptr, "Feed: 渡したアクターか部品が無い");
+            vcam->SetFollowMotion(true, NS::Vector3{});
             NS::FollowChargeDesc charge{};
             charge.held = true;
             charge.charge01 = std::min(static_cast<float>(frame) / 60.0f, 1.0f);
-            (void)vcam.SetFollowCharge(charge);
+            (void)vcam->SetFollowCharge(charge);
         }
         int frame = 0;
     };
@@ -146,11 +147,13 @@ namespace
             return offsets;
         }
         NS::ThirdPersonFollow& vcam = actor->Vcam();
-        NS::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
+        NS::ApplyJsonFields(&vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
+        // 欄を書いた後に、エディタと同じく相手を取得し直す
+        actor->ResolveActorRefs();
         for (int frame = 0; frame < k_ChargeFrames; ++frame)
         {
             target->frame = frame;
-            target->Feed(vcam);
+            target->Feed(&vcam);
             scene.OnUpdate();
             NS::Vector3 angles{};
             const NS::CameraManager* cameras = scene.GetCameraManager();

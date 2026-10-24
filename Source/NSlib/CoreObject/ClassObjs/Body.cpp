@@ -3,7 +3,7 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Phys/PhysicsScene.h"
 
 #include <cmath>
 
@@ -79,21 +79,22 @@ namespace NS
 
     void Body::Gravity(float gravity, float dt) noexcept
     {
-        if (m_owner == nullptr)
+        // 非有限値で速度が壊れると戻せないので、SceneActor::AddGravity と同じく変更しない
+        if (!std::isfinite(gravity) || !std::isfinite(dt) || !(dt > 0.0f))
         {
-            m_velocity.y += gravity * dt;
             return;
         }
-        m_owner->AddGravity(m_velocity, -gravity, dt);
+        m_velocity += Phys::k_GravityDirection * (-gravity * dt);
     }
 
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
     // 天井に当たったフレームの上向き速度は Move を抜けた時点で 0 になっている
-    void Body::Move(Collider& collider, float dt, float maxStepHeight) noexcept
+    void Body::Move(Transform* root, Collider* collider, float dt, float maxStepHeight) noexcept
     {
-        NS_ASSERT(Scene, m_owner != nullptr, "持ち主の無い Body を動かしている");
-        const ColliderMove moved = collider.Move(m_owner->Root().Position(), m_velocity, dt, maxStepHeight);
-        m_owner->Root().SetPosition(moved.position);
+        NS_ASSERT(Scene, collider != nullptr, "Body::Move: 当たりの部品が空");
+        NS_ASSERT(Scene, root != nullptr, "Body::Move: 動かすルートが空");
+        const ColliderMove moved = collider->Move(root->Position(), m_velocity, dt, maxStepHeight);
+        root->SetPosition(moved.position);
         m_velocity = moved.velocity;
         m_wasGrounded = m_isGrounded;
         m_isGrounded = moved.grounded;

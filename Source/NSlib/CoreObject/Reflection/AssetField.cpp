@@ -68,8 +68,9 @@ namespace NS
         return PathOrEmpty(field);
     }
 
-    void LoadAssetFields(SceneActor& actor)
+    void LoadAssetFields(SceneActor* actor)
     {
+        NS_ASSERT(Scene, actor != nullptr, "LoadAssetFields: アクターが null");
         ForEachReflectedClassObj(actor, [](const ClassObjInfo&, Object* classObj) {
             const ReflectionInfo* info = classObj->GetReflection();
             if (info == nullptr)

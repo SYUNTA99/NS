@@ -417,33 +417,44 @@ namespace NS
     };
 
     class HitSensor;
+    class Model;
+
+    //! @brief 束か項目を始める 1 回の呼び出しに渡す、持ち主の読む物と書く先。呼び出しの中だけ使い、覚えない
+    struct HitReactionSelf
+    {
+        //! .actor の名前・カメラ・シーンを読み、管理クラスへの依頼の主にする。事前条件: nullptr でない
+        const SceneActor* actor = nullptr;
+        Model* model = nullptr; //!< 形・揺れ・震えを書く先。持ち主に Model が無ければ nullptr
+    };
 
     //! @brief 当たりの演出を頼む部品。.actor の名前の束を持ち、名前で始める
     //! @details 揺れと寄りは CameraManager、白・震えの線・歪みの輪・床の波は HitScreenDirector、振動は PadRumbleDirector、
-    //! 描く揺れ・形・震えは持ち主の Model が進める。止めの残りは持ち主の SceneActor が数える。
-    //! 持ち主へ渡す項目の進みはここに持ち、持ち主の SceneActor::Update が進める
+    //! 描く揺れ・形・震えは持ち主の Model が進める。止めの長さは Start が返し、持ち主の SceneActor が数える。
+    //! 持ち主は覚えず、呼ぶたびに受ける。持ち主へ渡す項目の進みはここに持ち、持ち主の SceneActor::Update が進める
     class HitReaction : public Object
     {
     public:
-        explicit HitReaction(SceneActor* owner) noexcept : m_owner(owner) {}
-
         //! シーンに 1 つの HitScreenDirector と PadRumbleDirector
         //! を作る。更新の最中に作ると、そのフレームの段に間に合わない
-        void CreateDirectors();
+        void CreateDirectors(const SceneActor* owner);
 
         //! @brief 持ち主の .actor (SceneActor::ActorFileName) から束を読み直す
         //! @details .actor が無ければ束は空。壊れた束は ReadHitReactionSets が ERROR を出して読まない
-        void ReloadSets();
+        void ReloadSets(const SceneActor* owner);
 
         //! @brief 名前の束を始める。全部の項目が呼んだフレームに始まり、項目の値は束に書いた値のまま使う
-        //! @details 束の止めの長さを持ち主の止めの残りに頼む (残りより長い時だけ延ばす)。向きを使う項目は、
-        //! self の中心から other の中心への向きで決め、位置を使う項目は position を使う
+        //! @details 向きを使う項目は、self の中心から other の中心への向きで決め、位置を使う項目は position を使う
         //! @param[in] name 束の名前
         //! @param[in] position 触れた位置などの世界の点
         //! @param[in] self 持ち主のセンサー。事前条件: nullptr でない
         //! @param[in] other 相手のセンサー。事前条件: nullptr でない
-        //! @return 始めた場合 true。その名前の束が無い場合は WARN を出して false
-        bool Start(std::string_view name, const Vector3& position, const HitSensor* self, const HitSensor* other);
+        //! @return 始めた場合は束の止めの長さ (フレーム数)。持ち主が SceneActor::RequestHitStop で止めに頼む。
+        //! その名前の束が無い場合は WARN を出して std::nullopt
+        [[nodiscard]] std::optional<int> Start(const HitReactionSelf& owner,
+                                               std::string_view name,
+                                               const Vector3& position,
+                                               const HitSensor* self,
+                                               const HitSensor* other);
 
         //! @brief 項目を 1 つ、長さ length で始める。動作のタイムラインが事象の始まりのフレームに呼ぶ
         //! @details 向きと位置は Start と同じく self・other・position から出す。持ち主の止めには触らない
@@ -451,7 +462,8 @@ namespace NS
         //! @param[in] other 相手のセンサー。事前条件: nullptr でない
         //! @param[in] shapeFrame 形の項目を何フレーム目の姿から描くか。途中のフレームから入った動作の形に使い、
         //! ほかの項目は読まない。事前条件: 0 以上
-        void StartItem(const HitReactionItem& item,
+        void StartItem(const HitReactionSelf& owner,
+                       const HitReactionItem& item,
                        int length,
                        const Vector3& position,
                        const HitSensor* self,
@@ -468,72 +480,74 @@ namespace NS
         //! @details 呼ぶのは SceneActor::Update の頭だけ。持ち主の止めの間も進める
         void AdvanceOwnerRuns() noexcept;
 
+        // 下の関数の owner は管理クラスとカメラを引くアクターで、依頼の主にもなる。事前条件: nullptr でない
+
         //! @brief 白の光を頼む。前の白が残っていても始め直す
         //! @param[in] frames 白の光のフレーム数。0 以下なら光らない
         //! @param[in] alpha 始めの濃さ。残りのフレーム数に比例して薄くなる
-        void StartFlash(int frames, float alpha) noexcept;
+        void StartFlash(const SceneActor* owner, int frames, float alpha) noexcept;
 
         //! @brief カメラの揺れを始める
         //! @param[in] desc 揺れの設定。フレーム数 0 以下なら揺らさない
         //! @return 揺れを積んだか、フレーム数 0 以下で揺らさなかった場合 true。
         //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
-        bool StartShake(const CameraShakeDesc& desc);
+        bool StartShake(const SceneActor* owner, const CameraShakeDesc& desc);
 
         //! @brief カメラの沈む揺れを始める
         //! @param[in] desc 4 拍の形。フレーム数 0 以下なら揺らさない
         //! @return 揺れを積んだか、フレーム数 0 以下で揺らさなかった場合 true。
         //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
-        bool StartSink(const CameraSinkDesc& desc);
+        bool StartSink(const SceneActor* owner, const CameraSinkDesc& desc);
 
         //! @brief カメラのずれを始める。位置と注視点を同じだけずらし、向きは変えない
         //! @param[in] desc ずらす向きと距離の曲線。フレーム数 0 以下ならずらさない
         //! @return ずれを積んだか、フレーム数 0 以下でずらさなかった場合 true。
         //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
-        bool StartNudge(const CameraNudgeDesc& desc);
+        bool StartNudge(const SceneActor* owner, const CameraNudgeDesc& desc);
 
         //! @brief カメラのトラウマを足す。揺れの途中なら前のトラウマに足す
         //! @param[in] desc 足す量と揺れの形
         //! @return 足した場合 true。量が壊れている・カメラの管理役が無い場合 false
-        bool AddTrauma(const CameraTraumaDesc& desc);
+        bool AddTrauma(const SceneActor* owner, const CameraTraumaDesc& desc);
 
         //! @brief カメラの寄りと傾きを始める
         //! @param[in] desc 寄りと傾きの設定
         //! @return 積んだ場合 true。設定が壊れている・カメラの管理役が無い場合 false
-        bool StartZoomRoll(const CameraZoomRollDesc& desc);
+        bool StartZoomRoll(const SceneActor* owner, const CameraZoomRollDesc& desc);
 
         //! @brief 震えの線を頼む。前の線が残っていても始め直す
         //! @param[in] desc 震えの線の設定。半径かフレーム数が 0 以下なら出さない
-        void StartShakeLines(const HitShakeLinesDesc& desc) noexcept;
+        void StartShakeLines(const SceneActor* owner, const HitShakeLinesDesc& desc) noexcept;
 
         //! @brief 歪みの輪を頼む。前の輪が残っていても始め直す
         //! @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない
-        void StartDistortionRing(const HitDistortionRingDesc& desc) noexcept;
+        void StartDistortionRing(const SceneActor* owner, const HitDistortionRingDesc& desc) noexcept;
 
         //! @brief この部品が頼んだ歪みの輪を消す
         //! @details Stop は輪を消さない
-        void StopDistortionRing() noexcept;
+        void StopDistortionRing(const SceneActor* owner) noexcept;
 
         //! @brief この部品が頼んだ床の波を消す
         //! @details Stop は波を消さない
-        void StopGroundWave() noexcept;
+        void StopGroundWave(const SceneActor* owner) noexcept;
 
         //! @brief パッドの振動を頼む。前の振動が残っていても始め直す
         //! @param[in] pad 振動の設定
-        void StartPadVibration(const HitPadVibration& pad);
+        void StartPadVibration(const SceneActor* owner, const HitPadVibration& pad);
         //! @brief 書いている振動に pad を重ねる
         //! @details 重ねたフレームを 0 として pad を進め、値を足す。pad の長さを過ぎたら 0 を足す。
         //! 何も書いていなければ StartPadVibration と同じ
         //! @param[in] pad 重ねる振動
-        void BlendPadVibration(const HitPadVibration& pad);
+        void BlendPadVibration(const SceneActor* owner, const HitPadVibration& pad);
 
         //! @brief この部品が頼んだ演出を止める。白と震えの線を消し、振動を 0 にし、揺れ・ずれ・寄りを外し、
         //! 持ち主へ渡す項目を外す
         //! @details トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される。
         //! ほかの物が頼んだカメラの効果は残す
-        void Stop();
+        void Stop(const SceneActor* owner);
 
         //! Stop に加えて、この部品が頼んだカメラの効果をトラウマも含めて全部外す。途中で外れても効果を残さない
-        void StopAll();
+        void StopAll(const SceneActor* owner);
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する
         NS_REFLECT_NONE(HitReaction, Object)
@@ -541,7 +555,6 @@ namespace NS
     private:
         struct ItemStarter;
 
-        SceneActor* m_owner = nullptr;          // 持ち主 (非所有)
         std::vector<HitReactionSet> m_sets;     // 持ち主の .actor の束
         std::vector<HitOwnerRun> m_ownerRuns;   // 進めている持ち主へ渡す項目
         uint32 m_startCount = 0;                // 束か項目を始めた回数。揺れの種に混ぜる

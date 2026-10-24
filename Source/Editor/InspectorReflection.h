@@ -51,8 +51,8 @@ namespace NS
 
         //! @brief 欄の名前に上書きの色を付け、戻すを出すか
         //! @details シーンへ書く欄で、actor のシーンの上書きの一覧にある時だけ真。値は比べない。
-        //! actor は comp の持ち主、partKey は comp の部品のキー。どちらかが nullptr なら偽
-        [[nodiscard]] bool ShowsOverride(const Object& comp,
+        //! actor は comp の持ち主、partKey は comp の部品のキー。actor か partKey が nullptr なら偽
+        [[nodiscard]] bool ShowsOverride(const Object* comp,
                                          const char* partKey,
                                          const FieldDesc& field,
                                          const SceneActor* actor);
@@ -61,7 +61,7 @@ namespace NS
         //! refOptions が空なら参照は数値入力。partKey と actor があれば上書きの表示と既定に戻すを使える
         //! filter は欄の見せる名前の部分一致。空か nullptr なら絞らない
         //! actor は comp の持ち主。actor と appearance があれば、行の地を書く先の色で塗る
-        [[nodiscard]] ClassObjEditResult DrawReflectedClassObj(Object& comp,
+        [[nodiscard]] ClassObjEditResult DrawReflectedClassObj(Object* comp,
                                                                std::span<const ActorRefOption> refOptions = {},
                                                                const char* partKey = nullptr,
                                                                const char* filter = nullptr,

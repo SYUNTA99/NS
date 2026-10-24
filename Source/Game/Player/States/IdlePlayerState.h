@@ -11,7 +11,7 @@ namespace GL
         class IdlePlayerState final : public PlayerState<IdlePlayerState>
         {
         public:
-            void OnStep(::PlayerActor& player, float dt) override;
+            void OnStep(::PlayerActor* player, float dt) override;
         };
     } // namespace Player
 } // namespace GL

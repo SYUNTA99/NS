@@ -19,6 +19,7 @@ namespace NS
             void Undo(IActorSnapshotApplier& target) noexcept override;
 
             [[nodiscard]] std::size_t EstimatedBytes() const noexcept override;
+            void ReleaseHeldActors() noexcept override;
 
         private:
             std::vector<std::unique_ptr<ICommand>> m_commands;

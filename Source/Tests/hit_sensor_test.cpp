@@ -2,9 +2,11 @@
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/IUse/IUseHitSensor.h"
 #include "NSlib/CoreObject/Message/Message.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -29,10 +31,11 @@ namespace
     public:
         SensorProbeActor(SensorKind kind, float radius) : m_kind(kind), m_radius(radius) {}
 
-        void AttackSensor(NS::HitSensor& self, NS::HitSensor& other) override
+        void AttackSensor(NS::HitSensor* self, NS::HitSensor* other) override
         {
-            selves.push_back(&self);
-            touched.push_back(&other);
+            NS_ASSERT(Game, self != nullptr && other != nullptr, "重なったセンサーが渡されていない");
+            selves.push_back(self);
+            touched.push_back(other);
         }
 
         bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override
@@ -53,7 +56,8 @@ namespace
         void OnInit() override
         {
             m_sensor = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
-            GL::Level::SetSensorKind(*m_sensor, m_kind);
+            NS::InitHitSensor(this, m_sensor);
+            GL::Level::SetSensorKind(m_sensor, m_kind);
             m_sensor->SetSphere(m_radius);
         }
 
@@ -136,7 +140,7 @@ TEST(HitSensor, WorldVolumeFollowsRootScale)
     sensor->SetSphere(0.5f);
     actor.Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
     actor.Root().SetScale(Vector3{2.0f, 2.0f, 2.0f});
-    const NS::SensorVolume volume = sensor->WorldVolume();
+    const NS::SensorVolume volume = sensor->WorldVolume(actor.Root().WorldMatrix());
     EXPECT_FLOAT_EQ(volume.radius, 1.0f);
     EXPECT_FLOAT_EQ(volume.Center().y, 2.0f);
 }
@@ -274,7 +278,7 @@ TEST(HitSensorDirector, SensorLeavesDirectorWhenDestroyed)
     EXPECT_EQ(scene.HitSensors().Sensors().size(), before);
 }
 
-// 登録されているかは調べ役の並びだけが持つ。調べ役から直に外されても、次の Register で戻る
+// 登録されているかは調べ役の並びだけが持つ。外したセンサーは次の Register で戻り、二重には入らない
 TEST(HitSensorDirector, SensorRejoinsAfterTheDirectorDroppedIt)
 {
     NS::Scene scene;
@@ -282,8 +286,30 @@ TEST(HitSensorDirector, SensorRejoinsAfterTheDirectorDroppedIt)
     const std::size_t joined = scene.HitSensors().Sensors().size();
     scene.HitSensors().Unregister(rock->m_sensor);
     ASSERT_EQ(scene.HitSensors().Sensors().size(), joined - 1);
-    rock->m_sensor->Register();
+    scene.HitSensors().Register(rock->m_sensor);
+    scene.HitSensors().Register(rock->m_sensor);
     EXPECT_EQ(scene.HitSensors().Sensors().size(), joined);
+}
+
+// 調べる対象かは、出入りで切り替える値とゲームの Invalidate の両方で決まり、持ち主が出ているかを読まない
+TEST(HitSensor, ValidOnlyWhileEnabledAndNotInvalidated)
+{
+    NS::ShapeHitSensor loose{nullptr};
+    EXPECT_FALSE(loose.IsValid());
+    NS::EnableHitSensor(&loose);
+    EXPECT_TRUE(loose.IsValid());
+    loose.Invalidate();
+    EXPECT_FALSE(loose.IsValid());
+    loose.Validate();
+    NS::DisableHitSensor(&loose);
+    EXPECT_FALSE(loose.IsValid());
+
+    NS::Scene scene;
+    SensorProbeActor* rock = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::MapObjBody, 0.5f);
+    ASSERT_TRUE(rock->IsAppeared());
+    ASSERT_TRUE(rock->m_sensor->IsValid());
+    NS::DisableHitSensor(rock->m_sensor);
+    EXPECT_FALSE(rock->m_sensor->IsValid());
 }
 
 TEST(Message, KindsAreDistinctPerType)
@@ -302,15 +328,15 @@ TEST(Message, SendReachesReceiverOwnerAndReturnsItsAnswer)
     SensorProbeActor* sender = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::Area, 1.0f);
     SensorProbeActor* receiver = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::PlayerBody, 0.5f);
 
-    EXPECT_TRUE(NS::SendMsg(MsgPing{}, *receiver->m_sensor, sender->m_sensor));
+    EXPECT_TRUE(NS::SendMsg(MsgPing{}, receiver->m_sensor, sender->m_sensor));
     ASSERT_EQ(receiver->received.size(), 1u);
     EXPECT_EQ(receiver->received[0], MsgPing::StaticKind());
 
     // 受け手が応じなければ false
     receiver->acceptMessages = false;
-    EXPECT_FALSE(NS::SendMsg(MsgPong{}, *receiver->m_sensor, sender->m_sensor));
+    EXPECT_FALSE(NS::SendMsg(MsgPong{}, receiver->m_sensor, sender->m_sensor));
 
     // 自分宛ては送らない
-    EXPECT_FALSE(NS::SendMsg(MsgPing{}, *sender->m_sensor, sender->m_sensor));
+    EXPECT_FALSE(NS::SendMsg(MsgPing{}, sender->m_sensor, sender->m_sensor));
     EXPECT_TRUE(sender->received.empty());
 }

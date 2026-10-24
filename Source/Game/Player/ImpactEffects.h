@@ -15,6 +15,8 @@ namespace NS
 {
     class Body;
     class Collider;
+    class IUseCamera;
+    class IUseEffect;
 } // namespace NS
 
 namespace GL
@@ -97,10 +99,8 @@ namespace GL
         class ImpactEffects : public NS::Object
         {
         public:
-            explicit ImpactEffects(NS::SceneActor* owner) noexcept;
-
-            //! 当たり・反動・着地の絵を先に読む。持ち主の OnStart が呼ぶ
-            void Preload();
+            //! 当たり・反動・着地の絵を先に読む。絵は effect (持ち主のアクター) のシーンへ出す。持ち主の OnAssetsLoaded が呼ぶ
+            void Preload(const NS::IUseEffect* effect);
 
             //! @brief 当たりの絵を、次の Update で最後の当たりの内訳から始める
             //! @details 持ち主が段の束の持ち主へ渡す項目 HitEffect を始めたフレームに呼ぶ
@@ -111,11 +111,17 @@ namespace GL
 
             //! @brief 頼まれた当たりと飛びの絵を始め、出ている絵を進める。持ち主の見た目の段が呼ぶ
             //! @details 同じフレームに両方を頼まれた時は、当たりの絵の後に飛びの絵を始める
+            //! @param[in] effect 絵を出す持ち主のアクター。空でないこと
+            //! @param[in] camera 反動の尾を視点へ向けるのに、効果を掛ける前の視点を読む。空でないこと
+            //! @param[in] position 持ち主のルートの位置。世界座標
             //! @param[in] slam 外れの火花の向きに突進の向きを読む
             //! @param[in] body 反動の尾の向きと、頂点と着地の判定に速度と接地を読む。空でないこと
             //! @param[in] collider 接触点と足元を、当たりのカプセルから作る。空でないこと
             //! @param[in] impact 最後の当たりの内訳。絵の置き所と大きさを決める
-            void Update(const BodySlamStatus& slam,
+            void Update(const NS::IUseEffect* effect,
+                        const NS::IUseCamera* camera,
+                        const NS::Vector3& position,
+                        const BodySlamStatus& slam,
                         const PlayerMotion& motion,
                         const NS::Body* body,
                         const NS::Collider* collider,
@@ -277,21 +283,36 @@ namespace GL
                 int reboundStartStep = 0;    // 反動の尾を出したフレーム。このフレームは出した姿のまま置き直さない
             };
 
-            void BeginHit(const GL::Level::ImpactRecord& impact,
+            // Update が受けた持ち主の物。Update の中で呼ぶ関数へそのまま渡し、控えない
+            struct Owner
+            {
+                const NS::IUseEffect* effect = nullptr;
+                const NS::IUseCamera* camera = nullptr;
+                NS::Vector3 position; // 持ち主のルートの位置。世界座標
+            };
+
+            void BeginHit(const Owner& owner,
+                          const GL::Level::ImpactRecord& impact,
                           const BodySlamStatus& slam,
                           const NS::Collider* collider);
-            void AdvanceHit(const NS::Collider* collider);
-            void PlaySparks();
-            void PlayEmbers();
+            void AdvanceHit(const Owner& owner, const NS::Collider* collider);
+            void PlaySparks(const Owner& owner);
+            void PlayEmbers(const Owner& owner);
             // 前の当たりの層のうち、ここが消える時を持っている物を今のフレームで畳む
-            void FinishHeldEffects();
-            void BeginFlight(const PlayerMotion& motion, const NS::Body* body, const GL::Level::ImpactRecord& impact);
+            void FinishHeldEffects(const Owner& owner);
+            void BeginFlight(const Owner& owner,
+                             const PlayerMotion& motion,
+                             const NS::Body* body,
+                             const GL::Level::ImpactRecord& impact);
             // 反動の尾を自機へ付いていかせる。頂点で親を止める
-            void AdvanceFlight(const PlayerMotion& motion, const NS::Body* body);
+            void AdvanceFlight(const Owner& owner, const PlayerMotion& motion, const NS::Body* body);
             // 反動の着地のフレームに足元へ粉を出し、次のフレームのために縦の速さを控える
-            void AdvanceLanding(const PlayerMotion& motion, const NS::Body* body, const NS::Collider* collider);
+            void AdvanceLanding(const Owner& owner,
+                                const PlayerMotion& motion,
+                                const NS::Body* body,
+                                const NS::Collider* collider);
             // 効果を掛ける前の視点の位置。カメラが無い・姿が決まらない世界では空
-            [[nodiscard]] std::optional<NS::Vector3> CameraPosition() const;
+            [[nodiscard]] static std::optional<NS::Vector3> CameraPosition(const Owner& owner);
 
             HitPlan m_plan;
             Flight m_flight;
@@ -368,7 +389,6 @@ namespace GL
             float m_dustScalePerPower = 0.5f;
             float m_landDustRadiusBase = 1.2f;
             float m_landDustRadiusPerFallSpeed = 0.04f;
-            NS::SceneActor* m_owner = nullptr; // 持ち主 (非所有)
         };
     } // namespace Player
 } // namespace GL

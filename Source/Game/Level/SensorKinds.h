@@ -22,9 +22,9 @@ namespace GL
         };
 
         //! Unset を付けると未設定へ戻す
-        void SetSensorKind(NS::HitSensor& sensor, SensorKind kind) noexcept;
+        void SetSensorKind(NS::HitSensor* sensor, SensorKind kind) noexcept;
 
         //! 指定の種類の場合 true、それ以外の場合は false。Unset は常に false
-        [[nodiscard]] bool IsSensorKind(const NS::HitSensor& sensor, SensorKind kind) noexcept;
+        [[nodiscard]] bool IsSensorKind(const NS::HitSensor* sensor, SensorKind kind) noexcept;
     } // namespace Level
 } // namespace GL

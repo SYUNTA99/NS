@@ -56,9 +56,10 @@ namespace
     class ObservePlayerEffectsState final : public NS::StateOf<ObservePlayerEffectsState, ::PlayerActor>
     {
     public:
-        void OnStep(::PlayerActor& player, float) override
+        void OnStep(::PlayerActor* player, float) override
         {
-            EXPECT_EQ(NS::FindSceneSystem<NS::HitScreenDirector>(&player)->FlashFramesRemaining(), 3);
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            EXPECT_EQ(NS::FindSceneSystem<NS::HitScreenDirector>(player)->FlashFramesRemaining(), 3);
         }
     };
 
@@ -188,7 +189,7 @@ TEST(PlayerStateSequence, ChargingDuringATapSlamKeepsTheSlamGoing)
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
     constexpr float k_TapDistance = 6.0f;
-    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"通常突進の距離", k_TapDistance}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"通常突進の距離", k_TapDistance}}), 0u);
     player->Root().SetPosition(NS::Vector3{0.0f, 10.0f, 0.0f});
     player->Body().SetGrounded(false);
     player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
@@ -250,9 +251,10 @@ namespace
 
     // 縁の上を、上面に立った立ち姿の中心の高さより少し下から上だけ塞ぐ。
     // 上面から半分の高さの所は空いている
-    void BlockAboveLedgeTop(NS::Scene& scene, const NS::Collider& collider)
+    void BlockAboveLedgeTop(NS::Scene& scene, const NS::Collider* collider)
     {
-        const float bottom = collider.StandingHalfHeight() + 0.5f * collider.CapsuleRadius();
+        NS_ASSERT(Game, collider != nullptr, "BlockAboveLedgeTop: 渡したアクターか部品が無い");
+        const float bottom = collider->StandingHalfHeight() + 0.5f * collider->CapsuleRadius();
         NS::OBB blocker{};
         blocker.center = NS::Vector3{0.0f, bottom + 1.0f, 2.0f};
         blocker.halfExtentX = 2.0f;
@@ -261,12 +263,13 @@ namespace
         scene.Physics().AddBox(blocker, NS::Phys::ObjectLayers::Terrain);
     }
 
-    bool FallUntilHanging(PlayerActor& player)
+    bool FallUntilHanging(PlayerActor* player)
     {
+        NS_ASSERT(Game, player != nullptr, "FallUntilHanging: 渡したアクターか部品が無い");
         for (int frame = 0; frame < 30; ++frame)
         {
-            player.Update(false);
-            if (player.States().IsCurrent<GL::Player::LedgeHangingPlayerState>())
+            player->Update(false);
+            if (player->States().IsCurrent<GL::Player::LedgeHangingPlayerState>())
             {
                 return true;
             }
@@ -287,16 +290,16 @@ TEST(PlayerStateSequence, LedgeIsRefusedWhereTheClimbEndIsBlocked)
         ASSERT_NE(player, nullptr);
         if (blocked)
         {
-            BlockAboveLedgeTop(scene, player->Collider());
+            BlockAboveLedgeTop(scene, &player->Collider());
         }
-        EXPECT_EQ(FallUntilHanging(*player), !blocked);
+        EXPECT_EQ(FallUntilHanging(player), !blocked);
     }
 
     NS::Scene scene;
     PlayerActor* player = PlaceBelowLedge(scene);
     ASSERT_NE(player, nullptr);
-    ASSERT_TRUE(FallUntilHanging(*player));
-    BlockAboveLedgeTop(scene, player->Collider());
+    ASSERT_TRUE(FallUntilHanging(player));
+    BlockAboveLedgeTop(scene, &player->Collider());
     player->Update(false);
     EXPECT_FALSE(player->States().IsCurrent<GL::Player::LedgeHangingPlayerState>());
 }
@@ -321,10 +324,10 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     ASSERT_NE(player, nullptr);
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
-    screen->StartFlash(*player, 3, 1.0f);
+    screen->StartFlash(player, 3, 1.0f);
     screen->OnTick();
     ASSERT_EQ(screen->FlashFramesRemaining(), 3);
-    player->States().Build<ObservePlayerEffectsState>(*player);
+    player->States().Build<ObservePlayerEffectsState>(player);
     // HitScreenDirector は描く支度の段で進む。自機の状態の歩は、薄れる前の白を見る
     scene.OnUpdate();
     EXPECT_EQ(player->States().StepsInState(), 1u);
@@ -364,7 +367,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
     ASSERT_TRUE(player->IsInTackleHit());
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
-    screen->StartFlash(*player, 3, 1.0f);
+    screen->StartFlash(player, 3, 1.0f);
     screen->OnTick();
     const NS::uint32 stateStep = player->States().StepsInState();
     scene.OnUpdate();
@@ -402,7 +405,7 @@ TEST(PlayerStateSequence, ReboundGravityIsTheChoiceWithTheReboundRise)
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"頂点滞空 Vy", 3.0f}, {"頂点滞空倍率", 0.3f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"頂点滞空 Vy", 3.0f}, {"頂点滞空倍率", 0.3f}}), 0u);
     constexpr float k_Dt = 1.0f / 60.0f;
     const GL::Level::AirGravity gravity = player->Params().ReboundGravity();
     for (const float vertical : {5.0f, 1.0f, -1.0f, -5.0f})
@@ -446,7 +449,7 @@ TEST(PlayerStateSequence, CurledAnswerShapeAndDrawnMeshAgree)
     ASSERT_NE(player, nullptr);
     const NS::Model* model = player->ModelClassObj();
     ASSERT_NE(model, nullptr);
-    const nlohmann::json looks = NS::SerializeClassObjFields(player->Appearance());
+    const nlohmann::json looks = NS::SerializeClassObjFields(&player->Appearance());
     NS::Mesh* standingMesh = nullptr;
     NS::Mesh* ballMesh = nullptr;
     NS::LoadAssetField(standingMesh, looks["立ち姿のメッシュ"].get<std::string>());
@@ -536,20 +539,21 @@ namespace
         float sinkPixels = 0.0f;
     };
 
-    TackleStep ReadTackleStep(NS::Scene& scene, PlayerActor& player)
+    TackleStep ReadTackleStep(NS::Scene& scene, PlayerActor* player)
     {
+        NS_ASSERT(Game, player != nullptr, "ReadTackleStep: 渡したアクターか部品が無い");
         TackleStep step;
-        step.canMoveBody = player.CanMoveBody();
-        step.inTackleHit = player.IsInTackleHit();
-        step.rebounding = player.IsRebounding();
+        step.canMoveBody = player->CanMoveBody();
+        step.inTackleHit = player->IsInTackleHit();
+        step.rebounding = player->IsRebounding();
         if (const GL::Level::PropActor* rock = TackleRockOf(scene))
         {
             step.rockFrozen = rock->IsFrozen();
             step.rockFlying = rock->IsFlying();
         }
-        step.root = player.Root().Position();
+        step.root = player->Root().Position();
         step.worldSpeed = scene.WorldSpeed();
-        if (const NS::CameraManager* cameras = player.GetCameraManager())
+        if (const NS::CameraManager* cameras = player->GetCameraManager())
         {
             if (const NS::CameraSinkModifier* sink = cameras->FindModifier<NS::CameraSinkModifier>())
             {
@@ -563,19 +567,20 @@ namespace
     // +z へ突進を出し、全部の段を回して、検知の歩から frames 歩の姿を並べる。当たらなければ空
     // each は歩 k を読んだ後に k を渡して呼ぶ
     std::vector<TackleStep> RunTackle(NS::Scene& scene,
-                                      PlayerActor& player,
+                                      PlayerActor* player,
                                       float charge01,
                                       int frames,
                                       float overcharge01 = 0.0f,
                                       const std::function<void(int)>& each = {})
     {
+        NS_ASSERT(Game, player != nullptr, "RunTackle: 渡したアクターか部品が無い");
         std::vector<TackleStep> trace;
-        const NS::uint32 before = player.Resolver().Answer().lastImpact.sequence;
-        player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f}, 0.0f, overcharge01);
+        const NS::uint32 before = player->Resolver().Answer().lastImpact.sequence;
+        player->RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f}, 0.0f, overcharge01);
         for (int frame = 0; frame < 120 + frames && static_cast<int>(trace.size()) < frames; ++frame)
         {
             scene.OnUpdate();
-            if (trace.empty() && player.Resolver().Answer().lastImpact.sequence == before)
+            if (trace.empty() && player->Resolver().Answer().lastImpact.sequence == before)
             {
                 continue;
             }
@@ -687,7 +692,7 @@ TEST(PlayerTackleHit, TheHitHoldsTheStateAndBodyUntilTheReleaseStep)
         NS::Scene scene;
         PlayerActor* player = PlaceTackleScene(scene, hit.rockX);
         ASSERT_NE(player, nullptr);
-        const std::vector<TackleStep> trace = RunTackle(scene, *player, 1.0f, hit.stop + 3);
+        const std::vector<TackleStep> trace = RunTackle(scene, player, 1.0f, hit.stop + 3);
         ASSERT_EQ(trace.size(), static_cast<std::size_t>(hit.stop + 3));
         ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, hit.tier);
         EXPECT_TRUE(trace[0].canMoveBody);
@@ -724,7 +729,7 @@ TEST(PlayerTackleHit, TheStopIsAsLongAsTheSetSays)
         NS::Scene scene;
         PlayerActor* player = PlaceTackleScene(scene, 0.0f);
         ASSERT_NE(player, nullptr);
-        const std::vector<TackleStep> trace = RunTackle(scene, *player, 1.0f, stop + 4);
+        const std::vector<TackleStep> trace = RunTackle(scene, player, 1.0f, stop + 4);
         ASSERT_EQ(trace.size(), static_cast<std::size_t>(stop + 4));
         EXPECT_EQ(CountHeldSteps(trace), stop);
         EXPECT_TRUE(trace[static_cast<std::size_t>(stop + 1)].rebounding);
@@ -745,7 +750,7 @@ TEST(PlayerTackleHit, TheStopIgnoresChargeAndMass)
             NS::Scene scene;
             PlayerActor* player = PlaceTackleScene(scene, 0.0f, 0.6f, mass);
             ASSERT_NE(player, nullptr);
-            const std::vector<TackleStep> trace = RunTackle(scene, *player, charge, 16);
+            const std::vector<TackleStep> trace = RunTackle(scene, player, charge, 16);
             ASSERT_EQ(trace.size(), 16u);
             ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, GL::Level::HitTier::Center);
             EXPECT_EQ(CountHeldSteps(trace), 12);
@@ -760,7 +765,7 @@ TEST(PlayerTackleHit, TheRecordNamesOnlyTheStopsTheSetUsed)
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f);
     ASSERT_NE(player, nullptr);
-    const std::vector<TackleStep> trace = RunTackle(scene, *player, 1.0f, 4);
+    const std::vector<TackleStep> trace = RunTackle(scene, player, 1.0f, 4);
     ASSERT_EQ(trace.size(), 4u);
     EXPECT_EQ(player->Resolver().Answer().lastImpact.hitStopSteps, 0);
     EXPECT_FALSE(player->Resolver().Answer().lastImpact.localStop);
@@ -790,7 +795,7 @@ TEST(PlayerTackleHit, OnlyAPurpleCenterSlowsTheWorldFromTheRelease)
             NS::Scene scene;
             PlayerActor* player = PlaceTackleScene(scene, each.rockX);
             ASSERT_NE(player, nullptr);
-            const std::vector<TackleStep> trace = RunTackle(scene, *player, 1.0f, each.release + 1, each.overcharge);
+            const std::vector<TackleStep> trace = RunTackle(scene, player, 1.0f, each.release + 1, each.overcharge);
             ASSERT_EQ(trace.size(), static_cast<std::size_t>(each.release + 1));
             EXPECT_FLOAT_EQ(trace[static_cast<std::size_t>(each.release - 1)].worldSpeed, 1.0f);
             if (each.slows)
@@ -821,7 +826,7 @@ TEST(PlayerTackleHit, TheReboundSetBouncesTheSinkFromTheReboundStep)
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f);
     ASSERT_NE(player, nullptr);
-    const std::vector<TackleStep> trace = RunTackle(scene, *player, 1.0f, 16);
+    const std::vector<TackleStep> trace = RunTackle(scene, player, 1.0f, 16);
     ASSERT_EQ(trace.size(), 16u);
     EXPECT_FALSE(trace[0].sinkShown);
     ASSERT_TRUE(trace[1].sinkShown);
@@ -844,7 +849,7 @@ TEST(PlayerTackleHit, AResetDuringTheStopLeavesTheSinkWithoutABounce)
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f);
     ASSERT_NE(player, nullptr);
-    const std::vector<TackleStep> trace = RunTackle(scene, *player, 1.0f, 40, 0.0f, [&](int k) {
+    const std::vector<TackleStep> trace = RunTackle(scene, player, 1.0f, 40, 0.0f, [&](int k) {
         if (k == 5)
         {
             ASSERT_TRUE(player->IsInTackleHit());
@@ -871,7 +876,7 @@ TEST(PlayerTackleHit, AResetAfterTheReleaseKeepsTheFadingReturns)
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f);
     ASSERT_NE(player, nullptr);
-    const std::vector<TackleStep> trace = RunTackle(scene, *player, 1.0f, 16, 0.0f, [&](int k) {
+    const std::vector<TackleStep> trace = RunTackle(scene, player, 1.0f, 16, 0.0f, [&](int k) {
         if (k == 15)
         {
             ASSERT_TRUE(player->IsRebounding());
@@ -911,13 +916,13 @@ TEST(PlayerTackleHit, ABreakOverridesTheStopWithTheBreakStop)
     PlayerActor* player = PlaceTackleScene(scene, 50.0f);
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(
-        NS::ApplyJsonFields(player->Params(), nlohmann::json{{"破壊を許可", true}, {"貫通の止め秒", 2.0f / 60.0f}}),
+        NS::ApplyJsonFields(&player->Params(), nlohmann::json{{"破壊を許可", true}, {"貫通の止め秒", 2.0f / 60.0f}}),
         0u);
     BreakableTackleRock* rock = scene.SpawnActor<BreakableTackleRock>("BreakableTackleRock");
     ASSERT_NE(rock, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(rock->Params(), nlohmann::json{{"耐久", 0.0f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&rock->Params(), nlohmann::json{{"耐久", 0.0f}}), 0u);
     rock->Root().SetPosition(NS::Vector3{0.0f, 0.5f, 0.6f});
-    const std::vector<TackleStep> trace = RunTackle(scene, *player, 1.0f, 5);
+    const std::vector<TackleStep> trace = RunTackle(scene, player, 1.0f, 5);
     ASSERT_EQ(trace.size(), 5u);
     const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     ASSERT_TRUE(impact.broke);
@@ -938,14 +943,14 @@ TEST(PlayerTackleHit, ANewHitStopsTheRunningSet)
     ASSERT_NE(player, nullptr);
     GL::Level::PropActor* rock = TackleRockOf(scene);
     ASSERT_NE(rock, nullptr);
-    const std::vector<TackleStep> first = RunTackle(scene, *player, 1.0f, 16);
+    const std::vector<TackleStep> first = RunTackle(scene, player, 1.0f, 16);
     ASSERT_EQ(first.size(), 16u);
     ASSERT_TRUE(first[15].sinkShown);
     ASSERT_TRUE(player->IsRebounding());
 
     // 飛んだ相手を自機の前へ戻し、反動の途中から当て直す
     rock->Root().SetPosition(player->Root().Position() + NS::Vector3{0.0f, -0.5f, 0.6f});
-    const std::vector<TackleStep> second = RunTackle(scene, *player, 1.0f, 2);
+    const std::vector<TackleStep> second = RunTackle(scene, player, 1.0f, 2);
     ASSERT_EQ(second.size(), 2u);
     ASSERT_EQ(player->Resolver().Answer().lastImpact.sequence, 2u);
     EXPECT_FALSE(second[0].sinkShown) << "前の当たりの沈みは検知の歩に止まる";
@@ -955,10 +960,11 @@ TEST(PlayerTackleHit, ANewHitStopsTheRunningSet)
 namespace
 {
     // 自機が出したエフェクトのうち、絵の名前が name の物の数
-    int CountPlayerEffects(PlayerActor& player, std::string_view name)
+    int CountPlayerEffects(PlayerActor* player, std::string_view name)
     {
+        NS_ASSERT(Game, player != nullptr, "CountPlayerEffects: 渡したアクターか部品が無い");
         int count = 0;
-        for (const NS::EffectRecord& record : player.GetEffectKeeper()->Records())
+        for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
         {
             if (record.name == name)
             {
@@ -1010,9 +1016,9 @@ TEST(PlayerTackleHit, TheHitAndFlightEffectsStartFromTheirOwnerItems)
         ASSERT_NE(player, nullptr);
         std::vector<int> cores;
         std::vector<int> trails;
-        const std::vector<TackleStep> trace = RunTackle(scene, *player, 1.0f, 16, 0.0f, [&](int) {
-            cores.push_back(CountPlayerEffects(*player, "impact.core"));
-            trails.push_back(CountPlayerEffects(*player, "rebound.trail"));
+        const std::vector<TackleStep> trace = RunTackle(scene, player, 1.0f, 16, 0.0f, [&](int) {
+            cores.push_back(CountPlayerEffects(player, "impact.core"));
+            trails.push_back(CountPlayerEffects(player, "rebound.trail"));
         });
         ASSERT_EQ(trace.size(), 16u);
         ASSERT_TRUE(trace[13].rebounding);
@@ -1042,24 +1048,24 @@ TEST(PlayerTackleHit, TheReboundLandingFrameSquashesDustsAndEndsTheTrail)
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f);
     ASSERT_NE(player, nullptr);
-    const std::vector<TackleStep> trace = RunTackle(scene, *player, 1.0f, 14);
+    const std::vector<TackleStep> trace = RunTackle(scene, player, 1.0f, 14);
     ASSERT_EQ(trace.size(), 14u);
     ASSERT_TRUE(trace.back().rebounding);
-    ASSERT_EQ(CountPlayerEffects(*player, "rebound.trail"), 1);
+    ASSERT_EQ(CountPlayerEffects(player, "rebound.trail"), 1);
 
     bool landed = false;
     for (int frame = 0; frame < 240 && !landed; ++frame)
     {
-        const int dustBefore = CountPlayerEffects(*player, "land.dust");
+        const int dustBefore = CountPlayerEffects(player, "land.dust");
         const float heightBefore = player->ModelClassObj()->GetDrawScale().y;
         scene.OnUpdate();
         if (!player->Motion().reboundLanded)
         {
-            EXPECT_EQ(CountPlayerEffects(*player, "land.dust"), dustBefore);
+            EXPECT_EQ(CountPlayerEffects(player, "land.dust"), dustBefore);
             continue;
         }
         landed = true;
-        EXPECT_EQ(CountPlayerEffects(*player, "land.dust"), dustBefore + 1);
+        EXPECT_EQ(CountPlayerEffects(player, "land.dust"), dustBefore + 1);
         EXPECT_LT(player->ModelClassObj()->GetDrawScale().y, heightBefore);
         const NS::EffectRecord* trail = nullptr;
         int trails = 0;
@@ -1087,7 +1093,7 @@ TEST(PlayerTackleHit, AMissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.75f);
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(RunTackle(scene, *player, 1.0f, 8).size(), 8u);
+    ASSERT_EQ(RunTackle(scene, player, 1.0f, 8).size(), 8u);
     const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     ASSERT_EQ(impact.tier, GL::Level::HitTier::Wide);
 
@@ -1151,31 +1157,32 @@ namespace
     // +z へ突進を出し、検知の歩までの歩を並べる。最後の要素が検知の歩。当たらなければ 120 歩で止める
     // each は歩を読んだ後に、その歩の番号を渡して呼ぶ。真を返すとそこで止める
     std::vector<ContactStep> RunUntilContact(NS::Scene& scene,
-                                             PlayerActor& player,
+                                             PlayerActor* player,
                                              const OthersTicker& others,
                                              float charge01 = 1.0f,
                                              const std::function<bool(std::size_t)>& each = {})
     {
+        NS_ASSERT(Game, player != nullptr, "RunUntilContact: 渡したアクターか部品が無い");
         std::vector<ContactStep> steps;
-        player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
-        for (int frame = 0; frame < 120 && player.Resolver().Answer().lastImpact.sequence == 0; ++frame)
+        player->RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
+        for (int frame = 0; frame < 120 && player->Resolver().Answer().lastImpact.sequence == 0; ++frame)
         {
             const int before = others.ticks;
-            const float z = player.Root().Position().z;
+            const float z = player->Root().Position().z;
             scene.OnUpdate();
             ContactStep step;
-            step.inBeforeContact = player.IsInBeforeContact();
-            step.slamming = player.IsBodySlamming();
-            step.canMoveBody = player.CanMoveBody();
-            step.framesToContact = player.Resolver().Answer().framesToPredictedContact;
-            if (player.ActionTimelineClassObj()->IsRunning())
+            step.inBeforeContact = player->IsInBeforeContact();
+            step.slamming = player->IsBodySlamming();
+            step.canMoveBody = player->CanMoveBody();
+            step.framesToContact = player->Resolver().Answer().framesToPredictedContact;
+            if (player->ActionTimelineClassObj()->IsRunning())
             {
-                step.actionFrame = player.ActionTimelineClassObj()->Frame();
+                step.actionFrame = player->ActionTimelineClassObj()->Frame();
             }
-            step.drawScale = player.ModelClassObj()->GetDrawScale();
+            step.drawScale = player->ModelClassObj()->GetDrawScale();
             step.othersRan = others.ticks != before;
-            step.advance = player.Root().Position().z - z;
-            if (const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(&player))
+            step.advance = player->Root().Position().z - z;
+            if (const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player))
             {
                 step.flashRemaining = screen->FlashFramesRemaining();
             }
@@ -1249,7 +1256,7 @@ TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndHoldsTheOther
     ASSERT_NE(player, nullptr);
     scene.AddSystemTick(others, NS::UpdatePhase::Triggers);
     const NS::DrawShapeDesc shape = ShippedBeforeContactShape();
-    const std::vector<ContactStep> steps = RunUntilContact(scene, *player, others);
+    const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
     scene.RemoveSystemTick(others);
     ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
     ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, GL::Level::HitTier::Center);
@@ -1293,7 +1300,7 @@ TEST(PlayerBeforeContact, AMissPredictionNeitherShrinksNorHoldsTheOthers)
     PlayerActor* player = PlaceTackleScene(scene, 0.75f);
     ASSERT_NE(player, nullptr);
     scene.AddSystemTick(others, NS::UpdatePhase::Triggers);
-    const std::vector<ContactStep> steps = RunUntilContact(scene, *player, others);
+    const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
     scene.RemoveSystemTick(others);
     ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
     ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, GL::Level::HitTier::Wide);
@@ -1336,7 +1343,7 @@ TEST(PlayerBeforeContact, AMissedPredictionRestoresTheShapeTheOthersAndTheReturn
         GL::Level::PropActor* rock = TackleRockOf(scene);
         ASSERT_NE(rock, nullptr);
         const std::vector<ContactStep> steps =
-            RunUntilContact(scene, *player, others, 1.0f, [&](std::size_t) { return scene.IsHoldingOthers(); });
+            RunUntilContact(scene, player, others, 1.0f, [&](std::size_t) { return scene.IsHoldingOthers(); });
         ASSERT_FALSE(steps.empty());
         ASSERT_TRUE(scene.IsHoldingOthers());
         ASSERT_TRUE(steps.back().inBeforeContact);
@@ -1375,7 +1382,7 @@ TEST(PlayerBeforeContact, ALatePredictionEntersAtTheFrameThatMatchesTheRest)
         PlayerActor* player = PlaceTackleScene(scene, 0.0f, late.rockZ);
         ASSERT_NE(player, nullptr);
         scene.AddSystemTick(others, NS::UpdatePhase::Triggers);
-        const std::vector<ContactStep> steps = RunUntilContact(scene, *player, others);
+        const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
         scene.RemoveSystemTick(others);
         ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
         ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, GL::Level::HitTier::Center);
@@ -1414,7 +1421,7 @@ TEST(PlayerBeforeContact, FramesToPredictedContactCountDownToTheDetection)
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f, 6.0f);
     ASSERT_NE(player, nullptr);
-    const std::vector<ContactStep> steps = RunUntilContact(scene, *player, others);
+    const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
     ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
     ASSERT_GE(steps.size(), 9u);
     const std::size_t last = steps.size() - 1;
@@ -1436,11 +1443,11 @@ TEST(PlayerBeforeContact, ATargetBeyondTheRemainingSlamIsNotPredicted)
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     GL::Level::SlamLineTarget reachable{};
     ASSERT_TRUE(player->Resolver().FindSlamLineTarget(
-        forward, player->BodySlamDistance(), &player->Params(), &player->Body(), &player->Collider(), reachable))
+        player->SelfForImpact(), forward, player->BodySlamDistance(), &player->Params(), &player->Body(), &player->Collider(), reachable))
         << "溜めた突進の距離なら線の先に入る相手で見る";
     // 溜め量 0 の通常突進は、溜めた突進より短い距離で終わる
     int slammingSteps = 0;
-    const std::vector<ContactStep> steps = RunUntilContact(scene, *player, others, 0.0f, [&](std::size_t) {
+    const std::vector<ContactStep> steps = RunUntilContact(scene, player, others, 0.0f, [&](std::size_t) {
         if (player->IsBodySlamming())
         {
             ++slammingSteps;

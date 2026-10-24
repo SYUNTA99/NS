@@ -1,8 +1,6 @@
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Windows/Clock.h"
 
 #include <utility>
 
@@ -15,17 +13,11 @@ namespace NS
         m_machine = std::move(machine);
     }
 
-    void StateMachine::Update()
+    void StateMachine::Update(float dt)
     {
         if (m_machine == nullptr)
         {
             return;
-        }
-        // 持ち主の無い部品は固定の 1 歩の秒で進む
-        float dt = OS::FrameTimer::FixedDelta();
-        if (m_owner != nullptr)
-        {
-            dt = GetFrameDelta(m_owner);
         }
         m_machine->Step(dt);
     }

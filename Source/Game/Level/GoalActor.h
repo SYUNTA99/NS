@@ -15,7 +15,7 @@ namespace GL
             NS_CLASSOBJ(m_params, "Params")
             NS_REFLECT_END()
 
-            void AttackSensor(NS::HitSensor& self, NS::HitSensor& other) override;
+            void AttackSensor(NS::HitSensor* self, NS::HitSensor* other) override;
             [[nodiscard]] GoalParams& Params() noexcept { return *m_params; }
             [[nodiscard]] const GoalParams& Params() const noexcept { return *m_params; }
 

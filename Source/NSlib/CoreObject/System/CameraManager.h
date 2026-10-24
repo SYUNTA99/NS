@@ -24,14 +24,21 @@ namespace NS
         //! 姿勢を書き込む実カメラを差し替える。非所有で、nullptr は書き込む先が無い状態
         void SetCamera(SceneCamera* camera) noexcept { m_camera = camera; }
 
-        //! 候補 vcam を登録する。空と重複は無視する。所有せず、呼び出し側が寿命を保つ
+        //! @brief 候補 vcam を有効な組として登録する。空と重複は無視する。所有せず、呼び出し側が寿命を保つ
+        //! @details アクターの部品は補助関数 InitVirtualCamera から入る
         void AddVirtualCamera(VirtualCamera* vcam);
 
         //! 登録済み vcam を外す。未登録と空は無視する。使用中のカメラを外したら選び直す
         //! 寿命を呼出側が握る vcam を破棄する前に呼んで無効参照を防ぐ
-        void RemoveVirtualCamera(VirtualCamera* vcam) noexcept;
+        void RemoveVirtualCamera(const VirtualCamera* vcam) noexcept;
 
+        //! 登録済み vcam の組の有効と無効を書く。無効の組は選ばない。未登録は何もしない
+        void SetVirtualCameraEnabled(const VirtualCamera* vcam, bool enabled) noexcept;
+
+        //! 登録済み vcam の数。無効の組も数える
         [[nodiscard]] std::size_t VirtualCameraCount() const noexcept { return m_vcams.size(); }
+        //! 登録済み vcam のうち有効な組の数
+        [[nodiscard]] std::size_t EnabledVirtualCameraCount() const noexcept;
 
         //! active 切替時のブレンド秒数。0 以下で即時カット。負値は 0 に丸める
         void SetBlendDuration(float seconds) noexcept;
@@ -155,10 +162,12 @@ namespace NS
         [[nodiscard]] SceneCamera* Camera() const noexcept { return m_camera; }
 
     private:
-        // 効いている vcam のうち priority 最高の物。無ければ nullptr
+        // 有効な組の vcam のうち priority 最高の物。無ければ nullptr
         [[nodiscard]] VirtualCamera* SelectActive() const noexcept;
-        // 効いていない物も含めて priority 最高の vcam。無ければ nullptr
+        // 無効の組も含めて priority 最高の vcam。無ければ nullptr
         [[nodiscard]] VirtualCamera* SelectHighest() const noexcept;
+        // vcam が登録済みで有効な組か
+        [[nodiscard]] bool IsVirtualCameraEnabled(const VirtualCamera* vcam) const noexcept;
 
         // 積んであるトラウマの揺れ。無ければ積んで返す
         [[nodiscard]] CameraTraumaModifier* TraumaModifier();
@@ -167,7 +176,13 @@ namespace NS
         [[nodiscard]] std::optional<CameraPose> ComposeBeforeEffects(float alpha) const noexcept;
 
         SceneCamera* m_camera = nullptr;     // Scene が持つ実カメラ (非所有)
-        std::vector<VirtualCamera*> m_vcams; // 登録済み vcam 候補 (非所有)
+        //! 候補の vcam と、持ち主が出ているか。指す物は非所有
+        struct VirtualCameraEntry
+        {
+            VirtualCamera* vcam = nullptr;
+            bool enabled = true; // 正はこの値だけ
+        };
+        std::vector<VirtualCameraEntry> m_vcams; // 登録の順
         VirtualCamera* m_active = nullptr;   // 現在選ばれている vcam
 
         CameraPose m_lastPose{};       // 直近 Evaluate が実カメラへ書いた pose。切替時のブレンド始点になる

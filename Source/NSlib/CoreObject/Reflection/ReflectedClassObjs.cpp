@@ -26,9 +26,10 @@ namespace NS
         }
     } // namespace
 
-    void ForEachReflectedClassObj(const SceneActor& actor, const ClassObjFieldVisitor& visit)
+    void ForEachReflectedClassObj(const SceneActor* actor, const ClassObjFieldVisitor& visit)
     {
-        VisitReflectedClassObjs(actor, actor.GetReflection(), visit);
+        NS_ASSERT(Game, actor != nullptr, "ForEachReflectedClassObj: アクターが null");
+        VisitReflectedClassObjs(*actor, actor->GetReflection(), visit);
     }
 
 } // namespace NS

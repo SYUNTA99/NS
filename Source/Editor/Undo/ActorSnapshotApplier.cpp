@@ -1,5 +1,6 @@
 #include "Editor/Undo/ActorSnapshotApplier.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/Core/Assert.h"
 
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
@@ -23,28 +24,37 @@ namespace NS
                 return std::nullopt;
             }
             // undo は編集値ごと戻すため、配置物が自分を全部品の値まで忠実に書き出す
-            return ActorToJson(*obj);
+            return ActorToJson(obj);
         }
 
-        void ActorSnapshotApplier::ApplyActorSnapshot(uint32 objectId,
-                                                        const std::optional<nlohmann::json>& desired)
+        std::unique_ptr<SceneActor> ActorSnapshotApplier::ApplyActorSnapshot(uint32 objectId,
+                                                                              const nlohmann::json& desired)
         {
             if (m_scene == nullptr)
             {
-                return;
+                return nullptr;
             }
 
-            // 対象 1 体へ姿を書き戻す。構成が同じなら実体は残し、部品が増減した時だけ作り直す
-            if (desired)
+            nlohmann::json entry = desired;
+            SetActorJsonId(entry, objectId);
+            std::unique_ptr<SceneActor> replaced;
+            (void)m_scene->ApplyFromJson(entry, &replaced);
+            return replaced;
+        }
+
+        DetachedActor ActorSnapshotApplier::DetachActor(uint32 objectId)
+        {
+            if (m_scene == nullptr)
             {
-                nlohmann::json entry = *desired;
-                SetActorJsonId(entry, objectId);
-                (void)m_scene->ApplyFromJson(entry);
+                return DetachedActor{};
             }
-            else
-            {
-                m_scene->RemoveActor(objectId);
-            }
+            return m_scene->DetachActor(objectId);
+        }
+
+        void ActorSnapshotApplier::ReattachActor(DetachedActor detached)
+        {
+            NS_ASSERT(App, m_scene != nullptr, "シーンの無い適用先へ、外した配置物を戻そうとしている");
+            (void)m_scene->ReattachActor(std::move(detached));
         }
     } // namespace Editor
 } // namespace NS

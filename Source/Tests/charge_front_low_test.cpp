@@ -28,9 +28,10 @@ namespace
         return static_cast<int>(std::lround(seconds / NS::OS::FrameTimer::FixedDelta()));
     }
 
-    const NS::EffectRecord* LiveEffect(const PlayerActor& player, std::string_view name)
+    const NS::EffectRecord* LiveEffect(const PlayerActor* player, std::string_view name)
     {
-        for (const NS::EffectRecord& record : player.GetEffectKeeper()->Records())
+        NS_ASSERT(Game, player != nullptr, "LiveEffect: 渡したアクターか部品が無い");
+        for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
         {
             if (record.name == name && !record.endStep.has_value())
             {
@@ -53,7 +54,7 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
     scene.ResetFromJson(doc);
     PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
     TestViewCamera* camera = PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_NE(camera, nullptr);
     for (int frame = 0; frame < FramesFor(0.2f); ++frame)
@@ -72,7 +73,7 @@ TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
             player->Update(true);
             GL::Level::AimLine aim{};
             ASSERT_TRUE(player->TryGetAimLine(aim));
-            const NS::EffectRecord* gather = LiveEffect(*player, "charge.gather");
+            const NS::EffectRecord* gather = LiveEffect(player, "charge.gather");
             ASSERT_NE(gather, nullptr);
             ASSERT_TRUE(gather->rotation.has_value());
             const NS::Quaternion expected = GL::Player::ChargeEffects::YawToward(aim.direction);

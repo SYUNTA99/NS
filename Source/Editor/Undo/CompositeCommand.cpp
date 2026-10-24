@@ -46,6 +46,17 @@ namespace NS
             return bytes;
         }
 
+        void CompositeCommand::ReleaseHeldActors() noexcept
+        {
+            for (std::unique_ptr<ICommand>& command : m_commands)
+            {
+                if (command)
+                {
+                    command->ReleaseHeldActors();
+                }
+            }
+        }
+
         std::unique_ptr<ICommand> MakeUndoUnit(std::vector<std::unique_ptr<ICommand>> commands)
         {
             if (commands.size() == 1)

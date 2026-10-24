@@ -33,7 +33,7 @@ namespace
     nlohmann::json DefaultParamsFields()
     {
         const GL::Player::PlayerParams params;
-        return NS::SerializeClassObjFields(params);
+        return NS::SerializeClassObjFields(&params);
     }
 
     // 同梱の自機の玉の中心の高さ (床 0 の上の半径 0.65 の玉) から、突進速度 20 m/s で放つ
@@ -177,7 +177,7 @@ TEST(LaunchPitchTest, PlayerActorGravityMatchesTheSharedChoice)
         if (pass == 1)
         {
             ASSERT_EQ(NS::ApplyJsonFields(
-                          player.Params(),
+                          &player.Params(),
                           {{"上昇重力", -18.0f}, {"下降重力", -41.0f}, {"頂点滞空 Vy", 2.0f}, {"頂点滞空倍率", 0.3f}}),
                       0u);
         }

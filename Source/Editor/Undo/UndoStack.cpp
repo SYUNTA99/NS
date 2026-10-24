@@ -84,6 +84,18 @@ namespace NS
             m_version = 0;
         }
 
+        void UndoStack::ReleaseHeldActors() noexcept
+        {
+            for (std::unique_ptr<ICommand>& command : m_undo)
+            {
+                command->ReleaseHeldActors();
+            }
+            for (std::unique_ptr<ICommand>& command : m_redo)
+            {
+                command->ReleaseHeldActors();
+            }
+        }
+
         void UndoStack::TrimOldest() noexcept
         {
             while ((m_undo.size() > k_MaxOps || m_undoBytes > k_MaxBytes) && !m_undo.empty())

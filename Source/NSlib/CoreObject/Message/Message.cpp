@@ -5,10 +5,11 @@
 
 namespace NS
 {
-    bool SendMsg(const Message& msg, HitSensor& receiver, HitSensor* sender)
+    bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender)
     {
-        SceneActor* owner = receiver.Host();
-        if (owner == nullptr || !receiver.IsValid())
+        NS_ASSERT(Scene, receiver != nullptr, "SendMsg: 渡したアクターか部品が無い");
+        SceneActor* owner = receiver->Host();
+        if (owner == nullptr || !receiver->IsValid())
         {
             return false;
         }
@@ -17,11 +18,12 @@ namespace NS
         {
             return false;
         }
-        return owner->ReceiveMsg(msg, sender, &receiver);
+        return owner->ReceiveMsg(msg, sender, receiver);
     }
 
-    bool SendMsgToActor(const Message& msg, SceneActor& receiver)
+    bool SendMsgToActor(const Message& msg, SceneActor* receiver)
     {
-        return receiver.ReceiveMsg(msg, nullptr, nullptr);
+        NS_ASSERT(Scene, receiver != nullptr, "SendMsgToActor: 渡したアクターか部品が無い");
+        return receiver->ReceiveMsg(msg, nullptr, nullptr);
     }
 } // namespace NS

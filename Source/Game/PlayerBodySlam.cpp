@@ -141,6 +141,11 @@ GL::Level::BodySlamMotion PlayerActor::SlamMotion() const noexcept
                                      .predictsContact = predicts};
 }
 
+GL::Level::ImpactSelf PlayerActor::SelfForImpact() const noexcept
+{
+    return GL::Level::ImpactSelf{.sensors = GetHitSensorDirector(), .position = Root().Position(), .ignore = this};
+}
+
 void PlayerActor::DecideBeforeContact(const GL::Level::ImpactAnswer& answer) noexcept
 {
     // 検知したフレームは、突進を打ち切った所で当たる直前を出ている
@@ -185,29 +190,27 @@ void PlayerActor::DecideBeforeContact(const GL::Level::ImpactAnswer& answer) noe
     StopTackleHitEffects();
     if (NS::HitReaction* reaction = HitReactionClassObj())
     {
-        reaction->Stop();
+        reaction->Stop(this);
     }
     (void)m_states->Change<GL::Player::BeforeContactPlayerState>();
 }
 
 bool PlayerActor::ContinuesBeforeContact(const GL::Level::ImpactRecord& impact) const noexcept
 {
-    return IsInBeforeContact() && m_beforeContact.target.id == impact.targetId && m_beforeContact.tier == impact.tier;
+    return IsInBeforeContact() && m_beforeContact.target->Id() == impact.targetId && m_beforeContact.tier == impact.tier;
 }
 
 void PlayerActor::BeginBeforeContact() noexcept
 {
-    NS::SceneActor* target = nullptr;
-    if (OwningScene() != nullptr)
+    NS::SceneActor* target = m_beforeContact.target;
+    NS_ASSERT(Game, target != nullptr, "当たる直前の状態へ入る予約が相手を書いていない");
+    if (target->BodySensorClassObj() == nullptr)
     {
-        target = OwningScene()->Actors().FindActor(m_beforeContact.target);
-    }
-    if (target == nullptr || target->BodySensorClassObj() == nullptr)
-    {
-        NS_LOG_WARN(Game, "予測した相手が居ないので、当たる直前の動作を始めない: 相手 {}", m_beforeContact.target.id);
+        NS_LOG_WARN(Game, "予測した相手に体のセンサーが無いので、当たる直前の動作を始めない: 相手 {}", target->Id());
         return;
     }
-    (void)ActionTimelineClassObj()->Start(GL::Level::BeforeContactActionName(m_beforeContact.tier),
+    (void)ActionTimelineClassObj()->Start(ActionTimelineSelfOf(),
+                                          GL::Level::BeforeContactActionName(m_beforeContact.tier),
                                           m_beforeContact.startFrame,
                                           m_beforeContact.point,
                                           BodySensorClassObj(),
@@ -225,7 +228,7 @@ void PlayerActor::EndBeforeContact() noexcept
     StopTackleHitEffects();
     if (NS::HitReaction* reaction = HitReactionClassObj())
     {
-        reaction->Stop();
+        reaction->Stop(this);
     }
     if (OwningScene() != nullptr)
     {
@@ -525,11 +528,11 @@ void PlayerActor::ChangeCurled(bool curled) noexcept
     collider.SetSphereShape(curled);
     if (curled)
     {
-        m_appearance->Curl();
+        m_appearance->Curl(m_model.get());
     }
     else
     {
-        m_appearance->Uncurl();
+        m_appearance->Uncurl(m_model.get());
     }
     // 半長ぶん根を上げ下げして、立ち姿と玉の当たりの下端を揃える
     float rise = collider.StandingHalfHeight();
@@ -544,7 +547,7 @@ void PlayerActor::ChangeCurled(bool curled) noexcept
 
 NS::Sphere PlayerActor::SlamBallAt(const NS::Vector3& rootPosition) const noexcept
 {
-    return GL::Player::SlamBallAt(*m_collider, rootPosition);
+    return GL::Player::SlamBallAt(m_collider.get(), rootPosition);
 }
 
 void PlayerActor::UncurlWhenSettled() noexcept

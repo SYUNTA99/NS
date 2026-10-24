@@ -8,6 +8,7 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 #include <algorithm>
 #include <cstdio>
@@ -89,15 +90,15 @@ namespace NS
                 {
                     if (SceneActor* target = editor.SelectedActor())
                     {
-                        BeginRename(*target);
+                        BeginRename(target);
                     }
                 }
 
                 for (SceneActor* object : placed)
                 {
-                    if (!filtering || NameMatches(Editor::ActorDisplayName(*object), m_actorListFilter))
+                    if (!filtering || NameMatches(Editor::ActorDisplayName(object), m_actorListFilter))
                     {
-                        RenderRow(editor, *object);
+                        RenderRow(editor, object);
                     }
                 }
 
@@ -185,10 +186,11 @@ namespace NS
 #endif
         }
 
-        void ActorListPanel::RenderRow(LevelEditorController& editor, SceneActor& object) noexcept
+        void ActorListPanel::RenderRow(LevelEditorController& editor, SceneActor* object) noexcept
         {
+            NS_ASSERT(App, object != nullptr, "RenderRow: アクターが null");
 #if NS_EDITOR_ENABLED
-            const uint32 id = object.Id();
+            const uint32 id = object->Id();
 
             ImGui::PushID(static_cast<int>(id));
 
@@ -277,10 +279,11 @@ namespace NS
 #endif
         }
 
-        void ActorListPanel::BeginRename(SceneActor& object) noexcept
+        void ActorListPanel::BeginRename(SceneActor* object) noexcept
         {
+            NS_ASSERT(App, object != nullptr, "BeginRename: アクターが null");
 #if NS_EDITOR_ENABLED
-            m_renamingActorId = object.Id();
+            m_renamingActorId = object->Id();
             // 導出名から始めるので、そのまま確定すると今見えている名前がそのまま実体になる
             std::snprintf(m_renameBuffer, sizeof(m_renameBuffer), "%s", Editor::ActorDisplayName(object));
             m_renameFocusPending = true;

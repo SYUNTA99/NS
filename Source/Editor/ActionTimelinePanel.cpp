@@ -152,7 +152,7 @@ namespace NS
             {
                 if (actor->ActorFileName() == m_actorFile && actor->ActionTimelineClassObj() != nullptr)
                 {
-                    actor->ActionTimelineClassObj()->ReloadActions();
+                    actor->ActionTimelineClassObj()->ReloadActions(actor);
                 }
             }
             m_needsRun = true;
@@ -516,7 +516,7 @@ namespace NS
                 {
                     if (m_dirty.contains(actor->ActorFileName()) && actor->ActionTimelineClassObj() != nullptr)
                     {
-                        actor->ActionTimelineClassObj()->ReloadActions();
+                        actor->ActionTimelineClassObj()->ReloadActions(actor);
                     }
                 }
                 std::string actionName;

@@ -77,7 +77,8 @@ namespace
     protected:
         void OnInit() override
         {
-            NS::Model* model = CreateClassObj(m_model, this);
+            NS::Model* model = CreateClassObj(m_model);
+            NS::InitDraw(this, model, &Root());
             model->SetMeshRef("cube");
             model->SetMaterialRef("Assets/Materials/player.mat");
         }

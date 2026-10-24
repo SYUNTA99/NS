@@ -26,13 +26,14 @@ namespace NS
 {
     namespace Editor
     {
-        bool ShowsOverride(const Object& comp,
+        bool ShowsOverride(const Object* comp,
                            const char* partKey,
                            const FieldDesc& field,
                            const SceneActor* actor)
         {
+            NS_ASSERT(App, comp != nullptr, "ShowsOverride: 部品が null");
             if (actor == nullptr || partKey == nullptr ||
-                FieldDestinationOf(*actor, comp, field) != FieldDestination::Scene)
+                FieldDestinationOf(actor, field) != FieldDestination::Scene)
             {
                 return false;
             }
@@ -1614,14 +1615,15 @@ namespace NS
             }
         } // namespace
 
-        ClassObjEditResult DrawReflectedClassObj(Object& comp,
+        ClassObjEditResult DrawReflectedClassObj(Object* comp,
                                                  std::span<const ActorRefOption> refOptions,
                                                  const char* partKey,
                                                  const char* filter,
                                                  const SceneActor* actor,
                                                  const EditorAppearance* appearance) noexcept
         {
-            const ReflectionInfo* info = comp.GetReflection();
+            NS_ASSERT(App, comp != nullptr, "DrawReflectedClassObj: 部品が null");
+            const ReflectionInfo* info = comp->GetReflection();
             if (info == nullptr || info->fieldCount == 0)
             {
                 return ClassObjEditResult{};
@@ -1639,7 +1641,7 @@ namespace NS
                 ImU32 background = 0;
                 if (actor != nullptr && appearance != nullptr)
                 {
-                    if (const std::optional<Color> color = FieldRowColor(*appearance, *actor, comp, field))
+                    if (const std::optional<Color> color = FieldRowColor(*appearance, actor, field))
                     {
                         background = ImGui::ColorConvertFloat4ToU32(ImVec4{color->x, color->y, color->z, color->w});
                     }
@@ -1647,21 +1649,21 @@ namespace NS
                 ImGui::PushID(static_cast<int>(i));
                 FieldRow(FieldLabel(field), changed, background);
 
-                const FieldWidgetResult widget = DrawFieldWidget(&comp, field, refOptions);
+                const FieldWidgetResult widget = DrawFieldWidget(comp, field, refOptions);
                 result.changed |= widget.changed;
                 result.activated |= widget.activated;
                 result.committed |= widget.committed;
 
                 if (result.changed && !wasChanged)
                 {
-                    result.changedTarget = &comp;
+                    result.changedTarget = comp;
                     result.changedField = &field;
                 }
 
                 const OverrideAction action = OverrideButton(changed);
                 if (action == OverrideAction::Revert)
                 {
-                    result.revertTarget = &comp;
+                    result.revertTarget = comp;
                     result.revertField = &field;
                 }
                 ImGui::PopID();
@@ -1706,7 +1708,7 @@ namespace NS
         }
 
 #else
-        ClassObjEditResult DrawReflectedClassObj(Object&,
+        ClassObjEditResult DrawReflectedClassObj(Object*,
                                                  std::span<const ActorRefOption>,
                                                  const char*,
                                                  const char*,

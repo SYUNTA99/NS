@@ -58,8 +58,6 @@ namespace
     class AlphaCamera final : public NS::VirtualCamera
     {
     public:
-        using NS::VirtualCamera::VirtualCamera;
-
         [[nodiscard]] NS::CameraPose EvaluatePose(float alpha) const noexcept override
         {
             return MakePose(
@@ -80,15 +78,14 @@ namespace
         void OnEndPlay() override
         {
             NS::SceneActor::OnEndPlay();
-            NS::UnregisterVirtualCamera(this, vcam.get());
+            NS::EndVirtualCamera(this, vcam.get());
         }
 
     protected:
-        void OnInit() override { CreateClassObj(vcam, this); }
-        void OnStart() override
+        void OnInit() override
         {
-            NS::SceneActor::OnStart();
-            NS::RegisterVirtualCamera(this, vcam.get());
+            CreateClassObj(vcam);
+            NS::InitVirtualCamera(this, vcam.get());
         }
     };
 
@@ -325,10 +322,12 @@ TEST(FollowCameraActor, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}), 0u);
     GL::Level::FollowCameraActor* actor = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
     NS::ThirdPersonFollow& vcam = actor->Vcam();
-    NS::ApplyJsonFields(vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", player->Id()}}}});
+    NS::ApplyJsonFields(&vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", player->Id()}}}});
+    // 欄を書いた後に、エディタと同じく相手を取得し直す
+    actor->ResolveActorRefs();
     // しきい値を越えるまで押し続ける
     for (int held = 0; held < 30; ++held)
     {

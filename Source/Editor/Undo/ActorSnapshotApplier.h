@@ -14,7 +14,7 @@ namespace NS
 {
     namespace Editor
     {
-        //! 1 個体の状態をシーンへ適用する。クラスと部品構成が同じなら実体を保ち、異なる時だけ再構築する
+        //! 1 個体の状態をシーンへ適用する。アクターは Scene::ApplyFromJson のとおり使い回し、作り直した時は古いアクターを返す
         class ActorSnapshotApplier final : public IActorSnapshotApplier
         {
         public:
@@ -23,8 +23,14 @@ namespace NS
             //! objectId の現在の姿を写す。居なければ nullopt。シーン未設定も nullopt
             [[nodiscard]] std::optional<nlohmann::json> CaptureActor(uint32 objectId) const override;
 
-            //! objectId を desired の姿へ揃える。シーン未設定なら何もしない
-            void ApplyActorSnapshot(uint32 objectId, const std::optional<nlohmann::json>& desired) override;
+            //! objectId を desired の姿へ揃える。シーン未設定なら何もせずに空を返す
+            [[nodiscard]] std::unique_ptr<SceneActor> ApplyActorSnapshot(uint32 objectId,
+                                                                         const nlohmann::json& desired) override;
+
+            //! シーン未設定なら空を返す
+            [[nodiscard]] DetachedActor DetachActor(uint32 objectId) override;
+
+            void ReattachActor(DetachedActor detached) override;
 
         private:
             Scene* m_scene = nullptr; // 編集対象のシーン、非所有

@@ -35,7 +35,7 @@ TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
     player.SyncGroundState();
     input->SetJumpPressed();
     input->SetReleaseLedgePressed();
-    input->Update();
+    input->Update(&player);
     ASSERT_TRUE(input->JumpPressed());
     ASSERT_TRUE(input->ReleaseLedgePressed());
     player.Update();
@@ -80,11 +80,11 @@ TEST(PlayerInputOwnership, SlamTappedBetweenPlayerStepsIsSeenOnce)
     PlayerActor& player = *playerOwned;
     NS::PlayerInput* input = &player.Input();
     platform.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
-    input->Update();
+    input->Update(&player);
     platform.Mouse().OnButtonUp(NS::OS::MouseButton::Left);
-    input->Update();
+    input->Update(&player);
     EXPECT_TRUE(input->SlamHeld());
     input->ConsumePressed();
-    input->Update();
+    input->Update(&player);
     EXPECT_FALSE(input->SlamHeld());
 }

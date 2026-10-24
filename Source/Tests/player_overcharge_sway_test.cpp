@@ -39,7 +39,7 @@ namespace
             scene.ResetFromJson(doc);
             player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
             ASSERT_NE(player, nullptr);
-            ASSERT_EQ(NS::ApplyJsonFields(player->Params(),
+            ASSERT_EQ(NS::ApplyJsonFields(&player->Params(),
                                           {{"チャージしきい値秒", 0.2f},
                                            {"チャージ満タン秒", 1.0f},
                                            {"溜めすぎの秒数", 1.0f},
@@ -135,7 +135,7 @@ TEST(PlayerOverchargeSway, PurplePowerRisesToTheCapFromTheFullCharge)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    ASSERT_EQ(NS::ApplyJsonFields(player.Params(), {{"紫の威力の上限", 1.5f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&player.Params(), {{"紫の威力の上限", 1.5f}}), 0u);
     const GL::Player::PlayerParams& params = player.Params();
     const float full = params.ChargeFactorFor(1.0f);
     EXPECT_FLOAT_EQ(params.ChargeFactorFor(1.0f, 0.0f), full);
@@ -151,7 +151,7 @@ TEST(PlayerOverchargeSway, EdgeBeatsCountDownToTheForcedLaunch)
     s.Load();
     PlayerActor& player = *s.player;
     ASSERT_EQ(NS::ApplyJsonFields(
-                  player.Params(),
+                  &player.Params(),
                   {{"溜めすぎの秒数", 3.0f}, {"紫の揺れの始めの速さ", 0.8f}, {"紫の揺れの終わりの速さ", 2.6f}}),
               0u);
     const int full = FramesFor(1.0f);

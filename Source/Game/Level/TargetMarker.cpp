@@ -174,8 +174,6 @@ namespace GL
             return true;
         }
 
-        TargetMarker::TargetMarker(NS::SceneActor* owner) noexcept : NS::OverlayRenderer(owner) {}
-
         void TargetMarker::Update(const GL::Player::ChargeStatus& charge)
         {
             const bool hadShown = m_hasShown;
@@ -243,11 +241,11 @@ namespace GL
             }
         }
 
-        NS::ActorRef TargetMarker::ShownTargetRef() const noexcept
+        NS::SceneActor* TargetMarker::ShownTarget() const noexcept
         {
             if (!m_hasShown)
             {
-                return NS::ActorRef{};
+                return nullptr;
             }
             return m_shown.target;
         }

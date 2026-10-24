@@ -52,24 +52,26 @@ namespace
     }
 
     // 接地するまで回す
-    void Settle(PlayerActor& player)
+    void Settle(PlayerActor* player)
     {
-        for (int frame = 0; frame < 60 && !player.Body().IsGrounded(); ++frame)
+        NS_ASSERT(Game, player != nullptr, "Settle: 渡したアクターか部品が無い");
+        for (int frame = 0; frame < 60 && !player->Body().IsGrounded(); ++frame)
         {
-            player.Update(false);
+            player->Update(false);
         }
     }
 
     // 1 フレーム進め、そのフレームに突進が始まった場合 true を返す
-    bool StepAndSeeSlamStart(PlayerActor& player, GL::Level::PropActor* rock)
+    bool StepAndSeeSlamStart(PlayerActor* player, GL::Level::PropActor* rock)
     {
-        const bool before = player.IsBodySlamming();
-        player.Update(false);
+        NS_ASSERT(Game, player != nullptr, "StepAndSeeSlamStart: 渡したアクターか部品が無い");
+        const bool before = player->IsBodySlamming();
+        player->Update(false);
         if (rock != nullptr)
         {
             rock->Update();
         }
-        return !before && player.IsBodySlamming();
+        return !before && player->IsBodySlamming();
     }
 } // namespace
 
@@ -79,14 +81,14 @@ TEST(PlayerSlamPress, PressDuringASlamDoesNotFireAfterTheMiss)
     NS::Scene scene;
     PlayerActor* player = PlacePressScene(scene, false, 1.0f);
     ASSERT_NE(player, nullptr);
-    Settle(*player);
+    Settle(player);
     ASSERT_TRUE(player->Body().IsGrounded());
     player->RequestBodySlam(0.0f, k_Forward);
     int starts = 0;
     bool pressed = false;
     for (int frame = 0; frame < 120; ++frame)
     {
-        if (StepAndSeeSlamStart(*player, nullptr))
+        if (StepAndSeeSlamStart(player, nullptr))
         {
             ++starts;
         }
@@ -110,13 +112,13 @@ TEST(PlayerSlamPress, PressDuringTheHitStopDoesNotFireOnTheRelease)
     ASSERT_NE(player, nullptr);
     GL::Level::PropActor* rock = RockOf(scene);
     ASSERT_NE(rock, nullptr);
-    Settle(*player);
+    Settle(player);
     player->RequestBodySlam(1.0f, k_Forward);
     int starts = 0;
     bool pressed = false;
     for (int frame = 0; frame < 120; ++frame)
     {
-        if (StepAndSeeSlamStart(*player, rock))
+        if (StepAndSeeSlamStart(player, rock))
         {
             ++starts;
         }
@@ -141,7 +143,7 @@ TEST(PlayerSlamPress, PressDuringTheReboundOfAGroundSlamFiresTheAirShot)
         ASSERT_NE(player, nullptr);
         GL::Level::PropActor* rock = RockOf(scene);
         ASSERT_NE(rock, nullptr);
-        Settle(*player);
+        Settle(player);
         ASSERT_TRUE(player->Body().IsGrounded());
         // 溜めた突進は上向きに放ち、当たるまで接地させない
         player->RequestBodySlam(charge01, k_Forward, 3.0f);
@@ -152,7 +154,7 @@ TEST(PlayerSlamPress, PressDuringTheReboundOfAGroundSlamFiresTheAirShot)
         for (int frame = 0; frame < 120 && !firedFromTheRebound; ++frame)
         {
             const bool rebounding = player->IsRebounding();
-            if (StepAndSeeSlamStart(*player, rock))
+            if (StepAndSeeSlamStart(player, rock))
             {
                 ++starts;
                 firedFromTheRebound = rebounding;
@@ -188,7 +190,7 @@ TEST(PlayerSlamPress, AnAirLaunchedSlamBlocksTheNextUntilLanding)
     bool pressedInTheAir = false;
     for (int frame = 0; frame < 180 && !player->Body().IsGrounded(); ++frame)
     {
-        if (StepAndSeeSlamStart(*player, nullptr) && !player->Body().IsGrounded())
+        if (StepAndSeeSlamStart(player, nullptr) && !player->Body().IsGrounded())
         {
             ++startsInTheAir;
         }

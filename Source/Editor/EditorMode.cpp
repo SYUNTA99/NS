@@ -260,9 +260,10 @@ namespace NS
                 return false;
             }
 
-            // 読込済みデータを実体側へ取り込み world を組み直す。新レベルなので Undo 履歴もクリアする
-            m_loadLevel(std::move(fresh));
+            // 新レベルなので Undo 履歴を捨てる。履歴が持つアクターは組み直しが捨てる管理クラスを指すので、
+            // 組み直しより先に捨てる
             m_undo.Clear();
+            m_loadLevel(std::move(fresh));
             m_savedUndoVersion = m_undo.Version();
             m_levelDirty = true;
             m_currentLevelName = QualifyLevelPath(SanitizeLevelPath(name));

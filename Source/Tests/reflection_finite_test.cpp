@@ -18,7 +18,7 @@ namespace
         NS_REFLECT_NONE(FiniteBoxActor, NS::SceneActor)
 
     protected:
-        void OnInit() override { CreateClassObj<NS::Collision, NS::BoxCollision>(m_collision, this); }
+        void OnInit() override { CreateClassObj<NS::Collision, NS::BoxCollision>(m_collision); }
     };
 
     // float の組を持つ欄の型を、メンバの欄と getter/setter の欄で 1 つずつ持つ値型

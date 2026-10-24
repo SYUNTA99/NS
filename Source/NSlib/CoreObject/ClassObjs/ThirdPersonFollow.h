@@ -8,6 +8,8 @@
 
 namespace NS
 {
+    class IUseCamera;
+    class SceneActor;
     class Transform;
 
     //! @brief 追従カメラが 1 フレームぶん受ける溜めの状態
@@ -42,13 +44,19 @@ namespace NS
     class ThirdPersonFollow : public VirtualCamera
     {
     public:
-        explicit ThirdPersonFollow(SceneActor* owner) noexcept;
+        ThirdPersonFollow() noexcept;
 
-        //! 追従対象の Transform。参照から使うたびに引き、未設定と解決不可は nullptr
-        [[nodiscard]] Transform* Target() const noexcept;
+        //! 追う相手の根。相手を受けていなければ nullptr
+        [[nodiscard]] const Transform* Target() const noexcept;
+        //! 追う相手。相手を受けていなければ nullptr
+        [[nodiscard]] const SceneActor* TargetActor() const noexcept { return m_target; }
 
         //! 追従対象の永続参照。データ経由の構築がリフレクション set で書く
         [[nodiscard]] ActorRef TargetRef() const noexcept { return m_targetRef; }
+
+        //! @brief 追う相手を受ける。持ち主のアクターが TargetRef の指す相手を取得して渡す
+        //! @details 相手が一覧から外れる前に、持ち主が取得し直して渡し直す。nullptr は相手なし
+        void SetTarget(const SceneActor* target) noexcept { m_target = target; }
 
         //! プレイ開始 / rebuild ごとに初期姿勢へ戻す
         void ResetPose() noexcept;
@@ -110,8 +118,9 @@ namespace NS
         //! 指定位置から初期姿勢を逆算し、現在姿勢にも反映する。対象なし・距離ゼロなら変更しない
         void SetInitialPoseFromCameraPosition(const Vector3& cameraPosition) noexcept;
 
-        //! 固定ステップで向きと距離を更新する。EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
-        void Update();
+        //! @brief 固定ステップで向きと距離を更新する。EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
+        //! @param[in] user 溜めの揺れを保たせるカメラの管理クラスの窓口。持ち主のアクター
+        void Update(const IUseCamera* user);
 
         //! alpha で補間した target を追う最終姿勢を返す。CameraManager が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
@@ -165,9 +174,10 @@ namespace NS
     private:
         // 受けた溜めの状態から締め・揺れ・構図のずらしを 1 フレーム進める
         // look はこのフレームの注視点。framingHeld が真の間は、放した後の締めの戻しと構図のずらしを止める
-        void UpdateCharge(const FollowChargeDesc& charge,
+        void UpdateCharge(const IUseCamera* user,
+                          const FollowChargeDesc& charge,
                           bool framingHeld,
-                          const Transform& target,
+                          const Transform* target,
                           const Vector3& look,
                           float dt) noexcept;
 
@@ -194,7 +204,8 @@ namespace NS
             Returning, // 反動の状態が外れてから普通の追い方へ寄せ戻している
         };
 
-        ActorRef m_targetRef{}; // 追従対象の永続参照。ポインタで控えないので、相手が先に消えても空を引くだけ
+        ActorRef m_targetRef{};               // 追従対象の永続参照。シーンに保存する
+        const SceneActor* m_target = nullptr; // m_targetRef から持ち主が取得した相手 (非所有)
 
         // 値で受けた追従先の運動。届くまでは待機距離のまま
         bool m_followGrounded = false;
@@ -295,7 +306,6 @@ namespace NS
         Vector3 m_look{};                  // このフレームの注視点。反動と寄せ戻しで使う
         Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
         bool m_hasLook = false;                // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
-        SceneActor* m_owner = nullptr;         // 持ち主 (非所有)
     };
 
 } // namespace NS

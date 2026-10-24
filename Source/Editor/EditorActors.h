@@ -39,7 +39,7 @@ namespace NS
         nlohmann::json& EnsureTransformClassObj(nlohmann::json& actorJson);
 
         //! @details 位置のほかの値は写さず .actor の値に任せる疎な写し。id は 0 で、置く時に振る
-        [[nodiscard]] nlohmann::json MakePrototypeJson(const SceneActor& obj);
+        [[nodiscard]] nlohmann::json MakePrototypeJson(const SceneActor* obj);
 
         //! @brief .actor の名前 actorFileName を指すひな形の JSON。アクターを作らずに組む
         //! @details 位置だけを Transform の初期値で書き、回転とスケールを含むほかの値は書かない。id は 0 で、置く時に振る
@@ -51,7 +51,7 @@ namespace NS
         {
             static_assert(std::is_base_of_v<SceneActor, T>, "T は SceneActor 派生でなければならない");
             const std::unique_ptr<T> prototype = CreateActor<T>();
-            return MakePrototypeJson(*prototype);
+            return MakePrototypeJson(prototype.get());
         }
 
         //! @brief エディタが並べて番号を振る配置物。objects の並びのまま
@@ -60,12 +60,12 @@ namespace NS
 
         //! @brief cell ブラシが置換・削除・回転できる 1 m の升の配置物か
         //! @details 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。
-        [[nodiscard]] bool IsCellBrushActor(const SceneActor& object) noexcept;
+        [[nodiscard]] bool IsCellBrushActor(const SceneActor* object) noexcept;
 
         //! 実体のセル座標。Root の位置を最も近い整数へ丸めた値
-        [[nodiscard]] int16 ActorCellX(const SceneActor& object) noexcept;
-        [[nodiscard]] int16 ActorCellY(const SceneActor& object) noexcept;
-        [[nodiscard]] int16 ActorCellZ(const SceneActor& object) noexcept;
+        [[nodiscard]] int16 ActorCellX(const SceneActor* object) noexcept;
+        [[nodiscard]] int16 ActorCellY(const SceneActor* object) noexcept;
+        [[nodiscard]] int16 ActorCellZ(const SceneActor* object) noexcept;
 
         //! objects からセルが一致する最初のセルブラシ配置物の永続識別番号を返す。不在は k_NoActorId
         [[nodiscard]] uint32 FindActorIdAtCell(const ActorList& objects,
@@ -86,10 +86,10 @@ namespace NS
         void SetCellRotationStep(nlohmann::json& actorJson, uint8 rotationStep) noexcept;
 
         //! 個体名を優先し、空なら登録の表示名かクラス名。未登録の型は SceneActor
-        [[nodiscard]] const char* ActorDisplayName(const SceneActor& object);
+        [[nodiscard]] const char* ActorDisplayName(const SceneActor* object);
 
         //! 選択判定に使う根の局所空間の AABB。メッシュ境界がなければ 1 m 立方
-        [[nodiscard]] AABB PickLocalBounds(const SceneActor& object) noexcept;
+        [[nodiscard]] AABB PickLocalBounds(const SceneActor* object) noexcept;
 
         //! シーンの JSON 文書からプレイヤーを探す。最初の 1 件の添字、無ければ k_NoActorIndex
         //! 複数居ても先頭を正とする

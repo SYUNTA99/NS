@@ -9,7 +9,6 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/Reflection/ActorRef.h"
 #include "NSlib/Gfx/Render/FrameConstants.h"
 #include "NSlib/Windows/Gamepad.h"
 
@@ -33,6 +32,7 @@ namespace NS
     class Body;
     class Collider;
     class HitSensor;
+    class HitSensorDirector;
 } // namespace NS
 
 namespace GL
@@ -40,7 +40,7 @@ namespace GL
     namespace Level
     {
         //! PlayerParams と現在の固定ステップから、配分に使う全調整値を作る
-        [[nodiscard]] ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams& params) noexcept;
+        [[nodiscard]] ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams* params) noexcept;
 
         //! @brief 当たり 1 回の裁定の内訳
         struct ImpactRecord
@@ -124,6 +124,16 @@ namespace GL
             std::optional<GL::Player::ReboundArc> reboundArc; //!< 反動で弾く曲線。貫通の当たりは空
         };
 
+        //! @brief 裁定が自機から読む、シーン・位置・除く相手
+        //! @details 自機が呼ぶたびに組んで渡し、ImpactResolver は控えない
+        struct ImpactSelf
+        {
+            //! 自機のシーンのセンサーの管理クラス。シーンに居ない間は空で、裁定も予測も相手を見つけない
+            const NS::HitSensorDirector* sensors = nullptr;
+            NS::Vector3 position;                   //!< 自機のルートの位置。世界座標
+            const NS::SceneActor* ignore = nullptr; //!< 重なりの問いから除く相手。自機
+        };
+
         //! @brief 自機の衝突結果と当たりの記録を決め、突進の線の先の相手を予測する部品
         //! @details 身体が動く前に突進の予定速度で判定する。物理停止で実速度が消えるため。
         //! 触れる前の演出は自機の当たる直前の状態が、検知の後の止め・明け・反動は自機の当たりの状態が進め、
@@ -132,19 +142,18 @@ namespace GL
         class ImpactResolver : public NS::Object
         {
         public:
-            explicit ImpactResolver(NS::SceneActor* owner) noexcept : m_owner(owner) {}
-
             //! @brief 次の固定ステップで重なる相手を控える。身体の実速度ではなく突進の予定速度を使う
             //! @details 突進外と自機の停止中は探さない。結果は StepState が一度だけ使う
             //! @param[in] collider 自機の当たりの形。空でないこと
-            void ObserveImpact(const BodySlamMotion& motion, const NS::Collider* collider);
+            void ObserveImpact(const ImpactSelf& self, const BodySlamMotion& motion, const NS::Collider* collider);
 
             //! @brief ObserveImpact の結果を一度だけ裁定し、検知しなければ突進の線の先の相手を予測して、答えを書き直す
             //! @details 検知したら当たりの記録を書く。予測は motion.predictsContact の時だけ線を引く。
             //! 自機を動かす事 (突進の打ち切り・当たりの状態へ移る事・エフェクト) は答えに書くだけで、呼ぶのは Player
             //! @param[in] params・body・collider 空でないこと
             //! @param[in] hitReaction 自機の束の止めの長さと紫の明けの束を読む先。空なら止めは 0
-            void StepState(const BodySlamMotion& motion,
+            void StepState(const ImpactSelf& self,
+                           const BodySlamMotion& motion,
                            const GL::Player::PlayerParams* params,
                            const NS::Body* body,
                            const NS::Collider* collider,
@@ -171,7 +180,8 @@ namespace GL
             //! 壁や地形による停止は考慮しない。direction は水平成分、maxDistance は m
             //! @param[in] params・body・collider 空でないこと
             //! @return 無効な方向・距離、相手なしの場合は false で outTarget を変更しない
-            [[nodiscard]] bool FindSlamLineTarget(const NS::Vector3& direction,
+            [[nodiscard]] bool FindSlamLineTarget(const ImpactSelf& self,
+                                                  const NS::Vector3& direction,
                                                   float maxDistance,
                                                   const GL::Player::PlayerParams* params,
                                                   const NS::Body* body,
@@ -191,21 +201,23 @@ namespace GL
             };
 
             // 次の固定ステップで重なる体から、中心が最も近い相手を選ぶ。無ければ nullptr
-            [[nodiscard]] NS::HitSensor* FindOverlapped(const NS::Vector3& predictedVelocity,
-                                                        const NS::Collider& collider) const;
+            [[nodiscard]] NS::HitSensor* FindOverlapped(const ImpactSelf& self,
+                                                        const NS::Vector3& predictedVelocity,
+                                                        const NS::Collider* collider) const;
 
             // StepState の中身。Player がする事を空にした後、答えを書き直す前に呼ぶ
-            void AdvanceState(const BodySlamMotion& motion, const PlayerParts& parts);
+            void AdvanceState(const ImpactSelf& self, const BodySlamMotion& motion, const PlayerParts& parts);
             // 答えのうち Player がする事を空にする
             void ClearOrders() noexcept;
 
             // 控えた相手へ向かっていれば衝突の結果を決め、当たりの記録を書く。当たりにならなかった場合 false
-            [[nodiscard]] bool ResolveObservedHit(bool hadObservation,
+            [[nodiscard]] bool ResolveObservedHit(const ImpactSelf& self,
+                                                  bool hadObservation,
                                                   const BodySlamMotion& motion,
                                                   const PlayerParts& parts);
 
             // 突進の線の先に触れる相手を探し、検知までの見込みのフレーム数と相手を答えに書く
-            void PredictContact(const BodySlamMotion& motion, const PlayerParts& parts);
+            void PredictContact(const ImpactSelf& self, const BodySlamMotion& motion, const PlayerParts& parts);
 
             // 止めていた自機を動かし直す速度と反動の曲線を答えに書く。反発は反動を始め、貫通は速度を書くよう Player
             // に頼む
@@ -220,18 +232,17 @@ namespace GL
             GL::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
             LaunchArc m_pendingLaunchArc{};
             NS::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みの向き
-            NS::ActorRef m_pendingTarget{};                   // 知らせる相手。凍結をまたぐので使うたびに引く
+            NS::SceneActor* m_pendingTarget = nullptr;        // 明けを知らせる相手
             // 検知してから、次の StepState で当たりの状態へ移る事を答えに書くまで true
             bool m_hitAwaitsEntry = false;
             bool m_pendingBreak = false;
             // 直近の更新の答え。1 フレームだけの欄 (反発・貫通・予測) は StepState の頭で戻す
             ImpactAnswer m_answer{};
-            NS::ActorRef m_observedTarget{};
+            NS::SceneActor* m_observedTarget = nullptr;
             TackleTargetAnswer m_observedAnswer{};
             NS::Vector3 m_observedVelocity{};
             bool m_hasObservedTarget = false;
             bool m_stateReady = false;
-            NS::SceneActor* m_owner = nullptr; // 持ち主 (非所有)
         };
     } // namespace Level
 } // namespace GL

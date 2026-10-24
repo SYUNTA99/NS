@@ -53,7 +53,7 @@ TEST(ColliderShape, AnswersFromItsOwnFieldsWithoutOwner)
     EXPECT_FLOAT_EQ(collider.StandingHalfHeight(), 0.5f);
     EXPECT_EQ(collider.GetPhysicsScene(), nullptr);
 
-    EXPECT_EQ(NS::ApplyJsonFields(collider, {{"半径", 0.3f}, {"半分の高さ", 0.7f}}), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(&collider, {{"半径", 0.3f}, {"半分の高さ", 0.7f}}), 0u);
     EXPECT_FLOAT_EQ(collider.CapsuleRadius(), 0.3f);
     EXPECT_FLOAT_EQ(collider.StandingHalfHeight(), 0.7f);
     EXPECT_FLOAT_EQ(collider.CapsuleHalfHeight(), 0.7f);
@@ -63,7 +63,7 @@ TEST(ColliderShape, AnswersFromItsOwnFieldsWithoutOwner)
 TEST(ColliderShape, CapsuleAtPutsTheCurrentShapeAroundTheRoot)
 {
     NS::Collider collider{nullptr, nullptr};
-    ASSERT_EQ(NS::ApplyJsonFields(collider, {{"半径", 0.3f}, {"半分の高さ", 0.7f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&collider, {{"半径", 0.3f}, {"半分の高さ", 0.7f}}), 0u);
     const NS::Vector3 root{1.0f, 2.0f, 3.0f};
     NS::Phys::Capsule capsule = collider.CapsuleAt(root);
     EXPECT_FLOAT_EQ(capsule.center.x, 1.0f);
@@ -105,7 +105,7 @@ TEST(ColliderShape, PlayerOwnsAFixedColliderPart)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    EXPECT_NE(NS::ClassObjFields(NS::Editor::MakePrototypeJson(player), "Collider"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(NS::Editor::MakePrototypeJson(&player), "Collider"), nullptr);
 }
 
 TEST(ColliderShape, BodyHasNoShapeFields)
@@ -135,8 +135,8 @@ TEST(ColliderShape, PlayerBodySensorFollowsARadiusEditWithoutRestart)
     LoadPlayerScene(scene, nlohmann::json::object());
     PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->Collider(), {{"半径", 0.8f}}), 0u);
-    const NS::SensorVolume volume = player->BodySensorClassObj()->WorldVolume();
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Collider(), {{"半径", 0.8f}}), 0u);
+    const NS::SensorVolume volume = player->BodySensorClassObj()->WorldVolume(player->Root().WorldMatrix());
     EXPECT_FLOAT_EQ(volume.radius, 0.8f);
 }
 
@@ -149,7 +149,7 @@ TEST(ColliderShape, ScaledPlayerRootDoesNotScaleTheBodySensor)
     ASSERT_NE(player, nullptr);
 
     player->Root().SetScale(NS::Vector3{1.2f, 1.2f, 1.2f});
-    const NS::SensorVolume volume = player->BodySensorClassObj()->WorldVolume();
+    const NS::SensorVolume volume = player->BodySensorClassObj()->WorldVolume(player->Root().WorldMatrix());
     const NS::Phys::Capsule capsule = player->Collider().CapsuleAt(player->Root().Position());
     EXPECT_FLOAT_EQ(volume.radius, capsule.radius);
     EXPECT_FLOAT_EQ((volume.b - volume.a).Length(), capsule.halfHeight * 2.0f);
@@ -172,11 +172,11 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     NS::SphereCollision* collision = NS::Cast<NS::SphereCollision>(placed->CollisionClassObj());
     ASSERT_NE(collision, nullptr);
 
-    ASSERT_EQ(NS::ApplyJsonFields(*collision,
+    ASSERT_EQ(NS::ApplyJsonFields(collision,
                                   {{"半径", 0.8f}, {"中心オフセット", {0.0f, 0.25f, 0.0f}}}),
               0u);
-    const NS::Sphere sphere = collision->WorldSphere();
-    const NS::SensorVolume volume = placed->BodySensorClassObj()->WorldVolume();
+    const NS::Sphere sphere = collision->WorldSphere(placed->Root().WorldMatrix());
+    const NS::SensorVolume volume = placed->BodySensorClassObj()->WorldVolume(placed->Root().WorldMatrix());
     EXPECT_FLOAT_EQ(sphere.radius, 0.8f);
     EXPECT_FLOAT_EQ(volume.radius, sphere.radius);
     EXPECT_FLOAT_EQ(volume.Center().x, sphere.center.x);
@@ -206,8 +206,8 @@ TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
     GL::Level::DeathZoneActor& zone = *zoneOwned;
     ASSERT_NE(goal.BodySensorClassObj(), nullptr);
     ASSERT_NE(zone.BodySensorClassObj(), nullptr);
-    EXPECT_EQ(NS::ApplyJsonFields(*goal.BodySensorClassObj(), {{"半径", 0.9f}}), 0u);
-    EXPECT_EQ(NS::ApplyJsonFields(*zone.BodySensorClassObj(),
+    EXPECT_EQ(NS::ApplyJsonFields(goal.BodySensorClassObj(), {{"半径", 0.9f}}), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(zone.BodySensorClassObj(),
                                   {{"箱の半径", {1000.0f, 5.0f, 1000.0f}}, {"中心オフセット", {0.0f, 0.0f, 0.0f}}}),
               0u);
 }

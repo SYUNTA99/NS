@@ -37,11 +37,11 @@ namespace
 TEST(ClassObjSavedFields, SavedJsonHasNoEnabledKey)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
-    ExpectNoEnabledKey(NS::ActorToJson(*player));
+    ExpectNoEnabledKey(NS::ActorToJson(player.get()));
     ExpectNoEnabledKey(*NS::ActorFileLibrary::Get().Values("PlayerActor"));
 
     const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
-    ExpectNoEnabledKey(NS::ActorToJson(*prop));
+    ExpectNoEnabledKey(NS::ActorToJson(prop.get()));
     ExpectNoEnabledKey(*NS::ActorFileLibrary::Get().Values("PropActor"));
 }
 
@@ -80,5 +80,5 @@ TEST(ClassObjSavedFields, OptionalColorIsSavedAsNullOrFourNumbers)
 TEST(ClassObjSavedFields, EnabledKeyIsReadLikeAnyUnknownField)
 {
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
-    EXPECT_EQ(NS::ApplyJsonFields(player->Input(), nlohmann::json{{"enabled", false}}), 1u);
+    EXPECT_EQ(NS::ApplyJsonFields(&player->Input(), nlohmann::json{{"enabled", false}}), 1u);
 }

@@ -177,17 +177,17 @@ public:
     //! 写した欄は履歴へ 1 つずつ積まず、編集へ戻る時にプレイ開始の凍結と比べて 1 まとまりで積む
     //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所が呼ぶ
     //! row は actor のクラスの表の行
-    void MirrorPlayEditToBaseline(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
+    void MirrorPlayEditToBaseline(const NS::SceneActor* actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
     //! @brief Inspector で actor の欄の値が変わったフレームに呼ぶ。row は actor のクラスの表の行
     //! @details 配置物へ書く欄はプレイ中の凍結へ写す。.actor へ書く欄は覚えておき、
     //! CommitClassObjEdit で .actor のファイルへ書いて、同じ .actor のアクターの全部へ写す。プレイ中も同じ
-    void NoteFieldEdit(const NS::SceneActor& actor, const NS::ClassObjInfo& row, std::string_view fieldName);
+    void NoteFieldEdit(const NS::SceneActor* actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
     //! @brief アクターの欄を書いた後の後始末。欄を変える・既定へ戻す・.actor の欄を直す・マテリアルを付ける の全部が呼ぶ
     //! @details 素材の欄を書いた時だけ、描くメッシュ・描くマテリアル・メッシュの当たりの形を読み直す
     //! 当たりの姿と形は、世界を止めた歩とプレイの歩が揃えるので、ここでは張り直さない。writtenType は書いた欄の型
-    void FinishFieldWrite(NS::SceneActor& actor, NS::FieldType writtenType);
+    void FinishFieldWrite(NS::SceneActor* actor, NS::FieldType writtenType);
 
     //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);
@@ -263,11 +263,6 @@ public:
     //! アクターの切り替えは取り消しの履歴へ積み、ファイルは取り消しても残す。編集モードでない時と、作れない時は WARN を出して何もしない
     //! @return 切り替えた場合 true、それ以外の場合は false
     bool DeriveActorFileFromActor(NS::uint32 actorId, std::string_view name);
-
-    //! @brief actorId のアクターの .actor を、同じクラスの name の .actor に替えて、取り消しの履歴へ積む
-    //! @details シーンの上書きは残る。編集モードでない時・アクターか name の .actor が無い時・クラスが違う時は WARN を出して替えない
-    //! @return 替えた場合 true、それ以外の場合は false
-    bool ChangeActorFile(NS::uint32 actorId, std::string_view name);
 
 private:
     void TickEdit();

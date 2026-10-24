@@ -2,8 +2,6 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/OBB.h"
 
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/PhysicsScene.h"
 
 #include <cmath>
@@ -33,8 +31,7 @@ namespace NS
         }
     } // namespace
 
-    BoxCollision::BoxCollision(SceneActor* owner, const Vector3& halfExtents) noexcept
-        : Collision(owner), m_halfExtents(ClampNonNegative(halfExtents))
+    BoxCollision::BoxCollision(const Vector3& halfExtents) noexcept : m_halfExtents(ClampNonNegative(halfExtents))
     {}
 
     void BoxCollision::SetHalfExtents(const Vector3& halfExtents) noexcept
@@ -81,21 +78,21 @@ namespace NS
         return QuaternionToEulerDegrees(m_localRotation);
     }
 
-    AABB BoxCollision::WorldAABB() const noexcept
+    AABB BoxCollision::WorldAABB(const Matrix& world) const noexcept
     {
         // 原点中心の箱に局所のずれと回転を掛け、その後で持ち主の世界変換を掛ける
         // 回転時は内包する軸並行 AABB になる
-        const Matrix combined = ShapeWorldMatrix(m_localRotation, m_centerOffset);
+        const Matrix combined = ShapeWorldMatrix(world, m_localRotation, m_centerOffset);
         const AABB local(Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);
-        AABB world;
-        local.Transform(world, combined);
-        return world;
+        AABB result;
+        local.Transform(result, combined);
+        return result;
     }
 
-    OBB BoxCollision::WorldOBB() const noexcept
+    OBB BoxCollision::WorldOBB(const Matrix& world) const noexcept
     {
         const AffineDecomposition decomposed =
-            DecomposeAffine(ShapeWorldMatrix(m_localRotation, m_centerOffset));
+            DecomposeAffine(ShapeWorldMatrix(world, m_localRotation, m_centerOffset));
         const Vector3 half{m_halfExtents.x * std::abs(decomposed.scale.x),
                                m_halfExtents.y * std::abs(decomposed.scale.y),
                                m_halfExtents.z * std::abs(decomposed.scale.z)};
@@ -103,8 +100,8 @@ namespace NS
         return MakeOBB(decomposed.translation, decomposed.rotation, half);
     }
 
-    JPH::BodyID BoxCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current)
+    JPH::BodyID BoxCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current, const Matrix& world)
     {
-        return physics.SyncBox(current, WorldOBB(), Phys::ObjectLayers::Terrain);
+        return physics.SyncBox(current, WorldOBB(world), Phys::ObjectLayers::Terrain);
     }
 } // namespace NS

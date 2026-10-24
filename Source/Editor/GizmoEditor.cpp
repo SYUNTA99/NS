@@ -470,7 +470,7 @@ namespace NS
             for (const SceneActor* obj : m_objects)
             {
                 worldMatrices.push_back(obj->Root().WorldMatrix());
-                localBounds.push_back(PickLocalBounds(*obj));
+                localBounds.push_back(PickLocalBounds(obj));
             }
 
             // 可視オブジェクトを優先して判定し、ヒットしなければ不可視オブジェクトも含めて再判定する

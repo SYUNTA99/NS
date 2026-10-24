@@ -12,11 +12,15 @@ namespace GL
         class LedgeClimbingPlayerState final : public PlayerState<LedgeClimbingPlayerState>
         {
         public:
-            void OnEnter(::PlayerActor& player) override;
-            void OnStep(::PlayerActor&, float) override {}
+            void OnEnter(::PlayerActor* player) override;
+            void OnStep(::PlayerActor* player, float) override
+            {
+                NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+                (void)player;
+            }
 
         private:
-            NS::Coroutine Run(::PlayerActor& player);
+            NS::Coroutine Run(::PlayerActor* player);
         };
     } // namespace Player
 } // namespace GL

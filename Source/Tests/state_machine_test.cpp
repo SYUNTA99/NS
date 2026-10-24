@@ -55,36 +55,39 @@ namespace
     class IdleState final : public NS::StateOf<IdleState, StateOwner>
     {
     public:
-        void OnEnter(StateOwner& owner) override
+        void OnEnter(StateOwner* owner) override
         {
-            owner.calls.push_back(1);
-            StartCoroutine(ResumeLater(owner));
+            NS_ASSERT(Scene, owner != nullptr, "状態の持ち主が無い");
+            owner->calls.push_back(1);
+            StartCoroutine(ResumeLater(*owner));
         }
 
-        void OnStep(StateOwner& owner, float) override
+        void OnStep(StateOwner* owner, float) override
         {
-            owner.calls.push_back(2);
-            if (owner.change)
+            NS_ASSERT(Scene, owner != nullptr, "状態の持ち主が無い");
+            owner->calls.push_back(2);
+            if (owner->change)
             {
-                owner.machine->Change<ActiveState>();
-                if (owner.recordAfterChange)
+                owner->machine->Change<ActiveState>();
+                if (owner->recordAfterChange)
                 {
-                    owner.calls.push_back(7);
+                    owner->calls.push_back(7);
                 }
-                if (owner.finishAfterChange)
+                if (owner->finishAfterChange)
                 {
-                    owner.child->Finish();
+                    owner->child->Finish();
                 }
             }
         }
 
-        void OnExit(StateOwner& owner) override
+        void OnExit(StateOwner* owner) override
         {
-            owner.calls.push_back(3);
-            if (owner.exitChangesState)
+            NS_ASSERT(Scene, owner != nullptr, "状態の持ち主が無い");
+            owner->calls.push_back(3);
+            if (owner->exitChangesState)
             {
-                owner.exitChangesState = false;
-                owner.machine->Change<DeltaState>();
+                owner->exitChangesState = false;
+                owner->machine->Change<DeltaState>();
             }
         }
     };
@@ -92,42 +95,57 @@ namespace
     class ActiveState final : public NS::StateOf<ActiveState, StateOwner>
     {
     public:
-        void OnEnter(StateOwner& owner) override
+        void OnEnter(StateOwner* owner) override
         {
-            owner.calls.push_back(4);
-            owner.activeEnteredBy = &owner;
-            if (owner.finishOnEntry)
+            NS_ASSERT(Scene, owner != nullptr, "状態の持ち主が無い");
+            owner->calls.push_back(4);
+            owner->activeEnteredBy = owner;
+            if (owner->finishOnEntry)
             {
-                owner.child->Finish();
+                owner->child->Finish();
             }
-            if (owner.entryChangesState)
+            if (owner->entryChangesState)
             {
-                owner.machine->Change<DeltaState>();
+                owner->machine->Change<DeltaState>();
             }
         }
-        void OnStep(StateOwner& owner, float) override
+        void OnStep(StateOwner* owner, float) override
         {
-            owner.calls.push_back(5);
-            owner.activeSteppedBy = &owner;
+            NS_ASSERT(Scene, owner != nullptr, "状態の持ち主が無い");
+            owner->calls.push_back(5);
+            owner->activeSteppedBy = owner;
         }
     };
 
     class ChildState final : public NS::StateOf<ChildState, StateOwner>
     {
     public:
-        void OnEnter(StateOwner& owner) override { StartCoroutine(ResumeChildLater(owner)); }
-        void OnStep(StateOwner& owner, float) override
+        void OnEnter(StateOwner* owner) override
         {
-            owner.calls.push_back(6);
-            owner.child->Finish();
+            NS_ASSERT(Scene, owner != nullptr, "状態の持ち主が無い");
+            StartCoroutine(ResumeChildLater(*owner));
+        }
+        void OnStep(StateOwner* owner, float) override
+        {
+            NS_ASSERT(Scene, owner != nullptr, "状態の持ち主が無い");
+            owner->calls.push_back(6);
+            owner->child->Finish();
         }
     };
 
     class DeltaState final : public NS::StateOf<DeltaState, StateOwner>
     {
     public:
-        void OnEnter(StateOwner& owner) override { StartCoroutine(Run(owner)); }
-        void OnStep(StateOwner&, float) override {}
+        void OnEnter(StateOwner* owner) override
+        {
+            NS_ASSERT(Scene, owner != nullptr, "状態の持ち主が無い");
+            StartCoroutine(Run(*owner));
+        }
+        void OnStep(StateOwner* owner, float) override
+        {
+            NS_ASSERT(Scene, owner != nullptr, "状態の持ち主が無い");
+            (void)owner;
+        }
 
     private:
         NS::Coroutine Run(StateOwner& owner)
@@ -147,7 +165,7 @@ TEST(StateMachineOf, TransitionOrderAndFirstStep)
     StateOwner owner;
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     EXPECT_TRUE(machine.IsFirstStep());
     EXPECT_EQ(machine.StepsInState(), 0u);
 
@@ -171,7 +189,7 @@ TEST(StateMachineOf, OwnerComesFromBuildOnly)
     StateOwner owner;
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
     machine.Step(1.0f / 60.0f);
     EXPECT_EQ(owner.activeEnteredBy, &owner);
@@ -183,7 +201,7 @@ TEST(StateMachineOf, LeavingStateCancelsItsCoroutine)
     StateOwner owner;
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
     machine.Step(1.0f / 60.0f);
     EXPECT_EQ(owner.resumed, 0);
@@ -195,7 +213,7 @@ TEST(StateMachineOf, CoroutineCanLeaveItsStateWhileResuming)
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.coroutineChangesState = true;
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     machine.Step(1.0f / 60.0f);
     EXPECT_TRUE(machine.IsCurrent<ActiveState>());
     EXPECT_EQ(owner.resumed, 1);
@@ -207,7 +225,7 @@ TEST(StateMachineOf, ChildFinishStopsStepsAndCancelsCoroutine)
     StateOwner owner;
     NS::SubStateMachine<StateOwner> child;
     owner.child = &child;
-    child.Build<ChildState>(owner);
+    child.Build<ChildState>(&owner);
     EXPECT_FALSE(child.IsDead());
     child.Step(1.0f / 60.0f);
     EXPECT_TRUE(child.IsDead());
@@ -222,7 +240,7 @@ TEST(StateMachineOf, CoroutineReadsTheCurrentStepDelta)
 {
     StateOwner owner;
     NS::StateMachineOf<StateOwner> machine;
-    machine.Build<DeltaState>(owner);
+    machine.Build<DeltaState>(&owner);
     EXPECT_TRUE(owner.deltas.empty());
     machine.Step(0.1f);
     machine.Step(0.2f);
@@ -234,7 +252,7 @@ TEST(StateMachineOf, ExternalRequestDefersEntryUntilTheNextStepBoundary)
     StateOwner owner;
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
     EXPECT_TRUE(machine.IsCurrent<ActiveState>());
     EXPECT_FALSE(machine.IsFirstStep());
@@ -253,7 +271,7 @@ TEST(StateMachineOf, EntryDoesNotInterruptThePreviousStep)
     owner.machine = &machine;
     owner.change = true;
     owner.recordAfterChange = true;
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3, 7, 4}));
     EXPECT_TRUE(machine.IsFirstStep());
@@ -265,7 +283,7 @@ TEST(StateMachineOf, LastValidRequestWinsWithoutExitingTwice)
     StateOwner owner;
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
-    machine.Build<IdleState, ActiveState, DeltaState>(owner);
+    machine.Build<IdleState, ActiveState, DeltaState>(&owner);
     ASSERT_TRUE(machine.Change<ActiveState>());
     ASSERT_TRUE(machine.Change<DeltaState>());
     ASSERT_TRUE(machine.Change<DeltaState>());
@@ -281,7 +299,7 @@ TEST(StateMachineOf, ResetDiscardsAPendingEntry)
     StateOwner owner;
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     machine.Change<ActiveState>();
     machine.Reset();
     machine.Step(0.1f);
@@ -298,7 +316,7 @@ TEST(StateMachineOf, ChildFinishDiscardsAnEntryRequestedDuringItsStep)
     owner.machine = &child.Machine();
     owner.change = true;
     owner.finishAfterChange = true;
-    child.Build<IdleState, ActiveState>(owner);
+    child.Build<IdleState, ActiveState>(&owner);
     child.Step(0.1f);
     EXPECT_TRUE(child.IsDead());
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3}));
@@ -312,7 +330,7 @@ TEST(StateMachineOf, ReturningToTheExitedStateReentersAtTheBoundary)
     StateOwner owner;
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     machine.Change<ActiveState>();
     machine.Change<IdleState>();
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
@@ -325,7 +343,7 @@ TEST(StateMachineOf, RequestingTheCurrentStateDoesNotResetItsStep)
     StateOwner owner;
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     machine.Step(0.1f);
     machine.Change<IdleState>();
     EXPECT_EQ(machine.StepsInState(), 1u);
@@ -338,7 +356,7 @@ TEST(StateMachineOf, EntryRequestAtTheOpeningBoundaryDoesNotStepTheExitedState)
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.entryChangesState = true;
-    machine.Build<IdleState, ActiveState, DeltaState>(owner);
+    machine.Build<IdleState, ActiveState, DeltaState>(&owner);
     machine.Change<ActiveState>();
     machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 4}));
@@ -356,7 +374,7 @@ TEST(StateMachineOf, EntryRequestAtTheClosingBoundaryWaitsUntilTheNextStep)
     owner.machine = &machine;
     owner.entryChangesState = true;
     owner.change = true;
-    machine.Build<IdleState, ActiveState, DeltaState>(owner);
+    machine.Build<IdleState, ActiveState, DeltaState>(&owner);
     machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3, 4}));
     EXPECT_TRUE(machine.IsCurrent<DeltaState>());
@@ -373,7 +391,7 @@ TEST(StateMachineOf, ExitCanReplaceThePendingTargetWithoutRecursiveExit)
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
     owner.exitChangesState = true;
-    machine.Build<IdleState, ActiveState, DeltaState>(owner);
+    machine.Build<IdleState, ActiveState, DeltaState>(&owner);
     machine.Change<ActiveState>();
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3}));
     EXPECT_TRUE(machine.IsCurrent<DeltaState>());
@@ -387,9 +405,9 @@ TEST(StateMachineOf, RebuildDiscardsThePreviousPendingEntry)
     StateOwner owner;
     NS::StateMachineOf<StateOwner> machine;
     owner.machine = &machine;
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     machine.Change<ActiveState>();
-    machine.Build<IdleState, ActiveState>(owner);
+    machine.Build<IdleState, ActiveState>(&owner);
     machine.Step(0.1f);
     EXPECT_TRUE(machine.IsCurrent<IdleState>());
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 3, 1, 2}));
@@ -404,7 +422,7 @@ TEST(StateMachineOf, ChildFinishDuringCoroutineStopsTheRemainingStateStep)
     owner.machine = &child.Machine();
     owner.coroutineChangesState = true;
     owner.finishFromCoroutine = true;
-    child.Build<IdleState, ActiveState>(owner);
+    child.Build<IdleState, ActiveState>(&owner);
     child.Step(0.1f);
     EXPECT_TRUE(child.IsDead());
     EXPECT_EQ(owner.resumed, 1);
@@ -421,7 +439,7 @@ TEST(StateMachineOf, ChildFinishDuringEntryStopsTheFirstStateStep)
     owner.child = &child;
     owner.machine = &child.Machine();
     owner.finishOnEntry = true;
-    child.Build<IdleState, ActiveState>(owner);
+    child.Build<IdleState, ActiveState>(&owner);
     child.Machine().Change<ActiveState>();
     child.Step(0.1f);
     EXPECT_TRUE(child.IsDead());

@@ -43,7 +43,7 @@ TEST(HitScreenDirector, FlashStartsAtFullAlphaAndFadesFromTheNextTick)
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
 
-    screen->StartFlash(*player, 3, 0.9f);
+    screen->StartFlash(player, 3, 0.9f);
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     EXPECT_FLOAT_EQ(screen->FlashAlpha(), 0.9f);
     screen->OnTick();
@@ -66,7 +66,7 @@ TEST(HitScreenDirector, ShakeLinesRunForTheirFrames)
     ASSERT_NE(player, nullptr);
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
-    screen->StartShakeLines(*player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
+    screen->StartShakeLines(player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 3);
     screen->OnTick();
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 3);
@@ -74,7 +74,7 @@ TEST(HitScreenDirector, ShakeLinesRunForTheirFrames)
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 2);
     EXPECT_FLOAT_EQ(screen->ShakeLines().radius, 0.5f);
     // 半径が 0 以下・フレーム数 0 以下は出さない
-    screen->StartShakeLines(*player, NS::HitShakeLinesDesc{.radius = 0.0f, .frames = 3});
+    screen->StartShakeLines(player, NS::HitShakeLinesDesc{.radius = 0.0f, .frames = 3});
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 0);
 }
 
@@ -89,12 +89,12 @@ TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
 
-    screen->StartFlash(*rock, 3, 1.0f);
-    screen->StartShakeLines(*player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
-    screen->Stop(*player);
+    screen->StartFlash(rock, 3, 1.0f);
+    screen->StartShakeLines(player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
+    screen->Stop(player);
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 0);
-    screen->Stop(*rock);
+    screen->Stop(rock);
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
 }
 
@@ -108,11 +108,11 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
     ASSERT_NE(reaction, nullptr);
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
-    reaction->StartFlash(4, 1.0f);
-    reaction->StartShakeLines(NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 4});
+    reaction->StartFlash(player, 4, 1.0f);
+    reaction->StartShakeLines(player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 4});
     EXPECT_EQ(screen->FlashFramesRemaining(), 4);
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 4);
-    reaction->Stop();
+    reaction->Stop(player);
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 0);
 }
@@ -126,7 +126,7 @@ TEST(HitScreenDirector, FlashKeepsFadingWhileOthersAreHeld)
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
     scene.HoldOthers(10);
-    screen->StartFlash(*player, 3, 1.0f);
+    screen->StartFlash(player, 3, 1.0f);
     scene.OnUpdate();
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     scene.OnUpdate();
@@ -184,7 +184,7 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
     desc.halfWidth = 0.05f;
     desc.frames = 3;
 
-    screen->StartDistortionRing(*player, desc);
+    screen->StartDistortionRing(player, desc);
     for (int frame = 0; frame < 3; ++frame)
     {
         SCOPED_TRACE(frame);
@@ -204,7 +204,7 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
     EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
     // フレーム数 0 以下は出さない
     desc.frames = 0;
-    screen->StartDistortionRing(*player, desc);
+    screen->StartDistortionRing(player, desc);
     EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
 }
 
@@ -225,13 +225,13 @@ TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
     desc.push.keys[0] = NS::Curve::Key{0.0f, 0.03f};
     desc.frames = 10;
 
-    reaction->StartDistortionRing(desc);
+    reaction->StartDistortionRing(player, desc);
     EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
-    screen->StopDistortionRing(*rock);
+    screen->StopDistortionRing(rock);
     EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
     // 白と線を止めても、輪は止めない
-    reaction->Stop();
+    reaction->Stop(player);
     EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
-    reaction->StopDistortionRing();
+    reaction->StopDistortionRing(player);
     EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
 }

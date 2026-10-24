@@ -6,7 +6,6 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
-#include "NSlib/CoreObject/Reflection/ActorRef.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 
 #include <vector>
@@ -65,15 +64,13 @@ namespace GL
         class TargetMarker : public NS::OverlayRenderer
         {
         public:
-            explicit TargetMarker(NS::SceneActor* owner) noexcept;
-
             //! 溜めている間、確定した狙う相手へ枠を控える。溜めを終えたら控えと経過フレーム数を戻す
             void Update(const GL::Player::ChargeStatus& charge);
 
             void OnRenderOverlay(const NS::Gfx::RenderContext& context) override;
 
-            //! このフレームに示す相手。示さないフレームと、外れた後に枠だけを出すフレームは未設定の参照
-            [[nodiscard]] NS::ActorRef ShownTargetRef() const noexcept;
+            //! このフレームに示す相手。示さないフレームと、外れた後に枠だけを出すフレームは nullptr
+            [[nodiscard]] NS::SceneActor* ShownTarget() const noexcept;
 
             //! 捕捉中か喪失演出中の枠を組む。targetSize は画素寸法
             //! 枠を組めた場合 true、それ以外の場合は false。失敗時は outFrame を変更しない

@@ -45,5 +45,5 @@ namespace NS
 
     //! @brief actor の部品の素材の欄を全部、今の道で引き直す
     //! @details 呼ぶのは SceneActor::ReloadAssets だけ。作る時と欄を書き換えた時の両方がそこを通る
-    void LoadAssetFields(SceneActor& actor);
+    void LoadAssetFields(SceneActor* actor);
 } // namespace NS

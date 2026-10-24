@@ -6,5 +6,5 @@
 class TestEffectActor : public NS::SceneActor
 {
 protected:
-    void OnInit() override { CreateClassObj(m_effectKeeper, this); }
+    void OnInit() override { CreateClassObj(m_effectKeeper); }
 };

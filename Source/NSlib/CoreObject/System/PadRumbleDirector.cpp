@@ -24,30 +24,33 @@ namespace NS
         }
     }
 
-    void PadRumbleDirector::Start(const SceneActor& requester, const HitPadVibration& pad)
+    void PadRumbleDirector::Start(const SceneActor* requester, const HitPadVibration& pad)
     {
+        NS_ASSERT(Scene, requester != nullptr, "PadRumbleDirector::Start: 頼んだ物が null");
         m_layers.clear();
-        m_layers.push_back(Layer{.pad = pad, .startElapsed = 0, .requester = &requester});
+        m_layers.push_back(Layer{.pad = pad, .startElapsed = 0, .requester = requester});
         m_elapsed = 0;
         m_running = true;
         m_justStarted = true;
         Write();
     }
 
-    void PadRumbleDirector::Blend(const SceneActor& requester, const HitPadVibration& pad)
+    void PadRumbleDirector::Blend(const SceneActor* requester, const HitPadVibration& pad)
     {
+        NS_ASSERT(Scene, requester != nullptr, "PadRumbleDirector::Blend: 頼んだ物が null");
         if (!m_running)
         {
             Start(requester, pad);
             return;
         }
-        m_layers.push_back(Layer{.pad = pad, .startElapsed = m_elapsed, .requester = &requester});
+        m_layers.push_back(Layer{.pad = pad, .startElapsed = m_elapsed, .requester = requester});
         Write();
     }
 
-    void PadRumbleDirector::Stop(const SceneActor& requester)
+    void PadRumbleDirector::Stop(const SceneActor* requester)
     {
-        std::erase_if(m_layers, [&requester](const Layer& layer) { return layer.requester == &requester; });
+        NS_ASSERT(Scene, requester != nullptr, "PadRumbleDirector::Stop: 頼んだ物が null");
+        std::erase_if(m_layers, [requester](const Layer& layer) { return layer.requester == requester; });
         if (!m_layers.empty())
         {
             Write();

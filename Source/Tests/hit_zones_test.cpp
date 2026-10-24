@@ -77,8 +77,9 @@ namespace
 
     // parts の部品ごとの欄を、読んだ後の actor へ書く。HitZones などの欄は .actor だけが持つので、
     // 1 体だけ違う値は配置物でなくアクターに書く
-    void WriteParts(NS::SceneActor& actor, const nlohmann::json& parts)
+    void WriteParts(NS::SceneActor* actor, const nlohmann::json& parts)
     {
+        NS_ASSERT(Game, actor != nullptr, "WriteParts: 渡したアクターか部品が無い");
         nlohmann::json values = NS::MakeActorJson();
         NS::ActorJsonClassObjs(values) = parts;
         NS::ApplyActorClassObjs(actor, values);
@@ -100,14 +101,15 @@ namespace
         NS::SceneActor* target = scene.Actors().FindByActorId(2);
         if (target != nullptr)
         {
-            WriteParts(*target, overriddenParts);
+            WriteParts(target, overriddenParts);
         }
         return target;
     }
 
-    const HitZones* HitZonesOf(const NS::SceneActor& actor)
+    const HitZones* HitZonesOf(const NS::SceneActor* actor)
     {
-        const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(&actor);
+        NS_ASSERT(Game, actor != nullptr, "HitZonesOf: 渡したアクターか部品が無い");
+        const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor);
         if (prop == nullptr)
         {
             return nullptr;
@@ -134,39 +136,43 @@ namespace
         NS::SceneActor* target = scene.Actors().FindByActorId(2);
         if (target != nullptr)
         {
-            WriteParts(*target, rockParts);
+            WriteParts(target, rockParts);
         }
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
     // 溜め 0 で +z へ突進させ、本番の 1 フレームを 1 回回す。裁定は決定の段で身体が動く前に記録される
     // 溜め 0 のチャージ倍率は 1
-    const GL::Level::ImpactRecord& SlamOnce(PlayerActor& player)
+    const GL::Level::ImpactRecord& SlamOnce(PlayerActor* player)
     {
-        player.RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_TRUE(player.BodySlam());
-        player.Update(false);
-        return player.Resolver().Answer().lastImpact;
+        NS_ASSERT(Game, player != nullptr, "SlamOnce: 渡したアクターか部品が無い");
+        player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
+        EXPECT_TRUE(player->BodySlam());
+        player->Update(false);
+        return player->Resolver().Answer().lastImpact;
     }
 
     // 裁定の観測と決定を、自機の段と同じ引数で 1 回ずつ呼ぶ。答えにある自機を動かす事はしない
-    void ObserveAndStepImpact(PlayerActor& player)
+    void ObserveAndStepImpact(PlayerActor* player)
     {
-        player.Resolver().ObserveImpact(player.SlamMotion(), &player.Collider());
-        player.Resolver().StepState(player.SlamMotion(),
-                                    &player.Params(),
-                                    &player.Body(),
-                                    &player.Collider(),
-                                    player.HitReactionClassObj());
+        NS_ASSERT(Game, player != nullptr, "ObserveAndStepImpact: 渡したアクターか部品が無い");
+        player->Resolver().ObserveImpact(player->SelfForImpact(), player->SlamMotion(), &player->Collider());
+        player->Resolver().StepState(player->SelfForImpact(),
+                                    player->SlamMotion(),
+                                    &player->Params(),
+                                    &player->Body(),
+                                    &player->Collider(),
+                                    player->HitReactionClassObj());
     }
 
-    bool FindSlamLineTarget(PlayerActor& player,
+    bool FindSlamLineTarget(PlayerActor* player,
                             const Vector3& direction,
                             float distance,
                             GL::Level::SlamLineTarget& out)
     {
-        return player.Resolver().FindSlamLineTarget(
-            direction, distance, &player.Params(), &player.Body(), &player.Collider(), out);
+        NS_ASSERT(Game, player != nullptr, "FindSlamLineTarget: 渡したアクターか部品が無い");
+        return player->Resolver().FindSlamLineTarget(
+            player->SelfForImpact(), direction, distance, &player->Params(), &player->Body(), &player->Collider(), out);
     }
 } // namespace
 
@@ -496,7 +502,7 @@ TEST(HitZonesTest, LinePointIsTheCenterDroppedOntoTheLineAtTheCenterHeight)
 TEST(HitZonesTest, FieldDefaultsAreARoundRedOfPoint43)
 {
     const HitZones zones;
-    const nlohmann::json fields = NS::SerializeClassObjFields(zones);
+    const nlohmann::json fields = NS::SerializeClassObjFields(&zones);
     EXPECT_EQ(fields["丸"], true);
     EXPECT_FLOAT_EQ(fields["横幅"].get<float>(), 0.43f);
     EXPECT_FLOAT_EQ(fields["縦の幅"].get<float>(), 0.43f);
@@ -512,7 +518,7 @@ TEST(HitZonesTest, FieldsAreClamped)
 {
     HitZones zones;
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    EXPECT_EQ(NS::ApplyJsonFields(zones,
+    EXPECT_EQ(NS::ApplyJsonFields(&zones,
                                   {{"横幅", 1.5f},
                                    {"縦の幅", -0.5f},
                                    {"左右の位置", -2.0f},
@@ -557,18 +563,18 @@ TEST(HitZonesTest, MapObjAnswersWithItsFaceAndBody)
     NS::Scene scene;
     NS::SceneActor* rock = PlaceRocks(scene, {{"HitZones", {{"左右の位置", 0.25f}, {"威力の倍率", 1.1f}}}});
     ASSERT_NE(rock, nullptr);
-    const HitZones* zones = HitZonesOf(*rock);
+    const HitZones* zones = HitZonesOf(rock);
     ASSERT_NE(zones, nullptr);
 
     GL::Level::TackleTargetAnswer answer{};
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(*rock->BodySensorClassObj(), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(rock->BodySensorClassObj(), answer));
     EXPECT_EQ(answer.face.round, zones->Face().round);
     EXPECT_FLOAT_EQ(answer.face.width, zones->Face().width);
     EXPECT_FLOAT_EQ(answer.face.centerU, 0.25f);
     EXPECT_FLOAT_EQ(answer.face.powerScale, 1.1f);
     EXPECT_FLOAT_EQ(answer.face.remainderPowerScale, zones->Face().remainderPowerScale);
 
-    const SensorVolume expected = rock->BodySensorClassObj()->WorldVolume();
+    const SensorVolume expected = rock->BodySensorClassObj()->WorldVolume(rock->Root().WorldMatrix());
     EXPECT_FALSE(answer.body.isBox);
     EXPECT_FLOAT_EQ(answer.body.radius, expected.radius);
     EXPECT_FLOAT_EQ(answer.body.a.x, 8.0f);
@@ -585,9 +591,10 @@ TEST(HitZonesTest, RedMovedOnOneTargetChangesOnlyThatTarget)
     NS::SceneActor* plain = scene.Actors().FindByActorId(1);
     ASSERT_NE(plain, nullptr);
 
-    const auto judgeThroughCenter = [&](NS::SceneActor& target) {
+    const auto judgeThroughCenter = [&](NS::SceneActor* target) {
+        NS_ASSERT(Game, target != nullptr, "judgeThroughCenter: 渡したアクターが無い");
         GL::Level::TackleTargetAnswer answer{};
-        EXPECT_TRUE(GL::Level::SendMsgAskTackleTarget(*target.BodySensorClassObj(), answer));
+        EXPECT_TRUE(GL::Level::SendMsgAskTackleTarget(target->BodySensorClassObj(), answer));
         const Vector3 center = answer.body.Center();
         HitFaceJudgement result;
         EXPECT_TRUE(JudgeHitFace(answer.face,
@@ -598,8 +605,8 @@ TEST(HitZonesTest, RedMovedOnOneTargetChangesOnlyThatTarget)
                                  result));
         return result.tier;
     };
-    EXPECT_EQ(judgeThroughCenter(*plain), HitTier::Center);
-    EXPECT_EQ(judgeThroughCenter(*moved), HitTier::Wide);
+    EXPECT_EQ(judgeThroughCenter(plain), HitTier::Center);
+    EXPECT_EQ(judgeThroughCenter(moved), HitTier::Wide);
 }
 
 // 面は相手の正面に接する平面に立ち、自機の方を向く。横と縦の半分の幅は判定と同じ「半幅 + 自機の半径」
@@ -755,7 +762,7 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
     ASSERT_NE(player, nullptr);
     const NS::SceneActor* target = scene.Actors().FindByActorId(2);
     ASSERT_NE(target, nullptr);
-    const SensorVolume body = target->BodySensorClassObj()->WorldVolume();
+    const SensorVolume body = target->BodySensorClassObj()->WorldVolume(target->Root().WorldMatrix());
 
     player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -812,7 +819,7 @@ TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
     PlayerActor* plain =
         PlaceSlamTarget(plainScene, {{"HitZones", {{"威力の倍率", 1.1f}, {"残りの威力の倍率", 0.6f}}}});
     ASSERT_NE(plain, nullptr);
-    const GL::Level::ImpactRecord& centered = SlamOnce(*plain);
+    const GL::Level::ImpactRecord& centered = SlamOnce(plain);
     ASSERT_EQ(centered.sequence, 1u);
     EXPECT_EQ(centered.tier, HitTier::Center);
     EXPECT_FLOAT_EQ(centered.positionFactor, 1.1f);
@@ -823,7 +830,7 @@ TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
     PlayerActor* moved = PlaceSlamTarget(
         movedScene, {{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}, {"残りの威力の倍率", 0.6f}}}});
     ASSERT_NE(moved, nullptr);
-    const GL::Level::ImpactRecord& missed = SlamOnce(*moved);
+    const GL::Level::ImpactRecord& missed = SlamOnce(moved);
     ASSERT_EQ(missed.sequence, 1u);
     EXPECT_EQ(missed.tier, HitTier::Wide);
     EXPECT_FLOAT_EQ(missed.positionFactor, 0.6f);
@@ -840,7 +847,7 @@ TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
     ASSERT_TRUE(player->BodySlam());
-    ObserveAndStepImpact(*player);
+    ObserveAndStepImpact(player);
     const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     ASSERT_EQ(impact.sequence, 1u);
     EXPECT_EQ(impact.tier, HitTier::Wide);
@@ -860,7 +867,7 @@ TEST(HitZonesTest, VerdictJudgesTheBallWhereThisStepMovesIt)
     player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, riseSpeed);
     ASSERT_TRUE(player->BodySlam());
     ASSERT_FLOAT_EQ(player->BodySlamVelocity().y, riseSpeed);
-    ObserveAndStepImpact(*player);
+    ObserveAndStepImpact(player);
     const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
     ASSERT_EQ(impact.sequence, 1u);
     EXPECT_EQ(impact.tier, HitTier::Center);
@@ -878,9 +885,9 @@ TEST(HitZonesTest, AimPredictionGivesTheSameTierAsTheVerdict)
         PlayerActor* player = PlaceSlamTarget(scene, entry.first);
         ASSERT_NE(player, nullptr);
         GL::Level::SlamLineTarget predicted{};
-        ASSERT_TRUE(FindSlamLineTarget(*player, Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
+        ASSERT_TRUE(FindSlamLineTarget(player, Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
         EXPECT_EQ(predicted.tier, entry.second);
-        const GL::Level::ImpactRecord& impact = SlamOnce(*player);
+        const GL::Level::ImpactRecord& impact = SlamOnce(player);
         ASSERT_EQ(impact.sequence, 1u);
         EXPECT_EQ(predicted.tier, impact.tier);
         EXPECT_FLOAT_EQ(predicted.offset, impact.offset01);
@@ -926,7 +933,7 @@ TEST(ImpactResolver, TackleSkipsANearerAreaSensor)
     GL::Level::GoalActor* goal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
     goal->Root().SetPosition(Vector3{0.0f, 1.0f, 0.3f});
 
-    const GL::Level::ImpactRecord& impact = SlamOnce(*player);
+    const GL::Level::ImpactRecord& impact = SlamOnce(player);
     ASSERT_EQ(impact.sequence, 1u);
     EXPECT_EQ(impact.targetId, 2u);
 }
@@ -944,8 +951,9 @@ TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
     goal->Root().SetPosition(Vector3{0.0f, 0.5f, 1.5f});
 
     GL::Level::SlamLineTarget predicted{};
-    ASSERT_TRUE(FindSlamLineTarget(*player, Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
-    EXPECT_EQ(predicted.target.id, 2u);
+    ASSERT_TRUE(FindSlamLineTarget(player, Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
+    ASSERT_NE(predicted.target, nullptr);
+    EXPECT_EQ(predicted.target->Id(), 2u);
 }
 
 namespace
@@ -957,6 +965,7 @@ namespace
         void OnInit() override
         {
             NS::ShapeHitSensor* sensor = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
+            NS::InitHitSensor(this, sensor);
             sensor->SetSphere(0.5f);
         }
     };
@@ -976,5 +985,5 @@ TEST(HitSensor, UnsetKindIsNotATackleTarget)
     unset->Root().SetPosition(Vector3{0.0f, 0.5f, 2.0f});
 
     GL::Level::SlamLineTarget predicted{};
-    EXPECT_FALSE(FindSlamLineTarget(*player, Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
+    EXPECT_FALSE(FindSlamLineTarget(player, Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
 }

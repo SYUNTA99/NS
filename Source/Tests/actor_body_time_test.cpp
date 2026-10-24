@@ -59,8 +59,9 @@ namespace
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(2));
     }
 
-    void ReleaseRock(GL::Level::PropActor& rock)
+    void ReleaseRock(GL::Level::PropActor* rock)
     {
+        NS_ASSERT(Game, rock != nullptr, "ReleaseRock: 渡したアクターか部品が無い");
         GL::Level::TackleReleaseDesc release;
         release.arc.distance = 5.0f;
         release.arc.apexHeight = 1.0f;
@@ -73,15 +74,16 @@ namespace
         float spinDegrees = 0.0f;
     };
 
-    SlamStep SecondSlamStep(PlayerActor& player)
+    SlamStep SecondSlamStep(PlayerActor* player)
     {
-        player.RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-        player.Update(false);
-        const NS::Vector3 from = player.Root().Position();
-        player.Update(false);
+        NS_ASSERT(Game, player != nullptr, "SecondSlamStep: 渡したアクターか部品が無い");
+        player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+        player->Update(false);
+        const NS::Vector3 from = player->Root().Position();
+        player->Update(false);
         SlamStep step;
-        step.moved = player.Root().Position() - from;
-        step.spinDegrees = player.Appearance().SpinDegreesThisFrame();
+        step.moved = player->Root().Position() - from;
+        step.spinDegrees = player->Appearance().SpinDegreesThisFrame();
         return step;
     }
 } // namespace
@@ -106,8 +108,8 @@ TEST(ActorBodyTime, RockAtScaleTwoFliesTwoStepsInOne)
     ASSERT_NE(fastRock, nullptr);
     ASSERT_NE(player, nullptr);
     ASSERT_TRUE(NS::SetFrameRate(fastRock, 2.0f));
-    ReleaseRock(*slowRock);
-    ReleaseRock(*fastRock);
+    ReleaseRock(slowRock);
+    ReleaseRock(fastRock);
     for (int step = 0; step < 4; ++step)
     {
         slowRock->UpdateMotion();
@@ -134,8 +136,8 @@ TEST(ActorBodyTime, PlayerAtScaleTwoMovesAndSpinsTwoStepsInOne)
     ASSERT_NE(slowPlayer, nullptr);
     ASSERT_NE(fastPlayer, nullptr);
     ASSERT_TRUE(NS::SetFrameRate(fastPlayer, 2.0f));
-    const SlamStep slow = SecondSlamStep(*slowPlayer);
-    const SlamStep fastStep = SecondSlamStep(*fastPlayer);
+    const SlamStep slow = SecondSlamStep(slowPlayer);
+    const SlamStep fastStep = SecondSlamStep(fastPlayer);
     ASSERT_GT(slow.moved.z, 0.0f);
     ASSERT_GT(slow.spinDegrees, 0.0f);
     EXPECT_NEAR(fastStep.moved.z, slow.moved.z * 2.0f, slow.moved.z * 0.01f);
@@ -154,12 +156,12 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
         PlayerActor& player = *playerOwned;
         NS::Animation* animation = player.AnimationClassObj();
         ASSERT_NE(animation, nullptr);
-        ASSERT_EQ(UseTestClips(player, {{"走りのクリップ", "Assets/Models/Xbot.glb#run"}}), 0u);
+        ASSERT_EQ(UseTestClips(&player, {{"走りのクリップ", "Assets/Models/Xbot.glb#run"}}), 0u);
         ASSERT_TRUE(NS::SetFrameRate(&player, static_cast<float>(index + 1)));
         player.Body().SetGrounded(true);
         player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
         player.UpdateAnimation();
-        animation->Update();
+        player.PrepareRender();
         times[index] = animation->Time();
     }
     ASSERT_GT(times[0], 0.0f);

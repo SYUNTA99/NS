@@ -44,7 +44,7 @@ TEST(ImpactMarks, ReleasedPropLeavesAMarkOnTheFloorBelowIt)
     GL::Level::TackleReleaseDesc release;
     release.arc.distance = 5.0f;
     release.arc.apexHeight = 1.0f;
-    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(*rock, release));
+    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, release));
 
     EXPECT_EQ(scene.Actors().ActorCount(), actors);
     ASSERT_EQ(rock->Marks().LiveCount(), 1u);

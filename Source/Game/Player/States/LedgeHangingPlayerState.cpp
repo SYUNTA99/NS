@@ -9,27 +9,28 @@ namespace GL
 {
     namespace Player
     {
-        void LedgeHangingPlayerState::OnStep(::PlayerActor& player, float dt)
+        void LedgeHangingPlayerState::OnStep(::PlayerActor* player, float dt)
         {
-            if (!player.HoldLedge())
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            if (!player->HoldLedge())
             {
                 return;
             }
-            if (player.LedgeJump())
+            if (player->LedgeJump())
             {
                 return;
             }
-            if (PlayerJudgeClimbLedge::Judge(player.ClimbForward()))
+            if (PlayerJudgeClimbLedge::Judge(player->ClimbForward()))
             {
-                player.ClimbLedge();
+                player->ClimbLedge();
                 return;
             }
-            if (PlayerJudgeDropLedge::Judge(player.Input().ReleaseLedgePressed()))
+            if (PlayerJudgeDropLedge::Judge(player->Input().ReleaseLedgePressed()))
             {
-                player.DropLedge();
+                player->DropLedge();
                 return;
             }
-            player.Shimmy(dt);
+            player->Shimmy(dt);
         }
     } // namespace Player
 } // namespace GL

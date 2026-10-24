@@ -143,7 +143,7 @@ namespace GL
         {
         public:
             //! 板と材質の欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
-            explicit SlamArrow(NS::SceneActor* owner);
+            SlamArrow();
 
             //! @brief 溜め中の矢印を控える。狙いが無いか溜めを終えたら、控えと経過フレーム数を戻す
             //! @details 道筋は params の突進の速さと重力、玉の半径と床は collider (持ち主の移動の当たり) から出す
@@ -210,7 +210,6 @@ namespace GL
             bool m_hasShown = false;
             int m_framesSinceShown = -1;                  // 矢印を出していない間は負
             std::vector<NS::Gfx::DrawItem> m_drawScratch; // 描く単位を毎フレーム積み直す置き場。確保を使い回す
-            NS::SceneActor* m_owner = nullptr;            // 持ち主 (非所有)
         };
     } // namespace Level
 } // namespace GL

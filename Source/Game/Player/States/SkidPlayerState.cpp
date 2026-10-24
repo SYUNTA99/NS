@@ -10,24 +10,26 @@ namespace GL
 {
     namespace Player
     {
-        void SkidPlayerState::OnEnter(::PlayerActor& player)
+        void SkidPlayerState::OnEnter(::PlayerActor* player)
         {
-            player.BeginSkid();
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            player->BeginSkid();
         }
 
-        void SkidPlayerState::OnStep(::PlayerActor& player, float dt)
+        void SkidPlayerState::OnStep(::PlayerActor* player, float dt)
         {
-            player.TickTimers(dt);
-            const bool stopped = player.AdvanceSkid();
-            player.Gravity(dt);
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            player->TickTimers(dt);
+            const bool stopped = player->AdvanceSkid();
+            player->Gravity(dt);
 
-            if (PlayerJudgeFall::Judge(player.Body().IsGrounded()))
+            if (PlayerJudgeFall::Judge(player->Body().IsGrounded()))
             {
-                player.States().Change<FallPlayerState>();
+                player->States().Change<FallPlayerState>();
             }
             else if (stopped)
             {
-                player.States().Change<IdlePlayerState>();
+                player->States().Change<IdlePlayerState>();
             }
         }
     } // namespace Player

@@ -47,10 +47,11 @@ namespace
     };
 
     // 本番の入力の段と PlayerActor の段を 1 歩ずつ回す
-    void StepPlayer(PlayerActor& player)
+    void StepPlayer(PlayerActor* player)
     {
-        player.ReadInput();
-        player.Update();
+        NS_ASSERT(Game, player != nullptr, "StepPlayer: 渡したアクターか部品が無い");
+        player->ReadInput();
+        player->Update();
     }
 
     // プレイヤーと落下死の範囲を敷いたシーン文書
@@ -187,7 +188,7 @@ TEST(CourseDirector, RespawnButtonReturnsActorsButKeepsPlayer)
 
     {
         const KeyPress press{NS::OS::Key::R};
-        StepPlayer(*player);
+        StepPlayer(player);
     }
     director->OnTick();
 
@@ -240,7 +241,7 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
     MouseLeftPress press;
     for (int i = 0; i < 60 && !player->ChargeJudge().IsCharging(); ++i)
     {
-        StepPlayer(*player);
+        StepPlayer(player);
     }
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
 
@@ -252,7 +253,7 @@ TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
 
     for (int i = 0; i < 10; ++i)
     {
-        StepPlayer(*player);
+        StepPlayer(player);
         EXPECT_FALSE(player->ChargeJudge().IsCharging()) << "歩 " << i;
         EXPECT_FALSE(player->IsBodySlamming()) << "歩 " << i;
     }
@@ -285,7 +286,7 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
 
     for (int i = 0; i < 10; ++i)
     {
-        StepPlayer(*player);
+        StepPlayer(player);
     }
     EXPECT_FLOAT_EQ(player->DesiredDirection().Length(), 0.0f);
     EXPECT_FLOAT_EQ(player->DesiredSpeedScale(), 0.0f);
@@ -309,7 +310,7 @@ TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
     ASSERT_TRUE(player->ChargeJudge().IsCharging());
     const NS::uint32 impacts = player->Resolver().Answer().lastImpact.sequence;
 
-    EXPECT_TRUE(GL::Level::SendMsgInputLock(*player, true));
+    EXPECT_TRUE(GL::Level::SendMsgInputLock(player, true));
     EXPECT_FALSE(player->ChargeJudge().IsCharging());
     EXPECT_FLOAT_EQ(player->StanceHeight(), 1.0f);
 
@@ -421,10 +422,10 @@ TEST(CourseDirector, RestartReturnsToThePoseAtStartEvenIfTheBaselineChanges)
     for (NS::SceneActor* actor : std::initializer_list<NS::SceneActor*>{player, prop})
     {
         actor->Root().SetPosition(moved);
-        NS::ForEachReflectedClassObj(*actor, [&](const NS::ClassObjInfo& row, NS::Object* part) {
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, NS::Object* part) {
             if (part == &actor->Root())
             {
-                scene.WritePlayBaselineField(*actor, row, "位置");
+                scene.WritePlayBaselineField(actor, row, "位置");
             }
         });
     }

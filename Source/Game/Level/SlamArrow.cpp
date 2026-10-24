@@ -520,7 +520,7 @@ namespace GL
             out.push_back(occludedItem);
         }
 
-        SlamArrow::SlamArrow(NS::SceneActor* owner) : NS::OverlayRenderer(owner), m_owner(owner)
+        SlamArrow::SlamArrow()
         {
             NS::LoadAssetField(m_mesh, "shadowQuad");
             NS::LoadAssetField(m_bandMaterial, "Assets/Materials/ground_arrow_band.mat");
@@ -565,21 +565,17 @@ namespace GL
             {
                 return;
             }
-            SlamArrowGroundProbe probe;
             const NS::Collider* ground = collider;
-            // Scene に居なければ probe は空のまま。空の probe は床を見ない合図
-            if (m_owner->OwningScene() != nullptr)
-            {
-                probe = [ground](const NS::Vector3& from, float maxDepth, float& outGroundY) {
-                    float distance = 0.0f;
-                    if (!NS::RaycastCollision(ground, from, NS::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
-                    {
-                        return false;
-                    }
-                    outGroundY = from.y - distance;
-                    return true;
-                };
-            }
+            // 地形を受け取っていない当たりでは探しが必ず外れ、矢印は床を見ない
+            const SlamArrowGroundProbe probe = [ground](const NS::Vector3& from, float maxDepth, float& outGroundY) {
+                float distance = 0.0f;
+                if (!NS::RaycastCollision(ground, from, NS::Vector3{0.0f, -1.0f, 0.0f}, maxDepth, distance))
+                {
+                    return false;
+                }
+                outGroundY = from.y - distance;
+                return true;
+            };
             // 接地して水平に放つ玉は床の上を転がる。段を下りた先と落ちる所には今までどおり貼らない
             if (state.line.grounded && !(state.line.launchVerticalSpeed > 0.0f))
             {
@@ -595,7 +591,7 @@ namespace GL
                                                   .grounded = state.line.grounded,
                                                   .maxFrames = params->m_launchMaxFrames};
                 // 線の始まりは根。玉の中心は突進の玉と同じ SlamBallAt が決める
-                const float ballCenterHeight = GL::Player::SlamBallAt(*collider, state.line.origin).center.y;
+                const float ballCenterHeight = GL::Player::SlamBallAt(collider, state.line.origin).center.y;
                 PlaceSlamArrowOnPath(probe, path, ballCenterHeight, m_desc, shape);
             }
             m_shown = std::move(shape);
@@ -606,7 +602,7 @@ namespace GL
         {
             const SlamArrowDrawAssets assets{
                 .mesh = m_mesh, .bandMaterial = m_bandMaterial, .headMaterial = m_headMaterial};
-            if (!IsOverlayVisible() || !m_hasShown || context.device == nullptr || m_mesh->D3D() == nullptr ||
+            if (!m_hasShown || context.device == nullptr || m_mesh->D3D() == nullptr ||
                 m_bandMaterial->D3D() == nullptr || m_headMaterial->D3D() == nullptr)
             {
                 return;

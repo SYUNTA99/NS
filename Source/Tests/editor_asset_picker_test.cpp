@@ -52,7 +52,7 @@ namespace
             m_tableMin = ImGui::GetCursorScreenPos();
             m_tableWidth = ImGui::GetContentRegionAvail().x;
             const NS::Editor::ClassObjEditResult result =
-                NS::Editor::DrawReflectedClassObj(m_model, {}, nullptr, "メッシュ");
+                NS::Editor::DrawReflectedClassObj(&m_model, {}, nullptr, "メッシュ");
             ImGui::End();
             ImGui::EndFrame();
             return result;
@@ -74,7 +74,7 @@ namespace
         }
 
         ImGuiContext* m_gui = nullptr;
-        NS::Model m_model{nullptr};
+        NS::Model m_model;
         ImVec2 m_tableMin{};
         float m_tableWidth = 0.0f;
         bool m_activated = false;
@@ -139,12 +139,12 @@ TEST(AssetPickerCatalog, EffectNameMemberIsAnEffectFieldSavedAsItsName)
 
 TEST_F(EditorAssetPickerTest, FileReferenceOpensChoicesBeforeChangingTheValue)
 {
-    const nlohmann::json before = NS::SerializeClassObjFields(m_model);
+    const nlohmann::json before = NS::SerializeClassObjFields(&m_model);
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
     EXPECT_TRUE(m_activated);
     EXPECT_FALSE(m_committed);
-    EXPECT_EQ(NS::SerializeClassObjFields(m_model), before);
+    EXPECT_EQ(NS::SerializeClassObjFields(&m_model), before);
 }
 
 TEST_F(EditorAssetPickerTest, SearchFiltersChoicesAndSelectionWritesOnlyTheSelectedName)

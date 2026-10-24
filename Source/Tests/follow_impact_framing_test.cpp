@@ -20,17 +20,18 @@ namespace
     {
     public:
         // 接地・溜め・保つかを仮想カメラの口へ渡す
-        void Feed(NS::ThirdPersonFollow& vcam) const
+        void Feed(NS::ThirdPersonFollow* vcam) const
         {
-            vcam.SetFollowMotion(grounded, NS::Vector3{});
-            vcam.SetFollowFramingHeld(framingHeld);
+            NS_ASSERT(Game, vcam != nullptr, "Feed: 渡したアクターか部品が無い");
+            vcam->SetFollowMotion(grounded, NS::Vector3{});
+            vcam->SetFollowFramingHeld(framingHeld);
             NS::FollowChargeDesc charge{};
             charge.held = held;
             charge.charge01 = charge01;
             charge.hasAimTarget = hasAim;
             charge.aimTargetCenter = aim;
             charge.aimTargetRadius = 0.5f;
-            (void)vcam.SetFollowCharge(charge);
+            (void)vcam->SetFollowCharge(charge);
         }
 
         bool hasAim = false;
@@ -51,14 +52,16 @@ namespace
         {
             target = scene.SpawnActor<FramingTargetProbeActor>("target");
             camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
-            NS::ApplyJsonFields(camera->Vcam(), nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
+            NS::ApplyJsonFields(&camera->Vcam(), nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
+            // 欄を書いた後に、エディタと同じく相手を取得し直す
+            camera->ResolveActorRefs();
         }
 
         void Run(int frames)
         {
             for (int frame = 0; frame < frames; ++frame)
             {
-                target->Feed(camera->Vcam());
+                target->Feed(&camera->Vcam());
                 camera->Update();
             }
         }
@@ -149,11 +152,11 @@ TEST(FollowImpactFraming, NarrowSpeedsUpTowardTheFullCharge)
     world.target->charge01 = 0.5f;
     world.Run(2);
     EXPECT_FLOAT_EQ(world.camera->Vcam().ChargeNarrowDegrees(), 15.0f * 0.25f);
-    NS::ApplyJsonFields(world.camera->Vcam(), nlohmann::json{{"溜めの寄りの効き方の指数", 1.0f}});
+    NS::ApplyJsonFields(&world.camera->Vcam(), nlohmann::json{{"溜めの寄りの効き方の指数", 1.0f}});
     world.Run(1);
     EXPECT_FLOAT_EQ(world.camera->Vcam().ChargeNarrowDegrees(), 15.0f * 0.5f);
     world.target->charge01 = 1.0f;
-    NS::ApplyJsonFields(world.camera->Vcam(), nlohmann::json{{"溜めの寄りの効き方の指数", 2.0f}});
+    NS::ApplyJsonFields(&world.camera->Vcam(), nlohmann::json{{"溜めの寄りの効き方の指数", 2.0f}});
     world.Run(1);
     EXPECT_FLOAT_EQ(world.camera->Vcam().ChargeNarrowDegrees(), 15.0f);
 }

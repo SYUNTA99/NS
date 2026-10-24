@@ -11,7 +11,7 @@ namespace GL
         class LedgeHangingPlayerState final : public PlayerState<LedgeHangingPlayerState>
         {
         public:
-            void OnStep(::PlayerActor& player, float dt) override;
+            void OnStep(::PlayerActor* player, float dt) override;
         };
     } // namespace Player
 } // namespace GL

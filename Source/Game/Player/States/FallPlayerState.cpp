@@ -8,21 +8,22 @@ namespace GL
 {
     namespace Player
     {
-        void FallPlayerState::OnStep(::PlayerActor& player, float dt)
+        void FallPlayerState::OnStep(::PlayerActor* player, float dt)
         {
-            player.TickTimers(dt);
-            player.AccelerateToInputDirection(dt);
-            player.Jump(dt);
-            player.CutJumpRelease();
-            player.Gravity(dt);
-            if (player.LedgeGrab())
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            player->TickTimers(dt);
+            player->AccelerateToInputDirection(dt);
+            player->Jump(dt);
+            player->CutJumpRelease();
+            player->Gravity(dt);
+            if (player->LedgeGrab())
             {
                 return;
             }
 
-            if (player.Body().IsGrounded())
+            if (player->Body().IsGrounded())
             {
-                player.States().Change<IdlePlayerState>();
+                player->States().Change<IdlePlayerState>();
             }
         }
     } // namespace Player

@@ -12,7 +12,7 @@ namespace GL
         class FallPlayerState final : public PlayerState<FallPlayerState>
         {
         public:
-            void OnStep(::PlayerActor& player, float dt) override;
+            void OnStep(::PlayerActor* player, float dt) override;
         };
     } // namespace Player
 } // namespace GL

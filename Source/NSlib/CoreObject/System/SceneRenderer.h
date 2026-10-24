@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
+#include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/CoreObject/System/SceneSystem.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
@@ -60,6 +61,8 @@ namespace NS
     class DirectionalLight;
     class IRenderable;
     class IOverlay;
+    class Model;
+    class Transform;
     class UIDirector;
 
     //! @brief 指定の描画先へ指定の視点でシーンを描く単位
@@ -116,35 +119,52 @@ namespace NS
         [[nodiscard]] const Gfx::DistortionRing& DistortionRingShown() const noexcept { return m_distortionRing; }
 
         //! @brief 体の型に写す描く物を差し替える。空なら型を描かない
-        //! @details 登録を外した描く物は、ここからも外す
+        //! @details 型に写すのは登録の組が有効な物だけ。登録を外した描く物は、ここからも外す
         //! @param[in] renderables 型に写す描く物、非所有
         void SetBodyMask(std::vector<IRenderable*> renderables) noexcept { m_bodyMask = std::move(renderables); }
         //! @brief ビュー列の index 番目に、今のフレームで描いた体の型を返す
         //! @return 1 色 8 ビットの型。未描画なら空
         [[nodiscard]] const Gfx::D3DTexture* BodyMaskShown(std::size_t viewIndex) const noexcept;
 
-        //! IRenderable の部品の自己登録。二重登録は無視する
-        void RegisterRenderable(IRenderable* renderable);
-        //! IRenderable の部品の自己解除
-        void UnregisterRenderable(IRenderable* renderable);
+        //! @brief 描く物を、持ち主の根 root と元にする model と組にして入れる。組は有効で入る。二重登録は無視する
+        //! @details 呼ぶのは補助関数 InitDraw だけ。renderable と root は外すまで生きていること
+        //! @param[in] model 同じアクターの体をもう一度描く物が元にする Model。ほかの描く物は nullptr
+        void RegisterRenderable(IRenderable* renderable, const Transform* root, const Model* model);
+        //! 描く物の組を外す。入れていない物は何もしない
+        void UnregisterRenderable(const IRenderable* renderable) noexcept;
+        //! 描く物の組の有効と無効を書く。無効の組は描かず、境界も写さない。入れていない物は何もしない
+        void SetRenderableEnabled(const IRenderable* renderable, bool enabled) noexcept;
 
-        //! 重ね描きの登録。二重登録は無視する
-        //! 並びは OverlayOrder 昇順に保たれ、同値なら後から登録した方が後ろになる
+        //! @brief 重ね描きを入れる。組は有効で入る。二重登録は無視する
+        //! @details 呼ぶのは補助関数 InitOverlay だけ。並びは OverlayOrder 昇順に保たれ、同値なら後から入れた方が後ろになる
         void RegisterOverlay(IOverlay* overlay);
-        //! 重ね描きの解除
-        void UnregisterOverlay(IOverlay* overlay);
+        //! 重ね描きの組を外す。入れていない物は何もしない
+        void UnregisterOverlay(const IOverlay* overlay) noexcept;
+        //! 重ね描きの組の有効と無効を書く。無効の組は描かない。入れていない物は何もしない
+        void SetOverlayEnabled(const IOverlay* overlay, bool enabled) noexcept;
 
-        //! 平行光の自己登録。二重登録は無視する
-        //! 並びは登録順。ResolveSceneSettings はこの順に読む
-        void RegisterLight(DirectionalLight* light);
-        //! 平行光の自己解除
-        void UnregisterLight(DirectionalLight* light);
+        //! @brief 平行光を、向きを出す持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
+        //! @details 呼ぶのは補助関数 InitLight だけ。並びは入れた順で、ResolveSceneSettings はこの順に読む
+        void RegisterLight(DirectionalLight* light, const Transform* root);
+        //! 平行光の組を外す。入れていない物は何もしない
+        void UnregisterLight(const DirectionalLight* light) noexcept;
+        //! 平行光の組の有効と無効を書く。無効の組は ResolveSceneSettings が読まない。入れていない物は何もしない
+        void SetLightEnabled(const DirectionalLight* light, bool enabled) noexcept;
 
+        //! 登録簿に入っている数。無効の組も数える
         [[nodiscard]] std::size_t RenderableCount() const noexcept { return m_renderables.size(); }
         [[nodiscard]] std::size_t OverlayCount() const noexcept { return m_overlays.size(); }
         [[nodiscard]] std::size_t LightCount() const noexcept { return m_lights.size(); }
 
-        //! 登録中の全 renderable の bounds とソート情報を RenderProxyList へ同期する。描画の入口で呼ぶ
+        //! 登録簿のうち有効な組の数
+        [[nodiscard]] std::size_t EnabledRenderableCount() const noexcept;
+        [[nodiscard]] std::size_t EnabledOverlayCount() const noexcept;
+        [[nodiscard]] std::size_t EnabledLightCount() const noexcept;
+
+        //! 登録中の描く物。登録順、非所有
+        [[nodiscard]] std::vector<IRenderable*> Renderables() const;
+
+        //! 有効な組の bounds とソート情報を RenderProxyList へ同期する。描画の入口で呼ぶ
         void SyncRenderBounds();
 
         //! ビューを順に描く。未指定なら現在の描画先、装置なしなら描画しない
@@ -161,8 +181,7 @@ namespace NS
         //! Transparent バケットを視錐台で絞り、context.cameraPosition から遠い順に描画する
         //! 距離が同じなら SortPriority 昇順
         void DrawTransparent(const Gfx::RenderContext& context);
-        //! 登録中の重ね描きを OverlayOrder 昇順で描画し、その上へ ui の画面を DrawOrder 昇順で描く
-        //! IsOverlayVisible が false の重ね描きは飛ばす
+        //! 有効な組の重ね描きを OverlayOrder 昇順で描画し、その上へ ui の画面を DrawOrder 昇順で描く
         //! 最後にシーン全体の暗転 fade を重ねる
         void DrawOverlays(const Gfx::RenderContext& context, UIDirector& ui, const Gfx::ScreenFade& fade);
 
@@ -205,17 +224,41 @@ namespace NS
         //! 体の型に写す描く物を、世界の深度で隠して型へ描く。写す物が無ければ型を描かない
         void DrawBodyMask(const Gfx::RenderContext& context, Gfx::ScreenPasses& screen);
 
-        //! IRenderable と RenderProxyList 登録ハンドルの対。renderable は非所有
+        //! 描く物と、描く時に渡す持ち主の根と元の Model、RenderProxyList の登録ハンドルの組。指す物は全部非所有
         struct RenderEntry
         {
             IRenderable* renderable = nullptr;
+            const Transform* root = nullptr;
+            const Model* model = nullptr; // 元にする Model。同じアクターの体をもう一度描く物の時だけ入る
             Gfx::RenderHandle handle{};
+            bool enabled = true; // 持ち主が出ているか。正はこの値だけ
         };
-        std::vector<RenderEntry> m_renderables;
+        // 組の番地を RenderProxyList が持って描く時に返すので、組は並びが動いても動かない所に置く。登録順
+        std::vector<std::unique_ptr<RenderEntry>> m_renderables;
 
-        std::vector<IOverlay*> m_overlays; // 重ね描きの登録簿。OverlayOrder 昇順、非所有
+        //! renderable の組。入れていなければ nullptr
+        [[nodiscard]] RenderEntry* FindEntry(const IRenderable* renderable) const noexcept;
+        //! RenderProxyList の proxy を組の IRenderable::Collect へつなぐ。entry は登録した組で、無効なら何も積まない
+        static void CollectEntry(void* entry, const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out);
+        //! 組の今の固定フレームの姿
+        [[nodiscard]] static RenderSource CurrentSource(const RenderEntry& entry) noexcept;
 
-        std::vector<DirectionalLight*> m_lights; // 平行光の登録簿。登録順、非所有
+        //! 重ね描きの組。指す物は非所有
+        struct OverlayEntry
+        {
+            IOverlay* overlay = nullptr;
+            bool enabled = true; // 持ち主が出ているか。正はこの値だけ
+        };
+        std::vector<OverlayEntry> m_overlays; // OverlayOrder 昇順
+
+        //! 平行光と、向きを出す持ち主の根の組。指す物は非所有
+        struct LightEntry
+        {
+            DirectionalLight* light = nullptr;
+            const Transform* root = nullptr;
+            bool enabled = true; // 持ち主が出ているか。正はこの値だけ
+        };
+        std::vector<LightEntry> m_lights; // 入れた順
 
         Gfx::RenderProxyList m_renderScene;
 

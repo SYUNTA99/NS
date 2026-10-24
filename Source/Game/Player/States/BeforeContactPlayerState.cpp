@@ -6,19 +6,22 @@ namespace GL
 {
     namespace Player
     {
-        void BeforeContactPlayerState::OnEnter(::PlayerActor& player)
+        void BeforeContactPlayerState::OnEnter(::PlayerActor* player)
         {
-            player.BeginBeforeContact();
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            player->BeginBeforeContact();
         }
 
-        void BeforeContactPlayerState::OnStep(::PlayerActor& player, float dt)
+        void BeforeContactPlayerState::OnStep(::PlayerActor* player, float dt)
         {
-            player.UpdateBodySlam(dt);
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            player->UpdateBodySlam(dt);
         }
 
-        void BeforeContactPlayerState::OnExit(::PlayerActor& player)
+        void BeforeContactPlayerState::OnExit(::PlayerActor* player)
         {
-            player.EndBeforeContact();
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
+            player->EndBeforeContact();
         }
     } // namespace Player
 } // namespace GL

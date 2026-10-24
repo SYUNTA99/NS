@@ -51,24 +51,26 @@ namespace
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
-    float FieldOf(PlayerActor& player, const char* name)
+    float FieldOf(PlayerActor* player, const char* name)
     {
-        return NS::SerializeClassObjFields(player.Params())[name].get<float>();
+        NS_ASSERT(Game, player != nullptr, "FieldOf: 渡したアクターか部品が無い");
+        return NS::SerializeClassObjFields(&player->Params())[name].get<float>();
     }
 
     // 突進を出して、突進の間に回った角度の和 (度) を返す
-    float SpinWhileSlamming(PlayerActor& player, float charge01)
+    float SpinWhileSlamming(PlayerActor* player, float charge01)
     {
-        player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
+        NS_ASSERT(Game, player != nullptr, "SpinWhileSlamming: 渡したアクターか部品が無い");
+        player->RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
         float degrees = 0.0f;
         bool started = false;
         for (int frame = 0; frame < 240; ++frame)
         {
-            player.Update(false);
-            if (player.IsBodySlamming())
+            player->Update(false);
+            if (player->IsBodySlamming())
             {
                 started = true;
-                degrees += player.Appearance().SpinDegreesThisFrame();
+                degrees += player->Appearance().SpinDegreesThisFrame();
             }
             else if (started)
             {
@@ -79,19 +81,20 @@ namespace
     }
 
     // 置物に当てて、反動の始まりから着地までに回った角度の和 (度) を返す。反動しなければ負
-    float SpinWhileRebounding(PlayerActor& player, GL::Level::PropActor& rock, float charge01)
+    float SpinWhileRebounding(PlayerActor* player, GL::Level::PropActor* rock, float charge01)
     {
-        player.RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
+        NS_ASSERT(Game, player != nullptr && rock != nullptr, "SpinWhileRebounding: 渡したアクターか部品が無い");
+        player->RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
         float degrees = 0.0f;
         bool started = false;
         for (int frame = 0; frame < 400; ++frame)
         {
-            player.Update(false);
-            rock.Update();
-            if (player.IsRebounding())
+            player->Update(false);
+            rock->Update();
+            if (player->IsRebounding())
             {
                 started = true;
-                degrees += player.Appearance().SpinDegreesThisFrame();
+                degrees += player->Appearance().SpinDegreesThisFrame();
             }
             else if (started)
             {
@@ -108,7 +111,7 @@ TEST(PlayerSpinCount, TapLeavesAtItsFieldSpeed)
     NS::Scene scene;
     PlayerActor* player = PlaceSpinScene(scene, false);
     ASSERT_NE(player, nullptr);
-    EXPECT_FLOAT_EQ(FieldOf(*player, "通常突進の初速"), 15.0f);
+    EXPECT_FLOAT_EQ(FieldOf(player, "通常突進の初速"), 15.0f);
     player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
     player->Update(false);
     ASSERT_TRUE(player->IsBodySlamming());
@@ -127,11 +130,11 @@ TEST(PlayerSpinCount, TapTurnsItsCountWhateverTheSpeedAndDistance)
             NS::Scene scene;
             PlayerActor* player = PlaceSpinScene(scene, false);
             ASSERT_NE(player, nullptr);
-            NS::ApplyJsonFields(player->Params(),
+            NS::ApplyJsonFields(&player->Params(),
                                 nlohmann::json{{"通常突進の初速", speed}, {"通常突進の距離", distance}});
-            const float turns = FieldOf(*player, "通常突進の届くまでの回転数");
+            const float turns = FieldOf(player, "通常突進の届くまでの回転数");
             const float perFrame = turns * 360.0f * speed / distance * k_FrameSeconds;
-            EXPECT_NEAR(SpinWhileSlamming(*player, 0.0f), turns * 360.0f, perFrame * 1.01f);
+            EXPECT_NEAR(SpinWhileSlamming(player, 0.0f), turns * 360.0f, perFrame * 1.01f);
         }
     }
 }
@@ -142,11 +145,11 @@ TEST(PlayerSpinCount, ChargedSlamTurnsItsOwnCount)
     NS::Scene scene;
     PlayerActor* player = PlaceSpinScene(scene, false);
     ASSERT_NE(player, nullptr);
-    const float turns = FieldOf(*player, "溜めた突進の届くまでの回転数");
-    EXPECT_GE(turns - FieldOf(*player, "通常突進の届くまでの回転数"), 2.0f);
-    const float perFrame = turns * 360.0f * FieldOf(*player, "チャージ突進の速度") /
-                           FieldOf(*player, "チャージ突進の距離") * k_FrameSeconds;
-    EXPECT_NEAR(SpinWhileSlamming(*player, 1.0f), turns * 360.0f, perFrame * 1.01f);
+    const float turns = FieldOf(player, "溜めた突進の届くまでの回転数");
+    EXPECT_GE(turns - FieldOf(player, "通常突進の届くまでの回転数"), 2.0f);
+    const float perFrame = turns * 360.0f * FieldOf(player, "チャージ突進の速度") /
+                           FieldOf(player, "チャージ突進の距離") * k_FrameSeconds;
+    EXPECT_NEAR(SpinWhileSlamming(player, 1.0f), turns * 360.0f, perFrame * 1.01f);
 }
 
 // 反動は着地までに、溜めて当てた時と通常突進で当てた時のそれぞれの回転数だけ回る
@@ -165,8 +168,8 @@ TEST(PlayerSpinCount, ReboundTurnsTheCountOfTheSlamThatHit)
         {
             field = "通常突進で当てた反動の回転数";
         }
-        const float turns = FieldOf(*player, field);
-        const float degrees = SpinWhileRebounding(*player, *rock, charge01);
+        const float turns = FieldOf(player, field);
+        const float degrees = SpinWhileRebounding(player, rock, charge01);
         ASSERT_GT(degrees, 0.0f);
         // 着地のフレームの揃い方で 1〜2 フレームぶんずれる
         EXPECT_NEAR(degrees, turns * 360.0f, turns * 360.0f * 0.1f);

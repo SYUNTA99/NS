@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Windows/FileSystem.h"
 #include "NSlib/Windows/StringUtils.h"
@@ -116,6 +117,19 @@ inline nlohmann::json CodeValuesActorFile(std::string_view className)
 [[nodiscard]] inline std::unique_ptr<NS::SceneActor> ActorFromFile(std::string_view name)
 {
     return NS::CreateActorOfClass(NS::ActorFileLibrary::Get().ClassNameOf(name), NS::ActorInitInfo{.actorFile = name});
+}
+
+//! @brief 控えを当てる。作り直して返った古いアクターは、履歴が捨てる時と同じく OnEndPlay を呼んでから解放する
+//! @details 古いアクターを見ない試しが使う
+inline NS::SceneActor* ApplySnapshot(NS::Scene& scene, const nlohmann::json& snapshot)
+{
+    std::unique_ptr<NS::SceneActor> replaced;
+    NS::SceneActor* applied = scene.ApplyFromJson(snapshot, &replaced);
+    if (replaced)
+    {
+        replaced->OnEndPlay();
+    }
+    return applied;
 }
 
 //! @brief 試しの間だけ name の .actor を読んだ物として敷き、壊す時に前の文書へ戻す

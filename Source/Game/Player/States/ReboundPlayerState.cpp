@@ -8,37 +8,39 @@ namespace GL
 {
     namespace Player
     {
-        void ReboundPlayerState::OnEnter(::PlayerActor& player)
+        void ReboundPlayerState::OnEnter(::PlayerActor* player)
         {
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
             // 沈みの跳ね返りは反動に入るフレームに始まる (束「反動」)
-            player.StartReboundReaction();
+            player->StartReboundReaction();
             StartCoroutine(Run(player));
         }
 
-        NS::Coroutine ReboundPlayerState::Run(::PlayerActor& player)
+        NS::Coroutine ReboundPlayerState::Run(::PlayerActor* player)
         {
+            NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
             while (true)
             {
                 co_await NS::NextFrame{};
                 const float dt = StepDelta();
-                player.TickTimers(dt);
-                player.AccelerateDuringRebound(dt);
-                player.ReboundGravity(dt);
-                if (player.LedgeGrab())
+                player->TickTimers(dt);
+                player->AccelerateDuringRebound(dt);
+                player->ReboundGravity(dt);
+                if (player->LedgeGrab())
                 {
                     co_return;
                 }
 
-                if (player.IsReboundLanded())
+                if (player->IsReboundLanded())
                 {
                     // 外れは着いた後もこすって止まるまで操作が戻らない。真ん中は着いたフレームに立ちへ戻る
-                    if (player.SkidsOnLanding())
+                    if (player->SkidsOnLanding())
                     {
-                        player.States().Change<SkidPlayerState>();
+                        player->States().Change<SkidPlayerState>();
                     }
                     else
                     {
-                        player.States().Change<IdlePlayerState>();
+                        player->States().Change<IdlePlayerState>();
                     }
                     co_return;
                 }

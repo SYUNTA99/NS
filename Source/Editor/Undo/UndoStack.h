@@ -38,6 +38,10 @@ namespace NS
             //! @brief 履歴を全消去する。レベル遷移時に使用
             void Clear() noexcept;
 
+            //! @brief 全部のコマンドが持つアクターを解放し、コマンドは前後の JSON だけで残す
+            //! @details シーンを全部作り直す前に呼ぶ。作り直しの後は持っていたアクターを戻せない
+            void ReleaseHeldActors() noexcept;
+
             //! 履歴変更の通算回数。同じ内容へ戻しても進むため、未保存判定は変更ありとみなす側にずれる
             [[nodiscard]] uint64 Version() const noexcept { return m_version; }
 

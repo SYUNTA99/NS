@@ -21,6 +21,14 @@ namespace NS
     //! 配置物の JSON 1 件から配置物を組むファクトリ。組めない JSON には nullptr を返し、RebuildFromJson が読み飛ばす
     using ActorFactoryFn = std::function<std::unique_ptr<SceneActor>(const nlohmann::json&)>;
 
+    //! 解放せずに一覧から外した配置物。持つ側は捨てる前に OnEndPlay を呼ぶ
+    struct DetachedActor
+    {
+        std::unique_ptr<SceneActor> actor; // 居なかった時と、外すのを断った時は空
+        std::size_t index = 0;             // 外す前の並びの位置
+        bool wasAppeared = false;          // 外す前に出ていたか。戻す時に出す物を決める
+    };
+
     //! 配置物を所有し、永続 id から参照を解決する一覧。個体の構築は渡された生成関数が行う
     class ActorList : public NonCopyable
     {
@@ -32,7 +40,7 @@ namespace NS
         [[nodiscard]] std::size_t IndexOfActorId(uint32 objectId) const noexcept;
 
         //! obj の名前を変える。他の配置物と重なれば番号を付ける。名前を書けるのはシーンの配置物を持つここだけ
-        void RenameActor(SceneActor& obj, std::string_view name);
+        void RenameActor(SceneActor* obj, std::string_view name);
 
         //! 配置物の OnEndPlay を逆順に呼んでから所有物を空へ戻す。scene の OnShutdown と RebuildFromJson の冒頭が呼ぶ
         //! 段の更新の最中は断る。その段で後に呼ぶ予定の配置物を解放しない
@@ -53,7 +61,7 @@ namespace NS
 
         //! ActorRef の指す配置物を返す。未設定と該当なしは nullptr
         //! 並びが変わるたびに索引を捨てるので、破棄した相手を指す参照は必ず nullptr になる
-        //! 別の配置物への参照はポインタで控えず、ActorRef で持って使うたびにここで引く
+        //! アクターは保存する項目の ActorRef から ResolveActorRefs で相手を取得して持つ。一覧の出入りのたびに取得し直させる
         [[nodiscard]] SceneActor* FindActor(ActorRef ref) noexcept;
 
         //! 出ている Actor の collision を今の姿と形へ揃える。変わっていない collision は何もしない
@@ -124,11 +132,21 @@ namespace NS
         //! シーンへの接続と開始は呼び手が済ませる
         SceneActor* InsertFromJson(std::unique_ptr<SceneActor> obj, const nlohmann::json& entry, std::size_t index);
 
+        //! objectId の配置物を Disappear してから、解放せずに一覧から外す。OnEndPlay は呼ばない
+        //! 居なければ空を返す。段の更新の最中は断る
+        [[nodiscard]] DetachedActor DetachByActorId(uint32 objectId);
+
+        //! DetachByActorId で外した配置物を外す前の位置へ戻し、出ていた物は Appear する。OnStart は呼び直さない
+        SceneActor* Reattach(DetachedActor detached);
+
         //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄した配置物を索引に残さない
         void MarkIndexDirty() noexcept;
+        //! 一覧に入れた後と外した後に呼び、全部のアクターに ActorRef の指す相手を取得し直させる
+        //! 外した相手を指したまま次のフレームへ持ち越さない
+        void ResolveActorRefs();
 
-        //! 頭の欄の id・名前・出現を obj へ写す。名前は他の配置物と重なれば番号を付ける
-        void ApplyIdentity(SceneActor& obj, const ActorHeader& header);
+        //! 頭の欄の id・.actor の名前・名前・出現を obj へ写す。名前は他の配置物と重なれば番号を付ける
+        void ApplyIdentity(SceneActor* obj, const ActorHeader& header);
 
         std::vector<std::unique_ptr<SceneActor>> m_actors; // 配置物の単一所有リスト
         std::vector<SceneActor*> m_scheduled; // ExecutePhase がその段で呼ぶ SceneActor を呼ぶ順に積む作業用の並び

@@ -45,8 +45,8 @@ namespace NS
             void DrawAssetPreview(const Gfx::DrawItem& item);
             //! actorFileName の .actor の名前の束の欄を描き、直し終えた束を .actor へ書く。.actor が無ければ何も描かない
             void DrawHitReactionSets(LevelEditorController& editor, const std::string& actorFileName);
-            //! actor の .actor を替える一覧と、上書きから派生を作る欄を描く。押した操作は Render を描き終えてから流す
-            void DrawActorFileChoice(const SceneActor& actor);
+            //! actor の .actor の名前と、上書きから派生を作る欄を描く。押した操作は Render を描き終えてから流す
+            void DrawActorFileChoice(const SceneActor* actor);
 
             std::unique_ptr<Gfx::D3DRenderTarget> m_assetPreview;
             std::unique_ptr<Gfx::D3DRenderTarget> m_environmentPreview;
@@ -64,9 +64,8 @@ namespace NS
             uint32 m_nameCommitId = 0; // このフレームに確定した名前の対象、0 なら無し
             uint32 m_nameEditId = 0;   // 名前を打ち始めた対象。0 なら打っていない
             char m_derivedNameBuffer[64]{}; // 作る派生の .actor の名前の欄
-            std::string m_actorFileChange;  // このフレームに選んだ替える先の .actor の名前。空なら無し。描き終えてから替える
             bool m_deriveRequested = false; // このフレームに上書きから派生を作るを押した。描き終えてから作る
-            uint32 m_actorFileTargetId = 0; // 替える・派生を作る対象のアクター
+            uint32 m_actorFileTargetId = 0; // 派生を作る対象のアクター
             char m_fieldFilter[64]{};      // 欄の検索欄。空でない間は名前に含む欄だけを並べる。選択を変えても残す
             EditorAppearance m_appearance; // 欄の行の地の色。シーン設定の下で直す
             // 束の欄が直している写し。直し終えるまでは .actor の文書が変わっても読み直さない

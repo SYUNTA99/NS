@@ -51,24 +51,50 @@ namespace NS
         {
             return;
         }
-        if (std::find(m_vcams.begin(), m_vcams.end(), vcam) != m_vcams.end())
+        if (std::any_of(m_vcams.begin(), m_vcams.end(), [vcam](const VirtualCameraEntry& entry) {
+                return entry.vcam == vcam;
+            }))
         {
             return;
         }
-        m_vcams.push_back(vcam);
+        m_vcams.push_back(VirtualCameraEntry{.vcam = vcam});
     }
 
-    void CameraManager::RemoveVirtualCamera(VirtualCamera* vcam) noexcept
+    void CameraManager::RemoveVirtualCamera(const VirtualCamera* vcam) noexcept
     {
         if (vcam == nullptr)
         {
             return;
         }
-        m_vcams.erase(std::remove(m_vcams.begin(), m_vcams.end(), vcam), m_vcams.end());
+        std::erase_if(m_vcams, [vcam](const VirtualCameraEntry& entry) { return entry.vcam == vcam; });
         if (m_active == vcam)
         {
             m_active = nullptr; // 次の OnTick / Evaluate で選び直す
         }
+    }
+
+    void CameraManager::SetVirtualCameraEnabled(const VirtualCamera* vcam, bool enabled) noexcept
+    {
+        for (VirtualCameraEntry& entry : m_vcams)
+        {
+            if (entry.vcam == vcam)
+            {
+                entry.enabled = enabled;
+            }
+        }
+    }
+
+    std::size_t CameraManager::EnabledVirtualCameraCount() const noexcept
+    {
+        return static_cast<std::size_t>(std::count_if(
+            m_vcams.begin(), m_vcams.end(), [](const VirtualCameraEntry& entry) { return entry.enabled; }));
+    }
+
+    bool CameraManager::IsVirtualCameraEnabled(const VirtualCamera* vcam) const noexcept
+    {
+        return std::any_of(m_vcams.begin(), m_vcams.end(), [vcam](const VirtualCameraEntry& entry) {
+            return entry.vcam == vcam && entry.enabled;
+        });
     }
 
     void CameraManager::SetBlendDuration(float seconds) noexcept
@@ -255,15 +281,15 @@ namespace NS
     VirtualCamera* CameraManager::SelectActive() const noexcept
     {
         VirtualCamera* best = nullptr;
-        for (VirtualCamera* vcam : m_vcams)
+        for (const VirtualCameraEntry& entry : m_vcams)
         {
-            if (vcam == nullptr || !vcam->IsOwnerAppeared())
+            if (!entry.enabled)
             {
                 continue;
             }
-            if (best == nullptr || vcam->VcamPriority() > best->VcamPriority())
+            if (best == nullptr || entry.vcam->VcamPriority() > best->VcamPriority())
             {
-                best = vcam;
+                best = entry.vcam;
             }
         }
         return best;
@@ -272,15 +298,11 @@ namespace NS
     VirtualCamera* CameraManager::SelectHighest() const noexcept
     {
         VirtualCamera* best = nullptr;
-        for (VirtualCamera* vcam : m_vcams)
+        for (const VirtualCameraEntry& entry : m_vcams)
         {
-            if (vcam == nullptr)
+            if (best == nullptr || entry.vcam->VcamPriority() > best->VcamPriority())
             {
-                continue;
-            }
-            if (best == nullptr || vcam->VcamPriority() > best->VcamPriority())
-            {
-                best = vcam;
+                best = entry.vcam;
             }
         }
         return best;
@@ -331,7 +353,7 @@ namespace NS
     std::optional<CameraPose> CameraManager::ComposeBeforeEffects(float alpha) const noexcept
     {
         VirtualCamera* active = m_active;
-        if (active == nullptr || !active->IsOwnerAppeared())
+        if (!IsVirtualCameraEnabled(active))
         {
             active = SelectActive();
         }
@@ -385,7 +407,7 @@ namespace NS
     void CameraManager::Evaluate(float alpha) noexcept
     {
         // 非 active になった 仮想カメラの pose は書かない。一時停止で OnTick が回らない間も選び直す
-        if (m_active == nullptr || !m_active->IsOwnerAppeared())
+        if (!IsVirtualCameraEnabled(m_active))
         {
             m_active = SelectActive();
         }

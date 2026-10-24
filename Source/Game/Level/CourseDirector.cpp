@@ -60,7 +60,7 @@ namespace GL
             (void)m_scene.BeginPlayBaseline();
             for (NS::SceneActor* actor : PlacedActors(nullptr))
             {
-                (void)SendMsgCourseStart(*actor);
+                (void)SendMsgCourseStart(actor);
             }
             RestartCourse();
         }
@@ -94,7 +94,7 @@ namespace GL
         {
             for (NS::SceneActor* actor : PlacedActors(skip))
             {
-                (void)SendMsgCourseRestart(*actor);
+                (void)SendMsgCourseRestart(actor);
             }
         }
 
@@ -102,7 +102,7 @@ namespace GL
         {
             if (::PlayerActor* player = FindPlayer(m_scene.Actors()))
             {
-                (void)SendMsgInputLock(*player, locked);
+                (void)SendMsgInputLock(player, locked);
             }
         }
 

@@ -2,6 +2,7 @@
 #include "NSlib/Core/Types.h"
 
 #include "Editor/Undo/IActorSnapshotApplier.h"
+#include "NSlib/CoreObject/SceneActor.h"
 
 namespace NS
 {
@@ -41,14 +42,55 @@ namespace NS
             : m_id(id), m_before(std::move(before)), m_after(std::move(after))
         {}
 
+        ActorSnapshotCommand::~ActorSnapshotCommand()
+        {
+            ReleaseHeldActors();
+        }
+
+        void ActorSnapshotCommand::ReleaseHeldActors() noexcept
+        {
+            if (m_detached.actor)
+            {
+                m_detached.actor->OnEndPlay();
+                m_detached = DetachedActor{};
+            }
+            for (std::unique_ptr<SceneActor>& replaced : m_replaced)
+            {
+                replaced->OnEndPlay();
+            }
+            m_replaced.clear();
+        }
+
         void ActorSnapshotCommand::Do(IActorSnapshotApplier& target) noexcept
         {
-            target.ApplyActorSnapshot(m_id, m_after);
+            Apply(target, m_after);
         }
 
         void ActorSnapshotCommand::Undo(IActorSnapshotApplier& target) noexcept
         {
-            target.ApplyActorSnapshot(m_id, m_before);
+            Apply(target, m_before);
+        }
+
+        void ActorSnapshotCommand::Apply(IActorSnapshotApplier& target,
+                                         const std::optional<nlohmann::json>& desired) noexcept
+        {
+            if (!desired)
+            {
+                m_detached = target.DetachActor(m_id);
+                return;
+            }
+            // 外したアクターは外した時の姿のまま持っているので、JSON から作り直さずにそのまま戻す
+            if (m_detached.actor)
+            {
+                target.ReattachActor(std::move(m_detached));
+                m_detached = DetachedActor{};
+                return;
+            }
+            std::unique_ptr<SceneActor> replaced = target.ApplyActorSnapshot(m_id, *desired);
+            if (replaced)
+            {
+                m_replaced.push_back(std::move(replaced));
+            }
         }
 
         std::size_t ActorSnapshotCommand::EstimatedBytes() const noexcept

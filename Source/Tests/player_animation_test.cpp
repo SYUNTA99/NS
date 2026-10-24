@@ -17,13 +17,14 @@
 namespace
 {
     // 今のクリップの名前。クリップが無ければ空
-    std::string CurrentClipName(const NS::Animation& animation)
+    std::string CurrentClipName(const NS::Animation* animation)
     {
-        if (animation.CurrentClip() == nullptr)
+        NS_ASSERT(Game, animation != nullptr, "CurrentClipName: 渡したアクターか部品が無い");
+        if (animation->CurrentClip() == nullptr)
         {
             return {};
         }
-        return animation.CurrentClip()->name;
+        return animation->CurrentClip()->name;
     }
 } // namespace
 
@@ -31,7 +32,7 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
-    ASSERT_EQ(UseTestClips(player,
+    ASSERT_EQ(UseTestClips(&player,
                            {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},
                             {"歩きのクリップ", "Assets/Models/Xbot.glb#walk"},
                             {"走りのクリップ", "Assets/Models/Xbot.glb#run"}}),
@@ -40,19 +41,19 @@ TEST(PlayerAnimation, PlayerSelectsMovementClipWithoutRestartingItsTime)
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
-    ASSERT_EQ(CurrentClipName(*animation), "run");
-    animation->Update();
+    ASSERT_EQ(CurrentClipName(animation), "run");
+    player.PrepareRender();
     const float first = animation->Time();
     EXPECT_NEAR(first, NS::OS::FrameTimer::FixedDelta() * 0.5f, 0.00001f);
     player.UpdateAnimation();
-    animation->Update();
+    player.PrepareRender();
     EXPECT_NEAR(animation->Time(), first * 2.0f, 0.00001f);
     player.Body().SetLateralVelocity(NS::Vector3{2.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
-    EXPECT_EQ(CurrentClipName(*animation), "walk");
+    EXPECT_EQ(CurrentClipName(animation), "walk");
     player.Body().SetLateralVelocity(NS::Vector3{});
     player.UpdateAnimation();
-    EXPECT_EQ(CurrentClipName(*animation), "idle");
+    EXPECT_EQ(CurrentClipName(animation), "idle");
 }
 
 // アニメの欄はアニメの欄だけの部品 Clips が持ち、遊びの欄と並ばない。モデルを入れるまで字面は空
@@ -60,8 +61,8 @@ TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
-    const nlohmann::json fields = NS::SerializeClassObjFields(player.Clips());
-    const nlohmann::json paramFields = NS::SerializeClassObjFields(player.Params());
+    const nlohmann::json fields = NS::SerializeClassObjFields(&player.Clips());
+    const nlohmann::json paramFields = NS::SerializeClassObjFields(&player.Params());
     const nlohmann::json expected = {{"立ちのクリップ", ""},
                                      {"歩きのクリップ", ""},
                                      {"走りのクリップ", ""},
@@ -76,7 +77,7 @@ TEST(PlayerAnimation, ClipsKeepAllAnimatorNamesAndDefaults)
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
         EXPECT_FALSE(paramFields.contains(it.key())) << it.key();
     }
-    EXPECT_EQ(NS::ClassObjFields(NS::Editor::MakePrototypeJson(player), "PlayerAnimator"), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(NS::Editor::MakePrototypeJson(&player), "PlayerAnimator"), nullptr);
 }
 
 TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
@@ -84,7 +85,7 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
     NS::Animation* animation = player.AnimationClassObj();
-    ASSERT_EQ(UseTestClips(player,
+    ASSERT_EQ(UseTestClips(&player,
                            {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},
                             {"跳ぶクリップ", "Assets/Models/Xbot.glb#agree"},
                             {"落ちるクリップ", "Assets/Models/Xbot.glb#headShake"},
@@ -93,13 +94,13 @@ TEST(PlayerAnimation, AirborneClipsAndHangingStateUseLiveParams)
     player.Body().SetGrounded(false);
     player.Body().SetVerticalVelocity(2.0f);
     player.UpdateAnimation();
-    EXPECT_EQ(CurrentClipName(*animation), "agree");
+    EXPECT_EQ(CurrentClipName(animation), "agree");
     player.Body().SetVerticalVelocity(-2.0f);
     player.UpdateAnimation();
-    EXPECT_EQ(CurrentClipName(*animation), "headShake");
+    EXPECT_EQ(CurrentClipName(animation), "headShake");
     ASSERT_TRUE(player.States().Change<GL::Player::LedgeHangingPlayerState>());
     player.UpdateAnimation();
-    EXPECT_EQ(CurrentClipName(*animation), "sad_pose");
+    EXPECT_EQ(CurrentClipName(animation), "sad_pose");
 }
 
 // 字面はあるが読めないクリップは、立ちのクリップへ戻す
@@ -108,7 +109,7 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<TestAnimatedPlayerActor>();
     PlayerActor& player = *playerOwned;
     NS::Animation* animation = player.AnimationClassObj();
-    ASSERT_EQ(UseTestClips(player,
+    ASSERT_EQ(UseTestClips(&player,
                            {{"立ちのクリップ", "Assets/Models/Xbot.glb#idle"},
                             {"歩きのクリップ", "Assets/Models/Xbot.glb#walk"},
                             {"走りのクリップ", "Assets/Models/Xbot.glb#__ns_missing__"}}),
@@ -116,11 +117,11 @@ TEST(PlayerAnimation, MissingClipFallsBackToIdleAndSpeedFloorIsLive)
     player.Body().SetGrounded(true);
     player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});
     player.UpdateAnimation();
-    EXPECT_EQ(CurrentClipName(*animation), "idle");
+    EXPECT_EQ(CurrentClipName(animation), "idle");
     player.Body().SetLateralVelocity(NS::Vector3{1.0f, 0.0f, 0.0f});
-    ASSERT_EQ(UseTestClips(player, {{"再生速度の下限", 0.75f}}), 0u);
+    ASSERT_EQ(UseTestClips(&player, {{"再生速度の下限", 0.75f}}), 0u);
     player.UpdateAnimation();
-    ASSERT_EQ(CurrentClipName(*animation), "walk");
-    animation->Update();
+    ASSERT_EQ(CurrentClipName(animation), "walk");
+    player.PrepareRender();
     EXPECT_NEAR(animation->Time(), NS::OS::FrameTimer::FixedDelta() * 0.75f, 0.00001f);
 }

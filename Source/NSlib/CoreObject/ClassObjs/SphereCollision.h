@@ -12,9 +12,9 @@ namespace NS
     {
     public:
         //! 既定半径 0.5 で構築する
-        explicit SphereCollision(SceneActor* owner) noexcept : Collision(owner), m_owner(owner) {}
+        SphereCollision() noexcept = default;
         //! 半径を指定して構築する。負は 0 にクランプ
-        SphereCollision(SceneActor* owner, float radius) noexcept;
+        explicit SphereCollision(float radius) noexcept;
 
         //! 負は 0 にクランプ
         void SetRadius(float radius) noexcept;
@@ -25,12 +25,11 @@ namespace NS
         void SetCenterOffset(const Vector3& offset) noexcept;
         [[nodiscard]] Vector3 CenterOffset() const noexcept;
 
-        //! owner の世界変換に offset を重ねた球を返す。半径は owner scale 最大成分で拡縮する
-        //! Owner 未登録時は局所のずれと半径だけを反映する。例外は投げない
-        [[nodiscard]] Sphere WorldSphere() const noexcept;
+        //! 持ち主の root の世界行列 world に offset を重ねた球を返す。半径は world の拡縮の最大成分で拡縮する
+        [[nodiscard]] Sphere WorldSphere(const Matrix& world) const noexcept;
 
-        //! owner の世界変換を反映した世界軸並行 AABB を返す。Owner 未登録時は局所の値だけを反映する
-        [[nodiscard]] AABB WorldAABB() const noexcept;
+        //! 持ち主の root の世界行列 world を反映した世界軸並行 AABB を返す
+        [[nodiscard]] AABB WorldAABB(const Matrix& world) const noexcept;
 
         NS_REFLECT_BEGIN(SphereCollision, Collision)
         NS_ACCESSOR(float, "半径", Radius(), SetRadius)
@@ -39,10 +38,11 @@ namespace NS
 
     private:
         // 世界座標の球を body 1 個として入れる
-        [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics,
+                                           JPH::BodyID current,
+                                           const Matrix& world) override;
 
         float m_radius = 0.5f;                        // 球の半径 (owner scale 前)
         Vector3 m_centerOffset{0.0f, 0.0f, 0.0f}; // 持ち主の局所座標系での中心オフセット
-        SceneActor* m_owner = nullptr;            // 持ち主 (非所有)
     };
 } // namespace NS

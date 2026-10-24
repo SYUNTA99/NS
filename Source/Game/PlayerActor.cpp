@@ -65,29 +65,37 @@ PlayerActor::PlayerActor() noexcept = default;
 PlayerActor::~PlayerActor() = default;
 void PlayerActor::OnInit()
 {
-    CreateClassObj(m_model, this);
-    CreateClassObj(m_appearance, this);
-    CreateClassObj(m_body, this);
+    CreateClassObj(m_model);
+    NS::InitDraw(this, m_model.get(), &Root());
+    CreateClassObj(m_appearance);
+    CreateClassObj(m_body);
     // シーンは OnInit の前に決まっている。当たりは作る時に地形と根を受け取り、持ち主を持たない
     CreateClassObj(m_collider, GetPhysicsScene(), &Root());
-    CreateClassObj(m_input, this);
+    CreateClassObj(m_input);
     CreateClassObj(m_params);
     CreateClassObj(m_clips);
-    CreateClassObj(m_shadow, this);
+    CreateClassObj(m_shadow);
+    NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
+    // 残像は本体の Model を元に描く
+    NS::InitDraw(this, &m_tackleGhost, &Root(), m_model.get());
     // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
     NS::FollowHitSensor* bodySensor =
-        CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(m_bodySensor, this, [collider = m_collider.get()] {
-            return NS::SensorVolume::Capsule(collider->WorldCapsule());
-        });
-    GL::Level::SetSensorKind(*bodySensor, GL::Level::SensorKind::PlayerBody);
-    CreateClassObj(m_resolver, this);
-    CreateClassObj(m_hitReaction, this);
-    CreateClassObj(m_actionTimeline, this);
-    CreateClassObj(m_targetMarker, this);
-    CreateClassObj(m_slamArrow, this);
-    CreateClassObj(m_effectKeeper, this);
-    CreateClassObj(m_chargeEffects, this);
-    CreateClassObj(m_impactEffects, this);
+        CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(
+            m_bodySensor, this, [collider = m_collider.get()](const NS::Matrix&) {
+                return NS::SensorVolume::Capsule(collider->WorldCapsule());
+            });
+    NS::InitHitSensor(this, bodySensor);
+    GL::Level::SetSensorKind(bodySensor, GL::Level::SensorKind::PlayerBody);
+    CreateClassObj(m_resolver);
+    CreateClassObj(m_hitReaction);
+    CreateClassObj(m_actionTimeline);
+    CreateClassObj(m_targetMarker);
+    NS::InitOverlay(this, m_targetMarker.get());
+    CreateClassObj(m_slamArrow);
+    NS::InitOverlay(this, m_slamArrow.get());
+    CreateClassObj(m_effectKeeper);
+    CreateClassObj(m_chargeEffects);
+    CreateClassObj(m_impactEffects);
     // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
     (void)BuildStateMachine<PlayerActor,
                             GL::Player::IdlePlayerState,
@@ -100,7 +108,7 @@ void PlayerActor::OnInit()
                             GL::Player::BrakePlayerState,
                             GL::Player::TackleHitPlayerState,
                             GL::Player::ReboundPlayerState,
-                            GL::Player::SkidPlayerState>(*this, m_states);
+                            GL::Player::SkidPlayerState>(this, m_states);
 }
 
 GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
@@ -180,7 +188,7 @@ void PlayerActor::UpdateAnimation()
 void PlayerActor::ReadInput()
 {
     // clang-format off
-    if (m_input) { m_input->Update(); }
+    if (m_input) { m_input->Update(this); }
     // clang-format on
 }
 
@@ -203,7 +211,7 @@ void PlayerActor::ObserveStep()
         }
     }
     ObserveCharge(m_input->SlamHeld());
-    m_resolver->ObserveImpact(SlamMotion(), m_collider.get());
+    m_resolver->ObserveImpact(SelfForImpact(), SlamMotion(), m_collider.get());
 }
 
 void PlayerActor::DecideStep()
@@ -211,7 +219,8 @@ void PlayerActor::DecideStep()
     AdvanceCharge(NS::GetFrameDelta(this));
     // 止めの後に初めて回るフレームが明け。状態の段より前に反動へ移すと、反動の 1 歩目が明けのフレームに回る
     const bool releasing = IsInTackleHit() && !IsHitStopping();
-    m_resolver->StepState(SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), HitReactionClassObj());
+    m_resolver->StepState(
+        SelfForImpact(), SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), HitReactionClassObj());
     if (releasing)
     {
         ReleaseTackleHit();
@@ -231,7 +240,7 @@ void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexc
             StopTackleHitEffects();
             if (NS::HitReaction* reaction = HitReactionClassObj())
             {
-                reaction->Stop();
+                reaction->Stop(this);
             }
         }
         CancelBodySlam();
@@ -272,7 +281,7 @@ void PlayerActor::StateStep()
     {
         PrepareStateStep();
         // clang-format off
-        if (m_stateMachine) { m_stateMachine->Update(); }
+        if (m_stateMachine) { m_stateMachine->Update(dt); }
         // clang-format on
         FinishStateStep(dt);
         return;
@@ -284,7 +293,7 @@ void PlayerActor::StateStep()
     if (IsInTackleHit() && dt > 0.0f)
     {
         // clang-format off
-        if (m_stateMachine) { m_stateMachine->Update(); }
+        if (m_stateMachine) { m_stateMachine->Update(dt); }
         // clang-format on
     }
 }
@@ -301,7 +310,7 @@ void PlayerActor::BodyStep()
 void PlayerActor::VisualStep()
 {
     // 写し取る姿は Model が揺れを書いた後で、見た目の部品が回転と倍率を書く前の姿
-    m_ghostRun.Advance(&m_tackleGhost);
+    m_ghostRun.Advance(&m_tackleGhost, m_model.get(), Root().WorldMatrix());
     UpdateAnimation();
     // clang-format off
     m_targetMarker->Update(m_charge);
@@ -311,9 +320,11 @@ void PlayerActor::VisualStep()
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
     const NS::Vector3 release = ReleaseDirection();
-    m_appearance->Update(motion, m_charge, m_slam, m_rebound, m_skid, release, impact);
-    m_chargeEffects->Update(m_charge, m_slam, motion, release, m_appearance.get(), impact);
-    m_impactEffects->Update(m_slam, motion, m_body.get(), m_collider.get(), impact.lastImpact);
+    const NS::Vector3 center = Root().Position();
+    m_appearance->Update(m_model.get(), NS::GetFrameDelta(this),
+                         motion, m_charge, m_slam, m_rebound, m_skid, release, impact);
+    m_chargeEffects->Update(this, center, m_charge, m_slam, motion, release, m_appearance.get(), impact);
+    m_impactEffects->Update(this, this, center, m_slam, motion, m_body.get(), m_collider.get(), impact.lastImpact);
     // clang-format on
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
@@ -382,24 +393,14 @@ void PlayerActor::OnAssetsLoaded()
     // Model は自分のメッシュの欄を読み直したところなので、当たりの形に合う姿のメッシュを差し直す
     if (IsCurled())
     {
-        m_appearance->Curl();
+        m_appearance->Curl(m_model.get());
     }
     else
     {
-        m_appearance->Uncurl();
+        m_appearance->Uncurl(m_model.get());
     }
-}
-
-void PlayerActor::OnStart()
-{
-    NS::SceneActor::OnStart();
-    if (NS::Scene* scene = OwningScene())
-    {
-        scene->RegisterOverlay(m_targetMarker.get());
-        scene->RegisterOverlay(m_slamArrow.get());
-    }
-    m_chargeEffects->Preload();
-    m_impactEffects->Preload();
+    m_chargeEffects->Preload(this);
+    m_impactEffects->Preload(this);
 }
 
 void PlayerActor::OnEndPlay()
@@ -411,12 +412,11 @@ void PlayerActor::OnEndPlay()
     {
         animation->Play(nullptr);
     }
+    // 残像の値は ResetState が消してある。描く物は消えていても入れたままなので、基底と同じくここで外す
     NS::SceneActor::OnEndPlay();
-    if (NS::Scene* scene = OwningScene())
-    {
-        scene->UnregisterOverlay(m_targetMarker.get());
-        scene->UnregisterOverlay(m_slamArrow.get());
-    }
+    NS::EndDraw(this, &m_tackleGhost);
+    NS::EndOverlay(this, m_targetMarker.get());
+    NS::EndOverlay(this, m_slamArrow.get());
 }
 
 void PlayerActor::OnAppear()
@@ -424,14 +424,18 @@ void PlayerActor::OnAppear()
     NS::SceneActor::OnAppear();
     if (IsAppeared())
     {
-        m_tackleGhost.Register();
+        NS::ShowModel(this, &m_tackleGhost);
+        NS::ShowOverlay(this, m_targetMarker.get());
+        NS::ShowOverlay(this, m_slamArrow.get());
     }
 }
 
 void PlayerActor::OnDisappear() noexcept
 {
     NS::SceneActor::OnDisappear();
-    m_tackleGhost.Unregister();
+    NS::HideModel(this, &m_tackleGhost);
+    NS::HideOverlay(this, m_targetMarker.get());
+    NS::HideOverlay(this, m_slamArrow.get());
 }
 
 void PlayerActor::InitAfterPlacement()
@@ -692,7 +696,8 @@ void PlayerActor::BeginTackleHit() noexcept
     }
     // 束が足した持ち主へ渡す項目は、走っている項目の後ろに並ぶ
     const std::size_t first = reaction->OwnerRuns().size();
-    (void)reaction->Start(GL::Level::TackleSetName("体当たり", impact.tier), impact.surfacePoint, BodySensorClassObj(), target);
+    (void)StartHitReaction(
+        GL::Level::TackleSetName("体当たり", impact.tier), impact.surfacePoint, BodySensorClassObj(), target);
     GL::Level::TackleHitDesc hit{.tier = impact.tier, .contact = impact.surfacePoint, .impactDir = impact.impactDir};
     if (impact.broke)
     {
@@ -713,7 +718,7 @@ void PlayerActor::BeginTackleHit() noexcept
             m_impactEffects->RequestHit();
         }
     }
-    (void)GL::Level::SendMsgTackleHit(*target, *BodySensorClassObj(), hit);
+    (void)GL::Level::SendMsgTackleHit(target, BodySensorClassObj(), hit);
 }
 
 void PlayerActor::ReleaseTackleHit() noexcept
@@ -725,11 +730,12 @@ void PlayerActor::ReleaseTackleHit() noexcept
     {
         // 束が足した持ち主へ渡す項目は、走っている項目の後ろに並ぶ
         const std::size_t first = reaction->OwnerRuns().size();
-        (void)reaction->Start(GL::Level::TackleSetName("明け", impact.tier), impact.surfacePoint, BodySensorClassObj(), target);
+        (void)StartHitReaction(
+            GL::Level::TackleSetName("明け", impact.tier), impact.surfacePoint, BodySensorClassObj(), target);
         // 紫で上がった威力を当たった結果で見せる遅さなので、赤で放した当たりには出さない
         if (impact.gradualRelease)
         {
-            m_slowedWorld = reaction->Start(
+            m_slowedWorld = StartHitReaction(
                 GL::Level::TackleSetName("明け", impact.tier, "・紫"), impact.surfacePoint, BodySensorClassObj(), target);
         }
         const std::vector<NS::HitOwnerRun>& runs = reaction->OwnerRuns();
@@ -747,12 +753,11 @@ void PlayerActor::ReleaseTackleHit() noexcept
 void PlayerActor::StartReboundReaction() noexcept
 {
     NS::HitSensor* target = LastTackleTargetSensor();
-    NS::HitReaction* reaction = HitReactionClassObj();
-    if (target == nullptr || reaction == nullptr)
+    if (target == nullptr)
     {
         return;
     }
-    (void)reaction->Start("反動", m_resolver->Answer().lastImpact.surfacePoint, BodySensorClassObj(), target);
+    (void)StartHitReaction("反動", m_resolver->Answer().lastImpact.surfacePoint, BodySensorClassObj(), target);
 }
 
 void PlayerActor::StopTackleHitEffects() noexcept
@@ -765,8 +770,8 @@ void PlayerActor::StopTackleHitEffects() noexcept
     }
     if (NS::HitReaction* reaction = HitReactionClassObj())
     {
-        reaction->StopGroundWave();
-        reaction->StopDistortionRing();
+        reaction->StopGroundWave(this);
+        reaction->StopDistortionRing(this);
     }
     m_ghostRun.Stop(&m_tackleGhost);
     // 紫の明けの遅い世界は束より長く続く。打ち切る当たりが遅くした世界を普段の速さへ戻す
@@ -812,7 +817,7 @@ void PlayerActor::ResetState() noexcept
     m_request = BodySlamRequest{};
     // 押したまま出直すと、次の押しのフレームから溜め直す。残すと、出直した後に放したフレームで前の溜めの突進が出る
     CancelCharge();
-    m_chargeEffects->Clear();
+    m_chargeEffects->Clear(this);
     m_slam = GL::Player::BodySlamStatus{};
     m_rebound.m_direction = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_rebound.m_spinSpeed = 0.0f;
@@ -821,7 +826,7 @@ void PlayerActor::ResetState() noexcept
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_collider->SetSphereShape(false);
-    m_appearance->Uncurl();
+    m_appearance->Uncurl(m_model.get());
     m_states->Reset();
     // 止めの最中か明けを待つ間のやり直しで、出現位置で明けて弾かれないよう、止めと当たりの状態を捨てる。
     // StateMachineOf::Reset は OnExit を呼ばないので、当たりの演出もここで止める
@@ -830,7 +835,7 @@ void PlayerActor::ResetState() noexcept
     StopTackleHitEffects();
     if (heldByHit && HitReactionClassObj() != nullptr)
     {
-        HitReactionClassObj()->Stop();
+        HitReactionClassObj()->Stop(this);
     }
     // 当たる直前の動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
     ActionTimelineClassObj()->Stop();
@@ -840,7 +845,7 @@ void PlayerActor::ResetState() noexcept
         OwningScene()->HoldOthers(0);
     }
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
-    m_appearance->ResetDrawScale();
+    m_appearance->ResetDrawScale(m_model.get());
 }
 
 void PlayerActor::SkipBodyStep() noexcept

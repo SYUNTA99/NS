@@ -61,19 +61,19 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
         pad->OnTick();
     };
 
-    reaction->StartPadVibration(FadingLeft(1.0f, 4));
+    reaction->StartPadVibration(player, FadingLeft(1.0f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
     tick();
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
 
-    reaction->StartFlash(3, 1.0f);
+    reaction->StartFlash(player, 3, 1.0f);
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     tick();
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     EXPECT_FLOAT_EQ(PadLeft(), 0.5f);
 
-    reaction->StartPadVibration(FadingLeft(0.5f, 2));
+    reaction->StartPadVibration(player, FadingLeft(0.5f, 2));
     tick();
     // 振動は頼んだフレームの姿のまま、白は薄れる
     EXPECT_EQ(screen->FlashFramesRemaining(), 2);
@@ -81,7 +81,7 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.25f);
 
-    reaction->Stop();
+    reaction->Stop(player);
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
 }
@@ -96,8 +96,8 @@ TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
     ASSERT_NE(reaction, nullptr);
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
-    EXPECT_TRUE(reaction->StartShake(NS::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 4}));
+    EXPECT_TRUE(reaction->StartShake(player, NS::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 4}));
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
-    EXPECT_TRUE(reaction->StartZoomRoll(NS::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 2, .returnFrames = 2}));
-    EXPECT_FALSE(reaction->StartShake(NS::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 61}));
+    EXPECT_TRUE(reaction->StartZoomRoll(player, NS::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 2, .returnFrames = 2}));
+    EXPECT_FALSE(reaction->StartShake(player, NS::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 61}));
 }

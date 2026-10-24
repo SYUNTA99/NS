@@ -22,6 +22,10 @@ namespace NS
 
             [[nodiscard]] virtual std::size_t EstimatedBytes() const noexcept = 0;
 
+            //! シーンから外して持っているアクターを、OnEndPlay を呼んでから解放する。前後の JSON は残す
+            //! シーンを全部作り直す前に呼ぶ。作り直しは管理クラスを捨てるので、持ったままだと捨てた物を指す
+            virtual void ReleaseHeldActors() noexcept {}
+
         protected:
             ICommand() = default;
         };

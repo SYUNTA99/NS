@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseCollision.h"
+#include "NSlib/CoreObject/IUse/IUseRenderer.h"
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
@@ -41,14 +42,16 @@ namespace NS
     class AssetManager;
     class Object;
     struct ClassObjInfo;
-    class DirectionalLight;
     class IRenderable;
-    class IOverlay;
     class UIActor;
 
     //! @brief 配置物と共有システムを所有し、固定更新と描画を行うシーン
     //! @details JSON は保存・凍結・編集履歴に使い、実行中の状態は SceneActor と部品が持つ
-    class Scene : public NonCopyable, public IUseCamera, public IUseSceneSystem, public IUseCollision
+    class Scene : public NonCopyable,
+                  public IUseCamera,
+                  public IUseSceneSystem,
+                  public IUseCollision,
+                  public IUseRenderer
     {
     public:
         Scene();
@@ -58,28 +61,23 @@ namespace NS
         //! @details 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
         void OnRender();
 
-        //! 描く部品の登録。部品が自分の Register の中で呼ぶ。二重登録は無視する
-        //! 基底の部品 (Model・Shadow) の Register は、持ち主の SceneActor が OnAppear で呼ぶ。登録簿は SceneRenderer が持つ
-        void RegisterRenderable(IRenderable* renderable);
-        //! 描く部品の解除。基底の部品の Unregister は、持ち主の SceneActor が OnDisappear で呼ぶ
-        void UnregisterRenderable(IRenderable* renderable);
+        //! @brief 描く物・重ね描き・平行光の管理クラス
+        //! @details アクターが OnInit で InitDraw・InitOverlay・InitLight を呼んで入れ、OnEndPlay で外す。
+        //! 出る・消える時は、入れたまま組の有効と無効を切り替える
+        [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
 
-        //! 重ね描きの登録。部品は持ち主の SceneActor が OnStart で 1 回呼ぶ。二重登録は無視する
-        //! 並びは OverlayOrder 昇順に保たれ、同値なら後から登録した方が後ろになる
-        void RegisterOverlay(IOverlay* overlay);
-        //! 重ね描きの解除。部品は持ち主の SceneActor が OnEndPlay で呼ぶ
-        void UnregisterOverlay(IOverlay* overlay);
-
-        //! 平行光の登録。持ち主の LightActor が OnStart で 1 回呼ぶ。二重登録は無視する
-        //! 並びは登録順。ResolveSceneSettings はこの順に読み、持ち主が出ていない光は飛ばす
-        void RegisterLight(DirectionalLight* light);
-        //! 平行光の解除。持ち主の LightActor が OnEndPlay で呼ぶ
-        void UnregisterLight(DirectionalLight* light);
-
-        //! 描く物・重ね描き・平行光の登録簿に入っている数
+        //! 描く物・重ね描き・平行光の登録簿に入っている数。無効の組も数える
         [[nodiscard]] std::size_t RenderableCount() const noexcept { return m_sceneRenderer.RenderableCount(); }
         [[nodiscard]] std::size_t OverlayCount() const noexcept { return m_sceneRenderer.OverlayCount(); }
         [[nodiscard]] std::size_t LightCount() const noexcept { return m_sceneRenderer.LightCount(); }
+
+        //! 描く物・重ね描き・平行光の登録簿のうち、有効な組の数
+        [[nodiscard]] std::size_t EnabledRenderableCount() const noexcept { return m_sceneRenderer.EnabledRenderableCount(); }
+        [[nodiscard]] std::size_t EnabledOverlayCount() const noexcept { return m_sceneRenderer.EnabledOverlayCount(); }
+        [[nodiscard]] std::size_t EnabledLightCount() const noexcept { return m_sceneRenderer.EnabledLightCount(); }
+
+        //! 登録中の描く物。登録順、非所有
+        [[nodiscard]] std::vector<IRenderable*> Renderables() const { return m_sceneRenderer.Renderables(); }
 
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
 
@@ -94,7 +92,8 @@ namespace NS
         //! エフェクトの EffectScene。描画を持たないシーン (試し) では nullptr
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept;
 
-        //! シーンのヒットセンサーの一覧。HitSensor は持ち主の SceneActor の OnAppear で入り、OnDisappear で出る
+        //! @brief シーンのヒットセンサーの一覧。HitSensor は持ち主の SceneActor が OnInit で InitHitSensor を呼んで入れ、OnEndPlay で出る
+        //! @details 持ち主が消えている間は入ったまま、HitSensor::IsValid が偽になる
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
 
@@ -184,7 +183,7 @@ namespace NS
 
         //! 手編集した欄だけを凍結へ写し、編集復帰後も残す。実行で動いた値は写さない
         //! row は actor のクラスの表の行。凍結にない個体、作られていない行、存在しない欄、.actor へ書く欄は変更しない
-        void WritePlayBaselineField(const SceneActor& actor, const ClassObjInfo& row, std::string_view fieldName);
+        void WritePlayBaselineField(const SceneActor* actor, const ClassObjInfo& row, std::string_view fieldName);
 
         //! シミュレーションを切り替え、一時停止とコマ送りを解除する
         //! 無効中はカメラも更新せず、部品の有効状態には反映しない
@@ -238,18 +237,25 @@ namespace NS
         //! undo の作り直しと複製が通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
         SceneActor* SpawnFromJson(const nlohmann::json& actorJson);
 
-        //! @brief 同じ id の配置物を JSON の姿へ作り直す。並びの位置は保つ。居なければ SpawnFromJson と同じ
-        //! @details 部品の増減も含めて姿を丸ごと入れ替える。.actor が見つからなければ、
-        //! 前のアクターを外して JSON のまま持ち、nullptr を返す
-        SceneActor* ReplaceFromJson(const nlohmann::json& actorJson);
-
-        //! 同じ id の個体へ JSON を適用する。構成が同じなら実体を保ち、違えば再構築する
-        //! 未配置なら生成する。動いた当たりは次の歩で揃う
-        SceneActor* ApplyFromJson(const nlohmann::json& actorJson);
+        //! @brief 同じ id のアクターへ JSON の姿を当てる。居なければ SpawnFromJson と同じ。動いた当たりは次の歩で揃う
+        //! @details .actor が替わっても同じクラスならアクターを使い回し、替えた先の .actor の全部の値とシーンの上書きを
+        //! 書いてから、束・動作・素材を読み直す。替えた先の .actor が違うクラスなら ERROR を出し、何も変えずに nullptr を返す。
+        //! 替えた先の .actor が見つからない時と重ねるのに失敗した時だけ作り直し、古いアクターを解放せずに外して
+        //! replaced へ渡す。replaced を捨てる時は、呼び手が先に OnEndPlay を呼ぶ
+        //! @param[out] replaced 作り直した時の古いアクター。作り直さなければ触らない。nullptr は渡さない
+        SceneActor* ApplyFromJson(const nlohmann::json& actorJson, std::unique_ptr<SceneActor>* replaced);
 
         //! @brief 配置物を 1 体消す。居なければ何もしない
         //! @details 当たり箱も揃うので、走っている世界を止めずに消せる。.actor が見つからずに持っている同じ id の JSON も捨てる
         void RemoveActor(uint32 objectId);
+
+        //! @brief 配置物を 1 体、解放せずにシーンから外して返す。.actor が見つからずに持っている同じ id の JSON は捨てる
+        //! @details Disappear で登録の組が無効になるが、OnEndPlay は呼ばない。返した物を捨てる時は、呼び手が先に
+        //! OnEndPlay を呼ぶ。居なければ空を返す。段の更新の最中は断る
+        [[nodiscard]] DetachedActor DetachActor(uint32 objectId);
+
+        //! DetachActor で外した配置物を外す前の並びの位置へ戻す。外す前に出ていた物は Appear する
+        SceneActor* ReattachActor(DetachedActor detached);
 
         //! 固定更新の段を順に実行する。同じ段では SceneActor の後にシステムを更新する
         void OnUpdate();
@@ -283,12 +289,16 @@ namespace NS
         //! 作れた時は同じ id の持っていた JSON を捨てる
         [[nodiscard]] std::unique_ptr<SceneActor> BuildOrKeepUnresolved(const nlohmann::json& actorJson);
 
+        //! ApplyFromJson の作り直す道。同じ id のアクターを外して replaced へ渡し、同じ並びの位置へ JSON から作って入れる
+        SceneActor* RebuildActorFromJson(const nlohmann::json& snapshot, std::unique_ptr<SceneActor>* replaced);
+
         // SpawnActor の中身。外から個体を受けると、OnInit を通っていない個体が入る
         SceneActor* AdoptActor(std::unique_ptr<SceneActor> obj, std::string name);
 
         //! 実行時に入れた配置物の資産を引き当ててから開始する
-        void StartSpawned(SceneActor& obj);
+        void StartSpawned(SceneActor* obj);
 
+        // 描く物は持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         SceneRenderer m_sceneRenderer;
         // m_sceneObjs が持つ CourseDirector が破棄で暗転を取り消すので、m_sceneObjs より先に宣言して後に破棄する
         ScreenFadeDirector m_fade;
@@ -296,19 +306,19 @@ namespace NS
         UIDirector m_ui;
 
         //! 衝突判定の PhysicsScene を持つ。Collision が出る時と動いた歩に body を入れる
-        //! Collision が OnEndPlay で body を外し、Collider が借りるので、m_objects より先に宣言して後に破棄する
+        //! Collision が持ち主の OnDisappear で body を外し、Collider が借りるので、m_actors より先に宣言して後に破棄する
         PhysicsDirector m_physics;
         // skybox と重力の向き。実体側の唯一の出所で、描画が毎フレーム読み、保存は ToJson がここから写す
         SceneEnvironment m_environment;
 
-        // ヒットセンサーの調べ役。配置物の部品が OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
+        // ヒットセンサーの調べ役。配置物の部品が持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         HitSensorDirector m_hitSensors;
         SceneCamera m_mainCamera;
         // 仮想カメラは持ち主の OnEndPlay で外れるので、配置物より先に宣言して後に破棄する
         CameraManager m_cameraManager;
         ActorList m_actors; // 配置物の一覧
         // .actor が見つからず作らなかった配置物の JSON。id ごとに 1 つ、持った順に並べ、保存ではアクターの後に書く。
-        // id は、読む時は m_objects の次の id が数え、1 体だけ入れる道ではこのシーンの控えの id なので数え済み。
+        // id は、読む時は m_actors の次の id が数え、1 体だけ入れる道ではこのシーンの控えの id なので数え済み。
         // 新しいアクターに振られない
         std::vector<nlohmann::json> m_unresolvedActors;
         // 更新へ登録した管理役 1 件

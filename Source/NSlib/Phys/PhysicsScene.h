@@ -79,8 +79,10 @@ namespace NS
             PhysicsScene();
             ~PhysicsScene();
 
-            //! 入っている body の数
+            //! 作った body の数。DetachBody で外しただけの body も数える
             [[nodiscard]] uint BodyCount() const noexcept;
+            //! 当たりの問いと接触に出る body の数。DetachBody で外した body を除く
+            [[nodiscard]] uint AttachedBodyCount() const;
 
             //! OBB の中心と 3 軸をそのまま box body にする
             JPH::BodyID AddBox(const OBB& box, JPH::ObjectLayer layer);
@@ -182,8 +184,12 @@ namespace NS
             //! body の線速度
             [[nodiscard]] Vector3 BodyVelocity(JPH::BodyID id) const;
 
-            //! body をこの PhysicsScene から外して壊す。無効な BodyID は何もしない
+            //! body をこの PhysicsScene から外して壊す。DetachBody で外してある body も壊す。無効な BodyID は何もしない
             void RemoveBody(JPH::BodyID id);
+            //! body を壊さずに外す。外した body は当たりの問いにも接触にも出ない。無効な BodyID と外してある body は何もしない
+            void DetachBody(JPH::BodyID id);
+            //! DetachBody で外した body を戻す。無効な BodyID と入っている body は何もしない
+            void AttachBody(JPH::BodyID id);
 
             //! body の世界座標の位置
             [[nodiscard]] Vector3 BodyPosition(JPH::BodyID id) const;

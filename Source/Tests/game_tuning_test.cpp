@@ -30,7 +30,7 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShape)
     scene.ResetFromJson(std::move(doc));
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->ImpactVisuals(),
+    ASSERT_EQ(NS::ApplyJsonFields(&player->ImpactVisuals(),
                                   {{"核の留まりの上限フレーム", 2}, {"中心の火花の開始フレーム", 5}}),
               0u);
     GL::Level::ImpactRecord impact;
@@ -45,7 +45,7 @@ TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->ChargeVisuals(), {{"丸まりの殻の寿命フレーム", 2}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->ChargeVisuals(), {{"丸まりの殻の寿命フレーム", 2}}), 0u);
     for (int i = 0; i < 3; ++i)
     {
         player->Update(true);
@@ -64,30 +64,30 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(player->ChargeVisuals(), {{"丸まりの殻の資産", "custom.curl"}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->ChargeVisuals(), {{"丸まりの殻の資産", "custom.curl"}}), 0u);
     player->Update(true);
     const NS::EffectKeeper* keeper = player->GetEffectKeeper();
     ASSERT_NE(keeper, nullptr);
     ASSERT_FALSE(keeper->Records().empty());
     EXPECT_EQ(keeper->Records().front().name, "custom.curl");
-    const nlohmann::json saved = NS::SerializeClassObjFields(player->ChargeVisuals());
-    GL::Player::ChargeEffects restored{nullptr};
-    ASSERT_EQ(NS::ApplyJsonFields(restored, saved), 0u);
-    EXPECT_EQ(NS::SerializeClassObjFields(restored)["丸まりの殻の資産"], "custom.curl");
+    const nlohmann::json saved = NS::SerializeClassObjFields(&player->ChargeVisuals());
+    GL::Player::ChargeEffects restored;
+    ASSERT_EQ(NS::ApplyJsonFields(&restored, saved), 0u);
+    EXPECT_EQ(NS::SerializeClassObjFields(&restored)["丸まりの殻の資産"], "custom.curl");
 }
 
 TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 {
-    NS::EffectKeeper shortHistory{nullptr, 2};
-    NS::EffectKeeper longHistory{nullptr, 6};
-    const NS::uint32 shortId = shortHistory.Play("test", {});
-    const NS::uint32 longId = longHistory.Play("test", {});
-    shortHistory.Stop(shortId);
-    longHistory.Stop(longId);
+    NS::EffectKeeper shortHistory{2};
+    NS::EffectKeeper longHistory{6};
+    const NS::uint32 shortId = shortHistory.Play(nullptr, "test", {});
+    const NS::uint32 longId = longHistory.Play(nullptr, "test", {});
+    shortHistory.Stop(nullptr, shortId);
+    longHistory.Stop(nullptr, longId);
     for (int frame = 0; frame < 3; ++frame)
     {
-        shortHistory.BeginStep();
-        longHistory.BeginStep();
+        shortHistory.BeginStep(nullptr);
+        longHistory.BeginStep(nullptr);
     }
     EXPECT_TRUE(shortHistory.Records().empty());
     EXPECT_EQ(longHistory.Records().size(), 1u);
@@ -99,15 +99,21 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
     GL::Level::PropActor* rock = scene.SpawnActor<GL::Level::PropActor>("PropActor");
     ASSERT_NE(rock, nullptr);
     GL::Level::LaunchEffects* effects = &rock->Effects();
-    ASSERT_EQ(NS::ApplyJsonFields(*effects, {{"着地の粉の寿命フレーム", 2}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(effects, {{"着地の粉の寿命フレーム", 2}}), 0u);
     const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(rock->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
-    effects->BeginTrail(GL::Level::TackleReleaseDesc{}, rock->Flight(), &rock->Params(), sphere);
-    effects->NotifyLanding({}, {0.0f, 1.0f, 0.0f});
+    effects->BeginTrail(
+        rock,
+        NS::GetFrameDelta(rock),
+        GL::Level::TackleReleaseDesc{},
+        rock->Flight(),
+        &rock->Params(),
+        sphere->WorldSphere(rock->Root().WorldMatrix()));
+    effects->NotifyLanding(rock, {}, {0.0f, 1.0f, 0.0f});
     NS::EffectKeeper* keeper = rock->GetEffectKeeper();
     ASSERT_NE(keeper, nullptr);
-    keeper->BeginStep();
-    keeper->BeginStep();
+    keeper->BeginStep(rock->GetEffectScene());
+    keeper->BeginStep(rock->GetEffectScene());
     ASSERT_FALSE(keeper->Records().empty());
     const NS::EffectRecord& dust = keeper->Records().back();
     EXPECT_EQ(dust.name, "launch.landDust");
@@ -117,10 +123,10 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
 
 TEST(GameTuning, EditedPowerRangeAndTrailAngleKeepTheOutputFinite)
 {
-    GL::Player::ImpactEffects effects{nullptr};
+    GL::Player::ImpactEffects effects;
     ASSERT_EQ(
         NS::ApplyJsonFields(
-            effects,
+            &effects,
             {{"火花の数を振る威力の下限", 1.0f}, {"火花の数を振る威力の上限", 1.0f}, {"反動の尾の最小横成分", 2.0f}}),
         0u);
     GL::Level::ImpactRecord impact;
@@ -136,16 +142,16 @@ TEST(GameTuning, EditedPowerRangeAndTrailAngleKeepTheOutputFinite)
 
 TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
 {
-    GL::Player::ImpactEffects effects{nullptr};
-    ASSERT_EQ(NS::ApplyJsonFields(effects, {{"外れの火花の横の割合", 1.0f}}), 0u);
+    GL::Player::ImpactEffects effects;
+    ASSERT_EQ(NS::ApplyJsonFields(&effects, {{"外れの火花の横の割合", 1.0f}}), 0u);
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     const NS::Vector3 heading =
         effects.MissSparkHeading(0.8f, 0.0f, GL::Level::MissSurfaceNormal(0.8f, 0.0f, 2.0f, forward), forward);
     EXPECT_NEAR(heading.x, 1.0f, 0.001f);
     EXPECT_NEAR(heading.z, 0.0f, 0.001f);
-    GL::Level::TargetMarker marker{nullptr};
-    ASSERT_EQ(NS::ApplyJsonFields(marker, {{"枠の縁の幅", 3.0f}}), 0u);
-    const nlohmann::json fields = NS::SerializeClassObjFields(marker);
+    GL::Level::TargetMarker marker;
+    ASSERT_EQ(NS::ApplyJsonFields(&marker, {{"枠の縁の幅", 3.0f}}), 0u);
+    const nlohmann::json fields = NS::SerializeClassObjFields(&marker);
     EXPECT_EQ(fields["枠の縁の幅"], 3.0f);
     GL::Level::TargetMarkerDesc desc;
     desc.outlineWidth = 3.0f;

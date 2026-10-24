@@ -24,7 +24,7 @@ namespace GL
         class SlamArrow;
         struct ImpactTuning;
         struct LaunchArc;
-        ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams& params) noexcept;
+        ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams* params) noexcept;
     } // namespace Level
 } // namespace GL
 
@@ -179,7 +179,7 @@ namespace GL
             int m_launchMaxFrames = 600;
             friend class GL::Level::ImpactResolver;
             friend class GL::Level::SlamArrow;
-            friend GL::Level::ImpactTuning GL::Level::MakeImpactTuning(const PlayerParams& params) noexcept;
+            friend GL::Level::ImpactTuning GL::Level::MakeImpactTuning(const PlayerParams* params) noexcept;
             float m_reboundApexHeight = 1.15f;
             float m_reboundDistance = 0.575f;
             // 真ん中はカメラ側へ低く速く弾き返し、浮きを抑える

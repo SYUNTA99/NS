@@ -120,6 +120,22 @@ namespace NS
             return m_physicsSystem.GetNumBodies();
         }
 
+        uint PhysicsScene::AttachedBodyCount() const
+        {
+            JPH::BodyIDVector ids;
+            m_physicsSystem.GetBodies(ids);
+            const JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
+            uint count = 0;
+            for (const JPH::BodyID id : ids)
+            {
+                if (bodies.IsAdded(id))
+                {
+                    ++count;
+                }
+            }
+            return count;
+        }
+
         JPH::BodyID PhysicsScene::SyncStatic(JPH::BodyID id,
                                              const JPH::ShapeRefC& shape,
                                              const Vector3& position,
@@ -343,8 +359,40 @@ namespace NS
             }
 
             JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
-            bodies.RemoveBody(id);
+            // 外してある body を Jolt の RemoveBody へ渡すと、入っていない物を外す事になり止まる
+            if (bodies.IsAdded(id))
+            {
+                bodies.RemoveBody(id);
+            }
             bodies.DestroyBody(id);
+        }
+
+        void PhysicsScene::DetachBody(JPH::BodyID id)
+        {
+            if (id.IsInvalid())
+            {
+                return;
+            }
+
+            JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
+            if (bodies.IsAdded(id))
+            {
+                bodies.RemoveBody(id);
+            }
+        }
+
+        void PhysicsScene::AttachBody(JPH::BodyID id)
+        {
+            if (id.IsInvalid())
+            {
+                return;
+            }
+
+            JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
+            if (!bodies.IsAdded(id))
+            {
+                bodies.AddBody(id, JPH::EActivation::DontActivate);
+            }
         }
 
         bool PhysicsScene::Raycast(const Vector3& origin,

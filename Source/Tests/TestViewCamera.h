@@ -12,8 +12,6 @@
 class TestViewCamera final : public NS::VirtualCamera
 {
 public:
-    using NS::VirtualCamera::VirtualCamera;
-
     //! 返す位置と注視点を差し替える
     void SetPose(const NS::Vector3& position, const NS::Vector3& target) noexcept
     {
@@ -36,7 +34,7 @@ private:
 };
 
 //! @brief 試し用の仮想カメラの持ち主
-//! @details シーンへ湧かすと開始の時に仮想カメラが管理役へ登録される。シーンの外で使う時は管理役へ直に登録する
+//! @details シーンへ湧かすと作る時に仮想カメラが管理役へ登録される。シーンの外で使う時は管理役へ直に登録する
 //! 依存: NS::SceneActor, TestViewCamera
 class TestViewCameraHostActor final : public NS::SceneActor
 {
@@ -50,15 +48,14 @@ public:
     void OnEndPlay() override
     {
         NS::SceneActor::OnEndPlay();
-        NS::UnregisterVirtualCamera(this, m_vcam.get());
+        NS::EndVirtualCamera(this, m_vcam.get());
     }
 
 protected:
-    void OnInit() override { CreateClassObj(m_vcam, this); }
-    void OnStart() override
+    void OnInit() override
     {
-        NS::SceneActor::OnStart();
-        NS::RegisterVirtualCamera(this, m_vcam.get());
+        CreateClassObj(m_vcam);
+        NS::InitVirtualCamera(this, m_vcam.get());
     }
 
 private:

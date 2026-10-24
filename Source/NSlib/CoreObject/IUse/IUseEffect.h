@@ -12,12 +12,19 @@ namespace NS
     class EffectKeeper;
     struct EffectRecord;
 
+    namespace Gfx
+    {
+        class EffectScene;
+    }
+
     //! 個体のエフェクト記録を取得するインターフェース。操作は下の関数で行う
     class IUseEffect
     {
     public:
         //! 出したエフェクトを覚える部品。枠 Effect を作っていない個体では nullptr
         [[nodiscard]] virtual EffectKeeper* GetEffectKeeper() const noexcept = 0;
+        //! エフェクトを再生する置き場。シーンに居ない間と描画の無い世界では nullptr
+        [[nodiscard]] virtual Gfx::EffectScene* GetEffectScene() const noexcept = 0;
 
     protected:
         ~IUseEffect() = default;

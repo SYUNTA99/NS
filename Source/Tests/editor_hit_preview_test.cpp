@@ -422,12 +422,12 @@ TEST(EditorHitPreview, StartsTheSceneLikeTheGame)
     ASSERT_NE(player, nullptr);
     const NS::Vector3 playerStart = player->Root().Position();
     player->Root().SetPosition(playerStart + NS::Vector3{4.0f, 3.0f, -5.0f});
-    EXPECT_TRUE(SendMsgCourseRestart(*player));
+    EXPECT_TRUE(SendMsgCourseRestart(player));
     EXPECT_TRUE(player->Root().Position() == playerStart);
 
     NS::SceneActor* rock = scene->Actors().FindByActorId(k_RockId);
     ASSERT_NE(rock, nullptr);
-    EXPECT_TRUE(SendMsgCourseRestart(*rock));
+    EXPECT_TRUE(SendMsgCourseRestart(rock));
 }
 
 // 反動が先に終わっても、当たりの束の一番長い項目が終わるまで記録する

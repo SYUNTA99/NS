@@ -4,9 +4,8 @@
 
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Core/Assert.h"
+#include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
@@ -37,7 +36,7 @@ namespace
 
 namespace NS
 {
-    Model::Model(SceneActor* owner) : m_owner(owner)
+    Model::Model()
     {
         LoadAssetField(m_mesh, "");
         LoadAssetField(m_material, "");
@@ -89,34 +88,6 @@ namespace NS
         m_perObjectVsData = cpuData;
         m_perObjectVsSize = cpuDataSize;
         m_perObjectVsSlot = slot;
-    }
-
-    void Model::Register()
-    {
-        if (m_owner == nullptr)
-        {
-            return;
-        }
-        Scene* scene = m_owner->OwningScene();
-        if (scene == nullptr)
-        {
-            return;
-        }
-        scene->RegisterRenderable(this);
-    }
-
-    void Model::Unregister()
-    {
-        if (m_owner == nullptr)
-        {
-            return;
-        }
-        Scene* scene = m_owner->OwningScene();
-        if (scene == nullptr)
-        {
-            return;
-        }
-        scene->UnregisterRenderable(this);
     }
 
     void Model::Snapshot() noexcept
@@ -178,8 +149,9 @@ namespace NS
         m_drawTremor = Gfx::TremorCB{};
     }
 
-    void Model::AdvanceDraw()
+    void Model::AdvanceDraw(const IUseCamera* camera, const Vector3& rootPosition)
     {
+        NS_ASSERT(Scene, camera != nullptr, "Model::AdvanceDraw: カメラの窓口が null");
         if (m_shake.active)
         {
             ++m_shake.frame;
@@ -216,14 +188,11 @@ namespace NS
         {
             ++m_tremor.elapsed;
             Gfx::TremorCB tremor{};
-            if (m_owner != nullptr)
+            // 振れ幅はカメラとの距離で決まる
+            const std::optional<CameraPose> pose = GetCameraViewPose(camera);
+            if (pose.has_value())
             {
-                // 振れ幅はカメラとの距離で決まる
-                const std::optional<CameraPose> pose = GetCameraViewPose(m_owner);
-                if (pose.has_value())
-                {
-                    tremor = MakeTremor(m_tremor.desc, m_tremor.elapsed, m_owner->Root().Position(), *pose);
-                }
+                tremor = MakeTremor(m_tremor.desc, m_tremor.elapsed, rootPosition, *pose);
             }
             // 有限でない震えは描く形を消すので控えず、前の震えのまま描く
             if (IsFiniteTremor(tremor))
@@ -256,21 +225,16 @@ namespace NS
         return GetMesh()->LocalBounds();
     }
 
-    Matrix Model::DrawWorldMatrix(float alpha) const noexcept
+    Matrix Model::DrawWorldMatrix(const Matrix& root, float alpha) const noexcept
     {
-        return DrawWorldMatrixWithOffset(alpha, m_drawOffset);
+        return DrawWorldMatrixWithOffset(root, alpha, m_drawOffset);
     }
 
-    Matrix Model::DrawWorldMatrixWithOffset(float alpha, const Vector3& offset) const noexcept
+    Matrix Model::DrawWorldMatrixWithOffset(const Matrix& root, float alpha, const Vector3& offset) const noexcept
     {
         const Quaternion local = Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
         const Matrix localMatrix = WithLocalScale(m_localScale, Matrix::CreateFromQuaternion(local));
-        if (m_owner == nullptr)
-        {
-            return localMatrix;
-        }
         // 回転を先に掛ける。根のスケールは根の軸に残り、局所の回転と一緒に回らない
-        const Matrix root = m_owner->Root().InterpolatedWorldMatrix(alpha);
         Matrix drawn = localMatrix * root;
         // ずれは倍率の後に世界で足す。倍率の中心 (下端の真ん中) は根から測るので、ずれと一緒に動いて形を変えない
         // ずれが 0 の間は掛けない。0 の平行移動でも掛け算が下の桁を丸めることがある
@@ -311,14 +275,16 @@ namespace NS
         return scaled;
     }
 
-    void Model::Collect(const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
+    void Model::Collect(const Gfx::RenderContext& context,
+                        const RenderSource& source,
+                        std::vector<Gfx::DrawItem>& out)
     {
         if (!CanDraw(m_drawnMaterial))
         {
             return;
         }
 
-        out.push_back(MakeDrawItem(context, m_drawnMaterial, DrawWorldMatrix(context.alpha)));
+        out.push_back(MakeDrawItem(context, m_drawnMaterial, DrawWorldMatrix(source.root, context.alpha)));
     }
 
     Color Model::DrawColor() const noexcept
@@ -342,7 +308,7 @@ namespace NS
 
     bool Model::CanDraw(const Material* material) const noexcept
     {
-        return m_owner != nullptr && m_owner->IsAppeared() && GetMesh()->D3D() != nullptr && material->D3D() != nullptr;
+        return GetMesh()->D3D() != nullptr && material->D3D() != nullptr;
     }
 
     Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context,
@@ -388,13 +354,9 @@ namespace NS
         return RenderBucket::Transparent;
     }
 
-    Vector3 Model::SortCenter() const noexcept
+    Vector3 Model::SortCenter(const RenderSource& source) const noexcept
     {
-        if (m_owner == nullptr)
-        {
-            return {};
-        }
-        return m_owner->Root().WorldMatrix().Translation();
+        return source.root.Translation();
     }
 
     int Model::SortPriority() const noexcept
@@ -406,15 +368,15 @@ namespace NS
         return 0;
     }
 
-    AABB Model::WorldBounds() const noexcept
+    AABB Model::WorldBounds(const RenderSource& source) const noexcept
     {
-        if (GetMesh()->D3D() == nullptr || m_owner == nullptr)
+        if (GetMesh()->D3D() == nullptr)
         {
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない
         }
         AABB out{};
         // m_mesh は確認済みで、描画の境界を取得できる
-        DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, m_owner->Root().WorldMatrix()));
+        DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, source.root));
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
         const Vector3 scale = Vector3::Max(m_previousDrawScale, GetDrawScale());

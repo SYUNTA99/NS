@@ -56,9 +56,20 @@ namespace NS
     //! 効果を掛ける前の、遊びが読む視点。管理役か選べる仮想カメラが無ければ nullopt
     [[nodiscard]] std::optional<CameraPose> GetCameraViewPose(const IUseCamera* user) noexcept;
 
-    //! 仮想カメラを管理役の候補へ入れる。管理役が無ければ何もしない
-    void RegisterVirtualCamera(const IUseCamera* user, VirtualCamera* vcam);
+    // 仮想カメラは、アクターを作る時 (OnInit) に部品を作る行の隣で InitVirtualCamera を 1 回呼んで入れ、
+    // アクターが終わる時 (OnEndPlay) に EndVirtualCamera で外す。出る・消える時は入れたまま
+    // EnableVirtualCamera・DisableVirtualCamera で切り替える。管理役が無ければどれも何もしない
 
-    //! 仮想カメラを管理役の候補から外す。管理役が無ければ何もしない
-    void UnregisterVirtualCamera(const IUseCamera* user, VirtualCamera* vcam) noexcept;
+    //! @brief 仮想カメラを管理役の候補へ、選べる物として入れる
+    //! @details vcam は EndVirtualCamera まで生きていること
+    void InitVirtualCamera(const IUseCamera* user, VirtualCamera* vcam);
+
+    //! 入れた仮想カメラを選べる物にする。入れていない物は何もしない
+    void EnableVirtualCamera(const IUseCamera* user, const VirtualCamera* vcam) noexcept;
+
+    //! 入れた仮想カメラを、入れたまま選ばない。入れていない物は何もしない
+    void DisableVirtualCamera(const IUseCamera* user, const VirtualCamera* vcam) noexcept;
+
+    //! 仮想カメラを管理役の候補から外す。入れていない物は何もしない
+    void EndVirtualCamera(const IUseCamera* user, const VirtualCamera* vcam) noexcept;
 } // namespace NS

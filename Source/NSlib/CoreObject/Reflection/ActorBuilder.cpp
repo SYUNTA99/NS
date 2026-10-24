@@ -2,6 +2,7 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/Object.h"
@@ -19,17 +20,19 @@
 
 namespace NS
 {
-    nlohmann::json MakeActorHeaderJson(const SceneActor& obj, uint32 id)
+    nlohmann::json MakeActorHeaderJson(const SceneActor* obj, uint32 id)
     {
+        NS_ASSERT(Scene, obj != nullptr, "MakeActorHeaderJson: 書くアクターが無い");
         nlohmann::json object = nlohmann::json::object();
         WriteActorHeader(
             object,
-            ActorHeader{.id = id, .actorFile = obj.ActorFileName(), .name = obj.Name(), .active = obj.IsAppeared()});
+            ActorHeader{.id = id, .actorFile = obj->ActorFileName(), .name = obj->Name(), .active = obj->IsAppeared()});
         return object;
     }
 
-    void ApplyActorClassObjs(SceneActor& obj, const nlohmann::json& actorJson)
+    void ApplyActorClassObjs(SceneActor* obj, const nlohmann::json& actorJson)
     {
+        NS_ASSERT(Scene, obj != nullptr, "ApplyActorClassObjs: 値を書くアクターが無い");
         const nlohmann::json& parts = ActorJsonClassObjs(actorJson);
         std::vector<std::string_view> knownKeys;
         ForEachReflectedClassObj(obj, [&](const ClassObjInfo& field, Object* classObj) {
@@ -37,14 +40,14 @@ namespace NS
             const nlohmann::json::const_iterator entry = parts.find(field.key);
             if (entry != parts.end())
             {
-                ApplyJsonFields(*classObj, entry.value());
+                ApplyJsonFields(classObj, entry.value());
             }
         });
         for (nlohmann::json::const_iterator entry = parts.begin(); entry != parts.end(); ++entry)
         {
             if (std::find(knownKeys.begin(), knownKeys.end(), entry.key()) == knownKeys.end())
             {
-                NS_LOG_WARN(Scene, "{} の部品 {} はクラスに無いので読み飛ばす", obj.ClassName(), entry.key());
+                NS_LOG_WARN(Scene, "{} の部品 {} はクラスに無いので読み飛ばす", obj->ClassName(), entry.key());
             }
         }
     }
@@ -77,22 +80,33 @@ namespace NS
             return nullptr;
         }
         WarnIfUnregistered(className);
+        // シーンの上書きは書いてよい項目だけを持つ。書いてよくない項目を捨てて作ると、保存で黙って消える。
+        // 確かめるのは本物を作る前で、シーンへ入れない一時のアクターで行う。本物の部品は OnInit でシーンの仕組みを
+        // 受け取るので、作ったアクターは必ず一覧に入れて OnEndPlay まで通す。
+        // 未登録のクラスは一時のアクターを作れないが、.actor の値も読まれないので CreateActorOfClass が断る
+        const std::unique_ptr<SceneActor> probe = CreateActorWithCodeValues(className, actorFile);
+        if (probe != nullptr &&
+            !MergeLayer(nlohmann::json::object(), actorJson, FieldDestination::Scene, probe.get()).has_value())
+        {
+            return nullptr;
+        }
         const ActorInitInfo info{.placement = &actorJson, .scene = &scene, .actorFile = actorFile};
         return CreateActorOfClass(className, info);
     }
 
-    nlohmann::json ActorToJson(const SceneActor& obj)
+    nlohmann::json ActorToJson(const SceneActor* obj)
     {
-        nlohmann::json object = MakeActorHeaderJson(obj, obj.Id());
+        NS_ASSERT(Scene, obj != nullptr, "ActorToJson: 書き出すアクターが無い");
+        nlohmann::json object = MakeActorHeaderJson(obj, obj->Id());
         nlohmann::json& parts = ActorJsonClassObjs(object);
         // 値は .actor と比べない。シーンに書くのは参照の欄と上書きの一覧の項目で、ほかは .actor の値を使う
         ForEachReflectedClassObj(obj, [&](const ClassObjInfo& row, const Object* classObj) {
-            nlohmann::json fields = SerializeClassObjFields(*classObj);
+            nlohmann::json fields = SerializeClassObjFields(classObj);
             for (nlohmann::json::iterator entry = fields.begin(); entry != fields.end();)
             {
                 const FieldDesc* field = FindField(classObj->GetReflection(), entry.key());
                 const bool reference = field != nullptr && field->type == FieldType::ActorRef;
-                if (reference || obj.IsSceneOverride(row.key, entry.key()))
+                if (reference || obj->IsSceneOverride(row.key, entry.key()))
                 {
                     ++entry;
                     continue;
