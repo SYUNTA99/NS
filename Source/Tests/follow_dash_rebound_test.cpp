@@ -105,6 +105,36 @@ TEST(FollowDashRebound, WidensTheViewWhileFastAndReturnsAfter)
     EXPECT_NEAR(dash.Pose().fovY.value, base, 1.0e-3f);
 }
 
+// 反動でカメラへ向かって飛ぶ間も、注視点の遅れでカメラが自機へ寄らない。寄るのは欄の上限まで
+TEST(FollowDashRebound, ReboundTowardTheCameraKeepsTheDistance)
+{
+    DashScene dash;
+    dash.Step(120);
+    const NS::CameraPose before = dash.Pose();
+    NS::Vector3 toCamera = before.position - before.target;
+    toCamera.y = 0.0f;
+    const float startGap = toCamera.Length();
+    toCamera.Normalize();
+    const float cap = NS::SerializeClassObjFields(&dash.camera->Vcam()).at("カメラへ向かう遅れの上限").get<float>();
+    ASSERT_GE(cap, 0.0f);
+
+    dash.target->rebound.rebounding = true;
+    dash.target->rebound.holdLook = false;
+    dash.target->rebound.pullBack = false;
+    // 地形の反動の速さ 14 m/s で、カメラへ真っすぐ 0.5 秒飛ぶ
+    float smallestGap = startGap;
+    for (int frame = 1; frame <= 30; ++frame)
+    {
+        dash.target->Root().SetPosition(toCamera * (14.0f / 60.0f) * static_cast<float>(frame));
+        dash.Step(1);
+        const NS::CameraPose pose = dash.Pose();
+        NS::Vector3 gap = pose.position - dash.target->Root().Position();
+        gap.y = 0.0f;
+        smallestGap = std::min(smallestGap, gap.Length());
+    }
+    EXPECT_GT(smallestGap, startGap - cap - 0.05f);
+}
+
 // 自機とカメラの間に地形があれば、地形の手前まで縮める。地形が無くなれば元の距離へ戻す
 TEST(FollowDashRebound, TerrainBetweenShortensTheDistance)
 {

@@ -422,6 +422,16 @@ namespace NS
         }
         // 上限は欄の値より上にある間だけ、今の遅れまで縮めていく。増やさないので注視点は跳ばない
         m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lag, maxLag)));
+        // カメラへ向かう間は、注視点が自機より奥へ遅れた分だけカメラが自機へ寄る。奥への遅れだけを別の上限で縛る。
+        // 横と、カメラから離れる向きの遅れは残すので、離れていく速さの見え方は変えない
+        const Vector3 away = ViewAxesFromYawPitch(m_yaw, 0.0f).forward;
+        const float lagAway = (m_reboundAnchor.x - head.x) * away.x + (m_reboundAnchor.z - head.z) * away.z;
+        const float awayCap = std::max(m_reboundTowardCameraMaxLag, 0.0f);
+        if (lagAway > awayCap)
+        {
+            m_reboundAnchor.x -= away.x * (lagAway - awayCap);
+            m_reboundAnchor.z -= away.z * (lagAway - awayCap);
+        }
         m_look = m_reboundAnchor + m_partnerLean;
 
         // 追う相手が画面の上下の帯を越えそうな時だけ、

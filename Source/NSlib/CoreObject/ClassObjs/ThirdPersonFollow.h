@@ -163,6 +163,7 @@ namespace NS
         NS_FIELD(m_chargeFrameOmega, "溜めの構図のバネ角速度")
         NS_FIELD(m_reboundFollowOmega, "反動の間の横と前後のバネ角速度")
         NS_FIELD(m_reboundMaxLag, "反動の間の横と前後の遅れの上限")
+        NS_FIELD(m_reboundTowardCameraMaxLag, "カメラへ向かう遅れの上限")
         NS_FIELD(m_reboundScreenBand, "反動の間の上下の帯")
         NS_FIELD(m_reboundBandLean, "反動の縦の向きで帯をずらす割合")
         NS_FIELD(m_widenDegrees, "速い間に広げる視野角")
@@ -277,6 +278,8 @@ namespace NS
 
         float m_reboundFollowOmega = 4.0f; // 反動の間に注視点の横と前後が寄るバネ角速度 (1/秒)
         float m_reboundMaxLag = 1.5f;      // 反動の間に注視点が横と前後へ遅れてよい上限 (m)
+        // 反動でカメラへ向かう間に、注視点が自機より奥へ遅れてよい上限 (m)。遅れの分だけカメラが自機へ寄り、自機が画面を塞ぐ
+        float m_reboundTowardCameraMaxLag = 0.5f;
         float m_reboundScreenBand = 0.5f;  // 反動の間の上下の帯。視野の半分への割合
         // 縦の向き 1 で帯の中心を下げる量。視野の半分への割合。上へ返る時に自機を下寄りに置き、上に足場の入る空きを作る
         float m_reboundBandLean = 0.3f;
