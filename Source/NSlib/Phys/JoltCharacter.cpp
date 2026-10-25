@@ -38,6 +38,43 @@ namespace NS
                 return velocity - normal * into;
             }
 
+            // 平らな床では Jolt も下りる速さを消すので、捨てると床の端から出るフレームの落ち始めだけが遅れる
+            bool DropsFallOnWalkable(const Vector3& requested, JPH::Vec3Arg groundNormal)
+            {
+                const float normalY = groundNormal.GetY();
+                return requested.y <= 0.0f && IsWalkableNormal(normalY) && normalY < 1.0f - k_Epsilon;
+            }
+
+            // 下る向きは面から離れる向きなので、水平のままだと足の下から坂が離れて宙に浮く
+            JPH::Vec3 HorizontalAlong(const Vector3& requested, JPH::Vec3Arg groundNormal)
+            {
+                const JPH::Vec3 horizontal{requested.x, 0.0f, requested.z};
+                const float away = horizontal.Dot(groundNormal);
+                if (away > 0.0f)
+                {
+                    return horizontal - JPH::Vec3::sAxisY() * (away / groundNormal.GetY());
+                }
+                return CancelInto(horizontal, groundNormal);
+            }
+
+            JPH::Vec3 HoldOnWalkableSlope(JPH::Vec3Arg otherwise, const Vector3& requested, JPH::Vec3Arg groundNormal)
+            {
+                if (DropsFallOnWalkable(requested, groundNormal))
+                {
+                    return HorizontalAlong(requested, groundNormal);
+                }
+                return otherwise;
+            }
+
+            JPH::Vec3 GroundedVelocity(JPH::Vec3Arg projected, const Vector3& requested, JPH::Vec3Arg groundNormal, bool landed)
+            {
+                if (landed)
+                {
+                    return CancelInto(HoldOnWalkableSlope(projected, requested, groundNormal), groundNormal);
+                }
+                return CancelInto(projected, groundNormal);
+            }
+
             bool CastRayDown(const JPH::PhysicsSystem& system, JPH::RVec3Arg origin, float length, float& outDistance)
             {
                 if (!(length > 0.0f))
@@ -102,8 +139,15 @@ namespace NS
                                  float dt,
                                  float maxStepHeight)
         {
+            const bool wasGrounded = IsGrounded();
             m_character->SetPosition(ToJolt(position));
-            m_character->SetLinearVelocity(ToJolt(velocity));
+            // 止まっている間も呼び手は重力の分の下りる速さを渡すので、そのまま渡すと坂の上で立っているだけで下へ滑る
+            JPH::Vec3 moveVelocity = ToJolt(velocity);
+            if (wasGrounded)
+            {
+                moveVelocity = HoldOnWalkableSlope(moveVelocity, velocity, m_character->GetGroundNormal());
+            }
+            m_character->SetLinearVelocity(moveVelocity);
 
             const float stepHeight = std::max(0.0f, maxStepHeight);
             // 半径 × (1 − cos 45°) までの角は CharacterVirtual::Update が登れる面として滑り越える
@@ -146,7 +190,8 @@ namespace NS
             JPH::Vec3 correctedVelocity = m_character->GetLinearVelocity();
             if (IsGrounded())
             {
-                correctedVelocity = CancelInto(correctedVelocity, m_character->GetGroundNormal());
+                correctedVelocity =
+                    GroundedVelocity(correctedVelocity, velocity, m_character->GetGroundNormal(), !wasGrounded);
             }
 
             for (const JPH::CharacterContact& contact : m_character->GetActiveContacts())
