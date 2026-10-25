@@ -38,12 +38,18 @@ namespace NS
             [[nodiscard]] Vector3 Velocity() const;
             //! 直近の Step 後に接地しているか。登れない急な面に挟まれて下へ滑れない時も接地に数える
             [[nodiscard]] bool IsGrounded() const;
+            //! @brief 直近の Step で、渡した速度の向きへ進むのを遮った面の外向きの単位法線を引く
+            //! @details 実際に当たった接触のうち、速度に一番向かい合った面を選ぶ。面に沿う速度は遮ったに数えない
+            //! @return 遮った面が無かった場合 false で、outNormal は書き換えない
+            [[nodiscard]] bool BlockingNormal(Vector3& outNormal) const;
 
         private:
             PhysicsScene& m_physics;
             float m_radius = 0.4f;
             float m_halfHeight = 0.5f;
             JPH::Ref<JPH::CharacterVirtual> m_character;
+            bool m_blocked = false;
+            Vector3 m_blockNormal{0.0f, 0.0f, 0.0f};
         };
 
         //! 単位法線の Y 成分から、45° 以下の登れる斜面かを判定する

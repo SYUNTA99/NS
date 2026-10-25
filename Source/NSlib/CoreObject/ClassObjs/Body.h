@@ -31,6 +31,11 @@ namespace NS
         //! 掴まりのように移動を通さず位置を直に置く時、接地の控えも合わせて置く
         void SetGrounded(bool grounded) noexcept;
 
+        //! 直前の Move で、速度の向きへ進むのを地形の面が遮ったか。面に沿う動きは遮ったに数えない
+        [[nodiscard]] bool IsBlocked() const noexcept { return m_isBlocked; }
+        //! 直前の Move で遮った面のうち、速度に一番向かい合った面の外向きの単位法線。遮らなかったら 0
+        [[nodiscard]] Vector3 BlockNormal() const noexcept { return m_blockNormal; }
+
         //! 水平の単位方向へ加速し、横滑りを減らす。上限を超える順方向速度は保つ
         //! turningDrag・acceleration は m/s²、topSpeed は m/s、dt は秒
         void Accelerate(
@@ -56,6 +61,8 @@ namespace NS
         Vector3 m_velocity{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
         bool m_wasGrounded = false; // 直前の Move より前の接地
+        bool m_isBlocked = false;
+        Vector3 m_blockNormal{0.0f, 0.0f, 0.0f};
         BodyEvents m_events;
     };
 } // namespace NS

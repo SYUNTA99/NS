@@ -93,6 +93,12 @@ namespace NS
         m_velocity = moved.velocity;
         m_wasGrounded = m_isGrounded;
         m_isGrounded = moved.grounded;
+        m_isBlocked = moved.blocked;
+        m_blockNormal = Vector3{0.0f, 0.0f, 0.0f};
+        if (moved.blocked)
+        {
+            m_blockNormal = moved.blockNormal;
+        }
         // Scene に居ない間は知らせを出さない
         if (!moved.inWorld)
         {
