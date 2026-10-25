@@ -178,6 +178,21 @@ public:
     //! @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
     [[nodiscard]] NS::Vector3 BodySlamDirection() const noexcept { return m_slam.Direction(); }
     [[nodiscard]] bool IsRebounding() const noexcept;
+    //! エアダッシュの状態に居る場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsAirDashing() const noexcept;
+    //! 地形の面で返った反動の状態に居る場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsDashRebounding() const noexcept;
+    //! 今出せるエアダッシュの回数。接地の間と、反動の補正の段に入った時に 1 に戻る
+    [[nodiscard]] int AirDashesRemaining() const noexcept { return m_airDash.Remaining(); }
+    //! エアダッシュと地形の反動の値。見た目・カメラ・開発用の線・Replay が読む
+    [[nodiscard]] const GL::Player::AirDashStatus& AirDash() const noexcept { return m_airDash; }
+    //! @brief エアダッシュの 1 フレームを進める。重力を掛けずに速度を向き × 速さで書き、秒が過ぎたら終える
+    //! @details エアダッシュの間の速度の書き手はここと、面に当たった時の BeginTerrainRebound だけ
+    void UpdateAirDash(float dt) noexcept;
+    //! @brief 地形の反動の 1 フレームを進める
+    //! @details 操作なしの段は速度を保つ。補正の段はダッシュを 1 回戻し、重力・減速・曲げを掛ける。
+    //! 補正の段を過ぎたら落下へ、登れる面に着いたら地上の状態へ移る
+    void UpdateDashRebound(float dt) noexcept;
     //! @brief 反動のまま着いた場合 true、それ以外の場合は false
     //! @details 反動の着地を判定するのはここだけ。見た目と演出は移動の後に、反動の状態は次のフレームの頭に読む
     [[nodiscard]] bool IsReboundLanded() const noexcept;
@@ -227,6 +242,10 @@ public:
     //! @brief 入力の向きへ加速する。入力が無ければ何もしない
     //! @details 加速の上限は MaxSpeed × 倒し具合で、歩き速度を下回らない。空中は空中の加速度を使う
     void AccelerateToInputDirection(float dt) noexcept;
+    //! ダッシュと反動の後の落下で、空中の操作が戻る経過を 1 フレーム進める。落下の状態だけが呼ぶ
+    void AdvanceAirControlReturn(float dt) noexcept;
+    //! 次の落下の空中の操作を 0 から戻し直す。エアダッシュと反動を始める所が呼ぶ
+    void StartAirControlReturn() noexcept;
     //! 手を放した時の減速度で水平の速さを減らす
     void ApplyFriction(float dt) noexcept;
     //! ブレーキの減速度で水平の速さを減らす
@@ -389,8 +408,26 @@ private:
         bool hasAimTarget = false;
     };
 
-    //! 固定ステップごとに一度呼ぶ。移動後に接地と突進距離を更新する
+    //! 固定ステップごとに一度呼ぶ。移動後に接地と突進距離を更新し、面に当たったエアダッシュと反動を返す
     void MoveBody(float dt) noexcept;
+    //! この歩にエアダッシュを出せる場合 true、それ以外の場合は false。押した瞬間で、回数が残り、出せる状態に居る
+    [[nodiscard]] bool CanStartAirDash() const noexcept;
+    //! @brief エアダッシュを始める。向きはスティック、倒していなければ自機の向き、無ければカメラの前
+    //! @details 回数を 1 減らし、押したフレームの体の更新から速さが出るよう速度もここで書く
+    void BeginAirDash() noexcept;
+    //! @brief 体を動かした直後に呼ぶ。エアダッシュか地形の反動の間に面が遮ったら、その面で反動を始める
+    //! @details 当て方が欄「反動に数える当て方の下限」より浅い面と、反動の間の登れる面は数えない
+    void TryBeginTerrainRebound() noexcept;
+    //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、スティックで 1 段ずらし、返る速さを書く
+    //! @param[in] baseSpeed 返る力の上限 (m/s)。エアダッシュならダッシュの速さ、反動の続きなら今の速さ
+    void BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vector3& normal, float baseSpeed) noexcept;
+    //! 当たった時のスティックを、左右はカメラの右・上下は世界の上下にした向き。倒していなければゼロ
+    [[nodiscard]] NS::Vector3 ReboundShiftInput() const noexcept;
+    //! @brief 地形の反動の束を、当て方の強さで選んで始める
+    //! @details 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。向きを使う項目は向き無しになる
+    void StartTerrainReboundReaction(const NS::Vector3& contact, float facing) noexcept;
+    //! 欄「反動の線を描く」が真なら、最後の地形の反動の向きの線と、今の段の輪を描く
+    void DrawTerrainRebound() const;
     //! 稼働していないフレームでも、そのフレーム限りの入力は落とす。残すと再開した時に古い押下が効く
     void SkipBodyStep() noexcept;
     //! 突進の進んだ距離を足し、距離を使い切るか進めなくなったら突進を終える
@@ -512,6 +549,9 @@ private:
     int m_jumpsRemaining = 1;
     float m_coyoteTimer = 0.0f; // コヨーテ猶予の残り秒
     float m_bufferTimer = 0.0f; // 先行ジャンプ入力の残り秒
+    // ダッシュと反動で始め、着地とやり直しで終える。経過は落下の状態に居る間だけ数える
+    bool m_airControlReturning = false;
+    float m_airControlReturnElapsed = 0.0f;
 
     float m_maxSpeedScale = 1.0f; // 走行速度に掛ける倍率。書くのは AdvanceCharge と CancelCharge
 
@@ -519,6 +559,7 @@ private:
     BodySlamRequest m_request;
     GL::Player::ReboundStatus m_rebound;
     GL::Player::SkidStatus m_skid;
+    GL::Player::AirDashStatus m_airDash;
     GL::Player::ChargeStatus m_charge;
     ChargeObservation m_chargeObserved;
     // 紫に入った回数。紫になりきった時に揺れが来る端を毎回入れ替える。溜めを捨てても戻さない

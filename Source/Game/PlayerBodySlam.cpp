@@ -489,6 +489,7 @@ bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
     ++m_rebound.m_count;
     m_rebound.m_spinSpeed = SpinSpeedFor(turns, GL::Level::LaunchArcFlightSeconds(m_params->ReboundLaunchArc(arc)));
     m_body->SetVelocity(velocity);
+    StartAirControlReturn();
     (void)m_states->Change<GL::Player::ReboundPlayerState>();
     return true;
 }
@@ -556,6 +557,11 @@ void PlayerActor::UncurlWhenSettled() noexcept
     }
     // 押している間は着地しても丸まりを解かない
     if (m_charge.m_judge.IsHeld() || IsBodySlamming() || !body.IsGrounded())
+    {
+        return;
+    }
+    // 床の上でダッシュしても、床の上で返っても、その間は玉のまま
+    if (IsAirDashing() || IsDashRebounding())
     {
         return;
     }

@@ -81,6 +81,8 @@ namespace GL
             NS_GROUP("溜めの回転")
             NS_FIELD(m_emptyChargeSpinSpeed, "溜め 0 の回る速さ")
             NS_FIELD(m_fullChargeSpinSpeed, "溜めきりの回る速さ")
+            NS_GROUP("エアダッシュの転がり")
+            NS_FIELD(m_dashRollDegreesPerMeter, "エアダッシュの 1 m で回る角度")
             NS_GROUP("外れの回り方")
             NS_FIELD(m_missTwistTurnsPerSecond, "外れの縁でのねじれの回転数")
             NS_FIELD(m_missSpinCarryRatio, "外れで当たる前の回転を引き継ぐ割合")
@@ -143,6 +145,8 @@ namespace GL
 
             float m_emptyChargeSpinSpeed = 360.0f; // 溜め 0 の玉が回る速さ。度/秒
             float m_fullChargeSpinSpeed = 1440.0f; // 溜めきりの玉が回る速さ。度/秒
+            // エアダッシュと地形の反動の間、1 m 進むごとに玉が回る角度 (度/m)。回る速さは今の速さに掛ける
+            float m_dashRollDegreesPerMeter = 88.0f;
             // 縁で威力 1 の時のねじれの回転数 (回/秒)。威力と縁への近さを掛ける
             float m_missTwistTurnsPerSecond = 2.0f;
             // 溜めて外したほど大きく振り回される。突進の回転をこの割合だけ残してねじれに足す

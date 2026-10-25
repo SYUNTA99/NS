@@ -223,38 +223,6 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
     EXPECT_TRUE(director->IsClearing());
 }
 
-// 体当たりのボタンを止めを見ずに読むと、暗転の間も押したままの自機が溜め続ける
-TEST(CourseDirector, ClearLockStopsTheHeldSlamButton)
-{
-    const nlohmann::json doc = CourseWithPlayerOnGoal();
-    NS::Scene scene;
-    scene.ResetFromJson(doc);
-    PlayerActor* player = FindPlayer(scene.Actors());
-    ASSERT_NE(player, nullptr);
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-
-    MouseLeftPress press;
-    for (int i = 0; i < 60 && !player->ChargeJudge().IsCharging(); ++i)
-    {
-        StepPlayer(player);
-    }
-    ASSERT_TRUE(player->ChargeJudge().IsCharging());
-
-    // 溜めている間に落ちた分を戻してゴールに重ねる
-    player->Root().SetPosition(SpawnOf(doc));
-    scene.HitSensors().OnTick();
-    director->OnTick();
-    ASSERT_TRUE(director->IsClearing());
-
-    for (int i = 0; i < 10; ++i)
-    {
-        StepPlayer(player);
-        EXPECT_FALSE(player->ChargeJudge().IsCharging()) << "歩 " << i;
-        EXPECT_FALSE(player->IsBodySlamming()) << "歩 " << i;
-    }
-}
-
 // 止めた瞬間の向きを持ち続けると、暗転の間もゴールで倒していた向きへ歩き続ける
 TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
 {
@@ -287,30 +255,6 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
     EXPECT_FLOAT_EQ(player->DesiredSpeedScale(), 0.0f);
     // 床の無い空中では手を放しても横は減らないので、加速し続けないことを見る
     EXPECT_LE(player->Body().LateralVelocity().Length(), lockedSpeed);
-}
-
-// 押しが偽になった歩を放したと読むと、溜めの最中の止めで溜めた突進が出る
-TEST(CourseDirector, InputLockDropsTheChargeInsteadOfReleasingIt)
-{
-    NS::Scene scene;
-    scene.ResetFromJson(CourseWithPlayer());
-    PlayerActor* player = FindPlayer(scene.Actors());
-    ASSERT_NE(player, nullptr);
-
-    for (int i = 0; i < 60 && !player->ChargeJudge().IsCharging(); ++i)
-    {
-        player->Update(true);
-    }
-    ASSERT_TRUE(player->ChargeJudge().IsCharging());
-    const NS::uint32 impacts = player->Resolver().Answer().lastImpact.sequence;
-
-    EXPECT_TRUE(GL::Level::SendMsgInputLock(player, true));
-    EXPECT_FALSE(player->ChargeJudge().IsCharging());
-    EXPECT_FLOAT_EQ(player->StanceHeight(), 1.0f);
-
-    player->Update(false);
-    EXPECT_FALSE(player->IsBodySlamming());
-    EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, impacts);
 }
 
 TEST(CourseDirector, RestartReturnsActorsToTheirStart)

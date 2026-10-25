@@ -1182,7 +1182,16 @@ TEST(ShippedHitReactions, MissVibratesHeavyHeadThenLightTailPerDirection)
 TEST(ShippedHitReactions, PlayerHitSetsCarryTheTimelineValues)
 {
     const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
-    EXPECT_EQ(player.sets.size(), 6u);
+    EXPECT_EQ(player.sets.size(), 8u);
+
+    // 地形の反動は当て方で 2 つ。全部返った時だけ短く止め、弱い時は止めない
+    const NS::HitReactionSet* terrainFull = FindShippedSet(player, "地形の反動[全部]");
+    ASSERT_NE(terrainFull, nullptr);
+    EXPECT_EQ(terrainFull->stopFrames, 3);
+    ASSERT_NE(FindOwnerEntry(*terrainFull, "TackleGhost"), nullptr);
+    const NS::HitReactionSet* terrainWeak = FindShippedSet(player, "地形の反動[弱い]");
+    ASSERT_NE(terrainWeak, nullptr);
+    EXPECT_EQ(terrainWeak->stopFrames, 0);
 
     const NS::HitReactionSet* center = FindShippedSet(player, "体当たり[真ん中]");
     ASSERT_NE(center, nullptr);

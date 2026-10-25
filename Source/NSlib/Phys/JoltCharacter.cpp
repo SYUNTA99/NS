@@ -124,6 +124,25 @@ namespace NS
                                         m_physics.m_tempAllocator);
 
             // 呼出側が毎フレーム速度を足すので、面へ向かう分を抜かないと押し付けている間に溜まり、離したフレームに飛び出す
+            // 補正で速度を削る前の、呼び手が進みたかった向きで遮った面を選ぶ
+            m_blocked = false;
+            const JPH::Vec3 wanted = ToJolt(velocity).NormalizedOr(JPH::Vec3::sZero());
+            float mostOpposed = -k_Epsilon;
+            for (const JPH::CharacterContact& contact : m_character->GetActiveContacts())
+            {
+                if (!contact.mHadCollision || contact.mWasDiscarded)
+                {
+                    continue;
+                }
+                const float facing = wanted.Dot(contact.mSurfaceNormal);
+                if (facing < mostOpposed)
+                {
+                    mostOpposed = facing;
+                    m_blocked = true;
+                    m_blockNormal = FromJolt(contact.mSurfaceNormal);
+                }
+            }
+
             JPH::Vec3 correctedVelocity = m_character->GetLinearVelocity();
             if (IsGrounded())
             {
@@ -209,6 +228,16 @@ namespace NS
         bool JoltCharacter::IsGrounded() const
         {
             return m_character->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround;
+        }
+
+        bool JoltCharacter::BlockingNormal(Vector3& outNormal) const
+        {
+            if (!m_blocked)
+            {
+                return false;
+            }
+            outNormal = m_blockNormal;
+            return true;
         }
 
         bool IsWalkableNormal(float normalY) noexcept

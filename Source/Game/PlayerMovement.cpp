@@ -67,12 +67,14 @@ void PlayerActor::MoveBody(float dt) noexcept
     }
 
     const NS::Vector3 before = Root().Position();
+    m_airDash.m_intended = m_body->Velocity();
     m_body->Move(&Root(), m_collider.get(), dt, m_params->m_maxStepHeight);
     const NS::Vector3 delta = Root().Position() - before;
     m_lastMoveDistance = delta.Length();
     SyncGroundState();
     AdvanceBodySlamTravel(delta);
     m_slam.m_wasSlamming = IsBodySlamming();
+    TryBeginTerrainRebound();
 }
 
 void PlayerActor::SyncGroundState() noexcept
@@ -94,6 +96,7 @@ void PlayerActor::SyncGroundState() noexcept
 void PlayerActor::RestoreOnLanding() noexcept
 {
     m_jumpsRemaining = 1;
+    m_airControlReturning = false;
     RestoreWhileGrounded();
 }
 
@@ -102,6 +105,7 @@ void PlayerActor::RestoreWhileGrounded() noexcept
     m_coyoteTimer = m_params->m_coyoteTime;
     // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
     m_request.spent = false;
+    m_airDash.m_remaining = 1;
 }
 
 void PlayerActor::TickTimers(float dt) noexcept
@@ -142,11 +146,44 @@ void PlayerActor::AccelerateToInputDirection(float dt) noexcept
     }
 
     float acceleration = m_params->m_airAcceleration;
+    float turningDrag = m_params->m_turningDrag;
     if (body.IsGrounded())
     {
         acceleration = m_params->m_acceleration;
     }
-    body.Accelerate(direction, m_params->m_turningDrag, acceleration, topSpeed, dt);
+    else if (m_airControlReturning)
+    {
+        // 返った軌道を落ちた最初のフレームで折らない。0 から滑らかに上げ、戻りの初めほどゆっくり効かせる
+        const float seconds = m_params->m_airControlReturnSeconds;
+        float t = 1.0f;
+        if (seconds > 0.0f)
+        {
+            t = std::clamp(m_airControlReturnElapsed / seconds, 0.0f, 1.0f);
+        }
+        const float scale = t * t * (3.0f - 2.0f * t);
+        acceleration *= scale;
+        turningDrag *= scale;
+    }
+    body.Accelerate(direction, turningDrag, acceleration, topSpeed, dt);
+}
+
+void PlayerActor::StartAirControlReturn() noexcept
+{
+    m_airControlReturning = true;
+    m_airControlReturnElapsed = 0.0f;
+}
+
+void PlayerActor::AdvanceAirControlReturn(float dt) noexcept
+{
+    if (!m_airControlReturning)
+    {
+        return;
+    }
+    m_airControlReturnElapsed += dt;
+    if (m_airControlReturnElapsed >= m_params->m_airControlReturnSeconds)
+    {
+        m_airControlReturning = false;
+    }
 }
 
 void PlayerActor::ApplyFriction(float dt) noexcept

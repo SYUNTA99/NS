@@ -1,0 +1,223 @@
+{
+  "environment": {
+    "skybox": "Assets/Skybox/blue-sky/"
+  },
+  "nextObjectId": 20,
+  "objects": [
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            8.0,
+            1.0,
+            13.2
+          ],
+          "位置": [
+            0.0,
+            0.0,
+            -1.4
+          ]
+        }
+      },
+      "id": 1,
+      "name": "出発の床"
+    },
+    {
+      "actor": "PlayerActor",
+      "classObjs": {
+        "Transform": {
+          "位置": [
+            0.0,
+            1.65,
+            0.0
+          ]
+        }
+      },
+      "id": 2,
+      "name": "自機"
+    },
+    {
+      "actor": "FollowCameraActor",
+      "classObjs": {
+        "Transform": {
+          "位置": [
+            0.0,
+            4.0,
+            -5.0
+          ]
+        },
+        "Vcam": {
+          "追従対象": {
+            "ref": "自機"
+          }
+        }
+      },
+      "id": 3,
+      "name": "カメラ"
+    },
+    {
+      "actor": "LightActor",
+      "classObjs": {
+        "DirectionalLight": {},
+        "Transform": {
+          "位置": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "回転": [
+            0.7382549047470093,
+            -0.2214764654636383,
+            0.0,
+            0.6371247172355652
+          ]
+        }
+      },
+      "id": 4,
+      "name": "光"
+    },
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            8.0,
+            1.0,
+            10.0
+          ],
+          "位置": [
+            0.0,
+            0.5,
+            5.0
+          ],
+          "回転": [
+            -0.3826834,
+            0.0,
+            0.0,
+            0.9238795
+          ]
+        }
+      },
+      "id": 10,
+      "name": "壁に立て掛けた坂"
+    },
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            8.0,
+            7.0,
+            16.0
+          ],
+          "位置": [
+            0.0,
+            4.0,
+            13.2
+          ]
+        }
+      },
+      "id": 11,
+      "name": "壁と上の足場"
+    },
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            6.0,
+            4.0,
+            1.0
+          ],
+          "位置": [
+            0.0,
+            9.5,
+            15.0
+          ],
+          "回転": [
+            0.0,
+            0.3826834,
+            0.0,
+            0.9238795
+          ]
+        }
+      },
+      "id": 12,
+      "name": "角を曲がる45度の壁"
+    },
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            16.0,
+            1.0,
+            10.0
+          ],
+          "位置": [
+            -14.0,
+            4.0,
+            13.0
+          ]
+        }
+      },
+      "id": 13,
+      "name": "ゴールの足場"
+    },
+    {
+      "actor": "GoalActor",
+      "classObjs": {
+        "Transform": {
+          "スケール": [
+            2.0,
+            2.0,
+            2.0
+          ],
+          "位置": [
+            -16.0,
+            5.5,
+            13.0
+          ]
+        }
+      },
+      "id": 14,
+      "name": "ゴール"
+    },
+    {
+      "actor": "DeathZoneActor",
+      "classObjs": {
+        "Transform": {
+          "位置": [
+            0.0,
+            -15.0,
+            0.0
+          ]
+        }
+      },
+      "id": 15,
+      "name": "落下死"
+    }
+  ],
+  "version": 9
+}

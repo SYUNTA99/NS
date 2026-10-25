@@ -355,7 +355,7 @@ TEST_F(EditorAssetPreview, AssetsShowsMaterialsModelsAndTexturesBeforeSelection)
     EXPECT_GT(blue, 100);
     EXPECT_TRUE(m_app.Device().CaptureBackbufferToPng("build/assets-material-thumbnails.png"));
     OpenAssetFolder("Models");
-    EXPECT_EQ(thumbnailCount(), 3);
+    EXPECT_EQ(thumbnailCount(), 4);
     EXPECT_TRUE(m_app.Device().CaptureBackbufferToPng("build/assets-model-thumbnails.png"));
     OpenAssetFolder("Textures");
     const NS::Texture* texture = m_assets.LoadTexture(NS::OS::FileSystem::Combine(

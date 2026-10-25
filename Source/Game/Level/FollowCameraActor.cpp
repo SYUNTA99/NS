@@ -66,7 +66,7 @@ namespace GL
         void FollowCameraActor::BodyStep()
         {
             // clang-format off
-            if (m_vcam) { m_vcam->Update(this); }
+            if (m_vcam) { m_vcam->Update(this, this); }
             // clang-format on
         }
 

@@ -13,7 +13,9 @@
 #include "Game/Player/PlayerClips.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/States/AirDashPlayerState.h"
 #include "Game/Player/States/BeforeContactPlayerState.h"
+#include "Game/Player/States/DashReboundPlayerState.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -108,7 +110,9 @@ void PlayerActor::OnInit()
                             GL::Player::BrakePlayerState,
                             GL::Player::TackleHitPlayerState,
                             GL::Player::ReboundPlayerState,
-                            GL::Player::SkidPlayerState>(this, m_states);
+                            GL::Player::SkidPlayerState,
+                            GL::Player::AirDashPlayerState,
+                            GL::Player::DashReboundPlayerState>(this, m_states);
 }
 
 GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
@@ -126,7 +130,18 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
         .rebounding = IsRebounding(),
         .forcedSlamming = IsBodySlamming() && m_slam.m_forced,
         .slamDirection = BodySlamDirection(),
+        .widenView = IsAirDashing() || IsDashRebounding(),
     };
+    // 地形の反動はカメラの向きを回さず、回す入力も止めない。スティックの基準がずれず、戻ったダッシュが思った向きへ出る
+    // 帯の縦は表で丸めた向きから取るので、同じ当て方なら毎回同じ画面になる
+    if (IsDashRebounding())
+    {
+        state.rebound.rebounding = true;
+        state.rebound.slamDirection = NS::Vector3{};
+        state.rebound.pullBack = false;
+        state.rebound.holdLook = false;
+        state.rebound.verticalLean = std::clamp(m_airDash.LastRebound().shifted.y, -1.0f, 1.0f);
+    }
     // 真ん中の反動は、飛んでいく相手を画面に残す。外れはいつもどおり自機だけを追う (外れのカメラは寄り無し)
     const GL::Level::ImpactRecord& impact = m_resolver->Answer().lastImpact;
     // 外れはカメラを突進の向きへ回り込ませない。回り込むと画面が振り回され、自機がどちらへ逸れたかも読めない
@@ -210,7 +225,11 @@ void PlayerActor::ObserveStep()
             director->RequestRespawnActors();
         }
     }
-    ObserveCharge(m_input->SlamHeld());
+    // 体当たりのボタンはエアダッシュに使う。押した瞬間に出すので、溜めには押しを渡さない
+    const bool pressHeld = m_input->SlamHeld();
+    m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
+    m_airDash.m_prevPressHeld = pressHeld;
+    ObserveCharge(false);
     m_resolver->ObserveImpact(SelfForImpact(), SlamMotion(), m_collider.get());
 }
 
@@ -329,6 +348,7 @@ void PlayerActor::VisualStep()
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
 #endif
+    DrawTerrainRebound();
 }
 
 const NS::AnimClip* PlayerActor::ChooseClip(float lateralSpeed) const noexcept
@@ -629,6 +649,16 @@ bool PlayerActor::IsRebounding() const noexcept
     return m_states != nullptr && m_states->IsCurrent<GL::Player::ReboundPlayerState>();
 }
 
+bool PlayerActor::IsAirDashing() const noexcept
+{
+    return m_states != nullptr && m_states->IsCurrent<GL::Player::AirDashPlayerState>();
+}
+
+bool PlayerActor::IsDashRebounding() const noexcept
+{
+    return m_states != nullptr && m_states->IsCurrent<GL::Player::DashReboundPlayerState>();
+}
+
 bool PlayerActor::IsReboundLanded() const noexcept
 {
     return IsRebounding() && GL::Player::PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity());
@@ -792,6 +822,9 @@ GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
         .skidding = IsSkidding(),
         .curled = IsCurled(),
         .canMoveBody = CanMoveBody(),
+        .airDashing = IsAirDashing(),
+        .dashRebounding = IsDashRebounding(),
+        .velocity = m_body->Velocity(),
     };
 }
 
@@ -805,6 +838,8 @@ void PlayerActor::ResetState() noexcept
     m_jumpsRemaining = 1;
     m_coyoteTimer = 0.0f;
     m_bufferTimer = 0.0f;
+    m_airControlReturning = false;
+    m_airControlReturnElapsed = 0.0f;
     m_body->SetGrounded(false);
     m_ledgeTopY = 0.0f;
     m_ledgeFaceNormal = NS::Vector3{0.0f, 0.0f, 0.0f};
@@ -820,6 +855,15 @@ void PlayerActor::ResetState() noexcept
     m_rebound.m_spinSpeed = 0.0f;
     m_rebound.m_missTumble.reset();
     m_skid = GL::Player::SkidStatus{};
+    // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
+    m_airDash.m_remaining = 1;
+    m_airDash.m_direction = NS::Vector3{};
+    m_airDash.m_dashElapsed = 0.0f;
+    m_airDash.m_pressed = false;
+    m_airDash.m_intended = NS::Vector3{};
+    m_airDash.m_reboundElapsed = 0.0f;
+    m_airDash.m_steeredRadians = 0.0f;
+    m_airDash.m_steerStarted = false;
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_collider->SetSphereShape(false);
@@ -855,6 +899,11 @@ void PlayerActor::PrepareStateStep()
                                                  m_states->IsCurrent<GL::Player::WalkPlayerState>(),
                                                  m_states->IsCurrent<GL::Player::FallPlayerState>(),
                                                  m_states->IsCurrent<GL::Player::ReboundPlayerState>());
+    if (CanStartAirDash())
+    {
+        BeginAirDash();
+        return;
+    }
     if (GL::Player::PlayerJudgeBodySlam::Judge(
             m_request.bufferRemaining, m_request.spent, m_slam.m_wasSlamming, locomotion))
     {

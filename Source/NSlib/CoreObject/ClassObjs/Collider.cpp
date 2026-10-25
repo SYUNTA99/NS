@@ -96,6 +96,7 @@ namespace NS
         moved.position = m_character->Position();
         moved.velocity = m_character->Velocity();
         moved.grounded = m_character->IsGrounded();
+        moved.blocked = m_character->BlockingNormal(moved.blockNormal);
         moved.inWorld = true;
         return moved;
     }

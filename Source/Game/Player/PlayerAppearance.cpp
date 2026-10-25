@@ -103,7 +103,13 @@ namespace GL
                 return;
             }
 
-            if (motion.bodySlamming)
+            if (motion.airDashing || motion.dashRebounding)
+            {
+                // 進む距離と回る角度を揃えて、今の進む向きへ転がす。真上・真下の間は水平の向きが無く、前の軸のまま
+                SetRollAxisToward(motion.velocity, m_spinAxis);
+                m_spinSpeed = motion.velocity.Length() * m_dashRollDegreesPerMeter;
+            }
+            else if (motion.bodySlamming)
             {
                 // 軸は水平の向きだけを見るので、突進の向きを使う。突進の速度の水平は向き ×
                 // 欄の速さで、速さが正なら同じ向き
