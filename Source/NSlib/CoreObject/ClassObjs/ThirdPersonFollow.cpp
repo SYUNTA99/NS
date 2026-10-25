@@ -620,14 +620,20 @@ namespace NS
         return m_distance;
     }
 
-    void ThirdPersonFollow::UpdateOcclusion(const IUseCollision* collision, const Vector3& look, float dt)
+    void ThirdPersonFollow::UpdateOcclusion(const IUseCollision* collision,
+                                            const Vector3& head,
+                                            const Vector3& look,
+                                            float dt)
     {
         NS_ASSERT(Scene, collision != nullptr, "UpdateOcclusion: 渡したアクターか部品が無い");
         const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
+        // カメラは注視点から前の向きの逆へ距離だけ離れる。頭から測ると、注視点が前へずれた分だけ短い
+        const float lookAhead = Dot(look - head, axes.forward);
+        const float probe = m_distance - lookAhead;
         float hitDistance = 0.0f;
-        if (RaycastCollision(collision, look, -axes.forward, m_distance, hitDistance))
+        if (probe > 0.0f && RaycastCollision(collision, head, -axes.forward, probe, hitDistance))
         {
-            const float goal = std::max(hitDistance - std::max(m_occlusionMargin, 0.0f), 0.0f);
+            const float goal = std::max(hitDistance + lookAhead - std::max(m_occlusionMargin, 0.0f), 0.0f);
             // 遮られた時は一度に縮めて壁の中を 1 フレームも見せない。遮りが遠のく時はなめらかに伸ばす
             if (!m_hasOccludedDistance || goal < m_occludedDistance)
             {
@@ -812,7 +818,7 @@ namespace NS
         m_widenNow = SpringApproach(m_widenNow, widenGoal, m_widenOmega, dt);
 
         const Vector3 look = UpdateReboundLook(head, root, rebound.verticalLean, dt);
-        UpdateOcclusion(collision, look, dt);
+        UpdateOcclusion(collision, head, look, dt);
         UpdateCharge(user, charge, framingHeld, target, look, dt);
     }
 

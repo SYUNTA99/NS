@@ -164,6 +164,36 @@ TEST(FollowDashRebound, TerrainBetweenShortensTheDistance)
     EXPECT_NEAR(DistanceOf(dash.Pose()), distance, 1.0e-2f);
 }
 
+// 壁の前で真上へ返る間、帯のずらしで注視点が壁の中へ入っても、自機と壁の間が空いていれば縮めない
+TEST(FollowDashRebound, LookInsideTheWallDoesNotCollapseTheDistance)
+{
+    DashScene dash;
+    dash.Step(120);
+    const float distance = DistanceOf(dash.Pose());
+    ASSERT_GT(distance, 3.0f);
+
+    // 追う相手の 0.6 m 奥に、カメラへ面を向けた壁を置く
+    NS::OBB wall;
+    wall.center = NS::Vector3{0.0f, 0.0f, 1.6f};
+    wall.halfExtentX = 10.0f;
+    wall.halfExtentY = 20.0f;
+    wall.halfExtentZ = 1.0f;
+    (void)dash.scene.Physics().AddBox(wall, NS::Phys::ObjectLayers::Terrain);
+
+    dash.target->rebound.rebounding = true;
+    dash.target->rebound.holdLook = false;
+    dash.target->rebound.pullBack = false;
+    dash.target->rebound.verticalLean = 1.0f;
+    float shortest = distance;
+    for (int frame = 1; frame <= 40; ++frame)
+    {
+        dash.target->Root().SetPosition(NS::Vector3{0.0f, 0.25f * static_cast<float>(frame), 0.0f});
+        dash.Step(1);
+        shortest = std::min(shortest, DistanceOf(dash.Pose()));
+    }
+    EXPECT_GT(shortest, distance * 0.5f);
+}
+
 // 縦の向きが壊れた反動は受けない
 TEST(FollowDashRebound, RejectsABrokenVerticalLean)
 {
