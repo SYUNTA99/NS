@@ -194,6 +194,73 @@ TEST(FollowDashRebound, LookInsideTheWallDoesNotCollapseTheDistance)
     EXPECT_GT(shortest, distance * 0.5f);
 }
 
+// 天井の下で頭の高さが天井の中に入っても、自機と天井の下の間が空いていれば縮めない
+TEST(FollowDashRebound, HeadInsideTheCeilingDoesNotCollapseTheDistance)
+{
+    DashScene dash;
+    dash.Step(120);
+    const NS::CameraPose open = dash.Pose();
+    const float distance = DistanceOf(open);
+    ASSERT_GT(distance, 3.0f);
+    NS::Vector3 back = open.position - open.target;
+    back.y = 0.0f;
+    back.Normalize();
+    ASSERT_GT(std::fabs(back.z), 0.99f);
+
+    // 頭の高さを中に含む薄い天井。自機の真上から前へ広がり、カメラの側へは 0.3 m だけ出る
+    const float headY = open.target.y;
+    NS::OBB ceiling;
+    ceiling.center = NS::Vector3{0.0f, headY + 0.1f, 0.0f} - back * 0.6f;
+    ceiling.halfExtentX = 3.0f;
+    ceiling.halfExtentY = 0.5f;
+    ceiling.halfExtentZ = 0.9f;
+    (void)dash.scene.Physics().AddBox(ceiling, NS::Phys::ObjectLayers::Terrain);
+
+    float shortest = distance;
+    for (int frame = 0; frame < 10; ++frame)
+    {
+        dash.Step(1);
+        shortest = std::min(shortest, DistanceOf(dash.Pose()));
+    }
+    EXPECT_GT(shortest, distance * 0.8f);
+}
+
+// 上へ返って天井の下へ入る間、天井がカメラと自機の間に無ければ縮めない
+TEST(FollowDashRebound, CeilingAboveTheViewLineDoesNotShortenTheDistance)
+{
+    DashScene dash;
+    dash.Step(120);
+    const NS::CameraPose open = dash.Pose();
+    const float distance = DistanceOf(open);
+    NS::Vector3 back = open.position - open.target;
+    back.y = 0.0f;
+    back.Normalize();
+    ASSERT_GT(std::fabs(back.z), 0.99f);
+    const float headAboveRoot = open.target.y - dash.target->Root().Position().y;
+
+    // 根が 4.5 m まで上がった時の頭の 0.2 m 上に下の面がある天井。自機の真上からカメラの側へ 1.5 m 張り出す
+    const float topRoot = 4.5f;
+    NS::OBB ceiling;
+    ceiling.center = NS::Vector3{0.0f, topRoot + headAboveRoot + 0.2f + 0.5f, 0.0f} - back * 1.5f;
+    ceiling.halfExtentX = 3.0f;
+    ceiling.halfExtentY = 0.5f;
+    ceiling.halfExtentZ = 3.0f;
+    (void)dash.scene.Physics().AddBox(ceiling, NS::Phys::ObjectLayers::Terrain);
+
+    dash.target->rebound.rebounding = true;
+    dash.target->rebound.holdLook = false;
+    dash.target->rebound.pullBack = false;
+    dash.target->rebound.verticalLean = 1.0f;
+    float shortest = distance;
+    for (int frame = 1; frame <= 30; ++frame)
+    {
+        dash.target->Root().SetPosition(NS::Vector3{0.0f, topRoot * static_cast<float>(frame) / 30.0f, 0.0f});
+        dash.Step(1);
+        shortest = std::min(shortest, DistanceOf(dash.Pose()));
+    }
+    EXPECT_GT(shortest, distance * 0.8f);
+}
+
 // 縦の向きが壊れた反動は受けない
 TEST(FollowDashRebound, RejectsABrokenVerticalLean)
 {

@@ -209,9 +209,14 @@ namespace NS
                                                     float verticalLean,
                                                     float dt) noexcept;
 
-        // 追う相手の頭から後ろへの光線で地形を探し、見せる距離の上限を 1 フレーム進める。
-        // 注視点から撃たないのは、反動の間の注視点が遅れと帯のずらしで地形の中へ入る事があるため
-        void UpdateOcclusion(const IUseCollision* collision, const Vector3& head, const Vector3& look, float dt);
+        // 追う相手の頭から置きたいカメラの位置への光線で地形を探し、見せる距離の上限を 1 フレーム進める。
+        // 注視点から撃たないのは、反動の間の注視点が遅れと帯のずらしで地形の中へ入る事があるため。
+        // root は地形の外にある点 (追う相手の体の中心) で、頭が天井に入る時はその間で遮られた手前から撃つ
+        void UpdateOcclusion(const IUseCollision* collision,
+                             const Vector3& root,
+                             const Vector3& head,
+                             const Vector3& look,
+                             float dt);
 
         // 描く視野角。溜めの締めを引き、速い間の広げを足す。帯・構図・描く時が同じ値を読む
         [[nodiscard]] float ViewFovRadians() const noexcept;

@@ -621,19 +621,33 @@ namespace NS
     }
 
     void ThirdPersonFollow::UpdateOcclusion(const IUseCollision* collision,
+                                            const Vector3& root,
                                             const Vector3& head,
                                             const Vector3& look,
                                             float dt)
     {
         NS_ASSERT(Scene, collision != nullptr, "UpdateOcclusion: 渡したアクターか部品が無い");
-        const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
-        // カメラは注視点から前の向きの逆へ距離だけ離れる。頭から測ると、注視点が前へずれた分だけ短い
-        const float lookAhead = Dot(look - head, axes.forward);
-        const float probe = m_distance - lookAhead;
-        float hitDistance = 0.0f;
-        if (probe > 0.0f && RaycastCollision(collision, head, -axes.forward, probe, hitDistance))
+        const float margin = std::max(m_occlusionMargin, 0.0f);
+        // 頭の高さは体より上にあり、天井の下では地形の中へ入る。中から撃つと 0 で当たって潰れるので、
+        // 掃引で地形の外にある根から頭へ撃ち、遮られたらその手前から撃つ
+        Vector3 origin = head;
+        const Vector3 rise = head - root;
+        const float riseLength = rise.Length();
+        float riseHit = 0.0f;
+        if (riseLength > k_Epsilon && RaycastCollision(collision, root, rise * (1.0f / riseLength), riseLength, riseHit))
         {
-            const float goal = std::max(hitDistance + lookAhead - std::max(m_occlusionMargin, 0.0f), 0.0f);
+            origin = root + rise * (std::max(riseHit - margin, 0.0f) / riseLength);
+        }
+        // 出発点から、注視点の後ろの置きたいカメラの位置へ撃つ。前の向きの逆へ撃つと、注視点が頭より
+        // 下へずれた時に線がカメラより上を通り、カメラと自機の間に無い天井で縮む
+        const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
+        const Vector3 toCamera = look - axes.forward * m_distance - origin;
+        const float probe = toCamera.Length();
+        float hitDistance = 0.0f;
+        if (probe > k_Epsilon && RaycastCollision(collision, origin, toCamera * (1.0f / probe), probe, hitDistance))
+        {
+            // 当たった所までの割合だけ距離を縮める。出発点と注視点は近いので、カメラは当たった所の手前に来る
+            const float goal = std::max(m_distance * (hitDistance / probe) - margin, 0.0f);
             // 遮られた時は一度に縮めて壁の中を 1 フレームも見せない。遮りが遠のく時はなめらかに伸ばす
             if (!m_hasOccludedDistance || goal < m_occludedDistance)
             {
@@ -818,7 +832,7 @@ namespace NS
         m_widenNow = SpringApproach(m_widenNow, widenGoal, m_widenOmega, dt);
 
         const Vector3 look = UpdateReboundLook(head, root, rebound.verticalLean, dt);
-        UpdateOcclusion(collision, head, look, dt);
+        UpdateOcclusion(collision, root, head, look, dt);
         UpdateCharge(user, charge, framingHeld, target, look, dt);
     }
 
