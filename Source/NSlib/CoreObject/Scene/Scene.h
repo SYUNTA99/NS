@@ -34,6 +34,10 @@ namespace NS
     {
         class D3DDevice;
     }
+    namespace Audio
+    {
+        class AudioDevice;
+    }
 } // namespace NS
 
 namespace NS
@@ -116,6 +120,11 @@ namespace NS
 
         //! 装置を非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
         void SetDevice(Gfx::D3DDevice* device) noexcept { m_sceneRenderer.SetDevice(device); }
+
+        //! 音の装置を非所有で差す。PlaySound が使う。未設定 (テスト・当たりの下見) は鳴らさない
+        void SetAudioDevice(Audio::AudioDevice* device) noexcept { m_audioDevice = device; }
+        //! 音の装置。受け取っていなければ nullptr
+        [[nodiscard]] Audio::AudioDevice* GetAudioDevice() const noexcept { return m_audioDevice; }
 
         //! @brief 次に描くフレームから使う床の波を書く。強さ 0 で消える
         void SetGroundWave(const Gfx::GroundWave& wave) noexcept { m_sceneRenderer.SetGroundWave(wave); }
@@ -288,6 +297,7 @@ namespace NS
 
         // 描く物は持ち主の OnEndPlay で外れるので、アクターより先に宣言して後に破棄する
         SceneRenderer m_sceneRenderer;
+        Audio::AudioDevice* m_audioDevice = nullptr; // 借りるだけ。持ち主は Application
         // m_sceneObjs が持つ CourseDirector が破棄で暗転を取り消すので、m_sceneObjs より先に宣言して後に破棄する
         ScreenFadeDirector m_fade;
         // アクターが持つ画面は破棄で自分を外すので、アクターより先に宣言して後に破棄する

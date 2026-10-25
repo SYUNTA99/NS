@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/EffectName.h"
+#include "NSlib/CoreObject/Reflection/SoundName.h"
 
 #include <cmath>
 #include <cstddef>
@@ -28,6 +29,7 @@ namespace NS
         Model,
         Animation,
         Effect,
+        Sound,
     };
 
     template <class T> constexpr AssetKind AssetKindOf() noexcept
@@ -52,6 +54,10 @@ namespace NS
         {
             return AssetKind::Effect;
         }
+        else if constexpr (std::is_same_v<T, SoundName>)
+        {
+            return AssetKind::Sound;
+        }
         return AssetKind::None;
     }
 
@@ -65,7 +71,7 @@ namespace NS
         Vector3,
         Quaternion,
         Color,  // 欄は NS::Color。保存は [r,g,b,a] の 4 成分
-        String, // 欄は std::string か EffectName。取得・設定の関数が受け渡すのは std::string
+        String, // 欄は std::string か EffectName か SoundName。取得・設定の関数が受け渡すのは std::string
         ActorRef,
         Curve,
         Asset, // 欄は素材の姿のポインタ。取得・設定の関数が受け渡すのは道の std::string
@@ -104,7 +110,7 @@ namespace NS
         {
             return FieldType::OptionalColor;
         }
-        else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, EffectName>)
+        else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, EffectName> || std::is_same_v<T, SoundName>)
         {
             return FieldType::String;
         }
@@ -125,7 +131,7 @@ namespace NS
             static_assert(
                 std::is_same_v<T, Vector3>,
                 "FieldTypeOf の T は float / int / bool / NS::Vector2 / NS::Vector3 / NS::Quaternion / NS::Color / "
-                "std::optional<NS::Color> / std::string / EffectName / ActorRef / Curve / IsAssetPointer に並ぶ素材の姿のポインタ のいずれか");
+                "std::optional<NS::Color> / std::string / EffectName / SoundName / ActorRef / Curve / IsAssetPointer に並ぶ素材の姿のポインタ のいずれか");
             return FieldType::Vector3;
         }
     }
@@ -166,7 +172,7 @@ namespace NS
         {
             static_cast<std::string*>(out)->assign(AssetFieldName(source));
         }
-        else if constexpr (std::is_same_v<Field, EffectName>)
+        else if constexpr (std::is_same_v<Field, EffectName> || std::is_same_v<Field, SoundName>)
         {
             *static_cast<std::string*>(out) = source.name;
         }
@@ -191,7 +197,7 @@ namespace NS
         {
             LoadAssetField(target, *static_cast<const std::string*>(in));
         }
-        else if constexpr (std::is_same_v<Field, EffectName>)
+        else if constexpr (std::is_same_v<Field, EffectName> || std::is_same_v<Field, SoundName>)
         {
             target.name = *static_cast<const std::string*>(in);
         }
@@ -361,7 +367,7 @@ namespace NS
 
 //! 宣言済みのメンバを 1 フィールドとして登録する。メンバの宣言はしないので、クラスに別に書く
 //! private も入れ子の struct のメンバ (m_tuning.speed) も書ける
-//! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectName の型で欄の種類が決まる
+//! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectName、音は SoundName の型で欄の種類が決まる
 //! float と float の組の欄は IsFiniteFieldValue を通るので、非有限値の書き込みは捨てて元の値が残る (NS_ACCESSOR も同じ)
 //! name は保存の鍵。3 つ目に見せる名前を書くと、インスペクタは name の代わりにそれを見せる
 #define NS_FIELD(member, name, ...) NS_FIELD_ENTRY(member, name, NS::FieldScope::Shared, __VA_ARGS__)

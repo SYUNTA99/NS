@@ -1,5 +1,6 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 
+#include "NSlib/Audio/SoundClip.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Core/Logger.h"
@@ -9,6 +10,7 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/CoreObject/Asset/SkinnedModel.h"
+#include "NSlib/CoreObject/Asset/SoundClip.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/Gfx/D3DMaterial.h"
@@ -913,8 +915,36 @@ namespace NS
         }
     }
 
+    void AssetManager::SetAudioDevice(Audio::AudioDevice* device) noexcept
+    {
+        // 前に読んだ音は前の装置で作ったか、音を作っていないので、読む前にだけ渡す
+        NS_ASSERT(Audio, m_soundClips.empty(), "AssetManager::SetAudioDevice: 音を読んだ後に装置を替えた");
+        m_audioDevice = device;
+    }
+
+    SoundClip* AssetManager::LoadSoundClip(std::string_view path)
+    {
+        const std::string key = NameKey(path);
+        return &FindOrAdd(m_soundClips, key, [this, &key]() -> std::unique_ptr<SoundClip> {
+            if (m_audioDevice == nullptr || key.empty())
+            {
+                return std::make_unique<SoundClip>(key, nullptr);
+            }
+            const std::optional<std::string> file = ResolveContentPath(key);
+            if (!file)
+            {
+                NS_LOG_ERROR(Audio, "音 {} は ContentRoot の外を指すので読まない", key);
+                return std::make_unique<SoundClip>(key, nullptr);
+            }
+            // 読めない理由は SoundClip が ERROR で出す
+            return std::make_unique<SoundClip>(key, std::make_unique<Audio::SoundClip>(m_audioDevice, *file));
+        });
+    }
+
     void AssetManager::Clear() noexcept
     {
+        // 音は装置の声を持つので、装置を壊す Application より先にここで捨てる
+        m_soundClips.clear();
         // material は shader / texture を参照するので先に解放する
         m_materials.clear();
         m_textures.clear();

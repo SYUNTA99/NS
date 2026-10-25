@@ -29,7 +29,7 @@ namespace NS
         [[nodiscard]] bool IsActorFileAssetPath(std::string_view path);
 
         //! contentRoot 配下の Assets と組み込みから候補を集める。保存用の道筋は contentRoot 相対
-        //! アニメーションはファイル内の動きごと、エフェクトは Effects 相対の拡張子なしの名前を返す
+        //! アニメーションはファイル内の動きごと、エフェクトは Effects 相対、音は Sounds 相対の拡張子なしの名前を返す
         [[nodiscard]] std::vector<AssetOption> CollectAssetOptions(AssetKind kind, std::string_view contentRoot);
 
         //! 六方向の PNG の存在、または単一の DDS キューブマップのヘッダーを確認する。

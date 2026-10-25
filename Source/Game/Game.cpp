@@ -38,6 +38,7 @@ void Game::OnAttach()
 
     // LoadScene で立てるシーンへ引き継ぐので、LoadScene より前に呼ぶ
     m_scenes.SetDevice(&app->Device());
+    m_scenes.SetAudioDevice(app->AudioDevice());
 
     // 同梱シーンを読む。読めなければ何も置かない空のシーンを立てる
     // 遊べる物を代わりに合成すると、パッケージの取りこぼしが遊べる風の画面に隠れて気づけない

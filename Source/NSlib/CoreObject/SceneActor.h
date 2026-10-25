@@ -3,6 +3,7 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/IUse/IUseAudio.h"
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/CoreObject/IUse/IUseCollision.h"
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
@@ -32,6 +33,7 @@ namespace NS
     class Shadow;
     class Collision;
     class Effect;
+    class Sound;
     class HitReaction;
     class ActionTimeline;
     struct ActionTimelineSelf;
@@ -46,6 +48,7 @@ namespace NS
                        public IUseSceneSystem,
                        public IUseCollision,
                        public IUseEffect,
+                       public IUseAudio,
                        public IUseHitSensor,
                        public IUseRenderer,
                        public IUseState
@@ -96,6 +99,9 @@ namespace NS
         // 出したエフェクトを記録する部品。持たなければ nullptr
         [[nodiscard]] Effect* GetEffect() const noexcept override { return m_effect.get(); }
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept override;
+        // 読んだ音を覚える部品。持たなければ nullptr
+        [[nodiscard]] Sound* GetSound() const noexcept override { return m_sound.get(); }
+        [[nodiscard]] Audio::AudioDevice* GetAudioDevice() const noexcept override;
 
         //! 個体の位置・回転・大きさを持つ部品
         [[nodiscard]] Transform& Root() noexcept;
@@ -312,6 +318,7 @@ namespace NS
         std::unique_ptr<HitSensor> m_attackSensor;
         std::unique_ptr<HitReaction> m_hitReaction;
         std::unique_ptr<Effect> m_effect;
+        std::unique_ptr<Sound> m_sound;
         std::unique_ptr<ActionTimeline> m_actionTimeline;
         // 状態が借りる部品より先に壊すので、部品の最後に置く。組むのは BuildStateMachine だけ
         std::unique_ptr<StateMachine> m_stateMachine;

@@ -1,6 +1,7 @@
 #include "NSlib/App/Application.h"
 
 #include "NSlib/App/Layer.h"
+#include "NSlib/Audio/AudioDevice.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
@@ -45,6 +46,7 @@ namespace NS
             fixedDelta = OS::FrameTimer::k_DefaultFixedDelta;
         }
         OS::FrameTimer::SetFixedDelta(fixedDelta);
+        m_enableAudio = desc.enableAudio;
 
         m_window = std::make_unique<OS::Window>(desc.window);
         if (!m_window->IsValid())
@@ -135,6 +137,11 @@ namespace NS
         return *m_assets;
     }
 
+    Audio::AudioDevice* Application::AudioDevice() const noexcept
+    {
+        return m_audio.get();
+    }
+
     void Application::AddLayer(std::unique_ptr<Layer> layer)
     {
         m_layers.AddLayer(std::move(layer));
@@ -169,7 +176,13 @@ namespace NS
         DrainPendingQuit();
         OS::FrameTimer::Reset();
 
+        // 音を作れなくても遊べるので、装置が無効でも起動を断らない
+        if (m_enableAudio)
+        {
+            m_audio = std::make_unique<Audio::AudioDevice>(true);
+        }
         m_assets = std::make_unique<AssetManager>(OS::FileSystem::ContentRoot());
+        m_assets->SetAudioDevice(m_audio.get());
         m_assetsScope = std::make_unique<AssetManagerScope>(*m_assets);
 
         for (std::unique_ptr<Layer>& layer : m_layers)
@@ -247,6 +260,11 @@ namespace NS
                 }
             }
 
+            if (m_audio)
+            {
+                m_audio->Update();
+            }
+
             device.BeginFrame();
 
             for (std::unique_ptr<Layer>& layer : stack)
@@ -292,10 +310,18 @@ namespace NS
         }
 
         m_assetsScope.reset();
+        if (m_audio)
+        {
+            // 鳴っている途中の 1 回の音が、Clear で捨てるデータを XAudio2 のスレッドに読ませないよう、先に止める
+            m_audio->Suspend();
+        }
         if (m_assets)
         {
             m_assets->Clear();
+            m_assets->SetAudioDevice(nullptr);
         }
+        // シーンの音は OnDetach で、アセットの音は Clear で放したので、ここで装置を壊せる
+        m_audio.reset();
         m_device.reset();
         m_window.reset();
     }

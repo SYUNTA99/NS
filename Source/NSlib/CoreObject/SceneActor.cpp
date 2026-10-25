@@ -12,6 +12,7 @@
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
+#include "NSlib/CoreObject/ClassObjs/Sound.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
@@ -38,6 +39,7 @@ namespace NS
     NS_CLASSOBJ(m_attackSensor, "AttackSensor")
     NS_CLASSOBJ(m_hitReaction, "HitReaction")
     NS_CLASSOBJ(m_effect, "Effect")
+    NS_CLASSOBJ(m_sound, "Sound")
     NS_CLASSOBJ(m_actionTimeline, "ActionTimeline")
     NS_CLASSOBJ(m_stateMachine, "StateMachine")
     NS_REFLECT_END_IMPL()
@@ -149,6 +151,15 @@ namespace NS
             return nullptr;
         }
         return m_scene->GetEffectScene();
+    }
+
+    Audio::AudioDevice* SceneActor::GetAudioDevice() const noexcept
+    {
+        if (m_scene == nullptr)
+        {
+            return nullptr;
+        }
+        return m_scene->GetAudioDevice();
     }
 
     CameraManager* SceneActor::GetCameraManager() const noexcept
