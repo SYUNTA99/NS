@@ -233,6 +233,39 @@ TEST(PlayerAirDashTest, SteeringNeverTurnsMoreThanTheLimit)
     EXPECT_LE(largest, limit + 1.0e-3f);
 }
 
+// 地形の反動はカメラを回さず、回す入力も止めない。縦の向きは返った向きの縦の成分で渡し、ダッシュと反動の間は視野を広げる
+TEST(PlayerAirDashTest, CameraStateDuringDashAndTerrainRebound)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    const GL::Player::CameraTargetState dashing = player->GetCameraTargetState();
+    EXPECT_TRUE(dashing.rebound.widenView);
+    EXPECT_FALSE(dashing.rebound.rebounding);
+
+    // 前 (画面の上) へ倒したまま当てると、後ろ上へずれて返る
+    for (int frame = 0; frame < 30 && !player->IsDashRebounding(); ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->IsDashRebounding());
+    ASSERT_GT(player->AirDash().LastRebound().shifted.y, 0.5f);
+    const GL::Player::CameraTargetState rebounding = player->GetCameraTargetState();
+    EXPECT_TRUE(rebounding.rebound.rebounding);
+    EXPECT_TRUE(rebounding.rebound.widenView);
+    EXPECT_FALSE(rebounding.rebound.holdLook);
+    EXPECT_FLOAT_EQ(rebounding.rebound.slamDirection.Length(), 0.0f);
+    EXPECT_FLOAT_EQ(rebounding.rebound.verticalLean, player->AirDash().LastRebound().shifted.y);
+
+    player->ResetState();
+    EXPECT_FALSE(player->GetCameraTargetState().rebound.widenView);
+}
+
 TEST(PlayerAirDashTest, ResetStateEndsTheReboundAndRestoresTheDash)
 {
     NS::Scene scene;

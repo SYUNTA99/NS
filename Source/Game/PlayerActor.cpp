@@ -130,7 +130,18 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
         .rebounding = IsRebounding(),
         .forcedSlamming = IsBodySlamming() && m_slam.m_forced,
         .slamDirection = BodySlamDirection(),
+        .widenView = IsAirDashing() || IsDashRebounding(),
     };
+    // 地形の反動はカメラの向きを回さず、回す入力も止めない。スティックの基準がずれず、戻ったダッシュが思った向きへ出る
+    // 帯の縦は表で丸めた向きから取るので、同じ当て方なら毎回同じ画面になる
+    if (IsDashRebounding())
+    {
+        state.rebound.rebounding = true;
+        state.rebound.slamDirection = NS::Vector3{};
+        state.rebound.pullBack = false;
+        state.rebound.holdLook = false;
+        state.rebound.verticalLean = std::clamp(m_airDash.LastRebound().shifted.y, -1.0f, 1.0f);
+    }
     // 真ん中の反動は、飛んでいく相手を画面に残す。外れはいつもどおり自機だけを追う (外れのカメラは寄り無し)
     const GL::Level::ImpactRecord& impact = m_resolver->Answer().lastImpact;
     // 外れはカメラを突進の向きへ回り込ませない。回り込むと画面が振り回され、自機がどちらへ逸れたかも読めない
