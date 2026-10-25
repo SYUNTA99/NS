@@ -492,10 +492,6 @@ void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
             {
                 ed.OpenSaveModal();
             }
-            if (ImGui::MenuItem("レベルを開く...", "Ctrl+O", false, editEnabled))
-            {
-                ed.OpenLoadModal();
-            }
             ImGui::Separator();
             if (ImGui::MenuItem("終了", "Alt+F4"))
             {

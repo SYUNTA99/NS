@@ -139,10 +139,6 @@ namespace NS
                     RequestSave();
                 }
             }
-            if (kb.IsPressed(OS::Key::O))
-            {
-                OpenLoadModal();
-            }
         }
 
         void EditorMode::RequestSave() noexcept

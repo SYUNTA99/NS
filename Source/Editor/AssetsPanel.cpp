@@ -4,6 +4,7 @@
 #include "Editor/AssetPreview.h"
 #include "Editor/DragTypes.h"
 #include "Editor/LevelEditorController.h"
+#include "Editor/LevelFilePaths.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
@@ -50,6 +51,7 @@ namespace NS
                 }
 
                 RenderTree(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"), editor);
+                RenderSceneOpen(editor);
             }
             ImGui::End();
 #else
@@ -58,6 +60,60 @@ namespace NS
         }
 
 #if NS_EDITOR_ENABLED
+        bool AssetsPanel::OpenPendingScene(LevelEditorController& editor)
+        {
+            if (!editor.Editor().OpenLevel(m_pendingSceneName))
+            {
+                m_sceneOpenError = "シーンを読み込めませんでした: " + m_pendingSceneName;
+                m_pendingSceneName.clear();
+                return false;
+            }
+            m_pendingSceneName.clear();
+            m_sceneOpenError.clear();
+            return true;
+        }
+
+        void AssetsPanel::RenderSceneOpen(LevelEditorController& editor)
+        {
+            bool opened = false;
+            if (!m_pendingSceneName.empty() && editor.IsSceneEditable())
+            {
+                if (editor.Editor().HasUnsavedChanges())
+                {
+                    ImGui::OpenPopup("シーンの切り替え");
+                }
+                else
+                {
+                    opened = OpenPendingScene(editor);
+                }
+            }
+            if (ImGui::BeginPopupModal("シーンの切り替え", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                ImGui::TextUnformatted("未保存の変更があります。変更を破棄してシーンを開きますか？");
+                ImGui::TextUnformatted(m_pendingSceneName.c_str());
+                if (ImGui::Button("破棄して開く"))
+                {
+                    opened = OpenPendingScene(editor);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("キャンセル"))
+                {
+                    m_pendingSceneName.clear();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+            if (opened)
+            {
+                ImGui::SetWindowFocus(k_PanelScene);
+            }
+            if (!m_sceneOpenError.empty())
+            {
+                ImGui::TextWrapped("%s", m_sceneOpenError.c_str());
+            }
+        }
+
         const Gfx::D3DTexture* AssetsPanel::LoadThumbnail(const std::string& file)
         {
             Application* app = Application::Get();
@@ -192,7 +248,25 @@ namespace NS
             std::vector<std::string> previewFiles;
             for (const std::string& file : files)
             {
-                if (IsMaterialAssetPath(file) || IsModelAssetPath(file) || IsTextureAssetPath(file))
+                const std::optional<std::string> relative =
+                    OS::FileSystem::RelativeUnder(OS::FileSystem::ContentRoot(), file);
+                std::string sceneName;
+                if (relative)
+                {
+                    sceneName = LevelNameOfScenePath(*relative);
+                }
+                if (!sceneName.empty() && sceneName.find('/') != std::string::npos)
+                {
+                    ImGui::BeginDisabled(!editor.IsSceneEditable());
+                    const bool selected = editor.Editor().CurrentLevelName() == sceneName;
+                    if (ImGui::Selectable(OS::FileSystem::FileName(file).c_str(), selected))
+                    {
+                        m_sceneOpenError.clear();
+                        m_pendingSceneName = sceneName;
+                    }
+                    ImGui::EndDisabled();
+                }
+                else if (IsMaterialAssetPath(file) || IsModelAssetPath(file) || IsTextureAssetPath(file))
                 {
                     previewFiles.push_back(file);
                 }

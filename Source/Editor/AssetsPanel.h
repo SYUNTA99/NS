@@ -19,7 +19,6 @@ namespace NS
     }
     namespace Editor
     {
-        //! 素材ツリーからマテリアル・メッシュ・画像・.actor を選ぶ。ドラッグで材質の適用とメッシュの配置ができる
         class AssetsPanel : public NonCopyable
         {
         public:
@@ -32,9 +31,13 @@ namespace NS
             void RenderTree(std::string_view dir, LevelEditorController& editor) noexcept;
             void RenderFiles(const std::vector<std::string>& files, LevelEditorController& editor);
             void RenderTile(const std::string& file, LevelEditorController& editor, float width);
+            void RenderSceneOpen(LevelEditorController& editor);
+            [[nodiscard]] bool OpenPendingScene(LevelEditorController& editor);
             const Gfx::D3DTexture* LoadThumbnail(const std::string& file);
 
             std::map<std::string, std::unique_ptr<Gfx::D3DRenderTarget>> m_previews;
+            std::string m_pendingSceneName;
+            std::string m_sceneOpenError;
         };
     } // namespace Editor
 } // namespace NS

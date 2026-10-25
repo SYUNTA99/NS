@@ -107,7 +107,7 @@ namespace NS
 
             //! @brief 編集の入力を 1 固定ステップ分進める
             //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
-            //! 真の間は R・Ctrl+Z・Ctrl+S・Ctrl+O・数字のキーを受けない
+            //! 真の間は R・Ctrl+Z・Ctrl+S・数字のキーを受けない
             void Tick(bool editShortcutsBlocked) noexcept;
 
             //! @brief カーソル位置に置いた時のプレビュー枠を、Scene タブの図形として積む
