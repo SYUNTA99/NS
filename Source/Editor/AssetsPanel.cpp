@@ -11,6 +11,11 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
+#include "NSlib/CoreObject/ActorInitInfo.h"
+#include "NSlib/CoreObject/ClassObjs/Animation.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Core/Logger.h"
@@ -29,6 +34,14 @@ namespace NS
 {
     namespace Editor
     {
+        struct AssetsPanel::ActorThumbnail
+        {
+            nlohmann::json source;
+            uint64 editVersion = 0;
+            bool rendered = false;
+            std::unique_ptr<Gfx::D3DRenderTarget> target;
+        };
+
         AssetsPanel::AssetsPanel() = default;
         AssetsPanel::~AssetsPanel() = default;
 
@@ -208,12 +221,68 @@ namespace NS
             }
         }
 
-        const Gfx::D3DTexture* AssetsPanel::LoadThumbnail(const std::string& file)
+        const Gfx::D3DTexture* AssetsPanel::LoadActorThumbnail(const std::string& file, LevelEditorController& editor)
+        {
+            const std::string name = OS::FileSystem::Stem(file);
+            const nlohmann::json* values = ActorFileLibrary::Get().Values(name);
+            if (values == nullptr)
+            {
+                return nullptr;
+            }
+            std::unique_ptr<ActorThumbnail>& cached = m_actorThumbnails[file];
+            if (!cached)
+            {
+                cached = std::make_unique<ActorThumbnail>();
+            }
+            const uint64 version = editor.Editor().Undo().Version();
+            if (cached->source == *values && cached->editVersion == version)
+            {
+                if (cached->rendered)
+                {
+                    return cached->target->Color();
+                }
+                return nullptr;
+            }
+            cached->source = *values;
+            cached->editVersion = version;
+            cached->rendered = false;
+            const std::unique_ptr<SceneActor> actor = CreateActorOfClass(
+                ActorFileLibrary::Get().ClassNameOf(name), ActorInitInfo{.actorFile = name});
+            if (!actor || actor->ModelClassObj() == nullptr)
+            {
+                return nullptr;
+            }
+            if (Animation* animation = actor->AnimationClassObj())
+            {
+                animation->BindToModel(actor->ModelClassObj());
+            }
+            const std::optional<Gfx::DrawItem> item = MakeAssetPreviewItem(*actor);
+            if (!item)
+            {
+                return nullptr;
+            }
+            if (!cached->target)
+            {
+                cached->target = Gfx::D3DRenderTarget::Create({80, 80});
+            }
+            cached->rendered = RenderAssetPreview(Application::Get()->Device(), *cached->target, *item);
+            if (!cached->rendered)
+            {
+                return nullptr;
+            }
+            return cached->target->Color();
+        }
+
+        const Gfx::D3DTexture* AssetsPanel::LoadThumbnail(const std::string& file, LevelEditorController& editor)
         {
             Application* app = Application::Get();
             if (app == nullptr || !app->IsValid())
             {
                 return nullptr;
+            }
+            if (IsActorFileAssetPath(file))
+            {
+                return LoadActorThumbnail(file, editor);
             }
             AssetManager& assets = AssetManager::Get();
             if (IsTextureAssetPath(file))
@@ -288,7 +357,7 @@ namespace NS
                                                    low.y + std::min(y + 8.0f, thumb)}, color);
                     }
                 }
-                if (const Gfx::D3DTexture* image = LoadThumbnail(file))
+                if (const Gfx::D3DTexture* image = LoadThumbnail(file, editor))
                 {
                     const Size2D size = image->Size();
                     const float scale = thumb / static_cast<float>(std::max(size.width, size.height));
@@ -360,17 +429,10 @@ namespace NS
                     }
                     ImGui::EndDisabled();
                 }
-                else if (IsMaterialAssetPath(file) || IsModelAssetPath(file) || IsTextureAssetPath(file))
+                else if (IsMaterialAssetPath(file) || IsModelAssetPath(file) || IsTextureAssetPath(file) ||
+                         IsActorFileAssetPath(file))
                 {
                     previewFiles.push_back(file);
-                }
-                else if (IsActorFileAssetPath(file))
-                {
-                    // 絵を持たないので行で出す。選ぶとインスペクタで欄を直せる
-                    if (ImGui::Selectable(OS::FileSystem::FileName(file).c_str(), editor.IsAssetSelected(file)))
-                    {
-                        editor.SelectAsset(file);
-                    }
                 }
                 else
                 {

@@ -15,6 +15,7 @@
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "TestLogCapture.h"
+#include "Tests/TestActorFile.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -390,6 +391,51 @@ TEST_F(EditorAssetPreview, AssetsShowsMaterialsModelsAndTexturesBeforeSelection)
     io.AddMouseButtonEvent(0, false);
     (void)Frame(true);
     EXPECT_EQ(m_editor.SelectedAssetPath(), "Assets/Textures/cube_test.png");
+}
+
+TEST_F(EditorAssetPreview, ActorThumbnailsShowTheirColorsAndRefreshAfterEditing)
+{
+    const ScopedActorFileEdit color("PropActor", [](nlohmann::json& document) {
+        NS::ActorJsonClassObjs(document)["Model"]["基本色"] = {1.0f, 0.0f, 0.0f, 1.0f};
+    });
+    (void)Frame(true);
+    const std::vector<ImTextureID> before = ShownImages();
+    const std::size_t actorCount = m_scene.Actors().ActorCount();
+    OpenAssetFolder("Actors");
+    int thumbnails = 0;
+    for (const ImTextureID image : ShownImages())
+    {
+        if (std::find(before.begin(), before.end(), image) == before.end())
+        {
+            ++thumbnails;
+        }
+    }
+    ASSERT_GT(thumbnails, 0);
+    const std::vector<NS::uint8> red = Frame(true);
+    const nlohmann::json* original = NS::ActorFileLibrary::Get().Find("PropActor");
+    ASSERT_NE(original, nullptr);
+    nlohmann::json edited = *original;
+    NS::ActorJsonClassObjs(edited)["Model"]["基本色"] = {0.0f, 0.0f, 1.0f, 1.0f};
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", edited));
+    const std::vector<NS::uint8> blue = Frame(true);
+    ASSERT_EQ(red.size(), blue.size());
+    int changed = 0;
+    for (std::size_t pixel = 0; pixel < red.size(); pixel += 4)
+    {
+        if (red[pixel + 2] > blue[pixel + 2] + 30 && blue[pixel] > red[pixel] + 30)
+        {
+            ++changed;
+        }
+    }
+    EXPECT_GT(changed, 100);
+    EXPECT_TRUE(m_app.Device().CaptureBackbufferToPng("build/assets-actor-thumbnails.png"));
+    m_assets.Clear();
+    NS::ActorJsonClassObjs(edited)["Model"]["基本色"] = {1.0f, 0.0f, 0.0f, 1.0f};
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", std::move(edited)));
+    EXPECT_NE(Frame(true), blue);
+    EXPECT_EQ(m_scene.Actors().ActorCount(), actorCount);
+    EXPECT_TRUE(m_editor.SelectedAssetPath().empty());
+    EXPECT_FALSE(m_editor.Editor().HasUnsavedChanges());
 }
 
 // 拡張子が大文字でも、素材の窓の下見とアクターへ付ける素材の選択が、小文字と同じ種類に分ける
