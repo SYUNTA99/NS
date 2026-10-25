@@ -9,7 +9,7 @@ namespace NS
         Input,
         Player,
         Enemy,
-        Physics, //!< 管理役が Jolt を進める段。この段の SceneActor は Jolt の前に回る
+        Physics, //!< 管理役が Jolt の broadphase の木を組み直す段。この段の SceneActor は組み直しの前に回る
         Sensors,
         Triggers,
         Course,
