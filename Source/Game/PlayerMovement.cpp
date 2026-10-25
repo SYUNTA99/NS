@@ -67,12 +67,14 @@ void PlayerActor::MoveBody(float dt) noexcept
     }
 
     const NS::Vector3 before = Root().Position();
+    m_airDash.m_intended = m_body->Velocity();
     m_body->Move(&Root(), m_collider.get(), dt, m_params->m_maxStepHeight);
     const NS::Vector3 delta = Root().Position() - before;
     m_lastMoveDistance = delta.Length();
     SyncGroundState();
     AdvanceBodySlamTravel(delta);
     m_slam.m_wasSlamming = IsBodySlamming();
+    TryBeginTerrainRebound();
 }
 
 void PlayerActor::SyncGroundState() noexcept
@@ -102,6 +104,7 @@ void PlayerActor::RestoreWhileGrounded() noexcept
     m_coyoteTimer = m_params->m_coyoteTime;
     // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
     m_request.spent = false;
+    m_airDash.m_remaining = 1;
 }
 
 void PlayerActor::TickTimers(float dt) noexcept

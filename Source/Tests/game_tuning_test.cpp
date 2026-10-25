@@ -40,42 +40,6 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShape)
     EXPECT_EQ(player->ImpactVisuals().ShapeFor(impact).sparkStartFrame, 5);
 }
 
-TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
-{
-    NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
-    ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(&player->ChargeVisuals(), {{"丸まりの殻の寿命フレーム", 2}}), 0u);
-    for (int i = 0; i < 3; ++i)
-    {
-        player->Update(true);
-    }
-    const NS::EffectKeeper* keeper = player->GetEffectKeeper();
-    ASSERT_NE(keeper, nullptr);
-    ASSERT_FALSE(keeper->Records().empty());
-    const NS::EffectRecord& curl = keeper->Records().front();
-    EXPECT_EQ(curl.name, "charge.curl");
-    ASSERT_TRUE(curl.endStep.has_value());
-    EXPECT_EQ(*curl.endStep - curl.startStep, 2);
-}
-
-TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
-{
-    NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
-    ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(&player->ChargeVisuals(), {{"丸まりの殻の資産", "custom.curl"}}), 0u);
-    player->Update(true);
-    const NS::EffectKeeper* keeper = player->GetEffectKeeper();
-    ASSERT_NE(keeper, nullptr);
-    ASSERT_FALSE(keeper->Records().empty());
-    EXPECT_EQ(keeper->Records().front().name, "custom.curl");
-    const nlohmann::json saved = NS::SerializeClassObjFields(&player->ChargeVisuals());
-    GL::Player::ChargeEffects restored;
-    ASSERT_EQ(NS::ApplyJsonFields(&restored, saved), 0u);
-    EXPECT_EQ(NS::SerializeClassObjFields(&restored)["丸まりの殻の資産"], "custom.curl");
-}
-
 TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 {
     NS::EffectKeeper shortHistory{2};

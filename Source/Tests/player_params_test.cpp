@@ -493,51 +493,6 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyFiveFields)
     ExpectNotInParams(&player, arrowFields);
 }
 
-TEST(PlayerParams, LiveIndicatorTuningReachesTheShownShapes)
-{
-    NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeActorJson();
-    NS::SetActorJsonFile(entry, "PlayerActor");
-    NS::SetActorJsonId(entry, 1);
-    NS::SceneJsonActors(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::SetActorJsonId(rock, 2);
-    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.0f, 4.0f});
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
-    scene.ResetFromJson(doc);
-    PlayerActor* player = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
-    ASSERT_NE(player, nullptr);
-    const NS::Vector3 eye{0.0f, 0.0f, -6.0f};
-    const NS::Vector3 lookAt{0.0f, 0.0f, 4.0f};
-    ASSERT_NE(PlaceViewCamera(scene, eye, lookAt), nullptr);
-    EXPECT_EQ(NS::ApplyJsonFields(&player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
-    EXPECT_EQ(NS::ApplyJsonFields(&player->TargetIndicator(), {{"ロックオンの枠の太さ", 7.0f}}), 0u);
-    EXPECT_EQ(NS::ApplyJsonFields(&player->SlamIndicator(),
-                                  {{"溜めの前半の色", {0.2f, 0.3f, 0.4f, 1.0f}}, {"矢印が伸びるフレーム数", 1}}),
-              0u);
-    // しきい値のフレームまで押して溜めに入れる
-    const int threshold = static_cast<int>(std::lround(0.2f / NS::OS::FrameTimer::FixedDelta()));
-    for (int frame = 0; frame < threshold; ++frame)
-    {
-        player->Update(true);
-    }
-    ASSERT_TRUE(player->ChargeJudge().IsCharging());
-    GL::Level::LockOnFrameShape frame{};
-    const NS::Matrix view = NS::Matrix::CreateLookAt(eye, lookAt, NS::Vector3::UnitY);
-    const NS::Matrix projection = NS::Matrix::CreatePerspectiveFieldOfView(1.0f, 16.0f / 9.0f, 0.1f, 100.0f);
-    ASSERT_TRUE(player->TargetIndicator().BuildShownShape(view * projection, NS::Size2D{1280, 720}, frame));
-    ASSERT_EQ(frame.corners.size(), 8u);
-    EXPECT_FLOAT_EQ(frame.corners.front().height, 7.0f);
-    GL::Level::SlamArrowShape arrow{};
-    ASSERT_TRUE(player->SlamIndicator().TryGetShownArrow(arrow));
-    EXPECT_FLOAT_EQ(arrow.stageColor.x, 0.2f);
-    EXPECT_FLOAT_EQ(arrow.stageColor.y, 0.3f);
-    EXPECT_FLOAT_EQ(arrow.stageColor.z, 0.4f);
-    EXPECT_FLOAT_EQ(arrow.tip, arrow.fullTip);
-}
-
 // 欄を別の部品へ移した後も、同梱の .actor と場面の値は読まれる。古い部品の下に残った鍵はどの欄にも
 // 照合されず、詰めた値が静かに既定へ戻る
 TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)

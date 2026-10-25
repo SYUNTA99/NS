@@ -181,33 +181,6 @@ TEST(PlayerStateSequence, ClimbEndRestoresWhatALandingRestores)
     }
 }
 
-// 通常突進の途中で押し直し、溜めのしきい値を越えても、突進は欄「通常突進の距離」を進み切るまで続く。
-// 溜め始めのフレームに水平を 0 にすると、次の移動で進めずに突進が打ち切られる
-TEST(PlayerStateSequence, ChargingDuringATapSlamKeepsTheSlamGoing)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceSequencePlayer(scene);
-    ASSERT_NE(player, nullptr);
-    constexpr float k_TapDistance = 6.0f;
-    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"通常突進の距離", k_TapDistance}}), 0u);
-    player->Root().SetPosition(NS::Vector3{0.0f, 10.0f, 0.0f});
-    player->Body().SetGrounded(false);
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
-    player->Update(true);
-    const NS::Vector3 start = player->Root().Position();
-    player->Update(false);
-    ASSERT_TRUE(player->IsBodySlamming());
-    for (int frame = 0; frame < 120 && player->IsBodySlamming(); ++frame)
-    {
-        player->Update(true);
-    }
-    ASSERT_FALSE(player->IsBodySlamming());
-    const NS::Vector3 end = player->Root().Position();
-    const float dx = end.x - start.x;
-    const float dz = end.z - start.z;
-    EXPECT_GE(std::sqrt(dx * dx + dz * dz), k_TapDistance - 0.001f);
-}
-
 // 縁から跳ぶ時も、跳べる回数・コヨーテ・先行入力を地面から跳ぶ時と同じに使い切る。
 // 掴まっている間はコヨーテが減らないので、残ったままだと次の押しで宙からもう 1 度跳べる
 TEST(PlayerStateSequence, LedgeJumpSpendsTheJumpLikeAGroundJump)

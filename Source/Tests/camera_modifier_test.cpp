@@ -311,36 +311,6 @@ TEST(IUseCamera, ActorReachesSceneCameraManager)
     EXPECT_FALSE(NS::StartCameraShake(&loose, ShakeOf(5)));
 }
 
-// 追従カメラの個体は、欄「追従対象」で指した自機の溜めを読んで仮想カメラへ渡す
-TEST(FollowCameraActor, ActorFeedsItsFixedCameraBeforeEvaluatingIt)
-{
-    NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
-    ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"チャージしきい値秒", 0.2f}, {"チャージ満タン秒", 1.0f}}), 0u);
-    GL::Level::FollowCameraActor* actor = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
-    NS::ThirdPersonFollow& vcam = actor->Vcam();
-    NS::ApplyJsonFields(&vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", player->Id()}}}});
-    // 欄を書いた後に、エディタと同じく相手を取得し直す
-    actor->ResolveActorRefs();
-    // しきい値を越えるまで押し続ける
-    for (int held = 0; held < 30; ++held)
-    {
-        player->Update(true);
-        actor->Update();
-    }
-    ASSERT_TRUE(player->ChargeJudge().IsHoldingCharge());
-    EXPECT_GT(vcam.ChargeNarrowDegrees(), 0.0f);
-    actor->Disappear();
-    EXPECT_FLOAT_EQ(vcam.ChargeNarrowDegrees(), 0.0f);
-    actor->Appear();
-    player->Update(true);
-    actor->Update();
-    EXPECT_GT(vcam.ChargeNarrowDegrees(), 0.0f);
-    scene.RemoveActor(player->Id());
-    actor->Update();
-}
-
 // 世界が回っている間は、描画の入口が管理役の姿勢を実カメラへ書く。描画先が無くても書く
 TEST(SceneCameraOnRender, RunningWorldWritesTheFollowPoseOnRender)
 {
