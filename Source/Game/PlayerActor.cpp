@@ -31,7 +31,7 @@
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -93,7 +93,7 @@ void PlayerActor::OnInit()
     NS::InitOverlay(this, m_targetMarker.get());
     CreateClassObj(m_slamArrow);
     NS::InitOverlay(this, m_slamArrow.get());
-    CreateClassObj(m_effectKeeper);
+    CreateClassObj(m_effect);
     CreateClassObj(m_chargeEffects);
     CreateClassObj(m_impactEffects);
     // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる

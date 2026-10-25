@@ -31,7 +31,7 @@ namespace NS
     class Animation;
     class Shadow;
     class Collision;
-    class EffectKeeper;
+    class Effect;
     class HitReaction;
     class ActionTimeline;
     struct ActionTimelineSelf;
@@ -94,7 +94,7 @@ namespace NS
         [[nodiscard]] HitSensorDirector* GetHitSensorDirector() const noexcept override;
         [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
         // 出したエフェクトを記録する部品。持たなければ nullptr
-        [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept override { return m_effectKeeper.get(); }
+        [[nodiscard]] Effect* GetEffect() const noexcept override { return m_effect.get(); }
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept override;
 
         //! 個体の位置・回転・大きさを持つ部品
@@ -311,7 +311,7 @@ namespace NS
         std::unique_ptr<HitSensor> m_bodySensor;
         std::unique_ptr<HitSensor> m_attackSensor;
         std::unique_ptr<HitReaction> m_hitReaction;
-        std::unique_ptr<EffectKeeper> m_effectKeeper;
+        std::unique_ptr<Effect> m_effect;
         std::unique_ptr<ActionTimeline> m_actionTimeline;
         // 状態が借りる部品より先に壊すので、部品の最後に置く。組むのは BuildStateMachine だけ
         std::unique_ptr<StateMachine> m_stateMachine;

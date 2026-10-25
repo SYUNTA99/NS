@@ -10,7 +10,7 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -50,10 +50,10 @@ TEST(GameTuning, ChargeLayerLifetimeReadsTheEditedField)
     {
         player->Update(true);
     }
-    const NS::EffectKeeper* keeper = player->GetEffectKeeper();
-    ASSERT_NE(keeper, nullptr);
-    ASSERT_FALSE(keeper->Records().empty());
-    const NS::EffectRecord& curl = keeper->Records().front();
+    const NS::Effect* effect = player->GetEffect();
+    ASSERT_NE(effect, nullptr);
+    ASSERT_FALSE(effect->Records().empty());
+    const NS::EffectRecord& curl = effect->Records().front();
     EXPECT_EQ(curl.name, "charge.curl");
     ASSERT_TRUE(curl.endStep.has_value());
     EXPECT_EQ(*curl.endStep - curl.startStep, 2);
@@ -66,10 +66,10 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(&player->ChargeVisuals(), {{"丸まりの殻の資産", "custom.curl"}}), 0u);
     player->Update(true);
-    const NS::EffectKeeper* keeper = player->GetEffectKeeper();
-    ASSERT_NE(keeper, nullptr);
-    ASSERT_FALSE(keeper->Records().empty());
-    EXPECT_EQ(keeper->Records().front().name, "custom.curl");
+    const NS::Effect* effect = player->GetEffect();
+    ASSERT_NE(effect, nullptr);
+    ASSERT_FALSE(effect->Records().empty());
+    EXPECT_EQ(effect->Records().front().name, "custom.curl");
     const nlohmann::json saved = NS::SerializeClassObjFields(&player->ChargeVisuals());
     GL::Player::ChargeEffects restored;
     ASSERT_EQ(NS::ApplyJsonFields(&restored, saved), 0u);
@@ -78,8 +78,8 @@ TEST(GameTuning, ChargeAssetBindingReadsItsInstanceAndSurvivesSaving)
 
 TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 {
-    NS::EffectKeeper shortHistory{2};
-    NS::EffectKeeper longHistory{6};
+    NS::Effect shortHistory{2};
+    NS::Effect longHistory{6};
     const NS::uint32 shortId = shortHistory.Play(nullptr, "test", {});
     const NS::uint32 longId = longHistory.Play(nullptr, "test", {});
     shortHistory.Stop(nullptr, shortId);
@@ -110,12 +110,12 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
         &rock->Params(),
         sphere->WorldSphere(rock->Root().WorldMatrix()));
     effects->NotifyLanding(rock, {}, {0.0f, 1.0f, 0.0f});
-    NS::EffectKeeper* keeper = rock->GetEffectKeeper();
-    ASSERT_NE(keeper, nullptr);
-    keeper->BeginStep(rock->GetEffectScene());
-    keeper->BeginStep(rock->GetEffectScene());
-    ASSERT_FALSE(keeper->Records().empty());
-    const NS::EffectRecord& dust = keeper->Records().back();
+    NS::Effect* effect = rock->GetEffect();
+    ASSERT_NE(effect, nullptr);
+    effect->BeginStep(rock->GetEffectScene());
+    effect->BeginStep(rock->GetEffectScene());
+    ASSERT_FALSE(effect->Records().empty());
+    const NS::EffectRecord& dust = effect->Records().back();
     EXPECT_EQ(dust.name, "launch.landDust");
     ASSERT_TRUE(dust.endStep.has_value());
     EXPECT_EQ(*dust.endStep - dust.startStep, 2);

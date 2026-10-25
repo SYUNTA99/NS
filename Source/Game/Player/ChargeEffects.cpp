@@ -6,7 +6,7 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IUse/IUseEffect.h"
 

@@ -5,7 +5,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -50,7 +50,7 @@ namespace
     const NS::EffectRecord* LiveEffect(const PlayerActor* player, std::string_view name)
     {
         NS_ASSERT(Game, player != nullptr, "LiveEffect: 渡したアクターか部品が無い");
-        for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
+        for (const NS::EffectRecord& record : player->GetEffect()->Records())
         {
             if (record.name == name && !record.endStep.has_value())
             {
@@ -392,7 +392,7 @@ namespace
     {
         NS_ASSERT(Game, player != nullptr, "ReleaseBurstOf: 渡したアクターか部品が無い");
         const NS::EffectRecord* burst = nullptr;
-        for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
+        for (const NS::EffectRecord& record : player->GetEffect()->Records())
         {
             if (record.name == "release.burst")
             {
@@ -419,11 +419,11 @@ namespace
             scene.OnUpdate();
             if (run.beforeContactStep < 0 && player->IsInBeforeContact())
             {
-                run.beforeContactStep = static_cast<int>(player->GetEffectKeeper()->Step());
+                run.beforeContactStep = static_cast<int>(player->GetEffect()->Step());
             }
             if (player->Resolver().Answer().lastImpact.sequence != 0)
             {
-                run.contactStep = static_cast<int>(player->GetEffectKeeper()->Step());
+                run.contactStep = static_cast<int>(player->GetEffect()->Step());
             }
         }
         return run;

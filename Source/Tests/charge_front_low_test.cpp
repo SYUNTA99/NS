@@ -1,7 +1,7 @@
 #include "Game/Player/ChargeEffects.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Core/Windows/Clock.h"
@@ -31,7 +31,7 @@ namespace
     const NS::EffectRecord* LiveEffect(const PlayerActor* player, std::string_view name)
     {
         NS_ASSERT(Game, player != nullptr, "LiveEffect: 渡したアクターか部品が無い");
-        for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
+        for (const NS::EffectRecord& record : player->GetEffect()->Records())
         {
             if (record.name == name && !record.endStep.has_value())
             {

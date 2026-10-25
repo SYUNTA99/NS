@@ -2,59 +2,59 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 
 namespace NS
 {
     void PreloadEffects(const IUseEffect* user, std::initializer_list<EffectName> names)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        EffectKeeper* keeper = user->GetEffectKeeper();
-        if (keeper == nullptr)
+        Effect* effect = user->GetEffect();
+        if (effect == nullptr)
         {
             return;
         }
         for (const EffectName& name : names)
         {
-            keeper->Preload(user->GetEffectScene(), name.name);
+            effect->Preload(user->GetEffectScene(), name.name);
         }
     }
 
     uint32 PlayEffect(const IUseEffect* user, const EffectName& name, const Gfx::EffectPlayDesc& desc)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        EffectKeeper* keeper = user->GetEffectKeeper();
-        if (keeper == nullptr)
+        Effect* effect = user->GetEffect();
+        if (effect == nullptr)
         {
             return 0;
         }
-        return keeper->Play(user->GetEffectScene(), name.name, desc);
+        return effect->Play(user->GetEffectScene(), name.name, desc);
     }
 
     void StopEffect(const IUseEffect* user, uint32 id) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        if (EffectKeeper* keeper = user->GetEffectKeeper())
+        if (Effect* effect = user->GetEffect())
         {
-            keeper->Stop(user->GetEffectScene(), id);
+            effect->Stop(user->GetEffectScene(), id);
         }
     }
 
     void StopEffectRoot(const IUseEffect* user, uint32 id) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        if (EffectKeeper* keeper = user->GetEffectKeeper())
+        if (Effect* effect = user->GetEffect())
         {
-            keeper->StopRoot(user->GetEffectScene(), id);
+            effect->StopRoot(user->GetEffectScene(), id);
         }
     }
 
     void StopEffectAfter(const IUseEffect* user, uint32 id, int steps)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        if (EffectKeeper* keeper = user->GetEffectKeeper())
+        if (Effect* effect = user->GetEffect())
         {
-            keeper->StopAfter(id, steps);
+            effect->StopAfter(id, steps);
         }
     }
 
@@ -65,58 +65,58 @@ namespace NS
                             const Vector3& scale) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        if (EffectKeeper* keeper = user->GetEffectKeeper())
+        if (Effect* effect = user->GetEffect())
         {
-            keeper->SetTransform(user->GetEffectScene(), id, position, rotation, scale);
+            effect->SetTransform(user->GetEffectScene(), id, position, rotation, scale);
         }
     }
 
     void SetEffectDynamicInput(const IUseEffect* user, uint32 id, int index, float value) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        if (EffectKeeper* keeper = user->GetEffectKeeper())
+        if (Effect* effect = user->GetEffect())
         {
-            keeper->SetDynamicInput(user->GetEffectScene(), id, index, value);
+            effect->SetDynamicInput(user->GetEffectScene(), id, index, value);
         }
     }
 
     void SetEffectAmount(const IUseEffect* user, uint32 id, float amount) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        if (EffectKeeper* keeper = user->GetEffectKeeper())
+        if (Effect* effect = user->GetEffect())
         {
-            keeper->SetAmount(id, amount);
+            effect->SetAmount(id, amount);
         }
     }
 
     void SetEffectRotation(const IUseEffect* user, uint32 id, const Quaternion& rotation) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        if (EffectKeeper* keeper = user->GetEffectKeeper())
+        if (Effect* effect = user->GetEffect())
         {
-            keeper->SetRotation(id, rotation);
+            effect->SetRotation(id, rotation);
         }
     }
 
     const EffectRecord* FindEffect(const IUseEffect* user, uint32 id) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        const EffectKeeper* keeper = user->GetEffectKeeper();
-        if (keeper == nullptr)
+        const Effect* effect = user->GetEffect();
+        if (effect == nullptr)
         {
             return nullptr;
         }
-        return keeper->Find(id);
+        return effect->Find(id);
     }
 
     int GetEffectStep(const IUseEffect* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        const EffectKeeper* keeper = user->GetEffectKeeper();
-        if (keeper == nullptr)
+        const Effect* effect = user->GetEffect();
+        if (effect == nullptr)
         {
             return 0;
         }
-        return keeper->Step();
+        return effect->Step();
     }
 } // namespace NS
