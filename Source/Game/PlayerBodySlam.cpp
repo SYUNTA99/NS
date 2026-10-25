@@ -559,6 +559,11 @@ void PlayerActor::UncurlWhenSettled() noexcept
     {
         return;
     }
+    // 床の上でダッシュしても、床の上で返っても、その間は玉のまま
+    if (IsAirDashing() || IsDashRebounding())
+    {
+        return;
+    }
     // 外れの着地からこすって止まる間は玉のまま地面をこする
     if (IsSkidding())
     {

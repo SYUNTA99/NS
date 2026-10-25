@@ -60,6 +60,8 @@ void PlayerActor::BeginAirDash() noexcept
     m_airDash.m_dashElapsed = 0.0f;
     m_airDash.m_remaining = m_airDash.m_remaining - 1;
     m_facingDir = direction;
+    // 押したフレームに玉になって飛び出す。解くのは接地して落ち着いた時 (UncurlWhenSettled)
+    SetCurled(true);
     m_body->SetVelocity(direction * m_params->m_airDashSpeed);
     (void)m_states->Change<GL::Player::AirDashPlayerState>();
 }

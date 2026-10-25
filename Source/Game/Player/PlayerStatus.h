@@ -27,6 +27,9 @@ namespace GL
             bool skidding = false;
             bool curled = false;
             bool canMoveBody = false; // 身体が有効で、当たりの止め・反動待ちの外か
+            bool airDashing = false;
+            bool dashRebounding = false; // 地形の面で返った反動の状態に居るか
+            NS::Vector3 velocity{};      // 身体の今の速度 (m/s)
         };
 
         //! 突進の値。向きと溜め量は終了後も使うため状態内には置かず、ResetState で戻す

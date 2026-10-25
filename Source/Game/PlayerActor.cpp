@@ -822,6 +822,9 @@ GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
         .skidding = IsSkidding(),
         .curled = IsCurled(),
         .canMoveBody = CanMoveBody(),
+        .airDashing = IsAirDashing(),
+        .dashRebounding = IsDashRebounding(),
+        .velocity = m_body->Velocity(),
     };
 }
 

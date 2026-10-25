@@ -1,4 +1,5 @@
 #include "Game/Level/ReboundDirections.h"
+#include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
@@ -264,6 +265,88 @@ TEST(PlayerAirDashTest, CameraStateDuringDashAndTerrainRebound)
 
     player->ResetState();
     EXPECT_FALSE(player->GetCameraTargetState().rebound.widenView);
+}
+
+// 押したフレームに丸まる。立ち姿のままダッシュすると、飛び出した瞬間に玉に見えない
+TEST(PlayerAirDashTest, PressFrameCurlsIntoTheBall)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    ASSERT_FALSE(player->IsCurled());
+
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    EXPECT_TRUE(player->IsCurled());
+}
+
+// ダッシュの間も地形の反動の間も、玉は今の進む向きへ前転し、進んだ距離に合う角度だけ回る
+TEST(PlayerAirDashTest, BallRollsTowardTheVelocityDuringTheDashAndTheRebound)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    const float degreesPerMeter =
+        NS::SerializeClassObjFields(&player->Appearance()).at("エアダッシュの 1 m で回る角度").get<float>();
+    const float dt = NS::OS::FrameTimer::FixedDelta();
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Update(true);
+    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Update(false);
+    ASSERT_TRUE(player->IsAirDashing());
+    // +Z へ進む前転の軸は 上 × 前 = (1, 0, 0)
+    const NS::Vector3 dashAxis = player->Appearance().SpinAxis();
+    EXPECT_NEAR(dashAxis.x, 1.0f, 1.0e-3f);
+    EXPECT_NEAR(dashAxis.z, 0.0f, 1.0e-3f);
+    EXPECT_NEAR(player->Appearance().SpinDegreesThisFrame(),
+                player->Body().Velocity().Length() * degreesPerMeter * dt,
+                1.0e-2f);
+
+    // 返った後、ヒットストップが明けたら返った向き (−Z) へ回る
+    for (int frame = 0; frame < 60 && !(player->IsDashRebounding() && player->Motion().canMoveBody); ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->IsDashRebounding());
+    player->Update(false);
+    ASSERT_TRUE(player->IsDashRebounding());
+    const NS::Vector3 reboundAxis = player->Appearance().SpinAxis();
+    EXPECT_NEAR(reboundAxis.x, -1.0f, 1.0e-3f);
+    EXPECT_NEAR(reboundAxis.z, 0.0f, 1.0e-3f);
+    EXPECT_NEAR(player->Appearance().SpinDegreesThisFrame(),
+                player->Body().Velocity().Length() * degreesPerMeter * dt,
+                1.0e-2f);
+}
+
+// ダッシュが終わっても宙の間は玉のまま。着地して落ち着いたら立ち姿へ戻る
+TEST(PlayerAirDashTest, BallStaysCurledInTheAirAndUncurlsAfterLanding)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, NS::Vector3{50.0f, 0.5f, 50.0f});
+
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(true);
+    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    for (int frame = 0; frame < 60 && player->IsAirDashing(); ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_FALSE(player->IsAirDashing());
+    ASSERT_FALSE(player->Body().IsGrounded());
+    EXPECT_TRUE(player->IsCurled());
+
+    for (int frame = 0; frame < 240 && !player->Body().IsGrounded(); ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->Body().IsGrounded());
+    player->Update(false);
+    EXPECT_FALSE(player->IsCurled());
 }
 
 TEST(PlayerAirDashTest, ResetStateEndsTheReboundAndRestoresTheDash)
