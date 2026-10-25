@@ -5,6 +5,7 @@
 
 #include <span>
 #include <string>
+#include <vector>
 
 namespace NS
 {
@@ -25,6 +26,14 @@ namespace NS
             std::string name;         //!< ボーン名 (アニメーションとの紐付けに使う)
         };
 
+        //! @brief 2 つの姿勢を骨ごとに混ぜる。位置と拡大は線形、回転は球面で補間し、回転は短い方を回る
+        //! @param[in] weight 0 で from、1 で to。0〜1 の外の値は 0〜1 に収める
+        //! @param[out] out from と同じ数になる。from と to の骨の数が違う時は ERROR を出し、from をそのまま入れる
+        void BlendPose(std::span<const BonePose> from,
+                       std::span<const BonePose> to,
+                       float weight,
+                       std::vector<BonePose>& out);
+
         //! ボーンの親子関係を持ち、ポーズからシェーダへ渡すボーンパレットを作る
         class Skeleton
         {
@@ -38,8 +47,6 @@ namespace NS
             //! @brief ポーズからシェーダ用のボーンパレットを計算する
             //! @param[in] pose 各ボーンのローカル姿勢。要素数は BoneCount() と一致すること
             void ComputePalette(std::span<const BonePose> pose, std::vector<Matrix>& out) const;
-
-            void ComputeBindPalette(std::vector<Matrix>& out) const;
 
             //! 姿勢から各ボーンの、親の変換を全部掛けた行列を計算する
             //! 親は子より前に並ぶこと。親が後ろにあるボーンは根として扱う
