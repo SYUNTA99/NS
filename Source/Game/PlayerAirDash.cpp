@@ -61,8 +61,15 @@ void PlayerActor::BeginAirDash() noexcept
     m_airDash.m_remaining = m_airDash.m_remaining - 1;
     m_facingDir = direction;
     // 押したフレームに玉になって飛び出す。解くのは接地して落ち着いた時 (UncurlWhenSettled)
+    // 丸まりは下端を揃えて根を下げる。宙では玉を立ち姿の中心に戻し、押したフレームに半長ぶん下へ飛ばさない
+    const bool curlInAir = !IsCurled() && !m_body->IsGrounded();
     SetCurled(true);
-    m_body->SetVelocity(direction * m_params->m_airDashSpeed);
+    if (curlInAir)
+    {
+        Root().ShiftPosition(NS::Vector3{0.0f, m_collider->StandingHalfHeight(), 0.0f});
+    }
+    StartAirControlReturn();
+    m_body->SetVelocity(direction * m_params->AirDashSpeed());
     (void)m_states->Change<GL::Player::AirDashPlayerState>();
 }
 
@@ -76,7 +83,7 @@ void PlayerActor::UpdateAirDash(float dt) noexcept
         ChangeToWalkOrFall();
         return;
     }
-    m_body->SetVelocity(m_airDash.m_direction * m_params->m_airDashSpeed);
+    m_body->SetVelocity(m_airDash.m_direction * m_params->AirDashSpeed());
 }
 
 void PlayerActor::UpdateDashRebound(float dt) noexcept
@@ -168,7 +175,7 @@ void PlayerActor::TryBeginTerrainRebound() noexcept
     float baseSpeed = speed;
     if (dashing)
     {
-        baseSpeed = m_params->m_airDashSpeed;
+        baseSpeed = m_params->AirDashSpeed() * m_params->m_terrainReboundSpeedScale;
     }
     BeginTerrainRebound(incoming, normal, baseSpeed);
 }
@@ -208,6 +215,7 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
     m_airDash.m_reboundElapsed = 0.0f;
     m_airDash.m_steeredRadians = 0.0f;
     m_airDash.m_steerStarted = false;
+    StartAirControlReturn();
     (void)m_states->Change<GL::Player::DashReboundPlayerState>();
     StartTerrainReboundReaction(Root().Position() - normal * m_collider->CapsuleRadius(), facing);
 }

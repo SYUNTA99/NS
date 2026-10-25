@@ -242,6 +242,10 @@ public:
     //! @brief 入力の向きへ加速する。入力が無ければ何もしない
     //! @details 加速の上限は MaxSpeed × 倒し具合で、歩き速度を下回らない。空中は空中の加速度を使う
     void AccelerateToInputDirection(float dt) noexcept;
+    //! ダッシュと反動の後の落下で、空中の操作が戻る経過を 1 フレーム進める。落下の状態だけが呼ぶ
+    void AdvanceAirControlReturn(float dt) noexcept;
+    //! 次の落下の空中の操作を 0 から戻し直す。エアダッシュと反動を始める所が呼ぶ
+    void StartAirControlReturn() noexcept;
     //! 手を放した時の減速度で水平の速さを減らす
     void ApplyFriction(float dt) noexcept;
     //! ブレーキの減速度で水平の速さを減らす
@@ -545,6 +549,9 @@ private:
     int m_jumpsRemaining = 1;
     float m_coyoteTimer = 0.0f; // コヨーテ猶予の残り秒
     float m_bufferTimer = 0.0f; // 先行ジャンプ入力の残り秒
+    // ダッシュと反動で始め、着地とやり直しで終える。経過は落下の状態に居る間だけ数える
+    bool m_airControlReturning = false;
+    float m_airControlReturnElapsed = 0.0f;
 
     float m_maxSpeedScale = 1.0f; // 走行速度に掛ける倍率。書くのは AdvanceCharge と CancelCharge
 

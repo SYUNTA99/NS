@@ -52,6 +52,9 @@ namespace GL
             [[nodiscard]] float StickDeadzone() const noexcept { return m_stickDeadzone; }
             //! 入力方向への水平速度成分がこの値未満ならブレーキに入る
             [[nodiscard]] float BrakeThreshold() const noexcept { return m_brakeThreshold; }
+            //! 欄「エアダッシュの距離」を「エアダッシュの秒」で進む速さ (m/s)。返る速さの元にもなる
+            //! 秒が 0 以下か非数なら 0 を返し、ダッシュは動かない
+            [[nodiscard]] float AirDashSpeed() const noexcept;
             //! 欄「上昇重力」「下降重力」「頂点滞空 Vy」「頂点滞空倍率」の写し。重力の強さを選ぶ ChooseGravity へ渡す
             [[nodiscard]] GL::Level::AirGravity Gravity() const noexcept
             {
@@ -104,6 +107,7 @@ namespace GL
             NS_FIELD(m_acceleration, "加速度")
             NS_FIELD(m_airAcceleration, "空中の加速度")
             NS_FIELD(m_turningDrag, "曲がる時の抵抗")
+            NS_FIELD(m_airControlReturnSeconds, "ダッシュと反動の後に空中の操作が戻る秒")
             NS_FIELD(m_friction, "手を放した時の減速度")
             NS_FIELD(m_deceleration, "ブレーキの減速度")
             NS_FIELD(m_brakeThreshold, "ブレーキのしきい値")
@@ -137,12 +141,13 @@ namespace GL
             NS_FIELD(m_overchargeSwayFallbackDistance, "相手がいない時に直す距離")
             NS_FIELD(m_overchargePowerMax, "紫の威力の上限")
             NS_GROUP("エアダッシュ")
-            NS_FIELD(m_airDashSpeed, "エアダッシュの速さ")
+            NS_FIELD(m_airDashDistance, "エアダッシュの距離")
             NS_FIELD(m_airDashSeconds, "エアダッシュの秒")
             NS_FIELD(m_airDashExitSpeed, "エアダッシュ後に残る速さ")
             NS_GROUP("地形の反動")
             NS_FIELD(m_reboundTableDivisions, "向きの表の分割数")
             NS_FIELD(m_reboundTableWithPitch, "表に傾きの段を入れる")
+            NS_FIELD(m_terrainReboundSpeedScale, "返る速さのダッシュの速さに対する倍率")
             NS_FIELD(m_reboundKeepRatio, "返る力の逃げない割合")
             NS_FIELD(m_reboundMinFacing, "反動に数える当て方の下限")
             NS_FIELD(m_reboundFullFacing, "全部返ったに数える当て方の下限")
@@ -257,6 +262,8 @@ namespace GL
             float m_acceleration = 40.0f;
             float m_airAcceleration = 40.0f;
             float m_turningDrag = 40.0f;
+            // ダッシュと反動の後の落下で、空中の加速度と曲がる時の抵抗が 0 から全部へ戻るまでの秒
+            float m_airControlReturnSeconds = 0.5f;
             float m_friction = 40.0f;
             float m_deceleration = 40.0f;
             float m_brakeThreshold = -0.8f;
@@ -279,11 +286,12 @@ namespace GL
             float m_slamAimFadeTime = 0.19f;
             float m_reboundRiseGravityScale = 0.5f;
             float m_reboundAirAcceleration = 2.0f;
-            float m_airDashSpeed = 20.0f;     // m/s。押したフレームに出る速さで、返る力の上限にもなる
+            float m_airDashDistance = 4.4f;   // m。当たらなければこの距離を秒で進む
             float m_airDashSeconds = 0.22f;   // 当たらなかった時に終わる秒
             float m_airDashExitSpeed = 8.0f;  // 当たらずに終わったフレームに落とす速さ (m/s)
             int m_reboundTableDivisions = 8;  // 8・12・16 のうち一番近い物へ丸める
             bool m_reboundTableWithPitch = true; // 偽なら縦・横・奥の 3 枚の円の表
+            float m_terrainReboundSpeedScale = 1.0f; // ダッシュで当てた時に返る速さ。返った後に続けて当たる時は掛け直さない
             float m_reboundKeepRatio = 0.6f;  // かすめた時に残る速さの割合
             // 当て方は進む向きと面の法線の内積の大きさ。下限より浅い当たりは掃引の滑りに任せる
             float m_reboundMinFacing = 0.2f;

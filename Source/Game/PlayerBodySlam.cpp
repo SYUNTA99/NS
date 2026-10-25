@@ -489,6 +489,7 @@ bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
     ++m_rebound.m_count;
     m_rebound.m_spinSpeed = SpinSpeedFor(turns, GL::Level::LaunchArcFlightSeconds(m_params->ReboundLaunchArc(arc)));
     m_body->SetVelocity(velocity);
+    StartAirControlReturn();
     (void)m_states->Change<GL::Player::ReboundPlayerState>();
     return true;
 }

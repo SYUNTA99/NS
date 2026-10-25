@@ -13,15 +13,24 @@ cbuffer MaterialParams : register(b2)
 // 暗い四角の明るさ。 明るい四角は 1。 前に床へ貼っていた cube_test.png の濃い灰と同じ値
 static const float k_DarkTile = 64.0 / 255.0;
 
-// 面の法線の一番大きい軸を除いた 2 軸の位置。 上の面も横の面も同じ長さの四角になる
+// 面に沿った 2 つの向きでの位置。 上の面も横の面も同じ長さの四角になる
+// 横と斜めの面は、 面に沿った水平の向きを法線から出す。 法線の一番大きい軸で分けると、 45 度に回した面で
+// 2 つの軸の大きさが揃い、 ピクセルごとの誤差で選ぶ軸が入れ替わって点々が出た
 float2 TilePlane(float3 worldPos, float3 worldNormal)
 {
-    float3 n = abs(worldNormal);
-    if (n.y >= n.x && n.y >= n.z)
+    float3 n = normalize(worldNormal);
+    if (abs(n.y) > 0.999)
     {
         return worldPos.xz;
     }
-    return n.x >= n.z ? worldPos.zy : worldPos.xy;
+    float3 across = normalize(float3(-n.z, 0.0, n.x));
+    float3 along = cross(n, across);
+    // 面を上る向きを正にする。 横の面では高さと同じ向きになる
+    if (along.y < 0.0)
+    {
+        along = -along;
+    }
+    return float2(dot(worldPos, across), dot(worldPos, along));
 }
 
 // 四角の単位の位置での市松。 0 が暗い四角、 1 が明るい四角

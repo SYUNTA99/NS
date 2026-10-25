@@ -838,6 +838,8 @@ void PlayerActor::ResetState() noexcept
     m_jumpsRemaining = 1;
     m_coyoteTimer = 0.0f;
     m_bufferTimer = 0.0f;
+    m_airControlReturning = false;
+    m_airControlReturnElapsed = 0.0f;
     m_body->SetGrounded(false);
     m_ledgeTopY = 0.0f;
     m_ledgeFaceNormal = NS::Vector3{0.0f, 0.0f, 0.0f};
