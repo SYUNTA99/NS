@@ -232,6 +232,20 @@ namespace NS
             return ok;
         }
 
+        bool EditorMode::CreateLevel(std::string_view name) noexcept
+        {
+            if (!IsSceneEditable())
+            {
+                return false;
+            }
+            const std::optional<std::string> path = BuildLevelPath(name);
+            if (!path || OS::FileSystem::Exists(*path))
+            {
+                return false;
+            }
+            return SaveSceneToJsonFile(MakeSceneJson(), *path);
+        }
+
         bool EditorMode::OpenLevel(std::string_view name) noexcept
         {
             // プレイ中に組み直すと、編集へ戻る組み直しがプレイ開始の写しで上書きし、名前だけが新しいレベルを指す

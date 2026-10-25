@@ -19,6 +19,7 @@
 #include <optional>
 #include <string>
 #include <algorithm>
+#include <cstring>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -50,7 +51,11 @@ namespace NS
                     ImGui::Separator();
                 }
 
-                RenderTree(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"), editor);
+                const std::string assetsDirectory = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets");
+                RenderTree(assetsDirectory, editor);
+                m_revealSceneFolder = false;
+                RenderCreateMenu(assetsDirectory, editor, false);
+                RenderSceneCreate(editor);
                 RenderSceneOpen(editor);
             }
             ImGui::End();
@@ -60,6 +65,95 @@ namespace NS
         }
 
 #if NS_EDITOR_ENABLED
+        void AssetsPanel::RenderCreateMenu(std::string_view directory, LevelEditorController& editor, bool onFolder)
+        {
+            bool open = false;
+            if (onFolder)
+            {
+                open = ImGui::BeginPopupContextItem(std::string{directory}.c_str());
+            }
+            else
+            {
+                open = ImGui::BeginPopupContextWindow("##createSceneInAssets",
+                    ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems);
+            }
+            if (!open)
+            {
+                return;
+            }
+            if (ImGui::MenuItem("シーンを作成...", nullptr, false, editor.IsSceneEditable()))
+            {
+                const std::optional<std::string> relative = OS::FileSystem::RelativeUnder(
+                    OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"), directory);
+                m_sceneCreateDirectory = "Scenes";
+                if (relative && !relative->empty())
+                {
+                    m_sceneCreateDirectory = *relative;
+                }
+                m_newSceneName = "New Scene";
+                m_sceneCreateError.clear();
+                m_sceneCreateRequested = true;
+            }
+            ImGui::EndPopup();
+        }
+
+        void AssetsPanel::RenderSceneCreate(LevelEditorController& editor)
+        {
+            if (m_sceneCreateRequested)
+            {
+                ImGui::OpenPopup("シーンを作成");
+                m_sceneCreateRequested = false;
+            }
+            if (!ImGui::BeginPopupModal("シーンを作成", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                return;
+            }
+            ImGui::Text("保存先: Assets/%s", m_sceneCreateDirectory.c_str());
+            if (ImGui::IsWindowAppearing())
+            {
+                ImGui::SetKeyboardFocusHere();
+            }
+            m_newSceneName.resize(std::max(m_newSceneName.size() + 1, std::size_t{256}));
+            const bool submitted = ImGui::InputText("名前", m_newSceneName.data(), m_newSceneName.size(),
+                                                   ImGuiInputTextFlags_EnterReturnsTrue);
+            m_newSceneName.resize(std::strlen(m_newSceneName.c_str()));
+            ImGui::BeginDisabled(!editor.IsSceneEditable());
+            if ((ImGui::Button("作成") || submitted) && editor.IsSceneEditable())
+            {
+                const std::string name = m_sceneCreateDirectory + "/" + m_newSceneName;
+                const std::optional<std::string> path = BuildLevelPath(name);
+                if (!path)
+                {
+                    m_sceneCreateError = "名前には英数字、空白、_、- を使ってください。";
+                }
+                else if (OS::FileSystem::Exists(*path))
+                {
+                    m_sceneCreateError = "同じ名前のシーンが既にあります。";
+                }
+                else if (!editor.Editor().CreateLevel(name))
+                {
+                    m_sceneCreateError = "シーンを作成できませんでした。保存先を確認してください。";
+                }
+                else
+                {
+                    m_sceneCreateDirectory = OS::FileSystem::ParentDirectory(name);
+                    m_revealSceneFolder = true;
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("キャンセル"))
+            {
+                ImGui::CloseCurrentPopup();
+            }
+            if (!m_sceneCreateError.empty())
+            {
+                ImGui::TextWrapped("%s", m_sceneCreateError.c_str());
+            }
+            ImGui::EndPopup();
+        }
+
         bool AssetsPanel::OpenPendingScene(LevelEditorController& editor)
         {
             if (!editor.Editor().OpenLevel(m_pendingSceneName))
@@ -308,7 +402,16 @@ namespace NS
             for (const std::string& sub : OS::FileSystem::ListDirectories(dir))
             {
                 const std::string label = OS::FileSystem::FileName(sub);
-                if (ImGui::TreeNode(label.c_str()))
+                const std::optional<std::string> relative = OS::FileSystem::RelativeUnder(
+                    OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"), sub);
+                if (m_revealSceneFolder && relative &&
+                    (*relative == m_sceneCreateDirectory || m_sceneCreateDirectory.starts_with(*relative + "/")))
+                {
+                    ImGui::SetNextItemOpen(true);
+                }
+                const bool open = ImGui::TreeNode(label.c_str());
+                RenderCreateMenu(sub, editor, true);
+                if (open)
                 {
                     RenderTree(sub, editor);
                     ImGui::TreePop();

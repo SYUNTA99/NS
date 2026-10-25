@@ -160,6 +160,8 @@ namespace NS
             //! @return 名前が使えない・取り込み関数が無い・読めない時は false で、今のレベルと名前を保つ。
             //! 名前の無いまま実在するファイルを読めなかった時は、終了の保存の書き先を退避の名前にする
             bool OpenLevel(std::string_view name) noexcept;
+            // 現在の編集内容と履歴を保ち、既存ファイルを上書きしない
+            [[nodiscard]] bool CreateLevel(std::string_view name) noexcept;
 
             //! 1 手戻す。戻せたら true。メニューとキーが同じ入口で呼ぶ
             bool PerformUndo() noexcept;

@@ -32,12 +32,19 @@ namespace NS
             void RenderFiles(const std::vector<std::string>& files, LevelEditorController& editor);
             void RenderTile(const std::string& file, LevelEditorController& editor, float width);
             void RenderSceneOpen(LevelEditorController& editor);
+            void RenderCreateMenu(std::string_view directory, LevelEditorController& editor, bool onFolder);
+            void RenderSceneCreate(LevelEditorController& editor);
             [[nodiscard]] bool OpenPendingScene(LevelEditorController& editor);
             const Gfx::D3DTexture* LoadThumbnail(const std::string& file);
 
             std::map<std::string, std::unique_ptr<Gfx::D3DRenderTarget>> m_previews;
             std::string m_pendingSceneName;
             std::string m_sceneOpenError;
+            std::string m_sceneCreateDirectory;
+            std::string m_newSceneName;
+            std::string m_sceneCreateError;
+            bool m_sceneCreateRequested = false;
+            bool m_revealSceneFolder = false;
         };
     } // namespace Editor
 } // namespace NS
