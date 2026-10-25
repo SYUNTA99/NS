@@ -184,19 +184,39 @@ TEST(SceneJson, SaveThatCannotFinishLeavesTheFileAsItWas)
 TEST(SceneActor, EnvironmentRoundTripsThroughFileAndScene)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    NS::WriteSceneEnvironment(doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt"});
+    NS::WriteSceneEnvironment(
+        doc,
+        NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt", .music = NS::SoundName{"bgm_course"}, .musicVolume = 0.3f});
 
     const std::string text = NS::SerializeSceneToJson(doc);
     nlohmann::json decoded;
     ASSERT_TRUE(NS::DeserializeSceneFromJson(decoded, text));
     const NS::SceneEnvironment read = NS::ReadSceneEnvironment(decoded);
     EXPECT_EQ(read.skybox, "Assets/Skybox/kurt");
+    EXPECT_EQ(read.music.name, "bgm_course");
+    EXPECT_FLOAT_EQ(read.musicVolume, 0.3f);
 
     NS::Scene scene;
     scene.ResetFromJson(decoded);
     EXPECT_EQ(scene.SkyboxPath(), "Assets/Skybox/kurt");
     const NS::SceneEnvironment saved = NS::ReadSceneEnvironment(scene.ToJson());
     EXPECT_EQ(saved.skybox, "Assets/Skybox/kurt");
+    EXPECT_EQ(saved.music.name, "bgm_course");
+    EXPECT_FLOAT_EQ(saved.musicVolume, 0.3f);
+}
+
+// ファイルの曲の音量が 0〜1 の外でも、読んだ値もシーンが持つ値も 0〜1 に収まる
+TEST(SceneActor, MusicVolumeFromTheFileIsClampedToZeroToOne)
+{
+    for (const std::pair<float, float>& volume : {std::pair{5.0f, 1.0f}, std::pair{-1.0f, 0.0f}})
+    {
+        nlohmann::json doc = NS::MakeSceneJson();
+        NS::WriteSceneEnvironment(doc, NS::SceneEnvironment{.musicVolume = volume.first});
+        EXPECT_FLOAT_EQ(NS::ReadSceneEnvironment(doc).musicVolume, volume.second) << volume.first;
+        NS::Scene scene;
+        scene.ResetFromJson(doc);
+        EXPECT_FLOAT_EQ(scene.Environment().musicVolume, volume.second) << volume.first;
+    }
 }
 
 // environment の欄の名前と値は SceneEnvironment のリフレクションが決める

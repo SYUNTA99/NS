@@ -40,11 +40,21 @@ namespace NS
     {
         //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない
         std::string skybox;
+        //! コースの曲の名前。名前が空なら曲は無い
+        SoundName music;
+        //! 曲の音量 (0〜1)。曲が効果音より小さく鳴り、動きの音を埋もれさせないようにする。
+        //! 0〜1 に収めるのは ClampMusicVolume で、ReadSceneEnvironment とエディタの SetSceneMusic が呼ぶ
+        float musicVolume = 0.5f;
 
         NS_REFLECT_BEGIN(SceneEnvironment, void)
         NS_FIELD(skybox, "skybox", "スカイボックス")
+        NS_FIELD(music, "music", "曲")
+        NS_FIELD(musicVolume, "musicVolume", "曲の音量")
         NS_REFLECT_END_VALUE()
     };
+
+    //! 曲の音量を 0〜1 に収める。非数と無限大は SceneEnvironment の既定の音量にする
+    [[nodiscard]] float ClampMusicVolume(float volume) noexcept;
 
     //! environment を読む。無い欄と壊れた欄は SceneEnvironment の既定
     [[nodiscard]] SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene);

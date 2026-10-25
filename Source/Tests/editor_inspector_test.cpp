@@ -832,6 +832,83 @@ TEST(EditorInspector, SkyboxEditUndoesThroughTheEnvironmentHistory)
     EXPECT_EQ(NS::ReadSceneEnvironment(scene.ToJson()).skybox, "Assets/Skybox/kurt");
 }
 
+// シーン設定で打った曲の音量はフレームをまたいで残り、適用で環境の履歴が 1 つ積まれる。
+// Undo の後は入力が元の値へ戻るので、もう一度適用を押しても積まれない
+TEST(EditorInspector, MusicVolumeEditUndoesThroughTheEnvironmentHistory)
+{
+    NS::Scene scene;
+    scene.SetSimulationEnabled(false);
+    LevelEditorController editor(&scene);
+    const nlohmann::json before = scene.ToJson();
+    const float volumeBefore = scene.Environment().musicVolume;
+    ASSERT_NE(volumeBefore, 0.25f);
+
+    InspectorFrames frames(editor);
+    frames.Frame();
+    frames.Frame();
+    const ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+    ASSERT_NE(window, nullptr);
+    const NS::ReflectionInfo* info = NS::SceneEnvironment::StaticReflection();
+    int volumeIndex = -1;
+    for (std::size_t i = 0; i < info->fieldCount; ++i)
+    {
+        if (std::string_view{info->fields[i].name} == "musicVolume")
+        {
+            volumeIndex = static_cast<int>(i);
+        }
+    }
+    ASSERT_GE(volumeIndex, 0);
+    const ImGuiID input =
+        ImHashStr("##value", 0, HashIndex(volumeIndex, ImHashStr("##value-fields", 0, window->ID)));
+    ImGui::ActivateItemByID(input);
+    GImGui->NavNextActivateFlags = ImGuiActivateFlags_PreferInput;
+    frames.Frame();
+    ASSERT_EQ(GImGui->ActiveId, input);
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddInputCharactersUTF8("0.25");
+    frames.Frame();
+    io.AddKeyEvent(ImGuiKey_Enter, true);
+    frames.Frame();
+    io.AddKeyEvent(ImGuiKey_Enter, false);
+    frames.Frame();
+    frames.Frame();
+    EXPECT_EQ(scene.Environment().musicVolume, volumeBefore);
+
+    ImGui::ActivateItemByID(ImHashStr("曲を適用", 0, window->ID));
+    frames.Frame();
+    frames.Frame();
+    EXPECT_FLOAT_EQ(scene.Environment().musicVolume, 0.25f);
+    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
+
+    ASSERT_TRUE(editor.Editor().PerformUndo());
+    EXPECT_EQ(scene.ToJson(), before);
+    frames.Frame();
+    ImGui::ActivateItemByID(ImHashStr("曲を適用", 0, window->ID));
+    frames.Frame();
+    frames.Frame();
+    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 0u);
+    EXPECT_EQ(scene.ToJson(), before);
+}
+
+// 曲を変えると環境の履歴が 1 つだけ積まれる。同じ値と非数の音量では積まない
+TEST(EditorInspector, SetSceneMusicPushesOneEnvironmentCommand)
+{
+    NS::Scene scene;
+    scene.SetSimulationEnabled(false);
+    LevelEditorController editor(&scene);
+    const nlohmann::json before = scene.ToJson();
+
+    ASSERT_TRUE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, 0.4f));
+    EXPECT_EQ(editor.SceneMusic().name, "bgm_course");
+    EXPECT_FLOAT_EQ(editor.SceneMusicVolume(), 0.4f);
+    EXPECT_TRUE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, 0.4f));
+    EXPECT_FALSE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, std::numeric_limits<float>::quiet_NaN()));
+    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
+
+    ASSERT_TRUE(editor.Editor().PerformUndo());
+    EXPECT_EQ(scene.ToJson(), before);
+}
+
 
 // シーンで選んだアクターの .actor の束が欄に出る。止めの長さを直すと、同じ .actor のアクターの束に効き、.actor の hitReactions に書く
 TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitAndTheFile)
