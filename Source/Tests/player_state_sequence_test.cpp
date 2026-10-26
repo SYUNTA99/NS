@@ -1229,7 +1229,7 @@ TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndHoldsTheOther
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f);
     ASSERT_NE(player, nullptr);
-    scene.AddSystemTick(others, NS::UpdatePhase::Triggers);
+    scene.AddSystemTick(others, NS::UpdatePhase::Sensors);
     const NS::DrawShapeDesc shape = ShippedBeforeContactShape();
     const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
     scene.RemoveSystemTick(others);
@@ -1274,7 +1274,7 @@ TEST(PlayerBeforeContact, AMissPredictionNeitherShrinksNorHoldsTheOthers)
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.75f);
     ASSERT_NE(player, nullptr);
-    scene.AddSystemTick(others, NS::UpdatePhase::Triggers);
+    scene.AddSystemTick(others, NS::UpdatePhase::Sensors);
     const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
     scene.RemoveSystemTick(others);
     ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
@@ -1356,7 +1356,7 @@ TEST(PlayerBeforeContact, ALatePredictionEntersAtTheFrameThatMatchesTheRest)
         NS::Scene scene;
         PlayerActor* player = PlaceTackleScene(scene, 0.0f, late.rockZ);
         ASSERT_NE(player, nullptr);
-        scene.AddSystemTick(others, NS::UpdatePhase::Triggers);
+        scene.AddSystemTick(others, NS::UpdatePhase::Sensors);
         const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
         scene.RemoveSystemTick(others);
         ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);

@@ -461,7 +461,7 @@ namespace NS
         {
             if (Scene* scene = owner.actor->OwningScene())
             {
-                scene->HoldOthers(length);
+                scene->HoldOthers(owner.actor, length);
             }
         }
 

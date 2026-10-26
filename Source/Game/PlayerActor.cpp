@@ -169,6 +169,27 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     return state;
 }
 
+void PlayerActor::WriteFollowState(NS::ThirdPersonFollow* vcam) const
+{
+    NS_ASSERT(Game, vcam != nullptr, "PlayerActor::WriteFollowState: 書く先の追従カメラが無い");
+    const GL::Player::CameraTargetState state = GetCameraTargetState();
+    vcam->SetFollowMotion(state.grounded, state.velocity);
+    vcam->SetTargetHeightOffset(state.heightOffset);
+    vcam->SetFollowFramingHeld(state.framingHeld);
+    if (state.hasRebound && !vcam->SetFollowRebound(state.rebound))
+    {
+        NS_LOG_WARN(Game,
+                    "突進の向きが壊れていて、反動をカメラへ渡さなかった: ({}, {}, {})",
+                    state.rebound.slamDirection.x,
+                    state.rebound.slamDirection.y,
+                    state.rebound.slamDirection.z);
+    }
+    if (state.hasCharge && !vcam->SetFollowCharge(state.charge))
+    {
+        NS_LOG_WARN(Game, "溜めの状態が壊れていて、追従カメラへ渡さなかった: 溜め量 {}", state.charge.charge01);
+    }
+}
+
 void PlayerActor::UpdateAnimation()
 {
     NS::Animation* animation = AnimationClassObj();
@@ -200,16 +221,15 @@ void PlayerActor::Update(bool chargeHeld)
     m_inputInjected = false;
 }
 
-void PlayerActor::ObserveStep()
+void PlayerActor::DecideStep()
 {
     // 世界を進めた固定フレームにだけ回るので、世界を進めない固定フレームの押しもここで拾う
     if (!m_inputInjected)
     {
         m_input->Update(this);
     }
-    NS::SceneActor::ObserveStep();
     // 当たりの途中は受け付けない。相手だけが戻ると、明けの知らせが戻った相手を飛ばす
-    // 押しは同じ歩の状態の段で消費されるので、当たりの途中の押しは持ち越さない
+    // 押しは同じ歩の状態機械の後か押しを下ろす所で消費されるので、当たりの途中の押しは持ち越さない
     if (m_input->RespawnPressed() && !IsHitStopping() && !IsInTackleHit())
     {
         if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
@@ -223,10 +243,7 @@ void PlayerActor::ObserveStep()
     m_airDash.m_prevPressHeld = pressHeld;
     ObserveCharge(false);
     m_resolver->ObserveImpact(SelfForImpact(), SlamMotion(), m_collider.get());
-}
 
-void PlayerActor::DecideStep()
-{
     AdvanceCharge(NS::GetFrameDelta(this));
     // 止めの後に初めて回るフレームが明け。状態の段より前に反動へ移すと、反動の 1 歩目が明けのフレームに回る
     const bool releasing = IsInTackleHit() && !IsHitStopping();
@@ -238,6 +255,39 @@ void PlayerActor::DecideStep()
     }
     ApplyImpactOrders(m_resolver->Answer());
     DecideBeforeContact(m_resolver->Answer());
+    m_stateStepPrepared = PrepareOrSkipStateStep();
+}
+
+bool PlayerActor::PrepareOrSkipStateStep()
+{
+    // 止めの間は基盤が状態機械を飛ばす。押しは下ろさず、止めの明けへ持ち越す
+    if (IsHitStopping())
+    {
+        return false;
+    }
+    const float dt = NS::GetFrameDelta(this);
+    if (CanMoveBody() && dt > 0.0f)
+    {
+        PrepareStateStep();
+        return true;
+    }
+    // 体の段にも止まっている時の押下の消費を置くと、dt が 0 以下の時に 2 回走る。消費は冪等なのでここ 1 回にする
+    DropPresses();
+    // 当たりの状態は体を動かさないので、突進の発動と丸まりの解除を通さずに状態機械だけを進める。
+    // 入る予約の確定 (段の束を始める) は止めの前のフレームに回る
+    if (!(IsInTackleHit() && dt > 0.0f))
+    {
+        SkipStateStep();
+    }
+    return false;
+}
+
+void PlayerActor::AfterStateStep()
+{
+    if (m_stateStepPrepared)
+    {
+        FinishStateStep(NS::GetFrameDelta(this));
+    }
 }
 
 void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexcept
@@ -282,30 +332,6 @@ void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexc
     if (IsInTackleHit())
     {
         ChangeToWalkOrFall();
-    }
-}
-
-void PlayerActor::StateStep()
-{
-    const float dt = NS::GetFrameDelta(this);
-    if (CanMoveBody() && dt > 0.0f)
-    {
-        PrepareStateStep();
-        // clang-format off
-        if (m_stateMachine) { m_stateMachine->Update(dt); }
-        // clang-format on
-        FinishStateStep(dt);
-        return;
-    }
-    // 身体の段にも止まっている時の押下の消費を置くと、dt が 0 以下の時に 2 回走る。消費は冪等なのでここ 1 回にする
-    SkipBodyStep();
-    // 当たりの状態は体を動かさないので、突進の発動と丸まりの解除を通さずに状態機械だけを進める。
-    // 入る予約の確定 (段の束を始める) は止めの前のフレームに回る
-    if (IsInTackleHit() && dt > 0.0f)
-    {
-        // clang-format off
-        if (m_stateMachine) { m_stateMachine->Update(dt); }
-        // clang-format on
     }
 }
 
@@ -879,12 +905,12 @@ void PlayerActor::ResetState() noexcept
     // 当たる直前の動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
     ActionTimelineClassObj()->Stop();
     m_beforeContact = BeforeContactEntry{};
-    OwningScene()->HoldOthers(0);
+    OwningScene()->HoldOthers(this, 0);
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale(m_model.get());
 }
 
-void PlayerActor::SkipBodyStep() noexcept
+void PlayerActor::DropPresses() noexcept
 {
     m_input->ConsumePressed();
     m_prevJumpHeld = m_input->JumpHeld();

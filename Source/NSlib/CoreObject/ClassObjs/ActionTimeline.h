@@ -128,7 +128,7 @@ namespace NS
         void Stop() noexcept;
 
         //! @brief 持ち主の状態の歩で 1 フレーム進め、その歩に始まる事象を起こす
-        //! @details 呼ぶのは SceneActor::Update の StateStep の直後だけ。状態の歩が進んでいなければ何もしない
+        //! @details 呼ぶのは SceneActor::Update の状態機械の 1 歩の直後だけ。状態の歩が進んでいなければ何もしない
         void Advance(const ActionTimelineSelf& owner);
 
         [[nodiscard]] bool IsRunning() const noexcept { return m_current != k_NoAction; }

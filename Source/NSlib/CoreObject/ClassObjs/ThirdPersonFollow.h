@@ -8,7 +8,8 @@
 
 namespace NS
 {
-    class IUseCamera;
+    class CameraManager;
+    class IUseCameraTarget;
     class IUseCollision;
     class SceneActor;
     class Transform;
@@ -62,8 +63,13 @@ namespace NS
         [[nodiscard]] ActorRef TargetRef() const noexcept { return m_targetRef; }
 
         //! @brief 追う相手を受ける。持ち主のアクターが TargetRef の指す相手を取得して渡す
-        //! @details 相手が一覧から外れる前に、持ち主が取得し直して渡し直す。nullptr は相手なし
-        void SetTarget(const SceneActor* target) noexcept { m_target = target; }
+        //! @details 相手が一覧から外れる前に、持ち主が取得し直して渡し直す。target が nullptr なら相手なし。
+        //! state は同じ相手が自分の状態を渡す口で、渡さない相手は nullptr。Advance が進める直前に読む
+        void SetTarget(const SceneActor* target, const IUseCameraTarget* state) noexcept
+        {
+            m_target = target;
+            m_targetState = state;
+        }
 
         //! プレイ開始 / rebuild ごとに初期姿勢へ戻す
         void ResetPose() noexcept;
@@ -125,10 +131,11 @@ namespace NS
         //! 指定位置から初期姿勢を逆算し、現在姿勢にも反映する。対象なし・距離ゼロなら変更しない
         void SetInitialPoseFromCameraPosition(const Vector3& cameraPosition) noexcept;
 
-        //! @brief 固定ステップで向きと距離を更新する。EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
-        //! @param[in] user 溜めの揺れを保たせるカメラの管理クラスの窓口。持ち主のアクター
-        //! @param[in] collision 注視点とカメラの間の地形を探すシーンの窓口。持ち主のアクター
-        void Update(const IUseCamera* user, const IUseCollision* collision);
+        //! @brief 追う相手の状態を受けてから、固定ステップで向きと距離を更新する
+        //! @details EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
+        //! @param[in] cameras 溜めの揺れを保たせるカメラの管理役
+        //! @param[in] collision 注視点とカメラの間の地形を探すシーン
+        void Advance(CameraManager* cameras, const IUseCollision* collision) override;
 
         //! alpha で補間した target を追う最終姿勢を返す。CameraManager が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
@@ -187,7 +194,7 @@ namespace NS
     private:
         // 受けた溜めの状態から締め・揺れ・構図のずらしを 1 フレーム進める
         // look はこのフレームの注視点。framingHeld が真の間は、放した後の締めの戻しと構図のずらしを止める
-        void UpdateCharge(const IUseCamera* user,
+        void UpdateCharge(CameraManager* cameras,
                           const FollowChargeDesc& charge,
                           bool framingHeld,
                           const Transform* target,
@@ -232,8 +239,9 @@ namespace NS
             Returning, // 反動の状態が外れてから普通の追い方へ寄せ戻している
         };
 
-        ActorRef m_targetRef{};               // 追従対象の永続参照。シーンに保存する
-        const SceneActor* m_target = nullptr; // m_targetRef から持ち主が取得した相手 (非所有)
+        ActorRef m_targetRef{};                          // 追従対象の永続参照。シーンに保存する
+        const SceneActor* m_target = nullptr;            // m_targetRef から持ち主が取得した相手 (非所有)
+        const IUseCameraTarget* m_targetState = nullptr; // m_target が状態を渡す口。渡さない相手は nullptr (非所有)
 
         // 値で受けた追従先の運動。届くまでは待機距離のまま
         bool m_followGrounded = false;

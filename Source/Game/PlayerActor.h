@@ -12,6 +12,7 @@
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
+#include "NSlib/CoreObject/IUse/IUseCameraTarget.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
@@ -62,7 +63,7 @@ namespace GL
 
 //! @brief 固定の部品を OnInit で組むプレイヤー
 //! @details 衝突の観測・裁定を身体の移動より先に行う。死とゴールは Scene の CourseDirector に通知する
-class PlayerActor : public NS::SceneActor
+class PlayerActor : public NS::SceneActor, public NS::IUseCameraTarget
 {
 public:
     PlayerActor() noexcept;
@@ -113,7 +114,6 @@ public:
     [[nodiscard]] GL::Level::TackleGhost& Ghost() noexcept { return m_tackleGhost; }
     [[nodiscard]] const GL::Level::TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
 
-    [[nodiscard]] NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Player; }
     using NS::SceneActor::Update;
     //! 機器を読まずに chargeHeld を差し込み、1 固定ステップ進める。ほかの入力は部品の Set〜 で書いた値のまま
     void Update(bool chargeHeld);
@@ -348,6 +348,8 @@ public:
     void SetCurled(bool curled) noexcept;
 
     [[nodiscard]] GL::Player::CameraTargetState GetCameraTargetState() const;
+    //! GetCameraTargetState を追従カメラの欄へ写す。壊れた溜めと反動の値は WARN を出して渡さない
+    void WriteFollowState(NS::ThirdPersonFollow* vcam) const override;
 
     //! コースの進行役を用意する。全てのアクターが揃った後に呼ばれる
     void InitAfterPlacement() override;
@@ -381,14 +383,14 @@ protected:
     //! 残像・ロックオンの枠・突進の矢印は、入れたまま出ている間だけ描く
     void OnAppear() override;
     void OnDisappear() noexcept override;
-    //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
-    //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
-    void ObserveStep() override;
-    //! @brief 溜めを進め (AdvanceCharge)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)
-    //! @details 裁定の答えにある自機を動かす事 (突進の打ち切り・反動・貫通の速度) は、ここで自機がする
+    //! @brief 入力を読み、押しと狙い (ObserveCharge) と衝突 (ImpactResolver::ObserveImpact) を見てから、溜めを進め
+    //! (AdvanceCharge)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)。終わりに状態機械の 1 歩を支度する
+    //! @details 裁定の答えにある自機を動かす事 (突進の打ち切り・反動・貫通の速度) は、ここで自機がする。
+    //! 止めの間は何もせず押しを明けへ持ち越す。CanMoveBody が真なら突進の発動を判定し、偽なら押しを下ろす。
+    //! 偽の間は、当たりの状態のフレームだけ状態機械を進め、ほかは SkipStateStep で飛ばす
     void DecideStep() override;
-    //! 突進の発動、状態機械の 1 歩、丸まりの解除と押下の消費。CanMoveBody が偽の間は押下の消費だけ
-    void StateStep() override;
+    //! 突進の発動を判定したフレームにだけ、丸まりの解除・長押しの控え・押しを下ろす・要求と狙いの経過を進める
+    void AfterStateStep() override;
     void BodyStep() override;
     //! 狙いの表示・命中反応・外見・溜め・命中エフェクトの順で更新する
     void VisualStep() override;
@@ -415,7 +417,7 @@ private:
         float aimAge = 0.0f;        // 狙いを控えてからの経過秒
     };
 
-    //! 観測の段に控えた押しと狙い。確定するのは AdvanceCharge で、確定した値は m_charge に写す
+    //! DecideStep の頭で控えた押しと狙い。確定するのは AdvanceCharge で、確定した値は m_charge に写す
     struct ChargeObservation
     {
         bool held = false;
@@ -451,8 +453,8 @@ private:
     void StartTerrainReboundReaction(const NS::Vector3& contact, float facing) noexcept;
     //! 欄「反動の線を描く」が真なら、最後の地形の反動の向きの線と、今の段の輪を描く
     void DrawTerrainRebound() const;
-    //! 稼働していないフレームでも、そのフレーム限りの入力は落とす。残すと再開した時に古い押下が効く
-    void SkipBodyStep() noexcept;
+    //! 体を動かさないフレームでも、そのフレーム限りの押しは下ろす。残すと再開した時に古い押下が効く
+    void DropPresses() noexcept;
     //! 突進の進んだ距離を足し、距離を使い切るか進めなくなったら突進を終える
     //! @details 進めた距離は動かした後にしか出ないので、打ち切りの判定は状態でなくここに置く
     //! 受け取るのは直前の Move で実際に動いた量
@@ -530,6 +532,9 @@ private:
     void PrepareStateStep();
     //! 状態機械を進めた後の控えの更新。丸まりを解く判定・長押しの控え・押下の消費・要求と狙いの経過を進める
     void FinishStateStep(float dt);
+    //! @brief DecideStep の終わりに状態機械を進める支度をする
+    //! @details 止めの間は何もしない。PrepareStateStep を呼んだら真を返し、AfterStateStep が FinishStateStep を呼ぶ
+    [[nodiscard]] bool PrepareOrSkipStateStep();
     //! @brief 掴まり位置から掴める縁を探す
     //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
     //! @param[out] outTop 見つけた縁の上端の y。見つからない場合は書き換えない
@@ -566,7 +571,8 @@ private:
     GL::Level::Health m_health;
     std::optional<NS::Vector3> m_courseStartPosition; // MsgCourseStart の時の位置。やり直しで戻る先
 
-    bool m_inputInjected = false; // Update(bool) の間。機器を読まず、差し込んだ入力のまま進める
+    bool m_inputInjected = false;     // Update(bool) の間。機器を読まず、差し込んだ入力のまま進める
+    bool m_stateStepPrepared = false; // DecideStep が PrepareStateStep を呼んだか。書くのは DecideStep だけ
     bool m_prevJumpHeld = false;
     int m_jumpsRemaining = 1;
     float m_coyoteTimer = 0.0f; // コヨーテ猶予の残り秒

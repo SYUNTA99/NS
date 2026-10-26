@@ -129,7 +129,6 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
     EXPECT_NE(NS::ClassObjFields(prototype, "Input"), nullptr);
     EXPECT_EQ(NS::ClassObjFields(prototype, "PlayerInputRelay"), nullptr);
     EXPECT_NE(player.GetStateMachine(), nullptr);
-    EXPECT_EQ(player.Phase(), NS::UpdatePhase::Player);
     EXPECT_NE(NS::ClassObjFields(prototype, "ImpactResolver"), nullptr);
     EXPECT_NE(player.HitReactionClassObj(), nullptr);
     const NS::HitSensor* body = player.BodySensorClassObj();

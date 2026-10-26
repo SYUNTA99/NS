@@ -37,12 +37,13 @@ namespace NS
     {
         m_mainCamera.SetUp({0.0f, 1.0f, 0.0f});
         m_cameraManager.SetCamera(&m_mainCamera);
-        // Jolt の broadphase の木は、物理の段に置いた個体の後で組み直す
+        // Jolt の broadphase の木は、アクターが全部動いた後で組み直す
         AddSystemTick(m_physics, UpdatePhase::Physics);
-        // 当たりの調べ役はセンサーの段 (物理の後、仕掛けとゴールの前) で回る
+        // 当たりの調べ役はセンサーの段 (物理の後、コースの前) で回る
         AddSystemTick(m_hitSensors, UpdatePhase::Sensors);
-        // 管理役は vcam を動かす追従カメラの後で選び直す
+        // 仮想カメラはアクターとコースが動かした後の相手を追い、続けて選び直す
         AddSystemTick(m_cameraManager, UpdatePhase::Camera);
+        m_cameraManager.SetCollision(this);
         // エフェクトの世界は同じ歩の SceneActor が出した演出を受けてから進む
         AddSystemTick(m_sceneRenderer, UpdatePhase::Effects);
         AddSystemTick(m_ui, UpdatePhase::UI);
@@ -111,14 +112,33 @@ namespace NS
         m_rampActive = false;
     }
 
-    void Scene::HoldOthers(int steps) noexcept
+    void Scene::HoldOthers(const SceneActor* holder, int steps) noexcept
     {
+        NS_ASSERT(Scene, holder != nullptr, "Scene::HoldOthers: 止め始めるアクターが無い");
+        // 止めている間は先に止め始めたアクターが持つ。後から頼んだアクターに替えると、止め始めたアクターが止まる
+        if (m_othersHeldSteps > 0 && !IsOthersHolder(holder))
+        {
+            return;
+        }
         if (steps <= 0)
         {
             m_othersHeldSteps = 0;
             return;
         }
         m_othersHeldSteps = std::max(m_othersHeldSteps, steps);
+        m_othersHolder = holder;
+        m_othersHolderId = holder->Id();
+    }
+
+    bool Scene::IsOthersHolder(const SceneActor* actor) const noexcept
+    {
+        // id の無い JSON から読んだアクターは id が 0 で重なるので、番地も比べる。番地は比べるだけで読まない
+        return actor == m_othersHolder && actor->Id() == m_othersHolderId;
+    }
+
+    bool Scene::UpdatesWhileHeld(const SceneActor* actor) const noexcept
+    {
+        return m_othersHeldSteps <= 0 || IsOthersHolder(actor);
     }
 
     void Scene::StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept
@@ -456,7 +476,7 @@ namespace NS
             {
                 continue;
             }
-            // 止めは自機の段で置かれるので、毎段読み直してその歩の残りの段から効かせる
+            // 止めはアクターの Update の中で置かれるので、毎段読み直してその歩の残りの段から効かせる
             if (m_othersHeldSteps > 0 && !RunsWhileOthersHeld(phase))
             {
                 continue;
@@ -464,7 +484,7 @@ namespace NS
             ExecutePhase(phase);
         }
         m_actors.RemoveDestroyed();
-        // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ自機が進む
+        // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ止め始めたアクターが進む
         if (worldStep && m_othersHeldSteps > 0)
         {
             m_othersHeldSteps -= 1;
@@ -551,7 +571,15 @@ namespace NS
                 m_scheduledSystems.push_back(entry.system);
             }
         }
-        m_actors.ExecutePhase(phase);
+        if (phase == UpdatePhase::Actors)
+        {
+            // 止めはアクターの Update の中で始まるので、1 体ごとに問い直す
+            m_actors.UpdateActors([this](const SceneActor* actor) noexcept { return UpdatesWhileHeld(actor); });
+        }
+        if (phase == UpdatePhase::RenderPrep)
+        {
+            m_actors.PrepareRenderActors();
+        }
         // 管理役は段の SceneActor が出した物を受けてまとめるので、SceneActor の後に回す
         for (SceneSystem* system : m_scheduledSystems)
         {

@@ -5,6 +5,9 @@
 
 namespace NS
 {
+    class CameraManager;
+    class IUseCollision;
+
     //! 仮想カメラが返す 1 フレーム分のカメラ姿勢 + 投影設定。CameraManager が実 Camera へそのまま書く
     struct CameraPose
     {
@@ -42,6 +45,17 @@ namespace NS
     public:
         //! 最終姿勢を返す。alpha は追従対象の補間係数で、自由視点では使わない
         [[nodiscard]] virtual CameraPose EvaluatePose(float alpha) const noexcept = 0;
+
+        //! @brief 固定フレームに 1 回、姿勢を進める。既定は何もしない
+        //! @details 呼ぶのは CameraManager::OnTick だけで、有効な組の仮想カメラを登録の順に、選び直す前に呼ぶ。
+        //! 世界を止めている間 (シミュレーションの停止・一時停止) は呼ばれない
+        //! @param[in] cameras 呼んでいるカメラの管理役。事前条件: nullptr でない
+        //! @param[in] collision 地形を探すシーン。事前条件: nullptr でない
+        virtual void Advance(CameraManager* cameras, const IUseCollision* collision)
+        {
+            (void)cameras;
+            (void)collision;
+        }
 
         //! CameraManager の選択優先度。大きいほど優先、同値は登録順。active な vcam の中から最大が選ばれる
         void SetVcamPriority(int priority) noexcept { m_vcamPriority = priority; }

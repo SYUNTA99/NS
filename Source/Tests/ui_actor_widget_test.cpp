@@ -64,13 +64,11 @@ namespace
 // 段で回る口は SceneActor だけが持ち、UIActor には無い
 template <class T>
 concept HasPhaseHooks = requires(T& actor) {
-    actor.Phase();
     actor.Update();
     actor.PrepareRender();
 };
 template <class T>
-concept HasAnyPhaseHook = requires(T& actor) { actor.Phase(); } ||
-                          requires(T& actor) { actor.Update(); } || requires(T& actor) { actor.PrepareRender(); };
+concept HasAnyPhaseHook = requires(T& actor) { actor.Update(); } || requires(T& actor) { actor.PrepareRender(); };
 static_assert(HasPhaseHooks<NS::SceneActor>);
 static_assert(!HasAnyPhaseHook<NS::UIActor>);
 

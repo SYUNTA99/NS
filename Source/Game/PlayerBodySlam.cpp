@@ -230,7 +230,7 @@ void PlayerActor::EndBeforeContact() noexcept
     {
         reaction->Stop(this);
     }
-    OwningScene()->HoldOthers(0);
+    OwningScene()->HoldOthers(this, 0);
 }
 
 void PlayerActor::CancelBodySlam() noexcept

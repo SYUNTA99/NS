@@ -620,7 +620,7 @@ namespace GL
             {
                 return;
             }
-            // 観測の段は、今の位置から 1 歩進んだ玉の重なりで当たりを見る。触れるまでの距離を k 歩目に越えるなら、
+            // ObserveImpact は、今の位置から 1 歩進んだ玉の重なりで当たりを見る。触れるまでの距離を k 歩目に越えるなら、
             // 検知はこのフレームから k - 1 フレーム後。このフレームで検知しなかったので 1 以上
             m_answer.framesToPredictedContact =
                 std::max(static_cast<int>(std::ceil(predicted.contact / stepLength)) - 1, 1);

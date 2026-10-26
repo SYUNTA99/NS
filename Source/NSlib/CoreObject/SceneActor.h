@@ -13,7 +13,6 @@
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SensorDeclarations.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
-#include "NSlib/CoreObject/UpdatePhase.h"
 
 #include "NSlib/Core/Types.h"
 #include <concepts>
@@ -133,7 +132,7 @@ namespace NS
         [[nodiscard]] ActionTimelineSelf ActionTimelineSelfOf() noexcept;
 
         //! @brief 当たりの止め (ヒットストップ) の残りを、frames が残りより長い時だけ延ばす
-        //! @details 止めの間は Update が StateStep と BodyStep を飛ばす。呼んだフレームの残りの段から効き、
+        //! @details 止めの間は Update が状態機械の 1 歩と BodyStep を飛ばす。呼んだフレームの残りの段から効き、
         //! そのフレームも数える。束を始めたアクターが、HitReaction::Start の返した束の止めの長さで呼ぶ
         void RequestHitStop(int frames) noexcept;
         //! @brief 当たりの止めの残りを frames に書き換える。短くもする
@@ -153,11 +152,16 @@ namespace NS
         //! 当たりの止めの間なら true
         [[nodiscard]] bool IsHitStopping() const noexcept { return m_hitStopFrames > 0; }
 
-        //! @brief Update を呼ばれる段を返す
-        [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
-        //! 観測・裁定・状態・身体・見た目を固定順で更新する。部品は各段で明示的に呼ぶ
-        //! エフェクトの記録は観測前に、動作のタイムラインは状態の段の直後に進める。
-        //! 当たりの止めの間は状態と身体の段を飛ばし、最後に止めの残りを 1 減らす
+        //! @brief 1 固定フレームぶん進める。順は基盤が決め、派生は変えられない
+        //! @details シーンは出ているアクターを全部、物理の前の 1 か所で一覧の順に 1 回ずつ呼ぶ
+        //! (止めている間は止め始めたアクターだけ)。中の順は次のとおりで、部品は基盤が挟む。
+        //! - エフェクトの記録と、束が持ち主へ渡す項目を 1 フレーム進める
+        //! - DecideStep を毎回 1 回
+        //! - 止めの間でも SkipStateStep を呼んだフレームでもなければ、状態機械を 1 歩・動作のタイムライン・
+        //!   AfterStateStep を 1 回ずつ
+        //! - 止めの間でなければ BodyStep を 1 回 (状態機械の中で止めが始まったフレームは呼ばない)
+        //! - 出ていれば当たりを体の姿へそろえ、Model の揺れと震えを進め、VisualStep を毎回 1 回
+        //! - 止めの残りを 1 減らす
         void Update();
         virtual void PrepareRender();
 
@@ -232,18 +236,24 @@ namespace NS
 
         virtual void OnAppear();
         virtual void OnDisappear() noexcept;
-        //! 世界と相手を観測する段。状態・身体・見た目は変更しない
-        virtual void ObserveStep() {}
-        //! 観測結果からこの歩の値を決め、メッセージを送る段
+        // 派生が上書きする更新の関数は次の 4 つだけ。呼ぶのは Update だけで、呼ぶ順と回数は Update の説明のとおり。
+        // 状態機械を進めるのは基盤だけで、派生は進めない
+
+        //! @brief 世界と入力を見て、このフレームの値を決め、メッセージを送る。Update ごとに必ず 1 回、最初に呼ばれる
+        //! @details 状態機械を進めないフレームは、ここで SkipStateStep を呼ぶ
         virtual void DecideStep() {}
-        //! 状態機械を進める段。上書きは状態更新の前後に処理を挟む場合だけ
-        virtual void StateStep();
-        //! 身体を動かし、衝突形状を揃える段。仮想カメラもここで更新する
+        //! @brief 状態機械を進めたフレームにだけ、状態機械の 1 歩と動作のタイムラインの後に 1 回呼ばれる
+        //! @details 止めの間と SkipStateStep を呼んだフレームは呼ばれない
+        virtual void AfterStateStep() {}
+        //! 体を動かす。止めの間でなければ 1 回呼ばれる
         virtual void BodyStep() {}
-        //! 移動後の姿勢から見た目・演出・寿命を更新する段
+        //! 動かした後の姿勢から見た目・演出・寿命を更新する。Update ごとに必ず 1 回、最後に呼ばれる
         virtual void VisualStep() {}
+        //! @brief このフレームだけ、状態機械の 1 歩と動作のタイムラインと AfterStateStep を飛ばす
+        //! @details DecideStep の中で呼ぶ。Update の初めに戻るので、次のフレームへ持ち越さない
+        void SkipStateStep() noexcept { m_skipStateStep = true; }
         //! 自分を持ち主に、TStates の先頭へ入る状態機械を一度だけ構築する
-        //! 先頭の OnEnter は組んだ時でなく、最初の StateStep の初めに走る。outMachine は組む前に設定する
+        //! 先頭の OnEnter は組んだ時でなく、最初に状態機械を進める Update の初めに走る。outMachine は組む前に設定する
         //! 機械は基底の部品 StateMachine が持ち、型付きポインタは非所有。既に構築済みなら変更せず false
         template <typename TOwner, typename... TStates>
         bool BuildStateMachine(TOwner* owner, StateMachineOf<TOwner>*& outMachine)
@@ -351,8 +361,9 @@ namespace NS
         std::unique_ptr<StateMachine> m_stateMachine;
 
     private:
-        float m_frameRate = 1.0f; // 体の倍率。読み書きは GetFrameRate・SetFrameRate だけ
-        int m_hitStopFrames = 0;  // 当たりの止めの残り。書くのは RequestHitStop・OverrideHitStop・Update だけ
+        float m_frameRate = 1.0f;     // 体の倍率。読み書きは GetFrameRate・SetFrameRate だけ
+        int m_hitStopFrames = 0;      // 当たりの止めの残り。書くのは RequestHitStop・OverrideHitStop・Update だけ
+        bool m_skipStateStep = false; // このフレームは状態機械を進めないか。書くのは SkipStateStep と Update の初めだけ
     };
 
     //! @brief 体の倍率を返す。1 が等速

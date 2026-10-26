@@ -358,7 +358,7 @@ namespace
             NS::Cast<NS::ShapeHitSensor>(m_bodySensor.get())->SetSphere(0.5f);
             CreateClassObj(m_hitReaction);
         }
-        void StateStep() override { ++stateSteps; }
+        void AfterStateStep() override { ++stateSteps; }
         void BodyStep() override { ++bodySteps; }
 
     private:
@@ -435,7 +435,7 @@ namespace
         // 1 固定フレーム。アクター・カメラ・画面とパッドの係の順に回す
         void Step()
         {
-            scene.ExecutePhase(NS::UpdatePhase::Triggers);
+            scene.ExecutePhase(NS::UpdatePhase::Actors);
             scene.ExecutePhase(NS::UpdatePhase::Camera);
             scene.ExecutePhase(NS::UpdatePhase::RenderPrep);
         }

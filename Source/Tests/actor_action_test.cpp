@@ -364,7 +364,7 @@ namespace
             (void)NS::SetState<ActionRunState>(self);
         }
 
-        void Step() { scene.ExecutePhase(NS::UpdatePhase::Triggers); }
+        void Step() { scene.ExecutePhase(NS::UpdatePhase::Actors); }
 
         // self の持ち主へ渡す項目の名前。始まった順
         [[nodiscard]] std::vector<std::string> Started() const

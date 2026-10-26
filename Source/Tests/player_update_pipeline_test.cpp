@@ -39,7 +39,7 @@
 
 namespace
 {
-    // 裁定の観測と決定を、自機の段と同じ引数で単独に呼ぶ。答えにある自機を動かす事はしない
+    // 裁定の観測と決定を、自機の DecideStep と同じ引数で単独に呼ぶ。答えにある自機を動かす事はしない
     void ObserveImpact(PlayerActor* player)
     {
         NS_ASSERT(Game, player != nullptr, "ObserveImpact: 渡したアクターか部品が無い");

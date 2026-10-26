@@ -322,6 +322,17 @@ namespace NS
 
     void CameraManager::OnTick()
     {
+        // 進めた後の姿勢で選び直す。進めている間に足した効果は、この後の効果の歩で積んだ直後として扱う
+        if (m_collision != nullptr)
+        {
+            for (const VirtualCameraEntry& entry : m_vcams)
+            {
+                if (entry.enabled)
+                {
+                    entry.vcam->Advance(this, m_collision);
+                }
+            }
+        }
         VirtualCamera* next = SelectActive();
         if (next != m_active)
         {

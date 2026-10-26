@@ -30,7 +30,7 @@ namespace
         return doc;
     }
 
-    // 本番の観測の段と同じく、自機の部品に機器を読ませる
+    // 本番の DecideStep の頭と同じく、自機の部品に機器を読ませる
     bool PlayerReadsJump(PlayerActor* player)
     {
         player->Input().Update(player);

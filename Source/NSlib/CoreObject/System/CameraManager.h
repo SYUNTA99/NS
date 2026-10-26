@@ -12,6 +12,7 @@
 
 namespace NS
 {
+    class IUseCollision;
     class SceneCamera;
 
     //! @brief 有効な仮想カメラを優先度で選び、切り替えを補間して効果を重ねる
@@ -23,6 +24,10 @@ namespace NS
 
         //! 姿勢を書き込む実カメラを差し替える。非所有で、nullptr は書き込む先が無い状態
         void SetCamera(SceneCamera* camera) noexcept { m_camera = camera; }
+
+        //! @brief OnTick が仮想カメラを進める時に渡す、地形を探すシーンを差す。非所有
+        //! @details シーンが作る時に自分を差す。差していない管理役は仮想カメラを進めない
+        void SetCollision(const IUseCollision* collision) noexcept { m_collision = collision; }
 
         //! @brief 候補 vcam を有効な組として登録する。空と重複は無視する。所有せず、呼び出し側が寿命を保つ
         //! @details アクターの部品は補助関数 InitVirtualCamera から入る
@@ -45,7 +50,10 @@ namespace NS
         void SetBlendDuration(float seconds) noexcept;
         [[nodiscard]] float BlendDuration() const noexcept { return m_blendDuration; }
 
-        //! 固定ステップで使用するカメラの切り替えを検出し、補間の時間を進める。描画はしない
+        //! @brief 有効な仮想カメラを登録の順に進め (VirtualCamera::Advance)、使うカメラの切り替えを検出し、
+        //! 補間の時間と効果を進める。描画はしない
+        //! @details シーンの並びのカメラの段で回るので、アクター全部・物理・判定・コースが動かした後の相手を追う。
+        //! ほかを止めている間 (Scene::HoldOthers) も回る
         void OnTick() override;
 
         //! 補間した姿勢と効果を実カメラへ反映する。時間は進めない
@@ -176,15 +184,16 @@ namespace NS
         // 仮想カメラとブレンドまでを合成する。効果は掛けない。選べる仮想カメラが無ければ nullopt
         [[nodiscard]] std::optional<CameraPose> ComposeBeforeEffects(float alpha) const noexcept;
 
-        SceneCamera* m_camera = nullptr;     // Scene が持つ実カメラ (非所有)
+        SceneCamera* m_camera = nullptr;            // Scene が持つ実カメラ (非所有)
+        const IUseCollision* m_collision = nullptr; // 仮想カメラを進める時に渡すシーン (非所有)
         //! 候補の vcam と、持ち主が出ているか。指す物は非所有
         struct VirtualCameraEntry
         {
             VirtualCamera* vcam = nullptr;
             bool enabled = true; // 正はこの値だけ
         };
-        std::vector<VirtualCameraEntry> m_vcams; // 登録の順
-        VirtualCamera* m_active = nullptr;   // 現在選ばれている vcam
+        std::vector<VirtualCameraEntry> m_vcams;    // 登録の順
+        VirtualCamera* m_active = nullptr;          // 現在選ばれている vcam
 
         CameraPose m_lastPose{};       // 直近 Evaluate が実カメラへ書いた pose。切替時のブレンド始点になる
         CameraPose m_blendFrom{};      // ブレンド開始時にスナップした旧 pose

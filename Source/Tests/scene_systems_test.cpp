@@ -42,14 +42,14 @@ static_assert(std::is_base_of_v<NS::SceneSystem, NS::ScreenFadeDirector>);
 // 更新の登録の口は Scene の 1 つで、SceneSystem の派生だけを受ける
 template <class T>
 concept CanAddSystemTick =
-    requires(NS::Scene& scene, T& system) { scene.AddSystemTick(system, NS::UpdatePhase::Triggers); };
+    requires(NS::Scene& scene, T& system) { scene.AddSystemTick(system, NS::UpdatePhase::Actors); };
 static_assert(CanAddSystemTick<NS::UIDirector>);
 static_assert(!CanAddSystemTick<NS::SceneActor>);
 static_assert(!CanAddSystemTick<NS::UIActor>);
 
 // 段を回す口も Scene の 1 つ。アクターの一覧を直に回すと、同じ段の管理役が呼ばれない
 template <class T>
-concept CanExecutePhase = requires(T& target) { target.ExecutePhase(NS::UpdatePhase::Triggers); };
+concept CanExecutePhase = requires(T& target) { target.ExecutePhase(NS::UpdatePhase::Actors); };
 static_assert(CanExecutePhase<NS::Scene>);
 static_assert(!CanExecutePhase<NS::ActorList>);
 
@@ -78,7 +78,7 @@ namespace
     class SelfRegisteringSystem final : public NS::SceneSystem
     {
     public:
-        explicit SelfRegisteringSystem(NS::Scene& scene) { scene.AddSystemTick(*this, NS::UpdatePhase::Triggers); }
+        explicit SelfRegisteringSystem(NS::Scene& scene) { scene.AddSystemTick(*this, NS::UpdatePhase::Actors); }
         void OnTick() override { ++s_ticks; }
         static inline int s_ticks = 0;
     };
@@ -135,7 +135,7 @@ namespace
 
     protected:
         void OnInit() override { CreateClassObj(m_part, &m_log); }
-        void StateStep() override
+        void DecideStep() override
         {
             m_log.order.push_back("actor");
             m_part->Log();
@@ -209,9 +209,9 @@ TEST(ActorListTicker, TickerRunsAfterClassObjsOfSameBand)
     TickLog log;
     scene.SpawnActor<LoggingActor>("LoggingActor", log);
     LoggingTicker ticker(log);
-    scene.AddSystemTick(ticker, NS::UpdatePhase::Triggers);
+    scene.AddSystemTick(ticker, NS::UpdatePhase::Actors);
 
-    scene.ExecutePhase(NS::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::UpdatePhase::Actors);
     ASSERT_EQ(log.order.size(), 3u);
     EXPECT_EQ(log.order[0], "actor");
     EXPECT_EQ(log.order[1], "component");
@@ -219,7 +219,7 @@ TEST(ActorListTicker, TickerRunsAfterClassObjsOfSameBand)
 
     scene.RemoveSystemTick(ticker);
     log.order.clear();
-    scene.ExecutePhase(NS::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::UpdatePhase::Actors);
     ASSERT_EQ(log.order.size(), 2u);
     EXPECT_EQ(log.order[0], "actor");
     EXPECT_EQ(log.order[1], "component");

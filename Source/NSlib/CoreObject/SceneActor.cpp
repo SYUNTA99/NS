@@ -357,10 +357,6 @@ namespace NS
 
     void SceneActor::OnStart()
     {
-        NS_ASSERT(Scene,
-                  Phase() != UpdatePhase::RenderPrep,
-                  "{} の段が、全部の Actor を回す段になっている。Update が呼ばれない",
-                  ClassName());
         // 描く物は OnInit で、センサーはその前に入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
         // 出ている物だけを OnAppear が物理シーンへ入れる
         // clang-format off
@@ -453,28 +449,29 @@ namespace NS
 
     void SceneActor::Update()
     {
+        m_skipStateStep = false;
         // clang-format off
         if (m_effectKeeper) { m_effectKeeper->BeginStep(GetEffectScene()); }
         if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(); }
         // clang-format on
-        ObserveStep();
         DecideStep();
         // 止めは状態の時計だけを止める。束で始めた演出は頼まれた係と模型が自分の歩で進める
-        if (!IsHitStopping())
+        if (!IsHitStopping() && !m_skipStateStep)
         {
-            StateStep();
             // 時計は状態の歩なので、状態を進めたフレームにだけ進める
             // clang-format off
+            if (m_stateMachine) { m_stateMachine->Update(GetFrameDelta(this)); }
             if (m_actionTimeline) { m_actionTimeline->Advance(ActionTimelineSelfOf()); }
             // clang-format on
+            AfterStateStep();
         }
-        // StateStep の中で束を始めた時は、そのフレームの身体から止める
+        // 状態機械の中で束を始めた時は、そのフレームの身体から止める
         if (!IsHitStopping())
         {
             BodyStep();
         }
         // 置く側の当たりは体を動かした後の姿へ揃える。姿も形も変わっていなければ Collision は何もしない
-        // 状態の段で消えたアクターの body は物理シーンの外にあるので揃えない
+        // 状態機械の中で消えたアクターの body は物理シーンの外にあるので揃えない
         // clang-format off
         if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(Root().WorldMatrix(), this); }
         // clang-format on
@@ -494,13 +491,6 @@ namespace NS
         Root().Snapshot();
         // clang-format off
         if (m_model) { m_model->Snapshot(); }
-        // clang-format on
-    }
-
-    void SceneActor::StateStep()
-    {
-        // clang-format off
-        if (m_stateMachine) { m_stateMachine->Update(GetFrameDelta(this)); }
         // clang-format on
     }
 

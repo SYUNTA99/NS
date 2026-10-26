@@ -25,7 +25,6 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
     input->SetClimbMove(2.0f, -2.0f);
     EXPECT_FLOAT_EQ(player.ClimbRight(), 1.0f);
     EXPECT_FLOAT_EQ(player.ClimbForward(), -1.0f);
-    EXPECT_EQ(player.Phase(), NS::UpdatePhase::Player);
 }
 
 TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
