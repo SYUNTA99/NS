@@ -416,6 +416,8 @@ private:
     //! @brief エアダッシュを始める。向きはスティック、倒していなければ自機の向き、無ければカメラの前
     //! @details 回数を 1 減らし、押したフレームの体の更新から速さが出るよう速度もここで書く
     void BeginAirDash() noexcept;
+    //! 今のスティックの向きを倒し続けた秒を数え、欄「行きたい向きとみなす秒」以上ならダッシュの向きにする。毎フレーム観測の段で呼ぶ
+    void UpdateIntendedDirection(float dt) noexcept;
     //! @brief 体を動かした直後に呼ぶ。エアダッシュか地形の反動の間に面が遮ったら、その面で反動を始める
     //! @details 当て方が欄「反動に数える当て方の下限」より浅い面と、反動の間の登れる面は数えない
     void TryBeginTerrainRebound() noexcept;

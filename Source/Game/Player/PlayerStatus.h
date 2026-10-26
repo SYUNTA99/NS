@@ -114,6 +114,9 @@ namespace GL
 
             int m_remaining = 1;
             NS::Vector3 m_direction{};   // 今のダッシュの水平の向き。正規化済み
+            NS::Vector3 m_intendedDirection{}; // ダッシュの向きに使う。無ければゼロ
+            NS::Vector3 m_tiltDirection{};     // 今倒している水平の向き。倒していなければゼロ
+            float m_tiltSeconds = 0.0f;        // m_tiltDirection を倒し続けた秒
             float m_dashElapsed = 0.0f;  // 今のダッシュを始めてからの秒
             bool m_prevPressHeld = false; // 直前の歩にボタンを押していたか。押した瞬間を見分ける
             bool m_pressed = false;       // この歩に押した瞬間か。観測の段で書き、状態の段で読む

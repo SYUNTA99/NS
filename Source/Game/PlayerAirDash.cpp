@@ -66,9 +66,11 @@ bool PlayerActor::CanStartAirDash() const noexcept
 
 void PlayerActor::BeginAirDash() noexcept
 {
-    NS::Vector3 direction{};
-    const bool stick = DesiredSpeedScale() >= m_params->StickDeadzone() &&
-                       NS::TryNormalizeHorizontal(DesiredDirection(), direction);
+    // 押す直前に倒し直した向きより、倒し続けていた向きを優先する
+    NS::Vector3 direction = m_airDash.m_intendedDirection;
+    const bool stick = direction.LengthSquared() > 0.0f ||
+                       (DesiredSpeedScale() >= m_params->StickDeadzone() &&
+                        NS::TryNormalizeHorizontal(DesiredDirection(), direction));
     if (!stick && !NS::TryNormalizeHorizontal(m_facingDir, direction))
     {
         direction = NS::CalcCameraForwardHorizontal(this);
@@ -88,6 +90,33 @@ void PlayerActor::BeginAirDash() noexcept
     StartAirControlReturn();
     m_body->SetVelocity(direction * m_params->AirDashSpeed());
     (void)m_states->Change<GL::Player::AirDashPlayerState>();
+}
+
+void PlayerActor::UpdateIntendedDirection(float dt) noexcept
+{
+    NS::Vector3 tilt{};
+    if (DesiredSpeedScale() < m_params->StickDeadzone() || !NS::TryNormalizeHorizontal(DesiredDirection(), tilt))
+    {
+        m_airDash.m_intendedDirection = NS::Vector3{};
+        m_airDash.m_tiltDirection = NS::Vector3{};
+        m_airDash.m_tiltSeconds = 0.0f;
+        return;
+    }
+    const float retilt = NS::ToRadians(NS::Degrees{m_params->m_retiltDegrees}).value;
+    if (m_airDash.m_tiltDirection.LengthSquared() > 0.0f && AngleBetweenUnit(tilt, m_airDash.m_tiltDirection) <= retilt)
+    {
+        m_airDash.m_tiltSeconds += dt;
+    }
+    else
+    {
+        m_airDash.m_tiltSeconds = 0.0f;
+    }
+    // ゆっくり回した時は、数え直さずに今の向きへ付いていく
+    m_airDash.m_tiltDirection = tilt;
+    if (m_airDash.m_tiltSeconds >= m_params->m_intendedHoldSeconds)
+    {
+        m_airDash.m_intendedDirection = tilt;
+    }
 }
 
 void PlayerActor::UpdateAirDash(float dt) noexcept
