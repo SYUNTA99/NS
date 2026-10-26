@@ -11,6 +11,7 @@
 #include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
 #include "NSlib/CoreObject/IUse/IUseState.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/SensorDeclarations.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
 #include "NSlib/CoreObject/UpdatePhase.h"
 
@@ -168,9 +169,25 @@ namespace NS
         //! @details OnStart と、エディタがアクターの並びか ActorRef の欄を書き換えた後に呼ぶ。上書きは何回呼ばれてもよい形で書く
         virtual void ResolveActorRefs() {}
 
-        //! 異なる持ち主のセンサーが重なる間、互いに毎歩呼ばれる
-        //! センサーの種類を判断し、必要なメッセージを送る
-        virtual void AttackSensor(HitSensor* self, HitSensor* other)
+        //! @brief 自分のセンサー self と、異なる持ち主のセンサー other が重なり始めた固定フレームに 1 回呼ばれる
+        //! @details 応じるかは other の種類を見て決め、要るメッセージを送る。重なった組の両方の持ち主へ、
+        //! 自分と相手を入れ替えて届く
+        virtual void OnSensorEnter(HitSensor* self, HitSensor* other)
+        {
+            (void)self;
+            (void)other;
+        }
+        //! 重なり始めた次の固定フレームから、重なっている間ずっと毎回呼ばれる
+        virtual void OnSensorStay(HitSensor* self, HitSensor* other)
+        {
+            (void)self;
+            (void)other;
+        }
+        //! @brief OnSensorEnter を受けた組の重なりが終わった時に 1 回呼ばれる
+        //! @details 形が離れた時と、どちらかのセンサーが調べる対象から外れた時 (Invalidate・持ち主の Disappear) に届く。
+        //! 相手のセンサーが一覧から外れた時 (相手のアクターが終わった時) は、次の固定フレームに other を nullptr で届く。
+        //! 自分のセンサーが一覧から外れた時 (自分のアクターが終わる時) は、SceneActor::OnEndPlay の中でその場で届く
+        virtual void OnSensorExit(HitSensor* self, HitSensor* other)
         {
             (void)self;
             (void)other;
@@ -204,21 +221,14 @@ namespace NS
         //! @details 作る時と ReloadAssets の両方で呼ぶので、何回呼ばれても同じ姿になるように書く。上書きする派生は基底も呼ぶ
         virtual void OnAssetsLoaded();
 
-        // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
+        //! @brief 部品を member に作る。未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
+        //! @details センサーは作れない。NS_SENSOR か NS_FOLLOW_SENSOR で宣言し、基底が OnInit の前に作る
         template <class TBase, class T = TBase, class... TArgs>
             requires std::derived_from<T, TBase> && std::derived_from<T, Object>
         T* CreateClassObj(std::unique_ptr<TBase>& member, TArgs&&... args)
         {
-            const ClassObjInfo* field = FindReflectedMember(&member);
-            if (field == nullptr || member != nullptr || IsClassObjKeyCreated(field->key))
-            {
-                ReportInvalidClassObj(field);
-                return nullptr;
-            }
-            std::unique_ptr<T> classObj = std::make_unique<T>(std::forward<TArgs>(args)...);
-            T* raw = classObj.get();
-            member = std::move(classObj);
-            return raw;
+            static_assert(!std::is_base_of_v<HitSensor, T>, "センサーは NS_SENSOR か NS_FOLLOW_SENSOR で宣言する");
+            return EmplaceClassObj<TBase, T>(member, std::forward<TArgs>(args)...);
         }
 
         virtual void OnAppear();
@@ -258,6 +268,7 @@ namespace NS
 
     private:
         friend class ActorList;
+        friend class SensorDeclarations;
         friend bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
         friend bool SendMsgToActor(const Message& msg, SceneActor* receiver);
         template <class T, class... TArgs> friend std::unique_ptr<T> CreateActor(TArgs&&... args);
@@ -269,12 +280,12 @@ namespace NS
                                                                      std::string_view actorFile);
         friend float GetFrameRate(const SceneActor* actor) noexcept;
         friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
-        //! @brief アクターを作る順。部品を作る → .actor の全部の値 → シーンの上書き → 素材
+        //! @brief アクターを作る順。宣言したセンサー → 部品を作る (OnInit) → .actor の全部の値 → シーンの上書き → 素材
         //! @details 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない。
         //! info が nullptr のアクターも、シーンの上書きを飛ばすだけで同じ順を通る。
         //! 断らない。シーンの上書きが書いてよい項目だけを持つかは、作る前に ActorFromJson が確かめる
         void Init(const ActorInitInfo* info);
-        //! 部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
+        //! 宣言したセンサーと部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
         //! actorFile は .actor の名前として持つだけで、空ならクラスと同じ名前
         void InitWithCodeValues(std::string_view actorFile);
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
@@ -288,6 +299,30 @@ namespace NS
         // 別のメンバーが同じ保存キーで作成済みか。同じキーの部品が 2 つあると保存で片方が消える
         [[nodiscard]] bool IsClassObjKeyCreated(std::string_view key) const;
         void ReportInvalidClassObj(const ClassObjInfo* field) const;
+        //! クラスが並べたセンサー。上書きは NS_SENSORS_BEGIN と NS_SENSORS_END が書く
+        virtual void DeclareSensors(SensorDeclarations& sensors) { (void)sensors; }
+        // 宣言したセンサーを作り、一覧に入れて種類と形を付ける。Init と InitWithCodeValues が OnInit の前に 1 回呼ぶ
+        void CreateDeclaredSensors();
+        void CreateShapeSensor(std::unique_ptr<HitSensor>& member, uint8 kind, HitSensorShape shape);
+        void CreateFollowSensor(std::unique_ptr<HitSensor>& member,
+                                uint8 kind,
+                                std::function<SensorVolume(const Matrix& rootWorld)> volume);
+        // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
+        template <class TBase, class T = TBase, class... TArgs>
+            requires std::derived_from<T, TBase> && std::derived_from<T, Object>
+        T* EmplaceClassObj(std::unique_ptr<TBase>& member, TArgs&&... args)
+        {
+            const ClassObjInfo* field = FindReflectedMember(&member);
+            if (field == nullptr || member != nullptr || IsClassObjKeyCreated(field->key))
+            {
+                ReportInvalidClassObj(field);
+                return nullptr;
+            }
+            std::unique_ptr<T> classObj = std::make_unique<T>(std::forward<TArgs>(args)...);
+            T* raw = classObj.get();
+            member = std::move(classObj);
+            return raw;
+        }
         // PendingDestroy からはどこへも移らない
         enum class Presence : uint8
         {

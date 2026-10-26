@@ -16,15 +16,16 @@ namespace NS
         ~IUseHitSensor() = default;
     };
 
-    // センサーは、アクターを作る時 (OnInit) に部品を作る行の隣で InitHitSensor を 1 回呼んで入れ、
-    // アクターが終わる時 (OnEndPlay) に EndHitSensor で外す。出る・消える時は EnableHitSensor・DisableHitSensor で
-    // センサー自身の値を切り替え、入れたままにするので調べる順は変わらない
+    // センサーは、アクターのクラスが NS_SENSOR・NS_FOLLOW_SENSOR で宣言し、基底の SceneActor が OnInit の前に作って
+    // InitHitSensor で 1 回入れ、アクターが終わる時 (OnEndPlay) に EndHitSensor で外す。
+    // 出る・消える時は EnableHitSensor・DisableHitSensor でセンサー自身の値を切り替え、入れたままにするので調べる順は変わらない
 
     //! @brief sensor を管理クラスへ入れる。入っていれば何もしない。管理クラスが無ければ何もしない
     //! @details 入れただけでは調べる対象にならない。EnableHitSensor で有効にする。sensor は EndHitSensor まで生きていること
     void InitHitSensor(const IUseHitSensor* user, HitSensor* sensor);
-    //! sensor を管理クラスから外す。入っていなければ何もしないので、2 回呼んでもよい
-    void EndHitSensor(const IUseHitSensor* user, HitSensor* sensor) noexcept;
+    //! @brief sensor を管理クラスから外す。入っていなければ何もしないので、2 回呼んでもよい
+    //! @details 重なっていた組の終わり (OnSensorExit) を、sensor の持ち主へこの場で届ける
+    void EndHitSensor(const IUseHitSensor* user, HitSensor* sensor);
 
     //! 持ち主が出た時に、sensor を調べる対象へ戻す。ゲームが Invalidate で外した物は外したまま
     void EnableHitSensor(HitSensor* sensor) noexcept;

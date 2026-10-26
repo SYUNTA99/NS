@@ -1,3 +1,4 @@
+#include "Game/Level/SensorKinds.h"
 #include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
@@ -282,18 +283,20 @@ namespace
     protected:
         void OnInit() override
         {
-            NS::ShapeHitSensor* body = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
-            NS::InitHitSensor(this, body);
-            body->SetSphere(0.5f);
-            NS::ShapeHitSensor* attack = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_attackSensor, this);
-            NS::InitHitSensor(this, attack);
-            attack->SetSphere(0.8f);
+            NS::Cast<NS::ShapeHitSensor>(m_bodySensor.get())->SetSphere(0.5f);
+            NS::Cast<NS::ShapeHitSensor>(m_attackSensor.get())->SetSphere(0.8f);
             CreateClassObj(m_model);
             CreateClassObj(m_hitReaction);
             CreateClassObj(m_actionTimeline);
             NS::StateMachineOf<ActionProbeActor>* machine = nullptr;
             (void)BuildStateMachine<ActionProbeActor, ActionIdleState, ActionRunState>(this, machine);
         }
+
+    private:
+        NS_SENSORS_BEGIN()
+        NS_SENSOR(m_bodySensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSOR(m_attackSensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSORS_END()
     };
 
     void ActionRunState::OnEnter(ActionProbeActor* owner)

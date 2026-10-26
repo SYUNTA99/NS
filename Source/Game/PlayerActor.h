@@ -3,6 +3,7 @@
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/SensorKinds.h"
 #include "Game/Level/SlamAim.h"
 #include "Game/Level/TackleGhost.h"
 #include "Game/Player/CameraTargetState.h"
@@ -394,6 +395,13 @@ protected:
     void VisualStep() override;
 
 private:
+    // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
+    NS_SENSORS_BEGIN()
+    NS_FOLLOW_SENSOR(m_bodySensor, GL::Level::SensorKind::PlayerBody, BodySensorVolume)
+    NS_SENSORS_END()
+    // 体のセンサーの世界座標の形。OnInit が m_collider を作った後にしか問われない
+    [[nodiscard]] NS::SensorVolume BodySensorVolume(const NS::Matrix& rootWorld) const noexcept;
+
     //! 体当たりの要求と、押したフレームの狙いの控え
     struct BodySlamRequest
     {

@@ -16,7 +16,7 @@ namespace NS
         }
     }
 
-    void EndHitSensor(const IUseHitSensor* user, HitSensor* sensor) noexcept
+    void EndHitSensor(const IUseHitSensor* user, HitSensor* sensor)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         NS_ASSERT(Scene, sensor != nullptr, "EndHitSensor: センサーが null");

@@ -80,14 +80,6 @@ void PlayerActor::OnInit()
     NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
     // 残像は本体の Model を元に描く
     NS::InitDraw(this, &m_tackleGhost, &Root(), m_model.get());
-    // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
-    NS::FollowHitSensor* bodySensor =
-        CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(
-            m_bodySensor, this, [collider = m_collider.get()](const NS::Matrix&) {
-                return NS::SensorVolume::Capsule(collider->WorldCapsule());
-            });
-    NS::InitHitSensor(this, bodySensor);
-    GL::Level::SetSensorKind(bodySensor, GL::Level::SensorKind::PlayerBody);
     CreateClassObj(m_resolver);
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actionTimeline);
@@ -456,6 +448,12 @@ void PlayerActor::OnDisappear() noexcept
     NS::HideModel(this, &m_tackleGhost);
     NS::HideOverlay(this, m_targetMarker.get());
     NS::HideOverlay(this, m_slamArrow.get());
+}
+
+// 体の形は当たりの部品が持つ世界のカプセルで決まるので、ルートの行列は読まない
+NS::SensorVolume PlayerActor::BodySensorVolume(const NS::Matrix&) const noexcept
+{
+    return NS::SensorVolume::Capsule(m_collider->WorldCapsule());
 }
 
 void PlayerActor::InitAfterPlacement()

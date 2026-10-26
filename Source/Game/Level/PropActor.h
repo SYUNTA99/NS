@@ -4,6 +4,7 @@
 #include "Game/Level/ImpactMarks.h"
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/SensorKinds.h"
 #include "Game/Level/MapObjParams.h"
 #include "Game/Level/PropFlight.h"
 #include "Game/Level/TackleGhost.h"
@@ -113,6 +114,16 @@ namespace GL
             {
                 return *static_cast<NS::SphereCollision*>(CollisionClassObj());
             }
+            [[nodiscard]] const NS::SphereCollision& Sphere() const noexcept
+            {
+                return *static_cast<const NS::SphereCollision*>(CollisionClassObj());
+            }
+            // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
+            NS_SENSORS_BEGIN()
+            NS_FOLLOW_SENSOR(m_bodySensor, SensorKind::MapObjBody, BodySensorVolume)
+            NS_SENSORS_END()
+            // 体のセンサーの世界座標の形。OnInit が当たりの球を作った後にしか問われない
+            [[nodiscard]] NS::SensorVolume BodySensorVolume(const NS::Matrix& rootWorld) const noexcept;
             std::unique_ptr<MapObjParams> m_params;
             std::unique_ptr<HitZones> m_hitZones;
             std::unique_ptr<LaunchEffects> m_effects;

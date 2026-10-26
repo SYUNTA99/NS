@@ -5,6 +5,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
+#include "Game/Level/SensorKinds.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/OBB.h"
@@ -958,16 +959,16 @@ TEST(ImpactResolver, SlamLineSkipsAnAreaSensorOnTheLine)
 
 namespace
 {
-    // 種類を付けない体のセンサーだけを持つ。センサーは開始で登録するので、OnInit で組む
+    // 種類を付けない体のセンサーだけを持つ
     class UnsetKindSensorActor final : public NS::SceneActor
     {
     protected:
-        void OnInit() override
-        {
-            NS::ShapeHitSensor* sensor = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
-            NS::InitHitSensor(this, sensor);
-            sensor->SetSphere(0.5f);
-        }
+        void OnInit() override { NS::Cast<NS::ShapeHitSensor>(m_bodySensor.get())->SetSphere(0.5f); }
+
+    private:
+        NS_SENSORS_BEGIN()
+        NS_SENSOR(m_bodySensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSORS_END()
     };
 } // namespace
 

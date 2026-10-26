@@ -1,3 +1,4 @@
+#include "Game/Level/SensorKinds.h"
 #include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
@@ -354,13 +355,16 @@ namespace
         void OnInit() override
         {
             CreateClassObj(m_model);
-            NS::ShapeHitSensor* sensor = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
-            NS::InitHitSensor(this, sensor);
-            sensor->SetSphere(0.5f);
+            NS::Cast<NS::ShapeHitSensor>(m_bodySensor.get())->SetSphere(0.5f);
             CreateClassObj(m_hitReaction);
         }
         void StateStep() override { ++stateSteps; }
         void BodyStep() override { ++bodySteps; }
+
+    private:
+        NS_SENSORS_BEGIN()
+        NS_SENSOR(m_bodySensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSORS_END()
     };
 } // namespace
 

@@ -97,6 +97,37 @@ namespace NS
         return created;
     }
 
+    void SceneActor::CreateDeclaredSensors()
+    {
+        SensorDeclarations sensors{this};
+        DeclareSensors(sensors);
+    }
+
+    void SceneActor::CreateShapeSensor(std::unique_ptr<HitSensor>& member, uint8 kind, HitSensorShape shape)
+    {
+        ShapeHitSensor* sensor = EmplaceClassObj<HitSensor, ShapeHitSensor>(member, this);
+        if (sensor == nullptr)
+        {
+            return;
+        }
+        sensor->SetKind(kind);
+        sensor->SetShape(shape);
+        InitHitSensor(this, sensor);
+    }
+
+    void SceneActor::CreateFollowSensor(std::unique_ptr<HitSensor>& member,
+                                        uint8 kind,
+                                        std::function<SensorVolume(const Matrix& rootWorld)> volume)
+    {
+        FollowHitSensor* sensor = EmplaceClassObj<HitSensor, FollowHitSensor>(member, this, std::move(volume));
+        if (sensor == nullptr)
+        {
+            return;
+        }
+        sensor->SetKind(kind);
+        InitHitSensor(this, sensor);
+    }
+
     IStateMachine* SceneActor::GetStateMachine() noexcept
     {
         if (m_stateMachine == nullptr)
@@ -239,6 +270,7 @@ namespace NS
         {
             m_actorFileName = std::string{actorFile};
         }
+        CreateDeclaredSensors();
         OnInit();
     }
 
@@ -269,6 +301,8 @@ namespace NS
         {
             m_scene = info->scene;
         }
+        // センサーは OnInit の前に作るので、OnInit と状態の OnEnter から読める。一覧へ入れるのでシーンを決めた後に作る
+        CreateDeclaredSensors();
         OnInit();
         ApplyActorFile(this);
         // 束と動作は .actor だけに書き、シーンでは上書きしない
@@ -327,7 +361,7 @@ namespace NS
                   Phase() != UpdatePhase::Input && Phase() != UpdatePhase::RenderPrep,
                   "{} の段が、全部の Actor を回す段になっている。Update が呼ばれない",
                   ClassName());
-        // 描く物とセンサーは OnInit で入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
+        // 描く物は OnInit で、センサーはその前に入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
         // 出ている物だけを OnAppear が物理シーンへ入れる
         // clang-format off
         if (m_collision) { InitCollision(this, m_collision.get(), Root().WorldMatrix()); }

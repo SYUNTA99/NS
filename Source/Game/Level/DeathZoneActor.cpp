@@ -10,15 +10,13 @@ namespace GL
 {
     namespace Level
     {
-        void DeathZoneActor::OnInit()
+        void DeathZoneActor::OnSensorEnter(NS::HitSensor* self, NS::HitSensor* other)
         {
-            NS::ShapeHitSensor* area = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
-            NS::InitHitSensor(this, area);
-            SetSensorKind(area, SensorKind::Area);
-            area->SetShape(NS::HitSensorShape::Box);
+            OnSensorStay(self, other);
         }
 
-        void DeathZoneActor::AttackSensor(NS::HitSensor* self, NS::HitSensor* other)
+        // 入っている間は毎フレーム送る。受け手が捨てた時も次のフレームに届き直す
+        void DeathZoneActor::OnSensorStay(NS::HitSensor* self, NS::HitSensor* other)
         {
             NS_ASSERT(Game, self != nullptr && other != nullptr, "重なったセンサーが渡されていない");
             if (IsSensorKind(other, SensorKind::PlayerBody))

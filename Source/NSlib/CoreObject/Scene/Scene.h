@@ -90,7 +90,7 @@ namespace NS
         //! エフェクトの EffectScene。描画を持たないシーン (試し) では nullptr
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept;
 
-        //! @brief シーンのヒットセンサーの一覧。HitSensor は持ち主の SceneActor が OnInit で InitHitSensor を呼んで入れ、OnEndPlay で出る
+        //! @brief シーンのヒットセンサーの一覧。HitSensor は持ち主の SceneActor が宣言から作る時 (OnInit の前) に入れ、OnEndPlay で出す
         //! @details 持ち主が消えている間は入ったまま、HitSensor::IsValid が偽になる
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }

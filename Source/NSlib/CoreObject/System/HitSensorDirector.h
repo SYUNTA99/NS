@@ -10,17 +10,20 @@ namespace NS
 {
     class SceneActor;
 
-    //! 有効な異なる持ち主のセンサーを照合し、双方の AttackSensor を呼ぶ
-    //! センサーの種類による判定は持ち主が行う
+    //! @brief 有効な異なる持ち主のセンサーの重なりを照合し、始まり・続き・終わりを持ち主へ知らせる
+    //! @details センサーの種類による判定は持ち主が行う。前の固定フレームに知らせた組を覚えて、今の組と比べる
     class HitSensorDirector final : public SceneSystem
     {
     public:
         //! センサーを入れる。二重登録は無視する
         void Register(HitSensor* sensor);
-        //! センサーを外す
-        void Unregister(HitSensor* sensor) noexcept;
+        //! @brief センサーを外す
+        //! @details 始まりを知らせた組の終わりを、外したセンサーの持ち主へはこの場で、相手の持ち主へは次の OnTick で
+        //! 知らせる。相手の持ち主へ渡す相手は nullptr で、外したセンサーの番地は外した後に読まない
+        void Unregister(HitSensor* sensor);
 
-        //! 重なった組を集め、両方の持ち主の AttackSensor を呼ぶ。呼ぶ間に外れたか持ち主が消えたセンサーは飛ばす
+        //! @brief 重なった組を集め、前の固定フレームの組と比べて、両方の持ち主へ始まり・続き・終わりを知らせる
+        //! @details 知らせる途中で外れたか持ち主が消えたセンサーには、始まりと続きを知らせない
         void OnTick() override;
 
         //! 世界座標の volume に重なる有効なセンサーを登録順に返す。参照は非所有
@@ -34,11 +37,23 @@ namespace NS
         [[nodiscard]] const std::vector<HitSensor*>& Sensors() const noexcept { return m_sensors; }
 
     private:
+        // 向きのある組。first が知らせる先の持ち主のセンサー、second が相手
+        using SensorPair = std::pair<HitSensor*, HitSensor*>;
+
+        // 今の固定フレームに重なっている有効な組を、両方の向きで集める
+        [[nodiscard]] std::vector<SensorPair> CollectOverlaps() const;
+        // 前の組と今の組を比べ、終わり → 始まりと続きの順に知らせる
+        void NotifyOverlaps(const std::vector<SensorPair>& current);
+        // pair.first の持ち主へ終わりを知らせる。pair.first が外れていれば知らせない
+        void NotifyExit(const SensorPair& pair);
+
         [[nodiscard]] bool IsRegistered(const HitSensor* sensor) const noexcept;
         // 入っていて、持ち主が出ているか。持ち主が消えてもセンサーは入ったままなので、呼ぶ途中で消えた物をこれで飛ばす。
         // 呼ぶ途中の Invalidate では組を飛ばさないので IsValid は読まない
         [[nodiscard]] bool IsPresent(const HitSensor* sensor) const noexcept;
 
-        std::vector<HitSensor*> m_sensors; // 登録順、非所有
+        std::vector<HitSensor*> m_sensors;      // 登録順、非所有
+        std::vector<SensorPair> m_overlaps;     // 前の OnTick で始まりか続きを知らせた組
+        std::vector<SensorPair> m_pendingExits; // 相手が外れた組。second は nullptr で、次の OnTick で終わりを知らせる
     };
 } // namespace NS
