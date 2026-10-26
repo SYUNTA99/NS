@@ -6,6 +6,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"

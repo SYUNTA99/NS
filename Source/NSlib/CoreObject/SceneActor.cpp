@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Collision.h"

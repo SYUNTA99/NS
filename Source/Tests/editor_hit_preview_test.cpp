@@ -6,7 +6,7 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"

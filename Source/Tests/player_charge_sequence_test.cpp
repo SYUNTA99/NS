@@ -3,7 +3,7 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"

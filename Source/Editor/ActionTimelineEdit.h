@@ -5,7 +5,7 @@
 // 出荷ビルドには載らない
 
 #include "Editor/Timeline.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 
 #include <cstddef>
 #include <optional>

@@ -1,7 +1,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 

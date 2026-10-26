@@ -29,7 +29,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AnimClip.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"

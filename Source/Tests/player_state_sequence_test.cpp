@@ -14,7 +14,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"

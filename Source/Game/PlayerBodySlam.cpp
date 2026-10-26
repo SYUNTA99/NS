@@ -14,7 +14,7 @@
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorList.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"

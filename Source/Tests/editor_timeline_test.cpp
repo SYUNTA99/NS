@@ -13,7 +13,7 @@
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"

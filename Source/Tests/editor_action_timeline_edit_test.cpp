@@ -1,6 +1,6 @@
 #include "Editor/ActionTimelineEdit.h"
 #include "Editor/HitPreview.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 
 #include <gtest/gtest.h>
