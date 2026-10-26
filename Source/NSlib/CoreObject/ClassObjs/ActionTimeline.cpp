@@ -134,10 +134,16 @@ namespace NS
         }
         for (nlohmann::json::const_iterator entry = doc.begin(); entry != doc.end(); ++entry)
         {
-            if (entry.key() != "name" && entry.key() != "events" && entry.key() != "sensors")
+            if (entry.key() != "name" && entry.key() != "length" && entry.key() != "events" &&
+                entry.key() != "sensors")
             {
                 NS_LOG_WARN(Scene, "動作 {} に読み手のいない欄 {} があり、読まない", action.name, entry.key());
             }
+        }
+        if (doc.contains("length") && !ReadHitReactionFrames(doc, "length", action.length))
+        {
+            error = std::format("動作 {} の長さ length が 0 以上の整数でない", action.name);
+            return std::nullopt;
         }
         if (sensors != doc.end())
         {
@@ -183,6 +189,11 @@ namespace NS
         }
         nlohmann::json doc;
         doc["name"] = action.name;
+        // 長さを決めていない動作は鍵を書かない。状態の長さを持たない動作の形を変えない
+        if (action.length > 0)
+        {
+            doc["length"] = action.length;
+        }
         doc["events"] = std::move(events);
         // 入り切りの無い動作は鍵を書かない。入り切りを使わない .actor の形を変えない
         if (!action.sensors.empty())
@@ -312,6 +323,29 @@ namespace NS
         return length;
     }
 
+    bool IsStateEnd(const SceneActor* actor) noexcept
+    {
+        NS_ASSERT(Scene, actor != nullptr, "IsStateEnd: 持ち主が null");
+        const ActionTimeline* timeline = actor->ActionTimelineClassObj();
+        const IStateMachine* machine = actor->GetStateMachine();
+        if (timeline == nullptr || machine == nullptr)
+        {
+            return false;
+        }
+        // 動作を始めた入りの間だけ、その動作の長さで答える。移る予約の間は、予約の先が動作を始めた状態と
+        // 同じでも入った回数はまだ変わらないので、回数が予約の間に返す uint32 の最大で見分ける
+        const uint32 steps = machine->StepCount();
+        if (machine->EntryCount() != timeline->m_endEntry || steps == static_cast<uint32>(-1))
+        {
+            return false;
+        }
+        if (timeline->m_endLength <= 0)
+        {
+            return false;
+        }
+        return steps >= static_cast<uint32>(timeline->m_endLength);
+    }
+
     void ActionTimeline::ReloadActions(const SceneActor* owner)
     {
         NS_ASSERT(Scene, owner != nullptr, "ActionTimeline::ReloadActions: 持ち主が null");
@@ -335,6 +369,9 @@ namespace NS
         NS_ASSERT(Scene, self != nullptr && other != nullptr, "ActionTimeline::Start: センサーが null");
         NS_ASSERT(Scene, startFrame >= 0, "ActionTimeline::Start: 始めるフレーム {} が負", startFrame);
         Stop();
+        // 始まらなかった時は、前の動作の長さで今の状態を終わらせない
+        m_endEntry = 0;
+        m_endLength = 0;
         const IStateMachine* machine = owner.actor->GetStateMachine();
         NS_ASSERT(Scene, machine != nullptr, "ActionTimeline::Start: 状態機械の無い持ち主で動作を始めている");
         if (machine == nullptr)
@@ -359,6 +396,8 @@ namespace NS
         }
         m_current = found;
         m_state = machine->CurrentId();
+        m_endEntry = machine->EntryCount();
+        m_endLength = m_actions[found].length;
         m_startFrame = std::max(startFrame, 0);
         m_frame = m_startFrame - 1;
         m_position = position;
@@ -415,7 +454,7 @@ namespace NS
         }
         // 状態の歩 k の OnStep が走ったフレームに、始める歩 + k の事象を起こす。入っただけで歩を
         // 進めていないフレームと、歩の進まなかったフレームは、前と同じかそれより前のフレームになるので回さない
-        const uint32 steps = machine->StepsInState();
+        const uint32 steps = machine->StepCount();
         const int frame = m_startFrame + static_cast<int>(steps) - 1;
         if (frame <= m_frame)
         {

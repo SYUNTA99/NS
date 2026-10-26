@@ -284,10 +284,12 @@ TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)
     ASSERT_NE(player, nullptr);
     player->Body().SetGrounded(true);
     ASSERT_TRUE(player->States().IsCurrent<GL::Player::IdlePlayerState>());
-    EXPECT_EQ(player->States().StepsInState(), 0u);
+    // 置いただけでは先頭の立ちへ入る予約のままで、入って 1 歩目を進めるのは自機の Update
+    EXPECT_FALSE(player->States().IsFirstStep());
     player->Body().SetGrounded(true);
     player->Update();
-    EXPECT_EQ(player->States().StepsInState(), 1u);
+    EXPECT_TRUE(player->States().IsCurrent<GL::Player::IdlePlayerState>());
+    EXPECT_EQ(player->States().StepCount(), 1u);
 }
 
 TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
@@ -303,7 +305,7 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     player->States().Build<ObservePlayerEffectsState>(player);
     // HitScreenDirector は描く支度の段で進む。自機の状態の歩は、薄れる前の白を見る
     scene.OnUpdate();
-    EXPECT_EQ(player->States().StepsInState(), 1u);
+    EXPECT_EQ(player->States().StepCount(), 1u);
     EXPECT_EQ(screen->FlashFramesRemaining(), 2);
 }
 
@@ -342,10 +344,10 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(player, 3, 1.0f);
     screen->OnTick();
-    const NS::uint32 stateStep = player->States().StepsInState();
+    const NS::uint32 stateStep = player->States().StepCount();
     scene.OnUpdate();
     ASSERT_TRUE(player->IsHitStopping());
-    EXPECT_EQ(player->States().StepsInState(), stateStep);
+    EXPECT_EQ(player->States().StepCount(), stateStep);
     EXPECT_EQ(screen->FlashFramesRemaining(), 2);
 }
 

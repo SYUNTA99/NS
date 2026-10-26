@@ -250,8 +250,10 @@ TEST(MapObjMotion, StateAdvancesThroughTheBaseMachine)
     ASSERT_NE(rock, nullptr);
     NS::IStateMachine* machine = rock->GetStateMachine();
     ASSERT_NE(machine, nullptr);
-    const NS::uint32 before = machine->StepsInState();
+    // 先頭の状態へは最初の Update の初めに入り、その Update で 1 歩目を進める
     rock->Update();
-    EXPECT_EQ(machine->StepsInState(), before + 1);
+    ASSERT_EQ(machine->StepCount(), 1u);
+    rock->Update();
+    EXPECT_EQ(machine->StepCount(), 2u);
     EXPECT_EQ(rock->GetStateMachine(), machine);
 }

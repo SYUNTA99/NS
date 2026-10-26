@@ -97,6 +97,30 @@ TEST(ActorAction, SensorSwitchesRoundTripThroughTheFileForm)
     EXPECT_EQ(NS::ActorActionToJson(*read), doc);
 }
 
+// 動作の長さ (状態の歩の回数) は往復する。鍵が無い動作は長さを決めておらず、決めていない長さは鍵を書かない
+TEST(ActorAction, TheActionLengthRoundTripsAndIsUnsetWhenMissing)
+{
+    const TestLogCapture log;
+    NS::ActorAction written;
+    written.name = "AirDash";
+    written.length = 29;
+    const nlohmann::json doc = NS::ActorActionToJson(written);
+    ASSERT_TRUE(doc.contains("length"));
+    EXPECT_EQ(doc.at("length").get<int>(), 29);
+    std::string error;
+    const std::optional<NS::ActorAction> read = NS::ParseActorAction(doc, error);
+    ASSERT_TRUE(read.has_value()) << error;
+    EXPECT_EQ(read->length, 29);
+    EXPECT_EQ(NS::ActorActionToJson(*read), doc);
+
+    const std::optional<NS::ActorAction> missing =
+        NS::ParseActorAction(nlohmann::json::parse(R"({"name": "A", "events": []})"), error);
+    ASSERT_TRUE(missing.has_value()) << error;
+    EXPECT_EQ(missing->length, 0);
+    EXPECT_FALSE(NS::ActorActionToJson(*missing).contains("length"));
+    EXPECT_EQ(log.WarningCount(), 0);
+}
+
 TEST(ActorAction, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
 {
     const nlohmann::json doc = nlohmann::json::parse(R"({"name": "A", "古い欄": 0, "events": [
@@ -138,6 +162,8 @@ TEST(ActorAction, BrokenActionsAreRejectedWithAReason)
         R"({"name": "A", "events": [], "sensors": [{"start": 0, "length": 1, "attack": 1}]})",
         R"({"name": "A", "events": [], "sensors": [{"start": 0, "length": 1, "valid": "on"}]})",
         R"({"name": "A", "events": [], "sensors": ["Attack"]})",
+        R"({"name": "A", "events": [], "length": -1})",
+        R"({"name": "A", "events": [], "length": 1.5})",
         R"("A")",
     };
     for (const char* text : broken)
@@ -237,11 +263,7 @@ namespace
     {
     public:
         void OnEnter(ActionProbeActor* owner) override;
-        void OnStep(ActionProbeActor* owner, float) override
-        {
-            NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
-            (void)owner;
-        }
+        void OnStep(ActionProbeActor* owner, float) override;
     };
 
     // 体と攻撃のセンサー・当たりの返り・動作のタイムラインと、2 つの状態を持つアクター
@@ -254,6 +276,8 @@ namespace
         int startFrame = 0;
         bool started = false;
         NS::SceneActor* partner = nullptr;
+        std::vector<bool> endSeen; // 動作の状態の OnStep ごとに、IsStateEnd が答えた値
+        bool startOnEnter = true;  // 偽なら、動作の状態に入っても動作を始めない
 
     protected:
         void OnInit() override
@@ -275,12 +299,22 @@ namespace
     void ActionRunState::OnEnter(ActionProbeActor* owner)
     {
         NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+        if (!owner->startOnEnter)
+        {
+            return;
+        }
         owner->started = owner->ActionTimelineClassObj()->Start(owner->ActionTimelineSelfOf(),
                                                                owner->actionName,
                                                                owner->startFrame,
                                                                owner->Root().Position(),
                                                                owner->BodySensorClassObj(),
                                                                owner->partner->BodySensorClassObj());
+    }
+
+    void ActionRunState::OnStep(ActionProbeActor* owner, float)
+    {
+        NS_ASSERT(Game, owner != nullptr, "状態の持ち主が無い");
+        owner->endSeen.push_back(NS::IsStateEnd(owner));
     }
 } // namespace
 
@@ -502,4 +536,138 @@ TEST(ActionTimeline, AMissingActionIsNotStarted)
     EXPECT_FALSE(probes.self->started);
     EXPECT_FALSE(probes.self->ActionTimelineClassObj()->IsRunning());
     EXPECT_EQ(log.WarningCount(), 1);
+}
+
+// 状態の OnStep が動作の長さの回数だけ走ると、次の OnStep から状態の終わりと答える
+TEST(ActionTimeline, TheStateEndsWhenItsStepsReachTheActionLength)
+{
+    NS::ActorAction action;
+    action.name = "Run";
+    action.length = 3;
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    probes.Enter("Run");
+    for (int frame = 0; frame < 5; ++frame)
+    {
+        probes.Step();
+    }
+    EXPECT_EQ(probes.self->endSeen, (std::vector<bool>{false, false, false, true, true}));
+}
+
+// 長さを決めていない動作・始まらなかった動作・動作の無いアクター・移る予約の後は、状態の終わりと答えない
+TEST(ActionTimeline, TheStateDoesNotEndWithoutTheBoundActionLength)
+{
+    NS::SceneActor plain;
+    EXPECT_FALSE(NS::IsStateEnd(&plain));
+
+    NS::ActorAction unset;
+    unset.name = "Unset";
+    NS::ActorAction run;
+    run.name = "Run";
+    run.length = 1;
+    ActionScene probes({unset, run});
+    ASSERT_NE(probes.self, nullptr);
+    probes.Enter("Unset");
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        probes.Step();
+    }
+    EXPECT_EQ(probes.self->endSeen, (std::vector<bool>{false, false, false}));
+
+    (void)NS::SetState<ActionIdleState>(probes.self);
+    probes.Step();
+    probes.self->endSeen.clear();
+    {
+        const TestLogCapture log;
+        probes.Enter("Nothing");
+        for (int frame = 0; frame < 3; ++frame)
+        {
+            probes.Step();
+        }
+    }
+    EXPECT_EQ(probes.self->endSeen, (std::vector<bool>{false, false, false}));
+
+    (void)NS::SetState<ActionIdleState>(probes.self);
+    probes.Step();
+    probes.Enter("Run");
+    probes.Step();
+    probes.Step();
+    ASSERT_TRUE(NS::IsStateEnd(probes.self));
+    // 移る予約の間は、移る先の状態を前の状態に結んだ動作の長さで答えない
+    (void)NS::SetState<ActionIdleState>(probes.self);
+    EXPECT_FALSE(NS::IsStateEnd(probes.self));
+}
+
+// 途中で動作が止まっても (Stop・読み直し)、状態は動作を始めた時の長さで終わる
+TEST(ActionTimeline, TheStateEndsEvenIfTheActionStopsMidway)
+{
+    NS::ActorAction run;
+    run.name = "Run";
+    run.length = 3;
+    ActionScene probes({run});
+    ASSERT_NE(probes.self, nullptr);
+    probes.Enter("Run");
+    probes.Step();
+    probes.self->ActionTimelineClassObj()->Stop();
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        probes.Step();
+    }
+    EXPECT_EQ(probes.self->endSeen, (std::vector<bool>{false, false, false, true}));
+
+    (void)NS::SetState<ActionIdleState>(probes.self);
+    probes.Step();
+    probes.self->endSeen.clear();
+    probes.Enter("Run");
+    probes.Step();
+    probes.self->ActionTimelineClassObj()->ReloadActions(probes.self);
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        probes.Step();
+    }
+    EXPECT_EQ(probes.self->endSeen, (std::vector<bool>{false, false, false, true}));
+}
+
+// 動作を始めずに同じ状態へ入り直すと、前に入った時の動作の長さでは終わらない
+TEST(ActionTimeline, ReenteringWithoutStartDoesNotUseThePreviousLength)
+{
+    NS::ActorAction run;
+    run.name = "Run";
+    run.length = 2;
+    ActionScene probes({run});
+    ASSERT_NE(probes.self, nullptr);
+    probes.Enter("Run");
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        probes.Step();
+    }
+    ASSERT_EQ(probes.self->endSeen, (std::vector<bool>{false, false, true}));
+
+    probes.self->ActionTimelineClassObj()->Stop();
+    (void)NS::SetState<ActionIdleState>(probes.self);
+    probes.Step();
+    probes.self->endSeen.clear();
+    probes.self->startOnEnter = false;
+    probes.Enter("Run");
+    for (int frame = 0; frame < 4; ++frame)
+    {
+        probes.Step();
+    }
+    EXPECT_EQ(probes.self->endSeen, (std::vector<bool>{false, false, false, false}));
+}
+
+// 予約し直した先が動作を始めた状態と同じでも、移る予約の間は状態の終わりと答えない
+TEST(ActionTimeline, TheStateDoesNotEndWhileReservedBackIntoTheSameState)
+{
+    NS::ActorAction run;
+    run.name = "Run";
+    run.length = 1;
+    ActionScene probes({run});
+    ASSERT_NE(probes.self, nullptr);
+    probes.Enter("Run");
+    probes.Step();
+    ASSERT_TRUE(probes.self->ActionTimelineClassObj()->IsRunning());
+    (void)NS::SetState<ActionIdleState>(probes.self);
+    (void)NS::SetState<ActionRunState>(probes.self);
+    EXPECT_FALSE(NS::IsStateEnd(probes.self));
 }

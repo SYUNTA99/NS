@@ -40,15 +40,19 @@ namespace NS
     struct ActorAction
     {
         std::string name;
+        //! 動作の長さ。結んだ状態の中で進める Step の回数で、この回数だけ OnStep が進んだ次の OnStep で
+        //! IsStateEnd が真になる。0 は長さを決めていない。
+        //! 事象の終わり (ActionLength) と別に持つので、見た目の事象を直しても状態の長さは変わらない
+        int length = 0;
         std::vector<ActorActionEvent> events;
         std::vector<ActionSensorEvent> sensors;
     };
 
-    //! @brief 動作 1 つを JSON の形 {"name", "events": [{"type", "start", "length", "fields"}],
+    //! @brief 動作 1 つを JSON の形 {"name", "length", "events": [{"type", "start", "length", "fields"}],
     //! "sensors": [{"attack", "valid", "start", "length"}]} から読む
-    //! @details 欠けた欄は既定のまま、知らない欄は WARN を出して飛ばす。sensors は無ければ空
-    //! @return 名前が空・始まりか長さが負・知らない種類・入り切りの欄が真偽でない場合は std::nullopt で、
-    //! error に理由を書く
+    //! @details 欠けた欄は既定のまま、知らない欄は WARN を出して飛ばす。sensors は無ければ空、length は無ければ 0
+    //! @return 名前が空・動作の長さが負か整数でない・始まりか長さが負・知らない種類・入り切りの欄が真偽でない場合は
+    //! std::nullopt で、error に理由を書く
     [[nodiscard]] std::optional<ActorAction> ParseActorAction(const nlohmann::json& doc, std::string& error);
 
     [[nodiscard]] nlohmann::json ActorActionToJson(const ActorAction& action);
@@ -65,9 +69,18 @@ namespace NS
     //! actions だけを書く
     void WriteActorActions(nlohmann::json& actorFile, const std::vector<ActorAction>& actions);
 
-    //! 動作の長さ (フレーム数)。一番遅く終わる事象と入り切りの、始まり + 長さ。どちらも無ければ 0。
-    //! int を越える長さは int の最大
+    //! 事象の並びの長さ (フレーム数)。一番遅く終わる事象と入り切りの、始まり + 長さ。どちらも無ければ 0。
+    //! int を越える長さは int の最大。状態の長さは ActorAction::length が持ち、これはエディタが並びを見せる長さ
     [[nodiscard]] int ActionLength(const ActorAction& action) noexcept;
+
+    //! @brief actor の今の状態が、結んだ動作の長さの回数だけ OnStep を進めた場合 true。状態の OnStep で問う
+    //! @details 最後に Start で動作を始めた後に今の状態へ入り直しておらず、その時の length が 1 以上で、今の状態の
+    //! GetStateStepCount が length 以上の時に true。動作が途中で止まっても (Stop・ReloadActions) 答えは変わらない。
+    //! 同じ状態の中で別の動作を Start すると、結んだ長さはその動作の長さに替わる。
+    //! 移る予約の間・Start を呼ばずに入り直した状態・長さを決めていない動作・始まらなかった動作・動作の無いアクターは
+    //! false
+    //! @param[in] actor 事前条件: nullptr でない
+    [[nodiscard]] bool IsStateEnd(const SceneActor* actor) noexcept;
 
     //! @brief 動作を始める・進める 1 回の呼び出しに渡す、持ち主の読む物と書く先。呼び出しの中だけ使い、覚えない
     //! @details 書く先は持ち主が持たなければ nullptr
@@ -130,6 +143,8 @@ namespace NS
         NS_REFLECT_NONE(ActionTimeline, Object)
 
     private:
+        friend bool IsStateEnd(const SceneActor* actor) noexcept;
+
         static constexpr std::size_t k_NoAction = static_cast<std::size_t>(-1);
 
         // 入り切りの途中の事象と、切り替えたセンサー
@@ -147,6 +162,11 @@ namespace NS
         std::vector<ActorAction> m_actions;  // 持ち主の .actor の動作
         std::size_t m_current = k_NoAction;  // 走っている動作の m_actions の番号
         StateId m_state = nullptr;           // 動作を始めた時の持ち主の状態
+        // IsStateEnd が読む、最後に始めた動作の状態に入った回数 (EntryCount) と length の控え。
+        // Stop と ReloadActions では消さず、次の Start で上書きする。動作が途中で止まっても、状態は始めた時の
+        // 長さで終わる。入り直すと回数が変わるので、Start を呼ばずに入り直した状態は前の長さで終わらない
+        uint32 m_endEntry = 0;
+        int m_endLength = 0;
         int m_startFrame = 0;                // 状態の最初の歩に当てるフレーム
         int m_frame = -1;                    // 最後に進めたフレーム
         Vector3 m_position{};                // 始めた時に渡した位置

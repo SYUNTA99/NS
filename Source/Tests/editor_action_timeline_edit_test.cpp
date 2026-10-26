@@ -83,6 +83,23 @@ TEST(EditorActionTimelineEdit, FrameRangeCoversEventsAndThePreviewFromTheEntry)
     EXPECT_EQ(range.last, 13);
 }
 
+// 動作の長さを決めた動作は、事象の並びより長ければ長さの終わりまでを含む
+TEST(EditorActionTimelineEdit, FrameRangeCoversTheActionLength)
+{
+    NS::ActorAction dash;
+    dash.name = "AirDash";
+    dash.length = 29;
+    NS::Editor::TimelineFrameRange range = NS::Editor::ActionFrameRange(dash, nullptr);
+    EXPECT_EQ(range.first, 0);
+    EXPECT_EQ(range.last, 28);
+
+    NS::ActorAction shorter = MakeTwoEvents();
+    shorter.length = 5;
+    range = NS::Editor::ActionFrameRange(shorter, nullptr);
+    EXPECT_EQ(range.first, 0);
+    EXPECT_EQ(range.last, 13);
+}
+
 // 行ごとに、下見で実際に始まったフレームを動作のフレームで返す。ほかの動作の行は数えない
 TEST(EditorActionTimelineEdit, RowStartsCountFromTheEntry)
 {

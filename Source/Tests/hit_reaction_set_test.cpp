@@ -1056,7 +1056,9 @@ TEST(ShippedHitReactions, CenterShrinksBeforeContactAndMissDoesNot)
     EXPECT_LT(std::get<NS::HitShapeItem>(squash->item).along.Evaluate(0.0f), shape.along.Evaluate(6.0f));
 
     EXPECT_EQ(FindShippedAction(player, "BeforeContactMiss"), nullptr);
-    EXPECT_EQ(player.actions.size(), 1u);
+    // 当たる直前の動作は真ん中の 1 つだけ。残りはエアダッシュの長さを持つ動作
+    EXPECT_NE(FindShippedAction(player, "AirDash"), nullptr);
+    EXPECT_EQ(player.actions.size(), 2u);
 }
 
 // 紫で当てた時だけ、止めの明けに紫の明けの束で世界を遅くする。外れと赤の明けの束は世界の速さに触らない

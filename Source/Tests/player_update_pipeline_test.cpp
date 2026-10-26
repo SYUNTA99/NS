@@ -304,7 +304,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     EXPECT_TRUE(player->IsHitStopping());
     EXPECT_FALSE(player->CanMoveBody());
     const NS::Vector3 position = player->Root().Position();
-    const NS::uint32 stateStep = player->States().StepsInState();
+    const NS::uint32 stateStep = player->States().StepCount();
     // 止めが明けて反動へ移る歩までは止まったまま
     bool released = false;
     for (int frame = 0; frame < 30 && !released; ++frame)
@@ -316,7 +316,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
         }
         SCOPED_TRACE(frame);
         ExpectSameVector(player->Root().Position(), position);
-        EXPECT_EQ(player->States().StepsInState(), stateStep);
+        EXPECT_EQ(player->States().StepCount(), stateStep);
     }
     EXPECT_TRUE(released);
     EXPECT_FALSE(player->IsHitStopping());

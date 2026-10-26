@@ -219,8 +219,8 @@ namespace NS
             constexpr int k_MaxPreviewFrames = 10000;
             for (const ActorAction& action : m_actions)
             {
-                const int64 end =
-                    static_cast<int64>(ActionLength(action)) + desc.leadFrames + desc.framesAfterRebound;
+                const int64 end = static_cast<int64>(std::max(ActionLength(action), action.length)) + desc.leadFrames +
+                                  desc.framesAfterRebound;
                 desc.maxFrames =
                     std::max(desc.maxFrames, static_cast<int>(std::clamp(end, int64{0}, int64{k_MaxPreviewFrames})));
             }
@@ -473,6 +473,18 @@ namespace NS
                     }
                 }
                 ImGui::EndCombo();
+            }
+            if (ActorAction* working = WorkingAction())
+            {
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(80.0f);
+                int length = working->length;
+                if (ImGui::DragInt("長さ", &length, 0.2f, 0, 600))
+                {
+                    working->length = std::max(length, 0);
+                    ApplyWorking(editor);
+                }
+                ImGui::SetItemTooltip("%s", "状態の中で進める Step の回数。この回数だけ OnStep が進んだ次の OnStep で IsStateEnd が真になる。0 は長さを決めていない");
             }
             ImGui::SetNextItemWidth(160.0f);
             ImGui::InputTextWithHint("##new-name", "新しい動作の名前", m_newName, sizeof(m_newName));

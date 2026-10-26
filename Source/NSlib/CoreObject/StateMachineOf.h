@@ -26,7 +26,7 @@ namespace NS
         //! 自分の型を指す StateId。Change の突き合わせに使う
         [[nodiscard]] virtual StateId Id() const noexcept = 0;
 
-        //! 状態に入った時に 1 回呼ばれる。Build の先頭と、予約の確定の時
+        //! 状態に入った時に 1 回呼ばれる。予約の確定の時で、先頭の状態も Build と Reset の後の次の確定で呼ばれる
         virtual void OnEnter(TOwner*) {}
         //! @brief 状態の中で 1 フレーム進める
         //! @details 同じフレームのコルーチンの後に呼ばれる。コルーチンが移る予約をしたフレームは呼ばれない
@@ -59,13 +59,17 @@ namespace NS
         [[nodiscard]] StateId Id() const noexcept final { return StateIdOf<TState>(); }
     };
 
-    //! @brief 型の並びから組む状態機械。先頭が初期状態で、Build 時に OnEnter する
+    //! @brief 型の並びから組む状態機械。先頭が初期状態で、Build は先頭を予約するだけ
     //! @details 所有者は Build で 1 回だけ受けて控え、Step と Change はその控えを状態へ渡す。
-    //! OnStep の中で Change しても呼び出し元の OnStep は続くので、遷移したら即 return する
+    //! OnStep の中で Change しても呼び出し元の OnStep は続くので、遷移したら即 return する。
+    //! 同じフレームに予約が重なった時は最後の予約が効き、OnExit は最初の予約の時に 1 回だけ呼ぶ。
+    //! OnEnter・OnExit の中の予約は止めず、次の確定の所まで保留する
     template <typename TOwner> class StateMachineOf : public IStateMachine
     {
     public:
-        //! 先頭の状態へ入る。この後の Step と Change は、ここで渡した owner を状態へ渡す
+        //! @brief 先頭の状態へ移る予約をする。この後の Step と Change は、ここで渡した owner を状態へ渡す
+        //! @details 先頭の OnEnter は、ほかの予約と同じく次の確定の所で呼ぶ。Step の外で組めば最初の Step の初めに、
+        //! 自分の更新の中で入る
         template <typename... TStates> void Build(TOwner* owner)
         {
             NS_ASSERT(Scene, owner != nullptr, "StateMachineOf: 持ち主を渡さずに組もうとした");
@@ -81,33 +85,35 @@ namespace NS
             m_states.clear();
             m_states.reserve(sizeof...(TStates));
             (m_states.push_back(std::make_unique<TStates>()), ...);
-            m_current = m_states.front().get();
+            m_current = nullptr;
+            m_next = m_states.front().get();
             m_owner = owner;
             m_step = 0;
-            m_current->OnEnter(owner);
         }
 
-        //! OnExit / OnEnter を呼ばずに先頭の状態へ戻す。やり直しで使う
+        //! @brief OnExit を呼ばずに、先頭の状態へ移る予約をする。やり直しで使う
+        //! @details 先頭の OnEnter は、ほかの予約と同じく次の確定の所で呼ぶ。Step の外で呼べば次の Step の初め、
+        //! Step の中 (OnStep やコルーチン) で呼べばその Step の終わりの確定で入る
         void Reset() noexcept
         {
-            m_next = nullptr;
             if (m_current != nullptr)
             {
                 m_current->CancelCoroutines();
             }
+            m_current = nullptr;
             if (m_states.empty())
             {
-                m_current = nullptr;
+                m_next = nullptr;
             }
             else
             {
-                m_current = m_states.front().get();
+                m_next = m_states.front().get();
             }
             m_step = 0;
         }
 
         //! 状態を 1 つでも組めているか
-        [[nodiscard]] bool IsBuilt() const noexcept { return m_current != nullptr; }
+        [[nodiscard]] bool IsBuilt() const noexcept { return !m_states.empty(); }
 
         //! 現在状態の StateId。未組立は nullptr
         [[nodiscard]] StateId CurrentId() const noexcept override
@@ -125,7 +131,7 @@ namespace NS
 
         //! @brief 今の状態に入ってから進めたフレーム数を返す
         //! @return 入った最初のフレームは 0。移る予約があれば NS::uint32 の最大値
-        [[nodiscard]] uint32 StepsInState() const noexcept override
+        [[nodiscard]] uint32 StepCount() const noexcept override
         {
             if (m_next != nullptr)
             {
@@ -133,22 +139,25 @@ namespace NS
             }
             return m_step;
         }
+        [[nodiscard]] uint32 EntryCount() const noexcept override { return m_entryCount; }
         //! 組めていて移る予約が無く、今の状態に入った最初のフレームの場合 true、それ以外の場合は false
         [[nodiscard]] bool IsFirstStep() const noexcept
         {
             return m_current != nullptr && m_next == nullptr && m_step == 0;
         }
 
-        //! @brief 今の状態のコルーチンを捨て、移る予約を取り消す
-        //! @details 走っている Step の中で呼ぶと、その Step は残りの OnStep と予約の確定を飛ばす
+        //! @brief 今の状態のコルーチンを捨て、今の状態から移る予約を取り消す
+        //! @details 走っている Step の中で呼ぶと、その Step は残りの OnStep と予約の確定を飛ばす。
+        //! Build と Reset の後の最初の Step の前 (今の状態が無い時) は、先頭へ入る予約を残す
         void CancelCurrentCoroutines() noexcept
         {
             m_stepCancelled = true;
-            m_next = nullptr;
-            if (m_current != nullptr)
+            if (m_current == nullptr)
             {
-                m_current->CancelCoroutines();
+                return;
             }
+            m_next = nullptr;
+            m_current->CancelCoroutines();
         }
 
         //! 現在状態が TState の場合 true、それ以外の場合は false。未組立はどの型とも一致しない
@@ -223,6 +232,7 @@ namespace NS
             m_current = m_next;
             m_next = nullptr;
             m_step = 0;
+            ++m_entryCount;
             m_current->OnEnter(m_owner);
         }
 
@@ -243,6 +253,7 @@ namespace NS
         State<TOwner>* m_next = nullptr;
         TOwner* m_owner = nullptr; // 書くのは Build だけ。未組立は nullptr
         uint32 m_step = 0;
+        uint32 m_entryCount = 0; // 書くのは CommitChange だけ
         bool m_stepCancelled = false;
     };
 
@@ -268,7 +279,9 @@ namespace NS
             }
         }
 
-        //! 今の状態のコルーチンと、移る予約を捨てる
+        //! @brief 子の状態機械を終え、Finish の後は次の Build まで Step しない
+        //! @details 今の状態のコルーチンと、今の状態から移る予約を捨てる。組んだ直後 (最初の Step の前) の Finish では、
+        //! 先頭へ入る予約は残る (Step しないので入らない)
         void Finish() noexcept
         {
             m_dead = true;

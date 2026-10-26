@@ -234,7 +234,7 @@ namespace NS
         //! 移動後の姿勢から見た目・演出・寿命を更新する段
         virtual void VisualStep() {}
         //! 自分を持ち主に、TStates の先頭へ入る状態機械を一度だけ構築する
-        //! OnEnter が使う部品を先に用意する。outMachine は OnEnter 前に設定する
+        //! 先頭の OnEnter は組んだ時でなく、最初の StateStep の初めに走る。outMachine は組む前に設定する
         //! 機械は基底の部品 StateMachine が持ち、型付きポインタは非所有。既に構築済みなら変更せず false
         template <typename TOwner, typename... TStates>
         bool BuildStateMachine(TOwner* owner, StateMachineOf<TOwner>*& outMachine)

@@ -114,7 +114,7 @@ namespace GL
 
             int m_remaining = 1;
             NS::Vector3 m_direction{};   // 今のダッシュの水平の向き。正規化済み
-            float m_dashElapsed = 0.0f;  // 今のダッシュを始めてからの秒
+            float m_dashSpeed = 0.0f;    // 今のダッシュの速さ (m/s)。状態に入った時に控え、途中の読み直しで変えない
             bool m_prevPressHeld = false; // 直前の歩にボタンを押していたか。押した瞬間を見分ける
             bool m_pressed = false;       // この歩に押した瞬間か。観測の段で書き、状態の段で読む
             NS::Vector3 m_intended{};     // 体を動かす前の速度。遮った面への当て方を測る

@@ -186,9 +186,19 @@ public:
     [[nodiscard]] int AirDashesRemaining() const noexcept { return m_airDash.Remaining(); }
     //! エアダッシュと地形の反動の値。見た目・カメラ・開発用の線・Replay が読む
     [[nodiscard]] const GL::Player::AirDashStatus& AirDash() const noexcept { return m_airDash; }
-    //! @brief エアダッシュの 1 フレームを進める。重力を掛けずに速度を向き × 速さで書き、秒が過ぎたら終える
-    //! @details エアダッシュの間の速度の書き手はここと、面に当たった時の BeginTerrainRebound だけ
-    void UpdateAirDash(float dt) noexcept;
+    //! @brief エアダッシュの動作 (.actor の動作 "AirDash") を、今の状態に結んで始める。エアダッシュの状態の OnEnter が呼ぶ
+    //! @details 動作の length がダッシュの長さで、状態は IsStateEnd で終わりを問う。ダッシュの速さもここで控え、
+    //! このダッシュの間は途中で動作を読み直しても変えない
+    //! @return 始めた場合 true。動作のタイムラインが無いか、Start が断った場合は false
+    [[nodiscard]] bool StartAirDashAction() noexcept;
+    //! @brief エアダッシュの 1 フレームの速度を書く。重力を掛けずに、向き × 控えたダッシュの速さにする
+    //! @details エアダッシュの間の速度の書き手は、押したフレームの BeginAirDash と、ここと KeepAirDashExitSpeed と、
+    //! 面に当たった時の BeginTerrainRebound だけ
+    void KeepAirDashSpeed() noexcept;
+    //! 当たらずに終わったエアダッシュの勢いを、向き × 欄「エアダッシュ後に残る速さ」で残す
+    void KeepAirDashExitSpeed() noexcept;
+    //! 接地していれば歩きへ、空中なら落下へ移す
+    void ChangeToWalkOrFall() noexcept;
     //! @brief 地形の反動の 1 フレームを進める
     //! @details 操作なしの段は速度を保つ。補正の段はダッシュを 1 回戻し、重力・減速・曲げを掛ける。
     //! 補正の段を過ぎたら落下へ、登れる面に着いたら地上の状態へ移る
@@ -413,8 +423,14 @@ private:
     //! この歩にエアダッシュを出せる場合 true、それ以外の場合は false。押した瞬間で、回数が残り、出せる状態に居る
     [[nodiscard]] bool CanStartAirDash() const noexcept;
     //! @brief エアダッシュを始める。向きはスティック、倒していなければ自機の向き、無ければカメラの前
-    //! @details 回数を 1 減らし、押したフレームの体の更新から速さが出るよう速度もここで書く
-    void BeginAirDash() noexcept;
+    //! @details 回数を 1 減らし、押したフレームの体の更新から速さが出るよう速度もここで書く。
+    //! ダッシュの速さが 0 以下なら WARN を出して始めず、回数も減らさない
+    //! @return 始めた場合 true
+    [[nodiscard]] bool BeginAirDash() noexcept;
+    //! @brief エアダッシュの速さ (m/s)。欄「エアダッシュの距離」を、動作 "AirDash" の length の固定フレームで進む速さ
+    //! @details 動作から毎回引き直す。ダッシュの最中に読むのは、始めた時に控えた速さの方。
+    //! 動作が無いか length が 0 か距離が非数なら 0
+    [[nodiscard]] float AirDashSpeed() const noexcept;
     //! @brief 体を動かした直後に呼ぶ。エアダッシュか地形の反動の間に面が遮ったら、その面で反動を始める
     //! @details 当て方が欄「反動に数える当て方の下限」より浅い面と、反動の間の登れる面は数えない
     void TryBeginTerrainRebound() noexcept;
@@ -457,8 +473,6 @@ private:
     [[nodiscard]] bool IsHeldByTackleHit() const noexcept;
     //! 最後の当たりの相手の体のセンサー。相手が居なければ nullptr
     [[nodiscard]] NS::HitSensor* LastTackleTargetSensor() const noexcept;
-    //! 接地していれば歩きへ、空中なら落下へ移す
-    void ChangeToWalkOrFall() noexcept;
     //! @brief 裁定の予測から、当たる直前の状態へ入るか、外れた予測で突進へ戻るかを決める。ApplyImpactOrders の後に呼ぶ
     //! @details 入るのは突進の線の先に予測した相手の段に当たる直前の動作があり、検知まで動作の長さ以内の時。
     //! 入る時は前の当たりの演出を打ち切る。検知したフレームは何もしない

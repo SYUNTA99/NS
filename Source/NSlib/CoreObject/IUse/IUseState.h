@@ -30,7 +30,10 @@ namespace NS
         [[nodiscard]] virtual StateId CurrentId() const noexcept = 0;
         //! @brief 今の状態に入ってから進めたフレーム数を返す
         //! @return 入った最初のフレームは 0
-        [[nodiscard]] virtual uint32 StepsInState() const noexcept = 0;
+        [[nodiscard]] virtual uint32 StepCount() const noexcept = 0;
+        //! @brief 状態に入った回数を返す。予約を確定して OnEnter を呼ぶたびに 1 増え、Build と Reset でも戻らない
+        //! @details 同じ状態へ入り直しても値が変わるので、どの入りの間かを見分けるのに使う
+        [[nodiscard]] virtual uint32 EntryCount() const noexcept = 0;
         //! 状態遷移を予約する。予約できたか同じ状態なら true
         virtual bool Change(StateId id) = 0;
         //! 組み立て時の持ち主で dt 秒進める。未組立なら何もしない
@@ -38,7 +41,7 @@ namespace NS
     };
 
     //! @brief 自分の状態機械を返す口。状態機械を持つ物が実装する
-    //! @details SetState / IsState / IsFirstStep / GetStateStep は IUseState だけを受け取る
+    //! @details SetState / IsState / IsFirstStep / GetStateStepCount は IUseState だけを受け取る
     class IUseState
     {
     public:
@@ -75,12 +78,12 @@ namespace NS
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const IStateMachine* machine = user->GetStateMachine();
-        return machine != nullptr && machine->CurrentId() != nullptr && machine->StepsInState() == 0;
+        return machine != nullptr && machine->CurrentId() != nullptr && machine->StepCount() == 0;
     }
 
     //! @brief user が今の状態に入ってから進めたフレーム数を返す
     //! @return 状態機械を持たなければ 0
-    [[nodiscard]] inline uint32 GetStateStep(const IUseState* user) noexcept
+    [[nodiscard]] inline uint32 GetStateStepCount(const IUseState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const IStateMachine* machine = user->GetStateMachine();
@@ -88,6 +91,6 @@ namespace NS
         {
             return 0;
         }
-        return machine->StepsInState();
+        return machine->StepCount();
     }
 } // namespace NS

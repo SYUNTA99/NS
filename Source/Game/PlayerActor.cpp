@@ -98,7 +98,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_effectKeeper);
     CreateClassObj(m_chargeEffects);
     CreateClassObj(m_impactEffects);
-    // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
+    // 部品を全部作った後に組む。並べた型が移れる状態の全部になる。先頭の立ちへは最初の更新の初めに入る
     (void)BuildStateMachine<PlayerActor,
                             GL::Player::IdlePlayerState,
                             GL::Player::WalkPlayerState,
@@ -620,7 +620,7 @@ float PlayerActor::RunSpeed() const noexcept
 
 bool PlayerActor::IsBodySlamming() const noexcept
 {
-    // 状態機械を組んでいる最中 (先頭の OnEnter) はまだ預かっていないので nullptr を見る
+    // 状態機械を組む前 (OnInit の前) はまだ預かっていないので nullptr を見る
     return m_states != nullptr && (m_states->IsCurrent<GL::Player::BodySlamPlayerState>() ||
                                    m_states->IsCurrent<GL::Player::BeforeContactPlayerState>());
 }
@@ -858,7 +858,7 @@ void PlayerActor::ResetState() noexcept
     // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
     m_airDash.m_remaining = 1;
     m_airDash.m_direction = NS::Vector3{};
-    m_airDash.m_dashElapsed = 0.0f;
+    m_airDash.m_dashSpeed = 0.0f;
     m_airDash.m_pressed = false;
     m_airDash.m_intended = NS::Vector3{};
     m_airDash.m_reboundElapsed = 0.0f;
@@ -899,9 +899,8 @@ void PlayerActor::PrepareStateStep()
                                                  m_states->IsCurrent<GL::Player::WalkPlayerState>(),
                                                  m_states->IsCurrent<GL::Player::FallPlayerState>(),
                                                  m_states->IsCurrent<GL::Player::ReboundPlayerState>());
-    if (CanStartAirDash())
+    if (CanStartAirDash() && BeginAirDash())
     {
-        BeginAirDash();
         return;
     }
     if (GL::Player::PlayerJudgeBodySlam::Judge(
