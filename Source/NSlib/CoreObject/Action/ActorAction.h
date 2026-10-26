@@ -13,8 +13,6 @@
 
 namespace NS
 {
-    class SceneActor;
-
     //! @brief 動作の事象 1 つ。項目の型は名前の束と同じで、状態に入ったフレームを 0 にしたフレーム数で始まりと長さを持つ
     struct ActorActionEvent
     {
@@ -70,13 +68,4 @@ namespace NS
     //! 事象の並びの長さ (フレーム数)。一番遅く終わる事象と入り切りの、始まり + 長さ。どちらも無ければ 0。
     //! int を越える長さは int の最大。状態の長さは ActorAction::length が持ち、これはエディタが並びを見せる長さ
     [[nodiscard]] int ActionLength(const ActorAction& action) noexcept;
-
-    //! @brief actor の今の状態が、結んだ動作の長さの回数だけ OnStep を進めた場合 true。状態の OnStep で問う
-    //! @details 最後に Start で動作を始めた後に今の状態へ入り直しておらず、その時の length が 1 以上で、今の状態の
-    //! GetStateStepCount が length 以上の時に true。動作が途中で止まっても (Stop・ReloadActions) 答えは変わらない。
-    //! 同じ状態の中で別の動作を Start すると、結んだ長さはその動作の長さに替わる。
-    //! 移る予約の間・Start を呼ばずに入り直した状態・長さを決めていない動作・始まらなかった動作・動作の無いアクターは
-    //! false
-    //! @param[in] actor 事前条件: nullptr でない
-    [[nodiscard]] bool IsStateEnd(const SceneActor* actor) noexcept;
 } // namespace NS

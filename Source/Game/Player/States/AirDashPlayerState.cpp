@@ -1,7 +1,7 @@
 #include "Game/Player/States/AirDashPlayerState.h"
 
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 
 namespace GL
 {

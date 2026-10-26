@@ -342,7 +342,6 @@ namespace GL
             m_motion.Build<ArcState, RollingState>(this);
             (void)m_states->Change<LaunchedState>();
             m_effects->BeginTrail(this,
-                                  NS::GetFrameDelta(this),
                                   desc,
                                   Flight(),
                                   m_params.get(),

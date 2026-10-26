@@ -70,7 +70,6 @@ namespace GL
         }
 
         void LaunchEffects::BeginTrail(const NS::IGetEffect* user,
-                                       float dt,
                                        const TackleReleaseDesc& release,
                                        const PropFlight& flight,
                                        const MapObjParams* params,
@@ -104,12 +103,11 @@ namespace GL
             const Vector3& launchDir = release.arc.direction;
             m_launchDir = NormalizedOr(Vector3{launchDir.x, 0.0f, launchDir.z}, Vector3{1.0f, 0.0f, 0.0f});
 
-            // 帯の頭は放した時の速度で 1 フレーム先へ置く。置物が並びで自機より後ろなら、同じフレームに
-            // 置物が動いた先と合う。前なら置物は次のフレームまで動かず、この 1 フレームだけ頭が先にある
+            // 帯の頭は置物の今の位置に置く。置物が一覧で自機より後ろなら、同じフレームの置物の見た目の段の
+            // Update が動いた先へ付け直すので、一覧の順に依らず頭は置物と合う
             // 帯の点の +Y を飛ぶ向きへ回す。揃えないと、横から見た時に幅が道に沿って潰れる
-            const Vector3 head = flight.position + flight.velocity * dt;
             NS::Gfx::EffectPlayDesc desc =
-                PlayAt(head, TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)), Uniform(m_trailScale));
+                PlayAt(flight.position, TurnUpTo(NormalizedOr(flight.velocity, m_launchDir)), Uniform(m_trailScale));
             // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
             desc.dynamicInputs[0] = 0.0f;
             desc.dynamicInputs[1] = 0.0f;
@@ -118,13 +116,12 @@ namespace GL
             desc.dynamicInputs[3] = 0.0f;
             m_trail = NS::PlayEffect(user, m_launchTrailAsset, desc);
             NS::SetEffectAmount(user, m_trail, static_cast<float>(m_trailFrames));
-            m_trailStartStep = NS::GetEffectStep(user);
         }
 
         void LaunchEffects::Update(const NS::IGetEffect* user, const PropFlight& flight)
         {
             NS_ASSERT(Game, user != nullptr, "LaunchEffects::Update: 絵を出すアクターが空");
-            if (m_trail == 0 || NS::GetEffectStep(user) == m_trailStartStep)
+            if (m_trail == 0)
             {
                 return;
             }

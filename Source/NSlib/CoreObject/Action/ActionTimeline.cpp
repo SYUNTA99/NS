@@ -227,4 +227,27 @@ namespace NS
             return true;
         });
     }
+
+    bool IsStateEnd(const SceneActor* actor) noexcept
+    {
+        NS_ASSERT(Scene, actor != nullptr, "IsStateEnd: 持ち主が null");
+        const ActionTimeline* timeline = actor->ActionTimelineClassObj();
+        const IStateMachine* machine = actor->GetStateMachine();
+        if (timeline == nullptr || machine == nullptr)
+        {
+            return false;
+        }
+        // 動作を始めた入りの間だけ、その動作の長さで答える。移る予約の間は、予約の先が動作を始めた状態と
+        // 同じでも入った回数はまだ変わらないので、回数が予約の間に返す uint32 の最大で見分ける
+        const uint32 steps = machine->StepCount();
+        if (machine->EntryCount() != timeline->m_endEntry || steps == static_cast<uint32>(-1))
+        {
+            return false;
+        }
+        if (timeline->m_endLength <= 0)
+        {
+            return false;
+        }
+        return steps >= static_cast<uint32>(timeline->m_endLength);
+    }
 } // namespace NS

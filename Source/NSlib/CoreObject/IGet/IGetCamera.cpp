@@ -47,13 +47,6 @@ namespace NS
         return cameras != nullptr && cameras->AddTrauma(desc, user);
     }
 
-    bool HoldCameraTrauma(const IGetCamera* user, float level, const CameraTraumaShape& shape)
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        CameraManager* cameras = user->GetCameraManager();
-        return cameras != nullptr && cameras->HoldTrauma(level, shape);
-    }
-
     void StopCameraHitEffects(const IGetCamera* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");

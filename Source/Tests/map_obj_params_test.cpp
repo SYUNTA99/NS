@@ -230,7 +230,7 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     ASSERT_NE(prop, nullptr);
     ASSERT_NE(sphere, nullptr);
     effects->BeginTrail(
-        prop, NS::GetFrameDelta(prop), trail, prop->Flight(), params, sphere->WorldSphere(prop->Root().WorldMatrix()));
+        prop, trail,prop->Flight(), params, sphere->WorldSphere(prop->Root().WorldMatrix()));
     EXPECT_EQ(effects->TrailFrames(), 20);
     EXPECT_FLOAT_EQ(effects->LandDustScale(), 2.5f);
 }

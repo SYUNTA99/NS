@@ -13,6 +13,8 @@
 
 namespace NS
 {
+    class SceneActor;
+
     //! @brief 動作を始める・進める 1 回の呼び出しに渡す、持ち主の読む物と書く先。呼び出しの中だけ使い、覚えない
     //! @details 書く先は持ち主が持たなければ nullptr
     struct ActionTimelineSelf
@@ -106,4 +108,13 @@ namespace NS
         std::vector<std::size_t> m_started;  // 最後の Advance で始まった事象
         std::vector<SensorSwitch> m_switched; // 入り切りの途中の事象
     };
+
+    //! @brief actor の今の状態が、結んだ動作の長さの回数だけ OnStep を進めた場合 true。状態の OnStep で問う
+    //! @details 最後に Start で動作を始めた後に今の状態へ入り直しておらず、その時の length が 1 以上で、今の状態の
+    //! GetStateStepCount が length 以上の時に true。動作が途中で止まっても (Stop・ReloadActions) 答えは変わらない。
+    //! 同じ状態の中で別の動作を Start すると、結んだ長さはその動作の長さに替わる。
+    //! 移る予約の間・Start を呼ばずに入り直した状態・長さを決めていない動作・始まらなかった動作・動作の無いアクターは
+    //! false
+    //! @param[in] actor 事前条件: nullptr でない
+    [[nodiscard]] bool IsStateEnd(const SceneActor* actor) noexcept;
 } // namespace NS

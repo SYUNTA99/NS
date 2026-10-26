@@ -36,11 +36,9 @@ namespace GL
             //! @brief 押し飛ばされた所から尾を出す。前の尾が残っていれば消してから出す
             //! @details 段で尾の色を引き (中心近くは橙、大きな外れは灰)、飛ばしの比で尾を長く残し、
             //!          威力と質量で落ちた所の粉を大きくする。飛ぶ水平の向きは速さが 0 の時の尾の向き
-            //! @param[in] dt 持ち主の 1 フレームの秒。尾の頭を 1 フレーム先へ置く
-            //! @param[in] flight 放した直後の飛び。曲線の上でなければ尾を出さない
+            //! @param[in] flight 放した直後の飛び。尾の頭を今の位置に置く。曲線の上でなければ尾を出さない
             //! @param[in] sphere 置物の当たりの世界座標の球。尾の太さを直径に合わせる
             void BeginTrail(const NS::IGetEffect* user,
-                            float dt,
                             const TackleReleaseDesc& release,
                             const PropFlight& flight,
                             const MapObjParams* params,
@@ -87,8 +85,7 @@ namespace GL
             // 尾を消し、床に落ちていればその場へ粉を出す
             void EndTrail(const NS::IGetEffect* user);
 
-            NS::uint32 m_trail = 0;   // 飛び出しの尾。消したら 0
-            int m_trailStartStep = 0; // 尾を出したフレーム。このフレームは出した姿のまま
+            NS::uint32 m_trail = 0; // 飛び出しの尾。消したら 0
             int m_trailFrames = 0;
             float m_trailScale = 1.0f; // 尾の再生の大きさ。自分の直径 (m)
             NS::Vector3 m_launchDir{1.0f, 0.0f, 0.0f};

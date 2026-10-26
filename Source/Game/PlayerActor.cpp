@@ -229,7 +229,8 @@ void PlayerActor::DecideStep()
         m_input->Update(this);
     }
     // 当たりの途中は受け付けない。相手だけが戻ると、明けの知らせが戻った相手を飛ばす
-    // 押しは同じ歩の状態機械の後か押しを下ろす所で消費されるので、当たりの途中の押しは持ち越さない
+    // ヒットストップの間は押しを下ろさないので、その間の押しは明けのフレームまで残る。明けのフレームも
+    // 当たりの途中なのでここでは受け付けず、同じフレームの状態機械の後か押しを下ろす所で消えて、明けの後へ持ち越さない
     if (m_input->RespawnPressed() && !IsHitStopping() && !IsInTackleHit())
     {
         if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
