@@ -223,6 +223,12 @@ TEST(PlayerAirDashTest, SteeringNeverTurnsMoreThanTheLimit)
     AddFrontWall(scene);
     const nlohmann::json fields = ParamsFields(player);
     ASSERT_TRUE(DashIntoFrontWall(player));
+    // 操作なしの間に倒すとずらしになるので、操作なしの間が明けてから測る
+    const float lock = fields.at("反動の操作なしの秒").get<float>();
+    for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
+    {
+        player->Update(false);
+    }
     const NS::Vector3 start = player->Body().LateralVelocity();
 
     // 補正の段の間ずっと真横へ倒す
@@ -255,8 +261,14 @@ TEST(PlayerAirDashTest, CameraStateDuringDashAndTerrainRebound)
     EXPECT_TRUE(dashing.rebound.widenView);
     EXPECT_FALSE(dashing.rebound.rebounding);
 
-    // 前 (画面の上) へ倒したまま当てると、後ろ上へずれて返る
+    player->SetDesiredMove(NS::Vector3{}, 0.0f);
     for (int frame = 0; frame < 30 && !player->IsDashRebounding(); ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->IsDashRebounding());
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < 30 && player->AirDash().LastRebound().shifted.y <= 0.5f; ++frame)
     {
         player->Update(false);
     }
@@ -271,6 +283,72 @@ TEST(PlayerAirDashTest, CameraStateDuringDashAndTerrainRebound)
 
     player->ResetState();
     EXPECT_FALSE(player->GetCameraTargetState().rebound.widenView);
+}
+
+TEST(PlayerAirDashTest, TiltAfterTheHitShiftsTheReboundOneStep)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    const float lock = ParamsFields(player).at("反動の操作なしの秒").get<float>();
+    ASSERT_TRUE(DashIntoFrontWall(player));
+    ASSERT_NEAR(player->AirDash().LastRebound().shifted.y, 0.0f, 1.0e-3f);
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
+    {
+        player->Update(false);
+    }
+    const NS::Vector3 shifted = player->AirDash().LastRebound().shifted;
+    EXPECT_NEAR(shifted.y, std::sqrt(0.5f), 1.0e-3f);
+    EXPECT_NEAR(shifted.z, -std::sqrt(0.5f), 1.0e-3f);
+    EXPECT_GT(player->Body().Velocity().y, 0.0f);
+}
+
+TEST(PlayerAirDashTest, HoldingTheDashStickThroughTheHitShiftsTheReboundOneStep)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    const float lock = ParamsFields(player).at("反動の操作なしの秒").get<float>();
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Update(true);
+    for (int frame = 0; frame < 30 && !player->IsDashRebounding(); ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->IsDashRebounding());
+    for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
+    {
+        player->Update(false);
+    }
+    const NS::Vector3 shifted = player->AirDash().LastRebound().shifted;
+    EXPECT_NEAR(shifted.y, std::sqrt(0.5f), 1.0e-3f);
+    EXPECT_NEAR(shifted.z, -std::sqrt(0.5f), 1.0e-3f);
+}
+
+TEST(PlayerAirDashTest, TiltAfterTheLockDoesNotShift)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    const float lock = ParamsFields(player).at("反動の操作なしの秒").get<float>();
+    ASSERT_TRUE(DashIntoFrontWall(player));
+    for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
+    {
+        player->Update(false);
+    }
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < 5; ++frame)
+    {
+        player->Update(false);
+    }
+    EXPECT_NEAR(player->AirDash().LastRebound().shifted.y, 0.0f, 1.0e-3f);
 }
 
 // 押したフレームに丸まる。立ち姿のままダッシュすると、飛び出した瞬間に玉に見えない

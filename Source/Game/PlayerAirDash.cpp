@@ -29,6 +29,23 @@ namespace
     {
         return std::acos(std::clamp(NS::Dot(a, b), -1.0f, 1.0f));
     }
+
+    // 2 つが同じか真逆で回す面が決まらない時は v のまま
+    NS::Vector3 TurnLike(const NS::Vector3& v, const NS::Vector3& from, const NS::Vector3& to) noexcept
+    {
+        NS::Vector3 side{to - from * NS::Dot(to, from)};
+        if (side.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
+        {
+            return v;
+        }
+        side.Normalize();
+        const float cosine = std::clamp(NS::Dot(from, to), -1.0f, 1.0f);
+        const float sine = std::sqrt(1.0f - cosine * cosine);
+        const float along = NS::Dot(v, from);
+        const float across = NS::Dot(v, side);
+        const NS::Vector3 rest = v - from * along - side * across;
+        return from * (along * cosine - across * sine) + side * (along * sine + across * cosine) + rest;
+    }
 } // namespace
 
 bool PlayerActor::CanStartAirDash() const noexcept
@@ -93,6 +110,7 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     // 操作なしの段は、床の上で返っても段の秒まで続ける。返った勢いを見せる長さを当てた所で変えない
     if (m_airDash.m_reboundElapsed <= lock)
     {
+        ApplyReboundShift();
         return;
     }
     if (GL::Player::PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity()))
@@ -182,24 +200,16 @@ void PlayerActor::TryBeginTerrainRebound() noexcept
 
 void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vector3& normal, float baseSpeed) noexcept
 {
-    GL::Level::ReboundTableShape shape = GL::Level::ReboundTableShape::ThreePlanes;
-    if (m_params->m_reboundTableWithPitch)
-    {
-        shape = GL::Level::ReboundTableShape::YawPitch;
-    }
-    const std::vector<NS::Vector3> table = GL::Level::MakeReboundDirections(m_params->m_reboundTableDivisions, shape);
     NS::Vector3 assigned{};
-    if (!GL::Level::AssignReboundDirection(table, incoming, normal, assigned))
+    if (!GL::Level::AssignReboundDirection(ReboundTable(), incoming, normal, assigned))
     {
         return;
     }
-    const NS::Vector3 shifted = GL::Level::ShiftReboundDirection(
-        table, assigned, normal, ReboundShiftInput(), GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions));
 
     const float facing = std::min(-NS::Dot(incoming, normal), 1.0f);
     const float keep = std::clamp(m_params->m_reboundKeepRatio, 0.0f, 1.0f);
     const float speed = baseSpeed * (keep + (1.0f - keep) * facing);
-    m_body->SetVelocity(shifted * speed);
+    m_body->SetVelocity(assigned * speed);
 
     NS::Vector3 reflected = GL::Level::ReflectAcross(incoming, normal);
     reflected.Normalize();
@@ -208,13 +218,14 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
                                                         .normal = normal,
                                                         .reflected = reflected,
                                                         .assigned = assigned,
-                                                        .shifted = shifted,
+                                                        .shifted = assigned,
                                                         .facing = facing,
                                                         .speed = speed};
     m_airDash.m_reboundCount = m_airDash.m_reboundCount + 1;
     m_airDash.m_reboundElapsed = 0.0f;
     m_airDash.m_steeredRadians = 0.0f;
     m_airDash.m_steerStarted = false;
+    m_airDash.m_shiftApplied = false;
     StartAirControlReturn();
     (void)m_states->Change<GL::Player::DashReboundPlayerState>();
     StartTerrainReboundReaction(Root().Position() - normal * m_collider->CapsuleRadius(), facing);
@@ -281,15 +292,60 @@ void PlayerActor::DrawTerrainRebound() const
     NS::Gfx::DebugDraw::Circle(center, NS::Vector3{radius, 0.0f, 0.0f}, NS::Vector3{0.0f, 0.0f, radius}, stage);
 }
 
-NS::Vector3 PlayerActor::ReboundShiftInput() const noexcept
+std::vector<NS::Vector3> PlayerActor::ReboundTable() const
+{
+    GL::Level::ReboundTableShape shape = GL::Level::ReboundTableShape::ThreePlanes;
+    if (m_params->m_reboundTableWithPitch)
+    {
+        shape = GL::Level::ReboundTableShape::YawPitch;
+    }
+    return GL::Level::MakeReboundDirections(m_params->m_reboundTableDivisions, shape);
+}
+
+void PlayerActor::ApplyReboundShift() noexcept
+{
+    if (m_airDash.m_shiftApplied)
+    {
+        return;
+    }
+    const GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
+    const NS::Vector3 shifted =
+        GL::Level::ShiftReboundDirection(ReboundTable(),
+                                         hit.assigned,
+                                         hit.normal,
+                                         ReboundShiftInput(hit.assigned),
+                                         GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions));
+    if (AngleBetweenUnit(shifted, hit.assigned) < NS::k_Epsilon)
+    {
+        return;
+    }
+    m_body->SetVelocity(TurnLike(m_body->Velocity(), hit.assigned, shifted));
+    m_airDash.m_last.shifted = shifted;
+    m_airDash.m_shiftApplied = true;
+}
+
+NS::Vector3 PlayerActor::ReboundShiftInput(const NS::Vector3& assigned) const noexcept
 {
     if (DesiredSpeedScale() < m_params->StickDeadzone())
     {
         return NS::Vector3{};
     }
-    // 入力と同じく、カメラの前 (x, z) の右は (z, −x)
-    const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(this);
-    const NS::Vector3 right{forward.z, 0.0f, -forward.x};
+    const NS::Vector3 flatForward = NS::CalcCameraForwardHorizontal(this);
+    const NS::Vector3 right{flatForward.z, 0.0f, -flatForward.x};
+    NS::Vector3 forward = flatForward;
+    const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(this);
+    if (pose.has_value())
+    {
+        const NS::Vector3 look = pose->target - pose->position;
+        if (look.LengthSquared() > NS::k_Epsilon * NS::k_Epsilon)
+        {
+            forward = look;
+            forward.Normalize();
+        }
+    }
+    NS::Vector3 up = NS::Cross(forward, right);
+    up.Normalize();
     const NS::Vector3 desired = DesiredDirection();
-    return right * NS::Dot(desired, right) + NS::Vector3{0.0f, 1.0f, 0.0f} * NS::Dot(desired, forward);
+    return GL::Level::ShiftInputOnScreen(
+        assigned, right, up, forward, NS::Dot(desired, right), NS::Dot(desired, flatForward));
 }

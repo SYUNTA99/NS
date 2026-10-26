@@ -1,5 +1,6 @@
 #include "Game/Level/ReboundDirections.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdlib>
@@ -159,6 +160,20 @@ namespace GL
                 }
             }
             return best;
+        }
+
+        NS::Vector3 ShiftInputOnScreen(const NS::Vector3& assigned,
+                                       const NS::Vector3& cameraRight,
+                                       const NS::Vector3& cameraUp,
+                                       const NS::Vector3& cameraForward,
+                                       float stickRight,
+                                       float stickUp) noexcept
+        {
+            const NS::Vector3 right{cameraRight - assigned * NS::Dot(cameraRight, assigned)};
+            const NS::Vector3 up{cameraUp - assigned * NS::Dot(cameraUp, assigned)};
+            const NS::Vector3 depth{cameraForward - assigned * NS::Dot(cameraForward, assigned)};
+            const float upLength{std::min(up.Length(), 1.0f)};
+            return right * stickRight + (up + depth * (1.0f - upLength)) * stickUp;
         }
 
         NS::Vector3 TurnToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept

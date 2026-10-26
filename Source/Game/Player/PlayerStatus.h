@@ -121,6 +121,7 @@ namespace GL
             float m_reboundElapsed = 0.0f;
             float m_steeredRadians = 0.0f; // 補正の段で曲げた角度の累計
             bool m_steerStarted = false;   // 補正の段に入ってダッシュを戻したか
+            bool m_shiftApplied = false;   // 今の反動でずらしを掛けたか。掛けるのは反動 1 回に 1 度
             NS::uint32 m_reboundCount = 0;
             TerrainReboundRecord m_last{};
         };
