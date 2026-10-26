@@ -391,7 +391,7 @@ TEST(HitSensorDirector, BothOwnersHearAnOverlap)
     EXPECT_EQ(body->entered[0], area->m_sensor);
 }
 
-// ゴールは自機の体にだけ、触れている間は毎フレーム知らせる。岩の体が範囲に重なっても知らせは出ない
+// ゴールは自機の体にだけ、触れ始めた時に 1 回知らせる。岩の体が範囲に重なっても知らせは出ない
 TEST(GoalActor, IgnoresARockBody)
 {
     NS::Scene scene;
@@ -404,12 +404,11 @@ TEST(GoalActor, IgnoresARockBody)
 
     EXPECT_TRUE(rock->received.empty());
     // 同じ所の自機の体には届く。照合が相手の種類を見ている証し
-    ASSERT_EQ(body->received.size(), 2u);
+    ASSERT_EQ(body->received.size(), 1u);
     EXPECT_EQ(body->received[0], GL::Level::MsgGoal::StaticKind());
-    EXPECT_EQ(body->received[1], GL::Level::MsgGoal::StaticKind());
 }
 
-// 落下死の範囲も自機の体にだけ、入っている間は毎フレーム知らせる
+// 落下死の範囲も自機の体にだけ、入った時に 1 回知らせる
 TEST(DeathZoneActor, IgnoresARockBody)
 {
     NS::Scene scene;
@@ -421,9 +420,8 @@ TEST(DeathZoneActor, IgnoresARockBody)
     scene.HitSensors().OnTick();
 
     EXPECT_TRUE(rock->received.empty());
-    ASSERT_EQ(body->received.size(), 2u);
+    ASSERT_EQ(body->received.size(), 1u);
     EXPECT_EQ(body->received[0], GL::Level::MsgInstantDeath::StaticKind());
-    EXPECT_EQ(body->received[1], GL::Level::MsgInstantDeath::StaticKind());
 }
 
 // 先読みの問いは仕組みの条件だけで絞る。種類は問う側が見る

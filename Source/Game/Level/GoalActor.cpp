@@ -20,13 +20,8 @@ namespace GL
 
         void GoalActor::OnSensorEnter(NS::HitSensor* self, NS::HitSensor* other)
         {
-            OnSensorStay(self, other);
-        }
-
-        void GoalActor::OnSensorStay(NS::HitSensor* self, NS::HitSensor* other)
-        {
             NS_ASSERT(Game, self != nullptr && other != nullptr, "重なったセンサーが渡されていない");
-            // 触れている間は毎フレーム送る。CourseDirector が流れの最中の物を捨てても、流れの後に届き直す
+            // 触れ始めた時に 1 回送る。クリアの流れはやり直しで自機を出現位置へ戻すので、触れたままにはならない
             if (IsSensorKind(other, SensorKind::PlayerBody))
             {
                 (void)SendMsgGoal(other, self, m_params->FadeOutSeconds(), m_params->FadeInSeconds());

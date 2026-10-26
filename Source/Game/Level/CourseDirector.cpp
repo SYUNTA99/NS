@@ -38,7 +38,7 @@ namespace GL
             {
                 m_sequences.Start(ClearSequence());
             }
-            // ゴールに触れている間は毎フレーム知らせが来る。流れの最中の知らせは捨てる
+            // ゴールは触れ始めに 1 回だけ届く。クリアの流れの最中に届いた物は捨てる
             m_goalReached = false;
 
             if (m_playerDead)

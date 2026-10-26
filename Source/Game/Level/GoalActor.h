@@ -17,7 +17,6 @@ namespace GL
             NS_REFLECT_END()
 
             void OnSensorEnter(NS::HitSensor* self, NS::HitSensor* other) override;
-            void OnSensorStay(NS::HitSensor* self, NS::HitSensor* other) override;
             [[nodiscard]] GoalParams& Params() noexcept { return *m_params; }
             [[nodiscard]] const GoalParams& Params() const noexcept { return *m_params; }
 

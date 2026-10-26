@@ -15,7 +15,6 @@ namespace GL
             NS_REFLECT_NONE(DeathZoneActor, NS::SceneActor)
 
             void OnSensorEnter(NS::HitSensor* self, NS::HitSensor* other) override;
-            void OnSensorStay(NS::HitSensor* self, NS::HitSensor* other) override;
 
         private:
             // 大きさは .actor の欄
