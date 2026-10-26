@@ -2,6 +2,7 @@
 
 #include "Game/Level/AirGravity.h"
 #include "Game/Level/ImpactOutcome.h"
+#include "Game/Player/PlayerAcceleration.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -164,7 +165,7 @@ void PlayerActor::AccelerateToInputDirection(float dt) noexcept
         acceleration *= scale;
         turningDrag *= scale;
     }
-    body.Accelerate(direction, turningDrag, acceleration, topSpeed, dt);
+    GL::Player::Accelerate(&body, direction, turningDrag, acceleration, topSpeed, dt);
 }
 
 void PlayerActor::StartAirControlReturn() noexcept
@@ -188,12 +189,12 @@ void PlayerActor::AdvanceAirControlReturn(float dt) noexcept
 
 void PlayerActor::ApplyFriction(float dt) noexcept
 {
-    m_body->Decelerate(m_params->m_friction, dt);
+    GL::Player::Decelerate(m_body.get(), m_params->m_friction, dt);
 }
 
 void PlayerActor::ApplyBrake(float dt) noexcept
 {
-    m_body->Decelerate(m_params->m_deceleration, dt);
+    GL::Player::Decelerate(m_body.get(), m_params->m_deceleration, dt);
 }
 
 void PlayerActor::Jump(float) noexcept
@@ -274,7 +275,7 @@ void PlayerActor::AccelerateDuringRebound(float dt) noexcept
     // 横入力で反動方向を消さないよう、入力からずれた速度は削らない
     const float turningDrag = 0.0f;
     // 明けのフレームは止める前の接地のフラグが残っている。接地を見て地上の加速度を選ぶと、そのフレームだけ大きく曲がる
-    body.Accelerate(direction, turningDrag, m_params->m_reboundAirAcceleration, topSpeed, dt);
+    GL::Player::Accelerate(&body, direction, turningDrag, m_params->m_reboundAirAcceleration, topSpeed, dt);
 }
 
 void PlayerActor::BeginSkid() noexcept

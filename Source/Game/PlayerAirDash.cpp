@@ -1,6 +1,7 @@
 #include "Game/PlayerActor.h"
 
 #include "Game/Level/ReboundDirections.h"
+#include "Game/Player/PlayerAcceleration.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/AirDashPlayerState.h"
@@ -168,7 +169,7 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     }
 
     m_body->Gravity(-m_params->m_dashReboundGravity, dt);
-    m_body->Decelerate(m_params->m_dashReboundDeceleration, dt);
+    GL::Player::Decelerate(m_body.get(), m_params->m_dashReboundDeceleration, dt);
 
     // 曲げはスティックの向きだけを目標にする。地形も相手も読まないので、目的地へは向かない
     NS::Vector3 target{};
