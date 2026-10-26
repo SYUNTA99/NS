@@ -1,6 +1,5 @@
 #pragma once
 
-#include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 
 namespace GL
@@ -47,21 +46,15 @@ namespace GL
                 return !grounded && !(verticalVelocity > 0.0f) && !wasSlamming;
             }
 
-            //! @brief 箱の上端が手の高さの帯に入り、手が箱の水平の範囲の中にあるかを返す
-            //! @param[in] probe 手の位置。世界座標
-            //! @param[in] box 調べる箱
-            //! @param[in] belowHand 手より下に許す上端の深さ。単位は m
-            //! @param[in] aboveHand 手より上に許す上端の高さ。単位は m
+            //! @brief 縁の上面の高さが、手の高さの帯に入っているかを返す
+            //! @param[in] handY 手の高さ。世界座標
+            //! @param[in] top 縁の上面の高さ。世界座標
+            //! @param[in] belowHand 手より下に許す上面の深さ。単位は m
+            //! @param[in] aboveHand 手より上に許す上面の高さ。単位は m
             //! @return 入っている場合 true、それ以外の場合は false
-            [[nodiscard]] static bool InBand(const NS::Vector3& probe,
-                                             const NS::AABB& box,
-                                             float belowHand,
-                                             float aboveHand) noexcept
+            [[nodiscard]] static bool InBand(float handY, float top, float belowHand, float aboveHand) noexcept
             {
-                const float top = box.Center.y + box.Extents.y;
-                return !(top < probe.y - belowHand || top > probe.y + aboveHand ||
-                         probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x ||
-                         probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z);
+                return !(top < handY - belowHand || top > handY + aboveHand);
             }
         };
 
