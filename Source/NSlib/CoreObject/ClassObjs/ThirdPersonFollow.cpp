@@ -2,8 +2,8 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseCameraTarget.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
+#include "NSlib/CoreObject/IGet/IGetCameraTarget.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Core/Windows/Clock.h"
@@ -621,7 +621,7 @@ namespace NS
         return m_distance;
     }
 
-    void ThirdPersonFollow::UpdateOcclusion(const IUseCollision* collision,
+    void ThirdPersonFollow::UpdateOcclusion(const IGetCollision* collision,
                                             const Vector3& root,
                                             const Vector3& head,
                                             const Vector3& look,
@@ -722,7 +722,7 @@ namespace NS
         m_distance = distance;
     }
 
-    void ThirdPersonFollow::Advance(CameraManager* cameras, const IUseCollision* collision)
+    void ThirdPersonFollow::Advance(CameraManager* cameras, const IGetCollision* collision)
     {
         NS_ASSERT(Scene, cameras != nullptr, "ThirdPersonFollow::Advance: カメラの管理役が null");
         NS_ASSERT(Scene, collision != nullptr, "ThirdPersonFollow::Advance: 地形を探すシーンが null");

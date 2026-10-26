@@ -6,7 +6,7 @@
 
 namespace NS
 {
-    class IUseCamera;
+    class IGetCamera;
 
     //! 機器の入力をカメラ相対の移動方向と操作状態へ変換する部品
     //! 操作ロック中は中立値を保持する
@@ -59,7 +59,7 @@ namespace NS
         //! @brief キーボードとゲームパッドから今の入力を読み、camera のシーンのカメラから水平の前を取る
         //! @details 押した瞬間は、前に呼んだ時から後の押しを読む。持ち主は世界を進めた固定フレームに呼び、
         //! 世界を進めない固定フレームの押しも次に呼んだ時に拾う
-        void Update(const IUseCamera* camera);
+        void Update(const IGetCamera* camera);
 
         // 入力を渡すだけで保存する調整値は無い。型名だけ登録する
         NS_REFLECT_NONE(PlayerInput, Object)

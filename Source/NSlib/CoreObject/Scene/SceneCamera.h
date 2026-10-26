@@ -15,7 +15,7 @@ namespace NS
 {
     struct CameraPose;
 
-    //! シーンの実カメラ。描画と編集用で、遊びの向きは IUseCamera から取得する
+    //! シーンの実カメラ。描画と編集用で、遊びの向きは IGetCamera から取得する
     class SceneCamera
     {
     public:

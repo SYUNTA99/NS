@@ -9,8 +9,8 @@
 namespace NS
 {
     class CameraManager;
-    class IUseCameraTarget;
-    class IUseCollision;
+    class IGetCameraTarget;
+    class IGetCollision;
     class SceneActor;
     class Transform;
 
@@ -65,7 +65,7 @@ namespace NS
         //! @brief 追う相手を受ける。持ち主のアクターが TargetRef の指す相手を取得して渡す
         //! @details 相手が一覧から外れる前に、持ち主が取得し直して渡し直す。target が nullptr なら相手なし。
         //! state は同じ相手が自分の状態を渡す口で、渡さない相手は nullptr。Advance が進める直前に読む
-        void SetTarget(const SceneActor* target, const IUseCameraTarget* state) noexcept
+        void SetTarget(const SceneActor* target, const IGetCameraTarget* state) noexcept
         {
             m_target = target;
             m_targetState = state;
@@ -135,7 +135,7 @@ namespace NS
         //! @details EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
         //! @param[in] cameras 溜めの揺れを保たせるカメラの管理役
         //! @param[in] collision 注視点とカメラの間の地形を探すシーン
-        void Advance(CameraManager* cameras, const IUseCollision* collision) override;
+        void Advance(CameraManager* cameras, const IGetCollision* collision) override;
 
         //! alpha で補間した target を追う最終姿勢を返す。CameraManager が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
@@ -219,7 +219,7 @@ namespace NS
         // 追う相手の頭から置きたいカメラの位置への光線で地形を探し、見せる距離の上限を 1 フレーム進める。
         // 注視点から撃たないのは、反動の間の注視点が遅れと帯のずらしで地形の中へ入る事があるため。
         // root は地形の外にある点 (追う相手の体の中心) で、頭が天井に入る時はその間で遮られた手前から撃つ
-        void UpdateOcclusion(const IUseCollision* collision,
+        void UpdateOcclusion(const IGetCollision* collision,
                              const Vector3& root,
                              const Vector3& head,
                              const Vector3& look,
@@ -241,7 +241,7 @@ namespace NS
 
         ActorRef m_targetRef{};                          // 追従対象の永続参照。シーンに保存する
         const SceneActor* m_target = nullptr;            // m_targetRef から持ち主が取得した相手 (非所有)
-        const IUseCameraTarget* m_targetState = nullptr; // m_target が状態を渡す口。渡さない相手は nullptr (非所有)
+        const IGetCameraTarget* m_targetState = nullptr; // m_target が状態を渡す口。渡さない相手は nullptr (非所有)
 
         // 値で受けた追従先の運動。届くまでは待機距離のまま
         bool m_followGrounded = false;

@@ -21,7 +21,7 @@ namespace NS
     {
         class D3DBuffer;
     }
-    class IUseCamera;
+    class IGetCamera;
 } // namespace NS
 
 namespace NS
@@ -127,7 +127,7 @@ namespace NS
         //! @brief 揺れ・形の再生・震えを 1 フレーム進める
         //! @details 呼ぶのは SceneActor::Update だけで、体を動かした後・VisualStep の前。震えは動かした後の根で書く。
         //! 震えの振れ幅は camera の視点から rootPosition (持ち主の根の位置) までの距離で決める
-        void AdvanceDraw(const IUseCamera* camera, const Vector3& rootPosition);
+        void AdvanceDraw(const IGetCamera* camera, const Vector3& rootPosition);
         //! 描く姿勢へ足す世界のずれ (m)。補間しない
         [[nodiscard]] const Vector3& GetDrawOffset() const noexcept { return m_drawOffset; }
         //! 今の固定フレームの描く時だけの倍率。SetDrawScale で書いた倍率と形の再生の倍率の積で、どちらも無ければ (1, 1, 1)

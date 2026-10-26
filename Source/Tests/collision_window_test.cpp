@@ -2,7 +2,7 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/PhysicsScene.h"
@@ -91,17 +91,17 @@ TEST(CollisionWindow, OverlapBoxAnswersLikeThePhysicsScene)
 TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
 {
     NS::Collider bare{nullptr, nullptr};
-    const NS::IUseCollision& bareWindow = bare;
+    const NS::IGetCollision& bareWindow = bare;
     EXPECT_EQ(bareWindow.GetPhysicsScene(), nullptr);
 
     const std::unique_ptr<CollisionProbeActor> looseOwned = NS::CreateActor<CollisionProbeActor>();
     CollisionProbeActor& loose = *looseOwned;
-    const NS::IUseCollision& looseWindow = *loose.collider;
+    const NS::IGetCollision& looseWindow = *loose.collider;
     EXPECT_EQ(looseWindow.GetPhysicsScene(), nullptr);
 
     NS::Scene scene;
     CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
-    const NS::IUseCollision& placedWindow = *placed->collider;
+    const NS::IGetCollision& placedWindow = *placed->collider;
     EXPECT_EQ(placedWindow.GetPhysicsScene(), &scene.Physics());
 }
 

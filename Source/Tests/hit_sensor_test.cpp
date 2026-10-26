@@ -6,7 +6,7 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseHitSensor.h"
+#include "NSlib/CoreObject/IGet/IGetHitSensor.h"
 #include "NSlib/CoreObject/Message/Message.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"

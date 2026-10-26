@@ -130,20 +130,20 @@ namespace NS
         std::erase_if(m_modifiers, [kind](const std::unique_ptr<CameraModifier>& m) { return m->Kind() == kind; });
     }
 
-    void CameraManager::RemoveModifiersOf(const IUseCamera* requester, const void* kind) noexcept
+    void CameraManager::RemoveModifiersOf(const IGetCamera* requester, const void* kind) noexcept
     {
         std::erase_if(m_modifiers, [requester, kind](const std::unique_ptr<CameraModifier>& m) {
             return m->Requester() == requester && m->Kind() == kind;
         });
     }
 
-    void CameraManager::RemoveModifiersOf(const IUseCamera* requester) noexcept
+    void CameraManager::RemoveModifiersOf(const IGetCamera* requester) noexcept
     {
         std::erase_if(m_modifiers,
                       [requester](const std::unique_ptr<CameraModifier>& m) { return m->Requester() == requester; });
     }
 
-    void CameraManager::ReleaseSink(const IUseCamera* requester) noexcept
+    void CameraManager::ReleaseSink(const IGetCamera* requester) noexcept
     {
         for (const std::unique_ptr<CameraModifier>& modifier : m_modifiers)
         {
@@ -159,7 +159,7 @@ namespace NS
         m_modifiers.clear();
     }
 
-    bool CameraManager::StartShake(const CameraShakeDesc& desc, const IUseCamera* requester)
+    bool CameraManager::StartShake(const CameraShakeDesc& desc, const IGetCamera* requester)
     {
         std::unique_ptr<CameraShakeModifier> shake =
             CameraShakeModifier::Create(desc, SideSignOf(desc.firstSideDirection));
@@ -179,7 +179,7 @@ namespace NS
         return Vector2{0.0f, 0.0f};
     }
 
-    bool CameraManager::StartZoomRoll(const CameraZoomRollDesc& desc, const IUseCamera* requester)
+    bool CameraManager::StartZoomRoll(const CameraZoomRollDesc& desc, const IGetCamera* requester)
     {
         std::unique_ptr<CameraZoomRollModifier> zoomRoll =
             CameraZoomRollModifier::Create(desc, SideSignOf(desc.rollDirection));
@@ -214,7 +214,7 @@ namespace NS
         return raw;
     }
 
-    bool CameraManager::AddTrauma(const CameraTraumaDesc& desc, const IUseCamera* requester)
+    bool CameraManager::AddTrauma(const CameraTraumaDesc& desc, const IGetCamera* requester)
     {
         if (!IsNonNegativeFinite(desc.trauma) || !IsValidTraumaShape(desc.shape) ||
             !std::isfinite(desc.kick.degrees))

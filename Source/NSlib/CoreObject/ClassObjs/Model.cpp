@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
@@ -149,7 +149,7 @@ namespace NS
         m_drawTremor = Gfx::TremorCB{};
     }
 
-    void Model::AdvanceDraw(const IUseCamera* camera, const Vector3& rootPosition)
+    void Model::AdvanceDraw(const IGetCamera* camera, const Vector3& rootPosition)
     {
         NS_ASSERT(Scene, camera != nullptr, "Model::AdvanceDraw: カメラの窓口が null");
         if (m_shake.active)

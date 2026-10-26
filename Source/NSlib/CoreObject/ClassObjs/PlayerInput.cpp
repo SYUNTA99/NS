@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/Core/Windows/Gamepad.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "NSlib/Core/Windows/InputReader.h"
@@ -78,7 +78,7 @@ namespace NS
         DiscardUnreadPresses();
     }
 
-    void PlayerInput::Update(const IUseCamera* camera)
+    void PlayerInput::Update(const IGetCamera* camera)
     {
         NS_ASSERT(Scene, camera != nullptr, "PlayerInput::Update: カメラを引くアクターが空");
 

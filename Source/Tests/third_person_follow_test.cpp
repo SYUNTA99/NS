@@ -4,8 +4,8 @@
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/IUse/IUseCameraTarget.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCameraTarget.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -55,7 +55,7 @@ namespace
     };
 
     // 更新のたびに +x へ 1 m 進み、追従カメラに状態を読まれた時の自分の位置を控える物
-    class WalkingTargetActor final : public NS::SceneActor, public NS::IUseCameraTarget
+    class WalkingTargetActor final : public NS::SceneActor, public NS::IGetCameraTarget
     {
     public:
         explicit WalkingTargetActor(std::vector<std::string>& log) : m_log(log) {}

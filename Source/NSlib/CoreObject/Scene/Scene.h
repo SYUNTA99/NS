@@ -3,10 +3,10 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ActorList.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
-#include "NSlib/CoreObject/IUse/IUseRenderer.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
+#include "NSlib/CoreObject/IGet/IGetRenderer.h"
+#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -47,10 +47,10 @@ namespace NS
     //! @brief アクターと共有システムを所有し、固定更新と描画を行うシーン
     //! @details JSON は保存・凍結・編集履歴に使い、実行中の状態は SceneActor と部品が持つ
     class Scene : public NonCopyable,
-                  public IUseCamera,
-                  public IUseSceneSystem,
-                  public IUseCollision,
-                  public IUseRenderer
+                  public IGetCamera,
+                  public IGetSceneSystem,
+                  public IGetCollision,
+                  public IGetRenderer
     {
     public:
         Scene();
@@ -85,7 +85,7 @@ namespace NS
 
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
 
-        //! Physics() と同じ物を、IUseCollision の形 (ポインタ) で返す
+        //! Physics() と同じ物を、IGetCollision の形 (ポインタ) で返す
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
 
         //! エフェクトの EffectScene。描画を持たないシーン (試し) では nullptr

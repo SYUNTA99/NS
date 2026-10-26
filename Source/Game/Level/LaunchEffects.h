@@ -13,7 +13,7 @@
 
 namespace NS
 {
-    class IUseEffect;
+    class IGetEffect;
 }
 
 namespace GL
@@ -28,10 +28,10 @@ namespace GL
             // 絵は user (持ち主のアクター) のシーンの絵の管理へ出す
 
             //! 尾と粉の絵を先に読む。持ち主の OnAssetsLoaded が呼ぶ
-            void Preload(const NS::IUseEffect* user);
+            void Preload(const NS::IGetEffect* user);
 
             //! 出ている尾を置物の今の位置と向きへ動かし、曲線を離れたら消す。持ち主の見た目の段が呼ぶ
-            void Update(const NS::IUseEffect* user, const PropFlight& flight);
+            void Update(const NS::IGetEffect* user, const PropFlight& flight);
 
             //! @brief 押し飛ばされた所から尾を出す。前の尾が残っていれば消してから出す
             //! @details 段で尾の色を引き (中心近くは橙、大きな外れは灰)、飛ばしの比で尾を長く残し、
@@ -39,7 +39,7 @@ namespace GL
             //! @param[in] dt 持ち主の 1 フレームの秒。尾の頭を 1 フレーム先へ置く
             //! @param[in] flight 放した直後の飛び。曲線の上でなければ尾を出さない
             //! @param[in] sphere 置物の当たりの世界座標の球。尾の太さを直径に合わせる
-            void BeginTrail(const NS::IUseEffect* user,
+            void BeginTrail(const NS::IGetEffect* user,
                             float dt,
                             const TackleReleaseDesc& release,
                             const PropFlight& flight,
@@ -49,9 +49,9 @@ namespace GL
             //! @brief 尾を消し、落ちた所へ粉を出す
             //! @param[in] position 床に触れた点。世界座標
             //! @param[in] normal 触れた床の法線。粉はこの向きへ少し浮かせて置く
-            void NotifyLanding(const NS::IUseEffect* user, const NS::Vector3& position, const NS::Vector3& normal);
+            void NotifyLanding(const NS::IGetEffect* user, const NS::Vector3& position, const NS::Vector3& normal);
             //! 出ている尾を消す。粉は出さない
-            void CancelTrail(const NS::IUseEffect* user);
+            void CancelTrail(const NS::IGetEffect* user);
 
             //! 出ている尾が残るフレーム数。尾が無ければ 0
             [[nodiscard]] int TrailFrames() const noexcept { return m_trailFrames; }
@@ -85,7 +85,7 @@ namespace GL
             float m_landDustPerRootMass = 0.4f;
             float m_landDustPerPower = 0.5f;
             // 尾を消し、床に落ちていればその場へ粉を出す
-            void EndTrail(const NS::IUseEffect* user);
+            void EndTrail(const NS::IGetEffect* user);
 
             NS::uint32 m_trail = 0;   // 飛び出しの尾。消したら 0
             int m_trailStartStep = 0; // 尾を出したフレーム。このフレームは出した姿のまま

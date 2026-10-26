@@ -6,7 +6,7 @@
 namespace NS
 {
     class CameraManager;
-    class IUseCollision;
+    class IGetCollision;
 
     //! 仮想カメラが返す 1 フレーム分のカメラ姿勢 + 投影設定。CameraManager が実 Camera へそのまま書く
     struct CameraPose
@@ -51,7 +51,7 @@ namespace NS
         //! 世界を止めている間 (シミュレーションの停止・一時停止) は呼ばれない
         //! @param[in] cameras 呼んでいるカメラの管理役。事前条件: nullptr でない
         //! @param[in] collision 地形を探すシーン。事前条件: nullptr でない
-        virtual void Advance(CameraManager* cameras, const IUseCollision* collision)
+        virtual void Advance(CameraManager* cameras, const IGetCollision* collision)
         {
             (void)cameras;
             (void)collision;

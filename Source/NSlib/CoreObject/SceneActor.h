@@ -3,13 +3,13 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
-#include "NSlib/CoreObject/IUse/IUseEffect.h"
-#include "NSlib/CoreObject/IUse/IUseHitSensor.h"
-#include "NSlib/CoreObject/IUse/IUseRenderer.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
-#include "NSlib/CoreObject/IUse/IUseState.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
+#include "NSlib/CoreObject/IGet/IGetHitSensor.h"
+#include "NSlib/CoreObject/IGet/IGetRenderer.h"
+#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
+#include "NSlib/CoreObject/IGet/IGetState.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/SensorDeclarations.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
@@ -40,15 +40,15 @@ namespace NS
     struct ActorInitInfo;
 
     //! @brief 世界に置く物の基底。Transform と部品を持ち、MapPartsActor / PropActor / PlayerActor などが派生する
-    //! @details 所属シーンを持ち、IUse〜 の問いを居るシーンへ繋ぐ。シーンに居ない間の問いは nullptr を返す
+    //! @details 所属シーンを持ち、IGet〜 の問いを居るシーンへ繋ぐ。シーンに居ない間の問いは nullptr を返す
     class SceneActor : public Object,
-                       public IUseCamera,
-                       public IUseSceneSystem,
-                       public IUseCollision,
-                       public IUseEffect,
-                       public IUseHitSensor,
-                       public IUseRenderer,
-                       public IUseState
+                       public IGetCamera,
+                       public IGetSceneSystem,
+                       public IGetCollision,
+                       public IGetEffect,
+                       public IGetHitSensor,
+                       public IGetRenderer,
+                       public IGetState
     {
     public:
         SceneActor() noexcept;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/Phys/Capsule.h"
 #include "NSlib/Phys/JoltCharacter.h"
@@ -32,7 +32,7 @@ namespace NS
 
     //! @brief カプセルを地形に当てて移動する部品。位置・速度への反映は Body が行う
     //! @details 自分への衝突を避けるため、静的な PhysicsScene の body には登録しない
-    class Collider : public Object, public IUseCollision
+    class Collider : public Object, public IGetCollision
     {
     public:
         //! @param[in] physics 当たる地形の PhysicsScene。シーンへ入らないアクターは nullptr で、Move は地形を見ない

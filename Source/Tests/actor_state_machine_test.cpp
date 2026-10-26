@@ -2,7 +2,7 @@
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
-#include "NSlib/CoreObject/IUse/IUseState.h"
+#include "NSlib/CoreObject/IGet/IGetState.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"

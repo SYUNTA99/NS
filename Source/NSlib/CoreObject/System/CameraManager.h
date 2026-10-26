@@ -12,7 +12,7 @@
 
 namespace NS
 {
-    class IUseCollision;
+    class IGetCollision;
     class SceneCamera;
 
     //! @brief 有効な仮想カメラを優先度で選び、切り替えを補間して効果を重ねる
@@ -27,7 +27,7 @@ namespace NS
 
         //! @brief OnTick が仮想カメラを進める時に渡す、地形を探すシーンを差す。非所有
         //! @details シーンが作る時に自分を差す。差していない管理役は仮想カメラを進めない
-        void SetCollision(const IUseCollision* collision) noexcept { m_collision = collision; }
+        void SetCollision(const IGetCollision* collision) noexcept { m_collision = collision; }
 
         //! @brief 候補 vcam を有効な組として登録する。空と重複は無視する。所有せず、呼び出し側が寿命を保つ
         //! @details アクターの部品は補助関数 InitVirtualCamera から入る
@@ -80,14 +80,14 @@ namespace NS
         void RemoveModifiers(const void* kind) noexcept;
 
         //! requester が頼んだ、種類のタグが kind のモディファイアを外す。ほかの物が頼んだ物は残す
-        void RemoveModifiersOf(const IUseCamera* requester, const void* kind) noexcept;
+        void RemoveModifiersOf(const IGetCamera* requester, const void* kind) noexcept;
 
         //! requester が頼んだモディファイアを全て外す。ほかの物が頼んだ物は残す
-        void RemoveModifiersOf(const IUseCamera* requester) noexcept;
+        void RemoveModifiersOf(const IGetCamera* requester) noexcept;
 
         //! @brief requester が頼んだ沈む揺れを跳ね返す。requester の沈みが無ければ何もしない
         //! @details 跳ね返りは次に進めたフレームから始まる
-        void ReleaseSink(const IUseCamera* requester) noexcept;
+        void ReleaseSink(const IGetCamera* requester) noexcept;
 
         //! 積んだモディファイアを全て外す。プレイを終えた後の視点に効果が残らないようにする
         void ClearModifiers() noexcept;
@@ -110,7 +110,7 @@ namespace NS
         //! firstSideDirection の内積が負なら左、それ以外は右へ向く
         //! @param[in] requester 頼んだ物。nullptr は頼んだ物を問わない揺れ
         //! @return 揺れを始めた場合 true、壊れた設定で何も変えなかった場合は false
-        bool StartShake(const CameraShakeDesc& desc, const IUseCamera* requester = nullptr);
+        bool StartShake(const CameraShakeDesc& desc, const IGetCamera* requester = nullptr);
 
         //! 今のフレームの揺れのずれ。x がカメラの右、y が上 (m)。揺れていない時は 0
         [[nodiscard]] Vector2 ShakeOffset() const noexcept;
@@ -120,7 +120,7 @@ namespace NS
         //! rollDirection の内積が負なら上端を左へ、それ以外は右へ倒す
         //! @param[in] requester 頼んだ物。nullptr は頼んだ物を問わない寄り
         //! @return 始めた場合 true、壊れた設定で何も変えなかった場合は false
-        bool StartZoomRoll(const CameraZoomRollDesc& desc, const IUseCamera* requester = nullptr);
+        bool StartZoomRoll(const CameraZoomRollDesc& desc, const IGetCamera* requester = nullptr);
 
         //! 今のフレームの寄りと傾き。始めていない時と戻し終えた後は倍率 1・傾き 0
         [[nodiscard]] CameraZoomRoll ZoomRoll() const noexcept;
@@ -129,7 +129,7 @@ namespace NS
         //! @details 揺れの途中なら今のトラウマに足す (上限 1)。続けて当てた時に揺れが重なる。
         //! トラウマの揺れは頼んだ物を問わず 1 つで、最後に足した requester を頼んだ物にする
         //! @return 足した場合 true、量か形が壊れていて何も変えなかった場合は false
-        bool AddTrauma(const CameraTraumaDesc& desc, const IUseCamera* requester = nullptr);
+        bool AddTrauma(const CameraTraumaDesc& desc, const IGetCamera* requester = nullptr);
 
         //! @brief このフレームのトラウマを少なくとも level に保つ。トラウマの揺れが積まれていなければ積む
         //! @details 溜めのように続く揺れが毎フレーム呼ぶ。呼ばなかったフレームから減り始める
@@ -185,7 +185,7 @@ namespace NS
         [[nodiscard]] std::optional<CameraPose> ComposeBeforeEffects(float alpha) const noexcept;
 
         SceneCamera* m_camera = nullptr;            // Scene が持つ実カメラ (非所有)
-        const IUseCollision* m_collision = nullptr; // 仮想カメラを進める時に渡すシーン (非所有)
+        const IGetCollision* m_collision = nullptr; // 仮想カメラを進める時に渡すシーン (非所有)
         //! 候補の vcam と、持ち主が出ているか。指す物は非所有
         struct VirtualCameraEntry
         {

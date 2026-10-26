@@ -2,7 +2,7 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/IUse/IUseEffect.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
 
 #include <algorithm>
 #include <cmath>
@@ -63,13 +63,13 @@ namespace GL
             }
         } // namespace
 
-        void LaunchEffects::Preload(const NS::IUseEffect* user)
+        void LaunchEffects::Preload(const NS::IGetEffect* user)
         {
             NS_ASSERT(Game, user != nullptr, "LaunchEffects::Preload: 絵を出すアクターが空");
             NS::PreloadEffects(user, {m_launchTrailAsset, m_launchLandDustAsset});
         }
 
-        void LaunchEffects::BeginTrail(const NS::IUseEffect* user,
+        void LaunchEffects::BeginTrail(const NS::IGetEffect* user,
                                        float dt,
                                        const TackleReleaseDesc& release,
                                        const PropFlight& flight,
@@ -121,7 +121,7 @@ namespace GL
             m_trailStartStep = NS::GetEffectStep(user);
         }
 
-        void LaunchEffects::Update(const NS::IUseEffect* user, const PropFlight& flight)
+        void LaunchEffects::Update(const NS::IGetEffect* user, const PropFlight& flight)
         {
             NS_ASSERT(Game, user != nullptr, "LaunchEffects::Update: 絵を出すアクターが空");
             if (m_trail == 0 || NS::GetEffectStep(user) == m_trailStartStep)
@@ -140,20 +140,20 @@ namespace GL
             EndTrail(user);
         }
 
-        void LaunchEffects::EndTrail(const NS::IUseEffect* user)
+        void LaunchEffects::EndTrail(const NS::IGetEffect* user)
         {
             // 帯と輪はここで消す。点は世界に残るので、通った道が柱のように残る
             NS::StopEffect(user, m_trail);
             m_trail = 0;
         }
 
-        void LaunchEffects::CancelTrail(const NS::IUseEffect* user)
+        void LaunchEffects::CancelTrail(const NS::IGetEffect* user)
         {
             NS_ASSERT(Game, user != nullptr, "LaunchEffects::CancelTrail: 絵を出すアクターが空");
             EndTrail(user);
         }
 
-        void LaunchEffects::NotifyLanding(const NS::IUseEffect* user, const Vector3& position, const Vector3& normal)
+        void LaunchEffects::NotifyLanding(const NS::IGetEffect* user, const Vector3& position, const Vector3& normal)
         {
             NS_ASSERT(Game, user != nullptr, "LaunchEffects::NotifyLanding: 絵を出すアクターが空");
             EndTrail(user);

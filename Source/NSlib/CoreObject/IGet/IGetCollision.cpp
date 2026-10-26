@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/Core/Assert.h"
 
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
@@ -6,7 +6,7 @@
 
 namespace NS
 {
-    bool RaycastCollision(const IUseCollision* user,
+    bool RaycastCollision(const IGetCollision* user,
                           const Vector3& origin,
                           const Vector3& direction,
                           float maxDistance,
@@ -17,7 +17,7 @@ namespace NS
         return physics != nullptr && physics->Raycast(origin, direction, maxDistance, outDistance);
     }
 
-    bool RaycastCollision(const IUseCollision* user,
+    bool RaycastCollision(const IGetCollision* user,
                           const Vector3& origin,
                           const Vector3& direction,
                           float maxDistance,
@@ -31,7 +31,7 @@ namespace NS
                physics->Raycast(origin, direction, maxDistance, outDistance, outNormal, ignoredBody);
     }
 
-    std::vector<AABB> OverlapBoxCollision(const IUseCollision* user, const AABB& region)
+    std::vector<AABB> OverlapBoxCollision(const IGetCollision* user, const AABB& region)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const Phys::PhysicsScene* physics = user->GetPhysicsScene();
@@ -42,7 +42,7 @@ namespace NS
         return physics->OverlapBox(region);
     }
 
-    void InitCollision(const IUseCollision* user, Collision* collision, const Matrix& world)
+    void InitCollision(const IGetCollision* user, Collision* collision, const Matrix& world)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         NS_ASSERT(Scene, collision != nullptr, "InitCollision: 当たりが null");
@@ -50,21 +50,21 @@ namespace NS
         collision->RemoveFromPhysics(user);
     }
 
-    void EnableCollision(const IUseCollision* user, Collision* collision, const Matrix& world)
+    void EnableCollision(const IGetCollision* user, Collision* collision, const Matrix& world)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         NS_ASSERT(Scene, collision != nullptr, "EnableCollision: 当たりが null");
         collision->ReturnToPhysics(world, user);
     }
 
-    void DisableCollision(const IUseCollision* user, Collision* collision)
+    void DisableCollision(const IGetCollision* user, Collision* collision)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         NS_ASSERT(Scene, collision != nullptr, "DisableCollision: 当たりが null");
         collision->RemoveFromPhysics(user);
     }
 
-    void EndCollision(const IUseCollision* user, Collision* collision)
+    void EndCollision(const IGetCollision* user, Collision* collision)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         NS_ASSERT(Scene, collision != nullptr, "EndCollision: 当たりが null");

@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Coroutine.h"
-#include "NSlib/CoreObject/IUse/IUseState.h"
+#include "NSlib/CoreObject/IGet/IGetState.h"
 
 #include "NSlib/Core/Types.h"
 #include <memory>
@@ -259,7 +259,7 @@ namespace NS
 
     //! @brief 親の状態の中で進める子の状態機械
     //! @details 子の状態が Finish を呼んで終わり、親は IsDead を見て次へ移る
-    template <typename TOwner> class SubStateMachine : public IUseState
+    template <typename TOwner> class SubStateMachine : public IGetState
     {
     public:
         //! Finish の後でも、組み直すとまた進む

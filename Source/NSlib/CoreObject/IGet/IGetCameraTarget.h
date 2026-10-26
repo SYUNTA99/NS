@@ -6,7 +6,7 @@ namespace NS
 
     //! @brief 追従カメラに追われるアクターが、追うのに要る自分の状態を渡すインターフェース
     //! @details 追従カメラ (ThirdPersonFollow) は追う相手の型を知らない。相手の状態の中身と、壊れた値の扱いは相手が決める
-    class IUseCameraTarget
+    class IGetCameraTarget
     {
     public:
         //! @brief このフレームの自分の状態 (接地・速度・見る高さ・溜め・反動など) を vcam の欄へ書く
@@ -16,6 +16,6 @@ namespace NS
         virtual void WriteFollowState(ThirdPersonFollow* vcam) const = 0;
 
     protected:
-        ~IUseCameraTarget() = default;
+        ~IGetCameraTarget() = default;
     };
 } // namespace NS

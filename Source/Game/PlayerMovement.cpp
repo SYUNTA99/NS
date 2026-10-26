@@ -318,7 +318,7 @@ void PlayerActor::UpdateBodySlam(float dt) noexcept
 namespace
 {
     // 掴まりの走査で見る AABB 群。体が Scene に居なければ空で、掴めないだけ
-    [[nodiscard]] std::vector<NS::AABB> BoxesTouchingBand(const NS::IUseCollision& collider,
+    [[nodiscard]] std::vector<NS::AABB> BoxesTouchingBand(const NS::IGetCollision& collider,
                                                           const NS::Vector3& probe,
                                                           float below,
                                                           float above)
@@ -329,7 +329,7 @@ namespace
         return NS::OverlapBoxCollision(&collider, region);
     }
 
-    [[nodiscard]] std::vector<NS::AABB> BoxesAtPoint(const NS::IUseCollision& collider, const NS::Vector3& point)
+    [[nodiscard]] std::vector<NS::AABB> BoxesAtPoint(const NS::IGetCollision& collider, const NS::Vector3& point)
     {
         NS::AABB region;
         region.Center = point;
@@ -344,7 +344,7 @@ namespace
                p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
     }
 
-    [[nodiscard]] bool IsBlockedAt(const NS::IUseCollision& collider, const NS::Vector3& point)
+    [[nodiscard]] bool IsBlockedAt(const NS::IGetCollision& collider, const NS::Vector3& point)
     {
         for (const NS::AABB& box : BoxesAtPoint(collider, point))
         {

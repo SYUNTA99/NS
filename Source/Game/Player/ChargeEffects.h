@@ -12,7 +12,7 @@
 
 namespace NS
 {
-    class IUseEffect;
+    class IGetEffect;
 }
 
 namespace GL
@@ -40,14 +40,14 @@ namespace GL
             // 絵は user (持ち主のアクター) のシーンの絵の管理へ出す
 
             //! 溜めと放しの絵を先に読む。持ち主の OnAssetsLoaded が呼ぶ
-            void Preload(const NS::IUseEffect* user);
+            void Preload(const NS::IGetEffect* user);
 
             //! @brief 押し・溜め・放しに合わせて演出を出し、玉へ付いていかせる。持ち主の見た目の段が呼ぶ
             //! @param[in] center 玉の中心。持ち主のルートの位置。世界座標
             //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
             //! @param[in] appearance 玉の回転の正。このフレームに玉が回った角度を読む。空でないこと
             //! @param[in] impact 当たりの裁定の答え。当たりの状態へ移るフレームと接触の見込みを読む
-            void Update(const NS::IUseEffect* user,
+            void Update(const NS::IGetEffect* user,
                         const NS::Vector3& center,
                         const ChargeStatus& charge,
                         const BodySlamStatus& slam,
@@ -57,7 +57,7 @@ namespace GL
                         const GL::Level::ImpactAnswer& impact);
 
             //! 番号を控えている溜めと放しのエフェクトを消す。持ち主の ResetState が呼ぶ
-            void Clear(const NS::IUseEffect* user);
+            void Clear(const NS::IGetEffect* user);
 
             //! @brief 溜まる光へ動的入力 1 番で渡す、溜めきってからの数
             //! @return 押し続けている間、溜めきったフレームを 1 とした数。溜めきる前と押していない間は 0
@@ -110,29 +110,29 @@ namespace GL
             NS::Gfx::EffectPlayDesc PlayDesc(const NS::Vector3& position,
                                              const NS::Quaternion& rotation,
                                              float charge01) const noexcept;
-            void ForgetEndedEffects(const NS::IUseEffect* user) noexcept;
-            void StartPress(const NS::IUseEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection);
-            void StartCharging(const NS::IUseEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection, float charge01);
-            void StartFullFlash(const NS::IUseEffect* user, const NS::Vector3& center);
+            void ForgetEndedEffects(const NS::IGetEffect* user) noexcept;
+            void StartPress(const NS::IGetEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection);
+            void StartCharging(const NS::IGetEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection, float charge01);
+            void StartFullFlash(const NS::IGetEffect* user, const NS::Vector3& center);
             // 紫の揺れが端へ来たフレームに、その側へ火花を散らす
-            void PlaySwaySparks(const NS::IUseEffect* user, const NS::Vector3& center, const ChargeStatus& charge);
+            void PlaySwaySparks(const NS::IGetEffect* user, const NS::Vector3& center, const ChargeStatus& charge);
             // 押している間の層を玉へ付いていかせ、溜め量を渡す
-            void FollowHeldEffects(const NS::IUseEffect* user, const NS::Vector3& center,
+            void FollowHeldEffects(const NS::IGetEffect* user, const NS::Vector3& center,
                                    const NS::Vector3& aimDirection,
                                    float charge01,
                                    float spinDegreesThisFrame) noexcept;
-            void ClearHeldEffects(const NS::IUseEffect* user) noexcept;
-            void StartRelease(const NS::IUseEffect* user, const NS::Vector3& center, const BodySlamStatus& slam);
-            void UpdateTrail(const NS::IUseEffect* user, const NS::Vector3& center,
+            void ClearHeldEffects(const NS::IGetEffect* user) noexcept;
+            void StartRelease(const NS::IGetEffect* user, const NS::Vector3& center, const BodySlamStatus& slam);
+            void UpdateTrail(const NS::IGetEffect* user, const NS::Vector3& center,
                              const BodySlamStatus& slam,
                              bool slamming,
                              const GL::Level::ImpactAnswer& impact) noexcept;
-            void StopTrailRoot(const NS::IUseEffect* user) noexcept;
+            void StopTrailRoot(const NS::IGetEffect* user) noexcept;
             // 層を今の位置・向き・大きさへ置き直し、向きを記録に書く。描画の無い世界では記録だけ書く
-            void Place(const NS::IUseEffect* user, NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept;
-            void SetCharge(const NS::IUseEffect* user, NS::uint32 id, float charge01) const noexcept;
-            void SetInput(const NS::IUseEffect* user, NS::uint32 id, int index, float value) const noexcept;
-            void StopAndClear(const NS::IUseEffect* user, NS::uint32& id) noexcept;
+            void Place(const NS::IGetEffect* user, NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept;
+            void SetCharge(const NS::IGetEffect* user, NS::uint32 id, float charge01) const noexcept;
+            void SetInput(const NS::IGetEffect* user, NS::uint32 id, int index, float value) const noexcept;
+            void StopAndClear(const NS::IGetEffect* user, NS::uint32& id) noexcept;
             // 跳ね返りか破壊が起きたか、触れる見込みが m_burstClearFrames 以内か
             [[nodiscard]] bool IsContactNear(const GL::Level::ImpactAnswer& impact) const noexcept;
 
