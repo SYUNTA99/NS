@@ -11,6 +11,7 @@
 #include "Editor/SceneViewPanel.h"
 #include "Editor/ToolModePanel.h"
 #include "NSlib/App/Layer.h"
+#include "NSlib/Core/Windows/InputReader.h"
 
 #include <memory>
 
@@ -37,11 +38,11 @@ public:
     void OnRender() override;
 
 private:
-    static void HandleModeToggleInput(LevelEditorController& editor) noexcept;
-    static void HandlePauseInput(LevelEditorController& editor) noexcept;
+    static void HandleModeToggleInput(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept;
+    static void HandlePauseInput(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept;
 
     //! エディタ UI 全体の表示・非表示を切り替える入力を見る
-    void HandleUiVisibilityInput(LevelEditorController& editor) noexcept;
+    void HandleUiVisibilityInput(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept;
 
     //! @brief 画面最上部に File / Edit / SceneActor 等のメインメニューバーを描画する
     //! @details 帯の高さ分だけビューポート作業領域が下がるので、後続のツールバー / ドックは自動でずれる
@@ -55,11 +56,12 @@ private:
     void RenderMaximizedPanel(LevelEditorController& editor, float topOffset) noexcept;
 
     //! 編集モードのキー操作を処理する。Delete = 削除、Ctrl+D = 複製、F = 選択物へ寄る
-    //! 押した瞬間は固定ステップの境で数えるので、描画からでなく更新から呼ぶ
-    static void HandleEditShortcuts(LevelEditorController& editor) noexcept;
+    //! 押した瞬間は OnUpdate が固定ステップごとに読むので、描画からでなく更新から呼ぶ
+    static void HandleEditShortcuts(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept;
 
     std::unique_ptr<NS::UI::ImGuiContext> m_imgui;
     std::unique_ptr<LevelEditorController> m_controller;
+    NS::OS::InputReader m_inputReader; // OnUpdate の頭で固定ステップごとに読む
 
     NS::Editor::ActorListPanel m_actorList;
     NS::Editor::InspectorPanel m_inspector;

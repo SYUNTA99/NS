@@ -114,9 +114,8 @@ public:
     [[nodiscard]] const GL::Level::TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
 
     [[nodiscard]] NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Player; }
-    void ReadInput() override;
     using NS::SceneActor::Update;
-    //! 入力の段を通さず chargeHeld を差し込み、1 固定ステップ進める
+    //! 機器を読まずに chargeHeld を差し込み、1 固定ステップ進める。ほかの入力は部品の Set〜 で書いた値のまま
     void Update(bool chargeHeld);
     //! @brief 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
     //! @details Animation が無ければ何もしない。選んだクリップが無ければ立ちのクリップへ戻す
@@ -567,6 +566,7 @@ private:
     GL::Level::Health m_health;
     std::optional<NS::Vector3> m_courseStartPosition; // MsgCourseStart の時の位置。やり直しで戻る先
 
+    bool m_inputInjected = false; // Update(bool) の間。機器を読まず、差し込んだ入力のまま進める
     bool m_prevJumpHeld = false;
     int m_jumpsRemaining = 1;
     float m_coyoteTimer = 0.0f; // コヨーテ猶予の残り秒

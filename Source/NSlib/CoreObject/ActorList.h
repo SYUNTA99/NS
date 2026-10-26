@@ -120,7 +120,7 @@ namespace NS
         //! 段の更新を終える。Scene が同じ段の管理役を回し終えてから呼ぶ
         void EndPhase() noexcept;
         //! 有効な SceneActor を配置順に更新する。BeginPhase と EndPhase の間に呼ぶ
-        //! Input は ReadInput、RenderPrep は PrepareRender、他は対応する段の Update
+        //! RenderPrep は PrepareRender、他は対応する段の Update
         //! 途中で無効になった個体は呼ばない
         void ExecutePhase(UpdatePhase phase);
 

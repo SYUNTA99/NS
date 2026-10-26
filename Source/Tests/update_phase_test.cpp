@@ -24,13 +24,6 @@ namespace
             : m_phase(phase), m_log(log), m_label(std::move(label))
         {}
         NS::UpdatePhase Phase() const noexcept override { return m_phase; }
-        void ReadInput() override
-        {
-            if (m_phase == NS::UpdatePhase::Player)
-            {
-                m_log.push_back("input");
-            }
-        }
         void PrepareRender() override
         {
             if (m_phase == NS::UpdatePhase::Player)
@@ -213,8 +206,7 @@ TEST(UpdatePhase, SceneRunsTheNamedTableAroundPhysics)
     scene.AddSystemTick(effects, NS::UpdatePhase::Effects);
     scene.OnUpdate();
     EXPECT_EQ(log,
-              (std::vector<std::string>{"input",
-                                        "player",
+              (std::vector<std::string>{"player",
                                         "enemy",
                                         "physics",
                                         "sensors",
@@ -322,7 +314,7 @@ TEST(ActorStepOrder, UpdateCallsEachStepOnceInTheFixedOrder)
 
 TEST(WorldSpeed, SlowWorldStepsOnceInFiveAndRealTimePhasesEveryStep)
 {
-    // 遅い世界は 1 歩の中身を変えず、世界の時計の段を間引く。入力と UI は毎歩回る
+    // 遅い世界は 1 歩の中身を変えず、世界の時計の段を間引く。UI は毎歩回る
     NS::Scene scene;
     std::vector<std::string> log;
     scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
@@ -344,12 +336,10 @@ TEST(WorldSpeed, SlowWorldStepsOnceInFiveAndRealTimePhasesEveryStep)
     EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"effects"}), 2);
     EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"render-prep"}), 2);
     EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"ui"}), 10);
-    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"input"}), 10);
-    // 4 歩目までは入力と UI だけ。5 歩目に初めて世界が進む
-    ASSERT_GE(log.size(), 10u);
-    EXPECT_EQ(log[7], std::string{"ui"});
-    EXPECT_EQ(log[8], std::string{"input"});
-    EXPECT_EQ(log[9], std::string{"player"});
+    // 4 歩目までは UI だけ。5 歩目に初めて世界が進む
+    ASSERT_GE(log.size(), 5u);
+    EXPECT_EQ(log[3], std::string{"ui"});
+    EXPECT_EQ(log[4], std::string{"player"});
     scene.RemoveSystemTick(physics);
     scene.RemoveSystemTick(ui);
     scene.RemoveSystemTick(effects);
@@ -432,7 +422,7 @@ TEST(WorldSpeed, SettingTheSpeedStopsTheRamp)
 
 TEST(OthersHold, HoldingOthersRunsOnlyThePlayerSideForItsSteps)
 {
-    // 真ん中で触れる前の数フレーム、自機以外の世界を止める。自機・入力・カメラ・UI は回す
+    // 真ん中で触れる前の数フレーム、自機以外の世界を止める。自機・カメラ・UI は回す
     NS::Scene scene;
     std::vector<std::string> log;
     scene.SpawnActor<PhaseActor>("PhaseActor", NS::UpdatePhase::Player, log, "player");
@@ -458,7 +448,7 @@ TEST(OthersHold, HoldingOthersRunsOnlyThePlayerSideForItsSteps)
     }
 
     EXPECT_FALSE(scene.IsHoldingOthers());
-    for (const char* label : {"input", "player", "camera", "ui", "render-prep"})
+    for (const char* label : {"player", "camera", "ui", "render-prep"})
     {
         EXPECT_EQ(std::count(log.begin(), log.end(), std::string{label}), 3) << label;
     }

@@ -16,7 +16,8 @@ namespace NS
     namespace OS
     {
         class Input;
-    }
+        class InputPresses;
+    } // namespace OS
 } // namespace NS
 namespace NS
 {
@@ -108,7 +109,8 @@ namespace NS
             //! @brief 編集の入力を 1 固定ステップ分進める
             //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
             //! 真の間は R・Ctrl+Z・Ctrl+S・Ctrl+O・数字のキーを受けない
-            void Tick(bool editShortcutsBlocked) noexcept;
+            //! @param[in] presses 持ち主がこの固定ステップに読んだ押し
+            void Tick(bool editShortcutsBlocked, const OS::InputPresses& presses) noexcept;
 
             //! @brief カーソル位置に置いた時のプレビュー枠を、Scene タブの図形として積む
             //! @param[in,out] shapes 積む先。そのビューを描いたら捨てられる
@@ -143,7 +145,7 @@ namespace NS
 
             [[nodiscard]] CategoryPalette& Palette() noexcept { return m_palette; }
 
-            void HandleSaveLoadInput() noexcept;
+            void HandleSaveLoadInput(const OS::InputPresses& presses) noexcept;
 
             //! 保存 / 読込のモーダルを描き、確定した操作をその場で実行する
             void RenderFileBrowser() noexcept;
@@ -210,9 +212,9 @@ namespace NS
             Quaternion m_displayedYawQuat{Quaternion::Identity};
 
             void UpdateCursorFromInput() noexcept;
-            void HandlePlaceDeleteInput() noexcept;
-            void HandleRotationInput() noexcept;
-            void HandleUndoRedoInput() noexcept;
+            void HandlePlaceDeleteInput(const OS::InputPresses& presses) noexcept;
+            void HandleRotationInput(const OS::InputPresses& presses) noexcept;
+            void HandleUndoRedoInput(const OS::InputPresses& presses) noexcept;
 
             //! 差した関数の答え。シーンを変える関数は全部、頭でこれを見る
             [[nodiscard]] bool IsSceneEditable() const noexcept;

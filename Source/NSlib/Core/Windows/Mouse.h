@@ -1,5 +1,7 @@
 #pragma once
 
+#include "NSlib/Core/Types.h"
+
 #include <array>
 #include <cstddef>
 
@@ -23,13 +25,10 @@ namespace NS
         class Mouse
         {
         public:
-            //! @brief 対象のボタンが現在のフレームで新たに押されたかどうかを判定する
-            [[nodiscard]] bool IsPressed(MouseButton b) const noexcept;
-
             [[nodiscard]] bool IsHeld(MouseButton b) const noexcept;
 
-            //! @brief 対象のボタンが現在のフレームで離されたかどうかを判定する
-            [[nodiscard]] bool IsReleased(MouseButton b) const noexcept;
+            //! 押した瞬間ごとに 1 足した回数。下ろさない。押した瞬間は InputReader で読む
+            [[nodiscard]] uint32 PressCount(MouseButton b) const noexcept;
 
             [[nodiscard]] int GetX() const noexcept { return m_x; }
 
@@ -58,13 +57,13 @@ namespace NS
             //! @brief 縦方向のホイール移動量を取得する (1 目盛りで WHEEL_DELTA = 120)
             [[nodiscard]] int GetWheelDelta() const noexcept { return m_wheel; }
 
-            //! @brief 入力状態のフレーム境界を更新し、差分判定の基準を進める
+            //! @brief 移動量とホイールのフレーム境界を更新する
             void Update() noexcept;
 
             //! @brief OSのマウス移動イベントを受け取る内部API
             void OnMove(int x, int y) noexcept;
 
-            //! @brief OSのマウスボタン押下イベントを受け取る内部API
+            //! @brief OSのマウスボタン押下イベントを受け取る内部API。押していないボタンだけを数える
             void OnButtonDown(MouseButton b) noexcept;
 
             //! @brief OSのマウスボタン解放イベントを受け取る内部API
@@ -85,14 +84,14 @@ namespace NS
             //! @note 最初の 1 回は座標を記録するだけで移動量は積まない
             void OnRawMoveAbsolute(int screenX, int screenY) noexcept;
 
-            //! フォーカス消失時の押しっぱなしを防ぐため入力を解除する。座標は保つ
+            //! フォーカス消失時の押しっぱなしを防ぐため入力を解除する。座標と押した回数は保つ
             void ClearState() noexcept;
 
         private:
             static constexpr std::size_t k_ButtonCount = static_cast<std::size_t>(MouseButton::Count);
 
             std::array<bool, k_ButtonCount> m_current{};
-            std::array<bool, k_ButtonCount> m_previous{};
+            std::array<uint32, k_ButtonCount> m_presses{};
 
             int m_x = 0;
             int m_y = 0;

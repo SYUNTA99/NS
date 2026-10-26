@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/IUse/IUseCamera.h"
 #include "NSlib/Core/Windows/Gamepad.h"
 #include "NSlib/Core/Windows/Input.h"
+#include "NSlib/Core/Windows/InputReader.h"
 #include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/Core/Windows/Mouse.h"
 
@@ -59,6 +60,8 @@ namespace NS
         m_climbForward = 0.0f;
         m_jumpHeld = false;
         ConsumePressed();
+        // やり直しと止めへ、読んでいない間 (消えている間・編集の間) の押しを持ち越さない
+        DiscardUnreadPresses();
     }
 
     void PlayerInput::SetLocked(bool locked) noexcept
@@ -69,7 +72,10 @@ namespace NS
             // 部品が回っていない間に止めても、止めた瞬間の値を残さない
             ResetMovementInput();
             m_slamHeld = false;
+            return;
         }
+        // 止めている間に世界が進まず Update が回らなかった時も、その間の押しを解いた後へ持ち越さない
+        DiscardUnreadPresses();
     }
 
     void PlayerInput::Update(const IUseCamera* camera)
@@ -86,12 +92,10 @@ namespace NS
         const OS::Keyboard& kb = input.Keyboard();
         const OS::Gamepad& pad = input.Gamepad();
 
-        // トリガーは XInput の既定のしきい値を NormalizeTrigger が先に切っているので、0 を超えたかだけ見る
-        const bool releaseLedgeHeld = pad.LeftTrigger() > 0.0f;
+        // 止めの間も読む。止めの間の押しを、止めが明けた歩で押したと読まない
+        const OS::InputPresses presses = m_reader.Read();
         if (m_locked)
         {
-            // 止めの間も手放しのトリガーの控えは進める。引いたまま止めが明けた歩を押した瞬間と読まない
-            m_prevReleaseLedgeHeld = releaseLedgeHeld;
             ResetMovementInput();
             m_slamHeld = false;
             return;
@@ -150,7 +154,7 @@ namespace NS
         };
 
         const bool jumpPressed =
-            (!wantKb && kb.IsPressed(OS::Key::Space)) || pad.IsPressed(OS::GamepadButton::A);
+            (!wantKb && presses.WasPressed(OS::Key::Space)) || presses.WasPressed(OS::GamepadButton::A);
         const bool jumpHeld = (!wantKb && kb.IsHeld(OS::Key::Space)) || pad.IsHeld(OS::GamepadButton::A);
 
         m_desiredDir = worldDir;
@@ -160,21 +164,23 @@ namespace NS
         m_jumpPressed = m_jumpPressed || jumpPressed;
         m_jumpHeld = jumpHeld;
         m_respawnPressed =
-            m_respawnPressed || (!wantKb && kb.IsPressed(OS::Key::R)) || pad.IsPressed(OS::GamepadButton::Back);
+            m_respawnPressed || (!wantKb && presses.WasPressed(OS::Key::R)) || presses.WasPressed(OS::GamepadButton::Back);
 
         // 体当たりのマウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
-        const bool slamHeld = (input.GameReceivesMouseButton(OS::MouseButton::Left) &&
-                               input.Mouse().IsHeld(OS::MouseButton::Left)) ||
-                              pad.IsHeld(OS::GamepadButton::X);
-        // 遅い世界では自機が読まない歩がある。その間に押して放した分も、次に読む歩で押したと見せる
-        m_slamHeld = slamHeld || m_slamSeen;
+        const bool mouseLeftToGame = input.GameReceivesMouseButton(OS::MouseButton::Left);
+        const bool slamHeld =
+            (mouseLeftToGame && input.Mouse().IsHeld(OS::MouseButton::Left)) || pad.IsHeld(OS::GamepadButton::X);
+        // 前に読んだ後に押して放した分も押したと見せる。遅い世界の読まない固定フレームに押した突進を落とさない
+        const bool slamPressed = (mouseLeftToGame && presses.WasPressed(OS::MouseButton::Left)) ||
+                                 presses.WasPressed(OS::GamepadButton::X);
+        // 止めの間は状態の段が下ろさないので、ConsumePressed まで押したままに見せる
+        m_slamHeld = slamHeld || slamPressed || m_slamSeen;
         m_slamSeen = m_slamHeld;
 
         // 手放しは専用のマウス右ボタン / 左トリガー。後ろ入力と兼ねると、カメラ側の縁へ寄せた入力で手を放す
         const bool mouseFree = !input.UiWantsMouse();
         m_releaseLedgePressed = m_releaseLedgePressed ||
-                                (mouseFree && input.Mouse().IsPressed(OS::MouseButton::Right)) ||
-                                (releaseLedgeHeld && !m_prevReleaseLedgeHeld);
-        m_prevReleaseLedgeHeld = releaseLedgeHeld;
+                                (mouseFree && presses.WasPressed(OS::MouseButton::Right)) ||
+                                presses.WasPressed(OS::GamepadTrigger::Left);
     }
 } // namespace NS

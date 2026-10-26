@@ -89,7 +89,7 @@ namespace NS
             return !m_sceneEditable || m_sceneEditable();
         }
 
-        void EditorMode::Tick(bool editShortcutsBlocked) noexcept
+        void EditorMode::Tick(bool editShortcutsBlocked, const OS::InputPresses& presses) noexcept
         {
             if (!IsSceneEditable())
             {
@@ -97,14 +97,14 @@ namespace NS
             }
 
             UpdateCursorFromInput();
-            HandlePlaceDeleteInput();
+            HandlePlaceDeleteInput(presses);
             if (!editShortcutsBlocked)
             {
-                HandleRotationInput();
-                HandleUndoRedoInput();
-                HandleSaveLoadInput();
+                HandleRotationInput(presses);
+                HandleUndoRedoInput(presses);
+                HandleSaveLoadInput(presses);
             }
-            m_palette.TickInput(m_input, editShortcutsBlocked);
+            m_palette.TickInput(m_input, presses, editShortcutsBlocked);
 
             const Quaternion targetQuat = RotationToQuaternion(m_currentRotation);
             constexpr float k_RotationSpringRate = 12.0f;
@@ -113,7 +113,7 @@ namespace NS
             m_displayedYawQuat = Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
         }
 
-        void EditorMode::HandleSaveLoadInput() noexcept
+        void EditorMode::HandleSaveLoadInput(const OS::InputPresses& presses) noexcept
         {
             if (m_input == nullptr)
             {
@@ -127,7 +127,7 @@ namespace NS
             }
 
             const bool shift = kb.IsHeld(OS::Key::Shift);
-            if (kb.IsPressed(OS::Key::S))
+            if (presses.WasPressed(OS::Key::S))
             {
                 // Shift 付きは常に名前を付けて保存、素の Ctrl+S は上書き (名前が無ければ付けて保存へ落ちる)
                 if (shift)
@@ -139,7 +139,7 @@ namespace NS
                     RequestSave();
                 }
             }
-            if (kb.IsPressed(OS::Key::O))
+            if (presses.WasPressed(OS::Key::O))
             {
                 OpenLoadModal();
             }
@@ -750,7 +750,7 @@ namespace NS
             m_cursor.placementBlocked = IsCellOccupied(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
         }
 
-        void EditorMode::HandlePlaceDeleteInput() noexcept
+        void EditorMode::HandlePlaceDeleteInput(const OS::InputPresses& presses) noexcept
         {
             // Game 窓の上では ImGui が常にマウスを要求するため、UI 上かどうかの判定は
             // カーソルがパネルの矩形内にあるかで判定する
@@ -763,12 +763,11 @@ namespace NS
                 return;
             }
 
-            OS::Mouse& mouse = m_input->Mouse();
-            if (mouse.IsPressed(OS::MouseButton::Left) && !m_cursor.placementBlocked)
+            if (presses.WasPressed(OS::MouseButton::Left) && !m_cursor.placementBlocked)
             {
                 PlaceUnderCursorProgrammatic(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
             }
-            if (mouse.IsPressed(OS::MouseButton::Right) &&
+            if (presses.WasPressed(OS::MouseButton::Right) &&
                 HasActorAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
             {
                 DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
@@ -780,18 +779,18 @@ namespace NS
                 return;
             }
 
-            if (gp.IsPressed(OS::GamepadButton::A) && !m_cursor.placementBlocked)
+            if (presses.WasPressed(OS::GamepadButton::A) && !m_cursor.placementBlocked)
             {
                 PlaceUnderCursorProgrammatic(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
             }
-            if (gp.IsPressed(OS::GamepadButton::B) &&
+            if (presses.WasPressed(OS::GamepadButton::B) &&
                 HasActorAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
             {
                 DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
             }
         }
 
-        void EditorMode::HandleRotationInput() noexcept
+        void EditorMode::HandleRotationInput(const OS::InputPresses& presses) noexcept
         {
             if (m_input == nullptr)
             {
@@ -803,8 +802,8 @@ namespace NS
             }
 
             const bool rotate =
-                m_input->Keyboard().IsPressed(OS::Key::R) ||
-                (m_input->Gamepad().IsConnected() && m_input->Gamepad().IsPressed(OS::GamepadButton::Y));
+                presses.WasPressed(OS::Key::R) ||
+                (m_input->Gamepad().IsConnected() && presses.WasPressed(OS::GamepadButton::Y));
 
             if (!rotate || !m_cursor.valid)
             {
@@ -821,7 +820,7 @@ namespace NS
             }
         }
 
-        void EditorMode::HandleUndoRedoInput() noexcept
+        void EditorMode::HandleUndoRedoInput(const OS::InputPresses& presses) noexcept
         {
             if (m_input == nullptr || m_applier == nullptr)
             {
@@ -837,16 +836,16 @@ namespace NS
             const bool ctrl = kb.IsHeld(OS::Key::Ctrl);
             const bool shift = kb.IsHeld(OS::Key::Shift);
 
-            if (ctrl && shift && kb.IsPressed(OS::Key::Z))
+            if (ctrl && shift && presses.WasPressed(OS::Key::Z))
             {
                 PerformRedo();
                 return;
             }
-            if (ctrl && kb.IsPressed(OS::Key::Z))
+            if (ctrl && presses.WasPressed(OS::Key::Z))
             {
                 PerformUndo();
             }
-            if (ctrl && kb.IsPressed(OS::Key::Y))
+            if (ctrl && presses.WasPressed(OS::Key::Y))
             {
                 PerformRedo();
             }

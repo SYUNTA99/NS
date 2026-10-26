@@ -155,7 +155,6 @@ namespace NS
 
         //! @brief Update を呼ばれる段を返す
         [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
-        virtual void ReadInput() {}
         //! 観測・裁定・状態・身体・見た目を固定順で更新する。部品は各段で明示的に呼ぶ
         //! エフェクトの記録は観測前に、動作のタイムラインは状態の段の直後に進める。
         //! 当たりの止めの間は状態と身体の段を飛ばし、最後に止めの残りを 1 減らす

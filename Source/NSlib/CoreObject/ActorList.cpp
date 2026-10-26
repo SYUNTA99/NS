@@ -289,7 +289,7 @@ namespace NS
             {
                 continue;
             }
-            if (phase == UpdatePhase::Input || phase == UpdatePhase::RenderPrep || obj->Phase() == phase)
+            if (phase == UpdatePhase::RenderPrep || obj->Phase() == phase)
             {
                 m_scheduled.push_back(obj.get());
             }
@@ -301,11 +301,7 @@ namespace NS
             {
                 continue;
             }
-            if (phase == UpdatePhase::Input)
-            {
-                actor->ReadInput();
-            }
-            else if (phase == UpdatePhase::RenderPrep)
+            if (phase == UpdatePhase::RenderPrep)
             {
                 actor->PrepareRender();
             }

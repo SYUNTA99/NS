@@ -192,21 +192,21 @@ void PlayerActor::UpdateAnimation()
     animation->SetSpeed(ChoosePlaybackSpeed(animation->CurrentClip(), lateralSpeed));
 }
 
-void PlayerActor::ReadInput()
-{
-    // clang-format off
-    if (m_input) { m_input->Update(this); }
-    // clang-format on
-}
-
 void PlayerActor::Update(bool chargeHeld)
 {
     m_input->SetSlamHeld(chargeHeld);
+    m_inputInjected = true;
     NS::SceneActor::Update();
+    m_inputInjected = false;
 }
 
 void PlayerActor::ObserveStep()
 {
+    // 世界を進めた固定フレームにだけ回るので、世界を進めない固定フレームの押しもここで拾う
+    if (!m_inputInjected)
+    {
+        m_input->Update(this);
+    }
     NS::SceneActor::ObserveStep();
     // 当たりの途中は受け付けない。相手だけが戻ると、明けの知らせが戻った相手を飛ばす
     // 押しは同じ歩の状態の段で消費されるので、当たりの途中の押しは持ち越さない

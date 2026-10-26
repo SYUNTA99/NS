@@ -65,12 +65,11 @@ namespace
 template <class T>
 concept HasPhaseHooks = requires(T& actor) {
     actor.Phase();
-    actor.ReadInput();
     actor.Update();
     actor.PrepareRender();
 };
 template <class T>
-concept HasAnyPhaseHook = requires(T& actor) { actor.Phase(); } || requires(T& actor) { actor.ReadInput(); } ||
+concept HasAnyPhaseHook = requires(T& actor) { actor.Phase(); } ||
                           requires(T& actor) { actor.Update(); } || requires(T& actor) { actor.PrepareRender(); };
 static_assert(HasPhaseHooks<NS::SceneActor>);
 static_assert(!HasAnyPhaseHook<NS::UIActor>);

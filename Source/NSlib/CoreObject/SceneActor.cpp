@@ -358,7 +358,7 @@ namespace NS
     void SceneActor::OnStart()
     {
         NS_ASSERT(Scene,
-                  Phase() != UpdatePhase::Input && Phase() != UpdatePhase::RenderPrep,
+                  Phase() != UpdatePhase::RenderPrep,
                   "{} の段が、全部の Actor を回す段になっている。Update が呼ばれない",
                   ClassName());
         // 描く物は OnInit で、センサーはその前に入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、

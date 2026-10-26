@@ -364,7 +364,8 @@ namespace NS
         void GizmoEditor::Tick(const Matrix& viewProjection,
                                const ViewRect& view,
                                bool viewHovered,
-                               bool editShortcutsBlocked) noexcept
+                               bool editShortcutsBlocked,
+                               const OS::InputPresses& presses) noexcept
         {
             if (!m_active || m_input == nullptr)
             {
@@ -382,12 +383,12 @@ namespace NS
             {
                 for (const OS::Key key : {OS::Key::Q, OS::Key::W, OS::Key::E, OS::Key::R})
                 {
-                    if (kb.IsPressed(key))
+                    if (presses.WasPressed(key))
                     {
                         m_tool = ToolForKey(m_tool, key);
                     }
                 }
-                if (kb.IsPressed(OS::Key::X))
+                if (presses.WasPressed(OS::Key::X))
                 {
                     ToggleSpace();
                 }
@@ -427,7 +428,7 @@ namespace NS
                 return;
             }
 
-            if (!mouse.IsPressed(OS::MouseButton::Left))
+            if (!presses.WasPressed(OS::MouseButton::Left))
             {
                 return;
             }

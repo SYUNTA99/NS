@@ -115,16 +115,17 @@ void Editor::OnDetach()
 
 void Editor::OnUpdate()
 {
+    const NS::OS::InputPresses presses = m_inputReader.Read();
     if (!IsActive() || !m_controller)
     {
         return;
     }
 
     m_controller->Tick();
-    HandleModeToggleInput(*m_controller);
-    HandlePauseInput(*m_controller);
-    HandleUiVisibilityInput(*m_controller);
-    HandleEditShortcuts(*m_controller);
+    HandleModeToggleInput(*m_controller, presses);
+    HandlePauseInput(*m_controller, presses);
+    HandleUiVisibilityInput(*m_controller, presses);
+    HandleEditShortcuts(*m_controller, presses);
 }
 
 void Editor::OnRender()
@@ -307,7 +308,7 @@ void Editor::OnRender()
     }
 }
 
-void Editor::HandleModeToggleInput(LevelEditorController& editor) noexcept
+void Editor::HandleModeToggleInput(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept
 {
     NS::Application* app = NS::Application::Get();
     if (app == nullptr)
@@ -319,8 +320,8 @@ void Editor::HandleModeToggleInput(LevelEditorController& editor) noexcept
     // UI がキーボードを握っている間は mode flip させない
     const bool wantKb = input.UiWantsKeyboard();
 
-    const bool tabPressed = !wantKb && input.Keyboard().IsPressed(NS::OS::Key::Tab);
-    const bool startPressed = input.Gamepad().IsConnected() && input.Gamepad().IsPressed(NS::OS::GamepadButton::Start);
+    const bool tabPressed = !wantKb && presses.WasPressed(NS::OS::Key::Tab);
+    const bool startPressed = input.Gamepad().IsConnected() && presses.WasPressed(NS::OS::GamepadButton::Start);
 
     if (tabPressed || startPressed)
     {
@@ -335,7 +336,7 @@ void Editor::HandleModeToggleInput(LevelEditorController& editor) noexcept
     }
 }
 
-void Editor::HandlePauseInput(LevelEditorController& editor) noexcept
+void Editor::HandlePauseInput(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept
 {
     if (editor.CurrentMode() != LevelEditorController::Mode::Play)
     {
@@ -350,8 +351,8 @@ void Editor::HandlePauseInput(LevelEditorController& editor) noexcept
 
     const bool wantKb = input.UiWantsKeyboard();
 
-    const bool pPressed = !wantKb && input.Keyboard().IsPressed(NS::OS::Key::P);
-    const bool backPressed = input.Gamepad().IsConnected() && input.Gamepad().IsPressed(NS::OS::GamepadButton::Back);
+    const bool pPressed = !wantKb && presses.WasPressed(NS::OS::Key::P);
+    const bool backPressed = input.Gamepad().IsConnected() && presses.WasPressed(NS::OS::GamepadButton::Back);
 
     if (pPressed || backPressed)
     {
@@ -359,7 +360,7 @@ void Editor::HandlePauseInput(LevelEditorController& editor) noexcept
     }
 }
 
-void Editor::HandleUiVisibilityInput(LevelEditorController& editor) noexcept
+void Editor::HandleUiVisibilityInput(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept
 {
     // 編集モードでは UI を常時表示に戻す。トグルはプレイ中だけ効かせる
     if (editor.CurrentMode() != LevelEditorController::Mode::Play)
@@ -376,7 +377,7 @@ void Editor::HandleUiVisibilityInput(LevelEditorController& editor) noexcept
     NS::OS::Input& input = app->Input();
 
     // 隠している間は ImGui がキーボードを掴まないので F5 で再表示できる
-    if (!input.UiWantsKeyboard() && input.Keyboard().IsPressed(NS::OS::Key::F5))
+    if (!input.UiWantsKeyboard() && presses.WasPressed(NS::OS::Key::F5))
     {
         m_uiVisible = !m_uiVisible;
     }
@@ -601,7 +602,7 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
 #endif
 }
 
-void Editor::HandleEditShortcuts(LevelEditorController& editor) noexcept
+void Editor::HandleEditShortcuts(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept
 {
     if (!editor.IsSceneEditable() || editor.EditShortcutsBlocked())
     {
@@ -615,15 +616,15 @@ void Editor::HandleEditShortcuts(LevelEditorController& editor) noexcept
 
     const NS::OS::Keyboard& keyboard = app->Input().Keyboard();
     const bool ctrl = keyboard.IsHeld(NS::OS::Key::Ctrl);
-    if (keyboard.IsPressed(NS::OS::Key::Delete))
+    if (presses.WasPressed(NS::OS::Key::Delete))
     {
         editor.DeleteSelectedActor();
     }
-    if (ctrl && keyboard.IsPressed(NS::OS::Key::D))
+    if (ctrl && presses.WasPressed(NS::OS::Key::D))
     {
         editor.DuplicateSelectedActor();
     }
-    if (!ctrl && keyboard.IsPressed(NS::OS::Key::F))
+    if (!ctrl && presses.WasPressed(NS::OS::Key::F))
     {
         editor.FocusSelectedInView();
     }

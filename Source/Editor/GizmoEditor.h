@@ -14,7 +14,8 @@ namespace NS
     namespace OS
     {
         class Input;
-    }
+        class InputPresses;
+    } // namespace OS
 } // namespace NS
 namespace NS
 {
@@ -104,10 +105,12 @@ namespace NS
             //! @param[in] viewHovered マウスがそのパネル上に居るか。偽の間は選択クリックとハンドル掴みを受けない
             //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
             //! 真の間は道具と座標系を切り替えるキーを受けない
+            //! @param[in] presses 持ち主がこの固定ステップに読んだ押し
             void Tick(const Matrix& viewProjection,
                       const ViewRect& view,
                       bool viewHovered,
-                      bool editShortcutsBlocked) noexcept;
+                      bool editShortcutsBlocked,
+                      const OS::InputPresses& presses) noexcept;
 
             //! 現在の選択対象に対するギズモのUI描画コマンドを発行する。パネル外はクリップされる
             void Render(const Matrix& viewProjection, const ViewRect& view) noexcept;
