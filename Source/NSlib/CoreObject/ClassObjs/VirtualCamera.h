@@ -55,7 +55,7 @@ namespace NS
         //! 非有限と近い面以下の値は投影行列を壊すので、捨てて元の値を残す。値は JSON と Inspector の欄から来る
         void SetFarPlane(float farPlane) noexcept
         {
-            if (std::isfinite(farPlane) && farPlane > m_nearPlane + k_Epsilon)
+            if (HasPositiveMagnitude(farPlane - m_nearPlane))
             {
                 m_farPlane = farPlane;
             }

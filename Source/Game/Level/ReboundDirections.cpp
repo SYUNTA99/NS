@@ -37,7 +37,7 @@ namespace GL
             {
                 for (const NS::Vector3& existing : table)
                 {
-                    if (NS::Dot(existing, direction) > 1.0f - NS::k_Epsilon)
+                    if (NS::IsNearlyParallel(existing, direction))
                     {
                         return;
                     }
@@ -111,7 +111,7 @@ namespace GL
             for (const NS::Vector3& direction : table)
             {
                 // 面に沿う向きと面へ向かう向きは返る向きにならない
-                if (NS::Dot(direction, normal) <= NS::k_Epsilon)
+                if (!NS::HasPositiveMagnitude(NS::Dot(direction, normal)))
                 {
                     continue;
                 }
@@ -133,22 +133,18 @@ namespace GL
                                           float stepRadians) noexcept
         {
             NS::Vector3 perpendicular{shift - assigned * NS::Dot(shift, assigned)};
-            if (perpendicular.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
+            if (NS::IsNearlyZero(perpendicular))
             {
                 return assigned;
             }
             perpendicular.Normalize();
 
-            NS::Vector3 best{assigned};
-            float bestDot{NS::k_Epsilon};
+            const NS::Vector3* bestNeighbor{nullptr};
+            float bestDot{0.0f};
             for (const NS::Vector3& direction : table)
             {
                 const float angle{AngleBetween(direction, assigned)};
-                if (angle < NS::k_Epsilon || angle > stepRadians + NS::k_Epsilon)
-                {
-                    continue;
-                }
-                if (NS::Dot(direction, normal) <= NS::k_Epsilon)
+                if (NS::IsNearlyZero(angle) || angle > stepRadians + NS::k_Epsilon)
                 {
                     continue;
                 }
@@ -156,10 +152,14 @@ namespace GL
                 if (dot > bestDot)
                 {
                     bestDot = dot;
-                    best = direction;
+                    bestNeighbor = &direction;
                 }
             }
-            return best;
+            if (bestNeighbor == nullptr || !NS::HasPositiveMagnitude(NS::Dot(*bestNeighbor, normal)))
+            {
+                return assigned;
+            }
+            return *bestNeighbor;
         }
 
         NS::Vector3 ShiftInputOnScreen(const NS::Vector3& assigned,
@@ -183,7 +183,7 @@ namespace GL
                 return to;
             }
             NS::Vector3 side{to - from * NS::Dot(to, from)};
-            if (side.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
+            if (NS::IsNearlyZero(side))
             {
                 return from;
             }

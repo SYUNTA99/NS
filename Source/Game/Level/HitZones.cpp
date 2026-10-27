@@ -112,7 +112,7 @@ namespace GL
                 out.core = out.center;
                 out.surfaceRadius = body.radius;
                 out.shape = NS::HitSensorShape::Sphere;
-                if (half.LengthSquared() > NS::k_Epsilon * NS::k_Epsilon)
+                if (!NS::IsNearlyZero(half))
                 {
                     out.shape = NS::HitSensorShape::Capsule;
                 }
@@ -137,7 +137,7 @@ namespace GL
                 }
                 NS::Vector3 touch = point - core;
                 // 玉の中心が core に重なると向きが無い。来た側から触れたことにする
-                if (touch.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
+                if (NS::IsNearlyZero(touch))
                 {
                     touch = -direction;
                 }
@@ -190,8 +190,8 @@ namespace GL
             {
                 return false;
             }
-            const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-            if (!std::isfinite(horizontal) || !(horizontal > NS::k_Epsilon))
+            const float horizontal = NS::HorizontalLength(direction);
+            if (!NS::HasPositiveMagnitude(horizontal))
             {
                 return false;
             }
@@ -287,8 +287,8 @@ namespace GL
                 return false;
             }
             // 向きの読み方は JudgeHitFace と揃える。半分の高さは向きに依らないが、箱の測りが右の軸を読む
-            const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-            if (!std::isfinite(horizontal) || !(horizontal > NS::k_Epsilon))
+            const float horizontal = NS::HorizontalLength(direction);
+            if (!NS::HasPositiveMagnitude(horizontal))
             {
                 return false;
             }
@@ -318,8 +318,8 @@ namespace GL
                 return false;
             }
             // 向きの読み方は JudgeHitFace と揃える。面の左右の軸が判定の右と同じになる
-            const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-            if (!std::isfinite(horizontal) || !(horizontal > NS::k_Epsilon))
+            const float horizontal = NS::HorizontalLength(direction);
+            if (!NS::HasPositiveMagnitude(horizontal))
             {
                 return false;
             }

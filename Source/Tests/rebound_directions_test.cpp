@@ -155,6 +155,17 @@ TEST(ReboundDirectionsTest, ShiftNeverGoesIntoTheSurfaceNorMoreThanOneStep)
     EXPECT_LE(AngleBetween(shifted, up), step + k_Tolerance);
 }
 
+TEST(ReboundDirectionsTest, ShiftKeepsStraightUpWhenTheClosestNeighborRunsAlongASlope)
+{
+    // 前へ上る 45° の坂から真上へ返り、前へ倒す。前上は坂の面に沿うので、左前上や右前上へ逸らさない
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const NS::Vector3 up{0.0f, 1.0f, 0.0f};
+    const NS::Vector3 slope{0.0f, k_Diagonal, -k_Diagonal};
+    const float step = DirectionStepRadians(8);
+    ExpectNear(ShiftReboundDirection(table, up, slope, NS::Vector3{0, 0, 1}, step), up);
+    ExpectNear(ShiftReboundDirection(table, up, slope, NS::Vector3{0.05f, 0, 1}, step), up);
+}
+
 TEST(ReboundDirectionsTest, ScreenUpShiftsUpOffAFrontWallWithALevelCamera)
 {
     const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);

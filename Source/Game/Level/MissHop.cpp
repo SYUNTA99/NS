@@ -30,7 +30,7 @@ namespace GL
         {
             const NS::Vector3 horizontal = velocity - up * velocity.Dot(up);
             const float speed = horizontal.Length();
-            if (!(speed > NS::k_Epsilon))
+            if (NS::IsNearlyZero(speed))
             {
                 return NS::Vector3{0.0f, 0.0f, 0.0f};
             }

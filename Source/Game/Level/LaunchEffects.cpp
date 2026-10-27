@@ -33,7 +33,7 @@ namespace GL
             [[nodiscard]] Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
             {
                 const float length = v.Length();
-                if (!(length > NS::k_Epsilon))
+                if (NS::IsNearlyZero(length))
                 {
                     return fallback;
                 }

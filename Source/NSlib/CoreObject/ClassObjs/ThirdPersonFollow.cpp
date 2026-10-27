@@ -634,7 +634,7 @@ namespace NS
         const Vector3 rise = head - root;
         const float riseLength = rise.Length();
         float riseHit = 0.0f;
-        if (riseLength > k_Epsilon && RaycastCollision(collision, root, rise * (1.0f / riseLength), riseLength, riseHit))
+        if (HasPositiveMagnitude(riseLength) && RaycastCollision(collision, root, rise * (1.0f / riseLength), riseLength, riseHit))
         {
             origin = root + rise * (std::max(riseHit - margin, 0.0f) / riseLength);
         }
@@ -644,7 +644,7 @@ namespace NS
         const Vector3 toCamera = look - axes.forward * m_distance - origin;
         const float probe = toCamera.Length();
         float hitDistance = 0.0f;
-        if (probe > k_Epsilon && RaycastCollision(collision, origin, toCamera * (1.0f / probe), probe, hitDistance))
+        if (HasPositiveMagnitude(probe) && RaycastCollision(collision, origin, toCamera * (1.0f / probe), probe, hitDistance))
         {
             // 当たった所までの割合だけ距離を縮める。出発点と注視点は近いので、カメラは当たった所の手前に来る
             const float goal = std::max(m_distance * (hitDistance / probe) - margin, 0.0f);

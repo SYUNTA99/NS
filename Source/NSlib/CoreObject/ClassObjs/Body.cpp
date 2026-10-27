@@ -31,7 +31,7 @@ namespace NS
     {
         // 8 m/s を減速度 40 で止めると、最後のフレームに 6×10⁻⁷ m/s の端数が残る
         // 0 と読まないと、止まったかの判定が 1 フレーム遅れる
-        if (m_velocity.x * m_velocity.x + m_velocity.z * m_velocity.z < k_Epsilon * k_Epsilon)
+        if (IsNearlyZeroHorizontal(m_velocity))
         {
             return Vector3{0.0f, 0.0f, 0.0f};
         }

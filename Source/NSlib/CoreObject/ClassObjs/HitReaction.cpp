@@ -271,7 +271,7 @@ namespace NS
             }
             // 画面の横を床に沿わせた向きで揺らし、最初は相手と逆の側へ振る。正面の相手は右から
             float firstSign = 1.0f;
-            if (Dot(context.toOther, context.cameraRight) > k_Epsilon)
+            if (HasPositiveMagnitude(Dot(context.toOther, context.cameraRight)))
             {
                 firstSign = -1.0f;
             }

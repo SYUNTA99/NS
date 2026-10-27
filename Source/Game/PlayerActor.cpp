@@ -376,7 +376,7 @@ const NS::AnimClip* PlayerActor::ChooseClip(float lateralSpeed) const noexcept
         return m_clips->m_idleClip;
     }
 
-    if (lateralSpeed <= NS::k_Epsilon)
+    if (NS::IsNearlyZero(lateralSpeed))
     {
         return m_clips->m_idleClip;
     }

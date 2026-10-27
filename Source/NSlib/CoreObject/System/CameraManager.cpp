@@ -33,7 +33,7 @@ namespace NS
             axes.right = Vector3{forward.z, 0.0f, -forward.x};
 
             Vector3 up = Cross(look, axes.right);
-            if (up.LengthSquared() < k_Epsilon * k_Epsilon)
+            if (IsNearlyZero(up))
             {
                 up = Vector3{0.0f, 1.0f, 0.0f};
             }

@@ -34,7 +34,7 @@ namespace
     NS::Vector3 TurnLike(const NS::Vector3& v, const NS::Vector3& from, const NS::Vector3& to) noexcept
     {
         NS::Vector3 side{to - from * NS::Dot(to, from)};
-        if (side.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
+        if (NS::IsNearlyZero(side))
         {
             return v;
         }
@@ -170,13 +170,13 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     // 目標は当たった直後のずらしと同じく画面で倒した向きで、前に倒すと画面の上へ曲がる
     const NS::Vector3 velocity = m_body->Velocity();
     const float speed = velocity.Length();
-    if (!(speed > NS::k_Epsilon))
+    if (NS::IsNearlyZero(speed))
     {
         return;
     }
     const NS::Vector3 current = velocity / speed;
     NS::Vector3 target = ReboundShiftInput(current);
-    if (target.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
+    if (NS::IsNearlyZero(target))
     {
         return;
     }
@@ -209,7 +209,7 @@ void PlayerActor::TryBeginTerrainRebound() noexcept
     }
     NS::Vector3 incoming = m_airDash.m_intended;
     const float speed = incoming.Length();
-    if (!(speed > NS::k_Epsilon))
+    if (NS::IsNearlyZero(speed))
     {
         return;
     }
@@ -349,7 +349,7 @@ void PlayerActor::ApplyReboundShift() noexcept
                                          hit.normal,
                                          ReboundShiftInput(hit.assigned),
                                          GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions));
-    if (AngleBetweenUnit(shifted, hit.assigned) < NS::k_Epsilon)
+    if (NS::IsNearlyZero(AngleBetweenUnit(shifted, hit.assigned)))
     {
         return;
     }
@@ -371,7 +371,7 @@ NS::Vector3 PlayerActor::ReboundShiftInput(const NS::Vector3& assigned) const no
     if (pose.has_value())
     {
         const NS::Vector3 look = pose->target - pose->position;
-        if (look.LengthSquared() > NS::k_Epsilon * NS::k_Epsilon)
+        if (!NS::IsNearlyZero(look))
         {
             forward = look;
             forward.Normalize();

@@ -97,7 +97,7 @@ namespace NS
             return 0.0f;
         }
         Vector3 forward = pose.target - pose.position;
-        if (!(forward.Length() > k_Epsilon))
+        if (IsNearlyZero(forward))
         {
             return 0.0f;
         }
@@ -121,14 +121,14 @@ namespace NS
             return tremor;
         }
         Vector3 forward = pose.target - pose.position;
-        if (!(forward.Length() > k_Epsilon))
+        if (IsNearlyZero(forward))
         {
             return tremor;
         }
         forward.Normalize();
         // 画面の右と上。真上か真下を見ている時は世界の X を右にする
         Vector3 right = Cross(Vector3{0.0f, 1.0f, 0.0f}, forward);
-        if (right.Length() > k_Epsilon)
+        if (!IsNearlyZero(right))
         {
             right.Normalize();
         }

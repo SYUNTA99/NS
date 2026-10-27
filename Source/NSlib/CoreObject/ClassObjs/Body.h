@@ -17,7 +17,7 @@ namespace NS
         [[nodiscard]] Vector3 Velocity() const noexcept { return m_velocity; }
         void SetVelocity(const Vector3& v) noexcept { m_velocity = v; }
 
-        //! 水平成分だけを取り出した速度で y は 0。長さが k_Epsilon 未満なら 0 を返す
+        //! 水平成分だけを取り出した速度で y は 0。長さが微小 (IsNearlyZeroHorizontal) なら 0 を返す
         [[nodiscard]] Vector3 LateralVelocity() const noexcept;
         //! 水平成分だけを差し替える。引数の y は読まない
         void SetLateralVelocity(const Vector3& v) noexcept;
