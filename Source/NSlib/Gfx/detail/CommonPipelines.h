@@ -10,8 +10,8 @@ namespace NS
     {
         namespace detail
         {
-            /// D3DPipeline::Create は Gpu() を参照するため、D3DGlobal 公開後に呼ぶこと
-            /// 第 1 添え字 [0] は裏面カリング、[1] は両面描画。outCommon の第 2 添え字は不透明・半透明・加算
+            //! D3DPipeline::Create は Gpu() を参照するため、D3DGlobal 公開後に呼ぶこと
+            //! 第 1 添え字 [0] は裏面カリング、[1] は両面描画。outCommon の第 2 添え字は不透明・半透明・加算
             [[nodiscard]] inline bool CreateCommonPipelines(std::unique_ptr<D3DPipeline> (&outCommon)[2][3],
                                                             std::unique_ptr<D3DPipeline> (&outOccluded)[2])
             {

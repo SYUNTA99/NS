@@ -17,44 +17,44 @@
 
 namespace NS
 {
-    /// 固定更新後にボーンの姿勢を計算する部品
-    /// メッシュ・骨格・クリップは非所有で、所有元が寿命を保証する
+    //! 固定更新後にボーンの姿勢を計算する部品
+    //! メッシュ・骨格・クリップは非所有で、所有元が寿命を保証する
     class Animation : public Object
     {
     public:
         Animation();
         ~Animation();
 
-        /// 非所有。nullptr の間は姿勢を適用しない
+        //! 非所有。nullptr の間は姿勢を適用しない
         void SetMesh(Gfx::D3DSkeletalMesh* mesh) noexcept;
-        /// 非所有。nullptr の間は姿勢を適用しない
+        //! 非所有。nullptr の間は姿勢を適用しない
         void SetSkeleton(const Anim::Skeleton* skeleton) noexcept;
         [[nodiscard]] const Anim::Skeleton* Skeleton() const noexcept { return m_skeleton; }
 
         void Play() noexcept;
-        /// clip を時刻 0 から再生する。現在のクリップと同じなら何もしない
-        /// clip は非所有。nullptr を渡すとクリップを外し、バインドポーズに戻す
+        //! clip を時刻 0 から再生する。現在のクリップと同じなら何もしない
+        //! clip は非所有。nullptr を渡すとクリップを外し、バインドポーズに戻す
         void Play(const Anim::AnimClip* clip);
         void Pause() noexcept;
-        /// 再生時刻を 0 に戻して停止する
+        //! 再生時刻を 0 に戻して停止する
         void Stop() noexcept;
-        /// 非有限値は無視して直前の値を残す。負値は 0 にクランプする
+        //! 非有限値は無視して直前の値を残す。負値は 0 にクランプする
         void SetSpeed(float speed) noexcept;
         void SetLooping(bool looping) noexcept;
 
         [[nodiscard]] const Anim::AnimClip* CurrentClip() const noexcept { return m_clip; }
         [[nodiscard]] float Time() const noexcept;
-        /// 現在クリップの尺 (秒)。無ければ 0
+        //! 現在クリップの尺 (秒)。無ければ 0
         [[nodiscard]] float Duration() const noexcept;
         [[nodiscard]] bool IsPlaying() const noexcept;
 
-        /// ボーンパレット用の定数バッファを作成して renderer へ登録し、現在時刻の姿勢を適用する
+        //! ボーンパレット用の定数バッファを作成して renderer へ登録し、現在時刻の姿勢を適用する
         void BindToModel(Model* renderer);
-        /// 再生中なら dt (秒) ぶん時刻を進め、現在時刻の姿勢と描画境界を renderer へ反映する
+        //! 再生中なら dt (秒) ぶん時刻を進め、現在時刻の姿勢と描画境界を renderer へ反映する
         void Update(Model* renderer, float dt);
 
-        /// モデルの欄で読んだ骨格とメッシュを自身と renderer へ設定する。持ち主の OnAssetsLoaded から呼ぶ
-        /// モデルが空または未読込なら骨格とメッシュを空にする。現在のクリップは維持する
+        //! モデルの欄で読んだ骨格とメッシュを自身と renderer へ設定する。持ち主の OnAssetsLoaded から呼ぶ
+        //! モデルが空または未読込なら骨格とメッシュを空にする。現在のクリップは維持する
         void UseModel(Model* renderer);
 
         NS_REFLECT_BEGIN(Animation, Object)

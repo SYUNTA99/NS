@@ -27,31 +27,31 @@ namespace NS
         class D3DTexture;
         struct BuiltinShaders;
 
-        /// skybox.vs.hlsl の cbuffer SkyboxCB とレイアウトを一致させる
+        //! skybox.vs.hlsl の cbuffer SkyboxCB とレイアウトを一致させる
         struct alignas(16) SkyboxCB
         {
             Matrix viewProj; // カメラの平行移動成分を除いたビュー射影行列
         };
         static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL の cbuffer SkyboxCB とバイト一致が必要");
 
-        /// キューブマップによるスカイボックス描画。D3DDevice より先に破棄し、shaders の破棄後は描画を呼ばないこと
+        //! キューブマップによるスカイボックス描画。D3DDevice より先に破棄し、shaders の破棄後は描画を呼ばないこと
         class Skybox : public NonCopyable
         {
         public:
-            /// shaders は非所有で参照のみ保持する
+            //! shaders は非所有で参照のみ保持する
             explicit Skybox(const BuiltinShaders& shaders) noexcept;
             ~Skybox();
 
-            /// cubemapPath は ContentRoot 内の .dds または 6 面画像ディレクトリ (空なら描画しない)
-            /// 変更した描画ステートは終了時に復元する
+            //! cubemapPath は ContentRoot 内の .dds または 6 面画像ディレクトリ (空なら描画しない)
+            //! 変更した描画ステートは終了時に復元する
             void Draw(D3DDevice& device, const CameraData& camera, std::string_view cubemapPath) noexcept;
 
             [[nodiscard]] bool IsValid() const noexcept;
 
-            /// キューブマップが未読み込み、または直近の読み込みに失敗してフォールバック中か
+            //! キューブマップが未読み込み、または直近の読み込みに失敗してフォールバック中か
             [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-            /// ディレクトリ指定時に読み込む 6 面のファイル名 (+X, -X, +Y, -Y, +Z, -Z 順)
+            //! ディレクトリ指定時に読み込む 6 面のファイル名 (+X, -X, +Y, -Y, +Z, -Z 順)
             [[nodiscard]] static const std::array<std::string_view, 6>& FaceFileNames() noexcept;
 
         private:

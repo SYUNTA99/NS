@@ -7,23 +7,23 @@
 
 namespace NS
 {
-    /// 地形として登録する Y 軸方向のカプセル。動く身体には Collider を使う
-    /// 半径は XZ の最大スケール、半長は Y で拡縮する。回転と非一様スケールの併用は近似
+    //! 地形として登録する Y 軸方向のカプセル。動く身体には Collider を使う
+    //! 半径は XZ の最大スケール、半長は Y で拡縮する。回転と非一様スケールの併用は近似
     class CapsuleCollision : public Collision
     {
     public:
         CapsuleCollision() noexcept = default;
-        /// 負の値は 0 にクランプする
+        //! 負の値は 0 にクランプする
         CapsuleCollision(float radius, float halfHeight) noexcept;
 
-        /// 負の値は 0 にクランプする
+        //! 負の値は 0 にクランプする
         void SetRadius(float radius) noexcept;
-        /// owner のスケールを掛ける前の半径 (m)
+        //! owner のスケールを掛ける前の半径 (m)
         [[nodiscard]] float Radius() const noexcept;
 
-        /// 半球を除く円柱部の半長を設定する。負の値は 0 にクランプする
+        //! 半球を除く円柱部の半長を設定する。負の値は 0 にクランプする
         void SetHalfHeight(float halfHeight) noexcept;
-        /// owner のスケールを掛ける前の円柱部の半長 (m)
+        //! owner のスケールを掛ける前の円柱部の半長 (m)
         [[nodiscard]] float HalfHeight() const noexcept;
 
         void SetCenterOffset(const Vector3& offset) noexcept;
@@ -32,14 +32,14 @@ namespace NS
         void SetLocalRotation(const Quaternion& rotation) noexcept;
         [[nodiscard]] Quaternion LocalRotation() const noexcept;
 
-        /// 局所回転をオイラー角 (度) で読み書きする
+        //! 局所回転をオイラー角 (度) で読み書きする
         void SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept;
         [[nodiscard]] Vector3 RotationEulerDegrees() const noexcept;
 
-        /// world に局所オフセットと局所回転を重ねた世界空間のカプセル
+        //! world に局所オフセットと局所回転を重ねた世界空間のカプセル
         [[nodiscard]] Phys::Capsule WorldCapsule(const Matrix& world) const noexcept;
 
-        /// world を反映した世界空間の軸並行 AABB
+        //! world を反映した世界空間の軸並行 AABB
         [[nodiscard]] AABB WorldAABB(const Matrix& world) const noexcept;
 
         NS_REFLECT_BEGIN(CapsuleCollision, Collision)

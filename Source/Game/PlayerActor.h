@@ -62,8 +62,8 @@ namespace GL
     } // namespace Level
 } // namespace GL
 
-/// 固定の部品を OnInit で組むプレイヤー
-/// 衝突の観測・裁定を身体の移動より先に行う。死とゴールは Scene の CourseDirector に通知する
+//! 固定の部品を OnInit で組むプレイヤー
+//! 衝突の観測・裁定を身体の移動より先に行う。死とゴールは Scene の CourseDirector に通知する
 class PlayerActor : public NS::SceneActor, public NS::IGetCameraTarget
 {
 public:
@@ -90,21 +90,21 @@ public:
     // チャージ・照準・演出サブシステムの参照
     // =========================================================================
     [[nodiscard]] const GL::Level::ImpactInputJudge& ChargeJudge() const noexcept;
-    /// 保持中の狙いの線を返す。入力方向ではなく、効果を掛ける前のカメラ方向を使う
-    /// 押していない、カメラ管理なし、無効な方向では false で outLine を変更しない
+    //! 保持中の狙いの線を返す。入力方向ではなく、効果を掛ける前のカメラ方向を使う
+    //! 押していない、カメラ管理なし、無効な方向では false で outLine を変更しない
     [[nodiscard]] bool TryGetAimLine(GL::Level::AimLine& outLine) const noexcept;
-    /// 揺れを足す前の線で狙う相手を返す。相手が無い場合は false で outTarget を変更しない
+    //! 揺れを足す前の線で狙う相手を返す。相手が無い場合は false で outTarget を変更しない
     [[nodiscard]] bool TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept;
-    /// 溜めすぎの揺れを足した線で、最初に触れる相手を返す
-    /// 枠と縦速度は TryGetAimTarget の相手を使う。相手が無い場合は false で outTarget を変更しない
+    //! 溜めすぎの揺れを足した線で、最初に触れる相手を返す
+    //! 枠と縦速度は TryGetAimTarget の相手を使う。相手が無い場合は false で outTarget を変更しない
     [[nodiscard]] bool TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const noexcept;
-    /// 紫の揺れの位相 (ラジアン)。紫になりきった瞬間に π/2 を通り、紫でない間は 0
+    //! 紫の揺れの位相 (ラジアン)。紫になりきった瞬間に π/2 を通り、紫でない間は 0
     [[nodiscard]] float ChargeSwayPhase() const noexcept { return m_charge.SwayPhase(); }
-    /// 狙いの線の右を正にした、相手の所 (相手がいなければ規定距離) での紫の揺れの横のずれ (m)。紫でない間は 0
+    //! 狙いの線の右を正にした、相手の所 (相手がいなければ規定距離) での紫の揺れの横のずれ (m)。紫でない間は 0
     [[nodiscard]] float ChargeSwayOffset() const noexcept { return m_charge.SwayOffset(); }
-    /// このフレームに紫の揺れが端 (位相 π/2 + nπ) を通ったか。紫に入ったフレームは数えない
+    //! このフレームに紫の揺れが端 (位相 π/2 + nπ) を通ったか。紫に入ったフレームは数えない
     [[nodiscard]] bool ChargeSwayReachedEdge() const noexcept { return m_charge.SwayReachedEdge(); }
-    /// 構えの縦倍率を返す。非保持時は 1
+    //! 構えの縦倍率を返す。非保持時は 1
     [[nodiscard]] float StanceHeight() const noexcept;
     [[nodiscard]] GL::Level::ImpactResolver& Resolver() noexcept { return *m_resolver; }
     [[nodiscard]] GL::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
@@ -119,187 +119,187 @@ public:
     // 更新・アニメーション・移動入力・ジャンプ状態
     // =========================================================================
     using NS::SceneActor::Update;
-    /// 機器を読まずに chargeHeld を差し込み、1 固定ステップ進める。ほかの入力は部品の Set〜 で書いた値のまま
+    //! 機器を読まずに chargeHeld を差し込み、1 固定ステップ進める。ほかの入力は部品の Set〜 で書いた値のまま
     void Update(bool chargeHeld);
-    /// 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
+    //! 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
     void UpdateAnimation();
     void OnEndPlay() override;
 
-    /// 世界座標系の目標移動方向と速度スケール (0..1 に丸める) を渡す
+    //! 世界座標系の目標移動方向と速度スケール (0..1 に丸める) を渡す
     void SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept;
-    /// 直近に渡された目標速度スケール 0..1
+    //! 直近に渡された目標速度スケール 0..1
     [[nodiscard]] float DesiredSpeedScale() const noexcept;
-    /// 直近に渡された世界座標系の目標移動方向。長さは入力の強さのままで正規化されていない
+    //! 直近に渡された世界座標系の目標移動方向。長さは入力の強さのままで正規化されていない
     [[nodiscard]] NS::Vector3 DesiredDirection() const noexcept;
-    /// 掴まり中の生ローカル入力 (-1..1)。SetDesiredMove とは別に持つ
+    //! 掴まり中の生ローカル入力 (-1..1)。SetDesiredMove とは別に持つ
     void SetClimbMove(float localRight, float localForward) noexcept;
     [[nodiscard]] float ClimbRight() const noexcept;
     [[nodiscard]] float ClimbForward() const noexcept;
-    /// ジャンプの押下を一度記録する。更新の終わりに消費する
+    //! ジャンプの押下を一度記録する。更新の終わりに消費する
     void SetJumpPressed() noexcept;
-    /// 手放しの押下を一度記録する。更新の終わりに消費する
+    //! 手放しの押下を一度記録する。更新の終わりに消費する
     void SetReleaseLedgePressed() noexcept;
-    /// ジャンプボタンの長押し状態を渡す。上昇中に離すと縦速度を縮める
+    //! ジャンプボタンの長押し状態を渡す。上昇中に離すと縦速度を縮める
     void SetJumpHeld(bool held) noexcept;
 
     [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
-    /// コヨーテ猶予の残り秒。0 以下なら宙からは跳べない
+    //! コヨーテ猶予の残り秒。0 以下なら宙からは跳べない
     [[nodiscard]] float CoyoteRemaining() const noexcept { return m_coyoteTimer; }
-    /// 走行速度に溜め中の倍率を掛けた最高速度 (m/s、下限 0)
+    //! 走行速度に溜め中の倍率を掛けた最高速度 (m/s、下限 0)
     [[nodiscard]] float MaxSpeed() const noexcept;
     [[nodiscard]] float RunSpeed() const noexcept;
-    /// 先に根を出現位置へ置いて呼ぶ。根は動かさず、移動・溜め・命中・丸まり・描画倍率を初期状態へ戻す
+    //! 先に根を出現位置へ置いて呼ぶ。根は動かさず、移動・溜め・命中・丸まり・描画倍率を初期状態へ戻す
     void ResetState() noexcept;
-    /// 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
+    //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
     void SyncGroundState() noexcept;
     [[nodiscard]] GL::Player::PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
 
     // =========================================================================
     // 体当たり（突進）・反動・エアダッシュ・丸まりの状態と操作
     // =========================================================================
-    /// 突進または当たる直前の状態に居るか
+    //! 突進または当たる直前の状態に居るか
     [[nodiscard]] bool IsBodySlamming() const noexcept;
     [[nodiscard]] bool IsInBeforeContact() const noexcept;
-    /// 予測した相手の段の当たる直前の動作を、残りの歩に合うフレームから始める
+    //! 予測した相手の段の当たる直前の動作を、残りの歩に合うフレームから始める
     void BeginBeforeContact() noexcept;
-    /// 検知で出る時は何もせず、予測が外れて出る時は形と自機以外の止めと返りを戻す
+    //! 検知で出る時は何もせず、予測が外れて出る時は形と自機以外の止めと返りを戻す
     void EndBeforeContact() noexcept;
-    /// 突進の進み具合 0..1。突進中でなければ 0
+    //! 突進の進み具合 0..1。突進中でなければ 0
     [[nodiscard]] float BodySlamProgress01() const noexcept;
-    /// 発動時の溜め量 0..1
+    //! 発動時の溜め量 0..1
     [[nodiscard]] float BodySlamCharge01() const noexcept { return m_slam.Charge01(); }
-    /// 発動時の溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
+    //! 発動時の溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
     [[nodiscard]] float BodySlamOvercharge01() const noexcept { return m_slam.Overcharge01(); }
-    /// 溜めた突進を終える水平の距離 (m)
+    //! 溜めた突進を終える水平の距離 (m)
     [[nodiscard]] float BodySlamDistance() const noexcept;
-    /// 最後に出した突進の正規化済みの水平の向き。突進を出す前と ResetState の後はゼロ
+    //! 最後に出した突進の正規化済みの水平の向き。突進を出す前と ResetState の後はゼロ
     [[nodiscard]] NS::Vector3 BodySlamDirection() const noexcept { return m_slam.Direction(); }
     [[nodiscard]] bool IsRebounding() const noexcept;
     [[nodiscard]] bool IsAirDashing() const noexcept;
     [[nodiscard]] bool IsDashRebounding() const noexcept;
-    /// 今出せるエアダッシュの回数。接地の間と、反動の補正の段に入った時に 1 に戻る
+    //! 今出せるエアダッシュの回数。接地の間と、反動の補正の段に入った時に 1 に戻る
     [[nodiscard]] int AirDashesRemaining() const noexcept { return m_airDash.Remaining(); }
     [[nodiscard]] const GL::Player::AirDashStatus& AirDash() const noexcept { return m_airDash; }
-    /// エアダッシュの動作 ("AirDash") を今の状態に結んで始める。タイムラインが無いか開始できなければ false
+    //! エアダッシュの動作 ("AirDash") を今の状態に結んで始める。タイムラインが無いか開始できなければ false
     [[nodiscard]] bool StartAirDashAction() noexcept;
-    /// 重力を掛けずに、向き × 控えたダッシュの速さを身体に書く
+    //! 重力を掛けずに、向き × 控えたダッシュの速さを身体に書く
     void KeepAirDashSpeed() noexcept;
-    /// 当たらずに終わったエアダッシュの勢いを残す
+    //! 当たらずに終わったエアダッシュの勢いを残す
     void KeepAirDashExitSpeed() noexcept;
-    /// 接地していれば歩きへ、空中なら落下へ移す
+    //! 接地していれば歩きへ、空中なら落下へ移す
     void ChangeToWalkOrFall() noexcept;
-    /// 地形の反動の 1 フレームを進める
+    //! 地形の反動の 1 フレームを進める
     void UpdateDashRebound(float dt) noexcept;
     [[nodiscard]] bool IsReboundLanded() const noexcept;
     [[nodiscard]] bool IsSkidding() const noexcept;
-    /// 外れで着地後に滑って止まるか。滑るフレーム数が 0 なら false
+    //! 外れで着地後に滑って止まるか。滑るフレーム数が 0 なら false
     [[nodiscard]] bool SkidsOnLanding() const noexcept;
-    /// 出ていて、当たりの止めの外で、当たりの状態に居ないか
+    //! 出ていて、当たりの止めの外で、当たりの状態に居ないか
     [[nodiscard]] bool CanMoveBody() const noexcept;
     [[nodiscard]] bool IsInTackleHit() const noexcept;
-    /// 段の束を触れた点と 2 つのセンサーで始め、相手へ当たったを知らせる
+    //! 段の束を触れた点と 2 つのセンサーで始め、相手へ当たったを知らせる
     void BeginTackleHit() noexcept;
-    /// 束「反動」を最後の当たりの触れた点と 2 つのセンサーで始める
+    //! 束「反動」を最後の当たりの触れた点と 2 つのセンサーで始める
     void StartReboundReaction() noexcept;
-    /// 最後に始めた反動の正規化済みの水平の向き。反動を始める前と ResetState の後はゼロ
+    //! 最後に始めた反動の正規化済みの水平の向き。反動を始める前と ResetState の後はゼロ
     [[nodiscard]] NS::Vector3 ReboundDirection() const noexcept { return m_rebound.Direction(); }
-    /// 最後に出した突進の角速度 (度/秒)。突進を出す前と ResetState 後は 0
+    //! 最後に出した突進の角速度 (度/秒)。突進を出す前と ResetState 後は 0
     [[nodiscard]] float BodySlamSpinSpeed() const noexcept { return m_slam.SpinSpeed(); }
-    /// 最後に始めた反動の角速度 (度/秒)。開始前と ResetState 後は 0
+    //! 最後に始めた反動の角速度 (度/秒)。開始前と ResetState 後は 0
     [[nodiscard]] float ReboundSpinSpeed() const noexcept { return m_rebound.SpinSpeed(); }
-    /// 外れの反動の時だけ値を持つ
+    //! 外れの反動の時だけ値を持つ
     [[nodiscard]] const std::optional<GL::Player::MissTumble>& ReboundMissTumble() const noexcept
     {
         return m_rebound.Tumble();
     }
-    /// 反動を始めた回数。ResetState では戻さない
+    //! 反動を始めた回数。ResetState では戻さない
     [[nodiscard]] NS::uint32 ReboundCount() const noexcept { return m_rebound.Count(); }
-    /// こすって止まる間の、着いた水平の速さに掛けている倍率 (0..1)。こすり状態でない間は 1
+    //! こすって止まる間の、着いた水平の速さに掛けている倍率 (0..1)。こすり状態でない間は 1
     [[nodiscard]] float SkidSpeedScale() const noexcept;
-    /// 丸まっているか (当たりを球にしている間は true)
+    //! 丸まっているか (当たりを球にしている間は true)
     [[nodiscard]] bool IsCurled() const noexcept;
     [[nodiscard]] GL::Player::PlayerMotion Motion() const noexcept;
-    /// 世界の rootPosition にある当たりのカプセルの下の球を返す (立ち姿と玉で同じ球)
+    //! 世界の rootPosition にある当たりのカプセルの下の球を返す (立ち姿と玉で同じ球)
     [[nodiscard]] NS::Sphere SlamBallAt(const NS::Vector3& rootPosition) const noexcept;
 
     // =========================================================================
     // 物理挙動・速度制御（重力・加速・減速・ジャンプ）
     // =========================================================================
-    /// 先行入力とコヨーテ猶予のタイマーを 1 フレーム進める
+    //! 先行入力とコヨーテ猶予のタイマーを 1 フレーム進める
     void TickTimers(float dt) noexcept;
-    /// 入力の向きへ加速する。加速の上限は MaxSpeed × 倒し具合で、歩き速度を下回らない
+    //! 入力の向きへ加速する。加速の上限は MaxSpeed × 倒し具合で、歩き速度を下回らない
     void AccelerateToInputDirection(float dt) noexcept;
-    /// ダッシュと反動の後の落下で、空中の操作が戻る経過を 1 フレーム進める
+    //! ダッシュと反動の後の落下で、空中の操作が戻る経過を 1 フレーム進める
     void AdvanceAirControlReturn(float dt) noexcept;
-    /// 次の落下の空中の操作を 0 から戻し直す
+    //! 次の落下の空中の操作を 0 から戻し直す
     void StartAirControlReturn() noexcept;
     void ApplyFriction(float dt) noexcept;
     void ApplyBrake(float dt) noexcept;
-    /// 接地かコヨーテ猶予の内で押されていれば跳ぶ
+    //! 接地かコヨーテ猶予の内で押されていれば跳ぶ
     void Jump(float dt) noexcept;
-    /// 上昇中にボタンを離したフレームだけ縦速度を縮める
+    //! 上昇中にボタンを離したフレームだけ縦速度を縮める
     void CutJumpRelease() noexcept;
-    /// 上昇と下降で非対称な重力を当てる (頂点の近くは弱める)
+    //! 上昇と下降で非対称な重力を当てる (頂点の近くは弱める)
     void Gravity(float dt) noexcept;
-    /// 通常突進の滞空秒が通常突進の距離を進む秒と揃う強さの重力を当てる
+    //! 通常突進の滞空秒が通常突進の距離を進む秒と揃う強さの重力を当てる
     void TapSlamGravity(float dt) noexcept;
     void ReboundGravity(float dt) noexcept;
-    /// 反動の間、入力の向きへ反動中の空中の加速度で加速する (入力からずれた速度は減らさない)
+    //! 反動の間、入力の向きへ反動中の空中の加速度で加速する (入力からずれた速度は減らさない)
     void AccelerateDuringRebound(float dt) noexcept;
-    /// 今の水平の速度を着いた速度として控え、こすり止めを始める
+    //! 今の水平の速度を着いた速度として控え、こすり止めを始める
     void BeginSkid() noexcept;
-    /// 着地時の速度を減らし、止まりきったら true を返す
+    //! 着地時の速度を減らし、止まりきったら true を返す
     [[nodiscard]] bool AdvanceSkid() noexcept;
-    /// 突進の 1 フレームを進める。溜めた突進は水平を BodySlamVelocity で書き直し、重力を当てる
+    //! 突進の 1 フレームを進める。溜めた突進は水平を BodySlamVelocity で書き直し、重力を当てる
     void UpdateBodySlam(float dt) noexcept;
 
     // =========================================================================
     // 崖掴まり・よじ登り
     // =========================================================================
-    /// 縁を掴めるか試す。掴んだら true (呼び出し側は即 return する)
+    //! 縁を掴めるか試す。掴んだら true (呼び出し側は即 return する)
     [[nodiscard]] bool LedgeGrab() noexcept;
-    /// 掴んでいる縁を取り直して位置を合わせ直す。縁を失ったら手を放して false を返す (呼び出し側は即 return する)
+    //! 掴んでいる縁を取り直して位置を合わせ直す。縁を失ったら手を放して false を返す (呼び出し側は即 return する)
     [[nodiscard]] bool HoldLedge() noexcept;
-    /// 掴まりからジャンプの初速を与えて落下へ移る。ジャンプしたら true (呼び出し側は即 return する)
+    //! 掴まりからジャンプの初速を与えて落下へ移る。ジャンプしたら true (呼び出し側は即 return する)
     [[nodiscard]] bool LedgeJump() noexcept;
-    /// 左右入力で縁に沿って動く。続いていない方向へは動かない
+    //! 左右入力で縁に沿って動く。続いていない方向へは動かない
     void Shimmy(float dt) noexcept;
-    /// よじ登りを始め、登りの状態へ移る
+    //! よじ登りを始め、登りの状態へ移る
     void ClimbLedge() noexcept;
     void UpdateLedgeClimb(float dt) noexcept;
-    /// 手を放し、その場から落下させる
+    //! 手を放し、その場から落下させる
     void DropLedge() noexcept;
 
     // =========================================================================
     // 体当たり（突進）の要求・開始・方向解決・反動軌道
     // =========================================================================
-    /// 体当たりを要求する。charge01・overcharge01 は 0〜1 に丸め、非有限は 0
-    /// 出せない要求は先行入力時間まで残し、突進中・身体の停止中は捨てる。空中発動は接地まで一度だけ
+    //! 体当たりを要求する。charge01・overcharge01 は 0〜1 に丸め、非有限は 0
+    //! 出せない要求は先行入力時間まで残し、突進中・身体の停止中は捨てる。空中発動は接地まで一度だけ
     void RequestBodySlam(float charge01, float overcharge01 = 0.0f) noexcept;
-    /// 向きと縦速度 (m/s、上が正、非有限は 0、通常突進には無効) を添えて体当たりを要求する
-    /// aimDirection は世界の水平成分を正規化し、無効なら方向指定なしとして扱う
+    //! 向きと縦速度 (m/s、上が正、非有限は 0、通常突進には無効) を添えて体当たりを要求する
+    //! aimDirection は世界の水平成分を正規化し、無効なら方向指定なしとして扱う
     void RequestBodySlam(float charge01,
                          const NS::Vector3& aimDirection,
                          float launchVerticalSpeed = 0.0f,
                          float overcharge01 = 0.0f) noexcept;
-    /// 突進中は予定の水平速度と身体の現在の縦速度、それ以外は身体の速度を返す
+    //! 突進中は予定の水平速度と身体の現在の縦速度、それ以外は身体の速度を返す
     [[nodiscard]] NS::Vector3 BodySlamVelocity() const noexcept;
     [[nodiscard]] GL::Level::BodySlamMotion SlamMotion() const noexcept;
     [[nodiscard]] GL::Level::ImpactSelf SelfForImpact() const noexcept;
-    /// 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
+    //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
     void CancelBodySlam() noexcept;
-    /// 向きを解決して突進を始める。向きが決まらないか距離が 0 以下なら false
+    //! 向きを解決して突進を始める。向きが決まらないか距離が 0 以下なら false
     [[nodiscard]] bool BodySlam() noexcept;
-    /// 向きを添えずに要求した体当たり (通常突進) を出す水平の向き (入力・カメラの前・速度の順、無ければゼロ)
+    //! 向きを添えずに要求した体当たり (通常突進) を出す水平の向き (入力・カメラの前・速度の順、無ければゼロ)
     [[nodiscard]] NS::Vector3 AimDirection() const noexcept;
-    /// このフレームの終わりに放したら次のフレームに出る突進の正規化済みの水平の向き (決まらなければゼロ)
+    //! このフレームの終わりに放したら次のフレームに出る突進の正規化済みの水平の向き (決まらなければゼロ)
     [[nodiscard]] NS::Vector3 ReleaseDirection() const noexcept;
-    /// 反動の初速を与え、反動状態へ移る。無効な軌道なら false で何も変えない
+    //! 反動の初速を与え、反動状態へ移る。無効な軌道なら false で何も変えない
     [[nodiscard]] bool BeginRebound(const GL::Player::ReboundArc& arc) noexcept;
-    /// 反動軌道の初速 (m/s) を求める。曲線を組めなければゼロ
+    //! 反動軌道の初速 (m/s) を求める。曲線を組めなければゼロ
     [[nodiscard]] NS::Vector3 ReboundVelocityFor(const GL::Player::ReboundArc& arc) const noexcept;
-    /// 丸まりを入れるか解く。丸まると当たりを球にして根を立ち姿の半長ぶん下げ、解くと立ち姿へ戻して上げる
-    /// 縁に掴まっている間とよじ登っている間の true は受けない
+    //! 丸まりを入れるか解く。丸まると当たりを球にして根を立ち姿の半長ぶん下げ、解くと立ち姿へ戻して上げる
+    //! 縁に掴まっている間とよじ登っている間の true は受けない
     void SetCurled(bool curled) noexcept;
 
     // =========================================================================
@@ -310,16 +310,16 @@ public:
 
     void InitAfterPlacement() override;
 
-    /// MsgCourseStart の時の位置へ戻り、動きと命を最初の状態へ戻す (コース開始前は位置を動かさない)
+    //! MsgCourseStart の時の位置へ戻り、動きと命を最初の状態へ戻す (コース開始前は位置を動かさない)
     void Restart() noexcept;
 
-    /// 命を amount 削る (下限 0)
+    //! 命を amount 削る (下限 0)
     void ApplyDamage(int amount) noexcept;
 
-    /// 命を 0 にして世界から消える
+    //! 命を 0 にして世界から消える
     void Die() noexcept;
 
-    /// 調整値の「体力」を読み直して命を満タンへ戻す
+    //! 調整値の「体力」を読み直して命を満タンへ戻す
     void ResetHealth() noexcept;
 
     [[nodiscard]] bool IsDead() const noexcept;
@@ -329,7 +329,7 @@ protected:
     // =========================================================================
     // シーンのステップ・メッセージ受信
     // =========================================================================
-    /// 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
+    //! 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
     bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
     void OnInit() override;

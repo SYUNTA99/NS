@@ -16,23 +16,23 @@ namespace NS
 {
     namespace UI
     {
-        /// 画面ごとの Widget の木。拡縮は描画時に渡す UICanvas に従う
+        //! 画面ごとの Widget の木。拡縮は描画時に渡す UICanvas に従う
         class WidgetTree : public NonCopyable
         {
         public:
             WidgetTree();
 
-            /// 木の根。全画面に広がる透明 Widget で、UI はこの子として組む
+            //! 木の根。全画面に広がる透明 Widget で、UI はこの子として組む
             [[nodiscard]] Widget& Root() noexcept { return m_root; }
 
-            /// 全画面の矩形から全 Widget の矩形を確定する
+            //! 全画面の矩形から全 Widget の矩形を確定する
             void Layout(const UICanvas& canvas) noexcept;
 
-            /// 矩形を確定し、現在の描画先へ重ねて描く
-            /// 中身が無ければ何もしない。overlay が未設定なら呼び出し側の不備
+            //! 矩形を確定し、現在の描画先へ重ねて描く
+            //! 中身が無ければ何もしない。overlay が未設定なら呼び出し側の不備
             void Draw(Gfx::ScreenOverlay* overlay, const UICanvas& canvas);
 
-            /// 描画先ピクセル座標の点を UI が吸うか。直近の Layout の結果で判定する
+            //! 描画先ピクセル座標の点を UI が吸うか。直近の Layout の結果で判定する
             [[nodiscard]] bool ConsumesPointer(const UICanvas& canvas, float px, float py) const noexcept;
 
         private:

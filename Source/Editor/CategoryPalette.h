@@ -18,15 +18,15 @@ namespace NS
 {
     namespace Editor
     {
-        /// 配置ブラシを数字キーとツールバーで選ぶ
+        //! 配置ブラシを数字キーとツールバーで選ぶ
         class CategoryPalette : public NonCopyable
         {
         public:
-            /// 数字キーと肩のボタンで選ぶ。editShortcutsBlocked が真の間は数字キーを受けない
-            /// @param[in] presses 持ち主がこの固定ステップに読んだ押し
+            //! 数字キーと肩のボタンで選ぶ。editShortcutsBlocked が真の間は数字キーを受けない
+            //! @param[in] presses 持ち主がこの固定ステップに読んだ押し
             void TickInput(OS::Input* input, const OS::InputPresses& presses, bool editShortcutsBlocked) noexcept;
 
-            /// Scene ビュー内に収まるツールバーを描く。viewRect はスクリーン座標
+            //! Scene ビュー内に収まるツールバーを描く。viewRect はスクリーン座標
             void Render(const Editor::ViewRect& viewRect) noexcept;
 
             [[nodiscard]] std::size_t ActiveSlot() const noexcept { return m_activeSlot; }
@@ -46,8 +46,8 @@ namespace NS
                 return PaletteTemplateSlots()[m_activeSlot].rotatable;
             }
 
-            /// 配置プレビュー用のスロープ角度を返す
-            /// @note キューブのように角度を持たない形状では負の値が返る
+            //! 配置プレビュー用のスロープ角度を返す
+            //! @note キューブのように角度を持たない形状では負の値が返る
             [[nodiscard]] float CurrentSlopeAngleDegrees() const noexcept;
 
             void SetActiveSlot(std::size_t slot) noexcept;

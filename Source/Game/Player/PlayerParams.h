@@ -40,19 +40,19 @@ namespace GL
 {
     namespace Player
     {
-        /// 自機の移動・溜め・衝突・反動の調整値を持つ部品
+        //! 自機の移動・溜め・衝突・反動の調整値を持つ部品
         class PlayerParams : public NS::Object
         {
         public:
             PlayerParams() noexcept;
 
-            /// 欄「体力」の値。1 未満は 1 として返す
+            //! 欄「体力」の値。1 未満は 1 として返す
             [[nodiscard]] int MaxHealth() const noexcept { return std::max(m_maxHealth, 1); }
-            /// スティックの倒しがこの値未満なら入力なしとして扱う
+            //! スティックの倒しがこの値未満なら入力なしとして扱う
             [[nodiscard]] float StickDeadzone() const noexcept { return m_stickDeadzone; }
-            /// 入力方向への水平速度成分がこの値未満ならブレーキに入る
+            //! 入力方向への水平速度成分がこの値未満ならブレーキに入る
             [[nodiscard]] float BrakeThreshold() const noexcept { return m_brakeThreshold; }
-            /// 欄「上昇重力」「下降重力」「頂点滞空 Vy」「頂点滞空倍率」の写し。重力の強さを選ぶ ChooseGravity へ渡す
+            //! 欄「上昇重力」「下降重力」「頂点滞空 Vy」「頂点滞空倍率」の写し。重力の強さを選ぶ ChooseGravity へ渡す
             [[nodiscard]] GL::Level::AirGravity Gravity() const noexcept
             {
                 return GL::Level::AirGravity{.rise = m_gravityUp,
@@ -60,7 +60,7 @@ namespace GL
                                              .apexSpeed = m_apexHangVy,
                                              .apexScale = m_apexHangScale};
             }
-            /// 上りだけ反動の倍率を掛けた重力を返す。移動と初速の計算に同じ値を使う
+            //! 上りだけ反動の倍率を掛けた重力を返す。移動と初速の計算に同じ値を使う
             [[nodiscard]] GL::Level::AirGravity ReboundGravity() const noexcept
             {
                 return GL::Level::AirGravity{.rise = m_gravityUp * m_reboundRiseGravityScale,
@@ -68,22 +68,22 @@ namespace GL
                                              .apexSpeed = m_apexHangVy,
                                              .apexScale = m_apexHangScale};
             }
-            /// 当たりが決めた反動の向き・高さ・距離を、ReboundGravity の重力で飛ぶ曲線にする
-            /// 反動の初速と滞空の秒は、自機が弾く時も裁定が記録に書く時もこの曲線から引く
+            //! 当たりが決めた反動の向き・高さ・距離を、ReboundGravity の重力で飛ぶ曲線にする
+            //! 反動の初速と滞空の秒は、自機が弾く時も裁定が記録に書く時もこの曲線から引く
             [[nodiscard]] GL::Level::LaunchArc ReboundLaunchArc(const ReboundArc& arc) const noexcept;
-            /// 溜め量 0..1 を欄「チャージ倍率カーブ」で威力の倍率にする
-            /// 非有限の入力とカーブの 0 以下の値は 1 とみなす。ImpactResolver が当たりの威力を作る時に読む
-            /// @param[in] charge01 溜め量。0..1 の外は丸める
-            /// @return 威力の倍率
+            //! 溜め量 0..1 を欄「チャージ倍率カーブ」で威力の倍率にする
+            //! 非有限の入力とカーブの 0 以下の値は 1 とみなす。ImpactResolver が当たりの威力を作る時に読む
+            //! @param[in] charge01 溜め量。0..1 の外は丸める
+            //! @return 威力の倍率
             [[nodiscard]] float ChargeFactorFor(float charge01) const noexcept;
-            /// 溜め量と溜めすぎの深さを威力の倍率にする
-            /// 溜め量の倍率 (1 つ引数の ChargeFactorFor) に、溜めすぎの深さで 1 から欄「紫の威力の上限」まで
-            /// 線形に上がる倍率を掛ける。非有限の深さは 0、0..1 の外は丸める
-            /// @param[in] charge01 溜め量。0..1 の外は丸める
-            /// @param[in] overcharge01 溜めすぎの深さ
-            /// @return 威力の倍率
+            //! 溜め量と溜めすぎの深さを威力の倍率にする
+            //! 溜め量の倍率 (1 つ引数の ChargeFactorFor) に、溜めすぎの深さで 1 から欄「紫の威力の上限」まで
+            //! 線形に上がる倍率を掛ける。非有限の深さは 0、0..1 の外は丸める
+            //! @param[in] charge01 溜め量。0..1 の外は丸める
+            //! @param[in] overcharge01 溜めすぎの深さ
+            //! @return 威力の倍率
             [[nodiscard]] float ChargeFactorFor(float charge01, float overcharge01) const noexcept;
-            /// 溜め中の最高速度の倍率を返す。1 − チャージ減速率を 0〜1 に丸める
+            //! 溜め中の最高速度の倍率を返す。1 − チャージ減速率を 0〜1 に丸める
             [[nodiscard]] float ChargingSpeedScale() const noexcept;
 
             NS_REFLECT_BEGIN(PlayerParams, NS::Object)

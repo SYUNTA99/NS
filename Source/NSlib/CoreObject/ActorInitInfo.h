@@ -10,7 +10,7 @@ namespace NS
 {
     class Scene;
 
-    /// SceneActor の初期化情報
+    //! SceneActor の初期化情報
     struct ActorInitInfo
     {
         const nlohmann::json* placement = nullptr; // 配置 JSON が無い場合は nullptr (.actor の値のみ適用)

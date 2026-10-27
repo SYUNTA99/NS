@@ -4,7 +4,7 @@ namespace NS
 {
     namespace Editor
     {
-        /// 表示名を変えるパネルは 表示名###ID の形式を使い、### 以降の識別子を固定する
+        //! 表示名を変えるパネルは 表示名###ID の形式を使い、### 以降の識別子を固定する
         inline constexpr const char* k_PanelScene = "Scene";
         inline constexpr const char* k_PanelGame = "Game";
         // 保存済みのドック配置を保つため、### 以降の識別子は従来の値を使う

@@ -8,7 +8,7 @@ namespace NS
     {
         namespace detail
         {
-            /// D3D11_USAGE に対し D3D11 仕様が一意に要求する CPUAccessFlags を返す
+            //! D3D11_USAGE に対し D3D11 仕様が一意に要求する CPUAccessFlags を返す
             [[nodiscard]] inline UINT GetCpuAccessFlags(D3D11_USAGE usage) noexcept
             {
                 switch (usage)

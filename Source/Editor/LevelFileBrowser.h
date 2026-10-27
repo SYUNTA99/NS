@@ -10,7 +10,7 @@ namespace NS
 {
     namespace Editor
     {
-        /// レベルファイルを名前を付けて保存するモーダル UI。開くのはアセットの窓のシーンから
+        //! レベルファイルを名前を付けて保存するモーダル UI。開くのはアセットの窓のシーンから
         class LevelFileBrowser : public NonCopyable
         {
         public:
@@ -30,7 +30,7 @@ namespace NS
 
             void OpenSaveModal(std::string_view initialName = {}) noexcept;
 
-            /// モーダルを描き、操作の結果を Result で返す
+            //! モーダルを描き、操作の結果を Result で返す
             [[nodiscard]] Result Render() noexcept;
 
             void NotifySaveResult(bool ok, std::string_view message) noexcept;

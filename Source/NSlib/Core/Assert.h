@@ -5,7 +5,7 @@
 
 #if defined(NS_ENABLE_ASSERT) && NS_ENABLE_ASSERT
 
-/// 条件が偽なら Fatal ログを出して停止する。無効な構成では評価しないため、条件式に副作用を含めない
+//! 条件が偽なら Fatal ログを出して停止する。無効な構成では評価しないため、条件式に副作用を含めない
 #define NS_ASSERT(cat, cond, ...)                                                                                      \
     do                                                                                                                 \
     {                                                                                                                  \

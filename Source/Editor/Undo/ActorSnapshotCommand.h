@@ -13,11 +13,11 @@ namespace NS
 {
     namespace Editor
     {
-        /// 永続 id で対象を引き、JSON の before・after を切り替える
+        //! 永続 id で対象を引き、JSON の before・after を切り替える
         class ActorSnapshotCommand final : public ICommand
         {
         public:
-            /// before は Undo、after は実行・Redo の状態。nullopt は個体が存在しない状態を表す
+            //! before は Undo、after は実行・Redo の状態。nullopt は個体が存在しない状態を表す
             ActorSnapshotCommand(uint32 id,
                                   std::optional<nlohmann::json> before,
                                   std::optional<nlohmann::json> after) noexcept;

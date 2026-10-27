@@ -28,17 +28,17 @@ namespace NS
 
             void Render(LevelEditorController& editor) noexcept;
 
-            /// 毎描画フレームに呼ぶ。配置の変更を調べ、下見の取り直しと再生時計を進める（プレイ中は下見を手放す）
+            //! 毎描画フレームに呼ぶ。配置の変更を調べ、下見の取り直しと再生時計を進める（プレイ中は下見を手放す）
             void Tick(LevelEditorController& editor, float seconds);
 
-            /// 再生位置まで評価した非所有の下見を返す（編集中かつ下見表示が有効でない場合は nullptr）
+            //! 再生位置まで評価した非所有の下見を返す（編集中かつ下見表示が有効でない場合は nullptr）
             [[nodiscard]] TimelinePreview* Preview(LevelEditorController& editor);
             void ResetPreview() noexcept;
 
             [[nodiscard]] const std::string& EditingActorFile() const noexcept { return m_actorFile; }
             [[nodiscard]] const ActorAction* EditingAction() const noexcept;
 
-            /// 未保存の変更がある .actor をすべて保存する。すべて書けた時だけ未保存記録を空にして true を返す
+            //! 未保存の変更がある .actor をすべて保存する。すべて書けた時だけ未保存記録を空にして true を返す
             [[nodiscard]] bool SaveAll() noexcept;
             [[nodiscard]] bool HasUnsavedChanges() const noexcept { return !m_dirty.empty(); }
 

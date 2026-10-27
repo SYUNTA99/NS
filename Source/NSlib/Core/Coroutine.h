@@ -11,9 +11,9 @@
 
 namespace NS
 {
-    /// 複数フレームにまたがる演出手順のシーケンス。co_await で待ちを挟みつつ上から下へ書く
-    /// CoroutineRunner が所有と駆動を持つ。シーケンスの中で待ちをまたいで生ポインタを持たないこと
-    /// 待っている間に持ち主が破棄され得る。破棄はコルーチンフレームごと捨てる方式で、途中再開はしない
+    //! 複数フレームにまたがる演出手順のシーケンス。co_await で待ちを挟みつつ上から下へ書く
+    //! CoroutineRunner が所有と駆動を持つ。シーケンスの中で待ちをまたいで生ポインタを持たないこと
+    //! 待っている間に持ち主が破棄され得る。破棄はコルーチンフレームごと捨てる方式で、途中再開はしない
     class Coroutine
     {
     public:
@@ -61,14 +61,14 @@ namespace NS
             return *this;
         }
 
-        /// 所有を手放して生ハンドルを返す。CoroutineRunner::Start だけが使う
+        //! 所有を手放して生ハンドルを返す。CoroutineRunner::Start だけが使う
         [[nodiscard]] Handle Release() noexcept { return std::exchange(m_handle, {}); }
 
     private:
         Handle m_handle{};
     };
 
-    /// 指定秒の待ち。CoroutineRunner::Tick へ渡す dt で進む
+    //! 指定秒の待ち。CoroutineRunner::Tick へ渡す dt で進む
     struct WaitSeconds
     {
         float seconds = 0.0f; // 秒
@@ -81,7 +81,7 @@ namespace NS
         void await_resume() const noexcept {}
     };
 
-    /// 条件が真になるまでの待ち。条件は毎 Tick 評価される
+    //! 条件が真になるまでの待ち。条件は毎 Tick 評価される
     struct WaitUntil
     {
         std::function<bool()> condition;
@@ -107,15 +107,15 @@ namespace NS
         void await_resume() const noexcept {}
     };
 
-    /// Tick で待ちを進めるシーケンスの所有者。Tick を止めれば全シーケンスが停止する
-    /// CancelAll は再開せずに破棄する。コルーチンフレーム内のデストラクタは呼ばれる
+    //! Tick で待ちを進めるシーケンスの所有者。Tick を止めれば全シーケンスが停止する
+    //! CancelAll は再開せずに破棄する。コルーチンフレーム内のデストラクタは呼ばれる
     class CoroutineRunner : public NonCopyable
     {
     public:
         CoroutineRunner() = default;
         ~CoroutineRunner() { CancelAll(); }
 
-        /// シーケンスを先頭から最初の待ちまで即時に走らせ、続きを預かる。待ち無しで終わればその場で捨てる
+        //! シーケンスを先頭から最初の待ちまで即時に走らせ、続きを預かる。待ち無しで終わればその場で捨てる
         void Start(Coroutine&& coroutine)
         {
             Coroutine::Handle handle = coroutine.Release();
@@ -140,7 +140,7 @@ namespace NS
             m_handles.push_back(handle);
         }
 
-        /// 待ちを dt 秒だけ進め、明けたシーケンスを再開する。終わったシーケンスはここで捨てる
+        //! 待ちを dt 秒だけ進め、明けたシーケンスを再開する。終わったシーケンスはここで捨てる
         void Tick(float dt)
         {
             m_ticking = true;
@@ -200,7 +200,7 @@ namespace NS
             }
         }
 
-        /// 全シーケンスを途中のまま破棄する。モード離脱やレベル破棄の前に呼ぶ
+        //! 全シーケンスを途中のまま破棄する。モード離脱やレベル破棄の前に呼ぶ
         void CancelAll() noexcept
         {
             if (m_ticking || m_resumeDepth > 0)

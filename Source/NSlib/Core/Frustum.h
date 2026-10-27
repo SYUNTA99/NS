@@ -7,12 +7,12 @@
 
 namespace NS
 {
-    /// AABB カリング用の視錐台
+    //! AABB カリング用の視錐台
     struct Frustum
     {
         Plane planes[6]{}; // 左・右・下・上・ニア・ファーの順（内側が正、非正規化）
 
-        /// 行ベクトル規約 v*M のビュープロジェクション行列から 6 平面を抽出する（DX11 の NDC 奥行き [0, 1] 前提）
+        //! 行ベクトル規約 v*M のビュープロジェクション行列から 6 平面を抽出する（DX11 の NDC 奥行き [0, 1] 前提）
         [[nodiscard]] static Frustum FromViewProjection(const Matrix& m) noexcept
         {
             Frustum f{};
@@ -25,7 +25,7 @@ namespace NS
             return f;
         }
 
-        /// 各平面に対する保守的な交差判定を行う（偽陰性なし）
+        //! 各平面に対する保守的な交差判定を行う（偽陰性なし）
         [[nodiscard]] bool Intersects(const AABB& box) const noexcept
         {
             for (const Plane& p : planes)

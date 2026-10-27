@@ -19,7 +19,7 @@ namespace NS
         class D3DTexture;
         struct BuiltinShaders;
 
-        /// 画面歪みパラメータ (長さの単位はすべて描画先のピクセル)
+        //! 画面歪みパラメータ (長さの単位はすべて描画先のピクセル)
         struct ScreenRing
         {
             Vector2 centerPixel{};        // 左上原点の中心座標
@@ -29,7 +29,7 @@ namespace NS
             bool keepBody = false;        // true のときボディマスクが 1 の画素を歪めない
         };
 
-        /// screen_distortion.ps.hlsl の cbuffer b0 とレイアウトを一致させる
+        //! screen_distortion.ps.hlsl の cbuffer b0 とレイアウトを一致させる
         struct alignas(16) ScreenDistortionCB
         {
             float ring[4]{};            // 中心 (x, y)、半径、押し出し量 (ピクセル単位)
@@ -39,34 +39,34 @@ namespace NS
         };
         static_assert(sizeof(ScreenDistortionCB) == 32, "ScreenDistortionCB は HLSL の cbuffer b0 とバイト一致が必要");
 
-        /// ポストプロセス演出 (画面歪み・ボディマスク描画) を行う
-        /// D3DDevice より先に破棄し、shaders の破棄後は描画を呼ばないこと
+        //! ポストプロセス演出 (画面歪み・ボディマスク描画) を行う
+        //! D3DDevice より先に破棄し、shaders の破棄後は描画を呼ばないこと
         class ScreenPasses : public NonCopyable
         {
         public:
-            /// shaders は非所有で参照のみ保持する
+            //! shaders は非所有で参照のみ保持する
             explicit ScreenPasses(const BuiltinShaders& shaders) noexcept;
             ~ScreenPasses();
 
             [[nodiscard]] bool IsValid() const noexcept;
 
-            /// 現在の描画先に輪状の歪みを適用する。描画先・深度・ビューポートは呼び出し前の状態へ戻す
+            //! 現在の描画先に輪状の歪みを適用する。描画先・深度・ビューポートは呼び出し前の状態へ戻す
             void Distort(D3DDevice& device, const ScreenRing& ring) noexcept;
 
-            /// ボディマスクを 0 でクリアして描画先に設定する (深度は現在のものを読み取り専用で共有)
-            /// true を返した場合は描画後に EndBodyMask を呼ぶこと
+            //! ボディマスクを 0 でクリアして描画先に設定する (深度は現在のものを読み取り専用で共有)
+            //! true を返した場合は描画後に EndBodyMask を呼ぶこと
             [[nodiscard]] bool BeginBodyMask(D3DDevice& device) noexcept;
 
-            /// BeginBodyMask と EndBodyMask の間で呼び、深度テストを通過した画素へ 1 を書き込む
+            //! BeginBodyMask と EndBodyMask の間で呼び、深度テストを通過した画素へ 1 を書き込む
             void DrawBodyMaskItem(D3DDevice& device, const DrawItem& item) noexcept;
 
-            /// 描画先・深度・ビューポートを BeginBodyMask 前の状態へ戻す
+            //! 描画先・深度・ビューポートを BeginBodyMask 前の状態へ戻す
             void EndBodyMask(D3DDevice& device) noexcept;
 
-            /// ボディマスクを描画しないフレームで呼び、前フレームのマスクを無効化する
+            //! ボディマスクを描画しないフレームで呼び、前フレームのマスクを無効化する
             void DropBodyMask() noexcept { m_bodyMaskDrawn = false; }
 
-            /// 現フレームで描画済みのボディマスク (R8_UNORM) を返す。未描画時は nullptr
+            //! 現フレームで描画済みのボディマスク (R8_UNORM) を返す。未描画時は nullptr
             [[nodiscard]] const D3DTexture* BodyMask() const noexcept;
 
         private:

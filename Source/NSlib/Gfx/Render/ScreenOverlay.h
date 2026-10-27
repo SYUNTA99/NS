@@ -18,14 +18,14 @@ namespace NS
         class D3DDevice;
         struct BuiltinShaders;
 
-        /// fade.ps.hlsl の cbuffer FadeCB とレイアウトを一致させる
+        //! fade.ps.hlsl の cbuffer FadeCB とレイアウトを一致させる
         struct alignas(16) FullscreenColorCB
         {
             Color color;
         };
         static_assert(sizeof(FullscreenColorCB) == 16, "FullscreenColorCB は HLSL の cbuffer FadeCB とバイト一致が必要");
 
-        /// ui_rect.vs.hlsl / ui_rect.ps.hlsl の cbuffer UiRectCB とレイアウトを一致させる
+        //! ui_rect.vs.hlsl / ui_rect.ps.hlsl の cbuffer UiRectCB とレイアウトを一致させる
         struct alignas(16) ScreenRectCB
         {
             float rect[4]{}; // クリップ空間の左上 (x, y) と幅・高さ (高さは画面下向き正)
@@ -33,8 +33,8 @@ namespace NS
         };
         static_assert(sizeof(ScreenRectCB) == 32, "ScreenRectCB は HLSL の cbuffer UiRectCB とバイト一致が必要");
 
-        /// 現在の描画先の最前面へ全画面色や矩形を半透明合成する
-        /// D3DDevice より先に破棄し、device と shaders はこのインスタンスより長く生存させること
+        //! 現在の描画先の最前面へ全画面色や矩形を半透明合成する
+        //! D3DDevice より先に破棄し、device と shaders はこのインスタンスより長く生存させること
         class ScreenOverlay : public NonCopyable
         {
         public:
@@ -43,7 +43,7 @@ namespace NS
 
             void DrawFullscreenColor(const Color& color) noexcept;
 
-            /// 左上原点のピクセル座標で矩形を半透明合成する
+            //! 左上原点のピクセル座標で矩形を半透明合成する
             void DrawScreenRect(float x, float y, float width, float height, const Color& color) noexcept;
 
         private:

@@ -12,7 +12,7 @@
 namespace NS
 {
 
-    /// Fatal は出力後にプロセスを強制終了する
+    //! Fatal は出力後にプロセスを強制終了する
     enum class LogLevel : int
     {
         Trace = 0,
@@ -37,7 +37,7 @@ namespace NS
         std::string text; // "[<LogType>] <本文>" 形式
     };
 
-    /// NS_LOG_* から使うスレッド対応のロガー。書式は std::format 準拠
+    //! NS_LOG_* から使うスレッド対応のロガー。書式は std::format 準拠
     class Logger
     {
     public:
@@ -45,15 +45,15 @@ namespace NS
 
         Logger() = delete;
 
-        /// Init 以降に出力された WARN 以上のログを新しい順に返す。未初期化時は空
+        //! Init 以降に出力された WARN 以上のログを新しい順に返す。未初期化時は空
         [[nodiscard]] static std::vector<RecentLog> RecentWarnings();
 
-        /// 複数回呼んでも無視される
+        //! 複数回呼んでも無視される
         static void Init(const LoggerDesc& desc = {}) noexcept;
 
         static void Shutdown() noexcept;
 
-        /// NS_LOG_* マクロ内部用。直接呼ばないこと
+        //! NS_LOG_* マクロ内部用。直接呼ばないこと
         static void LogImpl(LogLevel level,
                             std::string_view logTypeStr,
                             const char* file,
@@ -61,7 +61,7 @@ namespace NS
                             const char* func,
                             std::string_view msg);
 
-        /// NS_LOG_FATAL マクロ内部用。ログ出力後、非 Shipping ではデバッガで停止してからプロセスを強制終了する
+        //! NS_LOG_FATAL マクロ内部用。ログ出力後、非 Shipping ではデバッガで停止してからプロセスを強制終了する
         [[noreturn]] static void FatalImpl(
             std::string_view logTypeStr, const char* file, int line, const char* func, std::string_view msg);
     };

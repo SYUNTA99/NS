@@ -11,15 +11,15 @@ namespace NS
     {
         class D3DTexture;
 
-        /// シーンをテクスチャへ描くためのオフスクリーン描画先
-        /// カラー (RTV+SRV) と深度 (DSV) を 1 組で持ち、D3DDevice::SetSceneTarget へ渡して使う
-        /// 構築に失敗した場合は例外を送出せず、無効な状態として扱う
+        //! シーンをテクスチャへ描くためのオフスクリーン描画先
+        //! カラー (RTV+SRV) と深度 (DSV) を 1 組で持ち、D3DDevice::SetSceneTarget へ渡して使う
+        //! 構築に失敗した場合は例外を送出せず、無効な状態として扱う
         class D3DRenderTarget : public NonCopyable
         {
         public:
-            /// 指定サイズのオフスクリーン描画先を生成する
-            /// @param[in] size 幅と高さ。0 以下の成分があると無効なインスタンスを返す
-            /// @return 成否にかかわらず参照先を返す。成否は IsValid で確認する
+            //! 指定サイズのオフスクリーン描画先を生成する
+            //! @param[in] size 幅と高さ。0 以下の成分があると無効なインスタンスを返す
+            //! @return 成否にかかわらず参照先を返す。成否は IsValid で確認する
             [[nodiscard]] static std::unique_ptr<D3DRenderTarget> Create(Size2D size);
 
             ~D3DRenderTarget();
@@ -28,25 +28,25 @@ namespace NS
 
             [[nodiscard]] Size2D Size() const noexcept;
 
-            /// 描画先のサイズを変更する
-            /// @note 同サイズ、または 0 以下の指定は何もしない。旧テクスチャは即座に手放すため、
-            /// SRV を参照する描画が終わった位置で呼ぶこと
+            //! 描画先のサイズを変更する
+            //! @note 同サイズ、または 0 以下の指定は何もしない。旧テクスチャは即座に手放すため、
+            //! SRV を参照する描画が終わった位置で呼ぶこと
             void Resize(Size2D size) noexcept;
 
-            /// 描画先となるカラーテクスチャ (RTV+SRV)。無効時は nullptr
+            //! 描画先となるカラーテクスチャ (RTV+SRV)。無効時は nullptr
             [[nodiscard]] D3DTexture* Color() const noexcept;
 
-            /// 深度テクスチャ (DSV)。無効時は nullptr
+            //! 深度テクスチャ (DSV)。無効時は nullptr
             [[nodiscard]] D3DTexture* Depth() const noexcept;
 
-            /// UI (ImGui::Image) へ渡すためのカラー SRV ハンドルを取得する
-            /// @return 無効時は nullptr。型を伏せた非所有ポインタで、寿命はこのインスタンスに従う
+            //! UI (ImGui::Image) へ渡すためのカラー SRV ハンドルを取得する
+            //! @return 無効時は nullptr。型を伏せた非所有ポインタで、寿命はこのインスタンスに従う
             [[nodiscard]] void* UiTextureHandle() const noexcept;
 
         private:
             explicit D3DRenderTarget(Size2D size);
 
-            /// カラーと深度を組で作り直す。片方でも失敗したら両方とも持たない
+            //! カラーと深度を組で作り直す。片方でも失敗したら両方とも持たない
             void Build(Size2D size) noexcept;
 
             std::unique_ptr<D3DTexture> m_color; // カラー (RTV+SRV)

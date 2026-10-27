@@ -8,7 +8,7 @@ namespace GL
 {
     namespace Level
     {
-        /// プレイヤーとの重なりで MsgGoal を送り、受け手にクリア処理を委ねるゴール
+        //! プレイヤーとの重なりで MsgGoal を送り、受け手にクリア処理を委ねるゴール
         class GoalActor : public NS::SceneActor
         {
         public:

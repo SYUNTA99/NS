@@ -7,8 +7,8 @@ namespace GL
 {
     namespace Level
     {
-        /// 重なったプレイヤーへ即死を通知する範囲
-        /// 上面に着地させないため、地形の当たりは持たない
+        //! 重なったプレイヤーへ即死を通知する範囲
+        //! 上面に着地させないため、地形の当たりは持たない
         class DeathZoneActor : public NS::SceneActor
         {
         public:

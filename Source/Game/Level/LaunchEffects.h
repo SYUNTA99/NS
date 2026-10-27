@@ -20,41 +20,41 @@ namespace GL
 {
     namespace Level
     {
-        /// 押し飛ばされたアクターの尾と、着地の粉を出す部品
-        /// 尾は曲線を離れた時に消す。段で色、飛ばしの比で長さ、威力と質量で粉の大きさを決める
+        //! 押し飛ばされたアクターの尾と、着地の粉を出す部品
+        //! 尾は曲線を離れた時に消す。段で色、飛ばしの比で長さ、威力と質量で粉の大きさを決める
         class LaunchEffects : public NS::Object
         {
         public:
             // 絵は user (持ち主のアクター) のシーンの絵の管理へ出す
 
-            /// 尾と粉の絵を先に読む。持ち主の OnAssetsLoaded が呼ぶ
+            //! 尾と粉の絵を先に読む。持ち主の OnAssetsLoaded が呼ぶ
             void Preload(const NS::IGetEffect* user);
 
-            /// 出ている尾を置物の今の位置と向きへ動かし、曲線を離れたら消す。持ち主の見た目の段が呼ぶ
+            //! 出ている尾を置物の今の位置と向きへ動かし、曲線を離れたら消す。持ち主の見た目の段が呼ぶ
             void Update(const NS::IGetEffect* user, const PropFlight& flight);
 
-            /// 押し飛ばされた所から尾を出す。前の尾が残っていれば消してから出す
-            /// 段で尾の色を引き (中心近くは橙、大きな外れは灰)、飛ばしの比で尾を長く残し、
-            ///          威力と質量で落ちた所の粉を大きくする。飛ぶ水平の向きは速さが 0 の時の尾の向き
-            /// @param[in] flight 放した直後の飛び。尾の頭を今の位置に置く。曲線の上でなければ尾を出さない
-            /// @param[in] sphere 置物の当たりの世界座標の球。尾の太さを直径に合わせる
+            //! 押し飛ばされた所から尾を出す。前の尾が残っていれば消してから出す
+            //! 段で尾の色を引き (中心近くは橙、大きな外れは灰)、飛ばしの比で尾を長く残し、
+            //!          威力と質量で落ちた所の粉を大きくする。飛ぶ水平の向きは速さが 0 の時の尾の向き
+            //! @param[in] flight 放した直後の飛び。尾の頭を今の位置に置く。曲線の上でなければ尾を出さない
+            //! @param[in] sphere 置物の当たりの世界座標の球。尾の太さを直径に合わせる
             void BeginTrail(const NS::IGetEffect* user,
                             const TackleReleaseDesc& release,
                             const PropFlight& flight,
                             const MapObjParams* params,
                             const NS::Sphere& sphere);
 
-            /// 尾を消し、落ちた所へ粉を出す
-            /// @param[in] position 床に触れた点。世界座標
-            /// @param[in] normal 触れた床の法線。粉はこの向きへ少し浮かせて置く
+            //! 尾を消し、落ちた所へ粉を出す
+            //! @param[in] position 床に触れた点。世界座標
+            //! @param[in] normal 触れた床の法線。粉はこの向きへ少し浮かせて置く
             void NotifyLanding(const NS::IGetEffect* user, const NS::Vector3& position, const NS::Vector3& normal);
-            /// 出ている尾を消す。粉は出さない
+            //! 出ている尾を消す。粉は出さない
             void CancelTrail(const NS::IGetEffect* user);
 
-            /// 出ている尾が残るフレーム数。尾が無ければ 0
+            //! 出ている尾が残るフレーム数。尾が無ければ 0
             [[nodiscard]] int TrailFrames() const noexcept { return m_trailFrames; }
 
-            /// 落ちた所の粉の大きさ (m)
+            //! 落ちた所の粉の大きさ (m)
             [[nodiscard]] float LandDustScale() const noexcept { return m_landDustScale; }
 
             NS_REFLECT_BEGIN(LaunchEffects, NS::Object)
@@ -75,7 +75,7 @@ namespace GL
             NS::EffectName m_launchLandDustAsset{"launch.landDust"};
             float m_landDustAssetRadius = 1.2f;
             int m_landDustLife = 24;
-            /// 床の法線の向きへ浮かせる。単位はメートル
+            //! 床の法線の向きへ浮かせる。単位はメートル
             float m_dustRingLift = 0.3f;
             int m_trailFramesBase = 8;
             float m_trailFramesPerLaunch = 4.0f;

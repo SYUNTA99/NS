@@ -8,7 +8,7 @@ namespace GL
 {
     namespace Player
     {
-        /// 止まるまで入力方向へ加速しないブレーキ
+        //! 止まるまで入力方向へ加速しないブレーキ
         class BrakePlayerState final : public PlayerState<BrakePlayerState>
         {
         public:

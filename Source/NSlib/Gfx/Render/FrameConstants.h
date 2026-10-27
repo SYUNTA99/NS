@@ -7,7 +7,7 @@ namespace NS
 {
     namespace Gfx
     {
-        /// 衝突点からの距離に応じて遅れる頂点振動 (Shaders/Common.hlsli の TremorOffset と一致)
+        //! 衝突点からの距離に応じて遅れる頂点振動 (Shaders/Common.hlsli の TremorOffset と一致)
         struct alignas(16) TremorCB
         {
             Vector3 contactOffset{};         // ワールド行列の位置からの衝突点オフセット (ワールド空間、m)
@@ -23,7 +23,7 @@ namespace NS
         };
         static_assert(sizeof(TremorCB) == 64, "TremorCB は Common.hlsli の震えの欄と同じ 64 byte");
 
-        /// 1 描画あたりの定数バッファ (standard.vs / standard.ps とレイアウト一致、行優先・左手系)
+        //! 1 描画あたりの定数バッファ (standard.vs / standard.ps とレイアウト一致、行優先・左手系)
         struct alignas(16) FrameCB
         {
             Matrix world{};

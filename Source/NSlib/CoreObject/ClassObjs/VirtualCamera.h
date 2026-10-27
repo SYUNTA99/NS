@@ -8,7 +8,7 @@ namespace NS
     class CameraManager;
     class IGetCollision;
 
-    /// 仮想カメラが返す 1 フレーム分のカメラ姿勢 + 投影設定。CameraManager が実 Camera へそのまま書く
+    //! 仮想カメラが返す 1 フレーム分のカメラ姿勢 + 投影設定。CameraManager が実 Camera へそのまま書く
     struct CameraPose
     {
         Vector3 position{0.0f, 0.0f, -5.0f};
@@ -21,7 +21,7 @@ namespace NS
         // とした座標で、右と上が正。位置と向きを変えずに画面ごと動かす揺れが書く
         Vector2 screenOffset{0.0f, 0.0f};
 
-        /// t=0 で a、t=1 で b の線形補間。up は補間後に正規化する。CameraManager の vcam 切替ブレンドが使う
+        //! t=0 で a、t=1 で b の線形補間。up は補間後に正規化する。CameraManager の vcam 切替ブレンドが使う
         [[nodiscard]] static CameraPose Lerp(const CameraPose& a, const CameraPose& b, float t) noexcept
         {
             CameraPose pose{};
@@ -38,35 +38,35 @@ namespace NS
         }
     };
 
-    /// 実カメラを変更せず、CameraManager が選ぶ目標姿勢を返す部品
-    /// 状態は固定更新で進め、描画時の EvaluatePose で補間する
+    //! 実カメラを変更せず、CameraManager が選ぶ目標姿勢を返す部品
+    //! 状態は固定更新で進め、描画時の EvaluatePose で補間する
     class VirtualCamera : public Object
     {
     public:
-        /// 最終姿勢を返す。alpha は追従対象の補間係数で、自由視点では使わない
+        //! 最終姿勢を返す。alpha は追従対象の補間係数で、自由視点では使わない
         [[nodiscard]] virtual CameraPose EvaluatePose(float alpha) const noexcept = 0;
 
-        /// 固定フレームに 1 回、姿勢を進める。既定は何もしない
-        /// 呼ぶのは CameraManager::OnTick だけで、有効な組の仮想カメラを登録の順に、選び直す前に呼ぶ。
-        /// 世界を止めている間 (シミュレーションの停止・一時停止) は呼ばれない
-        /// @param[in] cameras 呼んでいるカメラの管理役。事前条件: nullptr でない
-        /// @param[in] collision 地形を探すシーン。事前条件: nullptr でない
+        //! 固定フレームに 1 回、姿勢を進める。既定は何もしない
+        //! 呼ぶのは CameraManager::OnTick だけで、有効な組の仮想カメラを登録の順に、選び直す前に呼ぶ。
+        //! 世界を止めている間 (シミュレーションの停止・一時停止) は呼ばれない
+        //! @param[in] cameras 呼んでいるカメラの管理役。事前条件: nullptr でない
+        //! @param[in] collision 地形を探すシーン。事前条件: nullptr でない
         virtual void Advance(CameraManager* cameras, const IGetCollision* collision)
         {
             (void)cameras;
             (void)collision;
         }
 
-        /// CameraManager の選択優先度。大きいほど優先、同値は登録順。active な vcam の中から最大が選ばれる
+        //! CameraManager の選択優先度。大きいほど優先、同値は登録順。active な vcam の中から最大が選ばれる
         void SetVcamPriority(int priority) noexcept { m_vcamPriority = priority; }
         [[nodiscard]] int VcamPriority() const noexcept { return m_vcamPriority; }
 
-        /// 投影設定。vcam ごとに保持し EvaluatePose の pose へ載せる。play=far100 / editor=far200 等の差を吸収する
+        //! 投影設定。vcam ごとに保持し EvaluatePose の pose へ載せる。play=far100 / editor=far200 等の差を吸収する
         void SetFovY(Radians fov) noexcept { m_fovY = fov; }
         [[nodiscard]] Radians FovY() const noexcept { return m_fovY; }
         void SetNearPlane(float nearPlane) noexcept { m_nearPlane = nearPlane; }
         [[nodiscard]] float NearPlane() const noexcept { return m_nearPlane; }
-        /// 非有限と近い面以下の値は投影行列を壊すので、捨てて元の値を残す。値は JSON と Inspector の欄から来る
+        //! 非有限と近い面以下の値は投影行列を壊すので、捨てて元の値を残す。値は JSON と Inspector の欄から来る
         void SetFarPlane(float farPlane) noexcept
         {
             if (HasPositiveMagnitude(farPlane - m_nearPlane))
@@ -81,7 +81,7 @@ namespace NS
         NS_REFLECT_NONE(VirtualCamera, Object)
 
     protected:
-        /// 派生が position/target/up を渡すと、保持中の投影設定を載せた CameraPose を返す
+        //! 派生が position/target/up を渡すと、保持中の投影設定を載せた CameraPose を返す
         [[nodiscard]] CameraPose MakePose(const Vector3& position,
                                           const Vector3& target,
                                           const Vector3& up) const noexcept

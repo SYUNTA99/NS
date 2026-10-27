@@ -32,21 +32,21 @@ namespace GL
         class PlayerAppearance;
         struct PlayerMotion;
 
-        /// 溜めと放しの演出を出し、寿命を管理する部品
-        /// PlayerAppearance の後に更新する
+        //! 溜めと放しの演出を出し、寿命を管理する部品
+        //! PlayerAppearance の後に更新する
         class ChargeEffects : public NS::Object
         {
         public:
             // 絵は user (持ち主のアクター) のシーンの絵の管理へ出す
 
-            /// 溜めと放しの絵を先に読む。持ち主の OnAssetsLoaded が呼ぶ
+            //! 溜めと放しの絵を先に読む。持ち主の OnAssetsLoaded が呼ぶ
             void Preload(const NS::IGetEffect* user);
 
-            /// 押し・溜め・放しに合わせて演出を出し、玉へ付いていかせる。持ち主の見た目の段が呼ぶ
-            /// @param[in] center 玉の中心。持ち主のルートの位置。世界座標
-            /// @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
-            /// @param[in] appearance 玉の回転の正。このフレームに玉が回った角度を読む。空でないこと
-            /// @param[in] impact 当たりの裁定の答え。当たりの状態へ移るフレームと接触の見込みを読む
+            //! 押し・溜め・放しに合わせて演出を出し、玉へ付いていかせる。持ち主の見た目の段が呼ぶ
+            //! @param[in] center 玉の中心。持ち主のルートの位置。世界座標
+            //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
+            //! @param[in] appearance 玉の回転の正。このフレームに玉が回った角度を読む。空でないこと
+            //! @param[in] impact 当たりの裁定の答え。当たりの状態へ移るフレームと接触の見込みを読む
             void Update(const NS::IGetEffect* user,
                         const NS::Vector3& center,
                         const ChargeStatus& charge,
@@ -56,17 +56,17 @@ namespace GL
                         const PlayerAppearance* appearance,
                         const GL::Level::ImpactAnswer& impact);
 
-            /// 番号を控えている溜めと放しのエフェクトを消す。持ち主の ResetState が呼ぶ
+            //! 番号を控えている溜めと放しのエフェクトを消す。持ち主の ResetState が呼ぶ
             void Clear(const NS::IGetEffect* user);
 
-            /// 溜まる光へ動的入力 1 番で渡す、溜めきってからの数
-            /// @return 押し続けている間、溜めきったフレームを 1 とした数。溜めきる前と押していない間は 0
+            //! 溜まる光へ動的入力 1 番で渡す、溜めきってからの数
+            //! @return 押し続けている間、溜めきったフレームを 1 とした数。溜めきる前と押していない間は 0
             [[nodiscard]] int FramesSinceFullCharge() const noexcept { return m_framesSinceFull; }
 
-            /// 放しの弾けの倍率を返す。charge01 は 0〜1 に丸め、非有限は 0 とする
+            //! 放しの弾けの倍率を返す。charge01 は 0〜1 に丸め、非有限は 0 とする
             [[nodiscard]] float ReleaseBurstScale(float charge01) const noexcept;
 
-            /// +Z を direction の水平成分へ向ける。水平の向きが無効なら無回転
+            //! +Z を direction の水平成分へ向ける。水平の向きが無効なら無回転
             [[nodiscard]] static NS::Quaternion YawToward(const NS::Vector3& direction) noexcept;
 
             NS_REFLECT_BEGIN(ChargeEffects, NS::Object)
@@ -136,13 +136,13 @@ namespace GL
             // 跳ね返りか破壊が起きたか、触れる見込みが m_burstClearFrames 以内か
             [[nodiscard]] bool IsContactNear(const GL::Level::ImpactAnswer& impact) const noexcept;
 
-            /// 演出の寿命と接触前に消す猶予。単位は固定フレーム
+            //! 演出の寿命と接触前に消す猶予。単位は固定フレーム
             int m_curlSteps = 6;
             int m_fullFlashSteps = 6;
             int m_burstSteps = 21;
             int m_burstClearFrames = 3;
             int m_trailFadeSteps = 6;
-            /// 紫の火花の横方向に混ぜる上向きの重み
+            //! 紫の火花の横方向に混ぜる上向きの重み
             float m_sideLift = 1.0f;
 
             // 放しの弾けのうち、輪・丸屋根・筋に掛ける大きさ

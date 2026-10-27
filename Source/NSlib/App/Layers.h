@@ -11,7 +11,7 @@ namespace NS
 
     class Layer;
 
-    /// 通常のレイヤーの後にオーバーレイを保持するコンテナ。構成は起動時に確定する
+    //! 通常のレイヤーの後にオーバーレイを保持するコンテナ。構成は起動時に確定する
     class Layers : public NonCopyable
     {
     public:

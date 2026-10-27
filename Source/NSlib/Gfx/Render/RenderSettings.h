@@ -6,7 +6,7 @@ namespace NS
 {
     namespace Gfx
     {
-        /// シーン全体の標準照明・露出設定
+        //! シーン全体の標準照明・露出設定
         struct RenderSettings
         {
             Vector3 lightDir{-0.3f, -1.0f, -0.2f};

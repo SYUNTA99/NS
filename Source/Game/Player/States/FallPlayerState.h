@@ -8,7 +8,7 @@ namespace GL
 {
     namespace Player
     {
-        /// 落下。着地したフレームに立ちへ移る
+        //! 落下。着地したフレームに立ちへ移る
         class FallPlayerState final : public PlayerState<FallPlayerState>
         {
         public:

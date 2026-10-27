@@ -5,20 +5,20 @@
 
 namespace NS
 {
-    /// シーンへ向き・色・環境光を渡す平行光。複数置いても有効な一つだけを使う
+    //! シーンへ向き・色・環境光を渡す平行光。複数置いても有効な一つだけを使う
     class DirectionalLight : public Object
     {
     public:
-        /// 平行光の向き。持ち主の根の世界行列 root で +Z を回した、長さ 1 の向き
-        /// 向きの欄は持たない。エディタのギズモでアクターを回すと光も回る
+        //! 平行光の向き。持ち主の根の世界行列 root で +Z を回した、長さ 1 の向き
+        //! 向きの欄は持たない。エディタのギズモでアクターを回すと光も回る
         [[nodiscard]] Vector3 Direction(const Matrix& root) const noexcept;
-        /// 平行光の色。1.0 超の HDR 値も許容する
+        //! 平行光の色。1.0 超の HDR 値も許容する
         [[nodiscard]] const NS::Color& Color() const noexcept { return m_color; }
-        /// 空側の環境光。上を向いた面へ回る
+        //! 空側の環境光。上を向いた面へ回る
         [[nodiscard]] const NS::Color& Ambient() const noexcept { return m_ambient; }
-        /// 地面側の環境光。下を向いた面へ回る
+        //! 地面側の環境光。下を向いた面へ回る
         [[nodiscard]] const NS::Color& Ground() const noexcept { return m_ground; }
-        /// 画面へ出す前の露出。上げると暗部が持ち上がり、明部は S 字が受け止めるので飛ばない
+        //! 画面へ出す前の露出。上げると暗部が持ち上がり、明部は S 字が受け止めるので飛ばない
         [[nodiscard]] float Exposure() const noexcept { return m_exposure; }
 
         NS_REFLECT_BEGIN(DirectionalLight, Object)

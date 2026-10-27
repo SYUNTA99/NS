@@ -17,30 +17,30 @@ namespace NS
 {
     class UIActor;
 
-    /// 開いている画面を束ね、UI の段で動かし、描く順に描く
-    /// 画面は所有しない。寿命は開いた側が持ち、UIActor の Open と Close が出し入れする
-    /// Scene がメンバーで持つので、アクターを組み直しても開いた画面は残る
+    //! 開いている画面を束ね、UI の段で動かし、描く順に描く
+    //! 画面は所有しない。寿命は開いた側が持ち、UIActor の Open と Close が出し入れする
+    //! Scene がメンバーで持つので、アクターを組み直しても開いた画面は残る
     class UIDirector final : public SceneSystem
     {
     public:
-        /// 画面を一覧の末尾へ入れる。入っていれば何もしない
+        //! 画面を一覧の末尾へ入れる。入っていれば何もしない
         void Add(UIActor& screen);
-        /// 画面を一覧から外す。入っていなければ何もしない
+        //! 画面を一覧から外す。入っていなければ何もしない
         void Remove(UIActor& screen) noexcept;
 
-        /// 開いている画面を開いた順に 1 回ずつ動かす
-        /// 最中に開いた画面は次の歩から動き、最中に閉じた画面は飛ばす
+        //! 開いている画面を開いた順に 1 回ずつ動かす
+        //! 最中に開いた画面は次の歩から動き、最中に閉じた画面は飛ばす
         void OnTick() override;
 
-        /// 描く順に並べた画面を返す
-        /// @return DrawOrder の昇順で同じ値は開いた順の一覧、非所有
+        //! 描く順に並べた画面を返す
+        //! @return DrawOrder の昇順で同じ値は開いた順の一覧、非所有
         [[nodiscard]] std::vector<UIActor*> DrawOrdered() const;
 
-        /// 描画先の大きさから UICanvas を作って控え、画面を描く順に描く
-        /// device がなければ UICanvas は既定の値を使い、画面の描画処理は呼ぶ
+        //! 描画先の大きさから UICanvas を作って控え、画面を描く順に描く
+        //! device がなければ UICanvas は既定の値を使い、画面の描画処理は呼ぶ
         void Draw(const Gfx::RenderContext& context);
 
-        /// 直近の Draw で控えた拡縮と全画面の矩形。画面が描く時に借りる
+        //! 直近の Draw で控えた拡縮と全画面の矩形。画面が描く時に借りる
         [[nodiscard]] const UI::UICanvas& Canvas() const noexcept { return m_canvas; }
 
     private:

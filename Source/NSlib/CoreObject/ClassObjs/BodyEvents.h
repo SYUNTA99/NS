@@ -6,11 +6,11 @@
 
 namespace NS
 {
-    /// 引数のない通知。登録順に複数の購読先へ送る
+    //! 引数のない通知。登録順に複数の購読先へ送る
     class BodyEvent
     {
     public:
-        /// 空の関数は無視する
+        //! 空の関数は無視する
         void Subscribe(std::function<void()> callback)
         {
             if (!callback)

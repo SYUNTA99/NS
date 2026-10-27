@@ -37,11 +37,11 @@ namespace NS
         };
 #pragma warning(pop)
 
-        /// mesh または material が nullptr の場合は何もしない
+        //! mesh または material が nullptr の場合は何もしない
         void IssueDrawItem(D3DDevice& device, const DrawItem& item) noexcept;
 
-        /// 指定したパイプラインとピクセルシェーダーで DrawItem を描く (頂点シェーダーと定数は material のものを使用)
-        /// pixelShader の入力は SV_POSITION から始めること。mesh または material が nullptr の場合は何もしない
+        //! 指定したパイプラインとピクセルシェーダーで DrawItem を描く (頂点シェーダーと定数は material のものを使用)
+        //! pixelShader の入力は SV_POSITION から始めること。mesh または material が nullptr の場合は何もしない
         void IssueDrawItemWith(D3DDevice& device,
                                const DrawItem& item,
                                const D3DPipeline& pipeline,

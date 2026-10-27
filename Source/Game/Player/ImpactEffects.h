@@ -34,22 +34,22 @@ namespace GL
         class BodySlamStatus;
         struct PlayerMotion;
 
-        /// 核が最大近くに留まる間の大きさの動かし方
+        //! 核が最大近くに留まる間の大きさの動かし方
         enum class CoreHoldMotion
         {
             Pulse,  // 偶数のフレームだけ縮める
             Settle, // 1 フレーム目の最大から、落ち着く割合へ少しずつ縮める
         };
 
-        /// 火花を飛ばす向き
+        //! 火花を飛ばす向き
         enum class SparkHeading
         {
             Launch, // 相手の飛ぶ向き
             Scrape, // 横ずれの側と飛ぶ向きと上の間
         };
 
-        /// 当たり 1 回の演出の大きさと量
-        /// ShapeFor が段と調整値から決める。大きさや数が 0 の層は出さない
+        //! 当たり 1 回の演出の大きさと量
+        //! ShapeFor が段と調整値から決める。大きさや数が 0 の層は出さない
         struct ImpactShape
         {
             GL::Level::HitTier tier = GL::Level::HitTier::Center;
@@ -59,7 +59,7 @@ namespace GL
             std::size_t sparkCountInput = 0;  // 火花の絵 impact.sparks の、粒の数を入れる動的入力の番号
             std::size_t recoilCountInput = 0; // 弾かれ線の絵 impact.recoil の、本数を入れる動的入力の番号
             int holdLastFrame = 1;            // 核が最大近くに留まる最後のフレーム。当たりの絵の頭を 0 と数える
-            /// 核を留まりの次のフレームで消すか。偽なら留まりの最後のフレームに親を止め、絵の定義の落ちるフレーム数で薄れる
+            //! 核を留まりの次のフレームで消すか。偽なら留まりの最後のフレームに親を止め、絵の定義の落ちるフレーム数で薄れる
             bool coreCut = false;
             int sparkStartFrame = 0; // 火花を出すフレーム。当たりの絵の頭を 0 と数え、中心近くだけ 3
             int emberStartFrame =
@@ -80,12 +80,12 @@ namespace GL
             float dustScale = 0.0f;    // 当たりの粉の塊の大きさ。単位は m
         };
 
-        /// 当たり 1 回の層を置く所と向き
+        //! 当たり 1 回の層を置く所と向き
         struct ImpactAim
         {
             NS::Vector3 contact; // 接触点。自機の玉の縁の、相手へ向いた点
-            /// 火花の向き。大きな外れは MissSparkHeading (面の上の位置が無い時は横ずれの側と飛ぶ向きと上の間)、
-            /// 他は相手の飛ぶ向き
+            //! 火花の向き。大きな外れは MissSparkHeading (面の上の位置が無い時は横ずれの側と飛ぶ向きと上の間)、
+            //! 他は相手の飛ぶ向き
             NS::Vector3 sparkDir;
             NS::Vector3 recoilDir;    // 弾かれ線の向き。自機の反動の初速の向き
             NS::Vector3 recoilOrigin; // 弾かれ線を出した所。自機の玉の縁の、反動の向きの逆の点
@@ -93,31 +93,31 @@ namespace GL
             NS::Vector3 ringNormal;   // 輪の面の法線。相手の飛ぶ向きをカメラへ起こした向き
         };
 
-        /// 自機の命中・反動・着地のエフェクトを出す部品
-        /// 持ち主が束の項目を始めた時の頼みを、移動後の VisualStep で読む。頼みの無い命中では出さない
-        /// 相手の飛行・着地の演出は相手の LaunchEffects に任せる
+        //! 自機の命中・反動・着地のエフェクトを出す部品
+        //! 持ち主が束の項目を始めた時の頼みを、移動後の VisualStep で読む。頼みの無い命中では出さない
+        //! 相手の飛行・着地の演出は相手の LaunchEffects に任せる
         class ImpactEffects : public NS::Object
         {
         public:
-            /// 当たり・反動・着地の絵を先に読む。絵は effect (持ち主のアクター) のシーンへ出す。持ち主の OnAssetsLoaded が呼ぶ
+            //! 当たり・反動・着地の絵を先に読む。絵は effect (持ち主のアクター) のシーンへ出す。持ち主の OnAssetsLoaded が呼ぶ
             void Preload(const NS::IGetEffect* effect);
 
-            /// 当たりの絵を、次の Update で最後の当たりの内訳から始める
-            /// 持ち主が段の束の持ち主へ渡す項目 HitEffect を始めたフレームに呼ぶ
+            //! 当たりの絵を、次の Update で最後の当たりの内訳から始める
+            //! 持ち主が段の束の持ち主へ渡す項目 HitEffect を始めたフレームに呼ぶ
             void RequestHit() noexcept { m_hitRequested = true; }
-            /// 飛びの絵を、次の Update で始める。当たりの絵が出ていなければ始めない
-            /// 持ち主が明けの束の持ち主へ渡す項目 FlightEffect を始めたフレームに呼ぶ
+            //! 飛びの絵を、次の Update で始める。当たりの絵が出ていなければ始めない
+            //! 持ち主が明けの束の持ち主へ渡す項目 FlightEffect を始めたフレームに呼ぶ
             void RequestFlight() noexcept { m_flightRequested = true; }
 
-            /// 頼まれた当たりと飛びの絵を始め、出ている絵を進める。持ち主の見た目の段が呼ぶ
-            /// 同じフレームに両方を頼まれた時は、当たりの絵の後に飛びの絵を始める
-            /// @param[in] effect 絵を出す持ち主のアクター。空でないこと
-            /// @param[in] camera 反動の尾を視点へ向けるのに、効果を掛ける前の視点を読む。空でないこと
-            /// @param[in] position 持ち主のルートの位置。世界座標
-            /// @param[in] slam 外れの火花の向きに突進の向きを読む
-            /// @param[in] body 反動の尾の向きと、頂点と着地の判定に速度と接地を読む。空でないこと
-            /// @param[in] collider 接触点と足元を、当たりのカプセルから作る。空でないこと
-            /// @param[in] impact 最後の当たりの内訳。絵の置き所と大きさを決める
+            //! 頼まれた当たりと飛びの絵を始め、出ている絵を進める。持ち主の見た目の段が呼ぶ
+            //! 同じフレームに両方を頼まれた時は、当たりの絵の後に飛びの絵を始める
+            //! @param[in] effect 絵を出す持ち主のアクター。空でないこと
+            //! @param[in] camera 反動の尾を視点へ向けるのに、効果を掛ける前の視点を読む。空でないこと
+            //! @param[in] position 持ち主のルートの位置。世界座標
+            //! @param[in] slam 外れの火花の向きに突進の向きを読む
+            //! @param[in] body 反動の尾の向きと、頂点と着地の判定に速度と接地を読む。空でないこと
+            //! @param[in] collider 接触点と足元を、当たりのカプセルから作る。空でないこと
+            //! @param[in] impact 最後の当たりの内訳。絵の置き所と大きさを決める
             void Update(const NS::IGetEffect* effect,
                         const NS::IGetCamera* camera,
                         const NS::Vector3& position,
@@ -127,27 +127,27 @@ namespace GL
                         const NS::Collider* collider,
                         const GL::Level::ImpactRecord& impact);
 
-            /// 当たりの内訳から、演出の大きさと量を決める
+            //! 当たりの内訳から、演出の大きさと量を決める
             [[nodiscard]] ImpactShape ShapeFor(const GL::Level::ImpactRecord& impact) const noexcept;
 
-            /// 反動の着地の粉が広がりきる半径を、着地の前のフレームの落ちる速さから決める
-            /// @param[in] fallSpeed 落ちる速さ。単位は m/s。負は 0 と見なす
-            /// @return 広がりきった半径。単位は m
+            //! 反動の着地の粉が広がりきる半径を、着地の前のフレームの落ちる速さから決める
+            //! @param[in] fallSpeed 落ちる速さ。単位は m/s。負は 0 と見なす
+            //! @return 広がりきった半径。単位は m
             [[nodiscard]] float LandDustRadiusFor(float fallSpeed) const noexcept;
 
-            /// 尾の +Y を速度方向へ向け、視線に近い時は輪郭の外へ見えるよう傾ける
-            /// 座標は世界。速度 0 は真上、カメラ位置が無ければ傾けない。戻り値は単位方向
+            //! 尾の +Y を速度方向へ向け、視線に近い時は輪郭の外へ見えるよう傾ける
+            //! 座標は世界。速度 0 は真上、カメラ位置が無ければ傾けない。戻り値は単位方向
             [[nodiscard]] NS::Vector3 ReboundTrailHeading(
                 const NS::Vector3& velocity,
                 const NS::Vector3& ballCenter,
                 const std::optional<NS::Vector3>& cameraPosition) const noexcept;
 
-            /// 直近の当たりの層を置いた所と向き。まだ当たっていなければ全部 0
+            //! 直近の当たりの層を置いた所と向き。まだ当たっていなければ全部 0
             [[nodiscard]] const ImpactAim& LastAim() const noexcept { return m_aim; }
 
-            /// 外した側と面に沿う滑りを混ぜ、火花の単位方向を返す。u は右、v は上が正
-            /// surfaceNormal は反動の配分が使った面の向き (ImpactRecord::faceNormal)。滑りはこの面に沿う
-            /// slamDirection は水平成分を使う。面の原点か水平の向きが決まらない時は (0, 0, 0)
+            //! 外した側と面に沿う滑りを混ぜ、火花の単位方向を返す。u は右、v は上が正
+            //! surfaceNormal は反動の配分が使った面の向き (ImpactRecord::faceNormal)。滑りはこの面に沿う
+            //! slamDirection は水平成分を使う。面の原点か水平の向きが決まらない時は (0, 0, 0)
             [[nodiscard]] NS::Vector3 MissSparkHeading(float u,
                                                        float v,
                                                        const NS::Vector3& surfaceNormal,
@@ -245,7 +245,7 @@ namespace GL
             NS::EffectName m_dustAsset{"impact.dust"};
             NS::EffectName m_reboundTrailAsset{"rebound.trail"};
             NS::EffectName m_landDustAsset{"land.dust"};
-            /// 同じ面で描画がちらつかないための離隔
+            //! 同じ面で描画がちらつかないための離隔
             float m_floorLift = 0.03f;
             float m_landDustAssetRadius = 1.2f;
             // 段で変わる層の形を段ごとの 1 行から埋める。段を足したら行を足す
@@ -343,21 +343,21 @@ namespace GL
             int m_streakTailFrames = 3;
             int m_streakFadeFrames = 3;
             int m_recoilDelay = 4;
-            /// 弱い当たりから強い当たりへ火花の数を振る威力の範囲
+            //! 弱い当たりから強い当たりへ火花の数を振る威力の範囲
             float m_powerMin = 0.7f;
             float m_powerMax = 2.0f;
-            /// 輪を視線に起こし、止めの間も光を脈打たせる
+            //! 輪を視線に起こし、止めの間も光を脈打たせる
             float m_ringLaunchWeight = 0.6f;
             float m_coreHoldPulse = 0.85f;
             float m_wideFlashFloor = 0.74f;
             float m_wideFlashDecay = 0.4f;
-            /// 粉が自機を覆わないよう向こうへずらす割合
+            //! 粉が自機を覆わないよう向こうへずらす割合
             float m_dustAwayShare = 0.7f;
             int m_reboundTrailFadeSteps = 8;
             int m_landDustLife = 30;
-            /// 粉が床へ埋まらないよう浮かせる高さ。単位はメートル
+            //! 粉が床へ埋まらないよう浮かせる高さ。単位はメートル
             float m_dustRingLift = 0.3f;
-            /// 筋が玉の陰に入らない傾き。玉の半径と筋の半幅の和を、筋の中心までの長さで割る
+            //! 筋が玉の陰に入らない傾き。玉の半径と筋の半幅の和を、筋の中心までの長さで割る
             float m_reboundStreakMinAcross = 0.8f / 1.3f;
 
             float m_coreDiameterBase = 0.3f;

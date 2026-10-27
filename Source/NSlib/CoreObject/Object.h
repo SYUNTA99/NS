@@ -7,7 +7,7 @@
 
 namespace NS
 {
-    /// 型情報とリフレクションを持つ全ての基底。RTTI を使わずに IsA / Cast を提供する
+    //! 型情報とリフレクションを持つ全ての基底。RTTI を使わずに IsA / Cast を提供する
     class Object : public NonCopyable
     {
     public:

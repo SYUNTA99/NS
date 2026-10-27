@@ -11,7 +11,7 @@ namespace NS
     class Scene;
 } // namespace NS
 
-/// シーンの更新・描画をアプリから呼ぶゲームレイヤー
+//! シーンの更新・描画をアプリから呼ぶゲームレイヤー
 class Game : public NS::Layer
 {
 public:
@@ -24,7 +24,7 @@ public:
     explicit Game(std::string_view startScenePath = StartScenePath(), StartScene startScene = StartScene::Load);
     ~Game() override;
 
-    /// 起動シーンの ContentRoot からの相対パス
+    //! 起動シーンの ContentRoot からの相対パス
     [[nodiscard]] static std::string_view StartScenePath() noexcept { return "Assets/Scenes/new_scene.scene"; }
 
     Game(const Game&) = delete;
@@ -37,11 +37,11 @@ public:
     void OnUpdate() override;
     void OnRender() override;
 
-    /// ContentRoot からの相対パスでシーンを読み、立て直す
-    /// 空・絶対パス・範囲外のパスや読み込み失敗は false で、現在のシーンを保つ
+    //! ContentRoot からの相対パスでシーンを読み、立て直す
+    //! 空・絶対パス・範囲外のパスや読み込み失敗は false で、現在のシーンを保つ
     bool LoadScene(std::string_view scenePath);
 
-    /// 開始シーンを読み、成否を返す。結果は StartSceneLoaded に残る
+    //! 開始シーンを読み、成否を返す。結果は StartSceneLoaded に残る
     bool LoadStartScene();
 
     [[nodiscard]] bool StartSceneLoaded() const noexcept { return m_startSceneLoaded; }

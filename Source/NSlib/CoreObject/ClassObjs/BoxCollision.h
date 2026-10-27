@@ -7,17 +7,17 @@
 
 namespace NS
 {
-    /// 描画と独立した箱の衝突形状。WorldOBB は回転と非一様スケールを保持する
+    //! 描画と独立した箱の衝突形状。WorldOBB は回転と非一様スケールを保持する
     class BoxCollision : public Collision
     {
     public:
         BoxCollision() noexcept = default;
-        /// 負の成分は 0 にクランプする
+        //! 負の成分は 0 にクランプする
         explicit BoxCollision(const Vector3& halfExtents) noexcept;
 
-        /// 負の成分は 0 にクランプする
+        //! 負の成分は 0 にクランプする
         void SetHalfExtents(const Vector3& halfExtents) noexcept;
-        /// owner のスケールを掛ける前の各軸の半長 (m)
+        //! owner のスケールを掛ける前の各軸の半長 (m)
         [[nodiscard]] Vector3 HalfExtents() const noexcept;
 
         void SetCenterOffset(const Vector3& offset) noexcept;
@@ -26,14 +26,14 @@ namespace NS
         void SetLocalRotation(const Quaternion& rotation) noexcept;
         [[nodiscard]] Quaternion LocalRotation() const noexcept;
 
-        /// 局所回転をオイラー角 (度) で読み書きする
+        //! 局所回転をオイラー角 (度) で読み書きする
         void SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept;
         [[nodiscard]] Vector3 RotationEulerDegrees() const noexcept;
 
-        /// world に局所オフセットと局所回転を重ねた世界空間の軸並行 AABB
+        //! world に局所オフセットと局所回転を重ねた世界空間の軸並行 AABB
         [[nodiscard]] AABB WorldAABB(const Matrix& world) const noexcept;
 
-        /// world に局所オフセットと局所回転を重ねた世界空間の OBB (回転・非一様スケールを保持)
+        //! world に局所オフセットと局所回転を重ねた世界空間の OBB (回転・非一様スケールを保持)
         [[nodiscard]] OBB WorldOBB(const Matrix& world) const noexcept;
 
         NS_REFLECT_BEGIN(BoxCollision, Collision)

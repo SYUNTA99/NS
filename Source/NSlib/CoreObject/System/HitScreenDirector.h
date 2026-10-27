@@ -12,7 +12,7 @@ namespace NS
     class SceneActor;
     class Scene;
 
-    /// 対象の輪郭の左右へ出す震えの線。寸法は高さ 720 基準の画素
+    //! 対象の輪郭の左右へ出す震えの線。寸法は高さ 720 基準の画素
     struct HitShakeLinesDesc
     {
         Vector3 center{};       // 線で挟む物の中心。世界の点
@@ -26,7 +26,7 @@ namespace NS
         float gapPixels = 16.0f;    // 輪郭から内側の線までの間の画素。線どうしの間もこれから決める
     };
 
-    /// 歪みの輪 1 回。長さの欄はどれも画面の高さに対する割合
+    //! 歪みの輪 1 回。長さの欄はどれも画面の高さに対する割合
     struct HitDistortionRingDesc
     {
         Vector3 center{};   // 輪の中心。世界の点
@@ -36,7 +36,7 @@ namespace NS
         int frames = 0;         // 出すフレーム数。0 以下なら出さない
     };
 
-    /// 床の波 1 回。center の真下から、上を向いた面へ光の輪を広げる
+    //! 床の波 1 回。center の真下から、上を向いた面へ光の輪を広げる
     struct HitGroundWaveDesc
     {
         Vector3 center{};   // 輪の中心の真上の世界の点。水平の位置だけを使う
@@ -45,7 +45,7 @@ namespace NS
         int frames = 0;     // 出すフレーム数。0 以下なら出さない
     };
 
-    /// 線で挟む物が画面の上で占める横の幅と、縦の中心。座標は描画先の画素で左上が原点
+    //! 線で挟む物が画面の上で占める横の幅と、縦の中心。座標は描画先の画素で左上が原点
     struct HitShakeLineSpan
     {
         float left = 0.0f;    // 左の輪郭の画素
@@ -53,7 +53,7 @@ namespace NS
         float centerY = 0.0f; // 縦の中心の画素
     };
 
-    /// 画面の矩形 1 枚。座標は描画先の画素で左上が原点
+    //! 画面の矩形 1 枚。座標は描画先の画素で左上が原点
     struct HitShakeLineRect
     {
         float x = 0.0f;
@@ -62,64 +62,64 @@ namespace NS
         float height = 0.0f;
     };
 
-    /// 対象の画面幅 span の外へ、左 3 本・右 3 本の順で矩形を返す
-    /// frame は開始を 0 とした歩数、pixelScale は描画先の高さ ÷ 720
+    //! 対象の画面幅 span の外へ、左 3 本・右 3 本の順で矩形を返す
+    //! frame は開始を 0 とした歩数、pixelScale は描画先の高さ ÷ 720
     [[nodiscard]] std::array<HitShakeLineRect, 6> ShakeLineRects(const HitShakeLinesDesc& desc,
                                                                  int frame,
                                                                  const HitShakeLineSpan& span,
                                                                  float pixelScale) noexcept;
 
-    /// シーン共通の画面演出。開始した歩は初期状態を描き、次の更新から世界の速さで進める
+    //! シーン共通の画面演出。開始した歩は初期状態を描き、次の更新から世界の速さで進める
     class HitScreenDirector final : public SceneSystem, public IOverlay
     {
     public:
         explicit HitScreenDirector(Scene& scene);
         ~HitScreenDirector() noexcept override;
 
-        /// 白の光を始める。前の白が残っていても始め直す
-        /// @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
-        /// @param[in] frames 白の光のフレーム数。0 以下なら光らない
-        /// @param[in] alpha 始めの濃さ。残りのフレーム数に比例して薄くなる
+        //! 白の光を始める。前の白が残っていても始め直す
+        //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
+        //! @param[in] frames 白の光のフレーム数。0 以下なら光らない
+        //! @param[in] alpha 始めの濃さ。残りのフレーム数に比例して薄くなる
         void StartFlash(const SceneActor* requester, int frames, float alpha) noexcept;
 
-        /// 震えの線を始める。前の線が残っていても始め直す
-        /// @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
-        /// @param[in] desc 震えの線の設定。半径かフレーム数が 0 以下なら出さない
+        //! 震えの線を始める。前の線が残っていても始め直す
+        //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
+        //! @param[in] desc 震えの線の設定。半径かフレーム数が 0 以下なら出さない
         void StartShakeLines(const SceneActor* requester, const HitShakeLinesDesc& desc) noexcept;
 
-        /// requester が頼んだ白と震えの線を消す。ほかの物が頼んだ物は残す
+        //! requester が頼んだ白と震えの線を消す。ほかの物が頼んだ物は残す
         void Stop(const SceneActor* requester) noexcept;
 
-        /// 歪みの輪を始め、始まりの姿を場面へ書く。前の輪が残っていても始め直す
-        /// @param[in] requester 頼んだ物。StopDistortionRing で同じ物を渡すと消える
-        /// @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない
+        //! 歪みの輪を始め、始まりの姿を場面へ書く。前の輪が残っていても始め直す
+        //! @param[in] requester 頼んだ物。StopDistortionRing で同じ物を渡すと消える
+        //! @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない
         void StartDistortionRing(const SceneActor* requester, const HitDistortionRingDesc& desc) noexcept;
 
-        /// requester が頼んだ歪みの輪を消す。ほかの物が頼んだ輪と、白と震えの線は残す
+        //! requester が頼んだ歪みの輪を消す。ほかの物が頼んだ輪と、白と震えの線は残す
         void StopDistortionRing(const SceneActor* requester) noexcept;
 
-        /// 床の波を始め、始まりの姿を場面へ書く。前の波が残っていても始め直す
-        /// @param[in] requester 頼んだ物。StopGroundWave で同じ物を渡すと消える
-        /// @param[in] desc 床の波の設定。フレーム数が 0 以下なら出さない
+        //! 床の波を始め、始まりの姿を場面へ書く。前の波が残っていても始め直す
+        //! @param[in] requester 頼んだ物。StopGroundWave で同じ物を渡すと消える
+        //! @param[in] desc 床の波の設定。フレーム数が 0 以下なら出さない
         void StartGroundWave(const SceneActor* requester, const HitGroundWaveDesc& desc) noexcept;
 
-        /// requester が頼んだ床の波を消す。ほかの物が頼んだ波は残す
+        //! requester が頼んだ床の波を消す。ほかの物が頼んだ波は残す
         void StopGroundWave(const SceneActor* requester) noexcept;
 
-        /// 白の残りフレーム数。出していない場合 0
+        //! 白の残りフレーム数。出していない場合 0
         [[nodiscard]] int FlashFramesRemaining() const noexcept { return m_flashRemaining; }
-        /// 今の白の濃さ。始めの濃さ × 残りのフレーム数 ÷ 始めのフレーム数
+        //! 今の白の濃さ。始めの濃さ × 残りのフレーム数 ÷ 始めのフレーム数
         [[nodiscard]] float FlashAlpha() const noexcept;
-        /// 震えの線の残りフレーム数。出していない場合 0
+        //! 震えの線の残りフレーム数。出していない場合 0
         [[nodiscard]] int ShakeLinesFramesRemaining() const noexcept { return m_linesRemaining; }
-        /// 最後に始めた震えの線の設定
+        //! 最後に始めた震えの線の設定
         [[nodiscard]] const HitShakeLinesDesc& ShakeLines() const noexcept { return m_lines; }
 
-        /// 白を 1 フレーム薄め、震えの線・歪みの輪・床の波を 1 フレーム進める
+        //! 白を 1 フレーム薄め、震えの線・歪みの輪・床の波を 1 フレーム進める
         void OnTick() override;
 
         [[nodiscard]] int OverlayOrder() const noexcept override { return 1; }
-        /// 残りのフレーム数に比例して薄くなる白を画面全体へ重ね、震えの線を描く
+        //! 残りのフレーム数に比例して薄くなる白を画面全体へ重ね、震えの線を描く
         void OnRenderOverlay(const Gfx::RenderContext& context) override;
 
     private:

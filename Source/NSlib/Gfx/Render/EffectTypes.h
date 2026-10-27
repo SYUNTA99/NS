@@ -14,7 +14,7 @@ namespace NS
         {
             int32 value = -1;
 
-            /// 再生中かの生存確認は EffectScene::Exists を使う
+            //! 再生中かの生存確認は EffectScene::Exists を使う
             [[nodiscard]] bool IsValid() const noexcept { return value >= 0; }
         };
 

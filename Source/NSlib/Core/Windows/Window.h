@@ -16,76 +16,76 @@ namespace NS
     {
         class Input;
 
-        /// ウィンドウ作成時の初期パラメータ
+        //! ウィンドウ作成時の初期パラメータ
         struct WindowDesc
         {
             std::string title = "NS";
 
-            /// クライアント領域のサイズ
+            //! クライアント領域のサイズ
             Size2D size{1920, 1080};
 
             bool visible = true;
         };
 
-        /// OS ウィンドウ
-        /// 単一インスタンス。二重に作ると致命ログを出す
+        //! OS ウィンドウ
+        //! 単一インスタンス。二重に作ると致命ログを出す
         class Window : public NonCopyable
         {
         public:
-            /// OS のメッセージをそのまま受け取るコールバック型
-            /// @note ImGui へのイベント転送に使う
+            //! OS のメッセージをそのまま受け取るコールバック型
+            //! @note ImGui へのイベント転送に使う
             using MessageHook = std::function<void(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)>;
 
             explicit Window(const WindowDesc& desc);
             ~Window();
 
-            /// ウィンドウの構築が成功したかどうかを返す
+            //! ウィンドウの構築が成功したかどうかを返す
             [[nodiscard]] bool IsValid() const noexcept;
 
-            /// 毎フレーム呼び出し、OSのメッセージイベントを処理する
+            //! 毎フレーム呼び出し、OSのメッセージイベントを処理する
             void PollMessages() noexcept;
 
-            /// ウィンドウを閉じる要求が出ているかを返す
+            //! ウィンドウを閉じる要求が出ているかを返す
             [[nodiscard]] bool ShouldClose() const noexcept;
 
-            /// 現在のクライアント領域のサイズを取得する
+            //! 現在のクライアント領域のサイズを取得する
             [[nodiscard]] Size2D Size() const noexcept;
 
-            /// ウィンドウハンドルを返す。構築に失敗した時は nullptr
+            //! ウィンドウハンドルを返す。構築に失敗した時は nullptr
             [[nodiscard]] HWND NativeHandle() const noexcept;
 
             void SetTitle(std::string_view utf8Title) noexcept;
 
-            /// クライアント領域におけるマウスカーソルの表示・非表示を切り替える
+            //! クライアント領域におけるマウスカーソルの表示・非表示を切り替える
             void SetCursorVisible(bool visible) noexcept;
 
             [[nodiscard]] bool IsCursorVisible() const noexcept;
 
-            /// カーソルの固定を切り替える
-            /// @note 固定中は PollMessages が毎フレームカーソルを固定点へ戻す。フォーカスを失っている間は戻さない
+            //! カーソルの固定を切り替える
+            //! @note 固定中は PollMessages が毎フレームカーソルを固定点へ戻す。フォーカスを失っている間は戻さない
             void SetCursorLocked(bool locked) noexcept;
 
             [[nodiscard]] bool IsCursorLocked() const noexcept;
 
-            /// カーソル固定の戻し先をクライアント座標で設定する
-            /// @note 未設定の間はクライアント領域の中央へ戻す
+            //! カーソル固定の戻し先をクライアント座標で設定する
+            //! @note 未設定の間はクライアント領域の中央へ戻す
             void SetCursorLockPoint(int clientX, int clientY) noexcept;
 
-            /// プログラム側からウィンドウを閉じる要求を発行する
+            //! プログラム側からウィンドウを閉じる要求を発行する
             void RequestClose() noexcept;
 
-            /// リサイズ時に呼び出されるコールバックを設定する
-            /// @note 最小化時はコールバックの呼び出しがスキップされる
+            //! リサイズ時に呼び出されるコールバックを設定する
+            //! @note 最小化時はコールバックの呼び出しがスキップされる
             void SetResizeCallback(std::function<void(Size2D)> cb);
 
-            /// ウィンドウの閉じる要求を受け取った際のコールバックを設定する
-            /// @note 独自の終了処理や、終了をキャンセルする処理をここで挟むことができる
+            //! ウィンドウの閉じる要求を受け取った際のコールバックを設定する
+            //! @note 独自の終了処理や、終了をキャンセルする処理をここで挟むことができる
             void SetCloseCallback(std::function<void()> cb);
 
-            /// ウィンドウへの入力イベントの転送先を設定する
+            //! ウィンドウへの入力イベントの転送先を設定する
             void AttachInput(Input* input) noexcept;
 
-            /// ネイティブメッセージのフックコールバックを設定する
+            //! ネイティブメッセージのフックコールバックを設定する
             void SetMessageHook(MessageHook hook);
 
         private:

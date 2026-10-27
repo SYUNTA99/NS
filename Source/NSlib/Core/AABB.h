@@ -10,7 +10,7 @@ namespace NS
 {
     using AABB = DirectX::BoundingBox;
 
-    /// stride は隣接要素までのバイト数。count が 0 または first が nullptr の場合は中心 0・半径 0 の箱を返す
+    //! stride は隣接要素までのバイト数。count が 0 または first が nullptr の場合は中心 0・半径 0 の箱を返す
     [[nodiscard]] inline AABB AABBFromPositions(const Vector3* first, std::size_t count, std::size_t stride) noexcept
     {
         if (first == nullptr || count == 0u)

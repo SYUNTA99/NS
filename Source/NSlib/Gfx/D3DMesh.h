@@ -18,7 +18,7 @@ namespace NS
         class D3DShader;
         class D3DCommandList;
 
-        /// 公開 InputElement 用フォーマット。頂点属性として受け付けるフォーマットの閉集合
+        //! 公開 InputElement 用フォーマット。頂点属性として受け付けるフォーマットの閉集合
         enum class InputElementFormat
         {
             Float2, // R32G32_FLOAT
@@ -28,7 +28,7 @@ namespace NS
             UInt4,  // R32G32B32A32_UINT
         };
 
-        /// 入力レイアウトの要素。セマンティック番号とストリームのスロットは 0 固定
+        //! 入力レイアウトの要素。セマンティック番号とストリームのスロットは 0 固定
         struct InputElement
         {
             std::string semanticName;
@@ -36,50 +36,50 @@ namespace NS
             uint byteOffset = 0;
         };
 
-        /// インデックスバッファの解釈方法を表すプリミティブ形状
+        //! インデックスバッファの解釈方法を表すプリミティブ形状
         enum class Topology
         {
             TriangleList,
             LineList
         };
 
-        /// 頂点とインデックスの GPU データ。描画は DrawMesh が行う
+        //! 頂点とインデックスの GPU データ。描画は DrawMesh が行う
         class D3DMesh : public NonCopyable
         {
         public:
             virtual ~D3DMesh();
 
-            /// 頂点バッファとインデックスバッファが揃っているか
+            //! 頂点バッファとインデックスバッファが揃っているか
             [[nodiscard]] bool IsValid() const noexcept;
 
-            /// 構築失敗でフォールバックジオメトリに切替わっているか
+            //! 構築失敗でフォールバックジオメトリに切替わっているか
             [[nodiscard]] bool IsUsingFallback() const noexcept;
 
             [[nodiscard]] std::size_t VertexCount() const noexcept;
             [[nodiscard]] std::size_t IndexCount() const noexcept;
 
-            /// モデル空間の軸並行境界ボックス。カリングで世界変換して視錐台に掛ける
-            /// 派生が build 時に頂点から算出して登録する。未登録なら原点の単位ボックス
+            //! モデル空間の軸並行境界ボックス。カリングで世界変換して視錐台に掛ける
+            //! 派生が build 時に頂点から算出して登録する。未登録なら原点の単位ボックス
             [[nodiscard]] const AABB& LocalBounds() const noexcept;
 
-            /// 頂点シェーダーに合う入力レイアウトを選ぶ。無ければ作る
-            /// レイアウトは頂点シェーダーごとに持ち、そのシェーダーの BytecodeId が作った時と違えば作り直す。
-            /// 描く度に呼べば、読み直しも、入力の違う別の頂点シェーダーで描く事も、選んだレイアウトに届く。
-            /// 作れなかった時は空を選び、番号が変わるまで作り直さない
-            /// @note グラフィックスデバイスが無効な場合は何もしない
+            //! 頂点シェーダーに合う入力レイアウトを選ぶ。無ければ作る
+            //! レイアウトは頂点シェーダーごとに持ち、そのシェーダーの BytecodeId が作った時と違えば作り直す。
+            //! 描く度に呼べば、読み直しも、入力の違う別の頂点シェーダーで描く事も、選んだレイアウトに届く。
+            //! 作れなかった時は空を選び、番号が変わるまで作り直さない
+            //! @note グラフィックスデバイスが無効な場合は何もしない
             void CreateInputLayout(const D3DShader& vertexShader) noexcept;
 
             [[nodiscard]] const D3DBuffer* VertexBuffer() const noexcept;
             [[nodiscard]] const D3DBuffer* IndexBuffer() const noexcept;
-            /// 直前の CreateInputLayout で選んだレイアウト
+            //! 直前の CreateInputLayout で選んだレイアウト
             [[nodiscard]] ID3D11InputLayout* InputLayout() const noexcept;
             [[nodiscard]] Topology GetTopology() const noexcept;
 
         protected:
             D3DMesh();
 
-            /// 成功時だけ両方の GPU バッファを登録する。失敗時は変更せず false
-            /// stride は頂点 1 個のバイト数、usingFallback は代替形状かを示す
+            //! 成功時だけ両方の GPU バッファを登録する。失敗時は変更せず false
+            //! stride は頂点 1 個のバイト数、usingFallback は代替形状かを示す
             [[nodiscard]] bool BuildGeometry(const void* vertices,
                                              std::size_t vertexCount,
                                              std::size_t stride,
@@ -91,7 +91,7 @@ namespace NS
 
             void SetTopology(Topology topology) noexcept;
 
-            /// 派生クラスが頂点から算出したモデル空間境界ボックスを登録する
+            //! 派生クラスが頂点から算出したモデル空間境界ボックスを登録する
             void SetLocalBounds(const AABB& bounds) noexcept;
 
         private:
@@ -116,7 +116,7 @@ namespace NS
             bool m_usingFallback = false;
         };
 
-        /// D3DMesh のデータを読んで bind + DrawIndexed を発行する。D3DShader/D3DMaterial の Bind は呼出側責任
+        //! D3DMesh のデータを読んで bind + DrawIndexed を発行する。D3DShader/D3DMaterial の Bind は呼出側責任
         void DrawMesh(D3DCommandList& commands, const D3DMesh& mesh) noexcept;
     } // namespace Gfx
 } // namespace NS

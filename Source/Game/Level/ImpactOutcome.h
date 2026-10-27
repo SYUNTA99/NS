@@ -11,8 +11,8 @@ namespace GL
 {
     namespace Level
     {
-        /// 衝突の配分に使う調整値
-        /// 既定値の重複を避け、MakeImpactTuning が PlayerParams から全項目を入れる
+        //! 衝突の配分に使う調整値
+        //! 既定値の重複を避け、MakeImpactTuning が PlayerParams から全項目を入れる
         struct ImpactTuning
         {
             float centerHitStopScale{}; // 中心近くの当たりの貫通の止めの倍率
@@ -33,7 +33,7 @@ namespace GL
             float missBoxEdgeSharpness{};   // 箱の相手の面を、角を丸めた箱の表面として読む時の鋭さ。2 で球
         };
 
-        /// 衝突の配分の計算へ渡す、検知で決まった値
+        //! 衝突の配分の計算へ渡す、検知で決まった値
         struct ImpactInput
         {
             float power = 0.0f; // 最終威力。溜めの倍率と、相手の正面の面で当てはまった決まりの威力の倍率の積
@@ -50,8 +50,8 @@ namespace GL
             LaunchShape launch{}; // 相手が当たりの答えで返した飛び方
         };
 
-        /// 衝突の配分の計算の結果
-        /// 貫通の当たりは反動も飛ばしもしないので、曲線と比は 0 のまま
+        //! 衝突の配分の計算の結果
+        //! 貫通の当たりは反動も飛ばしもしないので、曲線と比は 0 のまま
         struct ImpactOutcome
         {
             bool broke = false;        // 貫通する場合 true
@@ -60,33 +60,33 @@ namespace GL
             float launchScale = 0.0f;  // 相手の曲線の距離と高さに掛けた比
             GL::Player::ReboundArc reboundArc{};
             LaunchArc launchArc{};
-            /// 段を決めた面の上の位置を相手の形で読んだ、自機の側を向く単位法線。MissSurfaceNormal の値
-            /// 外れの反動とねじれ、外れの火花がこの向きを使う。突進の水平の向きが決まらない時は (0, 0, 0)
+            //! 段を決めた面の上の位置を相手の形で読んだ、自機の側を向く単位法線。MissSurfaceNormal の値
+            //! 外れの反動とねじれ、外れの火花がこの向きを使う。突進の水平の向きが決まらない時は (0, 0, 0)
             NS::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
             NS::Vector3 breakSelfVelocity{0.0f, 0.0f, 0.0f}; // 貫通で明けに自機が持つ速度。貫通しない当たりは 0
-            /// 貫通の当たりの止めるフレーム数。押し飛ばしの当たりの止めは自機の段の束が持つので 0
+            //! 貫通の当たりの止めるフレーム数。押し飛ばしの当たりの止めは自機の段の束が持つので 0
             int stopSteps = 0;
         };
 
-        /// 威力・質量・調整値から反動と飛ばしを決める。反動の初速は PlayerParams::ReboundLaunchArc の曲線から求める
-        /// 前提: mass は有限の正、両方向は水平で正規化済み、fixedDelta は正
-        /// tuning は MakeImpactTuning、input.launch は MapObjParams::Launch の値を渡す
+        //! 威力・質量・調整値から反動と飛ばしを決める。反動の初速は PlayerParams::ReboundLaunchArc の曲線から求める
+        //! 前提: mass は有限の正、両方向は水平で正規化済み、fixedDelta は正
+        //! tuning は MakeImpactTuning、input.launch は MapObjParams::Launch の値を渡す
         [[nodiscard]] ImpactOutcome ComputeImpactOutcome(const ImpactInput& input, const ImpactTuning& tuning) noexcept;
 
-        /// 面の位置を角の鋭さ sharpness の超楕円として読み、自機側を向く単位法線を返す
-        /// u は右、v は上が正。sharpness は 2 で球、2 未満・非有限は 2 に補正する
-        /// slamDirection は水平成分を使う。水平の向きが決まらない時は (0, 0, 0)
+        //! 面の位置を角の鋭さ sharpness の超楕円として読み、自機側を向く単位法線を返す
+        //! u は右、v は上が正。sharpness は 2 で球、2 未満・非有限は 2 に補正する
+        //! slamDirection は水平成分を使う。水平の向きが決まらない時は (0, 0, 0)
         [[nodiscard]] NS::Vector3 MissSurfaceNormal(float u,
                                                     float v,
                                                     float sharpness,
                                                     const NS::Vector3& slamDirection) noexcept;
 
-        /// 外れの着地からこすって止まる間の、着いた水平の速さに掛ける倍率を返す
-        /// (1 − elapsedSteps ÷ totalSteps)^exponent。着いた速さに依らず totalSteps フレームで 0 になる
-        /// @param[in] elapsedSteps 着いてからのフレーム数。着いたフレームが 0
-        /// @param[in] totalSteps 止まるまでのフレーム数。0 以下は着いたフレームから 0
-        /// @param[in] exponent 減り方。大きいほど早く落ちて長く残る。有限の正でない値は 1 (直線)
-        /// @return 0〜1 の倍率
+        //! 外れの着地からこすって止まる間の、着いた水平の速さに掛ける倍率を返す
+        //! (1 − elapsedSteps ÷ totalSteps)^exponent。着いた速さに依らず totalSteps フレームで 0 になる
+        //! @param[in] elapsedSteps 着いてからのフレーム数。着いたフレームが 0
+        //! @param[in] totalSteps 止まるまでのフレーム数。0 以下は着いたフレームから 0
+        //! @param[in] exponent 減り方。大きいほど早く落ちて長く残る。有限の正でない値は 1 (直線)
+        //! @return 0〜1 の倍率
         [[nodiscard]] float MissSkidSpeedScale(int elapsedSteps, int totalSteps, float exponent) noexcept;
     } // namespace Level
 } // namespace GL

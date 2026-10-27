@@ -7,8 +7,8 @@ namespace GL
 {
     namespace Level
     {
-        /// 発射の高さへ戻るまでの距離と頂点の高さで指定する飛行曲線
-        /// 水平は等速。上下と頂点付近の重力は各欄で調整する
+        //! 発射の高さへ戻るまでの距離と頂点の高さで指定する飛行曲線
+        //! 水平は等速。上下と頂点付近の重力は各欄で調整する
         struct LaunchArc
         {
             NS::Vector3 direction{1.0f, 0.0f, 0.0f}; // 飛ぶ向き。水平の成分だけを使う
@@ -21,7 +21,7 @@ namespace GL
             float apexBandGravityScale = 1.0f; // 頂点の帯の間に重力へ掛ける倍率
         };
 
-        /// 相手ごとの飛び方。飛ぶ距離と質量で割る強さは自機の欄が持ち、ここには無い
+        //! 相手ごとの飛び方。飛ぶ距離と質量で割る強さは自機の欄が持ち、ここには無い
         struct LaunchShape
         {
             float apexHeight{};           // 質量 1・威力 1 の飛ぶ高さ。単位は m
@@ -33,19 +33,19 @@ namespace GL
             float missDistanceRatio{};    // 外れで、距離に押し込む成分の縮みの上から掛ける割合
         };
 
-        /// 発射時の速度 (m/s) を返す
-        /// 距離・高さ・重力・倍率が有限の正でない、帯速度が有限の非負でない、水平の向きが無い時は 0
+        //! 発射時の速度 (m/s) を返す
+        //! 距離・高さ・重力・倍率が有限の正でない、帯速度が有限の非負でない、水平の向きが無い時は 0
         [[nodiscard]] NS::Vector3 LaunchArcInitialVelocity(const LaunchArc& arc) noexcept;
 
-        /// 発射から seconds 秒後の、発射の位置からのずれを返す
-        /// 水平の成分は arc.direction の水平の向きへ進んだずれ、y は発射の高さからの高さ。単位は m
-        /// seconds が有限の 0 以上でない時と、arc が LaunchArcInitialVelocity の挙げる曲線にならない値の時は 0 を返す
+        //! 発射から seconds 秒後の、発射の位置からのずれを返す
+        //! 水平の成分は arc.direction の水平の向きへ進んだずれ、y は発射の高さからの高さ。単位は m
+        //! seconds が有限の 0 以上でない時と、arc が LaunchArcInitialVelocity の挙げる曲線にならない値の時は 0 を返す
         [[nodiscard]] NS::Vector3 LaunchArcOffsetAt(const LaunchArc& arc, float seconds) noexcept;
 
-        /// 発射の高さへ戻るまでの秒を返す。曲線が不正なら 0
+        //! 発射の高さへ戻るまでの秒を返す。曲線が不正なら 0
         [[nodiscard]] float LaunchArcFlightSeconds(const LaunchArc& arc) noexcept;
 
-        /// 曲線の重力を、ChooseGravity へ渡す組 (下向きが負) にして返す
+        //! 曲線の重力を、ChooseGravity へ渡す組 (下向きが負) にして返す
         [[nodiscard]] AirGravity LaunchArcGravity(const LaunchArc& arc) noexcept;
     } // namespace Level
 } // namespace GL

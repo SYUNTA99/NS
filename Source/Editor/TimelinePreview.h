@@ -17,27 +17,27 @@ namespace NS
 {
     namespace Editor
     {
-        /// 下見専用の場面。再生時計を持たず、指定されたフレームで止まる
+        //! 下見専用の場面。再生時計を持たず、指定されたフレームで止まる
         class TimelinePreview : public NonCopyable
         {
         public:
             TimelinePreview();
             ~TimelinePreview();
 
-            /// 前の場面を捨て、開始状態を作る関数と範囲を受け取る
-            /// create は範囲の先頭より 1 歩前の場面を作る
-            /// 資産と D3DDevice はこの下見より長く生きること
+            //! 前の場面を捨て、開始状態を作る関数と範囲を受け取る
+            //! create は範囲の先頭より 1 歩前の場面を作る
+            //! 資産と D3DDevice はこの下見より長く生きること
             void Reset(std::function<std::unique_ptr<NS::Scene>()> create, TimelineFrameRange range);
-            /// 場面と生成関数を手放す
+            //! 場面と生成関数を手放す
             void Clear() noexcept;
-            /// 指定フレームまで進めて停止したシーンを非所有で返す。生成失敗は nullptr
-            /// 巻き戻しは開始から再生成し、同じフレームは更新しない。入力と実機振動は中立
+            //! 指定フレームまで進めて停止したシーンを非所有で返す。生成失敗は nullptr
+            //! 巻き戻しは開始から再生成し、同じフレームは更新しない。入力と実機振動は中立
             [[nodiscard]] NS::Scene* Seek(int frame);
             [[nodiscard]] NS::Scene* Scene() const noexcept { return m_scene.get(); }
             [[nodiscard]] std::optional<int> Frame() const noexcept { return m_frame; }
-            /// 現在のフレームを view の描画先へ描く
-            /// 時間は進めない。描画先はこの呼び出しの中だけ借りる
-            /// @return 描画を呼べた場合 true、それ以外の場合は false
+            //! 現在のフレームを view の描画先へ描く
+            //! 時間は進めない。描画先はこの呼び出しの中だけ借りる
+            //! @return 描画を呼べた場合 true、それ以外の場合は false
             bool RenderView(const SceneView& view);
 
         private:

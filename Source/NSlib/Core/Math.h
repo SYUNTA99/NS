@@ -35,26 +35,26 @@ namespace NS
 
     inline constexpr float k_Pi = 3.14159265358979323846f;
 
-    /// 単位の取り違えを型で防ぐ場合は ToRadians(Degrees) を使う
+    //! 単位の取り違えを型で防ぐ場合は ToRadians(Degrees) を使う
     [[nodiscard]] constexpr float DegreesToRadians(float deg) noexcept
     {
         return deg * (k_Pi / 180.0f);
     }
 
-    /// 単位の取り違えを型で防ぐ場合は ToDegrees(Radians) を使う
+    //! 単位の取り違えを型で防ぐ場合は ToDegrees(Radians) を使う
     [[nodiscard]] constexpr float RadiansToDegrees(float rad) noexcept
     {
         return rad * (180.0f / k_Pi);
     }
 
-    /// 度の Euler 角 (x=Pitch, y=Yaw, z=Roll) を Quaternion へ変換する
+    //! 度の Euler 角 (x=Pitch, y=Yaw, z=Roll) を Quaternion へ変換する
     [[nodiscard]] inline Quaternion EulerDegreesToQuaternion(const Vector3& eulerDegrees) noexcept
     {
         return Quaternion::CreateFromYawPitchRoll(Vector3{
             DegreesToRadians(eulerDegrees.x), DegreesToRadians(eulerDegrees.y), DegreesToRadians(eulerDegrees.z)});
     }
 
-    /// Quaternion を度の Euler 角 (x=Pitch, y=Yaw, z=Roll) へ変換する
+    //! Quaternion を度の Euler 角 (x=Pitch, y=Yaw, z=Roll) へ変換する
     [[nodiscard]] inline Vector3 QuaternionToEulerDegrees(const Quaternion& rotation) noexcept
     {
         const Vector3 euler = rotation.ToEuler();
@@ -105,7 +105,7 @@ namespace NS
         return a.value == b.value;
     }
 
-    /// 負の値は無効として扱う
+    //! 負の値は無効として扱う
     struct Size2D
     {
         int width;
@@ -117,7 +117,7 @@ namespace NS
         return a.width == b.width && a.height == b.height;
     }
 
-    /// width / height を返す。s.height は 0 でないこと
+    //! width / height を返す。s.height は 0 でないこと
     [[nodiscard]] constexpr float AspectRatio(Size2D s) noexcept
     {
         return static_cast<float>(s.width) / static_cast<float>(s.height);
@@ -136,13 +136,13 @@ namespace NS
         return value;
     }
 
-    /// t は [0, 1] の範囲外もクランプせず外挿する
+    //! t は [0, 1] の範囲外もクランプせず外挿する
     [[nodiscard]] constexpr float Lerp(float a, float b, float t) noexcept
     {
         return a + (b - a) * t;
     }
 
-    /// 両端で傾き 0 のエルミート補間。t は [0, 1] にクランプしない
+    //! 両端で傾き 0 のエルミート補間。t は [0, 1] にクランプしない
     [[nodiscard]] constexpr float SmoothStep(float t) noexcept
     {
         return t * t * (3.0f - 2.0f * t);
@@ -164,7 +164,7 @@ namespace NS
         return mixed;
     }
 
-    /// [-1, 1] の連続した 1 次元バリューノイズ。x は格子間隔を 1 とする位置
+    //! [-1, 1] の連続した 1 次元バリューノイズ。x は格子間隔を 1 とする位置
     [[nodiscard]] inline float ValueNoise1D(float x, uint32 seed) noexcept
     {
         const float cell = std::floor(x);
@@ -218,7 +218,7 @@ namespace NS
         return std::abs(a - b) <= tolerance;
     }
 
-    /// 2 つの単位ベクトルがほぼ同じ向きか判定する
+    //! 2 つの単位ベクトルがほぼ同じ向きか判定する
     [[nodiscard]] inline bool IsNearlyParallel(const Vector3& a, const Vector3& b, float tolerance = k_Epsilon) noexcept
     {
         return Dot(a, b) > 1.0f - tolerance;
@@ -244,13 +244,13 @@ namespace NS
         return Vector3{v.x, 0.0f, v.z};
     }
 
-    /// XZ 平面上で from を Y 軸まわりに回して to へ重ねる角度（ラジアン、[-π, π]、+X から -Z 向きが正）
+    //! XZ 平面上で from を Y 軸まわりに回して to へ重ねる角度（ラジアン、[-π, π]、+X から -Z 向きが正）
     [[nodiscard]] inline float SignedHorizontalAngle(const Vector3& from, const Vector3& to) noexcept
     {
         return std::atan2(from.z * to.x - from.x * to.z, DotHorizontal(from, to));
     }
 
-    /// 2 つの単位ベクトルのなす角（ラジアン、[0, π]）
+    //! 2 つの単位ベクトルのなす角（ラジアン、[0, π]）
     [[nodiscard]] inline float AngleBetweenUnit(const Vector3& a, const Vector3& b) noexcept
     {
         return std::acos(std::clamp(Dot(a, b), -1.0f, 1.0f));
@@ -286,19 +286,19 @@ namespace NS
         return Vector3{value, value, value};
     }
 
-    /// +Y 軸を direction へ回す回転を返す
+    //! +Y 軸を direction へ回す回転を返す
     [[nodiscard]] inline Quaternion TurnUpTo(const Vector3& direction) noexcept
     {
         return Quaternion::FromToRotation(Vector3{0.0f, 1.0f, 0.0f}, direction);
     }
 
-    /// +Z 軸を direction へ回す回転を返す
+    //! +Z 軸を direction へ回す回転を返す
     [[nodiscard]] inline Quaternion TurnNormalTo(const Vector3& direction) noexcept
     {
         return Quaternion::FromToRotation(Vector3{0.0f, 0.0f, 1.0f}, direction);
     }
 
-    /// t は [0, 1] にクランプされる
+    //! t は [0, 1] にクランプされる
     [[nodiscard]] inline float EaseOutCubic(float t) noexcept
     {
         const float clamped = std::clamp(t, 0.0f, 1.0f);
@@ -322,7 +322,7 @@ namespace NS
         return HasPositiveMagnitude(HorizontalLengthSquared(v), minThresholdSq);
     }
 
-    /// 長さが k_Epsilon 以下または非有限の場合は fallback を返す
+    //! 長さが k_Epsilon 以下または非有限の場合は fallback を返す
     [[nodiscard]] inline Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
     {
         const float length = v.Length();
@@ -333,13 +333,13 @@ namespace NS
         return v / length;
     }
 
-    /// v から単位法線 unitNormal 方向の成分を取り除いたベクトルを返す
+    //! v から単位法線 unitNormal 方向の成分を取り除いたベクトルを返す
     [[nodiscard]] inline Vector3 RejectUnit(const Vector3& v, const Vector3& unitNormal) noexcept
     {
         return v - unitNormal * Dot(v, unitNormal);
     }
 
-    /// XZ 平面へ射影して正規化する。長さが k_Epsilon 以下または非有限の場合は outDirection を変更せず false を返す
+    //! XZ 平面へ射影して正規化する。長さが k_Epsilon 以下または非有限の場合は outDirection を変更せず false を返す
     [[nodiscard]] inline bool TryNormalizeHorizontal(const Vector3& v, Vector3& outDirection) noexcept
     {
         const float length = std::hypot(v.x, v.z);

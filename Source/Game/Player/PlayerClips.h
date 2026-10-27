@@ -9,12 +9,12 @@ namespace GL
 {
     namespace Player
     {
-        /// 自機のアニメの欄を持つ部品。どのクリップを選ぶかは PlayerActor が欄を読んで決める
-        /// クリップの欄の字面は「ContentRoot からの glTF の道筋」か「道筋#動きの名前」
+        //! 自機のアニメの欄を持つ部品。どのクリップを選ぶかは PlayerActor が欄を読んで決める
+        //! クリップの欄の字面は「ContentRoot からの glTF の道筋」か「道筋#動きの名前」
         class PlayerClips : public NS::Object
         {
         public:
-            /// 欄が nullptr にならないように、空の名前の中身の空のクリップで始める
+            //! 欄が nullptr にならないように、空の名前の中身の空のクリップで始める
             PlayerClips()
             {
                 NS::LoadAssetField(m_idleClip, "");

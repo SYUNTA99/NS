@@ -19,8 +19,8 @@ namespace NS
     {
         class D3DDevice;
 
-        /// 所有は D3DDevice。DirectXTK の CommonStates のサンプラーだけを包む。
-        /// 混ぜ方・深度・面の捨て方は D3DPipeline が作る
+        //! 所有は D3DDevice。DirectXTK の CommonStates のサンプラーだけを包む。
+        //! 混ぜ方・深度・面の捨て方は D3DPipeline が作る
         class D3DCommonStates : public NonCopyable
         {
         public:

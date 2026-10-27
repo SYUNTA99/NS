@@ -16,21 +16,21 @@ namespace GL
 {
     namespace Level
     {
-        /// 死とゴールに応じてコースを再開するシーン共通処理
-        /// クリア時は操作を止め、世界を動かしたまま暗転・再開・明転する
+        //! 死とゴールに応じてコースを再開するシーン共通処理
+        //! クリア時は操作を止め、世界を動かしたまま暗転・再開・明転する
         class CourseDirector final : public NS::SceneSystem
         {
         public:
             explicit CourseDirector(NS::Scene& scene);
             ~CourseDirector() noexcept override;
 
-            /// 次の OnTick でコースをやり直す
+            //! 次の OnTick でコースをやり直す
             void NotifyPlayerDead() noexcept { m_playerDead = true; }
 
-            /// 次の OnTick で、自機以外のアクターを開始時の姿へ戻す
+            //! 次の OnTick で、自機以外のアクターを開始時の姿へ戻す
             void RequestRespawnActors() noexcept { m_respawnPending = true; }
 
-            /// 次の OnTick でクリア演出を始める。演出中は無視する
+            //! 次の OnTick でクリア演出を始める。演出中は無視する
             void NotifyGoal(float fadeOutSeconds, float fadeInSeconds) noexcept
             {
                 if (m_sequences.IsRunning() || m_goalReached)
@@ -44,17 +44,17 @@ namespace GL
 
             [[nodiscard]] bool IsClearing() const noexcept { return m_sequences.IsRunning(); }
 
-            /// 全てのアクターへ MsgCourseStart を送って今の姿を控えさせ、RestartCourse と同じ処理で始める
+            //! 全てのアクターへ MsgCourseStart を送って今の姿を控えさせ、RestartCourse と同じ処理で始める
             void StartCourse();
 
-            /// コースを最初からやり直す。全てのアクターへ MsgCourseRestart を送る
-            /// 受け手は StartCourse の時に控えた姿へ自分で戻る
+            //! コースを最初からやり直す。全てのアクターへ MsgCourseRestart を送る
+            //! 受け手は StartCourse の時に控えた姿へ自分で戻る
             void RestartCourse();
 
-            /// 自機の他のアクターへ MsgCourseRestart を送り、開始の時の姿へ戻す。自機の位置と状態は変えない
+            //! 自機の他のアクターへ MsgCourseRestart を送り、開始の時の姿へ戻す。自機の位置と状態は変えない
             void RespawnActors();
 
-            /// 知らせを受けた分だけ流れを進める
+            //! 知らせを受けた分だけ流れを進める
             void OnTick() override;
 
         private:
@@ -62,10 +62,10 @@ namespace GL
 
             void SendInputLock(bool locked);
 
-            /// skip の他のアクター。skip が nullptr なら全員
+            //! skip の他のアクター。skip が nullptr なら全員
             [[nodiscard]] std::vector<NS::SceneActor*> PlacedActors(const NS::SceneActor* skip) const;
 
-            /// PlacedActors の全員へ MsgCourseRestart を送る
+            //! PlacedActors の全員へ MsgCourseRestart を送る
             void SendRestart(const NS::SceneActor* skip);
 
             float m_fadeOutSeconds = 0.0f;

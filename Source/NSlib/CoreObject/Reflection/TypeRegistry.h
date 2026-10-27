@@ -11,11 +11,11 @@
 
 namespace NS
 {
-    /// SceneActor 派生を生成する関数
+    //! SceneActor 派生を生成する関数
     using ActorCreateFn = std::unique_ptr<SceneActor> (*)();
 
-    /// NS_CLASS で登録した SceneActor をクラス名から生成する
-    /// 静的ライブラリでは自己登録の翻訳単位がリンク時に除去されないようにする
+    //! NS_CLASS で登録した SceneActor をクラス名から生成する
+    //! 静的ライブラリでは自己登録の翻訳単位がリンク時に除去されないようにする
     class TypeRegistry
     {
     public:
@@ -28,12 +28,12 @@ namespace NS
             const char* label; // エディタで置ける SceneActor の表示名。置けない型は nullptr
         };
 
-        /// label はエディタで置ける SceneActor にだけ渡す。同名の二重登録は先勝ちで拒否し debug では assert で落とす
+        //! label はエディタで置ける SceneActor にだけ渡す。同名の二重登録は先勝ちで拒否し debug では assert で落とす
         void Register(const char* className, ActorCreateFn create, const char* label = nullptr);
 
         [[nodiscard]] const std::vector<Entry>& Entries() const noexcept;
 
-        /// className 一致の登録を返す。無ければ nullptr
+        //! className 一致の登録を返す。無ければ nullptr
         [[nodiscard]] const Entry* Find(std::string_view className) const noexcept;
 
     private:
@@ -41,24 +41,24 @@ namespace NS
         std::vector<Entry> m_entries; // 登録順のまま持つ。型の種類は少数なので線形照合で足りる
     };
 
-    /// クラス名から配置の無い SceneActor を作り、クラスと同じ名前の .actor と素材まで済ませて返す。.actor が無ければ ERROR を出して nullptr
+    //! クラス名から配置の無い SceneActor を作り、クラスと同じ名前の .actor と素材まで済ませて返す。.actor が無ければ ERROR を出して nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
 
-    /// クラス名から SceneActor を作り、info で .actor・配置の上書き・素材まで済ませて返す
-    /// info.actorFile が空ならクラスと同じ名前の .actor を使う。.actor が読まれていなければ ERROR を出して nullptr
+    //! クラス名から SceneActor を作り、info で .actor・配置の上書き・素材まで済ませて返す
+    //! info.actorFile が空ならクラスと同じ名前の .actor を使う。.actor が読まれていなければ ERROR を出して nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
 
-    /// クラス名から、.actor を写さずにコンストラクタと OnInit の値だけで SceneActor を作る
-    /// .actor の全部の項目を生成する時と、作る前にシーンの上書きを確かめる時に使う。シーンへ入らず、素材も読まない。
-    /// actorFile は ERROR の文に出す .actor の名前で、空ならクラスと同じ名前。未登録のクラスは nullptr
+    //! クラス名から、.actor を写さずにコンストラクタと OnInit の値だけで SceneActor を作る
+    //! .actor の全部の項目を生成する時と、作る前にシーンの上書きを確かめる時に使う。シーンへ入らず、素材も読まない。
+    //! actorFile は ERROR の文に出す .actor の名前で、空ならクラスと同じ名前。未登録のクラスは nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className,
                                                                         std::string_view actorFile = {});
 
-    /// エディタで置ける SceneActor の登録の一覧。表示名の順で安定
-    /// ヒエラルキーの追加メニューとパレットが、置ける種類の列挙に使う
+    //! エディタで置ける SceneActor の登録の一覧。表示名の順で安定
+    //! ヒエラルキーの追加メニューとパレットが、置ける種類の列挙に使う
     [[nodiscard]] const std::vector<const TypeRegistry::Entry*>& PlaceableEntries();
 
-    /// NS_CLASS / NS_PLACEABLE の実体。label を渡すのはエディタで置ける SceneActor だけ
+    //! NS_CLASS / NS_PLACEABLE の実体。label を渡すのはエディタで置ける SceneActor だけ
     template <class T> void RegisterClass(const char* className, const char* label = nullptr)
     {
         static_assert(std::is_base_of_v<SceneActor, T>, "NS_CLASS は SceneActor の派生に書く");
@@ -67,7 +67,7 @@ namespace NS
     }
 } // namespace NS
 
-/// SceneActor の型をクラス名で自己登録する。その型の .cpp で 1 度だけ書く。#Type が保存形式と検索のキーになる
+//! SceneActor の型をクラス名で自己登録する。その型の .cpp で 1 度だけ書く。#Type が保存形式と検索のキーになる
 #define NS_CLASS(Type)                                                                                                 \
     namespace                                                                                                          \
     {                                                                                                                  \
@@ -77,8 +77,8 @@ namespace NS
         }();                                                                                                           \
     }
 
-/// エディタで置ける SceneActor をクラス名と表示名で自己登録する。NS_CLASS の代わりに、その型の .cpp で 1 度だけ書く
-/// 表示名はヒエラルキーの追加メニューとパレットに出る
+//! エディタで置ける SceneActor をクラス名と表示名で自己登録する。NS_CLASS の代わりに、その型の .cpp で 1 度だけ書く
+//! 表示名はヒエラルキーの追加メニューとパレットに出る
 #define NS_PLACEABLE(Type, Label)                                                                                      \
     namespace                                                                                                          \
     {                                                                                                                  \

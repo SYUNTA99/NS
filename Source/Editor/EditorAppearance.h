@@ -10,7 +10,7 @@ namespace NS
 {
     namespace Editor
     {
-        /// エディタの見た目の欄。ファイルに書かず、起動ごとにこの既定から始まる
+        //! エディタの見た目の欄。ファイルに書かず、起動ごとにこの既定から始まる
         struct EditorAppearance
         {
             // 行の地の色。文字が読めるように薄く重ねる
@@ -21,8 +21,8 @@ namespace NS
             NS_REFLECT_END_VALUE()
         };
 
-        /// actor の欄 field の行の地の色。書く先を決める FieldDestinationOf の答えで選ぶ
-        /// シーンへ書く欄だけを塗り、元と派生の .actor へ書く欄は std::nullopt
+        //! actor の欄 field の行の地の色。書く先を決める FieldDestinationOf の答えで選ぶ
+        //! シーンへ書く欄だけを塗り、元と派生の .actor へ書く欄は std::nullopt
         [[nodiscard]] inline std::optional<Color> FieldRowColor(const EditorAppearance& appearance,
                                                                 const SceneActor* actor,
                                                                 const FieldDesc& field) noexcept

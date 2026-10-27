@@ -6,7 +6,7 @@ namespace NS
 {
     namespace UI
     {
-        /// 単色の矩形を描く Widget。下地・板・ゲージ・画面の覆いの素になる
+        //! 単色の矩形を描く Widget。下地・板・ゲージ・画面の覆いの素になる
         class ColorRect : public Widget
         {
         public:

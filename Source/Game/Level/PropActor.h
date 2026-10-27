@@ -21,7 +21,7 @@ namespace GL
 {
     namespace Level
     {
-        /// 動く・反応する置物。岩・箱・樽
+        //! 動く・反応する置物。岩・箱・樽
         // 個体ごとの見た目と重さは個体の上書きで変える
         class PropActor : public NS::SceneActor
         {
@@ -35,22 +35,22 @@ namespace GL
             NS_CLASSOBJ(m_marks, "ImpactMarks")
             NS_REFLECT_END()
 
-            /// 基底の作る物に続けて、尾と粉の絵を先に読む。.actor が替わって絵の名前が替わった時も読む
+            //! 基底の作る物に続けて、尾と粉の絵を先に読む。.actor が替わって絵の名前が替わった時も読む
             void OnAssetsLoaded() override;
-            /// 1 固定ステップを本番と同じ順で進める。試しが段を回さずに置物を動かす
+            //! 1 固定ステップを本番と同じ順で進める。試しが段を回さずに置物を動かす
             void UpdateMotion();
             void OnEndPlay() override;
-            /// 体当たりの止めの最中の場合 true、それ以外の場合は false
+            //! 体当たりの止めの最中の場合 true、それ以外の場合は false
             [[nodiscard]] bool IsFrozen() const noexcept;
-            /// 押し飛ばされて曲線か転がりの最中かを返す
-            /// 飛んでいる途中に止めが掛かった間も含む
-            /// @return 飛んでいる場合 true、それ以外の場合は false
+            //! 押し飛ばされて曲線か転がりの最中かを返す
+            //! 飛んでいる途中に止めが掛かった間も含む
+            //! @return 飛んでいる場合 true、それ以外の場合は false
             [[nodiscard]] bool IsFlying() const noexcept;
-            /// 飛んでいる中でも曲線の上にいる場合 true、それ以外の場合は false
+            //! 飛んでいる中でも曲線の上にいる場合 true、それ以外の場合は false
             [[nodiscard]] bool IsArc() const noexcept;
-            /// 自分で動かしている速度。単位は m/s。置かれている間は 0
+            //! 自分で動かしている速度。単位は m/s。置かれている間は 0
             [[nodiscard]] NS::Vector3 Velocity() const noexcept { return m_velocity; }
-            /// 今どう飛んでいるか。呼ばれた時の状態機械から組む
+            //! 今どう飛んでいるか。呼ばれた時の状態機械から組む
             [[nodiscard]] PropFlight Flight() const noexcept;
             [[nodiscard]] MapObjParams& Params() noexcept { return *m_params; }
             [[nodiscard]] const MapObjParams& Params() const noexcept { return *m_params; }
@@ -63,15 +63,15 @@ namespace GL
             [[nodiscard]] const TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
 
         protected:
-            /// 体当たりの問い・止め・明けと、コースのやり直しに応じる
-            /// やり直しでは、プレイ開始時の凍結の自分の位置と向きへ置かれた物として戻る
+            //! 体当たりの問い・止め・明けと、コースのやり直しに応じる
+            //! やり直しでは、プレイ開始時の凍結の自分の位置と向きへ置かれた物として戻る
             bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
             void OnInit() override;
-            /// 残像は Model と同じく、出ている間だけ描く物へ入れる
+            //! 残像は Model と同じく、出ている間だけ描く物へ入れる
             void OnAppear() override;
             void OnDisappear() noexcept override;
-            /// 発光の層・残像・当たりの跡を進める
+            //! 発光の層・残像・当たりの跡を進める
             void VisualStep() override;
 
         private:

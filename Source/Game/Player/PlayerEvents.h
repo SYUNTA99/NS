@@ -6,7 +6,7 @@ namespace GL
 {
     namespace Player
     {
-        /// 自機の行動を始めた・終えた時の通知
+        //! 自機の行動を始めた・終えた時の通知
         struct PlayerEvents
         {
             NS::BodyEvent onJump;            // 跳んだフレーム

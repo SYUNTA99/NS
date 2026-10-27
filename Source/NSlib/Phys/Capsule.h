@@ -6,8 +6,8 @@ namespace NS
 {
     namespace Phys
     {
-        /// カプセル形状
-        /// 円柱の両端に半球がついた形状
+        //! カプセル形状
+        //! 円柱の両端に半球がついた形状
         struct Capsule
         {
             Vector3 center{0.0f, 0.0f, 0.0f}; // 中心座標
@@ -16,8 +16,8 @@ namespace NS
             float radius = 0.4f;                  // 半径
         };
 
-        /// 上の向きに伸びるカプセルに、回転と拡大を掛ける
-        /// 横の拡大が x と z で違っても半径は 1 つで、絶対値の大きい方に合わせる
+        //! 上の向きに伸びるカプセルに、回転と拡大を掛ける
+        //! 横の拡大が x と z で違っても半径は 1 つで、絶対値の大きい方に合わせる
         [[nodiscard]] inline Capsule MakeScaledCapsule(const Vector3& center,
                                                        const Quaternion& rotation,
                                                        const Vector3& scale,

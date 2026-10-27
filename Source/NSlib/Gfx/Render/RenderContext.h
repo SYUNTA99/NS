@@ -12,7 +12,7 @@ namespace NS
         class D3DDevice;
         class ScreenOverlay;
 
-        /// 上向きの面に広がる光の輪 (ピクセルシェーダーで表現)
+        //! 上向きの面に広がる光の輪 (ピクセルシェーダーで表現)
         struct GroundWave
         {
             float centerX = 0.0f;  // 中心のワールド X 座標
@@ -21,7 +21,7 @@ namespace NS
             float strength = 0.0f; // 強さ (0 以下で無効)
         };
 
-        /// ワールド座標の点を中心に画面上で広がる歪みの輪 (各長さは描画先の高さに対する比率)
+        //! ワールド座標の点を中心に画面上で広がる歪みの輪 (各長さは描画先の高さに対する比率)
         struct DistortionRing
         {
             Vector3 center{};       // 中心のワールド座標
@@ -42,8 +42,8 @@ namespace NS
             DistortionRing distortionRing{};
         };
 
-        /// ワールド座標を描画先の左上原点ピクセル座標へ投影する (width, height はピクセル数)
-        /// カメラ背後の場合は false を返し出力を変更しない。outW は投影後のクリップ空間 W
+        //! ワールド座標を描画先の左上原点ピクセル座標へ投影する (width, height はピクセル数)
+        //! カメラ背後の場合は false を返し出力を変更しない。outW は投影後のクリップ空間 W
         [[nodiscard]] inline bool TryProjectToPixels(const Matrix& viewProjection,
                                                      const Vector3& point,
                                                      float width,
@@ -64,7 +64,7 @@ namespace NS
             return true;
         }
 
-        /// TryProjectToPixels が返した正の projectedW におけるワールド空間の長さ length をピクセル数へ変換する
+        //! TryProjectToPixels が返した正の projectedW におけるワールド空間の長さ length をピクセル数へ変換する
         [[nodiscard]] inline float ProjectedLengthPixels(const Matrix& viewProjection,
                                                          float length,
                                                          float projectedW,

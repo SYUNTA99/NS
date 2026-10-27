@@ -10,15 +10,15 @@ namespace NS
 {
     class Scene;
 
-    /// シーンが持つシステムの保持と生成を行う
-    /// 型ごとに高々 1 つを持ち、作った順の逆に破棄する
+    //! シーンが持つシステムの保持と生成を行う
+    //! 型ごとに高々 1 つを持ち、作った順の逆に破棄する
     class SceneSystemHolder : public NonCopyable
     {
     public:
         explicit SceneSystemHolder(Scene& scene) noexcept : m_scene(scene) {}
         ~SceneSystemHolder() noexcept { Clear(); }
 
-        /// 型 T の物。まだ作っていなければ nullptr
+        //! 型 T の物。まだ作っていなければ nullptr
         template <class T> [[nodiscard]] T* Find() const noexcept
         {
             for (const SystemEntry& entry : m_objects)
@@ -31,7 +31,7 @@ namespace NS
             return nullptr;
         }
 
-        /// 型 T の物。まだ作っていなければ T(Scene&) で作る
+        //! 型 T の物。まだ作っていなければ T(Scene&) で作る
         template <class T> T& GetOrCreate()
         {
             if (T* found = Find<T>())
@@ -44,8 +44,8 @@ namespace NS
             return result;
         }
 
-        /// 作った物を全て、作った順の逆に捨てる
-        /// 捨てる直前に Scene の更新の登録から外す。管理役は自分で解除しない
+        //! 作った物を全て、作った順の逆に捨てる
+        //! 捨てる直前に Scene の更新の登録から外す。管理役は自分で解除しない
         void Clear() noexcept;
 
     private:

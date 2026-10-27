@@ -46,7 +46,7 @@ namespace NS
                         int sortPriority,
                         bool transparent) noexcept;
 
-            /// 視錐台カリングを行い、transparent に一致するバケットを描画する
+            //! 視錐台カリングを行い、transparent に一致するバケットを描画する
             void DrawBucket(const RenderContext& context, bool transparent);
 
             [[nodiscard]] std::size_t Count() const noexcept;

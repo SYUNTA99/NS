@@ -17,7 +17,7 @@ namespace NS
         class ActorSnapshotApplier final : public IActorSnapshotApplier
         {
         public:
-            /// scene が nullptr の場合、ReattachActor 以外の操作は何もせず空を返す
+            //! scene が nullptr の場合、ReattachActor 以外の操作は何もせず空を返す
             explicit ActorSnapshotApplier(Scene* scene) noexcept : m_scene(scene) {}
 
             [[nodiscard]] std::optional<nlohmann::json> CaptureActor(uint32 objectId) const override;

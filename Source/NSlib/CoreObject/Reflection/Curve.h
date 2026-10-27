@@ -8,12 +8,12 @@
 
 namespace NS
 {
-    /// 最大 8 点の曲線。使用する点は x 昇順で持つ
+    //! 最大 8 点の曲線。使用する点は x 昇順で持つ
     struct Curve
     {
         static constexpr std::size_t k_MaxKeys = 8; // 保持できる点の上限
 
-        /// 点ごとの補間モード。番号は保存する点のモード番号にそのまま書くので並びを変えない
+        //! 点ごとの補間モード。番号は保存する点のモード番号にそのまま書くので並びを変えない
         enum class InterpMode : uint8
         {
             Linear = 0,
@@ -21,7 +21,7 @@ namespace NS
             Manual = 2,
         };
 
-        /// カーブ上の 1 点。x が入力、y が返る値
+        //! カーブ上の 1 点。x が入力、y が返る値
         struct Key
         {
             float x = 0.0f;
@@ -31,7 +31,7 @@ namespace NS
             float inTangent = 0.0f;
             float outTangent = 0.0f;
 
-            /// 位置・値・入りと出の傾きが全部有限なら true
+            //! 位置・値・入りと出の傾きが全部有限なら true
             [[nodiscard]] bool IsFinite() const noexcept
             {
                 return std::isfinite(x) && std::isfinite(y) && std::isfinite(inTangent) && std::isfinite(outTangent);
@@ -43,20 +43,20 @@ namespace NS
         Key keys[k_MaxKeys]{}; // 点の並び。有効なのは先頭 count 個
         uint32 count = 0;  // 有効な点の数
 
-        /// 空なら 0、範囲外は端点、区間内は両端のモードで補間する。同じ x の区間は後の点を使う
+        //! 空なら 0、範囲外は端点、区間内は両端のモードで補間する。同じ x の区間は後の点を使う
         [[nodiscard]] float Evaluate(float x) const noexcept;
 
-        /// keys の先頭 count 個を x 昇順に並べ直す。同じ x は元の並びを保つ
+        //! keys の先頭 count 個を x 昇順に並べ直す。同じ x は元の並びを保つ
         void SortKeys() noexcept;
 
-        /// i 番目と i + 1 番目の点の間を x でエルミート補間した y を返す。width は区間の x の幅
-        /// 事前条件: i + 1 < count と width > 0。守らないと配列の外を読み 0 除算する
+        //! i 番目と i + 1 番目の点の間を x でエルミート補間した y を返す。width は区間の x の幅
+        //! 事前条件: i + 1 < count と width > 0。守らないと配列の外を読み 0 除算する
         [[nodiscard]] float EvaluateHermite(uint32 i, float x, float width) const noexcept;
 
-        /// AutoSmooth の点の接線 dy/dx を返す。隣り合う点の y の間から飛び出さない傾きへ抑える
+        //! AutoSmooth の点の接線 dy/dx を返す。隣り合う点の y の間から飛び出さない傾きへ抑える
         [[nodiscard]] float AutoTangentAt(uint32 i) const noexcept;
 
-        /// 値を scale 倍にした曲線。点の値と傾きを同じ倍率で掛けるので、補間の形は変わらない
+        //! 値を scale 倍にした曲線。点の値と傾きを同じ倍率で掛けるので、補間の形は変わらない
         [[nodiscard]] constexpr Curve Scaled(float scale) const noexcept
         {
             Curve scaled = *this;
