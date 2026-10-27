@@ -913,8 +913,10 @@ void PlayerActor::PrepareStateStep()
         .fall = m_states->IsCurrent<GL::Player::FallPlayerState>(),
         .rebound = m_states->IsCurrent<GL::Player::ReboundPlayerState>(),
     });
+    // ここで始める動作は宙でも出せる。出現した後に一度も接地しないまま出しても、次の着地で着地の音を鳴らす
     if (CanStartAirDash() && BeginAirDash())
     {
+        m_playerSounds->AllowLand();
         return;
     }
     if (GL::Player::PlayerJudgeBodySlam::Judge(
@@ -923,6 +925,7 @@ void PlayerActor::PrepareStateStep()
         if (BodySlam())
         {
             m_request.bufferRemaining = 0.0f;
+            m_playerSounds->AllowLand();
         }
     }
 }

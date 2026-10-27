@@ -83,6 +83,7 @@ public:
     [[nodiscard]] const GL::Player::PlayerParams& Params() const noexcept { return *m_params; }
     [[nodiscard]] GL::Player::PlayerClips& Clips() noexcept { return *m_clips; }
     [[nodiscard]] const GL::Player::PlayerClips& Clips() const noexcept { return *m_clips; }
+    [[nodiscard]] const GL::Player::PlayerSounds& Sounds() const noexcept { return *m_playerSounds; }
     // =========================================================================
     // チャージ・照準・演出サブシステムの参照
     // =========================================================================

@@ -25,7 +25,7 @@ namespace GL
             //! 跳んだフレームに呼ぶ。次の Update で跳ぶ音を鳴らす。次の着地の音も鳴らせるようにする
             void RequestJump() noexcept;
 
-            //! 足場を離れたフレームに呼ぶ。次の着地の音を鳴らせるようにする
+            //! 足場を離れたフレームと、エアダッシュか体当たりを始めたフレームに呼ぶ。次の着地の音を鳴らせるようにする
             void AllowLand() noexcept;
 
             //! 着いたフレームに呼ぶ。Reset の後、まだ足場を離れていなければ頼まない
@@ -39,6 +39,9 @@ namespace GL
 
             //! 頼みを捨て、次に足場を離れるまで着地の音を鳴らさない。やり直しとコースの開始の直後の着地で鳴らさないため
             void Reset() noexcept;
+
+            //! 次の着地で着地の音を鳴らすか
+            [[nodiscard]] bool IsLandAllowed() const noexcept { return m_landAllowed; }
 
             NS_REFLECT_BEGIN(PlayerSounds, NS::Object)
             NS_FIELD(m_jumpSound, "跳ぶ音")
