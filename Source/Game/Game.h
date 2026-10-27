@@ -51,7 +51,8 @@ public:
     [[nodiscard]] static Game* Get() noexcept { return s_instance; }
 
 private:
-    void StartLoadedScene();
+    //! 立てたシーンのコースを始める。startMusic が true ならシーンの設定の曲も鳴らし始める
+    void StartLoadedScene(bool startMusic);
 
     std::string m_startScenePath;
     StartScene m_startScene = StartScene::Load;
