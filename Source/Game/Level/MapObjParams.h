@@ -11,7 +11,7 @@ namespace GL
 {
     namespace Level
     {
-        //! @brief 置物の重さ・転がり・壊れ方・飛び方の見た目の調整値の欄を持つ部品
+        //! 置物の重さ・転がり・壊れ方・飛び方の見た目の調整値の欄を持つ部品
         class MapObjParams : public NS::Object
         {
         public:

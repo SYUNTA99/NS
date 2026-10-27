@@ -12,14 +12,12 @@ namespace NS
     {
         namespace
         {
-            // パイプラインは呼ぶ前に設定する
             void BindDrawItem(D3DDevice& device, const DrawItem& item) noexcept
             {
                 D3DCommandList& cmd = device.Commands();
                 item.material->CreateInputLayoutFor(*item.mesh);
                 item.material->SetParams(device, item.constants);
 
-                // ボーンパレットなどの追加データがあれば転送して頂点シェーダのスロットへ設定する
                 if (item.extraVsCb != nullptr)
                 {
                     if (item.extraVsData != nullptr && item.extraVsSize != 0)

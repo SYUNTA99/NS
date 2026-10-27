@@ -8,7 +8,7 @@ namespace NS
 {
     namespace Editor
     {
-        //! @brief 配置用オブジェクトのテンプレート情報
+        //! 配置用オブジェクトのテンプレート情報
         struct PaletteTemplate
         {
             const char* name = nullptr;

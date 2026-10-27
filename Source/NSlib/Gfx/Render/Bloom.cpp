@@ -33,7 +33,6 @@ namespace NS
                 return D3DTexture::Create(desc);
             }
 
-            // 半分ずつ縮めた大きさ。0 にはしない
             Size2D LevelSize(Size2D size, int level)
             {
                 const int shift = level + 1;
@@ -79,10 +78,7 @@ namespace NS
 
         Bloom::~Bloom() = default;
 
-        bool Bloom::IsValid() const noexcept
-        {
-            return m_valid;
-        }
+        bool Bloom::IsValid() const noexcept { return m_valid; }
 
         void Bloom::BeginWorld(D3DDevice& device, const Color& clearColor) noexcept
         {
@@ -98,20 +94,11 @@ namespace NS
 
             D3DCommandList& cmd = device.Commands();
             SavedTargets saved = cmd.SaveTargets();
-            if (saved.color == nullptr)
-            {
-                return;
-            }
-
-            ComPtr<ID3D11Resource> resource;
-            saved.color->GetResource(resource.GetAddressOf());
-            ComPtr<ID3D11Texture2D> texture;
-            if (FAILED(resource.As(&texture)))
-            {
-                return;
-            }
             D3D11_TEXTURE2D_DESC desc{};
-            texture->GetDesc(&desc);
+            if (!ViewTexture2D(saved.color.Get(), &desc))
+            {
+                return;
+            }
             const Size2D size{static_cast<int>(desc.Width), static_cast<int>(desc.Height)};
             if (!EnsureTargets(size))
             {

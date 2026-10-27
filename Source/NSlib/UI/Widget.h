@@ -19,7 +19,7 @@ namespace NS
 {
     namespace UI
     {
-        //! @brief 画面上の矩形範囲。単位は基準解像度のピクセルで左上原点
+        //! 画面上の矩形範囲。単位は基準解像度のピクセルで左上原点
         struct WidgetRect
         {
             float x = 0.0f;

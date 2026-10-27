@@ -8,6 +8,7 @@
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/detail/ActorFileItems.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -23,7 +24,6 @@
 #include <limits>
 #include <optional>
 #include <random>
-#include <set>
 #include <type_traits>
 #include <utility>
 
@@ -577,6 +577,12 @@ namespace NS
         std::erase_if(m_ownerRuns, [](const HitOwnerRun& run) { return run.frame >= run.length; });
     }
 
+    std::vector<HitOwnerRun> HitReaction::OwnerRunsSince(std::size_t index) const
+    {
+        const std::size_t first = std::min(index, m_ownerRuns.size());
+        return {m_ownerRuns.begin() + static_cast<std::ptrdiff_t>(first), m_ownerRuns.end()};
+    }
+
     void HitReaction::CreateDirectors(const SceneActor* owner)
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::CreateDirectors: 持ち主が null");
@@ -996,92 +1002,18 @@ namespace NS
         return doc;
     }
 
-    namespace
-    {
-        // 束の並びの要素 1 つを読んだ結果。読まない要素は set が空で、reason に理由を持つ
-        struct ListedHitReactionSet
-        {
-            std::optional<HitReactionSet> set;
-            std::string reason;
-        };
-
-        // 束の並びを要素ごとに読む。読むか読まないかの決まりは、読む時と書き戻す時でこの 1 か所を通す
-        std::vector<ListedHitReactionSet> ListHitReactionSets(const nlohmann::json& list)
-        {
-            std::vector<ListedHitReactionSet> listed(list.size());
-            std::set<std::string, std::less<>> names;
-            for (std::size_t i = 0; i < list.size(); ++i)
-            {
-                std::optional<HitReactionSet> set = ParseHitReactionSet(list[i], listed[i].reason);
-                if (!set.has_value())
-                {
-                    continue;
-                }
-                // 同じ名前を 2 つ持つと、始める束が並びの順で黙って決まる
-                if (!names.insert(set->name).second)
-                {
-                    listed[i].reason = std::format("名前 {} が前の束と重なる", set->name);
-                    continue;
-                }
-                listed[i].set = std::move(set);
-            }
-            return listed;
-        }
-    } // namespace
-
     std::vector<HitReactionSet> ReadHitReactionSets(std::string_view actorFileName, const nlohmann::json& actorFile)
     {
-        std::vector<HitReactionSet> sets;
-        const nlohmann::json* list = ActorFileHitReactions(actorFile);
-        if (list == nullptr)
-        {
-            return sets;
-        }
-        if (!list->is_array())
-        {
-            NS_LOG_ERROR(Scene, ".actor {} の束の並び hitReactions が配列でないので、束を読まない", actorFileName);
-            return sets;
-        }
-        std::vector<ListedHitReactionSet> listed = ListHitReactionSets(*list);
-        for (std::size_t i = 0; i < listed.size(); ++i)
-        {
-            if (!listed[i].set.has_value())
-            {
-                NS_LOG_ERROR(Scene, ".actor {} の {} 番目の束を読まない。{}", actorFileName, i, listed[i].reason);
-                continue;
-            }
-            sets.push_back(std::move(*listed[i].set));
-        }
-        return sets;
+        return detail::ReadNamedActorFileItems(
+            actorFileName, ActorFileHitReactions(actorFile), &ParseHitReactionSet, "hitReactions", "束");
     }
 
     void WriteHitReactionSets(nlohmann::json& actorFile, const std::vector<HitReactionSet>& sets)
     {
-        nlohmann::json list = nlohmann::json::array();
-        std::size_t next = 0;
-        const nlohmann::json* current = ActorFileHitReactions(actorFile);
-        if (current != nullptr && current->is_array())
-        {
-            // 読まなかった束は字面のまま同じ位置に残す。捨てると、直していない本人の値が .actor から消える
-            const std::vector<ListedHitReactionSet> listed = ListHitReactionSets(*current);
-            for (std::size_t i = 0; i < listed.size(); ++i)
-            {
-                if (!listed[i].set.has_value())
-                {
-                    list.push_back((*current)[i]);
-                    continue;
-                }
-                if (next < sets.size())
-                {
-                    list.push_back(HitReactionSetToJson(sets[next]));
-                    ++next;
-                }
-            }
-        }
-        for (; next < sets.size(); ++next)
-        {
-            list.push_back(HitReactionSetToJson(sets[next]));
-        }
-        SetActorFileHitReactions(actorFile, std::move(list));
+        // 読まなかった束は字面のまま同じ位置に残す。捨てると、直していない本人の値が .actor から消える
+        SetActorFileHitReactions(
+            actorFile,
+            detail::BuildNamedActorFileItemsJson(
+                ActorFileHitReactions(actorFile), sets, &ParseHitReactionSet, &HitReactionSetToJson, "束"));
     }
 } // namespace NS

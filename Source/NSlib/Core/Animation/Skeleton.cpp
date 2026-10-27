@@ -20,17 +20,37 @@ namespace NS
             }
         } // namespace
 
+        void BlendPose(std::span<const BonePose> from,
+                       std::span<const BonePose> to,
+                       float weight,
+                       std::vector<BonePose>& out)
+        {
+            if (from.size() != to.size())
+            {
+                NS_LOG_ERROR(Graphics,
+                             "BlendPose: 元の姿勢の骨の数 ({}) が次の姿勢の骨の数 ({}) と不一致",
+                             from.size(),
+                             to.size());
+                out.assign(from.begin(), from.end());
+                return;
+            }
+
+            out.resize(from.size());
+            const float t = Clamp(weight, 0.0f, 1.0f);
+            for (std::size_t i = 0; i < out.size(); ++i)
+            {
+                out[i].translation = Vector3::Lerp(from[i].translation, to[i].translation, t);
+                // XMQuaternionSlerp は内積が負の時に符号を反転するので、短い方を回る
+                out[i].rotation = Quaternion::Slerp(from[i].rotation, to[i].rotation, t);
+                out[i].scale = Vector3::Lerp(from[i].scale, to[i].scale, t);
+            }
+        }
+
         Skeleton::Skeleton(std::vector<Bone> bones) noexcept : m_bones(std::move(bones)) {}
 
-        std::size_t Skeleton::BoneCount() const noexcept
-        {
-            return m_bones.size();
-        }
+        std::size_t Skeleton::BoneCount() const noexcept { return m_bones.size(); }
 
-        const std::vector<Bone>& Skeleton::Bones() const noexcept
-        {
-            return m_bones;
-        }
+        const std::vector<Bone>& Skeleton::Bones() const noexcept { return m_bones; }
 
         void Skeleton::ComputePalette(std::span<const BonePose> pose, std::vector<Matrix>& out) const
         {
@@ -67,13 +87,11 @@ namespace NS
                 return;
             }
 
-            const Matrix rootParent = [&]() -> Matrix {
-                if (applyRootTransform)
-                {
-                    return m_rootTransform;
-                }
-                return Matrix::Identity;
-            }();
+            Matrix rootParent = Matrix::Identity;
+            if (applyRootTransform)
+            {
+                rootParent = m_rootTransform;
+            }
             for (std::size_t i = 0; i < boneCount; ++i)
             {
                 const Matrix local = LocalMatrix(pose[i]);
@@ -89,26 +107,9 @@ namespace NS
             }
         }
 
-        void Skeleton::ComputeBindPalette(std::vector<Matrix>& out) const
-        {
-            std::vector<BonePose> bindPose;
-            bindPose.reserve(m_bones.size());
-            for (const Bone& bone : m_bones)
-            {
-                bindPose.push_back(bone.bindLocal);
-            }
-            ComputePalette(bindPose, out);
-        }
+        void Skeleton::SetRootTransform(const Matrix& transform) noexcept { m_rootTransform = transform; }
 
-        void Skeleton::SetRootTransform(const Matrix& transform) noexcept
-        {
-            m_rootTransform = transform;
-        }
-
-        const Matrix& Skeleton::RootTransform() const noexcept
-        {
-            return m_rootTransform;
-        }
+        const Matrix& Skeleton::RootTransform() const noexcept { return m_rootTransform; }
 
         Vector3 Skeleton::SkinPositionReference(const SkinnedVertex& vertex,
                                                     std::span<const Matrix> palette) noexcept

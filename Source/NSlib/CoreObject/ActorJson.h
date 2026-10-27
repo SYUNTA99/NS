@@ -13,16 +13,16 @@
 
 namespace NS
 {
-    //! @brief アクターの "classObjs" を返す
+    //! アクターの "classObjs" を返す
     //! @return 無いか object でなければ空の object
     [[nodiscard]] const nlohmann::json& ActorJsonClassObjs(const nlohmann::json& actorJson) noexcept;
-    //! @brief アクターの "classObjs" を返す。無いか object でなければ空の object を作って入れる
+    //! アクターの "classObjs" を返す。無いか object でなければ空の object を作って入れる
     [[nodiscard]] nlohmann::json& ActorJsonClassObjs(nlohmann::json& actorJson);
-    //! @brief 部品名 partName の欄の object を返す
+    //! 部品名 partName の欄の object を返す
     //! @return 無いか object でなければ nullptr
     [[nodiscard]] const nlohmann::json* ClassObjFields(const nlohmann::json& actorJson,
                                                        std::string_view partName) noexcept;
-    //! @brief 部品名 partName の欄の object を返す。無い部品は作らない
+    //! 部品名 partName の欄の object を返す。無い部品は作らない
     //! @return 無いか object でなければ nullptr
     [[nodiscard]] nlohmann::json* ClassObjFields(nlohmann::json& actorJson, std::string_view partName) noexcept;
     //! アクターの保存・凍結・編集履歴で共用する JSON。参照はメモリ上では id、ファイルでは名前
@@ -69,7 +69,7 @@ namespace NS
     [[nodiscard]] bool IsRefValue(const nlohmann::json& value) noexcept;
     //! id を指す参照の欄の値を作る
     [[nodiscard]] nlohmann::json MakeRefValue(ActorRef ref);
-    //! @brief 参照の欄の値から id を読む
+    //! 参照の欄の値から id を読む
     //! @return id が負でない整数で書かれている場合 true。名前で書かれた値と壊れた形は false で、out を変えない
     [[nodiscard]] bool ReadRefValue(const nlohmann::json& value, ActorRef& out) noexcept;
     //! 参照の欄の値の中の、id か名前の入る所。参照の形でなければ nullptr
@@ -97,7 +97,7 @@ namespace NS
         }
     }
 
-    //! @brief object の参照の欄のうち、idMap に載った id を指す物を載った先の id へ付け替える
-    //! @details 複製で使う。コピーした範囲の中を指す参照だけをコピー側へ向け、範囲の外を指す参照は元のまま残す
+    //! object の参照の欄のうち、idMap に載った id を指す物を載った先の id へ付け替える
+    //! 複製で使う。コピーした範囲の中を指す参照だけをコピー側へ向け、範囲の外を指す参照は元のまま残す
     void RemapActorRefs(nlohmann::json& actorJson, const std::unordered_map<uint32, uint32>& idMap);
 } // namespace NS

@@ -9,7 +9,7 @@ namespace NS
 {
     namespace OS
     {
-        //! @brief マウスボタンの識別子
+        //! マウスボタンの識別子
         enum class MouseButton : int
         {
             Left = 0,
@@ -54,22 +54,22 @@ namespace NS
                 return m_y - m_prevY;
             }
 
-            //! @brief 縦方向のホイール移動量を取得する (1 目盛りで WHEEL_DELTA = 120)
+            //! 縦方向のホイール移動量を取得する (1 目盛りで WHEEL_DELTA = 120)
             [[nodiscard]] int GetWheelDelta() const noexcept { return m_wheel; }
 
-            //! @brief 移動量とホイールのフレーム境界を更新する
+            //! 移動量とホイールのフレーム境界を更新する
             void Update() noexcept;
 
-            //! @brief OSのマウス移動イベントを受け取る内部API
+            //! OSのマウス移動イベントを受け取る内部API
             void OnMove(int x, int y) noexcept;
 
-            //! @brief OSのマウスボタン押下イベントを受け取る内部API。押していないボタンだけを数える
+            //! OSのマウスボタン押下イベントを受け取る内部API。押していないボタンだけを数える
             void OnButtonDown(MouseButton b) noexcept;
 
-            //! @brief OSのマウスボタン解放イベントを受け取る内部API
+            //! OSのマウスボタン解放イベントを受け取る内部API
             void OnButtonUp(MouseButton b) noexcept;
 
-            //! @brief OSのホイールスクロールイベントを受け取る内部API
+            //! OSのホイールスクロールイベントを受け取る内部API
             void OnWheel(int delta) noexcept;
 
             //! 画面端に達しても移動量を受け取る。切替時は未消化の移動量を捨てる
@@ -77,10 +77,10 @@ namespace NS
 
             [[nodiscard]] bool IsRelativeMode() const noexcept { return m_relativeMode; }
 
-            //! @brief 相対マウスモード用に、OS からの Raw Input の移動量を蓄積する内部 API
+            //! 相対マウスモード用に、OS からの Raw Input の移動量を蓄積する内部 API
             void OnRawMove(int dx, int dy) noexcept;
 
-            //! @brief 相対マウスモード用に、OS からの Raw Input の絶対座標を前回との差にして蓄積する内部 API
+            //! 相対マウスモード用に、OS からの Raw Input の絶対座標を前回との差にして蓄積する内部 API
             //! @note 最初の 1 回は座標を記録するだけで移動量は積まない
             void OnRawMoveAbsolute(int screenX, int screenY) noexcept;
 

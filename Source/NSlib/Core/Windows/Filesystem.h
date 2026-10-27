@@ -14,8 +14,8 @@ namespace NS
 {
     namespace OS
     {
-        //! @brief ファイル・ディレクトリ操作の最小ユーティリティ
-        //! @details 失敗時はエラーログを出力して nullopt や false を返す
+        //! ファイル・ディレクトリ操作の最小ユーティリティ
+        //! 失敗時はエラーログを出力して nullopt や false を返す
         class FileSystem
         {
         public:
@@ -31,8 +31,8 @@ namespace NS
             //! 既存のファイルは上書きされ、存在しない中間ディレクトリは自動的に作成される
             [[nodiscard]] static bool WriteAllBytes(std::string_view path, std::span<const std::byte> bytes);
 
-            //! @brief path に .tmp を足した一時のファイルに書いてから、path と置き換える
-            //! @details 途中で失敗した場合は path の前の中身を残し、一時のファイルを消す
+            //! path に .tmp を足した一時のファイルに書いてから、path と置き換える
+            //! 途中で失敗した場合は path の前の中身を残し、一時のファイルを消す
             [[nodiscard]] static bool ReplaceAllBytes(std::string_view path, std::span<const std::byte> bytes);
 
             //! path のファイルを消す。無い場合も成功扱いとなる
@@ -102,8 +102,8 @@ namespace NS
             [[nodiscard]] static std::string ParentDirectory(std::string_view path);
         };
 
-        //! @brief ファイルを開いたまま持ち、末尾へ書き足していく
-        //! @details ほかの FileAppender やプログラムが同じファイルを開いていても書ける。無いファイルは作る
+        //! ファイルを開いたまま持ち、末尾へ書き足していく
+        //! ほかの FileAppender やプログラムが同じファイルを開いていても書ける。無いファイルは作る
         class FileAppender : public NonCopyable
         {
         public:

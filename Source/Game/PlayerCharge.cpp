@@ -54,10 +54,7 @@ namespace
     }
 } // namespace
 
-const GL::Level::ImpactInputJudge& PlayerActor::ChargeJudge() const noexcept
-{
-    return m_charge.Judge();
-}
+const GL::Level::ImpactInputJudge& PlayerActor::ChargeJudge() const noexcept { return m_charge.Judge(); }
 
 bool PlayerActor::TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
 {
@@ -74,10 +71,7 @@ bool PlayerActor::TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const n
     return m_charge.TryGetLineTarget(outTarget);
 }
 
-float PlayerActor::StanceHeight() const noexcept
-{
-    return m_appearance->StanceHeight(m_charge);
-}
+float PlayerActor::StanceHeight() const noexcept { return m_appearance->StanceHeight(m_charge); }
 
 void PlayerActor::ObserveCharge(bool held)
 {

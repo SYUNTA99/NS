@@ -34,8 +34,8 @@ namespace GL
         //! ロックオンの枠の出方を決めるフレーム数。フレームは固定ステップで数える
         struct LockOnFrames
         {
-            int sinceCapture = 0; //!< 狙う相手なしからありへ移ったフレームを 0 として数えたフレーム数
-            int sinceLost = -1; //!< 狙う相手ありからなしへ移ったフレームを 0 として数えたフレーム数。外れていなければ負
+            int sinceCapture = 0; // 狙う相手なしからありへ移ったフレームを 0 として数えたフレーム数
+            int sinceLost = -1; // 狙う相手ありからなしへ移ったフレームを 0 として数えたフレーム数。外れていなければ負
         };
 
         //! ロックオンの枠。明るい線の四角と、その下に先に描く暗い縁の四角
@@ -45,8 +45,8 @@ namespace GL
             std::vector<MarkerRect> corners;
             //! 暗い縁。同じ並びで、各四角を縁の幅ぶん広げる
             std::vector<MarkerRect> outline;
-            NS::Color color{};        //!< 明るい線の色と不透明度
-            NS::Color outlineColor{}; //!< 暗い縁の色と不透明度
+            NS::Color color{};        // 明るい線の色と不透明度
+            NS::Color outlineColor{}; // 暗い縁の色と不透明度
         };
 
         //! 外接箱の中心と最大半径を画面へ投影し、捕捉・喪失の経過に応じた枠を組む
@@ -59,8 +59,8 @@ namespace GL
                                             const TargetMarkerDesc& desc,
                                             LockOnFrameShape& outFrame);
 
-        //! @brief 溜め中の相手へロックオン枠を描く部品
-        //! @details 相手を見失うと直前の枠を縮めて残す。溜めを終えたら消す
+        //! 溜め中の相手へロックオン枠を描く部品
+        //! 相手を見失うと直前の枠を縮めて残す。溜めを終えたら消す
         class TargetMarker : public NS::OverlayRenderer
         {
         public:

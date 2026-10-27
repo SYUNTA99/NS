@@ -15,9 +15,11 @@ namespace NS
         UnloadScene();
     }
 
-    void SceneManager::SetDevice(Gfx::D3DDevice* device) noexcept
+    void SceneManager::SetDevice(Gfx::D3DDevice* device) noexcept { m_device = device; }
+
+    void SceneManager::SetAudioDevice(Audio::AudioDevice* device) noexcept
     {
-        m_device = device;
+        m_audioDevice = device;
     }
 
     Scene& SceneManager::LoadScene(nlohmann::json&& scene)
@@ -26,6 +28,7 @@ namespace NS
 
         m_current = std::make_unique<Scene>();
         m_current->SetDevice(m_device);
+        m_current->SetAudioDevice(m_audioDevice);
 
         m_current->ResetFromJson(std::move(scene));
         return *m_current;
@@ -41,15 +44,9 @@ namespace NS
         m_current.reset();
     }
 
-    Scene* SceneManager::Current() noexcept
-    {
-        return m_current.get();
-    }
+    Scene* SceneManager::Current() noexcept { return m_current.get(); }
 
-    const Scene* SceneManager::Current() const noexcept
-    {
-        return m_current.get();
-    }
+    const Scene* SceneManager::Current() const noexcept { return m_current.get(); }
 
     void SceneManager::Update()
     {

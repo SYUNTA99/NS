@@ -3,7 +3,7 @@
 #include "Game/Level/PropActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -185,10 +185,10 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
     {
         rock->UpdateMotion();
     }
-    const NS::EffectKeeper* keeper = rock->GetEffectKeeper();
-    ASSERT_NE(keeper, nullptr);
+    const NS::Effect* effect = rock->GetEffect();
+    ASSERT_NE(effect, nullptr);
     int dustCount = 0;
-    for (const NS::EffectRecord& record : keeper->Records())
+    for (const NS::EffectRecord& record : effect->Records())
     {
         if (record.name == "launch.landDust")
         {
@@ -204,13 +204,13 @@ TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    const NS::EffectKeeper* keeper = rock->GetEffectKeeper();
-    ASSERT_NE(keeper, nullptr);
+    const NS::Effect* effect = rock->GetEffect();
+    ASSERT_NE(effect, nullptr);
     GL::Level::LaunchEffects* effects = &rock->Effects();
     rock->Update();
-    EXPECT_EQ(keeper->Step(), 1);
+    EXPECT_EQ(effect->Step(), 1);
     effects->Update(rock, rock->Flight());
-    EXPECT_EQ(keeper->Step(), 1);
+    EXPECT_EQ(effect->Step(), 1);
 }
 
 TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
@@ -224,17 +224,17 @@ TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
     ReleaseRock(rock);
-    const NS::EffectKeeper* keeper = rock->GetEffectKeeper();
-    ASSERT_NE(keeper, nullptr);
+    const NS::Effect* effect = rock->GetEffect();
+    ASSERT_NE(effect, nullptr);
     bool landed = false;
     for (int step = 0; step < 100 && !landed; ++step)
     {
         rock->Update();
-        for (const NS::EffectRecord& record : keeper->Records())
+        for (const NS::EffectRecord& record : effect->Records())
         {
             if (record.name == "launch.landDust")
             {
-                EXPECT_EQ(record.startStep, keeper->Step());
+                EXPECT_EQ(record.startStep, effect->Step());
                 EXPECT_FALSE(rock->IsArc());
                 landed = true;
             }

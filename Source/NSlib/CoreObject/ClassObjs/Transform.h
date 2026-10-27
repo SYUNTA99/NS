@@ -14,8 +14,8 @@ namespace NS
     inline constexpr const char* k_RotationFieldName = "回転";
     inline constexpr const char* k_ScaleFieldName = "スケール";
 
-    //! @brief 個体の姿勢を持つ部品。Snapshot で控えた固定更新間の姿勢を描画時に補間する
-    //! @details SceneActor::Root() はこの部品を返す。持ち主なしでも作れる
+    //! 個体の姿勢を持つ部品。Snapshot で控えた固定更新間の姿勢を描画時に補間する
+    //! SceneActor::Root() はこの部品を返す。持ち主なしでも作れる
     class Transform : public Object
     {
     public:
@@ -25,11 +25,11 @@ namespace NS
         void SetPosition(const Vector3& position) noexcept;
         //! シーン内の回転
         void SetRotation(const Quaternion& rotation) noexcept;
-        //! @brief 個体の大きさ。値をそのまま書く
-        //! @details Inspector とシーンの JSON から来る値は、欄から書く SetScaleField が下限で止めてから書く
+        //! 個体の大きさ。値をそのまま書く
+        //! Inspector とシーンの JSON から来る値は、欄から書く SetScaleField が下限で止めてから書く
         void SetScale(const Vector3& scale) noexcept;
-        //! @brief 今の位置と前フレームの位置を同じだけずらす
-        //! @details 補間には動きとして映らない。前フレームから今までに動いた分はそのまま補間される
+        //! 今の位置と前フレームの位置を同じだけずらす
+        //! 補間には動きとして映らない。前フレームから今までに動いた分はそのまま補間される
         void ShiftPosition(const Vector3& delta) noexcept;
 
         [[nodiscard]] const Vector3& Position() const noexcept { return m_position; }

@@ -243,10 +243,7 @@ namespace NS
         }
     }
 
-    SceneActor* ActorList::FindActor(ActorRef ref) noexcept
-    {
-        return FindByActorId(ref.id);
-    }
+    SceneActor* ActorList::FindActor(ActorRef ref) noexcept { return FindByActorId(ref.id); }
 
     void ActorList::SyncCollisions()
     {
@@ -274,10 +271,7 @@ namespace NS
         m_updating = true;
     }
 
-    void ActorList::EndPhase() noexcept
-    {
-        m_updating = false;
-    }
+    void ActorList::EndPhase() noexcept { m_updating = false; }
 
     void ActorList::ScheduleAppeared()
     {

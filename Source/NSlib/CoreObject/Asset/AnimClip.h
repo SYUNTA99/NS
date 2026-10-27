@@ -8,8 +8,8 @@
 
 namespace NS
 {
-    //! @brief 欄の名前で選んだ動き 1 本
-    //! @details 名前は「ContentRoot からの glTF の道筋」か「道筋#動きの名前」で、欄に保存する字面そのまま
+    //! 欄の名前で選んだ動き 1 本
+    //! 名前は「ContentRoot からの glTF の道筋」か「道筋#動きの名前」で、欄に保存する字面そのまま
     //! 読めない名前の時は動きが空で、名前だけを持つ。トラックは骨を名前で持ち、どのモデルにも依らない
     class AnimClip : public Object
     {

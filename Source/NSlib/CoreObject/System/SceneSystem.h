@@ -4,8 +4,8 @@
 
 namespace NS
 {
-    //! @brief シーンが持つ管理役の共通基底
-    //! @details シーンへ管理役を作る口は、この型の派生だけを受ける
+    //! シーンが持つ管理役の共通基底
+    //! シーンへ管理役を作る口は、この型の派生だけを受ける
     class SceneSystem : public NonCopyable
     {
     public:

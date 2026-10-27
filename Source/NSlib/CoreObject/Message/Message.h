@@ -31,12 +31,12 @@ namespace NS
         return static_cast<const T*>(&msg);
     }
 
-    //! @brief センサーからセンサーへ知らせを送る。受け手は receiver の持ち主の ReceiveMsg
-    //! @details 自分宛ては送らない。receiver が無効か持ち主が無ければ送らない
+    //! センサーからセンサーへ知らせを送る。受け手は receiver の持ち主の ReceiveMsg
+    //! 自分宛ては送らない。receiver が無効か持ち主が無ければ送らない
     //! @return 受け手が応じた場合 true
     bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
 
-    //! @brief センサーを介さずに SceneActor
+    //! センサーを介さずに SceneActor
     //! へ直接知らせを送る。進行役からの一斉の知らせなど、重なりと関係の無い知らせに使う
     //! @return 受け手が応じた場合 true
     bool SendMsgToActor(const Message& msg, SceneActor* receiver);

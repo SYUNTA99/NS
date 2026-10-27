@@ -1,13 +1,13 @@
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Core/Windows/ComInitialization.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 
 #include <windows.h>
 
 namespace
 {
-    // ロガーの初期化と終了を自動化して、途中で return しても絶対に終了処理が呼ばれるようにする
     class LoggerScope : public ::NS::NonCopyable
     {
     public:
@@ -30,6 +30,8 @@ namespace
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 {
     LoggerScope loggerScope;
+    // XAudio2 と WIC は COM を使う。初期化できなくても音と画像の読み込みが失敗するだけなので続ける
+    const ::NS::OS::ComInitialization com;
 
     std::unique_ptr<::NS::Application> app = ::NS::CreateApplication();
     if (!app)

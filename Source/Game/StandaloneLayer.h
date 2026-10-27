@@ -5,16 +5,15 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Windows/InputReader.h"
 
-//! @brief 単体構成のカーソルと Esc の操作
-//! @details 最初の Esc でカーソルを出し、表示中の Esc で終了する
+//! 単体構成のカーソルと Esc の操作
+//! 最初の Esc でカーソルを出し、表示中の Esc で終了する
 class StandaloneLayer : public NS::Layer
 {
 public:
-    //! @brief プレイ中に Esc を押した時の応答
     enum class EscapeResponse : NS::uint8
     {
-        ReleaseCursor, //!< カーソルを出し、固定と相対を解く
-        Quit           //!< アプリを終える
+        ReleaseCursor,
+        Quit
     };
 
     StandaloneLayer();
@@ -27,5 +26,5 @@ public:
     [[nodiscard]] static EscapeResponse ResolveEscape(bool cursorVisible) noexcept;
 
 private:
-    NS::OS::InputReader m_inputReader; // 固定フレームごとに読む
+    NS::OS::InputReader m_inputReader;
 };

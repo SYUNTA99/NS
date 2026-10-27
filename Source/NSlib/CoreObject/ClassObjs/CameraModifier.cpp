@@ -24,7 +24,6 @@ namespace NS
 {
     namespace
     {
-        // 向きが入れ替わるまでのフレーム数を 1〜longest から選ぶ。longest が 2 以上なら previous と同じ数を選ばない
         // 分布は実装ごとに結果が違うので通さず、生成器の出力の余りから選ぶ
         [[nodiscard]] int PickFlipFrames(std::mt19937& generator, int longest, int previous) noexcept
         {
@@ -45,7 +44,6 @@ namespace NS
             return picked;
         }
 
-        // offsets の各フレームの axis の成分へ向きの符号を書く。最初は firstSign
         void FillFlipSigns(std::mt19937& generator,
                            int longest,
                            float firstSign,
@@ -108,7 +106,6 @@ namespace NS
         FillFlipSigns(generator, desc.longestFlipFrames, sideSign, &Vector2::x, shake->m_offsets);
         FillFlipSigns(generator, desc.longestFlipFrames, -1.0f, &Vector2::y, shake->m_offsets);
 
-        // 始めたフレームが最大で、残りのフレーム数に比例して減る
         for (int frame = 0; frame < desc.frames; ++frame)
         {
             const float decay = static_cast<float>(desc.frames - frame) / static_cast<float>(desc.frames);
@@ -207,10 +204,7 @@ namespace NS
         return &kind;
     }
 
-    float CameraSinkModifier::Pixels() const noexcept
-    {
-        return CameraSinkPixelsAt(m_desc, Frame());
-    }
+    float CameraSinkModifier::Pixels() const noexcept { return CameraSinkPixelsAt(m_desc, Frame()); }
 
     void CameraSinkModifier::Advance() noexcept
     {
@@ -228,10 +222,7 @@ namespace NS
         pose.screenOffset.y += Pixels() * 2.0f / k_SinkReferenceHeightPixels;
     }
 
-    bool CameraSinkModifier::IsFinished() const noexcept
-    {
-        return Frame() >= m_desc.frames;
-    }
+    bool CameraSinkModifier::IsFinished() const noexcept { return Frame() >= m_desc.frames; }
 
     std::unique_ptr<CameraZoomRollModifier> CameraZoomRollModifier::Create(const CameraZoomRollDesc& desc,
                                                                            float rollSign)
@@ -336,10 +327,7 @@ namespace NS
         m_held = std::max(m_held, clamped);
     }
 
-    float CameraTraumaModifier::ShakeAmount() const noexcept
-    {
-        return std::pow(m_trauma, m_shape.exponent);
-    }
+    float CameraTraumaModifier::ShakeAmount() const noexcept { return std::pow(m_trauma, m_shape.exponent); }
 
     Vector3 CameraTraumaModifier::Angles() const noexcept
     {
@@ -468,10 +456,7 @@ namespace NS
         pose.target += shift;
     }
 
-    bool CameraNudgeModifier::IsFinished() const noexcept
-    {
-        return Frame() >= m_desc.frames;
-    }
+    bool CameraNudgeModifier::IsFinished() const noexcept { return Frame() >= m_desc.frames; }
 
     std::array<const void*, 5> CameraHitEffectKinds() noexcept
     {

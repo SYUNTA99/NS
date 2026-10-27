@@ -275,10 +275,7 @@ namespace NS
             }
         }
 
-        bool FileAppender::IsValid() const noexcept
-        {
-            return m_handle != INVALID_HANDLE_VALUE;
-        }
+        bool FileAppender::IsValid() const noexcept { return m_handle != INVALID_HANDLE_VALUE; }
 
         bool FileAppender::Append(std::span<const std::byte> bytes) noexcept
         {
@@ -695,10 +692,7 @@ namespace NS
             return std::string(name.substr(dot));
         }
 
-        std::string FileSystem::FileName(std::string_view path)
-        {
-            return std::string(FileNameView(path));
-        }
+        std::string FileSystem::FileName(std::string_view path) { return std::string(FileNameView(path)); }
 
         std::string FileSystem::Stem(std::string_view path)
         {

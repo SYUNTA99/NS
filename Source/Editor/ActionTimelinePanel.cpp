@@ -40,7 +40,6 @@ namespace NS
                 return s_types;
             }
 
-            // 入り切りの行に出す名前
             std::string SensorLabel(const ActionSensorEvent& sensor)
             {
                 std::string label = "体のセンサー";
@@ -59,7 +58,7 @@ namespace NS
             constexpr float k_QuarterSpeed = 0.25f;
 
 #if NS_EDITOR_ENABLED
-            constexpr int k_PreviewGraphCount = 5; // 帯の下の折れ線の行の数
+            constexpr int k_PreviewGraphCount = 5;
             constexpr ImU32 k_GraphBackColor = IM_COL32(40, 40, 46, 255);
             constexpr ImU32 k_GraphTraumaColor = IM_COL32(255, 170, 60, 255);
             constexpr ImU32 k_GraphXColor = IM_COL32(240, 90, 90, 255);
@@ -732,7 +731,7 @@ namespace NS
             }
             const float graphHeight = rowHeight * 2.0f;
             const int origin = PlaybackOrigin();
-            // 1 本の折れ線。value は 0〜1 (center が真なら -1〜1) に写した値を返す
+            // value は 0〜1 (centered が真なら -1〜1) に正規化した値を返す
             const auto drawLine = [&](const ImVec2& at,
                                       ImU32 color,
                                       bool centered,
@@ -756,16 +755,17 @@ namespace NS
                     previous = point;
                 }
             };
-            const auto graphRow =
-                [&](const char* label, const char* tooltip, const std::function<void(const ImVec2&)>& body) {
-                    ImGui::TextUnformatted(label);
-                    ImGui::SetItemTooltip("%s", tooltip);
-                    ImGui::SameLine(layout.labelWidth, 0.0f);
-                    const ImVec2 at = ImGui::GetCursorScreenPos();
-                    ImGui::Dummy(ImVec2{totalWidth, graphHeight});
-                    draw.AddRectFilled(at, ImVec2{at.x + totalWidth, at.y + graphHeight}, k_GraphBackColor);
-                    body(at);
-                };
+            const auto graphRow = [&](const char* label,
+                                      const char* tooltip,
+                                      const std::function<void(const ImVec2&)>& body) {
+                ImGui::TextUnformatted(label);
+                ImGui::SetItemTooltip("%s", tooltip);
+                ImGui::SameLine(layout.labelWidth, 0.0f);
+                const ImVec2 at = ImGui::GetCursorScreenPos();
+                ImGui::Dummy(ImVec2{totalWidth, graphHeight});
+                draw.AddRectFilled(at, ImVec2{at.x + totalWidth, at.y + graphHeight}, k_GraphBackColor);
+                body(at);
+            };
             graphRow("トラウマ", "カメラのトラウマ。下が 0、上が 1", [&](const ImVec2& at) {
                 drawLine(at, k_GraphTraumaColor, false, [](const HitPreviewFrame& frame) { return frame.trauma; });
             });
@@ -809,6 +809,48 @@ namespace NS
 #endif
         }
 
+        namespace
+        {
+#if NS_EDITOR_ENABLED
+            void DrawFrameSpanRows(int& outStart, int& outLength, bool& changed) noexcept
+            {
+                FieldRow("始まり");
+                int start = outStart;
+                if (ImGui::DragInt("##start", &start, 0.2f, 0, 600))
+                {
+                    outStart = std::max(start, 0);
+                    changed = true;
+                }
+                FieldRow("長さ");
+                int length = outLength;
+                if (ImGui::DragInt("##length", &length, 0.2f, 0, 600))
+                {
+                    outLength = std::max(length, 0);
+                    changed = true;
+                }
+            }
+
+            void DrawBoolComboRow(const char* label,
+                                  const char* id,
+                                  bool& flag,
+                                  const char* items,
+                                  bool& changed) noexcept
+            {
+                FieldRow(label);
+                int index = 0;
+                if (flag)
+                {
+                    index = 1;
+                }
+                if (ImGui::Combo(id, &index, items))
+                {
+                    flag = index == 1;
+                    changed = true;
+                }
+            }
+#endif
+        } // namespace
+
         void ActionTimelinePanel::RenderSelectedEvent(ActorActionEvent& event, bool& changed) noexcept
         {
 #if NS_EDITOR_ENABLED
@@ -816,20 +858,7 @@ namespace NS
             ImGui::SeparatorText(title.c_str());
             if (BeginFieldTable("##event-row"))
             {
-                FieldRow("始まり");
-                int start = event.start;
-                if (ImGui::DragInt("##start", &start, 0.2f, 0, 600))
-                {
-                    event.start = std::max(start, 0);
-                    changed = true;
-                }
-                FieldRow("長さ");
-                int length = event.length;
-                if (ImGui::DragInt("##length", &length, 0.2f, 0, 600))
-                {
-                    event.length = std::max(length, 0);
-                    changed = true;
-                }
+                DrawFrameSpanRows(event.start, event.length, changed);
                 EndFieldTable();
             }
             if (const ReflectionInfo* info = HitReactionItemReflection(event.item))
@@ -849,42 +878,9 @@ namespace NS
             ImGui::SeparatorText("センサーの入り切り");
             if (BeginFieldTable("##event-row"))
             {
-                FieldRow("センサー");
-                int kind = 0;
-                if (sensor.attack)
-                {
-                    kind = 1;
-                }
-                if (ImGui::Combo("##sensor", &kind, "体のセンサー\0攻撃のセンサー\0"))
-                {
-                    sensor.attack = kind == 1;
-                    changed = true;
-                }
-                FieldRow("長さの間");
-                int valid = 0;
-                if (sensor.valid)
-                {
-                    valid = 1;
-                }
-                if (ImGui::Combo("##valid", &valid, "外す\0入れる\0"))
-                {
-                    sensor.valid = valid == 1;
-                    changed = true;
-                }
-                FieldRow("始まり");
-                int start = sensor.start;
-                if (ImGui::DragInt("##start", &start, 0.2f, 0, 600))
-                {
-                    sensor.start = std::max(start, 0);
-                    changed = true;
-                }
-                FieldRow("長さ");
-                int length = sensor.length;
-                if (ImGui::DragInt("##length", &length, 0.2f, 0, 600))
-                {
-                    sensor.length = std::max(length, 0);
-                    changed = true;
-                }
+                DrawBoolComboRow("センサー", "##sensor", sensor.attack, "体のセンサー\0攻撃のセンサー\0", changed);
+                DrawBoolComboRow("長さの間", "##valid", sensor.valid, "外す\0入れる\0", changed);
+                DrawFrameSpanRows(sensor.start, sensor.length, changed);
                 EndFieldTable();
             }
 #else

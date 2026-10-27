@@ -8,6 +8,7 @@
 #include "NSlib/Core/Windows/Filesystem.h"
 
 #include <algorithm>
+#include <cmath>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -22,11 +23,11 @@ namespace NS
         // 保存形式を変えたら上げる。読み込みは一致する版だけを受け付ける
         constexpr int k_FormatVersion = 9;
 
-        //! 読込時の上限。巨大 size / 要素数による メモリ枯渇を防ぐ
+        // 読込時の上限。巨大 size / 要素数による メモリ枯渇を防ぐ
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;
         constexpr std::size_t k_MaxActorCount = 100'000u;
 
-        //! ファイルのアクター 1 体を、知っている欄だけの形へ整える。未知の欄は捨て、fields の中身は素通し
+        // ファイルのアクター 1 体を、知っている欄だけの形へ整える。未知の欄は捨て、fields の中身は素通し
         nlohmann::json NormalizeActorJson(const nlohmann::json& json)
         {
             nlohmann::json object = MakeActorJson();
@@ -167,6 +168,16 @@ namespace NS
         scene["nextObjectId"] = nextObjectId;
     }
 
+    float ClampMusicVolume(float volume) noexcept
+    {
+        // Clamp は非数を止めないので、先に弾く
+        if (!std::isfinite(volume))
+        {
+            return SceneEnvironment{}.musicVolume;
+        }
+        return Clamp(volume, 0.0f, 1.0f);
+    }
+
     SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene)
     {
         SceneEnvironment environment{};
@@ -180,6 +191,7 @@ namespace NS
             return environment;
         }
         (void)ApplyReflectedFields(&environment, *SceneEnvironment::StaticReflection(), *found);
+        environment.musicVolume = ClampMusicVolume(environment.musicVolume);
         return environment;
     }
 

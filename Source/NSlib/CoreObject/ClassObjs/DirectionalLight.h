@@ -9,8 +9,8 @@ namespace NS
     class DirectionalLight : public Object
     {
     public:
-        //! @brief 平行光の向き。持ち主の根の世界行列 root で +Z を回した、長さ 1 の向き
-        //! @details 向きの欄は持たない。エディタのギズモでアクターを回すと光も回る
+        //! 平行光の向き。持ち主の根の世界行列 root で +Z を回した、長さ 1 の向き
+        //! 向きの欄は持たない。エディタのギズモでアクターを回すと光も回る
         [[nodiscard]] Vector3 Direction(const Matrix& root) const noexcept;
         //! 平行光の色。1.0 超の HDR 値も許容する
         [[nodiscard]] const NS::Color& Color() const noexcept { return m_color; }

@@ -246,10 +246,7 @@ namespace NS
             m_character->SetLinearVelocity(correctedVelocity);
         }
 
-        Vector3 JoltCharacter::Position() const
-        {
-            return FromJolt(m_character->GetPosition());
-        }
+        Vector3 JoltCharacter::Position() const { return FromJolt(m_character->GetPosition()); }
 
         Vector3 JoltCharacter::Velocity() const
         {

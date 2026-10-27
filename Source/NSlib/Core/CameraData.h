@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/Math.h"
 
 namespace NS
 {
 
-    //! 左手系の透視投影。設定を変更すると、次の行列取得時に再計算する
+    //! 左手系の透視投影カメラ。設定変更は次の行列取得時に遅延反映される
     class CameraData
     {
     public:
@@ -14,11 +14,11 @@ namespace NS
         void SetUp(const Vector3& up) noexcept;
 
         void SetFovY(Radians fov) noexcept;
-        //! 幅を高さで割った値を指定する。ウィンドウリサイズ時などは再設定が必要
+        //! 幅 / 高さを指定する
         void SetAspectRatio(float aspect) noexcept;
         void SetNearPlane(float nearPlane) noexcept;
         void SetFarPlane(float farPlane) noexcept;
-        //! 投影後の画面をずらす。画面の幅・高さを 2 とする座標で、右と上が正。ビュー行列は変わらない
+        //! 投影後の NDC 座標系（幅・高さ 2、右上正）での平行移動量。ビュー行列には影響しない
         void SetScreenOffset(const Vector2& offset) noexcept;
 
         [[nodiscard]] const Vector3& Position() const noexcept;
@@ -31,11 +31,10 @@ namespace NS
         [[nodiscard]] float FarPlane() const noexcept;
         [[nodiscard]] const Vector2& ScreenOffset() const noexcept;
 
-        //! XMMatrixLookAtLH 相当。位置と注視点が重なっている時は単位行列を返す
+        //! 位置と注視点が一致している場合は単位行列を返す
         [[nodiscard]] const Matrix& View() const noexcept;
-        //! XMMatrixPerspectiveFovLH 相当
         [[nodiscard]] const Matrix& Projection() const noexcept;
-        //! ビュー行列と投影行列の乗算結果を返す。行ベクトル前提で View、Projection の順に掛ける
+        //! 行ベクトル規約に基づき View * Projection を返す
         [[nodiscard]] Matrix ViewProjection() const noexcept;
 
     private:

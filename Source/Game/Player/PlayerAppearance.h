@@ -27,8 +27,8 @@ namespace GL
         struct MissTumble;
         struct PlayerMotion;
 
-        //! @brief 自機の立ち姿・玉と、描画時の回転・変形を管理する部品
-        //! @details 姿のメッシュは素材の姿のポインタの欄 (NS::Mesh*) に持ち、姿ごとの倍率で大きさを合わせる。当たりの寸法には付いて行かない
+        //! 自機の立ち姿・玉と、描画時の回転・変形を管理する部品
+        //! 姿のメッシュは素材の姿のポインタの欄 (NS::Mesh*) に持ち、姿ごとの倍率で大きさを合わせる。当たりの寸法には付いて行かない
         // TODO: 部分的な JSON 適用では Model の undo を再反映できない。ResetFromJson で直る
         class PlayerAppearance : public NS::Object
         {
@@ -36,14 +36,14 @@ namespace GL
             //! 姿のメッシュの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
             PlayerAppearance();
 
-            //! @brief 玉のメッシュを renderer (持ち主の Model) へ差し、玉の倍率を局所の倍率へ書く
-            //! @details 丸まっているかは持たない。持ち主が当たりの形を変えた時と OnAssetsLoaded で、形に合う方を呼ぶ
+            //! 玉のメッシュを renderer (持ち主の Model) へ差し、玉の倍率を局所の倍率へ書く
+            //! 丸まっているかは持たない。持ち主が当たりの形を変えた時と OnAssetsLoaded で、形に合う方を呼ぶ
             void Curl(NS::Model* renderer) noexcept;
-            //! @brief 立ち姿のメッシュを renderer へ差し、立ち姿の倍率を局所の倍率へ書く
-            //! @details 呼ぶ時は Curl と同じ
+            //! 立ち姿のメッシュを renderer へ差し、立ち姿の倍率を局所の倍率へ書く
+            //! 呼ぶ時は Curl と同じ
             void Uncurl(NS::Model* renderer) noexcept;
 
-            //! @brief 丸まりに合わせて玉を回し、回転と描く形の倍率を renderer へ書く。持ち主の見た目の段が呼ぶ
+            //! 丸まりに合わせて玉を回し、回転と描く形の倍率を renderer へ書く。持ち主の見た目の段が呼ぶ
             //! @param[in] dt 持ち主の 1 フレームの秒。玉を回す角度と外れのぶれの位相に掛ける
             //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
             //! @param[in] impact 当たりの裁定の答え。何回目の当たりかを読む
@@ -57,8 +57,8 @@ namespace GL
                         const NS::Vector3& aimDirection,
                         const GL::Level::ImpactAnswer& impact);
 
-            //! @brief renderer (持ち主の Model) の描く倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
-            //! @details やり直しとプレイの終わりで持ち主が呼ぶ。次の Update からはその時の構えと当たりの形で組み直す
+            //! renderer (持ち主の Model) の描く倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
+            //! やり直しとプレイの終わりで持ち主が呼ぶ。次の Update からはその時の構えと当たりの形で組み直す
             void ResetDrawScale(NS::Model* renderer) noexcept;
 
             //! 押している間の構えの縦の倍率。押していない間は 1、溜めている間は構えの縮み、その前は押しの構えの縮み
@@ -66,8 +66,8 @@ namespace GL
 
             //! 直前の Update で玉が回った角度を度で返す。立ち姿と止めの間は 0
             [[nodiscard]] float SpinDegreesThisFrame() const noexcept { return m_spinDegreesThisFrame; }
-            //! @brief 玉を回している軸を返す
-            //! @details 根の空間の単位ベクトル。正の角度で、玉の上面が 軸 × 上 の向きへ倒れる前転になる。
+            //! 玉を回している軸を返す
+            //! 根の空間の単位ベクトル。正の角度で、玉の上面が 軸 × 上 の向きへ倒れる前転になる。
             //! 外れの反動の間は水平とは限らない
             //! @return 直前の Update で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
             [[nodiscard]] NS::Vector3 SpinAxis() const noexcept { return m_spinAxis; }

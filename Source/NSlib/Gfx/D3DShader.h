@@ -57,11 +57,11 @@ namespace NS
             std::vector<ShaderParam> params;
         };
 
-        //! @brief コンパイルしたバイトコードから MaterialParams の並びを取り出す
+        //! コンパイルしたバイトコードから MaterialParams の並びを取り出す
         //! @return MaterialParams が b2 以外にある時と、取り出しに失敗した時は nullopt。理由はログに出す
         [[nodiscard]] std::optional<ShaderParamLayout> ReflectMaterialParams(std::span<const std::byte> bytecode);
 
-        //! @brief 頂点と画素の MaterialParams を 1 つにする。2 つのステージは同じバッファを読む
+        //! 頂点と画素の MaterialParams を 1 つにする。2 つのステージは同じバッファを読む
         //! @return 片方が空ならもう片方。両方にあって大きさか項目 (名前・型・位置) が違えば nullopt
         [[nodiscard]] std::optional<ShaderParamLayout> MergeMaterialParams(const ShaderParamLayout& vertex,
                                                                            const ShaderParamLayout& pixel);
@@ -98,16 +98,16 @@ namespace NS
             //! 頂点レイアウト生成用のバイナリコードを取得する
             [[nodiscard]] std::span<const std::byte> VertexShaderBytecode() const noexcept;
 
-            //! @brief 今の中身の番号。中身を持たない間は 0
-            //! @details バイトコードの入力シグネチャから求める。入力が変われば番号も変わり、入力が同じなら別のシェーダーでも同じ番号。
+            //! 今の中身の番号。中身を持たない間は 0
+            //! バイトコードの入力シグネチャから求める。入力が変われば番号も変わり、入力が同じなら別のシェーダーでも同じ番号。
             //! 入力レイアウトのようにバイトコードから作る物は、作った時の番号と比べて作り直すかを決める
             [[nodiscard]] uint64 BytecodeId() const noexcept;
 
             //! 今の中身の MaterialParams の並び。代わりのピンクと、取り出せなかった時は空
             [[nodiscard]] const ShaderParamLayout& MaterialParams() const noexcept;
 
-            //! @brief hlslPath のファイルを読み直し、シェーダを更新する
-            //! @details 道は持たないので、作った時の道を呼び手が渡す。ファイル名のステージが作った時と違えば読まない
+            //! hlslPath のファイルを読み直し、シェーダを更新する
+            //! 道は持たないので、作った時の道を呼び手が渡す。ファイル名のステージが作った時と違えば読まない
             //! @return 成功した場合 true、それ以外の場合は false。失敗しても前の中身と並びを保つ
             [[nodiscard]] bool Reload(std::string_view hlslPath);
 

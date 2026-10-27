@@ -38,6 +38,7 @@ void Game::OnAttach()
 
     // LoadScene で立てるシーンへ引き継ぐので、LoadScene より前に呼ぶ
     m_scenes.SetDevice(&app->Device());
+    m_scenes.SetAudioDevice(app->AudioDevice());
 
     // 同梱シーンを読む。読めなければ何も置かない空のシーンを立てる
     // 遊べる物を代わりに合成すると、パッケージの取りこぼしが遊べる風の画面に隠れて気づけない
@@ -50,7 +51,7 @@ void Game::OnAttach()
         NS_LOG_ERROR(Game, "起動シーンを読めなかった。 空のシーンで立ち上げる");
     }
     (void)m_scenes.LoadScene(NS::MakeSceneJson());
-    StartLoadedScene();
+    StartLoadedScene(false);
 }
 
 void Game::OnDetach()
@@ -99,11 +100,12 @@ bool Game::LoadScene(std::string_view scenePath)
 
     // 欠けた物の補完はしない。プレイヤーの居ないシーンはそのまま立て、足りない事実を隠さない
     (void)m_scenes.LoadScene(std::move(data));
-    StartLoadedScene();
+    // 曲を始めるのはファイルのシーンを立てた Game.exe だけ。エディタは空のシーンで立ち、プレイを始める時に曲を始める
+    StartLoadedScene(true);
     return true;
 }
 
-void Game::StartLoadedScene()
+void Game::StartLoadedScene(bool startMusic)
 {
     NS::Scene* scene = m_scenes.Current();
     if (scene == nullptr)
@@ -115,10 +117,11 @@ void Game::StartLoadedScene()
     if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(scene))
     {
         director->StartCourse();
+        if (startMusic)
+        {
+            (void)director->StartMusic(); // 立てたばかりのシーンなので必ず始まる
+        }
     }
 }
 
-NS::Scene* Game::CurrentScene() noexcept
-{
-    return m_scenes.Current();
-}
+NS::Scene* Game::CurrentScene() noexcept { return m_scenes.Current(); }

@@ -7,12 +7,12 @@ namespace GL
 {
     namespace Player
     {
-        //! @brief 追従カメラが追う相手が 1 フレームぶん出す状態
+        //! 追従カメラが追う相手が 1 フレームぶん出す状態
         struct CameraTargetState
         {
-            bool grounded = true;                   //!< 接地しているか。自動ズームの判定に使う
-            NS::Vector3 velocity{0.0f, 0.0f, 0.0f}; //!< 速度 (m/s)
-            float heightOffset = 0.0f;              //!< 根から見る所までの高さのずれ (m)
+            bool grounded = true;                   // 接地しているか。自動ズームの判定に使う
+            NS::Vector3 velocity{0.0f, 0.0f, 0.0f}; // 速度 (m/s)
+            float heightOffset = 0.0f;              // 根から見る所までの高さのずれ (m)
             bool hasRebound = false;
             NS::FollowReboundDesc rebound{};
             bool hasCharge = false;

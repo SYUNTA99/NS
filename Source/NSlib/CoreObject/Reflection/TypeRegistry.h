@@ -44,18 +44,18 @@ namespace NS
     //! クラス名から配置の無い SceneActor を作り、クラスと同じ名前の .actor と素材まで済ませて返す。.actor が無ければ ERROR を出して nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
 
-    //! @brief クラス名から SceneActor を作り、info で .actor・配置の上書き・素材まで済ませて返す
-    //! @details info.actorFile が空ならクラスと同じ名前の .actor を使う。.actor が読まれていなければ ERROR を出して nullptr
+    //! クラス名から SceneActor を作り、info で .actor・配置の上書き・素材まで済ませて返す
+    //! info.actorFile が空ならクラスと同じ名前の .actor を使う。.actor が読まれていなければ ERROR を出して nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
 
-    //! @brief クラス名から、.actor を写さずにコンストラクタと OnInit の値だけで SceneActor を作る
-    //! @details .actor の全部の項目を生成する時と、作る前にシーンの上書きを確かめる時に使う。シーンへ入らず、素材も読まない。
+    //! クラス名から、.actor を写さずにコンストラクタと OnInit の値だけで SceneActor を作る
+    //! .actor の全部の項目を生成する時と、作る前にシーンの上書きを確かめる時に使う。シーンへ入らず、素材も読まない。
     //! actorFile は ERROR の文に出す .actor の名前で、空ならクラスと同じ名前。未登録のクラスは nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className,
                                                                         std::string_view actorFile = {});
 
-    //! @brief エディタで置ける SceneActor の登録の一覧。表示名の順で安定
-    //! @details ヒエラルキーの追加メニューとパレットが、置ける種類の列挙に使う
+    //! エディタで置ける SceneActor の登録の一覧。表示名の順で安定
+    //! ヒエラルキーの追加メニューとパレットが、置ける種類の列挙に使う
     [[nodiscard]] const std::vector<const TypeRegistry::Entry*>& PlaceableEntries();
 
     //! NS_CLASS / NS_PLACEABLE の実体。label を渡すのはエディタで置ける SceneActor だけ

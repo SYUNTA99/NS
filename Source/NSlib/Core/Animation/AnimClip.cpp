@@ -35,13 +35,11 @@ namespace NS
                     ++i;
                 }
                 const float span = times[i + 1] - times[i];
-                const float f = [&]() -> float {
-                    if (span > 0.0f)
-                    {
-                        return (t - times[i]) / span;
-                    }
-                    return 0.0f;
-                }();
+                float f = 0.0f;
+                if (span > 0.0f)
+                {
+                    f = (t - times[i]) / span;
+                }
 
                 return {i, i + 1, f};
             }

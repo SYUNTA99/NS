@@ -50,8 +50,8 @@ namespace NS
         //! 0 は未採番を表す値なので何もしない。段の更新の最中は断る
         void RemoveByActorId(uint32 objectId);
 
-        //! @brief SceneActor::Destroy を呼ばれたアクターを破棄して所有リストから外す
-        //! @details 段の更新の最中は断るので、段を回し終えた後に呼ぶ
+        //! SceneActor::Destroy を呼ばれたアクターを破棄して所有リストから外す
+        //! 段の更新の最中は断るので、段を回し終えた後に呼ぶ
         void RemoveDestroyed();
 
         //! objectId 一致のアクターを返す。居なければ nullptr。選択・編集の実体索引
@@ -118,8 +118,8 @@ namespace NS
         void BeginPhase() noexcept;
         //! 段の更新を終える。Scene が同じ段の管理役を回し終えてから呼ぶ
         void EndPhase() noexcept;
-        //! @brief 出ているアクターを並びの順に Update する。BeginPhase と EndPhase の間に呼ぶ
-        //! @details runs は 1 体ごとに Update の直前に問い、偽なら飛ばす。前のアクターの Update の中で変わった答えも
+        //! 出ているアクターを並びの順に Update する。BeginPhase と EndPhase の間に呼ぶ
+        //! runs は 1 体ごとに Update の直前に問い、偽なら飛ばす。前のアクターの Update の中で変わった答えも
         //! そのフレームの残りから効く。途中で消えたアクターと、途中で入ったアクターは呼ばない
         void UpdateActors(const std::function<bool(const SceneActor*)>& runs);
         //! 出ているアクターを並びの順に PrepareRender する。BeginPhase と EndPhase の間に呼ぶ

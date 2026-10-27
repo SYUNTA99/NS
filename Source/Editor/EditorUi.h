@@ -255,6 +255,31 @@ namespace NS
             }
             return ImStristr(name, nullptr, filter, nullptr) != nullptr;
         }
+
+        // 透過部分が見えるように、画像の後ろへ市松模様を描く
+        inline void DrawCheckerboard(ImDrawList& draw, ImVec2 origin, ImVec2 size, int step) noexcept
+        {
+            // 升の幅が 0 以下だと、下の繰り返しが終わらない
+            if (step <= 0)
+            {
+                return;
+            }
+            for (int y = 0; y < static_cast<int>(size.y); y += step)
+            {
+                for (int x = 0; x < static_cast<int>(size.x); x += step)
+                {
+                    ImU32 color = IM_COL32(55, 55, 55, 255);
+                    if ((x / step + y / step) % 2 == 0)
+                    {
+                        color = IM_COL32(80, 80, 80, 255);
+                    }
+                    draw.AddRectFilled(ImVec2{origin.x + x, origin.y + y},
+                                       ImVec2{origin.x + std::min(x + static_cast<float>(step), size.x),
+                                              origin.y + std::min(y + static_cast<float>(step), size.y)},
+                                       color);
+                }
+            }
+        }
     } // namespace Editor
 } // namespace NS
 

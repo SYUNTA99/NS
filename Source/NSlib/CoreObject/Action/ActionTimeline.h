@@ -15,31 +15,31 @@ namespace NS
 {
     class SceneActor;
 
-    //! @brief 動作を始める・進める 1 回の呼び出しに渡す、持ち主の読む物と書く先。呼び出しの中だけ使い、覚えない
-    //! @details 書く先は持ち主が持たなければ nullptr
+    //! 動作を始める・進める 1 回の呼び出しに渡す、持ち主の読む物と書く先。呼び出しの中だけ使い、覚えない
+    //! 書く先は持ち主が持たなければ nullptr
     struct ActionTimelineSelf
     {
-        const SceneActor* actor = nullptr;  //!< .actor の名前と状態機械を読む。事前条件: nullptr でない
-        HitReaction* reaction = nullptr;    //!< 項目の事象を始める
-        Model* model = nullptr;             //!< 項目が形・揺れ・震えを書く
-        HitSensor* bodySensor = nullptr;    //!< 入り切りの事象が切り替える体のセンサー
-        HitSensor* attackSensor = nullptr;  //!< 入り切りの事象が切り替える攻撃のセンサー
+        const SceneActor* actor = nullptr;  // .actor の名前と状態機械を読む。事前条件: nullptr でない
+        HitReaction* reaction = nullptr;    // 項目の事象を始める
+        Model* model = nullptr;             // 項目が形・揺れ・震えを書く
+        HitSensor* bodySensor = nullptr;    // 入り切りの事象が切り替える体のセンサー
+        HitSensor* attackSensor = nullptr;  // 入り切りの事象が切り替える攻撃のセンサー
     };
 
-    //! @brief 持ち主の .actor の動作を持ち、状態に入る時に始めた動作を、状態の歩を時計にして進める部品
-    //! @details 時計は持ち主の状態に入ってから進めたフレーム数で、止めの間は状態と一緒に止まる。
+    //! 持ち主の .actor の動作を持ち、状態に入る時に始めた動作を、状態の歩を時計にして進める部品
+    //! 時計は持ち主の状態に入ってから進めたフレーム数で、止めの間は状態と一緒に止まる。
     //! 始めた時と違う状態へ移ると止まり、残りの事象は起きない。項目は持ち主の HitReaction が始める。
     //! 持ち主は覚えず、呼ぶたびに受ける。進めるのは持ち主の SceneActor::Update だけ
     class ActionTimeline : public Object
     {
     public:
-        //! @brief 持ち主の .actor (SceneActor::ActorFileName) から動作を読み直す。走っている動作は止める
-        //! @details .actor が無ければ動作は空。壊れた動作は ReadActorActions が ERROR を出して読まない
+        //! 持ち主の .actor (SceneActor::ActorFileName) から動作を読み直す。走っている動作は止める
+        //! .actor が無ければ動作は空。壊れた動作は ReadActorActions が ERROR を出して読まない
         //! @param[in] owner 持ち主。事前条件: nullptr でない
         void ReloadActions(const SceneActor* owner);
 
-        //! @brief 名前の動作を、持ち主の今の状態に結んで始める。状態に入る時 (OnEnter) に呼ぶ
-        //! @details 走っている動作は止めてから始める。状態の最初の歩が startFrame に当たり、
+        //! 名前の動作を、持ち主の今の状態に結んで始める。状態に入る時 (OnEnter) に呼ぶ
+        //! 走っている動作は止めてから始める。状態の最初の歩が startFrame に当たり、
         //! それより前に始まる事象は起きない。ただし startFrame の途中にある形は、startFrame の姿から描く
         //! (形は動作のフレームに合わせて描く姿で、始まりのフレームに起こす事象と違う)。
         //! 項目の向きと位置は HitReaction::Start と同じく self・other・position から出す
@@ -60,8 +60,8 @@ namespace NS
         //! 走っている動作を止める。入り切りの途中のセンサーは戻す
         void Stop() noexcept;
 
-        //! @brief 持ち主の状態の歩で 1 フレーム進め、その歩に始まる事象を起こす
-        //! @details 呼ぶのは SceneActor::Update の状態機械の 1 歩の直後だけ。状態の歩が進んでいなければ何もしない
+        //! 持ち主の状態の歩で 1 フレーム進め、その歩に始まる事象を起こす
+        //! 呼ぶのは SceneActor::Update の状態機械の 1 歩の直後だけ。状態の歩が進んでいなければ何もしない
         void Advance(const ActionTimelineSelf& owner);
 
         [[nodiscard]] bool IsRunning() const noexcept { return m_current != k_NoAction; }
@@ -109,8 +109,8 @@ namespace NS
         std::vector<SensorSwitch> m_switched; // 入り切りの途中の事象
     };
 
-    //! @brief actor の今の状態が、結んだ動作の長さの回数だけ OnStep を進めた場合 true。状態の OnStep で問う
-    //! @details 最後に Start で動作を始めた後に今の状態へ入り直しておらず、その時の length が 1 以上で、今の状態の
+    //! actor の今の状態が、結んだ動作の長さの回数だけ OnStep を進めた場合 true。状態の OnStep で問う
+    //! 最後に Start で動作を始めた後に今の状態へ入り直しておらず、その時の length が 1 以上で、今の状態の
     //! GetStateStepCount が length 以上の時に true。動作が途中で止まっても (Stop・ReloadActions) 答えは変わらない。
     //! 同じ状態の中で別の動作を Start すると、結んだ長さはその動作の長さに替わる。
     //! 移る予約の間・Start を呼ばずに入り直した状態・長さを決めていない動作・始まらなかった動作・動作の無いアクターは

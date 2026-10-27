@@ -19,8 +19,7 @@ namespace NS
             //! objectId の現在状態をアクターの JSON へ写す。居なければ nullopt
             [[nodiscard]] virtual std::optional<nlohmann::json> CaptureActor(uint32 objectId) const = 0;
 
-            //! @brief objectId を desired の姿へ揃える。居なければ desired から作る
-            //! @return 作り直した時に外した古いアクター。作り直さなければ空。捨てる時は呼び手が先に OnEndPlay を呼ぶ
+            //! objectId を desired の姿へ揃える（居なければ生成）。作り直した場合は古いアクターを返し、破棄時は呼び出し側が先に OnEndPlay を呼ぶ
             [[nodiscard]] virtual std::unique_ptr<SceneActor> ApplyActorSnapshot(uint32 objectId,
                                                                                  const nlohmann::json& desired) = 0;
 

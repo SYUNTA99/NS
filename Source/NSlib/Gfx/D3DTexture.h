@@ -17,11 +17,11 @@ namespace NS
         //! path も寸法もなければ 1×1 の代替画像
         struct D3DTextureDesc
         {
-            std::string path;                                //!< 読み込む画像ファイル
-            UINT width = 0;                                  //!< 幅。path が空の時だけ見る
-            UINT height = 0;                                 //!< 高さ。path が空の時だけ見る
-            DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM; //!< 画素形式。path が空の時だけ見る
-            UINT bindFlags = D3D11_BIND_SHADER_RESOURCE;     //!< 作るビュー。path が空の時だけ見る
+            std::string path;                                // 読み込む画像ファイル
+            UINT width = 0;                                  // 幅。path が空の時だけ見る
+            UINT height = 0;                                 // 高さ。path が空の時だけ見る
+            DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM; // 画素形式。path が空の時だけ見る
+            UINT bindFlags = D3D11_BIND_SHADER_RESOURCE;     // 作るビュー。path が空の時だけ見る
             //! 読むビュー (SRV) の書式。DXGI_FORMAT_UNKNOWN なら format
             //! のまま。型の無い書式で作って型を付けて読む時に渡す。 path が空の時だけ見る
             DXGI_FORMAT viewFormat = DXGI_FORMAT_UNKNOWN;
@@ -35,7 +35,7 @@ namespace NS
             //! 参照先を必ず返す。画像の読み込み失敗は代替画像、空テクスチャの生成失敗は IsValid が false
             [[nodiscard]] static std::unique_ptr<D3DTexture> Create(const D3DTextureDesc& desc);
 
-            //! @brief 既存のテクスチャリソースを包んで生成する
+            //! 既存のテクスチャリソースを包んで生成する
             //! @param[in] existing 包む対象。空なら IsValid() が false を返す
             //! @param[in] bindFlags 作るビュー。立っている物だけ SRV / RTV / DSV を作る
             [[nodiscard]] static std::unique_ptr<D3DTexture> Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
@@ -89,5 +89,9 @@ namespace NS
             Size2D m_size{0, 0};
             bool m_fallback = false;
         };
+
+        //! RTV / DSV などのビューから裏の 2D テクスチャを取る。outDesc を渡すと記述も埋める。2D でなければ nullptr
+        [[nodiscard]] ComPtr<ID3D11Texture2D> ViewTexture2D(ID3D11View* view,
+                                                            D3D11_TEXTURE2D_DESC* outDesc = nullptr) noexcept;
     } // namespace Gfx
 } // namespace NS

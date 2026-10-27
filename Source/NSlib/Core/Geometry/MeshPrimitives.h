@@ -25,7 +25,7 @@ namespace NS
     //! +Z 側が高い斜面。angleDegrees は度、extents は各軸の半幅
     [[nodiscard]] MeshGeometry MakeSlope(float angleDegrees, const Vector3& extents);
 
-    //! @brief 原点中心の球のジオメトリを生成する
+    //! 原点中心の球のジオメトリを生成する
     //! @param[in] rings 上下方向の分割数。2 未満は 2 に切り上げる
     //! @param[in] segments 周方向の分割数。3 未満は 3 に切り上げる
     [[nodiscard]] MeshGeometry MakeSphere(float radius, uint32 rings = 16, uint32 segments = 32);

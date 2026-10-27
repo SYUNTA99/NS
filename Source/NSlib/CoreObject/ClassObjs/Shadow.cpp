@@ -17,10 +17,7 @@ namespace NS
         LoadAssetField(m_material, "Assets/Materials/shadow.mat");
     }
 
-    Vector3 Shadow::SortCenter(const RenderSource& source) const noexcept
-    {
-        return source.root.Translation();
-    }
+    Vector3 Shadow::SortCenter(const RenderSource& source) const noexcept { return source.root.Translation(); }
 
     AABB Shadow::WorldBounds(const RenderSource& source) const noexcept
     {

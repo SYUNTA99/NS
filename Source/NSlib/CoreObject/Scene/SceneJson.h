@@ -31,8 +31,8 @@ namespace NS
     [[nodiscard]] uint32 SceneJsonNextActorId(const nlohmann::json& scene) noexcept;
     void SetSceneJsonNextActorId(nlohmann::json& scene, uint32 nextObjectId);
 
-    //! @brief 次に置くアクターの id。nextObjectId と、アクターの最大の id の次の大きい方
-    //! @details 手編集で nextObjectId がアクターの id より小さいファイルもある。1 より小さくならない
+    //! 次に置くアクターの id。nextObjectId と、アクターの最大の id の次の大きい方
+    //! 手編集で nextObjectId がアクターの id より小さいファイルもある。1 より小さくならない
     [[nodiscard]] uint32 NextFreeActorId(const nlohmann::json& scene) noexcept;
 
     //! シーンの environment の欄。リフレクションの欄の名前を JSON の鍵に使う
@@ -40,11 +40,21 @@ namespace NS
     {
         //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない
         std::string skybox;
+        //! コースの曲の名前。名前が空なら曲は無い
+        SoundName music;
+        //! 曲の音量 (0〜1)。曲が効果音より小さく鳴り、動きの音を埋もれさせないようにする。
+        //! 0〜1 に収めるのは ClampMusicVolume で、ReadSceneEnvironment とエディタの SetSceneMusic が呼ぶ
+        float musicVolume = 0.5f;
 
         NS_REFLECT_BEGIN(SceneEnvironment, void)
         NS_FIELD(skybox, "skybox", "スカイボックス")
+        NS_FIELD(music, "music", "曲")
+        NS_FIELD(musicVolume, "musicVolume", "曲の音量")
         NS_REFLECT_END_VALUE()
     };
+
+    //! 曲の音量を 0〜1 に収める。非数と無限大は SceneEnvironment の既定の音量にする
+    [[nodiscard]] float ClampMusicVolume(float volume) noexcept;
 
     //! environment を読む。無い欄と壊れた欄は SceneEnvironment の既定
     [[nodiscard]] SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene);
@@ -59,7 +69,7 @@ namespace NS
     //! 永続 id が id のアクターの添字。無ければ k_NoActorIndex、k_NoActorId は常に該当無し
     [[nodiscard]] std::size_t FindActorIndexById(const nlohmann::json& scene, uint32 id) noexcept;
 
-    //! @details 未割当と重複には新 id を振り、nextObjectId を既存最大 id より先へ進める。重複は先勝ち
+    //! 未割当と重複には新 id を振り、nextObjectId を既存最大 id より先へ進める。重複は先勝ち
     void EnsureUniqueActorIds(nlohmann::json& scene);
 
     //! 未使用の名前を返す。空なら Object、重複したら _1、_2 と番号を付ける
@@ -68,8 +78,8 @@ namespace NS
     //! シーン文書をファイルの JSON 文字列へ直列化する。参照は名前へ直して書く
     [[nodiscard]] std::string SerializeSceneToJson(const nlohmann::json& scene);
 
-    //! @brief ファイルの JSON 文字列をシーン文書へ復元する
-    //! @details parse 失敗・version 不一致・上限超過で false、outScene は空の文書へ戻す
+    //! ファイルの JSON 文字列をシーン文書へ復元する
+    //! parse 失敗・version 不一致・上限超過で false、outScene は空の文書へ戻す
     //! 成功時は id と名前の一意化、名前で書かれた参照の id への変換、宙に浮いた参照と辿れない親の除去まで済ませる
     [[nodiscard]] bool DeserializeSceneFromJson(nlohmann::json& outScene, std::string_view jsonText);
 

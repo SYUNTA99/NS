@@ -7,8 +7,8 @@ namespace GL
 {
     namespace Level
     {
-        //! @brief 追従カメラ (ThirdPersonFollow) を置き、出ている間だけ選べる物にする
-        //! @details 仮想カメラを進めるのは CameraManager の OnTick で、このアクターは更新の関数を持たない
+        //! 追従カメラ (ThirdPersonFollow) を置き、出ている間だけ選べる物にする
+        //! 仮想カメラを進めるのは CameraManager の OnTick で、このアクターは更新の関数を持たない
         class FollowCameraActor : public NS::SceneActor
         {
         public:

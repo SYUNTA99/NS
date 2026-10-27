@@ -39,7 +39,7 @@ namespace NS
             //! 自由視点の見回しドラッグ中か。真の間はキーボードも UI が持つ
             [[nodiscard]] bool IsFreeFlying() const noexcept { return m_freeFlying; }
 
-            //! @brief 見回しドラッグの立ち下がりを返し、前フレーム状態を進める
+            //! 見回しドラッグの立ち下がりを返し、前フレーム状態を進める
             //! @return 真ならこのフレームで見回しが終わった。押しっぱなしのキー解除が要る
             [[nodiscard]] bool ConsumeFreeFlyReleased() noexcept;
 
@@ -49,8 +49,8 @@ namespace NS
             //! ボタン押下中は判定を保ち、パネル外でもドラッグを続ける状態。編集入力の可否に使う
             [[nodiscard]] bool IsMouseLatched() const noexcept { return m_mouseLatch; }
 
-            //! @brief プレイ中の自由視点の画像のラッチ
-            //! @details 左ボタンをゲームの溜めへ渡す状態。パネル内で押したら、離すまで外でも保つ
+            //! プレイ中の自由視点の画像のラッチ
+            //! 左ボタンをゲームの溜めへ渡す状態。パネル内で押したら、離すまで外でも保つ
             [[nodiscard]] bool IsFreeViewLatched() const noexcept { return m_freeViewLatch; }
 
             [[nodiscard]] bool IsFocused() const noexcept { return m_surface.IsFocused(); }

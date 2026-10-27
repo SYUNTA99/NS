@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/NonCopyable.h"
 
@@ -11,17 +11,14 @@ namespace NS
 
     class Layer;
 
-    //! 通常の層の後にオーバーレイを実行する。構成は起動時に確定する
+    //! 通常のレイヤーの後にオーバーレイを保持するコンテナ。構成は起動時に確定する
     class Layers : public NonCopyable
     {
     public:
         Layers();
         ~Layers();
 
-        //! 通常のレイヤーを追加する。常にオーバーレイより手前に配置される
         void AddLayer(std::unique_ptr<Layer> layer);
-
-        //! オーバーレイを追加する。常に通常のレイヤーより後ろに配置される
         void AddOverlay(std::unique_ptr<Layer> overlay);
 
         [[nodiscard]] bool Empty() const noexcept { return m_layers.empty(); }
@@ -36,7 +33,7 @@ namespace NS
 
     private:
         std::vector<std::unique_ptr<Layer>> m_layers;
-        std::size_t m_overlayBegin = 0; //!< オーバーレイ群の開始インデックス
+        std::size_t m_overlayBegin = 0;
     };
 
 } // namespace NS

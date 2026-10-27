@@ -27,7 +27,6 @@
 
 namespace
 {
-    // 回転数を秒で割った回る速さ (度/秒)。秒が 0 以下か有限でない時は 0
     [[nodiscard]] float SpinSpeedFor(float turns, float seconds) noexcept
     {
         if (!std::isfinite(seconds) || !NS::IsPositive(seconds))
@@ -38,10 +37,7 @@ namespace
     }
 } // namespace
 
-bool PlayerActor::AcceptsBodySlamRequest() const noexcept
-{
-    return !IsBodySlamming() && CanMoveBody();
-}
+bool PlayerActor::AcceptsBodySlamRequest() const noexcept { return !IsBodySlamming() && CanMoveBody(); }
 
 void PlayerActor::RequestBodySlam(float charge01, float overcharge01) noexcept
 {
@@ -418,7 +414,6 @@ bool PlayerActor::BodySlam() noexcept
         }
         body.SetVelocity(NS::Vector3{dir.x * speed, vertical, dir.z * speed});
     }
-    // 到達までの回転数を保つ角速度。到達時間が無効なら 0
     float turns = m_params->m_chargedSlamTurns;
     if (m_slam.m_isTap)
     {
@@ -499,10 +494,7 @@ void PlayerActor::SetCurled(bool curled) noexcept
     ChangeCurled(curled);
 }
 
-bool PlayerActor::IsCurled() const noexcept
-{
-    return m_collider->IsSphereShape();
-}
+bool PlayerActor::IsCurled() const noexcept { return m_collider->IsSphereShape(); }
 
 void PlayerActor::ChangeCurled(bool curled) noexcept
 {

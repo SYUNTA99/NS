@@ -117,10 +117,7 @@ namespace NS
             m_layoutElements = std::move(elements);
         }
 
-        void D3DMesh::SetTopology(Topology topology) noexcept
-        {
-            m_topology = topology;
-        }
+        void D3DMesh::SetTopology(Topology topology) noexcept { m_topology = topology; }
 
         void D3DMesh::CreateInputLayout(const D3DShader& vertexShader) noexcept
         {
@@ -167,37 +164,13 @@ namespace NS
             }
         }
 
-        bool D3DMesh::IsValid() const noexcept
-        {
-            return m_valid;
-        }
-        bool D3DMesh::IsUsingFallback() const noexcept
-        {
-            return m_usingFallback;
-        }
-        std::size_t D3DMesh::VertexCount() const noexcept
-        {
-            return m_vertexCount;
-        }
-        std::size_t D3DMesh::IndexCount() const noexcept
-        {
-            return m_indexCount;
-        }
-
-        const AABB& D3DMesh::LocalBounds() const noexcept
-        {
-            return m_localBounds;
-        }
-
-        void D3DMesh::SetLocalBounds(const AABB& bounds) noexcept
-        {
-            m_localBounds = bounds;
-        }
-
-        Topology D3DMesh::GetTopology() const noexcept
-        {
-            return m_topology;
-        }
+        bool D3DMesh::IsValid() const noexcept { return m_valid; }
+        bool D3DMesh::IsUsingFallback() const noexcept { return m_usingFallback; }
+        std::size_t D3DMesh::VertexCount() const noexcept { return m_vertexCount; }
+        std::size_t D3DMesh::IndexCount() const noexcept { return m_indexCount; }
+        const AABB& D3DMesh::LocalBounds() const noexcept { return m_localBounds; }
+        void D3DMesh::SetLocalBounds(const AABB& bounds) noexcept { m_localBounds = bounds; }
+        Topology D3DMesh::GetTopology() const noexcept { return m_topology; }
 
         void DrawMesh(D3DCommandList& commands, const D3DMesh& mesh) noexcept
         {
@@ -213,19 +186,8 @@ namespace NS
             commands.DrawIndexed(static_cast<uint>(mesh.IndexCount()));
         }
 
-        const D3DBuffer* D3DMesh::VertexBuffer() const noexcept
-        {
-            return m_vb.get();
-        }
-
-        const D3DBuffer* D3DMesh::IndexBuffer() const noexcept
-        {
-            return m_ib.get();
-        }
-
-        ID3D11InputLayout* D3DMesh::InputLayout() const noexcept
-        {
-            return m_selectedLayout;
-        }
+        const D3DBuffer* D3DMesh::VertexBuffer() const noexcept { return m_vb.get(); }
+        const D3DBuffer* D3DMesh::IndexBuffer() const noexcept { return m_ib.get(); }
+        ID3D11InputLayout* D3DMesh::InputLayout() const noexcept { return m_selectedLayout; }
     } // namespace Gfx
 } // namespace NS

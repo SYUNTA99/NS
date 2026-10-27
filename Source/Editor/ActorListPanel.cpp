@@ -28,8 +28,6 @@ namespace NS
 #if NS_EDITOR_ENABLED
         namespace
         {
-
-            // 置ける物の一覧をメニューに並べ、選んだ物を編集視点の中心あたりへ置く
             void RenderPlacementMenu(LevelEditorController& editor)
             {
                 for (const PlacementItem& item : PlacementItems())
@@ -48,7 +46,6 @@ namespace NS
 #if NS_EDITOR_ENABLED
             if (ImGui::Begin(k_PanelActorList))
             {
-                // 見出しに今開いているシーン名を出す。未保存なら * を付ける
                 const std::string& sceneName = editor.Editor().CurrentLevelName();
                 const char* shownName = "(名前なし)";
                 if (!sceneName.empty())

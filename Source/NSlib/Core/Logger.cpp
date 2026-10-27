@@ -1,4 +1,4 @@
-﻿#include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Logger.h"
 
 #include "NSlib/Core/Windows/Filesystem.h"
 
@@ -31,7 +31,6 @@ namespace NS
 
         std::atomic<bool> g_initialized{false};
 
-        // WARN 以上を溜める出し先。Init で作り、Shutdown で捨てる。読むのはエディタのコンソール
         std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> g_recentSink;
 
         std::string LogsDirectory(const LoggerDesc& desc)
@@ -52,9 +51,7 @@ namespace NS
             return logsDir + "/" + logName + "." + std::to_string(backupIndex) + ".log";
         }
 
-        // 前のログを logName.1.log へ、それまでの控えを 1 つ後ろへずらす。
-        // 他のプログラムが開いていて名前を変えられない時は、そのまま今のファイルへ追記する。
-        // spdlog の回転は名前の変更の失敗で abort するので使わない
+        // spdlog の回転はリネーム失敗時に abort するため、他プロセスが掴んでいる場合はそのまま追記できるよう自前でずらす
         void RotateLogFiles(const std::string& logsDir, const std::string& logName)
         {
             for (std::size_t index = k_RotatingMaxFiles; index > 0; --index)
@@ -67,7 +64,7 @@ namespace NS
             }
         }
 
-        // 実行中は大きさで回さないので、大きくなったログは次の起動で控えへ回す
+        // 実行中はサイズローテーションを行わないため、肥大化したログは次回起動時にローテートする
         bool IsLargerThan(const std::string& path, uint64 bytes)
         {
             if (!OS::FileSystem::Exists(path))
@@ -78,8 +75,7 @@ namespace NS
             return size.has_value() && *size > bytes;
         }
 
-        // spdlog の basic_file_sink は開けないファイルで abort し、ほかのプログラムとの共有も選べないので、
-        // 開くのと書くのを FileAppender に任せる
+        // spdlog の basic_file_sink はオープン失敗時に abort し共有モードも指定できないため FileAppender を使う
         class FileAppenderSink : public spdlog::sinks::base_sink<std::mutex>
         {
         public:
@@ -90,12 +86,11 @@ namespace NS
             {
                 spdlog::memory_buf_t formatted;
                 formatter_->format(msg, formatted);
-                // 書けなかった事をログに出すと、この出力先のロックを持ったまま同じ出力先へ戻ってきて止まる
+                // 書き込み失敗をログ出力すると、sink のロックを保持したまま再入してデッドロックするため無視する
                 (void)m_file->Append(std::as_bytes(std::span<const char>(formatted.data(), formatted.size())));
             }
 
-            // FileAppender は書くたびに OS へ渡すので、プログラムが止まっても書いた分は残る。
-            // ディスクへの書き込みを待つと、警告のたびにフレームが止まる
+            // FileAppender は毎回 OS へ WriteFile するため、フレーム落ちを招くディスクフラッシュ待ちは行わない
             void flush_() override {}
 
         private:
@@ -119,7 +114,6 @@ namespace NS
             case LogLevel::Fatal:
                 return spdlog::level::critical;
             }
-            // 未知の LogLevel が追加されたときにここで気づけるようにする
             assert(false && "Unknown LogLevel");
             return spdlog::level::info;
         }
@@ -144,7 +138,6 @@ namespace NS
             case spdlog::level::n_levels:
                 break;
             }
-            // 出し先は off を受けないので、ここへは来ない
             assert(false && "Unknown spdlog level");
             return LogLevel::Info;
         }
@@ -164,7 +157,6 @@ namespace NS
             {
                 RotateLogFiles(logsDir, desc.logName);
             }
-            // 開けない時のエラーは FileAppender が出す。ファイルへは出さずに続ける
             std::unique_ptr<OS::FileAppender> file = std::make_unique<OS::FileAppender>(logFilePath);
             if (file->IsValid())
             {
@@ -199,7 +191,6 @@ namespace NS
         (void)OS::FileSystem::CreateDirectories(LogsDirectory(desc));
 
         std::vector<spdlog::sink_ptr> sinks = BuildSinks(desc);
-        // 作るのも捨てるのも Init と Shutdown で、ロガーに渡した出し先だけを読む
         g_recentSink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(Logger::k_RecentLogCapacity);
         g_recentSink->set_level(spdlog::level::warn);
         sinks.push_back(g_recentSink);
@@ -232,7 +223,7 @@ namespace NS
         {
             return recent;
         }
-        // last_raw は古い順に返す
+        // last_raw は古い順に返すため逆順で詰める
         const std::vector<spdlog::details::log_msg_buffer> stored = g_recentSink->last_raw();
         recent.reserve(stored.size());
         for (std::vector<spdlog::details::log_msg_buffer>::const_reverse_iterator it = stored.rbegin();

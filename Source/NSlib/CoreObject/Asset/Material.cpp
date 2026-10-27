@@ -281,15 +281,9 @@ namespace NS
 
     Material::~Material() noexcept = default;
 
-    const std::string& Material::Path() const noexcept
-    {
-        return m_path;
-    }
+    const std::string& Material::Path() const noexcept { return m_path; }
 
-    bool Material::IsEmpty() const noexcept
-    {
-        return m_material == nullptr;
-    }
+    bool Material::IsEmpty() const noexcept { return m_material == nullptr; }
 
     Gfx::D3DMaterial* Material::D3D() const noexcept
     {
@@ -310,20 +304,11 @@ namespace NS
         m_standIn = standIn;
     }
 
-    Shader* Material::VertexShader() const noexcept
-    {
-        return m_vertexShader;
-    }
+    Shader* Material::VertexShader() const noexcept { return m_vertexShader; }
 
-    Shader* Material::PixelShader() const noexcept
-    {
-        return m_pixelShader;
-    }
+    Shader* Material::PixelShader() const noexcept { return m_pixelShader; }
 
-    const MaterialFileDesc& Material::File() const noexcept
-    {
-        return m_file;
-    }
+    const MaterialFileDesc& Material::File() const noexcept { return m_file; }
 
     bool Material::Rebuild(Shader* vertexShader, Shader* pixelShader, std::span<Texture* const> textures)
     {
@@ -347,10 +332,7 @@ namespace NS
         return true;
     }
 
-    const Gfx::ShaderParamLayout& Material::ParamLayout() const noexcept
-    {
-        return m_paramLayout;
-    }
+    const Gfx::ShaderParamLayout& Material::ParamLayout() const noexcept { return m_paramLayout; }
 
     MaterialParamValue Material::ParamValue(const Gfx::ShaderParam& param) const
     {
@@ -377,20 +359,14 @@ namespace NS
         return true;
     }
 
-    Color Material::BaseColor() const noexcept
-    {
-        return Color{m_file.baseColor};
-    }
+    Color Material::BaseColor() const noexcept { return Color{m_file.baseColor}; }
 
     void Material::SetBaseColor(const Color& color) noexcept
     {
         m_file.baseColor = color.ToVector3();
     }
 
-    std::string Material::BlendText() const
-    {
-        return std::string{BlendName(m_file.blend)};
-    }
+    std::string Material::BlendText() const { return std::string{BlendName(m_file.blend)}; }
 
     void Material::SetBlendText(const std::string& text)
     {
@@ -403,20 +379,14 @@ namespace NS
         m_file.blend = *blend;
     }
 
-    const std::string& Material::VertexShaderPath() const noexcept
-    {
-        return m_file.vertexShader;
-    }
+    const std::string& Material::VertexShaderPath() const noexcept { return m_file.vertexShader; }
 
     void Material::SetVertexShaderPath(const std::string& path)
     {
         m_file.vertexShader = path;
     }
 
-    const std::string& Material::PixelShaderPath() const noexcept
-    {
-        return m_file.pixelShader;
-    }
+    const std::string& Material::PixelShaderPath() const noexcept { return m_file.pixelShader; }
 
     void Material::SetPixelShaderPath(const std::string& path)
     {

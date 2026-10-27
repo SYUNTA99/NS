@@ -73,7 +73,7 @@ namespace NS
             //! 自由視点の調整値。Inspector で即反映し、保存しない
             struct FeelTuning
             {
-                float springOmega = 6.0f; //!< ズーム距離の追従係数 (1/秒)
+                float springOmega = 6.0f; // ズーム距離の追従係数 (1/秒)
                 float mouseSensOrbit = 0.003f;
                 float mouseSensPan = 0.02f;
                 // ホイール 1 刻みのズーム倍率。距離に比例して変えるため、近距離でも遠距離でも同じ割合で動く

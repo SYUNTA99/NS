@@ -12,14 +12,14 @@ namespace NS
 
 namespace NS
 {
-    //! @brief シーンを描き終えた画面へ重ねて描く物。重ね描きの登録簿が受け取る型
-    //! @details 部品は OverlayRenderer を継ぎ、持ち主の SceneActor が OnInit で InitOverlay を呼んで入れ、
+    //! シーンを描き終えた画面へ重ねて描く物。重ね描きの登録簿が受け取る型
+    //! 部品は OverlayRenderer を継ぎ、持ち主の SceneActor が OnInit で InitOverlay を呼んで入れ、
     //! OnEndPlay で EndOverlay を呼んで外す。出る・消える時は ShowOverlay・HideOverlay で切り替える。
     //! 部品でない物はこれを直に継ぎ、自分で登録簿へ出し入れする
     class IOverlay
     {
     public:
-        //! @brief 重ね描きの順を返す
+        //! 重ね描きの順を返す
         [[nodiscard]] virtual int OverlayOrder() const noexcept { return 0; }
 
         //! 標準のシーンの描画パスの後に画面へ重ねて描く

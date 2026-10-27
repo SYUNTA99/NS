@@ -10,7 +10,6 @@ namespace NS
     {
         namespace
         {
-            //! JSON 木の heap 量を概算する。要素そのものと文字列の確保分を数える
             std::size_t EstimatedJsonBytes(const nlohmann::json& value) noexcept
             {
                 if (value.is_string())

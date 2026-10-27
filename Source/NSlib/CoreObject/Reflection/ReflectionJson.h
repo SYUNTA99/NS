@@ -8,8 +8,8 @@
 
 namespace NS
 {
-    //! @brief comp のリフレクションの欄を、アクターの JSON の "classObjs" の 1 件の形 {名前: 値} で書き出す
-    //! @details GetReflection() が nullptr の部品は空の object を返し、警告を出す
+    //! comp のリフレクションの欄を、アクターの JSON の "classObjs" の 1 件の形 {名前: 値} で書き出す
+    //! GetReflection() が nullptr の部品は空の object を返し、警告を出す
     [[nodiscard]] nlohmann::json SerializeClassObjFields(const Object* comp);
 
     //! フィールド名を照合して値を適用する。欠損は現在値を保ち、型不一致は無視する

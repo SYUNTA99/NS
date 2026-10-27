@@ -33,8 +33,8 @@ namespace NS
 
         namespace BroadPhaseLayers
         {
-            //! @brief ObjectLayer と同じ番号の BroadPhaseLayer を作る
-            //! @details BroadPhaseLayerInterface は ObjectLayer をそのまま番号へキャストして割り当てる
+            //! ObjectLayer と同じ番号の BroadPhaseLayer を作る
+            //! BroadPhaseLayerInterface は ObjectLayer をそのまま番号へキャストして割り当てる
             //! 定数側にも番号を書くと、ObjectLayers を並べ替えた時に片方だけ古い番号が残る
             constexpr JPH::BroadPhaseLayer FromObjectLayer(JPH::ObjectLayer layer) noexcept
             {
@@ -89,8 +89,8 @@ namespace NS
             //! id の body を三角形群の形と layer へ書き換えて id を返す。id が無効なら新しく作る
             //! 空か、形を作れなければ無効な BodyID を返し、id の body は外さない
             JPH::BodyID SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer);
-            //! @brief id の body を collision の形で、位置・回転・拡縮へ置いて id を返す。id が無効なら新しく作る
-            //! @details 形は作り直さずに共有する。拡縮が 1 でなければ、共有した形を拡縮つきの形で包む
+            //! id の body を collision の形で、位置・回転・拡縮へ置いて id を返す。id が無効なら新しく作る
+            //! 形は作り直さずに共有する。拡縮が 1 でなければ、共有した形を拡縮つきの形で包む
             //! 位置・回転・拡縮で表せない歪みは受け取れない。歪みのある配置は SyncMesh に世界座標の三角形を渡す
             //! 形がないか、拡縮の 3 軸とも零に近ければ無効な BodyID を返す。既存の物体は外さない
             JPH::BodyID SyncMeshShape(JPH::BodyID id,
@@ -103,8 +103,8 @@ namespace NS
             //! broadphase の木を組み直す。Add 完了後に 1 度呼ぶ
             void OptimizeBroadPhase();
 
-            //! @brief broadphase の木を組み直す。固定更新ごとに 1 度呼ぶ
-            //! @details body は動かないので進める物は無い。Sync 系で置き直した body は置いた時から問い合わせに出るが、
+            //! broadphase の木を組み直す。固定更新ごとに 1 度呼ぶ
+            //! body は動かないので進める物は無い。Sync 系で置き直した body は置いた時から問い合わせに出るが、
             //! 木の境界は広がるだけなので、ここで締める。進める物が無いので、deltaTime の値で結果は変わらない
             void Update(float deltaTime);
 
@@ -124,8 +124,8 @@ namespace NS
                                        Vector3& outNormal,
                                        JPH::BodyID ignoredBody) const;
 
-            //! @brief capsule がどれかの body の本当の形に重なっていれば true
-            //! @details 回した box や mesh も外接箱でなく形で見る。layer は問わない。形を作れない capsule は false
+            //! capsule がどれかの body の本当の形に重なっていれば true
+            //! 回した box や mesh も外接箱でなく形で見る。layer は問わない。形を作れない capsule は false
             [[nodiscard]] bool OverlapsCapsule(const Capsule& capsule) const;
 
             //! body をこの PhysicsScene から外して壊す。DetachBody で外してある body も壊す。無効な BodyID は何もしない

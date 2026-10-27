@@ -23,13 +23,11 @@ namespace NS
             {
                 const ImGuiIO& io = ImGui::GetIO();
                 const float fps = io.Framerate;
-                const float ms = [fps]() -> float {
-                    if (fps > 0.0f)
-                    {
-                        return 1000.0f / fps;
-                    }
-                    return 0.0f;
-                }();
+                float ms = 0.0f;
+                if (fps > 0.0f)
+                {
+                    ms = 1000.0f / fps;
+                }
                 ImGui::Text("%.1f FPS (%.2f ms)", static_cast<double>(fps), static_cast<double>(ms));
                 ImGui::Text("delta       : %.4f s", static_cast<double>(OS::FrameTimer::DeltaSeconds()));
                 ImGui::Text("fixed delta : %.4f s", static_cast<double>(OS::FrameTimer::FixedDelta()));

@@ -40,10 +40,7 @@ namespace NS
         m_shape = shape;
     }
 
-    const Phys::MeshShape* MeshCollision::Shape() const noexcept
-    {
-        return m_shape;
-    }
+    const Phys::MeshShape* MeshCollision::Shape() const noexcept { return m_shape; }
 
     std::vector<Phys::Triangle> MeshCollision::WorldTriangles(const Matrix& world) const
     {

@@ -11,6 +11,7 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Core/Windows/InputReader.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
+#include "NSlib/CoreObject/Reflection/SoundName.h"
 
 #include "NSlib/Core/Types.h"
 #include <memory>
@@ -79,14 +80,14 @@ public:
 
     [[nodiscard]] Mode CurrentMode() const noexcept { return m_mode; }
 
-    //! @brief シーンを変えてよいか。編集モードの間だけ真
-    //! @details 変える関数と画面の止め方は全部これを見る。EditorMode にも同じ答えを差す。
+    //! シーンを変えてよいか。編集モードの間だけ真
+    //! 変える関数と画面の止め方は全部これを見る。EditorMode にも同じ答えを差す。
     //! プレイ中にインスペクタで欄を触る道 (NoteFieldEdit) は断らない。アクターへ書く欄はプレイ開始の写しへ写し、
     //! .actor へ書く欄はプレイ中も .actor へ書く
     [[nodiscard]] bool IsSceneEditable() const noexcept;
 
-    //! @brief 編集のショートカットを止めるか。ResolveInputOwnership の答えを毎回の描画の終わりに受ける
-    //! @details キーを読むのは次の固定ステップの更新なので、1 つ前の描画の答えを読む
+    //! 編集のショートカットを止めるか。ResolveInputOwnership の答えを毎回の描画の終わりに受ける
+    //! キーを読むのは次の固定ステップの更新なので、1 つ前の描画の答えを読む
     void SetEditShortcutsBlocked(bool blocked) noexcept { m_editShortcutsBlocked = blocked; }
     [[nodiscard]] bool EditShortcutsBlocked() const noexcept { return m_editShortcutsBlocked; }
 
@@ -113,14 +114,14 @@ public:
     //! 編集モード中は何もしない
     void TickPlaySceneView(const NS::Editor::EditorCameraInput& input) noexcept;
 
-    //! @brief Scene パネルに映す視点。プレイ中は自由視点を上書き、編集中は CameraManager 任せ (nullopt)
+    //! Scene パネルに映す視点。プレイ中は自由視点を上書き、編集中は CameraManager 任せ (nullopt)
     [[nodiscard]] std::optional<NS::CameraPose> SceneViewPose() noexcept;
-    //! @brief Game パネルに映す視点。編集中はゲームカメラを上書き、プレイ中は CameraManager 任せ (nullopt)
+    //! Game パネルに映す視点。編集中はゲームカメラを上書き、プレイ中は CameraManager 任せ (nullopt)
     [[nodiscard]] std::optional<NS::CameraPose> GameViewPose() noexcept;
-    //! @brief 可視な中央ビュー列を Scene へ流す。空なら現描画先へ 1 回だけ描く
+    //! 可視な中央ビュー列を Scene へ流す。空なら現描画先へ 1 回だけ描く
     void SetSceneViews(std::vector<NS::SceneView> views);
 
-    //! @brief 編集中の場面の写し (Scene::ToJson)。当たりの下見が写しから別の場面を組むのに読む
+    //! 編集中の場面の写し (Scene::ToJson)。当たりの下見が写しから別の場面を組むのに読む
     //! @return 写し。場面が無ければ空の場面の文書
     [[nodiscard]] nlohmann::json SceneSnapshot() const;
 
@@ -132,6 +133,13 @@ public:
     //! プロジェクトからの相対パスを適用し、取り消しの履歴へ積む。空なら非表示。
     //! 参照先の形式が対応外、シーン未設定、プレイ中の場合は変更せず false。
     bool SetSkyboxPath(std::string_view path);
+    //! シーンの曲。シーンが無ければ名前が空
+    [[nodiscard]] const NS::SoundName& SceneMusic() const noexcept;
+    //! シーンの曲の音量。シーンが無ければ SceneEnvironment の既定
+    [[nodiscard]] float SceneMusicVolume() const noexcept;
+    //! 曲と音量を適用し、変わった時だけ取り消しの履歴へ積む。音量は 0〜1 に収める。
+    //! シーン未設定、プレイ中、音量が非数の場合は変更せず false。
+    bool SetSceneMusic(const NS::SoundName& music, float volume);
 
     //! 編集の自由視点カメラ。Inspector が感度をライブ編集する
     [[nodiscard]] NS::Editor::EditorCamera& EditorFreeCamera() noexcept { return m_editorCamera; }
@@ -174,8 +182,8 @@ public:
     //! Inspector が編集 / 表示できる選択を持つか
     [[nodiscard]] bool HasInspectableSelection() const noexcept;
 
-    //! @brief ドラッグでの変形を始める / 確定する
-    //! @details 確定では、始めた時から値が変わったシーンに書く項目 (姿勢の位置・回転・スケールなど) を上書きの一覧に足す
+    //! ドラッグでの変形を始める / 確定する
+    //! 確定では、始めた時から値が変わったシーンに書く項目 (姿勢の位置・回転・スケールなど) を上書きの一覧に足す
     void BeginTransformEdit() noexcept;
     void CommitTransformEdit() noexcept;
 
@@ -189,17 +197,17 @@ public:
     //! row は actor のクラスの表の行。JSON に無いアクター、作られていない行、存在しない欄、.actor へ書く欄は写さない
     void MirrorPlayEditToBaseline(const NS::SceneActor* actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
-    //! @brief プレイを始めた時のシーンの JSON。プレイ中の手編集を写した後の姿で、編集へ戻る時にこれでシーンを組み直す
-    //! @details プレイ中でない時に呼ぶと NS_ASSERT で止まる
+    //! プレイを始めた時のシーンの JSON。プレイ中の手編集を写した後の姿で、編集へ戻る時にこれでシーンを組み直す
+    //! プレイ中でない時に呼ぶと NS_ASSERT で止まる
     [[nodiscard]] const nlohmann::json& PlayBaseline() const;
 
-    //! @brief Inspector で actor の欄の値が変わったフレームに呼ぶ。row は actor のクラスの表の行
-    //! @details アクターへ書く欄はプレイ中の凍結へ写す。.actor へ書く欄は覚えておき、
+    //! Inspector で actor の欄の値が変わったフレームに呼ぶ。row は actor のクラスの表の行
+    //! アクターへ書く欄はプレイ中の凍結へ写す。.actor へ書く欄は覚えておき、
     //! CommitClassObjEdit で .actor のファイルへ書いて、同じ .actor のアクターの全部へ写す。プレイ中も同じ
     void NoteFieldEdit(const NS::SceneActor* actor, const NS::ClassObjInfo& row, std::string_view fieldName);
 
-    //! @brief アクターの欄を書いた後の後始末。欄を変える・既定へ戻す・.actor の欄を直す・マテリアルを付ける の全部が呼ぶ
-    //! @details 素材の欄を書いた時だけ、描くメッシュ・描くマテリアル・メッシュの当たりの形を読み直す
+    //! アクターの欄を書いた後の後始末。欄を変える・既定へ戻す・.actor の欄を直す・マテリアルを付ける の全部が呼ぶ
+    //! 素材の欄を書いた時だけ、描くメッシュ・描くマテリアル・メッシュの当たりの形を読み直す
     //! 当たりの姿と形は、世界を止めた歩とプレイの歩が揃えるので、ここでは張り直さない。writtenType は書いた欄の型
     void FinishFieldWrite(NS::SceneActor* actor, NS::FieldType writtenType);
 
@@ -209,7 +217,7 @@ public:
     // 作成道具を保って1回の履歴で置く。プレイ中や配置失敗では k_NoActorId。
     [[nodiscard]] NS::uint32 PlaceStagePart(const NS::Ray& ray);
 
-    //! @brief メッシュ資産を地形の部品として編集視点の中心あたりへ置く。Undo 対応
+    //! メッシュ資産を地形の部品として編集視点の中心あたりへ置く。Undo 対応
     //! @param[in] meshPath 資産ファイルの絶対パス。参照は ContentRoot 相対へ直して持つ
     void AddMeshParts(std::string_view meshPath);
 
@@ -224,8 +232,8 @@ public:
     //! 選択中のアクターを新しい永続 id で複製して undo へ積む。プレイヤーは複製の対象から外す
     void DuplicateSelectedActor();
 
-    //! @brief 選択中のアクターを削除して取り消しの履歴へ 1 単位で積む
-    //! @details プレイヤーを含む選択の場合は何もしない
+    //! 選択中のアクターを削除して取り消しの履歴へ 1 単位で積む
+    //! プレイヤーを含む選択の場合は何もしない
     void DeleteSelectedActor();
 
     //! 編集カメラの注視点を選択中のアクターへ寄せる。広がりに応じて距離も取り直す
@@ -239,8 +247,8 @@ public:
     //! 選択中のアクターの Model に材質を割り当てて undo へ積む。対象外なら false
     bool ApplyMaterialToSelected(std::string_view matPath);
 
-    //! @brief 素材の窓で押したマテリアル・メッシュ・画像・.actor を選ぶ。アクターの選択は外れる
-    //! @details 道は ContentRoot からの道で覚え、SelectedAsset が引くたびに AssetManager から引く
+    //! 素材の窓で押したマテリアル・メッシュ・画像・.actor を選ぶ。アクターの選択は外れる
+    //! 道は ContentRoot からの道で覚え、SelectedAsset が引くたびに AssetManager から引く
     //! 読めない素材は選ばない。選ぶ前に、前の素材の確定していない編集を確定する
     //! @param[in] assetPath 素材のファイルの絶対パス
     void SelectAsset(std::string_view assetPath);
@@ -248,35 +256,35 @@ public:
     [[nodiscard]] const std::string& SelectedAssetPath() const noexcept { return m_selectedAssetPath; }
     //! 素材の窓の行が選んだ素材か。assetPath は素材のファイルの絶対パス
     [[nodiscard]] bool IsAssetSelected(std::string_view assetPath) const;
-    //! @brief 選んだ素材 (NS::Material・NS::Mesh・NS::Texture、.actor ならそれを敷いた NS::SceneActor)。選んでいなければ nullptr
-    //! @details .actor の 1 体はインスペクタで直すための物で、シーンへ入らない。
+    //! 選んだ素材 (NS::Material・NS::Mesh・NS::Texture、.actor ならそれを敷いた NS::SceneActor)。選んでいなければ nullptr
+    //! .actor の 1 体はインスペクタで直すための物で、シーンへ入らない。
     //! .actor の文書が変わると (確定・取り消し) 次に引いた時に作り直すので、引いたフレームの間だけ使う
     [[nodiscard]] NS::Object* SelectedAsset();
     //! Inspector で選んだ素材の値が変わったフレームに呼ぶ
     void MarkAssetEdited() noexcept;
-    //! @brief Inspector で選んだ .actor の 1 体の欄の値が変わったフレームに呼ぶ。row はその 1 体のクラスの表の行
-    //! @details NS_GLOBAL_FIELD の欄も .actor の値を直す。参照の欄は .actor が持たないので覚えない
+    //! Inspector で選んだ .actor の 1 体の欄の値が変わったフレームに呼ぶ。row はその 1 体のクラスの表の行
+    //! NS_GLOBAL_FIELD の欄も .actor の値を直す。参照の欄は .actor が持たないので覚えない
     void NoteActorFileFieldEdit(const NS::ClassObjInfo& row, std::string_view fieldName);
-    //! @brief 値が変わった後の確定で、選んだ素材のファイルへ書く
-    //! @details .mat はマテリアルを作り直して書き、作り直せなくても値は書いて前の絵で描き続ける。
+    //! 値が変わった後の確定で、選んだ素材のファイルへ書く
+    //! .mat はマテリアルを作り直して書き、作り直せなくても値は書いて前の絵で描き続ける。
     //! .actor は直した欄を書き、シーンの同じ .actor のアクターの全部へ写して、取り消しの履歴へ積む。
     //! 値が変わっていなければ何もしない
     void CommitAssetEdit();
 
-    //! @brief actorFileName の .actor の名前の束を sets に替えてファイルへ書き、取り消しの履歴へ積む
-    //! @details シーンの同じ .actor のアクターの全部が束を読み直すので、次の当たりから効く。プレイ中も同じ。
+    //! actorFileName の .actor の名前の束を sets に替えてファイルへ書き、取り消しの履歴へ積む
+    //! シーンの同じ .actor のアクターの全部が束を読み直すので、次の当たりから効く。プレイ中も同じ。
     //! .actor が読まれていない時は WARN を出して書かない。束が変わっていなければ何もしない
     void WriteActorFileHitReactions(std::string_view actorFileName, const std::vector<NS::HitReactionSet>& sets);
 
-    //! @brief baseName の .actor から、name の派生の .actor を作ってファイルへ書く
-    //! @details 何も書いていない派生で、baseName が元ならそれを、派生ならその元を指す。派生が書いた項目は写さない。
+    //! baseName の .actor から、name の派生の .actor を作ってファイルへ書く
+    //! 何も書いていない派生で、baseName が元ならそれを、派生ならその元を指す。派生が書いた項目は写さない。
     //! name が空・ファイルの名前に使えない字を含む・既にある時と、baseName が読まれていない時は WARN を出して作らない。
     //! ファイルを作る事は取り消しの履歴へ積まない
     //! @return 作れた場合 true、それ以外の場合は false
     bool CreateDerivedActorFile(std::string_view baseName, std::string_view name);
 
-    //! @brief actorId のアクターのシーンの上書きのうち派生に書ける項目を、name の派生の .actor へ移し、アクターをその派生に切り替える
-    //! @details 派生は CreateDerivedActorFile と同じ形で作るので、移るのはシーンの上書きだけ。
+    //! actorId のアクターのシーンの上書きのうち派生に書ける項目を、name の派生の .actor へ移し、アクターをその派生に切り替える
+    //! 派生は CreateDerivedActorFile と同じ形で作るので、移るのはシーンの上書きだけ。
     //! アクターが派生を指していれば、その派生が書いた値は元の値に戻る。位置は変わらない。
     //! アクターの切り替えは取り消しの履歴へ積み、ファイルは取り消しても残す。編集モードでない時と、作れない時は WARN を出して何もしない
     //! @return 切り替えた場合 true、それ以外の場合は false
@@ -286,12 +294,12 @@ private:
     void TickEdit(const NS::OS::InputPresses& presses);
     void FocusLoadedScene() noexcept;
 
-    //! @brief プレイ中のカーソルを置き直す
-    //! @details Captured は消して Game の画像の中心へ固定し、マウスを相対にする。Released はその逆
+    //! プレイ中のカーソルを置き直す
+    //! Captured は消して Game の画像の中心へ固定し、マウスを相対にする。Released はその逆
     void ApplyPlayCursor(NS::Editor::PlayCursor cursor) noexcept;
 
-    //! @brief 世界を動かし直す前に、自機がまだ読んでいない押しを捨てる
-    //! @details 捨てるのは自機の読み手だけ。描画の中のツールバーから呼ばれても、エディタがまだ読んでいない押しは残る
+    //! 世界を動かし直す前に、自機がまだ読んでいない押しを捨てる
+    //! 捨てるのは自機の読み手だけ。描画の中のツールバーから呼ばれても、エディタがまだ読んでいない押しは残る
     void DiscardPlayerPresses() noexcept;
 
     //! プレイを終えて編集の姿へ戻す。凍結スナップショットから世界を組み直し、操作系を休止させ、カーソルを出す
@@ -435,8 +443,8 @@ namespace NS
 {
     namespace Editor
     {
-        //! @brief material の値を、一時のファイルに書いてから filePath の .mat と置き換える
-        //! @details .mat から読んだマテリアルでない時と、書けない値の時は書かずに false
+        //! material の値を、一時のファイルに書いてから filePath の .mat と置き換える
+        //! .mat から読んだマテリアルでない時と、書けない値の時は書かずに false
         //! 書けなかった時は filePath の前の中身が残る
         [[nodiscard]] bool WriteMaterialFile(const AssetManager& assets, const Material& material, std::string_view filePath);
     } // namespace Editor

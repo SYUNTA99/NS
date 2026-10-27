@@ -14,16 +14,16 @@ namespace NS
 {
     namespace Editor
     {
-        //! @brief エディタで置ける物 1 種類
+        //! エディタで置ける物 1 種類
         struct PlacementItem
         {
-            std::string label;        //!< メニューとパレットに出す名前。地形の部品の形の 3 つの他は .actor の名前
-            nlohmann::json prototype; //!< 置く時に写すひな形。.actor の名前を持ち、id と位置は置く時に書く
-            bool rotatable = false;   //!< パレットで 90 度ずつ回せるか。地形の部品の箱と坂だけ
+            std::string label;        // メニューとパレットに出す名前。地形の部品の形の 3 つの他は .actor の名前
+            nlohmann::json prototype; // 置く時に写すひな形。.actor の名前を持ち、id と位置は置く時に書く
+            bool rotatable = false;   // パレットで 90 度ずつ回せるか。地形の部品の箱と坂だけ
         };
 
-        //! @brief 置ける .actor を名前の順に並べる。地形の部品の .actor はメッシュの形ごとに分ける
-        //! @details 呼ぶたびに今の .actor から組むので、後で .actor が変わっても返した値は変わらない
+        //! 置ける .actor を名前の順に並べる。地形の部品の .actor はメッシュの形ごとに分ける
+        //! 呼ぶたびに今の .actor から組むので、後で .actor が変わっても返した値は変わらない
         [[nodiscard]] std::vector<PlacementItem> PlacementItems();
 
         //! label が一致する物の写し。無ければ空

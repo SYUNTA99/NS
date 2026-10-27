@@ -27,9 +27,9 @@ namespace NS
             //! Begin からの測りを終える。Begin の後でなければ何もしない
             void End() noexcept;
 
-            //! @brief 直近の Begin から End までに描画装置が掛けた時間を、描画装置を待って読む
+            //! 直近の Begin から End までに描画装置が掛けた時間を、描画装置を待って読む
             //! @return 読めた場合はミリ秒。End まで測っていない・刻みが途中で変わった・待ちきれなかった場合は空
-            //! @details 1 回読むと測った物は無くなる。続けて呼ぶと 2 回目は空
+            //! 1 回読むと測った物は無くなる。続けて呼ぶと 2 回目は空
             [[nodiscard]] std::optional<float> ReadMilliseconds() noexcept;
 
         private:

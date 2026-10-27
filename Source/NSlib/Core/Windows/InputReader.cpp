@@ -33,25 +33,13 @@ namespace NS
             }
         } // namespace
 
-        bool InputPresses::WasPressed(Key k) const noexcept
-        {
-            return PressedAt(m_keys, k);
-        }
+        bool InputPresses::WasPressed(Key k) const noexcept { return PressedAt(m_keys, k); }
 
-        bool InputPresses::WasPressed(MouseButton b) const noexcept
-        {
-            return PressedAt(m_mouseButtons, b);
-        }
+        bool InputPresses::WasPressed(MouseButton b) const noexcept { return PressedAt(m_mouseButtons, b); }
 
-        bool InputPresses::WasPressed(GamepadButton b) const noexcept
-        {
-            return PressedAt(m_gamepadButtons, b);
-        }
+        bool InputPresses::WasPressed(GamepadButton b) const noexcept { return PressedAt(m_gamepadButtons, b); }
 
-        bool InputPresses::WasPressed(GamepadTrigger t) const noexcept
-        {
-            return PressedAt(m_gamepadTriggers, t);
-        }
+        bool InputPresses::WasPressed(GamepadTrigger t) const noexcept { return PressedAt(m_gamepadTriggers, t); }
 
         InputReader::InputReader() noexcept : m_seen(Input::Get().CurrentPressCounts()) {}
 
@@ -71,9 +59,6 @@ namespace NS
             return presses;
         }
 
-        void InputReader::Discard() noexcept
-        {
-            m_seen = Input::Get().CurrentPressCounts();
-        }
+        void InputReader::Discard() noexcept { m_seen = Input::Get().CurrentPressCounts(); }
     } // namespace OS
 } // namespace NS

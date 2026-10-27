@@ -40,10 +40,7 @@ namespace NS
         m_halfExtents = ClampNonNegative(halfExtents);
     }
 
-    Vector3 BoxCollision::HalfExtents() const noexcept
-    {
-        return m_halfExtents;
-    }
+    Vector3 BoxCollision::HalfExtents() const noexcept { return m_halfExtents; }
 
     void BoxCollision::SetCenterOffset(const Vector3& offset) noexcept
     {
@@ -51,10 +48,7 @@ namespace NS
         m_centerOffset = offset;
     }
 
-    Vector3 BoxCollision::CenterOffset() const noexcept
-    {
-        return m_centerOffset;
-    }
+    Vector3 BoxCollision::CenterOffset() const noexcept { return m_centerOffset; }
 
     void BoxCollision::SetLocalRotation(const Quaternion& rotation) noexcept
     {
@@ -62,10 +56,7 @@ namespace NS
         m_localRotation = rotation;
     }
 
-    Quaternion BoxCollision::LocalRotation() const noexcept
-    {
-        return m_localRotation;
-    }
+    Quaternion BoxCollision::LocalRotation() const noexcept { return m_localRotation; }
 
     void BoxCollision::SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept
     {
@@ -80,8 +71,6 @@ namespace NS
 
     AABB BoxCollision::WorldAABB(const Matrix& world) const noexcept
     {
-        // 原点中心の箱に局所のずれと回転を掛け、その後で持ち主の世界変換を掛ける
-        // 回転時は内包する軸並行 AABB になる
         const Matrix combined = ShapeWorldMatrix(world, m_localRotation, m_centerOffset);
         const AABB local(Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);
         AABB result;

@@ -10,8 +10,8 @@ namespace NS
 {
     class Scene;
 
-    //! @brief シーンが持つシステムの保持と生成を行う
-    //! @details 型ごとに高々 1 つを持ち、作った順の逆に破棄する
+    //! シーンが持つシステムの保持と生成を行う
+    //! 型ごとに高々 1 つを持ち、作った順の逆に破棄する
     class SceneSystemHolder : public NonCopyable
     {
     public:
@@ -44,8 +44,8 @@ namespace NS
             return result;
         }
 
-        //! @brief 作った物を全て、作った順の逆に捨てる
-        //! @details 捨てる直前に Scene の更新の登録から外す。管理役は自分で解除しない
+        //! 作った物を全て、作った順の逆に捨てる
+        //! 捨てる直前に Scene の更新の登録から外す。管理役は自分で解除しない
         void Clear() noexcept;
 
     private:

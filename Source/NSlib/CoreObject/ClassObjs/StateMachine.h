@@ -7,8 +7,8 @@
 
 namespace NS
 {
-    //! @brief 持ち主の状態機械を持つ部品
-    //! @details 機械は持ち主の型ごとの StateMachineOf で、組む時に持ち主を控える。
+    //! 持ち主の状態機械を持つ部品
+    //! 機械は持ち主の型ごとの StateMachineOf で、組む時に持ち主を控える。
     //! 部品は持ち主の型を知らずに IStateMachine で進める。組むのは SceneActor::BuildStateMachine だけ
     class StateMachine final : public Object
     {

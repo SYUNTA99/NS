@@ -28,10 +28,10 @@ namespace NS
 
             [[nodiscard]] bool IsValid() const noexcept;
 
-            [[nodiscard]] ID3D11SamplerState* LinearWrap() const noexcept;  //!< 線形補間＋UV繰り返し
-            [[nodiscard]] ID3D11SamplerState* LinearClamp() const noexcept; //!< 線形補間＋端で固定
-            [[nodiscard]] ID3D11SamplerState* PointWrap() const noexcept;   //!< 点サンプリング＋UV繰り返し
-            [[nodiscard]] ID3D11SamplerState* PointClamp() const noexcept;  //!< 点サンプリング＋端で固定
+            [[nodiscard]] ID3D11SamplerState* LinearWrap() const noexcept;  // 線形補間＋UV繰り返し
+            [[nodiscard]] ID3D11SamplerState* LinearClamp() const noexcept; // 線形補間＋端で固定
+            [[nodiscard]] ID3D11SamplerState* PointWrap() const noexcept;   // 点サンプリング＋UV繰り返し
+            [[nodiscard]] ID3D11SamplerState* PointClamp() const noexcept;  // 点サンプリング＋端で固定
 
         private:
             std::unique_ptr<DirectX::CommonStates> m_states;

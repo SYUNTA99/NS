@@ -40,8 +40,8 @@ namespace NS
     //! トラウマを足す。管理役が無いか壊れた量なら false
     bool AddCameraTrauma(const IGetCamera* user, const CameraTraumaDesc& desc);
 
-    //! @brief 当たりで始めた揺れ・ずれ・寄りを、頼んだ物を問わず止める。トラウマは残す
-    //! @details 次の当たりは前の当たりの揺れと寄りを止めてから始めるが、トラウマは続けて当てると足される
+    //! 当たりで始めた揺れ・ずれ・寄りを、頼んだ物を問わず止める。トラウマは残す
+    //! 次の当たりは前の当たりの揺れと寄りを止めてから始めるが、トラウマは続けて当てると足される
     void StopCameraHitEffects(const IGetCamera* user) noexcept;
 
     //! 今のカメラの画面で direction が右と左のどちらの側か。左なら -1、それ以外と管理役が無い時は 1
@@ -57,8 +57,8 @@ namespace NS
     // アクターが終わる時 (OnEndPlay) に EndVirtualCamera で外す。出る・消える時は入れたまま
     // EnableVirtualCamera・DisableVirtualCamera で切り替える。管理役が無ければどれも何もしない
 
-    //! @brief 仮想カメラを管理役の候補へ、選べる物として入れる
-    //! @details vcam は EndVirtualCamera まで生きていること
+    //! 仮想カメラを管理役の候補へ、選べる物として入れる
+    //! vcam は EndVirtualCamera まで生きていること
     void InitVirtualCamera(const IGetCamera* user, VirtualCamera* vcam);
 
     //! 入れた仮想カメラを選べる物にする。入れていない物は何もしない

@@ -40,17 +40,17 @@ namespace NS
         enum class CreateLevelResult : uint8
         {
             Created,
-            BadPath,       //!< 名前か保存先のフォルダに使えない文字がある
-            AlreadyExists, //!< 同じ名前のファイルがある。上書きしない
-            NotEditable,   //!< 編集モードでない
-            WriteFailed,   //!< ファイルへ書けなかった
+            BadPath,       // 名前か保存先のフォルダに使えない文字がある
+            AlreadyExists, // 同じ名前のファイルがある。上書きしない
+            NotEditable,   // 編集モードでない
+            WriteFailed,   // ファイルへ書けなかった
         };
 
         //! グリッド配置・保存・Undo の編集機能。非アクティブ中は編集入力と描画を止める
         class EditorMode : public NonCopyable
         {
         public:
-            //! @brief セルの整数座標。実体の照会に使う
+            //! セルの整数座標。実体の照会に使う
             struct CellCoord
             {
                 int16 x = 0;
@@ -58,50 +58,50 @@ namespace NS
                 int16 z = 0;
             };
 
-            //! @brief 編集中のカーソル状態。レイキャスト結果や配置候補のセル情報を保持する
+            //! 編集中のカーソル状態。レイキャスト結果や配置候補のセル情報を保持する
             struct CursorState
             {
-                bool valid = false;            //!< ブロック面か地面に当たったか
-                Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
-                bool placementBlocked = false; //!< 配置予定地に種類を問わずアクターが居るか
-    CellCoord hit{};               //!< ヒットしたセル
-                CellCoord place{};             //!< 配置先セル
+                bool valid = false;            // ブロック面か地面に当たったか
+                Vector3 placementCenter{}; // 配置先セルの中心ワールド座標
+                bool placementBlocked = false; // 配置予定地に種類を問わずアクターが居るか
+    CellCoord hit{};               // ヒットしたセル
+                CellCoord place{};             // 配置先セル
             };
 
-            //! @brief 保存時に実体からシーンの JSON 文書を作る捕捉関数を差す。未設定なら保存できない
+            //! 保存時に実体からシーンの JSON 文書を作る捕捉関数を差す。未設定なら保存できない
             void SetCaptureLevelFn(std::function<nlohmann::json()> fn) noexcept { m_captureLevel = std::move(fn); }
 
-            //! @brief セル編集・取り消しを実体へ適用する処理を設定する。未設定ならセル編集は何もしない
+            //! セル編集・取り消しを実体へ適用する処理を設定する。未設定ならセル編集は何もしない
             void SetApplier(IActorSnapshotApplier* applier) noexcept { m_applier = applier; }
 
-            //! @brief 読込済みシーンデータを実体側へ取り込む関数を差す。読込の完了時に呼ぶ
+            //! 読込済みシーンデータを実体側へ取り込む関数を差す。読込の完了時に呼ぶ
             void SetLoadLevelFn(std::function<void(nlohmann::json&&)> fn) noexcept { m_loadLevel = std::move(fn); }
 
-            //! @brief セルにあるセルブラシのアクターの永続識別番号を取得する処理を設定する。不在は k_NoActorId
+            //! セルにあるセルブラシのアクターの永続識別番号を取得する処理を設定する。不在は k_NoActorId
             void SetFindCellActorFn(std::function<uint32(int16, int16, int16)> fn) noexcept
             {
                 m_findCellActor = std::move(fn);
             }
 
-            //! @brief cell に種類を問わずアクターが居るかを引く関数を差す
+            //! cell に種類を問わずアクターが居るかを引く関数を差す
             void SetCellOccupiedFn(std::function<bool(int16, int16, int16)> fn) noexcept
             {
                 m_cellOccupied = std::move(fn);
             }
 
-            //! @brief 全セルブラシのアクターの座標を実体から取得する処理を設定する。カーソルの光線判定で使う
+            //! 全セルブラシのアクターの座標を実体から取得する処理を設定する。カーソルの光線判定で使う
             void SetCollectCellsFn(std::function<std::vector<CellCoord>()> fn) noexcept
             {
                 m_collectCells = std::move(fn);
             }
 
-            //! @brief 新規アクターへ永続 id を 1 個振る関数を差す
+            //! 新規アクターへ永続 id を 1 個振る関数を差す
             void SetAllocateIdFn(std::function<uint32()> fn) noexcept { m_allocateId = std::move(fn); }
             void SetInput(OS::Input* input) noexcept { m_input = input; }
             void SetSceneCamera(SceneCamera* camera) noexcept { m_camera = camera; }
 
-            //! @brief シーンを変えてよいかを答える関数を差す。LevelEditorController::IsSceneEditable を差す
-            //! @details 偽の間は入力・カーソル・作る・筆・取り消し・開く・保存を全部断る。未設定なら変えてよい
+            //! シーンを変えてよいかを答える関数を差す。LevelEditorController::IsSceneEditable を差す
+            //! 偽の間は入力・カーソル・作る・筆・取り消し・開く・保存を全部断る。未設定なら変えてよい
             void SetSceneEditableFn(std::function<bool()> fn) noexcept { m_sceneEditable = std::move(fn); }
 
             //! グリッドに対する編集入力を一時的に無効化する
@@ -116,38 +116,38 @@ namespace NS
             //! ギズモドラッグ中だけ undo/redo を止める。旧 Transform への書込を防ぐ
             void SetUndoRedoSuppressed(bool suppressed) noexcept { m_undoRedoSuppressed = suppressed; }
 
-            //! @brief 編集の入力を 1 固定ステップ分進める
+            //! 編集の入力を 1 固定ステップ分進める
             //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
             //! 真の間は R・Ctrl+Z・Ctrl+S・数字のキーを受けない
             //! @param[in] presses 持ち主がこの固定ステップに読んだ押し
             void Tick(bool editShortcutsBlocked, const OS::InputPresses& presses) noexcept;
 
-            //! @brief カーソル位置に置いた時のプレビュー枠を、Scene タブの図形として積む
+            //! カーソル位置に置いた時のプレビュー枠を、Scene タブの図形として積む
             //! @param[in,out] shapes 積む先。そのビューを描いたら捨てられる
             void DrawCursorShapes(Gfx::DebugShapes& shapes) const noexcept;
 
-            //! @brief カーソル位置のセルの枠とスロープの向きを ImGui の前面へ描く
-            //! @details ImGui のフレームの中で呼ぶ。立体の枠は DrawCursorShapes が積む
+            //! カーソル位置のセルの枠とスロープの向きを ImGui の前面へ描く
+            //! ImGui のフレームの中で呼ぶ。立体の枠は DrawCursorShapes が積む
             void RenderCursorPreview() noexcept;
 
             [[nodiscard]] const Editor::UndoStack& Undo() const noexcept { return m_undo; }
             [[nodiscard]] Editor::UndoStack& Undo() noexcept { return m_undo; }
 
-            //! @brief 新しいアクターを 1 回の履歴で作る。作る道 (置く・複製・筆で空いた升へ置く) は全部ここを通す
-            //! @details 各 JSON に新しい永続 id を振り、写した元の id を指す参照を、一緒に作る物の新しい id へ付け替える。
+            //! 新しいアクターを 1 回の履歴で作る。作る道 (置く・複製・筆で空いた升へ置く) は全部ここを通す
+            //! 各 JSON に新しい永続 id を振り、写した元の id を指す参照を、一緒に作る物の新しい id へ付け替える。
             //! 作った物を選ぶかは呼び手が決める
             //! @return 作った物の id を渡した順に返す。休止の間 (プレイ中) と、適用処理か採番が無い時は作らずに空を返す
             [[nodiscard]] std::vector<uint32> CreateActors(std::vector<nlohmann::json> objects);
 
-            //! @brief テストや自動処理向けに、入力を介さずに指定座標へ直接編集操作を実行する
+            //! テストや自動処理向けに、入力を介さずに指定座標へ直接編集操作を実行する
             void PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept;
             void DeleteAtProgrammatic(int16 x, int16 y, int16 z) noexcept;
             void RotateAtProgrammatic(int16 x, int16 y, int16 z) noexcept;
 
-            //! @brief 最後の保存 / 読込のあとに編集が入ったか
+            //! 最後の保存 / 読込のあとに編集が入ったか
             [[nodiscard]] bool HasUnsavedChanges() const noexcept { return m_undo.Version() != m_savedUndoVersion; }
 
-            //! @brief 今開いているレベル名。まだ名前が決まっていなければ空
+            //! 今開いているレベル名。まだ名前が決まっていなければ空
             [[nodiscard]] const std::string& CurrentLevelName() const noexcept { return m_currentLevelName; }
 
             [[nodiscard]] bool IsLevelDirty() const noexcept { return m_levelDirty; }
@@ -160,15 +160,15 @@ namespace NS
             //! 保存 / 読込のモーダルを描き、確定した操作をその場で実行する
             void RenderFileBrowser() noexcept;
 
-            //! @brief 終了する前に保存する。書き先は QuitSaveLevelName
+            //! 終了する前に保存する。書き先は QuitSaveLevelName
             [[nodiscard]] bool SaveForQuit() noexcept;
 
             //! 終了の保存の書き先のレベルの名前。今のレベルの名前、起動レベルが読めなかった時は退避の名前、
             //! どちらも無ければ起動シーンの名前
             [[nodiscard]] std::string QuitSaveLevelName() const noexcept;
 
-            //! @brief レベルを読み、プレイヤーと落下死の範囲が無ければ補ってから実体へ取り込む
-            //! @details 読めたら名前を控え、履歴を空にして未保存でない状態にする。起動と「開く」の両方がここを通る
+            //! レベルを読み、プレイヤーと落下死の範囲が無ければ補ってから実体へ取り込む
+            //! 読めたら名前を控え、履歴を空にして未保存でない状態にする。起動と「開く」の両方がここを通る
             //! @return 名前が使えない・取り込み関数が無い・読めない時は false で、今のレベルと名前を保つ。
             //! 名前の無いまま実在するファイルを読めなかった時は、終了の保存の書き先を退避の名前にする
             bool OpenLevel(std::string_view name) noexcept;

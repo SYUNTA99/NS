@@ -60,6 +60,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <optional>
 #include <set>
 #include <string>
@@ -70,198 +71,8 @@
 
 namespace
 {
-    // 部品の欄の値を JSON で読む。欄が無ければ値なしを返す
-    nlohmann::json FieldJson(const NS::Object& comp, std::string_view fieldName)
-    {
-        const nlohmann::json fields = NS::SerializeClassObjFields(&comp);
-        const nlohmann::json::const_iterator it = fields.find(std::string{fieldName});
-        if (it == fields.end())
-        {
-            return nullptr;
-        }
-        return *it;
-    }
-
-    // カメラの視錐台を描く時の far。vcam の既定 1000 のままだと錐台が画面に収まらないので近くで切る
-    constexpr float k_CameraGizmoFar = 8.0f;
-
     // 編集復帰の視点ブレンド秒。CameraManager の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
     constexpr float k_EditBlendSeconds = 0.35f;
-
-    // 部品のうち動く体の当たり (Collider) を返す。持たなければ nullptr
-    const NS::Collider* ColliderOf(const NS::SceneActor& object) noexcept
-    {
-        const NS::Collider* found = nullptr;
-        NS::ForEachReflectedClassObj(&object, [&](const NS::ClassObjInfo&, const NS::Object* classObj) {
-            if (found == nullptr)
-            {
-                found = NS::Cast<NS::Collider>(classObj);
-            }
-        });
-        return found;
-    }
-
-    // アクター 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状
-    void DrawCollisionWireframe(NS::Gfx::DebugShapes& shapes, NS::SceneActor& object, const NS::Color& color) noexcept
-    {
-        if (NS::BoxCollision* box = NS::Cast<NS::BoxCollision>(object.CollisionClassObj()))
-        {
-            shapes.OBB(box->WorldOBB(object.Root().WorldMatrix()), color);
-        }
-        else if (NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(object.CollisionClassObj()))
-        {
-            shapes.Sphere(sphere->WorldSphere(object.Root().WorldMatrix()), color);
-        }
-        else if (NS::CapsuleCollision* capsule = NS::Cast<NS::CapsuleCollision>(object.CollisionClassObj()))
-        {
-            NS::Phys::Capsule worldCapsule = capsule->WorldCapsule(object.Root().WorldMatrix());
-            worldCapsule.axis.Normalize();
-            shapes.Capsule(
-                worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
-        }
-        else if (const NS::Collider* collider = ColliderOf(object))
-        {
-            // 移動が掃引するのと同じ、根を中心にした縦のカプセル。根の拡縮は掛けない
-            const NS::Phys::Capsule bodyCapsule = collider->CapsuleAt(object.Root().Position());
-            shapes.Capsule(bodyCapsule.center, bodyCapsule.axis * bodyCapsule.halfHeight, bodyCapsule.radius, color);
-        }
-        else if (NS::Cast<NS::MeshCollision>(object.CollisionClassObj()) != nullptr)
-        {
-            // メッシュの当たりは見た目の三角形そのもの。三角形は多いので、見た目のメッシュを包む箱を出す
-            const NS::Model* renderer = object.ModelClassObj();
-            if (renderer == nullptr || renderer->GetMesh()->LocalBounds() == nullptr)
-            {
-                return;
-            }
-            const NS::AABB& local = *renderer->GetMesh()->LocalBounds();
-            const NS::Matrix world = object.Root().WorldMatrix();
-            const NS::AffineDecomposition parts = NS::DecomposeAffine(world);
-            const NS::Vector3 center = NS::Vector3::Transform(NS::Vector3{local.Center}, world);
-            const NS::Vector3 half{local.Extents.x * std::abs(parts.scale.x),
-                                   local.Extents.y * std::abs(parts.scale.y),
-                                   local.Extents.z * std::abs(parts.scale.z)};
-            shapes.OBB(NS::MakeOBB(center, parts.rotation, half), color);
-        }
-    }
-
-    // アクター 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
-    void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes, NS::SceneActor& object, const NS::Color& color) noexcept
-    {
-        for (const NS::HitSensor* sensor : {object.BodySensorClassObj(), object.AttackSensorClassObj()})
-        {
-            if (sensor == nullptr)
-            {
-                continue;
-            }
-            const NS::SensorVolume volume = sensor->WorldVolume(object.Root().WorldMatrix());
-            if (volume.isBox)
-            {
-                shapes.OBB(volume.box, color);
-                continue;
-            }
-            const NS::Vector3 center = (volume.a + volume.b) * 0.5f;
-            const NS::Vector3 axis = (volume.b - volume.a) * 0.5f;
-            if (axis.LengthSquared() > 0.0f)
-            {
-                shapes.Capsule(center, axis, volume.radius, color);
-            }
-            else
-            {
-                shapes.Sphere(NS::Sphere{center, volume.radius}, color);
-            }
-        }
-    }
-
-    // 正面の面の塗りの不透明度。外れの青に赤を重ねても、向こうの相手と床が透けて見える濃さ
-    constexpr float k_HitFaceAlpha = 0.35f;
-    // 直近の当たりの触れた点のマーカー。相手の表面に出るので、玉の模様を隠さない小ささ
-    constexpr float k_HitTouchMarkerRadius = 0.08f;
-
-    // 面の上の形を 1 つ描く。中心から縁の点へ扇に塗り、縁の点を線で結ぶ
-    // 形と縁の点と面の置き方は HitZones の関数が出す。判定と同じ値から描くので、色の境目が判定とずれない
-    void DrawHitFaceShape(NS::Gfx::DebugShapes& shapes,
-                          const GL::Level::HitFaceFrame& frame,
-                          const GL::Level::HitFaceShape& shape) noexcept
-    {
-        const std::vector<NS::Vector2> outline = GL::Level::HitFaceShapeOutline(shape);
-        const NS::Color edgeColor = NS::Editor::HitZoneColor(shape.tier);
-        NS::Color fillColor = edgeColor;
-        fillColor.A(k_HitFaceAlpha);
-        const NS::Vector3 center = GL::Level::HitFacePoint(frame, shape.centerU, shape.centerV);
-        for (std::size_t i = 0; i < outline.size(); ++i)
-        {
-            const NS::Vector2& from = outline[i];
-            const NS::Vector2& to = outline[(i + 1) % outline.size()];
-            const NS::Vector3 a = GL::Level::HitFacePoint(frame, from.x, from.y);
-            const NS::Vector3 b = GL::Level::HitFacePoint(frame, to.x, to.y);
-            shapes.Triangle(center, a, b, fillColor);
-            shapes.Line(a, b, edgeColor);
-        }
-    }
-
-    // a→b を 0.5m を目安に等分し 1 区間おきに線を引いて点線にする。DebugShapes に破線が無いので描画側で
-    // 間引く。辺長からセグメント数を出すので、長い辺でも刻みが粗くならない
-    void DrawDashedLine(NS::Gfx::DebugShapes& shapes,
-                        const NS::Vector3& a,
-                        const NS::Vector3& b,
-                        const NS::Color& color) noexcept
-    {
-        const float length = (b - a).Length();
-        const int rawSegments = static_cast<int>(length / 0.5f);
-        const int segments = std::max(rawSegments, 2);
-        for (int i = 0; i < segments; i += 2)
-        {
-            const float t0 = static_cast<float>(i) / static_cast<float>(segments);
-            const float t1 = static_cast<float>(i + 1) / static_cast<float>(segments);
-            shapes.Line(NS::Vector3::Lerp(a, b, t0), NS::Vector3::Lerp(a, b, t1), color);
-        }
-    }
-
-    // カメラ pose の視錐台を四角錐の点線で描く。視点から far 面 4 隅へ 4 本 + far 面の 4 辺で、向きと画角を見せる
-    // target==position や up と視線が平行な縮退では基底が作れないので何も描かない
-    void DrawCameraFrustum(NS::Gfx::DebugShapes& shapes,
-                           const NS::CameraPose& pose,
-                           float aspect,
-                           const NS::Color& color) noexcept
-    {
-        NS::Vector3 forward = pose.target - pose.position;
-        if (forward.LengthSquared() < 1e-6f)
-        {
-            return;
-        }
-        forward.Normalize();
-        NS::Vector3 right = pose.up.Cross(forward);
-        if (right.LengthSquared() < 1e-6f)
-        {
-            return;
-        }
-        right.Normalize();
-        const NS::Vector3 up = forward.Cross(right);
-
-        const float halfHeight = std::tan(pose.fovY.value * 0.5f) * k_CameraGizmoFar;
-        const float halfWidth = halfHeight * aspect;
-        const NS::Vector3 farCenter = pose.position + forward * k_CameraGizmoFar;
-        const NS::Vector3 topLeft = farCenter + up * halfHeight - right * halfWidth;
-        const NS::Vector3 topRight = farCenter + up * halfHeight + right * halfWidth;
-        const NS::Vector3 bottomLeft = farCenter - up * halfHeight - right * halfWidth;
-        const NS::Vector3 bottomRight = farCenter - up * halfHeight + right * halfWidth;
-
-        DrawDashedLine(shapes, pose.position, topLeft, color);
-        DrawDashedLine(shapes, pose.position, topRight, color);
-        DrawDashedLine(shapes, pose.position, bottomLeft, color);
-        DrawDashedLine(shapes, pose.position, bottomRight, color);
-        DrawDashedLine(shapes, topLeft, topRight, color);
-        DrawDashedLine(shapes, topRight, bottomRight, color);
-        DrawDashedLine(shapes, bottomRight, bottomLeft, color);
-        DrawDashedLine(shapes, bottomLeft, topLeft, color);
-    }
-
-    // 視点マーカーのワールド空間での半径。カメラから遠いほど半径を伸ばし、画面上の見かけサイズを一定に近づける
-    [[nodiscard]] float CameraMarkerHalf(const NS::Vector3& center, const NS::Matrix& vp) noexcept
-    {
-        const float baseHalf = 0.3f;
-        return baseHalf * NS::Editor::ScreenConstantScale(center, vp);
-    }
 
     // プレイ開始の凍結と編集へ戻る時の凍結を 1 体ずつ比べ、違う物を戻せる記録にする
     // 凍結へ入るのはプレイ中にインスペクタで写した欄だけなので、プレイで動いた値は比べに出ない
@@ -314,10 +125,7 @@ LevelEditorController::LevelEditorController(NS::Scene* scene) noexcept : m_scen
     }
 }
 
-bool LevelEditorController::IsSceneEditable() const noexcept
-{
-    return m_mode == Mode::Edit;
-}
+bool LevelEditorController::IsSceneEditable() const noexcept { return m_mode == Mode::Edit; }
 
 namespace
 {
@@ -333,7 +141,8 @@ namespace
         void Undo(NS::Editor::IActorSnapshotApplier&) noexcept override { m_scene.SetEnvironment(m_before); }
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
         {
-            return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size();
+            return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size() + m_before.music.name.size() +
+                   m_after.music.name.size();
         }
 
     private:
@@ -341,38 +150,6 @@ namespace
         NS::SceneEnvironment m_before;
         NS::SceneEnvironment m_after;
     };
-
-    // name の .actor を document に差し替えてファイルへ書き、name を指すアクターと name の派生を指すアクターの全部へ、
-    // 全部の値を写し直す。シーンで上書きした項目はアクターの値が残る
-    // 直し終えた時・取り消し・やり直しの全部がこの 1 本を通る
-    void WriteActorFile(NS::Scene& scene, const std::string& name, const nlohmann::json& document)
-    {
-        NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
-        if (!library.Set(name, document))
-        {
-            return;
-        }
-        if (!library.Save(name))
-        {
-            NS_LOG_WARN(App, ".actor {} をファイルへ書けなかった。今の起動の間だけ効く", name);
-        }
-        for (NS::SceneActor* actor : scene.Actors())
-        {
-            const nlohmann::json* actorFile = library.Find(actor->ActorFileName());
-            if (actorFile == nullptr ||
-                (actor->ActorFileName() != name && NS::ActorFileBase(*actorFile) != name))
-            {
-                continue;
-            }
-            NS::ApplyActorFile(actor);
-            actor->ReloadAssets();
-            // 束はアクターを作る時に .actor から読むので、読み直させて次の当たりに効かせる
-            if (NS::HitReaction* reaction = actor->HitReactionClassObj())
-            {
-                reaction->ReloadSets(actor);
-            }
-        }
-    }
 
     // actor の全部の部品の全部の欄の値。シーンの JSON と同じく classObjs の下に部品の鍵で並べる
     nlohmann::json AllFieldValues(const NS::SceneActor& actor)
@@ -409,144 +186,6 @@ namespace
             }
         });
     }
-
-    // baseName の .actor から作る、name の派生の .actor の文書。何も書かず、baseName が派生ならその元を指す
-    // name が空・ファイルの名前に使えない字を含む・既にある時と、baseName が読まれていない時は WARN を出して std::nullopt
-    std::optional<nlohmann::json> NewDerivedActorFile(std::string_view baseName, std::string_view name)
-    {
-        NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
-        if (name.empty() || name.find_first_of("\\/:*?\"<>|.") != std::string_view::npos)
-        {
-            NS_LOG_WARN(App, "派生の .actor の名前 \"{}\" はファイルの名前に使えないので作らない", name);
-            return std::nullopt;
-        }
-        if (library.Find(name) != nullptr)
-        {
-            NS_LOG_WARN(App, ".actor {} は既にあるので派生を作らない", name);
-            return std::nullopt;
-        }
-        const nlohmann::json* baseFile = library.Find(baseName);
-        if (baseFile == nullptr)
-        {
-            NS_LOG_WARN(App, ".actor {} が読まれていないので派生 {} を作らない", baseName, name);
-            return std::nullopt;
-        }
-        // 派生は元を 1 つだけ受け継ぎ、部品は元と同じなので、派生から作る時もその元から作り、派生の値は写さない
-        std::string_view origin = baseName;
-        if (!NS::ActorFileBase(*baseFile).empty())
-        {
-            origin = NS::ActorFileBase(*baseFile);
-        }
-        nlohmann::json derived = nlohmann::json::object();
-        NS::SetActorFileClass(derived, NS::ActorFileClass(*baseFile));
-        NS::SetActorFileBase(derived, origin);
-        NS::ActorJsonClassObjs(derived) = nlohmann::json::object();
-        return derived;
-    }
-
-    // name の .actor を document で足してファイルへ書く。読めない文書か書けなければ足さずに false
-    bool AddActorFile(std::string_view name, const nlohmann::json& document)
-    {
-        NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
-        // 読めない訳は Set が ERROR で出している
-        if (!library.Set(name, document))
-        {
-            return false;
-        }
-        if (!library.Save(name))
-        {
-            NS_LOG_WARN(App, ".actor {} をファイルへ書けなかったので足さない", name);
-            library.Erase(name);
-            return false;
-        }
-        return true;
-    }
-
-    // nlohmann::json::diff が作る 1 つの操作 (add・remove・replace) を document に当てられるか
-    // add は親が要り、配列の親なら位置が末尾以下。remove と replace は当てる所が要る
-    bool CanApplyPatchOperation(const nlohmann::json& document, const nlohmann::json& operation)
-    {
-        const nlohmann::json::json_pointer path{operation.at("path").get<std::string>()};
-        if (operation.at("op") != "add")
-        {
-            return document.contains(path);
-        }
-        if (path.empty())
-        {
-            return true;
-        }
-        const nlohmann::json::json_pointer parentPath = path.parent_pointer();
-        if (!document.contains(parentPath))
-        {
-            return false;
-        }
-        const nlohmann::json& parent = document[parentPath];
-        if (parent.is_object())
-        {
-            return true;
-        }
-        if (!parent.is_array())
-        {
-            return false;
-        }
-        const std::string& last = path.back();
-        if (last == "-")
-        {
-            return true;
-        }
-        std::size_t index = 0;
-        const std::from_chars_result parsed = std::from_chars(last.data(), last.data() + last.size(), index);
-        return parsed.ec == std::errc{} && parsed.ptr == last.data() + last.size() && index <= parent.size();
-    }
-
-    // .actor の 1 欄の書き換え。アクターでないので IActorSnapshotApplier を使わず、シーンと前後の差分を自分で持つ
-    // 戻す・やり直す時は、その時の文書に差分だけを当てる。動作の窓は取り消しの履歴を通さずに文書を書くので、
-    // 文書の全部を戻すと窓の直しが消える
-    class ActorFileCommand final : public NS::Editor::ICommand
-    {
-    public:
-        ActorFileCommand(NS::Scene& scene, std::string name, const nlohmann::json& before, const nlohmann::json& after)
-            : m_scene(scene), m_name(std::move(name)), m_redo(nlohmann::json::diff(before, after)),
-              m_undo(nlohmann::json::diff(after, before))
-        {
-            m_bytes = sizeof(*this) + m_name.size() + m_redo.dump().size() + m_undo.dump().size();
-        }
-
-        void Do(NS::Editor::IActorSnapshotApplier&) noexcept override { Apply(m_redo); }
-        void Undo(NS::Editor::IActorSnapshotApplier&) noexcept override { Apply(m_undo); }
-        [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return m_bytes; }
-
-    private:
-        void Apply(const nlohmann::json& patch) noexcept
-        {
-            const nlohmann::json* current = NS::ActorFileLibrary::Get().Find(m_name);
-            if (current == nullptr)
-            {
-                NS_LOG_WARN(App, ".actor {} が読まれていないので、取り消しかやり直しを当てない", m_name);
-                return;
-            }
-            nlohmann::json document = *current;
-            // 例外を切ってあるので、当てられない差分を patch に渡すと止まる。1 つずつ確かめて当てる
-            for (const nlohmann::json& operation : patch)
-            {
-                if (!CanApplyPatchOperation(document, operation))
-                {
-                    // 間に別の書き換えが同じ所を消した。書かずに今の文書を残す
-                    NS_LOG_WARN(App, ".actor {} の取り消しかやり直しを当てられなかった: {}", m_name,
-                                operation.dump());
-                    return;
-                }
-                document = document.patch(nlohmann::json::array({operation}));
-            }
-            WriteActorFile(m_scene, m_name, document);
-        }
-
-        NS::Scene& m_scene;
-        std::string m_name;
-        nlohmann::json m_redo;
-        nlohmann::json m_undo;
-        std::size_t m_bytes = 0;
-    };
 }
 
 void LevelEditorController::SelectSceneSettings()
@@ -592,6 +231,43 @@ bool LevelEditorController::SetSkyboxPath(std::string_view path)
     {
         NS::SceneEnvironment after = m_scene->Environment();
         after.skybox = std::move(normalized);
+        m_editor.Undo().Push(std::make_unique<EnvironmentCommand>(*m_scene, m_scene->Environment(), std::move(after)),
+                             m_applier);
+    }
+    return true;
+}
+
+const NS::SoundName& LevelEditorController::SceneMusic() const noexcept
+{
+    if (m_scene != nullptr)
+    {
+        return m_scene->Environment().music;
+    }
+    static const NS::SoundName empty;
+    return empty;
+}
+
+float LevelEditorController::SceneMusicVolume() const noexcept
+{
+    if (m_scene != nullptr)
+    {
+        return m_scene->Environment().musicVolume;
+    }
+    return NS::SceneEnvironment{}.musicVolume;
+}
+
+bool LevelEditorController::SetSceneMusic(const NS::SoundName& music, float volume)
+{
+    if (m_scene == nullptr || !IsSceneEditable() || !std::isfinite(volume))
+    {
+        return false;
+    }
+    NS::SceneEnvironment after = m_scene->Environment();
+    after.music = music;
+    after.musicVolume = NS::ClampMusicVolume(volume);
+    if (after.music.name != m_scene->Environment().music.name ||
+        after.musicVolume != m_scene->Environment().musicVolume)
+    {
         m_editor.Undo().Push(std::make_unique<EnvironmentCommand>(*m_scene, m_scene->Environment(), std::move(after)),
                              m_applier);
     }
@@ -652,10 +328,7 @@ void LevelEditorController::ApplyPlayCursor(NS::Editor::PlayCursor cursor) noexc
     app->SetCursorCaptured(cursor == NS::Editor::PlayCursor::Captured);
 }
 
-const NS::ActorList& LevelEditorController::Actors() const noexcept
-{
-    return m_scene->Actors();
-}
+const NS::ActorList& LevelEditorController::Actors() const noexcept { return m_scene->Actors(); }
 
 NS::CameraManager* LevelEditorController::Cameras() const noexcept
 {
@@ -797,6 +470,7 @@ void LevelEditorController::EnterPlay() noexcept
     if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(m_scene))
     {
         director->StartCourse();
+        (void)director->StartMusic(); // 編集へ戻る時に止めるので、プレイを始めるたびに始まる
     }
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (NS::CameraManager* cameras = Cameras())
@@ -871,6 +545,10 @@ void LevelEditorController::LeavePlayForEdit()
         return;
     }
     m_scene->SetSimulationEnabled(false);
+    if (GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(m_scene))
+    {
+        director->StopMusic();
+    }
 
     // プレイで変わった配置を編集へ持ち込まないため、プレイを始めた時の JSON から復元する
     NS_ASSERT(App, m_playBaseline.has_value(), "LeavePlayForEdit: プレイを始めた時の JSON が無い");
@@ -1150,38 +828,6 @@ void LevelEditorController::TickEdit(const NS::OS::InputPresses& presses)
     }
 }
 
-void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes, const NS::Matrix& viewProjection) noexcept
-{
-    if (m_scene == nullptr)
-    {
-        return;
-    }
-
-    if (m_mode != Mode::Edit)
-    {
-        // 動いている形をそのまま追えるよう選択に関わらず全部出す
-        RenderCollisionWireframes(shapes, true);
-        RenderHitFaces(shapes);
-        return;
-    }
-
-    m_editor.DrawCursorShapes(shapes);
-    if (m_editTool == EditTool::StageBuild && m_stagePlacement)
-    {
-        m_stageBuilder.DrawPreview(shapes, *m_stagePlacement);
-    }
-    // 錐台の横幅はゲーム画面の比で出す。窓が無い時は RenderCameraGizmos が 16:9 で代える
-    NS::Size2D viewport{};
-    if (const NS::Application* app = NS::Application::Get())
-    {
-        viewport = app->Window().Size();
-    }
-    RenderCameraGizmos(shapes, viewProjection, viewport);
-    RenderCollisionWireframes(shapes, false);
-    RenderHitFaces(shapes);
-    RenderSelectionOutlines(shapes);
-}
-
 void LevelEditorController::Render()
 {
     // プレイ中に Scene タブへ出す図形は DrawSceneViewShapes が積む。ImGui へ重ねる物は無い
@@ -1206,7 +852,12 @@ void LevelEditorController::Render()
 
 void LevelEditorController::SetGizmoToolActive(bool active) noexcept
 {
-    SetEditTool(active ? EditTool::Gizmo : EditTool::Grid);
+    if (active)
+    {
+        SetEditTool(EditTool::Gizmo);
+        return;
+    }
+    SetEditTool(EditTool::Grid);
 }
 
 void LevelEditorController::SetEditTool(EditTool tool) noexcept
@@ -1442,173 +1093,6 @@ void LevelEditorController::SetPrimarySelection(NS::uint32 id) noexcept
     m_lastGizmoSelected = nullptr;
 }
 
-void LevelEditorController::RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
-                                               const NS::Matrix& viewProjection,
-                                               NS::Size2D viewport) noexcept
-{
-    // edit 中、各カメラの視錐台を点線の四角錐で、視点位置を小箱で可視化する
-    // 選択中は強調色にする。追従カメラは pose がプレイヤー基準なので、錐台はプレイ中に居る視点位置へ出る
-    const NS::ActorList& objects = m_scene->Actors();
-    // 錐台の横幅は実ビューポート比で出す。viewport が潰れている時だけ 16:9 目安へフォールバックする
-    const float aspect = [viewport]() -> float {
-        if (viewport.height > 0)
-        {
-            return static_cast<float>(viewport.width) / static_cast<float>(viewport.height);
-        }
-        return 16.0f / 9.0f;
-    }();
-    for (NS::SceneActor* object : objects)
-    {
-        GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(object);
-        if (camera == nullptr)
-        {
-            continue;
-        }
-        NS::VirtualCamera* vcam = &camera->Vcam();
-        const bool selected = (object->Id() == m_selectedActorId);
-        const NS::Color camColor = [selected]() -> NS::Color {
-            if (selected)
-            {
-                return NS::Color{1.0f, 0.55f, 0.10f, 1.0f};
-            }
-            return NS::Color{1.0f, 0.85f, 0.10f, 1.0f};
-        }();
-
-        const NS::CameraPose pose = vcam->EvaluatePose(1.0f);
-        DrawCameraFrustum(shapes, pose, aspect, camColor);
-        const float markerHalf = CameraMarkerHalf(pose.position, viewProjection);
-        shapes.AABB(NS::AABB{pose.position, NS::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);
-    }
-}
-
-void LevelEditorController::RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes) noexcept
-{
-    // ギズモが出るのは主対象だけなので、一緒に選んでいる分は枠で見せる
-    if (m_selectionIds.size() < 2)
-    {
-        return;
-    }
-
-    const NS::Color color{1.0f, 0.65f, 0.15f, 1.0f};
-    for (const NS::uint32 id : m_selectionIds)
-    {
-        if (id == m_selectedActorId)
-        {
-            continue;
-        }
-        NS::SceneActor* object = m_scene->Actors().FindByActorId(id);
-        if (object == nullptr)
-        {
-            continue;
-        }
-
-        const NS::Matrix world = object->Root().WorldMatrix();
-        const NS::AffineDecomposition parts = NS::DecomposeAffine(world);
-        // 1m 立方の cube mesh の半サイズ 0.5 に拡縮を掛ける
-        const NS::Vector3 half{
-            std::abs(parts.scale.x) * 0.5f, std::abs(parts.scale.y) * 0.5f, std::abs(parts.scale.z) * 0.5f};
-        shapes.OBB(NS::MakeOBB(world.Translation(), parts.rotation, half), color);
-    }
-}
-
-void LevelEditorController::RenderCollisionWireframes(NS::Gfx::DebugShapes& shapes, bool all) noexcept
-{
-    const NS::Color color{0.35f, 1.0f, 0.45f, 1.0f};
-    // センサーは当たりの緑と見分けが付く橙
-    const NS::Color sensorColor{1.0f, 0.6f, 0.2f, 1.0f};
-
-    // プレイ中は動いている形を追えるよう全部出す
-    if (all)
-    {
-        for (NS::SceneActor* objPtr : m_scene->Actors())
-        {
-            DrawCollisionWireframe(shapes, *objPtr, color);
-            DrawSensorWireframe(shapes, *objPtr, sensorColor);
-        }
-        return;
-    }
-
-    // 編集中は選んだ分だけ。全部出すと線が重なって、どれの形か読み取れない
-    for (const NS::uint32 id : m_selectionIds)
-    {
-        if (NS::SceneActor* objPtr = m_scene->Actors().FindByActorId(id))
-        {
-            DrawCollisionWireframe(shapes, *objPtr, color);
-            DrawSensorWireframe(shapes, *objPtr, sensorColor);
-        }
-    }
-}
-
-void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcept
-{
-    PlayerActor* player = FindPlayer(m_scene->Actors());
-    // 自機が居ない場面は半径 0 として、相手の輪郭の大きさで描く
-    float playerRadius = 0.0f;
-    NS::Vector3 ballCenter{};
-    GL::Level::SlamLineTarget aim{};
-    bool aiming = false;
-    if (player != nullptr)
-    {
-        // 突進の玉は、狙う相手の探し方と同じ PlayerActor::SlamBallAt から引く
-        const NS::Sphere ball = player->SlamBallAt(player->Root().Position());
-        ballCenter = ball.center;
-        playerRadius = ball.radius;
-        aiming = player->TryGetAimTarget(aim);
-    }
-    const NS::Vector3 cameraPosition = m_editorCamera.Pose().position;
-
-    for (NS::SceneActor* object : m_scene->Actors())
-    {
-        if (!object->IsAppeared())
-        {
-            continue;
-        }
-        const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(object);
-        const NS::HitSensor* bodySensor = object->BodySensorClassObj();
-        if (prop == nullptr || bodySensor == nullptr)
-        {
-            continue;
-        }
-        const GL::Level::HitZones& zones = prop->Zones();
-        // 調べる対象から外した体は、突進が当たらないので面も出さない
-        if (!bodySensor->IsValid())
-        {
-            continue;
-        }
-        const NS::SensorVolume body = bodySensor->WorldVolume(object->Root().WorldMatrix());
-        NS::Vector3 direction = body.Center() - cameraPosition;
-        if (player != nullptr)
-        {
-            direction = body.Center() - ballCenter;
-        }
-        if (aiming && aim.target == object)
-        {
-            direction = aim.direction;
-        }
-        // 真上や真下から見て水平の向きが決まらない相手は描かない
-        GL::Level::HitFaceFrame frame;
-        if (!GL::Level::MakeHitFaceFrame(body, direction, playerRadius, frame))
-        {
-            continue;
-        }
-        for (const GL::Level::HitFaceShape& shape : GL::Level::HitFaceShapes(zones.Face(), frame.bodyShape))
-        {
-            DrawHitFaceShape(shapes, frame, shape);
-        }
-    }
-
-    if (player == nullptr)
-    {
-        return;
-    }
-    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
-    if (impact.sequence == 0)
-    {
-        return;
-    }
-    shapes.Sphere(NS::Sphere{impact.surfacePoint, k_HitTouchMarkerRadius}, NS::Editor::HitZoneColor(impact.tier));
-}
-
 void LevelEditorController::CaptureSelectionFromGizmo() noexcept
 {
     NS::Transform* selected = m_gizmo.Selected();
@@ -1668,286 +1152,6 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
         m_gizmo.ClearSelection();
     }
     m_lastGizmoSelected = nullptr;
-}
-
-void LevelEditorController::MirrorPlayEditToBaseline(const NS::SceneActor* actor,
-                                                     const NS::ClassObjInfo& row,
-                                                     std::string_view fieldName)
-{
-    NS_ASSERT(App, actor != nullptr, "MirrorPlayEditToBaseline: アクターが null");
-    // 写すのはプレイ中だけ。編集モードで写すと次のプレイ突入の捕捉と二重管理になる
-    if (m_mode != Mode::Play || !m_playBaseline)
-    {
-        return;
-    }
-    const std::size_t index = NS::FindActorIndexById(*m_playBaseline, actor->Id());
-    if (index == NS::k_NoActorIndex)
-    {
-        return;
-    }
-    const NS::Object* part = row.get(actor);
-    if (part == nullptr)
-    {
-        return;
-    }
-    // .actor へ書く欄はプレイを始めた時の JSON が持たない。写すと編集へ戻る時にシーンに置いたアクターの値として捨てられる
-    const NS::FieldDesc* field = NS::FindField(part->GetReflection(), fieldName);
-    if (field == nullptr || NS::FieldDestinationOf(actor, *field) != NS::FieldDestination::Scene)
-    {
-        return;
-    }
-    nlohmann::json& baselineParts = NS::ActorJsonClassObjs(NS::SceneJsonActors(*m_playBaseline)[index]);
-    // 上書きの一覧から外した項目は、JSON からも消す。残すと編集へ戻る時に上書きとして読み直される
-    if (field->type != NS::FieldType::ActorRef && !actor->IsSceneOverride(row.key, fieldName))
-    {
-        const nlohmann::json::iterator baselinePart = baselineParts.find(row.key);
-        if (baselinePart != baselineParts.end())
-        {
-            baselinePart->erase(std::string{fieldName});
-        }
-        return;
-    }
-    const nlohmann::json fields = NS::SerializeClassObjFields(part);
-    const nlohmann::json::const_iterator value = fields.find(std::string{fieldName});
-    if (value == fields.end())
-    {
-        return;
-    }
-    baselineParts[std::string{row.key}][std::string{fieldName}] = *value;
-}
-
-const nlohmann::json& LevelEditorController::PlayBaseline() const
-{
-    NS_ASSERT(App, m_playBaseline.has_value(), "PlayBaseline: プレイ中でないので、プレイを始めた時の JSON が無い");
-    return *m_playBaseline;
-}
-
-void LevelEditorController::NoteFieldEdit(const NS::SceneActor* actor,
-                                          const NS::ClassObjInfo& row,
-                                          std::string_view fieldName)
-{
-    NS_ASSERT(App, actor != nullptr, "NoteFieldEdit: アクターが null");
-    const NS::Object* part = row.get(actor);
-    if (part == nullptr)
-    {
-        return;
-    }
-    const NS::FieldDesc* field = NS::FindField(part->GetReflection(), fieldName);
-    if (field == nullptr)
-    {
-        return;
-    }
-    if (NS::FieldDestinationOf(actor, *field) == NS::FieldDestination::Scene)
-    {
-        // 保存は上書きの一覧の項目だけを書くので、直したら一覧に足す。参照の欄はいつも書く
-        NS::SceneActor* edited = nullptr;
-        if (m_scene != nullptr)
-        {
-            edited = m_scene->Actors().FindByActorId(actor->Id());
-        }
-        if (edited != nullptr && field->type != NS::FieldType::ActorRef)
-        {
-            edited->AddSceneOverride(row.key, fieldName);
-        }
-        MirrorPlayEditToBaseline(actor, row, fieldName);
-        return;
-    }
-    for (const ActorFileEdit& edit : m_actorFileEdits)
-    {
-        if (edit.actorId == actor->Id() && edit.row == &row && edit.fieldName == fieldName)
-        {
-            return;
-        }
-    }
-    m_actorFileEdits.push_back(ActorFileEdit{actor->Id(), &row, std::string{fieldName}});
-}
-
-void LevelEditorController::NoteActorFileFieldEdit(const NS::ClassObjInfo& row, std::string_view fieldName)
-{
-    if (m_actorFileDraft == nullptr)
-    {
-        return;
-    }
-    const NS::Object* part = row.get(m_actorFileDraft.get());
-    if (part == nullptr)
-    {
-        return;
-    }
-    const NS::FieldDesc* field = NS::FindField(part->GetReflection(), fieldName);
-    if (field == nullptr || field->type == NS::FieldType::ActorRef)
-    {
-        return;
-    }
-    m_assetEdited = true;
-    for (const ActorFileEdit& edit : m_actorFileEdits)
-    {
-        if (edit.actorId == NS::k_NoActorId && edit.row == &row && edit.fieldName == fieldName)
-        {
-            return;
-        }
-    }
-    m_actorFileEdits.push_back(ActorFileEdit{NS::k_NoActorId, &row, std::string{fieldName}});
-}
-
-void LevelEditorController::CommitActorFileEdits()
-{
-    std::vector<ActorFileEdit> edits = std::move(m_actorFileEdits);
-    m_actorFileEdits.clear();
-    if (m_scene == nullptr)
-    {
-        return;
-    }
-    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
-    for (const ActorFileEdit& edit : edits)
-    {
-        // 選んだ .actor の 1 体は作り直さずに読む。作り直すと直した値が文書の値へ戻る
-        const NS::SceneActor* actor = m_actorFileDraft.get();
-        if (edit.actorId != NS::k_NoActorId)
-        {
-            actor = m_scene->Actors().FindByActorId(edit.actorId);
-        }
-        if (actor == nullptr)
-        {
-            continue;
-        }
-        const NS::Object* part = edit.row->get(actor);
-        if (part == nullptr)
-        {
-            continue;
-        }
-        const NS::FieldDesc* field = NS::FindField(part->GetReflection(), edit.fieldName);
-        if (field == nullptr)
-        {
-            continue;
-        }
-        // 共有の項目は派生を指すアクターでも元へ書く。派生へ書くと、派生を読む時に書けない項目として断られる
-        // 選んだ .actor の 1 体はシーンに居ないので、グローバルの項目はその .actor 自身へ書く
-        NS::FieldDestination destination = NS::FieldDestinationOf(actor, *field);
-        if (destination == NS::FieldDestination::Scene)
-        {
-            destination = NS::FieldDestination::DerivedActorFile;
-        }
-        const std::string name = NS::ActorFileToWrite(actor, destination);
-        const nlohmann::json* current = library.Find(name);
-        if (current == nullptr)
-        {
-            NS_LOG_WARN(App, ".actor {} が読まれていないので、欄 {} を書かない", name, edit.fieldName);
-            continue;
-        }
-        const nlohmann::json before = *current;
-        nlohmann::json after = before;
-        NS::ActorJsonClassObjs(after)[std::string{edit.row->key}][edit.fieldName] = FieldJson(*part, edit.fieldName);
-        if (after == before)
-        {
-            continue;
-        }
-        // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-        m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, name, before, after), m_applier);
-    }
-}
-
-void LevelEditorController::WriteActorFileHitReactions(std::string_view actorFileName,
-                                                       const std::vector<NS::HitReactionSet>& sets)
-{
-    if (m_scene == nullptr)
-    {
-        return;
-    }
-    const std::string name{actorFileName};
-    const nlohmann::json* current = NS::ActorFileLibrary::Get().Find(name);
-    if (current == nullptr)
-    {
-        NS_LOG_WARN(App, ".actor {} が読まれていないので、束を書かない", name);
-        return;
-    }
-    nlohmann::json before = *current;
-    nlohmann::json after = before;
-    NS::WriteHitReactionSets(after, sets);
-    if (after == before)
-    {
-        return;
-    }
-    // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-    m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, name, before, after), m_applier);
-}
-
-bool LevelEditorController::CreateDerivedActorFile(std::string_view baseName, std::string_view name)
-{
-    const std::optional<nlohmann::json> document = NewDerivedActorFile(baseName, name);
-    if (!document.has_value())
-    {
-        return false;
-    }
-    return AddActorFile(name, *document);
-}
-
-bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::string_view name)
-{
-    if (!IsSceneEditable())
-    {
-        NS_LOG_WARN(App, "編集モードでないので、アクターから派生 {} を作らない", name);
-        return false;
-    }
-    const NS::SceneActor* actor = m_scene->Actors().FindByActorId(actorId);
-    if (actor == nullptr)
-    {
-        NS_LOG_WARN(App, "アクター {} が居ないので派生 {} を作らない", actorId, name);
-        return false;
-    }
-    std::optional<nlohmann::json> document = NewDerivedActorFile(actor->ActorFileName(), name);
-    std::optional<nlohmann::json> before = m_applier.CaptureActor(actorId);
-    if (!document.has_value() || !before.has_value())
-    {
-        return false;
-    }
-    // 保存の JSON はシーンの上書きと参照の欄だけを持つ。派生に書ける項目を移し、残りはシーンに残す
-    nlohmann::json after = *before;
-    NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
-        nlohmann::json* fields = NS::ClassObjFields(after, row.key);
-        if (fields == nullptr)
-        {
-            return;
-        }
-        for (nlohmann::json::iterator entry = fields->begin(); entry != fields->end();)
-        {
-            const NS::FieldDesc* field = NS::FindField(part->GetReflection(), entry.key());
-            if (field == nullptr || !NS::CanWriteField(NS::FieldDestination::DerivedActorFile, *field))
-            {
-                ++entry;
-                continue;
-            }
-            NS::ActorJsonClassObjs(*document)[std::string{row.key}][entry.key()] = entry.value();
-            entry = fields->erase(entry);
-        }
-    });
-    if (!AddActorFile(name, *document))
-    {
-        return false;
-    }
-    NS::SetActorJsonFile(after, name);
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ActorSnapshotCommand>(actorId, std::move(before), std::move(after)),
-                         m_applier);
-    RefreshGizmoSelectables();
-    ResolveSelectionFromId();
-    return true;
-}
-
-void LevelEditorController::FinishFieldWrite(NS::SceneActor* actor, NS::FieldType writtenType)
-{
-    NS_ASSERT(App, actor != nullptr, "FinishFieldWrite: アクターが null");
-    // 部品は ActorRef の指す相手を取得して持つので、欄を書き換えた時に取得し直す
-    if (writtenType == NS::FieldType::ActorRef)
-    {
-        actor->ResolveActorRefs();
-        return;
-    }
-    // 素材の欄は道を書くだけで、描くメッシュの差し替え・描くマテリアル・メッシュの当たりの形は読み直しで作る
-    // 素材でない欄で読み直すと、ドラッグの間じゅう骨の差し直しとメッシュの当たりの作り直しが毎回走る
-    if (writtenType != NS::FieldType::Asset)
-    {
-        return;
-    }
-    actor->ReloadAssets();
 }
 
 void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
@@ -2344,241 +1548,3 @@ void LevelEditorController::CommitClassObjEdit() noexcept
     m_editor.Undo().Record(std::make_unique<NS::Editor::ActorSnapshotCommand>(
         m_classObjEditBaselineId, m_classObjEditBaseline, std::move(*after)));
 }
-
-bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
-{
-    NS::Application* app = NS::Application::Get();
-    if (!IsSceneEditable() || !GizmoToolActive() || app == nullptr)
-    {
-        return false;
-    }
-
-    if (m_selectedActorId == NS::k_NoActorId)
-    {
-        return false;
-    }
-    NS::SceneActor* go = SelectedActor();
-    if (go == nullptr)
-    {
-        return false;
-    }
-
-    NS::Model* mesh = go->ModelClassObj();
-    if (mesh == nullptr)
-    {
-        return false;
-    }
-
-    // .mat パスは ContentRoot 相対で持つ。材質の正データは欄の名前なので、名前を書いて欄から読み直す
-    const std::optional<std::string> stored =
-        NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), matPath);
-    if (!stored)
-    {
-        NS_LOG_ERROR(App, "マテリアル {} が ContentRoot の外にあるので付けない", matPath);
-        return false;
-    }
-    const NS::Material* material = app->Assets().LoadMaterial(*stored);
-    if (material->IsEmpty())
-    {
-        return false;
-    }
-
-    // 差替前を忠実に写す。matRef を実体へ書き込み、差替後との差分を 取り消し 履歴へ積む
-    std::optional<nlohmann::json> before = m_applier.CaptureActor(m_selectedActorId);
-
-    mesh->SetMaterialRef(*stored);
-    FinishFieldWrite(go, NS::FieldType::Asset);
-
-    std::optional<nlohmann::json> after = m_applier.CaptureActor(m_selectedActorId);
-    if (before && after && !(*before == *after))
-    {
-        m_editor.Undo().Record(std::make_unique<NS::Editor::ActorSnapshotCommand>(
-            m_selectedActorId, std::move(before), std::move(after)));
-    }
-    return true;
-}
-
-namespace
-{
-    [[nodiscard]] NS::Object* LoadSelectableAsset(std::string_view path)
-    {
-        if (NS::Editor::IsMaterialAssetPath(path))
-        {
-            return NS::AssetManager::Get().LoadMaterial(path);
-        }
-        if (NS::Editor::IsModelAssetPath(path))
-        {
-            return NS::AssetManager::Get().LoadMesh(path);
-        }
-        if (NS::Editor::IsTextureAssetPath(path))
-        {
-            const std::optional<std::string> resolved = NS::ResolveContentPath(std::string{path});
-            if (resolved)
-            {
-                return NS::AssetManager::Get().LoadTexture(*resolved);
-            }
-        }
-        return nullptr;
-    }
-
-    [[nodiscard]] bool IsReadable(const NS::Object& asset)
-    {
-        if (const NS::Material* material = NS::Cast<NS::Material>(&asset))
-        {
-            return !material->IsEmpty();
-        }
-        if (const NS::Mesh* mesh = NS::Cast<NS::Mesh>(&asset))
-        {
-            return !mesh->IsEmpty();
-        }
-        if (const NS::Texture* texture = NS::Cast<NS::Texture>(&asset))
-        {
-            return texture->D3D()->IsValid() && !texture->D3D()->IsUsingFallback();
-        }
-        return false;
-    }
-} // namespace
-
-void LevelEditorController::SelectAsset(std::string_view assetPath)
-{
-    std::optional<std::string> stored = NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), assetPath);
-    if (!stored)
-    {
-        NS_LOG_ERROR(App, "素材 {} が ContentRoot の外にあるので選ばない", assetPath);
-        return;
-    }
-
-    ClearAssetSelection();
-    SelectActorById(NS::k_NoActorId);
-
-    // .actor は名前で引く。読めなかった .actor は持っていないので選ばない
-    if (NS::Editor::IsActorFileAssetPath(*stored))
-    {
-        if (NS::ActorFileLibrary::Get().Find(NS::OS::FileSystem::Stem(*stored)) == nullptr)
-        {
-            NS_LOG_WARN(App, ".actor {} を読めていないので選ばない", *stored);
-            return;
-        }
-        m_selectedAssetPath = std::move(*stored);
-        return;
-    }
-    const NS::Object* asset = LoadSelectableAsset(*stored);
-    if (asset == nullptr || !IsReadable(*asset))
-    {
-        NS_LOG_WARN(App, "素材 {} を読めないので選ばない", *stored);
-        return;
-    }
-    m_selectedAssetPath = std::move(*stored);
-}
-
-bool LevelEditorController::IsAssetSelected(std::string_view assetPath) const
-{
-    if (m_selectedAssetPath.empty())
-    {
-        return false;
-    }
-    return NS::OS::FileSystem::RelativeUnder(NS::OS::FileSystem::ContentRoot(), assetPath) == m_selectedAssetPath;
-}
-
-NS::Object* LevelEditorController::SelectedAsset()
-{
-    if (m_selectedAssetPath.empty())
-    {
-        return nullptr;
-    }
-    if (NS::Editor::IsActorFileAssetPath(m_selectedAssetPath))
-    {
-        return SelectedActorFile();
-    }
-    return LoadSelectableAsset(m_selectedAssetPath);
-}
-
-void LevelEditorController::ClearAssetSelection()
-{
-    CommitAssetEdit();
-    m_selectedAssetPath.clear();
-    m_actorFileDraft.reset();
-}
-
-NS::SceneActor* LevelEditorController::SelectedActorFile()
-{
-    const std::string name = NS::OS::FileSystem::Stem(m_selectedAssetPath);
-    const nlohmann::json* document = NS::ActorFileLibrary::Get().Find(name);
-    if (document == nullptr)
-    {
-        m_actorFileDraft.reset();
-        return nullptr;
-    }
-    if (m_actorFileDraft == nullptr || m_actorFileDraft->ActorFileName() != name || m_actorFileDraftSource != *document)
-    {
-        m_actorFileDraftSource = *document;
-        const NS::ActorInitInfo info{.actorFile = name};
-        m_actorFileDraft = NS::CreateActorOfClass(NS::ActorFileClass(m_actorFileDraftSource), info);
-    }
-    return m_actorFileDraft.get();
-}
-
-void LevelEditorController::MarkAssetEdited() noexcept
-{
-    m_assetEdited = true;
-}
-
-void LevelEditorController::CommitAssetEdit()
-{
-    if (!m_assetEdited)
-    {
-        return;
-    }
-    m_assetEdited = false;
-
-    if (NS::Editor::IsActorFileAssetPath(m_selectedAssetPath))
-    {
-        CommitActorFileEdits();
-        // 直した 1 体は書いた文書と同じ値だが、作った時の文書と比べると取り消しで元の文書へ戻った事を見落とす。
-        // 次に引いた時に今の文書から作り直させる
-        m_actorFileDraftSource = nlohmann::json{};
-        return;
-    }
-    NS::Material* material = NS::Cast<NS::Material>(SelectedAsset());
-    if (material == nullptr)
-    {
-        return;
-    }
-    NS::AssetManager& assets = NS::AssetManager::Get();
-    // 共有のマテリアルは書く先が無いので、絵も作り直さない。Inspector は見るだけにしている
-    if (!assets.MakeMaterialFileJson(*material))
-    {
-        return;
-    }
-    // 作り直せなくても値は .mat に残す。作り直しの失敗は Rebuild が報告する
-    (void)assets.RebuildMaterial(*material);
-    const std::optional<std::string> path = NS::ResolveContentPath(m_selectedAssetPath);
-    if (!path)
-    {
-        return;
-    }
-    (void)NS::Editor::WriteMaterialFile(assets, *material, *path);
-}
-
-namespace NS
-{
-    namespace Editor
-    {
-        bool WriteMaterialFile(const AssetManager& assets, const Material& material, std::string_view filePath)
-        {
-            const std::optional<std::string> text = assets.MakeMaterialFileJson(material);
-            if (!text)
-            {
-                NS_LOG_WARN(App, "マテリアル {} は .mat から読んだ物でないか、書けない値を持つので書かない", material.Path());
-                return false;
-            }
-            const std::span<const std::byte> bytes = std::as_bytes(std::span<const char>{text->data(), text->size()});
-            if (!OS::FileSystem::ReplaceAllBytes(filePath, bytes))
-            {
-                NS_LOG_WARN(App, "マテリアル {} を {} に書けないので前の .mat を残す", material.Path(), filePath);
-                return false;
-            }
-            return true;
-        }
-    } // namespace Editor
-} // namespace NS

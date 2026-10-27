@@ -40,15 +40,15 @@ namespace NS
             //! リリースビルドか初期化失敗でスタブになっている場合 true、それ以外の場合は false
             [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-            //! @brief 新しいUIフレームの構築を開始する
+            //! 新しいUIフレームの構築を開始する
             //! @note D3DDevice::BeginFrame の直後に呼ぶこと
             void BeginFrame() noexcept;
 
-            //! @brief UIの構築を終了し、描画コマンドを発行する
+            //! UIの構築を終了し、描画コマンドを発行する
             //! @note D3DDevice::EndFrame の直前に呼ぶこと
             void EndFrame() noexcept;
 
-            //! @brief OSからのウィンドウメッセージをUI側へ転送して処理する
+            //! OSからのウィンドウメッセージをUI側へ転送して処理する
             //! @return UI がメッセージを消費した場合 true、それ以外の場合は false。true ならゲーム側は入力を無視する
             [[nodiscard]] bool ForwardWndProc(void* hwnd,
                                               uint32 msg,

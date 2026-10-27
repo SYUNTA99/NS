@@ -86,8 +86,6 @@ namespace NS
                 cmd.VSSetConstantBuffer(*pass.cb, k_DrawConstantsSlot);
             }
             cmd.PSSetConstantBuffer(*pass.cb, k_DrawConstantsSlot);
-
-            // 頂点もインデックスも差さない
             cmd.DrawFromVertexId(vertexCount);
         }
 

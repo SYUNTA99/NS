@@ -38,6 +38,8 @@ namespace NS
 
         private:
             void DrawSceneSettings(LevelEditorController& editor);
+            //! 曲の下書きを適用する・戻すボタンを描く。playing の間は押せない
+            void DrawSceneMusicButtons(LevelEditorController& editor, bool playing);
             bool DrawSkyboxPreview(std::string_view path);
             void DrawSelectedAsset(LevelEditorController& editor, Object& asset);
             void DrawMaterialPreview(const Material& material);
@@ -55,6 +57,11 @@ namespace NS
             std::string m_skyboxDraft;
             std::string m_skyboxPreviewPath;
             bool m_skyboxPreviewFailed = false;
+            // 曲の元の値と下書き。元の値がシーンと違ったら (元に戻す・読み直し) 下書きを合わせ直す
+            std::string m_musicSource;
+            float m_musicVolumeSource = 0.0f;
+            std::string m_musicDraft;
+            float m_musicVolumeDraft = 0.0f;
             std::string m_previewMeshPath;
             float m_previewYaw = 0.45f;
             float m_previewPitch = -0.15f;

@@ -6,7 +6,7 @@ namespace NS
 {
     namespace Editor
     {
-        //! @brief フレーム統計と、溜めた警告とエラーのログを出すコンソールパネル
+        //! フレーム統計と、溜めた警告とエラーのログを出すコンソールパネル
         class ConsolePanel : public NonCopyable
         {
         public:

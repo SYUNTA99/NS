@@ -26,14 +26,14 @@ namespace NS
     // アクターが終わる時 (OnEndPlay) に EndDraw で外す。出る・消える時は ShowModel・HideModel で切り替え、
     // 入れたままにするので描く順は変わらない。管理クラスが無ければ (シーンに居ないアクター) どれも何もしない
 
-    //! @brief 描く物 renderable を、描く時に渡す持ち主の根 root と組にして入れる。出ている物として入る
-    //! @details renderable と root は EndDraw まで生きていること
+    //! 描く物 renderable を、描く時に渡す持ち主の根 root と組にして入れる。出ている物として入る
+    //! renderable と root は EndDraw まで生きていること
     void InitDraw(const IGetRenderer* user, IRenderable* renderable, const Transform* root);
-    //! @brief 同じアクターの体をもう一度描く物を入れる。model は描くたびに renderable へ渡す元の Model
-    //! @details model も EndDraw まで生きていること
+    //! 同じアクターの体をもう一度描く物を入れる。model は描くたびに renderable へ渡す元の Model
+    //! model も EndDraw まで生きていること
     void InitDraw(const IGetRenderer* user, IRenderable* renderable, const Transform* root, const Model* model);
-    //! @brief 影を入れる。collision は影が描くたびに真下の地面を探すシーンで、影が持つ
-    //! @details collision も EndDraw まで生きていること
+    //! 影を入れる。collision は影が描くたびに真下の地面を探すシーンで、影が持つ
+    //! collision も EndDraw まで生きていること
     void InitDraw(const IGetRenderer* user, Shadow* shadow, const Transform* root, const IGetCollision* collision);
 
     //! 入れた描く物を描き始める。入れていない物は何もしない
@@ -45,8 +45,8 @@ namespace NS
 
     // 重ね描きと平行光も描く物と同じく、OnInit で入れて OnEndPlay で外し、出る・消える時は入れたまま切り替える
 
-    //! @brief 重ね描き overlay を入れる。描く物として入る
-    //! @details overlay は EndOverlay まで生きていること
+    //! 重ね描き overlay を入れる。描く物として入る
+    //! overlay は EndOverlay まで生きていること
     void InitOverlay(const IGetRenderer* user, IOverlay* overlay);
     //! 入れた重ね描きを描き始める。入れていない物は何もしない
     void ShowOverlay(const IGetRenderer* user, const IOverlay* overlay) noexcept;
@@ -55,8 +55,8 @@ namespace NS
     //! 重ね描きを管理クラスから外す。入れていない物は何もしない
     void EndOverlay(const IGetRenderer* user, const IOverlay* overlay) noexcept;
 
-    //! @brief 平行光 light を、向きを出す持ち主の根 root と組にして入れる。シーンを照らす物として入る
-    //! @details light と root は EndLight まで生きていること
+    //! 平行光 light を、向きを出す持ち主の根 root と組にして入れる。シーンを照らす物として入る
+    //! light と root は EndLight まで生きていること
     void InitLight(const IGetRenderer* user, DirectionalLight* light, const Transform* root);
     //! 入れた平行光でシーンを照らし始める。入れていない物は何もしない
     void EnableLight(const IGetRenderer* user, const DirectionalLight* light) noexcept;

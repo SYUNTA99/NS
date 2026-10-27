@@ -5,7 +5,7 @@
 
 namespace NS
 {
-    //! @brief シーンを照らす平行光。DirectionalLight を 1 つ持つ
+    //! シーンを照らす平行光。DirectionalLight を 1 つ持つ
     class LightActor : public SceneActor
     {
     public:

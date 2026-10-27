@@ -44,11 +44,11 @@ private:
     //! エディタ UI 全体の表示・非表示を切り替える入力を見る
     void HandleUiVisibilityInput(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept;
 
-    //! @brief 画面最上部に File / Edit / SceneActor 等のメインメニューバーを描画する
-    //! @details 帯の高さ分だけビューポート作業領域が下がるので、後続のツールバー / ドックは自動でずれる
+    //! 画面最上部に File / Edit / SceneActor 等のメインメニューバーを描画する
+    //! 帯の高さ分だけビューポート作業領域が下がるので、後続のツールバー / ドックは自動でずれる
     void RenderMainMenuBar(LevelEditorController& editor) noexcept;
 
-    //! @brief 画面最上部にプレイ制御ツールバーの帯を描画する
+    //! 画面最上部にプレイ制御ツールバーの帯を描画する
     //! @return 帯の高さ。ドックホストはこの分だけ上端を空ける
     [[nodiscard]] static float RenderPlayToolbar(LevelEditorController& editor) noexcept;
 

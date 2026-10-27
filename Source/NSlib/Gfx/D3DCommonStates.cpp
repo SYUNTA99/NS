@@ -21,10 +21,7 @@ namespace NS
 
         D3DCommonStates::~D3DCommonStates() = default;
 
-        bool D3DCommonStates::IsValid() const noexcept
-        {
-            return m_states != nullptr;
-        }
+        bool D3DCommonStates::IsValid() const noexcept { return m_states != nullptr; }
 
         ID3D11SamplerState* D3DCommonStates::LinearWrap() const noexcept
         {

@@ -24,7 +24,7 @@ namespace GL
         class PlayerJudgeBodySlam
         {
         public:
-            //! @brief 要求の猶予が残り、spent と wasSlamming が偽で locomotion が真かを返す
+            //! 要求の猶予が残り、spent と wasSlamming が偽で locomotion が真かを返す
             //! @param[in] locomotion 立ち・歩き・落ち・反動のどれかの状態か
             //! @return 発動する場合 true、それ以外の場合は false
             [[nodiscard]] static bool Judge(float bufferRemaining,
@@ -46,7 +46,7 @@ namespace GL
                 return !grounded && !NS::IsPositive(verticalVelocity) && !wasSlamming;
             }
 
-            //! @brief 縁の上面の高さが、手の高さの帯に入っているかを返す
+            //! 縁の上面の高さが、手の高さの帯に入っているかを返す
             //! @param[in] handY 手の高さ。世界座標
             //! @param[in] top 縁の上面の高さ。世界座標
             //! @param[in] belowHand 手より下に許す上面の深さ。単位は m
@@ -86,7 +86,7 @@ namespace GL
         class PlayerJudgeBrake
         {
         public:
-            //! @brief 入力があり、入力の水平の向きへの水平の速度の成分が threshold 未満かを返す
+            //! 入力があり、入力の水平の向きへの水平の速度の成分が threshold 未満かを返す
             //! @return ブレーキを掛ける場合 true、それ以外の場合は false。入力の向きが水平に無い時は false
             [[nodiscard]] static bool Judge(bool hasInput,
                                             const NS::Vector3& desiredDirection,
@@ -106,8 +106,8 @@ namespace GL
         class PlayerJudgeLand
         {
         public:
-            //! @brief 接地していて上昇していない場合 true、それ以外の場合は false
-            //! @details 反動の明けのフレームは止める前の接地のフラグが残ったまま上向きの速度が入る。
+            //! 接地していて上昇していない場合 true、それ以外の場合は false
+            //! 反動の明けのフレームは止める前の接地のフラグが残ったまま上向きの速度が入る。
             //! 接地だけを見ると宙へ出る前に立ちへ移る
             [[nodiscard]] static bool Judge(bool grounded, float verticalVelocity) noexcept
             {

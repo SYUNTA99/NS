@@ -211,15 +211,9 @@ namespace NS
 #endif
         }
 
-        bool ImGuiContext::IsValid() const noexcept
-        {
-            return m_pImpl && m_pImpl->valid;
-        }
+        bool ImGuiContext::IsValid() const noexcept { return m_pImpl && m_pImpl->valid; }
 
-        bool ImGuiContext::IsUsingFallback() const noexcept
-        {
-            return !m_pImpl || m_pImpl->fallback;
-        }
+        bool ImGuiContext::IsUsingFallback() const noexcept { return !m_pImpl || m_pImpl->fallback; }
 
         void ImGuiContext::BeginFrame() noexcept
         {

@@ -15,8 +15,8 @@ namespace NS
 {
     class Scene;
 
-    //! @brief 体力の表示やメニューなど、画面に出す物の基底
-    //! @details 寿命は開いた側が持ち、Open で登録し Close か破棄で外れる
+    //! 体力の表示やメニューなど、画面に出す物の基底
+    //! 寿命は開いた側が持ち、Open で登録し Close か破棄で外れる
     //! UI の段で開いた順に更新し、世界の後に DrawOrder 順で描く
     class UIActor : public Object
     {
@@ -41,7 +41,7 @@ namespace NS
 
         virtual void OnTick() {}
 
-        //! @brief 世界と重ね描きの部品を描いた後の画面へ重ねて描く
+        //! 世界と重ね描きの部品を描いた後の画面へ重ねて描く
         virtual void OnRenderOverlay(const Gfx::RenderContext& context);
 
         //! 描く順。小さいほど先に描き、後から描く物が上に重なる

@@ -4,12 +4,12 @@ namespace GL
 {
     namespace Level
     {
-        //! @brief 残りの命を 0〜最大値で管理する値
+        //! 残りの命を 0〜最大値で管理する値
         class Health
         {
         public:
             Health() noexcept = default;
-            //! @brief 最大の命を差し替え、残量が上回っていれば最大まで削る
+            //! 最大の命を差し替え、残量が上回っていれば最大まで削る
             //! @param[in] value 新しい最大。0 以下なら何も変えない
             void SetMaxHealth(int value) noexcept;
 

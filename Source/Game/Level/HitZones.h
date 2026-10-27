@@ -11,33 +11,33 @@ namespace GL
 {
     namespace Level
     {
-        //! @brief 相手の面の赤領域と、領域内外の威力倍率
-        //! @details 面上の位置は左右 u・上下 v で、どちらも -1〜1
+        //! 相手の面の赤領域と、領域内外の威力倍率
+        //! 面上の位置は左右 u・上下 v で、どちらも -1〜1
         struct HitFace
         {
-            bool round = true;                //!< 丸か。偽なら箱
-            float width = 0.43f;              //!< 面全体に対する赤の左右の半分の幅の割合。0〜1
-            float height = 0.43f;             //!< 面全体に対する赤の上下の半分の幅の割合。0〜1
-            float centerU = 0.0f;             //!< 赤の中心の左右の位置。-1〜1、自機から見て右が正
-            float centerV = 0.0f;             //!< 赤の中心の上下の位置。-1〜1、上が正
-            float powerScale = 1.0f;          //!< 赤で当たった時の当たり位置の係数
-            float remainderPowerScale = 0.7f; //!< 赤の外 (外れ) の当たり位置の係数
+            bool round = true;                // 丸か。偽なら箱
+            float width = 0.43f;              // 面全体に対する赤の左右の半分の幅の割合。0〜1
+            float height = 0.43f;             // 面全体に対する赤の上下の半分の幅の割合。0〜1
+            float centerU = 0.0f;             // 赤の中心の左右の位置。-1〜1、自機から見て右が正
+            float centerV = 0.0f;             // 赤の中心の上下の位置。-1〜1、上が正
+            float powerScale = 1.0f;          // 赤で当たった時の当たり位置の係数
+            float remainderPowerScale = 0.7f; // 赤の外 (外れ) の当たり位置の係数
         };
 
-        //! @brief JudgeHitFace の結果
+        //! JudgeHitFace の結果
         struct HitFaceJudgement
         {
-            HitTier tier = HitTier::Wide; //!< 当たった段。赤の外は外れ
-            float powerScale = 1.0f;      //!< 威力の倍率。赤の外なら残りの威力の倍率
-            float u = 0.0f;               //!< 面の上の左右の位置。自機から見て右が正。-1〜1 が触れられる幅
-            float v = 0.0f;               //!< 面の上の上下の位置。上が正。-1〜1 が触れられる高さ
-            float offset01 = 1.0f;        //!< 横ずれ。u の大きさを 0〜1 に丸めた値
-            float ratio = 1.0f;           //!< 丸める前の u の大きさ。1 を超える線は、線を進む自機の縁が届かない
-            float along = 0.0f;           //!< 線の起点から相手の体の中心までの、線に沿った水平の距離 (m)。後ろは負
-            NS::Vector3 linePoint;        //!< 相手の体の中心に一番近い線の上の点を、中心の高さに置いた物
+            HitTier tier = HitTier::Wide; // 当たった段。赤の外は外れ
+            float powerScale = 1.0f;      // 威力の倍率。赤の外なら残りの威力の倍率
+            float u = 0.0f;               // 面の上の左右の位置。自機から見て右が正。-1〜1 が触れられる幅
+            float v = 0.0f;               // 面の上の上下の位置。上が正。-1〜1 が触れられる高さ
+            float offset01 = 1.0f;        // 横ずれ。u の大きさを 0〜1 に丸めた値
+            float ratio = 1.0f;           // 丸める前の u の大きさ。1 を超える線は、線を進む自機の縁が届かない
+            float along = 0.0f;           // 線の起点から相手の体の中心までの、線に沿った水平の距離 (m)。後ろは負
+            NS::Vector3 linePoint;        // 相手の体の中心に一番近い線の上の点を、中心の高さに置いた物
             //! 自機の玉が相手の表面に触れる点。線が届かない時は、線に一番近い表面の点
             NS::Vector3 surfacePoint;
-            NS::HitSensorShape bodyShape = NS::HitSensorShape::Sphere; //!< 相手の体の形の種類
+            NS::HitSensorShape bodyShape = NS::HitSensorShape::Sphere; // 相手の体の形の種類
         };
 
         //! 相手の正面で判定し、赤の内側は Center、それ以外は Wide とする
@@ -67,32 +67,32 @@ namespace GL
                                             float playerRadius,
                                             float& outHeight) noexcept;
 
-        //! @brief 面の上の 1 つの形。赤の範囲か、外れの面
-        //! @details 位置と大きさは面の上の左右 u・上下 v で表す
+        //! 面の上の 1 つの形。赤の範囲か、外れの面
+        //! 位置と大きさは面の上の左右 u・上下 v で表す
         //! 丸は楕円、箱は長方形で、縁ちょうどは外
         struct HitFaceShape
         {
-            HitTier tier = HitTier::Wide; //!< 形の中で当たった時の段
-            bool round = true;            //!< 楕円か。偽なら長方形
-            float centerU = 0.0f;         //!< 中心の左右の位置。自機から見て右が正
-            float centerV = 0.0f;         //!< 中心の上下の位置。上が正
-            float halfU = 1.0f;           //!< 左右の半分の幅
-            float halfV = 1.0f;           //!< 上下の半分の幅
+            HitTier tier = HitTier::Wide; // 形の中で当たった時の段
+            bool round = true;            // 楕円か。偽なら長方形
+            float centerU = 0.0f;         // 中心の左右の位置。自機から見て右が正
+            float centerV = 0.0f;         // 中心の上下の位置。上が正
+            float halfU = 1.0f;           // 左右の半分の幅
+            float halfV = 1.0f;           // 上下の半分の幅
             //! 丸の縁の分割数。既定の近似誤差は約半パーセント
             int outlineSegments = 32;
         };
 
 #if !defined(NS_SHIPPING)
-        //! @brief 相手の正面の面を世界に置いた時の位置と軸
+        //! 相手の正面の面を世界に置いた時の位置と軸
         struct HitFaceFrame
         {
-            NS::Vector3 center;                                        //!< 面の中心。相手の正面に接する点
-            NS::Vector3 right;                                         //!< 面の左右の軸。自機から見て右
-            NS::Vector3 up;                                            //!< 面の上下の軸。真上
-            NS::Vector3 normal;                                        //!< 面の向き。自機の方
-            float reachU = 0.0f;                                       //!< u が 1 の所までの長さ (m)
-            float reachV = 0.0f;                                       //!< v が 1 の所までの長さ (m)
-            NS::HitSensorShape bodyShape = NS::HitSensorShape::Sphere; //!< 相手の体の形の種類
+            NS::Vector3 center;                                        // 面の中心。相手の正面に接する点
+            NS::Vector3 right;                                         // 面の左右の軸。自機から見て右
+            NS::Vector3 up;                                            // 面の上下の軸。真上
+            NS::Vector3 normal;                                        // 面の向き。自機の方
+            float reachU = 0.0f;                                       // u が 1 の所までの長さ (m)
+            float reachV = 0.0f;                                       // v が 1 の所までの長さ (m)
+            NS::HitSensorShape bodyShape = NS::HitSensorShape::Sphere; // 相手の体の形の種類
         };
 
         //! エディタの描画用に、突進と逆を向く平面を相手の正面へ置く
@@ -115,7 +115,7 @@ namespace GL
         [[nodiscard]] std::vector<NS::Vector2> HitFaceShapeOutline(const HitFaceShape& shape) noexcept;
 #endif
 
-        //! @brief アクターごとの赤領域と威力倍率を保持する部品
+        //! アクターごとの赤領域と威力倍率を保持する部品
         class HitZones : public NS::Object
         {
         public:

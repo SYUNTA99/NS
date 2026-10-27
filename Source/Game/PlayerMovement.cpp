@@ -19,7 +19,7 @@
 
 namespace
 {
-    // 水平の向き from を Y 軸まわりに radians だけ回す。正の角度は +X を -Z の側へ回す
+    // 正の角度は +X を -Z の側へ回す
     NS::Vector3 RotateHorizontal(const NS::Vector3& from, float radians) noexcept
     {
         const float c = std::cos(radians);
@@ -27,7 +27,6 @@ namespace
         return NS::Vector3{from.x * c + from.z * s, 0.0f, -from.x * s + from.z * c};
     }
 
-    // from を Y 軸まわりに最大 maxRadians だけ to へ寄せた向き。from と to は正規化した水平の向き。
     NS::Vector3 TurnHorizontalToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept
     {
         const float angle = NS::SignedHorizontalAngle(from, to);
@@ -312,12 +311,11 @@ void PlayerActor::UpdateBodySlam(float dt) noexcept
 
 namespace
 {
-    // 掴む縁の 1 か所
     struct LedgeSpot
     {
-        NS::Vector3 hangPos;    // ぶら下がりの体の中心
+        NS::Vector3 hangPos;
         NS::Vector3 faceNormal; // 掴む面の、自機の側を向く水平の向き
-        float topY = 0.0f;      // 縁の上面の高さ
+        float topY = 0.0f;
     };
 
     // よじ登りを終えた体の中心。塞がっているかの確かめと登る先の両方がこの点を使う
@@ -333,12 +331,11 @@ namespace
         };
     }
 
-    // 縁の上面を探す手の高さの帯
     struct LedgeBand
     {
-        float handY = 0.0f; // 手の高さ
-        float below = 0.0f; // 手より下に許す上面の深さ
-        float above = 0.0f; // 手より上に許す上面の高さ
+        float handY = 0.0f;
+        float below = 0.0f;
+        float above = 0.0f;
     };
 
     // 縁を当たりの本当の形で探す。境界箱で探すと、傾いた坂や回した壁の周りの空中に縁ができる。

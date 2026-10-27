@@ -27,51 +27,40 @@ namespace NS
         class D3DTexture;
         struct BuiltinShaders;
 
-        //! @brief 空の頂点シェーダーの定数
-        //! @details skybox.vs.hlsl の cbuffer SkyboxCB と大きさを合わせる。照らす試しは shader_constants_test.cpp
+        //! skybox.vs.hlsl の cbuffer SkyboxCB とレイアウトを一致させる
         struct alignas(16) SkyboxCB
         {
-            Matrix viewProj; //!< カメラの平行移動を除いたビュー射影
+            Matrix viewProj; // カメラの平行移動成分を除いたビュー射影行列
         };
         static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL の cbuffer SkyboxCB とバイト一致が必要");
 
-        //! @brief 無限遠の背景の空を描く
-        //! @details 立方体のメッシュとキューブマップを持つ。描く資源は、画像を指定した初回の Draw で作る
-        //! 画像を読み込むまではピンク一色のフォールバックを描く
-        //! @warning D3DDevice より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
+        //! キューブマップによるスカイボックス描画。D3DDevice より先に破棄し、shaders の破棄後は描画を呼ばないこと
         class Skybox : public NonCopyable
         {
         public:
-            //! @param[in] shaders skyboxVs と skyboxPs を指すだけで持たない。使えるかは Draw の度に IsUsable で決める
+            //! shaders は非所有で参照のみ保持する
             explicit Skybox(const BuiltinShaders& shaders) noexcept;
             ~Skybox();
 
-            //! @brief 不透明の後、半透明の前に空を描く。変更した描画ステートは終了時に戻す
-            //! @details cubemapPath は ContentRoot 内の .dds か、6 方向の画像を入れたディレクトリ。空なら描かない
-            //! 画像の読み込みに失敗した時は前の画像を保って次の Draw で再試行し、GPU 資源の生成失敗は再試行しない
+            //! cubemapPath は ContentRoot 内の .dds または 6 面画像ディレクトリ (空なら描画しない)
+            //! 変更した描画ステートは終了時に復元する
             void Draw(D3DDevice& device, const CameraData& camera, std::string_view cubemapPath) noexcept;
 
-            //! 立方体メッシュ・定数バッファ・パイプライン・代替のキューブマップが揃っているか
             [[nodiscard]] bool IsValid() const noexcept;
 
-            //! 画像が未読み込み、または直近の読み込みに失敗したか
+            //! キューブマップが未読み込み、または直近の読み込みに失敗してフォールバック中か
             [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-            //! @brief 6 方向の画像を入れたディレクトリから読むファイル名
-            //! @details キューブマップの面の順 (右・左・上・下・奥・手前) に並ぶ。6 つが全部ある時だけ読める
+            //! ディレクトリ指定時に読み込む 6 面のファイル名 (+X, -X, +Y, -Y, +Z, -Z 順)
             [[nodiscard]] static const std::array<std::string_view, 6>& FaceFileNames() noexcept;
 
         private:
-            // 描く資源を初回だけ作る
             void EnsureResources() noexcept;
 
-            // cubemapPath が前回と違う時だけ読み直す。ContentRoot の外を指す道は読まない
             void UpdateCubemap(std::string_view cubemapPath) noexcept;
 
-            // DDS などの単一ファイルか、6 方向の画像を入れたディレクトリを読む。失敗しても前の中身を保つ
             [[nodiscard]] bool LoadCubemap(std::string_view path);
 
-            // viewProjNoTranslate はカメラの平行移動を除く行列、sampler は線形・端固定
             void DrawCube(D3DCommandList& commands,
                           const Matrix& viewProjNoTranslate,
                           ID3D11SamplerState* sampler) const noexcept;

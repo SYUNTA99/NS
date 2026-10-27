@@ -21,7 +21,7 @@ namespace GL
 {
     namespace Level
     {
-        //! @brief 動く・反応する置物。岩・箱・樽
+        //! 動く・反応する置物。岩・箱・樽
         // 個体ごとの見た目と重さは個体の上書きで変える
         class PropActor : public NS::SceneActor
         {
@@ -42,8 +42,8 @@ namespace GL
             void OnEndPlay() override;
             //! 体当たりの止めの最中の場合 true、それ以外の場合は false
             [[nodiscard]] bool IsFrozen() const noexcept;
-            //! @brief 押し飛ばされて曲線か転がりの最中かを返す
-            //! @details 飛んでいる途中に止めが掛かった間も含む
+            //! 押し飛ばされて曲線か転がりの最中かを返す
+            //! 飛んでいる途中に止めが掛かった間も含む
             //! @return 飛んでいる場合 true、それ以外の場合は false
             [[nodiscard]] bool IsFlying() const noexcept;
             //! 飛んでいる中でも曲線の上にいる場合 true、それ以外の場合は false

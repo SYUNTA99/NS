@@ -14,26 +14,23 @@ namespace NS
 {
     namespace Editor
     {
-        //! 1 個体の状態をシーンへ適用する。アクターは Scene::ApplyFromJson のとおり使い回し、作り直した時は古いアクターを返す
         class ActorSnapshotApplier final : public IActorSnapshotApplier
         {
         public:
+            //! scene が nullptr の場合、ReattachActor 以外の操作は何もせず空を返す
             explicit ActorSnapshotApplier(Scene* scene) noexcept : m_scene(scene) {}
 
-            //! objectId の現在の姿を写す。居なければ nullopt。シーン未設定も nullopt
             [[nodiscard]] std::optional<nlohmann::json> CaptureActor(uint32 objectId) const override;
 
-            //! objectId を desired の姿へ揃える。シーン未設定なら何もせずに空を返す
             [[nodiscard]] std::unique_ptr<SceneActor> ApplyActorSnapshot(uint32 objectId,
                                                                          const nlohmann::json& desired) override;
 
-            //! シーン未設定なら空を返す
             [[nodiscard]] DetachedActor DetachActor(uint32 objectId) override;
 
             void ReattachActor(DetachedActor detached) override;
 
         private:
-            Scene* m_scene = nullptr; // 編集対象のシーン、非所有
+            Scene* m_scene = nullptr;
         };
     } // namespace Editor
 } // namespace NS

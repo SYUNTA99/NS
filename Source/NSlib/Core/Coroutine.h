@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/NonCopyable.h"
 
@@ -11,17 +11,17 @@
 
 namespace NS
 {
-    //! @brief 複数フレームにまたがる演出手順のシーケンス。co_await で待ちを挟みつつ上から下へ書く
-    //! @details CoroutineRunner が所有と駆動を持つ。シーケンスの中で待ちをまたいで生ポインタを持たないこと
+    //! 複数フレームにまたがる演出手順のシーケンス。co_await で待ちを挟みつつ上から下へ書く
+    //! CoroutineRunner が所有と駆動を持つ。シーケンスの中で待ちをまたいで生ポインタを持たないこと
     //! 待っている間に持ち主が破棄され得る。破棄はコルーチンフレームごと捨てる方式で、途中再開はしない
     class Coroutine
     {
     public:
         struct promise_type
         {
-            float waitSeconds = 0.0f;            // 残り待ち秒。正の間は待つ
-            std::function<bool()> waitPredicate; // 条件待ち。真を返したら起きる
-            bool waitNextFrame = false;          // 次の Tick まで待つフラグ
+            float waitSeconds = 0.0f; // 秒
+            std::function<bool()> waitPredicate;
+            bool waitNextFrame = false;
 
             Coroutine get_return_object()
             {
@@ -68,10 +68,10 @@ namespace NS
         Handle m_handle{};
     };
 
-    //! @brief 指定秒の待ち。CoroutineRunner::Tick へ渡す dt で進む
+    //! 指定秒の待ち。CoroutineRunner::Tick へ渡す dt で進む
     struct WaitSeconds
     {
-        float seconds = 0.0f;
+        float seconds = 0.0f; // 秒
 
         [[nodiscard]] bool await_ready() const noexcept { return seconds <= 0.0f; }
         void await_suspend(std::coroutine_handle<Coroutine::promise_type> handle) const
@@ -81,14 +81,13 @@ namespace NS
         void await_resume() const noexcept {}
     };
 
-    //! @brief 条件が真になるまでの待ち。条件は毎 Tick 評価される
+    //! 条件が真になるまでの待ち。条件は毎 Tick 評価される
     struct WaitUntil
     {
         std::function<bool()> condition;
 
         [[nodiscard]] bool await_ready() const
         {
-            // 条件が空か最初から真なら待たずに続ける
             return condition == nullptr || condition();
         }
         void await_suspend(std::coroutine_handle<Coroutine::promise_type> handle)
@@ -98,7 +97,6 @@ namespace NS
         void await_resume() const noexcept {}
     };
 
-    //! @brief 次の Tick までの待ち
     struct NextFrame
     {
         [[nodiscard]] bool await_ready() const noexcept { return false; }
@@ -142,7 +140,7 @@ namespace NS
             m_handles.push_back(handle);
         }
 
-        //! 待ちを dt だけ進め、明けたシーケンスを再開する。終わったシーケンスはここで捨てる
+        //! 待ちを dt 秒だけ進め、明けたシーケンスを再開する。終わったシーケンスはここで捨てる
         void Tick(float dt)
         {
             m_ticking = true;
@@ -222,7 +220,7 @@ namespace NS
         [[nodiscard]] bool IsRunning() const noexcept { return !m_handles.empty(); }
 
     private:
-        std::vector<Coroutine::Handle> m_handles; // 進行中のシーケンス。done になったら即座に外す
+        std::vector<Coroutine::Handle> m_handles;
         int m_resumeDepth = 0;
         bool m_ticking = false;
         bool m_cancelPending = false;

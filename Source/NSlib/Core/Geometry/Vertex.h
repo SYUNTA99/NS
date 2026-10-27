@@ -22,8 +22,8 @@ namespace NS
     static_assert(std::is_standard_layout_v<StaticVertex>,
                   "GPUへ正しく転送するため、StaticVertexは標準レイアウトである必要があります。");
 
-    //! @brief スキンメッシュ用の頂点データ構造
-    //! @details 頂点の基本情報に加え、最大4つのボーンからインデックスとウェイトを保持する
+    //! スキンメッシュ用の頂点データ構造
+    //! 頂点の基本情報に加え、最大4つのボーンからインデックスとウェイトを保持する
     struct SkinnedVertex
     {
         Vector3 position;

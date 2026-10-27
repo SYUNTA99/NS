@@ -12,8 +12,8 @@ namespace NS
 {
     namespace OS
     {
-        //! @brief アプリケーション起動時からの経過時間を計測する
-        //! @details OS のシステム時刻変更の影響を受けず、<windows.h> にも依存しない
+        //! アプリケーション起動時からの経過時間を計測する
+        //! OS のシステム時刻変更の影響を受けず、<windows.h> にも依存しない
         class Clock
         {
         public:
@@ -44,11 +44,11 @@ namespace NS
         //! 1 フレームの経過を固定更新へ刻んだ結果
         struct FixedStepAdvance
         {
-            int steps = 0;            //!< このフレームで回す固定更新の回数
-            float accumulator = 0.0f; //!< 刻んだ残りの秒
+            int steps = 0;            // このフレームで回す固定更新の回数
+            float accumulator = 0.0f; // 刻んだ残りの秒
         };
 
-        //! @brief 貯めに経過秒を足し、固定更新の回数と残りを返す
+        //! 貯めに経過秒を足し、固定更新の回数と残りを返す
         //! @pre fixedDelta は 0 より大きい
         [[nodiscard]] inline FixedStepAdvance AdvanceFixedSteps(float accumulator, float dt, float fixedDelta) noexcept
         {
@@ -66,8 +66,8 @@ namespace NS
             return advance;
         }
 
-        //! @brief デルタタイムと固定タイムステップを管理する静的クラス
-        //! @details 毎フレームの経過時間を蓄積し、固定時間ぶんだけ処理ステップを回す
+        //! デルタタイムと固定タイムステップを管理する静的クラス
+        //! 毎フレームの経過時間を蓄積し、固定時間ぶんだけ処理ステップを回す
         class FrameTimer
         {
         public:
@@ -126,16 +126,16 @@ namespace NS
 
         private:
             static inline std::chrono::steady_clock::time_point s_lastTime{std::chrono::steady_clock::now()};
-            static inline float s_delta = 0.0f;                     //!< 前フレームからの経過秒
-            static inline double s_total = 0.0;                     //!< 起動からの累計秒
-            static inline uint64 s_frame = 0;                   //!< 累計フレーム数
-            static inline float s_fixedDelta = k_DefaultFixedDelta; //!< 固定更新の間隔（秒）
-            static inline float s_accumulator = 0.0f;               //!< 未消化の経過時間。固定ステップを刻んだ残り
-            static inline int s_fixedSteps = 0;                     //!< 今フレームで固定更新を回す回数
+            static inline float s_delta = 0.0f;                     // 前フレームからの経過秒
+            static inline double s_total = 0.0;                     // 起動からの累計秒
+            static inline uint64 s_frame = 0;                   // 累計フレーム数
+            static inline float s_fixedDelta = k_DefaultFixedDelta; // 固定更新の間隔（秒）
+            static inline float s_accumulator = 0.0f;               // 未消化の経過時間。固定ステップを刻んだ残り
+            static inline int s_fixedSteps = 0;                     // 今フレームで固定更新を回す回数
         };
 
-        //! @brief スコープを抜ける際に、そこまでの処理にかかった時間をデバッグログに出力する
-        //! @details 直接インスタンス化せず、NS_SCOPED_TIMER マクロを経由して使用すること
+        //! スコープを抜ける際に、そこまでの処理にかかった時間をデバッグログに出力する
+        //! 直接インスタンス化せず、NS_SCOPED_TIMER マクロを経由して使用すること
         class ScopedTimer
         {
         public:
@@ -169,8 +169,8 @@ namespace NS
 #define NS_CLOCK_PASTE_IMPL(a, b) a##b
 #define NS_CLOCK_PASTE(a, b) NS_CLOCK_PASTE_IMPL(a, b)
 
-//! @brief 指定したスコープの処理時間を計測・ログ出力する
-//! @details プロファイリングが無効な環境では何も展開されず、オーバーヘッドは発生しない
+//! 指定したスコープの処理時間を計測・ログ出力する
+//! プロファイリングが無効な環境では何も展開されず、オーバーヘッドは発生しない
 #if defined(NS_ENABLE_PROFILING)
 #define NS_SCOPED_TIMER(cat, label)                                                                                    \
     ::NS::OS::ScopedTimer NS_CLOCK_PASTE(ns_scoped_timer_, __COUNTER__)((::NS::LogType::cat), (label))

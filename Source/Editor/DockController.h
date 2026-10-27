@@ -22,9 +22,9 @@ namespace NS
                 Floating
             };
 
-            //! @brief ツールバー帯の下にドックホストを 1 枚置く
+            //! ツールバー帯の下にドックホストを 1 枚置く
             //! @param[in] topOffset ツールバー帯の高さ分だけ上端を空ける
-            //! @details 非表示中は keepAliveOnly で配置を維持する。配置が無い場合とリセット時だけ初期配置を組む
+            //! 非表示中は keepAliveOnly で配置を維持する。配置が無い場合とリセット時だけ初期配置を組む
             void RenderDockSpaceHost(float topOffset, bool keepAliveOnly = false) noexcept;
 
             void RenderWindowMenu() noexcept;

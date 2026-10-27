@@ -17,8 +17,8 @@ namespace NS
     template <class TKind>
     concept SensorKindEnum = std::is_enum_v<TKind> && std::same_as<std::underlying_type_t<TKind>, uint8>;
 
-    //! @brief アクターのクラスが宣言したセンサーを、基底の SceneActor に作らせる
-    //! @details 作れるのは SceneActor だけで、DeclareSensors を呼ぶ間だけ渡される。だから OnInit からはセンサーを作れない。
+    //! アクターのクラスが宣言したセンサーを、基底の SceneActor に作らせる
+    //! 作れるのは SceneActor だけで、DeclareSensors を呼ぶ間だけ渡される。だから OnInit からはセンサーを作れない。
     //! 作ったセンサーは一覧に入り、種類が付く。表に無いメンバーと作成済みのメンバーは ERROR を出して作らない
     class SensorDeclarations
     {
@@ -54,8 +54,8 @@ namespace NS
     };
 } // namespace NS
 
-//! @brief アクターのクラスの本体に、そのクラスが持つセンサーを並べる。NS_SENSORS_END で閉じる
-//! @details 基底の SceneActor が OnInit の前に作るので、OnInit と状態の OnEnter から読める。
+//! アクターのクラスの本体に、そのクラスが持つセンサーを並べる。NS_SENSORS_END で閉じる
+//! 基底の SceneActor が OnInit の前に作るので、OnInit と状態の OnEnter から読める。
 //! 派生のクラスが並べ直すと、基底の並びを置き換える
 #define NS_SENSORS_BEGIN() void DeclareSensors(::NS::SensorDeclarations& sensors) override {
 //! 独立した形のセンサーを 1 つ並べる。kind は Game の種類、shape は NS::HitSensorShape

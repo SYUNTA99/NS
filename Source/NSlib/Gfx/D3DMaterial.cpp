@@ -80,10 +80,7 @@ namespace NS
 
         D3DMaterial::~D3DMaterial() = default;
 
-        bool D3DMaterial::IsValid() const noexcept
-        {
-            return m_valid;
-        }
+        bool D3DMaterial::IsValid() const noexcept { return m_valid; }
 
         bool D3DMaterial::IsUsingFallback() const noexcept
         {
@@ -94,15 +91,9 @@ namespace NS
             return m_vertexShader->IsUsingFallback() || m_pixelShader->IsUsingFallback();
         }
 
-        BlendMode D3DMaterial::Blend() const noexcept
-        {
-            return m_blend;
-        }
+        BlendMode D3DMaterial::Blend() const noexcept { return m_blend; }
 
-        int D3DMaterial::RenderPriority() const noexcept
-        {
-            return m_renderPriority;
-        }
+        int D3DMaterial::RenderPriority() const noexcept { return m_renderPriority; }
 
         void D3DMaterial::SetTexture(uint slot, const D3DTexture* texture) noexcept
         {

@@ -6,12 +6,13 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
+#include "NSlib/CoreObject/ClassObjs/Sound.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
@@ -37,7 +38,8 @@ namespace NS
     NS_CLASSOBJ(m_bodySensor, "BodySensor")
     NS_CLASSOBJ(m_attackSensor, "AttackSensor")
     NS_CLASSOBJ(m_hitReaction, "HitReaction")
-    NS_CLASSOBJ(m_effectKeeper, "Effect")
+    NS_CLASSOBJ(m_effect, "Effect")
+    NS_CLASSOBJ(m_sound, "Sound")
     NS_CLASSOBJ(m_actionTimeline, "ActionTimeline")
     NS_CLASSOBJ(m_stateMachine, "StateMachine")
     NS_REFLECT_END_IMPL()
@@ -49,15 +51,9 @@ namespace NS
         Appear();
     }
 
-    Transform& SceneActor::Root() noexcept
-    {
-        return *m_transform;
-    }
+    Transform& SceneActor::Root() noexcept { return *m_transform; }
 
-    const Transform& SceneActor::Root() const noexcept
-    {
-        return *m_transform;
-    }
+    const Transform& SceneActor::Root() const noexcept { return *m_transform; }
 
     const ClassObjInfo* SceneActor::FindReflectedMember(const void* member) const
     {
@@ -182,6 +178,15 @@ namespace NS
         return m_scene->GetEffectScene();
     }
 
+    Audio::AudioDevice* SceneActor::GetAudioDevice() const noexcept
+    {
+        if (m_scene == nullptr)
+        {
+            return nullptr;
+        }
+        return m_scene->GetAudioDevice();
+    }
+
     CameraManager* SceneActor::GetCameraManager() const noexcept
     {
         if (m_scene == nullptr)
@@ -227,10 +232,7 @@ namespace NS
         return m_scene->GetSceneRenderer();
     }
 
-    Vector3 SceneActor::GravityDirection() const noexcept
-    {
-        return Phys::k_GravityDirection;
-    }
+    Vector3 SceneActor::GravityDirection() const noexcept { return Phys::k_GravityDirection; }
 
     void SceneActor::AddGravity(Vector3& velocity, float strength, float dt) const noexcept
     {
@@ -276,17 +278,17 @@ namespace NS
 
     bool SceneActor::IsSceneOverride(std::string_view part, std::string_view field) const
     {
-        return m_sceneOverrides.contains({std::string{part}, std::string{field}});
+        return m_sceneOverrides.contains(SceneOverrideKey{std::string{part}, std::string{field}});
     }
 
     void SceneActor::AddSceneOverride(std::string_view part, std::string_view field)
     {
-        m_sceneOverrides.emplace(std::string{part}, std::string{field});
+        m_sceneOverrides.insert(SceneOverrideKey{std::string{part}, std::string{field}});
     }
 
     void SceneActor::RemoveSceneOverride(std::string_view part, std::string_view field)
     {
-        m_sceneOverrides.erase({std::string{part}, std::string{field}});
+        m_sceneOverrides.erase(SceneOverrideKey{std::string{part}, std::string{field}});
     }
 
     void SceneActor::Init(const ActorInitInfo* info)
@@ -408,10 +410,7 @@ namespace NS
         if (m_hitReaction) { m_hitReaction->StopAll(this); }
     }
 
-    void SceneActor::RequestHitStop(int frames) noexcept
-    {
-        m_hitStopFrames = std::max(m_hitStopFrames, frames);
-    }
+    void SceneActor::RequestHitStop(int frames) noexcept { m_hitStopFrames = std::max(m_hitStopFrames, frames); }
 
     void SceneActor::OverrideHitStop(int frames) noexcept
     {
@@ -438,6 +437,20 @@ namespace NS
         return true;
     }
 
+    std::vector<HitOwnerRun> SceneActor::StartHitReactionRuns(std::string_view name,
+                                                              const Vector3& position,
+                                                              const HitSensor* self,
+                                                              const HitSensor* other)
+    {
+        if (!m_hitReaction)
+        {
+            return {};
+        }
+        const std::size_t first = m_hitReaction->OwnerRuns().size();
+        (void)StartHitReaction(name, position, self, other);
+        return m_hitReaction->OwnerRunsSince(first);
+    }
+
     ActionTimelineSelf SceneActor::ActionTimelineSelfOf() noexcept
     {
         return ActionTimelineSelf{.actor = this,
@@ -451,7 +464,7 @@ namespace NS
     {
         m_skipStateStep = false;
         // clang-format off
-        if (m_effectKeeper) { m_effectKeeper->BeginStep(GetEffectScene()); }
+        if (m_effect) { m_effect->BeginStep(GetEffectScene()); }
         if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(); }
         // clang-format on
         DecideStep();

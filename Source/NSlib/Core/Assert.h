@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // マクロで NS_LOG_FATAL を使うので、勝手に include が消されないようにする
 #include "NSlib/Core/Logger.h" // IWYU pragma: keep
@@ -18,7 +18,6 @@
 
 #else
 
-// アサート不要な環境では何もしない
 #define NS_ASSERT(cat, cond, ...) ((void)0)
 
 #endif

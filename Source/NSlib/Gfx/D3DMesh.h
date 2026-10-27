@@ -21,11 +21,11 @@ namespace NS
         //! 公開 InputElement 用フォーマット。頂点属性として受け付けるフォーマットの閉集合
         enum class InputElementFormat
         {
-            Float2, //!< R32G32_FLOAT
-            Float3, //!< R32G32B32_FLOAT
-            Float4, //!< R32G32B32A32_FLOAT
-            UInt32, //!< R32_UINT
-            UInt4,  //!< R32G32B32A32_UINT
+            Float2, // R32G32_FLOAT
+            Float3, // R32G32B32_FLOAT
+            Float4, // R32G32B32A32_FLOAT
+            UInt32, // R32_UINT
+            UInt4,  // R32G32B32A32_UINT
         };
 
         //! 入力レイアウトの要素。セマンティック番号とストリームのスロットは 0 固定
@@ -58,12 +58,12 @@ namespace NS
             [[nodiscard]] std::size_t VertexCount() const noexcept;
             [[nodiscard]] std::size_t IndexCount() const noexcept;
 
-            //! @brief モデル空間の軸並行境界ボックス。カリングで世界変換して視錐台に掛ける
-            //! @details 派生が build 時に頂点から算出して登録する。未登録なら原点の単位ボックス
+            //! モデル空間の軸並行境界ボックス。カリングで世界変換して視錐台に掛ける
+            //! 派生が build 時に頂点から算出して登録する。未登録なら原点の単位ボックス
             [[nodiscard]] const AABB& LocalBounds() const noexcept;
 
-            //! @brief 頂点シェーダーに合う入力レイアウトを選ぶ。無ければ作る
-            //! @details レイアウトは頂点シェーダーごとに持ち、そのシェーダーの BytecodeId が作った時と違えば作り直す。
+            //! 頂点シェーダーに合う入力レイアウトを選ぶ。無ければ作る
+            //! レイアウトは頂点シェーダーごとに持ち、そのシェーダーの BytecodeId が作った時と違えば作り直す。
             //! 描く度に呼べば、読み直しも、入力の違う別の頂点シェーダーで描く事も、選んだレイアウトに届く。
             //! 作れなかった時は空を選び、番号が変わるまで作り直さない
             //! @note グラフィックスデバイスが無効な場合は何もしない
@@ -91,7 +91,7 @@ namespace NS
 
             void SetTopology(Topology topology) noexcept;
 
-            //! @brief 派生クラスが頂点から算出したモデル空間境界ボックスを登録する
+            //! 派生クラスが頂点から算出したモデル空間境界ボックスを登録する
             void SetLocalBounds(const AABB& bounds) noexcept;
 
         private:

@@ -18,7 +18,6 @@ namespace NS
     {
         namespace
         {
-            // 素材の種類は拡張子で分ける。大文字と小文字を区別しないため、比べる前に小文字へ揃える
             std::string LowerExtension(std::string_view path)
             {
                 std::string extension = OS::FileSystem::Extension(path);
@@ -37,6 +36,10 @@ namespace NS
                 if (kind == AssetKind::Effect)
                 {
                     return LowerExtension(path) == ".efkefc";
+                }
+                if (kind == AssetKind::Sound)
+                {
+                    return LowerExtension(path) == ".wav";
                 }
                 if (kind == AssetKind::Mesh || kind == AssetKind::Model || kind == AssetKind::Animation)
                 {
@@ -163,6 +166,10 @@ namespace NS
             {
                 directory = OS::FileSystem::Combine(directory, "Effects");
             }
+            if (kind == AssetKind::Sound)
+            {
+                directory = OS::FileSystem::Combine(directory, "Sounds");
+            }
             if (kind == AssetKind::None || !OS::FileSystem::IsDirectory(directory))
             {
                 return options;
@@ -199,16 +206,16 @@ namespace NS
                     }
                     continue;
                 }
-                if (kind == AssetKind::Effect)
+                if (kind == AssetKind::Effect || kind == AssetKind::Sound)
                 {
-                    // エフェクトは Effects のフォルダからの道を、拡張子を除いて名前にする
-                    const std::optional<std::string> underEffects = OS::FileSystem::RelativeUnder(directory, file);
-                    if (!underEffects)
+                    // エフェクトは Effects、音は Sounds のフォルダからの道を、拡張子を除いて名前にする
+                    const std::optional<std::string> underFolder = OS::FileSystem::RelativeUnder(directory, file);
+                    if (!underFolder)
                     {
-                        NS_LOG_ERROR(App, "エフェクト {} が Effects の外にあるので候補に出さない", file);
+                        NS_LOG_ERROR(App, "素材 {} が {} の外にあるので候補に出さない", file, directory);
                         continue;
                     }
-                    std::string name = *underEffects;
+                    std::string name = *underFolder;
                     name.resize(name.size() - OS::FileSystem::Extension(name).size());
                     options.push_back(AssetOption{name, name, location});
                     continue;

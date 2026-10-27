@@ -42,10 +42,8 @@ namespace NS
                 return result;
             }
 
-            // Effekseer の Manager が持つ動的入力の数
             constexpr int k_DynamicInputCount = 4;
 
-            // 大きさ・回転・位置の順に掛けた姿勢。行の並びは DirectXMath と同じで、平行移動は 4 行目
             Effekseer::Matrix43 ToEffekseerTransform(const Vector3& position,
                                                      const Quaternion& rotation,
                                                      const Vector3& scale) noexcept
@@ -63,7 +61,6 @@ namespace NS
                 return result;
             }
 
-            // 0〜1 の色の成分を 0〜255 にする。非数と 0 以下は 0、1 以上は 255
             uint8 ToColorByte(float value) noexcept
             {
                 if (!IsPositive(value))
@@ -439,16 +436,13 @@ namespace NS
                 m_depthFallback = false;
                 return;
             }
-            ComPtr<ID3D11Resource> resource;
-            dsv->GetResource(resource.GetAddressOf());
-            ComPtr<ID3D11Texture2D> source;
-            if (resource == nullptr || FAILED(resource.As(&source)))
+            D3D11_TEXTURE2D_DESC desc{};
+            const ComPtr<ID3D11Texture2D> source = ViewTexture2D(dsv.Get(), &desc);
+            if (!source)
             {
                 FallBackWithoutDepth("奥行きが 2D のテクスチャでない", 0, 0);
                 return;
             }
-            D3D11_TEXTURE2D_DESC desc{};
-            source->GetDesc(&desc);
             // 写し先は R24G8 の組で作るので、写せるのは同じ組で多重サンプルでない奥行きだけ
             const bool copyable =
                 (desc.Format == DXGI_FORMAT_D24_UNORM_S8_UINT || desc.Format == DXGI_FORMAT_R24G8_TYPELESS) &&
@@ -497,7 +491,6 @@ namespace NS
                     oldest = &copy;
                 }
             }
-            // 空きか、一番長く使っていない方を作り直す
             for (DepthCopy& copy : m_depthCopies)
             {
                 if (copy.texture == nullptr)

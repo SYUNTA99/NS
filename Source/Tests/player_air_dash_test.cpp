@@ -1,6 +1,7 @@
 #include "Game/Level/ReboundDirections.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/PlayerSounds.h"
 #include "Game/Player/States/AirDashPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
@@ -177,6 +178,21 @@ TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
     EXPECT_EQ(player->AirDashesRemaining(), 0);
     // 距離はダッシュの速さで進む分。終わるフレームは残る速さで進むので、1 フレームで進む分だけずれてよい
     EXPECT_NEAR(player->Root().Position().x - startX, distance, speed * NS::OS::FrameTimer::FixedDelta());
+}
+
+// やり直しの後に一度も接地しないまま宙で動いても、その後の着地の音は鳴る
+TEST(PlayerAirDashTest, DashFromTheAirAllowsTheNextLandingSound)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    ASSERT_GT(AirDashLength(player), 0);
+    ASSERT_FALSE(player->Sounds().IsLandAllowed());
+
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    EXPECT_TRUE(player->Sounds().IsLandAllowed());
 }
 
 TEST(PlayerAirDashTest, TiltJustBeforeThePressKeepsTheDirectionHeldBefore)
@@ -409,6 +425,31 @@ TEST(PlayerAirDashTest, ARefusedDashDoesNotSwallowTheBodySlam)
     player->Update(true);
     EXPECT_FALSE(player->IsAirDashing());
     EXPECT_TRUE(player->IsBodySlamming());
+}
+
+// やり直しの後に一度も接地しないまま宙で体当たりしても、その後の着地の音は鳴る
+TEST(PlayerAirDashTest, BodySlamFromTheAirAllowsTheNextLandingSound)
+{
+    const ScopedActorFileEdit unset("PlayerActor", [](nlohmann::json& actorFile) {
+        std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
+        for (NS::ActorAction& action : actions)
+        {
+            if (action.name == "AirDash")
+            {
+                action.length = 0;
+            }
+        }
+        NS::WriteActorActions(actorFile, actions);
+    });
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const TestLogCapture log;
+    ASSERT_FALSE(player->Sounds().IsLandAllowed());
+    player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+    player->Update(true);
+    ASSERT_TRUE(player->IsBodySlamming());
+    EXPECT_TRUE(player->Sounds().IsLandAllowed());
 }
 
 // エアダッシュの状態に入っても動作を始められなければ、その場で普段の動きへ移る

@@ -19,14 +19,11 @@ namespace
 {
     constexpr std::size_t k_MaxVertices = 4096;
     constexpr int k_CircleSegments = 12;
-
-    // 頂点バッファの 1 頂点 (POSITION 12 + COLOR 16)。DebugShapes::Vertex と同じ並び
     constexpr std::size_t k_VertexStride = 28;
 
     // 三角形 12960 枚ぶんの頂点 (約 1 MB)。エディタの面は相手 1 体で 100 枚に満たず、相手の数で溢れない
     constexpr std::size_t k_MaxFaceVertices = 38880;
 
-    // この固定ステップの図形の積み先。自由関数の Line や Circle などは全部ここへ積む
     NS::Gfx::DebugShapes& EditableStepShapes() noexcept
     {
         static NS::Gfx::DebugShapes g_stepShapes;
@@ -40,7 +37,7 @@ namespace NS
     {
         void DebugShapes::Line(const Vector3& a, const Vector3& b, const Color& color)
         {
-            if (m_lines.size() + 2 > k_MaxVertices) // 最大容量を超える場合は最も古い線を破棄する
+            if (m_lines.size() + 2 > k_MaxVertices)
             {
                 m_lines.erase(m_lines.begin(), m_lines.begin() + 2);
             }
@@ -73,19 +70,16 @@ namespace NS
             const Vector3 c111 = obb.center + ex + ey + ez;
             const Vector3 c011 = obb.center - ex + ey + ez;
 
-            // 前面
             Line(c000, c100, color);
             Line(c100, c110, color);
             Line(c110, c010, color);
             Line(c010, c000, color);
 
-            // 背面
             Line(c001, c101, color);
             Line(c101, c111, color);
             Line(c111, c011, color);
             Line(c011, c001, color);
 
-            // 前面と背面を繋ぐ辺
             Line(c000, c001, color);
             Line(c100, c101, color);
             Line(c110, c111, color);
@@ -103,7 +97,6 @@ namespace NS
             Circle(sphere.center, rz, rx, color);
         }
 
-        // center を中心に u と v が張る平面上の円を積む。u と v は半径ぶん伸ばした直交ベクトルを渡す
         void DebugShapes::Circle(const Vector3& center,
                                  const Vector3& u,
                                  const Vector3& v,
@@ -131,11 +124,9 @@ namespace NS
                                   float radius,
                                   const Color& color)
         {
-            // 上下端の基準点
             const Vector3 top = base + axis;
             const Vector3 bottom = base - axis;
 
-            // 軸に対して垂直な2つのベクトルを計算する
             Vector3 axisN = axis;
             if (axisN.Length() > 1e-6f)
             {
@@ -155,13 +146,11 @@ namespace NS
             }
             const Vector3 perpB = axisN.Cross(perpA);
 
-            // 上下端の円
             const Vector3 uA = perpA * radius;
             const Vector3 uB = perpB * radius;
             Circle(top, uA, uB, color);
             Circle(bottom, uA, uB, color);
 
-            // 円柱の側面に沿う線 4 本
             const Vector3 dirs[4] = {uA, -uA, uB, -uB};
             for (const Vector3& d : dirs)
             {
@@ -174,7 +163,6 @@ namespace NS
                                    const Vector3& c,
                                    const Color& color)
         {
-            // 線と同じく、上限を超える時は最も古い三角形を捨てる
             if (m_faces.size() + 3 > k_MaxFaceVertices)
             {
                 m_faces.erase(m_faces.begin(), m_faces.begin() + 3);
@@ -302,74 +290,27 @@ namespace NS
     {
         namespace DebugDraw
         {
-            void Line(const Vector3& a, const Vector3& b, const Color& color) noexcept
-            {
-                EditableStepShapes().Line(a, b, color);
-            }
-
-            void AABB(const NS::AABB& box, const Color& color) noexcept
-            {
-                EditableStepShapes().AABB(box, color);
-            }
-
-            void OBB(const NS::OBB& obb, const Color& color) noexcept
-            {
-                EditableStepShapes().OBB(obb, color);
-            }
-
-            void Sphere(const NS::Sphere& sphere, const Color& color) noexcept
-            {
-                EditableStepShapes().Sphere(sphere, color);
-            }
-
-            void Circle(const Vector3& center,
-                        const Vector3& u,
-                        const Vector3& v,
-                        const Color& color) noexcept
-            {
-                EditableStepShapes().Circle(center, u, v, color);
-            }
-
-            void Capsule(const Vector3& base,
-                         const Vector3& axis,
-                         float radius,
-                         const Color& color) noexcept
-            {
-                EditableStepShapes().Capsule(base, axis, radius, color);
-            }
-
-            const DebugShapes& StepShapes() noexcept
-            {
-                return EditableStepShapes();
-            }
-
-            void BeginStep() noexcept
-            {
-                EditableStepShapes().Clear();
-            }
-
-            void Clear() noexcept
-            {
-                EditableStepShapes().Clear();
-            }
-
-            std::size_t VertexCount() noexcept
-            {
-                return EditableStepShapes().VertexCount();
-            }
-
-            void Triangle(const Vector3& a,
-                          const Vector3& b,
-                          const Vector3& c,
-                          const Color& color) noexcept
-            {
-                EditableStepShapes().Triangle(a, b, c, color);
-            }
-
-            std::size_t FaceVertexCount() noexcept
-            {
-                return EditableStepShapes().FaceVertexCount();
-            }
+    void Line(const Vector3& a, const Vector3& b, const Color& color) noexcept { EditableStepShapes().Line(a, b, color); }
+    void AABB(const NS::AABB& box, const Color& color) noexcept { EditableStepShapes().AABB(box, color); }
+    void OBB(const NS::OBB& obb, const Color& color) noexcept { EditableStepShapes().OBB(obb, color); }
+    void Sphere(const NS::Sphere& sphere, const Color& color) noexcept { EditableStepShapes().Sphere(sphere, color); }
+    void Circle(const Vector3& center, const Vector3& u, const Vector3& v, const Color& color) noexcept
+    {
+        EditableStepShapes().Circle(center, u, v, color);
+    }
+    void Capsule(const Vector3& base, const Vector3& axis, float radius, const Color& color) noexcept
+    {
+        EditableStepShapes().Capsule(base, axis, radius, color);
+    }
+    const DebugShapes& StepShapes() noexcept { return EditableStepShapes(); }
+    void BeginStep() noexcept { EditableStepShapes().Clear(); }
+    void Clear() noexcept { EditableStepShapes().Clear(); }
+    std::size_t VertexCount() noexcept { return EditableStepShapes().VertexCount(); }
+    void Triangle(const Vector3& a, const Vector3& b, const Vector3& c, const Color& color) noexcept
+    {
+        EditableStepShapes().Triangle(a, b, c, color);
+    }
+    std::size_t FaceVertexCount() noexcept { return EditableStepShapes().FaceVertexCount(); }
         } // namespace DebugDraw
     } // namespace Gfx
 } // namespace NS

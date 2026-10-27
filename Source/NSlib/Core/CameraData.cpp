@@ -1,4 +1,4 @@
-﻿#include "NSlib/Core/CameraData.h"
+#include "NSlib/Core/CameraData.h"
 
 namespace NS
 {
@@ -64,38 +64,14 @@ namespace NS
         m_projDirty = true;
     }
 
-    const Vector3& CameraData::Position() const noexcept
-    {
-        return m_position;
-    }
-    const Vector3& CameraData::Target() const noexcept
-    {
-        return m_target;
-    }
-    const Vector3& CameraData::Up() const noexcept
-    {
-        return m_up;
-    }
-    Radians CameraData::FovY() const noexcept
-    {
-        return m_fovY;
-    }
-    float CameraData::AspectRatio() const noexcept
-    {
-        return m_aspect;
-    }
-    float CameraData::NearPlane() const noexcept
-    {
-        return m_near;
-    }
-    float CameraData::FarPlane() const noexcept
-    {
-        return m_far;
-    }
-    const Vector2& CameraData::ScreenOffset() const noexcept
-    {
-        return m_screenOffset;
-    }
+    const Vector3& CameraData::Position() const noexcept { return m_position; }
+    const Vector3& CameraData::Target() const noexcept { return m_target; }
+    const Vector3& CameraData::Up() const noexcept { return m_up; }
+    Radians CameraData::FovY() const noexcept { return m_fovY; }
+    float CameraData::AspectRatio() const noexcept { return m_aspect; }
+    float CameraData::NearPlane() const noexcept { return m_near; }
+    float CameraData::FarPlane() const noexcept { return m_far; }
+    const Vector2& CameraData::ScreenOffset() const noexcept { return m_screenOffset; }
 
     const Matrix& CameraData::View() const noexcept
     {
@@ -128,9 +104,6 @@ namespace NS
         return m_projection;
     }
 
-    Matrix CameraData::ViewProjection() const noexcept
-    {
-        return View() * Projection();
-    }
+    Matrix CameraData::ViewProjection() const noexcept { return View() * Projection(); }
 
 } // namespace NS

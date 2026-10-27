@@ -3,6 +3,7 @@
 #include "Editor/AssetPicker.h"
 #include "Editor/AssetPreview.h"
 #include "Editor/DragTypes.h"
+#include "Editor/EditorUi.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/LevelFilePaths.h"
 #include "Editor/PanelIds.h"
@@ -350,20 +351,7 @@ namespace NS
             {
                 ImDrawList* draw = ImGui::GetWindowDrawList();
                 const ImVec2 low{start.x + (width - thumb) * 0.5f, start.y};
-                for (int y = 0; y < static_cast<int>(thumb); y += 8)
-                {
-                    for (int x = 0; x < static_cast<int>(thumb); x += 8)
-                    {
-                        ImU32 color = IM_COL32(55, 55, 55, 255);
-                        if ((x / 8 + y / 8) % 2 == 0)
-                        {
-                            color = IM_COL32(80, 80, 80, 255);
-                        }
-                        draw->AddRectFilled(ImVec2{low.x + x, low.y + y},
-                                            ImVec2{low.x + std::min(x + 8.0f, thumb),
-                                                   low.y + std::min(y + 8.0f, thumb)}, color);
-                    }
-                }
+                DrawCheckerboard(*draw, low, ImVec2{thumb, thumb}, 8);
                 if (const Gfx::D3DTexture* image = LoadThumbnail(file, editor))
                 {
                     const Size2D size = image->Size();

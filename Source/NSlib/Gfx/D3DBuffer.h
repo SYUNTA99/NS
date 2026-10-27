@@ -12,16 +12,16 @@ namespace NS
         //! 用途別の値は MakeVertexBufferDesc 等のヘルパが埋める
         struct D3DBufferDesc
         {
-            const void* initialData = nullptr;              //!< 動的バッファ以外では必須
-            std::size_t byteSize = 0;                       //!< 定数バッファの場合は内部で16バイト境界に切り上げられる
-            std::size_t stride = 0;                         //!< 頂点バッファ利用時の1頂点あたりのバイト数
-            DXGI_FORMAT indexFormat = DXGI_FORMAT_R32_UINT; //!< インデックスバッファ利用時のフォーマット
-            D3D11_USAGE usage = D3D11_USAGE_DEFAULT;        //!< CPUからのアクセスフラグは本値に依存して自動決定される
-            UINT bindFlags = 0;                             //!< バッファの役割を指定する
+            const void* initialData = nullptr;              // 動的バッファ以外では必須
+            std::size_t byteSize = 0;                       // 定数バッファの場合は内部で16バイト境界に切り上げられる
+            std::size_t stride = 0;                         // 頂点バッファ利用時の1頂点あたりのバイト数
+            DXGI_FORMAT indexFormat = DXGI_FORMAT_R32_UINT; // インデックスバッファ利用時のフォーマット
+            D3D11_USAGE usage = D3D11_USAGE_DEFAULT;        // CPUからのアクセスフラグは本値に依存して自動決定される
+            UINT bindFlags = 0;                             // バッファの役割を指定する
         };
 
-        //! @brief 頂点 / インデックス / 定数を兼ねる単一 D3DBuffer
-        //! @details 役割は bindFlags で決まる。バインドと更新は D3DCommandList 経由
+        //! 頂点 / インデックス / 定数を兼ねる単一 D3DBuffer
+        //! 役割は bindFlags で決まる。バインドと更新は D3DCommandList 経由
         //! 定数用途は alignas(16) と手動 padding で 16 バイト境界を守ること
         class D3DBuffer : public NonCopyable
         {

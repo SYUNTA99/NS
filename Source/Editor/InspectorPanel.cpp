@@ -68,24 +68,17 @@ namespace NS
                 const float available = std::max(1.0f, std::min(256.0f, ImGui::GetContentRegionAvail().x));
                 const float scale = available / static_cast<float>(std::max(size.width, size.height));
                 const ImVec2 display{size.width * scale, size.height * scale};
-                const ImVec2 start = ImGui::GetCursorScreenPos();
-                ImDrawList* draw = ImGui::GetWindowDrawList();
-                for (int y = 0; y < static_cast<int>(display.y); y += 16)
-                {
-                    for (int x = 0; x < static_cast<int>(display.x); x += 16)
-                    {
-                        ImU32 color = IM_COL32(55, 55, 55, 255);
-                        if ((x / 16 + y / 16) % 2 == 0)
-                        {
-                            color = IM_COL32(80, 80, 80, 255);
-                        }
-                        draw->AddRectFilled(ImVec2{start.x + x, start.y + y},
-                                            ImVec2{start.x + std::min(x + 16.0f, display.x),
-                                                   start.y + std::min(y + 16.0f, display.y)}, color);
-                    }
-                }
+                DrawCheckerboard(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(), display, 16);
                 const ImTextureID handle = static_cast<ImTextureID>(reinterpret_cast<uintptr>(image->Srv()));
                 ImGui::Image(handle, display);
+            }
+
+            bool DrawDerivedActorNameRow(char* buffer, std::size_t bufferSize, const char* buttonLabel) noexcept
+            {
+                ImGui::SetNextItemWidth(-ImGui::CalcTextSize(buttonLabel).x - ImGui::GetStyle().ItemSpacing.x * 3.0f);
+                ImGui::InputTextWithHint("##derivedName", "派生の名前", buffer, bufferSize);
+                ImGui::SameLine();
+                return ImGui::Button(buttonLabel);
             }
 
             // 名前 label の 0 以上のフレーム数の欄を、欄の表の 1 行で描く。直し終えたフレームに true
@@ -254,14 +247,27 @@ namespace NS
                 m_skyboxDraft = m_skyboxSource;
                 m_skyboxPreviewPath.clear();
             }
+            if (m_musicSource != editor.SceneMusic().name || m_musicVolumeSource != editor.SceneMusicVolume())
+            {
+                m_musicSource = editor.SceneMusic().name;
+                m_musicVolumeSource = editor.SceneMusicVolume();
+                m_musicDraft = m_musicSource;
+                m_musicVolumeDraft = m_musicVolumeSource;
+            }
             const bool playing = !editor.IsSceneEditable();
             ImGui::BeginDisabled(playing);
-            SceneEnvironment fields{.skybox = m_skyboxDraft};
+            SceneEnvironment fields{
+                .skybox = m_skyboxDraft, .music = SoundName{m_musicDraft}, .musicVolume = m_musicVolumeDraft};
             const ValueEditResult edit = DrawReflectedValue(fields);
             if (edit.changed)
             {
-                m_skyboxDraft = fields.skybox;
-                m_skyboxPreviewPath.clear();
+                if (fields.skybox != m_skyboxDraft)
+                {
+                    m_skyboxDraft = fields.skybox;
+                    m_skyboxPreviewPath.clear();
+                }
+                m_musicDraft = fields.music.name;
+                m_musicVolumeDraft = ClampMusicVolume(fields.musicVolume);
             }
             static std::vector<AssetOption> options;
             if (ImGui::Button("画像を選択..."))
@@ -326,9 +332,38 @@ namespace NS
             {
                 ImGui::TextDisabled("入力した参照先は「適用」でシーンに反映します");
             }
+            DrawSceneMusicButtons(editor, playing);
             if (playing)
             {
-                ImGui::TextDisabled("背景の変更は編集モードで行います");
+                ImGui::TextDisabled("背景と曲の変更は編集モードで行います");
+            }
+        }
+
+        void InspectorPanel::DrawSceneMusicButtons(LevelEditorController& editor, bool playing)
+        {
+            const bool changed =
+                m_musicDraft != editor.SceneMusic().name || m_musicVolumeDraft != editor.SceneMusicVolume();
+            ImGui::BeginDisabled(playing || !changed);
+            if (ImGui::Button("曲を適用"))
+            {
+                if (editor.SetSceneMusic(SoundName{m_musicDraft}, m_musicVolumeDraft))
+                {
+                    m_musicSource = editor.SceneMusic().name;
+                    m_musicVolumeSource = editor.SceneMusicVolume();
+                    m_musicDraft = m_musicSource;
+                    m_musicVolumeDraft = m_musicVolumeSource;
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("曲の入力を戻す"))
+            {
+                m_musicDraft = editor.SceneMusic().name;
+                m_musicVolumeDraft = editor.SceneMusicVolume();
+            }
+            ImGui::EndDisabled();
+            if (changed)
+            {
+                ImGui::TextDisabled("入力した曲と音量は「曲を適用」でシーンに反映します");
             }
         }
 
@@ -474,11 +509,13 @@ namespace NS
                             HitOwnerItem* owner = std::get_if<HitOwnerItem>(&entry.item);
                             if (owner != nullptr && !owner->values.empty() && BeginFieldTable("##ownerValues"))
                             {
-                                for (std::pair<const std::string, float>& value : owner->values)
+                                for (std::pair<const std::string, float>& ownerValue : owner->values)
                                 {
-                                    ImGui::PushID(value.first.c_str());
-                                    FieldRow(value.first.c_str());
-                                    m_hitSetsEditing |= ImGui::DragFloat("##ownerValue", &value.second, 0.01f);
+                                    const std::string& name = ownerValue.first;
+                                    float& number = ownerValue.second;
+                                    ImGui::PushID(name.c_str());
+                                    FieldRow(name.c_str());
+                                    m_hitSetsEditing |= ImGui::DragFloat("##ownerValue", &number, 0.01f);
                                     committed |= ImGui::IsItemDeactivatedAfterEdit();
                                     (void)OverrideButton(false);
                                     ImGui::PopID();
@@ -554,11 +591,8 @@ namespace NS
                 // .actor の欄は、NS_GLOBAL_FIELD の欄も含めて全部 .actor へ書く。直し終えた時にファイルへ書き、同じ .actor のアクターへ写す
                 ImGui::Text("%s.actor (%s)", actorFile->ActorFileName().c_str(), actorFile->ClassName());
                 ImGui::TextDisabled("ここで直した値は、この .actor を指すアクターの全部に効く");
-                ImGui::SetNextItemWidth(-ImGui::CalcTextSize("派生を作る").x - ImGui::GetStyle().ItemSpacing.x * 3.0f);
-                ImGui::InputTextWithHint("##derivedName", "派生の名前", m_derivedNameBuffer, sizeof(m_derivedNameBuffer));
-                ImGui::SameLine();
                 // 作れない訳はエディタが WARN で出す。作れた時だけ名前の欄を空にする
-                if (ImGui::Button("派生を作る") &&
+                if (DrawDerivedActorNameRow(m_derivedNameBuffer, sizeof(m_derivedNameBuffer), "派生を作る") &&
                     editor.CreateDerivedActorFile(actorFile->ActorFileName(), m_derivedNameBuffer))
                 {
                     m_derivedNameBuffer[0] = '\0';
@@ -636,10 +670,7 @@ namespace NS
             NS_ASSERT(App, actor != nullptr, "DrawActorFileChoice: 渡したアクターか部品が無い");
 #if NS_EDITOR_ENABLED
             ImGui::TextUnformatted((actor->ActorFileName() + ".actor").c_str());
-            ImGui::SetNextItemWidth(-ImGui::CalcTextSize("上書きから派生を作る").x - ImGui::GetStyle().ItemSpacing.x * 3.0f);
-            ImGui::InputTextWithHint("##derivedName", "派生の名前", m_derivedNameBuffer, sizeof(m_derivedNameBuffer));
-            ImGui::SameLine();
-            if (ImGui::Button("上書きから派生を作る"))
+            if (DrawDerivedActorNameRow(m_derivedNameBuffer, sizeof(m_derivedNameBuffer), "上書きから派生を作る"))
             {
                 m_deriveRequested = true;
                 m_actorFileTargetId = actor->Id();

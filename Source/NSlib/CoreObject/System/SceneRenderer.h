@@ -65,8 +65,8 @@ namespace NS
     class Transform;
     class UIDirector;
 
-    //! @brief 指定の描画先へ指定の視点でシーンを描く単位
-    //! @details target が未指定ならウィンドウへ、viewPose が空なら実カメラで描く
+    //! 指定の描画先へ指定の視点でシーンを描く単位
+    //! target が未指定ならウィンドウへ、viewPose が空なら実カメラで描く
     //! drawShapes を持つビューだけ、描く直前に使い捨ての DebugShapes へ図形を積ませて描く
     struct SceneView
     {
@@ -78,21 +78,21 @@ namespace NS
         std::function<void(Gfx::DebugShapes&, const Matrix&)> drawShapes;
     };
 
-    //! @brief シーンの描画物を登録し、各ビューへ描画する
-    //! @details 世界と後処理の後に重ね描きと UI、最後にシーン全体の暗転を描く
+    //! シーンの描画物を登録し、各ビューへ描画する
+    //! 世界と後処理の後に重ね描きと UI、最後にシーン全体の暗転を描く
     class SceneRenderer : public SceneSystem
     {
     public:
         SceneRenderer();
         ~SceneRenderer();
 
-        //! @brief 装置を非所有で差す。EffectScene と描く段を作り直し、未設定なら畳む
-        //! @details EffectScene は構築時に Gpu() を読む。D3DDevice が立つまで作れない
+        //! 装置を非所有で差す。EffectScene と描く段を作り直し、未設定なら畳む
+        //! EffectScene は構築時に Gpu() を読む。D3DDevice が立つまで作れない
         //! 描く段のシェーダーはここで AssetManager::Get() から引くので、AssetManager を差した後に呼ぶ
         void SetDevice(Gfx::D3DDevice* device) noexcept;
 
-        //! @brief Preload が .efkefc を探すディレクトリを差す。空のままなら ContentRoot の Assets/Effects
-        //! @details effectRoot は EffectScene の構築時に固まる。SetDevice より前に差す
+        //! Preload が .efkefc を探すディレクトリを差す。空のままなら ContentRoot の Assets/Effects
+        //! effectRoot は EffectScene の構築時に固まる。SetDevice より前に差す
         void SetEffectRoot(std::string root) noexcept;
 
         //! 所有している EffectScene。装置未設定の間は nullptr
@@ -104,30 +104,30 @@ namespace NS
         //! エフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ何もしない
         void OnTick() override;
 
-        //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ実カメラの視点で 1 回だけ描く
-        //! @details 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
+        //! 1 フレームで描くビュー列を差す。空なら現描画先へ実カメラの視点で 1 回だけ描く
+        //! 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneViews = std::move(views); }
 
-        //! @brief 次に描くフレームから使う床の波を書く。強さ 0 で消える
+        //! 次に描くフレームから使う床の波を書く。強さ 0 で消える
         void SetGroundWave(const Gfx::GroundWave& wave) noexcept { m_groundWave = wave; }
         //! 描く時に使う床の波
         [[nodiscard]] const Gfx::GroundWave& GroundWaveShown() const noexcept { return m_groundWave; }
 
-        //! @brief 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
+        //! 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
         void SetDistortionRing(const Gfx::DistortionRing& ring) noexcept { m_distortionRing = ring; }
         //! 描く時に使う歪みの輪
         [[nodiscard]] const Gfx::DistortionRing& DistortionRingShown() const noexcept { return m_distortionRing; }
 
-        //! @brief 体の型に写す描く物を差し替える。空なら型を描かない
-        //! @details 型に写すのは登録の組が有効な物だけ。登録を外した描く物は、ここからも外す
+        //! 体の型に写す描く物を差し替える。空なら型を描かない
+        //! 型に写すのは登録の組が有効な物だけ。登録を外した描く物は、ここからも外す
         //! @param[in] renderables 型に写す描く物、非所有
         void SetBodyMask(std::vector<IRenderable*> renderables) noexcept { m_bodyMask = std::move(renderables); }
-        //! @brief ビュー列の index 番目に、今のフレームで描いた体の型を返す
+        //! ビュー列の index 番目に、今のフレームで描いた体の型を返す
         //! @return 1 色 8 ビットの型。未描画なら空
         [[nodiscard]] const Gfx::D3DTexture* BodyMaskShown(std::size_t viewIndex) const noexcept;
 
-        //! @brief 描く物を、持ち主の根 root と元にする model と組にして入れる。組は有効で入る。二重登録は無視する
-        //! @details 呼ぶのは補助関数 InitDraw だけ。renderable と root は外すまで生きていること
+        //! 描く物を、持ち主の根 root と元にする model と組にして入れる。組は有効で入る。二重登録は無視する
+        //! 呼ぶのは補助関数 InitDraw だけ。renderable と root は外すまで生きていること
         //! @param[in] model 同じアクターの体をもう一度描く物が元にする Model。ほかの描く物は nullptr
         void RegisterRenderable(IRenderable* renderable, const Transform* root, const Model* model);
         //! 描く物の組を外す。入れていない物は何もしない
@@ -137,16 +137,16 @@ namespace NS
         //! 描く物の組の有効と無効を書く。無効の組は描かず、境界も写さない。入れていない物は何もしない
         void SetRenderableEnabled(const IRenderable* renderable, bool enabled) noexcept;
 
-        //! @brief 重ね描きを入れる。組は有効で入る。二重登録は無視する
-        //! @details 呼ぶのは補助関数 InitOverlay だけ。並びは OverlayOrder 昇順に保たれ、同値なら後から入れた方が後ろになる
+        //! 重ね描きを入れる。組は有効で入る。二重登録は無視する
+        //! 呼ぶのは補助関数 InitOverlay だけ。並びは OverlayOrder 昇順に保たれ、同値なら後から入れた方が後ろになる
         void RegisterOverlay(IOverlay* overlay);
         //! 重ね描きの組を外す。入れていない物は何もしない
         void UnregisterOverlay(const IOverlay* overlay) noexcept;
         //! 重ね描きの組の有効と無効を書く。無効の組は描かない。入れていない物は何もしない
         void SetOverlayEnabled(const IOverlay* overlay, bool enabled) noexcept;
 
-        //! @brief 平行光を、向きを出す持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
-        //! @details 呼ぶのは補助関数 InitLight だけ。並びは入れた順で、ResolveSceneSettings はこの順に読む
+        //! 平行光を、向きを出す持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
+        //! 呼ぶのは補助関数 InitLight だけ。並びは入れた順で、ResolveSceneSettings はこの順に読む
         void RegisterLight(DirectionalLight* light, const Transform* root);
         //! 平行光の組を外す。入れていない物は何もしない
         void UnregisterLight(const DirectionalLight* light) noexcept;
@@ -187,8 +187,8 @@ namespace NS
         //! 最後にシーン全体の暗転 fade を重ねる
         void DrawOverlays(const Gfx::RenderContext& context, UIDirector& ui, const Gfx::ScreenFade& fade);
 
-        //! @brief プロジェクト既定値からシーンの照明を作る。有効な平行光があれば照明を上書きする
-        //! @details 登録が無ければプロジェクト既定値がそのまま残る
+        //! プロジェクト既定値からシーンの照明を作る。有効な平行光があれば照明を上書きする
+        //! 登録が無ければプロジェクト既定値がそのまま残る
         [[nodiscard]] Gfx::RenderSettings ResolveSceneSettings(const Gfx::RenderSettings& projectDefaults);
 
     private:
@@ -199,8 +199,8 @@ namespace NS
             std::unique_ptr<Gfx::ScreenPasses> screen;
         };
 
-        //! @brief 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
-        //! @details デバッグ描画は、この固定ステップの図形、view.drawShapes が積んだ図形の順に描く
+        //! 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
+        //! デバッグ描画は、この固定ステップの図形、view.drawShapes が積んだ図形の順に描く
         //! view.viewPose が空なら実カメラで描く
         void RenderViewWithOverlays(SceneCamera& camera,
                                     UIDirector& ui,

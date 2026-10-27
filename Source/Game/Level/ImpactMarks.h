@@ -13,16 +13,16 @@ namespace GL
 {
     namespace Level
     {
-        //! @brief 置物が床に残す半透明の跡。決まった数を持ち、時間で縮めて消す
-        //! @details 跡は動かないので補間せず、出した位置にそのまま描く。描くのは持ち主が出ている間だけ
+        //! 置物が床に残す半透明の跡。決まった数を持ち、時間で縮めて消す
+        //! 跡は動かないので補間せず、出した位置にそのまま描く。描くのは持ち主が出ている間だけ
         class ImpactMarks : public NS::Object, public NS::IRenderable
         {
         public:
             //! 板とマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
             ImpactMarks();
 
-            //! @brief position に跡を 1 つ出す
-            //! @details 跡の数の欄が埋まっていれば一番古い跡を置き換える。欄が 0 以下なら出さない
+            //! position に跡を 1 つ出す
+            //! 跡の数の欄が埋まっていれば一番古い跡を置き換える。欄が 0 以下なら出さない
             void Spawn(const NS::Vector3& position);
             //! 出ている跡を dt 秒進めて縮め、寿命を過ぎた跡を消す。持ち主の見た目の段が呼ぶ
             void Step(float dt) noexcept;

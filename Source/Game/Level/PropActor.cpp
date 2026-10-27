@@ -5,7 +5,7 @@
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -103,7 +103,7 @@ namespace GL
             CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision);
             CreateClassObj(m_params);
             CreateClassObj(m_hitZones);
-            CreateClassObj(m_effectKeeper);
+            CreateClassObj(m_effect);
             CreateClassObj(m_hitReaction);
             CreateClassObj(m_effects);
             // 残像は本体の Model を元に描く
@@ -142,10 +142,7 @@ namespace GL
             NS::HideModel(this, m_marks.get());
         }
 
-        bool PropActor::IsFrozen() const noexcept
-        {
-            return m_states->IsCurrent<FreezeState>();
-        }
+        bool PropActor::IsFrozen() const noexcept { return m_states->IsCurrent<FreezeState>(); }
 
         bool PropActor::IsFlying() const noexcept
         {
@@ -241,10 +238,9 @@ namespace GL
             }
             TackleFreezeDesc freeze{.impactDir = hit.impactDir};
             std::optional<NS::HitOwnerRun> ghost;
-            const std::vector<NS::HitOwnerRun>& runs = m_hitReaction->OwnerRuns();
-            for (std::size_t i = first; i < runs.size(); ++i)
+            for (const NS::HitOwnerRun& run : m_hitReaction->OwnerRunsSince(first))
             {
-                const NS::HitOwnerItem& item = runs[i].item;
+                const NS::HitOwnerItem& item = run.item;
                 if (item.name == "TackleFreeze")
                 {
                     freeze.pushInDistance = HitOwnerValue(item, "食い込み距離", 0.0f);
@@ -255,7 +251,7 @@ namespace GL
                 }
                 if (item.name == "TackleGhost")
                 {
-                    ghost = runs[i];
+                    ghost = run;
                 }
             }
             BeginFreeze(freeze);

@@ -21,13 +21,13 @@ namespace NS
     //! センサーの形
     enum class HitSensorShape : int
     {
-        Sphere = 0,  //!< 球
-        Capsule = 1, //!< 根の上の向きに伸びるカプセル
-        Box = 2,     //!< 根の向きの箱
+        Sphere = 0,  // 球
+        Capsule = 1, // 根の上の向きに伸びるカプセル
+        Box = 2,     // 根の向きの箱
     };
 
-    //! @brief 世界座標のセンサーの形。球とカプセルは線分と半径、箱は向きのある箱で持つ
-    //! @details 重なりは物理エンジンを使わずにこの形同士で直に解く。順番に依らず、毎回同じ答になる
+    //! 世界座標のセンサーの形。球とカプセルは線分と半径、箱は向きのある箱で持つ
+    //! 重なりは物理エンジンを使わずにこの形同士で直に解く。順番に依らず、毎回同じ答になる
     struct SensorVolume
     {
         bool isBox = false;
@@ -135,7 +135,7 @@ namespace NS
     class FollowHitSensor final : public HitSensor
     {
     public:
-        //! @brief 形を答える関数を受けて作る
+        //! 形を答える関数を受けて作る
         //! @param[in] volume 持ち主の root の世界行列から世界座標の形を返す関数。事前条件: 空でない。
         //! 空なら WorldVolume は根に長さ 0 の球を返し、NS_LOG_ERROR で知らせる
         FollowHitSensor(SceneActor* owner, std::function<SensorVolume(const Matrix& rootWorld)> volume) noexcept;

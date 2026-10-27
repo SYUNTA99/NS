@@ -78,10 +78,7 @@ namespace NS
         return scene;
     }
 
-    void Scene::SetEnvironment(const SceneEnvironment& environment) noexcept
-    {
-        m_environment = environment;
-    }
+    void Scene::SetEnvironment(const SceneEnvironment& environment) noexcept { m_environment = environment; }
 
     void Scene::SetSimulationEnabled(bool enabled) noexcept
     {
@@ -525,10 +522,7 @@ namespace NS
         return const_cast<CameraManager*>(&m_cameraManager);
     }
 
-    SceneSystemHolder* Scene::GetSceneSystemHolder() const noexcept
-    {
-        return &m_sceneObjs;
-    }
+    SceneSystemHolder* Scene::GetSceneSystemHolder() const noexcept { return &m_sceneObjs; }
 
     Phys::PhysicsScene* Scene::GetPhysicsScene() const noexcept
     {
@@ -536,10 +530,7 @@ namespace NS
         return const_cast<Phys::PhysicsScene*>(&m_physics.Physics());
     }
 
-    Gfx::EffectScene* Scene::GetEffectScene() const noexcept
-    {
-        return m_sceneRenderer.Effects();
-    }
+    Gfx::EffectScene* Scene::GetEffectScene() const noexcept { return m_sceneRenderer.Effects(); }
 
     void Scene::AddSystemTick(SceneSystem& system, UpdatePhase phase)
     {
@@ -596,8 +587,5 @@ namespace NS
         m_actors.EndPhase();
     }
 
-    SceneCamera* Scene::MainCamera() noexcept
-    {
-        return &m_mainCamera;
-    }
+    SceneCamera* Scene::MainCamera() noexcept { return &m_mainCamera; }
 } // namespace NS

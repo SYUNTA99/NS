@@ -46,7 +46,7 @@ namespace NS
                 return PaletteTemplateSlots()[m_activeSlot].rotatable;
             }
 
-            //! @brief 配置プレビュー用のスロープ角度を返す
+            //! 配置プレビュー用のスロープ角度を返す
             //! @note キューブのように角度を持たない形状では負の値が返る
             [[nodiscard]] float CurrentSlopeAngleDegrees() const noexcept;
 

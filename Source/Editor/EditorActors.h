@@ -38,15 +38,15 @@ namespace NS
         //! 既にあればそれを返す。書かない項目は .actor の値になる
         nlohmann::json& EnsureTransformClassObj(nlohmann::json& actorJson);
 
-        //! @details 位置のほかの値は写さず .actor の値に任せる疎な写し。id は 0 で、置く時に振る
+        //! 位置のほかの値は写さず .actor の値に任せる疎な写し。id は 0 で、置く時に振る
         [[nodiscard]] nlohmann::json MakePrototypeJson(const SceneActor* obj);
 
-        //! @brief .actor の名前 actorFileName を指すひな形の JSON。アクターを作らずに組む
-        //! @details 位置だけを Transform の初期値で書き、回転とスケールを含むほかの値は書かない。id は 0 で、置く時に振る
+        //! .actor の名前 actorFileName を指すひな形の JSON。アクターを作らずに組む
+        //! 位置だけを Transform の初期値で書き、回転とスケールを含むほかの値は書かない。id は 0 で、置く時に振る
         [[nodiscard]] nlohmann::json MakePrototypeJson(std::string_view actorFileName);
 
-        //! @brief SceneActor 派生 T の OnInit が積む構成からひな形の JSON を作る
-        //! @details 派生クラスの構成を手書きレシピへ並記せず、クラス自身を構成と既定値の唯一の出所にする
+        //! SceneActor 派生 T の OnInit が積む構成からひな形の JSON を作る
+        //! 派生クラスの構成を手書きレシピへ並記せず、クラス自身を構成と既定値の唯一の出所にする
         template <class T> [[nodiscard]] nlohmann::json MakePrototypeJson()
         {
             static_assert(std::is_base_of_v<SceneActor, T>, "T は SceneActor 派生でなければならない");
@@ -54,12 +54,12 @@ namespace NS
             return MakePrototypeJson(prototype.get());
         }
 
-        //! @brief エディタが並べて番号を振るアクター。objects の並びのまま
-        //! @details アクター一覧・その数・参照先の候補はこの並びと番号で出す
+        //! エディタが並べて番号を振るアクター。objects の並びのまま
+        //! アクター一覧・その数・参照先の候補はこの並びと番号で出す
         [[nodiscard]] std::vector<SceneActor*> PlacedActors(const ActorList& objects);
 
-        //! @brief cell ブラシが置換・削除・回転できる 1 m の升のアクターか
-        //! @details 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。
+        //! cell ブラシが置換・削除・回転できる 1 m の升のアクターか
+        //! 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。
         [[nodiscard]] bool IsCellBrushActor(const SceneActor* object) noexcept;
 
         //! 実体のセル座標。Root の位置を最も近い整数へ丸めた値

@@ -61,20 +61,11 @@ namespace GL
             return kind;
         }
 
-        bool ImpactInputJudge::JustPressed() const noexcept
-        {
-            return m_heldSteps == 1;
-        }
+        bool ImpactInputJudge::JustPressed() const noexcept { return m_heldSteps == 1; }
 
-        bool ImpactInputJudge::IsHeld() const noexcept
-        {
-            return m_heldSteps > 0;
-        }
+        bool ImpactInputJudge::IsHeld() const noexcept { return m_heldSteps > 0; }
 
-        bool ImpactInputJudge::IsHoldingCharge() const noexcept
-        {
-            return IsHeld() && m_phase != HoldPhase::Spent;
-        }
+        bool ImpactInputJudge::IsHoldingCharge() const noexcept { return IsHeld() && m_phase != HoldPhase::Spent; }
 
         bool ImpactInputJudge::ReachedThreshold() const noexcept
         {
@@ -169,10 +160,7 @@ namespace GL
             return steps - chargeMaxSteps;
         }
 
-        bool ImpactInputJudge::IsAwaitingLaunch() const noexcept
-        {
-            return m_phase == HoldPhase::AwaitingLaunch;
-        }
+        bool ImpactInputJudge::IsAwaitingLaunch() const noexcept { return m_phase == HoldPhase::AwaitingLaunch; }
 
         void ImpactInputJudge::MarkLaunched() noexcept
         {

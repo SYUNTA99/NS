@@ -4,7 +4,7 @@ namespace GL
 {
     namespace Level
     {
-        //! @brief 体当たりの発動種別
+        //! 体当たりの発動種別
         enum class SlamKind
         {
             None,
@@ -15,8 +15,8 @@ namespace GL
         //! 発動種別の日本語の表示名を返す
         [[nodiscard]] const char* SlamKindLabel(SlamKind kind) noexcept;
 
-        //! @brief 押下時間から体当たりの発動種別を決める
-        //! @details Step の後、TakeFired で一度だけ消費する。離した時の保持時間で通常・チャージを選ぶ
+        //! 押下時間から体当たりの発動種別を決める
+        //! Step の後、TakeFired で一度だけ消費する。離した時の保持時間で通常・チャージを選ぶ
         //! 溜めすぎきると保持中でも一度発動を控える。MarkLaunched の後は放すまで溜めず、放しても再発動しない
         struct ImpactInputJudge
         {
@@ -45,20 +45,20 @@ namespace GL
             //! しきい値から満タンまでの溜め量を 0..1 で返す。離したフレームは控えた値から読む。溜めすぎで出た後は 0
             [[nodiscard]] float Charge01() const noexcept;
 
-            //! @brief 満タンから溜めすぎきるまでの深さを 0..1 で返す
-            //! @details 満タンまでと溜めすぎで出た後は 0。離したフレームは控えた値から読む
+            //! 満タンから溜めすぎきるまでの深さを 0..1 で返す
+            //! 満タンまでと溜めすぎで出た後は 0。離したフレームは控えた値から読む
             [[nodiscard]] float Overcharge01() const noexcept;
 
-            //! @brief 満タンから数えた溜めすぎのフレーム数を返す
-            //! @details 溜めすぎきった後も押している間は数え続ける。満タンまでと溜めすぎで出た後は 0。
+            //! 満タンから数えた溜めすぎのフレーム数を返す
+            //! 溜めすぎきった後も押している間は数え続ける。満タンまでと溜めすぎで出た後は 0。
             //! 離したフレームは控えた値から読む
             [[nodiscard]] int OverchargedSteps() const noexcept;
 
             //! 溜めすぎきってチャージを控え、突進が出るのを待っている場合 true、それ以外の場合は false
             [[nodiscard]] bool IsAwaitingLaunch() const noexcept;
 
-            //! @brief 突進が出た事を知らせる
-            //! @details 出るのを待っている間だけ、放すまでの使い切りへ移す。それ以外は何もしない
+            //! 突進が出た事を知らせる
+            //! 出るのを待っている間だけ、放すまでの使い切りへ移す。それ以外は何もしない
             void MarkLaunched() noexcept;
 
             // 秒でなくフレーム数で持つのは、固定ステップの整数で数えると同じ入力列が必ず同じ判定になるため。

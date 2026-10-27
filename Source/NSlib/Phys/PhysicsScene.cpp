@@ -75,10 +75,7 @@ namespace NS
 
         PhysicsScene::~PhysicsScene() = default;
 
-        uint PhysicsScene::BodyCount() const noexcept
-        {
-            return m_physicsSystem.GetNumBodies();
-        }
+        uint PhysicsScene::BodyCount() const noexcept { return m_physicsSystem.GetNumBodies(); }
 
         uint PhysicsScene::AttachedBodyCount() const
         {

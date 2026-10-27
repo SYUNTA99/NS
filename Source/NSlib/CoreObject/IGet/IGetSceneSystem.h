@@ -5,8 +5,8 @@
 
 namespace NS
 {
-    //! @brief シーンに 1 つの物の窓口
-    //! @details SceneActor とシーンが持つ。部品は持ち主の SceneActor から引く
+    //! シーンに 1 つの物の窓口
+    //! SceneActor とシーンが持つ。部品は持ち主の SceneActor から引く
     class IGetSceneSystem
     {
     public:

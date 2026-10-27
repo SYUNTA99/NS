@@ -39,13 +39,21 @@ namespace NS
 
 namespace NS
 {
+    namespace Audio
+    {
+        class AudioDevice;
+    } // namespace Audio
+} // namespace NS
+
+namespace NS
+{
     class AssetManager;
     class Object;
     class IRenderable;
     class UIActor;
 
-    //! @brief アクターと共有システムを所有し、固定更新と描画を行うシーン
-    //! @details JSON は保存・凍結・編集履歴に使い、実行中の状態は SceneActor と部品が持つ
+    //! アクターと共有システムを所有し、固定更新と描画を行うシーン
+    //! JSON は保存・凍結・編集履歴に使い、実行中の状態は SceneActor と部品が持つ
     class Scene : public NonCopyable,
                   public IGetCamera,
                   public IGetSceneSystem,
@@ -56,12 +64,12 @@ namespace NS
         Scene();
         virtual ~Scene();
 
-        //! @brief 可変フレーム Render の入口。標準のシーン描画パスを 1 回回す
-        //! @details 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
+        //! 可変フレーム Render の入口。標準のシーン描画パスを 1 回回す
+        //! 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
         void OnRender();
 
-        //! @brief 描く物・重ね描き・平行光の管理クラス
-        //! @details アクターが OnInit で InitDraw・InitOverlay・InitLight を呼んで入れ、OnEndPlay で外す。
+        //! 描く物・重ね描き・平行光の管理クラス
+        //! アクターが OnInit で InitDraw・InitOverlay・InitLight を呼んで入れ、OnEndPlay で外す。
         //! 出る・消える時は、入れたまま組の有効と無効を切り替える
         [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
 
@@ -91,8 +99,8 @@ namespace NS
         //! エフェクトの EffectScene。描画を持たないシーン (試し) では nullptr
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept;
 
-        //! @brief シーンのヒットセンサーの一覧。HitSensor は持ち主の SceneActor が宣言から作る時 (OnInit の前) に入れ、OnEndPlay で出す
-        //! @details 持ち主が消えている間は入ったまま、HitSensor::IsValid が偽になる
+        //! シーンのヒットセンサーの一覧。HitSensor は持ち主の SceneActor が宣言から作る時 (OnInit の前) に入れ、OnEndPlay で出す
+        //! 持ち主が消えている間は入ったまま、HitSensor::IsValid が偽になる
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
 
@@ -100,8 +108,8 @@ namespace NS
         [[nodiscard]] Gfx::ScreenFade& Fade() noexcept { return m_fade.Fade(); }
         [[nodiscard]] const Gfx::ScreenFade& Fade() const noexcept { return m_fade.Fade(); }
 
-        //! @brief 管理役を段 phase の更新へ登録する。登録済みなら段だけを差し替える
-        //! @details その段のアクター (Actors の Update・RenderPrep の PrepareRender) の後に登録順で OnTick が呼ばれる
+        //! 管理役を段 phase の更新へ登録する。登録済みなら段だけを差し替える
+        //! その段のアクター (Actors の Update・RenderPrep の PrepareRender) の後に登録順で OnTick が呼ばれる
         //! 更新の最中に登録した物は、その歩の残りでは呼ばれない
         void AddSystemTick(SceneSystem& system, UpdatePhase phase);
         //! 管理役を更新から外す。更新の最中に外した物は、その歩の残りでは呼ばれない
@@ -118,6 +126,11 @@ namespace NS
         //! 装置を非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
         void SetDevice(Gfx::D3DDevice* device) noexcept { m_sceneRenderer.SetDevice(device); }
 
+        //! 音の装置を非所有で差す。PlaySound が使う。未設定 (テスト・当たりの下見) は鳴らさない
+        void SetAudioDevice(Audio::AudioDevice* device) noexcept { m_audioDevice = device; }
+        //! 音の装置。受け取っていなければ nullptr
+        [[nodiscard]] Audio::AudioDevice* GetAudioDevice() const noexcept { return m_audioDevice; }
+
         //! @brief 次に描くフレームから使う床の波を書く。強さ 0 で消える
         void SetGroundWave(const Gfx::GroundWave& wave) noexcept { m_sceneRenderer.SetGroundWave(wave); }
         //! 描く時に使う床の波
@@ -126,7 +139,7 @@ namespace NS
             return m_sceneRenderer.GroundWaveShown();
         }
 
-        //! @brief 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
+        //! 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
         void SetDistortionRing(const Gfx::DistortionRing& ring) noexcept
         {
             m_sceneRenderer.SetDistortionRing(ring);
@@ -137,13 +150,13 @@ namespace NS
             return m_sceneRenderer.DistortionRingShown();
         }
 
-        //! @brief 体の型に写す描く物を差し替える。空なら型を描かない
+        //! 体の型に写す描く物を差し替える。空なら型を描かない
         //! @param[in] renderables 型に写す描く物、非所有。登録を外した物は型からも外れる
         void SetBodyMask(std::vector<IRenderable*> renderables) noexcept
         {
             m_sceneRenderer.SetBodyMask(std::move(renderables));
         }
-        //! @brief ビュー列の index 番目に、今のフレームで描いた体の型を返す
+        //! ビュー列の index 番目に、今のフレームで描いた体の型を返す
         //! @return 1 色 8 ビットの型。未描画なら空
         [[nodiscard]] const Gfx::D3DTexture* BodyMaskShown(std::size_t viewIndex) const noexcept
         {
@@ -154,24 +167,24 @@ namespace NS
         //! effectRoot は EffectScene の構築時に固まる。SetDevice より前に差す
         void SetEffectRoot(std::string root) noexcept { m_sceneRenderer.SetEffectRoot(std::move(root)); }
 
-        //! @brief skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空なら skybox を描かない
-        //! @details 描画が毎フレーム読む。保存は ToJson がここから写す
+        //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空なら skybox を描かない
+        //! 描画が毎フレーム読む。保存は ToJson がここから写す
         [[nodiscard]] const std::string& SkyboxPath() const noexcept { return m_environment.skybox; }
 
         [[nodiscard]] const SceneEnvironment& Environment() const noexcept { return m_environment; }
         //! environment を丸ごと替える
         void SetEnvironment(const SceneEnvironment& environment) noexcept;
 
-        //! @brief シーンのアクターの一覧
+        //! シーンのアクターの一覧
         [[nodiscard]] ActorList& Actors() noexcept { return m_actors; }
         [[nodiscard]] const ActorList& Actors() const noexcept { return m_actors; }
 
-        //! @brief シーンの JSON 文書を取り込みアクターを組み直す。文書は取込後に用済みになる
-        //! @details 組む前に id と名前を一意に揃える。前の世界の固定ステップで積んだ開発用の図形は捨てる
+        //! シーンの JSON 文書を取り込みアクターを組み直す。文書は取込後に用済みになる
+        //! 組む前に id と名前を一意に揃える。前の世界の固定ステップで積んだ開発用の図形は捨てる
         void ResetFromJson(nlohmann::json scene);
 
-        //! @brief シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
-        //! @details 全アクターを、全部品の値まで忠実に写す
+        //! シーンが自分を JSON 文書へ書き出す。保存と凍結の出所を実体に一本化する
+        //! 全アクターを、全部品の値まで忠実に写す
         [[nodiscard]] nlohmann::json ToJson() const;
 
         //! シミュレーションを切り替え、一時停止とコマ送りを解除する
@@ -179,12 +192,12 @@ namespace NS
         void SetSimulationEnabled(bool enabled) noexcept;
         [[nodiscard]] bool IsSimulationEnabled() const noexcept { return m_simulationEnabled; }
 
-        //! @brief 時間停止。snapshot だけ回し、描く補間の割合を 1 に留める
-        //! @details 動きの一瞬を止めて観察できるようにする
+        //! 時間停止。snapshot だけ回し、描く補間の割合を 1 に留める
+        //! 動きの一瞬を止めて観察できるようにする
         void SetSimulationPaused(bool paused) noexcept { m_simulationPaused = paused; }
         [[nodiscard]] bool IsSimulationPaused() const noexcept { return m_simulationPaused; }
 
-        //! @brief 止めたまま次の固定ステップを 1 コマだけ進める。動いていればまず止める
+        //! 止めたまま次の固定ステップを 1 コマだけ進める。動いていればまず止める
         void StepSimulation() noexcept;
 
         //! 世界の更新を間引いて減速する。0 で停止、1 で通常。実時間の段は毎歩更新する
@@ -196,8 +209,8 @@ namespace NS
         //! shape は経過割合から復帰割合への曲線で、空なら直線。速度設定やシミュレーション切替で解除する
         void StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept;
 
-        //! @brief holder 以外を steps 歩止める。止めている間に Update するアクターは holder だけ
-        //! @details 回す管理役は RunsWhileOthersHeld の表で決まる。呼んだ歩の残りから効き、その歩も数える。
+        //! holder 以外を steps 歩止める。止めている間に Update するアクターは holder だけ
+        //! 回す管理役は RunsWhileOthersHeld の表で決まる。呼んだ歩の残りから効き、その歩も数える。
         //! 同じ holder の頼みは延長だけを受け、steps が 0 以下なら解く。止めている間は先に止め始めたアクターが止めを持ち、
         //! ほかのアクターの頼み (延長も解くのも) は受けない。holder は番地と id で覚えて比べるだけなので、止めている間に
         //! holder が一覧から外れても番地を読まず、止めは残りの歩で切れる。プレイ開始でも解く
@@ -213,12 +226,12 @@ namespace NS
         //! 減速中の経過に合わせた補間割合 0〜1。停止中は絵の変動を避けるため 1
         [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
 
-        //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
-        //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
+        //! 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
+        //! 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneRenderer.SetSceneViews(std::move(views)); }
 
-        //! @brief 型 T のアクターをシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
-        //! @details 所有はシーンが握り、呼出側へは生ポインタだけ返す。名前は既存と重なれば番号を付ける。
+        //! 型 T のアクターをシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
+        //! 所有はシーンが握り、呼出側へは生ポインタだけ返す。名前は既存と重なれば番号を付ける。
         //! 値はクラスと同じ名前の .actor の値で、保存と凍結に写る
         template <class T, class... Args> T* SpawnActor(std::string name, Args&&... args)
         {
@@ -229,25 +242,25 @@ namespace NS
             return raw;
         }
 
-        //! @brief アクターの JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
-        //! @details 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
+        //! アクターの JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
+        //! 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
         //! undo の作り直しと複製が通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
         SceneActor* SpawnFromJson(const nlohmann::json& actorJson);
 
-        //! @brief 同じ id のアクターへ JSON の姿を当てる。居なければ SpawnFromJson と同じ。動いた当たりは次の歩で揃う
-        //! @details .actor が替わっても同じクラスならアクターを使い回し、替えた先の .actor の全部の値とシーンの上書きを
+        //! 同じ id のアクターへ JSON の姿を当てる。居なければ SpawnFromJson と同じ。動いた当たりは次の歩で揃う
+        //! .actor が替わっても同じクラスならアクターを使い回し、替えた先の .actor の全部の値とシーンの上書きを
         //! 書いてから、束・動作・素材を読み直す。替えた先の .actor が違うクラスなら ERROR を出し、何も変えずに nullptr を返す。
         //! 替えた先の .actor が見つからない時と重ねるのに失敗した時だけ作り直し、古いアクターを解放せずに外して
         //! replaced へ渡す。replaced を捨てる時は、呼び手が先に OnEndPlay を呼ぶ
         //! @param[out] replaced 作り直した時の古いアクター。作り直さなければ触らない。nullptr は渡さない
         SceneActor* ApplyFromJson(const nlohmann::json& actorJson, std::unique_ptr<SceneActor>* replaced);
 
-        //! @brief アクターを 1 体消す。居なければ何もしない
-        //! @details 当たり箱も揃うので、走っている世界を止めずに消せる。.actor が見つからずに持っている同じ id の JSON も捨てる
+        //! アクターを 1 体消す。居なければ何もしない
+        //! 当たり箱も揃うので、走っている世界を止めずに消せる。.actor が見つからずに持っている同じ id の JSON も捨てる
         void RemoveActor(uint32 objectId);
 
-        //! @brief アクターを 1 体、解放せずにシーンから外して返す。.actor が見つからずに持っている同じ id の JSON は捨てる
-        //! @details Disappear で登録の組が無効になるが、OnEndPlay は呼ばない。返した物を捨てる時は、呼び手が先に
+        //! アクターを 1 体、解放せずにシーンから外して返す。.actor が見つからずに持っている同じ id の JSON は捨てる
+        //! Disappear で登録の組が無効になるが、OnEndPlay は呼ばない。返した物を捨てる時は、呼び手が先に
         //! OnEndPlay を呼ぶ。居なければ空を返す。段の更新の最中は断る
         [[nodiscard]] DetachedActor DetachActor(uint32 objectId);
 
@@ -257,8 +270,8 @@ namespace NS
         //! 固定更新の並びを UpdatePhase の順に実行する。アクターを回す段では、アクターの後に管理役を更新する
         void OnUpdate();
 
-        //! @brief 段 phase を 1 回だけ回す。OnUpdate が段ごとに呼ぶ
-        //! @details Actors は出ているアクターを並びの順に Update し (ほかを止めている間は止め始めたアクターだけ)、
+        //! 段 phase を 1 回だけ回す。OnUpdate が段ごとに呼ぶ
+        //! Actors は出ているアクターを並びの順に Update し (ほかを止めている間は止め始めたアクターだけ)、
         //! RenderPrep は全部の出ているアクターの PrepareRender を呼ぶ。続いてその段に登録した管理役を登録順に更新する
         //! 回している間はアクターを解放する口を断る。再入は禁止
         void ExecutePhase(UpdatePhase phase);
@@ -276,14 +289,14 @@ namespace NS
         //! 戻りの曲線を実時間の 1 歩だけ進め、世界の速さを書く
         void AdvanceWorldSpeedRamp() noexcept;
 
-        //! @brief 渡されたシーンの JSON 文書からアクターと当たりの body を組み直す
+        //! 渡されたシーンの JSON 文書からアクターと当たりの body を組み直す
         void RebuildSceneFrom(const nlohmann::json& scene);
 
         //! シーンに 1 つの物・暗転・アクター・エフェクト・開発用の図形を捨てる。組み直しと終わりが呼ぶ
         void ClearWorld();
 
-        //! @brief アクターの JSON 1 件からアクターを作る。組み直しと 1 体だけ入れる道の全部が通る
-        //! @details .actor が見つからなければ作らず、JSON を m_unresolvedActors に id ごとに 1 つ持つ。
+        //! アクターの JSON 1 件からアクターを作る。組み直しと 1 体だけ入れる道の全部が通る
+        //! .actor が見つからなければ作らず、JSON を m_unresolvedActors に id ごとに 1 つ持つ。
         //! 作れた時は同じ id の持っていた JSON を捨てる
         [[nodiscard]] std::unique_ptr<SceneActor> BuildOrKeepUnresolved(const nlohmann::json& actorJson);
 
@@ -301,6 +314,7 @@ namespace NS
 
         // 描く物は持ち主の OnEndPlay で外れるので、アクターより先に宣言して後に破棄する
         SceneRenderer m_sceneRenderer;
+        Audio::AudioDevice* m_audioDevice = nullptr; // 借りるだけ。持ち主は Application
         // m_sceneObjs が持つ CourseDirector が破棄で暗転を取り消すので、m_sceneObjs より先に宣言して後に破棄する
         ScreenFadeDirector m_fade;
         // アクターが持つ画面は破棄で自分を外すので、アクターより先に宣言して後に破棄する

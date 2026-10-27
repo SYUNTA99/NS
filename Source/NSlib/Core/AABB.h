@@ -8,12 +8,9 @@
 
 namespace NS
 {
-    //! 軸に平行な境界ボックス
     using AABB = DirectX::BoundingBox;
 
-    //! @brief 位置の並びを包む箱を返す
-    //! @details stride は隣の位置までのバイト数で、頂点の型の中の位置を指して渡せる
-    //! count が 0 の時は中心 0・大きさ 0 の箱 (DirectX の箱の既定は大きさ 1)
+    //! stride は隣接要素までのバイト数。count が 0 または first が nullptr の場合は中心 0・半径 0 の箱を返す
     [[nodiscard]] inline AABB AABBFromPositions(const Vector3* first, std::size_t count, std::size_t stride) noexcept
     {
         if (first == nullptr || count == 0u)

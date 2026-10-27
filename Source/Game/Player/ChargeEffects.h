@@ -42,7 +42,7 @@ namespace GL
             //! 溜めと放しの絵を先に読む。持ち主の OnAssetsLoaded が呼ぶ
             void Preload(const NS::IGetEffect* user);
 
-            //! @brief 押し・溜め・放しに合わせて演出を出し、玉へ付いていかせる。持ち主の見た目の段が呼ぶ
+            //! 押し・溜め・放しに合わせて演出を出し、玉へ付いていかせる。持ち主の見た目の段が呼ぶ
             //! @param[in] center 玉の中心。持ち主のルートの位置。世界座標
             //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
             //! @param[in] appearance 玉の回転の正。このフレームに玉が回った角度を読む。空でないこと
@@ -59,7 +59,7 @@ namespace GL
             //! 番号を控えている溜めと放しのエフェクトを消す。持ち主の ResetState が呼ぶ
             void Clear(const NS::IGetEffect* user);
 
-            //! @brief 溜まる光へ動的入力 1 番で渡す、溜めきってからの数
+            //! 溜まる光へ動的入力 1 番で渡す、溜めきってからの数
             //! @return 押し続けている間、溜めきったフレームを 1 とした数。溜めきる前と押していない間は 0
             [[nodiscard]] int FramesSinceFullCharge() const noexcept { return m_framesSinceFull; }
 

@@ -11,38 +11,31 @@ namespace NS
     class BoxCollision : public Collision
     {
     public:
-        //! 既定 halfExtents {0.5,0.5,0.5} で構築する
         BoxCollision() noexcept = default;
-        //! halfExtents を指定して構築する。負の成分は 0 にクランプ
+        //! 負の成分は 0 にクランプする
         explicit BoxCollision(const Vector3& halfExtents) noexcept;
 
-        //! 当たり箱の各軸の半径を設定する。負の成分は 0 にクランプ
+        //! 負の成分は 0 にクランプする
         void SetHalfExtents(const Vector3& halfExtents) noexcept;
-
-        //! 当たり箱の各軸の半径を返す。owner の scale を掛ける前の値
+        //! owner のスケールを掛ける前の各軸の半長 (m)
         [[nodiscard]] Vector3 HalfExtents() const noexcept;
 
-        //! 持ち主の局所座標系での中心オフセットを設定 / 取得する。当たり箱を視覚と独立にずらすのに使う
         void SetCenterOffset(const Vector3& offset) noexcept;
         [[nodiscard]] Vector3 CenterOffset() const noexcept;
 
-        //! 持ち主の局所座標系での回転をクォータニオンで設定 / 取得する。owner 回転にこれを重ねて当たり箱を回す
         void SetLocalRotation(const Quaternion& rotation) noexcept;
         [[nodiscard]] Quaternion LocalRotation() const noexcept;
 
-        //! 局所回転を仰角・方位角・傾きのオイラー角 (度) で読み書きする Inspector 用アクセサ。内部はクォータニオン保持
+        //! 局所回転をオイラー角 (度) で読み書きする
         void SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept;
         [[nodiscard]] Vector3 RotationEulerDegrees() const noexcept;
 
-        //! 持ち主の root の世界行列 world に当たり箱の局所のずれと回転を重ねた AABB を返す。回転時は内包する軸並行にする
+        //! world に局所オフセットと局所回転を重ねた世界空間の軸並行 AABB
         [[nodiscard]] AABB WorldAABB(const Matrix& world) const noexcept;
 
-        //! 持ち主の root の世界行列 world に当たり箱の局所のずれと回転を重ねた有向境界ボックスを返す
-        //! 回転・非一様 scale を厳密に保持する
+        //! world に局所オフセットと局所回転を重ねた世界空間の OBB (回転・非一様スケールを保持)
         [[nodiscard]] OBB WorldOBB(const Matrix& world) const noexcept;
 
-        // 当たり箱の形状の半径と Transform からの独立オフセット / 回転を Inspector へ公開する
-        // 半径は負を 0 にクランプし、回転は Euler 度で受けるため setter 経由で書く
         NS_REFLECT_BEGIN(BoxCollision, Collision)
         NS_ACCESSOR(Vector3, "半径", HalfExtents(), SetHalfExtents)
         NS_ACCESSOR(Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
@@ -50,13 +43,12 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        // 固形の body として OBB のまま入れる
         [[nodiscard]] JPH::BodyID SyncBody(Phys::PhysicsScene& physics,
                                            JPH::BodyID current,
                                            const Matrix& world) override;
 
-        Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};               // 当たり箱の各軸半径
-        Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};              // 持ち主の局所座標系での中心オフセット
-        Quaternion m_localRotation = Quaternion::Identity; // owner 回転に重ねる局所回転
+        Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};          // ローカル空間 (m)
+        Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};         // ローカル空間 (m)
+        Quaternion m_localRotation = Quaternion::Identity; // ローカル空間
     };
 } // namespace NS

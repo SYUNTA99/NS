@@ -92,12 +92,12 @@ namespace NS
             //! 押した瞬間ごとに 1 足した回数。下ろさない。押した瞬間は InputReader で読む
             [[nodiscard]] uint32 PressCount(Key k) const noexcept;
 
-            //! @brief OSのキー押下イベントを受け取る内部API
-            //! @details 押していないキーだけを数える。押したままの OS の繰り返しは数えない
+            //! OSのキー押下イベントを受け取る内部API
+            //! 押していないキーだけを数える。押したままの OS の繰り返しは数えない
             //! @note Key::Unknown は処理されず無視される
             void OnKeyDown(Key k) noexcept;
 
-            //! @brief OSのキー解放イベントを受け取る内部API
+            //! OSのキー解放イベントを受け取る内部API
             //! @note Key::Unknown は処理されず無視される
             void OnKeyUp(Key k) noexcept;
 

@@ -11,10 +11,7 @@ namespace NS
 {
     namespace Editor
     {
-        void EditorCamera::SetCenter(Vector3 center) noexcept
-        {
-            m_center = center;
-        }
+        void EditorCamera::SetCenter(Vector3 center) noexcept { m_center = center; }
 
         void EditorCamera::SetDistance(float distance) noexcept
         {

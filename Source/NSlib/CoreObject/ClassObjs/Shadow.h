@@ -23,8 +23,8 @@ namespace NS
         //! 板とマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
         Shadow();
 
-        //! @brief 描くたびに真下の地面を探すシーンを書く。書くのは補助関数 InitDraw だけ
-        //! @details collision は影を外すまで生きていること。書かずに描くのは呼び手のバグで、NS_ASSERT が止める
+        //! 描くたびに真下の地面を探すシーンを書く。書くのは補助関数 InitDraw だけ
+        //! collision は影を外すまで生きていること。書かずに描くのは呼び手のバグで、NS_ASSERT が止める
         void UseCollision(const IGetCollision* collision) noexcept { m_collision = collision; }
 
         //! 根の真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない

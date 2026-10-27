@@ -1,7 +1,5 @@
 #pragma once
 
-// D3DDevice が構築の最後に作る共通パイプラインを組む内部ヘルパ
-
 #include "NSlib/Gfx/D3DPipeline.h"
 
 #include <memory>
@@ -12,9 +10,8 @@ namespace NS
     {
         namespace detail
         {
-            //! @brief 共通パイプライン 8 本を作り、全部が有効なら true を返す
-            //! @details D3DPipeline::Create は Gpu() を引くので、装置を公開した後に呼ぶ。
-            //! 添え字の [0] は裏を向いた面を描かない、[1] は裏も描く。outCommon の 2 つ目の添え字は不透明・半透明・加算
+            //! D3DPipeline::Create は Gpu() を参照するため、D3DGlobal 公開後に呼ぶこと
+            //! 第 1 添え字 [0] は裏面カリング、[1] は両面描画。outCommon の第 2 添え字は不透明・半透明・加算
             [[nodiscard]] inline bool CreateCommonPipelines(std::unique_ptr<D3DPipeline> (&outCommon)[2][3],
                                                             std::unique_ptr<D3DPipeline> (&outOccluded)[2])
             {

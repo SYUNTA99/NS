@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -21,12 +21,12 @@ TEST(IGetEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
-    ASSERT_NE(actor.GetEffectKeeper(), nullptr);
+    ASSERT_NE(actor.GetEffect(), nullptr);
 
     const NS::uint32 id = NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
-    EXPECT_EQ(actor.GetEffectKeeper()->Records().size(), 1u);
+    EXPECT_EQ(actor.GetEffect()->Records().size(), 1u);
     const EffectRecord* record = NS::FindEffect(&actor, id);
     ASSERT_NE(record, nullptr);
     EXPECT_EQ(record->name, "test.spark");
@@ -74,7 +74,7 @@ TEST(IGetEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 TEST(IGetEffectTest, ActorWithoutTheSlotDoesNothing)
 {
     NS::SceneActor actor;
-    ASSERT_EQ(actor.GetEffectKeeper(), nullptr);
+    ASSERT_EQ(actor.GetEffect(), nullptr);
 
     NS::PreloadEffects(&actor, {NS::EffectName{"test.spark"}});
     EXPECT_EQ(NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{}), 0u);

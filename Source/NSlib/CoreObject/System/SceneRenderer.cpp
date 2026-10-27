@@ -73,10 +73,7 @@ namespace NS
         m_effects = std::make_unique<Gfx::EffectScene>(std::move(root));
     }
 
-    void SceneRenderer::SetEffectRoot(std::string root) noexcept
-    {
-        m_effectRoot = std::move(root);
-    }
+    void SceneRenderer::SetEffectRoot(std::string root) noexcept { m_effectRoot = std::move(root); }
 
     void SceneRenderer::OnTick()
     {

@@ -40,7 +40,7 @@ namespace GL
 {
     namespace Player
     {
-        //! @brief 自機の移動・溜め・衝突・反動の調整値を持つ部品
+        //! 自機の移動・溜め・衝突・反動の調整値を持つ部品
         class PlayerParams : public NS::Object
         {
         public:
@@ -71,13 +71,13 @@ namespace GL
             //! 当たりが決めた反動の向き・高さ・距離を、ReboundGravity の重力で飛ぶ曲線にする
             //! 反動の初速と滞空の秒は、自機が弾く時も裁定が記録に書く時もこの曲線から引く
             [[nodiscard]] GL::Level::LaunchArc ReboundLaunchArc(const ReboundArc& arc) const noexcept;
-            //! @brief 溜め量 0..1 を欄「チャージ倍率カーブ」で威力の倍率にする
-            //! @details 非有限の入力とカーブの 0 以下の値は 1 とみなす。ImpactResolver が当たりの威力を作る時に読む
+            //! 溜め量 0..1 を欄「チャージ倍率カーブ」で威力の倍率にする
+            //! 非有限の入力とカーブの 0 以下の値は 1 とみなす。ImpactResolver が当たりの威力を作る時に読む
             //! @param[in] charge01 溜め量。0..1 の外は丸める
             //! @return 威力の倍率
             [[nodiscard]] float ChargeFactorFor(float charge01) const noexcept;
-            //! @brief 溜め量と溜めすぎの深さを威力の倍率にする
-            //! @details 溜め量の倍率 (1 つ引数の ChargeFactorFor) に、溜めすぎの深さで 1 から欄「紫の威力の上限」まで
+            //! 溜め量と溜めすぎの深さを威力の倍率にする
+            //! 溜め量の倍率 (1 つ引数の ChargeFactorFor) に、溜めすぎの深さで 1 から欄「紫の威力の上限」まで
             //! 線形に上がる倍率を掛ける。非有限の深さは 0、0..1 の外は丸める
             //! @param[in] charge01 溜め量。0..1 の外は丸める
             //! @param[in] overcharge01 溜めすぎの深さ

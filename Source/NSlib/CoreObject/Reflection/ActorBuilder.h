@@ -20,7 +20,7 @@ namespace NS
     //! id と名前は設定しない。.actor が見つからないか、シーンの上書きに書けない項目があれば ERROR を出して nullptr
     [[nodiscard]] std::unique_ptr<SceneActor> ActorFromJson(const nlohmann::json& actorJson, Scene& scene);
 
-    //! @brief obj が自分を JSON へ書き出す。欄はシーンのファイルのアクターが持てる欄のうち、obj の .actor の値と違う物だけを書く
+    //! obj が自分を JSON へ書き出す。欄はシーンのファイルのアクターが持てる欄のうち、obj の .actor の値と違う物だけを書く
     [[nodiscard]] nlohmann::json ActorToJson(const SceneActor* obj);
 
     //! obj の .actor の名前・名前・出現を、シーンのファイルのアクターの頭の欄だけを持つ JSON に書く。保存とエディタのひな形が通す

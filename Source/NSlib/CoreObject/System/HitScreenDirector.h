@@ -15,45 +15,45 @@ namespace NS
     //! 対象の輪郭の左右へ出す震えの線。寸法は高さ 720 基準の画素
     struct HitShakeLinesDesc
     {
-        Vector3 center{};       //!< 線で挟む物の中心。世界の点
-        float radius = 0.0f;        //!< 線で挟む物の半径。世界の長さ。0 以下なら出さない
-        Vector3 otherCenter{};  //!< 一緒に挟むもう 1 つの物の中心。世界の点
-        float otherRadius = 0.0f;   //!< 一緒に挟むもう 1 つの物の半径。0 以下なら 1 つだけを挟む
-        int frames = 0;             //!< 出すフレーム数。0 以下なら出さない
-        int flipFrames = 1;         //!< 外と内へずらし直すフレーム数。1 未満は 1
-        float lengthPixels = 80.0f; //!< 内側の線の長さの画素。外の線ほど短い
-        float widthPixels = 7.0f;   //!< 線の太さの画素
-        float gapPixels = 16.0f;    //!< 輪郭から内側の線までの間の画素。線どうしの間もこれから決める
+        Vector3 center{};       // 線で挟む物の中心。世界の点
+        float radius = 0.0f;        // 線で挟む物の半径。世界の長さ。0 以下なら出さない
+        Vector3 otherCenter{};  // 一緒に挟むもう 1 つの物の中心。世界の点
+        float otherRadius = 0.0f;   // 一緒に挟むもう 1 つの物の半径。0 以下なら 1 つだけを挟む
+        int frames = 0;             // 出すフレーム数。0 以下なら出さない
+        int flipFrames = 1;         // 外と内へずらし直すフレーム数。1 未満は 1
+        float lengthPixels = 80.0f; // 内側の線の長さの画素。外の線ほど短い
+        float widthPixels = 7.0f;   // 線の太さの画素
+        float gapPixels = 16.0f;    // 輪郭から内側の線までの間の画素。線どうしの間もこれから決める
     };
 
-    //! @brief 歪みの輪 1 回。長さの欄はどれも画面の高さに対する割合
+    //! 歪みの輪 1 回。長さの欄はどれも画面の高さに対する割合
     struct HitDistortionRingDesc
     {
-        Vector3 center{};   //!< 輪の中心。世界の点
-        Curve radius{};         //!< 輪の半径。始めたフレームを 0 にしたフレーム数で引く
-        Curve push{};           //!< 輪の真ん中で絵を押し出す長さ。0 以下のフレームは歪めない
-        float halfWidth = 0.0f; //!< 輪の半分の幅
-        int frames = 0;         //!< 出すフレーム数。0 以下なら出さない
+        Vector3 center{};   // 輪の中心。世界の点
+        Curve radius{};         // 輪の半径。始めたフレームを 0 にしたフレーム数で引く
+        Curve push{};           // 輪の真ん中で絵を押し出す長さ。0 以下のフレームは歪めない
+        float halfWidth = 0.0f; // 輪の半分の幅
+        int frames = 0;         // 出すフレーム数。0 以下なら出さない
     };
 
-    //! @brief 床の波 1 回。center の真下から、上を向いた面へ光の輪を広げる
+    //! 床の波 1 回。center の真下から、上を向いた面へ光の輪を広げる
     struct HitGroundWaveDesc
     {
-        Vector3 center{};   //!< 輪の中心の真上の世界の点。水平の位置だけを使う
-        Curve radius{};     //!< 輪の半径 (m)。始めたフレームを 0 にしたフレーム数で引く
-        Curve strength{};   //!< 輪の強さ。0 以下のフレームは出さない
-        int frames = 0;     //!< 出すフレーム数。0 以下なら出さない
+        Vector3 center{};   // 輪の中心の真上の世界の点。水平の位置だけを使う
+        Curve radius{};     // 輪の半径 (m)。始めたフレームを 0 にしたフレーム数で引く
+        Curve strength{};   // 輪の強さ。0 以下のフレームは出さない
+        int frames = 0;     // 出すフレーム数。0 以下なら出さない
     };
 
-    //! @brief 線で挟む物が画面の上で占める横の幅と、縦の中心。座標は描画先の画素で左上が原点
+    //! 線で挟む物が画面の上で占める横の幅と、縦の中心。座標は描画先の画素で左上が原点
     struct HitShakeLineSpan
     {
-        float left = 0.0f;    //!< 左の輪郭の画素
-        float right = 0.0f;   //!< 右の輪郭の画素
-        float centerY = 0.0f; //!< 縦の中心の画素
+        float left = 0.0f;    // 左の輪郭の画素
+        float right = 0.0f;   // 右の輪郭の画素
+        float centerY = 0.0f; // 縦の中心の画素
     };
 
-    //! @brief 画面の矩形 1 枚。座標は描画先の画素で左上が原点
+    //! 画面の矩形 1 枚。座標は描画先の画素で左上が原点
     struct HitShakeLineRect
     {
         float x = 0.0f;
@@ -76,13 +76,13 @@ namespace NS
         explicit HitScreenDirector(Scene& scene);
         ~HitScreenDirector() noexcept override;
 
-        //! @brief 白の光を始める。前の白が残っていても始め直す
+        //! 白の光を始める。前の白が残っていても始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
         //! @param[in] frames 白の光のフレーム数。0 以下なら光らない
         //! @param[in] alpha 始めの濃さ。残りのフレーム数に比例して薄くなる
         void StartFlash(const SceneActor* requester, int frames, float alpha) noexcept;
 
-        //! @brief 震えの線を始める。前の線が残っていても始め直す
+        //! 震えの線を始める。前の線が残っていても始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
         //! @param[in] desc 震えの線の設定。半径かフレーム数が 0 以下なら出さない
         void StartShakeLines(const SceneActor* requester, const HitShakeLinesDesc& desc) noexcept;
@@ -94,7 +94,7 @@ namespace NS
         //! @details 始め直さず、残りをその強さで続ける。震えの線は変えない
         void Scale(const SceneActor* requester, float scale) noexcept;
 
-        //! @brief 歪みの輪を始め、始まりの姿を場面へ書く。前の輪が残っていても始め直す
+        //! 歪みの輪を始め、始まりの姿を場面へ書く。前の輪が残っていても始め直す
         //! @param[in] requester 頼んだ物。StopDistortionRing で同じ物を渡すと消える
         //! @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない
         void StartDistortionRing(const SceneActor* requester, const HitDistortionRingDesc& desc) noexcept;
@@ -102,7 +102,7 @@ namespace NS
         //! requester が頼んだ歪みの輪を消す。ほかの物が頼んだ輪と、白と震えの線は残す
         void StopDistortionRing(const SceneActor* requester) noexcept;
 
-        //! @brief 床の波を始め、始まりの姿を場面へ書く。前の波が残っていても始め直す
+        //! 床の波を始め、始まりの姿を場面へ書く。前の波が残っていても始め直す
         //! @param[in] requester 頼んだ物。StopGroundWave で同じ物を渡すと消える
         //! @param[in] desc 床の波の設定。フレーム数が 0 以下なら出さない
         void StartGroundWave(const SceneActor* requester, const HitGroundWaveDesc& desc) noexcept;

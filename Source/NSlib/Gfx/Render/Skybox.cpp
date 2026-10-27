@@ -26,7 +26,6 @@ namespace NS
     {
         namespace
         {
-            // キューブマップのテクスチャファイル名
             // 素材のファイル名が示す向きは DX11 の軸から水平に 90° ずれている。継ぎ目が合う並びで置く
             constexpr std::array<std::string_view, 6> k_KurtFaceFileNames = {
                 "space_ft.png", // 右
@@ -163,7 +162,6 @@ namespace NS
             }
             else if (OS::FileSystem::IsDirectory(path))
             {
-                // ディレクトリが指定された場合は、6方向の画像ファイルとして読み込みを試みる
                 std::array<std::string, 6> facePaths{};
                 for (std::size_t i = 0; i < facePaths.size(); ++i)
                 {
@@ -233,15 +231,9 @@ namespace NS
             commands->OMSetBlendState(prevBlend.Get(), prevBlendFactor, prevSampleMask);
         }
 
-        bool Skybox::IsValid() const noexcept
-        {
-            return m_valid;
-        }
+        bool Skybox::IsValid() const noexcept { return m_valid; }
 
-        bool Skybox::IsUsingFallback() const noexcept
-        {
-            return m_usingFallback;
-        }
+        bool Skybox::IsUsingFallback() const noexcept { return m_usingFallback; }
 
         const std::array<std::string_view, 6>& Skybox::FaceFileNames() noexcept
         {

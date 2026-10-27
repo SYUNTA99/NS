@@ -58,12 +58,12 @@ namespace NS
             //! BeginView と対で必ず呼ぶ。Begin した窓を閉じ、積んだスタイルを戻す
             void EndView() noexcept;
 
-            //! @brief 目標サイズに追従して描画先を用意し、pose とセットのビューを返す
+            //! 目標サイズに追従して描画先を用意し、pose とセットのビューを返す
             //! @return 可視だったフレームは {描画先, pose}。不可視やサイズ不足なら nullopt
             [[nodiscard]] std::optional<SceneView> CollectView(std::optional<CameraPose> pose) noexcept;
 
-            //! @brief 貼り付け中の描画先をリサイズせず、pose とセットで返す
-            //! @details 画像の実描画前に使い、CollectView の前に使い終える
+            //! 貼り付け中の描画先をリサイズせず、pose とセットで返す
+            //! 画像の実描画前に使い、CollectView の前に使い終える
             //! @return 可視かつ描画先が有効ならビュー、それ以外なら nullopt
             [[nodiscard]] std::optional<SceneView> CurrentView(std::optional<CameraPose> pose) const noexcept;
 

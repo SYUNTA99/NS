@@ -8,8 +8,8 @@ namespace NS
 {
     namespace Editor
     {
-        //! @brief Assets からの相対パスを検証・正規化する。区切りは '/'
-        //! @details 各セグメントを SanitizeLevelName で検証し、'..'・絶対パス・'\'・空セグメントを排除する
+        //! Assets からの相対パスを検証・正規化する。区切りは '/'
+        //! 各セグメントを SanitizeLevelName で検証し、'..'・絶対パス・'\'・空セグメントを排除する
         //! @return 検証に失敗した場合は空文字列を返す
         [[nodiscard]] std::string SanitizeLevelPath(std::string_view relativePath) noexcept;
 
@@ -23,7 +23,7 @@ namespace NS
         //! 拡張子は大文字と小文字を区別しない。Assets の外・.scene でない道・使えない名前は空文字列
         [[nodiscard]] std::string LevelNameOfScenePath(std::string_view scenePath) noexcept;
 
-        //! @brief レベル保存用ディレクトリが存在することを確認し、なければ作成する
+        //! レベル保存用ディレクトリが存在することを確認し、なければ作成する
         //! @return 作成に失敗した場合は false を返す
         [[nodiscard]] bool EnsureScenesDirectoryExists() noexcept;
     } // namespace Editor

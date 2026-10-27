@@ -10,12 +10,12 @@ namespace NS
     class SceneActor;
     class Scene;
 
-    //! @brief パッドの振動 1 回。左右のモーターの速さを始めてからのフレーム数の曲線で決め、書くフレーム数で切る
+    //! パッドの振動 1 回。左右のモーターの速さを始めてからのフレーム数の曲線で決め、書くフレーム数で切る
     struct HitPadVibration
     {
-        Curve left{};   //!< 左のモーターの速さ 0〜1。横軸は始めたフレームを 0 にしたフレーム数。点が無ければ 0
-        Curve right{};  //!< 右のモーターの速さ 0〜1。横軸は left と同じ
-        int frames = 0; //!< 書くフレーム数。0 なら震わせない
+        Curve left{};   // 左のモーターの速さ 0〜1。横軸は始めたフレームを 0 にしたフレーム数。点が無ければ 0
+        Curve right{};  // 右のモーターの速さ 0〜1。横軸は left と同じ
+        int frames = 0; // 書くフレーム数。0 なら震わせない
     };
 
     //! シーン共通の振動。開始時に初期値を出し、更新ごとに実機へ書き、破棄時に停止する
@@ -25,7 +25,7 @@ namespace NS
         explicit PadRumbleDirector(Scene& scene);
         ~PadRumbleDirector() noexcept override;
 
-        //! @brief 振動を始める。前の振動が残っていても、重ねた分も含めて始め直す
+        //! 振動を始める。前の振動が残っていても、重ねた分も含めて始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
         //! @param[in] pad 振動の設定
         void Start(const SceneActor* requester, const HitPadVibration& pad);

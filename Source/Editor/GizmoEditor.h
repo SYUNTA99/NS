@@ -27,7 +27,7 @@ namespace NS
 {
     namespace Editor
     {
-        //! @brief 変形操作のツール種別
+        //! 変形操作のツール種別
         enum class GizmoTool : uint8
         {
             Select,
@@ -36,7 +36,7 @@ namespace NS
             Scale
         };
 
-        //! @brief 変形操作の基準となる座標系
+        //! 変形操作の基準となる座標系
         //! @note スケール操作は常にLocal空間で適用される
         enum class GizmoSpace : uint8
         {
@@ -44,7 +44,7 @@ namespace NS
             World
         };
 
-        //! @brief ギズモ操作の対象となる軸
+        //! ギズモ操作の対象となる軸
         enum class GizmoAxis : uint8
         {
             None,
@@ -54,7 +54,7 @@ namespace NS
             Uniform
         };
 
-        //! @brief 位置・回転・スケールのスナップショット
+        //! 位置・回転・スケールのスナップショット
         struct TransformState
         {
             Vector3 position{0.0f, 0.0f, 0.0f};
@@ -62,7 +62,7 @@ namespace NS
             Vector3 scale{1.0f, 1.0f, 1.0f};
         };
 
-        //! @brief オブジェクトの選択と、変形ギズモのドラッグによる Transform 書き換え
+        //! オブジェクトの選択と、変形ギズモのドラッグによる Transform 書き換え
         class GizmoEditor : public NonCopyable
         {
         public:
@@ -73,7 +73,7 @@ namespace NS
             void SetSelectableActors(std::span<SceneActor* const> objects,
                                       std::span<const uint8> pickable = {}) noexcept;
 
-            //! @brief ギズモ操作の有効を切り替える。休ませると進行中のドラッグを取り消す
+            //! ギズモ操作の有効を切り替える。休ませると進行中のドラッグを取り消す
             void SetActive(bool active) noexcept
             {
                 m_active = active;
@@ -100,7 +100,7 @@ namespace NS
                 }
             }
 
-            //! @brief 毎フレーム入力を見て、選択とドラッグによる変形を進める
+            //! 毎フレーム入力を見て、選択とドラッグによる変形を進める
             //! @param[in] view ゲーム表示パネルの矩形。マウスはこの矩形基準のローカル座標で扱う
             //! @param[in] viewHovered マウスがそのパネル上に居るか。偽の間は選択クリックとハンドル掴みを受けない
             //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
@@ -118,10 +118,10 @@ namespace NS
             [[nodiscard]] GizmoTool Tool() const noexcept { return m_tool; }
             [[nodiscard]] Transform* Selected() const noexcept { return m_selected; }
 
-            //! @brief 選択を解除し、進行中のドラッグを取り消す
+            //! 選択を解除し、進行中のドラッグを取り消す
             void ClearSelection() noexcept { SetSelected(nullptr); }
 
-            //! @brief 選択対象を直接指定して変更する。進行中のドラッグ操作はキャンセルされる
+            //! 選択対象を直接指定して変更する。進行中のドラッグ操作はキャンセルされる
             void SetSelected(Transform* target) noexcept
             {
                 m_selected = target;
@@ -131,7 +131,7 @@ namespace NS
 
             [[nodiscard]] bool IsDragging() const noexcept { return m_dragging; }
 
-            //! @brief 視線レイをアクターの OBB へ当て、最も手前の添字を返す
+            //! 視線レイをアクターの OBB へ当て、最も手前の添字を返す
             //! @param[in] localBounds worldMatrices と同じ添字の判定箱。行列のローカル空間で、中心は原点でなくてよい
             //! @param[in] pickMask 0 の添字を飛ばす。空なら全部を見る
             //! @return ヒットした場合はそのインデックス、ヒットしなかった場合は -1
@@ -162,7 +162,7 @@ namespace NS
                                                                   GizmoAxis axis,
                                                                   float angleRad,
                                                                   bool snap,
-                                                                  bool worldSpace = false) noexcept;
+                                                                  GizmoSpace space = GizmoSpace::Local) noexcept;
 
             //! スクリーンのドラッグ量を、スケールへ足し引きする変化量に変換する
             [[nodiscard]] static float ScreenDragToScaleAmount(Vector2 axisDir2d, Vector2 dragPixels) noexcept;
@@ -176,7 +176,7 @@ namespace NS
             //! 入力されたキーに応じたギズモツール種別を返す
             [[nodiscard]] static GizmoTool ToolForKey(GizmoTool current, OS::Key key) noexcept;
 
-            //! @brief マウス座標から、クリックされたギズモのハンドルを判定して返す
+            //! マウス座標から、クリックされたギズモのハンドルを判定して返す
             [[nodiscard]] static GizmoAxis ToolHandlePick(const Vector3& gizmoOrigin,
                                                           const Quaternion& rotation,
                                                           GizmoTool tool,
@@ -188,7 +188,7 @@ namespace NS
             OS::Input* m_input = nullptr;
 
             std::span<SceneActor* const> m_objects{};
-            std::span<const uint8> m_pickable{}; //!< 選択の優先度。1 のアクターを先に選ぶ
+            std::span<const uint8> m_pickable{}; // 選択の優先度。1 のアクターを先に選ぶ
 
             bool m_active = false;
             GizmoTool m_tool = GizmoTool::Move;
@@ -197,8 +197,8 @@ namespace NS
 
             bool m_dragging = false;
             GizmoAxis m_dragAxis = GizmoAxis::None;
-            Vector2 m_dragStartScreen{}; //!< ドラッグ開始時のスクリーン座標
-            TransformState m_dragBefore{};   //!< ドラッグ開始時の 位置・回転・スケール
+            Vector2 m_dragStartScreen{}; // ドラッグ開始時のスクリーン座標
+            TransformState m_dragBefore{};   // ドラッグ開始時の 位置・回転・スケール
         };
     } // namespace Editor
 } // namespace NS

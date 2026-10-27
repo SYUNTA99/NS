@@ -16,8 +16,8 @@ namespace GL
 {
     namespace Player
     {
-        //! @brief 今どの動きか
-        //! @details PlayerActor::Motion
+        //! 今どの動きか
+        //! PlayerActor::Motion
         //! が呼ばれた時の状態機械から組む。状態は状態の段の途中で変わるので、控えて持たない
         struct PlayerMotion
         {
@@ -41,8 +41,8 @@ namespace GL
             [[nodiscard]] float Charge01() const noexcept { return m_charge01; }
             //! 発動時に確定した溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
             [[nodiscard]] float Overcharge01() const noexcept { return m_overcharge01; }
-            //! @brief 最後に出した突進の水平の向き
-            //! @details 突進が終わった後も、次の突進を出すまで残す
+            //! 最後に出した突進の水平の向き
+            //! 突進が終わった後も、次の突進を出すまで残す
             //! @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
             [[nodiscard]] NS::Vector3 Direction() const noexcept { return m_dir; }
             //! 最後に出した突進で玉が回る速さ (度/秒)。突進を出す前と ResetState の後は 0
@@ -73,8 +73,8 @@ namespace GL
             [[nodiscard]] float SpinSpeed() const noexcept { return m_spinSpeed; }
             //! 最後に始めた反動の外れの回り方。外れの反動の時だけ値を持つ
             [[nodiscard]] const std::optional<MissTumble>& Tumble() const noexcept { return m_missTumble; }
-            //! @brief 反動を始めた回数
-            //! @details 見た目が新しい反動の始まりを知るために読む。ResetState では戻さない
+            //! 反動を始めた回数
+            //! 見た目が新しい反動の始まりを知るために読む。ResetState では戻さない
             [[nodiscard]] NS::uint32 Count() const noexcept { return m_count; }
 
             //! 通算の反動回数を保ったまま、今の反動の状態だけを初期値へ戻す
@@ -94,7 +94,7 @@ namespace GL
             NS::uint32 m_count = 0;
         };
 
-        //! @brief 地形の面で返った最後の反動の記録。開発用の線と Replay が読む
+        //! 地形の面で返った最後の反動の記録。開発用の線と Replay が読む
         struct TerrainReboundRecord
         {
             NS::Vector3 point{};     // 当たったフレームの根の位置
@@ -171,8 +171,8 @@ namespace GL
             float m_speedScale = 1.0f;
         };
 
-        //! @brief 決定の段で確定した溜めと狙いの値
-        //! @details DecideStep の頭で控えただけの押しと狙いは入れない。
+        //! 決定の段で確定した溜めと狙いの値
+        //! DecideStep の頭で控えただけの押しと狙いは入れない。
         //!          読み手が 1 フレーム前の狙いを読まないようにするため
         class ChargeStatus
         {

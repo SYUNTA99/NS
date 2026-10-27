@@ -10,18 +10,9 @@ namespace NS
 
     Shader::~Shader() noexcept = default;
 
-    const std::string& Shader::Path() const noexcept
-    {
-        return m_path;
-    }
+    const std::string& Shader::Path() const noexcept { return m_path; }
 
-    Gfx::D3DShader* Shader::D3D() const noexcept
-    {
-        return m_shader.get();
-    }
+    Gfx::D3DShader* Shader::D3D() const noexcept { return m_shader.get(); }
 
-    bool Shader::Reload()
-    {
-        return m_shader->Reload(m_path);
-    }
+    bool Shader::Reload() { return m_shader->Reload(m_path); }
 } // namespace NS

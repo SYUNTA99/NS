@@ -40,13 +40,11 @@ namespace NS
                                        DXGI_FORMAT format,
                                        D3D11_USAGE usage) noexcept
         {
-            const std::size_t elementSize = [format]() -> std::size_t {
-                if (format == DXGI_FORMAT_R16_UINT)
-                {
-                    return 2u;
-                }
-                return 4u;
-            }();
+            std::size_t elementSize = 4u;
+            if (format == DXGI_FORMAT_R16_UINT)
+            {
+                elementSize = 2u;
+            }
             D3DBufferDesc desc{};
             desc.initialData = data;
             desc.byteSize = indexCount * elementSize;
@@ -75,13 +73,11 @@ namespace NS
         D3DBuffer::D3DBuffer(const D3DBufferDesc& desc)
         {
             const bool isConstant = (desc.bindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0u;
-            const std::size_t bytes = [&]() -> std::size_t {
-                if (isConstant)
-                {
-                    return RoundUpToAlignment(desc.byteSize, k_ConstantBufferAlignment);
-                }
-                return desc.byteSize;
-            }();
+            std::size_t bytes = desc.byteSize;
+            if (isConstant)
+            {
+                bytes = RoundUpToAlignment(desc.byteSize, k_ConstantBufferAlignment);
+            }
 
             m_stride = desc.stride;
             m_byteSize = bytes;
@@ -131,29 +127,11 @@ namespace NS
             }
         }
 
-        bool D3DBuffer::IsValid() const noexcept
-        {
-            return m_buffer != nullptr;
-        }
-        ID3D11Buffer* D3DBuffer::Native() const noexcept
-        {
-            return m_buffer.Get();
-        }
-        std::size_t D3DBuffer::Stride() const noexcept
-        {
-            return m_stride;
-        }
-        std::size_t D3DBuffer::ByteSize() const noexcept
-        {
-            return m_byteSize;
-        }
-        DXGI_FORMAT D3DBuffer::Format() const noexcept
-        {
-            return m_format;
-        }
-        bool D3DBuffer::IsDynamic() const noexcept
-        {
-            return m_dynamic;
-        }
+        bool D3DBuffer::IsValid() const noexcept { return m_buffer != nullptr; }
+        ID3D11Buffer* D3DBuffer::Native() const noexcept { return m_buffer.Get(); }
+        std::size_t D3DBuffer::Stride() const noexcept { return m_stride; }
+        std::size_t D3DBuffer::ByteSize() const noexcept { return m_byteSize; }
+        DXGI_FORMAT D3DBuffer::Format() const noexcept { return m_format; }
+        bool D3DBuffer::IsDynamic() const noexcept { return m_dynamic; }
     } // namespace Gfx
 } // namespace NS

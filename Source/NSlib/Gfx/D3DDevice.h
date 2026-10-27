@@ -13,12 +13,12 @@ namespace NS
 {
     namespace Gfx
     {
-        //! @brief 描画システムの初期化パラメータ
+        //! 描画システムの初期化パラメータ
         struct D3DDeviceDesc
         {
-            bool enableDebugLayer = false; //!< DX11 のデバッグレイヤーを有効にするか
-            bool vsync = true;             //!< 垂直同期を有効にするか
-            Color clearColor{0.10f, 0.10f, 0.15f, 1.0f}; //!< BeginFrame と BeginSceneView が描画先を塗る色
+            bool enableDebugLayer = false; // DX11 のデバッグレイヤーを有効にするか
+            bool vsync = true;             // 垂直同期を有効にするか
+            Color clearColor{0.10f, 0.10f, 0.15f, 1.0f}; // BeginFrame と BeginSceneView が描画先を塗る色
         };
 
         class D3DCommandList;
@@ -33,7 +33,7 @@ namespace NS
         class D3DDevice : public NonCopyable
         {
         public:
-            //! @brief 描画システムを構築する
+            //! 描画システムを構築する
             //! @param[in,out] window 紐づける対象のウィンドウ
             D3DDevice(const D3DDeviceDesc& desc, OS::Window& window) noexcept;
             ~D3DDevice();
@@ -53,18 +53,18 @@ namespace NS
             //! フレームの描画を終了し、結果を画面に出力する
             void EndFrame() noexcept;
 
-            //! @brief ウィンドウのサイズ変更に合わせて描画領域を再構築する
+            //! ウィンドウのサイズ変更に合わせて描画領域を再構築する
             //! @param[in] size 新しい描画領域のサイズ
             //! @note 指定された幅や高さが0以下の場合は、ウィンドウの最小化として扱われ何も行わない
             void Resize(Size2D size) noexcept;
 
-            //! @brief 最後に差したビューの大きさを取得する
-            //! @details BeginFrame・BeginSceneView・BindBackbuffer が差した描画先の大きさを返す。
+            //! 最後に差したビューの大きさを取得する
+            //! BeginFrame・BeginSceneView・BindBackbuffer が差した描画先の大きさを返す。
             //! 構築と Resize の後、次に差すまではバックバッファの大きさ。
             //! Commands() から直に差した描画先は数えない
             [[nodiscard]] Size2D Size() const noexcept;
 
-            //! @brief BeginFrame が塗って差す描画先をオフスクリーンへ切り替える
+            //! BeginFrame が塗って差す描画先をオフスクリーンへ切り替える
             //! @param[in,out] target 非所有の描画先。空の参照でウィンドウの描画先へ戻す
             //! @note 反映は次の BeginFrame から。target の破棄前に空の参照を渡して外す
             void SetSceneTarget(D3DRenderTarget* target) noexcept;
@@ -74,12 +74,12 @@ namespace NS
             //! SetSceneTarget の描画先は変えない
             void BeginSceneView(D3DRenderTarget* target) noexcept;
 
-            //! @brief backbuffer を描画先へ戻し viewport を張り直す
-            //! @details オフスクリーン描画のフレームで、UI の実描画直前に呼ぶ
+            //! backbuffer を描画先へ戻し viewport を張り直す
+            //! オフスクリーン描画のフレームで、UI の実描画直前に呼ぶ
             void BindBackbuffer() noexcept;
 
-            //! @brief 今の backbuffer の内容を PNG として書き出す
-            //! @details 書き出しは WIC を通る。IsValid() が false の間は何もしない
+            //! 今の backbuffer の内容を PNG として書き出す
+            //! 書き出しは WIC を通る。IsValid() が false の間は何もしない
             //! @param[in] path 書き出し先のファイルパス。親フォルダは作らない
             //! @return 書き出せた場合 true、それ以外の場合は false
             [[nodiscard]] bool CaptureBackbufferToPng(const std::filesystem::path& path) noexcept;
@@ -94,14 +94,14 @@ namespace NS
             //! 描画コマンドの発行やリソース更新などを記録するためのコマンドリスト
             [[nodiscard]] D3DCommandList& Commands() noexcept;
 
-            //! @brief 各種ブレンドモードに対応する標準的な描画パイプラインを取得する
+            //! 各種ブレンドモードに対応する標準的な描画パイプラインを取得する
             //! @param[in] blend 取得したいブレンドモード
             //! @param[in] twoSided 裏を向いた面も描く場合 true。偽なら裏を向いた面は描かない
             //! @note 共通パイプラインは構築の最後に作るので、構築に失敗した D3DDevice では呼んではいけない
             [[nodiscard]] const D3DPipeline& CommonPipeline(BlendMode blend, bool twoSided = false) const noexcept;
 
-            //! @brief 手前の物に隠れた画素だけへ半透明で描くパイプラインを取得する
-            //! @details 深度は書かない。隠れた所を透かして見せる描画が、普通の描画と同じ物を 2 回目に描く時に使う
+            //! 手前の物に隠れた画素だけへ半透明で描くパイプラインを取得する
+            //! 深度は書かない。隠れた所を透かして見せる描画が、普通の描画と同じ物を 2 回目に描く時に使う
             //! @param[in] twoSided 裏を向いた面も描く場合 true。偽なら裏を向いた面は描かない
             //! @note 共通パイプラインと一緒に構築の最後に作るので、構築に失敗した D3DDevice では呼んではいけない
             [[nodiscard]] const D3DPipeline& OccludedPipeline(bool twoSided = false) const noexcept;
@@ -121,8 +121,8 @@ namespace NS
             std::unique_ptr<D3DPipeline> m_commonPipelines[2][3];
             //! 隠れた画素だけへ半透明で描くパイプライン。[裏も描くか]
             std::unique_ptr<D3DPipeline> m_occludedPipelines[2];
-            D3DRenderTarget* m_sceneTarget = nullptr; //!< 非所有。BeginFrame が塗って差す先。未指定ならウィンドウへ描く
-            Size2D m_boundSize{};                     //!< 最後に差したビューの大きさ
+            D3DRenderTarget* m_sceneTarget = nullptr; // 非所有。BeginFrame が塗って差す先。未指定ならウィンドウへ描く
+            Size2D m_boundSize{};                     // 最後に差したビューの大きさ
             OS::Window* m_window = nullptr;
             Color m_clearColor{};
             bool m_vsync = true;

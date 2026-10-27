@@ -1,7 +1,5 @@
 #pragma once
 
-// DepthMode から深度とステンシルのステートの設定を組む内部ヘルパ
-
 #include "NSlib/Gfx/D3DPipeline.h"
 
 #include <d3d11.h>
@@ -12,7 +10,6 @@ namespace NS
     {
         namespace detail
         {
-            //! DepthMode に対する深度とステンシルのステートの設定を返す。ステンシルは使わない
             [[nodiscard]] inline D3D11_DEPTH_STENCIL_DESC MakeDepthStencilDesc(DepthMode depth) noexcept
             {
                 D3D11_DEPTH_STENCIL_DESC dd{};

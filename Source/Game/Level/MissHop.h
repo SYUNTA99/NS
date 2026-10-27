@@ -11,9 +11,9 @@ namespace GL
         //! 外れで飛んだ相手が着地のたびに跳ねる時の値
         struct MissHopDesc
         {
-            float heightRatio = 0.35f; //!< 跳ねる上向きの速さの、跳ねた後の水平の速さに対する割合の上限
-            float turnDegrees = 60.0f; //!< 跳ねる向きが左右へぶれる角度の上限 (度)
-            float keep = 0.7f;         //!< 跳ねるたびに残る水平の速さの割合
+            float heightRatio = 0.35f; // 跳ねる上向きの速さの、跳ねた後の水平の速さに対する割合の上限
+            float turnDegrees = 60.0f; // 跳ねる向きが左右へぶれる角度の上限 (度)
+            float keep = 0.7f;         // 跳ねるたびに残る水平の速さの割合
         };
 
         //! 着地後の跳ねる速度 (m/s) を返す。水平速度が 0 なら 0

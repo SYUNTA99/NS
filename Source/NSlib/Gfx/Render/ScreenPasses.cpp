@@ -57,10 +57,7 @@ namespace NS
 
         ScreenPasses::~ScreenPasses() = default;
 
-        bool ScreenPasses::IsValid() const noexcept
-        {
-            return m_valid;
-        }
+        bool ScreenPasses::IsValid() const noexcept { return m_valid; }
 
         void ScreenPasses::Distort(D3DDevice& device, const ScreenRing& ring) noexcept
         {
@@ -75,14 +72,8 @@ namespace NS
 
             D3DCommandList& cmd = device.Commands();
             const SavedTargets saved = cmd.SaveTargets();
-            if (saved.color == nullptr)
-            {
-                return;
-            }
-            ComPtr<ID3D11Resource> resource;
-            saved.color->GetResource(resource.GetAddressOf());
-            ComPtr<ID3D11Texture2D> texture;
-            if (FAILED(resource.As(&texture)) || !EnsureCopy(*texture.Get()))
+            const ComPtr<ID3D11Texture2D> texture = ViewTexture2D(saved.color.Get());
+            if (!texture || !EnsureCopy(*texture.Get()))
             {
                 return;
             }
@@ -137,20 +128,8 @@ namespace NS
 
             D3DCommandList& cmd = device.Commands();
             SavedTargets saved = cmd.SaveTargets();
-            if (saved.color == nullptr)
-            {
-                return false;
-            }
-            ComPtr<ID3D11Resource> resource;
-            saved.color->GetResource(resource.GetAddressOf());
-            ComPtr<ID3D11Texture2D> texture;
-            if (FAILED(resource.As(&texture)))
-            {
-                return false;
-            }
             D3D11_TEXTURE2D_DESC desc{};
-            texture->GetDesc(&desc);
-            if (!EnsureBodyMask(desc))
+            if (!ViewTexture2D(saved.color.Get(), &desc) || !EnsureBodyMask(desc))
             {
                 return false;
             }

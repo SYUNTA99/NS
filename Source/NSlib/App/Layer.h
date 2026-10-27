@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/NonCopyable.h"
 
@@ -22,19 +22,20 @@ namespace NS
         //! アプリケーション終了時に逆順で一度だけ呼ばれる
         virtual void OnDetach() {}
 
-        //! 固定時間刻みのループ内で、1回の更新につき 1 回呼ばれる
+        //! 固定時間刻みのループ内で、1 回の更新につき 1 回呼ばれる
         virtual void OnUpdate() {}
 
-        //! 可変フレームにおける描画時に、1フレームにつき1回呼ばれる
+        //! 可変フレームにおける描画時に、1 フレームにつき 1 回呼ばれる
         virtual void OnRender() {}
 
         [[nodiscard]] std::string_view Name() const noexcept { return m_name; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
+        //! false の間は OnUpdate と OnRender がスキップされる
         void SetActive(bool active) noexcept { m_active = active; }
 
     private:
         std::string m_name;
-        bool m_active = true; //!< false の場合は更新と描画がスキップされる
+        bool m_active = true;
     };
 
 } // namespace NS

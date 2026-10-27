@@ -11,13 +11,7 @@ namespace NS
 
     AnimClip::~AnimClip() noexcept = default;
 
-    const std::string& AnimClip::Path() const noexcept
-    {
-        return m_path;
-    }
+    const std::string& AnimClip::Path() const noexcept { return m_path; }
 
-    const Anim::AnimClip* AnimClip::Clip() const noexcept
-    {
-        return m_clip.get();
-    }
+    const Anim::AnimClip* AnimClip::Clip() const noexcept { return m_clip.get(); }
 } // namespace NS

@@ -23,13 +23,13 @@ namespace NS
             return Vector3{value.GetX(), value.GetY(), value.GetZ()};
         }
 
-        //! @brief NS::Quaternion を JPH::Quat へ変換する
+        //! NS::Quaternion を JPH::Quat へ変換する
         [[nodiscard]] inline JPH::Quat ToJolt(const Quaternion& value) noexcept
         {
             return JPH::Quat{value.x, value.y, value.z, value.w};
         }
 
-        //! @brief JPH::Quat を NS::Quaternion へ変換する
+        //! JPH::Quat を NS::Quaternion へ変換する
         [[nodiscard]] inline Quaternion FromJolt(JPH::QuatArg value) noexcept
         {
             return Quaternion{value.GetX(), value.GetY(), value.GetZ(), value.GetW()};
