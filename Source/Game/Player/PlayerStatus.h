@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game/Level/ImpactInputJudge.h"
+#include "Game/Level/ReboundDirections.h"
 #include "Game/Level/SlamAim.h"
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
@@ -101,9 +102,10 @@ namespace GL
             NS::Vector3 normal{};    // 遮った面の外向きの法線
             NS::Vector3 reflected{}; // 物理の反射。正規化済み
             NS::Vector3 assigned{};  // 表へ割り当てた向き
-            NS::Vector3 shifted{};   // 1 段のずらしの後の向き。返った向き
+            NS::Vector3 shifted{};   // 入力補正の後の向き。返った向き
             float facing = 0.0f;     // 当て方 |incoming·normal|
             float speed = 0.0f;      // 返った速さ (m/s)
+            GL::Level::ReboundInputResult input = GL::Level::ReboundInputResult::Kept; // 入力補正が向きをどうしたか
         };
 
         //! エアダッシュと地形の反動の値。書くのは PlayerActor だけ

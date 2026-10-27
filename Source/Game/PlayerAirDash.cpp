@@ -287,10 +287,9 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
         return;
     }
 
+    // 返る速さは当て方で減らさない。入力が返る向きと合った時だけ ApplyReboundChoice が強める
     const float facing = std::min(-NS::Dot(incoming, normal), 1.0f);
-    const float keep = std::clamp(m_params->m_reboundKeepRatio, 0.0f, 1.0f);
-    const float speed = baseSpeed * (keep + (1.0f - keep) * facing);
-    m_body->SetVelocity(assigned * speed);
+    m_body->SetVelocity(assigned * baseSpeed);
 
     NS::Vector3 reflected = GL::Level::ReflectAcross(incoming, normal);
     reflected.Normalize();
@@ -301,7 +300,7 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
                                                         .assigned = assigned,
                                                         .shifted = assigned,
                                                         .facing = facing,
-                                                        .speed = speed};
+                                                        .speed = baseSpeed};
     m_airDash.m_reboundCount = m_airDash.m_reboundCount + 1;
     m_airDash.m_reboundElapsed = 0.0f;
     m_airDash.m_steeredRadians = 0.0f;
@@ -309,10 +308,15 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
     m_airDash.m_shiftApplied = false;
     StartAirControlReturn();
     (void)m_states->Change<GL::Player::DashReboundPlayerState>();
-    StartTerrainReboundReaction(Root().Position() - normal * m_collider->CapsuleRadius(), facing);
+    // 当たる前から入れていた入力は、当たったフレームに選ぶ。合っていたら強い束で始める
+    const GL::Level::ReboundChoice choice = ChooseReboundInput();
+    StartTerrainReboundReaction(Root().Position() - normal * m_collider->CapsuleRadius(),
+                                facing,
+                                choice.result == GL::Level::ReboundInputResult::Matched);
+    ApplyReboundChoice(choice);
 }
 
-void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float facing) noexcept
+void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float facing, bool matched) noexcept
 {
     NS::HitReaction* reaction = HitReactionClassObj();
     NS::HitSensor* self = BodySensorClassObj();
@@ -321,7 +325,7 @@ void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float 
         return;
     }
     std::string_view name = "地形の反動[弱い]";
-    if (facing >= m_params->m_reboundFullFacing)
+    if (matched || facing >= m_params->m_reboundFullFacing)
     {
         name = "地形の反動[全部]";
     }
@@ -385,28 +389,81 @@ void PlayerActor::ApplyReboundShift() noexcept
     {
         return;
     }
+    ApplyReboundChoice(ChooseReboundInput());
+}
+
+GL::Level::ReboundChoice PlayerActor::ChooseReboundInput() const noexcept
+{
     const GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
-    const NS::Vector3 shifted =
-        GL::Level::ShiftReboundDirection(ReboundTable(),
-                                         hit.assigned,
-                                         hit.normal,
-                                         ReboundShiftInput(hit.assigned),
-                                         GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions));
-    if (NS::IsNearlyZero(NS::AngleBetweenUnit(shifted, hit.assigned)))
+    if (DesiredSpeedScale() < m_params->StickDeadzone())
+    {
+        return GL::Level::ReboundChoice{.direction = hit.assigned};
+    }
+    const GL::Level::ScreenAxes screen = ReboundScreenAxes();
+    const NS::Vector3 desired = DesiredDirection();
+    const GL::Level::ReboundChoiceLimits limits{
+        .maxRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundShiftMaxDegrees}).value,
+        .screenTieRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundScreenTieDegrees}).value,
+        .depthSlackRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundDepthSlackDegrees}).value,
+        .behindViewRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundBehindViewDegrees}).value,
+        .stepRadians = GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions)};
+    return GL::Level::ChooseReboundDirection(
+        ReboundTable(),
+        GL::Level::ReboundHit{.assigned = hit.assigned, .normal = hit.normal, .incoming = hit.incoming},
+        screen,
+        NS::Dot(desired, screen.right),
+        NS::Dot(desired, screen.flatForward),
+        limits);
+}
+
+void PlayerActor::ApplyReboundChoice(const GL::Level::ReboundChoice& choice) noexcept
+{
+    if (choice.result == GL::Level::ReboundInputResult::Kept)
     {
         return;
     }
-    m_body->SetVelocity(TurnLike(m_body->Velocity(), hit.assigned, shifted));
-    m_airDash.m_last.shifted = shifted;
+    GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
+    hit.input = choice.result;
     m_airDash.m_shiftApplied = true;
+    if (choice.result == GL::Level::ReboundInputResult::Matched)
+    {
+        // 続けて当たる時は今の速さで返るので、合うたびに倍率が積もらないよう、エアダッシュで当てた速さの倍率までにする。
+        // 落ちて当てた速さが上限を超えていても、合った時に遅くはしない
+        const float scale = m_params->m_reboundMatchedSpeedScale;
+        float matched = hit.speed * scale;
+        const float dashMatched = m_airDash.m_dashSpeed * m_params->m_terrainReboundSpeedScale * scale;
+        if (NS::HasPositiveMagnitude(dashMatched))
+        {
+            matched = std::max(hit.speed, std::min(matched, dashMatched));
+        }
+        if (NS::HasPositiveMagnitude(hit.speed))
+        {
+            m_body->SetVelocity(m_body->Velocity() * (matched / hit.speed));
+            hit.speed = matched;
+        }
+        return;
+    }
+    m_body->SetVelocity(TurnLike(m_body->Velocity(), hit.assigned, choice.direction));
+    hit.shifted = choice.direction;
+    StartShiftedReboundReaction();
 }
 
-NS::Vector3 PlayerActor::ReboundShiftInput(const NS::Vector3& assigned) const noexcept
+void PlayerActor::StartShiftedReboundReaction() noexcept
 {
-    if (DesiredSpeedScale() < m_params->StickDeadzone())
+    NS::HitReaction* reaction = HitReactionClassObj();
+    NS::HitSensor* self = BodySensorClassObj();
+    if (reaction == nullptr || self == nullptr)
     {
-        return NS::Vector3{};
+        return;
     }
+    const float scale = m_params->m_reboundShiftedEffectScale;
+    reaction->ScaleRunning(NS::HitReactionSelf{.actor = this, .model = ModelClassObj()}, scale);
+    m_ghostRun.ScaleOpacity(scale);
+    (void)StartHitReaction("地形の反動[ずらし]", Root().Position(), self, self);
+}
+
+GL::Level::ScreenAxes PlayerActor::ReboundScreenAxes() const noexcept
+{
     const NS::Vector3 flatForward = NS::CalcCameraForwardHorizontal(this);
     const NS::Vector3 right{flatForward.z, 0.0f, -flatForward.x};
     NS::Vector3 forward = flatForward;
@@ -422,7 +479,21 @@ NS::Vector3 PlayerActor::ReboundShiftInput(const NS::Vector3& assigned) const no
     }
     NS::Vector3 up = NS::Cross(forward, right);
     up.Normalize();
+    return GL::Level::ScreenAxes{.right = right, .up = up, .forward = forward, .flatForward = flatForward};
+}
+
+NS::Vector3 PlayerActor::ReboundShiftInput(const NS::Vector3& assigned) const noexcept
+{
+    if (DesiredSpeedScale() < m_params->StickDeadzone())
+    {
+        return NS::Vector3{};
+    }
+    const GL::Level::ScreenAxes screen = ReboundScreenAxes();
     const NS::Vector3 desired = DesiredDirection();
-    return GL::Level::ShiftInputOnScreen(
-        assigned, right, up, forward, NS::Dot(desired, right), NS::Dot(desired, flatForward));
+    return GL::Level::ShiftInputOnScreen(assigned,
+                                         screen.right,
+                                         screen.up,
+                                         screen.forward,
+                                         NS::Dot(desired, screen.right),
+                                         NS::Dot(desired, screen.flatForward));
 }

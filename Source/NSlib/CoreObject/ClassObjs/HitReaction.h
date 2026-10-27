@@ -245,6 +245,7 @@ namespace NS
         std::string_view label = "パッドの振動";
 
         bool byDirection = false; // 向き別の 4 組を使う場合 true。偽なら向き無しの 1 組
+        bool layered = false;     // 走っている振動を始め直さずに重ねる場合 true
         Curve left{};             // 向き無しの左のモーターの速さ 0〜1
         Curve right{};            // 向き無しの右のモーターの速さ 0〜1
         Curve rightLeft{};        // 相手が右の時の左のモーター
@@ -258,6 +259,7 @@ namespace NS
 
         NS_REFLECT_BEGIN(HitPadVibrationItem, void)
         NS_FIELD(byDirection, "向き別")
+        NS_FIELD(layered, "前の振動に重ねる")
         NS_FIELD(left, "左の速さ")
         NS_FIELD(right, "右の速さ")
         NS_FIELD(rightLeft, "右の時の左の速さ")
@@ -545,6 +547,13 @@ namespace NS
         //! 何も書いていなければ StartPadVibration と同じ
         //! @param[in] pad 重ねる振動
         void BlendPadVibration(const SceneActor* owner, const HitPadVibration& pad);
+
+        //! @brief この部品が頼んで走っている演出の強さに scale を掛ける。始め直さず、残りをその強さで続ける
+        //! @details 掛けるのは白の濃さ・歪みの輪の押し出し・床の波の強さ・振動の速さ・描く形の揺れと震えの振れ幅。
+        //! 震えの線・描く形の倍率・カメラの効果は変えない。持ち主へ渡す項目は持ち主が自分で弱める
+        //! @param[in] owner 頼んだ持ち主と、揺れと震えを書いた先
+        //! @param[in] scale 掛ける倍率。事前条件: 0 以上の有限の数
+        void ScaleRunning(const HitReactionSelf& owner, float scale);
 
         //! この部品が頼んだ演出を止める。白と震えの線を消し、振動を 0 にし、揺れ・ずれ・寄りを外し、
         //! 持ち主へ渡す項目を外す

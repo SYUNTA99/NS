@@ -147,7 +147,12 @@ namespace GL
             NS_FIELD(m_reboundTableDivisions, "向きの表の分割数")
             NS_FIELD(m_reboundTableWithPitch, "表に傾きの段を入れる")
             NS_FIELD(m_terrainReboundSpeedScale, "返る速さのダッシュの速さに対する倍率")
-            NS_FIELD(m_reboundKeepRatio, "返る力の逃げない割合")
+            NS_FIELD(m_reboundShiftMaxDegrees, "反射から離れられる角度の上限")
+            NS_FIELD(m_reboundScreenTieDegrees, "画面で同じに見える角度の差", NS::FieldRange::NonNegative())
+            NS_FIELD(m_reboundDepthSlackDegrees, "奥と手前の上限の余裕の角度")
+            NS_FIELD(m_reboundBehindViewDegrees, "後ろから見ているとみなす角度")
+            NS_FIELD(m_reboundMatchedSpeedScale, "向きが合った時の返る速さの倍率", NS::FieldRange::Positive())
+            NS_FIELD(m_reboundShiftedEffectScale, "ずらした時の演出の強さの倍率", NS::FieldRange::NonNegative())
             NS_FIELD(m_reboundMinFacing, "反動に数える当て方の下限")
             NS_FIELD(m_reboundFullFacing, "全部返ったに数える当て方の下限")
             NS_FIELD(m_reboundLockSeconds, "反動の操作なしの秒")
@@ -294,7 +299,13 @@ namespace GL
             int m_reboundTableDivisions = 8;  // 8・12・16 のうち一番近い物へ丸める
             bool m_reboundTableWithPitch = true; // 偽なら縦・横・奥の 3 枚の円の表
             float m_terrainReboundSpeedScale = 1.0f; // ダッシュで当てた時に返る速さ。返った後に続けて当たる時は掛け直さない
-            float m_reboundKeepRatio = 0.6f;  // かすめた時に残る速さの割合
+            // 入力補正は、反射を丸めた向きからこの角度以内の表の向きのうち、画面で入力に一番近い物へ向きを変える
+            float m_reboundShiftMaxDegrees = 90.0f;
+            float m_reboundScreenTieDegrees = 10.0f;   // 画面の角度の差がこれ以内なら、奥と手前へ動かない向きを選ぶ
+            float m_reboundDepthSlackDegrees = 10.0f;  // 奥と手前へ飛ぶ量の上限に足す、カメラのずれの余裕
+            float m_reboundBehindViewDegrees = 45.0f;  // 真上へ返る時の上の入力を奥へ読む、カメラと進む向きの角度
+            float m_reboundMatchedSpeedScale = 1.2f;   // 入力が返る向きと合った時だけ、当てた速さに掛ける
+            float m_reboundShiftedEffectScale = 0.7f;  // 入力補正で向きを変えた時に、走っている演出に掛ける
             // 当て方は進む向きと面の法線の内積の大きさ。下限より浅い当たりは掃引の滑りに任せる
             float m_reboundMinFacing = 0.2f;
             float m_reboundFullFacing = 0.9f; // これ以上なら強い演出の束を始める

@@ -124,6 +124,8 @@ namespace NS
         void StartDrawTremor(const DrawTremorDesc& desc) noexcept;
         //! 震えを止めて、振れ幅を 0 に戻す
         void StopDrawTremor() noexcept;
+        //! 走っている揺れと震えの振れ幅に scale を掛ける。次の AdvanceDraw から効く
+        void ScaleDrawShaking(float scale) noexcept;
         //! 揺れ・形の再生・震えを 1 フレーム進める
         //! 呼ぶのは SceneActor::Update だけで、体を動かした後・VisualStep の前。震えは動かした後の根で書く。
         //! 震えの振れ幅は camera の視点から rootPosition (持ち主の根の位置) までの距離で決める

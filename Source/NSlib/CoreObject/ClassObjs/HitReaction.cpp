@@ -413,8 +413,13 @@ namespace NS
         {
             if (!pad.byDirection)
             {
-                reaction.StartPadVibration(owner.actor,
-                                           HitPadVibration{.left = pad.left, .right = pad.right, .frames = length});
+                const HitPadVibration vibration{.left = pad.left, .right = pad.right, .frames = length};
+                if (pad.layered)
+                {
+                    reaction.BlendPadVibration(owner.actor, vibration);
+                    return;
+                }
+                reaction.StartPadVibration(owner.actor, vibration);
                 return;
             }
             struct Directed
@@ -428,8 +433,8 @@ namespace NS
                                                     {weights.left, &pad.leftLeft, &pad.leftRight},
                                                     {weights.up, &pad.upLeft, &pad.upRight},
                                                     {weights.down, &pad.downLeft, &pad.downRight}}};
-            // 重みのある 2 本を同じフレームに重ねて鳴らす
-            bool started = false;
+            // 重みのある 2 本を同じフレームに重ねて鳴らす。重ねる項目は 1 本目から走っている振動に重ねる
+            bool started = pad.layered;
             for (const Directed& direction : directed)
             {
                 if (!IsPositive(direction.weight))
@@ -737,6 +742,24 @@ namespace NS
         if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(owner))
         {
             rumble->Blend(owner, pad);
+        }
+    }
+
+    void HitReaction::ScaleRunning(const HitReactionSelf& owner, float scale)
+    {
+        NS_ASSERT(Scene, owner.actor != nullptr, "HitReaction::ScaleRunning: 持ち主が null");
+        NS_ASSERT(Scene, std::isfinite(scale) && scale >= 0.0f, "HitReaction::ScaleRunning: 倍率が負か非数");
+        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner.actor))
+        {
+            screen->Scale(owner.actor, scale);
+        }
+        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(owner.actor))
+        {
+            rumble->Scale(owner.actor, scale);
+        }
+        if (owner.model != nullptr)
+        {
+            owner.model->ScaleDrawShaking(scale);
         }
     }
 

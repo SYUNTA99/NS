@@ -37,18 +37,61 @@ namespace GL
                                                   const NS::Vector3& normal,
                                                   NS::Vector3& outDirection) noexcept;
 
-        //! 割り当てた向きを、スティックで倒した向きの隣へ 1 段だけずらす
-        //! 隣は、割り当てた向きから 1 段の角度以内の表の向き。倒した向きのうち
-        //! 割り当てた向きに垂直な成分へ一番動く物を選ぶ。垂直な成分が無い (倒していない、真上へ返って上下に倒した)
-        //! 時と、その向きへ動く隣が無い時と、選んだ隣が面に沿うか面へ向かう時は割り当てた向きのまま。
-        //! 選んだ隣が使えない時に次に近い隣へ逸らさないのは、倒していない左右へずれるのを防ぐため
-        //! @param[in] shift スティックを世界へ写した向き。長さは倒し具合
-        //! @param[in] stepRadians 表の 1 段の角度
-        [[nodiscard]] NS::Vector3 ShiftReboundDirection(std::span<const NS::Vector3> table,
-                                                        const NS::Vector3& assigned,
-                                                        const NS::Vector3& normal,
-                                                        const NS::Vector3& shift,
-                                                        float stepRadians) noexcept;
+        //! カメラから見た画面の向き。全部が単位の長さ
+        struct ScreenAxes
+        {
+            NS::Vector3 right{};       //!< 画面の右
+            NS::Vector3 up{};          //!< 画面の上
+            NS::Vector3 forward{};     //!< カメラの見る向き
+            NS::Vector3 flatForward{}; //!< 見る向きを水平にした向き
+        };
+
+        //! 入力補正が返る向きをどうしたか
+        enum class ReboundInputResult
+        {
+            Kept,    //!< 入力が無いか、選べる向きが無く、割り当てた向きのまま
+            Matched, //!< 入力が割り当てた向きと合い、向きを変えなかった
+            Shifted, //!< 入力の向きへ変えた
+        };
+
+        //! 入力補正で選んだ返る向き
+        struct ReboundChoice
+        {
+            NS::Vector3 direction{};
+            ReboundInputResult result = ReboundInputResult::Kept;
+        };
+
+        //! 入力補正の候補を決める当たり
+        struct ReboundHit
+        {
+            NS::Vector3 assigned{}; //!< 表へ割り当てた返る向き。単位の長さ
+            NS::Vector3 normal{};   //!< 当たった面の外向きの単位法線
+            NS::Vector3 incoming{}; //!< 当たる直前の進む向き。単位の長さ
+        };
+
+        //! 入力補正で選べる幅
+        struct ReboundChoiceLimits
+        {
+            float maxRadians = 0.0f;        //!< 割り当てた向きから離れられる角度の上限
+            float screenTieRadians = 0.0f;  //!< 画面の上で同じ向きに見なす角度の差
+            float depthSlackRadians = 0.0f; //!< 奥と手前へ飛ぶ量の上限に足す角度。カメラと当たる前の向きのわずかなずれを吸う
+            float behindViewRadians = 0.0f; //!< 後ろから見ているとみなす、カメラと当たる前の向きの水平の角度
+            float stepRadians = 0.0f;       //!< 表の 1 段の角度
+        };
+
+        //! @brief 表のうち、画面の上で入力の向きに一番近い向きを返る向きに選ぶ
+        //! @details 候補は、面から離れ、割り当てた向きから上限の角度以内の表の向き。カメラの水平の前の向きの成分が、
+        //! 当たる前の向きの成分に余裕の角度の分を足した物より大きい向きは外す。画面へ映した長さが無い向きも外す。画面の上の角度の差が
+        //! 同じに見なす差の中に並んだら、カメラの見る向きの成分が一番小さい向きを選ぶ。後ろから見ていて、真上へ返る
+        //! 時に入力が合ったら、カメラの水平の前の向きへ 1 段だけ変える
+        //! @param[in] stickRight スティックの右への入力。左は負
+        //! @param[in] stickUp スティックの前への入力。後ろは負
+        [[nodiscard]] ReboundChoice ChooseReboundDirection(std::span<const NS::Vector3> table,
+                                                           const ReboundHit& hit,
+                                                           const ScreenAxes& screen,
+                                                           float stickRight,
+                                                           float stickUp,
+                                                           const ReboundChoiceLimits& limits) noexcept;
 
         //! スティックの倒しを、カメラから見た向きのまま、返る向きに垂直な面の向きにする
         //! 左右はカメラの右を、前後はカメラの上を、返る向きに垂直な面へ落とした向きに掛ける。返る向きが
@@ -58,7 +101,7 @@ namespace GL
         //! @param[in] cameraRight カメラの右。cameraUp・cameraForward と直交する単位の向き
         //! @param[in] stickRight スティックの右への倒し。左は負
         //! @param[in] stickUp スティックの前への倒し。後ろは負
-        //! @return ShiftReboundDirection へ渡すずらしの向き
+        //! @return 反動の後の曲げの目標の向き。長さは入力の大きさ
         [[nodiscard]] NS::Vector3 ShiftInputOnScreen(const NS::Vector3& assigned,
                                                      const NS::Vector3& cameraRight,
                                                      const NS::Vector3& cameraUp,

@@ -337,6 +337,61 @@ TEST(PlayerAirDashTest, AirDashDistanceFieldKeepsTheValueOnZeroNegativeAndInfini
     }
 }
 
+// 反動の 2 つの倍率は、負と無限大を読むと今の値を残す。負は演出の強さと速度の向きを裏返す。
+// 合った時の速さの倍率は 0 も残す (速度が 0 になる)。演出の倍率の 0 は演出を消すだけなので書く
+TEST(PlayerAirDashTest, ReboundScaleFieldsKeepTheValueOnNegativeAndInfinite)
+{
+    struct Case
+    {
+        const char* name;
+        std::vector<double> rejected;
+    };
+    const std::vector<Case> cases{{"向きが合った時の返る速さの倍率", {0.0, -1.0, 1.0e39}},
+                                  {"ずらした時の演出の強さの倍率", {-1.0, 1.0e39}}};
+    for (const Case& c : cases)
+    {
+        SCOPED_TRACE(c.name);
+        GL::Player::PlayerParams params;
+        const NS::FieldDesc* field = NS::FindField(params.GetReflection(), c.name);
+        ASSERT_NE(field, nullptr);
+        float before = 0.0f;
+        field->get(&params, &before);
+        for (const double value : c.rejected)
+        {
+            SCOPED_TRACE(value);
+            EXPECT_EQ(NS::ApplyJsonFields(&params, nlohmann::json{{c.name, value}}), 0u);
+            float after = 0.0f;
+            field->get(&params, &after);
+            EXPECT_EQ(after, before);
+        }
+    }
+    GL::Player::PlayerParams params;
+    const NS::FieldDesc* effect = NS::FindField(params.GetReflection(), "ずらした時の演出の強さの倍率");
+    ASSERT_NE(effect, nullptr);
+    EXPECT_EQ(NS::ApplyJsonFields(&params, nlohmann::json{{"ずらした時の演出の強さの倍率", 0.0}}), 0u);
+    float written = 1.0f;
+    effect->get(&params, &written);
+    EXPECT_EQ(written, 0.0f);
+}
+
+// 画面で同じに見える角度の差は、負と無限大を読むと今の値を残す。負は一番近い向きまで候補から外し、選んだ向きが無いまま読む
+TEST(PlayerAirDashTest, ReboundScreenTieFieldKeepsTheValueOnNegativeAndInfinite)
+{
+    GL::Player::PlayerParams params;
+    const NS::FieldDesc* field = NS::FindField(params.GetReflection(), "画面で同じに見える角度の差");
+    ASSERT_NE(field, nullptr);
+    float before = 0.0f;
+    field->get(&params, &before);
+    for (const double value : {-1.0, 1.0e39})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_EQ(NS::ApplyJsonFields(&params, nlohmann::json{{"画面で同じに見える角度の差", value}}), 0u);
+        float after = 0.0f;
+        field->get(&params, &after);
+        EXPECT_EQ(after, before);
+    }
+}
+
 // 動作 "AirDash" が無いか長さを決めていない自機は、押してもエアダッシュに入らない。入ると終わりが来ず宙で止まる
 TEST(PlayerAirDashTest, NoDashWithoutTheAirDashActionLength)
 {

@@ -101,6 +101,25 @@ namespace NS
         }
     }
 
+    void HitScreenDirector::Scale(const SceneActor* requester, float scale) noexcept
+    {
+        NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::Scale: 頼んだ物が null");
+        if (m_flashRequester == requester)
+        {
+            m_flashAlpha *= scale;
+        }
+        if (m_ringActive && m_ringRequester == requester)
+        {
+            m_ring.push = m_ring.push.Scaled(scale);
+            WriteDistortionRing();
+        }
+        if (m_waveActive && m_waveRequester == requester)
+        {
+            m_wave.strength = m_wave.strength.Scaled(scale);
+            WriteGroundWave();
+        }
+    }
+
     void HitScreenDirector::StartDistortionRing(const SceneActor* requester, const HitDistortionRingDesc& desc) noexcept
     {
         NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::StartDistortionRing: 頼んだ物が null");

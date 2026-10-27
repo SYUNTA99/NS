@@ -194,6 +194,8 @@ namespace GL
             void Advance(TackleGhost* ghost, const NS::Model* model, const NS::Matrix& root) noexcept;
             //! 止めて、左右の写しと明けの写しを消す
             void Stop(TackleGhost* ghost) noexcept;
+            //! 左右の写しと明けの写しの不透明度に scale を掛ける。次の Advance から効く
+            void ScaleOpacity(float scale) noexcept;
         };
 
         //! 持ち主へ渡す項目の値。.actor に書き忘れた値は WARN を出して fallback を使う

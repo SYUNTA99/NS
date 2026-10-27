@@ -1188,7 +1188,7 @@ TEST(ShippedHitReactions, MissVibratesHeavyHeadThenLightTailPerDirection)
 TEST(ShippedHitReactions, PlayerHitSetsCarryTheTimelineValues)
 {
     const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
-    EXPECT_EQ(player.sets.size(), 8u);
+    EXPECT_EQ(player.sets.size(), 9u);
 
     // 地形の反動は当て方で 2 つ。全部返った時だけ短く止め、弱い時は止めない
     const NS::HitReactionSet* terrainFull = FindShippedSet(player, "地形の反動[全部]");
@@ -1198,6 +1198,14 @@ TEST(ShippedHitReactions, PlayerHitSetsCarryTheTimelineValues)
     const NS::HitReactionSet* terrainWeak = FindShippedSet(player, "地形の反動[弱い]");
     ASSERT_NE(terrainWeak, nullptr);
     EXPECT_EQ(terrainWeak->stopFrames, 0);
+    // 入力補正で向きを変えた時は、走っている振動を始め直さずに振動だけを重ねる
+    const NS::HitReactionSet* terrainShift = FindShippedSet(player, "地形の反動[ずらし]");
+    ASSERT_NE(terrainShift, nullptr);
+    EXPECT_EQ(terrainShift->stopFrames, 0);
+    ASSERT_EQ(terrainShift->entries.size(), 1u);
+    const NS::HitReactionEntry* shiftPad = FindEntry<NS::HitPadVibrationItem>(*terrainShift);
+    ASSERT_NE(shiftPad, nullptr);
+    EXPECT_TRUE(std::get<NS::HitPadVibrationItem>(shiftPad->item).layered);
 
     const NS::HitReactionSet* center = FindShippedSet(player, "体当たり[真ん中]");
     ASSERT_NE(center, nullptr);
