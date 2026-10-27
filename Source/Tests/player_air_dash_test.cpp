@@ -374,6 +374,24 @@ TEST(PlayerAirDashTest, ReboundScaleFieldsKeepTheValueOnNegativeAndInfinite)
     EXPECT_EQ(written, 0.0f);
 }
 
+// 画面で同じに見える角度の差は、負と無限大を読むと今の値を残す。負は一番近い向きまで候補から外し、選んだ向きが無いまま読む
+TEST(PlayerAirDashTest, ReboundScreenTieFieldKeepsTheValueOnNegativeAndInfinite)
+{
+    GL::Player::PlayerParams params;
+    const NS::FieldDesc* field = NS::FindField(params.GetReflection(), "画面で同じに見える角度の差");
+    ASSERT_NE(field, nullptr);
+    float before = 0.0f;
+    field->get(&params, &before);
+    for (const double value : {-1.0, 1.0e39})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_EQ(NS::ApplyJsonFields(&params, nlohmann::json{{"画面で同じに見える角度の差", value}}), 0u);
+        float after = 0.0f;
+        field->get(&params, &after);
+        EXPECT_EQ(after, before);
+    }
+}
+
 // 動作 "AirDash" が無いか長さを決めていない自機は、押してもエアダッシュに入らない。入ると終わりが来ず宙で止まる
 TEST(PlayerAirDashTest, NoDashWithoutTheAirDashActionLength)
 {

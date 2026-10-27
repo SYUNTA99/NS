@@ -148,7 +148,7 @@ namespace GL
             NS_FIELD(m_reboundTableWithPitch, "表に傾きの段を入れる")
             NS_FIELD(m_terrainReboundSpeedScale, "返る速さのダッシュの速さに対する倍率")
             NS_FIELD(m_reboundShiftMaxDegrees, "反射から離れられる角度の上限")
-            NS_FIELD(m_reboundScreenTieDegrees, "画面で同じに見える角度の差")
+            NS_FIELD(m_reboundScreenTieDegrees, "画面で同じに見える角度の差", NS::FieldRange::NonNegative())
             NS_FIELD(m_reboundDepthSlackDegrees, "奥と手前の上限の余裕の角度")
             NS_FIELD(m_reboundBehindViewDegrees, "後ろから見ているとみなす角度")
             NS_FIELD(m_reboundMatchedSpeedScale, "向きが合った時の返る速さの倍率", NS::FieldRange::Positive())
