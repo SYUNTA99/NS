@@ -292,8 +292,6 @@ TEST(PlayerAirDashTest, SteeringNeverTurnsMoreThanTheLimit)
     {
         player->Update(false);
     }
-    const NS::Vector3 start = player->Body().LateralVelocity();
-
     // 補正の段の間ずっと真横へ倒す
     player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     const int frames = FramesFor(fields.at("反動の補正が終わる秒").get<float>());
@@ -301,12 +299,45 @@ TEST(PlayerAirDashTest, SteeringNeverTurnsMoreThanTheLimit)
     for (int frame = 0; frame < frames && player->IsDashRebounding(); ++frame)
     {
         player->Update(false);
-        largest = std::max(largest, AngleBetween(start, player->Body().LateralVelocity()));
+        // 曲げは速度の全部を回すので、真後ろへ返る縦の面から外れた角度で測る。重力と減速はこの角度を増やさない
+        const NS::Vector3 velocity = player->Body().Velocity();
+        largest = std::max(largest, std::asin(std::abs(velocity.x) / velocity.Length()));
     }
     const float limit = GL::Level::DirectionStepRadians(fields.at("向きの表の分割数").get<int>()) *
                         fields.at("曲げの上限の段の割合").get<float>();
     EXPECT_GT(largest, 0.0f);
     EXPECT_LE(largest, limit + 1.0e-3f);
+}
+
+TEST(PlayerAirDashTest, HoldingForwardThroughTheSteerStageBendsUpNotSideways)
+{
+    const auto steer = [](const NS::Vector3& desired, float scale) {
+        NS::Scene scene;
+        PlayerActor* player = PlaceFloatingPlayer(scene);
+        AddFrontWall(scene);
+        const nlohmann::json fields = ParamsFields(player);
+        EXPECT_TRUE(DashIntoFrontWall(player));
+        const float lock = fields.at("反動の操作なしの秒").get<float>();
+        for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
+        {
+            player->Update(false);
+        }
+        player->SetDesiredMove(desired, scale);
+        const float end = fields.at("反動の補正が終わる秒").get<float>();
+        for (int frame = 0; frame < 120 && player->AirDash().ReboundElapsed() + 0.05f < end; ++frame)
+        {
+            player->Update(false);
+        }
+        return player->Body().Velocity();
+    };
+    const NS::Vector3 released = steer(NS::Vector3{}, 0.0f);
+    NS::Vector3 forward{-0.3f, 0.0f, 1.0f};
+    forward.Normalize();
+    const NS::Vector3 held = steer(forward, 1.0f);
+
+    const float sideways = std::atan2(std::abs(held.x), -held.z);
+    EXPECT_LT(sideways, NS::ToRadians(NS::Degrees{10.0f}).value);
+    EXPECT_GT(held.y, released.y);
 }
 
 // 地形の反動はカメラを回さず、回す入力も止めない。縦の向きは返った向きの縦の成分で渡し、ダッシュと反動の間は視野を広げる

@@ -167,15 +167,20 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     m_body->Decelerate(m_params->m_dashReboundDeceleration, dt);
 
     // 曲げはスティックの向きだけを目標にする。地形も相手も読まないので、目的地へは向かない
-    NS::Vector3 target{};
-    NS::Vector3 current{};
-    const NS::Vector3 lateral = m_body->LateralVelocity();
-    if (DesiredSpeedScale() < m_params->StickDeadzone() ||
-        !NS::TryNormalizeHorizontal(DesiredDirection(), target) ||
-        !NS::TryNormalizeHorizontal(lateral, current))
+    // 目標は当たった直後のずらしと同じく画面で倒した向きで、前に倒すと画面の上へ曲がる
+    const NS::Vector3 velocity = m_body->Velocity();
+    const float speed = velocity.Length();
+    if (!(speed > NS::k_Epsilon))
     {
         return;
     }
+    const NS::Vector3 current = velocity / speed;
+    NS::Vector3 target = ReboundShiftInput(current);
+    if (target.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
+    {
+        return;
+    }
+    target.Normalize();
     const float limitRatio = std::min(m_params->m_reboundSteerLimitRatio, std::nextafter(0.5f, 0.0f));
     const float limit = GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions) * std::max(limitRatio, 0.0f);
     const float span = steerEnd - lock;
@@ -192,7 +197,7 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     }
     const NS::Vector3 turned = GL::Level::TurnToward(current, target, step);
     m_airDash.m_steeredRadians += AngleBetweenUnit(current, turned);
-    m_body->SetLateralVelocity(turned * lateral.Length());
+    m_body->SetVelocity(turned * speed);
 }
 
 void PlayerActor::TryBeginTerrainRebound() noexcept
