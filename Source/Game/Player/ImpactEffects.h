@@ -15,8 +15,8 @@ namespace NS
 {
     class Body;
     class Collider;
-    class IUseCamera;
-    class IUseEffect;
+    class IGetCamera;
+    class IGetEffect;
 } // namespace NS
 
 namespace GL
@@ -100,7 +100,7 @@ namespace GL
         {
         public:
             //! 当たり・反動・着地の絵を先に読む。絵は effect (持ち主のアクター) のシーンへ出す。持ち主の OnAssetsLoaded が呼ぶ
-            void Preload(const NS::IUseEffect* effect);
+            void Preload(const NS::IGetEffect* effect);
 
             //! @brief 当たりの絵を、次の Update で最後の当たりの内訳から始める
             //! @details 持ち主が段の束の持ち主へ渡す項目 HitEffect を始めたフレームに呼ぶ
@@ -118,8 +118,8 @@ namespace GL
             //! @param[in] body 反動の尾の向きと、頂点と着地の判定に速度と接地を読む。空でないこと
             //! @param[in] collider 接触点と足元を、当たりのカプセルから作る。空でないこと
             //! @param[in] impact 最後の当たりの内訳。絵の置き所と大きさを決める
-            void Update(const NS::IUseEffect* effect,
-                        const NS::IUseCamera* camera,
+            void Update(const NS::IGetEffect* effect,
+                        const NS::IGetCamera* camera,
                         const NS::Vector3& position,
                         const BodySlamStatus& slam,
                         const PlayerMotion& motion,
@@ -286,8 +286,8 @@ namespace GL
             // Update が受けた持ち主の物。Update の中で呼ぶ関数へそのまま渡し、控えない
             struct Owner
             {
-                const NS::IUseEffect* effect = nullptr;
-                const NS::IUseCamera* camera = nullptr;
+                const NS::IGetEffect* effect = nullptr;
+                const NS::IGetCamera* camera = nullptr;
                 NS::Vector3 position; // 持ち主のルートの位置。世界座標
             };
 

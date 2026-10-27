@@ -1,5 +1,6 @@
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
+#include "Game/Level/SensorKinds.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
@@ -81,12 +82,11 @@ namespace
 
     class SensorPartsActor final : public NS::SceneActor
     {
-    protected:
-        void OnInit() override
-        {
-            CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
-            CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_attackSensor, this);
-        }
+    private:
+        NS_SENSORS_BEGIN()
+        NS_SENSOR(m_bodySensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSOR(m_attackSensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSORS_END()
     };
 
     // 表を回して鍵 key の部品を返す。出なければ nullptr

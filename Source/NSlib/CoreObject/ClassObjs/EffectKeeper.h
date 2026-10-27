@@ -39,7 +39,7 @@ namespace NS
 
     //! @brief 個体のエフェクト再生と記録。描画先がなくても記録を残す
     //! @details 持ち主を覚えない。再生の置き場 effects は呼ぶたびに受け、nullptr は描画の無い世界。
-    //!          利用側は IUseEffect の関数を使う
+    //!          利用側は IGetEffect の関数を使う
     class EffectKeeper : public Object
     {
     public:

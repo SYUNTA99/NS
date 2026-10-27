@@ -1,6 +1,7 @@
 #include "Game/PlayerActor.h"
 
 #include "Game/Level/ReboundDirections.h"
+#include "Game/Player/PlayerAcceleration.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/AirDashPlayerState.h"
@@ -10,11 +11,13 @@
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Phys/JoltCharacter.h"
 
@@ -28,6 +31,12 @@ namespace
     float AngleBetweenUnit(const NS::Vector3& a, const NS::Vector3& b) noexcept
     {
         return std::acos(std::clamp(NS::Dot(a, b), -1.0f, 1.0f));
+    }
+
+    // エアダッシュの状態に結ぶ .actor の動作の名前。長さ (length) がダッシュの長さを持つ
+    std::string_view AirDashActionName() noexcept
+    {
+        return "AirDash";
     }
 } // namespace
 
@@ -47,8 +56,18 @@ bool PlayerActor::CanStartAirDash() const noexcept
            m_states->IsCurrent<GL::Player::SkidPlayerState>();
 }
 
-void PlayerActor::BeginAirDash() noexcept
+bool PlayerActor::BeginAirDash() noexcept
 {
+    // 速さが 0 のダッシュは、状態の終わり (IsStateEnd) も来ないので宙で止まったまま抜けられない
+    const float speed = AirDashSpeed();
+    if (!(speed > 0.0f))
+    {
+        NS_LOG_WARN(Game,
+                    ".actor {} の動作 {} が無いか長さが 0、または距離が 0 以下なので、エアダッシュを始めない",
+                    ActorFileName(),
+                    AirDashActionName());
+        return false;
+    }
     NS::Vector3 direction{};
     const bool stick = DesiredSpeedScale() >= m_params->StickDeadzone() &&
                        NS::TryNormalizeHorizontal(DesiredDirection(), direction);
@@ -57,7 +76,6 @@ void PlayerActor::BeginAirDash() noexcept
         direction = NS::CalcCameraForwardHorizontal(this);
     }
     m_airDash.m_direction = direction;
-    m_airDash.m_dashElapsed = 0.0f;
     m_airDash.m_remaining = m_airDash.m_remaining - 1;
     m_facingDir = direction;
     // 押したフレームに玉になって飛び出す。解くのは接地して落ち着いた時 (UncurlWhenSettled)
@@ -69,21 +87,55 @@ void PlayerActor::BeginAirDash() noexcept
         Root().ShiftPosition(NS::Vector3{0.0f, m_collider->StandingHalfHeight(), 0.0f});
     }
     StartAirControlReturn();
-    m_body->SetVelocity(direction * m_params->AirDashSpeed());
+    // 状態に入るのが止めで遅れても、面に当たった時の返る速さがこの控えを読む
+    m_airDash.m_dashSpeed = speed;
+    m_body->SetVelocity(direction * speed);
     (void)m_states->Change<GL::Player::AirDashPlayerState>();
+    return true;
 }
 
-void PlayerActor::UpdateAirDash(float dt) noexcept
+float PlayerActor::AirDashSpeed() const noexcept
 {
-    m_airDash.m_dashElapsed += dt;
-    if (m_airDash.m_dashElapsed >= m_params->m_airDashSeconds)
+    const NS::ActionTimeline* timeline = ActionTimelineClassObj();
+    if (timeline == nullptr)
     {
-        // 当たらずに終わったら、勢いを残して普段の動きへつなぐ
-        m_body->SetVelocity(m_airDash.m_direction * m_params->m_airDashExitSpeed);
-        ChangeToWalkOrFall();
-        return;
+        return 0.0f;
     }
-    m_body->SetVelocity(m_airDash.m_direction * m_params->AirDashSpeed());
+    const NS::ActorAction* action = timeline->FindAction(AirDashActionName());
+    // 長さを決めていない動作と、Inspector で距離を非数にした時は割らない
+    if (action == nullptr || action->length <= 0 || !std::isfinite(m_params->m_airDashDistance))
+    {
+        return 0.0f;
+    }
+    return m_params->m_airDashDistance / (static_cast<float>(action->length) * NS::OS::FrameTimer::FixedDelta());
+}
+
+bool PlayerActor::StartAirDashAction() noexcept
+{
+    // 速さは状態に入った時の動作の長さで決めて控え、途中で読み直しても変えない。IsStateEnd も入った時の長さで終わる
+    m_airDash.m_dashSpeed = AirDashSpeed();
+    NS::ActionTimeline* timeline = ActionTimelineClassObj();
+    if (timeline == nullptr)
+    {
+        return false;
+    }
+    // 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。動作が無ければ Start が WARN を出す
+    return timeline->Start(ActionTimelineSelfOf(),
+                           AirDashActionName(),
+                           0,
+                           Root().Position(),
+                           BodySensorClassObj(),
+                           BodySensorClassObj());
+}
+
+void PlayerActor::KeepAirDashSpeed() noexcept
+{
+    m_body->SetVelocity(m_airDash.m_direction * m_airDash.m_dashSpeed);
+}
+
+void PlayerActor::KeepAirDashExitSpeed() noexcept
+{
+    m_body->SetVelocity(m_airDash.m_direction * m_params->m_airDashExitSpeed);
 }
 
 void PlayerActor::UpdateDashRebound(float dt) noexcept
@@ -117,7 +169,7 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     }
 
     m_body->Gravity(-m_params->m_dashReboundGravity, dt);
-    m_body->Decelerate(m_params->m_dashReboundDeceleration, dt);
+    GL::Player::Decelerate(m_body.get(), m_params->m_dashReboundDeceleration, dt);
 
     // 曲げはスティックの向きだけを目標にする。地形も相手も読まないので、目的地へは向かない
     NS::Vector3 target{};
@@ -175,7 +227,7 @@ void PlayerActor::TryBeginTerrainRebound() noexcept
     float baseSpeed = speed;
     if (dashing)
     {
-        baseSpeed = m_params->AirDashSpeed() * m_params->m_terrainReboundSpeedScale;
+        baseSpeed = m_airDash.m_dashSpeed * m_params->m_terrainReboundSpeedScale;
     }
     BeginTerrainRebound(incoming, normal, baseSpeed);
 }

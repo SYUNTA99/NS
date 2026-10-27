@@ -5,26 +5,6 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/Phys/PhysicsScene.h"
 
-#include <cmath>
-
-namespace
-{
-    // 水平の長さを drop だけ縮め、drop 以下なら 0 にする
-    void ShrinkHorizontal(float& x, float& z, float drop) noexcept
-    {
-        const float length = std::sqrt(x * x + z * z);
-        if (length <= drop || length == 0.0f)
-        {
-            x = 0.0f;
-            z = 0.0f;
-            return;
-        }
-        const float scale = (length - drop) / length;
-        x *= scale;
-        z *= scale;
-    }
-} // namespace
-
 namespace NS
 {
     Vector3 Body::LateralVelocity() const noexcept
@@ -48,33 +28,6 @@ namespace NS
     {
         m_wasGrounded = grounded;
         m_isGrounded = grounded;
-    }
-
-    void Body::Accelerate(
-        const Vector3& direction, float turningDrag, float acceleration, float topSpeed, float dt) noexcept
-    {
-        const Vector3 lateral = LateralVelocity();
-        float speed = direction.x * lateral.x + direction.z * lateral.z;
-        float turningX = lateral.x - direction.x * speed;
-        float turningZ = lateral.z - direction.z * speed;
-
-        const float lateralSpeed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
-        if (lateralSpeed < topSpeed || speed < 0.0f)
-        {
-            speed = Clamp(speed + acceleration * dt, -topSpeed, topSpeed);
-        }
-
-        ShrinkHorizontal(turningX, turningZ, turningDrag * dt);
-        m_velocity.x = direction.x * speed + turningX;
-        m_velocity.z = direction.z * speed + turningZ;
-    }
-
-    void Body::Decelerate(float deceleration, float dt) noexcept
-    {
-        Vector3 lateral = LateralVelocity();
-        ShrinkHorizontal(lateral.x, lateral.z, deceleration * dt);
-        m_velocity.x = lateral.x;
-        m_velocity.z = lateral.z;
     }
 
     void Body::Gravity(float gravity, float dt) noexcept

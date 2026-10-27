@@ -1,7 +1,6 @@
 #include "Game/Level/FollowCameraActor.h"
 
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 
@@ -24,7 +23,10 @@ namespace GL
 
         void FollowCameraActor::ResolveActorRefs()
         {
-            m_vcam->SetTarget(OwningScene()->Actors().FindActor(m_vcam->TargetRef()));
+            const NS::SceneActor* target = OwningScene()->Actors().FindActor(m_vcam->TargetRef());
+            // 状態を渡す相手は今は自機だけ。実行時型情報を切っているので、型で確かめてから口へ変える
+            const NS::IGetCameraTarget* state = NS::Cast<::PlayerActor>(target);
+            m_vcam->SetTarget(target, state);
         }
 
         void FollowCameraActor::OnAppear()
@@ -34,40 +36,6 @@ namespace GL
             {
                 NS::EnableVirtualCamera(this, m_vcam.get());
             }
-        }
-
-        void FollowCameraActor::ObserveStep()
-        {
-            const ::PlayerActor* player = NS::Cast<::PlayerActor>(m_vcam->TargetActor());
-            if (player == nullptr)
-            {
-                return;
-            }
-            const GL::Player::CameraTargetState state = player->GetCameraTargetState();
-            m_vcam->SetFollowMotion(state.grounded, state.velocity);
-            m_vcam->SetTargetHeightOffset(state.heightOffset);
-            m_vcam->SetFollowFramingHeld(state.framingHeld);
-            if (state.hasRebound && !m_vcam->SetFollowRebound(state.rebound))
-            {
-                NS_LOG_WARN(Game,
-                            "突進の向きが壊れていて、反動をカメラへ渡さなかった: ({}, {}, {})",
-                            state.rebound.slamDirection.x,
-                            state.rebound.slamDirection.y,
-                            state.rebound.slamDirection.z);
-            }
-            if (state.hasCharge && !m_vcam->SetFollowCharge(state.charge))
-            {
-                NS_LOG_WARN(Game,
-                            "溜めの状態が壊れていて、追従カメラへ渡さなかった: 溜め量 {}",
-                            state.charge.charge01);
-            }
-        }
-
-        void FollowCameraActor::BodyStep()
-        {
-            // clang-format off
-            if (m_vcam) { m_vcam->Update(this, this); }
-            // clang-format on
         }
 
         void FollowCameraActor::OnDisappear() noexcept

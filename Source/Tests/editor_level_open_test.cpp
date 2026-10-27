@@ -152,7 +152,7 @@ TEST_F(LevelOpenTest, CreateLevelWritesAnEmptySceneWithoutChangingTheCurrentEdit
         std::make_unique<NS::Editor::CompositeCommand>(std::vector<std::unique_ptr<NS::Editor::ICommand>>{}));
     const std::string created = m_folder + "/nested/New Scene";
 
-    ASSERT_TRUE(editor.CreateLevel(created));
+    ASSERT_EQ(editor.CreateLevel(created), NS::Editor::CreateLevelResult::Created);
 
     EXPECT_EQ(editor.CurrentLevelName(), current);
     EXPECT_TRUE(editor.HasUnsavedChanges());
@@ -172,15 +172,16 @@ TEST_F(LevelOpenTest, CreateLevelRejectsExistingInvalidAndPlayModeTargets)
     ASSERT_TRUE(path.has_value());
     NS::Editor::EditorMode editor;
 
-    EXPECT_FALSE(editor.CreateLevel(existing));
+    // 作れない理由を返し、作成の窓はその理由で文を出す。窓が同じ確かめを写さずに済む
+    EXPECT_EQ(editor.CreateLevel(existing), NS::Editor::CreateLevelResult::AlreadyExists);
     const std::optional<std::string> contents = NS::OS::FileSystem::ReadAllText(*path);
     ASSERT_TRUE(contents.has_value());
     EXPECT_EQ(*contents, "do not replace");
-    EXPECT_FALSE(editor.CreateLevel(m_folder + "/../escaped"));
-    EXPECT_FALSE(editor.CreateLevel(""));
+    EXPECT_EQ(editor.CreateLevel(m_folder + "/../escaped"), NS::Editor::CreateLevelResult::BadPath);
+    EXPECT_EQ(editor.CreateLevel(""), NS::Editor::CreateLevelResult::BadPath);
     editor.SetSceneEditableFn([] { return false; });
     const std::string blocked = m_folder + "/blocked";
-    EXPECT_FALSE(editor.CreateLevel(blocked));
+    EXPECT_EQ(editor.CreateLevel(blocked), NS::Editor::CreateLevelResult::NotEditable);
     EXPECT_FALSE(NS::OS::FileSystem::Exists(*NS::Editor::BuildLevelPath(blocked)));
 }
 

@@ -30,6 +30,8 @@ namespace NS
 
             //! dt 秒後の補正した姿勢と速度を保持する。重力は呼び手が速度へ加える
             //! maxStepHeight は登れる段差 m。負は 0、半径 × (1 − cos 45°) までは角を滑って登る
+            //! 前の Step の後に置き直された位置では、前の接地と坂の向きを使わない。置き直していない時の position は、
+            //! 前の Step の後の Position() の写しを渡す (Body::Move がそうする)。計算し直した値は置き直しと読む
             void Step(const Vector3& position, const Vector3& velocity, float dt, float maxStepHeight);
 
             //! 直近の Step 後の位置

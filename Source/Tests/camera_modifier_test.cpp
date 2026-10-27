@@ -2,7 +2,7 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
@@ -17,7 +17,7 @@
 #include <optional>
 #include <type_traits>
 
-// 実カメラは遊びの向きを答えない。向きの口は IUseCamera の補助関数 1 本だけ
+// 実カメラは遊びの向きを答えない。向きの口は IGetCamera の補助関数 1 本だけ
 template <class T>
 concept AnswersForwardHorizontal = requires(const T& camera) { camera.ForwardHorizontal(); };
 static_assert(AnswersForwardHorizontal<NS::CameraManager>);
@@ -196,7 +196,7 @@ TEST(CameraManager, ModifiersApplyInOrder)
 }
 
 // 遊びの向きは仮想カメラから合成する。実カメラは描画の出力で、遊びは読まない
-TEST(IUseCamera, ForwardFollowsTheVirtualCameraNotTheDrawnCamera)
+TEST(IGetCamera, ForwardFollowsTheVirtualCameraNotTheDrawnCamera)
 {
     NS::Scene scene;
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
@@ -212,7 +212,7 @@ TEST(IUseCamera, ForwardFollowsTheVirtualCameraNotTheDrawnCamera)
 }
 
 // 仮想カメラが無い時は管理役が無い時と同じ +Z。描いた実カメラの向きを拾わない
-TEST(IUseCamera, ForwardWithoutAVirtualCameraIsPlusZ)
+TEST(IGetCamera, ForwardWithoutAVirtualCameraIsPlusZ)
 {
     NS::Scene scene;
     scene.MainCamera()->SetPosition(NS::Vector3{});
@@ -275,7 +275,7 @@ TEST(CameraManager, ForwardLeavesOutTheModifiers)
 }
 
 // 窓口の視点も効果の前。揺れの間も位置が揺れない
-TEST(IUseCamera, ViewPoseLeavesOutTheShake)
+TEST(IGetCamera, ViewPoseLeavesOutTheShake)
 {
     NS::Scene scene;
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
@@ -294,7 +294,7 @@ TEST(IUseCamera, ViewPoseLeavesOutTheShake)
     EXPECT_FLOAT_EQ(view->position.z, -5.0f);
 }
 
-TEST(IUseCamera, ActorReachesSceneCameraManager)
+TEST(IGetCamera, ActorReachesSceneCameraManager)
 {
     NS::Scene scene;
     NS::SceneActor* actor = scene.SpawnActor<NS::SceneActor>("SceneActor");

@@ -16,7 +16,8 @@ namespace NS
     namespace OS
     {
         class Input;
-    }
+        class InputPresses;
+    } // namespace OS
 } // namespace NS
 namespace NS
 {
@@ -34,6 +35,16 @@ namespace NS
     namespace Editor
     {
         class IActorSnapshotApplier;
+
+        //! CreateLevel の答え。作れなかった時は理由を返し、作成の窓が理由ごとの文を出す
+        enum class CreateLevelResult : uint8
+        {
+            Created,
+            BadPath,       //!< 名前か保存先のフォルダに使えない文字がある
+            AlreadyExists, //!< 同じ名前のファイルがある。上書きしない
+            NotEditable,   //!< 編集モードでない
+            WriteFailed,   //!< ファイルへ書けなかった
+        };
 
         //! グリッド配置・保存・Undo の編集機能。非アクティブ中は編集入力と描画を止める
         class EditorMode : public NonCopyable
@@ -108,7 +119,8 @@ namespace NS
             //! @brief 編集の入力を 1 固定ステップ分進める
             //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
             //! 真の間は R・Ctrl+Z・Ctrl+S・数字のキーを受けない
-            void Tick(bool editShortcutsBlocked) noexcept;
+            //! @param[in] presses 持ち主がこの固定ステップに読んだ押し
+            void Tick(bool editShortcutsBlocked, const OS::InputPresses& presses) noexcept;
 
             //! @brief カーソル位置に置いた時のプレビュー枠を、Scene タブの図形として積む
             //! @param[in,out] shapes 積む先。そのビューを描いたら捨てられる
@@ -143,7 +155,7 @@ namespace NS
 
             [[nodiscard]] CategoryPalette& Palette() noexcept { return m_palette; }
 
-            void HandleSaveLoadInput() noexcept;
+            void HandleSaveLoadInput(const OS::InputPresses& presses) noexcept;
 
             //! 保存 / 読込のモーダルを描き、確定した操作をその場で実行する
             void RenderFileBrowser() noexcept;
@@ -161,7 +173,7 @@ namespace NS
             //! 名前の無いまま実在するファイルを読めなかった時は、終了の保存の書き先を退避の名前にする
             bool OpenLevel(std::string_view name) noexcept;
             // 現在の編集内容と履歴を保ち、既存ファイルを上書きしない
-            [[nodiscard]] bool CreateLevel(std::string_view name) noexcept;
+            [[nodiscard]] CreateLevelResult CreateLevel(std::string_view name) noexcept;
 
             //! 1 手戻す。戻せたら true。メニューとキーが同じ入口で呼ぶ
             bool PerformUndo() noexcept;
@@ -174,7 +186,6 @@ namespace NS
             void RequestSave() noexcept;
             //! 名前を付けて保存のモーダルを開く
             void OpenSaveModal() noexcept { m_fileBrowser.OpenSaveModal(m_currentLevelName); }
-            void OpenLoadModal() noexcept { m_fileBrowser.OpenLoadModal(); }
 
         private:
             std::function<nlohmann::json()> m_captureLevel;
@@ -212,9 +223,9 @@ namespace NS
             Quaternion m_displayedYawQuat{Quaternion::Identity};
 
             void UpdateCursorFromInput() noexcept;
-            void HandlePlaceDeleteInput() noexcept;
-            void HandleRotationInput() noexcept;
-            void HandleUndoRedoInput() noexcept;
+            void HandlePlaceDeleteInput(const OS::InputPresses& presses) noexcept;
+            void HandleRotationInput(const OS::InputPresses& presses) noexcept;
+            void HandleUndoRedoInput(const OS::InputPresses& presses) noexcept;
 
             //! 差した関数の答え。シーンを変える関数は全部、頭でこれを見る
             [[nodiscard]] bool IsSceneEditable() const noexcept;

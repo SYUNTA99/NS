@@ -91,6 +91,20 @@ TEST_F(ColliderSlopeLanding, JumpingOffAWalkableSlopeLeavesTheGround)
     EXPECT_GT(m_body.Velocity().y, 0.0f);
 }
 
+TEST_F(ColliderSlopeLanding, PlacedOnFlatFloorDoesNotFollowTheOldSlope)
+{
+    // 坂に立ったまま平らな床の上へ置き直す。前の坂の向きで速さを写すと、登る向きの縦の速さが付いて床から浮く
+    m_scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{30.0f, -0.5f, 0.0f}, NS::Quaternion::Identity, NS::Vector3{5.0f, 0.5f, 5.0f}),
+                             NS::Phys::ObjectLayers::Terrain);
+    ASSERT_TRUE(m_body.IsGrounded());
+    const float standingY = m_collider.CapsuleHalfHeight() + m_collider.CapsuleRadius();
+    m_root.SetPosition(NS::Vector3{30.0f, standingY, 0.0f});
+
+    Step(NS::Vector3{0.0f, k_GravityStep, 8.0f});
+    EXPECT_TRUE(m_body.IsGrounded());
+    EXPECT_NEAR(m_root.Position().y, standingY, 0.02f);
+}
+
 TEST_F(ColliderSlopeLanding, RunningDownAWalkableSlopeStaysGrounded)
 {
     // 下る向きの水平の速さだけで進むと、坂の面が足の下から離れて毎フレーム宙に浮く

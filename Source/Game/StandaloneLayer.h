@@ -3,6 +3,7 @@
 #include "NSlib/App/Layer.h"
 
 #include "NSlib/Core/Types.h"
+#include "NSlib/Core/Windows/InputReader.h"
 
 //! @brief 単体構成のカーソルと Esc の操作
 //! @details 最初の Esc でカーソルを出し、表示中の Esc で終了する
@@ -24,4 +25,7 @@ public:
 
     //! 非表示ならカーソルを解放し、表示中なら終了する
     [[nodiscard]] static EscapeResponse ResolveEscape(bool cursorVisible) noexcept;
+
+private:
+    NS::OS::InputReader m_inputReader; // 固定フレームごとに読む
 };

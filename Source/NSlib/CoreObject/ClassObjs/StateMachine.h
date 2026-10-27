@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/CoreObject/IUse/IUseState.h"
+#include "NSlib/CoreObject/IGet/IGetState.h"
 #include "NSlib/CoreObject/Object.h"
 
 #include <memory>

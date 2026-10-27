@@ -34,6 +34,7 @@
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -608,6 +609,11 @@ void LevelEditorController::TogglePlayPause() noexcept
     if (m_scene != nullptr)
     {
         m_scene->SetSimulationPaused(!m_scene->IsSimulationPaused());
+        // 止めている間の押し (パネルのクリック・値の打ち込み) を、動かし直した世界へ渡さない
+        if (!m_scene->IsSimulationPaused())
+        {
+            DiscardPlayerPresses();
+        }
         // 固定したままだと Inspector を触れず、プレイ中に値を調整する動線が消える。止めている間は解く
         // 再開は Game が映っている時だけ固定へ戻す。Scene を見ている時はタブを押せるよう出したまま
         if (m_mode == Mode::Play)
@@ -716,20 +722,24 @@ void LevelEditorController::Setup(std::string_view startLevelName)
     m_playBaseline = m_scene->ToJson();
     LeavePlayForEdit();
     m_mode = Mode::Edit;
+    bool opened = false;
     if (!startLevelName.empty())
     {
-        if (!m_editor.OpenLevel(startLevelName))
+        opened = m_editor.OpenLevel(startLevelName);
+        if (!opened)
         {
             NS_LOG_ERROR(App, "起動シーンを開けなかった。 空のシーンで編集を始める: {}", startLevelName);
         }
     }
-    // 選択候補はこの後に今の実体から集めるので、初回 Tick の貼り直しを省く
+    // 選択候補は読み込みの関数かこの後に今の実体から集めるので、初回 Tick の貼り直しを省く
     m_editor.ClearLevelDirty();
-
-    FocusLoadedScene();
-
-    // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
-    RefreshGizmoSelectables();
+    // 開けた時は、読み込みの関数が視点を合わせて選択候補を集め終えている
+    if (!opened)
+    {
+        FocusLoadedScene();
+        // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
+        RefreshGizmoSelectables();
+    }
 }
 
 void LevelEditorController::FocusLoadedScene() noexcept
@@ -793,6 +803,8 @@ void LevelEditorController::EnterPlay() noexcept
         cameras->BeginBlendFrom(m_editorCamera.Pose());
     }
     m_scene->SetSimulationEnabled(true);
+    // 編集の間の押し (配置のクリック・ショートカット) を、プレイの最初の歩へ渡さない
+    DiscardPlayerPresses();
 
     // プレイ突入はカーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
     ApplyPlayCursor(NS::Editor::PlayCursor::Captured);
@@ -834,7 +846,21 @@ void LevelEditorController::RequestStepFrame() noexcept
     {
         return;
     }
+    // 止めている間の押しを、コマ送りの 1 歩へ渡さない
+    DiscardPlayerPresses();
     m_scene->StepSimulation();
+}
+
+void LevelEditorController::DiscardPlayerPresses() noexcept
+{
+    if (m_scene == nullptr)
+    {
+        return;
+    }
+    if (PlayerActor* player = FindPlayer(m_scene->Actors()))
+    {
+        player->Input().DiscardUnreadPresses();
+    }
 }
 
 void LevelEditorController::LeavePlayForEdit()
@@ -978,11 +1004,13 @@ void LevelEditorController::SetSceneViews(std::vector<NS::SceneView> views)
 
 void LevelEditorController::Tick()
 {
+    // 編集とプレイのどちらの歩も読む。読まない歩を挟むと、その間の押しが次に読んだ歩へ持ち越される
+    const NS::OS::InputPresses presses = m_inputReader.Read();
     // プレイ中のクリア / 死亡は応答部品が出荷と同じ手順で完結させる
     // editor は割り込まず、編集へ戻るのは Tab / Pause modal の明示操作だけ
     if (m_mode == Mode::Edit)
     {
-        TickEdit();
+        TickEdit(presses);
         return;
     }
 
@@ -992,13 +1020,13 @@ void LevelEditorController::Tick()
     {
         return;
     }
-    if (app->Input().Keyboard().IsPressed(NS::OS::Key::Escape) && !app->Window().IsCursorVisible())
+    if (presses.WasPressed(NS::OS::Key::Escape) && !app->Window().IsCursorVisible())
     {
         ApplyPlayCursor(NS::Editor::PlayCursor::Released);
     }
 }
 
-void LevelEditorController::TickEdit()
+void LevelEditorController::TickEdit(const NS::OS::InputPresses& presses)
 {
     NS::Application* app = NS::Application::Get();
     if (app == nullptr)
@@ -1007,13 +1035,13 @@ void LevelEditorController::TickEdit()
     }
 
     // F5 のシェーダ再読込は編集時だけ。プレイ時は UI 表示の切替に使う
-    if (!m_editShortcutsBlocked && app->Input().Keyboard().IsPressed(NS::OS::Key::F5))
+    if (!m_editShortcutsBlocked && presses.WasPressed(NS::OS::Key::F5))
     {
         app->Assets().ReloadAllShaders();
     }
 
     // Esc: Object モードで選択中ならまず選択解除に使い終了させない
-    if (app->Input().Keyboard().IsPressed(NS::OS::Key::Escape))
+    if (presses.WasPressed(NS::OS::Key::Escape))
     {
         if (m_gizmoToolActive && m_gizmo.Selected() != nullptr)
         {
@@ -1063,7 +1091,7 @@ void LevelEditorController::TickEdit()
 
         const NS::Matrix vp = Cameras()->ViewProjection();
         const bool wasDragging = m_gizmoWasDragging;
-        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked);
+        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked, presses);
 
         // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
         CaptureSelectionFromGizmo();
@@ -1101,7 +1129,7 @@ void LevelEditorController::TickEdit()
 
     // 掴んでいる間は選択の貼り直しを飛ばすので、undo が旧 Transform を指す
     m_editor.SetUndoRedoSuppressed(m_gizmo.IsDragging());
-    m_editor.Tick(m_editShortcutsBlocked);
+    m_editor.Tick(m_editShortcutsBlocked, presses);
     if (m_editor.IsLevelDirty())
     {
         // grid 編集・undo・読込は applier / reload がアクターを組み直し済。候補と gizmo を今の実体へ貼り直す

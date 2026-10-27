@@ -11,7 +11,7 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -44,11 +44,10 @@ namespace
         KeyPress& operator=(const KeyPress&) = delete;
     };
 
-    // 本番の入力の段と PlayerActor の段を 1 歩ずつ回す
+    // 本番と同じく、機器を読む PlayerActor の段を 1 歩回す
     void StepPlayer(PlayerActor* player)
     {
         NS_ASSERT(Game, player != nullptr, "StepPlayer: 渡したアクターか部品が無い");
-        player->ReadInput();
         player->Update();
     }
 
@@ -237,7 +236,7 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
     player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     for (int i = 0; i < 5; ++i)
     {
-        player->Update();
+        player->Update(false);
     }
     const float lockedSpeed = player->Body().LateralVelocity().Length();
     ASSERT_GT(lockedSpeed, 0.0f);

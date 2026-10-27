@@ -129,7 +129,6 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
     EXPECT_NE(NS::ClassObjFields(prototype, "Input"), nullptr);
     EXPECT_EQ(NS::ClassObjFields(prototype, "PlayerInputRelay"), nullptr);
     EXPECT_NE(player.GetStateMachine(), nullptr);
-    EXPECT_EQ(player.Phase(), NS::UpdatePhase::Player);
     EXPECT_NE(NS::ClassObjFields(prototype, "ImpactResolver"), nullptr);
     EXPECT_NE(player.HitReactionClassObj(), nullptr);
     const NS::HitSensor* body = player.BodySensorClassObj();
@@ -137,32 +136,39 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
     EXPECT_TRUE(GL::Level::IsSensorKind(body, GL::Level::SensorKind::PlayerBody));
 }
 
-TEST(SensorKinds, SetKindIsSeenByIsKindOnlyForThatKind)
+TEST(SensorKinds, EachBodySensorIsOnlyItsOwnKind)
 {
-    // 付けた種類にだけ真で、他の種類と未設定には偽
-    NS::ShapeHitSensor sensor{nullptr};
+    // 自機・置物・ゴールの体のセンサーは、宣言した種類にだけ真で、他の種類と未設定には偽
+    const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
+    const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
+    const std::unique_ptr<GL::Level::GoalActor> goal = NS::CreateActor<GL::Level::GoalActor>();
+    struct BodyCase
+    {
+        const NS::HitSensor* sensor;
+        GL::Level::SensorKind kind;
+    };
+    const BodyCase cases[] = {
+        {player->BodySensorClassObj(), GL::Level::SensorKind::PlayerBody},
+        {prop->BodySensorClassObj(), GL::Level::SensorKind::MapObjBody},
+        {goal->BodySensorClassObj(), GL::Level::SensorKind::Area},
+    };
     const GL::Level::SensorKind kinds[] = {
         GL::Level::SensorKind::PlayerBody, GL::Level::SensorKind::MapObjBody, GL::Level::SensorKind::Area};
-    for (const GL::Level::SensorKind set : kinds)
+    for (const BodyCase& body : cases)
     {
-        GL::Level::SetSensorKind(&sensor, set);
+        ASSERT_NE(body.sensor, nullptr);
         for (const GL::Level::SensorKind asked : kinds)
         {
-            EXPECT_EQ(GL::Level::IsSensorKind(&sensor, asked), set == asked);
+            EXPECT_EQ(GL::Level::IsSensorKind(body.sensor, asked), body.kind == asked);
         }
-        EXPECT_FALSE(GL::Level::IsSensorKind(&sensor, GL::Level::SensorKind::Unset));
+        EXPECT_FALSE(GL::Level::IsSensorKind(body.sensor, GL::Level::SensorKind::Unset));
     }
 }
 
-TEST(SensorKinds, NewSensorIsUnsetAndUnsetCanBeWrittenBack)
+TEST(SensorKinds, NewSensorIsUnset)
 {
     // 作ったばかりのセンサーはどの種類でもない。付け忘れたセンサーが黙って体当たりの相手にならない
     NS::ShapeHitSensor sensor{nullptr};
     EXPECT_EQ(sensor.Kind(), 0u);
     EXPECT_FALSE(GL::Level::IsSensorKind(&sensor, GL::Level::SensorKind::MapObjBody));
-    // 未設定を書くと未設定へ戻る
-    GL::Level::SetSensorKind(&sensor, GL::Level::SensorKind::Area);
-    GL::Level::SetSensorKind(&sensor, GL::Level::SensorKind::Unset);
-    EXPECT_FALSE(GL::Level::IsSensorKind(&sensor, GL::Level::SensorKind::Area));
-    EXPECT_EQ(sensor.Kind(), 0u);
 }

@@ -49,6 +49,11 @@ namespace NS
                 // 長さ 1 の事象は始まりのフレームだけを占める
                 range.last = std::max(range.last, event.start + std::max(event.length, 1) - 1);
             }
+            // 長さを決めた動作は、事象が無くても状態の終わりまでを見せる
+            if (action.length > 0)
+            {
+                range.last = std::max(range.last, action.length - 1);
+            }
             if (preview == nullptr || preview->frames.empty())
             {
                 return range;

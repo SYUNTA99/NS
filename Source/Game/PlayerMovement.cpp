@@ -2,6 +2,7 @@
 
 #include "Game/Level/AirGravity.h"
 #include "Game/Level/ImpactOutcome.h"
+#include "Game/Player/PlayerAcceleration.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -165,7 +166,7 @@ void PlayerActor::AccelerateToInputDirection(float dt) noexcept
         acceleration *= scale;
         turningDrag *= scale;
     }
-    body.Accelerate(direction, turningDrag, acceleration, topSpeed, dt);
+    GL::Player::Accelerate(&body, direction, turningDrag, acceleration, topSpeed, dt);
 }
 
 void PlayerActor::StartAirControlReturn() noexcept
@@ -189,12 +190,12 @@ void PlayerActor::AdvanceAirControlReturn(float dt) noexcept
 
 void PlayerActor::ApplyFriction(float dt) noexcept
 {
-    m_body->Decelerate(m_params->m_friction, dt);
+    GL::Player::Decelerate(m_body.get(), m_params->m_friction, dt);
 }
 
 void PlayerActor::ApplyBrake(float dt) noexcept
 {
-    m_body->Decelerate(m_params->m_deceleration, dt);
+    GL::Player::Decelerate(m_body.get(), m_params->m_deceleration, dt);
 }
 
 void PlayerActor::Jump(float) noexcept
@@ -275,7 +276,7 @@ void PlayerActor::AccelerateDuringRebound(float dt) noexcept
     // 横入力で反動方向を消さないよう、入力からずれた速度は削らない
     const float turningDrag = 0.0f;
     // 明けのフレームは止める前の接地のフラグが残っている。接地を見て地上の加速度を選ぶと、そのフレームだけ大きく曲がる
-    body.Accelerate(direction, turningDrag, m_params->m_reboundAirAcceleration, topSpeed, dt);
+    GL::Player::Accelerate(&body, direction, turningDrag, m_params->m_reboundAirAcceleration, topSpeed, dt);
 }
 
 void PlayerActor::BeginSkid() noexcept
@@ -400,14 +401,18 @@ namespace
             faceNormal,
             top,
         };
-        // 登り終えた体の中心まで上面の上が空いていなければ縁ではない。オーバーハングの下では掴めない
+        // 登り終えた体が地形に入るなら縁ではない。オーバーハングと低い天井の下では掴めない。
+        // 体と同じ太さで、上面から半径だけ上から頭の上端までを見る。足元は上面に触れるので見ない
         const NS::Vector3 mantleEnd = MantleEnd(collider, halfHeight, ledge);
-        float blockedDistance = 0.0f;
-        if (NS::RaycastCollision(&collider,
-                                 NS::Vector3{mantleEnd.x, top + radius, mantleEnd.z},
-                                 NS::Vector3{0.0f, 1.0f, 0.0f},
-                                 mantleEnd.y - top - radius,
-                                 blockedDistance))
+        const float headTop = mantleEnd.y + halfHeight + radius;
+        const float lowestCenter = top + 2.0f * radius;
+        const float highestCenter = std::max(lowestCenter, headTop - radius);
+        const NS::Phys::Capsule climbed{
+            .center = NS::Vector3{mantleEnd.x, 0.5f * (lowestCenter + highestCenter), mantleEnd.z},
+            .halfHeight = 0.5f * (highestCenter - lowestCenter),
+            .radius = radius,
+        };
+        if (NS::OverlapsCapsuleCollision(&collider, climbed))
         {
             return false;
         }
@@ -459,16 +464,18 @@ bool PlayerActor::HoldLedge() noexcept
 {
     NS::Body& body = *m_body;
     float top = 0.0f;
-    if (!FindLedgeTopAt(Root().Position(), top))
+    NS::Vector3 faceNormal{};
+    NS::Vector3 hangPos{};
+    if (!FindLedgeTopAt(Root().Position(), top, faceNormal, hangPos))
     {
         DropLedge();
         return false;
     }
 
     m_ledgeTopY = top;
-    NS::Vector3 pos = Root().Position();
-    pos.y = m_ledgeTopY - m_collider->CapsuleHalfHeight();
-    Root().SetPosition(pos);
+    m_ledgeFaceNormal = faceNormal;
+    m_facingDir = -faceNormal;
+    Root().SetPosition(hangPos);
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     return true;
 }
@@ -513,17 +520,32 @@ void PlayerActor::Shimmy(float dt) noexcept
 {
     if (ClimbRight() != 0.0f)
     {
-        // 面法線に水平直交する縁方向。動いても面からの距離は変わらない
+        // 面法線に水平直交する縁方向へ進め、移動先で見つけた面から半径だけ外と上面の高さへ置き直す。面が折れていても面に沿う
         const NS::Vector3 pos = Root().Position();
         const NS::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
-        NS::Vector3 shimmied = pos;
-        shimmied.x += alongDir.x * ClimbRight() * m_params->m_ledgeShimmySpeed * dt;
-        shimmied.z += alongDir.z * ClimbRight() * m_params->m_ledgeShimmySpeed * dt;
+        const NS::Vector3 step = alongDir * (ClimbRight() * m_params->m_ledgeShimmySpeed * dt);
+        const NS::Vector3 shimmied = pos + step;
         // 移動先にも掴める縁が続いている時だけ動く。端なら止めて落とさない
         float top = 0.0f;
-        if (FindLedgeTopAt(shimmied, top))
+        NS::Vector3 faceNormal{};
+        NS::Vector3 hangPos{};
+        if (FindLedgeTopAt(shimmied, top, faceNormal, hangPos))
         {
-            Root().SetPosition(shimmied);
+            // 面が手前へ折れている所で見つけた面の前へ置くと、面に沿って進んだ向きの逆へ跳ぶ。
+            // その時は見つけた面に垂直な向きだけ寄せる。奥へ折れている所は面の前へ置き、角を回り込む
+            NS::Vector3 placed = hangPos;
+            if (faceNormal.x * step.x + faceNormal.z * step.z < 0.0f)
+            {
+                const NS::Vector3 offset = shimmied - hangPos;
+                const float awayFromFace = offset.x * faceNormal.x + offset.z * faceNormal.z;
+                placed = NS::Vector3{
+                    shimmied.x - faceNormal.x * awayFromFace, hangPos.y, shimmied.z - faceNormal.z * awayFromFace};
+            }
+            // 折れた面へ持ち替えたら、向きも上面の高さも新しい面に合わせる
+            m_ledgeFaceNormal = faceNormal;
+            m_ledgeTopY = top;
+            m_facingDir = -faceNormal;
+            Root().SetPosition(placed);
         }
     }
 }
@@ -567,16 +589,23 @@ void PlayerActor::UpdateLedgeClimb(float dt) noexcept
     }
 }
 
-bool PlayerActor::FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept
+bool PlayerActor::FindLedgeTopAt(const NS::Vector3& hangPos,
+                                 float& outTop,
+                                 NS::Vector3& outFaceNormal,
+                                 NS::Vector3& outHangPos) const noexcept
 {
     const NS::Collider& collider = *m_collider;
     const NS::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
-    const LedgeBand band{hangPos.y + collider.CapsuleHalfHeight(), m_params->m_ledgeGrabBelowHand, 0.0f};
+    // 手の高さは前のフレームに測った上面。撃った線で測り直す上面は誤差で手より少し上に出るので、その分を許す
+    const LedgeBand band{
+        hangPos.y + collider.CapsuleHalfHeight(), m_params->m_ledgeGrabBelowHand, m_params->m_ledgeHoldAboveHand};
     LedgeSpot ledge{};
     if (!FindLedge(collider, hangPos, inward, band, m_params->m_ledgeReach, collider.CapsuleHalfHeight(), ledge))
     {
         return false;
     }
     outTop = ledge.topY;
+    outFaceNormal = ledge.faceNormal;
+    outHangPos = ledge.hangPos;
     return true;
 }

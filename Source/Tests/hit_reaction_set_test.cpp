@@ -1,4 +1,5 @@
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "Game/Level/SensorKinds.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -354,13 +355,16 @@ namespace
         void OnInit() override
         {
             CreateClassObj(m_model);
-            NS::ShapeHitSensor* sensor = CreateClassObj<NS::HitSensor, NS::ShapeHitSensor>(m_bodySensor, this);
-            NS::InitHitSensor(this, sensor);
-            sensor->SetSphere(0.5f);
+            NS::Cast<NS::ShapeHitSensor>(m_bodySensor.get())->SetSphere(0.5f);
             CreateClassObj(m_hitReaction);
         }
-        void StateStep() override { ++stateSteps; }
+        void AfterStateStep() override { ++stateSteps; }
         void BodyStep() override { ++bodySteps; }
+
+    private:
+        NS_SENSORS_BEGIN()
+        NS_SENSOR(m_bodySensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSORS_END()
     };
 } // namespace
 
@@ -431,7 +435,7 @@ namespace
         // 1 固定フレーム。アクター・カメラ・画面とパッドの係の順に回す
         void Step()
         {
-            scene.ExecutePhase(NS::UpdatePhase::Triggers);
+            scene.ExecutePhase(NS::UpdatePhase::Actors);
             scene.ExecutePhase(NS::UpdatePhase::Camera);
             scene.ExecutePhase(NS::UpdatePhase::RenderPrep);
         }
@@ -1056,7 +1060,9 @@ TEST(ShippedHitReactions, CenterShrinksBeforeContactAndMissDoesNot)
     EXPECT_LT(std::get<NS::HitShapeItem>(squash->item).along.Evaluate(0.0f), shape.along.Evaluate(6.0f));
 
     EXPECT_EQ(FindShippedAction(player, "BeforeContactMiss"), nullptr);
-    EXPECT_EQ(player.actions.size(), 1u);
+    // 当たる直前の動作は真ん中の 1 つだけ。残りはエアダッシュの長さを持つ動作
+    EXPECT_NE(FindShippedAction(player, "AirDash"), nullptr);
+    EXPECT_EQ(player.actions.size(), 2u);
 }
 
 // 紫で当てた時だけ、止めの明けに紫の明けの束で世界を遅くする。外れと赤の明けの束は世界の速さに触らない

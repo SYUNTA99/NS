@@ -52,9 +52,6 @@ namespace GL
             [[nodiscard]] float StickDeadzone() const noexcept { return m_stickDeadzone; }
             //! 入力方向への水平速度成分がこの値未満ならブレーキに入る
             [[nodiscard]] float BrakeThreshold() const noexcept { return m_brakeThreshold; }
-            //! 欄「エアダッシュの距離」を「エアダッシュの秒」で進む速さ (m/s)。返る速さの元にもなる
-            //! 秒が 0 以下か非数なら 0 を返し、ダッシュは動かない
-            [[nodiscard]] float AirDashSpeed() const noexcept;
             //! 欄「上昇重力」「下降重力」「頂点滞空 Vy」「頂点滞空倍率」の写し。重力の強さを選ぶ ChooseGravity へ渡す
             [[nodiscard]] GL::Level::AirGravity Gravity() const noexcept
             {
@@ -117,6 +114,7 @@ namespace GL
             NS_FIELD(m_maxStepHeight, "登れる段の高さ")
             NS_FIELD(m_ledgeGrabBelowHand, "掴める縁の下向き距離")
             NS_FIELD(m_ledgeReach, "縁へ手を伸ばす距離")
+            NS_FIELD(m_ledgeHoldAboveHand, "掴まっている縁の上向きの許し")
             NS_FIELD(m_ledgeClimbDuration, "よじ登りの所要時間")
             NS_FIELD(m_ledgeShimmySpeed, "縁の横移動速度")
             NS_GROUP("突進")
@@ -142,7 +140,6 @@ namespace GL
             NS_FIELD(m_overchargePowerMax, "紫の威力の上限")
             NS_GROUP("エアダッシュ")
             NS_FIELD(m_airDashDistance, "エアダッシュの距離")
-            NS_FIELD(m_airDashSeconds, "エアダッシュの秒")
             NS_FIELD(m_airDashExitSpeed, "エアダッシュ後に残る速さ")
             NS_GROUP("地形の反動")
             NS_FIELD(m_reboundTableDivisions, "向きの表の分割数")
@@ -271,6 +268,8 @@ namespace GL
             float m_maxStepHeight = 0.25f;
             float m_ledgeGrabBelowHand = 0.5f;
             float m_ledgeReach = 0.3f;
+            // 掴まっている間に測り直す上面が、手より上に出てよい高さ (m)。撃った線の誤差で手を放さないための余白
+            float m_ledgeHoldAboveHand = 0.01f;
             float m_ledgeClimbDuration = 0.25f;
             float m_ledgeShimmySpeed = 2.0f;
             float m_turnSpeed = 970.0f;
@@ -286,8 +285,7 @@ namespace GL
             float m_slamAimFadeTime = 0.19f;
             float m_reboundRiseGravityScale = 0.5f;
             float m_reboundAirAcceleration = 2.0f;
-            float m_airDashDistance = 4.4f;   // m。当たらなければこの距離を秒で進む
-            float m_airDashSeconds = 0.22f;   // 当たらなかった時に終わる秒
+            float m_airDashDistance = 4.4f;   // m。当たらなければ、動作 "AirDash" の length の歩でこの距離を進む
             float m_airDashExitSpeed = 8.0f;  // 当たらずに終わったフレームに落とす速さ (m/s)
             int m_reboundTableDivisions = 8;  // 8・12・16 のうち一番近い物へ丸める
             bool m_reboundTableWithPitch = true; // 偽なら縦・横・奥の 3 枚の円の表

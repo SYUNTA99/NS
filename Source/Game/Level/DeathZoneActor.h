@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Level/SensorKinds.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 namespace GL
@@ -13,10 +14,13 @@ namespace GL
         public:
             NS_REFLECT_NONE(DeathZoneActor, NS::SceneActor)
 
-            void AttackSensor(NS::HitSensor* self, NS::HitSensor* other) override;
+            void OnSensorEnter(NS::HitSensor* self, NS::HitSensor* other) override;
 
-        protected:
-            void OnInit() override;
+        private:
+            // 大きさは .actor の欄
+            NS_SENSORS_BEGIN()
+            NS_SENSOR(m_bodySensor, SensorKind::Area, NS::HitSensorShape::Box)
+            NS_SENSORS_END()
         };
     } // namespace Level
 } // namespace GL

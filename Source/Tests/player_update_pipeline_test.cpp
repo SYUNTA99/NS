@@ -16,14 +16,14 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -39,7 +39,7 @@
 
 namespace
 {
-    // 裁定の観測と決定を、自機の段と同じ引数で単独に呼ぶ。答えにある自機を動かす事はしない
+    // 裁定の観測と決定を、自機の DecideStep と同じ引数で単独に呼ぶ。答えにある自機を動かす事はしない
     void ObserveImpact(PlayerActor* player)
     {
         NS_ASSERT(Game, player != nullptr, "ObserveImpact: 渡したアクターか部品が無い");
@@ -304,7 +304,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
     EXPECT_TRUE(player->IsHitStopping());
     EXPECT_FALSE(player->CanMoveBody());
     const NS::Vector3 position = player->Root().Position();
-    const NS::uint32 stateStep = player->States().StepsInState();
+    const NS::uint32 stateStep = player->States().StepCount();
     // 止めが明けて反動へ移る歩までは止まったまま
     bool released = false;
     for (int frame = 0; frame < 30 && !released; ++frame)
@@ -316,7 +316,7 @@ TEST(PlayerUpdatePipeline, HitStopHoldsTheBodyWithoutSwitchingItOff)
         }
         SCOPED_TRACE(frame);
         ExpectSameVector(player->Root().Position(), position);
-        EXPECT_EQ(player->States().StepsInState(), stateStep);
+        EXPECT_EQ(player->States().StepCount(), stateStep);
     }
     EXPECT_TRUE(released);
     EXPECT_FALSE(player->IsHitStopping());
@@ -477,7 +477,7 @@ TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)
     ASSERT_NE(player, nullptr);
     scene.SetSimulationEnabled(false);
     player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
-    // 入力の段が実機の入力で歩きを消しても、回っていればこの速さで動く
+    // 自機の更新が実機の入力で歩きを消しても、回っていればこの速さで動く
     player->Body().SetVelocity(NS::Vector3{0.0f, 2.0f, 0.0f});
     const NS::Vector3 position = player->Root().Position();
 
