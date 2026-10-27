@@ -54,11 +54,12 @@ namespace
                           .flatForward = NS::Vector3{0, 0, 1}};
     }
 
-    // 上限 90°・同じに見なす差 10°・後ろから見る角度 45°・表は 8 分割
+    // 上限 90°・同じに見なす差 10°・奥と手前の余裕 10°・後ろから見る角度 45°・表は 8 分割
     ReboundChoiceLimits Limits()
     {
         return ReboundChoiceLimits{.maxRadians = NS::k_Pi / 2.0f,
                                    .screenTieRadians = NS::k_Pi / 18.0f,
+                                   .depthSlackRadians = NS::k_Pi / 18.0f,
                                    .behindViewRadians = NS::k_Pi / 4.0f,
                                    .stepRadians = DirectionStepRadians(8)};
     }
@@ -198,6 +199,24 @@ TEST(ReboundDirectionsTest, DepthNeverExceedsWhatTheDashHadBeforeTheHit)
     const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
     const ReboundHit hit = HitOn(table, NS::Vector3{0, 0, 1}, NS::Vector3{0.5f, 0.0f, -std::sqrt(0.75f)});
     const ReboundChoice choice = ChooseReboundDirection(table, hit, SideCamera(), 0.0f, 1.0f, Limits());
+    EXPECT_EQ(choice.result, ReboundInputResult::Shifted);
+    ExpectNear(choice.direction, NS::Vector3{0.0f, k_Diagonal, -k_Diagonal});
+}
+
+TEST(ReboundDirectionsTest, DepthLimitAllowsASlightlyTurnedCamera)
+{
+    // 横から見るカメラが 0.5° 回り、当たる前の向きも同じだけずれていて、当たる前の奥の成分が 0 になる。
+    // 斜めの壁は反射を奥へ向けるが、上の入力で画面の左上を選ぶ。カメラのずれで左上の奥の成分が 0 を超えても外さない
+    const float yaw = NS::k_Pi / 360.0f;
+    const ScreenAxes camera{.right = NS::Vector3{-std::sin(yaw), 0.0f, -std::cos(yaw)},
+                            .up = NS::Vector3{0, 1, 0},
+                            .forward = NS::Vector3{std::cos(yaw), 0.0f, -std::sin(yaw)},
+                            .flatForward = NS::Vector3{std::cos(yaw), 0.0f, -std::sin(yaw)}};
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const ReboundHit hit =
+        HitOn(table, NS::Vector3{std::sin(yaw), 0.0f, std::cos(yaw)}, NS::Vector3{k_Diagonal, 0.0f, -k_Diagonal});
+    ExpectNear(hit.assigned, NS::Vector3{1, 0, 0});
+    const ReboundChoice choice = ChooseReboundDirection(table, hit, camera, 0.0f, 1.0f, Limits());
     EXPECT_EQ(choice.result, ReboundInputResult::Shifted);
     ExpectNear(choice.direction, NS::Vector3{0.0f, k_Diagonal, -k_Diagonal});
 }

@@ -60,8 +60,10 @@ namespace GL
                                                       const ScreenInput& input,
                                                       const ReboundChoiceLimits& limits) noexcept
             {
-                // 奥と手前へ飛ぶ量は、当たる前に進んでいた量まで。壁や床の傾きが足した奥と手前の動きは使わない
-                const float depthLimit{std::abs(NS::Dot(hit.incoming, screen.flatForward)) + NS::k_Epsilon};
+                // 奥と手前へ飛ぶ量は、当たる前に進んでいた量まで。壁や床の傾きが足した奥と手前の動きは使わない。
+                // カメラも当たる前の向きも軸にそろう事はほぼ無いので、わずかなずれの分は余裕で通す
+                const float depthLimit{std::abs(NS::Dot(hit.incoming, screen.flatForward)) +
+                                       std::sin(limits.depthSlackRadians) + NS::k_Epsilon};
                 if (!NS::HasPositiveMagnitude(NS::Dot(direction, hit.normal)) ||
                     NS::AngleBetweenUnit(direction, hit.assigned) > limits.maxRadians + NS::k_Epsilon ||
                     std::abs(NS::Dot(direction, screen.flatForward)) > depthLimit)
