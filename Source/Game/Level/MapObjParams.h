@@ -15,15 +15,8 @@ namespace GL
         class MapObjParams : public NS::Object
         {
         public:
-            //! 欄「質量」の値。有限の正でなければ 1
-            [[nodiscard]] float Mass() const noexcept
-            {
-                if (!std::isfinite(m_mass) || m_mass <= 0.0f)
-                {
-                    return 1.0f;
-                }
-                return m_mass;
-            }
+            //! 欄「質量」の値。欄の範囲が有限の正の数だけを書く
+            [[nodiscard]] float Mass() const noexcept { return m_mass; }
             //! 欄「摩擦」の値。有限でなければ 0.6、負は 0
             [[nodiscard]] float Friction() const noexcept
             {
@@ -78,7 +71,7 @@ namespace GL
             [[nodiscard]] int MaxContacts() const noexcept { return std::max(m_maxContacts, 1); }
 
             NS_REFLECT_BEGIN(MapObjParams, NS::Object)
-            NS_PROTECTED_FIELD(m_mass, "質量")
+            NS_PROTECTED_FIELD(m_mass, "質量", NS::FieldRange::Positive())
             NS_FIELD(m_friction, "摩擦")
             NS_FIELD(m_restitution, "跳ね返り")
             NS_FIELD(m_spinPerSpeed, "回転の強さ")

@@ -283,6 +283,56 @@ TEST(CourseDirector, RestartReturnsActorsToTheirStart)
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
 }
 
+// 自機でないアクターが止め始めたヒットストップも、やり直しで解く。残すと出し直したアクターが止まったまま待つ
+TEST(CourseDirector, RestartReleasesAHoldStartedByAnotherActor)
+{
+    nlohmann::json doc = CourseWithPlayer();
+    nlohmann::json rock = NS::MakeActorJson();
+    NS::SetActorJsonFile(rock, "PropActor");
+    NS::SceneJsonActors(doc).push_back(std::move(rock));
+    NS::EnsureUniqueActorIds(doc);
+
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->StartCourse();
+    NS::SceneActor* placed = nullptr;
+    for (NS::SceneActor* actor : scene.Actors())
+    {
+        if (std::string_view{actor->ClassName()} == "PropActor")
+        {
+            placed = actor;
+        }
+    }
+    ASSERT_NE(placed, nullptr);
+    scene.HoldOthers(placed, 30);
+    ASSERT_TRUE(scene.IsHoldingOthers());
+
+    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->RestartCourse();
+    EXPECT_FALSE(scene.IsHoldingOthers());
+}
+
+// リスポーンは自機を出し直さないので、自機が始めた止めは解かない
+TEST(CourseDirector, RespawnKeepsAHoldStartedByThePlayer)
+{
+    NS::Scene scene;
+    scene.ResetFromJson(CourseWithPlayer());
+    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->StartCourse();
+    NS::SceneActor* player = nullptr;
+    for (NS::SceneActor* actor : scene.Actors())
+    {
+        if (std::string_view{actor->ClassName()} == "PlayerActor")
+        {
+            player = actor;
+        }
+    }
+    ASSERT_NE(player, nullptr);
+    scene.HoldOthers(player, 30);
+    ASSERT_TRUE(scene.IsHoldingOthers());
+
+    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->RespawnActors();
+    EXPECT_TRUE(scene.IsHoldingOthers());
+}
+
 TEST(CourseDirector, StartCourseStartsThePlayerAtRestFromThePlacedPose)
 {
     NS::Scene scene;

@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <optional>
 #include <span>
 #include <string>
@@ -153,10 +154,108 @@ namespace NS
         {
             return !value.has_value() || IsFiniteFieldValue(*value);
         }
+        else if constexpr (std::is_same_v<Value, Curve>)
+        {
+            // 使う先頭 count 個だけを見る。count が上限を超えても配列の外は読まない
+            for (uint32 i = 0; i < value.count && i < Curve::k_MaxKeys; ++i)
+            {
+                if (!value.keys[i].IsFinite())
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
         else
         {
             return true;
         }
+    }
+
+    //! @brief 調整値が取ってよい値の範囲。両端を含む
+    //! @details 登録のマクロの付け足しの引数に書く。範囲を付けられるのは float の欄だけ
+    struct FieldRange
+    {
+        float min = -std::numeric_limits<float>::max();
+        float max = std::numeric_limits<float>::max();
+
+        //! k_Epsilon 以上の値。0 と、割る数にすると溢れるほど 0 に近い正の値は範囲の外
+        [[nodiscard]] static constexpr FieldRange Positive() noexcept
+        {
+            return FieldRange{k_Epsilon, std::numeric_limits<float>::max()};
+        }
+        //! 0 以上の値
+        [[nodiscard]] static constexpr FieldRange NonNegative() noexcept
+        {
+            return FieldRange{0.0f, std::numeric_limits<float>::max()};
+        }
+        //! 0 から 1 までの値
+        [[nodiscard]] static constexpr FieldRange Unit() noexcept { return FieldRange{0.0f, 1.0f}; }
+
+        [[nodiscard]] constexpr bool Contains(float value) const noexcept { return value >= min && value <= max; }
+    };
+
+    //! 登録の行に範囲を書かなかった事を表す型。この型を受けた書き込みは範囲を確かめない
+    struct NoFieldRange
+    {
+    };
+
+    //! 欄へ書いた結果。書けなかった時は欄の今の値が残る
+    enum class [[nodiscard]] FieldWriteResult
+    {
+        Written,
+        NonFinite,  // float の成分のどれかが非数か無限大
+        OutOfRange, // 登録の行に書いた範囲の外
+    };
+
+    //! ログに書く、書けなかった理由の文
+    [[nodiscard]] constexpr const char* FieldWriteResultText(FieldWriteResult result) noexcept
+    {
+        switch (result)
+        {
+        case FieldWriteResult::Written:
+            return "書いた";
+        case FieldWriteResult::NonFinite:
+            return "非数か無限大";
+        case FieldWriteResult::OutOfRange:
+            return "範囲の外";
+        }
+        return "不明な結果";
+    }
+
+    // 登録のマクロの付け足しの引数から、見せる名前と範囲を型で拾う。両方を書く時は名前が先
+    // 範囲を先に書くと合う重ね定義が無く、コンパイルエラーになる
+    [[nodiscard]] constexpr const char* FieldLabelOf() noexcept
+    {
+        return nullptr;
+    }
+    [[nodiscard]] constexpr const char* FieldLabelOf(const char* label) noexcept
+    {
+        return label;
+    }
+    [[nodiscard]] constexpr const char* FieldLabelOf(FieldRange) noexcept
+    {
+        return nullptr;
+    }
+    [[nodiscard]] constexpr const char* FieldLabelOf(const char* label, FieldRange) noexcept
+    {
+        return label;
+    }
+    [[nodiscard]] constexpr NoFieldRange FieldRangeOf() noexcept
+    {
+        return NoFieldRange{};
+    }
+    [[nodiscard]] constexpr NoFieldRange FieldRangeOf(const char*) noexcept
+    {
+        return NoFieldRange{};
+    }
+    [[nodiscard]] constexpr FieldRange FieldRangeOf(FieldRange range) noexcept
+    {
+        return range;
+    }
+    [[nodiscard]] constexpr FieldRange FieldRangeOf(const char*, FieldRange range) noexcept
+    {
+        return range;
     }
 
     // 捨てる枝の型検査を避けるため、マクロの外のテンプレートで分岐する
@@ -185,23 +284,41 @@ namespace NS
         }
     }
 
-    template <class Field> void AssignFieldValue(Field& target, const void* in) noexcept
+    //! 非有限か範囲の外なら書かずに理由を返す。ログへの出し方は呼ぶ側が決める
+    template <class Field, class Range>
+    FieldWriteResult AssignFieldValue(Field& target, const void* in, [[maybe_unused]] const Range& range) noexcept
     {
+        if constexpr (std::is_same_v<Range, FieldRange>)
+        {
+            static_assert(std::is_same_v<Field, float>, "範囲を付けられるのは float の欄だけ");
+        }
+
         if constexpr (IsAssetPointer<Field>::value)
         {
             LoadAssetField(target, *static_cast<const std::string*>(in));
+            return FieldWriteResult::Written;
         }
         else if constexpr (std::is_same_v<Field, EffectName>)
         {
             target.name = *static_cast<const std::string*>(in);
+            return FieldWriteResult::Written;
         }
         else
         {
             const Field& value = *static_cast<const Field*>(in);
-            if (IsFiniteFieldValue(value))
+            if (!IsFiniteFieldValue(value))
             {
-                target = value;
+                return FieldWriteResult::NonFinite;
             }
+            if constexpr (std::is_same_v<Range, FieldRange>)
+            {
+                if (!range.Contains(value))
+                {
+                    return FieldWriteResult::OutOfRange;
+                }
+            }
+            target = value;
+            return FieldWriteResult::Written;
         }
     }
 
@@ -219,7 +336,8 @@ namespace NS
         const char* name; // データの名前。保存と読み込みの鍵で、変えると保存済みの値が既定へ戻る
         FieldType type;
         void (*get)(const void* obj, void* outValue) noexcept; // obj から値を outValue へ取り出す
-        void (*set)(void* obj, const void* inValue) noexcept;  // inValue を obj へ書き込む
+        // inValue を obj へ書き込む。非有限か範囲の外なら書かずに理由を返す。[[nodiscard]] は戻り値の型に付ける
+        FieldWriteResult (*set)(void* obj, const void* inValue) noexcept;
         void (*load)(void* obj) = nullptr;                    // 素材の欄の素材を引き直す。ほかの型の欄では何もしない
         AssetKind assetKind = AssetKind::None;
         const char* label = nullptr; // インスペクタに見せる名前。変えても保存の鍵は変わらない
@@ -362,8 +480,10 @@ namespace NS
 //! 宣言済みのメンバを 1 フィールドとして登録する。メンバの宣言はしないので、クラスに別に書く
 //! private も入れ子の struct のメンバ (m_tuning.speed) も書ける
 //! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectName の型で欄の種類が決まる
-//! float と float の組の欄は IsFiniteFieldValue を通るので、非有限値の書き込みは捨てて元の値が残る (NS_ACCESSOR も同じ)
+//! float と float の組と曲線の欄は IsFiniteFieldValue を通るので、非有限値の書き込みは捨てて元の値が残る (NS_ACCESSOR も同じ)
 //! name は保存の鍵。3 つ目に見せる名前を書くと、インスペクタは name の代わりにそれを見せる
+//! float の欄は、見せる名前の後に範囲 (NS::FieldRange) も書ける。範囲の外の書き込みは捨てて元の値が残る
+//! 例: NS_FIELD(m_distance, "距離", NS::FieldRange::Positive()) / NS_FIELD(m_distance, "距離", "見せる名前", NS::FieldRange{0.0f, 1.0f})
 #define NS_FIELD(member, name, ...) NS_FIELD_ENTRY(member, name, NS::FieldScope::Shared, __VA_ARGS__)
 
 //! NS_FIELD に、派生の .actor でも値を変えてよい項目として登録する。引数は NS_FIELD と同じ
@@ -379,10 +499,12 @@ namespace NS
             name,                                                                                                      \
             NS::FieldTypeOf<decltype(Self::member)>(),                                                                 \
             +[](const void* c, void* out) noexcept { NS::ReadFieldValue(static_cast<const Self*>(c)->member, out); },  \
-            +[](void* c, const void* in) noexcept { NS::AssignFieldValue(static_cast<Self*>(c)->member, in); },        \
+            +[](void* c, const void* in) noexcept {                                                                    \
+                return NS::AssignFieldValue(static_cast<Self*>(c)->member, in, NS::FieldRangeOf(__VA_ARGS__));         \
+            },                                                                                                         \
             +[](void* c) { NS::LoadFieldAsset(static_cast<Self*>(c)->member); },                                       \
             NS::AssetKindOf<decltype(Self::member)>(),                                                                 \
-            {__VA_ARGS__},                                                                                             \
+            NS::FieldLabelOf(__VA_ARGS__),                                                                             \
             fieldScope},                                                                                               \
         nullptr},
 
@@ -390,7 +512,7 @@ namespace NS
 #define NS_GROUP(groupName) NS::ReflectEntry{NS::FieldDesc{}, groupName},
 
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
-//! 見せる名前は NS_FIELD と同じく、最後の引数に書く
+//! 見せる名前は NS_FIELD と同じく、最後の引数に書く。範囲 (NS::FieldRange) は書けない
 #define NS_ACCESSOR(ValueType, name, getterCall, setterCall, ...)                                                      \
     NS_ACCESSOR_ENTRY(ValueType, name, getterCall, setterCall, NS::FieldScope::Shared, __VA_ARGS__)
 
@@ -407,10 +529,12 @@ namespace NS
                                    },                                                                                  \
                                    +[](void* c, const void* in) noexcept {                                             \
                                        const ValueType& value = *static_cast<const ValueType*>(in);                    \
-                                       if (NS::IsFiniteFieldValue(value))                                              \
+                                       if (!NS::IsFiniteFieldValue(value))                                             \
                                        {                                                                               \
-                                           static_cast<Self*>(c)->setterCall(value);                                   \
+                                           return NS::FieldWriteResult::NonFinite;                                     \
                                        }                                                                               \
+                                       static_cast<Self*>(c)->setterCall(value);                                       \
+                                       return NS::FieldWriteResult::Written;                                           \
                                    },                                                                                  \
                                    nullptr,                                                                            \
                                    NS::AssetKind::None,                                                                \

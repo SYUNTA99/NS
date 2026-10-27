@@ -114,7 +114,7 @@ namespace
         NS::Vector3 nb = b;
         na.Normalize();
         nb.Normalize();
-        return std::acos(std::clamp(NS::Dot(na, nb), -1.0f, 1.0f));
+        return NS::AngleBetweenUnit(na, nb);
     }
 
     // 宙の自機でエアダッシュを押しても、ダッシュに入らず、回数も減らず、WARN を 1 回出す事を確かめる
@@ -300,6 +300,25 @@ TEST(PlayerAirDashTest, TheDashLengthAndSpeedComeFromTheAirDashAction)
     ASSERT_TRUE(player->IsAirDashing());
     player->Update(false);
     EXPECT_FALSE(player->IsAirDashing());
+}
+
+// エアダッシュの距離は正の数だけを書く。0・負・無限大を読むと今の値を残す
+TEST(PlayerAirDashTest, AirDashDistanceFieldKeepsTheValueOnZeroNegativeAndInfinite)
+{
+    GL::Player::PlayerParams params;
+    const NS::FieldDesc* field = NS::FindField(params.GetReflection(), "エアダッシュの距離");
+    ASSERT_NE(field, nullptr);
+    float before = 0.0f;
+    field->get(&params, &before);
+    // 1e39 は float に収まらず、読むと無限大になる
+    for (const double value : {0.0, -1.0, 1.0e39})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_EQ(NS::ApplyJsonFields(&params, nlohmann::json{{"エアダッシュの距離", value}}), 0u);
+        float after = 0.0f;
+        field->get(&params, &after);
+        EXPECT_EQ(after, before);
+    }
 }
 
 // 動作 "AirDash" が無いか長さを決めていない自機は、押してもエアダッシュに入らない。入ると終わりが来ず宙で止まる

@@ -161,7 +161,7 @@ namespace GL
                     // 真上か真下の縁で水平の成分が無い時は、来た向きへ戻す
                     flatNormal = -forward;
                     NS::Vector3 horizontal{};
-                    if (!NS::IsNearlyZeroHorizontal(normal) &&
+                    if (NS::HasPositiveMagnitudeHorizontal(normal) &&
                         NS::TryNormalizeHorizontal(normal, horizontal))
                     {
                         flatNormal = horizontal;

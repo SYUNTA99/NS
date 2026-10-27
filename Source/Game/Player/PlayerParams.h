@@ -139,7 +139,7 @@ namespace GL
             NS_FIELD(m_overchargeSwayFallbackDistance, "相手がいない時に直す距離")
             NS_FIELD(m_overchargePowerMax, "紫の威力の上限")
             NS_GROUP("エアダッシュ")
-            NS_FIELD(m_airDashDistance, "エアダッシュの距離")
+            NS_FIELD(m_airDashDistance, "エアダッシュの距離", NS::FieldRange::Positive())
             NS_FIELD(m_airDashExitSpeed, "エアダッシュ後に残る速さ")
             NS_FIELD(m_intendedHoldSeconds, "行きたい向きとみなす秒")
             NS_FIELD(m_retiltDegrees, "倒し直しとみなす角度")

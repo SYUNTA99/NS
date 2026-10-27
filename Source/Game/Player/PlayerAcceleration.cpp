@@ -7,19 +7,15 @@
 
 namespace
 {
-    // 水平の長さを drop だけ縮め、drop 以下なら 0 にする
-    void ShrinkHorizontal(float& x, float& z, float drop) noexcept
+    // 水平の長さを drop だけ縮めた水平成分。drop 以下なら 0
+    NS::Vector3 ShrinkHorizontal(const NS::Vector3& v, float drop) noexcept
     {
-        const float length = std::sqrt(x * x + z * z);
+        const float length = NS::HorizontalLength(v);
         if (length <= drop || length == 0.0f)
         {
-            x = 0.0f;
-            z = 0.0f;
-            return;
+            return NS::Vector3{};
         }
-        const float scale = (length - drop) / length;
-        x *= scale;
-        z *= scale;
+        return NS::HorizontalPart(v) * ((length - drop) / length);
     }
 } // namespace
 
@@ -34,8 +30,7 @@ namespace GL
             NS_ASSERT(Game, body != nullptr, "Accelerate: 体が空");
             const NS::Vector3 lateral = body->LateralVelocity();
             float speed = NS::DotHorizontal(direction, lateral);
-            float turningX = lateral.x - direction.x * speed;
-            float turningZ = lateral.z - direction.z * speed;
+            const NS::Vector3 turning = NS::HorizontalPart(lateral - direction * speed);
 
             const float lateralSpeed = NS::HorizontalLength(lateral);
             if (lateralSpeed < topSpeed || speed < 0.0f)
@@ -43,17 +38,14 @@ namespace GL
                 speed = NS::Clamp(speed + acceleration * dt, -topSpeed, topSpeed);
             }
 
-            ShrinkHorizontal(turningX, turningZ, turningDrag * dt);
             body->SetLateralVelocity(
-                NS::Vector3{direction.x * speed + turningX, 0.0f, direction.z * speed + turningZ});
+                NS::HorizontalPart(direction * speed) + ShrinkHorizontal(turning, turningDrag * dt));
         }
 
         void Decelerate(NS::Body* body, float deceleration, float dt) noexcept
         {
             NS_ASSERT(Game, body != nullptr, "Decelerate: 体が空");
-            NS::Vector3 lateral = body->LateralVelocity();
-            ShrinkHorizontal(lateral.x, lateral.z, deceleration * dt);
-            body->SetLateralVelocity(lateral);
+            body->SetLateralVelocity(ShrinkHorizontal(body->LateralVelocity(), deceleration * dt));
         }
     } // namespace Player
 } // namespace GL

@@ -126,6 +126,25 @@ TEST(MapObjParams, InvalidOverridesKeepPhysicalValuesSafe)
     EXPECT_FLOAT_EQ(params->Restitution(), 0.0f);
 }
 
+// 質量は正の数だけを書く。0・負・無限大を読むと今の値を残す。Mass() の読み替えでなく欄の値で見る
+TEST(MapObjParams, MassFieldKeepsTheValueOnZeroNegativeAndInfinite)
+{
+    GL::Level::MapObjParams params;
+    const NS::FieldDesc* field = NS::FindField(params.GetReflection(), "質量");
+    ASSERT_NE(field, nullptr);
+    float before = 0.0f;
+    field->get(&params, &before);
+    // 1e39 は float に収まらず、読むと無限大になる
+    for (const double value : {0.0, -2.0, 1.0e39})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_EQ(NS::ApplyJsonFields(&params, nlohmann::json{{"質量", value}}), 0u);
+        float after = 0.0f;
+        field->get(&params, &after);
+        EXPECT_EQ(after, before);
+    }
+}
+
 // 飛び方の欄の表示名と既定。表示名は保存の鍵になる
 TEST(MapObjParams, LaunchShapeDefaultsBelongToParams)
 {

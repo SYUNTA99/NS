@@ -112,7 +112,7 @@ namespace GL
                 out.core = out.center;
                 out.surfaceRadius = body.radius;
                 out.shape = NS::HitSensorShape::Sphere;
-                if (!NS::IsNearlyZero(half))
+                if (NS::HasPositiveMagnitude(half))
                 {
                     out.shape = NS::HitSensorShape::Capsule;
                 }

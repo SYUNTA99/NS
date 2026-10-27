@@ -273,3 +273,11 @@ TEST(BodyShake, ReachIsTheEnvelopeWithoutTheSpreadOrSide)
                   NS::BodyShakeReach(frame, 12, 0.2f) + 1.0e-6f);
     }
 }
+
+// カメラの向きが非数なら、ピクセルを m に直した値は 0。非数を揺れの大きさへ渡さない
+TEST(BodyShake, PixelsToMetersIsZeroForANonFiniteCameraDirection)
+{
+    NS::CameraPose pose{};
+    pose.target.x = std::numeric_limits<float>::quiet_NaN();
+    EXPECT_EQ(NS::ScreenPixelsToMeters(10.0f, pose, NS::Vector3{0.0f, 0.0f, 0.0f}), 0.0f);
+}

@@ -119,7 +119,7 @@ void PlayerActor::UpdateIntendedDirection(float dt) noexcept
         return;
     }
     const float retilt = NS::ToRadians(NS::Degrees{m_params->m_retiltDegrees}).value;
-    if (m_airDash.m_tiltDirection.LengthSquared() > 0.0f && NS::AngleBetween(tilt, m_airDash.m_tiltDirection) <= retilt)
+    if (m_airDash.m_tiltDirection.LengthSquared() > 0.0f && NS::AngleBetweenUnit(tilt, m_airDash.m_tiltDirection) <= retilt)
     {
         m_airDash.m_tiltSeconds += dt;
     }
@@ -143,8 +143,8 @@ float PlayerActor::AirDashSpeed() const noexcept
         return 0.0f;
     }
     const NS::ActorAction* action = timeline->FindAction(AirDashActionName());
-    // 長さを決めていない動作と、Inspector で距離を非数にした時は割らない
-    if (action == nullptr || action->length <= 0 || !std::isfinite(m_params->m_airDashDistance))
+    // 長さを決めていない動作では割らない。距離は欄の範囲が有限の正の数だけを書く
+    if (action == nullptr || action->length <= 0)
     {
         return 0.0f;
     }
@@ -243,7 +243,7 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
         return;
     }
     const NS::Vector3 turned = GL::Level::TurnToward(current, target, step);
-    m_airDash.m_steeredRadians += NS::AngleBetween(current, turned);
+    m_airDash.m_steeredRadians += NS::AngleBetweenUnit(current, turned);
     m_body->SetVelocity(turned * speed);
 }
 
@@ -256,7 +256,7 @@ void PlayerActor::TryBeginTerrainRebound() noexcept
     }
     NS::Vector3 incoming = m_airDash.m_intended;
     const float speed = incoming.Length();
-    if (NS::IsNearlyZero(speed))
+    if (!NS::HasPositiveMagnitude(speed))
     {
         return;
     }
@@ -396,7 +396,7 @@ void PlayerActor::ApplyReboundShift() noexcept
                                          hit.normal,
                                          ReboundShiftInput(hit.assigned),
                                          GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions));
-    if (NS::IsNearlyZero(NS::AngleBetween(shifted, hit.assigned)))
+    if (NS::IsNearlyZero(NS::AngleBetweenUnit(shifted, hit.assigned)))
     {
         return;
     }
@@ -418,7 +418,7 @@ NS::Vector3 PlayerActor::ReboundShiftInput(const NS::Vector3& assigned) const no
     if (pose.has_value())
     {
         const NS::Vector3 look = pose->target - pose->position;
-        if (!NS::IsNearlyZero(look))
+        if (NS::HasPositiveMagnitude(look))
         {
             forward = look;
             forward.Normalize();

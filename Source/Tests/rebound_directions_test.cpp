@@ -28,11 +28,6 @@ namespace
         EXPECT_NEAR(actual.y, expected.y, k_Tolerance);
         EXPECT_NEAR(actual.z, expected.z, k_Tolerance);
     }
-
-    float AngleBetween(const NS::Vector3& a, const NS::Vector3& b)
-    {
-        return std::acos(std::clamp(NS::Dot(a, b), -1.0f, 1.0f));
-    }
 } // namespace
 
 TEST(ReboundDirectionsTest, CountsMatchTheDocumentForEachDivisionAndShape)
@@ -55,7 +50,7 @@ TEST(ReboundDirectionsTest, EveryDirectionIsUnitLengthAndDistinct)
         EXPECT_NEAR(table[i].Length(), 1.0f, k_Tolerance);
         for (std::size_t j = i + 1; j < table.size(); ++j)
         {
-            EXPECT_GT(AngleBetween(table[i], table[j]), 0.01f) << i << " と " << j << " が重なる";
+            EXPECT_GT(NS::AngleBetweenUnit(table[i], table[j]), 0.01f) << i << " と " << j << " が重なる";
         }
     }
 }
@@ -121,7 +116,7 @@ TEST(ReboundDirectionsTest, ThreePlaneTableMissesTheCornerThatYawPitchHas)
     NS::Vector3 yawPitch{};
     ASSERT_TRUE(AssignReboundDirection(MakeReboundDirections(8, ReboundTableShape::ThreePlanes), dash, normal, planes));
     ASSERT_TRUE(AssignReboundDirection(MakeReboundDirections(8, ReboundTableShape::YawPitch), dash, normal, yawPitch));
-    EXPECT_GT(AngleBetween(planes, corner), AngleBetween(yawPitch, corner) + 0.1f);
+    EXPECT_GT(NS::AngleBetweenUnit(planes, corner), NS::AngleBetweenUnit(yawPitch, corner) + 0.1f);
 }
 
 TEST(ReboundDirectionsTest, StickUpShiftsOneStepUpFromStraightBack)
@@ -152,7 +147,7 @@ TEST(ReboundDirectionsTest, ShiftNeverGoesIntoTheSurfaceNorMoreThanOneStep)
     const float step = DirectionStepRadians(8);
     const NS::Vector3 shifted = ShiftReboundDirection(table, up, up, NS::Vector3{0, -1, 0}, step);
     EXPECT_GT(NS::Dot(shifted, up), 0.0f);
-    EXPECT_LE(AngleBetween(shifted, up), step + k_Tolerance);
+    EXPECT_LE(NS::AngleBetweenUnit(shifted, up), step + k_Tolerance);
 }
 
 TEST(ReboundDirectionsTest, ShiftKeepsStraightUpWhenTheClosestNeighborRunsAlongASlope)
@@ -203,7 +198,7 @@ TEST(ReboundDirectionsTest, TurnTowardStopsAtTheGivenAngle)
     const NS::Vector3 right{1.0f, 0.0f, 0.0f};
     const float limit = NS::k_Pi / 18.0f;
     const NS::Vector3 turned = TurnToward(forward, right, limit);
-    EXPECT_NEAR(AngleBetween(turned, forward), limit, k_Tolerance);
+    EXPECT_NEAR(NS::AngleBetweenUnit(turned, forward), limit, k_Tolerance);
     EXPECT_NEAR(turned.Length(), 1.0f, k_Tolerance);
     // 上限より近ければ、目標の向きで止まる
     ExpectNear(TurnToward(forward, right, NS::k_Pi), right);

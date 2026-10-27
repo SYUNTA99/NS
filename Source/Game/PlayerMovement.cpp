@@ -27,16 +27,10 @@ namespace
         return NS::Vector3{from.x * c + from.z * s, 0.0f, -from.x * s + from.z * c};
     }
 
-    // from を RotateHorizontal で回して to へ重ねる角度。範囲は -π..π
-    float HorizontalAngleBetween(const NS::Vector3& from, const NS::Vector3& to) noexcept
-    {
-        return std::atan2(from.z * to.x - from.x * to.z, from.x * to.x + from.z * to.z);
-    }
-
     // from を Y 軸まわりに最大 maxRadians だけ to へ寄せた向き。from と to は正規化した水平の向き。
     NS::Vector3 TurnHorizontalToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept
     {
-        const float angle = HorizontalAngleBetween(from, to);
+        const float angle = NS::SignedHorizontalAngle(from, to);
         if (std::abs(angle) <= maxRadians)
         {
             return to;
@@ -536,10 +530,9 @@ void PlayerActor::Shimmy(float dt) noexcept
             NS::Vector3 placed = hangPos;
             if (NS::DotHorizontal(faceNormal, step) < 0.0f)
             {
-                const NS::Vector3 offset = shimmied - hangPos;
-                const float awayFromFace = NS::DotHorizontal(offset, faceNormal);
-                placed = NS::Vector3{
-                    shimmied.x - faceNormal.x * awayFromFace, hangPos.y, shimmied.z - faceNormal.z * awayFromFace};
+                const float awayFromFace = NS::DotHorizontal(shimmied - hangPos, faceNormal);
+                placed = shimmied - NS::HorizontalPart(faceNormal) * awayFromFace;
+                placed.y = hangPos.y;
             }
             // 折れた面へ持ち替えたら、向きも上面の高さも新しい面に合わせる
             m_ledgeFaceNormal = faceNormal;

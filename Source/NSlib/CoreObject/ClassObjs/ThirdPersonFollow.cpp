@@ -418,15 +418,14 @@ namespace NS
         {
             // 表示する遅れだけをなめらかに制限し、バネの速度が急変しないよう状態は切らない。
             CriticalSpringStepHorizontal(m_reboundAnchor, m_reboundAnchorVelocity, head, m_forcedLaunchFollowOmega, dt);
-            const Vector3 lagOffset = m_reboundAnchor - head;
-            const float lag = HorizontalLength(lagOffset);
+            const Vector3 lag = HorizontalPart(m_reboundAnchor - head);
+            const float lagLength = lag.Length();
             const float maxLag = std::max(m_forcedLaunchMaxLag, 0.0f);
             m_look = head;
-            if (lag > 0.0f && maxLag > 0.0f)
+            if (lagLength > 0.0f && maxLag > 0.0f)
             {
-                const float shown = maxLag * std::tanh(lag / maxLag);
-                m_look.x = head.x + lagOffset.x * (shown / lag);
-                m_look.z = head.z + lagOffset.z * (shown / lag);
+                const float shown = maxLag * std::tanh(lagLength / maxLag);
+                m_look = head + lag * (shown / lagLength);
             }
             return m_look;
         }
@@ -434,17 +433,17 @@ namespace NS
         // 横と前後は臨界減衰のバネで遅れて付いていき、遅れは上限の内に留める
         // 高さは留めたまま
         CriticalSpringStepHorizontal(m_reboundAnchor, m_reboundAnchorVelocity, head, m_reboundFollowOmega, dt);
-        const Vector3 lagOffset = m_reboundAnchor - head;
-        const float lag = HorizontalLength(lagOffset);
+        const Vector3 lag = HorizontalPart(m_reboundAnchor - head);
+        const float lagLength = lag.Length();
         const float maxLag = std::max(m_reboundLagCap, 0.0f);
-        if (lag > maxLag)
+        if (lagLength > maxLag)
         {
-            const float scale = maxLag / lag;
-            m_reboundAnchor.x = head.x + lagOffset.x * scale;
-            m_reboundAnchor.z = head.z + lagOffset.z * scale;
+            const float scale = maxLag / lagLength;
+            m_reboundAnchor.x = head.x + lag.x * scale;
+            m_reboundAnchor.z = head.z + lag.z * scale;
         }
         // 上限は欄の値より上にある間だけ、今の遅れまで縮めていく。増やさないので注視点は跳ばない
-        m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lag, maxLag)));
+        m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lagLength, maxLag)));
         // カメラへ向かう間は、注視点が自機より奥へ遅れた分だけカメラが自機へ寄る。奥への遅れだけを別の上限で縛る。
         // 横と、カメラから離れる向きの遅れは残すので、離れていく速さの見え方は変えない
         const Vector3 away = ViewAxesFromYawPitch(m_yaw, 0.0f).forward;
@@ -452,8 +451,7 @@ namespace NS
         const float awayCap = std::max(m_reboundTowardCameraMaxLag, 0.0f);
         if (lagAway > awayCap)
         {
-            m_reboundAnchor.x -= away.x * (lagAway - awayCap);
-            m_reboundAnchor.z -= away.z * (lagAway - awayCap);
+            m_reboundAnchor -= HorizontalPart(away) * (lagAway - awayCap);
         }
         m_look = m_reboundAnchor + m_partnerLean;
 

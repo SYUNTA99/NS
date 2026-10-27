@@ -138,7 +138,7 @@ namespace GL
             float bestDot{0.0f};
             for (const NS::Vector3& direction : table)
             {
-                const float angle{NS::AngleBetween(direction, assigned)};
+                const float angle{NS::AngleBetweenUnit(direction, assigned)};
                 if (NS::IsNearlyZero(angle) || angle > stepRadians + NS::k_Epsilon)
                 {
                     continue;
@@ -173,7 +173,7 @@ namespace GL
 
         NS::Vector3 TurnToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept
         {
-            if (NS::AngleBetween(from, to) <= maxRadians)
+            if (NS::AngleBetweenUnit(from, to) <= maxRadians)
             {
                 return to;
             }
