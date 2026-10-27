@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Windows/Gamepad.h"
+#include "NSlib/Core/Windows/InputReader.h"
 #include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/Core/Windows/Mouse.h"
 
@@ -82,7 +83,7 @@ namespace NS
                 return m_gamepad;
             }
 
-            //! XInput の番号 0〜3 に切り替える。状態を初期化し、次の Update から読む
+            //! XInput の番号 0〜3 に切り替える。押している間と軸を初期化し、押した回数は引き継いで、次の Update から読む
             //! 範囲外は変更せず false
             [[nodiscard]] bool SetGamepadUserIndex(int userIndex) noexcept;
 
@@ -102,6 +103,9 @@ namespace NS
             void EndNeutral() noexcept;
 
             [[nodiscard]] bool IsNeutral() const noexcept { return m_neutralDepth > 0; }
+
+            //! @brief 手元の機器の押した回数を返す。中立の間も手元の機器の回数
+            [[nodiscard]] PressCounts CurrentPressCounts() const noexcept;
 
             void SetUiCapture(const UiCaptureDesc& desc) noexcept { m_uiCapture = desc; }
 

@@ -3,16 +3,16 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
-#include "NSlib/CoreObject/IUse/IUseEffect.h"
-#include "NSlib/CoreObject/IUse/IUseHitSensor.h"
-#include "NSlib/CoreObject/IUse/IUseRenderer.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
-#include "NSlib/CoreObject/IUse/IUseState.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
+#include "NSlib/CoreObject/IGet/IGetHitSensor.h"
+#include "NSlib/CoreObject/IGet/IGetRenderer.h"
+#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
+#include "NSlib/CoreObject/IGet/IGetState.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/SensorDeclarations.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
-#include "NSlib/CoreObject/UpdatePhase.h"
 
 #include "NSlib/Core/Types.h"
 #include <concepts>
@@ -40,15 +40,15 @@ namespace NS
     struct ActorInitInfo;
 
     //! @brief 世界に置く物の基底。Transform と部品を持ち、MapPartsActor / PropActor / PlayerActor などが派生する
-    //! @details 所属シーンを持ち、IUse〜 の問いを居るシーンへ繋ぐ。シーンに居ない間の問いは nullptr を返す
+    //! @details 所属シーンを持ち、IGet〜 の問いを居るシーンへ繋ぐ。シーンに居ない間の問いは nullptr を返す
     class SceneActor : public Object,
-                       public IUseCamera,
-                       public IUseSceneSystem,
-                       public IUseCollision,
-                       public IUseEffect,
-                       public IUseHitSensor,
-                       public IUseRenderer,
-                       public IUseState
+                       public IGetCamera,
+                       public IGetSceneSystem,
+                       public IGetCollision,
+                       public IGetEffect,
+                       public IGetHitSensor,
+                       public IGetRenderer,
+                       public IGetState
     {
     public:
         SceneActor() noexcept;
@@ -132,7 +132,7 @@ namespace NS
         [[nodiscard]] ActionTimelineSelf ActionTimelineSelfOf() noexcept;
 
         //! @brief 当たりの止め (ヒットストップ) の残りを、frames が残りより長い時だけ延ばす
-        //! @details 止めの間は Update が StateStep と BodyStep を飛ばす。呼んだフレームの残りの段から効き、
+        //! @details 止めの間は Update が状態機械の 1 歩と BodyStep を飛ばす。呼んだフレームの残りの段から効き、
         //! そのフレームも数える。束を始めたアクターが、HitReaction::Start の返した束の止めの長さで呼ぶ
         void RequestHitStop(int frames) noexcept;
         //! @brief 当たりの止めの残りを frames に書き換える。短くもする
@@ -152,12 +152,16 @@ namespace NS
         //! 当たりの止めの間なら true
         [[nodiscard]] bool IsHitStopping() const noexcept { return m_hitStopFrames > 0; }
 
-        //! @brief Update を呼ばれる段を返す
-        [[nodiscard]] virtual UpdatePhase Phase() const noexcept { return UpdatePhase::Triggers; }
-        virtual void ReadInput() {}
-        //! 観測・裁定・状態・身体・見た目を固定順で更新する。部品は各段で明示的に呼ぶ
-        //! エフェクトの記録は観測前に、動作のタイムラインは状態の段の直後に進める。
-        //! 当たりの止めの間は状態と身体の段を飛ばし、最後に止めの残りを 1 減らす
+        //! @brief 1 固定フレームぶん進める。順は基盤が決め、派生は変えられない
+        //! @details シーンは出ているアクターを全部、物理の前の 1 か所で一覧の順に 1 回ずつ呼ぶ
+        //! (止めている間は止め始めたアクターだけ)。中の順は次のとおりで、部品は基盤が挟む。
+        //! - エフェクトの記録と、束が持ち主へ渡す項目を 1 フレーム進める
+        //! - DecideStep を毎回 1 回
+        //! - 止めの間でも SkipStateStep を呼んだフレームでもなければ、状態機械を 1 歩・動作のタイムライン・
+        //!   AfterStateStep を 1 回ずつ
+        //! - 止めの間でなければ BodyStep を 1 回 (状態機械の中で止めが始まったフレームは呼ばない)
+        //! - 出ていれば当たりを体の姿へそろえ、Model の揺れと震えを進め、VisualStep を毎回 1 回
+        //! - 止めの残りを 1 減らす
         void Update();
         virtual void PrepareRender();
 
@@ -168,9 +172,25 @@ namespace NS
         //! @details OnStart と、エディタがアクターの並びか ActorRef の欄を書き換えた後に呼ぶ。上書きは何回呼ばれてもよい形で書く
         virtual void ResolveActorRefs() {}
 
-        //! 異なる持ち主のセンサーが重なる間、互いに毎歩呼ばれる
-        //! センサーの種類を判断し、必要なメッセージを送る
-        virtual void AttackSensor(HitSensor* self, HitSensor* other)
+        //! @brief 自分のセンサー self と、異なる持ち主のセンサー other が重なり始めた固定フレームに 1 回呼ばれる
+        //! @details 応じるかは other の種類を見て決め、要るメッセージを送る。重なった組の両方の持ち主へ、
+        //! 自分と相手を入れ替えて届く
+        virtual void OnSensorEnter(HitSensor* self, HitSensor* other)
+        {
+            (void)self;
+            (void)other;
+        }
+        //! 重なり始めた次の固定フレームから、重なっている間ずっと毎回呼ばれる
+        virtual void OnSensorStay(HitSensor* self, HitSensor* other)
+        {
+            (void)self;
+            (void)other;
+        }
+        //! @brief OnSensorEnter を受けた組の重なりが終わった時に 1 回呼ばれる
+        //! @details 形が離れた時と、どちらかのセンサーが調べる対象から外れた時 (Invalidate・持ち主の Disappear) に届く。
+        //! 相手のセンサーが一覧から外れた時 (相手のアクターが終わった時) は、次の固定フレームに other を nullptr で届く。
+        //! 自分のセンサーが一覧から外れた時 (自分のアクターが終わる時) は、SceneActor::OnEndPlay の中でその場で届く
+        virtual void OnSensorExit(HitSensor* self, HitSensor* other)
         {
             (void)self;
             (void)other;
@@ -204,37 +224,36 @@ namespace NS
         //! @details 作る時と ReloadAssets の両方で呼ぶので、何回呼ばれても同じ姿になるように書く。上書きする派生は基底も呼ぶ
         virtual void OnAssetsLoaded();
 
-        // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
+        //! @brief 部品を member に作る。未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
+        //! @details センサーは作れない。NS_SENSOR か NS_FOLLOW_SENSOR で宣言し、基底が OnInit の前に作る
         template <class TBase, class T = TBase, class... TArgs>
             requires std::derived_from<T, TBase> && std::derived_from<T, Object>
         T* CreateClassObj(std::unique_ptr<TBase>& member, TArgs&&... args)
         {
-            const ClassObjInfo* field = FindReflectedMember(&member);
-            if (field == nullptr || member != nullptr || IsClassObjKeyCreated(field->key))
-            {
-                ReportInvalidClassObj(field);
-                return nullptr;
-            }
-            std::unique_ptr<T> classObj = std::make_unique<T>(std::forward<TArgs>(args)...);
-            T* raw = classObj.get();
-            member = std::move(classObj);
-            return raw;
+            static_assert(!std::is_base_of_v<HitSensor, T>, "センサーは NS_SENSOR か NS_FOLLOW_SENSOR で宣言する");
+            return EmplaceClassObj<TBase, T>(member, std::forward<TArgs>(args)...);
         }
 
         virtual void OnAppear();
         virtual void OnDisappear() noexcept;
-        //! 世界と相手を観測する段。状態・身体・見た目は変更しない
-        virtual void ObserveStep() {}
-        //! 観測結果からこの歩の値を決め、メッセージを送る段
+        // 派生が上書きする更新の関数は次の 4 つだけ。呼ぶのは Update だけで、呼ぶ順と回数は Update の説明のとおり。
+        // 状態機械を進めるのは基盤だけで、派生は進めない
+
+        //! @brief 世界と入力を見て、このフレームの値を決め、メッセージを送る。Update ごとに必ず 1 回、最初に呼ばれる
+        //! @details 状態機械を進めないフレームは、ここで SkipStateStep を呼ぶ
         virtual void DecideStep() {}
-        //! 状態機械を進める段。上書きは状態更新の前後に処理を挟む場合だけ
-        virtual void StateStep();
-        //! 身体を動かし、衝突形状を揃える段。仮想カメラもここで更新する
+        //! @brief 状態機械を進めたフレームにだけ、状態機械の 1 歩と動作のタイムラインの後に 1 回呼ばれる
+        //! @details 止めの間と SkipStateStep を呼んだフレームは呼ばれない
+        virtual void AfterStateStep() {}
+        //! 体を動かす。止めの間でなければ 1 回呼ばれる
         virtual void BodyStep() {}
-        //! 移動後の姿勢から見た目・演出・寿命を更新する段
+        //! 動かした後の姿勢から見た目・演出・寿命を更新する。Update ごとに必ず 1 回、最後に呼ばれる
         virtual void VisualStep() {}
+        //! @brief このフレームだけ、状態機械の 1 歩と動作のタイムラインと AfterStateStep を飛ばす
+        //! @details DecideStep の中で呼ぶ。Update の初めに戻るので、次のフレームへ持ち越さない
+        void SkipStateStep() noexcept { m_skipStateStep = true; }
         //! 自分を持ち主に、TStates の先頭へ入る状態機械を一度だけ構築する
-        //! OnEnter が使う部品を先に用意する。outMachine は OnEnter 前に設定する
+        //! 先頭の OnEnter は組んだ時でなく、最初に状態機械を進める Update の初めに走る。outMachine は組む前に設定する
         //! 機械は基底の部品 StateMachine が持ち、型付きポインタは非所有。既に構築済みなら変更せず false
         template <typename TOwner, typename... TStates>
         bool BuildStateMachine(TOwner* owner, StateMachineOf<TOwner>*& outMachine)
@@ -258,6 +277,7 @@ namespace NS
 
     private:
         friend class ActorList;
+        friend class SensorDeclarations;
         friend bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
         friend bool SendMsgToActor(const Message& msg, SceneActor* receiver);
         template <class T, class... TArgs> friend std::unique_ptr<T> CreateActor(TArgs&&... args);
@@ -269,12 +289,12 @@ namespace NS
                                                                      std::string_view actorFile);
         friend float GetFrameRate(const SceneActor* actor) noexcept;
         friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
-        //! @brief アクターを作る順。部品を作る → .actor の全部の値 → シーンの上書き → 素材
+        //! @brief アクターを作る順。宣言したセンサー → 部品を作る (OnInit) → .actor の全部の値 → シーンの上書き → 素材
         //! @details 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない。
         //! info が nullptr のアクターも、シーンの上書きを飛ばすだけで同じ順を通る。
         //! 断らない。シーンの上書きが書いてよい項目だけを持つかは、作る前に ActorFromJson が確かめる
         void Init(const ActorInitInfo* info);
-        //! 部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
+        //! 宣言したセンサーと部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
         //! actorFile は .actor の名前として持つだけで、空ならクラスと同じ名前
         void InitWithCodeValues(std::string_view actorFile);
         //! @brief 補間の前の値として、根の Transform と Model の今の値を控える
@@ -288,6 +308,30 @@ namespace NS
         // 別のメンバーが同じ保存キーで作成済みか。同じキーの部品が 2 つあると保存で片方が消える
         [[nodiscard]] bool IsClassObjKeyCreated(std::string_view key) const;
         void ReportInvalidClassObj(const ClassObjInfo* field) const;
+        //! クラスが並べたセンサー。上書きは NS_SENSORS_BEGIN と NS_SENSORS_END が書く
+        virtual void DeclareSensors(SensorDeclarations& sensors) { (void)sensors; }
+        // 宣言したセンサーを作り、一覧に入れて種類と形を付ける。Init と InitWithCodeValues が OnInit の前に 1 回呼ぶ
+        void CreateDeclaredSensors();
+        void CreateShapeSensor(std::unique_ptr<HitSensor>& member, uint8 kind, HitSensorShape shape);
+        void CreateFollowSensor(std::unique_ptr<HitSensor>& member,
+                                uint8 kind,
+                                std::function<SensorVolume(const Matrix& rootWorld)> volume);
+        // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
+        template <class TBase, class T = TBase, class... TArgs>
+            requires std::derived_from<T, TBase> && std::derived_from<T, Object>
+        T* EmplaceClassObj(std::unique_ptr<TBase>& member, TArgs&&... args)
+        {
+            const ClassObjInfo* field = FindReflectedMember(&member);
+            if (field == nullptr || member != nullptr || IsClassObjKeyCreated(field->key))
+            {
+                ReportInvalidClassObj(field);
+                return nullptr;
+            }
+            std::unique_ptr<T> classObj = std::make_unique<T>(std::forward<TArgs>(args)...);
+            T* raw = classObj.get();
+            member = std::move(classObj);
+            return raw;
+        }
         // PendingDestroy からはどこへも移らない
         enum class Presence : uint8
         {
@@ -317,8 +361,9 @@ namespace NS
         std::unique_ptr<StateMachine> m_stateMachine;
 
     private:
-        float m_frameRate = 1.0f; // 体の倍率。読み書きは GetFrameRate・SetFrameRate だけ
-        int m_hitStopFrames = 0;  // 当たりの止めの残り。書くのは RequestHitStop・OverrideHitStop・Update だけ
+        float m_frameRate = 1.0f;     // 体の倍率。読み書きは GetFrameRate・SetFrameRate だけ
+        int m_hitStopFrames = 0;      // 当たりの止めの残り。書くのは RequestHitStop・OverrideHitStop・Update だけ
+        bool m_skipStateStep = false; // このフレームは状態機械を進めないか。書くのは SkipStateStep と Update の初めだけ
     };
 
     //! @brief 体の倍率を返す。1 が等速

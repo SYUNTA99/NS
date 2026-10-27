@@ -8,12 +8,6 @@ namespace GL
 {
     namespace Level
     {
-        void SetSensorKind(NS::HitSensor* sensor, SensorKind kind) noexcept
-        {
-            NS_ASSERT(Game, sensor != nullptr, "種類を付けるセンサーが無い");
-            sensor->SetKind(static_cast<NS::uint8>(kind));
-        }
-
         bool IsSensorKind(const NS::HitSensor* sensor, SensorKind kind) noexcept
         {
             NS_ASSERT(Game, sensor != nullptr, "種類を問うセンサーが無い");

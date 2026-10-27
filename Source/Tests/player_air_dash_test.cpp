@@ -1,19 +1,25 @@
 #include "Game/Level/ReboundDirections.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/States/AirDashPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ActorJson.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/Input.h"
 #include "NSlib/Phys/PhysicsScene.h"
+#include "Tests/TestActorFile.h"
+#include "Tests/TestLogCapture.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <vector>
 
 // エアダッシュ (押した瞬間に一定の速さで飛ぶ) と、地形の面での反動 (操作なし → 補正とダッシュ 1 回 → 普段) を縛る
 
@@ -28,6 +34,24 @@ namespace
     nlohmann::json ParamsFields(const PlayerActor* player)
     {
         return NS::SerializeClassObjFields(&player->Params());
+    }
+
+    // 自機の .actor の動作 "AirDash" の長さ (状態の歩の回数)。動作が無ければ 0
+    int AirDashLength(const PlayerActor* player)
+    {
+        const NS::ActorAction* action = player->ActionTimelineClassObj()->FindAction("AirDash");
+        if (action == nullptr)
+        {
+            return 0;
+        }
+        return action->length;
+    }
+
+    // 欄「エアダッシュの距離」を、動作 "AirDash" の長さの固定フレームで進む速さ
+    float DashSpeed(const PlayerActor* player)
+    {
+        return ParamsFields(player).at("エアダッシュの距離").get<float>() /
+               (static_cast<float>(AirDashLength(player)) * NS::OS::FrameTimer::FixedDelta());
     }
 
     // +Z を向くカメラと、宙に浮かせた自機。床は無い
@@ -92,7 +116,41 @@ namespace
         nb.Normalize();
         return std::acos(std::clamp(NS::Dot(na, nb), -1.0f, 1.0f));
     }
+
+    // 宙の自機でエアダッシュを押しても、ダッシュに入らず、回数も減らず、WARN を 1 回出す事を確かめる
+    void ExpectNoDashOnPress()
+    {
+        NS::Scene scene;
+        PlayerActor* player = PlaceFloatingPlayer(scene);
+        ASSERT_NE(player, nullptr);
+        const TestLogCapture log;
+        player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+        player->Update(true);
+        EXPECT_FALSE(player->IsAirDashing());
+        EXPECT_EQ(player->AirDashesRemaining(), 1);
+        EXPECT_EQ(log.WarningCount(), 1);
+    }
 } // namespace
+
+// 遅い世界で、世界を進めない固定フレームの前に押して放したダッシュを、次に世界を進めた固定フレームで出す
+TEST(PlayerAirDashTest, PressBeforeASkippedSlowStepDashesOnTheNextWorldStep)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    NS::OS::Input& input = NS::OS::Input::Get();
+    input.Keyboard().OnKeyDown(NS::OS::Key::D);
+    scene.SetWorldSpeed(0.5f);
+
+    input.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
+    input.Mouse().OnButtonUp(NS::OS::MouseButton::Left);
+    // 速さ 0.5 の 1 歩目は世界を進めない
+    scene.OnUpdate();
+    EXPECT_FALSE(player->IsAirDashing());
+    scene.OnUpdate();
+    EXPECT_TRUE(player->IsAirDashing());
+    input.Keyboard().OnKeyUp(NS::OS::Key::D);
+}
 
 TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
 {
@@ -100,8 +158,8 @@ TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
     PlayerActor* player = PlaceFloatingPlayer(scene);
     ASSERT_NE(player, nullptr);
     const float distance = ParamsFields(player).at("エアダッシュの距離").get<float>();
-    const float seconds = ParamsFields(player).at("エアダッシュの秒").get<float>();
-    const float speed = distance / seconds;
+    ASSERT_GT(AirDashLength(player), 0);
+    const float speed = DashSpeed(player);
     const float startX = player->Root().Position().x;
 
     player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -110,14 +168,14 @@ TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
     EXPECT_NEAR(player->Body().Velocity().x, speed, 1.0e-3f);
     EXPECT_NEAR(player->Body().Velocity().y, 0.0f, 1.0e-3f);
 
-    const int frames = FramesFor(seconds);
+    const int frames = AirDashLength(player);
     for (int frame = 0; frame < frames + 1 && player->IsAirDashing(); ++frame)
     {
         player->Update(true);
     }
     EXPECT_FALSE(player->IsAirDashing());
     EXPECT_EQ(player->AirDashesRemaining(), 0);
-    // 秒はフレームの刻みで終わるので、1 フレームで進む分だけずれてよい
+    // 距離はダッシュの速さで進む分。終わるフレームは残る速さで進むので、1 フレームで進む分だけずれてよい
     EXPECT_NEAR(player->Root().Position().x - startX, distance, speed * NS::OS::FrameTimer::FixedDelta());
 }
 
@@ -184,15 +242,198 @@ TEST(PlayerAirDashTest, ReleasingTheStickForgetsTheDirectionHeldBefore)
     EXPECT_NEAR(player->Body().Velocity().z, 0.0f, 1.0e-3f);
 }
 
+// 当たらなければ、押したフレームから動作の長さの歩だけダッシュの速さで進み、次の歩で残る速さにして普段の動きへ移る
+TEST(PlayerAirDashTest, DashLastsTheActionLengthThenKeepsTheExitSpeed)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const int length = AirDashLength(player);
+    ASSERT_GT(length, 0);
+    const float speed = DashSpeed(player);
+
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(true);
+    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    for (int step = 1; step < length; ++step)
+    {
+        SCOPED_TRACE(step);
+        ASSERT_TRUE(player->IsAirDashing());
+        EXPECT_NEAR(player->Body().Velocity().x, speed, 1.0e-3f);
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->IsAirDashing());
+    player->Update(false);
+    EXPECT_FALSE(player->IsAirDashing());
+    EXPECT_NEAR(player->Body().Velocity().x, ParamsFields(player).at("エアダッシュ後に残る速さ").get<float>(), 1.0e-3f);
+}
+
+// ダッシュの長さと速さは .actor の動作 "AirDash" の長さで決まる
+TEST(PlayerAirDashTest, TheDashLengthAndSpeedComeFromTheAirDashAction)
+{
+    const ScopedActorFileEdit shorter("PlayerActor", [](nlohmann::json& actorFile) {
+        std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
+        for (NS::ActorAction& action : actions)
+        {
+            if (action.name == "AirDash")
+            {
+                action.length = 10;
+            }
+        }
+        NS::WriteActorActions(actorFile, actions);
+    });
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    ASSERT_EQ(AirDashLength(player), 10);
+    const float speed = ParamsFields(player).at("エアダッシュの距離").get<float>() /
+                        (10.0f * NS::OS::FrameTimer::FixedDelta());
+
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(true);
+    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    EXPECT_NEAR(player->Body().Velocity().x, speed, 1.0e-3f);
+    for (int step = 1; step < 10; ++step)
+    {
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->IsAirDashing());
+    player->Update(false);
+    EXPECT_FALSE(player->IsAirDashing());
+}
+
+// 動作 "AirDash" が無いか長さを決めていない自機は、押してもエアダッシュに入らない。入ると終わりが来ず宙で止まる
+TEST(PlayerAirDashTest, NoDashWithoutTheAirDashActionLength)
+{
+    {
+        SCOPED_TRACE("動作が無い");
+        const ScopedActorFileEdit removed("PlayerActor", [](nlohmann::json& actorFile) {
+            std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
+            std::erase_if(actions, [](const NS::ActorAction& action) { return action.name == "AirDash"; });
+            NS::WriteActorActions(actorFile, actions);
+        });
+        ExpectNoDashOnPress();
+    }
+    {
+        SCOPED_TRACE("長さが 0");
+        const ScopedActorFileEdit unset("PlayerActor", [](nlohmann::json& actorFile) {
+            std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
+            for (NS::ActorAction& action : actions)
+            {
+                if (action.name == "AirDash")
+                {
+                    action.length = 0;
+                }
+            }
+            NS::WriteActorActions(actorFile, actions);
+        });
+        ExpectNoDashOnPress();
+    }
+}
+
+// エアダッシュを断ったフレームも、同じフレームに頼んだ体当たりは出る
+TEST(PlayerAirDashTest, ARefusedDashDoesNotSwallowTheBodySlam)
+{
+    const ScopedActorFileEdit unset("PlayerActor", [](nlohmann::json& actorFile) {
+        std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
+        for (NS::ActorAction& action : actions)
+        {
+            if (action.name == "AirDash")
+            {
+                action.length = 0;
+            }
+        }
+        NS::WriteActorActions(actorFile, actions);
+    });
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const TestLogCapture log;
+    player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+    player->Update(true);
+    EXPECT_FALSE(player->IsAirDashing());
+    EXPECT_TRUE(player->IsBodySlamming());
+}
+
+// エアダッシュの状態に入っても動作を始められなければ、その場で普段の動きへ移る
+TEST(PlayerAirDashTest, TheDashEndsWhenItsActionCannotStart)
+{
+    const ScopedActorFileEdit removed("PlayerActor", [](nlohmann::json& actorFile) {
+        std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
+        std::erase_if(actions, [](const NS::ActorAction& action) { return action.name == "AirDash"; });
+        NS::WriteActorActions(actorFile, actions);
+    });
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const TestLogCapture log;
+    (void)NS::SetState<GL::Player::AirDashPlayerState>(player);
+    ASSERT_TRUE(player->IsAirDashing());
+    player->Update(false);
+    EXPECT_FALSE(player->IsAirDashing());
+}
+
+// 途中で動作の長さを変えて読み直しても、そのダッシュの速さは始めた時のまま
+TEST(PlayerAirDashTest, TheDashSpeedHoldsWhenTheLengthChangesMidway)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    ASSERT_GT(AirDashLength(player), 10);
+    const float speed = DashSpeed(player);
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(true);
+    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Update(false);
+    ASSERT_TRUE(player->IsAirDashing());
+    {
+        const ScopedActorFileEdit shorter("PlayerActor", [](nlohmann::json& actorFile) {
+            std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
+            for (NS::ActorAction& action : actions)
+            {
+                if (action.name == "AirDash")
+                {
+                    action.length = 10;
+                }
+            }
+            NS::WriteActorActions(actorFile, actions);
+        });
+        player->ActionTimelineClassObj()->ReloadActions(player);
+    }
+    player->Update(false);
+    ASSERT_TRUE(player->IsAirDashing());
+    EXPECT_NEAR(player->Body().Velocity().x, speed, 1.0e-3f);
+}
+
+// 途中で動作が止まっても (.actor の読み直し)、ダッシュは動作の長さで終わる
+TEST(PlayerAirDashTest, TheDashEndsEvenIfTheActionIsReloadedMidway)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const int length = AirDashLength(player);
+    ASSERT_GT(length, 1);
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(true);
+    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Update(false);
+    ASSERT_TRUE(player->IsAirDashing());
+    player->ActionTimelineClassObj()->ReloadActions(player);
+    for (int step = 0; step < length + 1 && player->IsAirDashing(); ++step)
+    {
+        player->Update(false);
+    }
+    EXPECT_FALSE(player->IsAirDashing());
+}
+
 TEST(PlayerAirDashTest, HittingAWallReboundsStraightBackAtTheFullSpeed)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceFloatingPlayer(scene);
     ASSERT_NE(player, nullptr);
     AddFrontWall(scene);
-    const float speed = ParamsFields(player).at("エアダッシュの距離").get<float>() /
-                        ParamsFields(player).at("エアダッシュの秒").get<float>() *
-                        ParamsFields(player).at("返る速さのダッシュの速さに対する倍率").get<float>();
+    const float speed =
+        DashSpeed(player) * ParamsFields(player).at("返る速さのダッシュの速さに対する倍率").get<float>();
 
     ASSERT_TRUE(DashIntoFrontWall(player));
     const NS::Vector3 velocity = player->Body().Velocity();
@@ -226,7 +467,7 @@ TEST(PlayerAirDashTest, NoDashDuringTheLockThenOneDashInTheSteerStage)
     EXPECT_TRUE(player->IsAirDashing());
 
     // 補正の段で戻ったダッシュは 1 回だけ。使い切ったら次の押しは効かない
-    for (int frame = 0; frame < FramesFor(fields.at("エアダッシュの秒").get<float>()) + 1; ++frame)
+    for (int frame = 0; frame < AirDashLength(player) + 1; ++frame)
     {
         player->Update(false);
     }

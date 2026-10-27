@@ -17,16 +17,6 @@ namespace GL
             m_chargeFactorCurve.keys[1] = NS::Curve::Key{1.0f, 2.0f};
         }
 
-        float PlayerParams::AirDashSpeed() const noexcept
-        {
-            // Inspector で秒を 0 にすると割れないため
-            if (!(m_airDashSeconds > 0.0f) || !std::isfinite(m_airDashDistance))
-            {
-                return 0.0f;
-            }
-            return m_airDashDistance / m_airDashSeconds;
-        }
-
         float PlayerParams::ChargeFactorFor(float charge01) const noexcept
         {
             if (!std::isfinite(charge01))

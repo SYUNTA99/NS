@@ -58,9 +58,7 @@ namespace NS
         //! このセンサーを持つアクター。重なりを知らせる宛先
         [[nodiscard]] SceneActor* Host() const noexcept { return m_owner; }
 
-        //! 0 は未設定。種類の意味はゲーム側が定義する
-        void SetKind(uint8 kind) noexcept { m_kind = kind; }
-        //! 種類の値。0 は未設定
+        //! 種類の値。0 は未設定で、種類の意味はゲーム側が定義する。書くのはセンサーを宣言から作る SceneActor だけ
         [[nodiscard]] uint8 Kind() const noexcept { return m_kind; }
 
         //! 調べる対象か。持ち主が出ていて (ValidateBySystem)、ゲームが Invalidate していない時だけ真
@@ -81,6 +79,9 @@ namespace NS
         NS_REFLECT_NONE(HitSensor, Object)
 
     private:
+        friend class SceneActor;
+        void SetKind(uint8 kind) noexcept { m_kind = kind; }
+
         uint8 m_kind = 0;      // 種類の値。0 は未設定で、どの受け手も応じない
         bool m_valid = true;       // ゲームが外していないか
         bool m_validBySystem = false; // 持ち主が出ているか

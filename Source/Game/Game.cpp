@@ -2,7 +2,7 @@
 
 #include "Game/Level/CourseDirector.h"
 #include "NSlib/App/Application.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Core/Windows/Filesystem.h"

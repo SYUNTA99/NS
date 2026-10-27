@@ -117,9 +117,9 @@ namespace GL
             NS::Vector3 m_intendedDirection{}; // ダッシュの向きに使う。無ければゼロ
             NS::Vector3 m_tiltDirection{};     // 今倒している水平の向き。倒していなければゼロ
             float m_tiltSeconds = 0.0f;        // m_tiltDirection を倒し続けた秒
-            float m_dashElapsed = 0.0f;  // 今のダッシュを始めてからの秒
+            float m_dashSpeed = 0.0f;    // 今のダッシュの速さ (m/s)。状態に入った時に控え、途中の読み直しで変えない
             bool m_prevPressHeld = false; // 直前の歩にボタンを押していたか。押した瞬間を見分ける
-            bool m_pressed = false;       // この歩に押した瞬間か。観測の段で書き、状態の段で読む
+            bool m_pressed = false;       // この歩に押した瞬間か。DecideStep の頭で書き、状態機械で読む
             NS::Vector3 m_intended{};     // 体を動かす前の速度。遮った面への当て方を測る
             float m_reboundElapsed = 0.0f;
             float m_steeredRadians = 0.0f; // 補正の段で曲げた角度の累計
@@ -145,7 +145,8 @@ namespace GL
         };
 
         //! @brief 決定の段で確定した溜めと狙いの値
-        //! @details 観測の段に控えただけの押しと狙いは入れない。読み手が 1 フレーム前の狙いを読まないようにするため
+        //! @details DecideStep の頭で控えただけの押しと狙いは入れない。
+        //!          読み手が 1 フレーム前の狙いを読まないようにするため
         class ChargeStatus
         {
         public:

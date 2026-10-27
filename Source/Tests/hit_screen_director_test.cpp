@@ -2,7 +2,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
@@ -117,7 +117,7 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 0);
 }
 
-// 描く支度の段で進むので、自機以外を止めている間も薄れる
+// 描く支度の段で進むので、ほかを止めている間も薄れる
 TEST(HitScreenDirector, FlashKeepsFadingWhileOthersAreHeld)
 {
     NS::Scene scene;
@@ -125,7 +125,7 @@ TEST(HitScreenDirector, FlashKeepsFadingWhileOthersAreHeld)
     ASSERT_NE(player, nullptr);
     NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
     ASSERT_NE(screen, nullptr);
-    scene.HoldOthers(10);
+    scene.HoldOthers(player, 10);
     screen->StartFlash(player, 3, 1.0f);
     scene.OnUpdate();
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);

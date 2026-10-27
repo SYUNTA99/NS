@@ -48,7 +48,7 @@ namespace
             for (int frame = 0; frame < frames; ++frame)
             {
                 target->Feed(&camera->Vcam());
-                camera->Update();
+                scene.ExecutePhase(NS::UpdatePhase::Camera);
             }
         }
 

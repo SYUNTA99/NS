@@ -70,7 +70,7 @@ namespace
             for (int frame = 0; frame < 180; ++frame)
             {
                 target->Feed(&camera->Vcam());
-                camera->Update();
+                scene.ExecutePhase(NS::UpdatePhase::Camera);
             }
         }
 

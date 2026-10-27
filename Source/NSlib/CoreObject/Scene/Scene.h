@@ -3,10 +3,10 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ActorList.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
-#include "NSlib/CoreObject/IUse/IUseRenderer.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
+#include "NSlib/CoreObject/IGet/IGetRenderer.h"
+#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -17,6 +17,7 @@
 #include "NSlib/CoreObject/System/SceneSystemHolder.h"
 #include "NSlib/CoreObject/System/ScreenFadeDirector.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
+#include "NSlib/CoreObject/UpdatePhase.h"
 
 #include "NSlib/Core/Types.h"
 #include <memory>
@@ -46,10 +47,10 @@ namespace NS
     //! @brief アクターと共有システムを所有し、固定更新と描画を行うシーン
     //! @details JSON は保存・凍結・編集履歴に使い、実行中の状態は SceneActor と部品が持つ
     class Scene : public NonCopyable,
-                  public IUseCamera,
-                  public IUseSceneSystem,
-                  public IUseCollision,
-                  public IUseRenderer
+                  public IGetCamera,
+                  public IGetSceneSystem,
+                  public IGetCollision,
+                  public IGetRenderer
     {
     public:
         Scene();
@@ -84,13 +85,13 @@ namespace NS
 
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
 
-        //! Physics() と同じ物を、IUseCollision の形 (ポインタ) で返す
+        //! Physics() と同じ物を、IGetCollision の形 (ポインタ) で返す
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
 
         //! エフェクトの EffectScene。描画を持たないシーン (試し) では nullptr
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept;
 
-        //! @brief シーンのヒットセンサーの一覧。HitSensor は持ち主の SceneActor が OnInit で InitHitSensor を呼んで入れ、OnEndPlay で出る
+        //! @brief シーンのヒットセンサーの一覧。HitSensor は持ち主の SceneActor が宣言から作る時 (OnInit の前) に入れ、OnEndPlay で出す
         //! @details 持ち主が消えている間は入ったまま、HitSensor::IsValid が偽になる
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
@@ -100,7 +101,7 @@ namespace NS
         [[nodiscard]] const Gfx::ScreenFade& Fade() const noexcept { return m_fade.Fade(); }
 
         //! @brief 管理役を段 phase の更新へ登録する。登録済みなら段だけを差し替える
-        //! @details 同じ段の SceneActor の後に登録順で OnTick が呼ばれる
+        //! @details その段のアクター (Actors の Update・RenderPrep の PrepareRender) の後に登録順で OnTick が呼ばれる
         //! 更新の最中に登録した物は、その歩の残りでは呼ばれない
         void AddSystemTick(SceneSystem& system, UpdatePhase phase);
         //! 管理役を更新から外す。更新の最中に外した物は、その歩の残りでは呼ばれない
@@ -195,11 +196,17 @@ namespace NS
         //! shape は経過割合から復帰割合への曲線で、空なら直線。速度設定やシミュレーション切替で解除する
         void StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept;
 
-        //! 自機以外を steps 歩停止する。呼んだ歩の残りから効き、その歩も数える
-        //! 残り時間は延長だけを受け付ける。0 以下またはプレイ開始で解除する
-        void HoldOthers(int steps) noexcept;
-        //! 自機以外の世界を止めている場合 true、それ以外の場合は false
+        //! @brief holder 以外を steps 歩止める。止めている間に Update するアクターは holder だけ
+        //! @details 回す管理役は RunsWhileOthersHeld の表で決まる。呼んだ歩の残りから効き、その歩も数える。
+        //! 同じ holder の頼みは延長だけを受け、steps が 0 以下なら解く。止めている間は先に止め始めたアクターが止めを持ち、
+        //! ほかのアクターの頼み (延長も解くのも) は受けない。holder は番地と id で覚えて比べるだけなので、止めている間に
+        //! holder が一覧から外れても番地を読まず、止めは残りの歩で切れる。プレイ開始でも解く
+        //! @param[in] holder 止め始めるアクター。事前条件: nullptr でない
+        void HoldOthers(const SceneActor* holder, int steps) noexcept;
+        //! ほかを止めている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsHoldingOthers() const noexcept { return m_othersHeldSteps > 0; }
+        //! actor が今の止めを始めたアクターなら true
+        [[nodiscard]] bool IsOthersHolder(const SceneActor* actor) const noexcept;
 
         //! 減速中の経過に合わせた補間割合 0〜1。停止中は絵の変動を避けるため 1
         [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
@@ -245,11 +252,12 @@ namespace NS
         //! DetachActor で外したアクターを外す前の並びの位置へ戻す。外す前に出ていた物は Appear する
         SceneActor* ReattachActor(DetachedActor detached);
 
-        //! 固定更新の段を順に実行する。同じ段では SceneActor の後にシステムを更新する
+        //! 固定更新の並びを UpdatePhase の順に実行する。アクターを回す段では、アクターの後に管理役を更新する
         void OnUpdate();
 
         //! @brief 段 phase を 1 回だけ回す。OnUpdate が段ごとに呼ぶ
-        //! @details 有効な SceneActor を配置順に、続いてその段に登録した管理役を登録順に更新する
+        //! @details Actors は出ているアクターを並びの順に Update し (ほかを止めている間は止め始めたアクターだけ)、
+        //! RenderPrep は全部の出ているアクターの PrepareRender を呼ぶ。続いてその段に登録した管理役を登録順に更新する
         //! 回している間はアクターを解放する口を断る。再入は禁止
         void ExecutePhase(UpdatePhase phase);
 
@@ -286,6 +294,9 @@ namespace NS
         //! 実行時に入れたアクターの資産を引き当ててから開始する
         void StartSpawned(SceneActor* obj);
 
+        //! ほかを止めていないか、actor が止め始めたアクターなら true
+        [[nodiscard]] bool UpdatesWhileHeld(const SceneActor* actor) const noexcept;
+
         // 描く物は持ち主の OnEndPlay で外れるので、アクターより先に宣言して後に破棄する
         SceneRenderer m_sceneRenderer;
         // m_sceneObjs が持つ CourseDirector が破棄で暗転を取り消すので、m_sceneObjs より先に宣言して後に破棄する
@@ -313,7 +324,7 @@ namespace NS
         struct SystemEntry
         {
             SceneSystem* system = nullptr; // 非所有。実体はこのシーンのメンバーか保持体が持つ
-            UpdatePhase phase = UpdatePhase::Triggers;
+            UpdatePhase phase = UpdatePhase::Actors;
         };
         std::vector<SystemEntry> m_systems;           // このシーンが回す管理役と段。登録順
         std::vector<SceneSystem*> m_scheduledSystems; // ExecutePhase がその段で呼ぶ管理役を積む作業用の並び
@@ -321,16 +332,18 @@ namespace NS
         // const の窓口からも作れるよう mutable にする。作っても見かけのシーンの状態は変わらない
         mutable SceneSystemHolder m_sceneObjs{*this};
 
-        bool m_simulationEnabled = true;      // 世界を回すか。エディタの編集モードだけが下ろす
-        bool m_simulationPaused = false;      // 時間停止中か
-        int32 m_simulationStepFrames = 0; // コマ送り残り固定ステップ数。止めたままこの数だけ進める
-        float m_worldSpeed = 1.0f;            // 世界の速さ (0〜1)
-        float m_worldCarry = 0.0f;            // 前に世界を進めてから足した速さ。1 に届いたら世界を 1 歩進める
-        bool m_rampActive = false;            // 世界の速さを戻している間か
-        float m_rampFrom = 1.0f;              // 戻りの始まりの速さ
-        float m_rampSeconds = 0.0f;           // 戻りの実時間の長さ (秒)
-        float m_rampElapsed = 0.0f;           // 戻りを始めてからの実時間 (秒)
-        Curve m_rampShape{};                  // 戻り方。点が無ければ直線
-        int m_othersHeldSteps = 0;            // 自機以外の世界を止める残りの歩数
+        bool m_simulationEnabled = true;       // 世界を回すか。エディタの編集モードだけが下ろす
+        bool m_simulationPaused = false;       // 時間停止中か
+        int32 m_simulationStepFrames = 0;      // コマ送り残り固定ステップ数。止めたままこの数だけ進める
+        float m_worldSpeed = 1.0f;             // 世界の速さ (0〜1)
+        float m_worldCarry = 0.0f;             // 前に世界を進めてから足した速さ。1 に届いたら世界を 1 歩進める
+        bool m_rampActive = false;             // 世界の速さを戻している間か
+        float m_rampFrom = 1.0f;               // 戻りの始まりの速さ
+        float m_rampSeconds = 0.0f;            // 戻りの実時間の長さ (秒)
+        float m_rampElapsed = 0.0f;            // 戻りを始めてからの実時間 (秒)
+        Curve m_rampShape{};                   // 戻り方。点が無ければ直線
+        int m_othersHeldSteps = 0;             // ほかを止める残りの歩数
+        const SceneActor* m_othersHolder = nullptr; // 止め始めたアクター。消えた後もあり得るので比べるだけで読まない
+        uint32 m_othersHolderId = k_NoActorId; // 止め始めたアクターの id。m_othersHeldSteps が正の間だけ読む
     };
 } // namespace NS

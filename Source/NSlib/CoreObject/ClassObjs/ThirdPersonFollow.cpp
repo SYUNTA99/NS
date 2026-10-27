@@ -2,9 +2,10 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
+#include "NSlib/CoreObject/IGet/IGetCameraTarget.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/Core/Windows/Gamepad.h"
 #include "NSlib/Core/Windows/Input.h"
@@ -463,7 +464,7 @@ namespace NS
         return m_look;
     }
 
-    void ThirdPersonFollow::UpdateCharge(const IUseCamera* user,
+    void ThirdPersonFollow::UpdateCharge(CameraManager* cameras,
                                          const FollowChargeDesc& charge,
                                          bool framingHeld,
                                          const Transform* target,
@@ -534,7 +535,7 @@ namespace NS
             shape.pitchDegrees = m_chargeShakePitchDegrees;
             shape.frequency = m_chargeShakeFrequency;
             shape.decayPerSecond = m_chargeShakeDecayPerSecond;
-            (void)HoldCameraTrauma(user, holdCharge, shape);
+            (void)cameras->HoldTrauma(holdCharge, shape);
         }
 
         // 構図は押したフレームから動かし、溜めに入った時には相手を枠へ入れておく
@@ -620,7 +621,7 @@ namespace NS
         return m_distance;
     }
 
-    void ThirdPersonFollow::UpdateOcclusion(const IUseCollision* collision,
+    void ThirdPersonFollow::UpdateOcclusion(const IGetCollision* collision,
                                             const Vector3& root,
                                             const Vector3& head,
                                             const Vector3& look,
@@ -721,10 +722,13 @@ namespace NS
         m_distance = distance;
     }
 
-    void ThirdPersonFollow::Update(const IUseCamera* user, const IUseCollision* collision)
+    void ThirdPersonFollow::Advance(CameraManager* cameras, const IGetCollision* collision)
     {
-        NS_ASSERT(Scene, user != nullptr, "ThirdPersonFollow::Update: カメラの管理クラスの窓口が null");
-        NS_ASSERT(Scene, collision != nullptr, "ThirdPersonFollow::Update: 地形を探すシーンの窓口が null");
+        NS_ASSERT(Scene, cameras != nullptr, "ThirdPersonFollow::Advance: カメラの管理役が null");
+        NS_ASSERT(Scene, collision != nullptr, "ThirdPersonFollow::Advance: 地形を探すシーンが null");
+        // clang-format off
+        if (m_targetState != nullptr) { m_targetState->WriteFollowState(this); }
+        // clang-format on
         // 受けた溜めと反動の状態はこのフレームだけ使う。渡されなかったフレームは押していない・反動でないのと同じ
         const FollowChargeDesc charge = m_charge;
         m_charge = FollowChargeDesc{};
@@ -833,7 +837,7 @@ namespace NS
 
         const Vector3 look = UpdateReboundLook(head, root, rebound.verticalLean, dt);
         UpdateOcclusion(collision, root, head, look, dt);
-        UpdateCharge(user, charge, framingHeld, target, look, dt);
+        UpdateCharge(cameras, charge, framingHeld, target, look, dt);
     }
 
     CameraPose ThirdPersonFollow::EvaluatePose(float alpha) const noexcept

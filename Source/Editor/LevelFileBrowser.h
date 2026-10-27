@@ -5,13 +5,12 @@
 
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace NS
 {
     namespace Editor
     {
-        //! @brief レベルファイルを保存・読込するモーダル UI
+        //! @brief レベルファイルを名前を付けて保存するモーダル UI。開くのはアセットの窓のシーンから
         class LevelFileBrowser : public NonCopyable
         {
         public:
@@ -19,7 +18,6 @@ namespace NS
             {
                 None,
                 RequestSave,
-                RequestLoad,
             };
 
             struct Result
@@ -32,25 +30,17 @@ namespace NS
 
             void OpenSaveModal(std::string_view initialName = {}) noexcept;
 
-            void OpenLoadModal() noexcept;
-
             //! @brief モーダルを描き、操作の結果を Result で返す
             [[nodiscard]] Result Render() noexcept;
 
             void NotifySaveResult(bool ok, std::string_view message) noexcept;
 
-            void NotifyLoadResult(bool ok, std::string_view message) noexcept;
-
         private:
             [[nodiscard]] Result RenderSaveModal() noexcept;
-            [[nodiscard]] Result RenderLoadModal() noexcept;
 
             bool m_saveModalOpen = false;
-            bool m_loadModalOpen = false;
 
             std::string m_saveNameBuffer;
-            std::vector<std::string> m_loadFileList;
-            int m_loadSelection = -1;
 
             std::string m_lastMessage;
             bool m_lastMessageError = false;

@@ -5,7 +5,7 @@
 // 出荷ビルドには載らない
 
 #include "Editor/Timeline.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 
 #include <cstddef>
 #include <optional>
@@ -25,8 +25,9 @@ namespace NS
         //! @return 消した場合 true。row が範囲の外の場合は false
         bool RemoveActionEvent(ActorAction& action, std::size_t row) noexcept;
 
-        //! @brief 事象と、下見の全フレームを含む範囲。下見のフレームは、その動作に入った歩を 0 にして数える
-        //! @details 下見が無いか、下見でその動作が走らなかった場合は事象だけ。事象も無ければ 0〜0
+        //! @brief 事象・動作の長さ・下見の全フレームを含む範囲。下見のフレームは、その動作に入った歩を 0 にして数える
+        //! @details 動作の長さは 1 以上の時だけ 0〜長さ − 1 を含む。下見が無いか、下見でその動作が走らなかった場合は
+        //! 事象と長さだけ。どれも無ければ 0〜0
         [[nodiscard]] TimelineFrameRange ActionFrameRange(const ActorAction& action,
                                                           const HitPreviewResult* preview) noexcept;
 

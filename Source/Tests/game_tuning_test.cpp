@@ -68,7 +68,6 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
     ASSERT_NE(sphere, nullptr);
     effects->BeginTrail(
         rock,
-        NS::GetFrameDelta(rock),
         GL::Level::TackleReleaseDesc{},
         rock->Flight(),
         &rock->Params(),

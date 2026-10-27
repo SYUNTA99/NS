@@ -10,7 +10,8 @@ namespace NS
     namespace OS
     {
         class Input;
-    }
+        class InputPresses;
+    } // namespace OS
 } // namespace NS
 
 namespace NS
@@ -22,7 +23,8 @@ namespace NS
         {
         public:
             //! 数字キーと肩のボタンで選ぶ。editShortcutsBlocked が真の間は数字キーを受けない
-            void TickInput(OS::Input* input, bool editShortcutsBlocked) noexcept;
+            //! @param[in] presses 持ち主がこの固定ステップに読んだ押し
+            void TickInput(OS::Input* input, const OS::InputPresses& presses, bool editShortcutsBlocked) noexcept;
 
             //! Scene ビュー内に収まるツールバーを描く。viewRect はスクリーン座標
             void Render(const Editor::ViewRect& viewRect) noexcept;

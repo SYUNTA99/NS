@@ -7,8 +7,8 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/IUse/IUseEffect.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Core/Windows/Clock.h"
@@ -74,7 +74,7 @@ namespace GL
 
         } // namespace
 
-        void ImpactEffects::Preload(const NS::IUseEffect* effect)
+        void ImpactEffects::Preload(const NS::IGetEffect* effect)
         {
             NS_ASSERT(Game, effect != nullptr, "ImpactEffects::Preload: 絵を出すアクターが空");
             NS::PreloadEffects(effect,
@@ -90,8 +90,8 @@ namespace GL
                                 m_landDustAsset});
         }
 
-        void ImpactEffects::Update(const NS::IUseEffect* effect,
-                                   const NS::IUseCamera* camera,
+        void ImpactEffects::Update(const NS::IGetEffect* effect,
+                                   const NS::IGetCamera* camera,
                                    const NS::Vector3& position,
                                    const BodySlamStatus& slam,
                                    const PlayerMotion& motion,

@@ -36,14 +36,6 @@ namespace NS
         //! 直前の Move で遮った面のうち、速度に一番向かい合った面の外向きの単位法線。遮らなかったら 0
         [[nodiscard]] Vector3 BlockNormal() const noexcept { return m_blockNormal; }
 
-        //! 水平の単位方向へ加速し、横滑りを減らす。上限を超える順方向速度は保つ
-        //! turningDrag・acceleration は m/s²、topSpeed は m/s、dt は秒
-        void Accelerate(
-            const Vector3& direction, float turningDrag, float acceleration, float topSpeed, float dt) noexcept;
-
-        //! 水平の速さを 1 フレームに deceleration × dt ずつ減らし、ちょうど 0 で止める。縦は触らない
-        void Decelerate(float deceleration, float dt) noexcept;
-
         //! 重力の値は呼び手が選ぶ。負の値で重力方向へ加速する。非有限値または dt が 0 以下なら変更しない
         void Gravity(float gravity, float dt) noexcept;
 

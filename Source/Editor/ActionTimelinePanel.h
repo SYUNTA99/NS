@@ -4,7 +4,7 @@
 #include "Editor/Timeline.h"
 #include "Editor/TimelinePreview.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 
 #include <cstddef>
 #include <functional>

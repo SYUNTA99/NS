@@ -167,43 +167,5 @@ namespace NS
             }
             return true;
         }
-
-        std::vector<std::string> EnumerateLevelFiles() noexcept
-        {
-            std::vector<std::string> result;
-            const std::string root = OS::FileSystem::ContentRoot();
-            const std::string assetsDir = OS::FileSystem::Combine(root, "Assets");
-            if (!OS::FileSystem::Exists(assetsDir))
-            {
-                return result;
-            }
-
-            for (const std::string& path : OS::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
-            {
-                const std::optional<std::string> fromRoot = OS::FileSystem::RelativeUnder(root, path);
-                if (!fromRoot)
-                {
-                    NS_LOG_ERROR(App, "レベル一覧から除外: {} (ContentRoot の外)", path);
-                    continue;
-                }
-                std::string name = LevelNameOfScenePath(*fromRoot);
-                if (name.empty())
-                {
-                    // 黙って落とすとレベル消失に見える。除外したことをログに残す
-                    NS_LOG_WARN(App, "レベル一覧から除外: {} (パスに使えない文字か長さ超過)", *fromRoot);
-                }
-                else if (name.find('/') == std::string::npos)
-                {
-                    // フォルダの無い名前は Scenes/ の下で開くので、Assets 直下は開けない
-                    NS_LOG_WARN(App, "レベル一覧から除外: {} (Assets 直下の .scene は開けない)", *fromRoot);
-                }
-                else
-                {
-                    result.push_back(std::move(name));
-                }
-            }
-            std::sort(result.begin(), result.end());
-            return result;
-        }
     } // namespace Editor
 } // namespace NS
