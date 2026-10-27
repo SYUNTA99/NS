@@ -2,10 +2,12 @@
 
 #include "NSlib/Core/LogType.h"
 
+#include <cstddef>
 #include <format>
 #include <magic_enum/magic_enum.hpp>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace NS
 {
@@ -35,11 +37,24 @@ namespace NS
         std::string logDirectory = {};
     };
 
+    //! 溜めたログ 1 件。エディタのコンソールが一覧に出す
+    struct RecentLog
+    {
+        LogLevel level = LogLevel::Warn;
+        std::string text; // 種類の名前を頭に付けた本文。例: "[Game] 欄 質量 に読んだ値 0 を書かず…"
+    };
+
     //! NS_LOG_* から使うスレッド対応のロガー。書式は std::format に合わせる
     class Logger
     {
     public:
+        //! RecentWarnings が返す件数の上限。越えたら古い物から消える
+        static constexpr std::size_t k_RecentLogCapacity = 256;
+
         Logger() = delete;
+
+        //! Init から後に出た WARN 以上のログを、新しい順に返す。Init の前と Shutdown の後は空
+        [[nodiscard]] static std::vector<RecentLog> RecentWarnings();
 
         //! 失敗時は標準エラー出力にエラーを出し、既定の設定で強行する。複数回呼んでも無視される
         static void Init(const LoggerDesc& desc = {}) noexcept;

@@ -4,6 +4,7 @@
 #include "Editor/EditorAppearance.h"
 #include "Editor/EditorUi.h"
 #include "Editor/AssetPicker.h"
+#include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -452,7 +453,48 @@ namespace NS
                 bool activated = false; // 編集が始まった
                 bool committed = false; // ウィジェットが非活性化した
                 bool popupActive = false;
+                bool wrote = false; // この描画で欄へ書こうとした
             };
+
+            // 編集の間に最後に書けなかった理由を、欄のウィジェットの ID ごとに覚える鍵。書けたら Written に戻す
+            constexpr const char* k_RejectedWriteKey = "field-write-rejected";
+
+            // 書けた時だけ changed を立てる。書けなかった時は今の値が残るので、理由を覚えて離した時に知らせる
+            void WriteField(void* owner, const FieldDesc& field, const void* value, FieldWidgetResult& result) noexcept
+            {
+                const FieldWriteResult written = field.set(owner, value);
+                ImGui::GetStateStorage()->SetInt(ImGui::GetID(k_RejectedWriteKey), static_cast<int>(written));
+                result.wrote = true;
+                if (written == FieldWriteResult::Written)
+                {
+                    result.changed = true;
+                }
+            }
+
+            // 入力を離した時に、編集の最後の書き込みが拒まれていれば WARN を 1 回出す。ドラッグの間は毎フレーム出さない
+            // 編集が始まった描画で書いていなければ、前の編集の理由を捨てる。離す前に行が消えた編集の理由が、
+            // 同じ ID の別のアクターの欄に出ないようにする
+            void WarnRejectedWriteOnCommit(const FieldDesc& field, const FieldWidgetResult& result) noexcept
+            {
+                ImGuiStorage* storage = ImGui::GetStateStorage();
+                const ImGuiID id = ImGui::GetID(k_RejectedWriteKey);
+                if (result.activated && !result.wrote)
+                {
+                    storage->SetInt(id, static_cast<int>(FieldWriteResult::Written));
+                }
+                if (!result.committed)
+                {
+                    return;
+                }
+                const FieldWriteResult last =
+                    static_cast<FieldWriteResult>(storage->GetInt(id, static_cast<int>(FieldWriteResult::Written)));
+                storage->SetInt(id, static_cast<int>(FieldWriteResult::Written));
+                if (last == FieldWriteResult::Written)
+                {
+                    return;
+                }
+                NS_LOG_WARN(App, "欄 {} に入れた値を書かず、今の値を残した: {}", FieldLabel(field), FieldWriteResultText(last));
+            }
 
             void DrawStringFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
             {
@@ -467,8 +509,7 @@ namespace NS
                 if (ImGui::InputTextWithHint("##value", "文字を入力", value.data(), value.capacity() + 1,
                                              ImGuiInputTextFlags_CallbackResize, resize, &value))
                 {
-                    field.set(owner, &value);
-                    result.changed = true;
+                    WriteField(owner, field, &value, result);
                 }
                 if (ImGui::IsItemHovered() && !value.empty())
                 {
@@ -516,6 +557,7 @@ namespace NS
                     ImGui::PopTextWrapPos();
                     ImGui::EndTooltip();
                 }
+                bool picked = false;
                 ImGui::SetNextWindowSize(ImVec2{640.0f, 480.0f}, ImGuiCond_Appearing);
                 if (ImGui::BeginPopup("asset-picker"))
                 {
@@ -531,7 +573,7 @@ namespace NS
                         if (!value.empty())
                         {
                             value.clear();
-                            result.changed = true;
+                            picked = true;
                         }
                         ImGui::CloseCurrentPopup();
                     }
@@ -565,7 +607,7 @@ namespace NS
                                 if (value != option.value)
                                 {
                                     value = option.value;
-                                    result.changed = true;
+                                    picked = true;
                                 }
                                 ImGui::CloseCurrentPopup();
                                 break;
@@ -583,9 +625,9 @@ namespace NS
                 result.popupActive = open;
                 result.committed |= wasOpen && !open;
                 storage->SetBool(wasOpenId, open);
-                if (result.changed)
+                if (picked)
                 {
-                    field.set(owner, &value);
+                    WriteField(owner, field, &value, result);
                 }
             }
 
@@ -637,8 +679,7 @@ namespace NS
                 field.get(owner, &value);
                 if (DrawColorPicker(field, value, ImGui::CalcItemWidth(), result))
                 {
-                    field.set(owner, &value);
-                    result.changed = true;
+                    WriteField(owner, field, &value, result);
                 }
             }
 
@@ -659,8 +700,7 @@ namespace NS
                     {
                         value.reset();
                     }
-                    field.set(owner, &value);
-                    result.changed = true;
+                    WriteField(owner, field, &value, result);
                 }
                 if (ImGui::IsItemHovered())
                 {
@@ -677,17 +717,18 @@ namespace NS
                 if (DrawColorPicker(field, color, pickerWidth, result))
                 {
                     value = color;
-                    field.set(owner, &value);
-                    result.changed = true;
+                    WriteField(owner, field, &value, result);
                 }
             }
 
-            // ActorRef の欄。参照候補が無ければ id を打たせ、あれば候補から選ばせる。値を変えたら true
-            bool DrawActorRefFieldWidget(void* owner,
+            // ActorRef の欄。参照候補が無ければ id を打たせ、あれば候補から選ばせる
+            // 書くのは候補の窓を閉じた後の 1 か所。書けなかった理由は欄の ID で覚えるので、窓の中では書かない
+            void DrawActorRefFieldWidget(void* owner,
                                          const FieldDesc& field,
-                                         std::span<const ActorRefOption> refOptions) noexcept
+                                         std::span<const ActorRefOption> refOptions,
+                                         FieldWidgetResult& result) noexcept
             {
-                bool changed = false;
+                bool picked = false;
                 ActorRef value{};
                 field.get(owner, &value);
 
@@ -710,10 +751,9 @@ namespace NS
                         {
                             value.id = static_cast<uint32>(id);
                         }
-                        field.set(owner, &value);
-                        changed = true;
+                        WriteField(owner, field, &value, result);
                     }
-                    return changed;
+                    return;
                 }
 
                 const char* currentLabel = "未設定";
@@ -734,8 +774,7 @@ namespace NS
                     if (ImGui::Selectable("未設定", !value.IsSet()))
                     {
                         value.id = 0;
-                        field.set(owner, &value);
-                        changed = true;
+                        picked = true;
                     }
                     for (const ActorRefOption& option : refOptions)
                     {
@@ -743,14 +782,16 @@ namespace NS
                         if (ImGui::Selectable(option.label.c_str(), option.id == value.id))
                         {
                             value.id = option.id;
-                            field.set(owner, &value);
-                            changed = true;
+                            picked = true;
                         }
                         ImGui::PopID();
                     }
                     ImGui::EndCombo();
                 }
-                return changed;
+                if (picked)
+                {
+                    WriteField(owner, field, &value, result);
+                }
             }
 
             // 曲線のグラフが ImGui の状態の保存に使う識別子。グラフと同じ ID スタックの中で作る
@@ -1373,8 +1414,7 @@ namespace NS
                 {
                     // x を左右へドラッグすると並びが崩れるため、編集のたびに並べ直してから書き戻す
                     value.SortKeys();
-                    field.set(owner, &value);
-                    result.changed = true;
+                    WriteField(owner, field, &value, result);
                 }
             }
 
@@ -1394,8 +1434,7 @@ namespace NS
                     field.get(owner, &value);
                     if (ImGui::DragFloat("##value", &value, 0.05f))
                     {
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1405,8 +1444,7 @@ namespace NS
                     field.get(owner, &value);
                     if (ImGui::DragInt("##value", &value))
                     {
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1416,8 +1454,7 @@ namespace NS
                     field.get(owner, &value);
                     if (ImGui::Checkbox("##value", &value))
                     {
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1432,8 +1469,7 @@ namespace NS
                     if (edit.changed)
                     {
                         value = Vector2{xy[0], xy[1]};
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1448,8 +1484,7 @@ namespace NS
                     if (edit.changed)
                     {
                         value = Vector3{xyz[0], xyz[1], xyz[2]};
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1466,8 +1501,7 @@ namespace NS
                     if (edit.changed)
                     {
                         value = EulerDegreesToQuaternion(Vector3{xyz[0], xyz[1], xyz[2]});
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1491,7 +1525,7 @@ namespace NS
                     break;
                 }
                 case FieldType::ActorRef:
-                    result.changed |= DrawActorRefFieldWidget(owner, field, refOptions);
+                    DrawActorRefFieldWidget(owner, field, refOptions, result);
                     break;
                 case FieldType::Curve:
                     DrawCurveFieldWidget(owner, field, result);
@@ -1506,6 +1540,7 @@ namespace NS
                 {
                     result.committed |= ImGui::IsItemDeactivated();
                 }
+                WarnRejectedWriteOnCommit(field, result);
                 return result;
             }
 
