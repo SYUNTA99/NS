@@ -259,6 +259,11 @@ namespace NS
         // 透過部分が見えるように、画像の後ろへ市松模様を描く
         inline void DrawCheckerboard(ImDrawList& draw, ImVec2 origin, ImVec2 size, int step) noexcept
         {
+            // 升の幅が 0 以下だと、下の繰り返しが終わらない
+            if (step <= 0)
+            {
+                return;
+            }
             for (int y = 0; y < static_cast<int>(size.y); y += step)
             {
                 for (int x = 0; x < static_cast<int>(size.x); x += step)
