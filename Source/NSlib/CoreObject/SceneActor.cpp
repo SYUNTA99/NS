@@ -437,10 +437,10 @@ namespace NS
         return true;
     }
 
-    std::span<const HitOwnerRun> SceneActor::StartHitReactionRuns(std::string_view name,
-                                                                  const Vector3& position,
-                                                                  const HitSensor* self,
-                                                                  const HitSensor* other)
+    std::vector<HitOwnerRun> SceneActor::StartHitReactionRuns(std::string_view name,
+                                                              const Vector3& position,
+                                                              const HitSensor* self,
+                                                              const HitSensor* other)
     {
         if (!m_hitReaction)
         {

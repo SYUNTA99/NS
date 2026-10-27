@@ -572,9 +572,10 @@ namespace NS
         std::erase_if(m_ownerRuns, [](const HitOwnerRun& run) { return run.frame >= run.length; });
     }
 
-    std::span<const HitOwnerRun> HitReaction::OwnerRunsSince(std::size_t index) const noexcept
+    std::vector<HitOwnerRun> HitReaction::OwnerRunsSince(std::size_t index) const
     {
-        return std::span<const HitOwnerRun>{m_ownerRuns}.subspan(std::min(index, m_ownerRuns.size()));
+        const std::size_t first = std::min(index, m_ownerRuns.size());
+        return {m_ownerRuns.begin() + static_cast<std::ptrdiff_t>(first), m_ownerRuns.end()};
     }
 
     void HitReaction::CreateDirectors(const SceneActor* owner)

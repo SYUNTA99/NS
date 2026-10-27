@@ -15,7 +15,6 @@
 #include <initializer_list>
 #include <map>
 #include <optional>
-#include <span>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -479,8 +478,9 @@ namespace NS
         //! 始めて長さの終わっていない、持ち主へ渡す項目。始めた順
         [[nodiscard]] const std::vector<HitOwnerRun>& OwnerRuns() const noexcept { return m_ownerRuns; }
 
-        //! index 以降に足された、持ち主へ渡す項目の並び
-        [[nodiscard]] std::span<const HitOwnerRun> OwnerRunsSince(std::size_t index) const noexcept;
+        //! index 以降に足された、持ち主へ渡す項目の写し。
+        //! 写しで返すので、回している間に次の当たりの演出を始めて並びが伸びても、指す先が消えない
+        [[nodiscard]] std::vector<HitOwnerRun> OwnerRunsSince(std::size_t index) const;
 
         //! 持ち主へ渡す項目を 1 フレーム進め、長さの終わった物を外す
         //! 呼ぶのは SceneActor::Update の頭だけ。持ち主の止めの間も進める

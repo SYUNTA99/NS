@@ -741,7 +741,7 @@ void PlayerActor::BeginTackleHit() noexcept
         NS_LOG_WARN(Game, "当たりの相手か自機の当たりの演出が無いので、段の束を始めない: 相手 {}", impact.targetId);
         return;
     }
-    const std::span<const NS::HitOwnerRun> runs = StartHitReactionRuns(
+    const std::vector<NS::HitOwnerRun> runs = StartHitReactionRuns(
         GL::Level::TackleSetName("体当たり", impact.tier), impact.surfacePoint, BodySensorClassObj(), target);
     GL::Level::TackleHitDesc hit{.tier = impact.tier, .contact = impact.surfacePoint, .impactDir = impact.impactDir};
     if (impact.broke)

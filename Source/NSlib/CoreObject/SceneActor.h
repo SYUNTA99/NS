@@ -19,7 +19,6 @@
 #include <concepts>
 #include <memory>
 #include <set>
-#include <span>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -155,11 +154,11 @@ namespace NS
                               const Vector3& position,
                               const HitSensor* self,
                               const HitSensor* other);
-        //! StartHitReaction を呼び、この束が足した持ち主へ渡す項目の並びを返す
-        [[nodiscard]] std::span<const HitOwnerRun> StartHitReactionRuns(std::string_view name,
-                                                                        const Vector3& position,
-                                                                        const HitSensor* self,
-                                                                        const HitSensor* other);
+        //! StartHitReaction を呼び、この束が足した持ち主へ渡す項目の写しを返す
+        [[nodiscard]] std::vector<HitOwnerRun> StartHitReactionRuns(std::string_view name,
+                                                                    const Vector3& position,
+                                                                    const HitSensor* self,
+                                                                    const HitSensor* other);
         //! 当たりの止めの残りのフレーム数。止めていなければ 0
         [[nodiscard]] int HitStopFramesRemaining() const noexcept { return m_hitStopFrames; }
         //! 当たりの止めの間なら true
