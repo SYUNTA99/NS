@@ -2,12 +2,12 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/detail/ActorFileItems.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <format>
 #include <limits>
-#include <set>
 #include <utility>
 
 namespace NS
@@ -219,7 +219,7 @@ namespace NS
 
     std::vector<ActorAction> ReadActorActions(std::string_view actorFileName, const nlohmann::json& actorFile)
     {
-        return ReadNamedActorFileItems(
+        return detail::ReadNamedActorFileItems(
             actorFileName, ActorFileActions(actorFile), &ParseActorAction, "actions", "動作");
     }
 
@@ -228,7 +228,7 @@ namespace NS
         // 読まなかった動作は字面のまま同じ位置に残す。捨てると、直していない本人の値が .actor から消える
         SetActorFileActions(
             actorFile,
-            BuildNamedActorFileItemsJson(
+            detail::BuildNamedActorFileItemsJson(
                 ActorFileActions(actorFile), actions, &ParseActorAction, &ActorActionToJson, "動作"));
     }
 

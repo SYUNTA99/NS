@@ -8,6 +8,7 @@
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/detail/ActorFileItems.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -23,7 +24,6 @@
 #include <limits>
 #include <optional>
 #include <random>
-#include <set>
 #include <type_traits>
 #include <utility>
 
@@ -980,7 +980,7 @@ namespace NS
 
     std::vector<HitReactionSet> ReadHitReactionSets(std::string_view actorFileName, const nlohmann::json& actorFile)
     {
-        return ReadNamedActorFileItems(
+        return detail::ReadNamedActorFileItems(
             actorFileName, ActorFileHitReactions(actorFile), &ParseHitReactionSet, "hitReactions", "束");
     }
 
@@ -989,7 +989,7 @@ namespace NS
         // 読まなかった束は字面のまま同じ位置に残す。捨てると、直していない本人の値が .actor から消える
         SetActorFileHitReactions(
             actorFile,
-            BuildNamedActorFileItemsJson(
+            detail::BuildNamedActorFileItemsJson(
                 ActorFileHitReactions(actorFile), sets, &ParseHitReactionSet, &HitReactionSetToJson, "束"));
     }
 } // namespace NS
