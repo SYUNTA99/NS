@@ -54,7 +54,7 @@ namespace GL
             //! @return 入っている場合 true、それ以外の場合は false
             [[nodiscard]] static bool InBand(float handY, float top, float belowHand, float aboveHand) noexcept
             {
-                return !(top < handY - belowHand || top > handY + aboveHand);
+                return top >= handY - belowHand && top <= handY + aboveHand;
             }
         };
 
@@ -92,7 +92,7 @@ namespace GL
                 {
                     return false;
                 }
-                return direction.x * lateralVelocity.x + direction.z * lateralVelocity.z < threshold;
+                return NS::DotHorizontal(direction, lateralVelocity) < threshold;
             }
         };
 

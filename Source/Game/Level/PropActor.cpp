@@ -314,7 +314,7 @@ namespace GL
             const NS::Vector3 up = -GravityDirection();
             NS::Vector3 forward = desc.arc.direction - up * NS::Dot(desc.arc.direction, up);
             const float length = forward.Length();
-            if (!NS::IsFinite(forward) || !(length > 0.0001f))
+            if (!NS::HasPositiveMagnitude(length))
             {
                 return;
             }
@@ -483,7 +483,7 @@ namespace GL
                 bool blocked = NS::RaycastCollision(
                     this, sphere.center, direction, travel + sphere.radius * 2.0f, distance, normal, Sphere().BodyId());
                 const float approach = -NS::Dot(direction, normal);
-                if (blocked && approach > 0.0001f)
+                if (blocked && NS::HasPositiveMagnitude(approach))
                 {
                     allowed = std::max(0.0f, distance - sphere.radius / approach - m_params->ContactSkin());
                     blocked = allowed < travel;
@@ -517,7 +517,7 @@ namespace GL
             const NS::Vector3 horizontal = m_velocity - up * NS::Dot(m_velocity, up);
             const NS::Vector3 spin = NS::Cross(up, horizontal) * m_params->SpinPerSpeed();
             const float rate = spin.Length();
-            if (std::isfinite(rate) && rate > 0.0001f)
+            if (NS::HasPositiveMagnitude(rate))
             {
                 Root().SetRotation(NS::Quaternion::CreateFromAxisAngle(spin / rate, rate * dt) * Root().Rotation());
             }

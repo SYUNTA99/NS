@@ -127,8 +127,7 @@ namespace GL
 
         NS::Quaternion ChargeEffects::YawToward(const NS::Vector3& direction) noexcept
         {
-            const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-            if (!std::isfinite(length) || length <= 0.0f)
+            if (!NS::HasPositiveMagnitudeHorizontal(direction))
             {
                 return NS::Quaternion::Identity;
             }

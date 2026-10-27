@@ -90,6 +90,12 @@ namespace GL
 
         void CourseDirector::SendRestart(const NS::SceneActor* skip)
         {
+            // 止め始めたのが出し直すアクターなら、止めを残すと出し直したアクターが止まったまま待つ。
+            // 出し直さないアクター (リスポーンの自機) が始めた止めは、そのアクターが続けているので残す
+            if (skip == nullptr || !m_scene.IsOthersHolder(skip))
+            {
+                m_scene.ReleaseOthersHold();
+            }
             for (NS::SceneActor* actor : PlacedActors(skip))
             {
                 (void)SendMsgCourseRestart(actor);

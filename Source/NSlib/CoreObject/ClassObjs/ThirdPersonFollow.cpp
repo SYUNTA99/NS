@@ -137,7 +137,7 @@ namespace NS
     void ThirdPersonFollow::SetFollowMotion(bool grounded, const Vector3& velocity) noexcept
     {
         m_followGrounded = grounded;
-        const float horiz = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        const float horiz = HorizontalLength(velocity);
         // 非数を持つと走り判定の比較が常に偽になり、走っても待機時距離のまま
         if (std::isfinite(horiz))
         {
@@ -286,9 +286,7 @@ namespace NS
             m_reboundPhase = ReboundPhase::Following;
             anchorAtLastLook();
             // 勝手に出た突進の遅れは反動の上限より大きいことがある。入った時の遅れを上限の初めにして、切って跳ばさない
-            const float lagX = m_reboundAnchor.x - head.x;
-            const float lagZ = m_reboundAnchor.z - head.z;
-            m_reboundLagCap = std::max(m_reboundMaxLag, std::sqrt(lagX * lagX + lagZ * lagZ));
+            m_reboundLagCap = std::max(m_reboundMaxLag, HorizontalLength(m_reboundAnchor - head));
             return;
         }
 
@@ -393,16 +391,14 @@ namespace NS
             // 表示する遅れだけをなめらかに制限し、バネの速度が急変しないよう状態は切らない。
             CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_forcedLaunchFollowOmega, dt);
             CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_forcedLaunchFollowOmega, dt);
-            const float lagX = m_reboundAnchor.x - head.x;
-            const float lagZ = m_reboundAnchor.z - head.z;
-            const float lag = std::sqrt(lagX * lagX + lagZ * lagZ);
+            const Vector3 lag = HorizontalPart(m_reboundAnchor - head);
+            const float lagLength = lag.Length();
             const float maxLag = std::max(m_forcedLaunchMaxLag, 0.0f);
             m_look = head;
-            if (lag > 0.0f && maxLag > 0.0f)
+            if (lagLength > 0.0f && maxLag > 0.0f)
             {
-                const float shown = maxLag * std::tanh(lag / maxLag);
-                m_look.x = head.x + lagX * (shown / lag);
-                m_look.z = head.z + lagZ * (shown / lag);
+                const float shown = maxLag * std::tanh(lagLength / maxLag);
+                m_look = head + lag * (shown / lagLength);
             }
             return m_look;
         }
@@ -411,27 +407,25 @@ namespace NS
         // 高さは留めたまま
         CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_reboundFollowOmega, dt);
         CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_reboundFollowOmega, dt);
-        const float lagX = m_reboundAnchor.x - head.x;
-        const float lagZ = m_reboundAnchor.z - head.z;
-        const float lag = std::sqrt(lagX * lagX + lagZ * lagZ);
+        const Vector3 lag = HorizontalPart(m_reboundAnchor - head);
+        const float lagLength = lag.Length();
         const float maxLag = std::max(m_reboundLagCap, 0.0f);
-        if (lag > maxLag)
+        if (lagLength > maxLag)
         {
-            const float scale = maxLag / lag;
-            m_reboundAnchor.x = head.x + lagX * scale;
-            m_reboundAnchor.z = head.z + lagZ * scale;
+            const float scale = maxLag / lagLength;
+            m_reboundAnchor.x = head.x + lag.x * scale;
+            m_reboundAnchor.z = head.z + lag.z * scale;
         }
         // 上限は欄の値より上にある間だけ、今の遅れまで縮めていく。増やさないので注視点は跳ばない
-        m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lag, maxLag)));
+        m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lagLength, maxLag)));
         // カメラへ向かう間は、注視点が自機より奥へ遅れた分だけカメラが自機へ寄る。奥への遅れだけを別の上限で縛る。
         // 横と、カメラから離れる向きの遅れは残すので、離れていく速さの見え方は変えない
         const Vector3 away = ViewAxesFromYawPitch(m_yaw, 0.0f).forward;
-        const float lagAway = (m_reboundAnchor.x - head.x) * away.x + (m_reboundAnchor.z - head.z) * away.z;
+        const float lagAway = DotHorizontal(m_reboundAnchor - head, away);
         const float awayCap = std::max(m_reboundTowardCameraMaxLag, 0.0f);
         if (lagAway > awayCap)
         {
-            m_reboundAnchor.x -= away.x * (lagAway - awayCap);
-            m_reboundAnchor.z -= away.z * (lagAway - awayCap);
+            m_reboundAnchor -= HorizontalPart(away) * (lagAway - awayCap);
         }
         m_look = m_reboundAnchor + m_partnerLean;
 

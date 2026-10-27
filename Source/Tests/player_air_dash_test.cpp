@@ -114,7 +114,7 @@ namespace
         NS::Vector3 nb = b;
         na.Normalize();
         nb.Normalize();
-        return std::acos(std::clamp(NS::Dot(na, nb), -1.0f, 1.0f));
+        return NS::AngleBetweenUnit(na, nb);
     }
 
     // 宙の自機でエアダッシュを押しても、ダッシュに入らず、回数も減らず、WARN を 1 回出す事を確かめる

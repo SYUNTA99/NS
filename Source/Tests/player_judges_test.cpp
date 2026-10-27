@@ -86,6 +86,9 @@ TEST(PlayerJudges, LedgeBandIncludesItsEdgesWithoutPhysicsOrState)
     EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::InBand(2.0f, 2.0f, 0.5f, 0.25f));
     EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(2.0f, 1.499f, 0.5f, 0.25f));
     EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(2.0f, 2.251f, 0.5f, 0.25f));
+    // 上面か手の高さが非数なら掴まない
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(2.0f, std::numeric_limits<float>::quiet_NaN(), 0.5f, 0.25f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(std::numeric_limits<float>::quiet_NaN(), 2.0f, 0.5f, 0.25f));
 }
 
 TEST(PlayerJudges, MoveInputIncludesTheDeadzoneEdgeAndStoppedNeedsExactZero)

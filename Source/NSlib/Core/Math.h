@@ -263,6 +263,34 @@ namespace NS
         return std::sqrt(HorizontalLengthSquared(v));
     }
 
+    //! @brief XZ 平面の内積（水平成分）
+    [[nodiscard]] inline float DotHorizontal(const Vector3& a, const Vector3& b) noexcept
+    {
+        return a.x * b.x + a.z * b.z;
+    }
+
+    //! @brief y を 0 にした水平成分
+    [[nodiscard]] inline Vector3 HorizontalPart(const Vector3& v) noexcept
+    {
+        return Vector3{v.x, 0.0f, v.z};
+    }
+
+    //! @brief 水平の向き from を Y 軸まわりに回して to へ重ねる角度。正の角度は +X を -Z の側へ回す
+    //! @return ラジアン。範囲は -π..π
+    [[nodiscard]] inline float SignedHorizontalAngle(const Vector3& from, const Vector3& to) noexcept
+    {
+        return std::atan2(from.z * to.x - from.x * to.z, DotHorizontal(from, to));
+    }
+
+    //! @brief 2 つの単位ベクトルの間の角度。内積が丸めの誤差で -1..1 を越えた分は端へ寄せる
+    //! @param[in] a 有限の単位ベクトル。非数は寄せても非数のまま返る
+    //! @param[in] b 有限の単位ベクトル
+    //! @return ラジアン。範囲は 0..π
+    [[nodiscard]] inline float AngleBetweenUnit(const Vector3& a, const Vector3& b) noexcept
+    {
+        return std::acos(std::clamp(Dot(a, b), -1.0f, 1.0f));
+    }
+
     //! @brief 水平成分の長さが 0 近傍か判定する
     [[nodiscard]] inline bool IsNearlyZeroHorizontal(const Vector3& v, float toleranceSq = k_Epsilon * k_Epsilon) noexcept
     {
@@ -273,6 +301,30 @@ namespace NS
     [[nodiscard]] inline bool HasPositiveMagnitude(float value, float minThreshold = k_Epsilon) noexcept
     {
         return std::isfinite(value) && value > minThreshold;
+    }
+
+    //! @brief 長さが有限かつ正の有意な大きさ（k_Epsilon より大）を持つか判定する。割る前に問う
+    [[nodiscard]] inline bool HasPositiveMagnitude(const Vector3& v, float minThresholdSq = k_Epsilon * k_Epsilon) noexcept
+    {
+        return HasPositiveMagnitude(v.LengthSquared(), minThresholdSq);
+    }
+
+    //! @brief 水平成分の長さが有限かつ正の有意な大きさ（k_Epsilon より大）を持つか判定する
+    [[nodiscard]] inline bool HasPositiveMagnitudeHorizontal(const Vector3& v,
+                                                             float minThresholdSq = k_Epsilon * k_Epsilon) noexcept
+    {
+        return HasPositiveMagnitude(HorizontalLengthSquared(v), minThresholdSq);
+    }
+
+    //! @brief 正規化した向き。長さが有限で k_Epsilon より大きくなければ fallback を返す
+    [[nodiscard]] inline Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
+    {
+        const float length = v.Length();
+        if (!HasPositiveMagnitude(length))
+        {
+            return fallback;
+        }
+        return v / length;
     }
 
     //! @brief XZ 平面へ畳んだ向きを正規化する

@@ -203,6 +203,8 @@ namespace NS
         //! holder が一覧から外れても番地を読まず、止めは残りの歩で切れる。プレイ開始でも解く
         //! @param[in] holder 止め始めるアクター。事前条件: nullptr でない
         void HoldOthers(const SceneActor* holder, int steps) noexcept;
+        //! 止め始めたアクターに関わらず、ほかを止めているのを解く。アクターを出し直す側が、出し直す前に呼ぶ
+        void ReleaseOthersHold() noexcept { m_othersHeldSteps = 0; }
         //! ほかを止めている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsHoldingOthers() const noexcept { return m_othersHeldSteps > 0; }
         //! actor が今の止めを始めたアクターなら true

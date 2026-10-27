@@ -250,12 +250,11 @@ void PlayerActor::EndBodySlam() noexcept
 
     // 加速は最高速を超えた速さを削らない。切らないと、倒している間は突進の速さのまま走り続ける
     const NS::Vector3 lateral = body.LateralVelocity();
-    const float speed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
+    const float speed = NS::HorizontalLength(lateral);
     const float cap = MaxSpeed();
     if (speed > cap)
     {
-        const float scale = cap / speed;
-        body.SetLateralVelocity(NS::Vector3{lateral.x * scale, 0.0f, lateral.z * scale});
+        body.SetLateralVelocity(NS::HorizontalPart(lateral) * (cap / speed));
     }
 
     ChangeToWalkOrFall();
@@ -352,14 +351,12 @@ NS::Vector3 PlayerActor::BlendedAimDirection() const noexcept
     {
         return dir;
     }
-    const NS::Vector3 mixed{dir.x * (1.0f - blend) + m_request.aimDir.x * blend,
-                            0.0f,
-                            dir.z * (1.0f - blend) + m_request.aimDir.z * blend};
-    const float mixedLength = NS::HorizontalLength(mixed);
+    const NS::Vector3 mixed = dir * (1.0f - blend) + m_request.aimDir * blend;
     // 正反対の向きを同じくらいの重みで混ぜると長さが 0 近くになる。その時は濃い側をそのまま採る
-    if (!NS::IsNearlyZero(mixedLength))
+    NS::Vector3 mixedDirection{};
+    if (NS::TryNormalizeHorizontal(mixed, mixedDirection))
     {
-        return NS::Vector3{mixed.x / mixedLength, 0.0f, mixed.z / mixedLength};
+        return mixedDirection;
     }
     if (blend >= 0.5f)
     {

@@ -92,7 +92,7 @@ namespace NS
         m_worldSpeed = 1.0f;
         m_worldCarry = 0.0f;
         m_rampActive = false;
-        m_othersHeldSteps = 0;
+        ReleaseOthersHold();
     }
 
     void Scene::StepSimulation() noexcept

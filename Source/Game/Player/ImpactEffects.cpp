@@ -27,16 +27,6 @@ namespace GL
             using NS::Quaternion;
             using NS::Vector3;
 
-            [[nodiscard]] Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
-            {
-                const float length = v.Length();
-                if (NS::IsNearlyZero(length))
-                {
-                    return fallback;
-                }
-                return v / length;
-            }
-
             // 絵の +Y を向きへ回す回転
             [[nodiscard]] Quaternion TurnUpTo(const Vector3& direction) noexcept
             {
@@ -221,14 +211,14 @@ namespace GL
                 return Vector3{};
             }
             const Vector3 right{forward.z, 0.0f, -forward.x};
-            const Vector3 side = NormalizedOr(right * u + Vector3{0.0f, v, 0.0f}, Vector3{});
+            const Vector3 side = NS::NormalizedOr(right * u + Vector3{0.0f, v, 0.0f}, Vector3{});
             if (!(side.Length() > 0.5f))
             {
                 return Vector3{};
             }
-            const Vector3 slide = NormalizedOr(forward - surfaceNormal * NS::Dot(forward, surfaceNormal), side);
+            const Vector3 slide = NS::NormalizedOr(forward - surfaceNormal * NS::Dot(forward, surfaceNormal), side);
             const float sideShare = std::clamp(m_missSparkSideShare, 0.0f, 1.0f);
-            return NormalizedOr(side * sideShare + slide * (1.0f - sideShare), side);
+            return NS::NormalizedOr(side * sideShare + slide * (1.0f - sideShare), side);
         }
 
         float ImpactEffects::LandDustRadiusFor(float fallSpeed) const noexcept
@@ -240,12 +230,12 @@ namespace GL
                                                    const Vector3& ballCenter,
                                                    const std::optional<Vector3>& cameraPosition) const noexcept
         {
-            const Vector3 heading = NormalizedOr(velocity, Vector3{0.0f, 1.0f, 0.0f});
+            const Vector3 heading = NS::NormalizedOr(velocity, Vector3{0.0f, 1.0f, 0.0f});
             if (!cameraPosition.has_value())
             {
                 return heading;
             }
-            const Vector3 sight = NormalizedOr(ballCenter - cameraPosition.value(), Vector3{});
+            const Vector3 sight = NS::NormalizedOr(ballCenter - cameraPosition.value(), Vector3{});
             if (!(sight.Length() > 0.5f))
             {
                 return heading;
@@ -298,18 +288,18 @@ namespace GL
             const Vector3 self = owner.position;
             const float radius = collider->CapsuleRadius();
             const Vector3 horizontalForward{impact.impactDir.x, 0.0f, impact.impactDir.z};
-            plan.launchDir = NormalizedOr(horizontalForward, Vector3{1.0f, 0.0f, 0.0f});
-            const Vector3 toTarget = NormalizedOr(impact.targetPos - self, plan.launchDir);
+            plan.launchDir = NS::NormalizedOr(horizontalForward, Vector3{1.0f, 0.0f, 0.0f});
+            const Vector3 toTarget = NS::NormalizedOr(impact.targetPos - self, plan.launchDir);
             plan.contact = self + toTarget * radius;
-            plan.awayDir = NormalizedOr(Vector3{toTarget.x, 0.0f, toTarget.z}, plan.launchDir);
+            plan.awayDir = NS::NormalizedOr(Vector3{toTarget.x, 0.0f, toTarget.z}, plan.launchDir);
 
             // 横ずれの側: 相手の中心から自機への向きのうち、飛ぶ向きに直角な水平の成分
             const Vector3 away = self - impact.targetPos;
             Vector3 across = away - plan.launchDir * NS::Dot(away, plan.launchDir);
             across.y = 0.0f;
             const Vector3 fallbackSide = NS::Cross(Vector3{0.0f, 1.0f, 0.0f}, plan.launchDir);
-            plan.sideDir = NormalizedOr(across, NormalizedOr(fallbackSide, Vector3{0.0f, 0.0f, 1.0f}));
-            plan.scrapeDir = NormalizedOr(plan.sideDir + plan.launchDir * m_scrapeLaunchWeight +
+            plan.sideDir = NS::NormalizedOr(across, NS::NormalizedOr(fallbackSide, Vector3{0.0f, 0.0f, 1.0f}));
+            plan.scrapeDir = NS::NormalizedOr(plan.sideDir + plan.launchDir * m_scrapeLaunchWeight +
                                               Vector3{0.0f, m_scrapeLiftWeight, 0.0f},
                                           plan.sideDir);
             // 外れは、どこで、どっちへ力がそれたかを読ませる。面の上の位置から外した側を取り、段と逸れ方と向きを揃える
@@ -319,17 +309,17 @@ namespace GL
             {
                 plan.scrapeDir = missHeading;
             }
-            plan.selfDir = NormalizedOr(impact.selfVelocity, Vector3{0.0f, 1.0f, 0.0f});
+            plan.selfDir = NS::NormalizedOr(impact.selfVelocity, Vector3{0.0f, 1.0f, 0.0f});
 
             // 輪の法線は相手の飛ぶ向きを残しつつカメラへ起こす。真横から見て縦の線に潰れない
             Vector3 toCamera{};
             const std::optional<Vector3> camera = CameraPosition(owner);
             if (camera.has_value())
             {
-                toCamera = NormalizedOr(camera.value() - plan.contact, Vector3{});
+                toCamera = NS::NormalizedOr(camera.value() - plan.contact, Vector3{});
             }
             plan.ringNormal =
-                NormalizedOr(plan.launchDir * m_ringLaunchWeight + toCamera * m_ringFaceCamera, plan.launchDir);
+                NS::NormalizedOr(plan.launchDir * m_ringLaunchWeight + toCamera * m_ringFaceCamera, plan.launchDir);
 
             // 床は相手の体の外接箱の底。置かれた相手は床に接している。底は当てた時に相手が答えた値
             plan.floor = Vector3{impact.targetPos.x, impact.targetBottom, impact.targetPos.z};

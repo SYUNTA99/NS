@@ -49,16 +49,11 @@ namespace GL
                                                        const NS::Vector3& direction,
                                                        float playerRadius) noexcept
             {
-                const float toX = bounds.Center.x - position.x;
-                const float toZ = bounds.Center.z - position.z;
-                const float invSpeed = 1.0f / std::sqrt(direction.x * direction.x + direction.z * direction.z);
-                const float dirX = direction.x * invSpeed;
-                const float dirZ = direction.z * invSpeed;
-                const float along = toX * dirX + toZ * dirZ;
-                const float lateralX = toX - along * dirX;
-                const float lateralZ = toZ - along * dirZ;
-                const float lateral = std::sqrt(lateralX * lateralX + lateralZ * lateralZ);
-                const float halfWidth = std::abs(dirZ) * bounds.Extents.x + std::abs(dirX) * bounds.Extents.z;
+                const NS::Vector3 to = NS::HorizontalPart(NS::Vector3{bounds.Center} - position);
+                const NS::Vector3 dir = NS::HorizontalPart(direction) * (1.0f / NS::HorizontalLength(direction));
+                const float along = NS::Dot(to, dir);
+                const float lateral = (to - dir * along).Length();
+                const float halfWidth = std::abs(dir.z) * bounds.Extents.x + std::abs(dir.x) * bounds.Extents.z;
                 const float reach = halfWidth + playerRadius;
                 // 半幅と半径の和が 0 以下では割れない。中心扱いへ倒す
                 if (!(reach > 0.0f))
@@ -610,8 +605,7 @@ namespace GL
             }
             const NS::Vector3 velocity = motion.velocity;
             NS::Vector3 direction{};
-            const float stepLength =
-                std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z) * NS::OS::FrameTimer::FixedDelta();
+            const float stepLength = NS::HorizontalLength(velocity) * NS::OS::FrameTimer::FixedDelta();
             SlamLineTarget predicted{};
             if (!NS::TryNormalizeHorizontal(velocity, direction) || !(stepLength > 0.0f) ||
                 !FindSlamLineTarget(

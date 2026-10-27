@@ -44,11 +44,6 @@ namespace GL
                 }
                 table.push_back(direction);
             }
-
-            float AngleBetween(const NS::Vector3& a, const NS::Vector3& b) noexcept
-            {
-                return std::acos(std::clamp(NS::Dot(a, b), -1.0f, 1.0f));
-            }
         } // namespace
 
         float DirectionStepRadians(int divisions) noexcept
@@ -143,7 +138,7 @@ namespace GL
             float bestDot{0.0f};
             for (const NS::Vector3& direction : table)
             {
-                const float angle{AngleBetween(direction, assigned)};
+                const float angle{NS::AngleBetweenUnit(direction, assigned)};
                 if (NS::IsNearlyZero(angle) || angle > stepRadians + NS::k_Epsilon)
                 {
                     continue;
@@ -178,7 +173,7 @@ namespace GL
 
         NS::Vector3 TurnToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept
         {
-            if (AngleBetween(from, to) <= maxRadians)
+            if (NS::AngleBetweenUnit(from, to) <= maxRadians)
             {
                 return to;
             }

@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <limits>
 
 namespace
 {
@@ -74,5 +75,14 @@ TEST(MissHop, NoHorizontalSpeedGivesNoHop)
 {
     const NS::Vector3 up{0.0f, 1.0f, 0.0f};
     const NS::Vector3 hop = MissHopVelocity(NS::Vector3{0.0f, -3.0f, 0.0f}, up, Desc(), 3u, 0);
+    EXPECT_TRUE(hop == NS::Vector3(0.0f, 0.0f, 0.0f));
+}
+
+// 着いた速度が非数なら跳ねない。割ると非数が跳ねる速度へ移る
+TEST(MissHop, NonFiniteSpeedGivesNoHop)
+{
+    const NS::Vector3 up{0.0f, 1.0f, 0.0f};
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const NS::Vector3 hop = MissHopVelocity(NS::Vector3{nan, -3.0f, 10.0f}, up, Desc(), 3u, 0);
     EXPECT_TRUE(hop == NS::Vector3(0.0f, 0.0f, 0.0f));
 }
