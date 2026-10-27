@@ -15,6 +15,7 @@ namespace
     using GL::Level::MakeReboundDirections;
     using GL::Level::ReboundTableShape;
     using GL::Level::ReflectAcross;
+    using GL::Level::ShiftInputOnScreen;
     using GL::Level::ShiftReboundDirection;
     using GL::Level::TurnToward;
 
@@ -152,6 +153,48 @@ TEST(ReboundDirectionsTest, ShiftNeverGoesIntoTheSurfaceNorMoreThanOneStep)
     const NS::Vector3 shifted = ShiftReboundDirection(table, up, up, NS::Vector3{0, -1, 0}, step);
     EXPECT_GT(NS::Dot(shifted, up), 0.0f);
     EXPECT_LE(AngleBetween(shifted, up), step + k_Tolerance);
+}
+
+TEST(ReboundDirectionsTest, ShiftKeepsStraightUpWhenTheClosestNeighborRunsAlongASlope)
+{
+    // 前へ上る 45° の坂から真上へ返り、前へ倒す。前上は坂の面に沿うので、左前上や右前上へ逸らさない
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const NS::Vector3 up{0.0f, 1.0f, 0.0f};
+    const NS::Vector3 slope{0.0f, k_Diagonal, -k_Diagonal};
+    const float step = DirectionStepRadians(8);
+    ExpectNear(ShiftReboundDirection(table, up, slope, NS::Vector3{0, 0, 1}, step), up);
+    ExpectNear(ShiftReboundDirection(table, up, slope, NS::Vector3{0.05f, 0, 1}, step), up);
+}
+
+TEST(ReboundDirectionsTest, ScreenUpShiftsUpOffAFrontWallWithALevelCamera)
+{
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const NS::Vector3 back{0.0f, 0.0f, -1.0f};
+    const NS::Vector3 shift = ShiftInputOnScreen(back, NS::Vector3{1, 0, 0}, NS::Vector3{0, 1, 0}, NS::Vector3{0, 0, 1}, 0.0f, 1.0f);
+    ExpectNear(ShiftReboundDirection(table, back, back, shift, DirectionStepRadians(8)),
+               NS::Vector3{0.0f, k_Diagonal, -k_Diagonal});
+}
+
+TEST(ReboundDirectionsTest, ScreenUpShiftsIntoTheScreenWhenBouncingStraightUp)
+{
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const NS::Vector3 up{0.0f, 1.0f, 0.0f};
+    const NS::Vector3 shift = ShiftInputOnScreen(up, NS::Vector3{1, 0, 0}, NS::Vector3{0, 1, 0}, NS::Vector3{0, 0, 1}, 0.0f, 1.0f);
+    ExpectNear(ShiftReboundDirection(table, up, up, shift, DirectionStepRadians(8)),
+               NS::Vector3{0.0f, k_Diagonal, k_Diagonal});
+}
+
+TEST(ReboundDirectionsTest, ScreenUpFollowsASteepCameraOffASideWall)
+{
+    // 60° 見下ろすカメラでは画面の上が水平に近く、側面から返る向きは世界の上でなく画面の奥側へずれる
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const NS::Vector3 side{1.0f, 0.0f, 0.0f};
+    const float pitch = NS::k_Pi / 3.0f;
+    const NS::Vector3 forward{0.0f, -std::sin(pitch), std::cos(pitch)};
+    const NS::Vector3 screenUp{0.0f, std::cos(pitch), std::sin(pitch)};
+    const NS::Vector3 shift = ShiftInputOnScreen(side, NS::Vector3{1, 0, 0}, screenUp, forward, 0.0f, 1.0f);
+    ExpectNear(ShiftReboundDirection(table, side, side, shift, DirectionStepRadians(8)),
+               NS::Vector3{k_Diagonal, 0.0f, k_Diagonal});
 }
 
 TEST(ReboundDirectionsTest, TurnTowardStopsAtTheGivenAngle)

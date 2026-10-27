@@ -218,9 +218,62 @@ namespace NS
         return std::max({std::abs(v.x), std::abs(v.y), std::abs(v.z)});
     }
 
-    //! @brief 0 除算よけの下限
-    //! @details 長さ 2 乗と比べる側は k_Epsilon * k_Epsilon と書く。意味を持つ許容誤差には使わない
+    //! @brief 0 除算よけ・微小量判定の下限
     inline constexpr float k_Epsilon = 1e-4f;
+
+    //! @brief スカラ値が 0 近傍（絶対値が tolerance 未満）か判定する
+    [[nodiscard]] inline bool IsNearlyZero(float value, float tolerance = k_Epsilon) noexcept
+    {
+        return std::abs(value) < tolerance;
+    }
+
+    //! @brief 2 次元のベクトルが 0 近傍（長さ 2 乗が toleranceSq 未満）か判定する
+    [[nodiscard]] inline bool IsNearlyZero(const Vector2& v, float toleranceSq = k_Epsilon * k_Epsilon) noexcept
+    {
+        return v.LengthSquared() < toleranceSq;
+    }
+
+    //! @brief 3 次元のベクトルが 0 近傍（長さ 2 乗が toleranceSq 未満）か判定する
+    [[nodiscard]] inline bool IsNearlyZero(const Vector3& v, float toleranceSq = k_Epsilon * k_Epsilon) noexcept
+    {
+        return v.LengthSquared() < toleranceSq;
+    }
+
+    //! @brief 2 つのスカラ値がほぼ等しいか判定する
+    [[nodiscard]] inline bool IsNearlyEqual(float a, float b, float tolerance = k_Epsilon) noexcept
+    {
+        return std::abs(a - b) <= tolerance;
+    }
+
+    //! @brief 2 つの単位ベクトルがほぼ同じ向き（平行）か判定する
+    [[nodiscard]] inline bool IsNearlyParallel(const Vector3& a, const Vector3& b, float tolerance = k_Epsilon) noexcept
+    {
+        return Dot(a, b) > 1.0f - tolerance;
+    }
+
+    //! @brief XZ 平面の長さ 2 乗（水平成分）
+    [[nodiscard]] inline float HorizontalLengthSquared(const Vector3& v) noexcept
+    {
+        return v.x * v.x + v.z * v.z;
+    }
+
+    //! @brief XZ 平面の長さ（水平成分）
+    [[nodiscard]] inline float HorizontalLength(const Vector3& v) noexcept
+    {
+        return std::sqrt(HorizontalLengthSquared(v));
+    }
+
+    //! @brief 水平成分の長さが 0 近傍か判定する
+    [[nodiscard]] inline bool IsNearlyZeroHorizontal(const Vector3& v, float toleranceSq = k_Epsilon * k_Epsilon) noexcept
+    {
+        return HorizontalLengthSquared(v) < toleranceSq;
+    }
+
+    //! @brief 有限値かつ正の有意な大きさ（k_Epsilon より大）を持つか判定する
+    [[nodiscard]] inline bool HasPositiveMagnitude(float value, float minThreshold = k_Epsilon) noexcept
+    {
+        return std::isfinite(value) && value > minThreshold;
+    }
 
     //! @brief XZ 平面へ畳んだ向きを正規化する
     //! @param[in] v 元のベクトル。y 成分は捨てる
@@ -228,7 +281,7 @@ namespace NS
     //! @return 正規化できた場合 true、長さが k_Epsilon 未満の場合は false
     [[nodiscard]] inline bool TryNormalizeHorizontal(const Vector3& v, Vector3& outDirection) noexcept
     {
-        const float lengthSq = v.x * v.x + v.z * v.z;
+        const float lengthSq = HorizontalLengthSquared(v);
         if (lengthSq < k_Epsilon * k_Epsilon)
         {
             return false;

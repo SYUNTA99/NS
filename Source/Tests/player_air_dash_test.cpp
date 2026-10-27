@@ -179,6 +179,69 @@ TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
     EXPECT_NEAR(player->Root().Position().x - startX, distance, speed * NS::OS::FrameTimer::FixedDelta());
 }
 
+TEST(PlayerAirDashTest, TiltJustBeforeThePressKeepsTheDirectionHeldBefore)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const int hold = FramesFor(ParamsFields(player).at("行きたい向きとみなす秒").get<float>());
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < hold + 2; ++frame)
+    {
+        player->Update(false);
+    }
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    EXPECT_NEAR(player->Body().Velocity().x, 0.0f, 1.0e-3f);
+    EXPECT_GT(player->Body().Velocity().z, 0.0f);
+}
+
+TEST(PlayerAirDashTest, HoldingTheNewDirectionLongerThanTheWindowDashesThatWay)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const int hold = FramesFor(ParamsFields(player).at("行きたい向きとみなす秒").get<float>());
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < hold + 2; ++frame)
+    {
+        player->Update(false);
+    }
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    for (int frame = 0; frame < hold + 2; ++frame)
+    {
+        player->Update(false);
+    }
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    EXPECT_GT(player->Body().Velocity().x, 0.0f);
+    EXPECT_NEAR(player->Body().Velocity().z, 0.0f, 1.0e-3f);
+}
+
+TEST(PlayerAirDashTest, ReleasingTheStickForgetsTheDirectionHeldBefore)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const int hold = FramesFor(ParamsFields(player).at("行きたい向きとみなす秒").get<float>());
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < hold + 2; ++frame)
+    {
+        player->Update(false);
+    }
+    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Update(false);
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    EXPECT_GT(player->Body().Velocity().x, 0.0f);
+    EXPECT_NEAR(player->Body().Velocity().z, 0.0f, 1.0e-3f);
+}
+
 // 当たらなければ、押したフレームから動作の長さの歩だけダッシュの速さで進み、次の歩で残る速さにして普段の動きへ移る
 TEST(PlayerAirDashTest, DashLastsTheActionLengthThenKeepsTheExitSpeed)
 {
@@ -464,8 +527,12 @@ TEST(PlayerAirDashTest, SteeringNeverTurnsMoreThanTheLimit)
     AddFrontWall(scene);
     const nlohmann::json fields = ParamsFields(player);
     ASSERT_TRUE(DashIntoFrontWall(player));
-    const NS::Vector3 start = player->Body().LateralVelocity();
-
+    // 操作なしの間に倒すとずらしになるので、操作なしの間が明けてから測る
+    const float lock = fields.at("反動の操作なしの秒").get<float>();
+    for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
+    {
+        player->Update(false);
+    }
     // 補正の段の間ずっと真横へ倒す
     player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     const int frames = FramesFor(fields.at("反動の補正が終わる秒").get<float>());
@@ -473,12 +540,45 @@ TEST(PlayerAirDashTest, SteeringNeverTurnsMoreThanTheLimit)
     for (int frame = 0; frame < frames && player->IsDashRebounding(); ++frame)
     {
         player->Update(false);
-        largest = std::max(largest, AngleBetween(start, player->Body().LateralVelocity()));
+        // 曲げは速度の全部を回すので、真後ろへ返る縦の面から外れた角度で測る。重力と減速はこの角度を増やさない
+        const NS::Vector3 velocity = player->Body().Velocity();
+        largest = std::max(largest, std::asin(std::abs(velocity.x) / velocity.Length()));
     }
     const float limit = GL::Level::DirectionStepRadians(fields.at("向きの表の分割数").get<int>()) *
                         fields.at("曲げの上限の段の割合").get<float>();
     EXPECT_GT(largest, 0.0f);
     EXPECT_LE(largest, limit + 1.0e-3f);
+}
+
+TEST(PlayerAirDashTest, HoldingForwardThroughTheSteerStageBendsUpNotSideways)
+{
+    const auto steer = [](const NS::Vector3& desired, float scale) {
+        NS::Scene scene;
+        PlayerActor* player = PlaceFloatingPlayer(scene);
+        AddFrontWall(scene);
+        const nlohmann::json fields = ParamsFields(player);
+        EXPECT_TRUE(DashIntoFrontWall(player));
+        const float lock = fields.at("反動の操作なしの秒").get<float>();
+        for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
+        {
+            player->Update(false);
+        }
+        player->SetDesiredMove(desired, scale);
+        const float end = fields.at("反動の補正が終わる秒").get<float>();
+        for (int frame = 0; frame < 120 && player->AirDash().ReboundElapsed() + 0.05f < end; ++frame)
+        {
+            player->Update(false);
+        }
+        return player->Body().Velocity();
+    };
+    const NS::Vector3 released = steer(NS::Vector3{}, 0.0f);
+    NS::Vector3 forward{-0.3f, 0.0f, 1.0f};
+    forward.Normalize();
+    const NS::Vector3 held = steer(forward, 1.0f);
+
+    const float sideways = std::atan2(std::abs(held.x), -held.z);
+    EXPECT_LT(sideways, NS::ToRadians(NS::Degrees{10.0f}).value);
+    EXPECT_GT(held.y, released.y);
 }
 
 // 地形の反動はカメラを回さず、回す入力も止めない。縦の向きは返った向きの縦の成分で渡し、ダッシュと反動の間は視野を広げる
@@ -496,8 +596,14 @@ TEST(PlayerAirDashTest, CameraStateDuringDashAndTerrainRebound)
     EXPECT_TRUE(dashing.rebound.widenView);
     EXPECT_FALSE(dashing.rebound.rebounding);
 
-    // 前 (画面の上) へ倒したまま当てると、後ろ上へずれて返る
+    player->SetDesiredMove(NS::Vector3{}, 0.0f);
     for (int frame = 0; frame < 30 && !player->IsDashRebounding(); ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->IsDashRebounding());
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < 30 && player->AirDash().LastRebound().shifted.y <= 0.5f; ++frame)
     {
         player->Update(false);
     }
@@ -512,6 +618,72 @@ TEST(PlayerAirDashTest, CameraStateDuringDashAndTerrainRebound)
 
     player->ResetState();
     EXPECT_FALSE(player->GetCameraTargetState().rebound.widenView);
+}
+
+TEST(PlayerAirDashTest, TiltAfterTheHitShiftsTheReboundOneStep)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    const float lock = ParamsFields(player).at("反動の操作なしの秒").get<float>();
+    ASSERT_TRUE(DashIntoFrontWall(player));
+    ASSERT_NEAR(player->AirDash().LastRebound().shifted.y, 0.0f, 1.0e-3f);
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
+    {
+        player->Update(false);
+    }
+    const NS::Vector3 shifted = player->AirDash().LastRebound().shifted;
+    EXPECT_NEAR(shifted.y, std::sqrt(0.5f), 1.0e-3f);
+    EXPECT_NEAR(shifted.z, -std::sqrt(0.5f), 1.0e-3f);
+    EXPECT_GT(player->Body().Velocity().y, 0.0f);
+}
+
+TEST(PlayerAirDashTest, HoldingTheDashStickThroughTheHitShiftsTheReboundOneStep)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    const float lock = ParamsFields(player).at("反動の操作なしの秒").get<float>();
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Update(true);
+    for (int frame = 0; frame < 30 && !player->IsDashRebounding(); ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->IsDashRebounding());
+    for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
+    {
+        player->Update(false);
+    }
+    const NS::Vector3 shifted = player->AirDash().LastRebound().shifted;
+    EXPECT_NEAR(shifted.y, std::sqrt(0.5f), 1.0e-3f);
+    EXPECT_NEAR(shifted.z, -std::sqrt(0.5f), 1.0e-3f);
+}
+
+TEST(PlayerAirDashTest, TiltAfterTheLockDoesNotShift)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    const float lock = ParamsFields(player).at("反動の操作なしの秒").get<float>();
+    ASSERT_TRUE(DashIntoFrontWall(player));
+    for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
+    {
+        player->Update(false);
+    }
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < 5; ++frame)
+    {
+        player->Update(false);
+    }
+    EXPECT_NEAR(player->AirDash().LastRebound().shifted.y, 0.0f, 1.0e-3f);
 }
 
 // 押したフレームに丸まる。立ち姿のままダッシュすると、飛び出した瞬間に玉に見えない

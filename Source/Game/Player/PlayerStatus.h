@@ -114,6 +114,9 @@ namespace GL
 
             int m_remaining = 1;
             NS::Vector3 m_direction{};   // 今のダッシュの水平の向き。正規化済み
+            NS::Vector3 m_intendedDirection{}; // ダッシュの向きに使う。無ければゼロ
+            NS::Vector3 m_tiltDirection{};     // 今倒している水平の向き。倒していなければゼロ
+            float m_tiltSeconds = 0.0f;        // m_tiltDirection を倒し続けた秒
             float m_dashSpeed = 0.0f;    // 今のダッシュの速さ (m/s)。状態に入った時に控え、途中の読み直しで変えない
             bool m_prevPressHeld = false; // 直前の歩にボタンを押していたか。押した瞬間を見分ける
             bool m_pressed = false;       // この歩に押した瞬間か。DecideStep の頭で書き、状態機械で読む
@@ -121,6 +124,7 @@ namespace GL
             float m_reboundElapsed = 0.0f;
             float m_steeredRadians = 0.0f; // 補正の段で曲げた角度の累計
             bool m_steerStarted = false;   // 補正の段に入ってダッシュを戻したか
+            bool m_shiftApplied = false;   // 今の反動でずらしを掛けたか。掛けるのは反動 1 回に 1 度
             NS::uint32 m_reboundCount = 0;
             TerrainReboundRecord m_last{};
         };

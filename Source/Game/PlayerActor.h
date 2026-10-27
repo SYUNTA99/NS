@@ -21,6 +21,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace NS
 {
@@ -440,14 +441,21 @@ private:
     //! @details 動作から毎回引き直す。ダッシュの最中に読むのは、始めた時に控えた速さの方。
     //! 動作が無いか length が 0 か距離が非数なら 0
     [[nodiscard]] float AirDashSpeed() const noexcept;
+    //! 今のスティックの向きを倒し続けた秒を数え、欄「行きたい向きとみなす秒」以上ならダッシュの向きにする。毎フレーム観測の段で呼ぶ
+    void UpdateIntendedDirection(float dt) noexcept;
     //! @brief 体を動かした直後に呼ぶ。エアダッシュか地形の反動の間に面が遮ったら、その面で反動を始める
     //! @details 当て方が欄「反動に数える当て方の下限」より浅い面と、反動の間の登れる面は数えない
     void TryBeginTerrainRebound() noexcept;
-    //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、スティックで 1 段ずらし、返る速さを書く
-    //! @param[in] baseSpeed 返る力の上限 (m/s)。エアダッシュならダッシュの速さ、反動の続きなら今の速さ
+    //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、返る速さを書く。ずらしは ApplyReboundShift が後で掛ける
+    //! @param[in] baseSpeed 返る力の上限 (m/s)。エアダッシュならダッシュの速さに地形の反動の倍率を掛けた値、反動の続きなら今の速さ
     void BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vector3& normal, float baseSpeed) noexcept;
-    //! 当たった時のスティックを、左右はカメラの右・上下は世界の上下にした向き。倒していなければゼロ
-    [[nodiscard]] NS::Vector3 ReboundShiftInput() const noexcept;
+    //! @brief 反動の操作なしの段の間に呼ぶ。スティックで隣の向きが選べたら、飛んでいる速さを保って向きを 1 段回す
+    //! @details 掛けるのは反動 1 回に 1 度。当たる前から倒したままのスティックも数える
+    void ApplyReboundShift() noexcept;
+    //! 欄「向きの表の分割数」と「表に傾きの段を入れる」で作った反動の向きの表
+    [[nodiscard]] std::vector<NS::Vector3> ReboundTable() const;
+    //! 今のスティックを、カメラから見た向きのまま、返る向き assigned に垂直な面の向きにする。倒していなければゼロ
+    [[nodiscard]] NS::Vector3 ReboundShiftInput(const NS::Vector3& assigned) const noexcept;
     //! @brief 地形の反動の束を、当て方の強さで選んで始める
     //! @details 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。向きを使う項目は向き無しになる
     void StartTerrainReboundReaction(const NS::Vector3& contact, float facing) noexcept;

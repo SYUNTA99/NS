@@ -182,7 +182,7 @@ namespace GL
             // こすって止まる間は、身体の速さと同じ割合で回転も落とす
             const NS::Vector3 spin = (m_tumbleStartSpin + (target - m_tumbleStartSpin) * blend) * skidScale;
             const float speed = spin.Length();
-            if (!std::isfinite(speed) || speed <= NS::k_Epsilon)
+            if (!NS::HasPositiveMagnitude(speed))
             {
                 m_spinSpeed = 0.0f;
                 return;

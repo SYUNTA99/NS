@@ -244,7 +244,7 @@ void PlayerActor::TapSlamGravity(float dt) noexcept
         airSeconds = m_params->m_tapSlamDistance / m_params->m_tapSlamSpeed;
     }
     // Inspector で 0 を置くと 0 除算で位置まで非有限値が伝わるため、距離か初速が 0 なら通常の重力へ戻す
-    if (!(airSeconds > NS::k_Epsilon))
+    if (!NS::HasPositiveMagnitude(airSeconds))
     {
         Gravity(dt);
         return;

@@ -30,7 +30,7 @@ namespace GL
             [[nodiscard]] Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
             {
                 const float length = v.Length();
-                if (!(length > NS::k_Epsilon))
+                if (NS::IsNearlyZero(length))
                 {
                     return fallback;
                 }
@@ -257,7 +257,7 @@ namespace GL
             const float acrossLength = across.Length();
             // 真っ直ぐ視線に沿って飛ぶ時は画面の上の向きが決まらないので起こさない
             const float minAcross = std::clamp(m_reboundStreakMinAcross, 0.0f, 1.0f);
-            if (acrossLength >= minAcross || !(acrossLength > NS::k_Epsilon))
+            if (acrossLength >= minAcross || !NS::HasPositiveMagnitude(acrossLength))
             {
                 return heading;
             }

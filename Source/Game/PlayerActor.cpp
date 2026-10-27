@@ -242,6 +242,7 @@ void PlayerActor::DecideStep()
     const bool pressHeld = m_input->SlamHeld();
     m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
     m_airDash.m_prevPressHeld = pressHeld;
+    UpdateIntendedDirection(NS::GetFrameDelta(this));
     ObserveCharge(false);
     m_resolver->ObserveImpact(SelfForImpact(), SlamMotion(), m_collider.get());
 
@@ -394,7 +395,7 @@ const NS::AnimClip* PlayerActor::ChooseClip(float lateralSpeed) const noexcept
         return m_clips->m_idleClip;
     }
 
-    if (lateralSpeed <= NS::k_Epsilon)
+    if (NS::IsNearlyZero(lateralSpeed))
     {
         return m_clips->m_idleClip;
     }
@@ -883,6 +884,9 @@ void PlayerActor::ResetState() noexcept
     // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
     m_airDash.m_remaining = 1;
     m_airDash.m_direction = NS::Vector3{};
+    m_airDash.m_intendedDirection = NS::Vector3{};
+    m_airDash.m_tiltDirection = NS::Vector3{};
+    m_airDash.m_tiltSeconds = 0.0f;
     m_airDash.m_dashSpeed = 0.0f;
     m_airDash.m_pressed = false;
     m_airDash.m_intended = NS::Vector3{};

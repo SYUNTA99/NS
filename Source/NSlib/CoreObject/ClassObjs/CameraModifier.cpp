@@ -366,7 +366,7 @@ namespace NS
         const Vector3 angles = Angles();
         Vector3 look = pose.target - pose.position;
         const float distance = look.Length();
-        if (distance <= k_Epsilon)
+        if (IsNearlyZero(distance))
         {
             return;
         }
