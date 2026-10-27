@@ -16,6 +16,7 @@
 #include "NSlib/CoreObject/StateMachineOf.h"
 
 #include "NSlib/Core/Types.h"
+#include <compare>
 #include <concepts>
 #include <memory>
 #include <set>
@@ -359,14 +360,7 @@ namespace NS
             std::string classObjKey;
             std::string fieldName;
 
-            [[nodiscard]] bool operator<(const SceneOverrideKey& other) const noexcept
-            {
-                if (classObjKey != other.classObjKey)
-                {
-                    return classObjKey < other.classObjKey;
-                }
-                return fieldName < other.fieldName;
-            }
+            [[nodiscard]] std::strong_ordering operator<=>(const SceneOverrideKey& other) const noexcept = default;
         };
         std::set<SceneOverrideKey> m_sceneOverrides; // シーンで上書きしている (部品の鍵, 欄の名前)
         Scene* m_scene = nullptr;    // 入るシーン。書くのは Init だけ
