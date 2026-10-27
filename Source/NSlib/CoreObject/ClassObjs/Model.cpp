@@ -149,6 +149,13 @@ namespace NS
         m_drawTremor = Gfx::TremorCB{};
     }
 
+    void Model::ScaleDrawShaking(float scale) noexcept
+    {
+        m_shake.desc.amplitude *= scale;
+        m_tremor.desc.amplitudePixels *= scale;
+        m_tremor.desc.amplitudeRatio *= scale;
+    }
+
     void Model::AdvanceDraw(const IGetCamera* camera, const Vector3& rootPosition)
     {
         NS_ASSERT(Scene, camera != nullptr, "Model::AdvanceDraw: カメラの窓口が null");

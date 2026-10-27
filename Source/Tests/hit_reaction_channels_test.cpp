@@ -86,6 +86,59 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
 }
 
+// 走っている振動と白に倍率を掛けると、始め直さずに、残りをその強さで続ける
+TEST(HitReactionChannels, ScalingKeepsTheRunningEffectsGoingAtTheNewStrength)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlacePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    NS::HitReaction* reaction = player->HitReactionClassObj();
+    ASSERT_NE(reaction, nullptr);
+    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
+    ASSERT_NE(screen, nullptr);
+    ASSERT_NE(pad, nullptr);
+    const auto tick = [&]() {
+        screen->OnTick();
+        pad->OnTick();
+    };
+
+    reaction->StartPadVibration(player, FadingLeft(1.0f, 4));
+    reaction->StartFlash(player, 4, 1.0f);
+    tick();
+    tick();
+    EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
+    const float flash = screen->FlashAlpha();
+
+    reaction->ScaleRunning(NS::HitReactionSelf{.actor = player}, 0.5f);
+    EXPECT_FLOAT_EQ(PadLeft(), 0.375f);
+    EXPECT_FLOAT_EQ(screen->FlashAlpha(), flash * 0.5f);
+    tick();
+    EXPECT_FLOAT_EQ(PadLeft(), 0.25f);
+}
+
+// 重ねる振動の項目は、走っている振動を始め直さずに足す
+TEST(HitReactionChannels, LayeredPadItemAddsToTheRunningVibration)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlacePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    NS::HitReaction* reaction = player->HitReactionClassObj();
+    ASSERT_NE(reaction, nullptr);
+
+    reaction->StartPadVibration(player, FadingLeft(0.5f, 4));
+    NS::HitPadVibrationItem layered{};
+    layered.layered = true;
+    layered.left = FadingLeft(0.25f, 2).left;
+    reaction->StartItem(NS::HitReactionSelf{.actor = player},
+                        NS::HitReactionItem{layered},
+                        2,
+                        player->Root().Position(),
+                        player->BodySensorClassObj(),
+                        player->BodySensorClassObj());
+    EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
+}
+
 // 揺れと寄りは、頼んだ物だけがカメラの効果に積まれる
 TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
 {

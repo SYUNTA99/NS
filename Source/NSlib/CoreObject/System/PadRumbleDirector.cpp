@@ -63,6 +63,23 @@ namespace NS
         Write();
     }
 
+    void PadRumbleDirector::Scale(const SceneActor* requester, float scale)
+    {
+        NS_ASSERT(Scene, requester != nullptr, "PadRumbleDirector::Scale: 頼んだ物が null");
+        if (!m_running)
+        {
+            return;
+        }
+        for (Layer& layer : m_layers)
+        {
+            if (layer.requester == requester)
+            {
+                layer.scale *= scale;
+            }
+        }
+        Write();
+    }
+
     // 書かれなかったフレームは Gamepad::Update が 0 にするので、振動の間は毎フレーム書く
     void PadRumbleDirector::OnTick()
     {
@@ -86,8 +103,8 @@ namespace NS
             const int elapsed = m_elapsed - layer.startElapsed;
             if (elapsed < layer.pad.frames)
             {
-                speed.left += layer.pad.left.Evaluate(static_cast<float>(elapsed));
-                speed.right += layer.pad.right.Evaluate(static_cast<float>(elapsed));
+                speed.left += layer.pad.left.Evaluate(static_cast<float>(elapsed)) * layer.scale;
+                speed.right += layer.pad.right.Evaluate(static_cast<float>(elapsed)) * layer.scale;
                 anyRunning = true;
             }
         }

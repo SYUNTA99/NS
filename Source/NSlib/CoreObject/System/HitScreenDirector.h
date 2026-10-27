@@ -90,6 +90,10 @@ namespace NS
         //! requester が頼んだ白と震えの線を消す。ほかの物が頼んだ物は残す
         void Stop(const SceneActor* requester) noexcept;
 
+        //! @brief requester が頼んで出している白の濃さ・歪みの輪の押し出し・床の波の強さに scale を掛ける
+        //! @details 始め直さず、残りをその強さで続ける。震えの線は変えない
+        void Scale(const SceneActor* requester, float scale) noexcept;
+
         //! @brief 歪みの輪を始め、始まりの姿を場面へ書く。前の輪が残っていても始め直す
         //! @param[in] requester 頼んだ物。StopDistortionRing で同じ物を渡すと消える
         //! @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない

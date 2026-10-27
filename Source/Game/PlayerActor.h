@@ -476,19 +476,29 @@ private:
     //! @brief 体を動かした直後に呼ぶ。エアダッシュか地形の反動の間に面が遮ったら、その面で反動を始める
     //! @details 当て方が欄「反動に数える当て方の下限」より浅い面と、反動の間の登れる面は数えない
     void TryBeginTerrainRebound() noexcept;
-    //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、返る速さを書く。ずらしは ApplyReboundShift が後で掛ける
-    //! @param[in] baseSpeed 返る力の上限 (m/s)。エアダッシュならダッシュの速さに地形の反動の倍率を掛けた値、反動の続きなら今の速さ
+    //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、当てた速さで返す
+    //! @details 当たる前から入れていた入力は、このフレームに入力補正を掛ける。後から入れた入力は ApplyReboundShift が掛ける
+    //! @param[in] baseSpeed 返る速さ (m/s)。エアダッシュならダッシュの速さに地形の反動の倍率を掛けた値、反動の続きなら今の速さ
     void BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vector3& normal, float baseSpeed) noexcept;
-    //! @brief 反動の操作なしの段の間に呼ぶ。スティックで隣の向きが選べたら、飛んでいる速さを保って向きを 1 段回す
-    //! @details 掛けるのは反動 1 回に 1 度。当たる前から倒したままのスティックも数える
+    //! @brief 反動の操作なしの段の間に呼ぶ。入力で返る向きが選べたら、入力補正を掛ける
+    //! @details 掛けるのは反動 1 回に 1 度
     void ApplyReboundShift() noexcept;
+    //! 今の入力で、最後の反動の返る向きを表から選ぶ。入力が無ければ割り当てた向きのまま
+    [[nodiscard]] GL::Level::ReboundChoice ChooseReboundInput() const noexcept;
+    //! @brief 選んだ向きを掛ける。合った時は速さを欄「向きが合った時の返る速さの倍率」で強め、変えた時は飛んでいる
+    //! 速さを保って向きを回し、走っている演出を弱めて振動を重ねる
+    void ApplyReboundChoice(const GL::Level::ReboundChoice& choice) noexcept;
     //! 欄「向きの表の分割数」と「表に傾きの段を入れる」で作った反動の向きの表
     [[nodiscard]] std::vector<NS::Vector3> ReboundTable() const;
-    //! 今のスティックを、カメラから見た向きのまま、返る向き assigned に垂直な面の向きにする。倒していなければゼロ
+    //! 今のカメラから見た画面の右・上・見る向き。カメラが無ければ水平の前の向きから作る
+    [[nodiscard]] GL::Level::ScreenAxes ReboundScreenAxes() const noexcept;
+    //! 今の入力を、カメラから見た向きのまま、返る向き assigned に垂直な面の向きにする。入力が無ければゼロ
     [[nodiscard]] NS::Vector3 ReboundShiftInput(const NS::Vector3& assigned) const noexcept;
-    //! @brief 地形の反動の束を、当て方の強さで選んで始める
+    //! @brief 地形の反動の束を始める。入力が返る向きと合っていたか、当て方が強ければ強い束を選ぶ
     //! @details 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。向きを使う項目は向き無しになる
-    void StartTerrainReboundReaction(const NS::Vector3& contact, float facing) noexcept;
+    void StartTerrainReboundReaction(const NS::Vector3& contact, float facing, bool matched) noexcept;
+    //! 入力補正で向きを変えた時の演出。走っている演出と残像を弱め、振動の束を重ねる
+    void StartShiftedReboundReaction() noexcept;
     //! 欄「反動の線を描く」が真なら、最後の地形の反動の向きの線と、今の段の輪を描く
     void DrawTerrainRebound() const;
     //! 体を動かさないフレームでも、そのフレーム限りの押しは下ろす。残すと再開した時に古い押下が効く

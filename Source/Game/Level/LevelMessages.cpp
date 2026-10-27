@@ -162,6 +162,12 @@ namespace GL
             (void)ghost->SetAfterimageOpacity(0.0f);
         }
 
+        void TackleGhostRun::ScaleOpacity(float scale) noexcept
+        {
+            desc.sideOpacity *= scale;
+            desc.releaseOpacity *= scale;
+        }
+
         float HitOwnerValue(const NS::HitOwnerItem& item, std::string_view name, float fallback)
         {
             const std::map<std::string, float, std::less<>>::const_iterator found = item.values.find(name);

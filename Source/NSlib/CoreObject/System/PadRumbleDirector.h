@@ -35,6 +35,9 @@ namespace NS
         //! requester が頼んだ振動を外して書き直す。残りが無ければ 0 を書いて止める
         void Stop(const SceneActor* requester);
 
+        //! requester が頼んで書いている振動の速さに scale を掛けて書き直す。後から重ねる振動には掛けない
+        void Scale(const SceneActor* requester, float scale);
+
         //! 振動を 1 フレーム進めて書く
         void OnTick() override;
 
@@ -48,6 +51,7 @@ namespace NS
             HitPadVibration pad;
             int startElapsed = 0;
             const SceneActor* requester = nullptr;
+            float scale = 1.0f; // 曲線の速さに掛ける倍率
         };
 
         std::vector<Layer> m_layers; // 書いている振動。始めた振動と、重ねた振動

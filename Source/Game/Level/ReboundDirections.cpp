@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <optional>
 
 namespace GL
 {
@@ -43,6 +44,75 @@ namespace GL
                     }
                 }
                 table.push_back(direction);
+            }
+
+            // スティックの入力を長さ 1 にした、画面の右と上の成分
+            struct ScreenInput
+            {
+                float right;
+                float up;
+            };
+
+            // direction が入力補正の候補なら、画面の上で入力から離れた角度を返す。候補でなければ空
+            std::optional<float> CandidateScreenAngle(const NS::Vector3& direction,
+                                                      const ReboundHit& hit,
+                                                      const ScreenAxes& screen,
+                                                      const ScreenInput& input,
+                                                      const ReboundChoiceLimits& limits) noexcept
+            {
+                // 奥と手前へ飛ぶ量は、当たる前に進んでいた量まで。壁や床の傾きが足した奥と手前の動きは使わない
+                const float depthLimit{std::abs(NS::Dot(hit.incoming, screen.flatForward)) + NS::k_Epsilon};
+                if (!NS::HasPositiveMagnitude(NS::Dot(direction, hit.normal)) ||
+                    NS::AngleBetweenUnit(direction, hit.assigned) > limits.maxRadians + NS::k_Epsilon ||
+                    std::abs(NS::Dot(direction, screen.flatForward)) > depthLimit)
+                {
+                    return std::nullopt;
+                }
+                // 画面へ映した長さが無い向き (奥か手前だけへ向く物) は、画面の上の角度が決まらない
+                const float onRight{NS::Dot(direction, screen.right)};
+                const float onUp{NS::Dot(direction, screen.up)};
+                const float onLength{std::sqrt(onRight * onRight + onUp * onUp)};
+                if (NS::IsNearlyZero(onLength))
+                {
+                    return std::nullopt;
+                }
+                const float cosine{std::clamp((onRight * input.right + onUp * input.up) / onLength, -1.0f, 1.0f)};
+                return std::acos(cosine);
+            }
+
+            // 後ろから見るカメラは少し見下ろすので、奥・斜め上・真上が全部画面の上に見え、奥を入力する向きが無い。
+            // 後ろから見ていて真上へ返る時は、候補のうち 1 段以内で、カメラの水平の前へ一番進む向きを返す。無ければ nullptr
+            const NS::Vector3* AheadOfStraightUp(std::span<const NS::Vector3> table,
+                                                 const ReboundHit& hit,
+                                                 const ScreenAxes& screen,
+                                                 const ScreenInput& input,
+                                                 const ReboundChoiceLimits& limits) noexcept
+            {
+                if (!NS::IsNearlyParallel(hit.assigned, NS::Vector3{0.0f, 1.0f, 0.0f}) ||
+                    NS::IsNearlyZeroHorizontal(hit.incoming))
+                {
+                    return nullptr;
+                }
+                const NS::Vector3 flatIncoming{
+                    NS::NormalizedOr(NS::Vector3{hit.incoming.x, 0.0f, hit.incoming.z}, screen.flatForward)};
+                if (NS::AngleBetweenUnit(flatIncoming, screen.flatForward) > limits.behindViewRadians)
+                {
+                    return nullptr;
+                }
+                const NS::Vector3* ahead{nullptr};
+                float aheadDot{0.0f};
+                for (const NS::Vector3& direction : table)
+                {
+                    const float dot{NS::Dot(direction, screen.flatForward)};
+                    if (dot > aheadDot &&
+                        NS::AngleBetweenUnit(direction, hit.assigned) <= limits.stepRadians + NS::k_Epsilon &&
+                        CandidateScreenAngle(direction, hit, screen, input, limits).has_value())
+                    {
+                        aheadDot = dot;
+                        ahead = &direction;
+                    }
+                }
+                return ahead;
             }
         } // namespace
 
@@ -121,40 +191,66 @@ namespace GL
             return found;
         }
 
-        NS::Vector3 ShiftReboundDirection(std::span<const NS::Vector3> table,
-                                          const NS::Vector3& assigned,
-                                          const NS::Vector3& normal,
-                                          const NS::Vector3& shift,
-                                          float stepRadians) noexcept
+        ReboundChoice ChooseReboundDirection(std::span<const NS::Vector3> table,
+                                             const ReboundHit& hit,
+                                             const ScreenAxes& screen,
+                                             float stickRight,
+                                             float stickUp,
+                                             const ReboundChoiceLimits& limits) noexcept
         {
-            NS::Vector3 perpendicular{shift - assigned * NS::Dot(shift, assigned)};
-            if (NS::IsNearlyZero(perpendicular))
+            const ReboundChoice kept{.direction = hit.assigned, .result = ReboundInputResult::Kept};
+            const float stickLength{std::sqrt(stickRight * stickRight + stickUp * stickUp)};
+            if (NS::IsNearlyZero(stickLength))
             {
-                return assigned;
+                return kept;
             }
-            perpendicular.Normalize();
+            const ScreenInput input{.right = stickRight / stickLength, .up = stickUp / stickLength};
 
-            const NS::Vector3* bestNeighbor{nullptr};
-            float bestDot{0.0f};
+            std::optional<float> bestAngle{};
             for (const NS::Vector3& direction : table)
             {
-                const float angle{NS::AngleBetweenUnit(direction, assigned)};
-                if (NS::IsNearlyZero(angle) || angle > stepRadians + NS::k_Epsilon)
+                const std::optional<float> angle{CandidateScreenAngle(direction, hit, screen, input, limits)};
+                if (angle.has_value() && (!bestAngle.has_value() || *angle < *bestAngle))
+                {
+                    bestAngle = angle;
+                }
+            }
+            if (!bestAngle.has_value())
+            {
+                return kept;
+            }
+
+            // 画面で同じに見える候補の中から、カメラの見る向きへ一番動かない物を選ぶ。同じなら画面で入力に近い物
+            const NS::Vector3* chosen{nullptr};
+            float chosenDepth{0.0f};
+            float chosenAngle{0.0f};
+            for (const NS::Vector3& direction : table)
+            {
+                const std::optional<float> angle{CandidateScreenAngle(direction, hit, screen, input, limits)};
+                if (!angle.has_value() || *angle > *bestAngle + limits.screenTieRadians)
                 {
                     continue;
                 }
-                const float dot{NS::Dot(direction, perpendicular)};
-                if (dot > bestDot)
+                const float depth{std::abs(NS::Dot(direction, screen.forward))};
+                const bool lessDepth{depth < chosenDepth - NS::k_Epsilon};
+                const bool sameDepthCloser{std::abs(depth - chosenDepth) <= NS::k_Epsilon && *angle < chosenAngle};
+                if (chosen == nullptr || lessDepth || sameDepthCloser)
                 {
-                    bestDot = dot;
-                    bestNeighbor = &direction;
+                    chosen = &direction;
+                    chosenDepth = depth;
+                    chosenAngle = *angle;
                 }
             }
-            if (bestNeighbor == nullptr || !NS::HasPositiveMagnitude(NS::Dot(*bestNeighbor, normal)))
+
+            if (!NS::IsNearlyParallel(*chosen, hit.assigned))
             {
-                return assigned;
+                return ReboundChoice{.direction = *chosen, .result = ReboundInputResult::Shifted};
             }
-            return *bestNeighbor;
+            if (const NS::Vector3* ahead = AheadOfStraightUp(table, hit, screen, input, limits))
+            {
+                return ReboundChoice{.direction = *ahead, .result = ReboundInputResult::Shifted};
+            }
+            return ReboundChoice{.direction = hit.assigned, .result = ReboundInputResult::Matched};
         }
 
         NS::Vector3 ShiftInputOnScreen(const NS::Vector3& assigned,
