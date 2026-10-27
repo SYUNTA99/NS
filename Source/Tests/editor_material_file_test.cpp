@@ -48,7 +48,7 @@ namespace
     {
         const NS::FieldDesc* field = NS::FindField(material.GetReflection(), "混ぜ方");
         ASSERT_NE(field, nullptr);
-        field->set(&material, &blend);
+        ASSERT_EQ(field->set(&material, &blend), NS::FieldWriteResult::Written);
     }
 
     bool WriteText(const std::string& path, const std::string& text)

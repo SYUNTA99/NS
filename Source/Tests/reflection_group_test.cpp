@@ -100,7 +100,7 @@ TEST(ReflectionGroup, FindFieldSeesOnlyFields)
     field->get(&value, &read);
     EXPECT_EQ(read, 3);
     const int written = 7;
-    field->set(&value, &written);
+    EXPECT_EQ(field->set(&value, &written), NS::FieldWriteResult::Written);
     EXPECT_EQ(value.runSpeed, 7);
 }
 

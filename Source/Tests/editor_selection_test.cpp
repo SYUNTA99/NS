@@ -60,7 +60,7 @@ namespace
         ASSERT_NE(row, nullptr);
         const NS::FieldDesc* field = NS::FindField(actor->Root().GetReflection(), fieldName);
         ASSERT_NE(field, nullptr);
-        field->set(&actor->Root(), &value);
+        ASSERT_EQ(field->set(&actor->Root(), &value), NS::FieldWriteResult::Written);
         editor.NoteFieldEdit(actor, *row, fieldName);
     }
 
@@ -920,7 +920,7 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
             const NS::FieldDesc* blend = NS::FindField(material->GetReflection(), "混ぜ方");
             ASSERT_NE(blend, nullptr);
             const std::string additive = "Additive";
-            blend->set(material, &additive);
+            ASSERT_EQ(blend->set(material, &additive), NS::FieldWriteResult::Written);
             editor.MarkAssetEdited();
 
             path.clear();

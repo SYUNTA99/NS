@@ -31,6 +31,12 @@ namespace NS
             float inTangent = 0.0f;
             float outTangent = 0.0f;
 
+            //! 位置・値・入りと出の傾きが全部有限なら true
+            [[nodiscard]] bool IsFinite() const noexcept
+            {
+                return std::isfinite(x) && std::isfinite(y) && std::isfinite(inTangent) && std::isfinite(outTangent);
+            }
+
             [[nodiscard]] constexpr bool operator==(const Key&) const noexcept = default;
         };
 

@@ -53,6 +53,13 @@ public:
         return static_cast<int>(m_warnings.size());
     }
 
+    //! 控えた WARN の文の写し。出た順
+    [[nodiscard]] std::vector<std::string> Warnings() const
+    {
+        const std::lock_guard<std::mutex> lock{m_mutex};
+        return m_warnings;
+    }
+
 private:
     std::shared_ptr<spdlog::logger> m_previous;
     mutable std::mutex m_mutex;
