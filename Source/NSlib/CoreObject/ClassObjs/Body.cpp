@@ -18,10 +18,23 @@ namespace NS
         return Vector3{m_velocity.x, 0.0f, m_velocity.z};
     }
 
+    void Body::SetVelocity(const Vector3& v) noexcept
+    {
+        NS_ASSERT(Scene, IsFinite(v), "Body::SetVelocity: 速度が有限でない");
+        m_velocity = v;
+    }
+
     void Body::SetLateralVelocity(const Vector3& v) noexcept
     {
+        NS_ASSERT(Scene, IsFinite(HorizontalPart(v)), "Body::SetLateralVelocity: 水平の速度が有限でない");
         m_velocity.x = v.x;
         m_velocity.z = v.z;
+    }
+
+    void Body::SetVerticalVelocity(float y) noexcept
+    {
+        NS_ASSERT(Scene, std::isfinite(y), "Body::SetVerticalVelocity: 縦の速度が有限でない");
+        m_velocity.y = y;
     }
 
     void Body::SetGrounded(bool grounded) noexcept
@@ -33,6 +46,7 @@ namespace NS
     void Body::Gravity(float gravity, float dt) noexcept
     {
         Phys::AddGravity(m_velocity, -gravity, dt);
+        NS_ASSERT(Scene, IsFinite(m_velocity), "Body::Gravity: 重力を足した速度が有限でない");
     }
 
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
@@ -42,6 +56,8 @@ namespace NS
         NS_ASSERT(Scene, collider != nullptr, "Body::Move: 当たりの部品が空");
         NS_ASSERT(Scene, root != nullptr, "Body::Move: 動かすルートが空");
         const ColliderMove moved = collider->Move(root->Position(), m_velocity, dt, maxStepHeight);
+        NS_ASSERT(Scene, IsFinite(moved.position), "Body::Move: 当たりの部品が返した位置が有限でない");
+        NS_ASSERT(Scene, IsFinite(moved.velocity), "Body::Move: 当たりの部品が返した速度が有限でない");
         root->SetPosition(moved.position);
         m_velocity = moved.velocity;
         m_wasGrounded = m_isGrounded;

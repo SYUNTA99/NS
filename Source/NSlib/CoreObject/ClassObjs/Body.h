@@ -11,11 +11,12 @@ namespace NS
 
     //! @brief 速度と接地を保持し、Collider の移動結果を根の姿勢へ反映する部品
     //! @details 自動更新はしない。持ち主が固定更新の経過秒 dt で各操作を呼ぶ
+    //! 速度を書く 5 つの関数は、非数か無限大を書くと NS_ASSERT が止める。NS_ASSERT を切る GameRelease では止めずに書く
     class Body : public Object
     {
     public:
         [[nodiscard]] Vector3 Velocity() const noexcept { return m_velocity; }
-        void SetVelocity(const Vector3& v) noexcept { m_velocity = v; }
+        void SetVelocity(const Vector3& v) noexcept;
 
         //! 水平成分だけを取り出した速度で y は 0。長さが微小 (IsNearlyZeroHorizontal) なら 0 を返す
         [[nodiscard]] Vector3 LateralVelocity() const noexcept;
@@ -23,7 +24,7 @@ namespace NS
         void SetLateralVelocity(const Vector3& v) noexcept;
 
         [[nodiscard]] float VerticalVelocity() const noexcept { return m_velocity.y; }
-        void SetVerticalVelocity(float y) noexcept { m_velocity.y = y; }
+        void SetVerticalVelocity(float y) noexcept;
 
         [[nodiscard]] bool IsGrounded() const noexcept { return m_isGrounded; }
         //! 直前の Move より前の接地。着地したフレームを見分けるのに使う
