@@ -1,6 +1,6 @@
 {
   "environment": {
-    "music": "",
+    "music": "bgm_course",
     "musicVolume": 0.5,
     "skybox": "Assets/Skybox/blue-sky/"
   },

@@ -4,6 +4,7 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/SoundClip.h"
+#include "NSlib/CoreObject/Reflection/SoundName.h"
 
 namespace NS
 {
@@ -17,7 +18,7 @@ namespace NS
         SoundClip*& sound = m_sounds[std::string{name}];
         if (sound == nullptr)
         {
-            sound = assets->LoadSoundClip("Assets/Sounds/" + std::string{name} + ".wav");
+            sound = assets->LoadSoundClip(SoundPathOf(name));
         }
     }
 

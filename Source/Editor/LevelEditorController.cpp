@@ -836,6 +836,7 @@ void LevelEditorController::EnterPlay() noexcept
     if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(m_scene))
     {
         director->StartCourse();
+        (void)director->StartMusic(); // 編集へ戻る時に止めるので、プレイを始めるたびに始まる
     }
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (NS::CameraManager* cameras = Cameras())
@@ -910,6 +911,10 @@ void LevelEditorController::LeavePlayForEdit()
         return;
     }
     m_scene->SetSimulationEnabled(false);
+    if (GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(m_scene))
+    {
+        director->StopMusic();
+    }
 
     // プレイで変わった配置を編集へ持ち込まないため、プレイを始めた時の JSON から復元する
     NS_ASSERT(App, m_playBaseline.has_value(), "LeavePlayForEdit: プレイを始めた時の JSON が無い");

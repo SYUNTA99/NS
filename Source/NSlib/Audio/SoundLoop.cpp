@@ -22,12 +22,9 @@ namespace NS
 
         void SoundLoop::Play()
         {
-            if (m_playing)
-            {
-                return;
-            }
             m_playing = true;
-            if (m_instance)
+            // 機器を失うと DirectXTK が声を捨てて止めた事にするので、鳴っているかは声に問う
+            if (m_instance && m_instance->GetState() != DirectX::SoundState::PLAYING)
             {
                 m_instance->Play(true);
             }
