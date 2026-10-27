@@ -4,14 +4,14 @@
 #include "NSlib/CoreObject/System/SceneSystem.h"
 
 #include <memory>
-#include <utility>
 #include <vector>
 
 namespace NS
 {
     class Scene;
 
-    //! 型ごとに一つのシステムを必要時に生成する。配置の再構築時に生成と逆順で破棄する
+    //! @brief シーンが持つシステムの保持と生成を行う
+    //! @details 型ごとに高々 1 つを持ち、作った順の逆に破棄する
     class SceneSystemHolder : public NonCopyable
     {
     public:
@@ -21,11 +21,11 @@ namespace NS
         //! 型 T の物。まだ作っていなければ nullptr
         template <class T> [[nodiscard]] T* Find() const noexcept
         {
-            for (const std::pair<const void*, std::unique_ptr<SceneSystem>>& entry : m_objects)
+            for (const SystemEntry& entry : m_objects)
             {
-                if (entry.first == KeyOf<T>())
+                if (entry.typeKey == KeyOf<T>())
                 {
-                    return static_cast<T*>(entry.second.get());
+                    return static_cast<T*>(entry.system.get());
                 }
             }
             return nullptr;
@@ -40,7 +40,7 @@ namespace NS
             }
             std::unique_ptr<T> created = std::make_unique<T>(m_scene);
             T& result = *created;
-            m_objects.emplace_back(KeyOf<T>(), std::move(created));
+            m_objects.push_back(SystemEntry{KeyOf<T>(), std::move(created)});
             return result;
         }
 
@@ -49,6 +49,12 @@ namespace NS
         void Clear() noexcept;
 
     private:
+        struct SystemEntry
+        {
+            const void* typeKey = nullptr;
+            std::unique_ptr<SceneSystem> system;
+        };
+
         // 型ごとに 1 つのタグ。関数内の static の番地は型ごとに 1 つに決まり、RTTI を使わずに型を見分けられる
         template <class T> [[nodiscard]] static const void* KeyOf() noexcept
         {
@@ -57,6 +63,6 @@ namespace NS
         }
 
         Scene& m_scene;
-        std::vector<std::pair<const void*, std::unique_ptr<SceneSystem>>> m_objects; // 作った順
+        std::vector<SystemEntry> m_objects; // 作った順
     };
 } // namespace NS

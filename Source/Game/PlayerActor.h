@@ -71,6 +71,9 @@ public:
     ~PlayerActor() override;
 
     NS_REFLECT_DECLARE()
+    // =========================================================================
+    // コンポーネント・基本情報の参照
+    // =========================================================================
     //! 基底が所有する自機の状態機械。OnInit が組むので、Init の後から立ちの状態に居る
     [[nodiscard]] NS::StateMachineOf<PlayerActor>& States() noexcept { return *m_states; }
     [[nodiscard]] const NS::StateMachineOf<PlayerActor>& States() const noexcept { return *m_states; }
@@ -85,6 +88,9 @@ public:
     [[nodiscard]] const GL::Player::PlayerParams& Params() const noexcept { return *m_params; }
     [[nodiscard]] GL::Player::PlayerClips& Clips() noexcept { return *m_clips; }
     [[nodiscard]] const GL::Player::PlayerClips& Clips() const noexcept { return *m_clips; }
+    // =========================================================================
+    // チャージ・照準・演出サブシステムの参照
+    // =========================================================================
     [[nodiscard]] const GL::Level::ImpactInputJudge& ChargeJudge() const noexcept;
     //! 保持中の狙いの線を返す。入力方向ではなく、効果を掛ける前のカメラ方向を使う
     //! 押していない、カメラ管理なし、無効な方向では false で outLine を変更しない
@@ -115,6 +121,9 @@ public:
     [[nodiscard]] GL::Level::TackleGhost& Ghost() noexcept { return m_tackleGhost; }
     [[nodiscard]] const GL::Level::TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
 
+    // =========================================================================
+    // 更新・アニメーション・移動入力・ジャンプ状態
+    // =========================================================================
     using NS::SceneActor::Update;
     //! 機器を読まずに chargeHeld を差し込み、1 固定ステップ進める。ほかの入力は部品の Set〜 で書いた値のまま
     void Update(bool chargeHeld);
@@ -155,6 +164,9 @@ public:
     //! 自機だけの通知の受け口。身体の Events() は接地の 2 件を返すので名前を分ける
     [[nodiscard]] GL::Player::PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
 
+    // =========================================================================
+    // 体当たり（突進）・反動・エアダッシュ・丸まりの状態と操作
+    // =========================================================================
     //! 突進の状態か、突進を続ける当たる直前の状態に居る場合 true、それ以外の場合は false
     [[nodiscard]] bool IsBodySlamming() const noexcept;
     //! @brief 当たる直前の状態に居る場合 true、それ以外の場合は false
@@ -248,6 +260,9 @@ public:
     //! 丸まりで下端を揃えるため、立ち姿と玉で同じ球になる。ChangeCurled と判定の基準を揃える
     [[nodiscard]] NS::Sphere SlamBallAt(const NS::Vector3& rootPosition) const noexcept;
 
+    // =========================================================================
+    // 物理挙動・速度制御（重力・加速・減速・ジャンプ）
+    // =========================================================================
     //! 先行入力とコヨーテ猶予のタイマーを 1 フレーム進める
     void TickTimers(float dt) noexcept;
     //! @brief 入力の向きへ加速する。入力が無ければ何もしない
@@ -282,6 +297,9 @@ public:
     //! @details 突進の間の水平の書き手はここだけ
     void UpdateBodySlam(float dt) noexcept;
 
+    // =========================================================================
+    // 崖掴まり・よじ登り
+    // =========================================================================
     //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
     [[nodiscard]] bool LedgeGrab() noexcept;
     //! @brief 掴んでいる縁を取り直し、その高さへ位置を合わせ直す
@@ -299,6 +317,9 @@ public:
     //! 手を放し、その場から落下させる
     void DropLedge() noexcept;
 
+    // =========================================================================
+    // 体当たり（突進）の要求・開始・方向解決・反動軌道
+    // =========================================================================
     //! 体当たりを要求する。charge01・overcharge01 は 0〜1 に丸め、非有限は 0
     //! 出せない要求は先行入力時間まで残す。突進中・身体の停止中は捨てる
     //! 空中発動は接地まで一度だけ。地上発動は回数を消費しない。向きは BodySlam が決める
@@ -348,6 +369,9 @@ public:
     //! 縁に掴まっている間とよじ登っている間の true は受けない
     void SetCurled(bool curled) noexcept;
 
+    // =========================================================================
+    // カメラ追従・コース進行・体力
+    // =========================================================================
     [[nodiscard]] GL::Player::CameraTargetState GetCameraTargetState() const;
     //! GetCameraTargetState を追従カメラの欄へ写す。壊れた溜めと反動の値は WARN を出して渡さない
     void WriteFollowState(NS::ThirdPersonFollow* vcam) const override;
@@ -374,6 +398,9 @@ public:
     [[nodiscard]] int Health() const noexcept;
 
 protected:
+    // =========================================================================
+    // シーンのステップ・メッセージ受信
+    // =========================================================================
     //! @brief 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
     //! @details 操作の停止は PlayerInput の止め (SetLocked) へ写し、止める時は CancelCharge で溜めを捨てる
     bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
@@ -428,6 +455,9 @@ private:
         bool hasAimTarget = false;
     };
 
+    // =========================================================================
+    // 内部ヘルパー：移動・エアダッシュ・地形反動
+    // =========================================================================
     //! 固定ステップごとに一度呼ぶ。移動後に接地と突進距離を更新し、面に当たったエアダッシュと反動を返す
     void MoveBody(float dt) noexcept;
     //! この歩にエアダッシュを出せる場合 true、それ以外の場合は false。押した瞬間で、回数が残り、出せる状態に居る
@@ -463,6 +493,9 @@ private:
     void DrawTerrainRebound() const;
     //! 体を動かさないフレームでも、そのフレーム限りの押しは下ろす。残すと再開した時に古い押下が効く
     void DropPresses() noexcept;
+    // =========================================================================
+    // 内部ヘルパー：突進・衝突裁定・命中反応・丸まり切り替え
+    // =========================================================================
     //! 突進の進んだ距離を足し、距離を使い切るか進めなくなったら突進を終える
     //! @details 進めた距離は動かした後にしか出ないので、打ち切りの判定は状態でなくここに置く
     //! 受け取るのは直前の Move で実際に動いた量
@@ -513,6 +546,9 @@ private:
     [[nodiscard]] bool TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept;
     //! 押したフレームの狙いを控える。離すまでの遅れのぶん、向きを添えない発動はこの向きから始める
     void MarkBodySlamAim() noexcept;
+    // =========================================================================
+    // 内部ヘルパー：チャージ観測・接地復帰・状態進行・アニメーション選択
+    // =========================================================================
     //! @brief このフレームの押しを控え、押していれば狙いの線と狙う相手を探して控える
     //! @details 控えるのは m_chargeObserved だけで、判定・速度・丸まりには触らない
     //! @param[in] held 体当たりのボタンを押しているか
@@ -558,6 +594,9 @@ private:
     // 状態と水平の速さから役の欄を選ぶ。字面が空の役は立ちの欄に代える
     [[nodiscard]] const NS::AnimClip* ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(const NS::Anim::AnimClip* clip, float lateralSpeed) const noexcept;
+    // =========================================================================
+    // メンバ変数：所有コンポーネント・サブシステム・体力
+    // =========================================================================
     std::unique_ptr<GL::Player::PlayerParams> m_params;
     std::unique_ptr<GL::Player::PlayerClips> m_clips;
     std::unique_ptr<NS::PlayerInput> m_input;
@@ -586,6 +625,9 @@ private:
     GL::Level::Health m_health;
     std::optional<NS::Vector3> m_courseStartPosition; // MsgCourseStart の時の位置。やり直しで戻る先
 
+    // =========================================================================
+    // メンバ変数：通常移動・ジャンプ・突進・反動・チャージ・崖掴まり状態
+    // =========================================================================
     bool m_inputInjected = false;     // Update(bool) の間。機器を読まず、差し込んだ入力のまま進める
     bool m_stateStepPrepared = false; // DecideStep が PrepareStateStep を呼んだか。書くのは DecideStep だけ
     bool m_prevJumpHeld = false;

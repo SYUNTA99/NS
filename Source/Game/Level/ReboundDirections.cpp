@@ -164,9 +164,9 @@ namespace GL
                                        float stickRight,
                                        float stickUp) noexcept
         {
-            const NS::Vector3 right{cameraRight - assigned * NS::Dot(cameraRight, assigned)};
-            const NS::Vector3 up{cameraUp - assigned * NS::Dot(cameraUp, assigned)};
-            const NS::Vector3 depth{cameraForward - assigned * NS::Dot(cameraForward, assigned)};
+            const NS::Vector3 right{NS::RejectUnit(cameraRight, assigned)};
+            const NS::Vector3 up{NS::RejectUnit(cameraUp, assigned)};
+            const NS::Vector3 depth{NS::RejectUnit(cameraForward, assigned)};
             const float upLength{std::min(up.Length(), 1.0f)};
             return right * stickRight + (up + depth * (1.0f - upLength)) * stickUp;
         }
@@ -177,7 +177,7 @@ namespace GL
             {
                 return to;
             }
-            NS::Vector3 side{to - from * NS::Dot(to, from)};
+            NS::Vector3 side{NS::RejectUnit(to, from)};
             if (NS::IsNearlyZero(side))
             {
                 return from;

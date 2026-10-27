@@ -8,7 +8,7 @@ namespace NS
 {
     namespace Editor
     {
-        //! @brief Build / Object の編集モードを切り替え、主要ショートカットを一覧するパネル
+        // ステージ作成・選択変形・グリッド配置を切り替え、配置の設定を編集する。
         class ToolModePanel : public NonCopyable
         {
         public:

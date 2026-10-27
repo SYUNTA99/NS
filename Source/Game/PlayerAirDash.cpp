@@ -31,7 +31,7 @@ namespace
     // 2 つが同じか真逆で回す面が決まらない時は v のまま
     NS::Vector3 TurnLike(const NS::Vector3& v, const NS::Vector3& from, const NS::Vector3& to) noexcept
     {
-        NS::Vector3 side{to - from * NS::Dot(to, from)};
+        NS::Vector3 side{NS::RejectUnit(to, from)};
         if (NS::IsNearlyZero(side))
         {
             return v;
@@ -72,7 +72,7 @@ bool PlayerActor::BeginAirDash() noexcept
 {
     // 速さが 0 のダッシュは、状態の終わり (IsStateEnd) も来ないので宙で止まったまま抜けられない
     const float speed = AirDashSpeed();
-    if (!(speed > 0.0f))
+    if (!NS::IsPositive(speed))
     {
         NS_LOG_WARN(Game,
                     ".actor {} の動作 {} が無いか長さが 0、または距離が 0 以下なので、エアダッシュを始めない",
@@ -238,7 +238,7 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     }
     const float rate = NS::ToRadians(NS::Degrees{m_params->m_reboundSteerMaxDegreesPerSecond}).value;
     const float step = std::min(rate * progress * dt, limit - m_airDash.m_steeredRadians);
-    if (!(step > 0.0f))
+    if (!NS::IsPositive(step))
     {
         return;
     }

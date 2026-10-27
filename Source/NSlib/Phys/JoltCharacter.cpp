@@ -58,7 +58,7 @@ namespace NS
 
             bool CastRayDown(const JPH::PhysicsSystem& system, JPH::RVec3Arg origin, float length, float& outDistance)
             {
-                if (!(length > 0.0f))
+                if (!IsPositive(length))
                 {
                     return false;
                 }

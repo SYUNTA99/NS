@@ -24,13 +24,25 @@ namespace NS
         //! @details 既定の値で渡すと、原点で絵の定義どおりに出す
         struct EffectPlayDesc
         {
-            Vector3 position{0.0f, 0.0f, 0.0f};             //!< 再生位置のワールド座標
+            Vector3 position{0.0f, 0.0f, 0.0f};         //!< 再生位置のワールド座標
             Quaternion rotation = Quaternion::Identity; //!< 絵の向き
-            Vector3 scale{1.0f, 1.0f, 1.0f};                //!< 絵の大きさの倍率。軸ごとに掛ける
+            Vector3 scale{1.0f, 1.0f, 1.0f};            //!< 絵の大きさの倍率。軸ごとに掛ける
             //! 絵の全体に掛ける色。各成分 0〜1 で、白は定義の色のまま
             Color color{1.0f, 1.0f, 1.0f, 1.0f};
             //! 動的入力 0〜3 番の値。書いた番号だけ、絵の定義が持つ既定の値を上書きする
             std::array<std::optional<float>, 4> dynamicInputs{};
         };
+
+        //! 位置・回転・スケールを指定して EffectPlayDesc を組み立てる
+        [[nodiscard]] inline EffectPlayDesc MakeEffectPlayDesc(const Vector3& position,
+                                                               const Quaternion& rotation,
+                                                               const Vector3& scale) noexcept
+        {
+            EffectPlayDesc desc;
+            desc.position = position;
+            desc.rotation = rotation;
+            desc.scale = scale;
+            return desc;
+        }
     } // namespace Gfx
 } // namespace NS

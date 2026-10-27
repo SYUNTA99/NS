@@ -312,7 +312,7 @@ namespace GL
             }
             SpawnMark();
             const NS::Vector3 up = -GravityDirection();
-            NS::Vector3 forward = desc.arc.direction - up * NS::Dot(desc.arc.direction, up);
+            NS::Vector3 forward = NS::RejectUnit(desc.arc.direction, up);
             const float length = forward.Length();
             if (!NS::HasPositiveMagnitude(length))
             {
@@ -321,7 +321,7 @@ namespace GL
             LaunchArc arc = desc.arc;
             arc.direction = NS::Vector3{1.0f, 0.0f, 0.0f};
             const NS::Vector3 initial = LaunchArcInitialVelocity(arc);
-            if (!(initial.Length() > 0.0f))
+            if (!NS::IsPositive(initial.Length()))
             {
                 return;
             }

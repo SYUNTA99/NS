@@ -49,6 +49,37 @@ namespace
         value = target + (gap + push) * decay;
     }
 
+    void CriticalSpringStep(NS::Vector2& value,
+                            NS::Vector2& velocity,
+                            const NS::Vector2& target,
+                            float omega,
+                            float dt) noexcept
+    {
+        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
+        CriticalSpringStep(value.y, velocity.y, target.y, omega, dt);
+    }
+
+    void CriticalSpringStep(NS::Vector3& value,
+                            NS::Vector3& velocity,
+                            const NS::Vector3& target,
+                            float omega,
+                            float dt) noexcept
+    {
+        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
+        CriticalSpringStep(value.y, velocity.y, target.y, omega, dt);
+        CriticalSpringStep(value.z, velocity.z, target.z, omega, dt);
+    }
+
+    void CriticalSpringStepHorizontal(NS::Vector3& value,
+                                      NS::Vector3& velocity,
+                                      const NS::Vector3& target,
+                                      float omega,
+                                      float dt) noexcept
+    {
+        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
+        CriticalSpringStep(value.z, velocity.z, target.z, omega, dt);
+    }
+
     // 右は水平で、上は視線と右に直交する
     struct ViewAxes
     {
@@ -267,8 +298,7 @@ namespace NS
         }
     }
 
-    void ThirdPersonFollow::UpdateReboundPhase(
-        bool began, bool rebounding, bool launchBegan, bool launching, const Vector3& head) noexcept
+    void ThirdPersonFollow::UpdateReboundPhase(const ReboundPhaseInput& input, const Vector3& head) noexcept
     {
         const auto anchorAtLastLook = [this, &head]() {
             m_reboundAnchor = head;
@@ -281,7 +311,7 @@ namespace NS
 
         // 反動の状態になったフレームに、前のフレームに見ていた所から留める
         // 空中で続けて当てた時も留め直す。勝手に出た突進の途中で当たった時も、遅れた注視点から続けるので跳ばない
-        if (began)
+        if (input.reboundBegan)
         {
             m_reboundPhase = ReboundPhase::Following;
             anchorAtLastLook();
@@ -292,7 +322,7 @@ namespace NS
 
         // 勝手に出た突進になったフレームに、前のフレームに見ていた所へ取り残す。バネは止まった所から動き出すので、
         // 出た最初の数フレームは注視点がほぼ動かない
-        if (launchBegan)
+        if (input.launchBegan)
         {
             m_reboundPhase = ReboundPhase::Launching;
             anchorAtLastLook();
@@ -301,8 +331,8 @@ namespace NS
 
         // 反動の状態か勝手に出た突進が外れたフレームから寄せ戻す
         // 着地のほか、空中の 1 発と縁を掴んだ時も外れる。突進は当たらずに止まった時に外れる
-        if ((m_reboundPhase == ReboundPhase::Following && !rebounding) ||
-            (m_reboundPhase == ReboundPhase::Launching && !launching))
+        if ((m_reboundPhase == ReboundPhase::Following && !input.rebounding) ||
+            (m_reboundPhase == ReboundPhase::Launching && !input.launching))
         {
             if (m_reboundReturnFrames > 0 && m_hasLook)
             {
@@ -352,9 +382,7 @@ namespace NS
         {
             omega = 1.678f / m_reboundPartnerHalfSeconds;
         }
-        CriticalSpringStep(m_partnerLean.x, m_partnerLeanVelocity.x, leanTarget.x, omega, dt);
-        CriticalSpringStep(m_partnerLean.y, m_partnerLeanVelocity.y, leanTarget.y, omega, dt);
-        CriticalSpringStep(m_partnerLean.z, m_partnerLeanVelocity.z, leanTarget.z, omega, dt);
+        CriticalSpringStep(m_partnerLean, m_partnerLeanVelocity, leanTarget, omega, dt);
         CriticalSpringStep(m_partnerPull, m_partnerPullVelocity, pullTarget, omega, dt);
     }
 
@@ -389,8 +417,7 @@ namespace NS
         if (m_reboundPhase == ReboundPhase::Launching)
         {
             // 表示する遅れだけをなめらかに制限し、バネの速度が急変しないよう状態は切らない。
-            CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_forcedLaunchFollowOmega, dt);
-            CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_forcedLaunchFollowOmega, dt);
+            CriticalSpringStepHorizontal(m_reboundAnchor, m_reboundAnchorVelocity, head, m_forcedLaunchFollowOmega, dt);
             const Vector3 lag = HorizontalPart(m_reboundAnchor - head);
             const float lagLength = lag.Length();
             const float maxLag = std::max(m_forcedLaunchMaxLag, 0.0f);
@@ -405,8 +432,7 @@ namespace NS
 
         // 横と前後は臨界減衰のバネで遅れて付いていき、遅れは上限の内に留める
         // 高さは留めたまま
-        CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_reboundFollowOmega, dt);
-        CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_reboundFollowOmega, dt);
+        CriticalSpringStepHorizontal(m_reboundAnchor, m_reboundAnchorVelocity, head, m_reboundFollowOmega, dt);
         const Vector3 lag = HorizontalPart(m_reboundAnchor - head);
         const float lagLength = lag.Length();
         const float maxLag = std::max(m_reboundLagCap, 0.0f);
@@ -573,8 +599,7 @@ namespace NS
             m_chargeFrameVelocity = Vector2{0.0f, 0.0f};
             return;
         }
-        CriticalSpringStep(m_chargeFrameOffset.x, m_chargeFrameVelocity.x, wanted.x, m_chargeFrameOmega, dt);
-        CriticalSpringStep(m_chargeFrameOffset.y, m_chargeFrameVelocity.y, wanted.y, m_chargeFrameOmega, dt);
+        CriticalSpringStep(m_chargeFrameOffset, m_chargeFrameVelocity, wanted, m_chargeFrameOmega, dt);
         CriticalSpringStep(m_chargeCenterTilt, m_chargeCenterTiltVelocity, wantedTilt, m_chargeFrameOmega, dt);
         // 0 へは限りなく近づくだけなので、k_ChargeFrameSnap を切ったら 0 にして溜めを受けていない時の式へ戻す
         if (!framing && m_chargeFrameOffset.Length() < k_ChargeFrameSnap)
@@ -777,7 +802,8 @@ namespace NS
 
         const Vector3 root = target->Position();
         const Vector3 head{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};
-        UpdateReboundPhase(reboundBegan, rebound.rebounding, launchBegan, rebound.forcedSlamming, head);
+        UpdateReboundPhase(ReboundPhaseInput{reboundBegan, rebound.rebounding, launchBegan, rebound.forcedSlamming},
+                           head);
         // 反動になったフレームは前の反動の寄せと引きを持ち越さない
         if (reboundBegan)
         {

@@ -246,7 +246,7 @@ namespace NS
     bool SetFrameRate(SceneActor* actor, float rate) noexcept
     {
         NS_ASSERT(Scene, actor != nullptr, "SetFrameRate: アクターが null");
-        if (!std::isfinite(rate) || !(rate > 0.0f))
+        if (!std::isfinite(rate) || !IsPositive(rate))
         {
             NS_LOG_ERROR(
                 Scene, "SetFrameRate: 体の倍率 {} は正の有限値でない。前の {} を残す", rate, actor->m_frameRate);

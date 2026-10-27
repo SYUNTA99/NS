@@ -30,7 +30,7 @@ namespace
     // 回転数を秒で割った回る速さ (度/秒)。秒が 0 以下か有限でない時は 0
     [[nodiscard]] float SpinSpeedFor(float turns, float seconds) noexcept
     {
-        if (!std::isfinite(seconds) || !(seconds > 0.0f))
+        if (!std::isfinite(seconds) || !NS::IsPositive(seconds))
         {
             return 0.0f;
         }
@@ -331,7 +331,7 @@ float PlayerActor::BodySlamAimBlend01() const noexcept
         return 1.0f;
     }
     // 巻き戻し秒を消える秒より後ろにできる。幅が 0 以下なら割らずに切る
-    if (!(fade > hold) || age >= fade)
+    if (!NS::IsGreaterThan(fade, hold) || age >= fade)
     {
         return 0.0f;
     }
@@ -347,7 +347,7 @@ NS::Vector3 PlayerActor::BlendedAimDirection() const noexcept
         return dir;
     }
     const float blend = BodySlamAimBlend01();
-    if (!(blend > 0.0f))
+    if (!NS::IsPositive(blend))
     {
         return dir;
     }
@@ -397,7 +397,7 @@ bool PlayerActor::BodySlam() noexcept
 
     m_slam.m_charge01 = m_request.charge01;
     m_slam.m_overcharge01 = m_request.overcharge01;
-    m_slam.m_isTap = !(m_request.charge01 > 0.0f);
+    m_slam.m_isTap = !NS::IsPositive(m_request.charge01);
     m_slam.m_travelled = 0.0f;
     m_slam.m_justStarted = true;
     const float speed = BodySlamSpeed();
@@ -427,7 +427,7 @@ bool PlayerActor::BodySlam() noexcept
     m_slam.m_spinSpeed = SpinSpeedFor(turns, m_slam.m_distanceTarget / speed);
 
     // 距離が 0 以下だと 1 フレーム目で終わって発動が消えるため、出さずに通常移動のままにする
-    if (!(m_slam.m_distanceTarget > 0.0f))
+    if (!NS::IsPositive(m_slam.m_distanceTarget))
     {
         return false;
     }
@@ -456,7 +456,7 @@ bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
 {
     // 曲線にならない反動で移すと、弾かれないまま速度が 0 に消える。移さずに偽を返し、速度は呼び手に任せる
     const NS::Vector3 velocity = ReboundVelocityFor(arc);
-    if (!(velocity.y > 0.0f))
+    if (!NS::IsPositive(velocity.y))
     {
         return false;
     }

@@ -17,7 +17,7 @@ namespace
     // ImpactInputJudge は固定ステップの整数で数えるため、秒の欄をフレーム数へ丸めて渡す
     [[nodiscard]] int SecondsToSteps(float seconds, float dt) noexcept
     {
-        if (!(dt > 0.0f))
+        if (!NS::IsPositive(dt))
         {
             return 0;
         }
@@ -37,7 +37,7 @@ namespace
                                             float startRate,
                                             float endRate) noexcept
     {
-        if (!(overchargeSeconds > 0.0f))
+        if (!NS::IsPositive(overchargeSeconds))
         {
             return (0.5f * NS::k_Pi) + (2.0f * NS::k_Pi) * endRate * seconds;
         }
@@ -249,7 +249,7 @@ void PlayerActor::ApplyChargeSway(float dt)
     const NS::Vector3 right{forward.z, 0.0f, -forward.x};
     NS::Vector3 swayed{};
     // 距離が 0 か非数で向きが作れない時は揺らさない
-    if (!(distance > 0.0f) || !NS::TryNormalizeHorizontal(forward * distance + right * m_charge.m_swayOffset, swayed) ||
+    if (!NS::IsPositive(distance) || !NS::TryNormalizeHorizontal(forward * distance + right * m_charge.m_swayOffset, swayed) ||
         !std::isfinite(swayed.x) || !std::isfinite(swayed.z))
     {
         m_charge.m_swayOffset = 0.0f;

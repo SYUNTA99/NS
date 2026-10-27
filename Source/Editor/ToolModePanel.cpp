@@ -17,24 +17,33 @@ namespace NS
             // 固定座標を置くとドッキング配置と競合するので位置はドッキング / imgui.ini 任せ
             if (ImGui::Begin(k_PanelEditMode))
             {
-                const bool gizmoActive = editor.GizmoToolActive();
-                if (ImGui::RadioButton("Build (Grid place)", !gizmoActive))
+                const LevelEditorController::EditTool tool = editor.CurrentEditTool();
+                ImGui::BeginDisabled(!editor.IsSceneEditable());
+                if (ImGui::RadioButton("ステージ作成", tool == LevelEditorController::EditTool::StageBuild))
                 {
-                    editor.SetGizmoToolActive(false);
+                    editor.SetEditTool(LevelEditorController::EditTool::StageBuild);
                 }
-                if (ImGui::RadioButton("Gizmo", gizmoActive))
+                if (ImGui::RadioButton("選択・変形", tool == LevelEditorController::EditTool::Gizmo))
                 {
                     editor.SetGizmoToolActive(true);
                 }
-                ImGui::Separator();
-                if (gizmoActive)
+                if (ImGui::RadioButton("グリッド配置", tool == LevelEditorController::EditTool::Grid))
                 {
-                    ImGui::TextUnformatted("Click orange box to select. Q/W/E/R = Select/Move/Rotate/Scale");
+                    editor.SetGizmoToolActive(false);
+                }
+                if (editor.CurrentEditTool() == LevelEditorController::EditTool::StageBuild)
+                {
+                    editor.StageBuilder().RenderControls();
+                }
+                else if (editor.GizmoToolActive())
+                {
+                    ImGui::TextWrapped("クリックで選択。Q/W/E/R = 選択 / 移動 / 回転 / 拡大縮小");
                 }
                 else
                 {
-                    ImGui::TextUnformatted("Left click = place block");
+                    ImGui::TextUnformatted("左クリックで部品を配置");
                 }
+                ImGui::EndDisabled();
 
                 // 感度はこの場で効き、シーンには保存しない
                 ImGui::SeparatorText("自由視点");

@@ -1,6 +1,7 @@
 #include "NSlib/Gfx/Render/ScreenPasses.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Math.h"
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
@@ -63,7 +64,7 @@ namespace NS
 
         void ScreenPasses::Distort(D3DDevice& device, const ScreenRing& ring) noexcept
         {
-            if (!m_valid || !(ring.pushPixels > 0.0f) || !(ring.halfWidthPixels > 0.0f))
+            if (!m_valid || !IsPositive(ring.pushPixels) || !IsPositive(ring.halfWidthPixels))
             {
                 return;
             }

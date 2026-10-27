@@ -448,7 +448,7 @@ namespace NS
                                                        const Matrix& viewProjection,
                                                        Size2D size) noexcept
         {
-            if (!(ring.push > 0.0f) || size.width <= 0 || size.height <= 0)
+            if (!IsPositive(ring.push) || size.width <= 0 || size.height <= 0)
             {
                 return Gfx::ScreenRing{};
             }

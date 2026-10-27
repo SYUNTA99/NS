@@ -27,6 +27,12 @@ namespace NS
 
     using Color = DirectX::SimpleMath::Color;
 
+    //! 2つの2次元ベクトルの内積
+    [[nodiscard]] inline float Dot(const Vector2& a, const Vector2& b) noexcept
+    {
+        return a.x * b.x + a.y * b.y;
+    }
+
     //! 2つのベクトルの内積
     [[nodiscard]] inline float Dot(const Vector3& a, const Vector3& b) noexcept
     {
@@ -297,6 +303,56 @@ namespace NS
         return HorizontalLengthSquared(v) < toleranceSq;
     }
 
+    //! @brief スカラ値が正（0 より大）か判定する。0 以下および NaN の場合は false
+    [[nodiscard]] inline bool IsPositive(float value) noexcept
+    {
+        return value > 0.0f;
+    }
+
+    //! @brief スカラ値が非負（0 以上）か判定する。負および NaN の場合は false
+    [[nodiscard]] inline bool IsNonNegative(float value) noexcept
+    {
+        return value >= 0.0f;
+    }
+
+    //! @brief a が b より大きいか判定する。a <= b またはいずれかが NaN の場合は false
+    [[nodiscard]] inline bool IsGreaterThan(float a, float b) noexcept
+    {
+        return a > b;
+    }
+
+    //! @brief 値が閉区間 [minVal, maxVal] に入っているか判定する。範囲外および NaN の場合は false
+    [[nodiscard]] inline bool IsInRange(float value, float minVal, float maxVal) noexcept
+    {
+        return value >= minVal && value <= maxVal;
+    }
+
+    //! @brief 全成分が等しい 3 次元スケールベクトルを返す
+    [[nodiscard]] inline Vector3 UniformScale(float value) noexcept
+    {
+        return Vector3{value, value, value};
+    }
+
+    //! @brief +Y 軸を指定した向きへ回す回転を返す
+    [[nodiscard]] inline Quaternion TurnUpTo(const Vector3& direction) noexcept
+    {
+        return Quaternion::FromToRotation(Vector3{0.0f, 1.0f, 0.0f}, direction);
+    }
+
+    //! @brief +Z 軸（法線）を指定した向きへ回す回転を返す
+    [[nodiscard]] inline Quaternion TurnNormalTo(const Vector3& direction) noexcept
+    {
+        return Quaternion::FromToRotation(Vector3{0.0f, 0.0f, 1.0f}, direction);
+    }
+
+    //! @brief 3 次のイーズアウト補間 (1 - (1 - t)^3)。t は 0〜1 にクランプする
+    [[nodiscard]] inline float EaseOutCubic(float t) noexcept
+    {
+        const float clamped = std::clamp(t, 0.0f, 1.0f);
+        const float rest = 1.0f - clamped;
+        return 1.0f - rest * rest * rest;
+    }
+
     //! @brief 有限値かつ正の有意な大きさ（k_Epsilon より大）を持つか判定する
     [[nodiscard]] inline bool HasPositiveMagnitude(float value, float minThreshold = k_Epsilon) noexcept
     {
@@ -325,6 +381,12 @@ namespace NS
             return fallback;
         }
         return v / length;
+    }
+
+    //! @brief ベクトルから単位法線方向の成分を取り除いた射影ベクトルを返す
+    [[nodiscard]] inline Vector3 RejectUnit(const Vector3& v, const Vector3& unitNormal) noexcept
+    {
+        return v - unitNormal * Dot(v, unitNormal);
     }
 
     //! @brief XZ 平面へ畳んだ向きを正規化する

@@ -658,7 +658,7 @@ bool PlayerActor::IsInBeforeContact() const noexcept
 
 float PlayerActor::BodySlamProgress01() const noexcept
 {
-    if (!IsBodySlamming() || !(m_slam.m_distanceTarget > 0.0f))
+    if (!IsBodySlamming() || !NS::IsPositive(m_slam.m_distanceTarget))
     {
         return 0.0f;
     }
@@ -877,22 +877,10 @@ void PlayerActor::ResetState() noexcept
     CancelCharge();
     m_chargeEffects->Clear(this);
     m_slam = GL::Player::BodySlamStatus{};
-    m_rebound.m_direction = NS::Vector3{0.0f, 0.0f, 0.0f};
-    m_rebound.m_spinSpeed = 0.0f;
-    m_rebound.m_missTumble.reset();
+    m_rebound.Reset();
     m_skid = GL::Player::SkidStatus{};
     // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
-    m_airDash.m_remaining = 1;
-    m_airDash.m_direction = NS::Vector3{};
-    m_airDash.m_intendedDirection = NS::Vector3{};
-    m_airDash.m_tiltDirection = NS::Vector3{};
-    m_airDash.m_tiltSeconds = 0.0f;
-    m_airDash.m_dashSpeed = 0.0f;
-    m_airDash.m_pressed = false;
-    m_airDash.m_intended = NS::Vector3{};
-    m_airDash.m_reboundElapsed = 0.0f;
-    m_airDash.m_steeredRadians = 0.0f;
-    m_airDash.m_steerStarted = false;
+    m_airDash.Reset();
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_collider->SetSphereShape(false);
@@ -923,11 +911,12 @@ void PlayerActor::DropPresses() noexcept
 
 void PlayerActor::PrepareStateStep()
 {
-    const bool locomotion =
-        GL::Player::PlayerJudgeLocomotion::Judge(m_states->IsCurrent<GL::Player::IdlePlayerState>(),
-                                                 m_states->IsCurrent<GL::Player::WalkPlayerState>(),
-                                                 m_states->IsCurrent<GL::Player::FallPlayerState>(),
-                                                 m_states->IsCurrent<GL::Player::ReboundPlayerState>());
+    const bool locomotion = GL::Player::PlayerJudgeLocomotion::Judge(GL::Player::PlayerJudgeLocomotion::StateFlags{
+        .idle = m_states->IsCurrent<GL::Player::IdlePlayerState>(),
+        .walk = m_states->IsCurrent<GL::Player::WalkPlayerState>(),
+        .fall = m_states->IsCurrent<GL::Player::FallPlayerState>(),
+        .rebound = m_states->IsCurrent<GL::Player::ReboundPlayerState>(),
+    });
     if (CanStartAirDash() && BeginAirDash())
     {
         return;

@@ -191,8 +191,8 @@ namespace NS
         // 壊れた値が姿へ流れると画面が消える。入口で捨てる
         if (!IsNonNegativeFinite(desc.bottomPixels) || !IsNonNegativeFinite(desc.tremblePixels) ||
             !std::isfinite(desc.overshootRatio) || desc.frames <= 0 || desc.sinkFrames < 1 || desc.trembleFrames < 0 ||
-            desc.tremblePeriodFrames < 1 || desc.bouncePeriodFrames < 1 || !(desc.overshootRatio > 0.0f) ||
-            !(desc.overshootRatio < 1.0f))
+            desc.tremblePeriodFrames < 1 || desc.bouncePeriodFrames < 1 || !IsPositive(desc.overshootRatio) ||
+            !IsGreaterThan(1.0f, desc.overshootRatio))
         {
             return nullptr;
         }
@@ -457,7 +457,7 @@ namespace NS
             const float right = Dot(direction, axes.right);
             const float up = Dot(direction, axes.up);
             const float onScreen = std::sqrt(right * right + up * up);
-            if (!(onScreen > k_MinScreenShare))
+            if (!IsGreaterThan(onScreen, k_MinScreenShare))
             {
                 return;
             }

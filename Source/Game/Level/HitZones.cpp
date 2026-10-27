@@ -100,7 +100,7 @@ namespace GL
                     return true;
                 }
                 if (!NS::IsFinite(body.a) || !NS::IsFinite(body.b) || !std::isfinite(body.radius) ||
-                    !(body.radius > 0.0f))
+                    !NS::IsPositive(body.radius))
                 {
                     return false;
                 }
@@ -149,7 +149,7 @@ namespace GL
             [[nodiscard]] bool ShapeContains(const HitFaceShape& shape, float u, float v) noexcept
             {
                 // 幅 0 で割らないよう先に外す。幅 0 の向きがある形はどこも覆わない
-                if (!(shape.halfU > 0.0f) || !(shape.halfV > 0.0f))
+                if (!NS::IsPositive(shape.halfU) || !NS::IsPositive(shape.halfV))
                 {
                     return false;
                 }
@@ -165,7 +165,7 @@ namespace GL
             // 赤が覆う形。判定と描画が同じ形を読む。幅 0 の向きがある赤はどこも覆わないので false
             [[nodiscard]] bool RedShape(const HitFace& face, HitFaceShape& out) noexcept
             {
-                if (!(face.width > 0.0f) || !(face.height > 0.0f))
+                if (!NS::IsPositive(face.width) || !NS::IsPositive(face.height))
                 {
                     return false;
                 }

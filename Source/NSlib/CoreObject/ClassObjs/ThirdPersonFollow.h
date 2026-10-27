@@ -201,9 +201,17 @@ namespace NS
                           const Vector3& look,
                           float dt) noexcept;
 
+        // 反動と強制突進のフェーズ遷移の入力
+        struct ReboundPhaseInput
+        {
+            bool reboundBegan = false;
+            bool rebounding = false;
+            bool launchBegan = false;
+            bool launching = false;
+        };
+
         // 距離と注視点を決める前に、反動と強制突進の状態を更新する
-        void UpdateReboundPhase(
-            bool began, bool rebounding, bool launchBegan, bool launching, const Vector3& head) noexcept;
+        void UpdateReboundPhase(const ReboundPhaseInput& input, const Vector3& head) noexcept;
 
         // 手動入力を適用する前に、反動の回転と入力制限を更新する
         void UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept;

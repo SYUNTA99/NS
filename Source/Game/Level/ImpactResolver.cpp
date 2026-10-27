@@ -49,14 +49,14 @@ namespace GL
                                                        const NS::Vector3& direction,
                                                        float playerRadius) noexcept
             {
-                const NS::Vector3 to = NS::HorizontalPart(NS::Vector3{bounds.Center} - position);
-                const NS::Vector3 dir = NS::HorizontalPart(direction) * (1.0f / NS::HorizontalLength(direction));
-                const float along = NS::Dot(to, dir);
-                const float lateral = (to - dir * along).Length();
-                const float halfWidth = std::abs(dir.z) * bounds.Extents.x + std::abs(dir.x) * bounds.Extents.z;
+                const NS::Vector2 toCenter{bounds.Center.x - position.x, bounds.Center.z - position.z};
+                const NS::Vector2 dir = NS::Vector2{direction.x, direction.z} * (1.0f / NS::HorizontalLength(direction));
+                const float along = NS::Dot(toCenter, dir);
+                const float lateral = (toCenter - dir * along).Length();
+                const float halfWidth = std::abs(dir.y) * bounds.Extents.x + std::abs(dir.x) * bounds.Extents.z;
                 const float reach = halfWidth + playerRadius;
                 // 半幅と半径の和が 0 以下では割れない。中心扱いへ倒す
-                if (!(reach > 0.0f))
+                if (!NS::IsPositive(reach))
                 {
                     return LineOffset{.along = along, .ratio = 0.0f};
                 }
@@ -148,7 +148,7 @@ namespace GL
             // 明けに紫の明けの束で世界を遅くするか。溜めすぎて放した突進の当たりで、段にその束がある時だけ
             [[nodiscard]] bool UsesGradualRelease(const NS::HitReaction* reaction, HitTier tier, float overcharge01)
             {
-                if (!(overcharge01 > 0.0f) || reaction == nullptr)
+                if (!NS::IsPositive(overcharge01) || reaction == nullptr)
                 {
                     return false;
                 }
@@ -219,7 +219,7 @@ namespace GL
             {
                 return false;
             }
-            if (!(maxDistance >= 0.0f) || !std::isfinite(maxDistance))
+            if (!NS::IsNonNegative(maxDistance) || !std::isfinite(maxDistance))
             {
                 return false;
             }
@@ -247,13 +247,13 @@ namespace GL
                 const NS::AABB bounds = volume.Bounds();
 
                 const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
-                if (!(line.along > 0.0f))
+                if (!NS::IsPositive(line.along))
                 {
                     continue;
                 }
                 // 比が 1 を超える相手は、線を進む自機の縁が相手の外接箱の縁に届かない。丸めた値で見ると 1
                 // に張り付いて拾う
-                if (!(line.ratio <= 1.0f))
+                if (!NS::IsInRange(line.ratio, 0.0f, 1.0f))
                 {
                     continue;
                 }
@@ -432,16 +432,97 @@ namespace GL
             m_answer.reboundArc.reset();
         }
 
+        void ImpactResolver::ApplyImpactOutcome(const ImpactOutcome& outcome,
+                                                const TackleTargetAnswer& answer,
+                                                const GL::Player::PlayerParams* params,
+                                                float power,
+                                                bool centerHit)
+        {
+            if (outcome.broke)
+            {
+                m_pendingBreak = true;
+                // 貫通は相手を飛ばさず、自機も反動しない
+                // 前の当たりの曲線を残すと、この当たりの記録に使っていない曲線が載る
+                m_pendingLaunchArc = outcome.launchArc;
+                m_pendingReboundArc = outcome.reboundArc;
+                m_pendingSelfVelocity = outcome.breakSelfVelocity;
+                m_answer.broke = true;
+                NS_LOG_INFO(Game, "貫通: 耐久 {} 威力 {} 中心近く {}", answer.toughness, power, centerHit);
+            }
+            else
+            {
+                m_pendingBreak = false;
+                m_pendingReboundArc = outcome.reboundArc;
+                m_pendingSelfVelocity = LaunchArcInitialVelocity(params->ReboundLaunchArc(m_pendingReboundArc));
+                m_pendingLaunchArc = outcome.launchArc;
+
+                m_answer.rebounded = true;
+                NS_LOG_INFO(Game,
+                            "衝突: 質量 {} 耐久 {} 反動の高さ {} 距離 {} 押し飛ばしの距離 {} 高さ {} 中心近く {}",
+                            answer.mass,
+                            answer.toughness,
+                            m_pendingReboundArc.apexHeight,
+                            m_pendingReboundArc.distance,
+                            m_pendingLaunchArc.distance,
+                            m_pendingLaunchArc.apexHeight,
+                            centerHit);
+            }
+        }
+
+        void ImpactResolver::RecordLastImpact(const TackleTargetAnswer& answer,
+                                              const BodySlamMotion& motion,
+                                              const HitFaceJudgement& judgement,
+                                              const ImpactOutcome& outcome,
+                                              const PlayerParts& parts,
+                                              float power)
+        {
+            const HitTier tier = judgement.tier;
+            const std::string setName = TackleSetName("体当たり", tier);
+            const int stopSteps = HitStopStepsFor(parts.hitReaction, setName, outcome);
+            const bool gradualRelease = UsesGradualRelease(parts.hitReaction, tier, motion.overcharge01);
+            const NS::AABB& bounds = answer.bounds;
+
+            // 止めるフレーム数が決まってから控える
+            ImpactRecord& record = m_answer.lastImpact;
+            record.sequence += 1;
+            record.targetId = m_pendingTarget->Id();
+            record.power = power;
+            record.charge01 = motion.charge01;
+            record.positionFactor = judgement.powerScale;
+            record.offset01 = judgement.offset01;
+            record.tier = tier;
+            record.setName = setName;
+            record.faceU = judgement.u;
+            record.faceV = judgement.v;
+            record.faceNormal = outcome.faceNormal;
+            record.hitStopSteps = stopSteps;
+            record.localStop = stopSteps > 0;
+            record.overcharge01 = motion.overcharge01;
+            record.gradualRelease = gradualRelease;
+            record.centerHit = tier == HitTier::Center;
+            record.broke = m_pendingBreak;
+            record.selfVelocity = m_pendingSelfVelocity;
+            record.reboundApexHeight = m_pendingReboundArc.apexHeight;
+            record.launchVelocity = LaunchArcInitialVelocity(m_pendingLaunchArc);
+            record.launchDistance = m_pendingLaunchArc.distance;
+            record.launchApexHeight = m_pendingLaunchArc.apexHeight;
+            record.impactDir = m_pendingImpactDir;
+            // 触れた点は記録とエディタのマーカーだけが読む。段と威力を決めた判定の結果を使う
+            record.surfacePoint = judgement.surfacePoint;
+            record.targetPos = answer.position;
+            record.targetBottom = bounds.Center.y - bounds.Extents.y;
+            record.targetMass = answer.mass;
+            record.targetPlaced = answer.placed;
+            record.launchScale = outcome.launchScale;
+            record.reboundScale = outcome.reboundScale;
+        }
+
         bool ImpactResolver::ResolveObservedHit(const ImpactSelf& self,
                                                 bool hadObservation,
                                                 const BodySlamMotion& motion,
                                                 const PlayerParts& parts)
         {
-            if (!hadObservation)
-            {
-                return false;
-            }
-            if (!m_observedTarget->IsAppeared())
+            if (!hadObservation || !m_observedTarget->IsAppeared())
             {
                 return false;
             }
@@ -460,29 +541,20 @@ namespace GL
             {
                 return false;
             }
-            const float awayX = away.x;
-            const float awayZ = away.z;
 
             // 箱へ向かっているフレームだけ弾く。離れていく間も弾くと、重なりが解けるまで毎フレーム掛かり直す
-            if (velocity.x * awayX + velocity.z * awayZ >= 0.0f)
+            if (NS::DotHorizontal(velocity, away) >= 0.0f)
             {
                 return false;
             }
-
-            const float charge01 = motion.charge01;
-
-            const float mass = answer.mass;
 
             // 重なりと面の判定を同じステップ先で見る。現在位置を使うと、縦移動中の段がずれる
             const NS::Vector3 stepped = PositionAfterStep(position, velocity);
             const NS::Vector3 ballCenter = GL::Player::SlamBallAt(parts.collider, stepped).center;
             const HitFaceJudgement judgement =
                 JudgeHitFaceOrWide(answer.face, answer.body, ballCenter, velocity, parts.collider->CapsuleRadius());
-            const float offset01 = judgement.offset01;
-            const float chargeFactor = parts.params->ChargeFactorFor(charge01, motion.overcharge01);
+            const float chargeFactor = parts.params->ChargeFactorFor(motion.charge01, motion.overcharge01);
             const float positionFactor = judgement.powerScale;
-            const HitTier tier = judgement.tier;
-            const bool centerHit = tier == HitTier::Center;
             // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
             const float power = chargeFactor * positionFactor;
             NS_LOG_INFO(Game,
@@ -490,8 +562,8 @@ namespace GL
                         chargeFactor,
                         positionFactor,
                         power,
-                        charge01,
-                        offset01);
+                        motion.charge01,
+                        judgement.offset01);
 
             // 明けたフレームの反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る。打ち切るのは Player
             m_answer.cancelBodySlam = true;
@@ -499,7 +571,7 @@ namespace GL
             m_pendingTarget = m_observedTarget;
             // 相手は突進の向きへ飛ばす。中心の並びで飛ばすと、横ずれのある当たりが狙いと別の所へ飛ぶ
             // 突進の水平の速さがほぼ 0 で向きが決まらない時だけ、中心の並びの向きへ飛ばす
-            NS::Vector3 launchDir{-awayX, 0.0f, -awayZ};
+            NS::Vector3 launchDir = -away;
             NS::Vector3 slamDir{};
             if (NS::TryNormalizeHorizontal(velocity, slamDir))
             {
@@ -509,12 +581,12 @@ namespace GL
             // TODO: 敵が自機に当たる場面が出たら、裁定をシーンに 1 つの物へ移す。今は自機だけが検知する
             ImpactInput impactInput;
             impactInput.power = power;
-            impactInput.tier = tier;
-            impactInput.mass = mass;
+            impactInput.tier = judgement.tier;
+            impactInput.mass = answer.mass;
             impactInput.toughness = answer.toughness;
             impactInput.breakable = answer.breakable;
             impactInput.launch = answer.launch;
-            impactInput.awayDirection = NS::Vector3{awayX, 0.0f, awayZ};
+            impactInput.awayDirection = away;
             impactInput.launchDirection = launchDir;
             impactInput.slamVelocity = velocity;
             impactInput.faceU = judgement.u;
@@ -522,74 +594,8 @@ namespace GL
             impactInput.bodyShape = judgement.bodyShape;
             const ImpactOutcome outcome = ComputeImpactOutcome(impactInput, MakeImpactTuning(parts.params));
 
-            const float reboundScale = outcome.reboundScale;
-            const float launchScale = outcome.launchScale;
-            if (outcome.broke)
-            {
-                m_pendingBreak = true;
-                // 貫通は相手を飛ばさず、自機も反動しない
-                // 前の当たりの曲線を残すと、この当たりの記録に使っていない曲線が載る
-                m_pendingLaunchArc = outcome.launchArc;
-                m_pendingReboundArc = outcome.reboundArc;
-                m_pendingSelfVelocity = outcome.breakSelfVelocity;
-                m_answer.broke = true;
-                NS_LOG_INFO(Game, "貫通: 耐久 {} 威力 {} 中心近く {}", answer.toughness, power, centerHit);
-            }
-            else
-            {
-                m_pendingBreak = false;
-                m_pendingReboundArc = outcome.reboundArc;
-                m_pendingSelfVelocity = LaunchArcInitialVelocity(parts.params->ReboundLaunchArc(m_pendingReboundArc));
-                m_pendingLaunchArc = outcome.launchArc;
-
-                m_answer.rebounded = true;
-                NS_LOG_INFO(Game,
-                            "衝突: 質量 {} 耐久 {} 反動の高さ {} 距離 {} 押し飛ばしの距離 {} 高さ {} 中心近く {}",
-                            mass,
-                            answer.toughness,
-                            m_pendingReboundArc.apexHeight,
-                            m_pendingReboundArc.distance,
-                            m_pendingLaunchArc.distance,
-                            m_pendingLaunchArc.apexHeight,
-                            centerHit);
-            }
-
-            const std::string setName = TackleSetName("体当たり", tier);
-            const int stopSteps = HitStopStepsFor(parts.hitReaction, setName, outcome);
-            const bool gradualRelease = UsesGradualRelease(parts.hitReaction, tier, motion.overcharge01);
-
-            // 止めるフレーム数が決まってから控える
-            m_answer.lastImpact.sequence += 1;
-            m_answer.lastImpact.targetId = m_pendingTarget->Id();
-            m_answer.lastImpact.power = power;
-            m_answer.lastImpact.charge01 = charge01;
-            m_answer.lastImpact.positionFactor = positionFactor;
-            m_answer.lastImpact.offset01 = offset01;
-            m_answer.lastImpact.tier = tier;
-            m_answer.lastImpact.setName = setName;
-            m_answer.lastImpact.faceU = judgement.u;
-            m_answer.lastImpact.faceV = judgement.v;
-            m_answer.lastImpact.faceNormal = outcome.faceNormal;
-            m_answer.lastImpact.hitStopSteps = stopSteps;
-            m_answer.lastImpact.localStop = stopSteps > 0;
-            m_answer.lastImpact.overcharge01 = motion.overcharge01;
-            m_answer.lastImpact.gradualRelease = gradualRelease;
-            m_answer.lastImpact.centerHit = centerHit;
-            m_answer.lastImpact.broke = m_pendingBreak;
-            m_answer.lastImpact.selfVelocity = m_pendingSelfVelocity;
-            m_answer.lastImpact.reboundApexHeight = m_pendingReboundArc.apexHeight;
-            m_answer.lastImpact.launchVelocity = LaunchArcInitialVelocity(m_pendingLaunchArc);
-            m_answer.lastImpact.launchDistance = m_pendingLaunchArc.distance;
-            m_answer.lastImpact.launchApexHeight = m_pendingLaunchArc.apexHeight;
-            m_answer.lastImpact.impactDir = m_pendingImpactDir;
-            // 触れた点は記録とエディタのマーカーだけが読む。段と威力を決めた判定の結果を使う
-            m_answer.lastImpact.surfacePoint = judgement.surfacePoint;
-            m_answer.lastImpact.targetPos = answer.position;
-            m_answer.lastImpact.targetBottom = bounds.Center.y - bounds.Extents.y;
-            m_answer.lastImpact.targetMass = mass;
-            m_answer.lastImpact.targetPlaced = answer.placed;
-            m_answer.lastImpact.launchScale = launchScale;
-            m_answer.lastImpact.reboundScale = reboundScale;
+            ApplyImpactOutcome(outcome, answer, parts.params, power, judgement.tier == HitTier::Center);
+            RecordLastImpact(answer, motion, judgement, outcome, parts, power);
 
             m_hitAwaitsEntry = true;
             return true;
@@ -607,7 +613,7 @@ namespace GL
             NS::Vector3 direction{};
             const float stepLength = NS::HorizontalLength(velocity) * NS::OS::FrameTimer::FixedDelta();
             SlamLineTarget predicted{};
-            if (!NS::TryNormalizeHorizontal(velocity, direction) || !(stepLength > 0.0f) ||
+            if (!NS::TryNormalizeHorizontal(velocity, direction) || !NS::IsPositive(stepLength) ||
                 !FindSlamLineTarget(
                     self,
                     direction, motion.remainingDistance, parts.params, parts.body, parts.collider, predicted))

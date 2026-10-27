@@ -259,7 +259,7 @@ namespace GL
                 return;
             }
 
-            if (!std::isfinite(m_landingSquashVertical) || !(m_landingSquashVertical > 0.0f))
+            if (!std::isfinite(m_landingSquashVertical) || !NS::IsPositive(m_landingSquashVertical))
             {
                 NS_LOG_WARN(Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", m_landingSquash);
                 m_landingSquashRemaining = 0;
