@@ -26,14 +26,16 @@ namespace GL
 
         void PlayerSounds::RequestLand() noexcept
         {
-            if (m_landAllowed)
+            // 接地が細かく切れて着地が続く時に、音を重ねて鳴らさない
+            if (m_landAllowed && m_sinceLandSound >= m_landMinInterval)
             {
                 m_landRequested = true;
             }
         }
 
-        void PlayerSounds::Update(const NS::IGetAudio* audio)
+        void PlayerSounds::Update(const NS::IGetAudio* audio, float dt)
         {
+            m_sinceLandSound += dt;
             NS_ASSERT(Game, audio != nullptr, "PlayerSounds::Update: 音を鳴らすアクターが空");
             if (m_jumpRequested)
             {
@@ -42,6 +44,7 @@ namespace GL
             if (m_landRequested)
             {
                 NS::PlaySound(audio, m_landSound, m_landVolume);
+                m_sinceLandSound = 0.0f;
             }
             m_jumpRequested = false;
             m_landRequested = false;

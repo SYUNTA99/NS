@@ -372,7 +372,7 @@ void PlayerActor::VisualStep()
     m_chargeEffects->Update(this, center, m_charge, m_slam, motion, release, m_appearance.get(), impact);
     m_impactEffects->Update(this, this, center, m_slam, motion, m_body.get(), m_collider.get(), impact.lastImpact);
     // clang-format on
-    m_playerSounds->Update(this);
+    m_playerSounds->Update(this, NS::GetFrameDelta(this));
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
 #endif
