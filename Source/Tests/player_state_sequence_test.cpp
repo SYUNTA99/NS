@@ -39,6 +39,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <functional>
@@ -277,6 +278,55 @@ TEST(PlayerStateSequence, LedgeIsRefusedWhereTheClimbEndIsBlocked)
     EXPECT_FALSE(player->States().IsCurrent<GL::Player::LedgeHangingPlayerState>());
 }
 
+// 立ち姿の中心より上、頭の高さまでの間に天井があると、登り終えた体が天井に入るので掴まない
+TEST(PlayerStateSequence, LedgeIsRefusedUnderACeilingAboveTheClimbEnd)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceBelowLedge(scene);
+    ASSERT_NE(player, nullptr);
+    const NS::Collider& collider = player->Collider();
+    const float standCenter = collider.StandingHalfHeight() + collider.CapsuleRadius();
+    NS::OBB ceiling{};
+    ceiling.center = NS::Vector3{0.0f, standCenter + 0.5f * collider.StandingHalfHeight() + 1.0f, 2.0f};
+    ceiling.halfExtentX = 2.0f;
+    ceiling.halfExtentY = 1.0f;
+    ceiling.halfExtentZ = 1.0f;
+    scene.Physics().AddBox(ceiling, NS::Phys::ObjectLayers::Terrain);
+    EXPECT_FALSE(FallUntilHanging(player));
+}
+
+// 天井の端が登り終えた体の真上から横へ半径の半分だけずれていても、体の横に掛かるので掴まない
+TEST(PlayerStateSequence, LedgeIsRefusedUnderACeilingThatClipsTheSideOfTheClimbEnd)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceBelowLedge(scene);
+    ASSERT_NE(player, nullptr);
+    const NS::Collider& collider = player->Collider();
+    const float radius = collider.CapsuleRadius();
+    const float standCenter = collider.StandingHalfHeight() + radius;
+    NS::OBB ceiling{};
+    ceiling.center = NS::Vector3{0.5f * radius + 2.0f, standCenter + 0.5f * collider.StandingHalfHeight() + 1.0f, 2.0f};
+    ceiling.halfExtentX = 2.0f;
+    ceiling.halfExtentY = 1.0f;
+    ceiling.halfExtentZ = 1.0f;
+    scene.Physics().AddBox(ceiling, NS::Phys::ObjectLayers::Terrain);
+    EXPECT_FALSE(FallUntilHanging(player));
+}
+
+// 縁の上面は撃った線から測るので、手の高さと少しずれる。上面が手より少し上に出ても手を放さない
+TEST(PlayerStateSequence, HangingKeepsHoldingWhenTheTopIsSlightlyAboveTheHand)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceBelowLedge(scene);
+    ASSERT_NE(player, nullptr);
+    ASSERT_TRUE(FallUntilHanging(player));
+    NS::Vector3 lowered = player->Root().Position();
+    lowered.y -= 2.0e-5f;
+    player->Root().SetPosition(lowered);
+    EXPECT_TRUE(player->HoldLedge());
+    EXPECT_TRUE(player->States().IsCurrent<GL::Player::LedgeHangingPlayerState>());
+}
+
 namespace
 {
     PlayerActor* PlaceBelowTurnedLedge(NS::Scene& scene, NS::OBB& outWall)
@@ -349,6 +399,78 @@ TEST(PlayerStateSequence, TurnedWallIsHeldAtItsVisibleFace)
     moved.y = 0.0f;
     EXPECT_GT(moved.Length(), 0.3f);
     EXPECT_NEAR(DistanceToNearFace(player, wall), radius, 0.05f);
+}
+
+namespace
+{
+    // 手前の面 z = 1 の右端 x = 2 から、angle だけ回って続く壁を足す。負の角は奥へ、正の角は手前へ折れる
+    NS::OBB AddBentWall(NS::Scene& scene, float angle)
+    {
+        const NS::Quaternion turn = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, angle);
+        const NS::Vector3 halfExtents{2.0f, 1.0f, 1.0f};
+        const NS::OBB axes = NS::MakeOBB(NS::Vector3{0.0f, 0.0f, 0.0f}, turn, halfExtents);
+        const NS::Vector3 corner{2.0f, -1.0f, 1.0f};
+        const NS::OBB bent =
+            NS::MakeOBB(corner + axes.axisX * halfExtents.x + axes.axisZ * halfExtents.z, turn, halfExtents);
+        scene.Physics().AddBox(bent, NS::Phys::ObjectLayers::Terrain);
+        return bent;
+    }
+
+    // 掴まったまま 1.5 秒右へ伝い、1 フレームに動いた水平の距離の最大を返す
+    float ShimmyRightAndMeasureLongestStep(PlayerActor* player)
+    {
+        NS_ASSERT(Game, player != nullptr, "ShimmyRightAndMeasureLongestStep: 渡したアクターが無い");
+        player->Input().SetClimbMove(1.0f, 0.0f);
+        float longest = 0.0f;
+        for (int frame = 0; frame < 90; ++frame)
+        {
+            const NS::Vector3 before = player->Root().Position();
+            player->Shimmy(1.0f / 60.0f);
+            EXPECT_TRUE(player->HoldLedge()) << "frame " << frame;
+            NS::Vector3 moved = player->Root().Position() - before;
+            moved.y = 0.0f;
+            longest = std::max(longest, moved.Length());
+        }
+        return longest;
+    }
+
+    float PastTheBend(const PlayerActor* player, const NS::OBB& bent)
+    {
+        NS::Vector3 pastCorner = player->Root().Position() - NS::Vector3{2.0f, -1.0f, 1.0f};
+        pastCorner.y = 0.0f;
+        return pastCorner.Dot(bent.axisX);
+    }
+} // namespace
+
+// 奥へ折れた壁の縁を横へ伝う。掴んだ時の面の向きのまま進むと、折れた先の面から離れて止まる
+TEST(PlayerStateSequence, ShimmyFollowsTheLedgeAroundAnOutwardBend)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceBelowLedge(scene);
+    ASSERT_NE(player, nullptr);
+    const NS::OBB bent = AddBentWall(scene, -NS::k_Pi / 6.0f);
+    ASSERT_GT(bent.axisX.z, 0.0f);
+    ASSERT_TRUE(FallUntilHanging(player));
+
+    (void)ShimmyRightAndMeasureLongestStep(player);
+    EXPECT_GT(PastTheBend(player, bent), 0.7f);
+    EXPECT_NEAR(DistanceToNearFace(player, bent), player->Collider().CapsuleRadius(), 0.05f);
+}
+
+// 手前へ折れた壁の縁を横へ伝う。折れた先の面の前へ置き直すと、角で面に沿って後ろへ跳ぶ
+TEST(PlayerStateSequence, ShimmyAroundAnInwardBendDoesNotJump)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceBelowLedge(scene);
+    ASSERT_NE(player, nullptr);
+    const NS::OBB bent = AddBentWall(scene, NS::k_Pi / 6.0f);
+    ASSERT_LT(bent.axisX.z, 0.0f);
+    ASSERT_TRUE(FallUntilHanging(player));
+
+    // 横移動は 1 フレームに数 cm。面の前へ置き直すと、角で半径の半分 (約 0.3 m) 跳ぶ
+    EXPECT_LT(ShimmyRightAndMeasureLongestStep(player), 0.1f);
+    EXPECT_GT(PastTheBend(player, bent), 0.7f);
+    EXPECT_NEAR(DistanceToNearFace(player, bent), player->Collider().CapsuleRadius(), 0.05f);
 }
 
 TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)

@@ -31,15 +31,11 @@ namespace NS
                physics->Raycast(origin, direction, maxDistance, outDistance, outNormal, ignoredBody);
     }
 
-    std::vector<AABB> OverlapBoxCollision(const IGetCollision* user, const AABB& region)
+    bool OverlapsCapsuleCollision(const IGetCollision* user, const Phys::Capsule& capsule)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const Phys::PhysicsScene* physics = user->GetPhysicsScene();
-        if (physics == nullptr)
-        {
-            return {};
-        }
-        return physics->OverlapBox(region);
+        return physics != nullptr && physics->OverlapsCapsule(capsule);
     }
 
     void InitCollision(const IGetCollision* user, Collision* collision, const Matrix& world)

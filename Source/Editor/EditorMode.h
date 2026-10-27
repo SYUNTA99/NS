@@ -36,6 +36,16 @@ namespace NS
     {
         class IActorSnapshotApplier;
 
+        //! CreateLevel の答え。作れなかった時は理由を返し、作成の窓が理由ごとの文を出す
+        enum class CreateLevelResult : uint8
+        {
+            Created,
+            BadPath,       //!< 名前か保存先のフォルダに使えない文字がある
+            AlreadyExists, //!< 同じ名前のファイルがある。上書きしない
+            NotEditable,   //!< 編集モードでない
+            WriteFailed,   //!< ファイルへ書けなかった
+        };
+
         //! グリッド配置・保存・Undo の編集機能。非アクティブ中は編集入力と描画を止める
         class EditorMode : public NonCopyable
         {
@@ -163,7 +173,7 @@ namespace NS
             //! 名前の無いまま実在するファイルを読めなかった時は、終了の保存の書き先を退避の名前にする
             bool OpenLevel(std::string_view name) noexcept;
             // 現在の編集内容と履歴を保ち、既存ファイルを上書きしない
-            [[nodiscard]] bool CreateLevel(std::string_view name) noexcept;
+            [[nodiscard]] CreateLevelResult CreateLevel(std::string_view name) noexcept;
 
             //! 1 手戻す。戻せたら true。メニューとキーが同じ入口で呼ぶ
             bool PerformUndo() noexcept;
@@ -176,7 +186,6 @@ namespace NS
             void RequestSave() noexcept;
             //! 名前を付けて保存のモーダルを開く
             void OpenSaveModal() noexcept { m_fileBrowser.OpenSaveModal(m_currentLevelName); }
-            void OpenLoadModal() noexcept { m_fileBrowser.OpenLoadModal(); }
 
         private:
             std::function<nlohmann::json()> m_captureLevel;

@@ -722,20 +722,24 @@ void LevelEditorController::Setup(std::string_view startLevelName)
     m_playBaseline = m_scene->ToJson();
     LeavePlayForEdit();
     m_mode = Mode::Edit;
+    bool opened = false;
     if (!startLevelName.empty())
     {
-        if (!m_editor.OpenLevel(startLevelName))
+        opened = m_editor.OpenLevel(startLevelName);
+        if (!opened)
         {
             NS_LOG_ERROR(App, "起動シーンを開けなかった。 空のシーンで編集を始める: {}", startLevelName);
         }
     }
-    // 選択候補はこの後に今の実体から集めるので、初回 Tick の貼り直しを省く
+    // 選択候補は読み込みの関数かこの後に今の実体から集めるので、初回 Tick の貼り直しを省く
     m_editor.ClearLevelDirty();
-
-    FocusLoadedScene();
-
-    // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
-    RefreshGizmoSelectables();
+    // 開けた時は、読み込みの関数が視点を合わせて選択候補を集め終えている
+    if (!opened)
+    {
+        FocusLoadedScene();
+        // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
+        RefreshGizmoSelectables();
+    }
 }
 
 void LevelEditorController::FocusLoadedScene() noexcept

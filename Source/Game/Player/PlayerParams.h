@@ -114,6 +114,7 @@ namespace GL
             NS_FIELD(m_maxStepHeight, "登れる段の高さ")
             NS_FIELD(m_ledgeGrabBelowHand, "掴める縁の下向き距離")
             NS_FIELD(m_ledgeReach, "縁へ手を伸ばす距離")
+            NS_FIELD(m_ledgeHoldAboveHand, "掴まっている縁の上向きの許し")
             NS_FIELD(m_ledgeClimbDuration, "よじ登りの所要時間")
             NS_FIELD(m_ledgeShimmySpeed, "縁の横移動速度")
             NS_GROUP("突進")
@@ -267,6 +268,8 @@ namespace GL
             float m_maxStepHeight = 0.25f;
             float m_ledgeGrabBelowHand = 0.5f;
             float m_ledgeReach = 0.3f;
+            // 掴まっている間に測り直す上面が、手より上に出てよい高さ (m)。撃った線の誤差で手を放さないための余白
+            float m_ledgeHoldAboveHand = 0.01f;
             float m_ledgeClimbDuration = 0.25f;
             float m_ledgeShimmySpeed = 2.0f;
             float m_turnSpeed = 970.0f;

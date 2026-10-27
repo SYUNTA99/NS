@@ -232,18 +232,26 @@ namespace NS
             return ok;
         }
 
-        bool EditorMode::CreateLevel(std::string_view name) noexcept
+        CreateLevelResult EditorMode::CreateLevel(std::string_view name) noexcept
         {
             if (!IsSceneEditable())
             {
-                return false;
+                return CreateLevelResult::NotEditable;
             }
             const std::optional<std::string> path = BuildLevelPath(name);
-            if (!path || OS::FileSystem::Exists(*path))
+            if (!path)
             {
-                return false;
+                return CreateLevelResult::BadPath;
             }
-            return SaveSceneToJsonFile(MakeSceneJson(), *path);
+            if (OS::FileSystem::Exists(*path))
+            {
+                return CreateLevelResult::AlreadyExists;
+            }
+            if (!SaveSceneToJsonFile(MakeSceneJson(), *path))
+            {
+                return CreateLevelResult::WriteFailed;
+            }
+            return CreateLevelResult::Created;
         }
 
         bool EditorMode::OpenLevel(std::string_view name) noexcept
@@ -294,24 +302,6 @@ namespace NS
                     message = "保存成功";
                 }
                 m_fileBrowser.NotifySaveResult(ok, message);
-                break;
-            }
-            case LevelFileBrowser::Action::RequestLoad:
-            {
-                if (!BuildLevelPath(result.targetName) || !m_loadLevel)
-                {
-                    m_fileBrowser.NotifyLoadResult(false, "不正な level name");
-                    break;
-                }
-
-                if (OpenLevel(result.targetName))
-                {
-                    m_fileBrowser.NotifyLoadResult(true, "読込成功");
-                }
-                else
-                {
-                    m_fileBrowser.NotifyLoadResult(false, "読込失敗 (破損 or version 不一致)");
-                }
                 break;
             }
             case LevelFileBrowser::Action::None:

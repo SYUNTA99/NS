@@ -910,8 +910,8 @@ TEST(EditorQuit, SaveAllForQuitWritesTheTimeline)
     EXPECT_EQ(FirstActionEventCount(), before + 1);
 }
 
-// 終了の確認と Save Level・Load Level を開いている間は、編集のショートカットを止める答えが真になる。
-// 答えはモーダルを ImGui の窓の積み重ねで問うので、3 つの窓がモーダルとして開いていないと Delete で消した後のシーンを保存できてしまう
+// 終了の確認と Save Level を開いている間は、編集のショートカットを止める答えが真になる。
+// 答えはモーダルを ImGui の窓の積み重ねで問うので、2 つの窓がモーダルとして開いていないと Delete で消した後のシーンを保存できてしまう
 TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
 {
     TimelineGui gui;
@@ -960,10 +960,10 @@ TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
     EXPECT_TRUE(blocked(frame(nullptr)));
     EXPECT_FALSE(blocked(frame("Cancel")));
 
-    files.OpenLoadModal();
+    files.OpenSaveModal("quit_modal_test");
     EXPECT_TRUE(blocked(frame(nullptr)));
-    // 読み込めた知らせで閉じる道。知らせは描画の後に届くので、次のフレームで閉じる
-    files.NotifyLoadResult(true, "");
+    // 保存できた通知で閉じる経路。通知は描画の後に届くので、次のフレームで閉じる
+    files.NotifySaveResult(true, "");
     EXPECT_FALSE(blocked(frame(nullptr)));
 
     // Save Level を開いたまま終了を求めると、終了の確認が前に出て、2 つが開き合わない

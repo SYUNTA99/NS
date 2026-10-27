@@ -131,27 +131,30 @@ namespace NS
                                                    ImGuiInputTextFlags_EnterReturnsTrue);
             m_newSceneName.resize(std::strlen(m_newSceneName.c_str()));
             ImGui::BeginDisabled(!editor.IsSceneEditable());
-            if ((ImGui::Button("作成") || submitted) && editor.IsSceneEditable())
+            // 名前の欄で Enter を押した時は、押せないボタンを通らずに来る。編集できるかも CreateLevel が答える
+            if (ImGui::Button("作成") || submitted)
             {
+                // 作れるかの確かめは CreateLevel が持ち、ここは答えの理由ごとに文を出すだけ
                 const std::string name = m_sceneCreateDirectory + "/" + m_newSceneName;
-                const std::optional<std::string> path = BuildLevelPath(name);
-                if (!path)
+                switch (editor.Editor().CreateLevel(name))
                 {
-                    m_sceneCreateError = "名前には英数字、空白、_、- を使ってください。";
-                }
-                else if (OS::FileSystem::Exists(*path))
-                {
-                    m_sceneCreateError = "同じ名前のシーンが既にあります。";
-                }
-                else if (!editor.Editor().CreateLevel(name))
-                {
-                    m_sceneCreateError = "シーンを作成できませんでした。保存先を確認してください。";
-                }
-                else
-                {
+                case CreateLevelResult::Created:
                     m_sceneCreateDirectory = OS::FileSystem::ParentDirectory(name);
                     m_revealSceneFolder = true;
                     ImGui::CloseCurrentPopup();
+                    break;
+                case CreateLevelResult::BadPath:
+                    m_sceneCreateError = "名前と保存先のフォルダには、英数字、空白、_、- を使ってください。";
+                    break;
+                case CreateLevelResult::AlreadyExists:
+                    m_sceneCreateError = "同じ名前のシーンが既にあります。";
+                    break;
+                case CreateLevelResult::NotEditable:
+                    m_sceneCreateError = "プレイ中はシーンを作成できません。";
+                    break;
+                case CreateLevelResult::WriteFailed:
+                    m_sceneCreateError = "シーンを作成できませんでした。保存先を確認してください。";
+                    break;
                 }
             }
             ImGui::EndDisabled();
@@ -183,8 +186,12 @@ namespace NS
         void AssetsPanel::RenderSceneOpen(LevelEditorController& editor)
         {
             bool opened = false;
-            if (!m_pendingSceneName.empty() && editor.IsSceneEditable())
+            if (!m_pendingSceneName.empty() && editor.IsSceneEditable() && !ImGui::IsPopupOpen("シーンの切り替え"))
             {
+                // 入力欄で直している途中の値は、まだ履歴に入っていない。先に確定して、未保存かを問う。
+                // 確かめの窓を開いた後は、窓が答えを受けるまでここを通らない
+                editor.CommitTransformEdit();
+                editor.CommitClassObjEdit();
                 if (editor.Editor().HasUnsavedChanges())
                 {
                     ImGui::OpenPopup("シーンの切り替え");

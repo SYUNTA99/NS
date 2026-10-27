@@ -123,7 +123,11 @@ namespace NS
                                  float dt,
                                  float maxStepHeight)
         {
-            const bool wasGrounded = IsGrounded();
+            // 前の Step の後に置き直された時は、前の接地と坂の向きは今の位置の物でない。
+            // 呼び手は前の Step が返した位置の写しを渡すので、触っていなければビットまで同じ
+            const Vector3 previous = Position();
+            const bool placed = position.x != previous.x || position.y != previous.y || position.z != previous.z;
+            const bool wasGrounded = IsGrounded() && !placed;
             const JPH::Vec3 groundNormalBefore = m_character->GetGroundNormal();
             // 呼び手は前のフレームに返した速度に重力を足して渡す。上向きの速さが増えていなければジャンプではない
             const bool leavingGround = velocity.y > std::max(m_character->GetLinearVelocity().GetY(), 0.0f);

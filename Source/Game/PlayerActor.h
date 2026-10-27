@@ -536,10 +536,17 @@ private:
     //! @details 止めの間は何もしない。PrepareStateStep を呼んだら真を返し、AfterStateStep が FinishStateStep を呼ぶ
     [[nodiscard]] bool PrepareOrSkipStateStep();
     //! @brief 掴まり位置から掴める縁を探す
+    //! @details 手を伸ばす向きは今掴んでいる面の向き。面が折れていれば、見つけた面の向きを返す
     //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
     //! @param[out] outTop 見つけた縁の上端の y。見つからない場合は書き換えない
-    //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
-    [[nodiscard]] bool FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept;
+    //! @param[out] outFaceNormal 見つけた面の、自機の側を向く水平の向き。見つからない場合は書き換えない
+    //! @param[out] outHangPos 見つけた面から半径だけ外のぶら下がりの中心。見つからない場合は書き換えない
+    //! @return 手の高さの下と、手より上へ欄「掴まっている縁の上向きの許し」までの帯に縁があり、登り先も塞がって
+    //! いない場合 true、それ以外の場合は false
+    [[nodiscard]] bool FindLedgeTopAt(const NS::Vector3& hangPos,
+                                      float& outTop,
+                                      NS::Vector3& outFaceNormal,
+                                      NS::Vector3& outHangPos) const noexcept;
     // 状態と水平の速さから役の欄を選ぶ。字面が空の役は立ちの欄に代える
     [[nodiscard]] const NS::AnimClip* ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(const NS::Anim::AnimClip* clip, float lateralSpeed) const noexcept;

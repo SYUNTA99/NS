@@ -1,12 +1,10 @@
 #pragma once
 
-#include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/Phys/Capsule.h"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Body/BodyID.h>
-
-#include <vector>
 
 namespace NS
 {
@@ -47,9 +45,8 @@ namespace NS
                                         Vector3& outNormal,
                                         JPH::BodyID ignoredBody);
 
-    //! 軸並行の境界箱で重なりを調べ、世界座標の境界箱を返す。実形状は判定しない
-    //! region は幅 0 の点や柱も受け付ける。シーンなし・重なりなしなら空
-    [[nodiscard]] std::vector<AABB> OverlapBoxCollision(const IGetCollision* user, const AABB& region);
+    //! capsule が地形の本当の形に重なっていれば true。シーンに居ない時は false
+    [[nodiscard]] bool OverlapsCapsuleCollision(const IGetCollision* user, const Phys::Capsule& capsule);
 
     //! @brief 当たりの body を 1 回だけ作り、物理シーンの外に置く。出る時に EnableCollision が入れる
     //! @details 形が何も入れない形状なら作らない。user がシーンに居なければ何もしない
