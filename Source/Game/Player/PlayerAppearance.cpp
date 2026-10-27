@@ -17,7 +17,7 @@ namespace
     // TryNormalizeHorizontal は長さの 2 乗が非数だと下限との比較が偽になって通すので、先に有限かを見る
     void SetRollAxisToward(const NS::Vector3& direction, NS::Vector3& axis) noexcept
     {
-        const float lengthSq = direction.x * direction.x + direction.z * direction.z;
+        const float lengthSq = NS::HorizontalLengthSquared(direction);
         if (!std::isfinite(lengthSq))
         {
             return;
@@ -259,7 +259,7 @@ namespace GL
                 return;
             }
 
-            if (!std::isfinite(m_landingSquashVertical) || !(m_landingSquashVertical > 0.0f))
+            if (!std::isfinite(m_landingSquashVertical) || !NS::IsPositive(m_landingSquashVertical))
             {
                 NS_LOG_WARN(Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", m_landingSquash);
                 m_landingSquashRemaining = 0;

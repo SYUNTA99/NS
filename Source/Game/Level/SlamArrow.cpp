@@ -214,14 +214,14 @@ namespace GL
                                       float& inOutAlong,
                                       float& inOutRise) noexcept
             {
-                if (!(inOutAlong > 0.0f) || !NS::IsFinite(cameraPosition))
+                if (!NS::IsPositive(inOutAlong) || !NS::IsFinite(cameraPosition))
                 {
                     return;
                 }
                 const NS::Vector3 nearEdge = shape.origin + shape.direction * shape.head.alongNear;
                 const NS::Vector3 toCamera = cameraPosition - NS::Vector3{nearEdge.x, shape.head.height, nearEdge.z};
                 const float behind = -NS::Dot(toCamera, shape.direction);
-                if (!(behind > 0.0f))
+                if (!NS::IsPositive(behind))
                 {
                     return;
                 }
@@ -229,7 +229,7 @@ namespace GL
                 const float tilt = std::atan2(inOutRise, inOutAlong);
                 const float wanted = std::min(NS::DegreesToRadians(desc.headMinViewDegrees) - lookDown,
                                               NS::DegreesToRadians(desc.maxHeadTiltDegrees));
-                if (!(wanted > tilt))
+                if (!NS::IsGreaterThan(wanted, tilt))
                 {
                     return;
                 }
@@ -336,7 +336,7 @@ namespace GL
             {
                 return;
             }
-            if (!probe || !(shape.tip > shape.start) || !std::isfinite(desc.groundLift))
+            if (!probe || !NS::IsGreaterThan(shape.tip, shape.start) || !std::isfinite(desc.groundLift))
             {
                 return;
             }
@@ -406,7 +406,7 @@ namespace GL
             {
                 return;
             }
-            if (!(shape.tip > shape.start) || !std::isfinite(desc.groundLift) || !std::isfinite(ballCenterHeight))
+            if (!NS::IsGreaterThan(shape.tip, shape.start) || !std::isfinite(desc.groundLift) || !std::isfinite(ballCenterHeight))
             {
                 return;
             }
@@ -577,7 +577,7 @@ namespace GL
                 return true;
             };
             // 接地して水平に放つ玉は床の上を転がる。段を下りた先と落ちる所には今までどおり貼らない
-            if (state.line.grounded && !(state.line.launchVerticalSpeed > 0.0f))
+            if (state.line.grounded && !NS::IsPositive(state.line.launchVerticalSpeed))
             {
                 PlaceSlamArrowOnGround(probe, m_desc, shape);
             }

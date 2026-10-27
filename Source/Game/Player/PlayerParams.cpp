@@ -26,7 +26,7 @@ namespace GL
             const float clamped = NS::Clamp(charge01, 0.0f, 1.0f);
             const float factor = m_chargeFactorCurve.Evaluate(clamped);
             // Inspector で点を全部消すと Evaluate が 0 を返して威力が消えるため、0 以下は 1 とみなす
-            if (!(factor > 0.0f))
+            if (!NS::IsPositive(factor))
             {
                 return 1.0f;
             }

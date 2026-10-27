@@ -95,7 +95,7 @@ namespace GL
                 return 0.0f;
             }
             float c = exponent;
-            if (!std::isfinite(c) || !(c > 0.0f))
+            if (!std::isfinite(c) || !NS::IsPositive(c))
             {
                 c = 1.0f;
             }

@@ -658,7 +658,7 @@ bool PlayerActor::IsInBeforeContact() const noexcept
 
 float PlayerActor::BodySlamProgress01() const noexcept
 {
-    if (!IsBodySlamming() || !(m_slam.m_distanceTarget > 0.0f))
+    if (!IsBodySlamming() || !NS::IsPositive(m_slam.m_distanceTarget))
     {
         return 0.0f;
     }

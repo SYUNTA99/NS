@@ -8,7 +8,7 @@ namespace NS
     {
         while (!m_objects.empty())
         {
-            m_scene.RemoveSystemTick(*m_objects.back().second);
+            m_scene.RemoveSystemTick(*m_objects.back().system);
             m_objects.pop_back();
         }
     }

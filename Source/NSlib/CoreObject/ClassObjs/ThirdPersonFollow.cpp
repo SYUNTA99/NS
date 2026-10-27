@@ -49,6 +49,37 @@ namespace
         value = target + (gap + push) * decay;
     }
 
+    void CriticalSpringStep(NS::Vector2& value,
+                            NS::Vector2& velocity,
+                            const NS::Vector2& target,
+                            float omega,
+                            float dt) noexcept
+    {
+        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
+        CriticalSpringStep(value.y, velocity.y, target.y, omega, dt);
+    }
+
+    void CriticalSpringStep(NS::Vector3& value,
+                            NS::Vector3& velocity,
+                            const NS::Vector3& target,
+                            float omega,
+                            float dt) noexcept
+    {
+        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
+        CriticalSpringStep(value.y, velocity.y, target.y, omega, dt);
+        CriticalSpringStep(value.z, velocity.z, target.z, omega, dt);
+    }
+
+    void CriticalSpringStepHorizontal(NS::Vector3& value,
+                                      NS::Vector3& velocity,
+                                      const NS::Vector3& target,
+                                      float omega,
+                                      float dt) noexcept
+    {
+        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
+        CriticalSpringStep(value.z, velocity.z, target.z, omega, dt);
+    }
+
     // 右は水平で、上は視線と右に直交する
     struct ViewAxes
     {
@@ -351,9 +382,7 @@ namespace NS
         {
             omega = 1.678f / m_reboundPartnerHalfSeconds;
         }
-        CriticalSpringStep(m_partnerLean.x, m_partnerLeanVelocity.x, leanTarget.x, omega, dt);
-        CriticalSpringStep(m_partnerLean.y, m_partnerLeanVelocity.y, leanTarget.y, omega, dt);
-        CriticalSpringStep(m_partnerLean.z, m_partnerLeanVelocity.z, leanTarget.z, omega, dt);
+        CriticalSpringStep(m_partnerLean, m_partnerLeanVelocity, leanTarget, omega, dt);
         CriticalSpringStep(m_partnerPull, m_partnerPullVelocity, pullTarget, omega, dt);
     }
 
@@ -388,42 +417,38 @@ namespace NS
         if (m_reboundPhase == ReboundPhase::Launching)
         {
             // 表示する遅れだけをなめらかに制限し、バネの速度が急変しないよう状態は切らない。
-            CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_forcedLaunchFollowOmega, dt);
-            CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_forcedLaunchFollowOmega, dt);
-            const float lagX = m_reboundAnchor.x - head.x;
-            const float lagZ = m_reboundAnchor.z - head.z;
-            const float lag = std::sqrt(lagX * lagX + lagZ * lagZ);
+            CriticalSpringStepHorizontal(m_reboundAnchor, m_reboundAnchorVelocity, head, m_forcedLaunchFollowOmega, dt);
+            const Vector3 lagOffset = m_reboundAnchor - head;
+            const float lag = HorizontalLength(lagOffset);
             const float maxLag = std::max(m_forcedLaunchMaxLag, 0.0f);
             m_look = head;
             if (lag > 0.0f && maxLag > 0.0f)
             {
                 const float shown = maxLag * std::tanh(lag / maxLag);
-                m_look.x = head.x + lagX * (shown / lag);
-                m_look.z = head.z + lagZ * (shown / lag);
+                m_look.x = head.x + lagOffset.x * (shown / lag);
+                m_look.z = head.z + lagOffset.z * (shown / lag);
             }
             return m_look;
         }
 
         // 横と前後は臨界減衰のバネで遅れて付いていき、遅れは上限の内に留める
         // 高さは留めたまま
-        CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_reboundFollowOmega, dt);
-        CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_reboundFollowOmega, dt);
-        const float lagX = m_reboundAnchor.x - head.x;
-        const float lagZ = m_reboundAnchor.z - head.z;
-        const float lag = std::sqrt(lagX * lagX + lagZ * lagZ);
+        CriticalSpringStepHorizontal(m_reboundAnchor, m_reboundAnchorVelocity, head, m_reboundFollowOmega, dt);
+        const Vector3 lagOffset = m_reboundAnchor - head;
+        const float lag = HorizontalLength(lagOffset);
         const float maxLag = std::max(m_reboundLagCap, 0.0f);
         if (lag > maxLag)
         {
             const float scale = maxLag / lag;
-            m_reboundAnchor.x = head.x + lagX * scale;
-            m_reboundAnchor.z = head.z + lagZ * scale;
+            m_reboundAnchor.x = head.x + lagOffset.x * scale;
+            m_reboundAnchor.z = head.z + lagOffset.z * scale;
         }
         // 上限は欄の値より上にある間だけ、今の遅れまで縮めていく。増やさないので注視点は跳ばない
         m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lag, maxLag)));
         // カメラへ向かう間は、注視点が自機より奥へ遅れた分だけカメラが自機へ寄る。奥への遅れだけを別の上限で縛る。
         // 横と、カメラから離れる向きの遅れは残すので、離れていく速さの見え方は変えない
         const Vector3 away = ViewAxesFromYawPitch(m_yaw, 0.0f).forward;
-        const float lagAway = (m_reboundAnchor.x - head.x) * away.x + (m_reboundAnchor.z - head.z) * away.z;
+        const float lagAway = DotHorizontal(m_reboundAnchor - head, away);
         const float awayCap = std::max(m_reboundTowardCameraMaxLag, 0.0f);
         if (lagAway > awayCap)
         {
@@ -576,8 +601,7 @@ namespace NS
             m_chargeFrameVelocity = Vector2{0.0f, 0.0f};
             return;
         }
-        CriticalSpringStep(m_chargeFrameOffset.x, m_chargeFrameVelocity.x, wanted.x, m_chargeFrameOmega, dt);
-        CriticalSpringStep(m_chargeFrameOffset.y, m_chargeFrameVelocity.y, wanted.y, m_chargeFrameOmega, dt);
+        CriticalSpringStep(m_chargeFrameOffset, m_chargeFrameVelocity, wanted, m_chargeFrameOmega, dt);
         CriticalSpringStep(m_chargeCenterTilt, m_chargeCenterTiltVelocity, wantedTilt, m_chargeFrameOmega, dt);
         // 0 へは限りなく近づくだけなので、k_ChargeFrameSnap を切ったら 0 にして溜めを受けていない時の式へ戻す
         if (!framing && m_chargeFrameOffset.Length() < k_ChargeFrameSnap)

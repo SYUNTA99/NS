@@ -24,52 +24,24 @@ namespace GL
     {
         namespace
         {
+            using NS::EaseOutCubic;
+            using NS::NormalizedOr;
             using NS::Quaternion;
+            using NS::TurnNormalTo;
+            using NS::TurnUpTo;
             using NS::Vector3;
-
-            [[nodiscard]] Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
-            {
-                const float length = v.Length();
-                if (NS::IsNearlyZero(length))
-                {
-                    return fallback;
-                }
-                return v / length;
-            }
-
-            // 絵の +Y を向きへ回す回転
-            [[nodiscard]] Quaternion TurnUpTo(const Vector3& direction) noexcept
-            {
-                return Quaternion::FromToRotation(Vector3{0.0f, 1.0f, 0.0f}, direction);
-            }
-
-            // 絵の +Z (輪の面の法線) を向きへ回す回転
-            [[nodiscard]] Quaternion TurnNormalTo(const Vector3& direction) noexcept
-            {
-                return Quaternion::FromToRotation(Vector3{0.0f, 0.0f, 1.0f}, direction);
-            }
-
-            [[nodiscard]] float EaseOutCubic(float t) noexcept
-            {
-                const float clamped = std::clamp(t, 0.0f, 1.0f);
-                const float rest = 1.0f - clamped;
-                return 1.0f - rest * rest * rest;
-            }
+            using NS::Gfx::MakeEffectPlayDesc;
 
             [[nodiscard]] NS::Gfx::EffectPlayDesc PlayAt(const Vector3& position,
                                                          const Quaternion& rotation,
                                                          const Vector3& scale) noexcept
             {
-                NS::Gfx::EffectPlayDesc desc;
-                desc.position = position;
-                desc.rotation = rotation;
-                desc.scale = scale;
-                return desc;
+                return MakeEffectPlayDesc(position, rotation, scale);
             }
 
             [[nodiscard]] Vector3 Uniform(float value) noexcept
             {
-                return Vector3{value, value, value};
+                return NS::UniformScale(value);
             }
 
         } // namespace

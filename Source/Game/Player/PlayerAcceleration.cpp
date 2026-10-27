@@ -33,11 +33,11 @@ namespace GL
         {
             NS_ASSERT(Game, body != nullptr, "Accelerate: 体が空");
             const NS::Vector3 lateral = body->LateralVelocity();
-            float speed = direction.x * lateral.x + direction.z * lateral.z;
+            float speed = NS::DotHorizontal(direction, lateral);
             float turningX = lateral.x - direction.x * speed;
             float turningZ = lateral.z - direction.z * speed;
 
-            const float lateralSpeed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
+            const float lateralSpeed = NS::HorizontalLength(lateral);
             if (lateralSpeed < topSpeed || speed < 0.0f)
             {
                 speed = NS::Clamp(speed + acceleration * dt, -topSpeed, topSpeed);

@@ -52,7 +52,7 @@ namespace NS
         //! 非有限値で速度が壊れると戻せないので、非有限値か dt が 0 以下なら変更しない
         inline void AddGravity(Vector3& velocity, float strength, float dt) noexcept
         {
-            if (!std::isfinite(strength) || !std::isfinite(dt) || !(dt > 0.0f))
+            if (!std::isfinite(strength) || !std::isfinite(dt) || !IsPositive(dt))
             {
                 return;
             }

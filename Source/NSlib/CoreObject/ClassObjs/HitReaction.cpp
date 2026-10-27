@@ -432,7 +432,7 @@ namespace NS
             bool started = false;
             for (const Directed& direction : directed)
             {
-                if (!(direction.weight > 0.0f))
+                if (!IsPositive(direction.weight))
                 {
                     continue;
                 }

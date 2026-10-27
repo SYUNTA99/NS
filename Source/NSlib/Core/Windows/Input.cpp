@@ -1,4 +1,5 @@
 #include "NSlib/Core/Windows/Input.h"
+
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
@@ -34,6 +35,11 @@ namespace NS
             {
                 const std::size_t i = static_cast<std::size_t>(b);
                 return i < static_cast<std::size_t>(GamepadButton::Count);
+            }
+
+            [[nodiscard]] constexpr bool IsValidVibration(float value) noexcept
+            {
+                return value >= 0.0f && value <= 1.0f;
             }
 
             [[nodiscard]] float NormalizeAxis(short raw, float deadzone) noexcept
@@ -314,7 +320,7 @@ namespace NS
         bool Gamepad::SetVibration(float left, float right) noexcept
         {
             // 非数は比較が偽になり、範囲の内側の判定を通らない
-            if (!(left >= 0.0f && left <= 1.0f) || !(right >= 0.0f && right <= 1.0f))
+            if (!IsValidVibration(left) || !IsValidVibration(right))
             {
                 return false;
             }

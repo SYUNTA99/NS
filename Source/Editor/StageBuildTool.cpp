@@ -94,7 +94,7 @@ namespace NS
                     return std::nullopt;
                 }
                 distance = (m_emptySpaceHeight - ray.position.y) / direction.y;
-                if (!(distance > 0.0f) || distance > k_MaxDistance)
+                if (!IsPositive(distance) || distance > k_MaxDistance)
                 {
                     return std::nullopt;
                 }

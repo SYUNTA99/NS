@@ -148,7 +148,7 @@ namespace GL
             // 明けに紫の明けの束で世界を遅くするか。溜めすぎて放した突進の当たりで、段にその束がある時だけ
             [[nodiscard]] bool UsesGradualRelease(const NS::HitReaction* reaction, HitTier tier, float overcharge01)
             {
-                if (!(overcharge01 > 0.0f) || reaction == nullptr)
+                if (!NS::IsPositive(overcharge01) || reaction == nullptr)
                 {
                     return false;
                 }
@@ -219,7 +219,7 @@ namespace GL
             {
                 return false;
             }
-            if (!(maxDistance >= 0.0f) || !std::isfinite(maxDistance))
+            if (!NS::IsNonNegative(maxDistance) || !std::isfinite(maxDistance))
             {
                 return false;
             }
@@ -247,13 +247,13 @@ namespace GL
                 const NS::AABB bounds = volume.Bounds();
 
                 const LineOffset line = MeasureLineOffset(position, bounds, lineDir, playerRadius);
-                if (!(line.along > 0.0f))
+                if (!NS::IsPositive(line.along))
                 {
                     continue;
                 }
                 // 比が 1 を超える相手は、線を進む自機の縁が相手の外接箱の縁に届かない。丸めた値で見ると 1
                 // に張り付いて拾う
-                if (!(line.ratio <= 1.0f))
+                if (!NS::IsInRange(line.ratio, 0.0f, 1.0f))
                 {
                     continue;
                 }
@@ -611,10 +611,9 @@ namespace GL
             }
             const NS::Vector3 velocity = motion.velocity;
             NS::Vector3 direction{};
-            const float stepLength =
-                std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z) * NS::OS::FrameTimer::FixedDelta();
+            const float stepLength = NS::HorizontalLength(velocity) * NS::OS::FrameTimer::FixedDelta();
             SlamLineTarget predicted{};
-            if (!NS::TryNormalizeHorizontal(velocity, direction) || !(stepLength > 0.0f) ||
+            if (!NS::TryNormalizeHorizontal(velocity, direction) || !NS::IsPositive(stepLength) ||
                 !FindSlamLineTarget(
                     self,
                     direction, motion.remainingDistance, parts.params, parts.body, parts.collider, predicted))

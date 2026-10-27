@@ -534,10 +534,10 @@ void PlayerActor::Shimmy(float dt) noexcept
             // 面が手前へ折れている所で見つけた面の前へ置くと、面に沿って進んだ向きの逆へ跳ぶ。
             // その時は見つけた面に垂直な向きだけ寄せる。奥へ折れている所は面の前へ置き、角を回り込む
             NS::Vector3 placed = hangPos;
-            if (faceNormal.x * step.x + faceNormal.z * step.z < 0.0f)
+            if (NS::DotHorizontal(faceNormal, step) < 0.0f)
             {
                 const NS::Vector3 offset = shimmied - hangPos;
-                const float awayFromFace = offset.x * faceNormal.x + offset.z * faceNormal.z;
+                const float awayFromFace = NS::DotHorizontal(offset, faceNormal);
                 placed = NS::Vector3{
                     shimmied.x - faceNormal.x * awayFromFace, hangPos.y, shimmied.z - faceNormal.z * awayFromFace};
             }

@@ -69,7 +69,7 @@ namespace NS
         {
             const Vector4 clip =
                 Vector4::Transform(Vector4{point.x, point.y, point.z, 1.0f}, viewProjection);
-            if (!(clip.w > 0.0f))
+            if (!IsPositive(clip.w))
             {
                 return false;
             }

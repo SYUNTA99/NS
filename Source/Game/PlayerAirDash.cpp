@@ -28,15 +28,10 @@
 
 namespace
 {
-    float AngleBetweenUnit(const NS::Vector3& a, const NS::Vector3& b) noexcept
-    {
-        return std::acos(std::clamp(NS::Dot(a, b), -1.0f, 1.0f));
-    }
-
     // 2 つが同じか真逆で回す面が決まらない時は v のまま
     NS::Vector3 TurnLike(const NS::Vector3& v, const NS::Vector3& from, const NS::Vector3& to) noexcept
     {
-        NS::Vector3 side{to - from * NS::Dot(to, from)};
+        NS::Vector3 side{NS::RejectUnit(to, from)};
         if (NS::IsNearlyZero(side))
         {
             return v;
@@ -77,7 +72,7 @@ bool PlayerActor::BeginAirDash() noexcept
 {
     // 速さが 0 のダッシュは、状態の終わり (IsStateEnd) も来ないので宙で止まったまま抜けられない
     const float speed = AirDashSpeed();
-    if (!(speed > 0.0f))
+    if (!NS::IsPositive(speed))
     {
         NS_LOG_WARN(Game,
                     ".actor {} の動作 {} が無いか長さが 0、または距離が 0 以下なので、エアダッシュを始めない",
@@ -124,7 +119,7 @@ void PlayerActor::UpdateIntendedDirection(float dt) noexcept
         return;
     }
     const float retilt = NS::ToRadians(NS::Degrees{m_params->m_retiltDegrees}).value;
-    if (m_airDash.m_tiltDirection.LengthSquared() > 0.0f && AngleBetweenUnit(tilt, m_airDash.m_tiltDirection) <= retilt)
+    if (m_airDash.m_tiltDirection.LengthSquared() > 0.0f && NS::AngleBetween(tilt, m_airDash.m_tiltDirection) <= retilt)
     {
         m_airDash.m_tiltSeconds += dt;
     }
@@ -243,12 +238,12 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     }
     const float rate = NS::ToRadians(NS::Degrees{m_params->m_reboundSteerMaxDegreesPerSecond}).value;
     const float step = std::min(rate * progress * dt, limit - m_airDash.m_steeredRadians);
-    if (!(step > 0.0f))
+    if (!NS::IsPositive(step))
     {
         return;
     }
     const NS::Vector3 turned = GL::Level::TurnToward(current, target, step);
-    m_airDash.m_steeredRadians += AngleBetweenUnit(current, turned);
+    m_airDash.m_steeredRadians += NS::AngleBetween(current, turned);
     m_body->SetVelocity(turned * speed);
 }
 
@@ -401,7 +396,7 @@ void PlayerActor::ApplyReboundShift() noexcept
                                          hit.normal,
                                          ReboundShiftInput(hit.assigned),
                                          GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions));
-    if (NS::IsNearlyZero(AngleBetweenUnit(shifted, hit.assigned)))
+    if (NS::IsNearlyZero(NS::AngleBetween(shifted, hit.assigned)))
     {
         return;
     }

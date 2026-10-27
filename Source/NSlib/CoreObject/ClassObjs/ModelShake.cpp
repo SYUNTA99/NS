@@ -103,7 +103,7 @@ namespace NS
         }
         forward.Normalize();
         float depth = Dot(at - pose.position, forward);
-        if (!(depth > 0.0f))
+        if (!IsPositive(depth))
         {
             depth = (at - pose.position).Length();
         }
