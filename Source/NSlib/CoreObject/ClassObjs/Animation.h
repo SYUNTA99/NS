@@ -36,7 +36,7 @@ namespace NS
         //! @details clip のトラックの骨を、今の骨格で名前から 1 回だけ引いて控える。clip の寿命は AssetManager が保つ
         //! nullptr を渡すとクリップを外し、骨格の基準の姿勢を描く
         //! blendSeconds が正なら、最後に作った姿勢を保存し、そこから clip の姿勢へ blendSeconds かけて混ぜる。秒は dt で数え、再生速度を掛けない。
-        //! 止めている時・前のクリップが無いか有効でない時・まだ姿勢を作っていない時・blendSeconds が 0 以下か非数の時は混ぜない
+        //! 止めていた時は止めた姿勢から混ぜる。前のクリップが無いか有効でない時・まだ姿勢を作っていない時・blendSeconds が 0 以下か非数の時は混ぜない
         void Play(const Anim::AnimClip* clip, float blendSeconds = 0.0f);
         void Pause() noexcept;
         //! 再生時刻を 0 に戻して停止する。補間の途中ならやめる

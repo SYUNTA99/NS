@@ -161,14 +161,40 @@ TEST_F(AnimationCrossfadeTest, PausingMidBlendHoldsThePose)
     ExpectPoseNear(m_animation.LocalPose(), paused);
 }
 
-// 止めている時の切り替えは混ぜず、新しいクリップの姿勢になる。止めたまま混ぜると補間が進まず、前の姿勢のままになる
-TEST_F(AnimationCrossfadeTest, SwitchingWhilePausedDoesNotBlend)
+// 一時停止の間の切り替えも、止めた姿勢から混ぜ、新しいクリップを再生する
+TEST_F(AnimationCrossfadeTest, SwitchingWhilePausedBlendsAndPlays)
 {
     RunFrames(20);
     m_animation.Pause();
+    const std::vector<NS::Anim::BonePose> paused = CurrentPose();
+
     m_animation.Play(m_sad, k_BlendSeconds);
-    m_animation.Update(&m_model, 0.0f);
-    ExpectPoseNear(m_animation.LocalPose(), ClipPose(m_sad, 0.0f));
+    m_animation.Update(&m_model, k_BlendSeconds * 0.5f);
+    EXPECT_TRUE(m_animation.IsPlaying());
+    std::vector<NS::Anim::BonePose> expected;
+    NS::Anim::BlendPose(paused, ClipPose(m_sad, m_animation.Time()), 0.5f, expected);
+    ExpectPoseNear(m_animation.LocalPose(), expected);
+}
+
+// ループしないクリップが終わって止まった後の切り替えも、最後の姿勢から混ぜ、新しいクリップを再生する
+TEST_F(AnimationCrossfadeTest, SwitchingAfterANonLoopingClipEndsBlendsAndPlays)
+{
+    m_animation.SetLooping(false);
+    m_animation.Play(m_sad);
+    for (int i = 0; i < 120; ++i)
+    {
+        m_animation.Update(&m_model, k_Dt);
+    }
+    ASSERT_FALSE(m_animation.IsPlaying());
+    const std::vector<NS::Anim::BonePose> ended = CurrentPose();
+
+    m_animation.Play(m_run, k_BlendSeconds);
+    m_animation.Update(&m_model, k_BlendSeconds * 0.5f);
+    EXPECT_TRUE(m_animation.IsPlaying());
+    EXPECT_GT(m_animation.Time(), 0.0f);
+    std::vector<NS::Anim::BonePose> expected;
+    NS::Anim::BlendPose(ended, ClipPose(m_run, m_animation.Time()), 0.5f, expected);
+    ExpectPoseNear(m_animation.LocalPose(), expected);
 }
 
 // ループしないクリップが補間より先に終わっても、補間は最後まで進み、クリップの最後の姿勢になる

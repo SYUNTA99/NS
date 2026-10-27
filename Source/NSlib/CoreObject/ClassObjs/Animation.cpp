@@ -40,8 +40,8 @@ namespace NS
             return;
         }
         // 補間の途中なら m_pose は混ぜた後の姿勢なので、保存し直すだけで姿勢が飛ばない。
-        // 止めている間は補間が進まないので、混ぜると前の姿勢のまま残る。止めている時は混ぜない
-        const bool canBlend = m_playing && m_clip != nullptr && m_clip->IsValid() && m_skeleton != nullptr &&
+        // 止めていた時も、m_pose は止めた姿勢なので、そこから混ぜる
+        const bool canBlend = m_clip != nullptr && m_clip->IsValid() && m_skeleton != nullptr &&
                               m_pose.size() == m_skeleton->BoneCount() && std::isfinite(blendSeconds) &&
                               blendSeconds > 0.0f;
         if (canBlend)
@@ -56,6 +56,7 @@ namespace NS
         }
         m_clip = clip;
         m_time = 0.0f;
+        m_playing = true;
         FindClipBones();
     }
 
