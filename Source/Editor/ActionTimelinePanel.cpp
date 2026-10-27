@@ -732,11 +732,10 @@ namespace NS
             const float graphHeight = rowHeight * 2.0f;
             const int origin = PlaybackOrigin();
             // value は 0〜1 (centered が真なら -1〜1) に正規化した値を返す
-            const std::function<void(const ImVec2&, ImU32, bool, const std::function<float(const HitPreviewFrame&)>&)>
-                drawLine = [&](const ImVec2& at,
-                               ImU32 color,
-                               bool centered,
-                               const std::function<float(const HitPreviewFrame&)>& value) {
+            const auto drawLine = [&](const ImVec2& at,
+                                      ImU32 color,
+                                      bool centered,
+                                      const std::function<float(const HitPreviewFrame&)>& value) {
                 ImVec2 previous{};
                 for (std::size_t i = 0; i < frames.size(); ++i)
                 {
@@ -756,16 +755,17 @@ namespace NS
                     previous = point;
                 }
             };
-            const std::function<void(const char*, const char*, const std::function<void(const ImVec2&)>&)> graphRow =
-                [&](const char* label, const char* tooltip, const std::function<void(const ImVec2&)>& body) {
-                    ImGui::TextUnformatted(label);
-                    ImGui::SetItemTooltip("%s", tooltip);
-                    ImGui::SameLine(layout.labelWidth, 0.0f);
-                    const ImVec2 at = ImGui::GetCursorScreenPos();
-                    ImGui::Dummy(ImVec2{totalWidth, graphHeight});
-                    draw.AddRectFilled(at, ImVec2{at.x + totalWidth, at.y + graphHeight}, k_GraphBackColor);
-                    body(at);
-                };
+            const auto graphRow = [&](const char* label,
+                                      const char* tooltip,
+                                      const std::function<void(const ImVec2&)>& body) {
+                ImGui::TextUnformatted(label);
+                ImGui::SetItemTooltip("%s", tooltip);
+                ImGui::SameLine(layout.labelWidth, 0.0f);
+                const ImVec2 at = ImGui::GetCursorScreenPos();
+                ImGui::Dummy(ImVec2{totalWidth, graphHeight});
+                draw.AddRectFilled(at, ImVec2{at.x + totalWidth, at.y + graphHeight}, k_GraphBackColor);
+                body(at);
+            };
             graphRow("トラウマ", "カメラのトラウマ。下が 0、上が 1", [&](const ImVec2& at) {
                 drawLine(at, k_GraphTraumaColor, false, [](const HitPreviewFrame& frame) { return frame.trauma; });
             });

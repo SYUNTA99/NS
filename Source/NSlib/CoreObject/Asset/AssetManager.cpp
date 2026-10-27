@@ -542,10 +542,9 @@ namespace NS
     Gfx::BuiltinShaders AssetManager::LoadBuiltinShaders()
     {
         const std::string directory = OS::FileSystem::Combine(m_baseDir, "Shaders");
-        const std::function<Gfx::D3DShader*(std::string_view)> load =
-            [this, &directory](std::string_view fileName) {
-                return LoadShader(OS::FileSystem::Combine(directory, fileName))->D3D();
-            };
+        const auto load = [this, &directory](std::string_view fileName) {
+            return LoadShader(OS::FileSystem::Combine(directory, fileName))->D3D();
+        };
         Gfx::BuiltinShaders shaders{};
         shaders.fullscreenVs = load("fade.vs.hlsl");
         shaders.fadePs = load("fade.ps.hlsl");
