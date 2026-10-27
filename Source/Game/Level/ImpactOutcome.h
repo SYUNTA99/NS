@@ -7,10 +7,8 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 衝突の配分に使う調整値
         //! @details 既定値の重複を避け、MakeImpactTuning が PlayerParams から全項目を入れる
         struct ImpactTuning
@@ -88,5 +86,4 @@ namespace GL
         //! @param[in] exponent 減り方。大きいほど早く落ちて長く残る。有限の正でない値は 1 (直線)
         //! @return 0〜1 の倍率
         [[nodiscard]] float MissSkidSpeedScale(int elapsedSteps, int totalSteps, float exponent) noexcept;
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

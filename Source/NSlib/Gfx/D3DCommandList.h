@@ -6,10 +6,8 @@
 
 #include <cstddef>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DBuffer;
         class D3DTexture;
         class D3DShader;
@@ -134,5 +132,4 @@ namespace NS
 
             ID3D11DeviceContext* m_context; //!< 非所有。所有は D3DDevice
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

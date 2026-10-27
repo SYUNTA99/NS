@@ -9,10 +9,8 @@
 
 #include <Jolt/Physics/Collision/Shape/Shape.h>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         //! 拡縮済みの世界座標の形状。合成 body の登録時に body 内の座標へ変換する
         struct ShapePart
         {
@@ -27,5 +25,4 @@ namespace NS
         [[nodiscard]] ShapePart MakeSpherePart(const Sphere& sphere);
         //! capsule.axis の向きでカプセルを作る。軸が零なら Y 軸。生成失敗時は空
         [[nodiscard]] ShapePart MakeCapsulePart(const Capsule& capsule);
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys

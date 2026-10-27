@@ -10,10 +10,8 @@
 #include <span>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DDevice;
         class D3DShader;
         class D3DTexture;
@@ -96,5 +94,4 @@ namespace NS
             int m_renderPriority = 0;
             bool m_valid = false;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

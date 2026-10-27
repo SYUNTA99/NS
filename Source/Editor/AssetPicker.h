@@ -6,10 +6,8 @@
 #include <string_view>
 #include <vector>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         struct AssetOption
         {
             // 保存する名前と、候補の表示名・場所を分ける。エフェクトはパスではなく読み取り側の名前を保存する
@@ -37,5 +35,4 @@ namespace NS
         [[nodiscard]] bool IsSkyboxAssetPath(std::string_view absolutePath);
         //! Assets 内の対応するフォルダと DDS を、プロジェクトからの相対パスで返す。
         [[nodiscard]] std::vector<AssetOption> CollectSkyboxOptions(std::string_view contentRoot);
-    }
-}
+} // namespace NS::Editor

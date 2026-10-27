@@ -28,10 +28,8 @@
 #include <utility>
 #include <vector>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         namespace
         {
             // 自機の位置から向きの線を引いた時の、相手の外接箱の中心の測り
@@ -688,5 +686,4 @@ namespace GL
                                             .hopSeed = m_answer.lastImpact.sequence};
             (void)SendMsgTackleRelease(m_pendingTarget, release);
         }
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

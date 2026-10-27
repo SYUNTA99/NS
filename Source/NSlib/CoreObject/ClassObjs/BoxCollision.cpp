@@ -40,10 +40,7 @@ namespace NS
         m_halfExtents = ClampNonNegative(halfExtents);
     }
 
-    Vector3 BoxCollision::HalfExtents() const noexcept
-    {
-        return m_halfExtents;
-    }
+    Vector3 BoxCollision::HalfExtents() const noexcept { return m_halfExtents; }
 
     void BoxCollision::SetCenterOffset(const Vector3& offset) noexcept
     {
@@ -51,10 +48,7 @@ namespace NS
         m_centerOffset = offset;
     }
 
-    Vector3 BoxCollision::CenterOffset() const noexcept
-    {
-        return m_centerOffset;
-    }
+    Vector3 BoxCollision::CenterOffset() const noexcept { return m_centerOffset; }
 
     void BoxCollision::SetLocalRotation(const Quaternion& rotation) noexcept
     {
@@ -62,10 +56,7 @@ namespace NS
         m_localRotation = rotation;
     }
 
-    Quaternion BoxCollision::LocalRotation() const noexcept
-    {
-        return m_localRotation;
-    }
+    Quaternion BoxCollision::LocalRotation() const noexcept { return m_localRotation; }
 
     void BoxCollision::SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept
     {

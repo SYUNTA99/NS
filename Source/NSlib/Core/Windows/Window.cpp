@@ -5,10 +5,8 @@
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "NSlib/Core/Windows/detail/InputWin32.h"
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         namespace
         {
             // Window は単一インスタンス
@@ -229,10 +227,7 @@ namespace NS
             s_instance = nullptr;
         }
 
-        bool Window::IsValid() const noexcept
-        {
-            return m_hwnd != nullptr;
-        }
+        bool Window::IsValid() const noexcept { return m_hwnd != nullptr; }
 
         void Window::PollMessages() noexcept
         {
@@ -257,20 +252,11 @@ namespace NS
             }
         }
 
-        bool Window::ShouldClose() const noexcept
-        {
-            return m_shouldClose;
-        }
+        bool Window::ShouldClose() const noexcept { return m_shouldClose; }
 
-        Size2D Window::Size() const noexcept
-        {
-            return m_size;
-        }
+        Size2D Window::Size() const noexcept { return m_size; }
 
-        HWND Window::NativeHandle() const noexcept
-        {
-            return m_hwnd;
-        }
+        HWND Window::NativeHandle() const noexcept { return m_hwnd; }
 
         void Window::SetTitle(std::string_view utf8Title) noexcept
         {
@@ -294,20 +280,11 @@ namespace NS
             ::SetCursor(cursor);
         }
 
-        bool Window::IsCursorVisible() const noexcept
-        {
-            return m_cursorVisible;
-        }
+        bool Window::IsCursorVisible() const noexcept { return m_cursorVisible; }
 
-        void Window::SetCursorLocked(bool locked) noexcept
-        {
-            m_cursorLocked = locked;
-        }
+        void Window::SetCursorLocked(bool locked) noexcept { m_cursorLocked = locked; }
 
-        bool Window::IsCursorLocked() const noexcept
-        {
-            return m_cursorLocked;
-        }
+        bool Window::IsCursorLocked() const noexcept { return m_cursorLocked; }
 
         void Window::SetCursorLockPoint(int clientX, int clientY) noexcept
         {
@@ -332,14 +309,7 @@ namespace NS
             m_onClose = std::move(cb);
         }
 
-        void Window::AttachInput(Input* input) noexcept
-        {
-            m_input = input;
-        }
+        void Window::AttachInput(Input* input) noexcept { m_input = input; }
 
-        void Window::SetMessageHook(MessageHook hook)
-        {
-            m_messageHook = std::move(hook);
-        }
-    } // namespace OS
-} // namespace NS
+        void Window::SetMessageHook(MessageHook hook) { m_messageHook = std::move(hook); }
+} // namespace NS::OS

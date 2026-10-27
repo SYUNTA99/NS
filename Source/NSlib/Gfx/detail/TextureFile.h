@@ -8,12 +8,8 @@
 #include <string>
 #include <string_view>
 
-namespace NS
+namespace NS::Gfx::detail
 {
-    namespace Gfx
-    {
-        namespace detail
-        {
             [[nodiscard]] inline bool IsDdsExtension(std::string_view path)
             {
                 std::string ext = OS::FileSystem::Extension(path);
@@ -22,6 +18,4 @@ namespace NS
                 });
                 return ext == ".dds";
             }
-        } // namespace detail
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx::detail

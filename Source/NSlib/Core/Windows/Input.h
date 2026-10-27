@@ -7,10 +7,8 @@
 
 #include <windows.h>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         //! @brief UI が取る入力の登録内容
         struct UiCaptureDesc
         {
@@ -153,5 +151,4 @@ namespace NS
             ScopedNeutralInput(const ScopedNeutralInput&) = delete;
             ScopedNeutralInput& operator=(const ScopedNeutralInput&) = delete;
         };
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS

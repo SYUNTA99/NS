@@ -5,10 +5,8 @@
 
 #include <span>
 
-namespace NS
+namespace NS::Anim
 {
-    namespace Anim
-    {
         namespace
         {
             [[nodiscard]] Matrix LocalMatrix(const BonePose& pose) noexcept
@@ -48,15 +46,9 @@ namespace NS
 
         Skeleton::Skeleton(std::vector<Bone> bones) noexcept : m_bones(std::move(bones)) {}
 
-        std::size_t Skeleton::BoneCount() const noexcept
-        {
-            return m_bones.size();
-        }
+        std::size_t Skeleton::BoneCount() const noexcept { return m_bones.size(); }
 
-        const std::vector<Bone>& Skeleton::Bones() const noexcept
-        {
-            return m_bones;
-        }
+        const std::vector<Bone>& Skeleton::Bones() const noexcept { return m_bones; }
 
         void Skeleton::ComputePalette(std::span<const BonePose> pose, std::vector<Matrix>& out) const
         {
@@ -93,13 +85,11 @@ namespace NS
                 return;
             }
 
-            const Matrix rootParent = [&]() -> Matrix {
-                if (applyRootTransform)
-                {
-                    return m_rootTransform;
-                }
-                return Matrix::Identity;
-            }();
+            Matrix rootParent = Matrix::Identity;
+            if (applyRootTransform)
+            {
+                rootParent = m_rootTransform;
+            }
             for (std::size_t i = 0; i < boneCount; ++i)
             {
                 const Matrix local = LocalMatrix(pose[i]);
@@ -115,15 +105,9 @@ namespace NS
             }
         }
 
-        void Skeleton::SetRootTransform(const Matrix& transform) noexcept
-        {
-            m_rootTransform = transform;
-        }
+        void Skeleton::SetRootTransform(const Matrix& transform) noexcept { m_rootTransform = transform; }
 
-        const Matrix& Skeleton::RootTransform() const noexcept
-        {
-            return m_rootTransform;
-        }
+        const Matrix& Skeleton::RootTransform() const noexcept { return m_rootTransform; }
 
         Vector3 Skeleton::SkinPositionReference(const SkinnedVertex& vertex,
                                                     std::span<const Matrix> palette) noexcept
@@ -145,5 +129,4 @@ namespace NS
             }
             return result;
         }
-    } // namespace Anim
-} // namespace NS
+} // namespace NS::Anim

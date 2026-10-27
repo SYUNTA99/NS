@@ -3,13 +3,10 @@
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Math.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DDevice;
-    }
-} // namespace NS
+} // namespace NS::Gfx
 
 namespace NS
 {

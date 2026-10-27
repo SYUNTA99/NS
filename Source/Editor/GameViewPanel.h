@@ -5,10 +5,8 @@
 
 class LevelEditorController;
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         class TimelinePreview;
         //! ゲーム視点を映すパネル。ゲーム操作の入力はプレイ中だけ受け付ける
         class GameViewPanel : public NonCopyable
@@ -55,5 +53,4 @@ namespace NS
             bool m_hovered = false;    // マウスが Game パネルの画像上に居るか
             bool m_mouseLatch = false; // ボタン押下中は判定を保ち、パネル外でもドラッグを続ける
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

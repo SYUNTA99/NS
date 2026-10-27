@@ -3,10 +3,8 @@
 
 #include <cmath>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         namespace
         {
             // 種と番号を混ぜて 0〜1 の値にする。整数の混ぜ方は種の近い当たりでも値が散る形
@@ -43,5 +41,4 @@ namespace GL
             const float kept = speed * desc.keep;
             return turned * kept + up * (kept * desc.heightRatio * lift);
         }
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

@@ -18,20 +18,22 @@
 #include <utility>
 #include <vector>
 
+namespace NS::Phys
+{
+    struct MeshShape;
+} // namespace NS::Phys
+
+namespace NS::Gfx
+{
+    struct BuiltinShaders;
+} // namespace NS::Gfx
+
 namespace NS
 {
-    namespace Phys
-    {
-        struct MeshShape;
-    }
-    namespace Gfx
-    {
-        struct BuiltinShaders;
-    }
     namespace Audio
     {
         class AudioDevice;
-    }
+    } // namespace Audio
 } // namespace NS
 
 namespace NS

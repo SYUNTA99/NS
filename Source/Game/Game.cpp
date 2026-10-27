@@ -124,7 +124,4 @@ void Game::StartLoadedScene()
     }
 }
 
-NS::Scene* Game::CurrentScene() noexcept
-{
-    return m_scenes.Current();
-}
+NS::Scene* Game::CurrentScene() noexcept { return m_scenes.Current(); }

@@ -63,10 +63,7 @@ namespace NS
         return CapsuleAt(m_pose->Position());
     }
 
-    void Collider::SetSphereShape(bool sphere) noexcept
-    {
-        m_sphereShape = sphere;
-    }
+    void Collider::SetSphereShape(bool sphere) noexcept { m_sphereShape = sphere; }
 
     ColliderMove Collider::Move(const Vector3& from,
                                 const Vector3& velocity,

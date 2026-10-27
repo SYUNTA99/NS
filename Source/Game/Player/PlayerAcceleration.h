@@ -7,10 +7,8 @@ namespace NS
     class Body;
 }
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! @brief 体の水平の速度を単位方向へ加速し、横滑りを減らす。上限を超える順方向速度は保つ
         //! @details 曲がり方の手触りを決める式なので、基盤の Body でなくゲームに置く
         //! @param[in,out] body 事前条件: nullptr でない
@@ -26,5 +24,4 @@ namespace GL
         //! @brief 体の水平の速さを 1 フレームに deceleration × dt ずつ減らし、ちょうど 0 で止める。縦は触らない
         //! @param[in,out] body 事前条件: nullptr でない
         void Decelerate(NS::Body* body, float deceleration, float dt) noexcept;
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

@@ -6,10 +6,8 @@
 
 #include <optional>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! エディタの見た目の欄。ファイルに書かず、起動ごとにこの既定から始まる
         struct EditorAppearance
         {
@@ -34,5 +32,4 @@ namespace NS
             }
             return appearance.placementRowColor;
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

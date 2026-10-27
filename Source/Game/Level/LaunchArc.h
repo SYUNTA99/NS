@@ -3,10 +3,8 @@
 #include "Game/Level/AirGravity.h"
 #include "NSlib/Core/Math.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 発射の高さへ戻るまでの距離と頂点の高さで指定する飛行曲線
         //! @details 水平は等速。上下と頂点付近の重力は各欄で調整する
         struct LaunchArc
@@ -47,5 +45,4 @@ namespace GL
 
         //! 曲線の重力を、ChooseGravity へ渡す組 (下向きが負) にして返す
         [[nodiscard]] AirGravity LaunchArcGravity(const LaunchArc& arc) noexcept;
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

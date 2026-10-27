@@ -20,10 +20,8 @@
 
 #include <array>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         namespace
         {
             // キューブマップのテクスチャファイル名
@@ -233,19 +231,12 @@ namespace NS
             commands->OMSetBlendState(prevBlend.Get(), prevBlendFactor, prevSampleMask);
         }
 
-        bool Skybox::IsValid() const noexcept
-        {
-            return m_valid;
-        }
+        bool Skybox::IsValid() const noexcept { return m_valid; }
 
-        bool Skybox::IsUsingFallback() const noexcept
-        {
-            return m_usingFallback;
-        }
+        bool Skybox::IsUsingFallback() const noexcept { return m_usingFallback; }
 
         const std::array<std::string_view, 6>& Skybox::FaceFileNames() noexcept
         {
             return k_KurtFaceFileNames;
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

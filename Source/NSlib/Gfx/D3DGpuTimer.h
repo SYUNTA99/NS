@@ -5,10 +5,8 @@
 
 #include <optional>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! GPU の Begin〜End の時間を測る。読み取りは GPU を待つため計測用に限る
         //! D3DDevice が未構築なら無効。D3DDevice より先に破棄する
         class D3DGpuTimer : public NonCopyable
@@ -39,5 +37,4 @@ namespace NS
             bool m_begun = false;           // Begin の後で End の前か
             bool m_ended = false;           // End まで測って、まだ読んでいないか
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

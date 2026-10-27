@@ -4,10 +4,8 @@
 
 #include <optional>
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! @brief 外れの反動の回り方のうち、当たりが決める物
         //! @details 回転の速さ・補間・軸のぶれは PlayerAppearance の欄で調整する
         struct MissTumble
@@ -27,5 +25,4 @@ namespace GL
             // 外れの時だけ持つ。玉が軸のぶれるねじれで回り、着地の後にこすって止まる
             std::optional<MissTumble> missTumble{};
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

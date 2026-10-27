@@ -10,10 +10,8 @@
 #include <string_view>
 #include <vector>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         //! @brief ファイル・ディレクトリ操作の最小ユーティリティ
         //! @details 失敗時はエラーログを出力して nullopt や false を返す
         class FileSystem
@@ -121,5 +119,4 @@ namespace NS
             // Win32 の HANDLE と同じ型。<windows.h> をこのヘッダの読み手へ広げないために void* で持つ
             void* m_handle;
         };
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS

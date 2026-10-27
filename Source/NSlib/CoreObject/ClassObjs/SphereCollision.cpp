@@ -17,10 +17,7 @@ namespace NS
         m_radius = std::max(radius, 0.0f);
     }
 
-    float SphereCollision::Radius() const noexcept
-    {
-        return m_radius;
-    }
+    float SphereCollision::Radius() const noexcept { return m_radius; }
 
     void SphereCollision::SetCenterOffset(const Vector3& offset) noexcept
     {
@@ -28,10 +25,7 @@ namespace NS
         m_centerOffset = offset;
     }
 
-    Vector3 SphereCollision::CenterOffset() const noexcept
-    {
-        return m_centerOffset;
-    }
+    Vector3 SphereCollision::CenterOffset() const noexcept { return m_centerOffset; }
 
     Sphere SphereCollision::WorldSphere(const Matrix& world) const noexcept
     {

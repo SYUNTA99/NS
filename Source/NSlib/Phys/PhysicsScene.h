@@ -20,10 +20,8 @@
 
 #include <span>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         //! body の種別を表す ObjectLayer。body はどれも動かないので、body どうしは当たらない
         namespace ObjectLayers
         {
@@ -179,5 +177,4 @@ namespace NS
             JPH::JobSystemSingleThreaded m_jobSystem;
             JPH::PhysicsSystem m_physicsSystem;
         };
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys

@@ -4,10 +4,8 @@
 #include "Editor/Undo/IActorSnapshotApplier.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             //! JSON 木の heap 量を概算する。要素そのものと文字列の確保分を数える
@@ -106,5 +104,4 @@ namespace NS
             }
             return bytes;
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

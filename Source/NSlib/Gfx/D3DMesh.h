@@ -10,10 +10,8 @@
 #include <string>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DBuffer;
         class D3DShader;
         class D3DCommandList;
@@ -118,5 +116,4 @@ namespace NS
 
         //! D3DMesh のデータを読んで bind + DrawIndexed を発行する。D3DShader/D3DMaterial の Bind は呼出側責任
         void DrawMesh(D3DCommandList& commands, const D3DMesh& mesh) noexcept;
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

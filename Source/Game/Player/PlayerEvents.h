@@ -2,10 +2,8 @@
 
 #include "NSlib/CoreObject/ClassObjs/BodyEvents.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! @brief 自機の行動を始めた・終えた時の通知
         struct PlayerEvents
         {
@@ -15,5 +13,4 @@ namespace GL
             NS::BodyEvent onBodySlamStarted; //!< 体当たりが出たフレーム
             NS::BodyEvent onBodySlamEnded;   //!< 体当たりが終わったフレーム
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

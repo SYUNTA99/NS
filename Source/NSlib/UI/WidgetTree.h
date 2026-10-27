@@ -4,18 +4,13 @@
 #include "NSlib/UI/UICanvas.h"
 #include "NSlib/UI/Widget.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class ScreenOverlay;
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx
 
-namespace NS
+namespace NS::UI
 {
-    namespace UI
-    {
         //! 画面ごとの Widget の木。拡縮は描画時に渡す UICanvas に従う
         class WidgetTree : public NonCopyable
         {
@@ -38,5 +33,4 @@ namespace NS
         private:
             Widget m_root; // 木の根。全画面 stretch の透明 Widget
         };
-    } // namespace UI
-} // namespace NS
+} // namespace NS::UI

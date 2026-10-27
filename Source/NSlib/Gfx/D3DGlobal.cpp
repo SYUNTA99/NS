@@ -1,9 +1,7 @@
 #include "NSlib/Gfx/D3DGlobal.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         namespace
         {
             // プロセス唯一の device / immediate context を束ねたグローバル。D3DDevice 構築で代入し、
@@ -15,5 +13,4 @@ namespace NS
         {
             return g_d3dGlobal;
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

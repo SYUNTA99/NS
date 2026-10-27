@@ -4,10 +4,8 @@
 
 #include <cstddef>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         class IActorSnapshotApplier;
 
         //! スナップショットを適用・取消する編集コマンド。描画資源は保持しない
@@ -29,5 +27,4 @@ namespace NS
         protected:
             ICommand() = default;
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

@@ -9,10 +9,30 @@
 #include <cmath>
 #include <limits>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
+        namespace
+        {
+            template <typename Fn>
+            void ForEachBoneVertex(const SkinnedVertex* vertices,
+                                   std::size_t vertexCount,
+                                   std::size_t boneCount,
+                                   Fn&& fn) noexcept
+            {
+                for (std::size_t i = 0; i < vertexCount; ++i)
+                {
+                    const SkinnedVertex& v = vertices[i];
+                    for (int k = 0; k < 4; ++k)
+                    {
+                        if (v.weights[k] > 0.0f && v.joints[k] < boneCount)
+                        {
+                            fn(v.joints[k], v.position);
+                        }
+                    }
+                }
+            }
+        } // namespace
+
         std::vector<BoneSphere> ComputeBoneSpheres(const SkinnedVertex* vertices,
                                                    std::size_t vertexCount,
                                                    std::size_t boneCount)
@@ -29,25 +49,11 @@ namespace NS
             std::vector<bool> hit(boneCount, false);
 
             // 各頂点を weight>0 の全影響ボーンへ算入し、ボーンごとの軸並行範囲を取る
-            for (std::size_t i = 0; i < vertexCount; ++i)
-            {
-                const SkinnedVertex& v = vertices[i];
-                for (int k = 0; k < 4; ++k)
-                {
-                    if (v.weights[k] <= 0.0f)
-                    {
-                        continue;
-                    }
-                    const uint32 j = v.joints[k];
-                    if (j >= boneCount)
-                    {
-                        continue;
-                    }
-                    mn[j] = Vector3::Min(mn[j], v.position);
-                    mx[j] = Vector3::Max(mx[j], v.position);
-                    hit[j] = true;
-                }
-            }
+            ForEachBoneVertex(vertices, vertexCount, boneCount, [&](uint32 j, const Vector3& position) {
+                mn[j] = Vector3::Min(mn[j], position);
+                mx[j] = Vector3::Max(mx[j], position);
+                hit[j] = true;
+            });
             for (std::size_t j = 0; j < boneCount; ++j)
             {
                 if (hit[j])
@@ -58,27 +64,9 @@ namespace NS
 
             // 中心が決まってから最遠影響頂点までの距離を半径にする
             std::vector<float> maxD2(boneCount, 0.0f);
-            for (std::size_t i = 0; i < vertexCount; ++i)
-            {
-                const SkinnedVertex& v = vertices[i];
-                for (int k = 0; k < 4; ++k)
-                {
-                    if (v.weights[k] <= 0.0f)
-                    {
-                        continue;
-                    }
-                    const uint32 j = v.joints[k];
-                    if (j >= boneCount)
-                    {
-                        continue;
-                    }
-                    const float d2 = Vector3::DistanceSquared(v.position, spheres[j].center);
-                    if (d2 > maxD2[j])
-                    {
-                        maxD2[j] = d2;
-                    }
-                }
-            }
+            ForEachBoneVertex(vertices, vertexCount, boneCount, [&](uint32 j, const Vector3& position) {
+                maxD2[j] = std::max(maxD2[j], Vector3::DistanceSquared(position, spheres[j].center));
+            });
             for (std::size_t j = 0; j < boneCount; ++j)
             {
                 if (hit[j])
@@ -203,14 +191,7 @@ namespace NS
             return k_Layout;
         }
 
-        std::size_t D3DSkeletalMesh::BoneCount() const noexcept
-        {
-            return m_boneCount;
-        }
+        std::size_t D3DSkeletalMesh::BoneCount() const noexcept { return m_boneCount; }
 
-        const std::vector<BoneSphere>& D3DSkeletalMesh::BoneSpheres() const noexcept
-        {
-            return m_boneSpheres;
-        }
-    } // namespace Gfx
-} // namespace NS
+        const std::vector<BoneSphere>& D3DSkeletalMesh::BoneSpheres() const noexcept { return m_boneSpheres; }
+} // namespace NS::Gfx

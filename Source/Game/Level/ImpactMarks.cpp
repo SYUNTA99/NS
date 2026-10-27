@@ -8,10 +8,8 @@
 
 #include <cmath>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         ImpactMarks::ImpactMarks()
         {
             NS::LoadAssetField(m_mesh, "shadowQuad");
@@ -152,5 +150,4 @@ namespace GL
             }
             return source.root.Translation();
         }
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

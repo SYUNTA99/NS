@@ -358,19 +358,9 @@ namespace NS
 
     namespace
     {
-        // 読み直すと同じ float になる一番短い綴り。整数の値は今の .mat と同じく .0 を付ける
-        [[nodiscard]] std::string FloatJson(float value)
-        {
-            std::string text = std::format("{}", value);
-            if (text.find_first_of(".e") == std::string::npos)
-            {
-                text += ".0";
-            }
-            return text;
-        }
-
-        // 材質の値は double で持つので、double で読み直すと同じになる一番短い綴りにする
-        [[nodiscard]] std::string DoubleJson(double value)
+        // 読み直すと同じ浮動小数点数になる一番短い綴り。整数の値は今の .mat と同じく .0 を付ける
+        template <typename T>
+        [[nodiscard]] std::string NumberJson(T value)
         {
             std::string text = std::format("{}", value);
             if (text.find_first_of(".e") == std::string::npos)
@@ -392,7 +382,7 @@ namespace NS
             }
             if (value.numbers.size() == 1u)
             {
-                return DoubleJson(value.numbers[0]);
+                return NumberJson(value.numbers[0]);
             }
             std::string text = "[";
             for (std::size_t i = 0; i < value.numbers.size(); ++i)
@@ -401,7 +391,7 @@ namespace NS
                 {
                     text += ", ";
                 }
-                text += DoubleJson(value.numbers[i]);
+                text += NumberJson(value.numbers[i]);
             }
             return text + "]";
         }
@@ -449,7 +439,7 @@ namespace NS
             text += "],\n";
         }
         text += std::format(
-            "  \"baseColor\": [{}, {}, {}],\n", FloatJson(color.x), FloatJson(color.y), FloatJson(color.z));
+            "  \"baseColor\": [{}, {}, {}],\n", NumberJson(color.x), NumberJson(color.y), NumberJson(color.z));
         text += "  \"blend\": " + StringJson(BlendName(file.blend));
         // params の無い .mat は、params を持つ前と同じ字面に書く
         if (!file.params.empty())
@@ -539,28 +529,23 @@ namespace NS
     {
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
         const std::string key = OS::FileSystem::Normalize(path);
-        if (const std::map<std::string, std::unique_ptr<Shader>>::iterator it = m_shaders.find(key);
-            it != m_shaders.end())
-        {
-            return it->second.get();
-        }
-
-        std::unique_ptr<Shader> shader = std::make_unique<Shader>(key);
-        Shader* raw = shader.get();
-        if (raw->D3D()->IsUsingFallback())
-        {
-            NS_LOG_ERROR(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key);
-        }
-        m_shaders.emplace(key, std::move(shader));
-        return raw;
+        return &FindOrAdd(m_shaders, key, [&key] {
+            std::unique_ptr<Shader> shader = std::make_unique<Shader>(key);
+            if (shader->D3D()->IsUsingFallback())
+            {
+                NS_LOG_ERROR(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key);
+            }
+            return shader;
+        });
     }
 
     Gfx::BuiltinShaders AssetManager::LoadBuiltinShaders()
     {
         const std::string directory = OS::FileSystem::Combine(m_baseDir, "Shaders");
-        const auto load = [this, &directory](std::string_view fileName) {
-            return LoadShader(OS::FileSystem::Combine(directory, fileName))->D3D();
-        };
+        const std::function<Gfx::D3DShader*(std::string_view)> load =
+            [this, &directory](std::string_view fileName) {
+                return LoadShader(OS::FileSystem::Combine(directory, fileName))->D3D();
+            };
         Gfx::BuiltinShaders shaders{};
         shaders.fullscreenVs = load("fade.vs.hlsl");
         shaders.fadePs = load("fade.ps.hlsl");
@@ -582,15 +567,7 @@ namespace NS
     Texture* AssetManager::LoadTexture(std::string_view path)
     {
         const std::string key = OS::FileSystem::Normalize(path);
-        if (const std::map<std::string, std::unique_ptr<Texture>>::iterator it = m_textures.find(key);
-            it != m_textures.end())
-        {
-            return it->second.get();
-        }
-        std::unique_ptr<Texture> texture = std::make_unique<Texture>(key);
-        Texture* raw = texture.get();
-        m_textures.emplace(key, std::move(texture));
-        return raw;
+        return &FindOrAdd(m_textures, key, [&key] { return std::make_unique<Texture>(key); });
     }
 
     std::unique_ptr<Mesh> AssetManager::CreateMesh(const std::string& key)
@@ -782,10 +759,7 @@ namespace NS
         return shape->slopeAngleDegrees;
     }
 
-    std::string_view AssetManager::DefaultMaterialPath() noexcept
-    {
-        return "Assets/Materials/default.mat";
-    }
+    std::string_view AssetManager::DefaultMaterialPath() noexcept { return "Assets/Materials/default.mat"; }
 
     Material* AssetManager::LoadMaterial(std::string_view name)
     {
@@ -842,15 +816,13 @@ namespace NS
     AssetManager::MaterialSources AssetManager::LoadMaterialSources(const MaterialFileDesc& file)
     {
         // 相対 path は構築時の baseDir 基準で解決する。絶対 / ドライブ相対は Combine が baseDir を捨てて通す
-        const auto resolve = [this](std::string_view p) { return OS::FileSystem::Combine(m_baseDir, p); };
-
         MaterialSources sources{};
-        sources.vertexShader = LoadShader(resolve(file.vertexShader));
-        sources.pixelShader = LoadShader(resolve(file.pixelShader));
+        sources.vertexShader = LoadShader(OS::FileSystem::Combine(m_baseDir, file.vertexShader));
+        sources.pixelShader = LoadShader(OS::FileSystem::Combine(m_baseDir, file.pixelShader));
         sources.textures.reserve(file.textures.size());
         for (const std::string& texture : file.textures)
         {
-            sources.textures.push_back(LoadTexture(resolve(texture)));
+            sources.textures.push_back(LoadTexture(OS::FileSystem::Combine(m_baseDir, texture)));
         }
         return sources;
     }

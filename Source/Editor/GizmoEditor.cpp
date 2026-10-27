@@ -17,10 +17,8 @@
 #include <imgui.h>
 #endif
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             constexpr float k_MoveSnapStep = 0.5f;
@@ -112,30 +110,42 @@ namespace NS
                 return true;
             }
 
+            [[nodiscard]] float VectorAxis(const Vector3& v, int axis) noexcept
+            {
+                switch (axis)
+                {
+                case 0:
+                    return v.x;
+                case 1:
+                    return v.y;
+                default:
+                    return v.z;
+                }
+            }
+
             [[nodiscard]] bool IntersectRayCenteredAABB(const Vector3& origin,
                                                         const Vector3& direction,
                                                         const Vector3& halfExtents,
                                                         float& outT) noexcept
             {
-                const float o[3] = {origin.x, origin.y, origin.z};
-                const float d[3] = {direction.x, direction.y, direction.z};
-                const float he[3] = {halfExtents.x, halfExtents.y, halfExtents.z};
-
                 float tMin = -std::numeric_limits<float>::infinity();
                 float tMax = std::numeric_limits<float>::infinity();
                 for (int axis = 0; axis < 3; ++axis)
                 {
-                    if (std::fabs(d[axis]) < k_RayAABBParallelEpsilon)
+                    const float o = VectorAxis(origin, axis);
+                    const float d = VectorAxis(direction, axis);
+                    const float he = VectorAxis(halfExtents, axis);
+                    if (std::fabs(d) < k_RayAABBParallelEpsilon)
                     {
-                        if (o[axis] < -he[axis] || o[axis] > he[axis])
+                        if (o < -he || o > he)
                         {
                             return false;
                         }
                         continue;
                     }
-                    const float invD = 1.0f / d[axis];
-                    float t1 = (-he[axis] - o[axis]) * invD;
-                    float t2 = (he[axis] - o[axis]) * invD;
+                    const float invD = 1.0f / d;
+                    float t1 = (-he - o) * invD;
+                    float t2 = (he - o) * invD;
                     if (t1 > t2)
                     {
                         std::swap(t1, t2);
@@ -181,29 +191,15 @@ namespace NS
 
             [[nodiscard]] float DistancePointToSegment(Vector2 p, Vector2 a, Vector2 b) noexcept
             {
-                const float abx = b.x - a.x;
-                const float aby = b.y - a.y;
-                const float apx = p.x - a.x;
-                const float apy = p.y - a.y;
-                const float lenSq = abx * abx + aby * aby;
+                const Vector2 ab = b - a;
+                const Vector2 ap = p - a;
+                const float lenSq = ab.LengthSquared();
                 float t = 0.0f;
                 if (lenSq > 1e-12f)
                 {
-                    t = (apx * abx + apy * aby) / lenSq;
+                    t = std::clamp(ap.Dot(ab) / lenSq, 0.0f, 1.0f);
                 }
-                if (t < 0.0f)
-                {
-                    t = 0.0f;
-                }
-                else if (t > 1.0f)
-                {
-                    t = 1.0f;
-                }
-                const float cx = a.x + abx * t;
-                const float cy = a.y + aby * t;
-                const float dx = p.x - cx;
-                const float dy = p.y - cy;
-                return std::sqrt(dx * dx + dy * dy);
+                return (p - (a + ab * t)).Length();
             }
 
             // ギズモは世界の空間で動かす
@@ -248,7 +244,7 @@ namespace NS
                     const float angle = GizmoEditor::WorldDragToAngle(
                         before.position, axis, axisOrient, viewProjection, viewport, screenStart, screenEnd);
                     after.rotation =
-                        GizmoEditor::ComputeAxisRotate(before.rotation, axis, angle, snap, space == GizmoSpace::World);
+                        GizmoEditor::ComputeAxisRotate(before.rotation, axis, angle, snap, space);
                     break;
                 }
                 case GizmoTool::Scale:
@@ -778,7 +774,7 @@ namespace NS
         }
 
         Quaternion GizmoEditor::ComputeAxisRotate(
-            const Quaternion& startRot, GizmoAxis axis, float angleRad, bool snap, bool worldSpace) noexcept
+            const Quaternion& startRot, GizmoAxis axis, float angleRad, bool snap, GizmoSpace space) noexcept
         {
             if (axis != GizmoAxis::X && axis != GizmoAxis::Y && axis != GizmoAxis::Z)
             {
@@ -792,7 +788,7 @@ namespace NS
             }
 
             Vector3 n = AxisVector(axis);
-            if (!worldSpace)
+            if (space != GizmoSpace::World)
             {
                 n = OrientedAxis(axis, startRot);
             }
@@ -903,9 +899,7 @@ namespace NS
             // 中央の Uniform ハンドルは軸より先に見る
             if (tool == GizmoTool::Scale)
             {
-                const float dx = mouse2d.x - origin2d.x;
-                const float dy = mouse2d.y - origin2d.y;
-                if (std::sqrt(dx * dx + dy * dy) < k_PickThresholdPixels)
+                if ((mouse2d - origin2d).Length() < k_PickThresholdPixels)
                 {
                     return GizmoAxis::Uniform;
                 }
@@ -934,9 +928,7 @@ namespace NS
                 }
 
                 // 視線と重なって画面で潰れた矢印は掴めても引けないので候補から外す
-                const float ax = end2d.x - origin2d.x;
-                const float ay = end2d.y - origin2d.y;
-                const float pixels = std::sqrt(ax * ax + ay * ay);
+                const float pixels = (end2d - origin2d).Length();
                 if (pixels < k_MinHandlePixels)
                 {
                     continue;
@@ -968,5 +960,4 @@ namespace NS
 
             return best;
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

@@ -8,10 +8,8 @@
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         namespace
         {
             D3D11_PRIMITIVE_TOPOLOGY ToD3d(Topology topology) noexcept
@@ -265,110 +263,126 @@ namespace NS
             }
         }
 
-        // 実型は生成時のステージで決まる。Type を検証してから static_cast で下ろす
+        namespace
+        {
+            // 実型は生成時のステージで決まる。Type を検証してから static_cast で下ろす
+            template <typename D3DStageShader>
+            void SetStageShader(ID3D11DeviceContext* context,
+                                const D3DShader& shader,
+                                ShaderType expected,
+                                const char* methodName,
+                                const char* stageLabel,
+                                void (STDMETHODCALLTYPE ID3D11DeviceContext::*setter)(D3DStageShader*,
+                                                                                      ID3D11ClassInstance* const*,
+                                                                                      UINT)) noexcept
+            {
+                if (context == nullptr)
+                {
+                    return;
+                }
+                if (shader.Type() != expected)
+                {
+                    NS_LOG_ERROR(Graphics,
+                                 "D3DCommandList::{}: {}以外の D3DShader を渡した (type={})",
+                                 methodName,
+                                 stageLabel,
+                                 static_cast<int>(shader.Type()));
+                    return;
+                }
+                ID3D11DeviceChild* raw = shader.Native();
+                if (raw == nullptr)
+                {
+                    return;
+                }
+                (context->*setter)(static_cast<D3DStageShader*>(raw), nullptr, 0u);
+            }
+
+            void SetStageSrv(ID3D11DeviceContext* context,
+                             const D3DTexture& texture,
+                             uint slot,
+                             void (STDMETHODCALLTYPE ID3D11DeviceContext::*setter)(UINT,
+                                                                                   UINT,
+                                                                                   ID3D11ShaderResourceView* const*)) noexcept
+            {
+                ID3D11ShaderResourceView* srv = texture.Srv();
+                if (context == nullptr || srv == nullptr)
+                {
+                    return;
+                }
+                ID3D11ShaderResourceView* srvs[1] = {srv};
+                (context->*setter)(slot, 1u, srvs);
+            }
+
+            void SetStageSampler(ID3D11DeviceContext* context,
+                                 ID3D11SamplerState* sampler,
+                                 uint slot,
+                                 void (STDMETHODCALLTYPE ID3D11DeviceContext::*setter)(UINT,
+                                                                                       UINT,
+                                                                                       ID3D11SamplerState* const*)) noexcept
+            {
+                if (context == nullptr || sampler == nullptr)
+                {
+                    return;
+                }
+                ID3D11SamplerState* samplers[1] = {sampler};
+                (context->*setter)(slot, 1u, samplers);
+            }
+
+            void SetStageConstantBuffer(ID3D11DeviceContext* context,
+                                        const D3DBuffer& buffer,
+                                        uint slot,
+                                        void (STDMETHODCALLTYPE ID3D11DeviceContext::*setter)(UINT,
+                                                                                              UINT,
+                                                                                              ID3D11Buffer* const*)) noexcept
+            {
+                if (context == nullptr || !buffer.IsValid())
+                {
+                    return;
+                }
+                ID3D11Buffer* buffers[1] = {buffer.Native()};
+                (context->*setter)(slot, 1u, buffers);
+            }
+        } // namespace
+
         void D3DCommandList::VSSetShader(const D3DShader& shader) noexcept
         {
-            if (m_context == nullptr)
-            {
-                return;
-            }
-            if (shader.Type() != ShaderType::Vertex)
-            {
-                NS_LOG_ERROR(Graphics,
-                             "D3DCommandList::VSSetShader: 頂点以外の D3DShader を渡した (type={})",
-                             static_cast<int>(shader.Type()));
-                return;
-            }
-            ID3D11DeviceChild* raw = shader.Native();
-            if (raw == nullptr)
-            {
-                return;
-            }
-            m_context->VSSetShader(static_cast<ID3D11VertexShader*>(raw), nullptr, 0u);
+            SetStageShader(m_context, shader, ShaderType::Vertex, "VSSetShader", "頂点", &ID3D11DeviceContext::VSSetShader);
         }
 
         void D3DCommandList::VSSetShaderResource(const D3DTexture& texture, uint slot) noexcept
         {
-            ID3D11ShaderResourceView* srv = texture.Srv();
-            if (m_context == nullptr || srv == nullptr)
-            {
-                return;
-            }
-            ID3D11ShaderResourceView* srvs[1] = {srv};
-            m_context->VSSetShaderResources(slot, 1u, srvs);
+            SetStageSrv(m_context, texture, slot, &ID3D11DeviceContext::VSSetShaderResources);
         }
 
         // サンプラーは NS にラッパ型が無いため生の ID3D11SamplerState* をそのまま受ける
         void D3DCommandList::VSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
-            if (m_context == nullptr || sampler == nullptr)
-            {
-                return;
-            }
-            ID3D11SamplerState* samplers[1] = {sampler};
-            m_context->VSSetSamplers(slot, 1u, samplers);
+            SetStageSampler(m_context, sampler, slot, &ID3D11DeviceContext::VSSetSamplers);
         }
 
         void D3DCommandList::VSSetConstantBuffer(const D3DBuffer& buffer, uint slot) noexcept
         {
-            if (m_context == nullptr || !buffer.IsValid())
-            {
-                return;
-            }
-            ID3D11Buffer* buffers[1] = {buffer.Native()};
-            m_context->VSSetConstantBuffers(slot, 1u, buffers);
+            SetStageConstantBuffer(m_context, buffer, slot, &ID3D11DeviceContext::VSSetConstantBuffers);
         }
 
         void D3DCommandList::PSSetShader(const D3DShader& shader) noexcept
         {
-            if (m_context == nullptr)
-            {
-                return;
-            }
-            if (shader.Type() != ShaderType::Pixel)
-            {
-                NS_LOG_ERROR(Graphics,
-                             "D3DCommandList::PSSetShader: ピクセル以外の D3DShader を渡した (type={})",
-                             static_cast<int>(shader.Type()));
-                return;
-            }
-            ID3D11DeviceChild* raw = shader.Native();
-            if (raw == nullptr)
-            {
-                return;
-            }
-            m_context->PSSetShader(static_cast<ID3D11PixelShader*>(raw), nullptr, 0u);
+            SetStageShader(m_context, shader, ShaderType::Pixel, "PSSetShader", "ピクセル", &ID3D11DeviceContext::PSSetShader);
         }
 
         void D3DCommandList::PSSetShaderResource(const D3DTexture& texture, uint slot) noexcept
         {
-            ID3D11ShaderResourceView* srv = texture.Srv();
-            if (m_context == nullptr || srv == nullptr)
-            {
-                return;
-            }
-            ID3D11ShaderResourceView* srvs[1] = {srv};
-            m_context->PSSetShaderResources(slot, 1u, srvs);
+            SetStageSrv(m_context, texture, slot, &ID3D11DeviceContext::PSSetShaderResources);
         }
 
         void D3DCommandList::PSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
-            if (m_context == nullptr || sampler == nullptr)
-            {
-                return;
-            }
-            ID3D11SamplerState* samplers[1] = {sampler};
-            m_context->PSSetSamplers(slot, 1u, samplers);
+            SetStageSampler(m_context, sampler, slot, &ID3D11DeviceContext::PSSetSamplers);
         }
 
         void D3DCommandList::PSSetConstantBuffer(const D3DBuffer& buffer, uint slot) noexcept
         {
-            if (m_context == nullptr || !buffer.IsValid())
-            {
-                return;
-            }
-            ID3D11Buffer* buffers[1] = {buffer.Native()};
-            m_context->PSSetConstantBuffers(slot, 1u, buffers);
+            SetStageConstantBuffer(m_context, buffer, slot, &ID3D11DeviceContext::PSSetConstantBuffers);
         }
 
         void D3DCommandList::UnbindPixelShaderResources(uint first, uint count) noexcept
@@ -392,106 +406,42 @@ namespace NS
 
         void D3DCommandList::GSSetShader(const D3DShader& shader) noexcept
         {
-            if (m_context == nullptr)
-            {
-                return;
-            }
-            if (shader.Type() != ShaderType::Geometry)
-            {
-                NS_LOG_ERROR(Graphics,
-                             "D3DCommandList::GSSetShader: ジオメトリ以外の D3DShader を渡した (type={})",
-                             static_cast<int>(shader.Type()));
-                return;
-            }
-            ID3D11DeviceChild* raw = shader.Native();
-            if (raw == nullptr)
-            {
-                return;
-            }
-            m_context->GSSetShader(static_cast<ID3D11GeometryShader*>(raw), nullptr, 0u);
+            SetStageShader(m_context, shader, ShaderType::Geometry, "GSSetShader", "ジオメトリ", &ID3D11DeviceContext::GSSetShader);
         }
 
         void D3DCommandList::GSSetShaderResource(const D3DTexture& texture, uint slot) noexcept
         {
-            ID3D11ShaderResourceView* srv = texture.Srv();
-            if (m_context == nullptr || srv == nullptr)
-            {
-                return;
-            }
-            ID3D11ShaderResourceView* srvs[1] = {srv};
-            m_context->GSSetShaderResources(slot, 1u, srvs);
+            SetStageSrv(m_context, texture, slot, &ID3D11DeviceContext::GSSetShaderResources);
         }
 
         void D3DCommandList::GSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
-            if (m_context == nullptr || sampler == nullptr)
-            {
-                return;
-            }
-            ID3D11SamplerState* samplers[1] = {sampler};
-            m_context->GSSetSamplers(slot, 1u, samplers);
+            SetStageSampler(m_context, sampler, slot, &ID3D11DeviceContext::GSSetSamplers);
         }
 
         void D3DCommandList::GSSetConstantBuffer(const D3DBuffer& buffer, uint slot) noexcept
         {
-            if (m_context == nullptr || !buffer.IsValid())
-            {
-                return;
-            }
-            ID3D11Buffer* buffers[1] = {buffer.Native()};
-            m_context->GSSetConstantBuffers(slot, 1u, buffers);
+            SetStageConstantBuffer(m_context, buffer, slot, &ID3D11DeviceContext::GSSetConstantBuffers);
         }
 
         void D3DCommandList::CSSetShader(const D3DShader& shader) noexcept
         {
-            if (m_context == nullptr)
-            {
-                return;
-            }
-            if (shader.Type() != ShaderType::Compute)
-            {
-                NS_LOG_ERROR(Graphics,
-                             "D3DCommandList::CSSetShader: コンピュート以外の D3DShader を渡した (type={})",
-                             static_cast<int>(shader.Type()));
-                return;
-            }
-            ID3D11DeviceChild* raw = shader.Native();
-            if (raw == nullptr)
-            {
-                return;
-            }
-            m_context->CSSetShader(static_cast<ID3D11ComputeShader*>(raw), nullptr, 0u);
+            SetStageShader(m_context, shader, ShaderType::Compute, "CSSetShader", "コンピュート", &ID3D11DeviceContext::CSSetShader);
         }
 
         void D3DCommandList::CSSetShaderResource(const D3DTexture& texture, uint slot) noexcept
         {
-            ID3D11ShaderResourceView* srv = texture.Srv();
-            if (m_context == nullptr || srv == nullptr)
-            {
-                return;
-            }
-            ID3D11ShaderResourceView* srvs[1] = {srv};
-            m_context->CSSetShaderResources(slot, 1u, srvs);
+            SetStageSrv(m_context, texture, slot, &ID3D11DeviceContext::CSSetShaderResources);
         }
 
         void D3DCommandList::CSSetSampler(ID3D11SamplerState* sampler, uint slot) noexcept
         {
-            if (m_context == nullptr || sampler == nullptr)
-            {
-                return;
-            }
-            ID3D11SamplerState* samplers[1] = {sampler};
-            m_context->CSSetSamplers(slot, 1u, samplers);
+            SetStageSampler(m_context, sampler, slot, &ID3D11DeviceContext::CSSetSamplers);
         }
 
         void D3DCommandList::CSSetConstantBuffer(const D3DBuffer& buffer, uint slot) noexcept
         {
-            if (m_context == nullptr || !buffer.IsValid())
-            {
-                return;
-            }
-            ID3D11Buffer* buffers[1] = {buffer.Native()};
-            m_context->CSSetConstantBuffers(slot, 1u, buffers);
+            SetStageConstantBuffer(m_context, buffer, slot, &ID3D11DeviceContext::CSSetConstantBuffers);
         }
 
         void D3DCommandList::DrawIndexed(uint indexCount) noexcept
@@ -521,14 +471,10 @@ namespace NS
             Draw(vertexCount);
         }
 
-        ID3D11DeviceContext* D3DCommandList::Native() const noexcept
-        {
-            return m_context;
-        }
+        ID3D11DeviceContext* D3DCommandList::Native() const noexcept { return m_context; }
 
         ID3D11DeviceContext* D3DCommandList::operator->() const noexcept
         {
             return m_context;
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

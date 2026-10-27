@@ -10,18 +10,13 @@
 
 #include <vector>
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         class ChargeStatus;
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! 画面へ重ねる四角 1 枚。座標は描画先の画素で、左上が原点
         struct MarkerRect
         {
@@ -108,5 +103,4 @@ namespace GL
             NS::AABB m_lostBounds{};      // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない
             int m_framesSinceLost = -1;
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

@@ -12,10 +12,8 @@ namespace NS
 
 class LevelEditorController;
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! アクターを平らな一覧で表示する。改名などの適用は描画後に行う
         class ActorListPanel : public NonCopyable
         {
@@ -45,5 +43,4 @@ namespace NS
 
             char m_actorListFilter[64]{}; // 一覧の検索欄。一致する個体だけを並べる
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

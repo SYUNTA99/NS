@@ -10,10 +10,8 @@
 #include <imgui.h>
 #endif
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         bool HasUnsavedWork(const EditorMode& editor, const ActionTimelinePanel& timeline) noexcept
         {
             return editor.HasUnsavedChanges() || timeline.HasUnsavedChanges();
@@ -129,5 +127,4 @@ namespace NS
             (void)timeline;
 #endif
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

@@ -207,10 +207,7 @@ namespace NS
         return &kind;
     }
 
-    float CameraSinkModifier::Pixels() const noexcept
-    {
-        return CameraSinkPixelsAt(m_desc, Frame());
-    }
+    float CameraSinkModifier::Pixels() const noexcept { return CameraSinkPixelsAt(m_desc, Frame()); }
 
     void CameraSinkModifier::Advance() noexcept
     {
@@ -228,10 +225,7 @@ namespace NS
         pose.screenOffset.y += Pixels() * 2.0f / k_SinkReferenceHeightPixels;
     }
 
-    bool CameraSinkModifier::IsFinished() const noexcept
-    {
-        return Frame() >= m_desc.frames;
-    }
+    bool CameraSinkModifier::IsFinished() const noexcept { return Frame() >= m_desc.frames; }
 
     std::unique_ptr<CameraZoomRollModifier> CameraZoomRollModifier::Create(const CameraZoomRollDesc& desc,
                                                                            float rollSign)
@@ -336,10 +330,7 @@ namespace NS
         m_held = std::max(m_held, clamped);
     }
 
-    float CameraTraumaModifier::ShakeAmount() const noexcept
-    {
-        return std::pow(m_trauma, m_shape.exponent);
-    }
+    float CameraTraumaModifier::ShakeAmount() const noexcept { return std::pow(m_trauma, m_shape.exponent); }
 
     Vector3 CameraTraumaModifier::Angles() const noexcept
     {
@@ -468,10 +459,7 @@ namespace NS
         pose.target += shift;
     }
 
-    bool CameraNudgeModifier::IsFinished() const noexcept
-    {
-        return Frame() >= m_desc.frames;
-    }
+    bool CameraNudgeModifier::IsFinished() const noexcept { return Frame() >= m_desc.frames; }
 
     std::array<const void*, 5> CameraHitEffectKinds() noexcept
     {

@@ -14,10 +14,8 @@
 #include <cmath>
 #include <format>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         namespace
         {
             // Effekseer の Update は 1 を 1/60 秒として数える
@@ -439,16 +437,13 @@ namespace NS
                 m_depthFallback = false;
                 return;
             }
-            ComPtr<ID3D11Resource> resource;
-            dsv->GetResource(resource.GetAddressOf());
-            ComPtr<ID3D11Texture2D> source;
-            if (resource == nullptr || FAILED(resource.As(&source)))
+            D3D11_TEXTURE2D_DESC desc{};
+            const ComPtr<ID3D11Texture2D> source = ViewTexture2D(dsv.Get(), &desc);
+            if (!source)
             {
                 FallBackWithoutDepth("奥行きが 2D のテクスチャでない", 0, 0);
                 return;
             }
-            D3D11_TEXTURE2D_DESC desc{};
-            source->GetDesc(&desc);
             // 写し先は R24G8 の組で作るので、写せるのは同じ組で多重サンプルでない奥行きだけ
             const bool copyable =
                 (desc.Format == DXGI_FORMAT_D24_UNORM_S8_UINT || desc.Format == DXGI_FORMAT_R24G8_TYPELESS) &&
@@ -545,5 +540,4 @@ namespace NS
             NS_LOG_ERROR(Graphics, "EffectScene: {} ({}x{})。奥行き無しでエフェクトを描く", reason, width, height);
             m_failedDepthKey = std::move(key);
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

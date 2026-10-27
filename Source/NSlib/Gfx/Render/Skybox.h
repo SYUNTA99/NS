@@ -14,10 +14,8 @@ namespace NS
     class CameraData;
 } // namespace NS
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DCommandList;
         class D3DStaticMesh;
         class D3DShader;
@@ -87,5 +85,4 @@ namespace NS
             bool m_tried = false;
             bool m_valid = false;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

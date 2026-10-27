@@ -6,12 +6,8 @@
 
 #include <d3d11.h>
 
-namespace NS
+namespace NS::Gfx::detail
 {
-    namespace Gfx
-    {
-        namespace detail
-        {
             //! DepthMode に対する深度とステンシルのステートの設定を返す。ステンシルは使わない
             [[nodiscard]] inline D3D11_DEPTH_STENCIL_DESC MakeDepthStencilDesc(DepthMode depth) noexcept
             {
@@ -45,6 +41,4 @@ namespace NS
                 }
                 return dd;
             }
-        } // namespace detail
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx::detail

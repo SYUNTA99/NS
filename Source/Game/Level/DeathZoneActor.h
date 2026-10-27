@@ -3,10 +3,8 @@
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 重なったプレイヤーへ即死を通知する範囲
         //! @details 上面に着地させないため、地形の当たりは持たない
         class DeathZoneActor : public NS::SceneActor
@@ -22,5 +20,4 @@ namespace GL
             NS_SENSOR(m_bodySensor, SensorKind::Area, NS::HitSensorShape::Box)
             NS_SENSORS_END()
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

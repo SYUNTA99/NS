@@ -10,10 +10,8 @@
 #include <string_view>
 #include <vector>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! @brief エディタで置ける物 1 種類
         struct PlacementItem
         {
@@ -39,5 +37,4 @@ namespace NS
 
         //! ひな形の見た目が組み込みの坂なら、その角度 (度)。坂でなければ負の値
         [[nodiscard]] float PartsSlopeAngleDegrees(const nlohmann::json& prototype) noexcept;
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

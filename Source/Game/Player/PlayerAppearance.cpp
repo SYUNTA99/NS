@@ -31,10 +31,8 @@ namespace
     }
 } // namespace
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         PlayerAppearance::PlayerAppearance()
         {
             NS::LoadAssetField(m_standingMesh, "capsule");
@@ -309,5 +307,4 @@ namespace GL
             }
             renderer->SetMesh(mesh);
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

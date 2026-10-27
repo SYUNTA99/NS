@@ -15,10 +15,8 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             const nlohmann::json* FindTransformFields(const nlohmann::json& object) noexcept
@@ -253,5 +251,4 @@ namespace NS
             }
             return k_NoActorIndex;
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

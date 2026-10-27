@@ -5,19 +5,14 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/CoreObject/ActorJson.h"
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         class Input;
         class InputPresses;
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! 配置ブラシを数字キーとツールバーで選ぶ
         class CategoryPalette : public NonCopyable
         {
@@ -60,5 +55,4 @@ namespace NS
             bool m_toolbarPlaced = false;   // 初回に Scene 上端中央へ置いたか
             bool m_toolbarDragging = false; // 余白ドラッグで移動中か
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

@@ -1,9 +1,7 @@
 #pragma once
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 体当たりの発動種別
         enum class SlamKind
         {
@@ -86,5 +84,4 @@ namespace GL
             SlamKind m_fired = SlamKind::None;
             HoldPhase m_phase = HoldPhase::Charging;
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

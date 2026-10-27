@@ -15,10 +15,8 @@
 #include <algorithm>
 #include <map>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         std::unique_ptr<D3DMaterial> D3DMaterial::Create(const D3DMaterialDesc& desc)
         {
             return std::unique_ptr<D3DMaterial>(new D3DMaterial(desc));
@@ -80,10 +78,7 @@ namespace NS
 
         D3DMaterial::~D3DMaterial() = default;
 
-        bool D3DMaterial::IsValid() const noexcept
-        {
-            return m_valid;
-        }
+        bool D3DMaterial::IsValid() const noexcept { return m_valid; }
 
         bool D3DMaterial::IsUsingFallback() const noexcept
         {
@@ -94,15 +89,9 @@ namespace NS
             return m_vertexShader->IsUsingFallback() || m_pixelShader->IsUsingFallback();
         }
 
-        BlendMode D3DMaterial::Blend() const noexcept
-        {
-            return m_blend;
-        }
+        BlendMode D3DMaterial::Blend() const noexcept { return m_blend; }
 
-        int D3DMaterial::RenderPriority() const noexcept
-        {
-            return m_renderPriority;
-        }
+        int D3DMaterial::RenderPriority() const noexcept { return m_renderPriority; }
 
         void D3DMaterial::SetTexture(uint slot, const D3DTexture* texture) noexcept
         {
@@ -188,5 +177,4 @@ namespace NS
                 mesh.CreateInputLayout(*m_vertexShader);
             }
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

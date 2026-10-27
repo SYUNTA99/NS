@@ -38,13 +38,10 @@ namespace NS
     struct HitReactionSet;
 } // namespace NS
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class DebugShapes;
-    }
-} // namespace NS
+} // namespace NS::Gfx
 
 //! シーンの編集操作と編集・プレイの切替を管理する
 class LevelEditorController : public NS::NonCopyable
@@ -439,13 +436,10 @@ private:
     [[nodiscard]] NS::SceneActor* SelectedActorFile();
 };
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! @brief material の値を、一時のファイルに書いてから filePath の .mat と置き換える
         //! @details .mat から読んだマテリアルでない時と、書けない値の時は書かずに false
         //! 書けなかった時は filePath の前の中身が残る
         [[nodiscard]] bool WriteMaterialFile(const AssetManager& assets, const Material& material, std::string_view filePath);
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

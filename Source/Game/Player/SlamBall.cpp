@@ -2,10 +2,8 @@
 
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         NS::Sphere SlamBallAt(const NS::Collider* collider, const NS::Vector3& rootPosition) noexcept
         {
             NS_ASSERT(Game, collider != nullptr, "SlamBallAt: 渡したアクターか部品が無い");
@@ -13,5 +11,4 @@ namespace GL
             const NS::Phys::Capsule capsule = collider->CapsuleAt(rootPosition);
             return NS::Sphere{capsule.center - capsule.axis * capsule.halfHeight, capsule.radius};
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

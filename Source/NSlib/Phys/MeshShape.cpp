@@ -7,10 +7,8 @@
 
 #include <utility>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         JPH::ShapeRefC CreateMeshShape(std::span<const Triangle> triangles)
         {
             if (triangles.empty())
@@ -30,5 +28,4 @@ namespace NS
             const JPH::MeshShapeSettings settings{std::move(list)};
             return ShapeOrNull(settings.Create());
         }
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys

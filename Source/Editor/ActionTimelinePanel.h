@@ -17,10 +17,8 @@
 class LevelEditorController;
 struct ImDrawList;
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! シーンで選んだアクターの .actor の動作を編集・下見する。編集は読んである .actor の文書へ即反映し、保存でファイルへ書く
         //! 下見は別シーンで 1 回当てて行い、編集中のシーンを変更しない
         class ActionTimelinePanel : public NonCopyable
@@ -104,5 +102,4 @@ namespace NS
             bool m_showPreview = false;
             bool m_panelVisible = false; // 直近の描画でパネルの中身が見えていたか
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

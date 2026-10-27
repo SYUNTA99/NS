@@ -9,10 +9,8 @@ namespace NS
     class SceneActor;
 } // namespace NS
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 溜め中の狙いと、放つ突進の向き・縦速度
         //! @details 突進中も向きは曲げない
         struct AimLine
@@ -46,5 +44,4 @@ namespace GL
             //! 段の予測。放つ縦の速さの道筋が launchContact で居る高さで、裁定と同じ面の判定で出す
             HitTier tier = HitTier::Wide;
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

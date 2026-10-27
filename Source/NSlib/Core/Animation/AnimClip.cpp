@@ -3,10 +3,8 @@
 #include <algorithm>
 #include <span>
 
-namespace NS
+namespace NS::Anim
 {
-    namespace Anim
-    {
         namespace
         {
             struct Segment
@@ -35,13 +33,11 @@ namespace NS
                     ++i;
                 }
                 const float span = times[i + 1] - times[i];
-                const float f = [&]() -> float {
-                    if (span > 0.0f)
-                    {
-                        return (t - times[i]) / span;
-                    }
-                    return 0.0f;
-                }();
+                float f = 0.0f;
+                if (span > 0.0f)
+                {
+                    f = (t - times[i]) / span;
+                }
 
                 return {i, i + 1, f};
             }
@@ -128,5 +124,4 @@ namespace NS
                 pose.scale = SampleVec3(track.scaleTimes, track.scaleValues, track.scaleInterp, t, pose.scale);
             }
         }
-    } // namespace Anim
-} // namespace NS
+} // namespace NS::Anim

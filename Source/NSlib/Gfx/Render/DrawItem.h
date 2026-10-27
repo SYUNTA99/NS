@@ -7,10 +7,8 @@
 
 #include <cstddef>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DMesh;
         class D3DMaterial;
         class D3DBuffer;
@@ -51,5 +49,4 @@ namespace NS
                                const DrawItem& item,
                                const D3DPipeline& pipeline,
                                const D3DShader& pixelShader) noexcept;
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

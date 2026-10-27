@@ -6,10 +6,8 @@
 #include <array>
 #include <cmath>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         namespace
         {
             // 非数と無限は割合として意味を持たないので 0。それ以外は lower〜upper へ丸める
@@ -426,5 +424,4 @@ namespace GL
         {
             m_face.remainderPowerScale = SanitizeScale(scale);
         }
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

@@ -2,10 +2,8 @@
 
 #include <array>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             struct HitZoneColorRow
@@ -39,5 +37,4 @@ namespace NS
             // 外れの行まで消した表。どの段とも見分けられる白
             return Color{1.0f, 1.0f, 1.0f, 1.0f};
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

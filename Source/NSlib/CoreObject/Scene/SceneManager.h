@@ -5,16 +5,17 @@
 
 #include <memory>
 
+namespace NS::Gfx
+{
+        class D3DDevice;
+} // namespace NS::Gfx
+
 namespace NS
 {
-    namespace Gfx
-    {
-        class D3DDevice;
-    }
     namespace Audio
     {
         class AudioDevice;
-    }
+    } // namespace Audio
 } // namespace NS
 
 namespace NS

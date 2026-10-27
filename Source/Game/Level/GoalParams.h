@@ -3,10 +3,8 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Object.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         class GoalParams : public NS::Object
         {
         public:
@@ -37,5 +35,4 @@ namespace GL
             float m_fadeOutSeconds = 0.4f;
             float m_fadeInSeconds = 0.4f;
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

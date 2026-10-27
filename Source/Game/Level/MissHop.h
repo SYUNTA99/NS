@@ -4,10 +4,8 @@
 
 #include "NSlib/Core/Types.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! 外れで飛んだ相手が着地のたびに跳ねる時の値
         struct MissHopDesc
         {
@@ -23,5 +21,4 @@ namespace GL
                                                   const MissHopDesc& desc,
                                                   NS::uint32 seed,
                                                   int hopIndex) noexcept;
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

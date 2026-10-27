@@ -11,29 +11,21 @@
 #include <functional>
 #include <vector>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         class Input;
         class InputPresses;
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS
 namespace NS
 {
     class SceneCamera;
 } // namespace NS
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class DebugShapes;
-    }
-} // namespace NS
-namespace NS
+} // namespace NS::Gfx
+namespace NS::Editor
 {
-    namespace Editor
-    {
         class IActorSnapshotApplier;
 
         //! CreateLevel の答え。作れなかった時は理由を返し、作成の窓が理由ごとの文を出す
@@ -238,5 +230,4 @@ namespace NS
             [[nodiscard]] bool SaveLevelToName(std::string_view name) noexcept;
             void OverwriteCurrentLevel() noexcept;
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

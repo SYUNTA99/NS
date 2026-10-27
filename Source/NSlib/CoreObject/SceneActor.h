@@ -19,6 +19,7 @@
 #include <concepts>
 #include <memory>
 #include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -35,6 +36,7 @@ namespace NS
     class Effect;
     class Sound;
     class HitReaction;
+    struct HitOwnerRun;
     class ActionTimeline;
     struct ActionTimelineSelf;
     class Message;
@@ -153,6 +155,11 @@ namespace NS
                               const Vector3& position,
                               const HitSensor* self,
                               const HitSensor* other);
+        //! StartHitReaction を呼び、この束が足した持ち主へ渡す項目の並びを返す
+        [[nodiscard]] std::span<const HitOwnerRun> StartHitReactionRuns(std::string_view name,
+                                                                        const Vector3& position,
+                                                                        const HitSensor* self,
+                                                                        const HitSensor* other);
         //! 当たりの止めの残りのフレーム数。止めていなければ 0
         [[nodiscard]] int HitStopFramesRemaining() const noexcept { return m_hitStopFrames; }
         //! 当たりの止めの間なら true
@@ -348,7 +355,21 @@ namespace NS
         uint32 m_id = 0;
         std::string m_name;
         std::string m_actorFileName; // 書くのは Init と、一覧へ入れる時と控えを当てる時の ActorList::ApplyIdentity
-        std::set<std::pair<std::string, std::string>> m_sceneOverrides; // シーンで上書きしている (部品の鍵, 欄の名前)
+        struct SceneOverrideKey
+        {
+            std::string classObjKey;
+            std::string fieldName;
+
+            [[nodiscard]] bool operator<(const SceneOverrideKey& other) const noexcept
+            {
+                if (classObjKey != other.classObjKey)
+                {
+                    return classObjKey < other.classObjKey;
+                }
+                return fieldName < other.fieldName;
+            }
+        };
+        std::set<SceneOverrideKey> m_sceneOverrides; // シーンで上書きしている (部品の鍵, 欄の名前)
         Scene* m_scene = nullptr;    // 入るシーン。書くのは Init だけ
         Presence m_presence = Presence::Disappeared;
         std::unique_ptr<Transform> m_transform;

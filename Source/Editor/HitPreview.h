@@ -19,18 +19,13 @@ namespace NS
     class Scene;
 } // namespace NS
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DDevice;
-    }
-} // namespace NS
+} // namespace NS::Gfx
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! @brief 下見の当たりの条件
         struct HitPreviewDesc
         {
@@ -97,5 +92,4 @@ namespace NS
 
         //! hits.jsonl と同じ形式の 1 行を返す。改行は含めず、未命中では空文字列
         [[nodiscard]] std::string HitPreviewHitLine(const HitPreviewResult& result);
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

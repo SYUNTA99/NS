@@ -5,10 +5,8 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         void LedgeHangingPlayerState::OnStep(::PlayerActor* player, float dt)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
@@ -32,5 +30,4 @@ namespace GL
             }
             player->Shimmy(dt);
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

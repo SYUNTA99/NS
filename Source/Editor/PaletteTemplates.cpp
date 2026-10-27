@@ -5,10 +5,8 @@
 #include <optional>
 #include <string_view>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             // 置ける物の一覧から 1 つを写してブラシにする。一覧に無い名前は空のブラシのまま
@@ -35,5 +33,4 @@ namespace NS
             }();
             return slots;
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

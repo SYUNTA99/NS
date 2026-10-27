@@ -12,10 +12,8 @@
 #include <string_view>
 #include <vector>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         struct HitPreviewResult;
 
         //! 末尾に事象を足し、行番号を返す。start は状態に入った歩を 0 とするフレームで、負は 0 にする。長さは既定の 1
@@ -43,5 +41,4 @@ namespace NS
         [[nodiscard]] std::vector<int> RowStartFrames(const HitPreviewResult& preview,
                                                       std::string_view actionName,
                                                       std::size_t row);
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

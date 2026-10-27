@@ -5,10 +5,8 @@
 #include <CommonStates.h>
 #include <memory>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         D3DCommonStates::D3DCommonStates(ID3D11Device* device) noexcept
         {
             if (device == nullptr)
@@ -21,10 +19,7 @@ namespace NS
 
         D3DCommonStates::~D3DCommonStates() = default;
 
-        bool D3DCommonStates::IsValid() const noexcept
-        {
-            return m_states != nullptr;
-        }
+        bool D3DCommonStates::IsValid() const noexcept { return m_states != nullptr; }
 
         ID3D11SamplerState* D3DCommonStates::LinearWrap() const noexcept
         {
@@ -64,5 +59,4 @@ namespace NS
 
             return nullptr;
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

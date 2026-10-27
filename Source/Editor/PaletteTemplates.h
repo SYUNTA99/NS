@@ -4,10 +4,8 @@
 
 #include <array>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! @brief 配置用オブジェクトのテンプレート情報
         struct PaletteTemplate
         {
@@ -23,5 +21,4 @@ namespace NS
 
         //! 初めの 1 回だけ置く物の一覧から組む。組む時に .actor を読むので投げうる
         [[nodiscard]] const std::array<PaletteTemplate, k_PaletteSlotCount>& PaletteTemplateSlots();
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

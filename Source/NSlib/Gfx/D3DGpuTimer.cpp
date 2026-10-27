@@ -6,10 +6,8 @@
 
 #include <chrono>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         namespace
         {
             // 描画装置が End まで進むのを待つ上限。1 フレームの描画はこれより十分に短い
@@ -127,5 +125,4 @@ namespace NS
             const double seconds = static_cast<double>(end - start) / static_cast<double>(disjoint.Frequency);
             return static_cast<float>(seconds * 1000.0);
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

@@ -1,9 +1,7 @@
 #include "Editor/Undo/CompositeCommand.h"
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         CompositeCommand::CompositeCommand(std::vector<std::unique_ptr<ICommand>> commands) noexcept
             : m_commands(std::move(commands))
         {}
@@ -65,5 +63,4 @@ namespace NS
             }
             return std::make_unique<CompositeCommand>(std::move(commands));
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

@@ -17,10 +17,8 @@ namespace NS
     struct Curve;
 } // namespace NS
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         struct EditorAppearance;
 
         //! @brief ActorRef の欄で参照可能なオブジェクトの選択肢
@@ -93,5 +91,4 @@ namespace NS
         {
             return DrawReflectedValue(&value, *T::StaticReflection());
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

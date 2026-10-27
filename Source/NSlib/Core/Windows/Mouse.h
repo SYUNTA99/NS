@@ -5,10 +5,8 @@
 #include <array>
 #include <cstddef>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         //! @brief マウスボタンの識別子
         enum class MouseButton : int
         {
@@ -105,5 +103,4 @@ namespace NS
             bool m_absOriginSet = false;
             bool m_relativeMode = false;
         };
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS

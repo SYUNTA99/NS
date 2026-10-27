@@ -3,10 +3,8 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! ロックオンの枠の見た目の調整値。TargetMarker が欄として持つ
         struct TargetMarkerDesc
         {
@@ -82,5 +80,4 @@ namespace GL
             // 隠れた矢じりに掛ける不透明度の割合。高い相手や自機に隠れた先も薄く見せる
             float occludedHeadAlpha = 0.7f;
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

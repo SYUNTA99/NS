@@ -16,10 +16,8 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         namespace
         {
             constexpr float k_MaxSlopeAngleRadians = 0.7853982f;
@@ -246,10 +244,7 @@ namespace NS
             m_character->SetLinearVelocity(correctedVelocity);
         }
 
-        Vector3 JoltCharacter::Position() const
-        {
-            return FromJolt(m_character->GetPosition());
-        }
+        Vector3 JoltCharacter::Position() const { return FromJolt(m_character->GetPosition()); }
 
         Vector3 JoltCharacter::Velocity() const
         {
@@ -275,5 +270,4 @@ namespace NS
         {
             return normalY >= k_MaxSlopeNormalY;
         }
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys

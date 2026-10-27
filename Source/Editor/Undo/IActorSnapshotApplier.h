@@ -6,10 +6,8 @@
 #include "NSlib/Core/Types.h"
 #include <optional>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! 永続 id ごとに現在状態を取得・適用する。適用後の物理や参照の同期も実装側が行う
         class IActorSnapshotApplier
         {
@@ -30,5 +28,4 @@ namespace NS
             //! DetachActor で外した物を外す前の並びの位置へ戻す
             virtual void ReattachActor(DetachedActor detached) = 0;
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

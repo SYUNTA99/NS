@@ -8,10 +8,8 @@
 #include <string>
 #include <utility>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         //! @brief アプリケーション起動時からの経過時間を計測する
         //! @details OS のシステム時刻変更の影響を受けず、<windows.h> にも依存しない
         class Clock
@@ -163,8 +161,7 @@ namespace NS
             std::string m_label;
             std::chrono::steady_clock::time_point m_startTime;
         };
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS
 
 #define NS_CLOCK_PASTE_IMPL(a, b) a##b
 #define NS_CLOCK_PASTE(a, b) NS_CLOCK_PASTE_IMPL(a, b)

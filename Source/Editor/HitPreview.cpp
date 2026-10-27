@@ -26,10 +26,8 @@
 #include <memory>
 #include <utility>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             // 置き直しを詰める回数の上限。面の位置と検知のフレームが合えば途中で止める
@@ -437,5 +435,4 @@ namespace NS
             root["padStart"] = nullptr;
             return root.dump(-1, ' ', false, Json::error_handler_t::replace);
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

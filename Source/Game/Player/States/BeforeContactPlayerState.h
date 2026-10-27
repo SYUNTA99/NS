@@ -4,10 +4,8 @@
 
 class PlayerActor;
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! @brief 突進の線の先の相手に触れる前の、当たる直前の突進
         //! @details 突進を続けながら、入る時に段の当たる直前の動作を始める。検知で突進を打ち切って出る時は
         //! 形と自機以外の止めを触れる瞬間まで残し、予測が外れて出る時は戻す
@@ -18,5 +16,4 @@ namespace GL
             void OnStep(::PlayerActor* player, float dt) override;
             void OnExit(::PlayerActor* player) override;
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

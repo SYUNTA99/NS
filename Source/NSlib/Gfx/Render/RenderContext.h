@@ -5,10 +5,8 @@
 
 #include <cmath>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DDevice;
         class ScreenOverlay;
 
@@ -92,5 +90,4 @@ namespace NS
                           viewProjection._32 * viewProjection._32);
             return length * verticalScale / projectedW * height * 0.5f;
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

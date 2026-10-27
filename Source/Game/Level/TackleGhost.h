@@ -12,10 +12,8 @@ namespace NS
     class Model;
 } // namespace NS
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 体当たりの残像。止めの間の左右の写しと、明けに当たった所へ残す写しを描く
         //! @details 同じアクターの Model のメッシュ・マテリアル・姿勢を借り、本体のマテリアルを半透明で重ねる。
         //! Model は覚えず、描く物の管理クラスが登録の組から渡す。持ち主は InitDraw で自分の Model と一緒に入れる。
@@ -78,5 +76,4 @@ namespace GL
             NS::Matrix m_afterimageWorld = NS::Matrix::Identity;
             float m_afterimageOpacity = 0.0f;
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

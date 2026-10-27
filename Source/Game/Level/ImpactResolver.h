@@ -18,13 +18,10 @@
 #include <string>
 #include <vector>
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         class PlayerParams;
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player
 
 namespace NS
 {
@@ -35,10 +32,8 @@ namespace NS
     class HitSensorDirector;
 } // namespace NS
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! PlayerParams と現在の固定ステップから、配分に使う全調整値を作る
         [[nodiscard]] ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams* params) noexcept;
 
@@ -259,5 +254,4 @@ namespace GL
             bool m_hasObservedTarget = false;
             bool m_stateReady = false;
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

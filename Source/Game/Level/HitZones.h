@@ -7,10 +7,8 @@
 
 #include <vector>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 相手の面の赤領域と、領域内外の威力倍率
         //! @details 面上の位置は左右 u・上下 v で、どちらも -1〜1
         struct HitFace
@@ -149,5 +147,4 @@ namespace GL
         private:
             HitFace m_face;
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

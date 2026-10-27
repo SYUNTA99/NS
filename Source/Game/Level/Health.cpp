@@ -1,9 +1,7 @@
 #include "Game/Level/Health.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         void Health::SetMaxHealth(int value) noexcept
         {
             if (value > 0)
@@ -29,5 +27,4 @@ namespace GL
                 m_current = 0;
             }
         }
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

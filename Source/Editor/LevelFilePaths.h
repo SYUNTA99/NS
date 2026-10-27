@@ -4,10 +4,8 @@
 #include <string>
 #include <string_view>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! @brief Assets からの相対パスを検証・正規化する。区切りは '/'
         //! @details 各セグメントを SanitizeLevelName で検証し、'..'・絶対パス・'\'・空セグメントを排除する
         //! @return 検証に失敗した場合は空文字列を返す
@@ -26,5 +24,4 @@ namespace NS
         //! @brief レベル保存用ディレクトリが存在することを確認し、なければ作成する
         //! @return 作成に失敗した場合は false を返す
         [[nodiscard]] bool EnsureScenesDirectoryExists() noexcept;
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

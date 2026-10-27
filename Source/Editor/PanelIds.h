@@ -1,9 +1,7 @@
 #pragma once
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! 表示名を変えるパネルは 表示名###ID の形式を使い、### 以降の識別子を固定する
         inline constexpr const char* k_PanelScene = "Scene";
         inline constexpr const char* k_PanelGame = "Game";
@@ -14,5 +12,4 @@ namespace NS
         inline constexpr const char* k_PanelAssets = "Assets";
         inline constexpr const char* k_PanelEditMode = "Edit Mode";
         inline constexpr const char* k_PanelActionTimeline = "動作のタイムライン###ActionTimeline";
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

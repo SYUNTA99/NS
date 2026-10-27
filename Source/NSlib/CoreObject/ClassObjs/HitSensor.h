@@ -8,13 +8,10 @@
 #include "NSlib/Core/Types.h"
 #include <functional>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         struct Capsule;
-    }
-} // namespace NS
+} // namespace NS::Phys
 
 namespace NS
 {

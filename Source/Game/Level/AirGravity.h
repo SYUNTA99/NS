@@ -2,10 +2,8 @@
 
 #include <cmath>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 空中の重力の組。上りと下りで強さを分け、頂点付近を弱める
         //! @details 自機の移動・突進の予測・飛ばされて曲がった後の置物が、同じ ChooseGravity で重力を選ぶ
         struct AirGravity
@@ -31,5 +29,4 @@ namespace GL
             }
             return strength;
         }
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

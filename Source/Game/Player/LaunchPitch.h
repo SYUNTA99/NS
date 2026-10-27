@@ -2,10 +2,8 @@
 
 #include "Game/Level/AirGravity.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! @brief 放った玉の道筋の入力
         //! @details 自機と同じ重力・順序で、速度を更新してから位置を進める
         struct LaunchPath
@@ -58,5 +56,4 @@ namespace GL
         //! 指定高さに届く縦速度を、LaunchHeightAt と同じ道筋で探す。接地中は下向きに放たない
         //! 不正な入力か角度上限内で届かない場合は reachable が false、縦速度は 0
         [[nodiscard]] LaunchPitchResult LaunchPitch(const LaunchPitchDesc& desc) noexcept;
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

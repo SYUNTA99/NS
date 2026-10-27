@@ -3,10 +3,8 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Gfx/Render/RenderSettings.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! 衝突点からの距離に応じて遅れる頂点の震え。振れ幅 0 で無効
         //! contactOffset は描画姿勢に追従する。計算式は Shaders/Common.hlsli の TremorOffset
         struct alignas(16) TremorCB
@@ -49,5 +47,4 @@ namespace NS
         };
         static_assert(sizeof(FrameCB) == 288, "FrameCB size は standard.vs と完全一致 (288 byte)");
         static_assert(alignof(FrameCB) == 16, "FrameCB は 16 byte alignment");
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

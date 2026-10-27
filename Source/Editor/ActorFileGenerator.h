@@ -7,10 +7,8 @@
 #include <string>
 #include <vector>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! @brief actorFile に、そのクラスのコードの値で、書いていない項目を書き足した文書
         //! @details 書いてある項目は値のまま残す。参照の欄は書かない。
         //! 派生の .actor は元から受け継ぐので、そのまま返す。登録の無いクラスもそのまま返す。
@@ -22,5 +20,4 @@ namespace NS
         //! 読めないファイルは ERROR を出して飛ばす
         //! @return 書いたファイルの数
         int GenerateActorFiles(const std::string& directory);
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

@@ -4,10 +4,8 @@
 
 #include <algorithm>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         std::optional<int> ActionOriginIndex(const HitPreviewResult& preview, std::string_view actionName) noexcept
         {
             for (std::size_t i = 0; i < preview.frames.size(); ++i)
@@ -87,5 +85,4 @@ namespace NS
             }
             return starts;
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

@@ -5,10 +5,8 @@
 
 #include <memory>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DTexture;
 
         //! @brief シーンをテクスチャへ描くためのオフスクリーン描画先
@@ -52,5 +50,4 @@ namespace NS
             std::unique_ptr<D3DTexture> m_color; // カラー (RTV+SRV)
             std::unique_ptr<D3DTexture> m_depth; // 深度 (DSV)
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

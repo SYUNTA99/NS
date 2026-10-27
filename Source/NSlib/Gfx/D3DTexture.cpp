@@ -12,10 +12,8 @@
 #include <WICTextureLoader.h>
 #include <algorithm>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         namespace
         {
             [[nodiscard]] ComPtr<ID3D11Texture2D> AsTexture2D(ID3D11Resource* resource) noexcept
@@ -496,33 +494,31 @@ namespace NS
 
         D3DTexture::~D3DTexture() = default;
 
-        bool D3DTexture::IsValid() const noexcept
+        bool D3DTexture::IsValid() const noexcept { return m_srv || m_rtv || m_dsv; }
+        Size2D D3DTexture::Size() const noexcept { return m_size; }
+        bool D3DTexture::IsUsingFallback() const noexcept { return m_fallback; }
+        ID3D11Texture2D* D3DTexture::Native() const noexcept { return m_tex.Get(); }
+        ID3D11ShaderResourceView* D3DTexture::Srv() const noexcept { return m_srv.Get(); }
+        ID3D11RenderTargetView* D3DTexture::Rtv() const noexcept { return m_rtv.Get(); }
+        ID3D11DepthStencilView* D3DTexture::Dsv() const noexcept { return m_dsv.Get(); }
+
+        ComPtr<ID3D11Texture2D> ViewTexture2D(ID3D11View* view, D3D11_TEXTURE2D_DESC* outDesc) noexcept
         {
-            return m_srv || m_rtv || m_dsv;
+            if (view == nullptr)
+            {
+                return nullptr;
+            }
+            ComPtr<ID3D11Resource> resource;
+            view->GetResource(resource.GetAddressOf());
+            ComPtr<ID3D11Texture2D> texture;
+            if (resource == nullptr || FAILED(resource.As(&texture)))
+            {
+                return nullptr;
+            }
+            if (outDesc != nullptr)
+            {
+                texture->GetDesc(outDesc);
+            }
+            return texture;
         }
-        Size2D D3DTexture::Size() const noexcept
-        {
-            return m_size;
-        }
-        bool D3DTexture::IsUsingFallback() const noexcept
-        {
-            return m_fallback;
-        }
-        ID3D11Texture2D* D3DTexture::Native() const noexcept
-        {
-            return m_tex.Get();
-        }
-        ID3D11ShaderResourceView* D3DTexture::Srv() const noexcept
-        {
-            return m_srv.Get();
-        }
-        ID3D11RenderTargetView* D3DTexture::Rtv() const noexcept
-        {
-            return m_rtv.Get();
-        }
-        ID3D11DepthStencilView* D3DTexture::Dsv() const noexcept
-        {
-            return m_dsv.Get();
-        }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

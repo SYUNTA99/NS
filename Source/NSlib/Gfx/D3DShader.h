@@ -10,10 +10,8 @@
 #include <string>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         // 定数バッファの場所はここだけに書く。HLSL の register(bN) は C++ から読めないので、
         // shader_constants_test がシェーダーを反射で読んで場所と大きさを照らす
 
@@ -127,5 +125,4 @@ namespace NS
             uint64 m_bytecodeId = 0;
             bool m_fallback = false;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

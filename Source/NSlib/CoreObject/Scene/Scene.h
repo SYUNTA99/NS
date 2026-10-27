@@ -25,20 +25,18 @@
 #include <utility>
 #include <vector>
 
+namespace NS::Gfx
+{
+    class EffectScene;
+    class D3DDevice;
+} // namespace NS::Gfx
+
 namespace NS
 {
-    namespace Gfx
-    {
-        class EffectScene;
-    }
-    namespace Gfx
-    {
-        class D3DDevice;
-    }
     namespace Audio
     {
         class AudioDevice;
-    }
+    } // namespace Audio
 } // namespace NS
 
 namespace NS

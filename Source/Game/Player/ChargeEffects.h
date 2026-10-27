@@ -15,18 +15,13 @@ namespace NS
     class IGetEffect;
 }
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         struct ImpactAnswer;
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         class BodySlamStatus;
         class ChargeStatus;
         class PlayerAppearance;
@@ -171,5 +166,4 @@ namespace GL
             float m_spinDegrees = 0.0f;       // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
             NS::Vector3 m_slamDirection;
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

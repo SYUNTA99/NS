@@ -6,10 +6,8 @@
 
 #include <cmath>
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         PlayerParams::PlayerParams() noexcept
         {
             m_chargeFactorCurve.count = 2;
@@ -62,5 +60,4 @@ namespace GL
                                         .apexBandSpeed = gravity.apexSpeed,
                                         .apexBandGravityScale = gravity.apexScale};
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

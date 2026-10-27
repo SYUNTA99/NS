@@ -36,23 +36,18 @@ namespace NS
     class PlayerInput;
 } // namespace NS
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         class PlayerParams;
         class PlayerClips;
         class PlayerAppearance;
         class ChargeEffects;
         class ImpactEffects;
         class PlayerSounds;
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         class ImpactResolver;
         class TargetMarker;
         class SlamArrow;
@@ -60,8 +55,7 @@ namespace GL
         struct ImpactAnswer;
         struct ImpactRecord;
         struct ImpactSelf;
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level
 
 //! @brief 固定の部品を OnInit で組むプレイヤー
 //! @details 衝突の観測・裁定を身体の移動より先に行う。死とゴールは Scene の CourseDirector に通知する

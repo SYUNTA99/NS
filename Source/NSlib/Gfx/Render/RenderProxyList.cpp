@@ -7,10 +7,8 @@
 
 #include <algorithm>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         RenderHandle RenderProxyList::Register(const RenderProxyDesc& desc)
         {
             uint32 slot = static_cast<uint32>(m_proxies.size());
@@ -125,5 +123,4 @@ namespace NS
             return handle.slot < m_proxies.size() && m_proxies[handle.slot].alive &&
                    m_proxies[handle.slot].generation == handle.generation;
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

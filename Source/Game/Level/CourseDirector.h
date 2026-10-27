@@ -18,10 +18,8 @@ namespace NS
     } // namespace Audio
 } // namespace NS
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 死とゴールに応じてコースを再開するシーン共通処理
         //! @details クリア時は操作を止め、世界を動かしたまま暗転・再開・明転する
         class CourseDirector final : public NS::SceneSystem
@@ -96,5 +94,4 @@ namespace GL
             std::unique_ptr<NS::Audio::SoundLoop> m_music; // 音を出せない時は nullptr
             bool m_musicStarted = false;                   // StartMusic から StopMusic までの間か
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

@@ -12,10 +12,8 @@
 #include <utility>
 #include <vector>
 
-namespace NS
+namespace NS::detail
 {
-    namespace detail
-    {
         //! 重みの合計を 1 に揃える。合計がほぼ 0 の頂点は、全部 0 のままだと原点へ潰れるので骨 0 に重み 1 を載せる
         inline void NormalizeJointWeights(std::array<uint32, 4>& joints, std::array<float, 4>& weights) noexcept
         {
@@ -126,5 +124,4 @@ namespace NS
             bones = std::move(sorted);
             return oldToNew;
         }
-    } // namespace detail
-} // namespace NS
+} // namespace NS::detail

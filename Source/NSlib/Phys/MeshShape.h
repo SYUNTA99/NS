@@ -9,10 +9,8 @@
 #include <span>
 #include <vector>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         //! 静的 body 用の三角形と Jolt 形状。歪みのないアクター間で形状を共有する
         struct MeshShape
         {
@@ -22,5 +20,4 @@ namespace NS
 
         //! Jolt を初期化して三角形を作る。入力なし・生成失敗時は空
         [[nodiscard]] JPH::ShapeRefC CreateMeshShape(std::span<const Triangle> triangles);
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys

@@ -15,10 +15,7 @@ namespace NS
         UnloadScene();
     }
 
-    void SceneManager::SetDevice(Gfx::D3DDevice* device) noexcept
-    {
-        m_device = device;
-    }
+    void SceneManager::SetDevice(Gfx::D3DDevice* device) noexcept { m_device = device; }
 
     void SceneManager::SetAudioDevice(Audio::AudioDevice* device) noexcept
     {
@@ -47,15 +44,9 @@ namespace NS
         m_current.reset();
     }
 
-    Scene* SceneManager::Current() noexcept
-    {
-        return m_current.get();
-    }
+    Scene* SceneManager::Current() noexcept { return m_current.get(); }
 
-    const Scene* SceneManager::Current() const noexcept
-    {
-        return m_current.get();
-    }
+    const Scene* SceneManager::Current() const noexcept { return m_current.get(); }
 
     void SceneManager::Update()
     {

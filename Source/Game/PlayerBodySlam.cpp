@@ -38,10 +38,7 @@ namespace
     }
 } // namespace
 
-bool PlayerActor::AcceptsBodySlamRequest() const noexcept
-{
-    return !IsBodySlamming() && CanMoveBody();
-}
+bool PlayerActor::AcceptsBodySlamRequest() const noexcept { return !IsBodySlamming() && CanMoveBody(); }
 
 void PlayerActor::RequestBodySlam(float charge01, float overcharge01) noexcept
 {
@@ -499,10 +496,7 @@ void PlayerActor::SetCurled(bool curled) noexcept
     ChangeCurled(curled);
 }
 
-bool PlayerActor::IsCurled() const noexcept
-{
-    return m_collider->IsSphereShape();
-}
+bool PlayerActor::IsCurled() const noexcept { return m_collider->IsSphereShape(); }
 
 void PlayerActor::ChangeCurled(bool curled) noexcept
 {

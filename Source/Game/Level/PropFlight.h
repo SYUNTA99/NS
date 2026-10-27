@@ -2,10 +2,8 @@
 
 #include "NSlib/Core/Math.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 置物が今どう飛んでいるか
         //! @details PropActor::Flight が呼ばれた時の状態機械から組む。状態は状態の段の途中で変わるので、控えて持たない
         struct PropFlight
@@ -14,5 +12,4 @@ namespace GL
             NS::Vector3 velocity{}; // 自分で動かしている速度。単位は m/s
             bool arc = false;       // 飛んでいる中でも曲線の上にいるか
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

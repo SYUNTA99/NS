@@ -9,10 +9,8 @@
 #include <memory>
 #include <string>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! path があれば画像から読み、空なら指定の寸法・形式で空のテクスチャを作る
         //! path も寸法もなければ 1×1 の代替画像
         struct D3DTextureDesc
@@ -89,5 +87,8 @@ namespace NS
             Size2D m_size{0, 0};
             bool m_fallback = false;
         };
-    } // namespace Gfx
-} // namespace NS
+
+        //! RTV / DSV などのビューから裏の 2D テクスチャを取る。outDesc を渡すと記述も埋める。2D でなければ nullptr
+        [[nodiscard]] ComPtr<ID3D11Texture2D> ViewTexture2D(ID3D11View* view,
+                                                            D3D11_TEXTURE2D_DESC* outDesc = nullptr) noexcept;
+} // namespace NS::Gfx

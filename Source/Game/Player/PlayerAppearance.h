@@ -8,18 +8,13 @@
 #include "NSlib/Core/Types.h"
 #include <string>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         struct ImpactAnswer;
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         class BodySlamStatus;
         class ChargeStatus;
         class ReboundStatus;
@@ -161,5 +156,4 @@ namespace GL
             float m_chargeSquashScale = 0.95f;
             float m_pressSquashScale = 0.97f;
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player
