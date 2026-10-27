@@ -4,8 +4,8 @@
 
 namespace NS
 {
-    //! エフェクトの絵を名前で指す欄の値
-    //! 欄は名前だけを持ち、絵を読むのは PreloadEffects と PlayEffect から渡された EffectKeeper。
+    //! @brief エフェクトの絵を名前で指す欄の値
+    //! @details 欄は名前だけを持ち、絵を読むのは PreloadEffects と PlayEffect から渡された Effect。
     //! 保存とインスペクタは名前の文字列を扱い、インスペクタはエフェクトの一覧から選ばせる
     struct EffectName
     {

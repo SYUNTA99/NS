@@ -3,6 +3,7 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/IGet/IGetAudio.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/IGet/IGetEffect.h"
@@ -32,7 +33,8 @@ namespace NS
     class Animation;
     class Shadow;
     class Collision;
-    class EffectKeeper;
+    class Effect;
+    class Sound;
     class HitReaction;
     struct HitOwnerRun;
     class ActionTimeline;
@@ -48,6 +50,7 @@ namespace NS
                        public IGetSceneSystem,
                        public IGetCollision,
                        public IGetEffect,
+                       public IGetAudio,
                        public IGetHitSensor,
                        public IGetRenderer,
                        public IGetState
@@ -96,8 +99,11 @@ namespace NS
         [[nodiscard]] HitSensorDirector* GetHitSensorDirector() const noexcept override;
         [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
         // 出したエフェクトを記録する部品。持たなければ nullptr
-        [[nodiscard]] EffectKeeper* GetEffectKeeper() const noexcept override { return m_effectKeeper.get(); }
+        [[nodiscard]] Effect* GetEffect() const noexcept override { return m_effect.get(); }
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept override;
+        // 読んだ音を覚える部品。持たなければ nullptr
+        [[nodiscard]] Sound* GetSound() const noexcept override { return m_sound.get(); }
+        [[nodiscard]] Audio::AudioDevice* GetAudioDevice() const noexcept override;
 
         //! 個体の位置・回転・大きさを持つ部品
         [[nodiscard]] Transform& Root() noexcept;
@@ -376,7 +382,8 @@ namespace NS
         std::unique_ptr<HitSensor> m_bodySensor;
         std::unique_ptr<HitSensor> m_attackSensor;
         std::unique_ptr<HitReaction> m_hitReaction;
-        std::unique_ptr<EffectKeeper> m_effectKeeper;
+        std::unique_ptr<Effect> m_effect;
+        std::unique_ptr<Sound> m_sound;
         std::unique_ptr<ActionTimeline> m_actionTimeline;
         // 状態が借りる部品より先に壊すので、部品の最後に置く。組むのは BuildStateMachine だけ
         std::unique_ptr<StateMachine> m_stateMachine;

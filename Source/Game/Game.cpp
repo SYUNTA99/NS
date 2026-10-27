@@ -38,6 +38,7 @@ void Game::OnAttach()
 
     // LoadScene で立てるシーンへ引き継ぐので、LoadScene より前に呼ぶ
     m_scenes.SetDevice(&app->Device());
+    m_scenes.SetAudioDevice(app->AudioDevice());
 
     // 同梱シーンを読む。読めなければ何も置かない空のシーンを立てる
     // 遊べる物を代わりに合成すると、パッケージの取りこぼしが遊べる風の画面に隠れて気づけない
@@ -100,6 +101,11 @@ bool Game::LoadScene(std::string_view scenePath)
     // 欠けた物の補完はしない。プレイヤーの居ないシーンはそのまま立て、足りない事実を隠さない
     (void)m_scenes.LoadScene(std::move(data));
     StartLoadedScene();
+    // 曲を始めるのはファイルのシーンを立てた Game.exe だけ。エディタは空のシーンで立ち、プレイを始める時に曲を始める
+    if (GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(m_scenes.Current()))
+    {
+        (void)director->StartMusic(); // 立てたばかりのシーンなので必ず始まる
+    }
     return true;
 }
 

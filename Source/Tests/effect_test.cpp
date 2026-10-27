@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -26,18 +26,18 @@ namespace
         }
     };
 
-    using NS::EffectKeeper;
+    using NS::Effect;
     using NS::EffectRecord;
 } // namespace
 
-TEST(EffectKeeperTest, PlayWithoutAnEffectSceneLeavesOneRecord)
+TEST(EffectTest, PlayWithoutAnEffectSceneLeavesOneRecord)
 {
-    EffectKeeper keeper;
-    const NS::uint32 id = keeper.Play(nullptr, "test.spark", NS::Gfx::EffectPlayDesc{});
+    Effect effect;
+    const NS::uint32 id = effect.Play(nullptr, "test.spark", NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
-    ASSERT_EQ(keeper.Records().size(), 1u);
-    const EffectRecord* record = keeper.Find(id);
+    ASSERT_EQ(effect.Records().size(), 1u);
+    const EffectRecord* record = effect.Find(id);
     ASSERT_NE(record, nullptr);
     EXPECT_EQ(record->name, "test.spark");
     EXPECT_EQ(record->startStep, 0);
@@ -45,17 +45,17 @@ TEST(EffectKeeperTest, PlayWithoutAnEffectSceneLeavesOneRecord)
     EXPECT_FALSE(record->handle.IsValid());
 }
 
-TEST(EffectKeeperTest, StopWritesTheStepItEndedOn)
+TEST(EffectTest, StopWritesTheStepItEndedOn)
 {
-    EffectKeeper keeper;
-    keeper.BeginStep(nullptr);
-    const NS::uint32 id = keeper.Play(nullptr, "test.spark", NS::Gfx::EffectPlayDesc{});
-    keeper.BeginStep(nullptr);
-    keeper.StopRoot(nullptr, id);
-    keeper.BeginStep(nullptr);
-    keeper.Stop(nullptr, id);
+    Effect effect;
+    effect.BeginStep(nullptr);
+    const NS::uint32 id = effect.Play(nullptr, "test.spark", NS::Gfx::EffectPlayDesc{});
+    effect.BeginStep(nullptr);
+    effect.StopRoot(nullptr, id);
+    effect.BeginStep(nullptr);
+    effect.Stop(nullptr, id);
 
-    const EffectRecord* record = keeper.Find(id);
+    const EffectRecord* record = effect.Find(id);
     ASSERT_NE(record, nullptr);
     EXPECT_EQ(record->startStep, 1);
     ASSERT_TRUE(record->rootStopStep.has_value());
@@ -64,43 +64,43 @@ TEST(EffectKeeperTest, StopWritesTheStepItEndedOn)
     EXPECT_EQ(record->endStep.value(), 3);
 }
 
-TEST(EffectKeeperTest, StopAfterEndsOnTheScheduledStep)
+TEST(EffectTest, StopAfterEndsOnTheScheduledStep)
 {
-    EffectKeeper keeper;
-    const NS::uint32 id = keeper.Play(nullptr, "test.spark", NS::Gfx::EffectPlayDesc{});
-    keeper.StopAfter(id, 2);
+    Effect effect;
+    const NS::uint32 id = effect.Play(nullptr, "test.spark", NS::Gfx::EffectPlayDesc{});
+    effect.StopAfter(id, 2);
 
-    keeper.BeginStep(nullptr);
-    EXPECT_FALSE(keeper.Find(id)->endStep.has_value());
-    keeper.BeginStep(nullptr);
-    ASSERT_TRUE(keeper.Find(id)->endStep.has_value());
-    EXPECT_EQ(keeper.Find(id)->endStep.value(), 2);
+    effect.BeginStep(nullptr);
+    EXPECT_FALSE(effect.Find(id)->endStep.has_value());
+    effect.BeginStep(nullptr);
+    ASSERT_TRUE(effect.Find(id)->endStep.has_value());
+    EXPECT_EQ(effect.Find(id)->endStep.value(), 2);
 }
 
-TEST(EffectKeeperTest, EndedRecordIsDroppedAfterTheKeepSteps)
+TEST(EffectTest, EndedRecordIsDroppedAfterTheKeepSteps)
 {
-    EffectKeeper keeper{3};
-    const NS::uint32 id = keeper.Play(nullptr, "test.spark", NS::Gfx::EffectPlayDesc{});
-    keeper.Stop(nullptr, id);
+    Effect effect{3};
+    const NS::uint32 id = effect.Play(nullptr, "test.spark", NS::Gfx::EffectPlayDesc{});
+    effect.Stop(nullptr, id);
 
     for (int step = 0; step < 3; ++step)
     {
-        keeper.BeginStep(nullptr);
+        effect.BeginStep(nullptr);
     }
-    EXPECT_NE(keeper.Find(id), nullptr);
-    keeper.BeginStep(nullptr);
-    EXPECT_EQ(keeper.Find(id), nullptr);
+    EXPECT_NE(effect.Find(id), nullptr);
+    effect.BeginStep(nullptr);
+    EXPECT_EQ(effect.Find(id), nullptr);
 }
 
-TEST(EffectKeeperTest, AmountAndRotationAreWrittenToTheRecord)
+TEST(EffectTest, AmountAndRotationAreWrittenToTheRecord)
 {
-    EffectKeeper keeper;
-    const NS::uint32 id = keeper.Play(nullptr, "test.spark", NS::Gfx::EffectPlayDesc{});
+    Effect effect;
+    const NS::uint32 id = effect.Play(nullptr, "test.spark", NS::Gfx::EffectPlayDesc{});
     const NS::Quaternion turned = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, 1.0f);
-    keeper.SetAmount(id, 2.5f);
-    keeper.SetRotation(id, turned);
+    effect.SetAmount(id, 2.5f);
+    effect.SetRotation(id, turned);
 
-    const EffectRecord* record = keeper.Find(id);
+    const EffectRecord* record = effect.Find(id);
     ASSERT_NE(record, nullptr);
     ASSERT_TRUE(record->amount.has_value());
     EXPECT_FLOAT_EQ(record->amount.value(), 2.5f);
@@ -108,27 +108,27 @@ TEST(EffectKeeperTest, AmountAndRotationAreWrittenToTheRecord)
     EXPECT_EQ(record->rotation.value(), turned);
 }
 
-TEST(EffectKeeperTest, ActorUpdateAdvancesTheSlotKeeperOnce)
+TEST(EffectTest, ActorUpdateAdvancesTheSlotKeeperOnce)
 {
     NS::Scene scene;
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
-    EffectKeeper* keeper = actor.GetEffectKeeper();
-    ASSERT_NE(keeper, nullptr);
-    ASSERT_EQ(keeper->Step(), 0);
+    Effect* effect = actor.GetEffect();
+    ASSERT_NE(effect, nullptr);
+    ASSERT_EQ(effect->Step(), 0);
 
     actor.Update();
-    EXPECT_EQ(keeper->Step(), 1);
+    EXPECT_EQ(effect->Step(), 1);
 }
 
-TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
+TEST(EffectTest, SlotKeeperIsOrderedAfterHitReaction)
 {
     const std::unique_ptr<ReactionEffectActor> owned = NS::CreateActor<ReactionEffectActor>();
     ReactionEffectActor& actor = *owned;
-    NS::Object* keeper = actor.GetEffectKeeper();
+    NS::Object* effect = actor.GetEffect();
     NS::Object* reaction = actor.HitReactionClassObj();
-    ASSERT_NE(keeper, nullptr);
+    ASSERT_NE(effect, nullptr);
     ASSERT_NE(reaction, nullptr);
 
     std::vector<NS::Object*> parts;
@@ -139,6 +139,6 @@ TEST(EffectKeeperTest, SlotKeeperIsOrderedAfterHitReaction)
     });
     ASSERT_EQ(parts.size(), 3u);
     EXPECT_EQ(parts[1], reaction);
-    EXPECT_EQ(parts[2], keeper);
+    EXPECT_EQ(parts[2], effect);
     EXPECT_EQ(keys[2], "Effect");
 }

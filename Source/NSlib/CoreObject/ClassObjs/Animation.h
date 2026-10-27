@@ -32,11 +32,14 @@ namespace NS
         [[nodiscard]] const Anim::Skeleton* Skeleton() const noexcept { return m_skeleton; }
 
         void Play() noexcept;
-        //! clip を時刻 0 から再生する。現在のクリップと同じなら何もしない
-        //! clip は非所有。nullptr を渡すとクリップを外し、バインドポーズに戻す
-        void Play(const Anim::AnimClip* clip);
+        //! @brief clip を今のクリップにして、時刻を 0 から再生する。今と同じクリップなら何もしない
+        //! @details clip のトラックの骨を、今の骨格で名前から 1 回だけ引いて控える。clip の寿命は AssetManager が保つ
+        //! nullptr を渡すとクリップを外し、骨格の基準の姿勢を描く
+        //! blendSeconds が正なら、最後に作った姿勢を保存し、そこから clip の姿勢へ blendSeconds かけて混ぜる。秒は dt で数え、再生速度を掛けない。
+        //! 止めている時・前のクリップが無いか有効でない時・まだ姿勢を作っていない時・blendSeconds が 0 以下か非数の時は混ぜない
+        void Play(const Anim::AnimClip* clip, float blendSeconds = 0.0f);
         void Pause() noexcept;
-        //! 再生時刻を 0 に戻して停止する
+        //! 再生時刻を 0 に戻して停止する。補間の途中ならやめる
         void Stop() noexcept;
         //! 非有限値は無視して直前の値を残す。負値は 0 にクランプする
         void SetSpeed(float speed) noexcept;
@@ -47,6 +50,8 @@ namespace NS
         //! 現在クリップの尺 (秒)。無ければ 0
         [[nodiscard]] float Duration() const noexcept;
         [[nodiscard]] bool IsPlaying() const noexcept;
+        //! 最後の Update で作った各骨のローカルの姿勢。補間の途中なら混ぜた後の姿勢。骨格が無い間は空
+        [[nodiscard]] std::span<const Anim::BonePose> LocalPose() const noexcept { return m_pose; }
 
         //! ボーンパレット用の定数バッファを作成して renderer へ登録し、現在時刻の姿勢を適用する
         void BindToModel(Model* renderer);
@@ -64,7 +69,11 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        void ApplyPose(Model* renderer, float time);
+        // 今の時刻の姿勢を m_pose に作る。補間の途中なら保存した姿勢と混ぜる。メッシュは見ない
+        void EvaluatePose(float time);
+        // m_pose からボーンパレットと描く範囲を作って renderer へ書く
+        void ApplyPose(Model* renderer);
+        // 今のクリップのトラックの骨を、今の骨格で名前から引き直す
         void FindClipBones();
 
         Gfx::D3DSkeletalMesh* m_mesh = nullptr;
@@ -76,8 +85,12 @@ namespace NS
         float m_speed = 1.0f;
         bool m_playing = true;
         bool m_looping = true;
-        std::vector<Anim::BonePose> m_poseScratch;
-        std::vector<Matrix> m_paletteScratch;
+        std::vector<Anim::BonePose> m_pose;        // 最後に作った姿勢
+        std::vector<Anim::BonePose> m_blendFrom;   // 切り替えの瞬間に保存した姿勢。混ぜていない間は空
+        float m_blendSeconds = 0.0f;
+        float m_blendElapsed = 0.0f;
+        std::vector<Anim::BonePose> m_poseScratch; // サンプリング結果の一時ポーズ
+        std::vector<Matrix> m_paletteScratch;     // ボーンパレットの一時バッファ
 
         std::unique_ptr<Gfx::D3DBuffer> m_bonePaletteCB;
         Gfx::BonePaletteCB m_palette;

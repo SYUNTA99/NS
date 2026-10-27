@@ -32,10 +32,19 @@ namespace NS
 
 namespace NS
 {
+    namespace Audio
+    {
+        class AudioDevice;
+    } // namespace Audio
+} // namespace NS
+
+namespace NS
+{
     class AnimClip;
     class AssetManager;
     class Shader;
     class SkinnedModel;
+    class SoundClip;
     class Texture;
 
     //! アセット相対パスを ContentRoot 配下の絶対パスへ正規化する
@@ -106,6 +115,14 @@ namespace NS
         //! 空の名前は「使わない」で警告しない。読めない名前は最初の 1 回だけ警告し、Clear まで同じクリップを返す
         [[nodiscard]] AnimClip* LoadAnimClip(std::string_view name);
 
+        //! @brief 音を作る装置を渡す。LoadSoundClip を呼ぶ前に呼ぶ
+        //! @details 渡さない間 (テスト・Replay・差していない時の AssetManager) は、LoadSoundClip がファイルを読まない
+        void SetAudioDevice(Audio::AudioDevice* device) noexcept;
+        //! @brief ContentRoot からの WAV の道筋の音を返す。nullptr を返さない
+        //! @details 装置を受け取っていない時は、ファイルを読まずに音の無い SoundClip を返し、ERROR を出さない。
+        //! 装置があって読めない時は ERROR を出して音の無い SoundClip を返す。Clear まで同じ SoundClip を返す
+        [[nodiscard]] SoundClip* LoadSoundClip(std::string_view path);
+
         //! コードで作る組み込みの形 cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad の名前
         [[nodiscard]] static std::span<const std::string_view> BuiltinMeshNames() noexcept;
         //! 組み込みの形が坂なら、頂点を作るのと同じ角度 (度)。坂でない名前と組み込みでない名前は nullopt
@@ -174,6 +191,10 @@ namespace NS
         std::map<std::string, std::unique_ptr<AnimSource>>  m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録
         // 読めなかった名前も、中身の空のクリップとして覚える
         std::map<std::string, std::unique_ptr<AnimClip>> m_animClips;
+        // 音を作る装置。持ち主は Application で、AssetManager より長く生きる
+        Audio::AudioDevice* m_audioDevice = nullptr;
+        // 読めなかった道筋も、音の無い SoundClip として覚える
+        std::map<std::string, std::unique_ptr<SoundClip>> m_soundClips;
     };
 
     //! 生きている間だけ AssetManager::Get() が assets を返すようにし、壊れる時に前の物へ戻す

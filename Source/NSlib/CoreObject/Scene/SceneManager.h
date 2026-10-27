@@ -15,6 +15,14 @@ namespace NS
 
 namespace NS
 {
+    namespace Audio
+    {
+        class AudioDevice;
+    } // namespace Audio
+} // namespace NS
+
+namespace NS
+{
 
     class Scene;
 
@@ -27,6 +35,8 @@ namespace NS
 
         //! 立てる scene へ引き継ぐ装置を非所有で差す。以降 LoadScene する scene が受け取る
         void SetDevice(Gfx::D3DDevice* device) noexcept;
+        //! 立てる scene へ引き継ぐ音の装置を非所有で差す。以降 LoadScene する scene が受け取る
+        void SetAudioDevice(Audio::AudioDevice* device) noexcept;
 
         //! シーンの JSON 文書から scene を立てる。現 scene は破棄してから作り直す
         //! 文書は取込後に用済みで、以降の出所は実体になる
@@ -47,6 +57,7 @@ namespace NS
     private:
         std::unique_ptr<Scene> m_current;
         Gfx::D3DDevice* m_device = nullptr;
+        Audio::AudioDevice* m_audioDevice = nullptr;
     };
 
 } // namespace NS

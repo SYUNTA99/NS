@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Gfx/Render/EffectScene.h"
@@ -7,7 +7,7 @@
 
 namespace NS
 {
-    void EffectKeeper::BeginStep(Gfx::EffectScene* effects)
+    void Effect::BeginStep(Gfx::EffectScene* effects)
     {
         // 前のフレームの終わりの更新で消えた記録。そのフレームの終わりに読んだ時点で残っていない
         if (effects != nullptr)
@@ -39,7 +39,7 @@ namespace NS
         std::erase_if(m_scheduledStops, [step](const ScheduledStop& scheduled) { return step >= scheduled.step; });
     }
 
-    void EffectKeeper::Preload(Gfx::EffectScene* effects, std::string_view name)
+    void Effect::Preload(Gfx::EffectScene* effects, std::string_view name)
     {
         // 読めない絵は Play が無効なハンドルを返し、記録だけ残る。警告は EffectScene が名前ごとに 1 回出す
         if (effects != nullptr)
@@ -48,7 +48,7 @@ namespace NS
         }
     }
 
-    uint32 EffectKeeper::Play(Gfx::EffectScene* effects, std::string_view name, const Gfx::EffectPlayDesc& desc)
+    uint32 Effect::Play(Gfx::EffectScene* effects, std::string_view name, const Gfx::EffectPlayDesc& desc)
     {
         EffectRecord record;
         record.id = m_nextId;
@@ -63,7 +63,7 @@ namespace NS
         return m_records.back().id;
     }
 
-    void EffectKeeper::StopRoot(Gfx::EffectScene* effects, uint32 id) noexcept
+    void Effect::StopRoot(Gfx::EffectScene* effects, uint32 id) noexcept
     {
         EffectRecord* record = FindMutable(id);
         if (record == nullptr || record->rootStopStep.has_value() || record->endStep.has_value())
@@ -77,7 +77,7 @@ namespace NS
         }
     }
 
-    void EffectKeeper::Stop(Gfx::EffectScene* effects, uint32 id) noexcept
+    void Effect::Stop(Gfx::EffectScene* effects, uint32 id) noexcept
     {
         EffectRecord* record = FindMutable(id);
         if (record == nullptr || record->endStep.has_value())
@@ -91,16 +91,16 @@ namespace NS
         }
     }
 
-    void EffectKeeper::StopAfter(uint32 id, int steps)
+    void Effect::StopAfter(uint32 id, int steps)
     {
         m_scheduledStops.push_back(ScheduledStop{.id = id, .step = m_step + steps});
     }
 
-    void EffectKeeper::SetTransform(Gfx::EffectScene* effects,
-                                    uint32 id,
-                                    const Vector3& position,
-                                    const Quaternion& rotation,
-                                    const Vector3& scale) noexcept
+    void Effect::SetTransform(Gfx::EffectScene* effects,
+                              uint32 id,
+                              const Vector3& position,
+                              const Quaternion& rotation,
+                              const Vector3& scale) noexcept
     {
         const EffectRecord* record = Find(id);
         if (record == nullptr || effects == nullptr)
@@ -110,7 +110,7 @@ namespace NS
         effects->SetTransform(record->handle, position, rotation, scale);
     }
 
-    void EffectKeeper::SetDynamicInput(Gfx::EffectScene* effects, uint32 id, int index, float value) noexcept
+    void Effect::SetDynamicInput(Gfx::EffectScene* effects, uint32 id, int index, float value) noexcept
     {
         const EffectRecord* record = Find(id);
         if (record == nullptr || effects == nullptr)
@@ -120,7 +120,7 @@ namespace NS
         effects->SetDynamicInput(record->handle, index, value);
     }
 
-    void EffectKeeper::SetAmount(uint32 id, float amount) noexcept
+    void Effect::SetAmount(uint32 id, float amount) noexcept
     {
         EffectRecord* record = FindMutable(id);
         if (record == nullptr)
@@ -130,7 +130,7 @@ namespace NS
         record->amount = amount;
     }
 
-    void EffectKeeper::SetRotation(uint32 id, const Quaternion& rotation) noexcept
+    void Effect::SetRotation(uint32 id, const Quaternion& rotation) noexcept
     {
         EffectRecord* record = FindMutable(id);
         if (record == nullptr)
@@ -140,7 +140,7 @@ namespace NS
         record->rotation = rotation;
     }
 
-    const EffectRecord* EffectKeeper::Find(uint32 id) const noexcept
+    const EffectRecord* Effect::Find(uint32 id) const noexcept
     {
         for (const EffectRecord& record : m_records)
         {
@@ -152,12 +152,12 @@ namespace NS
         return nullptr;
     }
 
-    EffectRecord* EffectKeeper::FindMutable(uint32 id) noexcept
+    EffectRecord* Effect::FindMutable(uint32 id) noexcept
     {
         return const_cast<EffectRecord*>(std::as_const(*this).Find(id));
     }
 
-    void EffectKeeper::AppendStartedNames(std::vector<std::string>& out) const
+    void Effect::AppendStartedNames(std::vector<std::string>& out) const
     {
         for (const EffectRecord& record : m_records)
         {
@@ -168,7 +168,7 @@ namespace NS
         }
     }
 
-    void EffectKeeper::AppendStartedAmounts(std::vector<std::optional<float>>& out) const
+    void Effect::AppendStartedAmounts(std::vector<std::optional<float>>& out) const
     {
         for (const EffectRecord& record : m_records)
         {
@@ -179,7 +179,7 @@ namespace NS
         }
     }
 
-    void EffectKeeper::AppendLiveNames(const Gfx::EffectScene* effects, std::vector<std::string>& out) const
+    void Effect::AppendLiveNames(const Gfx::EffectScene* effects, std::vector<std::string>& out) const
     {
         for (const EffectRecord& record : m_records)
         {

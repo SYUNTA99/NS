@@ -60,6 +60,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <optional>
 #include <set>
 #include <string>
@@ -140,7 +141,8 @@ namespace
         void Undo(NS::Editor::IActorSnapshotApplier&) noexcept override { m_scene.SetEnvironment(m_before); }
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
         {
-            return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size();
+            return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size() + m_before.music.name.size() +
+                   m_after.music.name.size();
         }
 
     private:
@@ -229,6 +231,43 @@ bool LevelEditorController::SetSkyboxPath(std::string_view path)
     {
         NS::SceneEnvironment after = m_scene->Environment();
         after.skybox = std::move(normalized);
+        m_editor.Undo().Push(std::make_unique<EnvironmentCommand>(*m_scene, m_scene->Environment(), std::move(after)),
+                             m_applier);
+    }
+    return true;
+}
+
+const NS::SoundName& LevelEditorController::SceneMusic() const noexcept
+{
+    if (m_scene != nullptr)
+    {
+        return m_scene->Environment().music;
+    }
+    static const NS::SoundName empty;
+    return empty;
+}
+
+float LevelEditorController::SceneMusicVolume() const noexcept
+{
+    if (m_scene != nullptr)
+    {
+        return m_scene->Environment().musicVolume;
+    }
+    return NS::SceneEnvironment{}.musicVolume;
+}
+
+bool LevelEditorController::SetSceneMusic(const NS::SoundName& music, float volume)
+{
+    if (m_scene == nullptr || !IsSceneEditable() || !std::isfinite(volume))
+    {
+        return false;
+    }
+    NS::SceneEnvironment after = m_scene->Environment();
+    after.music = music;
+    after.musicVolume = NS::ClampMusicVolume(volume);
+    if (after.music.name != m_scene->Environment().music.name ||
+        after.musicVolume != m_scene->Environment().musicVolume)
+    {
         m_editor.Undo().Push(std::make_unique<EnvironmentCommand>(*m_scene, m_scene->Environment(), std::move(after)),
                              m_applier);
     }
@@ -431,6 +470,7 @@ void LevelEditorController::EnterPlay() noexcept
     if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(m_scene))
     {
         director->StartCourse();
+        (void)director->StartMusic(); // 編集へ戻る時に止めるので、プレイを始めるたびに始まる
     }
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (NS::CameraManager* cameras = Cameras())
@@ -505,6 +545,10 @@ void LevelEditorController::LeavePlayForEdit()
         return;
     }
     m_scene->SetSimulationEnabled(false);
+    if (GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(m_scene))
+    {
+        director->StopMusic();
+    }
 
     // プレイで変わった配置を編集へ持ち込まないため、プレイを始めた時の JSON から復元する
     NS_ASSERT(App, m_playBaseline.has_value(), "LeavePlayForEdit: プレイを始めた時の JSON が無い");

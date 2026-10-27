@@ -27,7 +27,12 @@ namespace NS
 {
     class AssetManager;
     class AssetManagerScope;
-}
+
+    namespace Audio
+    {
+        class AudioDevice;
+    }
+} // namespace NS
 
 namespace NS
 {
@@ -38,6 +43,8 @@ namespace NS
         OS::WindowDesc window{};
         Gfx::D3DDeviceDesc device{};
         float fixedDelta = OS::FrameTimer::k_DefaultFixedDelta; // 秒
+        //! true の時だけ音の装置を作る。音の機器の状態で結果が変わらないよう、撮影とテストのアプリは true にしない
+        bool enableAudio = false;
     };
 
     //! 単一インスタンスのメインループ。レイヤー構成は起動時に確定する
@@ -71,6 +78,9 @@ namespace NS
         [[nodiscard]] AssetManager& Assets() noexcept;
         [[nodiscard]] const AssetManager& Assets() const noexcept;
 
+        //! Init で作った音の装置。enableAudio が false の時と Init 前 / Shutdown 後は nullptr
+        [[nodiscard]] Audio::AudioDevice* AudioDevice() const noexcept;
+
         //! カーソルの表示・固定・相対モードをまとめて切り替える。固定点の設定は変更しない
         void SetCursorCaptured(bool captured) noexcept;
 
@@ -91,6 +101,9 @@ namespace NS
 
         std::unique_ptr<OS::Window> m_window;
         std::unique_ptr<Gfx::D3DDevice> m_device;
+        // 音のアセットが装置から作った声を持つので、m_assets より先に書いて後に壊す
+        std::unique_ptr<Audio::AudioDevice> m_audio;
+        bool m_enableAudio = false;
         // D3DDevice より先にアセットを解放するため m_device の後に宣言する
         std::unique_ptr<AssetManager> m_assets;
         // m_assets より先に破棄してダングリング参照を防ぐ

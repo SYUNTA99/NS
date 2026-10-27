@@ -34,6 +34,7 @@ namespace GL
             NS_FIELD(m_ledgeHangClip, "ぶら下がりのクリップ")
             NS_FIELD(m_runBlendRatio, "走りへ移る速さの比")
             NS_FIELD(m_minPlaybackSpeed, "再生速度の下限")
+            NS_FIELD(m_blendSeconds, "切り替えの秒")
             NS_REFLECT_END()
 
         private:
@@ -46,6 +47,7 @@ namespace GL
             NS::AnimClip* m_ledgeHangClip = nullptr;
             float m_runBlendRatio = 0.4f;
             float m_minPlaybackSpeed = 0.5f;
+            float m_blendSeconds = 0.12f; // 切り替えの瞬間の姿勢から次のクリップの姿勢へ混ぜる秒
         };
     } // namespace Player
 } // namespace GL

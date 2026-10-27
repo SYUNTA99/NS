@@ -10,6 +10,7 @@ namespace NS
         ApplicationDesc desc{};
         desc.window.title = "Recoilot";
         desc.window.size = Size2D{1920, 1080};
+        desc.enableAudio = true;
 #ifdef NS_BUILD_DEBUG
         desc.device.enableDebugLayer = true;
 #endif

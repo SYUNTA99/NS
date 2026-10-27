@@ -2,8 +2,13 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/Audio/SoundLoop.h"
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/SoundClip.h"
+#include "NSlib/CoreObject/Reflection/SoundName.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Core/Windows/Clock.h"
 
@@ -30,6 +35,11 @@ namespace GL
 
         void CourseDirector::OnTick()
         {
+            // 音の機器を繋ぎ直すと曲が止まるので、鳴らし直す。鳴っている間は何もしない
+            if (m_music)
+            {
+                m_music->Play();
+            }
             if (m_sequences.IsRunning())
             {
                 m_sequences.Tick(NS::OS::FrameTimer::FixedDelta());
@@ -71,6 +81,37 @@ namespace GL
         void CourseDirector::RespawnActors()
         {
             SendRestart(FindPlayer(m_scene.Actors()));
+        }
+
+        bool CourseDirector::StartMusic()
+        {
+            if (m_musicStarted)
+            {
+                return false;
+            }
+            m_musicStarted = true;
+            const NS::SceneEnvironment& environment = m_scene.Environment();
+            // 当たりの下見のシーンは装置を受け取らないので、曲を読まない
+            if (m_scene.GetAudioDevice() == nullptr || environment.music.name.empty())
+            {
+                return true;
+            }
+            const NS::SoundClip* sound = NS::AssetManager::Get().LoadSoundClip(NS::SoundPathOf(environment.music.name));
+            if (sound == nullptr || !sound->IsValid())
+            {
+                return true;
+            }
+            // 曲の音は AssetManager が Clear まで持ち、シーンはそれより先に壊れるので、ループが音より長く生きない
+            m_music = std::make_unique<NS::Audio::SoundLoop>(*sound->Clip());
+            m_music->SetVolume(environment.musicVolume);
+            m_music->Play();
+            return true;
+        }
+
+        void CourseDirector::StopMusic()
+        {
+            m_musicStarted = false;
+            m_music.reset();
         }
 
         std::vector<NS::SceneActor*> CourseDirector::PlacedActors(const NS::SceneActor* skip) const

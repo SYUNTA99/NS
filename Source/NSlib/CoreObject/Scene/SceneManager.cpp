@@ -17,12 +17,18 @@ namespace NS
 
     void SceneManager::SetDevice(Gfx::D3DDevice* device) noexcept { m_device = device; }
 
+    void SceneManager::SetAudioDevice(Audio::AudioDevice* device) noexcept
+    {
+        m_audioDevice = device;
+    }
+
     Scene& SceneManager::LoadScene(nlohmann::json&& scene)
     {
         UnloadScene();
 
         m_current = std::make_unique<Scene>();
         m_current->SetDevice(m_device);
+        m_current->SetAudioDevice(m_audioDevice);
 
         m_current->ResetFromJson(std::move(scene));
         return *m_current;
