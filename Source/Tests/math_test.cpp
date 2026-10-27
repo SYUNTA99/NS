@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <limits>
 
 // Math.h の関数が、成立条件を満たさない値に正しい答えのような値を返さない事を縛る
@@ -25,9 +26,20 @@ TEST(TryNormalizeHorizontal, RejectsInfiniteComponent)
     EXPECT_FALSE(NS::TryNormalizeHorizontal(NS::Vector3{1.0f, 0.0f, k_Infinity}, direction));
 }
 
-// 成分は有限でも、長さの 2 乗が float に収まらなければ向きを出せない
-TEST(TryNormalizeHorizontal, RejectsLengthSquaredOverflow)
+// 長さの 2 乗は float に収まらなくても、長さが収まるなら向きはある。途中で溢れずに正しい向きを返す
+TEST(TryNormalizeHorizontal, NormalizesComponentsWhoseSquareOverflows)
 {
     NS::Vector3 direction{};
-    EXPECT_FALSE(NS::TryNormalizeHorizontal(NS::Vector3{1.0e30f, 0.0f, 1.0e30f}, direction));
+    ASSERT_TRUE(NS::TryNormalizeHorizontal(NS::Vector3{1.0e30f, 5.0f, 1.0e30f}, direction));
+    const float diagonal = std::sqrt(0.5f);
+    EXPECT_NEAR(direction.x, diagonal, 1.0e-6f);
+    EXPECT_EQ(direction.y, 0.0f);
+    EXPECT_NEAR(direction.z, diagonal, 1.0e-6f);
+}
+
+// 成分は有限でも、長さそのものが float に収まらなければ向きを出せない
+TEST(TryNormalizeHorizontal, RejectsLengthBeyondFloat)
+{
+    NS::Vector3 direction{};
+    EXPECT_FALSE(NS::TryNormalizeHorizontal(NS::Vector3{3.0e38f, 0.0f, 3.0e38f}, direction));
 }

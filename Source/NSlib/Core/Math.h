@@ -330,18 +330,18 @@ namespace NS
     //! @brief XZ 平面へ畳んだ向きを正規化する
     //! @param[in] v 元のベクトル。y 成分は捨てる
     //! @param[out] outDirection 正規化した向き。y は 0。失敗した場合は書き換えない
-    //! @return 正規化できた場合 true、長さが k_Epsilon 以下か、長さの 2 乗が有限でない場合は false
+    //! @return 正規化できた場合 true、長さが k_Epsilon 以下か、長さが有限でない場合は false
     [[nodiscard]] inline bool TryNormalizeHorizontal(const Vector3& v, Vector3& outDirection) noexcept
     {
-        // 非数は大きさの比べを素通りし、溢れた無限大は 0 の向きになるので、有限かも合わせて見る
-        if (!HasPositiveMagnitudeHorizontal(v))
+        // 2 乗の和は成分が 1e19 を超えると途中で溢れる。hypot は途中で溢れずに長さを出すので、大きな成分でも向きを返せる
+        // 非数の成分と、長さそのものが float の外になる時は、長さが有限でないので偽を返す
+        const float length = std::hypot(v.x, v.z);
+        if (!HasPositiveMagnitude(length))
         {
             return false;
         }
 
-        const float lengthSq = HorizontalLengthSquared(v);
-        const float invLength = 1.0f / std::sqrt(lengthSq);
-        outDirection = Vector3{v.x * invLength, 0.0f, v.z * invLength};
+        outDirection = Vector3{v.x / length, 0.0f, v.z / length};
         return true;
     }
 

@@ -11,7 +11,8 @@ namespace NS
 
     //! @brief 速度と接地を保持し、Collider の移動結果を根の姿勢へ反映する部品
     //! @details 自動更新はしない。持ち主が固定更新の経過秒 dt で各操作を呼ぶ
-    //! 速度を書く 5 つの関数は、非数か無限大を書くと NS_ASSERT が止める。NS_ASSERT を切る GameRelease では止めずに書く
+    //! SetVelocity・SetLateralVelocity・SetVerticalVelocity・Move は、非数か無限大を書くと NS_ASSERT が止める
+    //! NS_ASSERT は診断の道具で、NS_ASSERT を切る GameRelease では止めずに書く。非数を作らないのは書く側の計算の受け持ち
     class Body : public Object
     {
     public:

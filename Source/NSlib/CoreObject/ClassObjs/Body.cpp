@@ -45,8 +45,9 @@ namespace NS
 
     void Body::Gravity(float gravity, float dt) noexcept
     {
+        // 非有限の重力と経過秒は AddGravity が捨てる。有限どうしの掛け算の溢れはここでは見ない
+        // 重力の大きさの範囲は、重力を調整値として持つ側が受け持つ
         Phys::AddGravity(m_velocity, -gravity, dt);
-        NS_ASSERT(Scene, IsFinite(m_velocity), "Body::Gravity: 重力を足した速度が有限でない");
     }
 
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
