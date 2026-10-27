@@ -2,19 +2,18 @@
 
 #include "NSlib/Core/Math.h"
 
-namespace NS::Gfx
+namespace NS
 {
-        //! @brief プロジェクト全体の標準となる照明
-        //! @details シーンは初期値から、配置された平行光の値で照明を上書きした複製を描画に使う
+    namespace Gfx
+    {
+        /// シーン全体の標準照明・露出設定
         struct RenderSettings
         {
-            Vector3 lightDir{-0.3f, -1.0f, -0.2f};       //!< 平行光源の方向
-            Vector3 lightColor{1.0f, 1.0f, 1.0f};        //!< 平行光源の色と明るさ
-            //! 空側の環境光。上を向いた面へ回る
-            Vector3 ambientColor{0.30f, 0.34f, 0.40f};
-            //! 地面側の環境光。下を向いた面へ回る。空側と分けると影の中でも面の向きが読める
-            Vector3 groundColor{0.24f, 0.21f, 0.18f};
-            //! 画面へ出す前の露出。S 字で潰す前に掛けるので、上げても明部は飛ばず暗部だけ持ち上がる
-            float exposure = 1.35f;
+            Vector3 lightDir{-0.3f, -1.0f, -0.2f};
+            Vector3 lightColor{1.0f, 1.0f, 1.0f};
+            Vector3 ambientColor{0.30f, 0.34f, 0.40f}; // 空側の環境光 (上向き面)
+            Vector3 groundColor{0.24f, 0.21f, 0.18f};  // 地面側の環境光 (下向き面)
+            float exposure = 1.35f;                    // トーンマップ前の露出倍率
         };
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

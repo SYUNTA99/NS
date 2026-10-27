@@ -71,8 +71,6 @@ namespace NS
 
     AABB BoxCollision::WorldAABB(const Matrix& world) const noexcept
     {
-        // 原点中心の箱に局所のずれと回転を掛け、その後で持ち主の世界変換を掛ける
-        // 回転時は内包する軸並行 AABB になる
         const Matrix combined = ShapeWorldMatrix(world, m_localRotation, m_centerOffset);
         const AABB local(Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);
         AABB result;

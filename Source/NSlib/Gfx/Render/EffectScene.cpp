@@ -14,8 +14,10 @@
 #include <cmath>
 #include <format>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             // Effekseer の Update は 1 を 1/60 秒として数える
@@ -40,10 +42,8 @@ namespace NS::Gfx
                 return result;
             }
 
-            // Effekseer の Manager が持つ動的入力の数
             constexpr int k_DynamicInputCount = 4;
 
-            // 大きさ・回転・位置の順に掛けた姿勢。行の並びは DirectXMath と同じで、平行移動は 4 行目
             Effekseer::Matrix43 ToEffekseerTransform(const Vector3& position,
                                                      const Quaternion& rotation,
                                                      const Vector3& scale) noexcept
@@ -61,7 +61,6 @@ namespace NS::Gfx
                 return result;
             }
 
-            // 0〜1 の色の成分を 0〜255 にする。非数と 0 以下は 0、1 以上は 255
             uint8 ToColorByte(float value) noexcept
             {
                 if (!IsPositive(value))
@@ -492,7 +491,6 @@ namespace NS::Gfx
                     oldest = &copy;
                 }
             }
-            // 空きか、一番長く使っていない方を作り直す
             for (DepthCopy& copy : m_depthCopies)
             {
                 if (copy.texture == nullptr)
@@ -540,4 +538,5 @@ namespace NS::Gfx
             NS_LOG_ERROR(Graphics, "EffectScene: {} ({}x{})。奥行き無しでエフェクトを描く", reason, width, height);
             m_failedDepthKey = std::move(key);
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

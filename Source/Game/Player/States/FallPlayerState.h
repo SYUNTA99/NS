@@ -4,12 +4,15 @@
 
 class PlayerActor;
 
-namespace GL::Player
+namespace GL
 {
-        //! 落下。着地したフレームに立ちへ移る
+    namespace Player
+    {
+        /// 落下。着地したフレームに立ちへ移る
         class FallPlayerState final : public PlayerState<FallPlayerState>
         {
         public:
             void OnStep(::PlayerActor* player, float dt) override;
         };
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

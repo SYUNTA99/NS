@@ -45,8 +45,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         InspectorPanel::InspectorPanel() = default;
         InspectorPanel::~InspectorPanel() = default;
 
@@ -805,4 +807,5 @@ namespace NS::Editor
             (void)editor;
 #endif
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

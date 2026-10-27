@@ -13,8 +13,10 @@
 #include <limits>
 #include <map>
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         bool SendMsgInstantDeath(NS::HitSensor* receiver, NS::HitSensor* sender)
         {
             NS_ASSERT(Game, receiver != nullptr && sender != nullptr, "知らせの受け手か送り手のセンサーが無い");
@@ -225,4 +227,5 @@ namespace GL::Level
         {
             return NS::IsMsg<MsgTackleRelease>(msg);
         }
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

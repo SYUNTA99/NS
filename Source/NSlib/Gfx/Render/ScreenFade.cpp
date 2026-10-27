@@ -4,8 +4,10 @@
 
 #include <algorithm>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         void ScreenFade::Render(ScreenOverlay& overlay) const noexcept
         {
             const float alpha = Alpha();
@@ -88,4 +90,5 @@ namespace NS::Gfx
                 return 0.0f;
             }
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

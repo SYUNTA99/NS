@@ -115,7 +115,6 @@ namespace NS
             m_palette.bones[i] = Matrix::Identity;
         }
 
-        // 描画する Model にパレットを差す。現在ポーズ境界は ApplyPose が毎フレーム差す
         if (m_bonePaletteCB->IsValid())
         {
             renderer->SetPerObjectVsConstant(
@@ -169,7 +168,6 @@ namespace NS
             m_skeleton->ComputeBindPalette(m_paletteScratch);
         }
 
-        // CPU 側パレットへ写す。余りは恒等で埋める。GPU への upload は描画側が毎描画行う
         const std::size_t count = std::min(m_paletteScratch.size(), k_MaxBones);
         for (std::size_t i = 0; i < k_MaxBones; ++i)
         {

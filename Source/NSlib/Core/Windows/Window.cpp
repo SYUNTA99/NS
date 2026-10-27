@@ -5,8 +5,10 @@
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "NSlib/Core/Windows/detail/InputWin32.h"
 
-namespace NS::OS
+namespace NS
 {
+    namespace OS
+    {
         namespace
         {
             // Window は単一インスタンス
@@ -312,4 +314,5 @@ namespace NS::OS
         void Window::AttachInput(Input* input) noexcept { m_input = input; }
 
         void Window::SetMessageHook(MessageHook hook) { m_messageHook = std::move(hook); }
-} // namespace NS::OS
+    } // namespace OS
+} // namespace NS

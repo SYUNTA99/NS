@@ -16,8 +16,10 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Phys
+namespace NS
 {
+    namespace Phys
+    {
         namespace
         {
             constexpr float k_MaxSlopeAngleRadians = 0.7853982f;
@@ -270,4 +272,5 @@ namespace NS::Phys
         {
             return normalY >= k_MaxSlopeNormalY;
         }
-} // namespace NS::Phys
+    } // namespace Phys
+} // namespace NS

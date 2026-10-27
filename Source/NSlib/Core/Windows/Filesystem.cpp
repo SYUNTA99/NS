@@ -13,8 +13,10 @@
 
 #include <windows.h>
 
-namespace NS::OS
+namespace NS
 {
+    namespace OS
+    {
         namespace
         {
             class FileHandle
@@ -783,4 +785,5 @@ namespace NS::OS
             }
             return pathNorm.substr(start);
         }
-} // namespace NS::OS
+    } // namespace OS
+} // namespace NS

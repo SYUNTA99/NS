@@ -22,8 +22,10 @@
 #include <string_view>
 #include <vector>
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         class PropActor::RestingState : public NS::StateOf<RestingState, PropActor>
         {
             void OnEnter(PropActor* owner) override
@@ -628,4 +630,5 @@ namespace GL::Level
         }
 
         NS_PLACEABLE(PropActor, "置物")
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

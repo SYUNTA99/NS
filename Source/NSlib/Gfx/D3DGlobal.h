@@ -2,11 +2,13 @@
 
 #include "NSlib/Gfx/D3dCommon.h"
 
-namespace NS::Gfx
+namespace NS
 {
-        //! @brief プロセス唯一の D3D11 device / immediate context を束ねたグローバル
-        //! @details 中身は D3DDevice が所有する非所有の観測ポインタで、未構築時は nullptr。直接参照は層内部と
-        //! ImGui統合のみ
+    namespace Gfx
+    {
+        /// プロセス唯一の D3D11 device / immediate context を束ねたグローバル
+        /// 中身は D3DDevice が所有する非所有の観測ポインタで、未構築時は nullptr。直接参照は層内部と
+        /// ImGui統合のみ
         struct D3DGlobal
         {
             ID3D11Device* device = nullptr;
@@ -14,4 +16,5 @@ namespace NS::Gfx
         };
 
         [[nodiscard]] D3DGlobal& Gpu() noexcept;
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

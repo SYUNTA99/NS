@@ -8,8 +8,10 @@
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             D3D11_PRIMITIVE_TOPOLOGY ToD3d(Topology topology) noexcept
@@ -477,4 +479,5 @@ namespace NS::Gfx
         {
             return m_context;
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

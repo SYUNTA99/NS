@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <cmath>
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         namespace
         {
             // 曲線を式で辿るための値。LaunchArc の欄から毎回組み直す
@@ -180,4 +182,5 @@ namespace GL::Level
                               .apexSpeed = arc.apexBandSpeed,
                               .apexScale = arc.apexBandGravityScale};
         }
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

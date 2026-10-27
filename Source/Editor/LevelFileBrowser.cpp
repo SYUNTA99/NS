@@ -11,8 +11,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         namespace
         {
             // ImGui InputText で確保する name buffer の容量。sanitize 側の上限 200 + 余裕
@@ -133,4 +135,5 @@ namespace NS::Editor
             return result;
         }
 #endif
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

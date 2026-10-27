@@ -14,8 +14,8 @@ namespace NS
     class SceneActor;
     class Transform;
 
-    //! @brief 追従カメラが 1 フレームぶん受ける溜めの状態
-    //! @details 溜め量は押している間だけ意味を持つ。押していない値は放したのと同じに扱う
+    /// 追従カメラが 1 フレームぶん受ける溜めの状態
+    /// 溜め量は押している間だけ意味を持つ。押していない値は放したのと同じに扱う
     struct FollowChargeDesc
     {
         float charge01 = 0.0f;         // 押している間の溜め量 (0〜1)
@@ -25,8 +25,8 @@ namespace NS
         float aimTargetRadius = 0.0f;  // 狙う相手の半径 (m)。構図は中心でなく中心 ± 半径を枠に入れる
     };
 
-    //! @brief 追従カメラが 1 フレームぶん受ける反動の状態
-    //! @details 突進の向きは反動になったフレームにだけ読む
+    /// 追従カメラが 1 フレームぶん受ける反動の状態
+    /// 突進の向きは反動になったフレームにだけ読む
     struct FollowReboundDesc
     {
         bool rebounding = false; // 追う相手が反動の状態か
@@ -47,67 +47,67 @@ namespace NS
         bool widenView = false;
     };
 
-    //! @brief 溜めと反動に応じて構図を調整する三人称の追従カメラ
-    //! @details 実カメラは変更せず、CameraManager が採用する姿勢を返す
+    /// 溜めと反動に応じて構図を調整する三人称の追従カメラ
+    /// 実カメラは変更せず、CameraManager が採用する姿勢を返す
     class ThirdPersonFollow : public VirtualCamera
     {
     public:
         ThirdPersonFollow() noexcept;
 
-        //! 追う相手の根。相手を受けていなければ nullptr
+        /// 追う相手の根。相手を受けていなければ nullptr
         [[nodiscard]] const Transform* Target() const noexcept;
-        //! 追う相手。相手を受けていなければ nullptr
+        /// 追う相手。相手を受けていなければ nullptr
         [[nodiscard]] const SceneActor* TargetActor() const noexcept { return m_target; }
 
-        //! 追従対象の永続参照。データ経由の構築がリフレクション set で書く
+        /// 追従対象の永続参照。データ経由の構築がリフレクション set で書く
         [[nodiscard]] ActorRef TargetRef() const noexcept { return m_targetRef; }
 
-        //! @brief 追う相手を受ける。持ち主のアクターが TargetRef の指す相手を取得して渡す
-        //! @details 相手が一覧から外れる前に、持ち主が取得し直して渡し直す。target が nullptr なら相手なし。
-        //! state は同じ相手が自分の状態を渡す口で、渡さない相手は nullptr。Advance が進める直前に読む
+        /// 追う相手を受ける。持ち主のアクターが TargetRef の指す相手を取得して渡す
+        /// 相手が一覧から外れる前に、持ち主が取得し直して渡し直す。target が nullptr なら相手なし。
+        /// state は同じ相手が自分の状態を渡す口で、渡さない相手は nullptr。Advance が進める直前に読む
         void SetTarget(const SceneActor* target, const IGetCameraTarget* state) noexcept
         {
             m_target = target;
             m_targetState = state;
         }
 
-        //! プレイ開始 / rebuild ごとに初期姿勢へ戻す
+        /// プレイ開始 / rebuild ごとに初期姿勢へ戻す
         void ResetPose() noexcept;
 
-        //! 自動ズームの判定に使う接地と速度を値で受け取る。移動部品の型を include せずに済む
+        /// 自動ズームの判定に使う接地と速度を値で受け取る。移動部品の型を include せずに済む
         void SetFollowMotion(bool grounded, const Vector3& velocity) noexcept;
-        //! 根を上下させても見る高さを保つためのずれ。注視点は根 + ずれ + 頭の高さ
-        //! ずれは補間しないため、根の移動は Transform::ShiftPosition で前後の値を揃える
+        /// 根を上下させても見る高さを保つためのずれ。注視点は根 + ずれ + 頭の高さ
+        /// ずれは補間しないため、根の移動は Transform::ShiftPosition で前後の値を揃える
         void SetTargetHeightOffset(float offset) noexcept;
 
-        //! @brief このフレームの溜めの状態を受け取る
-        //! @details 受けた値は次の Update だけで使う。渡されなかったフレームは押していないのと同じに扱う
-        //! 非数・0 未満・1 を超える溜め量と、狙う相手がいる時の非数の中心・非数か負の半径は壊れた値
-        //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
+        /// このフレームの溜めの状態を受け取る
+        /// 受けた値は次の Update だけで使う。渡されなかったフレームは押していないのと同じに扱う
+        /// 非数・0 未満・1 を超える溜め量と、狙う相手がいる時の非数の中心・非数か負の半径は壊れた値
+        /// @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
         bool SetFollowCharge(const FollowChargeDesc& desc) noexcept;
 
-        //! @brief 距離・溜めの締め・構図を次の更新で固定する
-        //! @details ヒットストップ中に画面が引くのを防ぐ。更新ごとに渡し、未指定なら固定しない
+        /// 距離・溜めの締め・構図を次の更新で固定する
+        /// ヒットストップ中に画面が引くのを防ぐ。更新ごとに渡し、未指定なら固定しない
         void SetFollowFramingHeld(bool held) noexcept { m_framingHeld = held; }
 
-        //! @brief 溜めで締めている視野角を返す
-        //! @return 基準の視野角から引いている角度 (度)。締めていない時は 0
+        /// 溜めで締めている視野角を返す
+        /// @return 基準の視野角から引いている角度 (度)。締めていない時は 0
         [[nodiscard]] float ChargeNarrowDegrees() const noexcept { return m_chargeNarrowDegrees; }
 
-        //! @brief 溜めの構図のずらしを返す
-        //! @return x がカメラの右、y がカメラの上の向きのずれ (m)。ずらしていない時は 0
+        /// 溜めの構図のずらしを返す
+        /// @return x がカメラの右、y がカメラの上の向きのずれ (m)。ずらしていない時は 0
         [[nodiscard]] Vector2 ChargeFrameOffset() const noexcept { return m_chargeFrameOffset; }
 
-        //! @brief 溜めの締め・揺れ・構図のずらしをその場で 0 にし、受けた溜めの状態を捨てる
+        /// 溜めの締め・揺れ・構図のずらしをその場で 0 にし、受けた溜めの状態を捨てる
         void ClearCharge() noexcept;
 
-        //! @brief 次の更新で使う反動の状態を受け取る
-        //! @details 未指定なら反動なし。反動開始時に突進方向へ回し、接地まで手動回転を止める
-        //! 接地が未入力なら反動終了時に回転を許可する。突進方向の非有限値と、−1〜1 の外か非数の縦の向きは拒否する
-        //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
+        /// 次の更新で使う反動の状態を受け取る
+        /// 未指定なら反動なし。反動開始時に突進方向へ回し、接地まで手動回転を止める
+        /// 接地が未入力なら反動終了時に回転を許可する。突進方向の非有限値と、−1〜1 の外か非数の縦の向きは拒否する
+        /// @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
         bool SetFollowRebound(const FollowReboundDesc& desc) noexcept;
 
-        //! @brief 反動の追従・回転と入力制限を解除する。現在の向きは保つ
+        /// 反動の追従・回転と入力制限を解除する。現在の向きは保つ
         void ClearRebound() noexcept;
 
         void SetSensX(float radPerPixel) noexcept;
@@ -124,20 +124,20 @@ namespace NS
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
 
-        //! プレイ開始時の向き。ResetPose で現在方位角・仰角へ写し、以降はプレイ中の手動回転で動く
+        /// プレイ開始時の向き。ResetPose で現在方位角・仰角へ写し、以降はプレイ中の手動回転で動く
         [[nodiscard]] float InitialYaw() const noexcept { return m_initialYaw; }
         [[nodiscard]] float InitialPitch() const noexcept { return m_initialPitch; }
 
-        //! 指定位置から初期姿勢を逆算し、現在姿勢にも反映する。対象なし・距離ゼロなら変更しない
+        /// 指定位置から初期姿勢を逆算し、現在姿勢にも反映する。対象なし・距離ゼロなら変更しない
         void SetInitialPoseFromCameraPosition(const Vector3& cameraPosition) noexcept;
 
-        //! @brief 追う相手の状態を受けてから、固定ステップで向きと距離を更新する
-        //! @details EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
-        //! @param[in] cameras 溜めの揺れを保たせるカメラの管理役
-        //! @param[in] collision 注視点とカメラの間の地形を探すシーン
+        /// 追う相手の状態を受けてから、固定ステップで向きと距離を更新する
+        /// EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
+        /// @param[in] cameras 溜めの揺れを保たせるカメラの管理役
+        /// @param[in] collision 注視点とカメラの間の地形を探すシーン
         void Advance(CameraManager* cameras, const IGetCollision* collision) override;
 
-        //! alpha で補間した target を追う最終姿勢を返す。CameraManager が選択時に実カメラへ書く
+        /// alpha で補間した target を追う最終姿勢を返す。CameraManager が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
         NS_REFLECT_BEGIN(ThirdPersonFollow, VirtualCamera)

@@ -9,8 +9,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         ViewportSurface::ViewportSurface() = default;
         ViewportSurface::~ViewportSurface() = default;
 
@@ -141,4 +143,5 @@ namespace NS::Editor
         {
             m_target.reset();
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

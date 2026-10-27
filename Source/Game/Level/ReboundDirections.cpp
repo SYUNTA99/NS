@@ -5,8 +5,10 @@
 #include <cmath>
 #include <cstdlib>
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         namespace
         {
             // 資料 v0.2 の 6.1 が決める分割の数
@@ -183,4 +185,5 @@ namespace GL::Level
             side.Normalize();
             return from * std::cos(maxRadians) + side * std::sin(maxRadians);
         }
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

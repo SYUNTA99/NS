@@ -4,8 +4,10 @@
 #include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/detail/PipelineDepth.h"
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             D3D11_CULL_MODE ToD3d(CullMode cull) noexcept
@@ -124,4 +126,5 @@ namespace NS::Gfx
         ID3D11BlendState* D3DPipeline::BlendState() const noexcept { return m_blend.Get(); }
 
         ID3D11DepthStencilState* D3DPipeline::DepthStencilState() const noexcept { return m_depthStencil.Get(); }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

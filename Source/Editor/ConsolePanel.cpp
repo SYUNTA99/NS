@@ -12,8 +12,10 @@
 #include <vector>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         void ConsolePanel::Render() noexcept
         {
 #if NS_EDITOR_ENABLED
@@ -53,4 +55,5 @@ namespace NS::Editor
             ImGui::End();
 #endif
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

@@ -1,7 +1,6 @@
 #pragma once
 
-// 各層 PCH と Game / Editor の GamePch が共通取り込みする定番標準ライブラリ
-// windows.h を含まないので stdlib セットが揃う
+// windows.h を含まない PCH 共通の標準ライブラリ群
 
 #include <cstddef>
 #include <cstdint>

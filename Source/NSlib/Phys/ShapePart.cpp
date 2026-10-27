@@ -7,8 +7,10 @@
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 
-namespace NS::Phys
+namespace NS
 {
+    namespace Phys
+    {
         ShapePart MakeBoxPart(const OBB& box)
         {
             // collision は PhysicsScene より先に形を作ることがある。形の確保は allocator の登録が済んでいないと落ちる
@@ -39,4 +41,5 @@ namespace NS::Phys
                 JPH::Quat::sFromTo(JPH::Vec3::sAxisY(), ToJolt(capsule.axis).NormalizedOr(JPH::Vec3::sAxisY()));
             return ShapePart{ShapeOrNull(settings.Create()), capsule.center, FromJolt(rotation)};
         }
-} // namespace NS::Phys
+    } // namespace Phys
+} // namespace NS

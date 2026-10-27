@@ -1,13 +1,14 @@
 #pragma once
 
-// D3D11_USAGE から CreateBuffer / CreateTexture 用の派生値を求める内部ヘルパ
-
 #include <d3d11.h>
 
-namespace NS::Gfx::detail
+namespace NS
 {
-            //! D3D11_USAGE に対し D3D11 が許す CPUAccessFlags を返す。両者は仕様で一意対応し矛盾すると Create
-            //! が失敗する DEFAULT / IMMUTABLE は 0、DYNAMIC は WRITE、STAGING は READ | WRITE
+    namespace Gfx
+    {
+        namespace detail
+        {
+            /// D3D11_USAGE に対し D3D11 仕様が一意に要求する CPUAccessFlags を返す
             [[nodiscard]] inline UINT GetCpuAccessFlags(D3D11_USAGE usage) noexcept
             {
                 switch (usage)
@@ -22,4 +23,6 @@ namespace NS::Gfx::detail
                     return 0u;
                 }
             }
-} // namespace NS::Gfx::detail
+        } // namespace detail
+    } // namespace Gfx
+} // namespace NS

@@ -19,8 +19,10 @@
 #include <utility>
 #include <vector>
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         namespace
         {
             // 地形の部品のひな形は、.actor に任せる欄のほかにメッシュの欄だけを持つ。
@@ -146,4 +148,5 @@ namespace NS::Editor
             }
             return *angle;
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

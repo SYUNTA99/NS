@@ -1,23 +1,18 @@
 #pragma once
 
-// 全部の項目を書いた .actor を、クラスのコードの値から作る。エディタの起動とテストの起動が呼び、出荷ビルドには載らない
-
 #include "NSlib/CoreObject/ActorJson.h"
 
 #include <string>
 #include <vector>
 
-namespace NS::Editor
+namespace NS
 {
-        //! @brief actorFile に、そのクラスのコードの値で、書いていない項目を書き足した文書
-        //! @details 書いてある項目は値のまま残す。参照の欄は書かない。
-        //! 派生の .actor は元から受け継ぐので、そのまま返す。登録の無いクラスもそのまま返す。
-        //! 書き足した項目を "部品/欄" の形で added の後ろに足す
+    namespace Editor
+    {
+        /// actorFile に未記載の項目をクラスのコード既定値で補完した文書を返す（参照欄・派生 .actor・未登録クラスは対象外）。補完した項目は "部品/欄" の形で added に追記する
         [[nodiscard]] nlohmann::json CompleteActorFile(const nlohmann::json& actorFile, std::vector<std::string>& added);
 
-        //! @brief directory の全部の .actor を CompleteActorFile で書き足し、変わったファイルだけを書く
-        //! @details ActorFileLibrary を通さずにファイルを直に読む。書き足した項目はファイルごとに INFO で出す。
-        //! 読めないファイルは ERROR を出して飛ばす
-        //! @return 書いたファイルの数
+        /// directory 内の全 .actor を CompleteActorFile で補完し、変更があったファイルのみ保存して件数を返す
         int GenerateActorFiles(const std::string& directory);
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

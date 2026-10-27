@@ -4,8 +4,10 @@
 
 class PlayerActor;
 
-namespace GL::Player
+namespace GL
 {
+    namespace Player
+    {
         class ReboundPlayerState final : public PlayerState<ReboundPlayerState>
         {
         public:
@@ -19,4 +21,5 @@ namespace GL::Player
         private:
             NS::Coroutine Run(::PlayerActor* player);
         };
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

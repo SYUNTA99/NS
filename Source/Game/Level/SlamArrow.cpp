@@ -26,8 +26,10 @@
 #include <type_traits>
 #include <utility>
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         namespace
         {
             static_assert(sizeof(SlamArrowConstants) == sizeof(NS::Gfx::FrameCB), "FrameCB と同じ大きさで送る");
@@ -623,4 +625,5 @@ namespace GL::Level
             outShape = m_shown;
             return true;
         }
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

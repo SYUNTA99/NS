@@ -8,8 +8,10 @@
 #include <cmath>
 #include <cstddef>
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         namespace
         {
             using NS::Quaternion;
@@ -129,4 +131,5 @@ namespace GL::Level
             NS::SetEffectAmount(user, dust, m_landDustScale);
             NS::StopEffectAfter(user, dust, std::max(m_landDustLife, 1));
         }
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

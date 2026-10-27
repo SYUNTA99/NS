@@ -12,8 +12,10 @@
 #include <limits>
 #include <utility>
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         namespace
         {
             // 左上 (left, top)・一辺 side の正方形の四隅に、横と縦の 2 本ずつのかぎ形を足す
@@ -268,4 +270,5 @@ namespace GL::Level
             const LockOnFrames frames{.sinceCapture = m_framesSinceCapture, .sinceLost = m_framesSinceLost};
             return BuildLockOnFrame(viewProjection, targetSize, m_lostBounds, frames, m_desc, outFrame);
         }
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

@@ -7,8 +7,10 @@
 #include <unordered_map>
 #include <utility>
 
-namespace NS::Anim
+namespace NS
 {
+    namespace Anim
+    {
         std::string NormalizeBoneName(std::string_view raw)
         {
             const std::size_t separator = raw.find_last_of(":|");
@@ -65,4 +67,5 @@ namespace NS::Anim
             }
             return trackBones;
         }
-} // namespace NS::Anim
+    } // namespace Anim
+} // namespace NS

@@ -4,9 +4,11 @@
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
-namespace GL::Level
+namespace GL
 {
-        //! @brief プレイヤーとの重なりで MsgGoal を送り、受け手にクリア処理を委ねるゴール
+    namespace Level
+    {
+        /// プレイヤーとの重なりで MsgGoal を送り、受け手にクリア処理を委ねるゴール
         class GoalActor : public NS::SceneActor
         {
         public:
@@ -29,4 +31,5 @@ namespace GL::Level
 
             std::unique_ptr<GoalParams> m_params;
         };
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

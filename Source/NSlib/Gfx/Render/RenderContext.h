@@ -5,59 +5,45 @@
 
 #include <cmath>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         class D3DDevice;
         class ScreenOverlay;
 
-        //! 上向きの面に広がる光の輪。形状は変えず、画素シェーダーで表現する
+        /// 上向きの面に広がる光の輪 (ピクセルシェーダーで表現)
         struct GroundWave
         {
-            float centerX = 0.0f;  //!< 中心の世界の x
-            float centerZ = 0.0f;  //!< 中心の世界の z
-            float radius = 0.0f;   //!< 輪の半径 (m)
-            float strength = 0.0f; //!< 輪の強さ。0 以下なら出さない
+            float centerX = 0.0f;  // 中心のワールド X 座標
+            float centerZ = 0.0f;  // 中心のワールド Z 座標
+            float radius = 0.0f;   // 半径 (m)
+            float strength = 0.0f; // 強さ (0 以下で無効)
         };
 
-        //! @brief 歪みの輪。世界の点を中心に、画面の上で広がる輪の所の絵を外へ押し出す
-        //! @details 長さはどれも描画先の高さに対する割合。光のにじみが世界の絵を書き戻す時に掛ける
+        /// ワールド座標の点を中心に画面上で広がる歪みの輪 (各長さは描画先の高さに対する比率)
         struct DistortionRing
         {
-            Vector3 center{};   //!< 中心の世界の点
-            float radius = 0.0f;    //!< 輪の半径
-            float push = 0.0f;      //!< 輪の真ん中で絵を押し出す長さ。0 以下なら歪めない
-            float halfWidth = 0.0f; //!< 輪の半分の幅
+            Vector3 center{};       // 中心のワールド座標
+            float radius = 0.0f;
+            float push = 0.0f;      // 押し出し量 (0 以下で無効)
+            float halfWidth = 0.0f;
         };
 
-        //! @brief 1フレームの描画処理全体で共有されるコンテキスト情報
         struct RenderContext
         {
             D3DDevice* device = nullptr;
-
-            //! 重ね描きと UI が、全画面の色と画面の矩形を描く先。無ければ描かない
-            ScreenOverlay* overlay = nullptr;
-
-            //! カメラのビュープロジェクション行列
+            ScreenOverlay* overlay = nullptr; // nullptr の場合はオーバーレイ・UI を描画しない
             Matrix viewProjection{};
-
-            //! カメラのワールド座標
             Vector3 cameraPosition{};
-
-            //! 固定ステップ更新と描画のズレを埋める補間係数 (0.0 〜 1.0)
-            float alpha = 1.0f;
-
-            //! シーン全体に適用される共通の描画設定
+            float alpha = 1.0f; // 固定ステップ更新と描画の補間係数 (0.0 〜 1.0)
             RenderSettings resolvedSettings{};
-
-            //! このフレームの床の波。強さ 0 なら出さない
             GroundWave groundWave{};
-
-            //! このフレームの歪みの輪。押しが 0 なら歪めない
             DistortionRing distortionRing{};
         };
 
-        //! 世界座標を描画先の左上原点の画素座標へ投影する。width・height は画素数
-        //! カメラの後ろなら false で出力を変更しない。outW は投影後の奥行き係数
+        /// ワールド座標を描画先の左上原点ピクセル座標へ投影する (width, height はピクセル数)
+        /// カメラ背後の場合は false を返し出力を変更しない。outW は投影後のクリップ空間 W
         [[nodiscard]] inline bool TryProjectToPixels(const Matrix& viewProjection,
                                                      const Vector3& point,
                                                      float width,
@@ -78,8 +64,7 @@ namespace NS::Gfx
             return true;
         }
 
-        //! projectedW の奥行きで、世界座標の長さを画素数へ変換する。カメラの回転に依存しない
-        //! projectedW は TryProjectToPixels の正の出力、height は描画先の高さの画素数
+        /// TryProjectToPixels が返した正の projectedW におけるワールド空間の長さ length をピクセル数へ変換する
         [[nodiscard]] inline float ProjectedLengthPixels(const Matrix& viewProjection,
                                                          float length,
                                                          float projectedW,
@@ -90,4 +75,5 @@ namespace NS::Gfx
                           viewProjection._32 * viewProjection._32);
             return length * verticalScale / projectedW * height * 0.5f;
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

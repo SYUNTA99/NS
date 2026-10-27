@@ -12,11 +12,12 @@
 #include <optional>
 #include <utility>
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         namespace
         {
-            // 素材の種類は拡張子で分ける。大文字と小文字を区別しないため、比べる前に小文字へ揃える
             std::string LowerExtension(std::string_view path)
             {
                 std::string extension = OS::FileSystem::Extension(path);
@@ -222,4 +223,5 @@ namespace NS::Editor
             });
             return options;
         }
-} // namespace NS::Editor
+    }
+}

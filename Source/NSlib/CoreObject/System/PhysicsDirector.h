@@ -5,9 +5,9 @@
 
 namespace NS
 {
-    //! @brief シーンの PhysicsScene を持ち、物理の段で broadphase の木を組み直す
-    //! @details Collision は OnEndPlay で body を PhysicsScene から外すので、Scene
-    //! は個体の一覧より先に宣言して後に破棄する
+    /// シーンの PhysicsScene を持ち、物理の段で broadphase の木を組み直す
+    /// Collision は OnEndPlay で body を PhysicsScene から外すので、Scene
+    /// は個体の一覧より先に宣言して後に破棄する
     class PhysicsDirector final : public SceneSystem
     {
     public:

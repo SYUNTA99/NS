@@ -12,8 +12,10 @@
 #include <WICTextureLoader.h>
 #include <algorithm>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             [[nodiscard]] ComPtr<ID3D11Texture2D> AsTexture2D(ID3D11Resource* resource) noexcept
@@ -521,4 +523,5 @@ namespace NS::Gfx
             }
             return texture;
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

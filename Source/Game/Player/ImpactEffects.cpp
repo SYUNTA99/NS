@@ -18,8 +18,10 @@
 #include <optional>
 #include <string_view>
 
-namespace GL::Player
+namespace GL
 {
+    namespace Player
+    {
         namespace
         {
             using NS::EaseOutCubic;
@@ -704,4 +706,5 @@ namespace GL::Player
             NS::StopEffect(owner.effect, m_plan.ring);
             m_plan = HitPlan{};
         }
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

@@ -6,25 +6,28 @@
 
 #include <vector>
 
-namespace NS::Phys
+namespace NS
 {
+    namespace Phys
+    {
         struct MeshShape;
-} // namespace NS::Phys
+    }
+} // namespace NS
 
 namespace NS
 {
-    //! メッシュの三角形による地形。資産ごとに形状を共有し、個体の姿勢で配置する
+    /// メッシュの三角形による地形。資産ごとに形状を共有し、個体の姿勢で配置する
     class MeshCollision : public Collision
     {
     public:
         MeshCollision() noexcept = default;
 
-        //! 所有しない当たりを差し替える。この部品より長く生きる物を渡す。未指定なら当たりなし
+        /// 所有しない当たりを差し替える。この部品より長く生きる物を渡す。未指定なら当たりなし
         void SetShape(const Phys::MeshShape* shape) noexcept;
-        //! 借りている当たり。なければ空
+        /// 借りている当たり。なければ空
         [[nodiscard]] const Phys::MeshShape* Shape() const noexcept;
 
-        //! 持ち主の root の世界行列 world を各頂点に掛け、世界座標の三角形群を返す。当たりが無ければ空
+        /// 持ち主の root の世界行列 world を各頂点に掛け、世界座標の三角形群を返す。当たりが無ければ空
         [[nodiscard]] std::vector<Phys::Triangle> WorldTriangles(const Matrix& world) const;
 
         // 当たりはリフレクションで運ばない。持ち主の OnAssetsLoaded が Model のメッシュの名前から渡すので、型名だけ登録しておく

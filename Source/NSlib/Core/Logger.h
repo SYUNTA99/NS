@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "NSlib/Core/LogType.h"
 
@@ -12,7 +12,7 @@
 namespace NS
 {
 
-    //! ログ出力の重要度。Fatal は出力後にプロセスを強制終了する
+    /// Fatal は出力後にプロセスを強制終了する
     enum class LogLevel : int
     {
         Trace = 0,
@@ -23,46 +23,37 @@ namespace NS
         Fatal = 5,
     };
 
-    //! @brief ロガー初期化用の設定
     struct LoggerDesc
     {
-        //! ログの識別名。ログファイル名に使う
-        std::string logName = "ns";
-
-        //! true の場合、Init のたびに前のログを logName.1.log へずらして新しいファイルへ書く
-        //! 他のプログラムが開いていてずらせない時は、前のファイルへ追記する
+        std::string logName = "ns"; // ログファイル名 (<logName>.log)
+        // true の場合、Init のたびに前のログを logName.1.log へローテートする（他プロセスが使用中の場合は追記）
         bool rotateOnOpen = false;
-
-        //! ログ出力先の親ディレクトリ。空の場合は logs だけを使う
-        std::string logDirectory = {};
+        std::string logDirectory = {}; // 出力先の親ディレクトリ。空の場合は "logs"
     };
 
-    //! 溜めたログ 1 件。エディタのコンソールが一覧に出す
     struct RecentLog
     {
         LogLevel level = LogLevel::Warn;
-        std::string text; // 種類の名前を頭に付けた本文。例: "[Game] 欄 質量 に読んだ値 0 を書かず…"
+        std::string text; // "[<LogType>] <本文>" 形式
     };
 
-    //! NS_LOG_* から使うスレッド対応のロガー。書式は std::format に合わせる
+    /// NS_LOG_* から使うスレッド対応のロガー。書式は std::format 準拠
     class Logger
     {
     public:
-        //! RecentWarnings が返す件数の上限。越えたら古い物から消える
         static constexpr std::size_t k_RecentLogCapacity = 256;
 
         Logger() = delete;
 
-        //! Init から後に出た WARN 以上のログを、新しい順に返す。Init の前と Shutdown の後は空
+        /// Init 以降に出力された WARN 以上のログを新しい順に返す。未初期化時は空
         [[nodiscard]] static std::vector<RecentLog> RecentWarnings();
 
-        //! 失敗時は標準エラー出力にエラーを出し、既定の設定で強行する。複数回呼んでも無視される
+        /// 複数回呼んでも無視される
         static void Init(const LoggerDesc& desc = {}) noexcept;
 
-        //! 未出力のログをすべて書き出して終了する
         static void Shutdown() noexcept;
 
-        //! NS_LOG_* マクロ内部用。直接呼ばないこと
+        /// NS_LOG_* マクロ内部用。直接呼ばないこと
         static void LogImpl(LogLevel level,
                             std::string_view logTypeStr,
                             const char* file,
@@ -70,7 +61,7 @@ namespace NS
                             const char* func,
                             std::string_view msg);
 
-        //! Fatal マクロ内部用。ログを書き出した後、開発環境ではデバッガで停止し、その後プロセスを強制終了する
+        /// NS_LOG_FATAL マクロ内部用。ログ出力後、非 Shipping ではデバッガで停止してからプロセスを強制終了する
         [[noreturn]] static void FatalImpl(
             std::string_view logTypeStr, const char* file, int line, const char* func, std::string_view msg);
     };

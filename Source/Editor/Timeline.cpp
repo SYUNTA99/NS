@@ -9,8 +9,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         void TimelinePlayback::Tick(float seconds, TimelineFrameRange range) noexcept
         {
             if (!playing || range.last < range.first || !std::isfinite(seconds) || seconds < 0.0f ||
@@ -230,4 +232,5 @@ namespace NS::Editor
             return false;
 #endif
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

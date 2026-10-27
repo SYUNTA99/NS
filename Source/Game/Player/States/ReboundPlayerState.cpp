@@ -4,8 +4,10 @@
 #include "Game/Player/States/SkidPlayerState.h"
 #include "Game/PlayerActor.h"
 
-namespace GL::Player
+namespace GL
 {
+    namespace Player
+    {
         void ReboundPlayerState::OnEnter(::PlayerActor* player)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
@@ -44,4 +46,5 @@ namespace GL::Player
                 }
             }
         }
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

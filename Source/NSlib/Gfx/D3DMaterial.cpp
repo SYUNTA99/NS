@@ -15,8 +15,10 @@
 #include <algorithm>
 #include <map>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         std::unique_ptr<D3DMaterial> D3DMaterial::Create(const D3DMaterialDesc& desc)
         {
             return std::unique_ptr<D3DMaterial>(new D3DMaterial(desc));
@@ -177,4 +179,5 @@ namespace NS::Gfx
                 mesh.CreateInputLayout(*m_vertexShader);
             }
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

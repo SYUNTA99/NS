@@ -11,8 +11,10 @@
 
 #include <cmath>
 
-namespace NS::OS
+namespace NS
 {
+    namespace OS
+    {
         namespace
         {
             // 整数キャスト経由の不正値による m_current / m_presses の境界外アクセスを防ぐ
@@ -652,4 +654,5 @@ namespace NS::OS
                 break;
             }
         }
-} // namespace NS::OS
+    } // namespace OS
+} // namespace NS

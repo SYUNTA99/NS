@@ -7,7 +7,6 @@
 
 namespace
 {
-    // ロガーの初期化と終了を自動化して、途中で return しても絶対に終了処理が呼ばれるようにする
     class LoggerScope : public ::NS::NonCopyable
     {
     public:

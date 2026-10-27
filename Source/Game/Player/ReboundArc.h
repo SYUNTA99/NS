@@ -4,19 +4,21 @@
 
 #include <optional>
 
-namespace GL::Player
+namespace GL
 {
-        //! @brief 外れの反動の回り方のうち、当たりが決める物
-        //! @details 回転の速さ・補間・軸のぶれは PlayerAppearance の欄で調整する
+    namespace Player
+    {
+        /// 外れの反動の回り方のうち、当たりが決める物
+        /// 回転の速さ・補間・軸のぶれは PlayerAppearance の欄で調整する
         struct MissTumble
         {
-            //! かすった所の摩擦でねじれる軸。触れた面の向き × 滑る向き で、長さは端の近さ 0〜1。真ん中の外れは 0
+            /// かすった所の摩擦でねじれる軸。触れた面の向き × 滑る向き で、長さは端の近さ 0〜1。真ん中の外れは 0
             NS::Vector3 twist{0.0f, 0.0f, 0.0f};
-            float power = 0.0f; //!< 当たりの最終威力。ねじれの速さに掛ける
+            float power = 0.0f; // 当たりの最終威力。ねじれの速さに掛ける
         };
 
-        //! @brief 当たりで決まる反動の向き・高さ・距離
-        //! @details 重力は PlayerActor の調整値で決め、BeginRebound に渡す
+        /// 当たりで決まる反動の向き・高さ・距離
+        /// 重力は PlayerActor の調整値で決め、BeginRebound に渡す
         struct ReboundArc
         {
             NS::Vector3 direction{1.0f, 0.0f, 0.0f}; // 弾かれる向き。水平の成分だけを使う
@@ -25,4 +27,5 @@ namespace GL::Player
             // 外れの時だけ持つ。玉が軸のぶれるねじれで回り、着地の後にこすって止まる
             std::optional<MissTumble> missTumble{};
         };
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

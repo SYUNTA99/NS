@@ -15,7 +15,6 @@
 
 namespace
 {
-    // 前回残ってしまった終了メッセージを捨てておく
     void DrainPendingQuit() noexcept
     {
         MSG msg;
@@ -261,7 +260,6 @@ namespace NS
 
         m_shutdownCalled = true;
 
-        // 起動を断った時は OnAttach が走っていない
         if (m_attached)
         {
             for (std::vector<std::unique_ptr<Layer>>::reverse_iterator it = m_layers.rbegin(); it != m_layers.rend();

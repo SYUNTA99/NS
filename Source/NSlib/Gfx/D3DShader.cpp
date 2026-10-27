@@ -16,8 +16,10 @@
 #include <string>
 #include <string_view>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             struct ShaderTypeInfo
@@ -521,4 +523,5 @@ namespace NS::Gfx
             return std::span<const std::byte>(static_cast<const std::byte*>(m_vsBytecode->GetBufferPointer()),
                                               m_vsBytecode->GetBufferSize());
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

@@ -2,8 +2,10 @@
 
 #include "NSlib/Core/Windows/Input.h"
 
-namespace NS::OS
+namespace NS
 {
+    namespace OS
+    {
         namespace
         {
             // 前に読んだ回数より今の回数が多い物を押したとする。読んだ回数は今の回数へ進める
@@ -58,4 +60,5 @@ namespace NS::OS
         }
 
         void InputReader::Discard() noexcept { m_seen = Input::Get().CurrentPressCounts(); }
-} // namespace NS::OS
+    } // namespace OS
+} // namespace NS

@@ -13,8 +13,10 @@
 #include <memory>
 #include <optional>
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         nlohmann::json CompleteActorFile(const nlohmann::json& actorFile, std::vector<std::string>& added)
         {
             if (!ActorFileBase(actorFile).empty())
@@ -80,4 +82,5 @@ namespace NS::Editor
             }
             return written;
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

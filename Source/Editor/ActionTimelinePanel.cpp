@@ -25,8 +25,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         namespace
         {
             // 事象の種類の並び。HitReactionItem の選択肢の順で、種類を足すとここにも出る
@@ -38,7 +40,6 @@ namespace NS::Editor
                 return s_types;
             }
 
-            // 入り切りの行に出す名前
             std::string SensorLabel(const ActionSensorEvent& sensor)
             {
                 std::string label = "体のセンサー";
@@ -57,7 +58,7 @@ namespace NS::Editor
             constexpr float k_QuarterSpeed = 0.25f;
 
 #if NS_EDITOR_ENABLED
-            constexpr int k_PreviewGraphCount = 5; // 帯の下の折れ線の行の数
+            constexpr int k_PreviewGraphCount = 5;
             constexpr ImU32 k_GraphBackColor = IM_COL32(40, 40, 46, 255);
             constexpr ImU32 k_GraphTraumaColor = IM_COL32(255, 170, 60, 255);
             constexpr ImU32 k_GraphXColor = IM_COL32(240, 90, 90, 255);
@@ -730,7 +731,7 @@ namespace NS::Editor
             }
             const float graphHeight = rowHeight * 2.0f;
             const int origin = PlaybackOrigin();
-            // 1 本の折れ線。value は 0〜1 (center が真なら -1〜1) に写した値を返す
+            // value は 0〜1 (centered が真なら -1〜1) に正規化した値を返す
             const std::function<void(const ImVec2&, ImU32, bool, const std::function<float(const HitPreviewFrame&)>&)>
                 drawLine = [&](const ImVec2& at,
                                ImU32 color,
@@ -931,4 +932,5 @@ namespace NS::Editor
             (void)editor;
 #endif
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

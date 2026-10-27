@@ -10,8 +10,10 @@
 
 #include <imgui.h>
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         namespace
         {
             // float の一番短い表記を double に読み直す。0.3 と打った値が .mat に 0.3 と残る
@@ -70,4 +72,5 @@ namespace NS::Editor
             value.numbers[0] = static_cast<double>(flag);
             return changed;
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

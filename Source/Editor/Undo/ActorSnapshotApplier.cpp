@@ -7,8 +7,10 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         std::optional<nlohmann::json> ActorSnapshotApplier::CaptureActor(uint32 objectId) const
         {
             if (m_scene == nullptr)
@@ -54,4 +56,5 @@ namespace NS::Editor
             NS_ASSERT(App, m_scene != nullptr, "シーンの無い適用先へ、外したアクターを戻そうとしている");
             (void)m_scene->ReattachActor(std::move(detached));
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

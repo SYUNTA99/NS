@@ -6,8 +6,10 @@
 #include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/detail/D3dUsage.h"
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             constexpr std::size_t k_ConstantBufferAlignment = 16;
@@ -131,4 +133,5 @@ namespace NS::Gfx
         std::size_t D3DBuffer::ByteSize() const noexcept { return m_byteSize; }
         DXGI_FORMAT D3DBuffer::Format() const noexcept { return m_format; }
         bool D3DBuffer::IsDynamic() const noexcept { return m_dynamic; }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

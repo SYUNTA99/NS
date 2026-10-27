@@ -10,14 +10,19 @@
 
 #include <vector>
 
-namespace GL::Player
+namespace GL
 {
+    namespace Player
+    {
         class ChargeStatus;
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL
 
-namespace GL::Level
+namespace GL
 {
-        //! 画面へ重ねる四角 1 枚。座標は描画先の画素で、左上が原点
+    namespace Level
+    {
+        /// 画面へ重ねる四角 1 枚。座標は描画先の画素で、左上が原点
         struct MarkerRect
         {
             float x = 0.0f;
@@ -26,27 +31,27 @@ namespace GL::Level
             float height = 0.0f;
         };
 
-        //! ロックオンの枠の出方を決めるフレーム数。フレームは固定ステップで数える
+        /// ロックオンの枠の出方を決めるフレーム数。フレームは固定ステップで数える
         struct LockOnFrames
         {
-            int sinceCapture = 0; //!< 狙う相手なしからありへ移ったフレームを 0 として数えたフレーム数
-            int sinceLost = -1; //!< 狙う相手ありからなしへ移ったフレームを 0 として数えたフレーム数。外れていなければ負
+            int sinceCapture = 0; // 狙う相手なしからありへ移ったフレームを 0 として数えたフレーム数
+            int sinceLost = -1; // 狙う相手ありからなしへ移ったフレームを 0 として数えたフレーム数。外れていなければ負
         };
 
-        //! ロックオンの枠。明るい線の四角と、その下に先に描く暗い縁の四角
+        /// ロックオンの枠。明るい線の四角と、その下に先に描く暗い縁の四角
         struct LockOnFrameShape
         {
-            //! 明るい線。左上・右上・左下・右下の隅の順に、隅ごとに横の 1 本と縦の 1 本
+            /// 明るい線。左上・右上・左下・右下の隅の順に、隅ごとに横の 1 本と縦の 1 本
             std::vector<MarkerRect> corners;
-            //! 暗い縁。同じ並びで、各四角を縁の幅ぶん広げる
+            /// 暗い縁。同じ並びで、各四角を縁の幅ぶん広げる
             std::vector<MarkerRect> outline;
-            NS::Color color{};        //!< 明るい線の色と不透明度
-            NS::Color outlineColor{}; //!< 暗い縁の色と不透明度
+            NS::Color color{};        // 明るい線の色と不透明度
+            NS::Color outlineColor{}; // 暗い縁の色と不透明度
         };
 
-        //! 外接箱の中心と最大半径を画面へ投影し、捕捉・喪失の経過に応じた枠を組む
-        //! 画素寸法は高さ 720 基準。viewProjection は行ベクトルに右から掛ける行列
-        //! カメラの後ろや喪失演出の終了後は空の枠。不正な入力・調整値なら false で outFrame を変更しない
+        /// 外接箱の中心と最大半径を画面へ投影し、捕捉・喪失の経過に応じた枠を組む
+        /// 画素寸法は高さ 720 基準。viewProjection は行ベクトルに右から掛ける行列
+        /// カメラの後ろや喪失演出の終了後は空の枠。不正な入力・調整値なら false で outFrame を変更しない
         [[nodiscard]] bool BuildLockOnFrame(const NS::Matrix& viewProjection,
                                             NS::Size2D targetSize,
                                             const NS::AABB& bounds,
@@ -54,21 +59,21 @@ namespace GL::Level
                                             const TargetMarkerDesc& desc,
                                             LockOnFrameShape& outFrame);
 
-        //! @brief 溜め中の相手へロックオン枠を描く部品
-        //! @details 相手を見失うと直前の枠を縮めて残す。溜めを終えたら消す
+        /// 溜め中の相手へロックオン枠を描く部品
+        /// 相手を見失うと直前の枠を縮めて残す。溜めを終えたら消す
         class TargetMarker : public NS::OverlayRenderer
         {
         public:
-            //! 溜めている間、確定した狙う相手へ枠を控える。溜めを終えたら控えと経過フレーム数を戻す
+            /// 溜めている間、確定した狙う相手へ枠を控える。溜めを終えたら控えと経過フレーム数を戻す
             void Update(const GL::Player::ChargeStatus& charge);
 
             void OnRenderOverlay(const NS::Gfx::RenderContext& context) override;
 
-            //! このフレームに示す相手。示さないフレームと、外れた後に枠だけを出すフレームは nullptr
+            /// このフレームに示す相手。示さないフレームと、外れた後に枠だけを出すフレームは nullptr
             [[nodiscard]] NS::SceneActor* ShownTarget() const noexcept;
 
-            //! 捕捉中か喪失演出中の枠を組む。targetSize は画素寸法
-            //! 枠を組めた場合 true、それ以外の場合は false。失敗時は outFrame を変更しない
+            /// 捕捉中か喪失演出中の枠を組む。targetSize は画素寸法
+            /// 枠を組めた場合 true、それ以外の場合は false。失敗時は outFrame を変更しない
             [[nodiscard]] bool BuildShownShape(const NS::Matrix& viewProjection,
                                                NS::Size2D targetSize,
                                                LockOnFrameShape& outFrame) const;
@@ -103,4 +108,5 @@ namespace GL::Level
             NS::AABB m_lostBounds{};      // 外れた相手の外接箱。m_framesSinceLost が負の間は読まない
             int m_framesSinceLost = -1;
         };
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

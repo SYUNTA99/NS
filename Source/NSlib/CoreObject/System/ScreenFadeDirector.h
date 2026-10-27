@@ -5,9 +5,9 @@
 
 namespace NS
 {
-    //! @brief シーンの暗転 ScreenFade を持ち、UI の段で固定フレーム 1 回分進める
-    //! @details UI の段は世界の速さに依らず、ほかを止めている間 (Scene::HoldOthers) も回るので、暗転は実時間で進む。
-    //! 描くのは SceneRenderer で、全 UI の後に重ねる
+    /// シーンの暗転 ScreenFade を持ち、UI の段で固定フレーム 1 回分進める
+    /// UI の段は世界の速さに依らず、ほかを止めている間 (Scene::HoldOthers) も回るので、暗転は実時間で進む。
+    /// 描くのは SceneRenderer で、全 UI の後に重ねる
     class ScreenFadeDirector final : public SceneSystem
     {
     public:

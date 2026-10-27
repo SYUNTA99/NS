@@ -7,8 +7,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         void ToolModePanel::Render(LevelEditorController& editor) noexcept
         {
 #if NS_EDITOR_ENABLED
@@ -72,4 +74,5 @@ namespace NS::Editor
             (void)editor;
 #endif
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

@@ -5,8 +5,10 @@
 #include <CommonStates.h>
 #include <memory>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         D3DCommonStates::D3DCommonStates(ID3D11Device* device) noexcept
         {
             if (device == nullptr)
@@ -59,4 +61,5 @@ namespace NS::Gfx
 
             return nullptr;
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

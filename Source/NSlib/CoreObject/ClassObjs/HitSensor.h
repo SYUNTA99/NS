@@ -8,23 +8,26 @@
 #include "NSlib/Core/Types.h"
 #include <functional>
 
-namespace NS::Phys
+namespace NS
 {
+    namespace Phys
+    {
         struct Capsule;
-} // namespace NS::Phys
+    }
+} // namespace NS
 
 namespace NS
 {
-    //! センサーの形
+    /// センサーの形
     enum class HitSensorShape : int
     {
-        Sphere = 0,  //!< 球
-        Capsule = 1, //!< 根の上の向きに伸びるカプセル
-        Box = 2,     //!< 根の向きの箱
+        Sphere = 0,  // 球
+        Capsule = 1, // 根の上の向きに伸びるカプセル
+        Box = 2,     // 根の向きの箱
     };
 
-    //! @brief 世界座標のセンサーの形。球とカプセルは線分と半径、箱は向きのある箱で持つ
-    //! @details 重なりは物理エンジンを使わずにこの形同士で直に解く。順番に依らず、毎回同じ答になる
+    /// 世界座標のセンサーの形。球とカプセルは線分と半径、箱は向きのある箱で持つ
+    /// 重なりは物理エンジンを使わずにこの形同士で直に解く。順番に依らず、毎回同じ答になる
     struct SensorVolume
     {
         bool isBox = false;
@@ -37,40 +40,40 @@ namespace NS
         [[nodiscard]] static SensorVolume Capsule(const Phys::Capsule& capsule) noexcept;
         [[nodiscard]] static SensorVolume Box(const OBB& box) noexcept;
 
-        //! 形を包む軸並行の箱
+        /// 形を包む軸並行の箱
         [[nodiscard]] AABB Bounds() const noexcept;
-        //! 形の中心
+        /// 形の中心
         [[nodiscard]] Vector3 Center() const noexcept;
     };
 
-    //! 2 つの形が重なるか。触れているだけも重なりに数える
+    /// 2 つの形が重なるか。触れているだけも重なりに数える
     [[nodiscard]] bool VolumesOverlap(const SensorVolume& lhs, const SensorVolume& rhs) noexcept;
 
-    //! シーンへ登録するセンサーの基底。形状は派生、種類への応答は持ち主が決める
+    /// シーンへ登録するセンサーの基底。形状は派生、種類への応答は持ち主が決める
     class HitSensor : public Object
     {
     public:
         explicit HitSensor(SceneActor* owner) noexcept : m_owner(owner) {}
 
-        //! このセンサーを持つアクター。重なりを知らせる宛先
+        /// このセンサーを持つアクター。重なりを知らせる宛先
         [[nodiscard]] SceneActor* Host() const noexcept { return m_owner; }
 
-        //! 種類の値。0 は未設定で、種類の意味はゲーム側が定義する。書くのはセンサーを宣言から作る SceneActor だけ
+        /// 種類の値。0 は未設定で、種類の意味はゲーム側が定義する。書くのはセンサーを宣言から作る SceneActor だけ
         [[nodiscard]] uint8 Kind() const noexcept { return m_kind; }
 
-        //! 調べる対象か。持ち主が出ていて (ValidateBySystem)、ゲームが Invalidate していない時だけ真
+        /// 調べる対象か。持ち主が出ていて (ValidateBySystem)、ゲームが Invalidate していない時だけ真
         [[nodiscard]] bool IsValid() const noexcept { return m_valid && m_validBySystem; }
-        //! 調べる対象へ戻す
+        /// 調べる対象へ戻す
         void Validate() noexcept { m_valid = true; }
-        //! 調べる対象から外す。飛んでいる間だけ当たらない物などに使う
+        /// 調べる対象から外す。飛んでいる間だけ当たらない物などに使う
         void Invalidate() noexcept { m_valid = false; }
 
-        //! 持ち主が出ているか。作った時は偽で、EnableHitSensor・DisableHitSensor が出入りに合わせて切り替える
+        /// 持ち主が出ているか。作った時は偽で、EnableHitSensor・DisableHitSensor が出入りに合わせて切り替える
         [[nodiscard]] bool IsValidBySystem() const noexcept { return m_validBySystem; }
         void ValidateBySystem() noexcept { m_validBySystem = true; }
         void InvalidateBySystem() noexcept { m_validBySystem = false; }
 
-        //! 世界座標の形。rootWorld は持ち主の根の世界行列。持ち主を手元に持たない呼び手は HitSensorDirector::VolumeOf を使う
+        /// 世界座標の形。rootWorld は持ち主の根の世界行列。持ち主を手元に持たない呼び手は HitSensorDirector::VolumeOf を使う
         [[nodiscard]] virtual SensorVolume WorldVolume(const Matrix& rootWorld) const noexcept = 0;
 
         NS_REFLECT_NONE(HitSensor, Object)
@@ -85,19 +88,19 @@ namespace NS
         SceneActor* m_owner = nullptr; // 持ち主 (非所有)
     };
 
-    //! 独立した形状を持つセンサー。寸法は持ち主の世界スケールに従う
+    /// 独立した形状を持つセンサー。寸法は持ち主の世界スケールに従う
     class ShapeHitSensor final : public HitSensor
     {
     public:
         explicit ShapeHitSensor(SceneActor* owner) noexcept : HitSensor(owner) {}
 
-        //! 球にする。半径は根のスケール前
+        /// 球にする。半径は根のスケール前
         void SetSphere(float radius) noexcept;
-        //! 根の上の向きに伸びるカプセルにする。halfHeight は中心から端の半球の中心まで
+        /// 根の上の向きに伸びるカプセルにする。halfHeight は中心から端の半球の中心まで
         void SetCapsule(float radius, float halfHeight) noexcept;
-        //! 根の向きの箱にする。halfExtents は中心から各面まで
+        /// 根の向きの箱にする。halfExtents は中心から各面まで
         void SetBox(const Vector3& halfExtents) noexcept;
-        //! 形だけを決める。大きさは .actor の欄の値のまま
+        /// 形だけを決める。大きさは .actor の欄の値のまま
         void SetShape(HitSensorShape shape) noexcept { m_shape = shape; }
 
         [[nodiscard]] HitSensorShape Shape() const noexcept { return m_shape; }
@@ -105,11 +108,11 @@ namespace NS
         [[nodiscard]] float HalfHeight() const noexcept { return m_halfHeight; }
         [[nodiscard]] const Vector3& BoxHalfExtents() const noexcept { return m_boxHalfExtents; }
 
-        //! 根からの中心のずれ (根のローカル)
+        /// 根からの中心のずれ (根のローカル)
         void SetCenterOffset(const Vector3& offset) noexcept { m_centerOffset = offset; }
         [[nodiscard]] const Vector3& CenterOffset() const noexcept { return m_centerOffset; }
 
-        //! 世界座標の形。大きさに根の世界のスケールを掛ける
+        /// 世界座標の形。大きさに根の世界のスケールを掛ける
         [[nodiscard]] SensorVolume WorldVolume(const Matrix& rootWorld) const noexcept override;
 
         // 形の大きさは .actor の値で調整できる。種類と形はクラスが決めるので出さない
@@ -128,16 +131,16 @@ namespace NS
         Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};   // 根からの中心のずれ
     };
 
-    //! 持ち主の衝突形状を毎回読むセンサー。形状の写しや編集用の寸法は持たない
+    /// 持ち主の衝突形状を毎回読むセンサー。形状の写しや編集用の寸法は持たない
     class FollowHitSensor final : public HitSensor
     {
     public:
-        //! @brief 形を答える関数を受けて作る
-        //! @param[in] volume 持ち主の root の世界行列から世界座標の形を返す関数。事前条件: 空でない。
-        //! 空なら WorldVolume は根に長さ 0 の球を返し、NS_LOG_ERROR で知らせる
+        /// 形を答える関数を受けて作る
+        /// @param[in] volume 持ち主の root の世界行列から世界座標の形を返す関数。事前条件: 空でない。
+        /// 空なら WorldVolume は根に長さ 0 の球を返し、NS_LOG_ERROR で知らせる
         FollowHitSensor(SceneActor* owner, std::function<SensorVolume(const Matrix& rootWorld)> volume) noexcept;
 
-        //! 世界座標の形。受けた関数へ rootWorld を渡し、その答えをそのまま返す
+        /// 世界座標の形。受けた関数へ rootWorld を渡し、その答えをそのまま返す
         [[nodiscard]] SensorVolume WorldVolume(const Matrix& rootWorld) const noexcept override;
 
         NS_REFLECT_NONE(FollowHitSensor, HitSensor)

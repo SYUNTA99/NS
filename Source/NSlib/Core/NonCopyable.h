@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 
 namespace NS
 {
-    //! コピーとムーブを禁止する継承用基底。デストラクタは非仮想
+    /// コピーとムーブを禁止する継承用基底。デストラクタは非仮想
     class NonCopyable
     {
     protected:

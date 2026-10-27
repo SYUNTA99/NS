@@ -8,10 +8,10 @@
 
 namespace NS
 {
-    //! スキンメッシュで使えるボーンの最大数
+    /// スキンメッシュで使えるボーンの最大数
     inline constexpr std::size_t k_MaxBones = 128;
 
-    //! アニメーションを持たない静的モデル用の頂点データ構造
+    /// アニメーションを持たない静的モデル用の頂点データ構造
     struct StaticVertex
     {
         Vector3 position;
@@ -22,8 +22,8 @@ namespace NS
     static_assert(std::is_standard_layout_v<StaticVertex>,
                   "GPUへ正しく転送するため、StaticVertexは標準レイアウトである必要があります。");
 
-    //! @brief スキンメッシュ用の頂点データ構造
-    //! @details 頂点の基本情報に加え、最大4つのボーンからインデックスとウェイトを保持する
+    /// スキンメッシュ用の頂点データ構造
+    /// 頂点の基本情報に加え、最大4つのボーンからインデックスとウェイトを保持する
     struct SkinnedVertex
     {
         Vector3 position;

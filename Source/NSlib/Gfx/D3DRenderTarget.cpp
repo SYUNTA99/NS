@@ -3,8 +3,10 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         std::unique_ptr<D3DRenderTarget> D3DRenderTarget::Create(Size2D size)
         {
             return std::unique_ptr<D3DRenderTarget>(new D3DRenderTarget(size));
@@ -94,4 +96,5 @@ namespace NS::Gfx
             }
             return m_color->Srv();
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

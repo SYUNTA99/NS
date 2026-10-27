@@ -4,13 +4,16 @@
 
 class PlayerActor;
 
-namespace GL::Player
+namespace GL
 {
-        //! 外れの反動で着地した後の滑り。止まるまで操作を受けない
+    namespace Player
+    {
+        /// 外れの反動で着地した後の滑り。止まるまで操作を受けない
         class SkidPlayerState final : public PlayerState<SkidPlayerState>
         {
         public:
             void OnEnter(::PlayerActor* player) override;
             void OnStep(::PlayerActor* player, float dt) override;
         };
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

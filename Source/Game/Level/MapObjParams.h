@@ -7,15 +7,17 @@
 #include <algorithm>
 #include <cmath>
 
-namespace GL::Level
+namespace GL
 {
-        //! @brief 置物の重さ・転がり・壊れ方・飛び方の見た目の調整値の欄を持つ部品
+    namespace Level
+    {
+        /// 置物の重さ・転がり・壊れ方・飛び方の見た目の調整値の欄を持つ部品
         class MapObjParams : public NS::Object
         {
         public:
-            //! 欄「質量」の値。欄の範囲が有限の正の数だけを書く
+            /// 欄「質量」の値。欄の範囲が有限の正の数だけを書く
             [[nodiscard]] float Mass() const noexcept { return m_mass; }
-            //! 欄「摩擦」の値。有限でなければ 0.6、負は 0
+            /// 欄「摩擦」の値。有限でなければ 0.6、負は 0
             [[nodiscard]] float Friction() const noexcept
             {
                 if (!std::isfinite(m_friction))
@@ -24,7 +26,7 @@ namespace GL::Level
                 }
                 return std::max(m_friction, 0.0f);
             }
-            //! 欄「跳ね返り」の値。有限でなければ 0.35、負は 0
+            /// 欄「跳ね返り」の値。有限でなければ 0.35、負は 0
             [[nodiscard]] float Restitution() const noexcept
             {
                 if (!std::isfinite(m_restitution))
@@ -34,7 +36,7 @@ namespace GL::Level
                 return std::max(m_restitution, 0.0f);
             }
             [[nodiscard]] float SpinPerSpeed() const noexcept { return m_spinPerSpeed; }
-            //! 欄「耐久」の値。有限でなければ 1、負は 0
+            /// 欄「耐久」の値。有限でなければ 1、負は 0
             [[nodiscard]] float Toughness() const noexcept
             {
                 if (!std::isfinite(m_toughness))
@@ -47,7 +49,7 @@ namespace GL::Level
             [[nodiscard]] float FloorDot() const noexcept { return std::clamp(m_floorDot, NS::k_Epsilon, 1.0f); }
             [[nodiscard]] float MarkProbeDistance() const noexcept { return m_markProbeDistance; }
             [[nodiscard]] int MissHopCount() const noexcept { return std::max(m_missHopCount, 0); }
-            //! 外れで着地した後の跳ね方の欄をまとめた値
+            /// 外れで着地した後の跳ね方の欄をまとめた値
             [[nodiscard]] MissHopDesc MissHop() const noexcept
             {
                 return MissHopDesc{
@@ -120,4 +122,5 @@ namespace GL::Level
             float m_missHopTurnDegrees = 30.0f;
             float m_missHopKeep = 0.7f;
         };
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

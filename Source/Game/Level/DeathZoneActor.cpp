@@ -6,8 +6,10 @@
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         void DeathZoneActor::OnSensorEnter(NS::HitSensor* self, NS::HitSensor* other)
         {
             NS_ASSERT(Game, self != nullptr && other != nullptr, "重なったセンサーが渡されていない");
@@ -18,4 +20,5 @@ namespace GL::Level
         }
 
         NS_PLACEABLE(DeathZoneActor, "落下死の範囲")
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

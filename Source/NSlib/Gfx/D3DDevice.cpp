@@ -23,8 +23,10 @@
 #include <memory>
 #include <new>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             bool TryCreateDeviceAndSwapChain(HWND hwnd,
@@ -558,4 +560,5 @@ namespace NS::Gfx
             NS_ASSERT(Graphics, m_commands, "D3DDevice が無効な状態で Commands() を呼んでいる");
             return *m_commands;
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

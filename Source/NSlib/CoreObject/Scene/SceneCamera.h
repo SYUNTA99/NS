@@ -3,16 +3,19 @@
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Math.h"
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         class D3DDevice;
-} // namespace NS::Gfx
+    }
+} // namespace NS
 
 namespace NS
 {
     struct CameraPose;
 
-    //! シーンの実カメラ。描画と編集用で、遊びの向きは IGetCamera から取得する
+    /// シーンの実カメラ。描画と編集用で、遊びの向きは IGetCamera から取得する
     class SceneCamera
     {
     public:
@@ -23,7 +26,7 @@ namespace NS
         void SetUp(const Vector3& up) noexcept;
         void SetAspectRatioFromDevice(const Gfx::D3DDevice& device) noexcept;
 
-        //! pose の位置 / 注視点 / up と投影設定をまとめて書く。CameraManager の Evaluate とエディタの視点反映が使う
+        /// pose の位置 / 注視点 / up と投影設定をまとめて書く。CameraManager の Evaluate とエディタの視点反映が使う
         void ApplyPose(const CameraPose& pose) noexcept;
 
         [[nodiscard]] const Vector3& Position() const noexcept { return m_camera.Position(); }
@@ -31,7 +34,7 @@ namespace NS
         [[nodiscard]] const Vector3& Up() const noexcept { return m_camera.Up(); }
         [[nodiscard]] Radians FovY() const noexcept { return m_camera.FovY(); }
 
-        //! 内包する CameraData への変更不可参照。skybox 描画とカメラ位置を読むのに使う
+        /// 内包する CameraData への変更不可参照。skybox 描画とカメラ位置を読むのに使う
         [[nodiscard]] const CameraData& Camera() const noexcept { return m_camera; }
 
         [[nodiscard]] Matrix ViewProjection() const noexcept { return m_camera.ViewProjection(); }

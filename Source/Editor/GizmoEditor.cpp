@@ -17,8 +17,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         namespace
         {
             constexpr float k_MoveSnapStep = 0.5f;
@@ -337,7 +339,7 @@ namespace NS::Editor
                 return best;
             }
 
-            //! パネルローカル座標に原点を加算し、drawlist へ渡す画面座標にする
+            // パネルローカル座標に原点を加算し、drawlist へ渡す画面座標にする
             struct PanelToScreenPx
             {
                 float panelX = 0.0f; // パネル左上の X
@@ -960,4 +962,5 @@ namespace NS::Editor
 
             return best;
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

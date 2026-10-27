@@ -27,13 +27,13 @@ namespace NS
     }
     namespace Editor
     {
-        //! 選択物の名前・姿勢・部品の値を編集する。改名の適用は描画後に行う
+        /// 選択物の名前・姿勢・部品の値を編集する。改名の適用は描画後に行う
         class InspectorPanel : public NonCopyable
         {
         public:
             InspectorPanel();
             ~InspectorPanel();
-            //! インスペクターを 1 枚描く。名前・トランスフォーム・アクターの持ち物の編集は controller へ流す
+            /// インスペクターを 1 枚描く。名前・トランスフォーム・アクターの持ち物の編集は controller へ流す
             void Render(LevelEditorController& editor) noexcept;
 
         private:
@@ -43,9 +43,9 @@ namespace NS
             void DrawMaterialPreview(const Material& material);
             void DrawMeshPreview(const Mesh& mesh);
             void DrawAssetPreview(const Gfx::DrawItem& item);
-            //! actor の元の .actor の名前の束の欄を描き、直し終えた束をその .actor へ書く。.actor が無ければ何も描かない
+            /// actor の元の .actor の名前の束の欄を描き、直し終えた束をその .actor へ書く。.actor が無ければ何も描かない
             void DrawHitReactionSets(LevelEditorController& editor, const SceneActor* actor);
-            //! actor の .actor の名前と、上書きから派生を作る欄を描く。押した操作は Render を描き終えてから流す
+            /// actor の .actor の名前と、上書きから派生を作る欄を描く。押した操作は Render を描き終えてから流す
             void DrawActorFileChoice(const SceneActor* actor);
 
             std::unique_ptr<Gfx::D3DRenderTarget> m_assetPreview;
@@ -75,7 +75,7 @@ namespace NS
             bool m_hitSetsEditing = false; // 値を変えて、まだ .actor へ書いていない
         };
 
-        //! ActorRef の欄の参照先の候補。PlacedActors の並びと番号で、アクター一覧と同じ表示名を出す
+        /// ActorRef の欄の参照先の候補。PlacedActors の並びと番号で、アクター一覧と同じ表示名を出す
         [[nodiscard]] std::vector<ActorRefOption> MakeActorRefOptions(const ActorList& objects);
     } // namespace Editor
 } // namespace NS

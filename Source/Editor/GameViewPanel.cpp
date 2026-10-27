@@ -9,8 +9,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         void GameViewPanel::Render(LevelEditorController& editor) noexcept
         {
 #if NS_EDITOR_ENABLED
@@ -90,4 +92,5 @@ namespace NS::Editor
             }
 #endif
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

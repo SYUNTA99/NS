@@ -20,11 +20,12 @@
 
 #include <array>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
-            // キューブマップのテクスチャファイル名
             // 素材のファイル名が示す向きは DX11 の軸から水平に 90° ずれている。継ぎ目が合う並びで置く
             constexpr std::array<std::string_view, 6> k_KurtFaceFileNames = {
                 "space_ft.png", // 右
@@ -161,7 +162,6 @@ namespace NS::Gfx
             }
             else if (OS::FileSystem::IsDirectory(path))
             {
-                // ディレクトリが指定された場合は、6方向の画像ファイルとして読み込みを試みる
                 std::array<std::string, 6> facePaths{};
                 for (std::size_t i = 0; i < facePaths.size(); ++i)
                 {
@@ -239,4 +239,5 @@ namespace NS::Gfx
         {
             return k_KurtFaceFileNames;
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

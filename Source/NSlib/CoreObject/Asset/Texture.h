@@ -12,8 +12,8 @@ namespace NS
         class D3DTexture;
     }
 
-    //! @brief 画像ファイル 1 つのテクスチャ。中に D3DTexture を持つ
-    //! @details 読めない時は中の D3DTexture が代わりのピンクの画像になる
+    /// 画像ファイル 1 つのテクスチャ。中に D3DTexture を持つ
+    /// 読めない時は中の D3DTexture が代わりのピンクの画像になる
     class Texture : public Object
     {
     public:

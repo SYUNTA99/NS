@@ -706,8 +706,10 @@ void LevelEditorController::CommitAssetEdit()
     (void)NS::Editor::WriteMaterialFile(assets, *material, *path);
 }
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         bool WriteMaterialFile(const AssetManager& assets, const Material& material, std::string_view filePath)
         {
             const std::optional<std::string> text = assets.MakeMaterialFileJson(material);
@@ -724,4 +726,5 @@ namespace NS::Editor
             }
             return true;
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

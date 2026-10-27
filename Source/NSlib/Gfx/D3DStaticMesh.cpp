@@ -7,8 +7,10 @@
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Gfx/D3DDevice.h"
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             // モデルの読み込みに失敗した場合に表示する、デバッグ用の代替モデル
@@ -96,4 +98,5 @@ namespace NS::Gfx
             };
             return k_Layout;
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

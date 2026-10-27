@@ -11,11 +11,13 @@
 class PlayerActor;
 
 // 自機の今の動きの値。書くのは PlayerActor だけで、見た目とエフェクトの部品は const の参照で問いの関数を読む
-namespace GL::Player
+namespace GL
 {
-        //! @brief 今どの動きか
-        //! @details PlayerActor::Motion
-        //! が呼ばれた時の状態機械から組む。状態は状態の段の途中で変わるので、控えて持たない
+    namespace Player
+    {
+        /// 今どの動きか
+        /// PlayerActor::Motion
+        /// が呼ばれた時の状態機械から組む。状態は状態の段の途中で変わるので、控えて持たない
         struct PlayerMotion
         {
             bool bodySlamming = false;  // 突進か、突進を続ける当たる直前の状態に居るか
@@ -30,19 +32,19 @@ namespace GL::Player
             NS::Vector3 velocity{};      // 身体の今の速度 (m/s)
         };
 
-        //! 突進の値。向きと溜め量は終了後も使うため状態内には置かず、ResetState で戻す
+        /// 突進の値。向きと溜め量は終了後も使うため状態内には置かず、ResetState で戻す
         class BodySlamStatus
         {
         public:
-            //! 発動時に確定した溜め量 0..1
+            /// 発動時に確定した溜め量 0..1
             [[nodiscard]] float Charge01() const noexcept { return m_charge01; }
-            //! 発動時に確定した溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
+            /// 発動時に確定した溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
             [[nodiscard]] float Overcharge01() const noexcept { return m_overcharge01; }
-            //! @brief 最後に出した突進の水平の向き
-            //! @details 突進が終わった後も、次の突進を出すまで残す
-            //! @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
+            /// 最後に出した突進の水平の向き
+            /// 突進が終わった後も、次の突進を出すまで残す
+            /// @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
             [[nodiscard]] NS::Vector3 Direction() const noexcept { return m_dir; }
-            //! 最後に出した突進で玉が回る速さ (度/秒)。突進を出す前と ResetState の後は 0
+            /// 最後に出した突進で玉が回る速さ (度/秒)。突進を出す前と ResetState の後は 0
             [[nodiscard]] float SpinSpeed() const noexcept { return m_spinSpeed; }
 
         private:
@@ -60,21 +62,21 @@ namespace GL::Player
             bool m_wasSlamming = false; // 直前のフレームを突進中で終えたか。書くのは MoveBody と ResetState
         };
 
-        //! 反動の値
+        /// 反動の値
         class ReboundStatus
         {
         public:
-            //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
+            /// 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
             [[nodiscard]] NS::Vector3 Direction() const noexcept { return m_direction; }
-            //! 最後に始めた反動の玉の回る速さ (度/秒)。開始前と ResetState 後は 0
+            /// 最後に始めた反動の玉の回る速さ (度/秒)。開始前と ResetState 後は 0
             [[nodiscard]] float SpinSpeed() const noexcept { return m_spinSpeed; }
-            //! 最後に始めた反動の外れの回り方。外れの反動の時だけ値を持つ
+            /// 最後に始めた反動の外れの回り方。外れの反動の時だけ値を持つ
             [[nodiscard]] const std::optional<MissTumble>& Tumble() const noexcept { return m_missTumble; }
-            //! @brief 反動を始めた回数
-            //! @details 見た目が新しい反動の始まりを知るために読む。ResetState では戻さない
+            /// 反動を始めた回数
+            /// 見た目が新しい反動の始まりを知るために読む。ResetState では戻さない
             [[nodiscard]] NS::uint32 Count() const noexcept { return m_count; }
 
-            //! 通算の反動回数を保ったまま、今の反動の状態だけを初期値へ戻す
+            /// 通算の反動回数を保ったまま、今の反動の状態だけを初期値へ戻す
             void Reset() noexcept
             {
                 m_direction = NS::Vector3{};
@@ -91,7 +93,7 @@ namespace GL::Player
             NS::uint32 m_count = 0;
         };
 
-        //! @brief 地形の面で返った最後の反動の記録。開発用の線と Replay が読む
+        /// 地形の面で返った最後の反動の記録。開発用の線と Replay が読む
         struct TerrainReboundRecord
         {
             NS::Vector3 point{};     // 当たったフレームの根の位置
@@ -104,18 +106,18 @@ namespace GL::Player
             float speed = 0.0f;      // 返った速さ (m/s)
         };
 
-        //! エアダッシュと地形の反動の値。書くのは PlayerActor だけ
+        /// エアダッシュと地形の反動の値。書くのは PlayerActor だけ
         class AirDashStatus
         {
         public:
             [[nodiscard]] int Remaining() const noexcept { return m_remaining; }
-            //! 地形の反動を始めてからの秒。反動の状態の外では最後の反動の値のまま
+            /// 地形の反動を始めてからの秒。反動の状態の外では最後の反動の値のまま
             [[nodiscard]] float ReboundElapsed() const noexcept { return m_reboundElapsed; }
-            //! 地形の反動を始めた回数。ResetState では戻さない
+            /// 地形の反動を始めた回数。ResetState では戻さない
             [[nodiscard]] NS::uint32 ReboundCount() const noexcept { return m_reboundCount; }
             [[nodiscard]] const TerrainReboundRecord& LastRebound() const noexcept { return m_last; }
 
-            //! 押しの控え・通算の反動回数・直前の反動記録を保ったまま、ダッシュの状態を初期値へ戻す
+            /// 押しの控え・通算の反動回数・直前の反動記録を保ったまま、ダッシュの状態を初期値へ戻す
             void Reset() noexcept
             {
                 m_remaining = 1;
@@ -152,11 +154,11 @@ namespace GL::Player
             TerrainReboundRecord m_last{};
         };
 
-        //! 外れの着地からこすって止まる間の値。書くのは BeginSkid と AdvanceSkid
+        /// 外れの着地からこすって止まる間の値。書くのは BeginSkid と AdvanceSkid
         class SkidStatus
         {
         public:
-            //! 着いた水平の速さに今掛けている倍率 0〜1。身体と玉の回転が同じ倍率で落ちる
+            /// 着いた水平の速さに今掛けている倍率 0〜1。身体と玉の回転が同じ倍率で落ちる
             [[nodiscard]] float SpeedScale() const noexcept { return m_speedScale; }
 
         private:
@@ -167,15 +169,15 @@ namespace GL::Player
             float m_speedScale = 1.0f;
         };
 
-        //! @brief 決定の段で確定した溜めと狙いの値
-        //! @details DecideStep の頭で控えただけの押しと狙いは入れない。
-        //!          読み手が 1 フレーム前の狙いを読まないようにするため
+        /// 決定の段で確定した溜めと狙いの値
+        /// DecideStep の頭で控えただけの押しと狙いは入れない。
+        ///          読み手が 1 フレーム前の狙いを読まないようにするため
         class ChargeStatus
         {
         public:
-            //! 通常突進と溜めの判定
+            /// 通常突進と溜めの判定
             [[nodiscard]] const GL::Level::ImpactInputJudge& Judge() const noexcept { return m_judge; }
-            //! 押している間の狙いの線を返す。線が無い場合は false で outLine を変更しない
+            /// 押している間の狙いの線を返す。線が無い場合は false で outLine を変更しない
             [[nodiscard]] bool TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
             {
                 if (!m_hasAimLine)
@@ -185,7 +187,7 @@ namespace GL::Player
                 outLine = m_aimLine;
                 return true;
             }
-            //! 揺れを足す前の線で狙う相手を返す。相手が無い場合は false で outTarget を変更しない
+            /// 揺れを足す前の線で狙う相手を返す。相手が無い場合は false で outTarget を変更しない
             [[nodiscard]] bool TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
             {
                 if (!m_hasAimTarget)
@@ -195,7 +197,7 @@ namespace GL::Player
                 outTarget = m_aimTarget;
                 return true;
             }
-            //! 紫の揺れを足した線で最初に触れる相手を返す。相手が無い場合は false で outTarget を変更しない
+            /// 紫の揺れを足した線で最初に触れる相手を返す。相手が無い場合は false で outTarget を変更しない
             [[nodiscard]] bool TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
             {
                 if (!m_hasLineTarget)
@@ -205,11 +207,11 @@ namespace GL::Player
                 outTarget = m_lineTarget;
                 return true;
             }
-            //! 紫の揺れの位相 (ラジアン)。紫でない間は 0
+            /// 紫の揺れの位相 (ラジアン)。紫でない間は 0
             [[nodiscard]] float SwayPhase() const noexcept { return m_swayPhase; }
-            //! 紫の揺れの横のずれ (m)。狙いの線の右が正。紫でない間は 0
+            /// 紫の揺れの横のずれ (m)。狙いの線の右が正。紫でない間は 0
             [[nodiscard]] float SwayOffset() const noexcept { return m_swayOffset; }
-            //! このフレームに紫の揺れが端を通った場合 true、それ以外の場合は false
+            /// このフレームに紫の揺れが端を通った場合 true、それ以外の場合は false
             [[nodiscard]] bool SwayReachedEdge() const noexcept { return m_swayReachedEdge; }
 
         private:
@@ -228,4 +230,5 @@ namespace GL::Player
             bool m_hasSwayEdge = false; // 前のフレームの端の番号を控えているか
             bool m_swayReachedEdge = false;
         };
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

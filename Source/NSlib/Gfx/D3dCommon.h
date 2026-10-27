@@ -7,7 +7,10 @@
 #include <dxgi.h>
 #include <wrl/client.h>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         template <typename T> using ComPtr = Microsoft::WRL::ComPtr<T>;
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

@@ -15,14 +15,17 @@
 
 #include <memory>
 
-namespace NS::UI
+namespace NS
 {
+    namespace UI
+    {
         class ImGuiContext;
-} // namespace NS::UI
+    }
+} // namespace NS
 
 class LevelEditorController;
 
-//! ゲームの更新・描画に編集用の UI と自由視点を重ねるレイヤー
+/// ゲームの更新・描画に編集用の UI と自由視点を重ねるレイヤー
 class Editor : public NS::Layer
 {
 public:
@@ -38,22 +41,22 @@ private:
     static void HandleModeToggleInput(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept;
     static void HandlePauseInput(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept;
 
-    //! エディタ UI 全体の表示・非表示を切り替える入力を見る
+    /// エディタ UI 全体の表示・非表示を切り替える入力を見る
     void HandleUiVisibilityInput(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept;
 
-    //! @brief 画面最上部に File / Edit / SceneActor 等のメインメニューバーを描画する
-    //! @details 帯の高さ分だけビューポート作業領域が下がるので、後続のツールバー / ドックは自動でずれる
+    /// 画面最上部に File / Edit / SceneActor 等のメインメニューバーを描画する
+    /// 帯の高さ分だけビューポート作業領域が下がるので、後続のツールバー / ドックは自動でずれる
     void RenderMainMenuBar(LevelEditorController& editor) noexcept;
 
-    //! @brief 画面最上部にプレイ制御ツールバーの帯を描画する
-    //! @return 帯の高さ。ドックホストはこの分だけ上端を空ける
+    /// 画面最上部にプレイ制御ツールバーの帯を描画する
+    /// @return 帯の高さ。ドックホストはこの分だけ上端を空ける
     [[nodiscard]] static float RenderPlayToolbar(LevelEditorController& editor) noexcept;
 
-    //! 全面化中のパネルだけをワークエリア全面へ描く。ドックの配置は別途維持する
+    /// 全面化中のパネルだけをワークエリア全面へ描く。ドックの配置は別途維持する
     void RenderMaximizedPanel(LevelEditorController& editor, float topOffset) noexcept;
 
-    //! 編集モードのキー操作を処理する。Delete = 削除、Ctrl+D = 複製、F = 選択物へ寄る
-    //! 押した瞬間は OnUpdate が固定ステップごとに読むので、描画からでなく更新から呼ぶ
+    /// 編集モードのキー操作を処理する。Delete = 削除、Ctrl+D = 複製、F = 選択物へ寄る
+    /// 押した瞬間は OnUpdate が固定ステップごとに読むので、描画からでなく更新から呼ぶ
     static void HandleEditShortcuts(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept;
 
     std::unique_ptr<NS::UI::ImGuiContext> m_imgui;

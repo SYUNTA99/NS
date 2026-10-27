@@ -8,9 +8,11 @@
 #include <array>
 #include <cstddef>
 
-namespace NS::OS
+namespace NS
 {
-        //! @brief 手元の機器のキーとボタンごとの押した回数
+    namespace OS
+    {
+        /// 手元の機器のキーとボタンごとの押した回数
         struct PressCounts
         {
             std::array<uint32, static_cast<std::size_t>(Key::Count)> keys{};
@@ -19,14 +21,14 @@ namespace NS::OS
             std::array<uint32, static_cast<std::size_t>(GamepadTrigger::Count)> gamepadTriggers{};
         };
 
-        //! @brief InputReader::Read が返す、前の Read から後に押されたキーとボタン
+        /// InputReader::Read が返す、前の Read から後に押されたキーとボタン
         class InputPresses
         {
         public:
             [[nodiscard]] bool WasPressed(Key k) const noexcept;
             [[nodiscard]] bool WasPressed(MouseButton b) const noexcept;
             [[nodiscard]] bool WasPressed(GamepadButton b) const noexcept;
-            //! しきい値を超えて引いたか
+            /// しきい値を超えて引いたか
             [[nodiscard]] bool WasPressed(GamepadTrigger t) const noexcept;
 
         private:
@@ -38,26 +40,27 @@ namespace NS::OS
             std::array<bool, static_cast<std::size_t>(GamepadTrigger::Count)> m_gamepadTriggers{};
         };
 
-        //! @brief 機器の押した回数を、前に Read した時の回数と比べて、押した瞬間を返す
-        //! @details 押した瞬間を読む物は、それぞれ 1 つ持ち、自分の時計で Read を呼ぶ。
-        //! 機器は回数を下ろさないので、ほかの InputReader が読んでも押しは消えず、
-        //! Read の間に何回固定フレームが進んでも押しを落とさない。
-        //! 機器は Input::Get() の手元の機器を読む
+        /// 機器の押した回数を、前に Read した時の回数と比べて、押した瞬間を返す
+        /// 押した瞬間を読む物は、それぞれ 1 つ持ち、自分の時計で Read を呼ぶ。
+        /// 機器は回数を下ろさないので、ほかの InputReader が読んでも押しは消えず、
+        /// Read の間に何回固定フレームが進んでも押しを落とさない。
+        /// 機器は Input::Get() の手元の機器を読む
         class InputReader
         {
         public:
-            //! 作る前の押しは返さない
+            /// 作る前の押しは返さない
             InputReader() noexcept;
 
-            //! @brief 前の Read (無ければ作った時) から後に押された物を返す
-            //! @details 中立 (Input::BeginNeutral) の間は何も返さず、前に読んだ回数も進めない。
-            //! 中立の間に手元の機器へ届いた押しは、明けた後の Read が返す
+            /// 前の Read (無ければ作った時) から後に押された物を返す
+            /// 中立 (Input::BeginNeutral) の間は何も返さず、前に読んだ回数も進めない。
+            /// 中立の間に手元の機器へ届いた押しは、明けた後の Read が返す
             [[nodiscard]] InputPresses Read() noexcept;
 
-            //! 前の Read から後の押しを、返さずに読んだ事にする
+            /// 前の Read から後の押しを、返さずに読んだ事にする
             void Discard() noexcept;
 
         private:
             PressCounts m_seen{}; // 前に Read した時の押した回数
         };
-} // namespace NS::OS
+    } // namespace OS
+} // namespace NS

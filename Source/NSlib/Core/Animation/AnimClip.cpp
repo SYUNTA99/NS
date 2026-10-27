@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <span>
 
-namespace NS::Anim
+namespace NS
 {
+    namespace Anim
+    {
         namespace
         {
             struct Segment
@@ -124,4 +126,5 @@ namespace NS::Anim
                 pose.scale = SampleVec3(track.scaleTimes, track.scaleValues, track.scaleInterp, t, pose.scale);
             }
         }
-} // namespace NS::Anim
+    } // namespace Anim
+} // namespace NS

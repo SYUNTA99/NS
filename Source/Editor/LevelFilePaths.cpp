@@ -9,8 +9,10 @@
 #include <cctype>
 #include <optional>
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         namespace
         {
             constexpr std::size_t k_MinNameLen = 1;
@@ -165,4 +167,5 @@ namespace NS::Editor
             }
             return true;
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

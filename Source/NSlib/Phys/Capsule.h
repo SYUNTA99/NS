@@ -2,10 +2,12 @@
 
 #include "NSlib/Core/Math.h"
 
-namespace NS::Phys
+namespace NS
 {
-        //! @brief カプセル形状
-        //! @details 円柱の両端に半球がついた形状
+    namespace Phys
+    {
+        /// カプセル形状
+        /// 円柱の両端に半球がついた形状
         struct Capsule
         {
             Vector3 center{0.0f, 0.0f, 0.0f}; // 中心座標
@@ -14,8 +16,8 @@ namespace NS::Phys
             float radius = 0.4f;                  // 半径
         };
 
-        //! @brief 上の向きに伸びるカプセルに、回転と拡大を掛ける
-        //! @details 横の拡大が x と z で違っても半径は 1 つで、絶対値の大きい方に合わせる
+        /// 上の向きに伸びるカプセルに、回転と拡大を掛ける
+        /// 横の拡大が x と z で違っても半径は 1 つで、絶対値の大きい方に合わせる
         [[nodiscard]] inline Capsule MakeScaledCapsule(const Vector3& center,
                                                        const Quaternion& rotation,
                                                        const Vector3& scale,
@@ -27,4 +29,5 @@ namespace NS::Phys
                            .halfHeight = halfHeight * std::abs(scale.y),
                            .radius = radius * std::max(std::abs(scale.x), std::abs(scale.z))};
         }
-} // namespace NS::Phys
+    } // namespace Phys
+} // namespace NS

@@ -78,7 +78,6 @@ void PlayerActor::OnInit()
     CreateClassObj(m_clips);
     CreateClassObj(m_shadow);
     NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
-    // 残像は本体の Model を元に描く
     NS::InitDraw(this, &m_tackleGhost, &Root(), m_model.get());
     CreateClassObj(m_resolver);
     CreateClassObj(m_hitReaction);
@@ -204,7 +203,6 @@ void PlayerActor::UpdateAnimation()
     {
         clip = m_clips->m_idleClip->Clip();
     }
-    // 立ちのクリップも読めなければ、今のクリップのまま
     if (clip != nullptr)
     {
         animation->Play(clip);

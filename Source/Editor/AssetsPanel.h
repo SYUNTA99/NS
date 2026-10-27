@@ -27,7 +27,7 @@ namespace NS
             void Render(LevelEditorController& editor) noexcept;
 
         private:
-            //! 開いたフォルダの中身を辿り、素材の選択とドラッグを受け付ける
+            /// 開いたフォルダの中身を辿り、素材の選択とドラッグを受け付ける
             void RenderTree(std::string_view dir, LevelEditorController& editor) noexcept;
             void RenderFiles(const std::vector<std::string>& files, LevelEditorController& editor);
             void RenderTile(const std::string& file, LevelEditorController& editor, float width);

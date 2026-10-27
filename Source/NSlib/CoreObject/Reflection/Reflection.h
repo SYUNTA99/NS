@@ -56,7 +56,7 @@ namespace NS
         return AssetKind::None;
     }
 
-    //! リフレクションが扱うフィールド型タグ
+    /// リフレクションが扱うフィールド型タグ
     // TODO: 角度の欄は素の float / Vector3 で、単位は欄名だけが持つ。Core/Math.h の Radians を FieldType へ足す
     enum class FieldType
     {
@@ -74,7 +74,7 @@ namespace NS
         OptionalColor // 欄は std::optional<NS::Color>。空は null、値は Color と同じ [r,g,b,a] で保存する
     };
 
-    //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
+    /// メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
     template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
         if constexpr (std::is_same_v<T, float>)
@@ -131,7 +131,7 @@ namespace NS
         }
     }
 
-    //! 欄へ書く値の float の成分が全部有限なら true。float を持たない型は常に true
+    /// 欄へ書く値の float の成分が全部有限なら true。float を持たない型は常に true
     template <class Value> [[nodiscard]] bool IsFiniteFieldValue(const Value& value) noexcept
     {
         if constexpr (std::is_same_v<Value, float>)
@@ -172,35 +172,35 @@ namespace NS
         }
     }
 
-    //! @brief 調整値が取ってよい値の範囲。両端を含む
-    //! @details 登録のマクロの付け足しの引数に書く。範囲を付けられるのは float の欄だけ
+    /// 調整値が取ってよい値の範囲。両端を含む
+    /// 登録のマクロの付け足しの引数に書く。範囲を付けられるのは float の欄だけ
     struct FieldRange
     {
         float min = -std::numeric_limits<float>::max();
         float max = std::numeric_limits<float>::max();
 
-        //! k_Epsilon 以上の値。0 と、割る数にすると溢れるほど 0 に近い正の値は範囲の外
+        /// k_Epsilon 以上の値。0 と、割る数にすると溢れるほど 0 に近い正の値は範囲の外
         [[nodiscard]] static constexpr FieldRange Positive() noexcept
         {
             return FieldRange{k_Epsilon, std::numeric_limits<float>::max()};
         }
-        //! 0 以上の値
+        /// 0 以上の値
         [[nodiscard]] static constexpr FieldRange NonNegative() noexcept
         {
             return FieldRange{0.0f, std::numeric_limits<float>::max()};
         }
-        //! 0 から 1 までの値
+        /// 0 から 1 までの値
         [[nodiscard]] static constexpr FieldRange Unit() noexcept { return FieldRange{0.0f, 1.0f}; }
 
         [[nodiscard]] constexpr bool Contains(float value) const noexcept { return value >= min && value <= max; }
     };
 
-    //! 登録の行に範囲を書かなかった事を表す型。この型を受けた書き込みは範囲を確かめない
+    /// 登録の行に範囲を書かなかった事を表す型。この型を受けた書き込みは範囲を確かめない
     struct NoFieldRange
     {
     };
 
-    //! 欄へ書いた結果。書けなかった時は欄の今の値が残る
+    /// 欄へ書いた結果。書けなかった時は欄の今の値が残る
     enum class [[nodiscard]] FieldWriteResult
     {
         Written,
@@ -208,7 +208,7 @@ namespace NS
         OutOfRange, // 登録の行に書いた範囲の外
     };
 
-    //! ログに書く、書けなかった理由の文
+    /// ログに書く、書けなかった理由の文
     [[nodiscard]] constexpr const char* FieldWriteResultText(FieldWriteResult result) noexcept
     {
         switch (result)
@@ -284,7 +284,7 @@ namespace NS
         }
     }
 
-    //! 非有限か範囲の外なら書かずに理由を返す。ログへの出し方は呼ぶ側が決める
+    /// 非有限か範囲の外なら書かずに理由を返す。ログへの出し方は呼ぶ側が決める
     template <class Field, class Range>
     FieldWriteResult AssignFieldValue(Field& target, const void* in, [[maybe_unused]] const Range& range) noexcept
     {
@@ -322,7 +322,7 @@ namespace NS
         }
     }
 
-    //! 項目の値をどこで変えてよいか。登録のマクロで決まる
+    /// 項目の値をどこで変えてよいか。登録のマクロで決まる
     enum class FieldScope
     {
         Shared,    // NS_FIELD。元の .actor だけに書け、派生も含めてそのクラスの全部で共有する
@@ -330,7 +330,7 @@ namespace NS
         Global,    // NS_GLOBAL_FIELD。元と派生の .actor とシーンに書ける
     };
 
-    //! 型消去したフィールドの取得・設定関数。obj は宣言した具象型を指す
+    /// 型消去したフィールドの取得・設定関数。obj は宣言した具象型を指す
     struct FieldDesc
     {
         const char* name; // データの名前。保存と読み込みの鍵で、変えると保存済みの値が既定へ戻る
@@ -345,7 +345,7 @@ namespace NS
         FieldScope scope = FieldScope::Shared;
     };
 
-    //! インスペクタに見せる名前。label を書かない欄は name を返す
+    /// インスペクタに見せる名前。label を書かない欄は name を返す
     [[nodiscard]] inline const char* FieldLabel(const FieldDesc& field) noexcept
     {
         if (field.label != nullptr)
@@ -355,8 +355,8 @@ namespace NS
         return field.name;
     }
 
-    //! @brief 欄の見出し 1 つ。インスペクタが firstField の欄の前に畳める区切りを出す
-    //! @details 見出しは次の見出しの手前の欄までを束ねる。次の見出しと firstField が同じなら欄を持たない
+    /// 欄の見出し 1 つ。インスペクタが firstField の欄の前に畳める区切りを出す
+    /// 見出しは次の見出しの手前の欄までを束ねる。次の見出しと firstField が同じなら欄を持たない
     struct FieldGroup
     {
         const char* name;
@@ -392,7 +392,7 @@ namespace NS
         ClassObjInfo classObj{};
     };
 
-    //! 型ごとの不変なフィールド配列。ReflectionInfo が参照するためコピーしない
+    /// 型ごとの不変なフィールド配列。ReflectionInfo が参照するためコピーしない
     class ReflectedFields
     {
     public:
@@ -417,7 +417,7 @@ namespace NS
         ReflectedFields(const ReflectedFields&) = delete;
         ReflectedFields& operator=(const ReflectedFields&) = delete;
 
-        //! 戻り値の配列参照は、このオブジェクトが生存している間だけ有効
+        /// 戻り値の配列参照は、このオブジェクトが生存している間だけ有効
         [[nodiscard]] ReflectionInfo MakeInfo(const char* typeName, const ReflectionInfo* base) const noexcept
         {
             return ReflectionInfo{typeName,
@@ -436,7 +436,7 @@ namespace NS
         std::vector<FieldGroup> m_groups; // 見出し。宣言の並び
     };
 
-    //! 基底型のリフレクションを返す。素の値型は void を渡し、nullptr になる
+    /// 基底型のリフレクションを返す。素の値型は void を渡し、nullptr になる
     template <class TBase> [[nodiscard]] const ReflectionInfo* ReflectionBaseOf() noexcept
     {
         if constexpr (std::is_same_v<TBase, void>)
@@ -449,8 +449,8 @@ namespace NS
         }
     }
 
-    //! info->fields から name 一致の最初の 1 件を返す。無ければ nullptr、info が nullptr でも nullptr
-    //! 基底型のリフレクションは辿らない。リフレクション欄は継承分も accessor で平坦に並べる約束に合わせる
+    /// info->fields から name 一致の最初の 1 件を返す。無ければ nullptr、info が nullptr でも nullptr
+    /// 基底型のリフレクションは辿らない。リフレクション欄は継承分も accessor で平坦に並べる約束に合わせる
     [[nodiscard]] inline const FieldDesc* FindField(const ReflectionInfo* info, std::string_view name) noexcept
     {
         if (info == nullptr)
@@ -468,7 +468,7 @@ namespace NS
     }
 } // namespace NS
 
-//! フィールド宣言の開始。クラス本体の public 節に、自分の型と直接の基底型を並べて書く
+/// フィールド宣言の開始。クラス本体の public 節に、自分の型と直接の基底型を並べて書く
 #define NS_REFLECT_BEGIN(ThisType, BaseType)                                                                           \
     [[nodiscard]] static const NS::ReflectionInfo* StaticReflection() noexcept                                         \
     {                                                                                                                  \
@@ -477,19 +477,19 @@ namespace NS
         static constexpr const char* k_TypeName = #ThisType;                                                           \
         static const NS::ReflectEntry k_Entries[] = {
 
-//! 宣言済みのメンバを 1 フィールドとして登録する。メンバの宣言はしないので、クラスに別に書く
-//! private も入れ子の struct のメンバ (m_tuning.speed) も書ける
-//! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectName の型で欄の種類が決まる
-//! float と float の組と曲線の欄は IsFiniteFieldValue を通るので、非有限値の書き込みは捨てて元の値が残る (NS_ACCESSOR も同じ)
-//! name は保存の鍵。3 つ目に見せる名前を書くと、インスペクタは name の代わりにそれを見せる
-//! float の欄は、見せる名前の後に範囲 (NS::FieldRange) も書ける。範囲の外の書き込みは捨てて元の値が残る
-//! 例: NS_FIELD(m_distance, "距離", NS::FieldRange::Positive()) / NS_FIELD(m_distance, "距離", "見せる名前", NS::FieldRange{0.0f, 1.0f})
+/// 宣言済みのメンバを 1 フィールドとして登録する。メンバの宣言はしないので、クラスに別に書く
+/// private も入れ子の struct のメンバ (m_tuning.speed) も書ける
+/// 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectName の型で欄の種類が決まる
+/// float と float の組と曲線の欄は IsFiniteFieldValue を通るので、非有限値の書き込みは捨てて元の値が残る (NS_ACCESSOR も同じ)
+/// name は保存の鍵。3 つ目に見せる名前を書くと、インスペクタは name の代わりにそれを見せる
+/// float の欄は、見せる名前の後に範囲 (NS::FieldRange) も書ける。範囲の外の書き込みは捨てて元の値が残る
+/// 例: NS_FIELD(m_distance, "距離", NS::FieldRange::Positive()) / NS_FIELD(m_distance, "距離", "見せる名前", NS::FieldRange{0.0f, 1.0f})
 #define NS_FIELD(member, name, ...) NS_FIELD_ENTRY(member, name, NS::FieldScope::Shared, __VA_ARGS__)
 
-//! NS_FIELD に、派生の .actor でも値を変えてよい項目として登録する。引数は NS_FIELD と同じ
+/// NS_FIELD に、派生の .actor でも値を変えてよい項目として登録する。引数は NS_FIELD と同じ
 #define NS_PROTECTED_FIELD(member, name, ...) NS_FIELD_ENTRY(member, name, NS::FieldScope::Protected, __VA_ARGS__)
 
-//! NS_FIELD に、シーンに置いたアクターでも値を変えてよい項目として登録する。引数は NS_FIELD と同じ
+/// NS_FIELD に、シーンに置いたアクターでも値を変えてよい項目として登録する。引数は NS_FIELD と同じ
 #define NS_GLOBAL_FIELD(member, name, ...) NS_FIELD_ENTRY(member, name, NS::FieldScope::Global, __VA_ARGS__)
 
 // NS_FIELD・NS_PROTECTED_FIELD・NS_GLOBAL_FIELD の中身。直には書かない
@@ -508,15 +508,15 @@ namespace NS
             fieldScope},                                                                                               \
         nullptr},
 
-//! 欄の見出しを置く。次の見出しまでに並べた欄がこの見出しの下に入る。見出しは欄の配列に入らず、保存の鍵にならない
+/// 欄の見出しを置く。次の見出しまでに並べた欄がこの見出しの下に入る。見出しは欄の配列に入らず、保存の鍵にならない
 #define NS_GROUP(groupName) NS::ReflectEntry{NS::FieldDesc{}, groupName},
 
-//! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
-//! 見せる名前は NS_FIELD と同じく、最後の引数に書く。範囲 (NS::FieldRange) は書けない
+/// 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
+/// 見せる名前は NS_FIELD と同じく、最後の引数に書く。範囲 (NS::FieldRange) は書けない
 #define NS_ACCESSOR(ValueType, name, getterCall, setterCall, ...)                                                      \
     NS_ACCESSOR_ENTRY(ValueType, name, getterCall, setterCall, NS::FieldScope::Shared, __VA_ARGS__)
 
-//! NS_ACCESSOR に、シーンに置いたアクターでも値を変えてよい項目として登録する。引数は NS_ACCESSOR と同じ
+/// NS_ACCESSOR に、シーンに置いたアクターでも値を変えてよい項目として登録する。引数は NS_ACCESSOR と同じ
 #define NS_GLOBAL_ACCESSOR(ValueType, name, getterCall, setterCall, ...)                                               \
     NS_ACCESSOR_ENTRY(ValueType, name, getterCall, setterCall, NS::FieldScope::Global, __VA_ARGS__)
 
@@ -542,7 +542,7 @@ namespace NS
                                    fieldScope},                                                                        \
                      nullptr},
 
-//! フィールド宣言の終了。static なリフレクション情報を組み立てて返し、仮想の GetReflection はそこへ転送する
+/// フィールド宣言の終了。static なリフレクション情報を組み立てて返し、仮想の GetReflection はそこへ転送する
 #define NS_REFLECT_END()                                                                                               \
     NS_REFLECT_END_VALUE()                                                                                             \
     [[nodiscard]] const NS::ReflectionInfo* GetReflection() const noexcept override                                    \
@@ -581,7 +581,7 @@ namespace NS
 // NS_REFLECT_BEGIN_IMPL の終了。仮想の GetReflection は NS_REFLECT_DECLARE が宣言に置く
 #define NS_REFLECT_END_IMPL() NS_REFLECT_END_VALUE()
 
-//! 値型用のフィールド宣言終了。Object を継承しない型向けに、仮想の GetReflection を出さず静的関数だけ定義する
+/// 値型用のフィールド宣言終了。Object を継承しない型向けに、仮想の GetReflection を出さず静的関数だけ定義する
 #define NS_REFLECT_END_VALUE()                                                                                         \
     }                                                                                                                  \
     ;                                                                                                                  \
@@ -590,8 +590,8 @@ namespace NS
     return &k_Info;                                                                                                    \
     }
 
-//! 調整フィールドを持たない型用。typeName と基底だけのリフレクション情報を返す。空配列は宣言できないため fields は
-//! nullptr
+/// 調整フィールドを持たない型用。typeName と基底だけのリフレクション情報を返す。空配列は宣言できないため fields は
+/// nullptr
 #define NS_REFLECT_NONE(ThisType, BaseType)                                                                            \
     [[nodiscard]] static const NS::ReflectionInfo* StaticReflection() noexcept                                         \
     {                                                                                                                  \

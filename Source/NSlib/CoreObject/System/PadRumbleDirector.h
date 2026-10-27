@@ -10,32 +10,32 @@ namespace NS
     class SceneActor;
     class Scene;
 
-    //! @brief パッドの振動 1 回。左右のモーターの速さを始めてからのフレーム数の曲線で決め、書くフレーム数で切る
+    /// パッドの振動 1 回。左右のモーターの速さを始めてからのフレーム数の曲線で決め、書くフレーム数で切る
     struct HitPadVibration
     {
-        Curve left{};   //!< 左のモーターの速さ 0〜1。横軸は始めたフレームを 0 にしたフレーム数。点が無ければ 0
-        Curve right{};  //!< 右のモーターの速さ 0〜1。横軸は left と同じ
-        int frames = 0; //!< 書くフレーム数。0 なら震わせない
+        Curve left{};   // 左のモーターの速さ 0〜1。横軸は始めたフレームを 0 にしたフレーム数。点が無ければ 0
+        Curve right{};  // 右のモーターの速さ 0〜1。横軸は left と同じ
+        int frames = 0; // 書くフレーム数。0 なら震わせない
     };
 
-    //! シーン共通の振動。開始時に初期値を出し、更新ごとに実機へ書き、破棄時に停止する
+    /// シーン共通の振動。開始時に初期値を出し、更新ごとに実機へ書き、破棄時に停止する
     class PadRumbleDirector final : public SceneSystem
     {
     public:
         explicit PadRumbleDirector(Scene& scene);
         ~PadRumbleDirector() noexcept override;
 
-        //! @brief 振動を始める。前の振動が残っていても、重ねた分も含めて始め直す
-        //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
-        //! @param[in] pad 振動の設定
+        /// 振動を始める。前の振動が残っていても、重ねた分も含めて始め直す
+        /// @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
+        /// @param[in] pad 振動の設定
         void Start(const SceneActor* requester, const HitPadVibration& pad);
-        //! requester の振動を重ねる。振動していなければ Start と同じ
+        /// requester の振動を重ねる。振動していなければ Start と同じ
         void Blend(const SceneActor* requester, const HitPadVibration& pad);
 
-        //! requester が頼んだ振動を外して書き直す。残りが無ければ 0 を書いて止める
+        /// requester が頼んだ振動を外して書き直す。残りが無ければ 0 を書いて止める
         void Stop(const SceneActor* requester);
 
-        //! 振動を 1 フレーム進めて書く
+        /// 振動を 1 フレーム進めて書く
         void OnTick() override;
 
     private:

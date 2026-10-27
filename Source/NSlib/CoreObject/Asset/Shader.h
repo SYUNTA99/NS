@@ -12,8 +12,8 @@ namespace NS
         class D3DShader;
     }
 
-    //! @brief HLSL ファイル 1 つのシェーダー。道はここだけが持ち、読み直しはこの道で中の D3DShader を作り直す
-    //! @details 頂点・ピクセルシェーダーが読めない時は、中の D3DShader が代わりのピンクになる。装置が無い時は空のシェーダーになる
+    /// HLSL ファイル 1 つのシェーダー。道はここだけが持ち、読み直しはこの道で中の D3DShader を作り直す
+    /// 頂点・ピクセルシェーダーが読めない時は、中の D3DShader が代わりのピンクになる。装置が無い時は空のシェーダーになる
     class Shader : public Object
     {
     public:
@@ -23,8 +23,8 @@ namespace NS
         [[nodiscard]] const std::string& Path() const noexcept;
         [[nodiscard]] Gfx::D3DShader* D3D() const noexcept;
 
-        //! @brief 道のファイルを読み直す。同じ D3DShader のまま中身を替えるので、指している物はそのまま使える
-        //! @return 成功した場合 true。失敗しても前の中身を保つ
+        /// 道のファイルを読み直す。同じ D3DShader のまま中身を替えるので、指している物はそのまま使える
+        /// @return 成功した場合 true。失敗しても前の中身を保つ
         [[nodiscard]] bool Reload();
 
         NS_REFLECT_NONE(Shader, Object)

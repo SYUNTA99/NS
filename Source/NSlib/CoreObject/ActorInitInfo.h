@@ -10,16 +10,12 @@ namespace NS
 {
     class Scene;
 
-    //! @brief SceneActor::Init が受ける、アクターを作る時の情報
-    //! @details 作る道 (シーンの組み直し・JSON から湧かす・作り直す・型から湧かす) で同じ形を渡す
+    /// SceneActor の初期化情報
     struct ActorInitInfo
     {
-        //! 型から湧かすアクターは配置の JSON が無いので nullptr。.actor の値だけが書かれる
-        const nlohmann::json* placement = nullptr;
-        //! 入るシーン。シーンへ入らない物は nullptr
-        Scene* scene = nullptr;
-        //! 敷く .actor の名前。空なら作るクラスと同じ名前の .actor を敷く
-        std::string_view actorFile;
+        const nlohmann::json* placement = nullptr; // 配置 JSON が無い場合は nullptr (.actor の値のみ適用)
+        Scene* scene = nullptr;                    // シーンに所属しない場合は nullptr
+        std::string_view actorFile;                // 空なら生成クラスと同名の .actor を適用
     };
 
 } // namespace NS

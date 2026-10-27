@@ -7,8 +7,10 @@
 
 #include <memory>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         class D3DBuffer;
         struct DrawItem;
         class D3DPipeline;
@@ -17,66 +19,54 @@ namespace NS::Gfx
         class D3DTexture;
         struct BuiltinShaders;
 
-        //! @brief 歪みの段に渡す輪。長さはどれも描画先の画素
+        /// 画面歪みパラメータ (長さの単位はすべて描画先のピクセル)
         struct ScreenRing
         {
-            Vector2 centerPixel{};    //!< 中心。左上が原点
-            float radiusPixels = 0.0f;    //!< 輪の半径
-            float pushPixels = 0.0f;      //!< 輪の真ん中で絵を押し出す長さ。0 以下なら歪めない
-            float halfWidthPixels = 0.0f; //!< 輪の半分の幅。0 以下なら歪めない
-            bool keepBody = false;        //!< 体の型が 1 の画素を押さない場合 true
+            Vector2 centerPixel{};        // 左上原点の中心座標
+            float radiusPixels = 0.0f;
+            float pushPixels = 0.0f;      // 押し出し量 (0 以下で無効)
+            float halfWidthPixels = 0.0f; // 輪の半幅 (0 以下で無効)
+            bool keepBody = false;        // true のときボディマスクが 1 の画素を歪めない
         };
 
-        //! @brief 歪みのシェーダーの定数
-        //! @details screen_distortion.ps.hlsl の cbuffer b0 とバイト一致させる
+        /// screen_distortion.ps.hlsl の cbuffer b0 とレイアウトを一致させる
         struct alignas(16) ScreenDistortionCB
         {
-            float ring[4]{};            //!< 輪の中心の x・y、半径、押し。どれも描画先の画素
-            float ringHalfWidth = 0.0f; //!< 輪の半分の幅。描画先の画素
-            float keepBody = 0.0f;      //!< 0 より大きいなら、体の型が 1 の画素を押さない
+            float ring[4]{};            // 中心 (x, y)、半径、押し出し量 (ピクセル単位)
+            float ringHalfWidth = 0.0f; // 輪の半幅 (ピクセル単位)
+            float keepBody = 0.0f;      // 0 より大きいときボディマスクが 1 の画素を歪めない
             float padding[2]{};
         };
         static_assert(sizeof(ScreenDistortionCB) == 32, "ScreenDistortionCB は HLSL の cbuffer b0 とバイト一致が必要");
 
-        //! @brief 出来上がった絵に、画面全体に掛ける演出を掛ける
-        //! @details 描画先を同じ形の絵へ写し、写しを読んで全画面を 1 回描いて描画先へ書く
-        //! 選んだ描く物だけを世界の深度で隠して 1 色で写した体の型も作る
-        //! @warning D3DDevice より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
+        /// ポストプロセス演出 (画面歪み・ボディマスク描画) を行う
+        /// D3DDevice より先に破棄し、shaders の破棄後は描画を呼ばないこと
         class ScreenPasses : public NonCopyable
         {
         public:
-            //! @brief パイプライン・定数バッファを作る。D3DDevice が未構築なら無効な状態になる
-            //! @param[in] shaders fullscreenVs・screenDistortionPs・bodyMaskPs を指すだけで持たない
-            //! 使えるかは Distort と BeginBodyMask の度に決め、使えなければその段を描かない
+            /// shaders は非所有で参照のみ保持する
             explicit ScreenPasses(const BuiltinShaders& shaders) noexcept;
             ~ScreenPasses();
 
-            //! パイプラインと定数バッファを作れた場合 true、それ以外の場合は false
             [[nodiscard]] bool IsValid() const noexcept;
 
-            //! @brief 今の描画先の絵の輪の所を、輪の外へ押し出す
-            //! @details 押しか幅が 0 以下・無効な状態・描画先が無い時は何もしない
-            //! 描画先・深度・ビューポートは呼ぶ前の物へ戻す
-            //! @param[in,out] device 描く命令を借りる先。今の描画先とビューポートもここから読む
+            /// 現在の描画先に輪状の歪みを適用する。描画先・深度・ビューポートは呼び出し前の状態へ戻す
             void Distort(D3DDevice& device, const ScreenRing& ring) noexcept;
 
-            //! @brief 体の型を 0 で塗り、型を描画先にする
-            //! @details 深度は今の物を読むだけ。true を返した時だけ、描いた後に EndBodyMask を呼ぶ
-            //! @return 型を描画先にできた場合 true、それ以外の場合は false
+            /// ボディマスクを 0 でクリアして描画先に設定する (深度は現在のものを読み取り専用で共有)
+            /// true を返した場合は描画後に EndBodyMask を呼ぶこと
             [[nodiscard]] bool BeginBodyMask(D3DDevice& device) noexcept;
 
-            //! @brief 描く物の写る画素のうち、世界の深度で隠れていない所を型に 1 で描く
-            //! @details BeginBodyMask と EndBodyMask の間で呼ぶ
+            /// BeginBodyMask と EndBodyMask の間で呼び、深度テストを通過した画素へ 1 を書き込む
             void DrawBodyMaskItem(D3DDevice& device, const DrawItem& item) noexcept;
 
-            //! 描画先・深度・ビューポートを BeginBodyMask の前へ戻し、BodyMask が型を返すようにする
+            /// 描画先・深度・ビューポートを BeginBodyMask 前の状態へ戻す
             void EndBodyMask(D3DDevice& device) noexcept;
 
-            //! 体の型を描かないフレームに呼び、前のフレームの型を Distort に読ませない
+            /// ボディマスクを描画しないフレームで呼び、前フレームのマスクを無効化する
             void DropBodyMask() noexcept { m_bodyMaskDrawn = false; }
 
-            //! @brief 今のフレームに描いた体の型を返す
-            //! @return 1 色 8 ビットの描画先と同じ大きさの型。未描画なら空
+            /// 現フレームで描画済みのボディマスク (R8_UNORM) を返す。未描画時は nullptr
             [[nodiscard]] const D3DTexture* BodyMask() const noexcept;
 
         private:
@@ -84,20 +74,20 @@ namespace NS::Gfx
 
             [[nodiscard]] bool EnsureBodyMask(const D3D11_TEXTURE2D_DESC& target) noexcept;
 
-            D3DShader* m_vs = nullptr;                    // 全画面三角形
-            D3DShader* m_distortionPs = nullptr;          // 輪の所を押し出す
-            D3DShader* m_bodyMaskPs = nullptr;            // 写る画素を 1 にする
-            std::unique_ptr<D3DPipeline> m_writePipeline; // 書き込み先を置き換える
-            //! 体の型を描く。世界の深度は読むだけ。両面の描く物は添字 1
+            D3DShader* m_vs = nullptr;
+            D3DShader* m_distortionPs = nullptr;
+            D3DShader* m_bodyMaskPs = nullptr;
+            std::unique_ptr<D3DPipeline> m_writePipeline;
             std::unique_ptr<D3DPipeline> m_bodyMaskPipelines[2];
             std::unique_ptr<D3DBuffer> m_cb;
 
-            std::unique_ptr<D3DTexture> m_copy; // 描画先の写し。読みながら同じ描画先へは書けないので取る
+            std::unique_ptr<D3DTexture> m_copy;
             D3D11_TEXTURE2D_DESC m_copyDesc{};
-            std::unique_ptr<D3DTexture> m_bodyMask; // 体の型。描画先と同じ大きさ
+            std::unique_ptr<D3DTexture> m_bodyMask;
             bool m_bodyMaskDrawn = false;
 
-            SavedTargets m_saved{}; // BeginBodyMask から EndBodyMask の間だけ持つ
+            SavedTargets m_saved{};
             bool m_valid = false;
         };
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

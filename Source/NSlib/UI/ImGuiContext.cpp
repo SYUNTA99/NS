@@ -20,8 +20,10 @@
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 #endif
 
-namespace NS::UI
+namespace NS
 {
+    namespace UI
+    {
         struct ImGuiContext::Impl
         {
             bool valid = false;   // 初期化に成功したか
@@ -300,4 +302,5 @@ namespace NS::UI
             return false;
 #endif
         }
-} // namespace NS::UI
+    } // namespace UI
+} // namespace NS

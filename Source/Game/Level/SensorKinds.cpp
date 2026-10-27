@@ -4,8 +4,10 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         bool IsSensorKind(const NS::HitSensor* sensor, SensorKind kind) noexcept
         {
             NS_ASSERT(Game, sensor != nullptr, "種類を問うセンサーが無い");
@@ -16,4 +18,5 @@ namespace GL::Level
             }
             return sensor->Kind() == static_cast<NS::uint8>(kind);
         }
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

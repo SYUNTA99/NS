@@ -10,80 +10,82 @@
 #include <string>
 #include <string_view>
 
-namespace NS::OS
+namespace NS
 {
+    namespace OS
+    {
         class Input;
 
-        //! @brief ウィンドウ作成時の初期パラメータ
+        /// ウィンドウ作成時の初期パラメータ
         struct WindowDesc
         {
             std::string title = "NS";
 
-            //! クライアント領域のサイズ
+            /// クライアント領域のサイズ
             Size2D size{1920, 1080};
 
             bool visible = true;
         };
 
-        //! @brief OS ウィンドウ
-        //! @details 単一インスタンス。二重に作ると致命ログを出す
+        /// OS ウィンドウ
+        /// 単一インスタンス。二重に作ると致命ログを出す
         class Window : public NonCopyable
         {
         public:
-            //! @brief OS のメッセージをそのまま受け取るコールバック型
-            //! @note ImGui へのイベント転送に使う
+            /// OS のメッセージをそのまま受け取るコールバック型
+            /// @note ImGui へのイベント転送に使う
             using MessageHook = std::function<void(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)>;
 
             explicit Window(const WindowDesc& desc);
             ~Window();
 
-            //! @brief ウィンドウの構築が成功したかどうかを返す
+            /// ウィンドウの構築が成功したかどうかを返す
             [[nodiscard]] bool IsValid() const noexcept;
 
-            //! @brief 毎フレーム呼び出し、OSのメッセージイベントを処理する
+            /// 毎フレーム呼び出し、OSのメッセージイベントを処理する
             void PollMessages() noexcept;
 
-            //! @brief ウィンドウを閉じる要求が出ているかを返す
+            /// ウィンドウを閉じる要求が出ているかを返す
             [[nodiscard]] bool ShouldClose() const noexcept;
 
-            //! @brief 現在のクライアント領域のサイズを取得する
+            /// 現在のクライアント領域のサイズを取得する
             [[nodiscard]] Size2D Size() const noexcept;
 
-            //! @brief ウィンドウハンドルを返す。構築に失敗した時は nullptr
+            /// ウィンドウハンドルを返す。構築に失敗した時は nullptr
             [[nodiscard]] HWND NativeHandle() const noexcept;
 
             void SetTitle(std::string_view utf8Title) noexcept;
 
-            //! @brief クライアント領域におけるマウスカーソルの表示・非表示を切り替える
+            /// クライアント領域におけるマウスカーソルの表示・非表示を切り替える
             void SetCursorVisible(bool visible) noexcept;
 
             [[nodiscard]] bool IsCursorVisible() const noexcept;
 
-            //! @brief カーソルの固定を切り替える
-            //! @note 固定中は PollMessages が毎フレームカーソルを固定点へ戻す。フォーカスを失っている間は戻さない
+            /// カーソルの固定を切り替える
+            /// @note 固定中は PollMessages が毎フレームカーソルを固定点へ戻す。フォーカスを失っている間は戻さない
             void SetCursorLocked(bool locked) noexcept;
 
             [[nodiscard]] bool IsCursorLocked() const noexcept;
 
-            //! @brief カーソル固定の戻し先をクライアント座標で設定する
-            //! @note 未設定の間はクライアント領域の中央へ戻す
+            /// カーソル固定の戻し先をクライアント座標で設定する
+            /// @note 未設定の間はクライアント領域の中央へ戻す
             void SetCursorLockPoint(int clientX, int clientY) noexcept;
 
-            //! @brief プログラム側からウィンドウを閉じる要求を発行する
+            /// プログラム側からウィンドウを閉じる要求を発行する
             void RequestClose() noexcept;
 
-            //! @brief リサイズ時に呼び出されるコールバックを設定する
-            //! @note 最小化時はコールバックの呼び出しがスキップされる
+            /// リサイズ時に呼び出されるコールバックを設定する
+            /// @note 最小化時はコールバックの呼び出しがスキップされる
             void SetResizeCallback(std::function<void(Size2D)> cb);
 
-            //! @brief ウィンドウの閉じる要求を受け取った際のコールバックを設定する
-            //! @note 独自の終了処理や、終了をキャンセルする処理をここで挟むことができる
+            /// ウィンドウの閉じる要求を受け取った際のコールバックを設定する
+            /// @note 独自の終了処理や、終了をキャンセルする処理をここで挟むことができる
             void SetCloseCallback(std::function<void()> cb);
 
-            //! @brief ウィンドウへの入力イベントの転送先を設定する
+            /// ウィンドウへの入力イベントの転送先を設定する
             void AttachInput(Input* input) noexcept;
 
-            //! @brief ネイティブメッセージのフックコールバックを設定する
+            /// ネイティブメッセージのフックコールバックを設定する
             void SetMessageHook(MessageHook hook);
 
         private:
@@ -94,12 +96,12 @@ namespace NS::OS
             HINSTANCE m_hInstance = nullptr;
 
             Size2D m_size{0, 0};
-            bool m_shouldClose = false; //!< WM_QUIT を受けたか
+            bool m_shouldClose = false; // WM_QUIT を受けたか
 
             std::function<void(Size2D)> m_onResize;
             std::function<void()> m_onClose;
 
-            Input* m_input = nullptr; //!< 入力の転送先。持ち主ではない
+            Input* m_input = nullptr; // 入力の転送先。持ち主ではない
             MessageHook m_messageHook;
 
             // false の間はクライアント領域のカーソルを消す。WM_SETCURSOR がこの値を見て適用する
@@ -108,6 +110,7 @@ namespace NS::OS
             bool m_cursorLocked = false;
             // 一度も前に出ない窓には WM_SETFOCUS が来ない。作成時に実際の状態を書く
             bool m_hasFocus = false;
-            std::optional<POINT> m_lockPoint; //!< 無い時はクライアント領域の中央
+            std::optional<POINT> m_lockPoint; // 無い時はクライアント領域の中央
         };
-} // namespace NS::OS
+    } // namespace OS
+} // namespace NS

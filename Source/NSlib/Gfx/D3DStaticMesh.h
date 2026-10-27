@@ -8,9 +8,11 @@
 
 #include <memory>
 
-namespace NS::Gfx
+namespace NS
 {
-        //! 静的メッシュの初期化パラメータ
+    namespace Gfx
+    {
+        /// 静的メッシュの初期化パラメータ
         struct D3DStaticMeshDesc
         {
             const StaticVertex* vertices = nullptr;
@@ -20,23 +22,24 @@ namespace NS::Gfx
             const AABB* precomputedBounds = nullptr; // あれば頂点走査を省いて局所境界に使う
         };
 
-        //! @brief アニメーションを持たない静的な 3D モデル
-        //! @details 位置・UV 座標・法線の頂点情報を持ち、描画へ渡す
-        //! @note 構築に失敗するとキューブのフォールバックへ差し替わる
-        //! @warning D3DDevice より先に破棄すること
+        /// アニメーションを持たない静的な 3D モデル
+        /// 位置・UV 座標・法線の頂点情報を持ち、描画へ渡す
+        /// @note 構築に失敗するとキューブのフォールバックへ差し替わる
+        /// @warning D3DDevice より先に破棄すること
         class D3DStaticMesh : public D3DMesh
         {
         public:
-            //! @brief パラメータから静的メッシュを生成する
-            //! @details D3DDevice の無い場では ERROR を出さずに nullptr を返す
+            /// パラメータから静的メッシュを生成する
+            /// D3DDevice の無い場では ERROR を出さずに nullptr を返す
             [[nodiscard]] static std::unique_ptr<D3DStaticMesh> Create(const D3DStaticMeshDesc& desc);
 
             ~D3DStaticMesh() override = default;
 
-            //! 静的メッシュ用の頂点入力レイアウトを返す
+            /// 静的メッシュ用の頂点入力レイアウトを返す
             [[nodiscard]] static std::vector<InputElement> StandardInputLayout();
 
         private:
             explicit D3DStaticMesh(const D3DStaticMeshDesc& desc);
         };
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

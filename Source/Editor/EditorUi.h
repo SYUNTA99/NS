@@ -7,8 +7,10 @@
 #include <imgui_internal.h>
 #include <span>
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         // 状態メッセージの表示色。失敗は赤、警告は橙、成功は緑
         inline const ImVec4 k_MsgErrorColor{1.0f, 0.4f, 0.4f, 1.0f};
         inline const ImVec4 k_MsgWarnColor{1.0f, 0.78f, 0.35f, 1.0f};
@@ -154,8 +156,8 @@ namespace NS::Editor
                    style.ItemInnerSpacing.x * static_cast<float>(count * 2 - 1);
         }
 
-        //! 2〜3成分を軸名付きで編集する。幅が足りない時は軸ごとに行を分ける
-        //! 各軸の編集開始と終了を返し、呼び出し側で取り消しの履歴をまとめられる
+        /// 2〜3成分を軸名付きで編集する。幅が足りない時は軸ごとに行を分ける
+        /// 各軸の編集開始と終了を返し、呼び出し側で取り消しの履歴をまとめられる
         inline AxisEditResult DragAxisFloats(std::span<float> values, float speed, const char* format = "%.3f") noexcept
         {
             IM_ASSERT(values.size() >= 2 && values.size() <= 3);
@@ -273,6 +275,7 @@ namespace NS::Editor
                 }
             }
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS
 
 #endif

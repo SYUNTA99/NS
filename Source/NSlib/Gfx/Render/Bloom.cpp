@@ -14,8 +14,10 @@
 #include <algorithm>
 #include <utility>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             // 1 を超える明るさを持つ。16 ビットの浮動小数は 1 付近の刻みが 1/2048 で、8 ビットの 1/255 より細かい
@@ -31,7 +33,6 @@ namespace NS::Gfx
                 return D3DTexture::Create(desc);
             }
 
-            // 半分ずつ縮めた大きさ。0 にはしない
             Size2D LevelSize(Size2D size, int level)
             {
                 const int shift = level + 1;
@@ -213,4 +214,5 @@ namespace NS::Gfx
 
             cmd.DrawFromVertexId(3);
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

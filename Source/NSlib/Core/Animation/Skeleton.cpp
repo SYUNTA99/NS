@@ -5,8 +5,10 @@
 
 #include <span>
 
-namespace NS::Anim
+namespace NS
 {
+    namespace Anim
+    {
         namespace
         {
             [[nodiscard]] Matrix LocalMatrix(const BonePose& pose) noexcept
@@ -114,4 +116,5 @@ namespace NS::Anim
             }
             return result;
         }
-} // namespace NS::Anim
+    } // namespace Anim
+} // namespace NS

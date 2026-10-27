@@ -8,9 +8,11 @@
 #include <Jolt/Math/Vec3.h>
 #include <Jolt/Physics/Collision/Shape/Shape.h>
 
-namespace NS::Phys
+namespace NS
 {
-        //! 軸と符号はそのまま変換する。三角形の巻き方は双方とも CCW
+    namespace Phys
+    {
+        /// 軸と符号はそのまま変換する。三角形の巻き方は双方とも CCW
         [[nodiscard]] inline JPH::Vec3 ToJolt(const Vector3& value) noexcept
         {
             return JPH::Vec3{value.x, value.y, value.z};
@@ -21,13 +23,13 @@ namespace NS::Phys
             return Vector3{value.GetX(), value.GetY(), value.GetZ()};
         }
 
-        //! @brief NS::Quaternion を JPH::Quat へ変換する
+        /// NS::Quaternion を JPH::Quat へ変換する
         [[nodiscard]] inline JPH::Quat ToJolt(const Quaternion& value) noexcept
         {
             return JPH::Quat{value.x, value.y, value.z, value.w};
         }
 
-        //! @brief JPH::Quat を NS::Quaternion へ変換する
+        /// JPH::Quat を NS::Quaternion へ変換する
         [[nodiscard]] inline Quaternion FromJolt(JPH::QuatArg value) noexcept
         {
             return Quaternion{value.GetX(), value.GetY(), value.GetZ(), value.GetW()};
@@ -41,4 +43,5 @@ namespace NS::Phys
             }
             return result.Get();
         }
-} // namespace NS::Phys
+    } // namespace Phys
+} // namespace NS

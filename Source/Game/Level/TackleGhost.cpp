@@ -7,8 +7,10 @@
 #include <algorithm>
 #include <cmath>
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         bool TackleGhost::SetSpread(const NS::Vector3& spread) noexcept
         {
             if (!NS::IsFinite(spread))
@@ -125,4 +127,5 @@ namespace GL::Level
             }
             return model->SortCenter(source);
         }
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

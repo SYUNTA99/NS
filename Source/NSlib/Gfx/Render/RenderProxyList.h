@@ -7,11 +7,12 @@
 #include "NSlib/Core/Types.h"
 #include <vector>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         struct RenderContext;
 
-        //! @brief 描画オブジェクトを一意に識別するための登録ハンドル
         struct RenderHandle
         {
             static constexpr uint32 k_InvalidSlot = 0xffffffffu;
@@ -22,51 +23,32 @@ namespace NS::Gfx
             [[nodiscard]] bool IsValid() const noexcept { return slot != k_InvalidSlot; }
         };
 
-        //! @brief 描画オブジェクトの登録に必要な情報をまとめた記述子
         struct RenderProxyDesc
         {
-            //! カリング判定に用いるワールド空間のAABB
-            AABB bounds{};
-
-            //! 深度ソート用の中心座標
-            Vector3 sortCenter{};
-
-            //! ソート優先度。半透明の並べ替えで距離が同じときだけ効き、小さい方から先に描く
-            int sortPriority = 0;
-
-            //! 半透明オブジェクトとして扱う場合はtrue
+            AABB bounds{};        // 視錐台カリング用のワールド空間 AABB
+            Vector3 sortCenter{}; // 深度ソート用のワールド座標
+            int sortPriority = 0; // 半透明ソートで距離が等しい場合の優先度 (小さい順に先に描画)
             bool transparent = false;
-
-            //! @brief 見えると判定された時に呼ばれ、DrawItem を out へ積むコールバック
             void (*collect)(void* owner, const RenderContext& context, std::vector<DrawItem>& out) = nullptr;
-
-            //! collect の第 1 引数へそのまま渡す登録元
             void* owner = nullptr;
         };
 
-        //! @brief 描画物の登録簿。視錐台で絞った物から DrawItem を集めて描く
         class RenderProxyList
         {
         public:
-            //! @brief 描画オブジェクトを登録し、識別用のハンドルを返す
             [[nodiscard]] RenderHandle Register(const RenderProxyDesc& desc);
 
-            //! @brief 指定されたハンドルの登録を解除する。無効なハンドルの場合は無視される
             void Unregister(RenderHandle handle) noexcept;
 
-            //! @brief 登録済みの境界とソート情報を差し替える
             void Update(RenderHandle handle,
                         const AABB& bounds,
                         const Vector3& sortCenter,
                         int sortPriority,
                         bool transparent) noexcept;
 
-            //! @brief 視錐台の外を捨て、残った描画物を描く
-            //! @param[in] context 描画コンテキスト
-            //! @param[in] transparent true なら半透明、false なら不透明を描く
+            /// 視錐台カリングを行い、transparent に一致するバケットを描画する
             void DrawBucket(const RenderContext& context, bool transparent);
 
-            //! @brief 現在登録されている有効なオブジェクトの総数を返す
             [[nodiscard]] std::size_t Count() const noexcept;
 
         private:
@@ -84,4 +66,5 @@ namespace NS::Gfx
             std::vector<uint32> m_visibleScratch;
             std::vector<DrawItem> m_drawScratch;
         };
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

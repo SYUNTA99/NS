@@ -11,8 +11,10 @@
 
 #include <span>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             [[nodiscard]] DXGI_FORMAT ToDxgiFormat(InputElementFormat fmt) noexcept
@@ -187,4 +189,5 @@ namespace NS::Gfx
         const D3DBuffer* D3DMesh::VertexBuffer() const noexcept { return m_vb.get(); }
         const D3DBuffer* D3DMesh::IndexBuffer() const noexcept { return m_ib.get(); }
         ID3D11InputLayout* D3DMesh::InputLayout() const noexcept { return m_selectedLayout; }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

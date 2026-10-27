@@ -9,8 +9,10 @@
 
 #include <vector>
 
-namespace GL::Level
+namespace GL
 {
+    namespace Level
+    {
         CourseDirector::CourseDirector(NS::Scene& scene) : m_scene(scene)
         {
             m_scene.AddSystemTick(*this, NS::UpdatePhase::Course);
@@ -124,4 +126,5 @@ namespace GL::Level
 
             SendInputLock(false);
         }
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

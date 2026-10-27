@@ -7,8 +7,10 @@
 #include <algorithm>
 #include <cmath>
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         void EditorCamera::SetCenter(Vector3 center) noexcept { m_center = center; }
 
         void EditorCamera::SetDistance(float distance) noexcept
@@ -229,4 +231,5 @@ namespace NS::Editor
             pose.farPlane = m_farPlane;
             return pose;
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

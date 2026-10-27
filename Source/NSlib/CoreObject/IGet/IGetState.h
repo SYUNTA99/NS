@@ -6,7 +6,7 @@
 
 namespace NS
 {
-    //! 状態の型ごとに 1 つのタグ。中身は型ごとの静的変数の番地で、nullptr は状態が無いことを表す
+    /// 状態の型ごとに 1 つのタグ。中身は型ごとの静的変数の番地で、nullptr は状態が無いことを表す
     using StateId = const void*;
 
     template <typename TState> struct StateTag
@@ -14,50 +14,50 @@ namespace NS
         static constexpr char k_Marker = 0;
     };
 
-    //! @brief 状態の型 TState の StateId を返す
+    /// 状態の型 TState の StateId を返す
     template <typename TState> [[nodiscard]] constexpr StateId StateIdOf() noexcept
     {
         return &StateTag<TState>::k_Marker;
     }
 
-    //! @brief 所有者の型を問わずに状態機械を問い、移す口
+    /// 所有者の型を問わずに状態機械を問い、移す口
     class IStateMachine
     {
     public:
         virtual ~IStateMachine() = default;
-        //! @brief 今の状態の StateId を返す
-        //! @return 移る予約があれば移る先の StateId。組んでいなければ nullptr
+        /// 今の状態の StateId を返す
+        /// @return 移る予約があれば移る先の StateId。組んでいなければ nullptr
         [[nodiscard]] virtual StateId CurrentId() const noexcept = 0;
-        //! @brief 今の状態に入ってから進めたフレーム数を返す
-        //! @return 入った最初のフレームは 0
+        /// 今の状態に入ってから進めたフレーム数を返す
+        /// @return 入った最初のフレームは 0
         [[nodiscard]] virtual uint32 StepCount() const noexcept = 0;
-        //! @brief 状態に入った回数を返す。予約を確定して OnEnter を呼ぶたびに 1 増え、Build と Reset でも戻らない
-        //! @details 同じ状態へ入り直しても値が変わるので、どの入りの間かを見分けるのに使う
+        /// 状態に入った回数を返す。予約を確定して OnEnter を呼ぶたびに 1 増え、Build と Reset でも戻らない
+        /// 同じ状態へ入り直しても値が変わるので、どの入りの間かを見分けるのに使う
         [[nodiscard]] virtual uint32 EntryCount() const noexcept = 0;
-        //! 状態遷移を予約する。予約できたか同じ状態なら true
+        /// 状態遷移を予約する。予約できたか同じ状態なら true
         virtual bool Change(StateId id) = 0;
-        //! 組み立て時の持ち主で dt 秒進める。未組立なら何もしない
+        /// 組み立て時の持ち主で dt 秒進める。未組立なら何もしない
         virtual void Step(float dt) = 0;
     };
 
-    //! @brief 自分の状態機械を返す口。状態機械を持つ物が実装する
-    //! @details SetState / IsState / IsFirstStep / GetStateStepCount は IGetState だけを受け取る
+    /// 自分の状態機械を返す口。状態機械を持つ物が実装する
+    /// SetState / IsState / IsFirstStep / GetStateStepCount は IGetState だけを受け取る
     class IGetState
     {
     public:
-        //! @brief 自分の状態機械を返す
-        //! @return 状態機械を持たなければ nullptr
+        /// 自分の状態機械を返す
+        /// @return 状態機械を持たなければ nullptr
         [[nodiscard]] virtual IStateMachine* GetStateMachine() noexcept = 0;
-        //! @brief 自分の状態機械を返す
-        //! @return 状態機械を持たなければ nullptr
+        /// 自分の状態機械を返す
+        /// @return 状態機械を持たなければ nullptr
         [[nodiscard]] virtual const IStateMachine* GetStateMachine() const noexcept = 0;
 
     protected:
         ~IGetState() = default;
     };
 
-    //! @brief user の状態機械を TState へ移す予約をする
-    //! @return 予約できたか既に TState の場合 true、それ以外の場合は false
+    /// user の状態機械を TState へ移す予約をする
+    /// @return 予約できたか既に TState の場合 true、それ以外の場合は false
     template <typename TState> bool SetState(IGetState* user)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
@@ -65,7 +65,7 @@ namespace NS
         return machine != nullptr && machine->Change(StateIdOf<TState>());
     }
 
-    //! user の今の状態が TState の場合 true、それ以外の場合は false
+    /// user の今の状態が TState の場合 true、それ以外の場合は false
     template <typename TState> [[nodiscard]] bool IsState(const IGetState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
@@ -73,7 +73,7 @@ namespace NS
         return machine != nullptr && machine->CurrentId() == StateIdOf<TState>();
     }
 
-    //! user が今の状態に入った最初のフレームの場合 true、それ以外の場合は false
+    /// user が今の状態に入った最初のフレームの場合 true、それ以外の場合は false
     [[nodiscard]] inline bool IsFirstStep(const IGetState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
@@ -81,8 +81,8 @@ namespace NS
         return machine != nullptr && machine->CurrentId() != nullptr && machine->StepCount() == 0;
     }
 
-    //! @brief user が今の状態に入ってから進めたフレーム数を返す
-    //! @return 状態機械を持たなければ 0
+    /// user が今の状態に入ってから進めたフレーム数を返す
+    /// @return 状態機械を持たなければ 0
     [[nodiscard]] inline uint32 GetStateStepCount(const IGetState* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");

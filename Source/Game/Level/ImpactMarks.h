@@ -9,25 +9,27 @@
 #include <cstddef>
 #include <vector>
 
-namespace GL::Level
+namespace GL
 {
-        //! @brief 置物が床に残す半透明の跡。決まった数を持ち、時間で縮めて消す
-        //! @details 跡は動かないので補間せず、出した位置にそのまま描く。描くのは持ち主が出ている間だけ
+    namespace Level
+    {
+        /// 置物が床に残す半透明の跡。決まった数を持ち、時間で縮めて消す
+        /// 跡は動かないので補間せず、出した位置にそのまま描く。描くのは持ち主が出ている間だけ
         class ImpactMarks : public NS::Object, public NS::IRenderable
         {
         public:
-            //! 板とマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
+            /// 板とマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
             ImpactMarks();
 
-            //! @brief position に跡を 1 つ出す
-            //! @details 跡の数の欄が埋まっていれば一番古い跡を置き換える。欄が 0 以下なら出さない
+            /// position に跡を 1 つ出す
+            /// 跡の数の欄が埋まっていれば一番古い跡を置き換える。欄が 0 以下なら出さない
             void Spawn(const NS::Vector3& position);
-            //! 出ている跡を dt 秒進めて縮め、寿命を過ぎた跡を消す。持ち主の見た目の段が呼ぶ
+            /// 出ている跡を dt 秒進めて縮め、寿命を過ぎた跡を消す。持ち主の見た目の段が呼ぶ
             void Step(float dt) noexcept;
 
-            //! 出ている跡の数
+            /// 出ている跡の数
             [[nodiscard]] std::size_t LiveCount() const noexcept;
-            //! 出ている跡の描く世界行列。並びは置き場の順で、出した順ではない
+            /// 出ている跡の描く世界行列。並びは置き場の順で、出した順ではない
             [[nodiscard]] std::vector<NS::Matrix> MarkWorldMatrices() const;
             [[nodiscard]] int Capacity() const noexcept { return m_capacity; }
             [[nodiscard]] float LifeSeconds() const noexcept { return m_lifeSeconds; }
@@ -35,10 +37,10 @@ namespace GL::Level
             void Collect(const NS::Gfx::RenderContext& context,
                          const NS::RenderSource& source,
                          std::vector<NS::Gfx::DrawItem>& out) override;
-            //! 出ている跡を全部包む箱。跡が無ければ持ち主の根の位置の大きさ 0 の箱
+            /// 出ている跡を全部包む箱。跡が無ければ持ち主の根の位置の大きさ 0 の箱
             [[nodiscard]] NS::AABB WorldBounds(const NS::RenderSource& source) const noexcept override;
             [[nodiscard]] NS::RenderBucket Bucket() const noexcept override { return NS::RenderBucket::Transparent; }
-            //! 一番新しい跡の位置。跡が無ければ持ち主の根の位置
+            /// 一番新しい跡の位置。跡が無ければ持ち主の根の位置
             [[nodiscard]] NS::Vector3 SortCenter(const NS::RenderSource& source) const noexcept override;
 
             NS_REFLECT_BEGIN(ImpactMarks, NS::Object)
@@ -72,4 +74,5 @@ namespace GL::Level
             std::size_t m_next = 0;            // 次に書く置き場
             std::size_t m_newest = 0; // 一番新しく書いた置き場
         };
-} // namespace GL::Level
+    } // namespace Level
+} // namespace GL

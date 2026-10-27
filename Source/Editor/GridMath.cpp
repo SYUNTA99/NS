@@ -9,8 +9,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         bool ViewRectContains(const ViewRect& rect, int screenX, int screenY) noexcept
         {
             return screenX >= rect.x && screenX < rect.x + rect.width && screenY >= rect.y &&
@@ -127,4 +129,5 @@ namespace NS::Editor
             }
             return std::max(clip.w / 10.0f, 1.0f);
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

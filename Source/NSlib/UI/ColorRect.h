@@ -2,9 +2,11 @@
 
 #include "NSlib/UI/Widget.h"
 
-namespace NS::UI
+namespace NS
 {
-        //! @brief 単色の矩形を描く Widget。下地・板・ゲージ・画面の覆いの素になる
+    namespace UI
+    {
+        /// 単色の矩形を描く Widget。下地・板・ゲージ・画面の覆いの素になる
         class ColorRect : public Widget
         {
         public:
@@ -17,4 +19,5 @@ namespace NS::UI
         private:
             Color m_color{1.0f, 1.0f, 1.0f, 1.0f}; // 塗り色。alpha は Widget の実効値と掛かる
         };
-} // namespace NS::UI
+    } // namespace UI
+} // namespace NS

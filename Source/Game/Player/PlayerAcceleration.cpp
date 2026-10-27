@@ -19,8 +19,10 @@ namespace
     }
 } // namespace
 
-namespace GL::Player
+namespace GL
 {
+    namespace Player
+    {
         void Accelerate(
             NS::Body* body, const NS::Vector3& direction, float turningDrag, float acceleration, float topSpeed,
             float dt) noexcept
@@ -45,4 +47,5 @@ namespace GL::Player
             NS_ASSERT(Game, body != nullptr, "Decelerate: 体が空");
             body->SetLateralVelocity(ShrinkHorizontal(body->LateralVelocity(), deceleration * dt));
         }
-} // namespace GL::Player
+    } // namespace Player
+} // namespace GL

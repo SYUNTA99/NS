@@ -1,7 +1,9 @@
 #include "NSlib/UI/Widget.h"
 
-namespace NS::UI
+namespace NS
 {
+    namespace UI
+    {
         WidgetRect Widget::ResolveRect(const WidgetRect& parent) const noexcept
         {
             if (m_stretch)
@@ -66,4 +68,5 @@ namespace NS::UI
             }
             return m_blocksInput && m_layoutRect.Contains(px, py);
         }
-} // namespace NS::UI
+    } // namespace UI
+} // namespace NS

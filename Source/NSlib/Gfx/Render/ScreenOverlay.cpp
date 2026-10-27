@@ -11,8 +11,10 @@
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/D3DDevice.h"
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         ScreenOverlay::ScreenOverlay(D3DDevice* device, const BuiltinShaders& shaders) noexcept
             : m_device(device), m_fullscreenVs(shaders.fullscreenVs), m_fadePs(shaders.fadePs),
               m_screenRectVs(shaders.screenRectVs), m_screenRectPs(shaders.screenRectPs)
@@ -84,8 +86,6 @@ namespace NS::Gfx
                 cmd.VSSetConstantBuffer(*pass.cb, k_DrawConstantsSlot);
             }
             cmd.PSSetConstantBuffer(*pass.cb, k_DrawConstantsSlot);
-
-            // 頂点もインデックスも差さない
             cmd.DrawFromVertexId(vertexCount);
         }
 
@@ -128,4 +128,5 @@ namespace NS::Gfx
             cbData.color = color;
             DrawPass(m_screenRect, *m_screenRectVs, *m_screenRectPs, &cbData, sizeof(cbData), 6, true);
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

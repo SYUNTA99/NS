@@ -24,7 +24,6 @@ namespace NS
 {
     namespace
     {
-        // 向きが入れ替わるまでのフレーム数を 1〜longest から選ぶ。longest が 2 以上なら previous と同じ数を選ばない
         // 分布は実装ごとに結果が違うので通さず、生成器の出力の余りから選ぶ
         [[nodiscard]] int PickFlipFrames(std::mt19937& generator, int longest, int previous) noexcept
         {
@@ -45,7 +44,6 @@ namespace NS
             return picked;
         }
 
-        // offsets の各フレームの axis の成分へ向きの符号を書く。最初は firstSign
         void FillFlipSigns(std::mt19937& generator,
                            int longest,
                            float firstSign,
@@ -108,7 +106,6 @@ namespace NS
         FillFlipSigns(generator, desc.longestFlipFrames, sideSign, &Vector2::x, shake->m_offsets);
         FillFlipSigns(generator, desc.longestFlipFrames, -1.0f, &Vector2::y, shake->m_offsets);
 
-        // 始めたフレームが最大で、残りのフレーム数に比例して減る
         for (int frame = 0; frame < desc.frames; ++frame)
         {
             const float decay = static_cast<float>(desc.frames - frame) / static_cast<float>(desc.frames);

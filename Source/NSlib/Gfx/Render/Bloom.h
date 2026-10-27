@@ -8,8 +8,10 @@
 #include <memory>
 #include <vector>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         class D3DBuffer;
         class D3DPipeline;
         class D3DDevice;
@@ -17,58 +19,45 @@ namespace NS::Gfx
         class D3DTexture;
         struct BuiltinShaders;
 
-        //! @brief 光のにじみの 4 つのシェーダーが共有する定数
-        //! @details bloom.hlsli の cbuffer BloomCB と大きさを合わせる。照らす試しは shader_constants_test.cpp
+        /// bloom.hlsli の cbuffer BloomCB とレイアウトを一致させる
         struct alignas(16) BloomCB
         {
-            float sourceTexel[2]{};      //!< 読む絵の 1 ピクセルの UV の幅と高さ
-            float destinationTexel[2]{}; //!< 書く絵の 1 ピクセルの UV の幅と高さ
+            float sourceTexel[2]{};      // 入力テクスチャ 1 テクセルの UV 幅・高さ
+            float destinationTexel[2]{}; // 出力テクスチャ 1 テクセルの UV 幅・高さ
             float threshold = 0.0f;
             float intensity = 0.0f;
             float padding[2]{};
         };
         static_assert(sizeof(BloomCB) == 32, "BloomCB は HLSL の cbuffer BloomCB とバイト一致が必要");
 
-        //! @brief 光のにじみの設定
-        //! @details 物の絵は S 字で 1 以下に書くので、閾値 1 なら 1 を超えて書いたエフェクトだけがにじむ
+        /// 閾値 1.0 ではトーンマップ後の通常描画 (<= 1.0) を除外し HDR 発光のみを抽出する
         struct BloomDesc
         {
-            //! これを超えた分の明るさだけをにじませる。色の成分ごとに引く
-            float threshold = 1.0f;
-            //! 各ぼかし段から加算する光の強さ
-            float intensity = 0.2f;
-            //! 縮める段の数。1 段目は描画先の半分の大きさ。1 未満は 1 として扱う
-            int levels = 5;
+            float threshold = 1.0f; // 色成分ごとに減算する輝度閾値
+            float intensity = 0.2f; // 各縮小段から加算する強さ
+            int levels = 5;         // 縮小段数 (1 段目は 1/2 解像度、1 未満は 1 に切り上げ)
         };
 
-        //! @brief HDR の明るい部分をぼかして元の描画先へ加算する
-        //! @details BeginWorld と EndWorld で描画先を切り替える。深度は元の描画先を共有する
-        //! @warning D3DDevice より先に破棄すること。シェーダーの持ち主が捨てた後は描画を呼ばない
+        /// HDR の高輝度領域を縮小・ぼかして元の描画先へ加算する
+        /// D3DDevice より先に破棄し、shaders の破棄後は描画を呼ばないこと
         class Bloom : public NonCopyable
         {
         public:
-            //! @brief パイプライン・定数バッファを作る
-            //! @param[in] desc 閾値・足す強さ・段の数
-            //! @param[in] shaders fullscreenVs と bloom の 4 つを指すだけで持たない
-            //! 使えるかは BeginWorld の度に決め、どれかが使えなければそのフレームは元の描画先で続ける
+            /// shaders は非所有で参照のみ保持する。シェーダーの有効性は BeginWorld ごとに判定する
             Bloom(const BloomDesc& desc, const BuiltinShaders& shaders) noexcept;
             ~Bloom();
 
-            //! パイプラインと定数バッファを作れた場合 true、それ以外の場合は false
             [[nodiscard]] bool IsValid() const noexcept;
 
-            //! HDR 描画へ切り替える。準備に失敗した場合は元の描画先で続ける
-            //! 深度は共有し、clearColor で背景を塗る
+            /// HDR 描画先へ切り替え、深度は元の描画先と共有して clearColor でクリアする。準備失敗時は元の描画先を維持する
             void BeginWorld(D3DDevice& device, const Color& clearColor) noexcept;
 
-            //! にじみを加算し、元の描画先とビューポートへ戻す。BeginWorld と同じ D3DDevice を渡す
+            /// ブルームを合成し、BeginWorld 前の描画先とビューポートへ戻す。BeginWorld と同じ D3DDevice を渡すこと
             void EndWorld(D3DDevice& device) noexcept;
 
         private:
-            // 描画先の大きさと段の数に合わせて浮動小数の描画先を揃える。作れなければ false
             [[nodiscard]] bool EnsureTargets(Size2D size) noexcept;
 
-            // 全画面を 1 回描く。source を t0、scene を t1 に差して destination へ書く。scene は無ければ差さない
             void DrawPass(D3DCommandList& cmd,
                           const D3DShader& pixelShader,
                           const D3DPipeline& pipeline,
@@ -79,22 +68,23 @@ namespace NS::Gfx
 
             BloomDesc m_desc{};
 
-            D3DShader* m_vs = nullptr;                    // 全画面三角形
-            D3DShader* m_thresholdPs = nullptr;           // 閾値を超えた分だけを残す
-            D3DShader* m_downPs = nullptr;                // 13 点で拾って半分に縮める
-            D3DShader* m_upPs = nullptr;                  // 3×3 の山形で拾って 1 段大きい方へ足す
-            D3DShader* m_compositePs = nullptr;           // 元の絵ににじみを足して 1 へ丸める
-            std::unique_ptr<D3DPipeline> m_writePipeline; // 書き込み先を置き換える
-            std::unique_ptr<D3DPipeline> m_addPipeline;   // 書き込み先へ足す
+            D3DShader* m_vs = nullptr;
+            D3DShader* m_thresholdPs = nullptr;
+            D3DShader* m_downPs = nullptr;
+            D3DShader* m_upPs = nullptr;
+            D3DShader* m_compositePs = nullptr;
+            std::unique_ptr<D3DPipeline> m_writePipeline;
+            std::unique_ptr<D3DPipeline> m_addPipeline;
             std::unique_ptr<D3DBuffer> m_cb;
 
-            Size2D m_size{0, 0};                        // 浮動小数の描画先の大きさ。0 なら未作成
-            std::unique_ptr<D3DTexture> m_scene;               // 世界を描く浮動小数の描画先
-            std::unique_ptr<D3DTexture> m_bright;              // 閾値を超えた分。世界と同じ大きさ
-            std::vector<std::unique_ptr<D3DTexture>> m_levels; // 縮めた段。先頭が半分の大きさ
+            Size2D m_size{0, 0};
+            std::unique_ptr<D3DTexture> m_scene;
+            std::unique_ptr<D3DTexture> m_bright;
+            std::vector<std::unique_ptr<D3DTexture>> m_levels;
 
-            SavedTargets m_saved{}; // BeginWorld で控えた描画先・深度・ビューポート
-            bool m_active = false; // BeginWorld が差し替えて EndWorld を待っているか
+            SavedTargets m_saved{};
+            bool m_active = false;
             bool m_valid = false;
         };
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

@@ -14,8 +14,10 @@
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         ScreenPasses::ScreenPasses(const BuiltinShaders& shaders) noexcept
             : m_vs(shaders.fullscreenVs), m_distortionPs(shaders.screenDistortionPs), m_bodyMaskPs(shaders.bodyMaskPs)
         {
@@ -232,4 +234,5 @@ namespace NS::Gfx
             m_copyDesc = desc;
             return true;
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

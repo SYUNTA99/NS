@@ -3,7 +3,6 @@
 namespace NS
 {
 
-    //! ログ出力時に指定するカテゴリ
     enum class LogType
     {
         Core,

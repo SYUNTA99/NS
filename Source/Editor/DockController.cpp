@@ -14,8 +14,10 @@
 #include <imgui_internal.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
 #if NS_EDITOR_ENABLED
         namespace
         {
@@ -415,4 +417,5 @@ namespace NS::Editor
             }
 #endif
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

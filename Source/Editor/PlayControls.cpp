@@ -2,8 +2,10 @@
 
 #include <optional>
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         PlayToolbarState MakePlayToolbarState(PlayModeSnapshot snapshot) noexcept
         {
             PlayToolbarState state{};
@@ -82,4 +84,5 @@ namespace NS::Editor
             }
             return query.cursorReleased && query.gameViewClicked;
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

@@ -6,32 +6,27 @@
 #include <array>
 #include <optional>
 
-namespace NS::Gfx
+namespace NS
 {
-        //! @brief EffectScene::Play が返す、再生したエフェクトのハンドル
+    namespace Gfx
+    {
         struct EffectHandle
         {
-            int32 value = -1; //!< Effekseer の Manager が返したハンドル値。既定の -1 は無効
+            int32 value = -1;
 
-            //! value が 0 以上の場合 true、それ以外の場合は false
-            //! @details エフェクトが今も残っているかは EffectScene::Exists で見る
+            /// 再生中かの生存確認は EffectScene::Exists を使う
             [[nodiscard]] bool IsValid() const noexcept { return value >= 0; }
         };
 
-        //! @brief EffectScene::Play に渡す、再生の姿勢と見た目
-        //! @details 既定の値で渡すと、原点で絵の定義どおりに出す
         struct EffectPlayDesc
         {
-            Vector3 position{0.0f, 0.0f, 0.0f};         //!< 再生位置のワールド座標
-            Quaternion rotation = Quaternion::Identity; //!< 絵の向き
-            Vector3 scale{1.0f, 1.0f, 1.0f};            //!< 絵の大きさの倍率。軸ごとに掛ける
-            //! 絵の全体に掛ける色。各成分 0〜1 で、白は定義の色のまま
-            Color color{1.0f, 1.0f, 1.0f, 1.0f};
-            //! 動的入力 0〜3 番の値。書いた番号だけ、絵の定義が持つ既定の値を上書きする
-            std::array<std::optional<float>, 4> dynamicInputs{};
+            Vector3 position{0.0f, 0.0f, 0.0f};
+            Quaternion rotation = Quaternion::Identity;
+            Vector3 scale{1.0f, 1.0f, 1.0f};
+            Color color{1.0f, 1.0f, 1.0f, 1.0f}; // 全体に乗算する色 (各成分 0〜1)
+            std::array<std::optional<float>, 4> dynamicInputs{}; // 動的入力 0〜3 の初期値 (指定した要素のみ既定値を上書き)
         };
 
-        //! 位置・回転・スケールを指定して EffectPlayDesc を組み立てる
         [[nodiscard]] inline EffectPlayDesc MakeEffectPlayDesc(const Vector3& position,
                                                                const Quaternion& rotation,
                                                                const Vector3& scale) noexcept
@@ -42,4 +37,5 @@ namespace NS::Gfx
             desc.scale = scale;
             return desc;
         }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

@@ -31,8 +31,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         struct AssetsPanel::ActorThumbnail
         {
             nlohmann::json source;
@@ -479,4 +481,5 @@ namespace NS::Editor
             (void)editor;
 #endif
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

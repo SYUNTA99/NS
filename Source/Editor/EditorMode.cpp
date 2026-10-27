@@ -32,8 +32,10 @@
 #include <optional>
 #include <unordered_map>
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         namespace
         {
             constexpr float k_CellHalfExtent = 0.5f;
@@ -48,7 +50,7 @@ namespace NS::Editor
                 return static_cast<int16>(std::lround(v));
             }
 
-            //! ワールド座標をパネル上のスクリーン座標へ射影する。カメラの後ろ (w <= 0) なら false を返す
+            // ワールド座標をパネル上のスクリーン座標へ射影する。カメラの後ろ (w <= 0) なら false を返す
             struct CursorScreenProjector
             {
                 Matrix viewProjection; // 射影に使う view * projection
@@ -825,4 +827,5 @@ namespace NS::Editor
             m_levelDirty = true;
             return true;
         }
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

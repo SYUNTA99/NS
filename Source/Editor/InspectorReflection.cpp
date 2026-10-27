@@ -23,8 +23,10 @@
 #include <imgui.h>
 #endif
 
-namespace NS::Editor
+namespace NS
 {
+    namespace Editor
+    {
         bool ShowsOverride(const Object* comp,
                            const char* partKey,
                            const FieldDesc& field,
@@ -1803,4 +1805,5 @@ namespace NS::Editor
             return ValueEditResult{};
         }
 #endif
-} // namespace NS::Editor
+    } // namespace Editor
+} // namespace NS

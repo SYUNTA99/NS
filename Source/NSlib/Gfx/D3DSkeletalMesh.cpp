@@ -9,8 +9,10 @@
 #include <cmath>
 #include <limits>
 
-namespace NS::Gfx
+namespace NS
 {
+    namespace Gfx
+    {
         namespace
         {
             template <typename Fn>
@@ -194,4 +196,5 @@ namespace NS::Gfx
         std::size_t D3DSkeletalMesh::BoneCount() const noexcept { return m_boneCount; }
 
         const std::vector<BoneSphere>& D3DSkeletalMesh::BoneSpheres() const noexcept { return m_boneSpheres; }
-} // namespace NS::Gfx
+    } // namespace Gfx
+} // namespace NS

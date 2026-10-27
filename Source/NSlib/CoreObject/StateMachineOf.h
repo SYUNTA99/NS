@@ -11,7 +11,7 @@
 
 namespace NS
 {
-    //! 状態の判断と遷移。共有する調整値や進行データは持ち主に置き、StateOf から派生する
+    /// 状態の判断と遷移。共有する調整値や進行データは持ち主に置き、StateOf から派生する
     template <typename TOwner> class State
     {
     public:
@@ -23,15 +23,15 @@ namespace NS
         State(State&&) = delete;
         State& operator=(State&&) = delete;
 
-        //! 自分の型を指す StateId。Change の突き合わせに使う
+        /// 自分の型を指す StateId。Change の突き合わせに使う
         [[nodiscard]] virtual StateId Id() const noexcept = 0;
 
-        //! 状態に入った時に 1 回呼ばれる。予約の確定の時で、先頭の状態も Build と Reset の後の次の確定で呼ばれる
+        /// 状態に入った時に 1 回呼ばれる。予約の確定の時で、先頭の状態も Build と Reset の後の次の確定で呼ばれる
         virtual void OnEnter(TOwner*) {}
-        //! @brief 状態の中で 1 フレーム進める
-        //! @details 同じフレームのコルーチンの後に呼ばれる。コルーチンが移る予約をしたフレームは呼ばれない
+        /// 状態の中で 1 フレーム進める
+        /// 同じフレームのコルーチンの後に呼ばれる。コルーチンが移る予約をしたフレームは呼ばれない
         virtual void OnStep(TOwner* owner, float dt) = 0;
-        //! 他の状態へ移る予約が入った時に 1 回呼ばれる
+        /// 他の状態へ移る予約が入った時に 1 回呼ばれる
         virtual void OnExit(TOwner*) {}
 
     protected:
@@ -51,25 +51,25 @@ namespace NS
         float m_stepDelta = 0.0f;
     };
 
-    //! @brief 状態の StateId を埋める中間クラス。状態は StateOf<自分の型, 所有者> から派生する
-    //! @details Id を派生に書かせると、状態を複製した時に型名を直し忘れてもビルドが通り、StateId が元の状態と重なる
+    /// 状態の StateId を埋める中間クラス。状態は StateOf<自分の型, 所有者> から派生する
+    /// Id を派生に書かせると、状態を複製した時に型名を直し忘れてもビルドが通り、StateId が元の状態と重なる
     template <typename TState, typename TOwner> class StateOf : public State<TOwner>
     {
     public:
         [[nodiscard]] StateId Id() const noexcept final { return StateIdOf<TState>(); }
     };
 
-    //! @brief 型の並びから組む状態機械。先頭が初期状態で、Build は先頭を予約するだけ
-    //! @details 所有者は Build で 1 回だけ受けて控え、Step と Change はその控えを状態へ渡す。
-    //! OnStep の中で Change しても呼び出し元の OnStep は続くので、遷移したら即 return する。
-    //! 同じフレームに予約が重なった時は最後の予約が効き、OnExit は最初の予約の時に 1 回だけ呼ぶ。
-    //! OnEnter・OnExit の中の予約は止めず、次の確定の所まで保留する
+    /// 型の並びから組む状態機械。先頭が初期状態で、Build は先頭を予約するだけ
+    /// 所有者は Build で 1 回だけ受けて控え、Step と Change はその控えを状態へ渡す。
+    /// OnStep の中で Change しても呼び出し元の OnStep は続くので、遷移したら即 return する。
+    /// 同じフレームに予約が重なった時は最後の予約が効き、OnExit は最初の予約の時に 1 回だけ呼ぶ。
+    /// OnEnter・OnExit の中の予約は止めず、次の確定の所まで保留する
     template <typename TOwner> class StateMachineOf : public IStateMachine
     {
     public:
-        //! @brief 先頭の状態へ移る予約をする。この後の Step と Change は、ここで渡した owner を状態へ渡す
-        //! @details 先頭の OnEnter は、ほかの予約と同じく次の確定の所で呼ぶ。Step の外で組めば最初の Step の初めに、
-        //! 自分の更新の中で入る
+        /// 先頭の状態へ移る予約をする。この後の Step と Change は、ここで渡した owner を状態へ渡す
+        /// 先頭の OnEnter は、ほかの予約と同じく次の確定の所で呼ぶ。Step の外で組めば最初の Step の初めに、
+        /// 自分の更新の中で入る
         template <typename... TStates> void Build(TOwner* owner)
         {
             NS_ASSERT(Scene, owner != nullptr, "StateMachineOf: 持ち主を渡さずに組もうとした");
@@ -91,9 +91,9 @@ namespace NS
             m_step = 0;
         }
 
-        //! @brief OnExit を呼ばずに、先頭の状態へ移る予約をする。やり直しで使う
-        //! @details 先頭の OnEnter は、ほかの予約と同じく次の確定の所で呼ぶ。Step の外で呼べば次の Step の初め、
-        //! Step の中 (OnStep やコルーチン) で呼べばその Step の終わりの確定で入る
+        /// OnExit を呼ばずに、先頭の状態へ移る予約をする。やり直しで使う
+        /// 先頭の OnEnter は、ほかの予約と同じく次の確定の所で呼ぶ。Step の外で呼べば次の Step の初め、
+        /// Step の中 (OnStep やコルーチン) で呼べばその Step の終わりの確定で入る
         void Reset() noexcept
         {
             if (m_current != nullptr)
@@ -112,10 +112,10 @@ namespace NS
             m_step = 0;
         }
 
-        //! 状態を 1 つでも組めているか
+        /// 状態を 1 つでも組めているか
         [[nodiscard]] bool IsBuilt() const noexcept { return !m_states.empty(); }
 
-        //! 現在状態の StateId。未組立は nullptr
+        /// 現在状態の StateId。未組立は nullptr
         [[nodiscard]] StateId CurrentId() const noexcept override
         {
             if (m_next != nullptr)
@@ -129,8 +129,8 @@ namespace NS
             return m_current->Id();
         }
 
-        //! @brief 今の状態に入ってから進めたフレーム数を返す
-        //! @return 入った最初のフレームは 0。移る予約があれば NS::uint32 の最大値
+        /// 今の状態に入ってから進めたフレーム数を返す
+        /// @return 入った最初のフレームは 0。移る予約があれば NS::uint32 の最大値
         [[nodiscard]] uint32 StepCount() const noexcept override
         {
             if (m_next != nullptr)
@@ -140,15 +140,15 @@ namespace NS
             return m_step;
         }
         [[nodiscard]] uint32 EntryCount() const noexcept override { return m_entryCount; }
-        //! 組めていて移る予約が無く、今の状態に入った最初のフレームの場合 true、それ以外の場合は false
+        /// 組めていて移る予約が無く、今の状態に入った最初のフレームの場合 true、それ以外の場合は false
         [[nodiscard]] bool IsFirstStep() const noexcept
         {
             return m_current != nullptr && m_next == nullptr && m_step == 0;
         }
 
-        //! @brief 今の状態のコルーチンを捨て、今の状態から移る予約を取り消す
-        //! @details 走っている Step の中で呼ぶと、その Step は残りの OnStep と予約の確定を飛ばす。
-        //! Build と Reset の後の最初の Step の前 (今の状態が無い時) は、先頭へ入る予約を残す
+        /// 今の状態のコルーチンを捨て、今の状態から移る予約を取り消す
+        /// 走っている Step の中で呼ぶと、その Step は残りの OnStep と予約の確定を飛ばす。
+        /// Build と Reset の後の最初の Step の前 (今の状態が無い時) は、先頭へ入る予約を残す
         void CancelCurrentCoroutines() noexcept
         {
             m_stepCancelled = true;
@@ -160,7 +160,7 @@ namespace NS
             m_current->CancelCoroutines();
         }
 
-        //! 現在状態が TState の場合 true、それ以外の場合は false。未組立はどの型とも一致しない
+        /// 現在状態が TState の場合 true、それ以外の場合は false。未組立はどの型とも一致しない
         template <typename TState> [[nodiscard]] bool IsCurrent() const noexcept
         {
             return CurrentId() == StateIdOf<TState>();
@@ -193,8 +193,8 @@ namespace NS
             }
         }
 
-        //! 遷移を予約する。予約時に OnExit とコルーチン破棄、次の確定時に OnEnter を行う
-        //! 未組立は false、未登録の状態はアサート。同じ状態または予約成功なら true
+        /// 遷移を予約する。予約時に OnExit とコルーチン破棄、次の確定時に OnEnter を行う
+        /// 未組立は false、未登録の状態はアサート。同じ状態または予約成功なら true
         bool Change(StateId id) override
         {
             State<TOwner>* next = Find(id);
@@ -257,12 +257,12 @@ namespace NS
         bool m_stepCancelled = false;
     };
 
-    //! @brief 親の状態の中で進める子の状態機械
-    //! @details 子の状態が Finish を呼んで終わり、親は IsDead を見て次へ移る
+    /// 親の状態の中で進める子の状態機械
+    /// 子の状態が Finish を呼んで終わり、親は IsDead を見て次へ移る
     template <typename TOwner> class SubStateMachine : public IGetState
     {
     public:
-        //! Finish の後でも、組み直すとまた進む
+        /// Finish の後でも、組み直すとまた進む
         template <typename... TStates> void Build(TOwner* owner)
         {
             NS_ASSERT(Scene, owner != nullptr, "SubStateMachine: 持ち主を渡さずに組もうとした");
@@ -270,7 +270,7 @@ namespace NS
             m_machine.template Build<TStates...>(owner);
         }
 
-        //! Finish の後は、次の Build まで何もしない
+        /// Finish の後は、次の Build まで何もしない
         void Step(float dt)
         {
             if (!m_dead)
@@ -279,15 +279,15 @@ namespace NS
             }
         }
 
-        //! @brief 子の状態機械を終え、Finish の後は次の Build まで Step しない
-        //! @details 今の状態のコルーチンと、今の状態から移る予約を捨てる。組んだ直後 (最初の Step の前) の Finish では、
-        //! 先頭へ入る予約は残る (Step しないので入らない)
+        /// 子の状態機械を終え、Finish の後は次の Build まで Step しない
+        /// 今の状態のコルーチンと、今の状態から移る予約を捨てる。組んだ直後 (最初の Step の前) の Finish では、
+        /// 先頭へ入る予約は残る (Step しないので入らない)
         void Finish() noexcept
         {
             m_dead = true;
             m_machine.CancelCurrentCoroutines();
         }
-        //! Finish の後、次の Build までの場合 true、それ以外の場合は false
+        /// Finish の後、次の Build までの場合 true、それ以外の場合は false
         [[nodiscard]] bool IsDead() const noexcept { return m_dead; }
         [[nodiscard]] StateMachineOf<TOwner>& Machine() noexcept { return m_machine; }
         [[nodiscard]] const StateMachineOf<TOwner>& Machine() const noexcept { return m_machine; }

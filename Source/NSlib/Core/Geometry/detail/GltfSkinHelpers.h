@@ -12,9 +12,11 @@
 #include <utility>
 #include <vector>
 
-namespace NS::detail
+namespace NS
 {
-        //! 重みの合計を 1 に揃える。合計がほぼ 0 の頂点は、全部 0 のままだと原点へ潰れるので骨 0 に重み 1 を載せる
+    namespace detail
+    {
+        /// 重みの合計を 1 に揃える。合計がほぼ 0 の頂点は、全部 0 のままだと原点へ潰れるので骨 0 に重み 1 を載せる
         inline void NormalizeJointWeights(std::array<uint32, 4>& joints, std::array<float, 4>& weights) noexcept
         {
             const float sum = weights[0] + weights[1] + weights[2] + weights[3];
@@ -31,20 +33,20 @@ namespace NS::detail
             }
         }
 
-        //! position / translation を Z 反転で右手系から左手系へ変換する
+        /// position / translation を Z 反転で右手系から左手系へ変換する
         [[nodiscard]] inline Vector3 MirrorZ(const Vector3& v) noexcept
         {
             return Vector3{v.x, v.y, -v.z};
         }
 
-        //! 回転クォータニオンを右手系から左手系へ変換する。Z 反転の相似変換では (x,y,z,w) → (-x,-y,z,w)
+        /// 回転クォータニオンを右手系から左手系へ変換する。Z 反転の相似変換では (x,y,z,w) → (-x,-y,z,w)
         [[nodiscard]] inline Quaternion MirrorQuaternionZ(const Quaternion& q) noexcept
         {
             return Quaternion{-q.x, -q.y, q.z, q.w};
         }
 
-        //! cgltf 列優先 16 float を行ベクトル Matrix に読む。列優先 M == 行優先 Mᵀ
-        //! なので順序そのままでよく、translation は _41/_42/_43 に入る
+        /// cgltf 列優先 16 float を行ベクトル Matrix に読む。列優先 M == 行優先 Mᵀ
+        /// なので順序そのままでよく、translation は _41/_42/_43 に入る
         [[nodiscard]] inline Matrix ReadColumnMajorMatrix(const float m[16]) noexcept
         {
             return Matrix{m[0],
@@ -65,15 +67,15 @@ namespace NS::detail
                               m[15]};
         }
 
-        //! inverseBind を Z 反転で右手系から左手系へ変換する。S = diag(1,1,-1) として S * M * S
+        /// inverseBind を Z 反転で右手系から左手系へ変換する。S = diag(1,1,-1) として S * M * S
         [[nodiscard]] inline Matrix ConjugateZMatrix(const Matrix& m) noexcept
         {
             const Matrix s = Matrix::CreateScale(1.0f, 1.0f, -1.0f);
             return s * m * s;
         }
 
-        //! bones を親が子より前に来る順へ並べ替え、old→new index の remap を返す
-        //! 出力 bones の parentIndex は new index に張り替え済。呼出側は remap で頂点 joint index を変換する
+        /// bones を親が子より前に来る順へ並べ替え、old→new index の remap を返す
+        /// 出力 bones の parentIndex は new index に張り替え済。呼出側は remap で頂点 joint index を変換する
         [[nodiscard]] inline std::vector<uint32> TopologicalSortBones(std::vector<Anim::Bone>& bones) noexcept
         {
             const std::size_t boneCount = bones.size();
@@ -124,4 +126,5 @@ namespace NS::detail
             bones = std::move(sorted);
             return oldToNew;
         }
-} // namespace NS::detail
+    } // namespace detail
+} // namespace NS

@@ -4,8 +4,10 @@
 
 #include <windows.h>
 
-namespace NS::OS
+namespace NS
 {
+    namespace OS
+    {
         // OS の入力を手元の機器へ書く。中立の間も書き先は替わらない
         void DispatchWin32MessageToInput(Input& input, UINT msg, WPARAM wparam, LPARAM lparam) noexcept;
 
@@ -54,4 +56,5 @@ namespace NS::OS
             }
             return false;
         }
-} // namespace NS::OS
+    } // namespace OS
+} // namespace NS

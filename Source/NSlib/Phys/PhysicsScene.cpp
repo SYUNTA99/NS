@@ -18,8 +18,10 @@
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 
-namespace NS::Phys
+namespace NS
 {
+    namespace Phys
+    {
         namespace
         {
             constexpr uint k_MaxBodies = 4096;
@@ -299,4 +301,5 @@ namespace NS::Phys
                 part.shape, JPH::Vec3::sOne(), transform, JPH::CollideShapeSettings{}, JPH::RVec3::sZero(), collector);
             return collector.HadHit();
         }
-} // namespace NS::Phys
+    } // namespace Phys
+} // namespace NS
