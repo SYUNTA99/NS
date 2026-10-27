@@ -27,6 +27,12 @@ namespace NS
 
     using Color = DirectX::SimpleMath::Color;
 
+    //! 2つの2次元ベクトルの内積
+    [[nodiscard]] inline float Dot(const Vector2& a, const Vector2& b) noexcept
+    {
+        return a.x * b.x + a.y * b.y;
+    }
+
     //! 2つのベクトルの内積
     [[nodiscard]] inline float Dot(const Vector3& a, const Vector3& b) noexcept
     {
@@ -269,10 +275,34 @@ namespace NS
         return HorizontalLengthSquared(v) < toleranceSq;
     }
 
+    //! @brief スカラ値が正（0 より大）か判定する。0 以下および NaN の場合は false
+    [[nodiscard]] inline bool IsPositive(float value) noexcept
+    {
+        return value > 0.0f;
+    }
+
     //! @brief 有限値かつ正の有意な大きさ（k_Epsilon より大）を持つか判定する
     [[nodiscard]] inline bool HasPositiveMagnitude(float value, float minThreshold = k_Epsilon) noexcept
     {
         return std::isfinite(value) && value > minThreshold;
+    }
+
+    //! @brief XZ 平面の内積（水平成分）
+    [[nodiscard]] inline float DotHorizontal(const Vector3& a, const Vector3& b) noexcept
+    {
+        return a.x * b.x + a.z * b.z;
+    }
+
+    //! @brief 2 つの単位ベクトルがなす角度（ラジアン、0〜π）を返す
+    [[nodiscard]] inline float AngleBetween(const Vector3& a, const Vector3& b) noexcept
+    {
+        return std::acos(std::clamp(Dot(a, b), -1.0f, 1.0f));
+    }
+
+    //! @brief ベクトルから単位法線方向の成分を取り除いた射影ベクトルを返す
+    [[nodiscard]] inline Vector3 RejectUnit(const Vector3& v, const Vector3& unitNormal) noexcept
+    {
+        return v - unitNormal * Dot(v, unitNormal);
     }
 
     //! @brief XZ 平面へ畳んだ向きを正規化する

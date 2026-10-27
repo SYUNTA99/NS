@@ -33,6 +33,7 @@ namespace GL
             player->CutJumpRelease();
             player->Gravity(dt);
 
+            const bool stopped = PlayerJudgeStopped::Judge(body.LateralVelocity());
             if (PlayerJudgeFall::Judge(body.IsGrounded()))
             {
                 player->States().Change<FallPlayerState>();
@@ -41,10 +42,7 @@ namespace GL
             {
                 player->States().Change<BrakePlayerState>();
             }
-            else if (PlayerJudgeIdle::Judge(body.IsGrounded(),
-                                            PlayerJudgeWalk::Judge(body.IsGrounded(),
-                                                                   hasInput,
-                                                                   PlayerJudgeStopped::Judge(body.LateralVelocity()))))
+            else if (PlayerJudgeIdle::Judge(body.IsGrounded(), hasInput, stopped))
             {
                 player->States().Change<IdlePlayerState>();
             }

@@ -37,23 +37,29 @@ namespace NS
         [[nodiscard]] const std::vector<HitSensor*>& Sensors() const noexcept { return m_sensors; }
 
     private:
-        // 向きのある組。first が知らせる先の持ち主のセンサー、second が相手
-        using SensorPair = std::pair<HitSensor*, HitSensor*>;
+        // 向きのある組。self が知らせる先の持ち主のセンサー、other が相手
+        struct SensorOverlap
+        {
+            HitSensor* self = nullptr;
+            HitSensor* other = nullptr;
+
+            [[nodiscard]] bool operator==(const SensorOverlap&) const noexcept = default;
+        };
 
         // 今の固定フレームに重なっている有効な組を、両方の向きで集める
-        [[nodiscard]] std::vector<SensorPair> CollectOverlaps() const;
+        [[nodiscard]] std::vector<SensorOverlap> CollectOverlaps() const;
         // 前の組と今の組を比べ、終わり → 始まりと続きの順に知らせる
-        void NotifyOverlaps(const std::vector<SensorPair>& current);
-        // pair.first の持ち主へ終わりを知らせる。pair.first が外れていれば知らせない
-        void NotifyExit(const SensorPair& pair);
+        void NotifyOverlaps(const std::vector<SensorOverlap>& current);
+        // overlap.self の持ち主へ終わりを知らせる。overlap.self が外れていれば知らせない
+        void NotifyExit(const SensorOverlap& overlap);
 
         [[nodiscard]] bool IsRegistered(const HitSensor* sensor) const noexcept;
         // 入っていて、持ち主が出ているか。持ち主が消えてもセンサーは入ったままなので、呼ぶ途中で消えた物をこれで飛ばす。
         // 呼ぶ途中の Invalidate では組を飛ばさないので IsValid は読まない
         [[nodiscard]] bool IsPresent(const HitSensor* sensor) const noexcept;
 
-        std::vector<HitSensor*> m_sensors;      // 登録順、非所有
-        std::vector<SensorPair> m_overlaps;     // 前の OnTick で始まりか続きを知らせた組
-        std::vector<SensorPair> m_pendingExits; // 相手が外れた組。second は nullptr で、次の OnTick で終わりを知らせる
+        std::vector<HitSensor*> m_sensors;          // 登録順、非所有
+        std::vector<SensorOverlap> m_overlaps;      // 前の OnTick で始まりか続きを知らせた組
+        std::vector<SensorOverlap> m_pendingExits;  // 相手が外れた組。other は nullptr で、次の OnTick で終わりを知らせる
     };
 } // namespace NS

@@ -296,6 +296,11 @@ namespace GL
                           const BodySlamStatus& slam,
                           const NS::Collider* collider);
             void AdvanceHit(const Owner& owner, const NS::Collider* collider);
+            void AdvanceHitCore(const Owner& owner, int frame);
+            void AdvanceHitStreak(const Owner& owner, int frame);
+            void AdvanceHitGlow(const Owner& owner, int frame);
+            void AdvanceHitRing(const Owner& owner, int frame);
+            void AdvanceHitRelease(const Owner& owner, const NS::Collider* collider, int step);
             void PlaySparks(const Owner& owner);
             void PlayEmbers(const Owner& owner);
             // 前の当たりの層のうち、ここが消える時を持っている物を今のフレームで畳む

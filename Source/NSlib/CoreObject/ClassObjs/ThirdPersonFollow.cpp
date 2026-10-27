@@ -137,7 +137,7 @@ namespace NS
     void ThirdPersonFollow::SetFollowMotion(bool grounded, const Vector3& velocity) noexcept
     {
         m_followGrounded = grounded;
-        const float horiz = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        const float horiz = HorizontalLength(velocity);
         // 非数を持つと走り判定の比較が常に偽になり、走っても待機時距離のまま
         if (std::isfinite(horiz))
         {
@@ -267,8 +267,7 @@ namespace NS
         }
     }
 
-    void ThirdPersonFollow::UpdateReboundPhase(
-        bool began, bool rebounding, bool launchBegan, bool launching, const Vector3& head) noexcept
+    void ThirdPersonFollow::UpdateReboundPhase(const ReboundPhaseInput& input, const Vector3& head) noexcept
     {
         const auto anchorAtLastLook = [this, &head]() {
             m_reboundAnchor = head;
@@ -281,20 +280,18 @@ namespace NS
 
         // 反動の状態になったフレームに、前のフレームに見ていた所から留める
         // 空中で続けて当てた時も留め直す。勝手に出た突進の途中で当たった時も、遅れた注視点から続けるので跳ばない
-        if (began)
+        if (input.reboundBegan)
         {
             m_reboundPhase = ReboundPhase::Following;
             anchorAtLastLook();
             // 勝手に出た突進の遅れは反動の上限より大きいことがある。入った時の遅れを上限の初めにして、切って跳ばさない
-            const float lagX = m_reboundAnchor.x - head.x;
-            const float lagZ = m_reboundAnchor.z - head.z;
-            m_reboundLagCap = std::max(m_reboundMaxLag, std::sqrt(lagX * lagX + lagZ * lagZ));
+            m_reboundLagCap = std::max(m_reboundMaxLag, HorizontalLength(m_reboundAnchor - head));
             return;
         }
 
         // 勝手に出た突進になったフレームに、前のフレームに見ていた所へ取り残す。バネは止まった所から動き出すので、
         // 出た最初の数フレームは注視点がほぼ動かない
-        if (launchBegan)
+        if (input.launchBegan)
         {
             m_reboundPhase = ReboundPhase::Launching;
             anchorAtLastLook();
@@ -303,8 +300,8 @@ namespace NS
 
         // 反動の状態か勝手に出た突進が外れたフレームから寄せ戻す
         // 着地のほか、空中の 1 発と縁を掴んだ時も外れる。突進は当たらずに止まった時に外れる
-        if ((m_reboundPhase == ReboundPhase::Following && !rebounding) ||
-            (m_reboundPhase == ReboundPhase::Launching && !launching))
+        if ((m_reboundPhase == ReboundPhase::Following && !input.rebounding) ||
+            (m_reboundPhase == ReboundPhase::Launching && !input.launching))
         {
             if (m_reboundReturnFrames > 0 && m_hasLook)
             {
@@ -783,7 +780,8 @@ namespace NS
 
         const Vector3 root = target->Position();
         const Vector3 head{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};
-        UpdateReboundPhase(reboundBegan, rebound.rebounding, launchBegan, rebound.forcedSlamming, head);
+        UpdateReboundPhase(ReboundPhaseInput{reboundBegan, rebound.rebounding, launchBegan, rebound.forcedSlamming},
+                           head);
         // 反動になったフレームは前の反動の寄せと引きを持ち越さない
         if (reboundBegan)
         {

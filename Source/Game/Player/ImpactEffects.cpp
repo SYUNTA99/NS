@@ -400,6 +400,201 @@ namespace GL
                 owner.effect, NS::PlayEffect(owner.effect, m_embersAsset, embers), static_cast<float>(shape.emberCount));
         }
 
+        void ImpactEffects::AdvanceHitCore(const Owner& owner, int frame)
+        {
+            if (m_plan.core == 0)
+            {
+                return;
+            }
+            const ImpactShape& shape = m_plan.shape;
+            if (frame >= 1 && frame <= shape.holdLastFrame)
+            {
+                // 描く位置が変わるのはこのステップの終わりの更新の後。1 フレーム目の絵から最大の大きさで写り、
+                // 留まる間は偶数のフレームだけ少し縮める。大きな外れは 1 フレーム目の最大から少しずつ縮める
+                float diameter = shape.coreDiameter;
+                if (shape.coreHold == CoreHoldMotion::Settle)
+                {
+                    const float settle =
+                        std::pow(std::clamp(m_wideFlashDecay, 0.0f, 1.0f), static_cast<float>(frame - 1));
+                    const float floor = std::clamp(m_wideFlashFloor, 0.0f, 1.0f);
+                    const float share = floor + (1.0f - floor) * settle;
+                    diameter = shape.coreDiameter * std::sqrt(share);
+                }
+                else if (frame % 2 == 0)
+                {
+                    diameter = shape.coreDiameter * m_coreHoldPulse;
+                }
+                NS::SetEffectTransform(
+                    owner.effect, m_plan.core, m_plan.contact, Quaternion::Identity, Uniform(diameter));
+                if (frame == 1)
+                {
+                    // 星形と芯を出始めの大きさから再生の大きさへ戻す
+                    NS::SetEffectDynamicInput(owner.effect, m_plan.core, 3, 1.0f);
+                }
+            }
+            if (shape.coreCut)
+            {
+                if (frame > shape.holdLastFrame)
+                {
+                    NS::StopEffect(owner.effect, m_plan.core);
+                    m_plan.core = 0;
+                }
+            }
+            else if (frame >= shape.holdLastFrame)
+            {
+                NS::StopEffectRoot(owner.effect, m_plan.core);
+                m_plan.core = 0;
+            }
+        }
+
+        void ImpactEffects::AdvanceHitStreak(const Owner& owner, int frame)
+        {
+            const ImpactShape& shape = m_plan.shape;
+            if (shape.streakLength > 0.0f && frame == 1)
+            {
+                m_plan.streak = NS::PlayEffect(
+                    owner.effect,
+                    m_streakAsset,
+                    PlayAt(m_plan.contact, Quaternion::Identity, Vector3{shape.streakLength, 1.0f, 1.0f}));
+                NS::SetEffectAmount(owner.effect, m_plan.streak, shape.streakLength);
+            }
+            if (m_plan.streak == 0)
+            {
+                return;
+            }
+            const int thinned = shape.holdLastFrame + 1;
+            const int fadeStart = shape.holdLastFrame + std::max(m_streakTailFrames, 0);
+            if (frame >= fadeStart + std::max(m_streakFadeFrames, 0))
+            {
+                NS::StopEffect(owner.effect, m_plan.streak);
+                m_plan.streak = 0;
+            }
+            else if (frame >= fadeStart)
+            {
+                // 親を止めた後は太さを置き直さず、絵の定義の落ちるフレーム数で薄れる
+                NS::StopEffectRoot(owner.effect, m_plan.streak);
+            }
+            else
+            {
+                // 1 から細りきった太さへ、留まりの終わりの次のフレームまでに細り、その後は細いまま残る。
+                // 留まる間は核と同じ偶数のフレームだけ長さを縮める
+                const int thinFrame = std::min(frame, thinned);
+                const float t = static_cast<float>(thinFrame - 1) / static_cast<float>(std::max(1, thinned - 1));
+                const float thickness = 1.0f + (m_streakEndThickness - 1.0f) * t;
+                float length = shape.streakLength;
+                if (frame <= shape.holdLastFrame && frame % 2 == 0)
+                {
+                    length = shape.streakLength * m_coreHoldPulse;
+                }
+                NS::SetEffectTransform(
+                    owner.effect, m_plan.streak, m_plan.contact, Quaternion::Identity, Vector3{length, thickness, 1.0f});
+            }
+        }
+
+        void ImpactEffects::AdvanceHitGlow(const Owner& owner, int frame)
+        {
+            if (m_plan.glow == 0)
+            {
+                return;
+            }
+            const ImpactShape& shape = m_plan.shape;
+            if (frame >= 1 && frame <= shape.holdLastFrame)
+            {
+                // 加算の円は面積で明るさが変わるため、消えるまでの面積を線形に減らす
+                float share = std::clamp(m_glowRiseShare, 0.0f, 1.0f);
+                if (frame == m_glowDimStart)
+                {
+                    share = 1.0f;
+                }
+                else if (frame > m_glowDimStart)
+                {
+                    const float span = static_cast<float>(shape.holdLastFrame + 2 - m_glowDimStart);
+                    share = static_cast<float>(shape.holdLastFrame + 2 - frame) / span;
+                }
+                const Quaternion lieFlat = TurnNormalTo(Vector3{0.0f, 1.0f, 0.0f});
+                NS::SetEffectTransform(
+                    owner.effect, m_plan.glow, m_plan.floor, lieFlat, Uniform(shape.glowDiameter * std::sqrt(share)));
+            }
+            if (frame >= shape.holdLastFrame)
+            {
+                NS::StopEffectRoot(owner.effect, m_plan.glow);
+                m_plan.glow = 0;
+            }
+        }
+
+        void ImpactEffects::AdvanceHitRing(const Owner& owner, int frame)
+        {
+            const ImpactShape& shape = m_plan.shape;
+            if (shape.ringRadius > 0.0f && frame == std::max(m_ringStart, 0))
+            {
+                m_plan.ring =
+                    NS::PlayEffect(owner.effect,
+                                   m_ringAsset,
+                                   PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(m_ringStartRadius)));
+                NS::SetEffectAmount(owner.effect, m_plan.ring, shape.ringRadius);
+            }
+            if (m_plan.ring == 0)
+            {
+                return;
+            }
+            if (frame >= m_ringEnd)
+            {
+                NS::StopEffect(owner.effect, m_plan.ring);
+                m_plan.ring = 0;
+            }
+            else
+            {
+                const float t = static_cast<float>(frame - std::max(m_ringStart, 0)) /
+                                static_cast<float>(std::max(m_ringFull - std::max(m_ringStart, 0), 1));
+                const float radius = m_ringStartRadius + (shape.ringRadius - m_ringStartRadius) * EaseOutCubic(t);
+                NS::SetEffectTransform(
+                    owner.effect, m_plan.ring, m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(radius));
+            }
+        }
+
+        void ImpactEffects::AdvanceHitRelease(const Owner& owner, const NS::Collider* collider, int step)
+        {
+            // 自機の側は飛びの絵の頭から。当たりの絵の頭で相手の側、飛びの絵の頭で自機の側が出て、作用と反作用の順に読める
+            if (m_plan.releaseStep < 0)
+            {
+                return;
+            }
+            const ImpactShape& shape = m_plan.shape;
+            if (!m_plan.dustPlayed && step == m_plan.releaseStep)
+            {
+                m_plan.dustPlayed = true;
+                if (shape.dustCount > 0)
+                {
+                    m_aim.dustOrigin = m_plan.floor + m_plan.awayDir * (shape.dustScale * m_dustAwayShare);
+                    NS::Gfx::EffectPlayDesc dust =
+                        PlayAt(m_aim.dustOrigin, Quaternion::Identity, Uniform(shape.dustScale));
+                    dust.dynamicInputs[0] = static_cast<float>(shape.dustCount);
+                    const NS::uint32 id = NS::PlayEffect(owner.effect, m_dustAsset, dust);
+                    NS::SetEffectAmount(owner.effect, id, shape.dustScale);
+                    m_dusts.push_back(id);
+                }
+            }
+            // 線の本数が 0 の段は出さずに済ませる
+            const bool recoilDue = !m_plan.recoilPlayed && step == m_plan.releaseStep + m_recoilDelay;
+            if (recoilDue)
+            {
+                m_plan.recoilPlayed = true;
+            }
+            if (recoilDue && shape.recoilCount > 0)
+            {
+                // 接触点から出すと動く方向を誤読しやすいため、反動と逆側の玉の縁から線を出す
+                const float radius = collider->CapsuleRadius();
+                m_aim.recoilOrigin = owner.position - m_plan.selfDir * radius;
+                NS::Gfx::EffectPlayDesc recoil =
+                    PlayAt(m_aim.recoilOrigin, TurnUpTo(m_plan.selfDir), Uniform(1.0f));
+                recoil.dynamicInputs[0] = 0.0f;
+                recoil.dynamicInputs[2] = 0.0f;
+                recoil.dynamicInputs[shape.recoilCountInput] = static_cast<float>(shape.recoilCount);
+                recoil.dynamicInputs[1] = shape.recoilLength;
+                NS::SetEffectAmount(owner.effect, NS::PlayEffect(owner.effect, m_recoilAsset, recoil), shape.recoilLength);
+            }
+        }
+
         void ImpactEffects::AdvanceHit(const Owner& owner, const NS::Collider* collider)
         {
             if (!m_plan.active)
@@ -422,171 +617,11 @@ namespace GL
                 PlayEmbers(owner);
             }
 
-            if (m_plan.core != 0)
-            {
-                if (frame >= 1 && frame <= shape.holdLastFrame)
-                {
-                    // 描く位置が変わるのはこのステップの終わりの更新の後。1 フレーム目の絵から最大の大きさで写り、
-                    // 留まる間は偶数のフレームだけ少し縮める。大きな外れは 1 フレーム目の最大から少しずつ縮める
-                    float diameter = shape.coreDiameter;
-                    if (shape.coreHold == CoreHoldMotion::Settle)
-                    {
-                        const float settle =
-                            std::pow(std::clamp(m_wideFlashDecay, 0.0f, 1.0f), static_cast<float>(frame - 1));
-                        const float floor = std::clamp(m_wideFlashFloor, 0.0f, 1.0f);
-                        const float share = floor + (1.0f - floor) * settle;
-                        diameter = shape.coreDiameter * std::sqrt(share);
-                    }
-                    else if (frame % 2 == 0)
-                    {
-                        diameter = shape.coreDiameter * m_coreHoldPulse;
-                    }
-                    NS::SetEffectTransform(
-                        owner.effect, m_plan.core, m_plan.contact, Quaternion::Identity, Uniform(diameter));
-                    if (frame == 1)
-                    {
-                        // 星形と芯を出始めの大きさから再生の大きさへ戻す
-                        NS::SetEffectDynamicInput(owner.effect, m_plan.core, 3, 1.0f);
-                    }
-                }
-                if (shape.coreCut)
-                {
-                    if (frame > shape.holdLastFrame)
-                    {
-                        NS::StopEffect(owner.effect, m_plan.core);
-                        m_plan.core = 0;
-                    }
-                }
-                else if (frame >= shape.holdLastFrame)
-                {
-                    NS::StopEffectRoot(owner.effect, m_plan.core);
-                    m_plan.core = 0;
-                }
-            }
-
-            if (shape.streakLength > 0.0f && frame == 1)
-            {
-                m_plan.streak = NS::PlayEffect(
-                    owner.effect,
-                    m_streakAsset,
-                    PlayAt(m_plan.contact, Quaternion::Identity, Vector3{shape.streakLength, 1.0f, 1.0f}));
-                NS::SetEffectAmount(owner.effect, m_plan.streak, shape.streakLength);
-            }
-            if (m_plan.streak != 0)
-            {
-                const int thinned = shape.holdLastFrame + 1;
-                const int fadeStart = shape.holdLastFrame + std::max(m_streakTailFrames, 0);
-                if (frame >= fadeStart + std::max(m_streakFadeFrames, 0))
-                {
-                    NS::StopEffect(owner.effect, m_plan.streak);
-                    m_plan.streak = 0;
-                }
-                else if (frame >= fadeStart)
-                {
-                    // 親を止めた後は太さを置き直さず、絵の定義の落ちるフレーム数で薄れる
-                    NS::StopEffectRoot(owner.effect, m_plan.streak);
-                }
-                else
-                {
-                    // 1 から細りきった太さへ、留まりの終わりの次のフレームまでに細り、その後は細いまま残る。
-                    // 留まる間は核と同じ偶数のフレームだけ長さを縮める
-                    const int thinFrame = std::min(frame, thinned);
-                    const float t = static_cast<float>(thinFrame - 1) / static_cast<float>(std::max(1, thinned - 1));
-                    const float thickness = 1.0f + (m_streakEndThickness - 1.0f) * t;
-                    float length = shape.streakLength;
-                    if (frame <= shape.holdLastFrame && frame % 2 == 0)
-                    {
-                        length = shape.streakLength * m_coreHoldPulse;
-                    }
-                    NS::SetEffectTransform(
-                        owner.effect, m_plan.streak, m_plan.contact, Quaternion::Identity, Vector3{length, thickness, 1.0f});
-                }
-            }
-            if (m_plan.glow != 0 && frame >= 1 && frame <= shape.holdLastFrame)
-            {
-                // 加算の円は面積で明るさが変わるため、消えるまでの面積を線形に減らす
-                float share = std::clamp(m_glowRiseShare, 0.0f, 1.0f);
-                if (frame == m_glowDimStart)
-                {
-                    share = 1.0f;
-                }
-                else if (frame > m_glowDimStart)
-                {
-                    const float span = static_cast<float>(shape.holdLastFrame + 2 - m_glowDimStart);
-                    share = static_cast<float>(shape.holdLastFrame + 2 - frame) / span;
-                }
-                const Quaternion lieFlat = TurnNormalTo(Vector3{0.0f, 1.0f, 0.0f});
-                NS::SetEffectTransform(
-                    owner.effect, m_plan.glow, m_plan.floor, lieFlat, Uniform(shape.glowDiameter * std::sqrt(share)));
-            }
-            if (m_plan.glow != 0 && frame >= shape.holdLastFrame)
-            {
-                NS::StopEffectRoot(owner.effect, m_plan.glow);
-                m_plan.glow = 0;
-            }
-
-            if (shape.ringRadius > 0.0f && frame == std::max(m_ringStart, 0))
-            {
-                m_plan.ring =
-                    NS::PlayEffect(owner.effect,
-                                   m_ringAsset,
-                                   PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(m_ringStartRadius)));
-                NS::SetEffectAmount(owner.effect, m_plan.ring, shape.ringRadius);
-            }
-            if (m_plan.ring != 0)
-            {
-                if (frame >= m_ringEnd)
-                {
-                    NS::StopEffect(owner.effect, m_plan.ring);
-                    m_plan.ring = 0;
-                }
-                else
-                {
-                    const float t = static_cast<float>(frame - std::max(m_ringStart, 0)) /
-                                    static_cast<float>(std::max(m_ringFull - std::max(m_ringStart, 0), 1));
-                    const float radius = m_ringStartRadius + (shape.ringRadius - m_ringStartRadius) * EaseOutCubic(t);
-                    NS::SetEffectTransform(
-                        owner.effect, m_plan.ring, m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(radius));
-                }
-            }
-
-            // 自機の側は飛びの絵の頭から。当たりの絵の頭で相手の側、飛びの絵の頭で自機の側が出て、作用と反作用の順に読める
-            if (m_plan.releaseStep >= 0)
-            {
-                if (!m_plan.dustPlayed && step == m_plan.releaseStep)
-                {
-                    m_plan.dustPlayed = true;
-                    if (shape.dustCount > 0)
-                    {
-                        m_aim.dustOrigin = m_plan.floor + m_plan.awayDir * (shape.dustScale * m_dustAwayShare);
-                        NS::Gfx::EffectPlayDesc dust =
-                            PlayAt(m_aim.dustOrigin, Quaternion::Identity, Uniform(shape.dustScale));
-                        dust.dynamicInputs[0] = static_cast<float>(shape.dustCount);
-                        const NS::uint32 id = NS::PlayEffect(owner.effect, m_dustAsset, dust);
-                        NS::SetEffectAmount(owner.effect, id, shape.dustScale);
-                        m_dusts.push_back(id);
-                    }
-                }
-                // 線の本数が 0 の段は出さずに済ませる
-                const bool recoilDue = !m_plan.recoilPlayed && step == m_plan.releaseStep + m_recoilDelay;
-                if (recoilDue)
-                {
-                    m_plan.recoilPlayed = true;
-                }
-                if (recoilDue && shape.recoilCount > 0)
-                {
-                    // 接触点から出すと動く方向を誤読しやすいため、反動と逆側の玉の縁から線を出す
-                    const float radius = collider->CapsuleRadius();
-                    m_aim.recoilOrigin = owner.position - m_plan.selfDir * radius;
-                    NS::Gfx::EffectPlayDesc recoil =
-                        PlayAt(m_aim.recoilOrigin, TurnUpTo(m_plan.selfDir), Uniform(1.0f));
-                    recoil.dynamicInputs[0] = 0.0f;
-                    recoil.dynamicInputs[2] = 0.0f;
-                    recoil.dynamicInputs[shape.recoilCountInput] = static_cast<float>(shape.recoilCount);
-                    recoil.dynamicInputs[1] = shape.recoilLength;
-                    NS::SetEffectAmount(owner.effect, NS::PlayEffect(owner.effect, m_recoilAsset, recoil), shape.recoilLength);
-                }
-            }
+            AdvanceHitCore(owner, frame);
+            AdvanceHitStreak(owner, frame);
+            AdvanceHitGlow(owner, frame);
+            AdvanceHitRing(owner, frame);
+            AdvanceHitRelease(owner, collider, step);
 
             const bool held = m_plan.core != 0 || m_plan.streak != 0 || m_plan.ring != 0 || m_plan.glow != 0;
             const bool embersDone = m_plan.embersPlayed || shape.emberCount == 0;

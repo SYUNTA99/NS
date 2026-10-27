@@ -76,6 +76,14 @@ namespace GL
             //! @details 見た目が新しい反動の始まりを知るために読む。ResetState では戻さない
             [[nodiscard]] NS::uint32 Count() const noexcept { return m_count; }
 
+            //! 通算の反動回数を保ったまま、今の反動の状態だけを初期値へ戻す
+            void Reset() noexcept
+            {
+                m_direction = NS::Vector3{};
+                m_spinSpeed = 0.0f;
+                m_missTumble.reset();
+            }
+
         private:
             friend class ::PlayerActor;
 
@@ -108,6 +116,23 @@ namespace GL
             //! 地形の反動を始めた回数。ResetState では戻さない
             [[nodiscard]] NS::uint32 ReboundCount() const noexcept { return m_reboundCount; }
             [[nodiscard]] const TerrainReboundRecord& LastRebound() const noexcept { return m_last; }
+
+            //! 押しの控え・通算の反動回数・直前の反動記録を保ったまま、ダッシュの状態を初期値へ戻す
+            void Reset() noexcept
+            {
+                m_remaining = 1;
+                m_direction = NS::Vector3{};
+                m_intendedDirection = NS::Vector3{};
+                m_tiltDirection = NS::Vector3{};
+                m_tiltSeconds = 0.0f;
+                m_dashSpeed = 0.0f;
+                m_pressed = false;
+                m_intended = NS::Vector3{};
+                m_reboundElapsed = 0.0f;
+                m_steeredRadians = 0.0f;
+                m_steerStarted = false;
+                m_shiftApplied = false;
+            }
 
         private:
             friend class ::PlayerActor;
