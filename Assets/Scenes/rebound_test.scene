@@ -2,7 +2,7 @@
   "environment": {
     "skybox": "Assets/Skybox/blue-sky/"
   },
-  "nextObjectId": 20,
+  "nextObjectId": 94,
   "objects": [
     {
       "actor": "MapPartsActor",
@@ -30,10 +30,28 @@
     {
       "actor": "PlayerActor",
       "classObjs": {
+        "ActionTimeline": {},
+        "Appearance": {},
+        "BodySensor": {},
+        "ChargeEffects": {},
+        "Clips": {},
+        "Collider": {},
+        "Effect": {},
+        "HitReaction": {},
+        "ImpactEffects": {},
+        "ImpactResolver": {},
+        "Input": {},
+        "Model": {},
+        "Movement": {},
+        "Params": {},
+        "Shadow": {},
+        "SlamArrow": {},
+        "StateMachine": {},
+        "TargetMarker": {},
         "Transform": {
           "位置": [
             0.0,
-            1.65,
+            1.649999976158142,
             0.0
           ]
         }
@@ -47,8 +65,8 @@
         "Transform": {
           "位置": [
             0.0,
-            4.0,
-            -5.0
+            4.144098281860352,
+            -4.8296284675598145
           ]
         },
         "Vcam": {
@@ -146,10 +164,10 @@
             5.0
           ],
           "回転": [
-            -0.3826834,
+            -0.3826833963394165,
             0.0,
             0.0,
-            0.9238795
+            0.9238795042037964
           ]
         }
       },
@@ -199,9 +217,9 @@
           ],
           "回転": [
             0.0,
-            0.3826834,
+            0.3826833963394165,
             0.0,
-            0.9238795
+            0.9238795042037964
           ]
         }
       },
@@ -211,6 +229,7 @@
     {
       "actor": "DeathZoneActor",
       "classObjs": {
+        "BodySensor": {},
         "Transform": {
           "位置": [
             0.0,

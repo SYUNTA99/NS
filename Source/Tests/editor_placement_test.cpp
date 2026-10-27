@@ -2,15 +2,21 @@
 #include "Editor/EditorActors.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
+#include "Editor/StageBuildTool.h"
 #include "Editor/Undo/ActorSnapshotApplier.h"
 #include "Game/Level/PropActor.h"
+#include "NSlib/App/Application.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Mouse.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Gfx/Render/DebugDraw.h"
 #include "TestLogCapture.h"
+#include "Tests/TestCheckLayer.h"
 
 #include <gtest/gtest.h>
 
@@ -161,4 +167,170 @@ TEST(EditorPlacement, OnlyTheBuiltInPartsCountAsCells)
 
     EXPECT_TRUE(NS::Editor::IsCellBrushActor(placedCube));
     EXPECT_FALSE(NS::Editor::IsCellBrushActor(dropped));
+}
+
+TEST(StageBuild, FreePlacementUsesPartDimensionsAboveTheEmptySpacePlane)
+{
+    NS::Scene scene;
+    NS::Editor::StageBuildTool tool;
+    tool.SelectPart(NS::Editor::StageBuildTool::Part::Wall);
+    tool.Size() = {3.5f, 4.0f, 0.75f};
+    tool.EmptySpaceHeight() = 2.0f;
+    tool.YawDegrees() = 30.0f;
+    const auto center =
+        tool.Placement(NS::Ray{NS::Vector3{1.25f, 20.0f, -2.75f}, NS::Vector3{0.0f, -1.0f, 0.0f}}, scene.Physics());
+    ASSERT_TRUE(center);
+    EXPECT_FLOAT_EQ(center->x, 1.25f);
+    EXPECT_FLOAT_EQ(center->y, 4.0f);
+    EXPECT_FLOAT_EQ(center->z, -2.75f);
+
+    NS::SceneActor* actor = scene.SpawnFromJson(tool.MakeActor(*center));
+    ASSERT_NE(actor, nullptr);
+    EXPECT_EQ(std::string_view{actor->ClassName()}, "MapPartsActor");
+    EXPECT_EQ(actor->ModelClassObj()->MeshRef(), "cube");
+    EXPECT_FLOAT_EQ(actor->Root().Scale().x, 3.5f);
+    EXPECT_FLOAT_EQ(actor->Root().Scale().z, 0.75f);
+    EXPECT_NEAR(actor->Root().Rotation().y, std::sin(NS::DegreesToRadians(15.0f)), 0.0001f);
+}
+
+TEST(StageBuild, PlacementUsesTheActualSlopeRatherThanItsBounds)
+{
+    NS::Scene scene;
+    nlohmann::json slope = NS::Editor::MakeMeshPartsPrototype("wedge45");
+    NS::SetActorJsonId(slope, 1);
+    NS::Editor::SetActorJsonScale(slope, {8.0f, 8.0f, 8.0f});
+    ASSERT_NE(scene.SpawnFromJson(slope), nullptr);
+    scene.SetSimulationEnabled(false);
+    scene.OnUpdate();
+
+    NS::Editor::StageBuildTool tool;
+    tool.Size() = {2.0f, 2.0f, 2.0f};
+    const auto center =
+        tool.Placement(NS::Ray{NS::Vector3{0.0f, 20.0f, 0.0f}, NS::Vector3{0.0f, -1.0f, 0.0f}}, scene.Physics());
+    ASSERT_TRUE(center);
+    EXPECT_NEAR(center->y, 1.0f, 0.01f);
+    EXPECT_NEAR(center->z, -1.0f, 0.01f);
+}
+
+TEST(StageBuild, InvalidSizeAndAParallelRayDoNotProduceAPlacement)
+{
+    NS::Scene scene;
+    NS::Editor::StageBuildTool tool;
+    EXPECT_FALSE(
+        tool.Placement(NS::Ray{NS::Vector3{0.0f, 5.0f, 0.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}}, scene.Physics()));
+    tool.Size().x = 0.0f;
+    EXPECT_FALSE(
+        tool.Placement(NS::Ray{NS::Vector3{0.0f, 5.0f, 0.0f}, NS::Vector3{0.0f, -1.0f, 0.0f}}, scene.Physics()));
+}
+
+TEST(StageBuild, RepeatedPlacementUsesSceneHistoryAndRejectsPlayMode)
+{
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    editor.StageBuilder().SelectPart(NS::Editor::StageBuildTool::Part::Slope);
+    editor.SetEditTool(LevelEditorController::EditTool::StageBuild);
+    editor.StageBuilder().Size() = {2.5f, 1.5f, 3.5f};
+    const NS::Ray ray{NS::Vector3{1.25f, 20.0f, 2.75f}, NS::Vector3{0.0f, -1.0f, 0.0f}};
+    const NS::uint32 first = editor.PlaceStagePart(ray);
+    const NS::uint32 second = editor.PlaceStagePart(ray);
+    ASSERT_NE(first, NS::k_NoActorId);
+    ASSERT_NE(second, NS::k_NoActorId);
+    EXPECT_NE(first, second);
+    EXPECT_EQ(editor.CurrentEditTool(), LevelEditorController::EditTool::StageBuild);
+    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 2u);
+    EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+    EXPECT_TRUE(editor.Editor().PerformUndo());
+    EXPECT_EQ(scene.Actors().FindByActorId(second), nullptr);
+    EXPECT_NE(scene.Actors().FindByActorId(first), nullptr);
+    EXPECT_TRUE(editor.Editor().PerformRedo());
+    EXPECT_NE(scene.Actors().FindByActorId(second), nullptr);
+
+    NS::Scene restored;
+    restored.ResetFromJson(scene.ToJson());
+    const NS::SceneActor* actor = restored.Actors().FindByActorId(first);
+    ASSERT_NE(actor, nullptr);
+    EXPECT_EQ(actor->ModelClassObj()->MeshRef(), "wedge45");
+    EXPECT_FLOAT_EQ(actor->Root().Scale().z, 3.5f);
+    EXPECT_FLOAT_EQ(actor->Root().Position().x, 1.25f);
+
+    editor.EnterPlay();
+    const std::size_t count = scene.Actors().ActorCount();
+    const std::size_t history = editor.Editor().Undo().UndoSize();
+    EXPECT_EQ(editor.PlaceStagePart(ray), NS::k_NoActorId);
+    EXPECT_EQ(scene.Actors().ActorCount(), count);
+    EXPECT_EQ(editor.Editor().Undo().UndoSize(), history);
+}
+
+TEST(StageBuild, ViewportInputPlacesOncePerClickAndHonorsUiOwnership)
+{
+    NS::ApplicationDesc desc;
+    desc.window.title = "ステージ作成の入力の試し";
+    desc.window.size = {320, 200};
+    desc.window.visible = false;
+    NS::Application app(desc);
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
+        NS::Scene scene;
+        LevelEditorController editor(&scene);
+        editor.Setup({});
+        editor.SetEditTool(LevelEditorController::EditTool::StageBuild);
+        NS::OS::Mouse& mouse = app.Input().Mouse();
+        NS::OS::Keyboard& keyboard = app.Input().Keyboard();
+        const int originalX = mouse.GetX();
+        const int originalY = mouse.GetY();
+        mouse.ClearState();
+        keyboard.ClearState();
+        mouse.OnMove(160, 100);
+        editor.SetGameView(0, 0, 320, 200, true);
+        editor.SetEditShortcutsBlocked(true);
+        mouse.OnButtonDown(NS::OS::MouseButton::Left);
+        editor.Tick();
+        EXPECT_EQ(scene.Actors().ActorCount(), 0u);
+        mouse.OnButtonUp(NS::OS::MouseButton::Left);
+        mouse.Update();
+
+        editor.SetEditShortcutsBlocked(false);
+        editor.SetGameView(0, 0, 320, 200, false);
+        mouse.OnButtonDown(NS::OS::MouseButton::Left);
+        editor.Tick();
+        EXPECT_EQ(scene.Actors().ActorCount(), 0u);
+        mouse.OnButtonUp(NS::OS::MouseButton::Left);
+        mouse.Update();
+
+        editor.SetGameView(0, 0, 320, 200, true);
+        editor.Tick();
+        NS::Gfx::DebugShapes preview;
+        editor.DrawSceneViewShapes(preview, NS::Matrix::Identity);
+        EXPECT_GT(preview.FaceVertexCount(), 0u);
+        mouse.OnButtonDown(NS::OS::MouseButton::Left);
+        editor.Tick();
+        EXPECT_EQ(scene.Actors().ActorCount(), 1u);
+        mouse.Update();
+        editor.Tick();
+        EXPECT_EQ(scene.Actors().ActorCount(), 1u);
+        EXPECT_EQ(editor.CurrentEditTool(), LevelEditorController::EditTool::StageBuild);
+        mouse.OnButtonUp(NS::OS::MouseButton::Left);
+        mouse.Update();
+        mouse.OnButtonDown(NS::OS::MouseButton::Left);
+        editor.Tick();
+        EXPECT_EQ(scene.Actors().ActorCount(), 2u);
+        mouse.OnButtonUp(NS::OS::MouseButton::Left);
+        mouse.Update();
+
+        editor.SetEditShortcutsBlocked(true);
+        keyboard.OnKeyDown(NS::OS::Key::Escape);
+        editor.Tick();
+        EXPECT_EQ(editor.CurrentEditTool(), LevelEditorController::EditTool::StageBuild);
+        keyboard.OnKeyUp(NS::OS::Key::Escape);
+        editor.SetEditShortcutsBlocked(false);
+        keyboard.OnKeyDown(NS::OS::Key::Escape);
+        editor.Tick();
+        EXPECT_EQ(editor.CurrentEditTool(), LevelEditorController::EditTool::Gizmo);
+
+        mouse.OnMove(originalX, originalY);
+        mouse.ClearState();
+        keyboard.ClearState();
+        mouse.Update();
+    }));
+    EXPECT_EQ(app.Run(), 0);
 }

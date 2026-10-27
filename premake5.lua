@@ -324,6 +324,7 @@ project "NSlib"
 --   editor を一切知らない (依存の向きは Editor → Game の一方向)。 出荷を含む全構成でビルド。
 --   合成 Layer ::Game もここに置き、 editor から Game::Get() で参照できるようにする。
 --============================================================================
+group "Game"
 project "Game"
     kind "StaticLib"
     location "build/Game"
@@ -371,6 +372,7 @@ project "Game"
 --   Game + UI(ImGui) に依存。 GameRelease では kind None で出荷から物理排除し、
 --   「ゲーム本体は editor を知らない」をリンカで強制する。
 --============================================================================
+group "Editor"
 project "Editor"
     kind "StaticLib"
     location "build/Editor"
@@ -419,15 +421,11 @@ project "Editor"
     applyCommonBuildOptions()
 
 --============================================================================
--- Solution Folder を解除し、 Game 実行ファイルをルート直下に戻す。
---============================================================================
-group ""
-
---============================================================================
 -- Game 実行ファイル (WindowedApp) — 薄い合成ルート
 --   GameMain.cpp (CreateApplication) のみ。 どの構成でも Editor をリンクしない。
 --   出荷 (GameRelease) には imgui も積まない (ゲーム UI の UI 層は積む)。
 --============================================================================
+group "Game"
 project "GameApp"
     kind "WindowedApp"
     location "build/GameApp"
@@ -496,6 +494,7 @@ project "GameApp"
 --   EditorMain.cpp (CreateApplication) のみ。 Game と Editor を積む。
 --   開発の構成だけで作り、 GameRelease では kind None で作らない。
 --============================================================================
+group "Editor"
 project "EditorApp"
     kind "WindowedApp"
     location "build/EditorApp"
@@ -700,6 +699,7 @@ project "Tests"
         "Source/Editor/CategoryPalette.cpp",
         "Source/Editor/PaletteTemplates.cpp",
         "Source/Editor/PlacementCatalog.cpp",
+        "Source/Editor/StageBuildTool.cpp",
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
         "Source/Editor/PlayControls.cpp",
