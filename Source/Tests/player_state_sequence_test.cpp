@@ -18,7 +18,7 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
@@ -1135,7 +1135,7 @@ namespace
     {
         NS_ASSERT(Game, player != nullptr, "CountPlayerEffects: 渡したアクターか部品が無い");
         int count = 0;
-        for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
+        for (const NS::EffectRecord& record : player->GetEffect()->Records())
         {
             if (record.name == name)
             {
@@ -1240,7 +1240,7 @@ TEST(PlayerTackleHit, TheReboundLandingFrameSquashesDustsAndEndsTheTrail)
         EXPECT_LT(player->ModelClassObj()->GetDrawScale().y, heightBefore);
         const NS::EffectRecord* trail = nullptr;
         int trails = 0;
-        for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
+        for (const NS::EffectRecord& record : player->GetEffect()->Records())
         {
             if (record.name == "rebound.trail")
             {
@@ -1270,7 +1270,7 @@ TEST(PlayerTackleHit, AMissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
 
     const NS::EffectRecord* core = nullptr;
     const NS::EffectRecord* sparks = nullptr;
-    for (const NS::EffectRecord& record : player->GetEffectKeeper()->Records())
+    for (const NS::EffectRecord& record : player->GetEffect()->Records())
     {
         if (record.name == "impact.core")
         {

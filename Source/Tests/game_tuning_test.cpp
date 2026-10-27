@@ -10,7 +10,7 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -42,8 +42,8 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShape)
 
 TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 {
-    NS::EffectKeeper shortHistory{2};
-    NS::EffectKeeper longHistory{6};
+    NS::Effect shortHistory{2};
+    NS::Effect longHistory{6};
     const NS::uint32 shortId = shortHistory.Play(nullptr, "test", {});
     const NS::uint32 longId = longHistory.Play(nullptr, "test", {});
     shortHistory.Stop(nullptr, shortId);
@@ -73,12 +73,12 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
         &rock->Params(),
         sphere->WorldSphere(rock->Root().WorldMatrix()));
     effects->NotifyLanding(rock, {}, {0.0f, 1.0f, 0.0f});
-    NS::EffectKeeper* keeper = rock->GetEffectKeeper();
-    ASSERT_NE(keeper, nullptr);
-    keeper->BeginStep(rock->GetEffectScene());
-    keeper->BeginStep(rock->GetEffectScene());
-    ASSERT_FALSE(keeper->Records().empty());
-    const NS::EffectRecord& dust = keeper->Records().back();
+    NS::Effect* effect = rock->GetEffect();
+    ASSERT_NE(effect, nullptr);
+    effect->BeginStep(rock->GetEffectScene());
+    effect->BeginStep(rock->GetEffectScene());
+    ASSERT_FALSE(effect->Records().empty());
+    const NS::EffectRecord& dust = effect->Records().back();
     EXPECT_EQ(dust.name, "launch.landDust");
     ASSERT_TRUE(dust.endStep.has_value());
     EXPECT_EQ(*dust.endStep - dust.startStep, 2);

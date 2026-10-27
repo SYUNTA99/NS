@@ -249,7 +249,7 @@ namespace GL::Player
             struct HitPlan
             {
                 bool active = false;
-                int freezeStep = 0;   // 当たりの絵の頭の EffectKeeper のフレーム
+                int freezeStep = 0;   // 当たりの絵の頭の Effect のフレーム
                 int releaseStep = -1; // 飛びの絵の頭のフレーム。まだ始めていなければ -1
                 ImpactShape shape;
                 NS::Vector3 contact;   // 接触点。自機の玉の縁の、相手へ向いた点

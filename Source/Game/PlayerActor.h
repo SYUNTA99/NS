@@ -43,6 +43,7 @@ namespace GL::Player
         class PlayerAppearance;
         class ChargeEffects;
         class ImpactEffects;
+        class PlayerSounds;
 } // namespace GL::Player
 
 namespace GL::Level
@@ -82,6 +83,7 @@ public:
     [[nodiscard]] const GL::Player::PlayerParams& Params() const noexcept { return *m_params; }
     [[nodiscard]] GL::Player::PlayerClips& Clips() noexcept { return *m_clips; }
     [[nodiscard]] const GL::Player::PlayerClips& Clips() const noexcept { return *m_clips; }
+    [[nodiscard]] const GL::Player::PlayerSounds& Sounds() const noexcept { return *m_playerSounds; }
     // =========================================================================
     // チャージ・照準・演出サブシステムの参照
     // =========================================================================
@@ -602,6 +604,7 @@ private:
     std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
     std::unique_ptr<GL::Player::ChargeEffects> m_chargeEffects;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
+    std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;
     GL::Level::TackleGhost m_tackleGhost; // 体当たりの残像。描く時に Model を渡されて描く
     // 残像の進み。当たりの状態に入ったフレームの見た目の段を 1 フレーム目に数え、止めの後も状態に依らず進める
     GL::Level::TackleGhostRun m_ghostRun;

@@ -245,14 +245,27 @@ namespace NS::Editor
                 m_skyboxDraft = m_skyboxSource;
                 m_skyboxPreviewPath.clear();
             }
+            if (m_musicSource != editor.SceneMusic().name || m_musicVolumeSource != editor.SceneMusicVolume())
+            {
+                m_musicSource = editor.SceneMusic().name;
+                m_musicVolumeSource = editor.SceneMusicVolume();
+                m_musicDraft = m_musicSource;
+                m_musicVolumeDraft = m_musicVolumeSource;
+            }
             const bool playing = !editor.IsSceneEditable();
             ImGui::BeginDisabled(playing);
-            SceneEnvironment fields{.skybox = m_skyboxDraft};
+            SceneEnvironment fields{
+                .skybox = m_skyboxDraft, .music = SoundName{m_musicDraft}, .musicVolume = m_musicVolumeDraft};
             const ValueEditResult edit = DrawReflectedValue(fields);
             if (edit.changed)
             {
-                m_skyboxDraft = fields.skybox;
-                m_skyboxPreviewPath.clear();
+                if (fields.skybox != m_skyboxDraft)
+                {
+                    m_skyboxDraft = fields.skybox;
+                    m_skyboxPreviewPath.clear();
+                }
+                m_musicDraft = fields.music.name;
+                m_musicVolumeDraft = ClampMusicVolume(fields.musicVolume);
             }
             static std::vector<AssetOption> options;
             if (ImGui::Button("画像を選択..."))
@@ -317,9 +330,38 @@ namespace NS::Editor
             {
                 ImGui::TextDisabled("入力した参照先は「適用」でシーンに反映します");
             }
+            DrawSceneMusicButtons(editor, playing);
             if (playing)
             {
-                ImGui::TextDisabled("背景の変更は編集モードで行います");
+                ImGui::TextDisabled("背景と曲の変更は編集モードで行います");
+            }
+        }
+
+        void InspectorPanel::DrawSceneMusicButtons(LevelEditorController& editor, bool playing)
+        {
+            const bool changed =
+                m_musicDraft != editor.SceneMusic().name || m_musicVolumeDraft != editor.SceneMusicVolume();
+            ImGui::BeginDisabled(playing || !changed);
+            if (ImGui::Button("曲を適用"))
+            {
+                if (editor.SetSceneMusic(SoundName{m_musicDraft}, m_musicVolumeDraft))
+                {
+                    m_musicSource = editor.SceneMusic().name;
+                    m_musicVolumeSource = editor.SceneMusicVolume();
+                    m_musicDraft = m_musicSource;
+                    m_musicVolumeDraft = m_musicVolumeSource;
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("曲の入力を戻す"))
+            {
+                m_musicDraft = editor.SceneMusic().name;
+                m_musicVolumeDraft = editor.SceneMusicVolume();
+            }
+            ImGui::EndDisabled();
+            if (changed)
+            {
+                ImGui::TextDisabled("入力した曲と音量は「曲を適用」でシーンに反映します");
             }
         }
 

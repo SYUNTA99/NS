@@ -145,8 +145,8 @@ end
 
 --============================================================================
 -- DirectXTK 必要サブセット (StaticLib)
---   NS が使う 4 機能: SimpleMath / CommonStates / DDSTextureLoader /
---   WICTextureLoader。 Effects / SpriteBatch / GeometricPrimitive 等は精
+--   NS が使う 5 機能: SimpleMath / CommonStates / DDSTextureLoader /
+--   WICTextureLoader / Audio。 Effects / SpriteBatch / GeometricPrimitive 等は精
 --   コンパイル済 HLSL (`.inc`) を要求するため exclude。
 --   pch.h が Windows.h まで巻き込むため、 本体に汚染を持ち込まないように
 --   隔離した独立プロジェクトとしてビルドする。
@@ -175,11 +175,25 @@ project "directxtk_simplemath"
         "Source/ThirdParty/DirectXTK/Src/DDS.h",
         "Source/ThirdParty/DirectXTK/Src/LoaderHelpers.h",
         "Source/ThirdParty/DirectXTK/Src/PlatformHelpers.h",
+        -- Audio 層が使う XAudio2 の包み。 ループと一度鳴らし切る音と、 WAV の読み込み
+        "Source/ThirdParty/DirectXTK/Inc/Audio.h",
+        "Source/ThirdParty/DirectXTK/Audio/AudioEngine.cpp",
+        "Source/ThirdParty/DirectXTK/Audio/SoundEffect.cpp",
+        "Source/ThirdParty/DirectXTK/Audio/SoundEffectInstance.cpp",
+        "Source/ThirdParty/DirectXTK/Audio/SoundCommon.cpp",
+        "Source/ThirdParty/DirectXTK/Audio/SoundCommon.h",
+        "Source/ThirdParty/DirectXTK/Audio/WAVFileReader.cpp",
+        "Source/ThirdParty/DirectXTK/Audio/WAVFileReader.h",
+        "Source/ThirdParty/DirectXTK/Audio/WaveBank.cpp",
+        "Source/ThirdParty/DirectXTK/Audio/WaveBankReader.cpp",
+        "Source/ThirdParty/DirectXTK/Audio/WaveBankReader.h",
+        "Source/ThirdParty/DirectXTK/Audio/SoundStreamInstance.cpp",
     }
 
     includedirs {
         "Source/ThirdParty/DirectXTK/Inc",
-        "Source/ThirdParty/DirectXTK/Src"   -- "pch.h" 解決用
+        "Source/ThirdParty/DirectXTK/Src",  -- "pch.h" 解決用
+        "Source/ThirdParty/DirectXTK/Audio"
     }
 
     -- DirectXTK 標準の pch.h を PCH 化 (各 .cpp が冒頭で `#include "pch.h"` 済)
@@ -301,6 +315,9 @@ project "NSlib"
     }
     includedirs {
         "Source/ThirdParty/DirectXTK/Inc",
+        -- Audio 層が WAV の形式を確かめる SoundCommon.h を読み、それが Src の PlatformHelpers.h を読む
+        "Source/ThirdParty/DirectXTK/Audio",
+        "Source/ThirdParty/DirectXTK/Src",
         "Source/ThirdParty/DirectXTex/DirectXTex",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",

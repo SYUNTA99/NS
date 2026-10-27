@@ -5,7 +5,7 @@
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -101,7 +101,7 @@ namespace GL::Level
             CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision);
             CreateClassObj(m_params);
             CreateClassObj(m_hitZones);
-            CreateClassObj(m_effectKeeper);
+            CreateClassObj(m_effect);
             CreateClassObj(m_hitReaction);
             CreateClassObj(m_effects);
             // 残像は本体の Model を元に描く

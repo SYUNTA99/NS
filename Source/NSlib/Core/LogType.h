@@ -10,6 +10,7 @@ namespace NS
         Platform,
         Physics,
         Graphics,
+        Audio,
         Scene,
         App,
         Game,

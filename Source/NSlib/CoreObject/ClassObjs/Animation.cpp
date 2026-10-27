@@ -23,15 +23,36 @@ namespace NS
 
     void Animation::SetMesh(Gfx::D3DSkeletalMesh* mesh) noexcept { m_mesh = mesh; }
 
-    void Animation::SetSkeleton(const Anim::Skeleton* skeleton) noexcept { m_skeleton = skeleton; }
+    void Animation::SetSkeleton(const Anim::Skeleton* skeleton) noexcept
+    {
+        m_skeleton = skeleton;
+        // 作った姿勢と保存した姿勢は前の骨格の骨の並びなので、新しい骨格と混ぜない
+        m_pose.clear();
+        m_blendFrom.clear();
+    }
 
     void Animation::Play() noexcept { m_playing = true; }
 
-    void Animation::Play(const Anim::AnimClip* clip)
+    void Animation::Play(const Anim::AnimClip* clip, float blendSeconds)
     {
         if (clip == m_clip)
         {
             return;
+        }
+        // 補間の途中なら m_pose は混ぜた後の姿勢なので、保存し直すだけで姿勢が飛ばない。
+        // 止めている間は補間が進まないので、混ぜると前の姿勢のまま残る。止めている時は混ぜない
+        const bool canBlend = m_playing && m_clip != nullptr && m_clip->IsValid() && m_skeleton != nullptr &&
+                              m_pose.size() == m_skeleton->BoneCount() && std::isfinite(blendSeconds) &&
+                              blendSeconds > 0.0f;
+        if (canBlend)
+        {
+            m_blendFrom = m_pose;
+            m_blendSeconds = blendSeconds;
+            m_blendElapsed = 0.0f;
+        }
+        else
+        {
+            m_blendFrom.clear();
         }
         m_clip = clip;
         m_time = 0.0f;
@@ -44,6 +65,8 @@ namespace NS
     {
         m_playing = false;
         m_time = 0.0f;
+        // 補間が進まなくなるので、混ぜた姿勢のまま止めずに最初の姿勢を出す
+        m_blendFrom.clear();
     }
 
     void Animation::SetSpeed(float speed) noexcept
@@ -121,7 +144,8 @@ namespace NS
             renderer->SetPerObjectVsConstant(
                 m_bonePaletteCB.get(), &m_palette, sizeof(Gfx::BonePaletteCB), Gfx::k_BonePaletteSlot);
         }
-        ApplyPose(renderer, m_time);
+        EvaluatePose(m_time);
+        ApplyPose(renderer);
     }
 
     void Animation::Update(Model* renderer, float dt)
@@ -145,10 +169,51 @@ namespace NS
                 m_playing = false;
             }
         }
-        ApplyPose(renderer, m_time);
+        // 補間は一時停止で止まるが、再生速度は掛けない。速度は自機が毎フレーム変えるので、掛けると秒の長さが揺れる。
+        // ループしないクリップが補間より先に終わった時は、最後の姿勢へ向けて補間だけを進める
+        const bool clipEnded = !m_looping && duration > 0.0f && m_time >= duration;
+        if (!m_blendFrom.empty() && (m_playing || clipEnded))
+        {
+            m_blendElapsed += dt;
+            if (m_blendElapsed >= m_blendSeconds)
+            {
+                m_blendFrom.clear();
+            }
+        }
+        EvaluatePose(m_time);
+        ApplyPose(renderer);
     }
 
-    void Animation::ApplyPose(Model* renderer, float time)
+    void Animation::EvaluatePose(float time)
+    {
+        if (m_skeleton == nullptr)
+        {
+            m_pose.clear();
+            return;
+        }
+        if (m_clip != nullptr && m_clip->IsValid())
+        {
+            Anim::SampleClipPose(*m_clip, m_clipBones, *m_skeleton, time, m_poseScratch);
+        }
+        else
+        {
+            const std::vector<Anim::Bone>& bones = m_skeleton->Bones();
+            m_poseScratch.resize(bones.size());
+            for (std::size_t i = 0; i < bones.size(); ++i)
+            {
+                m_poseScratch[i] = bones[i].bindLocal;
+            }
+        }
+
+        if (m_blendFrom.empty())
+        {
+            m_pose.swap(m_poseScratch);
+            return;
+        }
+        Anim::BlendPose(m_blendFrom, m_poseScratch, m_blendElapsed / m_blendSeconds, m_pose);
+    }
+
+    void Animation::ApplyPose(Model* renderer)
     {
         if (m_mesh == nullptr)
         {
@@ -159,15 +224,7 @@ namespace NS
             // 骨格が届くまでパレットは恒等のまま
             return;
         }
-        if (m_clip != nullptr && m_clip->IsValid())
-        {
-            Anim::SampleClipPose(*m_clip, m_clipBones, *m_skeleton, time, m_poseScratch);
-            m_skeleton->ComputePalette(m_poseScratch, m_paletteScratch);
-        }
-        else
-        {
-            m_skeleton->ComputeBindPalette(m_paletteScratch);
-        }
+        m_skeleton->ComputePalette(m_pose, m_paletteScratch);
 
         // CPU 側パレットへ写す。余りは恒等で埋める。GPU への upload は描画側が毎描画行う
         const std::size_t count = std::min(m_paletteScratch.size(), k_MaxBones);

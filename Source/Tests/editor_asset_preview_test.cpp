@@ -224,7 +224,7 @@ TEST_F(EditorAssetPreview, SkyboxPickerPreviewsBeforeApplyingAndCanHideTheBackgr
     NS::Editor::ActorSnapshotApplier applier{&m_scene};
     m_editor.Editor().SetApplier(&applier);
     (void)Frame();
-    Click(45.0f, 169.0f);
+    Click(45.0f, 245.0f);
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
     ImGuiWindow* popup = GImGui->OpenPopupStack[0].Window;
     ASSERT_NE(popup, nullptr);
@@ -234,9 +234,9 @@ TEST_F(EditorAssetPreview, SkyboxPickerPreviewsBeforeApplyingAndCanHideTheBackgr
     EXPECT_TRUE(m_scene.SkyboxPath().empty());
     EXPECT_FALSE(m_editor.Editor().HasUnsavedChanges());
     EXPECT_TRUE(m_app.Device().CaptureBackbufferToPng("build/skybox-inspector-before-apply.png"));
-    Click(25.0f, 437.0f);
+    Click(25.0f, 513.0f);
     ASSERT_EQ(m_scene.SkyboxPath(), "Assets/Skybox/kurt");
-    Click(90.0f, 437.0f);
+    Click(90.0f, 513.0f);
     EXPECT_TRUE(m_scene.SkyboxPath().empty());
     ASSERT_TRUE(m_editor.Editor().PerformUndo());
     EXPECT_EQ(m_scene.SkyboxPath(), "Assets/Skybox/kurt");

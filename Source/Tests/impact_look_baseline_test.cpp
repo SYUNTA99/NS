@@ -4,7 +4,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
-#include "NSlib/CoreObject/ClassObjs/EffectKeeper.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
@@ -527,12 +527,12 @@ namespace
         return line + name;
     }
 
-    // keeper の記録のうち番号が lastId より大きい物を、歩 k に出したエフェクトとして out へ足す
+    // effect の記録のうち番号が lastId より大きい物を、歩 k に出したエフェクトとして out へ足す
     void CollectStartedEffects(
-        const NS::EffectKeeper* keeper, LookActor actor, int k, NS::uint32& lastId, std::vector<std::string>& out)
+        const NS::Effect* effect, LookActor actor, int k, NS::uint32& lastId, std::vector<std::string>& out)
     {
-        NS_ASSERT(Game, keeper != nullptr, "CollectStartedEffects: 渡したアクターか部品が無い");
-        for (const NS::EffectRecord& record : keeper->Records())
+        NS_ASSERT(Game, effect != nullptr, "CollectStartedEffects: 渡したアクターか部品が無い");
+        for (const NS::EffectRecord& record : effect->Records())
         {
             if (record.id <= lastId)
             {
@@ -568,15 +568,15 @@ namespace
         NS::uint32 rockId = 0;
         // 突進の前に出ていた記録は数えない
         CollectStartedEffects(
-            player->GetEffectKeeper(), LookActor::Self, -k_StepsBefore - 1, selfId, trace.effects);
-        CollectStartedEffects(rock->GetEffectKeeper(), LookActor::Rock, -k_StepsBefore - 1, rockId, trace.effects);
+            player->GetEffect(), LookActor::Self, -k_StepsBefore - 1, selfId, trace.effects);
+        CollectStartedEffects(rock->GetEffect(), LookActor::Rock, -k_StepsBefore - 1, rockId, trace.effects);
         player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
         for (int step = 0; step <= look.detectionStep + k_StepsAfter; ++step)
         {
             scene.OnUpdate();
             const int k = step - look.detectionStep;
-            CollectStartedEffects(player->GetEffectKeeper(), LookActor::Self, k, selfId, trace.effects);
-            CollectStartedEffects(rock->GetEffectKeeper(), LookActor::Rock, k, rockId, trace.effects);
+            CollectStartedEffects(player->GetEffect(), LookActor::Self, k, selfId, trace.effects);
+            CollectStartedEffects(rock->GetEffect(), LookActor::Rock, k, rockId, trace.effects);
             if (k >= -k_StepsBefore)
             {
                 trace.rows.push_back(ReadLookRow(scene, player, rock));

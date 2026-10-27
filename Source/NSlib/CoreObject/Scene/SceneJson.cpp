@@ -8,6 +8,7 @@
 #include "NSlib/Core/Windows/Filesystem.h"
 
 #include <algorithm>
+#include <cmath>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -167,6 +168,16 @@ namespace NS
         scene["nextObjectId"] = nextObjectId;
     }
 
+    float ClampMusicVolume(float volume) noexcept
+    {
+        // Clamp は非数を止めないので、先に弾く
+        if (!std::isfinite(volume))
+        {
+            return SceneEnvironment{}.musicVolume;
+        }
+        return Clamp(volume, 0.0f, 1.0f);
+    }
+
     SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene)
     {
         SceneEnvironment environment{};
@@ -180,6 +191,7 @@ namespace NS
             return environment;
         }
         (void)ApplyReflectedFields(&environment, *SceneEnvironment::StaticReflection(), *found);
+        environment.musicVolume = ClampMusicVolume(environment.musicVolume);
         return environment;
     }
 

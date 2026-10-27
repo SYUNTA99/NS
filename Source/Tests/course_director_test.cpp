@@ -104,7 +104,7 @@ TEST(CourseDirector, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
     ASSERT_NE(player, nullptr);
     const NS::PlayerInput* input = &player->Input();
     const float duration = NS::OS::FrameTimer::FixedDelta() * 2.0f;
-    director->NotifyGoal(duration, duration);
+    ASSERT_TRUE(director->NotifyGoal(duration, duration));
 
     scene.OnUpdate();
     ASSERT_TRUE(director->IsClearing());
@@ -119,6 +119,40 @@ TEST(CourseDirector, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
     scene.OnUpdate();
     EXPECT_FALSE(director->IsClearing());
     EXPECT_FALSE(input->IsLocked());
+}
+
+TEST(CourseDirector, GoalIsAcceptedOnlyOnTheFirstTouch)
+{
+    NS::Scene scene;
+    scene.ResetFromJson(CourseWithPlayer());
+    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
+    ASSERT_NE(director, nullptr);
+    director->StartCourse();
+    const float duration = NS::OS::FrameTimer::FixedDelta() * 2.0f;
+
+    // ゴールに触れている間は毎フレーム届く。ゴールの音を頼むのは、クリアを始めた最初の 1 回だけ
+    EXPECT_TRUE(director->NotifyGoal(duration, duration));
+    EXPECT_FALSE(director->NotifyGoal(duration, duration));
+    scene.OnUpdate();
+    ASSERT_TRUE(director->IsClearing());
+    EXPECT_FALSE(director->NotifyGoal(duration, duration));
+}
+
+TEST(CourseDirector, RestartDoesNotStartTheMusicAgain)
+{
+    NS::Scene scene;
+    scene.ResetFromJson(CourseWithPlayer());
+    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
+    ASSERT_NE(director, nullptr);
+    director->StartCourse();
+
+    EXPECT_TRUE(director->StartMusic());
+    director->RestartCourse();
+    EXPECT_FALSE(director->StartMusic());
+
+    // 止めた後は、次のプレイでまた始める
+    director->StopMusic();
+    EXPECT_TRUE(director->StartMusic());
 }
 
 TEST(CourseDirector, RemovingAnIdleDirectorKeepsAnIndependentSceneFade)

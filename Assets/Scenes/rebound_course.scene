@@ -1,5 +1,7 @@
 {
   "environment": {
+    "music": "",
+    "musicVolume": 0.5,
     "skybox": "Assets/Skybox/blue-sky/"
   },
   "nextObjectId": 94,

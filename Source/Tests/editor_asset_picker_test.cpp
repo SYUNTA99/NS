@@ -234,6 +234,18 @@ TEST_F(AssetPickerCatalogTest, EffectChoicesKeepTheNamesExpectedByTheEffectLoade
     EXPECT_EQ(options[1].value, "group/impact");
 }
 
+TEST_F(AssetPickerCatalogTest, SoundChoicesAreWavUnderSoundsNamedWithoutExtension)
+{
+    File("Assets/Sounds/player/jump.wav");
+    File("Assets/Sounds/goal.WAV");
+    File("Assets/Sounds/notes.txt");
+    File("Assets/Other/stray.wav");
+    const std::vector<NS::Editor::AssetOption> options = NS::Editor::CollectAssetOptions(NS::AssetKind::Sound, m_root.generic_string());
+    ASSERT_EQ(options.size(), 2);
+    EXPECT_EQ(options[0].value, "goal");
+    EXPECT_EQ(options[1].value, "player/jump");
+}
+
 TEST_F(AssetPickerCatalogTest, SkyboxesRequireSixFacesOrACubemapDds)
 {
     // 選べる空は、描く側の Skybox が読む 6 面の名前と同じ物を揃えたフォルダだけ
