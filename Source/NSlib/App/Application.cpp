@@ -172,7 +172,11 @@ namespace NS
             m_audio = std::make_unique<Audio::AudioDevice>(true);
         }
         m_assets = std::make_unique<AssetManager>(OS::FileSystem::ContentRoot());
-        m_assets->SetAudioDevice(m_audio.get());
+        // 無効な装置を渡すと、鳴らせない WAV をディスクから読んでから捨てる
+        if (m_audio && m_audio->IsValid())
+        {
+            m_assets->SetAudioDevice(m_audio.get());
+        }
         m_assetsScope = std::make_unique<AssetManagerScope>(*m_assets);
 
         for (std::unique_ptr<Layer>& layer : m_layers)
