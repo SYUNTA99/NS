@@ -38,6 +38,24 @@ namespace NS
                 return velocity - normal * into;
             }
 
+            // 地形は動かないので、接地中の縦の速さは足元の面が決める。水平の速さは呼び手が操作で決めた値なので残し、
+            // 面に沿うのに要る縦の速さだけを付ける。Jolt に面へ写させると、登りで水平の速さが縮んだまま持ち越される
+            JPH::Vec3 AlongGround(const Vector3& requested, JPH::Vec3Arg groundNormal)
+            {
+                const JPH::Vec3 horizontal{requested.x, 0.0f, requested.z};
+                return horizontal - JPH::Vec3::sAxisY() * (horizontal.Dot(groundNormal) / groundNormal.GetY());
+            }
+
+            JPH::Vec3 GroundedVelocity(JPH::Vec3Arg projected, const Vector3& requested, JPH::Vec3Arg groundNormal, bool landed)
+            {
+                // Jolt が着地で面へ写した速度は、落ちる速さから生まれた坂を下る向きの速さを含むので使わない
+                if (landed && requested.y <= 0.0f && IsWalkableNormal(groundNormal.GetY()))
+                {
+                    return AlongGround(requested, groundNormal);
+                }
+                return CancelInto(projected, groundNormal);
+            }
+
             bool CastRayDown(const JPH::PhysicsSystem& system, JPH::RVec3Arg origin, float length, float& outDistance)
             {
                 if (!(length > 0.0f))
@@ -73,6 +91,9 @@ namespace NS
                 }
                 settings.mMaxSlopeAngle = k_MaxSlopeAngleRadians;
                 settings.mCollisionTolerance = k_CollisionTolerance;
+                // 地形はメッシュの三角形なので、Jolt は三角形を 1 枚ずつ調べ、隣の面の三角形の縁を急な面として返す。
+                // 取り除かないと、坂の頂上の手前で向こう側の面の縁を壁と読み、前へ進む速さが消えた
+                settings.mEnhancedInternalEdgeRemoval = true;
                 settings.mSupportingVolume = JPH::Plane{JPH::Vec3::sAxisY(), -supportHeight};
                 return new JPH::CharacterVirtual(&settings, JPH::RVec3::sZero(), JPH::Quat::sIdentity(), &system);
             }
@@ -102,8 +123,17 @@ namespace NS
                                  float dt,
                                  float maxStepHeight)
         {
+            const bool wasGrounded = IsGrounded();
+            const JPH::Vec3 groundNormalBefore = m_character->GetGroundNormal();
+            // 呼び手は前のフレームに返した速度に重力を足して渡す。上向きの速さが増えていなければジャンプではない
+            const bool leavingGround = velocity.y > std::max(m_character->GetLinearVelocity().GetY(), 0.0f);
             m_character->SetPosition(ToJolt(position));
-            m_character->SetLinearVelocity(ToJolt(velocity));
+            JPH::Vec3 moveVelocity = ToJolt(velocity);
+            if (wasGrounded && !leavingGround && IsWalkableNormal(groundNormalBefore.GetY()))
+            {
+                moveVelocity = AlongGround(velocity, groundNormalBefore);
+            }
+            m_character->SetLinearVelocity(moveVelocity);
 
             const float stepHeight = std::max(0.0f, maxStepHeight);
             // 半径 × (1 − cos 45°) までの角は CharacterVirtual::Update が登れる面として滑り越える
@@ -111,7 +141,7 @@ namespace NS
             const float slideUpHeight = m_radius * (1.0f - k_MaxSlopeNormalY);
             JPH::CharacterVirtual::ExtendedUpdateSettings settings;
             settings.mWalkStairsStepUp = JPH::Vec3{0.0f, std::max(0.0f, stepHeight - slideUpHeight), 0.0f};
-            // 足場を離れたフレームには吸い付けない
+            // 坂を下る分は AlongGround が速さで付けるので吸い付けない
             // 吸い付けると床の端で角に沿って接地のまま沈み、コヨーテジャンプが 9 cm 低い所から出た
             settings.mStickToFloorStepDown = JPH::Vec3::sZero();
             m_character->ExtendedUpdate(dt,
@@ -146,7 +176,8 @@ namespace NS
             JPH::Vec3 correctedVelocity = m_character->GetLinearVelocity();
             if (IsGrounded())
             {
-                correctedVelocity = CancelInto(correctedVelocity, m_character->GetGroundNormal());
+                correctedVelocity =
+                    GroundedVelocity(correctedVelocity, velocity, m_character->GetGroundNormal(), !wasGrounded);
             }
 
             for (const JPH::CharacterContact& contact : m_character->GetActiveContacts())
@@ -176,15 +207,11 @@ namespace NS
             {
                 const JPH::Vec3 groundNormal = m_character->GetGroundNormal();
                 const bool standingOnWalkable = IsWalkableNormal(groundNormal.GetY());
-
                 // 登り坂に必要な上向き速度は保ち、角で跳ね上がった余剰分だけを消す。
                 float alongGroundY = 0.0f;
                 if (standingOnWalkable)
                 {
-                    // 速度と法線の内積が 0 になる縦の速度
-                    const float horizontalDot =
-                        correctedVelocity.GetX() * groundNormal.GetX() + correctedVelocity.GetZ() * groundNormal.GetZ();
-                    alongGroundY = -horizontalDot / groundNormal.GetY();
+                    alongGroundY = AlongGround(FromJolt(correctedVelocity), groundNormal).GetY();
                 }
                 correctedVelocity.SetY(std::min(correctedVelocity.GetY(), std::max(alongGroundY, 0.0f)));
 

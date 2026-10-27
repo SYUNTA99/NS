@@ -272,6 +272,7 @@ public:
 
 private:
     void TickEdit(const NS::OS::InputPresses& presses);
+    void FocusLoadedScene() noexcept;
 
     //! @brief プレイ中のカーソルを置き直す
     //! @details Captured は消して Game の画像の中心へ固定し、マウスを相対にする。Released はその逆

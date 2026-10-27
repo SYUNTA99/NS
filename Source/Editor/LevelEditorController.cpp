@@ -295,6 +295,22 @@ LevelEditorController::LevelEditorController(NS::Scene* scene) noexcept : m_scen
     m_editor.SetApplier(&m_applier);
     m_editor.SetAllocateIdFn([this]() { return m_scene->Actors().AllocateActorId(); });
     m_editor.SetSceneEditableFn([this]() { return IsSceneEditable(); });
+    if (m_scene != nullptr)
+    {
+        m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) {
+            CommitTransformEdit();
+            CommitClassObjEdit();
+            ClearAssetSelection();
+            m_editor.Undo().Clear();
+            SelectActorById(NS::k_NoActorId);
+            m_dragFollowers.clear();
+            m_gizmoWasDragging = false;
+            m_scene->ResetFromJson(std::move(fresh));
+            m_scene->SetSimulationEnabled(false);
+            FocusLoadedScene();
+            RefreshGizmoSelectables();
+        });
+    }
 }
 
 bool LevelEditorController::IsSceneEditable() const noexcept
@@ -674,7 +690,6 @@ void LevelEditorController::Setup(std::string_view startLevelName)
 
     // 保存は実体から作り、読込は取込関数がデータを実体へ写して用済みにする
     m_editor.SetCaptureLevelFn([this]() { return m_scene->ToJson(); });
-    m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) { m_scene->ResetFromJson(std::move(fresh)); });
     // セルの照会は実体で行う
     m_editor.SetFindCellActorFn([this](NS::int16 x, NS::int16 y, NS::int16 z) {
         return NS::Editor::FindActorIdAtCell(m_scene->Actors(), x, y, z);
@@ -717,19 +732,28 @@ void LevelEditorController::Setup(std::string_view startLevelName)
     // 選択候補はこの後に今の実体から集めるので、初回 Tick の貼り直しを省く
     m_editor.ClearLevelDirty();
 
-    // 初期視点はプレイヤーの位置を中心に少し引いた位置から見下ろす。不在なら原点
-    NS::SceneActor* bootPlayer = FindPlayer(m_scene->Actors());
-    NS::Vector3 startCenter{0.0f, 0.0f, 0.0f};
-    if (bootPlayer != nullptr)
-    {
-        startCenter = bootPlayer->Root().Position();
-    }
-    m_editorCamera.SetCenter(startCenter);
-    // 起動直後は出現地点の block を真ん中近めに見せる距離。1m cube が画面の十数 % を占める
-    m_editorCamera.SetDistance(5.0f);
+    FocusLoadedScene();
 
     // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
     RefreshGizmoSelectables();
+}
+
+void LevelEditorController::FocusLoadedScene() noexcept
+{
+    NS::SceneActor* focusActor = FindPlayer(m_scene->Actors());
+    if (focusActor == nullptr && m_scene->Actors().ActorCount() > 0)
+    {
+        focusActor = *m_scene->Actors().begin();
+    }
+    NS::Vector3 startCenter{0.0f, 0.0f, 0.0f};
+    if (focusActor != nullptr)
+    {
+        startCenter = focusActor->Root().Position();
+    }
+    m_editorCamera.SetCenter(startCenter);
+    m_editorCamera.SetDistance(5.0f);
+    m_editBlending = false;
+    MainCamera()->ApplyPose(m_editorCamera.Pose());
 }
 
 void LevelEditorController::Teardown()

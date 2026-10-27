@@ -108,7 +108,7 @@ namespace NS
 
             //! @brief 編集の入力を 1 固定ステップ分進める
             //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
-            //! 真の間は R・Ctrl+Z・Ctrl+S・Ctrl+O・数字のキーを受けない
+            //! 真の間は R・Ctrl+Z・Ctrl+S・数字のキーを受けない
             //! @param[in] presses 持ち主がこの固定ステップに読んだ押し
             void Tick(bool editShortcutsBlocked, const OS::InputPresses& presses) noexcept;
 
@@ -162,6 +162,8 @@ namespace NS
             //! @return 名前が使えない・取り込み関数が無い・読めない時は false で、今のレベルと名前を保つ。
             //! 名前の無いまま実在するファイルを読めなかった時は、終了の保存の書き先を退避の名前にする
             bool OpenLevel(std::string_view name) noexcept;
+            // 現在の編集内容と履歴を保ち、既存ファイルを上書きしない
+            [[nodiscard]] bool CreateLevel(std::string_view name) noexcept;
 
             //! 1 手戻す。戻せたら true。メニューとキーが同じ入口で呼ぶ
             bool PerformUndo() noexcept;

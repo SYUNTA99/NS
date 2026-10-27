@@ -277,6 +277,80 @@ TEST(PlayerStateSequence, LedgeIsRefusedWhereTheClimbEndIsBlocked)
     EXPECT_FALSE(player->States().IsCurrent<GL::Player::LedgeHangingPlayerState>());
 }
 
+namespace
+{
+    PlayerActor* PlaceBelowTurnedLedge(NS::Scene& scene, NS::OBB& outWall)
+    {
+        PlayerActor* player = PlaceSequencePlayer(scene);
+        if (player == nullptr)
+        {
+            return nullptr;
+        }
+        const NS::Quaternion turn = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, NS::k_Pi / 4.0f);
+        outWall = NS::MakeOBB(NS::Vector3{0.0f, -1.0f, 3.0f}, turn, NS::Vector3{2.0f, 1.0f, 1.0f});
+        scene.Physics().AddBox(outWall, NS::Phys::ObjectLayers::Terrain);
+
+        const NS::Collider& collider = player->Collider();
+        const NS::Vector3 faceNormal = -outWall.axisZ;
+        const float away = outWall.halfExtentZ + collider.CapsuleRadius() + 0.05f;
+        NS::Vector3 start = outWall.center + faceNormal * away;
+        start.y = 0.2f - collider.CapsuleHalfHeight();
+        player->Root().SetPosition(start);
+        player->Body().SetGrounded(false);
+        player->Body().SetLateralVelocity(-faceNormal);
+        return player;
+    }
+
+    float DistanceToNearFace(const PlayerActor* player, const NS::OBB& wall)
+    {
+        const NS::Vector3 faceNormal = -wall.axisZ;
+        NS::Vector3 offset = player->Root().Position() - wall.center;
+        offset.y = 0.0f;
+        return offset.Dot(faceNormal) - wall.halfExtentZ;
+    }
+} // namespace
+
+TEST(PlayerStateSequence, TiltedSlopeIsNotALedge)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceSequencePlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const NS::Quaternion tilt = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{1.0f, 0.0f, 0.0f}, -NS::k_Pi / 4.0f);
+    const NS::OBB slope = NS::MakeOBB(NS::Vector3{0.0f, 0.5f, 5.0f}, tilt, NS::Vector3{3.0f, 0.5f, 5.0f});
+    scene.Physics().AddBox(slope, NS::Phys::ObjectLayers::Terrain);
+    const float boundingTop = slope.center.y + slope.halfExtentY * std::abs(slope.axisY.y) +
+                              slope.halfExtentZ * std::abs(slope.axisZ.y);
+
+    const NS::Collider& collider = player->Collider();
+    player->Root().SetPosition(NS::Vector3{0.0f, boundingTop + 0.2f - collider.CapsuleHalfHeight(), 1.0f});
+    player->Body().SetGrounded(false);
+    player->Body().SetLateralVelocity(NS::Vector3{0.0f, 0.0f, 1.0f});
+
+    EXPECT_FALSE(FallUntilHanging(player));
+}
+
+TEST(PlayerStateSequence, TurnedWallIsHeldAtItsVisibleFace)
+{
+    NS::Scene scene;
+    NS::OBB wall{};
+    PlayerActor* player = PlaceBelowTurnedLedge(scene, wall);
+    ASSERT_NE(player, nullptr);
+    ASSERT_TRUE(FallUntilHanging(player));
+    const float radius = player->Collider().CapsuleRadius();
+    EXPECT_NEAR(DistanceToNearFace(player, wall), radius, 0.05f);
+
+    const NS::Vector3 hangPos = player->Root().Position();
+    player->Input().SetClimbMove(1.0f, 0.0f);
+    for (int frame = 0; frame < 20; ++frame)
+    {
+        player->Shimmy(1.0f / 60.0f);
+    }
+    NS::Vector3 moved = player->Root().Position() - hangPos;
+    moved.y = 0.0f;
+    EXPECT_GT(moved.Length(), 0.3f);
+    EXPECT_NEAR(DistanceToNearFace(player, wall), radius, 0.05f);
+}
+
 TEST(PlayerStateSequence, OnlyActorUpdateAdvancesTheOwnedStateMachine)
 {
     NS::Scene scene;

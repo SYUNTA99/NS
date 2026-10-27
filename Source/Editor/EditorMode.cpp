@@ -139,10 +139,6 @@ namespace NS
                     RequestSave();
                 }
             }
-            if (presses.WasPressed(OS::Key::O))
-            {
-                OpenLoadModal();
-            }
         }
 
         void EditorMode::RequestSave() noexcept
@@ -234,6 +230,20 @@ namespace NS
                 m_statusTimer = k_StatusToastSeconds;
             }
             return ok;
+        }
+
+        bool EditorMode::CreateLevel(std::string_view name) noexcept
+        {
+            if (!IsSceneEditable())
+            {
+                return false;
+            }
+            const std::optional<std::string> path = BuildLevelPath(name);
+            if (!path || OS::FileSystem::Exists(*path))
+            {
+                return false;
+            }
+            return SaveSceneToJsonFile(MakeSceneJson(), *path);
         }
 
         bool EditorMode::OpenLevel(std::string_view name) noexcept

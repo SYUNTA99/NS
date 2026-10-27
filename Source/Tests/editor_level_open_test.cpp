@@ -1,19 +1,28 @@
 #include "Editor/EditorMode.h"
+#include "Editor/AssetsPanel.h"
+#include "Editor/PanelIds.h"
 #include "Editor/LevelFilePaths.h"
+#include "Editor/LevelEditorController.h"
+#include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Game/Game.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
 
 #include <gtest/gtest.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 
 #include <chrono>
 #include <cstddef>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -131,4 +140,212 @@ TEST_F(LevelOpenTest, OpenLevelOfABrokenFileFailsAndQuitSaveGoesToTheRecoveryNam
     EXPECT_FALSE(loadCalled);
     EXPECT_TRUE(editor.CurrentLevelName().empty());
     EXPECT_EQ(editor.QuitSaveLevelName(), "Scenes/recovered_level");
+}
+
+TEST_F(LevelOpenTest, CreateLevelWritesAnEmptySceneWithoutChangingTheCurrentEdits)
+{
+    const std::string current = WriteLevel("current", NS::MakeSceneJson().dump());
+    NS::Editor::EditorMode editor;
+    editor.SetLoadLevelFn([](nlohmann::json&&) {});
+    ASSERT_TRUE(editor.OpenLevel(current));
+    editor.Undo().Record(
+        std::make_unique<NS::Editor::CompositeCommand>(std::vector<std::unique_ptr<NS::Editor::ICommand>>{}));
+    const std::string created = m_folder + "/nested/New Scene";
+
+    ASSERT_TRUE(editor.CreateLevel(created));
+
+    EXPECT_EQ(editor.CurrentLevelName(), current);
+    EXPECT_TRUE(editor.HasUnsavedChanges());
+    const std::optional<std::string> path = NS::Editor::BuildLevelPath(created);
+    ASSERT_TRUE(path.has_value());
+    nlohmann::json document;
+    ASSERT_TRUE(NS::LoadSceneFromJsonFile(document, *path));
+    EXPECT_TRUE(NS::SceneJsonActors(document).empty());
+    EXPECT_TRUE(editor.OpenLevel(created));
+    EXPECT_EQ(editor.CurrentLevelName(), created);
+}
+
+TEST_F(LevelOpenTest, CreateLevelRejectsExistingInvalidAndPlayModeTargets)
+{
+    const std::string existing = WriteLevel("existing", "do not replace");
+    const std::optional<std::string> path = NS::Editor::BuildLevelPath(existing);
+    ASSERT_TRUE(path.has_value());
+    NS::Editor::EditorMode editor;
+
+    EXPECT_FALSE(editor.CreateLevel(existing));
+    const std::optional<std::string> contents = NS::OS::FileSystem::ReadAllText(*path);
+    ASSERT_TRUE(contents.has_value());
+    EXPECT_EQ(*contents, "do not replace");
+    EXPECT_FALSE(editor.CreateLevel(m_folder + "/../escaped"));
+    EXPECT_FALSE(editor.CreateLevel(""));
+    editor.SetSceneEditableFn([] { return false; });
+    const std::string blocked = m_folder + "/blocked";
+    EXPECT_FALSE(editor.CreateLevel(blocked));
+    EXPECT_FALSE(NS::OS::FileSystem::Exists(*NS::Editor::BuildLevelPath(blocked)));
+}
+
+TEST_F(LevelOpenTest, ControllerLoadsSceneAndImmediatelyFocusesItsActors)
+{
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    ASSERT_TRUE(item.has_value());
+    editor.PlaceItem(*item);
+    ASSERT_NE(editor.SelectedActorId(), NS::k_NoActorId);
+    nlohmann::json document = scene.ToJson();
+    ASSERT_FALSE(NS::SceneJsonActors(document).empty());
+    NS::SceneJsonActors(document).erase(NS::SceneJsonActors(document).begin() + 1,
+                                       NS::SceneJsonActors(document).end());
+    NS::Editor::SetActorJsonPosition(NS::SceneJsonActors(document).front(), {300.0f, 20.0f, -200.0f});
+    const std::string name = WriteLevel("distant", document.dump());
+
+    ASSERT_TRUE(editor.Editor().OpenLevel(name));
+
+    EXPECT_EQ(editor.SelectedActorId(), NS::k_NoActorId);
+    EXPECT_EQ(editor.Editor().CurrentLevelName(), name);
+    EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
+    EXPECT_NEAR(scene.MainCamera()->Target().x, 300.0f, 0.001f);
+    EXPECT_NEAR(scene.MainCamera()->Target().y, 20.0f, 0.001f);
+    EXPECT_NEAR(scene.MainCamera()->Target().z, -200.0f, 0.001f);
+    EXPECT_NEAR((scene.MainCamera()->Position() - scene.MainCamera()->Target()).Length(), 5.0f, 0.001f);
+    EXPECT_GT(scene.MainCamera()->Position().y, scene.MainCamera()->Target().y);
+
+    const std::string broken = WriteLevel("bad", "{ broken");
+    EXPECT_FALSE(editor.Editor().OpenLevel(broken));
+    EXPECT_EQ(editor.Editor().CurrentLevelName(), name);
+    EXPECT_NEAR(scene.MainCamera()->Target().x, 300.0f, 0.001f);
+}
+
+TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
+{
+    const std::string name = WriteLevel("clicked", NS::MakeSceneJson().dump());
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    editor.SetGizmoToolActive(false);
+    NS::Editor::AssetsPanel assets;
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(
+        ImGui::CreateContext(), &ImGui::DestroyContext);
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.DisplaySize = {1200.0f, 900.0f};
+    unsigned char* pixels = nullptr;
+    int width = 0;
+    int height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    ImVec2 click{};
+    ImVec2 folderClick{};
+    std::string assetToClick = "clicked.scene";
+    bool sceneFocused = false;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({700.0f, 0.0f});
+        ImGui::SetNextWindowSize({400.0f, 700.0f});
+        ImGui::Begin(NS::Editor::k_PanelScene);
+        sceneFocused = ImGui::IsWindowFocused();
+        ImGui::End();
+        ImGui::SetNextWindowPos({0.0f, 0.0f});
+        ImGui::SetNextWindowSize({600.0f, 850.0f});
+        ImGui::Begin(NS::Editor::k_PanelAssets);
+        int index = 0;
+        for (const std::string& directory : NS::OS::FileSystem::ListDirectories(
+                 NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets")))
+        {
+            const std::string label = NS::OS::FileSystem::FileName(directory);
+            ImGui::GetStateStorage()->SetInt(ImGui::GetID(label.c_str()), label == m_folder);
+            if (label == m_folder)
+            {
+                const ImVec2 origin = ImGui::GetCursorScreenPos();
+                folderClick = {origin.x + 60.0f,
+                               origin.y + (static_cast<float>(index) + 0.5f) * ImGui::GetTextLineHeightWithSpacing()};
+                click = {origin.x + 60.0f,
+                         origin.y + (static_cast<float>(index) + 1.5f) * ImGui::GetTextLineHeightWithSpacing()};
+                int fileIndex = 0;
+                for (const std::string& file : NS::OS::FileSystem::ListFiles(m_directory))
+                {
+                    if (NS::OS::FileSystem::FileName(file) == assetToClick)
+                    {
+                        click.y += static_cast<float>(fileIndex) * ImGui::GetTextLineHeightWithSpacing();
+                        break;
+                    }
+                    ++fileIndex;
+                }
+            }
+            ++index;
+        }
+        ImGui::End();
+        assets.Render(editor);
+        ImGui::EndFrame();
+    };
+    frame();
+    frame();
+    io.AddMousePosEvent(click.x, click.y);
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    frame();
+    frame();
+    EXPECT_EQ(editor.Editor().CurrentLevelName(), name);
+    EXPECT_TRUE(sceneFocused);
+
+    const auto openCreateMenu = [&] {
+        io.AddMousePosEvent(folderClick.x, folderClick.y);
+        io.AddMouseButtonEvent(ImGuiMouseButton_Right, true);
+        frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Right, false);
+        frame();
+        ASSERT_FALSE(GImGui->OpenPopupStack.empty());
+        ImGuiWindow* const menu = GImGui->OpenPopupStack.back().Window;
+        ASSERT_NE(menu, nullptr);
+        frame();
+        io.AddMousePosEvent(menu->Pos.x + menu->Size.x * 0.5f,
+                            menu->DC.CursorStartPos.y + ImGui::GetTextLineHeight() * 0.5f);
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+        frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+        frame();
+        frame();
+        ASSERT_FALSE(GImGui->OpenPopupStack.empty());
+        ASSERT_NE(GImGui->OpenPopupStack.back().Window, nullptr);
+        ASSERT_STREQ(GImGui->OpenPopupStack.back().Window->Name, "シーンを作成");
+        frame();
+    };
+    ASSERT_NO_FATAL_FAILURE(openCreateMenu());
+    io.AddKeyEvent(ImGuiKey_Enter, true);
+    frame();
+    io.AddKeyEvent(ImGuiKey_Enter, false);
+    frame();
+    const std::string created = m_folder + "/New Scene";
+    const std::optional<std::string> createdPath = NS::Editor::BuildLevelPath(created);
+    ASSERT_TRUE(createdPath.has_value());
+    ASSERT_TRUE(NS::OS::FileSystem::Exists(*createdPath));
+    EXPECT_EQ(editor.Editor().CurrentLevelName(), name);
+    assetToClick = "New Scene.scene";
+    frame();
+    io.AddMousePosEvent(click.x, click.y);
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    frame();
+    EXPECT_EQ(editor.Editor().CurrentLevelName(), created);
+
+    ASSERT_NO_FATAL_FAILURE(openCreateMenu());
+    io.AddKeyEvent(ImGuiMod_Ctrl, true);
+    io.AddKeyEvent(ImGuiKey_A, true);
+    frame();
+    io.AddKeyEvent(ImGuiKey_A, false);
+    io.AddKeyEvent(ImGuiMod_Ctrl, false);
+    frame();
+    io.AddInputCharactersUTF8("nested/New Scene");
+    frame();
+    io.AddKeyEvent(ImGuiKey_Enter, true);
+    frame();
+    io.AddKeyEvent(ImGuiKey_Enter, false);
+    frame();
+    io.AddMousePosEvent(folderClick.x + ImGui::GetStyle().IndentSpacing,
+                        folderClick.y + ImGui::GetTextLineHeightWithSpacing() * 2.0f);
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    frame();
+    EXPECT_EQ(editor.Editor().CurrentLevelName(), m_folder + "/nested/New Scene");
 }
