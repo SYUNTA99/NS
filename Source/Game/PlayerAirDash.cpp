@@ -143,8 +143,8 @@ float PlayerActor::AirDashSpeed() const noexcept
         return 0.0f;
     }
     const NS::ActorAction* action = timeline->FindAction(AirDashActionName());
-    // 長さを決めていない動作と、Inspector で距離を非数にした時は割らない
-    if (action == nullptr || action->length <= 0 || !std::isfinite(m_params->m_airDashDistance))
+    // 長さを決めていない動作では割らない。距離は欄の範囲が有限の正の数だけを書く
+    if (action == nullptr || action->length <= 0)
     {
         return 0.0f;
     }
