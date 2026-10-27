@@ -2,10 +2,8 @@
 
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 
-namespace NS
+namespace NS::UI
 {
-    namespace UI
-    {
         void ColorRect::OnDraw(Gfx::ScreenOverlay& overlay, const WidgetRect& rectPx, float alpha)
         {
             const float effective = m_color.A() * alpha;
@@ -20,5 +18,4 @@ namespace NS
                                    rectPx.height,
                                    Color{m_color.R(), m_color.G(), m_color.B(), effective});
         }
-    } // namespace UI
-} // namespace NS
+} // namespace NS::UI

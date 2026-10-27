@@ -5,10 +5,8 @@
 
 #include <array>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         //! 描画と同じ規約の楔形スロープ。外向き CCW の 8 三角形
         //! angleDegrees は度、高さの上限は halfExtents.y × 2
         //! yawRadians はラジアン。0 で +Z 側が高い
@@ -16,5 +14,4 @@ namespace NS
                                                                   const Vector3& halfExtents,
                                                                   float angleDegrees,
                                                                   float yawRadians) noexcept;
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys

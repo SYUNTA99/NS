@@ -7,10 +7,8 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         void GoalActor::OnInit()
         {
             CreateClassObj(m_params);
@@ -29,5 +27,4 @@ namespace GL
         }
 
         NS_PLACEABLE(GoalActor, "ゴール")
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

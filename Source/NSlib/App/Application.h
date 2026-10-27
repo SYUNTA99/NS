@@ -15,13 +15,10 @@ namespace NS
     class Layer;
 }
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         class Input;
-    }
-} // namespace NS
+} // namespace NS::OS
 
 namespace NS
 {

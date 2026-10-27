@@ -11,10 +11,8 @@
 #include <memory>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! スキンメッシュの初期化パラメータ
         struct D3DSkeletalMeshDesc
         {
@@ -74,5 +72,4 @@ namespace NS
             std::size_t m_boneCount = 0;
             std::vector<BoneSphere> m_boneSpheres; // ボーンごとの影響球、Create 時に頂点から求める
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

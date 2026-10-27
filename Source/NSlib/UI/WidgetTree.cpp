@@ -2,10 +2,8 @@
 
 #include "NSlib/Core/Assert.h"
 
-namespace NS
+namespace NS::UI
 {
-    namespace UI
-    {
         WidgetTree::WidgetTree()
         {
             m_root.SetStretch(true);
@@ -36,5 +34,4 @@ namespace NS
             }
             return m_root.HitTest(px / canvas.scale, py / canvas.scale);
         }
-    } // namespace UI
-} // namespace NS
+} // namespace NS::UI

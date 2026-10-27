@@ -19,41 +19,17 @@
 #include <utility>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
-        class Bloom;
-    }
-    namespace Gfx
-    {
-        class EffectScene;
-    }
-    namespace Gfx
-    {
-        class D3DDevice;
-    }
-    namespace Gfx
-    {
-        class D3DRenderTarget;
-    }
-    namespace Gfx
-    {
-        class ScreenPasses;
-    }
-    namespace Gfx
-    {
-        class D3DTexture;
-    }
-    namespace Gfx
-    {
-        class ScreenOverlay;
-    }
-    namespace Gfx
-    {
-        class Skybox;
-    }
-} // namespace NS
+    class Bloom;
+    class EffectScene;
+    class D3DDevice;
+    class D3DRenderTarget;
+    class ScreenPasses;
+    class D3DTexture;
+    class ScreenOverlay;
+    class Skybox;
+} // namespace NS::Gfx
 
 namespace NS
 {

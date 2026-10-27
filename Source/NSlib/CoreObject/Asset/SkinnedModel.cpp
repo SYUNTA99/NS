@@ -15,15 +15,9 @@ namespace NS
 
     SkinnedModel::~SkinnedModel() noexcept = default;
 
-    const std::string& SkinnedModel::Path() const noexcept
-    {
-        return m_path;
-    }
+    const std::string& SkinnedModel::Path() const noexcept { return m_path; }
 
-    Mesh* SkinnedModel::GetMesh() const noexcept
-    {
-        return m_mesh.get();
-    }
+    Mesh* SkinnedModel::GetMesh() const noexcept { return m_mesh.get(); }
 
     const Anim::Skeleton* SkinnedModel::GetSkeleton() const noexcept
     {

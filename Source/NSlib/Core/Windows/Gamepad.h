@@ -4,10 +4,8 @@
 #include <array>
 #include <cstddef>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         //! @brief ゲームパッドのボタン識別子
         enum class GamepadButton : int
         {
@@ -119,5 +117,4 @@ namespace NS
             uint16 m_sentLeftMotor = 0;
             uint16 m_sentRightMotor = 0;
         };
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS

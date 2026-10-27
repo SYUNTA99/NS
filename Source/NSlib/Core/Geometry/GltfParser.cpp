@@ -195,25 +195,22 @@ namespace NS
             }
 
             std::vector<std::array<float, 3>> normals(vertexCount, {0.0f, 0.0f, 0.0f});
-            const cgltf_size count = [&]() -> cgltf_size {
-                if (prim.indices != nullptr)
-                {
-                    return prim.indices->count;
-                }
-                return vertexCount;
-            }();
-            const auto vertexAt = [&](cgltf_size corner) -> cgltf_size {
-                if (prim.indices != nullptr)
-                {
-                    return cgltf_accessor_read_index(prim.indices, corner);
-                }
-                return corner;
-            };
+            cgltf_size count = vertexCount;
+            if (prim.indices != nullptr)
+            {
+                count = prim.indices->count;
+            }
             for (cgltf_size t = 0; t + 2 < count; t += 3)
             {
-                const cgltf_size i0 = vertexAt(t);
-                const cgltf_size i1 = vertexAt(t + 1);
-                const cgltf_size i2 = vertexAt(t + 2);
+                cgltf_size i0 = t;
+                cgltf_size i1 = t + 1;
+                cgltf_size i2 = t + 2;
+                if (prim.indices != nullptr)
+                {
+                    i0 = cgltf_accessor_read_index(prim.indices, t);
+                    i1 = cgltf_accessor_read_index(prim.indices, t + 1);
+                    i2 = cgltf_accessor_read_index(prim.indices, t + 2);
+                }
 
                 if (i0 >= vertexCount || i1 >= vertexCount || i2 >= vertexCount)
                 {
@@ -247,6 +244,31 @@ namespace NS
                 }
             }
             return normals;
+        }
+
+        [[nodiscard]] Vector2 ReadVertexUv(const cgltf_accessor* uvAcc, cgltf_size index) noexcept
+        {
+            float uv[2] = {0.0f, 0.0f};
+            if (uvAcc != nullptr)
+            {
+                cgltf_accessor_read_float(uvAcc, index, uv, 2);
+            }
+            return Vector2{uv[0], uv[1]};
+        }
+
+        void ReadVertexNormalRightHanded(const cgltf_accessor* normalAcc,
+                                         const std::vector<std::array<float, 3>>& computedNormals,
+                                         cgltf_size index,
+                                         float (&outNormal)[3]) noexcept
+        {
+            if (normalAcc != nullptr)
+            {
+                cgltf_accessor_read_float(normalAcc, index, outNormal, 3);
+            }
+            else
+            {
+                std::copy(computedNormals[index].begin(), computedNormals[index].end(), outNormal);
+            }
         }
 
         // primitive の index に baseVertex を足して積み、この primitive の三角形だけ巻き順を右手から左手へ反転する
@@ -322,23 +344,10 @@ namespace NS
 
                 StaticVertex v{};
                 v.position = detail::MirrorZ(Vector3{wx, wy, wz});
-
-                float uv[2] = {0.0f, 0.0f};
-                if (uvAcc != nullptr)
-                {
-                    cgltf_accessor_read_float(uvAcc, i, uv, 2);
-                }
-                v.uv = Vector2{uv[0], uv[1]};
+                v.uv = ReadVertexUv(uvAcc, i);
 
                 float n[3] = {0.0f, 0.0f, 1.0f};
-                if (normalAcc != nullptr)
-                {
-                    cgltf_accessor_read_float(normalAcc, i, n, 3);
-                }
-                else
-                {
-                    std::copy(computedNormals[i].begin(), computedNormals[i].end(), n);
-                }
+                ReadVertexNormalRightHanded(normalAcc, computedNormals, i, n);
                 const float nx = nm[0] * n[0] + nm[1] * n[1] + nm[2] * n[2];
                 const float ny = nm[3] * n[0] + nm[4] * n[1] + nm[5] * n[2];
                 const float nz = nm[6] * n[0] + nm[7] * n[1] + nm[8] * n[2];
@@ -633,23 +642,10 @@ namespace NS
                 cgltf_accessor_read_float(posAcc, i, p, 3);
                 SkinnedVertex v{};
                 v.position = detail::MirrorZ(Vector3{p[0], p[1], p[2]});
-
-                float uv[2] = {0.0f, 0.0f};
-                if (uvAcc != nullptr)
-                {
-                    cgltf_accessor_read_float(uvAcc, i, uv, 2);
-                }
-                v.uv = Vector2{uv[0], uv[1]};
+                v.uv = ReadVertexUv(uvAcc, i);
 
                 float n[3] = {0.0f, 0.0f, 1.0f};
-                if (normalAcc != nullptr)
-                {
-                    cgltf_accessor_read_float(normalAcc, i, n, 3);
-                }
-                else
-                {
-                    std::copy(computedNormals[i].begin(), computedNormals[i].end(), n);
-                }
+                ReadVertexNormalRightHanded(normalAcc, computedNormals, i, n);
                 Vector3 normal = detail::MirrorZ(Vector3{n[0], n[1], n[2]});
                 normal.Normalize();
                 v.normal = normal;

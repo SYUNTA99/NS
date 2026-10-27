@@ -2,10 +2,8 @@
 
 #include <array>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 相手の正面の当たり位置で決まる段
         //! 記録と台本の互換性のため番号を固定する。1 は欠番で、新しい段は 3 以降
         enum class HitTier
@@ -19,5 +17,4 @@ namespace GL
         {
             return {HitTier::Center, HitTier::Wide};
         }
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

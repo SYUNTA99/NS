@@ -23,10 +23,8 @@ namespace NS
     class CameraData;
 } // namespace NS
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DTexture;
 
         //! Effekseer の再生と描画。D3DDevice の構築後に作り、Preload 後に再生する
@@ -125,5 +123,4 @@ namespace NS
             bool m_depthFallback = false;
             std::string m_failedDepthKey; // 最後にエラーを出した理由と大きさ。同じ失敗を毎フレーム出さない
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

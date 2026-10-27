@@ -9,10 +9,8 @@
 #include <cstddef>
 #include <vector>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 置物が床に残す半透明の跡。決まった数を持ち、時間で縮めて消す
         //! @details 跡は動かないので補間せず、出した位置にそのまま描く。描くのは持ち主が出ている間だけ
         class ImpactMarks : public NS::Object, public NS::IRenderable
@@ -74,5 +72,4 @@ namespace GL
             std::size_t m_next = 0;            // 次に書く置き場
             std::size_t m_newest = 0; // 一番新しく書いた置き場
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

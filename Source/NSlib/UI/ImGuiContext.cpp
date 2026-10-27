@@ -20,10 +20,8 @@
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 #endif
 
-namespace NS
+namespace NS::UI
 {
-    namespace UI
-    {
         struct ImGuiContext::Impl
         {
             bool valid = false;   // 初期化に成功したか
@@ -211,15 +209,9 @@ namespace NS
 #endif
         }
 
-        bool ImGuiContext::IsValid() const noexcept
-        {
-            return m_pImpl && m_pImpl->valid;
-        }
+        bool ImGuiContext::IsValid() const noexcept { return m_pImpl && m_pImpl->valid; }
 
-        bool ImGuiContext::IsUsingFallback() const noexcept
-        {
-            return !m_pImpl || m_pImpl->fallback;
-        }
+        bool ImGuiContext::IsUsingFallback() const noexcept { return !m_pImpl || m_pImpl->fallback; }
 
         void ImGuiContext::BeginFrame() noexcept
         {
@@ -308,5 +300,4 @@ namespace NS
             return false;
 #endif
         }
-    } // namespace UI
-} // namespace NS
+} // namespace NS::UI

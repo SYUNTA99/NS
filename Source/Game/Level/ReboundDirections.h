@@ -5,10 +5,8 @@
 #include <span>
 #include <vector>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! 反動の向きの表の作り方
         enum class ReboundTableShape
         {
@@ -69,5 +67,4 @@ namespace GL
         //! @brief 単位の向き from を、単位の向き to へ最大 maxRadians だけ回す
         //! @details 2 つが真逆で回す面が決まらない時は from のまま
         [[nodiscard]] NS::Vector3 TurnToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept;
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

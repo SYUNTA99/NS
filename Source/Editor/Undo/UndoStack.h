@@ -7,10 +7,8 @@
 #include <deque>
 #include <memory>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         class IActorSnapshotApplier;
 
         //! Undo・Redo の履歴。200 操作か 50 MB を超えた分は古い履歴から捨てる
@@ -59,5 +57,4 @@ namespace NS
             void PushRecorded(std::unique_ptr<ICommand> cmd) noexcept;
             void TrimOldest() noexcept;
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

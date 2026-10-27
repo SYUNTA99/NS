@@ -5,26 +5,18 @@
 #include "NSlib/Core/Types.h"
 #include <memory>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         class Window;
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DDevice;
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx
 
-namespace NS
+namespace NS::UI
 {
-    namespace UI
-    {
         //! ウィンドウと D3DDevice に対応する開発用 ImGui。無効な構成では何もしない
         class ImGuiContext : public NonCopyable
         {
@@ -64,5 +56,4 @@ namespace NS
         private:
             std::unique_ptr<Impl> m_pImpl;
         };
-    } // namespace UI
-} // namespace NS
+} // namespace NS::UI

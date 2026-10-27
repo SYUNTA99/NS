@@ -177,7 +177,7 @@ TEST(StageBuild, FreePlacementUsesPartDimensionsAboveTheEmptySpacePlane)
     tool.Size() = {3.5f, 4.0f, 0.75f};
     tool.EmptySpaceHeight() = 2.0f;
     tool.YawDegrees() = 30.0f;
-    const auto center =
+    const std::optional<NS::Vector3> center =
         tool.Placement(NS::Ray{NS::Vector3{1.25f, 20.0f, -2.75f}, NS::Vector3{0.0f, -1.0f, 0.0f}}, scene.Physics());
     ASSERT_TRUE(center);
     EXPECT_FLOAT_EQ(center->x, 1.25f);
@@ -205,7 +205,7 @@ TEST(StageBuild, PlacementUsesTheActualSlopeRatherThanItsBounds)
 
     NS::Editor::StageBuildTool tool;
     tool.Size() = {2.0f, 2.0f, 2.0f};
-    const auto center =
+    const std::optional<NS::Vector3> center =
         tool.Placement(NS::Ray{NS::Vector3{0.0f, 20.0f, 0.0f}, NS::Vector3{0.0f, -1.0f, 0.0f}}, scene.Physics());
     ASSERT_TRUE(center);
     EXPECT_NEAR(center->y, 1.0f, 0.01f);

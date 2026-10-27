@@ -12,10 +12,8 @@ namespace NS
     class Scene;
 } // namespace NS
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 死とゴールに応じてコースを再開するシーン共通処理
         //! @details クリア時は操作を止め、世界を動かしたまま暗転・再開・明転する
         class CourseDirector final : public NS::SceneSystem
@@ -77,5 +75,4 @@ namespace GL
             bool m_respawnPending = false;
             bool m_goalReached = false; // 次の段でクリアの流れを始めるか
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

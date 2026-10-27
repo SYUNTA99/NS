@@ -10,13 +10,7 @@ namespace NS
 
     Texture::~Texture() noexcept = default;
 
-    const std::string& Texture::Path() const noexcept
-    {
-        return m_path;
-    }
+    const std::string& Texture::Path() const noexcept { return m_path; }
 
-    Gfx::D3DTexture* Texture::D3D() const noexcept
-    {
-        return m_texture.get();
-    }
+    Gfx::D3DTexture* Texture::D3D() const noexcept { return m_texture.get(); }
 } // namespace NS

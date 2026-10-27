@@ -181,10 +181,7 @@ namespace NS
         m_hasFollowMotion = true;
     }
 
-    void ThirdPersonFollow::SetTargetHeightOffset(float offset) noexcept
-    {
-        m_targetHeightOffset = offset;
-    }
+    void ThirdPersonFollow::SetTargetHeightOffset(float offset) noexcept { m_targetHeightOffset = offset; }
 
     bool ThirdPersonFollow::SetFollowCharge(const FollowChargeDesc& desc) noexcept
     {
@@ -691,22 +688,10 @@ namespace NS
         }
     }
 
-    void ThirdPersonFollow::SetSensX(float radPerPixel) noexcept
-    {
-        m_sensX = radPerPixel;
-    }
-    void ThirdPersonFollow::SetSensY(float radPerPixel) noexcept
-    {
-        m_sensY = radPerPixel;
-    }
-    void ThirdPersonFollow::SetInvertX(bool invert) noexcept
-    {
-        m_invertX = invert;
-    }
-    void ThirdPersonFollow::SetInvertY(bool invert) noexcept
-    {
-        m_invertY = invert;
-    }
+    void ThirdPersonFollow::SetSensX(float radPerPixel) noexcept { m_sensX = radPerPixel; }
+    void ThirdPersonFollow::SetSensY(float radPerPixel) noexcept { m_sensY = radPerPixel; }
+    void ThirdPersonFollow::SetInvertX(bool invert) noexcept { m_invertX = invert; }
+    void ThirdPersonFollow::SetInvertY(bool invert) noexcept { m_invertY = invert; }
 
     void ThirdPersonFollow::SetInitialPoseFromCameraPosition(const Vector3& cameraPosition) noexcept
     {

@@ -32,10 +32,8 @@
 #include <optional>
 #include <unordered_map>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             constexpr float k_CellHalfExtent = 0.5f;
@@ -72,6 +70,31 @@ namespace NS
                     return true;
                 }
             };
+
+#if NS_EDITOR_ENABLED
+            template <std::size_t VertexCount, std::size_t EdgeCount>
+            void DrawProjectedWireframe(ImDrawList& dl,
+                                        const CursorScreenProjector& project,
+                                        const Vector3 (&vertices)[VertexCount],
+                                        const int (&edges)[EdgeCount][2],
+                                        ImU32 color,
+                                        float thickness) noexcept
+            {
+                ImVec2 screen[VertexCount]{};
+                bool front[VertexCount]{};
+                for (std::size_t i = 0; i < VertexCount; ++i)
+                {
+                    front[i] = project(vertices[i], screen[i]);
+                }
+                for (const int(&e)[2] : edges)
+                {
+                    if (front[e[0]] && front[e[1]])
+                    {
+                        dl.AddLine(screen[e[0]], screen[e[1]], color, thickness);
+                    }
+                }
+            }
+#endif
         } // namespace
 
         bool EditorMode::HasActorAtCell(int16 x, int16 y, int16 z) const noexcept
@@ -84,10 +107,7 @@ namespace NS
             return m_cellOccupied && m_cellOccupied(x, y, z);
         }
 
-        bool EditorMode::IsSceneEditable() const noexcept
-        {
-            return !m_sceneEditable || m_sceneEditable();
-        }
+        bool EditorMode::IsSceneEditable() const noexcept { return !m_sceneEditable || m_sceneEditable(); }
 
         void EditorMode::Tick(bool editShortcutsBlocked, const OS::InputPresses& presses) noexcept
         {
@@ -328,13 +348,11 @@ namespace NS
 
                     if (ImGui::Begin("##save_toast", nullptr, k_SaveToastFlags))
                     {
-                        const ImVec4 color = [this]() -> ImVec4 {
-                            if (m_statusError)
-                            {
-                                return k_MsgErrorColor;
-                            }
-                            return k_MsgOkColor;
-                        }();
+                        ImVec4 color = k_MsgOkColor;
+                        if (m_statusError)
+                        {
+                            color = k_MsgErrorColor;
+                        }
                         ImGui::TextColored(color, "%s", m_statusMessage.c_str());
                     }
                     ImGui::End();
@@ -409,90 +427,43 @@ namespace NS
                 {c.x + h, c.y + h, c.z + h},
                 {c.x - h, c.y + h, c.z + h},
             };
-            ImVec2 boxScreen[8]{};
-            bool boxFront[8]{};
-            for (int i = 0; i < 8; ++i)
-            {
-                boxFront[i] = project(boxCorners[i], boxScreen[i]);
-            }
-
             static constexpr int k_BoxEdges[12][2] = {
-                {0, 1},
-                {1, 2},
-                {2, 3},
-                {3, 0},
-                {4, 5},
-                {5, 6},
-                {6, 7},
-                {7, 4},
-                {0, 4},
-                {1, 5},
-                {2, 6},
-                {3, 7},
+                {0, 1}, {1, 2}, {2, 3}, {3, 0},
+                {4, 5}, {5, 6}, {6, 7}, {7, 4},
+                {0, 4}, {1, 5}, {2, 6}, {3, 7},
             };
 
-            const ImU32 boxColor = [this]() -> ImU32 {
-                if (m_cursor.placementBlocked)
-                {
-                    return IM_COL32(255, 64, 64, 255);
-                }
-                return IM_COL32(64, 255, 64, 255);
-            }();
-
-            for (const int(&e)[2] : k_BoxEdges)
+            ImU32 boxColor = IM_COL32(64, 255, 64, 255);
+            if (m_cursor.placementBlocked)
             {
-                if (boxFront[e[0]] && boxFront[e[1]])
-                {
-                    dl->AddLine(boxScreen[e[0]], boxScreen[e[1]], boxColor, 2.0f);
-                }
+                boxColor = IM_COL32(255, 64, 64, 255);
             }
+            DrawProjectedWireframe(*dl, project, boxCorners, k_BoxEdges, boxColor, 2.0f);
 
             const float slopeAngle = m_palette.CurrentSlopeAngleDegrees();
             if (slopeAngle >= 0.0f)
             {
-                const float angle = slopeAngle;
-                const float rawHeight = std::tan(DegreesToRadians(angle)) * (2.0f * h);
+                const float rawHeight = std::tan(DegreesToRadians(slopeAngle)) * (2.0f * h);
                 const float height = std::min(rawHeight, 2.0f * h);
                 const float yBot = -h;
                 const float yTop = -h + height;
 
                 const Vector3 wedgeLocal[6] = {
-                    {-h, yBot, -h},
-                    {+h, yBot, -h},
-                    {-h, yBot, +h},
-                    {+h, yBot, +h},
-                    {-h, yTop, +h},
-                    {+h, yTop, +h},
+                    {-h, yBot, -h}, {+h, yBot, -h},
+                    {-h, yBot, +h}, {+h, yBot, +h},
+                    {-h, yTop, +h}, {+h, yTop, +h},
                 };
-
-                ImVec2 wedgeScreen[6]{};
-                bool wedgeFront[6]{};
+                Vector3 wedgeWorld[6]{};
                 for (int i = 0; i < 6; ++i)
                 {
-                    const Vector3 r = Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
-                    wedgeFront[i] = project(Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
+                    wedgeWorld[i] = c + Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
                 }
 
                 static constexpr int k_WedgeEdges[9][2] = {
-                    {0, 1},
-                    {0, 2},
-                    {1, 3},
-                    {2, 3},
-                    {0, 4},
-                    {1, 5},
-                    {4, 5},
-                    {2, 4},
-                    {3, 5},
+                    {0, 1}, {0, 2}, {1, 3}, {2, 3},
+                    {0, 4}, {1, 5}, {4, 5}, {2, 4}, {3, 5},
                 };
-
-                const ImU32 slopeColor = IM_COL32(150, 255, 210, 230);
-                for (const int(&e)[2] : k_WedgeEdges)
-                {
-                    if (wedgeFront[e[0]] && wedgeFront[e[1]])
-                    {
-                        dl->AddLine(wedgeScreen[e[0]], wedgeScreen[e[1]], slopeColor, 1.0f);
-                    }
-                }
+                DrawProjectedWireframe(*dl, project, wedgeWorld, k_WedgeEdges, IM_COL32(150, 255, 210, 230), 1.0f);
             }
 
             dl->PopClipRect();
@@ -543,13 +514,11 @@ namespace NS
                 return;
             }
 
-            const uint8 rotation = [this]() -> uint8 {
-                if (m_palette.CurrentIsRotatable())
-                {
-                    return m_currentRotation;
-                }
-                return uint8{0};
-            }();
+            uint8 rotation = 0;
+            if (m_palette.CurrentIsRotatable())
+            {
+                rotation = m_currentRotation;
+            }
 
             nlohmann::json placed = m_palette.CurrentTemplate();
             SetActorJsonPosition(placed,
@@ -754,37 +723,22 @@ namespace NS
         {
             // Game 窓の上では ImGui が常にマウスを要求するため、UI 上かどうかの判定は
             // カーソルがパネルの矩形内にあるかで判定する
-            if (m_input == nullptr || !m_cursor.valid)
-            {
-                return;
-            }
-            if (m_inputSuppressed)
+            if (m_input == nullptr || !m_cursor.valid || m_inputSuppressed)
             {
                 return;
             }
 
-            if (presses.WasPressed(OS::MouseButton::Left) && !m_cursor.placementBlocked)
+            const bool gamepadConnected = m_input->Gamepad().IsConnected();
+            const bool place = presses.WasPressed(OS::MouseButton::Left) ||
+                               (gamepadConnected && presses.WasPressed(OS::GamepadButton::A));
+            const bool remove = presses.WasPressed(OS::MouseButton::Right) ||
+                                (gamepadConnected && presses.WasPressed(OS::GamepadButton::B));
+
+            if (place && !m_cursor.placementBlocked)
             {
                 PlaceUnderCursorProgrammatic(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
             }
-            if (presses.WasPressed(OS::MouseButton::Right) &&
-                HasActorAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
-            {
-                DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
-            }
-
-            OS::Gamepad& gp = m_input->Gamepad();
-            if (!gp.IsConnected())
-            {
-                return;
-            }
-
-            if (presses.WasPressed(OS::GamepadButton::A) && !m_cursor.placementBlocked)
-            {
-                PlaceUnderCursorProgrammatic(m_cursor.place.x, m_cursor.place.y, m_cursor.place.z);
-            }
-            if (presses.WasPressed(OS::GamepadButton::B) &&
-                HasActorAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
+            if (remove && HasActorAtCell(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z))
             {
                 DeleteAtProgrammatic(m_cursor.hit.x, m_cursor.hit.y, m_cursor.hit.z);
             }
@@ -871,5 +825,4 @@ namespace NS
             m_levelDirty = true;
             return true;
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

@@ -5,20 +5,11 @@
 namespace NS
 {
 
-    void Transform::SetPosition(const Vector3& position) noexcept
-    {
-        m_position = position;
-    }
+    void Transform::SetPosition(const Vector3& position) noexcept { m_position = position; }
 
-    void Transform::SetRotation(const Quaternion& rotation) noexcept
-    {
-        m_rotation = rotation;
-    }
+    void Transform::SetRotation(const Quaternion& rotation) noexcept { m_rotation = rotation; }
 
-    void Transform::SetScale(const Vector3& scale) noexcept
-    {
-        m_scale = scale;
-    }
+    void Transform::SetScale(const Vector3& scale) noexcept { m_scale = scale; }
 
     void Transform::SetScaleField(const Vector3& scale) noexcept
     {

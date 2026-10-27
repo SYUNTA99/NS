@@ -13,10 +13,8 @@ namespace NS
     struct SceneView;
 } // namespace NS
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! 下見専用の場面。再生時計を持たず、指定されたフレームで止まる
         class TimelinePreview : public NonCopyable
         {
@@ -46,5 +44,4 @@ namespace NS
             std::unique_ptr<NS::Scene> m_scene;
             std::optional<int> m_frame;
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

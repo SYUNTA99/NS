@@ -2,14 +2,11 @@
 
 #include "Game/PlayerActor.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         void BodySlamPlayerState::OnStep(::PlayerActor* player, float dt)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
             player->UpdateBodySlam(dt);
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

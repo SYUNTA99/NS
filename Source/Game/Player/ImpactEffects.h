@@ -19,18 +19,13 @@ namespace NS
     class IGetEffect;
 } // namespace NS
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         struct ImpactRecord;
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         class BodySlamStatus;
         struct PlayerMotion;
 
@@ -395,5 +390,4 @@ namespace GL
             float m_landDustRadiusBase = 1.2f;
             float m_landDustRadiusPerFallSpeed = 0.04f;
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

@@ -18,17 +18,15 @@
 #include <utility>
 #include <vector>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
-        struct MeshShape;
-    }
-    namespace Gfx
-    {
-        struct BuiltinShaders;
-    }
-} // namespace NS
+    struct MeshShape;
+} // namespace NS::Phys
+
+namespace NS::Gfx
+{
+    struct BuiltinShaders;
+} // namespace NS::Gfx
 
 namespace NS
 {

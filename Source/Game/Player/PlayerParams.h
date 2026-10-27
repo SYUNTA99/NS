@@ -8,38 +8,27 @@
 
 class PlayerActor;
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         class PlayerParams;
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         class ImpactResolver;
         class SlamArrow;
         struct ImpactTuning;
         struct LaunchArc;
         ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams* params) noexcept;
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         struct ReboundArc;
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! @brief 自機の移動・溜め・衝突・反動の調整値を持つ部品
         class PlayerParams : public NS::Object
         {
@@ -307,5 +296,4 @@ namespace GL
             bool m_drawReboundLines = true;
             float m_reboundLineLength = 2.0f; // 開発用の向きの線の長さ (m)
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

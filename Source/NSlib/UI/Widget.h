@@ -7,18 +7,13 @@
 #include <utility>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class ScreenOverlay;
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx
 
-namespace NS
+namespace NS::UI
 {
-    namespace UI
-    {
         //! @brief 画面上の矩形範囲。単位は基準解像度のピクセルで左上原点
         struct WidgetRect
         {
@@ -107,5 +102,4 @@ namespace NS
             WidgetRect m_layoutRect{}; // 直近の Layout で確定した矩形
             std::vector<std::unique_ptr<Widget>> m_children;
         };
-    } // namespace UI
-} // namespace NS
+} // namespace NS::UI

@@ -5,10 +5,8 @@
 
 class PlayerActor;
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! @brief 自機のアニメの欄を持つ部品。どのクリップを選ぶかは PlayerActor が欄を読んで決める
         //! @details クリップの欄の字面は「ContentRoot からの glTF の道筋」か「道筋#動きの名前」
         class PlayerClips : public NS::Object
@@ -47,5 +45,4 @@ namespace GL
             float m_runBlendRatio = 0.4f;
             float m_minPlaybackSpeed = 0.5f;
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

@@ -6,10 +6,8 @@
 #include <span>
 #include <string>
 
-namespace NS
+namespace NS::Anim
 {
-    namespace Anim
-    {
         //! キーとキーの間の埋め方。3 次スプラインには対応しない
         enum class Interpolation
         {
@@ -70,5 +68,4 @@ namespace NS
                             const Skeleton& skeleton,
                             float t,
                             std::vector<BonePose>& outPose);
-    } // namespace Anim
-} // namespace NS
+} // namespace NS::Anim

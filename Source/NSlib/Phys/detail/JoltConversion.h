@@ -8,10 +8,8 @@
 #include <Jolt/Math/Vec3.h>
 #include <Jolt/Physics/Collision/Shape/Shape.h>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         //! 軸と符号はそのまま変換する。三角形の巻き方は双方とも CCW
         [[nodiscard]] inline JPH::Vec3 ToJolt(const Vector3& value) noexcept
         {
@@ -43,5 +41,4 @@ namespace NS
             }
             return result.Get();
         }
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys

@@ -6,10 +6,8 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         void SkidPlayerState::OnEnter(::PlayerActor* player)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
@@ -32,5 +30,4 @@ namespace GL
                 player->States().Change<IdlePlayerState>();
             }
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

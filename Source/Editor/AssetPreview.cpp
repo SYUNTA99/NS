@@ -16,10 +16,8 @@
 
 #include <cmath>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             std::optional<Matrix> FitPreviewWorld(const AABB& localBounds, const Matrix& world,
@@ -131,5 +129,4 @@ namespace NS
             device.BindBackbuffer();
             return true;
         }
-    }
-}
+} // namespace NS::Editor

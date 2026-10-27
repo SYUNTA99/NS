@@ -13,10 +13,8 @@ namespace DirectX
     }
 } // namespace DirectX
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DDevice;
 
         //! 所有は D3DDevice。DirectXTK の CommonStates のサンプラーだけを包む。
@@ -39,5 +37,4 @@ namespace NS
             friend class D3DDevice;
             explicit D3DCommonStates(ID3D11Device* device) noexcept;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

@@ -6,10 +6,8 @@
 
 #include <windows.h>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         std::wstring StringUtils::WideFromUtf8(std::string_view utf8)
         {
             if (utf8.empty())
@@ -77,5 +75,4 @@ namespace NS
             }
             return result;
         }
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS

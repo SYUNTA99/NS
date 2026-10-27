@@ -89,6 +89,15 @@ namespace NS
             return &*it;
         }
 
+        void SetTopString(nlohmann::json& actorFile, const char* key, std::string_view value)
+        {
+            if (!actorFile.is_object())
+            {
+                actorFile = nlohmann::json::object();
+            }
+            actorFile[key] = std::string{value};
+        }
+
         // 空の並びは鍵ごと消す。束も動作も持たない .actor の形を変えない
         void SetTopList(nlohmann::json& actorFile, const char* key, nlohmann::json list)
         {
@@ -311,25 +320,17 @@ namespace NS
 
     std::string_view ActorFileClass(const nlohmann::json& actorFile) noexcept
     {
-        if (!actorFile.is_object())
+        const nlohmann::json* cls = FindTopKey(actorFile, k_ClassKey);
+        if (cls == nullptr || !cls->is_string())
         {
             return {};
         }
-        const nlohmann::json::const_iterator it = actorFile.find(k_ClassKey);
-        if (it == actorFile.end() || !it->is_string())
-        {
-            return {};
-        }
-        return it->get_ref<const std::string&>();
+        return cls->get_ref<const std::string&>();
     }
 
     void SetActorFileClass(nlohmann::json& actorFile, std::string_view className)
     {
-        if (!actorFile.is_object())
-        {
-            actorFile = nlohmann::json::object();
-        }
-        actorFile[k_ClassKey] = std::string{className};
+        SetTopString(actorFile, k_ClassKey, className);
     }
 
     std::string_view ActorFileBase(const nlohmann::json& actorFile) noexcept
@@ -344,11 +345,7 @@ namespace NS
 
     void SetActorFileBase(nlohmann::json& actorFile, std::string_view baseName)
     {
-        if (!actorFile.is_object())
-        {
-            actorFile = nlohmann::json::object();
-        }
-        actorFile[k_BaseKey] = std::string{baseName};
+        SetTopString(actorFile, k_BaseKey, baseName);
     }
 
     const nlohmann::json* ActorFileHitReactions(const nlohmann::json& actorFile) noexcept
@@ -490,14 +487,16 @@ namespace NS
         {
             for (const std::pair<const std::string, nlohmann::json>& entry : m_actorFiles)
             {
-                if (ActorFileBase(entry.second).empty() == derived)
+                const std::string& fileName = entry.first;
+                const nlohmann::json& actorFile = entry.second;
+                if (ActorFileBase(actorFile).empty() == derived)
                 {
                     continue;
                 }
-                std::optional<nlohmann::json> values = BuildValues(entry.first, entry.second);
+                std::optional<nlohmann::json> values = BuildValues(fileName, actorFile);
                 if (values.has_value())
                 {
-                    m_mergedValues.emplace(entry.first, std::move(*values));
+                    m_mergedValues.emplace(fileName, std::move(*values));
                 }
             }
         }

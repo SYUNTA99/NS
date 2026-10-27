@@ -24,10 +24,7 @@ namespace NS
         }
     }
 
-    float CapsuleCollision::Radius() const noexcept
-    {
-        return m_radius;
-    }
+    float CapsuleCollision::Radius() const noexcept { return m_radius; }
 
     void CapsuleCollision::SetHalfHeight(float halfHeight) noexcept
     {
@@ -42,10 +39,7 @@ namespace NS
         }
     }
 
-    float CapsuleCollision::HalfHeight() const noexcept
-    {
-        return m_halfHeight;
-    }
+    float CapsuleCollision::HalfHeight() const noexcept { return m_halfHeight; }
 
     void CapsuleCollision::SetCenterOffset(const Vector3& offset) noexcept
     {
@@ -53,10 +47,7 @@ namespace NS
         m_centerOffset = offset;
     }
 
-    Vector3 CapsuleCollision::CenterOffset() const noexcept
-    {
-        return m_centerOffset;
-    }
+    Vector3 CapsuleCollision::CenterOffset() const noexcept { return m_centerOffset; }
 
     void CapsuleCollision::SetLocalRotation(const Quaternion& rotation) noexcept
     {
@@ -64,10 +55,7 @@ namespace NS
         m_localRotation = rotation;
     }
 
-    Quaternion CapsuleCollision::LocalRotation() const noexcept
-    {
-        return m_localRotation;
-    }
+    Quaternion CapsuleCollision::LocalRotation() const noexcept { return m_localRotation; }
 
     void CapsuleCollision::SetRotationEulerDegrees(const Vector3& eulerDegrees) noexcept
     {

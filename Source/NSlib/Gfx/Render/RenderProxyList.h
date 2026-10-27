@@ -7,10 +7,8 @@
 #include "NSlib/Core/Types.h"
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         struct RenderContext;
 
         //! @brief 描画オブジェクトを一意に識別するための登録ハンドル
@@ -86,5 +84,4 @@ namespace NS
             std::vector<uint32> m_visibleScratch;
             std::vector<DrawItem> m_drawScratch;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

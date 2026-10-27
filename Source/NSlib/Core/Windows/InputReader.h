@@ -8,10 +8,8 @@
 #include <array>
 #include <cstddef>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         //! @brief 手元の機器のキーとボタンごとの押した回数
         struct PressCounts
         {
@@ -62,5 +60,4 @@ namespace NS
         private:
             PressCounts m_seen{}; // 前に Read した時の押した回数
         };
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS

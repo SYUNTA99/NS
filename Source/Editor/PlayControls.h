@@ -5,10 +5,8 @@
 
 //! @brief プレイ制御ツールバーと中央タブ (Scene / Game) の表示状態を決める純関数群
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! 中央ノードのタブ
         enum class CenterTab : uint8
         {
@@ -105,5 +103,4 @@ namespace NS
 
         //! 出したカーソルを固定へ戻す場合 true、それ以外の場合は false。止めている間は戻さない
         [[nodiscard]] bool ShouldRecaptureCursor(RecaptureQuery query) noexcept;
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

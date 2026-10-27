@@ -4,10 +4,8 @@
 #include <algorithm>
 #include <cmath>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         namespace
         {
             // 貫通の止めの上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
@@ -215,5 +213,4 @@ namespace GL
             }
             return outcome;
         }
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

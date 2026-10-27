@@ -11,10 +11,8 @@
 
 #include <cmath>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         namespace
         {
             // 整数キャスト経由の不正値による m_current / m_presses の境界外アクセスを防ぐ
@@ -253,10 +251,7 @@ namespace NS
 
         Gamepad::Gamepad(int userIndex) noexcept : m_userIndex(userIndex) {}
 
-        bool Gamepad::IsConnected() const noexcept
-        {
-            return m_connected;
-        }
+        bool Gamepad::IsConnected() const noexcept { return m_connected; }
 
         bool Gamepad::IsHeld(GamepadButton b) const noexcept
         {
@@ -292,30 +287,15 @@ namespace NS
             m_triggerPresses = previous.m_triggerPresses;
         }
 
-        Stick Gamepad::LeftStick() const noexcept
-        {
-            return m_leftStick;
-        }
+        Stick Gamepad::LeftStick() const noexcept { return m_leftStick; }
 
-        Stick Gamepad::RightStick() const noexcept
-        {
-            return m_rightStick;
-        }
+        Stick Gamepad::RightStick() const noexcept { return m_rightStick; }
 
-        float Gamepad::LeftTrigger() const noexcept
-        {
-            return m_leftTrigger;
-        }
+        float Gamepad::LeftTrigger() const noexcept { return m_leftTrigger; }
 
-        float Gamepad::RightTrigger() const noexcept
-        {
-            return m_rightTrigger;
-        }
+        float Gamepad::RightTrigger() const noexcept { return m_rightTrigger; }
 
-        int Gamepad::UserIndex() const noexcept
-        {
-            return m_userIndex;
-        }
+        int Gamepad::UserIndex() const noexcept { return m_userIndex; }
 
         bool Gamepad::SetVibration(float left, float right) noexcept
         {
@@ -329,10 +309,7 @@ namespace NS
             return true;
         }
 
-        GamepadVibration Gamepad::Vibration() const noexcept
-        {
-            return m_vibration;
-        }
+        GamepadVibration Gamepad::Vibration() const noexcept { return m_vibration; }
 
         void Gamepad::StopVibration() noexcept
         {
@@ -675,5 +652,4 @@ namespace NS
                 break;
             }
         }
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS

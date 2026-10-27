@@ -5,13 +5,10 @@
 
 #include <memory>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DDevice;
-    }
-} // namespace NS
+} // namespace NS::Gfx
 
 namespace NS
 {

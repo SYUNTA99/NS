@@ -13,10 +13,8 @@
 #include <imgui.h>
 #endif
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         void CategoryPalette::SetActiveSlot(std::size_t slot) noexcept
         {
             if (slot < k_PaletteSlotCount)
@@ -155,5 +153,4 @@ namespace NS
             ImGui::End();
 #endif
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

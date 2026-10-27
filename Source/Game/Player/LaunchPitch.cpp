@@ -5,10 +5,8 @@
 #include <algorithm>
 #include <cmath>
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         float LaunchHeightAt(const LaunchPath& path, float distance) noexcept
         {
             if (!NS::IsPositiveFinite(path.horizontalSpeed) || !NS::IsPositiveFinite(path.dt) ||
@@ -119,5 +117,4 @@ namespace GL
             }
             return LaunchPitchResult{.verticalSpeed = (low + high) * 0.5f, .reachable = true};
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

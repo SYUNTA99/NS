@@ -8,10 +8,8 @@
 #include <memory>
 #include <string_view>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DBuffer;
         class D3DPipeline;
         class D3DShader;
@@ -86,5 +84,4 @@ namespace NS
             Pass m_fullscreen;
             Pass m_screenRect;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

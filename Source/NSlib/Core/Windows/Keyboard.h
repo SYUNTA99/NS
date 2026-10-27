@@ -5,10 +5,8 @@
 #include <array>
 #include <cstddef>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         //! 物理キー識別子
         enum class Key : int
         {
@@ -110,5 +108,4 @@ namespace NS
             std::array<bool, k_KeyCount> m_current{};
             std::array<uint32, k_KeyCount> m_presses{};
         };
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS

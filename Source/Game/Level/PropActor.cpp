@@ -22,10 +22,8 @@
 #include <string_view>
 #include <vector>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         class PropActor::RestingState : public NS::StateOf<RestingState, PropActor>
         {
             void OnEnter(PropActor* owner) override
@@ -142,10 +140,7 @@ namespace GL
             NS::HideModel(this, m_marks.get());
         }
 
-        bool PropActor::IsFrozen() const noexcept
-        {
-            return m_states->IsCurrent<FreezeState>();
-        }
+        bool PropActor::IsFrozen() const noexcept { return m_states->IsCurrent<FreezeState>(); }
 
         bool PropActor::IsFlying() const noexcept
         {
@@ -241,10 +236,9 @@ namespace GL
             }
             TackleFreezeDesc freeze{.impactDir = hit.impactDir};
             std::optional<NS::HitOwnerRun> ghost;
-            const std::vector<NS::HitOwnerRun>& runs = m_hitReaction->OwnerRuns();
-            for (std::size_t i = first; i < runs.size(); ++i)
+            for (const NS::HitOwnerRun& run : m_hitReaction->OwnerRunsSince(first))
             {
-                const NS::HitOwnerItem& item = runs[i].item;
+                const NS::HitOwnerItem& item = run.item;
                 if (item.name == "TackleFreeze")
                 {
                     freeze.pushInDistance = HitOwnerValue(item, "食い込み距離", 0.0f);
@@ -255,7 +249,7 @@ namespace GL
                 }
                 if (item.name == "TackleGhost")
                 {
-                    ghost = runs[i];
+                    ghost = run;
                 }
             }
             BeginFreeze(freeze);
@@ -634,5 +628,4 @@ namespace GL
         }
 
         NS_PLACEABLE(PropActor, "置物")
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

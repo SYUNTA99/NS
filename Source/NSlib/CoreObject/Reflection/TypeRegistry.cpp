@@ -37,10 +37,7 @@ namespace NS
         m_entries.push_back(Entry{className, create, label});
     }
 
-    const std::vector<TypeRegistry::Entry>& TypeRegistry::Entries() const noexcept
-    {
-        return m_entries;
-    }
+    const std::vector<TypeRegistry::Entry>& TypeRegistry::Entries() const noexcept { return m_entries; }
 
     const TypeRegistry::Entry* TypeRegistry::Find(std::string_view className) const noexcept
     {

@@ -16,10 +16,8 @@ namespace NS
     class IGetEffect;
 }
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 押し飛ばされたアクターの尾と、着地の粉を出す部品
         //! @details 尾は曲線を離れた時に消す。段で色、飛ばしの比で長さ、威力と質量で粉の大きさを決める
         class LaunchEffects : public NS::Object
@@ -91,5 +89,4 @@ namespace GL
             NS::Vector3 m_launchDir{1.0f, 0.0f, 0.0f};
             float m_landDustScale = 0.0f; // 落ちた所の粉の大きさ (m)
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

@@ -9,24 +9,19 @@
 
 #include <span>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         class Input;
         class InputPresses;
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS
 namespace NS
 {
     class Transform;
     class SceneActor;
 } // namespace NS
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! @brief 変形操作のツール種別
         enum class GizmoTool : uint8
         {
@@ -162,7 +157,7 @@ namespace NS
                                                                   GizmoAxis axis,
                                                                   float angleRad,
                                                                   bool snap,
-                                                                  bool worldSpace = false) noexcept;
+                                                                  GizmoSpace space = GizmoSpace::Local) noexcept;
 
             //! スクリーンのドラッグ量を、スケールへ足し引きする変化量に変換する
             [[nodiscard]] static float ScreenDragToScaleAmount(Vector2 axisDir2d, Vector2 dragPixels) noexcept;
@@ -200,5 +195,4 @@ namespace NS
             Vector2 m_dragStartScreen{}; //!< ドラッグ開始時のスクリーン座標
             TransformState m_dragBefore{};   //!< ドラッグ開始時の 位置・回転・スケール
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

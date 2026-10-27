@@ -6,10 +6,8 @@
 #include <array>
 #include <optional>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! @brief EffectScene::Play が返す、再生したエフェクトのハンドル
         struct EffectHandle
         {
@@ -44,5 +42,4 @@ namespace NS
             desc.scale = scale;
             return desc;
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

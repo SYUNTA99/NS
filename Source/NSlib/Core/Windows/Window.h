@@ -10,10 +10,8 @@
 #include <string>
 #include <string_view>
 
-namespace NS
+namespace NS::OS
 {
-    namespace OS
-    {
         class Input;
 
         //! @brief ウィンドウ作成時の初期パラメータ
@@ -112,5 +110,4 @@ namespace NS
             bool m_hasFocus = false;
             std::optional<POINT> m_lockPoint; //!< 無い時はクライアント領域の中央
         };
-    } // namespace OS
-} // namespace NS
+} // namespace NS::OS

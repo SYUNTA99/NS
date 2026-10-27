@@ -8,13 +8,10 @@
 
 struct ImVec2;
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DRenderTarget;
-    }
-} // namespace NS
+} // namespace NS::Gfx
 
 namespace NS
 {
@@ -22,10 +19,8 @@ namespace NS
     struct CameraPose;
 } // namespace NS
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! パネルに貼るオフスクリーン描画先。画像表示後に次フレームのサイズへ合わせる
         class ViewportSurface : public NonCopyable
         {
@@ -88,5 +83,4 @@ namespace NS
             bool m_tabPressed = false;
             bool m_tabClicked = false;
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

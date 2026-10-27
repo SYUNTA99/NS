@@ -10,10 +10,8 @@ namespace NS
     class Scene;
 }
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! 1 個体の状態をシーンへ適用する。アクターは Scene::ApplyFromJson のとおり使い回し、作り直した時は古いアクターを返す
         class ActorSnapshotApplier final : public IActorSnapshotApplier
         {
@@ -35,5 +33,4 @@ namespace NS
         private:
             Scene* m_scene = nullptr; // 編集対象のシーン、非所有
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

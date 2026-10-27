@@ -10,13 +10,10 @@
 #include <string_view>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class EffectScene;
-    }
-} // namespace NS
+} // namespace NS::Gfx
 
 namespace NS
 {

@@ -8,10 +8,8 @@
 
 #include <memory>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! 静的メッシュの初期化パラメータ
         struct D3DStaticMeshDesc
         {
@@ -41,5 +39,4 @@ namespace NS
         private:
             explicit D3DStaticMesh(const D3DStaticMeshDesc& desc);
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

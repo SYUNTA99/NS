@@ -21,20 +21,11 @@ namespace NS
 
     Animation::~Animation() = default;
 
-    void Animation::SetMesh(Gfx::D3DSkeletalMesh* mesh) noexcept
-    {
-        m_mesh = mesh;
-    }
+    void Animation::SetMesh(Gfx::D3DSkeletalMesh* mesh) noexcept { m_mesh = mesh; }
 
-    void Animation::SetSkeleton(const Anim::Skeleton* skeleton) noexcept
-    {
-        m_skeleton = skeleton;
-    }
+    void Animation::SetSkeleton(const Anim::Skeleton* skeleton) noexcept { m_skeleton = skeleton; }
 
-    void Animation::Play() noexcept
-    {
-        m_playing = true;
-    }
+    void Animation::Play() noexcept { m_playing = true; }
 
     void Animation::Play(const Anim::AnimClip* clip)
     {
@@ -47,10 +38,7 @@ namespace NS
         FindClipBones();
     }
 
-    void Animation::Pause() noexcept
-    {
-        m_playing = false;
-    }
+    void Animation::Pause() noexcept { m_playing = false; }
 
     void Animation::Stop() noexcept
     {
@@ -75,15 +63,9 @@ namespace NS
         }
     }
 
-    void Animation::SetLooping(bool looping) noexcept
-    {
-        m_looping = looping;
-    }
+    void Animation::SetLooping(bool looping) noexcept { m_looping = looping; }
 
-    float Animation::Time() const noexcept
-    {
-        return m_time;
-    }
+    float Animation::Time() const noexcept { return m_time; }
 
     float Animation::Duration() const noexcept
     {
@@ -94,10 +76,7 @@ namespace NS
         return 0.0f;
     }
 
-    bool Animation::IsPlaying() const noexcept
-    {
-        return m_playing;
-    }
+    bool Animation::IsPlaying() const noexcept { return m_playing; }
 
     void Animation::FindClipBones()
     {

@@ -7,10 +7,8 @@
 
 #include <memory>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DBuffer;
         struct DrawItem;
         class D3DPipeline;
@@ -102,5 +100,4 @@ namespace NS
             SavedTargets m_saved{}; // BeginBodyMask から EndBodyMask の間だけ持つ
             bool m_valid = false;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

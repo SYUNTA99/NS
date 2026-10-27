@@ -296,10 +296,7 @@ namespace NS
         return m_drawnMaterial->BaseColor();
     }
 
-    bool Model::CanDraw() const noexcept
-    {
-        return CanDraw(m_drawnMaterial);
-    }
+    bool Model::CanDraw() const noexcept { return CanDraw(m_drawnMaterial); }
 
     Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept
     {
@@ -354,10 +351,7 @@ namespace NS
         return RenderBucket::Transparent;
     }
 
-    Vector3 Model::SortCenter(const RenderSource& source) const noexcept
-    {
-        return source.root.Translation();
-    }
+    Vector3 Model::SortCenter(const RenderSource& source) const noexcept { return source.root.Translation(); }
 
     int Model::SortPriority() const noexcept
     {

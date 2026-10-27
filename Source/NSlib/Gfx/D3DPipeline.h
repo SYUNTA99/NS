@@ -5,10 +5,8 @@
 
 #include <memory>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! ポリゴンのどちらの面を描画せずにカリングするか
         enum class CullMode
         {
@@ -80,5 +78,4 @@ namespace NS
             ComPtr<ID3D11DepthStencilState> m_depthStencil;
             bool m_valid = false;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

@@ -6,12 +6,8 @@
 
 #include <memory>
 
-namespace NS
+namespace NS::Gfx::detail
 {
-    namespace Gfx
-    {
-        namespace detail
-        {
             //! @brief 共通パイプライン 8 本を作り、全部が有効なら true を返す
             //! @details D3DPipeline::Create は Gpu() を引くので、装置を公開した後に呼ぶ。
             //! 添え字の [0] は裏を向いた面を描かない、[1] は裏も描く。outCommon の 2 つ目の添え字は不透明・半透明・加算
@@ -38,6 +34,4 @@ namespace NS
                 }
                 return allValid;
             }
-        } // namespace detail
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx::detail

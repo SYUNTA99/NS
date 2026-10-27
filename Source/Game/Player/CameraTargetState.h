@@ -3,10 +3,8 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! @brief 追従カメラが追う相手が 1 フレームぶん出す状態
         struct CameraTargetState
         {
@@ -20,5 +18,4 @@ namespace GL
             //! 体当たりから止めの明けまでか。真の間、カメラは距離と溜めの締めをその時のまま保つ
             bool framingHeld = false;
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

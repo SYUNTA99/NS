@@ -2,10 +2,8 @@
 
 #include "NSlib/Core/Math.h"
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         //! 頂点を CCW に並べる前提の 1 三角形。法線は (v1 - v0) × (v2 - v0) の向き
         struct Triangle
         {
@@ -13,5 +11,4 @@ namespace NS
             Vector3 v1{0.0f, 0.0f, 0.0f};
             Vector3 v2{0.0f, 0.0f, 0.0f};
         };
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys

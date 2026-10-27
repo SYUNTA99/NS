@@ -4,10 +4,8 @@
 
 #include <cstddef>
 #include <memory>
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! バッファ構築パラメータ。役割は D3D11_BIND_* の bindFlags で表す
         //! 用途別の値は MakeVertexBufferDesc 等のヘルパが埋める
         struct D3DBufferDesc
@@ -61,5 +59,4 @@ namespace NS
 
         //! 動的な定数バッファ用。byteSize は内部で 16 バイト境界へ切り上げる
         [[nodiscard]] D3DBufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept;
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

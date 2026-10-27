@@ -7,12 +7,8 @@
 
 #include <memory>
 
-namespace NS
+namespace NS::Phys::detail
 {
-    namespace Phys
-    {
-        namespace detail
-        {
             namespace
             {
                 class JoltRuntime
@@ -41,6 +37,4 @@ namespace NS
             {
                 static JoltRuntime runtime;
             }
-        } // namespace detail
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys::detail

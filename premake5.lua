@@ -677,6 +677,8 @@ project "Tests"
         -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
         -- EnterEdit / 値メンバ accessor の symbol が要るので .cpp を Tests に取り込む。
         "Source/Editor/LevelEditorController.cpp",
+        "Source/Editor/LevelEditorViewShapes.cpp",
+        "Source/Editor/LevelEditorAssets.cpp",
         -- Level 配下と Undo Command は Application 非依存の純粋ロジックなので
         -- Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",

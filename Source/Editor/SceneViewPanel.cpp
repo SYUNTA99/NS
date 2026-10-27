@@ -12,10 +12,8 @@
 #include <imgui.h>
 #endif
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         void SceneViewPanel::Render(LevelEditorController& editor) noexcept
         {
 #if NS_EDITOR_ENABLED
@@ -207,5 +205,4 @@ namespace NS
             (void)editor;
 #endif
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

@@ -6,10 +6,8 @@
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         namespace
         {
             // パイプラインは呼ぶ前に設定する
@@ -71,5 +69,4 @@ namespace NS
             cmd.PSSetShader(pixelShader);
             DrawMesh(cmd, *item.mesh);
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

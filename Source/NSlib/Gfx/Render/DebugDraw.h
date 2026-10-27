@@ -14,10 +14,8 @@
 #include <memory>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DBuffer;
         class D3DDevice;
         class D3DPipeline;
@@ -117,17 +115,12 @@ namespace NS
             uint64 m_layoutBytecodeId = 0;
             bool m_valid = false;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx
 
 //! この固定ステップの図形を積む自由関数。積み先は 1 つの静的な DebugShapes
 //! 捨てるのは Scene で、段を回す歩の頭・世界の組み直し・終わりの 3 か所。描いても捨てないので次の歩まで描かれ続ける
-namespace NS
+namespace NS::Gfx::DebugDraw
 {
-    namespace Gfx
-    {
-        namespace DebugDraw
-        {
             //! @brief 2点間に線分を追加する
             void Line(const Vector3& a, const Vector3& b, const Color& color) noexcept;
 
@@ -182,6 +175,4 @@ namespace NS
 
             //! 現在バッファに蓄積されている三角形の頂点の総数を返す
             [[nodiscard]] std::size_t FaceVertexCount() noexcept;
-        } // namespace DebugDraw
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx::DebugDraw

@@ -25,17 +25,11 @@
 #include <utility>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
-        class EffectScene;
-    }
-    namespace Gfx
-    {
-        class D3DDevice;
-    }
-} // namespace NS
+    class EffectScene;
+    class D3DDevice;
+} // namespace NS::Gfx
 
 namespace NS
 {

@@ -15,13 +15,10 @@
 
 #include <memory>
 
-namespace NS
+namespace NS::UI
 {
-    namespace UI
-    {
         class ImGuiContext;
-    }
-} // namespace NS
+} // namespace NS::UI
 
 class LevelEditorController;
 

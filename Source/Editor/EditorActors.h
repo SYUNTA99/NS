@@ -19,10 +19,8 @@ namespace NS
     class ActorList;
 } // namespace NS
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! アクターの JSON の姿勢を読み書きする。
         //! 実体は classObjs 内の姿勢の部品の欄。エディタと試しが Actor を作らずに置き場所を書くための関数
         //! Set は対象エントリが無ければ EnsureTransformClassObj で 1 つ作り、その項目だけを書く。書いた項目はシーンの上書きになる
@@ -94,5 +92,4 @@ namespace NS
         //! シーンの JSON 文書からプレイヤーを探す。最初の 1 件の添字、無ければ k_NoActorIndex
         //! 複数居ても先頭を正とする
         [[nodiscard]] std::size_t FindPlayerActorIndex(const nlohmann::json& scene) noexcept;
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

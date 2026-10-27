@@ -14,10 +14,8 @@
 #include <imgui.h>
 #endif
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             [[nodiscard]] Quaternion PartRotation(float yawDegrees) noexcept
@@ -196,5 +194,4 @@ namespace NS
             return IsPositiveFinite(m_size.x) && IsPositiveFinite(m_size.y) && IsPositiveFinite(m_size.z) &&
                    std::isfinite(m_yawDegrees) && std::isfinite(m_emptySpaceHeight);
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

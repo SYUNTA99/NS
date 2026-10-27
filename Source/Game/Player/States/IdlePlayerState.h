@@ -4,14 +4,11 @@
 
 class PlayerActor;
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         class IdlePlayerState final : public PlayerState<IdlePlayerState>
         {
         public:
             void OnStep(::PlayerActor* player, float dt) override;
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

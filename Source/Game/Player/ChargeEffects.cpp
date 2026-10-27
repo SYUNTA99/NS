@@ -13,10 +13,8 @@
 #include <algorithm>
 #include <cmath>
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         NS::Gfx::EffectPlayDesc ChargeEffects::PlayDesc(const NS::Vector3& position,
                                                         const NS::Quaternion& rotation,
                                                         float charge01) const noexcept
@@ -372,5 +370,4 @@ namespace GL
             NS::StopEffect(user, id);
             id = 0;
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

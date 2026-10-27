@@ -76,10 +76,7 @@ namespace NS
         }
     }
 
-    bool Application::IsValid() const noexcept
-    {
-        return m_valid;
-    }
+    bool Application::IsValid() const noexcept { return m_valid; }
 
     OS::Window& Application::Window() noexcept
     {
@@ -105,15 +102,9 @@ namespace NS
         return *m_device;
     }
 
-    OS::Input& Application::Input() noexcept
-    {
-        return OS::Input::Get();
-    }
+    OS::Input& Application::Input() noexcept { return OS::Input::Get(); }
 
-    const OS::Input& Application::Input() const noexcept
-    {
-        return OS::Input::Get();
-    }
+    const OS::Input& Application::Input() const noexcept { return OS::Input::Get(); }
 
     void Application::SetCursorCaptured(bool captured) noexcept
     {
@@ -300,10 +291,7 @@ namespace NS
         m_window.reset();
     }
 
-    Application* Application::Get() noexcept
-    {
-        return s_instance;
-    }
+    Application* Application::Get() noexcept { return s_instance; }
 
     void Application::Quit() noexcept
     {

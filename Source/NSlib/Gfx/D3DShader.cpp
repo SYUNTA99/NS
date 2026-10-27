@@ -16,10 +16,8 @@
 #include <string>
 #include <string_view>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         namespace
         {
             struct ShaderTypeInfo
@@ -86,13 +84,11 @@ namespace NS
                                    HRESULT hr,
                                    const ComPtr<ID3DBlob>& errorBlob) noexcept
             {
-                const char* msg = [&]() -> const char* {
-                    if (errorBlob)
-                    {
-                        return static_cast<const char*>(errorBlob->GetBufferPointer());
-                    }
-                    return "(no error blob)";
-                }();
+                const char* msg = "(no error blob)";
+                if (errorBlob)
+                {
+                    msg = static_cast<const char*>(errorBlob->GetBufferPointer());
+                }
                 NS_LOG_ERROR(Graphics,
                              "D3DShader compile failed: target={}, entry={}, hr=0x{:X}, msg={}",
                              target,
@@ -510,30 +506,12 @@ namespace NS
             return true;
         }
 
-        bool D3DShader::IsValid() const noexcept
-        {
-            return static_cast<bool>(m_shader);
-        }
-        bool D3DShader::IsUsingFallback() const noexcept
-        {
-            return m_fallback;
-        }
-        ShaderType D3DShader::Type() const noexcept
-        {
-            return m_type;
-        }
-        ID3D11DeviceChild* D3DShader::Native() const noexcept
-        {
-            return m_shader.Get();
-        }
-        const ShaderParamLayout& D3DShader::MaterialParams() const noexcept
-        {
-            return m_materialParams;
-        }
-        uint64 D3DShader::BytecodeId() const noexcept
-        {
-            return m_bytecodeId;
-        }
+        bool D3DShader::IsValid() const noexcept { return static_cast<bool>(m_shader); }
+        bool D3DShader::IsUsingFallback() const noexcept { return m_fallback; }
+        ShaderType D3DShader::Type() const noexcept { return m_type; }
+        ID3D11DeviceChild* D3DShader::Native() const noexcept { return m_shader.Get(); }
+        const ShaderParamLayout& D3DShader::MaterialParams() const noexcept { return m_materialParams; }
+        uint64 D3DShader::BytecodeId() const noexcept { return m_bytecodeId; }
         std::span<const std::byte> D3DShader::VertexShaderBytecode() const noexcept
         {
             if (m_type != ShaderType::Vertex || !m_vsBytecode)
@@ -543,5 +521,4 @@ namespace NS
             return std::span<const std::byte>(static_cast<const std::byte*>(m_vsBytecode->GetBufferPointer()),
                                               m_vsBytecode->GetBufferSize());
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

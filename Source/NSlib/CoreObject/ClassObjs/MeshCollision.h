@@ -6,13 +6,10 @@
 
 #include <vector>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         struct MeshShape;
-    }
-} // namespace NS
+} // namespace NS::Phys
 
 namespace NS
 {

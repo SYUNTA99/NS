@@ -6,10 +6,8 @@
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         class PhysicsScene;
 
         //! @brief 縦のカプセルか球 1 つを 1 フレームずつ動かす JPH::CharacterVirtual のラッパー
@@ -56,5 +54,4 @@ namespace NS
 
         //! 単位法線の Y 成分から、45° 以下の登れる斜面かを判定する
         [[nodiscard]] bool IsWalkableNormal(float normalY) noexcept;
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys

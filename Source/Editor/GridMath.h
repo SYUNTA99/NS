@@ -6,10 +6,8 @@
 
 //! @brief エディタでのグリッド計算やレイキャスト判定を補助する数学ユーティリティ
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! グリッドの基本サイズ
         inline constexpr float k_GridSize = 1.0f;
 
@@ -56,5 +54,4 @@ namespace NS
         //! @brief 画面上の見かけの大きさを一定に近づける、世界の長さの倍率を返す
         //! @details 深度 10 までは 1、遠いほど深度に比例して伸ばす。clip.w が 0.001 以下なら 1
         [[nodiscard]] float ScreenConstantScale(const Vector3& point, const Matrix& viewProjection) noexcept;
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

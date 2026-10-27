@@ -13,24 +13,19 @@
 #include <string>
 #include <vector>
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         class ChargeStatus;
         class PlayerParams;
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player
 
 namespace NS
 {
     class Collider;
 }
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! 地面の矢印を組む時点の、溜めと狙いの様子
         struct SlamArrowState
         {
@@ -211,5 +206,4 @@ namespace GL
             int m_framesSinceShown = -1;                  // 矢印を出していない間は負
             std::vector<NS::Gfx::DrawItem> m_drawScratch; // 描く単位を毎フレーム積み直す置き場。確保を使い回す
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

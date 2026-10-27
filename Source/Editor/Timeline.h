@@ -7,10 +7,8 @@
 #include <string>
 #include <vector>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! 両端を含む符号付きフレームの範囲。last が first より小さい時は空
         struct TimelineFrameRange
         {
@@ -68,5 +66,4 @@ namespace NS
                                 float extraHeight = 0.0f,
                                 const std::function<void(const TimelineLayout&)>& extraRows = {},
                                 std::optional<TimelineFrameRange> seekRange = std::nullopt) noexcept;
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

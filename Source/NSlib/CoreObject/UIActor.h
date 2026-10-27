@@ -3,13 +3,10 @@
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/UI/WidgetTree.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         struct RenderContext;
-    }
-} // namespace NS
+} // namespace NS::Gfx
 
 namespace NS
 {

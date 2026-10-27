@@ -4,10 +4,8 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         NS_PLACEABLE(FollowCameraActor, "追従カメラ")
         void FollowCameraActor::OnInit()
         {
@@ -52,5 +50,4 @@ namespace GL
             NS::SceneActor::OnEndPlay();
             NS::EndVirtualCamera(this, m_vcam.get());
         }
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

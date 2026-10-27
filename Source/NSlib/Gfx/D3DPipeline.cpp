@@ -4,10 +4,8 @@
 #include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/detail/PipelineDepth.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         namespace
         {
             D3D11_CULL_MODE ToD3d(CullMode cull) noexcept
@@ -117,29 +115,13 @@ namespace NS
 
         D3DPipeline::~D3DPipeline() = default;
 
-        bool D3DPipeline::IsValid() const noexcept
-        {
-            return m_valid;
-        }
+        bool D3DPipeline::IsValid() const noexcept { return m_valid; }
 
-        const D3DPipelineDesc& D3DPipeline::Desc() const noexcept
-        {
-            return m_desc;
-        }
+        const D3DPipelineDesc& D3DPipeline::Desc() const noexcept { return m_desc; }
 
-        ID3D11RasterizerState* D3DPipeline::RasterizerState() const noexcept
-        {
-            return m_rasterizer.Get();
-        }
+        ID3D11RasterizerState* D3DPipeline::RasterizerState() const noexcept { return m_rasterizer.Get(); }
 
-        ID3D11BlendState* D3DPipeline::BlendState() const noexcept
-        {
-            return m_blend.Get();
-        }
+        ID3D11BlendState* D3DPipeline::BlendState() const noexcept { return m_blend.Get(); }
 
-        ID3D11DepthStencilState* D3DPipeline::DepthStencilState() const noexcept
-        {
-            return m_depthStencil.Get();
-        }
-    } // namespace Gfx
-} // namespace NS
+        ID3D11DepthStencilState* D3DPipeline::DepthStencilState() const noexcept { return m_depthStencil.Get(); }
+} // namespace NS::Gfx

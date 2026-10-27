@@ -2,10 +2,8 @@
 
 #include "NSlib/Core/Math.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! 跳びの判定
         class PlayerJudgeJump
         {
@@ -180,5 +178,4 @@ namespace GL
                 return Judge(StateFlags{idle, walk, fall, rebound});
             }
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

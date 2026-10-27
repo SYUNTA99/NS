@@ -4,12 +4,8 @@
 
 #include <d3d11.h>
 
-namespace NS
+namespace NS::Gfx::detail
 {
-    namespace Gfx
-    {
-        namespace detail
-        {
             //! D3D11_USAGE に対し D3D11 が許す CPUAccessFlags を返す。両者は仕様で一意対応し矛盾すると Create
             //! が失敗する DEFAULT / IMMUTABLE は 0、DYNAMIC は WRITE、STAGING は READ | WRITE
             [[nodiscard]] inline UINT GetCpuAccessFlags(D3D11_USAGE usage) noexcept
@@ -26,6 +22,4 @@ namespace NS
                     return 0u;
                 }
             }
-        } // namespace detail
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx::detail

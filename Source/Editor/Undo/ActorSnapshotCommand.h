@@ -9,10 +9,8 @@
 #include <optional>
 #include <vector>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! 永続 id で対象を引き、JSON の before・after を切り替える。派生状態の同期は適用側が行う
         //! 居ない姿へ切り替える時はアクターを解放せずに外して持ち、居る姿へ戻す時に同じアクターを戻す
         class ActorSnapshotCommand final : public ICommand
@@ -43,5 +41,4 @@ namespace NS
             DetachedActor m_detached;               // 居ない姿の間、外して持つアクター
             std::vector<std::unique_ptr<SceneActor>> m_replaced; // 姿を当てた時に作り直して外した古いアクター。戻さない
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

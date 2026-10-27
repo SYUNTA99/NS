@@ -2,10 +2,8 @@
 
 #include "NSlib/Gfx/D3DShader.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! @brief 描く段が使う組み込みのシェーダー。持ち主は渡す側で、描く段は指すだけ
         //! @details 渡す側は描く段より長く持つ。読み直しは同じ D3DShader のまま中身を替えるので、
         //! 描く段は指したまま新しい中身で描く。使えるかは描く度に IsUsable (頂点の番号で形を作る頂点シェーダーは
@@ -46,5 +44,4 @@ namespace NS
         {
             return IsUsable(vertexShader) && !vertexShader->IsUsingFallback();
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

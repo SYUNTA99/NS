@@ -17,10 +17,8 @@
 
 #include <optional>
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 動く・反応する置物。岩・箱・樽
         // 個体ごとの見た目と重さは個体の上書きで変える
         class PropActor : public NS::SceneActor
@@ -163,5 +161,4 @@ namespace GL
             int m_hopIndex = 0; // 次の跳ねが何回目か。0 から数える
             NS::uint32 m_hopSeed = 0;
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

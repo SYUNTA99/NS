@@ -11,10 +11,8 @@
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/D3DDevice.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         ScreenOverlay::ScreenOverlay(D3DDevice* device, const BuiltinShaders& shaders) noexcept
             : m_device(device), m_fullscreenVs(shaders.fullscreenVs), m_fadePs(shaders.fadePs),
               m_screenRectVs(shaders.screenRectVs), m_screenRectPs(shaders.screenRectPs)
@@ -130,5 +128,4 @@ namespace NS
             cbData.color = color;
             DrawPass(m_screenRect, *m_screenRectVs, *m_screenRectPs, &cbData, sizeof(cbData), 6, true);
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

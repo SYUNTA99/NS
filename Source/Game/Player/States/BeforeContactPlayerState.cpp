@@ -2,10 +2,8 @@
 
 #include "Game/PlayerActor.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         void BeforeContactPlayerState::OnEnter(::PlayerActor* player)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
@@ -23,5 +21,4 @@ namespace GL
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
             player->EndBeforeContact();
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

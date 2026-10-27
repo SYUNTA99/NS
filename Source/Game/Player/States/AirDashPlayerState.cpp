@@ -3,10 +3,8 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         void AirDashPlayerState::OnEnter(::PlayerActor* player)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
@@ -29,5 +27,4 @@ namespace GL
             }
             player->KeepAirDashSpeed();
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

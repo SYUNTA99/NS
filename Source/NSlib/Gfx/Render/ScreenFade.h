@@ -4,10 +4,8 @@
 
 #include "NSlib/Core/Types.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class ScreenOverlay;
 
         //! @brief 全画面へ黒を重ねる暗転と明転
@@ -56,5 +54,4 @@ namespace NS
             float m_duration = 0.0f; // 今の段階にかける秒数。BeginOut / BeginIn が決める
             float m_timer = 0.0f;    // 今の段階の経過秒。段階が変わるたび 0 へ戻す
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

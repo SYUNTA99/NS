@@ -23,10 +23,8 @@
 #include <memory>
 #include <new>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         namespace
         {
             bool TryCreateDeviceAndSwapChain(HWND hwnd,
@@ -261,10 +259,7 @@ namespace NS
             // Gpu() は既に空のため各リソースのデストラクタから Gpu() を参照しないこと
         }
 
-        bool D3DDevice::IsValid() const noexcept
-        {
-            return m_valid;
-        }
+        bool D3DDevice::IsValid() const noexcept { return m_valid; }
 
         bool D3DDevice::CaptureBackbufferToPng(const std::filesystem::path& path) noexcept
         {
@@ -448,10 +443,7 @@ namespace NS
             BeginFrame(c.R(), c.G(), c.B(), c.A());
         }
 
-        const Color& D3DDevice::ClearColor() const noexcept
-        {
-            return m_clearColor;
-        }
+        const Color& D3DDevice::ClearColor() const noexcept { return m_clearColor; }
 
         void D3DDevice::EndFrame() noexcept
         {
@@ -460,13 +452,11 @@ namespace NS
                 return;
             }
 
-            const UINT sync = [&]() -> UINT {
-                if (m_vsync)
-                {
-                    return 1;
-                }
-                return 0;
-            }();
+            UINT sync = 0;
+            if (m_vsync)
+            {
+                sync = 1;
+            }
             const HRESULT hr = m_swapchain->Present(sync, 0);
             if (FAILED(hr))
             {
@@ -518,10 +508,7 @@ namespace NS
             m_boundSize = m_backbuffer->Size();
         }
 
-        void D3DDevice::SetSceneTarget(D3DRenderTarget* target) noexcept
-        {
-            m_sceneTarget = target;
-        }
+        void D3DDevice::SetSceneTarget(D3DRenderTarget* target) noexcept { m_sceneTarget = target; }
 
         void D3DDevice::BeginSceneView(D3DRenderTarget* target) noexcept
         {
@@ -558,10 +545,7 @@ namespace NS
             m_boundSize = size;
         }
 
-        Size2D D3DDevice::Size() const noexcept
-        {
-            return m_boundSize;
-        }
+        Size2D D3DDevice::Size() const noexcept { return m_boundSize; }
 
         D3DCommonStates& D3DDevice::States() noexcept
         {
@@ -574,5 +558,4 @@ namespace NS
             NS_ASSERT(Graphics, m_commands, "D3DDevice が無効な状態で Commands() を呼んでいる");
             return *m_commands;
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

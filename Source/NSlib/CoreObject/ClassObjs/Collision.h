@@ -7,13 +7,10 @@
 
 #include <Jolt/Physics/Body/BodyID.h>
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         class PhysicsScene;
-    }
-} // namespace NS
+} // namespace NS::Phys
 
 namespace NS
 {

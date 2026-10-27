@@ -3,10 +3,8 @@
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 追従カメラ (ThirdPersonFollow) を置き、出ている間だけ選べる物にする
         //! @details 仮想カメラを進めるのは CameraManager の OnTick で、このアクターは更新の関数を持たない
         class FollowCameraActor : public NS::SceneActor
@@ -32,5 +30,4 @@ namespace GL
         private:
             std::unique_ptr<NS::ThirdPersonFollow> m_vcam;
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

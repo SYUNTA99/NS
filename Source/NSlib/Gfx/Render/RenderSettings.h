@@ -2,10 +2,8 @@
 
 #include "NSlib/Core/Math.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! @brief プロジェクト全体の標準となる照明
         //! @details シーンは初期値から、配置された平行光の値で照明を上書きした複製を描画に使う
         struct RenderSettings
@@ -19,5 +17,4 @@ namespace NS
             //! 画面へ出す前の露出。S 字で潰す前に掛けるので、上げても明部は飛ばず暗部だけ持ち上がる
             float exposure = 1.35f;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

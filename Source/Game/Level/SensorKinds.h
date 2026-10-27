@@ -7,10 +7,8 @@ namespace NS
     class HitSensor;
 }
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief センサーの応答先を識別する Game の種類
         //! @details 保存しない。付けるのはアクターのクラスのセンサーの宣言 (NS_SENSOR・NS_FOLLOW_SENSOR) だけ。
         //! 重なりは全組へ通知され、応答の可否は各受け手が決める
@@ -24,5 +22,4 @@ namespace GL
 
         //! 指定の種類の場合 true、それ以外の場合は false。Unset は常に false
         [[nodiscard]] bool IsSensorKind(const NS::HitSensor* sensor, SensorKind kind) noexcept;
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

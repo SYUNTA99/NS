@@ -6,10 +6,8 @@
 #include <span>
 #include <string>
 
-namespace NS
+namespace NS::Anim
 {
-    namespace Anim
-    {
         struct BonePose
         {
             Vector3 translation{0.0f, 0.0f, 0.0f};
@@ -58,5 +56,4 @@ namespace NS
             std::vector<Bone> m_bones;
             Matrix m_rootTransform{};
         };
-    } // namespace Anim
-} // namespace NS
+} // namespace NS::Anim

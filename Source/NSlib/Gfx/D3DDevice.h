@@ -9,10 +9,8 @@
 #include <filesystem>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         //! @brief 描画システムの初期化パラメータ
         struct D3DDeviceDesc
         {
@@ -129,5 +127,4 @@ namespace NS
             bool m_valid = false;
             bool m_resizeCallbackRegistered = false; // デストラクタの購読解除判定
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

@@ -5,10 +5,8 @@
 #include <algorithm>
 #include <utility>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         TimelinePreview::TimelinePreview() = default;
         TimelinePreview::~TimelinePreview()
         {
@@ -83,5 +81,4 @@ namespace NS
             m_scene->SetSceneViews({});
             return true;
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

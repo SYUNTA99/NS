@@ -4,10 +4,8 @@
 
 class PlayerActor;
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! よじ登り。登り切ったフレームに立ちへ移る
         class LedgeClimbingPlayerState final : public PlayerState<LedgeClimbingPlayerState>
         {
@@ -22,5 +20,4 @@ namespace GL
         private:
             NS::Coroutine Run(::PlayerActor* player);
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

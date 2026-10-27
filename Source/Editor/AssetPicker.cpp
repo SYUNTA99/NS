@@ -12,10 +12,8 @@
 #include <optional>
 #include <utility>
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             // 素材の種類は拡張子で分ける。大文字と小文字を区別しないため、比べる前に小文字へ揃える
@@ -224,5 +222,4 @@ namespace NS
             });
             return options;
         }
-    }
-}
+} // namespace NS::Editor

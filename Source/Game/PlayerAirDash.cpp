@@ -327,15 +327,11 @@ void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float 
     }
     // 前の反動の残像と揺れは、新しい反動の束で始め直す
     StopTackleHitEffects();
-    // 束が足した持ち主へ渡す項目は、走っている項目の後ろに並ぶ
-    const std::size_t first = reaction->OwnerRuns().size();
-    (void)StartHitReaction(name, contact, self, self);
-    const std::vector<NS::HitOwnerRun>& runs = reaction->OwnerRuns();
-    for (std::size_t i = first; i < runs.size(); ++i)
+    for (const NS::HitOwnerRun& run : StartHitReactionRuns(name, contact, self, self))
     {
-        if (runs[i].item.name == "TackleGhost")
+        if (run.item.name == "TackleGhost")
         {
-            m_ghostRun.Start(runs[i], this);
+            m_ghostRun.Start(run, this);
         }
     }
 }

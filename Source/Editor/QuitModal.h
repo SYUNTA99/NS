@@ -4,10 +4,8 @@
 
 class LevelEditorController;
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         class EditorMode;
         class ActionTimelinePanel;
 
@@ -36,5 +34,4 @@ namespace NS
             bool m_confirmed = false;  // 終了を確定したか。二度目の終了要求を素通しする
             bool m_saveFailed = false; // 直前の保存が失敗したか。modal に赤字で出す
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

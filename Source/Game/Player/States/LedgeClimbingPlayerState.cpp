@@ -2,10 +2,8 @@
 
 #include "Game/PlayerActor.h"
 
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         void LedgeClimbingPlayerState::OnEnter(::PlayerActor* player)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
@@ -25,5 +23,4 @@ namespace GL
                 }
             }
         }
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

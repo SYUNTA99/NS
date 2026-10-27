@@ -1,9 +1,7 @@
 #include "Editor/Undo/UndoStack.h"
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         void UndoStack::Push(std::unique_ptr<ICommand> cmd, IActorSnapshotApplier& target) noexcept
         {
             if (!cmd)
@@ -105,5 +103,4 @@ namespace NS
                 m_undo.pop_front();
             }
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

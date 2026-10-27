@@ -25,10 +25,8 @@
 #include <imgui.h>
 #endif
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         namespace
         {
             // 事象の種類の並び。HitReactionItem の選択肢の順で、種類を足すとここにも出る
@@ -733,10 +731,11 @@ namespace NS
             const float graphHeight = rowHeight * 2.0f;
             const int origin = PlaybackOrigin();
             // 1 本の折れ線。value は 0〜1 (center が真なら -1〜1) に写した値を返す
-            const auto drawLine = [&](const ImVec2& at,
-                                      ImU32 color,
-                                      bool centered,
-                                      const std::function<float(const HitPreviewFrame&)>& value) {
+            const std::function<void(const ImVec2&, ImU32, bool, const std::function<float(const HitPreviewFrame&)>&)>
+                drawLine = [&](const ImVec2& at,
+                               ImU32 color,
+                               bool centered,
+                               const std::function<float(const HitPreviewFrame&)>& value) {
                 ImVec2 previous{};
                 for (std::size_t i = 0; i < frames.size(); ++i)
                 {
@@ -756,7 +755,7 @@ namespace NS
                     previous = point;
                 }
             };
-            const auto graphRow =
+            const std::function<void(const char*, const char*, const std::function<void(const ImVec2&)>&)> graphRow =
                 [&](const char* label, const char* tooltip, const std::function<void(const ImVec2&)>& body) {
                     ImGui::TextUnformatted(label);
                     ImGui::SetItemTooltip("%s", tooltip);
@@ -809,6 +808,48 @@ namespace NS
 #endif
         }
 
+        namespace
+        {
+#if NS_EDITOR_ENABLED
+            void DrawFrameSpanRows(int& outStart, int& outLength, bool& changed) noexcept
+            {
+                FieldRow("始まり");
+                int start = outStart;
+                if (ImGui::DragInt("##start", &start, 0.2f, 0, 600))
+                {
+                    outStart = std::max(start, 0);
+                    changed = true;
+                }
+                FieldRow("長さ");
+                int length = outLength;
+                if (ImGui::DragInt("##length", &length, 0.2f, 0, 600))
+                {
+                    outLength = std::max(length, 0);
+                    changed = true;
+                }
+            }
+
+            void DrawBoolComboRow(const char* label,
+                                  const char* id,
+                                  bool& flag,
+                                  const char* items,
+                                  bool& changed) noexcept
+            {
+                FieldRow(label);
+                int index = 0;
+                if (flag)
+                {
+                    index = 1;
+                }
+                if (ImGui::Combo(id, &index, items))
+                {
+                    flag = index == 1;
+                    changed = true;
+                }
+            }
+#endif
+        } // namespace
+
         void ActionTimelinePanel::RenderSelectedEvent(ActorActionEvent& event, bool& changed) noexcept
         {
 #if NS_EDITOR_ENABLED
@@ -816,20 +857,7 @@ namespace NS
             ImGui::SeparatorText(title.c_str());
             if (BeginFieldTable("##event-row"))
             {
-                FieldRow("始まり");
-                int start = event.start;
-                if (ImGui::DragInt("##start", &start, 0.2f, 0, 600))
-                {
-                    event.start = std::max(start, 0);
-                    changed = true;
-                }
-                FieldRow("長さ");
-                int length = event.length;
-                if (ImGui::DragInt("##length", &length, 0.2f, 0, 600))
-                {
-                    event.length = std::max(length, 0);
-                    changed = true;
-                }
+                DrawFrameSpanRows(event.start, event.length, changed);
                 EndFieldTable();
             }
             if (const ReflectionInfo* info = HitReactionItemReflection(event.item))
@@ -849,42 +877,9 @@ namespace NS
             ImGui::SeparatorText("センサーの入り切り");
             if (BeginFieldTable("##event-row"))
             {
-                FieldRow("センサー");
-                int kind = 0;
-                if (sensor.attack)
-                {
-                    kind = 1;
-                }
-                if (ImGui::Combo("##sensor", &kind, "体のセンサー\0攻撃のセンサー\0"))
-                {
-                    sensor.attack = kind == 1;
-                    changed = true;
-                }
-                FieldRow("長さの間");
-                int valid = 0;
-                if (sensor.valid)
-                {
-                    valid = 1;
-                }
-                if (ImGui::Combo("##valid", &valid, "外す\0入れる\0"))
-                {
-                    sensor.valid = valid == 1;
-                    changed = true;
-                }
-                FieldRow("始まり");
-                int start = sensor.start;
-                if (ImGui::DragInt("##start", &start, 0.2f, 0, 600))
-                {
-                    sensor.start = std::max(start, 0);
-                    changed = true;
-                }
-                FieldRow("長さ");
-                int length = sensor.length;
-                if (ImGui::DragInt("##length", &length, 0.2f, 0, 600))
-                {
-                    sensor.length = std::max(length, 0);
-                    changed = true;
-                }
+                DrawBoolComboRow("センサー", "##sensor", sensor.attack, "体のセンサー\0攻撃のセンサー\0", changed);
+                DrawBoolComboRow("長さの間", "##valid", sensor.valid, "外す\0入れる\0", changed);
+                DrawFrameSpanRows(sensor.start, sensor.length, changed);
                 EndFieldTable();
             }
 #else
@@ -936,5 +931,4 @@ namespace NS
             (void)editor;
 #endif
         }
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

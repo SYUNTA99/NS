@@ -3,10 +3,8 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         std::unique_ptr<D3DRenderTarget> D3DRenderTarget::Create(Size2D size)
         {
             return std::unique_ptr<D3DRenderTarget>(new D3DRenderTarget(size));
@@ -58,10 +56,7 @@ namespace NS
             m_depth = std::move(depth);
         }
 
-        bool D3DRenderTarget::IsValid() const noexcept
-        {
-            return m_color != nullptr && m_depth != nullptr;
-        }
+        bool D3DRenderTarget::IsValid() const noexcept { return m_color != nullptr && m_depth != nullptr; }
 
         Size2D D3DRenderTarget::Size() const noexcept
         {
@@ -87,15 +82,9 @@ namespace NS
             Build(size);
         }
 
-        D3DTexture* D3DRenderTarget::Color() const noexcept
-        {
-            return m_color.get();
-        }
+        D3DTexture* D3DRenderTarget::Color() const noexcept { return m_color.get(); }
 
-        D3DTexture* D3DRenderTarget::Depth() const noexcept
-        {
-            return m_depth.get();
-        }
+        D3DTexture* D3DRenderTarget::Depth() const noexcept { return m_depth.get(); }
 
         void* D3DRenderTarget::UiTextureHandle() const noexcept
         {
@@ -105,5 +94,4 @@ namespace NS
             }
             return m_color->Srv();
         }
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

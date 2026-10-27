@@ -3,10 +3,8 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 
-namespace NS
+namespace NS::Editor
 {
-    namespace Editor
-    {
         //! 1 フレームの自由視点入力。感度と距離の追従は EditorCamera の設定を使う
         struct EditorCameraInput
         {
@@ -106,5 +104,4 @@ namespace NS
             float m_nearPlane = 0.1f;
             float m_farPlane = 1000.0f;
         };
-    } // namespace Editor
-} // namespace NS
+} // namespace NS::Editor

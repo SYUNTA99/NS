@@ -2,10 +2,8 @@
 
 #include "NSlib/Core/Math.h"
 
-namespace NS
+namespace NS::Phys
 {
-    namespace Phys
-    {
         //! @brief カプセル形状
         //! @details 円柱の両端に半球がついた形状
         struct Capsule
@@ -29,5 +27,4 @@ namespace NS
                            .halfHeight = halfHeight * std::abs(scale.y),
                            .radius = radius * std::max(std::abs(scale.x), std::abs(scale.z))};
         }
-    } // namespace Phys
-} // namespace NS
+} // namespace NS::Phys

@@ -26,25 +26,13 @@ namespace NS
 
     Mesh::~Mesh() noexcept = default;
 
-    const std::string& Mesh::Path() const noexcept
-    {
-        return m_path;
-    }
+    const std::string& Mesh::Path() const noexcept { return m_path; }
 
-    Gfx::D3DMesh* Mesh::D3D() const noexcept
-    {
-        return m_mesh.get();
-    }
+    Gfx::D3DMesh* Mesh::D3D() const noexcept { return m_mesh.get(); }
 
-    Gfx::D3DSkeletalMesh* Mesh::D3DSkeletal() const noexcept
-    {
-        return m_skeletal;
-    }
+    Gfx::D3DSkeletalMesh* Mesh::D3DSkeletal() const noexcept { return m_skeletal; }
 
-    Phys::MeshShape* Mesh::Collision() const noexcept
-    {
-        return m_collision.get();
-    }
+    Phys::MeshShape* Mesh::Collision() const noexcept { return m_collision.get(); }
 
     const AABB* Mesh::LocalBounds() const noexcept
     {

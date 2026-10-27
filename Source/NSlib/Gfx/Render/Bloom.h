@@ -8,10 +8,8 @@
 #include <memory>
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         class D3DBuffer;
         class D3DPipeline;
         class D3DDevice;
@@ -99,5 +97,4 @@ namespace NS
             bool m_active = false; // BeginWorld が差し替えて EndWorld を待っているか
             bool m_valid = false;
         };
-    } // namespace Gfx
-} // namespace NS
+} // namespace NS::Gfx

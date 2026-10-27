@@ -8,13 +8,10 @@
 #include "NSlib/Core/Types.h"
 #include <vector>
 
-namespace NS
+namespace NS::Gfx
 {
-    namespace Gfx
-    {
         struct RenderContext;
-    }
-} // namespace NS
+} // namespace NS::Gfx
 
 namespace NS
 {

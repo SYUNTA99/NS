@@ -1,9 +1,7 @@
 #pragma once
 
-namespace GL
+namespace GL::Level
 {
-    namespace Level
-    {
         //! @brief 残りの命を 0〜最大値で管理する値
         class Health
         {
@@ -28,5 +26,4 @@ namespace GL
             int m_maxHealth = 8;
             int m_current = 8; // プレイ中の残量。保存せず、プレイ突入とリスタートで満タンに戻る
         };
-    } // namespace Level
-} // namespace GL
+} // namespace GL::Level

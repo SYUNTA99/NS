@@ -11,10 +11,8 @@
 class PlayerActor;
 
 // 自機の今の動きの値。書くのは PlayerActor だけで、見た目とエフェクトの部品は const の参照で問いの関数を読む
-namespace GL
+namespace GL::Player
 {
-    namespace Player
-    {
         //! @brief 今どの動きか
         //! @details PlayerActor::Motion
         //! が呼ばれた時の状態機械から組む。状態は状態の段の途中で変わるので、控えて持たない
@@ -230,5 +228,4 @@ namespace GL
             bool m_hasSwayEdge = false; // 前のフレームの端の番号を控えているか
             bool m_swayReachedEdge = false;
         };
-    } // namespace Player
-} // namespace GL
+} // namespace GL::Player

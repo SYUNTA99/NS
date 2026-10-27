@@ -564,45 +564,27 @@ void PlayerActor::ResetHealth() noexcept
     m_health.Reset();
 }
 
-bool PlayerActor::IsDead() const noexcept
-{
-    return m_health.IsDead();
-}
+bool PlayerActor::IsDead() const noexcept { return m_health.IsDead(); }
 
-int PlayerActor::Health() const noexcept
-{
-    return m_health.Current();
-}
+int PlayerActor::Health() const noexcept { return m_health.Current(); }
 
 void PlayerActor::SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept
 {
     m_input->SetDesiredMove(worldDir, speedScale01);
 }
 
-float PlayerActor::DesiredSpeedScale() const noexcept
-{
-    return m_input->DesiredSpeedScale();
-}
+float PlayerActor::DesiredSpeedScale() const noexcept { return m_input->DesiredSpeedScale(); }
 
-NS::Vector3 PlayerActor::DesiredDirection() const noexcept
-{
-    return m_input->DesiredDirection();
-}
+NS::Vector3 PlayerActor::DesiredDirection() const noexcept { return m_input->DesiredDirection(); }
 
 void PlayerActor::SetClimbMove(float localRight, float localForward) noexcept
 {
     m_input->SetClimbMove(localRight, localForward);
 }
 
-float PlayerActor::ClimbRight() const noexcept
-{
-    return m_input->ClimbRight();
-}
+float PlayerActor::ClimbRight() const noexcept { return m_input->ClimbRight(); }
 
-float PlayerActor::ClimbForward() const noexcept
-{
-    return m_input->ClimbForward();
-}
+float PlayerActor::ClimbForward() const noexcept { return m_input->ClimbForward(); }
 
 void PlayerActor::SetJumpPressed() noexcept
 {
@@ -639,10 +621,7 @@ void PlayerActor::SetMaxSpeedScale(float scale) noexcept
     m_maxSpeedScale = scale;
 }
 
-float PlayerActor::RunSpeed() const noexcept
-{
-    return m_params->m_runSpeed;
-}
+float PlayerActor::RunSpeed() const noexcept { return m_params->m_runSpeed; }
 
 bool PlayerActor::IsBodySlamming() const noexcept
 {
@@ -665,10 +644,7 @@ float PlayerActor::BodySlamProgress01() const noexcept
     return NS::Clamp(m_slam.m_travelled / m_slam.m_distanceTarget, 0.0f, 1.0f);
 }
 
-float PlayerActor::BodySlamDistance() const noexcept
-{
-    return m_params->m_bodySlamDistance;
-}
+float PlayerActor::BodySlamDistance() const noexcept { return m_params->m_bodySlamDistance; }
 
 bool PlayerActor::IsRebounding() const noexcept
 {
@@ -750,9 +726,7 @@ void PlayerActor::BeginTackleHit() noexcept
         NS_LOG_WARN(Game, "当たりの相手か自機の当たりの演出が無いので、段の束を始めない: 相手 {}", impact.targetId);
         return;
     }
-    // 束が足した持ち主へ渡す項目は、走っている項目の後ろに並ぶ
-    const std::size_t first = reaction->OwnerRuns().size();
-    (void)StartHitReaction(
+    const std::span<const NS::HitOwnerRun> runs = StartHitReactionRuns(
         GL::Level::TackleSetName("体当たり", impact.tier), impact.surfacePoint, BodySensorClassObj(), target);
     GL::Level::TackleHitDesc hit{.tier = impact.tier, .contact = impact.surfacePoint, .impactDir = impact.impactDir};
     if (impact.broke)
@@ -762,14 +736,13 @@ void PlayerActor::BeginTackleHit() noexcept
         ModelClassObj()->StopDrawShape();
         hit.stopOverride = impact.hitStopSteps;
     }
-    const std::vector<NS::HitOwnerRun>& runs = reaction->OwnerRuns();
-    for (std::size_t i = first; i < runs.size(); ++i)
+    for (const NS::HitOwnerRun& run : runs)
     {
-        if (runs[i].item.name == "TackleGhost")
+        if (run.item.name == "TackleGhost")
         {
-            m_ghostRun.Start(runs[i], this);
+            m_ghostRun.Start(run, this);
         }
-        if (runs[i].item.name == "HitEffect")
+        if (run.item.name == "HitEffect")
         {
             m_impactEffects->RequestHit();
         }
@@ -794,10 +767,9 @@ void PlayerActor::ReleaseTackleHit() noexcept
             m_slowedWorld = StartHitReaction(
                 GL::Level::TackleSetName("明け", impact.tier, "・紫"), impact.surfacePoint, BodySensorClassObj(), target);
         }
-        const std::vector<NS::HitOwnerRun>& runs = reaction->OwnerRuns();
-        for (std::size_t i = first; i < runs.size(); ++i)
+        for (const NS::HitOwnerRun& run : reaction->OwnerRunsSince(first))
         {
-            if (runs[i].item.name == "FlightEffect")
+            if (run.item.name == "FlightEffect")
             {
                 m_impactEffects->RequestFlight();
             }
