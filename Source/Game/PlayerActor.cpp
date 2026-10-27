@@ -28,6 +28,7 @@
 #include "Game/Player/States/TackleHitPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
@@ -372,7 +373,8 @@ void PlayerActor::VisualStep()
     m_chargeEffects->Update(this, center, m_charge, m_slam, motion, release, m_appearance.get(), impact);
     m_impactEffects->Update(this, this, center, m_slam, motion, m_body.get(), m_collider.get(), impact.lastImpact);
     // clang-format on
-    m_playerSounds->Update(this, NS::GetFrameDelta(this));
+    // 音を重ねない間隔なので、ヒットストップや遅い世界でも伸び縮みしない固定フレームの秒で数える
+    m_playerSounds->Update(this, NS::OS::FrameTimer::FixedDelta());
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
 #endif

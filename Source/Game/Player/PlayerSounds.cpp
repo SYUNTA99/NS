@@ -67,6 +67,7 @@ namespace GL
             m_jumpRequested = false;
             m_landRequested = false;
             m_landAllowed = false;
+            m_sinceLandSound = std::numeric_limits<float>::infinity();
         }
     } // namespace Player
 } // namespace GL

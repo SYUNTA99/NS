@@ -34,7 +34,7 @@ namespace GL
             //! 前に着地の音を鳴らしてから、着地の音の最短の間隔の秒が経っていなければ頼まない
             void RequestLand() noexcept;
 
-            //! 頼まれた音を鳴らし、頼みを消す。dt は前の Update からの秒
+            //! 頼まれた音を鳴らし、頼みを消す。dt は前の Update からの実際の秒 (アクターの時間の速さを掛けない)
             void Update(const NS::IGetAudio* audio, float dt);
 
             void PlayGoal(const NS::IGetAudio* audio) const;
