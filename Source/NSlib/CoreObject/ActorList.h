@@ -5,7 +5,6 @@
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorRef.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/UpdatePhase.h"
 
 #include <cstddef>
 #include <functional>
@@ -119,10 +118,14 @@ namespace NS
         void BeginPhase() noexcept;
         //! 段の更新を終える。Scene が同じ段の管理役を回し終えてから呼ぶ
         void EndPhase() noexcept;
-        //! 有効な SceneActor を配置順に更新する。BeginPhase と EndPhase の間に呼ぶ
-        //! Input は ReadInput、RenderPrep は PrepareRender、他は対応する段の Update
-        //! 途中で無効になった個体は呼ばない
-        void ExecutePhase(UpdatePhase phase);
+        //! @brief 出ているアクターを並びの順に Update する。BeginPhase と EndPhase の間に呼ぶ
+        //! @details runs は 1 体ごとに Update の直前に問い、偽なら飛ばす。前のアクターの Update の中で変わった答えも
+        //! そのフレームの残りから効く。途中で消えたアクターと、途中で入ったアクターは呼ばない
+        void UpdateActors(const std::function<bool(const SceneActor*)>& runs);
+        //! 出ているアクターを並びの順に PrepareRender する。BeginPhase と EndPhase の間に呼ぶ
+        void PrepareRenderActors();
+        //! 出ているアクターを並びの順に m_scheduled へ積み直す
+        void ScheduleAppeared();
 
         //! 永続 id を振り、名前が既存と重なれば番号を付けて 1 体加える
         //! シーンへの付けと開始は呼び手が済ませる
@@ -149,7 +152,7 @@ namespace NS
         void ApplyIdentity(SceneActor* obj, const ActorHeader& header);
 
         std::vector<std::unique_ptr<SceneActor>> m_actors; // アクターの単一所有リスト
-        std::vector<SceneActor*> m_scheduled; // ExecutePhase がその段で呼ぶ SceneActor を呼ぶ順に積む作業用の並び
+        std::vector<SceneActor*> m_scheduled; // UpdateActors・PrepareRenderActors が呼ぶ順に積む作業用の並び
         std::unordered_map<uint32, SceneActor*>
             m_index;                   // 永続 id からアクターへの索引。汚れていれば次に引く時に作り直す
         bool m_indexDirty = true;      // 索引が所有リストと食い違っているか

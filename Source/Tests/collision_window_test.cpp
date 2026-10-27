@@ -1,15 +1,12 @@
-#include "NSlib/Core/AABB.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/PhysicsScene.h"
 
 #include <gtest/gtest.h>
-
-#include <vector>
 
 namespace
 {
@@ -33,26 +30,6 @@ namespace
         }
     };
 
-    // 上面が y = 0 の床
-    void AddFloor(NS::Scene& scene)
-    {
-        NS::OBB floor{};
-        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
-        floor.halfExtentX = 5.0f;
-        floor.halfExtentY = 0.5f;
-        floor.halfExtentZ = 5.0f;
-        scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
-    }
-
-    // 床の上面をまたぐ細い柱。崖掴みが縁を探す箱と同じく幅 0
-    NS::AABB BandAcrossFloorTop()
-    {
-        NS::AABB region;
-        region.Center = NS::Vector3{2.0f, 0.0f, 2.0f};
-        region.Extents = NS::Vector3{0.0f, 0.25f, 0.0f};
-        return region;
-    }
-
     bool HitsDownFrom(const NS::Scene& scene, const NS::Vector3& from)
     {
         float distance = 0.0f;
@@ -60,48 +37,42 @@ namespace
     }
 } // namespace
 
-TEST(CollisionWindow, OverlapBoxIsEmptyOutsideAScene)
+TEST(CollisionWindow, CapsuleOverlapIsFalseOutsideAScene)
 {
     const std::unique_ptr<CollisionProbeActor> looseOwned = NS::CreateActor<CollisionProbeActor>();
-    CollisionProbeActor& loose = *looseOwned;
-    EXPECT_TRUE(NS::OverlapBoxCollision(&loose, BandAcrossFloorTop()).empty());
+    const NS::Phys::Capsule capsule{.center = NS::Vector3{0.0f, 0.0f, 0.0f}, .halfHeight = 0.5f, .radius = 0.5f};
+    EXPECT_FALSE(NS::OverlapsCapsuleCollision(looseOwned->collider.get(), capsule));
 }
 
-TEST(CollisionWindow, OverlapBoxAnswersLikeThePhysicsScene)
+// 45 度回した箱の角の外接箱には入るが、本当の形には入らない所を見分ける
+TEST(CollisionWindow, CapsuleOverlapUsesTheRealShapeOfATurnedBox)
 {
     NS::Scene scene;
-    AddFloor(scene);
+    const NS::Quaternion turn = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, NS::k_Pi / 4.0f);
+    scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, 0.0f, 0.0f}, turn, NS::Vector3{1.0f, 1.0f, 1.0f}),
+                           NS::Phys::ObjectLayers::Terrain);
     CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
-
-    const std::vector<NS::AABB> expected = scene.Physics().OverlapBox(BandAcrossFloorTop());
-    const std::vector<NS::AABB> actual = NS::OverlapBoxCollision(placed, BandAcrossFloorTop());
-    ASSERT_FALSE(expected.empty());
-    ASSERT_EQ(actual.size(), expected.size());
-    for (std::size_t i = 0; i < expected.size(); ++i)
-    {
-        EXPECT_FLOAT_EQ(actual[i].Center.x, expected[i].Center.x);
-        EXPECT_FLOAT_EQ(actual[i].Center.y, expected[i].Center.y);
-        EXPECT_FLOAT_EQ(actual[i].Center.z, expected[i].Center.z);
-        EXPECT_FLOAT_EQ(actual[i].Extents.x, expected[i].Extents.x);
-        EXPECT_FLOAT_EQ(actual[i].Extents.y, expected[i].Extents.y);
-        EXPECT_FLOAT_EQ(actual[i].Extents.z, expected[i].Extents.z);
-    }
+    // 外接箱の角 (1.414, 1.414) の近くは、回した箱の面から 1 m ほど離れている
+    const NS::Phys::Capsule nearTheBoundsCorner{.center = NS::Vector3{1.2f, 0.0f, 1.2f}, .halfHeight = 0.2f, .radius = 0.2f};
+    const NS::Phys::Capsule acrossTheFace{.center = NS::Vector3{1.3f, 0.0f, 0.0f}, .halfHeight = 0.2f, .radius = 0.2f};
+    EXPECT_FALSE(NS::OverlapsCapsuleCollision(placed->collider.get(), nearTheBoundsCorner));
+    EXPECT_TRUE(NS::OverlapsCapsuleCollision(placed->collider.get(), acrossTheFace));
 }
 
 TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
 {
     NS::Collider bare{nullptr, nullptr};
-    const NS::IUseCollision& bareWindow = bare;
+    const NS::IGetCollision& bareWindow = bare;
     EXPECT_EQ(bareWindow.GetPhysicsScene(), nullptr);
 
     const std::unique_ptr<CollisionProbeActor> looseOwned = NS::CreateActor<CollisionProbeActor>();
     CollisionProbeActor& loose = *looseOwned;
-    const NS::IUseCollision& looseWindow = *loose.collider;
+    const NS::IGetCollision& looseWindow = *loose.collider;
     EXPECT_EQ(looseWindow.GetPhysicsScene(), nullptr);
 
     NS::Scene scene;
     CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
-    const NS::IUseCollision& placedWindow = *placed->collider;
+    const NS::IGetCollision& placedWindow = *placed->collider;
     EXPECT_EQ(placedWindow.GetPhysicsScene(), &scene.Physics());
 }
 

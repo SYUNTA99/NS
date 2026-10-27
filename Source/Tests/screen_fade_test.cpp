@@ -123,17 +123,19 @@ TEST(ScreenFade, RepeatedRequestsDoNotRestartTheTransition)
     EXPECT_FALSE(fade.IsFading());
 }
 
-TEST(ScreenFade, SceneAdvancesOncePerStepWithoutWorldTimeOrAnActor)
+TEST(ScreenFade, SceneAdvancesOncePerStepWithoutWorldTimeWhileOthersAreHeld)
 {
     NS::Scene scene;
     scene.SetWorldSpeed(0.0f);
-    scene.HoldOthers(10);
+    // 止めを持つだけのアクター。暗転を進める物は無い
+    const NS::SceneActor* holder = scene.SpawnActor<NS::SceneActor>("Holder");
+    scene.HoldOthers(holder, 10);
     scene.Fade().BeginOut(NS::OS::FrameTimer::FixedDelta() * 4.0f);
     scene.OnUpdate();
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.25f);
     scene.OnUpdate();
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.5f);
-    EXPECT_EQ(scene.Actors().ActorCount(), 0u);
+    EXPECT_EQ(scene.Actors().ActorCount(), 1u);
 
     NS::ScreenFadeDirector director;
     director.Fade().BeginOut(0.0f);

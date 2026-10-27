@@ -3,6 +3,7 @@
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/SensorKinds.h"
 #include "Game/Level/SlamAim.h"
 #include "Game/Level/TackleGhost.h"
 #include "Game/Player/CameraTargetState.h"
@@ -11,6 +12,7 @@
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
+#include "NSlib/CoreObject/IGet/IGetCameraTarget.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
@@ -19,6 +21,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace NS
 {
@@ -61,13 +64,16 @@ namespace GL
 
 //! @brief 固定の部品を OnInit で組むプレイヤー
 //! @details 衝突の観測・裁定を身体の移動より先に行う。死とゴールは Scene の CourseDirector に通知する
-class PlayerActor : public NS::SceneActor
+class PlayerActor : public NS::SceneActor, public NS::IGetCameraTarget
 {
 public:
     PlayerActor() noexcept;
     ~PlayerActor() override;
 
     NS_REFLECT_DECLARE()
+    // =========================================================================
+    // コンポーネント・基本情報の参照
+    // =========================================================================
     //! 基底が所有する自機の状態機械。OnInit が組むので、Init の後から立ちの状態に居る
     [[nodiscard]] NS::StateMachineOf<PlayerActor>& States() noexcept { return *m_states; }
     [[nodiscard]] const NS::StateMachineOf<PlayerActor>& States() const noexcept { return *m_states; }
@@ -82,6 +88,9 @@ public:
     [[nodiscard]] const GL::Player::PlayerParams& Params() const noexcept { return *m_params; }
     [[nodiscard]] GL::Player::PlayerClips& Clips() noexcept { return *m_clips; }
     [[nodiscard]] const GL::Player::PlayerClips& Clips() const noexcept { return *m_clips; }
+    // =========================================================================
+    // チャージ・照準・演出サブシステムの参照
+    // =========================================================================
     [[nodiscard]] const GL::Level::ImpactInputJudge& ChargeJudge() const noexcept;
     //! 保持中の狙いの線を返す。入力方向ではなく、効果を掛ける前のカメラ方向を使う
     //! 押していない、カメラ管理なし、無効な方向では false で outLine を変更しない
@@ -112,10 +121,11 @@ public:
     [[nodiscard]] GL::Level::TackleGhost& Ghost() noexcept { return m_tackleGhost; }
     [[nodiscard]] const GL::Level::TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
 
-    [[nodiscard]] NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Player; }
-    void ReadInput() override;
+    // =========================================================================
+    // 更新・アニメーション・移動入力・ジャンプ状態
+    // =========================================================================
     using NS::SceneActor::Update;
-    //! 入力の段を通さず chargeHeld を差し込み、1 固定ステップ進める
+    //! 機器を読まずに chargeHeld を差し込み、1 固定ステップ進める。ほかの入力は部品の Set〜 で書いた値のまま
     void Update(bool chargeHeld);
     //! @brief 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
     //! @details Animation が無ければ何もしない。選んだクリップが無ければ立ちのクリップへ戻す
@@ -154,6 +164,9 @@ public:
     //! 自機だけの通知の受け口。身体の Events() は接地の 2 件を返すので名前を分ける
     [[nodiscard]] GL::Player::PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
 
+    // =========================================================================
+    // 体当たり（突進）・反動・エアダッシュ・丸まりの状態と操作
+    // =========================================================================
     //! 突進の状態か、突進を続ける当たる直前の状態に居る場合 true、それ以外の場合は false
     [[nodiscard]] bool IsBodySlamming() const noexcept;
     //! @brief 当たる直前の状態に居る場合 true、それ以外の場合は false
@@ -178,6 +191,31 @@ public:
     //! @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
     [[nodiscard]] NS::Vector3 BodySlamDirection() const noexcept { return m_slam.Direction(); }
     [[nodiscard]] bool IsRebounding() const noexcept;
+    //! エアダッシュの状態に居る場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsAirDashing() const noexcept;
+    //! 地形の面で返った反動の状態に居る場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsDashRebounding() const noexcept;
+    //! 今出せるエアダッシュの回数。接地の間と、反動の補正の段に入った時に 1 に戻る
+    [[nodiscard]] int AirDashesRemaining() const noexcept { return m_airDash.Remaining(); }
+    //! エアダッシュと地形の反動の値。見た目・カメラ・開発用の線・Replay が読む
+    [[nodiscard]] const GL::Player::AirDashStatus& AirDash() const noexcept { return m_airDash; }
+    //! @brief エアダッシュの動作 (.actor の動作 "AirDash") を、今の状態に結んで始める。エアダッシュの状態の OnEnter が呼ぶ
+    //! @details 動作の length がダッシュの長さで、状態は IsStateEnd で終わりを問う。ダッシュの速さもここで控え、
+    //! このダッシュの間は途中で動作を読み直しても変えない
+    //! @return 始めた場合 true。動作のタイムラインが無いか、Start が断った場合は false
+    [[nodiscard]] bool StartAirDashAction() noexcept;
+    //! @brief エアダッシュの 1 フレームの速度を書く。重力を掛けずに、向き × 控えたダッシュの速さにする
+    //! @details エアダッシュの間の速度の書き手は、押したフレームの BeginAirDash と、ここと KeepAirDashExitSpeed と、
+    //! 面に当たった時の BeginTerrainRebound だけ
+    void KeepAirDashSpeed() noexcept;
+    //! 当たらずに終わったエアダッシュの勢いを、向き × 欄「エアダッシュ後に残る速さ」で残す
+    void KeepAirDashExitSpeed() noexcept;
+    //! 接地していれば歩きへ、空中なら落下へ移す
+    void ChangeToWalkOrFall() noexcept;
+    //! @brief 地形の反動の 1 フレームを進める
+    //! @details 操作なしの段は速度を保つ。補正の段はダッシュを 1 回戻し、重力・減速・曲げを掛ける。
+    //! 補正の段を過ぎたら落下へ、登れる面に着いたら地上の状態へ移る
+    void UpdateDashRebound(float dt) noexcept;
     //! @brief 反動のまま着いた場合 true、それ以外の場合は false
     //! @details 反動の着地を判定するのはここだけ。見た目と演出は移動の後に、反動の状態は次のフレームの頭に読む
     [[nodiscard]] bool IsReboundLanded() const noexcept;
@@ -222,11 +260,18 @@ public:
     //! 丸まりで下端を揃えるため、立ち姿と玉で同じ球になる。ChangeCurled と判定の基準を揃える
     [[nodiscard]] NS::Sphere SlamBallAt(const NS::Vector3& rootPosition) const noexcept;
 
+    // =========================================================================
+    // 物理挙動・速度制御（重力・加速・減速・ジャンプ）
+    // =========================================================================
     //! 先行入力とコヨーテ猶予のタイマーを 1 フレーム進める
     void TickTimers(float dt) noexcept;
     //! @brief 入力の向きへ加速する。入力が無ければ何もしない
     //! @details 加速の上限は MaxSpeed × 倒し具合で、歩き速度を下回らない。空中は空中の加速度を使う
     void AccelerateToInputDirection(float dt) noexcept;
+    //! ダッシュと反動の後の落下で、空中の操作が戻る経過を 1 フレーム進める。落下の状態だけが呼ぶ
+    void AdvanceAirControlReturn(float dt) noexcept;
+    //! 次の落下の空中の操作を 0 から戻し直す。エアダッシュと反動を始める所が呼ぶ
+    void StartAirControlReturn() noexcept;
     //! 手を放した時の減速度で水平の速さを減らす
     void ApplyFriction(float dt) noexcept;
     //! ブレーキの減速度で水平の速さを減らす
@@ -252,6 +297,9 @@ public:
     //! @details 突進の間の水平の書き手はここだけ
     void UpdateBodySlam(float dt) noexcept;
 
+    // =========================================================================
+    // 崖掴まり・よじ登り
+    // =========================================================================
     //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
     [[nodiscard]] bool LedgeGrab() noexcept;
     //! @brief 掴んでいる縁を取り直し、その高さへ位置を合わせ直す
@@ -269,6 +317,9 @@ public:
     //! 手を放し、その場から落下させる
     void DropLedge() noexcept;
 
+    // =========================================================================
+    // 体当たり（突進）の要求・開始・方向解決・反動軌道
+    // =========================================================================
     //! 体当たりを要求する。charge01・overcharge01 は 0〜1 に丸め、非有限は 0
     //! 出せない要求は先行入力時間まで残す。突進中・身体の停止中は捨てる
     //! 空中発動は接地まで一度だけ。地上発動は回数を消費しない。向きは BodySlam が決める
@@ -318,7 +369,12 @@ public:
     //! 縁に掴まっている間とよじ登っている間の true は受けない
     void SetCurled(bool curled) noexcept;
 
+    // =========================================================================
+    // カメラ追従・コース進行・体力
+    // =========================================================================
     [[nodiscard]] GL::Player::CameraTargetState GetCameraTargetState() const;
+    //! GetCameraTargetState を追従カメラの欄へ写す。壊れた溜めと反動の値は WARN を出して渡さない
+    void WriteFollowState(NS::ThirdPersonFollow* vcam) const override;
 
     //! コースの進行役を用意する。全てのアクターが揃った後に呼ばれる
     void InitAfterPlacement() override;
@@ -342,6 +398,9 @@ public:
     [[nodiscard]] int Health() const noexcept;
 
 protected:
+    // =========================================================================
+    // シーンのステップ・メッセージ受信
+    // =========================================================================
     //! @brief 即死・ゴール・コースのやり直し・操作の停止の知らせに応じる
     //! @details 操作の停止は PlayerInput の止め (SetLocked) へ写し、止める時は CancelCharge で溜めを捨てる
     bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
@@ -352,19 +411,26 @@ protected:
     //! 残像・ロックオンの枠・突進の矢印は、入れたまま出ている間だけ描く
     void OnAppear() override;
     void OnDisappear() noexcept override;
-    //! PlayerInput の体当たりの押しと狙いの観測 (ObserveCharge)、
-    //! 体当たりの衝突の観測 (ImpactResolver::ObserveImpact)。副作用は無い
-    void ObserveStep() override;
-    //! @brief 溜めを進め (AdvanceCharge)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)
-    //! @details 裁定の答えにある自機を動かす事 (突進の打ち切り・反動・貫通の速度) は、ここで自機がする
+    //! @brief 入力を読み、押しと狙い (ObserveCharge) と衝突 (ImpactResolver::ObserveImpact) を見てから、溜めを進め
+    //! (AdvanceCharge)、衝突の裁定を出して知らせを送る (ImpactResolver::StepState)。終わりに状態機械の 1 歩を支度する
+    //! @details 裁定の答えにある自機を動かす事 (突進の打ち切り・反動・貫通の速度) は、ここで自機がする。
+    //! 止めの間は何もせず押しを明けへ持ち越す。CanMoveBody が真なら突進の発動を判定し、偽なら押しを下ろす。
+    //! 偽の間は、当たりの状態のフレームだけ状態機械を進め、ほかは SkipStateStep で飛ばす
     void DecideStep() override;
-    //! 突進の発動、状態機械の 1 歩、丸まりの解除と押下の消費。CanMoveBody が偽の間は押下の消費だけ
-    void StateStep() override;
+    //! 突進の発動を判定したフレームにだけ、丸まりの解除・長押しの控え・押しを下ろす・要求と狙いの経過を進める
+    void AfterStateStep() override;
     void BodyStep() override;
     //! 狙いの表示・命中反応・外見・溜め・命中エフェクトの順で更新する
     void VisualStep() override;
 
 private:
+    // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
+    NS_SENSORS_BEGIN()
+    NS_FOLLOW_SENSOR(m_bodySensor, GL::Level::SensorKind::PlayerBody, BodySensorVolume)
+    NS_SENSORS_END()
+    // 体のセンサーの世界座標の形。OnInit が m_collider を作った後にしか問われない
+    [[nodiscard]] NS::SensorVolume BodySensorVolume(const NS::Matrix& rootWorld) const noexcept;
+
     //! 体当たりの要求と、押したフレームの狙いの控え
     struct BodySlamRequest
     {
@@ -379,7 +445,7 @@ private:
         float aimAge = 0.0f;        // 狙いを控えてからの経過秒
     };
 
-    //! 観測の段に控えた押しと狙い。確定するのは AdvanceCharge で、確定した値は m_charge に写す
+    //! DecideStep の頭で控えた押しと狙い。確定するのは AdvanceCharge で、確定した値は m_charge に写す
     struct ChargeObservation
     {
         bool held = false;
@@ -389,10 +455,47 @@ private:
         bool hasAimTarget = false;
     };
 
-    //! 固定ステップごとに一度呼ぶ。移動後に接地と突進距離を更新する
+    // =========================================================================
+    // 内部ヘルパー：移動・エアダッシュ・地形反動
+    // =========================================================================
+    //! 固定ステップごとに一度呼ぶ。移動後に接地と突進距離を更新し、面に当たったエアダッシュと反動を返す
     void MoveBody(float dt) noexcept;
-    //! 稼働していないフレームでも、そのフレーム限りの入力は落とす。残すと再開した時に古い押下が効く
-    void SkipBodyStep() noexcept;
+    //! この歩にエアダッシュを出せる場合 true、それ以外の場合は false。押した瞬間で、回数が残り、出せる状態に居る
+    [[nodiscard]] bool CanStartAirDash() const noexcept;
+    //! @brief エアダッシュを始める。向きはスティック、倒していなければ自機の向き、無ければカメラの前
+    //! @details 回数を 1 減らし、押したフレームの体の更新から速さが出るよう速度もここで書く。
+    //! ダッシュの速さが 0 以下なら WARN を出して始めず、回数も減らさない
+    //! @return 始めた場合 true
+    [[nodiscard]] bool BeginAirDash() noexcept;
+    //! @brief エアダッシュの速さ (m/s)。欄「エアダッシュの距離」を、動作 "AirDash" の length の固定フレームで進む速さ
+    //! @details 動作から毎回引き直す。ダッシュの最中に読むのは、始めた時に控えた速さの方。
+    //! 動作が無いか length が 0 か距離が非数なら 0
+    [[nodiscard]] float AirDashSpeed() const noexcept;
+    //! 今のスティックの向きを倒し続けた秒を数え、欄「行きたい向きとみなす秒」以上ならダッシュの向きにする。毎フレーム観測の段で呼ぶ
+    void UpdateIntendedDirection(float dt) noexcept;
+    //! @brief 体を動かした直後に呼ぶ。エアダッシュか地形の反動の間に面が遮ったら、その面で反動を始める
+    //! @details 当て方が欄「反動に数える当て方の下限」より浅い面と、反動の間の登れる面は数えない
+    void TryBeginTerrainRebound() noexcept;
+    //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、返る速さを書く。ずらしは ApplyReboundShift が後で掛ける
+    //! @param[in] baseSpeed 返る力の上限 (m/s)。エアダッシュならダッシュの速さに地形の反動の倍率を掛けた値、反動の続きなら今の速さ
+    void BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vector3& normal, float baseSpeed) noexcept;
+    //! @brief 反動の操作なしの段の間に呼ぶ。スティックで隣の向きが選べたら、飛んでいる速さを保って向きを 1 段回す
+    //! @details 掛けるのは反動 1 回に 1 度。当たる前から倒したままのスティックも数える
+    void ApplyReboundShift() noexcept;
+    //! 欄「向きの表の分割数」と「表に傾きの段を入れる」で作った反動の向きの表
+    [[nodiscard]] std::vector<NS::Vector3> ReboundTable() const;
+    //! 今のスティックを、カメラから見た向きのまま、返る向き assigned に垂直な面の向きにする。倒していなければゼロ
+    [[nodiscard]] NS::Vector3 ReboundShiftInput(const NS::Vector3& assigned) const noexcept;
+    //! @brief 地形の反動の束を、当て方の強さで選んで始める
+    //! @details 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。向きを使う項目は向き無しになる
+    void StartTerrainReboundReaction(const NS::Vector3& contact, float facing) noexcept;
+    //! 欄「反動の線を描く」が真なら、最後の地形の反動の向きの線と、今の段の輪を描く
+    void DrawTerrainRebound() const;
+    //! 体を動かさないフレームでも、そのフレーム限りの押しは下ろす。残すと再開した時に古い押下が効く
+    void DropPresses() noexcept;
+    // =========================================================================
+    // 内部ヘルパー：突進・衝突裁定・命中反応・丸まり切り替え
+    // =========================================================================
     //! 突進の進んだ距離を足し、距離を使い切るか進めなくなったら突進を終える
     //! @details 進めた距離は動かした後にしか出ないので、打ち切りの判定は状態でなくここに置く
     //! 受け取るのは直前の Move で実際に動いた量
@@ -420,8 +523,6 @@ private:
     [[nodiscard]] bool IsHeldByTackleHit() const noexcept;
     //! 最後の当たりの相手の体のセンサー。相手が居なければ nullptr
     [[nodiscard]] NS::HitSensor* LastTackleTargetSensor() const noexcept;
-    //! 接地していれば歩きへ、空中なら落下へ移す
-    void ChangeToWalkOrFall() noexcept;
     //! @brief 裁定の予測から、当たる直前の状態へ入るか、外れた予測で突進へ戻るかを決める。ApplyImpactOrders の後に呼ぶ
     //! @details 入るのは突進の線の先に予測した相手の段に当たる直前の動作があり、検知まで動作の長さ以内の時。
     //! 入る時は前の当たりの演出を打ち切る。検知したフレームは何もしない
@@ -445,6 +546,9 @@ private:
     [[nodiscard]] bool TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept;
     //! 押したフレームの狙いを控える。離すまでの遅れのぶん、向きを添えない発動はこの向きから始める
     void MarkBodySlamAim() noexcept;
+    // =========================================================================
+    // 内部ヘルパー：チャージ観測・接地復帰・状態進行・アニメーション選択
+    // =========================================================================
     //! @brief このフレームの押しを控え、押していれば狙いの線と狙う相手を探して控える
     //! @details 控えるのは m_chargeObserved だけで、判定・速度・丸まりには触らない
     //! @param[in] held 体当たりのボタンを押しているか
@@ -472,14 +576,27 @@ private:
     void PrepareStateStep();
     //! 状態機械を進めた後の控えの更新。丸まりを解く判定・長押しの控え・押下の消費・要求と狙いの経過を進める
     void FinishStateStep(float dt);
+    //! @brief DecideStep の終わりに状態機械を進める支度をする
+    //! @details 止めの間は何もしない。PrepareStateStep を呼んだら真を返し、AfterStateStep が FinishStateStep を呼ぶ
+    [[nodiscard]] bool PrepareOrSkipStateStep();
     //! @brief 掴まり位置から掴める縁を探す
+    //! @details 手を伸ばす向きは今掴んでいる面の向き。面が折れていれば、見つけた面の向きを返す
     //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
     //! @param[out] outTop 見つけた縁の上端の y。見つからない場合は書き換えない
-    //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
-    [[nodiscard]] bool FindLedgeTopAt(const NS::Vector3& hangPos, float& outTop) const noexcept;
+    //! @param[out] outFaceNormal 見つけた面の、自機の側を向く水平の向き。見つからない場合は書き換えない
+    //! @param[out] outHangPos 見つけた面から半径だけ外のぶら下がりの中心。見つからない場合は書き換えない
+    //! @return 手の高さの下と、手より上へ欄「掴まっている縁の上向きの許し」までの帯に縁があり、登り先も塞がって
+    //! いない場合 true、それ以外の場合は false
+    [[nodiscard]] bool FindLedgeTopAt(const NS::Vector3& hangPos,
+                                      float& outTop,
+                                      NS::Vector3& outFaceNormal,
+                                      NS::Vector3& outHangPos) const noexcept;
     // 状態と水平の速さから役の欄を選ぶ。字面が空の役は立ちの欄に代える
     [[nodiscard]] const NS::AnimClip* ChooseClip(float lateralSpeed) const noexcept;
     [[nodiscard]] float ChoosePlaybackSpeed(const NS::Anim::AnimClip* clip, float lateralSpeed) const noexcept;
+    // =========================================================================
+    // メンバ変数：所有コンポーネント・サブシステム・体力
+    // =========================================================================
     std::unique_ptr<GL::Player::PlayerParams> m_params;
     std::unique_ptr<GL::Player::PlayerClips> m_clips;
     std::unique_ptr<NS::PlayerInput> m_input;
@@ -508,10 +625,18 @@ private:
     GL::Level::Health m_health;
     std::optional<NS::Vector3> m_courseStartPosition; // MsgCourseStart の時の位置。やり直しで戻る先
 
+    // =========================================================================
+    // メンバ変数：通常移動・ジャンプ・突進・反動・チャージ・崖掴まり状態
+    // =========================================================================
+    bool m_inputInjected = false;     // Update(bool) の間。機器を読まず、差し込んだ入力のまま進める
+    bool m_stateStepPrepared = false; // DecideStep が PrepareStateStep を呼んだか。書くのは DecideStep だけ
     bool m_prevJumpHeld = false;
     int m_jumpsRemaining = 1;
     float m_coyoteTimer = 0.0f; // コヨーテ猶予の残り秒
     float m_bufferTimer = 0.0f; // 先行ジャンプ入力の残り秒
+    // ダッシュと反動で始め、着地とやり直しで終える。経過は落下の状態に居る間だけ数える
+    bool m_airControlReturning = false;
+    float m_airControlReturnElapsed = 0.0f;
 
     float m_maxSpeedScale = 1.0f; // 走行速度に掛ける倍率。書くのは AdvanceCharge と CancelCharge
 
@@ -519,6 +644,7 @@ private:
     BodySlamRequest m_request;
     GL::Player::ReboundStatus m_rebound;
     GL::Player::SkidStatus m_skid;
+    GL::Player::AirDashStatus m_airDash;
     GL::Player::ChargeStatus m_charge;
     ChargeObservation m_chargeObserved;
     // 紫に入った回数。紫になりきった時に揺れが来る端を毎回入れ替える。溜めを捨てても戻さない

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Core/OBB.h"
@@ -20,7 +19,6 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 
 #include <span>
-#include <vector>
 
 namespace NS
 {
@@ -54,7 +52,7 @@ namespace NS
         //! 非有限値で速度が壊れると戻せないので、非有限値か dt が 0 以下なら変更しない
         inline void AddGravity(Vector3& velocity, float strength, float dt) noexcept
         {
-            if (!std::isfinite(strength) || !std::isfinite(dt) || !(dt > 0.0f))
+            if (!std::isfinite(strength) || !std::isfinite(dt) || !IsPositive(dt))
             {
                 return;
             }
@@ -126,10 +124,9 @@ namespace NS
                                        Vector3& outNormal,
                                        JPH::BodyID ignoredBody) const;
 
-            //! @brief region に重なる body の世界座標の境界箱を集めて返す
-            //! @details 重なりを見るのも返すのも軸並行の境界箱で、shape の形は見ない
-            //! 回転した box や mesh では形より大きい箱が返る
-            [[nodiscard]] std::vector<AABB> OverlapBox(const AABB& region) const;
+            //! @brief capsule がどれかの body の本当の形に重なっていれば true
+            //! @details 回した box や mesh も外接箱でなく形で見る。layer は問わない。形を作れない capsule は false
+            [[nodiscard]] bool OverlapsCapsule(const Capsule& capsule) const;
 
             //! body をこの PhysicsScene から外して壊す。DetachBody で外してある body も壊す。無効な BodyID は何もしない
             void RemoveBody(JPH::BodyID id);

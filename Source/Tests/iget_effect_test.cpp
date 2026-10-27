@@ -1,5 +1,5 @@
 #include "NSlib/CoreObject/ClassObjs/Effect.h"
-#include "NSlib/CoreObject/IUse/IUseEffect.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "TestEffectActor.h"
@@ -15,7 +15,7 @@ namespace
     using NS::EffectRecord;
 } // namespace
 
-TEST(IUseEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
+TEST(IGetEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
 {
     NS::Scene scene;
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
@@ -32,7 +32,7 @@ TEST(IUseEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
     EXPECT_EQ(record->name, "test.spark");
 }
 
-TEST(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
+TEST(IGetEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 {
     NS::Scene scene;
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
@@ -56,7 +56,7 @@ TEST(IUseEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
     EXPECT_EQ(record->endStep.value(), 1);
 }
 
-TEST(IUseEffectTest, StopEffectAfterEndsOnTheScheduledStep)
+TEST(IGetEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 {
     NS::Scene scene;
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
@@ -71,7 +71,7 @@ TEST(IUseEffectTest, StopEffectAfterEndsOnTheScheduledStep)
     EXPECT_TRUE(NS::FindEffect(&actor, id)->endStep.has_value());
 }
 
-TEST(IUseEffectTest, ActorWithoutTheSlotDoesNothing)
+TEST(IGetEffectTest, ActorWithoutTheSlotDoesNothing)
 {
     NS::SceneActor actor;
     ASSERT_EQ(actor.GetEffect(), nullptr);

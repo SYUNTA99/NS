@@ -279,40 +279,43 @@ namespace NS
         m_updating = false;
     }
 
-    void ActorList::ExecutePhase(UpdatePhase phase)
+    void ActorList::ScheduleAppeared()
     {
         NS_ASSERT(Scene, m_updating, "BeginPhase の前に段を回している");
         m_scheduled.clear();
         for (const std::unique_ptr<SceneActor>& obj : m_actors)
         {
-            if (!obj->IsAppeared())
-            {
-                continue;
-            }
-            if (phase == UpdatePhase::Input || phase == UpdatePhase::RenderPrep || obj->Phase() == phase)
+            if (obj->IsAppeared())
             {
                 m_scheduled.push_back(obj.get());
             }
         }
+    }
+
+    void ActorList::UpdateActors(const std::function<bool(const SceneActor*)>& runs)
+    {
+        ScheduleAppeared();
         for (SceneActor* actor : m_scheduled)
         {
             // 解放の口は段の間は断るので、積んだ生ポインタは生きている。途中で消えた物だけ飛ばす
+            if (!actor->IsAppeared() || !runs(actor))
+            {
+                continue;
+            }
+            actor->Update();
+        }
+    }
+
+    void ActorList::PrepareRenderActors()
+    {
+        ScheduleAppeared();
+        for (SceneActor* actor : m_scheduled)
+        {
             if (!actor->IsAppeared())
             {
                 continue;
             }
-            if (phase == UpdatePhase::Input)
-            {
-                actor->ReadInput();
-            }
-            else if (phase == UpdatePhase::RenderPrep)
-            {
-                actor->PrepareRender();
-            }
-            else
-            {
-                actor->Update();
-            }
+            actor->PrepareRender();
         }
     }
 

@@ -97,13 +97,13 @@ namespace NS
             return 0.0f;
         }
         Vector3 forward = pose.target - pose.position;
-        if (!(forward.Length() > k_Epsilon))
+        if (!HasPositiveMagnitude(forward))
         {
             return 0.0f;
         }
         forward.Normalize();
         float depth = Dot(at - pose.position, forward);
-        if (!(depth > 0.0f))
+        if (!IsPositive(depth))
         {
             depth = (at - pose.position).Length();
         }
@@ -121,14 +121,14 @@ namespace NS
             return tremor;
         }
         Vector3 forward = pose.target - pose.position;
-        if (!(forward.Length() > k_Epsilon))
+        if (!HasPositiveMagnitude(forward))
         {
             return tremor;
         }
         forward.Normalize();
         // 画面の右と上。真上か真下を見ている時は世界の X を右にする
         Vector3 right = Cross(Vector3{0.0f, 1.0f, 0.0f}, forward);
-        if (right.Length() > k_Epsilon)
+        if (HasPositiveMagnitude(right))
         {
             right.Normalize();
         }

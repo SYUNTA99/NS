@@ -46,7 +46,7 @@ namespace GL
                 }
                 mark.age += dt;
                 // 寿命が 0 以下か非数の跡は、出た次の歩で消す
-                if (!(mark.age < m_lifeSeconds))
+                if (!NS::IsGreaterThan(m_lifeSeconds, mark.age))
                 {
                     mark.live = false;
                 }

@@ -3,7 +3,7 @@
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"

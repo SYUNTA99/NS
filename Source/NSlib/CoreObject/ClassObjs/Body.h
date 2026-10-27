@@ -11,19 +11,21 @@ namespace NS
 
     //! @brief 速度と接地を保持し、Collider の移動結果を根の姿勢へ反映する部品
     //! @details 自動更新はしない。持ち主が固定更新の経過秒 dt で各操作を呼ぶ
+    //! SetVelocity・SetLateralVelocity・SetVerticalVelocity・Move は、非数か無限大を書くと NS_ASSERT が止める
+    //! NS_ASSERT は診断の道具で、NS_ASSERT を切る GameRelease では止めずに書く。非数を作らないのは書く側の計算の受け持ち
     class Body : public Object
     {
     public:
         [[nodiscard]] Vector3 Velocity() const noexcept { return m_velocity; }
-        void SetVelocity(const Vector3& v) noexcept { m_velocity = v; }
+        void SetVelocity(const Vector3& v) noexcept;
 
-        //! 水平成分だけを取り出した速度で y は 0。長さが k_Epsilon 未満なら 0 を返す
+        //! 水平成分だけを取り出した速度で y は 0。長さが微小 (IsNearlyZeroHorizontal) なら 0 を返す
         [[nodiscard]] Vector3 LateralVelocity() const noexcept;
         //! 水平成分だけを差し替える。引数の y は読まない
         void SetLateralVelocity(const Vector3& v) noexcept;
 
         [[nodiscard]] float VerticalVelocity() const noexcept { return m_velocity.y; }
-        void SetVerticalVelocity(float y) noexcept { m_velocity.y = y; }
+        void SetVerticalVelocity(float y) noexcept;
 
         [[nodiscard]] bool IsGrounded() const noexcept { return m_isGrounded; }
         //! 直前の Move より前の接地。着地したフレームを見分けるのに使う
@@ -31,13 +33,10 @@ namespace NS
         //! 掴まりのように移動を通さず位置を直に置く時、接地の控えも合わせて置く
         void SetGrounded(bool grounded) noexcept;
 
-        //! 水平の単位方向へ加速し、横滑りを減らす。上限を超える順方向速度は保つ
-        //! turningDrag・acceleration は m/s²、topSpeed は m/s、dt は秒
-        void Accelerate(
-            const Vector3& direction, float turningDrag, float acceleration, float topSpeed, float dt) noexcept;
-
-        //! 水平の速さを 1 フレームに deceleration × dt ずつ減らし、ちょうど 0 で止める。縦は触らない
-        void Decelerate(float deceleration, float dt) noexcept;
+        //! 直前の Move で、速度の向きへ進むのを地形の面が遮ったか。面に沿う動きは遮ったに数えない
+        [[nodiscard]] bool IsBlocked() const noexcept { return m_isBlocked; }
+        //! 直前の Move で遮った面のうち、速度に一番向かい合った面の外向きの単位法線。遮らなかったら 0
+        [[nodiscard]] Vector3 BlockNormal() const noexcept { return m_blockNormal; }
 
         //! 重力の値は呼び手が選ぶ。負の値で重力方向へ加速する。非有限値または dt が 0 以下なら変更しない
         void Gravity(float gravity, float dt) noexcept;
@@ -56,6 +55,8 @@ namespace NS
         Vector3 m_velocity{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
         bool m_wasGrounded = false; // 直前の Move より前の接地
+        bool m_isBlocked = false;
+        Vector3 m_blockNormal{0.0f, 0.0f, 0.0f};
         BodyEvents m_events;
     };
 } // namespace NS

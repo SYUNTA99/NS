@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/Phys/PhysicsScene.h"
 
 namespace NS
@@ -14,7 +14,7 @@ namespace NS
         return Matrix::CreateFromQuaternion(localRotation) * Matrix::CreateTranslation(centerOffset) * world;
     }
 
-    void Collision::SyncToPhysics(const Matrix& world, const IUseCollision* user)
+    void Collision::SyncToPhysics(const Matrix& world, const IGetCollision* user)
     {
         NS_ASSERT(Scene, user != nullptr, "Collision::SyncToPhysics: 物理シーンの窓口が null");
         Phys::PhysicsScene* physics = user->GetPhysicsScene();
@@ -41,7 +41,7 @@ namespace NS
         m_shapeChanged = false;
     }
 
-    void Collision::RemoveFromPhysics(const IUseCollision* user)
+    void Collision::RemoveFromPhysics(const IGetCollision* user)
     {
         NS_ASSERT(Scene, user != nullptr, "Collision::RemoveFromPhysics: 物理シーンの窓口が null");
         Phys::PhysicsScene* physics = user->GetPhysicsScene();
@@ -52,7 +52,7 @@ namespace NS
         physics->DetachBody(m_bodyId);
     }
 
-    void Collision::ReturnToPhysics(const Matrix& world, const IUseCollision* user)
+    void Collision::ReturnToPhysics(const Matrix& world, const IGetCollision* user)
     {
         NS_ASSERT(Scene, user != nullptr, "Collision::ReturnToPhysics: 物理シーンの窓口が null");
         Phys::PhysicsScene* physics = user->GetPhysicsScene();
@@ -65,7 +65,7 @@ namespace NS
         SyncToPhysics(world, user);
     }
 
-    void Collision::Unregister(const IUseCollision* user)
+    void Collision::Unregister(const IGetCollision* user)
     {
         NS_ASSERT(Scene, user != nullptr, "Collision::Unregister: 物理シーンの窓口が null");
         if (m_bodyId.IsInvalid())

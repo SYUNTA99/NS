@@ -1,11 +1,11 @@
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/Core/Assert.h"
 
 #include "NSlib/CoreObject/System/CameraManager.h"
 
 namespace NS
 {
-    bool AddCameraModifier(const IUseCamera* user, std::unique_ptr<CameraModifier> modifier)
+    bool AddCameraModifier(const IGetCamera* user, std::unique_ptr<CameraModifier> modifier)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         CameraManager* cameras = user->GetCameraManager();
@@ -17,21 +17,21 @@ namespace NS
         return cameras->AddModifier(std::move(modifier));
     }
 
-    bool StartCameraShake(const IUseCamera* user, const CameraShakeDesc& desc)
+    bool StartCameraShake(const IGetCamera* user, const CameraShakeDesc& desc)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         CameraManager* cameras = user->GetCameraManager();
         return cameras != nullptr && cameras->StartShake(desc, user);
     }
 
-    bool StartCameraZoomRoll(const IUseCamera* user, const CameraZoomRollDesc& desc)
+    bool StartCameraZoomRoll(const IGetCamera* user, const CameraZoomRollDesc& desc)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         CameraManager* cameras = user->GetCameraManager();
         return cameras != nullptr && cameras->StartZoomRoll(desc, user);
     }
 
-    void StopCameraEffects(const IUseCamera* user) noexcept
+    void StopCameraEffects(const IGetCamera* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (CameraManager* cameras = user->GetCameraManager())
@@ -40,21 +40,14 @@ namespace NS
         }
     }
 
-    bool AddCameraTrauma(const IUseCamera* user, const CameraTraumaDesc& desc)
+    bool AddCameraTrauma(const IGetCamera* user, const CameraTraumaDesc& desc)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         CameraManager* cameras = user->GetCameraManager();
         return cameras != nullptr && cameras->AddTrauma(desc, user);
     }
 
-    bool HoldCameraTrauma(const IUseCamera* user, float level, const CameraTraumaShape& shape)
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        CameraManager* cameras = user->GetCameraManager();
-        return cameras != nullptr && cameras->HoldTrauma(level, shape);
-    }
-
-    void StopCameraHitEffects(const IUseCamera* user) noexcept
+    void StopCameraHitEffects(const IGetCamera* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (CameraManager* cameras = user->GetCameraManager())
@@ -66,7 +59,7 @@ namespace NS
         }
     }
 
-    float CalcCameraSideSign(const IUseCamera* user, const Vector3& direction) noexcept
+    float CalcCameraSideSign(const IGetCamera* user, const Vector3& direction) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const CameraManager* cameras = user->GetCameraManager();
@@ -77,7 +70,7 @@ namespace NS
         return cameras->SideSignOf(direction);
     }
 
-    Vector3 CalcCameraForwardHorizontal(const IUseCamera* user) noexcept
+    Vector3 CalcCameraForwardHorizontal(const IGetCamera* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const CameraManager* cameras = user->GetCameraManager();
@@ -88,7 +81,7 @@ namespace NS
         return cameras->ForwardHorizontal();
     }
 
-    std::optional<CameraPose> GetCameraViewPose(const IUseCamera* user) noexcept
+    std::optional<CameraPose> GetCameraViewPose(const IGetCamera* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         const CameraManager* cameras = user->GetCameraManager();
@@ -99,7 +92,7 @@ namespace NS
         return cameras->ViewPose();
     }
 
-    void InitVirtualCamera(const IUseCamera* user, VirtualCamera* vcam)
+    void InitVirtualCamera(const IGetCamera* user, VirtualCamera* vcam)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         NS_ASSERT(Scene, vcam != nullptr, "InitVirtualCamera: 仮想カメラが null");
@@ -109,7 +102,7 @@ namespace NS
         }
     }
 
-    void EnableVirtualCamera(const IUseCamera* user, const VirtualCamera* vcam) noexcept
+    void EnableVirtualCamera(const IGetCamera* user, const VirtualCamera* vcam) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         NS_ASSERT(Scene, vcam != nullptr, "EnableVirtualCamera: 仮想カメラが null");
@@ -119,7 +112,7 @@ namespace NS
         }
     }
 
-    void DisableVirtualCamera(const IUseCamera* user, const VirtualCamera* vcam) noexcept
+    void DisableVirtualCamera(const IGetCamera* user, const VirtualCamera* vcam) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         NS_ASSERT(Scene, vcam != nullptr, "DisableVirtualCamera: 仮想カメラが null");
@@ -129,7 +122,7 @@ namespace NS
         }
     }
 
-    void EndVirtualCamera(const IUseCamera* user, const VirtualCamera* vcam) noexcept
+    void EndVirtualCamera(const IGetCamera* user, const VirtualCamera* vcam) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         NS_ASSERT(Scene, vcam != nullptr, "EndVirtualCamera: 仮想カメラが null");

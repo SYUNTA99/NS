@@ -4,6 +4,7 @@
 #include "Editor/EditorAppearance.h"
 #include "Editor/EditorUi.h"
 #include "Editor/AssetPicker.h"
+#include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -452,7 +453,48 @@ namespace NS
                 bool activated = false; // 編集が始まった
                 bool committed = false; // ウィジェットが非活性化した
                 bool popupActive = false;
+                bool wrote = false; // この描画で欄へ書こうとした
             };
+
+            // 編集の間に最後に書けなかった理由を、欄のウィジェットの ID ごとに覚える鍵。書けたら Written に戻す
+            constexpr const char* k_RejectedWriteKey = "field-write-rejected";
+
+            // 書けた時だけ changed を立てる。書けなかった時は今の値が残るので、理由を覚えて離した時に知らせる
+            void WriteField(void* owner, const FieldDesc& field, const void* value, FieldWidgetResult& result) noexcept
+            {
+                const FieldWriteResult written = field.set(owner, value);
+                ImGui::GetStateStorage()->SetInt(ImGui::GetID(k_RejectedWriteKey), static_cast<int>(written));
+                result.wrote = true;
+                if (written == FieldWriteResult::Written)
+                {
+                    result.changed = true;
+                }
+            }
+
+            // 入力を離した時に、編集の最後の書き込みが拒まれていれば WARN を 1 回出す。ドラッグの間は毎フレーム出さない
+            // 編集が始まった描画で書いていなければ、前の編集の理由を捨てる。離す前に行が消えた編集の理由が、
+            // 同じ ID の別のアクターの欄に出ないようにする
+            void WarnRejectedWriteOnCommit(const FieldDesc& field, const FieldWidgetResult& result) noexcept
+            {
+                ImGuiStorage* storage = ImGui::GetStateStorage();
+                const ImGuiID id = ImGui::GetID(k_RejectedWriteKey);
+                if (result.activated && !result.wrote)
+                {
+                    storage->SetInt(id, static_cast<int>(FieldWriteResult::Written));
+                }
+                if (!result.committed)
+                {
+                    return;
+                }
+                const FieldWriteResult last =
+                    static_cast<FieldWriteResult>(storage->GetInt(id, static_cast<int>(FieldWriteResult::Written)));
+                storage->SetInt(id, static_cast<int>(FieldWriteResult::Written));
+                if (last == FieldWriteResult::Written)
+                {
+                    return;
+                }
+                NS_LOG_WARN(App, "欄 {} に入れた値を書かず、今の値を残した: {}", FieldLabel(field), FieldWriteResultText(last));
+            }
 
             void DrawStringFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
             {
@@ -467,8 +509,7 @@ namespace NS
                 if (ImGui::InputTextWithHint("##value", "文字を入力", value.data(), value.capacity() + 1,
                                              ImGuiInputTextFlags_CallbackResize, resize, &value))
                 {
-                    field.set(owner, &value);
-                    result.changed = true;
+                    WriteField(owner, field, &value, result);
                 }
                 if (ImGui::IsItemHovered() && !value.empty())
                 {
@@ -516,6 +557,7 @@ namespace NS
                     ImGui::PopTextWrapPos();
                     ImGui::EndTooltip();
                 }
+                bool picked = false;
                 ImGui::SetNextWindowSize(ImVec2{640.0f, 480.0f}, ImGuiCond_Appearing);
                 if (ImGui::BeginPopup("asset-picker"))
                 {
@@ -531,7 +573,7 @@ namespace NS
                         if (!value.empty())
                         {
                             value.clear();
-                            result.changed = true;
+                            picked = true;
                         }
                         ImGui::CloseCurrentPopup();
                     }
@@ -565,7 +607,7 @@ namespace NS
                                 if (value != option.value)
                                 {
                                     value = option.value;
-                                    result.changed = true;
+                                    picked = true;
                                 }
                                 ImGui::CloseCurrentPopup();
                                 break;
@@ -583,9 +625,9 @@ namespace NS
                 result.popupActive = open;
                 result.committed |= wasOpen && !open;
                 storage->SetBool(wasOpenId, open);
-                if (result.changed)
+                if (picked)
                 {
-                    field.set(owner, &value);
+                    WriteField(owner, field, &value, result);
                 }
             }
 
@@ -637,8 +679,7 @@ namespace NS
                 field.get(owner, &value);
                 if (DrawColorPicker(field, value, ImGui::CalcItemWidth(), result))
                 {
-                    field.set(owner, &value);
-                    result.changed = true;
+                    WriteField(owner, field, &value, result);
                 }
             }
 
@@ -659,8 +700,7 @@ namespace NS
                     {
                         value.reset();
                     }
-                    field.set(owner, &value);
-                    result.changed = true;
+                    WriteField(owner, field, &value, result);
                 }
                 if (ImGui::IsItemHovered())
                 {
@@ -677,17 +717,18 @@ namespace NS
                 if (DrawColorPicker(field, color, pickerWidth, result))
                 {
                     value = color;
-                    field.set(owner, &value);
-                    result.changed = true;
+                    WriteField(owner, field, &value, result);
                 }
             }
 
-            // ActorRef の欄。参照候補が無ければ id を打たせ、あれば候補から選ばせる。値を変えたら true
-            bool DrawActorRefFieldWidget(void* owner,
+            // ActorRef の欄。参照候補が無ければ id を打たせ、あれば候補から選ばせる
+            // 書くのは候補の窓を閉じた後の 1 か所。書けなかった理由は欄の ID で覚えるので、窓の中では書かない
+            void DrawActorRefFieldWidget(void* owner,
                                          const FieldDesc& field,
-                                         std::span<const ActorRefOption> refOptions) noexcept
+                                         std::span<const ActorRefOption> refOptions,
+                                         FieldWidgetResult& result) noexcept
             {
-                bool changed = false;
+                bool picked = false;
                 ActorRef value{};
                 field.get(owner, &value);
 
@@ -710,10 +751,9 @@ namespace NS
                         {
                             value.id = static_cast<uint32>(id);
                         }
-                        field.set(owner, &value);
-                        changed = true;
+                        WriteField(owner, field, &value, result);
                     }
-                    return changed;
+                    return;
                 }
 
                 const char* currentLabel = "未設定";
@@ -734,8 +774,7 @@ namespace NS
                     if (ImGui::Selectable("未設定", !value.IsSet()))
                     {
                         value.id = 0;
-                        field.set(owner, &value);
-                        changed = true;
+                        picked = true;
                     }
                     for (const ActorRefOption& option : refOptions)
                     {
@@ -743,14 +782,16 @@ namespace NS
                         if (ImGui::Selectable(option.label.c_str(), option.id == value.id))
                         {
                             value.id = option.id;
-                            field.set(owner, &value);
-                            changed = true;
+                            picked = true;
                         }
                         ImGui::PopID();
                     }
                     ImGui::EndCombo();
                 }
-                return changed;
+                if (picked)
+                {
+                    WriteField(owner, field, &value, result);
+                }
             }
 
             // 曲線のグラフが ImGui の状態の保存に使う識別子。グラフと同じ ID スタックの中で作る
@@ -1034,6 +1075,166 @@ namespace NS
                 return edited;
             }
 
+            // グラフを押した瞬間に、掴む対象（パン・接線ハンドル・点）を決めて storage に控える
+            void BeginCurveGrab(const Curve& value,
+                                const CurveGraphView& view,
+                                ImGuiStorage* storage,
+                                const CurveGraphIds& ids,
+                                const ImVec2& mouse,
+                                bool leftHeld,
+                                bool altHeld,
+                                int highlighted,
+                                int& selected) noexcept
+            {
+                // ドラッグの途中で隣の点へ乗り移ると形が壊れるため、掴む点は押した瞬間に決めて離すまで追う
+                // 右ボタンの活性化で前回の番号が残ると、右を押したまま左を押した時に別の点を掴むため空にする
+                int grabbedNow = -1;
+                int grabKind = k_GrabPoint;
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Middle) || (leftHeld && altHeld))
+                {
+                    grabKind = k_GrabPan;
+                }
+                else if (leftHeld)
+                {
+                    // 点よりハンドルを先に判定する。重なった時に点の掴みが勝つと選択が移って接線を触れないため
+                    if (selected >= 0 && static_cast<uint32>(selected) < value.count)
+                    {
+                        const uint32 selectedIndex = static_cast<uint32>(selected);
+                        const ImVec2 center =
+                            CurveToScreen(view, value.keys[selectedIndex].x, value.keys[selectedIndex].y);
+                        const ImVec2 inTip =
+                            TangentHandleTip(view, center, DisplayTangent(value, selectedIndex, true), true);
+                        const ImVec2 outTip =
+                            TangentHandleTip(view, center, DisplayTangent(value, selectedIndex, false), false);
+                        const float inDx = inTip.x - mouse.x;
+                        const float inDy = inTip.y - mouse.y;
+                        const float outDx = outTip.x - mouse.x;
+                        const float outDy = outTip.y - mouse.y;
+                        constexpr float k_HandleRadiusSq = k_CurveGrabRadius * k_CurveGrabRadius;
+                        if (selectedIndex > 0 && inDx * inDx + inDy * inDy <= k_HandleRadiusSq)
+                        {
+                            grabbedNow = selected;
+                            grabKind = k_GrabInHandle;
+                        }
+                        else if (selectedIndex + 1 < value.count && outDx * outDx + outDy * outDy <= k_HandleRadiusSq)
+                        {
+                            grabbedNow = selected;
+                            grabKind = k_GrabOutHandle;
+                        }
+                    }
+                    if (grabKind == k_GrabPoint)
+                    {
+                        grabbedNow = highlighted;
+                        storage->SetInt(ids.selectedId, grabbedNow);
+                        selected = grabbedNow;
+                    }
+                }
+                storage->SetInt(ids.grabbedId, grabbedNow);
+                storage->SetInt(ids.grabKindId, grabKind);
+                if (grabbedNow >= 0 && grabKind == k_GrabPoint)
+                {
+                    // 掴んだ瞬間に点がカーソルへ飛ぶのを避けるため、点の中心と押した位置のずれを控える
+                    const Curve::Key& key = value.keys[grabbedNow];
+                    const ImVec2 center = CurveToScreen(view, key.x, key.y);
+                    storage->SetFloat(ids.grabOffsetXId, center.x - mouse.x);
+                    storage->SetFloat(ids.grabOffsetYId, center.y - mouse.y);
+                }
+            }
+
+            // 掴んでいる点のドラッグ移動
+            [[nodiscard]] bool DragCurvePoint(Curve& value,
+                                              const CurveGraphView& view,
+                                              ImGuiStorage* storage,
+                                              const CurveGraphIds& ids,
+                                              const ImVec2& mouse,
+                                              bool snapToGrid,
+                                              uint32 grabbed,
+                                              int& highlighted) noexcept
+            {
+                const ImVec2 target{mouse.x + storage->GetFloat(ids.grabOffsetXId, 0.0f),
+                                    mouse.y + storage->GetFloat(ids.grabOffsetYId, 0.0f)};
+                // 移動先の x y だけ写す。ScreenToCurve の返り値ごと代入するとモードと接線が既定へ戻るため
+                const Curve::Key targetKey = ScreenToCurve(view, target);
+                Curve::Key moved = value.keys[grabbed];
+                moved.x = targetKey.x;
+                moved.y = targetKey.y;
+                if (snapToGrid)
+                {
+                    const float xStep = CurveGridStep(view.xMax - view.xMin, view.size.x, 80.0f);
+                    const float yStep = CurveGridStep(view.yMax - view.yMin, view.size.y, 40.0f);
+                    moved.x = std::round(moved.x / xStep) * xStep;
+                    moved.y = std::round(moved.y / yStep) * yStep;
+                }
+                if (moved == value.keys[grabbed])
+                {
+                    return false;
+                }
+                const uint32 movedTo = MoveKey(value, grabbed, moved);
+                storage->SetInt(ids.grabbedId, static_cast<int>(movedTo));
+                storage->SetInt(ids.selectedId, static_cast<int>(movedTo));
+                highlighted = static_cast<int>(movedTo);
+                return true;
+            }
+
+            // 掴んでいる接線ハンドルのドラッグ更新
+            [[nodiscard]] bool DragCurveTangentHandle(Curve& value,
+                                                      const CurveGraphView& view,
+                                                      const ImVec2& mouse,
+                                                      uint32 grabbed,
+                                                      int grabKind) noexcept
+            {
+                bool edited = false;
+                Curve::Key& key = value.keys[grabbed];
+                const ImVec2 center = CurveToScreen(view, key.x, key.y);
+                const float slope = ScreenToTangent(view, center, mouse, grabKind == k_GrabInHandle);
+                // 昇格は動かした瞬間に行う。掴んだだけで昇格するとクリックだけでモードが変わるため
+                if (key.mode != Curve::InterpMode::Manual)
+                {
+                    const float inNow = DisplayTangent(value, grabbed, true);
+                    const float outNow = DisplayTangent(value, grabbed, false);
+                    key.mode = Curve::InterpMode::Manual;
+                    key.inTangent = inNow;
+                    key.outTangent = outNow;
+                    edited = true;
+                }
+                if (grabKind == k_GrabInHandle && slope != key.inTangent)
+                {
+                    key.inTangent = slope;
+                    edited = true;
+                }
+                if (grabKind == k_GrabOutHandle && slope != key.outTangent)
+                {
+                    key.outTangent = slope;
+                    edited = true;
+                }
+                return edited;
+            }
+
+            // グラフ上のホバーカーソル・点のツールチップ・操作方法ヘルプを描く
+            void DrawCurveHoverHelp(const Curve& value, bool hovered, int highlighted) noexcept
+            {
+                if (hovered && highlighted >= 0)
+                {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+                }
+                if (hovered && highlighted >= 0 && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+                {
+                    const Curve::Key& key = value.keys[highlighted];
+                    ImGui::SetTooltip("点 %d\n上下に動かす: 値を変更\n左右に動かす: 位置を変更\nX: %.4f\nY: %.4f",
+                                      highlighted + 1, key.x, key.y);
+                }
+                ImGui::TextDisabled("操作方法 (?)");
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::SetTooltip("X: 入力 / Y: 値\nホイール: カーソルを中心にズーム\n"
+                                      "Ctrl+ホイール: 横軸のみ / Shift+ホイール: 縦軸のみ\n"
+                                      "中ボタン・Alt+左ドラッグ: 表示移動 / F: 全体表示\n"
+                                      "点をドラッグ: 移動 / Ctrl: 目盛りに吸着\n"
+                                      "ダブルクリック: 点を追加 / 右クリック: メニュー\n"
+                                      "数値欄をCtrl+クリック: 直接入力");
+                }
+            }
+
             // 曲線の欄。グラフのドラッグ・メニュー・数値の並びで点を編集する
             bool DrawCurveEditor(Curve& value, FieldWidgetResult& result, float width, float height) noexcept
             {
@@ -1113,59 +1314,8 @@ namespace NS
 
                 if (ImGui::IsItemActivated())
                 {
-                    // ドラッグの途中で隣の点へ乗り移ると形が壊れるため、掴む点は押した瞬間に決めて離すまで追う
-                    // 右ボタンの活性化で前回の番号が残ると、右を押したまま左を押した時に別の点を掴むため空にする
-                    int grabbedNow = -1;
-                    int grabKind = k_GrabPoint;
-                    if (ImGui::IsMouseDown(ImGuiMouseButton_Middle) || (leftHeld && io.KeyAlt))
-                    {
-                        grabKind = k_GrabPan;
-                    }
-                    else if (leftHeld)
-                    {
-                        // 点よりハンドルを先に判定する。重なった時に点の掴みが勝つと選択が移って接線を触れないため
-                        if (selected >= 0 && static_cast<uint32>(selected) < value.count)
-                        {
-                            const uint32 selectedIndex = static_cast<uint32>(selected);
-                            const ImVec2 center =
-                                CurveToScreen(view, value.keys[selectedIndex].x, value.keys[selectedIndex].y);
-                            const ImVec2 inTip =
-                                TangentHandleTip(view, center, DisplayTangent(value, selectedIndex, true), true);
-                            const ImVec2 outTip =
-                                TangentHandleTip(view, center, DisplayTangent(value, selectedIndex, false), false);
-                            const float inDx = inTip.x - mouse.x;
-                            const float inDy = inTip.y - mouse.y;
-                            const float outDx = outTip.x - mouse.x;
-                            const float outDy = outTip.y - mouse.y;
-                            constexpr float k_HandleRadiusSq = k_CurveGrabRadius * k_CurveGrabRadius;
-                            if (selectedIndex > 0 && inDx * inDx + inDy * inDy <= k_HandleRadiusSq)
-                            {
-                                grabbedNow = selected;
-                                grabKind = k_GrabInHandle;
-                            }
-                            else if (selectedIndex + 1 < value.count && outDx * outDx + outDy * outDy <= k_HandleRadiusSq)
-                            {
-                                grabbedNow = selected;
-                                grabKind = k_GrabOutHandle;
-                            }
-                        }
-                        if (grabKind == k_GrabPoint)
-                        {
-                            grabbedNow = highlighted;
-                            storage->SetInt(ids.selectedId, grabbedNow);
-                            selected = grabbedNow;
-                        }
-                    }
-                    storage->SetInt(ids.grabbedId, grabbedNow);
-                    storage->SetInt(ids.grabKindId, grabKind);
-                    if (grabbedNow >= 0 && grabKind == k_GrabPoint)
-                    {
-                        // 掴んだ瞬間に点がカーソルへ飛ぶのを避けるため、点の中心と押した位置のずれを控える
-                        const Curve::Key& key = value.keys[grabbedNow];
-                        const ImVec2 center = CurveToScreen(view, key.x, key.y);
-                        storage->SetFloat(ids.grabOffsetXId, center.x - mouse.x);
-                        storage->SetFloat(ids.grabOffsetYId, center.y - mouse.y);
-                    }
+                    BeginCurveGrab(
+                        value, view, storage, ids, mouse, leftHeld, io.KeyAlt, highlighted, selected);
                 }
 
                 // 左の単クリックは掴みと選択に使うため、追加は空きのダブルクリックか右クリックのメニューに分ける
@@ -1203,58 +1353,15 @@ namespace NS
                     const int grabKind = storage->GetInt(ids.grabKindId, k_GrabPoint);
                     if (grabbed >= 0 && static_cast<uint32>(grabbed) < value.count)
                     {
+                        const uint32 grabbedIndex = static_cast<uint32>(grabbed);
                         if (grabKind == k_GrabPoint)
                         {
-                            const ImVec2 target{mouse.x + storage->GetFloat(ids.grabOffsetXId, 0.0f),
-                                                mouse.y + storage->GetFloat(ids.grabOffsetYId, 0.0f)};
-                            // 移動先の x y だけ写す。ScreenToCurve
-                            // の返り値ごと代入するとモードと接線が既定へ戻るため
-                            const Curve::Key targetKey = ScreenToCurve(view, target);
-                            Curve::Key moved = value.keys[grabbed];
-                            moved.x = targetKey.x;
-                            moved.y = targetKey.y;
-                            if (io.KeyCtrl)
-                            {
-                                const float xStep = CurveGridStep(view.xMax - view.xMin, view.size.x, 80.0f);
-                                const float yStep = CurveGridStep(view.yMax - view.yMin, view.size.y, 40.0f);
-                                moved.x = std::round(moved.x / xStep) * xStep;
-                                moved.y = std::round(moved.y / yStep) * yStep;
-                            }
-                            if (moved != value.keys[grabbed])
-                            {
-                                const uint32 movedTo = MoveKey(value, static_cast<uint32>(grabbed), moved);
-                                storage->SetInt(ids.grabbedId, static_cast<int>(movedTo));
-                                storage->SetInt(ids.selectedId, static_cast<int>(movedTo));
-                                highlighted = static_cast<int>(movedTo);
-                                edited = true;
-                            }
+                            edited |= DragCurvePoint(
+                                value, view, storage, ids, mouse, io.KeyCtrl, grabbedIndex, highlighted);
                         }
                         else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.0f))
                         {
-                            Curve::Key& key = value.keys[grabbed];
-                            const ImVec2 center = CurveToScreen(view, key.x, key.y);
-                            const float slope = ScreenToTangent(view, center, mouse, grabKind == k_GrabInHandle);
-                            // 昇格は動かした瞬間に行う。掴んだだけで昇格するとクリックだけでモードが変わるため
-                            if (key.mode != Curve::InterpMode::Manual)
-                            {
-                                const uint32 grabbedIndex = static_cast<uint32>(grabbed);
-                                const float inNow = DisplayTangent(value, grabbedIndex, true);
-                                const float outNow = DisplayTangent(value, grabbedIndex, false);
-                                key.mode = Curve::InterpMode::Manual;
-                                key.inTangent = inNow;
-                                key.outTangent = outNow;
-                                edited = true;
-                            }
-                            if (grabKind == k_GrabInHandle && slope != key.inTangent)
-                            {
-                                key.inTangent = slope;
-                                edited = true;
-                            }
-                            if (grabKind == k_GrabOutHandle && slope != key.outTangent)
-                            {
-                                key.outTangent = slope;
-                                edited = true;
-                            }
+                            edited |= DragCurveTangentHandle(value, view, mouse, grabbedIndex, grabKind);
                         }
                     }
                 }
@@ -1283,26 +1390,7 @@ namespace NS
 
                 DrawCurveGraph(
                     *ImGui::GetWindowDrawList(), view, value, highlighted, storage->GetInt(ids.selectedId, -1));
-                if (hovered && highlighted >= 0)
-                {
-                    ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
-                }
-                if (hovered && highlighted >= 0 && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
-                {
-                    const Curve::Key& key = value.keys[highlighted];
-                    ImGui::SetTooltip("点 %d\n上下に動かす: 値を変更\n左右に動かす: 位置を変更\nX: %.4f\nY: %.4f",
-                                      highlighted + 1, key.x, key.y);
-                }
-                ImGui::TextDisabled("操作方法 (?)");
-                if (ImGui::IsItemHovered())
-                {
-                    ImGui::SetTooltip("X: 入力 / Y: 値\nホイール: カーソルを中心にズーム\n"
-                                      "Ctrl+ホイール: 横軸のみ / Shift+ホイール: 縦軸のみ\n"
-                                      "中ボタン・Alt+左ドラッグ: 表示移動 / F: 全体表示\n"
-                                      "点をドラッグ: 移動 / Ctrl: 目盛りに吸着\n"
-                                      "ダブルクリック: 点を追加 / 右クリック: メニュー\n"
-                                      "数値欄をCtrl+クリック: 直接入力");
-                }
+                DrawCurveHoverHelp(value, hovered, highlighted);
 
                 edited |= DrawCurveSelection(value, *storage, ids, result, width);
                 edited |= DrawCurveNumbers(value, storage, ids, result);
@@ -1373,8 +1461,7 @@ namespace NS
                 {
                     // x を左右へドラッグすると並びが崩れるため、編集のたびに並べ直してから書き戻す
                     value.SortKeys();
-                    field.set(owner, &value);
-                    result.changed = true;
+                    WriteField(owner, field, &value, result);
                 }
             }
 
@@ -1394,8 +1481,7 @@ namespace NS
                     field.get(owner, &value);
                     if (ImGui::DragFloat("##value", &value, 0.05f))
                     {
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1405,8 +1491,7 @@ namespace NS
                     field.get(owner, &value);
                     if (ImGui::DragInt("##value", &value))
                     {
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1416,8 +1501,7 @@ namespace NS
                     field.get(owner, &value);
                     if (ImGui::Checkbox("##value", &value))
                     {
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1432,8 +1516,7 @@ namespace NS
                     if (edit.changed)
                     {
                         value = Vector2{xy[0], xy[1]};
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1448,8 +1531,7 @@ namespace NS
                     if (edit.changed)
                     {
                         value = Vector3{xyz[0], xyz[1], xyz[2]};
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1466,8 +1548,7 @@ namespace NS
                     if (edit.changed)
                     {
                         value = EulerDegreesToQuaternion(Vector3{xyz[0], xyz[1], xyz[2]});
-                        field.set(owner, &value);
-                        result.changed = true;
+                        WriteField(owner, field, &value, result);
                     }
                     break;
                 }
@@ -1491,7 +1572,7 @@ namespace NS
                     break;
                 }
                 case FieldType::ActorRef:
-                    result.changed |= DrawActorRefFieldWidget(owner, field, refOptions);
+                    DrawActorRefFieldWidget(owner, field, refOptions, result);
                     break;
                 case FieldType::Curve:
                     DrawCurveFieldWidget(owner, field, result);
@@ -1506,6 +1587,7 @@ namespace NS
                 {
                     result.committed |= ImGui::IsItemDeactivated();
                 }
+                WarnRejectedWriteOnCommit(field, result);
                 return result;
             }
 

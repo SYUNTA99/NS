@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
@@ -97,6 +97,37 @@ namespace NS
             }
         });
         return created;
+    }
+
+    void SceneActor::CreateDeclaredSensors()
+    {
+        SensorDeclarations sensors{this};
+        DeclareSensors(sensors);
+    }
+
+    void SceneActor::CreateShapeSensor(std::unique_ptr<HitSensor>& member, uint8 kind, HitSensorShape shape)
+    {
+        ShapeHitSensor* sensor = EmplaceClassObj<HitSensor, ShapeHitSensor>(member, this);
+        if (sensor == nullptr)
+        {
+            return;
+        }
+        sensor->SetKind(kind);
+        sensor->SetShape(shape);
+        InitHitSensor(this, sensor);
+    }
+
+    void SceneActor::CreateFollowSensor(std::unique_ptr<HitSensor>& member,
+                                        uint8 kind,
+                                        std::function<SensorVolume(const Matrix& rootWorld)> volume)
+    {
+        FollowHitSensor* sensor = EmplaceClassObj<HitSensor, FollowHitSensor>(member, this, std::move(volume));
+        if (sensor == nullptr)
+        {
+            return;
+        }
+        sensor->SetKind(kind);
+        InitHitSensor(this, sensor);
     }
 
     IStateMachine* SceneActor::GetStateMachine() noexcept
@@ -226,7 +257,7 @@ namespace NS
     bool SetFrameRate(SceneActor* actor, float rate) noexcept
     {
         NS_ASSERT(Scene, actor != nullptr, "SetFrameRate: アクターが null");
-        if (!std::isfinite(rate) || !(rate > 0.0f))
+        if (!std::isfinite(rate) || !IsPositive(rate))
         {
             NS_LOG_ERROR(
                 Scene, "SetFrameRate: 体の倍率 {} は正の有限値でない。前の {} を残す", rate, actor->m_frameRate);
@@ -250,6 +281,7 @@ namespace NS
         {
             m_actorFileName = std::string{actorFile};
         }
+        CreateDeclaredSensors();
         OnInit();
     }
 
@@ -280,6 +312,8 @@ namespace NS
         {
             m_scene = info->scene;
         }
+        // センサーは OnInit の前に作るので、OnInit と状態の OnEnter から読める。一覧へ入れるのでシーンを決めた後に作る
+        CreateDeclaredSensors();
         OnInit();
         ApplyActorFile(this);
         // 束と動作は .actor だけに書き、シーンでは上書きしない
@@ -334,11 +368,7 @@ namespace NS
 
     void SceneActor::OnStart()
     {
-        NS_ASSERT(Scene,
-                  Phase() != UpdatePhase::Input && Phase() != UpdatePhase::RenderPrep,
-                  "{} の段が、全部の Actor を回す段になっている。Update が呼ばれない",
-                  ClassName());
-        // 描く物とセンサーは OnInit で入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
+        // 描く物は OnInit で、センサーはその前に入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
         // 出ている物だけを OnAppear が物理シーンへ入れる
         // clang-format off
         if (m_collision) { InitCollision(this, m_collision.get(), Root().WorldMatrix()); }
@@ -430,28 +460,29 @@ namespace NS
 
     void SceneActor::Update()
     {
+        m_skipStateStep = false;
         // clang-format off
         if (m_effect) { m_effect->BeginStep(GetEffectScene()); }
         if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(); }
         // clang-format on
-        ObserveStep();
         DecideStep();
         // 止めは状態の時計だけを止める。束で始めた演出は頼まれた係と模型が自分の歩で進める
-        if (!IsHitStopping())
+        if (!IsHitStopping() && !m_skipStateStep)
         {
-            StateStep();
             // 時計は状態の歩なので、状態を進めたフレームにだけ進める
             // clang-format off
+            if (m_stateMachine) { m_stateMachine->Update(GetFrameDelta(this)); }
             if (m_actionTimeline) { m_actionTimeline->Advance(ActionTimelineSelfOf()); }
             // clang-format on
+            AfterStateStep();
         }
-        // StateStep の中で束を始めた時は、そのフレームの身体から止める
+        // 状態機械の中で束を始めた時は、そのフレームの身体から止める
         if (!IsHitStopping())
         {
             BodyStep();
         }
         // 置く側の当たりは体を動かした後の姿へ揃える。姿も形も変わっていなければ Collision は何もしない
-        // 状態の段で消えたアクターの body は物理シーンの外にあるので揃えない
+        // 状態機械の中で消えたアクターの body は物理シーンの外にあるので揃えない
         // clang-format off
         if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(Root().WorldMatrix(), this); }
         // clang-format on
@@ -471,13 +502,6 @@ namespace NS
         Root().Snapshot();
         // clang-format off
         if (m_model) { m_model->Snapshot(); }
-        // clang-format on
-    }
-
-    void SceneActor::StateStep()
-    {
-        // clang-format off
-        if (m_stateMachine) { m_stateMachine->Update(GetFrameDelta(this)); }
         // clang-format on
     }
 

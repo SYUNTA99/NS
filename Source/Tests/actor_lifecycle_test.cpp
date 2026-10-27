@@ -59,7 +59,7 @@ namespace
         int updates = 0;
 
     protected:
-        void StateStep() override { ++updates; }
+        void DecideStep() override { ++updates; }
     };
 
     class LifeUI final : public NS::UIActor
@@ -89,18 +89,18 @@ TEST(ActorLifecycle, DisappearStopsUpdatesAndAppearResumesOnce)
     LifeProbeActor* actor = scene.SpawnActor<LifeProbeActor>("LifeProbeActor");
     LifeProbeActor* other = scene.SpawnActor<LifeProbeActor>("LifeProbeActor");
     EXPECT_TRUE(actor->IsAppeared());
-    scene.ExecutePhase(NS::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::UpdatePhase::Actors);
     EXPECT_EQ(actor->updates, 1);
     EXPECT_EQ(other->updates, 1);
     actor->Disappear();
     actor->Disappear();
     EXPECT_FALSE(actor->IsAppeared());
-    scene.ExecutePhase(NS::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::UpdatePhase::Actors);
     EXPECT_EQ(actor->updates, 1);
     EXPECT_EQ(other->updates, 2);
     actor->Appear();
     actor->Appear();
-    scene.ExecutePhase(NS::UpdatePhase::Triggers);
+    scene.ExecutePhase(NS::UpdatePhase::Actors);
     EXPECT_EQ(actor->updates, 2);
     EXPECT_EQ(other->updates, 3);
 }
@@ -228,6 +228,22 @@ TEST(ActorLifecycle, EveryWayInGivesTheCollisionRightAway)
 
     ASSERT_NE(scene.SpawnFromJson(LifeBoxJson(50, "FromJson", 20.0f)), nullptr);
     EXPECT_TRUE(HitsDownAt(scene, 20.0f));
+}
+
+// id の無い JSON から入れたアクターは id が 0 で重なる。止め始めたアクターだけを止め始めた物と見る
+TEST(ActorLifecycle, AnotherActorWithoutAnIdIsNotTheHolderOfTheHold)
+{
+    NS::Scene scene;
+    NS::SceneActor* holder = scene.SpawnFromJson(LifeBoxJson(0, "Holder", 0.0f));
+    NS::SceneActor* other = scene.SpawnFromJson(LifeBoxJson(0, "Other", 5.0f));
+    ASSERT_NE(holder, nullptr);
+    ASSERT_NE(other, nullptr);
+    ASSERT_EQ(holder->Id(), other->Id());
+
+    scene.HoldOthers(holder, 2);
+
+    EXPECT_TRUE(scene.IsOthersHolder(holder));
+    EXPECT_FALSE(scene.IsOthersHolder(other));
 }
 
 TEST(ActorLifecycle, DisappearRemovesTheCollisionAndAppearBringsItBack)

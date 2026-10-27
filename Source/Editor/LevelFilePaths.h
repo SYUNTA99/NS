@@ -3,7 +3,6 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace NS
 {
@@ -27,8 +26,5 @@ namespace NS
         //! @brief レベル保存用ディレクトリが存在することを確認し、なければ作成する
         //! @return 作成に失敗した場合は false を返す
         [[nodiscard]] bool EnsureScenesDirectoryExists() noexcept;
-
-        //! Assets 配下の有効な .scene を相対名の辞書順で返す。直下のファイルと無効な名前は除外する
-        [[nodiscard]] std::vector<std::string> EnumerateLevelFiles() noexcept;
     } // namespace Editor
 } // namespace NS

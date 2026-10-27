@@ -1,6 +1,5 @@
 #pragma once
 
-#include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 
 namespace GL
@@ -44,24 +43,18 @@ namespace GL
             //! 宙にいて上昇しておらず、突進中でない場合 true、それ以外の場合は false
             [[nodiscard]] static bool Judge(bool grounded, float verticalVelocity, bool wasSlamming) noexcept
             {
-                return !grounded && !(verticalVelocity > 0.0f) && !wasSlamming;
+                return !grounded && !NS::IsPositive(verticalVelocity) && !wasSlamming;
             }
 
-            //! @brief 箱の上端が手の高さの帯に入り、手が箱の水平の範囲の中にあるかを返す
-            //! @param[in] probe 手の位置。世界座標
-            //! @param[in] box 調べる箱
-            //! @param[in] belowHand 手より下に許す上端の深さ。単位は m
-            //! @param[in] aboveHand 手より上に許す上端の高さ。単位は m
+            //! @brief 縁の上面の高さが、手の高さの帯に入っているかを返す
+            //! @param[in] handY 手の高さ。世界座標
+            //! @param[in] top 縁の上面の高さ。世界座標
+            //! @param[in] belowHand 手より下に許す上面の深さ。単位は m
+            //! @param[in] aboveHand 手より上に許す上面の高さ。単位は m
             //! @return 入っている場合 true、それ以外の場合は false
-            [[nodiscard]] static bool InBand(const NS::Vector3& probe,
-                                             const NS::AABB& box,
-                                             float belowHand,
-                                             float aboveHand) noexcept
+            [[nodiscard]] static bool InBand(float handY, float top, float belowHand, float aboveHand) noexcept
             {
-                const float top = box.Center.y + box.Extents.y;
-                return !(top < probe.y - belowHand || top > probe.y + aboveHand ||
-                         probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x ||
-                         probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z);
+                return top >= handY - belowHand && top <= handY + aboveHand;
             }
         };
 
@@ -81,6 +74,12 @@ namespace GL
         {
         public:
             [[nodiscard]] static bool Judge(bool grounded, bool walking) noexcept { return grounded && !walking; }
+
+            //! 接地していて、移動入力がなく、水平に止まっている場合 true、それ以外の場合は false
+            [[nodiscard]] static bool Judge(bool grounded, bool hasInput, bool stopped) noexcept
+            {
+                return grounded && !hasInput && stopped;
+            }
         };
 
         //! 切り返しのブレーキの判定
@@ -99,7 +98,7 @@ namespace GL
                 {
                     return false;
                 }
-                return direction.x * lateralVelocity.x + direction.z * lateralVelocity.z < threshold;
+                return NS::DotHorizontal(direction, lateralVelocity) < threshold;
             }
         };
 
@@ -112,7 +111,7 @@ namespace GL
             //! 接地だけを見ると宙へ出る前に立ちへ移る
             [[nodiscard]] static bool Judge(bool grounded, float verticalVelocity) noexcept
             {
-                return grounded && !(verticalVelocity > 0.0f);
+                return grounded && !NS::IsPositive(verticalVelocity);
             }
         };
 
@@ -163,9 +162,22 @@ namespace GL
         class PlayerJudgeLocomotion
         {
         public:
+            struct StateFlags
+            {
+                bool idle = false;
+                bool walk = false;
+                bool fall = false;
+                bool rebound = false;
+            };
+
+            [[nodiscard]] static bool Judge(const StateFlags& flags) noexcept
+            {
+                return flags.idle || flags.walk || flags.fall || flags.rebound;
+            }
+
             [[nodiscard]] static bool Judge(bool idle, bool walk, bool fall, bool rebound) noexcept
             {
-                return idle || walk || fall || rebound;
+                return Judge(StateFlags{idle, walk, fall, rebound});
             }
         };
     } // namespace Player

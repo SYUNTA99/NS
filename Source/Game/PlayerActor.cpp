@@ -13,7 +13,9 @@
 #include "Game/Player/PlayerClips.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/States/AirDashPlayerState.h"
 #include "Game/Player/States/BeforeContactPlayerState.h"
+#include "Game/Player/States/DashReboundPlayerState.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -27,7 +29,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AnimClip.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
@@ -38,7 +40,7 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
 #include <algorithm>
@@ -78,14 +80,6 @@ void PlayerActor::OnInit()
     NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
     // 残像は本体の Model を元に描く
     NS::InitDraw(this, &m_tackleGhost, &Root(), m_model.get());
-    // 範囲が照合する体は移動の当たりと同じカプセル。寸法の正は Collider の欄で、センサーは毎回それを読む
-    NS::FollowHitSensor* bodySensor =
-        CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(
-            m_bodySensor, this, [collider = m_collider.get()](const NS::Matrix&) {
-                return NS::SensorVolume::Capsule(collider->WorldCapsule());
-            });
-    NS::InitHitSensor(this, bodySensor);
-    GL::Level::SetSensorKind(bodySensor, GL::Level::SensorKind::PlayerBody);
     CreateClassObj(m_resolver);
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actionTimeline);
@@ -96,7 +90,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_effect);
     CreateClassObj(m_chargeEffects);
     CreateClassObj(m_impactEffects);
-    // 部品を全部作った後に組む。先頭の立ちの OnEnter が触る物が揃っている。並べた型が移れる状態の全部になる
+    // 部品を全部作った後に組む。並べた型が移れる状態の全部になる。先頭の立ちへは最初の更新の初めに入る
     (void)BuildStateMachine<PlayerActor,
                             GL::Player::IdlePlayerState,
                             GL::Player::WalkPlayerState,
@@ -108,7 +102,9 @@ void PlayerActor::OnInit()
                             GL::Player::BrakePlayerState,
                             GL::Player::TackleHitPlayerState,
                             GL::Player::ReboundPlayerState,
-                            GL::Player::SkidPlayerState>(this, m_states);
+                            GL::Player::SkidPlayerState,
+                            GL::Player::AirDashPlayerState,
+                            GL::Player::DashReboundPlayerState>(this, m_states);
 }
 
 GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
@@ -126,7 +122,18 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
         .rebounding = IsRebounding(),
         .forcedSlamming = IsBodySlamming() && m_slam.m_forced,
         .slamDirection = BodySlamDirection(),
+        .widenView = IsAirDashing() || IsDashRebounding(),
     };
+    // 地形の反動はカメラの向きを回さず、回す入力も止めない。スティックの基準がずれず、戻ったダッシュが思った向きへ出る
+    // 帯の縦は表で丸めた向きから取るので、同じ当て方なら毎回同じ画面になる
+    if (IsDashRebounding())
+    {
+        state.rebound.rebounding = true;
+        state.rebound.slamDirection = NS::Vector3{};
+        state.rebound.pullBack = false;
+        state.rebound.holdLook = false;
+        state.rebound.verticalLean = std::clamp(m_airDash.LastRebound().shifted.y, -1.0f, 1.0f);
+    }
     // 真ん中の反動は、飛んでいく相手を画面に残す。外れはいつもどおり自機だけを追う (外れのカメラは寄り無し)
     const GL::Level::ImpactRecord& impact = m_resolver->Answer().lastImpact;
     // 外れはカメラを突進の向きへ回り込ませない。回り込むと画面が振り回され、自機がどちらへ逸れたかも読めない
@@ -162,6 +169,27 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     return state;
 }
 
+void PlayerActor::WriteFollowState(NS::ThirdPersonFollow* vcam) const
+{
+    NS_ASSERT(Game, vcam != nullptr, "PlayerActor::WriteFollowState: 書く先の追従カメラが無い");
+    const GL::Player::CameraTargetState state = GetCameraTargetState();
+    vcam->SetFollowMotion(state.grounded, state.velocity);
+    vcam->SetTargetHeightOffset(state.heightOffset);
+    vcam->SetFollowFramingHeld(state.framingHeld);
+    if (state.hasRebound && !vcam->SetFollowRebound(state.rebound))
+    {
+        NS_LOG_WARN(Game,
+                    "突進の向きが壊れていて、反動をカメラへ渡さなかった: ({}, {}, {})",
+                    state.rebound.slamDirection.x,
+                    state.rebound.slamDirection.y,
+                    state.rebound.slamDirection.z);
+    }
+    if (state.hasCharge && !vcam->SetFollowCharge(state.charge))
+    {
+        NS_LOG_WARN(Game, "溜めの状態が壊れていて、追従カメラへ渡さなかった: 溜め量 {}", state.charge.charge01);
+    }
+}
+
 void PlayerActor::UpdateAnimation()
 {
     NS::Animation* animation = AnimationClassObj();
@@ -185,24 +213,24 @@ void PlayerActor::UpdateAnimation()
     animation->SetSpeed(ChoosePlaybackSpeed(animation->CurrentClip(), lateralSpeed));
 }
 
-void PlayerActor::ReadInput()
-{
-    // clang-format off
-    if (m_input) { m_input->Update(this); }
-    // clang-format on
-}
-
 void PlayerActor::Update(bool chargeHeld)
 {
     m_input->SetSlamHeld(chargeHeld);
+    m_inputInjected = true;
     NS::SceneActor::Update();
+    m_inputInjected = false;
 }
 
-void PlayerActor::ObserveStep()
+void PlayerActor::DecideStep()
 {
-    NS::SceneActor::ObserveStep();
+    // 世界を進めた固定フレームにだけ回るので、世界を進めない固定フレームの押しもここで拾う
+    if (!m_inputInjected)
+    {
+        m_input->Update(this);
+    }
     // 当たりの途中は受け付けない。相手だけが戻ると、明けの知らせが戻った相手を飛ばす
-    // 押しは同じ歩の状態の段で消費されるので、当たりの途中の押しは持ち越さない
+    // ヒットストップの間は押しを下ろさないので、その間の押しは明けのフレームまで残る。明けのフレームも
+    // 当たりの途中なのでここでは受け付けず、同じフレームの状態機械の後か押しを下ろす所で消えて、明けの後へ持ち越さない
     if (m_input->RespawnPressed() && !IsHitStopping() && !IsInTackleHit())
     {
         if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
@@ -210,12 +238,14 @@ void PlayerActor::ObserveStep()
             director->RequestRespawnActors();
         }
     }
-    ObserveCharge(m_input->SlamHeld());
+    // 体当たりのボタンはエアダッシュに使う。押した瞬間に出すので、溜めには押しを渡さない
+    const bool pressHeld = m_input->SlamHeld();
+    m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
+    m_airDash.m_prevPressHeld = pressHeld;
+    UpdateIntendedDirection(NS::GetFrameDelta(this));
+    ObserveCharge(false);
     m_resolver->ObserveImpact(SelfForImpact(), SlamMotion(), m_collider.get());
-}
 
-void PlayerActor::DecideStep()
-{
     AdvanceCharge(NS::GetFrameDelta(this));
     // 止めの後に初めて回るフレームが明け。状態の段より前に反動へ移すと、反動の 1 歩目が明けのフレームに回る
     const bool releasing = IsInTackleHit() && !IsHitStopping();
@@ -227,6 +257,39 @@ void PlayerActor::DecideStep()
     }
     ApplyImpactOrders(m_resolver->Answer());
     DecideBeforeContact(m_resolver->Answer());
+    m_stateStepPrepared = PrepareOrSkipStateStep();
+}
+
+bool PlayerActor::PrepareOrSkipStateStep()
+{
+    // 止めの間は基盤が状態機械を飛ばす。押しは下ろさず、止めの明けへ持ち越す
+    if (IsHitStopping())
+    {
+        return false;
+    }
+    const float dt = NS::GetFrameDelta(this);
+    if (CanMoveBody() && dt > 0.0f)
+    {
+        PrepareStateStep();
+        return true;
+    }
+    // 体の段にも止まっている時の押下の消費を置くと、dt が 0 以下の時に 2 回走る。消費は冪等なのでここ 1 回にする
+    DropPresses();
+    // 当たりの状態は体を動かさないので、突進の発動と丸まりの解除を通さずに状態機械だけを進める。
+    // 入る予約の確定 (段の束を始める) は止めの前のフレームに回る
+    if (!(IsInTackleHit() && dt > 0.0f))
+    {
+        SkipStateStep();
+    }
+    return false;
+}
+
+void PlayerActor::AfterStateStep()
+{
+    if (m_stateStepPrepared)
+    {
+        FinishStateStep(NS::GetFrameDelta(this));
+    }
 }
 
 void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexcept
@@ -274,30 +337,6 @@ void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexc
     }
 }
 
-void PlayerActor::StateStep()
-{
-    const float dt = NS::GetFrameDelta(this);
-    if (CanMoveBody() && dt > 0.0f)
-    {
-        PrepareStateStep();
-        // clang-format off
-        if (m_stateMachine) { m_stateMachine->Update(dt); }
-        // clang-format on
-        FinishStateStep(dt);
-        return;
-    }
-    // 身体の段にも止まっている時の押下の消費を置くと、dt が 0 以下の時に 2 回走る。消費は冪等なのでここ 1 回にする
-    SkipBodyStep();
-    // 当たりの状態は体を動かさないので、突進の発動と丸まりの解除を通さずに状態機械だけを進める。
-    // 入る予約の確定 (段の束を始める) は止めの前のフレームに回る
-    if (IsInTackleHit() && dt > 0.0f)
-    {
-        // clang-format off
-        if (m_stateMachine) { m_stateMachine->Update(dt); }
-        // clang-format on
-    }
-}
-
 void PlayerActor::BodyStep()
 {
     const float dt = NS::GetFrameDelta(this);
@@ -329,6 +368,7 @@ void PlayerActor::VisualStep()
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
 #endif
+    DrawTerrainRebound();
 }
 
 const NS::AnimClip* PlayerActor::ChooseClip(float lateralSpeed) const noexcept
@@ -355,7 +395,7 @@ const NS::AnimClip* PlayerActor::ChooseClip(float lateralSpeed) const noexcept
         return m_clips->m_idleClip;
     }
 
-    if (lateralSpeed <= NS::k_Epsilon)
+    if (NS::IsNearlyZero(lateralSpeed))
     {
         return m_clips->m_idleClip;
     }
@@ -436,6 +476,12 @@ void PlayerActor::OnDisappear() noexcept
     NS::HideModel(this, &m_tackleGhost);
     NS::HideOverlay(this, m_targetMarker.get());
     NS::HideOverlay(this, m_slamArrow.get());
+}
+
+// 体の形は当たりの部品が持つ世界のカプセルで決まるので、ルートの行列は読まない
+NS::SensorVolume PlayerActor::BodySensorVolume(const NS::Matrix&) const noexcept
+{
+    return NS::SensorVolume::Capsule(m_collider->WorldCapsule());
 }
 
 void PlayerActor::InitAfterPlacement()
@@ -600,7 +646,7 @@ float PlayerActor::RunSpeed() const noexcept
 
 bool PlayerActor::IsBodySlamming() const noexcept
 {
-    // 状態機械を組んでいる最中 (先頭の OnEnter) はまだ預かっていないので nullptr を見る
+    // 状態機械を組む前 (OnInit の前) はまだ預かっていないので nullptr を見る
     return m_states != nullptr && (m_states->IsCurrent<GL::Player::BodySlamPlayerState>() ||
                                    m_states->IsCurrent<GL::Player::BeforeContactPlayerState>());
 }
@@ -612,7 +658,7 @@ bool PlayerActor::IsInBeforeContact() const noexcept
 
 float PlayerActor::BodySlamProgress01() const noexcept
 {
-    if (!IsBodySlamming() || !(m_slam.m_distanceTarget > 0.0f))
+    if (!IsBodySlamming() || !NS::IsPositive(m_slam.m_distanceTarget))
     {
         return 0.0f;
     }
@@ -627,6 +673,16 @@ float PlayerActor::BodySlamDistance() const noexcept
 bool PlayerActor::IsRebounding() const noexcept
 {
     return m_states != nullptr && m_states->IsCurrent<GL::Player::ReboundPlayerState>();
+}
+
+bool PlayerActor::IsAirDashing() const noexcept
+{
+    return m_states != nullptr && m_states->IsCurrent<GL::Player::AirDashPlayerState>();
+}
+
+bool PlayerActor::IsDashRebounding() const noexcept
+{
+    return m_states != nullptr && m_states->IsCurrent<GL::Player::DashReboundPlayerState>();
 }
 
 bool PlayerActor::IsReboundLanded() const noexcept
@@ -792,6 +848,9 @@ GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
         .skidding = IsSkidding(),
         .curled = IsCurled(),
         .canMoveBody = CanMoveBody(),
+        .airDashing = IsAirDashing(),
+        .dashRebounding = IsDashRebounding(),
+        .velocity = m_body->Velocity(),
     };
 }
 
@@ -805,6 +864,8 @@ void PlayerActor::ResetState() noexcept
     m_jumpsRemaining = 1;
     m_coyoteTimer = 0.0f;
     m_bufferTimer = 0.0f;
+    m_airControlReturning = false;
+    m_airControlReturnElapsed = 0.0f;
     m_body->SetGrounded(false);
     m_ledgeTopY = 0.0f;
     m_ledgeFaceNormal = NS::Vector3{0.0f, 0.0f, 0.0f};
@@ -816,10 +877,10 @@ void PlayerActor::ResetState() noexcept
     CancelCharge();
     m_chargeEffects->Clear(this);
     m_slam = GL::Player::BodySlamStatus{};
-    m_rebound.m_direction = NS::Vector3{0.0f, 0.0f, 0.0f};
-    m_rebound.m_spinSpeed = 0.0f;
-    m_rebound.m_missTumble.reset();
+    m_rebound.Reset();
     m_skid = GL::Player::SkidStatus{};
+    // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
+    m_airDash.Reset();
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_collider->SetSphereShape(false);
@@ -837,12 +898,12 @@ void PlayerActor::ResetState() noexcept
     // 当たる直前の動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
     ActionTimelineClassObj()->Stop();
     m_beforeContact = BeforeContactEntry{};
-    OwningScene()->HoldOthers(0);
+    OwningScene()->HoldOthers(this, 0);
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale(m_model.get());
 }
 
-void PlayerActor::SkipBodyStep() noexcept
+void PlayerActor::DropPresses() noexcept
 {
     m_input->ConsumePressed();
     m_prevJumpHeld = m_input->JumpHeld();
@@ -850,11 +911,16 @@ void PlayerActor::SkipBodyStep() noexcept
 
 void PlayerActor::PrepareStateStep()
 {
-    const bool locomotion =
-        GL::Player::PlayerJudgeLocomotion::Judge(m_states->IsCurrent<GL::Player::IdlePlayerState>(),
-                                                 m_states->IsCurrent<GL::Player::WalkPlayerState>(),
-                                                 m_states->IsCurrent<GL::Player::FallPlayerState>(),
-                                                 m_states->IsCurrent<GL::Player::ReboundPlayerState>());
+    const bool locomotion = GL::Player::PlayerJudgeLocomotion::Judge(GL::Player::PlayerJudgeLocomotion::StateFlags{
+        .idle = m_states->IsCurrent<GL::Player::IdlePlayerState>(),
+        .walk = m_states->IsCurrent<GL::Player::WalkPlayerState>(),
+        .fall = m_states->IsCurrent<GL::Player::FallPlayerState>(),
+        .rebound = m_states->IsCurrent<GL::Player::ReboundPlayerState>(),
+    });
+    if (CanStartAirDash() && BeginAirDash())
+    {
+        return;
+    }
     if (GL::Player::PlayerJudgeBodySlam::Judge(
             m_request.bufferRemaining, m_request.spent, m_slam.m_wasSlamming, locomotion))
     {

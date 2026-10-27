@@ -1,7 +1,7 @@
 #include "Game/StandaloneLayer.h"
 
 #include "NSlib/App/Application.h"
-#include "NSlib/Core/Windows/Input.h"
+#include "NSlib/Core/Windows/InputReader.h"
 
 StandaloneLayer::StandaloneLayer() : NS::Layer("Standalone") {}
 
@@ -28,12 +28,13 @@ void StandaloneLayer::OnAttach()
 
 void StandaloneLayer::OnUpdate()
 {
+    const NS::OS::InputPresses presses = m_inputReader.Read();
     NS::Application* app = NS::Application::Get();
     if (app == nullptr)
     {
         return;
     }
-    if (!app->Input().Keyboard().IsPressed(NS::OS::Key::Escape))
+    if (!presses.WasPressed(NS::OS::Key::Escape))
     {
         return;
     }

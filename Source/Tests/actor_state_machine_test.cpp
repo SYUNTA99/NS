@@ -2,7 +2,7 @@
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
-#include "NSlib/CoreObject/IUse/IUseState.h"
+#include "NSlib/CoreObject/IGet/IGetState.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
@@ -132,7 +132,7 @@ namespace
         void VisualStep() override
         {
             NS::SceneActor::VisualStep();
-            stepsSeenInVisual = GetStateStep(this);
+            stepsSeenInVisual = GetStateStepCount(this);
         }
     };
 } // namespace
@@ -154,15 +154,16 @@ TEST(ActorStateMachine, BaseOwnsTheMachineAndUpdateStepsIt)
     ASSERT_NE(actor.GetStateMachine(), nullptr);
     EXPECT_EQ(actor.GetStateMachine(), machine);
     EXPECT_TRUE(NS::IsState<OwnedState>(&actor));
-    EXPECT_TRUE(NS::IsFirstStep(&actor));
+    // 組んだだけでは先頭へ入る予約で、入るのは最初の Update の初め
+    EXPECT_FALSE(NS::IsFirstStep(&actor));
     actor.Update();
-    EXPECT_EQ(NS::GetStateStep(&actor), 1u);
+    EXPECT_EQ(NS::GetStateStepCount(&actor), 1u);
     actor.Update();
-    EXPECT_EQ(NS::GetStateStep(&actor), 2u);
+    EXPECT_EQ(NS::GetStateStepCount(&actor), 2u);
     EXPECT_TRUE(NS::SetState<OwnedState>(&actor));
 }
 
-TEST(ActorStateMachine, StepsInStateIsReachableUnqualifiedInsideAnActor)
+TEST(ActorStateMachine, StepCountIsReachableUnqualifiedInsideAnActor)
 {
     StepReadingActor actor;
     actor.BuildOwned();
@@ -179,8 +180,11 @@ TEST(ActorStateMachine, TypedPointerIsReadableFromFirstStateOnEnter)
     ASSERT_TRUE(actor.BuildProbe());
 
     ASSERT_NE(actor.machine, nullptr);
-    EXPECT_EQ(actor.machineSeenInEnter, actor.machine);
     EXPECT_EQ(actor.GetStateMachine(), actor.machine);
+    // 先頭の OnEnter は組んだ時でなく、最初の Update の初めに走る
+    EXPECT_EQ(actor.machineSeenInEnter, nullptr);
+    actor.Update();
+    EXPECT_EQ(actor.machineSeenInEnter, actor.machine);
 }
 
 TEST(ActorStateMachine, MachineIsListedAsTheStateMachineClassObj)

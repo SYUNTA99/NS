@@ -1,5 +1,4 @@
 #include "NSlib/Phys/PhysicsScene.h"
-#include "NSlib/Core/AABB.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Sphere.h"
 #include "NSlib/Core/Types.h"
@@ -14,6 +13,7 @@
 #include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Body/BodyLockInterface.h>
 #include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
@@ -291,30 +291,18 @@ namespace NS
             return true;
         }
 
-        std::vector<AABB> PhysicsScene::OverlapBox(const AABB& region) const
+        bool PhysicsScene::OverlapsCapsule(const Capsule& capsule) const
         {
-            const JPH::Vec3 center = ToJolt(region.Center);
-            const JPH::Vec3 extents = ToJolt(region.Extents);
-            const JPH::AABox box{center - extents, center + extents};
-
-            JPH::AllHitCollisionCollector<JPH::CollideShapeBodyCollector> collector;
-            m_physicsSystem.GetBroadPhaseQuery().CollideAABox(box, collector);
-
-            std::vector<AABB> found;
-            found.reserve(collector.mHits.size());
-            const JPH::BodyLockInterface& lock = m_physicsSystem.GetBodyLockInterfaceNoLock();
-            for (const JPH::BodyID id : collector.mHits)
+            const ShapePart part = MakeCapsulePart(capsule);
+            if (part.shape == nullptr)
             {
-                const JPH::BodyLockRead body{lock, id};
-                if (!body.Succeeded())
-                {
-                    continue;
-                }
-
-                const JPH::AABox& bounds = body.GetBody().GetWorldSpaceBounds();
-                found.push_back(AABB{FromJolt(bounds.GetCenter()), FromJolt(bounds.GetExtent())});
+                return false;
             }
-            return found;
+            const JPH::RMat44 transform = JPH::RMat44::sRotationTranslation(ToJolt(part.rotation), ToJolt(part.position));
+            JPH::AnyHitCollisionCollector<JPH::CollideShapeCollector> collector;
+            m_physicsSystem.GetNarrowPhaseQuery().CollideShape(
+                part.shape, JPH::Vec3::sOne(), transform, JPH::CollideShapeSettings{}, JPH::RVec3::sZero(), collector);
+            return collector.HadHit();
         }
     } // namespace Phys
 } // namespace NS

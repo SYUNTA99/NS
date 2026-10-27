@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/IUse/IUseAudio.h"
+#include "NSlib/CoreObject/IGet/IGetAudio.h"
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
@@ -6,7 +6,7 @@
 
 namespace NS
 {
-    void PreloadSounds(const IUseAudio* user, std::initializer_list<SoundName> names)
+    void PreloadSounds(const IGetAudio* user, std::initializer_list<SoundName> names)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         Sound* sound = user->GetSound();
@@ -20,7 +20,7 @@ namespace NS
         }
     }
 
-    void PlaySound(const IUseAudio* user, const SoundName& name, float volume)
+    void PlaySound(const IGetAudio* user, const SoundName& name, float volume)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         Sound* sound = user->GetSound();

@@ -100,7 +100,7 @@ namespace GL
                     return true;
                 }
                 if (!NS::IsFinite(body.a) || !NS::IsFinite(body.b) || !std::isfinite(body.radius) ||
-                    !(body.radius > 0.0f))
+                    !NS::IsPositive(body.radius))
                 {
                     return false;
                 }
@@ -112,7 +112,7 @@ namespace GL
                 out.core = out.center;
                 out.surfaceRadius = body.radius;
                 out.shape = NS::HitSensorShape::Sphere;
-                if (half.LengthSquared() > NS::k_Epsilon * NS::k_Epsilon)
+                if (NS::HasPositiveMagnitude(half))
                 {
                     out.shape = NS::HitSensorShape::Capsule;
                 }
@@ -137,7 +137,7 @@ namespace GL
                 }
                 NS::Vector3 touch = point - core;
                 // 玉の中心が core に重なると向きが無い。来た側から触れたことにする
-                if (touch.LengthSquared() < NS::k_Epsilon * NS::k_Epsilon)
+                if (NS::IsNearlyZero(touch))
                 {
                     touch = -direction;
                 }
@@ -149,7 +149,7 @@ namespace GL
             [[nodiscard]] bool ShapeContains(const HitFaceShape& shape, float u, float v) noexcept
             {
                 // 幅 0 で割らないよう先に外す。幅 0 の向きがある形はどこも覆わない
-                if (!(shape.halfU > 0.0f) || !(shape.halfV > 0.0f))
+                if (!NS::IsPositive(shape.halfU) || !NS::IsPositive(shape.halfV))
                 {
                     return false;
                 }
@@ -165,7 +165,7 @@ namespace GL
             // 赤が覆う形。判定と描画が同じ形を読む。幅 0 の向きがある赤はどこも覆わないので false
             [[nodiscard]] bool RedShape(const HitFace& face, HitFaceShape& out) noexcept
             {
-                if (!(face.width > 0.0f) || !(face.height > 0.0f))
+                if (!NS::IsPositive(face.width) || !NS::IsPositive(face.height))
                 {
                     return false;
                 }
@@ -190,8 +190,8 @@ namespace GL
             {
                 return false;
             }
-            const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-            if (!std::isfinite(horizontal) || !(horizontal > NS::k_Epsilon))
+            const float horizontal = NS::HorizontalLength(direction);
+            if (!NS::HasPositiveMagnitude(horizontal))
             {
                 return false;
             }
@@ -287,8 +287,8 @@ namespace GL
                 return false;
             }
             // 向きの読み方は JudgeHitFace と揃える。半分の高さは向きに依らないが、箱の測りが右の軸を読む
-            const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-            if (!std::isfinite(horizontal) || !(horizontal > NS::k_Epsilon))
+            const float horizontal = NS::HorizontalLength(direction);
+            if (!NS::HasPositiveMagnitude(horizontal))
             {
                 return false;
             }
@@ -318,8 +318,8 @@ namespace GL
                 return false;
             }
             // 向きの読み方は JudgeHitFace と揃える。面の左右の軸が判定の右と同じになる
-            const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-            if (!std::isfinite(horizontal) || !(horizontal > NS::k_Epsilon))
+            const float horizontal = NS::HorizontalLength(direction);
+            if (!NS::HasPositiveMagnitude(horizontal))
             {
                 return false;
             }

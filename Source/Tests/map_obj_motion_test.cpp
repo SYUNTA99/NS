@@ -149,7 +149,7 @@ TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
     EXPECT_FLOAT_EQ(rock->Velocity().Length(), 0.0f);
 }
 
-// やり直しの知らせはコースの段で届き、次の歩の自機の段は置物の段より前に回る。
+// やり直しの知らせはコースの段で届き、次のフレームはアクターの段で並び順に回るので、自機が置物より先に回る事がある。
 // 置き直した当たりは、置物の次の更新を待たずに知らせを受けたその場で戻った位置にある
 TEST(MapObjMotion, RestartMovesTheCollisionBeforeTheNextUpdate)
 {
@@ -250,8 +250,10 @@ TEST(MapObjMotion, StateAdvancesThroughTheBaseMachine)
     ASSERT_NE(rock, nullptr);
     NS::IStateMachine* machine = rock->GetStateMachine();
     ASSERT_NE(machine, nullptr);
-    const NS::uint32 before = machine->StepsInState();
+    // 先頭の状態へは最初の Update の初めに入り、その Update で 1 歩目を進める
     rock->Update();
-    EXPECT_EQ(machine->StepsInState(), before + 1);
+    ASSERT_EQ(machine->StepCount(), 1u);
+    rock->Update();
+    EXPECT_EQ(machine->StepCount(), 2u);
     EXPECT_EQ(rock->GetStateMachine(), machine);
 }

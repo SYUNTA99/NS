@@ -5,8 +5,8 @@
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
-#include "NSlib/CoreObject/IUse/IUseSceneSystem.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
+#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -271,7 +271,7 @@ namespace NS
             }
             // 画面の横を床に沿わせた向きで揺らし、最初は相手と逆の側へ振る。正面の相手は右から
             float firstSign = 1.0f;
-            if (Dot(context.toOther, context.cameraRight) > k_Epsilon)
+            if (HasPositiveMagnitude(Dot(context.toOther, context.cameraRight)))
             {
                 firstSign = -1.0f;
             }
@@ -432,7 +432,7 @@ namespace NS
             bool started = false;
             for (const Directed& direction : directed)
             {
-                if (!(direction.weight > 0.0f))
+                if (!IsPositive(direction.weight))
                 {
                     continue;
                 }
@@ -461,7 +461,7 @@ namespace NS
         {
             if (Scene* scene = owner.actor->OwningScene())
             {
-                scene->HoldOthers(length);
+                scene->HoldOthers(owner.actor, length);
             }
         }
 

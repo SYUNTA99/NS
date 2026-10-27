@@ -79,7 +79,7 @@ namespace GL
             const float slideV = std::copysign(std::pow(absV, p - 1.0f), v);
             const float slideLength = std::sqrt(slideU * slideU + slideV * slideV);
             NS::Vector3 normal = -forward;
-            if (std::isfinite(edge) && slideLength > NS::k_Epsilon)
+            if (std::isfinite(edge) && NS::HasPositiveMagnitude(slideLength))
             {
                 const NS::Vector3 slide = (right * slideU + up * slideV) / slideLength;
                 normal = slide * edge - forward * std::sqrt(std::max(1.0f - edge * edge, 0.0f));
@@ -95,7 +95,7 @@ namespace GL
                 return 0.0f;
             }
             float c = exponent;
-            if (!std::isfinite(c) || !(c > 0.0f))
+            if (!std::isfinite(c) || !NS::IsPositive(c))
             {
                 c = 1.0f;
             }
@@ -150,7 +150,7 @@ namespace GL
             {
                 const NS::Vector3 normal = outcome.faceNormal;
                 const float slamSpeed = input.slamVelocity.Length();
-                if (slamSpeed > NS::k_Epsilon)
+                if (NS::HasPositiveMagnitude(slamSpeed))
                 {
                     missPush = NS::Clamp(-(input.slamVelocity / slamSpeed).Dot(normal), 0.0f, 1.0f);
                 }
@@ -161,7 +161,7 @@ namespace GL
                     // 真上か真下の縁で水平の成分が無い時は、来た向きへ戻す
                     flatNormal = -forward;
                     NS::Vector3 horizontal{};
-                    if (NS::Vector2{normal.x, normal.z}.Length() > NS::k_Epsilon &&
+                    if (NS::HasPositiveMagnitudeHorizontal(normal) &&
                         NS::TryNormalizeHorizontal(normal, horizontal))
                     {
                         flatNormal = horizontal;

@@ -3,12 +3,15 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DTexture.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 
 #include <cmath>
@@ -17,6 +20,26 @@ namespace NS
 {
     namespace Editor
     {
+        namespace
+        {
+            std::optional<Matrix> FitPreviewWorld(const AABB& localBounds, const Matrix& world,
+                                                  const AssetPreviewPose& pose)
+            {
+                AABB bounds{};
+                localBounds.Transform(bounds, world);
+                const Vector3 center{bounds.Center.x, bounds.Center.y, bounds.Center.z};
+                const Vector3 extents{bounds.Extents.x, bounds.Extents.y, bounds.Extents.z};
+                const float radius = extents.Length();
+                if (!std::isfinite(center.x) || !std::isfinite(center.y) || !std::isfinite(center.z) ||
+                    !std::isfinite(radius) || radius <= 0.0f || !std::isfinite(1.0f / radius))
+                {
+                    return std::nullopt;
+                }
+                return world * Matrix::CreateTranslation(-center) * Matrix::CreateScale(pose.zoom / radius) *
+                       Matrix::CreateRotationY(pose.yaw) * Matrix::CreateRotationX(pose.pitch);
+            }
+        }
+
         std::optional<Gfx::DrawItem> MakeAssetPreviewItem(const Object& asset, const AssetPreviewPose& pose)
         {
             Gfx::DrawItem item{};
@@ -37,6 +60,27 @@ namespace NS
                     item.blend = item.material->Blend();
                 }
             }
+            else if (const SceneActor* actor = Cast<SceneActor>(&asset))
+            {
+                const Model* model = actor->ModelClassObj();
+                if (model == nullptr || !model->CanDraw() || model->DrawnLocalBounds() == nullptr)
+                {
+                    return std::nullopt;
+                }
+                const AABB& localBounds = *model->DrawnLocalBounds();
+                const Matrix actorWorld = model->DrawWorldMatrix(actor->Root().WorldMatrix(), 1.0f);
+                const std::optional<Matrix> world = FitPreviewWorld(localBounds, actorWorld, pose);
+                if (!world)
+                {
+                    return std::nullopt;
+                }
+                const Gfx::RenderContext context{};
+                item = model->MakeDrawItem(context, *world);
+                item.twoSided = true;
+                item.constants.ambientColor = Vector3{0.8f, 0.8f, 0.8f};
+                item.constants.groundColor = Vector3{0.6f, 0.6f, 0.6f};
+                distance = 3.2f;
+            }
             else if (const Mesh* mesh = Cast<Mesh>(&asset))
             {
                 const AABB* bounds = mesh->LocalBounds();
@@ -44,18 +88,15 @@ namespace NS
                 {
                     return std::nullopt;
                 }
-                const Vector3 center{bounds->Center.x, bounds->Center.y, bounds->Center.z};
-                const Vector3 extents{bounds->Extents.x, bounds->Extents.y, bounds->Extents.z};
-                const float radius = extents.Length();
-                if (!std::isfinite(radius) || radius <= 0.0f || !std::isfinite(1.0f / radius))
+                const std::optional<Matrix> world = FitPreviewWorld(*bounds, Matrix::Identity, pose);
+                if (!world)
                 {
                     return std::nullopt;
                 }
                 item.mesh = mesh->D3D();
                 item.material = AssetManager::Get().LoadMaterial(AssetManager::DefaultMaterialPath())->D3D();
                 item.twoSided = true;
-                item.constants.world = Matrix::CreateTranslation(-center) * Matrix::CreateScale(pose.zoom / radius) *
-                                       Matrix::CreateRotationY(pose.yaw) * Matrix::CreateRotationX(pose.pitch);
+                item.constants.world = *world;
                 item.constants.baseColor = Vector3{0.85f, 0.85f, 0.85f};
                 item.constants.ambientColor = Vector3{0.8f, 0.8f, 0.8f};
                 item.constants.groundColor = Vector3{0.6f, 0.6f, 0.6f};

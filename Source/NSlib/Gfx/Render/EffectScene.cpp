@@ -3,6 +3,7 @@
 
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Math.h"
 #include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Core/Windows/Filesystem.h"
@@ -65,7 +66,7 @@ namespace NS
             // 0〜1 の色の成分を 0〜255 にする。非数と 0 以下は 0、1 以上は 255
             uint8 ToColorByte(float value) noexcept
             {
-                if (!(value > 0.0f))
+                if (!IsPositive(value))
                 {
                     return 0;
                 }

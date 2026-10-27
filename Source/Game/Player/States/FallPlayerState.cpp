@@ -12,6 +12,7 @@ namespace GL
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
             player->TickTimers(dt);
+            player->AdvanceAirControlReturn(dt);
             player->AccelerateToInputDirection(dt);
             player->Jump(dt);
             player->CutJumpRelease();

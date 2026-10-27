@@ -102,7 +102,7 @@ namespace NS
         if (m_viewDirty)
         {
             const Vector3 lookDir = m_target - m_position;
-            if (lookDir.LengthSquared() < k_Epsilon * k_Epsilon)
+            if (IsNearlyZero(lookDir))
             {
                 m_view = Matrix::Identity;
             }

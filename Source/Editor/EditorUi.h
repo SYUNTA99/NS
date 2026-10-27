@@ -11,8 +11,9 @@ namespace NS
 {
     namespace Editor
     {
-        // 状態メッセージの表示色。失敗は赤、成功は緑
+        // 状態メッセージの表示色。失敗は赤、警告は橙、成功は緑
         inline const ImVec4 k_MsgErrorColor{1.0f, 0.4f, 0.4f, 1.0f};
+        inline const ImVec4 k_MsgWarnColor{1.0f, 0.78f, 0.35f, 1.0f};
         inline const ImVec4 k_MsgOkColor{0.4f, 1.0f, 0.4f, 1.0f};
 
         // アクターの持ち物のヘッダは中身より一段明るくして、どこからどこまでが 1 個か見えるようにする

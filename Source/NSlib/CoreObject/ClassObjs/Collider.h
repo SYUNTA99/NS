@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/IUse/IUseCollision.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/Phys/Capsule.h"
 #include "NSlib/Phys/JoltCharacter.h"
@@ -26,11 +26,13 @@ namespace NS
         Vector3 velocity{0.0f, 0.0f, 0.0f}; //!< 接触面へ射影した後の速度
         bool grounded = false;                  //!< 移動の後に足場に立っているか
         bool inWorld = false;                   //!< 地形を見たか。PhysicsScene を受け取っていなければ偽
+        bool blocked = false;                   //!< 速度の向きへ進むのを地形の面が遮ったか。面に沿う動きは数えない
+        Vector3 blockNormal{0.0f, 0.0f, 0.0f};  //!< 遮った面のうち速度に一番向かい合った面の外向きの単位法線
     };
 
     //! @brief カプセルを地形に当てて移動する部品。位置・速度への反映は Body が行う
     //! @details 自分への衝突を避けるため、静的な PhysicsScene の body には登録しない
-    class Collider : public Object, public IUseCollision
+    class Collider : public Object, public IGetCollision
     {
     public:
         //! @param[in] physics 当たる地形の PhysicsScene。シーンへ入らないアクターは nullptr で、Move は地形を見ない

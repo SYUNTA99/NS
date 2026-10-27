@@ -216,6 +216,21 @@ namespace GL
                                                   const BodySlamMotion& motion,
                                                   const PlayerParts& parts);
 
+            // 衝突の計算結果から、貫通・反動の保留値と答えのフラグを更新する
+            void ApplyImpactOutcome(const ImpactOutcome& outcome,
+                                    const TackleTargetAnswer& answer,
+                                    const GL::Player::PlayerParams* params,
+                                    float power,
+                                    bool centerHit);
+
+            // 直近の当たりの内訳 (m_answer.lastImpact) を書き換える
+            void RecordLastImpact(const TackleTargetAnswer& answer,
+                                  const BodySlamMotion& motion,
+                                  const HitFaceJudgement& judgement,
+                                  const ImpactOutcome& outcome,
+                                  const PlayerParts& parts,
+                                  float power);
+
             // 突進の線の先に触れる相手を探し、検知までの見込みのフレーム数と相手を答えに書く
             void PredictContact(const ImpactSelf& self, const BodySlamMotion& motion, const PlayerParts& parts);
 

@@ -97,7 +97,7 @@ namespace GL
             // フレーム前の保持で判定を引き直して決める。控えた結果だと、しきい値を変えたフレームで境目がずれる
             // 溜めすぎで出た後は IsCharging が偽なので、ここへは段階 Charging か AwaitingLaunch でしか来ない
             const int previous = m_heldSteps - 1;
-            return !(previous > 0 && previous >= chargeThresholdSteps);
+            return previous <= 0 || previous < chargeThresholdSteps;
         }
 
         bool ImpactInputJudge::IsChargeFull() const noexcept

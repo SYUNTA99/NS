@@ -96,7 +96,7 @@ namespace NS
 
             Vector3 m_center{0.0f, 0.0f, 0.0f}; // orbit の中心 pivot
             float m_yaw = 0.0f;                     // 方位角 (ラジアン)
-            float m_pitch = -0.5236f;               // 仰角 (ラジアン)
+            float m_pitch = 0.5236f;               // 仰角 (ラジアン)
             float m_distance = 15.0f;
             float m_desiredDistance = 15.0f; // ズームの目標距離、バネで寄せる
 

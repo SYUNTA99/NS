@@ -11,7 +11,7 @@
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"

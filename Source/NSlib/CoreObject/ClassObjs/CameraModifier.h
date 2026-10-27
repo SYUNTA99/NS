@@ -12,7 +12,7 @@
 
 namespace NS
 {
-    class IUseCamera;
+    class IGetCamera;
 
     //! 効果を掛ける時の姿勢の軸。仮想カメラとブレンドまで済んだ姿勢の視線から作る。どちらも長さ 1
     struct CameraAxes
@@ -49,8 +49,8 @@ namespace NS
 
         //! @brief 頼んだ物を書く。管理役は同じ種類のタグと同じ頼んだ物の効果だけを置き換え、頼んだ物ごとに外せる
         //! @details 見分けるだけで指す先は読まない。nullptr は頼んだ物を問わない効果
-        void SetRequester(const IUseCamera* requester) noexcept { m_requester = requester; }
-        [[nodiscard]] const IUseCamera* Requester() const noexcept { return m_requester; }
+        void SetRequester(const IGetCamera* requester) noexcept { m_requester = requester; }
+        [[nodiscard]] const IGetCamera* Requester() const noexcept { return m_requester; }
 
     protected:
         //! @brief Frame を 1 つ進めた後に呼ぶ。番号のほかに進める物がある効果だけが上書きする
@@ -62,7 +62,7 @@ namespace NS
     private:
         bool m_justAdded = true; // 積んだ後まだ Tick を通っていないか
         int m_frame = 0;
-        const IUseCamera* m_requester = nullptr; // 頼んだ物 (非所有)
+        const IGetCamera* m_requester = nullptr; // 頼んだ物 (非所有)
     };
 
     //! カメラの右と上へずらす揺れ。振れ幅は直線で減り、seed から反転間隔を決める

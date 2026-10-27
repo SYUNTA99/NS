@@ -17,7 +17,7 @@ namespace
     // TryNormalizeHorizontal は長さの 2 乗が非数だと下限との比較が偽になって通すので、先に有限かを見る
     void SetRollAxisToward(const NS::Vector3& direction, NS::Vector3& axis) noexcept
     {
-        const float lengthSq = direction.x * direction.x + direction.z * direction.z;
+        const float lengthSq = NS::HorizontalLengthSquared(direction);
         if (!std::isfinite(lengthSq))
         {
             return;
@@ -103,7 +103,13 @@ namespace GL
                 return;
             }
 
-            if (motion.bodySlamming)
+            if (motion.airDashing || motion.dashRebounding)
+            {
+                // 進む距離と回る角度を揃えて、今の進む向きへ転がす。真上・真下の間は水平の向きが無く、前の軸のまま
+                SetRollAxisToward(motion.velocity, m_spinAxis);
+                m_spinSpeed = motion.velocity.Length() * m_dashRollDegreesPerMeter;
+            }
+            else if (motion.bodySlamming)
             {
                 // 軸は水平の向きだけを見るので、突進の向きを使う。突進の速度の水平は向き ×
                 // 欄の速さで、速さが正なら同じ向き
@@ -176,7 +182,7 @@ namespace GL
             // こすって止まる間は、身体の速さと同じ割合で回転も落とす
             const NS::Vector3 spin = (m_tumbleStartSpin + (target - m_tumbleStartSpin) * blend) * skidScale;
             const float speed = spin.Length();
-            if (!std::isfinite(speed) || speed <= NS::k_Epsilon)
+            if (!NS::HasPositiveMagnitude(speed))
             {
                 m_spinSpeed = 0.0f;
                 return;
@@ -253,7 +259,7 @@ namespace GL
                 return;
             }
 
-            if (!std::isfinite(m_landingSquashVertical) || !(m_landingSquashVertical > 0.0f))
+            if (!std::isfinite(m_landingSquashVertical) || !NS::IsPositive(m_landingSquashVertical))
             {
                 NS_LOG_WARN(Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", m_landingSquash);
                 m_landingSquashRemaining = 0;

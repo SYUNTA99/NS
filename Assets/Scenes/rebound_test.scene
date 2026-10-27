@@ -1,0 +1,248 @@
+{
+  "environment": {
+    "music": "",
+    "musicVolume": 0.5,
+    "skybox": "Assets/Skybox/blue-sky/"
+  },
+  "nextObjectId": 94,
+  "objects": [
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            70.0,
+            1.0,
+            50.0
+          ],
+          "位置": [
+            18.0,
+            0.0,
+            5.0
+          ]
+        }
+      },
+      "id": 1,
+      "name": "床"
+    },
+    {
+      "actor": "PlayerActor",
+      "classObjs": {
+        "ActionTimeline": {},
+        "Appearance": {},
+        "BodySensor": {},
+        "ChargeEffects": {},
+        "Clips": {},
+        "Collider": {},
+        "Effect": {},
+        "HitReaction": {},
+        "ImpactEffects": {},
+        "ImpactResolver": {},
+        "Input": {},
+        "Model": {},
+        "Movement": {},
+        "Params": {},
+        "Shadow": {},
+        "SlamArrow": {},
+        "StateMachine": {},
+        "TargetMarker": {},
+        "Transform": {
+          "位置": [
+            0.0,
+            1.649999976158142,
+            0.0
+          ]
+        }
+      },
+      "id": 2,
+      "name": "自機"
+    },
+    {
+      "actor": "FollowCameraActor",
+      "classObjs": {
+        "Transform": {
+          "位置": [
+            0.0,
+            4.144098281860352,
+            -4.8296284675598145
+          ]
+        },
+        "Vcam": {
+          "追従対象": {
+            "ref": "自機"
+          }
+        }
+      },
+      "id": 3,
+      "name": "カメラ"
+    },
+    {
+      "actor": "LightActor",
+      "classObjs": {
+        "DirectionalLight": {},
+        "Transform": {
+          "位置": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "回転": [
+            0.7382549047470093,
+            -0.2214764654636383,
+            0.0,
+            0.6371247172355652
+          ]
+        }
+      },
+      "id": 4,
+      "name": "光"
+    },
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            6.0,
+            6.0,
+            1.0
+          ],
+          "位置": [
+            0.0,
+            3.5,
+            4.0
+          ]
+        }
+      },
+      "id": 10,
+      "name": "正面の壁"
+    },
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            6.0,
+            1.0,
+            6.0
+          ],
+          "位置": [
+            0.0,
+            7.0,
+            1.5
+          ]
+        }
+      },
+      "id": 11,
+      "name": "天井"
+    },
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            6.0,
+            1.0,
+            10.0
+          ],
+          "位置": [
+            12.0,
+            0.5,
+            5.0
+          ],
+          "回転": [
+            -0.3826833963394165,
+            0.0,
+            0.0,
+            0.9238795042037964
+          ]
+        }
+      },
+      "id": 12,
+      "name": "45度の坂"
+    },
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            6.0,
+            6.0,
+            1.0
+          ],
+          "位置": [
+            24.0,
+            3.5,
+            4.0
+          ]
+        }
+      },
+      "id": 13,
+      "name": "30度で当てる壁"
+    },
+    {
+      "actor": "MapPartsActor",
+      "classObjs": {
+        "Collision": {},
+        "Model": {
+          "マテリアル": "Assets/Materials/stone.mat"
+        },
+        "Transform": {
+          "スケール": [
+            6.0,
+            6.0,
+            1.0
+          ],
+          "位置": [
+            36.0,
+            3.5,
+            4.0
+          ],
+          "回転": [
+            0.0,
+            0.3826833963394165,
+            0.0,
+            0.9238795042037964
+          ]
+        }
+      },
+      "id": 14,
+      "name": "45度の壁"
+    },
+    {
+      "actor": "DeathZoneActor",
+      "classObjs": {
+        "BodySensor": {},
+        "Transform": {
+          "位置": [
+            0.0,
+            -30.0,
+            0.0
+          ]
+        }
+      },
+      "id": 15,
+      "name": "落下死"
+    }
+  ],
+  "version": 9
+}

@@ -7,11 +7,13 @@
 
 #include <cstdio>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <optional>
 #include <share.h>
 #include <string>
 #include <system_error>
+#include <vector>
 
 namespace
 {
@@ -139,6 +141,56 @@ TEST(Logger, InitKeepsRunningWhenLogFileCannotBeOpened)
     RestoreTestsLogger();
 
     EXPECT_TRUE(std::filesystem::is_directory(logPath));
+    std::error_code error;
+    std::filesystem::remove_all(dir, error);
+}
+
+// エディタのコンソールに出すため、WARN 以上だけを溜め、新しい順に返す
+TEST(Logger, RecentWarningsKeepsWarnAndAboveNewestFirst)
+{
+    const std::filesystem::path dir = TestLogDirectory(L"recent");
+    ::NS::Logger::Shutdown();
+    ::NS::LoggerDesc desc;
+    desc.logName = "recent";
+    desc.logDirectory = ToUtf8(dir);
+    ::NS::Logger::Init(desc);
+    NS_LOG_INFO(App, "info の行");
+    NS_LOG_WARN(App, "warn の行");
+    NS_LOG_ERROR(App, "error の行");
+    const std::vector<::NS::RecentLog> recent = ::NS::Logger::RecentWarnings();
+    ::NS::Logger::Shutdown();
+    RestoreTestsLogger();
+
+    ASSERT_EQ(recent.size(), 2u);
+    EXPECT_EQ(recent[0].level, ::NS::LogLevel::Error);
+    EXPECT_NE(recent[0].text.find("error の行"), std::string::npos) << recent[0].text;
+    EXPECT_EQ(recent[1].level, ::NS::LogLevel::Warn);
+    EXPECT_NE(recent[1].text.find("warn の行"), std::string::npos) << recent[1].text;
+    std::error_code error;
+    std::filesystem::remove_all(dir, error);
+}
+
+// 溜める数を越えたら古い物から消える
+TEST(Logger, RecentWarningsDropsOldestBeyondCapacity)
+{
+    const std::filesystem::path dir = TestLogDirectory(L"recent_capacity");
+    ::NS::Logger::Shutdown();
+    ::NS::LoggerDesc desc;
+    desc.logName = "recent_capacity";
+    desc.logDirectory = ToUtf8(dir);
+    ::NS::Logger::Init(desc);
+    const std::size_t capacity = ::NS::Logger::k_RecentLogCapacity;
+    for (std::size_t i = 0; i <= capacity; ++i)
+    {
+        NS_LOG_WARN(App, "警告 #{}.", i);
+    }
+    const std::vector<::NS::RecentLog> recent = ::NS::Logger::RecentWarnings();
+    ::NS::Logger::Shutdown();
+    RestoreTestsLogger();
+
+    ASSERT_EQ(recent.size(), capacity);
+    EXPECT_NE(recent.front().text.find(std::format("警告 #{}.", capacity)), std::string::npos) << recent.front().text;
+    EXPECT_NE(recent.back().text.find("警告 #1."), std::string::npos) << recent.back().text;
     std::error_code error;
     std::filesystem::remove_all(dir, error);
 }

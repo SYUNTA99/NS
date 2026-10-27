@@ -35,7 +35,7 @@ namespace
     {
         const NS::FieldDesc* field = NS::FindField(material.GetReflection(), name);
         ASSERT_NE(field, nullptr) << name;
-        field->set(&material, &value);
+        ASSERT_EQ(field->set(&material, &value), NS::FieldWriteResult::Written) << name;
     }
 
     std::string ContentPath(const char* relative)

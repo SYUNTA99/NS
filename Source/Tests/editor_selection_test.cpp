@@ -60,7 +60,7 @@ namespace
         ASSERT_NE(row, nullptr);
         const NS::FieldDesc* field = NS::FindField(actor->Root().GetReflection(), fieldName);
         ASSERT_NE(field, nullptr);
-        field->set(&actor->Root(), &value);
+        ASSERT_EQ(field->set(&actor->Root(), &value), NS::FieldWriteResult::Written);
         editor.NoteFieldEdit(actor, *row, fieldName);
     }
 
@@ -136,13 +136,11 @@ TEST(EditorSelection, EscapeClearsTheSelection)
         ASSERT_NE(editor.SelectedActorId(), NS::k_NoActorId);
         NS::OS::Keyboard& keyboard = app.Input().Keyboard();
         keyboard.ClearState();
-        keyboard.Update();
         editor.Tick();
 
         keyboard.OnKeyDown(NS::OS::Key::Escape);
         editor.Tick();
         keyboard.OnKeyUp(NS::OS::Key::Escape);
-        keyboard.Update();
         editor.Tick();
         EXPECT_EQ(editor.SelectedActorId(), NS::k_NoActorId);
         EXPECT_TRUE(editor.SelectedActorIds().empty());
@@ -922,7 +920,7 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
             const NS::FieldDesc* blend = NS::FindField(material->GetReflection(), "混ぜ方");
             ASSERT_NE(blend, nullptr);
             const std::string additive = "Additive";
-            blend->set(material, &additive);
+            ASSERT_EQ(blend->set(material, &additive), NS::FieldWriteResult::Written);
             editor.MarkAssetEdited();
 
             path.clear();
@@ -1166,7 +1164,6 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
         const int startX = mouse.GetX();
         const int startY = mouse.GetY();
         keyboard.ClearState();
-        keyboard.Update();
         mouse.ClearState();
         editor.Tick();
         editor.FocusSelectedInView();
@@ -1185,7 +1182,6 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
             editor.Tick();
             keyboard.OnKeyUp(key);
             keyboard.OnKeyUp(NS::OS::Key::Ctrl);
-            keyboard.Update();
         };
         const NS::Editor::UndoStack& undo = editor.Editor().Undo();
 
@@ -1227,10 +1223,11 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
             EXPECT_EQ(editor.Editor().Palette().ActiveSlot(), expectedSlot) << "番号 止める=" << blocked;
 
             const NS::Editor::GizmoTool toolBefore = gizmo.Tool();
+            // 前のキー (R など) をギズモへ渡さないよう、E の直前から読む
+            NS::OS::InputReader gizmoReader;
             keyboard.OnKeyDown(NS::OS::Key::E);
-            gizmo.Tick(NS::Matrix::Identity, view, true, blocked);
+            gizmo.Tick(NS::Matrix::Identity, view, true, blocked, gizmoReader.Read());
             keyboard.OnKeyUp(NS::OS::Key::E);
-            keyboard.Update();
             NS::Editor::GizmoTool expectedTool = NS::Editor::GizmoTool::Rotate;
             if (blocked)
             {
@@ -1244,7 +1241,6 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
         mouse.ClearState();
         mouse.Update();
         keyboard.ClearState();
-        keyboard.Update();
     }));
     EXPECT_EQ(app.Run(), 0);
 }

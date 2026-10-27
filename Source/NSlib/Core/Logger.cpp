@@ -4,6 +4,7 @@
 
 #include <spdlog/sinks/base_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
+#include <spdlog/sinks/ringbuffer_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
@@ -29,6 +30,9 @@ namespace NS
         constexpr std::size_t k_RotatingMaxFiles = 2;
 
         std::atomic<bool> g_initialized{false};
+
+        // WARN 以上を溜める出し先。Init で作り、Shutdown で捨てる。読むのはエディタのコンソール
+        std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> g_recentSink;
 
         std::string LogsDirectory(const LoggerDesc& desc)
         {
@@ -120,6 +124,31 @@ namespace NS
             return spdlog::level::info;
         }
 
+        LogLevel FromSpdLevel(spdlog::level::level_enum level)
+        {
+            switch (level)
+            {
+            case spdlog::level::trace:
+                return LogLevel::Trace;
+            case spdlog::level::debug:
+                return LogLevel::Debug;
+            case spdlog::level::info:
+                return LogLevel::Info;
+            case spdlog::level::warn:
+                return LogLevel::Warn;
+            case spdlog::level::err:
+                return LogLevel::Error;
+            case spdlog::level::critical:
+                return LogLevel::Fatal;
+            case spdlog::level::off:
+            case spdlog::level::n_levels:
+                break;
+            }
+            // 出し先は off を受けないので、ここへは来ない
+            assert(false && "Unknown spdlog level");
+            return LogLevel::Info;
+        }
+
         std::vector<spdlog::sink_ptr> BuildSinks(const LoggerDesc& desc)
         {
             std::vector<spdlog::sink_ptr> sinks;
@@ -170,6 +199,10 @@ namespace NS
         (void)OS::FileSystem::CreateDirectories(LogsDirectory(desc));
 
         std::vector<spdlog::sink_ptr> sinks = BuildSinks(desc);
+        // 作るのも捨てるのも Init と Shutdown で、ロガーに渡した出し先だけを読む
+        g_recentSink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(Logger::k_RecentLogCapacity);
+        g_recentSink->set_level(spdlog::level::warn);
+        sinks.push_back(g_recentSink);
         std::shared_ptr<spdlog::logger> logger =
             std::make_shared<spdlog::logger>(k_LoggerName, sinks.begin(), sinks.end());
 
@@ -189,6 +222,26 @@ namespace NS
             return;
         }
         spdlog::shutdown();
+        g_recentSink.reset();
+    }
+
+    std::vector<RecentLog> Logger::RecentWarnings()
+    {
+        std::vector<RecentLog> recent;
+        if (!g_recentSink)
+        {
+            return recent;
+        }
+        // last_raw は古い順に返す
+        const std::vector<spdlog::details::log_msg_buffer> stored = g_recentSink->last_raw();
+        recent.reserve(stored.size());
+        for (std::vector<spdlog::details::log_msg_buffer>::const_reverse_iterator it = stored.rbegin();
+             it != stored.rend();
+             ++it)
+        {
+            recent.push_back(RecentLog{FromSpdLevel(it->level), std::string(it->payload.data(), it->payload.size())});
+        }
+        return recent;
     }
 
     void Logger::LogImpl(

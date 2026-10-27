@@ -10,7 +10,7 @@
 
 namespace NS
 {
-    class IUseCollision;
+    class IGetCollision;
 } // namespace NS
 
 namespace NS
@@ -25,7 +25,7 @@ namespace NS
 
         //! @brief 描くたびに真下の地面を探すシーンを書く。書くのは補助関数 InitDraw だけ
         //! @details collision は影を外すまで生きていること。書かずに描くのは呼び手のバグで、NS_ASSERT が止める
-        void UseCollision(const IUseCollision* collision) noexcept { m_collision = collision; }
+        void UseCollision(const IGetCollision* collision) noexcept { m_collision = collision; }
 
         //! 根の真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
         void Collect(const Gfx::RenderContext& context,
@@ -60,6 +60,6 @@ namespace NS
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離
         float m_surfaceOffset = 0.02f; // 地面へめり込ませない浮かせ量
         float m_baseAlpha = 0.5f;      // 接地時の不透明度
-        const IUseCollision* m_collision = nullptr; // 真下の地面を探すシーン (非所有)
+        const IGetCollision* m_collision = nullptr; // 真下の地面を探すシーン (非所有)
     };
 } // namespace NS

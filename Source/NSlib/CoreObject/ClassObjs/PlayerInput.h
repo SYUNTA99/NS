@@ -1,11 +1,12 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
+#include "NSlib/Core/Windows/InputReader.h"
 #include "NSlib/CoreObject/Object.h"
 
 namespace NS
 {
-    class IUseCamera;
+    class IGetCamera;
 
     //! 機器の入力をカメラ相対の移動方向と操作状態へ変換する部品
     //! 操作ロック中は中立値を保持する
@@ -28,8 +29,11 @@ namespace NS
         void SetJumpHeld(bool held) noexcept { m_jumpHeld = held; }
         //! 跳びと掴まりの手放しの押した瞬間と、突進の押しの控えと、出し直しの押しを下ろす
         void ConsumePressed() noexcept;
-        //! 移動・掴まり・跳びの入力を全て 0 と false に戻す
+        //! 移動・掴まり・跳びの入力を全て 0 と false に戻し、まだ読んでいない機器の押しも捨てる
         void ResetMovementInput() noexcept;
+        //! @brief 前に Update で読んでから後の機器の押しを、読まずに捨てる。読み取った値は残す
+        //! @details 世界を止めた後に動かし直す時に呼ぶ。止めている間の押しを、動かし直した世界へ渡さない
+        void DiscardUnreadPresses() noexcept { m_reader.Discard(); }
         //! 体当たりのボタンの押しを書く。試しが機器を通さずに押しを入れる時に使い、操作の停止は見ない
         void SetSlamHeld(bool held) noexcept { m_slamHeld = held; }
         //! 入力を中立へ戻し、解除まで機器からの操作を無視する。直接値を設定する関数には影響しない
@@ -52,9 +56,10 @@ namespace NS
         //! 置物の出し直しのボタン (R かゲームパッドの Back) を押した場合 true、それ以外の場合は false
         [[nodiscard]] bool RespawnPressed() const noexcept { return m_respawnPressed; }
 
-        //! キーボードとゲームパッドから今の入力を読み、camera のシーンのカメラから水平の前を取る
-        //! 呼ぶのはアクターが出ている間だけ。消えている間は ActorList が入力の段を回さない
-        void Update(const IUseCamera* camera);
+        //! @brief キーボードとゲームパッドから今の入力を読み、camera のシーンのカメラから水平の前を取る
+        //! @details 押した瞬間は、前に呼んだ時から後の押しを読む。持ち主は世界を進めた固定フレームに呼び、
+        //! 世界を進めない固定フレームの押しも次に呼んだ時に拾う
+        void Update(const IGetCamera* camera);
 
         // 入力を渡すだけで保存する調整値は無い。型名だけ登録する
         NS_REFLECT_NONE(PlayerInput, Object)
@@ -70,10 +75,10 @@ namespace NS
         bool m_jumpPressed = false;
         bool m_jumpHeld = false;
         bool m_releaseLedgePressed = false;
-        bool m_prevReleaseLedgeHeld = false;
         bool m_slamHeld = false;
         bool m_slamSeen = false; // ConsumePressed の後に突進を押したか
         bool m_respawnPressed = false;
         bool m_locked = false; // 操作の停止中か。保存しない
+        OS::InputReader m_reader;
     };
 } // namespace NS

@@ -13,7 +13,7 @@ namespace NS
     class SoundClip;
 
     //! @brief アクターが読んだ音を名前で覚える部品
-    //! @details 音の持ち主は AssetManager で、この部品は借りるだけ。利用側は IUseAudio の関数を使う
+    //! @details 音の持ち主は AssetManager で、この部品は借りるだけ。利用側は IGetAudio の関数を使う
     class Sound : public Object
     {
     public:

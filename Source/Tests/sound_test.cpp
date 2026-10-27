@@ -3,7 +3,7 @@
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Sound.h"
-#include "NSlib/CoreObject/IUse/IUseAudio.h"
+#include "NSlib/CoreObject/IGet/IGetAudio.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"

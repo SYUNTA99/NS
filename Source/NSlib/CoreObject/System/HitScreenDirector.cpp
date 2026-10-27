@@ -72,7 +72,7 @@ namespace NS
     void HitScreenDirector::StartShakeLines(const SceneActor* requester, const HitShakeLinesDesc& desc) noexcept
     {
         NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::StartShakeLines: 頼んだ物が null");
-        if (!(desc.radius > 0.0f) || desc.frames <= 0)
+        if (!IsPositive(desc.radius) || desc.frames <= 0)
         {
             m_linesRemaining = 0;
             m_linesJustStarted = false;
@@ -289,22 +289,27 @@ namespace NS
         float right = std::numeric_limits<float>::lowest();
         float top = std::numeric_limits<float>::max();
         float bottom = std::numeric_limits<float>::lowest();
-        const std::array<std::pair<Vector3, float>, 2> bodies{std::pair{m_lines.center, m_lines.radius},
-                                                                  std::pair{m_lines.otherCenter, m_lines.otherRadius}};
-        for (const std::pair<Vector3, float>& body : bodies)
+        struct ProjectedBody
         {
-            if (!(body.second > 0.0f))
+            Vector3 center{};
+            float radius = 0.0f;
+        };
+        const std::array<ProjectedBody, 2> bodies{ProjectedBody{m_lines.center, m_lines.radius},
+                                                  ProjectedBody{m_lines.otherCenter, m_lines.otherRadius}};
+        for (const ProjectedBody& body : bodies)
+        {
+            if (!IsPositive(body.radius))
             {
                 continue;
             }
             Vector2 centerPixel{};
             float centerW = 0.0f;
-            if (!Gfx::TryProjectToPixels(context.viewProjection, body.first, width, height, centerPixel, centerW))
+            if (!Gfx::TryProjectToPixels(context.viewProjection, body.center, width, height, centerPixel, centerW))
             {
                 return;
             }
             const float radiusPixels =
-                Gfx::ProjectedLengthPixels(context.viewProjection, body.second, centerW, height);
+                Gfx::ProjectedLengthPixels(context.viewProjection, body.radius, centerW, height);
             left = std::min(left, centerPixel.x - radiusPixels);
             right = std::max(right, centerPixel.x + radiusPixels);
             top = std::min(top, centerPixel.y - radiusPixels);

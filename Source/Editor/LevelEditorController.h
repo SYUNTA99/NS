@@ -6,8 +6,10 @@
 #include "Editor/GizmoEditor.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/PlayControls.h"
+#include "Editor/StageBuildTool.h"
 #include "Editor/Undo/ActorSnapshotApplier.h"
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Core/Windows/InputReader.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/Reflection/SoundName.h"
 
@@ -152,7 +154,15 @@ public:
     //! 編集対象の ActorList。一覧と参照候補はここから直接取得する
     [[nodiscard]] const NS::ActorList& Actors() const noexcept;
 
-    [[nodiscard]] bool GizmoToolActive() const noexcept { return m_gizmoToolActive; }
+    enum class EditTool
+    {
+        Gizmo,
+        Grid,
+        StageBuild
+    };
+    [[nodiscard]] EditTool CurrentEditTool() const noexcept { return m_editTool; }
+    void SetEditTool(EditTool tool) noexcept;
+    [[nodiscard]] bool GizmoToolActive() const noexcept { return m_editTool == EditTool::Gizmo; }
     //! 配置ツールを Build / Object 切替える。Build へ戻す時はギズモ選択を解除する
     void SetGizmoToolActive(bool active) noexcept;
 
@@ -203,6 +213,9 @@ public:
 
     //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
     void PlaceItem(const NS::Editor::PlacementItem& item);
+    [[nodiscard]] NS::Editor::StageBuildTool& StageBuilder() noexcept { return m_stageBuilder; }
+    // 作成道具を保って1回の履歴で置く。プレイ中や配置失敗では k_NoActorId。
+    [[nodiscard]] NS::uint32 PlaceStagePart(const NS::Ray& ray);
 
     //! @brief メッシュ資産を地形の部品として編集視点の中心あたりへ置く。Undo 対応
     //! @param[in] meshPath 資産ファイルの絶対パス。参照は ContentRoot 相対へ直して持つ
@@ -278,11 +291,16 @@ public:
     bool DeriveActorFileFromActor(NS::uint32 actorId, std::string_view name);
 
 private:
-    void TickEdit();
+    void TickEdit(const NS::OS::InputPresses& presses);
+    void FocusLoadedScene() noexcept;
 
     //! @brief プレイ中のカーソルを置き直す
     //! @details Captured は消して Game の画像の中心へ固定し、マウスを相対にする。Released はその逆
     void ApplyPlayCursor(NS::Editor::PlayCursor cursor) noexcept;
+
+    //! @brief 世界を動かし直す前に、自機がまだ読んでいない押しを捨てる
+    //! @details 捨てるのは自機の読み手だけ。描画の中のツールバーから呼ばれても、エディタがまだ読んでいない押しは残る
+    void DiscardPlayerPresses() noexcept;
 
     //! プレイを終えて編集の姿へ戻す。凍結スナップショットから世界を組み直し、操作系を休止させ、カーソルを出す
     //! 編集モードでしか要らない遷移なのでエディタが持つ。組み直しで確保が起きるため noexcept にしない
@@ -343,9 +361,12 @@ private:
     bool m_editBlending = false;
 
     NS::Editor::EditorMode m_editor{};
+    NS::Editor::StageBuildTool m_stageBuilder;
     Mode m_mode = Mode::Edit;
 
-    bool m_gizmoToolActive = true; // false の時は Build
+    EditTool m_editTool = EditTool::Gizmo;
+    std::optional<NS::Vector3> m_stagePlacement;
+    void TickStageBuild(const NS::OS::InputPresses& presses);
 
     NS::Editor::GizmoEditor m_gizmo{};
 
@@ -407,6 +428,8 @@ private:
     bool m_assetEdited = false; // 選んだ素材の値が変わり、まだ確定していない
 
     bool m_editShortcutsBlocked = false;
+    // Tick の頭で固定ステップごとに読む。編集の部品は、ここで読んだ押しを引数で受ける
+    NS::OS::InputReader m_inputReader;
 
     //! 選んだ .actor の値で作った 1 体。素材の窓で直す値はこの 1 体に入れ、確定の時に .actor へ書く
     std::unique_ptr<NS::SceneActor> m_actorFileDraft;

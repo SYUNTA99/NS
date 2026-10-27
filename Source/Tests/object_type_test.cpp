@@ -23,12 +23,12 @@ static_assert(std::is_base_of_v<NS::Object, NS::SceneActor>);
 static_assert(std::is_base_of_v<NS::Object, NS::UIActor>);
 static_assert(!std::is_base_of_v<NS::SceneActor, NS::UIActor>);
 static_assert(!std::is_base_of_v<NS::UIActor, NS::SceneActor>);
-static_assert(!std::is_base_of_v<NS::IUseCamera, NS::UIActor>);
-static_assert(!std::is_base_of_v<NS::IUseSceneSystem, NS::UIActor>);
+static_assert(!std::is_base_of_v<NS::IGetCamera, NS::UIActor>);
+static_assert(!std::is_base_of_v<NS::IGetSceneSystem, NS::UIActor>);
 // エフェクトの窓口は保持役の枠を持つ個体だけが継ぐ。シーンは出す先の EffectScene を持つだけで継がない
-static_assert(std::is_base_of_v<NS::IUseEffect, NS::SceneActor>);
-static_assert(!std::is_base_of_v<NS::IUseEffect, NS::Scene>);
-static_assert(!std::is_base_of_v<NS::IUseEffect, NS::UIActor>);
+static_assert(std::is_base_of_v<NS::IGetEffect, NS::SceneActor>);
+static_assert(!std::is_base_of_v<NS::IGetEffect, NS::Scene>);
+static_assert(!std::is_base_of_v<NS::IGetEffect, NS::UIActor>);
 static_assert(!k_HasObjectName<NS::UIActor>);
 static_assert(!k_CanCreateTypedClassObjFromOutside<NS::SceneActor>);
 static_assert(!k_HasPartTypeSearch<NS::SceneActor>);

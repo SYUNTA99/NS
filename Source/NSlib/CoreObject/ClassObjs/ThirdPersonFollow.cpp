@@ -2,8 +2,10 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCameraTarget.h"
+#include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/Core/Windows/Gamepad.h"
 #include "NSlib/Core/Windows/Input.h"
@@ -28,6 +30,8 @@ namespace
     constexpr float k_ChargeFrameAspect = 16.0f / 9.0f;
     // これより小さい構図のずらしは 0 にする (m)。画素の 1/100 未満
     constexpr float k_ChargeFrameSnap = 0.0001f;
+    // 遮りの上限が追う距離にこれより近づいたら外す (m)。ピクセルの 1/100 未満
+    constexpr float k_OcclusionReleaseGap = 0.0001f;
 
     // 臨界減衰のバネを dt 進める。止まった所から一定の目標へは、τ 秒で差の 1 − (1 + ωτ) e^(−ωτ) が詰まる
     void CriticalSpringStep(float& value, float& velocity, float target, float omega, float dt) noexcept
@@ -43,6 +47,37 @@ namespace
         const float push = (velocity + omega * gap) * dt;
         velocity = (velocity - omega * push) * decay;
         value = target + (gap + push) * decay;
+    }
+
+    void CriticalSpringStep(NS::Vector2& value,
+                            NS::Vector2& velocity,
+                            const NS::Vector2& target,
+                            float omega,
+                            float dt) noexcept
+    {
+        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
+        CriticalSpringStep(value.y, velocity.y, target.y, omega, dt);
+    }
+
+    void CriticalSpringStep(NS::Vector3& value,
+                            NS::Vector3& velocity,
+                            const NS::Vector3& target,
+                            float omega,
+                            float dt) noexcept
+    {
+        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
+        CriticalSpringStep(value.y, velocity.y, target.y, omega, dt);
+        CriticalSpringStep(value.z, velocity.z, target.z, omega, dt);
+    }
+
+    void CriticalSpringStepHorizontal(NS::Vector3& value,
+                                      NS::Vector3& velocity,
+                                      const NS::Vector3& target,
+                                      float omega,
+                                      float dt) noexcept
+    {
+        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
+        CriticalSpringStep(value.z, velocity.z, target.z, omega, dt);
     }
 
     // 右は水平で、上は視線と右に直交する
@@ -133,7 +168,7 @@ namespace NS
     void ThirdPersonFollow::SetFollowMotion(bool grounded, const Vector3& velocity) noexcept
     {
         m_followGrounded = grounded;
-        const float horiz = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        const float horiz = HorizontalLength(velocity);
         // 非数を持つと走り判定の比較が常に偽になり、走っても待機時距離のまま
         if (std::isfinite(horiz))
         {
@@ -190,6 +225,11 @@ namespace NS
         {
             return false;
         }
+        // 非数の縦の向きは帯の中心を非数にし、注視点ごと壊す
+        if (!std::isfinite(desc.verticalLean) || desc.verticalLean < -1.0f || desc.verticalLean > 1.0f)
+        {
+            return false;
+        }
         m_rebound = desc;
         return true;
     }
@@ -221,7 +261,7 @@ namespace NS
         // 空中の 1 発が当たって反動になり直した時も、その 1 発を出した向きで回し直す
         if (began)
         {
-            m_reboundLookHeld = true;
+            m_reboundLookHeld = rebound.holdLook;
             m_reboundTurnAngle = 0.0f;
             m_reboundTurnFrame = 0;
             Vector3 direction{};
@@ -258,8 +298,7 @@ namespace NS
         }
     }
 
-    void ThirdPersonFollow::UpdateReboundPhase(
-        bool began, bool rebounding, bool launchBegan, bool launching, const Vector3& head) noexcept
+    void ThirdPersonFollow::UpdateReboundPhase(const ReboundPhaseInput& input, const Vector3& head) noexcept
     {
         const auto anchorAtLastLook = [this, &head]() {
             m_reboundAnchor = head;
@@ -272,20 +311,18 @@ namespace NS
 
         // 反動の状態になったフレームに、前のフレームに見ていた所から留める
         // 空中で続けて当てた時も留め直す。勝手に出た突進の途中で当たった時も、遅れた注視点から続けるので跳ばない
-        if (began)
+        if (input.reboundBegan)
         {
             m_reboundPhase = ReboundPhase::Following;
             anchorAtLastLook();
             // 勝手に出た突進の遅れは反動の上限より大きいことがある。入った時の遅れを上限の初めにして、切って跳ばさない
-            const float lagX = m_reboundAnchor.x - head.x;
-            const float lagZ = m_reboundAnchor.z - head.z;
-            m_reboundLagCap = std::max(m_reboundMaxLag, std::sqrt(lagX * lagX + lagZ * lagZ));
+            m_reboundLagCap = std::max(m_reboundMaxLag, HorizontalLength(m_reboundAnchor - head));
             return;
         }
 
         // 勝手に出た突進になったフレームに、前のフレームに見ていた所へ取り残す。バネは止まった所から動き出すので、
         // 出た最初の数フレームは注視点がほぼ動かない
-        if (launchBegan)
+        if (input.launchBegan)
         {
             m_reboundPhase = ReboundPhase::Launching;
             anchorAtLastLook();
@@ -294,8 +331,8 @@ namespace NS
 
         // 反動の状態か勝手に出た突進が外れたフレームから寄せ戻す
         // 着地のほか、空中の 1 発と縁を掴んだ時も外れる。突進は当たらずに止まった時に外れる
-        if ((m_reboundPhase == ReboundPhase::Following && !rebounding) ||
-            (m_reboundPhase == ReboundPhase::Launching && !launching))
+        if ((m_reboundPhase == ReboundPhase::Following && !input.rebounding) ||
+            (m_reboundPhase == ReboundPhase::Launching && !input.launching))
         {
             if (m_reboundReturnFrames > 0 && m_hasLook)
             {
@@ -345,14 +382,13 @@ namespace NS
         {
             omega = 1.678f / m_reboundPartnerHalfSeconds;
         }
-        CriticalSpringStep(m_partnerLean.x, m_partnerLeanVelocity.x, leanTarget.x, omega, dt);
-        CriticalSpringStep(m_partnerLean.y, m_partnerLeanVelocity.y, leanTarget.y, omega, dt);
-        CriticalSpringStep(m_partnerLean.z, m_partnerLeanVelocity.z, leanTarget.z, omega, dt);
+        CriticalSpringStep(m_partnerLean, m_partnerLeanVelocity, leanTarget, omega, dt);
         CriticalSpringStep(m_partnerPull, m_partnerPullVelocity, pullTarget, omega, dt);
     }
 
     Vector3 ThirdPersonFollow::UpdateReboundLook(const Vector3& head,
                                                      const Vector3& ball,
+                                                     float verticalLean,
                                                      float dt) noexcept
     {
         m_previousLook = m_look;
@@ -381,53 +417,60 @@ namespace NS
         if (m_reboundPhase == ReboundPhase::Launching)
         {
             // 表示する遅れだけをなめらかに制限し、バネの速度が急変しないよう状態は切らない。
-            CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_forcedLaunchFollowOmega, dt);
-            CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_forcedLaunchFollowOmega, dt);
-            const float lagX = m_reboundAnchor.x - head.x;
-            const float lagZ = m_reboundAnchor.z - head.z;
-            const float lag = std::sqrt(lagX * lagX + lagZ * lagZ);
+            CriticalSpringStepHorizontal(m_reboundAnchor, m_reboundAnchorVelocity, head, m_forcedLaunchFollowOmega, dt);
+            const Vector3 lag = HorizontalPart(m_reboundAnchor - head);
+            const float lagLength = lag.Length();
             const float maxLag = std::max(m_forcedLaunchMaxLag, 0.0f);
             m_look = head;
-            if (lag > 0.0f && maxLag > 0.0f)
+            if (lagLength > 0.0f && maxLag > 0.0f)
             {
-                const float shown = maxLag * std::tanh(lag / maxLag);
-                m_look.x = head.x + lagX * (shown / lag);
-                m_look.z = head.z + lagZ * (shown / lag);
+                const float shown = maxLag * std::tanh(lagLength / maxLag);
+                m_look = head + lag * (shown / lagLength);
             }
             return m_look;
         }
 
         // 横と前後は臨界減衰のバネで遅れて付いていき、遅れは上限の内に留める
         // 高さは留めたまま
-        CriticalSpringStep(m_reboundAnchor.x, m_reboundAnchorVelocity.x, head.x, m_reboundFollowOmega, dt);
-        CriticalSpringStep(m_reboundAnchor.z, m_reboundAnchorVelocity.z, head.z, m_reboundFollowOmega, dt);
-        const float lagX = m_reboundAnchor.x - head.x;
-        const float lagZ = m_reboundAnchor.z - head.z;
-        const float lag = std::sqrt(lagX * lagX + lagZ * lagZ);
+        CriticalSpringStepHorizontal(m_reboundAnchor, m_reboundAnchorVelocity, head, m_reboundFollowOmega, dt);
+        const Vector3 lag = HorizontalPart(m_reboundAnchor - head);
+        const float lagLength = lag.Length();
         const float maxLag = std::max(m_reboundLagCap, 0.0f);
-        if (lag > maxLag)
+        if (lagLength > maxLag)
         {
-            const float scale = maxLag / lag;
-            m_reboundAnchor.x = head.x + lagX * scale;
-            m_reboundAnchor.z = head.z + lagZ * scale;
+            const float scale = maxLag / lagLength;
+            m_reboundAnchor.x = head.x + lag.x * scale;
+            m_reboundAnchor.z = head.z + lag.z * scale;
         }
         // 上限は欄の値より上にある間だけ、今の遅れまで縮めていく。増やさないので注視点は跳ばない
-        m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lag, maxLag)));
+        m_reboundLagCap = std::max(m_reboundMaxLag, std::min(m_reboundLagCap, std::min(lagLength, maxLag)));
+        // カメラへ向かう間は、注視点が自機より奥へ遅れた分だけカメラが自機へ寄る。奥への遅れだけを別の上限で縛る。
+        // 横と、カメラから離れる向きの遅れは残すので、離れていく速さの見え方は変えない
+        const Vector3 away = ViewAxesFromYawPitch(m_yaw, 0.0f).forward;
+        const float lagAway = DotHorizontal(m_reboundAnchor - head, away);
+        const float awayCap = std::max(m_reboundTowardCameraMaxLag, 0.0f);
+        if (lagAway > awayCap)
+        {
+            m_reboundAnchor -= HorizontalPart(away) * (lagAway - awayCap);
+        }
         m_look = m_reboundAnchor + m_partnerLean;
 
         // 追う相手が画面の上下の帯を越えそうな時だけ、
         // 越えない所まで位置と注視点をカメラの上の向きへ動かす
         // 動かした量は留めた注視点へ戻さない。帯の内へ戻れば留めた高さへ戻る
-        const float viewFov = FovY().value - DegreesToRadians(m_chargeNarrowDegrees);
+        // 帯の中心は縦の向きの逆へずらす。上へ返る間は自機を下寄りに留め、進む先の上を空ける
+        const float viewFov = ViewFovRadians();
         if (m_reboundScreenBand > 0.0f && viewFov > 0.0f)
         {
             const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
-            const Vector3 toBall = ball - (m_look - axes.forward * m_distance);
+            const Vector3 toBall = ball - (m_look - axes.forward * ShownDistance());
             const float depth = Dot(toBall, axes.forward);
             if (depth > 0.0f)
             {
-                const float limit = m_reboundScreenBand * depth * std::tan(viewFov * 0.5f);
-                const float height = Dot(toBall, axes.up);
+                const float halfHeight = depth * std::tan(viewFov * 0.5f);
+                const float center = -m_reboundBandLean * verticalLean * halfHeight;
+                const float limit = m_reboundScreenBand * halfHeight;
+                const float height = Dot(toBall, axes.up) - center;
                 if (height > limit)
                 {
                     m_look += axes.up * (height - limit);
@@ -441,7 +484,7 @@ namespace NS
         return m_look;
     }
 
-    void ThirdPersonFollow::UpdateCharge(const IUseCamera* user,
+    void ThirdPersonFollow::UpdateCharge(CameraManager* cameras,
                                          const FollowChargeDesc& charge,
                                          bool framingHeld,
                                          const Transform* target,
@@ -512,19 +555,19 @@ namespace NS
             shape.pitchDegrees = m_chargeShakePitchDegrees;
             shape.frequency = m_chargeShakeFrequency;
             shape.decayPerSecond = m_chargeShakeDecayPerSecond;
-            (void)HoldCameraTrauma(user, holdCharge, shape);
+            (void)cameras->HoldTrauma(holdCharge, shape);
         }
 
         // 構図は押したフレームから動かし、溜めに入った時には相手を枠へ入れておく
         Vector2 wanted{0.0f, 0.0f};
         float wantedTilt = 0.0f;
-        const float frameFov = FovY().value - DegreesToRadians(m_chargeNarrowDegrees);
+        const float frameFov = ViewFovRadians();
         const bool framing = charge.held && charge.hasAimTarget && m_chargeFrameRatio > 0.0f && frameFov > 0.0f;
         if (framing)
         {
             const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
             const Vector3 root = target->Position();
-            const Vector3 camPos = look - axes.forward * m_distance;
+            const Vector3 camPos = look - axes.forward * ShownDistance();
             const float frameTanHalf = m_chargeFrameRatio * std::tan(frameFov * 0.5f);
 
             const FramePoint self = ToFramePoint(root, camPos, axes, frameTanHalf);
@@ -556,8 +599,7 @@ namespace NS
             m_chargeFrameVelocity = Vector2{0.0f, 0.0f};
             return;
         }
-        CriticalSpringStep(m_chargeFrameOffset.x, m_chargeFrameVelocity.x, wanted.x, m_chargeFrameOmega, dt);
-        CriticalSpringStep(m_chargeFrameOffset.y, m_chargeFrameVelocity.y, wanted.y, m_chargeFrameOmega, dt);
+        CriticalSpringStep(m_chargeFrameOffset, m_chargeFrameVelocity, wanted, m_chargeFrameOmega, dt);
         CriticalSpringStep(m_chargeCenterTilt, m_chargeCenterTiltVelocity, wantedTilt, m_chargeFrameOmega, dt);
         // 0 へは限りなく近づくだけなので、k_ChargeFrameSnap を切ったら 0 にして溜めを受けていない時の式へ戻す
         if (!framing && m_chargeFrameOffset.Length() < k_ChargeFrameSnap)
@@ -578,8 +620,75 @@ namespace NS
         m_yaw = m_initialYaw;
         m_pitch = m_initialPitch;
         m_distance = m_idleDistance;
+        m_widenNow = 0.0f;
+        m_hasOccludedDistance = false;
         ClearCharge();
         ClearRebound();
+    }
+
+    float ThirdPersonFollow::ViewFovRadians() const noexcept
+    {
+        return FovY().value - DegreesToRadians(m_chargeNarrowDegrees) + DegreesToRadians(m_widenNow);
+    }
+
+    float ThirdPersonFollow::ShownDistance() const noexcept
+    {
+        if (m_hasOccludedDistance)
+        {
+            return std::min(m_distance, m_occludedDistance);
+        }
+        return m_distance;
+    }
+
+    void ThirdPersonFollow::UpdateOcclusion(const IGetCollision* collision,
+                                            const Vector3& root,
+                                            const Vector3& head,
+                                            const Vector3& look,
+                                            float dt)
+    {
+        NS_ASSERT(Scene, collision != nullptr, "UpdateOcclusion: 渡したアクターか部品が無い");
+        const float margin = std::max(m_occlusionMargin, 0.0f);
+        // 頭の高さは体より上にあり、天井の下では地形の中へ入る。中から撃つと 0 で当たって潰れるので、
+        // 掃引で地形の外にある根から頭へ撃ち、遮られたらその手前から撃つ
+        Vector3 origin = head;
+        const Vector3 rise = head - root;
+        const float riseLength = rise.Length();
+        float riseHit = 0.0f;
+        if (HasPositiveMagnitude(riseLength) && RaycastCollision(collision, root, rise * (1.0f / riseLength), riseLength, riseHit))
+        {
+            origin = root + rise * (std::max(riseHit - margin, 0.0f) / riseLength);
+        }
+        // 出発点から、注視点の後ろの置きたいカメラの位置へ撃つ。前の向きの逆へ撃つと、注視点が頭より
+        // 下へずれた時に線がカメラより上を通り、カメラと自機の間に無い天井で縮む
+        const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
+        const Vector3 toCamera = look - axes.forward * m_distance - origin;
+        const float probe = toCamera.Length();
+        float hitDistance = 0.0f;
+        if (HasPositiveMagnitude(probe) && RaycastCollision(collision, origin, toCamera * (1.0f / probe), probe, hitDistance))
+        {
+            // 当たった所までの割合だけ距離を縮める。出発点と注視点は近いので、カメラは当たった所の手前に来る
+            const float goal = std::max(m_distance * (hitDistance / probe) - margin, 0.0f);
+            // 遮られた時は一度に縮めて壁の中を 1 フレームも見せない。遮りが遠のく時はなめらかに伸ばす
+            if (!m_hasOccludedDistance || goal < m_occludedDistance)
+            {
+                m_occludedDistance = goal;
+                m_hasOccludedDistance = true;
+                return;
+            }
+            m_occludedDistance = SpringApproach(m_occludedDistance, goal, m_springOmega, dt);
+            return;
+        }
+        if (!m_hasOccludedDistance)
+        {
+            return;
+        }
+        // 外れた後は距離バネと同じ速さで追う距離へ戻し、着いたら上限を外す。外さないと、
+        // 追う距離が伸びる時に上限のバネが遅れて重なる
+        m_occludedDistance = SpringApproach(m_occludedDistance, m_distance, m_springOmega, dt);
+        if (m_distance - m_occludedDistance < k_OcclusionReleaseGap)
+        {
+            m_hasOccludedDistance = false;
+        }
     }
 
     void ThirdPersonFollow::SetSensX(float radPerPixel) noexcept
@@ -632,9 +741,13 @@ namespace NS
         m_distance = distance;
     }
 
-    void ThirdPersonFollow::Update(const IUseCamera* user)
+    void ThirdPersonFollow::Advance(CameraManager* cameras, const IGetCollision* collision)
     {
-        NS_ASSERT(Scene, user != nullptr, "ThirdPersonFollow::Update: カメラの管理クラスの窓口が null");
+        NS_ASSERT(Scene, cameras != nullptr, "ThirdPersonFollow::Advance: カメラの管理役が null");
+        NS_ASSERT(Scene, collision != nullptr, "ThirdPersonFollow::Advance: 地形を探すシーンが null");
+        // clang-format off
+        if (m_targetState != nullptr) { m_targetState->WriteFollowState(this); }
+        // clang-format on
         // 受けた溜めと反動の状態はこのフレームだけ使う。渡されなかったフレームは押していない・反動でないのと同じ
         const FollowChargeDesc charge = m_charge;
         m_charge = FollowChargeDesc{};
@@ -689,7 +802,8 @@ namespace NS
 
         const Vector3 root = target->Position();
         const Vector3 head{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};
-        UpdateReboundPhase(reboundBegan, rebound.rebounding, launchBegan, rebound.forcedSlamming, head);
+        UpdateReboundPhase(ReboundPhaseInput{reboundBegan, rebound.rebounding, launchBegan, rebound.forcedSlamming},
+                           head);
         // 反動になったフレームは前の反動の寄せと引きを持ち越さない
         if (reboundBegan)
         {
@@ -734,9 +848,16 @@ namespace NS
             desiredDistance = m_idleDistance;
         }
         m_distance = SpringApproach(m_distance, desiredDistance, m_springOmega, dt);
+        float widenGoal = 0.0f;
+        if (rebound.widenView)
+        {
+            widenGoal = m_widenDegrees;
+        }
+        m_widenNow = SpringApproach(m_widenNow, widenGoal, m_widenOmega, dt);
 
-        const Vector3 look = UpdateReboundLook(head, root, dt);
-        UpdateCharge(user, charge, framingHeld, target, look, dt);
+        const Vector3 look = UpdateReboundLook(head, root, rebound.verticalLean, dt);
+        UpdateOcclusion(collision, root, head, look, dt);
+        UpdateCharge(cameras, charge, framingHeld, target, look, dt);
     }
 
     CameraPose ThirdPersonFollow::EvaluatePose(float alpha) const noexcept
@@ -759,7 +880,7 @@ namespace NS
         {
             headPos = m_previousLook * (1.0f - alpha) + m_look * alpha;
         }
-        Vector3 camPos = headPos - axes.forward * m_distance;
+        Vector3 camPos = headPos - axes.forward * ShownDistance();
 
         // 構図のずらしは位置と注視点を同じだけ動かし、視線の向きを変えない。0 なら足さない
         const float upShift = m_chargeFrameOffset.y;
@@ -776,9 +897,9 @@ namespace NS
         }
 
         CameraPose pose = MakePose(camPos, headPos, Vector3{0.0f, 1.0f, 0.0f});
-        if (m_chargeNarrowDegrees != 0.0f)
+        if (m_chargeNarrowDegrees != 0.0f || m_widenNow != 0.0f)
         {
-            pose.fovY = Radians{pose.fovY.value - DegreesToRadians(m_chargeNarrowDegrees)};
+            pose.fovY = Radians{ViewFovRadians()};
         }
         return pose;
     }

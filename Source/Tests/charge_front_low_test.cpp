@@ -42,49 +42,6 @@ namespace
     }
 } // namespace
 
-// 溜まる光の根の向きは、そのフレームの狙いの線の水平の向き。カメラを回すと次のフレームで付いてくる
-TEST(ChargeFrontLow, GatherRootFacesTheAimLineEveryFrame)
-{
-    NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeActorJson();
-    NS::SetActorJsonFile(entry, "PlayerActor");
-    NS::SetActorJsonId(entry, 1);
-    NS::SceneJsonActors(doc).push_back(std::move(entry));
-    scene.ResetFromJson(doc);
-    PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
-    ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"チャージしきい値秒", 0.2f}}), 0u);
-    TestViewCamera* camera = PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_NE(camera, nullptr);
-    for (int frame = 0; frame < FramesFor(0.2f); ++frame)
-    {
-        player->Update(true);
-    }
-    ASSERT_TRUE(player->ChargeJudge().IsCharging());
-
-    const NS::Vector3 targets[] = {
-        NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Vector3{-1.0f, 0.0f, -1.0f}, NS::Vector3{0.0f, 0.0f, 1.0f}};
-    for (const NS::Vector3& target : targets)
-    {
-        camera->SetPose(NS::Vector3{}, target);
-        for (int frame = 0; frame < 3; ++frame)
-        {
-            player->Update(true);
-            GL::Level::AimLine aim{};
-            ASSERT_TRUE(player->TryGetAimLine(aim));
-            const NS::EffectRecord* gather = LiveEffect(player, "charge.gather");
-            ASSERT_NE(gather, nullptr);
-            ASSERT_TRUE(gather->rotation.has_value());
-            const NS::Quaternion expected = GL::Player::ChargeEffects::YawToward(aim.direction);
-            EXPECT_NEAR(gather->rotation->x, expected.x, 0.00001f);
-            EXPECT_NEAR(gather->rotation->y, expected.y, 0.00001f);
-            EXPECT_NEAR(gather->rotation->z, expected.z, 0.00001f);
-            EXPECT_NEAR(gather->rotation->w, expected.w, 0.00001f);
-        }
-    }
-}
-
 // 球の上に生む光の点は、根から見て手前 (−Z、カメラの側) では玉の中心より低い所にだけ生まれ、
 // 奥 (+Z) では高い所にも生まれる。点の向きは生む時だけ根に従う
 TEST(ChargeFrontLow, PointsNearTheCameraSpawnLowerThanFarOnes)

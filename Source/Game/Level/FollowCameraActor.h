@@ -7,17 +7,18 @@ namespace GL
 {
     namespace Level
     {
+        //! @brief 追従カメラ (ThirdPersonFollow) を置き、出ている間だけ選べる物にする
+        //! @details 仮想カメラを進めるのは CameraManager の OnTick で、このアクターは更新の関数を持たない
         class FollowCameraActor : public NS::SceneActor
         {
         public:
             NS_REFLECT_BEGIN(FollowCameraActor, NS::SceneActor)
             NS_CLASSOBJ(m_vcam, "Vcam")
             NS_REFLECT_END()
-            [[nodiscard]] NS::UpdatePhase Phase() const noexcept override { return NS::UpdatePhase::Camera; }
             [[nodiscard]] NS::ThirdPersonFollow& Vcam() noexcept { return *m_vcam; }
             [[nodiscard]] const NS::ThirdPersonFollow& Vcam() const noexcept { return *m_vcam; }
             void OnEndPlay() override;
-            //! 「追従対象」の指す相手を取得し直して仮想カメラへ渡す
+            //! 「追従対象」の指す相手を取得し直し、相手が状態を渡す口と一緒に仮想カメラへ渡す
             void ResolveActorRefs() override;
 
         protected:
@@ -26,9 +27,6 @@ namespace GL
             void OnStart() override;
             //! 仮想カメラは入れたまま、出ている間だけ選べる
             void OnAppear() override;
-            //! 追う相手の状態を読んで仮想カメラへ渡す
-            void ObserveStep() override;
-            void BodyStep() override;
             void OnDisappear() noexcept override;
 
         private:

@@ -81,13 +81,14 @@ TEST(PlayerJudges, LedgeEligibilityPreservesGroundUpwardAndRecentImpactExclusion
 
 TEST(PlayerJudges, LedgeBandIncludesItsEdgesWithoutPhysicsOrState)
 {
-    const NS::AABB box{NS::Vector3{0.0f, 1.0f, 0.0f}, NS::Vector3{1.0f, 1.0f, 1.0f}};
-    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{-1.0f, 2.0f, 1.0f}, box, 0.5f, 0.25f));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{1.0f, 2.5f, -1.0f}, box, 0.5f, 0.25f));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 1.75f, 0.0f}, box, 0.5f, 0.25f));
-    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{1.001f, 2.0f, 0.0f}, box, 0.5f, 0.25f));
-    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 2.501f, 0.0f}, box, 0.5f, 0.25f));
-    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(NS::Vector3{0.0f, 1.749f, 0.0f}, box, 0.5f, 0.25f));
+    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::InBand(2.0f, 1.5f, 0.5f, 0.25f));
+    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::InBand(2.0f, 2.25f, 0.5f, 0.25f));
+    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::InBand(2.0f, 2.0f, 0.5f, 0.25f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(2.0f, 1.499f, 0.5f, 0.25f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(2.0f, 2.251f, 0.5f, 0.25f));
+    // 上面か手の高さが非数なら掴まない
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(2.0f, std::numeric_limits<float>::quiet_NaN(), 0.5f, 0.25f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::InBand(std::numeric_limits<float>::quiet_NaN(), 2.0f, 0.5f, 0.25f));
 }
 
 TEST(PlayerJudges, MoveInputIncludesTheDeadzoneEdgeAndStoppedNeedsExactZero)

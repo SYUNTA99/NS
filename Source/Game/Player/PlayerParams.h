@@ -104,6 +104,7 @@ namespace GL
             NS_FIELD(m_acceleration, "加速度")
             NS_FIELD(m_airAcceleration, "空中の加速度")
             NS_FIELD(m_turningDrag, "曲がる時の抵抗")
+            NS_FIELD(m_airControlReturnSeconds, "ダッシュと反動の後に空中の操作が戻る秒")
             NS_FIELD(m_friction, "手を放した時の減速度")
             NS_FIELD(m_deceleration, "ブレーキの減速度")
             NS_FIELD(m_brakeThreshold, "ブレーキのしきい値")
@@ -113,6 +114,7 @@ namespace GL
             NS_FIELD(m_maxStepHeight, "登れる段の高さ")
             NS_FIELD(m_ledgeGrabBelowHand, "掴める縁の下向き距離")
             NS_FIELD(m_ledgeReach, "縁へ手を伸ばす距離")
+            NS_FIELD(m_ledgeHoldAboveHand, "掴まっている縁の上向きの許し")
             NS_FIELD(m_ledgeClimbDuration, "よじ登りの所要時間")
             NS_FIELD(m_ledgeShimmySpeed, "縁の横移動速度")
             NS_GROUP("突進")
@@ -136,6 +138,26 @@ namespace GL
             NS_FIELD(m_overchargeSwayEndRate, "紫の揺れの終わりの速さ")
             NS_FIELD(m_overchargeSwayFallbackDistance, "相手がいない時に直す距離")
             NS_FIELD(m_overchargePowerMax, "紫の威力の上限")
+            NS_GROUP("エアダッシュ")
+            NS_FIELD(m_airDashDistance, "エアダッシュの距離", NS::FieldRange::Positive())
+            NS_FIELD(m_airDashExitSpeed, "エアダッシュ後に残る速さ")
+            NS_FIELD(m_intendedHoldSeconds, "行きたい向きとみなす秒")
+            NS_FIELD(m_retiltDegrees, "倒し直しとみなす角度")
+            NS_GROUP("地形の反動")
+            NS_FIELD(m_reboundTableDivisions, "向きの表の分割数")
+            NS_FIELD(m_reboundTableWithPitch, "表に傾きの段を入れる")
+            NS_FIELD(m_terrainReboundSpeedScale, "返る速さのダッシュの速さに対する倍率")
+            NS_FIELD(m_reboundKeepRatio, "返る力の逃げない割合")
+            NS_FIELD(m_reboundMinFacing, "反動に数える当て方の下限")
+            NS_FIELD(m_reboundFullFacing, "全部返ったに数える当て方の下限")
+            NS_FIELD(m_reboundLockSeconds, "反動の操作なしの秒")
+            NS_FIELD(m_reboundSteerEndSeconds, "反動の補正が終わる秒")
+            NS_FIELD(m_dashReboundGravity, "地形の反動の重力")
+            NS_FIELD(m_dashReboundDeceleration, "地形の反動の減速度")
+            NS_FIELD(m_reboundSteerLimitRatio, "曲げの上限の段の割合")
+            NS_FIELD(m_reboundSteerMaxDegreesPerSecond, "曲げの最大の角速度")
+            NS_FIELD(m_drawReboundLines, "反動の線を描く")
+            NS_FIELD(m_reboundLineLength, "反動の線の長さ")
             NS_GROUP("反動")
             NS_FIELD(m_reboundRiseGravityScale, "反動の上りの重力倍率")
             NS_FIELD(m_reboundAirAcceleration, "反動中の空中の加速度")
@@ -239,6 +261,8 @@ namespace GL
             float m_acceleration = 40.0f;
             float m_airAcceleration = 40.0f;
             float m_turningDrag = 40.0f;
+            // ダッシュと反動の後の落下で、空中の加速度と曲がる時の抵抗が 0 から全部へ戻るまでの秒
+            float m_airControlReturnSeconds = 0.5f;
             float m_friction = 40.0f;
             float m_deceleration = 40.0f;
             float m_brakeThreshold = -0.8f;
@@ -246,6 +270,8 @@ namespace GL
             float m_maxStepHeight = 0.25f;
             float m_ledgeGrabBelowHand = 0.5f;
             float m_ledgeReach = 0.3f;
+            // 掴まっている間に測り直す上面が、手より上に出てよい高さ (m)。撃った線の誤差で手を放さないための余白
+            float m_ledgeHoldAboveHand = 0.01f;
             float m_ledgeClimbDuration = 0.25f;
             float m_ledgeShimmySpeed = 2.0f;
             float m_turnSpeed = 970.0f;
@@ -261,6 +287,25 @@ namespace GL
             float m_slamAimFadeTime = 0.19f;
             float m_reboundRiseGravityScale = 0.5f;
             float m_reboundAirAcceleration = 2.0f;
+            float m_airDashDistance = 4.4f;   // m。当たらなければ、動作 "AirDash" の length の歩でこの距離を進む
+            float m_airDashExitSpeed = 8.0f;  // 当たらずに終わったフレームに落とす速さ (m/s)
+            float m_intendedHoldSeconds = 0.1f;    // 同じ向きをこの秒以上倒し続けたら、ダッシュの向きにする
+            float m_retiltDegrees = 30.0f;         // 向きがこの角度より変わったら、倒し続けた秒を数え直す
+            int m_reboundTableDivisions = 8;  // 8・12・16 のうち一番近い物へ丸める
+            bool m_reboundTableWithPitch = true; // 偽なら縦・横・奥の 3 枚の円の表
+            float m_terrainReboundSpeedScale = 1.0f; // ダッシュで当てた時に返る速さ。返った後に続けて当たる時は掛け直さない
+            float m_reboundKeepRatio = 0.6f;  // かすめた時に残る速さの割合
+            // 当て方は進む向きと面の法線の内積の大きさ。下限より浅い当たりは掃引の滑りに任せる
+            float m_reboundMinFacing = 0.2f;
+            float m_reboundFullFacing = 0.9f; // これ以上なら強い演出の束を始める
+            float m_reboundLockSeconds = 0.15f;    // 反動を始めてから操作が戻るまで
+            float m_reboundSteerEndSeconds = 0.6f; // 反動を始めてから補正の段が終わるまで
+            float m_dashReboundGravity = 30.0f;     // 補正の段の重力 (m/s²)
+            float m_dashReboundDeceleration = 6.0f; // 補正の段の水平の減速度 (m/s²)
+            float m_reboundSteerLimitRatio = 0.45f; // 曲げの累計の上限を 1 段の角度に対する割合で。0.5 未満へ丸める
+            float m_reboundSteerMaxDegreesPerSecond = 120.0f; // 補正の段の終わりに届く曲げの角速度
+            bool m_drawReboundLines = true;
+            float m_reboundLineLength = 2.0f; // 開発用の向きの線の長さ (m)
         };
     } // namespace Player
 } // namespace GL

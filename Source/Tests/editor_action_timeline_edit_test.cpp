@@ -1,6 +1,6 @@
 #include "Editor/ActionTimelineEdit.h"
 #include "Editor/HitPreview.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 
 #include <gtest/gtest.h>
@@ -79,6 +79,23 @@ TEST(EditorActionTimelineEdit, FrameRangeCoversEventsAndThePreviewFromTheEntry)
     NS::ActorAction other = action;
     other.name = "Other";
     range = NS::Editor::ActionFrameRange(other, &preview);
+    EXPECT_EQ(range.first, 0);
+    EXPECT_EQ(range.last, 13);
+}
+
+// 動作の長さを決めた動作は、事象の並びより長ければ長さの終わりまでを含む
+TEST(EditorActionTimelineEdit, FrameRangeCoversTheActionLength)
+{
+    NS::ActorAction dash;
+    dash.name = "AirDash";
+    dash.length = 29;
+    NS::Editor::TimelineFrameRange range = NS::Editor::ActionFrameRange(dash, nullptr);
+    EXPECT_EQ(range.first, 0);
+    EXPECT_EQ(range.last, 28);
+
+    NS::ActorAction shorter = MakeTwoEvents();
+    shorter.length = 5;
+    range = NS::Editor::ActionFrameRange(shorter, nullptr);
     EXPECT_EQ(range.first, 0);
     EXPECT_EQ(range.last, 13);
 }

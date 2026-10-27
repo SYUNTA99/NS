@@ -125,6 +125,21 @@ namespace NS
             return nlohmann::json{};
         }
 
+        // 読んだ値を欄へ書く。書けなかった時は欄の今の値が残るので、名前・読んだ値・理由を WARN に出す
+        void WriteReadValue(void* owner, const FieldDesc& field, const void* in, const nlohmann::json& value)
+        {
+            const FieldWriteResult result = field.set(owner, in);
+            if (result == FieldWriteResult::Written)
+            {
+                return;
+            }
+            NS_LOG_WARN(Game,
+                        "欄 {} に読んだ値 {} を書かず、今の値を残す: {}",
+                        field.name,
+                        value.dump(),
+                        FieldWriteResultText(result));
+        }
+
         // 型が合わなければ前方互換のため何もしない
         void JsonToField(void* owner, const FieldDesc& field, const nlohmann::json& value)
         {
@@ -137,7 +152,7 @@ namespace NS
                     return;
                 }
                 float v = value.get<float>();
-                field.set(owner, &v);
+                WriteReadValue(owner, field, &v, value);
                 return;
             }
             case FieldType::Int:
@@ -148,7 +163,7 @@ namespace NS
                     return;
                 }
                 int v = value.get<int>();
-                field.set(owner, &v);
+                WriteReadValue(owner, field, &v, value);
                 return;
             }
             case FieldType::Bool:
@@ -158,7 +173,7 @@ namespace NS
                     return;
                 }
                 bool v = value.get<bool>();
-                field.set(owner, &v);
+                WriteReadValue(owner, field, &v, value);
                 return;
             }
             case FieldType::Vector2:
@@ -168,10 +183,7 @@ namespace NS
                     return;
                 }
                 const Vector2 v{value[0].get<float>(), value[1].get<float>()};
-                if (std::isfinite(v.x) && std::isfinite(v.y))
-                {
-                    field.set(owner, &v);
-                }
+                WriteReadValue(owner, field, &v, value);
                 return;
             }
             case FieldType::Vector3:
@@ -179,7 +191,7 @@ namespace NS
                 Vector3 v;
                 if (ReadVector3(value, v))
                 {
-                    field.set(owner, &v);
+                    WriteReadValue(owner, field, &v, value);
                 }
                 return;
             }
@@ -188,7 +200,7 @@ namespace NS
                 Quaternion v;
                 if (ReadQuaternion(value, v))
                 {
-                    field.set(owner, &v);
+                    WriteReadValue(owner, field, &v, value);
                 }
                 return;
             }
@@ -201,7 +213,7 @@ namespace NS
                     NS_LOG_WARN(Game, "色の欄 {} は [r,g,b,a] の 4 つの数でないため読まない", field.name);
                     return;
                 }
-                field.set(owner, &v);
+                WriteReadValue(owner, field, &v, value);
                 return;
             }
             case FieldType::OptionalColor:
@@ -212,7 +224,7 @@ namespace NS
                     NS_LOG_WARN(Game, "色の欄 {} は null か [r,g,b,a] の 4 つの数でないため読まない", field.name);
                     return;
                 }
-                field.set(owner, &v);
+                WriteReadValue(owner, field, &v, value);
                 return;
             }
             case FieldType::String:
@@ -223,7 +235,7 @@ namespace NS
                     return;
                 }
                 std::string v = value.get<std::string>();
-                field.set(owner, &v);
+                WriteReadValue(owner, field, &v, value);
                 return;
             }
             case FieldType::ActorRef:
@@ -232,7 +244,7 @@ namespace NS
                 ActorRef v{};
                 if (ReadRefValue(value, v))
                 {
-                    field.set(owner, &v);
+                    WriteReadValue(owner, field, &v, value);
                 }
                 return;
             }
@@ -309,12 +321,18 @@ namespace NS
                             key.outTangent = point[4].get<float>();
                         }
                     }
+                    // 曲線ごと捨てずに、float に収まらない値の点だけを飛ばす
+                    if (!key.IsFinite())
+                    {
+                        NS_LOG_WARN(Game, "欄 {} の Curve の点 {} が非数か無限大のため捨てる", field.name, point.dump());
+                        continue;
+                    }
                     v.keys[v.count] = key;
                     ++v.count;
                 }
                 // 降順に書かれた記述だと Evaluate の昇順前提が崩れるため、読み込み直後に並べ直す
                 v.SortKeys();
-                field.set(owner, &v);
+                WriteReadValue(owner, field, &v, value);
                 return;
             }
             }

@@ -31,7 +31,9 @@ namespace NS
             return PartsSlopeAngleDegrees(PaletteTemplateSlots()[m_activeSlot].prototype);
         }
 
-        void CategoryPalette::TickInput(OS::Input* input, bool editShortcutsBlocked) noexcept
+        void CategoryPalette::TickInput(OS::Input* input,
+                                        const OS::InputPresses& presses,
+                                        bool editShortcutsBlocked) noexcept
         {
             if (input == nullptr)
             {
@@ -41,12 +43,12 @@ namespace NS
             OS::Gamepad& gp = input->Gamepad();
             if (gp.IsConnected())
             {
-                if (gp.IsPressed(OS::GamepadButton::LeftShoulder))
+                if (presses.WasPressed(OS::GamepadButton::LeftShoulder))
                 {
                     SetActiveSlot((m_activeSlot + k_PaletteSlotCount - 1) % k_PaletteSlotCount);
                 }
 
-                if (gp.IsPressed(OS::GamepadButton::RightShoulder))
+                if (presses.WasPressed(OS::GamepadButton::RightShoulder))
                 {
                     SetActiveSlot((m_activeSlot + 1) % k_PaletteSlotCount);
                 }
@@ -57,12 +59,11 @@ namespace NS
                 return;
             }
 
-            OS::Keyboard& kb = input->Keyboard();
             for (std::size_t i = 0; i < k_PaletteSlotCount; ++i)
             {
                 const OS::Key code =
                     static_cast<OS::Key>(static_cast<int>(OS::Key::Num1) + static_cast<int>(i));
-                if (kb.IsPressed(code))
+                if (presses.WasPressed(code))
                 {
                     SetActiveSlot(i);
                 }

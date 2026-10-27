@@ -112,7 +112,8 @@ namespace
     }
 
     // 色の正をマテリアルへ移す前に描いていた色。シーンのアクターの "基本色"、.actor の "基本色"、
-    // クラスのコードが入れる色、Model の既定の白の順に引く
+    // クラスのコードが入れる色、Model の既定の白の順に引く。ゴールは後で色の上書きを外し、
+    // テクスチャのマテリアル (基本色は白) で描くようにしたので、既定の白で比べる
     NS::Vector3 ColorBeforeTheMaterialOwnedIt(const nlohmann::json& object, const std::string& actorFileName)
     {
         const std::optional<NS::Vector3> placed = SavedModelColor(object);
@@ -138,7 +139,6 @@ namespace
         }
         const std::string className = NS::ActorFileLibrary::Get().ClassNameOf(actorFileName);
         const std::map<std::string, NS::Vector3> classColors{
-            {"GoalActor", NS::Vector3{1.0f, 0.84f, 0.0f}},
             {"PropActor", NS::Vector3{0.72f, 0.70f, 0.66f}},
             {"PlayerActor", NS::Vector3{0.5f, 0.5f, 0.5f}},
             {"MapPartsActor", NS::Vector3{0.70f, 0.70f, 0.75f}},

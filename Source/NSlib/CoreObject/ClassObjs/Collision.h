@@ -17,10 +17,10 @@ namespace NS
 
 namespace NS
 {
-    class IUseCollision;
+    class IGetCollision;
 
     //! @brief 地形の body を物理シーンへ入れる部品の基底。具体的な形状は派生が決める
-    //! @details 持ち主を覚えない。持ち主の root の世界行列と物理シーン (窓口 IUseCollision) は呼ぶたびに受ける
+    //! @details 持ち主を覚えない。持ち主の root の世界行列と物理シーン (窓口 IGetCollision) は呼ぶたびに受ける
     class Collision : public Object
     {
     public:
@@ -28,21 +28,21 @@ namespace NS
         //! @details 前に入れた時から world も形も変わっていなければ何もしない。何も入れない形状もある。
         //!          user がシーンに居なければ何もしない。事前条件: 持ち主が出ている (消えている間は呼ばない)
         //! @param[in] world 持ち主の root の世界行列
-        void SyncToPhysics(const Matrix& world, const IUseCollision* user);
+        void SyncToPhysics(const Matrix& world, const IGetCollision* user);
 
         //! 当たりの body の id。何も入れなかった形状では無効
         [[nodiscard]] JPH::BodyID BodyId() const noexcept { return m_bodyId; }
 
         //! @brief 入れた body を壊さずに user の PhysicsScene から外す。id は持ったままで、ReturnToPhysics で戻す
         //! @details body が無いか、user がシーンに居なければ何もしない
-        void RemoveFromPhysics(const IUseCollision* user);
+        void RemoveFromPhysics(const IGetCollision* user);
 
         //! @brief RemoveFromPhysics で外した body を戻し、world へ置き直す。body がまだ無ければ作る
         //! @param[in] world 持ち主の root の世界行列
-        void ReturnToPhysics(const Matrix& world, const IUseCollision* user);
+        void ReturnToPhysics(const Matrix& world, const IGetCollision* user);
 
         //! body を壊す。user がシーンに居なければエラーを出し、id だけを手放す。body が無ければ何もしない
-        void Unregister(const IUseCollision* user);
+        void Unregister(const IGetCollision* user);
 
         NS_REFLECT_NONE(Collision, Object)
 

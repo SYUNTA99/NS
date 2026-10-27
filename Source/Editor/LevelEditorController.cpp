@@ -34,6 +34,7 @@
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -55,6 +56,7 @@
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "NSlib/Core/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Mouse.h"
 
 #include <algorithm>
 #include <charconv>
@@ -295,6 +297,22 @@ LevelEditorController::LevelEditorController(NS::Scene* scene) noexcept : m_scen
     m_editor.SetApplier(&m_applier);
     m_editor.SetAllocateIdFn([this]() { return m_scene->Actors().AllocateActorId(); });
     m_editor.SetSceneEditableFn([this]() { return IsSceneEditable(); });
+    if (m_scene != nullptr)
+    {
+        m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) {
+            CommitTransformEdit();
+            CommitClassObjEdit();
+            ClearAssetSelection();
+            m_editor.Undo().Clear();
+            SelectActorById(NS::k_NoActorId);
+            m_dragFollowers.clear();
+            m_gizmoWasDragging = false;
+            m_scene->ResetFromJson(std::move(fresh));
+            m_scene->SetSimulationEnabled(false);
+            FocusLoadedScene();
+            RefreshGizmoSelectables();
+        });
+    }
 }
 
 bool LevelEditorController::IsSceneEditable() const noexcept
@@ -631,6 +649,11 @@ void LevelEditorController::TogglePlayPause() noexcept
     if (m_scene != nullptr)
     {
         m_scene->SetSimulationPaused(!m_scene->IsSimulationPaused());
+        // 止めている間の押し (パネルのクリック・値の打ち込み) を、動かし直した世界へ渡さない
+        if (!m_scene->IsSimulationPaused())
+        {
+            DiscardPlayerPresses();
+        }
         // 固定したままだと Inspector を触れず、プレイ中に値を調整する動線が消える。止めている間は解く
         // 再開は Game が映っている時だけ固定へ戻す。Scene を見ている時はタブを押せるよう出したまま
         if (m_mode == Mode::Play)
@@ -707,7 +730,6 @@ void LevelEditorController::Setup(std::string_view startLevelName)
 
     // 保存は実体から作り、読込は取込関数がデータを実体へ写して用済みにする
     m_editor.SetCaptureLevelFn([this]() { return m_scene->ToJson(); });
-    m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) { m_scene->ResetFromJson(std::move(fresh)); });
     // セルの照会は実体で行う
     m_editor.SetFindCellActorFn([this](NS::int16 x, NS::int16 y, NS::int16 z) {
         return NS::Editor::FindActorIdAtCell(m_scene->Actors(), x, y, z);
@@ -740,29 +762,42 @@ void LevelEditorController::Setup(std::string_view startLevelName)
     m_playBaseline = m_scene->ToJson();
     LeavePlayForEdit();
     m_mode = Mode::Edit;
+    bool opened = false;
     if (!startLevelName.empty())
     {
-        if (!m_editor.OpenLevel(startLevelName))
+        opened = m_editor.OpenLevel(startLevelName);
+        if (!opened)
         {
             NS_LOG_ERROR(App, "起動シーンを開けなかった。 空のシーンで編集を始める: {}", startLevelName);
         }
     }
-    // 選択候補はこの後に今の実体から集めるので、初回 Tick の貼り直しを省く
+    // 選択候補は読み込みの関数かこの後に今の実体から集めるので、初回 Tick の貼り直しを省く
     m_editor.ClearLevelDirty();
-
-    // 初期視点はプレイヤーの位置を中心に少し引いた位置から見下ろす。不在なら原点
-    NS::SceneActor* bootPlayer = FindPlayer(m_scene->Actors());
-    NS::Vector3 startCenter{0.0f, 0.0f, 0.0f};
-    if (bootPlayer != nullptr)
+    // 開けた時は、読み込みの関数が視点を合わせて選択候補を集め終えている
+    if (!opened)
     {
-        startCenter = bootPlayer->Root().Position();
+        FocusLoadedScene();
+        // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
+        RefreshGizmoSelectables();
+    }
+}
+
+void LevelEditorController::FocusLoadedScene() noexcept
+{
+    NS::SceneActor* focusActor = FindPlayer(m_scene->Actors());
+    if (focusActor == nullptr && m_scene->Actors().ActorCount() > 0)
+    {
+        focusActor = *m_scene->Actors().begin();
+    }
+    NS::Vector3 startCenter{0.0f, 0.0f, 0.0f};
+    if (focusActor != nullptr)
+    {
+        startCenter = focusActor->Root().Position();
     }
     m_editorCamera.SetCenter(startCenter);
-    // 起動直後は出現地点の block を真ん中近めに見せる距離。1m cube が画面の十数 % を占める
     m_editorCamera.SetDistance(5.0f);
-
-    // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
-    RefreshGizmoSelectables();
+    m_editBlending = false;
+    MainCamera()->ApplyPose(m_editorCamera.Pose());
 }
 
 void LevelEditorController::Teardown()
@@ -808,6 +843,8 @@ void LevelEditorController::EnterPlay() noexcept
         cameras->BeginBlendFrom(m_editorCamera.Pose());
     }
     m_scene->SetSimulationEnabled(true);
+    // 編集の間の押し (配置のクリック・ショートカット) を、プレイの最初の歩へ渡さない
+    DiscardPlayerPresses();
 
     // プレイ突入はカーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
     ApplyPlayCursor(NS::Editor::PlayCursor::Captured);
@@ -849,7 +886,21 @@ void LevelEditorController::RequestStepFrame() noexcept
     {
         return;
     }
+    // 止めている間の押しを、コマ送りの 1 歩へ渡さない
+    DiscardPlayerPresses();
     m_scene->StepSimulation();
+}
+
+void LevelEditorController::DiscardPlayerPresses() noexcept
+{
+    if (m_scene == nullptr)
+    {
+        return;
+    }
+    if (PlayerActor* player = FindPlayer(m_scene->Actors()))
+    {
+        player->Input().DiscardUnreadPresses();
+    }
 }
 
 void LevelEditorController::LeavePlayForEdit()
@@ -993,11 +1044,13 @@ void LevelEditorController::SetSceneViews(std::vector<NS::SceneView> views)
 
 void LevelEditorController::Tick()
 {
+    // 編集とプレイのどちらの歩も読む。読まない歩を挟むと、その間の押しが次に読んだ歩へ持ち越される
+    const NS::OS::InputPresses presses = m_inputReader.Read();
     // プレイ中のクリア / 死亡は応答部品が出荷と同じ手順で完結させる
     // editor は割り込まず、編集へ戻るのは Tab / Pause modal の明示操作だけ
     if (m_mode == Mode::Edit)
     {
-        TickEdit();
+        TickEdit(presses);
         return;
     }
 
@@ -1007,13 +1060,13 @@ void LevelEditorController::Tick()
     {
         return;
     }
-    if (app->Input().Keyboard().IsPressed(NS::OS::Key::Escape) && !app->Window().IsCursorVisible())
+    if (presses.WasPressed(NS::OS::Key::Escape) && !app->Window().IsCursorVisible())
     {
         ApplyPlayCursor(NS::Editor::PlayCursor::Released);
     }
 }
 
-void LevelEditorController::TickEdit()
+void LevelEditorController::TickEdit(const NS::OS::InputPresses& presses)
 {
     NS::Application* app = NS::Application::Get();
     if (app == nullptr)
@@ -1022,15 +1075,23 @@ void LevelEditorController::TickEdit()
     }
 
     // F5 のシェーダ再読込は編集時だけ。プレイ時は UI 表示の切替に使う
-    if (!m_editShortcutsBlocked && app->Input().Keyboard().IsPressed(NS::OS::Key::F5))
+    if (!m_editShortcutsBlocked && presses.WasPressed(NS::OS::Key::F5))
     {
         app->Assets().ReloadAllShaders();
     }
 
     // Esc: Object モードで選択中ならまず選択解除に使い終了させない
-    if (app->Input().Keyboard().IsPressed(NS::OS::Key::Escape))
+    if (presses.WasPressed(NS::OS::Key::Escape))
     {
-        if (m_gizmoToolActive && m_gizmo.Selected() != nullptr)
+        if (m_editTool == EditTool::StageBuild)
+        {
+            if (!m_editShortcutsBlocked)
+            {
+                SetEditTool(EditTool::Gizmo);
+            }
+            return;
+        }
+        if (GizmoToolActive() && m_gizmo.Selected() != nullptr)
         {
             // 選択の id ごと外す。ギズモだけ外すと、次のフレームに id から選び直される
             SelectActorById(NS::k_NoActorId);
@@ -1061,11 +1122,12 @@ void LevelEditorController::TickEdit()
         camera->ApplyPose(pose);
     }
 
-    // 同時に 1 モードだけがクリックと R を消費する。Object 中は grid 入力を抑制しギズモへ回す
+    // 同時に1つの道具だけがクリックと R を使う。グリッド入力はグリッド配置中だけ受ける。
     // モード切替は Editor の UI ボタンが SetGizmoToolActive で入れる。Tab は Edit↔Play 専用
-    const bool objectMode = m_gizmoToolActive;
+    const bool objectMode = GizmoToolActive();
     m_gizmo.SetActive(objectMode);
-    m_editor.SetInputSuppressed(objectMode);
+    m_editor.SetInputSuppressed(m_editTool != EditTool::Grid);
+    TickStageBuild(presses);
 
     if (objectMode && Cameras())
     {
@@ -1078,7 +1140,7 @@ void LevelEditorController::TickEdit()
 
         const NS::Matrix vp = Cameras()->ViewProjection();
         const bool wasDragging = m_gizmoWasDragging;
-        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked);
+        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked, presses);
 
         // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
         CaptureSelectionFromGizmo();
@@ -1116,7 +1178,7 @@ void LevelEditorController::TickEdit()
 
     // 掴んでいる間は選択の貼り直しを飛ばすので、undo が旧 Transform を指す
     m_editor.SetUndoRedoSuppressed(m_gizmo.IsDragging());
-    m_editor.Tick(m_editShortcutsBlocked);
+    m_editor.Tick(m_editShortcutsBlocked, presses);
     if (m_editor.IsLevelDirty())
     {
         // grid 編集・undo・読込は applier / reload がアクターを組み直し済。候補と gizmo を今の実体へ貼り直す
@@ -1143,6 +1205,10 @@ void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes, co
     }
 
     m_editor.DrawCursorShapes(shapes);
+    if (m_editTool == EditTool::StageBuild && m_stagePlacement)
+    {
+        m_stageBuilder.DrawPreview(shapes, *m_stagePlacement);
+    }
     // 錐台の横幅はゲーム画面の比で出す。窓が無い時は RenderCameraGizmos が 16:9 で代える
     NS::Size2D viewport{};
     if (const NS::Application* app = NS::Application::Get())
@@ -1166,7 +1232,7 @@ void LevelEditorController::Render()
     m_editor.RenderCursorPreview();
     // Object モードはブラシを置かないので Build モードの時だけ出す
     // Game ビュー前面などで編集ビューが隠れているフレームは、ゲーム画面へ被せないよう出さない
-    if (!GizmoToolActive() && !m_gameViewHidden)
+    if (m_editTool == EditTool::Grid && !m_gameViewHidden)
     {
         m_editor.Palette().Render(CurrentViewRect());
     }
@@ -1179,14 +1245,63 @@ void LevelEditorController::Render()
 
 void LevelEditorController::SetGizmoToolActive(bool active) noexcept
 {
-    if (active == m_gizmoToolActive)
+    SetEditTool(active ? EditTool::Gizmo : EditTool::Grid);
+}
+
+void LevelEditorController::SetEditTool(EditTool tool) noexcept
+{
+    if (tool == m_editTool)
     {
         return;
     }
-    m_gizmoToolActive = active;
-    if (!active)
+    CommitTransformEdit();
+    m_editTool = tool;
+    m_stagePlacement.reset();
+    if (tool != EditTool::Gizmo)
     {
         SelectActorById(NS::k_NoActorId);
+    }
+}
+
+void LevelEditorController::TickStageBuild(const NS::OS::InputPresses& presses)
+{
+    m_stagePlacement.reset();
+    if (m_editTool != EditTool::StageBuild || m_editShortcutsBlocked || !m_gameViewHovered || m_gameViewHidden ||
+        m_scene == nullptr || MainCamera() == nullptr)
+    {
+        return;
+    }
+    NS::Application* app = NS::Application::Get();
+    if (app == nullptr)
+    {
+        return;
+    }
+    NS::OS::Mouse& mouse = app->Input().Mouse();
+    if (mouse.IsHeld(NS::OS::MouseButton::Right) || mouse.IsHeld(NS::OS::MouseButton::Middle))
+    {
+        return;
+    }
+    if (presses.WasPressed(NS::OS::Key::R))
+    {
+        m_stageBuilder.YawDegrees() += 90.0f;
+    }
+    const NS::Editor::ViewRect view = CurrentViewRect();
+    int mouseX = 0;
+    int mouseY = 0;
+    NS::Editor::WindowMouseToViewSpace(mouse.GetX(), mouse.GetY(), mouseX, mouseY);
+    if (!NS::Editor::ViewRectContains(view, mouseX, mouseY))
+    {
+        return;
+    }
+    int localX = 0;
+    int localY = 0;
+    NS::Editor::ViewRectToLocal(view, mouseX, mouseY, localX, localY);
+    const NS::Ray ray =
+        NS::Editor::ScreenToWorldRay(MainCamera()->ViewProjection(), NS::Editor::ViewRectSize(view), localX, localY);
+    m_stagePlacement = m_stageBuilder.Placement(ray, m_scene->Physics());
+    if (m_stagePlacement && presses.WasPressed(NS::OS::MouseButton::Left))
+    {
+        (void)PlaceStagePart(ray);
     }
 }
 
@@ -1881,6 +1996,28 @@ void LevelEditorController::PlaceItem(const NS::Editor::PlacementItem& item)
     CreateActorAndSelect(std::move(object));
 }
 
+NS::uint32 LevelEditorController::PlaceStagePart(const NS::Ray& ray)
+{
+    if (!IsSceneEditable() || m_scene == nullptr)
+    {
+        return NS::k_NoActorId;
+    }
+    const std::optional<NS::Vector3> center = m_stageBuilder.Placement(ray, m_scene->Physics());
+    if (!center)
+    {
+        return NS::k_NoActorId;
+    }
+    std::vector<nlohmann::json> objects;
+    objects.push_back(m_stageBuilder.MakeActor(*center));
+    const std::vector<NS::uint32> created = m_editor.CreateActors(std::move(objects));
+    if (created.empty())
+    {
+        return NS::k_NoActorId;
+    }
+    RefreshGizmoSelectables();
+    return created.front();
+}
+
 void LevelEditorController::AddMeshParts(std::string_view meshPath)
 {
     // 参照は ContentRoot 相対で持つ。build 時にこの文字列から実体を引く
@@ -2250,7 +2387,7 @@ void LevelEditorController::CommitClassObjEdit() noexcept
 bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
 {
     NS::Application* app = NS::Application::Get();
-    if (!IsSceneEditable() || !m_gizmoToolActive || app == nullptr)
+    if (!IsSceneEditable() || !GizmoToolActive() || app == nullptr)
     {
         return false;
     }

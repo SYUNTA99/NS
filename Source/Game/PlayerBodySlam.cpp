@@ -14,7 +14,7 @@
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorList.h"
-#include "NSlib/CoreObject/ClassObjs/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
@@ -30,7 +30,7 @@ namespace
     // 回転数を秒で割った回る速さ (度/秒)。秒が 0 以下か有限でない時は 0
     [[nodiscard]] float SpinSpeedFor(float turns, float seconds) noexcept
     {
-        if (!std::isfinite(seconds) || !(seconds > 0.0f))
+        if (!std::isfinite(seconds) || !NS::IsPositive(seconds))
         {
             return 0.0f;
         }
@@ -230,7 +230,7 @@ void PlayerActor::EndBeforeContact() noexcept
     {
         reaction->Stop(this);
     }
-    OwningScene()->HoldOthers(0);
+    OwningScene()->HoldOthers(this, 0);
 }
 
 void PlayerActor::CancelBodySlam() noexcept
@@ -250,12 +250,11 @@ void PlayerActor::EndBodySlam() noexcept
 
     // 加速は最高速を超えた速さを削らない。切らないと、倒している間は突進の速さのまま走り続ける
     const NS::Vector3 lateral = body.LateralVelocity();
-    const float speed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
+    const float speed = NS::HorizontalLength(lateral);
     const float cap = MaxSpeed();
     if (speed > cap)
     {
-        const float scale = cap / speed;
-        body.SetLateralVelocity(NS::Vector3{lateral.x * scale, 0.0f, lateral.z * scale});
+        body.SetLateralVelocity(NS::HorizontalPart(lateral) * (cap / speed));
     }
 
     ChangeToWalkOrFall();
@@ -282,13 +281,13 @@ void PlayerActor::AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept
     }
 
     // 進んだ距離は実際に動いた量から測る。突進の速さから積むと壁で止められたフレームも進んだ扱いになる
-    const float stepDistance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
+    const float stepDistance = NS::HorizontalLength(delta);
     m_slam.m_travelled += stepDistance;
 
     // 進めないフレームで打ち切る。壁で止められると進んだ距離が伸びず、突進から出られなくなる
     // 発動したフレームは見ない。ここで打ち切ると発動から打ち切りまでに ImpactResolver が
     // 一度も走らず、突進を見ないまま終わる
-    const bool stalled = !m_slam.m_justStarted && stepDistance < NS::k_Epsilon;
+    const bool stalled = !m_slam.m_justStarted && NS::IsNearlyZero(stepDistance);
     m_slam.m_justStarted = false;
 
     if (m_slam.m_travelled >= m_slam.m_distanceTarget || stalled)
@@ -299,29 +298,21 @@ void PlayerActor::AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept
 
 NS::Vector3 PlayerActor::AimDirection() const noexcept
 {
-    const NS::Body& body = *m_body;
-    NS::Vector3 dir{DesiredDirection().x, 0.0f, DesiredDirection().z};
-    float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
-
+    NS::Vector3 dir{};
     // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
-    if (length < NS::k_Epsilon)
+    if (NS::TryNormalizeHorizontal(DesiredDirection(), dir))
     {
-        const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(this);
-        dir = NS::Vector3{forward.x, 0.0f, forward.z};
-        length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+        return dir;
     }
-    if (length < NS::k_Epsilon)
+    if (NS::TryNormalizeHorizontal(NS::CalcCameraForwardHorizontal(this), dir))
     {
-        const NS::Vector3 lateral = body.LateralVelocity();
-        dir = NS::Vector3{lateral.x, 0.0f, lateral.z};
-        length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+        return dir;
     }
-    if (length < NS::k_Epsilon)
+    if (NS::TryNormalizeHorizontal(m_body->LateralVelocity(), dir))
     {
-        return NS::Vector3{0.0f, 0.0f, 0.0f};
+        return dir;
     }
-
-    return NS::Vector3{dir.x / length, 0.0f, dir.z / length};
+    return NS::Vector3{0.0f, 0.0f, 0.0f};
 }
 
 void PlayerActor::MarkBodySlamAim() noexcept
@@ -340,7 +331,7 @@ float PlayerActor::BodySlamAimBlend01() const noexcept
         return 1.0f;
     }
     // 巻き戻し秒を消える秒より後ろにできる。幅が 0 以下なら割らずに切る
-    if (!(fade > hold) || age >= fade)
+    if (!NS::IsGreaterThan(fade, hold) || age >= fade)
     {
         return 0.0f;
     }
@@ -350,25 +341,22 @@ float PlayerActor::BodySlamAimBlend01() const noexcept
 NS::Vector3 PlayerActor::BlendedAimDirection() const noexcept
 {
     const NS::Vector3 dir = AimDirection();
-    const float aimLength =
-        std::sqrt(m_request.aimDir.x * m_request.aimDir.x + m_request.aimDir.z * m_request.aimDir.z);
-    if (aimLength < NS::k_Epsilon)
+    const float aimLength = NS::HorizontalLength(m_request.aimDir);
+    if (NS::IsNearlyZero(aimLength))
     {
         return dir;
     }
     const float blend = BodySlamAimBlend01();
-    if (!(blend > 0.0f))
+    if (!NS::IsPositive(blend))
     {
         return dir;
     }
-    const NS::Vector3 mixed{dir.x * (1.0f - blend) + m_request.aimDir.x * blend,
-                            0.0f,
-                            dir.z * (1.0f - blend) + m_request.aimDir.z * blend};
-    const float mixedLength = std::sqrt(mixed.x * mixed.x + mixed.z * mixed.z);
+    const NS::Vector3 mixed = dir * (1.0f - blend) + m_request.aimDir * blend;
     // 正反対の向きを同じくらいの重みで混ぜると長さが 0 近くになる。その時は濃い側をそのまま採る
-    if (mixedLength >= NS::k_Epsilon)
+    NS::Vector3 mixedDirection{};
+    if (NS::TryNormalizeHorizontal(mixed, mixedDirection))
     {
-        return NS::Vector3{mixed.x / mixedLength, 0.0f, mixed.z / mixedLength};
+        return mixedDirection;
     }
     if (blend >= 0.5f)
     {
@@ -402,14 +390,14 @@ bool PlayerActor::BodySlam() noexcept
         dir = BlendedAimDirection();
     }
 
-    if (std::sqrt(dir.x * dir.x + dir.z * dir.z) < NS::k_Epsilon)
+    if (NS::IsNearlyZeroHorizontal(dir))
     {
         return false;
     }
 
     m_slam.m_charge01 = m_request.charge01;
     m_slam.m_overcharge01 = m_request.overcharge01;
-    m_slam.m_isTap = !(m_request.charge01 > 0.0f);
+    m_slam.m_isTap = !NS::IsPositive(m_request.charge01);
     m_slam.m_travelled = 0.0f;
     m_slam.m_justStarted = true;
     const float speed = BodySlamSpeed();
@@ -439,7 +427,7 @@ bool PlayerActor::BodySlam() noexcept
     m_slam.m_spinSpeed = SpinSpeedFor(turns, m_slam.m_distanceTarget / speed);
 
     // 距離が 0 以下だと 1 フレーム目で終わって発動が消えるため、出さずに通常移動のままにする
-    if (!(m_slam.m_distanceTarget > 0.0f))
+    if (!NS::IsPositive(m_slam.m_distanceTarget))
     {
         return false;
     }
@@ -468,7 +456,7 @@ bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
 {
     // 曲線にならない反動で移すと、弾かれないまま速度が 0 に消える。移さずに偽を返し、速度は呼び手に任せる
     const NS::Vector3 velocity = ReboundVelocityFor(arc);
-    if (!(velocity.y > 0.0f))
+    if (!NS::IsPositive(velocity.y))
     {
         return false;
     }
@@ -489,6 +477,7 @@ bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
     ++m_rebound.m_count;
     m_rebound.m_spinSpeed = SpinSpeedFor(turns, GL::Level::LaunchArcFlightSeconds(m_params->ReboundLaunchArc(arc)));
     m_body->SetVelocity(velocity);
+    StartAirControlReturn();
     (void)m_states->Change<GL::Player::ReboundPlayerState>();
     return true;
 }
@@ -556,6 +545,11 @@ void PlayerActor::UncurlWhenSettled() noexcept
     }
     // 押している間は着地しても丸まりを解かない
     if (m_charge.m_judge.IsHeld() || IsBodySlamming() || !body.IsGrounded())
+    {
+        return;
+    }
+    // 床の上でダッシュしても、床の上で返っても、その間は玉のまま
+    if (IsAirDashing() || IsDashRebounding())
     {
         return;
     }

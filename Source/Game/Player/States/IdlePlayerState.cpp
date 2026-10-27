@@ -21,14 +21,14 @@ namespace GL
             player->Gravity(dt);
 
             const NS::Body& body = player->Body();
+            const bool hasInput =
+                PlayerJudgeMoveInput::Judge(player->DesiredSpeedScale(), player->Params().StickDeadzone());
+            const bool stopped = PlayerJudgeStopped::Judge(body.LateralVelocity());
             if (PlayerJudgeFall::Judge(body.IsGrounded()))
             {
                 player->States().Change<FallPlayerState>();
             }
-            else if (PlayerJudgeWalk::Judge(
-                         body.IsGrounded(),
-                         PlayerJudgeMoveInput::Judge(player->DesiredSpeedScale(), player->Params().StickDeadzone()),
-                         PlayerJudgeStopped::Judge(body.LateralVelocity())))
+            else if (PlayerJudgeWalk::Judge(body.IsGrounded(), hasInput, stopped))
             {
                 player->States().Change<WalkPlayerState>();
             }

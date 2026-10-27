@@ -27,6 +27,12 @@ namespace NS
 
     using Color = DirectX::SimpleMath::Color;
 
+    //! 2つの2次元ベクトルの内積
+    [[nodiscard]] inline float Dot(const Vector2& a, const Vector2& b) noexcept
+    {
+        return a.x * b.x + a.y * b.y;
+    }
+
     //! 2つのベクトルの内積
     [[nodiscard]] inline float Dot(const Vector3& a, const Vector3& b) noexcept
     {
@@ -218,24 +224,186 @@ namespace NS
         return std::max({std::abs(v.x), std::abs(v.y), std::abs(v.z)});
     }
 
-    //! @brief 0 除算よけの下限
-    //! @details 長さ 2 乗と比べる側は k_Epsilon * k_Epsilon と書く。意味を持つ許容誤差には使わない
+    //! @brief 0 除算よけ・微小量判定の下限
     inline constexpr float k_Epsilon = 1e-4f;
+
+    //! @brief スカラ値が 0 近傍（絶対値が tolerance 未満）か判定する
+    [[nodiscard]] inline bool IsNearlyZero(float value, float tolerance = k_Epsilon) noexcept
+    {
+        return std::abs(value) < tolerance;
+    }
+
+    //! @brief 2 次元のベクトルが 0 近傍（長さ 2 乗が toleranceSq 未満）か判定する
+    [[nodiscard]] inline bool IsNearlyZero(const Vector2& v, float toleranceSq = k_Epsilon * k_Epsilon) noexcept
+    {
+        return v.LengthSquared() < toleranceSq;
+    }
+
+    //! @brief 3 次元のベクトルが 0 近傍（長さ 2 乗が toleranceSq 未満）か判定する
+    [[nodiscard]] inline bool IsNearlyZero(const Vector3& v, float toleranceSq = k_Epsilon * k_Epsilon) noexcept
+    {
+        return v.LengthSquared() < toleranceSq;
+    }
+
+    //! @brief 2 つのスカラ値がほぼ等しいか判定する
+    [[nodiscard]] inline bool IsNearlyEqual(float a, float b, float tolerance = k_Epsilon) noexcept
+    {
+        return std::abs(a - b) <= tolerance;
+    }
+
+    //! @brief 2 つの単位ベクトルがほぼ同じ向き（平行）か判定する
+    [[nodiscard]] inline bool IsNearlyParallel(const Vector3& a, const Vector3& b, float tolerance = k_Epsilon) noexcept
+    {
+        return Dot(a, b) > 1.0f - tolerance;
+    }
+
+    //! @brief XZ 平面の長さ 2 乗（水平成分）
+    [[nodiscard]] inline float HorizontalLengthSquared(const Vector3& v) noexcept
+    {
+        return v.x * v.x + v.z * v.z;
+    }
+
+    //! @brief XZ 平面の長さ（水平成分）
+    [[nodiscard]] inline float HorizontalLength(const Vector3& v) noexcept
+    {
+        return std::sqrt(HorizontalLengthSquared(v));
+    }
+
+    //! @brief XZ 平面の内積（水平成分）
+    [[nodiscard]] inline float DotHorizontal(const Vector3& a, const Vector3& b) noexcept
+    {
+        return a.x * b.x + a.z * b.z;
+    }
+
+    //! @brief y を 0 にした水平成分
+    [[nodiscard]] inline Vector3 HorizontalPart(const Vector3& v) noexcept
+    {
+        return Vector3{v.x, 0.0f, v.z};
+    }
+
+    //! @brief 水平の向き from を Y 軸まわりに回して to へ重ねる角度。正の角度は +X を -Z の側へ回す
+    //! @return ラジアン。範囲は -π..π
+    [[nodiscard]] inline float SignedHorizontalAngle(const Vector3& from, const Vector3& to) noexcept
+    {
+        return std::atan2(from.z * to.x - from.x * to.z, DotHorizontal(from, to));
+    }
+
+    //! @brief 2 つの単位ベクトルの間の角度。内積が丸めの誤差で -1..1 を越えた分は端へ寄せる
+    //! @param[in] a 有限の単位ベクトル。非数は寄せても非数のまま返る
+    //! @param[in] b 有限の単位ベクトル
+    //! @return ラジアン。範囲は 0..π
+    [[nodiscard]] inline float AngleBetweenUnit(const Vector3& a, const Vector3& b) noexcept
+    {
+        return std::acos(std::clamp(Dot(a, b), -1.0f, 1.0f));
+    }
+
+    //! @brief 水平成分の長さが 0 近傍か判定する
+    [[nodiscard]] inline bool IsNearlyZeroHorizontal(const Vector3& v, float toleranceSq = k_Epsilon * k_Epsilon) noexcept
+    {
+        return HorizontalLengthSquared(v) < toleranceSq;
+    }
+
+    //! @brief スカラ値が正（0 より大）か判定する。0 以下および NaN の場合は false
+    [[nodiscard]] inline bool IsPositive(float value) noexcept
+    {
+        return value > 0.0f;
+    }
+
+    //! @brief スカラ値が非負（0 以上）か判定する。負および NaN の場合は false
+    [[nodiscard]] inline bool IsNonNegative(float value) noexcept
+    {
+        return value >= 0.0f;
+    }
+
+    //! @brief a が b より大きいか判定する。a <= b またはいずれかが NaN の場合は false
+    [[nodiscard]] inline bool IsGreaterThan(float a, float b) noexcept
+    {
+        return a > b;
+    }
+
+    //! @brief 値が閉区間 [minVal, maxVal] に入っているか判定する。範囲外および NaN の場合は false
+    [[nodiscard]] inline bool IsInRange(float value, float minVal, float maxVal) noexcept
+    {
+        return value >= minVal && value <= maxVal;
+    }
+
+    //! @brief 全成分が等しい 3 次元スケールベクトルを返す
+    [[nodiscard]] inline Vector3 UniformScale(float value) noexcept
+    {
+        return Vector3{value, value, value};
+    }
+
+    //! @brief +Y 軸を指定した向きへ回す回転を返す
+    [[nodiscard]] inline Quaternion TurnUpTo(const Vector3& direction) noexcept
+    {
+        return Quaternion::FromToRotation(Vector3{0.0f, 1.0f, 0.0f}, direction);
+    }
+
+    //! @brief +Z 軸（法線）を指定した向きへ回す回転を返す
+    [[nodiscard]] inline Quaternion TurnNormalTo(const Vector3& direction) noexcept
+    {
+        return Quaternion::FromToRotation(Vector3{0.0f, 0.0f, 1.0f}, direction);
+    }
+
+    //! @brief 3 次のイーズアウト補間 (1 - (1 - t)^3)。t は 0〜1 にクランプする
+    [[nodiscard]] inline float EaseOutCubic(float t) noexcept
+    {
+        const float clamped = std::clamp(t, 0.0f, 1.0f);
+        const float rest = 1.0f - clamped;
+        return 1.0f - rest * rest * rest;
+    }
+
+    //! @brief 有限値かつ正の有意な大きさ（k_Epsilon より大）を持つか判定する
+    [[nodiscard]] inline bool HasPositiveMagnitude(float value, float minThreshold = k_Epsilon) noexcept
+    {
+        return std::isfinite(value) && value > minThreshold;
+    }
+
+    //! @brief 長さが有限かつ正の有意な大きさ（k_Epsilon より大）を持つか判定する。割る前に問う
+    [[nodiscard]] inline bool HasPositiveMagnitude(const Vector3& v, float minThresholdSq = k_Epsilon * k_Epsilon) noexcept
+    {
+        return HasPositiveMagnitude(v.LengthSquared(), minThresholdSq);
+    }
+
+    //! @brief 水平成分の長さが有限かつ正の有意な大きさ（k_Epsilon より大）を持つか判定する
+    [[nodiscard]] inline bool HasPositiveMagnitudeHorizontal(const Vector3& v,
+                                                             float minThresholdSq = k_Epsilon * k_Epsilon) noexcept
+    {
+        return HasPositiveMagnitude(HorizontalLengthSquared(v), minThresholdSq);
+    }
+
+    //! @brief 正規化した向き。長さが有限で k_Epsilon より大きくなければ fallback を返す
+    [[nodiscard]] inline Vector3 NormalizedOr(const Vector3& v, const Vector3& fallback) noexcept
+    {
+        const float length = v.Length();
+        if (!HasPositiveMagnitude(length))
+        {
+            return fallback;
+        }
+        return v / length;
+    }
+
+    //! @brief ベクトルから単位法線方向の成分を取り除いた射影ベクトルを返す
+    [[nodiscard]] inline Vector3 RejectUnit(const Vector3& v, const Vector3& unitNormal) noexcept
+    {
+        return v - unitNormal * Dot(v, unitNormal);
+    }
 
     //! @brief XZ 平面へ畳んだ向きを正規化する
     //! @param[in] v 元のベクトル。y 成分は捨てる
     //! @param[out] outDirection 正規化した向き。y は 0。失敗した場合は書き換えない
-    //! @return 正規化できた場合 true、長さが k_Epsilon 未満の場合は false
+    //! @return 正規化できた場合 true、長さが k_Epsilon 以下か、長さが有限でない場合は false
     [[nodiscard]] inline bool TryNormalizeHorizontal(const Vector3& v, Vector3& outDirection) noexcept
     {
-        const float lengthSq = v.x * v.x + v.z * v.z;
-        if (lengthSq < k_Epsilon * k_Epsilon)
+        // 2 乗の和は成分が 1e19 を超えると途中で溢れる。hypot は途中で溢れずに長さを出すので、大きな成分でも向きを返せる
+        // 非数の成分と、長さそのものが float の外になる時は、長さが有限でないので偽を返す
+        const float length = std::hypot(v.x, v.z);
+        if (!HasPositiveMagnitude(length))
         {
             return false;
         }
 
-        const float invLength = 1.0f / std::sqrt(lengthSq);
-        outDirection = Vector3{v.x * invLength, 0.0f, v.z * invLength};
+        outDirection = Vector3{v.x / length, 0.0f, v.z / length};
         return true;
     }
 

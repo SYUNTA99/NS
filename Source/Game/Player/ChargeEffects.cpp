@@ -8,7 +8,7 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseEffect.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
 
 #include <algorithm>
 #include <cmath>
@@ -28,7 +28,7 @@ namespace GL
             return desc;
         }
 
-        void ChargeEffects::Preload(const NS::IUseEffect* user)
+        void ChargeEffects::Preload(const NS::IGetEffect* user)
         {
             NS_ASSERT(Game, user != nullptr, "ChargeEffects::Preload: 絵を出すアクターが空");
             NS::PreloadEffects(user,
@@ -42,7 +42,7 @@ namespace GL
                                 m_swaySparksAsset});
         }
 
-        void ChargeEffects::Update(const NS::IUseEffect* user,
+        void ChargeEffects::Update(const NS::IGetEffect* user,
                                    const NS::Vector3& center,
                                    const ChargeStatus& charge,
                                    const BodySlamStatus& slam,
@@ -104,7 +104,7 @@ namespace GL
             m_wasSlamming = slamming;
         }
 
-        void ChargeEffects::Clear(const NS::IUseEffect* user)
+        void ChargeEffects::Clear(const NS::IGetEffect* user)
         {
             NS_ASSERT(Game, user != nullptr, "ChargeEffects::Clear: 絵を出したアクターが空");
             ClearHeldEffects(user);
@@ -127,8 +127,7 @@ namespace GL
 
         NS::Quaternion ChargeEffects::YawToward(const NS::Vector3& direction) noexcept
         {
-            const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-            if (!std::isfinite(length) || length <= 0.0f)
+            if (!NS::HasPositiveMagnitudeHorizontal(direction))
             {
                 return NS::Quaternion::Identity;
             }
@@ -136,7 +135,7 @@ namespace GL
             return NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, yaw);
         }
 
-        void ChargeEffects::ForgetEndedEffects(const NS::IUseEffect* user) noexcept
+        void ChargeEffects::ForgetEndedEffects(const NS::IGetEffect* user) noexcept
         {
             const auto forgetIfEnded = [user](NS::uint32& id) {
                 if (id == 0)
@@ -155,7 +154,7 @@ namespace GL
             forgetIfEnded(m_full);
         }
 
-        void ChargeEffects::StartPress(const NS::IUseEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection)
+        void ChargeEffects::StartPress(const NS::IGetEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection)
         {
             // 前の押しの層が残っていれば、新しい押しの層と重ねない
             StopAndClear(user, m_curl);
@@ -171,13 +170,13 @@ namespace GL
             m_gather = NS::PlayEffect(user, m_gatherAsset, PlayDesc(center, YawToward(aimDirection), 0.0f));
         }
 
-        void ChargeEffects::StartCharging(const NS::IUseEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection, float charge01)
+        void ChargeEffects::StartCharging(const NS::IGetEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection, float charge01)
         {
             StopAndClear(user, m_grind);
             m_grind = NS::PlayEffect(user, m_grindAsset, PlayDesc(center, YawToward(aimDirection), charge01));
         }
 
-        void ChargeEffects::StartFullFlash(const NS::IUseEffect* user, const NS::Vector3& center)
+        void ChargeEffects::StartFullFlash(const NS::IGetEffect* user, const NS::Vector3& center)
         {
             m_fullShown = true;
             m_fullStep = NS::GetEffectStep(user);
@@ -186,7 +185,7 @@ namespace GL
             NS::StopEffectAfter(user, m_full, std::max(m_fullFlashSteps, 1));
         }
 
-        void ChargeEffects::PlaySwaySparks(const NS::IUseEffect* user, const NS::Vector3& center, const ChargeStatus& charge)
+        void ChargeEffects::PlaySwaySparks(const NS::IGetEffect* user, const NS::Vector3& center, const ChargeStatus& charge)
         {
             GL::Level::AimLine line{};
             if (!charge.TryGetAimLine(line))
@@ -219,7 +218,7 @@ namespace GL
             static_cast<void>(NS::PlayEffect(user, m_swaySparksAsset, sparks));
         }
 
-        void ChargeEffects::FollowHeldEffects(const NS::IUseEffect* user, const NS::Vector3& center,
+        void ChargeEffects::FollowHeldEffects(const NS::IGetEffect* user, const NS::Vector3& center,
                                               const NS::Vector3& aimDirection,
                                               float charge01,
                                               float spinDegreesThisFrame) noexcept
@@ -242,7 +241,7 @@ namespace GL
             SetInput(user, m_gather, m_fullFramesInput, static_cast<float>(m_framesSinceFull));
         }
 
-        void ChargeEffects::ClearHeldEffects(const NS::IUseEffect* user) noexcept
+        void ChargeEffects::ClearHeldEffects(const NS::IGetEffect* user) noexcept
         {
             // すぐ放した時も殻や閃きが残らないよう、保持中の層を同時に消す
             StopAndClear(user, m_curl);
@@ -252,7 +251,7 @@ namespace GL
             StopAndClear(user, m_full);
         }
 
-        void ChargeEffects::StartRelease(const NS::IUseEffect* user, const NS::Vector3& center, const BodySlamStatus& slam)
+        void ChargeEffects::StartRelease(const NS::IGetEffect* user, const NS::Vector3& center, const BodySlamStatus& slam)
         {
             const float charge01 = slam.Charge01();
             m_slamDirection = slam.Direction();
@@ -274,7 +273,7 @@ namespace GL
             m_trail = NS::PlayEffect(user, m_trailAsset, PlayDesc(center, facing, charge01));
         }
 
-        void ChargeEffects::UpdateTrail(const NS::IUseEffect* user, const NS::Vector3& center,
+        void ChargeEffects::UpdateTrail(const NS::IGetEffect* user, const NS::Vector3& center,
                                         const BodySlamStatus& slam,
                                         bool slamming,
                                         const GL::Level::ImpactAnswer& impact) noexcept
@@ -312,13 +311,13 @@ namespace GL
             Place(user, m_trail, center, YawToward(m_slamDirection));
         }
 
-        void ChargeEffects::StopTrailRoot(const NS::IUseEffect* user) noexcept
+        void ChargeEffects::StopTrailRoot(const NS::IGetEffect* user) noexcept
         {
             NS::StopEffectRoot(user, m_trail);
             NS::StopEffectAfter(user, m_trail, std::max(m_trailFadeSteps, 1));
         }
 
-        void ChargeEffects::Place(const NS::IUseEffect* user, NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept
+        void ChargeEffects::Place(const NS::IGetEffect* user, NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept
         {
             if (id == 0)
             {
@@ -335,12 +334,12 @@ namespace GL
             NS::SetEffectTransform(user, id, position, rotation, NS::Vector3::One);
         }
 
-        void ChargeEffects::SetCharge(const NS::IUseEffect* user, NS::uint32 id, float charge01) const noexcept
+        void ChargeEffects::SetCharge(const NS::IGetEffect* user, NS::uint32 id, float charge01) const noexcept
         {
             SetInput(user, id, m_chargeInput, charge01);
         }
 
-        void ChargeEffects::SetInput(const NS::IUseEffect* user, NS::uint32 id, int index, float value) const noexcept
+        void ChargeEffects::SetInput(const NS::IGetEffect* user, NS::uint32 id, int index, float value) const noexcept
         {
             if (id == 0)
             {
@@ -364,7 +363,7 @@ namespace GL
             return frames >= 0 && frames <= std::max(m_burstClearFrames, 0);
         }
 
-        void ChargeEffects::StopAndClear(const NS::IUseEffect* user, NS::uint32& id) noexcept
+        void ChargeEffects::StopAndClear(const NS::IGetEffect* user, NS::uint32& id) noexcept
         {
             if (id == 0)
             {

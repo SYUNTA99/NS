@@ -29,6 +29,15 @@ namespace NS
             Count
         };
 
+        //! @brief ゲームパッドのトリガーの識別子
+        enum class GamepadTrigger : int
+        {
+            Left = 0,
+            Right,
+
+            Count
+        };
+
         //! @brief 正規化されたアナログスティックの入力値
         struct Stick
         {
@@ -53,13 +62,17 @@ namespace NS
 
             [[nodiscard]] bool IsConnected() const noexcept;
 
-            //! @brief ボタンが現在のフレームで新たに押されたかどうかを判定する
-            [[nodiscard]] bool IsPressed(GamepadButton b) const noexcept;
-
             [[nodiscard]] bool IsHeld(GamepadButton b) const noexcept;
 
-            //! @brief ボタンが現在のフレームで離されたかどうかを判定する
-            [[nodiscard]] bool IsReleased(GamepadButton b) const noexcept;
+            //! Update で押していないボタンが押されていたら 1 足した回数。下ろさない。押した瞬間は InputReader で読む
+            [[nodiscard]] uint32 PressCount(GamepadButton b) const noexcept;
+
+            //! しきい値を超えて引いた瞬間ごとに 1 足した回数。下ろさない
+            [[nodiscard]] uint32 PressCount(GamepadTrigger t) const noexcept;
+
+            //! @brief previous の押した回数を引き継ぐ
+            //! @details 読む番号を替えて作り直した時に呼ぶ。回数が 0 へ戻ると、InputReader が前に読んだ回数と比べられない
+            void CarryPressCounts(const Gamepad& previous) noexcept;
 
             [[nodiscard]] Stick LeftStick() const noexcept;
 
@@ -94,7 +107,8 @@ namespace NS
             int m_userIndex = 0;
             bool m_connected = false;
             std::array<bool, k_ButtonCount> m_current{};
-            std::array<bool, k_ButtonCount> m_previous{};
+            std::array<uint32, k_ButtonCount> m_presses{};
+            std::array<uint32, static_cast<std::size_t>(GamepadTrigger::Count)> m_triggerPresses{};
             Stick m_leftStick{};
             Stick m_rightStick{};
             float m_leftTrigger = 0.0f;

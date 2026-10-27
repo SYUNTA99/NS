@@ -8,7 +8,9 @@
 
 namespace NS
 {
-    class IUseCamera;
+    class CameraManager;
+    class IGetCameraTarget;
+    class IGetCollision;
     class SceneActor;
     class Transform;
 
@@ -37,6 +39,12 @@ namespace NS
         std::optional<Vector3> partnerPosition{};
         // 反動になったフレームに、欄「反動の間に下げる距離」だけ後ろへ下げるか。反動になったフレームにだけ読む
         bool pullBack = true;
+        // 反動になったフレームから接地まで、回す入力を止めるか。反動になったフレームにだけ読む
+        bool holdLook = true;
+        // 反動の向きの縦の成分 (−1〜1)。正なら追う相手を画面の下寄りに、負なら上寄りに留め、進む側に空きを作る
+        float verticalLean = 0.0f;
+        // 速く動いている間か。真の間は視野角を欄「速い間に広げる視野角」へ寄せる
+        bool widenView = false;
     };
 
     //! @brief 溜めと反動に応じて構図を調整する三人称の追従カメラ
@@ -55,8 +63,13 @@ namespace NS
         [[nodiscard]] ActorRef TargetRef() const noexcept { return m_targetRef; }
 
         //! @brief 追う相手を受ける。持ち主のアクターが TargetRef の指す相手を取得して渡す
-        //! @details 相手が一覧から外れる前に、持ち主が取得し直して渡し直す。nullptr は相手なし
-        void SetTarget(const SceneActor* target) noexcept { m_target = target; }
+        //! @details 相手が一覧から外れる前に、持ち主が取得し直して渡し直す。target が nullptr なら相手なし。
+        //! state は同じ相手が自分の状態を渡す口で、渡さない相手は nullptr。Advance が進める直前に読む
+        void SetTarget(const SceneActor* target, const IGetCameraTarget* state) noexcept
+        {
+            m_target = target;
+            m_targetState = state;
+        }
 
         //! プレイ開始 / rebuild ごとに初期姿勢へ戻す
         void ResetPose() noexcept;
@@ -90,7 +103,7 @@ namespace NS
 
         //! @brief 次の更新で使う反動の状態を受け取る
         //! @details 未指定なら反動なし。反動開始時に突進方向へ回し、接地まで手動回転を止める
-        //! 接地が未入力なら反動終了時に回転を許可する。突進方向の非有限値は拒否する
+        //! 接地が未入力なら反動終了時に回転を許可する。突進方向の非有限値と、−1〜1 の外か非数の縦の向きは拒否する
         //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
         bool SetFollowRebound(const FollowReboundDesc& desc) noexcept;
 
@@ -118,9 +131,11 @@ namespace NS
         //! 指定位置から初期姿勢を逆算し、現在姿勢にも反映する。対象なし・距離ゼロなら変更しない
         void SetInitialPoseFromCameraPosition(const Vector3& cameraPosition) noexcept;
 
-        //! @brief 固定ステップで向きと距離を更新する。EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
-        //! @param[in] user 溜めの揺れを保たせるカメラの管理クラスの窓口。持ち主のアクター
-        void Update(const IUseCamera* user);
+        //! @brief 追う相手の状態を受けてから、固定ステップで向きと距離を更新する
+        //! @details EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
+        //! @param[in] cameras 溜めの揺れを保たせるカメラの管理役
+        //! @param[in] collision 注視点とカメラの間の地形を探すシーン
+        void Advance(CameraManager* cameras, const IGetCollision* collision) override;
 
         //! alpha で補間した target を追う最終姿勢を返す。CameraManager が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
@@ -155,7 +170,12 @@ namespace NS
         NS_FIELD(m_chargeFrameOmega, "溜めの構図のバネ角速度")
         NS_FIELD(m_reboundFollowOmega, "反動の間の横と前後のバネ角速度")
         NS_FIELD(m_reboundMaxLag, "反動の間の横と前後の遅れの上限")
+        NS_FIELD(m_reboundTowardCameraMaxLag, "カメラへ向かう遅れの上限")
         NS_FIELD(m_reboundScreenBand, "反動の間の上下の帯")
+        NS_FIELD(m_reboundBandLean, "反動の縦の向きで帯をずらす割合")
+        NS_FIELD(m_widenDegrees, "速い間に広げる視野角")
+        NS_FIELD(m_widenOmega, "視野角を寄せるバネ角速度")
+        NS_FIELD(m_occlusionMargin, "遮った地形から離す距離")
         NS_FIELD(m_reboundReturnFrames, "反動の後に戻すフレーム数")
         NS_FIELD(m_reboundTurnFrames, "反動の向きへ回すフレーム数")
         NS_FIELD(m_reboundPullBack, "反動の間に下げる距離")
@@ -174,26 +194,49 @@ namespace NS
     private:
         // 受けた溜めの状態から締め・揺れ・構図のずらしを 1 フレーム進める
         // look はこのフレームの注視点。framingHeld が真の間は、放した後の締めの戻しと構図のずらしを止める
-        void UpdateCharge(const IUseCamera* user,
+        void UpdateCharge(CameraManager* cameras,
                           const FollowChargeDesc& charge,
                           bool framingHeld,
                           const Transform* target,
                           const Vector3& look,
                           float dt) noexcept;
 
+        // 反動と強制突進のフェーズ遷移の入力
+        struct ReboundPhaseInput
+        {
+            bool reboundBegan = false;
+            bool rebounding = false;
+            bool launchBegan = false;
+            bool launching = false;
+        };
+
         // 距離と注視点を決める前に、反動と強制突進の状態を更新する
-        void UpdateReboundPhase(
-            bool began, bool rebounding, bool launchBegan, bool launching, const Vector3& head) noexcept;
+        void UpdateReboundPhase(const ReboundPhaseInput& input, const Vector3& head) noexcept;
 
         // 手動入力を適用する前に、反動の回転と入力制限を更新する
         void UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept;
         // 反動の間に受けた相手の位置から、注視点の寄せと引きのばねを 1 フレーム進める。反動の間でなければ 0 へ戻す
         void UpdateReboundPartner(const FollowReboundDesc& rebound, const Vector3& head, float dt) noexcept;
 
-        // ball を上下の帯に保つ注視点。通常時は head を返す
+        // ball を上下の帯に保つ注視点。通常時は head を返す。verticalLean で帯の中心を上下へずらす
         [[nodiscard]] Vector3 UpdateReboundLook(const Vector3& head,
                                                     const Vector3& ball,
+                                                    float verticalLean,
                                                     float dt) noexcept;
+
+        // 追う相手の頭から置きたいカメラの位置への光線で地形を探し、見せる距離の上限を 1 フレーム進める。
+        // 注視点から撃たないのは、反動の間の注視点が遅れと帯のずらしで地形の中へ入る事があるため。
+        // root は地形の外にある点 (追う相手の体の中心) で、頭が天井に入る時はその間で遮られた手前から撃つ
+        void UpdateOcclusion(const IGetCollision* collision,
+                             const Vector3& root,
+                             const Vector3& head,
+                             const Vector3& look,
+                             float dt);
+
+        // 描く視野角。溜めの締めを引き、速い間の広げを足す。帯・構図・描く時が同じ値を読む
+        [[nodiscard]] float ViewFovRadians() const noexcept;
+        // 描く距離。追う距離を、遮りで縮めた上限で切る
+        [[nodiscard]] float ShownDistance() const noexcept;
 
         // 反動の間の追い方の段
         enum class ReboundPhase
@@ -204,8 +247,9 @@ namespace NS
             Returning, // 反動の状態が外れてから普通の追い方へ寄せ戻している
         };
 
-        ActorRef m_targetRef{};               // 追従対象の永続参照。シーンに保存する
-        const SceneActor* m_target = nullptr; // m_targetRef から持ち主が取得した相手 (非所有)
+        ActorRef m_targetRef{};                          // 追従対象の永続参照。シーンに保存する
+        const SceneActor* m_target = nullptr;            // m_targetRef から持ち主が取得した相手 (非所有)
+        const IGetCameraTarget* m_targetState = nullptr; // m_target が状態を渡す口。渡さない相手は nullptr (非所有)
 
         // 値で受けた追従先の運動。届くまでは待機距離のまま
         bool m_followGrounded = false;
@@ -256,7 +300,14 @@ namespace NS
 
         float m_reboundFollowOmega = 4.0f; // 反動の間に注視点の横と前後が寄るバネ角速度 (1/秒)
         float m_reboundMaxLag = 1.5f;      // 反動の間に注視点が横と前後へ遅れてよい上限 (m)
+        // 反動でカメラへ向かう間に、注視点が自機より奥へ遅れてよい上限 (m)。遅れの分だけカメラが自機へ寄り、自機が画面を塞ぐ
+        float m_reboundTowardCameraMaxLag = 0.5f;
         float m_reboundScreenBand = 0.5f;  // 反動の間の上下の帯。視野の半分への割合
+        // 縦の向き 1 で帯の中心を下げる量。視野の半分への割合。上へ返る時に自機を下寄りに置き、上に足場の入る空きを作る
+        float m_reboundBandLean = 0.3f;
+        float m_widenDegrees = 8.0f; // 速い間に足す視野角 (度)。速さを画面の縁の流れで見せる
+        float m_widenOmega = 8.0f;   // 足す視野角を寄せる・戻すバネ角速度 (1/秒)
+        float m_occlusionMargin = 0.3f; // 遮った地形の面からカメラを手前へ離す距離 (m)。近面で壁を切らない
         int m_reboundReturnFrames = 20;    // 反動が外れてから普通の追い方へ寄せ戻すフレーム数
         int m_reboundTurnFrames = 20;      // 反動になってから突進の向きへ回し終えるフレーム数
         float m_reboundPullBack = 1.0f;    // 反動の間に当たった瞬間の距離より伸ばす距離 (m)
@@ -303,6 +354,10 @@ namespace NS
         Vector3 m_partnerLeanVelocity{};   // 寄せの速さ (m/秒)
         float m_partnerPull = 0.0f;            // 相手を収めるために引いている距離 (m)
         float m_partnerPullVelocity = 0.0f;    // 引きの速さ (m/秒)
+        float m_widenNow = 0.0f;           // 今足している視野角 (度)
+        // 遮りで縮めた距離の上限 (m)。遮られた時は面の手前まで一度に縮め、外れたら距離バネと同じ速さで戻す
+        float m_occludedDistance = 0.0f;
+        bool m_hasOccludedDistance = false; // m_occludedDistance を前のフレームから持っているか
         Vector3 m_look{};                  // このフレームの注視点。反動と寄せ戻しで使う
         Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
         bool m_hasLook = false;                // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽

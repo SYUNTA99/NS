@@ -70,7 +70,7 @@ namespace
         void Tick()
         {
             target->Feed(&camera->Vcam());
-            camera->Update();
+            scene.ExecutePhase(NS::UpdatePhase::Camera);
         }
 
         // 追われる物を 1 秒に 20 m で +Z へ進め、カメラを 1 フレーム進める

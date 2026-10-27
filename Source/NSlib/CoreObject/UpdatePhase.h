@@ -2,16 +2,14 @@
 
 namespace NS
 {
-    //! @brief 1 固定ステップの更新の段。Scene::OnUpdate が書いた順に回す
-    //! @details SceneActor は SceneActor::Phase で自分の段を答え、管理役は Scene::AddSystemTick で段を決める
+    //! @brief 1 固定ステップの並び。Scene::OnUpdate が書いた順に回す
+    //! @details アクターは段を選ばない。Actors で全部のアクターを一覧の順に Update し、RenderPrep で全部の
+    //! アクターの描く支度をする。管理役は Scene::AddSystemTick で段を決め、その段のアクターの後に回る
     enum class UpdatePhase
     {
-        Input,
-        Player,
-        Enemy,
-        Physics, //!< 管理役が Jolt の broadphase の木を組み直す段。この段の SceneActor は組み直しの前に回る
+        Actors,
+        Physics, //!< 管理役が Jolt の broadphase の木を組み直す段。アクターが動かした後に組み直す
         Sensors,
-        Triggers,
         Course,
         Camera,
         UI,
@@ -27,12 +25,11 @@ namespace NS
     };
 
     //! @brief 段の時計を返す。世界の速さに従うかの表はここ 1 か所で、部品ごとに止め方を書かない
-    //! @details 入力の段は押しを溜めて次に世界を進める歩の自機へ渡すので、毎歩回す。UI は遅い世界でも普段の速さで動く
+    //! @details UI は遅い世界でも普段の速さで動く
     [[nodiscard]] constexpr PhaseClock ClockOf(UpdatePhase phase) noexcept
     {
         switch (phase)
         {
-        case UpdatePhase::Input:
         case UpdatePhase::UI:
             return PhaseClock::RealTime;
         default:
@@ -40,15 +37,15 @@ namespace NS
         }
     }
 
-    //! @brief 自機以外の止め (Scene::HoldOthers) の間も段を回す場合 true、止める場合は false
-    //! @details 表はここ 1 か所。回すのは自機と、自機を見せる側 (入力・カメラ・UI・描く支度)。
-    //! 止めるのは置物・敵・物理・判定・コースの進行・エフェクト。カメラまで止めると、進み続ける自機が画面の中で動いて見える
+    //! @brief ほかを止めている間 (Scene::HoldOthers) も段を回す場合 true、止める場合は false
+    //! @details 表はここ 1 か所。Actors は回すが、Update するのは止め始めたアクターだけ。管理役は止め始めた
+    //! アクターを見せる側 (カメラ・UI・描く支度) を回し、物理・判定・コースの進行・エフェクトを止める。
+    //! カメラまで止めると、進み続ける止め始めたアクターが画面の中で動いて見える
     [[nodiscard]] constexpr bool RunsWhileOthersHeld(UpdatePhase phase) noexcept
     {
         switch (phase)
         {
-        case UpdatePhase::Input:
-        case UpdatePhase::Player:
+        case UpdatePhase::Actors:
         case UpdatePhase::Camera:
         case UpdatePhase::UI:
         case UpdatePhase::RenderPrep:

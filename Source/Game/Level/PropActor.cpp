@@ -9,7 +9,7 @@
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IUse/IUseCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -100,7 +100,7 @@ namespace GL
             NS::InitDraw(this, m_model.get(), &Root());
             CreateClassObj(m_shadow);
             NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
-            NS::SphereCollision* sphere = CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision);
+            CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision);
             CreateClassObj(m_params);
             CreateClassObj(m_hitZones);
             CreateClassObj(m_effect);
@@ -110,16 +110,13 @@ namespace GL
             NS::InitDraw(this, &m_tackleGhost, &Root(), m_model.get());
             CreateClassObj(m_marks);
             NS::InitDraw(this, m_marks.get(), &Root());
-            // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
-            NS::FollowHitSensor* bodySensor =
-                CreateClassObj<NS::HitSensor, NS::FollowHitSensor>(
-                    m_bodySensor, this, [sphere](const NS::Matrix& rootWorld) {
-                        const NS::Sphere world = sphere->WorldSphere(rootWorld);
-                        return NS::SensorVolume::Sphere(world.center, world.radius);
-                    });
-            NS::InitHitSensor(this, bodySensor);
-            SetSensorKind(bodySensor, SensorKind::MapObjBody);
             (void)BuildStateMachine<PropActor, RestingState, FreezeState, LaunchedState>(this, m_states);
+        }
+
+        NS::SensorVolume PropActor::BodySensorVolume(const NS::Matrix& rootWorld) const noexcept
+        {
+            const NS::Sphere world = Sphere().WorldSphere(rootWorld);
+            return NS::SensorVolume::Sphere(world.center, world.radius);
         }
 
         void PropActor::OnAssetsLoaded()
@@ -315,16 +312,16 @@ namespace GL
             }
             SpawnMark();
             const NS::Vector3 up = -GravityDirection();
-            NS::Vector3 forward = desc.arc.direction - up * NS::Dot(desc.arc.direction, up);
+            NS::Vector3 forward = NS::RejectUnit(desc.arc.direction, up);
             const float length = forward.Length();
-            if (!NS::IsFinite(forward) || !(length > 0.0001f))
+            if (!NS::HasPositiveMagnitude(length))
             {
                 return;
             }
             LaunchArc arc = desc.arc;
             arc.direction = NS::Vector3{1.0f, 0.0f, 0.0f};
             const NS::Vector3 initial = LaunchArcInitialVelocity(arc);
-            if (!(initial.Length() > 0.0f))
+            if (!NS::IsPositive(initial.Length()))
             {
                 return;
             }
@@ -345,7 +342,6 @@ namespace GL
             m_motion.Build<ArcState, RollingState>(this);
             (void)m_states->Change<LaunchedState>();
             m_effects->BeginTrail(this,
-                                  NS::GetFrameDelta(this),
                                   desc,
                                   Flight(),
                                   m_params.get(),
@@ -487,7 +483,7 @@ namespace GL
                 bool blocked = NS::RaycastCollision(
                     this, sphere.center, direction, travel + sphere.radius * 2.0f, distance, normal, Sphere().BodyId());
                 const float approach = -NS::Dot(direction, normal);
-                if (blocked && approach > 0.0001f)
+                if (blocked && NS::HasPositiveMagnitude(approach))
                 {
                     allowed = std::max(0.0f, distance - sphere.radius / approach - m_params->ContactSkin());
                     blocked = allowed < travel;
@@ -521,7 +517,7 @@ namespace GL
             const NS::Vector3 horizontal = m_velocity - up * NS::Dot(m_velocity, up);
             const NS::Vector3 spin = NS::Cross(up, horizontal) * m_params->SpinPerSpeed();
             const float rate = spin.Length();
-            if (std::isfinite(rate) && rate > 0.0001f)
+            if (NS::HasPositiveMagnitude(rate))
             {
                 Root().SetRotation(NS::Quaternion::CreateFromAxisAngle(spin / rate, rate * dt) * Root().Rotation());
             }
