@@ -74,6 +74,43 @@ namespace
         return bytes;
     }
 
+    //! 2 チャンネル・48 kHz の MS-ADPCM の WAV を 1 ブロックだけ作る。ブロックのバイト数は標本の数から出す
+    [[nodiscard]] std::vector<char> MakeAdpcmWav(std::uint16_t samplesPerBlock)
+    {
+        constexpr std::uint16_t k_Channels = 2;
+        constexpr std::uint32_t k_SampleRate = 48000;
+        constexpr std::uint32_t k_FormatBytes = 18 + 32;
+        constexpr std::int16_t k_Coefficients[7][2] = {
+            {256, 0}, {512, -256}, {0, 0}, {192, 64}, {240, 0}, {460, -208}, {392, -232}};
+        const std::uint16_t blockAlign =
+            static_cast<std::uint16_t>((samplesPerBlock - 2) * k_Channels / 2 + 7 * k_Channels);
+
+        std::vector<char> bytes;
+        AppendTag(bytes, "RIFF");
+        AppendU32(bytes, 4 + (8 + k_FormatBytes) + (8 + blockAlign));
+        AppendTag(bytes, "WAVE");
+        AppendTag(bytes, "fmt ");
+        AppendU32(bytes, k_FormatBytes);
+        AppendU16(bytes, 2); // WAVE_FORMAT_ADPCM
+        AppendU16(bytes, k_Channels);
+        AppendU32(bytes, k_SampleRate);
+        AppendU32(bytes, k_SampleRate / samplesPerBlock * blockAlign);
+        AppendU16(bytes, blockAlign);
+        AppendU16(bytes, 4);  // 1 標本のビット数
+        AppendU16(bytes, 32); // cbSize
+        AppendU16(bytes, samplesPerBlock);
+        AppendU16(bytes, 7); // 係数の数
+        for (const std::int16_t(&pair)[2] : k_Coefficients)
+        {
+            AppendU16(bytes, static_cast<std::uint16_t>(pair[0]));
+            AppendU16(bytes, static_cast<std::uint16_t>(pair[1]));
+        }
+        AppendTag(bytes, "data");
+        AppendU32(bytes, blockAlign);
+        bytes.insert(bytes.end(), blockAlign, '\0');
+        return bytes;
+    }
+
     class SoundClipTest : public ::testing::Test
     {
     protected:
@@ -157,6 +194,46 @@ TEST_F(SoundClipTest, BrokenFormatIsInvalidWithError)
 
     EXPECT_FALSE(clip.IsValid());
     EXPECT_EQ(log.ErrorCount(), 1);
+}
+
+// 1 ブロックが 512 標本を超える MS-ADPCM は、XAudio2 が声を作れずに DirectXTK が throw するので、読む時に断る
+TEST_F(SoundClipTest, AdpcmBlockOverXAudio2LimitIsInvalidWithError)
+{
+    const std::string path = WriteFile("long_block.wav", MakeAdpcmWav(1012));
+    const TestLogCapture log;
+
+    const NS::Audio::SoundClip clip(&m_device, path);
+
+    EXPECT_FALSE(clip.IsValid());
+    EXPECT_EQ(log.ErrorCount(), 1);
+}
+
+// 1 ブロックがちょうど 512 標本の MS-ADPCM は XAudio2 が受け付けるので、断らない
+TEST_F(SoundClipTest, AdpcmBlockAtXAudio2LimitIsReadWithoutError)
+{
+    const std::string path = WriteFile("max_block.wav", MakeAdpcmWav(512));
+    const TestLogCapture log;
+
+    const NS::Audio::SoundClip clip(&m_device, path);
+
+    EXPECT_EQ(log.ErrorCount(), 0);
+}
+
+// 出荷の音は全部、XAudio2 が鳴らせる形で読める
+TEST(SoundAssetTest, ShippedSoundsAreReadWithoutError)
+{
+    using NS::OS::FileSystem;
+    const std::vector<std::string> paths =
+        FileSystem::ListFiles(FileSystem::Combine(FileSystem::ContentRoot(), "Assets/Sounds"), ".wav");
+    ASSERT_FALSE(paths.empty());
+    const TestLogCapture log;
+
+    for (const std::string& path : paths)
+    {
+        const NS::Audio::SoundClip clip(nullptr, path);
+    }
+
+    EXPECT_EQ(log.ErrorCount(), 0);
 }
 
 // 装置を受け取っていない AssetManager は、同じ道筋に同じ無効な音を返し、ファイルを読まないので ERROR を出さない

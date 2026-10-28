@@ -31,6 +31,21 @@ namespace NS
                     return false;
                 }
             }
+
+            // XAudio2 の MS-ADPCM が受け付ける 1 ブロックの標本の数。DirectX::IsValid はこの範囲を見ない
+            constexpr uint16 k_MinAdpcmSamplesPerBlock = 32;
+            constexpr uint16 k_MaxAdpcmSamplesPerBlock = 512;
+
+            //! MS-ADPCM の時だけ、1 ブロックの標本の数が XAudio2 の範囲にあるかを見る。ほかの形式は true
+            [[nodiscard]] bool IsXAudio2AdpcmBlock(const WAVEFORMATEX* wfx) noexcept
+            {
+                if (DirectX::GetFormatTag(wfx) != WAVE_FORMAT_ADPCM)
+                {
+                    return true;
+                }
+                const uint16 samples = reinterpret_cast<const ADPCMWAVEFORMAT*>(wfx)->wSamplesPerBlock;
+                return samples >= k_MinAdpcmSamplesPerBlock && samples <= k_MaxAdpcmSamplesPerBlock;
+            }
         } // namespace
 
         SoundClip::SoundClip(AudioDevice* device, std::string_view path)
@@ -50,6 +65,17 @@ namespace NS
                 wav.audioBytes == 0)
             {
                 NS_LOG_ERROR(Audio, "SoundClip: WAV の形式が PCM・IEEE float・MS-ADPCM でないか壊れている: {}", path);
+                return;
+            }
+            // 範囲の外は SoundEffect を作れても、鳴らす時に XAudio2 が声を作れず DirectXTK が throw する
+            if (!IsXAudio2AdpcmBlock(wav.wfx))
+            {
+                NS_LOG_ERROR(Audio,
+                             "SoundClip: MS-ADPCM の 1 ブロックの標本の数 {} が XAudio2 の範囲 {}〜{} の外: {}",
+                             reinterpret_cast<const ADPCMWAVEFORMAT*>(wav.wfx)->wSamplesPerBlock,
+                             k_MinAdpcmSamplesPerBlock,
+                             k_MaxAdpcmSamplesPerBlock,
+                             path);
                 return;
             }
 

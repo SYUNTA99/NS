@@ -17,8 +17,9 @@ namespace NS
         class AudioDevice;
 
         //! @brief 1 本の WAV の音を持ち、鳴らし切る
-        //! @details 読めるのは PCM・IEEE float・MS-ADPCM の WAV。ファイルが無い・WAV でない・形式の値が
-        //!          壊れている時は ERROR を出して IsValid() が false になる。読めても装置が無効な時は、
+        //! @details 読めるのは PCM・IEEE float・MS-ADPCM の WAV。MS-ADPCM は 1 ブロックが 32〜512 標本の物だけ
+        //!          (XAudio2 の範囲)。ファイルが無い・WAV でない・形式の値が壊れている・範囲の外の MS-ADPCM の時は
+        //!          ERROR を出して IsValid() が false になる。読めても装置が無効な時は、
         //!          ERROR を出さずに IsValid() が false になる (音を作らない設定は失敗でないため)
         class SoundClip : private NonCopyable
         {
