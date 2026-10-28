@@ -128,6 +128,9 @@ public:
     [[nodiscard]] nlohmann::json SceneSnapshot() const;
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
+    [[nodiscard]] const NS::Editor::EditorMode& Editor() const noexcept { return m_editor; }
+    //! 履歴に積む前のプレイ中の手編集も含め、シーンに未保存の変更があるか
+    [[nodiscard]] bool HasUnsavedSceneChanges() const noexcept;
 
     //! 素材の編集中の値を確定し、アクターと素材の選択を外してシーン設定を表示する。
     void SelectSceneSettings();

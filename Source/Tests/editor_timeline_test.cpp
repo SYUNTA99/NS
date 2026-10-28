@@ -862,12 +862,35 @@ TEST(EditorQuit, TimelineEditAloneIsUnsavedWork)
     LevelEditorController editor(&scene);
     PlaceEditedPlayer(directory, scene, editor);
     NS::Editor::ActionTimelinePanel timeline;
-    ASSERT_FALSE(NS::Editor::HasUnsavedWork(editor.Editor(), timeline));
+    ASSERT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
 
     AddEventThroughThePanel(editor, timeline);
 
     EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
-    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor.Editor(), timeline));
+    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
+}
+
+TEST(EditorQuit, UnchangedSceneClosesWithoutOpeningConfirmation)
+{
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::ActionTimelinePanel timeline;
+    NS::Editor::QuitModal quit;
+    ASSERT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
+    EXPECT_TRUE(quit.RequestQuit(NS::Editor::HasUnsavedWork(editor, timeline)));
+    ImGui::NewFrame();
+    quit.Render(editor, timeline);
+    EXPECT_EQ(ImGui::GetTopMostPopupModal(), nullptr);
+    ImGui::EndFrame();
+}
+
+TEST(EditorQuit, CleanWorkDoesNotRequireASceneSave)
+{
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Editor::ActionTimelinePanel timeline;
+    EXPECT_TRUE(NS::Editor::SaveAllForQuit(editor, timeline));
 }
 
 // 終了の保存は動作のタイムラインで直した .actor も書く。シーンだけを書くと、動作の変更が黙って失われる
@@ -898,8 +921,8 @@ TEST(EditorQuit, SaveAllForQuitWritesTheTimeline)
     const bool opened = mode.OpenLevel(folder + "/quit");
 
     AddEventThroughThePanel(editor, timeline);
-    const bool saved = NS::Editor::SaveAllForQuit(mode, timeline);
-    const bool unsavedAfter = NS::Editor::HasUnsavedWork(mode, timeline);
+    const bool saved = NS::Editor::SaveAllForQuit(editor, timeline);
+    const bool unsavedAfter = NS::Editor::HasUnsavedWork(editor, timeline);
     std::error_code error;
     std::filesystem::remove_all(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(levelDirectory)}, error);
 
@@ -951,7 +974,7 @@ TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
 
     EXPECT_FALSE(blocked(frame(nullptr)));
 
-    ASSERT_FALSE(quit.RequestQuit());
+    ASSERT_FALSE(quit.RequestQuit(true));
     EXPECT_TRUE(blocked(frame(nullptr)));
     EXPECT_FALSE(blocked(frame("キャンセル")));
     EXPECT_FALSE(blocked(frame(nullptr)));
@@ -969,7 +992,7 @@ TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
     // Save Level を開いたまま終了を求めると、終了の確認が前に出て、2 つが開き合わない
     files.OpenSaveModal("quit_modal_test");
     EXPECT_EQ(frame(nullptr), "Save Level");
-    ASSERT_FALSE(quit.RequestQuit());
+    ASSERT_FALSE(quit.RequestQuit(true));
     EXPECT_EQ(frame(nullptr), "終了の確認");
     EXPECT_EQ(frame(nullptr), "終了の確認");
     EXPECT_FALSE(blocked(frame("キャンセル")));

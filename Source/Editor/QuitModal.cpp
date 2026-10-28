@@ -15,16 +15,19 @@ namespace NS
 {
     namespace Editor
     {
-        bool HasUnsavedWork(const EditorMode& editor, const ActionTimelinePanel& timeline) noexcept
+        bool HasUnsavedWork(const LevelEditorController& editor, const ActionTimelinePanel& timeline) noexcept
         {
-            return editor.HasUnsavedChanges() || timeline.HasUnsavedChanges() ||
+            return editor.HasUnsavedSceneChanges() || timeline.HasUnsavedChanges() ||
                    AssetManager::Get().HasUnsavedEffectSets();
         }
 
-        bool SaveAllForQuit(EditorMode& editor, ActionTimelinePanel& timeline) noexcept
+        bool SaveAllForQuit(LevelEditorController& editor, ActionTimelinePanel& timeline) noexcept
         {
-            // シーンは変更があるか問わず書く。プレイ中にインスペクタで変えた値は履歴の版に載らないため
-            const bool sceneSaved = editor.SaveForQuit();
+            bool sceneSaved = true;
+            if (editor.HasUnsavedSceneChanges())
+            {
+                sceneSaved = editor.Editor().SaveForQuit();
+            }
             bool timelineSaved = true;
             if (timeline.HasUnsavedChanges())
             {
@@ -34,10 +37,11 @@ namespace NS
             return sceneSaved && timelineSaved && effectsSaved;
         }
 
-        bool QuitModal::RequestQuit() noexcept
+        bool QuitModal::RequestQuit(bool hasUnsavedWork) noexcept
         {
-            if (m_confirmed)
+            if (m_confirmed || !hasUnsavedWork)
             {
+                m_open = false;
                 return true;
             }
             // まだ確認していない終了要求は modal を開いて握りつぶす。取り下げを Application に返す
@@ -53,7 +57,6 @@ namespace NS
             {
                 return;
             }
-            EditorMode& mode = editor.Editor();
             // モーダルにして、開いている間は編集のショートカットと他の窓の操作を止める。
             // 他のモーダル (Save Level など) が開いていても、同じ段で開き直して前に出す
             constexpr const char* k_QuitModalTitle = "終了の確認";
@@ -72,10 +75,10 @@ namespace NS
             if (ImGui::BeginPopupModal(k_QuitModalTitle, nullptr, k_QuitModalFlags))
             {
                 ImGui::TextUnformatted("変更を保存して終了しますか");
-                if (HasUnsavedWork(mode, timeline))
+                if (HasUnsavedWork(editor, timeline))
                 {
                     ImGui::TextUnformatted("保存していない変更:");
-                    if (mode.HasUnsavedChanges())
+                    if (editor.HasUnsavedSceneChanges())
                     {
                         ImGui::BulletText("シーン");
                     }
@@ -100,7 +103,7 @@ namespace NS
                 if (saveClicked)
                 {
                     // 保存成功でのみ終了する。失敗時は modal を残しデータ消失を防ぐ
-                    if (SaveAllForQuit(mode, timeline))
+                    if (SaveAllForQuit(editor, timeline))
                     {
                         m_confirmed = true;
                         m_open = false;

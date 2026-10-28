@@ -11,6 +11,7 @@
 #include "NSlib/Core/Windows/Gamepad.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "NSlib/Core/Windows/Keyboard.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 
 #include <memory>
 #include <optional>
@@ -71,6 +72,8 @@ void Editor::OnAttach()
     });
 
     m_controller = std::make_unique<LevelEditorController>(scene);
+    m_controller->Editor().SetSessionPath(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "build/editor-session.json"));
     m_controller->Setup(NS::Editor::LevelNameOfScenePath(Game::StartScenePath()));
 
     // 初回フレームからオフスクリーンで描けるよう、ウィンドウサイズを初期の目標サイズにしておく
@@ -79,7 +82,12 @@ void Editor::OnAttach()
     m_gameView.SetInitialSize(viewSize);
 
     // 終了要求を握って保存確認を挟む。出荷には Editor が無いのでリリースは確認なしで終了する
-    app->SetQuitGuard([this]() { return m_quitModal.RequestQuit(); });
+    app->SetQuitGuard([this]() {
+        m_controller->CommitTransformEdit();
+        m_controller->CommitClassObjEdit();
+        m_controller->CommitAssetEdit();
+        return m_quitModal.RequestQuit(NS::Editor::HasUnsavedWork(*m_controller, m_actionTimeline));
+    });
 
     NS_LOG_INFO(App, "Editor attached (Debug/Dev/GameDebug only)");
 }

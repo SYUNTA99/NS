@@ -1,4 +1,6 @@
 #include "Editor/EditorMode.h"
+#include "Editor/ActionTimelinePanel.h"
+#include "Editor/QuitModal.h"
 #include "Editor/AssetsPanel.h"
 #include "Editor/PanelIds.h"
 #include "Editor/LevelFilePaths.h"
@@ -91,6 +93,145 @@ TEST(EditorLevelOpen, QuitSaveWithoutALevelNameTargetsTheStartScene)
     NS::Editor::EditorMode editor;
 
     EXPECT_EQ(editor.QuitSaveLevelName(), NS::Editor::LevelNameOfScenePath(::Game::StartScenePath()));
+}
+
+TEST_F(LevelOpenTest, RestartReopensTheLastSuccessfullyOpenedSceneWithoutSavingEdits)
+{
+    const std::string first = WriteLevel("first", NS::MakeSceneJson().dump());
+    const std::string last = WriteLevel("last", NS::MakeSceneJson().dump());
+    const std::string session = NS::OS::FileSystem::Combine(m_directory, "session.json");
+    {
+        NS::Editor::EditorMode editor;
+        editor.SetSessionPath(session);
+        editor.SetLoadLevelFn([](nlohmann::json&&) {});
+        ASSERT_TRUE(editor.OpenLevel(first));
+        ASSERT_TRUE(editor.OpenLevel(last));
+        editor.Undo().Record(
+            std::make_unique<NS::Editor::CompositeCommand>(std::vector<std::unique_ptr<NS::Editor::ICommand>>{}));
+        ASSERT_TRUE(editor.HasUnsavedChanges());
+    }
+    NS::Editor::EditorMode restarted;
+    restarted.SetSessionPath(session);
+    restarted.SetLoadLevelFn([](nlohmann::json&&) {});
+    ASSERT_TRUE(restarted.OpenStartupLevel(first));
+    EXPECT_EQ(restarted.CurrentLevelName(), last);
+    EXPECT_FALSE(restarted.HasUnsavedChanges());
+    nlohmann::json document;
+    ASSERT_TRUE(NS::LoadSceneFromJsonFile(document, *NS::Editor::BuildLevelPath(last)));
+    EXPECT_TRUE(NS::SceneJsonActors(document).empty());
+}
+
+TEST_F(LevelOpenTest, FailedOpenDoesNotReplaceTheRememberedScene)
+{
+    const std::string fallback = WriteLevel("fallback", NS::MakeSceneJson().dump());
+    const std::string last = WriteLevel("last", NS::MakeSceneJson().dump());
+    const std::string broken = WriteLevel("broken", "{ broken");
+    const std::string session = NS::OS::FileSystem::Combine(m_directory, "session.json");
+    NS::Editor::EditorMode editor;
+    editor.SetSessionPath(session);
+    editor.SetLoadLevelFn([](nlohmann::json&&) {});
+    ASSERT_TRUE(editor.OpenLevel(last));
+    EXPECT_FALSE(editor.OpenLevel(broken));
+    NS::Editor::EditorMode restarted;
+    restarted.SetSessionPath(session);
+    restarted.SetLoadLevelFn([](nlohmann::json&&) {});
+    ASSERT_TRUE(restarted.OpenStartupLevel(fallback));
+    EXPECT_EQ(restarted.CurrentLevelName(), last);
+}
+
+TEST_F(LevelOpenTest, DeletedOrInvalidRememberedSceneFallsBackWithoutReplacingIt)
+{
+    const std::string fallback = WriteLevel("fallback", NS::MakeSceneJson().dump());
+    const std::string session = NS::OS::FileSystem::Combine(m_directory, "session.json");
+    for (const std::string& text : {std::string{"{ broken"},
+                                   nlohmann::json{{"level", m_folder + "/deleted"}}.dump(),
+                                   nlohmann::json{{"level", "../outside"}}.dump(),
+                                   nlohmann::json{{"level", 5}}.dump()})
+    {
+        ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(session, std::as_bytes(std::span{text.data(), text.size()})));
+        NS::Editor::EditorMode restarted;
+        restarted.SetSessionPath(session);
+        restarted.SetLoadLevelFn([](nlohmann::json&&) {});
+        ASSERT_TRUE(restarted.OpenStartupLevel(fallback));
+        EXPECT_EQ(restarted.CurrentLevelName(), fallback);
+        EXPECT_FALSE(restarted.HasUnsavedChanges());
+    }
+}
+
+TEST_F(LevelOpenTest, SavedSceneClosesWithoutConfirmation)
+{
+    const std::string name = WriteLevel("saved", NS::MakeSceneJson().dump());
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    editor.Editor().SetCaptureLevelFn([] { return NS::MakeSceneJson(); });
+    ASSERT_TRUE(editor.Editor().OpenLevel(name));
+    editor.Editor().Undo().Record(
+        std::make_unique<NS::Editor::CompositeCommand>(std::vector<std::unique_ptr<NS::Editor::ICommand>>{}));
+    NS::Editor::ActionTimelinePanel timeline;
+    NS::Editor::QuitModal quit;
+    ASSERT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
+    EXPECT_FALSE(quit.RequestQuit(NS::Editor::HasUnsavedWork(editor, timeline)));
+    ASSERT_TRUE(NS::Editor::SaveAllForQuit(editor, timeline));
+    EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
+    EXPECT_TRUE(quit.RequestQuit(NS::Editor::HasUnsavedWork(editor, timeline)));
+}
+
+TEST_F(LevelOpenTest, SaveAsUpdatesTheSceneRememberedForRestart)
+{
+    const std::string first = WriteLevel("first", NS::MakeSceneJson().dump());
+    const std::string saved = m_folder + "/saved";
+    const std::string session = NS::OS::FileSystem::Combine(m_directory, "session.json");
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(
+        ImGui::CreateContext(), &ImGui::DestroyContext);
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.DisplaySize = {1200.0f, 900.0f};
+    io.ConfigInputTrickleEventQueue = false;
+    unsigned char* pixels = nullptr;
+    int width = 0;
+    int height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    NS::Editor::EditorMode editor;
+    editor.SetSessionPath(session);
+    editor.SetLoadLevelFn([](nlohmann::json&&) {});
+    editor.SetCaptureLevelFn([] { return NS::MakeSceneJson(); });
+    ASSERT_TRUE(editor.OpenLevel(first));
+    editor.OpenSaveModal();
+    const auto frame = [&editor, &context](const char* activate = nullptr, bool input = false) {
+        ImGui::NewFrame();
+        if (activate != nullptr)
+        {
+            ImGuiWindow* modal = ImGui::GetTopMostPopupModal();
+            ASSERT_NE(modal, nullptr);
+            context->NavActivateId = modal->GetID(activate);
+            context->NavActivateDownId = context->NavActivateId;
+            context->NavActivateFlags = ImGuiActivateFlags_None;
+            if (input)
+            {
+                context->NavActivateFlags = ImGuiActivateFlags_PreferInput;
+            }
+        }
+        editor.RenderFileBrowser();
+        ImGui::EndFrame();
+    };
+    frame();
+    frame();
+    frame("##name", true);
+    io.AddKeyEvent(ImGuiMod_Ctrl, true);
+    io.AddKeyEvent(ImGuiKey_A, true);
+    frame();
+    io.AddKeyEvent(ImGuiKey_A, false);
+    io.AddKeyEvent(ImGuiMod_Ctrl, false);
+    frame();
+    io.AddInputCharactersUTF8(saved.c_str());
+    frame();
+    frame("Save");
+    ASSERT_EQ(editor.CurrentLevelName(), saved);
+    NS::Editor::EditorMode restarted;
+    restarted.SetSessionPath(session);
+    restarted.SetLoadLevelFn([](nlohmann::json&&) {});
+    ASSERT_TRUE(restarted.OpenStartupLevel(first));
+    EXPECT_EQ(restarted.CurrentLevelName(), saved);
 }
 
 // Assets の外・拡張子の違い・使えない文字は名前にしない

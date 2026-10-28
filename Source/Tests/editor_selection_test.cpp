@@ -1,10 +1,12 @@
 #include "Editor/EditorActors.h"
+#include "Editor/ActionTimelinePanel.h"
 #include "Editor/GizmoEditor.h"
 #include "Editor/GridMath.h"
 #include "Editor/InspectorPanel.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
+#include "Editor/QuitModal.h"
 #include "Editor/Undo/ActorSnapshotApplier.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
@@ -314,15 +316,18 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
         };
         const nlohmann::json colorBefore = colorOf();
         const NS::Vector3 positionBefore = scene.Actors().FindByActorId(id)->Root().Position();
+        NS::Editor::ActionTimelinePanel timeline;
 
         // 何も変えずに戻る
         editor.EnterPlay();
+        EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
         editor.EnterEdit();
         EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
 
         // 位置だけがプレイで動く
         editor.EnterPlay();
         scene.Actors().FindByActorId(id)->Root().SetPosition(NS::Vector3{7.0f, 3.0f, 1.0f});
+        EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
         editor.EnterEdit();
         EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
         EXPECT_EQ(scene.Actors().FindByActorId(id)->Root().Position(), positionBefore);
@@ -341,6 +346,8 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
         });
         ASSERT_NE(modelRow, nullptr);
         editor.NoteFieldEdit(actor, *modelRow, "基本色");
+        EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
+        EXPECT_FALSE(NS::Editor::SaveAllForQuit(editor, timeline));
         const nlohmann::json colorEdited = colorOf();
         ASSERT_NE(colorEdited, colorBefore);
         editor.EnterEdit();

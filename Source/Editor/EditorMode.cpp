@@ -30,6 +30,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <span>
 #include <unordered_map>
 
 namespace NS
@@ -200,6 +201,7 @@ namespace NS
             {
                 m_currentLevelName = safe;
                 m_savedUndoVersion = m_undo.Version();
+                RememberCurrentLevel();
             }
             return ok;
         }
@@ -307,7 +309,44 @@ namespace NS
             m_savedUndoVersion = m_undo.Version();
             m_levelDirty = true;
             m_currentLevelName = QualifyLevelPath(SanitizeLevelPath(name));
+            RememberCurrentLevel();
             return true;
+        }
+
+        bool EditorMode::OpenStartupLevel(std::string_view fallback) noexcept
+        {
+            if (!m_sessionPath.empty())
+            {
+                const std::optional<std::string> text = OS::FileSystem::ReadAllText(m_sessionPath);
+                if (text)
+                {
+                    const nlohmann::json session = nlohmann::json::parse(*text, nullptr, false);
+                    if (session.is_object() && session.contains("level") && session["level"].is_string())
+                    {
+                        const std::string name = session["level"].get<std::string>();
+                        if (!name.empty() && OpenLevel(name))
+                        {
+                            return true;
+                        }
+                    }
+                    NS_LOG_WARN(App, "前回のシーンを開けないため通常の起動シーンを開く: {}", m_sessionPath);
+                }
+            }
+            return OpenLevel(fallback);
+        }
+
+        void EditorMode::RememberCurrentLevel() const noexcept
+        {
+            if (m_sessionPath.empty() || m_currentLevelName.empty())
+            {
+                return;
+            }
+            const std::string text = nlohmann::json{{"level", m_currentLevelName}}.dump(2) + "\n";
+            if (!OS::FileSystem::ReplaceAllBytes(m_sessionPath,
+                                                 std::as_bytes(std::span{text.data(), text.size()})))
+            {
+                NS_LOG_WARN(App, "開いているシーンを次回起動用に記録できない: {}", m_sessionPath);
+            }
         }
 
         void EditorMode::RenderFileBrowser() noexcept

@@ -172,6 +172,10 @@ namespace NS
             //! @return 名前が使えない・取り込み関数が無い・読めない時は false で、今のレベルと名前を保つ。
             //! 名前の無いまま実在するファイルを読めなかった時は、終了の保存の書き先を退避の名前にする
             bool OpenLevel(std::string_view name) noexcept;
+            //! エディタ固有の作業状態の保存先。空なら記録と復元を行わない
+            void SetSessionPath(std::string path) noexcept { m_sessionPath = std::move(path); }
+            //! 前回開いたシーンを復元し、記録が無いか開けなければ fallback を開く
+            [[nodiscard]] bool OpenStartupLevel(std::string_view fallback) noexcept;
             // 現在の編集内容と履歴を保ち、既存ファイルを上書きしない
             [[nodiscard]] CreateLevelResult CreateLevel(std::string_view name) noexcept;
 
@@ -212,6 +216,7 @@ namespace NS
             LevelFileBrowser m_fileBrowser{};
 
             std::string m_currentLevelName;
+            std::string m_sessionPath;
             bool m_bootLevelLoadFailed = false; // 起動レベルが実在かつ読込失敗した
             uint64 m_savedUndoVersion = 0;  // 最後に保存 / 読込した時点の履歴の版
 
@@ -236,6 +241,7 @@ namespace NS
             [[nodiscard]] bool IsCellOccupied(int16 x, int16 y, int16 z) const noexcept;
 
             [[nodiscard]] bool SaveLevelToName(std::string_view name) noexcept;
+            void RememberCurrentLevel() const noexcept;
             void OverwriteCurrentLevel() noexcept;
         };
     } // namespace Editor

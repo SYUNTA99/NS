@@ -399,7 +399,7 @@ void LevelEditorController::Setup(std::string_view startLevelName)
     bool opened = false;
     if (!startLevelName.empty())
     {
-        opened = m_editor.OpenLevel(startLevelName);
+        opened = m_editor.OpenStartupLevel(startLevelName);
         if (!opened)
         {
             NS_LOG_ERROR(App, "起動シーンを開けなかった。 空のシーンで編集を始める: {}", startLevelName);
@@ -513,6 +513,13 @@ void LevelEditorController::EnterEdit() noexcept
     // 編集復帰の組み直しを跨いだ選択を、id から現在のオブジェクトへ貼り直してから編集へ戻る
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
+}
+
+bool LevelEditorController::HasUnsavedSceneChanges() const noexcept
+{
+    return m_editor.HasUnsavedChanges() ||
+           (m_mode == Mode::Play && m_playBaseline && m_playStartBaseline &&
+            *m_playBaseline != *m_playStartBaseline);
 }
 
 void LevelEditorController::RequestStepFrame() noexcept
