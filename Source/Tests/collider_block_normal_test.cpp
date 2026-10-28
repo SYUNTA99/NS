@@ -12,6 +12,8 @@
 namespace
 {
     constexpr float k_Dt = 1.0f / 60.0f;
+    // 45° の坂を登れる面として扱う上限。ゲームの既定の 40° より緩くし、登れる坂の振る舞いを確かめる
+    constexpr float k_WalkableSlopeRadians = NS::k_Pi * 50.0f / 180.0f;
 
     void AddBox(NS::Scene& scene, const NS::Vector3& center, const NS::Vector3& half)
     {
@@ -40,7 +42,7 @@ namespace
             for (int frame = 0; frame < frames; ++frame)
             {
                 body.SetVelocity(velocity);
-                body.Move(&root, &collider, k_Dt, 0.0f);
+                body.Move(&root, &collider, k_Dt, 0.0f, k_WalkableSlopeRadians);
                 if (body.IsBlocked())
                 {
                     return frame;
@@ -83,7 +85,7 @@ TEST(ColliderBlockNormal, DashingIntoAFortyFiveDegreeSlopeReportsTheSlopeAndKeep
 
     // 反動で真上へ返した次のフレーム。登れる面の接地の補正で上向きの速さを削らない
     mover.body.SetVelocity(NS::Vector3{0.0f, 20.0f, 0.0f});
-    mover.body.Move(&mover.root, &mover.collider, k_Dt, 0.0f);
+    mover.body.Move(&mover.root, &mover.collider, k_Dt, 0.0f, k_WalkableSlopeRadians);
     EXPECT_NEAR(mover.body.Velocity().y, 20.0f, 1.0e-3f);
 }
 

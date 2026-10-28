@@ -52,11 +52,11 @@ namespace NS
 
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
     // 天井に当たったフレームの上向き速度は Move を抜けた時点で 0 になっている
-    void Body::Move(Transform* root, Collider* collider, float dt, float maxStepHeight) noexcept
+    void Body::Move(Transform* root, Collider* collider, float dt, float maxStepHeight, float maxSlopeRadians) noexcept
     {
         NS_ASSERT(Scene, collider != nullptr, "Body::Move: 当たりの部品が空");
         NS_ASSERT(Scene, root != nullptr, "Body::Move: 動かすルートが空");
-        const ColliderMove moved = collider->Move(root->Position(), m_velocity, dt, maxStepHeight);
+        const ColliderMove moved = collider->Move(root->Position(), m_velocity, dt, maxStepHeight, maxSlopeRadians);
         NS_ASSERT(Scene, IsFinite(moved.position), "Body::Move: 当たりの部品が返した位置が有限でない");
         NS_ASSERT(Scene, IsFinite(moved.velocity), "Body::Move: 当たりの部品が返した速度が有限でない");
         root->SetPosition(moved.position);

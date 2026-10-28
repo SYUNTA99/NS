@@ -63,7 +63,7 @@ void PlayerActor::MoveBody(float dt) noexcept
 
     const NS::Vector3 before = Root().Position();
     m_airDash.m_intended = m_body->Velocity();
-    m_body->Move(&Root(), m_collider.get(), dt, m_params->m_maxStepHeight);
+    m_body->Move(&Root(), m_collider.get(), dt, m_params->m_maxStepHeight, m_params->MaxSlopeRadians());
     const NS::Vector3 delta = Root().Position() - before;
     m_lastMoveDistance = delta.Length();
     SyncGroundState();
@@ -340,13 +340,15 @@ namespace
 
     // 縁を当たりの本当の形で探す。境界箱で探すと、傾いた坂や回した壁の周りの空中に縁ができる。
     // 壁の面は、上面が帯に入る壁なら必ず当たる帯の一番下の高さで、dir へ撃って見つける。
-    // 上面は、面から reach だけ奥を帯の上から下へ撃って見つける。登れる傾きの面は壁にも上面にもしない
+    // 上面は、面から reach だけ奥を帯の上から下へ撃って見つける。傾きが maxSlopeRadians 以下の登れる面は、壁にしない
+    // 上面は登れる面だけにする
     [[nodiscard]] bool FindLedge(const NS::Collider& collider,
                                  const NS::Vector3& center,
                                  const NS::Vector3& dir,
                                  const LedgeBand& band,
                                  float reach,
                                  float halfHeight,
+                                 float maxSlopeRadians,
                                  LedgeSpot& outLedge)
     {
         const float radius = collider.CapsuleRadius();
@@ -354,7 +356,7 @@ namespace
         float faceDistance = 0.0f;
         NS::Vector3 faceHitNormal{};
         if (!NS::RaycastCollision(&collider, faceOrigin, dir, radius + reach, faceDistance, faceHitNormal, JPH::BodyID{}) ||
-            NS::Phys::IsWalkableNormal(faceHitNormal.y))
+            NS::Phys::IsWalkableNormal(faceHitNormal.y, maxSlopeRadians))
         {
             return false;
         }
@@ -377,7 +379,7 @@ namespace
                                   topDistance,
                                   topNormal,
                                   JPH::BodyID{}) ||
-            !NS::Phys::IsWalkableNormal(topNormal.y))
+            !NS::Phys::IsWalkableNormal(topNormal.y, maxSlopeRadians))
         {
             return false;
         }
@@ -434,7 +436,7 @@ bool PlayerActor::LedgeGrab() noexcept
     // 帯の上は今フレーム動いた距離まで。速く落ちると 1 フレームで縁の上端を通り過ぎて掴み損ねる
     const LedgeBand band{pos.y + halfHeight, m_params->m_ledgeGrabBelowHand, m_lastMoveDistance};
     LedgeSpot ledge{};
-    if (!FindLedge(collider, pos, dir, band, m_params->m_ledgeReach, halfHeight, ledge))
+    if (!FindLedge(collider, pos, dir, band, m_params->m_ledgeReach, halfHeight, m_params->MaxSlopeRadians(), ledge))
     {
         return false;
     }
@@ -590,7 +592,14 @@ bool PlayerActor::FindLedgeTopAt(const NS::Vector3& hangPos,
     const LedgeBand band{
         hangPos.y + collider.CapsuleHalfHeight(), m_params->m_ledgeGrabBelowHand, m_params->m_ledgeHoldAboveHand};
     LedgeSpot ledge{};
-    if (!FindLedge(collider, hangPos, inward, band, m_params->m_ledgeReach, collider.CapsuleHalfHeight(), ledge))
+    if (!FindLedge(collider,
+                   hangPos,
+                   inward,
+                   band,
+                   m_params->m_ledgeReach,
+                   collider.CapsuleHalfHeight(),
+                   m_params->MaxSlopeRadians(),
+                   ledge))
     {
         return false;
     }

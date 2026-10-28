@@ -72,12 +72,13 @@ namespace NS
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override { return m_physics; }
 
         //! 位置 from から地形に当てた移動結果を返す。個体の姿勢と速度は変更しない
-        //! velocity は m/s、dt は秒、maxStepHeight は登れる段差 m
+        //! velocity は m/s、dt は秒、maxStepHeight は登れる段差 m、maxSlopeRadians は登れる坂の上限の角度
         //! シーンなしでは速度分だけ進み、grounded と inWorld は false
         [[nodiscard]] ColliderMove Move(const Vector3& from,
                                         const Vector3& velocity,
                                         float dt,
-                                        float maxStepHeight) noexcept;
+                                        float maxStepHeight,
+                                        float maxSlopeRadians) noexcept;
 
         // TypeRegistry には登録しない。欄の表示名は保存の鍵
         NS_REFLECT_BEGIN(Collider, Object)

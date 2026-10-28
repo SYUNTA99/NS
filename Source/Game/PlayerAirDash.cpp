@@ -268,7 +268,7 @@ void PlayerActor::TryBeginTerrainRebound() noexcept
         return;
     }
     // 反動の続きで床や坂に落ちたら着地にする。エアダッシュは坂でも返る
-    if (!dashing && NS::Phys::IsWalkableNormal(normal.y))
+    if (!dashing && NS::Phys::IsWalkableNormal(normal.y, m_params->MaxSlopeRadians()))
     {
         return;
     }

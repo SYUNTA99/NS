@@ -16,6 +16,8 @@
 namespace
 {
     constexpr float k_Dt = 1.0f / 60.0f;
+    // 45° の坂を登れる面として扱う上限。ゲームの既定の 40° より緩くし、登れる坂の振る舞いを確かめる
+    constexpr float k_WalkableSlopeRadians = NS::k_Pi * 50.0f / 180.0f;
     constexpr float k_GravityStep = -35.0f * k_Dt;
 
     class ColliderSlopeLanding : public ::testing::Test
@@ -41,7 +43,7 @@ namespace
         void Step(const NS::Vector3& velocity)
         {
             m_body.SetVelocity(velocity);
-            m_body.Move(&m_root, &m_collider, k_Dt, 0.0f);
+            m_body.Move(&m_root, &m_collider, k_Dt, 0.0f, k_WalkableSlopeRadians);
         }
 
         NS::Scene m_scene;
@@ -160,7 +162,7 @@ TEST(ColliderSlopeTop, RunningOverTheTopOfAWalkableSlopeKeepsTheHorizontalSpeed)
             forwardSpeed = 8.0f;
         }
         body.SetVelocity(NS::Vector3{0.0f, verticalSpeed, forwardSpeed});
-        body.Move(&root, &collider, k_Dt, 0.25f);
+        body.Move(&root, &collider, k_Dt, 0.25f, k_WalkableSlopeRadians);
         verticalSpeed = body.Velocity().y + k_RiseGravityStep;
         // 頂上の縁を壁と読むと前へ進む速さが消え、接地が切れたり付いたりして坂の上で止まる
         if (frame >= static_cast<int>(std::size(forwardSpeeds)))
@@ -185,7 +187,7 @@ TEST(ColliderLedge, WalkingOffALedgeDoesNotSinkToTheLowerFloor)
     for (int frame = 0; frame < 60 && !body.IsGrounded(); ++frame)
     {
         body.SetVelocity(NS::Vector3{0.0f, -8.0f, 0.0f});
-        body.Move(&root, &collider, k_Dt, 0.0f);
+        body.Move(&root, &collider, k_Dt, 0.0f, k_WalkableSlopeRadians);
     }
     ASSERT_TRUE(body.IsGrounded());
     const float standingY = root.Position().y;
@@ -194,7 +196,7 @@ TEST(ColliderLedge, WalkingOffALedgeDoesNotSinkToTheLowerFloor)
     for (int frame = 0; frame < 30 && !left; ++frame)
     {
         body.SetVelocity(NS::Vector3{0.0f, body.Velocity().y + k_GravityStep, 8.0f});
-        body.Move(&root, &collider, k_Dt, 0.25f);
+        body.Move(&root, &collider, k_Dt, 0.25f, k_WalkableSlopeRadians);
         left = !body.IsGrounded();
     }
     ASSERT_TRUE(left);
@@ -203,7 +205,7 @@ TEST(ColliderLedge, WalkingOffALedgeDoesNotSinkToTheLowerFloor)
 
 namespace
 {
-    int CountAirborneFramesRunningForward(NS::Scene& scene, const NS::Vector3& start)
+    int CountAirborneFramesRunningForward(NS::Scene& scene, const NS::Vector3& start, float maxSlopeRadians)
     {
         NS::Transform root;
         NS::Collider collider{&scene.Physics(), &root};
@@ -212,7 +214,7 @@ namespace
         for (int frame = 0; frame < 60 && !body.IsGrounded(); ++frame)
         {
             body.SetVelocity(NS::Vector3{0.0f, -8.0f, 0.0f});
-            body.Move(&root, &collider, k_Dt, 0.0f);
+            body.Move(&root, &collider, k_Dt, 0.0f, maxSlopeRadians);
         }
         EXPECT_TRUE(body.IsGrounded());
 
@@ -220,7 +222,7 @@ namespace
         for (int frame = 0; frame < 60; ++frame)
         {
             body.SetVelocity(NS::Vector3{0.0f, body.Velocity().y + k_GravityStep, 8.0f});
-            body.Move(&root, &collider, k_Dt, 0.25f);
+            body.Move(&root, &collider, k_Dt, 0.25f, maxSlopeRadians);
             if (!body.IsGrounded())
             {
                 ++airborneFrames;
@@ -237,7 +239,7 @@ TEST(ColliderStep, RunningUpA25cmStepStaysGrounded)
                            NS::Phys::ObjectLayers::Terrain);
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, -0.25f, 5.0f}, NS::Quaternion::Identity, NS::Vector3{5.0f, 0.5f, 5.0f}),
                            NS::Phys::ObjectLayers::Terrain);
-    EXPECT_EQ(CountAirborneFramesRunningForward(scene, NS::Vector3{0.0f, 1.5f, -3.0f}), 0);
+    EXPECT_EQ(CountAirborneFramesRunningForward(scene, NS::Vector3{0.0f, 1.5f, -3.0f}, k_WalkableSlopeRadians), 0);
 }
 
 TEST(ColliderSeam, RunningOverSeamsBetweenFloorBoxesStaysGrounded)
@@ -251,7 +253,7 @@ TEST(ColliderSeam, RunningOverSeamsBetweenFloorBoxesStaysGrounded)
                                            NS::Vector3{5.0f, 0.5f, 1.0f}),
                                NS::Phys::ObjectLayers::Terrain);
     }
-    EXPECT_EQ(CountAirborneFramesRunningForward(scene, NS::Vector3{0.0f, 1.5f, -5.0f}), 0);
+    EXPECT_EQ(CountAirborneFramesRunningForward(scene, NS::Vector3{0.0f, 1.5f, -5.0f}, k_WalkableSlopeRadians), 0);
 }
 
 TEST(ColliderSlopeTop, RunningUpOntoAPlateauStaysGrounded)
@@ -266,5 +268,51 @@ TEST(ColliderSlopeTop, RunningUpOntoAPlateauStaysGrounded)
         NS::Phys::Triangle{NS::Vector3{-5.0f, 2.0f, 4.0f}, NS::Vector3{-5.0f, 2.0f, 12.0f}, NS::Vector3{5.0f, 2.0f, 12.0f}},
         NS::Phys::Triangle{NS::Vector3{-5.0f, 2.0f, 4.0f}, NS::Vector3{5.0f, 2.0f, 12.0f}, NS::Vector3{5.0f, 2.0f, 4.0f}}};
     scene.Physics().AddMesh(slopeAndPlateau, NS::Phys::ObjectLayers::Terrain);
-    EXPECT_EQ(CountAirborneFramesRunningForward(scene, NS::Vector3{0.0f, 1.5f, -2.0f}), 0);
+    EXPECT_EQ(CountAirborneFramesRunningForward(scene, NS::Vector3{0.0f, 1.5f, -2.0f}, k_WalkableSlopeRadians), 0);
+}
+
+TEST(ColliderSlopeLimit, A45DegreeSlopeBlocksWalkingWhenTheLimitIs40Degrees)
+{
+    // 上限が 45° の時は、45° の坂の法線の Y が上限の値と浮動小数で同じになり、最後の桁で登れるかが変わった
+    // 上限を 40° にすると、45° の坂はいつも壁と同じく進む向きを遮る
+    constexpr float k_SlopeLimitRadians = NS::k_Pi * 40.0f / 180.0f;
+    NS::Scene scene;
+    scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, -0.5f, -5.0f}, NS::Quaternion::Identity, NS::Vector3{5.0f, 0.5f, 5.0f}),
+                           NS::Phys::ObjectLayers::Terrain);
+    const std::vector<NS::Phys::Triangle> slope{
+        NS::Phys::Triangle{NS::Vector3{-5.0f, 0.0f, 0.0f}, NS::Vector3{-5.0f, 4.0f, 4.0f}, NS::Vector3{5.0f, 4.0f, 4.0f}},
+        NS::Phys::Triangle{NS::Vector3{-5.0f, 0.0f, 0.0f}, NS::Vector3{5.0f, 4.0f, 4.0f}, NS::Vector3{5.0f, 0.0f, 0.0f}}};
+    scene.Physics().AddMesh(slope, NS::Phys::ObjectLayers::Terrain);
+    NS::Transform root;
+    NS::Collider collider{&scene.Physics(), &root};
+    NS::Body body;
+    root.SetPosition(NS::Vector3{0.0f, 1.5f, -2.0f});
+    for (int frame = 0; frame < 60 && !body.IsGrounded(); ++frame)
+    {
+        body.SetVelocity(NS::Vector3{0.0f, -8.0f, 0.0f});
+        body.Move(&root, &collider, k_Dt, 0.0f, k_SlopeLimitRadians);
+    }
+    ASSERT_TRUE(body.IsGrounded());
+    const float standingY = root.Position().y;
+
+    for (int frame = 0; frame < 60; ++frame)
+    {
+        body.SetVelocity(NS::Vector3{0.0f, body.Velocity().y + k_GravityStep, 8.0f});
+        body.Move(&root, &collider, k_Dt, 0.25f, k_SlopeLimitRadians);
+    }
+    EXPECT_LT(root.Position().y, standingY + 0.5f) << "z " << root.Position().z;
+    EXPECT_LT(root.Position().z, 0.5f);
+}
+
+TEST(ColliderSlopeLimit, PushingIntoA45DegreeSlopeAtItsFootStaysGrounded)
+{
+    // 登れない坂のふもとで前へ押し続けると、5 フレームごとに上向きの速さが付いて接地を失い、状態が Fall になった
+    NS::Scene scene;
+    scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, -0.5f, -5.0f}, NS::Quaternion::Identity, NS::Vector3{5.0f, 0.5f, 5.0f}),
+                           NS::Phys::ObjectLayers::Terrain);
+    const std::vector<NS::Phys::Triangle> slope{
+        NS::Phys::Triangle{NS::Vector3{-5.0f, 0.0f, 0.0f}, NS::Vector3{-5.0f, 4.0f, 4.0f}, NS::Vector3{5.0f, 4.0f, 4.0f}},
+        NS::Phys::Triangle{NS::Vector3{-5.0f, 0.0f, 0.0f}, NS::Vector3{5.0f, 4.0f, 4.0f}, NS::Vector3{5.0f, 0.0f, 0.0f}}};
+    scene.Physics().AddMesh(slope, NS::Phys::ObjectLayers::Terrain);
+    EXPECT_EQ(CountAirborneFramesRunningForward(scene, NS::Vector3{0.0f, 1.5f, -2.0f}, NS::k_Pi * 40.0f / 180.0f), 0);
 }

@@ -22,9 +22,6 @@ namespace NS
     {
         namespace
         {
-            constexpr float k_MaxSlopeAngleRadians = 0.7853982f;
-            // 登れる急さの上限をそのまま法線の Y 成分で表した値
-            const float k_MaxSlopeNormalY = std::cos(k_MaxSlopeAngleRadians);
             // Jolt の既定値と同じ。浮きの判定もこの距離で切り、Jolt が触れていると数える距離と揃える
             constexpr float k_CollisionTolerance = 1.0e-3f;
 
@@ -46,14 +43,35 @@ namespace NS
                 return horizontal - JPH::Vec3::sAxisY() * (horizontal.Dot(groundNormal) / groundNormal.GetY());
             }
 
-            JPH::Vec3 GroundedVelocity(JPH::Vec3Arg projected, const Vector3& requested, JPH::Vec3Arg groundNormal, bool landed)
+            JPH::Vec3 GroundedVelocity(JPH::Vec3Arg projected,
+                                       const Vector3& requested,
+                                       JPH::Vec3Arg groundNormal,
+                                       bool landed,
+                                       float maxSlopeRadians)
             {
                 // Jolt が着地で面へ写した速度は、落ちる速さから生まれた坂を下る向きの速さを含むので使わない
-                if (landed && requested.y <= 0.0f && IsWalkableNormal(groundNormal.GetY()))
+                if (landed && requested.y <= 0.0f && IsWalkableNormal(groundNormal.GetY(), maxSlopeRadians))
                 {
                     return AlongGround(requested, groundNormal);
                 }
                 return CancelInto(projected, groundNormal);
+            }
+
+            // Jolt の GetGroundNormal は登れない面の法線も平均に混ぜる。床と 45° の坂の境目で 22.5° の足場になり、
+            // 登れる坂と読んで上向きの速さを付けたので、5 フレームごとに坂へ押し上げられて接地を失った
+            // 登れる接触が無い時 (急な面に挟まれた時) は Jolt の平均を使う
+            JPH::Vec3 WalkableGroundNormal(const JPH::CharacterVirtual& character, float maxSlopeRadians)
+            {
+                JPH::Vec3 sum = JPH::Vec3::sZero();
+                for (const JPH::CharacterContact& contact : character.GetActiveContacts())
+                {
+                    if (contact.mHadCollision && !contact.mWasDiscarded &&
+                        IsWalkableNormal(contact.mSurfaceNormal.GetY(), maxSlopeRadians))
+                    {
+                        sum += contact.mSurfaceNormal;
+                    }
+                }
+                return sum.NormalizedOr(character.GetGroundNormal());
             }
 
             bool CastRayDown(const JPH::PhysicsSystem& system, JPH::RVec3Arg origin, float length, float& outDistance)
@@ -89,7 +107,7 @@ namespace NS
                 {
                     settings.mShape = new JPH::CapsuleShape(halfHeight, radius);
                 }
-                settings.mMaxSlopeAngle = k_MaxSlopeAngleRadians;
+                // 登れる坂の上限 mMaxSlopeAngle は、Step が呼び手から毎回受けて設定する
                 settings.mCollisionTolerance = k_CollisionTolerance;
                 // 地形はメッシュの三角形なので、Jolt は三角形を 1 枚ずつ調べ、隣の面の三角形の縁を急な面として返す。
                 // 取り除かないと、坂の頂上の手前で向こう側の面の縁を壁と読み、前へ進む速さが消えた
@@ -121,28 +139,34 @@ namespace NS
         void JoltCharacter::Step(const Vector3& position,
                                  const Vector3& velocity,
                                  float dt,
-                                 float maxStepHeight)
+                                 float maxStepHeight,
+                                 float maxSlopeRadians)
         {
+            NS_ASSERT(Physics,
+                      IsFinite(maxSlopeRadians) && maxSlopeRadians >= 0.0f && maxSlopeRadians <= k_Pi / 2.0f,
+                      "JoltCharacter::Step: 登れる坂の上限が 0 以上 90° 以下でない ({})",
+                      maxSlopeRadians);
+            m_character->SetMaxSlopeAngle(maxSlopeRadians);
             // 前の Step の後に置き直された時は、前の接地と坂の向きは今の位置の物でない。
             // 呼び手は前の Step が返した位置の写しを渡すので、触っていなければビットまで同じ
             const Vector3 previous = Position();
             const bool placed = position.x != previous.x || position.y != previous.y || position.z != previous.z;
             const bool wasGrounded = IsGrounded() && !placed;
-            const JPH::Vec3 groundNormalBefore = m_character->GetGroundNormal();
+            const JPH::Vec3 groundNormalBefore = WalkableGroundNormal(*m_character, maxSlopeRadians);
             // 呼び手は前のフレームに返した速度に重力を足して渡す。上向きの速さが増えていなければジャンプではない
             const bool leavingGround = velocity.y > std::max(m_character->GetLinearVelocity().GetY(), 0.0f);
             m_character->SetPosition(ToJolt(position));
             JPH::Vec3 moveVelocity = ToJolt(velocity);
-            if (wasGrounded && !leavingGround && IsWalkableNormal(groundNormalBefore.GetY()))
+            if (wasGrounded && !leavingGround && IsWalkableNormal(groundNormalBefore.GetY(), maxSlopeRadians))
             {
                 moveVelocity = AlongGround(velocity, groundNormalBefore);
             }
             m_character->SetLinearVelocity(moveVelocity);
 
             const float stepHeight = std::max(0.0f, maxStepHeight);
-            // 半径 × (1 − cos 45°) までの角は CharacterVirtual::Update が登れる面として滑り越える
+            // 半径 × (1 − cos 坂の上限) までの角は CharacterVirtual::Update が登れる面として滑り越える
             // WalkStairs には残りの高さだけを渡す。maxStepHeight の 25 cm をそのまま渡すと 45 cm の段まで登った
-            const float slideUpHeight = m_radius * (1.0f - k_MaxSlopeNormalY);
+            const float slideUpHeight = m_radius * (1.0f - std::cos(maxSlopeRadians));
             JPH::CharacterVirtual::ExtendedUpdateSettings settings;
             settings.mWalkStairsStepUp = JPH::Vec3{0.0f, std::max(0.0f, stepHeight - slideUpHeight), 0.0f};
             // 坂を下る分は AlongGround が速さで付けるので吸い付けない
@@ -181,7 +205,7 @@ namespace NS
             if (IsGrounded())
             {
                 correctedVelocity =
-                    GroundedVelocity(correctedVelocity, velocity, m_character->GetGroundNormal(), !wasGrounded);
+                    GroundedVelocity(correctedVelocity, velocity, WalkableGroundNormal(*m_character, maxSlopeRadians), !wasGrounded, maxSlopeRadians);
             }
 
             for (const JPH::CharacterContact& contact : m_character->GetActiveContacts())
@@ -192,7 +216,7 @@ namespace NS
                     continue;
                 }
                 // 登れる斜面は接地の法線で処理済み。ここで水平化して打ち消すと登る速度まで消える。
-                if (IsWalkableNormal(contact.mContactNormal.GetY()))
+                if (IsWalkableNormal(contact.mContactNormal.GetY(), maxSlopeRadians))
                 {
                     continue;
                 }
@@ -209,8 +233,8 @@ namespace NS
 
             if (IsGrounded())
             {
-                const JPH::Vec3 groundNormal = m_character->GetGroundNormal();
-                const bool standingOnWalkable = IsWalkableNormal(groundNormal.GetY());
+                const JPH::Vec3 groundNormal = WalkableGroundNormal(*m_character, maxSlopeRadians);
+                const bool standingOnWalkable = IsWalkableNormal(groundNormal.GetY(), maxSlopeRadians);
                 // 登り坂に必要な上向き速度は保ち、角で跳ね上がった余剰分だけを消す。
                 float alongGroundY = 0.0f;
                 if (standingOnWalkable)
@@ -268,9 +292,9 @@ namespace NS
             return true;
         }
 
-        bool IsWalkableNormal(float normalY) noexcept
+        bool IsWalkableNormal(float normalY, float maxSlopeRadians) noexcept
         {
-            return normalY >= k_MaxSlopeNormalY;
+            return normalY >= std::cos(maxSlopeRadians);
         }
     } // namespace Phys
 } // namespace NS

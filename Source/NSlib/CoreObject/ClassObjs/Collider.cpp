@@ -68,7 +68,8 @@ namespace NS
     ColliderMove Collider::Move(const Vector3& from,
                                 const Vector3& velocity,
                                 float dt,
-                                float maxStepHeight) noexcept
+                                float maxStepHeight,
+                                float maxSlopeRadians) noexcept
     {
         ColliderMove moved;
         Phys::PhysicsScene* physics = GetPhysicsScene();
@@ -88,7 +89,7 @@ namespace NS
         }
         m_character->Resize(radius, halfHeight);
 
-        m_character->Step(from, velocity, dt, maxStepHeight);
+        m_character->Step(from, velocity, dt, maxStepHeight, maxSlopeRadians);
 
         moved.position = m_character->Position();
         moved.velocity = m_character->Velocity();
