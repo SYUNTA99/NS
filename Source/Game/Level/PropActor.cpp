@@ -42,7 +42,7 @@ namespace GL
                     owner->m_restAge += dt;
                     if (owner->m_restAge >= owner->m_params->RestLifeSeconds())
                     {
-                        owner->BodySensorClassObj()->Invalidate();
+                        owner->m_bodyHitSensor->Invalidate();
                         owner->Disappear();
                     }
                 }
@@ -270,7 +270,7 @@ namespace GL
             }
             m_received.active = false;
             (void)StartHitReaction(
-                TackleSetName("明け", m_received.tier), m_received.contact, BodySensorClassObj(), m_received.attacker);
+                TackleSetName("明け", m_received.tier), m_received.contact, m_bodyHitSensor, m_received.attacker);
         }
 
         void PropActor::EndFreeze()
@@ -553,7 +553,7 @@ namespace GL
             Root().SetPosition(position);
             Root().SetRotation(rotation);
             Appear();
-            BodySensorClassObj()->Validate();
+            m_bodyHitSensor->Validate();
             m_effects->CancelTrail(this);
             // 次の歩を待たず、同じ歩の後の問いに置き直した当たりを見せる
             Sphere().SyncToPhysics(Root().WorldMatrix(), this);
@@ -575,7 +575,7 @@ namespace GL
         {
             if (const MsgAskTackleTarget* ask = NS::MsgCast<MsgAskTackleTarget>(msg))
             {
-                if (!IsAppeared() || !BodySensorClassObj()->IsValid())
+                if (!IsAppeared() || !m_bodyHitSensor->IsValid())
                 {
                     return false;
                 }
@@ -586,7 +586,7 @@ namespace GL
                 answer.breakable = false;
                 answer.placed = !IsFlying();
                 answer.position = Root().Position();
-                const NS::SensorVolume body = BodySensorClassObj()->WorldVolume(Root().WorldMatrix());
+                const NS::SensorVolume body = m_bodyHitSensor->WorldVolume(Root().WorldMatrix());
                 answer.bounds = body.Bounds();
                 answer.face = m_hitZones->Face();
                 answer.body = body;

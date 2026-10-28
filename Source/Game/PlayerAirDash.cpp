@@ -165,8 +165,8 @@ bool PlayerActor::StartAirDashAction() noexcept
                            AirDashActionName(),
                            0,
                            Root().Position(),
-                           BodySensorClassObj(),
-                           BodySensorClassObj());
+                           m_bodyHitSensor,
+                           m_bodyHitSensor);
 }
 
 void PlayerActor::KeepAirDashSpeed() noexcept
@@ -319,7 +319,7 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
 void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float facing, bool matched) noexcept
 {
     NS::HitReaction* reaction = HitReactionClassObj();
-    NS::HitSensor* self = BodySensorClassObj();
+    NS::HitSensor* self = m_bodyHitSensor;
     if (reaction == nullptr || self == nullptr)
     {
         return;
@@ -451,7 +451,7 @@ void PlayerActor::ApplyReboundChoice(const GL::Level::ReboundChoice& choice) noe
 void PlayerActor::StartShiftedReboundReaction() noexcept
 {
     NS::HitReaction* reaction = HitReactionClassObj();
-    NS::HitSensor* self = BodySensorClassObj();
+    NS::HitSensor* self = m_bodyHitSensor;
     if (reaction == nullptr || self == nullptr)
     {
         return;

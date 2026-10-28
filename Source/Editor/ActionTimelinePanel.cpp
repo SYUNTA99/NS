@@ -16,6 +16,7 @@
 #include <cmath>
 #include <format>
 #include <functional>
+#include <span>
 #include <string_view>
 #include <utility>
 #include <variant>
@@ -42,17 +43,26 @@ namespace NS
 
             std::string SensorLabel(const ActionSensorEvent& sensor)
             {
-                std::string label = "体のセンサー";
-                if (sensor.attack)
-                {
-                    label = "攻撃のセンサー";
-                }
                 if (sensor.valid)
                 {
-                    return label + "を入れる";
+                    return sensor.sensor + " を入れる";
                 }
-                return label + "を外す";
+                return sensor.sensor + " を外す";
             }
+
+#if NS_EDITOR_ENABLED
+            // 直している .actor actorFile を元に持つ actor のセンサー。作った順
+            // actor が nullptr か別の .actor を指す時は空。窓は選びを外しても前の .actor の動作を出し続けるので、
+            // 別のクラスのセンサーの名前を入り切りに書かない
+            std::span<HitSensor* const> SensorsOf(const SceneActor* actor, const std::string& actorFile)
+            {
+                if (actor == nullptr || ActorFileToWrite(actor, FieldDestination::ActorFile) != actorFile)
+                {
+                    return {};
+                }
+                return actor->HitSensorsObjClassObj()->Sensors();
+            }
+#endif
 
             // 再生の速さ。12 フレームの止めはそのままの速さだと 0.2 秒で目で追えないので、遅い方を既定にする
             constexpr float k_QuarterSpeed = 0.25f;
@@ -335,8 +345,8 @@ namespace NS
             bool changed = false;
 
             SceneActor* selected = editor.SelectedActor();
-            const bool selectable =
-                selected != nullptr && !editor.SelectedIsPlayerActor() && selected->BodySensorClassObj() != nullptr;
+            const bool selectable = selected != nullptr && !editor.SelectedIsPlayerActor() &&
+                                    selected->HitSensorsObjClassObj()->Find("Body") != nullptr;
             if (m_desc.targetId == 0)
             {
                 ImGui::TextUnformatted("相手: 自機に一番近いアクター");
@@ -589,17 +599,22 @@ namespace NS
                 }
             }
             ImGui::SameLine();
+            // 入り切りはセンサーを名前で指す。名前を持たない入り切りは .actor に書けないので、選んだアクターの最初の物を入れる
+            const std::span<HitSensor* const> sensors = SensorsOf(editor.SelectedActor(), m_actorFile);
+            ImGui::BeginDisabled(sensors.empty());
             if (ImGui::Button("入り切りを足す"))
             {
                 if (ActorAction* working = WorkingAction())
                 {
                     ActionSensorEvent sensor;
+                    sensor.sensor = sensors.front()->Name();
                     sensor.start = clock;
                     working->sensors.push_back(sensor);
                     m_selectedRow = working->events.size() + working->sensors.size() - 1;
                     ApplyWorking(editor);
                 }
             }
+            ImGui::EndDisabled();
             ImGui::EndDisabled();
 #else
             (void)editor;
@@ -872,18 +887,35 @@ namespace NS
 #endif
         }
 
-        void ActionTimelinePanel::RenderSelectedSensor(ActionSensorEvent& sensor, bool& changed) noexcept
+        void ActionTimelinePanel::RenderSelectedSensor(const SceneActor* selected,
+                                                       ActionSensorEvent& sensor,
+                                                       bool& changed) noexcept
         {
 #if NS_EDITOR_ENABLED
             ImGui::SeparatorText("センサーの入り切り");
             if (BeginFieldTable("##event-row"))
             {
-                DrawBoolComboRow("センサー", "##sensor", sensor.attack, "体のセンサー\0攻撃のセンサー\0", changed);
+                // 選べるのは選んだアクターが持つ名前だけ。打った名前の写しを持たない
+                FieldRow("センサー");
+                if (ImGui::BeginCombo("##sensor", sensor.sensor.c_str()))
+                {
+                    for (const HitSensor* choice : SensorsOf(selected, m_actorFile))
+                    {
+                        const std::string& name = choice->Name();
+                        if (ImGui::Selectable(name.c_str(), name == sensor.sensor))
+                        {
+                            sensor.sensor = name;
+                            changed = true;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
                 DrawBoolComboRow("長さの間", "##valid", sensor.valid, "外す\0入れる\0", changed);
                 DrawFrameSpanRows(sensor.start, sensor.length, changed);
                 EndFieldTable();
             }
 #else
+            (void)selected;
             (void)sensor;
             (void)changed;
 #endif
@@ -912,7 +944,7 @@ namespace NS
             else if (row - action->events.size() < action->sensors.size())
             {
                 const std::size_t sensorRow = row - action->events.size();
-                RenderSelectedSensor(action->sensors[sensorRow], changed);
+                RenderSelectedSensor(editor.SelectedActor(), action->sensors[sensorRow], changed);
                 if (ImGui::Button("この入り切りを消す"))
                 {
                     action->sensors.erase(action->sensors.begin() + static_cast<std::ptrdiff_t>(sensorRow));

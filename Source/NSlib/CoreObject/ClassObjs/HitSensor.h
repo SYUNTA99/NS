@@ -7,6 +7,8 @@
 
 #include "NSlib/Core/Types.h"
 #include <functional>
+#include <string>
+#include <utility>
 
 namespace NS
 {
@@ -53,12 +55,18 @@ namespace NS
     class HitSensor : public Object
     {
     public:
-        explicit HitSensor(SceneActor* owner) noexcept : m_owner(owner) {}
+        //! 持ち主・名前・種類を受けて作る。アクターのセンサーを作るのは HitSensorsObj の AddShape・AddFollow だけ
+        HitSensor(SceneActor* owner, std::string name, uint8 kind) noexcept
+            : m_name(std::move(name)), m_kind(kind), m_owner(owner)
+        {}
 
         //! このセンサーを持つアクター。重なりを知らせる宛先
         [[nodiscard]] SceneActor* Host() const noexcept { return m_owner; }
 
-        //! 種類の値。0 は未設定で、種類の意味はゲーム側が定義する。書くのはセンサーを宣言から作る SceneActor だけ
+        //! 持ち主の中でこのセンサーを指す名前。.actor の hitSensors のキーと、動作の入り切りが同じ名前で指す
+        [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
+
+        //! 種類の値。0 は未設定で、種類の意味はゲーム側が定義する。作る時に決まり、後から変わらない
         [[nodiscard]] uint8 Kind() const noexcept { return m_kind; }
 
         //! 調べる対象か。持ち主が出ていて (ValidateBySystem)、ゲームが Invalidate していない時だけ真
@@ -79,9 +87,7 @@ namespace NS
         NS_REFLECT_NONE(HitSensor, Object)
 
     private:
-        friend class SceneActor;
-        void SetKind(uint8 kind) noexcept { m_kind = kind; }
-
+        std::string m_name;    // 持ち主の中の名前
         uint8 m_kind = 0;      // 種類の値。0 は未設定で、どの受け手も応じない
         bool m_valid = true;       // ゲームが外していないか
         bool m_validBySystem = false; // 持ち主が出ているか
@@ -92,7 +98,9 @@ namespace NS
     class ShapeHitSensor final : public HitSensor
     {
     public:
-        explicit ShapeHitSensor(SceneActor* owner) noexcept : HitSensor(owner) {}
+        ShapeHitSensor(SceneActor* owner, std::string name, uint8 kind, HitSensorShape shape) noexcept
+            : HitSensor(owner, std::move(name), kind), m_shape(shape)
+        {}
 
         //! 球にする。半径は根のスケール前
         void SetSphere(float radius) noexcept;
@@ -138,7 +146,10 @@ namespace NS
         //! 形を答える関数を受けて作る
         //! @param[in] volume 持ち主の root の世界行列から世界座標の形を返す関数。事前条件: 空でない。
         //! 空なら WorldVolume は根に長さ 0 の球を返し、NS_LOG_ERROR で知らせる
-        FollowHitSensor(SceneActor* owner, std::function<SensorVolume(const Matrix& rootWorld)> volume) noexcept;
+        FollowHitSensor(SceneActor* owner,
+                        std::string name,
+                        uint8 kind,
+                        std::function<SensorVolume(const Matrix& rootWorld)> volume) noexcept;
 
         //! 世界座標の形。受けた関数へ rootWorld を渡し、その答えをそのまま返す
         [[nodiscard]] SensorVolume WorldVolume(const Matrix& rootWorld) const noexcept override;

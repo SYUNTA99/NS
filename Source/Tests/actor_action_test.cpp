@@ -76,11 +76,11 @@ TEST(ActorAction, SensorSwitchesRoundTripThroughTheFileForm)
 {
     NS::ActorAction written;
     written.name = "Swing";
-    written.sensors = {{.attack = true, .valid = true, .start = 2, .length = 5},
-                       {.attack = false, .valid = false, .start = 0, .length = 3}};
+    written.sensors = {{.sensor = "Attack", .valid = true, .start = 2, .length = 5},
+                       {.sensor = "Body", .valid = false, .start = 0, .length = 3}};
     const nlohmann::json doc = NS::ActorActionToJson(written);
     ASSERT_EQ(doc["sensors"].size(), 2u);
-    EXPECT_TRUE(doc["sensors"][0]["attack"].get<bool>());
+    EXPECT_EQ(doc["sensors"][0]["sensor"].get<std::string>(), "Attack");
     EXPECT_EQ(doc["sensors"][0]["start"].get<int>(), 2);
 
     std::string error;
@@ -90,7 +90,7 @@ TEST(ActorAction, SensorSwitchesRoundTripThroughTheFileForm)
     for (std::size_t i = 0; i < written.sensors.size(); ++i)
     {
         SCOPED_TRACE(i);
-        EXPECT_EQ(read->sensors[i].attack, written.sensors[i].attack);
+        EXPECT_EQ(read->sensors[i].sensor, written.sensors[i].sensor);
         EXPECT_EQ(read->sensors[i].valid, written.sensors[i].valid);
         EXPECT_EQ(read->sensors[i].start, written.sensors[i].start);
         EXPECT_EQ(read->sensors[i].length, written.sensors[i].length);
@@ -128,7 +128,7 @@ TEST(ActorAction, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
         {"type": "Flash", "start": 1, "length": 6, "fields": {"濃さ": 0.3, "消した欄": 2}},
         {"type": "ZoomRoll", "start": 2, "length": 7}
     ], "sensors": [
-        {"start": 1, "length": 2, "古い欄": 1}
+        {"sensor": "Body", "start": 1, "length": 2, "古い欄": 1}
     ]})");
     std::string error;
     const TestLogCapture log;
@@ -138,10 +138,25 @@ TEST(ActorAction, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
     EXPECT_FLOAT_EQ(std::get<NS::HitFlashItem>(read->events[0].item).alpha, 0.3f);
     EXPECT_FLOAT_EQ(std::get<NS::HitZoomRollItem>(read->events[1].item).zoom, NS::HitZoomRollItem{}.zoom);
     ASSERT_EQ(read->sensors.size(), 1u);
-    EXPECT_EQ(read->sensors[0].attack, NS::ActionSensorEvent{}.attack);
+    EXPECT_EQ(read->sensors[0].sensor, "Body");
     EXPECT_EQ(read->sensors[0].valid, NS::ActionSensorEvent{}.valid);
     EXPECT_EQ(log.WarningCount(), 3);
     EXPECT_EQ(log.ErrorCount(), 0);
+}
+
+// 入り切りはセンサーを名前で指す。名前の無い物と空の名前は、どのセンサーか決まらないので読まない
+TEST(ActorAction, SensorSwitchWithoutANameIsRefused)
+{
+    for (const char* row : {R"({"start": 0, "length": 2})", R"({"sensor": "", "start": 0, "length": 2})",
+                            R"({"sensor": true, "start": 0, "length": 2})"})
+    {
+        SCOPED_TRACE(row);
+        nlohmann::json doc = nlohmann::json{{"name", "A"}, {"events", nlohmann::json::array()}};
+        doc["sensors"] = nlohmann::json::array({nlohmann::json::parse(row)});
+        std::string error;
+        EXPECT_FALSE(NS::ParseActorAction(doc, error).has_value());
+        EXPECT_NE(error.find("sensor"), std::string::npos);
+    }
 }
 
 TEST(ActorAction, BrokenActionsAreRejectedWithAReason)
@@ -160,8 +175,8 @@ TEST(ActorAction, BrokenActionsAreRejectedWithAReason)
         R"({"name": "A", "events": [], "sensors": {}})",
         R"({"name": "A", "events": [], "sensors": [{"start": 0, "length": -1}]})",
         R"({"name": "A", "events": [], "sensors": [{"length": 1}]})",
-        R"({"name": "A", "events": [], "sensors": [{"start": 0, "length": 1, "attack": 1}]})",
-        R"({"name": "A", "events": [], "sensors": [{"start": 0, "length": 1, "valid": "on"}]})",
+        R"({"name": "A", "events": [], "sensors": [{"sensor": 1, "start": 0, "length": 1}]})",
+        R"({"name": "A", "events": [], "sensors": [{"sensor": "Body", "start": 0, "length": 1, "valid": "on"}]})",
         R"({"name": "A", "events": [], "sensors": ["Attack"]})",
         R"({"name": "A", "events": [], "length": -1})",
         R"({"name": "A", "events": [], "length": 1.5})",
@@ -283,8 +298,8 @@ namespace
     protected:
         void OnInit() override
         {
-            NS::Cast<NS::ShapeHitSensor>(m_bodySensor.get())->SetSphere(0.5f);
-            NS::Cast<NS::ShapeHitSensor>(m_attackSensor.get())->SetSphere(0.8f);
+            NS::Cast<NS::ShapeHitSensor>(m_bodySensor)->SetSphere(0.5f);
+            NS::Cast<NS::ShapeHitSensor>(m_attackSensor)->SetSphere(0.8f);
             CreateClassObj(m_model);
             CreateClassObj(m_hitReaction);
             CreateClassObj(m_actionTimeline);
@@ -294,9 +309,11 @@ namespace
 
     private:
         NS_SENSORS_BEGIN()
-        NS_SENSOR(m_bodySensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
-        NS_SENSOR(m_attackSensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSOR(m_bodySensor, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSOR(m_attackSensor, "Attack", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
         NS_SENSORS_END()
+        NS::HitSensor* m_bodySensor = nullptr;
+        NS::HitSensor* m_attackSensor = nullptr;
     };
 
     void ActionRunState::OnEnter(ActionProbeActor* owner)
@@ -310,8 +327,8 @@ namespace
                                                                owner->actionName,
                                                                owner->startFrame,
                                                                owner->Root().Position(),
-                                                               owner->BodySensorClassObj(),
-                                                               owner->partner->BodySensorClassObj());
+                                                               owner->HitSensorsObjClassObj()->Find("Body"),
+                                                               owner->partner->HitSensorsObjClassObj()->Find("Body"));
     }
 
     void ActionRunState::OnStep(ActionProbeActor* owner, float)
@@ -498,14 +515,14 @@ TEST(ActionTimeline, SensorSwitchesHoldForTheirLength)
 {
     NS::ActorAction flicker;
     flicker.name = "Flicker";
-    flicker.sensors = {{.attack = false, .valid = false, .start = 1, .length = 2}};
+    flicker.sensors = {{.sensor = "Body", .valid = false, .start = 1, .length = 2}};
     NS::ActorAction hold;
     hold.name = "Hold";
-    hold.sensors = {{.attack = true, .valid = false, .start = 0, .length = 10}};
+    hold.sensors = {{.sensor = "Attack", .valid = false, .start = 0, .length = 10}};
     ActionScene probes({flicker, hold});
     ASSERT_NE(probes.self, nullptr);
-    const NS::HitSensor& body = *probes.self->BodySensorClassObj();
-    const NS::HitSensor& attack = *probes.self->AttackSensorClassObj();
+    const NS::HitSensor& body = *probes.self->HitSensorsObjClassObj()->Find("Body");
+    const NS::HitSensor& attack = *probes.self->HitSensorsObjClassObj()->Find("Attack");
 
     probes.Enter("Flicker");
     const bool bodyValid[] = {true, false, false, true, true};
@@ -526,6 +543,25 @@ TEST(ActionTimeline, SensorSwitchesHoldForTheirLength)
     (void)NS::SetState<ActionIdleState>(probes.self);
     probes.Step();
     EXPECT_TRUE(attack.IsValid());
+}
+
+// 持ち主に無い名前の入り切りは、WARN を出してどのセンサーも切り替えない
+TEST(ActionTimeline, SensorSwitchOfAMissingNameChangesNothing)
+{
+    NS::ActorAction missing;
+    missing.name = "Missing";
+    missing.sensors = {{.sensor = "Tail", .valid = false, .start = 0, .length = 10}};
+    ActionScene probes({missing});
+    ASSERT_NE(probes.self, nullptr);
+    const NS::HitSensor& body = *probes.self->HitSensorsObjClassObj()->Find("Body");
+    const NS::HitSensor& attack = *probes.self->HitSensorsObjClassObj()->Find("Attack");
+
+    const TestLogCapture log;
+    probes.Enter("Missing");
+    probes.Step();
+    EXPECT_TRUE(body.IsValid());
+    EXPECT_TRUE(attack.IsValid());
+    EXPECT_EQ(log.WarningCount(), 1);
 }
 
 // 名前の無い動作は始めず、知らせる

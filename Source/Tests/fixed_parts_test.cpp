@@ -84,9 +84,11 @@ namespace
     {
     private:
         NS_SENSORS_BEGIN()
-        NS_SENSOR(m_bodySensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
-        NS_SENSOR(m_attackSensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSOR(m_bodySensor, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSOR(m_attackSensor, "Attack", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
         NS_SENSORS_END()
+        NS::HitSensor* m_bodySensor = nullptr;
+        NS::HitSensor* m_attackSensor = nullptr;
     };
 
     // 表を回して鍵 key の部品を返す。出なければ nullptr
@@ -264,7 +266,7 @@ TEST(ReflectedParts, InheritedMembersDriveEnumerationWithoutAnOverride)
     std::vector<std::string> keys;
     NS::ForEachReflectedClassObj(actor.get(),
                                  [&](const NS::ClassObjInfo& field, NS::Object*) { keys.emplace_back(field.key); });
-    EXPECT_EQ(keys, (std::vector<std::string>{"Transform", "ParentPart", "ChildPart"}));
+    EXPECT_EQ(keys, (std::vector<std::string>{"Transform", "HitSensors", "ParentPart", "ChildPart"}));
     EXPECT_EQ(NS::Cast<ReflectedParentActor>(actor.get()), actor.get());
 }
 
@@ -396,20 +398,21 @@ TEST(FixedParts, CommonMembersAreCreatedByTheActorClass)
     std::vector<std::string> names;
     NS::ForEachReflectedClassObj(&actor,
                                  [&](const NS::ClassObjInfo& field, NS::Object*) { names.push_back(field.key); });
-    EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model"}));
+    EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model", "HitSensors"}));
 }
 
-TEST(FixedParts, SensorsHaveDistinctRoleNames)
+// センサーは部品の一覧に 1 つずつ出ず、センサーの部品 1 つが名前つきで持つ
+TEST(FixedParts, SensorsLiveInOneSensorsPartByName)
 {
     const std::unique_ptr<SensorPartsActor> owned = NS::CreateActor<SensorPartsActor>();
     NS::SceneActor& actor = *owned;
-    NS::Object* body = actor.BodySensorClassObj();
-    NS::Object* attack = actor.AttackSensorClassObj();
+    NS::Object* body = actor.HitSensorsObjClassObj()->Find("Body");
+    NS::Object* attack = actor.HitSensorsObjClassObj()->Find("Attack");
     ASSERT_NE(body, nullptr);
     ASSERT_NE(attack, nullptr);
     EXPECT_NE(body, attack);
-    EXPECT_EQ(PartAt(&actor, "BodySensor"), body);
-    EXPECT_EQ(PartAt(&actor, "AttackSensor"), attack);
+    EXPECT_EQ(PartAt(&actor, "HitSensors"), actor.HitSensorsObjClassObj());
+    EXPECT_EQ(PartAt(&actor, "BodySensor"), nullptr);
     EXPECT_EQ(PartAt(&actor, "Missing"), nullptr);
     EXPECT_NE(NS::Cast<NS::ShapeHitSensor>(body), nullptr);
     EXPECT_NE(NS::Cast<NS::ShapeHitSensor>(attack), nullptr);
@@ -431,7 +434,7 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
     EXPECT_EQ(PartAt(&player, "Movement"), &player.Body());
     EXPECT_NE(PartAt(&player, "Params"), nullptr);
     EXPECT_NE(player.ModelClassObj(), nullptr);
-    EXPECT_NE(player.BodySensorClassObj(), nullptr);
+    EXPECT_NE(player.HitSensorsObjClassObj()->Find("Body"), nullptr);
     EXPECT_NE(rock.ModelClassObj(), nullptr);
     EXPECT_NE(rock.CollisionClassObj(), nullptr);
     EXPECT_NE(PartAt(&rock, "Params"), nullptr);

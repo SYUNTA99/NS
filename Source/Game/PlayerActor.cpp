@@ -728,7 +728,7 @@ NS::HitSensor* PlayerActor::LastTackleTargetSensor() const noexcept
     {
         return nullptr;
     }
-    return target->BodySensorClassObj();
+    return target->HitSensorsObjClassObj()->Find("Body");
 }
 
 void PlayerActor::BeginTackleHit() noexcept
@@ -742,7 +742,7 @@ void PlayerActor::BeginTackleHit() noexcept
         return;
     }
     const std::vector<NS::HitOwnerRun> runs = StartHitReactionRuns(
-        GL::Level::TackleSetName("体当たり", impact.tier), impact.surfacePoint, BodySensorClassObj(), target);
+        GL::Level::TackleSetName("体当たり", impact.tier), impact.surfacePoint, m_bodyHitSensor, target);
     GL::Level::TackleHitDesc hit{.tier = impact.tier, .contact = impact.surfacePoint, .impactDir = impact.impactDir};
     if (impact.broke)
     {
@@ -762,7 +762,7 @@ void PlayerActor::BeginTackleHit() noexcept
             m_impactEffects->RequestHit();
         }
     }
-    (void)GL::Level::SendMsgTackleHit(target, BodySensorClassObj(), hit);
+    (void)GL::Level::SendMsgTackleHit(target, m_bodyHitSensor, hit);
 }
 
 void PlayerActor::ReleaseTackleHit() noexcept
@@ -775,12 +775,12 @@ void PlayerActor::ReleaseTackleHit() noexcept
         // 束が足した持ち主へ渡す項目は、走っている項目の後ろに並ぶ
         const std::size_t first = reaction->OwnerRuns().size();
         (void)StartHitReaction(
-            GL::Level::TackleSetName("明け", impact.tier), impact.surfacePoint, BodySensorClassObj(), target);
+            GL::Level::TackleSetName("明け", impact.tier), impact.surfacePoint, m_bodyHitSensor, target);
         // 紫で上がった威力を当たった結果で見せる遅さなので、赤で放した当たりには出さない
         if (impact.gradualRelease)
         {
             m_slowedWorld = StartHitReaction(
-                GL::Level::TackleSetName("明け", impact.tier, "・紫"), impact.surfacePoint, BodySensorClassObj(), target);
+                GL::Level::TackleSetName("明け", impact.tier, "・紫"), impact.surfacePoint, m_bodyHitSensor, target);
         }
         for (const NS::HitOwnerRun& run : reaction->OwnerRunsSince(first))
         {
@@ -800,7 +800,7 @@ void PlayerActor::StartReboundReaction() noexcept
     {
         return;
     }
-    (void)StartHitReaction("反動", m_resolver->Answer().lastImpact.surfacePoint, BodySensorClassObj(), target);
+    (void)StartHitReaction("反動", m_resolver->Answer().lastImpact.surfacePoint, m_bodyHitSensor, target);
 }
 
 void PlayerActor::StopTackleHitEffects() noexcept

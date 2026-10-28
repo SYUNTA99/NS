@@ -35,8 +35,7 @@ namespace NS
     NS_CLASSOBJ(m_animation, "Animation")
     NS_CLASSOBJ(m_shadow, "Shadow")
     NS_CLASSOBJ(m_collision, "Collision")
-    NS_CLASSOBJ(m_bodySensor, "BodySensor")
-    NS_CLASSOBJ(m_attackSensor, "AttackSensor")
+    NS_CLASSOBJ(m_hitSensors, "HitSensors")
     NS_CLASSOBJ(m_hitReaction, "HitReaction")
     NS_CLASSOBJ(m_effect, "Effect")
     NS_CLASSOBJ(m_sound, "Sound")
@@ -93,35 +92,14 @@ namespace NS
         return created;
     }
 
-    void SceneActor::CreateDeclaredSensors()
+    void SceneActor::CreateHitSensors()
     {
-        SensorDeclarations sensors{this};
-        DeclareSensors(sensors);
-    }
-
-    void SceneActor::CreateShapeSensor(std::unique_ptr<HitSensor>& member, uint8 kind, HitSensorShape shape)
-    {
-        ShapeHitSensor* sensor = EmplaceClassObj<HitSensor, ShapeHitSensor>(member, this);
-        if (sensor == nullptr)
+        HitSensorsObj* sensors = EmplaceClassObj(m_hitSensors);
+        if (sensors == nullptr)
         {
             return;
         }
-        sensor->SetKind(kind);
-        sensor->SetShape(shape);
-        InitHitSensor(this, sensor);
-    }
-
-    void SceneActor::CreateFollowSensor(std::unique_ptr<HitSensor>& member,
-                                        uint8 kind,
-                                        std::function<SensorVolume(const Matrix& rootWorld)> volume)
-    {
-        FollowHitSensor* sensor = EmplaceClassObj<HitSensor, FollowHitSensor>(member, this, std::move(volume));
-        if (sensor == nullptr)
-        {
-            return;
-        }
-        sensor->SetKind(kind);
-        InitHitSensor(this, sensor);
+        DeclareSensors(*sensors);
     }
 
     IStateMachine* SceneActor::GetStateMachine() noexcept
@@ -272,7 +250,7 @@ namespace NS
         {
             m_actorFileName = std::string{actorFile};
         }
-        CreateDeclaredSensors();
+        CreateHitSensors();
         OnInit();
     }
 
@@ -304,11 +282,12 @@ namespace NS
             m_scene = info->scene;
         }
         // センサーは OnInit の前に作るので、OnInit と状態の OnEnter から読める。一覧へ入れるのでシーンを決めた後に作る
-        CreateDeclaredSensors();
+        CreateHitSensors();
         OnInit();
         ApplyActorFile(this);
-        // 束と動作は .actor だけに書き、シーンでは上書きしない
+        // 束と動作とセンサーの値は .actor だけに書き、シーンでは上書きしない
         // clang-format off
+        if (m_hitSensors) { m_hitSensors->ReloadValues(this); }
         if (m_hitReaction) { m_hitReaction->ReloadSets(this); }
         if (m_actionTimeline) { m_actionTimeline->ReloadActions(this); }
         // clang-format on
@@ -385,8 +364,7 @@ namespace NS
         if (m_model) { ShowModel(this, m_model.get()); }
         if (m_shadow) { ShowModel(this, m_shadow.get()); }
         if (m_collision) { EnableCollision(this, m_collision.get(), Root().WorldMatrix()); }
-        if (m_bodySensor) { EnableHitSensor(m_bodySensor.get()); }
-        if (m_attackSensor) { EnableHitSensor(m_attackSensor.get()); }
+        if (m_hitSensors) { m_hitSensors->EnableAll(); }
         // clang-format on
         // 出た所から描き始める。前の値が原点や消えた所のままだと、そこから補間して見える
         SnapshotForInterpolation();
@@ -403,8 +381,7 @@ namespace NS
         // clang-format off
         if (m_model) { HideModel(this, m_model.get()); }
         if (m_shadow) { HideModel(this, m_shadow.get()); }
-        if (m_bodySensor) { DisableHitSensor(m_bodySensor.get()); }
-        if (m_attackSensor) { DisableHitSensor(m_attackSensor.get()); }
+        if (m_hitSensors) { m_hitSensors->DisableAll(); }
         if (m_collision) { DisableCollision(this, m_collision.get()); }
         if (m_actionTimeline) { m_actionTimeline->Stop(); }
         if (m_hitReaction) { m_hitReaction->StopAll(this); }
@@ -456,8 +433,7 @@ namespace NS
         return ActionTimelineSelf{.actor = this,
                                   .reaction = m_hitReaction.get(),
                                   .model = m_model.get(),
-                                  .bodySensor = m_bodySensor.get(),
-                                  .attackSensor = m_attackSensor.get()};
+                                  .sensors = m_hitSensors.get()};
     }
 
     void SceneActor::Update()
@@ -525,8 +501,7 @@ namespace NS
         // clang-format off
         if (m_model) { EndDraw(this, m_model.get()); }
         if (m_shadow) { EndDraw(this, m_shadow.get()); }
-        if (m_bodySensor) { EndHitSensor(this, m_bodySensor.get()); }
-        if (m_attackSensor) { EndHitSensor(this, m_attackSensor.get()); }
+        if (m_hitSensors) { m_hitSensors->EndAll(this); }
         if (m_collision) { EndCollision(this, m_collision.get()); }
         // clang-format on
     }

@@ -139,19 +139,20 @@ namespace NS
             {
                 continue;
             }
-            HitSensor* sensor = owner.bodySensor;
-            if (event.attack)
+            HitSensor* sensor = nullptr;
+            if (owner.sensors != nullptr)
             {
-                sensor = owner.attackSensor;
+                sensor = owner.sensors->Find(event.sensor);
             }
             if (sensor == nullptr)
             {
                 NS_LOG_WARN(Scene,
-                            ".actor {} の動作 {} の {} 番目の入り切りは、{} が持たないセンサーを指すので、切り替えなかった",
+                            ".actor {} の動作 {} の {} 番目の入り切りは、{} が持たないセンサー {} を指すので、切り替えなかった",
                             owner.actor->ActorFileName(),
                             action.name,
                             i,
-                            owner.actor->ClassName());
+                            owner.actor->ClassName(),
+                            event.sensor);
                 continue;
             }
             if (event.valid)

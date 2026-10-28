@@ -15,6 +15,7 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
@@ -70,7 +71,11 @@ namespace
             }
             NS::ApplyActorFile(actor);
             actor->ReloadAssets();
-            // 束はアクターを作る時に .actor から読むので、読み直させて次の当たりに効かせる
+            // 束とセンサーの値はアクターを作る時に .actor から読むので、読み直させて次の当たりに効かせる
+            if (NS::HitSensorsObj* sensors = actor->HitSensorsObjClassObj())
+            {
+                sensors->ReloadValues(actor);
+            }
             if (NS::HitReaction* reaction = actor->HitReactionClassObj())
             {
                 reaction->ReloadSets(actor);
@@ -434,6 +439,20 @@ void LevelEditorController::CommitActorFileEdits()
 void LevelEditorController::WriteActorFileHitReactions(std::string_view actorFileName,
                                                        const std::vector<NS::HitReactionSet>& sets)
 {
+    PushActorFileChange(
+        actorFileName, [&sets](nlohmann::json& document) { NS::WriteHitReactionSets(document, sets); }, "束");
+}
+
+void LevelEditorController::WriteActorFileHitSensors(std::string_view actorFileName, const NS::HitSensorsObj& sensors)
+{
+    PushActorFileChange(
+        actorFileName, [&sensors](nlohmann::json& document) { sensors.WriteValues(document); }, "センサーの値");
+}
+
+void LevelEditorController::PushActorFileChange(std::string_view actorFileName,
+                                                const std::function<void(nlohmann::json&)>& change,
+                                                std::string_view what)
+{
     if (m_scene == nullptr)
     {
         return;
@@ -442,12 +461,12 @@ void LevelEditorController::WriteActorFileHitReactions(std::string_view actorFil
     const nlohmann::json* current = NS::ActorFileLibrary::Get().Find(name);
     if (current == nullptr)
     {
-        NS_LOG_WARN(App, ".actor {} が読まれていないので、束を書かない", name);
+        NS_LOG_WARN(App, ".actor {} が読まれていないので、{}を書かない", name, what);
         return;
     }
     nlohmann::json before = *current;
     nlohmann::json after = before;
-    NS::WriteHitReactionSets(after, sets);
+    change(after);
     if (after == before)
     {
         return;

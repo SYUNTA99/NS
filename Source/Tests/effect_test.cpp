@@ -137,8 +137,8 @@ TEST(EffectTest, SlotKeeperIsOrderedAfterHitReaction)
         parts.push_back(part);
         keys.push_back(field.key);
     });
-    ASSERT_EQ(parts.size(), 3u);
-    EXPECT_EQ(parts[1], reaction);
-    EXPECT_EQ(parts[2], effect);
-    EXPECT_EQ(keys[2], "Effect");
+    ASSERT_EQ(parts.size(), 4u);
+    EXPECT_EQ(parts[2], reaction);
+    EXPECT_EQ(parts[3], effect);
+    EXPECT_EQ(keys[3], "Effect");
 }

@@ -97,7 +97,6 @@
         1.2999999523162842
       ]
     },
-    "BodySensor": {},
     "ChargeEffects": {
       "丸まりの殻の寿命フレーム": 6,
       "丸まりの殻の資産": "charge.curl",
@@ -137,6 +136,7 @@
     },
     "Effect": {},
     "HitReaction": {},
+    "HitSensors": {},
     "ImpactEffects": {
       "中心の火花の開始フレーム": 3,
       "光条の尾のフレーム": 3,

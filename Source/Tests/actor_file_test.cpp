@@ -184,12 +184,13 @@ TEST(ActorFile, InstanceOverridesActorFile)
 TEST(ActorFile, ActorFileCannotAddParts)
 {
     const ScopedActorFileDirectory scope("FixedParts");
-    NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "AttackSensor", nlohmann::json::object()));
+    // 置物はアニメを作らない。.actor に書いても部品は増えない
+    NS::ActorFileLibrary::Get().Set("PropActor", ActorFileWith("PropActor", "Animation", nlohmann::json::object()));
 
     NS::Scene scene;
     const std::unique_ptr<NS::SceneActor> actor = NS::ActorFromJson(MapObjJson(1), scene);
     ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(actor->AttackSensorClassObj(), nullptr);
+    EXPECT_EQ(actor->AnimationClassObj(), nullptr);
     EXPECT_NE(actor->ShadowClassObj(), nullptr);
 }
 

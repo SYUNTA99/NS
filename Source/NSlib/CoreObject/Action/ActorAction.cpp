@@ -77,11 +77,14 @@ namespace NS
                 error = std::format("{} 番目の入り切りの長さ length が 0 以上の整数でない", index);
                 return std::nullopt;
             }
-            if (!ReadOptionalBool(row, "attack", event.attack))
+            // 既定の名前は持たない。名前はアクターのクラスの宣言が決める物で、NSlib は知らない
+            const nlohmann::json::const_iterator sensor = row.find("sensor");
+            if (sensor == row.end() || !sensor->is_string() || sensor->get_ref<const std::string&>().empty())
             {
-                error = std::format("{} 番目の入り切りの attack が真偽でない", index);
+                error = std::format("{} 番目の入り切りのセンサーの名前 sensor が空でない文字列でない", index);
                 return std::nullopt;
             }
+            event.sensor = sensor->get<std::string>();
             if (!ReadOptionalBool(row, "valid", event.valid))
             {
                 error = std::format("{} 番目の入り切りの valid が真偽でない", index);
@@ -90,7 +93,7 @@ namespace NS
             for (nlohmann::json::const_iterator entry = row.begin(); entry != row.end(); ++entry)
             {
                 const std::string& key = entry.key();
-                if (key != "attack" && key != "valid" && key != "start" && key != "length")
+                if (key != "sensor" && key != "valid" && key != "start" && key != "length")
                 {
                     NS_LOG_WARN(Scene, "{} 番目の入り切りに読み手のいない欄 {} があり、読まない", index, key);
                 }
@@ -196,7 +199,7 @@ namespace NS
             for (const ActionSensorEvent& sensor : action.sensors)
             {
                 nlohmann::json row;
-                row["attack"] = sensor.attack;
+                row["sensor"] = sensor.sensor;
                 row["valid"] = sensor.valid;
                 row["start"] = sensor.start;
                 row["length"] = sensor.length;

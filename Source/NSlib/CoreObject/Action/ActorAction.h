@@ -26,10 +26,10 @@ namespace NS
     //! 長さの途中で動作が止まった時も戻す
     struct ActionSensorEvent
     {
-        bool attack = false; // 攻撃のセンサーを切り替える場合 true。偽なら体のセンサー
-        bool valid = true;   // 長さの間、調べる対象にする場合 true。偽なら長さの間外す
-        int start = 0;       // 始まりのフレーム。0 以上
-        int length = 1;      // 長さ (フレーム数)。0 以上
+        std::string sensor; // 切り替えるセンサーの名前 (HitSensor::Name)。空でない
+        bool valid = true;  // 長さの間、調べる対象にする場合 true。偽なら長さの間外す
+        int start = 0;      // 始まりのフレーム。0 以上
+        int length = 1;     // 長さ (フレーム数)。0 以上
     };
 
     //! 状態ごとの動作。同じフレームに始まる事象は並びの順に起きる
@@ -45,9 +45,10 @@ namespace NS
     };
 
     //! 動作 1 つを JSON の形 {"name", "length", "events": [{"type", "start", "length", "fields"}],
-    //! "sensors": [{"attack", "valid", "start", "length"}]} から読む
+    //! "sensors": [{"sensor", "valid", "start", "length"}]} から読む
     //! 欠けた欄は既定のまま、知らない欄は WARN を出して飛ばす。sensors は無ければ空、length は無ければ 0
-    //! @return 名前が空・動作の長さが負か整数でない・始まりか長さが負・知らない種類・入り切りの欄が真偽でない場合は
+    //! @return 名前が空・動作の長さが負か整数でない・始まりか長さが負・知らない種類・
+    //! 入り切りの sensor が空でない文字列でない・入り切りの valid が真偽でない場合は
     //! std::nullopt で、error に理由を書く
     [[nodiscard]] std::optional<ActorAction> ParseActorAction(const nlohmann::json& doc, std::string& error);
 

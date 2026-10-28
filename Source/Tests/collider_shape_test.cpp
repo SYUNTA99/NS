@@ -136,7 +136,7 @@ TEST(ColliderShape, PlayerBodySensorFollowsARadiusEditWithoutRestart)
     PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(&player->Collider(), {{"半径", 0.8f}}), 0u);
-    const NS::SensorVolume volume = player->BodySensorClassObj()->WorldVolume(player->Root().WorldMatrix());
+    const NS::SensorVolume volume = player->HitSensorsObjClassObj()->Find("Body")->WorldVolume(player->Root().WorldMatrix());
     EXPECT_FLOAT_EQ(volume.radius, 0.8f);
 }
 
@@ -149,7 +149,7 @@ TEST(ColliderShape, ScaledPlayerRootDoesNotScaleTheBodySensor)
     ASSERT_NE(player, nullptr);
 
     player->Root().SetScale(NS::Vector3{1.2f, 1.2f, 1.2f});
-    const NS::SensorVolume volume = player->BodySensorClassObj()->WorldVolume(player->Root().WorldMatrix());
+    const NS::SensorVolume volume = player->HitSensorsObjClassObj()->Find("Body")->WorldVolume(player->Root().WorldMatrix());
     const NS::Phys::Capsule capsule = player->Collider().CapsuleAt(player->Root().Position());
     EXPECT_FLOAT_EQ(volume.radius, capsule.radius);
     EXPECT_FLOAT_EQ((volume.b - volume.a).Length(), capsule.halfHeight * 2.0f);
@@ -176,7 +176,7 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
                                   {{"半径", 0.8f}, {"中心オフセット", {0.0f, 0.25f, 0.0f}}}),
               0u);
     const NS::Sphere sphere = collision->WorldSphere(placed->Root().WorldMatrix());
-    const NS::SensorVolume volume = placed->BodySensorClassObj()->WorldVolume(placed->Root().WorldMatrix());
+    const NS::SensorVolume volume = placed->HitSensorsObjClassObj()->Find("Body")->WorldVolume(placed->Root().WorldMatrix());
     EXPECT_FLOAT_EQ(sphere.radius, 0.8f);
     EXPECT_FLOAT_EQ(volume.radius, sphere.radius);
     EXPECT_FLOAT_EQ(volume.Center().x, sphere.center.x);
@@ -191,10 +191,10 @@ TEST(ColliderShape, FollowingBodySensorsShowNoFields)
     PlayerActor& player = *playerOwned;
     const std::unique_ptr<GL::Level::PropActor> objOwned = NS::CreateActor<GL::Level::PropActor>();
     GL::Level::PropActor& obj = *objOwned;
-    ASSERT_NE(player.BodySensorClassObj(), nullptr);
-    ASSERT_NE(obj.BodySensorClassObj(), nullptr);
-    EXPECT_EQ(player.BodySensorClassObj()->GetReflection()->fieldCount, 0u);
-    EXPECT_EQ(obj.BodySensorClassObj()->GetReflection()->fieldCount, 0u);
+    ASSERT_NE(player.HitSensorsObjClassObj()->Find("Body"), nullptr);
+    ASSERT_NE(obj.HitSensorsObjClassObj()->Find("Body"), nullptr);
+    EXPECT_EQ(player.HitSensorsObjClassObj()->Find("Body")->GetReflection()->fieldCount, 0u);
+    EXPECT_EQ(obj.HitSensorsObjClassObj()->Find("Body")->GetReflection()->fieldCount, 0u);
 }
 
 TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
@@ -204,10 +204,10 @@ TEST(ColliderShape, AreaSensorsKeepTheirSavedFieldNames)
     GL::Level::GoalActor& goal = *goalOwned;
     const std::unique_ptr<GL::Level::DeathZoneActor> zoneOwned = NS::CreateActor<GL::Level::DeathZoneActor>();
     GL::Level::DeathZoneActor& zone = *zoneOwned;
-    ASSERT_NE(goal.BodySensorClassObj(), nullptr);
-    ASSERT_NE(zone.BodySensorClassObj(), nullptr);
-    EXPECT_EQ(NS::ApplyJsonFields(goal.BodySensorClassObj(), {{"半径", 0.9f}}), 0u);
-    EXPECT_EQ(NS::ApplyJsonFields(zone.BodySensorClassObj(),
+    ASSERT_NE(goal.HitSensorsObjClassObj()->Find("Body"), nullptr);
+    ASSERT_NE(zone.HitSensorsObjClassObj()->Find("Body"), nullptr);
+    EXPECT_EQ(NS::ApplyJsonFields(goal.HitSensorsObjClassObj()->Find("Body"), {{"半径", 0.9f}}), 0u);
+    EXPECT_EQ(NS::ApplyJsonFields(zone.HitSensorsObjClassObj()->Find("Body"),
                                   {{"箱の半径", {1000.0f, 5.0f, 1000.0f}}, {"中心オフセット", {0.0f, 0.0f, 0.0f}}}),
               0u);
 }

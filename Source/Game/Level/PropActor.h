@@ -120,10 +120,11 @@ namespace GL
             }
             // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
             NS_SENSORS_BEGIN()
-            NS_FOLLOW_SENSOR(m_bodySensor, SensorKind::MapObjBody, BodySensorVolume)
+            NS_FOLLOW_SENSOR(m_bodyHitSensor, "Body", SensorKind::MapObjBody, BodySensorVolume)
             NS_SENSORS_END()
             // 体のセンサーの世界座標の形。OnInit が当たりの球を作った後にしか問われない
             [[nodiscard]] NS::SensorVolume BodySensorVolume(const NS::Matrix& rootWorld) const noexcept;
+            NS::HitSensor* m_bodyHitSensor = nullptr; // 体のセンサー (非所有)。持つのは基底の HitSensorsObj
             std::unique_ptr<MapObjParams> m_params;
             std::unique_ptr<HitZones> m_hitZones;
             std::unique_ptr<LaunchEffects> m_effects;
