@@ -165,45 +165,79 @@ namespace GL
                 return alongSurface - surfaceUp * into;
             }
 
-            // 割り当てた向きの隣の候補から、入力を世界の向きにした物との内積が一番大きい物を選ぶ。割り当てた向きより入力に
-            // 近い物だけを曲げる先にし、同じだけ近ければ割り当てた向きから離れる角度が小さい物を選ぶ。
-            // 曲げる先が無いか、左右に同じだけ近い 2 つが並んで 1 つに決まらなければ nullptr
+            // 割り当てた向きの隣の候補で、入力を世界の向きにした物との角度が、割り当てた向きより小さい物なら、その角度を返す。
+            // 曲げる先でなければ空
+            std::optional<float> StepAngle(const NS::Vector3& direction,
+                                           const NS::Vector3& wanted,
+                                           float assignedAngle,
+                                           const ReboundHit& hit,
+                                           const ScreenAxes& screen,
+                                           const ReboundChoiceLimits& limits) noexcept
+            {
+                if (!IsNeighbor(hit.assigned, direction, limits.stepRadians) ||
+                    !IsCandidate(direction, hit, screen, limits))
+                {
+                    return std::nullopt;
+                }
+                const float angle{NS::AngleBetweenUnit(direction, wanted)};
+                if (angle >= assignedAngle - NS::k_Epsilon)
+                {
+                    return std::nullopt;
+                }
+                return angle;
+            }
+
+            // 割り当てた向きの隣の候補から、入力を世界の向きにした物に一番近い物を選ぶ。一番近い物から同じに見なす差の中の
+            // 物は同じだけ近いとし、その中で割り当てた向きから離れる角度が一番小さい物にする。差が少しでも近い方を選ぶと、
+            // 真後ろから 3° 回ったカメラで前を入力した時、真上の隣と斜め上の隣のわずかな差で左右へ曲がった。
+            // 曲げる先が無いか、離れる角度も同じ 2 つが残って 1 つに決まらなければ nullptr
             const NS::Vector3* OneStepTowardInput(std::span<const NS::Vector3> table,
                                                   const ReboundHit& hit,
                                                   const ScreenAxes& screen,
                                                   const ScreenInput& input,
                                                   const ReboundChoiceLimits& limits) noexcept
             {
-                const NS::Vector3 wanted{InputInWorld(hit, screen, input)};
-                const float assignedScore{NS::Dot(hit.assigned, wanted)};
+                NS::Vector3 wanted{InputInWorld(hit, screen, input)};
+                if (NS::IsNearlyZero(wanted))
+                {
+                    return nullptr;
+                }
+                wanted.Normalize();
+                const float assignedAngle{NS::AngleBetweenUnit(hit.assigned, wanted)};
+
+                std::optional<float> bestAngle{};
+                for (const NS::Vector3& direction : table)
+                {
+                    const std::optional<float> angle{StepAngle(direction, wanted, assignedAngle, hit, screen, limits)};
+                    if (angle.has_value() && (!bestAngle.has_value() || *angle < *bestAngle))
+                    {
+                        bestAngle = angle;
+                    }
+                }
+                if (!bestAngle.has_value())
+                {
+                    return nullptr;
+                }
+
                 const NS::Vector3* chosen{nullptr};
-                float chosenScore{0.0f};
                 float chosenTurn{0.0f};
                 bool tied{false};
                 for (const NS::Vector3& direction : table)
                 {
-                    if (!IsNeighbor(hit.assigned, direction, limits.stepRadians) ||
-                        !IsCandidate(direction, hit, screen, limits))
-                    {
-                        continue;
-                    }
-                    const float score{NS::Dot(direction, wanted)};
-                    if (score <= assignedScore + NS::k_Epsilon)
+                    const std::optional<float> angle{StepAngle(direction, wanted, assignedAngle, hit, screen, limits)};
+                    if (!angle.has_value() || *angle > *bestAngle + limits.screenTieRadians)
                     {
                         continue;
                     }
                     const float turn{NS::AngleBetweenUnit(direction, hit.assigned)};
-                    const bool sameScore{std::abs(score - chosenScore) <= NS::k_Epsilon};
-                    const bool sameTurn{std::abs(turn - chosenTurn) <= NS::k_Epsilon};
-                    if (chosen != nullptr && sameScore && sameTurn)
+                    if (chosen != nullptr && std::abs(turn - chosenTurn) <= NS::k_Epsilon)
                     {
                         tied = true;
                         continue;
                     }
-                    if (chosen == nullptr || score > chosenScore + NS::k_Epsilon || (sameScore && turn < chosenTurn))
+                    if (chosen == nullptr || turn < chosenTurn)
                     {
                         chosen = &direction;
-                        chosenScore = score;
                         chosenTurn = turn;
                         tied = false;
                     }
