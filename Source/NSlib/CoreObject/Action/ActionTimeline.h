@@ -3,6 +3,7 @@
 #include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
 #include "NSlib/CoreObject/IGet/IGetState.h"
 #include "NSlib/CoreObject/Object.h"
 
@@ -22,8 +23,7 @@ namespace NS
         const SceneActor* actor = nullptr;  // .actor の名前と状態機械を読む。事前条件: nullptr でない
         HitReaction* reaction = nullptr;    // 項目の事象を始める
         Model* model = nullptr;             // 項目が形・揺れ・震えを書く
-        HitSensor* bodySensor = nullptr;    // 入り切りの事象が切り替える体のセンサー
-        HitSensor* attackSensor = nullptr;  // 入り切りの事象が切り替える攻撃のセンサー
+        HitSensorsObj* sensors = nullptr;   // 入り切りの事象が名前で切り替えるセンサーを持つ部品
     };
 
     //! 持ち主の .actor の動作を持ち、状態に入る時に始めた動作を、状態の歩を時計にして進める部品

@@ -568,14 +568,14 @@ TEST(HitZonesTest, MapObjAnswersWithItsFaceAndBody)
     ASSERT_NE(zones, nullptr);
 
     GL::Level::TackleTargetAnswer answer{};
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(rock->BodySensorClassObj(), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(rock->HitSensorsObjClassObj()->Find("Body"), answer));
     EXPECT_EQ(answer.face.round, zones->Face().round);
     EXPECT_FLOAT_EQ(answer.face.width, zones->Face().width);
     EXPECT_FLOAT_EQ(answer.face.centerU, 0.25f);
     EXPECT_FLOAT_EQ(answer.face.powerScale, 1.1f);
     EXPECT_FLOAT_EQ(answer.face.remainderPowerScale, zones->Face().remainderPowerScale);
 
-    const SensorVolume expected = rock->BodySensorClassObj()->WorldVolume(rock->Root().WorldMatrix());
+    const SensorVolume expected = rock->HitSensorsObjClassObj()->Find("Body")->WorldVolume(rock->Root().WorldMatrix());
     EXPECT_FALSE(answer.body.isBox);
     EXPECT_FLOAT_EQ(answer.body.radius, expected.radius);
     EXPECT_FLOAT_EQ(answer.body.a.x, 8.0f);
@@ -595,7 +595,7 @@ TEST(HitZonesTest, RedMovedOnOneTargetChangesOnlyThatTarget)
     const auto judgeThroughCenter = [&](NS::SceneActor* target) {
         NS_ASSERT(Game, target != nullptr, "judgeThroughCenter: 渡したアクターが無い");
         GL::Level::TackleTargetAnswer answer{};
-        EXPECT_TRUE(GL::Level::SendMsgAskTackleTarget(target->BodySensorClassObj(), answer));
+        EXPECT_TRUE(GL::Level::SendMsgAskTackleTarget(target->HitSensorsObjClassObj()->Find("Body"), answer));
         const Vector3 center = answer.body.Center();
         HitFaceJudgement result;
         EXPECT_TRUE(JudgeHitFace(answer.face,
@@ -763,7 +763,7 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
     ASSERT_NE(player, nullptr);
     const NS::SceneActor* target = scene.Actors().FindByActorId(2);
     ASSERT_NE(target, nullptr);
-    const SensorVolume body = target->BodySensorClassObj()->WorldVolume(target->Root().WorldMatrix());
+    const SensorVolume body = target->HitSensorsObjClassObj()->Find("Body")->WorldVolume(target->Root().WorldMatrix());
 
     player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
     ASSERT_TRUE(player->BodySlam());
@@ -963,12 +963,13 @@ namespace
     class UnsetKindSensorActor final : public NS::SceneActor
     {
     protected:
-        void OnInit() override { NS::Cast<NS::ShapeHitSensor>(m_bodySensor.get())->SetSphere(0.5f); }
+        void OnInit() override { NS::Cast<NS::ShapeHitSensor>(m_bodySensor)->SetSphere(0.5f); }
 
     private:
         NS_SENSORS_BEGIN()
-        NS_SENSOR(m_bodySensor, GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
+        NS_SENSOR(m_bodySensor, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
         NS_SENSORS_END()
+        NS::HitSensor* m_bodySensor = nullptr;
     };
 } // namespace
 

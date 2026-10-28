@@ -345,9 +345,10 @@ protected:
 
 private:
     NS_SENSORS_BEGIN()
-    NS_FOLLOW_SENSOR(m_bodySensor, GL::Level::SensorKind::PlayerBody, BodySensorVolume)
+    NS_FOLLOW_SENSOR(m_bodyHitSensor, "Body", GL::Level::SensorKind::PlayerBody, BodySensorVolume)
     NS_SENSORS_END()
     [[nodiscard]] NS::SensorVolume BodySensorVolume(const NS::Matrix& rootWorld) const noexcept;
+    NS::HitSensor* m_bodyHitSensor = nullptr; // 体のセンサー (非所有)。持つのは基底の HitSensorsObj
 
     struct BodySlamRequest
     {

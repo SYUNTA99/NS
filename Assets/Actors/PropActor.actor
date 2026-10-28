@@ -1,7 +1,6 @@
 {
   "class": "PropActor",
   "classObjs": {
-    "BodySensor": {},
     "Collision": {
       "中心オフセット": [
         0,
@@ -12,6 +11,7 @@
     },
     "Effect": {},
     "HitReaction": {},
+    "HitSensors": {},
     "HitZones": {
       "上下の位置": 0.0,
       "丸": true,

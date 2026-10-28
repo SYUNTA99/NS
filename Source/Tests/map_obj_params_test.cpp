@@ -64,7 +64,7 @@ TEST(MapObjParams, DerivedActorFileControlsMassAndToughness)
     EXPECT_FLOAT_EQ(params->Toughness(), 3.0f);
     EXPECT_EQ(NS::ClassObjFields(NS::Editor::MakePrototypeJson(actor), "Breakable"), nullptr);
     GL::Level::TackleTargetAnswer answer;
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(actor->BodySensorClassObj(), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(actor->HitSensorsObjClassObj()->Find("Body"), answer));
     EXPECT_FLOAT_EQ(answer.mass, 2.0f);
     EXPECT_FLOAT_EQ(answer.toughness, 3.0f);
 
@@ -188,7 +188,7 @@ TEST(MapObjParams, TackleAnswerCarriesTheLaunchShape)
                                   nlohmann::json{{"押し飛ばしの高さ", 3.0f}, {"外れで飛ばす相手の距離の割合", 0.5f}}),
               0u);
     GL::Level::TackleTargetAnswer answer;
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(actor->BodySensorClassObj(), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(actor->HitSensorsObjClassObj()->Find("Body"), answer));
     EXPECT_FLOAT_EQ(answer.launch.apexHeight, 3.0f);
     EXPECT_FLOAT_EQ(answer.launch.missDistanceRatio, 0.5f);
     EXPECT_FLOAT_EQ(answer.launch.riseGravity, 25.0f);

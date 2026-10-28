@@ -17,6 +17,7 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -538,6 +539,55 @@ namespace NS
             }
         }
 
+        void InspectorPanel::DrawHitSensors(LevelEditorController& editor, SceneActor* actor)
+        {
+            NS_ASSERT(App, actor != nullptr, "センサーの欄を描くアクターが無い");
+            HitSensorsObj* sensors = actor->HitSensorsObjClassObj();
+            if (sensors == nullptr)
+            {
+                return;
+            }
+            const std::vector<HitSensor*>& list = sensors->Sensors();
+            const bool hasValues = std::any_of(list.begin(), list.end(), [](const HitSensor* sensor) {
+                const ReflectionInfo* info = sensor->GetReflection();
+                return info != nullptr && info->fieldCount > 0;
+            });
+            if (!hasValues || !ImGui::CollapsingHeader("センサー (.actor)", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                return;
+            }
+            ImGui::TextDisabled("直し終えた値は元の .actor に書き、元と派生を指すアクターの全部のセンサーに効く");
+            bool committed = false;
+            ImGui::PushID("##hitSensors");
+            for (HitSensor* sensor : list)
+            {
+                const ReflectionInfo* info = sensor->GetReflection();
+                if (info == nullptr || info->fieldCount == 0)
+                {
+                    continue;
+                }
+                ImGui::PushID(sensor->Name().c_str());
+                if (ImGui::TreeNodeEx("##sensor",
+                                      ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_NoTreePushOnOpen,
+                                      "%s",
+                                      sensor->Name().c_str()))
+                {
+                    ImGui::Indent();
+                    // 値はこのアクターのセンサーへすぐ効かせ、確定の時に .actor へ書いてほかのアクターへ広げる
+                    const ClassObjEditResult edit = DrawReflectedClassObj(sensor);
+                    committed |= edit.committed;
+                    ImGui::Unindent();
+                }
+                ImGui::PopID();
+            }
+            ImGui::PopID();
+            if (committed)
+            {
+                // センサーの値は束と同じく元の .actor だけが持つ
+                editor.WriteActorFileHitSensors(ActorFileToWrite(actor, FieldDestination::ActorFile), *sensors);
+            }
+        }
+
         void InspectorPanel::DrawSelectedAsset(LevelEditorController& editor, Object& asset)
         {
             if (Material* material = Cast<Material>(&asset))
@@ -619,6 +669,7 @@ namespace NS
                     }
                     ImGui::PopID();
                 });
+                DrawHitSensors(editor, actorFile);
                 DrawHitReactionSets(editor, actorFile);
                 // 確定で .actor の文書が変わると、この 1 体は次に引いた時に作り直される
                 if (committed)
@@ -810,6 +861,7 @@ namespace NS
                     }
                     ImGui::PopID();
                 });
+                DrawHitSensors(editor, go);
                 DrawHitReactionSets(editor, go);
                 // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
                 if (classObjEdit.revertTarget != nullptr && revertRow != nullptr)

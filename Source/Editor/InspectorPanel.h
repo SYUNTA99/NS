@@ -47,6 +47,8 @@ namespace NS
             void DrawAssetPreview(const Gfx::DrawItem& item);
             //! actor の元の .actor の名前の束の欄を描き、直し終えた束をその .actor へ書く。.actor が無ければ何も描かない
             void DrawHitReactionSets(LevelEditorController& editor, const SceneActor* actor);
+            //! actor のセンサーの値の欄を描き、直し終えた値を元の .actor の hitSensors へ書く。値を持つセンサーが無ければ何も描かない
+            void DrawHitSensors(LevelEditorController& editor, SceneActor* actor);
             //! actor の .actor の名前と、上書きから派生を作る欄を描く。押した操作は Render を描き終えてから流す
             void DrawActorFileChoice(const SceneActor* actor);
 

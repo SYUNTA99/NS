@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Assert.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetAudio.h"
@@ -12,7 +13,6 @@
 #include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/IGet/IGetState.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/SensorDeclarations.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
 
 #include "NSlib/Core/Types.h"
@@ -125,13 +125,10 @@ namespace NS
         [[nodiscard]] const Shadow* ShadowClassObj() const noexcept { return m_shadow.get(); }
         [[nodiscard]] Collision* CollisionClassObj() noexcept { return m_collision.get(); }
         [[nodiscard]] const Collision* CollisionClassObj() const noexcept { return m_collision.get(); }
-        //! その物の体の広がりのセンサー。持たなければ nullptr
-        [[nodiscard]] HitSensor* BodySensorClassObj() noexcept { return m_bodySensor.get(); }
-        [[nodiscard]] const HitSensor* BodySensorClassObj() const noexcept { return m_bodySensor.get(); }
-        //! 体と別の広がりを持つ 2 つ目のセンサー。持たなければ nullptr
-        //! 調べ役は体のセンサーと区別せずに扱う。今はこの枠を作る種類が無い
-        [[nodiscard]] HitSensor* AttackSensorClassObj() noexcept { return m_attackSensor.get(); }
-        [[nodiscard]] const HitSensor* AttackSensorClassObj() const noexcept { return m_attackSensor.get(); }
+        //! クラスが宣言したセンサーを名前つきで持つ部品。Init と InitWithCodeValues が OnInit の前に作る
+        //! 作る前 (コンストラクタの中) だけ nullptr
+        [[nodiscard]] HitSensorsObj* HitSensorsObjClassObj() noexcept { return m_hitSensors.get(); }
+        [[nodiscard]] const HitSensorsObj* HitSensorsObjClassObj() const noexcept { return m_hitSensors.get(); }
         [[nodiscard]] HitReaction* HitReactionClassObj() noexcept { return m_hitReaction.get(); }
         [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
         [[nodiscard]] ActionTimeline* ActionTimelineClassObj() noexcept { return m_actionTimeline.get(); }
@@ -238,12 +235,13 @@ namespace NS
         virtual void OnAssetsLoaded();
 
         //! 部品を member に作る。未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
-        //! センサーは作れない。NS_SENSOR か NS_FOLLOW_SENSOR で宣言し、基底が OnInit の前に作る
+        //! センサーとセンサーの部品は作れない。センサーは NS_SENSOR か NS_FOLLOW_SENSOR で宣言し、基底が OnInit の前に作る
         template <class TBase, class T = TBase, class... TArgs>
             requires std::derived_from<T, TBase> && std::derived_from<T, Object>
         T* CreateClassObj(std::unique_ptr<TBase>& member, TArgs&&... args)
         {
-            static_assert(!std::is_base_of_v<HitSensor, T>, "センサーは NS_SENSOR か NS_FOLLOW_SENSOR で宣言する");
+            static_assert(!std::is_base_of_v<HitSensor, T> && !std::is_same_v<T, HitSensorsObj>,
+                          "センサーは NS_SENSOR か NS_FOLLOW_SENSOR で宣言する");
             return EmplaceClassObj<TBase, T>(member, std::forward<TArgs>(args)...);
         }
 
@@ -290,7 +288,6 @@ namespace NS
 
     private:
         friend class ActorList;
-        friend class SensorDeclarations;
         friend bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
         friend bool SendMsgToActor(const Message& msg, SceneActor* receiver);
         template <class T, class... TArgs> friend std::unique_ptr<T> CreateActor(TArgs&&... args);
@@ -302,7 +299,7 @@ namespace NS
                                                                      std::string_view actorFile);
         friend float GetFrameRate(const SceneActor* actor) noexcept;
         friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
-        //! アクターを作る順。宣言したセンサー → 部品を作る (OnInit) → .actor の全部の値 → シーンの上書き → 素材
+        //! アクターを作る順。宣言したセンサー → 部品を作る (OnInit) → .actor の全部の値とセンサーの値 → シーンの上書き → 素材
         //! 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない。
         //! info が nullptr のアクターも、シーンの上書きを飛ばすだけで同じ順を通る。
         //! 断らない。シーンの上書きが書いてよい項目だけを持つかは、作る前に ActorFromJson が確かめる
@@ -321,14 +318,10 @@ namespace NS
         // 別のメンバーが同じ保存キーで作成済みか。同じキーの部品が 2 つあると保存で片方が消える
         [[nodiscard]] bool IsClassObjKeyCreated(std::string_view key) const;
         void ReportInvalidClassObj(const ClassObjInfo* field) const;
-        //! クラスが並べたセンサー。上書きは NS_SENSORS_BEGIN と NS_SENSORS_END が書く
-        virtual void DeclareSensors(SensorDeclarations& sensors) { (void)sensors; }
-        // 宣言したセンサーを作り、一覧に入れて種類と形を付ける。Init と InitWithCodeValues が OnInit の前に 1 回呼ぶ
-        void CreateDeclaredSensors();
-        void CreateShapeSensor(std::unique_ptr<HitSensor>& member, uint8 kind, HitSensorShape shape);
-        void CreateFollowSensor(std::unique_ptr<HitSensor>& member,
-                                uint8 kind,
-                                std::function<SensorVolume(const Matrix& rootWorld)> volume);
+        //! クラスが並べたセンサーを sensors に作る。上書きは NS_SENSORS_BEGIN と NS_SENSORS_END が書く
+        virtual void DeclareSensors(HitSensorsObj& sensors) { (void)sensors; }
+        // センサーの部品を作り、クラスが宣言したセンサーを作らせる。Init と InitWithCodeValues が OnInit の前に 1 回呼ぶ
+        void CreateHitSensors();
         // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
         template <class TBase, class T = TBase, class... TArgs>
             requires std::derived_from<T, TBase> && std::derived_from<T, Object>
@@ -372,8 +365,7 @@ namespace NS
         std::unique_ptr<Animation> m_animation;
         std::unique_ptr<Shadow> m_shadow;
         std::unique_ptr<Collision> m_collision;
-        std::unique_ptr<HitSensor> m_bodySensor;
-        std::unique_ptr<HitSensor> m_attackSensor;
+        std::unique_ptr<HitSensorsObj> m_hitSensors; // 作るのは CreateHitSensors だけ
         std::unique_ptr<HitReaction> m_hitReaction;
         std::unique_ptr<Effect> m_effect;
         std::unique_ptr<Sound> m_sound;

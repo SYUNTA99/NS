@@ -69,15 +69,16 @@ namespace
     protected:
         void OnInit() override
         {
-            m_sensor = NS::Cast<NS::ShapeHitSensor>(m_bodySensor.get());
+            m_sensor = NS::Cast<NS::ShapeHitSensor>(m_bodySensor);
             m_sensor->SetSphere(m_radius);
         }
 
     private:
         // 種類はコンストラクタで受けた物。宣言はコンストラクタの後に読まれる
         NS_SENSORS_BEGIN()
-        NS_SENSOR(m_bodySensor, m_kind, NS::HitSensorShape::Sphere)
+        NS_SENSOR(m_bodySensor, "Body", m_kind, NS::HitSensorShape::Sphere)
         NS_SENSORS_END()
+        NS::HitSensor* m_bodySensor = nullptr;
 
         SensorKind m_kind;
         float m_radius;
@@ -465,7 +466,7 @@ TEST(HitSensorDirector, SensorRejoinsAfterTheDirectorDroppedIt)
 // 調べる対象かは、出入りで切り替える値とゲームの Invalidate の両方で決まり、持ち主が出ているかを読まない
 TEST(HitSensor, ValidOnlyWhileEnabledAndNotInvalidated)
 {
-    NS::ShapeHitSensor loose{nullptr};
+    NS::ShapeHitSensor loose{nullptr, "Body", 0, NS::HitSensorShape::Sphere};
     EXPECT_FALSE(loose.IsValid());
     NS::EnableHitSensor(&loose);
     EXPECT_TRUE(loose.IsValid());
@@ -525,8 +526,8 @@ namespace
     protected:
         void OnInit() override
         {
-            bodyAtInit = m_bodySensor.get();
-            attackAtInit = m_attackSensor.get();
+            bodyAtInit = m_bodySensor;
+            attackAtInit = m_attackSensor;
             if (NS::HitSensorDirector* director = GetHitSensorDirector())
             {
                 const std::vector<NS::HitSensor*>& listed = director->Sensors();
@@ -541,14 +542,17 @@ namespace
         }
 
         NS_SENSORS_BEGIN()
-        NS_SENSOR(m_bodySensor, SensorKind::Area, NS::HitSensorShape::Box)
-        NS_FOLLOW_SENSOR(m_attackSensor, SensorKind::PlayerBody, AttackVolume)
+        NS_SENSOR(m_bodySensor, "Body", SensorKind::Area, NS::HitSensorShape::Box)
+        NS_FOLLOW_SENSOR(m_attackSensor, "Attack", SensorKind::PlayerBody, AttackVolume)
         NS_SENSORS_END()
+        NS::HitSensor* m_bodySensor = nullptr;
+        NS::HitSensor* m_attackSensor = nullptr;
     };
 } // namespace
 
-// 宣言したセンサーは OnInit の前にあり、一覧に入って種類と形が付いている
-TEST(SensorDeclarations, DeclaredSensorsExistBeforeOnInitListedWithKindAndShape)
+// 名前の違う 2 つの宣言は、OnInit の前にセンサーの部品に 2 つあり、宣言した名前・種類・形と持ち主を持ち、
+// シーンの一覧に 1 回ずつ入る。マクロが指したメンバー変数は作ったセンサーを指す
+TEST(HitSensorsObj, TwoDeclaredSensorsExistBeforeOnInitWithTheirNames)
 {
     NS::Scene scene;
     DeclaredSensorsActor* actor = scene.SpawnActor<DeclaredSensorsActor>("DeclaredSensorsActor");
@@ -556,21 +560,30 @@ TEST(SensorDeclarations, DeclaredSensorsExistBeforeOnInitListedWithKindAndShape)
     ASSERT_NE(actor->bodyAtInit, nullptr);
     ASSERT_NE(actor->attackAtInit, nullptr);
     EXPECT_TRUE(actor->bodyListedAtInit);
-    EXPECT_EQ(actor->BodySensorClassObj(), actor->bodyAtInit);
+    const NS::HitSensorsObj* sensors = actor->HitSensorsObjClassObj();
+    ASSERT_NE(sensors, nullptr);
+    EXPECT_EQ(sensors->Sensors(), (std::vector<NS::HitSensor*>{actor->bodyAtInit, actor->attackAtInit}));
+    EXPECT_EQ(sensors->Find("Body"), actor->bodyAtInit);
+    EXPECT_EQ(sensors->Find("Attack"), actor->attackAtInit);
 
     const NS::ShapeHitSensor* body = NS::Cast<NS::ShapeHitSensor>(actor->bodyAtInit);
     ASSERT_NE(body, nullptr);
+    EXPECT_EQ(body->Name(), "Body");
     EXPECT_EQ(body->Shape(), NS::HitSensorShape::Box);
     EXPECT_TRUE(GL::Level::IsSensorKind(body, SensorKind::Area));
+    EXPECT_EQ(body->Host(), actor);
 
     const NS::FollowHitSensor* attack = NS::Cast<NS::FollowHitSensor>(actor->attackAtInit);
     ASSERT_NE(attack, nullptr);
+    EXPECT_EQ(attack->Name(), "Attack");
     EXPECT_TRUE(GL::Level::IsSensorKind(attack, SensorKind::PlayerBody));
+    EXPECT_EQ(attack->Host(), actor);
     actor->Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
     const NS::SensorVolume volume = NS::HitSensorDirector::VolumeOf(attack);
     EXPECT_FLOAT_EQ(volume.radius, 0.25f);
     EXPECT_FLOAT_EQ(volume.Center().y, 2.0f);
 
     const std::vector<NS::HitSensor*>& listed = scene.HitSensors().Sensors();
-    EXPECT_NE(std::find(listed.begin(), listed.end(), actor->attackAtInit), listed.end());
+    EXPECT_EQ(std::count(listed.begin(), listed.end(), actor->bodyAtInit), 1);
+    EXPECT_EQ(std::count(listed.begin(), listed.end(), actor->attackAtInit), 1);
 }

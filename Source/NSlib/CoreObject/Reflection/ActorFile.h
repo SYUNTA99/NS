@@ -36,6 +36,11 @@ namespace NS
     //! .actor の文書へ名前の束の並び hitReactions を書く。空の並びなら鍵ごと消す
     void SetActorFileHitReactions(nlohmann::json& actorFile, nlohmann::json list);
 
+    //! .actor の文書の中の、センサーの名前から大きさへの object hitSensors。無ければ nullptr。形は確かめない
+    [[nodiscard]] const nlohmann::json* ActorFileHitSensors(const nlohmann::json& actorFile) noexcept;
+    //! .actor の文書へ hitSensors を書く。空の object なら鍵ごと消す
+    void SetActorFileHitSensors(nlohmann::json& actorFile, nlohmann::json sensors);
+
     //! .actor の文書の中の動作の並び actions。無ければ nullptr。並びの形は確かめない
     [[nodiscard]] const nlohmann::json* ActorFileActions(const nlohmann::json& actorFile) noexcept;
     //! .actor の文書へ動作の並び actions を書く。空の並びなら鍵ごと消す

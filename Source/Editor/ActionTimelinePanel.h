@@ -53,7 +53,7 @@ namespace NS
             void RenderPreviewGraphs(ImDrawList& draw, const TimelineLayout& layout) noexcept;
             void RenderSelectedRow(LevelEditorController& editor) noexcept;
             void RenderSelectedEvent(ActorActionEvent& event, bool& changed) noexcept;
-            void RenderSelectedSensor(ActionSensorEvent& sensor, bool& changed) noexcept;
+            void RenderSelectedSensor(const SceneActor* selected, ActionSensorEvent& sensor, bool& changed) noexcept;
             void RenderPlayback() noexcept;
 
             void LoadWorking(std::string_view name, std::string_view action);

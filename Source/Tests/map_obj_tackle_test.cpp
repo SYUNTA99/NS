@@ -82,7 +82,7 @@ namespace
                                            .contact = NS::Vector3{0.0f, 0.5f, 3.5f},
                                            .impactDir = NS::Vector3{0.0f, 0.0f, 1.0f},
                                            .stopOverride = stopOverride};
-        return GL::Level::SendMsgTackleHit(rock->BodySensorClassObj(), player->BodySensorClassObj(), hit);
+        return GL::Level::SendMsgTackleHit(rock->HitSensorsObjClassObj()->Find("Body"), player->HitSensorsObjClassObj()->Find("Body"), hit);
     }
 
     GL::Level::TackleReleaseDesc ForwardRelease()
@@ -106,7 +106,7 @@ TEST(MapObjTackle, RockAnswersTheAsk)
     NS::Scene scene;
     NS::SceneActor* rock = PlaceRock(scene, NS::Vector3{2.0f, 1.0f, 0.0f});
     ASSERT_NE(rock, nullptr);
-    NS::HitSensor* body = rock->BodySensorClassObj();
+    NS::HitSensor* body = rock->HitSensorsObjClassObj()->Find("Body");
     ASSERT_NE(body, nullptr);
 
     GL::Level::TackleTargetAnswer answer{};
@@ -385,7 +385,7 @@ TEST(MapObjTackle, FlyingRockIsNotPushedIn)
     ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
 
     GL::Level::TackleTargetAnswer answer{};
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(rock->BodySensorClassObj(), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(rock->HitSensorsObjClassObj()->Find("Body"), answer));
     EXPECT_FALSE(answer.placed);
 
     ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
@@ -401,7 +401,7 @@ TEST(MapObjTackle, DestructionRemainsDisabled)
     GL::Level::TackleReleaseDesc release{};
     release.breaks = true;
     ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, release));
-    EXPECT_TRUE(rock->BodySensorClassObj()->IsValid());
+    EXPECT_TRUE(rock->HitSensorsObjClassObj()->Find("Body")->IsValid());
     EXPECT_TRUE(rock->IsAppeared());
 }
 

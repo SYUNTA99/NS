@@ -182,7 +182,7 @@ TEST(ClassObj, CreateEnumeratesRootThenSlotsThenDerivedInCreationOrder)
         }
         names.push_back(field.key);
     });
-    EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model", "Collision", "First", "Second"}));
+    EXPECT_EQ(names, (std::vector<std::string>{"Transform", "Model", "Collision", "HitSensors", "First", "Second"}));
 }
 
 TEST(ClassObj, SecondCreateInTheSameSlotIsRefused)

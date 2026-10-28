@@ -284,8 +284,10 @@ namespace NS
     }
 
     FollowHitSensor::FollowHitSensor(SceneActor* owner,
+                                     std::string name,
+                                     uint8 kind,
                                      std::function<SensorVolume(const Matrix& rootWorld)> volume) noexcept
-        : HitSensor(owner), m_volume(std::move(volume))
+        : HitSensor(owner, std::move(name), kind), m_volume(std::move(volume))
     {}
 
     SensorVolume FollowHitSensor::WorldVolume(const Matrix& rootWorld) const noexcept

@@ -14,6 +14,7 @@
 #include "NSlib/CoreObject/Reflection/SoundName.h"
 
 #include "NSlib/Core/Types.h"
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -36,6 +37,7 @@ namespace NS
     class Material;
     enum class FieldType;
     struct HitReactionSet;
+    class HitSensorsObj;
 } // namespace NS
 
 namespace NS
@@ -276,6 +278,11 @@ public:
     //! .actor が読まれていない時は WARN を出して書かない。束が変わっていなければ何もしない
     void WriteActorFileHitReactions(std::string_view actorFileName, const std::vector<NS::HitReactionSet>& sets);
 
+    //! actorFileName の .actor の hitSensors を sensors の今の値に替えてファイルへ書き、取り消しの履歴へ積む
+    //! シーンの同じ .actor のアクターの全部がセンサーの値を読み直す。プレイ中も同じ。
+    //! .actor が読まれていない時は WARN を出して書かない。値が変わっていなければ何もしない
+    void WriteActorFileHitSensors(std::string_view actorFileName, const NS::HitSensorsObj& sensors);
+
     //! baseName の .actor から、name の派生の .actor を作ってファイルへ書く
     //! 何も書いていない派生で、baseName が元ならそれを、派生ならその元を指す。派生が書いた項目は写さない。
     //! name が空・ファイルの名前に使えない字を含む・既にある時と、baseName が読まれていない時は WARN を出して作らない。
@@ -291,6 +298,12 @@ public:
     bool DeriveActorFileFromActor(NS::uint32 actorId, std::string_view name);
 
 private:
+    //! actorFileName の .actor の文書に change を当て、変わっていればファイルへ書いて取り消しの履歴へ積む
+    //! .actor が読まれていない時は WARN を出して書かない。what は WARN に出す書く物の名前
+    void PushActorFileChange(std::string_view actorFileName,
+                             const std::function<void(nlohmann::json&)>& change,
+                             std::string_view what);
+
     void TickEdit(const NS::OS::InputPresses& presses);
     void FocusLoadedScene() noexcept;
 

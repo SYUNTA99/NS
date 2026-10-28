@@ -33,12 +33,12 @@
       "actor": "PlayerActor",
       "classObjs": {
         "Appearance": {},
-        "BodySensor": {},
         "ChargeEffects": {},
         "Clips": {},
         "Collider": {},
         "Effect": {},
         "HitReaction": {},
+        "HitSensors": {},
         "ImpactEffects": {},
         "ImpactResolver": {},
         "Input": {},
@@ -103,9 +103,9 @@
     {
       "actor": "PropActorLight",
       "classObjs": {
-        "BodySensor": {},
         "Collision": {},
         "Effect": {},
+        "HitSensors": {},
         "HitZones": {},
         "LaunchEffects": {},
         "Model": {},
@@ -128,9 +128,9 @@
     {
       "actor": "PropActor",
       "classObjs": {
-        "BodySensor": {},
         "Collision": {},
         "Effect": {},
+        "HitSensors": {},
         "HitZones": {},
         "LaunchEffects": {},
         "Model": {
@@ -165,9 +165,9 @@
     {
       "actor": "PropActorHeavy",
       "classObjs": {
-        "BodySensor": {},
         "Collision": {},
         "Effect": {},
+        "HitSensors": {},
         "HitZones": {},
         "LaunchEffects": {},
         "Model": {
@@ -202,9 +202,9 @@
     {
       "actor": "PropActorHeaviest",
       "classObjs": {
-        "BodySensor": {},
         "Collision": {},
         "Effect": {},
+        "HitSensors": {},
         "HitZones": {},
         "LaunchEffects": {},
         "Model": {

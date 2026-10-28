@@ -34,12 +34,12 @@
       "classObjs": {
         "ActionTimeline": {},
         "Appearance": {},
-        "BodySensor": {},
         "ChargeEffects": {},
         "Clips": {},
         "Collider": {},
         "Effect": {},
         "HitReaction": {},
+        "HitSensors": {},
         "ImpactEffects": {},
         "ImpactResolver": {},
         "Input": {},
@@ -231,7 +231,7 @@
     {
       "actor": "DeathZoneActor",
       "classObjs": {
-        "BodySensor": {},
+        "HitSensors": {},
         "Transform": {
           "位置": [
             0.0,

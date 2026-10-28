@@ -134,8 +134,8 @@ TEST(HitReactionChannels, LayeredPadItemAddsToTheRunningVibration)
                         NS::HitReactionItem{layered},
                         2,
                         player->Root().Position(),
-                        player->BodySensorClassObj(),
-                        player->BodySensorClassObj());
+                        player->HitSensorsObjClassObj()->Find("Body"),
+                        player->HitSensorsObjClassObj()->Find("Body"));
     EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
 }
 

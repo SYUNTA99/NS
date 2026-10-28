@@ -57,6 +57,8 @@ namespace NS
         // 名前の束と動作の並びの鍵。シーンのファイルのアクターと派生は持たず、元の .actor だけに書く。派生は元の物を使う
         constexpr const char* k_HitReactionsKey = "hitReactions";
         constexpr const char* k_ActionsKey = "actions";
+        // センサーの名前ごとの大きさの鍵。束と同じく元の .actor だけに書く
+        constexpr const char* k_HitSensorsKey = "hitSensors";
         // 派生の .actor が元にする .actor の名前の鍵。元の .actor は持たない
         constexpr const char* k_BaseKey = "base";
 
@@ -67,7 +69,7 @@ namespace NS
             for (nlohmann::json::const_iterator it = root.begin(); it != root.end(); ++it)
             {
                 if (it.key() != k_ClassKey && it.key() != k_BaseKey && it.key() != "classObjs" &&
-                    it.key() != k_HitReactionsKey && it.key() != k_ActionsKey)
+                    it.key() != k_HitReactionsKey && it.key() != k_ActionsKey && it.key() != k_HitSensorsKey)
                 {
                     return &it.key();
                 }
@@ -128,11 +130,11 @@ namespace NS
             // 派生に書いた束と動作は効かないので、書いた理由が分からないまま残さない
             if (!ActorFileBase(root).empty())
             {
-                for (const char* key : {k_HitReactionsKey, k_ActionsKey})
+                for (const char* key : {k_HitReactionsKey, k_ActionsKey, k_HitSensorsKey})
                 {
                     if (root.contains(key))
                     {
-                        return std::format("派生なのに {} がある。束と動作は元の .actor だけに書く", key);
+                        return std::format("派生なのに {} がある。束と動作とセンサーは元の .actor だけに書く", key);
                     }
                 }
             }
@@ -356,6 +358,26 @@ namespace NS
     void SetActorFileHitReactions(nlohmann::json& actorFile, nlohmann::json list)
     {
         SetTopList(actorFile, k_HitReactionsKey, std::move(list));
+    }
+
+    const nlohmann::json* ActorFileHitSensors(const nlohmann::json& actorFile) noexcept
+    {
+        return FindTopKey(actorFile, k_HitSensorsKey);
+    }
+
+    void SetActorFileHitSensors(nlohmann::json& actorFile, nlohmann::json sensors)
+    {
+        if (!actorFile.is_object())
+        {
+            actorFile = nlohmann::json::object();
+        }
+        // 値を持つセンサーが無ければ鍵ごと消す。センサーを持たない .actor の形を変えない
+        if (sensors.is_object() && sensors.empty())
+        {
+            actorFile.erase(k_HitSensorsKey);
+            return;
+        }
+        actorFile[k_HitSensorsKey] = std::move(sensors);
     }
 
     const nlohmann::json* ActorFileActions(const nlohmann::json& actorFile) noexcept
