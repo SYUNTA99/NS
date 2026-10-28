@@ -441,6 +441,12 @@ void PlayerActor::ApplyReboundChoice(const GL::Level::ReboundChoice& choice) noe
             m_body->SetVelocity(m_body->Velocity() * (matched / hit.speed));
             hit.speed = matched;
         }
+        // 割り当てた向きと画面で同じに見える、奥と手前の動きが少ない向きを選んだ時は、その向きへ飛ぶ
+        if (!NS::IsNearlyParallel(choice.direction, hit.assigned))
+        {
+            m_body->SetVelocity(TurnLike(m_body->Velocity(), hit.assigned, choice.direction));
+            hit.shifted = choice.direction;
+        }
         return;
     }
     m_body->SetVelocity(TurnLike(m_body->Velocity(), hit.assigned, choice.direction));
