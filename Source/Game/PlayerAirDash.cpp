@@ -4,6 +4,7 @@
 #include "Game/Player/PlayerAcceleration.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/PlayerSounds.h"
 #include "Game/Player/States/AirDashPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/DashReboundPlayerState.h"
@@ -318,6 +319,7 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
 
 void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float facing, bool matched) noexcept
 {
+    m_playerSounds->PlayRebound(this);
     NS::HitReaction* reaction = HitReactionClassObj();
     NS::HitSensor* self = m_bodyHitSensor;
     if (reaction == nullptr || self == nullptr)

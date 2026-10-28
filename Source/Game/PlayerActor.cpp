@@ -733,6 +733,8 @@ NS::HitSensor* PlayerActor::LastTackleTargetSensor() const noexcept
 
 void PlayerActor::BeginTackleHit() noexcept
 {
+    // 当たりは決まっているので、演出のまとまりを始められなくても音は鳴らす
+    m_playerSounds->PlayHit(this);
     const GL::Level::ImpactRecord& impact = m_resolver->Answer().lastImpact;
     NS::HitSensor* target = LastTackleTargetSensor();
     NS::HitReaction* reaction = HitReactionClassObj();
@@ -795,6 +797,8 @@ void PlayerActor::ReleaseTackleHit() noexcept
 
 void PlayerActor::StartReboundReaction() noexcept
 {
+    // 相手が消えていても反動では飛ぶので、音は相手を探す前に鳴らす
+    m_playerSounds->PlayRebound(this);
     NS::HitSensor* target = LastTackleTargetSensor();
     if (target == nullptr)
     {
