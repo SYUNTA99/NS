@@ -53,6 +53,14 @@ namespace GL
                 float up;
             };
 
+            // direction を画面の右と上へ映した長さ
+            float ScreenLength(const NS::Vector3& direction, const ScreenAxes& screen) noexcept
+            {
+                const float onRight{NS::Dot(direction, screen.right)};
+                const float onUp{NS::Dot(direction, screen.up)};
+                return std::sqrt(onRight * onRight + onUp * onUp);
+            }
+
             // 画面の上で、direction が入力から離れた角度。画面へ映した長さが無い向き (奥か手前だけへ向く物) は角度が決まらず空
             // 長さが非数の時も空にする。比べた結果が全部偽になり、合ったかの判定を黙って通すため
             std::optional<float> ScreenAngle(const NS::Vector3& direction,
@@ -61,13 +69,26 @@ namespace GL
             {
                 const float onRight{NS::Dot(direction, screen.right)};
                 const float onUp{NS::Dot(direction, screen.up)};
-                const float onLength{std::sqrt(onRight * onRight + onUp * onUp)};
+                const float onLength{ScreenLength(direction, screen)};
                 if (!NS::HasPositiveMagnitude(onLength))
                 {
                     return std::nullopt;
                 }
                 const float cosine{std::clamp((onRight * input.right + onUp * input.up) / onLength, -1.0f, 1.0f)};
                 return std::acos(cosine);
+            }
+
+            // 奥と手前へ飛ぶ量は、当たる前に進んでいた量まで。壁や床の傾きが足した奥と手前の動きは使わない。
+            // カメラも当たる前の向きも軸にそろう事はほぼ無いので、わずかなずれの分は余裕で通す
+            bool IsCandidate(const NS::Vector3& direction,
+                             const ReboundHit& hit,
+                             const ScreenAxes& screen,
+                             const ReboundChoiceLimits& limits) noexcept
+            {
+                const float depthLimit{std::abs(NS::Dot(hit.incoming, screen.flatForward)) +
+                                       std::sin(limits.depthSlackRadians) + NS::k_Epsilon};
+                return NS::HasPositiveMagnitude(NS::Dot(direction, hit.normal)) &&
+                       std::abs(NS::Dot(direction, screen.flatForward)) <= depthLimit;
             }
 
             // direction が入力補正の候補なら、画面の上で入力から離れた角度を返す。候補でなければ空
@@ -77,33 +98,75 @@ namespace GL
                                                       const ScreenInput& input,
                                                       const ReboundChoiceLimits& limits) noexcept
             {
-                // 奥と手前へ飛ぶ量は、当たる前に進んでいた量まで。壁や床の傾きが足した奥と手前の動きは使わない。
-                // カメラも当たる前の向きも軸にそろう事はほぼ無いので、わずかなずれの分は余裕で通す
-                const float depthLimit{std::abs(NS::Dot(hit.incoming, screen.flatForward)) +
-                                       std::sin(limits.depthSlackRadians) + NS::k_Epsilon};
-                if (!NS::HasPositiveMagnitude(NS::Dot(direction, hit.normal)) ||
-                    std::abs(NS::Dot(direction, screen.flatForward)) > depthLimit)
+                if (!IsCandidate(direction, hit, screen, limits))
                 {
                     return std::nullopt;
                 }
                 return ScreenAngle(direction, screen, input);
             }
 
-            // 割り当てた向きから 1 段以内の候補なら、画面の上で入力から離れた角度を返す。候補でなければ空
-            std::optional<float> StepScreenAngle(const NS::Vector3& direction,
-                                                 const ReboundHit& hit,
-                                                 const ScreenAxes& screen,
-                                                 const ScreenInput& input,
-                                                 const ReboundChoiceLimits& limits) noexcept
+            // 表の向きの、傾きと水平の目盛りの番号。真上と真下は水平の番号を持たない
+            struct TableCell
             {
-                if (NS::AngleBetweenUnit(direction, hit.assigned) > limits.stepRadians + NS::k_Epsilon)
+                int pitch;
+                std::optional<int> yaw;
+            };
+
+            TableCell CellOf(const NS::Vector3& direction, float stepRadians) noexcept
+            {
+                const int turn{static_cast<int>(std::lround(2.0f * NS::k_Pi / stepRadians))};
+                const int pole{turn / 4};
+                const int pitch{static_cast<int>(std::lround(std::asin(std::clamp(direction.y, -1.0f, 1.0f)) / stepRadians))};
+                if (std::abs(pitch) >= pole)
                 {
-                    return std::nullopt;
+                    return TableCell{.pitch = pitch, .yaw = std::nullopt};
                 }
-                return CandidateScreenAngle(direction, hit, screen, input, limits);
+                const int yaw{static_cast<int>(std::lround(std::atan2(direction.x, direction.z) / stepRadians))};
+                return TableCell{.pitch = pitch, .yaw = ((yaw % turn) + turn) % turn};
             }
 
-            // 入力の側へ 1 段で曲げる向き。割り当てた向きより、画面で同じに見える差を超えて入力に近い物だけを曲げる先にする。
+            // 2 つの表の向きが、傾きと水平の番号をそれぞれ 1 つまで動かした隣か。真上と真下の隣は、1 つ下か上の傾きの全部の向き。
+            // 角度で決めると、傾いた向きでは水平の目盛りが狭まり、2 目盛り先まで入る
+            bool IsNeighbor(const NS::Vector3& from, const NS::Vector3& to, float stepRadians) noexcept
+            {
+                const TableCell a{CellOf(from, stepRadians)};
+                const TableCell b{CellOf(to, stepRadians)};
+                if (std::abs(a.pitch - b.pitch) > 1)
+                {
+                    return false;
+                }
+                if (!a.yaw.has_value() || !b.yaw.has_value())
+                {
+                    return a.pitch != b.pitch;
+                }
+                const int turn{static_cast<int>(std::lround(2.0f * NS::k_Pi / stepRadians))};
+                const int apart{std::abs(*a.yaw - *b.yaw)};
+                const int yawSteps{std::min(apart, turn - apart)};
+                return yawSteps <= 1 && (yawSteps != 0 || a.pitch != b.pitch);
+            }
+
+            // スティックの入力を、カメラの右と上で世界の向きにする。面へ向かう分は、面に沿って上へ向かう向きに置き換え、
+            // 壁へ押し込むと上へ抜ける。床と天井は面に沿う上が無いので、面へ向かう分を捨てる
+            NS::Vector3 InputInWorld(const ReboundHit& hit, const ScreenAxes& screen, const ScreenInput& input) noexcept
+            {
+                const NS::Vector3 onScreen{screen.right * input.right + screen.up * input.up};
+                const float into{NS::Dot(onScreen, hit.normal)};
+                if (into >= 0.0f)
+                {
+                    return onScreen;
+                }
+                const NS::Vector3 alongSurface{onScreen - hit.normal * into};
+                NS::Vector3 surfaceUp{NS::RejectUnit(NS::Vector3{0.0f, 1.0f, 0.0f}, hit.normal)};
+                if (NS::IsNearlyZero(surfaceUp))
+                {
+                    return alongSurface;
+                }
+                surfaceUp.Normalize();
+                return alongSurface - surfaceUp * into;
+            }
+
+            // 割り当てた向きの隣の候補から、入力を世界の向きにした物との内積が一番大きい物を選ぶ。割り当てた向きより入力に
+            // 近い物だけを曲げる先にし、同じだけ近ければ割り当てた向きから離れる角度が小さい物を選ぶ。
             // 曲げる先が無いか、左右に同じだけ近い 2 つが並んで 1 つに決まらなければ nullptr
             const NS::Vector3* OneStepTowardInput(std::span<const NS::Vector3> table,
                                                   const ReboundHit& hit,
@@ -111,52 +174,37 @@ namespace GL
                                                   const ScreenInput& input,
                                                   const ReboundChoiceLimits& limits) noexcept
             {
-                // 画面に映らない割り当ては、映る候補ならどれでも入力に近い
-                const std::optional<float> assignedAngle{ScreenAngle(hit.assigned, screen, input)};
-                float ceiling{NS::k_Pi + NS::k_Epsilon};
-                if (assignedAngle.has_value())
-                {
-                    ceiling = *assignedAngle - limits.screenTieRadians;
-                }
-                std::optional<float> bestAngle{};
-                for (const NS::Vector3& direction : table)
-                {
-                    const std::optional<float> angle{StepScreenAngle(direction, hit, screen, input, limits)};
-                    if (angle.has_value() && *angle < ceiling && (!bestAngle.has_value() || *angle < *bestAngle))
-                    {
-                        bestAngle = angle;
-                    }
-                }
-                if (!bestAngle.has_value())
-                {
-                    return nullptr;
-                }
-
-                // 画面で同じに見える候補の中から、カメラの見る向きへ一番動かない物を選ぶ。同じなら画面で入力に近い物
+                const NS::Vector3 wanted{InputInWorld(hit, screen, input)};
+                const float assignedScore{NS::Dot(hit.assigned, wanted)};
                 const NS::Vector3* chosen{nullptr};
-                float chosenDepth{0.0f};
-                float chosenAngle{0.0f};
+                float chosenScore{0.0f};
+                float chosenTurn{0.0f};
                 bool tied{false};
                 for (const NS::Vector3& direction : table)
                 {
-                    const std::optional<float> angle{StepScreenAngle(direction, hit, screen, input, limits)};
-                    if (!angle.has_value() || *angle >= ceiling || *angle > *bestAngle + limits.screenTieRadians)
+                    if (!IsNeighbor(hit.assigned, direction, limits.stepRadians) ||
+                        !IsCandidate(direction, hit, screen, limits))
                     {
                         continue;
                     }
-                    const float depth{std::abs(NS::Dot(direction, screen.forward))};
-                    const bool sameDepth{std::abs(depth - chosenDepth) <= NS::k_Epsilon};
-                    const bool sameAngle{std::abs(*angle - chosenAngle) <= NS::k_Epsilon};
-                    if (chosen != nullptr && sameDepth && sameAngle)
+                    const float score{NS::Dot(direction, wanted)};
+                    if (score <= assignedScore + NS::k_Epsilon)
+                    {
+                        continue;
+                    }
+                    const float turn{NS::AngleBetweenUnit(direction, hit.assigned)};
+                    const bool sameScore{std::abs(score - chosenScore) <= NS::k_Epsilon};
+                    const bool sameTurn{std::abs(turn - chosenTurn) <= NS::k_Epsilon};
+                    if (chosen != nullptr && sameScore && sameTurn)
                     {
                         tied = true;
                         continue;
                     }
-                    if (chosen == nullptr || depth < chosenDepth - NS::k_Epsilon || (sameDepth && *angle < chosenAngle))
+                    if (chosen == nullptr || score > chosenScore + NS::k_Epsilon || (sameScore && turn < chosenTurn))
                     {
                         chosen = &direction;
-                        chosenDepth = depth;
-                        chosenAngle = *angle;
+                        chosenScore = score;
+                        chosenTurn = turn;
                         tied = false;
                     }
                 }
@@ -276,8 +324,12 @@ namespace GL
             // 当たり方で決まった向きは、候補を絞る前に別に比べる。奥と手前の上限と、同じに見える向きの選び方に
             // かけると、合った入力でも別の向きへ飛び、強くもならない (D-08)
             const std::optional<float> assignedAngle{ScreenAngle(hit.assigned, screen, input)};
-            // 合ったかは 1 段に絞る前の全部の候補で見る。絞った後で比べると、入力の側に候補が無いだけで合った事になる
-            const bool matched{assignedAngle.has_value() && *assignedAngle <= *bestAngle + limits.screenTieRadians};
+            // 合ったかは 1 段に絞る前の全部の候補で見る。絞った後で比べると、入力の側に候補が無いだけで合った事になる。
+            // 画面にほとんど映らない向き (後ろから見て真後ろへ返る時など) は、画面へ映した向きが入力と合っても合ったとしない。
+            // 合ったとすると、入力しても画面では動きが変わらない
+            const bool matched{assignedAngle.has_value() &&
+                               ScreenLength(hit.assigned, screen) >= limits.matchVisibleLength &&
+                               *assignedAngle <= *bestAngle + limits.screenTieRadians};
             if (matched)
             {
                 return ReboundChoice{.direction = hit.assigned, .result = ReboundInputResult::Matched};

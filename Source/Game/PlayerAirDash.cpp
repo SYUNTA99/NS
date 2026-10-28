@@ -406,7 +406,8 @@ GL::Level::ReboundChoice PlayerActor::ChooseReboundInput() const noexcept
     const GL::Level::ReboundChoiceLimits limits{
         .screenTieRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundScreenTieDegrees}).value,
         .depthSlackRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundDepthSlackDegrees}).value,
-        .stepRadians = GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions)};
+        .stepRadians = GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions),
+        .matchVisibleLength = m_params->m_reboundMatchVisibleLength};
     return GL::Level::ChooseReboundDirection(
         ReboundTable(),
         GL::Level::ReboundHit{.assigned = hit.assigned, .normal = hit.normal, .incoming = hit.incoming},
