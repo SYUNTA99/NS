@@ -404,10 +404,8 @@ GL::Level::ReboundChoice PlayerActor::ChooseReboundInput() const noexcept
     const GL::Level::ScreenAxes screen = ReboundScreenAxes();
     const NS::Vector3 desired = DesiredDirection();
     const GL::Level::ReboundChoiceLimits limits{
-        .maxRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundShiftMaxDegrees}).value,
         .screenTieRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundScreenTieDegrees}).value,
         .depthSlackRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundDepthSlackDegrees}).value,
-        .behindViewRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundBehindViewDegrees}).value,
         .stepRadians = GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions)};
     return GL::Level::ChooseReboundDirection(
         ReboundTable(),
