@@ -42,7 +42,8 @@ namespace NS
 
         //! 同じアクターの Collider で root を動かし、位置・速度・接地を更新する (両方 nullptr 不可)
         //! シーン未所属時は衝突判定と接地通知を行わない。dt は秒、maxStepHeight は乗り越え可能な段差高 (m)
-        void Move(Transform* root, Collider* collider, float dt, float maxStepHeight) noexcept;
+        //! maxSlopeRadians は登れる坂の上限の角度。これより急な面は壁と同じく進む向きを遮る
+        void Move(Transform* root, Collider* collider, float dt, float maxStepHeight, float maxSlopeRadians) noexcept;
 
         [[nodiscard]] BodyEvents& Events() noexcept { return m_events; }
 

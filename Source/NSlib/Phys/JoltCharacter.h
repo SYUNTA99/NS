@@ -29,10 +29,16 @@ namespace NS
             void Resize(float radius, float halfHeight);
 
             //! dt 秒後の補正した姿勢と速度を保持する。重力は呼び手が速度へ加える
-            //! maxStepHeight は登れる段差 m。負は 0、半径 × (1 − cos 45°) までは角を滑って登る
+            //! maxStepHeight は登れる段差 m。負は 0、半径 × (1 − cos maxSlopeRadians) までは角を滑って登る
+            //! maxSlopeRadians は登れる坂の上限の角度。これより急な面は、壁と同じく進む向きを遮る
             //! 前の Step の後に置き直された位置では、前の接地と坂の向きを使わない。置き直していない時の position は、
             //! 前の Step の後の Position() の写しを渡す (Body::Move がそうする)。計算し直した値は置き直しと読む
-            void Step(const Vector3& position, const Vector3& velocity, float dt, float maxStepHeight);
+            //! @pre maxSlopeRadians は 0 以上 π/2 以下の有限の値
+            void Step(const Vector3& position,
+                      const Vector3& velocity,
+                      float dt,
+                      float maxStepHeight,
+                      float maxSlopeRadians);
 
             //! 直近の Step 後の位置
             [[nodiscard]] Vector3 Position() const;
@@ -54,7 +60,7 @@ namespace NS
             Vector3 m_blockNormal{0.0f, 0.0f, 0.0f};
         };
 
-        //! 単位法線の Y 成分から、45° 以下の登れる斜面かを判定する
-        [[nodiscard]] bool IsWalkableNormal(float normalY) noexcept;
+        //! 単位法線の Y 成分から、傾きが maxSlopeRadians 以下の登れる斜面かを判定する
+        [[nodiscard]] bool IsWalkableNormal(float normalY, float maxSlopeRadians) noexcept;
     } // namespace Phys
 } // namespace NS

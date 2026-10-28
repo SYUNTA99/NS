@@ -176,6 +176,8 @@ namespace NS
         return Clamp(Lerp(a, b, SmoothStep(t)), -1.0f, 1.0f);
     }
 
+    [[nodiscard]] inline bool IsFinite(float value) noexcept { return std::isfinite(value); }
+
     [[nodiscard]] inline bool IsFinite(const Vector3& v) noexcept
     {
         return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
