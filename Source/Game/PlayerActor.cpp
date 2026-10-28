@@ -304,6 +304,8 @@ void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexc
 {
     if (answer.cancelBodySlam)
     {
+        // 当たりの状態へ入るのは 1 フレーム以上後なので、音は触れたと分かったこのフレームに鳴らす
+        m_playerSounds->PlayHit(this);
         // 新しい当たりは、前の当たりの束で走っている演出を打ち切る。当たる直前から続く当たりは入る時に打ち切り、
         // 当たる直前の動作の形を検知のフレームまで描く
         if (!ContinuesBeforeContact(answer.lastImpact))
@@ -733,8 +735,6 @@ NS::HitSensor* PlayerActor::LastTackleTargetSensor() const noexcept
 
 void PlayerActor::BeginTackleHit() noexcept
 {
-    // 当たりは決まっているので、演出のまとまりを始められなくても音は鳴らす
-    m_playerSounds->PlayHit(this);
     const GL::Level::ImpactRecord& impact = m_resolver->Answer().lastImpact;
     NS::HitSensor* target = LastTackleTargetSensor();
     NS::HitReaction* reaction = HitReactionClassObj();

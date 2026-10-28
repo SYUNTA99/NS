@@ -41,7 +41,7 @@ namespace GL
             void PlayGoal(const NS::IGetAudio* audio) const;
             void PlayFall(const NS::IGetAudio* audio) const;
 
-            //! 体当たりが置物に当たったフレーム (ヒットストップの初め) に呼ぶ
+            //! 体当たりが置物に触れたと分かったフレームに呼ぶ。当たりの状態へ入るのを待つと音が遅れて聞こえる
             void PlayHit(const NS::IGetAudio* audio) const;
 
             //! 反動で飛び出すフレームに呼ぶ。置物の反動と地形の反動の両方で鳴らす
