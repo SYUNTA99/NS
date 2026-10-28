@@ -10,7 +10,7 @@ namespace GL
         void PlayerSounds::Preload(const NS::IGetAudio* audio)
         {
             NS_ASSERT(Game, audio != nullptr, "PlayerSounds::Preload: 音を鳴らすアクターが空");
-            NS::PreloadSounds(audio, {m_jumpSound, m_landSound, m_goalSound, m_fallSound});
+            NS::PreloadSounds(audio, {m_jumpSound, m_landSound, m_goalSound, m_fallSound, m_hitSound, m_reboundSound});
         }
 
         void PlayerSounds::RequestJump() noexcept
@@ -60,6 +60,18 @@ namespace GL
         {
             NS_ASSERT(Game, audio != nullptr, "PlayerSounds::PlayFall: 音を鳴らすアクターが空");
             NS::PlaySound(audio, m_fallSound, m_fallVolume);
+        }
+
+        void PlayerSounds::PlayHit(const NS::IGetAudio* audio) const
+        {
+            NS_ASSERT(Game, audio != nullptr, "PlayerSounds::PlayHit: 音を鳴らすアクターが空");
+            NS::PlaySound(audio, m_hitSound, m_hitVolume);
+        }
+
+        void PlayerSounds::PlayRebound(const NS::IGetAudio* audio) const
+        {
+            NS_ASSERT(Game, audio != nullptr, "PlayerSounds::PlayRebound: 音を鳴らすアクターが空");
+            NS::PlaySound(audio, m_reboundSound, m_reboundVolume);
         }
 
         void PlayerSounds::Reset() noexcept
