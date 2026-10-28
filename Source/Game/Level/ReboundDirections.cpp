@@ -53,6 +53,23 @@ namespace GL
                 float up;
             };
 
+            // 画面の上で、direction が入力から離れた角度。画面へ映した長さが無い向き (奥か手前だけへ向く物) は角度が決まらず空
+            // 長さが非数の時も空にする。比べた結果が全部偽になり、合ったかの判定を黙って通すため
+            std::optional<float> ScreenAngle(const NS::Vector3& direction,
+                                             const ScreenAxes& screen,
+                                             const ScreenInput& input) noexcept
+            {
+                const float onRight{NS::Dot(direction, screen.right)};
+                const float onUp{NS::Dot(direction, screen.up)};
+                const float onLength{std::sqrt(onRight * onRight + onUp * onUp)};
+                if (!NS::HasPositiveMagnitude(onLength))
+                {
+                    return std::nullopt;
+                }
+                const float cosine{std::clamp((onRight * input.right + onUp * input.up) / onLength, -1.0f, 1.0f)};
+                return std::acos(cosine);
+            }
+
             // direction が入力補正の候補なら、画面の上で入力から離れた角度を返す。候補でなければ空
             std::optional<float> CandidateScreenAngle(const NS::Vector3& direction,
                                                       const ReboundHit& hit,
@@ -70,16 +87,7 @@ namespace GL
                 {
                     return std::nullopt;
                 }
-                // 画面へ映した長さが無い向き (奥か手前だけへ向く物) は、画面の上の角度が決まらない
-                const float onRight{NS::Dot(direction, screen.right)};
-                const float onUp{NS::Dot(direction, screen.up)};
-                const float onLength{std::sqrt(onRight * onRight + onUp * onUp)};
-                if (NS::IsNearlyZero(onLength))
-                {
-                    return std::nullopt;
-                }
-                const float cosine{std::clamp((onRight * input.right + onUp * input.up) / onLength, -1.0f, 1.0f)};
-                return std::acos(cosine);
+                return ScreenAngle(direction, screen, input);
             }
 
             // 後ろから見るカメラは少し見下ろすので、奥・斜め上・真上が全部画面の上に見え、奥を入力する向きが無い。
@@ -222,6 +230,18 @@ namespace GL
                 return kept;
             }
 
+            // 当たり方で決まった向きは、候補を絞る前に別に比べる。奥と手前の上限と、同じに見える向きの選び方に
+            // かけると、合った入力でも別の向きへ飛び、強くもならない (D-08)
+            const std::optional<float> assignedAngle{ScreenAngle(hit.assigned, screen, input)};
+            const bool matched{assignedAngle.has_value() && *assignedAngle <= *bestAngle + limits.screenTieRadians};
+            if (matched)
+            {
+                if (const NS::Vector3* ahead = AheadOfStraightUp(table, hit, screen, input, limits))
+                {
+                    return ReboundChoice{.direction = *ahead, .result = ReboundInputResult::Shifted};
+                }
+            }
+
             // 画面で同じに見える候補の中から、カメラの見る向きへ一番動かない物を選ぶ。同じなら画面で入力に近い物
             const NS::Vector3* chosen{nullptr};
             float chosenDepth{0.0f};
@@ -244,15 +264,12 @@ namespace GL
                 }
             }
 
-            if (!NS::IsNearlyParallel(*chosen, hit.assigned))
+            // 合った時も、画面で同じに見える向きのうち奥と手前の動きが少ない方へ飛ぶ。見た目は入力どおりで、強さだけが変わる
+            if (matched)
             {
-                return ReboundChoice{.direction = *chosen, .result = ReboundInputResult::Shifted};
+                return ReboundChoice{.direction = *chosen, .result = ReboundInputResult::Matched};
             }
-            if (const NS::Vector3* ahead = AheadOfStraightUp(table, hit, screen, input, limits))
-            {
-                return ReboundChoice{.direction = *ahead, .result = ReboundInputResult::Shifted};
-            }
-            return ReboundChoice{.direction = hit.assigned, .result = ReboundInputResult::Matched};
+            return ReboundChoice{.direction = *chosen, .result = ReboundInputResult::Shifted};
         }
 
         NS::Vector3 ShiftInputOnScreen(const NS::Vector3& assigned,

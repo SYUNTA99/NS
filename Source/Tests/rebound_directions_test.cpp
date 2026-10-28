@@ -172,24 +172,26 @@ TEST(ReboundDirectionsTest, NoInputKeepsTheAssignedDirection)
 
 TEST(ReboundDirectionsTest, SideViewLeftPicksScreenLeftOverTheSameLookingDepthDirection)
 {
-    // 奥の左へ返る反射は、画面では真横の左と同じに見える。左を入力したら奥へ動かない真横の左を選ぶ
+    // 奥の左へ返る反射は、画面では真横の左と同じに見える。左を入力したら奥へ動かない真横の左を選び、
+    // 入力は割り当てた向きと画面で合ったので強く飛ぶ (D-08)
     const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
     const ReboundHit hit =
         HitOn(table, NS::Vector3{-k_Diagonal, 0.0f, -k_Diagonal}, NS::Vector3{k_Diagonal, 0.0f, k_Diagonal});
     ExpectNear(hit.assigned, NS::Vector3{k_Diagonal, 0.0f, k_Diagonal});
     const ReboundChoice choice = ChooseReboundDirection(table, hit, SideCamera(), -1.0f, 0.0f, Limits());
-    EXPECT_EQ(choice.result, ReboundInputResult::Shifted);
+    EXPECT_EQ(choice.result, ReboundInputResult::Matched);
     ExpectNear(choice.direction, NS::Vector3{0, 0, 1});
 }
 
 TEST(ReboundDirectionsTest, NearlySameLookingDirectionsPreferTheOneThatStaysOffTheDepth)
 {
-    // 奥の左下へ進んで床に当たり、奥の左上へ返る。画面でその向きを入力しても、9.7° しか違わない真横の左上を選ぶ
+    // 奥の左下へ進んで床に当たり、奥の左上へ返る。画面でその向きを入力しても、9.7° しか違わない真横の左上を選ぶ。
+    // 入力は割り当てた向きと画面で合ったので強く飛ぶ (D-08)
     const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
     const ReboundHit hit = HitOn(table, NS::Vector3{0.5f, -k_Diagonal, 0.5f}, NS::Vector3{0, 1, 0});
     ExpectNear(hit.assigned, NS::Vector3{0.5f, k_Diagonal, 0.5f});
     const ReboundChoice choice = ChooseReboundDirection(table, hit, SideCamera(), -0.5f, k_Diagonal, Limits());
-    EXPECT_EQ(choice.result, ReboundInputResult::Shifted);
+    EXPECT_EQ(choice.result, ReboundInputResult::Matched);
     ExpectNear(choice.direction, NS::Vector3{0.0f, k_Diagonal, k_Diagonal});
 }
 
@@ -288,4 +290,56 @@ TEST(ReboundDirectionsTest, TurnTowardStopsAtTheGivenAngle)
     EXPECT_NEAR(turned.Length(), 1.0f, k_Tolerance);
     // 上限より近ければ、目標の向きで止まる
     ExpectNear(TurnToward(forward, right, NS::k_Pi), right);
+}
+
+// D-08: 45° の物に当たって 90° 曲がる時は、曲がった向きが画面に見える向きへ入力すると、合ったとして強く飛ぶ。
+// 前は奥と手前の上限が曲がった向き自身を候補から外し、同じに見える向きが並ぶと別の向きを選んで、21 組で外れた。
+// 物の向き (曲がる先を進む向きの周りに 45° ずつ) × カメラの水平の向き (45° ずつ、15° 見下ろす) の全部の組で見る
+TEST(ReboundDirectionsTest, InputTowardTheNinetyDegreeTurnIsMatchedForEveryFortyFiveDegreeFace)
+{
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const NS::Vector3 incoming{0, 0, 1};
+    const NS::Vector3 worldUp{0, 1, 0};
+    const NS::Vector3 side{1, 0, 0};
+    const float pitch = NS::k_Pi / 12.0f;
+    for (int camera = 0; camera < 8; ++camera)
+    {
+        const float yaw = NS::k_Pi / 4.0f * static_cast<float>(camera);
+        const NS::Vector3 flatForward{std::sin(yaw), 0.0f, std::cos(yaw)};
+        const NS::Vector3 right{flatForward.z, 0.0f, -flatForward.x};
+        NS::Vector3 forward = flatForward * std::cos(pitch) - worldUp * std::sin(pitch);
+        forward.Normalize();
+        NS::Vector3 up = NS::Cross(forward, right);
+        up.Normalize();
+        const ScreenAxes screen{.right = right, .up = up, .forward = forward, .flatForward = flatForward};
+        for (int face = 0; face < 8; ++face)
+        {
+            // 曲がる先は進む向きに垂直な向き。物の法線は、進む向きの逆と曲がる先の間
+            const float around = NS::k_Pi / 4.0f * static_cast<float>(face);
+            const NS::Vector3 turn = side * std::cos(around) + worldUp * std::sin(around);
+            NS::Vector3 normal = turn - incoming;
+            normal.Normalize();
+            const ReboundHit hit = HitOn(table, incoming, normal);
+            // 本人は曲がった向きが画面のどちらに見えるかを見て、スティックをその向きへ入れる
+            const float onRight = NS::Dot(hit.assigned, screen.right);
+            const float onUp = NS::Dot(hit.assigned, screen.up);
+            if (NS::IsNearlyZero(std::sqrt(onRight * onRight + onUp * onUp)))
+            {
+                continue;
+            }
+            const ReboundChoice choice = ChooseReboundDirection(table, hit, screen, onRight, onUp, Limits());
+            // D-16: 後ろから見ていて (カメラと進む向きが 45° 以内) 真上へ飛ぶ時は、奥へ曲げる
+            const bool behind = camera == 0 || camera == 1 || camera == 7;
+            if (behind && NS::IsNearlyParallel(hit.assigned, worldUp))
+            {
+                EXPECT_EQ(choice.result, ReboundInputResult::Shifted) << "カメラ " << camera * 45 << "°";
+                continue;
+            }
+            const bool matched = choice.result == ReboundInputResult::Matched;
+            EXPECT_TRUE(matched) << "カメラ " << camera * 45 << "° / 物 " << face * 45 << "° / 曲がる先 ("
+                                 << hit.assigned.x << ", " << hit.assigned.y << ", " << hit.assigned.z
+                                 << ") / 選んだ向き (" << choice.direction.x << ", " << choice.direction.y << ", "
+                                 << choice.direction.z << ") / 結果 " << static_cast<int>(choice.result);
+        }
+    }
 }
