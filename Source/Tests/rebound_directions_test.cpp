@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <initializer_list>
 #include <span>
 #include <vector>
 
@@ -54,12 +55,26 @@ namespace
                           .flatForward = NS::Vector3{0, 0, 1}};
     }
 
-    // 同じに見なす差 10°・奥と手前の余裕 10°・表は 8 分割
+    // 水平の向き yaw (0 で奥の +Z を見る) から pitch だけ見下ろすカメラ
+    ScreenAxes ViewCamera(float yaw, float pitch)
+    {
+        const NS::Vector3 worldUp{0, 1, 0};
+        const NS::Vector3 flatForward{std::sin(yaw), 0.0f, std::cos(yaw)};
+        const NS::Vector3 right{flatForward.z, 0.0f, -flatForward.x};
+        NS::Vector3 forward = flatForward * std::cos(pitch) - worldUp * std::sin(pitch);
+        forward.Normalize();
+        NS::Vector3 up = NS::Cross(forward, right);
+        up.Normalize();
+        return ScreenAxes{.right = right, .up = up, .forward = forward, .flatForward = flatForward};
+    }
+
+    // 同じに見なす差 10°・奥と手前の余裕 10°・表は 8 分割・合ったとみなす画面に映る長さ 0.5
     ReboundChoiceLimits Limits()
     {
         return ReboundChoiceLimits{.screenTieRadians = NS::k_Pi / 18.0f,
                                    .depthSlackRadians = NS::k_Pi / 18.0f,
-                                   .stepRadians = DirectionStepRadians(8)};
+                                   .stepRadians = DirectionStepRadians(8),
+                                   .matchVisibleLength = 0.5f};
     }
 
     ReboundHit HitOn(std::span<const NS::Vector3> table, const NS::Vector3& incoming, const NS::Vector3& normal)
@@ -67,6 +82,29 @@ namespace
         ReboundHit hit{.normal = normal, .incoming = incoming};
         EXPECT_TRUE(AssignReboundDirection(table, incoming, normal, hit.assigned));
         return hit;
+    }
+
+    // 本人がページで選んだ、入力ごとに欲しい向き
+    struct WishedTurn
+    {
+        const char* input;
+        float right;
+        float up;
+        NS::Vector3 wanted;
+    };
+
+    // 正面の壁へ奥に当てて真後ろへ返る所に入力し、欲しい向きへ 1 目盛り曲がる事を見る
+    void ExpectWishedTurns(const ScreenAxes& screen, std::initializer_list<WishedTurn> wishes)
+    {
+        const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+        const ReboundHit hit = HitOn(table, NS::Vector3{0, 0, 1}, NS::Vector3{0, 0, -1});
+        for (const WishedTurn& wish : wishes)
+        {
+            SCOPED_TRACE(wish.input);
+            const ReboundChoice choice = ChooseReboundDirection(table, hit, screen, wish.right, wish.up, Limits());
+            EXPECT_EQ(choice.result, ReboundInputResult::Shifted);
+            ExpectNear(choice.direction, wish.wanted);
+        }
     }
 } // namespace
 
@@ -182,14 +220,14 @@ TEST(ReboundDirectionsTest, SideViewInputMatchingTheAssignedDirectionKeepsIt)
 
 TEST(ReboundDirectionsTest, DepthNeverExceedsWhatTheDashHadBeforeTheHit)
 {
-    // 真横の左へ進んで斜めの壁に当たり、奥の右へ返る。1 段先の奥の右上は画面で上に近くても、当たる前に奥へ進んでいないので
-    // 選ばない。ほかに上へ近づく 1 段先は無いので曲げない
+    // 真横の左へ進んで斜めの壁に当たり、奥の右へ返る。上を入力すると、奥の右上は当たる前に奥へ進んでいないので選ばず、
+    // 水平と傾きを 1 目盛りずつ動かした斜めの隣の右上 (奥へ動かない) へ曲がる
     const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
     const ReboundHit hit = HitOn(table, NS::Vector3{0, 0, 1}, NS::Vector3{0.5f, 0.0f, -std::sqrt(0.75f)});
     ExpectNear(hit.assigned, NS::Vector3{k_Diagonal, 0.0f, -k_Diagonal});
     const ReboundChoice choice = ChooseReboundDirection(table, hit, SideCamera(), 0.0f, 1.0f, Limits());
-    EXPECT_EQ(choice.result, ReboundInputResult::Kept);
-    ExpectNear(choice.direction, hit.assigned);
+    EXPECT_EQ(choice.result, ReboundInputResult::Shifted);
+    ExpectNear(choice.direction, NS::Vector3{0.0f, k_Diagonal, -k_Diagonal});
 }
 
 TEST(ReboundDirectionsTest, DepthLimitAllowsASlightlyTurnedCamera)
@@ -239,12 +277,82 @@ TEST(ReboundDirectionsTest, StraightUpWithUpInputStaysStraightUpFromEveryView)
 
 TEST(ReboundDirectionsTest, TwoSameLookingStepsOnBothSidesKeepTheAssignedDirection)
 {
-    // 真上へ飛ぶ所に後ろを入力する。1 段以内で画面の下に一番近いのは右上と左上で、同じだけ近いので曲げない
+    // 奥の下へ進んで正面の壁に当たり、手前の下へ返る所に、後ろから見て上を入力する。真後ろは当たる前より手前へ動くので
+    // 選べず、残る右と左の隣が同じだけ近いので曲げない
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const ReboundHit hit = HitOn(table, NS::Vector3{0.0f, -k_Diagonal, k_Diagonal}, NS::Vector3{0, 0, -1});
+    ExpectNear(hit.assigned, NS::Vector3{0.0f, -k_Diagonal, -k_Diagonal});
+    const ReboundChoice choice = ChooseReboundDirection(table, hit, BehindCamera(), 0.0f, 1.0f, Limits());
+    EXPECT_EQ(choice.result, ReboundInputResult::Kept);
+    ExpectNear(choice.direction, hit.assigned);
+}
+
+TEST(ReboundDirectionsTest, BehindViewDownInputOffAStraightUpBounceTurnsTowardTheCamera)
+{
+    // 45° の坂で真上へ返る所に、後ろから見て下を入力する。真上は画面に映るが入力と逆なので合わず、手前の上へ曲がる
     const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
     const ReboundHit hit = HitOn(table, NS::Vector3{0, 0, 1}, NS::Vector3{0.0f, k_Diagonal, -k_Diagonal});
     const ReboundChoice choice = ChooseReboundDirection(table, hit, BehindCamera(), 0.0f, -1.0f, Limits());
+    EXPECT_EQ(choice.result, ReboundInputResult::Shifted);
+    ExpectNear(choice.direction, NS::Vector3{0.0f, k_Diagonal, -k_Diagonal});
+}
+
+TEST(ReboundDirectionsTest, InputIntoTheFloorIsDroppedInsteadOfTurningUp)
+{
+    // 床には面に沿う上が無い。奥の下へ進んで床に当たり、前から見て床へ下を入力しても上へ曲げない。
+    // 残るのはカメラから離れる向きへの入力で、それに近い真横の隣は当たる前より奥と手前へ動くので選べず、曲げない
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const ReboundHit hit = HitOn(table, NS::Vector3{0.0f, -k_Diagonal, k_Diagonal}, NS::Vector3{0, 1, 0});
+    ExpectNear(hit.assigned, NS::Vector3{0.0f, k_Diagonal, k_Diagonal});
+    const ReboundChoice choice =
+        ChooseReboundDirection(table, hit, ViewCamera(NS::k_Pi, NS::k_Pi / 12.0f), 0.0f, -1.0f, Limits());
     EXPECT_EQ(choice.result, ReboundInputResult::Kept);
-    ExpectNear(choice.direction, NS::Vector3{0, 1, 0});
+    ExpectNear(choice.direction, hit.assigned);
+}
+
+// 本人の希望 (2026-10-28、記録 .planning/records/衝突の手触り.md の「本人の希望 3 回目」と「4 回目」)。正面の壁へ奥に当て、
+// 真後ろへ返る所に入力すると、入力の側の 8 個の隣 (水平と傾きを 1 目盛りずつ) へ曲がる
+TEST(ReboundDirectionsTest, WishedTurnsFromBehind)
+{
+    // 下は真後ろが画面に 0.26 しか映らないので合ったにせず、画面の下・手前へ曲げる
+    ExpectWishedTurns(ViewCamera(0.0f, NS::k_Pi / 12.0f),
+                      {{"下", 0.0f, -1.0f, NS::Vector3{0.0f, -k_Diagonal, -k_Diagonal}},
+                       {"右下", k_Diagonal, -k_Diagonal, NS::Vector3{0.5f, -k_Diagonal, -0.5f}},
+                       {"左下", -k_Diagonal, -k_Diagonal, NS::Vector3{-0.5f, -k_Diagonal, -0.5f}},
+                       {"右上", k_Diagonal, k_Diagonal, NS::Vector3{0.5f, k_Diagonal, -0.5f}},
+                       {"左上", -k_Diagonal, k_Diagonal, NS::Vector3{-0.5f, k_Diagonal, -0.5f}}});
+}
+
+TEST(ReboundDirectionsTest, WishedTurnsFromTheFront)
+{
+    // 前から見ると画面の右は −X。上は真後ろが画面に 0.26 しか映らないので合ったにせず、画面の上・奥へ曲げる
+    ExpectWishedTurns(ViewCamera(NS::k_Pi, NS::k_Pi / 12.0f),
+                      {{"上", 0.0f, 1.0f, NS::Vector3{0.0f, k_Diagonal, -k_Diagonal}},
+                       {"右上", k_Diagonal, k_Diagonal, NS::Vector3{-0.5f, k_Diagonal, -0.5f}},
+                       {"左上", -k_Diagonal, k_Diagonal, NS::Vector3{0.5f, k_Diagonal, -0.5f}},
+                       {"左下", -k_Diagonal, -k_Diagonal, NS::Vector3{0.5f, -k_Diagonal, -0.5f}},
+                       {"右下", k_Diagonal, -k_Diagonal, NS::Vector3{-0.5f, -k_Diagonal, -0.5f}}});
+}
+
+TEST(ReboundDirectionsTest, WishedTurnsFromAbove)
+{
+    // 70° 見下ろすと画面の上は壁の方。壁へ向かう分を壁に沿う上に置き換え、上へ 1 目盛り曲げる。
+    // 下の側は真後ろと同じ向きなので、左右へだけ曲げる
+    ExpectWishedTurns(ViewCamera(0.0f, NS::k_Pi * 7.0f / 18.0f),
+                      {{"上", 0.0f, 1.0f, NS::Vector3{0.0f, k_Diagonal, -k_Diagonal}},
+                       {"右上", k_Diagonal, k_Diagonal, NS::Vector3{0.5f, k_Diagonal, -0.5f}},
+                       {"左上", -k_Diagonal, k_Diagonal, NS::Vector3{-0.5f, k_Diagonal, -0.5f}},
+                       {"右下", k_Diagonal, -k_Diagonal, NS::Vector3{k_Diagonal, 0.0f, -k_Diagonal}},
+                       {"左下", -k_Diagonal, -k_Diagonal, NS::Vector3{-k_Diagonal, 0.0f, -k_Diagonal}}});
+}
+
+TEST(ReboundDirectionsTest, WishedTurnsFromTheSide)
+{
+    // 横から見て壁の方 (画面の左) へ入力すると、壁へ向かう分を壁に沿う上に置き換え、画面の右上へ曲げる
+    for (const ScreenAxes& screen : {SideCamera(), ViewCamera(NS::k_Pi / 2.0f, NS::k_Pi / 12.0f)})
+    {
+        ExpectWishedTurns(screen, {{"左", -1.0f, 0.0f, NS::Vector3{0.0f, k_Diagonal, -k_Diagonal}}});
+    }
 }
 
 TEST(ReboundDirectionsTest, ScreenUpTargetsUpOffAFrontWallWithALevelCamera)
@@ -285,24 +393,17 @@ TEST(ReboundDirectionsTest, TurnTowardStopsAtTheGivenAngle)
 
 // D-08: 45° の物に当たって 90° 曲がる時は、曲がった向きが画面に見える向きへ入力すると、合ったとして強く飛ぶ。
 // 前は奥と手前の上限が曲がった向き自身を候補から外し、同じに見える向きが並ぶと別の向きを選んで、21 組で外れた。
-// 物の向き (曲がる先を進む向きの周りに 45° ずつ) × カメラの水平の向き (45° ずつ、15° 見下ろす) の全部の組で見る
+// 物の向き (曲がる先を進む向きの周りに 45° ずつ) × カメラの水平の向き (45° ずつ、15° 見下ろす) の全部の組で見る。
+// 曲がった向きが画面にほとんど映らない組は、合ったとみなさないので外す
 TEST(ReboundDirectionsTest, InputTowardTheNinetyDegreeTurnIsMatchedForEveryFortyFiveDegreeFace)
 {
     const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
     const NS::Vector3 incoming{0, 0, 1};
     const NS::Vector3 worldUp{0, 1, 0};
     const NS::Vector3 side{1, 0, 0};
-    const float pitch = NS::k_Pi / 12.0f;
     for (int camera = 0; camera < 8; ++camera)
     {
-        const float yaw = NS::k_Pi / 4.0f * static_cast<float>(camera);
-        const NS::Vector3 flatForward{std::sin(yaw), 0.0f, std::cos(yaw)};
-        const NS::Vector3 right{flatForward.z, 0.0f, -flatForward.x};
-        NS::Vector3 forward = flatForward * std::cos(pitch) - worldUp * std::sin(pitch);
-        forward.Normalize();
-        NS::Vector3 up = NS::Cross(forward, right);
-        up.Normalize();
-        const ScreenAxes screen{.right = right, .up = up, .forward = forward, .flatForward = flatForward};
+        const ScreenAxes screen = ViewCamera(NS::k_Pi / 4.0f * static_cast<float>(camera), NS::k_Pi / 12.0f);
         for (int face = 0; face < 8; ++face)
         {
             // 曲がる先は進む向きに垂直な向き。物の法線は、進む向きの逆と曲がる先の間
@@ -314,7 +415,7 @@ TEST(ReboundDirectionsTest, InputTowardTheNinetyDegreeTurnIsMatchedForEveryForty
             // 本人は曲がった向きが画面のどちらに見えるかを見て、スティックをその向きへ入れる
             const float onRight = NS::Dot(hit.assigned, screen.right);
             const float onUp = NS::Dot(hit.assigned, screen.up);
-            if (NS::IsNearlyZero(std::sqrt(onRight * onRight + onUp * onUp)))
+            if (std::sqrt(onRight * onRight + onUp * onUp) < Limits().matchVisibleLength)
             {
                 continue;
             }

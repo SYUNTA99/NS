@@ -155,6 +155,7 @@ namespace GL
             NS_FIELD(m_terrainReboundSpeedScale, "返る速さのダッシュの速さに対する倍率")
             NS_FIELD(m_reboundScreenTieDegrees, "画面で同じに見える角度の差", NS::FieldRange::NonNegative())
             NS_FIELD(m_reboundDepthSlackDegrees, "奥と手前の上限の余裕の角度")
+            NS_FIELD(m_reboundMatchVisibleLength, "合ったとみなす、画面に映る長さの下限", NS::FieldRange::NonNegative())
             NS_FIELD(m_reboundMatchedSpeedScale, "向きが合った時の返る速さの倍率", NS::FieldRange::Positive())
             NS_FIELD(m_reboundShiftedEffectScale, "ずらした時の演出の強さの倍率", NS::FieldRange::NonNegative())
             NS_FIELD(m_reboundMinFacing, "反動に数える当て方の下限")
@@ -305,8 +306,10 @@ namespace GL
             int m_reboundTableDivisions = 8;  // 8・12・16 のうち一番近い物へ丸める
             bool m_reboundTableWithPitch = true; // 偽なら縦・横・奥の 3 枚の円の表
             float m_terrainReboundSpeedScale = 1.0f; // ダッシュで当てた時に返る速さ。返った後に続けて当たる時は掛け直さない
-            float m_reboundScreenTieDegrees = 10.0f;   // 画面の角度の差がこれ以内なら、奥と手前へ動かない向きを選ぶ
+            float m_reboundScreenTieDegrees = 10.0f;   // 画面の角度の差がこれ以内なら、入力が返る向きと合ったとみなす
             float m_reboundDepthSlackDegrees = 10.0f;  // 奥と手前へ飛ぶ量の上限に足す、カメラのずれの余裕
+            // 返る向きを画面の右と上へ映した長さがこれより短いと、入力と合ったとみなさずに入力の側へ曲げる
+            float m_reboundMatchVisibleLength = 0.5f;
             float m_reboundMatchedSpeedScale = 1.2f;   // 入力が返る向きと合った時だけ、当てた速さに掛ける
             float m_reboundShiftedEffectScale = 0.7f;  // 入力補正で向きを変えた時に、走っている演出に掛ける
             // 当て方は進む向きと面の法線の内積の大きさ。下限より浅い当たりは掃引の滑りに任せる
