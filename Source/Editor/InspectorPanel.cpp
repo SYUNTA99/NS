@@ -1,9 +1,12 @@
 #include "Editor/InspectorPanel.h"
+#include "NSlib/CoreObject/Asset/EffectAsset.h"
+#include "NSlib/CoreObject/Asset/EffectSet.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
-#include "Editor/EditorActors.h"
 #include "Editor/AssetPicker.h"
 #include "Editor/AssetPreview.h"
+#include "Editor/EditorActors.h"
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
@@ -12,6 +15,7 @@
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/CameraData.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
@@ -22,14 +26,13 @@
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DDevice.h"
+#include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DTexture.h"
-#include "NSlib/Gfx/Render/DrawItem.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
+#include "NSlib/Gfx/Render/DrawItem.h"
 #include "NSlib/Gfx/Render/Skybox.h"
-#include "NSlib/Core/Windows/Filesystem.h"
 
 #include "NSlib/Core/Types.h"
 #include <algorithm>
@@ -91,8 +94,8 @@ namespace NS
                     return false;
                 }
                 FieldRow(label);
-                changed |= ImGui::DragInt("##frames", &frames, 0.2f, 0, std::numeric_limits<int>::max(), "%d",
-                                          ImGuiSliderFlags_AlwaysClamp);
+                changed |= ImGui::DragInt(
+                    "##frames", &frames, 0.2f, 0, std::numeric_limits<int>::max(), "%d", ImGuiSliderFlags_AlwaysClamp);
                 const bool committed = ImGui::IsItemDeactivatedAfterEdit();
                 (void)OverrideButton(false);
                 EndFieldTable();
@@ -148,8 +151,8 @@ namespace NS
                         changed = DragParamFloats(value);
                         break;
                     case Gfx::ShaderParamType::Int:
-                        changed = DragParamInteger(std::numeric_limits<int32>::min(), std::numeric_limits<int32>::max(),
-                                                   value);
+                        changed = DragParamInteger(
+                            std::numeric_limits<int32>::min(), std::numeric_limits<int32>::max(), value);
                         break;
                     case Gfx::ShaderParamType::Uint:
                         changed = DragParamInteger(0, std::numeric_limits<uint32>::max(), value);
@@ -213,7 +216,8 @@ namespace NS
                     camera.SetTarget(Vector3{0.0f, 0.0f, 1.0f});
                     Gfx::D3DDevice& device = app->Device();
                     Gfx::D3DCommandList& commands = device.Commands();
-                    commands.SetRenderTarget(m_environmentPreview->Color()->Rtv(), m_environmentPreview->Depth()->Dsv());
+                    commands.SetRenderTarget(m_environmentPreview->Color()->Rtv(),
+                                             m_environmentPreview->Depth()->Dsv());
                     commands.SetViewport(320.0f, 180.0f);
                     commands.ClearRenderTarget(m_environmentPreview->Color()->Rtv(), 0.12f, 0.12f, 0.14f, 1.0f);
                     commands.ClearDepth(m_environmentPreview->Depth()->Dsv());
@@ -224,7 +228,8 @@ namespace NS
             }
             if (m_skyboxPreviewFailed)
             {
-                ImGui::TextWrapped("空の画像を読み込めません。プロジェクト内の DDS キューブマップか、六方向の PNG が同じ寸法・形式で揃うフォルダを選んでください。");
+                ImGui::TextWrapped("空の画像を読み込めません。プロジェクト内の DDS キューブマップか、六方向の PNG "
+                                   "が同じ寸法・形式で揃うフォルダを選んでください。");
                 return false;
             }
             const float width = std::max(1.0f, std::min(320.0f, ImGui::GetContentRegionAvail().x));
@@ -590,6 +595,68 @@ namespace NS
 
         void InspectorPanel::DrawSelectedAsset(LevelEditorController& editor, Object& asset)
         {
+            const auto duplicate = [&](const std::string& path) {
+                ImGui::InputText("複製名", m_effectCloneName, sizeof(m_effectCloneName));
+                if (!ImGui::Button("複製"))
+                {
+                    return false;
+                }
+                editor.CommitAssetEdit();
+                const std::optional<std::string> copy =
+                    AssetManager::Get().DuplicateEffectFile(path, m_effectCloneName);
+                if (!copy)
+                {
+                    NS_LOG_WARN(App, "複製できない。名前と未保存の変更を確認してください");
+                    return false;
+                }
+                m_effectCloneName[0] = '\0';
+                editor.SelectAsset(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), *copy));
+                return true;
+            };
+            if (EffectSet* set = Cast<EffectSet>(&asset))
+            {
+                ImGui::TextUnformatted(set->Label().c_str());
+                ImGui::TextWrapped("%s", set->Path().c_str());
+                if (duplicate(set->Path()))
+                {
+                    return;
+                }
+                const nlohmann::json before = set->Document();
+                bool committed = false;
+                for (const std::pair<const std::string, std::unique_ptr<Object>>& section : set->Sections())
+                {
+                    std::string label = section.first;
+                    const nlohmann::json::const_iterator labels = before.find("labels");
+                    if (labels != before.end() && labels->is_object() && labels->contains(section.first) &&
+                        labels->at(section.first).is_string())
+                    {
+                        label = labels->at(section.first).get<std::string>();
+                    }
+                    ImGui::PushID(section.first.c_str());
+                    if (ImGui::CollapsingHeader(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        const ClassObjEditResult result = DrawReflectedClassObj(section.second.get());
+                        if (result.changed)
+                        {
+                            editor.MarkEffectSetEdited(before);
+                        }
+                        committed |= result.committed;
+                    }
+                    ImGui::PopID();
+                }
+                if (committed)
+                {
+                    editor.CommitAssetEdit();
+                }
+                return;
+            }
+            if (const EffectAsset* effect = Cast<EffectAsset>(&asset))
+            {
+                ImGui::TextUnformatted(effect->Label().c_str());
+                ImGui::TextWrapped("%s", effect->Path().c_str());
+                (void)duplicate(effect->Path());
+                return;
+            }
             if (Material* material = Cast<Material>(&asset))
             {
                 ImGui::TextUnformatted(material->Path().c_str());
@@ -638,7 +705,8 @@ namespace NS
             }
             if (SceneActor* actorFile = Cast<SceneActor>(&asset))
             {
-                // .actor の欄は、NS_GLOBAL_FIELD の欄も含めて全部 .actor へ書く。直し終えた時にファイルへ書き、同じ .actor のアクターへ写す
+                // .actor の欄は、NS_GLOBAL_FIELD の欄も含めて全部 .actor へ書く。直し終えた時にファイルへ書き、同じ
+                // .actor のアクターへ写す
                 ImGui::Text("%s.actor (%s)", actorFile->ActorFileName().c_str(), actorFile->ClassName());
                 ImGui::TextDisabled("ここで直した値は、この .actor を指すアクターの全部に効く");
                 // 作れない訳はエディタが WARN で出す。作れた時だけ名前の欄を空にする
@@ -655,6 +723,14 @@ namespace NS
                     if (part->GetReflection() == nullptr)
                     {
                         return;
+                    }
+                    if (const Effect* effects = Cast<Effect>(part))
+                    {
+                        const EffectSet* set = effects->Definition();
+                        if (set != nullptr && set->IsValid() && ImGui::Button("演出セットを編集"))
+                        {
+                            editor.SelectAsset(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), set->Path()));
+                        }
                     }
                     ImGui::PushID(row.key);
                     if (ImGui::CollapsingHeader(row.key, ImGuiTreeNodeFlags_DefaultOpen))
@@ -710,7 +786,8 @@ namespace NS
             {
                 const SceneActor* candidate = placed[i];
                 char label[96];
-                std::snprintf(label, sizeof(label), "[%zu] %s (id %u)", i, ActorDisplayName(candidate), candidate->Id());
+                std::snprintf(
+                    label, sizeof(label), "[%zu] %s (id %u)", i, ActorDisplayName(candidate), candidate->Id());
                 options.push_back(ActorRefOption{candidate->Id(), label});
             }
             return options;
@@ -737,10 +814,8 @@ namespace NS
             m_nameCommitId = 0;
             m_deriveRequested = false;
             const ImGuiStyle& style = ImGui::GetStyle();
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
-                                ImVec2{style.ItemSpacing.x, style.ItemSpacing.y + 3.0f});
-            ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
-                                ImVec2{style.CellPadding.x, style.CellPadding.y + 2.0f});
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{style.ItemSpacing.x, style.ItemSpacing.y + 3.0f});
+            ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2{style.CellPadding.x, style.CellPadding.y + 2.0f});
             if (ImGui::Begin(k_PanelInspector))
             {
                 if (ImGui::SmallButton("シーン設定"))
@@ -806,6 +881,14 @@ namespace NS
                     }
                 }
                 DrawActorFileChoice(go);
+                if (const Effect* effects = go->GetEffect())
+                {
+                    const EffectSet* set = effects->Definition();
+                    if (set != nullptr && set->IsValid() && ImGui::Button("演出セットを編集"))
+                    {
+                        editor.SelectAsset(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), set->Path()));
+                    }
+                }
                 ImGui::Separator();
 
                 // 部品はクラスが決めるので、ここでは値だけを変える。足し引きはできない
@@ -841,8 +924,8 @@ namespace NS
 
                     if (open)
                     {
-                        const Editor::ClassObjEditResult r =
-                            Editor::DrawReflectedClassObj(live, refOptions, field.key, m_fieldFilter, go, &m_appearance);
+                        const Editor::ClassObjEditResult r = Editor::DrawReflectedClassObj(
+                            live, refOptions, field.key, m_fieldFilter, go, &m_appearance);
                         classObjEdit.activated |= r.activated;
                         classObjEdit.committed |= r.committed;
                         classObjEdit.changed |= r.changed;

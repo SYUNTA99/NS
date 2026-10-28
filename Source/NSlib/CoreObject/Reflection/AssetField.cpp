@@ -2,6 +2,8 @@
 
 #include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/EffectAsset.h"
+#include "NSlib/CoreObject/Asset/EffectSet.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/SkinnedModel.h"
@@ -66,6 +68,31 @@ namespace NS
     const std::string& AssetFieldName(const AnimClip* field) noexcept
     {
         return PathOrEmpty(field);
+    }
+
+    void LoadAssetField(EffectAsset*& field, std::string_view id)
+    {
+        field = AssetManager::Get().LoadEffectAsset(id);
+    }
+    void LoadAssetField(EffectSet*& field, std::string_view id)
+    {
+        field = AssetManager::Get().LoadEffectSet(id);
+    }
+    const std::string& AssetFieldName(const EffectAsset* field) noexcept
+    {
+        if (field == nullptr)
+        {
+            return k_NoName;
+        }
+        return field->Id();
+    }
+    const std::string& AssetFieldName(const EffectSet* field) noexcept
+    {
+        if (field == nullptr)
+        {
+            return k_NoName;
+        }
+        return field->Id();
     }
 
     void LoadAssetFields(SceneActor* actor)

@@ -8,24 +8,24 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
+#include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
-#include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DTexture.h"
-#include "NSlib/Core/Logger.h"
-#include "NSlib/Core/Windows/Filesystem.h"
 
-#include <optional>
-#include <string>
 #include <algorithm>
 #include <cstring>
+#include <optional>
+#include <string>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -88,8 +88,8 @@ namespace NS
             }
             else
             {
-                open = ImGui::BeginPopupContextWindow("##createSceneInAssets",
-                    ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems);
+                open = ImGui::BeginPopupContextWindow(
+                    "##createSceneInAssets", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems);
             }
             if (!open)
             {
@@ -128,8 +128,8 @@ namespace NS
                 ImGui::SetKeyboardFocusHere();
             }
             m_newSceneName.resize(std::max(m_newSceneName.size() + 1, std::size_t{256}));
-            const bool submitted = ImGui::InputText("名前", m_newSceneName.data(), m_newSceneName.size(),
-                                                   ImGuiInputTextFlags_EnterReturnsTrue);
+            const bool submitted = ImGui::InputText(
+                "名前", m_newSceneName.data(), m_newSceneName.size(), ImGuiInputTextFlags_EnterReturnsTrue);
             m_newSceneName.resize(std::strlen(m_newSceneName.c_str()));
             ImGui::BeginDisabled(!editor.IsSceneEditable());
             // 名前の欄で Enter を押した時は、押せないボタンを通らずに来る。編集できるかも CreateLevel が答える
@@ -254,8 +254,8 @@ namespace NS
             cached->source = *values;
             cached->editVersion = version;
             cached->rendered = false;
-            const std::unique_ptr<SceneActor> actor = CreateActorOfClass(
-                ActorFileLibrary::Get().ClassNameOf(name), ActorInitInfo{.actorFile = name});
+            const std::unique_ptr<SceneActor> actor =
+                CreateActorOfClass(ActorFileLibrary::Get().ClassNameOf(name), ActorInitInfo{.actorFile = name});
             if (!actor || actor->ModelClassObj() == nullptr)
             {
                 return nullptr;
@@ -283,6 +283,10 @@ namespace NS
 
         const Gfx::D3DTexture* AssetsPanel::LoadThumbnail(const std::string& file, LevelEditorController& editor)
         {
+            if (IsEffectAssetPath(file) || IsEffekseerAssetPath(file))
+            {
+                return nullptr;
+            }
             Application* app = Application::Get();
             if (app == nullptr || !app->IsValid())
             {
@@ -341,8 +345,8 @@ namespace NS
             const float height = thumb + ImGui::GetTextLineHeight() * 2.0f + 10.0f;
             ImGui::PushID(file.c_str());
             const ImVec2 start = ImGui::GetCursorScreenPos();
-            if (ImGui::Selectable("##asset", editor.IsAssetSelected(file), ImGuiSelectableFlags_None,
-                                   ImVec2{width, height}))
+            if (ImGui::Selectable(
+                    "##asset", editor.IsAssetSelected(file), ImGuiSelectableFlags_None, ImVec2{width, height}))
             {
                 editor.SelectAsset(file);
             }
@@ -357,19 +361,25 @@ namespace NS
                     const Size2D size = image->Size();
                     const float scale = thumb / static_cast<float>(std::max(size.width, size.height));
                     const ImVec2 dimensions{size.width * scale, size.height * scale};
-                    const ImVec2 at{low.x + (thumb - dimensions.x) * 0.5f,
-                                    low.y + (thumb - dimensions.y) * 0.5f};
+                    const ImVec2 at{low.x + (thumb - dimensions.x) * 0.5f, low.y + (thumb - dimensions.y) * 0.5f};
                     const ImTextureID handle = static_cast<ImTextureID>(reinterpret_cast<uintptr>(image->Srv()));
                     draw->AddImage(handle, at, ImVec2{at.x + dimensions.x, at.y + dimensions.y});
                 }
                 else
                 {
                     draw->AddText(ImVec2{low.x + 4.0f, low.y + thumb * 0.4f},
-                                   ImGui::GetColorU32(ImGuiCol_TextDisabled), "表示不可");
+                                  ImGui::GetColorU32(ImGuiCol_TextDisabled),
+                                  "表示不可");
                 }
                 const ImVec4 clip{start.x, start.y + thumb + 4.0f, start.x + width, start.y + height};
-                draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2{clip.x, clip.y},
-                               ImGui::GetColorU32(ImGuiCol_Text), name.c_str(), nullptr, width, &clip);
+                draw->AddText(ImGui::GetFont(),
+                              ImGui::GetFontSize(),
+                              ImVec2{clip.x, clip.y},
+                              ImGui::GetColorU32(ImGuiCol_Text),
+                              name.c_str(),
+                              nullptr,
+                              width,
+                              &clip);
             }
             const char* dragType = nullptr;
             if (IsMaterialAssetPath(file))
@@ -439,8 +449,8 @@ namespace NS
                 return;
             }
             const int columns = std::clamp(static_cast<int>(ImGui::GetContentRegionAvail().x / 112.0f), 1, 64);
-            if (ImGui::BeginTable("##assetTiles", columns,
-                                   ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings))
+            if (ImGui::BeginTable(
+                    "##assetTiles", columns, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings))
             {
                 for (const std::string& file : previewFiles)
                 {

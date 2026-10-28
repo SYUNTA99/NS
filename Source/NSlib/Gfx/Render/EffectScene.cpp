@@ -4,10 +4,10 @@
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Gfx/D3DGlobal.h"
-#include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
+#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DTexture.h"
 
 #include <EffekseerRendererDX11.h>
 
@@ -49,7 +49,7 @@ namespace NS
                                                      const Vector3& scale) noexcept
             {
                 const Matrix world = Matrix::CreateScale(scale) * Matrix::CreateFromQuaternion(rotation) *
-                                         Matrix::CreateTranslation(position);
+                                     Matrix::CreateTranslation(position);
                 Effekseer::Matrix43 result;
                 for (int row = 0; row < 4; ++row)
                 {
@@ -225,18 +225,44 @@ namespace NS
 
         bool EffectScene::Preload(std::string_view name) noexcept
         {
+            return PreloadFile(name,
+                               OS::FileSystem::Combine(m_effectRoot, std::string{name} + ".efkefc"),
+                               static_cast<uint32>(SeedOf(name, 0)));
+        }
+
+        bool EffectScene::Preload(const EffectResourceDesc& asset) noexcept
+        {
+            return PreloadFile(asset.id, asset.path, asset.seed);
+        }
+
+        EffectHandle EffectScene::Play(const EffectResourceDesc& asset, const EffectPlayDesc& desc) noexcept
+        {
+            const std::unordered_map<std::string, std::string>::const_iterator source = m_resourcePaths.find(asset.id);
+            if (asset.path.empty() || source == m_resourcePaths.end() || source->second != asset.path)
+            {
+                if (m_warnedMissing.insert(asset.id).second)
+                {
+                    NS_LOG_WARN(Graphics, "エフェクト素材 {} を現在の定義で先に読み込んでいない", asset.id);
+                }
+                return EffectHandle{};
+            }
+            return Play(asset.id, desc);
+        }
+
+        bool EffectScene::PreloadFile(std::string_view name, const std::string& path, uint32 seed) noexcept
+        {
             if (!IsValid())
             {
                 return false;
             }
 
             std::string key(name);
-            if (m_effects.contains(key))
+            if (m_effects.contains(key) && m_resourcePaths[key] == path)
             {
+                m_seedBases[key] = seed;
                 return true;
             }
 
-            const std::string path = OS::FileSystem::Combine(m_effectRoot, std::string(name) + ".efkefc");
             const std::wstring pathWide = OS::StringUtils::WideFromUtf8(path);
             const std::u16string pathU16(pathWide.begin(), pathWide.end());
 
@@ -253,7 +279,9 @@ namespace NS
                 return false;
             }
 
-            m_effects.emplace(std::move(key), std::move(effect));
+            m_seedBases[key] = seed;
+            m_resourcePaths[key] = path;
+            m_effects.insert_or_assign(key, std::move(effect));
             return true;
         }
 
@@ -285,7 +313,8 @@ namespace NS
                 m_manager->Play(found->second, desc.position.x, desc.position.y, desc.position.z);
             // Play が std::rand から引いた種を上書きする。節が生まれる最初の Update より前なので、この種で生まれる
             uint32& playCount = m_playCounts[key];
-            m_manager->SetRandomSeed(handle, SeedOf(key, playCount));
+            m_manager->SetRandomSeed(handle,
+                                     static_cast<int32>((m_seedBases[key] ^ (playCount * 2654435761u)) & 0x7FFFFFFFu));
             ++playCount;
             // Play は節を作らず、最初の Update で作る。ここで渡した姿勢・色・入力は生まれる時に読まれる
             m_manager->SetMatrix(handle, ToEffekseerTransform(desc.position, desc.rotation, desc.scale));

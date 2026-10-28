@@ -5,6 +5,7 @@
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerParams.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "TestEffectSettings.h"
 
 #include <gtest/gtest.h>
 
@@ -281,7 +282,8 @@ TEST(ImpactOutcome, BoxMissSparksSlideAlongTheFaceTheReboundUsed)
 
     // 横の割合 0 の火花は面に沿う滑りだけを向く。箱の面は球の面より上へ逸れない
     GL::Player::ImpactEffects effects;
-    ASSERT_EQ(NS::ApplyJsonFields(&effects, {{"外れの火花の横の割合", 0.0f}}), 0u);
+    TestEffectSettings<GL::Player::ImpactEffects> settings(&effects);
+    ASSERT_EQ(NS::ApplyJsonFields(settings.Get(), {{"外れの火花の横の割合", 0.0f}}), 0u);
     const NS::Vector3 spark = effects.MissSparkHeading(k_U, k_V, normal, forward);
     NS::Vector3 slide = forward - normal * forward.Dot(normal);
     slide.Normalize();

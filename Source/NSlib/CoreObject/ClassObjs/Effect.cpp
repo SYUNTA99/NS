@@ -39,28 +39,49 @@ namespace NS
         std::erase_if(m_scheduledStops, [step](const ScheduledStop& scheduled) { return step >= scheduled.step; });
     }
 
-    void Effect::Preload(Gfx::EffectScene* effects, std::string_view name)
-    {
-        // 読めない絵は Play が無効なハンドルを返し、記録だけ残る。警告は EffectScene が名前ごとに 1 回出す
-        if (effects != nullptr)
-        {
-            static_cast<void>(effects->Preload(name));
-        }
-    }
-
-    uint32 Effect::Play(Gfx::EffectScene* effects, std::string_view name, const Gfx::EffectPlayDesc& desc)
+    uint32 Effect::PlayResource(Gfx::EffectScene* effects,
+                                const Gfx::EffectResourceDesc& asset,
+                                const Gfx::EffectPlayDesc& desc)
     {
         EffectRecord record;
         record.id = m_nextId;
         ++m_nextId;
-        record.name = std::string{name};
+        record.name = asset.name;
+        // ファイルの見つからない識別子は名前を持たないので、記録には頼まれた識別子を残す
+        if (record.name.empty())
+        {
+            record.name = asset.id;
+        }
+        record.assetId = asset.id;
         record.startStep = m_step;
         if (effects != nullptr)
         {
-            record.handle = effects->Play(name, desc);
+            record.handle = effects->Play(asset, desc);
         }
         m_records.push_back(std::move(record));
         return m_records.back().id;
+    }
+
+    void Effect::Preload(Gfx::EffectScene* effects, const EffectAsset* asset)
+    {
+        if (effects != nullptr && asset != nullptr && asset->IsValid())
+        {
+            static_cast<void>(effects->Preload(asset->Resource()));
+        }
+    }
+
+    uint32 Effect::Play(Gfx::EffectScene* effects, const EffectAsset* asset, const Gfx::EffectPlayDesc& desc)
+    {
+        if (asset == nullptr || asset->Id().empty())
+        {
+            return 0;
+        }
+        Gfx::EffectScene* destination = nullptr;
+        if (asset->IsValid())
+        {
+            destination = effects;
+        }
+        return PlayResource(destination, asset->Resource(), desc);
     }
 
     void Effect::StopRoot(Gfx::EffectScene* effects, uint32 id) noexcept

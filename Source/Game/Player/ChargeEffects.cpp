@@ -31,15 +31,21 @@ namespace GL
         void ChargeEffects::Preload(const NS::IGetEffect* user)
         {
             NS_ASSERT(Game, user != nullptr, "ChargeEffects::Preload: 絵を出すアクターが空");
+            // 演出セットを読む前と、演出セットの欄が空の時は既定の設定のまま。既定の設定は素材を持たないので何も出さない
+            const NS::Effect* effectOwner = user->GetEffect();
+            if (effectOwner != nullptr && effectOwner->Definition() != nullptr)
+            {
+                Configure(&effectOwner->Definition()->Settings<ChargeEffectSettings>());
+            }
             NS::PreloadEffects(user,
-                               {m_curlAsset,
-                                m_spinAsset,
-                                m_grindAsset,
-                                m_gatherAsset,
-                                m_fullAsset,
-                                m_burstAsset,
-                                m_trailAsset,
-                                m_swaySparksAsset});
+                               {m_settings->m_curlAsset,
+                                m_settings->m_spinAsset,
+                                m_settings->m_grindAsset,
+                                m_settings->m_gatherAsset,
+                                m_settings->m_fullAsset,
+                                m_settings->m_burstAsset,
+                                m_settings->m_trailAsset,
+                                m_settings->m_swaySparksAsset});
         }
 
         void ChargeEffects::Update(const NS::IGetEffect* user,
@@ -122,7 +128,7 @@ namespace GL
             {
                 charge = std::clamp(charge01, 0.0f, 1.0f);
             }
-            return m_tapBurstScale + m_fullBurstScaleGain * charge;
+            return m_settings->m_tapBurstScale + m_settings->m_fullBurstScaleGain * charge;
         }
 
         NS::Quaternion ChargeEffects::YawToward(const NS::Vector3& direction) noexcept
@@ -154,7 +160,9 @@ namespace GL
             forgetIfEnded(m_full);
         }
 
-        void ChargeEffects::StartPress(const NS::IGetEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection)
+        void ChargeEffects::StartPress(const NS::IGetEffect* user,
+                                       const NS::Vector3& center,
+                                       const NS::Vector3& aimDirection)
         {
             // 前の押しの層が残っていれば、新しい押しの層と重ねない
             StopAndClear(user, m_curl);
@@ -162,18 +170,22 @@ namespace GL
             m_fullShown = false;
             m_spinDegrees = 0.0f;
 
-            m_curl = NS::PlayEffect(user, m_curlAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
-            NS::StopEffectAfter(user, m_curl, std::max(m_curlSteps, 1));
-            m_spin = NS::PlayEffect(user, m_spinAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
+            m_curl = NS::PlayEffect(user, m_settings->m_curlAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
+            NS::StopEffectAfter(user, m_curl, std::max(m_settings->m_curlSteps, 1));
+            m_spin = NS::PlayEffect(user, m_settings->m_spinAsset, PlayDesc(center, NS::Quaternion::Identity, 0.0f));
             // 玉を包む光は押したフレームから出し、丸まりの殻が消えた後も放すまで途切れさせない
             StopAndClear(user, m_gather);
-            m_gather = NS::PlayEffect(user, m_gatherAsset, PlayDesc(center, YawToward(aimDirection), 0.0f));
+            m_gather = NS::PlayEffect(user, m_settings->m_gatherAsset, PlayDesc(center, YawToward(aimDirection), 0.0f));
         }
 
-        void ChargeEffects::StartCharging(const NS::IGetEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection, float charge01)
+        void ChargeEffects::StartCharging(const NS::IGetEffect* user,
+                                          const NS::Vector3& center,
+                                          const NS::Vector3& aimDirection,
+                                          float charge01)
         {
             StopAndClear(user, m_grind);
-            m_grind = NS::PlayEffect(user, m_grindAsset, PlayDesc(center, YawToward(aimDirection), charge01));
+            m_grind =
+                NS::PlayEffect(user, m_settings->m_grindAsset, PlayDesc(center, YawToward(aimDirection), charge01));
         }
 
         void ChargeEffects::StartFullFlash(const NS::IGetEffect* user, const NS::Vector3& center)
@@ -181,11 +193,13 @@ namespace GL
             m_fullShown = true;
             m_fullStep = NS::GetEffectStep(user);
             StopAndClear(user, m_full);
-            m_full = NS::PlayEffect(user, m_fullAsset, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
-            NS::StopEffectAfter(user, m_full, std::max(m_fullFlashSteps, 1));
+            m_full = NS::PlayEffect(user, m_settings->m_fullAsset, PlayDesc(center, NS::Quaternion::Identity, 1.0f));
+            NS::StopEffectAfter(user, m_full, std::max(m_settings->m_fullFlashSteps, 1));
         }
 
-        void ChargeEffects::PlaySwaySparks(const NS::IGetEffect* user, const NS::Vector3& center, const ChargeStatus& charge)
+        void ChargeEffects::PlaySwaySparks(const NS::IGetEffect* user,
+                                           const NS::Vector3& center,
+                                           const ChargeStatus& charge)
         {
             GL::Level::AimLine line{};
             if (!charge.TryGetAimLine(line))
@@ -199,14 +213,16 @@ namespace GL
             }
             // 擦れの節は +Y の 45 度の円錐へ飛ぶ。+Y を横から 45 度起こすと円錐の下の縁が水平になり、床へ潜る粒が出ない
             const NS::Vector3 right{line.direction.z, 0.0f, -line.direction.x};
-            NS::Vector3 heading = right * side + NS::Vector3{0.0f, m_sideLift, 0.0f};
+            NS::Vector3 heading = right * side + NS::Vector3{0.0f, m_settings->m_sideLift, 0.0f};
             heading.Normalize();
 
             const float depth = NS::Clamp(charge.Judge().Overcharge01(), 0.0f, 1.0f);
-            const float count = static_cast<float>(m_overchargeSparkCountMin) +
-                                static_cast<float>(m_overchargeSparkCountMax - m_overchargeSparkCountMin) * depth;
-            const float speed =
-                m_overchargeSparkSpeedMin + (m_overchargeSparkSpeedMax - m_overchargeSparkSpeedMin) * depth;
+            const float count =
+                static_cast<float>(m_settings->m_overchargeSparkCountMin) +
+                static_cast<float>(m_settings->m_overchargeSparkCountMax - m_settings->m_overchargeSparkCountMin) *
+                    depth;
+            const float speed = m_settings->m_overchargeSparkSpeedMin +
+                                (m_settings->m_overchargeSparkSpeedMax - m_settings->m_overchargeSparkSpeedMin) * depth;
             NS::Gfx::EffectPlayDesc sparks{};
             sparks.position = center;
             sparks.rotation = NS::Quaternion::FromToRotation(NS::Vector3{0.0f, 1.0f, 0.0f}, heading);
@@ -215,10 +231,11 @@ namespace GL
             // 秒の速さを 1 フレームの距離にして絵へ渡す
             sparks.dynamicInputs[2] = speed / 60.0f;
             sparks.dynamicInputs[3] = 0.0f;
-            static_cast<void>(NS::PlayEffect(user, m_swaySparksAsset, sparks));
+            static_cast<void>(NS::PlayEffect(user, m_settings->m_swaySparksAsset, sparks));
         }
 
-        void ChargeEffects::FollowHeldEffects(const NS::IGetEffect* user, const NS::Vector3& center,
+        void ChargeEffects::FollowHeldEffects(const NS::IGetEffect* user,
+                                              const NS::Vector3& center,
                                               const NS::Vector3& aimDirection,
                                               float charge01,
                                               float spinDegreesThisFrame) noexcept
@@ -251,7 +268,9 @@ namespace GL
             StopAndClear(user, m_full);
         }
 
-        void ChargeEffects::StartRelease(const NS::IGetEffect* user, const NS::Vector3& center, const BodySlamStatus& slam)
+        void ChargeEffects::StartRelease(const NS::IGetEffect* user,
+                                         const NS::Vector3& center,
+                                         const BodySlamStatus& slam)
         {
             const float charge01 = slam.Charge01();
             m_slamDirection = slam.Direction();
@@ -261,8 +280,8 @@ namespace GL
             // 大きさを変えるのは輪・丸屋根・筋だけにする
             NS::Gfx::EffectPlayDesc burst = PlayDesc(center, facing, charge01);
             burst.dynamicInputs[m_burstScaleInput] = ReleaseBurstScale(charge01);
-            const NS::uint32 burstId = NS::PlayEffect(user, m_burstAsset, burst);
-            NS::StopEffectAfter(user, burstId, std::max(m_burstSteps, 1));
+            const NS::uint32 burstId = NS::PlayEffect(user, m_settings->m_burstAsset, burst);
+            NS::StopEffectAfter(user, burstId, std::max(m_settings->m_burstSteps, 1));
             m_burst = burstId;
 
             // 前の突進の尾がまだ伸びていれば止め、新しい尾と繋げない
@@ -270,10 +289,11 @@ namespace GL
             {
                 StopTrailRoot(user);
             }
-            m_trail = NS::PlayEffect(user, m_trailAsset, PlayDesc(center, facing, charge01));
+            m_trail = NS::PlayEffect(user, m_settings->m_trailAsset, PlayDesc(center, facing, charge01));
         }
 
-        void ChargeEffects::UpdateTrail(const NS::IGetEffect* user, const NS::Vector3& center,
+        void ChargeEffects::UpdateTrail(const NS::IGetEffect* user,
+                                        const NS::Vector3& center,
                                         const BodySlamStatus& slam,
                                         bool slamming,
                                         const GL::Level::ImpactAnswer& impact) noexcept
@@ -314,10 +334,13 @@ namespace GL
         void ChargeEffects::StopTrailRoot(const NS::IGetEffect* user) noexcept
         {
             NS::StopEffectRoot(user, m_trail);
-            NS::StopEffectAfter(user, m_trail, std::max(m_trailFadeSteps, 1));
+            NS::StopEffectAfter(user, m_trail, std::max(m_settings->m_trailFadeSteps, 1));
         }
 
-        void ChargeEffects::Place(const NS::IGetEffect* user, NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept
+        void ChargeEffects::Place(const NS::IGetEffect* user,
+                                  NS::uint32 id,
+                                  const NS::Vector3& position,
+                                  const NS::Quaternion& rotation) noexcept
         {
             if (id == 0)
             {
@@ -360,7 +383,7 @@ namespace GL
                 return true;
             }
             const int frames = impact.framesToPredictedContact;
-            return frames >= 0 && frames <= std::max(m_burstClearFrames, 0);
+            return frames >= 0 && frames <= std::max(m_settings->m_burstClearFrames, 0);
         }
 
         void ChargeEffects::StopAndClear(const NS::IGetEffect* user, NS::uint32& id) noexcept

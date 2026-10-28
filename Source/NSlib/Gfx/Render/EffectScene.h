@@ -41,11 +41,16 @@ namespace NS
 
             //! effectRoot 相対の拡張子なしパス (UTF-8) から .efkefc と参照資産を読み込む。読み込み済みなら再利用する
             [[nodiscard]] bool Preload(std::string_view name) noexcept;
+            //! 同じ識別子でファイルの道が変わった場合は読み直す
+            [[nodiscard]] bool Preload(const EffectResourceDesc& asset) noexcept;
+            //! 読み込み済みのファイルと定義の道が一致しない場合は無効なハンドルを返す
+            [[nodiscard]] EffectHandle Play(const EffectResourceDesc& asset, const EffectPlayDesc& desc) noexcept;
 
             //! 読み込み済みのエフェクトをワールド座標 position で再生する。未読み込み時は無効なハンドルを返す
             [[nodiscard]] EffectHandle Play(std::string_view name, Vector3 position = {}) noexcept;
 
-            //! 読み込み済みのエフェクトを再生する (パーティクル生成は次の Update 時)。未読み込み時は無効なハンドルを返す
+            //! 読み込み済みのエフェクトを再生する (パーティクル生成は次の Update
+            //! 時)。未読み込み時は無効なハンドルを返す
             //! 乱数シードはエフェクト名ごとの再生回数から決定するため、他エフェクトの再生順序に影響されない
             [[nodiscard]] EffectHandle Play(std::string_view name, const EffectPlayDesc& desc) noexcept;
 
@@ -91,6 +96,10 @@ namespace NS
                 uint32 height = 0;
                 uint32 lastUsed = 0;
             };
+
+            bool PreloadFile(std::string_view id, const std::string& path, uint32 seed) noexcept;
+            std::unordered_map<std::string, uint32> m_seedBases;
+            std::unordered_map<std::string, std::string> m_resourcePaths;
 
             void PassDepth(const CameraData& camera) noexcept;
             [[nodiscard]] DepthCopy* DepthCopyFor(uint32 width, uint32 height) noexcept;

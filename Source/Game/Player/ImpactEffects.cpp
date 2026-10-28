@@ -1,17 +1,18 @@
 #include "Game/Player/ImpactEffects.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Assert.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Core/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
@@ -49,17 +50,23 @@ namespace GL
         void ImpactEffects::Preload(const NS::IGetEffect* effect)
         {
             NS_ASSERT(Game, effect != nullptr, "ImpactEffects::Preload: 絵を出すアクターが空");
+            // 演出セットを読む前と、演出セットの欄が空の時は既定の設定のまま。既定の設定は素材を持たないので何も出さない
+            const NS::Effect* effectOwner = effect->GetEffect();
+            if (effectOwner != nullptr && effectOwner->Definition() != nullptr)
+            {
+                Configure(&effectOwner->Definition()->Settings<ImpactEffectSettings>());
+            }
             NS::PreloadEffects(effect,
-                               {m_coreAsset,
-                                m_streakAsset,
-                                m_ringAsset,
-                                m_sparksAsset,
-                                m_embersAsset,
-                                m_glowAsset,
-                                m_recoilAsset,
-                                m_dustAsset,
-                                m_reboundTrailAsset,
-                                m_landDustAsset});
+                               {m_settings->m_coreAsset,
+                                m_settings->m_streakAsset,
+                                m_settings->m_ringAsset,
+                                m_settings->m_sparksAsset,
+                                m_settings->m_embersAsset,
+                                m_settings->m_glowAsset,
+                                m_settings->m_recoilAsset,
+                                m_settings->m_dustAsset,
+                                m_settings->m_reboundTrailAsset,
+                                m_settings->m_landDustAsset});
         }
 
         void ImpactEffects::Update(const NS::IGetEffect* effect,
@@ -107,35 +114,40 @@ namespace GL
                 shape.coreInput = 0;
                 shape.coreHold = CoreHoldMotion::Pulse;
                 // 核の留まりは止めと結ぶ。止めの短い当たりは明けの前に落ち始め、明けの後に光が残らない
-                shape.holdLastFrame = std::max(1, std::min(m_coreHoldMax, impact.hitStopSteps - 1));
-                shape.sparkStartFrame = std::max(m_centerSparkStart, 0);
+                shape.holdLastFrame = std::max(1, std::min(m_settings->m_coreHoldMax, impact.hitStopSteps - 1));
+                shape.sparkStartFrame = std::max(m_settings->m_centerSparkStart, 0);
                 // 手本の弾きは光の塊が消える 11 に火の粉が接触点から新しく弾ける。核が落ちるフレームに揃える
                 shape.emberStartFrame = shape.holdLastFrame + 1;
-                shape.streakLength = m_streakLengthBase + m_streakLengthPerPower * power;
-                shape.ringRadius = m_ringRadiusBase + m_ringRadiusPerPower * power;
+                shape.streakLength = m_settings->m_streakLengthBase + m_settings->m_streakLengthPerPower * power;
+                shape.ringRadius = m_settings->m_ringRadiusBase + m_settings->m_ringRadiusPerPower * power;
                 float share = 0.0f;
-                if (m_powerMax > m_powerMin)
+                if (m_settings->m_powerMax > m_settings->m_powerMin)
                 {
-                    share = std::clamp((power - m_powerMin) / (m_powerMax - m_powerMin), 0.0f, 1.0f);
+                    share =
+                        std::clamp((power - m_settings->m_powerMin) / (m_settings->m_powerMax - m_settings->m_powerMin),
+                                   0.0f,
+                                   1.0f);
                 }
-                else if (power >= m_powerMin)
+                else if (power >= m_settings->m_powerMin)
                 {
                     share = 1.0f;
                 }
                 const float count =
-                    static_cast<float>(m_sparkCountMin) + static_cast<float>(m_sparkCountMax - m_sparkCountMin) * share;
+                    static_cast<float>(m_settings->m_sparkCountMin) +
+                    static_cast<float>(m_settings->m_sparkCountMax - m_settings->m_sparkCountMin) * share;
                 shape.sparkCount = std::max(1, static_cast<int>(std::lround(count)));
-                shape.sparkSpeed = m_sparkSpeedBase + m_sparkSpeedPerLaunch * std::max(impact.launchScale, 0.0f);
+                shape.sparkSpeed = m_settings->m_sparkSpeedBase +
+                                   m_settings->m_sparkSpeedPerLaunch * std::max(impact.launchScale, 0.0f);
                 shape.sparkHeading = SparkHeading::Launch;
                 shape.sparkCountInput = 0;
-                shape.emberCount =
-                    std::max(1, static_cast<int>(std::lround(static_cast<float>(shape.sparkCount) * m_emberShare)));
+                shape.emberCount = std::max(
+                    1, static_cast<int>(std::lround(static_cast<float>(shape.sparkCount) * m_settings->m_emberShare)));
                 // 照りは相手の足元の床に出す。飛んでいた相手の下に床は無い
                 if (impact.targetPlaced)
                 {
-                    shape.glowDiameter = m_glowDiameterBase + m_glowDiameterPerPower * power;
+                    shape.glowDiameter = m_settings->m_glowDiameterBase + m_settings->m_glowDiameterPerPower * power;
                 }
-                shape.recoilCount = m_recoilCount;
+                shape.recoilCount = m_settings->m_recoilCount;
                 shape.recoilCountInput = 0;
                 return;
             }
@@ -145,14 +157,14 @@ namespace GL
             // 大きな外れの行。番号から作った段の外の値もこの行で出し、中心近くの層を足さない
             shape.coreInput = 2;
             shape.coreHold = CoreHoldMotion::Settle;
-            shape.holdLastFrame = std::max(m_wideCoreHoldLast, 0);
+            shape.holdLastFrame = std::max(m_settings->m_wideCoreHoldLast, 0);
             shape.coreCut = true;
-            shape.sparkCount = m_wideSparkCount;
-            shape.sparkSpeed = m_wideSparkSpeed;
-            shape.sparkScale = m_wideSparkScale;
+            shape.sparkCount = m_settings->m_wideSparkCount;
+            shape.sparkSpeed = m_settings->m_wideSparkSpeed;
+            shape.sparkScale = m_settings->m_wideSparkScale;
             shape.sparkHeading = SparkHeading::Scrape;
             shape.sparkCountInput = 1;
-            shape.recoilCount = m_wideRecoilCount;
+            shape.recoilCount = m_settings->m_wideRecoilCount;
             shape.recoilCountInput = 2;
         }
 
@@ -162,21 +174,25 @@ namespace GL
             shape.tier = impact.tier;
             const float power = std::max(impact.power, 0.0f);
 
-            shape.coreDiameter = std::min(m_coreDiameterMax, m_coreDiameterBase + m_coreDiameterPerPower * power);
+            shape.coreDiameter = std::min(m_settings->m_coreDiameterMax,
+                                          m_settings->m_coreDiameterBase + m_settings->m_coreDiameterPerPower * power);
             ApplyTierRow(shape, impact, power);
             // 粒数と速さの積で量を測り、威力と質量の両方による差を残す
             shape.sparkAmount = static_cast<float>(shape.sparkCount) * shape.sparkSpeed;
 
-            shape.recoilLength = m_recoilLengthBase + m_recoilLengthPerRebound * std::max(impact.reboundScale, 0.0f);
+            shape.recoilLength = m_settings->m_recoilLengthBase +
+                                 m_settings->m_recoilLengthPerRebound * std::max(impact.reboundScale, 0.0f);
 
             // 粉は相手の足元の床に出す。飛んでいた相手の下に床は無い
             if (impact.targetPlaced)
             {
                 const float mass = std::max(impact.targetMass, 0.0f);
-                shape.dustCount = m_dustCountBase + static_cast<int>(std::lround(std::min(mass, m_dustCountMassLimit)));
+                shape.dustCount = m_settings->m_dustCountBase +
+                                  static_cast<int>(std::lround(std::min(mass, m_settings->m_dustCountMassLimit)));
                 // 威力 1 で質量だけの大きさ。強い当たりほど床を大きく巻き上げ、段の順にも並ぶ
-                const float powerGrowth = std::max(0.0f, 1.0f + m_dustScalePerPower * (power - 1.0f));
-                shape.dustScale = (m_dustScaleBase + m_dustScalePerRootMass * std::sqrt(mass)) * powerGrowth;
+                const float powerGrowth = std::max(0.0f, 1.0f + m_settings->m_dustScalePerPower * (power - 1.0f));
+                shape.dustScale =
+                    (m_settings->m_dustScaleBase + m_settings->m_dustScalePerRootMass * std::sqrt(mass)) * powerGrowth;
             }
 
             return shape;
@@ -199,13 +215,14 @@ namespace GL
                 return Vector3{};
             }
             const Vector3 slide = NS::NormalizedOr(forward - surfaceNormal * NS::Dot(forward, surfaceNormal), side);
-            const float sideShare = std::clamp(m_missSparkSideShare, 0.0f, 1.0f);
+            const float sideShare = std::clamp(m_settings->m_missSparkSideShare, 0.0f, 1.0f);
             return NS::NormalizedOr(side * sideShare + slide * (1.0f - sideShare), side);
         }
 
         float ImpactEffects::LandDustRadiusFor(float fallSpeed) const noexcept
         {
-            return m_landDustRadiusBase + m_landDustRadiusPerFallSpeed * std::max(fallSpeed, 0.0f);
+            return m_settings->m_landDustRadiusBase +
+                   m_settings->m_landDustRadiusPerFallSpeed * std::max(fallSpeed, 0.0f);
         }
 
         Vector3 ImpactEffects::ReboundTrailHeading(const Vector3& velocity,
@@ -228,7 +245,7 @@ namespace GL
             const Vector3 across = back - sight * along;
             const float acrossLength = across.Length();
             // 真っ直ぐ視線に沿って飛ぶ時は画面の上の向きが決まらないので起こさない
-            const float minAcross = std::clamp(m_reboundStreakMinAcross, 0.0f, 1.0f);
+            const float minAcross = std::clamp(m_settings->m_reboundStreakMinAcross, 0.0f, 1.0f);
             if (acrossLength >= minAcross || !NS::HasPositiveMagnitude(acrossLength))
             {
                 return heading;
@@ -243,7 +260,8 @@ namespace GL
             return leaned * -1.0f;
         }
 
-        void ImpactEffects::BeginHit(const Owner& owner, const GL::Level::ImpactRecord& impact,
+        void ImpactEffects::BeginHit(const Owner& owner,
+                                     const GL::Level::ImpactRecord& impact,
                                      const BodySlamStatus& slam,
                                      const NS::Collider* collider)
         {
@@ -281,12 +299,13 @@ namespace GL
             across.y = 0.0f;
             const Vector3 fallbackSide = NS::Cross(Vector3{0.0f, 1.0f, 0.0f}, plan.launchDir);
             plan.sideDir = NS::NormalizedOr(across, NS::NormalizedOr(fallbackSide, Vector3{0.0f, 0.0f, 1.0f}));
-            plan.scrapeDir = NS::NormalizedOr(plan.sideDir + plan.launchDir * m_scrapeLaunchWeight +
-                                              Vector3{0.0f, m_scrapeLiftWeight, 0.0f},
-                                          plan.sideDir);
+            plan.scrapeDir = NS::NormalizedOr(plan.sideDir + plan.launchDir * m_settings->m_scrapeLaunchWeight +
+                                                  Vector3{0.0f, m_settings->m_scrapeLiftWeight, 0.0f},
+                                              plan.sideDir);
             // 外れは、どこで、どっちへ力がそれたかを読ませる。面の上の位置から外した側を取り、段と逸れ方と向きを揃える
             // 位置の無い当たり (面で判定できない体) は前の擦れの向きのまま
-            const Vector3 missHeading = MissSparkHeading(impact.faceU, impact.faceV, impact.faceNormal, slam.Direction());
+            const Vector3 missHeading =
+                MissSparkHeading(impact.faceU, impact.faceV, impact.faceNormal, slam.Direction());
             if (missHeading.Length() > 0.5f)
             {
                 plan.scrapeDir = missHeading;
@@ -300,12 +319,13 @@ namespace GL
             {
                 toCamera = NS::NormalizedOr(camera.value() - plan.contact, Vector3{});
             }
-            plan.ringNormal =
-                NS::NormalizedOr(plan.launchDir * m_ringLaunchWeight + toCamera * m_ringFaceCamera, plan.launchDir);
+            plan.ringNormal = NS::NormalizedOr(plan.launchDir * m_settings->m_ringLaunchWeight +
+                                                   toCamera * m_settings->m_ringFaceCamera,
+                                               plan.launchDir);
 
             // 床は相手の体の外接箱の底。置かれた相手は床に接している。底は当てた時に相手が答えた値
             plan.floor = Vector3{impact.targetPos.x, impact.targetBottom, impact.targetPos.z};
-            plan.floor.y += m_floorLift;
+            plan.floor.y += m_settings->m_floorLift;
             m_plan = plan;
             m_aim.contact = plan.contact;
             m_aim.sparkDir = plan.launchDir;
@@ -319,13 +339,13 @@ namespace GL
             const ImpactShape& shape = m_plan.shape;
             // 放射は広がった大きさから始め、星形と核だけ出始めの倍率を掛ける
             NS::Gfx::EffectPlayDesc core =
-                PlayAt(m_plan.contact, Quaternion::Identity, Uniform(shape.coreDiameter * m_coreHoldPulse));
+                PlayAt(m_plan.contact, Quaternion::Identity, Uniform(shape.coreDiameter * m_settings->m_coreHoldPulse));
             core.dynamicInputs[0] = 0.0f;
             core.dynamicInputs[1] = 0.0f;
             core.dynamicInputs[2] = 0.0f;
             core.dynamicInputs[shape.coreInput] = 1.0f;
-            core.dynamicInputs[3] = m_coreBirthScale / std::max(m_coreHoldPulse, NS::k_Epsilon);
-            m_plan.core = NS::PlayEffect(owner.effect, m_coreAsset, core);
+            core.dynamicInputs[3] = m_settings->m_coreBirthScale / std::max(m_settings->m_coreHoldPulse, NS::k_Epsilon);
+            m_plan.core = NS::PlayEffect(owner.effect, m_settings->m_coreAsset, core);
             NS::SetEffectAmount(owner.effect, m_plan.core, shape.coreDiameter);
 
             // 照りも命中演出の最初から出す
@@ -333,9 +353,10 @@ namespace GL
             {
                 // 板の法線 (+Z) を上へ向け、床に寝かせる
                 const Quaternion lieFlat = TurnNormalTo(Vector3{0.0f, 1.0f, 0.0f});
-                const float riseDiameter = shape.glowDiameter * std::sqrt(std::clamp(m_glowRiseShare, 0.0f, 1.0f));
-                m_plan.glow =
-                    NS::PlayEffect(owner.effect, m_glowAsset, PlayAt(m_plan.floor, lieFlat, Uniform(riseDiameter)));
+                const float riseDiameter =
+                    shape.glowDiameter * std::sqrt(std::clamp(m_settings->m_glowRiseShare, 0.0f, 1.0f));
+                m_plan.glow = NS::PlayEffect(
+                    owner.effect, m_settings->m_glowAsset, PlayAt(m_plan.floor, lieFlat, Uniform(riseDiameter)));
                 NS::SetEffectAmount(owner.effect, m_plan.glow, shape.glowDiameter * 0.5f);
             }
         }
@@ -356,7 +377,7 @@ namespace GL
             sparks.dynamicInputs[shape.sparkCountInput] = static_cast<float>(shape.sparkCount);
             // 秒の速さを 1 フレームの距離にして絵へ渡す
             sparks.dynamicInputs[2] = shape.sparkSpeed / 60.0f;
-            const NS::uint32 id = NS::PlayEffect(owner.effect, m_sparksAsset, sparks);
+            const NS::uint32 id = NS::PlayEffect(owner.effect, m_settings->m_sparksAsset, sparks);
             NS::SetEffectAmount(owner.effect, id, shape.sparkAmount);
             NS::SetEffectRotation(owner.effect, id, heading);
         }
@@ -368,8 +389,9 @@ namespace GL
             NS::Gfx::EffectPlayDesc embers = PlayAt(m_plan.contact, TurnUpTo(m_plan.launchDir), Uniform(1.0f));
             embers.dynamicInputs[0] = static_cast<float>(shape.emberCount);
             embers.dynamicInputs[1] = shape.sparkSpeed / 60.0f;
-            NS::SetEffectAmount(
-                owner.effect, NS::PlayEffect(owner.effect, m_embersAsset, embers), static_cast<float>(shape.emberCount));
+            NS::SetEffectAmount(owner.effect,
+                                NS::PlayEffect(owner.effect, m_settings->m_embersAsset, embers),
+                                static_cast<float>(shape.emberCount));
         }
 
         void ImpactEffects::AdvanceHitCore(const Owner& owner, int frame)
@@ -387,14 +409,14 @@ namespace GL
                 if (shape.coreHold == CoreHoldMotion::Settle)
                 {
                     const float settle =
-                        std::pow(std::clamp(m_wideFlashDecay, 0.0f, 1.0f), static_cast<float>(frame - 1));
-                    const float floor = std::clamp(m_wideFlashFloor, 0.0f, 1.0f);
+                        std::pow(std::clamp(m_settings->m_wideFlashDecay, 0.0f, 1.0f), static_cast<float>(frame - 1));
+                    const float floor = std::clamp(m_settings->m_wideFlashFloor, 0.0f, 1.0f);
                     const float share = floor + (1.0f - floor) * settle;
                     diameter = shape.coreDiameter * std::sqrt(share);
                 }
                 else if (frame % 2 == 0)
                 {
-                    diameter = shape.coreDiameter * m_coreHoldPulse;
+                    diameter = shape.coreDiameter * m_settings->m_coreHoldPulse;
                 }
                 NS::SetEffectTransform(
                     owner.effect, m_plan.core, m_plan.contact, Quaternion::Identity, Uniform(diameter));
@@ -426,7 +448,7 @@ namespace GL
             {
                 m_plan.streak = NS::PlayEffect(
                     owner.effect,
-                    m_streakAsset,
+                    m_settings->m_streakAsset,
                     PlayAt(m_plan.contact, Quaternion::Identity, Vector3{shape.streakLength, 1.0f, 1.0f}));
                 NS::SetEffectAmount(owner.effect, m_plan.streak, shape.streakLength);
             }
@@ -435,8 +457,8 @@ namespace GL
                 return;
             }
             const int thinned = shape.holdLastFrame + 1;
-            const int fadeStart = shape.holdLastFrame + std::max(m_streakTailFrames, 0);
-            if (frame >= fadeStart + std::max(m_streakFadeFrames, 0))
+            const int fadeStart = shape.holdLastFrame + std::max(m_settings->m_streakTailFrames, 0);
+            if (frame >= fadeStart + std::max(m_settings->m_streakFadeFrames, 0))
             {
                 NS::StopEffect(owner.effect, m_plan.streak);
                 m_plan.streak = 0;
@@ -452,14 +474,17 @@ namespace GL
                 // 留まる間は核と同じ偶数のフレームだけ長さを縮める
                 const int thinFrame = std::min(frame, thinned);
                 const float t = static_cast<float>(thinFrame - 1) / static_cast<float>(std::max(1, thinned - 1));
-                const float thickness = 1.0f + (m_streakEndThickness - 1.0f) * t;
+                const float thickness = 1.0f + (m_settings->m_streakEndThickness - 1.0f) * t;
                 float length = shape.streakLength;
                 if (frame <= shape.holdLastFrame && frame % 2 == 0)
                 {
-                    length = shape.streakLength * m_coreHoldPulse;
+                    length = shape.streakLength * m_settings->m_coreHoldPulse;
                 }
-                NS::SetEffectTransform(
-                    owner.effect, m_plan.streak, m_plan.contact, Quaternion::Identity, Vector3{length, thickness, 1.0f});
+                NS::SetEffectTransform(owner.effect,
+                                       m_plan.streak,
+                                       m_plan.contact,
+                                       Quaternion::Identity,
+                                       Vector3{length, thickness, 1.0f});
             }
         }
 
@@ -473,14 +498,14 @@ namespace GL
             if (frame >= 1 && frame <= shape.holdLastFrame)
             {
                 // 加算の円は面積で明るさが変わるため、消えるまでの面積を線形に減らす
-                float share = std::clamp(m_glowRiseShare, 0.0f, 1.0f);
-                if (frame == m_glowDimStart)
+                float share = std::clamp(m_settings->m_glowRiseShare, 0.0f, 1.0f);
+                if (frame == m_settings->m_glowDimStart)
                 {
                     share = 1.0f;
                 }
-                else if (frame > m_glowDimStart)
+                else if (frame > m_settings->m_glowDimStart)
                 {
-                    const float span = static_cast<float>(shape.holdLastFrame + 2 - m_glowDimStart);
+                    const float span = static_cast<float>(shape.holdLastFrame + 2 - m_settings->m_glowDimStart);
                     share = static_cast<float>(shape.holdLastFrame + 2 - frame) / span;
                 }
                 const Quaternion lieFlat = TurnNormalTo(Vector3{0.0f, 1.0f, 0.0f});
@@ -497,28 +522,30 @@ namespace GL
         void ImpactEffects::AdvanceHitRing(const Owner& owner, int frame)
         {
             const ImpactShape& shape = m_plan.shape;
-            if (shape.ringRadius > 0.0f && frame == std::max(m_ringStart, 0))
+            if (shape.ringRadius > 0.0f && frame == std::max(m_settings->m_ringStart, 0))
             {
-                m_plan.ring =
-                    NS::PlayEffect(owner.effect,
-                                   m_ringAsset,
-                                   PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(m_ringStartRadius)));
+                m_plan.ring = NS::PlayEffect(
+                    owner.effect,
+                    m_settings->m_ringAsset,
+                    PlayAt(m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(m_settings->m_ringStartRadius)));
                 NS::SetEffectAmount(owner.effect, m_plan.ring, shape.ringRadius);
             }
             if (m_plan.ring == 0)
             {
                 return;
             }
-            if (frame >= m_ringEnd)
+            if (frame >= m_settings->m_ringEnd)
             {
                 NS::StopEffect(owner.effect, m_plan.ring);
                 m_plan.ring = 0;
             }
             else
             {
-                const float t = static_cast<float>(frame - std::max(m_ringStart, 0)) /
-                                static_cast<float>(std::max(m_ringFull - std::max(m_ringStart, 0), 1));
-                const float radius = m_ringStartRadius + (shape.ringRadius - m_ringStartRadius) * EaseOutCubic(t);
+                const float t =
+                    static_cast<float>(frame - std::max(m_settings->m_ringStart, 0)) /
+                    static_cast<float>(std::max(m_settings->m_ringFull - std::max(m_settings->m_ringStart, 0), 1));
+                const float radius = m_settings->m_ringStartRadius +
+                                     (shape.ringRadius - m_settings->m_ringStartRadius) * EaseOutCubic(t);
                 NS::SetEffectTransform(
                     owner.effect, m_plan.ring, m_plan.contact, TurnNormalTo(m_plan.ringNormal), Uniform(radius));
             }
@@ -537,17 +564,17 @@ namespace GL
                 m_plan.dustPlayed = true;
                 if (shape.dustCount > 0)
                 {
-                    m_aim.dustOrigin = m_plan.floor + m_plan.awayDir * (shape.dustScale * m_dustAwayShare);
+                    m_aim.dustOrigin = m_plan.floor + m_plan.awayDir * (shape.dustScale * m_settings->m_dustAwayShare);
                     NS::Gfx::EffectPlayDesc dust =
                         PlayAt(m_aim.dustOrigin, Quaternion::Identity, Uniform(shape.dustScale));
                     dust.dynamicInputs[0] = static_cast<float>(shape.dustCount);
-                    const NS::uint32 id = NS::PlayEffect(owner.effect, m_dustAsset, dust);
+                    const NS::uint32 id = NS::PlayEffect(owner.effect, m_settings->m_dustAsset, dust);
                     NS::SetEffectAmount(owner.effect, id, shape.dustScale);
                     m_dusts.push_back(id);
                 }
             }
             // 線の本数が 0 の段は出さずに済ませる
-            const bool recoilDue = !m_plan.recoilPlayed && step == m_plan.releaseStep + m_recoilDelay;
+            const bool recoilDue = !m_plan.recoilPlayed && step == m_plan.releaseStep + m_settings->m_recoilDelay;
             if (recoilDue)
             {
                 m_plan.recoilPlayed = true;
@@ -557,13 +584,13 @@ namespace GL
                 // 接触点から出すと動く方向を誤読しやすいため、反動と逆側の玉の縁から線を出す
                 const float radius = collider->CapsuleRadius();
                 m_aim.recoilOrigin = owner.position - m_plan.selfDir * radius;
-                NS::Gfx::EffectPlayDesc recoil =
-                    PlayAt(m_aim.recoilOrigin, TurnUpTo(m_plan.selfDir), Uniform(1.0f));
+                NS::Gfx::EffectPlayDesc recoil = PlayAt(m_aim.recoilOrigin, TurnUpTo(m_plan.selfDir), Uniform(1.0f));
                 recoil.dynamicInputs[0] = 0.0f;
                 recoil.dynamicInputs[2] = 0.0f;
                 recoil.dynamicInputs[shape.recoilCountInput] = static_cast<float>(shape.recoilCount);
                 recoil.dynamicInputs[1] = shape.recoilLength;
-                NS::SetEffectAmount(owner.effect, NS::PlayEffect(owner.effect, m_recoilAsset, recoil), shape.recoilLength);
+                NS::SetEffectAmount(
+                    owner.effect, NS::PlayEffect(owner.effect, m_settings->m_recoilAsset, recoil), shape.recoilLength);
             }
         }
 
@@ -603,7 +630,8 @@ namespace GL
             }
         }
 
-        void ImpactEffects::BeginFlight(const Owner& owner, const PlayerMotion& motion,
+        void ImpactEffects::BeginFlight(const Owner& owner,
+                                        const PlayerMotion& motion,
                                         const NS::Body* body,
                                         const GL::Level::ImpactRecord& impact)
         {
@@ -621,8 +649,8 @@ namespace GL
             {
                 const Vector3 ball = owner.position;
                 const Vector3 heading = ReboundTrailHeading(body->Velocity(), ball, CameraPosition(owner));
-                m_flight.reboundTrail =
-                    NS::PlayEffect(owner.effect, m_reboundTrailAsset, PlayAt(ball, TurnUpTo(heading), Uniform(1.0f)));
+                m_flight.reboundTrail = NS::PlayEffect(
+                    owner.effect, m_settings->m_reboundTrailAsset, PlayAt(ball, TurnUpTo(heading), Uniform(1.0f)));
                 m_flight.reboundStartStep = step;
             }
             // 飛ばした相手の飛び出しの尾は、相手が自分で出す (LaunchEffects)
@@ -644,7 +672,8 @@ namespace GL
                     // 頂点は縦の速さが 0 以下になったフレーム。親を止め、筋は頂点の位置と向きのまま薄れる
                     // 親を止めた後の筋は置き直しても動かない (Effekseer は親の最後の姿で子を描く)
                     NS::StopEffectRoot(owner.effect, m_flight.reboundTrail);
-                    NS::StopEffectAfter(owner.effect, m_flight.reboundTrail, std::max(m_reboundTrailFadeSteps, 1));
+                    NS::StopEffectAfter(
+                        owner.effect, m_flight.reboundTrail, std::max(m_settings->m_reboundTrailFadeSteps, 1));
                     m_flight.reboundTrail = 0;
                 }
                 else
@@ -656,7 +685,8 @@ namespace GL
             }
         }
 
-        void ImpactEffects::AdvanceLanding(const Owner& owner, const PlayerMotion& motion,
+        void ImpactEffects::AdvanceLanding(const Owner& owner,
+                                           const PlayerMotion& motion,
                                            const NS::Body* body,
                                            const NS::Collider* collider)
         {
@@ -672,13 +702,15 @@ namespace GL
                 // 足元は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径))
                 const NS::Phys::Capsule capsule = collider->CapsuleAt(owner.position);
                 Vector3 at = capsule.center - capsule.axis * (capsule.halfHeight + capsule.radius);
-                at.y += m_dustRingLift;
+                at.y += m_settings->m_dustRingLift;
                 const NS::uint32 dust = NS::PlayEffect(
                     owner.effect,
-                    m_landDustAsset,
-                    PlayAt(at, Quaternion::Identity, Uniform(radius / std::max(m_landDustAssetRadius, NS::k_Epsilon))));
+                    m_settings->m_landDustAsset,
+                    PlayAt(at,
+                           Quaternion::Identity,
+                           Uniform(radius / std::max(m_settings->m_landDustAssetRadius, NS::k_Epsilon))));
                 NS::SetEffectAmount(owner.effect, dust, radius);
-                NS::StopEffectAfter(owner.effect, dust, std::max(m_landDustLife, 1));
+                NS::StopEffectAfter(owner.effect, dust, std::max(m_settings->m_landDustLife, 1));
             }
             m_lastVerticalVelocity = body->VerticalVelocity();
         }

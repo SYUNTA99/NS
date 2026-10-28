@@ -30,6 +30,7 @@
      出力のフォルダは作業場で、注釈を外した写しと PNG を含む。ゲームへ渡すのは .efkefc と素材だけ
 """
 import argparse
+import json
 import os
 import re
 import shutil
@@ -38,6 +39,7 @@ import subprocess
 import sys
 import time
 import zlib
+import uuid
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -247,13 +249,64 @@ def build_one(name, tool, efkxml, definitions, assets, out, frames, probe, probe
     return True
 
 
+def ensure_effect_asset(effect_file, content_root):
+    metadata = effect_file.with_suffix(".effect")
+    if metadata.exists():
+        try:
+            document = json.loads(metadata.read_text(encoding="utf-8"))
+            identifier = document.get("id", "")
+            if len(identifier) != 32 or any(c not in "0123456789abcdef" for c in identifier):
+                raise ValueError("識別子は小文字の16進数32文字")
+            if not isinstance(document.get("label"), str) or not document["label"]:
+                raise ValueError("表示名が無い")
+            if not isinstance(document.get("source"), str):
+                raise ValueError("参照するファイルの道筋が無い")
+            source = Path(document["source"])
+            if source.is_absolute():
+                raise ValueError("参照はコンテンツからの相対パス")
+            (content_root / source).resolve().relative_to(content_root.resolve())
+            if type(document.get("seed")) is not int or not 0 <= document["seed"] <= 0xFFFFFFFF:
+                raise ValueError("乱数の基準が32ビットの符号なし整数でない")
+            if "recordName" in document and not isinstance(document["recordName"], str):
+                raise ValueError("記録用の名前が文字列でない")
+            return True
+        except (OSError, ValueError, AttributeError, TypeError) as error:
+            print(f"素材定義 {metadata} を読めないため上書きしない: {error}", file=sys.stderr)
+            return False
+    try:
+        source = effect_file.relative_to(content_root).as_posix()
+    except ValueError:
+        print(f"素材 {effect_file} がコンテンツのフォルダー外にある", file=sys.stderr)
+        return False
+    seed = 2166136261
+    for byte in effect_file.stem.encode("utf-8"):
+        seed = ((seed ^ byte) * 16777619) & 0xFFFFFFFF
+    document = {"id": uuid.uuid4().hex, "label": effect_file.stem,
+                "recordName": effect_file.stem, "source": source, "seed": seed}
+    metadata.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return True
+
+
 def install(names, assets, out, destination):
     """通った本だけを写す。1 本でも落ちたら main が先に返るので、ここへは全部通った時だけ来る"""
     destination.mkdir(parents=True, exist_ok=True)
+    targets = [destination / f"{name}.efkefc" for name in names]
+    # ensure_effect_asset が写した後に断る物は、1 本も写す前に見つけて全部を止める
+    # 前からある素材定義は置き場を問わず中身を見て、新しく作る素材定義はコンテンツのフォルダーの中だけに作る
+    for target in targets:
+        if target.with_suffix(".effect").exists():
+            if not ensure_effect_asset(target, REPO):
+                return False
+        elif not target.is_relative_to(REPO):
+            print(f"素材 {target} がコンテンツのフォルダー外にある", file=sys.stderr)
+            return False
     copy_assets(assets, destination)
-    for name in names:
-        shutil.copy2(out / f"{name}.efkefc", destination / f"{name}.efkefc")
-        print(f"写した: {destination / (name + '.efkefc')}")
+    for name, target in zip(names, targets):
+        shutil.copy2(out / f"{name}.efkefc", target)
+        if not ensure_effect_asset(target, REPO):
+            return False
+        print(f"写した: {target}")
+    return True
 
 
 def main():
@@ -307,7 +360,8 @@ def main():
         print("通らなかった: " + ", ".join(failed))
         return 1
     if args.install:
-        install(names, assets, out, Path(args.install_dir).resolve())
+        if not install(names, assets, out, Path(args.install_dir).resolve()):
+            return 1
     return 0
 
 

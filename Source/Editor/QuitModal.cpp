@@ -1,8 +1,9 @@
 #include "Editor/QuitModal.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 
+#include "Editor/ActionTimelinePanel.h"
 #include "Editor/EditorMode.h"
 #include "Editor/EditorUi.h"
-#include "Editor/ActionTimelinePanel.h"
 #include "Editor/LevelEditorController.h"
 #include "NSlib/App/Application.h"
 
@@ -16,7 +17,8 @@ namespace NS
     {
         bool HasUnsavedWork(const EditorMode& editor, const ActionTimelinePanel& timeline) noexcept
         {
-            return editor.HasUnsavedChanges() || timeline.HasUnsavedChanges();
+            return editor.HasUnsavedChanges() || timeline.HasUnsavedChanges() ||
+                   AssetManager::Get().HasUnsavedEffectSets();
         }
 
         bool SaveAllForQuit(EditorMode& editor, ActionTimelinePanel& timeline) noexcept
@@ -28,7 +30,8 @@ namespace NS
             {
                 timelineSaved = timeline.SaveAll();
             }
-            return sceneSaved && timelineSaved;
+            const bool effectsSaved = AssetManager::Get().SaveAllEffectSets();
+            return sceneSaved && timelineSaved && effectsSaved;
         }
 
         bool QuitModal::RequestQuit() noexcept
@@ -75,6 +78,10 @@ namespace NS
                     if (mode.HasUnsavedChanges())
                     {
                         ImGui::BulletText("シーン");
+                    }
+                    if (AssetManager::Get().HasUnsavedEffectSets())
+                    {
+                        ImGui::BulletText("演出セット");
                     }
                     if (timeline.HasUnsavedChanges())
                     {

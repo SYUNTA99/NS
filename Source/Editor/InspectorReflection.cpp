@@ -1,17 +1,20 @@
 #include "Editor/InspectorReflection.h"
 #include "NSlib/Core/Types.h"
 
+#include "Editor/AssetPicker.h"
 #include "Editor/EditorAppearance.h"
 #include "Editor/EditorUi.h"
-#include "Editor/AssetPicker.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/EffectAsset.h"
+#include "NSlib/CoreObject/Asset/EffectSet.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/Object.h"
-#include "NSlib/Core/Windows/Filesystem.h"
 
 #include <algorithm>
 #include <climits>
@@ -27,14 +30,10 @@ namespace NS
 {
     namespace Editor
     {
-        bool ShowsOverride(const Object* comp,
-                           const char* partKey,
-                           const FieldDesc& field,
-                           const SceneActor* actor)
+        bool ShowsOverride(const Object* comp, const char* partKey, const FieldDesc& field, const SceneActor* actor)
         {
             NS_ASSERT(App, comp != nullptr, "ShowsOverride: 部品が null");
-            if (actor == nullptr || partKey == nullptr ||
-                FieldDestinationOf(actor, field) != FieldDestination::Scene)
+            if (actor == nullptr || partKey == nullptr || FieldDestinationOf(actor, field) != FieldDestination::Scene)
             {
                 return false;
             }
@@ -146,7 +145,8 @@ namespace NS
             {
                 const float span = high - low;
                 // 大きなフレーム数では小さすぎる幅が丸めで消えるため、値の桁にも下限を合わせる
-                const float minSpan = std::max(0.0001f, std::abs(anchor) * std::numeric_limits<float>::epsilon() * 16.0f);
+                const float minSpan =
+                    std::max(0.0001f, std::abs(anchor) * std::numeric_limits<float>::epsilon() * 16.0f);
                 const float maxSpan = std::max(minSpan, 10000000.0f);
                 const float newSpan = std::clamp(span * factor, minSpan, maxSpan);
                 const float ratio = (anchor - low) / span;
@@ -168,7 +168,7 @@ namespace NS
                 const float ratioX = std::clamp((pos.x - view.origin.x) / view.size.x, 0.0f, 1.0f);
                 const float ratioY = 1.0f - (pos.y - view.origin.y) / view.size.y;
                 return Curve::Key{view.xMin + ratioX * (view.xMax - view.xMin),
-                                      view.yMin + ratioY * (view.yMax - view.yMin)};
+                                  view.yMin + ratioY * (view.yMax - view.yMin)};
             }
 
             // 昇格の初期値も表示も実際に効いている傾きから作る。ずれると掴んだ瞬間に形が飛ぶため
@@ -303,7 +303,8 @@ namespace NS
                     const float end = static_cast<float>(i + 1);
                     drawList.AddLine(ImVec2{center.x + step.x * start, center.y + step.y * start},
                                      ImVec2{center.x + step.x * end, center.y + step.y * end},
-                                     k_CurveHandleColor, 1.5f);
+                                     k_CurveHandleColor,
+                                     1.5f);
                 }
                 const ImVec2 low{tip.x - 5.0f, tip.y - 5.0f};
                 const ImVec2 high{tip.x + 5.0f, tip.y + 5.0f};
@@ -411,12 +412,14 @@ namespace NS
                     const ImVec2 center = CurveToScreen(view, curve.keys[selectedIndex].x, curve.keys[selectedIndex].y);
                     if (selectedIndex > 0)
                     {
-                        const ImVec2 tip = TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, true), true);
+                        const ImVec2 tip =
+                            TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, true), true);
                         DrawCurveTangent(drawList, center, tip);
                     }
                     if (selectedIndex + 1 < curve.count)
                     {
-                        const ImVec2 tip = TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, false), false);
+                        const ImVec2 tip =
+                            TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, false), false);
                         DrawCurveTangent(drawList, center, tip);
                     }
                 }
@@ -436,7 +439,8 @@ namespace NS
                     ImFormatString(number, sizeof(number), "%u", i + 1);
                     const ImVec2 textSize = ImGui::CalcTextSize(number);
                     drawList.AddText(ImVec2{center.x - textSize.x * 0.5f, center.y - textSize.y * 0.5f},
-                                     IM_COL32(20, 25, 30, 255), number);
+                                     IM_COL32(20, 25, 30, 255),
+                                     number);
                     if (static_cast<int>(i) == selected)
                     {
                         drawList.AddCircle(center, radius + 2.5f, k_CurveHandleColor, 0, 1.5f);
@@ -493,7 +497,8 @@ namespace NS
                 {
                     return;
                 }
-                NS_LOG_WARN(App, "欄 {} に入れた値を書かず、今の値を残した: {}", FieldLabel(field), FieldWriteResultText(last));
+                NS_LOG_WARN(
+                    App, "欄 {} に入れた値を書かず、今の値を残した: {}", FieldLabel(field), FieldWriteResultText(last));
             }
 
             void DrawStringFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
@@ -506,8 +511,13 @@ namespace NS
                     data->Buf = text->data();
                     return 0;
                 };
-                if (ImGui::InputTextWithHint("##value", "文字を入力", value.data(), value.capacity() + 1,
-                                             ImGuiInputTextFlags_CallbackResize, resize, &value))
+                if (ImGui::InputTextWithHint("##value",
+                                             "文字を入力",
+                                             value.data(),
+                                             value.capacity() + 1,
+                                             ImGuiInputTextFlags_CallbackResize,
+                                             resize,
+                                             &value))
                 {
                     WriteField(owner, field, &value, result);
                 }
@@ -532,6 +542,24 @@ namespace NS
                 const ImGuiID wasOpenId = ImGui::GetID("asset-picker-was-open");
                 const bool wasOpen = storage->GetBool(wasOpenId, false);
                 std::string label = OS::FileSystem::FileName(value);
+                if (field.assetKind == AssetKind::Effect && !value.empty())
+                {
+                    const EffectAsset* effect = AssetManager::Get().LoadEffectAsset(value);
+                    label = effect->Label();
+                    if (!effect->IsValid())
+                    {
+                        label = "参照切れ";
+                    }
+                }
+                if (field.assetKind == AssetKind::EffectSet && !value.empty())
+                {
+                    const EffectSet* set = AssetManager::Get().LoadEffectSet(value);
+                    label = set->Label();
+                    if (!set->IsValid())
+                    {
+                        label = "参照切れ";
+                    }
+                }
                 if (label.empty())
                 {
                     label = "素材を選択...";
@@ -583,7 +611,8 @@ namespace NS
                     {
                         for (const AssetOption& option : options)
                         {
-                            if (!NameMatches(option.value.c_str(), search) && !NameMatches(option.label.c_str(), search) &&
+                            if (!NameMatches(option.value.c_str(), search) &&
+                                !NameMatches(option.label.c_str(), search) &&
                                 !NameMatches(option.location.c_str(), search))
                             {
                                 continue;
@@ -591,12 +620,16 @@ namespace NS
                             found = true;
                             ImGui::PushID(option.value.c_str());
                             const float line = ImGui::GetTextLineHeight();
-                            const bool chosen = ImGui::Selectable("##option", option.value == value, 0,
-                                                                  ImVec2{0.0f, line * 2.0f + 4.0f});
+                            const bool chosen = ImGui::Selectable(
+                                "##option", option.value == value, 0, ImVec2{0.0f, line * 2.0f + 4.0f});
                             const ImVec2 at = ImGui::GetItemRectMin();
                             ImDrawList* drawList = ImGui::GetWindowDrawList();
-                            drawList->AddText(ImVec2{at.x + 4.0f, at.y + 2.0f}, ImGui::GetColorU32(ImGuiCol_Text), option.label.c_str());
-                            drawList->AddText(ImVec2{at.x + 4.0f, at.y + line + 3.0f}, ImGui::GetColorU32(ImGuiCol_TextDisabled), option.location.c_str());
+                            drawList->AddText(ImVec2{at.x + 4.0f, at.y + 2.0f},
+                                              ImGui::GetColorU32(ImGuiCol_Text),
+                                              option.label.c_str());
+                            drawList->AddText(ImVec2{at.x + 4.0f, at.y + line + 3.0f},
+                                              ImGui::GetColorU32(ImGuiCol_TextDisabled),
+                                              option.location.c_str());
                             if (ImGui::IsItemHovered())
                             {
                                 ImGui::SetTooltip("%s", option.value.c_str());
@@ -615,7 +648,8 @@ namespace NS
                         }
                         if (!found)
                         {
-                            ImGui::TextWrapped("該当する素材がありません。ファイルをAssetsに追加してから開き直してください。");
+                            ImGui::TextWrapped(
+                                "該当する素材がありません。ファイルをAssetsに追加してから開き直してください。");
                         }
                     }
                     ImGui::EndChild();
@@ -639,10 +673,11 @@ namespace NS
                 ImGuiStorage* storage = ImGui::GetStateStorage();
                 const ImGuiID stateId = ImGui::GetID("##colorPickerOpen");
                 const bool wasOpen = storage->GetBool(stateId, false);
-                constexpr ImGuiColorEditFlags k_Flags = ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float |
-                                                       ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_PickerHueBar |
-                                                       ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_AlphaBar;
-                if (ImGui::ColorButton("##value", ImVec4{value.x, value.y, value.z, value.w},
+                constexpr ImGuiColorEditFlags k_Flags =
+                    ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB |
+                    ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_AlphaBar;
+                if (ImGui::ColorButton("##value",
+                                       ImVec4{value.x, value.y, value.z, value.w},
                                        ImGuiColorEditFlags_AlphaPreviewHalf | ImGuiColorEditFlags_NoDragDrop |
                                            ImGuiColorEditFlags_NoTooltip,
                                        ImVec2{std::max(width, 1.0f), ImGui::GetFrameHeight() * 1.25f}))
@@ -683,7 +718,8 @@ namespace NS
                 }
             }
 
-            // 色を入れるかのチェックボックスと色の四角を 1 つの欄に並べる。外すと空、入れると Color の既定の値から始まる
+            // 色を入れるかのチェックボックスと色の四角を 1 つの欄に並べる。外すと空、入れると Color
+            // の既定の値から始まる
             void DrawOptionalColorFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
             {
                 std::optional<Color> value;
@@ -856,7 +892,7 @@ namespace NS
                     else if (ImGui::MenuItem("点を追加", nullptr, false, value.count < Curve::k_MaxKeys))
                     {
                         const Curve::Key added{storage->GetFloat(ids.menuXId, 0.0f),
-                                                   storage->GetFloat(ids.menuYId, 0.0f)};
+                                               storage->GetFloat(ids.menuYId, 0.0f)};
                         value.keys[value.count] = added;
                         ++value.count;
                         const uint32 inserted = MoveKey(value, value.count - 1, added);
@@ -874,8 +910,11 @@ namespace NS
                 result.committed |= ImGui::IsItemDeactivated();
             }
 
-            bool DrawCurveSelection(Curve& value, ImGuiStorage& storage,
-                                    const CurveGraphIds& ids, FieldWidgetResult& result, float width) noexcept
+            bool DrawCurveSelection(Curve& value,
+                                    ImGuiStorage& storage,
+                                    const CurveGraphIds& ids,
+                                    FieldWidgetResult& result,
+                                    float width) noexcept
             {
                 int selected = storage.GetInt(ids.selectedId, -1);
                 if (value.count > 0)
@@ -946,7 +985,8 @@ namespace NS
                 const ImGuiID comboWasOpenId = ImGui::GetID("graph-mode-was-open");
                 const bool comboWasOpen = storage.GetBool(comboWasOpenId, false);
                 ImGui::SetNextItemWidth(width);
-                const bool comboOpen = ImGui::BeginCombo("##interpolation", modes[static_cast<int>(value.keys[selected].mode)]);
+                const bool comboOpen =
+                    ImGui::BeginCombo("##interpolation", modes[static_cast<int>(value.keys[selected].mode)]);
                 TrackCurveItem(result);
                 storage.SetBool(comboWasOpenId, comboOpen);
                 result.popupActive |= comboOpen;
@@ -962,7 +1002,8 @@ namespace NS
                         if (ImGui::Selectable(modes[mode], mode == static_cast<int>(value.keys[selected].mode)))
                         {
                             Curve::Key& key = value.keys[selected];
-                            if (mode == static_cast<int>(Curve::InterpMode::Manual) && key.mode != Curve::InterpMode::Manual)
+                            if (mode == static_cast<int>(Curve::InterpMode::Manual) &&
+                                key.mode != Curve::InterpMode::Manual)
                             {
                                 key.inTangent = DisplayTangent(value, static_cast<uint32>(selected), true);
                                 key.outTangent = DisplayTangent(value, static_cast<uint32>(selected), false);
@@ -1017,7 +1058,9 @@ namespace NS
             }
 
             // 一覧で比較して入力できるよう、全点の数値欄も折り畳みで残す
-            bool DrawCurveNumbers(Curve& value, ImGuiStorage* storage, const CurveGraphIds& ids,
+            bool DrawCurveNumbers(Curve& value,
+                                  ImGuiStorage* storage,
+                                  const CurveGraphIds& ids,
                                   FieldWidgetResult& result) noexcept
             {
                 bool edited = false;
@@ -1177,11 +1220,8 @@ namespace NS
             }
 
             // 掴んでいる接線ハンドルのドラッグ更新
-            [[nodiscard]] bool DragCurveTangentHandle(Curve& value,
-                                                      const CurveGraphView& view,
-                                                      const ImVec2& mouse,
-                                                      uint32 grabbed,
-                                                      int grabKind) noexcept
+            [[nodiscard]] bool DragCurveTangentHandle(
+                Curve& value, const CurveGraphView& view, const ImVec2& mouse, uint32 grabbed, int grabKind) noexcept
             {
                 bool edited = false;
                 Curve::Key& key = value.keys[grabbed];
@@ -1221,7 +1261,9 @@ namespace NS
                 {
                     const Curve::Key& key = value.keys[highlighted];
                     ImGui::SetTooltip("点 %d\n上下に動かす: 値を変更\n左右に動かす: 位置を変更\nX: %.4f\nY: %.4f",
-                                      highlighted + 1, key.x, key.y);
+                                      highlighted + 1,
+                                      key.x,
+                                      key.y);
                 }
                 ImGui::TextDisabled("操作方法 (?)");
                 if (ImGui::IsItemHovered())
@@ -1262,9 +1304,10 @@ namespace NS
                 }
 
                 // 右クリックのメニュー操作でも活性化と確定を拾うため、右ボタンも受ける
-                ImGui::InvisibleButton(
-                    "##graph", view.size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight |
-                                         ImGuiButtonFlags_MouseButtonMiddle);
+                ImGui::InvisibleButton("##graph",
+                                       view.size,
+                                       ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight |
+                                           ImGuiButtonFlags_MouseButtonMiddle);
                 // ドラッグ全体を 1 回の undo にまとめるため、グラフの活性化と非活性化も集約へ入れる
                 result.activated |= ImGui::IsItemActivated();
                 const bool graphDeactivated = ImGui::IsItemDeactivated();
@@ -1314,8 +1357,7 @@ namespace NS
 
                 if (ImGui::IsItemActivated())
                 {
-                    BeginCurveGrab(
-                        value, view, storage, ids, mouse, leftHeld, io.KeyAlt, highlighted, selected);
+                    BeginCurveGrab(value, view, storage, ids, mouse, leftHeld, io.KeyAlt, highlighted, selected);
                 }
 
                 // 左の単クリックは掴みと選択に使うため、追加は空きのダブルクリックか右クリックのメニューに分ける
@@ -1331,8 +1373,8 @@ namespace NS
                         view.yMax += dy;
                     }
                 }
-                else if (hovered && !io.KeyAlt && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && highlighted < 0 &&
-                    value.count < Curve::k_MaxKeys)
+                else if (hovered && !io.KeyAlt && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
+                         highlighted < 0 && value.count < Curve::k_MaxKeys)
                 {
                     const Curve::Key added = ScreenToCurve(view, mouse);
                     value.keys[value.count] = added;
@@ -1356,8 +1398,8 @@ namespace NS
                         const uint32 grabbedIndex = static_cast<uint32>(grabbed);
                         if (grabKind == k_GrabPoint)
                         {
-                            edited |= DragCurvePoint(
-                                value, view, storage, ids, mouse, io.KeyCtrl, grabbedIndex, highlighted);
+                            edited |=
+                                DragCurvePoint(value, view, storage, ids, mouse, io.KeyCtrl, grabbedIndex, highlighted);
                         }
                         else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.0f))
                         {
@@ -1411,7 +1453,8 @@ namespace NS
                 const bool wasOpen = storage->GetBool(wasOpenId, false);
                 const float width = ImGui::CalcItemWidth();
                 char editorName[64]{};
-                ImFormatString(editorName, sizeof(editorName), "カーブ編集###curve-editor-%08X", ImGui::GetID("curve-editor"));
+                ImFormatString(
+                    editorName, sizeof(editorName), "カーブ編集###curve-editor-%08X", ImGui::GetID("curve-editor"));
                 ImGui::PushItemWidth(width);
                 if (ImGui::SmallButton("大きく編集"))
                 {
@@ -1643,10 +1686,10 @@ namespace NS
                 const std::size_t end = GroupEnd(info, groupIndex);
                 if (filtering)
                 {
-                    const bool anyMatch =
-                        std::any_of(info.fields + group.firstField,
-                                    info.fields + end,
-                                    [filter](const FieldDesc& field) { return NameMatches(FieldLabel(field), filter); });
+                    const bool anyMatch = std::any_of(
+                        info.fields + group.firstField, info.fields + end, [filter](const FieldDesc& field) {
+                            return NameMatches(FieldLabel(field), filter);
+                        });
                     if (!anyMatch)
                     {
                         return false;

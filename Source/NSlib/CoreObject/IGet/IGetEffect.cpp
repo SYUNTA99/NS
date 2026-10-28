@@ -6,7 +6,7 @@
 
 namespace NS
 {
-    void PreloadEffects(const IGetEffect* user, std::initializer_list<EffectName> names)
+    void PreloadEffects(const IGetEffect* user, std::initializer_list<const EffectAsset*> assets)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         Effect* effect = user->GetEffect();
@@ -14,13 +14,13 @@ namespace NS
         {
             return;
         }
-        for (const EffectName& name : names)
+        for (const EffectAsset* asset : assets)
         {
-            effect->Preload(user->GetEffectScene(), name.name);
+            effect->Preload(user->GetEffectScene(), asset);
         }
     }
 
-    uint32 PlayEffect(const IGetEffect* user, const EffectName& name, const Gfx::EffectPlayDesc& desc)
+    uint32 PlayEffect(const IGetEffect* user, const EffectAsset* asset, const Gfx::EffectPlayDesc& desc)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         Effect* effect = user->GetEffect();
@@ -28,7 +28,7 @@ namespace NS
         {
             return 0;
         }
-        return effect->Play(user->GetEffectScene(), name.name, desc);
+        return effect->Play(user->GetEffectScene(), asset, desc);
     }
 
     void StopEffect(const IGetEffect* user, uint32 id) noexcept

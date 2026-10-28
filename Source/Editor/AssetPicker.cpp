@@ -1,9 +1,10 @@
 #include "Editor/AssetPicker.h"
+#include "NSlib/CoreObject/Asset/EffectCatalog.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/Gfx/Render/Skybox.h"
-#include "NSlib/Core/Windows/Filesystem.h"
 
 #include <algorithm>
 #include <array>
@@ -33,10 +34,6 @@ namespace NS
                 {
                     return IsMaterialAssetPath(path);
                 }
-                if (kind == AssetKind::Effect)
-                {
-                    return LowerExtension(path) == ".efkefc";
-                }
                 if (kind == AssetKind::Sound)
                 {
                     return LowerExtension(path) == ".wav";
@@ -61,8 +58,7 @@ namespace NS
                     return value;
                 };
                 // DDS_HEADER の各欄をファイル上の位置から読む。
-                if (word(0) != 0x20534444 || word(4) != 124 || word(76) != 32 ||
-                    word(12) == 0 || word(12) != word(16))
+                if (word(0) != 0x20534444 || word(4) != 124 || word(76) != 32 || word(12) == 0 || word(12) != word(16))
                 {
                     return false;
                 }
@@ -73,7 +69,7 @@ namespace NS
                 }
                 return (word(112) & 0xfe00) == 0xfe00;
             }
-        }
+        } // namespace
 
         bool IsSkyboxAssetPath(std::string_view absolutePath)
         {
@@ -115,8 +111,8 @@ namespace NS
                     NS_LOG_ERROR(App, "空の素材 {} が ContentRoot の外にあるので候補に出さない", candidate);
                     continue;
                 }
-                options.push_back(AssetOption{*relative, OS::FileSystem::FileName(candidate),
-                                              OS::FileSystem::ParentDirectory(*relative)});
+                options.push_back(AssetOption{
+                    *relative, OS::FileSystem::FileName(candidate), OS::FileSystem::ParentDirectory(*relative)});
             }
             std::sort(options.begin(), options.end(), [](const AssetOption& a, const AssetOption& b) {
                 return a.value < b.value;
@@ -138,8 +134,8 @@ namespace NS
         bool IsTextureAssetPath(std::string_view path)
         {
             const std::string extension = LowerExtension(path);
-            return extension == ".png" || extension == ".jpg" || extension == ".jpeg" ||
-                   extension == ".bmp" || extension == ".tif" || extension == ".tiff" || extension == ".gif";
+            return extension == ".png" || extension == ".jpg" || extension == ".jpeg" || extension == ".bmp" ||
+                   extension == ".tif" || extension == ".tiff" || extension == ".gif";
         }
 
         bool IsActorFileAssetPath(std::string_view path)
@@ -147,9 +143,34 @@ namespace NS
             return LowerExtension(path) == ".actor";
         }
 
+        bool IsEffectAssetPath(std::string_view path)
+        {
+            const std::string extension = LowerExtension(path);
+            return extension == ".effect" || extension == ".effectset";
+        }
+
+        bool IsEffekseerAssetPath(std::string_view path)
+        {
+            return LowerExtension(path) == ".efkefc";
+        }
+
         std::vector<AssetOption> CollectAssetOptions(AssetKind kind, std::string_view contentRoot)
         {
             std::vector<AssetOption> options;
+            if (kind == AssetKind::Effect || kind == AssetKind::EffectSet)
+            {
+                for (const EffectAssetFile& file : ReadEffectAssetFiles(contentRoot))
+                {
+                    if (file.isSet == (kind == AssetKind::EffectSet))
+                    {
+                        options.push_back(AssetOption{file.id, file.label, file.path});
+                    }
+                }
+                std::sort(options.begin(), options.end(), [](const AssetOption& a, const AssetOption& b) {
+                    return a.label < b.label;
+                });
+                return options;
+            }
             std::span<const std::string_view> builtins;
             if (kind == AssetKind::Mesh)
             {
@@ -162,10 +183,6 @@ namespace NS
 
             const std::string root = OS::FileSystem::Normalize(contentRoot);
             std::string directory = OS::FileSystem::Combine(root, "Assets");
-            if (kind == AssetKind::Effect)
-            {
-                directory = OS::FileSystem::Combine(directory, "Effects");
-            }
             if (kind == AssetKind::Sound)
             {
                 directory = OS::FileSystem::Combine(directory, "Sounds");
@@ -206,9 +223,9 @@ namespace NS
                     }
                     continue;
                 }
-                if (kind == AssetKind::Effect || kind == AssetKind::Sound)
+                if (kind == AssetKind::Sound)
                 {
-                    // エフェクトは Effects、音は Sounds のフォルダからの道を、拡張子を除いて名前にする
+                    // 音は Sounds のフォルダからの道を、拡張子を除いて名前にする
                     const std::optional<std::string> underFolder = OS::FileSystem::RelativeUnder(directory, file);
                     if (!underFolder)
                     {
@@ -231,5 +248,5 @@ namespace NS
             });
             return options;
         }
-    }
-}
+    } // namespace Editor
+} // namespace NS

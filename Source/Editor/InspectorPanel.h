@@ -24,7 +24,7 @@ namespace NS
         class D3DRenderTarget;
         class Skybox;
         struct DrawItem;
-    }
+    } // namespace Gfx
     namespace Editor
     {
         //! 選択物の名前・姿勢・部品の値を編集する。改名の適用は描画後に行う
@@ -37,6 +37,7 @@ namespace NS
             void Render(LevelEditorController& editor) noexcept;
 
         private:
+            char m_effectCloneName[128]{};
             void DrawSceneSettings(LevelEditorController& editor);
             //! 曲の下書きを適用する・戻すボタンを描く。playing の間は押せない
             void DrawSceneMusicButtons(LevelEditorController& editor, bool playing);
@@ -45,7 +46,8 @@ namespace NS
             void DrawMaterialPreview(const Material& material);
             void DrawMeshPreview(const Mesh& mesh);
             void DrawAssetPreview(const Gfx::DrawItem& item);
-            //! actor の元の .actor の名前の束の欄を描き、直し終えた束をその .actor へ書く。.actor が無ければ何も描かない
+            //! actor の元の .actor の名前の束の欄を描き、直し終えた束をその .actor へ書く。.actor
+            //! が無ければ何も描かない
             void DrawHitReactionSets(LevelEditorController& editor, const SceneActor* actor);
             //! actor のセンサーの値の欄を描き、直し終えた値を元の .actor の hitSensors へ書く。値を持つセンサーが無ければ何も描かない
             void DrawHitSensors(LevelEditorController& editor, SceneActor* actor);
@@ -68,15 +70,15 @@ namespace NS
             float m_previewYaw = 0.45f;
             float m_previewPitch = -0.15f;
             float m_previewZoom = 1.0f;
-            char m_nameBuffer[64]{};       // 最上部の名前欄
-            uint32 m_nameId = 0;       // 名前欄が今映している対象。打っていない間は毎回入れ直す
-            uint32 m_nameCommitId = 0; // このフレームに確定した名前の対象、0 なら無し
-            uint32 m_nameEditId = 0;   // 名前を打ち始めた対象。0 なら打っていない
+            char m_nameBuffer[64]{};        // 最上部の名前欄
+            uint32 m_nameId = 0;            // 名前欄が今映している対象。打っていない間は毎回入れ直す
+            uint32 m_nameCommitId = 0;      // このフレームに確定した名前の対象、0 なら無し
+            uint32 m_nameEditId = 0;        // 名前を打ち始めた対象。0 なら打っていない
             char m_derivedNameBuffer[64]{}; // 作る派生の .actor の名前の欄
             bool m_deriveRequested = false; // このフレームに上書きから派生を作るを押した。描き終えてから作る
             uint32 m_actorFileTargetId = 0; // 派生を作る対象のアクター
-            char m_fieldFilter[64]{};      // 欄の検索欄。空でない間は名前に含む欄だけを並べる。選択を変えても残す
-            EditorAppearance m_appearance; // 欄の行の地の色。シーン設定の下で直す
+            char m_fieldFilter[64]{};       // 欄の検索欄。空でない間は名前に含む欄だけを並べる。選択を変えても残す
+            EditorAppearance m_appearance;  // 欄の行の地の色。シーン設定の下で直す
             // 束の欄が直している写し。直し終えるまでは .actor の文書が変わっても読み直さない
             std::string m_hitSetsActorFile;
             nlohmann::json m_hitSetsSource; // 写しを読んだ時の .actor の hitReactions
