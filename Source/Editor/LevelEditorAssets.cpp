@@ -5,15 +5,21 @@
 
 #include "Editor/AssetPicker.h"
 #include "Editor/Undo/ActorSnapshotCommand.h"
+#include "Game/Level/LaunchEffectSettings.h"
+#include "Game/Player/ChargeEffectSettings.h"
+#include "Game/Player/ImpactEffectSettings.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/EffectAsset.h"
+#include "NSlib/CoreObject/Asset/EffectSet.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
+#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -64,8 +70,7 @@ namespace
         for (NS::SceneActor* actor : scene.Actors())
         {
             const nlohmann::json* actorFile = library.Find(actor->ActorFileName());
-            if (actorFile == nullptr ||
-                (actor->ActorFileName() != name && NS::ActorFileBase(*actorFile) != name))
+            if (actorFile == nullptr || (actor->ActorFileName() != name && NS::ActorFileBase(*actorFile) != name))
             {
                 continue;
             }
@@ -84,7 +89,8 @@ namespace
     }
 
     // baseName の .actor から作る、name の派生の .actor の文書。何も書かず、baseName が派生ならその元を指す
-    // name が空・ファイルの名前に使えない字を含む・既にある時と、baseName が読まれていない時は WARN を出して std::nullopt
+    // name が空・ファイルの名前に使えない字を含む・既にある時と、baseName が読まれていない時は WARN を出して
+    // std::nullopt
     std::optional<nlohmann::json> NewDerivedActorFile(std::string_view baseName, std::string_view name)
     {
         NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
@@ -205,8 +211,7 @@ namespace
                 if (!CanApplyPatchOperation(document, operation))
                 {
                     // 間に別の書き換えが同じ所を消した。書かずに今の文書を残す
-                    NS_LOG_WARN(App, ".actor {} の取り消しかやり直しを当てられなかった: {}", m_name,
-                                operation.dump());
+                    NS_LOG_WARN(App, ".actor {} の取り消しかやり直しを当てられなかった: {}", m_name, operation.dump());
                     return;
                 }
                 document = document.patch(nlohmann::json::array({operation}));
@@ -218,6 +223,74 @@ namespace
         std::string m_name;
         nlohmann::json m_redo;
         nlohmann::json m_undo;
+        std::size_t m_bytes = 0;
+    };
+
+    void WriteEffectSet(NS::Scene* scene, const std::string& id, const nlohmann::json& document)
+    {
+        NS::AssetManager& assets = NS::AssetManager::Get();
+        NS::EffectSet* set = assets.LoadEffectSet(id);
+        if (!set->IsValid() || !set->Replace(set->Path(), document))
+        {
+            return;
+        }
+        if (!assets.SaveEffectSet(*set))
+        {
+            NS_LOG_ERROR(App, "演出セット {} を保存できない", id);
+        }
+        if (scene == nullptr)
+        {
+            return;
+        }
+        std::vector<const NS::EffectAsset*> references;
+        for (const std::pair<const std::string, std::unique_ptr<NS::Object>>& section : set->Sections())
+        {
+            for (const NS::ReflectionInfo* info = section.second->GetReflection(); info != nullptr; info = info->base)
+            {
+                for (const NS::FieldDesc& field : std::span{info->fields, info->fieldCount})
+                {
+                    if (field.assetKind != NS::AssetKind::Effect)
+                    {
+                        continue;
+                    }
+                    std::string assetId;
+                    field.get(section.second.get(), &assetId);
+                    references.push_back(assets.LoadEffectAsset(assetId));
+                }
+            }
+        }
+        for (NS::SceneActor* actor : scene->Actors())
+        {
+            NS::Effect* effect = actor->GetEffect();
+            if (effect == nullptr || effect->Definition() != set)
+            {
+                continue;
+            }
+            for (const NS::EffectAsset* asset : references)
+            {
+                effect->Preload(scene->GetEffectScene(), asset);
+            }
+        }
+    }
+
+    class EffectSetCommand final : public NS::Editor::ICommand
+    {
+    public:
+        EffectSetCommand(NS::Scene* scene, std::string id, nlohmann::json before, nlohmann::json after)
+            : m_scene(scene), m_id(std::move(id)), m_before(std::move(before)), m_after(std::move(after))
+        {
+            m_bytes = sizeof(*this) + m_id.size() + m_before.dump().size() + m_after.dump().size();
+        }
+        void Do(NS::Editor::IActorSnapshotApplier&) noexcept override { Apply(m_after); }
+        void Undo(NS::Editor::IActorSnapshotApplier&) noexcept override { Apply(m_before); }
+        [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return m_bytes; }
+
+    private:
+        void Apply(const nlohmann::json& document) { WriteEffectSet(m_scene, m_id, document); }
+        NS::Scene* m_scene;
+        std::string m_id;
+        nlohmann::json m_before;
+        nlohmann::json m_after;
         std::size_t m_bytes = 0;
     };
 
@@ -239,11 +312,40 @@ namespace
                 return NS::AssetManager::Get().LoadTexture(*resolved);
             }
         }
+        if (NS::Editor::IsEffectAssetPath(path))
+        {
+            NS::Object* asset = NS::AssetManager::Get().LoadEffectFile(path);
+            if (NS::EffectSet* set = NS::Cast<NS::EffectSet>(asset); set != nullptr && set->IsValid())
+            {
+                const nlohmann::json document = set->Document();
+                if (document["settings"].contains(GL::Player::ChargeEffectSettings::StaticReflection()->typeName))
+                {
+                    set->Settings<GL::Player::ChargeEffectSettings>();
+                }
+                if (document["settings"].contains(GL::Player::ImpactEffectSettings::StaticReflection()->typeName))
+                {
+                    set->Settings<GL::Player::ImpactEffectSettings>();
+                }
+                if (document["settings"].contains(GL::Level::LaunchEffectSettings::StaticReflection()->typeName))
+                {
+                    set->Settings<GL::Level::LaunchEffectSettings>();
+                }
+            }
+            return asset;
+        }
         return nullptr;
     }
 
     [[nodiscard]] bool IsReadable(const NS::Object& asset)
     {
+        if (const NS::EffectSet* set = NS::Cast<NS::EffectSet>(&asset))
+        {
+            return set->IsValid();
+        }
+        if (const NS::EffectAsset* effect = NS::Cast<NS::EffectAsset>(&asset))
+        {
+            return effect->IsValid();
+        }
         if (const NS::Material* material = NS::Cast<NS::Material>(&asset))
         {
             return !material->IsEmpty();
@@ -280,7 +382,8 @@ void LevelEditorController::MirrorPlayEditToBaseline(const NS::SceneActor* actor
     {
         return;
     }
-    // .actor へ書く欄はプレイを始めた時の JSON が持たない。写すと編集へ戻る時にシーンに置いたアクターの値として捨てられる
+    // .actor へ書く欄はプレイを始めた時の JSON
+    // が持たない。写すと編集へ戻る時にシーンに置いたアクターの値として捨てられる
     const NS::FieldDesc* field = NS::FindField(part->GetReflection(), fieldName);
     if (field == nullptr || NS::FieldDestinationOf(actor, *field) != NS::FieldDestination::Scene)
     {
@@ -529,8 +632,8 @@ bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::st
         return false;
     }
     NS::SetActorJsonFile(after, name);
-    m_editor.Undo().Push(std::make_unique<NS::Editor::ActorSnapshotCommand>(actorId, std::move(before), std::move(after)),
-                         m_applier);
+    m_editor.Undo().Push(
+        std::make_unique<NS::Editor::ActorSnapshotCommand>(actorId, std::move(before), std::move(after)), m_applier);
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
     return true;
@@ -601,8 +704,8 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     std::optional<nlohmann::json> after = m_applier.CaptureActor(m_selectedActorId);
     if (before && after && *before != *after)
     {
-        m_editor.Undo().Record(std::make_unique<NS::Editor::ActorSnapshotCommand>(
-            m_selectedActorId, std::move(before), std::move(after)));
+        m_editor.Undo().Record(
+            std::make_unique<NS::Editor::ActorSnapshotCommand>(m_selectedActorId, std::move(before), std::move(after)));
     }
     return true;
 }
@@ -686,7 +789,19 @@ NS::SceneActor* LevelEditorController::SelectedActorFile()
     return m_actorFileDraft.get();
 }
 
-void LevelEditorController::MarkAssetEdited() noexcept { m_assetEdited = true; }
+void LevelEditorController::MarkAssetEdited() noexcept
+{
+    m_assetEdited = true;
+}
+
+void LevelEditorController::MarkEffectSetEdited(const nlohmann::json& before)
+{
+    if (!m_assetEdited)
+    {
+        m_effectSetEditBefore = before;
+    }
+    m_assetEdited = true;
+}
 
 void LevelEditorController::CommitAssetEdit()
 {
@@ -702,6 +817,18 @@ void LevelEditorController::CommitAssetEdit()
         // 直した 1 体は書いた文書と同じ値だが、作った時の文書と比べると取り消しで元の文書へ戻った事を見落とす。
         // 次に引いた時に今の文書から作り直させる
         m_actorFileDraftSource = nlohmann::json{};
+        return;
+    }
+    if (NS::EffectSet* set = NS::Cast<NS::EffectSet>(SelectedAsset()))
+    {
+        const nlohmann::json after = set->Document();
+        if (m_effectSetEditBefore.is_object() && m_effectSetEditBefore != after)
+        {
+            m_editor.Undo().Record(
+                std::make_unique<EffectSetCommand>(m_scene, set->Id(), m_effectSetEditBefore, after));
+        }
+        m_effectSetEditBefore = nlohmann::json{};
+        WriteEffectSet(m_scene, set->Id(), after);
         return;
     }
     NS::Material* material = NS::Cast<NS::Material>(SelectedAsset());
@@ -734,7 +861,8 @@ namespace NS
             const std::optional<std::string> text = assets.MakeMaterialFileJson(material);
             if (!text)
             {
-                NS_LOG_WARN(App, "マテリアル {} は .mat から読んだ物でないか、書けない値を持つので書かない", material.Path());
+                NS_LOG_WARN(
+                    App, "マテリアル {} は .mat から読んだ物でないか、書けない値を持つので書かない", material.Path());
                 return false;
             }
             const std::span<const std::byte> bytes = std::as_bytes(std::span<const char>{text->data(), text->size()});

@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Game/Level/LaunchEffectSettings.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
 #include "Game/Level/PropFlight.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/Reflection/EffectName.h"
 
 #include "NSlib/Core/Types.h"
 #include <vector>
@@ -57,31 +58,18 @@ namespace GL
             //! 落ちた所の粉の大きさ (m)
             [[nodiscard]] float LandDustScale() const noexcept { return m_landDustScale; }
 
-            NS_REFLECT_BEGIN(LaunchEffects, NS::Object)
-            NS_FIELD(m_landDustLife, "着地の粉の寿命フレーム")
-            NS_FIELD(m_dustRingLift, "着地の粉を浮かせる高さ")
-            NS_FIELD(m_launchTrailAsset, "飛び出しの尾の資産")
-            NS_FIELD(m_launchLandDustAsset, "着地の粉の資産")
-            NS_FIELD(m_landDustAssetRadius, "着地の粉の資産半径")
-            NS_FIELD(m_trailFramesBase, "飛び出しの尾が残るフレーム数の基準")
-            NS_FIELD(m_trailFramesPerLaunch, "飛び出しの尾が残るフレーム数の飛ばしの比あたり")
-            NS_FIELD(m_landDustBase, "着地の粉の大きさの基準")
-            NS_FIELD(m_landDustPerRootMass, "着地の粉の大きさの質量の平方根あたり")
-            NS_FIELD(m_landDustPerPower, "着地の粉の大きさの威力あたりの伸び")
-            NS_REFLECT_END()
+            void Configure(const LaunchEffectSettings* settings) noexcept
+            {
+                NS_ASSERT(Game, settings != nullptr, "演出の設定が空");
+                m_settings = settings;
+            }
+            const LaunchEffectSettings& Settings() const noexcept { return *m_settings; }
+
+            NS_REFLECT_NONE(LaunchEffects, NS::Object)
 
         private:
-            NS::EffectName m_launchTrailAsset{"launch.trail"};
-            NS::EffectName m_launchLandDustAsset{"launch.landDust"};
-            float m_landDustAssetRadius = 1.2f;
-            int m_landDustLife = 24;
-            //! 床の法線の向きへ浮かせる。単位はメートル
-            float m_dustRingLift = 0.3f;
-            int m_trailFramesBase = 8;
-            float m_trailFramesPerLaunch = 4.0f;
-            float m_landDustBase = 0.8f;
-            float m_landDustPerRootMass = 0.4f;
-            float m_landDustPerPower = 0.5f;
+            inline static const LaunchEffectSettings m_defaultSettings{};
+            const LaunchEffectSettings* m_settings = &m_defaultSettings;
             // 尾を消し、床に落ちていればその場へ粉を出す
             void EndTrail(const NS::IGetEffect* user);
 

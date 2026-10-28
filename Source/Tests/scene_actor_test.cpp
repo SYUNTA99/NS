@@ -1,9 +1,16 @@
 #include "Editor/EditorActors.h"
+#include "Editor/LevelEditorController.h"
 #include "Game/Level/DeathZoneActor.h"
+#include "Game/Level/LaunchEffectSettings.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/StringUtils.h"
+#include "NSlib/Core/Windows/Window.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/EffectAsset.h"
+#include "NSlib/CoreObject/Asset/EffectSet.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -17,9 +24,6 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/EffectScene.h"
-#include "NSlib/Core/Windows/Filesystem.h"
-#include "NSlib/Core/Windows/StringUtils.h"
-#include "NSlib/Core/Windows/Window.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
 
@@ -154,7 +158,8 @@ TEST(SceneJson, SaveThatCannotFinishLeavesTheFileAsItWas)
 {
     using NS::OS::FileSystem;
     const std::string directory = FileSystem::Combine(
-        FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "build"), "TestSceneFiles"), "SaveKeepsOldFile");
+        FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "build"), "TestSceneFiles"),
+        "SaveKeepsOldFile");
     ASSERT_TRUE(FileSystem::CreateDirectories(directory));
     const std::string path = FileSystem::Combine(directory, "level.scene");
 
@@ -184,9 +189,10 @@ TEST(SceneJson, SaveThatCannotFinishLeavesTheFileAsItWas)
 TEST(SceneActor, EnvironmentRoundTripsThroughFileAndScene)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    NS::WriteSceneEnvironment(
-        doc,
-        NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt", .music = NS::SoundName{"bgm_course"}, .musicVolume = 0.3f});
+    NS::WriteSceneEnvironment(doc,
+                              NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt",
+                                                   .music = NS::SoundName{"bgm_course"},
+                                                   .musicVolume = 0.3f});
 
     const std::string text = NS::SerializeSceneToJson(doc);
     nlohmann::json decoded;
@@ -586,14 +592,19 @@ TEST(SceneActor, SnapshotNamingAnotherActorFileReloadsSetsAndActions)
 
 TEST(SceneActor, SnapshotReloadsEffectPreload)
 {
-    // エフェクトの名前の欄が替わった .actor を当てると、替えた先の名前の絵を読む。読まない名前は Play で出ない
     NS::OS::Window window(NS::OS::WindowDesc{.title = "控えのエフェクトの試し", .size = {32, 32}, .visible = false});
     NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
     ASSERT_TRUE(device.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     const NS::AssetManagerScope useAssets{assets};
     nlohmann::json sparkFile = CodeValuesActorFile("PropActor");
-    NS::ActorJsonClassObjs(sparkFile)["LaunchEffects"]["飛び出しの尾の資産"] = "impact.core";
+    const char* definitionId = "dddddddddddddddddddddddddddddddd";
+    NS::EffectSet* definition = assets.LoadEffectSet(definitionId);
+    nlohmann::json settings = assets.LoadEffectSet("7f2be7620b964c93a5f5315101ab9b7e")->Document();
+    settings["id"] = definitionId;
+    settings["settings"]["LaunchEffectSettings"]["飛び出しの尾の資産"] = "6e4f2fccb9df5a339885b53d42fafd45";
+    ASSERT_TRUE(definition->Replace("Assets/Effects/test.effectset", settings));
+    NS::ActorJsonClassObjs(sparkFile)["Effect"]["演出セット"] = definitionId;
     const ScopedActorFile spark{"SparkRock", std::move(sparkFile)};
     nlohmann::json doc = NS::MakeSceneJson();
     AddActorJson(doc, "PropActor", 1);
@@ -603,12 +614,13 @@ TEST(SceneActor, SnapshotReloadsEffectPreload)
     scene.ResetFromJson(doc);
     NS::Gfx::EffectScene* effects = scene.GetEffectScene();
     ASSERT_NE(effects, nullptr);
-    ASSERT_FALSE(effects->Play("impact.core").IsValid());
+    const NS::EffectAsset* core = assets.LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");
+    ASSERT_FALSE(effects->Play(core->Resource(), {}).IsValid());
 
     nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
     NS::SetActorJsonFile(snapshot, "SparkRock");
     ASSERT_NE(ApplySnapshot(scene, snapshot), nullptr);
-    EXPECT_TRUE(effects->Play("impact.core").IsValid());
+    EXPECT_TRUE(effects->Play(core->Resource(), {}).IsValid());
 }
 
 TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
@@ -697,7 +709,8 @@ TEST(SceneActor, ActorMadeFromATypeAnswersTheActorFileOfItsClass)
 // 欄の表示名と部品の登録が保存の鍵なので、鍵が変わると読み直した値が静かに既定へ戻る
 TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
 {
-    // Assets/Actors の .actor を 1 本ずつ、シーンで上書きできる項目を全部書いて置く。読んで書き戻すと、置いた鍵が全部残る
+    // Assets/Actors の .actor を 1
+    // 本ずつ、シーンで上書きできる項目を全部書いて置く。読んで書き戻すと、置いた鍵が全部残る
     NS::ActorFileLibrary::Get().Reload();
     nlohmann::json doc = NS::MakeSceneJson();
     NS::uint32 id = 1;
@@ -748,4 +761,47 @@ TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
         }
     }
     EXPECT_GT(checked, 0);
+}
+
+TEST(SceneActor, EffectSetEditPreloadsChangedReferencesAndUndoRestoresSettings)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "演出の編集の反映", .size = {32, 32}, .visible = false});
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
+    NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
+    const NS::AssetManagerScope useAssets{assets};
+    const char* definitionId = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    NS::EffectSet* definition = assets.LoadEffectSet(definitionId);
+    nlohmann::json settings = assets.LoadEffectSet("7f2be7620b964c93a5f5315101ab9b7e")->Document();
+    settings["id"] = definitionId;
+    ASSERT_TRUE(definition->Replace("Assets/Effects/test-editor.effectset", settings));
+    nlohmann::json actorFile = CodeValuesActorFile("PropActor");
+    NS::ActorJsonClassObjs(actorFile)["Effect"]["演出セット"] = definitionId;
+    const ScopedActorFile actorDefinition{"EffectEditorRock", std::move(actorFile)};
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddActorJson(doc, "EffectEditorRock", 1);
+    NS::Scene scene;
+    scene.SetEffectRoot("Assets/Effects");
+    scene.SetDevice(&device);
+    scene.ResetFromJson(doc);
+    NS::Gfx::EffectScene* effects = scene.GetEffectScene();
+    ASSERT_NE(effects, nullptr);
+    const NS::EffectAsset* core = assets.LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");
+    ASSERT_FALSE(effects->Play(core->Resource(), {}).IsValid());
+    LevelEditorController controller{&scene};
+    controller.SelectAsset(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), definition->Path()));
+    ASSERT_EQ(controller.SelectedAsset(), definition);
+    const nlohmann::json before = definition->Document();
+    NS::Object* section = definition->Sections().at("LaunchEffectSettings").get();
+    ASSERT_EQ(NS::ApplyJsonFields(section, {{"飛び出しの尾の資産", core->Id()}}), 0u);
+    controller.MarkEffectSetEdited(before);
+    controller.CommitAssetEdit();
+    EXPECT_TRUE(effects->Play(core->Resource(), {}).IsValid());
+    ASSERT_TRUE(controller.Editor().PerformUndo());
+    EXPECT_EQ(definition->Document(), before);
+    ASSERT_TRUE(controller.Editor().PerformRedo());
+    EXPECT_EQ(definition->Settings<GL::Level::LaunchEffectSettings>().m_launchTrailAsset, core);
+    EXPECT_TRUE(effects->Play(core->Resource(), {}).IsValid());
+    EXPECT_TRUE(NS::OS::FileSystem::RemoveFile(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), definition->Path())));
 }

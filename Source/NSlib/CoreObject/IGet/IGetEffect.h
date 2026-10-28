@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/Reflection/EffectName.h"
+#include "NSlib/CoreObject/Asset/EffectAsset.h"
 #include "NSlib/Gfx/Render/EffectTypes.h"
 
 #include "NSlib/Core/Types.h"
@@ -30,16 +30,14 @@ namespace NS
         ~IGetEffect() = default;
     };
 
-    //! @brief 出す名前の絵を先に読む。Effect が無ければ何もしない
+    //! @brief 出す素材を先に読む。Effect が無ければ何もしない
     //! @details 持ち主がシーンに入った後の OnStart で呼ぶ
-    void PreloadEffects(const IGetEffect* user, std::initializer_list<EffectName> names);
+    void PreloadEffects(const IGetEffect* user, std::initializer_list<const EffectAsset*> assets);
 
     //! エフェクトを 1 つ出す
-    //! @param[in] name PreloadEffects に渡した名前
+    //! @param[in] asset PreloadEffects に渡した素材
     //! @return 記録の番号。Effect が無い時は 0
-    [[nodiscard]] uint32 PlayEffect(const IGetEffect* user,
-                                        const EffectName& name,
-                                        const Gfx::EffectPlayDesc& desc);
+    [[nodiscard]] uint32 PlayEffect(const IGetEffect* user, const EffectAsset* asset, const Gfx::EffectPlayDesc& desc);
 
     //! 子も含めて消す。無い番号と Effect が無い時は何もしない
     void StopEffect(const IGetEffect* user, uint32 id) noexcept;

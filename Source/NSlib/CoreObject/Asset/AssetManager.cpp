@@ -5,7 +5,10 @@
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/Asset/AnimClip.h"
+#include "NSlib/CoreObject/Asset/EffectAsset.h"
+#include "NSlib/CoreObject/Asset/EffectSet.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Shader.h"
@@ -21,7 +24,6 @@
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Phys/MeshShape.h"
-#include "NSlib/Core/Windows/Filesystem.h"
 
 #include "NSlib/Core/Types.h"
 #include <algorithm>
@@ -98,7 +100,9 @@ namespace NS
 
         // create は同じ表へ別の鍵を足してよい
         template <class T, class Create>
-        [[nodiscard]] T& FindOrAdd(std::map<std::string, std::unique_ptr<T>>& table, const std::string& key, Create create)
+        [[nodiscard]] T& FindOrAdd(std::map<std::string, std::unique_ptr<T>>& table,
+                                   const std::string& key,
+                                   Create create)
         {
             typename std::map<std::string, std::unique_ptr<T>>::iterator it = table.find(key);
             if (it == table.end())
@@ -138,8 +142,8 @@ namespace NS
                     continue;
                 }
 
-                triangles.push_back(Phys::Triangle{
-                    geom.vertices[a].position, geom.vertices[b].position, geom.vertices[c].position});
+                triangles.push_back(
+                    Phys::Triangle{geom.vertices[a].position, geom.vertices[b].position, geom.vertices[c].position});
             }
             return triangles;
         }
@@ -359,8 +363,7 @@ namespace NS
     namespace
     {
         // 読み直すと同じ浮動小数点数になる一番短い綴り。整数の値は今の .mat と同じく .0 を付ける
-        template <typename T>
-        [[nodiscard]] std::string NumberJson(T value)
+        template <typename T> [[nodiscard]] std::string NumberJson(T value)
         {
             std::string text = std::format("{}", value);
             if (text.find_first_of(".e") == std::string::npos)
@@ -669,8 +672,7 @@ namespace NS
     {
         const std::string key = OS::FileSystem::Normalize(path);
         // 空の項目は読み込み失敗の記録。get() が nullptr を返し、再読み込みを避ける
-        if (const std::map<std::string, std::unique_ptr<AnimSource>>::iterator it =
-                m_animationSources.find(key);
+        if (const std::map<std::string, std::unique_ptr<AnimSource>>::iterator it = m_animationSources.find(key);
             it != m_animationSources.end())
         {
             return it->second.get();
@@ -758,7 +760,10 @@ namespace NS
         return shape->slopeAngleDegrees;
     }
 
-    std::string_view AssetManager::DefaultMaterialPath() noexcept { return "Assets/Materials/default.mat"; }
+    std::string_view AssetManager::DefaultMaterialPath() noexcept
+    {
+        return "Assets/Materials/default.mat";
+    }
 
     Material* AssetManager::LoadMaterial(std::string_view name)
     {
@@ -914,6 +919,10 @@ namespace NS
 
     void AssetManager::Clear() noexcept
     {
+        m_unsavedEffectSets.clear();
+        m_effectSets.clear();
+        m_effectAssets.clear();
+        m_effectCatalogLoaded = false;
         // 音は装置の声を持つので、装置を壊す Application より先にここで捨てる
         m_soundClips.clear();
         // material は shader / texture を参照するので先に解放する

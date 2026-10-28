@@ -9,17 +9,18 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/FileSystem.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/Core/Windows/Clock.h"
-#include "NSlib/Core/Windows/FileSystem.h"
+#include "TestEffectSettings.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -206,7 +207,7 @@ TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem
                                  {"溜めて当てた反動の回転数", 3.0f},
                                  {"通常突進で当てた反動の回転数", 1.0f}};
     ExpectClassObjFields(&player.Appearance(), appearance);
-    ExpectClassObjFields(&player.ChargeVisuals(), charge);
+    ExpectClassObjFields(&player.ChargeVisuals().Settings(), charge);
     ExpectClassObjFields(&player.Params(), spin);
     ExpectNotInParams(&player, appearance);
     ExpectNotInParams(&player, charge);
@@ -218,7 +219,9 @@ TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
     PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
-    EXPECT_EQ(NS::ApplyJsonFields(&player.ChargeVisuals(),
+    TestEffectSettings<GL::Player::ChargeEffects> chargeSettings(&player.ChargeVisuals());
+
+    EXPECT_EQ(NS::ApplyJsonFields(chargeSettings.Get(),
                                   {{"通常突進の弾けの大きさ", 0.5f}, {"溜めきりで足す弾けの大きさ", 0.4f}}),
               0u);
     EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(0.5f), 0.7f);
@@ -286,7 +289,7 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortyTwoDisplayNamesAndValues)
                                      {"着地の粉の半径の基準", 1.2f},
                                      {"着地の粉の半径の落ちる速さあたり", 0.04f}};
     // 当たりの絵の大きさと量は絵を出す ImpactEffects が持ち、遊びの欄と並ばない
-    ExpectClassObjFields(&player.ImpactVisuals(), expected);
+    ExpectClassObjFields(&player.ImpactVisuals().Settings(), expected);
     ExpectNotInParams(&player, expected);
     // 惜しいの段は消した。惜しいだけの演出の欄が戻ると、段の無い当たりの調整値が保存に載る
     // 当たりの返りの時間と形はタイムラインへ移した。欄が戻ると、同じ返りの値の出所が 2 つになる
@@ -326,7 +329,9 @@ TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)
     PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
-    EXPECT_EQ(NS::ApplyJsonFields(&player.ImpactVisuals(),
+    TestEffectSettings<GL::Player::ImpactEffects> impactSettings(&player.ImpactVisuals());
+
+    EXPECT_EQ(NS::ApplyJsonFields(impactSettings.Get(),
                                   {{"核の直径の基準", 0.4f},
                                    {"核の直径の威力あたり", 0.3f},
                                    {"核の直径の上限", 2.0f},
@@ -357,8 +362,10 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
+    TestEffectSettings<GL::Player::ImpactEffects> impactSettings(&player.ImpactVisuals());
+
     ASSERT_EQ(NS::ApplyJsonFields(
-                  &player.ImpactVisuals(),
+                  impactSettings.Get(),
                   {{"弾かれ線の本数", 9}, {"大きな外れの弾かれ線の本数", 4}, {"大きな外れの火花の大きさ", 2.5f}}),
               0u);
     GL::Level::ImpactRecord impact{};

@@ -6,28 +6,34 @@
 
 namespace NS
 {
+    class EffectAsset;
+    class EffectSet;
     class AnimClip;
     class Material;
     class Mesh;
     class SkinnedModel;
 
-    //! 素材の姿を指す欄の型。保存とインスペクタは、指す素材の道の文字列を扱う
+    //! 素材の姿を指す欄の型。保存は素材の道を使い、エフェクトは永続的な識別子を使う
     //! 素材の欄にできる型は、ここに並ぶ型だけ。並んでいない型の欄は FieldTypeOf の static_assert で落ちる
     template <class T> struct IsAssetPointer : std::false_type
-    {
-    };
+    {};
     template <> struct IsAssetPointer<Mesh*> : std::true_type
-    {
-    };
+    {};
     template <> struct IsAssetPointer<Material*> : std::true_type
-    {
-    };
+    {};
     template <> struct IsAssetPointer<SkinnedModel*> : std::true_type
-    {
-    };
+    {};
     template <> struct IsAssetPointer<AnimClip*> : std::true_type
-    {
-    };
+    {};
+
+    template <> struct IsAssetPointer<EffectAsset*> : std::true_type
+    {};
+    template <> struct IsAssetPointer<EffectSet*> : std::true_type
+    {};
+    void LoadAssetField(EffectAsset*& field, std::string_view id);
+    void LoadAssetField(EffectSet*& field, std::string_view id);
+    [[nodiscard]] const std::string& AssetFieldName(const EffectAsset* field) noexcept;
+    [[nodiscard]] const std::string& AssetFieldName(const EffectSet* field) noexcept;
 
     //! name の素材を AssetManager::Get() の型ごとの口から引き、field に入れる
     //! 読めない名前でも、その名前を持つ中身の空の素材が入るので、field は nullptr にならない

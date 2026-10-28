@@ -264,6 +264,7 @@ public:
     [[nodiscard]] NS::Object* SelectedAsset();
     //! Inspector で選んだ素材の値が変わったフレームに呼ぶ
     void MarkAssetEdited() noexcept;
+    void MarkEffectSetEdited(const nlohmann::json& before);
     //! Inspector で選んだ .actor の 1 体の欄の値が変わったフレームに呼ぶ。row はその 1 体のクラスの表の行
     //! NS_GLOBAL_FIELD の欄も .actor の値を直す。参照の欄は .actor が持たないので覚えない
     void NoteActorFileFieldEdit(const NS::ClassObjInfo& row, std::string_view fieldName);
@@ -438,6 +439,7 @@ private:
     // 素材の窓で選んだ素材の ContentRoot からの道。アクターの選択と排他。
     // 姿のポインタを持たないのは、AssetManager::Clear の後に古いポインタを残さないため
     std::string m_selectedAssetPath;
+    nlohmann::json m_effectSetEditBefore;
     bool m_assetEdited = false; // 選んだ素材の値が変わり、まだ確定していない
 
     bool m_editShortcutsBlocked = false;

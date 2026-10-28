@@ -5,13 +5,14 @@
 #include "Game/Level/MapObjParams.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/Core/Windows/FileSystem.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "NSlib/Core/Windows/FileSystem.h"
 #include "TestActorFile.h"
+#include "TestEffectSettings.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -94,8 +95,8 @@ TEST(MapObjParams, ShippedScenesKeepIndividualMassAndToughness)
             float mass;
             float toughness;
         };
-        for (const Expected& expected : {Expected{35, 0.5f, 0.5f}, Expected{41, 1.0f, 1.0f},
-                                         Expected{47, 2.0f, 2.0f}, Expected{53, 8.0f, 5.0f}})
+        for (const Expected& expected :
+             {Expected{35, 0.5f, 0.5f}, Expected{41, 1.0f, 1.0f}, Expected{47, 2.0f, 2.0f}, Expected{53, 8.0f, 5.0f}})
         {
             SCOPED_TRACE(expected.id);
             const GL::Level::PropActor* prop =
@@ -198,7 +199,7 @@ TEST(MapObjParams, TackleAnswerCarriesTheLaunchShape)
 TEST(MapObjParams, LaunchSizeDefaultsBelongToLaunchEffects)
 {
     GL::Level::LaunchEffects effects;
-    const nlohmann::json fields = NS::SerializeClassObjFields(&effects);
+    const nlohmann::json fields = NS::SerializeClassObjFields(&effects.Settings());
     const nlohmann::json expected = {{"飛び出しの尾が残るフレーム数の基準", 8},
                                      {"飛び出しの尾が残るフレーム数の飛ばしの比あたり", 4.0f},
                                      {"着地の粉の大きさの基準", 0.8f},
@@ -230,7 +231,9 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     GL::Level::MapObjParams* params = &placed->Params();
     GL::Level::LaunchEffects* effects = &placed->Effects();
     EXPECT_EQ(NS::ApplyJsonFields(params, {{"質量", 4.0f}}), 0u);
-    EXPECT_EQ(NS::ApplyJsonFields(effects,
+    TestEffectSettings<GL::Level::LaunchEffects> effectSettings(effects);
+
+    EXPECT_EQ(NS::ApplyJsonFields(effectSettings.Get(),
                                   {{"飛び出しの尾が残るフレーム数の基準", 13},
                                    {"飛び出しの尾が残るフレーム数の飛ばしの比あたり", 7.0f},
                                    {"着地の粉の大きさの基準", 1.0f},
@@ -248,8 +251,7 @@ TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
     const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
     ASSERT_NE(prop, nullptr);
     ASSERT_NE(sphere, nullptr);
-    effects->BeginTrail(
-        prop, trail,prop->Flight(), params, sphere->WorldSphere(prop->Root().WorldMatrix()));
+    effects->BeginTrail(prop, trail, prop->Flight(), params, sphere->WorldSphere(prop->Root().WorldMatrix()));
     EXPECT_EQ(effects->TrailFrames(), 20);
     EXPECT_FLOAT_EQ(effects->LandDustScale(), 2.5f);
 }

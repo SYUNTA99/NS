@@ -1,3 +1,4 @@
+#include "NSlib/CoreObject/Asset/EffectAsset.h"
 #include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -17,13 +18,15 @@ namespace
 
 TEST(IGetEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
 {
+    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::Scene scene;
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
     ASSERT_NE(actor.GetEffect(), nullptr);
 
-    const NS::uint32 id = NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
     EXPECT_EQ(actor.GetEffect()->Records().size(), 1u);
@@ -34,11 +37,13 @@ TEST(IGetEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
 
 TEST(IGetEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 {
+    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::Scene scene;
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
-    const NS::uint32 id = NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
     actor.Update();
     ASSERT_EQ(NS::GetEffectStep(&actor), 1);
 
@@ -58,11 +63,13 @@ TEST(IGetEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 
 TEST(IGetEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 {
+    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::Scene scene;
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
-    const NS::uint32 id = NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
     NS::StopEffectAfter(&actor, id, 2);
 
     actor.Update();
@@ -73,11 +80,13 @@ TEST(IGetEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 
 TEST(IGetEffectTest, ActorWithoutTheSlotDoesNothing)
 {
+    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::SceneActor actor;
     ASSERT_EQ(actor.GetEffect(), nullptr);
 
-    NS::PreloadEffects(&actor, {NS::EffectName{"test.spark"}});
-    EXPECT_EQ(NS::PlayEffect(&actor, NS::EffectName{"test.spark"}, NS::Gfx::EffectPlayDesc{}), 0u);
+    NS::PreloadEffects(&actor, {&asset});
+    EXPECT_EQ(NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{}), 0u);
     NS::StopEffect(&actor, 1);
     NS::StopEffectRoot(&actor, 1);
     NS::StopEffectAfter(&actor, 1, 1);

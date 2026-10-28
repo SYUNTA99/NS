@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Game/Player/ChargeEffectSettings.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/Reflection/EffectName.h"
-#include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/Gfx/Render/EffectTypes.h"
 
 #include "NSlib/Core/Types.h"
@@ -69,41 +70,18 @@ namespace GL
             //! +Z を direction の水平成分へ向ける。水平の向きが無効なら無回転
             [[nodiscard]] static NS::Quaternion YawToward(const NS::Vector3& direction) noexcept;
 
-            NS_REFLECT_BEGIN(ChargeEffects, NS::Object)
-            NS_GROUP("放しの弾け")
-            NS_FIELD(m_tapBurstScale, "通常突進の弾けの大きさ")
-            NS_FIELD(m_fullBurstScaleGain, "溜めきりで足す弾けの大きさ")
-            NS_GROUP("紫の火花")
-            NS_FIELD(m_overchargeSparkCountMin, "紫の火花の数の始め")
-            NS_FIELD(m_overchargeSparkCountMax, "紫の火花の数の終わり")
-            NS_FIELD(m_overchargeSparkSpeedMin, "紫の火花の速さの始め")
-            NS_FIELD(m_overchargeSparkSpeedMax, "紫の火花の速さの終わり")
-            NS_GROUP("時間と向き")
-            NS_FIELD(m_curlSteps, "丸まりの殻の寿命フレーム")
-            NS_FIELD(m_fullFlashSteps, "溜めきりの閃きの寿命フレーム")
-            NS_FIELD(m_burstSteps, "放しの弾けの寿命フレーム")
-            NS_FIELD(m_burstClearFrames, "放しの弾けを消す接触前フレーム")
-            NS_FIELD(m_trailFadeSteps, "突進の尾の薄れるフレーム")
-            NS_FIELD(m_sideLift, "紫の火花の上向きの重み")
-            NS_FIELD(m_curlAsset, "丸まりの殻の資産")
-            NS_FIELD(m_spinAsset, "回転の弧の資産")
-            NS_FIELD(m_grindAsset, "溜めの擦れの資産")
-            NS_FIELD(m_gatherAsset, "溜まる光の資産")
-            NS_FIELD(m_fullAsset, "溜めきりの資産")
-            NS_FIELD(m_burstAsset, "放しの弾けの資産")
-            NS_FIELD(m_trailAsset, "突進の尾の資産")
-            NS_FIELD(m_swaySparksAsset, "紫の火花の資産")
-            NS_REFLECT_END()
+            void Configure(const ChargeEffectSettings* settings) noexcept
+            {
+                NS_ASSERT(Game, settings != nullptr, "演出の設定が空");
+                m_settings = settings;
+            }
+            const ChargeEffectSettings& Settings() const noexcept { return *m_settings; }
+
+            NS_REFLECT_NONE(ChargeEffects, NS::Object)
 
         private:
-            NS::EffectName m_curlAsset{"charge.curl"};
-            NS::EffectName m_spinAsset{"charge.spin"};
-            NS::EffectName m_grindAsset{"charge.grind"};
-            NS::EffectName m_gatherAsset{"charge.gather"};
-            NS::EffectName m_fullAsset{"charge.full"};
-            NS::EffectName m_burstAsset{"release.burst"};
-            NS::EffectName m_trailAsset{"slam.trail"};
-            NS::EffectName m_swaySparksAsset{"impact.sparks"};
+            inline static const ChargeEffectSettings m_defaultSettings{};
+            const ChargeEffectSettings* m_settings = &m_defaultSettings;
             int m_chargeInput = 0;
             int m_burstScaleInput = 1;
             int m_fullFramesInput = 1;
@@ -112,47 +90,37 @@ namespace GL
                                              float charge01) const noexcept;
             void ForgetEndedEffects(const NS::IGetEffect* user) noexcept;
             void StartPress(const NS::IGetEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection);
-            void StartCharging(const NS::IGetEffect* user, const NS::Vector3& center, const NS::Vector3& aimDirection, float charge01);
+            void StartCharging(const NS::IGetEffect* user,
+                               const NS::Vector3& center,
+                               const NS::Vector3& aimDirection,
+                               float charge01);
             void StartFullFlash(const NS::IGetEffect* user, const NS::Vector3& center);
             // 紫の揺れが端へ来たフレームに、その側へ火花を散らす
             void PlaySwaySparks(const NS::IGetEffect* user, const NS::Vector3& center, const ChargeStatus& charge);
             // 押している間の層を玉へ付いていかせ、溜め量を渡す
-            void FollowHeldEffects(const NS::IGetEffect* user, const NS::Vector3& center,
+            void FollowHeldEffects(const NS::IGetEffect* user,
+                                   const NS::Vector3& center,
                                    const NS::Vector3& aimDirection,
                                    float charge01,
                                    float spinDegreesThisFrame) noexcept;
             void ClearHeldEffects(const NS::IGetEffect* user) noexcept;
             void StartRelease(const NS::IGetEffect* user, const NS::Vector3& center, const BodySlamStatus& slam);
-            void UpdateTrail(const NS::IGetEffect* user, const NS::Vector3& center,
+            void UpdateTrail(const NS::IGetEffect* user,
+                             const NS::Vector3& center,
                              const BodySlamStatus& slam,
                              bool slamming,
                              const GL::Level::ImpactAnswer& impact) noexcept;
             void StopTrailRoot(const NS::IGetEffect* user) noexcept;
             // 層を今の位置・向き・大きさへ置き直し、向きを記録に書く。描画の無い世界では記録だけ書く
-            void Place(const NS::IGetEffect* user, NS::uint32 id, const NS::Vector3& position, const NS::Quaternion& rotation) noexcept;
+            void Place(const NS::IGetEffect* user,
+                       NS::uint32 id,
+                       const NS::Vector3& position,
+                       const NS::Quaternion& rotation) noexcept;
             void SetCharge(const NS::IGetEffect* user, NS::uint32 id, float charge01) const noexcept;
             void SetInput(const NS::IGetEffect* user, NS::uint32 id, int index, float value) const noexcept;
             void StopAndClear(const NS::IGetEffect* user, NS::uint32& id) noexcept;
             // 跳ね返りか破壊が起きたか、触れる見込みが m_burstClearFrames 以内か
             [[nodiscard]] bool IsContactNear(const GL::Level::ImpactAnswer& impact) const noexcept;
-
-            //! 演出の寿命と接触前に消す猶予。単位は固定フレーム
-            int m_curlSteps = 6;
-            int m_fullFlashSteps = 6;
-            int m_burstSteps = 21;
-            int m_burstClearFrames = 3;
-            int m_trailFadeSteps = 6;
-            //! 紫の火花の横方向に混ぜる上向きの重み
-            float m_sideLift = 1.0f;
-
-            // 放しの弾けのうち、輪・丸屋根・筋に掛ける大きさ
-            float m_tapBurstScale = 0.75f;
-            float m_fullBurstScaleGain = 0.25f;
-            // 溜めすぎの深さに応じて火花の数と速さ (m/s) を上げる
-            int m_overchargeSparkCountMin = 4;
-            int m_overchargeSparkCountMax = 14;
-            float m_overchargeSparkSpeedMin = 2.5f;
-            float m_overchargeSparkSpeedMax = 5.0f;
 
             // 出ているエフェクトの記録の番号。0 は出ていない
             NS::uint32 m_curl = 0;
@@ -168,7 +136,7 @@ namespace GL
             bool m_fullShown = false;  // この押しで溜めきりの閃きを出したか。押し直すまで 2 回目を出さない
             bool m_wasHeld = false;
             bool m_wasSlamming = false;
-            float m_spinDegrees = 0.0f;       // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
+            float m_spinDegrees = 0.0f; // 押してから玉が回った角度の累計。回転の弧の板の回りの角度
             NS::Vector3 m_slamDirection;
         };
     } // namespace Player

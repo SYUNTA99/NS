@@ -1,20 +1,21 @@
 #include "Editor/AssetPicker.h"
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/CoreObject/Asset/EffectAsset.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Gfx/Render/Skybox.h"
-#include "NSlib/Core/Windows/Filesystem.h"
 #include "TestLogCapture.h"
 
-#include <gtest/gtest.h>
-#include <imgui.h>
-#include <imgui_internal.h>
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstring>
 #include <filesystem>
+#include <gtest/gtest.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 #include <span>
 
 namespace
@@ -100,8 +101,9 @@ namespace
         void File(const char* relative)
         {
             const std::string contents = "{}";
-            ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes((m_root / relative).generic_string(),
-                        std::as_bytes(std::span<const char>{contents.data(), contents.size()})));
+            ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(
+                (m_root / relative).generic_string(),
+                std::as_bytes(std::span<const char>{contents.data(), contents.size()})));
         }
 
         std::filesystem::path m_root;
@@ -117,14 +119,14 @@ namespace
 
     struct EffectSettings
     {
-        NS::EffectName effect{"charge.curl"};
+        NS::EffectAsset* effect = NS::AssetManager::Get().LoadEffectAsset("fb7493b290125dbca669213dc5390286");
         NS_REFLECT_BEGIN(EffectSettings, void)
         NS_FIELD(effect, "エフェクト")
         NS_REFLECT_END_VALUE()
     };
-}
+} // namespace
 
-TEST(AssetPickerCatalog, EffectNameMemberIsAnEffectFieldSavedAsItsName)
+TEST(AssetPickerCatalog, EffectAssetMemberIsSavedAsItsPersistentId)
 {
     const NS::ReflectionInfo& info = *EffectSettings::StaticReflection();
     const NS::FieldDesc* field = NS::FindField(&info, "エフェクト");
@@ -132,9 +134,12 @@ TEST(AssetPickerCatalog, EffectNameMemberIsAnEffectFieldSavedAsItsName)
     EXPECT_EQ(field->assetKind, NS::AssetKind::Effect);
 
     EffectSettings settings;
-    EXPECT_EQ(NS::SerializeReflectedFields(&settings, info)["エフェクト"], nlohmann::json("charge.curl"));
-    EXPECT_EQ(NS::ApplyReflectedFields(&settings, info, nlohmann::json{{"エフェクト", "impact.ring"}}), 0u);
-    EXPECT_EQ(settings.effect.name, "impact.ring");
+    EXPECT_EQ(NS::SerializeReflectedFields(&settings, info)["エフェクト"],
+              nlohmann::json("fb7493b290125dbca669213dc5390286"));
+    EXPECT_EQ(
+        NS::ApplyReflectedFields(&settings, info, nlohmann::json{{"エフェクト", "fa2acc194fe252f6a26e9f1a0ce0b914"}}),
+        0u);
+    EXPECT_EQ(settings.effect->Id(), "fa2acc194fe252f6a26e9f1a0ce0b914");
 }
 
 TEST_F(EditorAssetPickerTest, FileReferenceOpensChoicesBeforeChangingTheValue)
@@ -201,7 +206,8 @@ TEST_F(AssetPickerCatalogTest, ChoicesIncludeBuiltinsAndOnlyFilesOfTheRequestedK
     File("Assets/Models/folder/test.GLB");
     File("Assets/Materials/folder/test.mat");
     File("Assets/Models/readme.txt");
-    const std::vector<NS::Editor::AssetOption> meshes = NS::Editor::CollectAssetOptions(NS::AssetKind::Mesh, m_root.generic_string());
+    const std::vector<NS::Editor::AssetOption> meshes =
+        NS::Editor::CollectAssetOptions(NS::AssetKind::Mesh, m_root.generic_string());
     bool builtin = false;
     bool model = false;
     for (const NS::Editor::AssetOption& option : meshes)
@@ -213,25 +219,30 @@ TEST_F(AssetPickerCatalogTest, ChoicesIncludeBuiltinsAndOnlyFilesOfTheRequestedK
     }
     EXPECT_TRUE(builtin);
     EXPECT_TRUE(model);
-    const std::vector<NS::Editor::AssetOption> materials = NS::Editor::CollectAssetOptions(NS::AssetKind::Material, m_root.generic_string());
+    const std::vector<NS::Editor::AssetOption> materials =
+        NS::Editor::CollectAssetOptions(NS::AssetKind::Material, m_root.generic_string());
     EXPECT_TRUE(std::any_of(materials.begin(), materials.end(), [](const NS::Editor::AssetOption& option) {
         return option.value == "Assets/Materials/folder/test.mat" && option.label == "test.mat" &&
                option.location == "Assets/Materials/folder";
     }));
-    const std::vector<NS::Editor::AssetOption> models = NS::Editor::CollectAssetOptions(NS::AssetKind::Model, m_root.generic_string());
+    const std::vector<NS::Editor::AssetOption> models =
+        NS::Editor::CollectAssetOptions(NS::AssetKind::Model, m_root.generic_string());
     ASSERT_EQ(models.size(), 1);
     EXPECT_EQ(models[0].value, "Assets/Models/folder/test.GLB");
 }
 
-TEST_F(AssetPickerCatalogTest, EffectChoicesKeepTheNamesExpectedByTheEffectLoader)
+TEST_F(AssetPickerCatalogTest, EffectChoicesUsePersistentIdsAndDisplayLabels)
 {
-    File("Assets/Effects/charge.curl.efkefc");
-    File("Assets/Effects/group/impact.efkefc");
-    File("Assets/Effects/Texture/spark.png");
-    const std::vector<NS::Editor::AssetOption> options = NS::Editor::CollectAssetOptions(NS::AssetKind::Effect, m_root.generic_string());
-    ASSERT_EQ(options.size(), 2);
-    EXPECT_EQ(options[0].value, "charge.curl");
-    EXPECT_EQ(options[1].value, "group/impact");
+    File("Assets/Effects/ignored.efkefc");
+    const nlohmann::json definition = {{"id", "11111111111111111111111111111111"}, {"label", "衝突"}};
+    const std::string text = definition.dump();
+    ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes((m_root / "Assets/Effects/contact.effect").generic_string(),
+                                                  std::as_bytes(std::span<const char>{text.data(), text.size()})));
+    const std::vector<NS::Editor::AssetOption> options =
+        NS::Editor::CollectAssetOptions(NS::AssetKind::Effect, m_root.generic_string());
+    ASSERT_EQ(options.size(), 1u);
+    EXPECT_EQ(options[0].value, "11111111111111111111111111111111");
+    EXPECT_EQ(options[0].label, "衝突");
 }
 
 TEST_F(AssetPickerCatalogTest, SoundChoicesAreWavUnderSoundsNamedWithoutExtension)
@@ -240,7 +251,8 @@ TEST_F(AssetPickerCatalogTest, SoundChoicesAreWavUnderSoundsNamedWithoutExtensio
     File("Assets/Sounds/goal.WAV");
     File("Assets/Sounds/notes.txt");
     File("Assets/Other/stray.wav");
-    const std::vector<NS::Editor::AssetOption> options = NS::Editor::CollectAssetOptions(NS::AssetKind::Sound, m_root.generic_string());
+    const std::vector<NS::Editor::AssetOption> options =
+        NS::Editor::CollectAssetOptions(NS::AssetKind::Sound, m_root.generic_string());
     ASSERT_EQ(options.size(), 2);
     EXPECT_EQ(options[0].value, "goal");
     EXPECT_EQ(options[1].value, "player/jump");
@@ -290,8 +302,7 @@ TEST_F(AssetPickerCatalogTest, SkyboxesRequireSixFacesOrACubemapDds)
     const std::string array = (m_root / "Assets/Skybox/array.dds").generic_string();
     ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(array, bytes));
     EXPECT_FALSE(NS::Editor::IsSkyboxAssetPath(array));
-    const std::vector<NS::Editor::AssetOption> options =
-        NS::Editor::CollectSkyboxOptions(m_root.generic_string());
+    const std::vector<NS::Editor::AssetOption> options = NS::Editor::CollectSkyboxOptions(m_root.generic_string());
     ASSERT_EQ(options.size(), 3);
     EXPECT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Editor::AssetOption& option) {
         return option.value == "Assets/Skybox/complete";

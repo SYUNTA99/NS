@@ -1,6 +1,8 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Asset/EffectAsset.h"
+#include "NSlib/CoreObject/Asset/EffectSet.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/Gfx/Render/EffectTypes.h"
 
@@ -24,8 +26,9 @@ namespace NS
     //! @details フレームは持ち主の Effect::Step の数え方で、SceneActor::Update 1 回が 1 フレーム
     struct EffectRecord
     {
-        uint32 id = 0;               //!< 記録の番号。1 から振り、同じ Effect の中で使い回さない
-        std::string name;                //!< エフェクトの名前。charge.curl のように組の頭から書く
+        uint32 id = 0; //!< 記録の番号。1 から振り、同じ Effect の中で使い回さない
+        std::string assetId;
+        std::string name;                //!< 再生記録の分類名。素材の参照には assetId を使う
         int startStep = 0;               //!< 出したフレーム
         std::optional<int> rootStopStep; //!< 親を止めたフレーム。止めていなければ空
         //! 消えたフレーム。残っていれば空。Stop で消したフレームか、Effekseer から消えた更新のフレーム
@@ -54,13 +57,13 @@ namespace NS
         [[nodiscard]] int Step() const noexcept { return m_step; }
 
         //! 絵を先に読む。描画の無い世界では何もしない
-        void Preload(Gfx::EffectScene* effects, std::string_view name);
+        void Preload(Gfx::EffectScene* effects, const EffectAsset* asset);
 
         //! エフェクトを 1 つ出し、今のフレームに出した記録を残す
-        //! 絵を読めていない名前は再生されず、記録は無効なハンドルで残る
-        //! @param[in] name Preload に渡した名前
+        //! 読めない素材は再生されず、記録は無効なハンドルで残る
+        //! @param[in] asset 参照する素材。参照切れでも識別子を記録する
         //! @return 記録の番号
-        [[nodiscard]] uint32 Play(Gfx::EffectScene* effects, std::string_view name, const Gfx::EffectPlayDesc& desc);
+        [[nodiscard]] uint32 Play(Gfx::EffectScene* effects, const EffectAsset* asset, const Gfx::EffectPlayDesc& desc);
 
         //! 親を止める。出ていた子は寿命まで残る
         //! 無い番号、親を止めた後、消えた後なら何もしない
@@ -111,7 +114,11 @@ namespace NS
         //! @param[out] out 名前を足す先。中身は消さない
         void AppendLiveNames(const Gfx::EffectScene* effects, std::vector<std::string>& out) const;
 
-        NS_REFLECT_NONE(Effect, Object)
+        [[nodiscard]] EffectSet* Definition() const noexcept { return m_definition; }
+
+        NS_REFLECT_BEGIN(Effect, Object)
+        NS_FIELD(m_definition, "演出セット")
+        NS_REFLECT_END()
 
     private:
         struct ScheduledStop
@@ -122,6 +129,10 @@ namespace NS
 
         [[nodiscard]] EffectRecord* FindMutable(uint32 id) noexcept;
 
+        uint32 PlayResource(Gfx::EffectScene* effects,
+                            const Gfx::EffectResourceDesc& asset,
+                            const Gfx::EffectPlayDesc& desc);
+        EffectSet* m_definition = nullptr;
         int m_keepEndedSteps;
         std::vector<EffectRecord> m_records;
         std::vector<ScheduledStop> m_scheduledStops;

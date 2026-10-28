@@ -15,6 +15,36 @@
 
 ## 使い方
 
+### 素材の参照と演出セット
+
+ゲームは `.efkefc` の名前を直接指定せず、`.effect` の識別子で素材を参照する。
+`.effect` は次の値を持つ。
+
+| 項目 | 意味 |
+|---|---|
+| `id` | 小文字の16進数32文字の識別子。改名・移動・再生成で変えない |
+| `label` | 素材の選択画面で見せる名前 |
+| `source` | ContentRoot からの `.efkefc` の道筋 |
+| `seed` | 粒の散り方を再現する乱数の基準 |
+| `recordName` | 再生記録に出す用途の名前。表示名の変更で記録の分類を変えない |
+
+`--install` は初回だけ `.effect` を作り、次からは識別子・表示名・乱数の基準を保つ。
+壊れた `.effect` を見つけた時は書き換えずに失敗する。出荷物は `.effect` と `.effectset` も Assets と一緒に配る。
+
+`.effectset` は素材の参照と演出の設定をまとめた独立したファイル。
+Player と置物は `Effect` の「演出セット」で選び、「演出セットを編集」から参照先を開く。
+実行部品は設定への参照と再生中の状態を持ち、設定の値は `.actor` に重ねて保存しない。
+複製する時は素材のインスペクタの「複製」を使う。新しい識別子を発行し、元と区別する。
+ファイルだけをコピーして同じ識別子が2つある場合は、読み込み時に両方を拒否する。
+
+素材の定義ファイルと演出セットは、識別子を保てば `Assets/Effects` の下で改名・移動できる。
+`.efkefc` を移す場合は `.effect` の `source` を ContentRoot からの新しい道筋へ更新し、
+その `.efkefc` が使う `Texture` などの依存も同じ相対位置に移す。再起動か `ReloadEffectAssets` で読み直す。
+再生済みの粒は元の素材の寿命まで残り、次の再生から読み直した素材を使う。
+素材の複製はバイナリも別ファイルにし、演出セットの複製は参照する素材を共有する。
+
+生成の確認: `python Tools/effects/test_effect_assets.py`。
+
 ```
 Tools\@build_effects.cmd                        # efkprobe を組み、defs/*.efkproj と defs/<組>/*.efkproj を全部通す
 Tools\@build_effects.cmd spark_min --frames 40  # 1 本だけ。組のフォルダの定義も名前だけで渡す
@@ -30,7 +60,7 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 
 - 失敗が 1 本でもあれば終了コード 1。`--install` は全部通った時だけ写す
 - 作業の出力は `build/effects/` (注釈を外した写し・`.efkefc`・`Texture/`・`frames/<名前>/frame_NNN.png`・`frames/<名前>_sheet.png`・組んだ `efkxml`)
-- ゲームへ渡るのは `--install` で写す `Assets/Effects/<名前>.efkefc` と `Assets/Effects/Texture/` だけ。定義を `Assets/` の下に置かないのは、`@package_release.cmd` が `Assets` を丸ごと配るため
+- ゲームへ渡るのは `--install` で写す `Assets/Effects/<名前>.efkefc`・同名の `.effect` と `Assets/Effects/Texture/`。定義を `Assets/` の下に置かないのは、`@package_release.cmd` が `Assets` を丸ごと配るため
 - `--install-dir` を渡すと `Assets/Effects/` の代わりにそこへ写す。試し用の絵を `Assets/` へ置くと出荷の絵に混ざり、試し `ShippedEffects` も読む
 - `efkprobe` は Debug で組む (premake の `EffectProbe`、`Tools/effects/premake.lua`)。出荷の構成では建たない
 - 置いた絵がゲームで読めるかは試し `ShippedEffects.EveryEffectPreloads` が縛る (`Assets/Effects/` の全 `.efkefc` を `EffectScene::Preload` し、素材の欠けで落ちる。1 本も無ければ「確かめられなかった」で落ちる)

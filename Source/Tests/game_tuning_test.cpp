@@ -10,12 +10,13 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
-#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Core/Windows/Clock.h"
+#include "TestEffectSettings.h"
 
 #include <cmath>
 #include <gtest/gtest.h>
@@ -30,9 +31,11 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShape)
     scene.ResetFromJson(std::move(doc));
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(&player->ImpactVisuals(),
-                                  {{"核の留まりの上限フレーム", 2}, {"中心の火花の開始フレーム", 5}}),
-              0u);
+    TestEffectSettings<GL::Player::ImpactEffects> impactSettings(&player->ImpactVisuals());
+
+    ASSERT_EQ(
+        NS::ApplyJsonFields(impactSettings.Get(), {{"核の留まりの上限フレーム", 2}, {"中心の火花の開始フレーム", 5}}),
+        0u);
     GL::Level::ImpactRecord impact;
     impact.tier = GL::Level::HitTier::Center;
     impact.hitStopSteps = 12;
@@ -42,10 +45,12 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShape)
 
 TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 {
+    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test", {}, 1});
     NS::Effect shortHistory{2};
     NS::Effect longHistory{6};
-    const NS::uint32 shortId = shortHistory.Play(nullptr, "test", {});
-    const NS::uint32 longId = longHistory.Play(nullptr, "test", {});
+    const NS::uint32 shortId = shortHistory.Play(nullptr, &asset, {});
+    const NS::uint32 longId = longHistory.Play(nullptr, &asset, {});
     shortHistory.Stop(nullptr, shortId);
     longHistory.Stop(nullptr, longId);
     for (int frame = 0; frame < 3; ++frame)
@@ -63,15 +68,16 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
     GL::Level::PropActor* rock = scene.SpawnActor<GL::Level::PropActor>("PropActor");
     ASSERT_NE(rock, nullptr);
     GL::Level::LaunchEffects* effects = &rock->Effects();
-    ASSERT_EQ(NS::ApplyJsonFields(effects, {{"着地の粉の寿命フレーム", 2}}), 0u);
+    TestEffectSettings<GL::Level::LaunchEffects> effectSettings(effects);
+
+    ASSERT_EQ(NS::ApplyJsonFields(effectSettings.Get(), {{"着地の粉の寿命フレーム", 2}}), 0u);
     const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(rock->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
-    effects->BeginTrail(
-        rock,
-        GL::Level::TackleReleaseDesc{},
-        rock->Flight(),
-        &rock->Params(),
-        sphere->WorldSphere(rock->Root().WorldMatrix()));
+    effects->BeginTrail(rock,
+                        GL::Level::TackleReleaseDesc{},
+                        rock->Flight(),
+                        &rock->Params(),
+                        sphere->WorldSphere(rock->Root().WorldMatrix()));
     effects->NotifyLanding(rock, {}, {0.0f, 1.0f, 0.0f});
     NS::Effect* effect = rock->GetEffect();
     ASSERT_NE(effect, nullptr);
@@ -87,9 +93,11 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
 TEST(GameTuning, EditedPowerRangeAndTrailAngleKeepTheOutputFinite)
 {
     GL::Player::ImpactEffects effects;
+    TestEffectSettings<GL::Player::ImpactEffects> effectSettings(&effects);
+
     ASSERT_EQ(
         NS::ApplyJsonFields(
-            &effects,
+            effectSettings.Get(),
             {{"火花の数を振る威力の下限", 1.0f}, {"火花の数を振る威力の上限", 1.0f}, {"反動の尾の最小横成分", 2.0f}}),
         0u);
     GL::Level::ImpactRecord impact;
@@ -106,7 +114,9 @@ TEST(GameTuning, EditedPowerRangeAndTrailAngleKeepTheOutputFinite)
 TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
 {
     GL::Player::ImpactEffects effects;
-    ASSERT_EQ(NS::ApplyJsonFields(&effects, {{"外れの火花の横の割合", 1.0f}}), 0u);
+    TestEffectSettings<GL::Player::ImpactEffects> effectSettings(&effects);
+
+    ASSERT_EQ(NS::ApplyJsonFields(effectSettings.Get(), {{"外れの火花の横の割合", 1.0f}}), 0u);
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     const NS::Vector3 heading =
         effects.MissSparkHeading(0.8f, 0.0f, GL::Level::MissSurfaceNormal(0.8f, 0.0f, 2.0f, forward), forward);
