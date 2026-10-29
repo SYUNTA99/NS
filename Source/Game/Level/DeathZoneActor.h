@@ -16,12 +16,11 @@ namespace GL
 
             void OnSensorEnter(NS::HitSensor* self, NS::HitSensor* other) override;
 
+        protected:
+            void OnInit() override;
+
         private:
-            // 大きさは .actor の hitSensors の値
-            NS_SENSORS_BEGIN()
-            NS_SENSOR(m_bodyHitSensor, "Body", SensorKind::Area, NS::HitSensorShape::Box)
-            NS_SENSORS_END()
-            NS::HitSensor* m_bodyHitSensor = nullptr; // 体のセンサー (非所有)。持つのは基底の HitSensorsObj
+            NS::HitSensor* m_bodyHitSensor = nullptr; // 体のセンサー (非所有)。持つのは HitSensorsObj
         };
     } // namespace Level
 } // namespace GL

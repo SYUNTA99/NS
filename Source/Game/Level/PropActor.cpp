@@ -96,6 +96,10 @@ namespace GL
         }
         void PropActor::OnInit()
         {
+            // 体当たりが調べる体は当たりの球そのもの。半径と中心オフセットの正は Collision の欄
+            CreateClassObj(m_hitSensors);
+            m_bodyHitSensor = m_hitSensors->AddFollow(this, "Body", SensorKind::MapObjBody,
+                                                      [this](const NS::Matrix& rootWorld) { return BodySensorVolume(rootWorld); });
             CreateClassObj(m_model);
             NS::InitDraw(this, m_model.get(), &Root());
             CreateClassObj(m_shadow);

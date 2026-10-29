@@ -200,7 +200,7 @@ void PlayerActor::BeginBeforeContact() noexcept
 {
     NS::SceneActor* target = m_beforeContact.target;
     NS_ASSERT(Game, target != nullptr, "当たる直前の状態へ入る予約が相手を書いていない");
-    NS::HitSensor* targetBody = target->HitSensorsObjClassObj()->Find("Body");
+    NS::HitSensor* targetBody = target->HitSensorsClassObj()->Find("Body");
     if (targetBody == nullptr)
     {
         NS_LOG_WARN(Game, "予測した相手に体のセンサーが無いので、当たる直前の動作を始めない: 相手 {}", target->Id());

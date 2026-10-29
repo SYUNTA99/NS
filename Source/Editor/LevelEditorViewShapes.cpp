@@ -96,7 +96,12 @@ namespace
     // アクター 1 体のヒットセンサーの形を線で描く。範囲 (落下死・ゴール) は地形の当たりを持たないので、ここで見せる
     void DrawSensorWireframe(NS::Gfx::DebugShapes& shapes, NS::SceneActor& object, const NS::Color& color) noexcept
     {
-        for (const NS::HitSensor* sensor : object.HitSensorsObjClassObj()->Sensors())
+        const NS::HitSensorsObj* sensors = object.HitSensorsClassObj();
+        if (sensors == nullptr)
+        {
+            return;
+        }
+        for (const NS::HitSensor* sensor : sensors->Sensors())
         {
             const NS::SensorVolume volume = sensor->WorldVolume(object.Root().WorldMatrix());
             if (volume.isBox)
@@ -359,8 +364,13 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
             continue;
         }
         const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(object);
-        const NS::HitSensor* bodySensor = object->HitSensorsObjClassObj()->Find("Body");
-        if (prop == nullptr || bodySensor == nullptr)
+        const NS::HitSensorsObj* sensors = object->HitSensorsClassObj();
+        if (prop == nullptr || sensors == nullptr)
+        {
+            continue;
+        }
+        const NS::HitSensor* bodySensor = sensors->Find("Body");
+        if (bodySensor == nullptr)
         {
             continue;
         }

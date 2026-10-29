@@ -69,15 +69,13 @@ namespace
     protected:
         void OnInit() override
         {
+            CreateClassObj(m_hitSensors);
+            m_bodySensor = m_hitSensors->AddShape(this, "Body", m_kind, NS::HitSensorShape::Sphere);
             m_sensor = NS::Cast<NS::ShapeHitSensor>(m_bodySensor);
             m_sensor->SetSphere(m_radius);
         }
 
     private:
-        // 種類はコンストラクタで受けた物。宣言はコンストラクタの後に読まれる
-        NS_SENSORS_BEGIN()
-        NS_SENSOR(m_bodySensor, "Body", m_kind, NS::HitSensorShape::Sphere)
-        NS_SENSORS_END()
         NS::HitSensor* m_bodySensor = nullptr;
 
         SensorKind m_kind;
@@ -515,23 +513,25 @@ TEST(Message, SendReachesReceiverOwnerAndReturnsItsAnswer)
 
 namespace
 {
-    // 形の決まったセンサーと、形を関数から読むセンサーを宣言し、OnInit で見えた物を控える
-    class DeclaredSensorsActor final : public NS::SceneActor
+    // 形の決まったセンサーと、形を関数から読むセンサーを OnInit で足し、その時に一覧へ入ったかを控える
+    class OnInitSensorsActor final : public NS::SceneActor
     {
     public:
-        NS::HitSensor* bodyAtInit = nullptr;
-        NS::HitSensor* attackAtInit = nullptr;
+        NS::HitSensor* body = nullptr;
+        NS::HitSensor* attack = nullptr;
         bool bodyListedAtInit = false;
 
     protected:
         void OnInit() override
         {
-            bodyAtInit = m_bodySensor;
-            attackAtInit = m_attackSensor;
+            CreateClassObj(m_hitSensors);
+            body = m_hitSensors->AddShape(this, "Body", SensorKind::Area, NS::HitSensorShape::Box);
+            attack = m_hitSensors->AddFollow(this, "Attack", SensorKind::PlayerBody,
+                                             [this](const NS::Matrix& rootWorld) { return AttackVolume(rootWorld); });
             if (NS::HitSensorDirector* director = GetHitSensorDirector())
             {
                 const std::vector<NS::HitSensor*>& listed = director->Sensors();
-                bodyListedAtInit = std::find(listed.begin(), listed.end(), bodyAtInit) != listed.end();
+                bodyListedAtInit = std::find(listed.begin(), listed.end(), body) != listed.end();
             }
         }
 
@@ -540,40 +540,38 @@ namespace
         {
             return NS::SensorVolume::Sphere(rootWorld.Translation(), 0.25f);
         }
+    };
 
-        NS_SENSORS_BEGIN()
-        NS_SENSOR(m_bodySensor, "Body", SensorKind::Area, NS::HitSensorShape::Box)
-        NS_FOLLOW_SENSOR(m_attackSensor, "Attack", SensorKind::PlayerBody, AttackVolume)
-        NS_SENSORS_END()
-        NS::HitSensor* m_bodySensor = nullptr;
-        NS::HitSensor* m_attackSensor = nullptr;
+    // センサーの部品を作らないアクター
+    class NoSensorsActor final : public NS::SceneActor
+    {
     };
 } // namespace
 
-// 名前の違う 2 つの宣言は、OnInit の前にセンサーの部品に 2 つあり、宣言した名前・種類・形と持ち主を持ち、
-// シーンの一覧に 1 回ずつ入る。マクロが指したメンバー変数は作ったセンサーを指す
-TEST(HitSensorsObj, TwoDeclaredSensorsExistBeforeOnInitWithTheirNames)
+// OnInit で足した名前の違う 2 つのセンサーは、センサーの部品に 2 つあり、足した名前・種類・形と持ち主を持ち、
+// シーンの一覧に 1 回ずつ入る
+TEST(HitSensorsObj, TwoSensorsAddedInOnInitExistWithTheirNames)
 {
     NS::Scene scene;
-    DeclaredSensorsActor* actor = scene.SpawnActor<DeclaredSensorsActor>("DeclaredSensorsActor");
+    OnInitSensorsActor* actor = scene.SpawnActor<OnInitSensorsActor>("OnInitSensorsActor");
     ASSERT_NE(actor, nullptr);
-    ASSERT_NE(actor->bodyAtInit, nullptr);
-    ASSERT_NE(actor->attackAtInit, nullptr);
+    ASSERT_NE(actor->body, nullptr);
+    ASSERT_NE(actor->attack, nullptr);
     EXPECT_TRUE(actor->bodyListedAtInit);
-    const NS::HitSensorsObj* sensors = actor->HitSensorsObjClassObj();
+    const NS::HitSensorsObj* sensors = actor->HitSensorsClassObj();
     ASSERT_NE(sensors, nullptr);
-    EXPECT_EQ(sensors->Sensors(), (std::vector<NS::HitSensor*>{actor->bodyAtInit, actor->attackAtInit}));
-    EXPECT_EQ(sensors->Find("Body"), actor->bodyAtInit);
-    EXPECT_EQ(sensors->Find("Attack"), actor->attackAtInit);
+    EXPECT_EQ(sensors->Sensors(), (std::vector<NS::HitSensor*>{actor->body, actor->attack}));
+    EXPECT_EQ(sensors->Find("Body"), actor->body);
+    EXPECT_EQ(sensors->Find("Attack"), actor->attack);
 
-    const NS::ShapeHitSensor* body = NS::Cast<NS::ShapeHitSensor>(actor->bodyAtInit);
+    const NS::ShapeHitSensor* body = NS::Cast<NS::ShapeHitSensor>(actor->body);
     ASSERT_NE(body, nullptr);
     EXPECT_EQ(body->Name(), "Body");
     EXPECT_EQ(body->Shape(), NS::HitSensorShape::Box);
     EXPECT_TRUE(GL::Level::IsSensorKind(body, SensorKind::Area));
     EXPECT_EQ(body->Host(), actor);
 
-    const NS::FollowHitSensor* attack = NS::Cast<NS::FollowHitSensor>(actor->attackAtInit);
+    const NS::FollowHitSensor* attack = NS::Cast<NS::FollowHitSensor>(actor->attack);
     ASSERT_NE(attack, nullptr);
     EXPECT_EQ(attack->Name(), "Attack");
     EXPECT_TRUE(GL::Level::IsSensorKind(attack, SensorKind::PlayerBody));
@@ -584,6 +582,19 @@ TEST(HitSensorsObj, TwoDeclaredSensorsExistBeforeOnInitWithTheirNames)
     EXPECT_FLOAT_EQ(volume.Center().y, 2.0f);
 
     const std::vector<NS::HitSensor*>& listed = scene.HitSensors().Sensors();
-    EXPECT_EQ(std::count(listed.begin(), listed.end(), actor->bodyAtInit), 1);
-    EXPECT_EQ(std::count(listed.begin(), listed.end(), actor->attackAtInit), 1);
+    EXPECT_EQ(std::count(listed.begin(), listed.end(), actor->body), 1);
+    EXPECT_EQ(std::count(listed.begin(), listed.end(), actor->attack), 1);
+}
+
+// センサーの部品を作らないアクターは部品を持たず、出す・消す・終えるを通しても落ちない
+TEST(HitSensorsObj, ActorWithoutSensorsHasNoSensorsObjThroughItsLife)
+{
+    NS::Scene scene;
+    NoSensorsActor* actor = scene.SpawnActor<NoSensorsActor>("NoSensorsActor");
+    ASSERT_NE(actor, nullptr);
+    EXPECT_EQ(actor->HitSensorsClassObj(), nullptr);
+    actor->Appear();
+    actor->Disappear();
+    actor->Destroy();
+    EXPECT_EQ(actor->HitSensorsClassObj(), nullptr);
 }

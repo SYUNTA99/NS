@@ -92,16 +92,6 @@ namespace NS
         return created;
     }
 
-    void SceneActor::CreateHitSensors()
-    {
-        HitSensorsObj* sensors = EmplaceClassObj(m_hitSensors);
-        if (sensors == nullptr)
-        {
-            return;
-        }
-        DeclareSensors(*sensors);
-    }
-
     IStateMachine* SceneActor::GetStateMachine() noexcept
     {
         if (m_stateMachine == nullptr)
@@ -250,7 +240,6 @@ namespace NS
         {
             m_actorFileName = std::string{actorFile};
         }
-        CreateHitSensors();
         OnInit();
     }
 
@@ -281,8 +270,6 @@ namespace NS
         {
             m_scene = info->scene;
         }
-        // センサーは OnInit の前に作るので、OnInit と状態の OnEnter から読める。一覧へ入れるのでシーンを決めた後に作る
-        CreateHitSensors();
         OnInit();
         ApplyActorFile(this);
         // 束と動作とセンサーの値は .actor だけに書き、シーンでは上書きしない
@@ -338,7 +325,7 @@ namespace NS
 
     void SceneActor::OnStart()
     {
-        // 描く物は OnInit で、センサーはその前に入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
+        // 描く物とセンサーは OnInit で入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
         // 出ている物だけを OnAppear が物理シーンへ入れる
         // clang-format off
         if (m_collision) { InitCollision(this, m_collision.get(), Root().WorldMatrix()); }

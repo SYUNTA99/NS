@@ -355,6 +355,8 @@ namespace
         void OnInit() override
         {
             CreateClassObj(m_model);
+            CreateClassObj(m_hitSensors);
+            m_bodySensor = m_hitSensors->AddShape(this, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
             NS::Cast<NS::ShapeHitSensor>(m_bodySensor)->SetSphere(0.5f);
             CreateClassObj(m_hitReaction);
         }
@@ -362,9 +364,6 @@ namespace
         void BodyStep() override { ++bodySteps; }
 
     private:
-        NS_SENSORS_BEGIN()
-        NS_SENSOR(m_bodySensor, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
-        NS_SENSORS_END()
         NS::HitSensor* m_bodySensor = nullptr;
     };
 } // namespace
@@ -430,7 +429,7 @@ namespace
             {
                 partner = other;
             }
-            return owner->StartHitReaction(name, position, owner->HitSensorsObjClassObj()->Find("Body"), partner->HitSensorsObjClassObj()->Find("Body"));
+            return owner->StartHitReaction(name, position, owner->HitSensorsClassObj()->Find("Body"), partner->HitSensorsClassObj()->Find("Body"));
         }
 
         // 1 固定フレーム。アクター・カメラ・画面とパッドの係の順に回す

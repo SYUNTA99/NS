@@ -56,11 +56,12 @@ namespace NS
             // 別のクラスのセンサーの名前を入り切りに書かない
             std::span<HitSensor* const> SensorsOf(const SceneActor* actor, const std::string& actorFile)
             {
-                if (actor == nullptr || ActorFileToWrite(actor, FieldDestination::ActorFile) != actorFile)
+                if (actor == nullptr || actor->HitSensorsClassObj() == nullptr ||
+                    ActorFileToWrite(actor, FieldDestination::ActorFile) != actorFile)
                 {
                     return {};
                 }
-                return actor->HitSensorsObjClassObj()->Sensors();
+                return actor->HitSensorsClassObj()->Sensors();
             }
 #endif
 
@@ -346,7 +347,8 @@ namespace NS
 
             SceneActor* selected = editor.SelectedActor();
             const bool selectable = selected != nullptr && !editor.SelectedIsPlayerActor() &&
-                                    selected->HitSensorsObjClassObj()->Find("Body") != nullptr;
+                                    selected->HitSensorsClassObj() != nullptr &&
+                                    selected->HitSensorsClassObj()->Find("Body") != nullptr;
             if (m_desc.targetId == 0)
             {
                 ImGui::TextUnformatted("相手: 自機に一番近いアクター");

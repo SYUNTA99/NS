@@ -79,7 +79,7 @@ namespace
             NS::ApplyActorFile(actor);
             actor->ReloadAssets();
             // 束とセンサーの値はアクターを作る時に .actor から読むので、読み直させて次の当たりに効かせる
-            if (NS::HitSensorsObj* sensors = actor->HitSensorsObjClassObj())
+            if (NS::HitSensorsObj* sensors = actor->HitSensorsClassObj())
             {
                 sensors->ReloadValues(actor);
             }
