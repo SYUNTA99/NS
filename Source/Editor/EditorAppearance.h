@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"

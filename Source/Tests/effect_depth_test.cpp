@@ -321,7 +321,7 @@ TEST(EffectAssetsRender, HitLayerMaterialsKeepTheirCurvesAcrossDifferentHoldLeng
                 SCOPED_TRACE(::testing::Message() << hold << "/" << power);
                 NS::Gfx::EffectPlayDesc oldDesc;
                 float size = 4.0f + 2.0f * power;
-                oldDesc.scale = {size, 1.0f, 1.0f};
+                oldDesc.scale = NS::Vector3{size, 1.0f, 1.0f};
                 if (name == "glow")
                 {
                     size = 2.0f + 1.6f * power;

@@ -2,6 +2,7 @@
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
 #include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"

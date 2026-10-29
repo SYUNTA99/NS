@@ -44,6 +44,7 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 
 #include <algorithm>
 #include <cmath>
