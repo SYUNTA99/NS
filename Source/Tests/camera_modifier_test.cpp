@@ -48,12 +48,6 @@ TEST(CameraManager, CameraPhaseSelectsTheVirtualCamera)
 
 namespace
 {
-    NS::CameraShakeDesc ShakeOf(int frames)
-    {
-        return NS::CameraShakeDesc{
-            .sideAmplitude = 0.2f, .upAmplitude = 0.1f, .frames = frames, .longestFlipFrames = 1};
-    }
-
     // 割合が 0 なら +Z、1 なら +X 寄りを見る仮想カメラ。描画の割合が遊びの向きへ漏れると分かる
     class AlphaCamera final : public NS::VirtualCamera
     {
@@ -109,29 +103,8 @@ namespace
     };
 } // namespace
 
-TEST(CameraModifier, ShakeDrawsFirstFrameThenDecaysAndFinishes)
-{
-    std::unique_ptr<NS::CameraShakeModifier> shake = NS::CameraShakeModifier::Create(ShakeOf(3), 1.0f);
-    ASSERT_NE(shake, nullptr);
-    const NS::Vector2 first = shake->Offset();
-    EXPECT_FLOAT_EQ(std::abs(first.x), 0.2f);
-    // 縦の最初の振れは下
-    EXPECT_LT(first.y, 0.0f);
-
-    // 積んだ直後の Tick は進めない
-    shake->Tick();
-    EXPECT_EQ(shake->Offset(), first);
-    shake->Tick();
-    EXPECT_LT(std::abs(shake->Offset().x), 0.2f);
-    shake->Tick();
-    shake->Tick();
-    EXPECT_TRUE(shake->IsFinished());
-    EXPECT_EQ(shake->Offset(), (NS::Vector2{0.0f, 0.0f}));
-}
-
 TEST(CameraModifier, BrokenDescIsRejected)
 {
-    EXPECT_EQ(NS::CameraShakeModifier::Create(ShakeOf(0), 1.0f), nullptr);
     EXPECT_EQ(NS::CameraZoomRollModifier::Create(NS::CameraZoomRollDesc{.zoom = 0.5f}, 1.0f), nullptr);
 }
 
@@ -155,28 +128,25 @@ TEST(CameraModifier, ZoomRollHoldsThenReturnsToIdentity)
 TEST(CameraManager, SameKindReplacesAndClearRemovesAll)
 {
     NS::CameraManager cameras;
-    EXPECT_TRUE(cameras.StartShake(ShakeOf(10)));
-    EXPECT_TRUE(cameras.StartShake(ShakeOf(4)));
-    // 揺れは 1 つだけ残り、後から積んだ設定になる
-    const NS::CameraShakeModifier* shake = cameras.FindModifier<NS::CameraShakeModifier>();
-    ASSERT_NE(shake, nullptr);
+    EXPECT_TRUE(cameras.StartZoomRoll(NS::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 10}));
     EXPECT_TRUE(cameras.StartZoomRoll(NS::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 3}));
     EXPECT_FLOAT_EQ(cameras.ZoomRoll().zoom, 1.1f);
+    ASSERT_TRUE(cameras.AddModifier(NS::CameraSinkModifier::Create(NS::CameraSinkDesc{.bottomPixels = 9.0f, .frames = 4})));
 
     cameras.ClearModifiers();
-    EXPECT_EQ(cameras.FindModifier<NS::CameraShakeModifier>(), nullptr);
+    EXPECT_EQ(cameras.FindModifier<NS::CameraZoomRollModifier>(), nullptr);
+    EXPECT_EQ(cameras.FindModifier<NS::CameraSinkModifier>(), nullptr);
     EXPECT_FLOAT_EQ(cameras.ZoomRoll().zoom, 1.0f);
-    EXPECT_EQ(cameras.ShakeOffset(), (NS::Vector2{0.0f, 0.0f}));
 }
 
 TEST(CameraManager, FinishedModifiersAreRemovedOnTick)
 {
     NS::CameraManager cameras;
-    ASSERT_TRUE(cameras.StartShake(ShakeOf(1)));
+    ASSERT_TRUE(cameras.StartZoomRoll(NS::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 1}));
     cameras.OnTick(); // 積んだ直後は進めない
-    EXPECT_NE(cameras.FindModifier<NS::CameraShakeModifier>(), nullptr);
+    EXPECT_NE(cameras.FindModifier<NS::CameraZoomRollModifier>(), nullptr);
     cameras.OnTick();
-    EXPECT_EQ(cameras.FindModifier<NS::CameraShakeModifier>(), nullptr);
+    EXPECT_EQ(cameras.FindModifier<NS::CameraZoomRollModifier>(), nullptr);
 }
 
 TEST(CameraManager, ModifiersApplyInOrder)
@@ -281,7 +251,7 @@ TEST(IGetCamera, ViewPoseLeavesOutTheShake)
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     NS::SceneActor* actor = scene.SpawnActor<NS::SceneActor>("SceneActor");
     ASSERT_NE(actor, nullptr);
-    ASSERT_TRUE(NS::StartCameraShake(actor, ShakeOf(5)));
+    ASSERT_TRUE(NS::AddCameraModifier(actor, std::make_unique<OrderProbe>(100, 10.0f)));
     const std::optional<NS::CameraPose> drawn = scene.GetCameraManager()->ComposePose(1.0f);
     ASSERT_TRUE(drawn.has_value());
     ASSERT_NE(drawn->position.x, 0.0f);
@@ -300,15 +270,15 @@ TEST(IGetCamera, ActorReachesSceneCameraManager)
     NS::SceneActor* actor = scene.SpawnActor<NS::SceneActor>("SceneActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->GetCameraManager(), scene.GetCameraManager());
-    EXPECT_TRUE(NS::StartCameraShake(actor, ShakeOf(5)));
-    EXPECT_NE(scene.GetCameraManager()->FindModifier<NS::CameraShakeModifier>(), nullptr);
+    EXPECT_TRUE(NS::StartCameraZoomRoll(actor, NS::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 5}));
+    EXPECT_NE(scene.GetCameraManager()->FindModifier<NS::CameraZoomRollModifier>(), nullptr);
     NS::StopCameraEffects(actor);
-    EXPECT_EQ(scene.GetCameraManager()->FindModifier<NS::CameraShakeModifier>(), nullptr);
+    EXPECT_EQ(scene.GetCameraManager()->FindModifier<NS::CameraZoomRollModifier>(), nullptr);
 
     // シーンに居ない SceneActor は窓口が何もしない
     NS::SceneActor loose;
     EXPECT_EQ(loose.GetCameraManager(), nullptr);
-    EXPECT_FALSE(NS::StartCameraShake(&loose, ShakeOf(5)));
+    EXPECT_FALSE(NS::StartCameraZoomRoll(&loose, NS::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 5}));
 }
 
 // 世界が回っている間は、描画の入口が管理役の姿勢を実カメラへ書く。描画先が無くても書く

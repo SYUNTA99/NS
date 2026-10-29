@@ -8,7 +8,6 @@
 #include "NSlib/Core/Types.h"
 #include <array>
 #include <memory>
-#include <vector>
 
 namespace NS
 {
@@ -65,18 +64,6 @@ namespace NS
         const IGetCamera* m_requester = nullptr;
     };
 
-    //! カメラの右と上へずらす揺れ。振れ幅は直線で減り、seed から反転間隔を決める
-    //! 縦の初回は下向き。longestFlipFrames が 2 以上なら同じ間隔を連続させない
-    struct CameraShakeDesc
-    {
-        float sideAmplitude = 0.0f;                   // 初回の横振幅 (m)
-        float upAmplitude = 0.0f;                     // 初回の縦振幅 (m)
-        int frames = 0;                               // 開始フレームを含む総フレーム数
-        int longestFlipFrames = 1;                    // 反転までの最長フレーム数
-        Vector3 firstSideDirection{1.0f, 0.0f, 0.0f}; // 初回の横振れの世界方向
-        uint32 seed = 0;
-    };
-
     //! delayFrames の後に倍率と傾きを適用し、holdFrames の間保ち、returnFrames で滑らかに元へ戻す
     struct CameraZoomRollDesc
     {
@@ -92,32 +79,6 @@ namespace NS
     {
         float zoom = 1.0f;
         float rollDegrees = 0.0f; // 視線軸まわりの傾き (度、正は画面上端をカメラの右へ倒す向き)
-    };
-
-    //! 画面揺れ。position と target を同じだけ動かす平行移動なので視線の向きは回らない
-    class CameraShakeModifier final : public CameraModifier
-    {
-    public:
-        //! firstSideSign が負なら初回は左、それ以外は右へ振る
-        //! 非有限値・負の振幅・frames <= 0・longestFlipFrames < 1 の場合は nullptr を返す
-        [[nodiscard]] static std::unique_ptr<CameraShakeModifier> Create(const CameraShakeDesc& desc,
-                                                                         float firstSideSign);
-
-        [[nodiscard]] static const void* StaticKind() noexcept;
-        [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
-        [[nodiscard]] int Order() const noexcept override { return 100; }
-
-        void Modify(CameraPose& pose, const CameraAxes& axes) const noexcept override;
-        [[nodiscard]] bool IsFinished() const noexcept override;
-        [[nodiscard]] bool IsShake() const noexcept override { return true; }
-
-        //! 現在のフレームのずれ (m)。x がカメラの右、y が上。完了後は 0
-        [[nodiscard]] Vector2 Offset() const noexcept;
-
-    private:
-        CameraShakeModifier() noexcept = default;
-
-        std::vector<Vector2> m_offsets; // フレームごとのずれ (m、x: 右, y: 上)
     };
 
     //! 寄りと傾き。寄りは視野角、傾きは視線の軸まわりの上の向きで掛け、視線ベクトルは変えない
@@ -297,6 +258,6 @@ namespace NS
         CameraNudgeDesc m_desc{};
     };
 
-    //! ヒット演出で開始する揺れ・沈み・寄り・ずれの Kind タグ一覧 (加算式のトラウマは含まない)
-    [[nodiscard]] std::array<const void*, 5> CameraHitEffectKinds() noexcept;
+    //! ヒット演出で開始する沈み・寄り・ずれの Kind タグ一覧 (加算式のトラウマは含まない)
+    [[nodiscard]] std::array<const void*, 4> CameraHitEffectKinds() noexcept;
 } // namespace NS

@@ -28,9 +28,6 @@ namespace NS
     //! モディファイアを積む。管理役が無ければ何もせず false
     bool AddCameraModifier(const IGetCamera* user, std::unique_ptr<CameraModifier> modifier);
 
-    //! 画面揺れを始める。管理役が無いか壊れた設定なら false
-    bool StartCameraShake(const IGetCamera* user, const CameraShakeDesc& desc);
-
     //! 寄りと傾きを始める。管理役が無いか壊れた設定なら false
     bool StartCameraZoomRoll(const IGetCamera* user, const CameraZoomRollDesc& desc);
 

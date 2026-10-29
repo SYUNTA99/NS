@@ -599,30 +599,6 @@ namespace NS
         }
     }
 
-    bool HitReaction::StartShake(const SceneActor* owner, const CameraShakeDesc& desc)
-    {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartShake: 持ち主が null");
-        if (desc.frames <= 0)
-        {
-            return true;
-        }
-        if (!CanStartCameraMotion(owner, desc.frames))
-        {
-            return false;
-        }
-        if (!StartCameraShake(owner, desc))
-        {
-            NS_LOG_WARN(Scene,
-                        "揺れの設定が壊れていて、揺らさなかった: 横 {} 縦 {} フレーム数 {} 最長 {}",
-                        desc.sideAmplitude,
-                        desc.upAmplitude,
-                        desc.frames,
-                        desc.longestFlipFrames);
-            return false;
-        }
-        return true;
-    }
-
     bool HitReaction::StartSink(const SceneActor* owner, const CameraSinkDesc& desc)
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartSink: 持ち主が null");
@@ -689,15 +665,6 @@ namespace NS
             return false;
         }
         return true;
-    }
-
-    void HitReaction::StartShakeLines(const SceneActor* owner, const HitShakeLinesDesc& desc) noexcept
-    {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartShakeLines: 持ち主が null");
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
-        {
-            screen->StartShakeLines(owner, desc);
-        }
     }
 
     void HitReaction::StartDistortionRing(const SceneActor* owner, const HitDistortionRingDesc& desc) noexcept

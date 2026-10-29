@@ -495,12 +495,6 @@ namespace NS
         //! @param[in] alpha 始めの濃さ。残りのフレーム数に比例して薄くなる
         void StartFlash(const SceneActor* owner, int frames, float alpha) noexcept;
 
-        //! カメラの揺れを始める
-        //! @param[in] desc 揺れの設定。フレーム数 0 以下なら揺らさない
-        //! @return 揺れを積んだか、フレーム数 0 以下で揺らさなかった場合 true。
-        //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
-        bool StartShake(const SceneActor* owner, const CameraShakeDesc& desc);
-
         //! カメラの沈む揺れを始める
         //! @param[in] desc 4 拍の形。フレーム数 0 以下なら揺らさない
         //! @return 揺れを積んだか、フレーム数 0 以下で揺らさなかった場合 true。
@@ -522,10 +516,6 @@ namespace NS
         //! @param[in] desc 寄りと傾きの設定
         //! @return 積んだ場合 true。設定が壊れている・カメラの管理役が無い場合 false
         bool StartZoomRoll(const SceneActor* owner, const CameraZoomRollDesc& desc);
-
-        //! 震えの線を頼む。前の線が残っていても始め直す
-        //! @param[in] desc 震えの線の設定。半径かフレーム数が 0 以下なら出さない
-        void StartShakeLines(const SceneActor* owner, const HitShakeLinesDesc& desc) noexcept;
 
         //! 歪みの輪を頼む。前の輪が残っていても始め直す
         //! @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない
