@@ -42,8 +42,7 @@ namespace NS
 namespace NS
 {
     class Object;
-    class EffectAsset;
-    class EffectSet;
+    class Effect;
     class AnimClip;
     class AssetManager;
     class Shader;
@@ -155,13 +154,9 @@ namespace NS
         //! 読み直した後、材質の値の並びを取り直すために全部のマテリアルを作り直す
         std::size_t ReloadAllShaders();
 
-        [[nodiscard]] EffectAsset* LoadEffectAsset(std::string_view id);
-        [[nodiscard]] EffectSet* LoadEffectSet(std::string_view id);
+        [[nodiscard]] Effect* LoadEffectAsset(std::string_view id);
         [[nodiscard]] Object* LoadEffectFile(std::string_view path);
         void ReloadEffectAssets();
-        [[nodiscard]] bool SaveEffectSet(const EffectSet& asset);
-        [[nodiscard]] bool HasUnsavedEffectSets() const noexcept { return !m_unsavedEffectSets.empty(); }
-        [[nodiscard]] bool SaveAllEffectSets();
         [[nodiscard]] std::optional<std::string> DuplicateEffectFile(std::string_view path, std::string_view newName);
 
         //! 全キャッシュを解放する。D3DDevice 破棄より前に呼ぶ
@@ -195,10 +190,8 @@ namespace NS
         // アニメーションの glTF を path キーで 1 回だけ読む。読めなかった path も覚え、Clear まで読み直さない
         [[nodiscard]] const AnimSource* GetOrLoadAnimationSource(std::string_view path);
 
-        std::map<std::string, std::unique_ptr<EffectAsset>> m_effectAssets;
-        std::map<std::string, std::unique_ptr<EffectSet>> m_effectSets;
+        std::map<std::string, std::unique_ptr<Effect>> m_effectAssets;
         bool m_effectCatalogLoaded = false;
-        std::set<std::string> m_unsavedEffectSets;
         std::string m_baseDir; // 相対 path 解決の基準ディレクトリ
         std::map<std::string, std::unique_ptr<Shader>> m_shaders;
         std::map<std::string, std::unique_ptr<Texture>> m_textures;

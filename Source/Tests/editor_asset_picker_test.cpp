@@ -2,7 +2,7 @@
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
 #include "NSlib/Core/Windows/Filesystem.h"
-#include "NSlib/CoreObject/Asset/EffectAsset.h"
+#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/Gfx/Render/Skybox.h"
@@ -119,7 +119,7 @@ namespace
 
     struct EffectSettings
     {
-        NS::EffectAsset* effect = NS::AssetManager::Get().LoadEffectAsset("fb7493b290125dbca669213dc5390286");
+        NS::Effect* effect = NS::AssetManager::Get().LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");
         NS_REFLECT_BEGIN(EffectSettings, void)
         NS_FIELD(effect, "エフェクト")
         NS_REFLECT_END_VALUE()
@@ -135,7 +135,7 @@ TEST(AssetPickerCatalog, EffectAssetMemberIsSavedAsItsPersistentId)
 
     EffectSettings settings;
     EXPECT_EQ(NS::SerializeReflectedFields(&settings, info)["エフェクト"],
-              nlohmann::json("fb7493b290125dbca669213dc5390286"));
+              nlohmann::json("6e4f2fccb9df5a339885b53d42fafd45"));
     EXPECT_EQ(
         NS::ApplyReflectedFields(&settings, info, nlohmann::json{{"エフェクト", "fa2acc194fe252f6a26e9f1a0ce0b914"}}),
         0u);

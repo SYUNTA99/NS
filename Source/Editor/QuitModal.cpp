@@ -17,8 +17,7 @@ namespace NS
     {
         bool HasUnsavedWork(const LevelEditorController& editor, const ActionTimelinePanel& timeline) noexcept
         {
-            return editor.HasUnsavedSceneChanges() || timeline.HasUnsavedChanges() ||
-                   AssetManager::Get().HasUnsavedEffectSets();
+            return editor.HasUnsavedSceneChanges() || timeline.HasUnsavedChanges() || editor.HasUnsavedAssetWrites();
         }
 
         bool SaveAllForQuit(LevelEditorController& editor, ActionTimelinePanel& timeline) noexcept
@@ -33,8 +32,8 @@ namespace NS
             {
                 timelineSaved = timeline.SaveAll();
             }
-            const bool effectsSaved = AssetManager::Get().SaveAllEffectSets();
-            return sceneSaved && timelineSaved && effectsSaved;
+            const bool assetsSaved = editor.SavePendingAssets();
+            return sceneSaved && timelineSaved && assetsSaved;
         }
 
         bool QuitModal::RequestQuit(bool hasUnsavedWork) noexcept
@@ -82,9 +81,10 @@ namespace NS
                     {
                         ImGui::BulletText("シーン");
                     }
-                    if (AssetManager::Get().HasUnsavedEffectSets())
+
+                    if (editor.HasUnsavedAssetWrites())
                     {
-                        ImGui::BulletText("演出セット");
+                        ImGui::BulletText("アセット");
                     }
                     if (timeline.HasUnsavedChanges())
                     {

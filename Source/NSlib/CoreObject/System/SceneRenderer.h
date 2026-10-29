@@ -91,10 +91,6 @@ namespace NS
         //! 描く段のシェーダーはここで AssetManager::Get() から引くので、AssetManager を差した後に呼ぶ
         void SetDevice(Gfx::D3DDevice* device) noexcept;
 
-        //! Preload が .efkefc を探すディレクトリを差す。空のままなら ContentRoot の Assets/Effects
-        //! effectRoot は EffectScene の構築時に固まる。SetDevice より前に差す
-        void SetEffectRoot(std::string root) noexcept;
-
         //! 所有している EffectScene。装置未設定の間は nullptr
         [[nodiscard]] Gfx::EffectScene* Effects() const noexcept { return m_effects.get(); }
 
@@ -283,7 +279,6 @@ namespace NS
         // 光のにじみと画面の段。ビュー列と同じ並び。装置を差し替えると畳み、描く時に作る
         std::vector<ViewPasses> m_viewPasses;
 
-        std::string m_effectRoot;                       // .efkefc を探すディレクトリ。空なら既定の Assets/Effects
         Gfx::GroundWave m_groundWave{};             // 描く床の波。書くのは HitScreenDirector だけ
         Gfx::DistortionRing m_distortionRing{};     // 描く歪みの輪。書くのは HitScreenDirector だけ
         std::vector<IRenderable*> m_bodyMask;           // 体の型に写す描く物、非所有

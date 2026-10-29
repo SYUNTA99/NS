@@ -12,7 +12,6 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "TestActorFile.h"
-#include "TestEffectSettings.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -195,16 +194,12 @@ TEST(MapObjParams, TackleAnswerCarriesTheLaunchShape)
     EXPECT_FLOAT_EQ(answer.launch.riseGravity, 25.0f);
 }
 
-// 尾と粉の大きさは描く LaunchEffects の欄。遊びの欄と並ばない
-TEST(MapObjParams, LaunchSizeDefaultsBelongToLaunchEffects)
+// 着地の発生位置と消去の時機はGameが持つ
+TEST(MapObjParams, LaunchSynchronizationDefaultsBelongToLaunchEffects)
 {
     GL::Level::LaunchEffects effects;
-    const nlohmann::json fields = NS::SerializeClassObjFields(&effects.Settings());
-    const nlohmann::json expected = {{"飛び出しの尾が残るフレーム数の基準", 8},
-                                     {"飛び出しの尾が残るフレーム数の飛ばしの比あたり", 4.0f},
-                                     {"着地の粉の大きさの基準", 0.8f},
-                                     {"着地の粉の大きさの質量の平方根あたり", 0.4f},
-                                     {"着地の粉の大きさの威力あたりの伸び", 0.5f}};
+    const nlohmann::json fields = NS::SerializeClassObjFields(&effects);
+    const nlohmann::json expected = {{"着地の粉の寿命フレーム", 24}, {"着地の粉を浮かせる高さ", 0.3f}};
     GL::Level::MapObjParams params;
     const nlohmann::json paramFields = NS::SerializeClassObjFields(&params);
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -213,45 +208,4 @@ TEST(MapObjParams, LaunchSizeDefaultsBelongToLaunchEffects)
         EXPECT_EQ(fields[it.key()], it.value()) << it.key();
         EXPECT_FALSE(paramFields.contains(it.key())) << it.key();
     }
-}
-
-TEST(MapObjParams, LiveLaunchVisualTuningControlsTrailAndDust)
-{
-    NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::SetActorJsonId(rock, 1);
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
-    scene.ResetFromJson(doc);
-    NS::SceneActor* actor = scene.Actors().FindByActorId(1);
-    ASSERT_NE(actor, nullptr);
-    GL::Level::PropActor* placed = NS::Cast<GL::Level::PropActor>(actor);
-    ASSERT_NE(placed, nullptr);
-    GL::Level::MapObjParams* params = &placed->Params();
-    GL::Level::LaunchEffects* effects = &placed->Effects();
-    EXPECT_EQ(NS::ApplyJsonFields(params, {{"質量", 4.0f}}), 0u);
-    TestEffectSettings<GL::Level::LaunchEffects> effectSettings(effects);
-
-    EXPECT_EQ(NS::ApplyJsonFields(effectSettings.Get(),
-                                  {{"飛び出しの尾が残るフレーム数の基準", 13},
-                                   {"飛び出しの尾が残るフレーム数の飛ばしの比あたり", 7.0f},
-                                   {"着地の粉の大きさの基準", 1.0f},
-                                   {"着地の粉の大きさの質量の平方根あたり", 0.5f},
-                                   {"着地の粉の大きさの威力あたりの伸び", 0.25f}}),
-              0u);
-    GL::Level::TackleReleaseDesc release{};
-    release.arc = GL::Level::LaunchArc{.distance = 5.0f, .apexHeight = 1.0f};
-    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(actor, release));
-    GL::Level::TackleReleaseDesc trail = release;
-    trail.tier = GL::Level::HitTier::Center;
-    trail.power = 2.0f;
-    trail.launchScale = 1.0f;
-    const GL::Level::PropActor* prop = NS::Cast<GL::Level::PropActor>(actor);
-    const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
-    ASSERT_NE(prop, nullptr);
-    ASSERT_NE(sphere, nullptr);
-    effects->BeginTrail(prop, trail, prop->Flight(), params, sphere->WorldSphere(prop->Root().WorldMatrix()));
-    EXPECT_EQ(effects->TrailFrames(), 20);
-    EXPECT_FLOAT_EQ(effects->LandDustScale(), 2.5f);
 }

@@ -4,7 +4,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
-#include "NSlib/CoreObject/ClassObjs/Effect.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
@@ -529,7 +529,7 @@ namespace
 
     // effect の記録のうち番号が lastId より大きい物を、歩 k に出したエフェクトとして out へ足す
     void CollectStartedEffects(
-        const NS::Effect* effect, LookActor actor, int k, NS::uint32& lastId, std::vector<std::string>& out)
+        const NS::EffectObj* effect, LookActor actor, int k, NS::uint32& lastId, std::vector<std::string>& out)
     {
         NS_ASSERT(Game, effect != nullptr, "CollectStartedEffects: 渡したアクターか部品が無い");
         for (const NS::EffectRecord& record : effect->Records())

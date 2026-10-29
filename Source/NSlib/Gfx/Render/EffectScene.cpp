@@ -4,7 +4,6 @@
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DTexture.h"
@@ -74,19 +73,6 @@ namespace NS
                 return static_cast<uint8>(std::lround(value * 255.0f));
             }
 
-            // 他の再生や std::rand の呼び出しに影響されないよう、名前と再生回数から乱数の種を作る。
-            int32 SeedOf(std::string_view name, uint32 playIndex) noexcept
-            {
-                uint32 hash = 2166136261u;
-                for (const char c : name)
-                {
-                    hash ^= static_cast<uint8>(c);
-                    hash *= 16777619u;
-                }
-                hash ^= playIndex * 2654435761u;
-                return static_cast<int32>(hash & 0x7FFFFFFFu);
-            }
-
             std::string ToUtf8(const char16_t* path)
             {
                 if (path == nullptr)
@@ -149,7 +135,7 @@ namespace NS
             }
         } // namespace
 
-        EffectScene::EffectScene(std::string effectRoot) noexcept : m_effectRoot(std::move(effectRoot))
+        EffectScene::EffectScene() noexcept
         {
             const D3DGlobal& gpu = Gpu();
             if (gpu.device == nullptr || gpu.context == nullptr)
@@ -223,13 +209,6 @@ namespace NS
             return m_manager != nullptr && m_renderer != nullptr;
         }
 
-        bool EffectScene::Preload(std::string_view name) noexcept
-        {
-            return PreloadFile(name,
-                               OS::FileSystem::Combine(m_effectRoot, std::string{name} + ".efkefc"),
-                               static_cast<uint32>(SeedOf(name, 0)));
-        }
-
         bool EffectScene::Preload(const EffectResourceDesc& asset) noexcept
         {
             return PreloadFile(asset.id, asset.path, asset.seed);
@@ -237,6 +216,20 @@ namespace NS
 
         EffectHandle EffectScene::Play(const EffectResourceDesc& asset, const EffectPlayDesc& desc) noexcept
         {
+            if (!IsValid())
+            {
+                return EffectHandle{};
+            }
+
+            for (const std::optional<float>& input : desc.dynamicInputs)
+            {
+                if (input.has_value() && !std::isfinite(input.value()))
+                {
+                    NS_LOG_WARN(Graphics, "エフェクトの動的入力が有限でないため再生しない");
+                    return EffectHandle{};
+                }
+            }
+
             const std::unordered_map<std::string, std::string>::const_iterator source = m_resourcePaths.find(asset.id);
             if (asset.path.empty() || source == m_resourcePaths.end() || source->second != asset.path)
             {
@@ -246,7 +239,40 @@ namespace NS
                 }
                 return EffectHandle{};
             }
-            return Play(asset.id, desc);
+            const std::string key(asset.id);
+            const std::unordered_map<std::string, Effekseer::EffectRef>::iterator found = m_effects.find(key);
+            if (found == m_effects.end())
+            {
+                // 続けて呼ばれてもログを埋めないよう、警告は名前ごとに 1 回
+                if (m_warnedMissing.emplace(key).second)
+                {
+                    NS_LOG_WARN(Graphics, "EffectScene::Play: Preload していないエフェクト ({})", key);
+                }
+                return EffectHandle{};
+            }
+
+            const Effekseer::Handle handle =
+                m_manager->Play(found->second, desc.position.x, desc.position.y, desc.position.z);
+            // Play が std::rand から引いた種を上書きする。節が生まれる最初の Update より前なので、この種で生まれる
+            uint32& playCount = m_playCounts[key];
+            m_manager->SetRandomSeed(handle,
+                                     static_cast<int32>((m_seedBases[key] ^ (playCount * 2654435761u)) & 0x7FFFFFFFu));
+            ++playCount;
+            // Play は節を作らず、最初の Update で作る。ここで渡した姿勢・色・入力は生まれる時に読まれる
+            m_manager->SetMatrix(handle, ToEffekseerTransform(desc.position, desc.rotation, desc.scale));
+            m_manager->SetAllColor(handle,
+                                   Effekseer::Color(ToColorByte(desc.color.R()),
+                                                    ToColorByte(desc.color.G()),
+                                                    ToColorByte(desc.color.B()),
+                                                    ToColorByte(desc.color.A())));
+            for (std::size_t i = 0; i < desc.dynamicInputs.size(); ++i)
+            {
+                if (desc.dynamicInputs[i].has_value())
+                {
+                    m_manager->SetDynamicInput(handle, static_cast<int32>(i), desc.dynamicInputs[i].value());
+                }
+            }
+            return EffectHandle{handle};
         }
 
         bool EffectScene::PreloadFile(std::string_view name, const std::string& path, uint32 seed) noexcept
@@ -285,54 +311,6 @@ namespace NS
             return true;
         }
 
-        EffectHandle EffectScene::Play(std::string_view name, Vector3 position) noexcept
-        {
-            return Play(name, EffectPlayDesc{.position = position});
-        }
-
-        EffectHandle EffectScene::Play(std::string_view name, const EffectPlayDesc& desc) noexcept
-        {
-            if (!IsValid())
-            {
-                return EffectHandle{};
-            }
-
-            const std::string key(name);
-            const std::unordered_map<std::string, Effekseer::EffectRef>::iterator found = m_effects.find(key);
-            if (found == m_effects.end())
-            {
-                // 続けて呼ばれてもログを埋めないよう、警告は名前ごとに 1 回
-                if (m_warnedMissing.emplace(key).second)
-                {
-                    NS_LOG_WARN(Graphics, "EffectScene::Play: Preload していないエフェクト ({})", key);
-                }
-                return EffectHandle{};
-            }
-
-            const Effekseer::Handle handle =
-                m_manager->Play(found->second, desc.position.x, desc.position.y, desc.position.z);
-            // Play が std::rand から引いた種を上書きする。節が生まれる最初の Update より前なので、この種で生まれる
-            uint32& playCount = m_playCounts[key];
-            m_manager->SetRandomSeed(handle,
-                                     static_cast<int32>((m_seedBases[key] ^ (playCount * 2654435761u)) & 0x7FFFFFFFu));
-            ++playCount;
-            // Play は節を作らず、最初の Update で作る。ここで渡した姿勢・色・入力は生まれる時に読まれる
-            m_manager->SetMatrix(handle, ToEffekseerTransform(desc.position, desc.rotation, desc.scale));
-            m_manager->SetAllColor(handle,
-                                   Effekseer::Color(ToColorByte(desc.color.R()),
-                                                    ToColorByte(desc.color.G()),
-                                                    ToColorByte(desc.color.B()),
-                                                    ToColorByte(desc.color.A())));
-            for (std::size_t i = 0; i < desc.dynamicInputs.size(); ++i)
-            {
-                if (desc.dynamicInputs[i].has_value())
-                {
-                    m_manager->SetDynamicInput(handle, static_cast<int32>(i), desc.dynamicInputs[i].value());
-                }
-            }
-            return EffectHandle{handle};
-        }
-
         void EffectScene::SetTransform(EffectHandle handle,
                                        const Vector3& position,
                                        const Quaternion& rotation,
@@ -355,6 +333,11 @@ namespace NS
             if (index < 0 || index >= k_DynamicInputCount)
             {
                 NS_LOG_WARN(Graphics, "EffectScene::SetDynamicInput: 動的入力の番号 {} は 0〜3 の外", index);
+                return;
+            }
+            if (!std::isfinite(value))
+            {
+                NS_LOG_WARN(Graphics, "エフェクトの動的入力 {} の値が有限でないため変更しない", index);
                 return;
             }
             m_manager->SetDynamicInput(handle.value, index, value);

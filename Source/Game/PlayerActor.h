@@ -43,7 +43,6 @@ namespace GL
         class PlayerParams;
         class PlayerClips;
         class PlayerAppearance;
-        class ChargeEffects;
         class ImpactEffects;
         class PlayerSounds;
     } // namespace Player
@@ -112,7 +111,6 @@ public:
     [[nodiscard]] GL::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
     [[nodiscard]] GL::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
     [[nodiscard]] GL::Level::SlamArrow& SlamIndicator() noexcept { return *m_slamArrow; }
-    [[nodiscard]] GL::Player::ChargeEffects& ChargeVisuals() noexcept { return *m_chargeEffects; }
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
     [[nodiscard]] GL::Level::TackleGhost& Ghost() noexcept { return m_tackleGhost; }
     [[nodiscard]] const GL::Level::TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
@@ -462,7 +460,6 @@ private:
     std::unique_ptr<GL::Level::ImpactResolver> m_resolver;
     std::unique_ptr<GL::Level::TargetMarker> m_targetMarker;
     std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
-    std::unique_ptr<GL::Player::ChargeEffects> m_chargeEffects;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;
     GL::Level::TackleGhost m_tackleGhost; // 体当たりの残像。描く時に Model を渡されて描く

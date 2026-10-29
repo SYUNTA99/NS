@@ -1,4 +1,4 @@
-#include "NSlib/CoreObject/ClassObjs/Effect.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -26,15 +26,15 @@ namespace
         }
     };
 
-    using NS::Effect;
+    using NS::EffectObj;
     using NS::EffectRecord;
 } // namespace
 
 TEST(EffectTest, PlayWithoutAnEffectSceneLeavesOneRecord)
 {
-    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
-    Effect effect;
+    EffectObj effect;
     const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
@@ -49,9 +49,9 @@ TEST(EffectTest, PlayWithoutAnEffectSceneLeavesOneRecord)
 
 TEST(EffectTest, StopWritesTheStepItEndedOn)
 {
-    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
-    Effect effect;
+    EffectObj effect;
     effect.BeginStep(nullptr);
     const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
     effect.BeginStep(nullptr);
@@ -70,9 +70,9 @@ TEST(EffectTest, StopWritesTheStepItEndedOn)
 
 TEST(EffectTest, StopAfterEndsOnTheScheduledStep)
 {
-    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
-    Effect effect;
+    EffectObj effect;
     const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
     effect.StopAfter(id, 2);
 
@@ -85,9 +85,9 @@ TEST(EffectTest, StopAfterEndsOnTheScheduledStep)
 
 TEST(EffectTest, EndedRecordIsDroppedAfterTheKeepSteps)
 {
-    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
-    Effect effect{3};
+    EffectObj effect{3};
     const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
     effect.Stop(nullptr, id);
 
@@ -102,9 +102,9 @@ TEST(EffectTest, EndedRecordIsDroppedAfterTheKeepSteps)
 
 TEST(EffectTest, AmountAndRotationAreWrittenToTheRecord)
 {
-    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
-    Effect effect;
+    EffectObj effect;
     const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
     const NS::Quaternion turned = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, 1.0f);
     effect.SetAmount(id, 2.5f);
@@ -124,7 +124,7 @@ TEST(EffectTest, ActorUpdateAdvancesTheSlotKeeperOnce)
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
-    Effect* effect = actor.GetEffect();
+    EffectObj* effect = actor.GetEffect();
     ASSERT_NE(effect, nullptr);
     ASSERT_EQ(effect->Step(), 0);
 

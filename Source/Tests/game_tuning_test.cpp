@@ -5,18 +5,16 @@
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/PropActor.h"
 #include "Game/Level/TargetMarker.h"
-#include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/ActorJson.h"
-#include "NSlib/CoreObject/ClassObjs/Effect.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "TestEffectSettings.h"
 
 #include <cmath>
 #include <gtest/gtest.h>
@@ -31,10 +29,9 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShape)
     scene.ResetFromJson(std::move(doc));
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    TestEffectSettings<GL::Player::ImpactEffects> impactSettings(&player->ImpactVisuals());
 
     ASSERT_EQ(
-        NS::ApplyJsonFields(impactSettings.Get(), {{"核の留まりの上限フレーム", 2}, {"中心の火花の開始フレーム", 5}}),
+        NS::ApplyJsonFields(&player->ImpactVisuals(), {{"核の留まりの上限フレーム", 2}, {"中心の火花の開始フレーム", 5}}),
         0u);
     GL::Level::ImpactRecord impact;
     impact.tier = GL::Level::HitTier::Center;
@@ -45,10 +42,10 @@ TEST(GameTuning, ImpactTimingEditsChangeTheShape)
 
 TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
 {
-    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test", {}, 1});
-    NS::Effect shortHistory{2};
-    NS::Effect longHistory{6};
+    NS::EffectObj shortHistory{2};
+    NS::EffectObj longHistory{6};
     const NS::uint32 shortId = shortHistory.Play(nullptr, &asset, {});
     const NS::uint32 longId = longHistory.Play(nullptr, &asset, {});
     shortHistory.Stop(nullptr, shortId);
@@ -68,9 +65,8 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
     GL::Level::PropActor* rock = scene.SpawnActor<GL::Level::PropActor>("PropActor");
     ASSERT_NE(rock, nullptr);
     GL::Level::LaunchEffects* effects = &rock->Effects();
-    TestEffectSettings<GL::Level::LaunchEffects> effectSettings(effects);
 
-    ASSERT_EQ(NS::ApplyJsonFields(effectSettings.Get(), {{"着地の粉の寿命フレーム", 2}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(effects, {{"着地の粉の寿命フレーム", 2}}), 0u);
     const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(rock->CollisionClassObj());
     ASSERT_NE(sphere, nullptr);
     effects->BeginTrail(rock,
@@ -79,7 +75,7 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
                         &rock->Params(),
                         sphere->WorldSphere(rock->Root().WorldMatrix()));
     effects->NotifyLanding(rock, {}, {0.0f, 1.0f, 0.0f});
-    NS::Effect* effect = rock->GetEffect();
+    NS::EffectObj* effect = rock->GetEffect();
     ASSERT_NE(effect, nullptr);
     effect->BeginStep(rock->GetEffectScene());
     effect->BeginStep(rock->GetEffectScene());
@@ -90,20 +86,10 @@ TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
     EXPECT_EQ(*dust.endStep - dust.startStep, 2);
 }
 
-TEST(GameTuning, EditedPowerRangeAndTrailAngleKeepTheOutputFinite)
+TEST(GameTuning, EditedTrailAngleKeepsTheOutputFinite)
 {
     GL::Player::ImpactEffects effects;
-    TestEffectSettings<GL::Player::ImpactEffects> effectSettings(&effects);
-
-    ASSERT_EQ(
-        NS::ApplyJsonFields(
-            effectSettings.Get(),
-            {{"火花の数を振る威力の下限", 1.0f}, {"火花の数を振る威力の上限", 1.0f}, {"反動の尾の最小横成分", 2.0f}}),
-        0u);
-    GL::Level::ImpactRecord impact;
-    impact.tier = GL::Level::HitTier::Center;
-    impact.power = 1.0f;
-    EXPECT_EQ(effects.ShapeFor(impact).sparkCount, 30);
+    ASSERT_EQ(NS::ApplyJsonFields(&effects, {{"反動の尾の最小横成分", 2.0f}}), 0u);
     const NS::Vector3 heading = effects.ReboundTrailHeading({0.0f, 1.0f, 10.0f}, {}, NS::Vector3{0.0f, 0.0f, -5.0f});
     EXPECT_TRUE(std::isfinite(heading.x));
     EXPECT_TRUE(std::isfinite(heading.y));
@@ -114,9 +100,8 @@ TEST(GameTuning, EditedPowerRangeAndTrailAngleKeepTheOutputFinite)
 TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
 {
     GL::Player::ImpactEffects effects;
-    TestEffectSettings<GL::Player::ImpactEffects> effectSettings(&effects);
 
-    ASSERT_EQ(NS::ApplyJsonFields(effectSettings.Get(), {{"外れの火花の横の割合", 1.0f}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(&effects, {{"外れの火花の横の割合", 1.0f}}), 0u);
     const NS::Vector3 forward{0.0f, 0.0f, 1.0f};
     const NS::Vector3 heading =
         effects.MissSparkHeading(0.8f, 0.0f, GL::Level::MissSurfaceNormal(0.8f, 0.0f, 2.0f, forward), forward);

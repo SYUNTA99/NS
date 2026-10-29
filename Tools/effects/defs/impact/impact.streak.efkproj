@@ -1,9 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 光条 impact.streak: 中心近くの当たりにだけ足す、画面を横切る一文字の細い線
-     板はカメラへ向け、横が画面の横になる。再生の大きさの X が長さ (m)、Y が太さの倍率
-     長さ・細り方・薄れ始めるフレームはゲームが持つ
-     (大きさを毎フレーム置き直し、親を止めて薄れさせ、薄れきったら子ごと消す)
-     寿命の 120 フレームは打ち切り -->
+<?xml version='1.0' encoding='utf-8'?>
+<!-- 入力0は当たりから数えた保持の最終フレーム、入力1は威力。根は等倍。
+     当たりの1フレーム目に再生する。素材が長さ・脈動・太さの変化を持つ。 -->
 <EffekseerProject>
   <Root>
     <Name>Root</Name>
@@ -29,11 +26,11 @@
             </GenerationTimeOffset>
           </Generation>
         </CommonValues>
-        <!-- 太さの倍率 1 で板の高さ 0.16 m。線の芯は板の高さの 4 分の 1 (0.04 m) -->
         <ScalingValues>
           <Fixed>
             <Scale>
               <Y>0.16</Y>
+              <DynamicEquation>0</DynamicEquation>
             </Scale>
           </Fixed>
         </ScalingValues>
@@ -42,11 +39,6 @@
         </DepthValues>
         <RendererCommonValues>
           <ColorTexture>Texture/impact_line.png</ColorTexture>
-          <!-- 金橙 (255, 160, 60) のまま 1 を超えない。白い床の上では床を塗り替えて橙に見える -->
-          <!-- 2 = 取り除かれた後に消える。3 フレームで落ち、親を止めた次のフレームに 7 割、その次に 3 割の濃さで写る
-               手本の弾きの横線は 13 の次の 14 で最大の 2〜4 割、15 で 1 割ほどになり 16 に消える。並べた絵で
-               見ると 15 まで線が残り、16 にも薄く見える所がある。2 フレームで落とした時は 14 が最後で、
-               手本より 1〜2 早かった -->
           <FadeOutType>2</FadeOutType>
           <FadeOut>
             <Frame>3</Frame>
@@ -82,12 +74,12 @@
             </GenerationTimeOffset>
           </Generation>
         </CommonValues>
-        <!-- 芯の白は長さの 7 割、太さは下地の半分。橙の縁の中に白い芯が通る -->
         <ScalingValues>
           <Fixed>
             <Scale>
               <X>0.7</X>
               <Y>0.08</Y>
+              <DynamicEquation>0</DynamicEquation>
             </Scale>
           </Fixed>
         </ScalingValues>
@@ -97,9 +89,7 @@
         <RendererCommonValues>
           <ColorTexture>Texture/impact_line.png</ColorTexture>
           <AlphaBlend>2</AlphaBlend>
-          <!-- 暖かい白 (255, 235, 200) の 2.5 倍。芯が白く飛び、1 を超えた分がにじむ -->
           <EmissiveScaling>2.5</EmissiveScaling>
-          <!-- 下塗りと同じく 3 フレームで落ちる -->
           <FadeOutType>2</FadeOutType>
           <FadeOut>
             <Frame>3</Frame>
@@ -121,4 +111,36 @@
   <StartFrame>0</StartFrame>
   <EndFrame>30</EndFrame>
   <IsLoop>False</IsLoop>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>10</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>1</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations>
+      <DynamicEquation>
+        <Name>Shape</Name>
+        <Code>t = @GTime * 60
+f = (t + 0.5) - ((t + 0.5) % 1)
+f = f + 1
+h = 1 + (@In0 - 1) * step(1, @In0)
+t = (f - 1) / h
+t = t + (1 - t) * step(1, t)
+p = 0.85 + 0.15 * step(0, sin((f - 0.5) * 3.141592653589793))
+p = 1 + (p - 1) * (1 - step(h + 0.5, f))
+@O.x = @P.x * p * (4 + 2 * @In1)
+@O.y = @P.y * (1 + (0.3 - 1) * t)
+@O.z = @P.z</Code>
+      </DynamicEquation>
+    </Equations>
+  </Dynamic>
 </EffekseerProject>

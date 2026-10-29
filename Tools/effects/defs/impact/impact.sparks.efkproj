@@ -1,13 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 火花 impact.sparks: 力が相手へ入った向きと量
-     3 つの節を動的入力の数で選ぶ。0 番が Band の粒の数 (中心近く)、3 番が NearBand の粒の数 (惜しい)、
-     1 番が Scrape の粒の数 (大きな外れ)、2 番が速さ (m/フレーム)。使わない節の数は 0 にする
-     Band と NearBand: 再生の向きの +Y を相手の飛ぶ向きにする。生まれる所は接触点から 0.5 m 外の、+Y に直角な輪。
-       そこから +Y の 35 度の円錐の向きへ飛ぶ (層の表の半角 35 度)。帯の真横 (90 度) へ出すと横からの絵で縦の線に潰れ、
-       相手の飛ぶ向きが形に出なかった。接触点から 35 度で出すと相手の体の中へ入って隠れる。
-       0.5 m 外の輪から出ると、相手の玉 (半径 0.75 m) の外を回って前へ開く (0.3 m では出てすぐ玉の中を通る)
-     Scrape: 再生の向きの +Y を横ずれの側と相手の飛ぶ向きと上の間にし、+Y の 45 度の円錐へ擦れて飛ぶ
-     全部の粒を最初の更新で出す (生成の間隔 0 と開始 -1)。重力はワールドの下向きで、再生の向きに依らない -->
+<?xml version='1.0' encoding='utf-8'?>
+<!-- 入力0は威力、1は飛ばしの比、2は中心0/外れ1。3は使わない。
+     粒数・速さは素材が決める。外れの全体3倍は粒と発生半径、速さへ焼き込んである。
+     根の大きさは1。向きと位置はGameが渡す。 -->
 <EffekseerProject>
   <Root>
     <Name>Root</Name>
@@ -39,7 +33,7 @@
             </GenerationTimeOffset>
           </Generation>
         </CommonValues>
-        <!-- 1 = PVA。生まれた所の回転で各粒の +Y が外を向き、+Y の速さが放射になる。速さは動的入力 2 番の 0.8〜1.2 倍
+        <!-- 1 = PVA。生まれた所の回転で各粒の +Y が外を向き、+Y の速さが放射になる。速さは威力と飛ばしから素材で決める
              粒の局所の Z が再生の向きの +Y の逆なので、Z に負の速さを入れると相手の飛ぶ向きへ進む (efkprobe で確かめた)。
              外へ sin 35 度・前へ cos 35 度に分け、速さの大きさは動的入力 2 番のまま -->
         <LocationValues>
@@ -326,8 +320,9 @@
         <ScalingValues>
           <Fixed>
             <Scale>
-              <X>0.06</X>
-              <Y>0.35</Y>
+              <X>0.18</X>
+              <Y>1.0499999999999998</Y>
+              <Z>3.0</Z>
             </Scale>
           </Fixed>
         </ScalingValues>
@@ -339,9 +334,9 @@
           <Type>1</Type>
           <Sphere>
             <Radius>
-              <Center>0.05</Center>
-              <Max>0.05</Max>
-              <Min>0.05</Min>
+              <Center>0.15000000000000002</Center>
+              <Max>0.15000000000000002</Max>
+              <Min>0.15000000000000002</Min>
             </Radius>
             <RotationX>
               <Max>45</Max>
@@ -377,13 +372,13 @@
   <Dynamic>
     <Inputs>
       <DynamicInput>
-        <Input>20</Input>
+        <Input>1</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>1</Input>
       </DynamicInput>
       <DynamicInput>
         <Input>0</Input>
-      </DynamicInput>
-      <DynamicInput>
-        <Input>0.2</Input>
       </DynamicInput>
       <DynamicInput>
         <Input>0</Input>
@@ -392,33 +387,38 @@
     <Equations>
       <DynamicEquation>
         <Name>BandCount</Name>
-        <Code>@O.x = @In0</Code>
+        <Code>s = (@In0 - 0.7) / (2 - 0.7)
+s = s * step(0, s)
+s = s + (1 - s) * step(1, s)
+n = 10 + 20 * s + 0.5
+n = n - (n % 1)
+@O.x = n * (1 - step(0.5, @In2))</Code>
       </DynamicEquation>
       <DynamicEquation>
         <Name>ScrapeCount</Name>
-        <Code>@O.x = @In1</Code>
+        <Code>@O.x = 16 * step(0.5, @In2)</Code>
       </DynamicEquation>
       <DynamicEquation>
         <Name>SpeedMin</Name>
-        <Code>@O.y = @In2 * 0.8</Code>
+        <Code>@O.y = 4 / 60 * 0.8 * 3</Code>
       </DynamicEquation>
       <DynamicEquation>
         <Name>SpeedMax</Name>
-        <Code>@O.y = @In2 * 1.2</Code>
+        <Code>@O.y = 4 / 60 * 1.2 * 3</Code>
       </DynamicEquation>
       <DynamicEquation>
         <Name>NearBandCount</Name>
-        <Code>@O.x = @In3</Code>
+        <Code>@O.x = 0</Code>
       </DynamicEquation>
       <DynamicEquation>
         <Name>BandSpeedMin</Name>
-        <Code>@O.y = @In2 * 0.8 * 0.574
-@O.z = 0 - @In2 * 0.8 * 0.819</Code>
+        <Code>@O.y = (6 + 3 * @In1) / 60 * 0.8 * 0.574
+@O.z = 0 - (6 + 3 * @In1) / 60 * 0.8 * 0.819</Code>
       </DynamicEquation>
       <DynamicEquation>
         <Name>BandSpeedMax</Name>
-        <Code>@O.y = @In2 * 1.2 * 0.574
-@O.z = 0 - @In2 * 1.2 * 0.819</Code>
+        <Code>@O.y = (6 + 3 * @In1) / 60 * 1.2 * 0.574
+@O.z = 0 - (6 + 3 * @In1) / 60 * 1.2 * 0.819</Code>
       </DynamicEquation>
     </Equations>
   </Dynamic>

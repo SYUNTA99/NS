@@ -5,21 +5,16 @@
 
 #include "Editor/AssetPicker.h"
 #include "Editor/Undo/ActorSnapshotCommand.h"
-#include "Game/Level/LaunchEffectSettings.h"
-#include "Game/Player/ChargeEffectSettings.h"
-#include "Game/Player/ImpactEffectSettings.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/Asset/EffectAsset.h"
-#include "NSlib/CoreObject/Asset/EffectSet.h"
+#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
-#include "NSlib/CoreObject/ClassObjs/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -56,7 +51,8 @@ namespace
     // name の .actor を document に差し替えてファイルへ書き、name を指すアクターと name の派生を指すアクターの全部へ、
     // 全部の値を写し直す。シーンで上書きした項目はアクターの値が残る
     // 直し終えた時・取り消し・やり直しの全部がこの 1 本を通る
-    void WriteActorFile(NS::Scene& scene, const std::string& name, const nlohmann::json& document)
+    void WriteActorFile(NS::Scene& scene, std::set<std::string>& unsaved,
+                        const std::string& name, const nlohmann::json& document)
     {
         NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
         if (!library.Set(name, document))
@@ -65,7 +61,12 @@ namespace
         }
         if (!library.Save(name))
         {
-            NS_LOG_WARN(App, ".actor {} をファイルへ書けなかった。今の起動の間だけ効く", name);
+            unsaved.insert(name);
+            NS_LOG_WARN(App, ".actor {} をファイルへ書けなかった。終了時に再試行する", name);
+        }
+        else
+        {
+            unsaved.erase(name);
         }
         for (NS::SceneActor* actor : scene.Actors())
         {
@@ -184,8 +185,9 @@ namespace
     class ActorFileCommand final : public NS::Editor::ICommand
     {
     public:
-        ActorFileCommand(NS::Scene& scene, std::string name, const nlohmann::json& before, const nlohmann::json& after)
-            : m_scene(scene), m_name(std::move(name)), m_redo(nlohmann::json::diff(before, after)),
+        ActorFileCommand(NS::Scene& scene, std::set<std::string>& unsaved, std::string name,
+                         const nlohmann::json& before, const nlohmann::json& after)
+            : m_scene(scene), m_unsaved(unsaved), m_name(std::move(name)), m_redo(nlohmann::json::diff(before, after)),
               m_undo(nlohmann::json::diff(after, before))
         {
             m_bytes = sizeof(*this) + m_name.size() + m_redo.dump().size() + m_undo.dump().size();
@@ -216,81 +218,14 @@ namespace
                 }
                 document = document.patch(nlohmann::json::array({operation}));
             }
-            WriteActorFile(m_scene, m_name, document);
+            WriteActorFile(m_scene, m_unsaved, m_name, document);
         }
 
         NS::Scene& m_scene;
+        std::set<std::string>& m_unsaved;
         std::string m_name;
         nlohmann::json m_redo;
         nlohmann::json m_undo;
-        std::size_t m_bytes = 0;
-    };
-
-    void WriteEffectSet(NS::Scene* scene, const std::string& id, const nlohmann::json& document)
-    {
-        NS::AssetManager& assets = NS::AssetManager::Get();
-        NS::EffectSet* set = assets.LoadEffectSet(id);
-        if (!set->IsValid() || !set->Replace(set->Path(), document))
-        {
-            return;
-        }
-        if (!assets.SaveEffectSet(*set))
-        {
-            NS_LOG_ERROR(App, "演出セット {} を保存できない", id);
-        }
-        if (scene == nullptr)
-        {
-            return;
-        }
-        std::vector<const NS::EffectAsset*> references;
-        for (const std::pair<const std::string, std::unique_ptr<NS::Object>>& section : set->Sections())
-        {
-            for (const NS::ReflectionInfo* info = section.second->GetReflection(); info != nullptr; info = info->base)
-            {
-                for (const NS::FieldDesc& field : std::span{info->fields, info->fieldCount})
-                {
-                    if (field.assetKind != NS::AssetKind::Effect)
-                    {
-                        continue;
-                    }
-                    std::string assetId;
-                    field.get(section.second.get(), &assetId);
-                    references.push_back(assets.LoadEffectAsset(assetId));
-                }
-            }
-        }
-        for (NS::SceneActor* actor : scene->Actors())
-        {
-            NS::Effect* effect = actor->GetEffect();
-            if (effect == nullptr || effect->Definition() != set)
-            {
-                continue;
-            }
-            for (const NS::EffectAsset* asset : references)
-            {
-                effect->Preload(scene->GetEffectScene(), asset);
-            }
-        }
-    }
-
-    class EffectSetCommand final : public NS::Editor::ICommand
-    {
-    public:
-        EffectSetCommand(NS::Scene* scene, std::string id, nlohmann::json before, nlohmann::json after)
-            : m_scene(scene), m_id(std::move(id)), m_before(std::move(before)), m_after(std::move(after))
-        {
-            m_bytes = sizeof(*this) + m_id.size() + m_before.dump().size() + m_after.dump().size();
-        }
-        void Do(NS::Editor::IActorSnapshotApplier&) noexcept override { Apply(m_after); }
-        void Undo(NS::Editor::IActorSnapshotApplier&) noexcept override { Apply(m_before); }
-        [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return m_bytes; }
-
-    private:
-        void Apply(const nlohmann::json& document) { WriteEffectSet(m_scene, m_id, document); }
-        NS::Scene* m_scene;
-        std::string m_id;
-        nlohmann::json m_before;
-        nlohmann::json m_after;
         std::size_t m_bytes = 0;
     };
 
@@ -315,22 +250,7 @@ namespace
         if (NS::Editor::IsEffectAssetPath(path))
         {
             NS::Object* asset = NS::AssetManager::Get().LoadEffectFile(path);
-            if (NS::EffectSet* set = NS::Cast<NS::EffectSet>(asset); set != nullptr && set->IsValid())
-            {
-                const nlohmann::json document = set->Document();
-                if (document["settings"].contains(GL::Player::ChargeEffectSettings::StaticReflection()->typeName))
-                {
-                    set->Settings<GL::Player::ChargeEffectSettings>();
-                }
-                if (document["settings"].contains(GL::Player::ImpactEffectSettings::StaticReflection()->typeName))
-                {
-                    set->Settings<GL::Player::ImpactEffectSettings>();
-                }
-                if (document["settings"].contains(GL::Level::LaunchEffectSettings::StaticReflection()->typeName))
-                {
-                    set->Settings<GL::Level::LaunchEffectSettings>();
-                }
-            }
+
             return asset;
         }
         return nullptr;
@@ -338,11 +258,8 @@ namespace
 
     [[nodiscard]] bool IsReadable(const NS::Object& asset)
     {
-        if (const NS::EffectSet* set = NS::Cast<NS::EffectSet>(&asset))
-        {
-            return set->IsValid();
-        }
-        if (const NS::EffectAsset* effect = NS::Cast<NS::EffectAsset>(&asset))
+
+        if (const NS::Effect* effect = NS::Cast<NS::Effect>(&asset))
         {
             return effect->IsValid();
         }
@@ -535,7 +452,7 @@ void LevelEditorController::CommitActorFileEdits()
             continue;
         }
         // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-        m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, name, before, after), m_applier);
+        m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, m_unsavedActorFiles, name, before, after), m_applier);
     }
 }
 
@@ -575,7 +492,7 @@ void LevelEditorController::PushActorFileChange(std::string_view actorFileName,
         return;
     }
     // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-    m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, name, before, after), m_applier);
+    m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, m_unsavedActorFiles, name, before, after), m_applier);
 }
 
 bool LevelEditorController::CreateDerivedActorFile(std::string_view baseName, std::string_view name)
@@ -794,15 +711,6 @@ void LevelEditorController::MarkAssetEdited() noexcept
     m_assetEdited = true;
 }
 
-void LevelEditorController::MarkEffectSetEdited(const nlohmann::json& before)
-{
-    if (!m_assetEdited)
-    {
-        m_effectSetEditBefore = before;
-    }
-    m_assetEdited = true;
-}
-
 void LevelEditorController::CommitAssetEdit()
 {
     if (!m_assetEdited)
@@ -819,18 +727,7 @@ void LevelEditorController::CommitAssetEdit()
         m_actorFileDraftSource = nlohmann::json{};
         return;
     }
-    if (NS::EffectSet* set = NS::Cast<NS::EffectSet>(SelectedAsset()))
-    {
-        const nlohmann::json after = set->Document();
-        if (m_effectSetEditBefore.is_object() && m_effectSetEditBefore != after)
-        {
-            m_editor.Undo().Record(
-                std::make_unique<EffectSetCommand>(m_scene, set->Id(), m_effectSetEditBefore, after));
-        }
-        m_effectSetEditBefore = nlohmann::json{};
-        WriteEffectSet(m_scene, set->Id(), after);
-        return;
-    }
+
     NS::Material* material = NS::Cast<NS::Material>(SelectedAsset());
     if (material == nullptr)
     {
@@ -849,7 +746,38 @@ void LevelEditorController::CommitAssetEdit()
     {
         return;
     }
-    (void)NS::Editor::WriteMaterialFile(assets, *material, *path);
+    if (NS::Editor::WriteMaterialFile(assets, *material, *path))
+    {
+        m_unsavedMaterialFiles.erase(m_selectedAssetPath);
+    }
+    else
+    {
+        m_unsavedMaterialFiles.insert(m_selectedAssetPath);
+    }
+}
+
+bool LevelEditorController::SavePendingAssets()
+{
+    const std::set<std::string> actorFiles = m_unsavedActorFiles;
+    for (const std::string& name : actorFiles)
+    {
+        if (NS::ActorFileLibrary::Get().Save(name))
+        {
+            m_unsavedActorFiles.erase(name);
+        }
+    }
+    NS::AssetManager& assets = NS::AssetManager::Get();
+    const std::set<std::string> materialFiles = m_unsavedMaterialFiles;
+    for (const std::string& name : materialFiles)
+    {
+        const std::optional<std::string> path = NS::ResolveContentPath(name);
+        const NS::Material* material = assets.LoadMaterial(name);
+        if (path && NS::Editor::WriteMaterialFile(assets, *material, *path))
+        {
+            m_unsavedMaterialFiles.erase(name);
+        }
+    }
+    return !HasUnsavedAssetWrites();
 }
 
 namespace NS

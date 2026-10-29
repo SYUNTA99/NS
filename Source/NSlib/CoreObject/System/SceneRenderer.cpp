@@ -19,7 +19,6 @@
 #include "NSlib/Gfx/Render/ScreenPasses.h"
 #include "NSlib/Gfx/Render/Skybox.h"
 #include "NSlib/Core/Windows/Clock.h"
-#include "NSlib/Core/Windows/Filesystem.h"
 
 #include <algorithm>
 #include <string>
@@ -27,16 +26,6 @@
 
 namespace NS
 {
-    namespace
-    {
-        // effectRoot が空ならここを見る
-        std::string DefaultEffectRoot()
-        {
-            const std::string assets = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets");
-            return OS::FileSystem::Combine(assets, "Effects");
-        }
-    } // namespace
-
     SceneRenderer::SceneRenderer() = default;
 
     SceneRenderer::~SceneRenderer() = default;
@@ -65,15 +54,8 @@ namespace NS
         m_debugShapes = std::make_unique<Gfx::DebugShapePass>(m_shaders);
 #endif
 
-        std::string root = m_effectRoot;
-        if (root.empty())
-        {
-            root = DefaultEffectRoot();
-        }
-        m_effects = std::make_unique<Gfx::EffectScene>(std::move(root));
+        m_effects = std::make_unique<Gfx::EffectScene>();
     }
-
-    void SceneRenderer::SetEffectRoot(std::string root) noexcept { m_effectRoot = std::move(root); }
 
     void SceneRenderer::OnTick()
     {

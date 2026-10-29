@@ -3,7 +3,7 @@
 #include "Game/Level/PropActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/ClassObjs/Effect.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -185,7 +185,7 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
     {
         rock->UpdateMotion();
     }
-    const NS::Effect* effect = rock->GetEffect();
+    const NS::EffectObj* effect = rock->GetEffect();
     ASSERT_NE(effect, nullptr);
     int dustCount = 0;
     for (const NS::EffectRecord& record : effect->Records())
@@ -193,7 +193,8 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
         if (record.name == "launch.landDust")
         {
             ++dustCount;
-            EXPECT_GT(record.amount.value_or(0.0f), 0.0f);
+            ASSERT_TRUE(record.amount.has_value());
+            EXPECT_FLOAT_EQ(*record.amount, 0.0f);
         }
     }
     EXPECT_EQ(dustCount, 1);
@@ -204,13 +205,46 @@ TEST(MapObjMotion, EffectClockIsSeparateFromItsPostMovementUpdate)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    const NS::Effect* effect = rock->GetEffect();
+    const NS::EffectObj* effect = rock->GetEffect();
     ASSERT_NE(effect, nullptr);
     GL::Level::LaunchEffects* effects = &rock->Effects();
     rock->Update();
     EXPECT_EQ(effect->Step(), 1);
     effects->Update(rock, rock->Flight());
     EXPECT_EQ(effect->Step(), 1);
+}
+
+TEST(MapObjMotion, TrailAndLandingRecordsKeepTheReleaseStrength)
+{
+    NS::Scene scene;
+    GL::Level::PropActor* rock = PlaceMovingRock(scene);
+    ASSERT_NE(rock, nullptr);
+    GL::Level::TackleReleaseDesc release;
+    release.arc.distance = 5.0f;
+    release.arc.apexHeight = 1.0f;
+    release.power = 2.0f;
+    release.launchScale = 1.5f;
+    ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, release));
+    rock->Effects().NotifyLanding(rock, NS::Vector3::Zero, NS::Vector3::UnitY);
+    bool trail = false;
+    bool dust = false;
+    for (const NS::EffectRecord& record : rock->GetEffect()->Records())
+    {
+        if (record.name == "launch.trail")
+        {
+            trail = true;
+            ASSERT_TRUE(record.amount.has_value());
+            EXPECT_FLOAT_EQ(*record.amount, release.launchScale);
+        }
+        if (record.name == "launch.landDust")
+        {
+            dust = true;
+            ASSERT_TRUE(record.amount.has_value());
+            EXPECT_FLOAT_EQ(*record.amount, release.power);
+        }
+    }
+    EXPECT_TRUE(trail);
+    EXPECT_TRUE(dust);
 }
 
 TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
@@ -224,7 +258,7 @@ TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
     floor.halfExtentZ = 100.0f;
     scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
     ReleaseRock(rock);
-    const NS::Effect* effect = rock->GetEffect();
+    const NS::EffectObj* effect = rock->GetEffect();
     ASSERT_NE(effect, nullptr);
     bool landed = false;
     for (int step = 0; step < 100 && !landed; ++step)

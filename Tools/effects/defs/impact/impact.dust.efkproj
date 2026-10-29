@@ -1,23 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 当たりの粉 impact.dust: 相手が置かれていた床から舞う土ぼこり
-     動的入力 0 番が塊の数。再生の大きさが塊の大きさの倍率 (1 で直径 1 m)。再生の位置は床の上
-     塊は床の上の半径 0.5 m の輪に生まれ、ゆっくり上へ舞いながら 0.6 倍から 1.4 倍へ膨らむ
-     寿命 24 フレームの後、取り除かれてから 6 フレームで消え、明けから 30 フレームで無くなる。
-     親を止めると (次の当たり)、その時から 6 フレームで消える -->
+<?xml version='1.0' encoding='utf-8'?>
+<!-- 入力0は威力、1は質量の平方根、2/3は床で自機から離れる方向のX/Z。根は等倍。
+     親が塊と発生する輪をまとめて拡縮し、ゲームは床の位置を渡す。
+     入力は左手系。素材の固定位置の式は右手系なので、方向のZを反転してから出す。 -->
 <EffekseerProject>
   <Root>
     <Name>Root</Name>
     <Children>
       <Node>
-        <Name>Puff</Name>
+        <Name>Strength</Name>
         <CommonValues>
-          <MaxGeneration>
-            <DynamicEquation>0</DynamicEquation>
-          </MaxGeneration>
           <Life>
-            <Center>24</Center>
-            <Max>24</Max>
-            <Min>24</Min>
+            <Center>120</Center>
+            <Max>120</Max>
+            <Min>120</Min>
           </Life>
           <Generation>
             <GenerationTime>
@@ -32,164 +27,206 @@
             </GenerationTimeOffset>
           </Generation>
           <Removal>
-            <WhenParentIsRemoved>True</WhenParentIsRemoved>
+            <WhenAllChildrenAreRemoved>True</WhenAllChildrenAreRemoved>
           </Removal>
         </CommonValues>
-        <!-- 塊の中心を床から 0.45 m 上に置く。板はカメラへ向くので、床に中心を置くと下半分が床に切られて山形に見える
-             上へ 0.012〜0.02 m/フレーム、横は ±0.01 m/フレーム。1 フレームごとに 0.0006 ずつ遅くなる -->
-        <LocationValues>
-          <Type>1</Type>
-          <PVA>
-            <Location>
-              <Y>
-                <Center>0.45</Center>
-                <Max>0.45</Max>
-                <Min>0.45</Min>
-              </Y>
-            </Location>
-            <Velocity>
-              <X>
-                <Max>0.01</Max>
-                <Min>-0.01</Min>
-              </X>
-              <Y>
-                <Center>0.016</Center>
-                <Max>0.02</Max>
-                <Min>0.012</Min>
-              </Y>
-              <Z>
-                <Max>0.01</Max>
-                <Min>-0.01</Min>
-              </Z>
-            </Velocity>
-            <Acceleration>
-              <Y>
-                <Center>-0.0006</Center>
-                <Max>-0.0006</Max>
-                <Min>-0.0006</Min>
-              </Y>
-            </Acceleration>
-          </PVA>
-        </LocationValues>
-        <!-- 2 = イージング。寿命の間に 0.6 倍から 1.4 倍へ膨らむ -->
-        <ScalingValues>
-          <Type>2</Type>
-          <Easing>
-            <Start>
-              <X>
-                <Center>0.6</Center>
-                <Max>0.6</Max>
-                <Min>0.6</Min>
-              </X>
-              <Y>
-                <Center>0.6</Center>
-                <Max>0.6</Max>
-                <Min>0.6</Min>
-              </Y>
-              <Z>
-                <Center>0.6</Center>
-                <Max>0.6</Max>
-                <Min>0.6</Min>
-              </Z>
-            </Start>
-            <End>
-              <X>
-                <Center>1.4</Center>
-                <Max>1.4</Max>
-                <Min>1.4</Min>
-              </X>
-              <Y>
-                <Center>1.4</Center>
-                <Max>1.4</Max>
-                <Min>1.4</Min>
-              </Y>
-              <Z>
-                <Center>1.4</Center>
-                <Max>1.4</Max>
-                <Min>1.4</Min>
-              </Z>
-            </End>
-          </Easing>
-        </ScalingValues>
-        <!-- 1 = 球。半径 0.5 m の水平の輪 (+Y から 90 度) に置く。塊の向きは回さない -->
-        <GenerationLocationValues>
-          <Type>1</Type>
-          <Sphere>
-            <Radius>
-              <Center>0.5</Center>
-              <Max>0.6</Max>
-              <Min>0.4</Min>
-            </Radius>
-            <RotationX>
-              <Center>90</Center>
-              <Max>90</Max>
-              <Min>90</Min>
-            </RotationX>
-            <RotationY>
-              <Max>180</Max>
-              <Min>-180</Min>
-            </RotationY>
-          </Sphere>
-        </GenerationLocationValues>
-        <RendererCommonValues>
-          <ColorTexture>Texture/impact_puff.png</ColorTexture>
-          <FadeOutType>2</FadeOutType>
-          <FadeOut>
-            <Frame>6</Frame>
-          </FadeOut>
-        </RendererCommonValues>
         <DrawingValues>
-          <!-- 砂色 (190, 178, 158)。出始めの 1 割で濃くなり、後の 6 割で薄れる -->
-          <ColorAll>
-            <Type>4</Type>
-            <Gradient>
-              <ColorMarkers>
-                <Key>
-                  <ColorR>0.745</ColorR>
-                  <ColorG>0.698</ColorG>
-                  <ColorB>0.62</ColorB>
-                  <Position>0</Position>
-                  <Intensity>1</Intensity>
-                </Key>
-                <Key>
-                  <ColorR>0.745</ColorR>
-                  <ColorG>0.698</ColorG>
-                  <ColorB>0.62</ColorB>
-                  <Position>1</Position>
-                  <Intensity>1</Intensity>
-                </Key>
-              </ColorMarkers>
-              <AlphaMarkers>
-                <Key>
-                  <Position>0</Position>
-                  <Alpha>0.35</Alpha>
-                </Key>
-                <Key>
-                  <Position>0.1</Position>
-                  <Alpha>0.7</Alpha>
-                </Key>
-                <Key>
-                  <Position>0.4</Position>
-                  <Alpha>0.6</Alpha>
-                </Key>
-                <Key>
-                  <Position>1</Position>
-                  <Alpha>0.15</Alpha>
-                </Key>
-              </AlphaMarkers>
-            </Gradient>
-          </ColorAll>
+          <Type>0</Type>
         </DrawingValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <DynamicEquation>1</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
+        <LocationValues>
+          <Fixed>
+            <Location>
+              <DynamicEquation>2</DynamicEquation>
+            </Location>
+          </Fixed>
+        </LocationValues>
+        <Children>
+          <Node>
+            <Name>Puff</Name>
+            <CommonValues>
+              <MaxGeneration>
+                <DynamicEquation>0</DynamicEquation>
+              </MaxGeneration>
+              <Life>
+                <Center>24</Center>
+                <Max>24</Max>
+                <Min>24</Min>
+              </Life>
+              <Generation>
+                <GenerationTime>
+                  <Center>0</Center>
+                  <Max>0</Max>
+                  <Min>0</Min>
+                </GenerationTime>
+                <GenerationTimeOffset>
+                  <Center>-1</Center>
+                  <Max>-1</Max>
+                  <Min>-1</Min>
+                </GenerationTimeOffset>
+              </Generation>
+              <Removal>
+                <WhenParentIsRemoved>True</WhenParentIsRemoved>
+              </Removal>
+            </CommonValues>
+            <LocationValues>
+              <Type>1</Type>
+              <PVA>
+                <Location>
+                  <Y>
+                    <Center>0.45</Center>
+                    <Max>0.45</Max>
+                    <Min>0.45</Min>
+                  </Y>
+                </Location>
+                <Velocity>
+                  <X>
+                    <Max>0.01</Max>
+                    <Min>-0.01</Min>
+                  </X>
+                  <Y>
+                    <Center>0.016</Center>
+                    <Max>0.02</Max>
+                    <Min>0.012</Min>
+                  </Y>
+                  <Z>
+                    <Max>0.01</Max>
+                    <Min>-0.01</Min>
+                  </Z>
+                </Velocity>
+                <Acceleration>
+                  <Y>
+                    <Center>-0.0006</Center>
+                    <Max>-0.0006</Max>
+                    <Min>-0.0006</Min>
+                  </Y>
+                </Acceleration>
+              </PVA>
+            </LocationValues>
+            <ScalingValues>
+              <Type>2</Type>
+              <Easing>
+                <Start>
+                  <X>
+                    <Center>0.6</Center>
+                    <Max>0.6</Max>
+                    <Min>0.6</Min>
+                  </X>
+                  <Y>
+                    <Center>0.6</Center>
+                    <Max>0.6</Max>
+                    <Min>0.6</Min>
+                  </Y>
+                  <Z>
+                    <Center>0.6</Center>
+                    <Max>0.6</Max>
+                    <Min>0.6</Min>
+                  </Z>
+                </Start>
+                <End>
+                  <X>
+                    <Center>1.4</Center>
+                    <Max>1.4</Max>
+                    <Min>1.4</Min>
+                  </X>
+                  <Y>
+                    <Center>1.4</Center>
+                    <Max>1.4</Max>
+                    <Min>1.4</Min>
+                  </Y>
+                  <Z>
+                    <Center>1.4</Center>
+                    <Max>1.4</Max>
+                    <Min>1.4</Min>
+                  </Z>
+                </End>
+              </Easing>
+            </ScalingValues>
+            <GenerationLocationValues>
+              <Type>1</Type>
+              <Sphere>
+                <Radius>
+                  <Center>0.5</Center>
+                  <Max>0.6</Max>
+                  <Min>0.4</Min>
+                </Radius>
+                <RotationX>
+                  <Center>90</Center>
+                  <Max>90</Max>
+                  <Min>90</Min>
+                </RotationX>
+                <RotationY>
+                  <Max>180</Max>
+                  <Min>-180</Min>
+                </RotationY>
+              </Sphere>
+            </GenerationLocationValues>
+            <RendererCommonValues>
+              <ColorTexture>Texture/impact_puff.png</ColorTexture>
+              <FadeOutType>2</FadeOutType>
+              <FadeOut>
+                <Frame>6</Frame>
+              </FadeOut>
+            </RendererCommonValues>
+            <DrawingValues>
+              <ColorAll>
+                <Type>4</Type>
+                <Gradient>
+                  <ColorMarkers>
+                    <Key>
+                      <ColorR>0.745</ColorR>
+                      <ColorG>0.698</ColorG>
+                      <ColorB>0.62</ColorB>
+                      <Position>0</Position>
+                      <Intensity>1</Intensity>
+                    </Key>
+                    <Key>
+                      <ColorR>0.745</ColorR>
+                      <ColorG>0.698</ColorG>
+                      <ColorB>0.62</ColorB>
+                      <Position>1</Position>
+                      <Intensity>1</Intensity>
+                    </Key>
+                  </ColorMarkers>
+                  <AlphaMarkers>
+                    <Key>
+                      <Position>0</Position>
+                      <Alpha>0.35</Alpha>
+                    </Key>
+                    <Key>
+                      <Position>0.1</Position>
+                      <Alpha>0.7</Alpha>
+                    </Key>
+                    <Key>
+                      <Position>0.4</Position>
+                      <Alpha>0.6</Alpha>
+                    </Key>
+                    <Key>
+                      <Position>1</Position>
+                      <Alpha>0.15</Alpha>
+                    </Key>
+                  </AlphaMarkers>
+                </Gradient>
+              </ColorAll>
+            </DrawingValues>
+          </Node>
+        </Children>
       </Node>
     </Children>
   </Root>
   <Dynamic>
     <Inputs>
       <DynamicInput>
-        <Input>5</Input>
+        <Input>1</Input>
       </DynamicInput>
       <DynamicInput>
-        <Input>0</Input>
+        <Input>1</Input>
       </DynamicInput>
       <DynamicInput>
         <Input>0</Input>
@@ -201,7 +238,28 @@
     <Equations>
       <DynamicEquation>
         <Name>Count</Name>
-        <Code>@O.x = @In0</Code>
+        <Code>m = @In1 * @In1
+m = m + (4 - m) * step(4, m)
+n = m + 0.5
+@O.x = 4 + n - (n % 1)</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>Strength</Name>
+        <Code>g = 1 + 0.5 * (@In0 - 1)
+g = g * step(0, g)
+s = (0.8 + 0.3 * @In1) * g
+@O.x = s
+@O.y = s
+@O.z = s</Code>
+      </DynamicEquation>
+      <DynamicEquation>
+        <Name>Away</Name>
+        <Code>g = 1 + 0.5 * (@In0 - 1)
+g = g * step(0, g)
+s = (0.8 + 0.3 * @In1) * g
+@O.x = @In2 * s * 0.7
+@O.y = 0
+@O.z = 0 - @In3 * s * 0.7</Code>
       </DynamicEquation>
     </Equations>
   </Dynamic>

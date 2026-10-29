@@ -7,7 +7,6 @@
 #include "Game/Level/SensorKinds.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
-#include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerClips.h"
@@ -35,7 +34,7 @@
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
-#include "NSlib/CoreObject/ClassObjs/Effect.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -59,7 +58,6 @@ NS_CLASSOBJ(m_clips, "Clips")
 NS_CLASSOBJ(m_resolver, "ImpactResolver")
 NS_CLASSOBJ(m_targetMarker, "TargetMarker")
 NS_CLASSOBJ(m_slamArrow, "SlamArrow")
-NS_CLASSOBJ(m_chargeEffects, "ChargeEffects")
 NS_CLASSOBJ(m_impactEffects, "ImpactEffects")
 NS_CLASSOBJ(m_playerSounds, "PlayerSounds")
 NS_REFLECT_END_IMPL()
@@ -91,7 +89,6 @@ void PlayerActor::OnInit()
     CreateClassObj(m_slamArrow);
     NS::InitOverlay(this, m_slamArrow.get());
     CreateClassObj(m_effect);
-    CreateClassObj(m_chargeEffects);
     CreateClassObj(m_impactEffects);
     CreateClassObj(m_sound);
     CreateClassObj(m_playerSounds);
@@ -372,7 +369,7 @@ void PlayerActor::VisualStep()
     const NS::Vector3 center = Root().Position();
     m_appearance->Update(m_model.get(), NS::GetFrameDelta(this),
                          motion, m_charge, m_slam, m_rebound, m_skid, release, impact);
-    m_chargeEffects->Update(this, center, m_charge, m_slam, motion, release, m_appearance.get(), impact);
+    m_impactEffects->UpdateSlam(this, center, m_slam, motion, impact);
     m_impactEffects->Update(this, this, center, m_slam, motion, m_body.get(), m_collider.get(), impact.lastImpact);
     // clang-format on
     // 音を重ねない間隔なので、ヒットストップや遅い世界でも伸び縮みしない固定フレームの秒で数える
@@ -451,7 +448,6 @@ void PlayerActor::OnAssetsLoaded()
     {
         m_appearance->Uncurl(m_model.get());
     }
-    m_chargeEffects->Preload(this);
     m_impactEffects->Preload(this);
     m_playerSounds->Preload(this);
 }
@@ -866,7 +862,7 @@ void PlayerActor::ResetState() noexcept
     m_request = BodySlamRequest{};
     // 押したまま出直すと、次の押しのフレームから溜め直す。残すと、出直した後に放したフレームで前の溜めの突進が出る
     CancelCharge();
-    m_chargeEffects->Clear(this);
+    m_impactEffects->Reset(this);
     m_slam = GL::Player::BodySlamStatus{};
     m_rebound.Reset();
     m_skid = GL::Player::SkidStatus{};
