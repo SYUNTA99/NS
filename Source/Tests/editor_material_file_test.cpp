@@ -1,4 +1,7 @@
 #include "Editor/LevelEditorController.h"
+#include "Editor/ActionTimelinePanel.h"
+#include "Editor/QuitModal.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -21,8 +24,8 @@ namespace
     class TemporaryDirectory
     {
     public:
-        TemporaryDirectory()
-            : m_path(std::filesystem::temp_directory_path() /
+        explicit TemporaryDirectory(std::filesystem::path base = std::filesystem::temp_directory_path())
+            : m_path(base /
                      ("ns_material_file_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())))
         {
             std::filesystem::create_directories(m_path);
@@ -98,4 +101,41 @@ TEST(EditorMaterialFile, FailedWriteKeepsThePreviousFile)
 
     EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), previous);
     EXPECT_EQ(NS::OS::FileSystem::ListFiles(directory.Path()).size(), 1u);
+}
+
+TEST(EditorMaterialFile, FailedSelectionCommitIsRetriedBeforeQuitting)
+{
+    const TemporaryDirectory directory(std::filesystem::path{NS::OS::FileSystem::ContentRoot()} / "build");
+    const std::string path = directory.File("stone.mat");
+    const std::optional<std::string> source = NS::OS::FileSystem::ReadAllText(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Materials/stone.mat"));
+    ASSERT_TRUE(source.has_value());
+    ASSERT_TRUE(WriteText(path, *source));
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const NS::AssetManagerScope useAssets{assets};
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    editor.SelectAsset(path);
+    NS::Material* material = NS::Cast<NS::Material>(editor.SelectedAsset());
+    ASSERT_NE(material, nullptr);
+    SetBlend(*material, "Additive");
+    const std::string blocker = path + ".tmp";
+    ASSERT_TRUE(NS::OS::FileSystem::CreateDirectories(blocker));
+    editor.MarkAssetEdited();
+    editor.SelectSceneSettings();
+    NS::Editor::ActionTimelinePanel timeline;
+    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
+    EXPECT_FALSE(NS::Editor::SaveAllForQuit(editor, timeline));
+    EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), source);
+    std::error_code error;
+    EXPECT_TRUE(std::filesystem::remove(std::filesystem::path{blocker}, error));
+    EXPECT_FALSE(error);
+    EXPECT_TRUE(NS::Editor::SaveAllForQuit(editor, timeline));
+    EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
+    NS::MaterialFileDesc saved;
+    std::string message;
+    const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(path);
+    ASSERT_TRUE(text.has_value());
+    ASSERT_TRUE(NS::ParseMaterialJson(*text, saved, message));
+    EXPECT_EQ(saved.blend, NS::Gfx::BlendMode::Additive);
 }

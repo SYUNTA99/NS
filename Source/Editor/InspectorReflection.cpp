@@ -7,8 +7,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/Asset/EffectAsset.h"
-#include "NSlib/CoreObject/Asset/EffectSet.h"
+#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
@@ -544,22 +543,14 @@ namespace NS
                 std::string label = OS::FileSystem::FileName(value);
                 if (field.assetKind == AssetKind::Effect && !value.empty())
                 {
-                    const EffectAsset* effect = AssetManager::Get().LoadEffectAsset(value);
+                    const Effect* effect = AssetManager::Get().LoadEffectAsset(value);
                     label = effect->Label();
                     if (!effect->IsValid())
                     {
                         label = "参照切れ";
                     }
                 }
-                if (field.assetKind == AssetKind::EffectSet && !value.empty())
-                {
-                    const EffectSet* set = AssetManager::Get().LoadEffectSet(value);
-                    label = set->Label();
-                    if (!set->IsValid())
-                    {
-                        label = "参照切れ";
-                    }
-                }
+
                 if (label.empty())
                 {
                     label = "素材を選択...";

@@ -29,19 +29,37 @@
 | `recordName` | 再生記録に出す用途の名前。表示名の変更で記録の分類を変えない |
 
 `--install` は初回だけ `.effect` を作り、次からは識別子・表示名・乱数の基準を保つ。
-壊れた `.effect` を見つけた時は書き換えずに失敗する。出荷物は `.effect` と `.effectset` も Assets と一緒に配る。
+壊れた `.effect` を見つけた時は書き換えずに失敗する。出荷物は `.effect` もAssetsと一緒に配る。
 
-`.effectset` は素材の参照と演出の設定をまとめた独立したファイル。
-Player と置物は `Effect` の「演出セット」で選び、「演出セットを編集」から参照先を開く。
-実行部品は設定への参照と再生中の状態を持ち、設定の値は `.actor` に重ねて保存しない。
-複製する時は素材のインスペクタの「複製」を使う。新しい識別子を発行し、元と区別する。
-ファイルだけをコピーして同じ識別子が2つある場合は、読み込み時に両方を拒否する。
+素材の型は `Effect`、再生中の状態と記録を持つ部品は `EffectObj`。
+`ImpactEffects` と `LaunchEffects` の素材参照は通常の `.actor` の項目で、永続IDを保存する。
+参照先の選択・保存・取り消しは通常のアクターの項目と同じ操作を使う。
+粒数・粒の速さ・光の大きさや曲線はEffekseerの素材で編集する。
+ゲーム側は発生判断、位置と向き、威力・質量・速度などの入力と停止の同期を持つ。
 
-素材の定義ファイルと演出セットは、識別子を保てば `Assets/Effects` の下で改名・移動できる。
-`.efkefc` を移す場合は `.effect` の `source` を ContentRoot からの新しい道筋へ更新し、
-その `.efkefc` が使う `Texture` などの依存も同じ相対位置に移す。再起動か `ReloadEffectAssets` で読み直す。
-再生済みの粒は元の素材の寿命まで残り、次の再生から読み直した素材を使う。
-素材の複製はバイナリも別ファイルにし、演出セットの複製は参照する素材を共有する。
+素材のインスペクタの「複製」は新しい識別子と別のバイナリを作る。
+ファイルだけをコピーして識別子が重複した場合は両方を拒否する。
+識別子を保てば `Assets/Effects` の下で改名・移動できる。
+バイナリを移す場合は `.effect` の `source` と、Textureなどの相対依存も揃える。
+再起動か `ReloadEffectAssets` で読み直す。再生済みの粒は元の素材の寿命まで残る。
+
+主な動的入力:
+
+| 素材 | 入力 |
+|---|---|
+| impact.core | 0〜2:段の選択、3:威力 |
+| impact.streak / impact.glow | 0:保持の最終フレーム、1:威力 |
+| impact.ring | 0:威力 |
+| impact.sparks | 0:威力、1:飛ばしの比、2:中心0/外れ1 |
+| impact.embers | 0:威力、1:飛ばしの比 |
+| impact.recoil | 0:反動の比 |
+| impact.dust | 0:威力、1:質量の平方根、2/3:床で離れる向きのX/Z |
+| land.dust | 0:着地直前の落ちる速さ(m/s) |
+| launch.landDust | 0:威力、1:質量の平方根 |
+| launch.trail | 0/1:中心/外れの選択、2:飛ばしの比 |
+| release.burst / slam.trail | 0:突進の強さ(0〜1) |
+
+入力は生成前に渡す。根は等倍で、launch.trailだけ物理の球の直径を渡す。
 
 生成の確認: `python Tools/effects/test_effect_assets.py`。
 
@@ -49,9 +67,9 @@ Player と置物は `Effect` の「演出セット」で選び、「演出セッ
 Tools\@build_effects.cmd                        # efkprobe を組み、defs/*.efkproj と defs/<組>/*.efkproj を全部通す
 Tools\@build_effects.cmd spark_min --frames 40  # 1 本だけ。組のフォルダの定義も名前だけで渡す
 Tools\@build_effects.cmd nobuild --install      # 組まずに通し、全部通ったら Assets\Effects へ置く
-Tools\@build_effects.cmd charge.gather --input "0=0.5" --bg "0.85,0.85,0.83"  # 溜め量 0.5 を明るい背景で撮る
+Tools\@build_effects.cmd impact.core --input "3=1.5" --bg "0.85,0.85,0.83"  # 威力1.5を明るい背景で撮る
 python Tools/effects/defs/make_textures.py      # 確かめ用の 2 本の素材を描き直す (defs/Texture/)
-python Tools/effects/defs/charge/make_textures.py  # 溜めの組の素材を描き直す (defs/charge/Texture/)
+python Tools/effects/defs/release/make_textures.py  # 突進の弾けと尾の組の素材を描き直す (defs/release/Texture/)
 python Tools/effects/defs/impact/make_textures.py  # 当たりの組の素材を描き直す (defs/impact/Texture/)
 
 # 試し用の絵 (test_defs/) を作り直し、試しの置き場へ置く
@@ -72,7 +90,7 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 | `defs/<名前>.efkproj` | 定義。編集ソフトの XML の形そのもの (後述の書き方)。今は確かめ用の 2 本 |
 | `defs/Texture/` | 確かめ用の 2 本が読む素材。書き出し先と `Assets/Effects/` の同じ場所へ写る |
 | `defs/make_textures.py` | 白い閃光の丸 `flash.png` と火花の筋 `spark.png` を描く。同じ入力から同じ画素を描く |
-| `defs/charge/` | 溜めの組 (層の名前が `charge.`・`release.`・`slam.` で始まる) の定義と、素材を描く `make_textures.py`。素材は `defs/charge/Texture/` に描く |
+| `defs/release/` | 突進の弾けと尾の組 (層の名前が `release.`・`slam.` で始まる) の定義と、素材を描く `make_textures.py`。素材は `defs/release/Texture/` に描く |
 | `defs/impact/` | 当たりの組 (層の名前が `impact.`・`launch.`・`rebound.`・`land.` で始まる) の定義と `make_textures.py`。素材は `defs/impact/Texture/` に描く |
 | `test_defs/<名前>.efkproj` | 試し (`Source/Tests/effect_scene_test.cpp` など) が読む絵の定義。書き出した `.efkefc` は `Source/Tests/data/effects/` に置く。下の「試し用の 5 本」 |
 | `efkbuild.py` | 本体。下の 1〜7 を 1 本ずつ回す |
@@ -101,7 +119,7 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 
 ## 組ごとの置き場
 
-溜めの組と当たりの組を別の作業ツリーで同時に作るので、定義と素材の描き方を組のフォルダに分ける。2 本が同じファイルを書かなければ、合わせる時にぶつからない。
+突進の弾けと尾の組と当たりの組を別の作業ツリーで同時に作るので、定義と素材の描き方を組のフォルダに分ける。2 本が同じファイルを書かなければ、合わせる時にぶつからない。
 
 - 定義は `defs/*.efkproj` と `defs/<組>/*.efkproj`。組のフォルダは `defs/` の直下の、素材のフォルダでないフォルダ (`_` と `.` で始まる名前は見ない)
 - 素材のフォルダは `defs/` と各組のフォルダの直下の `Texture/`。どの組の素材も書き出し先と `Assets/Effects/Texture/` へ重ねて写す。定義の中の素材の道は `Texture/<ファイル名>` のまま書ける
@@ -114,7 +132,7 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 - 形は編集ソフトの `.efkproj` の XML そのもの。**既定から動かす値だけを書く**。公式サンプルを `efkxml dump` で開けば書き方の手本になる
 - 末尾に `<ToolVersion>1.80.7</ToolVersion>`・`<Version>3</Version>`・`<StartFrame>`・`<EndFrame>`・`<IsLoop>` を書く。`Version` が無いと古い形として読み替えられる。後ろの 3 つは実行側に渡らないが、**無いと編集ソフトの読み込みが落ちる**
 - 理由は注釈 (`<!-- -->`) で定義に書いてよい。編集ソフトは注釈で落ちるので、`efkbuild.py` が外してから渡す
-- 定義の前後は読み込みで反転されるので、定義のプラスはゲームでは狙いの向きの後ろ、マイナスは前。ゲームは左手系で読み込み (`EffectScene`)、実行側が前後の符号を反転した後で、溜めの組は `ChargeEffects::YawToward` が前を狙いの向きへ回す
+- 定義の前後は読み込みで反転されるので、定義のプラスはゲームでは狙いの向きの後ろ、マイナスは前。ゲームは左手系で読み込み (`EffectScene`)、実行側が前後の符号を反転した後で、突進の弾けと尾の組は `ChargeEffects::YawToward` が前を狙いの向きへ回す
 - 数の意味 (EffekseerCore.dll の列挙から引いた物のうち使う物)
   - 描画 `DrawingValues/Type`: 0 無し・2 板 (既定)・3 リボン・4 輪・5 モデル・6 軌跡
   - 合成 `RendererCommonValues/AlphaBlend`: 0 不透明・1 半透明 (既定)・2 加算・3 減算・4 乗算

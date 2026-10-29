@@ -6,8 +6,7 @@
 
 namespace NS
 {
-    class EffectAsset;
-    class EffectSet;
+    class Effect;
     class AnimClip;
     class Material;
     class Mesh;
@@ -26,14 +25,11 @@ namespace NS
     template <> struct IsAssetPointer<AnimClip*> : std::true_type
     {};
 
-    template <> struct IsAssetPointer<EffectAsset*> : std::true_type
+    template <> struct IsAssetPointer<Effect*> : std::true_type
     {};
-    template <> struct IsAssetPointer<EffectSet*> : std::true_type
-    {};
-    void LoadAssetField(EffectAsset*& field, std::string_view id);
-    void LoadAssetField(EffectSet*& field, std::string_view id);
-    [[nodiscard]] const std::string& AssetFieldName(const EffectAsset* field) noexcept;
-    [[nodiscard]] const std::string& AssetFieldName(const EffectSet* field) noexcept;
+
+    void LoadAssetField(Effect*& field, std::string_view id);
+    [[nodiscard]] const std::string& AssetFieldName(const Effect* field) noexcept;
 
     //! name の素材を AssetManager::Get() の型ごとの口から引き、field に入れる
     //! 読めない名前でも、その名前を持つ中身の空の素材が入るので、field は nullptr にならない

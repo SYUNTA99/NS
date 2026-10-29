@@ -1,5 +1,5 @@
-#include "NSlib/CoreObject/Asset/EffectAsset.h"
-#include "NSlib/CoreObject/ClassObjs/Effect.h"
+#include "NSlib/CoreObject/Asset/Effect.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -18,7 +18,7 @@ namespace
 
 TEST(IGetEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
 {
-    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::Scene scene;
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
@@ -37,7 +37,7 @@ TEST(IGetEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
 
 TEST(IGetEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 {
-    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::Scene scene;
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
@@ -63,7 +63,7 @@ TEST(IGetEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
 
 TEST(IGetEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 {
-    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::Scene scene;
     TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
@@ -80,7 +80,7 @@ TEST(IGetEffectTest, StopEffectAfterEndsOnTheScheduledStep)
 
 TEST(IGetEffectTest, ActorWithoutTheSlotDoesNothing)
 {
-    NS::EffectAsset asset{"11111111111111111111111111111111"};
+    NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::SceneActor actor;
     ASSERT_EQ(actor.GetEffect(), nullptr);

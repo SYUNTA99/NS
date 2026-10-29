@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game/Level/HitTier.h"
-#include "Game/Player/ImpactEffectSettings.h"
+#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Object.h"
@@ -25,6 +25,7 @@ namespace GL
     namespace Level
     {
         struct ImpactRecord;
+        struct ImpactAnswer;
     } // namespace Level
 } // namespace GL
 
@@ -35,13 +36,6 @@ namespace GL
         class BodySlamStatus;
         struct PlayerMotion;
 
-        //! 核が最大近くに留まる間の大きさの動かし方
-        enum class CoreHoldMotion
-        {
-            Pulse,  // 偶数のフレームだけ縮める
-            Settle, // 1 フレーム目の最大から、落ち着く割合へ少しずつ縮める
-        };
-
         //! 火花を飛ばす向き
         enum class SparkHeading
         {
@@ -49,36 +43,25 @@ namespace GL
             Scrape, // 横ずれの側と飛ぶ向きと上の間
         };
 
-        //! 当たり 1 回の演出の大きさと量
-        //! ShapeFor が段と調整値から決める。大きさや数が 0 の層は出さない
+        //! 当たり1回の素材へ渡すゲーム情報と、層を出す時機
         struct ImpactShape
         {
             GL::Level::HitTier tier = GL::Level::HitTier::Center;
             std::size_t coreInput = 0;                       // 核の絵 impact.core の、段の色の節を出す動的入力の番号
-            CoreHoldMotion coreHold = CoreHoldMotion::Pulse; // 核が最大近くに留まる間の大きさの動かし方
             SparkHeading sparkHeading = SparkHeading::Launch;
-            std::size_t sparkCountInput = 0;  // 火花の絵 impact.sparks の、粒の数を入れる動的入力の番号
-            std::size_t recoilCountInput = 0; // 弾かれ線の絵 impact.recoil の、本数を入れる動的入力の番号
             int holdLastFrame = 1;            // 核が最大近くに留まる最後のフレーム。当たりの絵の頭を 0 と数える
             //! 核を留まりの次のフレームで消すか。偽なら留まりの最後のフレームに親を止め、絵の定義の落ちるフレーム数で薄れる
             bool coreCut = false;
             int sparkStartFrame = 0; // 火花を出すフレーム。当たりの絵の頭を 0 と数え、中心近くだけ 3
             int emberStartFrame =
                 0; // 火の粉を出すフレーム。当たりの絵の頭を 0 と数え、核が落ちるフレーム。中心近くだけ
-            float coreDiameter = 0.0f; // 核の直径。単位は m
-            float streakLength = 0.0f; // 光条の長さ。単位は m。中心近くだけ
-            float ringRadius = 0.0f;   // 輪が広がりきった半径。単位は m。大きな外れは 0
-            int sparkCount = 0;
-            float sparkSpeed =
-                0.0f; // 火花の速さ。単位は m/s。大きさ 1 の時の速さで、絵の上では大きさを掛けた速さになる
-            float sparkScale = 1.0f;   // 火花の絵の全体に掛ける大きさ。粒の大きさ・散る範囲・速さが一緒に伸びる
-            float sparkAmount = 0.0f;  // 火花の量。粒の数 × 速さ (本・m/s)。記録の量に使う
-            int emberCount = 0;        // 火の粉の粒の数。中心近くだけで、他の段は 0
-            float glowDiameter = 0.0f; // 照りの直径。単位は m。中心近くで相手が置かれていた時だけ
-            int recoilCount = 0;
-            float recoilLength = 0.0f; // 弾かれ線の長さ。単位は m
-            int dustCount = 0;         // 当たりの粉の塊の数。飛んでいた相手は 0
-            float dustScale = 0.0f;    // 当たりの粉の塊の大きさ。単位は m
+            float power = 0.0f;
+            float launchScale = 0.0f;
+            float reboundScale = 0.0f;
+            bool centerLayers = false;
+            bool groundLight = false;
+            bool groundDust = false;
+            float rootMass = 0.0f;
         };
 
         //! 当たり 1 回の層を置く所と向き
@@ -90,7 +73,7 @@ namespace GL
             NS::Vector3 sparkDir;
             NS::Vector3 recoilDir;    // 弾かれ線の向き。自機の反動の初速の向き
             NS::Vector3 recoilOrigin; // 弾かれ線を出した所。自機の玉の縁の、反動の向きの逆の点
-            NS::Vector3 dustOrigin;   // 当たりの粉の輪の真ん中。相手が居た床から、自機と逆の側へずらした点
+            NS::Vector3 dustOrigin;   // 粉の根を置く床の位置。輪の離隔は素材が持つ
             NS::Vector3 ringNormal;   // 輪の面の法線。相手の飛ぶ向きをカメラへ起こした向き
         };
 
@@ -100,6 +83,15 @@ namespace GL
         class ImpactEffects : public NS::Object
         {
         public:
+            //! 突進の開始と接触から、弾けと尾を出す。保持中の溜め演出は出さない
+            //! userは空でないこと。位置はワールド座標
+            void UpdateSlam(const NS::IGetEffect* user,
+                            const NS::Vector3& center,
+                            const BodySlamStatus& slam,
+                            const PlayerMotion& motion,
+                            const GL::Level::ImpactAnswer& impact);
+            //! やり直しでエフェクトと未消化の命中・飛行の頼みを消す。userは空でないこと
+            void Reset(const NS::IGetEffect* user);
             //! 当たり・反動・着地の絵を先に読む。絵は effect (持ち主のアクター) のシーンへ出す。持ち主の OnAssetsLoaded
             //! が呼ぶ
             void Preload(const NS::IGetEffect* effect);
@@ -119,7 +111,7 @@ namespace GL
             //! @param[in] slam 外れの火花の向きに突進の向きを読む
             //! @param[in] body 反動の尾の向きと、頂点と着地の判定に速度と接地を読む。空でないこと
             //! @param[in] collider 接触点と足元を、当たりのカプセルから作る。空でないこと
-            //! @param[in] impact 最後の当たりの内訳。絵の置き所と大きさを決める
+            //! @param[in] impact 最後の当たりの内訳。絵の置き所と素材へ渡す強さを決める
             void Update(const NS::IGetEffect* effect,
                         const NS::IGetCamera* camera,
                         const NS::Vector3& position,
@@ -129,13 +121,8 @@ namespace GL
                         const NS::Collider* collider,
                         const GL::Level::ImpactRecord& impact);
 
-            //! 当たりの内訳から、演出の大きさと量を決める
+            //! 当たりの内訳から、素材の入力と発生・停止の時機を決める
             [[nodiscard]] ImpactShape ShapeFor(const GL::Level::ImpactRecord& impact) const noexcept;
-
-            //! 反動の着地の粉が広がりきる半径を、着地の前のフレームの落ちる速さから決める
-            //! @param[in] fallSpeed 落ちる速さ。単位は m/s。負は 0 と見なす
-            //! @return 広がりきった半径。単位は m
-            [[nodiscard]] float LandDustRadiusFor(float fallSpeed) const noexcept;
 
             //! 尾の +Y を速度方向へ向け、視線に近い時は輪郭の外へ見えるよう傾ける
             //! 座標は世界。速度 0 は真上、カメラ位置が無ければ傾けない。戻り値は単位方向
@@ -155,20 +142,87 @@ namespace GL
                                                        const NS::Vector3& surfaceNormal,
                                                        const NS::Vector3& slamDirection) const noexcept;
 
-            void Configure(const ImpactEffectSettings* settings) noexcept
-            {
-                NS_ASSERT(Game, settings != nullptr, "演出の設定が空");
-                m_settings = settings;
-            }
-            const ImpactEffectSettings& Settings() const noexcept { return *m_settings; }
-
-            NS_REFLECT_NONE(ImpactEffects, NS::Object)
+            NS_REFLECT_BEGIN(ImpactEffects, NS::Object)
+            NS_GROUP("輪")
+            NS_FIELD(m_ringFaceCamera, "輪をカメラへ起こす割合")
+            NS_GROUP("当たりの粉")
+            NS_GROUP("着地の粉")
+            NS_GROUP("時間と向き")
+            NS_FIELD(m_coreHoldMax, "核の留まりの上限フレーム")
+            NS_FIELD(m_wideCoreHoldLast, "外れの核の留まりフレーム")
+            NS_FIELD(m_missSparkSideShare, "外れの火花の横の割合")
+            NS_FIELD(m_centerSparkStart, "中心の火花の開始フレーム")
+            NS_FIELD(m_scrapeLaunchWeight, "擦る火花の飛ぶ向きの重み")
+            NS_FIELD(m_scrapeLiftWeight, "擦る火花の上向きの重み")
+            NS_FIELD(m_ringStart, "輪の開始フレーム")
+            NS_FIELD(m_ringEnd, "輪の終了フレーム")
+            NS_FIELD(m_streakTailFrames, "光条の尾のフレーム")
+            NS_FIELD(m_streakFadeFrames, "光条の薄れるフレーム")
+            NS_FIELD(m_recoilDelay, "弾かれ線の遅れフレーム")
+            NS_FIELD(m_ringLaunchWeight, "輪の飛ぶ向きの重み")
+            NS_FIELD(m_reboundTrailFadeSteps, "反動の尾の薄れるフレーム")
+            NS_FIELD(m_landDustLife, "着地の粉の寿命フレーム")
+            NS_FIELD(m_dustRingLift, "着地の粉を浮かせる高さ")
+            NS_FIELD(m_reboundStreakMinAcross, "反動の尾の最小横成分")
+            NS_FIELD(m_coreAsset, "核の資産")
+            NS_FIELD(m_streakAsset, "光条の資産")
+            NS_FIELD(m_ringAsset, "輪の資産")
+            NS_FIELD(m_sparksAsset, "火花の資産")
+            NS_FIELD(m_embersAsset, "火の粉の資産")
+            NS_FIELD(m_glowAsset, "照りの資産")
+            NS_FIELD(m_recoilAsset, "弾かれ線の資産")
+            NS_FIELD(m_dustAsset, "当たりの粉の資産")
+            NS_FIELD(m_reboundTrailAsset, "反動の尾の資産")
+            NS_FIELD(m_landDustAsset, "着地の粉の資産")
+            NS_FIELD(m_floorLift, "照りを浮かせる高さ")
+            NS_GROUP("突進")
+            NS_FIELD(m_burstAsset, "放しの弾けの資産")
+            NS_FIELD(m_slamTrailAsset, "突進の尾の資産")
+            NS_FIELD(m_burstSteps, "放しの弾けの寿命フレーム")
+            NS_FIELD(m_burstClearFrames, "放しの弾けを消す接触前フレーム")
+            NS_FIELD(m_slamTrailFadeSteps, "突進の尾の薄れるフレーム")
+            NS_REFLECT_END()
 
         private:
-            inline static const ImpactEffectSettings m_defaultSettings{};
-            const ImpactEffectSettings* m_settings = &m_defaultSettings;
-            // 段で変わる層の形を段ごとの 1 行から埋める。段を足したら行を足す
-            void ApplyTierRow(ImpactShape& shape, const GL::Level::ImpactRecord& impact, float power) const noexcept;
+            void ClearSlam(const NS::IGetEffect* user);
+            float m_ringFaceCamera = 1.0f;
+            int m_coreHoldMax = 10;
+            int m_wideCoreHoldLast = 1;
+            float m_missSparkSideShare = 0.7f;
+            int m_centerSparkStart = 3;
+            float m_scrapeLaunchWeight = 1.0f;
+            float m_scrapeLiftWeight = 1.0f;
+            int m_ringStart = 3;
+            int m_ringEnd = 10;
+            int m_streakTailFrames = 3;
+            int m_streakFadeFrames = 3;
+            int m_recoilDelay = 4;
+            float m_ringLaunchWeight = 0.6f;
+            int m_reboundTrailFadeSteps = 8;
+            int m_landDustLife = 30;
+            //! 粉が床へ埋まらないよう浮かせる高さ。単位はメートル
+            float m_dustRingLift = 0.3f;
+            //! 筋が玉の陰に入らない傾き。玉の半径と筋の半幅の和を、筋の中心までの長さで割る
+            float m_reboundStreakMinAcross = 0.8f / 1.3f;
+            NS::Effect* m_coreAsset = nullptr;
+            NS::Effect* m_streakAsset = nullptr;
+            NS::Effect* m_ringAsset = nullptr;
+            NS::Effect* m_sparksAsset = nullptr;
+            NS::Effect* m_embersAsset = nullptr;
+            NS::Effect* m_glowAsset = nullptr;
+            NS::Effect* m_recoilAsset = nullptr;
+            NS::Effect* m_dustAsset = nullptr;
+            NS::Effect* m_reboundTrailAsset = nullptr;
+            NS::Effect* m_landDustAsset = nullptr;
+            //! 同じ面で描画がちらつかないための離隔
+            float m_floorLift = 0.03f;
+            NS::Effect* m_burstAsset = nullptr;
+            NS::Effect* m_slamTrailAsset = nullptr;
+            int m_burstSteps = 21;
+            int m_burstClearFrames = 3;
+            int m_slamTrailFadeSteps = 6;
+
+            void ApplyTierRow(ImpactShape& shape, const GL::Level::ImpactRecord& impact) const noexcept;
             // 当たりの絵の頭から数えた当たり 1 回の段取り。層の番号 0 はまだ出していない事を表す
             struct HitPlan
             {
@@ -247,6 +301,10 @@ namespace GL
             bool m_landingDustPlayed = false;    // この反動の着地の粉を出した。反動を抜けたら戻す
             ImpactAim m_aim;
             std::vector<NS::uint32> m_dusts; // 出した粉。次の当たりの絵の頭で親を止める
+            NS::uint32 m_slamTrail = 0;
+            NS::uint32 m_burst = 0;
+            bool m_wasSlamming = false;
+            NS::Vector3 m_slamDirection;
         };
     } // namespace Player
 } // namespace GL

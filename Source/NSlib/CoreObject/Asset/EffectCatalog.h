@@ -13,7 +13,6 @@ namespace NS
         std::string id;
         std::string label;
         std::string path;
-        bool isSet = false;
         nlohmann::json document;
     };
 

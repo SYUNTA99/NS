@@ -4,7 +4,6 @@
 #include "Game/Level/PropActor.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
-#include "Game/Player/ChargeEffects.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
@@ -20,7 +19,6 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
-#include "TestEffectSettings.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -180,7 +178,7 @@ static void ExpectNotInParams(const PlayerActor* player, const nlohmann::json& e
     }
 }
 
-TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem)
+TEST(PlayerParams, AppearanceDefaultsBelongToThePartThatDrawsThem)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
@@ -195,43 +193,17 @@ TEST(PlayerParams, AppearanceAndChargeVisualDefaultsBelongToThePartsThatDrawThem
                                        {"外れの回転を寄せるフレーム数", 6},
                                        {"外れの軸のぶれの角度", 10.0f},
                                        {"外れの軸のぶれの速さ", 1.5f}};
-    const nlohmann::json charge = {{"通常突進の弾けの大きさ", 0.75f},
-                                   {"溜めきりで足す弾けの大きさ", 0.25f},
-                                   {"紫の火花の数の始め", 4},
-                                   {"紫の火花の数の終わり", 14},
-                                   {"紫の火花の速さの始め", 2.5f},
-                                   {"紫の火花の速さの終わり", 5.0f}};
     // 回転数は PlayerActor が突進と反動の回る速さを出すのに読むので、調整値の部品に残る
     const nlohmann::json spin = {{"溜めた突進の届くまでの回転数", 5.0f},
                                  {"通常突進の届くまでの回転数", 2.0f},
                                  {"溜めて当てた反動の回転数", 3.0f},
                                  {"通常突進で当てた反動の回転数", 1.0f}};
     ExpectClassObjFields(&player.Appearance(), appearance);
-    ExpectClassObjFields(&player.ChargeVisuals().Settings(), charge);
     ExpectClassObjFields(&player.Params(), spin);
     ExpectNotInParams(&player, appearance);
-    ExpectNotInParams(&player, charge);
 }
 
-TEST(PlayerParams, LiveChargeVisualTuningKeepsClampingAndNonFiniteInput)
-{
-    NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
-    ASSERT_NE(spawned, nullptr);
-    PlayerActor& player = *spawned;
-    TestEffectSettings<GL::Player::ChargeEffects> chargeSettings(&player.ChargeVisuals());
-
-    EXPECT_EQ(NS::ApplyJsonFields(chargeSettings.Get(),
-                                  {{"通常突進の弾けの大きさ", 0.5f}, {"溜めきりで足す弾けの大きさ", 0.4f}}),
-              0u);
-    EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(0.5f), 0.7f);
-    EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(-1.0f), 0.5f);
-    EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(2.0f), 0.9f);
-    EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(std::numeric_limits<float>::quiet_NaN()), 0.5f);
-    EXPECT_FLOAT_EQ(player.ChargeVisuals().ReleaseBurstScale(std::numeric_limits<float>::infinity()), 0.5f);
-}
-
-TEST(PlayerParams, ImpactDefaultsKeepAllFortyTwoDisplayNamesAndValues)
+TEST(PlayerParams, ImpactDefaultsKeepGameOwnedDisplayNamesAndValues)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
@@ -257,40 +229,20 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortyTwoDisplayNamesAndValues)
                        {"頂点の帯の重力倍率", 0},
                        {"外れで飛ばす相手の弧の高さの割合", 0},
                        {"外れで飛ばす相手の距離の割合", 0}});
-    const nlohmann::json expected = {{"核の直径の基準", 0.3f},
-                                     {"核の直径の威力あたり", 0.2f},
-                                     {"核の直径の上限", 0.7f},
-                                     {"核の出始めの大きさ", 0.5f},
-                                     {"光条の長さの基準", 4.0f},
-                                     {"光条の長さの威力あたり", 2.0f},
-                                     {"光条の細りきった太さ", 0.3f},
-                                     {"輪の半径の基準", 0.5f},
-                                     {"輪の半径の威力あたり", 0.6f},
-                                     {"輪の出始めの半径", 0.3f},
-                                     {"輪をカメラへ起こす割合", 1.0f},
-                                     {"火花の数の下限", 10},
-                                     {"火花の数の上限", 30},
-                                     {"火花の速さの基準", 6.0f},
-                                     {"火花の速さの飛ばしの比あたり", 3.0f},
-                                     {"大きな外れの火花の数", 16},
-                                     {"大きな外れの火花の速さ", 4.0f},
-                                     {"火の粉の数の火花あたり", 7.0f},
-                                     {"照りの直径の基準", 2.0f},
-                                     {"照りの直径の威力あたり", 1.6f},
-                                     {"弾かれ線の本数", 8},
-                                     {"大きな外れの弾かれ線の本数", 0},
-                                     {"弾かれ線の長さの基準", 0.6f},
-                                     {"弾かれ線の長さの反動の比あたり", 0.5f},
-                                     {"当たりの粉の数の基準", 4},
-                                     {"当たりの粉の数を増やす質量の上限", 4.0f},
-                                     {"当たりの粉の大きさの基準", 0.8f},
-                                     {"当たりの粉の大きさの質量の平方根あたり", 0.3f},
-                                     {"当たりの粉の大きさの威力あたりの伸び", 0.5f},
-                                     {"着地の粉の半径の基準", 1.2f},
-                                     {"着地の粉の半径の落ちる速さあたり", 0.04f}};
-    // 当たりの絵の大きさと量は絵を出す ImpactEffects が持ち、遊びの欄と並ばない
-    ExpectClassObjFields(&player.ImpactVisuals().Settings(), expected);
+    const nlohmann::json expected = {{"輪をカメラへ起こす割合", 1.0f}};
+    // カメラに対する輪の向きはGameが持ち、粒や光の調整値は素材が持つ
+    ExpectClassObjFields(&player.ImpactVisuals(), expected);
     ExpectNotInParams(&player, expected);
+    const nlohmann::json effectFields = NS::SerializeClassObjFields(&player.ImpactVisuals());
+    EXPECT_FALSE(effectFields.contains("核の出始めの大きさ"));
+    EXPECT_FALSE(effectFields.contains("外れの光の面積の落ち先"));
+    EXPECT_FALSE(effectFields.contains("外れの光の面積の減衰"));
+    EXPECT_FALSE(effectFields.contains("光条の細りきった太さ"));
+    EXPECT_FALSE(effectFields.contains("輪の出始めの半径"));
+    EXPECT_FALSE(effectFields.contains("照りが減り始めるフレーム"));
+    EXPECT_FALSE(effectFields.contains("照りの山の前の面積の割合"));
+    EXPECT_FALSE(effectFields.contains("輪が広がり切るフレーム"));
+    EXPECT_FALSE(effectFields.contains("核の脈の倍率"));
     // 惜しいの段は消した。惜しいだけの演出の欄が戻ると、段の無い当たりの調整値が保存に載る
     // 当たりの返りの時間と形はタイムラインへ移した。欄が戻ると、同じ返りの値の出所が 2 つになる
     for (const char* removed : {"惜しい当たりの返りの割合",
@@ -323,51 +275,16 @@ TEST(PlayerParams, ImpactDefaultsKeepAllFortyTwoDisplayNamesAndValues)
     EXPECT_TRUE(NS::SerializeClassObjFields(&player.Resolver()).empty());
 }
 
-TEST(PlayerParams, LiveImpactVisualTuningDrivesShapeAndLandingDust)
-{
-    NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
-    ASSERT_NE(spawned, nullptr);
-    PlayerActor& player = *spawned;
-    TestEffectSettings<GL::Player::ImpactEffects> impactSettings(&player.ImpactVisuals());
 
-    EXPECT_EQ(NS::ApplyJsonFields(impactSettings.Get(),
-                                  {{"核の直径の基準", 0.4f},
-                                   {"核の直径の威力あたり", 0.3f},
-                                   {"核の直径の上限", 2.0f},
-                                   {"光条の長さの基準", 3.0f},
-                                   {"光条の長さの威力あたり", 4.0f},
-                                   {"着地の粉の半径の基準", 2.0f},
-                                   {"着地の粉の半径の落ちる速さあたり", 0.1f}}),
-              0u);
-    GL::Level::ImpactRecord impact{};
-    impact.tier = GL::Level::HitTier::Center;
-    impact.power = 2.0f;
-    const GL::Player::ImpactShape shape = player.ImpactVisuals().ShapeFor(impact);
-    EXPECT_FLOAT_EQ(shape.coreDiameter, 1.0f);
-    EXPECT_FLOAT_EQ(shape.streakLength, 11.0f);
-    EXPECT_FLOAT_EQ(player.ImpactVisuals().LandDustRadiusFor(5.0f), 2.5f);
-    EXPECT_FLOAT_EQ(player.ImpactVisuals().LandDustRadiusFor(-1.0f), 2.0f);
-}
-
-// 段で変わる絵の決まりは段ごとの 1 行から来る。絵を出す側は段を比べずに形の欄を読む
 TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
 {
     using GL::Level::HitTier;
-    using GL::Player::CoreHoldMotion;
     using GL::Player::ImpactShape;
     using GL::Player::SparkHeading;
     NS::Scene scene;
     PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
-    // 中心近くと大きな外れで本数が違えば、どちらの行から来たかが分かる
-    TestEffectSettings<GL::Player::ImpactEffects> impactSettings(&player.ImpactVisuals());
-
-    ASSERT_EQ(NS::ApplyJsonFields(
-                  impactSettings.Get(),
-                  {{"弾かれ線の本数", 9}, {"大きな外れの弾かれ線の本数", 4}, {"大きな外れの火花の大きさ", 2.5f}}),
-              0u);
     GL::Level::ImpactRecord impact{};
     impact.power = 1.0f;
     impact.hitStopSteps = 8;
@@ -378,38 +295,24 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     const ImpactShape wide = player.ImpactVisuals().ShapeFor(impact);
 
     EXPECT_EQ(center.coreInput, 0u);
-    EXPECT_EQ(center.coreHold, CoreHoldMotion::Pulse);
     EXPECT_EQ(center.sparkHeading, SparkHeading::Launch);
-    EXPECT_EQ(center.sparkCountInput, 0u);
-    EXPECT_EQ(center.recoilCount, 9);
-    EXPECT_EQ(center.recoilCountInput, 0u);
+    EXPECT_TRUE(center.centerLayers);
+    EXPECT_TRUE(center.groundLight);
     EXPECT_FALSE(center.coreCut);
-    EXPECT_FLOAT_EQ(center.sparkScale, 1.0f);
 
     EXPECT_EQ(wide.coreInput, 2u);
-    EXPECT_EQ(wide.coreHold, CoreHoldMotion::Settle);
     EXPECT_EQ(wide.sparkHeading, SparkHeading::Scrape);
-    EXPECT_EQ(wide.sparkCountInput, 1u);
-    EXPECT_EQ(wide.recoilCount, 4);
-    EXPECT_EQ(wide.recoilCountInput, 2u);
+    EXPECT_FALSE(wide.centerLayers);
+    EXPECT_FALSE(wide.groundLight);
     EXPECT_TRUE(wide.coreCut);
-    EXPECT_FLOAT_EQ(wide.sparkScale, 2.5f);
 
     // 番号から作った段の外の値は、行を混ぜずに大きな外れの行で出す。中心近くの層は 1 つも足さない
     impact.tier = static_cast<HitTier>(3);
     const ImpactShape unknown = player.ImpactVisuals().ShapeFor(impact);
     EXPECT_EQ(unknown.coreInput, wide.coreInput);
-    EXPECT_EQ(unknown.coreHold, wide.coreHold);
     EXPECT_EQ(unknown.holdLastFrame, wide.holdLastFrame);
     EXPECT_EQ(unknown.sparkHeading, wide.sparkHeading);
-    EXPECT_EQ(unknown.sparkCountInput, wide.sparkCountInput);
-    EXPECT_EQ(unknown.sparkCount, wide.sparkCount);
-    EXPECT_EQ(unknown.recoilCount, wide.recoilCount);
-    EXPECT_EQ(unknown.recoilCountInput, wide.recoilCountInput);
-    EXPECT_FLOAT_EQ(unknown.streakLength, 0.0f);
-    EXPECT_FLOAT_EQ(unknown.ringRadius, 0.0f);
-    EXPECT_EQ(unknown.emberCount, 0);
-    EXPECT_FLOAT_EQ(unknown.glowDiameter, 0.0f);
+    EXPECT_FALSE(unknown.centerLayers);
 }
 
 TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)

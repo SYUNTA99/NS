@@ -33,26 +33,16 @@ namespace NS
         class EffectScene : public NonCopyable
         {
         public:
-            //! effectRoot は Preload が .efkefc を探す基準ディレクトリ
-            explicit EffectScene(std::string effectRoot) noexcept;
+            EffectScene() noexcept;
             ~EffectScene();
 
             [[nodiscard]] bool IsValid() const noexcept;
 
-            //! effectRoot 相対の拡張子なしパス (UTF-8) から .efkefc と参照資産を読み込む。読み込み済みなら再利用する
-            [[nodiscard]] bool Preload(std::string_view name) noexcept;
             //! 同じ識別子でファイルの道が変わった場合は読み直す
             [[nodiscard]] bool Preload(const EffectResourceDesc& asset) noexcept;
             //! 読み込み済みのファイルと定義の道が一致しない場合は無効なハンドルを返す
             [[nodiscard]] EffectHandle Play(const EffectResourceDesc& asset, const EffectPlayDesc& desc) noexcept;
 
-            //! 読み込み済みのエフェクトをワールド座標 position で再生する。未読み込み時は無効なハンドルを返す
-            [[nodiscard]] EffectHandle Play(std::string_view name, Vector3 position = {}) noexcept;
-
-            //! 読み込み済みのエフェクトを再生する (パーティクル生成は次の Update
-            //! 時)。未読み込み時は無効なハンドルを返す
-            //! 乱数シードはエフェクト名ごとの再生回数から決定するため、他エフェクトの再生順序に影響されない
-            [[nodiscard]] EffectHandle Play(std::string_view name, const EffectPlayDesc& desc) noexcept;
 
             //! ワールド座標の姿勢を設定する (次の Update で反映)
             void SetTransform(EffectHandle handle,
@@ -110,7 +100,6 @@ namespace NS
             std::unordered_map<std::string, Effekseer::EffectRef> m_effects;
             std::unordered_set<std::string> m_warnedMissing;
             std::unordered_map<std::string, uint32> m_playCounts;
-            std::string m_effectRoot;
             float m_elapsedSeconds = 0.0f;
 
             std::array<DepthCopy, 2> m_depthCopies{};

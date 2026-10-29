@@ -163,10 +163,6 @@ namespace NS
             return m_sceneRenderer.BodyMaskShown(viewIndex);
         }
 
-        //! エフェクトを探すディレクトリを SceneRenderer へ渡す。空のままなら ContentRoot の Assets/Effects
-        //! effectRoot は EffectScene の構築時に固まる。SetDevice より前に差す
-        void SetEffectRoot(std::string root) noexcept { m_sceneRenderer.SetEffectRoot(std::move(root)); }
-
         //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空なら skybox を描かない
         //! 描画が毎フレーム読む。保存は ToJson がここから写す
         [[nodiscard]] const std::string& SkyboxPath() const noexcept { return m_environment.skybox; }

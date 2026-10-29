@@ -1,16 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 照り impact.glow: 中心近くの当たりで、相手の足元の床が橙に照らされる
-     点の光源は無いので、床に寝かせた板で代える。再生の大きさが直径 (m)
-     照らす光は床を明るくするだけで暗くしないので加算で足す。足す量は中心で明るさ 0.8 (外の板 122 と真ん中の板 82
-       の和 204)。黒い升 (52) は橙 (255, 178, 110) に染まり、白い升 (225) は 1 を超えて白く飛び、超えた分がにじむ
-       白い升が 1 を超えない 30 に留めた時は、床のどこにも照りが見えなかった。0.8 の走行で、にじみが自機と相手の
-       輪郭を切らないのを撮った絵で見た。周回 4 までの半透明の橙は白い升を暗くし、画面の明るさを上げなかった
-     留まりと落ち始めはゲームが持つ。親を止めた次のフレームが最後で、落ちるフレーム数は既定の 1。
-     寿命の 120 フレームは打ち切り
-     手本の弾きは照らす光が 10 まで見え 11 で消える。3 では 12・13 に茶橙のにじみが残り、3 フレーム長かった
-     板は XY 面にある。床に寝かせる回転は再生の向きで渡す (板の +Z を上へ)
-     節を 2 つ持つ。親を止めた後に子のインスタンスが 1 つだけ残ると、実行側はそれを親と見なして絵ごと消し、
-     親を止めた次のフレームの落ちが出ない (Manager::StopStoppingEffects の数え方) -->
+<?xml version='1.0' encoding='utf-8'?>
+<!-- 入力0は保持の最終フレーム、入力1は威力。根は等倍。
+     素材が直径と面積の変化を持ち、親の停止後は保持の末尾の大きさを保つ。 -->
 <EffekseerProject>
   <Root>
     <Name>Root</Name>
@@ -42,15 +32,12 @@
         <RendererCommonValues>
           <ColorTexture>Texture/impact_glow.png</ColorTexture>
           <AlphaBlend>2</AlphaBlend>
-          <!-- 2 = 取り除かれた後に消える。落ちるフレーム数は既定の 1 -->
           <FadeOutType>2</FadeOutType>
         </RendererCommonValues>
         <DrawingValues>
           <Sprite>
-            <!-- 2 = 向きを固定。床に寝かせたまま描く -->
             <Billboard>2</Billboard>
           </Sprite>
-          <!-- 橙 (255, 150, 60) を中心で 122 足す。真ん中の板と合わせて明るさ 0.8 -->
           <ColorAll>
             <Fixed>
               <G>150</G>
@@ -59,6 +46,13 @@
             </Fixed>
           </ColorAll>
         </DrawingValues>
+        <ScalingValues>
+          <Fixed>
+            <Scale>
+              <DynamicEquation>0</DynamicEquation>
+            </Scale>
+          </Fixed>
+        </ScalingValues>
       </Node>
       <Node>
         <Name>Hot</Name>
@@ -84,20 +78,19 @@
             <WhenParentIsRemoved>True</WhenParentIsRemoved>
           </Removal>
         </CommonValues>
-        <!-- 真ん中の 4 割をもう一段濃く塗り、相手の真下ほど強く照らされて見える -->
         <ScalingValues>
           <Fixed>
             <Scale>
               <X>0.4</X>
               <Y>0.4</Y>
               <Z>0.4</Z>
+              <DynamicEquation>0</DynamicEquation>
             </Scale>
           </Fixed>
         </ScalingValues>
         <RendererCommonValues>
           <ColorTexture>Texture/impact_glow.png</ColorTexture>
           <AlphaBlend>2</AlphaBlend>
-          <!-- 2 = 取り除かれた後に消える。落ちるフレーム数は既定の 1 -->
           <FadeOutType>2</FadeOutType>
         </RendererCommonValues>
         <DrawingValues>
@@ -120,4 +113,43 @@
   <StartFrame>0</StartFrame>
   <EndFrame>30</EndFrame>
   <IsLoop>False</IsLoop>
+  <Dynamic>
+    <Inputs>
+      <DynamicInput>
+        <Input>10</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>1</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+    </Inputs>
+    <Equations>
+      <DynamicEquation>
+        <Name>Shape</Name>
+        <Code>t = @GTime * 60
+f = (t + 0.5) - ((t + 0.5) % 1)
+h = 1 + (@In0 - 1) * step(1, @In0)
+f = f + (h - f) * step(h, f)
+p = step(3, f) - step(4, f)
+l = step(4, f)
+span = h - 1
+span = 1 + (span - 1) * step(1, span)
+a = 0.9 * (1 - p - l) + p + l * (h + 2 - f) / span
+r = (1 + a) * 0.5
+r = (r + a / r) * 0.5
+r = (r + a / r) * 0.5
+r = (r + a / r) * 0.5
+r = (r + a / r) * 0.5
+r = (r + a / r) * 0.5
+@O.x = @P.x * r * (2 + 1.6 * @In1)
+@O.y = @P.y * r * (2 + 1.6 * @In1)
+@O.z = @P.z * r * (2 + 1.6 * @In1)</Code>
+      </DynamicEquation>
+    </Equations>
+  </Dynamic>
 </EffekseerProject>

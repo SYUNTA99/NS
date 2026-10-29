@@ -33,7 +33,7 @@ namespace NS
     class Animation;
     class Shadow;
     class Collision;
-    class Effect;
+    class EffectObj;
     class Sound;
     class HitReaction;
     struct HitOwnerRun;
@@ -99,7 +99,7 @@ namespace NS
         [[nodiscard]] HitSensorDirector* GetHitSensorDirector() const noexcept override;
         [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
         // 出したエフェクトを記録する部品。持たなければ nullptr
-        [[nodiscard]] Effect* GetEffect() const noexcept override { return m_effect.get(); }
+        [[nodiscard]] EffectObj* GetEffect() const noexcept override { return m_effect.get(); }
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept override;
         // 読んだ音を覚える部品。持たなければ nullptr
         [[nodiscard]] Sound* GetSound() const noexcept override { return m_sound.get(); }
@@ -367,7 +367,7 @@ namespace NS
         std::unique_ptr<Collision> m_collision;
         std::unique_ptr<HitSensorsObj> m_hitSensors; // 作るのは CreateHitSensors だけ
         std::unique_ptr<HitReaction> m_hitReaction;
-        std::unique_ptr<Effect> m_effect;
+        std::unique_ptr<EffectObj> m_effect;
         std::unique_ptr<Sound> m_sound;
         std::unique_ptr<ActionTimeline> m_actionTimeline;
         // 状態が借りる部品より先に壊すので、部品の最後に置く。組むのは BuildStateMachine だけ

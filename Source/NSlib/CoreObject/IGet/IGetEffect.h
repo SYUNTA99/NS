@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/Asset/EffectAsset.h"
+#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/Gfx/Render/EffectTypes.h"
 
 #include "NSlib/Core/Types.h"
@@ -9,7 +9,7 @@
 
 namespace NS
 {
-    class Effect;
+    class EffectObj;
     struct EffectRecord;
 
     namespace Gfx
@@ -22,7 +22,7 @@ namespace NS
     {
     public:
         //! 出したエフェクトを覚える部品。枠 Effect を作っていない個体では nullptr
-        [[nodiscard]] virtual Effect* GetEffect() const noexcept = 0;
+        [[nodiscard]] virtual EffectObj* GetEffect() const noexcept = 0;
         //! エフェクトを再生する置き場。シーンに居ない間と描画の無い世界では nullptr
         [[nodiscard]] virtual Gfx::EffectScene* GetEffectScene() const noexcept = 0;
 
@@ -32,12 +32,12 @@ namespace NS
 
     //! @brief 出す素材を先に読む。Effect が無ければ何もしない
     //! @details 持ち主がシーンに入った後の OnStart で呼ぶ
-    void PreloadEffects(const IGetEffect* user, std::initializer_list<const EffectAsset*> assets);
+    void PreloadEffects(const IGetEffect* user, std::initializer_list<const Effect*> assets);
 
     //! エフェクトを 1 つ出す
     //! @param[in] asset PreloadEffects に渡した素材
     //! @return 記録の番号。Effect が無い時は 0
-    [[nodiscard]] uint32 PlayEffect(const IGetEffect* user, const EffectAsset* asset, const Gfx::EffectPlayDesc& desc);
+    [[nodiscard]] uint32 PlayEffect(const IGetEffect* user, const Effect* asset, const Gfx::EffectPlayDesc& desc);
 
     //! 子も含めて消す。無い番号と Effect が無い時は何もしない
     void StopEffect(const IGetEffect* user, uint32 id) noexcept;

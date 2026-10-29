@@ -29,7 +29,6 @@ namespace NS
         Model,
         Animation,
         Effect,
-        EffectSet,
         Sound,
     };
 
@@ -51,14 +50,11 @@ namespace NS
         {
             return AssetKind::Animation;
         }
-        else if constexpr (std::is_same_v<T, EffectAsset*>)
+        else if constexpr (std::is_same_v<T, Effect*>)
         {
             return AssetKind::Effect;
         }
-        else if constexpr (std::is_same_v<T, EffectSet*>)
-        {
-            return AssetKind::EffectSet;
-        }
+
         else if constexpr (std::is_same_v<T, SoundName>)
         {
             return AssetKind::Sound;
@@ -489,7 +485,7 @@ namespace NS
 
 //! 宣言済みのメンバを 1 フィールドとして登録する。メンバの宣言はしないので、クラスに別に書く
 //! private も入れ子の struct のメンバ (m_tuning.speed) も書ける
-//! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは EffectAsset の参照、音は SoundName の型で欄の種類が決まる
+//! 型タグと素材の種類はメンバ型から推論する。色は NS::Color、エフェクトは Effect の参照、音は SoundName の型で欄の種類が決まる
 //! float と float の組と曲線の欄は IsFiniteFieldValue を通るので、非有限値の書き込みは捨てて元の値が残る (NS_ACCESSOR も同じ)
 //! name は保存の鍵。3 つ目に見せる名前を書くと、インスペクタは name の代わりにそれを見せる
 //! float の欄は、見せる名前の後に範囲 (NS::FieldRange) も書ける。範囲の外の書き込みは捨てて元の値が残る

@@ -33,7 +33,6 @@
       "actor": "PlayerActor",
       "classObjs": {
         "Appearance": {},
-        "ChargeEffects": {},
         "Clips": {},
         "Collider": {},
         "Effect": {},

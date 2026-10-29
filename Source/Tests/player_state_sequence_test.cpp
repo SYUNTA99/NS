@@ -18,10 +18,11 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
-#include "NSlib/CoreObject/ClassObjs/Effect.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/ActorJson.h"
@@ -1297,6 +1298,87 @@ TEST(PlayerTackleHit, AMissCoreIsCutAfterTwoFramesAndSparksFollowTheFace)
         impact.faceU, impact.faceV, impact.faceNormal, player->BodySlamDirection());
     ASSERT_GT(expected.Length(), 0.5f);
     EXPECT_NEAR(heading.Dot(expected), 1.0f, 1.0e-4f);
+}
+
+TEST(PlayerTackleHit, ParticleRecordsKeepGameStrengthInsteadOfArtistQuantities)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceTackleScene(scene, 0.0f);
+    ASSERT_NE(player, nullptr);
+    ASSERT_EQ(RunTackle(scene, player, 1.0f, 48).size(), 48u);
+    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
+    ASSERT_EQ(impact.tier, GL::Level::HitTier::Center);
+    bool sparks = false;
+    bool embers = false;
+    bool recoil = false;
+    bool core = false;
+    bool streak = false;
+    bool ring = false;
+    bool glow = false;
+    bool dust = false;
+    for (const NS::EffectRecord& record : player->GetEffect()->Records())
+    {
+        if (record.name == "impact.core" || record.name == "impact.streak" || record.name == "impact.ring" || record.name == "impact.glow" || record.name == "impact.dust")
+        {
+            core |= record.name == "impact.core";
+            streak |= record.name == "impact.streak";
+            ring |= record.name == "impact.ring";
+            glow |= record.name == "impact.glow";
+            dust |= record.name == "impact.dust";
+            ASSERT_TRUE(record.amount.has_value());
+            EXPECT_FLOAT_EQ(*record.amount, impact.power);
+        }
+        else if (record.name == "impact.sparks")
+        {
+            sparks = true;
+            ASSERT_TRUE(record.amount.has_value());
+            EXPECT_FLOAT_EQ(*record.amount, impact.power);
+        }
+        else if (record.name == "impact.embers")
+        {
+            embers = true;
+            ASSERT_TRUE(record.amount.has_value());
+            EXPECT_FLOAT_EQ(*record.amount, impact.power);
+        }
+        else if (record.name == "impact.recoil")
+        {
+            recoil = true;
+            ASSERT_TRUE(record.amount.has_value());
+            EXPECT_FLOAT_EQ(*record.amount, impact.reboundScale);
+        }
+    }
+    EXPECT_TRUE(sparks);
+    EXPECT_TRUE(embers);
+    EXPECT_TRUE(recoil);
+    EXPECT_TRUE(core);
+    EXPECT_TRUE(streak);
+    EXPECT_TRUE(ring);
+    EXPECT_EQ(glow, impact.targetPlaced);
+    EXPECT_EQ(dust, impact.targetPlaced);
+}
+
+TEST(PlayerTackleHit, ResetEndsOwnedEffectsAndDoesNotResumeThePreviousHit)
+{
+    for (const int steps : {5, 16, 35})
+    {
+        SCOPED_TRACE(steps);
+        NS::Scene scene;
+        PlayerActor* player = PlaceTackleScene(scene, 0.0f);
+        ASSERT_NE(player, nullptr);
+        ASSERT_EQ(RunTackle(scene, player, 1.0f, steps).size(), static_cast<std::size_t>(steps));
+        ASSERT_FALSE(player->GetEffect()->Records().empty());
+        player->ResetState();
+        for (const NS::EffectRecord& record : player->GetEffect()->Records())
+        {
+            EXPECT_TRUE(record.endStep.has_value()) << record.name;
+        }
+        const std::size_t count = player->GetEffect()->Records().size();
+        for (int frame = 0; frame < 40; ++frame)
+        {
+            scene.OnUpdate();
+        }
+        EXPECT_EQ(player->GetEffect()->Records().size(), count);
+    }
 }
 
 // 突進の線の先の相手に触れる前の、当たる直前の状態と動作を縛る。横軸は検知の歩を 0 にした歩

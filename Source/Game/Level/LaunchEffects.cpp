@@ -1,6 +1,6 @@
 #include "Game/Level/LaunchEffects.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/ClassObjs/Effect.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/IGet/IGetEffect.h"
@@ -35,13 +35,8 @@ namespace GL
         void LaunchEffects::Preload(const NS::IGetEffect* user)
         {
             NS_ASSERT(Game, user != nullptr, "LaunchEffects::Preload: 絵を出すアクターが空");
-            // 演出セットを読む前と、演出セットの欄が空の時は既定の設定のまま。既定の設定は素材を持たないので何も出さない
-            const NS::Effect* effectOwner = user->GetEffect();
-            if (effectOwner != nullptr && effectOwner->Definition() != nullptr)
-            {
-                Configure(&effectOwner->Definition()->Settings<LaunchEffectSettings>());
-            }
-            NS::PreloadEffects(user, {m_settings->m_launchTrailAsset, m_settings->m_launchLandDustAsset});
+
+            NS::PreloadEffects(user, {m_launchTrailAsset, m_launchLandDustAsset});
         }
 
         void LaunchEffects::BeginTrail(const NS::IGetEffect* user,
@@ -63,17 +58,8 @@ namespace GL
                 return; // 曲線の上を飛んでいない物には付けない
             }
 
-            // 軽い物ほど遠くへ速く飛ぶので、尾も長く残す。重い物は短い
-            const float trailFrames = static_cast<float>(m_settings->m_trailFramesBase) +
-                                      m_settings->m_trailFramesPerLaunch * std::max(release.launchScale, 0.0f);
-            m_trailFrames = std::max(1, static_cast<int>(std::lround(trailFrames)));
-            // 威力 1 で質量だけの大きさ。強く飛ばした物ほど高く上がって強く落ちるので威力でも伸ばす
-            const float mass = params->Mass();
-            const float powerGrowth =
-                std::max(0.0f, 1.0f + m_settings->m_landDustPerPower * (std::max(release.power, 0.0f) - 1.0f));
-            m_landDustScale =
-                (m_settings->m_landDustBase + m_settings->m_landDustPerRootMass * std::sqrt(std::max(mass, 0.0f))) *
-                powerGrowth;
+            m_landPower = std::max(release.power, 0.0f);
+            m_landRootMass = std::sqrt(std::max(params->Mass(), 0.0f));
 
             // 再生の大きさは自分の直径。帯の幅は絵の定義が直径への割合で持つ。物理への登録に依らず、変換と欄から作る
             m_trailScale = 2.0f * sphere.radius;
@@ -87,14 +73,14 @@ namespace GL
                 NS::Gfx::MakeEffectPlayDesc(flight.position,
                                             NS::TurnUpTo(NS::NormalizedOr(flight.velocity, m_launchDir)),
                                             NS::UniformScale(m_trailScale));
-            // 0 番が橙、1 番が大きな外れの灰。2 番が点の寿命
+            // 素材の入力0/1は橙/灰の選択、入力2は飛ばしの比
             desc.dynamicInputs[0] = 0.0f;
             desc.dynamicInputs[1] = 0.0f;
             desc.dynamicInputs[TrailColorInputFor(release.tier)] = 1.0f;
-            desc.dynamicInputs[2] = static_cast<float>(m_trailFrames);
+            desc.dynamicInputs[2] = std::max(release.launchScale, 0.0f);
             desc.dynamicInputs[3] = 0.0f;
-            m_trail = NS::PlayEffect(user, m_settings->m_launchTrailAsset, desc);
-            NS::SetEffectAmount(user, m_trail, static_cast<float>(m_trailFrames));
+            m_trail = NS::PlayEffect(user, m_launchTrailAsset, desc);
+            NS::SetEffectAmount(user, m_trail, std::max(release.launchScale, 0.0f));
         }
 
         void LaunchEffects::Update(const NS::IGetEffect* user, const PropFlight& flight)
@@ -133,16 +119,13 @@ namespace GL
         {
             NS_ASSERT(Game, user != nullptr, "LaunchEffects::NotifyLanding: 絵を出すアクターが空");
             EndTrail(user);
-            const Vector3 at = position + normal * m_settings->m_dustRingLift;
-            const NS::uint32 dust = NS::PlayEffect(
-                user,
-                m_settings->m_launchLandDustAsset,
-                NS::Gfx::MakeEffectPlayDesc(
-                    at,
-                    NS::TurnUpTo(normal),
-                    NS::UniformScale(m_landDustScale / std::max(m_settings->m_landDustAssetRadius, NS::k_Epsilon))));
-            NS::SetEffectAmount(user, dust, m_landDustScale);
-            NS::StopEffectAfter(user, dust, std::max(m_settings->m_landDustLife, 1));
+            const Vector3 at = position + normal * m_dustRingLift;
+            NS::Gfx::EffectPlayDesc desc = NS::Gfx::MakeEffectPlayDesc(at, NS::TurnUpTo(normal), NS::UniformScale(1.0f));
+            desc.dynamicInputs[0] = m_landPower;
+            desc.dynamicInputs[1] = m_landRootMass;
+            const NS::uint32 dust = NS::PlayEffect(user, m_launchLandDustAsset, desc);
+            NS::SetEffectAmount(user, dust, m_landPower);
+            NS::StopEffectAfter(user, dust, std::max(m_landDustLife, 1));
         }
     } // namespace Level
 } // namespace GL

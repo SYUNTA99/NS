@@ -146,7 +146,7 @@ namespace NS
         bool IsEffectAssetPath(std::string_view path)
         {
             const std::string extension = LowerExtension(path);
-            return extension == ".effect" || extension == ".effectset";
+            return extension == ".effect";
         }
 
         bool IsEffekseerAssetPath(std::string_view path)
@@ -157,14 +157,11 @@ namespace NS
         std::vector<AssetOption> CollectAssetOptions(AssetKind kind, std::string_view contentRoot)
         {
             std::vector<AssetOption> options;
-            if (kind == AssetKind::Effect || kind == AssetKind::EffectSet)
+            if (kind == AssetKind::Effect)
             {
                 for (const EffectAssetFile& file : ReadEffectAssetFiles(contentRoot))
                 {
-                    if (file.isSet == (kind == AssetKind::EffectSet))
-                    {
-                        options.push_back(AssetOption{file.id, file.label, file.path});
-                    }
+                    options.push_back(AssetOption{file.id, file.label, file.path});
                 }
                 std::sort(options.begin(), options.end(), [](const AssetOption& a, const AssetOption& b) {
                     return a.label < b.label;

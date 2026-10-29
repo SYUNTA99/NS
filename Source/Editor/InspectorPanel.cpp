@@ -1,7 +1,5 @@
 #include "Editor/InspectorPanel.h"
-#include "NSlib/CoreObject/Asset/EffectAsset.h"
-#include "NSlib/CoreObject/Asset/EffectSet.h"
-#include "NSlib/CoreObject/ClassObjs/Effect.h"
+#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "Editor/AssetPicker.h"
@@ -613,44 +611,8 @@ namespace NS
                 editor.SelectAsset(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), *copy));
                 return true;
             };
-            if (EffectSet* set = Cast<EffectSet>(&asset))
-            {
-                ImGui::TextUnformatted(set->Label().c_str());
-                ImGui::TextWrapped("%s", set->Path().c_str());
-                if (duplicate(set->Path()))
-                {
-                    return;
-                }
-                const nlohmann::json before = set->Document();
-                bool committed = false;
-                for (const std::pair<const std::string, std::unique_ptr<Object>>& section : set->Sections())
-                {
-                    std::string label = section.first;
-                    const nlohmann::json::const_iterator labels = before.find("labels");
-                    if (labels != before.end() && labels->is_object() && labels->contains(section.first) &&
-                        labels->at(section.first).is_string())
-                    {
-                        label = labels->at(section.first).get<std::string>();
-                    }
-                    ImGui::PushID(section.first.c_str());
-                    if (ImGui::CollapsingHeader(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
-                    {
-                        const ClassObjEditResult result = DrawReflectedClassObj(section.second.get());
-                        if (result.changed)
-                        {
-                            editor.MarkEffectSetEdited(before);
-                        }
-                        committed |= result.committed;
-                    }
-                    ImGui::PopID();
-                }
-                if (committed)
-                {
-                    editor.CommitAssetEdit();
-                }
-                return;
-            }
-            if (const EffectAsset* effect = Cast<EffectAsset>(&asset))
+
+            if (const Effect* effect = Cast<Effect>(&asset))
             {
                 ImGui::TextUnformatted(effect->Label().c_str());
                 ImGui::TextWrapped("%s", effect->Path().c_str());
@@ -724,14 +686,7 @@ namespace NS
                     {
                         return;
                     }
-                    if (const Effect* effects = Cast<Effect>(part))
-                    {
-                        const EffectSet* set = effects->Definition();
-                        if (set != nullptr && set->IsValid() && ImGui::Button("演出セットを編集"))
-                        {
-                            editor.SelectAsset(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), set->Path()));
-                        }
-                    }
+
                     ImGui::PushID(row.key);
                     if (ImGui::CollapsingHeader(row.key, ImGuiTreeNodeFlags_DefaultOpen))
                     {
@@ -881,14 +836,7 @@ namespace NS
                     }
                 }
                 DrawActorFileChoice(go);
-                if (const Effect* effects = go->GetEffect())
-                {
-                    const EffectSet* set = effects->Definition();
-                    if (set != nullptr && set->IsValid() && ImGui::Button("演出セットを編集"))
-                    {
-                        editor.SelectAsset(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), set->Path()));
-                    }
-                }
+
                 ImGui::Separator();
 
                 // 部品はクラスが決めるので、ここでは値だけを変える。足し引きはできない

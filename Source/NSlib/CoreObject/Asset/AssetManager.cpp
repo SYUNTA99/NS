@@ -7,8 +7,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/Asset/AnimClip.h"
-#include "NSlib/CoreObject/Asset/EffectAsset.h"
-#include "NSlib/CoreObject/Asset/EffectSet.h"
+#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Shader.h"
@@ -919,8 +918,6 @@ namespace NS
 
     void AssetManager::Clear() noexcept
     {
-        m_unsavedEffectSets.clear();
-        m_effectSets.clear();
         m_effectAssets.clear();
         m_effectCatalogLoaded = false;
         // 音は装置の声を持つので、装置を壊す Application より先にここで捨てる

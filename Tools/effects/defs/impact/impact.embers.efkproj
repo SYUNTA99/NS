@@ -1,16 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 火の粉 impact.embers: 中心近くの当たりで、光の塊が消えた後に力が弾けて散る
-     手本の弾きは光の塊が消える 11 に接触点から火の粉が新しく密に弾け、19〜20 まで四方へ散って落ちる。
-     放射の筋 (impact.sparks の Band) が 3〜10、この層が核の落ちるフレームから 20 ごろまでを受け持つ
-     再生の向きの +Y を相手の飛ぶ向きにする。生まれる所は接触点から 0.3 m の球面の全部で、各粒は外向きへ四方に散る。
-     +Y から 0〜100 度へ散らした時は、半分ほどの粒が相手の玉の中と裏へ入り、ゲームの視点で見えた粒は 30 ほど、
-     広がりは相手の玉の直径の 0.6〜0.8 倍だった (手本の弾きの火の粉は数百粒で人の背丈の約 2 倍)。
-     2 つの玉が触れ合う面に沿う 70〜110 度の帯にすると、ゲームの視点は 2 つの玉を横に並べて見るので帯が縁から写り、
-     接触点に縦の棒のように固まった。全部の向きへ散らすと、どの視点でも画面の上で四方へ開く。
-     相手の飛ぶ向きは火花の筋 (impact.sparks) と飛び出しの尾が形に出す
-     動的入力の 0 番が粒の数、1 番が速さの上限 (m/フレーム)。速さは上限の 0.3〜1.0 倍にばらし、
-     遅い粒が接触点の周りに密に残り、速い粒が外へ伸びる (手本の 12〜13 の、密な塊と外へ伸びる筋)
-     全部の粒を最初の更新で出す (生成の間隔 0 と開始 -1)。重力はワールドの下向きで、再生の向きに依らない -->
+<?xml version='1.0' encoding='utf-8'?>
+<!-- 入力0は威力、1は飛ばしの比。粒数と速さへの変換は素材が持つ。
+     根の大きさは1。向きと位置、核が落ちるフレームとの同期はGameが渡す。 -->
 <EffekseerProject>
   <Root>
     <Name>Root</Name>
@@ -148,24 +138,35 @@
   <Dynamic>
     <Inputs>
       <DynamicInput>
-        <Input>40</Input>
+        <Input>1</Input>
       </DynamicInput>
       <DynamicInput>
-        <Input>0.2</Input>
+        <Input>1</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
+      </DynamicInput>
+      <DynamicInput>
+        <Input>0</Input>
       </DynamicInput>
     </Inputs>
     <Equations>
       <DynamicEquation>
         <Name>EmberCount</Name>
-        <Code>@O.x = @In0</Code>
+        <Code>s = (@In0 - 0.7) / (2 - 0.7)
+s = s * step(0, s)
+s = s + (1 - s) * step(1, s)
+n = 10 + 20 * s + 0.5
+n = n - (n % 1)
+@O.x = n * 7</Code>
       </DynamicEquation>
       <DynamicEquation>
         <Name>SpeedMin</Name>
-        <Code>@O.y = @In1 * 0.3</Code>
+        <Code>@O.y = (6 + 3 * @In1) / 60 * 0.3</Code>
       </DynamicEquation>
       <DynamicEquation>
         <Name>SpeedMax</Name>
-        <Code>@O.y = @In1 * 1.0</Code>
+        <Code>@O.y = (6 + 3 * @In1) / 60</Code>
       </DynamicEquation>
     </Equations>
   </Dynamic>
