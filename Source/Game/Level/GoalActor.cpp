@@ -4,6 +4,7 @@
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
+#include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 
@@ -13,6 +14,9 @@ namespace GL
     {
         void GoalActor::OnInit()
         {
+            // ゴールの球にプレイヤーの体が重なれば触れたとみなす。半径は .actor の hitSensors の値
+            CreateClassObj(m_hitSensors);
+            m_bodyHitSensor = m_hitSensors->AddShape(this, "Body", SensorKind::Area, NS::HitSensorShape::Sphere);
             CreateClassObj(m_params);
             CreateClassObj(m_model);
             NS::InitDraw(this, m_model.get(), &Root());

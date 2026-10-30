@@ -545,7 +545,7 @@ namespace NS
         void InspectorPanel::DrawHitSensors(LevelEditorController& editor, SceneActor* actor)
         {
             NS_ASSERT(App, actor != nullptr, "センサーの欄を描くアクターが無い");
-            HitSensorsObj* sensors = actor->HitSensorsObjClassObj();
+            HitSensorsObj* sensors = actor->HitSensorsClassObj();
             if (sensors == nullptr)
             {
                 return;

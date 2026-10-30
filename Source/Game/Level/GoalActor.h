@@ -24,11 +24,7 @@ namespace GL
             void OnInit() override;
 
         private:
-            // ゴールの球にプレイヤーの体が重なれば触れたとみなす。半径は .actor の hitSensors の値
-            NS_SENSORS_BEGIN()
-            NS_SENSOR(m_bodyHitSensor, "Body", SensorKind::Area, NS::HitSensorShape::Sphere)
-            NS_SENSORS_END()
-            NS::HitSensor* m_bodyHitSensor = nullptr; // 体のセンサー (非所有)。持つのは基底の HitSensorsObj
+            NS::HitSensor* m_bodyHitSensor = nullptr; // 体のセンサー (非所有)。持つのは HitSensorsObj
 
             std::unique_ptr<GoalParams> m_params;
         };

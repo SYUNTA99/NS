@@ -1,7 +1,6 @@
 {
   "class": "FollowCameraActor",
   "classObjs": {
-    "HitSensors": {},
     "Transform": {
       "スケール": [
         1.0,

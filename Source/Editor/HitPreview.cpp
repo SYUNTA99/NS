@@ -252,7 +252,12 @@ namespace NS
             // 突進が当たる体と面を持つアクターか。下見の相手になれる
             bool IsHitTarget(SceneActor& object)
             {
-                const HitSensor* bodySensor = object.HitSensorsObjClassObj()->Find("Body");
+                const HitSensorsObj* sensors = object.HitSensorsClassObj();
+                if (sensors == nullptr)
+                {
+                    return false;
+                }
+                const HitSensor* bodySensor = sensors->Find("Body");
                 return bodySensor != nullptr && bodySensor->IsValid() && Cast<GL::Level::PropActor>(&object) != nullptr;
             }
 
@@ -325,7 +330,12 @@ namespace NS
                 result.error = std::format("id {} のアクターが場面に無い", result.desc.targetId);
                 return result;
             }
-            const HitSensor* bodySensor = target->HitSensorsObjClassObj()->Find("Body");
+            const HitSensorsObj* sensors = target->HitSensorsClassObj();
+            const HitSensor* bodySensor = nullptr;
+            if (sensors != nullptr)
+            {
+                bodySensor = sensors->Find("Body");
+            }
             if (bodySensor == nullptr || !bodySensor->IsValid())
             {
                 result.error = std::format("id {} のアクターに突進が当たる体が無い", result.desc.targetId);

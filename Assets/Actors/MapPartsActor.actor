@@ -2,7 +2,6 @@
   "class": "MapPartsActor",
   "classObjs": {
     "Collision": {},
-    "HitSensors": {},
     "Model": {
       "マテリアル": "",
       "メッシュ": "cube",

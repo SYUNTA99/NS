@@ -111,14 +111,14 @@ namespace NS
             NS_LOG_ERROR(Scene, "{}.actor の hitSensors が object でない。読まない", owner->ActorFileName());
             return;
         }
-        // 値を持つセンサーが hitSensors に無いと、宣言した時の大きさで黙って当たる
+        // 値を持つセンサーが hitSensors に無いと、作った時の大きさで黙って当たる
         for (const HitSensor* sensor : m_sensors)
         {
             const ReflectionInfo* info = sensor->GetReflection();
             if (info != nullptr && info->fieldCount > 0 && !values->contains(sensor->Name()))
             {
                 NS_LOG_WARN(Scene,
-                            "{}.actor の hitSensors に {} のセンサー {} が無いので、宣言した時の値で当たる",
+                            "{}.actor の hitSensors に {} のセンサー {} が無いので、作った時の値で当たる",
                             owner->ActorFileName(),
                             owner->ClassName(),
                             sensor->Name());

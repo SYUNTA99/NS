@@ -244,8 +244,8 @@ TEST(HitSensorsObj, ShippedGoalAndDeathZoneKeepTheirSensorSizes)
     const std::unique_ptr<GL::Level::DeathZoneActor> zone = NS::CreateActor<GL::Level::DeathZoneActor>();
     ASSERT_NE(goal, nullptr);
     ASSERT_NE(zone, nullptr);
-    const NS::ShapeHitSensor* goalBody = NS::Cast<NS::ShapeHitSensor>(goal->HitSensorsObjClassObj()->Find("Body"));
-    const NS::ShapeHitSensor* zoneBody = NS::Cast<NS::ShapeHitSensor>(zone->HitSensorsObjClassObj()->Find("Body"));
+    const NS::ShapeHitSensor* goalBody = NS::Cast<NS::ShapeHitSensor>(goal->HitSensorsClassObj()->Find("Body"));
+    const NS::ShapeHitSensor* zoneBody = NS::Cast<NS::ShapeHitSensor>(zone->HitSensorsClassObj()->Find("Body"));
     ASSERT_NE(goalBody, nullptr);
     ASSERT_NE(zoneBody, nullptr);
     ExpectSizes(*goalBody, GoalBodyValues());

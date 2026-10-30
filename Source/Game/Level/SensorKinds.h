@@ -12,7 +12,7 @@ namespace GL
     namespace Level
     {
         //! センサーの応答先を識別する Game の種類
-        //! 保存しない。付けるのはアクターのクラスのセンサーの宣言 (NS_SENSOR・NS_FOLLOW_SENSOR) だけ。
+        //! 保存しない。付けるのはアクターのクラスが OnInit で呼ぶ HitSensorsObj の AddShape・AddFollow だけ。
         //! 重なりは全組へ通知され、応答の可否は各受け手が決める
         enum class SensorKind : NS::uint8
         {

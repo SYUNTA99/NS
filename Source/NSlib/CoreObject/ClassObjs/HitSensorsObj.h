@@ -72,7 +72,7 @@ namespace NS
         void EndAll(const IGetHitSensor* user);
 
         //! 持ち主の .actor の hitSensors から、名前ごとの値を同じ名前のセンサーへ書く
-        //! 先に全部のセンサーを宣言した時の値へ戻すので、前に読んだ値は残らない。並びに無い名前と、
+        //! 先に全部のセンサーを作った時の値へ戻すので、前に読んだ値は残らない。並びに無い名前と、
         //! 値を持つのに hitSensors に無いセンサーは WARN を出す。持ち主に .actor が無ければ何もしない
         //! @param[in] owner 持ち主。事前条件: nullptr でない
         void ReloadValues(const SceneActor* owner);
@@ -83,7 +83,7 @@ namespace NS
         NS_REFLECT_NONE(HitSensorsObj, Object)
 
     private:
-        // 作ったセンサーと、宣言した時の値。ReloadValues が .actor を当てる前に戻す先
+        // 作ったセンサーと、作った時の値。ReloadValues が .actor を当てる前に戻す先
         struct Held
         {
             std::unique_ptr<HitSensor> sensor;
@@ -103,15 +103,3 @@ namespace NS
         std::vector<HitSensor*> m_sensors; // m_held と同じ順の非所有のポインタ。Sensors() が参照で返す並び
     };
 } // namespace NS
-
-//! アクターのクラスの本体に、そのクラスが持つセンサーを並べる。NS_SENSORS_END で閉じる
-//! 基底の SceneActor が OnInit の前に部品を作ってここを呼ぶので、OnInit と状態の OnEnter から読める。
-//! 派生のクラスが並べ直すと、基底の並びを置き換える
-#define NS_SENSORS_BEGIN() void DeclareSensors(::NS::HitSensorsObj& sensors) override {
-//! 独立した形のセンサーを 1 つ並べ、member (非所有の HitSensor*) に置く。name は .actor と動作が指す名前、
-//! kind は Game の種類、shape は NS::HitSensorShape
-#define NS_SENSOR(member, name, kind, shape) member = sensors.AddShape(this, name, kind, shape);
-//! 形を毎回メンバー関数 function(rootWorld) から読むセンサーを 1 つ並べ、member に置く。OnInit の後にしか形を問われない
-#define NS_FOLLOW_SENSOR(member, name, kind, function)                                                                 \
-    member = sensors.AddFollow(this, name, kind, [this](const ::NS::Matrix& rootWorld) { return function(rootWorld); });
-#define NS_SENSORS_END() }

@@ -70,6 +70,9 @@ PlayerActor::PlayerActor() noexcept = default;
 PlayerActor::~PlayerActor() = default;
 void PlayerActor::OnInit()
 {
+    CreateClassObj(m_hitSensors);
+    m_bodyHitSensor = m_hitSensors->AddFollow(this, "Body", GL::Level::SensorKind::PlayerBody,
+                                              [this](const NS::Matrix& rootWorld) { return BodySensorVolume(rootWorld); });
     CreateClassObj(m_model);
     NS::InitDraw(this, m_model.get(), &Root());
     CreateClassObj(m_appearance);
@@ -727,7 +730,7 @@ NS::HitSensor* PlayerActor::LastTackleTargetSensor() const noexcept
     {
         return nullptr;
     }
-    return target->HitSensorsObjClassObj()->Find("Body");
+    return target->HitSensorsClassObj()->Find("Body");
 }
 
 void PlayerActor::BeginTackleHit() noexcept

@@ -125,10 +125,9 @@ namespace NS
         [[nodiscard]] const Shadow* ShadowClassObj() const noexcept { return m_shadow.get(); }
         [[nodiscard]] Collision* CollisionClassObj() noexcept { return m_collision.get(); }
         [[nodiscard]] const Collision* CollisionClassObj() const noexcept { return m_collision.get(); }
-        //! クラスが宣言したセンサーを名前つきで持つ部品。Init と InitWithCodeValues が OnInit の前に作る
-        //! 作る前 (コンストラクタの中) だけ nullptr
-        [[nodiscard]] HitSensorsObj* HitSensorsObjClassObj() noexcept { return m_hitSensors.get(); }
-        [[nodiscard]] const HitSensorsObj* HitSensorsObjClassObj() const noexcept { return m_hitSensors.get(); }
+        //! センサーを名前つきで持つ部品。センサーを持つクラスが OnInit で作る。持たないクラスでは nullptr
+        [[nodiscard]] HitSensorsObj* HitSensorsClassObj() noexcept { return m_hitSensors.get(); }
+        [[nodiscard]] const HitSensorsObj* HitSensorsClassObj() const noexcept { return m_hitSensors.get(); }
         [[nodiscard]] HitReaction* HitReactionClassObj() noexcept { return m_hitReaction.get(); }
         [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
         [[nodiscard]] ActionTimeline* ActionTimelineClassObj() noexcept { return m_actionTimeline.get(); }
@@ -207,7 +206,7 @@ namespace NS
         }
 
         virtual void OnStart();
-        //! Disappear で世界から外し、基底の部品 (Model・Shadow・当たり・センサー) をシーンの仕組みから外す
+        //! Disappear で世界から外し、基底のメンバーの部品 (Model・Shadow・当たり・センサー) のうち作った物をシーンの仕組みから外す
         //! 消えたままでも外し、当たりの body は壊す。入れていない部品は何もしないので、2 回呼ばれてもよい
         virtual void OnEndPlay();
 
@@ -235,13 +234,12 @@ namespace NS
         virtual void OnAssetsLoaded();
 
         //! 部品を member に作る。未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
-        //! センサーとセンサーの部品は作れない。センサーは NS_SENSOR か NS_FOLLOW_SENSOR で宣言し、基底が OnInit の前に作る
+        //! センサーは作れない。センサーは HitSensorsObj の AddShape か AddFollow で作る
         template <class TBase, class T = TBase, class... TArgs>
             requires std::derived_from<T, TBase> && std::derived_from<T, Object>
         T* CreateClassObj(std::unique_ptr<TBase>& member, TArgs&&... args)
         {
-            static_assert(!std::is_base_of_v<HitSensor, T> && !std::is_same_v<T, HitSensorsObj>,
-                          "センサーは NS_SENSOR か NS_FOLLOW_SENSOR で宣言する");
+            static_assert(!std::is_base_of_v<HitSensor, T>, "センサーは HitSensorsObj の AddShape か AddFollow で作る");
             return EmplaceClassObj<TBase, T>(member, std::forward<TArgs>(args)...);
         }
 
@@ -299,12 +297,12 @@ namespace NS
                                                                      std::string_view actorFile);
         friend float GetFrameRate(const SceneActor* actor) noexcept;
         friend bool SetFrameRate(SceneActor* actor, float rate) noexcept;
-        //! アクターを作る順。宣言したセンサー → 部品を作る (OnInit) → .actor の全部の値とセンサーの値 → シーンの上書き → 素材
+        //! アクターを作る順。部品とセンサーを作る (OnInit) → .actor の全部の値とセンサーの値 → シーンの上書き → 素材
         //! 呼ぶのは作る関数だけで、作った直後に 1 回。private にして 2 回目を起こさない。
         //! info が nullptr のアクターも、シーンの上書きを飛ばすだけで同じ順を通る。
         //! 断らない。シーンの上書きが書いてよい項目だけを持つかは、作る前に ActorFromJson が確かめる
         void Init(const ActorInitInfo* info);
-        //! 宣言したセンサーと部品を作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
+        //! OnInit で部品とセンサーを作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
         //! actorFile は .actor の名前として持つだけで、空ならクラスと同じ名前
         void InitWithCodeValues(std::string_view actorFile);
         //! 補間の前の値として、根の Transform と Model の今の値を控える
@@ -318,10 +316,6 @@ namespace NS
         // 別のメンバーが同じ保存キーで作成済みか。同じキーの部品が 2 つあると保存で片方が消える
         [[nodiscard]] bool IsClassObjKeyCreated(std::string_view key) const;
         void ReportInvalidClassObj(const ClassObjInfo* field) const;
-        //! クラスが並べたセンサーを sensors に作る。上書きは NS_SENSORS_BEGIN と NS_SENSORS_END が書く
-        virtual void DeclareSensors(HitSensorsObj& sensors) { (void)sensors; }
-        // センサーの部品を作り、クラスが宣言したセンサーを作らせる。Init と InitWithCodeValues が OnInit の前に 1 回呼ぶ
-        void CreateHitSensors();
         // 未登録・作成済みのメンバーや使用済みの保存キーは変更せず nullptr を返す
         template <class TBase, class T = TBase, class... TArgs>
             requires std::derived_from<T, TBase> && std::derived_from<T, Object>
@@ -365,7 +359,7 @@ namespace NS
         std::unique_ptr<Animation> m_animation;
         std::unique_ptr<Shadow> m_shadow;
         std::unique_ptr<Collision> m_collision;
-        std::unique_ptr<HitSensorsObj> m_hitSensors; // 作るのは CreateHitSensors だけ
+        std::unique_ptr<HitSensorsObj> m_hitSensors;
         std::unique_ptr<HitReaction> m_hitReaction;
         std::unique_ptr<EffectObj> m_effect;
         std::unique_ptr<Sound> m_sound;

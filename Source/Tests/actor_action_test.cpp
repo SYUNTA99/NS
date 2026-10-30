@@ -298,6 +298,9 @@ namespace
     protected:
         void OnInit() override
         {
+            CreateClassObj(m_hitSensors);
+            m_bodySensor = m_hitSensors->AddShape(this, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
+            m_attackSensor = m_hitSensors->AddShape(this, "Attack", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
             NS::Cast<NS::ShapeHitSensor>(m_bodySensor)->SetSphere(0.5f);
             NS::Cast<NS::ShapeHitSensor>(m_attackSensor)->SetSphere(0.8f);
             CreateClassObj(m_model);
@@ -308,10 +311,6 @@ namespace
         }
 
     private:
-        NS_SENSORS_BEGIN()
-        NS_SENSOR(m_bodySensor, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
-        NS_SENSOR(m_attackSensor, "Attack", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere)
-        NS_SENSORS_END()
         NS::HitSensor* m_bodySensor = nullptr;
         NS::HitSensor* m_attackSensor = nullptr;
     };
@@ -327,8 +326,8 @@ namespace
                                                                owner->actionName,
                                                                owner->startFrame,
                                                                owner->Root().Position(),
-                                                               owner->HitSensorsObjClassObj()->Find("Body"),
-                                                               owner->partner->HitSensorsObjClassObj()->Find("Body"));
+                                                               owner->HitSensorsClassObj()->Find("Body"),
+                                                               owner->partner->HitSensorsClassObj()->Find("Body"));
     }
 
     void ActionRunState::OnStep(ActionProbeActor* owner, float)
@@ -521,8 +520,8 @@ TEST(ActionTimeline, SensorSwitchesHoldForTheirLength)
     hold.sensors = {{.sensor = "Attack", .valid = false, .start = 0, .length = 10}};
     ActionScene probes({flicker, hold});
     ASSERT_NE(probes.self, nullptr);
-    const NS::HitSensor& body = *probes.self->HitSensorsObjClassObj()->Find("Body");
-    const NS::HitSensor& attack = *probes.self->HitSensorsObjClassObj()->Find("Attack");
+    const NS::HitSensor& body = *probes.self->HitSensorsClassObj()->Find("Body");
+    const NS::HitSensor& attack = *probes.self->HitSensorsClassObj()->Find("Attack");
 
     probes.Enter("Flicker");
     const bool bodyValid[] = {true, false, false, true, true};
@@ -553,8 +552,8 @@ TEST(ActionTimeline, SensorSwitchOfAMissingNameChangesNothing)
     missing.sensors = {{.sensor = "Tail", .valid = false, .start = 0, .length = 10}};
     ActionScene probes({missing});
     ASSERT_NE(probes.self, nullptr);
-    const NS::HitSensor& body = *probes.self->HitSensorsObjClassObj()->Find("Body");
-    const NS::HitSensor& attack = *probes.self->HitSensorsObjClassObj()->Find("Attack");
+    const NS::HitSensor& body = *probes.self->HitSensorsClassObj()->Find("Body");
+    const NS::HitSensor& attack = *probes.self->HitSensorsClassObj()->Find("Attack");
 
     const TestLogCapture log;
     probes.Enter("Missing");

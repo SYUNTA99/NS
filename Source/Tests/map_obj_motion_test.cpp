@@ -72,7 +72,7 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
         rock->UpdateMotion();
     }
     GL::Level::TackleTargetAnswer answer;
-    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(rock->HitSensorsObjClassObj()->Find("Body"), answer));
+    ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(rock->HitSensorsClassObj()->Find("Body"), answer));
     EXPECT_TRUE(answer.placed);
     EXPECT_GT(rock->Root().Position().x, 5.0f);
     EXPECT_NEAR(rock->Root().Position().y, 0.5f, 0.002f);
