@@ -31,7 +31,7 @@ namespace GL
     } // namespace Level
 } // namespace GL
 
-// コースの仕掛けと進行役がやり取りする知らせ。型ごとに「送る」と「調べる」を対で置く
+// コースの仕掛けと進行役がやり取りする知らせ。型ごとに送る関数を置き、受け手は NS::IsMsg・NS::MsgCast で調べる
 // 受け手が応じたかは送る関数の戻り値で分かる
 
 namespace GL
@@ -44,8 +44,6 @@ namespace GL
             NS_MESSAGE(MsgInstantDeath)
         };
         bool SendMsgInstantDeath(NS::HitSensor* receiver, NS::HitSensor* sender);
-        [[nodiscard]] bool IsMsgInstantDeath(const NS::Message& msg) noexcept;
-
         //! ゴールに着いた知らせ。ゴールの範囲がプレイヤーの体へ送る
         class MsgGoal final : public NS::Message
         {
@@ -63,8 +61,6 @@ namespace GL
             float m_fadeInSeconds;
         };
         bool SendMsgGoal(NS::HitSensor* receiver, NS::HitSensor* sender, float fadeOutSeconds, float fadeInSeconds);
-        [[nodiscard]] bool IsMsgGoal(const NS::Message& msg) noexcept;
-
         //! コースが始まった知らせ。進行役がやり直しの前に全てのアクターへ 1 回送る
         //! 受け手は今の姿をやり直しの戻り先として控える。配置のデータは読み直さない
         class MsgCourseStart final : public NS::Message
@@ -72,8 +68,6 @@ namespace GL
             NS_MESSAGE(MsgCourseStart)
         };
         bool SendMsgCourseStart(NS::SceneActor* receiver);
-        [[nodiscard]] bool IsMsgCourseStart(const NS::Message& msg) noexcept;
-
         //! コースを最初からやり直す知らせ。進行役が全てのアクターへ送る
         //! 受け手は MsgCourseStart で控えた姿へ戻る。控えの無い物は応じなくてよい
         class MsgCourseRestart final : public NS::Message
@@ -81,8 +75,6 @@ namespace GL
             NS_MESSAGE(MsgCourseRestart)
         };
         bool SendMsgCourseRestart(NS::SceneActor* receiver);
-        [[nodiscard]] bool IsMsgCourseRestart(const NS::Message& msg) noexcept;
-
         //! 操作を止めるか戻す知らせ。進行役がクリアの演出の間だけプレイヤーの操作を止める
         //! 世界は止めない。止めている間も重力とカメラは動いたまま。
         //! 受け手は入力を中立にし、止める時は溜めを放させずに捨てる
@@ -99,8 +91,6 @@ namespace GL
             bool m_locked = false;
         };
         bool SendMsgInputLock(NS::SceneActor* receiver, bool locked);
-        [[nodiscard]] bool IsMsgInputLock(const NS::Message& msg) noexcept;
-
         //! 体当たりの相手の答え。MsgAskTackleTarget の受け手が書く
         struct TackleTargetAnswer
         {
@@ -131,8 +121,6 @@ namespace GL
             TackleTargetAnswer& m_answer;
         };
         bool SendMsgAskTackleTarget(NS::HitSensor* receiver, TackleTargetAnswer& outAnswer);
-        [[nodiscard]] bool IsMsgAskTackleTarget(const NS::Message& msg) noexcept;
-
         //! 体当たりを受けた相手へ渡す、当てた側の当たり
         //! 受け手は段ごとの自分の束を、触れた点と、自分と当てた側のセンサーで始める
         struct TackleHitDesc
@@ -158,8 +146,6 @@ namespace GL
             const TackleHitDesc& m_desc;
         };
         bool SendMsgTackleHit(NS::HitSensor* receiver, NS::HitSensor* sender, const TackleHitDesc& desc);
-        [[nodiscard]] bool IsMsgTackleHit(const NS::Message& msg) noexcept;
-
         //! 残像。止めの間は根の左右に写しを置き、明けに止めの最後の姿を残して薄める
         struct TackleGhostDesc
         {
@@ -238,7 +224,5 @@ namespace GL
         private:
             const TackleReleaseDesc& m_desc;
         };
-        bool SendMsgTackleRelease(NS::SceneActor* receiver, const TackleReleaseDesc& desc);
-        [[nodiscard]] bool IsMsgTackleRelease(const NS::Message& msg) noexcept;
-    } // namespace Level
+        bool SendMsgTackleRelease(NS::SceneActor* receiver, const TackleReleaseDesc& desc);    } // namespace Level
 } // namespace GL
