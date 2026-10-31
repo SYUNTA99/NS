@@ -10,6 +10,7 @@
 
 #include "NSlib/Core/Types.h"
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -88,4 +89,22 @@ namespace NS
 
     //! ファイルをシーン文書へ読む。失敗時 false + NS_LOG_ERROR、outScene は空の文書へ戻す
     [[nodiscard]] bool LoadSceneFromJsonFile(nlohmann::json& outScene, std::string_view path) noexcept;
+
+    //! Assets からの相対パスを検証・正規化する。区切りは '/'
+    //! 各セグメントを英数字・'_'・'-'・空白だけの名前として検証し、'..'・絶対パス・'\'・空セグメント・
+    //! Windows の予約名を排除する
+    //! @return 検証に失敗した場合は空文字列を返す
+    [[nodiscard]] std::string SanitizeLevelPath(std::string_view relativePath) noexcept;
+
+    //! 区切りのない名前を Scenes/ 配下へ直す。区切り付きのパスと空文字列はそのまま
+    [[nodiscard]] std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept;
+
+    //! シーンの名前から .scene の絶対パスを作る。素の名前は Assets/Scenes/<名前>.scene、
+    //! 区切り付きの名前は Assets/<名前>.scene。無効な名前は nullopt
+    [[nodiscard]] std::optional<std::string> BuildLevelPath(std::string_view name) noexcept;
+
+    //! ContentRoot からの "Assets/<名前>.scene" をシーンの名前へ直す。Assets の下のフォルダにあるシーンでは BuildLevelPath の逆
+    //! Assets の直下のファイルは、BuildLevelPath が Scenes/ の下として読む名前になる
+    //! 拡張子は大文字と小文字を区別しない。Assets の外・.scene でない道・使えない名前は空文字列
+    [[nodiscard]] std::string LevelNameOfScenePath(std::string_view scenePath) noexcept;
 } // namespace NS

@@ -1,4 +1,3 @@
-#include "Game/Level/CourseDirector.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
@@ -34,7 +33,6 @@ static_assert(std::is_base_of_v<NS::SceneSystem, NS::HitSensorDirector>);
 static_assert(std::is_base_of_v<NS::SceneSystem, NS::CameraManager>);
 static_assert(std::is_base_of_v<NS::SceneSystem, NS::HitScreenDirector>);
 static_assert(std::is_base_of_v<NS::SceneSystem, NS::PadRumbleDirector>);
-static_assert(std::is_base_of_v<NS::SceneSystem, GL::Level::CourseDirector>);
 static_assert(std::is_base_of_v<NS::SceneSystem, NS::UIDirector>);
 static_assert(std::is_base_of_v<NS::SceneSystem, NS::PhysicsDirector>);
 static_assert(std::is_base_of_v<NS::SceneSystem, NS::ScreenFadeDirector>);

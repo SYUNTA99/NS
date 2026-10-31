@@ -66,6 +66,15 @@ namespace NS
         Scene();
         virtual ~Scene();
 
+        //! 遊び始める。読み込んだ後と、エディタがプレイを始める時に呼ぶ。同じシーンで何度も呼ばれる
+        virtual void StartPlay() {}
+        //! 遊ぶのをやめる。エディタが編集へ戻る時に呼ぶ
+        virtual void StopPlay() {}
+
+        //! 派生の型ごとのタグ。RTTI を切っているので、SceneCast はこれで型を見分ける。派生の無いシーンは nullptr
+        //! 派生は static const void* StaticKind() を持ち、Kind で同じ値を返す
+        [[nodiscard]] virtual const void* Kind() const noexcept { return nullptr; }
+
         //! 可変フレーム Render の入口。標準のシーン描画パスを 1 回回す
         //! 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
         void OnRender();
@@ -280,12 +289,18 @@ namespace NS
 
         //! 段 phase を 1 回だけ回す。OnUpdate が段ごとに呼ぶ
         //! Actors は出ているアクターを全部並びの順に Update し、
-        //! RenderPrep は全部の出ているアクターの PrepareRender を呼ぶ。続いてその段に登録した管理役を登録順に更新する
+        //! RenderPrep は全部の出ているアクターの PrepareRender を呼ぶ。続いてその段に登録した管理役を登録順に更新する。
+        //! Sensors は最後に StepGame を呼ぶ
         //! 回している間はアクターを解放する口を断る。再入は禁止
         void ExecutePhase(UpdatePhase phase);
 
         //! アクターと、アクターから借りている物と、固定ステップで積んだ開発用の図形を捨てる
         void OnShutdown();
+
+    protected:
+        //! 世界を進める歩の、当たりの判定の後に 1 回呼ぶ。シーンが止まっている歩と世界を進めない歩では呼ばない。
+        //! 同じ歩のアクターとセンサーが書いた知らせを読める
+        virtual void StepGame() {}
 
     private:
         //! 古い世界のエフェクトを消し、時間を進めずに描画へ反映する
@@ -323,7 +338,6 @@ namespace NS
         // 描く物は持ち主の OnEndPlay で外れるので、アクターより先に宣言して後に破棄する
         SceneRenderer m_sceneRenderer;
         Audio::AudioDevice* m_audioDevice = nullptr; // 借りるだけ。持ち主は Application
-        // m_sceneObjs が持つ CourseDirector が破棄で暗転を取り消すので、m_sceneObjs より先に宣言して後に破棄する
         ScreenFadeDirector m_fade;
         // アクターが持つ画面は破棄で自分を外すので、アクターより先に宣言して後に破棄する
         UIDirector m_ui;
@@ -379,4 +393,23 @@ namespace NS
         const SceneActor* m_stopSceneRequester = nullptr;
         uint32 m_stopSceneRequesterId = k_NoActorId;
     };
+
+    //! scene が派生 T ならその T、違うか nullptr なら nullptr
+    template <class T> [[nodiscard]] T* SceneCast(Scene* scene) noexcept
+    {
+        if (scene == nullptr || scene->Kind() != T::StaticKind())
+        {
+            return nullptr;
+        }
+        return static_cast<T*>(scene);
+    }
+
+    template <class T> [[nodiscard]] const T* SceneCast(const Scene* scene) noexcept
+    {
+        if (scene == nullptr || scene->Kind() != T::StaticKind())
+        {
+            return nullptr;
+        }
+        return static_cast<const T*>(scene);
+    }
 } // namespace NS

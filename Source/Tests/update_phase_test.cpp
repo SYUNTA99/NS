@@ -180,12 +180,11 @@ namespace
     struct PhaseTickers
     {
         explicit PhaseTickers(NS::Scene& scene, std::vector<std::string>& log)
-            : m_scene(scene), physics(log, "physics"), sensors(log, "sensors"), course(log, "course"),
-              camera(log, "camera"), ui(log, "ui"), effects(log, "effects")
+            : m_scene(scene), physics(log, "physics"), sensors(log, "sensors"), camera(log, "camera"), ui(log, "ui"),
+              effects(log, "effects")
         {
             m_scene.AddSystemTick(physics, NS::UpdatePhase::Physics);
             m_scene.AddSystemTick(sensors, NS::UpdatePhase::Sensors);
-            m_scene.AddSystemTick(course, NS::UpdatePhase::Course);
             m_scene.AddSystemTick(camera, NS::UpdatePhase::Camera);
             m_scene.AddSystemTick(ui, NS::UpdatePhase::UI);
             m_scene.AddSystemTick(effects, NS::UpdatePhase::Effects);
@@ -193,7 +192,7 @@ namespace
         ~PhaseTickers()
         {
             for (NS::SceneSystem* system :
-                 std::initializer_list<NS::SceneSystem*>{&physics, &sensors, &course, &camera, &ui, &effects})
+                 std::initializer_list<NS::SceneSystem*>{&physics, &sensors, &camera, &ui, &effects})
             {
                 m_scene.RemoveSystemTick(*system);
             }
@@ -207,18 +206,30 @@ namespace
     public:
         PhaseTicker physics;
         PhaseTicker sensors;
-        PhaseTicker course;
         PhaseTicker camera;
         PhaseTicker ui;
         PhaseTicker effects;
+    };
+
+    // ゲームの流れ (StepGame) で "course" を控えるシーン
+    class CourseLogScene final : public NS::Scene
+    {
+    public:
+        explicit CourseLogScene(std::vector<std::string>& log) : m_log(log) {}
+
+    protected:
+        void StepGame() override { m_log.push_back("course"); }
+
+    private:
+        std::vector<std::string>& m_log;
     };
 } // namespace
 
 // アクターは段を選ばない。種類によらず全部が、物理の前の 1 か所で一覧の順に回る
 TEST(ActorFrame, EveryActorRunsInTheListOrderBeforeThePhysics)
 {
-    NS::Scene scene;
     std::vector<std::string> log;
+    CourseLogScene scene(log);
     scene.SpawnActor<FrameLogActor>("A", log, "a");
     scene.SpawnActor<FrameLogActor>("B", log, "b");
     const PhaseTickers tickers(scene, log);

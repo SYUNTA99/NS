@@ -10,7 +10,6 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ActorSnapshotCommand.h"
-#include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactResolver.h"
@@ -466,12 +465,8 @@ void LevelEditorController::EnterPlay() noexcept
     // 1 回だけ書き出して写すので、組み直す JSON と比べる写しはずれない
     m_playBaseline = m_scene->ToJson();
     m_playStartBaseline = m_playBaseline;
-    // 手順は出荷と同じ CourseDirector::StartCourse の持ち物
-    if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(m_scene))
-    {
-        director->StartCourse();
-        (void)director->StartMusic(); // 編集へ戻る時に止めるので、プレイを始めるたびに始まる
-    }
+    // 始める手順は出荷と同じく StartPlay が行う。曲は編集へ戻る時に止まるので、プレイを始めるたびに始まる
+    m_scene->StartPlay();
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (NS::CameraManager* cameras = Cameras())
     {
@@ -552,10 +547,7 @@ void LevelEditorController::LeavePlayForEdit()
         return;
     }
     m_scene->SetSimulationEnabled(false);
-    if (GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(m_scene))
-    {
-        director->StopMusic();
-    }
+    m_scene->StopPlay();
 
     // プレイで変わった配置を編集へ持ち込まないため、プレイを始めた時の JSON から復元する
     NS_ASSERT(App, m_playBaseline.has_value(), "LeavePlayForEdit: プレイを始めた時の JSON が無い");

@@ -31,7 +31,7 @@ namespace GL
     } // namespace Level
 } // namespace GL
 
-// コースの仕掛けと進行役がやり取りする知らせ。型ごとに送る関数を置き、受け手は NS::IsMsg・NS::MsgCast で調べる
+// コースの仕掛けと GameScene がやり取りする知らせ。型ごとに送る関数を置き、受け手は NS::IsMsg・NS::MsgCast で調べる
 // 受け手が応じたかは送る関数の戻り値で分かる
 
 namespace GL
@@ -61,21 +61,21 @@ namespace GL
             float m_fadeInSeconds;
         };
         bool SendMsgGoal(NS::HitSensor* receiver, NS::HitSensor* sender, float fadeOutSeconds, float fadeInSeconds);
-        //! コースが始まった知らせ。進行役がやり直しの前に全てのアクターへ 1 回送る
+        //! コースが始まった知らせ。GameScene がやり直しの前に全てのアクターへ 1 回送る
         //! 受け手は今の姿をやり直しの戻り先として控える。配置のデータは読み直さない
         class MsgCourseStart final : public NS::Message
         {
             NS_MESSAGE(MsgCourseStart)
         };
         bool SendMsgCourseStart(NS::SceneActor* receiver);
-        //! コースを最初からやり直す知らせ。進行役が全てのアクターへ送る
+        //! コースを最初からやり直す知らせ。GameScene が全てのアクターへ送る
         //! 受け手は MsgCourseStart で控えた姿へ戻る。控えの無い物は応じなくてよい
         class MsgCourseRestart final : public NS::Message
         {
             NS_MESSAGE(MsgCourseRestart)
         };
         bool SendMsgCourseRestart(NS::SceneActor* receiver);
-        //! 操作を止めるか戻す知らせ。進行役がクリアの演出の間だけプレイヤーの操作を止める
+        //! 操作を止めるか戻す知らせ。GameScene がクリアの演出の間だけプレイヤーの操作を止める
         //! 世界は止めない。止めている間も重力とカメラは動いたまま。
         //! 受け手は入力を中立にし、止める時は溜めを放させずに捨てる
         class MsgInputLock final : public NS::Message

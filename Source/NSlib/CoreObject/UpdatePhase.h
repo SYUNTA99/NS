@@ -9,8 +9,7 @@ namespace NS
     {
         Actors,
         Physics, // 管理役が Jolt の broadphase の木を組み直す段。アクターが動かした後に組み直す
-        Sensors,
-        Course,
+        Sensors, // この段の最後に Scene::StepGame を呼ぶ
         Camera,
         UI,
         RenderPrep,
@@ -40,7 +39,7 @@ namespace NS
     //! シーンが止まっている間 (Scene::RequestStopScene) も段を回す場合 true、止める場合は false
     //! 表はここ 1 か所。Actors は全部のアクターを Update し、止め始めたアクター以外は SceneActor::IsStopped で
     //! 状態機械と体を止める。管理役は止め始めた
-    //! アクターを見せる側 (カメラ・UI・描く支度) を回し、物理・判定・コースの進行・エフェクトを止める。
+    //! アクターを見せる側 (カメラ・UI・描く支度) を回し、物理・判定・エフェクトを止める。
     //! カメラまで止めると、進み続ける止め始めたアクターが画面の中で動いて見える
     [[nodiscard]] constexpr bool RunsWhileOthersHeld(UpdatePhase phase) noexcept
     {

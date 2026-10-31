@@ -1,5 +1,5 @@
 #include "Editor/EditorActors.h"
-#include "Game/Level/CourseDirector.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LaunchEffects.h"

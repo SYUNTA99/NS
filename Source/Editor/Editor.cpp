@@ -74,7 +74,7 @@ void Editor::OnAttach()
     m_controller = std::make_unique<LevelEditorController>(scene);
     m_controller->Editor().SetSessionPath(
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "build/editor-session.json"));
-    m_controller->Setup(NS::Editor::LevelNameOfScenePath(Game::StartScenePath()));
+    m_controller->Setup(NS::Editor::StartLevelName());
 
     // 初回フレームからオフスクリーンで描けるよう、ウィンドウサイズを初期の目標サイズにしておく
     const NS::Size2D viewSize = app->Window().Size();

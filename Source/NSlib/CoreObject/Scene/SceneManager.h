@@ -1,9 +1,12 @@
 #pragma once
 
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/CoreObject/ActorJson.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
 
 #include <memory>
+#include <optional>
+#include <string_view>
+#include <utility>
 
 namespace NS
 {
@@ -38,9 +41,26 @@ namespace NS
         //! 立てる scene へ引き継ぐ音の装置を非所有で差す。以降 LoadScene する scene が受け取る
         void SetAudioDevice(Audio::AudioDevice* device) noexcept;
 
-        //! シーンの JSON 文書から scene を立てる。現 scene は破棄してから作り直す
-        //! 文書は取込後に用済みで、以降の出所は実体になる
-        Scene& LoadScene(nlohmann::json&& scene);
+        //! @brief 名前のシーン (BuildLevelPath のパス) を読み、TScene を立てて StartPlay まで済ませる
+        //! @details 現 scene は読めた後に破棄してから立てる
+        //! @return 立てたシーン。名前が使えない時と読めない時は nullptr で、現在のシーンを保つ
+        template <typename TScene> TScene* LoadScene(std::string_view name)
+        {
+            std::optional<nlohmann::json> data = ReadSceneFile(name);
+            if (!data)
+            {
+                return nullptr;
+            }
+            UnloadScene();
+            return &static_cast<TScene&>(StartScene(std::make_unique<TScene>(), std::move(*data)));
+        }
+
+        //! 何も置かない TScene を立てて StartPlay まで済ませる。現 scene は破棄してから立てる
+        template <typename TScene> TScene& LoadEmptyScene()
+        {
+            UnloadScene();
+            return static_cast<TScene&>(StartScene(std::make_unique<TScene>(), MakeSceneJson()));
+        }
 
         //! 現 scene を破棄して scene 無し状態にする。未ロードなら何もしない
         void UnloadScene();
@@ -55,6 +75,12 @@ namespace NS
         void Render();
 
     private:
+        //! 名前のシーンのファイルを読む。名前が使えない時と読めない時は ERROR を出して nullopt
+        [[nodiscard]] static std::optional<nlohmann::json> ReadSceneFile(std::string_view name);
+
+        //! scene に装置を渡し、文書から組んで StartPlay を呼び、現 scene にする
+        Scene& StartScene(std::unique_ptr<Scene> scene, nlohmann::json data);
+
         std::unique_ptr<Scene> m_current;
         Gfx::D3DDevice* m_device = nullptr;
         Audio::AudioDevice* m_audioDevice = nullptr;

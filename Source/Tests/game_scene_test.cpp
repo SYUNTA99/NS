@@ -1,28 +1,33 @@
 #include "Editor/EditorActors.h"
-#include "Game/Level/CourseDirector.h"
 #include "Game/Level/DeathZoneActor.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/Audio/AudioDevice.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
+#include "NSlib/CoreObject/Reflection/SoundName.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/Scene/SceneManager.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/Core/Windows/Mouse.h"
+#include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
-// 落下死とゴールがメッセージで伝わり、コースの進行役が流れを進めることを縛る
+// 落下死とゴールがメッセージで伝わり、GameScene がコースの流れを進めることを縛る
 
 namespace
 {
@@ -49,6 +54,12 @@ namespace
     {
         NS_ASSERT(Game, player != nullptr, "StepPlayer: 渡したアクターか部品が無い");
         player->Update();
+    }
+
+    // 当たりの判定の段を回す。段の終わりに GameScene::StepGame が呼ばれる
+    void StepSensorsAndGame(NS::Scene& scene)
+    {
+        scene.ExecutePhase(NS::UpdatePhase::Sensors);
     }
 
     // プレイヤーと落下死の範囲を敷いたシーン文書
@@ -82,32 +93,19 @@ namespace
     }
 } // namespace
 
-TEST(CourseDirector, PlayerCreatesDirectorAfterPlacement)
+TEST(GameScene, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(CourseWithPlayer());
-    EXPECT_NE(NS::FindSceneSystem<GL::Level::CourseDirector>(&scene), nullptr);
-
-    // 組み直すと捨てられ、プレイヤーの居ないシーンでは作られない
-    scene.ResetFromJson(NS::MakeSceneJson());
-    EXPECT_EQ(NS::FindSceneSystem<GL::Level::CourseDirector>(&scene), nullptr);
-}
-
-TEST(CourseDirector, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
-{
-    NS::Scene scene;
-    scene.ResetFromJson(CourseWithPlayer());
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    director->StartCourse();
+    scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     const NS::PlayerInput* input = &player->Input();
     const float duration = NS::OS::FrameTimer::FixedDelta() * 2.0f;
-    ASSERT_TRUE(director->NotifyGoal(duration, duration));
+    ASSERT_TRUE(scene.NotifyGoal(duration, duration));
 
     scene.OnUpdate();
-    ASSERT_TRUE(director->IsClearing());
+    ASSERT_TRUE(scene.IsClearing());
     EXPECT_TRUE(input->IsLocked());
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.5f);
     scene.OnUpdate();
@@ -117,61 +115,86 @@ TEST(CourseDirector, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
     scene.OnUpdate();
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.0f);
     scene.OnUpdate();
-    EXPECT_FALSE(director->IsClearing());
+    EXPECT_FALSE(scene.IsClearing());
     EXPECT_FALSE(input->IsLocked());
 }
 
-TEST(CourseDirector, GoalIsAcceptedOnlyOnTheFirstTouch)
+TEST(GameScene, GoalIsAcceptedOnlyOnTheFirstTouch)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(CourseWithPlayer());
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    director->StartCourse();
+    scene.StartPlay();
     const float duration = NS::OS::FrameTimer::FixedDelta() * 2.0f;
 
     // ゴールに触れている間は毎フレーム届く。ゴールの音を頼むのは、クリアを始めた最初の 1 回だけ
-    EXPECT_TRUE(director->NotifyGoal(duration, duration));
-    EXPECT_FALSE(director->NotifyGoal(duration, duration));
+    EXPECT_TRUE(scene.NotifyGoal(duration, duration));
+    EXPECT_FALSE(scene.NotifyGoal(duration, duration));
     scene.OnUpdate();
-    ASSERT_TRUE(director->IsClearing());
-    EXPECT_FALSE(director->NotifyGoal(duration, duration));
+    ASSERT_TRUE(scene.IsClearing());
+    EXPECT_FALSE(scene.NotifyGoal(duration, duration));
 }
 
-TEST(CourseDirector, RestartDoesNotStartTheMusicAgain)
+TEST(GameScene, RestartDoesNotStartTheMusicAgain)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(CourseWithPlayer());
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    director->StartCourse();
 
-    EXPECT_TRUE(director->StartMusic());
-    director->RestartCourse();
-    EXPECT_FALSE(director->StartMusic());
+    EXPECT_TRUE(scene.StartMusic());
+    scene.RestartCourse();
+    EXPECT_FALSE(scene.StartMusic());
 
     // 止めた後は、次のプレイでまた始める
-    director->StopMusic();
-    EXPECT_TRUE(director->StartMusic());
+    scene.StopMusic();
+    EXPECT_TRUE(scene.StartMusic());
 }
 
-TEST(CourseDirector, RemovingAnIdleDirectorKeepsAnIndependentSceneFade)
+// 曲の名前が空のシーン (読めずに立てた空のシーン) は、音の装置があっても曲を読まない
+TEST(GameScene, StartPlayOfAnEmptySceneReadsNoMusic)
 {
-    NS::Scene scene;
-    (void)NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
-    scene.Fade().BeginOut(0.0f);
-    scene.GetSceneSystemHolder()->Clear();
-    EXPECT_TRUE(scene.Fade().IsBlack());
+    NS::Audio::AudioDevice device(false);
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    assets.SetAudioDevice(&device);
+    const NS::AssetManagerScope scope{assets};
+    NS::SceneManager scenes;
+    scenes.SetAudioDevice(&device);
+    const TestLogCapture log;
+
+    NS::Scene& scene = scenes.LoadEmptyScene<GL::Level::GameScene>();
+
+    ASSERT_NE(scene.GetAudioDevice(), nullptr);
+    EXPECT_TRUE(scene.Environment().music.name.empty());
+    EXPECT_EQ(log.ErrorCount(), 0);
+    EXPECT_EQ(log.WarningCount(), 0);
 }
 
-TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
+// 当たりの下見のシーンは音の装置を受け取らないので、曲の名前があっても曲を読まない
+TEST(GameScene, StartPlayWithoutAnAudioDeviceReadsNoMusic)
+{
+    NS::Audio::AudioDevice device(false);
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    assets.SetAudioDevice(&device);
+    const NS::AssetManagerScope scope{assets};
+    nlohmann::json doc = CourseWithPlayer();
+    NS::SceneEnvironment environment = NS::ReadSceneEnvironment(doc);
+    environment.music = NS::SoundName{"missing_music"};
+    NS::WriteSceneEnvironment(doc, environment);
+    GL::Level::GameScene scene;
+    scene.ResetFromJson(doc);
+    ASSERT_EQ(scene.Environment().music.name, "missing_music");
+    const TestLogCapture log;
+
+    scene.StartPlay();
+
+    EXPECT_EQ(log.ErrorCount(), 0);
+    EXPECT_EQ(log.WarningCount(), 0);
+}
+
+TEST(GameScene, DeathZoneEndsPlayerAndTheSceneRestartsCourse)
 {
     const nlohmann::json doc = CourseWithPlayer();
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
-    GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    director->StartCourse();
+    scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
 
@@ -180,14 +203,14 @@ TEST(CourseDirector, DeathZoneEndsPlayerAndDirectorRestartsCourse)
     scene.HitSensors().OnTick();
     EXPECT_TRUE(player->IsDead());
 
-    director->OnTick();
+    StepSensorsAndGame(scene);
     // 出現位置へ戻り、命も満タンへ戻る
     EXPECT_FALSE(player->IsDead());
     EXPECT_FLOAT_EQ(player->Root().Position().y, SpawnOf(doc).y);
 }
 
-// 置物の出し直しのボタンを押すと、次の進行役の段で岩だけが置いた所へ戻り、自機はその場に残る
-TEST(CourseDirector, RespawnButtonReturnsActorsButKeepsPlayer)
+// 置物の出し直しのボタンを押すと、次の StepGame で岩だけが置いた所へ戻り、自機はその場に残る
+TEST(GameScene, RespawnButtonReturnsActorsButKeepsPlayer)
 {
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::MakeActorJson();
@@ -196,13 +219,11 @@ TEST(CourseDirector, RespawnButtonReturnsActorsButKeepsPlayer)
     NS::SceneJsonActors(doc).push_back(std::move(rock));
     NS::EnsureUniqueActorIds(doc);
 
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    director->StartCourse();
+    scene.StartPlay();
     NS::SceneActor* placed = nullptr;
     for (NS::SceneActor* actor : scene.Actors())
     {
@@ -221,14 +242,14 @@ TEST(CourseDirector, RespawnButtonReturnsActorsButKeepsPlayer)
         const KeyPress press{NS::OS::Key::R};
         StepPlayer(player);
     }
-    director->OnTick();
+    StepSensorsAndGame(scene);
 
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
     EXPECT_FLOAT_EQ(player->Root().Position().x, movedTo.x);
     EXPECT_FLOAT_EQ(player->Root().Position().z, movedTo.z);
 }
 
-TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
+TEST(GameScene, GoalStartsClearSequenceAndLocksInput)
 {
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json goal = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
@@ -236,36 +257,30 @@ TEST(CourseDirector, GoalStartsClearSequenceAndLocksInput)
     NS::SceneJsonActors(doc).push_back(std::move(goal));
     NS::EnsureUniqueActorIds(doc);
 
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
 
-    scene.HitSensors().OnTick();
-    director->OnTick();
-    EXPECT_TRUE(director->IsClearing());
+    StepSensorsAndGame(scene);
+    EXPECT_TRUE(scene.IsClearing());
     EXPECT_TRUE(scene.Fade().IsFading());
     const NS::PlayerInput* input = &player->Input();
     EXPECT_TRUE(input->IsLocked());
 
     // 流れの最中に届くゴールの知らせは捨てる
-    scene.HitSensors().OnTick();
-    director->OnTick();
-    EXPECT_TRUE(director->IsClearing());
+    StepSensorsAndGame(scene);
+    EXPECT_TRUE(scene.IsClearing());
 }
 
 // 止めた瞬間の向きを持ち続けると、暗転の間もゴールで倒していた向きへ歩き続ける
-TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
+TEST(GameScene, ClearLockNeutralizesTheMoveInput)
 {
     const nlohmann::json doc = CourseWithPlayerOnGoal();
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
 
     player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     for (int i = 0; i < 5; ++i)
@@ -276,9 +291,8 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
     ASSERT_GT(lockedSpeed, 0.0f);
 
     player->Root().SetPosition(SpawnOf(doc));
-    scene.HitSensors().OnTick();
-    director->OnTick();
-    ASSERT_TRUE(director->IsClearing());
+    StepSensorsAndGame(scene);
+    ASSERT_TRUE(scene.IsClearing());
 
     for (int i = 0; i < 10; ++i)
     {
@@ -290,7 +304,7 @@ TEST(CourseDirector, ClearLockNeutralizesTheMoveInput)
     EXPECT_LE(player->Body().LateralVelocity().Length(), lockedSpeed);
 }
 
-TEST(CourseDirector, RestartReturnsActorsToTheirStart)
+TEST(GameScene, RestartReturnsActorsToTheirStart)
 {
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::MakeActorJson();
@@ -299,9 +313,9 @@ TEST(CourseDirector, RestartReturnsActorsToTheirStart)
     NS::SceneJsonActors(doc).push_back(std::move(rock));
     NS::EnsureUniqueActorIds(doc);
 
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
-    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->StartCourse();
+    scene.StartPlay();
     NS::SceneActor* placed = nullptr;
     for (NS::SceneActor* actor : scene.Actors())
     {
@@ -313,12 +327,12 @@ TEST(CourseDirector, RestartReturnsActorsToTheirStart)
     ASSERT_NE(placed, nullptr);
     placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
 
-    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->RestartCourse();
+    scene.RestartCourse();
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
 }
 
 // 自機でないアクターが止め始めたヒットストップも、やり直しで解く。残すと出し直したアクターが止まったまま待つ
-TEST(CourseDirector, RestartReleasesAHoldStartedByAnotherActor)
+TEST(GameScene, RestartReleasesAHoldStartedByAnotherActor)
 {
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json rock = NS::MakeActorJson();
@@ -326,9 +340,9 @@ TEST(CourseDirector, RestartReleasesAHoldStartedByAnotherActor)
     NS::SceneJsonActors(doc).push_back(std::move(rock));
     NS::EnsureUniqueActorIds(doc);
 
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
-    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->StartCourse();
+    scene.StartPlay();
     NS::SceneActor* placed = nullptr;
     for (NS::SceneActor* actor : scene.Actors())
     {
@@ -343,16 +357,16 @@ TEST(CourseDirector, RestartReleasesAHoldStartedByAnotherActor)
     scene.OnUpdate();
     ASSERT_TRUE(scene.IsSceneStopped());
 
-    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->RestartCourse();
+    scene.RestartCourse();
     EXPECT_FALSE(scene.IsSceneStopped());
 }
 
 // リスポーンは自機を出し直さないので、自機が始めた止めは解かない
-TEST(CourseDirector, RespawnKeepsAHoldStartedByThePlayer)
+TEST(GameScene, RespawnKeepsAHoldStartedByThePlayer)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(CourseWithPlayer());
-    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->StartCourse();
+    scene.StartPlay();
     NS::SceneActor* player = nullptr;
     for (NS::SceneActor* actor : scene.Actors())
     {
@@ -367,13 +381,13 @@ TEST(CourseDirector, RespawnKeepsAHoldStartedByThePlayer)
     scene.OnUpdate();
     ASSERT_TRUE(scene.IsSceneStopped());
 
-    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->RespawnActors();
+    scene.RespawnActors();
     EXPECT_TRUE(scene.IsSceneStopped());
 }
 
-TEST(CourseDirector, StartCourseStartsThePlayerAtRestFromThePlacedPose)
+TEST(GameScene, StartPlayStartsThePlayerAtRestFromThePlacedPose)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(CourseWithPlayer());
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
@@ -381,7 +395,7 @@ TEST(CourseDirector, StartCourseStartsThePlayerAtRestFromThePlacedPose)
     player->Root().SetPosition(placedAt);
     player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
 
-    NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->StartCourse();
+    scene.StartPlay();
 
     // 自機は呼んだ時の姿から、やり直しと同じく速さ 0 で始まる
     EXPECT_FLOAT_EQ(player->Body().Velocity().x, 0.0f);
@@ -419,16 +433,14 @@ namespace
 } // namespace
 
 // 以下は知らせを歩 (scene.OnUpdate) の中で届かせ、その歩が終わった後のアクターの姿を見る。
-// 進行役を直に進めず歩で回すので、進行役の置き場所が変わっても期待の値は変わらない
+// 流れを直に進めず歩で回すので、流れを進める置き場所が変わっても期待の値は変わらない
 
-TEST(CourseDirector, DeathInAStepRestartsTheCourseBeforeTheNextStep)
+TEST(GameScene, DeathInAStepRestartsTheCourseBeforeTheNextStep)
 {
     const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    director->StartCourse();
+    scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     NS::SceneActor* placed = FindProp(scene);
@@ -445,17 +457,15 @@ TEST(CourseDirector, DeathInAStepRestartsTheCourseBeforeTheNextStep)
     EXPECT_FLOAT_EQ(player->Root().Position().y, spawn.y);
     EXPECT_FLOAT_EQ(player->Root().Position().z, spawn.z);
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
-    EXPECT_FALSE(director->IsClearing());
+    EXPECT_FALSE(scene.IsClearing());
 }
 
-TEST(CourseDirector, RespawnButtonInAStepReturnsPropsBeforeTheNextStep)
+TEST(GameScene, RespawnButtonInAStepReturnsPropsBeforeTheNextStep)
 {
     const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    director->StartCourse();
+    scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     NS::SceneActor* placed = FindProp(scene);
@@ -474,17 +484,15 @@ TEST(CourseDirector, RespawnButtonInAStepReturnsPropsBeforeTheNextStep)
     // 自機は戻さない。縦は重力で動くので横だけを見る
     EXPECT_FLOAT_EQ(player->Root().Position().x, movedTo.x);
     EXPECT_FLOAT_EQ(player->Root().Position().z, movedTo.z);
-    EXPECT_FALSE(director->IsClearing());
+    EXPECT_FALSE(scene.IsClearing());
 }
 
-TEST(CourseDirector, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
+TEST(GameScene, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
 {
     const nlohmann::json doc = CourseWithProp(CourseWithPlayerOnGoal());
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    director->StartCourse();
+    scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     NS::SceneActor* placed = FindProp(scene);
@@ -494,7 +502,7 @@ TEST(CourseDirector, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
     scene.OnUpdate();
 
     // クリアの流れは始まったが、やり直しは暗転しきるまで待つ
-    ASSERT_TRUE(director->IsClearing());
+    ASSERT_TRUE(scene.IsClearing());
     EXPECT_TRUE(scene.Fade().IsFading());
     EXPECT_TRUE(player->Input().IsLocked());
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 9.0f);
@@ -502,40 +510,31 @@ TEST(CourseDirector, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
     EXPECT_FLOAT_EQ(player->Root().Position().x, spawn.x);
     EXPECT_FLOAT_EQ(player->Root().Position().z, spawn.z);
 
-    for (int i = 0; i < 600 && director->IsClearing(); ++i)
+    for (int i = 0; i < 600 && scene.IsClearing(); ++i)
     {
         scene.OnUpdate();
     }
-    EXPECT_FALSE(director->IsClearing());
+    EXPECT_FALSE(scene.IsClearing());
     EXPECT_FALSE(player->Input().IsLocked());
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
 }
 
 // エディタは同じシーンのオブジェクトでプレイを何度も始める。前のプレイの知らせが残ると、
-// 2 回目の始めに頼んでいないやり直しやクリアが起きる。
-// 下の 2 本は先頭の GTEST_SKIP で後ろが届かないので、届かないコードの警告 C4702 を外す。
-// GTEST_SKIP を外す時に、この警告の切り替えも外す
-#pragma warning(push)
-#pragma warning(disable : 4702)
-TEST(CourseDirector, SecondStartDropsNoticesOfThePreviousPlay)
+// 2 回目の始めに頼んでいないやり直しやクリアが起きる
+TEST(GameScene, SecondStartDropsNoticesOfThePreviousPlay)
 {
-    // 今の StartCourse は知らせを戻さないので落ちる。GameScene::StartPlay で戻す時に外す
-    GTEST_SKIP() << "StartCourse が前のプレイの知らせを戻さない。GameScene の StartPlay で直して外す";
-
     const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    director->StartCourse();
+    scene.StartPlay();
     const float duration = NS::OS::FrameTimer::FixedDelta() * 2.0f;
-    director->NotifyPlayerDead();
-    director->RequestRespawnActors();
-    ASSERT_TRUE(director->NotifyGoal(duration, duration));
+    scene.NotifyPlayerDead();
+    scene.RequestRespawnActors();
+    ASSERT_TRUE(scene.NotifyGoal(duration, duration));
 
-    // 歩を回さずにプレイをやめ、もう一度始める
-    director->StopMusic();
-    director->StartCourse();
+    // 歩を回さずに曲だけを止め、もう一度始める。前のプレイの知らせを戻すのは StartPlay
+    scene.StopMusic();
+    scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     NS::SceneActor* placed = FindProp(scene);
@@ -547,33 +546,41 @@ TEST(CourseDirector, SecondStartDropsNoticesOfThePreviousPlay)
 
     scene.OnUpdate();
 
-    EXPECT_FALSE(director->IsClearing());
+    EXPECT_FALSE(scene.IsClearing());
     EXPECT_FALSE(scene.Fade().IsFading());
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 9.0f);
     EXPECT_FLOAT_EQ(player->Root().Position().x, movedTo.x);
     EXPECT_FLOAT_EQ(player->Root().Position().z, movedTo.z);
 }
 
-TEST(CourseDirector, SecondStartEndsTheClearOfThePreviousPlay)
+TEST(GameScene, RebuildingTheWorldEndsTheClearOfThePlay)
 {
-    // 今の StartCourse はクリアの流れを止めないので落ちる。GameScene::StartPlay で戻す時に外す
-    GTEST_SKIP() << "StartCourse が前のプレイのクリアの流れを止めない。GameScene の StartPlay で直して外す";
-
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(CourseWithPlayerOnGoal());
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    director->StartCourse();
+    scene.StartPlay();
+    scene.OnUpdate();
+    ASSERT_TRUE(scene.IsClearing());
+
+    scene.ResetFromJson(CourseWithPlayerOnGoal());
+
+    EXPECT_FALSE(scene.IsClearing());
+    EXPECT_FALSE(scene.Fade().IsFading());
+}
+
+TEST(GameScene, SecondStartEndsTheClearOfThePreviousPlay)
+{
+    GL::Level::GameScene scene;
+    scene.ResetFromJson(CourseWithPlayerOnGoal());
+    scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     scene.OnUpdate();
-    ASSERT_TRUE(director->IsClearing());
+    ASSERT_TRUE(scene.IsClearing());
 
-    director->StopMusic();
-    director->StartCourse();
+    scene.StopMusic();
+    scene.StartPlay();
 
-    EXPECT_FALSE(director->IsClearing());
+    EXPECT_FALSE(scene.IsClearing());
     EXPECT_FALSE(scene.Fade().IsFading());
     EXPECT_FALSE(player->Input().IsLocked());
 }
-#pragma warning(pop)

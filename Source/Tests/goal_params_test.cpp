@@ -1,5 +1,5 @@
 #include "Editor/EditorActors.h"
-#include "Game/Level/CourseDirector.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
@@ -11,7 +11,7 @@
 
 TEST(GameTuning, GoalFadeUsesTheEditedGoalFields)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json playerDoc = NS::Editor::MakePrototypeJson<PlayerActor>();
     NS::SetActorJsonId(playerDoc, 1);
@@ -23,17 +23,15 @@ TEST(GameTuning, GoalFadeUsesTheEditedGoalFields)
     GL::Level::GoalActor* goal = NS::Cast<GL::Level::GoalActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(goal, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(&goal->Params(), {{"クリアの暗転秒", 0.1f}, {"クリアの明転秒", 0.2f}}), 0u);
-    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
-    ASSERT_NE(director, nullptr);
-    scene.HitSensors().OnTick();
-    director->OnTick();
-    ASSERT_TRUE(director->IsClearing());
+    // 当たりの判定の段の終わりに GameScene::StepGame が呼ばれる
+    scene.ExecutePhase(NS::UpdatePhase::Sensors);
+    ASSERT_TRUE(scene.IsClearing());
     NS::Gfx::ScreenFade& fade = scene.Fade();
     fade.Advance(0.05f);
     EXPECT_NEAR(fade.Alpha(), 0.5f, 0.001f);
     fade.Advance(0.05f);
     ASSERT_TRUE(fade.IsBlack());
-    director->OnTick();
+    scene.ExecutePhase(NS::UpdatePhase::Sensors);
     fade.Advance(0.1f);
     EXPECT_NEAR(fade.Alpha(), 0.5f, 0.001f);
 }

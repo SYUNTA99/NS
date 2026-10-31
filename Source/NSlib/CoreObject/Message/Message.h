@@ -37,7 +37,7 @@ namespace NS
     bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
 
     //! センサーを介さずに SceneActor
-    //! へ直接知らせを送る。進行役からの一斉の知らせなど、重なりと関係の無い知らせに使う
+    //! へ直接知らせを送る。シーンからの一斉の知らせなど、重なりと関係の無い知らせに使う
     //! @return 受け手が応じた場合 true
     bool SendMsgToActor(const Message& msg, SceneActor* receiver);
 } // namespace NS

@@ -2,8 +2,8 @@
 #include "NSlib/Core/Types.h"
 
 #include "Editor/EditorActors.h"
-#include "Game/Level/CourseDirector.h"
 #include "Game/Level/FollowCameraActor.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
@@ -53,14 +53,11 @@ namespace NS
             // 写しから場面を組み、ゲームと同じ手順でコースを始める。描かない下見では資産と描き手は空
             std::unique_ptr<Scene> MakeScene(const nlohmann::json& scene, const HitPreviewWorld& world)
             {
-                std::unique_ptr<Scene> made = std::make_unique<Scene>();
+                std::unique_ptr<Scene> made = std::make_unique<GL::Level::GameScene>();
                 made->SetDevice(world.device);
                 made->ResetFromJson(scene);
-                if (GL::Level::CourseDirector* director =
-                        GetOrCreateSceneSystem<GL::Level::CourseDirector>(made.get()))
-                {
-                    director->StartCourse();
-                }
+                // 音の装置を渡さないので、StartPlay は曲を鳴らさない
+                made->StartPlay();
                 return made;
             }
 

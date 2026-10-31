@@ -39,9 +39,9 @@ namespace NS
         m_cameraManager.SetCamera(&m_mainCamera);
         // Jolt の broadphase の木は、アクターが全部動いた後で組み直す
         AddSystemTick(m_physics, UpdatePhase::Physics);
-        // 当たりの調べ役はセンサーの段 (物理の後、コースの前) で回る
+        // 当たりの調べ役はセンサーの段 (物理の後、StepGame の前) で回る
         AddSystemTick(m_hitSensors, UpdatePhase::Sensors);
-        // 仮想カメラはアクターとコースが動かした後の相手を追い、続けて選び直す
+        // 仮想カメラはアクターと StepGame が動かした後の相手を追い、続けて選び直す
         AddSystemTick(m_cameraManager, UpdatePhase::Camera);
         m_cameraManager.SetCollision(this);
         // エフェクトの世界は同じ歩の SceneActor が出した演出を受けてから進む
@@ -58,6 +58,8 @@ namespace NS
 
     void Scene::ResetFromJson(nlohmann::json scene)
     {
+        // 組み直した世界へ前のプレイの流れと曲を持ち込まない
+        StopPlay();
         SetEnvironment(ReadSceneEnvironment(scene));
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueActorIds(scene);
@@ -450,7 +452,7 @@ namespace NS
 
     void Scene::ClearWorld()
     {
-        // シーンに 1 つの物 (進行役など) はアクターと画面の一覧を借りるので先に捨てる。
+        // シーンに 1 つの物はアクターと画面の一覧を借りるので先に捨てる。
         // 組み直しでは、組み直したアクターの開始が要る物が最初の状態から作り直す
         m_sceneObjs.Clear();
         // 前の世界のアクターが頼んだ演出と振動を、次の世界へ持ち越さない
@@ -631,6 +633,11 @@ namespace NS
             {
                 system->OnTick();
             }
+        }
+        // ゲームの流れは当たりの判定の後で、同じ歩に届いた知らせを読む。判定と同じ時計と止め方で回る
+        if (phase == UpdatePhase::Sensors)
+        {
+            StepGame();
         }
         m_actors.EndPhase();
     }

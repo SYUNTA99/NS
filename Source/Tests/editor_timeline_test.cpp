@@ -9,6 +9,7 @@
 #include "Editor/QuitModal.h"
 #include "Editor/Timeline.h"
 #include "Editor/TimelinePreview.h"
+#include "Game/Level/GameScene.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
@@ -345,7 +346,7 @@ TEST(EditorGameCursor, EscapeThenGameImageClickRecapturesTheCursor)
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     const NS::AssetManagerScope useAssets{assets};
     TimelineGui gui;
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     LevelEditorController editor(&scene);
     NS::Editor::GameViewPanel game;
     const auto frame = [&] {
@@ -395,7 +396,7 @@ TEST(EditorGameCursor, EscapeThenGameTabClickRecapturesTheCursor)
     TimelineGui gui;
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     LevelEditorController editor(&scene);
     NS::Editor::GameViewPanel game;
     const ImGuiID dock = ImHashStr("カーソル復帰のドック");

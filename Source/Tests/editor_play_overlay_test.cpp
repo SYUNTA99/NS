@@ -1,5 +1,6 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
+#include "Game/Level/GameScene.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 
@@ -28,7 +29,7 @@ namespace
 // 世界が 1 歩も進まない間 (プレイに入った直後と一時停止中) も、描くたびに当たり線と正面の面が出る
 TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     LevelEditorController editor(&scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
     editor.EnterPlay();

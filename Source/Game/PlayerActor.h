@@ -63,7 +63,7 @@ namespace GL
 } // namespace GL
 
 //! 固定の部品を OnInit で組むプレイヤー
-//! 衝突の観測・裁定を身体の移動より先に行う。死とゴールは Scene の CourseDirector に通知する
+//! 衝突の観測・裁定を身体の移動より先に行う。死とゴールは持ち主の GameScene に通知する
 class PlayerActor : public NS::SceneActor, public NS::IGetCameraTarget
 {
 public:

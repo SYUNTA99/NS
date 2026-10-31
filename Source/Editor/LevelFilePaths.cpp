@@ -1,161 +1,22 @@
 #include "Editor/LevelFilePaths.h"
-#include "NSlib/Core/Types.h"
 
+#include "Game/Game.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Windows/Filesystem.h"
-
-#include <algorithm>
-#include <array>
-#include <cctype>
-#include <optional>
+#include "NSlib/CoreObject/Scene/SceneJson.h"
 
 namespace NS
 {
     namespace Editor
     {
-        namespace
+        std::string StartLevelName() noexcept
         {
-            constexpr std::size_t k_MinNameLen = 1;
-            constexpr std::size_t k_MaxNameLen = 200;
-
-            constexpr std::array<std::string_view, 22> k_ReservedNames = {
-                "CON",  "PRN",  "AUX",  "NUL",  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
-                "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
-
-            [[nodiscard]] std::string ToUpperAscii(std::string_view text) noexcept
-            {
-                std::string upper;
-                upper.reserve(text.size());
-                for (char c : text)
-                {
-                    upper.push_back(static_cast<char>(std::toupper(static_cast<uint8>(c))));
-                }
-                return upper;
-            }
-
-            [[nodiscard]] bool IsReservedName(std::string_view name) noexcept
-            {
-                const std::string upper = ToUpperAscii(name);
-                for (const std::string_view& r : k_ReservedNames)
-                {
-                    if (upper == r)
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            }
-
-            std::string SanitizeLevelName(std::string_view name) noexcept
-            {
-                if (name.size() < k_MinNameLen || name.size() > k_MaxNameLen)
-                {
-                    return "";
-                }
-                for (char c : name)
-                {
-                    const bool isAlnum = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
-                    const bool isAllowedPunct = (c == '_' || c == '-' || c == ' ');
-                    if (!isAlnum && !isAllowedPunct)
-                    {
-                        return "";
-                    }
-                }
-                if (name.find("..") != std::string_view::npos)
-                {
-                    return "";
-                }
-                if (name.front() == ' ' || name.back() == ' ')
-                {
-                    return "";
-                }
-                if (IsReservedName(name))
-                {
-                    return "";
-                }
-                return std::string{name};
-            }
-
-            std::string GetScenesDirectory() noexcept
-            {
-                return OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets/Scenes");
-            }
-        } // namespace
-
-        std::string SanitizeLevelPath(std::string_view relativePath) noexcept
-        {
-            if (relativePath.empty())
-            {
-                return "";
-            }
-
-            std::string result;
-            std::size_t start = 0;
-            for (;;)
-            {
-                const std::size_t slash = relativePath.find('/', start);
-                // 末尾セグメントは区切りが無いので文字列末尾まで
-                const std::size_t end = std::min(slash, relativePath.size());
-                const std::string_view segment = relativePath.substr(start, end - start);
-                if (SanitizeLevelName(segment).empty())
-                {
-                    return "";
-                }
-                if (!result.empty())
-                {
-                    result.push_back('/');
-                }
-                result.append(segment);
-                if (slash == std::string_view::npos)
-                {
-                    break;
-                }
-                start = slash + 1;
-            }
-            return result;
-        }
-
-        std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept
-        {
-            if (sanitizedPath.empty() || sanitizedPath.find('/') != std::string_view::npos)
-            {
-                return std::string{sanitizedPath};
-            }
-            return "Scenes/" + std::string{sanitizedPath};
-        }
-
-        std::optional<std::string> BuildLevelPath(std::string_view name) noexcept
-        {
-            const std::string safe = SanitizeLevelPath(name);
-            if (safe.empty())
-            {
-                return std::nullopt;
-            }
-            return OS::FileSystem::ResolveUnder(
-                OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"),
-                QualifyLevelPath(safe) + ".scene");
-        }
-
-        std::string LevelNameOfScenePath(std::string_view scenePath) noexcept
-        {
-            constexpr std::string_view k_AssetsPrefix = "Assets/";
-            if (!scenePath.starts_with(k_AssetsPrefix))
-            {
-                return "";
-            }
-            const std::string extension = OS::FileSystem::Extension(scenePath);
-            if (ToUpperAscii(extension) != ".SCENE")
-            {
-                return "";
-            }
-            const std::string_view name =
-                scenePath.substr(k_AssetsPrefix.size(), scenePath.size() - k_AssetsPrefix.size() - extension.size());
-            return SanitizeLevelPath(name);
+            return QualifyLevelPath(SanitizeLevelPath(::Game::StartSceneName()));
         }
 
         bool EnsureScenesDirectoryExists() noexcept
         {
-            const std::string dir = GetScenesDirectory();
+            const std::string dir = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets/Scenes");
             if (OS::FileSystem::Exists(dir))
             {
                 return true;

@@ -8,6 +8,7 @@
 #include "Editor/PlacementCatalog.h"
 #include "Editor/QuitModal.h"
 #include "Editor/Undo/ActorSnapshotApplier.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/App/Application.h"
@@ -160,7 +161,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
-        NS::Scene scene;
+        GL::Level::GameScene scene;
         LevelEditorController editor(&scene);
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
@@ -190,7 +191,7 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
-        NS::Scene scene;
+        GL::Level::GameScene scene;
         LevelEditorController editor(&scene);
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
@@ -226,7 +227,7 @@ TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
-        NS::Scene scene;
+        GL::Level::GameScene scene;
         LevelEditorController editor(&scene);
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
@@ -299,7 +300,7 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
-        NS::Scene scene;
+        GL::Level::GameScene scene;
         LevelEditorController editor(&scene);
         NS::Editor::ActorSnapshotApplier applier(&scene);
         editor.Editor().SetApplier(&applier);
@@ -962,7 +963,7 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
     NS::Application app(desc);
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
-        NS::Scene scene;
+        GL::Level::GameScene scene;
         LevelEditorController editor(&scene);
         editor.Setup({});
         const std::optional<NS::Editor::PlacementItem> prop = NS::Editor::FindPlacementItem("PropActor");
@@ -1078,7 +1079,7 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
             NS::OS::FileSystem::Combine(directory, "other.scene"),
             std::as_bytes(std::span<const char>{levelText.data(), levelText.size()})));
 
-        NS::Scene scene;
+        GL::Level::GameScene scene;
         LevelEditorController editor(&scene);
         editor.Setup({});
         const std::optional<NS::Editor::PlacementItem> cube =
