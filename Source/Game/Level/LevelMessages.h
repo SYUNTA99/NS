@@ -177,27 +177,6 @@ namespace GL
             bool WriteTo(TackleGhost* ghost, int frame, const NS::Model* model, const NS::Matrix& root) const noexcept;
         };
 
-        //! 残像の進み。明けの写しは止めの後も残るので、状態に依らず進めた回数で数える
-        //! 始めた後の最初の Advance が 1 フレーム目。持ち主は見た目の段で Advance を呼ぶ
-        struct TackleGhostRun
-        {
-            TackleGhostDesc desc{};
-            int frame = 0;
-            bool active = false;
-
-            //! 束が始めた持ち主へ渡す項目 TackleGhost の値で残像を始める
-            //! 写しは画面の横を床に沿わせた向きへ離し、離れのピクセルは owner の今の根の所でゲームの中の
-            //! 距離にする。項目の長さが 0 以下か、カメラの管理役が無い場合は始めない
-            //! @param[in] owner 残像を出すアクター。事前条件: nullptr でない
-            void Start(const NS::HitOwnerRun& run, const NS::SceneActor* owner);
-            //! 動いていれば 1 フレーム進めて ghost へ書く。model と root は WriteTo へ渡す
-            void Advance(TackleGhost* ghost, const NS::Model* model, const NS::Matrix& root) noexcept;
-            //! 止めて、左右の写しと明けの写しを消す
-            void Stop(TackleGhost* ghost) noexcept;
-            //! 左右の写しと明けの写しの不透明度に scale を掛ける。次の Advance から効く
-            void ScaleOpacity(float scale) noexcept;
-        };
-
         //! 持ち主へ渡す項目の値。.actor に書き忘れた値は WARN を出して fallback を使う
         [[nodiscard]] float HitOwnerValue(const NS::HitOwnerItem& item, std::string_view name, float fallback);
 

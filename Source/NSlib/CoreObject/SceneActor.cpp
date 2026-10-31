@@ -113,12 +113,20 @@ namespace NS
     void SceneActor::Appear()
     {
         NS_ASSERT(Scene, !IsPendingDestroy(), "Destroy した個体を Appear で出そうとしている: {}", m_name);
+        if (m_parent != nullptr && !m_parent->IsAppeared())
+        {
+            return;
+        }
         if (m_presence != Presence::Disappeared)
         {
             return;
         }
         m_presence = Presence::Appeared;
         OnAppear();
+        if (m_child != nullptr && !m_child->IsPendingDestroy())
+        {
+            m_child->Appear();
+        }
     }
 
     void SceneActor::Disappear() noexcept
@@ -129,6 +137,10 @@ namespace NS
         }
         m_presence = Presence::Disappeared;
         OnDisappear();
+        if (m_child != nullptr)
+        {
+            m_child->Disappear();
+        }
     }
 
     void SceneActor::Destroy() noexcept
@@ -233,6 +245,33 @@ namespace NS
 
     SceneActor::~SceneActor() noexcept = default;
 
+    void SceneActor::InitChild(std::unique_ptr<SceneActor> child)
+    {
+        m_child = std::move(child);
+        m_child->m_parent = this;
+        m_child->m_scene = m_scene;
+        m_child->InitWithCodeValues({});
+        if (!IsAppeared())
+        {
+            m_child->Disappear();
+        }
+    }
+
+    void SceneActor::RemoveDestroyedChildren()
+    {
+        if (m_child == nullptr)
+        {
+            return;
+        }
+        if (m_child->IsPendingDestroy())
+        {
+            m_child->OnEndPlay();
+            m_child.reset();
+            return;
+        }
+        m_child->RemoveDestroyedChildren();
+    }
+
     void SceneActor::InitWithCodeValues(std::string_view actorFile)
     {
         m_actorFileName = ClassName();
@@ -301,6 +340,10 @@ namespace NS
         {
             m_model->ChooseDrawnMaterial();
         }
+        if (m_child != nullptr)
+        {
+            m_child->ReloadAssets();
+        }
     }
 
     void SceneActor::OnAssetsLoaded()
@@ -320,6 +363,20 @@ namespace NS
             {
                 NS_LOG_WARN(Scene, "{} は Model が無いので、メッシュの当たりは空のまま", ClassName());
             }
+        }
+    }
+
+    void SceneActor::Start()
+    {
+        if (m_started)
+        {
+            return;
+        }
+        m_started = true;
+        OnStart();
+        if (m_child != nullptr)
+        {
+            m_child->Start();
         }
     }
 
@@ -451,10 +508,13 @@ namespace NS
         // clang-format off
         if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(Root().WorldMatrix(), this); }
         // clang-format on
-        // 揺れと震えは体を動かした後の根で書き、VisualStep の残像が書いた後の姿を写し取る
         // clang-format off
         if (m_model) { m_model->AdvanceDraw(this, Root().Position()); }
         // clang-format on
+        if (m_child != nullptr && m_child->IsAppeared())
+        {
+            m_child->Update();
+        }
         VisualStep();
         if (m_hitStopFrames > 0)
         {
@@ -468,6 +528,10 @@ namespace NS
         // clang-format off
         if (m_model) { m_model->Snapshot(); }
         // clang-format on
+        if (m_child != nullptr)
+        {
+            m_child->SnapshotForInterpolation();
+        }
     }
 
     void SceneActor::PrepareRender()
@@ -475,10 +539,18 @@ namespace NS
         // clang-format off
         if (m_animation) { m_animation->Update(m_model.get(), GetFrameDelta(this)); }
         // clang-format on
+        if (m_child != nullptr && m_child->IsAppeared())
+        {
+            m_child->PrepareRender();
+        }
     }
 
     void SceneActor::OnEndPlay()
     {
+        if (m_child != nullptr)
+        {
+            m_child->OnEndPlay();
+        }
         // 描く物・センサー・当たりの body は消えても残っているので、出ていたかを問わずここで外す
         Disappear();
         if (OwningScene() == nullptr)

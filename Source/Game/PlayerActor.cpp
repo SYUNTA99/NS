@@ -84,7 +84,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_clips);
     CreateClassObj(m_shadow);
     NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
-    NS::InitDraw(this, &m_tackleGhost, &Root(), m_model.get());
+    (void)CreateChildActor<GL::Level::TackleGhost>();
     CreateClassObj(m_resolver);
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actionTimeline);
@@ -359,8 +359,6 @@ void PlayerActor::BodyStep()
 
 void PlayerActor::VisualStep()
 {
-    // 写し取る姿は Model が揺れを書いた後で、見た目の部品が回転と倍率を書く前の姿
-    m_ghostRun.Advance(&m_tackleGhost, m_model.get(), Root().WorldMatrix());
     UpdateAnimation();
     // clang-format off
     m_targetMarker->Update(m_charge);
@@ -460,9 +458,7 @@ void PlayerActor::OnEndPlay()
 {
     // 戻す物はやり直しと同じ組。当たりの止めと状態と演出も捨て、止めが次のプレイへ残らない
     ResetState();
-    // 残像の値は ResetState が消してある。描く物は消えていても入れたままなので、基底と同じくここで外す
     NS::SceneActor::OnEndPlay();
-    NS::EndDraw(this, &m_tackleGhost);
     NS::EndOverlay(this, m_targetMarker.get());
     NS::EndOverlay(this, m_slamArrow.get());
 }
@@ -472,7 +468,6 @@ void PlayerActor::OnAppear()
     NS::SceneActor::OnAppear();
     if (IsAppeared())
     {
-        NS::ShowModel(this, &m_tackleGhost);
         NS::ShowOverlay(this, m_targetMarker.get());
         NS::ShowOverlay(this, m_slamArrow.get());
     }
@@ -481,7 +476,6 @@ void PlayerActor::OnAppear()
 void PlayerActor::OnDisappear() noexcept
 {
     NS::SceneActor::OnDisappear();
-    NS::HideModel(this, &m_tackleGhost);
     NS::HideOverlay(this, m_targetMarker.get());
     NS::HideOverlay(this, m_slamArrow.get());
 }
@@ -755,9 +749,9 @@ void PlayerActor::BeginTackleHit() noexcept
     }
     for (const NS::HitOwnerRun& run : runs)
     {
-        if (run.item.name == "TackleGhost")
+        if (run.item.name == "TackleGhost" && Ghost() != nullptr)
         {
-            m_ghostRun.Start(run, this);
+            Ghost()->Start(run);
         }
         if (run.item.name == "HitEffect")
         {
@@ -820,7 +814,10 @@ void PlayerActor::StopTackleHitEffects() noexcept
         reaction->StopGroundWave(this);
         reaction->StopDistortionRing(this);
     }
-    m_ghostRun.Stop(&m_tackleGhost);
+    if (Ghost() != nullptr)
+    {
+        Ghost()->Stop();
+    }
     // 紫の明けの遅い世界は束より長く続く。打ち切る当たりが遅くした世界を普段の速さへ戻す
     if (m_slowedWorld)
     {

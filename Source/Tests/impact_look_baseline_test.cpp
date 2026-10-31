@@ -454,9 +454,9 @@ namespace
         row[i++] = selfModel.GetDrawOffset().z;
         row[i++] = selfModel.GetDrawTremor().amplitude;
         row[i++] = selfModel.GetDrawTremor().elapsedFrames;
-        row[i++] = player->Ghost().Spread().Length();
-        row[i++] = player->Ghost().SideOpacity();
-        row[i++] = player->Ghost().AfterimageOpacity();
+        row[i++] = player->Ghost()->Spread().Length();
+        row[i++] = player->Ghost()->SideOpacity();
+        row[i++] = player->Ghost()->AfterimageOpacity();
         const NS::CameraManager& cameras = *player->GetCameraManager();
         float sink = 0.0f;
         if (const NS::CameraSinkModifier* modifier = cameras.FindModifier<NS::CameraSinkModifier>())
@@ -501,8 +501,8 @@ namespace
         row[i++] = rockModel.GetDrawOffset().y;
         row[i++] = rockModel.GetDrawOffset().z;
         row[i++] = rockModel.GetDrawTremor().amplitude;
-        row[i++] = rock->Ghost().Spread().Length();
-        row[i++] = rock->Ghost().AfterimageOpacity();
+        row[i++] = rock->Ghost()->Spread().Length();
+        row[i++] = rock->Ghost()->AfterimageOpacity();
         EXPECT_EQ(i, k_ColumnCount);
         return row;
     }

@@ -122,10 +122,9 @@ namespace NS
         //! @return 1 色 8 ビットの型。未描画なら空
         [[nodiscard]] const Gfx::D3DTexture* BodyMaskShown(std::size_t viewIndex) const noexcept;
 
-        //! 描く物を、持ち主の根 root と元にする model と組にして入れる。組は有効で入る。二重登録は無視する
+        //! 描く物を、持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
         //! 呼ぶのは補助関数 InitDraw だけ。renderable と root は外すまで生きていること
-        //! @param[in] model 同じアクターの体をもう一度描く物が元にする Model。ほかの描く物は nullptr
-        void RegisterRenderable(IRenderable* renderable, const Transform* root, const Model* model);
+        void RegisterRenderable(IRenderable* renderable, const Transform* root);
         //! 描く物の組を外す。入れていない物は何もしない
         void UnregisterRenderable(const IRenderable* renderable) noexcept;
         // 組の有効と無効を書く関数は、この 3 つと CameraManager::SetVirtualCameraEnabled で 4 つある。
@@ -222,12 +221,11 @@ namespace NS
         //! 体の型に写す描く物を、世界の深度で隠して型へ描く。写す物が無ければ型を描かない
         void DrawBodyMask(const Gfx::RenderContext& context, Gfx::ScreenPasses& screen);
 
-        //! 描く物と、描く時に渡す持ち主の根と元の Model、RenderProxyList の登録ハンドルの組。指す物は全部非所有
+        //! 描く物と、描く時に渡す持ち主の根、RenderProxyList の登録ハンドルの組。指す物は全部非所有
         struct RenderEntry
         {
             IRenderable* renderable = nullptr;
             const Transform* root = nullptr;
-            const Model* model = nullptr; // 元にする Model。同じアクターの体をもう一度描く物の時だけ入る
             Gfx::RenderHandle handle{};
             bool enabled = true; // 持ち主が出ているか。正はこの値だけ
         };

@@ -112,8 +112,11 @@ public:
     [[nodiscard]] GL::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
     [[nodiscard]] GL::Level::SlamArrow& SlamIndicator() noexcept { return *m_slamArrow; }
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
-    [[nodiscard]] GL::Level::TackleGhost& Ghost() noexcept { return m_tackleGhost; }
-    [[nodiscard]] const GL::Level::TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
+    [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept { return NS::Cast<GL::Level::TackleGhost>(ChildActor()); }
+    [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept
+    {
+        return NS::Cast<GL::Level::TackleGhost>(ChildActor());
+    }
 
     // =========================================================================
     // 更新・アニメーション・移動入力・ジャンプ状態
@@ -459,9 +462,6 @@ private:
     std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;
-    GL::Level::TackleGhost m_tackleGhost; // 体当たりの残像。描く時に Model を渡されて描く
-    // 残像の進み。当たりの状態に入ったフレームの見た目の段を 1 フレーム目に数え、止めの後も状態に依らず進める
-    GL::Level::TackleGhostRun m_ghostRun;
     bool m_slowedWorld = false;
     struct BeforeContactEntry
     {

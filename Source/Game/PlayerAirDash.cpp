@@ -335,9 +335,9 @@ void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float 
     StopTackleHitEffects();
     for (const NS::HitOwnerRun& run : StartHitReactionRuns(name, contact, self, self))
     {
-        if (run.item.name == "TackleGhost")
+        if (run.item.name == "TackleGhost" && Ghost() != nullptr)
         {
-            m_ghostRun.Start(run, this);
+            Ghost()->Start(run);
         }
     }
 }
@@ -465,7 +465,10 @@ void PlayerActor::StartShiftedReboundReaction() noexcept
     }
     const float scale = m_params->m_reboundShiftedEffectScale;
     reaction->ScaleRunning(NS::HitReactionSelf{.actor = this, .model = ModelClassObj()}, scale);
-    m_ghostRun.ScaleOpacity(scale);
+    if (Ghost() != nullptr)
+    {
+        Ghost()->ScaleOpacity(scale);
+    }
     (void)StartHitReaction("地形の反動[ずらし]", Root().Position(), self, self);
 }
 
