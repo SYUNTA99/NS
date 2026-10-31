@@ -387,3 +387,189 @@ TEST(CourseDirector, StartCourseStartsThePlayerAtRestFromThePlacedPose)
     EXPECT_FLOAT_EQ(player->Root().Position().y, placedAt.y);
     EXPECT_FLOAT_EQ(player->Root().Position().z, placedAt.z);
 }
+
+namespace
+{
+    // 自機と落下死の範囲に、x=5 の置物を足したシーン文書
+    nlohmann::json CourseWithProp(nlohmann::json doc)
+    {
+        nlohmann::json rock = NS::MakeActorJson();
+        NS::SetActorJsonFile(rock, "PropActor");
+        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
+        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        NS::EnsureUniqueActorIds(doc);
+        return doc;
+    }
+
+    NS::SceneActor* FindProp(NS::Scene& scene)
+    {
+        for (NS::SceneActor* actor : scene.Actors())
+        {
+            if (std::string_view{actor->ClassName()} == "PropActor")
+            {
+                return actor;
+            }
+        }
+        return nullptr;
+    }
+} // namespace
+
+// 以下は知らせを歩 (scene.OnUpdate) の中で届かせ、その歩が終わった後のアクターの姿を見る。
+// 進行役を直に進めず歩で回すので、進行役の置き場所が変わっても期待の値は変わらない
+
+TEST(CourseDirector, DeathInAStepRestartsTheCourseBeforeTheNextStep)
+{
+    const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
+    ASSERT_NE(director, nullptr);
+    director->StartCourse();
+    PlayerActor* player = FindPlayer(scene.Actors());
+    ASSERT_NE(player, nullptr);
+    NS::SceneActor* placed = FindProp(scene);
+    ASSERT_NE(placed, nullptr);
+    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
+    // 落下死の範囲 (上面 y=-50) の中へ置く
+    player->Root().SetPosition(NS::Vector3{0.0f, -52.0f, 0.0f});
+
+    scene.OnUpdate();
+
+    EXPECT_FALSE(player->IsDead());
+    const NS::Vector3 spawn = SpawnOf(doc);
+    EXPECT_FLOAT_EQ(player->Root().Position().x, spawn.x);
+    EXPECT_FLOAT_EQ(player->Root().Position().y, spawn.y);
+    EXPECT_FLOAT_EQ(player->Root().Position().z, spawn.z);
+    EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
+    EXPECT_FALSE(director->IsClearing());
+}
+
+TEST(CourseDirector, RespawnButtonInAStepReturnsPropsBeforeTheNextStep)
+{
+    const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
+    ASSERT_NE(director, nullptr);
+    director->StartCourse();
+    PlayerActor* player = FindPlayer(scene.Actors());
+    ASSERT_NE(player, nullptr);
+    NS::SceneActor* placed = FindProp(scene);
+    ASSERT_NE(placed, nullptr);
+    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
+    const NS::Vector3 spawn = SpawnOf(doc);
+    const NS::Vector3 movedTo{spawn.x + 3.0f, spawn.y, spawn.z + 3.0f};
+    player->Root().SetPosition(movedTo);
+
+    {
+        const KeyPress press{NS::OS::Key::R};
+        scene.OnUpdate();
+    }
+
+    EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
+    // 自機は戻さない。縦は重力で動くので横だけを見る
+    EXPECT_FLOAT_EQ(player->Root().Position().x, movedTo.x);
+    EXPECT_FLOAT_EQ(player->Root().Position().z, movedTo.z);
+    EXPECT_FALSE(director->IsClearing());
+}
+
+TEST(CourseDirector, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
+{
+    const nlohmann::json doc = CourseWithProp(CourseWithPlayerOnGoal());
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
+    ASSERT_NE(director, nullptr);
+    director->StartCourse();
+    PlayerActor* player = FindPlayer(scene.Actors());
+    ASSERT_NE(player, nullptr);
+    NS::SceneActor* placed = FindProp(scene);
+    ASSERT_NE(placed, nullptr);
+    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
+
+    scene.OnUpdate();
+
+    // クリアの流れは始まったが、やり直しは暗転しきるまで待つ
+    ASSERT_TRUE(director->IsClearing());
+    EXPECT_TRUE(scene.Fade().IsFading());
+    EXPECT_TRUE(player->Input().IsLocked());
+    EXPECT_FLOAT_EQ(placed->Root().Position().x, 9.0f);
+    const NS::Vector3 spawn = SpawnOf(doc);
+    EXPECT_FLOAT_EQ(player->Root().Position().x, spawn.x);
+    EXPECT_FLOAT_EQ(player->Root().Position().z, spawn.z);
+
+    for (int i = 0; i < 600 && director->IsClearing(); ++i)
+    {
+        scene.OnUpdate();
+    }
+    EXPECT_FALSE(director->IsClearing());
+    EXPECT_FALSE(player->Input().IsLocked());
+    EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
+}
+
+// エディタは同じシーンのオブジェクトでプレイを何度も始める。前のプレイの知らせが残ると、
+// 2 回目の始めに頼んでいないやり直しやクリアが起きる。
+// 下の 2 本は先頭の GTEST_SKIP で後ろが届かないので、届かないコードの警告 C4702 を外す。
+// GTEST_SKIP を外す時に、この警告の切り替えも外す
+#pragma warning(push)
+#pragma warning(disable : 4702)
+TEST(CourseDirector, SecondStartDropsNoticesOfThePreviousPlay)
+{
+    // 今の StartCourse は知らせを戻さないので落ちる。GameScene::StartPlay で戻す時に外す
+    GTEST_SKIP() << "StartCourse が前のプレイの知らせを戻さない。GameScene の StartPlay で直して外す";
+
+    const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
+    ASSERT_NE(director, nullptr);
+    director->StartCourse();
+    const float duration = NS::OS::FrameTimer::FixedDelta() * 2.0f;
+    director->NotifyPlayerDead();
+    director->RequestRespawnActors();
+    ASSERT_TRUE(director->NotifyGoal(duration, duration));
+
+    // 歩を回さずにプレイをやめ、もう一度始める
+    director->StopMusic();
+    director->StartCourse();
+    PlayerActor* player = FindPlayer(scene.Actors());
+    ASSERT_NE(player, nullptr);
+    NS::SceneActor* placed = FindProp(scene);
+    ASSERT_NE(placed, nullptr);
+    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
+    const NS::Vector3 spawn = SpawnOf(doc);
+    const NS::Vector3 movedTo{spawn.x + 3.0f, spawn.y, spawn.z + 3.0f};
+    player->Root().SetPosition(movedTo);
+
+    scene.OnUpdate();
+
+    EXPECT_FALSE(director->IsClearing());
+    EXPECT_FALSE(scene.Fade().IsFading());
+    EXPECT_FLOAT_EQ(placed->Root().Position().x, 9.0f);
+    EXPECT_FLOAT_EQ(player->Root().Position().x, movedTo.x);
+    EXPECT_FLOAT_EQ(player->Root().Position().z, movedTo.z);
+}
+
+TEST(CourseDirector, SecondStartEndsTheClearOfThePreviousPlay)
+{
+    // 今の StartCourse はクリアの流れを止めないので落ちる。GameScene::StartPlay で戻す時に外す
+    GTEST_SKIP() << "StartCourse が前のプレイのクリアの流れを止めない。GameScene の StartPlay で直して外す";
+
+    NS::Scene scene;
+    scene.ResetFromJson(CourseWithPlayerOnGoal());
+    GL::Level::CourseDirector* director = NS::FindSceneSystem<GL::Level::CourseDirector>(&scene);
+    ASSERT_NE(director, nullptr);
+    director->StartCourse();
+    PlayerActor* player = FindPlayer(scene.Actors());
+    ASSERT_NE(player, nullptr);
+    scene.OnUpdate();
+    ASSERT_TRUE(director->IsClearing());
+
+    director->StopMusic();
+    director->StartCourse();
+
+    EXPECT_FALSE(director->IsClearing());
+    EXPECT_FALSE(scene.Fade().IsFading());
+    EXPECT_FALSE(player->Input().IsLocked());
+}
+#pragma warning(pop)

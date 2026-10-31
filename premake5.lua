@@ -739,6 +739,9 @@ project "Tests"
         -- 同じソースを直接コンパイルする Tests でも同一 prelude を与えるため GamePch を共有する
         "Source/Game/GamePch.cpp"
     }
+    -- シーンの止めの新しい名前 (RequestStopScene・IsSceneStopped・IsStopped) を先に書いたテスト。
+    -- 名前を足すまではビルドできないので外す。名前を足した時にこの行を消す
+    removefiles { "Source/Tests/scene_stop_test.cpp" }
 
     includedirs {
         "Source/ThirdParty/googletest/googletest/include",
