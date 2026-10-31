@@ -889,7 +889,7 @@ void PlayerActor::ResetState() noexcept
     // 当たる直前の動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
     ActionTimelineClassObj()->Stop();
     m_beforeContact = BeforeContactEntry{};
-    OwningScene()->HoldOthers(this, 0);
+    OwningScene()->RequestStopScene(this, 0);
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale(m_model.get());
     // 状態機械は立ちへ戻したので、立ちのクリップを前の姿勢から混ぜずに頭から流す。

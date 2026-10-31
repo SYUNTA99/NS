@@ -5,7 +5,6 @@
 #include "NSlib/Core/Windows/Window.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
@@ -102,18 +101,14 @@ namespace
             m_effect = effects->Play(stream, NS::Gfx::EffectPlayDesc{});
             ASSERT_TRUE(m_effect.IsValid());
 
-            NS::HitScreenDirector* screen = NS::GetOrCreateSceneSystem<NS::HitScreenDirector>(&m_scene);
-            ASSERT_NE(screen, nullptr);
-            screen->StartFlash(holder, 1000, 1.0f);
+            m_scene.HitScreen().StartFlash(holder, 1000, 1.0f);
 
-            NS::PadRumbleDirector* pad = NS::GetOrCreateSceneSystem<NS::PadRumbleDirector>(&m_scene);
-            ASSERT_NE(pad, nullptr);
             NS::HitPadVibration vibration;
             vibration.left.count = 2;
             vibration.left.keys[0] = NS::Curve::Key{0.0f, 1.0f};
             vibration.left.keys[1] = NS::Curve::Key{1000.0f, 0.0f};
             vibration.frames = 1000;
-            pad->Start(holder, vibration);
+            m_scene.PadRumble().Start(holder, vibration);
 
             for (int i = 0; i < 3; ++i)
             {
@@ -142,7 +137,7 @@ namespace
             }
             view.effectExists = m_scene.GetEffectScene()->Exists(m_effect);
             view.sensorStays = m_sensorA->stays + m_sensorB->stays;
-            view.flashRemaining = NS::FindSceneSystem<NS::HitScreenDirector>(&m_scene)->FlashFramesRemaining();
+            view.flashRemaining = m_scene.HitScreen().FlashFramesRemaining();
             view.padLeft = NS::OS::Input::Get().Gamepad().Vibration().left;
             return view;
         }
@@ -189,7 +184,7 @@ TEST(SceneStep, AStoppedStepAdvancesOnlyWhatShowsTheMover)
     StepScene world;
     ASSERT_TRUE(world.IsValid());
     ASSERT_NO_FATAL_FAILURE(world.Start());
-    world.Scene().HoldOthers(world.holder, k_ObservedSteps + 10);
+    world.Scene().RequestStopScene(world.holder, k_ObservedSteps + 10);
     // 止めを頼んだ直後の歩は、止めが効き始める歩が変わっても同じに通るよう見ない
     world.Step(1);
     const StepView before = world.View();
@@ -198,7 +193,7 @@ TEST(SceneStep, AStoppedStepAdvancesOnlyWhatShowsTheMover)
     world.Step(k_ObservedSteps);
     const StepView after = world.View();
 
-    ASSERT_TRUE(world.Scene().IsHoldingOthers());
+    ASSERT_TRUE(world.Scene().IsSceneStopped());
     EXPECT_GT(after.fadeAlpha, before.fadeAlpha);
     EXPECT_LT(after.cameraX, before.cameraX);
     EXPECT_TRUE(after.effectExists);

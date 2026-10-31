@@ -110,6 +110,9 @@ namespace NS
         //! requester が頼んだ床の波を消す。ほかの物が頼んだ波は残す
         void StopGroundWave(const SceneActor* requester) noexcept;
 
+        //! 頼んだ物に関わらず、白・震えの線・歪みの輪・床の波を全部消す。シーンがアクターを組み直す前に呼ぶ
+        void Clear() noexcept;
+
         //! 白の残りフレーム数。出していない場合 0
         [[nodiscard]] int FlashFramesRemaining() const noexcept { return m_flashRemaining; }
         //! 今の白の濃さ。始めの濃さ × 残りのフレーム数 ÷ 始めのフレーム数

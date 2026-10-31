@@ -46,6 +46,9 @@ namespace NS
         m_cameraManager.SetCollision(this);
         // エフェクトの世界は同じ歩の SceneActor が出した演出を受けてから進む
         AddSystemTick(m_sceneRenderer, UpdatePhase::Effects);
+        // 画面の演出と振動は、描く支度の段で、アクターの PrepareRender の後に進める
+        AddSystemTick(m_hitScreen, UpdatePhase::RenderPrep);
+        AddSystemTick(m_padRumble, UpdatePhase::RenderPrep);
         AddSystemTick(m_ui, UpdatePhase::UI);
         // 暗転は UI の後に進める。UI の段は実時間なので、ヒットストップと遅い世界でも同じ速さで進む
         AddSystemTick(m_fade, UpdatePhase::UI);
@@ -89,7 +92,7 @@ namespace NS
         m_worldSpeed = 1.0f;
         m_worldCarry = 0.0f;
         m_rampActive = false;
-        ReleaseOthersHold();
+        CancelStopScene();
     }
 
     void Scene::StepSimulation() noexcept
@@ -109,33 +112,72 @@ namespace NS
         m_rampActive = false;
     }
 
-    void Scene::HoldOthers(const SceneActor* holder, int steps) noexcept
+    void Scene::RequestStopScene(const SceneActor* mover, int steps) noexcept
     {
-        NS_ASSERT(Scene, holder != nullptr, "Scene::HoldOthers: 止め始めるアクターが無い");
+        NS_ASSERT(Scene, mover != nullptr, "Scene::RequestStopScene: 止め始めるアクターが無い");
         // 止めている間は先に止め始めたアクターが持つ。後から頼んだアクターに替えると、止め始めたアクターが止まる
-        if (m_othersHeldSteps > 0 && !IsOthersHolder(holder))
+        if (m_stopSceneSteps > 0 && !IsStopSceneMover(mover))
+        {
+            return;
+        }
+        const uint32 moverId = mover->Id();
+        const bool sameRequester =
+            m_stopSceneRequested && mover == m_stopSceneRequester && moverId == m_stopSceneRequesterId;
+        // 同じ歩に先に止めを頼んだアクターが持つ。解く頼みは止めを持たないので、後から頼んだ止めで置き換える
+        if (m_stopSceneRequested && !sameRequester && m_requestedStopSceneSteps > 0)
         {
             return;
         }
         if (steps <= 0)
         {
-            m_othersHeldSteps = 0;
+            m_requestedStopSceneSteps = 0;
+        }
+        else if (sameRequester)
+        {
+            m_requestedStopSceneSteps = std::max(m_requestedStopSceneSteps, steps);
+        }
+        else
+        {
+            m_requestedStopSceneSteps = steps;
+        }
+        m_stopSceneRequested = true;
+        m_stopSceneRequester = mover;
+        m_stopSceneRequesterId = moverId;
+    }
+
+    void Scene::ApplyStopSceneRequest() noexcept
+    {
+        if (!m_stopSceneRequested)
+        {
             return;
         }
-        m_othersHeldSteps = std::max(m_othersHeldSteps, steps);
-        m_othersHolder = holder;
-        m_othersHolderId = holder->Id();
+        m_stopSceneRequested = false;
+        // 頼んだアクターはこの歩までに一覧から外れている事があるので、番地を読まずに比べる
+        const bool sameMover = m_stopSceneRequester == m_stopSceneMover && m_stopSceneRequesterId == m_stopSceneMoverId;
+        if (m_stopSceneSteps > 0 && !sameMover)
+        {
+            return;
+        }
+        if (m_requestedStopSceneSteps <= 0)
+        {
+            m_stopSceneSteps = 0;
+            return;
+        }
+        m_stopSceneSteps = std::max(m_stopSceneSteps, m_requestedStopSceneSteps);
+        m_stopSceneMover = m_stopSceneRequester;
+        m_stopSceneMoverId = m_stopSceneRequesterId;
     }
 
-    bool Scene::IsOthersHolder(const SceneActor* actor) const noexcept
+    void Scene::CancelStopScene() noexcept
+    {
+        m_stopSceneSteps = 0;
+        m_stopSceneRequested = false;
+    }
+
+    bool Scene::IsStopSceneMover(const SceneActor* actor) const noexcept
     {
         // id の無い JSON から読んだアクターは id が 0 で重なるので、番地も比べる。番地は比べるだけで読まない
-        return actor == m_othersHolder && actor->Id() == m_othersHolderId;
-    }
-
-    bool Scene::UpdatesWhileHeld(const SceneActor* actor) const noexcept
-    {
-        return m_othersHeldSteps <= 0 || IsOthersHolder(actor);
+        return actor == m_stopSceneMover && actor->Id() == m_stopSceneMoverId;
     }
 
     void Scene::StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept
@@ -411,6 +453,9 @@ namespace NS
         // シーンに 1 つの物 (進行役など) はアクターと画面の一覧を借りるので先に捨てる。
         // 組み直しでは、組み直したアクターの開始が要る物が最初の状態から作り直す
         m_sceneObjs.Clear();
+        // 前の世界のアクターが頼んだ演出と振動を、次の世界へ持ち越さない
+        m_hitScreen.Clear();
+        m_padRumble.Clear();
         Fade().Cancel();
         m_actors.Clear();
         m_unresolvedActors.clear();
@@ -434,6 +479,8 @@ namespace NS
 
     void Scene::OnUpdate()
     {
+        // 前の歩で頼まれた止めをここで効かせる。歩の途中では止めが変わらないので、段ごとに確かめ直さない
+        ApplyStopSceneRequest();
         // 世界の駆動。読み込んだら回り続けるのが既定で、編集モードのエディタだけが止める
         // 時間停止中は前の値の控えだけが残り、previous == current で補間が凍る
         // Actor の Update が回らない歩も、編集で動いた当たりを揃える
@@ -467,24 +514,25 @@ namespace NS
             Gfx::DebugDraw::BeginStep();
 #endif
         }
+        const bool sceneStopped = IsSceneStopped();
         for (UpdatePhase phase : magic_enum::enum_values<UpdatePhase>())
         {
             if (!worldStep && ClockOf(phase) == PhaseClock::World)
             {
                 continue;
             }
-            // 止めはアクターの Update の中で置かれるので、毎段読み直してその歩の残りの段から効かせる
-            if (m_othersHeldSteps > 0 && !RunsWhileOthersHeld(phase))
+            if (sceneStopped && !RunsWhileOthersHeld(phase))
             {
                 continue;
             }
             ExecutePhase(phase);
         }
         m_actors.RemoveDestroyed();
-        // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ止め始めたアクターが進む
-        if (worldStep && m_othersHeldSteps > 0)
+        // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ止め始めたアクターが進む。
+        // 歩の途中で CancelStopScene が解いた時は数えない
+        if (worldStep && m_stopSceneSteps > 0)
         {
-            m_othersHeldSteps -= 1;
+            m_stopSceneSteps -= 1;
         }
         // この歩は始めた時の速さで回し、次の歩の速さを書く
         AdvanceWorldSpeedRamp();
@@ -564,8 +612,8 @@ namespace NS
         }
         if (phase == UpdatePhase::Actors)
         {
-            // 止めはアクターの Update の中で始まるので、1 体ごとに問い直す
-            m_actors.UpdateActors([this](const SceneActor* actor) noexcept { return UpdatesWhileHeld(actor); });
+            // 止まっている間も全部を回す。止まったアクターは SceneActor::IsStopped で状態機械と体を進めない
+            m_actors.UpdateActors();
         }
         if (phase == UpdatePhase::RenderPrep)
         {

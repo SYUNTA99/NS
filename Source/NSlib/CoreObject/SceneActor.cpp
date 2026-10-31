@@ -336,7 +336,6 @@ namespace NS
         // 作る時に 1 回だけの物
         // clang-format off
         if (m_animation) { m_animation->BindToModel(m_model.get()); }
-        if (m_hitReaction) { m_hitReaction->CreateDirectors(this); }
         // clang-format on
     }
 
@@ -423,6 +422,15 @@ namespace NS
                                   .sensors = m_hitSensors.get()};
     }
 
+    bool SceneActor::IsStopped() const noexcept
+    {
+        if (m_hitStopFrames > 0)
+        {
+            return true;
+        }
+        return m_scene != nullptr && m_scene->IsSceneStopped() && !m_scene->IsStopSceneMover(this);
+    }
+
     void SceneActor::Update()
     {
         m_skipStateStep = false;
@@ -432,7 +440,7 @@ namespace NS
         // clang-format on
         DecideStep();
         // 止めは状態の時計だけを止める。束で始めた演出は頼まれた係と模型が自分の歩で進める
-        if (!IsHitStopping() && !m_skipStateStep)
+        if (!IsStopped() && !m_skipStateStep)
         {
             // 時計は状態の歩なので、状態を進めたフレームにだけ進める
             // clang-format off
@@ -442,7 +450,7 @@ namespace NS
             AfterStateStep();
         }
         // 状態機械の中で束を始めた時は、そのフレームの身体から止める
-        if (!IsHitStopping())
+        if (!IsStopped())
         {
             BodyStep();
         }

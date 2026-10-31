@@ -6,7 +6,6 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/detail/ActorFileItems.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -204,6 +203,28 @@ namespace NS
 
     namespace
     {
+        // 持ち主のシーンの画面の演出。シーンに入っていなければ nullptr
+        [[nodiscard]] HitScreenDirector* HitScreenOf(const SceneActor* owner) noexcept
+        {
+            Scene* scene = owner->OwningScene();
+            if (scene == nullptr)
+            {
+                return nullptr;
+            }
+            return &scene->HitScreen();
+        }
+
+        // 持ち主のシーンの振動。シーンに入っていなければ nullptr
+        [[nodiscard]] PadRumbleDirector* PadRumbleOf(const SceneActor* owner) noexcept
+        {
+            Scene* scene = owner->OwningScene();
+            if (scene == nullptr)
+            {
+                return nullptr;
+            }
+            return &scene->PadRumble();
+        }
+
         // 束か項目を始める時の向きと位置を、2 つのセンサーと渡した位置から出す
         [[nodiscard]] HitStartContext MakeStartContext(const SceneActor* owner,
                                                        uint32 startCount,
@@ -399,7 +420,7 @@ namespace NS
 
         void operator()(const HitGroundWaveItem& wave) const
         {
-            if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner.actor))
+            if (HitScreenDirector* screen = HitScreenOf(owner.actor))
             {
                 screen->StartGroundWave(owner.actor,
                                         HitGroundWaveDesc{.center = context.position,
@@ -466,7 +487,7 @@ namespace NS
         {
             if (Scene* scene = owner.actor->OwningScene())
             {
-                scene->HoldOthers(owner.actor, length);
+                scene->RequestStopScene(owner.actor, length);
             }
         }
 
@@ -583,17 +604,10 @@ namespace NS
         return {m_ownerRuns.begin() + static_cast<std::ptrdiff_t>(first), m_ownerRuns.end()};
     }
 
-    void HitReaction::CreateDirectors(const SceneActor* owner)
-    {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::CreateDirectors: 持ち主が null");
-        (void)GetOrCreateSceneSystem<HitScreenDirector>(owner);
-        (void)GetOrCreateSceneSystem<PadRumbleDirector>(owner);
-    }
-
     void HitReaction::StartFlash(const SceneActor* owner, int frames, float alpha) noexcept
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartFlash: 持ち主が null");
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
+        if (HitScreenDirector* screen = HitScreenOf(owner))
         {
             screen->StartFlash(owner, frames, alpha);
         }
@@ -694,7 +708,7 @@ namespace NS
     void HitReaction::StartShakeLines(const SceneActor* owner, const HitShakeLinesDesc& desc) noexcept
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartShakeLines: 持ち主が null");
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
+        if (HitScreenDirector* screen = HitScreenOf(owner))
         {
             screen->StartShakeLines(owner, desc);
         }
@@ -703,7 +717,7 @@ namespace NS
     void HitReaction::StartDistortionRing(const SceneActor* owner, const HitDistortionRingDesc& desc) noexcept
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartDistortionRing: 持ち主が null");
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
+        if (HitScreenDirector* screen = HitScreenOf(owner))
         {
             screen->StartDistortionRing(owner, desc);
         }
@@ -712,7 +726,7 @@ namespace NS
     void HitReaction::StopDistortionRing(const SceneActor* owner) noexcept
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::StopDistortionRing: 持ち主が null");
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
+        if (HitScreenDirector* screen = HitScreenOf(owner))
         {
             screen->StopDistortionRing(owner);
         }
@@ -721,7 +735,7 @@ namespace NS
     void HitReaction::StopGroundWave(const SceneActor* owner) noexcept
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::StopGroundWave: 持ち主が null");
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
+        if (HitScreenDirector* screen = HitScreenOf(owner))
         {
             screen->StopGroundWave(owner);
         }
@@ -730,7 +744,7 @@ namespace NS
     void HitReaction::StartPadVibration(const SceneActor* owner, const HitPadVibration& pad)
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartPadVibration: 持ち主が null");
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(owner))
+        if (PadRumbleDirector* rumble = PadRumbleOf(owner))
         {
             rumble->Start(owner, pad);
         }
@@ -739,7 +753,7 @@ namespace NS
     void HitReaction::BlendPadVibration(const SceneActor* owner, const HitPadVibration& pad)
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::BlendPadVibration: 持ち主が null");
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(owner))
+        if (PadRumbleDirector* rumble = PadRumbleOf(owner))
         {
             rumble->Blend(owner, pad);
         }
@@ -749,11 +763,11 @@ namespace NS
     {
         NS_ASSERT(Scene, owner.actor != nullptr, "HitReaction::ScaleRunning: 持ち主が null");
         NS_ASSERT(Scene, std::isfinite(scale) && scale >= 0.0f, "HitReaction::ScaleRunning: 倍率が負か非数");
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner.actor))
+        if (HitScreenDirector* screen = HitScreenOf(owner.actor))
         {
             screen->Scale(owner.actor, scale);
         }
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(owner.actor))
+        if (PadRumbleDirector* rumble = PadRumbleOf(owner.actor))
         {
             rumble->Scale(owner.actor, scale);
         }
@@ -766,11 +780,11 @@ namespace NS
     void HitReaction::Stop(const SceneActor* owner)
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::Stop: 持ち主が null");
-        if (HitScreenDirector* screen = FindSceneSystem<HitScreenDirector>(owner))
+        if (HitScreenDirector* screen = HitScreenOf(owner))
         {
             screen->Stop(owner);
         }
-        if (PadRumbleDirector* rumble = FindSceneSystem<PadRumbleDirector>(owner))
+        if (PadRumbleDirector* rumble = PadRumbleOf(owner))
         {
             rumble->Stop(owner);
         }

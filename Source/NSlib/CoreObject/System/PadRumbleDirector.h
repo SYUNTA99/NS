@@ -8,7 +8,6 @@
 namespace NS
 {
     class SceneActor;
-    class Scene;
 
     //! パッドの振動 1 回。左右のモーターの速さを始めてからのフレーム数の曲線で決め、書くフレーム数で切る
     struct HitPadVibration
@@ -22,8 +21,11 @@ namespace NS
     class PadRumbleDirector final : public SceneSystem
     {
     public:
-        explicit PadRumbleDirector(Scene& scene);
+        PadRumbleDirector() = default;
         ~PadRumbleDirector() noexcept override;
+
+        //! 全部の振動を外す。振動していれば 0 を書いて止める。シーンがアクターを組み直す前に呼ぶ
+        void Clear();
 
         //! 振動を始める。前の振動が残っていても、重ねた分も含めて始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える

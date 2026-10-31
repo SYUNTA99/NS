@@ -11,7 +11,7 @@ namespace NS
     public:
         //! このフレームの自分の状態 (接地・速度・見る高さ・溜め・反動など) を vcam の欄へ書く
         //! 呼ぶのは CameraManager::OnTick の中の ThirdPersonFollow::Advance だけで、固定フレームに 1 回、
-        //! vcam を進める直前に呼ぶ。止めている間 (Scene::HoldOthers) も呼ぶ
+        //! vcam を進める直前に呼ぶ。シーンが止まっている間 (Scene::RequestStopScene) も呼ぶ
         //! @param[in] vcam 書く先の追従カメラ。事前条件: nullptr でない
         virtual void WriteFollowState(ThirdPersonFollow* vcam) const = 0;
 

@@ -2,7 +2,6 @@
 
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/UpdatePhase.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/Gfx/D3DDevice.h"
@@ -50,7 +49,6 @@ namespace NS
 
     HitScreenDirector::HitScreenDirector(Scene& scene) : m_scene(scene)
     {
-        m_scene.AddSystemTick(*this, UpdatePhase::RenderPrep);
         InitOverlay(&m_scene, this);
     }
 
@@ -190,6 +188,18 @@ namespace NS
         {
             EndGroundWave();
         }
+    }
+
+    void HitScreenDirector::Clear() noexcept
+    {
+        m_flashRequester = nullptr;
+        m_flashRemaining = 0;
+        m_flashJustStarted = false;
+        m_linesRequester = nullptr;
+        m_linesRemaining = 0;
+        m_linesJustStarted = false;
+        EndDistortionRing();
+        EndGroundWave();
     }
 
     void HitScreenDirector::WriteGroundWave() noexcept

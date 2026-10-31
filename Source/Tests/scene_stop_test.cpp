@@ -225,3 +225,70 @@ TEST(SceneStop, IsStoppedSeesTheOwnHitStopAndTheSceneStopExceptForTheMover)
     EXPECT_FALSE(world.scene.IsSceneStopped());
     EXPECT_FALSE(world.first->IsStopped());
 }
+
+// 止めは先に止め始めたアクターが持つ。止まっている間は、ほかのアクターの依頼は延ばすのも解くのも受けない
+TEST(SceneStop, TheFirstMoverKeepsTheStopUntilItEndsOrCancelsIt)
+{
+    NS::Scene scene;
+    const NS::SceneActor* first = scene.SpawnActor<NS::SceneActor>("First");
+    const NS::SceneActor* second = scene.SpawnActor<NS::SceneActor>("Second");
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    scene.RequestStopScene(first, 10);
+    scene.OnUpdate();
+    ASSERT_TRUE(scene.IsSceneStopped());
+
+    scene.RequestStopScene(second, 20);
+    scene.OnUpdate();
+    scene.RequestStopScene(second, 0);
+    scene.OnUpdate();
+    EXPECT_TRUE(scene.IsSceneStopped());
+    EXPECT_TRUE(scene.IsStopSceneMover(first));
+    EXPECT_FALSE(scene.IsStopSceneMover(second));
+
+    scene.RequestStopScene(first, 0);
+    scene.OnUpdate();
+    EXPECT_FALSE(scene.IsSceneStopped());
+}
+
+// 止め始めたアクターが消えても、止めは残りの歩数で切れる。後から入ったアクターを止め始めたアクターと見なさない
+TEST(SceneStop, RemovingTheMoverKeepsTheSceneStoppedUntilTheStopEnds)
+{
+    NS::Scene scene;
+    const NS::SceneActor* mover = scene.SpawnActor<NS::SceneActor>("Mover");
+    ASSERT_NE(mover, nullptr);
+    scene.RequestStopScene(mover, 2);
+    scene.OnUpdate();
+    ASSERT_TRUE(scene.IsSceneStopped());
+
+    scene.RemoveActor(mover->Id());
+    const NS::SceneActor* late = scene.SpawnActor<NS::SceneActor>("Late");
+    ASSERT_NE(late, nullptr);
+    EXPECT_TRUE(scene.IsSceneStopped());
+    EXPECT_FALSE(scene.IsStopSceneMover(late));
+
+    scene.OnUpdate();
+    EXPECT_FALSE(scene.IsSceneStopped());
+}
+
+// 0 歩の依頼と、プレイを始め直す事は、保存した依頼を捨てる。次の歩でも止まらない
+TEST(SceneStop, ZeroStepsAndRestartingThePlayDropTheRequest)
+{
+    NS::Scene scene;
+    const NS::SceneActor* mover = scene.SpawnActor<NS::SceneActor>("Mover");
+    ASSERT_NE(mover, nullptr);
+    scene.RequestStopScene(mover, k_StopSteps);
+    scene.RequestStopScene(mover, 0);
+    scene.OnUpdate();
+    EXPECT_FALSE(scene.IsSceneStopped());
+
+    scene.RequestStopScene(mover, k_StopSteps);
+    scene.SetSimulationEnabled(true);
+    scene.OnUpdate();
+    EXPECT_FALSE(scene.IsSceneStopped());
+
+    scene.RequestStopScene(mover, k_StopSteps);
+    scene.CancelStopScene();
+    scene.OnUpdate();
+    EXPECT_FALSE(scene.IsSceneStopped());
+}

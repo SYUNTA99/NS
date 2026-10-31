@@ -286,13 +286,13 @@ namespace NS
         }
     }
 
-    void ActorList::UpdateActors(const std::function<bool(const SceneActor*)>& runs)
+    void ActorList::UpdateActors()
     {
         ScheduleAppeared();
         for (SceneActor* actor : m_scheduled)
         {
             // 解放の口は段の間は断るので、積んだ生ポインタは生きている。途中で消えた物だけ飛ばす
-            if (!actor->IsAppeared() || !runs(actor))
+            if (!actor->IsAppeared())
             {
                 continue;
             }

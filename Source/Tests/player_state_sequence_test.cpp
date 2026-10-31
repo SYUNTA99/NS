@@ -24,7 +24,6 @@
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
@@ -61,7 +60,7 @@ namespace
         void OnStep(::PlayerActor* player, float) override
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
-            EXPECT_EQ(NS::FindSceneSystem<NS::HitScreenDirector>(player)->FlashFramesRemaining(), 3);
+            EXPECT_EQ(player->OwningScene()->HitScreen().FlashFramesRemaining(), 3);
         }
     };
 
@@ -494,7 +493,7 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(player, 3, 1.0f);
     screen->OnTick();
@@ -537,7 +536,7 @@ TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
         player->Update();
     }
     ASSERT_TRUE(player->IsInTackleHit());
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(player, 3, 1.0f);
     screen->OnTick();
@@ -1072,11 +1071,13 @@ TEST(PlayerTackleHit, AResetReleasesTheOthersStop)
     for (int frame = 0; frame < 60 && !held; ++frame)
     {
         scene.OnUpdate();
-        held = scene.IsHoldingOthers();
+        held = scene.IsSceneStopped();
     }
     ASSERT_TRUE(held);
     player->ResetState();
-    EXPECT_FALSE(scene.IsHoldingOthers());
+    // 解く頼みも次の歩の始めに効く
+    scene.OnUpdate();
+    EXPECT_FALSE(scene.IsSceneStopped());
 }
 
 // 貫通の当たりは、束を始めた後に止めの残りを欄「貫通の止め秒」の長さで上書きし、置物へも同じ長さを送る。
@@ -1435,10 +1436,7 @@ namespace
             step.drawScale = player->ModelClassObj()->GetDrawScale();
             step.othersRan = others.ticks != before;
             step.advance = player->Root().Position().z - z;
-            if (const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player))
-            {
-                step.flashRemaining = screen->FlashFramesRemaining();
-            }
+            step.flashRemaining = scene.HitScreen().FlashFramesRemaining();
             steps.push_back(step);
             if (each && each(steps.size() - 1))
             {
@@ -1499,9 +1497,9 @@ namespace
     }
 } // namespace
 
-// 真ん中の予測では、接触の 6 歩前に当たる直前の状態へ入って縮み始め、2 歩前から自機以外が止まる。
-// 自機は止まらずに突進の速さで進み、検知の歩で当たる直前を出る
-TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndHoldsTheOthersFromTwo)
+// 真ん中の予測では、接触の 6 歩前に当たる直前の状態へ入って縮み始める。2 歩前に止めを頼み、
+// 1 歩前と検知の歩で自機以外が止まる。自機は止まらずに突進の速さで進み、検知の歩で当たる直前を出る
+TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndHoldsTheOthersFromOne)
 {
     OthersTicker others;
     NS::Scene scene;
@@ -1525,14 +1523,14 @@ TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndHoldsTheOther
         const ContactStep& step = steps[static_cast<std::size_t>(i)];
         EXPECT_EQ(step.inBeforeContact, rel >= -6 && rel <= -1);
         ExpectScaleNear(step.drawScale, ExpectedBeforeContactScale(shape, rel));
-        const bool held = rel == -2 || rel == -1;
+        const bool held = rel == -1 || rel == 0;
         EXPECT_EQ(step.othersRan, !held);
         if (rel < 0)
         {
             EXPECT_TRUE(step.slamming);
             EXPECT_TRUE(step.canMoveBody);
         }
-        if (held)
+        if (held && rel < 0)
         {
             EXPECT_NEAR(step.advance, slamStep, slamStep * 0.05f);
         }
@@ -1542,7 +1540,7 @@ TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndHoldsTheOther
             EXPECT_EQ(step.actionFrame, 0);
         }
     }
-    EXPECT_FALSE(scene.IsHoldingOthers());
+    EXPECT_FALSE(scene.IsSceneStopped());
 }
 
 // 外れの段には当たる直前の動作が無いので、外れの予測では当たる直前に入らず、縮まず止めない
@@ -1596,9 +1594,9 @@ TEST(PlayerBeforeContact, AMissedPredictionRestoresTheShapeTheOthersAndTheReturn
         GL::Level::PropActor* rock = TackleRockOf(scene);
         ASSERT_NE(rock, nullptr);
         const std::vector<ContactStep> steps =
-            RunUntilContact(scene, player, others, 1.0f, [&](std::size_t) { return scene.IsHoldingOthers(); });
+            RunUntilContact(scene, player, others, 1.0f, [&](std::size_t) { return scene.IsSceneStopped(); });
         ASSERT_FALSE(steps.empty());
-        ASSERT_TRUE(scene.IsHoldingOthers());
+        ASSERT_TRUE(scene.IsSceneStopped());
         ASSERT_TRUE(steps.back().inBeforeContact);
         ASSERT_GT(steps.back().flashRemaining, 0);
         ASSERT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
@@ -1607,9 +1605,9 @@ TEST(PlayerBeforeContact, AMissedPredictionRestoresTheShapeTheOthersAndTheReturn
         scene.OnUpdate();
         EXPECT_FALSE(player->IsInBeforeContact());
         EXPECT_TRUE(player->IsBodySlamming());
-        EXPECT_FALSE(scene.IsHoldingOthers());
+        EXPECT_FALSE(scene.IsSceneStopped());
         ExpectScaleNear(player->ModelClassObj()->GetDrawScale(), NS::Vector3{1.0f, 1.0f, 1.0f});
-        const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+        const NS::HitScreenDirector* screen = &scene.HitScreen();
         ASSERT_NE(screen, nullptr);
         EXPECT_EQ(screen->FlashFramesRemaining(), 0);
         EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);

@@ -37,8 +37,9 @@ namespace NS
         }
     }
 
-    //! ほかを止めている間 (Scene::HoldOthers) も段を回す場合 true、止める場合は false
-    //! 表はここ 1 か所。Actors は回すが、Update するのは止め始めたアクターだけ。管理役は止め始めた
+    //! シーンが止まっている間 (Scene::RequestStopScene) も段を回す場合 true、止める場合は false
+    //! 表はここ 1 か所。Actors は全部のアクターを Update し、止め始めたアクター以外は SceneActor::IsStopped で
+    //! 状態機械と体を止める。管理役は止め始めた
     //! アクターを見せる側 (カメラ・UI・描く支度) を回し、物理・判定・コースの進行・エフェクトを止める。
     //! カメラまで止めると、進み続ける止め始めたアクターが画面の中で動いて見える
     [[nodiscard]] constexpr bool RunsWhileOthersHeld(UpdatePhase phase) noexcept

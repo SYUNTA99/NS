@@ -290,7 +290,7 @@ namespace NS
         NS_REFLECT_END_VALUE()
     };
 
-    //! 長さの間、持ち主以外の世界を止める
+    //! 長さの間、持ち主以外の世界を止める (Scene::RequestStopScene)。始めた歩の次の歩から止まる
     struct HitOthersStopItem
     {
         std::string_view typeName = "OthersStop";
@@ -438,10 +438,6 @@ namespace NS
     class HitReaction : public Object
     {
     public:
-        //! シーンに 1 つの HitScreenDirector と PadRumbleDirector
-        //! を作る。更新の最中に作ると、そのフレームの段に間に合わない
-        void CreateDirectors(const SceneActor* owner);
-
         //! 持ち主の .actor (SceneActor::ActorFileName) から束を読み直す
         //! .actor が無ければ束は空。壊れた束は ReadHitReactionSets が ERROR を出して読まない
         void ReloadSets(const SceneActor* owner);

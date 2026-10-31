@@ -119,9 +119,8 @@ namespace NS
         //! 段の更新を終える。Scene が同じ段の管理役を回し終えてから呼ぶ
         void EndPhase() noexcept;
         //! 出ているアクターを並びの順に Update する。BeginPhase と EndPhase の間に呼ぶ
-        //! runs は 1 体ごとに Update の直前に問い、偽なら飛ばす。前のアクターの Update の中で変わった答えも
-        //! そのフレームの残りから効く。途中で消えたアクターと、途中で入ったアクターは呼ばない
-        void UpdateActors(const std::function<bool(const SceneActor*)>& runs);
+        //! 途中で消えたアクターと、途中で入ったアクターは呼ばない
+        void UpdateActors();
         //! 出ているアクターを並びの順に PrepareRender する。BeginPhase と EndPhase の間に呼ぶ
         void PrepareRenderActors();
         //! 出ているアクターを並びの順に m_scheduled へ積み直す

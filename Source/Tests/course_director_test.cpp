@@ -338,11 +338,13 @@ TEST(CourseDirector, RestartReleasesAHoldStartedByAnotherActor)
         }
     }
     ASSERT_NE(placed, nullptr);
-    scene.HoldOthers(placed, 30);
-    ASSERT_TRUE(scene.IsHoldingOthers());
+    scene.RequestStopScene(placed, 30);
+    // 頼んだ止めは次の歩の始めに効く
+    scene.OnUpdate();
+    ASSERT_TRUE(scene.IsSceneStopped());
 
     NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->RestartCourse();
-    EXPECT_FALSE(scene.IsHoldingOthers());
+    EXPECT_FALSE(scene.IsSceneStopped());
 }
 
 // リスポーンは自機を出し直さないので、自機が始めた止めは解かない
@@ -360,11 +362,13 @@ TEST(CourseDirector, RespawnKeepsAHoldStartedByThePlayer)
         }
     }
     ASSERT_NE(player, nullptr);
-    scene.HoldOthers(player, 30);
-    ASSERT_TRUE(scene.IsHoldingOthers());
+    scene.RequestStopScene(player, 30);
+    // 頼んだ止めは次の歩の始めに効く
+    scene.OnUpdate();
+    ASSERT_TRUE(scene.IsSceneStopped());
 
     NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene)->RespawnActors();
-    EXPECT_TRUE(scene.IsHoldingOthers());
+    EXPECT_TRUE(scene.IsSceneStopped());
 }
 
 TEST(CourseDirector, StartCourseStartsThePlayerAtRestFromThePlacedPose)

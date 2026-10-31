@@ -2,7 +2,6 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
@@ -48,7 +47,7 @@ TEST(PadRumbleDirector, BlendedVibrationsAddAndEndOnTheirOwnLength)
     NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
+    NS::PadRumbleDirector* pad = &scene.PadRumble();
     ASSERT_NE(pad, nullptr);
 
     const NS::HitPadVibration first = FadingLeft(0.5f, 4);
@@ -88,17 +87,17 @@ TEST(PadRumbleDirector, HitReactionStopWritesZero)
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
 }
 
-// PadRumbleDirector を捨てる時に 0 を書く。振動の途中で場面を捨てても、パッドが震え続けない
+// シーンがアクターを組み直す時に 0 を書く。振動の途中で場面を捨てても、パッドが震え続けない
 TEST(PadRumbleDirector, DiscardingTheDirectorWritesZero)
 {
     NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
+    NS::PadRumbleDirector* pad = &scene.PadRumble();
     ASSERT_NE(pad, nullptr);
     pad->Start(player, FadingLeft(1.0f, 30));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
-    scene.GetSceneSystemHolder()->Clear();
+    scene.ResetFromJson(NS::MakeSceneJson());
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
 }
 
@@ -108,7 +107,7 @@ TEST(PadRumbleDirector, BlendedSumAboveOneWritesOneAndKeepsRunning)
     NS::Scene scene;
     PlayerActor* player = PlacePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
+    NS::PadRumbleDirector* pad = &scene.PadRumble();
     ASSERT_NE(pad, nullptr);
 
     pad->Start(player, FadingLeft(0.75f, 4));

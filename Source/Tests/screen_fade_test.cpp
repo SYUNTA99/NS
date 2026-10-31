@@ -129,7 +129,7 @@ TEST(ScreenFade, SceneAdvancesOncePerStepWithoutWorldTimeWhileOthersAreHeld)
     scene.SetWorldSpeed(0.0f);
     // 止めを持つだけのアクター。暗転を進める物は無い
     const NS::SceneActor* holder = scene.SpawnActor<NS::SceneActor>("Holder");
-    scene.HoldOthers(holder, 10);
+    scene.RequestStopScene(holder, 10);
     scene.Fade().BeginOut(NS::OS::FrameTimer::FixedDelta() * 4.0f);
     scene.OnUpdate();
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.25f);

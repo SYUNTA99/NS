@@ -11,7 +11,9 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
+#include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
+#include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/CoreObject/System/PhysicsDirector.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "NSlib/CoreObject/System/SceneSystemHolder.h"
@@ -119,6 +121,14 @@ namespace NS
         [[nodiscard]] UIDirector& UI() noexcept { return m_ui; }
         [[nodiscard]] const UIDirector& UI() const noexcept { return m_ui; }
 
+        //! 当たりの画面の演出 (白・震えの線・歪みの輪・床の波)。HitReaction が頼む
+        [[nodiscard]] HitScreenDirector& HitScreen() noexcept { return m_hitScreen; }
+        [[nodiscard]] const HitScreenDirector& HitScreen() const noexcept { return m_hitScreen; }
+
+        //! パッドの振動。HitReaction が頼む
+        [[nodiscard]] PadRumbleDirector& PadRumble() noexcept { return m_padRumble; }
+        [[nodiscard]] const PadRumbleDirector& PadRumble() const noexcept { return m_padRumble; }
+
         //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
         [[nodiscard]] Phys::PhysicsScene& Physics() noexcept { return m_physics.Physics(); }
         [[nodiscard]] const Phys::PhysicsScene& Physics() const noexcept { return m_physics.Physics(); }
@@ -205,19 +215,20 @@ namespace NS
         //! shape は経過割合から復帰割合への曲線で、空なら直線。速度設定やシミュレーション切替で解除する
         void StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept;
 
-        //! holder 以外を steps 歩止める。止めている間に Update するアクターは holder だけ
-        //! 回す管理役は RunsWhileOthersHeld の表で決まる。呼んだ歩の残りから効き、その歩も数える。
-        //! 同じ holder の頼みは延長だけを受け、steps が 0 以下なら解く。止めている間は先に止め始めたアクターが止めを持ち、
-        //! ほかのアクターの頼み (延長も解くのも) は受けない。holder は番地と id で覚えて比べるだけなので、止めている間に
-        //! holder が一覧から外れても番地を読まず、止めは残りの歩で切れる。プレイ開始でも解く
-        //! @param[in] holder 止め始めるアクター。事前条件: nullptr でない
-        void HoldOthers(const SceneActor* holder, int steps) noexcept;
-        //! 止め始めたアクターに関わらず、ほかを止めているのを解く。アクターを出し直す側が、出し直す前に呼ぶ
-        void ReleaseOthersHold() noexcept { m_othersHeldSteps = 0; }
-        //! ほかを止めている場合 true、それ以外の場合は false
-        [[nodiscard]] bool IsHoldingOthers() const noexcept { return m_othersHeldSteps > 0; }
+        //! mover 以外のアクターを steps 歩止めるよう頼む。頼みを控えるだけで、呼んだ歩はそのまま最後まで進む。
+        //! 次の OnUpdate の始めに効き、そこから世界を進める歩を steps 歩数える。止まっている間も全部のアクターを
+        //! Update し、mover 以外は SceneActor::IsStopped が true になる。回す管理役は RunsWhileOthersHeld の表で決まる。
+        //! 同じ mover の頼みは延長だけを受け、steps が 0 以下なら解く。止めている間と、同じ歩に先に止めを頼まれた間は、
+        //! 先に頼んだアクターが止めを持ち、ほかのアクターの頼み (延長も解くのも) は受けない。mover は番地と id で
+        //! 覚えて比べるだけなので、止めている間に一覧から外れても番地を読まず、止めは残りの歩で切れる。プレイ開始でも解く
+        //! @param[in] mover 止め始めるアクター。事前条件: nullptr でない
+        void RequestStopScene(const SceneActor* mover, int steps) noexcept;
+        //! 止め始めたアクターに関わらず、止めと控えた頼みを今すぐ解く。アクターを出し直す側が、出し直す前に呼ぶ
+        void CancelStopScene() noexcept;
+        //! シーンが止まっている場合 true、それ以外の場合は false。控えただけの頼みでは true にならない
+        [[nodiscard]] bool IsSceneStopped() const noexcept { return m_stopSceneSteps > 0; }
         //! actor が今の止めを始めたアクターなら true
-        [[nodiscard]] bool IsOthersHolder(const SceneActor* actor) const noexcept;
+        [[nodiscard]] bool IsStopSceneMover(const SceneActor* actor) const noexcept;
 
         //! 減速中の経過に合わせた補間割合 0〜1。停止中は絵の変動を避けるため 1
         [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
@@ -264,10 +275,11 @@ namespace NS
         SceneActor* ReattachActor(DetachedActor detached);
 
         //! 固定更新の並びを UpdatePhase の順に実行する。アクターを回す段では、アクターの後に管理役を更新する
+        //! 始めに前の歩で頼まれた止めを効かせ、止まっているかはこの歩の間変えない
         void OnUpdate();
 
         //! 段 phase を 1 回だけ回す。OnUpdate が段ごとに呼ぶ
-        //! Actors は出ているアクターを並びの順に Update し (ほかを止めている間は止め始めたアクターだけ)、
+        //! Actors は出ているアクターを全部並びの順に Update し、
         //! RenderPrep は全部の出ているアクターの PrepareRender を呼ぶ。続いてその段に登録した管理役を登録順に更新する
         //! 回している間はアクターを解放する口を断る。再入は禁止
         void ExecutePhase(UpdatePhase phase);
@@ -305,8 +317,8 @@ namespace NS
         //! 実行時に入れたアクターの資産を引き当ててから開始する
         void StartSpawned(SceneActor* obj);
 
-        //! ほかを止めていないか、actor が止め始めたアクターなら true
-        [[nodiscard]] bool UpdatesWhileHeld(const SceneActor* actor) const noexcept;
+        //! 前の歩で控えた止めの頼みを効かせる。OnUpdate の始めにだけ呼ぶ
+        void ApplyStopSceneRequest() noexcept;
 
         // 描く物は持ち主の OnEndPlay で外れるので、アクターより先に宣言して後に破棄する
         SceneRenderer m_sceneRenderer;
@@ -315,6 +327,10 @@ namespace NS
         ScreenFadeDirector m_fade;
         // アクターが持つ画面は破棄で自分を外すので、アクターより先に宣言して後に破棄する
         UIDirector m_ui;
+        // 作る時に m_sceneRenderer へ重ね描きを入れ、破棄で外すので、m_sceneRenderer より後に宣言する。
+        // アクターの HitReaction が頼むので、アクターより先に宣言して後に破棄する
+        HitScreenDirector m_hitScreen{*this};
+        PadRumbleDirector m_padRumble;
 
         //! 衝突判定の PhysicsScene を持つ。Collision が出る時と動いた歩に body を入れる
         //! Collision が持ち主の OnDisappear で body を外し、Collider が借りるので、m_actors より先に宣言して後に破棄する
@@ -354,8 +370,13 @@ namespace NS
         float m_rampSeconds = 0.0f;            // 戻りの実時間の長さ (秒)
         float m_rampElapsed = 0.0f;            // 戻りを始めてからの実時間 (秒)
         Curve m_rampShape{};                   // 戻り方。点が無ければ直線
-        int m_othersHeldSteps = 0;             // ほかを止める残りの歩数
-        const SceneActor* m_othersHolder = nullptr; // 止め始めたアクター。消えた後もあり得るので比べるだけで読まない
-        uint32 m_othersHolderId = k_NoActorId; // 止め始めたアクターの id。m_othersHeldSteps が正の間だけ読む
+        int m_stopSceneSteps = 0;             // シーンを止める残りの歩数
+        const SceneActor* m_stopSceneMover = nullptr; // 止め始めたアクター。消えた後もあり得るので比べるだけで読まない
+        uint32 m_stopSceneMoverId = k_NoActorId; // 止め始めたアクターの id。m_stopSceneSteps が正の間だけ読む
+        // 控えた止めの頼み。次の OnUpdate の始めに効かせて消す。頼んだアクターは比べるだけで読まない
+        bool m_stopSceneRequested = false;
+        int m_requestedStopSceneSteps = 0;
+        const SceneActor* m_stopSceneRequester = nullptr;
+        uint32 m_stopSceneRequesterId = k_NoActorId;
     };
 } // namespace NS

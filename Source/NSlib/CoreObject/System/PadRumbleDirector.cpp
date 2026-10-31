@@ -3,18 +3,12 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/UpdatePhase.h"
 #include "NSlib/Core/Windows/Input.h"
 
 #include <algorithm>
 
 namespace NS
 {
-    PadRumbleDirector::PadRumbleDirector(Scene& scene)
-    {
-        scene.AddSystemTick(*this, UpdatePhase::RenderPrep);
-    }
-
     PadRumbleDirector::~PadRumbleDirector() noexcept
     {
         // 振動の途中で場面を捨てても、パッドを震わせたままにしない
@@ -22,6 +16,20 @@ namespace NS
         {
             (void)OS::Input::Get().Gamepad().SetVibration(0.0f, 0.0f);
         }
+    }
+
+    void PadRumbleDirector::Clear()
+    {
+        m_layers.clear();
+        // 振動していない時は書かない。ほかの物が書いたパッドの値を 0 で消さない
+        if (!m_running)
+        {
+            return;
+        }
+        m_elapsed = 0;
+        m_running = false;
+        m_justStarted = false;
+        Write();
     }
 
     void PadRumbleDirector::Start(const SceneActor* requester, const HitPadVibration& pad)

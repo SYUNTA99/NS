@@ -7,7 +7,6 @@
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
@@ -132,8 +131,8 @@ namespace
         {0.0f, 0.65f, 1.33333f, 1.0f, 0.0f, 1.0f, 1.00139f, 0.995833f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 3.0f, -6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 4.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, // -5
         {0.0f, 0.65f, 1.66667f, 1.0f, 0.0f, 1.0f, 1.00556f, 0.983333f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 3.0f, -6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 4.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, // -4
         {0.0f, 0.65f, 2.0f, 1.0f, 0.0f, 1.0f, 1.0125f, 0.9625f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 3.0f, -6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 4.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, // -3
-        {0.0f, 0.65f, 2.33333f, 1.0f, 0.0f, 1.0f, 1.02222f, 0.933333f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 3.0f, -6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 4.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, // -2
-        {0.0f, 0.65f, 2.66667f, 1.0f, 0.0f, 1.0f, 1.03472f, 0.895833f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 3.0f, -6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 4.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, // -1
+        {0.0f, 0.65f, 2.33333f, 1.0f, 0.0f, 1.0f, 1.02222f, 0.933333f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 3.0f, -6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 4.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, // -2
+        {0.0f, 0.65f, 2.66667f, 1.0f, 0.0f, 1.0f, 1.03472f, 0.895833f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 3.0f, -6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 4.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, // -1
         {0.0f, 0.65f, 2.78889f, 1.0f, 0.0f, 1.0f, 1.05f, 0.85f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 3.0f, -6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 4.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, // 0
         {0.0f, 0.65f, 2.78889f, 0.0f, 0.0f, 1.0f, 1.1f, 0.7f, 0.18485f, 0.0f, -0.0f, 0.0f, 0.0f, 0.468045f, 0.45f, 0.0f, -5.50269f, 1.0f, 0.0f, 0.0f, 0.0f, 3.0f, -6.0f, 0.0f, -0.0101902f, 2.0f, 0.9f, 1.0f, 0.0f, 1.0f, 0.0f, 0.6f, 1.3f, 0.0f, 3.50427f, 0.05f, 0.05f, 0.0f, 0.5f, 4.06f, 1.0f, 0.0f, 1.0f, 1.1f, 0.7f, 0.489521f, -0.0f, 0.0f, 0.0f, 1.71439f, 0.0f}, // 1
         {0.0f, 0.65f, 2.78889f, 0.0f, 0.0f, 1.0f, 1.1f, 0.7f, 0.119189f, 0.0f, -0.0f, 0.0f, 0.0f, 0.425495f, 0.45f, 0.0f, -7.78198f, 1.0f, 0.0f, 0.0f, 0.0f, 3.0f, -6.0f, 0.0f, -0.0144111f, 1.0f, 0.45f, 0.916667f, 0.0f, 1.0f, 0.0f, 0.966667f, 1.2625f, 0.0f, 3.50427f, 0.1f, 0.0483333f, 0.0f, 0.5f, 4.06f, 1.0f, 0.0f, 1.0f, 1.1f, 0.7f, 0.510331f, -0.0f, 0.0f, 0.0f, 1.55854f, 0.0f}, // 2
@@ -473,14 +472,14 @@ namespace
         row[i++] = pose.position.z;
         row[i++] = pose.screenOffset.x;
         row[i++] = pose.screenOffset.y;
-        const NS::HitScreenDirector& screen = *NS::FindSceneSystem<NS::HitScreenDirector>(player);
+        const NS::HitScreenDirector& screen = scene.HitScreen();
         row[i++] = static_cast<float>(screen.FlashFramesRemaining());
         row[i++] = screen.FlashAlpha();
         const NS::OS::GamepadVibration pad = NS::OS::Input::Get().Gamepad().Vibration();
         row[i++] = pad.left;
         row[i++] = pad.right;
         row[i++] = scene.WorldSpeed();
-        row[i++] = AsFloat(scene.IsHoldingOthers());
+        row[i++] = AsFloat(scene.IsSceneStopped());
         row[i++] = scene.GroundWaveShown().radius;
         row[i++] = scene.GroundWaveShown().strength;
         row[i++] = scene.GroundWaveShown().centerX;

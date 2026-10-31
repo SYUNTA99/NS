@@ -240,10 +240,12 @@ TEST(ActorLifecycle, AnotherActorWithoutAnIdIsNotTheHolderOfTheHold)
     ASSERT_NE(other, nullptr);
     ASSERT_EQ(holder->Id(), other->Id());
 
-    scene.HoldOthers(holder, 2);
+    scene.RequestStopScene(holder, 2);
+    // 頼んだ止めは次の歩の始めに効く
+    scene.OnUpdate();
 
-    EXPECT_TRUE(scene.IsOthersHolder(holder));
-    EXPECT_FALSE(scene.IsOthersHolder(other));
+    EXPECT_TRUE(scene.IsStopSceneMover(holder));
+    EXPECT_FALSE(scene.IsStopSceneMover(other));
 }
 
 TEST(ActorLifecycle, DisappearRemovesTheCollisionAndAppearBringsItBack)

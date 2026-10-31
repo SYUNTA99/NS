@@ -168,14 +168,14 @@ TEST(FollowCamera, KeepsFollowingTheHolderWhileOthersAreHeld)
     WalkingFollowScene world;
     ASSERT_NE(world.camera, nullptr);
     ASSERT_NE(world.target, nullptr);
-    world.scene.HoldOthers(world.target, 10);
+    world.scene.RequestStopScene(world.target, 10);
 
     for (int frame = 0; frame < 3; ++frame)
     {
         world.scene.OnUpdate();
     }
 
-    ASSERT_TRUE(world.scene.IsHoldingOthers());
+    ASSERT_TRUE(world.scene.IsSceneStopped());
     ASSERT_EQ(world.target->seenPositions.size(), 3u);
     EXPECT_NEAR(world.target->seenPositions[2].x, 3.0f, 1.0e-4f);
 }

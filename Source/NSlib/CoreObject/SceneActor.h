@@ -160,15 +160,18 @@ namespace NS
         [[nodiscard]] int HitStopFramesRemaining() const noexcept { return m_hitStopFrames; }
         //! 当たりの止めの間なら true
         [[nodiscard]] bool IsHitStopping() const noexcept { return m_hitStopFrames > 0; }
+        //! 止まっている場合 true。自分の当たりの止めの間か、シーンが止まっていて自分が止め始めたアクターでない時。
+        //! 止まったアクターは Update で状態機械と BodyStep を進めず、見た目は進める
+        [[nodiscard]] bool IsStopped() const noexcept;
 
         //! 1 固定フレームぶん進める。順は基盤が決め、派生は変えられない
         //! シーンは出ているアクターを全部、物理の前の 1 か所で一覧の順に 1 回ずつ呼ぶ
-        //! (止めている間は止め始めたアクターだけ)。中の順は次のとおりで、部品は基盤が挟む。
+        //! (シーンが止まっている間も呼ぶ)。中の順は次のとおりで、部品は基盤が挟む。
         //! - エフェクトの記録と、束が持ち主へ渡す項目を 1 フレーム進める
         //! - DecideStep を毎回 1 回
-        //! - 止めの間でも SkipStateStep を呼んだフレームでもなければ、状態機械を 1 歩・動作のタイムライン・
+        //! - IsStopped でも SkipStateStep を呼んだフレームでもなければ、状態機械を 1 歩・動作のタイムライン・
         //!   AfterStateStep を 1 回ずつ
-        //! - 止めの間でなければ BodyStep を 1 回 (状態機械の中で止めが始まったフレームは呼ばない)
+        //! - IsStopped でなければ BodyStep を 1 回 (状態機械の中で当たりの止めが始まったフレームは呼ばない)
         //! - 出ていれば当たりを体の姿へそろえ、Model の揺れと震えを進め、VisualStep を毎回 1 回
         //! - 止めの残りを 1 減らす
         void Update();

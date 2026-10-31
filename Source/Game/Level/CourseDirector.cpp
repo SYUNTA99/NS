@@ -133,9 +133,9 @@ namespace GL
         {
             // 止め始めたのが出し直すアクターなら、止めを残すと出し直したアクターが止まったまま待つ。
             // 出し直さないアクター (リスポーンの自機) が始めた止めは、そのアクターが続けているので残す
-            if (skip == nullptr || !m_scene.IsOthersHolder(skip))
+            if (skip == nullptr || !m_scene.IsStopSceneMover(skip))
             {
-                m_scene.ReleaseOthersHold();
+                m_scene.CancelStopScene();
             }
             for (NS::SceneActor* actor : PlacedActors(skip))
             {

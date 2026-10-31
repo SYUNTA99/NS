@@ -2,10 +2,10 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
+#include "NSlib/Core/Windows/Input.h"
 
 #include <gtest/gtest.h>
 
@@ -40,7 +40,7 @@ TEST(HitScreenDirector, FlashStartsAtFullAlphaAndFadesFromTheNextTick)
     NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
 
     screen->StartFlash(player, 3, 0.9f);
@@ -64,7 +64,7 @@ TEST(HitScreenDirector, ShakeLinesRunForTheirFrames)
     NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
     screen->StartShakeLines(player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 3);
@@ -86,7 +86,7 @@ TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
     ASSERT_NE(player, nullptr);
     NS::SceneActor* rock = scene.Actors().FindByActorId(2);
     ASSERT_NE(rock, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
 
     screen->StartFlash(rock, 3, 1.0f);
@@ -106,7 +106,7 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
     ASSERT_NE(player, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
     reaction->StartFlash(player, 4, 1.0f);
     reaction->StartShakeLines(player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 4});
@@ -117,15 +117,46 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
     EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 0);
 }
 
+// シーンがアクターを組み直すと、前の世界で頼んだ白・線・床の波・振動を次の世界へ残さない。
+// 頼み手は、消える時に自分で止めない置物にする
+TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
+{
+    NS::Scene scene;
+    ASSERT_NE(PlaceTwo(scene), nullptr);
+    const NS::SceneActor* rock = scene.Actors().FindByActorId(2);
+    ASSERT_NE(rock, nullptr);
+    NS::HitScreenDirector& screen = scene.HitScreen();
+    screen.StartFlash(rock, 30, 1.0f);
+    screen.StartShakeLines(rock, NS::HitShakeLinesDesc{.radius = 1.0f, .frames = 30});
+    NS::HitGroundWaveDesc wave;
+    wave.strength.count = 1;
+    wave.strength.keys[0] = NS::Curve::Key{0.0f, 1.0f};
+    wave.frames = 30;
+    screen.StartGroundWave(rock, wave);
+    ASSERT_GT(scene.GroundWaveShown().strength, 0.0f);
+    NS::HitPadVibration pad;
+    pad.left.count = 1;
+    pad.left.keys[0] = NS::Curve::Key{0.0f, 1.0f};
+    pad.frames = 30;
+    scene.PadRumble().Start(rock, pad);
+    ASSERT_FLOAT_EQ(NS::OS::Input::Get().Gamepad().Vibration().left, 1.0f);
+
+    scene.ResetFromJson(NS::MakeSceneJson());
+    EXPECT_EQ(screen.FlashFramesRemaining(), 0);
+    EXPECT_EQ(screen.ShakeLinesFramesRemaining(), 0);
+    EXPECT_FLOAT_EQ(scene.GroundWaveShown().strength, 0.0f);
+    EXPECT_FLOAT_EQ(NS::OS::Input::Get().Gamepad().Vibration().left, 0.0f);
+}
+
 // 描く支度の段で進むので、ほかを止めている間も薄れる
 TEST(HitScreenDirector, FlashKeepsFadingWhileOthersAreHeld)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
-    scene.HoldOthers(player, 10);
+    scene.RequestStopScene(player, 10);
     screen->StartFlash(player, 3, 1.0f);
     scene.OnUpdate();
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
@@ -172,7 +203,7 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
     NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
     NS::HitDistortionRingDesc desc;
     desc.center = NS::Vector3{1.0f, 2.0f, 3.0f};
@@ -218,7 +249,7 @@ TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
     ASSERT_NE(rock, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
     NS::HitDistortionRingDesc desc;
     desc.push.count = 1;

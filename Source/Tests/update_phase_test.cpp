@@ -116,19 +116,9 @@ namespace
     public:
         FrameLogActor(std::vector<std::string>& log, std::string label) : m_log(log), m_label(std::move(label)) {}
         void PrepareRender() override { m_log.push_back(m_label + ":render-prep"); }
-        // 正なら次の DecideStep で、この長さだけ自分以外を止め始める
-        int holdSteps = 0;
 
     protected:
-        void DecideStep() override
-        {
-            m_log.push_back(m_label);
-            if (holdSteps > 0)
-            {
-                OwningScene()->HoldOthers(this, holdSteps);
-                holdSteps = 0;
-            }
-        }
+        void DecideStep() override { m_log.push_back(m_label); }
 
     private:
         std::vector<std::string>& m_log;
@@ -246,104 +236,6 @@ TEST(ActorFrame, EveryActorRunsInTheListOrderBeforeThePhysics)
                                         "a:render-prep",
                                         "b:render-prep",
                                         "effects"}));
-}
-
-// 止めている間に Update するアクターは止め始めたアクターだけ。管理役は表のとおりで、描く支度は全部のアクター
-TEST(OthersHold, OnlyTheHolderUpdatesAndTheSystemsFollowTheTable)
-{
-    NS::Scene scene;
-    std::vector<std::string> log;
-    FrameLogActor* other = scene.SpawnActor<FrameLogActor>("Other", log, "other");
-    FrameLogActor* holder = scene.SpawnActor<FrameLogActor>("Holder", log, "holder");
-    ASSERT_NE(other, nullptr);
-    ASSERT_NE(holder, nullptr);
-    const PhaseTickers tickers(scene, log);
-    scene.HoldOthers(holder, 2);
-
-    for (int i = 0; i < 3; ++i)
-    {
-        scene.OnUpdate();
-    }
-
-    EXPECT_FALSE(scene.IsHoldingOthers());
-    for (const char* label : {"holder", "camera", "ui", "holder:render-prep", "other:render-prep"})
-    {
-        EXPECT_EQ(CountOf(log, label), 3) << label;
-    }
-    for (const char* label : {"other", "physics", "sensors", "course", "effects"})
-    {
-        EXPECT_EQ(CountOf(log, label), 1) << label;
-    }
-}
-
-// Update の中で止め始めると、そのフレームの残りから効く。一覧で止め始めたアクターより後のアクターは回らない
-TEST(OthersHold, AHoldStartedInAnUpdateSkipsTheActorsAfterTheHolderInThatFrame)
-{
-    NS::Scene scene;
-    std::vector<std::string> log;
-    scene.SpawnActor<FrameLogActor>("Before", log, "before");
-    FrameLogActor* holder = scene.SpawnActor<FrameLogActor>("Holder", log, "holder");
-    scene.SpawnActor<FrameLogActor>("After", log, "after");
-    ASSERT_NE(holder, nullptr);
-    holder->holdSteps = 1;
-
-    scene.OnUpdate();
-    EXPECT_EQ(CountOf(log, "before"), 1);
-    EXPECT_EQ(CountOf(log, "holder"), 1);
-    EXPECT_EQ(CountOf(log, "after"), 0);
-    EXPECT_FALSE(scene.IsHoldingOthers());
-
-    scene.OnUpdate();
-    EXPECT_EQ(CountOf(log, "after"), 1);
-}
-
-// 止めは先に止め始めたアクターが持つ。止めている間は、ほかのアクターの頼みは延ばすのも解くのも受けない
-TEST(OthersHold, TheFirstHolderKeepsTheHoldUntilItEndsOrReleasesIt)
-{
-    NS::Scene scene;
-    std::vector<std::string> log;
-    FrameLogActor* first = scene.SpawnActor<FrameLogActor>("First", log, "first");
-    FrameLogActor* second = scene.SpawnActor<FrameLogActor>("Second", log, "second");
-    ASSERT_NE(first, nullptr);
-    ASSERT_NE(second, nullptr);
-    scene.HoldOthers(first, 3);
-    scene.HoldOthers(second, 10);
-    scene.HoldOthers(second, 0);
-    EXPECT_TRUE(scene.IsHoldingOthers());
-
-    scene.OnUpdate();
-    EXPECT_EQ(CountOf(log, "first"), 1);
-    EXPECT_EQ(CountOf(log, "second"), 0);
-
-    scene.HoldOthers(first, 0);
-    EXPECT_FALSE(scene.IsHoldingOthers());
-    scene.OnUpdate();
-    EXPECT_EQ(CountOf(log, "first"), 2);
-    EXPECT_EQ(CountOf(log, "second"), 1);
-}
-
-// 止め始めたアクターが消えても、消えたアクターの番地を読まない。止めは残りのフレームで切れ、後から入ったアクターも
-// 止め始めたアクターと見なさない
-TEST(OthersHold, RemovingTheHolderKeepsTheOthersHeldUntilTheHoldEnds)
-{
-    NS::Scene scene;
-    std::vector<std::string> log;
-    FrameLogActor* holder = scene.SpawnActor<FrameLogActor>("Holder", log, "holder");
-    scene.SpawnActor<FrameLogActor>("Other", log, "other");
-    ASSERT_NE(holder, nullptr);
-    scene.HoldOthers(holder, 2);
-    scene.RemoveActor(holder->Id());
-    scene.SpawnActor<FrameLogActor>("Late", log, "late");
-
-    scene.OnUpdate();
-    scene.OnUpdate();
-    EXPECT_EQ(CountOf(log, "other"), 0);
-    EXPECT_EQ(CountOf(log, "late"), 0);
-    EXPECT_FALSE(scene.IsHoldingOthers());
-
-    scene.OnUpdate();
-    EXPECT_EQ(CountOf(log, "other"), 1);
-    EXPECT_EQ(CountOf(log, "late"), 1);
 }
 
 // 状態機械を進めるのは基盤だけ。進めたフレームは状態機械の後に AfterStateStep が 1 回呼ばれる
@@ -608,19 +500,6 @@ TEST(WorldSpeed, SettingTheSpeedStopsTheRamp)
     scene.SetSimulationEnabled(true);
     scene.OnUpdate();
     EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
-}
-
-TEST(OthersHold, ZeroStepsAndRestartingThePlayReleaseTheHold)
-{
-    NS::Scene scene;
-    const NS::SceneActor* holder = scene.SpawnActor<NS::SceneActor>("Holder");
-    ASSERT_NE(holder, nullptr);
-    scene.HoldOthers(holder, 3);
-    scene.HoldOthers(holder, 0);
-    EXPECT_FALSE(scene.IsHoldingOthers());
-    scene.HoldOthers(holder, 3);
-    scene.SetSimulationEnabled(true);
-    EXPECT_FALSE(scene.IsHoldingOthers());
 }
 
 // 局所の倍率は形の中心で掛かり、根の位置を動かさない。描く倍率の中心 (下端の真ん中) は倍率を掛けた形から測る
