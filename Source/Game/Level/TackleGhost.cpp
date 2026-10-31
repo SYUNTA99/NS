@@ -1,7 +1,9 @@
 #include "Game/Level/TackleGhost.h"
 
 #include "NSlib/Core/Assert.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
 
 #include <algorithm>
@@ -11,6 +13,85 @@ namespace GL
 {
     namespace Level
     {
+        void TackleGhost::Start(const NS::HitOwnerRun& run)
+        {
+            const NS::SceneActor* owner = ParentActor();
+            NS_ASSERT(Game, owner != nullptr, "残像に親アクターが無い");
+            if (run.length <= 0)
+            {
+                return;
+            }
+            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(owner);
+            if (!pose.has_value())
+            {
+                return;
+            }
+            const NS::HitOwnerItem& item = run.item;
+            const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(owner);
+            m_desc = TackleGhostDesc{
+                .axis = NS::Vector3{forward.z, 0.0f, -forward.x},
+                .spread =
+                    NS::ScreenPixelsToMeters(HitOwnerValue(item, "離れのピクセル", 0.0f), *pose, owner->Root().Position()),
+                .sideOpacity = HitOwnerValue(item, "左右の残像の不透明度", 0.0f),
+                .stopLength = run.length,
+                .releaseFrames = HitOwnerFrames(item, "明けの残像のフレーム数", 0),
+                .releaseOpacity = HitOwnerValue(item, "明けの残像の不透明度", 0.0f)};
+            m_frame = 0;
+            m_running = true;
+        }
+
+        void TackleGhost::OnInit()
+        {
+            NS_ASSERT(Game, ParentActor() != nullptr, "残像は本体の子アクターとして作る");
+            NS::InitDraw(this, this, &ParentActor()->Root());
+        }
+
+        void TackleGhost::OnAppear()
+        {
+            NS::SceneActor::OnAppear();
+            if (IsAppeared())
+            {
+                NS::ShowModel(this, this);
+            }
+        }
+
+        void TackleGhost::OnDisappear() noexcept
+        {
+            NS::SceneActor::OnDisappear();
+            NS::HideModel(this, this);
+        }
+
+        void TackleGhost::OnEndPlay()
+        {
+            Stop();
+            NS::SceneActor::OnEndPlay();
+            NS::EndDraw(this, this);
+        }
+
+        void TackleGhost::VisualStep()
+        {
+            if (!m_running)
+            {
+                return;
+            }
+            const NS::SceneActor* owner = ParentActor();
+            ++m_frame;
+            m_running = m_desc.WriteTo(this, m_frame, owner->ModelClassObj(), owner->Root().WorldMatrix());
+        }
+
+        void TackleGhost::Stop() noexcept
+        {
+            m_running = false;
+            (void)SetSpread(NS::Vector3{});
+            (void)SetAfterimageOpacity(0.0f);
+        }
+
+        void TackleGhost::ScaleOpacity(float scale) noexcept
+        {
+            m_desc.sideOpacity *= scale;
+            m_desc.releaseOpacity *= scale;
+        }
+
         bool TackleGhost::SetSpread(const NS::Vector3& spread) noexcept
         {
             if (!NS::IsFinite(spread))
@@ -60,8 +141,8 @@ namespace GL
                                   const NS::RenderSource& source,
                                   std::vector<NS::Gfx::DrawItem>& out)
         {
-            const NS::Model* model = source.model;
-            NS_ASSERT(Game, model != nullptr, "残像は InitDraw で元の Model と一緒に入れていない");
+            const NS::Model* model = ParentActor()->ModelClassObj();
+            NS_ASSERT(Game, model != nullptr, "残像の親アクターにModelが無い");
             if (model == nullptr || !model->CanDraw())
             {
                 return;
@@ -94,7 +175,7 @@ namespace GL
 
         NS::AABB TackleGhost::WorldBounds(const NS::RenderSource& source) const noexcept
         {
-            const NS::Model* model = source.model;
+            const NS::Model* model = ParentActor()->ModelClassObj();
             if (model == nullptr)
             {
                 return {};
@@ -120,7 +201,7 @@ namespace GL
 
         NS::Vector3 TackleGhost::SortCenter(const NS::RenderSource& source) const noexcept
         {
-            const NS::Model* model = source.model;
+            const NS::Model* model = ParentActor()->ModelClassObj();
             if (model == nullptr)
             {
                 return {};

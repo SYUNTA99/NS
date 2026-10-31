@@ -60,7 +60,8 @@ namespace GL
             [[nodiscard]] const LaunchEffects& Effects() const noexcept { return *m_effects; }
             [[nodiscard]] ImpactMarks& Marks() noexcept { return *m_marks; }
             [[nodiscard]] const ImpactMarks& Marks() const noexcept { return *m_marks; }
-            [[nodiscard]] const TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
+            [[nodiscard]] TackleGhost* Ghost() noexcept { return NS::Cast<TackleGhost>(ChildActor()); }
+            [[nodiscard]] const TackleGhost* Ghost() const noexcept { return NS::Cast<TackleGhost>(ChildActor()); }
 
         protected:
             //! 体当たりの問い・止め・明けと、コースのやり直しに応じる
@@ -137,15 +138,12 @@ namespace GL
                 bool active = false;
             };
             ReceivedHit m_received;
-            // 残像。知らせを受けたフレームの見た目の 1 歩を 1 フレーム目に数える。離れは食い込んだ後の根の奥行きで出す
-            TackleGhostRun m_ghost;
             struct CoursePose
             {
                 NS::Vector3 position;
                 NS::Quaternion rotation;
             };
             std::optional<CoursePose> m_coursePose; // MsgCourseStart の時の姿。やり直しで戻る先
-            TackleGhost m_tackleGhost; // 体当たりの残像。描く時に Model を渡されて描く
             NS::Vector3 m_freezeHome{};
             bool m_freezePlaced = true;
             LaunchArc m_arc;

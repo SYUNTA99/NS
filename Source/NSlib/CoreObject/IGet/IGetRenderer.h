@@ -29,9 +29,6 @@ namespace NS
     //! 描く物 renderable を、描く時に渡す持ち主の根 root と組にして入れる。出ている物として入る
     //! renderable と root は EndDraw まで生きていること
     void InitDraw(const IGetRenderer* user, IRenderable* renderable, const Transform* root);
-    //! 同じアクターの体をもう一度描く物を入れる。model は描くたびに renderable へ渡す元の Model
-    //! model も EndDraw まで生きていること
-    void InitDraw(const IGetRenderer* user, IRenderable* renderable, const Transform* root, const Model* model);
     //! 影を入れる。collision は影が描くたびに真下の地面を探すシーンで、影が持つ
     //! collision も EndDraw まで生きていること
     void InitDraw(const IGetRenderer* user, Shadow* shadow, const Transform* root, const IGetCollision* collision);

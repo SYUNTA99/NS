@@ -8,17 +8,12 @@ namespace NS
 {
     void InitDraw(const IGetRenderer* user, IRenderable* renderable, const Transform* root)
     {
-        InitDraw(user, renderable, root, static_cast<const Model*>(nullptr));
-    }
-
-    void InitDraw(const IGetRenderer* user, IRenderable* renderable, const Transform* root, const Model* model)
-    {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         NS_ASSERT(Scene, renderable != nullptr, "InitDraw: 描く物が null");
         NS_ASSERT(Scene, root != nullptr, "InitDraw: 持ち主の根が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->RegisterRenderable(renderable, root, model);
+            renderer->RegisterRenderable(renderable, root);
         }
     }
 

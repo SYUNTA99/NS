@@ -93,6 +93,12 @@ namespace NS
         //! 入るシーン。作る時の ActorInitInfo::scene で、OnInit の前から決まっている。シーンへ入らない物は nullptr
         [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
 
+        //! コードで作る子は親が所有し、シーンの配置一覧や独立した保存項目には入らない
+        [[nodiscard]] SceneActor* ParentActor() noexcept { return m_parent; }
+        [[nodiscard]] const SceneActor* ParentActor() const noexcept { return m_parent; }
+        [[nodiscard]] SceneActor* ChildActor() noexcept { return m_child.get(); }
+        [[nodiscard]] const SceneActor* ChildActor() const noexcept { return m_child.get(); }
+
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
@@ -169,7 +175,7 @@ namespace NS
         //! - 止めの間でも SkipStateStep を呼んだフレームでもなければ、状態機械を 1 歩・動作のタイムライン・
         //!   AfterStateStep を 1 回ずつ
         //! - 止めの間でなければ BodyStep を 1 回 (状態機械の中で止めが始まったフレームは呼ばない)
-        //! - 出ていれば当たりを体の姿へそろえ、Model の揺れと震えを進め、VisualStep を毎回 1 回
+        //! - 出ていれば当たりを体の姿へそろえ、Model の揺れと震え、子、VisualStep の順に進める
         //! - 止めの残りを 1 減らす
         void Update();
         virtual void PrepareRender();
@@ -205,6 +211,8 @@ namespace NS
             (void)other;
         }
 
+        //! 親から子の順に、一度だけ開始する
+        void Start();
         virtual void OnStart();
         //! Disappear で世界から外し、基底のメンバーの部品 (Model・Shadow・当たり・センサー) のうち作った物をシーンの仕組みから外す
         //! 消えたままでも外し、当たりの body は壊す。入れていない部品は何もしないので、2 回呼ばれてもよい
@@ -215,6 +223,22 @@ namespace NS
         void ReloadAssets();
 
     protected:
+        //! OnInitで子を1体作る。作成済みか開始後なら変更せずnullptr
+        //! 子のTransformは世界座標のまま。親の姿勢を使う子はParentActorから取得する
+        template <class T, class... TArgs>
+            requires std::derived_from<T, SceneActor>
+        T* CreateChildActor(TArgs&&... args)
+        {
+            if (m_child != nullptr || m_started)
+            {
+                return nullptr;
+            }
+            std::unique_ptr<T> child = std::make_unique<T>(std::forward<TArgs>(args)...);
+            T* raw = child.get();
+            InitChild(std::move(child));
+            return raw;
+        }
+
         //! 知らせを受け取る。応じた場合 true、知らない知らせと応じなかった知らせは false
         //! 呼べるのは SendMsg と SendMsgToActor だけ。sender と receiver は知らせを運んだセンサーで、
         //! センサーを介さない知らせでは nullptr
@@ -305,6 +329,8 @@ namespace NS
         //! OnInit で部品とセンサーを作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
         //! actorFile は .actor の名前として持つだけで、空ならクラスと同じ名前
         void InitWithCodeValues(std::string_view actorFile);
+        void InitChild(std::unique_ptr<SceneActor> child);
+        void RemoveDestroyedChildren();
         //! 補間の前の値として、根の Transform と Model の今の値を控える
         //! ActorList::SnapshotActors が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
@@ -350,7 +376,7 @@ namespace NS
             [[nodiscard]] std::strong_ordering operator<=>(const SceneOverrideKey& other) const noexcept = default;
         };
         std::set<SceneOverrideKey> m_sceneOverrides; // シーンで上書きしている (部品の鍵, 欄の名前)
-        Scene* m_scene = nullptr;    // 入るシーン。書くのは Init だけ
+        Scene* m_scene = nullptr;    // 入るシーン。子は InitChild で親と同じシーンに結び付ける
         Presence m_presence = Presence::Disappeared;
         std::unique_ptr<Transform> m_transform;
 
@@ -371,6 +397,9 @@ namespace NS
         float m_frameRate = 1.0f;     // 体の倍率。読み書きは GetFrameRate・SetFrameRate だけ
         int m_hitStopFrames = 0;      // 当たりの止めの残り。書くのは RequestHitStop・OverrideHitStop・Update だけ
         bool m_skipStateStep = false; // このフレームは状態機械を進めないか。書くのは SkipStateStep と Update の初めだけ
+        bool m_started = false;
+        SceneActor* m_parent = nullptr;
+        std::unique_ptr<SceneActor> m_child; // 親の部品より先に壊すので最後に置く
     };
 
     //! 体の倍率を返す。1 が等速

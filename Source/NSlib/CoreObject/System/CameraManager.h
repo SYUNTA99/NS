@@ -105,16 +105,6 @@ namespace NS
             return nullptr;
         }
 
-        //! 画面揺れを始める。揺れの途中なら新しい設定の最初の振れから始め直す
-        //! 揺れのモディファイアを作って積む補助。最初の横の振れは、始めた時のカメラの右と
-        //! firstSideDirection の内積が負なら左、それ以外は右へ向く
-        //! @param[in] requester 頼んだ物。nullptr は頼んだ物を問わない揺れ
-        //! @return 揺れを始めた場合 true、壊れた設定で何も変えなかった場合は false
-        bool StartShake(const CameraShakeDesc& desc, const IGetCamera* requester = nullptr);
-
-        //! 今のフレームの揺れのずれ。x がカメラの右、y が上 (m)。揺れていない時は 0
-        [[nodiscard]] Vector2 ShakeOffset() const noexcept;
-
         //! 寄りと傾きを始める。戻しの途中なら新しい倍率と傾きから始め直す
         //! 寄りと傾きのモディファイアを作って積む補助。傾きの向きは、始めた時のカメラの右と
         //! rollDirection の内積が負なら上端を左へ、それ以外は右へ倒す

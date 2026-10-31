@@ -25,20 +25,16 @@ namespace NS
         Transparent
     };
 
-    class Model;
-
     //! 描く物の管理クラスが、登録の組から描く物へ渡す持ち主の姿
     //! root は持ち主の根の世界行列。Collect には固定更新の間を補間した行列、
     //! WorldBounds と SortCenter には今の固定フレームの行列が入る。
-    //! model は同じアクターの体をもう一度描く物が元にする Model で、ほかの描く物では nullptr
     struct RenderSource
     {
         Matrix root = Matrix::Identity;
-        const Model* model = nullptr;
     };
 
     //! DrawItem を生成する描画部品のインターフェース。GPU への発行はシーン側が行う
-    //! 描く物は持ち主のアクターも根も覚えない。管理クラスが登録の組から姿を渡し、出ている間だけ呼ぶ
+    //! 管理クラスが登録の組から姿を渡し、出ている間だけ呼ぶ
     class IRenderable : public NonCopyable
     {
     public:
