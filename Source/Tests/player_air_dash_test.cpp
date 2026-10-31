@@ -1,4 +1,5 @@
 #include "Game/Level/ReboundDirections.h"
+#include "Game/Level/ReboundPreview.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/PlayerSounds.h"
@@ -1099,4 +1100,116 @@ TEST(PlayerAirDashTest, PlainFallHasFullAirControlFromTheFirstFrame)
     const float before = player->Body().Velocity().x;
     player->Update(false);
     EXPECT_NEAR(player->Body().Velocity().x - before, full, 1.0e-3f);
+}
+
+TEST(PlayerAirDashTest, WallAheadShowsTheBounceArrowBeforeTheDash)
+{
+    // 押す前から、倒している向きの壁に当たる点へ、当て方の向きと曲げられる先の矢印を出す
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Update(false);
+    ASSERT_FALSE(player->IsAirDashing());
+
+    const GL::Level::ReboundPreviewArrows* arrows = player->ReboundIndicator().ShownArrows();
+    ASSERT_NE(arrows, nullptr);
+    EXPECT_NEAR(arrows->origin.z, 3.0f, 1.0e-2f);
+    EXPECT_NEAR(arrows->assigned.z, -1.0f, 1.0e-3f) << "正面の壁は真後ろへ返る";
+    EXPECT_FALSE(arrows->choices.empty());
+    for (const NS::Vector3& choice : arrows->choices)
+    {
+        EXPECT_LT(choice.z, 0.0f) << "曲げられる先も壁から離れる";
+    }
+}
+
+TEST(PlayerAirDashTest, NoWallWithinTheDashDistanceHidesTheBounceArrow)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    // 壁と逆の -Z へ倒す
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, -1.0f}, 1.0f);
+    player->Update(false);
+    EXPECT_EQ(player->ReboundIndicator().ShownArrows(), nullptr);
+}
+
+TEST(PlayerAirDashTest, BounceArrowFollowsTheDashDirectionDuringTheDash)
+{
+    // 出した後は、倒し直しても出た向きの先の壁を指し続ける
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, -1.0f}, 1.0f);
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    const GL::Level::ReboundPreviewArrows* arrows = player->ReboundIndicator().ShownArrows();
+    ASSERT_NE(arrows, nullptr);
+    EXPECT_NEAR(arrows->origin.z, 3.0f, 1.0e-2f);
+}
+
+TEST(PlayerAirDashTest, WallBeyondTheDashReachShowsNoArrowBeforeOrDuringTheDash)
+{
+    // 欄「エアダッシュの距離」の 1.5 倍先の壁には届かず反動にならないので、押す前もダッシュの間も矢印を出さない。
+    // ダッシュの間は残りの距離で調べる。全部の距離で調べると、半ばを過ぎた所から届かない壁に矢印が出る
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const float distance = ParamsFields(player).at("エアダッシュの距離").get<float>();
+    const float wallFace = player->Root().Position().z + distance * 1.5f;
+    AddBox(scene, NS::Vector3{0.0f, 5.0f, wallFace + 0.5f}, NS::Vector3{20.0f, 20.0f, 0.5f});
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Update(false);
+    EXPECT_EQ(player->ReboundIndicator().ShownArrows(), nullptr) << "押す前";
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    int frame = 0;
+    while (player->IsAirDashing() && frame < AirDashLength(player) + 1)
+    {
+        EXPECT_EQ(player->ReboundIndicator().ShownArrows(), nullptr) << "ダッシュの " << frame << " フレーム目";
+        player->Update(true);
+        ++frame;
+    }
+}
+
+TEST(PlayerAirDashTest, ArrowStaysThroughTheReboundStopUntilTheDirectionIsChosen)
+{
+    // 止めの間はスティックで向きを選ぶ時なので、当たった面の矢印を出し続ける。明けで向きを選んだら消す
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    ASSERT_TRUE(DashIntoFrontWall(player));
+
+    const GL::Level::ReboundPreviewArrows* arrows = player->ReboundIndicator().ShownArrows();
+    ASSERT_NE(arrows, nullptr) << "当たったフレーム";
+    const NS::Vector3 assigned = player->AirDash().LastRebound().assigned;
+    EXPECT_NEAR(arrows->assigned.x, assigned.x, 1.0e-3f);
+    EXPECT_NEAR(arrows->assigned.z, assigned.z, 1.0e-3f);
+    EXPECT_NEAR(arrows->origin.z, 3.0f, 1.0e-1f);
+    EXPECT_FALSE(arrows->choices.empty());
+
+    // 当たったフレームを入れて、止めの最短のフレーム数の間は出し続ける
+    const int stopFrames = ParamsFields(player).at("反動の止めの最短のフレーム数").get<int>();
+    int shownFrames = 1;
+    while (shownFrames < 30)
+    {
+        player->Update(true);
+        if (player->ReboundIndicator().ShownArrows() == nullptr)
+        {
+            break;
+        }
+        ++shownFrames;
+    }
+    EXPECT_GE(shownFrames, stopFrames);
+    EXPECT_LT(shownFrames, 30) << "向きを選んだ後も消えない";
+    EXPECT_TRUE(player->IsDashRebounding());
+    EXPECT_LT(player->Body().Velocity().z, 0.0f) << "消えた時には壁から離れて飛んでいる";
 }

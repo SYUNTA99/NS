@@ -38,6 +38,18 @@ namespace NS
         return physics != nullptr && physics->OverlapsCapsule(capsule);
     }
 
+    bool CastCapsuleCollision(const IGetCollision* user,
+                              const Phys::Capsule& capsule,
+                              const Vector3& direction,
+                              float maxDistance,
+                              float minFacing,
+                              Phys::CapsuleCastHit& outHit)
+    {
+        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        const Phys::PhysicsScene* physics = user->GetPhysicsScene();
+        return physics != nullptr && physics->CastCapsule(capsule, direction, maxDistance, minFacing, outHit);
+    }
+
     void InitCollision(const IGetCollision* user, Collision* collision, const Matrix& world)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");

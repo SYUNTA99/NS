@@ -174,8 +174,7 @@ namespace GL
                                            const ScreenAxes& screen,
                                            const ReboundChoiceLimits& limits) noexcept
             {
-                if (!IsNeighbor(hit.assigned, direction, limits.stepRadians) ||
-                    !IsCandidate(direction, hit, screen, limits))
+                if (!CanShiftReboundTo(direction, hit, screen, limits))
                 {
                     return std::nullopt;
                 }
@@ -324,6 +323,15 @@ namespace GL
                 }
             }
             return found;
+        }
+
+        bool CanShiftReboundTo(const NS::Vector3& direction,
+                               const ReboundHit& hit,
+                               const ScreenAxes& screen,
+                               const ReboundChoiceLimits& limits) noexcept
+        {
+            return IsNeighbor(hit.assigned, direction, limits.stepRadians) &&
+                   IsCandidate(direction, hit, screen, limits);
         }
 
         ReboundChoice ChooseReboundDirection(std::span<const NS::Vector3> table,

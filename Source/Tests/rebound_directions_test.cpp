@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <initializer_list>
 #include <span>
 #include <vector>
@@ -13,6 +14,7 @@
 namespace
 {
     using GL::Level::AssignReboundDirection;
+    using GL::Level::CanShiftReboundTo;
     using GL::Level::ChooseReboundDirection;
     using GL::Level::DirectionStepRadians;
     using GL::Level::MakeReboundDirections;
@@ -289,6 +291,38 @@ TEST(ReboundDirectionsTest, TwoSameLookingStepsOnBothSidesKeepTheAssignedDirecti
         EXPECT_EQ(choice.result, ReboundInputResult::Kept) << "カメラ " << yaw;
         ExpectNear(choice.direction, hit.assigned);
     }
+}
+
+TEST(ReboundDirectionsTest, FrontWallBounceCanShiftToTheEightNeighborsAndInputOnlyPicksThem)
+{
+    // 正面の壁で真後ろへ返る所の曲げられる先は、傾きと水平の番号を 1 つまで動かした 8 つ。矢印はこの 8 つを描くので、
+    // どの向きへ入力しても、曲げた先はこの 8 つのどれか
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const ReboundHit hit = HitOn(table, NS::Vector3{0, 0, 1}, NS::Vector3{0, 0, -1});
+    const std::ptrdiff_t neighbors =std::count_if(table.begin(), table.end(), [&](const NS::Vector3& direction) {
+        return CanShiftReboundTo(direction, hit, BehindCamera(), Limits());
+    });
+    EXPECT_EQ(neighbors, 8);
+    EXPECT_FALSE(CanShiftReboundTo(hit.assigned, hit, BehindCamera(), Limits()));
+    for (int i = 0; i < 16; ++i)
+    {
+        const float angle = NS::k_Pi / 8.0f * static_cast<float>(i);
+        const ReboundChoice choice =
+            ChooseReboundDirection(table, hit, BehindCamera(), std::cos(angle), std::sin(angle), Limits());
+        if (choice.result == ReboundInputResult::Shifted)
+        {
+            EXPECT_TRUE(CanShiftReboundTo(choice.direction, hit, BehindCamera(), Limits())) << "入力の角度 " << i;
+        }
+    }
+}
+
+TEST(ReboundDirectionsTest, NeighborDeeperThanTheDashCannotBeShiftedTo)
+{
+    // 奥の下へ進んで正面の壁に当たり、手前の下へ返る所。隣の真後ろは当たる前より手前へ動くので、曲げられる先に入らない
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const ReboundHit hit = HitOn(table, NS::Vector3{0.0f, -k_Diagonal, k_Diagonal}, NS::Vector3{0, 0, -1});
+    EXPECT_FALSE(CanShiftReboundTo(NS::Vector3{0, 0, -1}, hit, BehindCamera(), Limits()));
+    EXPECT_TRUE(CanShiftReboundTo(NS::Vector3{-0.5f, -k_Diagonal, -0.5f}, hit, BehindCamera(), Limits()));
 }
 
 TEST(ReboundDirectionsTest, SlightlyTurnedCameraDoesNotTurnAFrontWallBounceSideways)

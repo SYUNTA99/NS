@@ -552,6 +552,8 @@ namespace NS
         shaders.fadePs = load("fade.ps.hlsl");
         shaders.screenRectVs = load("ui_rect.vs.hlsl");
         shaders.screenRectPs = load("ui_rect.ps.hlsl");
+        shaders.screenLineVs = load("ui_line.vs.hlsl");
+        shaders.screenLinePs = load("ui_line.ps.hlsl");
         shaders.skyboxVs = load("skybox.vs.hlsl");
         shaders.skyboxPs = load("skybox.ps.hlsl");
         shaders.debugLineVs = load("debug_line.vs.hlsl");

@@ -55,6 +55,7 @@ namespace GL
         class ImpactResolver;
         class TargetMarker;
         class SlamArrow;
+        class ReboundPreview;
         struct BodySlamMotion;
         struct ImpactAnswer;
         struct ImpactRecord;
@@ -111,6 +112,7 @@ public:
     [[nodiscard]] GL::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
     [[nodiscard]] GL::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
     [[nodiscard]] GL::Level::SlamArrow& SlamIndicator() noexcept { return *m_slamArrow; }
+    [[nodiscard]] GL::Level::ReboundPreview& ReboundIndicator() noexcept { return *m_reboundPreview; }
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
     [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept { return NS::Cast<GL::Level::TackleGhost>(ChildActor()); }
     [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept
@@ -374,8 +376,15 @@ private:
     // 内部ヘルパー：移動・エアダッシュ・地形反動
     // =========================================================================
     void MoveBody(float dt) noexcept;
+    //! 押せばエアダッシュを出せる状態か。残りの回数と今の状態だけを見て、押しは見ない
+    [[nodiscard]] bool AcceptsAirDash() const noexcept;
     [[nodiscard]] bool CanStartAirDash() const noexcept;
+    //! 今押した時にエアダッシュが出る水平の向き。倒していればその向き、倒していなければ向いている向きかカメラの前
+    [[nodiscard]] NS::Vector3 AirDashStartDirection() const noexcept;
     [[nodiscard]] bool BeginAirDash() noexcept;
+    //! @brief VisualStep から毎フレーム呼ぶ。エアダッシュを出せる間とエアダッシュの間に、進む先の地形に当たる点から
+    //! 反動の矢印を出す。進む向きは、出す前は AirDashStartDirection、出した後はエアダッシュの向き
+    void UpdateReboundPreview();
     [[nodiscard]] float AirDashSpeed() const noexcept;
     void TryBeginTerrainRebound() noexcept;
     //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、当てた速さで返し、欄「反動の止めの最短のフレーム数」だけ止める
@@ -388,6 +397,8 @@ private:
     void ChooseReboundAtRelease() noexcept;
     //! 今の入力で、最後の反動の返る向きを表から選ぶ。入力が無ければ割り当てた向きのまま
     [[nodiscard]] GL::Level::ReboundChoice ChooseReboundInput() const noexcept;
+    //! 入力補正で選べる幅。欄の角度と表の分割数から作る。向きを選ぶ所と矢印が同じ幅を使う
+    [[nodiscard]] GL::Level::ReboundChoiceLimits ReboundLimits() const noexcept;
     //! @brief 選んだ向きを掛ける。合った時は速さを欄「向きが合った時の返る速さの倍率」で強め、変えた時は飛んでいる
     //! 速さを保って向きを回し、走っている演出を弱めて振動を重ねる
     void ApplyReboundChoice(const GL::Level::ReboundChoice& choice) noexcept;
@@ -460,6 +471,7 @@ private:
     std::unique_ptr<GL::Level::ImpactResolver> m_resolver;
     std::unique_ptr<GL::Level::TargetMarker> m_targetMarker;
     std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
+    std::unique_ptr<GL::Level::ReboundPreview> m_reboundPreview;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;
     bool m_slowedWorld = false;

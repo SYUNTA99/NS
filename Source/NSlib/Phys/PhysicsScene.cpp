@@ -17,6 +17,7 @@
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/ShapeCast.h>
 
 namespace NS
 {
@@ -300,6 +301,100 @@ namespace NS
             m_physicsSystem.GetNarrowPhaseQuery().CollideShape(
                 part.shape, JPH::Vec3::sOne(), transform, JPH::CollideShapeSettings{}, JPH::RVec3::sZero(), collector);
             return collector.HadHit();
+        }
+
+        bool PhysicsScene::CastCapsule(const Capsule& capsule,
+                                       const Vector3& direction,
+                                       float maxDistance,
+                                       float minFacing,
+                                       CapsuleCastHit& outHit) const
+        {
+            const float directionLength = direction.Length();
+            if (!IsPositiveFinite(maxDistance) || !IsPositiveFinite(directionLength) || !IsFinite(capsule.center) ||
+                !std::isfinite(minFacing))
+            {
+                return false;
+            }
+            const ShapePart part = MakeCapsulePart(capsule);
+            if (part.shape == nullptr)
+            {
+                return false;
+            }
+            const Vector3 unit = direction / directionLength;
+            const JPH::RMat44 start = JPH::RMat44::sRotationTranslation(ToJolt(part.rotation), ToJolt(part.position));
+            const JPH::RShapeCast cast{part.shape, JPH::Vec3::sOne(), start, ToJolt(unit * maxDistance)};
+
+            // 進む向きに向かい合う面のうち、一番手前の物だけを残す。Jolt の ClosestHit は向きを見ないので、
+            // 投げる前から触れている床が距離 0 で勝ち、奥の壁を隠す
+            class FacingHitCollector final : public JPH::CastShapeCollector
+            {
+            public:
+                FacingHitCollector(JPH::Vec3 unitDirection, float facing) noexcept
+                    : m_direction(unitDirection), m_minFacing(facing)
+                {
+                }
+
+                void AddHit(const JPH::ShapeCastResult& result) override
+                {
+                    if (result.mFraction >= GetEarlyOutFraction())
+                    {
+                        return;
+                    }
+                    const JPH::Vec3 normal = SurfaceNormal(result);
+                    if (-m_direction.Dot(normal) < m_minFacing)
+                    {
+                        return;
+                    }
+                    m_hit = result;
+                    m_normal = normal;
+                    m_hasHit = true;
+                    UpdateEarlyOutFraction(result.mFraction);
+                }
+
+                JPH::ShapeCastResult m_hit;
+                JPH::Vec3 m_normal = JPH::Vec3::sZero();
+                bool m_hasHit = false;
+
+            private:
+                // 動く体 (JoltCharacter が使う CharacterVirtual) が接触の面として読む法線と同じ規則で決める。
+                // 接触の法線 (当たった点から形の中心への向き) のままだと、角や縁で動く体と別の面の法線になる
+                [[nodiscard]] JPH::Vec3 SurfaceNormal(const JPH::ShapeCastResult& result) const
+                {
+                    // 押し出す軸は当たった相手へ向くので、相手の面の外向きはその逆
+                    const JPH::Vec3 contact = -result.mPenetrationAxis.NormalizedOr(JPH::Vec3::sZero());
+                    const JPH::TransformedShape* body = GetContext();
+                    if (body == nullptr)
+                    {
+                        return contact;
+                    }
+                    JPH::Vec3 surface = body->GetWorldSpaceSurfaceNormal(result.mSubShapeID2, result.mContactPointOn2);
+                    // 裏の面に当たった時は返す。CharacterVirtual と同じく、1° までの差は裏と見なさない
+                    if (contact.Dot(surface) < -std::sin(DegreesToRadians(1.0f)))
+                    {
+                        surface = -surface;
+                    }
+                    const JPH::Vec3 up = -ToJolt(k_GravityDirection);
+                    if (contact.Dot(up) > surface.Dot(up))
+                    {
+                        return contact;
+                    }
+                    return surface;
+                }
+
+                JPH::Vec3 m_direction;
+                float m_minFacing;
+            };
+
+            FacingHitCollector collector{ToJolt(unit), minFacing};
+            m_physicsSystem.GetNarrowPhaseQuery().CastShape(cast, JPH::ShapeCastSettings{}, JPH::RVec3::sZero(), collector);
+            if (!collector.m_hasHit)
+            {
+                return false;
+            }
+            outHit.distance = collector.m_hit.mFraction * maxDistance;
+            outHit.point = FromJolt(collector.m_hit.mContactPointOn2);
+            outHit.normal = FromJolt(collector.m_normal);
+            return true;
         }
     } // namespace Phys
 } // namespace NS

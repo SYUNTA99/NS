@@ -11,13 +11,16 @@
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/D3DDevice.h"
 
+#include <cmath>
+
 namespace NS
 {
     namespace Gfx
     {
         ScreenOverlay::ScreenOverlay(D3DDevice* device, const BuiltinShaders& shaders) noexcept
             : m_device(device), m_fullscreenVs(shaders.fullscreenVs), m_fadePs(shaders.fadePs),
-              m_screenRectVs(shaders.screenRectVs), m_screenRectPs(shaders.screenRectPs)
+              m_screenRectVs(shaders.screenRectVs), m_screenRectPs(shaders.screenRectPs),
+              m_screenLineVs(shaders.screenLineVs), m_screenLinePs(shaders.screenLinePs)
         {
             NS_ASSERT(Graphics, device != nullptr, "null の device で ScreenOverlay を作っている");
         }
@@ -127,6 +130,63 @@ namespace NS
             cbData.rect[3] = height / targetHeight * 2.0f;
             cbData.color = color;
             DrawPass(m_screenRect, *m_screenRectVs, *m_screenRectPs, &cbData, sizeof(cbData), 6, true);
+        }
+
+        bool MakeScreenLineConstants(float startX,
+                                     float startY,
+                                     float endX,
+                                     float endY,
+                                     float thickness,
+                                     const Color& color,
+                                     Size2D targetSize,
+                                     ScreenLineCB& outLine) noexcept
+        {
+            if (targetSize.width <= 0 || targetSize.height <= 0 || !IsPositiveFinite(thickness))
+            {
+                return false;
+            }
+            const float dx = endX - startX;
+            const float dy = endY - startY;
+            const float length = std::sqrt(dx * dx + dy * dy);
+            if (!IsPositiveFinite(length))
+            {
+                return false;
+            }
+            // 垂直な向きはピクセルで作る。クリップ空間で作ると、横長の画面で斜めの線の太さが向きで変わる
+            const float halfX = -dy / length * thickness * 0.5f;
+            const float halfY = dx / length * thickness * 0.5f;
+            const float targetWidth = static_cast<float>(targetSize.width);
+            const float targetHeight = static_cast<float>(targetSize.height);
+            const auto toClipX = [targetWidth](float x) { return x / targetWidth * 2.0f - 1.0f; };
+            const auto toClipY = [targetHeight](float y) { return 1.0f - y / targetHeight * 2.0f; };
+
+            ScreenLineCB line{};
+            line.cornersA[0] = toClipX(startX + halfX);
+            line.cornersA[1] = toClipY(startY + halfY);
+            line.cornersA[2] = toClipX(startX - halfX);
+            line.cornersA[3] = toClipY(startY - halfY);
+            line.cornersB[0] = toClipX(endX + halfX);
+            line.cornersB[1] = toClipY(endY + halfY);
+            line.cornersB[2] = toClipX(endX - halfX);
+            line.cornersB[3] = toClipY(endY - halfY);
+            line.color = color;
+            outLine = line;
+            return true;
+        }
+
+        void ScreenOverlay::DrawScreenLine(
+            float startX, float startY, float endX, float endY, float thickness, const Color& color) noexcept
+        {
+            if (!EnsurePass(m_screenLine, m_screenLineVs, m_screenLinePs, sizeof(ScreenLineCB), "UI 線"))
+            {
+                return;
+            }
+            ScreenLineCB cbData{};
+            if (!MakeScreenLineConstants(startX, startY, endX, endY, thickness, color, m_device->Size(), cbData))
+            {
+                return;
+            }
+            DrawPass(m_screenLine, *m_screenLineVs, *m_screenLinePs, &cbData, sizeof(cbData), 6, true);
         }
     } // namespace Gfx
 } // namespace NS

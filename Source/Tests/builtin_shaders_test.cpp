@@ -29,12 +29,14 @@ namespace
         return NS::OS::FileSystem::WriteAllBytes(path, std::as_bytes(std::span<const char>{text.data(), text.size()}));
     }
 
-    std::array<NS::Gfx::D3DShader*, 14> AllShaders(const NS::Gfx::BuiltinShaders& shaders)
+    std::array<NS::Gfx::D3DShader*, 16> AllShaders(const NS::Gfx::BuiltinShaders& shaders)
     {
         return {shaders.fullscreenVs,
                 shaders.fadePs,
                 shaders.screenRectVs,
                 shaders.screenRectPs,
+                shaders.screenLineVs,
+                shaders.screenLinePs,
                 shaders.skyboxVs,
                 shaders.skyboxPs,
                 shaders.debugLineVs,
@@ -233,13 +235,13 @@ TEST(BuiltinShaders, EachFileIsLoadedOnceAndSharedByThePasses)
     const NS::Gfx::BuiltinShaders first = assets.LoadBuiltinShaders();
     const NS::Gfx::BuiltinShaders second = assets.LoadBuiltinShaders();
 
-    const std::array<NS::Gfx::D3DShader*, 14> firstShaders = AllShaders(first);
-    const std::array<NS::Gfx::D3DShader*, 14> secondShaders = AllShaders(second);
+    const std::array<NS::Gfx::D3DShader*, 16> firstShaders = AllShaders(first);
+    const std::array<NS::Gfx::D3DShader*, 16> secondShaders = AllShaders(second);
     EXPECT_EQ(firstShaders, secondShaders);
     const std::set<NS::Gfx::D3DShader*> distinct(firstShaders.begin(), firstShaders.end());
-    EXPECT_EQ(distinct.size(), 14u);
+    EXPECT_EQ(distinct.size(), 16u);
     EXPECT_EQ(distinct.count(nullptr), 0u);
     // 読み直せた本数で、AssetManager が持つシェーダーの数を見る
-    // 綴りの違う道で同じ fade.vs.hlsl をもう 1 つ作ると 15 になる
-    EXPECT_EQ(assets.ReloadAllShaders(), 14u);
+    // 綴りの違う道で同じ fade.vs.hlsl をもう 1 つ作ると 17 になる
+    EXPECT_EQ(assets.ReloadAllShaders(), 16u);
 }

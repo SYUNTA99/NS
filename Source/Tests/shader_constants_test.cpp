@@ -171,6 +171,19 @@ TEST(ShaderConstants, ScreenRectShadersMatchTheScreenRectConstants)
         HasConstantBuffer(*ps.reflection.Get(), "UiRectCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::ScreenRectCB)));
 }
 
+TEST(ShaderConstants, ScreenLineShadersMatchTheScreenLineConstants)
+{
+    const ReflectedShader vs = Reflect(L"Shaders/ui_line.vs.hlsl", "VSMain", "vs_5_0");
+    ASSERT_NE(vs.reflection, nullptr) << vs.error;
+    EXPECT_TRUE(
+        HasConstantBuffer(*vs.reflection.Get(), "UiLineCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::ScreenLineCB)));
+
+    const ReflectedShader ps = Reflect(L"Shaders/ui_line.ps.hlsl", "PSMain", "ps_5_0");
+    ASSERT_NE(ps.reflection, nullptr) << ps.error;
+    EXPECT_TRUE(
+        HasConstantBuffer(*ps.reflection.Get(), "UiLineCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::ScreenLineCB)));
+}
+
 TEST(ShaderConstants, SkyboxVertexShaderMatchesTheSkyboxConstants)
 {
     const ReflectedShader shader = Reflect(L"Shaders/skybox.vs.hlsl", "VSMain", "vs_5_0");
