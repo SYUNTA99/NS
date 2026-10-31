@@ -154,12 +154,16 @@ void PlayerActor::KeepAirDashExitSpeed() noexcept
 
 void PlayerActor::UpdateDashRebound(float dt) noexcept
 {
+    // 止めの間は状態機械が回らないので、反動の最初の歩が止めの明けたフレームになる
+    if (!m_airDash.m_reboundChosen)
+    {
+        ChooseReboundAtRelease();
+    }
     m_airDash.m_reboundElapsed += dt;
     const float lock = m_params->m_reboundLockSeconds;
     // 操作なしの段は、床の上で返っても段の秒まで続ける。返った勢いを見せる長さを当てた所で変えない
     if (m_airDash.m_reboundElapsed <= lock)
     {
-        ApplyReboundShift();
         return;
     }
     if (GL::Player::PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity()))
@@ -278,20 +282,61 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
     m_airDash.m_reboundElapsed = 0.0f;
     m_airDash.m_steeredRadians = 0.0f;
     m_airDash.m_steerStarted = false;
-    m_airDash.m_shiftApplied = false;
+    m_airDash.m_reboundChosen = false;
+    m_airDash.m_reboundStopFrames = 1;
     StartAirControlReturn();
     (void)m_states->Change<GL::Player::DashReboundPlayerState>();
-    // 当たる前から入れていた入力は、当たったフレームに選ぶ。合っていたら強い束で始める
-    const GL::Level::ReboundChoice choice = ChooseReboundInput();
+    // 入力が合ったかは明けまで分からないので、当たったフレームの束は当て方だけで選ぶ
+    m_playerSounds->PlayRebound(this);
     StartTerrainReboundReaction(Root().Position() - normal * m_collider->CapsuleRadius(),
-                                facing,
-                                choice.result == GL::Level::ReboundInputResult::Matched);
+                                facing >= m_params->m_reboundFullFacing);
+    // 止めの間にスティックを入れる猶予。向きは明けのフレームに ChooseReboundAtRelease が選ぶ
+    RequestHitStop(m_params->m_reboundStopMinFrames);
+}
+
+void PlayerActor::ExtendReboundStop() noexcept
+{
+    const NS::Vector3 stick = DesiredDirection() * DesiredSpeedScale();
+    const float moved = (stick - m_airDash.m_prevStick).Length();
+    m_airDash.m_prevStick = stick;
+    // 延ばすのは、地形に当たってから向きを選ぶまでの間だけ。ほかの当たりの止めと、向きを選んだ後の止めは延ばさない
+    if (!IsDashRebounding() || m_airDash.m_reboundChosen)
+    {
+        return;
+    }
+    if (IsHitStopping())
+    {
+        m_airDash.m_reboundStopFrames = m_airDash.m_reboundStopFrames + 1;
+    }
+    // 1 フレーム足すのは、止めの最後のフレームか、止めが明けて向きを選ぶはずのフレームだけ。
+    // 明けるフレームで足すとそのフレームから止まるので、最短が 1 以下でも延ばせる。止めの残りを数えるのは基盤の止めだけにする
+    if (moved <= m_params->m_reboundStopStickChange || HitStopFramesRemaining() > 1 ||
+        m_airDash.m_reboundStopFrames >= m_params->m_reboundStopMaxFrames)
+    {
+        return;
+    }
+    if (!IsHitStopping())
+    {
+        m_airDash.m_reboundStopFrames = m_airDash.m_reboundStopFrames + 1;
+    }
+    RequestHitStop(HitStopFramesRemaining() + 1);
+}
+
+void PlayerActor::ChooseReboundAtRelease() noexcept
+{
+    m_airDash.m_reboundChosen = true;
+    const GL::Level::ReboundChoice choice = ChooseReboundInput();
+    const GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
+    // 当たったフレームが弱い束だった時に入力が合ったら、選んだこのフレームに強い束へ替える
+    if (choice.result == GL::Level::ReboundInputResult::Matched && hit.facing < m_params->m_reboundFullFacing)
+    {
+        StartTerrainReboundReaction(hit.point - hit.normal * m_collider->CapsuleRadius(), true);
+    }
     ApplyReboundChoice(choice);
 }
 
-void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float facing, bool matched) noexcept
+void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, bool full) noexcept
 {
-    m_playerSounds->PlayRebound(this);
     NS::HitReaction* reaction = HitReactionClassObj();
     NS::HitSensor* self = m_bodyHitSensor;
     if (reaction == nullptr || self == nullptr)
@@ -299,7 +344,7 @@ void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float 
         return;
     }
     std::string_view name = "地形の反動[弱い]";
-    if (matched || facing >= m_params->m_reboundFullFacing)
+    if (full)
     {
         name = "地形の反動[全部]";
     }
@@ -357,15 +402,6 @@ std::vector<NS::Vector3> PlayerActor::ReboundTable() const
     return GL::Level::MakeReboundDirections(m_params->m_reboundTableDivisions, shape);
 }
 
-void PlayerActor::ApplyReboundShift() noexcept
-{
-    if (m_airDash.m_shiftApplied)
-    {
-        return;
-    }
-    ApplyReboundChoice(ChooseReboundInput());
-}
-
 GL::Level::ReboundChoice PlayerActor::ChooseReboundInput() const noexcept
 {
     const GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
@@ -397,7 +433,6 @@ void PlayerActor::ApplyReboundChoice(const GL::Level::ReboundChoice& choice) noe
     }
     GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
     hit.input = choice.result;
-    m_airDash.m_shiftApplied = true;
     if (choice.result == GL::Level::ReboundInputResult::Matched)
     {
         // 続けて当たる時は今の速さで返るので、合うたびに倍率が積もらないよう、エアダッシュで当てた速さの倍率までにする。

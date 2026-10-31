@@ -130,7 +130,8 @@ namespace GL
                 m_reboundElapsed = 0.0f;
                 m_steeredRadians = 0.0f;
                 m_steerStarted = false;
-                m_shiftApplied = false;
+                m_reboundStopFrames = 0;
+                m_reboundChosen = false;
             }
 
         private:
@@ -145,7 +146,9 @@ namespace GL
             float m_reboundElapsed = 0.0f;
             float m_steeredRadians = 0.0f; // 補正の段で曲げた角度の累計
             bool m_steerStarted = false;   // 補正の段に入ってダッシュを戻したか
-            bool m_shiftApplied = false;   // 今の反動でずらしを掛けたか。掛けるのは反動 1 回に 1 度
+            NS::Vector3 m_prevStick{};     // 直前の歩の左スティック (向き × 倒した量)。止めを延ばすかを動いた量で見る
+            int m_reboundStopFrames = 0;   // 今の反動で止めたフレーム数。当たったフレームを入れて数える
+            bool m_reboundChosen = false;  // 今の反動の向きを、止めが明けたフレームに選んだか。選ぶのは反動 1 回に 1 度
             NS::uint32 m_reboundCount = 0;
             TerrainReboundRecord m_last{};
         };

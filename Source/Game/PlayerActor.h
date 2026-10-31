@@ -378,13 +378,14 @@ private:
     [[nodiscard]] bool BeginAirDash() noexcept;
     [[nodiscard]] float AirDashSpeed() const noexcept;
     void TryBeginTerrainRebound() noexcept;
-    //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、当てた速さで返す
-    //! @details 当たる前から入れていた入力は、このフレームに入力補正を掛ける。後から入れた入力は ApplyReboundShift が掛ける
+    //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、当てた速さで返し、欄「反動の止めの最短のフレーム数」だけ止める
+    //! @details 入力補正はここでは掛けない。止めが明けたフレームに ChooseReboundAtRelease が掛ける
     //! @param[in] baseSpeed 返る速さ (m/s)。エアダッシュならダッシュの速さに地形の反動の倍率を掛けた値、反動の続きなら今の速さ
     void BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vector3& normal, float baseSpeed) noexcept;
-    //! @brief 反動の操作なしの段の間に呼ぶ。入力で返る向きが選べたら、入力補正を掛ける
-    //! @details 掛けるのは反動 1 回に 1 度
-    void ApplyReboundShift() noexcept;
+    //! @brief DecideStep から毎フレーム呼ぶ。反動の止めの間に左スティックが動いていたら、欄「反動の止めの上限のフレーム数」まで止めを 1 フレーム延ばす
+    void ExtendReboundStop() noexcept;
+    //! @brief 止めが明けたフレームに 1 度だけ呼ぶ。今の入力で返る向きを選んで入力補正を掛け、合った時は弱い束を強い束に替える
+    void ChooseReboundAtRelease() noexcept;
     //! 今の入力で、最後の反動の返る向きを表から選ぶ。入力が無ければ割り当てた向きのまま
     [[nodiscard]] GL::Level::ReboundChoice ChooseReboundInput() const noexcept;
     //! @brief 選んだ向きを掛ける。合った時は速さを欄「向きが合った時の返る速さの倍率」で強め、変えた時は飛んでいる
@@ -396,9 +397,9 @@ private:
     [[nodiscard]] GL::Level::ScreenAxes ReboundScreenAxes() const noexcept;
     //! 今の入力を、カメラから見た向きのまま、返る向き assigned に垂直な面の向きにする。入力が無ければゼロ
     [[nodiscard]] NS::Vector3 ReboundShiftInput(const NS::Vector3& assigned) const noexcept;
-    //! @brief 地形の反動の束を始める。入力が返る向きと合っていたか、当て方が強ければ強い束を選ぶ
+    //! @brief 地形の反動の束を始める。full なら強い束、偽なら弱い束。音は鳴らさない
     //! @details 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。向きを使う項目は向き無しになる
-    void StartTerrainReboundReaction(const NS::Vector3& contact, float facing, bool matched) noexcept;
+    void StartTerrainReboundReaction(const NS::Vector3& contact, bool full) noexcept;
     //! 入力補正で向きを変えた時の演出。走っている演出と残像を弱め、振動の束を重ねる
     void StartShiftedReboundReaction() noexcept;
     //! 欄「反動の線を描く」が真なら、最後の地形の反動の向きの線と、今の段の輪を描く

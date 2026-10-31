@@ -158,6 +158,9 @@ namespace GL
             NS_FIELD(m_reboundShiftedEffectScale, "ずらした時の演出の強さの倍率", NS::FieldRange::NonNegative())
             NS_FIELD(m_reboundMinFacing, "反動に数える当て方の下限")
             NS_FIELD(m_reboundFullFacing, "全部返ったに数える当て方の下限")
+            NS_FIELD(m_reboundStopMinFrames, "反動の止めの最短のフレーム数")
+            NS_FIELD(m_reboundStopMaxFrames, "反動の止めの上限のフレーム数")
+            NS_FIELD(m_reboundStopStickChange, "スティックが動いているとみなす変化", NS::FieldRange::NonNegative())
             NS_FIELD(m_reboundLockSeconds, "反動の操作なしの秒")
             NS_FIELD(m_reboundSteerEndSeconds, "反動の補正が終わる秒")
             NS_FIELD(m_dashReboundGravity, "地形の反動の重力")
@@ -311,6 +314,10 @@ namespace GL
             // 当て方は進む向きと面の法線の内積の大きさ。下限より浅い当たりは掃引の滑りに任せる
             float m_reboundMinFacing = 0.2f;
             float m_reboundFullFacing = 0.9f; // これ以上なら強い演出の束を始める
+            // 地形に当たったフレームを入れて数える止め。止めが明けたフレームのスティックで反動の向きを選ぶ
+            int m_reboundStopMinFrames = 3;
+            int m_reboundStopMaxFrames = 12;      // スティックが動いている間は、ここまで止めを延ばす
+            float m_reboundStopStickChange = 0.05f; // 1 フレームの左スティックの位置の差がこれより大きいと、動いているとみなす
             float m_reboundLockSeconds = 0.15f;    // 反動を始めてから操作が戻るまで
             float m_reboundSteerEndSeconds = 0.6f; // 反動を始めてから補正の段が終わるまで
             float m_dashReboundGravity = 30.0f;     // 補正の段の重力 (m/s²)
