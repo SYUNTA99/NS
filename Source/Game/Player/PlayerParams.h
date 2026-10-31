@@ -147,8 +147,6 @@ namespace GL
             NS_GROUP("エアダッシュ")
             NS_FIELD(m_airDashDistance, "エアダッシュの距離", NS::FieldRange::Positive())
             NS_FIELD(m_airDashExitSpeed, "エアダッシュ後に残る速さ")
-            NS_FIELD(m_intendedHoldSeconds, "行きたい向きとみなす秒")
-            NS_FIELD(m_retiltDegrees, "倒し直しとみなす角度")
             NS_GROUP("地形の反動")
             NS_FIELD(m_reboundTableDivisions, "向きの表の分割数")
             NS_FIELD(m_reboundTableWithPitch, "表に傾きの段を入れる")
@@ -301,8 +299,6 @@ namespace GL
             float m_reboundAirAcceleration = 2.0f;
             float m_airDashDistance = 4.4f;   // m。当たらなければ、動作 "AirDash" の length の歩でこの距離を進む
             float m_airDashExitSpeed = 8.0f;  // 当たらずに終わったフレームに落とす速さ (m/s)
-            float m_intendedHoldSeconds = 0.1f;    // 同じ向きをこの秒以上倒し続けたら、ダッシュの向きにする
-            float m_retiltDegrees = 30.0f;         // 向きがこの角度より変わったら、倒し続けた秒を数え直す
             int m_reboundTableDivisions = 8;  // 8・12・16 のうち一番近い物へ丸める
             bool m_reboundTableWithPitch = true; // 偽なら縦・横・奥の 3 枚の円の表
             float m_terrainReboundSpeedScale = 1.0f; // ダッシュで当てた時に返る速さ。返った後に続けて当たる時は掛け直さない

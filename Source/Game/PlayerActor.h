@@ -377,7 +377,6 @@ private:
     [[nodiscard]] bool CanStartAirDash() const noexcept;
     [[nodiscard]] bool BeginAirDash() noexcept;
     [[nodiscard]] float AirDashSpeed() const noexcept;
-    void UpdateIntendedDirection(float dt) noexcept;
     void TryBeginTerrainRebound() noexcept;
     //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、当てた速さで返す
     //! @details 当たる前から入れていた入力は、このフレームに入力補正を掛ける。後から入れた入力は ApplyReboundShift が掛ける

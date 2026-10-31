@@ -251,7 +251,6 @@ void PlayerActor::DecideStep()
     const bool pressHeld = m_input->SlamHeld();
     m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
     m_airDash.m_prevPressHeld = pressHeld;
-    UpdateIntendedDirection(NS::GetFrameDelta(this));
     ObserveCharge(false);
     m_resolver->ObserveImpact(SelfForImpact(), SlamMotion(), m_collider.get());
 

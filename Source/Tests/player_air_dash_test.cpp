@@ -195,62 +195,18 @@ TEST(PlayerAirDashTest, DashFromTheAirAllowsTheNextLandingSound)
     EXPECT_TRUE(player->Sounds().IsLandAllowed());
 }
 
-TEST(PlayerAirDashTest, TiltJustBeforeThePressKeepsTheDirectionHeldBefore)
+// 倒し直してすぐ押しても、押したフレームに倒している向きへ出る
+TEST(PlayerAirDashTest, TiltJustBeforeThePressDashesTheTiltedWay)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceFloatingPlayer(scene);
     ASSERT_NE(player, nullptr);
-    const int hold = FramesFor(ParamsFields(player).at("行きたい向きとみなす秒").get<float>());
 
     player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
-    for (int frame = 0; frame < hold + 2; ++frame)
+    for (int frame = 0; frame < 30; ++frame)
     {
         player->Update(false);
     }
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
-    player->Update(true);
-    ASSERT_TRUE(player->IsAirDashing());
-    EXPECT_NEAR(player->Body().Velocity().x, 0.0f, 1.0e-3f);
-    EXPECT_GT(player->Body().Velocity().z, 0.0f);
-}
-
-TEST(PlayerAirDashTest, HoldingTheNewDirectionLongerThanTheWindowDashesThatWay)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceFloatingPlayer(scene);
-    ASSERT_NE(player, nullptr);
-    const int hold = FramesFor(ParamsFields(player).at("行きたい向きとみなす秒").get<float>());
-
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
-    for (int frame = 0; frame < hold + 2; ++frame)
-    {
-        player->Update(false);
-    }
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
-    for (int frame = 0; frame < hold + 2; ++frame)
-    {
-        player->Update(false);
-    }
-    player->Update(true);
-    ASSERT_TRUE(player->IsAirDashing());
-    EXPECT_GT(player->Body().Velocity().x, 0.0f);
-    EXPECT_NEAR(player->Body().Velocity().z, 0.0f, 1.0e-3f);
-}
-
-TEST(PlayerAirDashTest, ReleasingTheStickForgetsTheDirectionHeldBefore)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceFloatingPlayer(scene);
-    ASSERT_NE(player, nullptr);
-    const int hold = FramesFor(ParamsFields(player).at("行きたい向きとみなす秒").get<float>());
-
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
-    for (int frame = 0; frame < hold + 2; ++frame)
-    {
-        player->Update(false);
-    }
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
-    player->Update(false);
     player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
     ASSERT_TRUE(player->IsAirDashing());
