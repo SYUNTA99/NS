@@ -23,20 +23,10 @@ namespace GL
             return NS::SendMsg(MsgInstantDeath{}, receiver, sender);
         }
 
-        bool IsMsgInstantDeath(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgInstantDeath>(msg);
-        }
-
         bool SendMsgGoal(NS::HitSensor* receiver, NS::HitSensor* sender, float fadeOutSeconds, float fadeInSeconds)
         {
             NS_ASSERT(Game, receiver != nullptr && sender != nullptr, "知らせの受け手か送り手のセンサーが無い");
             return NS::SendMsg(MsgGoal{fadeOutSeconds, fadeInSeconds}, receiver, sender);
-        }
-
-        bool IsMsgGoal(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgGoal>(msg);
         }
 
         bool SendMsgCourseStart(NS::SceneActor* receiver)
@@ -45,20 +35,10 @@ namespace GL
             return NS::SendMsgToActor(MsgCourseStart{}, receiver);
         }
 
-        bool IsMsgCourseStart(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgCourseStart>(msg);
-        }
-
         bool SendMsgCourseRestart(NS::SceneActor* receiver)
         {
             NS_ASSERT(Game, receiver != nullptr, "知らせの受け手が無い");
             return NS::SendMsgToActor(MsgCourseRestart{}, receiver);
-        }
-
-        bool IsMsgCourseRestart(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgCourseRestart>(msg);
         }
 
         bool SendMsgInputLock(NS::SceneActor* receiver, bool locked)
@@ -67,31 +47,16 @@ namespace GL
             return NS::SendMsgToActor(MsgInputLock{locked}, receiver);
         }
 
-        bool IsMsgInputLock(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgInputLock>(msg);
-        }
-
         bool SendMsgAskTackleTarget(NS::HitSensor* receiver, TackleTargetAnswer& outAnswer)
         {
             NS_ASSERT(Game, receiver != nullptr, "知らせの受け手が無い");
             return NS::SendMsg(MsgAskTackleTarget{outAnswer}, receiver, nullptr);
         }
 
-        bool IsMsgAskTackleTarget(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgAskTackleTarget>(msg);
-        }
-
         bool SendMsgTackleHit(NS::HitSensor* receiver, NS::HitSensor* sender, const TackleHitDesc& desc)
         {
             NS_ASSERT(Game, receiver != nullptr && sender != nullptr, "知らせの受け手か送り手のセンサーが無い");
             return NS::SendMsg(MsgTackleHit{desc}, receiver, sender);
-        }
-
-        bool IsMsgTackleHit(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgTackleHit>(msg);
         }
 
         bool TackleGhostDesc::WriteTo(TackleGhost* ghost,
@@ -227,11 +192,6 @@ namespace GL
         {
             NS_ASSERT(Game, receiver != nullptr, "知らせの受け手が無い");
             return NS::SendMsgToActor(MsgTackleRelease{desc}, receiver);
-        }
-
-        bool IsMsgTackleRelease(const NS::Message& msg) noexcept
-        {
-            return NS::IsMsg<MsgTackleRelease>(msg);
         }
     } // namespace Level
 } // namespace GL

@@ -615,12 +615,12 @@ namespace GL
                 Release(release->Desc());
                 return true;
             }
-            if (IsMsgCourseStart(msg))
+            if (NS::IsMsg<MsgCourseStart>(msg))
             {
                 m_coursePose = CoursePose{.position = Root().Position(), .rotation = Root().Rotation()};
                 return true;
             }
-            if (IsMsgCourseRestart(msg))
+            if (NS::IsMsg<MsgCourseRestart>(msg))
             {
                 // コースが始まった後に置かれた物は、戻る先を持たない
                 if (!m_coursePose.has_value())

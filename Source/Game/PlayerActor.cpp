@@ -503,7 +503,7 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
 {
     (void)sender;
     (void)receiver;
-    if (GL::Level::IsMsgInstantDeath(msg))
+    if (NS::IsMsg<GL::Level::MsgInstantDeath>(msg))
     {
         // 消えた後は VisualStep が呼ばれないので、その場で鳴らす。重なった範囲から同じフレームに何度も届いても 1 回だけ
         if (!IsDead())
@@ -529,12 +529,12 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
         }
         return true;
     }
-    if (GL::Level::IsMsgCourseStart(msg))
+    if (NS::IsMsg<GL::Level::MsgCourseStart>(msg))
     {
         m_courseStartPosition = Root().Position();
         return true;
     }
-    if (GL::Level::IsMsgCourseRestart(msg))
+    if (NS::IsMsg<GL::Level::MsgCourseRestart>(msg))
     {
         Restart();
         return true;
