@@ -121,6 +121,7 @@ NS::Vector3 PlayerActor::AirDashStartDirection() const noexcept
     return direction;
 }
 
+#if !defined(NS_SHIPPING)
 void PlayerActor::UpdateReboundPreview()
 {
     m_reboundPreview->Hide();
@@ -153,7 +154,14 @@ void PlayerActor::UpdateReboundPreview()
     float reach = m_params->m_airDashDistance;
     if (IsAirDashing())
     {
-        direction = m_airDash.m_direction;
+        // 壁に沿って滑る間は出た向きと速度の向きが違うので、実際に進んでいる速度の向きの先を調べる
+        direction = m_body->Velocity();
+        const float speed = direction.Length();
+        if (!NS::HasPositiveMagnitude(speed))
+        {
+            return;
+        }
+        direction /= speed;
         // ダッシュが終わった後に触れた壁は反動にならないので、残りの歩で進む距離までだけ調べる
         const NS::ActionTimeline* timeline = ActionTimelineClassObj();
         const NS::ActorAction* action{nullptr};
@@ -207,6 +215,7 @@ void PlayerActor::UpdateReboundPreview()
     }
     showArrows(hit.point, GL::Level::ReboundHit{.assigned = assigned, .normal = hit.normal, .incoming = direction});
 }
+#endif
 
 float PlayerActor::AirDashSpeed() const noexcept
 {

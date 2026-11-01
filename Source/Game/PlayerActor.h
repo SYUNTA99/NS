@@ -382,9 +382,11 @@ private:
     //! 今押した時にエアダッシュが出る水平の向き。倒していればその向き、倒していなければ向いている向きかカメラの前
     [[nodiscard]] NS::Vector3 AirDashStartDirection() const noexcept;
     [[nodiscard]] bool BeginAirDash() noexcept;
+#if !defined(NS_SHIPPING)
     //! @brief VisualStep から毎フレーム呼ぶ。エアダッシュを出せる間とエアダッシュの間に、進む先の地形に当たる点から
-    //! 反動の矢印を出す。進む向きは、出す前は AirDashStartDirection、出した後はエアダッシュの向き
+    //! 反動の矢印を出す。進む向きは、出す前は AirDashStartDirection、出した後は自機の速度の向き。出荷では描かない
     void UpdateReboundPreview();
+#endif
     [[nodiscard]] float AirDashSpeed() const noexcept;
     void TryBeginTerrainRebound() noexcept;
     //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、当てた速さで返し、欄「反動の止めの最短のフレーム数」だけ止める

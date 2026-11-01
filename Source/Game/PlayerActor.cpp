@@ -368,7 +368,9 @@ void PlayerActor::VisualStep()
     m_targetMarker->Update(m_charge);
     m_slamArrow->Update(m_charge, m_params.get(), m_collider.get());
     // clang-format on
+#if !defined(NS_SHIPPING)
     UpdateReboundPreview();
+#endif
     const GL::Player::PlayerMotion motion = Motion();
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off

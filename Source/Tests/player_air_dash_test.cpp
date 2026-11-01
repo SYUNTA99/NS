@@ -9,6 +9,7 @@
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Core/Windows/Clock.h"
@@ -1152,6 +1153,37 @@ TEST(PlayerAirDashTest, BounceArrowFollowsTheDashDirectionDuringTheDash)
     const GL::Level::ReboundPreviewArrows* arrows = player->ReboundIndicator().ShownArrows();
     ASSERT_NE(arrows, nullptr);
     EXPECT_NEAR(arrows->origin.z, 3.0f, 1.0e-2f);
+}
+
+TEST(PlayerAirDashTest, BounceArrowFollowsTheVelocityWhileTheDashSlidesAlongAWall)
+{
+    // ダッシュの間は自機の速度の向きの先を調べる。反動にならない浅い角度で横の壁に沿って滑る間は、
+    // 出た向きでなく、滑って進む向き (+Z) の先の正面の壁を指す
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    const float radius = player->Collider().CapsuleRadius();
+    const float sideFace = radius + 0.05f;
+    AddBox(scene, NS::Vector3{sideFace + 0.5f, 5.0f, 0.0f}, NS::Vector3{0.5f, 20.0f, 20.0f});
+    const float angle = NS::ToRadians(NS::Degrees{8.0f}).value;
+    player->SetDesiredMove(NS::Vector3{std::sin(angle), 0.0f, std::cos(angle)}, 1.0f);
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+
+    for (int frame = 0; frame < 30 && player->IsAirDashing() && player->Root().Position().z < 1.0f; ++frame)
+    {
+        player->Update(true);
+    }
+    ASSERT_TRUE(player->IsAirDashing());
+    const NS::Vector3 position = player->Root().Position();
+    ASSERT_NEAR(position.x, sideFace - radius, 2.0e-2f) << "横の壁に沿って滑っている";
+    ASSERT_NEAR(player->Body().Velocity().x, 0.0f, 1.0e-2f) << "滑る間の速度は壁に沿う";
+
+    const GL::Level::ReboundPreviewArrows* arrows = player->ReboundIndicator().ShownArrows();
+    ASSERT_NE(arrows, nullptr);
+    EXPECT_NEAR(arrows->origin.z, 3.0f, 1.0e-2f);
+    EXPECT_NEAR(arrows->origin.x, position.x, 5.0e-2f) << "出た向きのままなら、横へずれた所を指す";
 }
 
 TEST(PlayerAirDashTest, WallBeyondTheDashReachShowsNoArrowBeforeOrDuringTheDash)
