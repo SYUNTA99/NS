@@ -42,7 +42,7 @@ namespace NS
 
     void Scene::ResetFromJson(nlohmann::json scene)
     {
-        // 組み直した世界へ前のプレイの流れと曲を持ち込まない
+        // 組み直した世界へ、派生が持つ前のプレイの状態を持ち込まない
         StopPlay();
         SetEnvironment(ReadSceneEnvironment(scene));
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
@@ -107,6 +107,7 @@ namespace NS
             return;
         }
         const uint32 moverId = mover->Id();
+        // 番地と id の両方を比べる理由は IsStopSceneMover と同じ。比べる相手が止め始めたアクターでなく、頼んだアクターなので分ける
         const bool sameRequester =
             m_stopSceneRequested && mover == m_stopSceneRequester && moverId == m_stopSceneRequesterId;
         // 同じ歩に先に止めを頼んだアクターが持つ。解く頼みは止めを持たないので、後から頼んだ止めで置き換える
@@ -138,12 +139,7 @@ namespace NS
             return;
         }
         m_stopSceneRequested = false;
-        // 頼んだアクターはこの歩までに一覧から外れている事があるので、番地を読まずに比べる
-        const bool sameMover = m_stopSceneRequester == m_stopSceneMover && m_stopSceneRequesterId == m_stopSceneMoverId;
-        if (m_stopSceneSteps > 0 && !sameMover)
-        {
-            return;
-        }
+        // 止めている間に頼めるのは止め始めたアクターだけ (RequestStopScene が断る) なので、ここでは比べない
         if (m_requestedStopSceneSteps <= 0)
         {
             m_stopSceneSteps = 0;

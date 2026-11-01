@@ -24,8 +24,7 @@ namespace GL
         void GameScene::StartPlay()
         {
             // エディタは同じシーンでプレイを何度も始めるので、前のプレイの流れと曲を残さない
-            DropFlow();
-            StopMusic();
+            StopPlay();
             for (NS::SceneActor* actor : PlacedActors(nullptr))
             {
                 (void)SendMsgCourseStart(actor);

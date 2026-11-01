@@ -11,7 +11,8 @@ namespace NS
 {
     PadRumbleDirector::~PadRumbleDirector() noexcept
     {
-        // 振動の途中で場面を捨てても、パッドを震わせたままにしない
+        // 振動の途中で場面を捨てても、パッドを震わせたままにしない。
+        // EndRumble は曲線を読む Write を通り noexcept でないので、ここでは 0 を直に書く
         if (m_running)
         {
             (void)OS::Input::Get().Gamepad().SetVibration(0.0f, 0.0f);
