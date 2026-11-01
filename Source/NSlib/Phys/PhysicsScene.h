@@ -128,6 +128,17 @@ namespace NS
             //! 回した box や mesh も外接箱でなく形で見る。layer は問わない。形を作れない capsule は false
             [[nodiscard]] bool OverlapsCapsule(const Capsule& capsule) const;
 
+            //! capsule を direction へ maxDistance まで動かし、最初に当たった面を返す。direction の長さは問わない
+            //! 面の法線は、動く体 (JoltCharacter) が当たった面として読む物と同じ規則で決める。角や縁でも、動く体が同じ所に
+            //! 当たった時と同じ面の法線になる。面の外向きの法線 n が -dot(向き, n) >= minFacing を満たす面だけを数える。投げる前から触れている床のような、
+            //! 進む向きに向かい合わない面を読み飛ばす
+            //! @return 当たりがあれば true。非有限値・正でない距離や方向長・形を作れない capsule・当たりが無い時は false で outHit を変えない
+            [[nodiscard]] bool CastCapsule(const Capsule& capsule,
+                                           const Vector3& direction,
+                                           float maxDistance,
+                                           float minFacing,
+                                           CapsuleCastHit& outHit) const;
+
             //! body をこの PhysicsScene から外して壊す。DetachBody で外してある body も壊す。無効な BodyID は何もしない
             void RemoveBody(JPH::BodyID id);
             //! body を壊さずに外す。外した body は当たりの問いにも接触にも出ない。無効な BodyID と外してある body は何もしない
