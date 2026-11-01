@@ -303,6 +303,76 @@ namespace NS
         return m_drawnMaterial->BaseColor();
     }
 
+    void Model::CollectDraws(const Gfx::RenderContext& context,
+                             const RenderSource& source,
+                             std::span<const ModelDraw> draws,
+                             std::vector<Gfx::DrawItem>& out) const
+    {
+        if (!CanDraw())
+        {
+            return;
+        }
+        for (const ModelDraw& draw : draws)
+        {
+            Matrix world = Matrix::Identity;
+            if (draw.world.has_value())
+            {
+                world = *draw.world;
+            }
+            else if (draw.offset.has_value())
+            {
+                world = DrawWorldMatrixWithOffset(source.root, context.alpha, *draw.offset);
+            }
+            else
+            {
+                world = DrawWorldMatrix(source.root, context.alpha);
+            }
+            Gfx::DrawItem item = MakeDrawItem(context, world);
+            item.blend = Gfx::BlendMode::Alpha;
+            item.constants.opacity = draw.opacity;
+            if (!draw.groundWave)
+            {
+                item.constants.groundWaveStrength = 0.0f;
+            }
+            if (!draw.tremor)
+            {
+                item.constants.tremor = Gfx::TremorCB{};
+            }
+            out.push_back(item);
+        }
+    }
+
+    AABB Model::DrawsWorldBounds(const RenderSource& source, std::span<const ModelDraw> draws) const noexcept
+    {
+        const AABB base = WorldBounds(source);
+        AABB out = base;
+        for (const ModelDraw& draw : draws)
+        {
+            AABB bounds = base;
+            if (draw.world.has_value())
+            {
+                const AABB* local = DrawnLocalBounds();
+                if (local == nullptr)
+                {
+                    continue;
+                }
+                local->Transform(bounds, *draw.world);
+            }
+            else if (draw.offset.has_value())
+            {
+                const Vector3& offset = *draw.offset;
+                const Vector3& sourceOffset = GetDrawOffset();
+                bounds.Extents.x += std::abs(offset.x) + std::abs(sourceOffset.x);
+                bounds.Extents.y += std::abs(offset.y) + std::abs(sourceOffset.y);
+                bounds.Extents.z += std::abs(offset.z) + std::abs(sourceOffset.z);
+            }
+            AABB merged{};
+            AABB::CreateMerged(merged, out, bounds);
+            out = merged;
+        }
+        return out;
+    }
+
     bool Model::CanDraw() const noexcept { return CanDraw(m_drawnMaterial); }
 
     Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept

@@ -1,4 +1,5 @@
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Assert.h"

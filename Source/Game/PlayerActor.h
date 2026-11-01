@@ -112,10 +112,21 @@ public:
     [[nodiscard]] GL::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
     [[nodiscard]] GL::Level::SlamArrow& SlamIndicator() noexcept { return *m_slamArrow; }
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
-    [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept { return NS::Cast<GL::Level::TackleGhost>(ChildActor()); }
+    [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept
+    {
+        if (ChildActor() == nullptr)
+        {
+            return nullptr;
+        }
+        return &m_ghost;
+    }
     [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept
     {
-        return NS::Cast<GL::Level::TackleGhost>(ChildActor());
+        if (ChildActor() == nullptr)
+        {
+            return nullptr;
+        }
+        return &m_ghost;
     }
 
     // =========================================================================
@@ -127,6 +138,7 @@ public:
     //! 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
     void UpdateAnimation();
     void OnEndPlay() override;
+    void PrepareRender() override;
 
     //! 世界座標系の目標移動方向と速度スケール (0..1 に丸める) を渡す
     void SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept;
@@ -473,6 +485,7 @@ private:
     BeforeContactEntry m_beforeContact;
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有し、OnInit の後から有効
     GL::Level::Health m_health;
+    GL::Level::TackleGhost m_ghost;
     std::optional<NS::Vector3> m_courseStartPosition; // カプセル中心の世界座標
 
     // =========================================================================
