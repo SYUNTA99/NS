@@ -40,10 +40,25 @@ namespace NS
 
     Scene::~Scene() = default;
 
+    void Scene::StartPlay()
+    {
+        NS_ASSERT(Scene, !m_playing, "StartPlay: ResetFromJson を通らずに始めた");
+        if (m_playing)
+        {
+            OnStopPlay();
+        }
+        m_playing = true;
+        OnStartPlay();
+    }
+
     void Scene::ResetFromJson(nlohmann::json scene)
     {
         // 組み直した世界へ、派生が持つ前のプレイの状態を持ち込まない
-        StopPlay();
+        if (m_playing)
+        {
+            m_playing = false;
+            OnStopPlay();
+        }
         SetEnvironment(ReadSceneEnvironment(scene));
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueActorIds(scene);

@@ -547,16 +547,22 @@ void LevelEditorController::LeavePlayForEdit()
         return;
     }
     m_scene->SetSimulationEnabled(false);
-    m_scene->StopPlay();
 
     // プレイで変わった配置を編集へ持ち込まないため、プレイを始めた時の JSON から復元する
     NS_ASSERT(App, m_playBaseline.has_value(), "LeavePlayForEdit: プレイを始めた時の JSON が無い");
-    if (!m_playBaseline)
+    nlohmann::json baseline{};
+    if (m_playBaseline)
     {
-        return;
+        baseline = std::move(*m_playBaseline);
+        m_playBaseline.reset();
     }
-    nlohmann::json baseline = std::move(*m_playBaseline);
-    m_playBaseline.reset();
+    else
+    {
+        // 戻す姿が無くても、プレイを終えるのは組み直しだけなので、今の姿で組み直す。
+        // プレイで動いた分を編集の変更として履歴に積まない
+        baseline = m_scene->ToJson();
+        m_playStartBaseline.reset();
+    }
     std::vector<std::unique_ptr<NS::Editor::ICommand>> playEdits;
     if (m_playStartBaseline)
     {

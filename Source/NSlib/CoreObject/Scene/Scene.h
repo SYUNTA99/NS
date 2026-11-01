@@ -62,10 +62,9 @@ namespace NS
         Scene();
         virtual ~Scene();
 
-        //! 遊び始める。読み込んだ後と、プレイを始め直す時に呼ぶ。同じシーンで何度も呼ばれる
-        virtual void StartPlay() {}
-        //! 遊ぶのをやめる。プレイを終える時と、ResetFromJson が組み直す前に呼ぶ
-        virtual void StopPlay() {}
+        //! 遊び始める。ResetFromJson の後にだけ呼ぶ。プレイを終えるのは次の ResetFromJson。
+        //! 前のプレイを終えずに呼ぶと assert で知らせ、前のプレイを終えてから始める
+        void StartPlay();
 
         //! 派生の型ごとのタグ。RTTI を切っているので、SceneCast はこれで型を見分ける。派生の無いシーンは nullptr
         //! 派生は static const void* StaticKind() を持ち、Kind で同じ値を返す
@@ -279,6 +278,11 @@ namespace NS
         void OnShutdown();
 
     protected:
+        //! StartPlay が 1 回のプレイにつき 1 回呼ぶ。派生はここでプレイを始める
+        virtual void OnStartPlay() {}
+        //! プレイ中のシーンを ResetFromJson が組み直す前に 1 回呼ぶ。派生はプレイの状態を戻す
+        virtual void OnStopPlay() {}
+
         //! 世界を進める歩の、当たりの判定の後に 1 回呼ぶ。シーンが止まっている歩と世界を進めない歩では呼ばない。
         //! 同じ歩のアクターとセンサーが書いた知らせを読める
         virtual void StepGame() {}
@@ -359,6 +363,7 @@ namespace NS
         // 新しいアクターに振られない
         std::vector<nlohmann::json> m_unresolvedActors;
 
+        bool m_playing = false;                // StartPlay から次の ResetFromJson までの間か
         bool m_simulationEnabled = true;       // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;       // 時間停止中か
         int32 m_simulationStepFrames = 0;      // コマ送り残り固定ステップ数。止めたままこの数だけ進める

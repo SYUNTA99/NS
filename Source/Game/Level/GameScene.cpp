@@ -21,19 +21,17 @@ namespace GL
 
         GameScene::~GameScene() = default;
 
-        void GameScene::StartPlay()
+        void GameScene::OnStartPlay()
         {
-            // エディタは同じシーンでプレイを何度も始めるので、前のプレイの流れと曲を残さない
-            StopPlay();
             for (NS::SceneActor* actor : PlacedActors(nullptr))
             {
                 (void)SendMsgCourseStart(actor);
             }
             RestartCourse();
-            (void)StartMusic(); // 直前に止めたので必ず始まる
+            (void)StartMusic(); // 前のプレイの曲は Scene が OnStopPlay で止めたので必ず始まる
         }
 
-        void GameScene::StopPlay()
+        void GameScene::OnStopPlay()
         {
             DropFlow();
             StopMusic();

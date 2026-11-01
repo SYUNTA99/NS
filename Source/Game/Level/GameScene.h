@@ -42,13 +42,6 @@ namespace GL
             }
             [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
 
-            //! 前のプレイの知らせ・クリアの流れ・曲を戻し、全てのアクターへ MsgCourseStart を送って今の姿を
-            //! 控えさせ、RestartCourse と同じ処理で始める。続けてシーンの設定の曲を鳴らし始める
-            void StartPlay() override;
-
-            //! クリアの流れと曲を止める
-            void StopPlay() override;
-
             //! 次の StepGame でコースをやり直す
             void NotifyPlayerDead() noexcept { m_playerDead = true; }
 
@@ -77,6 +70,13 @@ namespace GL
             void StopMusic();
 
         protected:
+            //! 全てのアクターへ MsgCourseStart を送って今の姿を控えさせ、RestartCourse と同じ処理で始める。
+            //! 続けてシーンの設定の曲を鳴らし始める
+            void OnStartPlay() override;
+
+            //! 組み直す前に、知らせ・クリアの流れ・曲を戻す
+            void OnStopPlay() override;
+
             //! 知らせを受けた分だけ流れを進める
             void StepGame() override;
 

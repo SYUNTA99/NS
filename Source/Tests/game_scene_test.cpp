@@ -430,9 +430,9 @@ TEST(GameScene, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
     EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
 }
 
-// エディタは同じシーンのオブジェクトでプレイを何度も始める。前のプレイの知らせが残ると、
-// 2 回目の始めに頼んでいないやり直しやクリアが起きる
-TEST(GameScene, SecondStartDropsNoticesOfThePreviousPlay)
+// エディタは同じシーンのオブジェクトでプレイを何度も始め、その間に ResetFromJson で組み直す。
+// 組み直しで前のプレイの知らせが残ると、次のプレイの始めに頼んでいないやり直しやクリアが起きる
+TEST(GameScene, RebuildingTheWorldDropsNoticesOfThePlay)
 {
     const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
     GL::Level::GameScene scene;
@@ -443,8 +443,8 @@ TEST(GameScene, SecondStartDropsNoticesOfThePreviousPlay)
     scene.RequestRespawnActors();
     ASSERT_TRUE(scene.NotifyGoal(duration, duration));
 
-    // 歩を回さずに曲だけを止め、もう一度始める。前のプレイの知らせを戻すのは StartPlay
-    scene.StopMusic();
+    // 歩を回さずに組み直し、もう一度始める。前のプレイの知らせを戻すのは ResetFromJson
+    scene.ResetFromJson(doc);
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
@@ -476,22 +476,9 @@ TEST(GameScene, RebuildingTheWorldEndsTheClearOfThePlay)
 
     EXPECT_FALSE(scene.IsClearing());
     EXPECT_FALSE(scene.Fade().IsFading());
-}
-
-TEST(GameScene, SecondStartEndsTheClearOfThePreviousPlay)
-{
-    GL::Level::GameScene scene;
-    scene.ResetFromJson(CourseWithPlayerOnGoal());
+    // 次のプレイの自機は操作できる
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    scene.OnUpdate();
-    ASSERT_TRUE(scene.IsClearing());
-
-    scene.StopMusic();
-    scene.StartPlay();
-
-    EXPECT_FALSE(scene.IsClearing());
-    EXPECT_FALSE(scene.Fade().IsFading());
     EXPECT_FALSE(player->Input().IsLocked());
 }
