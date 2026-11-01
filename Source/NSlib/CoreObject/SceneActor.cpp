@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
+#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
@@ -53,6 +54,8 @@ namespace NS
     Transform& SceneActor::Root() noexcept { return *m_transform; }
 
     const Transform& SceneActor::Root() const noexcept { return *m_transform; }
+
+    const Model* SceneActor::ModelSource() const noexcept { return m_model.get(); }
 
     const ClassObjInfo* SceneActor::FindReflectedMember(const void* member) const
     {
@@ -245,7 +248,7 @@ namespace NS
 
     SceneActor::~SceneActor() noexcept = default;
 
-    void SceneActor::InitChild(std::unique_ptr<SceneActor> child)
+    void SceneActor::InitChild(std::unique_ptr<ChildActorObj> child)
     {
         m_child = std::move(child);
         m_child->m_parent = this;

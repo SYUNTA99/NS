@@ -1,4 +1,5 @@
 #include "Game/Level/PropActor.h"
+#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/Core/Types.h"
 
 #include "Game/Level/ImpactOutcome.h"
@@ -110,7 +111,9 @@ namespace GL
             CreateClassObj(m_effect);
             CreateClassObj(m_hitReaction);
             CreateClassObj(m_effects);
-            (void)CreateChildActor<TackleGhost>();
+            NS::ChildActorObj* child = CreateChildActor<NS::ChildActorObj>();
+            child->UseParentModel();
+            child->SetModelSortPriority(-1);
             CreateClassObj(m_marks);
             NS::InitDraw(this, m_marks.get(), &Root());
             (void)BuildStateMachine<PropActor, RestingState, FreezeState, LaunchedState>(this, m_states);
@@ -166,6 +169,7 @@ namespace GL
 
         void PropActor::VisualStep()
         {
+            m_ghost.Advance(this);
             // clang-format off
             m_effects->Update(this, Flight());
             // clang-format on
@@ -175,6 +179,15 @@ namespace GL
         void PropActor::UpdateMotion()
         {
             Update();
+        }
+
+        void PropActor::PrepareRender()
+        {
+            if (ChildActor() != nullptr && ChildActor()->IsAppeared())
+            {
+                ChildActor()->Root().CopyFrom(Root());
+            }
+            NS::SceneActor::PrepareRender();
         }
 
         void PropActor::BeginFreeze(const TackleFreezeDesc& desc)
@@ -257,7 +270,7 @@ namespace GL
             // 残像の離れは食い込んだ所の奥行きで出す
             if (ghost.has_value() && Ghost() != nullptr)
             {
-                Ghost()->Start(*ghost);
+                Ghost()->Start(*ghost, this);
             }
         }
 
@@ -540,7 +553,7 @@ namespace GL
             ModelClassObj()->StopDrawShake();
             if (Ghost() != nullptr)
             {
-                Ghost()->Stop();
+                Ghost()->Stop(this);
             }
             ModelClassObj()->StopDrawTremor();
             // 止めの途中のやり直しでも、置いた所で動ける姿へ戻す。受けた当たりの明けの束は出さない
@@ -563,6 +576,7 @@ namespace GL
 
         void PropActor::OnEndPlay()
         {
+            m_ghost.Stop(this);
             if (IsFrozen())
             {
                 EndFreeze();

@@ -337,7 +337,7 @@ void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float 
     {
         if (run.item.name == "TackleGhost" && Ghost() != nullptr)
         {
-            Ghost()->Start(run);
+            Ghost()->Start(run, this);
         }
     }
 }

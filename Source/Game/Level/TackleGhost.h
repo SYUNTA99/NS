@@ -1,36 +1,30 @@
 #pragma once
 
 #include "Game/Level/LevelMessages.h"
-#include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/IRenderable.h"
-#include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Gfx/Render/DrawItem.h"
-
-#include <vector>
 
 namespace NS
 {
     class Model;
+    class SceneActor;
 } // namespace NS
 
 namespace GL
 {
     namespace Level
     {
-        //! 体当たりの残像。止めの間の左右の写しと、明けに当たった所へ残す写しを描く
-        //! 親ActorのModelからメッシュ・マテリアル・姿勢を借り、半透明で重ねる。Modelは所有しない
-        //! 実行中の子Actorとして作り、親のModelを進めた直後に進む。値は保存しない
-        class TackleGhost final : public NS::SceneActor, public NS::IRenderable
+        //! 体当たりの残像の進行。左右への離れと不透明度を通常の子Actorへ渡す
+        //! ModelとActorは所有しない。持ち主がModelを進めた直後、VisualStepの先頭で進める
+        class TackleGhost final
         {
         public:
-            NS_REFLECT_NONE(TackleGhost, NS::SceneActor)
-            //! 長さが0以下かカメラが無ければ始めない。次のVisualStepを1フレーム目に数える
-            void Start(const NS::HitOwnerRun& run);
-            void Stop() noexcept;
-            //! 不透明度の倍率は次のVisualStepから効く
+            //! 長さが0以下かカメラが無ければ始めない。次のAdvanceを1フレーム目に数える
+            void Start(const NS::HitOwnerRun& run, const NS::SceneActor* owner);
+            //! 子が出ている間だけ進め、親の補間前後の姿勢と描画指定を子へ写す
+            void Advance(NS::SceneActor* owner);
+            void Stop(NS::SceneActor* owner) noexcept;
+            //! 不透明度の倍率は次のAdvanceから効く
             void ScaleOpacity(float scale) noexcept;
-            void OnEndPlay() override;
 
             //! 根から ±spread m の位置に左右の写しを描く。ゼロなら描かない
             //! 補間せず、本体の描く時だけのずれは写しに足さない
@@ -66,26 +60,6 @@ namespace GL
             [[nodiscard]] float AfterimageOpacity() const noexcept { return m_afterimageOpacity; }
             //! 控えた明けの写しの世界行列。控えていなければ単位行列
             [[nodiscard]] const NS::Matrix& AfterimageWorldMatrix() const noexcept { return m_afterimageWorld; }
-
-            //! 写しの DrawItem を out に積む。親のModelが描けない時は何も積まない
-            void Collect(const NS::Gfx::RenderContext& context,
-                         const NS::RenderSource& source,
-                         std::vector<NS::Gfx::DrawItem>& out) override;
-            //! 本体の箱を、描く時だけのずれと離れの分だけ広げ、明けの写しを描く間は控えた姿の箱も包む
-            [[nodiscard]] NS::AABB WorldBounds(const NS::RenderSource& source) const noexcept override;
-            //! 不透明の並びで描くと、後に描く空と物が写しを上書きする
-            [[nodiscard]] NS::RenderBucket Bucket() const noexcept override { return NS::RenderBucket::Transparent; }
-            //! 本体と同じ中心
-            [[nodiscard]] NS::Vector3 SortCenter(const NS::RenderSource& source) const noexcept override;
-            //! 中心が同じ半透明の物 (同じアクターの影) より先に描く
-            //! 影は写しの上に重ねて描く。中心が同じ物の順を登録の順に任せると、出し入れのたびに入れ替わる
-            [[nodiscard]] int SortPriority() const noexcept override { return -1; }
-
-        protected:
-            void OnInit() override;
-            void OnAppear() override;
-            void OnDisappear() noexcept override;
-            void VisualStep() override;
 
         private:
             TackleGhostDesc m_desc{};

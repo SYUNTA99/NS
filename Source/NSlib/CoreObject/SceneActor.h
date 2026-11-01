@@ -30,6 +30,7 @@ namespace NS
 {
     class HitSensor;
     class Model;
+    class ChildActorObj;
     class Animation;
     class Shadow;
     class Collision;
@@ -96,8 +97,8 @@ namespace NS
         //! コードで作る子は親が所有し、シーンの配置一覧や独立した保存項目には入らない
         [[nodiscard]] SceneActor* ParentActor() noexcept { return m_parent; }
         [[nodiscard]] const SceneActor* ParentActor() const noexcept { return m_parent; }
-        [[nodiscard]] SceneActor* ChildActor() noexcept { return m_child.get(); }
-        [[nodiscard]] const SceneActor* ChildActor() const noexcept { return m_child.get(); }
+        [[nodiscard]] ChildActorObj* ChildActor() noexcept { return m_child.get(); }
+        [[nodiscard]] const ChildActorObj* ChildActor() const noexcept { return m_child.get(); }
 
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
         [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
@@ -125,6 +126,9 @@ namespace NS
 
         [[nodiscard]] Model* ModelClassObj() noexcept { return m_model.get(); }
         [[nodiscard]] const Model* ModelClassObj() const noexcept { return m_model.get(); }
+        //! 描画に使うModel。親の参照を使う子でも、所有するModelClassObjとは区別する
+        //! 自分にも参照元にもModelが無ければnullptr
+        [[nodiscard]] virtual const Model* ModelSource() const noexcept;
         [[nodiscard]] Animation* AnimationClassObj() noexcept { return m_animation.get(); }
         [[nodiscard]] const Animation* AnimationClassObj() const noexcept { return m_animation.get(); }
         [[nodiscard]] Shadow* ShadowClassObj() noexcept { return m_shadow.get(); }
@@ -226,7 +230,7 @@ namespace NS
         //! OnInitで子を1体作る。作成済みか開始後なら変更せずnullptr
         //! 子のTransformは世界座標のまま。親の姿勢を使う子はParentActorから取得する
         template <class T, class... TArgs>
-            requires std::derived_from<T, SceneActor>
+            requires std::derived_from<T, ChildActorObj>
         T* CreateChildActor(TArgs&&... args)
         {
             if (m_child != nullptr || m_started)
@@ -329,7 +333,7 @@ namespace NS
         //! OnInit で部品とセンサーを作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
         //! actorFile は .actor の名前として持つだけで、空ならクラスと同じ名前
         void InitWithCodeValues(std::string_view actorFile);
-        void InitChild(std::unique_ptr<SceneActor> child);
+        void InitChild(std::unique_ptr<ChildActorObj> child);
         void RemoveDestroyedChildren();
         //! 補間の前の値として、根の Transform と Model の今の値を控える
         //! ActorList::SnapshotActors が固定ステップの頭で全ての SceneActor
@@ -399,7 +403,7 @@ namespace NS
         bool m_skipStateStep = false; // このフレームは状態機械を進めないか。書くのは SkipStateStep と Update の初めだけ
         bool m_started = false;
         SceneActor* m_parent = nullptr;
-        std::unique_ptr<SceneActor> m_child; // 親の部品より先に壊すので最後に置く
+        std::unique_ptr<ChildActorObj> m_child; // 親の部品より先に壊すので最後に置く
     };
 
     //! 体の倍率を返す。1 が等速

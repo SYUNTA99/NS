@@ -11,12 +11,25 @@
 #include "NSlib/Gfx/Render/DrawItem.h"
 
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace NS
 {
+    //! 共有モデルを半透明で描く一回分の指定。元のModelは変更しない
+    struct ModelDraw
+    {
+        //! 描画姿勢を世界行列で固定する。指定中は根・局所変換・offsetを適用しない
+        std::optional<Matrix> world;
+        //! 世界座標の描画ずれを置き換える。省略時は元のModelのずれを使う
+        std::optional<Vector3> offset;
+        float opacity = 1.0f;
+        bool groundWave = true;
+        bool tremor = true;
+    };
+
     namespace Gfx
     {
         class D3DBuffer;
@@ -152,6 +165,16 @@ namespace NS
         [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept;
         //! 描く形の局所の境界。差された境界を先に、無ければメッシュの境界。どちらも無ければ nullptr
         [[nodiscard]] const AABB* DrawnLocalBounds() const noexcept;
+
+        //! 指定ごとに半透明の描画を積む。メッシュ・マテリアル・骨格の定数は共有する
+        //! worldを指定しても骨格の姿勢は固定しない。描けないModelでは何も積まない
+        void CollectDraws(const Gfx::RenderContext& context,
+                          const RenderSource& source,
+                          std::span<const ModelDraw> draws,
+                          std::vector<Gfx::DrawItem>& out) const;
+        //! 固定した世界行列も含めて、全ての描画指定を包む
+        [[nodiscard]] AABB DrawsWorldBounds(const RenderSource& source,
+                                            std::span<const ModelDraw> draws) const noexcept;
 
         //! DrawWorldMatrix(source.root, context.alpha) を詰めた DrawItem を out に積む
         void Collect(const Gfx::RenderContext& context,

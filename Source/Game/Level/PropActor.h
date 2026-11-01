@@ -40,6 +40,7 @@ namespace GL
             //! 1 固定ステップを本番と同じ順で進める。試しが段を回さずに置物を動かす
             void UpdateMotion();
             void OnEndPlay() override;
+            void PrepareRender() override;
             //! 体当たりの止めの最中の場合 true、それ以外の場合は false
             [[nodiscard]] bool IsFrozen() const noexcept;
             //! 押し飛ばされて曲線か転がりの最中かを返す
@@ -60,8 +61,22 @@ namespace GL
             [[nodiscard]] const LaunchEffects& Effects() const noexcept { return *m_effects; }
             [[nodiscard]] ImpactMarks& Marks() noexcept { return *m_marks; }
             [[nodiscard]] const ImpactMarks& Marks() const noexcept { return *m_marks; }
-            [[nodiscard]] TackleGhost* Ghost() noexcept { return NS::Cast<TackleGhost>(ChildActor()); }
-            [[nodiscard]] const TackleGhost* Ghost() const noexcept { return NS::Cast<TackleGhost>(ChildActor()); }
+            [[nodiscard]] TackleGhost* Ghost() noexcept
+            {
+                if (ChildActor() == nullptr)
+                {
+                    return nullptr;
+                }
+                return &m_ghost;
+            }
+            [[nodiscard]] const TackleGhost* Ghost() const noexcept
+            {
+                if (ChildActor() == nullptr)
+                {
+                    return nullptr;
+                }
+                return &m_ghost;
+            }
 
         protected:
             //! 体当たりの問い・止め・明けと、コースのやり直しに応じる
@@ -69,7 +84,6 @@ namespace GL
             bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
             void OnInit() override;
-            //! 残像は Model と同じく、出ている間だけ描く物へ入れる
             void OnAppear() override;
             void OnDisappear() noexcept override;
             //! 発光の層・残像・当たりの跡を進める
@@ -81,6 +95,8 @@ namespace GL
             class LaunchedState;
             class ArcState;
             class RollingState;
+
+            TackleGhost m_ghost;
 
             // 受けた状態の頭の形と動き
             struct TackleFreezeDesc

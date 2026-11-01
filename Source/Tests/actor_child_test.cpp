@@ -1,17 +1,43 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "Tests/TestViewCamera.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Window.h"
+#include "NSlib/Gfx/D3DDevice.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 
 #include <gtest/gtest.h>
+#include <array>
+#include <type_traits>
+#include <utility>
+
+static_assert(std::is_same_v<decltype(std::declval<NS::SceneActor&>().ChildActor()), NS::ChildActorObj*>);
+static_assert(std::is_same_v<decltype(std::declval<const NS::SceneActor&>().ChildActor()), const NS::ChildActorObj*>);
+static_assert(!std::derived_from<NS::SceneActor, NS::IRenderable>);
 
 namespace
 {
+    class SharedModelParent final : public NS::SceneActor
+    {
+    protected:
+        void OnInit() override
+        {
+            CreateClassObj(m_model);
+            NS::InitDraw(this, m_model.get(), &Root());
+            m_model->SetMeshRef("cube");
+            m_model->SetMaterialRef("Assets/Materials/player.mat");
+            CreateChildActor<NS::ChildActorObj>()->UseParentModel();
+        }
+    };
+
     struct ChildCounts
     {
         int made = 0;
@@ -36,12 +62,12 @@ namespace
         bool hiddenBeforeChild = false;
     };
 
-    class ChildProbe final : public NS::SceneActor
+    class ChildProbe final : public NS::ChildActorObj
     {
     public:
         explicit ChildProbe(ChildCounts& counts) : m_counts(counts) { ++m_counts.made; }
         ~ChildProbe() override { ++m_counts.destroyed; }
-        NS_REFLECT_NONE(ChildProbe, NS::SceneActor)
+        NS_REFLECT_NONE(ChildProbe, NS::ChildActorObj)
 
         void OnStart() override
         {
@@ -54,7 +80,7 @@ namespace
         {
             m_counts.endedWithParentModel = ParentActor()->ModelClassObj() != nullptr;
             ++m_counts.ended;
-            NS::SceneActor::OnEndPlay();
+            NS::ChildActorObj::OnEndPlay();
         }
 
         void InitAfterPlacement() override
@@ -86,7 +112,7 @@ namespace
         void OnDisappear() noexcept override
         {
             ++m_counts.vanished;
-            NS::SceneActor::OnDisappear();
+            NS::ChildActorObj::OnDisappear();
         }
 
     private:
@@ -143,7 +169,7 @@ TEST(ActorChild, BelongsToItsParentAndStartsAfterItWithoutAnotherScenePlacement)
     NS::Scene scene;
     ParentProbe* parent = scene.SpawnActor<ParentProbe>("parent", counts);
     ASSERT_NE(parent, nullptr);
-    NS::SceneActor* child = parent->ChildActor();
+    NS::ChildActorObj* child = parent->ChildActor();
     ASSERT_NE(child, nullptr);
     EXPECT_EQ(child->ParentActor(), parent);
     EXPECT_EQ(child->OwningScene(), &scene);
@@ -238,12 +264,16 @@ TEST(ActorChild, PlayerAndPropUseTheirMainModelWithoutGivingTheChildAnotherModel
     GL::Level::PropActor* prop = scene.SpawnActor<GL::Level::PropActor>("prop");
     ASSERT_NE(player, nullptr);
     ASSERT_NE(prop, nullptr);
-    EXPECT_EQ(player->ChildActor(), player->Ghost());
-    EXPECT_EQ(prop->ChildActor(), prop->Ghost());
-    EXPECT_EQ(player->Ghost()->ParentActor(), player);
-    EXPECT_EQ(prop->Ghost()->ParentActor(), prop);
-    EXPECT_EQ(player->Ghost()->ModelClassObj(), nullptr);
-    EXPECT_EQ(prop->Ghost()->ModelClassObj(), nullptr);
+    ASSERT_NE(player->ChildActor(), nullptr);
+    ASSERT_NE(prop->ChildActor(), nullptr);
+    EXPECT_STREQ(player->ChildActor()->ClassName(), "ChildActorObj");
+    EXPECT_STREQ(prop->ChildActor()->ClassName(), "ChildActorObj");
+    EXPECT_EQ(player->ChildActor()->ParentActor(), player);
+    EXPECT_EQ(prop->ChildActor()->ParentActor(), prop);
+    EXPECT_EQ(player->ChildActor()->ModelClassObj(), nullptr);
+    EXPECT_EQ(prop->ChildActor()->ModelClassObj(), nullptr);
+    EXPECT_EQ(player->ChildActor()->ModelSource(), player->ModelClassObj());
+    EXPECT_EQ(prop->ChildActor()->ModelSource(), prop->ModelClassObj());
     EXPECT_EQ(scene.Actors().ActorCount(), 2u);
     NS::SceneRenderer* renderer = player->GetSceneRenderer();
     ASSERT_NE(renderer, nullptr);
@@ -251,10 +281,10 @@ TEST(ActorChild, PlayerAndPropUseTheirMainModelWithoutGivingTheChildAnotherModel
     ASSERT_TRUE(player->Ghost()->SetSpread(NS::Vector3{0.3f, 0.0f, 0.0f}));
     ASSERT_TRUE(player->Ghost()->SetAfterimageOpacity(0.4f));
     player->Disappear();
-    EXPECT_FALSE(player->Ghost()->IsAppeared());
+    EXPECT_FALSE(player->ChildActor()->IsAppeared());
     EXPECT_EQ(renderer->RenderableCount(), registered);
     player->Appear();
-    EXPECT_TRUE(player->Ghost()->IsAppeared());
+    EXPECT_TRUE(player->ChildActor()->IsAppeared());
     EXPECT_FLOAT_EQ(player->Ghost()->Spread().x, 0.3f);
     EXPECT_FLOAT_EQ(player->Ghost()->AfterimageOpacity(), 0.4f);
     player->ChildActor()->Destroy();
@@ -269,6 +299,81 @@ TEST(ActorChild, PlayerAndPropUseTheirMainModelWithoutGivingTheChildAnotherModel
     prop->Destroy();
     scene.OnUpdate();
     EXPECT_EQ(renderer->RenderableCount(), 0u);
+}
+
+TEST(ActorChild, OrdinaryChildDrawsTheSharedModelWithItsOwnPoseAndOpacity)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "子のモデル参照描画の試し", .size = {64, 36}, .visible = false});
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const NS::AssetManagerScope useAssets{assets};
+    NS::Scene scene;
+    scene.SetDevice(&device);
+    SharedModelParent* parent = scene.SpawnActor<SharedModelParent>("parent");
+    ASSERT_NE(parent, nullptr);
+    NS::ChildActorObj* child = parent->ChildActor();
+    ASSERT_NE(child, nullptr);
+    EXPECT_STREQ(child->ClassName(), "ChildActorObj");
+    EXPECT_EQ(child->ModelClassObj(), nullptr);
+    EXPECT_EQ(child->ModelSource(), parent->ModelClassObj());
+    parent->Root().SetPosition(NS::Vector3{4.0f, 0.0f, 0.0f});
+    child->Root().SetPosition(NS::Vector3{10.0f, 0.0f, 0.0f});
+    child->Root().Snapshot();
+    child->Root().SetPosition(NS::Vector3{14.0f, 0.0f, 0.0f});
+    std::array<NS::ModelDraw, 2> draws{
+        NS::ModelDraw{.offset = NS::Vector3{1.0f, 0.0f, 0.0f}, .opacity = 0.5f, .groundWave = false},
+        NS::ModelDraw{.world = NS::Matrix::CreateTranslation(40.0f, 0.0f, 0.0f),
+                       .opacity = 0.25f, .groundWave = false, .tremor = false}};
+    child->SetModelDraws(draws);
+    draws[0].opacity = 0.0f;
+    NS::Gfx::RenderContext context{};
+    context.alpha = 0.5f;
+    context.groundWave.strength = 2.0f;
+    std::vector<NS::Gfx::DrawItem> copies;
+    child->Collect(context, NS::RenderSource{child->Root().InterpolatedWorldMatrix(context.alpha)}, copies);
+    ASSERT_EQ(copies.size(), 2u);
+    EXPECT_FLOAT_EQ(copies[0].constants.world._41, 13.0f);
+    EXPECT_FLOAT_EQ(copies[1].constants.world._41, 40.0f);
+    EXPECT_FLOAT_EQ(copies[0].constants.opacity, 0.5f);
+    EXPECT_FLOAT_EQ(copies[1].constants.opacity, 0.25f);
+    EXPECT_EQ(copies[0].blend, NS::Gfx::BlendMode::Alpha);
+    EXPECT_FLOAT_EQ(copies[0].constants.groundWaveStrength, 0.0f);
+    std::vector<NS::Gfx::DrawItem> body;
+    parent->ModelClassObj()->Collect(context, NS::RenderSource{parent->Root().WorldMatrix()}, body);
+    ASSERT_EQ(body.size(), 1u);
+    EXPECT_EQ(copies[0].mesh, body[0].mesh);
+    EXPECT_EQ(copies[1].material, body[0].material);
+    EXPECT_FLOAT_EQ(body[0].constants.world._41, 4.0f);
+    EXPECT_FLOAT_EQ(body[0].constants.opacity, 1.0f);
+    EXPECT_FLOAT_EQ(body[0].constants.groundWaveStrength, 2.0f);
+    const NS::AABB bounds = child->WorldBounds(NS::RenderSource{child->Root().WorldMatrix()});
+    EXPECT_GE(bounds.Center.x + bounds.Extents.x, 40.0f);
+    parent->Root().SetPosition(NS::Vector3{100.0f, 0.0f, 0.0f});
+    child->Root().SetPosition(NS::Vector3{100.0f, 0.0f, 0.0f});
+    copies.clear();
+    child->Collect(context, NS::RenderSource{child->Root().WorldMatrix()}, copies);
+    ASSERT_EQ(copies.size(), 2u);
+    EXPECT_FLOAT_EQ(copies[1].constants.world._41, 40.0f);
+    const std::size_t registered = parent->GetSceneRenderer()->RenderableCount();
+    child->UseParentModel();
+    EXPECT_EQ(parent->GetSceneRenderer()->RenderableCount(), registered);
+    const std::size_t enabled = parent->GetSceneRenderer()->EnabledRenderableCount();
+    child->Disappear();
+    EXPECT_EQ(parent->GetSceneRenderer()->EnabledRenderableCount(), enabled - 1u);
+    EXPECT_TRUE(parent->IsAppeared());
+    NS::ShowModel(parent, parent->ModelClassObj());
+    EXPECT_EQ(parent->GetSceneRenderer()->EnabledRenderableCount(), enabled - 1u);
+    child->Appear();
+    EXPECT_EQ(parent->GetSceneRenderer()->EnabledRenderableCount(), enabled);
+    copies.clear();
+    child->Collect(context, NS::RenderSource{child->Root().WorldMatrix()}, copies);
+    EXPECT_EQ(copies.size(), 2u);
+    child->OnEndPlay();
+    copies.clear();
+    child->Collect(context, NS::RenderSource{child->Root().WorldMatrix()}, copies);
+    EXPECT_TRUE(copies.empty());
+    EXPECT_EQ(parent->GetSceneRenderer()->RenderableCount(), registered - 1u);
 }
 
 TEST(ActorChild, ReloadsTheChildAssetsAfterTheParent)
@@ -308,10 +413,12 @@ TEST(ActorChild, PausesTheAfterimageWhileHiddenAndContinuesAfterReappearing)
                        {"左右の残像の不透明度", 0.4f},
                        {"明けの残像のフレーム数", 4.0f},
                        {"明けの残像の不透明度", 0.6f}};
-    player->Ghost()->Start(run);
+    player->Ghost()->Start(run, player);
     scene.OnUpdate();
     const float firstSpread = player->Ghost()->Spread().Length();
     ASSERT_GT(firstSpread, 0.0f);
+    EXPECT_EQ(player->ChildActor()->Root().Position(), player->Root().Position());
+    EXPECT_EQ(player->ChildActor()->Root().PreviousPosition(), player->Root().PreviousPosition());
     player->Disappear();
     scene.OnUpdate();
     scene.OnUpdate();
@@ -325,4 +432,51 @@ TEST(ActorChild, PausesTheAfterimageWhileHiddenAndContinuesAfterReappearing)
     EXPECT_FLOAT_EQ(player->Ghost()->AfterimageOpacity(), 0.0f);
     scene.OnUpdate();
     EXPECT_FLOAT_EQ(player->Ghost()->AfterimageOpacity(), 0.6f);
+}
+
+TEST(ActorChild, CopiesBothEndsOfThePoseForInterpolation)
+{
+    NS::Transform parent;
+    parent.SetPosition(NS::Vector3{1.0f, 2.0f, 3.0f});
+    parent.SetScale(NS::Vector3{2.0f, 3.0f, 4.0f});
+    parent.SetRotation(NS::Quaternion::CreateFromYawPitchRoll(0.2f, 0.1f, 0.3f));
+    parent.Snapshot();
+    parent.SetPosition(NS::Vector3{5.0f, 6.0f, 7.0f});
+    parent.SetScale(NS::Vector3{4.0f, 5.0f, 6.0f});
+    parent.SetRotation(NS::Quaternion::CreateFromYawPitchRoll(0.8f, 0.3f, 0.1f));
+    NS::Transform child;
+    child.CopyFrom(parent);
+    EXPECT_EQ(child.Position(), parent.Position());
+    EXPECT_EQ(child.PreviousPosition(), parent.PreviousPosition());
+    EXPECT_EQ(child.Rotation(), parent.Rotation());
+    EXPECT_EQ(child.PreviousRotation(), parent.PreviousRotation());
+    EXPECT_EQ(child.Scale(), parent.Scale());
+    EXPECT_EQ(child.PreviousScale(), parent.PreviousScale());
+    EXPECT_EQ(child.InterpolatedWorldMatrix(0.5f), parent.InterpolatedWorldMatrix(0.5f));
+    child.SetPosition(NS::Vector3{20.0f, 0.0f, 0.0f});
+    EXPECT_FLOAT_EQ(parent.Position().x, 5.0f);
+}
+
+TEST(ActorChild, ResyncsTheLiveCopiesAfterTheParentMovesLaterInTheStep)
+{
+    NS::Scene scene;
+    PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
+    GL::Level::PropActor* prop = scene.SpawnActor<GL::Level::PropActor>("prop");
+    ASSERT_NE(player, nullptr);
+    ASSERT_NE(prop, nullptr);
+    scene.OnUpdate();
+    player->Ghost()->CaptureAfterimage(player->ModelClassObj(), player->Root().WorldMatrix());
+    prop->Ghost()->CaptureAfterimage(prop->ModelClassObj(), prop->Root().WorldMatrix());
+    const NS::Matrix playerCapture = player->Ghost()->AfterimageWorldMatrix();
+    const NS::Matrix propCapture = prop->Ghost()->AfterimageWorldMatrix();
+    player->Root().ShiftPosition(NS::Vector3{10.0f, 0.0f, 0.0f});
+    prop->Root().ShiftPosition(NS::Vector3{-10.0f, 0.0f, 0.0f});
+    player->PrepareRender();
+    prop->PrepareRender();
+    EXPECT_EQ(player->ChildActor()->Root().WorldMatrix(), player->Root().WorldMatrix());
+    EXPECT_EQ(player->ChildActor()->Root().PreviousPosition(), player->Root().PreviousPosition());
+    EXPECT_EQ(prop->ChildActor()->Root().WorldMatrix(), prop->Root().WorldMatrix());
+    EXPECT_EQ(prop->ChildActor()->Root().PreviousPosition(), prop->Root().PreviousPosition());
+    EXPECT_EQ(player->Ghost()->AfterimageWorldMatrix(), playerCapture);
+    EXPECT_EQ(prop->Ghost()->AfterimageWorldMatrix(), propCapture);
 }

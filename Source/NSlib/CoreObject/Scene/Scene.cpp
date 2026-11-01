@@ -1,4 +1,5 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
