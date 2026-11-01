@@ -50,7 +50,7 @@ namespace
         KeyPress& operator=(const KeyPress&) = delete;
     };
 
-    // 本番と同じく、機器を読む PlayerActor の段を 1 歩回す
+    // 本番と同じく、機器を読む PlayerActor の Update を 1 歩回す
     void StepPlayer(PlayerActor* player)
     {
         NS_ASSERT(Game, player != nullptr, "StepPlayer: 渡したアクターか部品が無い");

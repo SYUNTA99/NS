@@ -134,6 +134,8 @@ namespace NS
         void RenderShakeLines(const Gfx::RenderContext& context) const noexcept;
         void WriteDistortionRing() noexcept;
         void EndDistortionRing() noexcept;
+        void EndFlash() noexcept;
+        void EndLines() noexcept;
         void WriteGroundWave() noexcept;
         void EndGroundWave() noexcept;
 

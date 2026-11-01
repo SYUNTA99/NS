@@ -264,7 +264,7 @@ TEST(SceneStepGuard, DestroyingDuringAStepIsRefused)
     EXPECT_EQ(victim->updates, 1);
 }
 
-TEST(InterpolationSnapshot, ModelWrittenByAnEarlierPhaseStartsFromTheValueBeforeTheStep)
+TEST(InterpolationSnapshot, ModelWrittenDuringTheStepStartsFromTheValueBeforeTheStep)
 {
     // 前の値をアクターを回した後に控えると、その歩で書いた倍率が始点にもなり補間されずに飛ぶ
     NS::Scene scene;

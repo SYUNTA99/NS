@@ -64,7 +64,7 @@ namespace NS
 
         //! 遊び始める。読み込んだ後と、エディタがプレイを始める時に呼ぶ。同じシーンで何度も呼ばれる
         virtual void StartPlay() {}
-        //! 遊ぶのをやめる。エディタが編集へ戻る時に呼ぶ
+        //! 遊ぶのをやめる。エディタが編集へ戻る時と、ResetFromJson が組み直す前に呼ぶ
         virtual void StopPlay() {}
 
         //! 派生の型ごとのタグ。RTTI を切っているので、SceneCast はこれで型を見分ける。派生の無いシーンは nullptr

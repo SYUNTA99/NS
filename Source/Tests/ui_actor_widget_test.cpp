@@ -61,19 +61,19 @@ namespace
     };
 } // namespace
 
-// シーンの歩で回る口は SceneActor だけが持ち、UIActor には無い
+// シーンが固定ステップごとに呼ぶ Update と PrepareRender は SceneActor だけが持ち、UIActor には無い
 template <class T>
-concept HasPhaseHooks = requires(T& actor) {
+concept HasSceneStepHooks = requires(T& actor) {
     actor.Update();
     actor.PrepareRender();
 };
 template <class T>
-concept HasAnyPhaseHook = requires(T& actor) { actor.Update(); } || requires(T& actor) { actor.PrepareRender(); };
-static_assert(HasPhaseHooks<NS::SceneActor>);
-static_assert(!HasAnyPhaseHook<NS::UIActor>);
+concept HasAnySceneStepHook = requires(T& actor) { actor.Update(); } || requires(T& actor) { actor.PrepareRender(); };
+static_assert(HasSceneStepHooks<NS::SceneActor>);
+static_assert(!HasAnySceneStepHook<NS::UIActor>);
 
 // 更新の順は開いた順で、描く順とは別の一覧になる
-TEST(UIActorWidgets, OpenScreensTickInOpenOrderOnTheUIPhase)
+TEST(UIActorWidgets, OpenScreensTickInOpenOrderOnTheUITick)
 {
     NS::Scene scene;
     std::vector<std::string> log;
@@ -131,7 +131,7 @@ TEST(UIActorWidgets, OpenScreenKeepsTickingAfterTheWorldIsRebuilt)
 }
 
 // UI を動かしている最中に開いた画面は、その歩では動かない
-TEST(UIActorWidgets, ScreenOpenedDuringTheUIPhaseWaitsForTheNextStep)
+TEST(UIActorWidgets, ScreenOpenedDuringTheUITickWaitsForTheNextStep)
 {
     NS::Scene scene;
     std::vector<std::string> log;
@@ -149,7 +149,7 @@ TEST(UIActorWidgets, ScreenOpenedDuringTheUIPhaseWaitsForTheNextStep)
 }
 
 // UI を動かしている最中に閉じた画面は、その歩の残りで動かない
-TEST(UIActorWidgets, ScreenClosedDuringTheUIPhaseIsSkipped)
+TEST(UIActorWidgets, ScreenClosedDuringTheUITickIsSkipped)
 {
     NS::Scene scene;
     std::vector<std::string> log;

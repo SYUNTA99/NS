@@ -148,8 +148,8 @@ TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
     EXPECT_FLOAT_EQ(NS::OS::Input::Get().Gamepad().Vibration().left, 0.0f);
 }
 
-// 描く支度の段で進むので、ほかを止めている間も薄れる
-TEST(HitScreenDirector, FlashKeepsFadingWhileOthersAreHeld)
+// シーンが止まっている歩も StepViewStopped で進むので、止めている間も薄れる
+TEST(HitScreenDirector, FlashKeepsFadingWhileTheSceneIsStopped)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);

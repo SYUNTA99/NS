@@ -149,7 +149,7 @@ TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
     EXPECT_FLOAT_EQ(rock->Velocity().Length(), 0.0f);
 }
 
-// やり直しの知らせは StepGame で届き、次のフレームはアクターの段で並び順に回るので、自機が置物より先に回る事がある。
+// やり直しの知らせは StepGame で届き、次のフレームはアクター全部が並び順に回るので、自機が置物より先に回る事がある。
 // 置き直した当たりは、置物の次の更新を待たずに知らせを受けたその場で戻った位置にある
 TEST(MapObjMotion, RestartMovesTheCollisionBeforeTheNextUpdate)
 {

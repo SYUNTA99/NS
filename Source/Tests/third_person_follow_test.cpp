@@ -167,7 +167,7 @@ TEST(FollowCamera, ReadsTheTargetAfterTheActorsAndTheCourseMovedItInThatFrame)
 }
 
 // 止めている間もカメラは止め始めたアクターを追う。止めると、進み続ける自機が画面の中で動いて見える
-TEST(FollowCamera, KeepsFollowingTheHolderWhileOthersAreHeld)
+TEST(FollowCamera, KeepsFollowingTheStopSceneMoverWhileTheSceneIsStopped)
 {
     WalkingFollowScene world;
     ASSERT_NE(world.camera, nullptr);

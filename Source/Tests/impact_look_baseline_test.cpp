@@ -545,7 +545,7 @@ namespace
         }
     }
 
-    // 落ち着くまで回してから溜めきりで真っすぐ突進し、検知の前後の歩を全部のシーンの段で回して並べる
+    // 落ち着くまで回してから溜めきりで真っすぐ突進し、検知の前後の歩を Scene::OnUpdate で回して並べる
     LookTrace RunLookCase(const LookCase& look)
     {
         (void)NS::OS::Input::Get().Gamepad().SetVibration(0.0f, 0.0f);

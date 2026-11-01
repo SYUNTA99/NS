@@ -37,7 +37,7 @@ namespace GL
 
             //! 基底の作る物に続けて、尾と粉の絵を先に読む。.actor が替わって絵の名前が替わった時も読む
             void OnAssetsLoaded() override;
-            //! 1 固定ステップを本番と同じ順で進める。試しが段を回さずに置物を動かす
+            //! 1 固定ステップを本番と同じ順で進める。テストが Scene::OnUpdate を通さずに置物を動かす
             void UpdateMotion();
             void OnEndPlay() override;
             //! 体当たりの止めの最中の場合 true、それ以外の場合は false

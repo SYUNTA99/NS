@@ -21,6 +21,11 @@ namespace NS
     void PadRumbleDirector::Clear()
     {
         m_layers.clear();
+        EndRumble();
+    }
+
+    void PadRumbleDirector::EndRumble()
+    {
         // 振動していない時は書かない。ほかの物が書いたパッドの値を 0 で消さない
         if (!m_running)
         {
@@ -64,11 +69,7 @@ namespace NS
             Write();
             return;
         }
-        // 振動の無い状態を書くと 0 が入り、止めたフレームの値が残らない
-        m_elapsed = 0;
-        m_running = false;
-        m_justStarted = false;
-        Write();
+        EndRumble();
     }
 
     void PadRumbleDirector::Scale(const SceneActor* requester, float scale)

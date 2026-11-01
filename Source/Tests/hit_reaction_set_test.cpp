@@ -578,7 +578,7 @@ TEST(HitReactionStart, OwnerItemsAdvanceThroughTheStop)
     EXPECT_EQ(FindOwnerRun(&reaction, "Long")->frame, 5);
 }
 
-// 寄りは始めるまでのフレーム数を数えてから寄せる。束を始めたフレームのカメラの段は、始めたフレームの姿を描く
+// 寄りは始めるまでのフレーム数を数えてから寄せる。束を始めたフレームの CameraManager::OnTick は、始めたフレームの仮想カメラを追わせる
 TEST(HitReactionStart, TheZoomWaitsItsDelayFrames)
 {
     NS::HitZoomRollItem zoom;

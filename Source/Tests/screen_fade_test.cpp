@@ -123,7 +123,7 @@ TEST(ScreenFade, RepeatedRequestsDoNotRestartTheTransition)
     EXPECT_FALSE(fade.IsFading());
 }
 
-TEST(ScreenFade, SceneAdvancesOncePerStepWithoutWorldTimeWhileOthersAreHeld)
+TEST(ScreenFade, SceneAdvancesOncePerStepWithoutWorldTimeWhileTheSceneIsStopped)
 {
     NS::Scene scene;
     scene.SetWorldSpeed(0.0f);

@@ -890,7 +890,7 @@ void PlayerActor::ResetState() noexcept
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale(m_model.get());
     // 状態機械は立ちへ戻したので、立ちのクリップを前の姿勢から混ぜずに頭から流す。
-    // やり直しはアクターの段より後に届くので、外したままにすると、次の VisualStep までの描画が骨格の初期の姿勢になる
+    // やり直しは StepGame からアクターの Update より後に届くので、外したままにすると、次の VisualStep までの描画が骨格の初期の姿勢になる
     if (NS::Animation* animation = AnimationClassObj())
     {
         animation->Play(nullptr);

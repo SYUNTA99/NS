@@ -72,8 +72,7 @@ namespace NS
         NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::StartShakeLines: 頼んだ物が null");
         if (!IsPositive(desc.radius) || desc.frames <= 0)
         {
-            m_linesRemaining = 0;
-            m_linesJustStarted = false;
+            EndLines();
             return;
         }
         m_linesRequester = requester;
@@ -87,16 +86,26 @@ namespace NS
         NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::Stop: 頼んだ物が null");
         if (m_flashRequester == requester)
         {
-            m_flashRemaining = 0;
-            m_flashJustStarted = false;
-            m_flashRequester = nullptr;
+            EndFlash();
         }
         if (m_linesRequester == requester)
         {
-            m_linesRemaining = 0;
-            m_linesJustStarted = false;
-            m_linesRequester = nullptr;
+            EndLines();
         }
+    }
+
+    void HitScreenDirector::EndFlash() noexcept
+    {
+        m_flashRemaining = 0;
+        m_flashJustStarted = false;
+        m_flashRequester = nullptr;
+    }
+
+    void HitScreenDirector::EndLines() noexcept
+    {
+        m_linesRemaining = 0;
+        m_linesJustStarted = false;
+        m_linesRequester = nullptr;
     }
 
     void HitScreenDirector::Scale(const SceneActor* requester, float scale) noexcept
@@ -192,12 +201,8 @@ namespace NS
 
     void HitScreenDirector::Clear() noexcept
     {
-        m_flashRequester = nullptr;
-        m_flashRemaining = 0;
-        m_flashJustStarted = false;
-        m_linesRequester = nullptr;
-        m_linesRemaining = 0;
-        m_linesJustStarted = false;
+        EndFlash();
+        EndLines();
         EndDistortionRing();
         EndGroundWave();
     }

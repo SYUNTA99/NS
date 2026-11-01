@@ -16,7 +16,7 @@
 
 // 画面に出す物 (UIActor)、アクターを回す口、知らせを受ける口を縛る
 
-// アクターを回す口は Scene::OnUpdate の 1 つ。アクターの一覧を直に回すと、同じ歩の管理役が呼ばれない
+// アクターを回す口は Scene::OnUpdate の 1 つ。アクターの一覧を直に回すと、歩を囲む BeginStep・EndStep と止めの効かせ方を通らない
 template <class T>
 concept CanUpdateActors = requires(T& target) { target.UpdateActors(); };
 static_assert(!CanUpdateActors<NS::ActorList>);
@@ -100,7 +100,7 @@ TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
     EXPECT_EQ(ui.updates, 1);
 }
 
-TEST(ActorListTicker, ActorTickFollowsBands)
+TEST(ActorListTicker, ActorRunsBeforeItsPartInItsOwnStep)
 {
     NS::Scene scene;
     TickLog log;

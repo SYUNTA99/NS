@@ -497,7 +497,7 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     screen->OnTick();
     ASSERT_EQ(screen->FlashFramesRemaining(), 3);
     player->States().Build<ObservePlayerEffectsState>(player);
-    // HitScreenDirector は描く支度の段で進む。自機の状態の歩は、薄れる前の白を見る
+    // HitScreenDirector はアクターの PrepareRender の後に進む。自機の状態の歩は、薄れる前の白を見る
     scene.OnUpdate();
     EXPECT_EQ(player->States().StepCount(), 1u);
     EXPECT_EQ(screen->FlashFramesRemaining(), 2);
@@ -733,7 +733,7 @@ namespace
         return step;
     }
 
-    // +z へ突進を出し、全部の段を回して、検知の歩から frames 歩の姿を並べる。当たらなければ空
+    // +z へ突進を出し、Scene::OnUpdate で回して、検知の歩から frames 歩の姿を並べる。当たらなければ空
     // each は歩 k を読んだ後に k を渡して呼ぶ
     std::vector<TackleStep> RunTackle(NS::Scene& scene,
                                       PlayerActor* player,
@@ -1499,7 +1499,7 @@ namespace
 
 // 真ん中の予測では、接触の 6 歩前に当たる直前の状態へ入って縮み始める。2 歩前に止めを頼み、
 // 1 歩前と検知の歩で自機以外が止まる。自機は止まらずに突進の速さで進み、検知の歩で当たる直前を出る
-TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndHoldsTheOthersFromOne)
+TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndStopsTheSceneFromOne)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f);
@@ -1541,7 +1541,7 @@ TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndHoldsTheOther
 }
 
 // 外れの段には当たる直前の動作が無いので、外れの予測では当たる直前に入らず、縮まず止めない
-TEST(PlayerBeforeContact, AMissPredictionNeitherShrinksNorHoldsTheOthers)
+TEST(PlayerBeforeContact, AMissPredictionNeitherShrinksNorStopsTheScene)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.75f);
@@ -1615,7 +1615,7 @@ TEST(PlayerBeforeContact, ALatePredictionEntersAtTheFrameThatMatchesTheRest)
     {
         float rockZ;
         int entered; // 入った歩の、接触までの見込みのフレーム数
-        bool holdsOthers;
+        bool stopsScene;
     };
     const NS::DrawShapeDesc shape = ShippedBeforeContactShape();
     for (const LateCase& late : {LateCase{2.6f, 3, true}, LateCase{2.0f, 1, false}})
@@ -1642,16 +1642,16 @@ TEST(PlayerBeforeContact, ALatePredictionEntersAtTheFrameThatMatchesTheRest)
         ASSERT_EQ(entry.framesToContact, late.entered) << "予測が遅れて入る間合いで見る";
         EXPECT_EQ(*enteredAt - detect, -late.entered);
         EXPECT_EQ(entry.actionFrame, 6 - late.entered);
-        bool othersHeld = false;
+        bool othersStopped = false;
         for (int i = *enteredAt; i <= detect; ++i)
         {
             const int rel = i - detect;
             SCOPED_TRACE(rel);
             const ContactStep& step = steps[static_cast<std::size_t>(i)];
             ExpectScaleNear(step.drawScale, ExpectedBeforeContactScale(shape, rel));
-            othersHeld = othersHeld || !step.othersRan;
+            othersStopped = othersStopped || !step.othersRan;
         }
-        EXPECT_EQ(othersHeld, late.holdsOthers);
+        EXPECT_EQ(othersStopped, late.stopsScene);
     }
 }
 
