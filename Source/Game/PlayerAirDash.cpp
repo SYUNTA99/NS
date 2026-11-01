@@ -110,11 +110,14 @@ bool PlayerActor::BeginAirDash() noexcept
 
 NS::Vector3 PlayerActor::AirDashStartDirection() const noexcept
 {
-    // 押したフレームに倒している向きへ出す。倒し直してすぐ押しても、前の向きへ出ない
+    // 反動のためにスティックを回している最中に押した時は、回し始める前の向きへ出す。
+    // 止めてから押した時は、押したフレームに入力している向きへ出す
     NS::Vector3 direction{};
-    const bool stick = DesiredSpeedScale() >= m_params->StickDeadzone() &&
-                       NS::TryNormalizeHorizontal(DesiredDirection(), direction);
-    if (!stick && !NS::TryNormalizeHorizontal(m_facingDir, direction))
+    if (m_airDash.m_stickMoving && NS::TryNormalizeHorizontal(m_airDash.m_steadyDirection, direction))
+    {
+        return direction;
+    }
+    if (!TryStickDirection(direction) && !NS::TryNormalizeHorizontal(m_facingDir, direction))
     {
         direction = NS::CalcCameraForwardHorizontal(this);
     }
@@ -403,11 +406,26 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
     RequestHitStop(m_params->m_reboundStopMinFrames);
 }
 
-void PlayerActor::ExtendReboundStop() noexcept
+void PlayerActor::ObserveStick() noexcept
 {
     const NS::Vector3 stick = DesiredDirection() * DesiredSpeedScale();
-    const float moved = (stick - m_airDash.m_prevStick).Length();
+    m_airDash.m_stickMoving = (stick - m_airDash.m_prevStick).Length() > m_params->m_reboundStopStickChange;
     m_airDash.m_prevStick = stick;
+    if (m_airDash.m_stickMoving)
+    {
+        return;
+    }
+    // 真ん中から入力し始めた時は止まっていた向きが無いので、押せば入力した向きへ出る
+    NS::Vector3 direction{};
+    if (!TryStickDirection(direction))
+    {
+        direction = NS::Vector3{};
+    }
+    m_airDash.m_steadyDirection = direction;
+}
+
+void PlayerActor::ExtendReboundStop() noexcept
+{
     // 延ばすのは、地形に当たってから向きを選ぶまでの間だけ。ほかの当たりの止めと、向きを選んだ後の止めは延ばさない
     if (!IsDashRebounding() || m_airDash.m_reboundChosen)
     {
@@ -419,7 +437,7 @@ void PlayerActor::ExtendReboundStop() noexcept
     }
     // 1 フレーム足すのは、止めの最後のフレームか、止めが明けて向きを選ぶはずのフレームだけ。
     // 明けるフレームで足すとそのフレームから止まるので、最短が 1 以下でも延ばせる。止めの残りを数えるのは基盤の止めだけにする
-    if (moved <= m_params->m_reboundStopStickChange || HitStopFramesRemaining() > 1 ||
+    if (!m_airDash.m_stickMoving || HitStopFramesRemaining() > 1 ||
         m_airDash.m_reboundStopFrames >= m_params->m_reboundStopMaxFrames)
     {
         return;

@@ -317,7 +317,8 @@ namespace GL
             // 地形に当たったフレームを入れて数える止め。止めが明けたフレームのスティックで反動の向きを選ぶ
             int m_reboundStopMinFrames = 3;
             int m_reboundStopMaxFrames = 12;      // スティックが動いている間は、ここまで止めを延ばす
-            float m_reboundStopStickChange = 0.05f; // 1 フレームの左スティックの位置の差がこれより大きいと、動いているとみなす
+            // 1 フレームの左スティックの位置の差がこれより大きいと、動いているとみなす。止めの延長と、押したフレームのエアダッシュの向きに使う
+            float m_reboundStopStickChange = 0.05f;
             float m_reboundLockSeconds = 0.15f;    // 反動を始めてから操作が戻るまで
             float m_reboundSteerEndSeconds = 0.6f; // 反動を始めてから補正の段が終わるまで
             float m_dashReboundGravity = 30.0f;     // 補正の段の重力 (m/s²)

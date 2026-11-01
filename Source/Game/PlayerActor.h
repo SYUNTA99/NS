@@ -379,7 +379,8 @@ private:
     //! 押せばエアダッシュを出せる状態か。残りの回数と今の状態だけを見て、押しは見ない
     [[nodiscard]] bool AcceptsAirDash() const noexcept;
     [[nodiscard]] bool CanStartAirDash() const noexcept;
-    //! 今押した時にエアダッシュが出る水平の向き。倒していればその向き、倒していなければ向いている向きかカメラの前
+    //! 今押した時にエアダッシュが出る水平の向き。スティックが動いている最中なら最後に止まっていた向き、
+    //! 止まっていれば今入力している向き、入力していなければ向いている向きかカメラの前
     [[nodiscard]] NS::Vector3 AirDashStartDirection() const noexcept;
     [[nodiscard]] bool BeginAirDash() noexcept;
 #if !defined(NS_SHIPPING)
@@ -393,6 +394,9 @@ private:
     //! @details 入力補正はここでは掛けない。止めが明けたフレームに ChooseReboundAtRelease が掛ける
     //! @param[in] baseSpeed 返る速さ (m/s)。エアダッシュならダッシュの速さに地形の反動の倍率を掛けた値、反動の続きなら今の速さ
     void BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vector3& normal, float baseSpeed) noexcept;
+    //! @brief DecideStep から毎フレーム、ExtendReboundStop より前に呼ぶ。前の歩から左スティックが欄「スティックが動いているとみなす変化」より
+    //! 動いたかを控え、止まっている歩ではその水平の向きを控える
+    void ObserveStick() noexcept;
     //! @brief DecideStep から毎フレーム呼ぶ。反動の止めの間に左スティックが動いていたら、欄「反動の止めの上限のフレーム数」まで止めを 1 フレーム延ばす
     void ExtendReboundStop() noexcept;
     //! @brief 止めが明けたフレームに 1 度だけ呼ぶ。今の入力で返る向きを選んで入力補正を掛け、合った時は弱い束を強い束に替える
@@ -437,6 +441,8 @@ private:
     void ChangeCurled(bool curled) noexcept;
     void UncurlWhenSettled() noexcept;
     void SetMaxSpeedScale(float scale) noexcept;
+    //! 左スティックをデッドゾーンより倒していれば、その水平の向き (正規化済み) を outDirection に書いて true
+    [[nodiscard]] bool TryStickDirection(NS::Vector3& outDirection) const noexcept;
     [[nodiscard]] bool TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept;
     void MarkBodySlamAim() noexcept;
     // =========================================================================

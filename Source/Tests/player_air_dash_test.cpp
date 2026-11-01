@@ -219,14 +219,67 @@ TEST(PlayerAirDashTest, DashFromTheAirAllowsTheNextLandingSound)
     EXPECT_TRUE(player->Sounds().IsLandAllowed());
 }
 
-// 倒し直してすぐ押しても、押したフレームに倒している向きへ出る
-TEST(PlayerAirDashTest, TiltJustBeforeThePressDashesTheTiltedWay)
+// 入力し直して 1 歩止めてから押せば、押したフレームに入力している向きへ出る
+TEST(PlayerAirDashTest, PressAStepAfterTheStickStopsDashesTheNewWay)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceFloatingPlayer(scene);
     ASSERT_NE(player, nullptr);
 
     player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        player->Update(false);
+    }
+    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(false);
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    EXPECT_GT(player->Body().Velocity().x, 0.0f);
+    EXPECT_NEAR(player->Body().Velocity().z, 0.0f, 1.0e-3f);
+}
+
+// 反動のためにスティックを回している最中に押すと、回し始める前に止まっていた向きへ出る
+TEST(PlayerAirDashTest, PressWhileTheStickMovesDashesTheWayItRestedBefore)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    const float change = ParamsFields(player).at("スティックが動いているとみなす変化").get<float>();
+    const NS::Vector3 turned20{0.342f, 0.0f, 0.940f};
+    const NS::Vector3 turned40{0.643f, 0.0f, 0.766f};
+    // 1 歩で回す量が、動いているとみなす変化より大きい
+    ASSERT_GT((turned40 - turned20).Length(), change);
+    ASSERT_GT((turned20 - NS::Vector3{0.0f, 0.0f, 1.0f}).Length(), change);
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        player->Update(false);
+    }
+    player->SetDesiredMove(turned20, 1.0f);
+    player->Update(false);
+    player->SetDesiredMove(turned40, 1.0f);
+    player->Update(true);
+    ASSERT_TRUE(player->IsAirDashing());
+    EXPECT_NEAR(player->Body().Velocity().x, 0.0f, 1.0e-3f);
+    EXPECT_GT(player->Body().Velocity().z, 0.0f);
+}
+
+// 真ん中から入力すると同時に押すと、止まっていた向きが無いので入力した向きへ出る。
+// 真ん中へ戻す前に入力していた向きは、止まっていた向きに残らない
+TEST(PlayerAirDashTest, PressWhilePushingOutFromTheCenterDashesTheInputWay)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+
+    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        player->Update(false);
+    }
+    player->SetDesiredMove(NS::Vector3{}, 0.0f);
     for (int frame = 0; frame < 30; ++frame)
     {
         player->Update(false);
