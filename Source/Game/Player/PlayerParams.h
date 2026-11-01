@@ -32,6 +32,7 @@ namespace GL
 {
     namespace Player
     {
+        struct LaunchPath;
         struct ReboundArc;
     } // namespace Player
 } // namespace GL
@@ -65,6 +66,11 @@ namespace GL
                                              .apexSpeed = m_apexHangVy,
                                              .apexScale = m_apexHangScale};
             }
+            //! 突進の玉の道筋。矢印と裁定がここで組むので、矢印と裁定の道筋がずれない
+            //! @param[in] verticalSpeed 放つ瞬間の縦の速さ (m/s)。上が正
+            //! @param[in] grounded 接地して放つか
+            //! @param[in] dt 1 フレームの秒
+            [[nodiscard]] LaunchPath SlamLaunchPath(float verticalSpeed, bool grounded, float dt) const noexcept;
             //! 上りだけ反動の倍率を掛けた重力を返す。移動と初速の計算に同じ値を使う
             [[nodiscard]] GL::Level::AirGravity ReboundGravity() const noexcept
             {

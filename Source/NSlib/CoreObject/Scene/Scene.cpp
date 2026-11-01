@@ -1,8 +1,6 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/Action/ActionTimeline.h"
-#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -358,17 +356,9 @@ namespace NS
             (void)ApplyJsonFields(classObj, *fields);
             written = true;
         });
-        // 束と動作は .actor だけに書くので、替えた先の .actor から読む
         if (actorFileChanged)
         {
-            if (HitReaction* reaction = obj->HitReactionClassObj())
-            {
-                reaction->ReloadSets(obj);
-            }
-            if (ActionTimeline* timeline = obj->ActionTimelineClassObj())
-            {
-                timeline->ReloadActions(obj);
-            }
+            obj->ReloadActorFileOnlyValues();
         }
         // 書き換えた欄に参照があれば読み直す。作る時と同じ組を通る
         if (written || actorFileChanged)

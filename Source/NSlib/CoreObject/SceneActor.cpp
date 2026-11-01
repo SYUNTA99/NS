@@ -263,12 +263,7 @@ namespace NS
         }
         OnInit();
         ApplyActorFile(this);
-        // 束と動作とセンサーの値は .actor だけに書き、シーンでは上書きしない
-        // clang-format off
-        if (m_hitSensors) { m_hitSensors->ReloadValues(this); }
-        if (m_hitReaction) { m_hitReaction->ReloadSets(this); }
-        if (m_actionTimeline) { m_actionTimeline->ReloadActions(this); }
-        // clang-format on
+        ReloadActorFileOnlyValues();
         if (info != nullptr && info->placement != nullptr)
         {
             ApplyActorClassObjs(this, *info->placement);
@@ -276,6 +271,15 @@ namespace NS
         }
         // 素材の参照は欄にある。欄を書き終えてから読む
         ReloadAssets();
+    }
+
+    void SceneActor::ReloadActorFileOnlyValues()
+    {
+        // clang-format off
+        if (m_hitSensors) { m_hitSensors->ReloadValues(this); }
+        if (m_hitReaction) { m_hitReaction->ReloadSets(this); }
+        if (m_actionTimeline) { m_actionTimeline->ReloadActions(this); }
+        // clang-format on
     }
 
     void SceneActor::ReloadAssets()

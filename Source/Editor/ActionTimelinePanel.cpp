@@ -541,7 +541,9 @@ namespace NS
                 ActorFileLibrary::Get().Reload();
                 for (SceneActor* actor : editor.Actors())
                 {
-                    if (m_dirty.contains(actor->ActorFileName()) && actor->ActionTimelineClassObj() != nullptr)
+                    // m_dirty は動作を書く先の名前なので、派生を指すアクターも書く先の名前で比べる
+                    if (m_dirty.contains(ActorFileToWrite(actor, FieldDestination::ActorFile)) &&
+                        actor->ActionTimelineClassObj() != nullptr)
                     {
                         actor->ActionTimelineClassObj()->ReloadActions(actor);
                     }

@@ -640,10 +640,9 @@ namespace NS
                 const float normalizedY = static_cast<float>(raw.data.mouse.lLastY) / 65535.0f;
                 // 遠隔で視点が動かない時に、入力が届いていないのか計算が違うのかを切り分ける
                 // 毎回出すとマウスを動かす間ずっとログが流れるので 1 回で止める
-                static bool s_absoluteReported = false;
-                if (!s_absoluteReported)
+                if (!input.m_absoluteMouseReported)
                 {
-                    s_absoluteReported = true;
+                    input.m_absoluteMouseReported = true;
                     NS_LOG_INFO(Platform, "絶対座標のマウスを検出、 相対移動は座標差から作る");
                 }
                 input.m_mouse.OnRawMoveAbsolute(static_cast<int>(normalizedX * width),

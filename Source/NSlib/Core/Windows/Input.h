@@ -141,6 +141,8 @@ namespace NS
             OS::Mouse m_neutralMouse;
             OS::Gamepad m_neutralGamepad;
             int m_neutralDepth = 0; // BeginNeutral を重ねた数
+
+            bool m_absoluteMouseReported = false; // 絶対座標のマウスを検出したログを出したか
         };
 
         //! 有効期間中だけ入力を中立にし、破棄時に元へ戻す

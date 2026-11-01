@@ -796,17 +796,20 @@ TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
 namespace
 {
     //! 出荷の PlayerActor.actor を試しの置き場へ写して読み直し、自機 1 体を置いて選ぶ
-    void PlaceEditedPlayer(const ScopedActorFileDirectory& directory, NS::Scene& scene, LevelEditorController& editor)
+    void PlaceEditedPlayer(const ScopedActorFileDirectory& directory,
+                           NS::Scene& scene,
+                           LevelEditorController& editor,
+                           const std::string& actorFile = "PlayerActor")
     {
         const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(
             NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Actors/PlayerActor.actor"));
         ASSERT_TRUE(text.has_value());
         WriteActorFile(directory.Path(), "PlayerActor", *text);
         NS::ActorFileLibrary::Get().Reload();
-        ASSERT_NE(NS::ActorFileLibrary::Get().Find("PlayerActor"), nullptr);
+        ASSERT_NE(NS::ActorFileLibrary::Get().Find(actorFile), nullptr);
         nlohmann::json snapshot = NS::MakeSceneJson();
         nlohmann::json player = NS::MakeActorJson();
-        NS::SetActorJsonFile(player, "PlayerActor");
+        NS::SetActorJsonFile(player, actorFile);
         NS::SetActorJsonId(player, 1);
         NS::SceneJsonActors(snapshot).push_back(std::move(player));
         scene.ResetFromJson(std::move(snapshot));
@@ -832,8 +835,8 @@ namespace
         return actions.front().events.size();
     }
 
-    //! パネルの「再生の位置に足す」を押し、選んだアクターの .actor の動作に事象を 1 つ足す
-    void AddEventThroughThePanel(LevelEditorController& editor, NS::Editor::ActionTimelinePanel& timeline)
+    //! パネルを 1 回描いてから、label のボタンを押して描く
+    void PressPanelButton(LevelEditorController& editor, NS::Editor::ActionTimelinePanel& timeline, const char* label)
     {
         const auto drawPanel = [&] {
             ImGui::SetNextWindowPos({0.0f, 0.0f});
@@ -847,12 +850,49 @@ namespace
         ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline);
         ASSERT_NE(window, nullptr);
         ImGuiContext& context = *ImGui::GetCurrentContext();
-        context.NavActivateId = window->GetID("再生の位置に足す");
+        context.NavActivateId = window->GetID(label);
         context.NavActivateDownId = context.NavActivateId;
         drawPanel();
         ImGui::EndFrame();
     }
+
+    //! パネルの「再生の位置に足す」を押し、選んだアクターの .actor の動作に事象を 1 つ足す
+    void AddEventThroughThePanel(LevelEditorController& editor, NS::Editor::ActionTimelinePanel& timeline)
+    {
+        PressPanelButton(editor, timeline, "再生の位置に足す");
+    }
 } // namespace
+
+// 「元に戻す」は派生を指すアクターの動作も読み直す。動作を書く先は元の .actor なので、派生の名前では見つからない
+TEST(EditorActionTimelinePanel, RevertReloadsActorsOfADerivedActorFile)
+{
+    const ScopedActorFileDirectory directory("EditorActionTimelineRevert");
+    nlohmann::json derived = ClassOnlyActorFile("PlayerActor");
+    NS::SetActorFileBase(derived, "PlayerActor");
+    WriteActorFile(directory.Path(), "DerivedPlayer", derived.dump());
+
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    PlaceEditedPlayer(directory, scene, editor, "DerivedPlayer");
+    const std::vector<NS::ActorAction> before =
+        NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
+    ASSERT_FALSE(before.empty());
+
+    NS::Editor::ActionTimelinePanel timeline;
+
+    const auto eventCount = [&] {
+        const NS::ActionTimeline* actions = scene.Actors().FindByActorId(1)->ActionTimelineClassObj();
+        return actions->FindAction(before.front().name)->events.size();
+    };
+    AddEventThroughThePanel(editor, timeline);
+    ASSERT_EQ(eventCount(), before.front().events.size() + 1);
+
+    PressPanelButton(editor, timeline, "元に戻す");
+
+    EXPECT_FALSE(timeline.HasUnsavedChanges());
+    EXPECT_EQ(eventCount(), before.front().events.size());
+}
 
 // シーンを変えずに動作のタイムラインだけを変えても、終了の確認は未保存と答える
 TEST(EditorQuit, TimelineEditAloneIsUnsavedWork)

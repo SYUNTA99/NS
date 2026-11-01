@@ -210,6 +210,10 @@ namespace NS
         //! 消えたままでも外し、当たりの body は壊す。入れていない部品は何もしないので、2 回呼ばれてもよい
         virtual void OnEndPlay();
 
+        //! .actor だけに書き、シーンでは上書きしない値 (センサーの値・束・動作) を今の .actor から読み直す
+        //! 再生中の動作は止まる。作る時と、アクターの指す .actor が替わった時に呼ぶ
+        void ReloadActorFileOnlyValues();
+
         //! 部品の素材の欄を引き直し、続けて OnAssetsLoaded を呼ぶ
         //! 作る時は Init が欄を書いた直後に呼ぶ。エディタやシーンが欄を書き換えた後も、これを呼んで読み直す
         void ReloadAssets();

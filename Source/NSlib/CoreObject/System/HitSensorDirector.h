@@ -3,7 +3,6 @@
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/Core/NonCopyable.h"
 
-#include <utility>
 #include <vector>
 
 namespace NS
@@ -50,7 +49,7 @@ namespace NS
         [[nodiscard]] std::vector<SensorOverlap> CollectOverlaps() const;
         // 前の組と今の組を比べ、終わり → 始まりと続きの順に知らせる
         void NotifyOverlaps(const std::vector<SensorOverlap>& current);
-        // overlap.self の持ち主へ終わりを知らせる。overlap.self が外れていれば知らせない
+        // overlap.self の持ち主へ終わりを知らせる。overlap の両方のセンサーは入っている事
         void NotifyExit(const SensorOverlap& overlap);
 
         [[nodiscard]] bool IsRegistered(const HitSensor* sensor) const noexcept;
@@ -61,5 +60,6 @@ namespace NS
         std::vector<HitSensor*> m_sensors;          // 登録順、非所有
         std::vector<SensorOverlap> m_overlaps;      // 前の OnTick で始まりか続きを知らせた組
         std::vector<SensorOverlap> m_pendingExits;  // 相手が外れた組。other は nullptr で、次の OnTick で終わりを知らせる
+        std::vector<SensorOverlap> m_notifying;     // NotifyOverlaps の途中で順番が来ていない組。済んだ組は空の組にする
     };
 } // namespace NS
