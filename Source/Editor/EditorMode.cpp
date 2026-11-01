@@ -22,9 +22,7 @@
 #include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/Core/Windows/Mouse.h"
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 #include <limits>
 #include <memory>
@@ -73,7 +71,6 @@ namespace NS
                 }
             };
 
-#if NS_EDITOR_ENABLED
             template <std::size_t VertexCount, std::size_t EdgeCount>
             void DrawProjectedWireframe(ImDrawList& dl,
                                         const CursorScreenProjector& project,
@@ -96,7 +93,6 @@ namespace NS
                     }
                 }
             }
-#endif
         } // namespace
 
         bool EditorMode::HasActorAtCell(int16 x, int16 y, int16 z) const noexcept
@@ -369,7 +365,6 @@ namespace NS
                 break;
             }
 
-#if NS_EDITOR_ENABLED
             // 上書き保存などモーダルを開かずに終わった操作をトーストで知らせる
             if (m_statusTimer > 0.0f)
             {
@@ -398,7 +393,6 @@ namespace NS
                     ImGui::End();
                 }
             }
-#endif
         }
 
         void EditorMode::DrawCursorShapes(Gfx::DebugShapes& shapes) const noexcept
@@ -427,7 +421,6 @@ namespace NS
                 return;
             }
 
-#if NS_EDITOR_ENABLED
             if (m_camera == nullptr)
             {
                 return;
@@ -507,7 +500,6 @@ namespace NS
             }
 
             dl->PopClipRect();
-#endif
         }
 
         std::vector<uint32> EditorMode::CreateActors(std::vector<nlohmann::json> objects)

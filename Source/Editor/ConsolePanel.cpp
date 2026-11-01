@@ -4,13 +4,11 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Windows/Clock.h"
 
-#if NS_EDITOR_ENABLED
 #include "Editor/EditorUi.h"
 
 #include <imgui.h>
 
 #include <vector>
-#endif
 
 namespace NS
 {
@@ -18,7 +16,6 @@ namespace NS
     {
         void ConsolePanel::Render() noexcept
         {
-#if NS_EDITOR_ENABLED
             if (ImGui::Begin(k_PanelConsole))
             {
                 const ImGuiIO& io = ImGui::GetIO();
@@ -53,7 +50,6 @@ namespace NS
                 ImGui::EndChild();
             }
             ImGui::End();
-#endif
         }
     } // namespace Editor
 } // namespace NS

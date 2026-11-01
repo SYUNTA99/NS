@@ -43,9 +43,7 @@
 #include <variant>
 #include <vector>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -54,7 +52,6 @@ namespace NS
         InspectorPanel::InspectorPanel() = default;
         InspectorPanel::~InspectorPanel() = default;
 
-#if NS_EDITOR_ENABLED
         namespace
         {
             void DrawTexturePreview(const Texture& texture)
@@ -730,7 +727,6 @@ namespace NS
                 }
             }
         }
-#endif
 
         std::vector<ActorRefOption> MakeActorRefOptions(const ActorList& objects)
         {
@@ -751,21 +747,16 @@ namespace NS
         void InspectorPanel::DrawActorFileChoice(const SceneActor* actor)
         {
             NS_ASSERT(App, actor != nullptr, "DrawActorFileChoice: 渡したアクターか部品が無い");
-#if NS_EDITOR_ENABLED
             ImGui::TextUnformatted((actor->ActorFileName() + ".actor").c_str());
             if (DrawDerivedActorNameRow(m_derivedNameBuffer, sizeof(m_derivedNameBuffer), "上書きから派生を作る"))
             {
                 m_deriveRequested = true;
                 m_actorFileTargetId = actor->Id();
             }
-#else
-            (void)actor;
-#endif
         }
 
         void InspectorPanel::Render(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             m_nameCommitId = 0;
             m_deriveRequested = false;
             const ImGuiStyle& style = ImGui::GetStyle();
@@ -928,9 +919,6 @@ namespace NS
             {
                 m_derivedNameBuffer[0] = '\0';
             }
-#else
-            (void)editor;
-#endif
         }
     } // namespace Editor
 } // namespace NS

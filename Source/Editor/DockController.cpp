@@ -9,16 +9,13 @@
 #include <optional>
 #include <span>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
 #include <imgui_internal.h>
-#endif
 
 namespace NS
 {
     namespace Editor
     {
-#if NS_EDITOR_ENABLED
         namespace
         {
             const char* const k_Panels[] = {k_PanelScene, k_PanelGame, k_PanelActorList, k_PanelInspector,
@@ -72,13 +69,10 @@ namespace NS
 
                 ImGui::DockBuilderFinish(dockspaceId);
             }
-
         } // namespace
-#endif
 
         void DockController::RenderDockSpaceHost(float topOffset, bool keepAliveOnly) noexcept
         {
-#if NS_EDITOR_ENABLED
             ImGui::GetIO().ConfigDockingWithWideTargets = true;
             ImGui::GetIO().ConfigDockingTransparentPayload = true;
             const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -119,15 +113,10 @@ namespace NS
             }
             ImGui::DockSpace(dockspaceId, ImVec2{0.0f, 0.0f}, flags);
             ImGui::End();
-#else
-            (void)topOffset;
-            (void)keepAliveOnly;
-#endif
         }
 
         void DockController::EnterMaximize(const char* name) noexcept
         {
-#if NS_EDITOR_ENABLED
             if (IsMaximized())
             {
                 ExitMaximize();
@@ -143,14 +132,10 @@ namespace NS
             ImGui::GetIO().IniFilename = nullptr;
             m_dockFocusPending = 0;
             m_maximizedPanel = name;
-#else
-            (void)name;
-#endif
         }
 
         void DockController::ExitMaximize() noexcept
         {
-#if NS_EDITOR_ENABLED
             if (!IsMaximized())
             {
                 return;
@@ -162,13 +147,11 @@ namespace NS
                 ImGui::LoadIniSettingsFromMemory(m_savedImGuiIni.data(), m_savedImGuiIni.size());
                 m_savedImGuiIni.clear();
             }
-#endif
             m_maximizedPanel.clear();
         }
 
         void DockController::RenderMaximizeButton(bool shortcutsBlocked) noexcept
         {
-#if NS_EDITOR_ENABLED
             if (shortcutsBlocked || !ImGui::GetIO().KeyShift ||
                 !ImGui::IsKeyPressed(ImGuiKey_Space, false))
             {
@@ -193,14 +176,10 @@ namespace NS
                     break;
                 }
             }
-#else
-            (void)shortcutsBlocked;
-#endif
         }
 
         void DockController::MovePanel(const char* panel, const char* target, Placement placement) noexcept
         {
-#if NS_EDITOR_ENABLED
             ExitMaximize();
             ImGuiWindow* window = ImGui::FindWindowByName(panel);
             if (window == nullptr)
@@ -255,7 +234,6 @@ namespace NS
             }
             m_dockFocusPending = 0;
             ImGui::SetWindowFocus(panel);
-#endif
         }
 
         void DockController::ResetLayout() noexcept
@@ -266,7 +244,6 @@ namespace NS
 
         bool DockController::SaveLayout(const char* path) const
         {
-#if NS_EDITOR_ENABLED
             std::size_t size = 0;
             const char* data = ImGui::SaveIniSettingsToMemory(&size);
             if (IsMaximized())
@@ -275,14 +252,10 @@ namespace NS
                 size = m_savedImGuiIni.size();
             }
             return OS::FileSystem::WriteAllBytes(path, std::as_bytes(std::span{data, size}));
-#else
-            return false;
-#endif
         }
 
         bool DockController::LoadLayout(const char* path)
         {
-#if NS_EDITOR_ENABLED
             const std::optional<std::string> data = OS::FileSystem::ReadAllText(path);
             if (!data.has_value() || data->empty() ||
                 data->find("[Docking][Data]") == std::string::npos ||
@@ -295,14 +268,10 @@ namespace NS
             m_resetPending = false;
             m_dockFocusPending = 0;
             return true;
-#else
-            return false;
-#endif
         }
 
         void DockController::RenderPanelMenu(const char* panel) noexcept
         {
-#if NS_EDITOR_ENABLED
             if (ImGui::MenuItem("前面に表示"))
             {
                 ExitMaximize();
@@ -338,12 +307,10 @@ namespace NS
                 }
                 ImGui::EndMenu();
             }
-#endif
         }
 
         void DockController::RenderWindowMenu() noexcept
         {
-#if NS_EDITOR_ENABLED
             if (!ImGui::BeginMenu("Window"))
             {
                 return;
@@ -396,12 +363,10 @@ namespace NS
                 ImGui::TextUnformatted(m_layoutStatus.c_str());
             }
             ImGui::EndMenu();
-#endif
         }
 
         void DockController::TickTabFocus() noexcept
         {
-#if NS_EDITOR_ENABLED
             // レイアウトを組んだフレームに焦点を渡しても DockBuilder の既定選択に負けるので、
             // 全パネルが 1 度発行された次のフレームで前面タブを確定させる
             if (m_dockFocusPending > 0)
@@ -415,7 +380,6 @@ namespace NS
                     ImGui::SetWindowFocus(k_PanelScene);
                 }
             }
-#endif
         }
     } // namespace Editor
 } // namespace NS

@@ -13,9 +13,7 @@
 
 #include <limits>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -491,7 +489,6 @@ namespace NS
 
         void GizmoEditor::Render(const Matrix& viewProjection, const ViewRect& view) noexcept
         {
-#if NS_EDITOR_ENABLED
             if (!m_active || m_selected == nullptr)
             {
                 return;
@@ -636,10 +633,6 @@ namespace NS
             }
 
             dl->PopClipRect();
-#else
-            (void)viewProjection;
-            (void)view;
-#endif
         }
 
         GizmoTool GizmoEditor::ToolForKey(GizmoTool current, OS::Key key) noexcept

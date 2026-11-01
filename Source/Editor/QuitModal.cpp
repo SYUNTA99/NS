@@ -7,9 +7,7 @@
 #include "Editor/LevelEditorController.h"
 #include "NSlib/App/Application.h"
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -51,7 +49,6 @@ namespace NS
 
         void QuitModal::Render(LevelEditorController& editor, ActionTimelinePanel& timeline) noexcept
         {
-#if NS_EDITOR_ENABLED
             if (!m_open)
             {
                 return;
@@ -134,10 +131,6 @@ namespace NS
                 }
                 ImGui::EndPopup();
             }
-#else
-            (void)editor;
-            (void)timeline;
-#endif
         }
     } // namespace Editor
 } // namespace NS

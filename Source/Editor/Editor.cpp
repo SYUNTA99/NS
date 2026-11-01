@@ -18,19 +18,15 @@
 #include <utility>
 #include <vector>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
 #include <imgui_internal.h>
-#endif
 
-#if NS_EDITOR_ENABLED
 namespace
 {
     // メニューバーだけ明るい帯＋濃い文字にする。他のポップアップは暗いテーマ任せ
     const ImVec4 k_MenuBarBg{0.96f, 0.96f, 0.96f, 1.0f};
     const ImVec4 k_MenuBarText{0.10f, 0.10f, 0.10f, 1.0f};
 } // namespace
-#endif
 
 Editor::Editor() : NS::Layer("Editor") {}
 Editor::~Editor() = default;
@@ -393,7 +389,6 @@ void Editor::HandleUiVisibilityInput(LevelEditorController& editor, const NS::OS
 
 float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
 {
-#if NS_EDITOR_ENABLED
     const ImGuiStyle& style = ImGui::GetStyle();
     const float height = ImGui::GetFrameHeight() + style.WindowPadding.y * 2.0f;
 
@@ -469,15 +464,10 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
     }
     ImGui::End();
     return height;
-#else
-    (void)editor;
-    return 0.0f;
-#endif
 }
 
 void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
 {
-#if NS_EDITOR_ENABLED
     NS::Editor::EditorMode& ed = editor.Editor();
     const bool editEnabled = editor.IsSceneEditable();
 
@@ -531,14 +521,10 @@ void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
     }
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar(2);
-#else
-    (void)editor;
-#endif
 }
 
 void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset) noexcept
 {
-#if NS_EDITOR_ENABLED
     const ImGuiViewport* vp = ImGui::GetMainViewport();
     if (vp == nullptr)
     {
@@ -600,10 +586,6 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
     {
         m_dock.ClearMaximized();
     }
-#else
-    (void)editor;
-    (void)topOffset;
-#endif
 }
 
 void Editor::HandleEditShortcuts(LevelEditorController& editor, const NS::OS::InputPresses& presses) noexcept

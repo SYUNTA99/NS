@@ -10,9 +10,7 @@
 #include <cmath>
 #include <limits>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -155,7 +153,6 @@ namespace NS
 
         void StageBuildTool::RenderControls()
         {
-#if NS_EDITOR_ENABLED
             ImGui::SeparatorText("置く部品");
             for (const Part part : {Part::Floor, Part::Wall, Part::Slope})
             {
@@ -188,7 +185,6 @@ namespace NS
             }
             ImGui::TextWrapped("左クリックで連続配置。地形の面に接して置き、空白では指定した高さを使います。");
             ImGui::TextWrapped("R: 90度回転 / Esc: 選択・変形へ戻る");
-#endif
         }
 
         bool StageBuildTool::HasValidSettings() const noexcept

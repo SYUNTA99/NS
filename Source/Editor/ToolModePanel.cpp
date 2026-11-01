@@ -3,9 +3,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -13,7 +11,6 @@ namespace NS
     {
         void ToolModePanel::Render(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             // 固定座標を置くとドッキング配置と競合するので位置はドッキング / imgui.ini 任せ
             if (ImGui::Begin(k_PanelEditMode))
             {
@@ -70,9 +67,6 @@ namespace NS
                 ImGui::TextDisabled("Ctrl/Shift クリックで複数選択");
             }
             ImGui::End();
-#else
-            (void)editor;
-#endif
         }
     } // namespace Editor
 } // namespace NS
