@@ -17,7 +17,7 @@ namespace NS
 
     //! 体力の表示やメニューなど、画面に出す物の基底
     //! 寿命は開いた側が持ち、Open で登録し Close か破棄で外れる
-    //! UI の段で開いた順に更新し、世界の後に DrawOrder 順で描く
+    //! シーンの歩ごとに実時間で、開いた順に更新し、世界の後に DrawOrder 順で描く
     class UIActor : public Object
     {
     public:

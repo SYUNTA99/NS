@@ -2,7 +2,6 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
@@ -52,8 +51,8 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     ASSERT_NE(player, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
-    NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
+    NS::PadRumbleDirector* pad = &scene.PadRumble();
     ASSERT_NE(screen, nullptr);
     ASSERT_NE(pad, nullptr);
     const auto tick = [&]() {
@@ -94,8 +93,8 @@ TEST(HitReactionChannels, ScalingKeepsTheRunningEffectsGoingAtTheNewStrength)
     ASSERT_NE(player, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
-    NS::PadRumbleDirector* pad = NS::FindSceneSystem<NS::PadRumbleDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
+    NS::PadRumbleDirector* pad = &scene.PadRumble();
     ASSERT_NE(screen, nullptr);
     ASSERT_NE(pad, nullptr);
     const auto tick = [&]() {
@@ -147,7 +146,7 @@ TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
     ASSERT_NE(player, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(player);
+    NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
     EXPECT_TRUE(reaction->StartSink(player, NS::CameraSinkDesc{.bottomPixels = 9.0f, .frames = 4}));
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);

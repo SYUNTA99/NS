@@ -4,6 +4,7 @@
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/Undo/ActorSnapshotApplier.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
@@ -783,7 +784,7 @@ TEST(ActorFile, RevertingDuringPlayRemovesTheFieldFromThePlayBaseline)
     NS::ActorJsonClassObjs(object)["Shadow"] = DiameterEntry(4.0f);
     nlohmann::json doc = NS::MakeSceneJson();
     NS::SceneJsonActors(doc).push_back(std::move(object));
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
     LevelEditorController editor(&scene);
     editor.EnterPlay();
@@ -1086,7 +1087,7 @@ TEST(ActorFile, EditorWritesAMarkedFieldToThatActorOnly)
 TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningToEdit)
 {
     const ScopedActorFileDirectory scope("PlayEditActorFile");
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     ResetTwoProps(scene);
     LevelEditorController editor(&scene);
     editor.EnterPlay();

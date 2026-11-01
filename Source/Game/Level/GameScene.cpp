@@ -1,4 +1,4 @@
-#include "Game/Level/CourseDirector.h"
+#include "Game/Level/GameScene.h"
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/PlayerActor.h"
@@ -7,7 +7,6 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/SoundClip.h"
 #include "NSlib/CoreObject/Reflection/SoundName.h"
-#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Core/Windows/Clock.h"
@@ -18,22 +17,43 @@ namespace GL
 {
     namespace Level
     {
-        CourseDirector::CourseDirector(NS::Scene& scene) : m_scene(scene)
-        {
-            m_scene.AddSystemTick(*this, NS::UpdatePhase::Course);
-        }
+        GameScene::GameScene() = default;
 
-        CourseDirector::~CourseDirector() noexcept
+        GameScene::~GameScene() = default;
+
+        void GameScene::OnStartPlay()
         {
-            // 進行中のクリア演出も取り消す
-            if (m_sequences.IsRunning())
+            for (NS::SceneActor* actor : PlacedActors(nullptr))
             {
-                m_scene.Fade().Cancel();
+                (void)SendMsgCourseStart(actor);
             }
-            m_sequences.CancelAll();
+            RestartCourse();
+            (void)StartMusic(); // 前のプレイの曲は Scene が OnStopPlay で止めたので必ず始まる
         }
 
-        void CourseDirector::OnTick()
+        void GameScene::OnStopPlay()
+        {
+            // 暗転とアクターの入力の止めは、続く組み直し (Scene::ClearWorld) が暗転を取り消し、アクターごと捨てる
+            m_sequences.CancelAll();
+            m_playerDead = false;
+            m_respawnPending = false;
+            m_goalReached = false;
+            StopMusic();
+        }
+
+        bool GameScene::NotifyGoal(float fadeOutSeconds, float fadeInSeconds) noexcept
+        {
+            if (m_sequences.IsRunning() || m_goalReached)
+            {
+                return false;
+            }
+            m_fadeOutSeconds = fadeOutSeconds;
+            m_fadeInSeconds = fadeInSeconds;
+            m_goalReached = true;
+            return true;
+        }
+
+        void GameScene::StepGame()
         {
             // 音の機器を繋ぎ直すと曲が止まるので、鳴らし直す。鳴っている間は何もしない
             if (m_music)
@@ -64,35 +84,26 @@ namespace GL
             }
         }
 
-        void CourseDirector::StartCourse()
-        {
-            for (NS::SceneActor* actor : PlacedActors(nullptr))
-            {
-                (void)SendMsgCourseStart(actor);
-            }
-            RestartCourse();
-        }
-
-        void CourseDirector::RestartCourse()
+        void GameScene::RestartCourse()
         {
             SendRestart(nullptr);
         }
 
-        void CourseDirector::RespawnActors()
+        void GameScene::RespawnActors()
         {
-            SendRestart(FindPlayer(m_scene.Actors()));
+            SendRestart(FindPlayer(Actors()));
         }
 
-        bool CourseDirector::StartMusic()
+        bool GameScene::StartMusic()
         {
             if (m_musicStarted)
             {
                 return false;
             }
             m_musicStarted = true;
-            const NS::SceneEnvironment& environment = m_scene.Environment();
+            const NS::SceneEnvironment& environment = Environment();
             // 当たりの下見のシーンは装置を受け取らないので、曲を読まない
-            if (m_scene.GetAudioDevice() == nullptr || environment.music.name.empty())
+            if (GetAudioDevice() == nullptr || environment.music.name.empty())
             {
                 return true;
             }
@@ -108,18 +119,18 @@ namespace GL
             return true;
         }
 
-        void CourseDirector::StopMusic()
+        void GameScene::StopMusic()
         {
             m_musicStarted = false;
             m_music.reset();
         }
 
-        std::vector<NS::SceneActor*> CourseDirector::PlacedActors(const NS::SceneActor* skip) const
+        std::vector<NS::SceneActor*> GameScene::PlacedActors(const NS::SceneActor* skip)
         {
             // 送る先は控えた並びで回す。受け手が戻る間にアクターの並びが変わっても崩れない
             std::vector<NS::SceneActor*> receivers;
-            receivers.reserve(m_scene.Actors().ActorCount());
-            for (NS::SceneActor* actor : m_scene.Actors())
+            receivers.reserve(Actors().ActorCount());
+            for (NS::SceneActor* actor : Actors())
             {
                 if (actor != skip)
                 {
@@ -129,13 +140,14 @@ namespace GL
             return receivers;
         }
 
-        void CourseDirector::SendRestart(const NS::SceneActor* skip)
+        void GameScene::SendRestart(const NS::SceneActor* skip)
         {
             // 止め始めたのが出し直すアクターなら、止めを残すと出し直したアクターが止まったまま待つ。
-            // 出し直さないアクター (リスポーンの自機) が始めた止めは、そのアクターが続けているので残す
-            if (skip == nullptr || !m_scene.IsOthersHolder(skip))
+            // 出し直さないアクター (リスポーンの自機) が始めた止めは、そのアクターが続けているので残す。
+            // skip が nullptr (全員を出し直す) の時は、IsStopSceneMover が false を返す
+            if (!IsStopSceneMover(skip))
             {
-                m_scene.ReleaseOthersHold();
+                CancelStopScene();
             }
             for (NS::SceneActor* actor : PlacedActors(skip))
             {
@@ -143,27 +155,27 @@ namespace GL
             }
         }
 
-        void CourseDirector::SendInputLock(bool locked)
+        void GameScene::SendInputLock(bool locked)
         {
-            if (::PlayerActor* player = FindPlayer(m_scene.Actors()))
+            if (::PlayerActor* player = FindPlayer(Actors()))
             {
                 (void)SendMsgInputLock(player, locked);
             }
         }
 
-        NS::Coroutine CourseDirector::ClearSequence()
+        NS::Coroutine GameScene::ClearSequence()
         {
             // 世界は止めず操作だけ止める。暗転の間も重力とカメラは動いたまま
             SendInputLock(true);
 
-            m_scene.Fade().BeginOut(m_fadeOutSeconds);
-            co_await NS::WaitUntil{[this] { return m_scene.Fade().IsBlack(); }};
+            Fade().BeginOut(m_fadeOutSeconds);
+            co_await NS::WaitUntil{[this] { return Fade().IsBlack(); }};
 
             // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる
             RestartCourse();
 
-            m_scene.Fade().BeginIn(m_fadeInSeconds);
-            co_await NS::WaitUntil{[this] { return !m_scene.Fade().IsFading(); }};
+            Fade().BeginIn(m_fadeInSeconds);
+            co_await NS::WaitUntil{[this] { return !Fade().IsFading(); }};
 
             SendInputLock(false);
         }

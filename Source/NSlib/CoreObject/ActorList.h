@@ -42,16 +42,16 @@ namespace NS
         void RenameActor(SceneActor* obj, std::string_view name);
 
         //! アクターの OnEndPlay を逆順に呼んでから所有物を空へ戻す。scene の OnShutdown と RebuildFromJson の冒頭が呼ぶ
-        //! 段の更新の最中は断る。その段で後に呼ぶ予定のアクターを解放しない
+        //! 1 歩の更新の最中は断る。その歩で後に呼ぶ予定のアクターを解放しない
         void Clear();
 
         //! objectId 一致のアクターを破棄して所有リストから外す。居なければ何もしない
         //! 当たり箱もここで揃えるので、組み直さずに 1 体だけ消せる
-        //! 0 は未採番を表す値なので何もしない。段の更新の最中は断る
+        //! 0 は未採番を表す値なので何もしない。1 歩の更新の最中は断る
         void RemoveByActorId(uint32 objectId);
 
         //! SceneActor::Destroy を呼ばれたアクターを破棄して所有リストから外す
-        //! 段の更新の最中は断るので、段を回し終えた後に呼ぶ
+        //! 1 歩の更新の最中は断るので、歩を回し終えた後に呼ぶ
         void RemoveDestroyed();
 
         //! objectId 一致のアクターを返す。居なければ nullptr。選択・編集の実体索引
@@ -105,24 +105,23 @@ namespace NS
 
     private:
         // 入れる口は開始の手前で止まるので、開始まで済ませる Scene だけに開く
-        // 段を回す口も Scene だけに開く。同じ段の管理役を Scene が続けて回す
+        // アクターを回す口も Scene だけに開く。同じ歩の管理役を Scene が続けて回す
         friend class Scene;
 
         //! scene の objects からアクターを組み直す。既存のアクターは先に空へ戻す
         //! 出ているアクターの当たりは開始の時に入る。broadphase の張り直しは呼出側がする
         //! factory は CreateActorOfClass で作った個体を返す。factory が空なら物を組まない。
-        //! 段の更新の最中は断る
+        //! 1 歩の更新の最中は断る
         void RebuildFromJson(const nlohmann::json& scene, Scene& owner, const ActorFactoryFn& factory);
 
-        //! 段の更新を始める。EndPhase まで解放の口を断る。再入は禁止
-        void BeginPhase() noexcept;
-        //! 段の更新を終える。Scene が同じ段の管理役を回し終えてから呼ぶ
-        void EndPhase() noexcept;
-        //! 出ているアクターを並びの順に Update する。BeginPhase と EndPhase の間に呼ぶ
-        //! runs は 1 体ごとに Update の直前に問い、偽なら飛ばす。前のアクターの Update の中で変わった答えも
-        //! そのフレームの残りから効く。途中で消えたアクターと、途中で入ったアクターは呼ばない
-        void UpdateActors(const std::function<bool(const SceneActor*)>& runs);
-        //! 出ているアクターを並びの順に PrepareRender する。BeginPhase と EndPhase の間に呼ぶ
+        //! 1 歩の更新を始める。EndStep まで解放の口を断る。再入は禁止
+        void BeginStep() noexcept;
+        //! 1 歩の更新を終える。Scene が同じ歩の管理役を回し終えてから呼ぶ
+        void EndStep() noexcept;
+        //! 出ているアクターを並びの順に Update する。BeginStep と EndStep の間に呼ぶ
+        //! 途中で消えたアクターと、途中で入ったアクターは呼ばない
+        void UpdateActors();
+        //! 出ているアクターを並びの順に PrepareRender する。BeginStep と EndStep の間に呼ぶ
         void PrepareRenderActors();
         //! 出ているアクターを並びの順に m_scheduled へ積み直す
         void ScheduleAppeared();
@@ -136,7 +135,7 @@ namespace NS
         SceneActor* InsertFromJson(std::unique_ptr<SceneActor> obj, const nlohmann::json& entry, std::size_t index);
 
         //! objectId のアクターを Disappear してから、解放せずに一覧から外す。OnEndPlay は呼ばない
-        //! 居なければ空を返す。段の更新の最中は断る
+        //! 居なければ空を返す。1 歩の更新の最中は断る
         [[nodiscard]] DetachedActor DetachByActorId(uint32 objectId);
 
         //! DetachByActorId で外したアクターを外す前の位置へ戻し、出ていた物は Appear する。OnStart は呼び直さない
@@ -157,7 +156,7 @@ namespace NS
             m_index;                   // 永続 id からアクターへの索引。汚れていれば次に引く時に作り直す
         bool m_indexDirty = true;      // 索引が所有リストと食い違っているか
         uint32 m_nextActorId = 1; // 次に割り当てる永続 id。単調増加で欠番は再利用しない
-        bool m_updating = false;       // BeginPhase から EndPhase の間か。入れ子の検知と、段の最中の解放を断るのに使う
+        bool m_updating = false;       // BeginStep から EndStep の間か。入れ子の検知と、歩の最中の解放を断るのに使う
     };
 
 } // namespace NS

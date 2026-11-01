@@ -3,7 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
-#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <cstdint>
 #include <memory>
@@ -17,7 +17,7 @@ namespace NS
 
     //! 有効な仮想カメラを優先度で選び、切り替えを補間して効果を重ねる
     //! 遊びの判定は効果を含まない ViewPose を使う。実カメラへの反映は描画時に行う
-    class CameraManager : public SceneSystem
+    class CameraManager : public NonCopyable
     {
     public:
         CameraManager() noexcept;
@@ -52,9 +52,9 @@ namespace NS
 
         //! 有効な仮想カメラを登録の順に進め (VirtualCamera::Advance)、使うカメラの切り替えを検出し、
         //! 補間の時間と効果を進める。描画はしない
-        //! シーンの並びのカメラの段で回るので、アクター全部・物理・判定・コースが動かした後の相手を追う。
-        //! ほかを止めている間 (Scene::HoldOthers) も回る
-        void OnTick() override;
+        //! Scene はアクター全部・物理・判定・StepGame の後に呼ぶので、それらが動かした後の相手を追う。
+        //! シーンが止まっている間 (Scene::RequestStopScene) も回る
+        void OnTick();
 
         //! 補間した姿勢と効果を実カメラへ反映する。時間は進めない
         //! 遊びの判定は ViewPose を使い、実カメラを読まない

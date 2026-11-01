@@ -81,10 +81,10 @@ namespace
     }
 } // namespace
 
-// 起動シーンの道の持ち主は Game だけ。エディタのレベルの名前はそこから引く
-TEST(EditorLevelOpen, StartSceneLevelNameComesFromTheGameStartScenePath)
+// 起動シーンの名前の持ち主は Game だけ。エディタのレベルの名前はそこから引く
+TEST(EditorLevelOpen, StartSceneLevelNameComesFromTheGameStartSceneName)
 {
-    EXPECT_EQ(NS::Editor::LevelNameOfScenePath(::Game::StartScenePath()), "Scenes/new_scene");
+    EXPECT_EQ(NS::Editor::StartLevelName(), "Scenes/new_scene");
 }
 
 // 名前の無いまま終了の保存をすると、起動シーンへ書き戻す。書き先の名前も Game の道から引く
@@ -92,7 +92,7 @@ TEST(EditorLevelOpen, QuitSaveWithoutALevelNameTargetsTheStartScene)
 {
     NS::Editor::EditorMode editor;
 
-    EXPECT_EQ(editor.QuitSaveLevelName(), NS::Editor::LevelNameOfScenePath(::Game::StartScenePath()));
+    EXPECT_EQ(editor.QuitSaveLevelName(), NS::Editor::StartLevelName());
 }
 
 TEST_F(LevelOpenTest, RestartReopensTheLastSuccessfullyOpenedSceneWithoutSavingEdits)
@@ -117,7 +117,7 @@ TEST_F(LevelOpenTest, RestartReopensTheLastSuccessfullyOpenedSceneWithoutSavingE
     EXPECT_EQ(restarted.CurrentLevelName(), last);
     EXPECT_FALSE(restarted.HasUnsavedChanges());
     nlohmann::json document;
-    ASSERT_TRUE(NS::LoadSceneFromJsonFile(document, *NS::Editor::BuildLevelPath(last)));
+    ASSERT_TRUE(NS::LoadSceneFromJsonFile(document, *NS::BuildLevelPath(last)));
     EXPECT_TRUE(NS::SceneJsonActors(document).empty());
 }
 
@@ -237,11 +237,11 @@ TEST_F(LevelOpenTest, SaveAsUpdatesTheSceneRememberedForRestart)
 // Assets の外・拡張子の違い・使えない文字は名前にしない
 TEST(EditorLevelOpen, LevelNameOfScenePathRejectsPathsOutsideAssetsOrNotScenes)
 {
-    EXPECT_EQ(NS::Editor::LevelNameOfScenePath("Assets/Scenes/a.SCENE"), "Scenes/a");
-    EXPECT_EQ(NS::Editor::LevelNameOfScenePath("Scenes/a.scene"), "");
-    EXPECT_EQ(NS::Editor::LevelNameOfScenePath("Assets/Scenes/a.mat"), "");
-    EXPECT_EQ(NS::Editor::LevelNameOfScenePath("Assets/Scenes/a"), "");
-    EXPECT_EQ(NS::Editor::LevelNameOfScenePath("Assets/../a.scene"), "");
+    EXPECT_EQ(NS::LevelNameOfScenePath("Assets/Scenes/a.SCENE"), "Scenes/a");
+    EXPECT_EQ(NS::LevelNameOfScenePath("Scenes/a.scene"), "");
+    EXPECT_EQ(NS::LevelNameOfScenePath("Assets/Scenes/a.mat"), "");
+    EXPECT_EQ(NS::LevelNameOfScenePath("Assets/Scenes/a"), "");
+    EXPECT_EQ(NS::LevelNameOfScenePath("Assets/../a.scene"), "");
 }
 
 // 自機の居ないレベルを開くと、自機と落下死の範囲を 1 体ずつ補い、名前を控え、前の履歴を捨てて未保存でない
@@ -297,7 +297,7 @@ TEST_F(LevelOpenTest, CreateLevelWritesAnEmptySceneWithoutChangingTheCurrentEdit
 
     EXPECT_EQ(editor.CurrentLevelName(), current);
     EXPECT_TRUE(editor.HasUnsavedChanges());
-    const std::optional<std::string> path = NS::Editor::BuildLevelPath(created);
+    const std::optional<std::string> path = NS::BuildLevelPath(created);
     ASSERT_TRUE(path.has_value());
     nlohmann::json document;
     ASSERT_TRUE(NS::LoadSceneFromJsonFile(document, *path));
@@ -309,7 +309,7 @@ TEST_F(LevelOpenTest, CreateLevelWritesAnEmptySceneWithoutChangingTheCurrentEdit
 TEST_F(LevelOpenTest, CreateLevelRejectsExistingInvalidAndPlayModeTargets)
 {
     const std::string existing = WriteLevel("existing", "do not replace");
-    const std::optional<std::string> path = NS::Editor::BuildLevelPath(existing);
+    const std::optional<std::string> path = NS::BuildLevelPath(existing);
     ASSERT_TRUE(path.has_value());
     NS::Editor::EditorMode editor;
 
@@ -323,7 +323,7 @@ TEST_F(LevelOpenTest, CreateLevelRejectsExistingInvalidAndPlayModeTargets)
     editor.SetSceneEditableFn([] { return false; });
     const std::string blocked = m_folder + "/blocked";
     EXPECT_EQ(editor.CreateLevel(blocked), NS::Editor::CreateLevelResult::NotEditable);
-    EXPECT_FALSE(NS::OS::FileSystem::Exists(*NS::Editor::BuildLevelPath(blocked)));
+    EXPECT_FALSE(NS::OS::FileSystem::Exists(*NS::BuildLevelPath(blocked)));
 }
 
 TEST_F(LevelOpenTest, ControllerLoadsSceneAndImmediatelyFocusesItsActors)
@@ -457,7 +457,7 @@ TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
     io.AddKeyEvent(ImGuiKey_Enter, false);
     frame();
     const std::string created = m_folder + "/New Scene";
-    const std::optional<std::string> createdPath = NS::Editor::BuildLevelPath(created);
+    const std::optional<std::string> createdPath = NS::BuildLevelPath(created);
     ASSERT_TRUE(createdPath.has_value());
     ASSERT_TRUE(NS::OS::FileSystem::Exists(*createdPath));
     EXPECT_EQ(editor.Editor().CurrentLevelName(), name);

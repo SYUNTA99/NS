@@ -8,7 +8,6 @@
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/IActorSnapshotApplier.h"
 #include "Editor/Undo/ActorSnapshotCommand.h"
-#include "Game/Game.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -234,7 +233,7 @@ namespace NS
             }
 
             // 通常起動 / 新規は同梱の起動シーンへ書き戻す
-            return LevelNameOfScenePath(::Game::StartScenePath());
+            return StartLevelName();
         }
 
         bool EditorMode::SaveForQuit() noexcept

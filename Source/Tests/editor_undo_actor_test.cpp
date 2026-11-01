@@ -4,6 +4,7 @@
 #include "Editor/Undo/ActorSnapshotApplier.h"
 #include "Editor/Undo/ActorSnapshotCommand.h"
 #include "Editor/Undo/UndoStack.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Game.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
@@ -99,7 +100,7 @@ TEST(EditorUndoActor, DiscardedHistoryLeavesNoRegistration)
 // 消してからプレイに入って戻ると、組み直しの前に履歴が持つアクターを解放し、元に戻すと JSON から作り直す
 TEST(EditorUndoActor, UndoDeleteAfterLeavingPlayRebuildsFromJson)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     (void)scene.SpawnActor<GL::Level::PropActor>("PropActor");
     const NS::uint32 id = scene.SpawnActor<CountedProp>("PropActor")->Id();
     LevelEditorController editor(&scene);
@@ -142,7 +143,7 @@ TEST(EditorUndoActor, OpenLevelFreesHeldActorsBeforeRebuild)
         destroyedAtRebuild = CountedProp::s_destroyed;
         endPlaysAtRebuild = CountedProp::s_endPlays;
     });
-    ASSERT_TRUE(editor.OpenLevel(NS::Editor::LevelNameOfScenePath(::Game::StartScenePath())));
+    ASSERT_TRUE(editor.OpenLevel(NS::Editor::StartLevelName()));
 
     EXPECT_EQ(destroyedAtRebuild, 1);
     EXPECT_EQ(endPlaysAtRebuild, 1);

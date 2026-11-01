@@ -1,7 +1,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ChildActorObj.h"
 
-#include "Game/Level/CourseDirector.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
@@ -43,7 +43,6 @@
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/Sound.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 
@@ -245,9 +244,9 @@ void PlayerActor::DecideStep()
     // 当たりの途中なのでここでは受け付けず、同じフレームの状態機械の後か押しを下ろす所で消えて、明けの後へ持ち越さない
     if (m_input->RespawnPressed() && !IsHitStopping() && !IsInTackleHit())
     {
-        if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
+        if (GL::Level::GameScene* game = NS::SceneCast<GL::Level::GameScene>(OwningScene()))
         {
-            director->RequestRespawnActors();
+            game->RequestRespawnActors();
         }
     }
     // 体当たりのボタンはエアダッシュに使う。押した瞬間に出すので、溜めには押しを渡さない
@@ -502,8 +501,6 @@ NS::SensorVolume PlayerActor::BodySensorVolume(const NS::Matrix&) const noexcept
 void PlayerActor::InitAfterPlacement()
 {
     ResetHealth();
-    // 死とゴールを伝える先。先に作っておくと、最初の知らせの段で流れが進む
-    (void)NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this);
 }
 
 bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver)
@@ -518,18 +515,18 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
             m_playerSounds->PlayFall(this);
         }
         Die();
-        if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
+        if (GL::Level::GameScene* game = NS::SceneCast<GL::Level::GameScene>(OwningScene()))
         {
-            director->NotifyPlayerDead();
+            game->NotifyPlayerDead();
         }
         return true;
     }
     if (const GL::Level::MsgGoal* goal = NS::MsgCast<GL::Level::MsgGoal>(msg))
     {
-        if (GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(this))
+        if (GL::Level::GameScene* game = NS::SceneCast<GL::Level::GameScene>(OwningScene()))
         {
             // ゴールの知らせは触れている間ずっと届くので、クリアを始めた 1 回だけ鳴らす
-            if (director->NotifyGoal(goal->FadeOutSeconds(), goal->FadeInSeconds()))
+            if (game->NotifyGoal(goal->FadeOutSeconds(), goal->FadeInSeconds()))
             {
                 m_playerSounds->PlayGoal(this);
             }
@@ -899,11 +896,11 @@ void PlayerActor::ResetState() noexcept
     // 当たる直前の動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
     ActionTimelineClassObj()->Stop();
     m_beforeContact = BeforeContactEntry{};
-    OwningScene()->HoldOthers(this, 0);
+    OwningScene()->RequestStopScene(this, 0);
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale(m_model.get());
     // 状態機械は立ちへ戻したので、立ちのクリップを前の姿勢から混ぜずに頭から流す。
-    // やり直しはアクターの段より後に届くので、外したままにすると、次の VisualStep までの描画が骨格の初期の姿勢になる
+    // やり直しは StepGame からアクターの Update より後に届くので、外したままにすると、次の VisualStep までの描画が骨格の初期の姿勢になる
     if (NS::Animation* animation = AnimationClassObj())
     {
         animation->Play(nullptr);

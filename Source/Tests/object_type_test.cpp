@@ -24,7 +24,6 @@ static_assert(std::is_base_of_v<NS::Object, NS::UIActor>);
 static_assert(!std::is_base_of_v<NS::SceneActor, NS::UIActor>);
 static_assert(!std::is_base_of_v<NS::UIActor, NS::SceneActor>);
 static_assert(!std::is_base_of_v<NS::IGetCamera, NS::UIActor>);
-static_assert(!std::is_base_of_v<NS::IGetSceneSystem, NS::UIActor>);
 // エフェクトの窓口は保持役の枠を持つ個体だけが継ぐ。シーンは出す先の EffectScene を持つだけで継がない
 static_assert(std::is_base_of_v<NS::IGetEffect, NS::SceneActor>);
 static_assert(!std::is_base_of_v<NS::IGetEffect, NS::Scene>);

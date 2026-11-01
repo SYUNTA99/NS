@@ -3,7 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
-#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/Core/NonCopyable.h"
 
 
 namespace NS
@@ -31,11 +31,11 @@ namespace NS
     };
 
     //! シーン共通の画面演出。開始した歩は初期状態を描き、次の更新から世界の速さで進める
-    class HitScreenDirector final : public SceneSystem, public IOverlay
+    class HitScreenDirector final : public NonCopyable, public IOverlay
     {
     public:
         explicit HitScreenDirector(Scene& scene);
-        ~HitScreenDirector() noexcept override;
+        ~HitScreenDirector() noexcept;
 
         //! 白の光を始める。前の白が残っていても始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
@@ -66,11 +66,15 @@ namespace NS
         //! requester が頼んだ床の波を消す。ほかの物が頼んだ波は残す
         void StopGroundWave(const SceneActor* requester) noexcept;
 
+        //! 頼んだ物に関わらず、白・歪みの輪・床の波を全部消す。シーンがアクターを組み直す前に呼ぶ
+        void Clear() noexcept;
+
         //! 白の残りフレーム数。出していない場合 0
         [[nodiscard]] int FlashFramesRemaining() const noexcept { return m_flashRemaining; }
         //! 今の白の濃さ。始めの濃さ × 残りのフレーム数 ÷ 始めのフレーム数
         [[nodiscard]] float FlashAlpha() const noexcept;
-        void OnTick() override;
+        //! 白を 1 フレーム薄め、歪みの輪・床の波を 1 フレーム進める
+        void OnTick();
 
         [[nodiscard]] int OverlayOrder() const noexcept override { return 1; }
         //! 残りのフレーム数に比例して薄くなる白を画面全体へ重ねる
@@ -79,6 +83,7 @@ namespace NS
     private:
         void WriteDistortionRing() noexcept;
         void EndDistortionRing() noexcept;
+        void EndFlash() noexcept;
         void WriteGroundWave() noexcept;
         void EndGroundWave() noexcept;
 

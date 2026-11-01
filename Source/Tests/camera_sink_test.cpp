@@ -97,7 +97,7 @@ TEST(CameraSink, ShiftsTheDrawnScreenOnlyAndScalesBySetting)
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     NS::CameraManager* cameras = scene.GetCameraManager();
     ASSERT_NE(cameras, nullptr);
-    scene.ExecutePhase(NS::UpdatePhase::Camera);
+    cameras->OnTick();
     const NS::Vector3 forwardBefore = cameras->ForwardHorizontal();
     const std::optional<NS::CameraPose> calm = cameras->ComposePose(1.0f);
     ASSERT_TRUE(calm.has_value());

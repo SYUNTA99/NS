@@ -2,7 +2,9 @@
 
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/Core/Logger.h"
 
+#include <string>
 #include <utility>
 
 namespace NS
@@ -22,15 +24,30 @@ namespace NS
         m_audioDevice = device;
     }
 
-    Scene& SceneManager::LoadScene(nlohmann::json&& scene)
+    std::optional<nlohmann::json> SceneManager::ReadSceneFile(std::string_view name)
     {
-        UnloadScene();
+        const std::optional<std::string> path = BuildLevelPath(name);
+        if (!path)
+        {
+            NS_LOG_ERROR(Scene, "LoadScene: シーンの名前が使えない: {}", name);
+            return std::nullopt;
+        }
+        nlohmann::json data;
+        if (!LoadSceneFromJsonFile(data, *path))
+        {
+            return std::nullopt; // 理由は LoadSceneFromJsonFile が記録する
+        }
+        return data;
+    }
 
-        m_current = std::make_unique<Scene>();
+    Scene& SceneManager::StartScene(std::unique_ptr<Scene> scene, nlohmann::json data)
+    {
+        m_current = std::move(scene);
         m_current->SetDevice(m_device);
         m_current->SetAudioDevice(m_audioDevice);
 
-        m_current->ResetFromJson(std::move(scene));
+        m_current->ResetFromJson(std::move(data));
+        m_current->StartPlay();
         return *m_current;
     }
 

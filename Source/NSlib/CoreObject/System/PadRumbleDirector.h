@@ -1,14 +1,13 @@
 #pragma once
 
 #include "NSlib/CoreObject/Reflection/Curve.h"
-#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <vector>
 
 namespace NS
 {
     class SceneActor;
-    class Scene;
 
     //! パッドの振動 1 回。左右のモーターの速さを始めてからのフレーム数の曲線で決め、書くフレーム数で切る
     struct HitPadVibration
@@ -19,11 +18,14 @@ namespace NS
     };
 
     //! シーン共通の振動。開始時に初期値を出し、更新ごとに実機へ書き、破棄時に停止する
-    class PadRumbleDirector final : public SceneSystem
+    class PadRumbleDirector final : public NonCopyable
     {
     public:
-        explicit PadRumbleDirector(Scene& scene);
-        ~PadRumbleDirector() noexcept override;
+        PadRumbleDirector() = default;
+        ~PadRumbleDirector() noexcept;
+
+        //! 全部の振動を外す。振動していれば 0 を書いて止める。シーンがアクターを組み直す前に呼ぶ
+        void Clear();
 
         //! 振動を始める。前の振動が残っていても、重ねた分も含めて始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
@@ -39,11 +41,13 @@ namespace NS
         void Scale(const SceneActor* requester, float scale);
 
         //! 振動を 1 フレーム進めて書く
-        void OnTick() override;
+        void OnTick();
 
     private:
         // 始めてからのフレーム数に応じた速さを足してパッドへ書く。全部が長さに届いたフレームは 0 を書いて止める
         void Write();
+        // 振動している時だけ、振動を終えて 0 を書く。止めたフレームの値をパッドに残さない
+        void EndRumble();
 
         // 重ねた振動 1 つ。重ねたフレームの m_elapsed から進める。頼んだ物は見分けるだけで、指す先は読まない
         struct Layer

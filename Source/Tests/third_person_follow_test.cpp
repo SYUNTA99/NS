@@ -9,8 +9,6 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/System/SceneSystem.h"
-#include "NSlib/CoreObject/UpdatePhase.h"
 
 #include <gtest/gtest.h>
 
@@ -49,7 +47,7 @@ namespace
         // 固定フレームを進めてから、補間を終えた姿勢の注視点を返す
         NS::Vector3 LookAfterUpdate()
         {
-            scene.ExecutePhase(NS::UpdatePhase::Camera);
+            scene.GetCameraManager()->OnTick();
             return camera->Vcam().EvaluatePose(1.0f).target;
         }
     };
@@ -79,23 +77,31 @@ namespace
         std::vector<std::string>& m_log;
     };
 
-    // コースの段で、追われる物を +z へ 5 m 置き直す
-    class CourseMoverSystem final : public NS::SceneSystem
+    // ゲームの流れ (StepGame) で、追われる物を +z へ 5 m 置き直すシーン。MoveInStepGame を呼ぶまでは何もしない
+    class CourseMoverScene final : public NS::Scene
     {
     public:
-        CourseMoverSystem(NS::SceneActor* target, std::vector<std::string>& log) : m_target(target), m_log(log)
+        void MoveInStepGame(NS::SceneActor* target, std::vector<std::string>& log)
         {
-            NS_ASSERT(Game, target != nullptr, "CourseMoverSystem: 置き直す物が無い");
+            NS_ASSERT(Game, target != nullptr, "CourseMoverScene: 置き直す物が無い");
+            m_target = target;
+            m_log = &log;
         }
-        void OnTick() override
+
+    protected:
+        void StepGame() override
         {
-            m_log.push_back("course");
+            if (m_target == nullptr)
+            {
+                return;
+            }
+            m_log->push_back("course");
             m_target->Root().SetPosition(m_target->Root().Position() + NS::Vector3{0.0f, 0.0f, 5.0f});
         }
 
     private:
         NS::SceneActor* m_target = nullptr;
-        std::vector<std::string>& m_log;
+        std::vector<std::string>* m_log = nullptr;
     };
 
     // 追従カメラを置くだけのアクター。追う相手と、相手が状態を渡す口を試しが渡す
@@ -127,7 +133,7 @@ namespace
     // 一覧の先頭に追従カメラ、後ろに進む物を置く。カメラが一覧の順で追うと、進む前の位置を読む
     struct WalkingFollowScene
     {
-        NS::Scene scene;
+        CourseMoverScene scene;
         std::vector<std::string> log;
         VcamOwnerActor* camera = nullptr;
         WalkingTargetActor* target = nullptr;
@@ -144,14 +150,13 @@ namespace
     };
 } // namespace
 
-// カメラはアクター全部・物理・判定・コースの後に追う。そのフレームに動いた後の相手を読む
+// カメラはアクター全部・物理・判定・StepGame の後に追う。そのフレームに動いた後の相手を読む
 TEST(FollowCamera, ReadsTheTargetAfterTheActorsAndTheCourseMovedItInThatFrame)
 {
     WalkingFollowScene world;
     ASSERT_NE(world.camera, nullptr);
     ASSERT_NE(world.target, nullptr);
-    CourseMoverSystem mover(world.target, world.log);
-    world.scene.AddSystemTick(mover, NS::UpdatePhase::Course);
+    world.scene.MoveInStepGame(world.target, world.log);
 
     world.scene.OnUpdate();
 
@@ -159,23 +164,22 @@ TEST(FollowCamera, ReadsTheTargetAfterTheActorsAndTheCourseMovedItInThatFrame)
     ASSERT_EQ(world.target->seenPositions.size(), 1u);
     EXPECT_NEAR(world.target->seenPositions[0].x, 1.0f, 1.0e-4f);
     EXPECT_NEAR(world.target->seenPositions[0].z, 5.0f, 1.0e-4f);
-    world.scene.RemoveSystemTick(mover);
 }
 
 // 止めている間もカメラは止め始めたアクターを追う。止めると、進み続ける自機が画面の中で動いて見える
-TEST(FollowCamera, KeepsFollowingTheHolderWhileOthersAreHeld)
+TEST(FollowCamera, KeepsFollowingTheStopSceneMoverWhileTheSceneIsStopped)
 {
     WalkingFollowScene world;
     ASSERT_NE(world.camera, nullptr);
     ASSERT_NE(world.target, nullptr);
-    world.scene.HoldOthers(world.target, 10);
+    world.scene.RequestStopScene(world.target, 10);
 
     for (int frame = 0; frame < 3; ++frame)
     {
         world.scene.OnUpdate();
     }
 
-    ASSERT_TRUE(world.scene.IsHoldingOthers());
+    ASSERT_TRUE(world.scene.IsSceneStopped());
     ASSERT_EQ(world.target->seenPositions.size(), 3u);
     EXPECT_NEAR(world.target->seenPositions[2].x, 3.0f, 1.0e-4f);
 }

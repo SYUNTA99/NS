@@ -4,6 +4,7 @@
 #include "Editor/PlacementCatalog.h"
 #include "Editor/StageBuildTool.h"
 #include "Editor/Undo/ActorSnapshotApplier.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Windows/Filesystem.h"
@@ -225,7 +226,7 @@ TEST(StageBuild, InvalidSizeAndAParallelRayDoNotProduceAPlacement)
 
 TEST(StageBuild, RepeatedPlacementUsesSceneHistoryAndRejectsPlayMode)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     LevelEditorController editor(&scene);
     editor.StageBuilder().SelectPart(NS::Editor::StageBuildTool::Part::Slope);
     editor.SetEditTool(LevelEditorController::EditTool::StageBuild);

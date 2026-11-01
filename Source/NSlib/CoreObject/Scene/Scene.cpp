@@ -18,8 +18,6 @@
 #include "NSlib/Gfx/Render/EffectScene.h"
 #include "NSlib/Core/Windows/Clock.h"
 
-#include <magic_enum/magic_enum.hpp>
-
 #include <algorithm>
 #include <cmath>
 #include <optional>
@@ -38,24 +36,26 @@ namespace NS
     {
         m_mainCamera.SetUp({0.0f, 1.0f, 0.0f});
         m_cameraManager.SetCamera(&m_mainCamera);
-        // Jolt の broadphase の木は、アクターが全部動いた後で組み直す
-        AddSystemTick(m_physics, UpdatePhase::Physics);
-        // 当たりの調べ役はセンサーの段 (物理の後、コースの前) で回る
-        AddSystemTick(m_hitSensors, UpdatePhase::Sensors);
-        // 仮想カメラはアクターとコースが動かした後の相手を追い、続けて選び直す
-        AddSystemTick(m_cameraManager, UpdatePhase::Camera);
         m_cameraManager.SetCollision(this);
-        // エフェクトの世界は同じ歩の SceneActor が出した演出を受けてから進む
-        AddSystemTick(m_sceneRenderer, UpdatePhase::Effects);
-        AddSystemTick(m_ui, UpdatePhase::UI);
-        // 暗転は UI の後に進める。UI の段は実時間なので、ヒットストップと遅い世界でも同じ速さで進む
-        AddSystemTick(m_fade, UpdatePhase::UI);
     }
 
     Scene::~Scene() = default;
 
+    void Scene::StartPlay()
+    {
+        NS_ASSERT(Scene, !m_playing, "StartPlay: ResetFromJson を通らずに始めた");
+        m_playing = true;
+        OnStartPlay();
+    }
+
     void Scene::ResetFromJson(nlohmann::json scene)
     {
+        // 組み直した世界へ、派生が持つ前のプレイの状態を持ち込まない
+        if (m_playing)
+        {
+            m_playing = false;
+            OnStopPlay();
+        }
         SetEnvironment(ReadSceneEnvironment(scene));
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueActorIds(scene);
@@ -90,7 +90,7 @@ namespace NS
         m_worldSpeed = 1.0f;
         m_worldCarry = 0.0f;
         m_rampActive = false;
-        ReleaseOthersHold();
+        CancelStopScene();
     }
 
     void Scene::StepSimulation() noexcept
@@ -110,33 +110,69 @@ namespace NS
         m_rampActive = false;
     }
 
-    void Scene::HoldOthers(const SceneActor* holder, int steps) noexcept
+    void Scene::RequestStopScene(const SceneActor* mover, int steps) noexcept
     {
-        NS_ASSERT(Scene, holder != nullptr, "Scene::HoldOthers: 止め始めるアクターが無い");
+        NS_ASSERT(Scene, mover != nullptr, "Scene::RequestStopScene: 止め始めるアクターが無い");
         // 止めている間は先に止め始めたアクターが持つ。後から頼んだアクターに替えると、止め始めたアクターが止まる
-        if (m_othersHeldSteps > 0 && !IsOthersHolder(holder))
+        if (m_stopSceneSteps > 0 && !IsStopSceneMover(mover))
+        {
+            return;
+        }
+        const uint32 moverId = mover->Id();
+        // 番地と id の両方を比べる理由は IsStopSceneMover と同じ。比べる相手が止め始めたアクターでなく、頼んだアクターなので分ける
+        const bool sameRequester =
+            m_stopSceneRequested && mover == m_stopSceneRequester && moverId == m_stopSceneRequesterId;
+        // 同じ歩に先に止めを頼んだアクターが持つ。解く頼みは止めを持たないので、後から頼んだ止めで置き換える
+        if (m_stopSceneRequested && !sameRequester && m_requestedStopSceneSteps > 0)
         {
             return;
         }
         if (steps <= 0)
         {
-            m_othersHeldSteps = 0;
+            m_requestedStopSceneSteps = 0;
+        }
+        else if (sameRequester)
+        {
+            m_requestedStopSceneSteps = std::max(m_requestedStopSceneSteps, steps);
+        }
+        else
+        {
+            m_requestedStopSceneSteps = steps;
+        }
+        m_stopSceneRequested = true;
+        m_stopSceneRequester = mover;
+        m_stopSceneRequesterId = moverId;
+    }
+
+    void Scene::ApplyStopSceneRequest() noexcept
+    {
+        if (!m_stopSceneRequested)
+        {
             return;
         }
-        m_othersHeldSteps = std::max(m_othersHeldSteps, steps);
-        m_othersHolder = holder;
-        m_othersHolderId = holder->Id();
+        m_stopSceneRequested = false;
+        // 止めている間に頼めるのは止め始めたアクターだけ (RequestStopScene が断る) なので、ここでは比べない
+        if (m_requestedStopSceneSteps <= 0)
+        {
+            m_stopSceneSteps = 0;
+            return;
+        }
+        m_stopSceneSteps = std::max(m_stopSceneSteps, m_requestedStopSceneSteps);
+        m_stopSceneMover = m_stopSceneRequester;
+        m_stopSceneMoverId = m_stopSceneRequesterId;
     }
 
-    bool Scene::IsOthersHolder(const SceneActor* actor) const noexcept
+    void Scene::CancelStopScene() noexcept
     {
-        // id の無い JSON から読んだアクターは id が 0 で重なるので、番地も比べる。番地は比べるだけで読まない
-        return actor == m_othersHolder && actor->Id() == m_othersHolderId;
+        m_stopSceneSteps = 0;
+        m_stopSceneRequested = false;
     }
 
-    bool Scene::UpdatesWhileHeld(const SceneActor* actor) const noexcept
+    bool Scene::IsStopSceneMover(const SceneActor* actor) const noexcept
     {
-        return m_othersHeldSteps <= 0 || IsOthersHolder(actor);
+        // id の無い JSON から読んだアクターは id が 0 で重なるので、番地も比べる。
+        // 止め始めたアクターは止めの最中だけ読む。最中の m_stopSceneMover は nullptr でないので、nullptr は読まずに外れる
+        return m_stopSceneSteps > 0 && actor == m_stopSceneMover && actor->Id() == m_stopSceneMoverId;
     }
 
     void Scene::StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept
@@ -412,9 +448,9 @@ namespace NS
 
     void Scene::ClearWorld()
     {
-        // シーンに 1 つの物 (進行役など) はアクターと画面の一覧を借りるので先に捨てる。
-        // 組み直しでは、組み直したアクターの開始が要る物が最初の状態から作り直す
-        m_sceneObjs.Clear();
+        // 前の世界のアクターが頼んだ演出と振動を、次の世界へ持ち越さない
+        m_hitScreen.Clear();
+        m_padRumble.Clear();
         Fade().Cancel();
         m_actors.Clear();
         m_unresolvedActors.clear();
@@ -438,6 +474,8 @@ namespace NS
 
     void Scene::OnUpdate()
     {
+        // 前の歩で頼まれた止めをここで効かせる。歩の途中では止めが変わらないので、状態ごとの関数の中で確かめ直さない
+        ApplyStopSceneRequest();
         // 世界の駆動。読み込んだら回り続けるのが既定で、編集モードのエディタだけが止める
         // 時間停止中は前の値の控えだけが残り、previous == current で補間が凍る
         // Actor の Update が回らない歩も、編集で動いた当たりを揃える
@@ -471,27 +509,71 @@ namespace NS
             Gfx::DebugDraw::BeginStep();
 #endif
         }
-        for (UpdatePhase phase : magic_enum::enum_values<UpdatePhase>())
+        // 歩の間はアクターを解放しない。後で呼ぶ予定のアクターの生ポインタが破棄済みにならない
+        m_actors.BeginStep();
+        if (!worldStep)
         {
-            if (!worldStep && ClockOf(phase) == PhaseClock::World)
-            {
-                continue;
-            }
-            // 止めはアクターの Update の中で置かれるので、毎段読み直してその歩の残りの段から効かせる
-            if (m_othersHeldSteps > 0 && !RunsWhileOthersHeld(phase))
-            {
-                continue;
-            }
-            ExecutePhase(phase);
+            StepRealTime();
         }
-        m_actors.RemoveDestroyed();
-        // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ止め始めたアクターが進む
-        if (worldStep && m_othersHeldSteps > 0)
+        else if (IsSceneStopped())
         {
-            m_othersHeldSteps -= 1;
+            StepStopped();
+        }
+        else
+        {
+            StepWorld();
+        }
+        m_actors.EndStep();
+        m_actors.RemoveDestroyed();
+        // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ止め始めたアクターが進む。
+        // 歩の途中で CancelStopScene が解いた時は数えない
+        if (worldStep && m_stopSceneSteps > 0)
+        {
+            m_stopSceneSteps -= 1;
         }
         // この歩は始めた時の速さで回し、次の歩の速さを書く
         AdvanceWorldSpeedRamp();
+    }
+
+    void Scene::StepWorld()
+    {
+        m_actors.UpdateActors();
+        // Jolt の broadphase の木は、アクターが全部動いた後で組み直す
+        m_physics.OnTick();
+        m_hitSensors.OnTick();
+        // ゲームの流れは当たりの判定の後で、同じ歩に届いた知らせを読む
+        StepGame();
+        StepView();
+    }
+
+    void Scene::StepStopped()
+    {
+        m_actors.UpdateActors();
+        StepViewStopped();
+    }
+
+    void Scene::StepView()
+    {
+        StepViewStopped();
+        // エフェクトの世界は同じ歩のアクターが出した演出を受けてから進む
+        m_sceneRenderer.OnTick();
+    }
+
+    void Scene::StepViewStopped()
+    {
+        // 仮想カメラはアクターと StepGame が動かした後の相手を追い、続けて選び直す
+        m_cameraManager.OnTick();
+        StepRealTime();
+        // 画面の演出と振動は、アクターの PrepareRender の後に進める
+        m_actors.PrepareRenderActors();
+        m_hitScreen.OnTick();
+        m_padRumble.OnTick();
+    }
+
+    void Scene::StepRealTime()
+    {
+        m_ui.OnTick();
+        m_fade.OnTick();
     }
 
     void Scene::OnShutdown()
@@ -526,8 +608,6 @@ namespace NS
         return const_cast<CameraManager*>(&m_cameraManager);
     }
 
-    SceneSystemHolder* Scene::GetSceneSystemHolder() const noexcept { return &m_sceneObjs; }
-
     Phys::PhysicsScene* Scene::GetPhysicsScene() const noexcept
     {
         // 地形を問う関数のほか、Collision も持ち主の Scene の body を出し入れする時にここから引く
@@ -535,61 +615,6 @@ namespace NS
     }
 
     Gfx::EffectScene* Scene::GetEffectScene() const noexcept { return m_sceneRenderer.Effects(); }
-
-    void Scene::AddSystemTick(SceneSystem& system, UpdatePhase phase)
-    {
-        for (SystemEntry& entry : m_systems)
-        {
-            if (entry.system == &system)
-            {
-                entry.phase = phase;
-                return;
-            }
-        }
-        m_systems.push_back(SystemEntry{.system = &system, .phase = phase});
-    }
-
-    void Scene::RemoveSystemTick(SceneSystem& system) noexcept
-    {
-        std::erase_if(m_systems, [&system](const SystemEntry& entry) noexcept { return entry.system == &system; });
-    }
-
-    void Scene::ExecutePhase(UpdatePhase phase)
-    {
-        m_actors.BeginPhase();
-        // 段で呼ぶ管理役は SceneActor を回す前に決める。段の SceneActor が足した管理役はこの段では呼ばない
-        m_scheduledSystems.clear();
-        for (const SystemEntry& entry : m_systems)
-        {
-            if (entry.phase == phase)
-            {
-                m_scheduledSystems.push_back(entry.system);
-            }
-        }
-        if (phase == UpdatePhase::Actors)
-        {
-            // 止めはアクターの Update の中で始まるので、1 体ごとに問い直す
-            m_actors.UpdateActors([this](const SceneActor* actor) noexcept { return UpdatesWhileHeld(actor); });
-        }
-        if (phase == UpdatePhase::RenderPrep)
-        {
-            m_actors.PrepareRenderActors();
-        }
-        // 管理役は段の SceneActor が出した物を受けてまとめるので、SceneActor の後に回す
-        for (SceneSystem* system : m_scheduledSystems)
-        {
-            // 段の途中で外した物と、段を替えた物は呼ばない
-            const bool stillRegistered =
-                std::any_of(m_systems.begin(), m_systems.end(), [system, phase](const SystemEntry& entry) noexcept {
-                    return entry.system == system && entry.phase == phase;
-                });
-            if (stillRegistered)
-            {
-                system->OnTick();
-            }
-        }
-        m_actors.EndPhase();
-    }
 
     SceneCamera* Scene::MainCamera() noexcept { return &m_mainCamera; }
 } // namespace NS

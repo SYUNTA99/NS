@@ -2,7 +2,6 @@
 
 #include "NSlib/CoreObject/IGet/IGetRenderer.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/UpdatePhase.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
 
@@ -12,7 +11,6 @@ namespace NS
 {
     HitScreenDirector::HitScreenDirector(Scene& scene) : m_scene(scene)
     {
-        m_scene.AddSystemTick(*this, UpdatePhase::RenderPrep);
         InitOverlay(&m_scene, this);
     }
 
@@ -36,10 +34,15 @@ namespace NS
         NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::Stop: 頼んだ物が null");
         if (m_flashRequester == requester)
         {
-            m_flashRemaining = 0;
-            m_flashJustStarted = false;
-            m_flashRequester = nullptr;
+            EndFlash();
         }
+    }
+
+    void HitScreenDirector::EndFlash() noexcept
+    {
+        m_flashRemaining = 0;
+        m_flashJustStarted = false;
+        m_flashRequester = nullptr;
     }
 
     void HitScreenDirector::Scale(const SceneActor* requester, float scale) noexcept
@@ -131,6 +134,13 @@ namespace NS
         {
             EndGroundWave();
         }
+    }
+
+    void HitScreenDirector::Clear() noexcept
+    {
+        EndFlash();
+        EndDistortionRing();
+        EndGroundWave();
     }
 
     void HitScreenDirector::WriteGroundWave() noexcept

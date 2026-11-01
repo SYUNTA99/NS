@@ -62,7 +62,7 @@ namespace
             for (int frame = 0; frame < frames; ++frame)
             {
                 target->Feed(&camera->Vcam());
-                scene.ExecutePhase(NS::UpdatePhase::Camera);
+                scene.GetCameraManager()->OnTick();
             }
         }
     };

@@ -1,5 +1,6 @@
 #include "Editor/EditorActors.h"
 #include "Editor/LevelEditorController.h"
+#include "Game/Level/GameScene.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -42,7 +43,7 @@ namespace
 
 TEST(EditorPlayResume, ResumeDropsPausedPressesForThePlayerOnly)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(SceneWithPlayer());
     LevelEditorController editor(&scene);
     editor.EnterPlay();
@@ -68,7 +69,7 @@ TEST(EditorPlayResume, ResumeDropsPausedPressesForThePlayerOnly)
 
 TEST(EditorPlayResume, StepFrameDropsPausedPressesForThePlayerOnly)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(SceneWithPlayer());
     LevelEditorController editor(&scene);
     editor.EnterPlay();

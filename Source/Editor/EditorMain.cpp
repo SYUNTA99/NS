@@ -22,7 +22,7 @@ namespace NS
         std::unique_ptr<Application> app = std::make_unique<Application>(desc);
 
         // 起動シーンはエディタが「開く」と同じ道で 1 回だけ読む。Game は空のシーンだけを立てる
-        app->AddLayer(std::make_unique<::Game>(::Game::StartScenePath(), ::Game::StartScene::Empty));
+        app->AddLayer(std::make_unique<::Game>(::Game::StartSceneName(), ::Game::StartScene::Empty));
         // プレイ中のカーソルと Esc はエディタが持つ。Game は世界だけを持つ
         app->AddOverlay(std::make_unique<::Editor>());
         return app;

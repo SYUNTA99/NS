@@ -432,13 +432,8 @@ namespace
             return owner->StartHitReaction(name, position, owner->HitSensorsClassObj()->Find("Body"), partner->HitSensorsClassObj()->Find("Body"));
         }
 
-        // 1 固定フレーム。アクター・カメラ・画面とパッドの係の順に回す
-        void Step()
-        {
-            scene.ExecutePhase(NS::UpdatePhase::Actors);
-            scene.ExecutePhase(NS::UpdatePhase::Camera);
-            scene.ExecutePhase(NS::UpdatePhase::RenderPrep);
-        }
+        // 1 固定フレーム。本番と同じ Scene::OnUpdate の 1 歩で、前の歩で頼まれた止めもこの歩の始めに効く
+        void Step() { scene.OnUpdate(); }
 
         [[nodiscard]] NS::CameraManager& Cameras() { return *scene.GetCameraManager(); }
 
@@ -501,7 +496,7 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
     const NS::Vector3 contact{0.0f, 1.0f, 3.5f};
     ASSERT_TRUE(probes.Start(probes.self, "Hit", contact));
 
-    const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(probes.self);
+    const NS::HitScreenDirector* screen = &probes.self->OwningScene()->HitScreen();
     ASSERT_NE(screen, nullptr);
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     EXPECT_FLOAT_EQ(screen->FlashAlpha(), 0.6f);
@@ -533,7 +528,7 @@ TEST(HitReactionStart, TheStopHoldsStateAndBodyButNotTheDirectors)
     shake.amplitudePixels = 20.0f;
     ProbeScene probes({SetOf("Hit", 3, {{flash, 6}, {shake, 6}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    const NS::HitScreenDirector* screen = NS::FindSceneSystem<NS::HitScreenDirector>(probes.self);
+    const NS::HitScreenDirector* screen = &probes.self->OwningScene()->HitScreen();
     ASSERT_NE(screen, nullptr);
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{0.0f, 1.0f, 3.5f}));
     EXPECT_TRUE(probes.self->IsHitStopping());
@@ -583,7 +578,7 @@ TEST(HitReactionStart, OwnerItemsAdvanceThroughTheStop)
     EXPECT_EQ(FindOwnerRun(&reaction, "Long")->frame, 5);
 }
 
-// 寄りは始めるまでのフレーム数を数えてから寄せる。束を始めたフレームのカメラの段は、始めたフレームの姿を描く
+// 寄りは始めるまでのフレーム数を数えてから寄せる。束を始めたフレームの CameraManager::OnTick は、始めたフレームの仮想カメラを追わせる
 TEST(HitReactionStart, TheZoomWaitsItsDelayFrames)
 {
     NS::HitZoomRollItem zoom;

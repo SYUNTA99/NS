@@ -10,7 +10,6 @@
 #include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/IGet/IGetHitSensor.h"
 #include "NSlib/CoreObject/IGet/IGetRenderer.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/IGet/IGetState.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
@@ -48,7 +47,6 @@ namespace NS
     //! 所属シーンを持ち、IGet〜 の問いを居るシーンへ繋ぐ。シーンに居ない間の問いは nullptr を返す
     class SceneActor : public Object,
                        public IGetCamera,
-                       public IGetSceneSystem,
                        public IGetCollision,
                        public IGetEffect,
                        public IGetAudio,
@@ -76,19 +74,19 @@ namespace NS
         void ClearSceneOverrides() noexcept { m_sceneOverrides.clear(); }
         NS_REFLECT_DECLARE()
 
-        //! 世界に出す。更新の段・当たりへ入れ、入れてある描く物を描き始め、センサーを調べる対象にする。出ていれば何もしない
+        //! 世界に出す。シーンの更新・当たりへ入れ、入れてある描く物を描き始め、センサーを調べる対象にする。出ていれば何もしない
         //! Destroy の後に呼ぶのは呼び手のバグで、NS_ASSERT が止める。出荷版では何もしない
         void Appear();
         //! 世界から外す。出ていなければ何もしない
         //! 解放はしないので Appear で戻せる。描く物とセンサーは入れたまま、描かず調べない
         void Disappear() noexcept;
-        //! 世界から外し、段を回し終えた後に解放させる。2 回目からは何もしない
-        //! その場では解放しないので、同じ段の中では指したまま読める。やり直しの知らせは
+        //! 世界から外し、その歩を回し終えた後に解放させる。2 回目からは何もしない
+        //! その場では解放しないので、同じ歩の中では指したまま読める。やり直しの知らせは
         //! 届かず戻らないので、戻す物は Disappear を使う
         void Destroy() noexcept;
         //! このアクターがシーンに出ているか
         [[nodiscard]] bool IsAppeared() const noexcept { return m_presence == Presence::Appeared; }
-        //! Destroy を呼ばれて、段の後の解放を待っている場合 true、それ以外の場合は false
+        //! Destroy を呼ばれて、歩の後の解放を待っている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsPendingDestroy() const noexcept { return m_presence == Presence::PendingDestroy; }
 
         //! 入るシーン。作る時の ActorInitInfo::scene で、OnInit の前から決まっている。シーンへ入らない物は nullptr
@@ -101,7 +99,6 @@ namespace NS
         [[nodiscard]] const ChildActorObj* ChildActor() const noexcept { return m_child.get(); }
 
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
-        [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
         [[nodiscard]] HitSensorDirector* GetHitSensorDirector() const noexcept override;
         [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
@@ -146,7 +143,7 @@ namespace NS
         [[nodiscard]] ActionTimelineSelf ActionTimelineSelfOf() noexcept;
 
         //! 当たりの止め (ヒットストップ) の残りを、frames が残りより長い時だけ延ばす
-        //! 止めの間は Update が状態機械の 1 歩と BodyStep を飛ばす。呼んだフレームの残りの段から効き、
+        //! 止めの間は Update が状態機械の 1 歩と BodyStep を飛ばす。呼んだフレームの残りから効き、
         //! そのフレームも数える。束を始めたアクターが、HitReaction::Start の返した束の止めの長さで呼ぶ
         void RequestHitStop(int frames) noexcept;
         //! 当たりの止めの残りを frames に書き換える。短くもする
@@ -170,15 +167,18 @@ namespace NS
         [[nodiscard]] int HitStopFramesRemaining() const noexcept { return m_hitStopFrames; }
         //! 当たりの止めの間なら true
         [[nodiscard]] bool IsHitStopping() const noexcept { return m_hitStopFrames > 0; }
+        //! 止まっている場合 true。自分の当たりの止めの間か、シーンが止まっていて自分が止め始めたアクターでない時。
+        //! 止まったアクターは Update で状態機械と BodyStep を進めず、見た目は進める
+        [[nodiscard]] bool IsStopped() const noexcept;
 
         //! 1 固定フレームぶん進める。順は基盤が決め、派生は変えられない
         //! シーンは出ているアクターを全部、物理の前の 1 か所で一覧の順に 1 回ずつ呼ぶ
-        //! (止めている間は止め始めたアクターだけ)。中の順は次のとおりで、部品は基盤が挟む。
+        //! (シーンが止まっている間も呼ぶ)。中の順は次のとおりで、部品は基盤が挟む。
         //! - エフェクトの記録と、束が持ち主へ渡す項目を 1 フレーム進める
         //! - DecideStep を毎回 1 回
-        //! - 止めの間でも SkipStateStep を呼んだフレームでもなければ、状態機械を 1 歩・動作のタイムライン・
+        //! - IsStopped でも SkipStateStep を呼んだフレームでもなければ、状態機械を 1 歩・動作のタイムライン・
         //!   AfterStateStep を 1 回ずつ
-        //! - 止めの間でなければ BodyStep を 1 回 (状態機械の中で止めが始まったフレームは呼ばない)
+        //! - IsStopped でなければ BodyStep を 1 回 (状態機械の中で当たりの止めが始まったフレームは呼ばない)
         //! - 出ていれば当たりを体の姿へそろえ、Model の揺れと震え、子、VisualStep の順に進める
         //! - 止めの残りを 1 減らす
         void Update();

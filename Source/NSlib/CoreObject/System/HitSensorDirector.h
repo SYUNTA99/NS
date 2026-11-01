@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
-#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <utility>
 #include <vector>
@@ -12,7 +12,7 @@ namespace NS
 
     //! 有効な異なる持ち主のセンサーの重なりを照合し、始まり・続き・終わりを持ち主へ知らせる
     //! センサーの種類による判定は持ち主が行う。前の固定フレームに知らせた組を覚えて、今の組と比べる
-    class HitSensorDirector final : public SceneSystem
+    class HitSensorDirector final : public NonCopyable
     {
     public:
         //! センサーを入れる。二重登録は無視する
@@ -24,7 +24,7 @@ namespace NS
 
         //! 重なった組を集め、前の固定フレームの組と比べて、両方の持ち主へ始まり・続き・終わりを知らせる
         //! 知らせる途中で外れたか持ち主が消えたセンサーには、始まりと続きを知らせない
-        void OnTick() override;
+        void OnTick();
 
         //! 世界座標の volume に重なる有効なセンサーを登録順に返す。参照は非所有
         //! ignore の持ち主を除き、種類は絞らない。ignore が nullptr なら除外なし

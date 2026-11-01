@@ -1,5 +1,5 @@
 #include "Editor/EditorActors.h"
-#include "Game/Level/CourseDirector.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
@@ -23,7 +23,6 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -329,17 +328,15 @@ TEST(PlayerUpdatePipeline, RestartDropsTheHitStopAndItsReservation)
     for (const bool waitForFreeze : {true, false})
     {
         SCOPED_TRACE(waitForFreeze);
-        NS::Scene scene;
+        GL::Level::GameScene scene;
         PlayerActor* player = PlacePipelinePlayer(scene, 0.0f, 0.6f);
         ASSERT_NE(player, nullptr);
-        GL::Level::CourseDirector* director = NS::GetOrCreateSceneSystem<GL::Level::CourseDirector>(&scene);
-        ASSERT_NE(director, nullptr);
-        director->StartCourse();
+        scene.StartPlay();
         GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
         ASSERT_NE(rock, nullptr);
         const NS::Vector3 rockHome = rock->Root().Position();
         ASSERT_TRUE(SlamIntoTheRock(player, rock, waitForFreeze));
-        director->RestartCourse();
+        scene.RestartCourse();
         for (int frame = 0; frame < 20; ++frame)
         {
             player->Update(false);
