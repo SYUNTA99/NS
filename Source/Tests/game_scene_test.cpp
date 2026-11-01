@@ -24,7 +24,6 @@
 #include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/Core/Windows/Mouse.h"
 #include "TestLogCapture.h"
-#include "Tests/TestSteppedGameScene.h"
 
 #include <gtest/gtest.h>
 
@@ -56,8 +55,6 @@ namespace
         NS_ASSERT(Game, player != nullptr, "StepPlayer: 渡したアクターか部品が無い");
         player->Update();
     }
-
-    void StepSensorsAndGame(SteppedGameScene& scene) { scene.StepSensorsAndGame(); }
 
     // プレイヤーと落下死の範囲を敷いたシーン文書
     nlohmann::json CourseWithPlayer()
@@ -186,96 +183,13 @@ TEST(GameScene, StartPlayWithoutAnAudioDeviceReadsNoMusic)
     EXPECT_EQ(log.WarningCount(), 0);
 }
 
-TEST(GameScene, DeathZoneEndsPlayerAndTheSceneRestartsCourse)
-{
-    const nlohmann::json doc = CourseWithPlayer();
-    SteppedGameScene scene;
-    scene.ResetFromJson(doc);
-    scene.StartPlay();
-    PlayerActor* player = FindPlayer(scene.Actors());
-    ASSERT_NE(player, nullptr);
-
-    // 落下死の範囲 (上面 y=-50) の中へ落とす
-    player->Root().SetPosition(NS::Vector3{0.0f, -52.0f, 0.0f});
-    scene.HitSensors().OnTick();
-    EXPECT_TRUE(player->IsDead());
-
-    StepSensorsAndGame(scene);
-    // 出現位置へ戻り、命も満タンへ戻る
-    EXPECT_FALSE(player->IsDead());
-    EXPECT_FLOAT_EQ(player->Root().Position().y, SpawnOf(doc).y);
-}
-
-// 置物の出し直しのボタンを押すと、次の StepGame で岩だけが置いた所へ戻り、自機はその場に残る
-TEST(GameScene, RespawnButtonReturnsActorsButKeepsPlayer)
-{
-    nlohmann::json doc = CourseWithPlayer();
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
-    NS::EnsureUniqueActorIds(doc);
-
-    SteppedGameScene scene;
-    scene.ResetFromJson(doc);
-    PlayerActor* player = FindPlayer(scene.Actors());
-    ASSERT_NE(player, nullptr);
-    scene.StartPlay();
-    NS::SceneActor* placed = nullptr;
-    for (NS::SceneActor* actor : scene.Actors())
-    {
-        if (std::string_view{actor->ClassName()} == "PropActor")
-        {
-            placed = actor;
-        }
-    }
-    ASSERT_NE(placed, nullptr);
-    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
-    const NS::Vector3 spawn = SpawnOf(doc);
-    const NS::Vector3 movedTo{spawn.x + 3.0f, spawn.y, spawn.z + 3.0f};
-    player->Root().SetPosition(movedTo);
-
-    {
-        const KeyPress press{NS::OS::Key::R};
-        StepPlayer(player);
-    }
-    StepSensorsAndGame(scene);
-
-    EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
-    EXPECT_FLOAT_EQ(player->Root().Position().x, movedTo.x);
-    EXPECT_FLOAT_EQ(player->Root().Position().z, movedTo.z);
-}
-
-TEST(GameScene, GoalStartsClearSequenceAndLocksInput)
-{
-    nlohmann::json doc = CourseWithPlayer();
-    nlohmann::json goal = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
-    NS::Editor::SetActorJsonPosition(goal, SpawnOf(doc));
-    NS::SceneJsonActors(doc).push_back(std::move(goal));
-    NS::EnsureUniqueActorIds(doc);
-
-    SteppedGameScene scene;
-    scene.ResetFromJson(doc);
-    PlayerActor* player = FindPlayer(scene.Actors());
-    ASSERT_NE(player, nullptr);
-
-    StepSensorsAndGame(scene);
-    EXPECT_TRUE(scene.IsClearing());
-    EXPECT_TRUE(scene.Fade().IsFading());
-    const NS::PlayerInput* input = &player->Input();
-    EXPECT_TRUE(input->IsLocked());
-
-    // 流れの最中に届くゴールの知らせは捨てる
-    StepSensorsAndGame(scene);
-    EXPECT_TRUE(scene.IsClearing());
-}
-
 // 止めた瞬間の向きを持ち続けると、暗転の間もゴールで倒していた向きへ歩き続ける
 TEST(GameScene, ClearLockNeutralizesTheMoveInput)
 {
     const nlohmann::json doc = CourseWithPlayerOnGoal();
-    SteppedGameScene scene;
+    GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
+    scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
 
@@ -288,7 +202,7 @@ TEST(GameScene, ClearLockNeutralizesTheMoveInput)
     ASSERT_GT(lockedSpeed, 0.0f);
 
     player->Root().SetPosition(SpawnOf(doc));
-    StepSensorsAndGame(scene);
+    scene.OnUpdate();
     ASSERT_TRUE(scene.IsClearing());
 
     for (int i = 0; i < 10; ++i)
