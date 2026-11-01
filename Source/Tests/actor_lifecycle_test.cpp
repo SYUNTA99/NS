@@ -89,18 +89,18 @@ TEST(ActorLifecycle, DisappearStopsUpdatesAndAppearResumesOnce)
     LifeProbeActor* actor = scene.SpawnActor<LifeProbeActor>("LifeProbeActor");
     LifeProbeActor* other = scene.SpawnActor<LifeProbeActor>("LifeProbeActor");
     EXPECT_TRUE(actor->IsAppeared());
-    scene.ExecutePhase(NS::UpdatePhase::Actors);
+    scene.OnUpdate();
     EXPECT_EQ(actor->updates, 1);
     EXPECT_EQ(other->updates, 1);
     actor->Disappear();
     actor->Disappear();
     EXPECT_FALSE(actor->IsAppeared());
-    scene.ExecutePhase(NS::UpdatePhase::Actors);
+    scene.OnUpdate();
     EXPECT_EQ(actor->updates, 1);
     EXPECT_EQ(other->updates, 2);
     actor->Appear();
     actor->Appear();
-    scene.ExecutePhase(NS::UpdatePhase::Actors);
+    scene.OnUpdate();
     EXPECT_EQ(actor->updates, 2);
     EXPECT_EQ(other->updates, 3);
 }
@@ -112,7 +112,7 @@ TEST(ActorLifecycle, DestroyedPlacedActorLeavesAfterTheStep)
     NS::SceneActor* actor = scene.SpawnActor<LifeProbeActor>("Probe");
     actor->Destroy();
     EXPECT_FALSE(actor->IsAppeared());
-    // 段を回している途中の呼び手がまだ指しているので、その場では解放しない
+    // 歩を回している途中の呼び手がまだ指しているので、その場では解放しない
     EXPECT_EQ(scene.Actors().ActorCount(), before + 1);
     scene.OnUpdate();
     EXPECT_EQ(scene.Actors().ActorCount(), before);

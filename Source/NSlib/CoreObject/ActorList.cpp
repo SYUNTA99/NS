@@ -23,7 +23,7 @@ namespace NS
         // Clear が断った後に組むと古いアクターの後ろへ新しいアクターが並ぶので、組む前にここで断る
         if (m_updating)
         {
-            NS_LOG_ERROR(Scene, "ActorList::RebuildFromJson: 段の更新の最中に呼ばれたので組み直しを断った");
+            NS_LOG_ERROR(Scene, "ActorList::RebuildFromJson: 1 歩の更新の最中に呼ばれたので組み直しを断った");
             return;
         }
 
@@ -90,11 +90,11 @@ namespace NS
 
     void ActorList::RemoveByActorId(uint32 objectId)
     {
-        // 段の最中に解放すると、その段で後に呼ぶ予定の生ポインタが破棄済みになる
+        // 歩の最中に解放すると、その歩で後に呼ぶ予定の生ポインタが破棄済みになる
         if (m_updating)
         {
             NS_LOG_ERROR(
-                Scene, "ActorList::RemoveByActorId: 段の更新の最中に呼ばれたので id {} の解放を断った", objectId);
+                Scene, "ActorList::RemoveByActorId: 1 歩の更新の最中に呼ばれたので id {} の解放を断った", objectId);
             return;
         }
 
@@ -121,11 +121,11 @@ namespace NS
 
     DetachedActor ActorList::DetachByActorId(uint32 objectId)
     {
-        // 段の最中に外すと、その段で後に呼ぶ予定の生ポインタが一覧の外を指す
+        // 歩の最中に外すと、その歩で後に呼ぶ予定の生ポインタが一覧の外を指す
         if (m_updating)
         {
             NS_LOG_ERROR(
-                Scene, "ActorList::DetachByActorId: 段の更新の最中に呼ばれたので id {} を外すのを断った", objectId);
+                Scene, "ActorList::DetachByActorId: 1 歩の更新の最中に呼ばれたので id {} を外すのを断った", objectId);
             return DetachedActor{};
         }
 
@@ -174,7 +174,7 @@ namespace NS
         if (m_updating)
         {
             NS_LOG_ERROR(Scene,
-                         "ActorList::RemoveDestroyed: 段の更新の最中に呼ばれたので Destroy した個体の解放を断った");
+                         "ActorList::RemoveDestroyed: 1 歩の更新の最中に呼ばれたので Destroy した個体の解放を断った");
             return;
         }
         const std::size_t removed = std::erase_if(m_actors, [](const std::unique_ptr<SceneActor>& obj) {
@@ -265,17 +265,17 @@ namespace NS
         }
     }
 
-    void ActorList::BeginPhase() noexcept
+    void ActorList::BeginStep() noexcept
     {
-        NS_ASSERT(Scene, !m_updating, "段の更新を入れ子で呼んでいる");
+        NS_ASSERT(Scene, !m_updating, "1 歩の更新を入れ子で呼んでいる");
         m_updating = true;
     }
 
-    void ActorList::EndPhase() noexcept { m_updating = false; }
+    void ActorList::EndStep() noexcept { m_updating = false; }
 
     void ActorList::ScheduleAppeared()
     {
-        NS_ASSERT(Scene, m_updating, "BeginPhase の前に段を回している");
+        NS_ASSERT(Scene, m_updating, "BeginStep の前にアクターを回している");
         m_scheduled.clear();
         for (const std::unique_ptr<SceneActor>& obj : m_actors)
         {
@@ -291,7 +291,7 @@ namespace NS
         ScheduleAppeared();
         for (SceneActor* actor : m_scheduled)
         {
-            // 解放の口は段の間は断るので、積んだ生ポインタは生きている。途中で消えた物だけ飛ばす
+            // 解放の口は歩の間は断るので、積んだ生ポインタは生きている。途中で消えた物だけ飛ばす
             if (!actor->IsAppeared())
             {
                 continue;
@@ -385,7 +385,7 @@ namespace NS
     {
         if (m_updating)
         {
-            NS_LOG_ERROR(Scene, "ActorList::Clear: 段の更新の最中に呼ばれたのでアクターの解放を断った");
+            NS_LOG_ERROR(Scene, "ActorList::Clear: 1 歩の更新の最中に呼ばれたのでアクターの解放を断った");
             return;
         }
 

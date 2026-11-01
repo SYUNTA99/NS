@@ -6,7 +6,6 @@
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/IGet/IGetRenderer.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -16,10 +15,8 @@
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/CoreObject/System/PhysicsDirector.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
-#include "NSlib/CoreObject/System/SceneSystemHolder.h"
 #include "NSlib/CoreObject/System/ScreenFadeDirector.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
-#include "NSlib/CoreObject/UpdatePhase.h"
 
 #include "NSlib/Core/Types.h"
 #include <memory>
@@ -58,7 +55,6 @@ namespace NS
     //! JSON は保存・凍結・編集履歴に使い、実行中の状態は SceneActor と部品が持つ
     class Scene : public NonCopyable,
                   public IGetCamera,
-                  public IGetSceneSystem,
                   public IGetCollision,
                   public IGetRenderer
     {
@@ -102,8 +98,6 @@ namespace NS
         //! カメラ管理が描画に使う実カメラ
         [[nodiscard]] SceneCamera* MainCamera() noexcept;
 
-        [[nodiscard]] SceneSystemHolder* GetSceneSystemHolder() const noexcept override;
-
         //! Physics() と同じ物を、IGetCollision の形 (ポインタ) で返す
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
 
@@ -115,16 +109,9 @@ namespace NS
         [[nodiscard]] HitSensorDirector& HitSensors() noexcept { return m_hitSensors; }
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
 
-        //! シーン全体の暗転。UI の段で進め、全 UI の後に描く。時間停止中は凍る
+        //! シーン全体の暗転。UI の後に実時間で進め、全 UI の後に描く。時間停止中は凍る
         [[nodiscard]] Gfx::ScreenFade& Fade() noexcept { return m_fade.Fade(); }
         [[nodiscard]] const Gfx::ScreenFade& Fade() const noexcept { return m_fade.Fade(); }
-
-        //! 管理役を段 phase の更新へ登録する。登録済みなら段だけを差し替える
-        //! その段のアクター (Actors の Update・RenderPrep の PrepareRender) の後に登録順で OnTick が呼ばれる
-        //! 更新の最中に登録した物は、その歩の残りでは呼ばれない
-        void AddSystemTick(SceneSystem& system, UpdatePhase phase);
-        //! 管理役を更新から外す。更新の最中に外した物は、その歩の残りでは呼ばれない
-        void RemoveSystemTick(SceneSystem& system) noexcept;
 
         //! 開いている画面の管理役。UIActor の Open と Close が出し入れする
         [[nodiscard]] UIDirector& UI() noexcept { return m_ui; }
@@ -215,7 +202,7 @@ namespace NS
         //! 止めたまま次の固定ステップを 1 コマだけ進める。動いていればまず止める
         void StepSimulation() noexcept;
 
-        //! 世界の更新を間引いて減速する。0 で停止、1 で通常。実時間の段は毎歩更新する
+        //! 世界の更新を間引いて減速する。0 で停止、1 で通常。StepRealTime の物は毎歩更新する
         //! 非有限値は拒否し、0〜1 に収める。プレイ開始時に 1 へ戻す
         void SetWorldSpeed(float speed) noexcept;
         [[nodiscard]] float WorldSpeed() const noexcept { return m_worldSpeed; }
@@ -226,7 +213,7 @@ namespace NS
 
         //! mover 以外のアクターを steps 歩止めるよう頼む。頼みを控えるだけで、呼んだ歩はそのまま最後まで進む。
         //! 次の OnUpdate の始めに効き、そこから世界を進める歩を steps 歩数える。止まっている間も全部のアクターを
-        //! Update し、mover 以外は SceneActor::IsStopped が true になる。回す管理役は RunsWhileOthersHeld の表で決まる。
+        //! Update し、mover 以外は SceneActor::IsStopped が true になる。回す管理役は StepStopped が決める。
         //! 同じ mover の頼みは延長だけを受け、steps が 0 以下なら解く。止めている間と、同じ歩に先に止めを頼まれた間は、
         //! 先に頼んだアクターが止めを持ち、ほかのアクターの頼み (延長も解くのも) は受けない。mover は番地と id で
         //! 覚えて比べるだけなので、止めている間に一覧から外れても番地を読まず、止めは残りの歩で切れる。プレイ開始でも解く
@@ -277,22 +264,16 @@ namespace NS
 
         //! アクターを 1 体、解放せずにシーンから外して返す。.actor が見つからずに持っている同じ id の JSON は捨てる
         //! Disappear で登録の組が無効になるが、OnEndPlay は呼ばない。返した物を捨てる時は、呼び手が先に
-        //! OnEndPlay を呼ぶ。居なければ空を返す。段の更新の最中は断る
+        //! OnEndPlay を呼ぶ。居なければ空を返す。1 歩の更新の最中は断る
         [[nodiscard]] DetachedActor DetachActor(uint32 objectId);
 
         //! DetachActor で外したアクターを外す前の並びの位置へ戻す。外す前に出ていた物は Appear する
         SceneActor* ReattachActor(DetachedActor detached);
 
-        //! 固定更新の並びを UpdatePhase の順に実行する。アクターを回す段では、アクターの後に管理役を更新する
-        //! 始めに前の歩で頼まれた止めを効かせ、止まっているかはこの歩の間変えない
-        void OnUpdate();
-
-        //! 段 phase を 1 回だけ回す。OnUpdate が段ごとに呼ぶ
-        //! Actors は出ているアクターを全部並びの順に Update し、
-        //! RenderPrep は全部の出ているアクターの PrepareRender を呼ぶ。続いてその段に登録した管理役を登録順に更新する。
-        //! Sensors は最後に StepGame を呼ぶ
+        //! 1 固定ステップを進める。始めに前の歩で頼まれた止めを効かせ、世界を進めない歩・シーンが止まっている歩・
+        //! 普段の歩で StepRealTime・StepStopped・StepWorld を呼び分ける。止まっているかはこの歩の間変えない。
         //! 回している間はアクターを解放する口を断る。再入は禁止
-        void ExecutePhase(UpdatePhase phase);
+        void OnUpdate();
 
         //! アクターと、アクターから借りている物と、固定ステップで積んだ開発用の図形を捨てる
         void OnShutdown();
@@ -303,6 +284,21 @@ namespace NS
         virtual void StepGame() {}
 
     private:
+        // 状態ごとの 1 歩。OnUpdate がどれか 1 つを選んで呼び、回す物と順番はこの 5 つが決める。中で止めを確かめない
+
+        //! 普段の歩。アクター全部 → 物理 → 当たりの判定 → StepGame → StepView
+        void StepWorld();
+        //! シーンが止まっている歩。アクター全部 (止まったアクターは自分で状態機械と体を止める) → StepViewStopped。
+        //! 物理・判定・StepGame・エフェクトは進めない
+        void StepStopped();
+        //! 普段の歩の見せる側。StepViewStopped → エフェクト
+        void StepView();
+        //! 止めている間も回す見せる側。カメラ → StepRealTime → 描く支度 → 画面の演出 → 振動。
+        //! カメラまで止めると、進み続ける止め始めたアクターが画面の中で動いて見える
+        void StepViewStopped();
+        //! 世界の速さに依らず毎歩回す物。UI → 暗転。遅い世界で世界を進めない歩はこれだけを呼ぶ
+        void StepRealTime();
+
         //! 古い世界のエフェクトを消し、時間を進めずに描画へ反映する
         void ClearEffects() noexcept;
 
@@ -362,17 +358,6 @@ namespace NS
         // id は、読む時は m_actors の次の id が数え、1 体だけ入れる道ではこのシーンの控えの id なので数え済み。
         // 新しいアクターに振られない
         std::vector<nlohmann::json> m_unresolvedActors;
-        // 更新へ登録した管理役 1 件
-        struct SystemEntry
-        {
-            SceneSystem* system = nullptr; // 非所有。実体はこのシーンのメンバーか保持体が持つ
-            UpdatePhase phase = UpdatePhase::Actors;
-        };
-        std::vector<SystemEntry> m_systems;           // このシーンが回す管理役と段。登録順
-        std::vector<SceneSystem*> m_scheduledSystems; // ExecutePhase がその段で呼ぶ管理役を積む作業用の並び
-        // シーンに 1 つの物。アクターと画面の一覧を借りるので、それより後に宣言して先に破棄する
-        // const の窓口からも作れるよう mutable にする。作っても見かけのシーンの状態は変わらない
-        mutable SceneSystemHolder m_sceneObjs{*this};
 
         bool m_simulationEnabled = true;       // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;       // 時間停止中か

@@ -7,11 +7,13 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Gfx/Render/ScreenFade.h"
 
+#include "Tests/TestSteppedGameScene.h"
+
 #include <gtest/gtest.h>
 
 TEST(GameTuning, GoalFadeUsesTheEditedGoalFields)
 {
-    GL::Level::GameScene scene;
+    SteppedGameScene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     nlohmann::json playerDoc = NS::Editor::MakePrototypeJson<PlayerActor>();
     NS::SetActorJsonId(playerDoc, 1);
@@ -23,15 +25,14 @@ TEST(GameTuning, GoalFadeUsesTheEditedGoalFields)
     GL::Level::GoalActor* goal = NS::Cast<GL::Level::GoalActor>(scene.Actors().FindByActorId(2));
     ASSERT_NE(goal, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(&goal->Params(), {{"クリアの暗転秒", 0.1f}, {"クリアの明転秒", 0.2f}}), 0u);
-    // 当たりの判定の段の終わりに GameScene::StepGame が呼ばれる
-    scene.ExecutePhase(NS::UpdatePhase::Sensors);
+    scene.StepSensorsAndGame();
     ASSERT_TRUE(scene.IsClearing());
     NS::Gfx::ScreenFade& fade = scene.Fade();
     fade.Advance(0.05f);
     EXPECT_NEAR(fade.Alpha(), 0.5f, 0.001f);
     fade.Advance(0.05f);
     ASSERT_TRUE(fade.IsBlack());
-    scene.ExecutePhase(NS::UpdatePhase::Sensors);
+    scene.StepSensorsAndGame();
     fade.Advance(0.1f);
     EXPECT_NEAR(fade.Alpha(), 0.5f, 0.001f);
 }

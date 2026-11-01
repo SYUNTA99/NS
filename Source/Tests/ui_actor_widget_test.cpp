@@ -61,7 +61,7 @@ namespace
     };
 } // namespace
 
-// 段で回る口は SceneActor だけが持ち、UIActor には無い
+// シーンの歩で回る口は SceneActor だけが持ち、UIActor には無い
 template <class T>
 concept HasPhaseHooks = requires(T& actor) {
     actor.Update();
@@ -82,14 +82,14 @@ TEST(UIActorWidgets, OpenScreensTickInOpenOrderOnTheUIPhase)
     front.Open(scene);
     back.Open(scene);
 
-    scene.ExecutePhase(NS::UpdatePhase::UI);
+    scene.UI().OnTick();
     ASSERT_EQ(log.size(), 2u);
     EXPECT_EQ(log[0], "front");
     EXPECT_EQ(log[1], "back");
 
     front.Close();
     log.clear();
-    scene.ExecutePhase(NS::UpdatePhase::UI);
+    scene.UI().OnTick();
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], "back");
     back.Close();
@@ -125,12 +125,12 @@ TEST(UIActorWidgets, OpenScreenKeepsTickingAfterTheWorldIsRebuilt)
     scene.ResetFromJson(NS::MakeSceneJson());
 
     EXPECT_TRUE(ui.IsOpen());
-    scene.ExecutePhase(NS::UpdatePhase::UI);
+    scene.UI().OnTick();
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], "ui");
 }
 
-// UI の段の最中に開いた画面は、その歩では動かない
+// UI を動かしている最中に開いた画面は、その歩では動かない
 TEST(UIActorWidgets, ScreenOpenedDuringTheUIPhaseWaitsForTheNextStep)
 {
     NS::Scene scene;
@@ -139,16 +139,16 @@ TEST(UIActorWidgets, ScreenOpenedDuringTheUIPhaseWaitsForTheNextStep)
     TogglingUI opener(scene, late, true);
     opener.Open(scene);
 
-    scene.ExecutePhase(NS::UpdatePhase::UI);
+    scene.UI().OnTick();
     EXPECT_TRUE(late.IsOpen());
     EXPECT_TRUE(log.empty());
 
-    scene.ExecutePhase(NS::UpdatePhase::UI);
+    scene.UI().OnTick();
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], "late");
 }
 
-// UI の段の最中に閉じた画面は、その歩の残りで動かない
+// UI を動かしている最中に閉じた画面は、その歩の残りで動かない
 TEST(UIActorWidgets, ScreenClosedDuringTheUIPhaseIsSkipped)
 {
     NS::Scene scene;
@@ -158,7 +158,7 @@ TEST(UIActorWidgets, ScreenClosedDuringTheUIPhaseIsSkipped)
     closer.Open(scene);
     victim.Open(scene);
 
-    scene.ExecutePhase(NS::UpdatePhase::UI);
+    scene.UI().OnTick();
 
     EXPECT_FALSE(victim.IsOpen());
     EXPECT_TRUE(log.empty());

@@ -164,15 +164,6 @@ namespace NS
         return m_scene->GetCameraManager();
     }
 
-    SceneSystemHolder* SceneActor::GetSceneSystemHolder() const noexcept
-    {
-        if (m_scene == nullptr)
-        {
-            return nullptr;
-        }
-        return m_scene->GetSceneSystemHolder();
-    }
-
     Phys::PhysicsScene* SceneActor::GetPhysicsScene() const noexcept
     {
         if (m_scene == nullptr)

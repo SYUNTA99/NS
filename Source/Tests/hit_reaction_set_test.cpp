@@ -432,13 +432,8 @@ namespace
             return owner->StartHitReaction(name, position, owner->HitSensorsClassObj()->Find("Body"), partner->HitSensorsClassObj()->Find("Body"));
         }
 
-        // 1 固定フレーム。アクター・カメラ・画面とパッドの係の順に回す
-        void Step()
-        {
-            scene.ExecutePhase(NS::UpdatePhase::Actors);
-            scene.ExecutePhase(NS::UpdatePhase::Camera);
-            scene.ExecutePhase(NS::UpdatePhase::RenderPrep);
-        }
+        // 1 固定フレーム。本番と同じ Scene::OnUpdate の 1 歩で、前の歩で頼まれた止めもこの歩の始めに効く
+        void Step() { scene.OnUpdate(); }
 
         [[nodiscard]] NS::CameraManager& Cameras() { return *scene.GetCameraManager(); }
 

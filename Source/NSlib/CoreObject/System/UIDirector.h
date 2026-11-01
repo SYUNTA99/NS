@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/Core/NonCopyable.h"
 #include "NSlib/UI/UICanvas.h"
 
 #include <vector>
@@ -17,10 +17,10 @@ namespace NS
 {
     class UIActor;
 
-    //! 開いている画面を束ね、UI の段で動かし、描く順に描く
+    //! 開いている画面を束ね、固定フレームごとに動かし、描く順に描く
     //! 画面は所有しない。寿命は開いた側が持ち、UIActor の Open と Close が出し入れする
     //! Scene がメンバーで持つので、アクターを組み直しても開いた画面は残る
-    class UIDirector final : public SceneSystem
+    class UIDirector final : public NonCopyable
     {
     public:
         //! 画面を一覧の末尾へ入れる。入っていれば何もしない
@@ -30,7 +30,7 @@ namespace NS
 
         //! 開いている画面を開いた順に 1 回ずつ動かす
         //! 最中に開いた画面は次の歩から動き、最中に閉じた画面は飛ばす
-        void OnTick() override;
+        void OnTick();
 
         //! 描く順に並べた画面を返す
         //! @return DrawOrder の昇順で同じ値は開いた順の一覧、非所有

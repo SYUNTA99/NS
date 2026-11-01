@@ -3,7 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
-#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <array>
 
@@ -70,11 +70,11 @@ namespace NS
                                                                  float pixelScale) noexcept;
 
     //! シーン共通の画面演出。開始した歩は初期状態を描き、次の更新から世界の速さで進める
-    class HitScreenDirector final : public SceneSystem, public IOverlay
+    class HitScreenDirector final : public NonCopyable, public IOverlay
     {
     public:
         explicit HitScreenDirector(Scene& scene);
-        ~HitScreenDirector() noexcept override;
+        ~HitScreenDirector() noexcept;
 
         //! 白の光を始める。前の白が残っていても始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
@@ -123,7 +123,7 @@ namespace NS
         [[nodiscard]] const HitShakeLinesDesc& ShakeLines() const noexcept { return m_lines; }
 
         //! 白を 1 フレーム薄め、震えの線・歪みの輪・床の波を 1 フレーム進める
-        void OnTick() override;
+        void OnTick();
 
         [[nodiscard]] int OverlayOrder() const noexcept override { return 1; }
         //! 残りのフレーム数に比例して薄くなる白を画面全体へ重ね、震えの線を描く

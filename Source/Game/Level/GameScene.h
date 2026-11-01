@@ -23,7 +23,7 @@ namespace GL
         //! コースを遊ぶシーン。死とゴールに応じてコースをやり直す
         //! クリア時は操作を止め、世界を動かしたまま暗転・再開・明転する。コースの中身は .scene のデータで、
         //! どのコースもこのクラスで立てる
-        class GameScene final : public NS::Scene
+        class GameScene : public NS::Scene
         {
         public:
             GameScene();

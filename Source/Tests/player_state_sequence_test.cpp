@@ -31,8 +31,6 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
-#include "NSlib/CoreObject/System/SceneSystem.h"
-#include "NSlib/CoreObject/UpdatePhase.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestTackleScene.h"
 #include "Tests/TestViewCamera.h"
@@ -1386,15 +1384,17 @@ TEST(PlayerTackleHit, ResetEndsOwnedEffectsAndDoesNotResumeThePreviousHit)
 
 namespace
 {
-    // 自機以外の段で回った歩を数える
-    class OthersTicker final : public NS::SceneSystem
+    // 自機以外のアクター。体を進めた歩を数える。シーンが止まっている歩は SceneActor::IsStopped で体を進めない
+    class OthersProbeActor final : public NS::SceneActor
     {
     public:
-        void OnTick() override { ++ticks; }
-        int ticks = 0;
+        int bodies = 0;
+
+    protected:
+        void BodyStep() override { ++bodies; }
     };
 
-    // 検知までの 1 歩の自機と、自機以外の段が回ったか
+    // 検知までの 1 歩の自機と、自機以外のアクターが体を進めたか
     struct ContactStep
     {
         bool inBeforeContact = false;
@@ -1412,16 +1412,16 @@ namespace
     // each は歩を読んだ後に、その歩の番号を渡して呼ぶ。真を返すとそこで止める
     std::vector<ContactStep> RunUntilContact(NS::Scene& scene,
                                              PlayerActor* player,
-                                             const OthersTicker& others,
                                              float charge01 = 1.0f,
                                              const std::function<bool(std::size_t)>& each = {})
     {
         NS_ASSERT(Game, player != nullptr, "RunUntilContact: 渡したアクターか部品が無い");
+        const OthersProbeActor* others = scene.SpawnActor<OthersProbeActor>("OthersProbe");
         std::vector<ContactStep> steps;
         player->RequestBodySlam(charge01, NS::Vector3{0.0f, 0.0f, 1.0f});
         for (int frame = 0; frame < 120 && player->Resolver().Answer().lastImpact.sequence == 0; ++frame)
         {
-            const int before = others.ticks;
+            const int before = others->bodies;
             const float z = player->Root().Position().z;
             scene.OnUpdate();
             ContactStep step;
@@ -1434,7 +1434,7 @@ namespace
                 step.actionFrame = player->ActionTimelineClassObj()->Frame();
             }
             step.drawScale = player->ModelClassObj()->GetDrawScale();
-            step.othersRan = others.ticks != before;
+            step.othersRan = others->bodies != before;
             step.advance = player->Root().Position().z - z;
             step.flashRemaining = scene.HitScreen().FlashFramesRemaining();
             steps.push_back(step);
@@ -1501,14 +1501,11 @@ namespace
 // 1 歩前と検知の歩で自機以外が止まる。自機は止まらずに突進の速さで進み、検知の歩で当たる直前を出る
 TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndHoldsTheOthersFromOne)
 {
-    OthersTicker others;
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f);
     ASSERT_NE(player, nullptr);
-    scene.AddSystemTick(others, NS::UpdatePhase::Sensors);
     const NS::DrawShapeDesc shape = ShippedBeforeContactShape();
-    const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
-    scene.RemoveSystemTick(others);
+    const std::vector<ContactStep> steps = RunUntilContact(scene, player);
     ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
     ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, GL::Level::HitTier::Center);
     ASSERT_GE(steps.size(), 9u) << "当たる直前の 6 歩より前から突進している間合いで見る";
@@ -1546,13 +1543,10 @@ TEST(PlayerBeforeContact, TheCenterPredictionShrinksFromSixStepsAndHoldsTheOther
 // 外れの段には当たる直前の動作が無いので、外れの予測では当たる直前に入らず、縮まず止めない
 TEST(PlayerBeforeContact, AMissPredictionNeitherShrinksNorHoldsTheOthers)
 {
-    OthersTicker others;
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.75f);
     ASSERT_NE(player, nullptr);
-    scene.AddSystemTick(others, NS::UpdatePhase::Sensors);
-    const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
-    scene.RemoveSystemTick(others);
+    const std::vector<ContactStep> steps = RunUntilContact(scene, player);
     ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
     ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, GL::Level::HitTier::Wide);
     bool predicted = false;
@@ -1587,14 +1581,13 @@ TEST(PlayerBeforeContact, AMissedPredictionRestoresTheShapeTheOthersAndTheReturn
     for (const float shift : {10.0f, 0.75f})
     {
         SCOPED_TRACE(shift);
-        OthersTicker others;
         NS::Scene scene;
         PlayerActor* player = PlaceTackleScene(scene, 0.0f);
         ASSERT_NE(player, nullptr);
         GL::Level::PropActor* rock = TackleRockOf(scene);
         ASSERT_NE(rock, nullptr);
         const std::vector<ContactStep> steps =
-            RunUntilContact(scene, player, others, 1.0f, [&](std::size_t) { return scene.IsSceneStopped(); });
+            RunUntilContact(scene, player, 1.0f, [&](std::size_t) { return scene.IsSceneStopped(); });
         ASSERT_FALSE(steps.empty());
         ASSERT_TRUE(scene.IsSceneStopped());
         ASSERT_TRUE(steps.back().inBeforeContact);
@@ -1628,13 +1621,10 @@ TEST(PlayerBeforeContact, ALatePredictionEntersAtTheFrameThatMatchesTheRest)
     for (const LateCase& late : {LateCase{2.6f, 3, true}, LateCase{2.0f, 1, false}})
     {
         SCOPED_TRACE(late.entered);
-        OthersTicker others;
         NS::Scene scene;
         PlayerActor* player = PlaceTackleScene(scene, 0.0f, late.rockZ);
         ASSERT_NE(player, nullptr);
-        scene.AddSystemTick(others, NS::UpdatePhase::Sensors);
-        const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
-        scene.RemoveSystemTick(others);
+        const std::vector<ContactStep> steps = RunUntilContact(scene, player);
         ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
         ASSERT_EQ(player->Resolver().Answer().lastImpact.tier, GL::Level::HitTier::Center);
         const int detect = static_cast<int>(steps.size()) - 1;
@@ -1668,11 +1658,10 @@ TEST(PlayerBeforeContact, ALatePredictionEntersAtTheFrameThatMatchesTheRest)
 // 線の先の相手に触れる見込みのフレーム数は、当たる直前の動作の長さに依らず数える。検知の 1 フレーム前で 1
 TEST(PlayerBeforeContact, FramesToPredictedContactCountDownToTheDetection)
 {
-    OthersTicker others;
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f, 6.0f);
     ASSERT_NE(player, nullptr);
-    const std::vector<ContactStep> steps = RunUntilContact(scene, player, others);
+    const std::vector<ContactStep> steps = RunUntilContact(scene, player);
     ASSERT_NE(player->Resolver().Answer().lastImpact.sequence, 0u);
     ASSERT_GE(steps.size(), 9u);
     const std::size_t last = steps.size() - 1;
@@ -1687,7 +1676,6 @@ TEST(PlayerBeforeContact, FramesToPredictedContactCountDownToTheDetection)
 // 突進の残りの距離で届かない相手は、線の先にいても触れる見込みに入れず、当たる直前に入らない
 TEST(PlayerBeforeContact, ATargetBeyondTheRemainingSlamIsNotPredicted)
 {
-    OthersTicker others;
     NS::Scene scene;
     PlayerActor* player = PlaceTackleScene(scene, 0.0f, 9.0f);
     ASSERT_NE(player, nullptr);
@@ -1698,7 +1686,7 @@ TEST(PlayerBeforeContact, ATargetBeyondTheRemainingSlamIsNotPredicted)
         << "溜めた突進の距離なら線の先に入る相手で見る";
     // 溜め量 0 の通常突進は、溜めた突進より短い距離で終わる
     int slammingSteps = 0;
-    const std::vector<ContactStep> steps = RunUntilContact(scene, player, others, 0.0f, [&](std::size_t) {
+    const std::vector<ContactStep> steps = RunUntilContact(scene, player, 0.0f, [&](std::size_t) {
         if (player->IsBodySlamming())
         {
             ++slammingSteps;

@@ -9,7 +9,6 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/UpdatePhase.h"
 
 #include <gtest/gtest.h>
 
@@ -48,7 +47,7 @@ namespace
         // 固定フレームを進めてから、補間を終えた姿勢の注視点を返す
         NS::Vector3 LookAfterUpdate()
         {
-            scene.ExecutePhase(NS::UpdatePhase::Camera);
+            scene.GetCameraManager()->OnTick();
             return camera->Vcam().EvaluatePose(1.0f).target;
         }
     };

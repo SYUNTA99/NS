@@ -1,20 +1,10 @@
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/IGet/IGetSceneSystem.h"
 #include "NSlib/CoreObject/Message/Message.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
-#include "NSlib/CoreObject/System/HitSensorDirector.h"
-#include "NSlib/CoreObject/System/PadRumbleDirector.h"
-#include "NSlib/CoreObject/System/PhysicsDirector.h"
-#include "NSlib/CoreObject/System/SceneRenderer.h"
-#include "NSlib/CoreObject/System/SceneSystem.h"
-#include "NSlib/CoreObject/System/ScreenFadeDirector.h"
-#include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 
@@ -22,34 +12,14 @@
 
 #include <cstddef>
 #include <string>
-#include <type_traits>
 #include <vector>
 
-// シーンに 1 つの物の置き場、画面に出す物 (UIActor)、部品でない物の更新の登録口を縛る
+// 画面に出す物 (UIActor)、アクターを回す口、知らせを受ける口を縛る
 
-// シーンの管理役は全部 SceneSystem の派生
-static_assert(std::is_base_of_v<NS::SceneSystem, NS::SceneRenderer>);
-static_assert(std::is_base_of_v<NS::SceneSystem, NS::HitSensorDirector>);
-static_assert(std::is_base_of_v<NS::SceneSystem, NS::CameraManager>);
-static_assert(std::is_base_of_v<NS::SceneSystem, NS::HitScreenDirector>);
-static_assert(std::is_base_of_v<NS::SceneSystem, NS::PadRumbleDirector>);
-static_assert(std::is_base_of_v<NS::SceneSystem, NS::UIDirector>);
-static_assert(std::is_base_of_v<NS::SceneSystem, NS::PhysicsDirector>);
-static_assert(std::is_base_of_v<NS::SceneSystem, NS::ScreenFadeDirector>);
-
-// 更新の登録の口は Scene の 1 つで、SceneSystem の派生だけを受ける
+// アクターを回す口は Scene::OnUpdate の 1 つ。アクターの一覧を直に回すと、同じ歩の管理役が呼ばれない
 template <class T>
-concept CanAddSystemTick =
-    requires(NS::Scene& scene, T& system) { scene.AddSystemTick(system, NS::UpdatePhase::Actors); };
-static_assert(CanAddSystemTick<NS::UIDirector>);
-static_assert(!CanAddSystemTick<NS::SceneActor>);
-static_assert(!CanAddSystemTick<NS::UIActor>);
-
-// 段を回す口も Scene の 1 つ。アクターの一覧を直に回すと、同じ段の管理役が呼ばれない
-template <class T>
-concept CanExecutePhase = requires(T& target) { target.ExecutePhase(NS::UpdatePhase::Actors); };
-static_assert(CanExecutePhase<NS::Scene>);
-static_assert(!CanExecutePhase<NS::ActorList>);
+concept CanUpdateActors = requires(T& target) { target.UpdateActors(); };
+static_assert(!CanUpdateActors<NS::ActorList>);
 
 // 知らせを受ける口は送る関数だけが呼べる
 template <class T>
@@ -60,27 +30,6 @@ static_assert(!CanReceiveMsgDirectly<GL::Level::PropActor>);
 
 namespace
 {
-    class CountedSceneObj final : public NS::SceneSystem
-    {
-    public:
-        explicit CountedSceneObj(NS::Scene& scene) noexcept
-        {
-            (void)scene;
-            ++s_alive;
-        }
-        ~CountedSceneObj() noexcept override { --s_alive; }
-        static inline int s_alive = 0;
-    };
-
-    // 作られた時に更新へ登録し、解除を自分では書かない管理役
-    class SelfRegisteringSystem final : public NS::SceneSystem
-    {
-    public:
-        explicit SelfRegisteringSystem(NS::Scene& scene) { scene.AddSystemTick(*this, NS::UpdatePhase::Actors); }
-        void OnTick() override { ++s_ticks; }
-        static inline int s_ticks = 0;
-    };
-
     class CountingUI final : public NS::UIActor
     {
     public:
@@ -93,16 +42,6 @@ namespace
     struct TickLog
     {
         std::vector<std::string> order;
-    };
-
-    class LoggingTicker final : public NS::SceneSystem
-    {
-    public:
-        explicit LoggingTicker(TickLog& log) noexcept : m_log(log) {}
-        void OnTick() override { m_log.order.push_back("ticker"); }
-
-    private:
-        TickLog& m_log;
     };
 
     class LoggingClassObj final : public NS::Object
@@ -145,46 +84,6 @@ namespace
     };
 } // namespace
 
-TEST(SceneSystemHolder, OneInstancePerTypeAndClearDestroys)
-{
-    NS::Scene scene;
-    CountedSceneObj* first = NS::GetOrCreateSceneSystem<CountedSceneObj>(&scene);
-    CountedSceneObj* second = NS::GetOrCreateSceneSystem<CountedSceneObj>(&scene);
-    ASSERT_NE(first, nullptr);
-    EXPECT_EQ(first, second);
-    EXPECT_EQ(NS::FindSceneSystem<CountedSceneObj>(&scene), first);
-    EXPECT_EQ(CountedSceneObj::s_alive, 1);
-
-    // シーンのアクターを組み直すと最初の状態から作り直させる
-    scene.ResetFromJson(NS::MakeSceneJson());
-    EXPECT_EQ(CountedSceneObj::s_alive, 0);
-    EXPECT_EQ(NS::FindSceneSystem<CountedSceneObj>(&scene), nullptr);
-}
-
-// 保持体は捨てる前に更新から外す。管理役はデストラクタに解除を書かなくてよい
-TEST(SceneSystemHolder, ClearRemovesTheSystemFromTheUpdate)
-{
-    NS::Scene scene;
-    SelfRegisteringSystem::s_ticks = 0;
-    ASSERT_NE(NS::GetOrCreateSceneSystem<SelfRegisteringSystem>(&scene), nullptr);
-    scene.OnUpdate();
-    EXPECT_EQ(SelfRegisteringSystem::s_ticks, 1);
-
-    scene.ResetFromJson(NS::MakeSceneJson());
-    scene.OnUpdate();
-    EXPECT_EQ(SelfRegisteringSystem::s_ticks, 1);
-}
-
-TEST(SceneSystemHolder, ActorReachesSceneObjectsThroughWindow)
-{
-    NS::Scene scene;
-    NS::SceneActor* actor = scene.SpawnActor<NS::SceneActor>("SceneActor");
-    CountedSceneObj* made = NS::GetOrCreateSceneSystem<CountedSceneObj>(actor);
-    EXPECT_EQ(made, NS::FindSceneSystem<CountedSceneObj>(&scene));
-    NS::SceneActor loose;
-    EXPECT_EQ(NS::GetOrCreateSceneSystem<CountedSceneObj>(&loose), nullptr);
-}
-
 TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
 {
     NS::Scene scene;
@@ -199,28 +98,6 @@ TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
     EXPECT_FALSE(ui.IsOpen());
     scene.OnUpdate();
     EXPECT_EQ(ui.updates, 1);
-}
-
-TEST(ActorListTicker, TickerRunsAfterClassObjsOfSameBand)
-{
-    NS::Scene scene;
-    TickLog log;
-    scene.SpawnActor<LoggingActor>("LoggingActor", log);
-    LoggingTicker ticker(log);
-    scene.AddSystemTick(ticker, NS::UpdatePhase::Actors);
-
-    scene.ExecutePhase(NS::UpdatePhase::Actors);
-    ASSERT_EQ(log.order.size(), 3u);
-    EXPECT_EQ(log.order[0], "actor");
-    EXPECT_EQ(log.order[1], "component");
-    EXPECT_EQ(log.order[2], "ticker");
-
-    scene.RemoveSystemTick(ticker);
-    log.order.clear();
-    scene.ExecutePhase(NS::UpdatePhase::Actors);
-    ASSERT_EQ(log.order.size(), 2u);
-    EXPECT_EQ(log.order[0], "actor");
-    EXPECT_EQ(log.order[1], "component");
 }
 
 TEST(ActorListTicker, ActorTickFollowsBands)

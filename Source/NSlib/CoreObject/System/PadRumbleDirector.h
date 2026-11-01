@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/CoreObject/Reflection/Curve.h"
-#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/Core/NonCopyable.h"
 
 #include <vector>
 
@@ -18,11 +18,11 @@ namespace NS
     };
 
     //! シーン共通の振動。開始時に初期値を出し、更新ごとに実機へ書き、破棄時に停止する
-    class PadRumbleDirector final : public SceneSystem
+    class PadRumbleDirector final : public NonCopyable
     {
     public:
         PadRumbleDirector() = default;
-        ~PadRumbleDirector() noexcept override;
+        ~PadRumbleDirector() noexcept;
 
         //! 全部の振動を外す。振動していれば 0 を書いて止める。シーンがアクターを組み直す前に呼ぶ
         void Clear();
@@ -41,7 +41,7 @@ namespace NS
         void Scale(const SceneActor* requester, float scale);
 
         //! 振動を 1 フレーム進めて書く
-        void OnTick() override;
+        void OnTick();
 
     private:
         // 始めてからのフレーム数に応じた速さを足してパッドへ書く。全部が長さに届いたフレームは 0 を書いて止める

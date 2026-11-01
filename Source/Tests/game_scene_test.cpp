@@ -24,6 +24,7 @@
 #include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/Core/Windows/Mouse.h"
 #include "TestLogCapture.h"
+#include "Tests/TestSteppedGameScene.h"
 
 #include <gtest/gtest.h>
 
@@ -56,11 +57,7 @@ namespace
         player->Update();
     }
 
-    // 当たりの判定の段を回す。段の終わりに GameScene::StepGame が呼ばれる
-    void StepSensorsAndGame(NS::Scene& scene)
-    {
-        scene.ExecutePhase(NS::UpdatePhase::Sensors);
-    }
+    void StepSensorsAndGame(SteppedGameScene& scene) { scene.StepSensorsAndGame(); }
 
     // プレイヤーと落下死の範囲を敷いたシーン文書
     nlohmann::json CourseWithPlayer()
@@ -192,7 +189,7 @@ TEST(GameScene, StartPlayWithoutAnAudioDeviceReadsNoMusic)
 TEST(GameScene, DeathZoneEndsPlayerAndTheSceneRestartsCourse)
 {
     const nlohmann::json doc = CourseWithPlayer();
-    GL::Level::GameScene scene;
+    SteppedGameScene scene;
     scene.ResetFromJson(doc);
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
@@ -219,7 +216,7 @@ TEST(GameScene, RespawnButtonReturnsActorsButKeepsPlayer)
     NS::SceneJsonActors(doc).push_back(std::move(rock));
     NS::EnsureUniqueActorIds(doc);
 
-    GL::Level::GameScene scene;
+    SteppedGameScene scene;
     scene.ResetFromJson(doc);
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
@@ -257,7 +254,7 @@ TEST(GameScene, GoalStartsClearSequenceAndLocksInput)
     NS::SceneJsonActors(doc).push_back(std::move(goal));
     NS::EnsureUniqueActorIds(doc);
 
-    GL::Level::GameScene scene;
+    SteppedGameScene scene;
     scene.ResetFromJson(doc);
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
@@ -277,7 +274,7 @@ TEST(GameScene, GoalStartsClearSequenceAndLocksInput)
 TEST(GameScene, ClearLockNeutralizesTheMoveInput)
 {
     const nlohmann::json doc = CourseWithPlayerOnGoal();
-    GL::Level::GameScene scene;
+    SteppedGameScene scene;
     scene.ResetFromJson(doc);
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);

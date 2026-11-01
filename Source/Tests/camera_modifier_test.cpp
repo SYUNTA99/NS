@@ -30,8 +30,8 @@ TEST(CameraManager, SceneOwnsCameraWithoutActorHost)
     EXPECT_EQ(scene.Actors().ActorCount(), 0u);
 }
 
-// 管理役はカメラの段の登録物。段の表を回すだけで仮想カメラを選び、シーンに直書きの呼び出しは要らない
-TEST(CameraManager, CameraPhaseSelectsTheVirtualCamera)
+// 管理役はシーンのメンバー。シーンの歩を回すだけで仮想カメラを選び、ほかの呼び出しは要らない
+TEST(CameraManager, SceneStepSelectsTheVirtualCamera)
 {
     NS::Scene scene;
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
@@ -39,7 +39,7 @@ TEST(CameraManager, CameraPhaseSelectsTheVirtualCamera)
     ASSERT_NE(cameras, nullptr);
     ASSERT_EQ(cameras->ActiveVirtualCamera(), nullptr);
 
-    scene.ExecutePhase(NS::UpdatePhase::Camera);
+    scene.OnUpdate();
 
     EXPECT_NE(cameras->ActiveVirtualCamera(), nullptr);
 }

@@ -3,7 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/IRenderable.h"
-#include "NSlib/CoreObject/System/SceneSystem.h"
+#include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
@@ -80,7 +80,7 @@ namespace NS
 
     //! シーンの描画物を登録し、各ビューへ描画する
     //! 世界と後処理の後に重ね描きと UI、最後にシーン全体の暗転を描く
-    class SceneRenderer : public SceneSystem
+    class SceneRenderer : public NonCopyable
     {
     public:
         SceneRenderer();
@@ -98,7 +98,7 @@ namespace NS
         [[nodiscard]] Gfx::ScreenOverlay* Overlay() const noexcept { return m_overlay.get(); }
 
         //! エフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ何もしない
-        void OnTick() override;
+        void OnTick();
 
         //! 1 フレームで描くビュー列を差す。空なら現描画先へ実カメラの視点で 1 回だけ描く
         //! 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
