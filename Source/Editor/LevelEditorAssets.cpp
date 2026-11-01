@@ -49,6 +49,35 @@ namespace
         return *it;
     }
 
+    // name の .actor をファイルへ書く。動作はファイルの中身のまま残す
+    // タイムラインの保存していない動作もライブラリにあるので、丸ごと書くとパネルの「元に戻す」で戻らなくなる
+    [[nodiscard]] bool SaveActorFileExceptActions(const std::string& name)
+    {
+        NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+        const nlohmann::json* current = library.Find(name);
+        if (current == nullptr)
+        {
+            return false;
+        }
+        nlohmann::json document = *current;
+        const std::string path = NS::OS::FileSystem::Combine(library.Directory(), name + ".actor");
+        if (NS::OS::FileSystem::Exists(path))
+        {
+            // 読めないファイルは ReadActorFileAt が ERROR を出している。残す動作が無いので今の文書で書き直す
+            if (const std::optional<nlohmann::json> saved = NS::ReadActorFileAt(path))
+            {
+                const nlohmann::json* actions = NS::ActorFileActions(*saved);
+                nlohmann::json savedActions = nlohmann::json::array();
+                if (actions != nullptr)
+                {
+                    savedActions = *actions;
+                }
+                NS::SetActorFileActions(document, std::move(savedActions));
+            }
+        }
+        return NS::WriteActorFileAt(path, document);
+    }
+
     // name の .actor を document に差し替えてファイルへ書き、name を指すアクターと name の派生を指すアクターの全部へ、
     // 全部の値を写し直す。シーンで上書きした項目はアクターの値が残る
     // 直し終えた時・取り消し・やり直しの全部がこの 1 本を通る
@@ -60,7 +89,7 @@ namespace
         {
             return;
         }
-        if (!library.Save(name))
+        if (!SaveActorFileExceptActions(name))
         {
             unsaved.insert(name);
             NS_LOG_WARN(App, ".actor {} をファイルへ書けなかった。終了時に再試行する", name);
@@ -763,7 +792,7 @@ bool LevelEditorController::SavePendingAssets()
     const std::set<std::string> actorFiles = m_unsavedActorFiles;
     for (const std::string& name : actorFiles)
     {
-        if (NS::ActorFileLibrary::Get().Save(name))
+        if (SaveActorFileExceptActions(name))
         {
             m_unsavedActorFiles.erase(name);
         }

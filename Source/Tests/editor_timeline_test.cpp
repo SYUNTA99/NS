@@ -15,6 +15,7 @@
 #include "NSlib/App/Layer.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"
@@ -892,6 +893,31 @@ TEST(EditorActionTimelinePanel, RevertReloadsActorsOfADerivedActorFile)
 
     EXPECT_FALSE(timeline.HasUnsavedChanges());
     EXPECT_EQ(eventCount(), before.front().events.size());
+}
+
+// インスペクターの .actor の保存は、タイムラインの保存していない動作を書かない。書くと「元に戻す」で動作が戻らない
+TEST(EditorActionTimelinePanel, RevertRestoresActionsAfterTheSameActorFileIsSavedFromTheInspector)
+{
+    const ScopedActorFileDirectory directory("EditorActionTimelineFieldSave");
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(&scene);
+    PlaceEditedPlayer(directory, scene, editor);
+    NS::Editor::ActionTimelinePanel timeline;
+    const std::size_t before = FirstActionEventCount();
+
+    AddEventThroughThePanel(editor, timeline);
+    ASSERT_EQ(FirstActionEventCount(), before + 1);
+    NS::HitReactionSet set;
+    set.name = "Hit";
+    editor.WriteActorFileHitReactions("PlayerActor", {set});
+    PressPanelButton(editor, timeline, "元に戻す");
+
+    EXPECT_EQ(FirstActionEventCount(), before);
+    // インスペクターで直した値は保存済みなので、読み直しても残る
+    const nlohmann::json* sets = NS::ActorFileHitReactions(*NS::ActorFileLibrary::Get().Find("PlayerActor"));
+    ASSERT_NE(sets, nullptr);
+    EXPECT_EQ(sets->size(), 1u);
 }
 
 // シーンを変えずに動作のタイムラインだけを変えても、終了の確認は未保存と答える
