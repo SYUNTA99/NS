@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
+#include "Tests/TestSceneSetup.h"
 #include <algorithm>
 #include <cstddef>
 #include <memory>
@@ -47,23 +48,9 @@ namespace
     nlohmann::json MakePreviewSceneJson()
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json floor = NS::MakeActorJson();
-        NS::SetActorJsonFile(floor, "MapPartsActor");
-        NS::SetActorJsonId(floor, 100);
-        NS::Editor::SetActorJsonPosition(floor, NS::Vector3{0.0f, -0.5f, 0.0f});
-        NS::Editor::SetActorJsonScale(floor, NS::Vector3{60.0f, 1.0f, 60.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(floor));
-        nlohmann::json player = NS::MakeActorJson();
-        NS::SetActorJsonFile(player, "PlayerActor");
-        NS::SetActorJsonId(player, 1);
-        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, k_RockId);
-        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 1.5f, 7.0f});
-        NS::Editor::SetActorJsonScale(rock, NS::Vector3{3.0f, 3.0f, 3.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "MapPartsActor", 100, NS::Vector3{0.0f, -0.5f, 0.0f}, NS::Vector3{60.0f, 1.0f, 60.0f});
+        AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
+        AddActorJson(doc, "PropActor", k_RockId, NS::Vector3{0.0f, 1.5f, 7.0f}, NS::Vector3{3.0f, 3.0f, 3.0f});
         return doc;
     }
 
@@ -341,11 +328,7 @@ TEST(EditorHitPreview, PicksTheNearestTargetWhenNoneIsChosen)
 {
     const ScopedPreviewActorFile actorFile;
     nlohmann::json snapshot = MakePreviewSceneJson();
-    nlohmann::json distant = NS::MakeActorJson();
-    NS::SetActorJsonFile(distant, "PropActor");
-    NS::SetActorJsonId(distant, 3);
-    NS::Editor::SetActorJsonPosition(distant, NS::Vector3{0.0f, 0.5f, 25.0f});
-    NS::SceneJsonActors(snapshot).push_back(std::move(distant));
+    AddActorJson(snapshot, "PropActor", 3, NS::Vector3{0.0f, 0.5f, 25.0f});
     PreviewAssets assets;
     NS::Editor::HitPreviewDesc desc = MakeDesc(0.0f, 0.0f);
     desc.targetId = 0;

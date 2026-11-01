@@ -6,6 +6,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/Core/Windows/Input.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -16,16 +17,8 @@ namespace
     PlayerActor* PlaceTwo(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeActorJson();
-        NS::SetActorJsonFile(entry, "PlayerActor");
-        NS::SetActorJsonId(entry, 1);
-        NS::Editor::SetActorJsonPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(entry));
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, 2);
-        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 5.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
+        AddActorJson(doc, "PropActor", 2, NS::Vector3{0.0f, 0.5f, 5.0f});
         scene.ResetFromJson(doc);
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }

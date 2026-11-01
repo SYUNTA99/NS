@@ -14,6 +14,7 @@
 #include "NSlib/Core/Windows/Clock.h"
 #include "TestAnimatedPlayerActor.h"
 #include "TestLogCapture.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -26,26 +27,13 @@ namespace
     void PlaceBodies(NS::Scene& scene, bool withPlayer)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, 1);
-        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 20.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "PropActor", 1, NS::Vector3{0.0f, 0.5f, 20.0f});
         if (withPlayer)
         {
-            nlohmann::json player = NS::MakeActorJson();
-            NS::SetActorJsonFile(player, "PlayerActor");
-            NS::SetActorJsonId(player, 2);
-            NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-            NS::SceneJsonActors(doc).push_back(std::move(player));
+            AddActorJson(doc, "PlayerActor", 2, NS::Vector3{0.0f, 1.0f, 0.0f});
         }
         scene.ResetFromJson(doc);
-        NS::OBB floor{};
-        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
-        floor.halfExtentX = 100.0f;
-        floor.halfExtentY = 0.5f;
-        floor.halfExtentZ = 100.0f;
-        scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
     }
 

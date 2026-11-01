@@ -29,6 +29,8 @@
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestCheckLayer.h"
+#include "Tests/TestHeadlessImGui.h"
+#include "Tests/TestHiddenApp.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -124,11 +126,7 @@ namespace
 // Esc は選択を外す。ギズモだけ外すと、次のフレームに残った選択の id から選び直される
 TEST(EditorSelection, EscapeClearsTheSelection)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "選択の試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("選択の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
@@ -154,11 +152,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
 // プレイ中はシーンに置いたアクターを消さず、履歴も積まない。編集へ戻る組み直しで消え、履歴だけがプレイの姿を指して残る
 TEST(EditorSelection, PlayDoesNotEditTheLevel)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "プレイ中の編集の試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("プレイ中の編集の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
@@ -184,11 +178,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
 // プレイ中に動かした位置・回転・スケールは、やり直しで戻る先の凍結にも届く
 TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "プレイ中の変形の試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("プレイ中の変形の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
@@ -220,11 +210,7 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
 // プレイを始めた時のシーンの JSON は、プレイに入る前に動かしたアクターの位置を持つ
 TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "プレイ開始の JSON の試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("プレイ開始の JSON の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
@@ -293,11 +279,7 @@ TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
 // プレイで動いただけの位置は履歴にも未保存のフラグにも入らない
 TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "プレイ中の欄の記録の試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("プレイ中の欄の記録の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
@@ -365,11 +347,7 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
 // ドラッグでマテリアルを付けても色の上書きは変えない。空なら付けたマテリアルの色で描く
 TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "マテリアルと色の上書きの試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("マテリアルと色の上書きの試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
@@ -401,11 +379,7 @@ TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
 // 追従カメラをギズモで引いた分も undo に積む。動かすのは初期姿勢の欄だが、控えは部品の値まで写す
 TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "追従カメラの引きの試し";
-    desc.window.size = {320, 200};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("追従カメラの引きの試し", {320, 200}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
@@ -447,11 +421,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
 
 TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "複数選択の移動の試し";
-    desc.window.size = {320, 200};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("複数選択の移動の試し", {320, 200}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
@@ -501,11 +471,7 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
 
 TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "独立した個体のギズモの試し";
-    desc.window.size = {320, 200};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("独立した個体のギズモの試し", {320, 200}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
@@ -554,11 +520,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
 // 地形の部品でない物が居る升には筆で重ねて置かない
 TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "筆の重なりの試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("筆の重なりの試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
@@ -577,11 +539,7 @@ TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
 // R は今の向きに縦軸の四半回転を足す。傾けた物も傾きを保つ
 TEST(EditorBrush, RotateKeepsTheTilt)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "筆の回転の試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("筆の回転の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
@@ -608,15 +566,8 @@ TEST(EditorBrush, RotateKeepsTheTilt)
 // 名前を打つ途中で選択を変えても、打った名前は打ち始めた物へ入る。後から選んだ物は改名しない
 TEST(EditorSelection, RenameGoesToTheActorBeingTyped)
 {
-    ImGuiContext* gui = ImGui::CreateContext();
+    ImGuiContext* gui = CreateHeadlessImGui(ImVec2{800.0f, 600.0f});
     ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = ImVec2{800.0f, 600.0f};
-    io.DeltaTime = 1.0f / 60.0f;
-    NS::uint8* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
     NS::Scene scene;
     LevelEditorController editor(&scene);
@@ -694,15 +645,7 @@ namespace
 // 一覧の道で改名しても、Undo で名前が戻っても、インスペクタの名前の欄は実体の今の名前を出す
 TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
 {
-    ImGuiContext* gui = ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = ImVec2{800.0f, 600.0f};
-    io.DeltaTime = 1.0f / 60.0f;
-    NS::uint8* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    ImGuiContext* gui = CreateHeadlessImGui(ImVec2{800.0f, 600.0f});
 
     NS::Scene scene;
     LevelEditorController editor(&scene);
@@ -747,16 +690,8 @@ TEST(EditorSelection, ReferenceOptionsFollowThePlacedActors)
 
 TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
 {
-    ImGuiContext* gui = ImGui::CreateContext();
+    ImGuiContext* gui = CreateHeadlessImGui(ImVec2{800.0f, 700.0f}, HeadlessImGuiInput::Instant);
     ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = ImVec2{800.0f, 700.0f};
-    io.DeltaTime = 1.0f / 60.0f;
-    io.ConfigInputTrickleEventQueue = false;
-    NS::uint8* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
     NS::Scene scene;
     LevelEditorController editor(&scene);
@@ -853,11 +788,7 @@ TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
 // 素材の値を変えた後は、どの道で素材の選択が外れても .mat に新しい値が書かれている
 TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "素材の選択を外す試し";
-    desc.window.size = {320, 200};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("素材の選択を外す試し", {320, 200}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         // 選ぶ素材は ContentRoot の下に限られるので、Assets の下に試しのフォルダを作り、終わったら消す
@@ -956,11 +887,7 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
 // 複製の参照は一緒に写した物を指す。作った物を選ぶかは道ごとに決まり、筆は選ばない。プレイ中はどの道も作らない
 TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "作る道の試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("作る道の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
@@ -1046,11 +973,7 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
 // (.actor へ書く道は ActorFile.PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningToEdit が見張る)
 TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "プレイ中に断る試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("プレイ中に断る試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         // 置く地形の部品の .actor を試しの置き場へ写す。プレイ中の道がどれも .actor のファイルを書かない事を中身で比べる
@@ -1151,11 +1074,7 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
 // 偽なら Ctrl+Z・R・番号・ギズモの道具のキーが効き、真ならどれも効かない
 TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "ショートカットを止める試し";
-    desc.window.size = {320, 200};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("ショートカットを止める試し", {320, 200}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;

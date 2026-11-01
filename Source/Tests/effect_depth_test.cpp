@@ -15,6 +15,7 @@
 #include "TestLogCapture.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/IGet/IGetEffect.h"
+#include "Tests/TestWarpGpu.h"
 
 #include <gtest/gtest.h>
 
@@ -34,43 +35,6 @@
 namespace
 {
     using Microsoft::WRL::ComPtr;
-
-    // 試しの間だけ WARP の描画装置を Gpu() に差す。作れない機械では空のまま
-    struct ScopedWarpGpu
-    {
-        ComPtr<ID3D11Device> d3d11Device;
-        ComPtr<ID3D11DeviceContext> context;
-
-        ScopedWarpGpu()
-        {
-            const HRESULT hr = ::D3D11CreateDevice(nullptr,
-                                                   D3D_DRIVER_TYPE_WARP,
-                                                   nullptr,
-                                                   0,
-                                                   nullptr,
-                                                   0,
-                                                   D3D11_SDK_VERSION,
-                                                   d3d11Device.GetAddressOf(),
-                                                   nullptr,
-                                                   context.GetAddressOf());
-            if (FAILED(hr))
-            {
-                d3d11Device.Reset();
-                context.Reset();
-                return;
-            }
-            NS::Gfx::Gpu().device = d3d11Device.Get();
-            NS::Gfx::Gpu().context = context.Get();
-        }
-
-        ~ScopedWarpGpu()
-        {
-            NS::Gfx::Gpu().device = nullptr;
-            NS::Gfx::Gpu().context = nullptr;
-        }
-
-        [[nodiscard]] bool Valid() const { return d3d11Device != nullptr; }
-    };
 
     std::unique_ptr<NS::Gfx::D3DTexture> MakeDepth(UINT width, UINT height, DXGI_FORMAT format)
     {

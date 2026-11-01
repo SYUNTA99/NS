@@ -31,6 +31,7 @@
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
+#include "Tests/TestSceneSetup.h"
 #include <cstddef>
 #include <filesystem>
 #include <memory>
@@ -43,15 +44,6 @@
 
 namespace
 {
-    // .actor の名前と id だけを持つアクターを doc へ足す
-    void AddActorJson(nlohmann::json& doc, std::string_view actorFile, NS::uint32 id)
-    {
-        nlohmann::json object = NS::MakeActorJson();
-        NS::SetActorJsonFile(object, actorFile);
-        NS::SetActorJsonId(object, id);
-        NS::SceneJsonActors(doc).push_back(std::move(object));
-    }
-
     // 開始の手前で止まる ActorList の口を外から呼べるか。テンプレートにして、呼べない時を偽として受ける
     template <class List>
     concept CanAppendWithNewIdFromOutside = requires(List& list, std::unique_ptr<NS::SceneActor> obj) {
