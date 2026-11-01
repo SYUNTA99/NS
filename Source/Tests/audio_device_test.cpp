@@ -7,12 +7,15 @@
 
 #include "TestLogCapture.h"
 
+#include <Audio.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -234,6 +237,61 @@ TEST(SoundAssetTest, ShippedSoundsAreReadWithoutError)
     }
 
     EXPECT_EQ(log.ErrorCount(), 0);
+}
+
+namespace
+{
+    //! WAV の fmt の塊を返す。見つからなければ空
+    [[nodiscard]] std::vector<char> ReadWavFormat(const std::string& path)
+    {
+        std::ifstream file(std::filesystem::u8path(path), std::ios::binary);
+        const std::vector<char> bytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        std::size_t offset = 12;
+        while (offset + 8 <= bytes.size())
+        {
+            std::uint32_t size = 0;
+            std::memcpy(&size, bytes.data() + offset + 4, sizeof(size));
+            if (std::memcmp(bytes.data() + offset, "fmt ", 4) == 0 && offset + 8 + size <= bytes.size())
+            {
+                return std::vector<char>(bytes.begin() + static_cast<std::ptrdiff_t>(offset + 8),
+                                         bytes.begin() + static_cast<std::ptrdiff_t>(offset + 8 + size));
+            }
+            offset += 8 + size + (size & 1);
+        }
+        return {};
+    }
+} // namespace
+
+// 出荷の音は全部、この PC の XAudio2 がソースボイスを作れる形式で置く。作れないと DirectXTK が鳴らす時に throw して止まる
+TEST(SoundAssetTest, ShippedSoundsCreateXAudio2Voice)
+{
+    using NS::OS::FileSystem;
+    NS::Audio::AudioDevice device(true);
+    if (!device.IsValid())
+    {
+        GTEST_SKIP() << "音の機器が無い";
+    }
+    IXAudio2* xaudio = device.Engine()->GetInterface();
+    const std::vector<std::string> paths =
+        FileSystem::ListFiles(FileSystem::Combine(FileSystem::ContentRoot(), "Assets/Sounds"), ".wav");
+    ASSERT_FALSE(paths.empty());
+
+    for (const std::string& path : paths)
+    {
+        const std::vector<char> format = ReadWavFormat(path);
+        ASSERT_GE(format.size(), sizeof(PCMWAVEFORMAT)) << path;
+        // PCM の fmt は cbSize を持たないので、WAVEFORMATEX の大きさまで 0 で埋める
+        std::vector<char> full(std::max(format.size(), sizeof(WAVEFORMATEX)), '\0');
+        std::memcpy(full.data(), format.data(), format.size());
+
+        IXAudio2SourceVoice* voice = nullptr;
+        const HRESULT hr = xaudio->CreateSourceVoice(&voice, reinterpret_cast<const WAVEFORMATEX*>(full.data()));
+        EXPECT_TRUE(SUCCEEDED(hr)) << path << " hr=0x" << std::hex << static_cast<std::uint32_t>(hr);
+        if (voice != nullptr)
+        {
+            voice->DestroyVoice();
+        }
+    }
 }
 
 // 装置を受け取っていない AssetManager は、同じ道筋に同じ無効な音を返し、ファイルを読まないので ERROR を出さない
