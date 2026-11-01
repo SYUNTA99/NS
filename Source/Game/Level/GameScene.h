@@ -83,9 +83,6 @@ namespace GL
         private:
             [[nodiscard]] NS::Coroutine ClearSequence();
 
-            //! 知らせとクリアの流れを捨てる。流れの途中なら暗転を取り消し、操作の止めを外す
-            void DropFlow();
-
             void SendInputLock(bool locked);
 
             //! skip の他のアクター。skip が nullptr なら全員

@@ -226,6 +226,23 @@ TEST(SceneStop, IsStoppedSeesTheOwnHitStopAndTheSceneStopExceptForTheMover)
     EXPECT_FALSE(world.first->IsStopped());
 }
 
+// 止め始めたアクターは止めの最中だけ。止めが終わった後は、前に止めたアクターも nullptr も止め始めたアクターでない
+TEST(SceneStop, NoActorIsTheMoverWhileNothingStopsTheScene)
+{
+    NS::Scene scene;
+    EXPECT_FALSE(scene.IsStopSceneMover(nullptr));
+
+    StopWorld world;
+    ASSERT_NE(world.mover, nullptr);
+    world.mover->stopRequestSteps = k_StopSteps;
+    world.scene.OnUpdate();
+    world.scene.OnUpdate();
+    ASSERT_TRUE(world.scene.IsStopSceneMover(world.mover));
+    world.scene.CancelStopScene();
+    EXPECT_FALSE(world.scene.IsStopSceneMover(world.mover));
+    EXPECT_FALSE(world.scene.IsStopSceneMover(nullptr));
+}
+
 // 止めは先に止め始めたアクターが持つ。止まっている間は、ほかのアクターの依頼は延ばすのも解くのも受けない
 TEST(SceneStop, TheFirstMoverKeepsTheStopUntilItEndsOrCancelsIt)
 {

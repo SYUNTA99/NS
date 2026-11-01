@@ -43,10 +43,6 @@ namespace NS
     void Scene::StartPlay()
     {
         NS_ASSERT(Scene, !m_playing, "StartPlay: ResetFromJson を通らずに始めた");
-        if (m_playing)
-        {
-            OnStopPlay();
-        }
         m_playing = true;
         OnStartPlay();
     }
@@ -173,8 +169,9 @@ namespace NS
 
     bool Scene::IsStopSceneMover(const SceneActor* actor) const noexcept
     {
-        // id の無い JSON から読んだアクターは id が 0 で重なるので、番地も比べる。番地は比べるだけで読まない
-        return actor == m_stopSceneMover && actor->Id() == m_stopSceneMoverId;
+        // id の無い JSON から読んだアクターは id が 0 で重なるので、番地も比べる。
+        // 止め始めたアクターは止めの最中だけ読む。最中の m_stopSceneMover は nullptr でないので、nullptr は読まずに外れる
+        return m_stopSceneSteps > 0 && actor == m_stopSceneMover && actor->Id() == m_stopSceneMoverId;
     }
 
     void Scene::StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept

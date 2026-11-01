@@ -62,8 +62,7 @@ namespace NS
         Scene();
         virtual ~Scene();
 
-        //! 遊び始める。ResetFromJson の後にだけ呼ぶ。プレイを終えるのは次の ResetFromJson。
-        //! 前のプレイを終えずに呼ぶと assert で知らせ、前のプレイを終えてから始める
+        //! 遊び始める。ResetFromJson の後にだけ呼ぶ。プレイを終えるのは次の ResetFromJson
         void StartPlay();
 
         //! 派生の型ごとのタグ。RTTI を切っているので、SceneCast はこれで型を見分ける。派生の無いシーンは nullptr
@@ -222,7 +221,7 @@ namespace NS
         void CancelStopScene() noexcept;
         //! シーンが止まっている場合 true、それ以外の場合は false。控えただけの頼みでは true にならない
         [[nodiscard]] bool IsSceneStopped() const noexcept { return m_stopSceneSteps > 0; }
-        //! actor が今の止めを始めたアクターなら true
+        //! シーンが止まっていて、actor が今の止めを始めたアクターなら true。nullptr は false
         [[nodiscard]] bool IsStopSceneMover(const SceneActor* actor) const noexcept;
 
         //! 減速中の経過に合わせた補間割合 0〜1。停止中は絵の変動を避けるため 1

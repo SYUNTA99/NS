@@ -33,7 +33,11 @@ namespace GL
 
         void GameScene::OnStopPlay()
         {
-            DropFlow();
+            // 暗転とアクターの入力の止めは、続く組み直し (Scene::ClearWorld) が暗転を取り消し、アクターごと捨てる
+            m_sequences.CancelAll();
+            m_playerDead = false;
+            m_respawnPending = false;
+            m_goalReached = false;
             StopMusic();
         }
 
@@ -121,19 +125,6 @@ namespace GL
             m_music.reset();
         }
 
-        void GameScene::DropFlow()
-        {
-            if (m_sequences.IsRunning())
-            {
-                Fade().Cancel();
-                SendInputLock(false);
-            }
-            m_sequences.CancelAll();
-            m_playerDead = false;
-            m_respawnPending = false;
-            m_goalReached = false;
-        }
-
         std::vector<NS::SceneActor*> GameScene::PlacedActors(const NS::SceneActor* skip)
         {
             // 送る先は控えた並びで回す。受け手が戻る間にアクターの並びが変わっても崩れない
@@ -152,8 +143,9 @@ namespace GL
         void GameScene::SendRestart(const NS::SceneActor* skip)
         {
             // 止め始めたのが出し直すアクターなら、止めを残すと出し直したアクターが止まったまま待つ。
-            // 出し直さないアクター (リスポーンの自機) が始めた止めは、そのアクターが続けているので残す
-            if (skip == nullptr || !IsStopSceneMover(skip))
+            // 出し直さないアクター (リスポーンの自機) が始めた止めは、そのアクターが続けているので残す。
+            // skip が nullptr (全員を出し直す) の時は、IsStopSceneMover が false を返す
+            if (!IsStopSceneMover(skip))
             {
                 CancelStopScene();
             }
