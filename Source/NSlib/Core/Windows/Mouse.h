@@ -1,9 +1,6 @@
 #pragma once
 
-#include "NSlib/Core/Types.h"
-
-#include <array>
-#include <cstddef>
+#include "NSlib/Core/Windows/ButtonStates.h"
 
 namespace NS
 {
@@ -22,14 +19,9 @@ namespace NS
         };
 
         //! 単一スレッドで読むマウス状態。座標はクライアント領域の左上原点
-        class Mouse
+        class Mouse : public ButtonStates<MouseButton, MouseButton::Left>
         {
         public:
-            [[nodiscard]] bool IsHeld(MouseButton b) const noexcept;
-
-            //! 押した瞬間ごとに 1 足した回数。下ろさない。押した瞬間は InputReader で読む
-            [[nodiscard]] uint32 PressCount(MouseButton b) const noexcept;
-
             [[nodiscard]] int GetX() const noexcept { return m_x; }
 
             [[nodiscard]] int GetY() const noexcept { return m_y; }
@@ -64,10 +56,10 @@ namespace NS
             void OnMove(int x, int y) noexcept;
 
             //! OSのマウスボタン押下イベントを受け取る内部API。押していないボタンだけを数える
-            void OnButtonDown(MouseButton b) noexcept;
+            void OnButtonDown(MouseButton b) noexcept { Press(b); }
 
             //! OSのマウスボタン解放イベントを受け取る内部API
-            void OnButtonUp(MouseButton b) noexcept;
+            void OnButtonUp(MouseButton b) noexcept { Release(b); }
 
             //! OSのホイールスクロールイベントを受け取る内部API
             void OnWheel(int delta) noexcept;
@@ -88,11 +80,6 @@ namespace NS
             void ClearState() noexcept;
 
         private:
-            static constexpr std::size_t k_ButtonCount = static_cast<std::size_t>(MouseButton::Count);
-
-            std::array<bool, k_ButtonCount> m_current{};
-            std::array<uint32, k_ButtonCount> m_presses{};
-
             int m_x = 0;
             int m_y = 0;
             int m_prevX = 0;

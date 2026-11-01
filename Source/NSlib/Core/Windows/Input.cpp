@@ -17,26 +17,6 @@ namespace NS
     {
         namespace
         {
-            // 整数キャスト経由の不正値による m_current / m_presses の境界外アクセスを防ぐ
-            [[nodiscard]] constexpr bool IsValidKey(Key k) noexcept
-            {
-                const std::size_t i = static_cast<std::size_t>(k);
-                return i > static_cast<std::size_t>(Key::Unknown) && i < static_cast<std::size_t>(Key::Count);
-            }
-
-            // Keyと同様に境界外アクセスを防ぐ
-            [[nodiscard]] constexpr bool IsValidButton(MouseButton b) noexcept
-            {
-                const std::size_t i = static_cast<std::size_t>(b);
-                return i < static_cast<std::size_t>(MouseButton::Count);
-            }
-
-            [[nodiscard]] constexpr bool IsValidGamepadButton(GamepadButton b) noexcept
-            {
-                const std::size_t i = static_cast<std::size_t>(b);
-                return i < static_cast<std::size_t>(GamepadButton::Count);
-            }
-
             [[nodiscard]] constexpr bool IsValidVibration(float value) noexcept
             {
                 return value >= 0.0f && value <= 1.0f;
@@ -106,71 +86,16 @@ namespace NS
             };
             static_assert(k_ButtonBits.size() == static_cast<std::size_t>(GamepadButton::Count),
                           "k_ButtonBits は GamepadButton 全要素に対応する必要があります");
+
+            template <typename TEnum, typename TDevice, typename TCounts>
+            void ReadPressCounts(const TDevice& device, TCounts& outCounts) noexcept
+            {
+                for (std::size_t i = 0; i < outCounts.size(); ++i)
+                {
+                    outCounts[i] = device.PressCount(static_cast<TEnum>(i));
+                }
+            }
         } // namespace
-
-        bool Keyboard::IsHeld(Key k) const noexcept
-        {
-            if (!IsValidKey(k))
-            {
-                return false;
-            }
-            return m_current[static_cast<std::size_t>(k)];
-        }
-
-        uint32 Keyboard::PressCount(Key k) const noexcept
-        {
-            if (!IsValidKey(k))
-            {
-                return 0;
-            }
-            return m_presses[static_cast<std::size_t>(k)];
-        }
-
-        void Keyboard::OnKeyDown(Key k) noexcept
-        {
-            if (!IsValidKey(k))
-            {
-                return;
-            }
-            const std::size_t i = static_cast<std::size_t>(k);
-            if (!m_current[i])
-            {
-                ++m_presses[i];
-            }
-            m_current[i] = true;
-        }
-
-        void Keyboard::OnKeyUp(Key k) noexcept
-        {
-            if (!IsValidKey(k))
-            {
-                return;
-            }
-            m_current[static_cast<std::size_t>(k)] = false;
-        }
-
-        void Keyboard::ClearState() noexcept
-        {
-            m_current.fill(false);
-        }
-
-        bool Mouse::IsHeld(MouseButton b) const noexcept
-        {
-            if (!IsValidButton(b))
-            {
-                return false;
-            }
-            return m_current[static_cast<std::size_t>(b)];
-        }
-
-        uint32 Mouse::PressCount(MouseButton b) const noexcept
-        {
-            if (!IsValidButton(b))
-            {
-                return 0;
-            }
-            return m_presses[static_cast<std::size_t>(b)];
-        }
 
         void Mouse::Update() noexcept
         {
@@ -185,29 +110,6 @@ namespace NS
         {
             m_x = x;
             m_y = y;
-        }
-
-        void Mouse::OnButtonDown(MouseButton b) noexcept
-        {
-            if (!IsValidButton(b))
-            {
-                return;
-            }
-            const std::size_t i = static_cast<std::size_t>(b);
-            if (!m_current[i])
-            {
-                ++m_presses[i];
-            }
-            m_current[i] = true;
-        }
-
-        void Mouse::OnButtonUp(MouseButton b) noexcept
-        {
-            if (!IsValidButton(b))
-            {
-                return;
-            }
-            m_current[static_cast<std::size_t>(b)] = false;
         }
 
         void Mouse::OnWheel(int delta) noexcept
@@ -244,7 +146,7 @@ namespace NS
 
         void Mouse::ClearState() noexcept
         {
-            m_current.fill(false);
+            ReleaseAll();
             m_wheel = 0;
             m_rawDeltaX = 0;
             m_rawDeltaY = 0;
@@ -254,24 +156,6 @@ namespace NS
         Gamepad::Gamepad(int userIndex) noexcept : m_userIndex(userIndex) {}
 
         bool Gamepad::IsConnected() const noexcept { return m_connected; }
-
-        bool Gamepad::IsHeld(GamepadButton b) const noexcept
-        {
-            if (!IsValidGamepadButton(b))
-            {
-                return false;
-            }
-            return m_current[static_cast<std::size_t>(b)];
-        }
-
-        uint32 Gamepad::PressCount(GamepadButton b) const noexcept
-        {
-            if (!IsValidGamepadButton(b))
-            {
-                return 0;
-            }
-            return m_presses[static_cast<std::size_t>(b)];
-        }
 
         uint32 Gamepad::PressCount(GamepadTrigger t) const noexcept
         {
@@ -285,7 +169,7 @@ namespace NS
 
         void Gamepad::CarryPressCounts(const Gamepad& previous) noexcept
         {
-            m_presses = previous.m_presses;
+            CopyPressCounts(previous);
             m_triggerPresses = previous.m_triggerPresses;
         }
 
@@ -342,7 +226,7 @@ namespace NS
             if (result != ERROR_SUCCESS)
             {
                 m_connected = false;
-                m_current.fill(false);
+                ReleaseAll();
                 m_leftStick = Stick{};
                 m_rightStick = Stick{};
                 m_leftTrigger = 0.0f;
@@ -356,12 +240,15 @@ namespace NS
             m_connected = true;
             for (std::size_t i = 0; i < k_ButtonBits.size(); ++i)
             {
-                const bool held = (state.Gamepad.wButtons & k_ButtonBits[i]) != 0;
-                if (held && !m_current[i])
+                const GamepadButton button = static_cast<GamepadButton>(i);
+                if ((state.Gamepad.wButtons & k_ButtonBits[i]) != 0)
                 {
-                    ++m_presses[i];
+                    Press(button);
                 }
-                m_current[i] = held;
+                else
+                {
+                    Release(button);
+                }
             }
             // しきい値は NormalizeTrigger が先に切っているので、0 を超えた所を引いた瞬間とする
             const float leftTrigger = NormalizeTrigger(state.Gamepad.bLeftTrigger);
@@ -398,22 +285,10 @@ namespace NS
         PressCounts Input::CurrentPressCounts() const noexcept
         {
             PressCounts counts;
-            for (std::size_t i = 0; i < counts.keys.size(); ++i)
-            {
-                counts.keys[i] = m_keyboard.PressCount(static_cast<Key>(i));
-            }
-            for (std::size_t i = 0; i < counts.mouseButtons.size(); ++i)
-            {
-                counts.mouseButtons[i] = m_mouse.PressCount(static_cast<MouseButton>(i));
-            }
-            for (std::size_t i = 0; i < counts.gamepadButtons.size(); ++i)
-            {
-                counts.gamepadButtons[i] = m_gamepad.PressCount(static_cast<GamepadButton>(i));
-            }
-            for (std::size_t i = 0; i < counts.gamepadTriggers.size(); ++i)
-            {
-                counts.gamepadTriggers[i] = m_gamepad.PressCount(static_cast<GamepadTrigger>(i));
-            }
+            ReadPressCounts<Key>(m_own.keyboard, counts.keys);
+            ReadPressCounts<MouseButton>(m_own.mouse, counts.mouseButtons);
+            ReadPressCounts<GamepadButton>(m_own.gamepad, counts.gamepadButtons);
+            ReadPressCounts<GamepadTrigger>(m_own.gamepad, counts.gamepadTriggers);
             return counts;
         }
 
@@ -424,17 +299,17 @@ namespace NS
                 return false;
             }
             // 向け直した後は前の番号の Update が来ないので、前の番号の振動をここで止める
-            m_gamepad.StopVibration();
+            m_own.gamepad.StopVibration();
             OS::Gamepad next{userIndex};
-            next.CarryPressCounts(m_gamepad);
-            m_gamepad = next;
+            next.CarryPressCounts(m_own.gamepad);
+            m_own.gamepad = next;
             return true;
         }
 
         void Input::Update() noexcept
         {
-            m_mouse.Update();
-            m_gamepad.Update();
+            m_own.mouse.Update();
+            m_own.gamepad.Update();
         }
 
         void Input::BeginNeutral() noexcept
@@ -444,10 +319,8 @@ namespace NS
             {
                 return;
             }
-            m_neutralKeyboard = OS::Keyboard{};
-            m_neutralMouse = OS::Mouse{};
             // 中立のパッドは Update を受けないので機器を読まず、送った速さが 0 のまま止めても機器へ書かない
-            m_neutralGamepad = OS::Gamepad{};
+            m_neutral = Devices{};
         }
 
         void Input::EndNeutral() noexcept
@@ -527,21 +400,21 @@ namespace NS
             {
                 // lparam のスキャンコード、bit 30 のリピートフラグ、拡張キーは現状未使用
                 const Key k = MapVkToKey(static_cast<uint>(wparam));
-                input.m_keyboard.OnKeyDown(k);
+                input.m_own.keyboard.OnKeyDown(k);
                 break;
             }
             case WM_KEYUP:
             case WM_SYSKEYUP:
             {
                 const Key k = MapVkToKey(static_cast<uint>(wparam));
-                input.m_keyboard.OnKeyUp(k);
+                input.m_own.keyboard.OnKeyUp(k);
                 break;
             }
             // フォーカス喪失
             case WM_KILLFOCUS:
             {
-                input.m_keyboard.ClearState();
-                input.m_mouse.ClearState();
+                input.m_own.keyboard.ClearState();
+                input.m_own.mouse.ClearState();
                 break;
             }
             // マウス
@@ -549,37 +422,37 @@ namespace NS
             {
                 const int x = static_cast<int>(static_cast<short>(LOWORD(lparam)));
                 const int y = static_cast<int>(static_cast<short>(HIWORD(lparam)));
-                input.m_mouse.OnMove(x, y);
+                input.m_own.mouse.OnMove(x, y);
                 break;
             }
             case WM_LBUTTONDOWN:
-                input.m_mouse.OnButtonDown(MouseButton::Left);
+                input.m_own.mouse.OnButtonDown(MouseButton::Left);
                 break;
             case WM_LBUTTONUP:
-                input.m_mouse.OnButtonUp(MouseButton::Left);
+                input.m_own.mouse.OnButtonUp(MouseButton::Left);
                 break;
             case WM_RBUTTONDOWN:
-                input.m_mouse.OnButtonDown(MouseButton::Right);
+                input.m_own.mouse.OnButtonDown(MouseButton::Right);
                 break;
             case WM_RBUTTONUP:
-                input.m_mouse.OnButtonUp(MouseButton::Right);
+                input.m_own.mouse.OnButtonUp(MouseButton::Right);
                 break;
             case WM_MBUTTONDOWN:
-                input.m_mouse.OnButtonDown(MouseButton::Middle);
+                input.m_own.mouse.OnButtonDown(MouseButton::Middle);
                 break;
             case WM_MBUTTONUP:
-                input.m_mouse.OnButtonUp(MouseButton::Middle);
+                input.m_own.mouse.OnButtonUp(MouseButton::Middle);
                 break;
             case WM_XBUTTONDOWN:
             {
                 const WORD xb = GET_XBUTTON_WPARAM(wparam);
                 if (xb == XBUTTON1)
                 {
-                    input.m_mouse.OnButtonDown(MouseButton::X1);
+                    input.m_own.mouse.OnButtonDown(MouseButton::X1);
                 }
                 else if (xb == XBUTTON2)
                 {
-                    input.m_mouse.OnButtonDown(MouseButton::X2);
+                    input.m_own.mouse.OnButtonDown(MouseButton::X2);
                 }
                 break;
             }
@@ -588,18 +461,18 @@ namespace NS
                 const WORD xb = GET_XBUTTON_WPARAM(wparam);
                 if (xb == XBUTTON1)
                 {
-                    input.m_mouse.OnButtonUp(MouseButton::X1);
+                    input.m_own.mouse.OnButtonUp(MouseButton::X1);
                 }
                 else if (xb == XBUTTON2)
                 {
-                    input.m_mouse.OnButtonUp(MouseButton::X2);
+                    input.m_own.mouse.OnButtonUp(MouseButton::X2);
                 }
                 break;
             }
             case WM_MOUSEWHEEL:
             {
                 const int delta = GET_WHEEL_DELTA_WPARAM(wparam);
-                input.m_mouse.OnWheel(delta);
+                input.m_own.mouse.OnWheel(delta);
                 break;
             }
             // Raw Input の相対移動
@@ -621,8 +494,8 @@ namespace NS
                 }
                 if ((raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0)
                 {
-                    input.m_mouse.OnRawMove(static_cast<int>(raw.data.mouse.lLastX),
-                                            static_cast<int>(raw.data.mouse.lLastY));
+                    input.m_own.mouse.OnRawMove(static_cast<int>(raw.data.mouse.lLastX),
+                                                static_cast<int>(raw.data.mouse.lLastY));
                     break;
                 }
                 // 遠隔操作とタブレットは絶対座標で届く。相対モードの差分は移動量だけなので座標差から作る
@@ -645,8 +518,8 @@ namespace NS
                     input.m_absoluteMouseReported = true;
                     NS_LOG_INFO(Platform, "絶対座標のマウスを検出、 相対移動は座標差から作る");
                 }
-                input.m_mouse.OnRawMoveAbsolute(static_cast<int>(normalizedX * width),
-                                                static_cast<int>(normalizedY * height));
+                input.m_own.mouse.OnRawMoveAbsolute(static_cast<int>(normalizedX * width),
+                                                    static_cast<int>(normalizedY * height));
                 break;
             }
             default:

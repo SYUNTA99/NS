@@ -31,57 +31,15 @@ namespace NS
             }
 
             // 読む機器を返す。中立の間は中立の機器を返す
-            [[nodiscard]] OS::Keyboard& Keyboard() noexcept
-            {
-                if (IsNeutral())
-                {
-                    return m_neutralKeyboard;
-                }
-                return m_keyboard;
-            }
-            [[nodiscard]] const OS::Keyboard& Keyboard() const noexcept
-            {
-                if (IsNeutral())
-                {
-                    return m_neutralKeyboard;
-                }
-                return m_keyboard;
-            }
+            [[nodiscard]] OS::Keyboard& Keyboard() noexcept { return ReadDevices().keyboard; }
+            [[nodiscard]] const OS::Keyboard& Keyboard() const noexcept { return ReadDevices().keyboard; }
 
-            [[nodiscard]] OS::Mouse& Mouse() noexcept
-            {
-                if (IsNeutral())
-                {
-                    return m_neutralMouse;
-                }
-                return m_mouse;
-            }
-            [[nodiscard]] const OS::Mouse& Mouse() const noexcept
-            {
-                if (IsNeutral())
-                {
-                    return m_neutralMouse;
-                }
-                return m_mouse;
-            }
+            [[nodiscard]] OS::Mouse& Mouse() noexcept { return ReadDevices().mouse; }
+            [[nodiscard]] const OS::Mouse& Mouse() const noexcept { return ReadDevices().mouse; }
 
             //! SetGamepadUserIndex で選んだ 1 台のゲームパッドを返す
-            [[nodiscard]] OS::Gamepad& Gamepad() noexcept
-            {
-                if (IsNeutral())
-                {
-                    return m_neutralGamepad;
-                }
-                return m_gamepad;
-            }
-            [[nodiscard]] const OS::Gamepad& Gamepad() const noexcept
-            {
-                if (IsNeutral())
-                {
-                    return m_neutralGamepad;
-                }
-                return m_gamepad;
-            }
+            [[nodiscard]] OS::Gamepad& Gamepad() noexcept { return ReadDevices().gamepad; }
+            [[nodiscard]] const OS::Gamepad& Gamepad() const noexcept { return ReadDevices().gamepad; }
 
             //! XInput の番号 0〜3 に切り替える。押している間と軸を初期化し、押した回数は引き継いで、次の Update から読む
             //! 範囲外は変更せず false
@@ -91,7 +49,7 @@ namespace NS
             void Update() noexcept;
 
             //! 手元のマウスの相対移動を切り替える。中立の間も手元のマウスへ書く
-            void SetMouseRelativeMode(bool enabled) noexcept { m_mouse.SetRelativeMode(enabled); }
+            void SetMouseRelativeMode(bool enabled) noexcept { m_own.mouse.SetRelativeMode(enabled); }
 
             //! 読む側へ何も押していない機器を見せる。重ねた回数だけ EndNeutral が必要
             //! 手元の機器は入れ替えないので、中立の間の OS の入力と相対移動は手元の機器へ書かれる
@@ -129,17 +87,38 @@ namespace NS
             // OS の入力は中立の間も手元の機器へ書くので、読む側を通さずに手元の機器へ触れる
             friend void DispatchWin32MessageToInput(Input& input, UINT msg, WPARAM wparam, LPARAM lparam) noexcept;
 
+            struct Devices
+            {
+                OS::Keyboard keyboard;
+                OS::Mouse mouse;
+                OS::Gamepad gamepad;
+            };
+
+            // 読む側へ見せる機器を返す。中立の間は中立の機器を返す
+            [[nodiscard]] Devices& ReadDevices() noexcept
+            {
+                if (IsNeutral())
+                {
+                    return m_neutral;
+                }
+                return m_own;
+            }
+            [[nodiscard]] const Devices& ReadDevices() const noexcept
+            {
+                if (IsNeutral())
+                {
+                    return m_neutral;
+                }
+                return m_own;
+            }
+
             // 手元の機器。OS の入力・Update・相対移動の書き先で、中立の間も替わらない
-            OS::Keyboard m_keyboard;
-            OS::Mouse m_mouse;
-            OS::Gamepad m_gamepad;
+            Devices m_own;
 
             UiCaptureDesc m_uiCapture{};
 
             // 中立の間に読む側へ見せる機器。BeginNeutral で作り直す
-            OS::Keyboard m_neutralKeyboard;
-            OS::Mouse m_neutralMouse;
-            OS::Gamepad m_neutralGamepad;
+            Devices m_neutral;
             int m_neutralDepth = 0; // BeginNeutral を重ねた数
 
             bool m_absoluteMouseReported = false; // 絶対座標のマウスを検出したログを出したか
