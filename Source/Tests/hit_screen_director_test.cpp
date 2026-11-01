@@ -9,9 +9,6 @@
 
 #include <gtest/gtest.h>
 
-#include <array>
-
-// 白と震えの線は、シーンに 1 つの HitScreenDirector が進めて描く。部品は頼むだけ
 
 namespace
 {
@@ -58,27 +55,7 @@ TEST(HitScreenDirector, FlashStartsAtFullAlphaAndFadesFromTheNextTick)
     EXPECT_FLOAT_EQ(screen->FlashAlpha(), 0.0f);
 }
 
-// 震えの線は始めたフレームの姿のまま出し、次の更新から数えて決めたフレーム数で消える
-TEST(HitScreenDirector, ShakeLinesRunForTheirFrames)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceTwo(scene);
-    ASSERT_NE(player, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
-    ASSERT_NE(screen, nullptr);
-    screen->StartShakeLines(player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
-    EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 3);
-    screen->OnTick();
-    EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 3);
-    screen->OnTick();
-    EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 2);
-    EXPECT_FLOAT_EQ(screen->ShakeLines().radius, 0.5f);
-    // 半径が 0 以下・フレーム数 0 以下は出さない
-    screen->StartShakeLines(player, NS::HitShakeLinesDesc{.radius = 0.0f, .frames = 3});
-    EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 0);
-}
-
-// 止めると、止めた物が頼んだ白と線だけが消える。ほかの物が頼んだ物は残る
+// 止めると、止めた物が頼んだ白だけが消える。ほかの物が頼んだ物は残る
 TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
 {
     NS::Scene scene;
@@ -90,15 +67,12 @@ TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
     ASSERT_NE(screen, nullptr);
 
     screen->StartFlash(rock, 3, 1.0f);
-    screen->StartShakeLines(player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 3});
     screen->Stop(player);
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
-    EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 0);
     screen->Stop(rock);
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
 }
 
-// 当たりの演出の部品は HitScreenDirector へ頼む。部品を止めると白と線が消える
 TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
 {
     NS::Scene scene;
@@ -109,15 +83,12 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
     NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
     reaction->StartFlash(player, 4, 1.0f);
-    reaction->StartShakeLines(player, NS::HitShakeLinesDesc{.radius = 0.5f, .frames = 4});
     EXPECT_EQ(screen->FlashFramesRemaining(), 4);
-    EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 4);
     reaction->Stop(player);
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
-    EXPECT_EQ(screen->ShakeLinesFramesRemaining(), 0);
 }
 
-// シーンがアクターを組み直すと、前の世界で頼んだ白・線・床の波・振動を次の世界へ残さない。
+// シーンがアクターを組み直すと、前の世界で頼んだ白・床の波・振動を次の世界へ残さない。
 // 頼み手は、消える時に自分で止めない置物にする
 TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
 {
@@ -127,7 +98,6 @@ TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
     ASSERT_NE(rock, nullptr);
     NS::HitScreenDirector& screen = scene.HitScreen();
     screen.StartFlash(rock, 30, 1.0f);
-    screen.StartShakeLines(rock, NS::HitShakeLinesDesc{.radius = 1.0f, .frames = 30});
     NS::HitGroundWaveDesc wave;
     wave.strength.count = 1;
     wave.strength.keys[0] = NS::Curve::Key{0.0f, 1.0f};
@@ -143,7 +113,6 @@ TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
 
     scene.ResetFromJson(NS::MakeSceneJson());
     EXPECT_EQ(screen.FlashFramesRemaining(), 0);
-    EXPECT_EQ(screen.ShakeLinesFramesRemaining(), 0);
     EXPECT_FLOAT_EQ(scene.GroundWaveShown().strength, 0.0f);
     EXPECT_FLOAT_EQ(NS::OS::Input::Get().Gamepad().Vibration().left, 0.0f);
 }
@@ -162,40 +131,6 @@ TEST(HitScreenDirector, FlashKeepsFadingWhileTheSceneIsStopped)
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     scene.OnUpdate();
     EXPECT_EQ(screen->FlashFramesRemaining(), 2);
-}
-
-// 震えの線は挟む物の輪郭の外の左右に 3 本ずつ。入れ替えのフレーム数ごとに、外と内へ交互にずれる
-TEST(HitScreenDirector, ShakeLinesSitOutsideTheOutlineAndJitterByTheFlipFrames)
-{
-    const NS::HitShakeLinesDesc desc{.radius = 0.5f, .frames = 12, .flipFrames = 2};
-    const NS::HitShakeLineSpan span{.left = 540.0f, .right = 760.0f, .centerY = 360.0f};
-    const std::array<NS::HitShakeLineRect, 6> first = NS::ShakeLineRects(desc, 0, span, 1.0f);
-    int left = 0;
-    int right = 0;
-    for (const NS::HitShakeLineRect& rect : first)
-    {
-        EXPECT_GT(rect.width, 0.0f);
-        EXPECT_GT(rect.height, rect.width);
-        EXPECT_FLOAT_EQ(rect.y + rect.height * 0.5f, span.centerY);
-        if (rect.x + rect.width <= span.left)
-        {
-            ++left;
-        }
-        if (rect.x >= span.right)
-        {
-            ++right;
-        }
-    }
-    EXPECT_EQ(left, 3);
-    EXPECT_EQ(right, 3);
-    const std::array<NS::HitShakeLineRect, 6> same = NS::ShakeLineRects(desc, 1, span, 1.0f);
-    const std::array<NS::HitShakeLineRect, 6> flipped = NS::ShakeLineRects(desc, 2, span, 1.0f);
-    for (std::size_t i = 0; i < first.size(); ++i)
-    {
-        SCOPED_TRACE(i);
-        EXPECT_FLOAT_EQ(same[i].x, first[i].x);
-        EXPECT_NE(flipped[i].x, first[i].x);
-    }
 }
 
 TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
@@ -260,7 +195,6 @@ TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
     EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
     screen->StopDistortionRing(rock);
     EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
-    // 白と線を止めても、輪は止めない
     reaction->Stop(player);
     EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
     reaction->StopDistortionRing(player);

@@ -1,4 +1,5 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
@@ -263,9 +264,12 @@ namespace NS
     {
         NS_ASSERT(Scene, obj != nullptr, "Scene::StartSpawned: 開始するアクターが無い");
         // 素材は作る関数の Init が読み終えている
-        obj->OnStart();
+        obj->Start();
         // 後から入る物は他のアクターが既に揃っている
-        obj->InitAfterPlacement();
+        for (SceneActor* actor = obj; actor != nullptr; actor = actor->ChildActor())
+        {
+            actor->InitAfterPlacement();
+        }
     }
 
     std::unique_ptr<SceneActor> Scene::BuildOrKeepUnresolved(const nlohmann::json& actorJson)

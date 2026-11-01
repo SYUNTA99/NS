@@ -197,7 +197,6 @@ namespace NS
                     if (const CameraManager* cameras = scene->GetCameraManager())
                     {
                         frame.trauma = cameras->Trauma();
-                        frame.shakeOffset = cameras->ShakeOffset();
                         if (const CameraSinkModifier* sink = cameras->FindModifier<CameraSinkModifier>())
                         {
                             frame.sinkPixels = sink->Pixels();

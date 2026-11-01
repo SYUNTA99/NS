@@ -181,7 +181,7 @@ TEST(MapObjTackle, TheRockShakesAndSpreadsGhostsFromItsOwnSet)
     {
         SCOPED_TRACE(frame);
         rock->UpdateMotion();
-        const GL::Level::TackleGhost& ghost = rock->Ghost();
+        const GL::Level::TackleGhost& ghost = *rock->Ghost();
         const NS::Vector3 offset = rock->ModelClassObj()->GetDrawOffset();
         if (frame < 12)
         {

@@ -55,7 +55,6 @@ namespace NS
             OS::GamepadVibration pad{};       // 下見が控えたパッドの振動。手元のパッドへは送らない
             float trauma = 0.0f;                  // カメラのトラウマ 0〜1
             Vector3 shakeAngles{};            // トラウマの揺れの角度 (度)。横・縦・傾き
-            Vector2 shakeOffset{};            // 平行移動の揺れのずれ (m)。カメラの右と上
             float sinkPixels = 0.0f;              // 沈む揺れの縦のずれ (高さ 1080 の画面の画素、下が負)
             float worldSpeed = 1.0f;              // 世界の速さ 0〜1
             std::string action;                     // 自機の走っている動作の名前。走っていなければ空
