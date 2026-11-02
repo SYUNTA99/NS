@@ -1,5 +1,4 @@
 #include "Game/Level/FollowCameraActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"

@@ -486,11 +486,6 @@ namespace NS
 
         // 下の関数の owner は管理クラスとカメラを引くアクターで、依頼の主にもなる。事前条件: nullptr でない
 
-        //! 白の光を頼む。前の白が残っていても始め直す
-        //! @param[in] frames 白の光のフレーム数。0 以下なら光らない
-        //! @param[in] alpha 始めの濃さ。残りのフレーム数に比例して薄くなる
-        void StartFlash(const SceneActor* owner, int frames, float alpha) noexcept;
-
         //! カメラの沈む揺れを始める
         //! @param[in] desc 4 拍の形。フレーム数 0 以下なら揺らさない
         //! @return 揺れを積んだか、フレーム数 0 以下で揺らさなかった場合 true。
@@ -513,10 +508,6 @@ namespace NS
         //! @return 積んだ場合 true。設定が壊れている・カメラの管理役が無い場合 false
         bool StartZoomRoll(const SceneActor* owner, const CameraZoomRollDesc& desc);
 
-        //! 歪みの輪を頼む。前の輪が残っていても始め直す
-        //! @param[in] desc 歪みの輪の設定。フレーム数が 0 以下なら出さない
-        void StartDistortionRing(const SceneActor* owner, const HitDistortionRingDesc& desc) noexcept;
-
         //! この部品が頼んだ歪みの輪を消す
         //! Stop は輪を消さない
         void StopDistortionRing(const SceneActor* owner) noexcept;
@@ -524,15 +515,6 @@ namespace NS
         //! この部品が頼んだ床の波を消す
         //! Stop は波を消さない
         void StopGroundWave(const SceneActor* owner) noexcept;
-
-        //! パッドの振動を頼む。前の振動が残っていても始め直す
-        //! @param[in] pad 振動の設定
-        void StartPadVibration(const SceneActor* owner, const HitPadVibration& pad);
-        //! 書いている振動に pad を重ねる
-        //! 重ねたフレームを 0 として pad を進め、値を足す。pad の長さを過ぎたら 0 を足す。
-        //! 何も書いていなければ StartPadVibration と同じ
-        //! @param[in] pad 重ねる振動
-        void BlendPadVibration(const SceneActor* owner, const HitPadVibration& pad);
 
         //! @brief この部品が頼んで走っている演出の強さに scale を掛ける。始め直さず、残りをその強さで続ける
         //! @details 掛けるのは白の濃さ・歪みの輪の押し出し・床の波の強さ・振動の速さ・描く形の揺れと震えの振れ幅。

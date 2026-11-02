@@ -66,7 +66,7 @@ TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
 }
 
-TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
+TEST(HitScreenDirector, HitReactionStopsThroughTheDirector)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
@@ -75,7 +75,7 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
     ASSERT_NE(reaction, nullptr);
     NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
-    reaction->StartFlash(player, 4, 1.0f);
+    screen->StartFlash(player, 4, 1.0f);
     EXPECT_EQ(screen->FlashFramesRemaining(), 4);
     reaction->Stop(player);
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
@@ -184,7 +184,7 @@ TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
     desc.push.keys[0] = NS::Curve::Key{0.0f, 0.03f};
     desc.frames = 10;
 
-    reaction->StartDistortionRing(player, desc);
+    screen->StartDistortionRing(player, desc);
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
     screen->StopDistortionRing(rock);
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);

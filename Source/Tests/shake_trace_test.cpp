@@ -3,7 +3,6 @@
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"

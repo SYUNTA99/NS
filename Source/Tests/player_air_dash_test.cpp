@@ -4,7 +4,6 @@
 #include "Game/Player/PlayerSounds.h"
 #include "Game/Player/States/AirDashPlayerState.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"

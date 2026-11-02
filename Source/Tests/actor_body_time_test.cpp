@@ -4,7 +4,6 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Animation/AnimClip.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"

@@ -2,7 +2,6 @@
 #include "Game/Level/ImpactMarks.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "Tests/TestSceneSetup.h"

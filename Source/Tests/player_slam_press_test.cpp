@@ -2,7 +2,6 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"

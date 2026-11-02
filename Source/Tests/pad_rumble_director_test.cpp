@@ -78,7 +78,7 @@ TEST(PadRumbleDirector, HitReactionStopWritesZero)
     ASSERT_NE(player, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    reaction->StartPadVibration(player, FadingLeft(1.0f, 4));
+    scene.PadRumble().Start(player, FadingLeft(1.0f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
     reaction->Stop(player);
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);

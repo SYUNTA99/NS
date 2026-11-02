@@ -31,6 +31,7 @@
 #include "NSlib/Core/Windows/Mouse.h"
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "Tests/TestActorFile.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestCheckLayer.h"
 #include "Tests/TestHeadlessImGui.h"
 #include "Tests/TestHiddenApp.h"
@@ -243,11 +244,8 @@ TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
 // ギズモで変えた姿勢の項目だけが上書きの一覧に載り、保存したシーンに書かれる。取り消すと一覧からも外れる
 TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
 {
-    nlohmann::json object = NS::MakeActorJson();
-    NS::SetActorJsonFile(object, "PropActor");
-    NS::SetActorJsonId(object, 1);
     nlohmann::json doc = NS::MakeSceneJson();
-    NS::SceneJsonActors(doc).push_back(std::move(object));
+    AddActorJson(doc, "PropActor", 1);
     NS::Scene scene;
     scene.ResetFromJson(doc);
     LevelEditorController editor(scene);
