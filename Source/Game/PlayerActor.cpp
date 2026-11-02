@@ -160,7 +160,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     }
     if (IsRebounding() && impact.tier == GL::Level::HitTier::Center)
     {
-        if (const NS::SceneActor* partner = OwningScene()->Actors().FindByActorId(impact.targetId))
+        if (const NS::SceneActor* partner = m_resolver->Answer().lastTarget)
         {
             state.rebound.partnerPosition = partner->Root().Position();
         }
@@ -318,7 +318,7 @@ void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexc
         m_playerSounds->PlayHit(this);
         // 新しい当たりは、前の当たりの束で走っている演出を打ち切る。当たる直前から続く当たりは入る時に打ち切り、
         // 当たる直前の動作の形を検知のフレームまで描く
-        if (!ContinuesBeforeContact(answer.lastImpact))
+        if (!ContinuesBeforeContact(answer))
         {
             StopTackleHitEffects();
             if (NS::HitReaction* reaction = HitReactionClassObj())
@@ -704,12 +704,7 @@ bool PlayerActor::IsHeldByTackleHit() const noexcept
 
 NS::HitSensor* PlayerActor::LastTackleTargetSensor() const noexcept
 {
-    const NS::uint32 targetId = m_resolver->Answer().lastImpact.targetId;
-    if (targetId == 0)
-    {
-        return nullptr;
-    }
-    NS::SceneActor* target = OwningScene()->Actors().FindActor(NS::ActorRef{targetId});
+    NS::SceneActor* target = m_resolver->Answer().lastTarget;
     if (target == nullptr)
     {
         return nullptr;

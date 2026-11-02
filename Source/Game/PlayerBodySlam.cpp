@@ -191,9 +191,9 @@ void PlayerActor::DecideBeforeContact(const GL::Level::ImpactAnswer& answer) noe
     (void)m_states->Change<GL::Player::BeforeContactPlayerState>();
 }
 
-bool PlayerActor::ContinuesBeforeContact(const GL::Level::ImpactRecord& impact) const noexcept
+bool PlayerActor::ContinuesBeforeContact(const GL::Level::ImpactAnswer& answer) const noexcept
 {
-    return IsInBeforeContact() && m_beforeContact.target->Id() == impact.targetId && m_beforeContact.tier == impact.tier;
+    return IsInBeforeContact() && m_beforeContact.target == answer.lastTarget && m_beforeContact.tier == answer.lastImpact.tier;
 }
 
 void PlayerActor::BeginBeforeContact() noexcept

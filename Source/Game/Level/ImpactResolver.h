@@ -104,6 +104,8 @@ namespace GL
         struct ImpactAnswer
         {
             ImpactRecord lastImpact; // 直近の当たりの内訳。まだ当たっていない間は sequence が 0
+            //! 直近の当たりの相手。次の当たりまで持ち、やり直しの CancelImpact で空に戻す。lastImpact と違いシーンより長く持たない
+            NS::SceneActor* lastTarget = nullptr;
             bool rebounded = false;  // 直近の更新で反発を検知した
             bool broke = false;      // 直近の更新で貫通を検知した
             //! 突進の線の先の相手を検知するまでの見込みのフレーム数。検知の 1 フレーム前で 1
@@ -247,7 +249,6 @@ namespace GL
             GL::Player::ReboundArc m_pendingReboundArc{}; // 明けたフレームに自機を弾く反動の向きと高さと距離
             LaunchArc m_pendingLaunchArc{};
             NS::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f}; // 発射の水平方向。食い込みの向き
-            NS::SceneActor* m_pendingTarget = nullptr;        // 明けを知らせる相手
             // 検知してから、次の StepState で当たりの状態へ移る事を答えに書くまで true
             bool m_hitAwaitsEntry = false;
             bool m_pendingBreak = false;
