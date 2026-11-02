@@ -10,12 +10,8 @@ namespace NS
     const nlohmann::json& ActorJsonClassObjs(const nlohmann::json& actorJson) noexcept
     {
         static const nlohmann::json empty = nlohmann::json::object();
-        if (!actorJson.is_object())
-        {
-            return empty;
-        }
-        const nlohmann::json::const_iterator found = actorJson.find("classObjs");
-        if (found == actorJson.end() || !found->is_object())
+        const nlohmann::json* found = FindFieldValue(actorJson, "classObjs");
+        if (found == nullptr || !found->is_object())
         {
             return empty;
         }
@@ -129,16 +125,12 @@ namespace NS
 
     bool ActorJsonActive(const nlohmann::json& actorJson) noexcept
     {
-        if (!actorJson.is_object())
+        const nlohmann::json* active = FindFieldValue(actorJson, "active");
+        if (active == nullptr || !active->is_boolean())
         {
             return true;
         }
-        const nlohmann::json::const_iterator it = actorJson.find("active");
-        if (it == actorJson.end() || !it->is_boolean())
-        {
-            return true;
-        }
-        return it->get<bool>();
+        return active->get<bool>();
     }
 
     void SetActorJsonActive(nlohmann::json& actorJson, bool active)

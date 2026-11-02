@@ -131,16 +131,12 @@ namespace NS
     const nlohmann::json& SceneJsonActors(const nlohmann::json& scene) noexcept
     {
         static const nlohmann::json k_Empty = nlohmann::json::array();
-        if (!scene.is_object())
+        const nlohmann::json* objects = FindFieldValue(scene, "objects");
+        if (objects == nullptr || !objects->is_array())
         {
             return k_Empty;
         }
-        const nlohmann::json::const_iterator it = scene.find("objects");
-        if (it == scene.end() || !it->is_array())
-        {
-            return k_Empty;
-        }
-        return *it;
+        return *objects;
     }
 
     nlohmann::json& SceneJsonActors(nlohmann::json& scene)
@@ -184,12 +180,8 @@ namespace NS
     SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene)
     {
         SceneEnvironment environment{};
-        if (!scene.is_object())
-        {
-            return environment;
-        }
-        const nlohmann::json::const_iterator found = scene.find("environment");
-        if (found == scene.end() || !found->is_object())
+        const nlohmann::json* found = FindFieldValue(scene, "environment");
+        if (found == nullptr || !found->is_object())
         {
             return environment;
         }

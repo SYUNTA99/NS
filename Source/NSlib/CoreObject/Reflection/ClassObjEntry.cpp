@@ -7,21 +7,6 @@ namespace NS
 {
     namespace
     {
-        // entry から name 一致の値を返す。値を読む Field 関数と HasField の共通処理。壊れた形は nullptr
-        const nlohmann::json* FindFieldValue(const nlohmann::json& entry, std::string_view name) noexcept
-        {
-            if (!entry.is_object())
-            {
-                return nullptr;
-            }
-            const nlohmann::json::const_iterator it = entry.find(name);
-            if (it == entry.end())
-            {
-                return nullptr;
-            }
-            return &*it;
-        }
-
         nlohmann::json& EnsureObject(nlohmann::json& entry)
         {
             if (!entry.is_object())
@@ -31,6 +16,20 @@ namespace NS
             return entry;
         }
     } // namespace
+
+    const nlohmann::json* FindFieldValue(const nlohmann::json& entry, std::string_view name) noexcept
+    {
+        if (!entry.is_object())
+        {
+            return nullptr;
+        }
+        const nlohmann::json::const_iterator it = entry.find(name);
+        if (it == entry.end())
+        {
+            return nullptr;
+        }
+        return &*it;
+    }
 
     float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept
     {
