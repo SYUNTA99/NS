@@ -365,8 +365,8 @@ private:
     void ApplyFollowCameraGizmoDrag();
     void CaptureSelectionFromGizmo() noexcept;
 
-    [[nodiscard]] NS::CameraManager* Cameras() const noexcept;
-    [[nodiscard]] NS::SceneCamera* MainCamera() const noexcept;
+    [[nodiscard]] NS::CameraManager& Cameras() const noexcept;
+    [[nodiscard]] NS::SceneCamera& MainCamera() const noexcept;
 
     NS::Scene& m_scene;                          // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
     NS::Editor::ActorSnapshotApplier m_applier; // 履歴の操作を実体へ適用する

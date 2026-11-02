@@ -537,6 +537,18 @@ TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
     EXPECT_EQ(app.Run(), 0);
 }
 
+// シーンはコントローラーを作った時からあるので、筆は Setup の前からシーンのアクターを見る
+TEST(EditorBrush, PlacesBeforeSetup)
+{
+    NS::Scene scene;
+    LevelEditorController editor(scene);
+    const std::size_t before = scene.Actors().ActorCount();
+    editor.Editor().Palette().SetActiveSlot(2);
+    ASSERT_STREQ(editor.Editor().Palette().CurrentTemplateName(), "ゴール");
+    editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
+    EXPECT_EQ(scene.Actors().ActorCount(), before + 1);
+}
+
 // カーソルの光線が升の面へ当たると、左クリックは面の先の升へ置き、右クリックは当たった升を消す
 TEST(EditorBrush, ClickPlacesBesideTheHitCellAndRightClickRemovesIt)
 {
