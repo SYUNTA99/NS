@@ -33,6 +33,8 @@
 #include <utility>
 #include <vector>
 
+using NS::Editor::LevelEditorController;
+
 namespace
 {
     // レベルの名前は Assets の下に限られるので、Assets の下に試しごとのフォルダを作り、終わったら消す

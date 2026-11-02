@@ -11,8 +11,6 @@
 #include <string_view>
 #include <vector>
 
-class LevelEditorController;
-
 namespace NS
 {
     class ActorList;
@@ -27,6 +25,8 @@ namespace NS
     } // namespace Gfx
     namespace Editor
     {
+        class LevelEditorController;
+
         //! 選択物の名前・姿勢・部品の値を編集する。改名の適用は描画後に行う
         class InspectorPanel : public NonCopyable
         {

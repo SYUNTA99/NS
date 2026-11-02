@@ -294,36 +294,33 @@ namespace NS
             m_lines.clear();
             m_faces.clear();
         }
-    } // namespace Gfx
-} // namespace NS
 
-namespace NS
-{
-    namespace Gfx
-    {
-        namespace DebugDraw
+        void DrawDebugLine(const Vector3& a, const Vector3& b, const Color& color) noexcept
         {
-    void Line(const Vector3& a, const Vector3& b, const Color& color) noexcept { EditableStepShapes().Line(a, b, color); }
-    void AABB(const NS::AABB& box, const Color& color) noexcept { EditableStepShapes().AABB(box, color); }
-    void OBB(const NS::OBB& obb, const Color& color) noexcept { EditableStepShapes().OBB(obb, color); }
-    void Sphere(const NS::Sphere& sphere, const Color& color) noexcept { EditableStepShapes().Sphere(sphere, color); }
-    void Circle(const Vector3& center, const Vector3& u, const Vector3& v, const Color& color) noexcept
-    {
-        EditableStepShapes().Circle(center, u, v, color);
-    }
-    void Capsule(const Vector3& base, const Vector3& axis, float radius, const Color& color) noexcept
-    {
-        EditableStepShapes().Capsule(base, axis, radius, color);
-    }
-    const DebugShapes& StepShapes() noexcept { return EditableStepShapes(); }
-    void BeginStep() noexcept { EditableStepShapes().Clear(); }
-    void Clear() noexcept { EditableStepShapes().Clear(); }
-    std::size_t VertexCount() noexcept { return EditableStepShapes().VertexCount(); }
-    void Triangle(const Vector3& a, const Vector3& b, const Vector3& c, const Color& color) noexcept
-    {
-        EditableStepShapes().Triangle(a, b, c, color);
-    }
-    std::size_t FaceVertexCount() noexcept { return EditableStepShapes().FaceVertexCount(); }
-        } // namespace DebugDraw
+            EditableStepShapes().Line(a, b, color);
+        }
+        void DrawDebugAABB(const AABB& box, const Color& color) noexcept { EditableStepShapes().AABB(box, color); }
+        void DrawDebugOBB(const OBB& obb, const Color& color) noexcept { EditableStepShapes().OBB(obb, color); }
+        void DrawDebugSphere(const Sphere& sphere, const Color& color) noexcept
+        {
+            EditableStepShapes().Sphere(sphere, color);
+        }
+        void DrawDebugCircle(const Vector3& center, const Vector3& u, const Vector3& v, const Color& color) noexcept
+        {
+            EditableStepShapes().Circle(center, u, v, color);
+        }
+        void DrawDebugCapsule(const Vector3& base, const Vector3& axis, float radius, const Color& color) noexcept
+        {
+            EditableStepShapes().Capsule(base, axis, radius, color);
+        }
+        const DebugShapes& DebugDrawStepShapes() noexcept { return EditableStepShapes(); }
+        void BeginDebugDrawStep() noexcept { EditableStepShapes().Clear(); }
+        void ClearDebugDraw() noexcept { EditableStepShapes().Clear(); }
+        std::size_t DebugDrawVertexCount() noexcept { return EditableStepShapes().VertexCount(); }
+        void DrawDebugTriangle(const Vector3& a, const Vector3& b, const Vector3& c, const Color& color) noexcept
+        {
+            EditableStepShapes().Triangle(a, b, c, color);
+        }
+        std::size_t DebugDrawFaceVertexCount() noexcept { return EditableStepShapes().FaceVertexCount(); }
     } // namespace Gfx
 } // namespace NS

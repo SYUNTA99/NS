@@ -10,12 +10,12 @@ namespace NS
     class SceneActor;
 }
 
-class LevelEditorController;
-
 namespace NS
 {
     namespace Editor
     {
+        class LevelEditorController;
+
         class ActorListPanel : public NonCopyable
         {
         public:

@@ -39,6 +39,8 @@
 #include <string>
 #include <string_view>
 
+using NS::Editor::LevelEditorController;
+
 // シーンの保存と読込が SceneActor のクラスを保つことを縛る
 // 部品の構成はクラスが決め、データは値だけを運ぶ
 

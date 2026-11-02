@@ -14,13 +14,14 @@
 #include <string_view>
 #include <vector>
 
-class LevelEditorController;
 struct ImDrawList;
 
 namespace NS
 {
     namespace Editor
     {
+        class LevelEditorController;
+
         class ActionTimelinePanel : public NonCopyable
         {
         public:

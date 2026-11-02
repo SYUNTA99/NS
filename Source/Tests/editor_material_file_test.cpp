@@ -18,6 +18,8 @@
 #include <string>
 #include <system_error>
 
+using NS::Editor::LevelEditorController;
+
 namespace
 {
     // 試しごとに作り、壊す時に中身ごと片付ける一時のフォルダ。リポジトリの .mat は書き換えない

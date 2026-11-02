@@ -43,6 +43,8 @@
 #include <variant>
 #include <vector>
 
+using NS::Editor::LevelEditorController;
+
 // コンボで参照先を選ぶと、値が変わる前に編集の始まりを、変わった後に確定を返す
 // 始まりが値の後だと、控えが変わった後の値になり undo に積まれない
 TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)

@@ -53,7 +53,7 @@ TEST(CollisionWindow, CapsuleOverlapUsesTheRealShapeOfATurnedBox)
     NS::Scene scene;
     const NS::Quaternion turn = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, NS::k_Pi / 4.0f);
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, 0.0f, 0.0f}, turn, NS::Vector3{1.0f, 1.0f, 1.0f}),
-                           NS::Phys::ObjectLayers::Terrain);
+                           NS::Phys::k_TerrainObjectLayer);
     CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
     // 外接箱の角 (1.414, 1.414) の近くは、回した箱の面から 1 m ほど離れている
     const NS::Phys::Capsule nearTheBoundsCorner{.center = NS::Vector3{1.2f, 0.0f, 1.2f}, .halfHeight = 0.2f, .radius = 0.2f};
@@ -67,9 +67,9 @@ TEST(CollisionWindow, CapsuleCastFindsTheFacingWallAndSkipsTheFloorItTouches)
     NS::Scene scene;
     // 奥の壁の面は z = 5。床の上の面は y = -0.4 で、投げる球の底が触れている
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, 0.0f, 6.0f}, NS::Quaternion::Identity, NS::Vector3{3.0f, 3.0f, 1.0f}),
-                           NS::Phys::ObjectLayers::Terrain);
+                           NS::Phys::k_TerrainObjectLayer);
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, -1.4f, 0.0f}, NS::Quaternion::Identity, NS::Vector3{8.0f, 1.0f, 8.0f}),
-                           NS::Phys::ObjectLayers::Terrain);
+                           NS::Phys::k_TerrainObjectLayer);
     CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
     const NS::Phys::Capsule ball{.center = NS::Vector3{0.0f, 0.0f, 0.0f}, .halfHeight = 0.0f, .radius = 0.4f};
 
@@ -92,7 +92,7 @@ TEST(CollisionWindow, CapsuleCastAtABoxEdgeReturnsAFaceNormalLikeTheMovingBody)
     NS::Scene scene;
     // 柱の左の面は x = 0.4、手前の面は z = 3
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{1.4f, 0.0f, 4.0f}, NS::Quaternion::Identity, NS::Vector3{1.0f, 3.0f, 1.0f}),
-                           NS::Phys::ObjectLayers::Terrain);
+                           NS::Phys::k_TerrainObjectLayer);
     CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
     const NS::Phys::Capsule ball{.center = NS::Vector3{0.0f, 0.0f, 0.0f}, .halfHeight = 0.0f, .radius = 0.65f};
 

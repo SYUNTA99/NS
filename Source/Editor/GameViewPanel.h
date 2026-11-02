@@ -3,12 +3,12 @@
 #include "Editor/ViewportSurface.h"
 #include "NSlib/Core/NonCopyable.h"
 
-class LevelEditorController;
-
 namespace NS
 {
     namespace Editor
     {
+        class LevelEditorController;
+
         class TimelinePreview;
         //! ゲーム視点を映すパネル。ゲーム操作の入力はプレイ中だけ受け付ける
         class GameViewPanel : public NonCopyable

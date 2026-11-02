@@ -8,8 +8,6 @@
 #include <map>
 #include <memory>
 
-class LevelEditorController;
-
 namespace NS
 {
     namespace Gfx
@@ -19,6 +17,8 @@ namespace NS
     }
     namespace Editor
     {
+        class LevelEditorController;
+
         class AssetsPanel : public NonCopyable
         {
         public:

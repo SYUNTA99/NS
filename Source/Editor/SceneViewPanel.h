@@ -5,12 +5,12 @@
 
 struct ImVec2;
 
-class LevelEditorController;
-
 namespace NS
 {
     namespace Editor
     {
+        class LevelEditorController;
+
         //! 編集視点を映すパネル。編集時は配置操作、プレイ時は自由視点の入力を受け付ける
         class SceneViewPanel : public NonCopyable
         {

@@ -71,11 +71,11 @@ namespace NS
         // 描画は 4x4 の行列で歪みまで出すので、形の共有をやめて世界座標の三角形から作り、描画と当たりを揃える
         if (HasShear(world, parts))
         {
-            return physics.SyncMesh(current, WorldTriangles(world), Phys::ObjectLayers::Terrain);
+            return physics.SyncMesh(current, WorldTriangles(world), Phys::k_TerrainObjectLayer);
         }
 
         const Phys::MeshShape& shared = *m_shape;
         return physics.SyncMeshShape(
-            current, shared, parts.translation, parts.rotation, parts.scale, Phys::ObjectLayers::Terrain);
+            current, shared, parts.translation, parts.rotation, parts.scale, Phys::k_TerrainObjectLayer);
     }
 } // namespace NS

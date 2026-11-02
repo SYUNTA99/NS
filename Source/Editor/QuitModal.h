@@ -2,12 +2,12 @@
 
 #include "NSlib/Core/NonCopyable.h"
 
-class LevelEditorController;
-
 namespace NS
 {
     namespace Editor
     {
+        class LevelEditorController;
+
         class EditorMode;
         class ActionTimelinePanel;
 

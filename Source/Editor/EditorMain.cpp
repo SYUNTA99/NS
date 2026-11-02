@@ -1,5 +1,5 @@
 #include "Editor/ActorFileGenerator.h"
-#include "Editor/Editor.h"
+#include "Editor/EditorLayer.h"
 #include "Game/Game.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -24,7 +24,7 @@ namespace NS
         // 起動シーンはエディタが「開く」と同じ道で 1 回だけ読む。Game は空のシーンだけを立てる
         app->AddLayer(std::make_unique<::Game>(::Game::StartSceneName(), ::Game::StartScene::Empty));
         // プレイ中のカーソルと Esc はエディタが持つ。Game は世界だけを持つ
-        app->AddOverlay(std::make_unique<::Editor>());
+        app->AddOverlay(std::make_unique<Editor::EditorLayer>());
         return app;
     }
 

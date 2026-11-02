@@ -40,13 +40,13 @@ namespace NS
 
         uint PhysicsScene::BPLayerInterface::GetNumBroadPhaseLayers() const
         {
-            return BroadPhaseLayers::Count;
+            return k_BroadPhaseLayerCount;
         }
 
         JPH::BroadPhaseLayer PhysicsScene::BPLayerInterface::GetBroadPhaseLayer(JPH::ObjectLayer layer) const
         {
-            JPH_ASSERT(layer < ObjectLayers::Count);
-            return BroadPhaseLayers::FromObjectLayer(layer);
+            JPH_ASSERT(layer < k_ObjectLayerCount);
+            return BroadPhaseLayerFromObjectLayer(layer);
         }
 
         bool PhysicsScene::ObjLayerPairFilter::ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const
