@@ -658,10 +658,19 @@ namespace NS
         // 出発点から、注視点の後ろの置きたいカメラの位置へ撃つ。前の向きの逆へ撃つと、注視点が頭より
         // 下へずれた時に線がカメラより上を通り、カメラと自機の間に無い天井で縮む
         const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
-        const Vector3 toCamera = look - axes.forward * m_distance - origin;
-        const float probe = toCamera.Length();
+        const Vector3 cameraGoal = look - axes.forward * m_distance;
+        const auto hitsTerrain = [&](const Vector3& from, float& outDistance)
+        {
+            const Vector3 toGoal = cameraGoal - from;
+            const float length = toGoal.Length();
+            return HasPositiveMagnitude(length) && RaycastCollision(collision, from, toGoal * (1.0f / length), length, outDistance);
+        };
+        const float probe = (cameraGoal - origin).Length();
         float hitDistance = 0.0f;
-        if (HasPositiveMagnitude(probe) && RaycastCollision(collision, origin, toCamera * (1.0f / probe), probe, hitDistance))
+        float bodyHitDistance = 0.0f;
+        // 頭の高さが地形の側面のすぐ横にあると、頭からの線は距離 0 で当たる。体からカメラが見えていれば、
+        // その地形はカメラと自機の間に無いので縮めない
+        if (hitsTerrain(origin, hitDistance) && hitsTerrain(root, bodyHitDistance))
         {
             // 当たった所までの割合だけ距離を縮める。出発点と注視点は近いので、カメラは当たった所の手前に来る
             const float goal = std::max(m_distance * (hitDistance / probe) - margin, 0.0f);
