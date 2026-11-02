@@ -318,12 +318,8 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
     AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::SetActorJsonId(rock, 2);
     // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
-    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 1.0f});
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
+    AddActorJson(doc, "PropActor", 2, NS::Vector3{0.0f, 0.5f, 1.0f});
     scene.ResetFromJson(doc);
     PlayerActor* player = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);

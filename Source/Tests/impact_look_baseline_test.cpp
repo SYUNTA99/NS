@@ -2,7 +2,6 @@
 #include "Game/Level/PropActor.h"
 #include "Game/Level/TackleGhost.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"

@@ -1,10 +1,12 @@
 #pragma once
 
+#include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3dCommon.h"
 
 //! 試しの間だけ WARP の描画装置を Gpu() に差す。作れない機械では空のまま
-struct ScopedWarpGpu
+//! コピーを破棄すると Gpu() が空になるので、コピーを禁止する
+struct ScopedWarpGpu : NS::NonCopyable
 {
     NS::Gfx::ComPtr<ID3D11Device> d3d11Device;
     NS::Gfx::ComPtr<ID3D11DeviceContext> context;

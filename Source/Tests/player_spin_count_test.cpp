@@ -4,7 +4,6 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"

@@ -6,7 +6,6 @@
 #include "Game/Level/TargetMarker.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"

@@ -14,7 +14,6 @@
 #include "Game/Player/States/TackleHitPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
