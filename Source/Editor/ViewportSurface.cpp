@@ -5,9 +5,7 @@
 
 #include "NSlib/Core/Types.h"
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -21,7 +19,6 @@ namespace NS
                                         ImVec2& outMax,
                                         bool& outHovered) noexcept
         {
-#if NS_EDITOR_ENABLED
             outHovered = false;
             outMin = ImVec2{0.0f, 0.0f};
             outMax = ImVec2{0.0f, 0.0f};
@@ -94,21 +91,12 @@ namespace NS
                 }
             }
             return imaged;
-#else
-            (void)windowName;
-            (void)outMin;
-            (void)outMax;
-            (void)outHovered;
-            return false;
-#endif
         }
 
         void ViewportSurface::EndView() noexcept
         {
-#if NS_EDITOR_ENABLED
             ImGui::End();
             ImGui::PopStyleVar();
-#endif
         }
 
         std::optional<SceneView> ViewportSurface::CollectView(std::optional<CameraPose> pose) noexcept

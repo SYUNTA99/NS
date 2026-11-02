@@ -13,10 +13,10 @@
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
-#include "NSlib/CoreObject/System/PhysicsDirector.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
-#include "NSlib/CoreObject/System/ScreenFadeDirector.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
+#include "NSlib/Gfx/Render/ScreenFade.h"
+#include "NSlib/Phys/PhysicsScene.h"
 
 #include "NSlib/Core/Types.h"
 #include <memory>
@@ -29,10 +29,6 @@ namespace NS
     namespace Gfx
     {
         class EffectScene;
-    }
-    namespace Gfx
-    {
-        class D3DDevice;
     }
 } // namespace NS
 
@@ -48,7 +44,6 @@ namespace NS
 {
     class AssetManager;
     class Object;
-    class IRenderable;
     class UIActor;
 
     //! アクターと共有システムを所有し、固定更新と描画を行うシーン
@@ -78,19 +73,6 @@ namespace NS
         //! 出る・消える時は、入れたまま組の有効と無効を切り替える
         [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
 
-        //! 描く物・重ね描き・平行光の登録簿に入っている数。無効の組も数える
-        [[nodiscard]] std::size_t RenderableCount() const noexcept { return m_sceneRenderer.RenderableCount(); }
-        [[nodiscard]] std::size_t OverlayCount() const noexcept { return m_sceneRenderer.OverlayCount(); }
-        [[nodiscard]] std::size_t LightCount() const noexcept { return m_sceneRenderer.LightCount(); }
-
-        //! 描く物・重ね描き・平行光の登録簿のうち、有効な組の数
-        [[nodiscard]] std::size_t EnabledRenderableCount() const noexcept { return m_sceneRenderer.EnabledRenderableCount(); }
-        [[nodiscard]] std::size_t EnabledOverlayCount() const noexcept { return m_sceneRenderer.EnabledOverlayCount(); }
-        [[nodiscard]] std::size_t EnabledLightCount() const noexcept { return m_sceneRenderer.EnabledLightCount(); }
-
-        //! 登録中の描く物。登録順、非所有
-        [[nodiscard]] std::vector<IRenderable*> Renderables() const { return m_sceneRenderer.Renderables(); }
-
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
 
         //! カメラ管理が描画に使う実カメラ
@@ -108,8 +90,8 @@ namespace NS
         [[nodiscard]] const HitSensorDirector& HitSensors() const noexcept { return m_hitSensors; }
 
         //! シーン全体の暗転。UI の後に実時間で進め、全 UI の後に描く。時間停止中は凍る
-        [[nodiscard]] Gfx::ScreenFade& Fade() noexcept { return m_fade.Fade(); }
-        [[nodiscard]] const Gfx::ScreenFade& Fade() const noexcept { return m_fade.Fade(); }
+        [[nodiscard]] Gfx::ScreenFade& Fade() noexcept { return m_fade; }
+        [[nodiscard]] const Gfx::ScreenFade& Fade() const noexcept { return m_fade; }
 
         //! 開いている画面の管理役。UIActor の Open と Close が出し入れする
         [[nodiscard]] UIDirector& UI() noexcept { return m_ui; }
@@ -124,48 +106,13 @@ namespace NS
         [[nodiscard]] const PadRumbleDirector& PadRumble() const noexcept { return m_padRumble; }
 
         //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
-        [[nodiscard]] Phys::PhysicsScene& Physics() noexcept { return m_physics.Physics(); }
-        [[nodiscard]] const Phys::PhysicsScene& Physics() const noexcept { return m_physics.Physics(); }
-
-        //! 装置を非所有で差す。OnRender が使う。未設定 (テスト等) は描かない
-        void SetDevice(Gfx::D3DDevice* device) noexcept { m_sceneRenderer.SetDevice(device); }
+        [[nodiscard]] Phys::PhysicsScene& Physics() noexcept { return m_physics; }
+        [[nodiscard]] const Phys::PhysicsScene& Physics() const noexcept { return m_physics; }
 
         //! 音の装置を非所有で差す。PlaySound が使う。未設定 (テスト・当たりの下見) は鳴らさない
         void SetAudioDevice(Audio::AudioDevice* device) noexcept { m_audioDevice = device; }
         //! 音の装置。受け取っていなければ nullptr
         [[nodiscard]] Audio::AudioDevice* GetAudioDevice() const noexcept { return m_audioDevice; }
-
-        //! @brief 次に描くフレームから使う床の波を書く。強さ 0 で消える
-        void SetGroundWave(const Gfx::GroundWave& wave) noexcept { m_sceneRenderer.SetGroundWave(wave); }
-        //! 描く時に使う床の波
-        [[nodiscard]] const Gfx::GroundWave& GroundWaveShown() const noexcept
-        {
-            return m_sceneRenderer.GroundWaveShown();
-        }
-
-        //! 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
-        void SetDistortionRing(const Gfx::DistortionRing& ring) noexcept
-        {
-            m_sceneRenderer.SetDistortionRing(ring);
-        }
-        //! 描く時に使う歪みの輪
-        [[nodiscard]] const Gfx::DistortionRing& DistortionRingShown() const noexcept
-        {
-            return m_sceneRenderer.DistortionRingShown();
-        }
-
-        //! 体の型に写す描く物を差し替える。空なら型を描かない
-        //! @param[in] renderables 型に写す描く物、非所有。登録を外した物は型からも外れる
-        void SetBodyMask(std::vector<IRenderable*> renderables) noexcept
-        {
-            m_sceneRenderer.SetBodyMask(std::move(renderables));
-        }
-        //! ビュー列の index 番目に、今のフレームで描いた体の型を返す
-        //! @return 1 色 8 ビットの型。未描画なら空
-        [[nodiscard]] const Gfx::D3DTexture* BodyMaskShown(std::size_t viewIndex) const noexcept
-        {
-            return m_sceneRenderer.BodyMaskShown(viewIndex);
-        }
 
         //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空なら skybox を描かない
         //! 描画が毎フレーム読む。保存は ToJson がここから写す
@@ -230,10 +177,6 @@ namespace NS
 
         //! 減速中の経過に合わせた補間割合 0〜1。停止中は絵の変動を避けるため 1
         [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
-
-        //! 1 フレームで描くビュー列を差す。空なら現描画先へ CameraManager の視点で 1 回だけ描く
-        //! 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
-        void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneRenderer.SetSceneViews(std::move(views)); }
 
         //! 型 T のアクターをシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
         //! 所有はシーンが握り、呼出側へは生ポインタだけ返す。名前は既存と重なれば番号を付ける。
@@ -341,7 +284,7 @@ namespace NS
         // 描く物は持ち主の OnEndPlay で外れるので、アクターより先に宣言して後に破棄する
         SceneRenderer m_sceneRenderer;
         Audio::AudioDevice* m_audioDevice = nullptr; // 借りるだけ。持ち主は Application
-        ScreenFadeDirector m_fade;
+        Gfx::ScreenFade m_fade;
         // アクターが持つ画面は破棄で自分を外すので、アクターより先に宣言して後に破棄する
         UIDirector m_ui;
         // 作る時に m_sceneRenderer へ重ね描きを入れ、破棄で外すので、m_sceneRenderer より後に宣言する。
@@ -349,9 +292,9 @@ namespace NS
         HitScreenDirector m_hitScreen{*this};
         PadRumbleDirector m_padRumble;
 
-        //! 衝突判定の PhysicsScene を持つ。Collision が出る時と動いた歩に body を入れる
+        //! 衝突判定の PhysicsScene。Collision が出る時と動いた歩に body を入れる
         //! Collision が持ち主の OnDisappear で body を外し、Collider が借りるので、m_actors より先に宣言して後に破棄する
-        PhysicsDirector m_physics;
+        Phys::PhysicsScene m_physics;
         // skybox と重力の向き。実体側の唯一の出所で、描画が毎フレーム読み、保存は ToJson がここから写す
         SceneEnvironment m_environment;
 

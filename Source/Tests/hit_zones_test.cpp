@@ -25,6 +25,7 @@
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
+#include "Tests/TestSceneSetup.h"
 #include <cmath>
 #include <limits>
 #include <memory>
@@ -92,11 +93,7 @@ namespace
         nlohmann::json doc = NS::MakeSceneJson();
         for (NS::uint32 id = 1; id <= 2; ++id)
         {
-            nlohmann::json rock = NS::MakeActorJson();
-            NS::SetActorJsonFile(rock, "PropActor");
-            NS::SetActorJsonId(rock, id);
-            NS::Editor::SetActorJsonPosition(rock, Vector3{static_cast<float>(id) * 4.0f, 1.0f, 0.0f});
-            NS::SceneJsonActors(doc).push_back(std::move(rock));
+            AddActorJson(doc, "PropActor", id, Vector3{static_cast<float>(id) * 4.0f, 1.0f, 0.0f});
         }
         scene.ResetFromJson(doc);
         NS::SceneActor* target = scene.Actors().FindByActorId(2);
@@ -123,16 +120,8 @@ namespace
     PlayerActor* PlaceSlamTarget(NS::Scene& scene, const nlohmann::json& rockParts, float rockHeight = 0.5f)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeActorJson();
-        NS::SetActorJsonFile(entry, "PlayerActor");
-        NS::SetActorJsonId(entry, 1);
-        NS::Editor::SetActorJsonPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(entry));
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, 2);
-        NS::Editor::SetActorJsonPosition(rock, Vector3{0.0f, rockHeight, 1.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "PlayerActor", 1, Vector3{0.0f, 1.0f, 0.0f});
+        AddActorJson(doc, "PropActor", 2, Vector3{0.0f, rockHeight, 1.0f});
         scene.ResetFromJson(doc);
         NS::SceneActor* target = scene.Actors().FindByActorId(2);
         if (target != nullptr)
@@ -748,16 +737,8 @@ TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeActorJson();
-    NS::SetActorJsonFile(entry, "PlayerActor");
-    NS::SetActorJsonId(entry, 1);
-    NS::Editor::SetActorJsonPosition(entry, Vector3{0.0f, 1.0f, 0.0f});
-    NS::SceneJsonActors(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::SetActorJsonId(rock, 2);
-    NS::Editor::SetActorJsonPosition(rock, Vector3{0.0f, 1.0f, 1.0f});
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
+    AddActorJson(doc, "PlayerActor", 1, Vector3{0.0f, 1.0f, 0.0f});
+    AddActorJson(doc, "PropActor", 2, Vector3{0.0f, 1.0f, 1.0f});
     scene.ResetFromJson(doc);
     PlayerActor* player = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);

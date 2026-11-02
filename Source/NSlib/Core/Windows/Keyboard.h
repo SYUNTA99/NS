@@ -1,9 +1,6 @@
 #pragma once
 
-#include "NSlib/Core/Types.h"
-
-#include <array>
-#include <cstddef>
+#include "NSlib/Core/Windows/ButtonStates.h"
 
 namespace NS
 {
@@ -83,32 +80,24 @@ namespace NS
             Count
         };
 
+        // ButtonStates の先頭を Key::A にして、Key::Unknown だけを無視する
+        static_assert(static_cast<int>(Key::A) == static_cast<int>(Key::Unknown) + 1);
+
         //! 単一スレッドで読むキー状態。押している間と、押した回数を持つ
-        class Keyboard
+        class Keyboard : public ButtonStates<Key, Key::A>
         {
         public:
-            [[nodiscard]] bool IsHeld(Key k) const noexcept;
-
-            //! 押した瞬間ごとに 1 足した回数。下ろさない。押した瞬間は InputReader で読む
-            [[nodiscard]] uint32 PressCount(Key k) const noexcept;
-
             //! OSのキー押下イベントを受け取る内部API
             //! 押していないキーだけを数える。押したままの OS の繰り返しは数えない
             //! @note Key::Unknown は処理されず無視される
-            void OnKeyDown(Key k) noexcept;
+            void OnKeyDown(Key k) noexcept { Press(k); }
 
             //! OSのキー解放イベントを受け取る内部API
             //! @note Key::Unknown は処理されず無視される
-            void OnKeyUp(Key k) noexcept;
+            void OnKeyUp(Key k) noexcept { Release(k); }
 
             //! フォーカス消失時などの押しっぱなしを防ぐため、押している間を解除する。押した回数は下ろさない
-            void ClearState() noexcept;
-
-        private:
-            static constexpr std::size_t k_KeyCount = static_cast<std::size_t>(Key::Count);
-
-            std::array<bool, k_KeyCount> m_current{};
-            std::array<uint32, k_KeyCount> m_presses{};
+            void ClearState() noexcept { ReleaseAll(); }
         };
     } // namespace OS
 } // namespace NS

@@ -6,13 +6,13 @@
 #include "Game/Level/TargetMarker.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Core/Windows/Clock.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
 #include "TestActorFile.h"
 
@@ -39,11 +39,7 @@ namespace
                               const nlohmann::json& targetParts = nlohmann::json::object())
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeActorJson();
-        NS::SetActorJsonFile(player, "PlayerActor");
-        NS::SetActorJsonId(player, 1);
-        NS::Editor::SetActorJsonPosition(player, playerPosition);
-        NS::SceneJsonActors(doc).push_back(std::move(player));
+        AddActorJson(doc, "PlayerActor", 1, playerPosition);
         if (withTarget)
         {
             nlohmann::json rock = NS::MakeActorJson();
@@ -58,12 +54,7 @@ namespace
             NS::SceneJsonActors(doc).push_back(std::move(rock));
         }
         scene.ResetFromJson(doc);
-        NS::OBB floor{};
-        floor.center = Vector3{0.0f, -0.5f, 0.0f};
-        floor.halfExtentX = 100.0f;
-        floor.halfExtentY = 0.5f;
-        floor.halfExtentZ = 100.0f;
-        scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
         PlaceViewCamera(scene, Vector3{0.0f, playerPosition.y, -1.0f}, Vector3{0.0f, playerPosition.y, 1.0f});
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }

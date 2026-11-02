@@ -15,6 +15,7 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
+#include "Tests/TestHeadlessImGui.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -162,7 +163,7 @@ TEST_F(LevelOpenTest, SavedSceneClosesWithoutConfirmation)
 {
     const std::string name = WriteLevel("saved", NS::MakeSceneJson().dump());
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.Editor().SetCaptureLevelFn([] { return NS::MakeSceneJson(); });
     ASSERT_TRUE(editor.Editor().OpenLevel(name));
     editor.Editor().Undo().Record(
@@ -182,15 +183,8 @@ TEST_F(LevelOpenTest, SaveAsUpdatesTheSceneRememberedForRestart)
     const std::string saved = m_folder + "/saved";
     const std::string session = NS::OS::FileSystem::Combine(m_directory, "session.json");
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(
-        ImGui::CreateContext(), &ImGui::DestroyContext);
+        CreateHeadlessImGui(ImVec2{1200.0f, 900.0f}, HeadlessImGuiInput::Instant), &ImGui::DestroyContext);
     ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = {1200.0f, 900.0f};
-    io.ConfigInputTrickleEventQueue = false;
-    unsigned char* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     NS::Editor::EditorMode editor;
     editor.SetSessionPath(session);
     editor.SetLoadLevelFn([](nlohmann::json&&) {});
@@ -329,7 +323,7 @@ TEST_F(LevelOpenTest, CreateLevelRejectsExistingInvalidAndPlayModeTargets)
 TEST_F(LevelOpenTest, ControllerLoadsSceneAndImmediatelyFocusesItsActors)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -362,18 +356,12 @@ TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
 {
     const std::string name = WriteLevel("clicked", NS::MakeSceneJson().dump());
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.SetGizmoToolActive(false);
     NS::Editor::AssetsPanel assets;
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(
-        ImGui::CreateContext(), &ImGui::DestroyContext);
+        CreateHeadlessImGui(ImVec2{1200.0f, 900.0f}), &ImGui::DestroyContext);
     ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = {1200.0f, 900.0f};
-    unsigned char* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     ImVec2 click{};
     ImVec2 folderClick{};
     std::string assetToClick = "clicked.scene";

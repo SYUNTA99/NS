@@ -638,7 +638,7 @@ TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
         EXPECT_NEAR((screen->Desc().direction + toward).Length(), 0.0f, 1.0e-5f);
         // 相手がカメラの右なら上端を右へ倒し、体は相手と逆の左から揺れる
         EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().rollDegrees, 3.0f * std::copysign(1.0f, side));
-        EXPECT_EQ(probes.scene.DistortionRingShown().center, contact);
+        EXPECT_EQ(probes.scene.GetSceneRenderer()->DistortionRingShown().center, contact);
         probes.Step();
         EXPECT_LT(probes.self->ModelClassObj()->GetDrawOffset().x * side, 0.0f);
         const NS::Vector3 offset = probes.self->ModelClassObj()->GetDrawTremor().contactOffset;
@@ -859,7 +859,7 @@ TEST(HitReactionStart, GroundWaveSpreadsFromThePositionForItsLength)
     {
         SCOPED_TRACE(frame);
         probes.Step();
-        const NS::Gfx::GroundWave& shown = probes.scene.GroundWaveShown();
+        const NS::Gfx::GroundWave& shown = probes.scene.GetSceneRenderer()->GroundWaveShown();
         if (frame >= 8)
         {
             EXPECT_FLOAT_EQ(shown.strength, 0.0f);
@@ -883,11 +883,11 @@ TEST(HitReactionStart, StoppingTheGroundWaveClearsOnlyTheOwnersWave)
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     probes.Step();
     probes.other->HitReactionClassObj()->StopGroundWave(probes.other);
-    EXPECT_FLOAT_EQ(probes.scene.GroundWaveShown().strength, 0.8f);
+    EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.8f);
     probes.self->HitReactionClassObj()->StopGroundWave(probes.self);
-    EXPECT_FLOAT_EQ(probes.scene.GroundWaveShown().strength, 0.0f);
+    EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
     probes.Step();
-    EXPECT_FLOAT_EQ(probes.scene.GroundWaveShown().strength, 0.0f);
+    EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
 }
 
 // 持ち主が消えても、ほかの持ち主が頼んだカメラの効果は残る

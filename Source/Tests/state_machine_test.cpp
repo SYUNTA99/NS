@@ -22,6 +22,7 @@ namespace
         bool coroutineChangesState = false;
         bool entryChangesState = false;
         bool exitChangesState = false;
+        bool exitResets = false;
         bool recordAfterChange = false;
         bool finishAfterChange = false;
         bool finishFromCoroutine = false;
@@ -88,6 +89,11 @@ namespace
             {
                 owner->exitChangesState = false;
                 owner->machine->Change<DeltaState>();
+            }
+            if (owner->exitResets)
+            {
+                owner->exitResets = false;
+                owner->machine->Reset();
             }
         }
     };
@@ -481,6 +487,22 @@ TEST(StateMachineOf, ExitCanReplaceThePendingTargetWithoutRecursiveExit)
     machine.Step(0.1f);
     EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3}));
     EXPECT_EQ(owner.deltas, (std::vector<float>{0.1f}));
+}
+
+// OnExit の中で Reset しても、抜ける状態のコルーチンを捨てて先頭の状態へ入り直す
+TEST(StateMachineOf, ExitCanResetTheMachine)
+{
+    StateOwner owner;
+    NS::StateMachineOf<StateOwner> machine;
+    owner.machine = &machine;
+    owner.exitResets = true;
+    machine.Build<IdleState, ActiveState>(&owner);
+    machine.Step(0.1f);
+    machine.Change<ActiveState>();
+    EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3}));
+    EXPECT_TRUE(machine.IsCurrent<IdleState>());
+    machine.Step(0.1f);
+    EXPECT_EQ(owner.calls, (std::vector<int>{1, 2, 3, 1, 2}));
 }
 
 TEST(StateMachineOf, RebuildDiscardsThePreviousPendingEntry)

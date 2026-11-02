@@ -17,15 +17,12 @@
 #include <utility>
 #include <vector>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
     namespace Editor
     {
-#if NS_EDITOR_ENABLED
         namespace
         {
             void RenderPlacementMenu(LevelEditorController& editor)
@@ -39,11 +36,9 @@ namespace NS
                 }
             }
         } // namespace
-#endif
 
         void ActorListPanel::Render(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             if (ImGui::Begin(k_PanelActorList))
             {
                 const std::string& sceneName = editor.Editor().CurrentLevelName();
@@ -178,15 +173,11 @@ namespace NS
                 }
             }
             ImGui::End();
-#else
-            (void)editor;
-#endif
         }
 
         void ActorListPanel::RenderRow(LevelEditorController& editor, SceneActor* object) noexcept
         {
             NS_ASSERT(App, object != nullptr, "RenderRow: アクターが null");
-#if NS_EDITOR_ENABLED
             const uint32 id = object->Id();
 
             ImGui::PushID(static_cast<int>(id));
@@ -270,23 +261,15 @@ namespace NS
             }
 
             ImGui::PopID();
-#else
-            (void)editor;
-            (void)object;
-#endif
         }
 
         void ActorListPanel::BeginRename(SceneActor* object) noexcept
         {
             NS_ASSERT(App, object != nullptr, "BeginRename: アクターが null");
-#if NS_EDITOR_ENABLED
             m_renamingActorId = object->Id();
             // 導出名から始めるので、そのまま確定すると今見えている名前がそのまま実体になる
             std::snprintf(m_renameBuffer, sizeof(m_renameBuffer), "%s", Editor::ActorDisplayName(object));
             m_renameFocusPending = true;
-#else
-            (void)object;
-#endif
         }
     } // namespace Editor
 } // namespace NS

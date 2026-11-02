@@ -41,6 +41,52 @@ TEST(InputPressCount, CountsEachPressAndIgnoresKeyRepeat)
     EXPECT_EQ(mouse.PressCount(NS::OS::MouseButton::Middle), 2u);
 }
 
+// 範囲の両端の値は押した回数を数える
+TEST(InputPressCount, CountsFirstAndLastValues)
+{
+    NS::OS::Keyboard keyboard;
+    for (const NS::OS::Key key : {NS::OS::Key::A, NS::OS::Key::F12})
+    {
+        keyboard.OnKeyDown(key);
+        EXPECT_TRUE(keyboard.IsHeld(key));
+        EXPECT_EQ(keyboard.PressCount(key), 1u);
+    }
+
+    NS::OS::Mouse mouse;
+    for (const NS::OS::MouseButton button : {NS::OS::MouseButton::Left, NS::OS::MouseButton::X2})
+    {
+        mouse.OnButtonDown(button);
+        EXPECT_TRUE(mouse.IsHeld(button));
+        EXPECT_EQ(mouse.PressCount(button), 1u);
+    }
+}
+
+// Key::Unknown と範囲の外の値は押しても記録されず、読んでも押していない扱いになる
+TEST(InputPressCount, IgnoresUnknownKeyAndOutOfRangeValues)
+{
+    NS::OS::Keyboard keyboard;
+    const NS::OS::Key tooLargeKey = NS::OS::Key::Count;
+    const NS::OS::Key negativeKey = static_cast<NS::OS::Key>(-1);
+    for (const NS::OS::Key key : {NS::OS::Key::Unknown, tooLargeKey, negativeKey})
+    {
+        keyboard.OnKeyDown(key);
+        EXPECT_FALSE(keyboard.IsHeld(key));
+        EXPECT_EQ(keyboard.PressCount(key), 0u);
+        keyboard.OnKeyUp(key);
+    }
+
+    NS::OS::Mouse mouse;
+    const NS::OS::MouseButton tooLargeButton = NS::OS::MouseButton::Count;
+    mouse.OnButtonDown(tooLargeButton);
+    EXPECT_FALSE(mouse.IsHeld(tooLargeButton));
+    EXPECT_EQ(mouse.PressCount(tooLargeButton), 0u);
+    mouse.OnButtonUp(tooLargeButton);
+
+    const NS::OS::Gamepad gamepad;
+    EXPECT_FALSE(gamepad.IsHeld(NS::OS::GamepadButton::Count));
+    EXPECT_EQ(gamepad.PressCount(NS::OS::GamepadButton::Count), 0u);
+}
+
 // 前の Read から後に押して離した物を、次の Read が 1 回だけ返す。作る前の押しは返さない
 TEST(InputReader, ReturnsPressesSinceThePreviousReadOnce)
 {

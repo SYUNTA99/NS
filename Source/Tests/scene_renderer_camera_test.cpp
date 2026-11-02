@@ -72,7 +72,7 @@ TEST(SceneRendererCamera, ActorsDrawTheSameAfterTheManagerDropsTheRealCamera)
 
     {
         NS::Scene scene;
-        scene.SetDevice(&device);
+        scene.GetSceneRenderer()->SetDevice(&device);
         (void)scene.SpawnActor<BoxActor>("Box");
         // 世界を止め、管理役が実カメラを書き換えずに、補間も掛けずに描く
         scene.SetSimulationEnabled(false);

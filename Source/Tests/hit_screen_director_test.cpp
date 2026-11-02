@@ -6,6 +6,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/Core/Windows/Input.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -16,16 +17,8 @@ namespace
     PlayerActor* PlaceTwo(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeActorJson();
-        NS::SetActorJsonFile(entry, "PlayerActor");
-        NS::SetActorJsonId(entry, 1);
-        NS::Editor::SetActorJsonPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(entry));
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, 2);
-        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 5.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
+        AddActorJson(doc, "PropActor", 2, NS::Vector3{0.0f, 0.5f, 5.0f});
         scene.ResetFromJson(doc);
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
@@ -73,7 +66,7 @@ TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
 }
 
-TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
+TEST(HitScreenDirector, HitReactionStopsThroughTheDirector)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceTwo(scene);
@@ -82,7 +75,7 @@ TEST(HitScreenDirector, HitReactionRequestsAndStopsThroughTheDirector)
     ASSERT_NE(reaction, nullptr);
     NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
-    reaction->StartFlash(player, 4, 1.0f);
+    screen->StartFlash(player, 4, 1.0f);
     EXPECT_EQ(screen->FlashFramesRemaining(), 4);
     reaction->Stop(player);
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
@@ -103,7 +96,7 @@ TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
     wave.strength.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     wave.frames = 30;
     screen.StartGroundWave(rock, wave);
-    ASSERT_GT(scene.GroundWaveShown().strength, 0.0f);
+    ASSERT_GT(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
     NS::HitPadVibration pad;
     pad.left.count = 1;
     pad.left.keys[0] = NS::Curve::Key{0.0f, 1.0f};
@@ -113,7 +106,7 @@ TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
 
     scene.ResetFromJson(NS::MakeSceneJson());
     EXPECT_EQ(screen.FlashFramesRemaining(), 0);
-    EXPECT_FLOAT_EQ(scene.GroundWaveShown().strength, 0.0f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
     EXPECT_FLOAT_EQ(NS::OS::Input::Get().Gamepad().Vibration().left, 0.0f);
 }
 
@@ -154,7 +147,7 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
     for (int frame = 0; frame < 3; ++frame)
     {
         SCOPED_TRACE(frame);
-        const NS::Gfx::DistortionRing& now = scene.DistortionRingShown();
+        const NS::Gfx::DistortionRing& now = scene.GetSceneRenderer()->DistortionRingShown();
         EXPECT_TRUE(now.center == desc.center);
         EXPECT_NEAR(now.radius, 0.1f * static_cast<float>(frame), 1.0e-6f);
         EXPECT_FLOAT_EQ(now.push, 0.03f);
@@ -163,15 +156,15 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
         if (frame == 0)
         {
             // 頼んだフレームの更新では進めない
-            EXPECT_FLOAT_EQ(scene.DistortionRingShown().radius, 0.0f);
+            EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().radius, 0.0f);
             screen->OnTick();
         }
     }
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
     // フレーム数 0 以下は出さない
     desc.frames = 0;
     screen->StartDistortionRing(player, desc);
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
 }
 
 // 歪みの輪は、頼んだ物が止めた時だけ消える
@@ -191,12 +184,12 @@ TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
     desc.push.keys[0] = NS::Curve::Key{0.0f, 0.03f};
     desc.frames = 10;
 
-    reaction->StartDistortionRing(player, desc);
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
+    screen->StartDistortionRing(player, desc);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
     screen->StopDistortionRing(rock);
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
     reaction->Stop(player);
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
     reaction->StopDistortionRing(player);
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
 }

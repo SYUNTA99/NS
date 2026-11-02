@@ -5,9 +5,7 @@
 #include "Editor/TimelinePreview.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -15,7 +13,6 @@ namespace NS
     {
         void GameViewPanel::Render(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             m_hovered = false;
             const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
 
@@ -48,23 +45,16 @@ namespace NS
             {
                 editor.HideGameView();
             }
-#else
-            (void)editor;
-#endif
         }
 
         void GameViewPanel::Suppress(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             m_hovered = false;
             m_surface.ResetVisibility();
             if (editor.CurrentMode() == LevelEditorController::Mode::Play)
             {
                 editor.HideGameView();
             }
-#else
-            (void)editor;
-#endif
         }
 
         std::optional<SceneView> GameViewPanel::CollectView(LevelEditorController& editor) noexcept
@@ -84,13 +74,11 @@ namespace NS
 
         void GameViewPanel::UpdateMouseLatch() noexcept
         {
-#if NS_EDITOR_ENABLED
             // マウスボタンを離すまで、パネルから始めたドラッグを外でも続ける
             if (!ImGui::IsAnyMouseDown())
             {
                 m_mouseLatch = m_hovered;
             }
-#endif
         }
     } // namespace Editor
 } // namespace NS

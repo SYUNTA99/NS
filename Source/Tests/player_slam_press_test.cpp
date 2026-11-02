@@ -2,11 +2,11 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -22,26 +22,13 @@ namespace
     PlayerActor* PlacePressScene(NS::Scene& scene, bool withRock, float height)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeActorJson();
-        NS::SetActorJsonFile(player, "PlayerActor");
-        NS::SetActorJsonId(player, 1);
-        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, height, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(player));
+        AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, height, 0.0f});
         if (withRock)
         {
-            nlohmann::json rock = NS::MakeActorJson();
-            NS::SetActorJsonFile(rock, "PropActor");
-            NS::SetActorJsonId(rock, 2);
-            NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
-            NS::SceneJsonActors(doc).push_back(std::move(rock));
+            AddActorJson(doc, "PropActor", 2, NS::Vector3{0.0f, 0.5f, 0.6f});
         }
         scene.ResetFromJson(doc);
-        NS::OBB floor{};
-        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
-        floor.halfExtentX = 100.0f;
-        floor.halfExtentY = 0.5f;
-        floor.halfExtentZ = 100.0f;
-        scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
         PlaceViewCamera(scene, NS::Vector3{}, k_Forward);
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }

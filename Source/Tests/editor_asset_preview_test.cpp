@@ -16,6 +16,7 @@
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "TestLogCapture.h"
 #include "Tests/TestActorFile.h"
+#include "Tests/TestHiddenApp.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -28,15 +29,6 @@
 
 namespace
 {
-    NS::ApplicationDesc PreviewAppDesc()
-    {
-        NS::ApplicationDesc desc;
-        desc.window.title = "素材プレビューの試し";
-        desc.window.size = {500, 740};
-        desc.window.visible = false;
-        return desc;
-    }
-
     class EditorAssetPreview : public testing::Test
     {
     protected:
@@ -135,12 +127,12 @@ namespace
             return images;
         }
 
-        NS::Application m_app{PreviewAppDesc()};
+        NS::Application m_app{HiddenAppDesc("素材プレビューの試し", {500, 740})};
         NS::AssetManager m_assets{NS::OS::FileSystem::ContentRoot()};
         NS::AssetManagerScope m_useAssets{m_assets};
         NS::UI::ImGuiContext m_gui{m_app.Window(), m_app.Device()};
         NS::Scene m_scene;
-        LevelEditorController m_editor{&m_scene};
+        LevelEditorController m_editor{m_scene};
         NS::Editor::InspectorPanel m_inspector;
         NS::Editor::AssetsPanel m_assetsPanel;
     };
@@ -162,7 +154,7 @@ TEST_F(EditorAssetPreview, TextureSelectionDisplaysTheSelectedImage)
 
 TEST_F(EditorAssetPreview, SkyboxSettingsPreviewAndUndoPreserveTheScene)
 {
-    NS::Editor::ActorSnapshotApplier applier{&m_scene};
+    NS::Editor::ActorSnapshotApplier applier{m_scene};
     m_editor.Editor().SetApplier(&applier);
     const nlohmann::json before = m_scene.ToJson();
     const std::vector<NS::Editor::AssetOption> options =
@@ -221,7 +213,7 @@ TEST_F(EditorAssetPreview, SkyboxSettingsPreviewAndUndoPreserveTheScene)
 
 TEST_F(EditorAssetPreview, SkyboxPickerPreviewsBeforeApplyingAndCanHideTheBackground)
 {
-    NS::Editor::ActorSnapshotApplier applier{&m_scene};
+    NS::Editor::ActorSnapshotApplier applier{m_scene};
     m_editor.Editor().SetApplier(&applier);
     (void)Frame();
     Click(45.0f, 245.0f);

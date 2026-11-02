@@ -2,9 +2,9 @@
 #include "Game/Level/ImpactMarks.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/PropActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -16,18 +16,9 @@ namespace
     GL::Level::PropActor* PlaceRockOnFloor(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, 1);
-        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "PropActor", 1, NS::Vector3{0.0f, 0.5f, 0.0f});
         scene.ResetFromJson(doc);
-        NS::OBB floor;
-        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
-        floor.halfExtentX = 100.0f;
-        floor.halfExtentY = 0.5f;
-        floor.halfExtentZ = 100.0f;
-        scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
         return static_cast<GL::Level::PropActor*>(scene.Actors().FindByActorId(1));
     }
 } // namespace

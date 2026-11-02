@@ -7,6 +7,7 @@
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/Core/Windows/Input.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -17,11 +18,7 @@ namespace
     PlayerActor* PlacePlayer(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeActorJson();
-        NS::SetActorJsonFile(entry, "PlayerActor");
-        NS::SetActorJsonId(entry, 1);
-        NS::Editor::SetActorJsonPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(entry));
+        AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
         scene.ResetFromJson(doc);
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
@@ -60,19 +57,19 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
         pad->OnTick();
     };
 
-    reaction->StartPadVibration(player, FadingLeft(1.0f, 4));
+    pad->Start(player, FadingLeft(1.0f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
     tick();
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
 
-    reaction->StartFlash(player, 3, 1.0f);
+    screen->StartFlash(player, 3, 1.0f);
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     tick();
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     EXPECT_FLOAT_EQ(PadLeft(), 0.5f);
 
-    reaction->StartPadVibration(player, FadingLeft(0.5f, 2));
+    pad->Start(player, FadingLeft(0.5f, 2));
     tick();
     // 振動は頼んだフレームの姿のまま、白は薄れる
     EXPECT_EQ(screen->FlashFramesRemaining(), 2);
@@ -102,8 +99,8 @@ TEST(HitReactionChannels, ScalingKeepsTheRunningEffectsGoingAtTheNewStrength)
         pad->OnTick();
     };
 
-    reaction->StartPadVibration(player, FadingLeft(1.0f, 4));
-    reaction->StartFlash(player, 4, 1.0f);
+    pad->Start(player, FadingLeft(1.0f, 4));
+    screen->StartFlash(player, 4, 1.0f);
     tick();
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
@@ -125,7 +122,7 @@ TEST(HitReactionChannels, LayeredPadItemAddsToTheRunningVibration)
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
 
-    reaction->StartPadVibration(player, FadingLeft(0.5f, 4));
+    scene.PadRumble().Start(player, FadingLeft(0.5f, 4));
     NS::HitPadVibrationItem layered{};
     layered.layered = true;
     layered.left = FadingLeft(0.25f, 2).left;

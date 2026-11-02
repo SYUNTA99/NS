@@ -13,6 +13,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -176,10 +177,7 @@ TEST(MapObjParams, TackleAnswerCarriesTheLaunchShape)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::SetActorJsonId(rock, 1);
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
+    AddActorJson(doc, "PropActor", 1);
     scene.ResetFromJson(doc);
     GL::Level::PropActor* actor = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(actor, nullptr);

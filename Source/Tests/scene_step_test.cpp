@@ -69,7 +69,7 @@ namespace
             : m_window(NS::OS::WindowDesc{.title = "歩の試し", .size = {32, 32}, .visible = false}),
               m_device(NS::Gfx::D3DDeviceDesc{}, m_window)
         {
-            m_scene.SetDevice(&m_device);
+            m_scene.GetSceneRenderer()->SetDevice(&m_device);
         }
 
         //! 描画の装置が作れた場合 true。作れなければエフェクトの世界が無い

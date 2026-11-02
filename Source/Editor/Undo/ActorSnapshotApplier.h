@@ -17,8 +17,7 @@ namespace NS
         class ActorSnapshotApplier final : public IActorSnapshotApplier
         {
         public:
-            //! scene が nullptr の場合、ReattachActor 以外の操作は何もせず空を返す
-            explicit ActorSnapshotApplier(Scene* scene) noexcept : m_scene(scene) {}
+            explicit ActorSnapshotApplier(Scene& scene) noexcept : m_scene(scene) {}
 
             [[nodiscard]] std::optional<nlohmann::json> CaptureActor(uint32 objectId) const override;
 
@@ -30,7 +29,7 @@ namespace NS
             void ReattachActor(DetachedActor detached) override;
 
         private:
-            Scene* m_scene = nullptr;
+            Scene& m_scene;
         };
     } // namespace Editor
 } // namespace NS

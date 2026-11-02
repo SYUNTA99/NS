@@ -192,7 +192,7 @@ TEST(ThirdPersonFollow, FollowsTheNewTargetAfterTheInspectorRewritesIt)
     ASSERT_TRUE(world.camera->IsAppeared());
     EXPECT_NEAR(world.LookAfterUpdate().x, 0.0f, 1.0e-4f);
 
-    LevelEditorController editor(&world.scene);
+    LevelEditorController editor(world.scene);
     ASSERT_EQ(NS::ApplyJsonFields(&world.camera->Vcam(),
                                   nlohmann::json{{"追従対象", nlohmann::json{{"ref", world.second->Id()}}}}),
               0u);
@@ -207,7 +207,7 @@ TEST(ThirdPersonFollow, FollowsTheNewTargetAfterASnapshotRewritesIt)
     ASSERT_NE(world.camera, nullptr);
     EXPECT_NEAR(world.LookAfterUpdate().x, 0.0f, 1.0e-4f);
 
-    NS::Editor::ActorSnapshotApplier applier{&world.scene};
+    NS::Editor::ActorSnapshotApplier applier{world.scene};
     std::optional<nlohmann::json> snapshot = applier.CaptureActor(world.camera->Id());
     ASSERT_TRUE(snapshot.has_value());
     NS::ActorJsonClassObjs(*snapshot)["Vcam"]["追従対象"] = nlohmann::json{{"ref", world.second->Id()}};

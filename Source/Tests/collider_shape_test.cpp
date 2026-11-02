@@ -13,6 +13,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "TestLogCapture.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -161,11 +162,7 @@ TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
     // 置物の体のセンサーは当たりの球をその場で映す。配置の後に半径を変えても割れない
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::SetActorJsonId(rock, 1);
-    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{2.0f, 1.0f, 0.0f});
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
+    AddActorJson(doc, "PropActor", 1, NS::Vector3{2.0f, 1.0f, 0.0f});
     scene.ResetFromJson(doc);
     NS::SceneActor* placed = scene.Actors().FindByActorId(1);
     ASSERT_NE(placed, nullptr);

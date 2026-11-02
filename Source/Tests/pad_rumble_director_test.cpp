@@ -6,6 +6,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/Core/Windows/Input.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -16,11 +17,7 @@ namespace
     PlayerActor* PlacePlayer(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeActorJson();
-        NS::SetActorJsonFile(entry, "PlayerActor");
-        NS::SetActorJsonId(entry, 1);
-        NS::Editor::SetActorJsonPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(entry));
+        AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
         scene.ResetFromJson(doc);
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
@@ -81,7 +78,7 @@ TEST(PadRumbleDirector, HitReactionStopWritesZero)
     ASSERT_NE(player, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    reaction->StartPadVibration(player, FadingLeft(1.0f, 4));
+    scene.PadRumble().Start(player, FadingLeft(1.0f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
     reaction->Stop(player);
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);

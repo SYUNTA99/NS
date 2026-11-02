@@ -26,6 +26,8 @@
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "Tests/TestCheckLayer.h"
 #include "TestActorFile.h"
+#include "Tests/TestHeadlessImGui.h"
+#include "Tests/TestHiddenApp.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -46,16 +48,8 @@
 // 始まりが値の後だと、控えが変わった後の値になり undo に積まれない
 TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
 {
-    ImGuiContext* gui = ImGui::CreateContext();
+    ImGuiContext* gui = CreateHeadlessImGui(ImVec2{800.0f, 600.0f}, HeadlessImGuiInput::Instant);
     ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = ImVec2{800.0f, 600.0f};
-    io.DeltaTime = 1.0f / 60.0f;
-    io.ConfigInputTrickleEventQueue = false;
-    NS::uint8* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
     NS::ThirdPersonFollow follow;
     const std::vector<NS::Editor::ActorRefOption> options{{7u, "相手"}};
@@ -147,15 +141,7 @@ TEST(EditorInspector, LabeledFieldSavesByNameAndShowsTheLabel)
     EXPECT_EQ(NS::ApplyReflectedFields(&object, info, nlohmann::json{{"speed", 5.0f}}), 0u);
     EXPECT_FLOAT_EQ(object.speed, 5.0f);
 
-    ImGuiContext* gui = ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = ImVec2{800.0f, 600.0f};
-    io.DeltaTime = 1.0f / 60.0f;
-    NS::uint8* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    ImGuiContext* gui = CreateHeadlessImGui(ImVec2{800.0f, 600.0f});
 
     // 表の列の幅は数回描くと定まるので、最後のフレームの文字だけを写し取る
     std::string drawnText;
@@ -198,15 +184,7 @@ namespace
 
 TEST(EditorInspector, VectorAxesStayReadableWhenThePanelNarrows)
 {
-    ImGuiContext* gui = ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = ImVec2{1000.0f, 800.0f};
-    io.DeltaTime = 1.0f / 60.0f;
-    NS::uint8* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    ImGuiContext* gui = CreateHeadlessImGui(ImVec2{1000.0f, 800.0f});
     VectorFieldObject object;
     const nlohmann::json before = NS::SerializeClassObjFields(&object);
     const float widths[] = {760.0f, 360.0f, 170.0f};
@@ -307,16 +285,8 @@ TEST(EditorInspector, FarPlaneFieldRejectsValuesThatBreakTheProjection)
 
 TEST(EditorInspector, Vector2ValueAxesEditIndependentlyAcrossPanelResizes)
 {
-    ImGuiContext* gui = ImGui::CreateContext();
+    ImGuiContext* gui = CreateHeadlessImGui(ImVec2{1000.0f, 800.0f}, HeadlessImGuiInput::Instant);
     ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = ImVec2{1000.0f, 800.0f};
-    io.DeltaTime = 1.0f / 60.0f;
-    io.ConfigInputTrickleEventQueue = false;
-    NS::uint8* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     TwoAxisFieldObject object;
     float panelWidth = 760.0f;
     const auto frame = [&] {
@@ -378,16 +348,7 @@ namespace
     public:
         explicit InspectorFrames(LevelEditorController& editor) : m_editor(editor)
         {
-            m_gui = ImGui::CreateContext();
-            ImGuiIO& io = ImGui::GetIO();
-            io.IniFilename = nullptr;
-            io.DisplaySize = ImVec2{800.0f, 2000.0f};
-            io.DeltaTime = 1.0f / 60.0f;
-            io.ConfigInputTrickleEventQueue = false;
-            NS::uint8* pixels = nullptr;
-            int width = 0;
-            int height = 0;
-            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+            m_gui = CreateHeadlessImGui(ImVec2{800.0f, 2000.0f}, HeadlessImGuiInput::Instant);
         }
         ~InspectorFrames() { ImGui::DestroyContext(m_gui); }
         InspectorFrames(const InspectorFrames&) = delete;
@@ -472,16 +433,7 @@ namespace
     public:
         explicit InspectorFrame(LevelEditorController& editor) : m_editor(editor)
         {
-            m_gui = ImGui::CreateContext();
-            ImGuiIO& io = ImGui::GetIO();
-            io.IniFilename = nullptr;
-            io.DisplaySize = ImVec2{800.0f, 6000.0f};
-            io.DeltaTime = 1.0f / 60.0f;
-            io.ConfigInputTrickleEventQueue = false;
-            NS::uint8* pixels = nullptr;
-            int width = 0;
-            int height = 0;
-            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+            m_gui = CreateHeadlessImGui(ImVec2{800.0f, 6000.0f}, HeadlessImGuiInput::Instant);
         }
 
         ~InspectorFrame() { ImGui::DestroyContext(m_gui); }
@@ -613,7 +565,7 @@ TEST(EditorInspector, FieldChangeReachesTheCollision)
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
@@ -654,7 +606,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
@@ -692,7 +644,7 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
     NS::SceneActor* parts = editor.SelectedActor();
     ASSERT_NE(parts, nullptr);
@@ -745,7 +697,7 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -783,16 +735,12 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
 // マテリアルを付けると、描くマテリアルが付けた物になる
 TEST(EditorInspector, MaterialApplyReachesTheDrawnMaterial)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "マテリアルを付ける試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("マテリアルを付ける試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         scene.SetSimulationEnabled(false);
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
         NS::SceneActor* parts = editor.SelectedActor();
         ASSERT_NE(parts, nullptr);
@@ -812,7 +760,7 @@ TEST(EditorInspector, SkyboxEditUndoesThroughTheEnvironmentHistory)
     nlohmann::json doc = NS::MakeSceneJson();
     NS::WriteSceneEnvironment(doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt"});
     scene.ResetFromJson(doc);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const nlohmann::json before = scene.ToJson();
 
     InspectorFrames frames(editor);
@@ -838,7 +786,7 @@ TEST(EditorInspector, MusicVolumeEditUndoesThroughTheEnvironmentHistory)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const nlohmann::json before = scene.ToJson();
     const float volumeBefore = scene.Environment().musicVolume;
     ASSERT_NE(volumeBefore, 0.25f);
@@ -895,7 +843,7 @@ TEST(EditorInspector, SetSceneMusicPushesOneEnvironmentCommand)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const nlohmann::json before = scene.ToJson();
 
     ASSERT_TRUE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, 0.4f));
@@ -917,8 +865,8 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     const ScopedActorFileDirectory scope("InspectorHitSets");
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
-    LevelEditorController editor(&scene);
-    NS::Editor::ActorSnapshotApplier applier(&scene);
+    LevelEditorController editor(scene);
+    NS::Editor::ActorSnapshotApplier applier(scene);
     editor.Editor().SetApplier(&applier);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
@@ -976,8 +924,8 @@ TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
     const ScopedActorFileDirectory scope("InspectorOwnerValues");
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
-    LevelEditorController editor(&scene);
-    NS::Editor::ActorSnapshotApplier applier(&scene);
+    LevelEditorController editor(scene);
+    NS::Editor::ActorSnapshotApplier applier(scene);
     editor.Editor().SetApplier(&applier);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());

@@ -1,7 +1,5 @@
 #pragma once
 
-#if NS_EDITOR_ENABLED
-
 #include <algorithm>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -282,5 +280,3 @@ namespace NS
         }
     } // namespace Editor
 } // namespace NS
-
-#endif

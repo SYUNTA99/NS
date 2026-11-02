@@ -8,9 +8,7 @@
 
 #include <optional>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -18,7 +16,6 @@ namespace NS
     {
         void SceneViewPanel::Render(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             m_editHovered = false;
             m_freeViewHovered = false;
             const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
@@ -77,14 +74,10 @@ namespace NS
                 m_freeViewLatch = false;
                 m_freeFlying = false;
             }
-#else
-            (void)editor;
-#endif
         }
 
         void SceneViewPanel::Suppress(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             m_freeViewHovered = false;
             m_surface.ResetVisibility();
             m_freeViewLatch = false;
@@ -93,9 +86,6 @@ namespace NS
             {
                 editor.HideGameView();
             }
-#else
-            (void)editor;
-#endif
         }
 
         void SceneViewPanel::ClearForHiddenUi(LevelEditorController& editor) noexcept
@@ -130,18 +120,15 @@ namespace NS
 
         void SceneViewPanel::UpdateMouseLatch() noexcept
         {
-#if NS_EDITOR_ENABLED
             // マウスボタンを離すまで、パネルから始めたドラッグを外でも続ける
             if (!ImGui::IsAnyMouseDown())
             {
                 m_mouseLatch = m_editHovered;
             }
-#endif
         }
 
         void SceneViewPanel::TickFreeViewInput(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             const ImGuiIO& io = ImGui::GetIO();
             if (!ImGui::IsAnyMouseDown())
             {
@@ -175,37 +162,13 @@ namespace NS
                 {
                     input.boost = true;
                 }
-                if (ImGui::IsKeyDown(ImGuiKey_W))
-                {
-                    input.forwardAxis += 1.0f;
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_S))
-                {
-                    input.forwardAxis -= 1.0f;
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_D))
-                {
-                    input.strafeAxis += 1.0f;
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_A))
-                {
-                    input.strafeAxis -= 1.0f;
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_E))
-                {
-                    input.verticalAxis += 1.0f;
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_Q))
-                {
-                    input.verticalAxis -= 1.0f;
-                }
+                input.forwardAxis = KeyAxis(ImGui::IsKeyDown(ImGuiKey_W), ImGui::IsKeyDown(ImGuiKey_S));
+                input.strafeAxis = KeyAxis(ImGui::IsKeyDown(ImGuiKey_D), ImGui::IsKeyDown(ImGuiKey_A));
+                input.verticalAxis = KeyAxis(ImGui::IsKeyDown(ImGuiKey_E), ImGui::IsKeyDown(ImGuiKey_Q));
             }
 
             m_freeFlying = flying;
             editor.TickPlaySceneView(input);
-#else
-            (void)editor;
-#endif
         }
     } // namespace Editor
 } // namespace NS

@@ -53,7 +53,7 @@ namespace NS
 class LevelEditorController : public NS::NonCopyable
 {
 public:
-    explicit LevelEditorController(NS::Scene* scene) noexcept;
+    explicit LevelEditorController(NS::Scene& scene) noexcept;
     ~LevelEditorController();
 
     //! scene の OnStart 完了後に呼ぶ。自由視点カメラ / EditorMode / ギズモを立ち上げ編集モードへ入り、
@@ -368,7 +368,7 @@ private:
     [[nodiscard]] NS::CameraManager* Cameras() const noexcept;
     [[nodiscard]] NS::SceneCamera* MainCamera() const noexcept;
 
-    NS::Scene* m_scene = nullptr;                // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
+    NS::Scene& m_scene;                          // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
     NS::Editor::ActorSnapshotApplier m_applier; // 履歴の操作を実体へ適用する
 
     // 前面のパネルの表示矩形。未設定時は CurrentViewRect が全画面の予備矩形を返す

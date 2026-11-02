@@ -10,6 +10,7 @@
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
+#include "Tests/TestHeadlessImGui.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -27,16 +28,7 @@ namespace
     protected:
         void SetUp() override
         {
-            m_gui = ImGui::CreateContext();
-            ImGuiIO& io = ImGui::GetIO();
-            io.IniFilename = nullptr;
-            io.DisplaySize = ImVec2{1000.0f, 800.0f};
-            io.DeltaTime = 1.0f / 60.0f;
-            io.ConfigInputTrickleEventQueue = false;
-            NS::uint8* pixels = nullptr;
-            int width = 0;
-            int height = 0;
-            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+            m_gui = CreateHeadlessImGui(ImVec2{1000.0f, 800.0f}, HeadlessImGuiInput::Instant);
         }
 
         void TearDown() override { ImGui::DestroyContext(m_gui); }

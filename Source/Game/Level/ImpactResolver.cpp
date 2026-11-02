@@ -320,12 +320,7 @@ namespace GL
                     first.launchContact = aimedContact;
                 }
                 // 段と横ずれは裁定と同じく相手の答えの面で決める。玉の高さは放つ縦の速さの道筋が触れる所で居る高さ
-                const GL::Player::LaunchPath path{.horizontalSpeed = params->m_bodySlamSpeed,
-                                                  .verticalSpeed = pitch.verticalSpeed,
-                                                  .gravity = params->Gravity(),
-                                                  .dt = dt,
-                                                  .grounded = body->IsGrounded(),
-                                                  .maxFrames = params->m_launchMaxFrames};
+                const GL::Player::LaunchPath path = params->SlamLaunchPath(pitch.verticalSpeed, body->IsGrounded(), dt);
                 const NS::Vector3 arrival{
                     ballCenter.x, ballCenter.y + GL::Player::LaunchHeightAt(path, first.launchContact), ballCenter.z};
                 judgement = JudgeHitFaceOrWide(answer.face, answer.body, arrival, lineDir, playerRadius);

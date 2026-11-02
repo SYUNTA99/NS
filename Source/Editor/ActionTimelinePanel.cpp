@@ -23,9 +23,7 @@
 #include <variant>
 #include <vector>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -51,7 +49,6 @@ namespace NS
                 return sensor.sensor + " を外す";
             }
 
-#if NS_EDITOR_ENABLED
             // 直している .actor actorFile を元に持つ actor のセンサー。作った順
             // actor が nullptr か別の .actor を指す時は空。窓は選びを外しても前の .actor の動作を出し続けるので、
             // 別のクラスのセンサーの名前を入り切りに書かない
@@ -64,12 +61,10 @@ namespace NS
                 }
                 return actor->HitSensorsClassObj()->Sensors();
             }
-#endif
 
             // 再生の速さ。12 フレームの止めはそのままの速さだと 0.2 秒で目で追えないので、遅い方を既定にする
             constexpr float k_QuarterSpeed = 0.25f;
 
-#if NS_EDITOR_ENABLED
             constexpr int k_PreviewGraphCount = 4;
             constexpr ImU32 k_GraphBackColor = IM_COL32(40, 40, 46, 255);
             constexpr ImU32 k_GraphTraumaColor = IM_COL32(255, 170, 60, 255);
@@ -77,7 +72,6 @@ namespace NS
             constexpr ImU32 k_GraphYColor = IM_COL32(110, 220, 110, 255);
             constexpr ImU32 k_GraphZColor = IM_COL32(110, 150, 255, 255);
             constexpr ImU32 k_GraphSpeedColor = IM_COL32(200, 120, 255, 255);
-#endif
         } // namespace
 
         ActionTimelinePanel::ActionTimelinePanel()
@@ -284,7 +278,6 @@ namespace NS
 
         void ActionTimelinePanel::Tick(LevelEditorController& editor, float seconds)
         {
-#if NS_EDITOR_ENABLED
             const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
             if (playMode)
             {
@@ -306,15 +299,10 @@ namespace NS
             {
                 m_playback.Tick(seconds, PlaybackRange());
             }
-#else
-            (void)editor;
-            (void)seconds;
-#endif
         }
 
         void ActionTimelinePanel::Render(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
             m_panelVisible = ImGui::Begin(k_PanelActionTimeline);
             if (m_panelVisible)
@@ -335,14 +323,10 @@ namespace NS
                 }
             }
             ImGui::End();
-#else
-            (void)editor;
-#endif
         }
 
         void ActionTimelinePanel::RenderConditions(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             ImGui::SeparatorText("当てる条件");
             bool changed = false;
 
@@ -428,14 +412,10 @@ namespace NS
             {
                 ImGui::TextColored(k_OverriddenFieldColor, "下見できない: %s", m_result.error.c_str());
             }
-#else
-            (void)editor;
-#endif
         }
 
         void ActionTimelinePanel::RenderActionButtons(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             ImGui::SeparatorText("動作");
             if (const SceneActor* selected = editor.SelectedActor())
             {
@@ -460,14 +440,10 @@ namespace NS
             {
                 ImGui::TextUnformatted(m_status.c_str());
             }
-#else
-            (void)editor;
-#endif
         }
 
         void ActionTimelinePanel::RenderActionChoice(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             std::string actionLabel = "(動作が無い)";
             if (const ActorAction* action = EditingAction())
             {
@@ -523,14 +499,10 @@ namespace NS
                     ApplyWorking(editor);
                 }
             }
-#else
-            (void)editor;
-#endif
         }
 
         void ActionTimelinePanel::RenderFileButtons(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             if (ImGui::Button("保存"))
             {
                 (void)SaveAll();
@@ -542,7 +514,9 @@ namespace NS
                 ActorFileLibrary::Get().Reload();
                 for (SceneActor* actor : editor.Actors())
                 {
-                    if (m_dirty.contains(actor->ActorFileName()) && actor->ActionTimelineClassObj() != nullptr)
+                    // m_dirty は動作を書く先の名前なので、派生を指すアクターも書く先の名前で比べる
+                    if (m_dirty.contains(ActorFileToWrite(actor, FieldDestination::ActorFile)) &&
+                        actor->ActionTimelineClassObj() != nullptr)
                     {
                         actor->ActionTimelineClassObj()->ReloadActions(actor);
                     }
@@ -562,14 +536,10 @@ namespace NS
                 ImGui::SameLine();
                 ImGui::TextColored(k_OverriddenFieldColor, "保存していない変更がある");
             }
-#else
-            (void)editor;
-#endif
         }
 
         void ActionTimelinePanel::RenderAddButtons(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             ImGui::BeginDisabled(EditingAction() == nullptr);
             const std::vector<HitReactionItem>& types = ItemTypes();
             m_addType = std::clamp(m_addType, 0, static_cast<int>(types.size()) - 1);
@@ -619,14 +589,10 @@ namespace NS
             }
             ImGui::EndDisabled();
             ImGui::EndDisabled();
-#else
-            (void)editor;
-#endif
         }
 
         void ActionTimelinePanel::RenderPlayback() noexcept
         {
-#if NS_EDITOR_ENABLED
             if (ImGui::Checkbox("Game に下見を表示", &m_showPreview) && m_showPreview)
             {
                 ImGui::SetWindowFocus(k_PanelGame);
@@ -639,12 +605,10 @@ namespace NS
             }
             ImGui::TextUnformatted(
                 "動作に入った歩を 0 としたフレーム。下見で動作が走らなければ検知が 0。Game ビューで動きを確認");
-#endif
         }
 
         void ActionTimelinePanel::RenderBands() noexcept
         {
-#if NS_EDITOR_ENABLED
             const ActorAction* action = EditingAction();
             if (action == nullptr)
             {
@@ -710,12 +674,10 @@ namespace NS
                 m_showPreview = true;
                 ImGui::SetWindowFocus(k_PanelGame);
             }
-#endif
         }
 
         void ActionTimelinePanel::RenderPreviewGraphs(ImDrawList& draw, const TimelineLayout& layout) noexcept
         {
-#if NS_EDITOR_ENABLED
             const int firstClock = layout.firstFrame;
             const float frameWidth = layout.frameWidth;
             const float totalWidth = layout.totalWidth;
@@ -803,15 +765,10 @@ namespace NS
             graphRow("世界の速さ", "世界の速さ。下が 0、上が普段の速さ 1", [&](const ImVec2& at) {
                 drawLine(at, k_GraphSpeedColor, false, [](const HitPreviewFrame& frame) { return frame.worldSpeed; });
             });
-#else
-            (void)draw;
-            (void)layout;
-#endif
         }
 
         namespace
         {
-#if NS_EDITOR_ENABLED
             void DrawFrameSpanRows(int& outStart, int& outLength, bool& changed) noexcept
             {
                 FieldRow("始まり");
@@ -848,12 +805,10 @@ namespace NS
                     changed = true;
                 }
             }
-#endif
         } // namespace
 
         void ActionTimelinePanel::RenderSelectedEvent(ActorActionEvent& event, bool& changed) noexcept
         {
-#if NS_EDITOR_ENABLED
             const std::string title{HitReactionItemLabel(event.item)};
             ImGui::SeparatorText(title.c_str());
             if (BeginFieldTable("##event-row"))
@@ -866,17 +821,12 @@ namespace NS
                 const ValueEditResult fields = DrawReflectedValue(HitReactionItemFields(event.item), *info);
                 changed |= fields.changed;
             }
-#else
-            (void)event;
-            (void)changed;
-#endif
         }
 
         void ActionTimelinePanel::RenderSelectedSensor(const SceneActor* selected,
                                                        ActionSensorEvent& sensor,
                                                        bool& changed) noexcept
         {
-#if NS_EDITOR_ENABLED
             ImGui::SeparatorText("センサーの入り切り");
             if (BeginFieldTable("##event-row"))
             {
@@ -899,16 +849,10 @@ namespace NS
                 DrawFrameSpanRows(sensor.start, sensor.length, changed);
                 EndFieldTable();
             }
-#else
-            (void)selected;
-            (void)sensor;
-            (void)changed;
-#endif
         }
 
         void ActionTimelinePanel::RenderSelectedRow(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             ActorAction* action = WorkingAction();
             if (action == nullptr || !m_selectedRow.has_value())
             {
@@ -945,9 +889,6 @@ namespace NS
             {
                 ApplyWorking(editor);
             }
-#else
-            (void)editor;
-#endif
         }
     } // namespace Editor
 } // namespace NS
