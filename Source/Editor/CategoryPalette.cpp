@@ -9,9 +9,7 @@
 
 #include <algorithm>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -72,7 +70,6 @@ namespace NS
 
         void CategoryPalette::Render(const Editor::ViewRect& viewRect) noexcept
         {
-#if NS_EDITOR_ENABLED
             constexpr float k_DesiredWidth = 640.0f;
             constexpr float k_Height = 56.0f;
             constexpr float k_TopMargin = 20.0f;
@@ -153,7 +150,6 @@ namespace NS
                 }
             }
             ImGui::End();
-#endif
         }
     } // namespace Editor
 } // namespace NS

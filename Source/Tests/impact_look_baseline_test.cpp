@@ -2,7 +2,6 @@
 #include "Game/Level/PropActor.h"
 #include "Game/Level/TackleGhost.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -12,6 +11,7 @@
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/Core/Windows/Input.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -412,23 +412,10 @@ namespace
     PlayerActor* PlaceLookScene(NS::Scene& scene, const NS::Vector3& rockPosition)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeActorJson();
-        NS::SetActorJsonFile(player, "PlayerActor");
-        NS::SetActorJsonId(player, 1);
-        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, 2);
-        NS::Editor::SetActorJsonPosition(rock, rockPosition);
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
+        AddActorJson(doc, "PropActor", 2, rockPosition);
         scene.ResetFromJson(doc);
-        NS::OBB floor{};
-        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
-        floor.halfExtentX = 100.0f;
-        floor.halfExtentY = 0.5f;
-        floor.halfExtentZ = 100.0f;
-        scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
         PlaceViewCamera(scene, NS::Vector3{0.0f, 3.0f, -6.0f}, NS::Vector3{0.0f, 0.5f, 4.0f});
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
@@ -480,12 +467,12 @@ namespace
         row[i++] = pad.right;
         row[i++] = scene.WorldSpeed();
         row[i++] = AsFloat(scene.IsSceneStopped());
-        row[i++] = scene.GroundWaveShown().radius;
-        row[i++] = scene.GroundWaveShown().strength;
-        row[i++] = scene.GroundWaveShown().centerX;
-        row[i++] = scene.GroundWaveShown().centerZ;
-        row[i++] = scene.DistortionRingShown().radius;
-        row[i++] = scene.DistortionRingShown().push;
+        row[i++] = scene.GetSceneRenderer()->GroundWaveShown().radius;
+        row[i++] = scene.GetSceneRenderer()->GroundWaveShown().strength;
+        row[i++] = scene.GetSceneRenderer()->GroundWaveShown().centerX;
+        row[i++] = scene.GetSceneRenderer()->GroundWaveShown().centerZ;
+        row[i++] = scene.GetSceneRenderer()->DistortionRingShown().radius;
+        row[i++] = scene.GetSceneRenderer()->DistortionRingShown().push;
         const NS::Vector3 other = rock->Root().Position();
         row[i++] = other.x;
         row[i++] = other.y;

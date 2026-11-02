@@ -583,13 +583,9 @@ namespace GL
             }
             else
             {
-                // 道筋は放つ縦の速さを決めた LaunchPitch と同じ重力の計算。矢印と実際の飛び方をずらさない
-                const GL::Player::LaunchPath path{.horizontalSpeed = params->m_bodySlamSpeed,
-                                                  .verticalSpeed = state.line.launchVerticalSpeed,
-                                                  .gravity = params->Gravity(),
-                                                  .dt = NS::OS::FrameTimer::FixedDelta(),
-                                                  .grounded = state.line.grounded,
-                                                  .maxFrames = params->m_launchMaxFrames};
+                // 道筋は放つ縦の速さを決めた LaunchPitch と同じ重力の計算
+                const GL::Player::LaunchPath path = params->SlamLaunchPath(
+                    state.line.launchVerticalSpeed, state.line.grounded, NS::OS::FrameTimer::FixedDelta());
                 // 線の始まりは根。玉の中心は突進の玉と同じ SlamBallAt が決める
                 const float ballCenterHeight = GL::Player::SlamBallAt(collider, state.line.origin).center.y;
                 PlaceSlamArrowOnPath(probe, path, ballCenterHeight, m_desc, shape);

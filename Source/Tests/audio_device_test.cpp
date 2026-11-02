@@ -267,7 +267,8 @@ TEST(SoundAssetTest, ShippedSoundsCreateXAudio2Voice)
 {
     using NS::OS::FileSystem;
     NS::Audio::AudioDevice device(true);
-    if (!device.IsValid())
+    // 機器が無い時も IsValid は true で、GetInterface が nullptr を返す
+    if (!device.IsValid() || !device.Engine()->IsAudioDevicePresent())
     {
         GTEST_SKIP() << "音の機器が無い";
     }

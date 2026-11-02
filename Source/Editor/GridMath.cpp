@@ -5,9 +5,7 @@
 #include "NSlib/Core/Types.h"
 #include <algorithm>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -34,7 +32,6 @@ namespace NS
         {
             outX = mouseX;
             outY = mouseY;
-#if NS_EDITOR_ENABLED
             if (ImGui::GetCurrentContext() == nullptr)
             {
                 return;
@@ -47,7 +44,6 @@ namespace NS
             // 別窓を出さない設定なら Pos は原点なので、この足し算は何も動かさない
             outX += static_cast<int>(main->Pos.x);
             outY += static_cast<int>(main->Pos.y);
-#endif
         }
 
         Ray ScreenToWorldRay(const Matrix& viewProjection, Size2D viewport, int mouseX, int mouseY) noexcept

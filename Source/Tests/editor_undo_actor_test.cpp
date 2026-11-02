@@ -62,7 +62,7 @@ TEST(EditorUndoActor, UndoDeleteRestoresTheSameActor)
     const std::size_t index = scene.Actors().IndexOfActorId(id);
     const Registrations before = CountRegistrations(scene);
 
-    NS::Editor::ActorSnapshotApplier applier{&scene};
+    NS::Editor::ActorSnapshotApplier applier{scene};
     NS::Editor::UndoStack undo;
     DeleteActor(undo, applier, id);
     ASSERT_EQ(scene.Actors().FindByActorId(id), nullptr);
@@ -86,7 +86,7 @@ TEST(EditorUndoActor, DiscardedHistoryLeavesNoRegistration)
     const NS::uint32 light = scene.SpawnActor<NS::LightActor>("LightActor")->Id();
     const NS::uint32 camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor")->Id();
 
-    NS::Editor::ActorSnapshotApplier applier{&scene};
+    NS::Editor::ActorSnapshotApplier applier{scene};
     NS::Editor::UndoStack undo;
     DeleteActor(undo, applier, prop);
     DeleteActor(undo, applier, player);
@@ -103,12 +103,12 @@ TEST(EditorUndoActor, UndoDeleteAfterLeavingPlayRebuildsFromJson)
     GL::Level::GameScene scene;
     (void)scene.SpawnActor<GL::Level::PropActor>("PropActor");
     const NS::uint32 id = scene.SpawnActor<CountedProp>("PropActor")->Id();
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const Registrations before = CountRegistrations(scene);
     CountedProp::s_endPlays = 0;
     CountedProp::s_destroyed = 0;
 
-    NS::Editor::ActorSnapshotApplier applier{&scene};
+    NS::Editor::ActorSnapshotApplier applier{scene};
     DeleteActor(editor.Editor().Undo(), applier, id);
     editor.EnterPlay();
     editor.EnterEdit();
@@ -132,7 +132,7 @@ TEST(EditorUndoActor, OpenLevelFreesHeldActorsBeforeRebuild)
     CountedProp::s_endPlays = 0;
     CountedProp::s_destroyed = 0;
 
-    NS::Editor::ActorSnapshotApplier applier{&scene};
+    NS::Editor::ActorSnapshotApplier applier{scene};
     NS::Editor::EditorMode editor;
     editor.SetApplier(&applier);
     DeleteActor(editor.Undo(), applier, id);

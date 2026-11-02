@@ -174,30 +174,9 @@ namespace NS
             if (frameInput.flying && !input.UiWantsKeyboard())
             {
                 OS::Keyboard& kb = input.Keyboard();
-                if (kb.IsHeld(OS::Key::W))
-                {
-                    frameInput.forwardAxis += 1.0f;
-                }
-                if (kb.IsHeld(OS::Key::S))
-                {
-                    frameInput.forwardAxis -= 1.0f;
-                }
-                if (kb.IsHeld(OS::Key::D))
-                {
-                    frameInput.strafeAxis += 1.0f;
-                }
-                if (kb.IsHeld(OS::Key::A))
-                {
-                    frameInput.strafeAxis -= 1.0f;
-                }
-                if (kb.IsHeld(OS::Key::E))
-                {
-                    frameInput.verticalAxis += 1.0f;
-                }
-                if (kb.IsHeld(OS::Key::Q))
-                {
-                    frameInput.verticalAxis -= 1.0f;
-                }
+                frameInput.forwardAxis = KeyAxis(kb.IsHeld(OS::Key::W), kb.IsHeld(OS::Key::S));
+                frameInput.strafeAxis = KeyAxis(kb.IsHeld(OS::Key::D), kb.IsHeld(OS::Key::A));
+                frameInput.verticalAxis = KeyAxis(kb.IsHeld(OS::Key::E), kb.IsHeld(OS::Key::Q));
                 if (kb.IsHeld(OS::Key::Shift))
                 {
                     frameInput.boost = true;

@@ -49,6 +49,35 @@ namespace
         return *it;
     }
 
+    // name の .actor をファイルへ書く。動作はファイルの中身のまま残す
+    // タイムラインの保存していない動作もライブラリにあるので、丸ごと書くとパネルの「元に戻す」で戻らなくなる
+    [[nodiscard]] bool SaveActorFileExceptActions(const std::string& name)
+    {
+        NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+        const nlohmann::json* current = library.Find(name);
+        if (current == nullptr)
+        {
+            return false;
+        }
+        nlohmann::json document = *current;
+        const std::string path = NS::OS::FileSystem::Combine(library.Directory(), name + ".actor");
+        if (NS::OS::FileSystem::Exists(path))
+        {
+            // 読めないファイルは ReadActorFileAt が ERROR を出している。残す動作が無いので今の文書で書き直す
+            if (const std::optional<nlohmann::json> saved = NS::ReadActorFileAt(path))
+            {
+                const nlohmann::json* actions = NS::ActorFileActions(*saved);
+                nlohmann::json savedActions = nlohmann::json::array();
+                if (actions != nullptr)
+                {
+                    savedActions = *actions;
+                }
+                NS::SetActorFileActions(document, std::move(savedActions));
+            }
+        }
+        return NS::WriteActorFileAt(path, document);
+    }
+
     // name の .actor を document に差し替えてファイルへ書き、name を指すアクターと name の派生を指すアクターの全部へ、
     // 全部の値を写し直す。シーンで上書きした項目はアクターの値が残る
     // 直し終えた時・取り消し・やり直しの全部がこの 1 本を通る
@@ -60,7 +89,7 @@ namespace
         {
             return;
         }
-        if (!library.Save(name))
+        if (!SaveActorFileExceptActions(name))
         {
             unsaved.insert(name);
             NS_LOG_WARN(App, ".actor {} をファイルへ書けなかった。終了時に再試行する", name);
@@ -79,6 +108,7 @@ namespace
             NS::ApplyActorFile(actor);
             actor->ReloadAssets();
             // 束とセンサーの値はアクターを作る時に .actor から読むので、読み直させて次の当たりに効かせる
+            // ReloadActorFileOnlyValues は呼ばない。ここを通る書き換えは動作を変えず、読み直すと再生中の動作が止まる
             if (NS::HitSensorsObj* sensors = actor->HitSensorsClassObj())
             {
                 sensors->ReloadValues(actor);
@@ -351,11 +381,7 @@ void LevelEditorController::NoteFieldEdit(const NS::SceneActor* actor,
     if (NS::FieldDestinationOf(actor, *field) == NS::FieldDestination::Scene)
     {
         // 保存は上書きの一覧の項目だけを書くので、直したら一覧に足す。参照の欄はいつも書く
-        NS::SceneActor* edited = nullptr;
-        if (m_scene != nullptr)
-        {
-            edited = m_scene->Actors().FindByActorId(actor->Id());
-        }
+        NS::SceneActor* edited = m_scene.Actors().FindByActorId(actor->Id());
         if (edited != nullptr && field->type != NS::FieldType::ActorRef)
         {
             edited->AddSceneOverride(row.key, fieldName);
@@ -404,10 +430,6 @@ void LevelEditorController::CommitActorFileEdits()
 {
     std::vector<ActorFileEdit> edits = std::move(m_actorFileEdits);
     m_actorFileEdits.clear();
-    if (m_scene == nullptr)
-    {
-        return;
-    }
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
     for (const ActorFileEdit& edit : edits)
     {
@@ -415,7 +437,7 @@ void LevelEditorController::CommitActorFileEdits()
         const NS::SceneActor* actor = m_actorFileDraft.get();
         if (edit.actorId != NS::k_NoActorId)
         {
-            actor = m_scene->Actors().FindByActorId(edit.actorId);
+            actor = m_scene.Actors().FindByActorId(edit.actorId);
         }
         if (actor == nullptr)
         {
@@ -453,7 +475,7 @@ void LevelEditorController::CommitActorFileEdits()
             continue;
         }
         // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-        m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, m_unsavedActorFiles, name, before, after), m_applier);
+        m_editor.Undo().Push(std::make_unique<ActorFileCommand>(m_scene, m_unsavedActorFiles, name, before, after), m_applier);
     }
 }
 
@@ -474,10 +496,6 @@ void LevelEditorController::PushActorFileChange(std::string_view actorFileName,
                                                 const std::function<void(nlohmann::json&)>& change,
                                                 std::string_view what)
 {
-    if (m_scene == nullptr)
-    {
-        return;
-    }
     const std::string name{actorFileName};
     const nlohmann::json* current = NS::ActorFileLibrary::Get().Find(name);
     if (current == nullptr)
@@ -493,7 +511,7 @@ void LevelEditorController::PushActorFileChange(std::string_view actorFileName,
         return;
     }
     // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-    m_editor.Undo().Push(std::make_unique<ActorFileCommand>(*m_scene, m_unsavedActorFiles, name, before, after), m_applier);
+    m_editor.Undo().Push(std::make_unique<ActorFileCommand>(m_scene, m_unsavedActorFiles, name, before, after), m_applier);
 }
 
 bool LevelEditorController::CreateDerivedActorFile(std::string_view baseName, std::string_view name)
@@ -513,7 +531,7 @@ bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::st
         NS_LOG_WARN(App, "編集モードでないので、アクターから派生 {} を作らない", name);
         return false;
     }
-    const NS::SceneActor* actor = m_scene->Actors().FindByActorId(actorId);
+    const NS::SceneActor* actor = m_scene.Actors().FindByActorId(actorId);
     if (actor == nullptr)
     {
         NS_LOG_WARN(App, "アクター {} が居ないので派生 {} を作らない", actorId, name);
@@ -762,7 +780,7 @@ bool LevelEditorController::SavePendingAssets()
     const std::set<std::string> actorFiles = m_unsavedActorFiles;
     for (const std::string& name : actorFiles)
     {
-        if (NS::ActorFileLibrary::Get().Save(name))
+        if (SaveActorFileExceptActions(name))
         {
             m_unsavedActorFiles.erase(name);
         }

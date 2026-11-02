@@ -216,11 +216,6 @@ namespace
 
 void LevelEditorController::DrawSceneViewShapes(NS::Gfx::DebugShapes& shapes, const NS::Matrix& viewProjection) noexcept
 {
-    if (m_scene == nullptr)
-    {
-        return;
-    }
-
     if (m_mode != Mode::Edit)
     {
         // 動いている形をそのまま追えるよう選択に関わらず全部出す
@@ -252,7 +247,7 @@ void LevelEditorController::RenderCameraGizmos(NS::Gfx::DebugShapes& shapes,
 {
     // edit 中、各カメラの視錐台を点線の四角錐で、視点位置を小箱で可視化する
     // 選択中は強調色にする。追従カメラは pose がプレイヤー基準なので、錐台はプレイ中に居る視点位置へ出る
-    const NS::ActorList& objects = m_scene->Actors();
+    const NS::ActorList& objects = m_scene.Actors();
     // 錐台の横幅は実ビューポート比で出す。viewport が潰れている時だけ 16:9 目安へフォールバックする
     float aspect = 16.0f / 9.0f;
     if (viewport.height > 0)
@@ -296,7 +291,7 @@ void LevelEditorController::RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes
         {
             continue;
         }
-        NS::SceneActor* object = m_scene->Actors().FindByActorId(id);
+        NS::SceneActor* object = m_scene.Actors().FindByActorId(id);
         if (object == nullptr)
         {
             continue;
@@ -320,7 +315,7 @@ void LevelEditorController::RenderCollisionWireframes(NS::Gfx::DebugShapes& shap
     // プレイ中は動いている形を追えるよう全部出す
     if (all)
     {
-        for (NS::SceneActor* objPtr : m_scene->Actors())
+        for (NS::SceneActor* objPtr : m_scene.Actors())
         {
             DrawCollisionWireframe(shapes, *objPtr, color);
             DrawSensorWireframe(shapes, *objPtr, sensorColor);
@@ -331,7 +326,7 @@ void LevelEditorController::RenderCollisionWireframes(NS::Gfx::DebugShapes& shap
     // 編集中は選んだ分だけ。全部出すと線が重なって、どれの形か読み取れない
     for (const NS::uint32 id : m_selectionIds)
     {
-        if (NS::SceneActor* objPtr = m_scene->Actors().FindByActorId(id))
+        if (NS::SceneActor* objPtr = m_scene.Actors().FindByActorId(id))
         {
             DrawCollisionWireframe(shapes, *objPtr, color);
             DrawSensorWireframe(shapes, *objPtr, sensorColor);
@@ -341,7 +336,7 @@ void LevelEditorController::RenderCollisionWireframes(NS::Gfx::DebugShapes& shap
 
 void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcept
 {
-    PlayerActor* player = FindPlayer(m_scene->Actors());
+    PlayerActor* player = FindPlayer(m_scene.Actors());
     // 自機が居ない場面は半径 0 として、相手の輪郭の大きさで描く
     float playerRadius = 0.0f;
     NS::Vector3 ballCenter{};
@@ -357,7 +352,7 @@ void LevelEditorController::RenderHitFaces(NS::Gfx::DebugShapes& shapes) noexcep
     }
     const NS::Vector3 cameraPosition = m_editorCamera.Pose().position;
 
-    for (NS::SceneActor* object : m_scene->Actors())
+    for (NS::SceneActor* object : m_scene.Actors())
     {
         if (!object->IsAppeared())
         {

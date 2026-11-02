@@ -5,9 +5,7 @@
 #include <cmath>
 #include <cstdio>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -72,7 +70,6 @@ namespace NS
 
         bool DrawTimelinePlayback(TimelinePlayback& playback, TimelineFrameRange range, bool enabled) noexcept
         {
-#if NS_EDITOR_ENABLED
             bool changed = false;
             ImGui::BeginDisabled(!enabled);
             if (ImGui::Button("|<"))
@@ -110,12 +107,6 @@ namespace NS
             ImGui::SameLine();
             ImGui::Text("フレーム %+d", playback.frame);
             return changed;
-#else
-            (void)playback;
-            (void)range;
-            (void)enabled;
-            return false;
-#endif
         }
 
         bool DrawTimelineTracks(std::span<const TimelineTrack> tracks,
@@ -127,7 +118,6 @@ namespace NS
                                 const std::function<void(const TimelineLayout&)>& extraRows,
                                 std::optional<TimelineFrameRange> seekRange) noexcept
         {
-#if NS_EDITOR_ENABLED
             range.last = std::max(range.first, range.last);
             const float count = static_cast<float>(static_cast<double>(range.last) - range.first + 1.0);
             const float rowHeight = ImGui::GetFrameHeight();
@@ -220,17 +210,6 @@ namespace NS
             }
             ImGui::EndChild();
             return moved;
-#else
-            (void)tracks;
-            (void)range;
-            (void)playback;
-            (void)selected;
-            (void)seekEnabled;
-            (void)extraHeight;
-            (void)extraRows;
-            (void)seekRange;
-            return false;
-#endif
         }
     } // namespace Editor
 } // namespace NS

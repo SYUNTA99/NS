@@ -21,6 +21,7 @@ namespace NS
 } // namespace NS
 namespace NS
 {
+    class ActorList;
     class SceneCamera;
 } // namespace NS
 namespace NS
@@ -50,7 +51,7 @@ namespace NS
         class EditorMode : public NonCopyable
         {
         public:
-            //! セルの整数座標。実体の照会に使う
+            //! セルの整数座標
             struct CellCoord
             {
                 int16 x = 0;
@@ -77,23 +78,8 @@ namespace NS
             //! 読込済みシーンデータを実体側へ取り込む関数を差す。読込の完了時に呼ぶ
             void SetLoadLevelFn(std::function<void(nlohmann::json&&)> fn) noexcept { m_loadLevel = std::move(fn); }
 
-            //! セルにあるセルブラシのアクターの永続識別番号を取得する処理を設定する。不在は k_NoActorId
-            void SetFindCellActorFn(std::function<uint32(int16, int16, int16)> fn) noexcept
-            {
-                m_findCellActor = std::move(fn);
-            }
-
-            //! cell に種類を問わずアクターが居るかを引く関数を差す
-            void SetCellOccupiedFn(std::function<bool(int16, int16, int16)> fn) noexcept
-            {
-                m_cellOccupied = std::move(fn);
-            }
-
-            //! 全セルブラシのアクターの座標を実体から取得する処理を設定する。カーソルの光線判定で使う
-            void SetCollectCellsFn(std::function<std::vector<CellCoord>()> fn) noexcept
-            {
-                m_collectCells = std::move(fn);
-            }
+            //! セルの照会とカーソルの光線判定で読むアクターの一覧を設定する。未設定の間はどのセルも空として扱う
+            void SetActors(const ActorList* actors) noexcept { m_actors = actors; }
 
             //! 新規アクターへ永続 id を 1 個振る関数を差す
             void SetAllocateIdFn(std::function<uint32()> fn) noexcept { m_allocateId = std::move(fn); }
@@ -195,9 +181,7 @@ namespace NS
             std::function<nlohmann::json()> m_captureLevel;
             IActorSnapshotApplier* m_applier = nullptr;
             std::function<void(nlohmann::json&&)> m_loadLevel;
-            std::function<uint32(int16, int16, int16)> m_findCellActor;
-            std::function<bool(int16, int16, int16)> m_cellOccupied;
-            std::function<std::vector<CellCoord>()> m_collectCells;
+            const ActorList* m_actors = nullptr;
             std::function<uint32()> m_allocateId;
             OS::Input* m_input = nullptr;
             SceneCamera* m_camera = nullptr;

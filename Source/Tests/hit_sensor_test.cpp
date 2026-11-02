@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -42,6 +43,10 @@ namespace
         {
             NS_ASSERT(Game, self != nullptr && other != nullptr, "重なったセンサーが渡されていない");
             stayed.push_back(other);
+            if (onStay)
+            {
+                onStay();
+            }
         }
         // 相手が一覧から外れた時の other は nullptr
         void OnSensorExit(NS::HitSensor* self, NS::HitSensor* other) override
@@ -64,6 +69,7 @@ namespace
         std::vector<NS::HitSensor*> stayed;
         std::vector<NS::HitSensor*> exited;
         std::vector<const void*> received;
+        std::function<void()> onStay; // 続きを受けた時に呼ぶ。知らせる途中の操作を試す
         bool acceptMessages = true;
 
     protected:
@@ -319,6 +325,25 @@ TEST(HitSensorDirector, UnregisteredSensorEndsTheOverlapForBothOwners)
     scene.HitSensors().Register(body->m_sensor);
     scene.HitSensors().OnTick();
     EXPECT_EQ(area->entered.size(), 2u);
+}
+
+// 知らせる途中で外れたセンサーにも、まだ順番が来ていない組の分まで終わりが 1 回ずつ届く
+TEST(HitSensorDirector, SensorUnregisteredWhileNotifyingGetsAnExitForEveryPair)
+{
+    NS::Scene scene;
+    SensorProbeActor* first = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::Area, 1.0f);
+    SensorProbeActor* second = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::Area, 1.0f);
+    SensorProbeActor* third = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::Area, 1.0f);
+    scene.HitSensors().OnTick();
+    ASSERT_EQ(second->entered.size(), 2u);
+
+    first->onStay = [&] { scene.HitSensors().Unregister(second->m_sensor); };
+    scene.HitSensors().OnTick();
+    scene.HitSensors().OnTick();
+
+    EXPECT_EQ(second->exited, (std::vector<NS::HitSensor*>{first->m_sensor, third->m_sensor}));
+    EXPECT_EQ(first->exited, (std::vector<NS::HitSensor*>{nullptr}));
+    EXPECT_EQ(third->exited, (std::vector<NS::HitSensor*>{nullptr}));
 }
 
 // 相手が先に外れて終わりが予約された組も、次の固定フレームの前に自分が外れれば、その場で 1 回届く

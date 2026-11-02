@@ -1,6 +1,7 @@
 #pragma once
 
-#include "NSlib/Core/Types.h"
+#include "NSlib/Core/Windows/ButtonStates.h"
+
 #include <array>
 #include <cstddef>
 
@@ -54,7 +55,7 @@ namespace NS
 
         //! ゲームパッドの状態を管理するクラス
         //! @note 内部でポーリングするので、メインループのフレーム頭で Update() を呼ぶ
-        class Gamepad
+        class Gamepad : public ButtonStates<GamepadButton, GamepadButton::A>
         {
         public:
             Gamepad() = default;
@@ -62,10 +63,7 @@ namespace NS
 
             [[nodiscard]] bool IsConnected() const noexcept;
 
-            [[nodiscard]] bool IsHeld(GamepadButton b) const noexcept;
-
-            //! Update で押していないボタンが押されていたら 1 足した回数。下ろさない。押した瞬間は InputReader で読む
-            [[nodiscard]] uint32 PressCount(GamepadButton b) const noexcept;
+            using ButtonStates::PressCount;
 
             //! しきい値を超えて引いた瞬間ごとに 1 足した回数。下ろさない
             [[nodiscard]] uint32 PressCount(GamepadTrigger t) const noexcept;
@@ -102,12 +100,8 @@ namespace NS
             void Update() noexcept;
 
         private:
-            static constexpr std::size_t k_ButtonCount = static_cast<std::size_t>(GamepadButton::Count);
-
             int m_userIndex = 0;
             bool m_connected = false;
-            std::array<bool, k_ButtonCount> m_current{};
-            std::array<uint32, k_ButtonCount> m_presses{};
             std::array<uint32, static_cast<std::size_t>(GamepadTrigger::Count)> m_triggerPresses{};
             Stick m_leftStick{};
             Stick m_rightStick{};

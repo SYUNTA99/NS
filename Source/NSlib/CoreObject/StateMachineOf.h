@@ -214,8 +214,10 @@ namespace NS
             m_next = next;
             if (!alreadyPending && m_current != nullptr)
             {
-                m_current->OnExit(m_owner);
-                m_current->CancelCoroutines();
+                // OnExit の中の Reset が m_current を空にしても、抜ける状態のコルーチンを捨てる
+                State<TOwner>* exiting = m_current;
+                exiting->OnExit(m_owner);
+                exiting->CancelCoroutines();
             }
             return true;
         }

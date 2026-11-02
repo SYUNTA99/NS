@@ -1,6 +1,7 @@
 #include "Game/Player/PlayerParams.h"
 
 #include "Game/Level/LaunchArc.h"
+#include "Game/Player/LaunchPitch.h"
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 
@@ -15,6 +16,16 @@ namespace GL
             m_chargeFactorCurve.count = 2;
             m_chargeFactorCurve.keys[0] = NS::Curve::Key{0.0f, 1.0f};
             m_chargeFactorCurve.keys[1] = NS::Curve::Key{1.0f, 2.0f};
+        }
+
+        LaunchPath PlayerParams::SlamLaunchPath(float verticalSpeed, bool grounded, float dt) const noexcept
+        {
+            return LaunchPath{.horizontalSpeed = m_bodySlamSpeed,
+                              .verticalSpeed = verticalSpeed,
+                              .gravity = Gravity(),
+                              .dt = dt,
+                              .grounded = grounded,
+                              .maxFrames = m_launchMaxFrames};
         }
 
         float PlayerParams::ChargeFactorFor(float charge01) const noexcept

@@ -38,8 +38,7 @@ namespace NS
             }
         }
         std::erase_if(m_pendingExits, [sensor](const SensorOverlap& overlap) { return overlap.self == sensor; });
-        for (const SensorOverlap& overlap : m_overlaps)
-        {
+        const auto endOverlap = [&](const SensorOverlap& overlap) {
             if (overlap.self == sensor)
             {
                 ownExits.push_back(overlap);
@@ -48,10 +47,24 @@ namespace NS
             {
                 m_pendingExits.push_back(SensorOverlap{overlap.self, nullptr});
             }
+        };
+        for (const SensorOverlap& overlap : m_overlaps)
+        {
+            endOverlap(overlap);
         }
         std::erase_if(m_overlaps, [sensor](const SensorOverlap& overlap) {
             return overlap.self == sensor || overlap.other == sensor;
         });
+        // 知らせる途中なら、まだ順番が来ていない組も同じように扱う。NotifyOverlaps が回している並びなので、消さずに空にする
+        // TODO: 知らせる途中で外して同じセンサーを入れ直すと、相手へ始まりの後に古い終わりが届く。受け手が入れ直す形を作る時に直す
+        for (SensorOverlap& overlap : m_notifying)
+        {
+            endOverlap(overlap);
+            if (overlap.self == sensor || overlap.other == sensor)
+            {
+                overlap = SensorOverlap{};
+            }
+        }
 
         // 覚えた組を直し終えてから呼ぶので、受け手がセンサーを付け外ししても組は崩れない
         SceneActor* owner = sensor->Host();
@@ -118,24 +131,31 @@ namespace NS
 
     void HitSensorDirector::NotifyOverlaps(const std::vector<SensorOverlap>& current)
     {
-        // 知らせる途中の Unregister も m_overlaps を直すので、前の組は手元へ移してから比べる
-        const std::vector<SensorOverlap> previous = std::exchange(m_overlaps, {});
-        const std::vector<SensorOverlap> pendingExits = std::exchange(m_pendingExits, {});
-        for (const SensorOverlap& overlap : pendingExits)
+        // 予約した終わりと前の組を m_notifying へ移す。知らせる途中の Unregister が、順番の来ていない組をここで終わらせる
+        m_notifying.assign(m_pendingExits.begin(), m_pendingExits.end());
+        m_notifying.insert(m_notifying.end(), m_overlaps.begin(), m_overlaps.end());
+        m_pendingExits.clear();
+        m_overlaps.clear();
+        // 知らせる前に並びから空にするので、受け手がセンサーを外しても同じ組へ 2 回届かない
+        for (std::size_t i = 0; i < m_notifying.size(); ++i)
         {
-            NotifyExit(overlap);
-        }
-        for (const SensorOverlap& overlap : previous)
-        {
-            if (!ContainsOverlap(current, overlap))
+            const SensorOverlap overlap = m_notifying[i];
+            if (overlap.self != nullptr && !ContainsOverlap(current, overlap))
             {
+                m_notifying[i] = SensorOverlap{};
                 NotifyExit(overlap);
             }
         }
 
         for (const SensorOverlap& overlap : current)
         {
-            const bool wasOverlapping = ContainsOverlap(previous, overlap);
+            const std::vector<SensorOverlap>::iterator previous =
+                std::find(m_notifying.begin(), m_notifying.end(), overlap);
+            const bool wasOverlapping = previous != m_notifying.end();
+            if (wasOverlapping)
+            {
+                *previous = SensorOverlap{};
+            }
             if (!IsPresent(overlap.self) || !IsPresent(overlap.other))
             {
                 // 知らせる途中で消えた組。始まりを知らせていた組だけを終わらせる
@@ -160,26 +180,22 @@ namespace NS
                 owner->OnSensorEnter(overlap.self, overlap.other);
             }
         }
+        m_notifying.clear();
     }
 
     void HitSensorDirector::NotifyExit(const SensorOverlap& overlap)
     {
-        if (!IsRegistered(overlap.self))
-        {
-            return;
-        }
+        // 外れたセンサーの番地は Unregister が覚えた組から全部消すので、ここへ来る組は両方とも入ったまま
+        NS_ASSERT(Scene, IsRegistered(overlap.self), "NotifyExit: 外れたセンサーの組が残っている");
+        NS_ASSERT(Scene,
+                  overlap.other == nullptr || IsRegistered(overlap.other),
+                  "NotifyExit: 外れた相手の組が残っている");
         SceneActor* owner = overlap.self->Host();
         if (owner == nullptr)
         {
             return;
         }
-        // 知らせる途中で相手が外れていれば、その番地は渡さない
-        HitSensor* other = overlap.other;
-        if (other != nullptr && !IsRegistered(other))
-        {
-            other = nullptr;
-        }
-        owner->OnSensorExit(overlap.self, other);
+        owner->OnSensorExit(overlap.self, overlap.other);
     }
 
     std::vector<HitSensor*> HitSensorDirector::FindOverlaps(const SensorVolume& volume, const SceneActor* ignore) const

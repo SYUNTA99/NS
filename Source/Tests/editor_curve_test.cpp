@@ -1,6 +1,7 @@
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
+#include "Tests/TestHeadlessImGui.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -23,16 +24,7 @@ namespace
     protected:
         void SetUp() override
         {
-            m_gui = ImGui::CreateContext();
-            ImGuiIO& io = ImGui::GetIO();
-            io.IniFilename = nullptr;
-            io.DisplaySize = ImVec2{1100.0f, 850.0f};
-            io.DeltaTime = 1.0f / 60.0f;
-            io.ConfigInputTrickleEventQueue = false;
-            NS::uint8* pixels = nullptr;
-            int width = 0;
-            int height = 0;
-            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+            m_gui = CreateHeadlessImGui(ImVec2{1100.0f, 850.0f}, HeadlessImGuiInput::Instant);
             m_settings.curve.count = 3;
             m_settings.curve.keys[0] = NS::Curve::Key{0.0f, 0.0f};
             m_settings.curve.keys[1] = NS::Curve::Key{0.5f, 0.5f};

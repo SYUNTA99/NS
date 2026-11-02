@@ -2,8 +2,6 @@
 #include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/Action/ActionTimeline.h"
-#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -362,17 +360,9 @@ namespace NS
             (void)ApplyJsonFields(classObj, *fields);
             written = true;
         });
-        // 束と動作は .actor だけに書くので、替えた先の .actor から読む
         if (actorFileChanged)
         {
-            if (HitReaction* reaction = obj->HitReactionClassObj())
-            {
-                reaction->ReloadSets(obj);
-            }
-            if (ActionTimeline* timeline = obj->ActionTimelineClassObj())
-            {
-                timeline->ReloadActions(obj);
-            }
+            obj->ReloadActorFileOnlyValues();
         }
         // 書き換えた欄に参照があれば読み直す。作る時と同じ組を通る
         if (written || actorFileChanged)
@@ -469,7 +459,7 @@ namespace NS
         m_actors.RebuildFromJson(
             scene, *this, [this](const nlohmann::json& entry) { return BuildOrKeepUnresolved(entry); });
         // 当たりはアクターの開始で入っている。まとめて入れた後の broadphase だけを張り直す
-        m_physics.Physics().OptimizeBroadPhase();
+        m_physics.OptimizeBroadPhase();
     }
 
     void Scene::OnUpdate()
@@ -539,7 +529,7 @@ namespace NS
     {
         m_actors.UpdateActors();
         // Jolt の broadphase の木は、アクターが全部動いた後で組み直す
-        m_physics.OnTick();
+        m_physics.Update(OS::FrameTimer::FixedDelta());
         m_hitSensors.OnTick();
         // ゲームの流れは当たりの判定の後で、同じ歩に届いた知らせを読む
         StepGame();
@@ -573,7 +563,7 @@ namespace NS
     void Scene::StepRealTime()
     {
         m_ui.OnTick();
-        m_fade.OnTick();
+        m_fade.Advance(OS::FrameTimer::FixedDelta());
     }
 
     void Scene::OnShutdown()
@@ -595,7 +585,7 @@ namespace NS
         {
             m_cameraManager.Evaluate(alpha);
         }
-        m_sceneRenderer.Render(m_mainCamera, m_ui, m_fade.Fade(), m_environment.skybox, alpha);
+        m_sceneRenderer.Render(m_mainCamera, m_ui, m_fade, m_environment.skybox, alpha);
     }
 
     SceneRenderer* Scene::GetSceneRenderer() const noexcept
@@ -611,7 +601,7 @@ namespace NS
     Phys::PhysicsScene* Scene::GetPhysicsScene() const noexcept
     {
         // 地形を問う関数のほか、Collision も持ち主の Scene の body を出し入れする時にここから引く
-        return const_cast<Phys::PhysicsScene*>(&m_physics.Physics());
+        return const_cast<Phys::PhysicsScene*>(&m_physics);
     }
 
     Gfx::EffectScene* Scene::GetEffectScene() const noexcept { return m_sceneRenderer.Effects(); }

@@ -92,10 +92,10 @@ namespace NS
     void HitScreenDirector::WriteDistortionRing() noexcept
     {
         const float frame = static_cast<float>(m_ringElapsed);
-        m_scene.SetDistortionRing(Gfx::DistortionRing{.center = m_ring.center,
-                                                          .radius = m_ring.radius.Evaluate(frame),
-                                                          .push = m_ring.push.Evaluate(frame),
-                                                          .halfWidth = m_ring.halfWidth});
+        m_scene.GetSceneRenderer()->SetDistortionRing(Gfx::DistortionRing{.center = m_ring.center,
+                                                                          .radius = m_ring.radius.Evaluate(frame),
+                                                                          .push = m_ring.push.Evaluate(frame),
+                                                                          .halfWidth = m_ring.halfWidth});
     }
 
     void HitScreenDirector::EndDistortionRing() noexcept
@@ -108,7 +108,7 @@ namespace NS
         m_ringActive = false;
         m_ringJustStarted = false;
         m_ringRequester = nullptr;
-        m_scene.SetDistortionRing(Gfx::DistortionRing{});
+        m_scene.GetSceneRenderer()->SetDistortionRing(Gfx::DistortionRing{});
     }
 
     void HitScreenDirector::StartGroundWave(const SceneActor* requester, const HitGroundWaveDesc& desc) noexcept
@@ -146,10 +146,10 @@ namespace NS
     void HitScreenDirector::WriteGroundWave() noexcept
     {
         const float frame = static_cast<float>(m_waveElapsed);
-        m_scene.SetGroundWave(Gfx::GroundWave{.centerX = m_wave.center.x,
-                                              .centerZ = m_wave.center.z,
-                                              .radius = m_wave.radius.Evaluate(frame),
-                                              .strength = m_wave.strength.Evaluate(frame)});
+        m_scene.GetSceneRenderer()->SetGroundWave(Gfx::GroundWave{.centerX = m_wave.center.x,
+                                                                  .centerZ = m_wave.center.z,
+                                                                  .radius = m_wave.radius.Evaluate(frame),
+                                                                  .strength = m_wave.strength.Evaluate(frame)});
     }
 
     void HitScreenDirector::EndGroundWave() noexcept
@@ -162,7 +162,7 @@ namespace NS
         m_waveActive = false;
         m_waveJustStarted = false;
         m_waveRequester = nullptr;
-        m_scene.SetGroundWave(Gfx::GroundWave{});
+        m_scene.GetSceneRenderer()->SetGroundWave(Gfx::GroundWave{});
     }
 
     float HitScreenDirector::FlashAlpha() const noexcept

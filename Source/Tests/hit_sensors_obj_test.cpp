@@ -1,6 +1,7 @@
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -188,6 +189,33 @@ TEST(HitSensorsObj, ReloadValuesWritesEachNamedSensor)
     EXPECT_FLOAT_EQ(zone->BoxHalfExtents().y, 5.0f);
     EXPECT_FLOAT_EQ(zone->CenterOffset().y, 0.0f);
     EXPECT_EQ(capture.WarningCount(), 1);
+}
+
+// 控えが同じクラスの別の .actor を指していれば、センサーの値も替えた先の .actor から読む
+TEST(HitSensorsObj, ApplyingASnapshotOfAnotherActorFileReadsItsSensorValues)
+{
+    const ScopedActorFileDirectory scope("HitSensorsApply");
+    const nlohmann::json* goal = NS::ActorFileLibrary::Get().Find("GoalActor");
+    ASSERT_NE(goal, nullptr);
+    nlohmann::json actorFile = *goal;
+    nlohmann::json body = GoalBodyValues();
+    body["半径"] = 9.0f;
+    actorFile["hitSensors"] = nlohmann::json{{"Body", body}};
+    const ScopedActorFile file("WideGoal", actorFile);
+
+    NS::Scene scene;
+    nlohmann::json placed = NS::MakeActorJson();
+    NS::SetActorJsonFile(placed, "GoalActor");
+    NS::SetActorJsonId(placed, 1);
+    NS::SceneActor* actor = scene.SpawnFromJson(placed);
+    ASSERT_NE(actor, nullptr);
+
+    NS::SetActorJsonFile(placed, "WideGoal");
+    ASSERT_EQ(ApplySnapshot(scene, placed), actor);
+
+    const NS::ShapeHitSensor* sensor = NS::Cast<NS::ShapeHitSensor>(actor->HitSensorsClassObj()->Find("Body"));
+    ASSERT_NE(sensor, nullptr);
+    EXPECT_FLOAT_EQ(sensor->Radius(), 9.0f);
 }
 
 // hitSensors に無い値を持つセンサーは、宣言した時の値へ戻して WARN を出す。前に読んだ値を残さない

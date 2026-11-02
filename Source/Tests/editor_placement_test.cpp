@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
+#include "Tests/TestHiddenApp.h"
 #include <optional>
 #include <string_view>
 
@@ -30,7 +31,7 @@
 TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
 
@@ -46,7 +47,7 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem(NS::Editor::k_PartsSlopeLabel);
     ASSERT_TRUE(item.has_value());
 
@@ -108,7 +109,7 @@ TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
 TEST(EditorPlacement, UndoRemovesPlacedActor)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
 
@@ -116,7 +117,7 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
     const NS::uint32 id = editor.SelectedActorId();
     ASSERT_NE(scene.Actors().FindByActorId(id), nullptr);
 
-    NS::Editor::ActorSnapshotApplier applier{&scene};
+    NS::Editor::ActorSnapshotApplier applier{scene};
     ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
     EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
 
@@ -131,7 +132,7 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
 TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
 
     const TestLogCapture log;
     editor.AddMeshParts(NS::OS::FileSystem::Combine(
@@ -154,7 +155,7 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
 TEST(EditorPlacement, OnlyTheBuiltInPartsCountAsCells)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
     ASSERT_TRUE(cube.has_value());
     editor.PlaceItem(*cube);
@@ -227,7 +228,7 @@ TEST(StageBuild, InvalidSizeAndAParallelRayDoNotProduceAPlacement)
 TEST(StageBuild, RepeatedPlacementUsesSceneHistoryAndRejectsPlayMode)
 {
     GL::Level::GameScene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.StageBuilder().SelectPart(NS::Editor::StageBuildTool::Part::Slope);
     editor.SetEditTool(LevelEditorController::EditTool::StageBuild);
     editor.StageBuilder().Size() = {2.5f, 1.5f, 3.5f};
@@ -264,15 +265,11 @@ TEST(StageBuild, RepeatedPlacementUsesSceneHistoryAndRejectsPlayMode)
 
 TEST(StageBuild, ViewportInputPlacesOncePerClickAndHonorsUiOwnership)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "ステージ作成の入力の試し";
-    desc.window.size = {320, 200};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("ステージ作成の入力の試し", {320, 200}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         editor.SetEditTool(LevelEditorController::EditTool::StageBuild);
         NS::OS::Mouse& mouse = app.Input().Mouse();

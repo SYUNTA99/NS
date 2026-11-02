@@ -32,6 +32,7 @@ namespace NS
         //! @param[in] pad 振動の設定
         void Start(const SceneActor* requester, const HitPadVibration& pad);
         //! requester の振動を重ねる。振動していなければ Start と同じ
+        //! 重ねたフレームを 0 として pad を進め、値を足す。pad の長さを過ぎたら 0 を足す
         void Blend(const SceneActor* requester, const HitPadVibration& pad);
 
         //! requester が頼んだ振動を外して書き直す。残りが無ければ 0 を書いて止める

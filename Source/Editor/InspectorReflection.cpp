@@ -21,9 +21,7 @@
 #include <cstring>
 #include <limits>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -57,7 +55,6 @@ namespace NS
             outMax = high;
         }
 
-#if NS_EDITOR_ENABLED
         namespace
         {
             constexpr float k_CurveGraphHeight = 150.0f;
@@ -1822,22 +1819,5 @@ namespace NS
             EndFieldTable();
             return result;
         }
-
-#else
-        ClassObjEditResult DrawReflectedClassObj(Object*,
-                                                 std::span<const ActorRefOption>,
-                                                 const char*,
-                                                 const char*,
-                                                 const SceneActor*,
-                                                 const EditorAppearance*) noexcept
-        {
-            return ClassObjEditResult{};
-        }
-
-        ValueEditResult DrawReflectedValue(void*, const ReflectionInfo&, std::span<const ActorRefOption>) noexcept
-        {
-            return ValueEditResult{};
-        }
-#endif
     } // namespace Editor
 } // namespace NS

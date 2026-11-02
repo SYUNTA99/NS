@@ -12,6 +12,7 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "Tests/TestActorFile.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestTackleScene.h"
 #include "Tests/TestViewCamera.h"
 
@@ -34,10 +35,7 @@ namespace
     PlayerActor* PlaceChargePlayer(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeActorJson();
-        NS::SetActorJsonFile(entry, "PlayerActor");
-        NS::SetActorJsonId(entry, 1);
-        NS::SceneJsonActors(doc).push_back(std::move(entry));
+        AddActorJson(doc, "PlayerActor", 1);
         scene.ResetFromJson(doc);
         if (PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f}) == nullptr)
         {

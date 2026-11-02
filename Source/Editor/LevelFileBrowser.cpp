@@ -7,9 +7,7 @@
 #include <algorithm>
 #include <cstring>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -20,7 +18,6 @@ namespace NS
             // ImGui InputText で確保する name buffer の容量。sanitize 側の上限 200 + 余裕
             constexpr std::size_t k_InputBufferCapacity = 256;
 
-#if NS_EDITOR_ENABLED
             constexpr const char* k_SaveModalTitle = "Save Level";
 
             void DrawResultMessage(const std::string& message, bool error) noexcept
@@ -44,7 +41,6 @@ namespace NS
                     ImGui::OpenPopup(title, ImGuiPopupFlags_NoOpenOverExistingPopup);
                 }
             }
-#endif
         } // namespace
 
         void LevelFileBrowser::OpenSaveModal(std::string_view initialName) noexcept
@@ -74,14 +70,9 @@ namespace NS
 
         LevelFileBrowser::Result LevelFileBrowser::Render() noexcept
         {
-#if NS_EDITOR_ENABLED
             return RenderSaveModal();
-#else
-            return {};
-#endif
         }
 
-#if NS_EDITOR_ENABLED
         // m_saveModalOpen が偽になると、BeginPopupModal が次に呼ばれた時に窓を閉じる。
         // 結果の通知 (NotifySaveResult) は描いた後に届くので、閉じるのは次のフレーム
         LevelFileBrowser::Result LevelFileBrowser::RenderSaveModal() noexcept
@@ -134,6 +125,5 @@ namespace NS
             ImGui::EndPopup();
             return result;
         }
-#endif
     } // namespace Editor
 } // namespace NS

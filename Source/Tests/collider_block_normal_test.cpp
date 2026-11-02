@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Phys/PhysicsScene.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -17,12 +18,7 @@ namespace
 
     void AddBox(NS::Scene& scene, const NS::Vector3& center, const NS::Vector3& half)
     {
-        NS::OBB box;
-        box.center = center;
-        box.halfExtentX = half.x;
-        box.halfExtentY = half.y;
-        box.halfExtentZ = half.z;
-        scene.Physics().AddBox(box, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, center, half.x, half.y, half.z);
     }
 
     // 立ったカプセル (半径 0.4・半分の高さ 0.5) の根を床から浮かせずに置く高さ

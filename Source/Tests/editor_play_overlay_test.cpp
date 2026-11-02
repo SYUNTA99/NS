@@ -30,7 +30,7 @@ namespace
 TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
 {
     GL::Level::GameScene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
     editor.EnterPlay();
     DD::Clear();
@@ -59,7 +59,7 @@ TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
 TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
     DD::Clear();
 
@@ -82,7 +82,7 @@ TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
 TEST(EditorSceneViewShapes, SelectionOutlinesLeaveOutThePrimary)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
     const NS::uint32 first = editor.SelectedActorId();
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));

@@ -27,9 +27,7 @@
 #include <optional>
 #include <string>
 
-#if NS_EDITOR_ENABLED
 #include <imgui.h>
-#endif
 
 namespace NS
 {
@@ -48,7 +46,6 @@ namespace NS
 
         void AssetsPanel::Render(LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             if (ImGui::Begin(k_PanelAssets))
             {
                 // 適用にはギズモ選択が要るので枠は Object モード時だけ出す
@@ -73,12 +70,8 @@ namespace NS
                 RenderSceneOpen(editor);
             }
             ImGui::End();
-#else
-            (void)editor;
-#endif
         }
 
-#if NS_EDITOR_ENABLED
         void AssetsPanel::RenderCreateMenu(std::string_view directory, LevelEditorController& editor, bool onFolder)
         {
             bool open = false;
@@ -460,11 +453,9 @@ namespace NS
                 ImGui::EndTable();
             }
         }
-#endif
 
         void AssetsPanel::RenderTree(std::string_view dir, LevelEditorController& editor) noexcept
         {
-#if NS_EDITOR_ENABLED
             // 開いた時だけ中身を走査する
             for (const std::string& sub : OS::FileSystem::ListDirectories(dir))
             {
@@ -486,10 +477,6 @@ namespace NS
             }
 
             RenderFiles(OS::FileSystem::ListFiles(dir), editor);
-#else
-            (void)dir;
-            (void)editor;
-#endif
         }
     } // namespace Editor
 } // namespace NS
