@@ -309,7 +309,7 @@ TEST(ActorChild, OrdinaryChildDrawsTheSharedModelWithItsOwnPoseAndOpacity)
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
-    scene.SetDevice(&device);
+    scene.GetSceneRenderer()->SetDevice(&device);
     SharedModelParent* parent = scene.SpawnActor<SharedModelParent>("parent");
     ASSERT_NE(parent, nullptr);
     NS::ChildActorObj* child = parent->ChildActor();

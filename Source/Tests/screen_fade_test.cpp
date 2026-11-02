@@ -3,7 +3,6 @@
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
-#include "NSlib/CoreObject/System/ScreenFadeDirector.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Gfx/D3DGlobal.h"
@@ -136,10 +135,6 @@ TEST(ScreenFade, SceneAdvancesOncePerStepWithoutWorldTimeWhileTheSceneIsStopped)
     scene.OnUpdate();
     EXPECT_FLOAT_EQ(scene.Fade().Alpha(), 0.5f);
     EXPECT_EQ(scene.Actors().ActorCount(), 1u);
-
-    NS::ScreenFadeDirector director;
-    director.Fade().BeginOut(0.0f);
-    EXPECT_TRUE(director.Fade().IsBlack());
 }
 
 TEST(ScreenFade, ScenePauseAndDisabledSimulationFreezeTheFade)

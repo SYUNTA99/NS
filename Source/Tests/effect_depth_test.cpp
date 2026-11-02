@@ -414,7 +414,7 @@ TEST(EffectPlayback, SceneAdvancesTheMaterialOncePerWorldStepDuringActorHitStop)
     NS::AssetManager assets(root);
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
-    scene.SetDevice(&device);
+    scene.GetSceneRenderer()->SetDevice(&device);
     PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
     ASSERT_NE(player, nullptr);
     scene.OnUpdate();
@@ -820,7 +820,7 @@ TEST(EffectLifecycle, RebuildingThePausedSceneClearsPixelsBeforeAnotherStep)
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
-    scene.SetDevice(&device);
+    scene.GetSceneRenderer()->SetDevice(&device);
     NS::Gfx::EffectScene* effects = scene.GetEffectScene();
     ASSERT_NE(effects, nullptr);
     const std::string root = NS::OS::FileSystem::ContentRoot();

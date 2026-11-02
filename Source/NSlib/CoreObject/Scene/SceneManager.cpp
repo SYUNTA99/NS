@@ -43,7 +43,7 @@ namespace NS
     Scene& SceneManager::StartScene(std::unique_ptr<Scene> scene, nlohmann::json data)
     {
         m_current = std::move(scene);
-        m_current->SetDevice(m_device);
+        m_current->GetSceneRenderer()->SetDevice(m_device);
         m_current->SetAudioDevice(m_audioDevice);
 
         m_current->ResetFromJson(std::move(data));

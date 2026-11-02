@@ -32,9 +32,9 @@ namespace
         // 世界を止めた 1 歩で当たりを今の姿へ揃えてから数える
         scene.SetSimulationEnabled(false);
         scene.OnUpdate();
-        return EnabledRegistrations{scene.EnabledRenderableCount(),
-                             scene.EnabledOverlayCount(),
-                             scene.EnabledLightCount(),
+        return EnabledRegistrations{scene.GetSceneRenderer()->EnabledRenderableCount(),
+                             scene.GetSceneRenderer()->EnabledOverlayCount(),
+                             scene.GetSceneRenderer()->EnabledLightCount(),
                              scene.GetCameraManager()->EnabledVirtualCameraCount(),
                              EnabledSensorCount(scene),
                              scene.GetPhysicsScene()->AttachedBodyCount()};
@@ -79,10 +79,10 @@ TEST(ClassObjLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
     EXPECT_EQ(RegisteredWhileAppeared(scene, player), (EnabledRegistrations{.renderables = 3, .overlays = 2, .sensors = 1}));
 
     // 当たりの画面の係も重ね描きに入るので、消えている間も枠と矢印が入っている事は、外した時に数が減るかで見る
-    const std::size_t registered = scene.OverlayCount();
+    const std::size_t registered = scene.GetSceneRenderer()->OverlayCount();
     NS::EndOverlay(&scene, &player->TargetIndicator());
     NS::EndOverlay(&scene, &player->SlamIndicator());
-    EXPECT_EQ(scene.OverlayCount(), registered - 2);
+    EXPECT_EQ(scene.GetSceneRenderer()->OverlayCount(), registered - 2);
 }
 
 TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
@@ -90,7 +90,7 @@ TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
     NS::Scene scene;
     NS::LightActor* light = scene.SpawnActor<NS::LightActor>("LightActor");
     EXPECT_EQ(RegisteredWhileAppeared(scene, light), EnabledRegistrations{.lights = 1});
-    EXPECT_EQ(scene.LightCount(), 1u);
+    EXPECT_EQ(scene.GetSceneRenderer()->LightCount(), 1u);
 
     // 消えている間はシーンの照明を書かず、出ると光の露出と向きで書く
     NS::Gfx::RenderSettings defaults{};

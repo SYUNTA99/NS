@@ -199,7 +199,7 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     preview.Reset(
         [&device] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SetDevice(&device);
+            scene->GetSceneRenderer()->SetDevice(&device);
             scene->SpawnActor<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
@@ -294,7 +294,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     preview.Reset(
         [&device, pose] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SetDevice(&device);
+            scene->GetSceneRenderer()->SetDevice(&device);
             scene->MainCamera()->ApplyPose(pose);
             scene->SpawnActor<TimelineMovingActor>("TimelineMovingActor");
             return scene;
@@ -487,7 +487,7 @@ TEST(EditorActionTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         TimelineGui gui;
         NS::Scene scene;
-        scene.SetDevice(&app.Device());
+        scene.GetSceneRenderer()->SetDevice(&app.Device());
         nlohmann::json snapshot = NS::MakeSceneJson();
         AddActorJson(snapshot, "MapPartsActor", 100, {0.0f, -0.5f, 0.0f}, {60.0f, 1.0f, 60.0f});
         AddActorJson(snapshot, "PlayerActor", 1, {0.0f, 1.0f, 0.0f});

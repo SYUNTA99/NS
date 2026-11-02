@@ -96,7 +96,7 @@ TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
     wave.strength.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     wave.frames = 30;
     screen.StartGroundWave(rock, wave);
-    ASSERT_GT(scene.GroundWaveShown().strength, 0.0f);
+    ASSERT_GT(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
     NS::HitPadVibration pad;
     pad.left.count = 1;
     pad.left.keys[0] = NS::Curve::Key{0.0f, 1.0f};
@@ -106,7 +106,7 @@ TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
 
     scene.ResetFromJson(NS::MakeSceneJson());
     EXPECT_EQ(screen.FlashFramesRemaining(), 0);
-    EXPECT_FLOAT_EQ(scene.GroundWaveShown().strength, 0.0f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
     EXPECT_FLOAT_EQ(NS::OS::Input::Get().Gamepad().Vibration().left, 0.0f);
 }
 
@@ -147,7 +147,7 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
     for (int frame = 0; frame < 3; ++frame)
     {
         SCOPED_TRACE(frame);
-        const NS::Gfx::DistortionRing& now = scene.DistortionRingShown();
+        const NS::Gfx::DistortionRing& now = scene.GetSceneRenderer()->DistortionRingShown();
         EXPECT_TRUE(now.center == desc.center);
         EXPECT_NEAR(now.radius, 0.1f * static_cast<float>(frame), 1.0e-6f);
         EXPECT_FLOAT_EQ(now.push, 0.03f);
@@ -156,15 +156,15 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
         if (frame == 0)
         {
             // 頼んだフレームの更新では進めない
-            EXPECT_FLOAT_EQ(scene.DistortionRingShown().radius, 0.0f);
+            EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().radius, 0.0f);
             screen->OnTick();
         }
     }
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
     // フレーム数 0 以下は出さない
     desc.frames = 0;
     screen->StartDistortionRing(player, desc);
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
 }
 
 // 歪みの輪は、頼んだ物が止めた時だけ消える
@@ -185,11 +185,11 @@ TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
     desc.frames = 10;
 
     reaction->StartDistortionRing(player, desc);
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
     screen->StopDistortionRing(rock);
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
     reaction->Stop(player);
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.03f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
     reaction->StopDistortionRing(player);
-    EXPECT_FLOAT_EQ(scene.DistortionRingShown().push, 0.0f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
 }

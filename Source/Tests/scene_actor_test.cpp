@@ -596,7 +596,7 @@ TEST(SceneActor, SnapshotReloadsEffectPreload)
     nlohmann::json doc = NS::MakeSceneJson();
     AddActorJson(doc, "PropActor", 1);
     NS::Scene scene;
-    scene.SetDevice(&device);
+    scene.GetSceneRenderer()->SetDevice(&device);
     scene.ResetFromJson(doc);
     NS::Gfx::EffectScene* effects = scene.GetEffectScene();
     ASSERT_NE(effects, nullptr);
@@ -763,7 +763,7 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
     AddActorJson(doc, "EffectEditorRock", 1);
     AddActorJson(doc, "EffectEditorRock", 2);
     NS::Scene scene;
-    scene.SetDevice(&device);
+    scene.GetSceneRenderer()->SetDevice(&device);
     scene.ResetFromJson(doc);
     NS::Gfx::EffectScene* effects = scene.GetEffectScene();
     ASSERT_NE(effects, nullptr);

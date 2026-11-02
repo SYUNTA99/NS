@@ -682,7 +682,7 @@ void LevelEditorController::SetSceneViews(std::vector<NS::SceneView> views)
 {
     if (m_scene != nullptr)
     {
-        m_scene->SetSceneViews(std::move(views));
+        m_scene->GetSceneRenderer()->SetSceneViews(std::move(views));
     }
 }
 
