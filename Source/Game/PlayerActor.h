@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game/Level/Health.h"
+#include "Game/Level/IGetCameraTarget.h"
 #include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
@@ -12,7 +13,6 @@
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
-#include "NSlib/CoreObject/IGet/IGetCameraTarget.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
@@ -65,7 +65,7 @@ namespace GL
 
 //! 固定の部品を OnInit で組むプレイヤー
 //! 衝突の観測・裁定を身体の移動より先に行う。死とゴールは持ち主の GameScene に通知する
-class PlayerActor : public NS::SceneActor, public NS::IGetCameraTarget
+class PlayerActor : public NS::SceneActor, public GL::Level::IGetCameraTarget
 {
 public:
     PlayerActor() noexcept;
@@ -304,7 +304,7 @@ public:
     // カメラ追従・コース進行・体力
     // =========================================================================
     [[nodiscard]] GL::Player::CameraTargetState GetCameraTargetState() const;
-    void WriteFollowState(NS::ThirdPersonFollow* vcam) const override;
+    void WriteFollowState(GL::Level::ThirdPersonFollow* vcam) const override;
 
     void InitAfterPlacement() override;
 

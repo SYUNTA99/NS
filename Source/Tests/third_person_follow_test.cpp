@@ -1,11 +1,11 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/EditorActors.h"
 #include "Game/Level/FollowCameraActor.h"
+#include "Game/Level/IGetCameraTarget.h"
+#include "Game/Level/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ActorJson.h"
-#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
-#include "NSlib/CoreObject/IGet/IGetCameraTarget.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -55,11 +55,11 @@ namespace
     };
 
     // 更新のたびに +x へ 1 m 進み、追従カメラに状態を読まれた時の自分の位置を控える物
-    class WalkingTargetActor final : public NS::SceneActor, public NS::IGetCameraTarget
+    class WalkingTargetActor final : public NS::SceneActor, public GL::Level::IGetCameraTarget
     {
     public:
         explicit WalkingTargetActor(std::vector<std::string>& log) : m_log(log) {}
-        void WriteFollowState(NS::ThirdPersonFollow* vcam) const override
+        void WriteFollowState(GL::Level::ThirdPersonFollow* vcam) const override
         {
             NS_ASSERT(Game, vcam != nullptr, "WriteFollowState: 渡したアクターか部品が無い");
             vcam->SetFollowMotion(true, NS::Vector3{});
@@ -129,7 +129,7 @@ namespace
         }
 
     private:
-        std::unique_ptr<NS::ThirdPersonFollow> m_vcam;
+        std::unique_ptr<GL::Level::ThirdPersonFollow> m_vcam;
     };
 
     // 一覧の先頭に追従カメラ、後ろに進む物を置く。カメラが一覧の順で追うと、進む前の位置を読む

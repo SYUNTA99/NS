@@ -200,6 +200,9 @@ namespace NS
 
     inline constexpr float k_Epsilon = 1e-4f;
 
+    //! 臨界減衰のバネが止まった所から差の半分まで詰める時の ωτ。(1 + ωτ) e^(−ωτ) = 0.5 の解
+    inline constexpr float k_CriticalSpringHalfOmegaTau = 1.678f;
+
     [[nodiscard]] inline bool IsNearlyZero(float value, float tolerance = k_Epsilon) noexcept
     {
         return std::abs(value) < tolerance;

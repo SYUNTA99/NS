@@ -1,5 +1,5 @@
 #include "Game/Level/FollowCameraActor.h"
-#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
+#include "Game/Level/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -18,7 +18,7 @@ namespace
     {
     public:
         // 接地と保つかを仮想カメラの口へ渡す
-        void Feed(NS::ThirdPersonFollow* vcam) const
+        void Feed(GL::Level::ThirdPersonFollow* vcam) const
         {
             NS_ASSERT(Game, vcam != nullptr, "Feed: 渡したアクターか部品が無い");
             vcam->SetFollowMotion(grounded, NS::Vector3{});
@@ -60,7 +60,7 @@ TEST(FollowImpactFraming, HeldFramingKeepsDistanceUntilTheRelease)
 {
     FramingScene world;
     world.Run(120);
-    const NS::ThirdPersonFollow& vcam = world.camera->Vcam();
+    const GL::Level::ThirdPersonFollow& vcam = world.camera->Vcam();
     const float distance = vcam.Distance();
 
     world.target->grounded = false;

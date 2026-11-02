@@ -22,6 +22,14 @@
 #include <utility>
 #include <vector>
 
+namespace GL
+{
+    namespace Level
+    {
+        class ThirdPersonFollow;
+    } // namespace Level
+} // namespace GL
+
 namespace NS
 {
     class SceneActor;
@@ -30,7 +38,6 @@ namespace NS
     class SceneCamera;
     class Object;
     class ActorList;
-    class ThirdPersonFollow;
     class Scene;
     struct SceneView;
     class AssetManager;
@@ -364,7 +371,7 @@ namespace NS
             //! 主対象がドラッグで動いた分を、控えた残りの選択へ同じだけ効かせる
             void ApplyDragToFollowers() noexcept;
 
-            [[nodiscard]] ThirdPersonFollow* SelectedFollowCamera() noexcept;
+            [[nodiscard]] GL::Level::ThirdPersonFollow* SelectedFollowCamera() noexcept;
             void SyncFollowCameraPoses();
             void ApplyFollowCameraGizmoDrag();
             void CaptureSelectionFromGizmo() noexcept;

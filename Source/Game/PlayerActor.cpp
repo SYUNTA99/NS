@@ -133,7 +133,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     // 体当たりから止めの明けまで、カメラは距離を保つ。当たる瞬間に画面が引かない
     state.framingHeld = IsBodySlamming() || IsHeldByTackleHit();
     state.hasRebound = true;
-    state.rebound = NS::FollowReboundDesc{
+    state.rebound = GL::Level::FollowReboundDesc{
         .rebounding = IsRebounding(),
         .slamDirection = BodySlamDirection(),
         .widenView = IsAirDashing() || IsDashRebounding(),
@@ -167,7 +167,7 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     return state;
 }
 
-void PlayerActor::WriteFollowState(NS::ThirdPersonFollow* vcam) const
+void PlayerActor::WriteFollowState(GL::Level::ThirdPersonFollow* vcam) const
 {
     NS_ASSERT(Game, vcam != nullptr, "PlayerActor::WriteFollowState: 書く先の追従カメラが無い");
     const GL::Player::CameraTargetState state = GetCameraTargetState();

@@ -12,7 +12,7 @@
 #include <memory>
 #include <optional>
 
-// トラウマの揺れ (外れと溜め) の決まりを縛る。連続・一撃・トラウマ・入力の向き・倍率
+// トラウマの揺れの決まりを縛る。連続・一撃・トラウマ・入力の向き・倍率
 
 namespace
 {
@@ -148,20 +148,6 @@ TEST(CameraTrauma, KickPeaksOnItsFrameTowardItsDirection)
     EXPECT_TRUE(trauma.IsFinished());
 }
 
-// 溜めは毎フレーム保ち、保たなくなったフレームから減る
-TEST(CameraTrauma, HeldTraumaStaysUntilReleased)
-{
-    NS::CameraTraumaModifier trauma;
-    for (int i = 0; i < 10; ++i)
-    {
-        trauma.HoldTrauma(0.6f, ShapeOf(10.0f, 1.0f));
-        trauma.Tick();
-        EXPECT_FLOAT_EQ(trauma.Trauma(), 0.6f);
-    }
-    trauma.Tick();
-    EXPECT_LT(trauma.Trauma(), 0.6f);
-}
-
 // 揺れは描く姿勢にだけ掛かり、遊びが読む水平の前は変わらない。倍率 0 で揺れが消える
 TEST(CameraTrauma, ShakesTheDrawnPoseOnlyAndScalesBySetting)
 {
@@ -228,20 +214,8 @@ TEST(CameraTrauma, ShapeThatNeverEndsIsRejected)
     NS::CameraTraumaDesc kick = TraumaOf(0.5f);
     kick.kick.degrees = nan;
     EXPECT_FALSE(cameras->AddTrauma(kick));
-    EXPECT_FALSE(cameras->HoldTrauma(0.5f, ShapeOf(10.0f, -1.0f)));
-    EXPECT_FALSE(cameras->HoldTrauma(0.5f, ShapeOf(nan, 1.0f)));
+    NS::CameraTraumaDesc notANumber = TraumaOf(0.5f);
+    notANumber.shape.frequency = nan;
+    EXPECT_FALSE(cameras->AddTrauma(notANumber));
     EXPECT_FLOAT_EQ(cameras->Trauma(), 0.0f);
-}
-
-// 弱い保ちは強い揺れの形を奪わない。外れの揺れの途中に溜め始めても、外れの揺れのまま減る
-TEST(CameraTrauma, WeakerHoldKeepsTheStrongerShape)
-{
-    NS::CameraTraumaModifier trauma;
-    trauma.AddTrauma(TraumaOf(0.9f));
-    NS::CameraTraumaShape charge = ShapeOf(20.0f, 4.0f);
-    charge.exponent = 3.0f;
-    trauma.HoldTrauma(0.2f, charge);
-    EXPECT_FLOAT_EQ(trauma.ShakeAmount(), 0.81f);
-    trauma.HoldTrauma(0.95f, charge);
-    EXPECT_NEAR(trauma.ShakeAmount(), 0.95f * 0.95f * 0.95f, 1.0e-5f);
 }

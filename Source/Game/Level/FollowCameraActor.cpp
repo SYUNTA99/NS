@@ -26,7 +26,7 @@ namespace GL
         {
             const NS::SceneActor* target = OwningScene()->Actors().FindActor(m_vcam->TargetRef());
             // 状態を渡す相手は今は自機だけ。実行時型情報を切っているので、型で確かめてから口へ変える
-            const NS::IGetCameraTarget* state = NS::Cast<::PlayerActor>(target);
+            const IGetCameraTarget* state = NS::Cast<::PlayerActor>(target);
             m_vcam->SetTarget(target, state);
         }
 

@@ -15,6 +15,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
 #include "Game/Level/SlamAim.h"
+#include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/AABB.h"
@@ -42,7 +43,6 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
-#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -870,7 +870,7 @@ namespace NS
             return player != nullptr && m_selectedActorId != k_NoActorId && m_selectedActorId == player->Id();
         }
 
-        ThirdPersonFollow* LevelEditorController::SelectedFollowCamera() noexcept
+        GL::Level::ThirdPersonFollow* LevelEditorController::SelectedFollowCamera() noexcept
         {
             if (GL::Level::FollowCameraActor* camera = Cast<GL::Level::FollowCameraActor>(SelectedActor()))
             {
@@ -891,7 +891,7 @@ namespace NS
                 {
                     continue;
                 }
-                ThirdPersonFollow* follow = &camera->Vcam();
+                GL::Level::ThirdPersonFollow* follow = &camera->Vcam();
                 if (m_gizmo.IsDragging() && object->Id() == m_selectedActorId)
                 {
                     continue;
@@ -908,7 +908,7 @@ namespace NS
             {
                 return;
             }
-            ThirdPersonFollow* follow = SelectedFollowCamera();
+            GL::Level::ThirdPersonFollow* follow = SelectedFollowCamera();
             if (follow == nullptr)
             {
                 return;

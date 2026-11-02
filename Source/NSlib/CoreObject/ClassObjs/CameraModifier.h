@@ -197,9 +197,6 @@ namespace NS
         //! トラウマを加算し、波形とシードを更新する。kick が有効なら再開する
         void AddTrauma(const CameraTraumaDesc& desc) noexcept;
 
-        //! 今フレームのトラウマ下限を level (0〜1) に保つ。現在値以上の場合のみ波形を更新し、次フレームから減衰する
-        void HoldTrauma(float level, const CameraTraumaShape& shape) noexcept;
-
         [[nodiscard]] float Trauma() const noexcept { return m_trauma; }
         //! トラウマ^exponent
         [[nodiscard]] float ShakeAmount() const noexcept;
@@ -216,7 +213,6 @@ namespace NS
 
         CameraTraumaShape m_shape{};
         float m_trauma = 0.0f;
-        float m_held = 0.0f;
         uint32 m_seed = 0;
         CameraKick m_kick{};
         int m_kickFrame = 0;

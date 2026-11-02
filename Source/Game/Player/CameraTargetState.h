@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Game/Level/ThirdPersonFollow.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 
 namespace GL
 {
@@ -14,7 +14,7 @@ namespace GL
             NS::Vector3 velocity{0.0f, 0.0f, 0.0f}; // 速度 (m/s)
             float heightOffset = 0.0f;              // 根から見る所までの高さのずれ (m)
             bool hasRebound = false;
-            NS::FollowReboundDesc rebound{};
+            Level::FollowReboundDesc rebound{};
             //! 体当たりから止めの明けまでか。真の間、カメラは距離をその時のまま保つ
             bool framingHeld = false;
         };
