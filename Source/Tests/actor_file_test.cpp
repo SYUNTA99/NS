@@ -1025,6 +1025,28 @@ TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 }
 
+// 読めない .actor へ欄の変更を書かない。保存していない動作がファイルへ入らず、壊れた中身も残り、未保存と分かる
+TEST(ActorFile, UnreadableActorFileIsNotOverwrittenAndStaysUnsaved)
+{
+    const ScopedActorFileDirectory scope("UnreadableActorFile");
+    NS::Scene scene;
+    ResetTwoProps(scene);
+    LevelEditorController editor(scene);
+    NS::SceneActor* first = scene.Actors().FindByActorId(1);
+    ASSERT_NE(first, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
+    const std::string path = NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor");
+    const std::string broken = "{ broken";
+    ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(path, std::as_bytes(std::span{broken.data(), broken.size()})));
+
+    sphere->SetRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, first, sphere, "半径"));
+
+    EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), broken);
+    EXPECT_TRUE(editor.HasUnsavedAssetWrites());
+}
+
 // 欄を直した後に動作の窓が .actor の動作を書いても、欄の取り消しとやり直しは欄だけを戻し、動作は残る
 TEST(ActorFile, UndoingAFieldEditKeepsActionsWrittenAfterIt)
 {

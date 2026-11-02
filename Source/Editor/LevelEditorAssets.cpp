@@ -63,17 +63,20 @@ namespace
         const std::string path = NS::OS::FileSystem::Combine(library.Directory(), name + ".actor");
         if (NS::OS::FileSystem::Exists(path))
         {
-            // 読めないファイルは ReadActorFileAt が ERROR を出している。残す動作が無いので今の文書で書き直す
-            if (const std::optional<nlohmann::json> saved = NS::ReadActorFileAt(path))
+            // 読めないファイルは ReadActorFileAt が ERROR を出している
+            // 上書きすると保存していない動作が入り、手で直せる中身も消えるので書かない
+            const std::optional<nlohmann::json> saved = NS::ReadActorFileAt(path);
+            if (!saved)
             {
-                const nlohmann::json* actions = NS::ActorFileActions(*saved);
-                nlohmann::json savedActions = nlohmann::json::array();
-                if (actions != nullptr)
-                {
-                    savedActions = *actions;
-                }
-                NS::SetActorFileActions(document, std::move(savedActions));
+                return false;
             }
+            const nlohmann::json* actions = NS::ActorFileActions(*saved);
+            nlohmann::json savedActions = nlohmann::json::array();
+            if (actions != nullptr)
+            {
+                savedActions = *actions;
+            }
+            NS::SetActorFileActions(document, std::move(savedActions));
         }
         return NS::WriteActorFileAt(path, document);
     }
