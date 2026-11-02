@@ -408,7 +408,8 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
 
 void PlayerActor::ObserveStick() noexcept
 {
-    const NS::Vector3 stick = m_input->DesiredDirection() * m_input->DesiredSpeedScale();
+    // カメラで回す前の入力で比べる。世界の向きで比べると、カメラを回すだけで動いたとみなす
+    const NS::Vector3 stick{m_input->ClimbRight(), 0.0f, m_input->ClimbForward()};
     m_airDash.m_stickMoving = (stick - m_airDash.m_prevStick).Length() > m_params->m_reboundStopStickChange;
     m_airDash.m_prevStick = stick;
     if (m_airDash.m_stickMoving)
