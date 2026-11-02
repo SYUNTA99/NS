@@ -406,16 +406,25 @@ namespace NS
                                                       .onScreen = true});
         }
 
-        void operator()(const HitFlashItem& flash) const { reaction.StartFlash(owner.actor, length, flash.alpha); }
+        void operator()(const HitFlashItem& flash) const
+        {
+            if (HitScreenDirector* screen = HitScreenOf(owner.actor))
+            {
+                screen->StartFlash(owner.actor, length, flash.alpha);
+            }
+        }
 
         void operator()(const HitDistortionRingItem& ring) const
         {
-            reaction.StartDistortionRing(owner.actor,
-                                         HitDistortionRingDesc{.center = context.position,
-                                                               .radius = ring.radius,
-                                                               .push = ring.push,
-                                                               .halfWidth = ring.halfWidth,
-                                                               .frames = length});
+            if (HitScreenDirector* screen = HitScreenOf(owner.actor))
+            {
+                screen->StartDistortionRing(owner.actor,
+                                            HitDistortionRingDesc{.center = context.position,
+                                                                  .radius = ring.radius,
+                                                                  .push = ring.push,
+                                                                  .halfWidth = ring.halfWidth,
+                                                                  .frames = length});
+            }
         }
 
         void operator()(const HitGroundWaveItem& wave) const
@@ -432,15 +441,20 @@ namespace NS
 
         void operator()(const HitPadVibrationItem& pad) const
         {
+            PadRumbleDirector* rumble = PadRumbleOf(owner.actor);
+            if (rumble == nullptr)
+            {
+                return;
+            }
             if (!pad.byDirection)
             {
                 const HitPadVibration vibration{.left = pad.left, .right = pad.right, .frames = length};
                 if (pad.layered)
                 {
-                    reaction.BlendPadVibration(owner.actor, vibration);
+                    rumble->Blend(owner.actor, vibration);
                     return;
                 }
-                reaction.StartPadVibration(owner.actor, vibration);
+                rumble->Start(owner.actor, vibration);
                 return;
             }
             struct Directed
@@ -467,10 +481,10 @@ namespace NS
                                                 .frames = length};
                 if (started)
                 {
-                    reaction.BlendPadVibration(owner.actor, vibration);
+                    rumble->Blend(owner.actor, vibration);
                     continue;
                 }
-                reaction.StartPadVibration(owner.actor, vibration);
+                rumble->Start(owner.actor, vibration);
                 started = true;
             }
         }
@@ -604,15 +618,6 @@ namespace NS
         return {m_ownerRuns.begin() + static_cast<std::ptrdiff_t>(first), m_ownerRuns.end()};
     }
 
-    void HitReaction::StartFlash(const SceneActor* owner, int frames, float alpha) noexcept
-    {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartFlash: 持ち主が null");
-        if (HitScreenDirector* screen = HitScreenOf(owner))
-        {
-            screen->StartFlash(owner, frames, alpha);
-        }
-    }
-
     bool HitReaction::StartSink(const SceneActor* owner, const CameraSinkDesc& desc)
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartSink: 持ち主が null");
@@ -681,15 +686,6 @@ namespace NS
         return true;
     }
 
-    void HitReaction::StartDistortionRing(const SceneActor* owner, const HitDistortionRingDesc& desc) noexcept
-    {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartDistortionRing: 持ち主が null");
-        if (HitScreenDirector* screen = HitScreenOf(owner))
-        {
-            screen->StartDistortionRing(owner, desc);
-        }
-    }
-
     void HitReaction::StopDistortionRing(const SceneActor* owner) noexcept
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::StopDistortionRing: 持ち主が null");
@@ -705,24 +701,6 @@ namespace NS
         if (HitScreenDirector* screen = HitScreenOf(owner))
         {
             screen->StopGroundWave(owner);
-        }
-    }
-
-    void HitReaction::StartPadVibration(const SceneActor* owner, const HitPadVibration& pad)
-    {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartPadVibration: 持ち主が null");
-        if (PadRumbleDirector* rumble = PadRumbleOf(owner))
-        {
-            rumble->Start(owner, pad);
-        }
-    }
-
-    void HitReaction::BlendPadVibration(const SceneActor* owner, const HitPadVibration& pad)
-    {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::BlendPadVibration: 持ち主が null");
-        if (PadRumbleDirector* rumble = PadRumbleOf(owner))
-        {
-            rumble->Blend(owner, pad);
         }
     }
 
