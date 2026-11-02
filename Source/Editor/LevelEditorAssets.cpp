@@ -106,17 +106,10 @@ namespace
                 continue;
             }
             NS::ApplyActorFile(actor);
-            actor->ReloadAssets();
             // 束とセンサーの値はアクターを作る時に .actor から読むので、読み直させて次の当たりに効かせる
-            // ReloadActorFileOnlyValues は呼ばない。ここを通る書き換えは動作を変えず、読み直すと再生中の動作が止まる
-            if (NS::HitSensorsObj* sensors = actor->HitSensorsClassObj())
-            {
-                sensors->ReloadValues(actor);
-            }
-            if (NS::HitReaction* reaction = actor->HitReactionClassObj())
-            {
-                reaction->ReloadSets(actor);
-            }
+            // 動作は読み直さない。ここを通る書き換えは動作を変えず、読み直すと再生中の動作が止まる
+            actor->ReloadActorFileOnlyValuesExceptActions();
+            actor->ReloadAssets();
         }
     }
 

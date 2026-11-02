@@ -102,7 +102,10 @@ namespace
 
 LevelEditorController::LevelEditorController(NS::Scene& scene) noexcept : m_scene(scene), m_applier(scene)
 {
-    // 作る道と取り消しは Setup の前から使えるよう、適用処理と採番はここで差す
+    // シーンだけで決まる物は Setup の前から使えるよう、ここで差す。入力は Application が要るので Setup で差す
+    m_editor.SetActors(&m_scene.Actors());
+    m_editor.SetSceneCamera(&MainCamera());
+    m_editor.SetCaptureLevelFn([this]() { return m_scene.ToJson(); });
     m_editor.SetApplier(&m_applier);
     m_editor.SetAllocateIdFn([this]() { return m_scene.Actors().AllocateActorId(); });
     m_editor.SetSceneEditableFn([this]() { return IsSceneEditable(); });
@@ -309,14 +312,14 @@ void LevelEditorController::ApplyPlayCursor(NS::Editor::PlayCursor cursor) noexc
 
 const NS::ActorList& LevelEditorController::Actors() const noexcept { return m_scene.Actors(); }
 
-NS::CameraManager* LevelEditorController::Cameras() const noexcept
+NS::CameraManager& LevelEditorController::Cameras() const noexcept
 {
-    return m_scene.GetCameraManager();
+    return *m_scene.GetCameraManager();
 }
 
-NS::SceneCamera* LevelEditorController::MainCamera() const noexcept
+NS::SceneCamera& LevelEditorController::MainCamera() const noexcept
 {
-    return m_scene.MainCamera();
+    return *m_scene.MainCamera();
 }
 
 void LevelEditorController::Setup(std::string_view startLevelName)
@@ -333,11 +336,7 @@ void LevelEditorController::Setup(std::string_view startLevelName)
     m_editorCamera.SetFarPlane(5000.0f);
     m_editorCamera.SetFovY(NS::ToRadians(NS::Degrees{60.0f}));
 
-    // 保存は実体から作り、読込は取込関数がデータを実体へ写して用済みにする
-    m_editor.SetCaptureLevelFn([this]() { return m_scene.ToJson(); });
-    m_editor.SetActors(&m_scene.Actors());
     m_editor.SetInput(&app->Input());
-    m_editor.SetSceneCamera(MainCamera());
 
     m_gizmo.SetInput(&app->Input());
 
@@ -382,7 +381,7 @@ void LevelEditorController::FocusLoadedScene() noexcept
     m_editorCamera.SetCenter(startCenter);
     m_editorCamera.SetDistance(5.0f);
     m_editBlending = false;
-    MainCamera()->ApplyPose(m_editorCamera.Pose());
+    MainCamera().ApplyPose(m_editorCamera.Pose());
 }
 
 void LevelEditorController::Teardown()
@@ -420,10 +419,7 @@ void LevelEditorController::EnterPlay() noexcept
     // 始める手順は出荷と同じく StartPlay が行う。曲は編集へ戻る時に止まるので、プレイを始めるたびに始まる
     m_scene.StartPlay();
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
-    if (NS::CameraManager* cameras = Cameras())
-    {
-        cameras->BeginBlendFrom(m_editorCamera.Pose());
-    }
+    Cameras().BeginBlendFrom(m_editorCamera.Pose());
     m_scene.SetSimulationEnabled(true);
     // 編集の間の押し (配置のクリック・ショートカット) を、プレイの最初の歩へ渡さない
     DiscardPlayerPresses();
@@ -451,12 +447,9 @@ void LevelEditorController::EnterEdit() noexcept
     // プレイを終え、プレイを始めた時の JSON から編集の姿へ組み直す
     LeavePlayForEdit();
     // プレイ視点から自由視点へ繋ぐ。始点は直前まで実カメラに書かれていた pose
-    if (NS::CameraManager* cameras = Cameras())
-    {
-        m_editBlendFrom = cameras->LastPose();
-        m_editBlendElapsed = 0.0f;
-        m_editBlending = true;
-    }
+    m_editBlendFrom = Cameras().LastPose();
+    m_editBlendElapsed = 0.0f;
+    m_editBlending = true;
     // 編集復帰の組み直しを跨いだ選択を、id から現在のオブジェクトへ貼り直してから編集へ戻る
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -606,11 +599,11 @@ std::optional<NS::CameraPose> LevelEditorController::SceneViewPose() noexcept
 std::optional<NS::CameraPose> LevelEditorController::GameViewPose() noexcept
 {
     // プレイ中は CameraManager (follow・ブレンド維持) 任せ。編集中だけゲームカメラを上書きする
-    if (m_mode == Mode::Play || Cameras() == nullptr)
+    if (m_mode == Mode::Play)
     {
         return std::nullopt;
     }
-    return Cameras()->EvaluateTopPose(1.0f);
+    return Cameras().EvaluateTopPose(1.0f);
 }
 
 nlohmann::json LevelEditorController::SceneSnapshot() const
@@ -686,22 +679,19 @@ void LevelEditorController::TickEdit(const NS::OS::InputPresses& presses)
 
     // 自由視点を更新して実カメラへ反映し、ギズモと編集の光線判定に同じ視点を使う
     // 編集中は世界が止まり CameraManager が実カメラを書かないので、この書き込みが上書きされずに残る
-    if (NS::SceneCamera* camera = MainCamera())
+    NS::CameraPose pose = m_editorCamera.Pose();
+    if (m_editBlending)
     {
-        NS::CameraPose pose = m_editorCamera.Pose();
-        if (m_editBlending)
+        m_editBlendElapsed += NS::OS::FrameTimer::FixedDelta();
+        const float t = std::min(m_editBlendElapsed / k_EditBlendSeconds, 1.0f);
+        const float eased = NS::SmoothStep(t);
+        pose = NS::CameraPose::Lerp(m_editBlendFrom, pose, eased);
+        if (t >= 1.0f)
         {
-            m_editBlendElapsed += NS::OS::FrameTimer::FixedDelta();
-            const float t = std::min(m_editBlendElapsed / k_EditBlendSeconds, 1.0f);
-            const float eased = NS::SmoothStep(t);
-            pose = NS::CameraPose::Lerp(m_editBlendFrom, pose, eased);
-            if (t >= 1.0f)
-            {
-                m_editBlending = false;
-            }
+            m_editBlending = false;
         }
-        camera->ApplyPose(pose);
     }
+    MainCamera().ApplyPose(pose);
 
     // 同時に1つの道具だけがクリックと R を使う。グリッド入力はグリッド配置中だけ受ける。
     // モード切替は Editor の UI ボタンが SetGizmoToolActive で入れる。Tab は Edit↔Play 専用
@@ -710,7 +700,7 @@ void LevelEditorController::TickEdit(const NS::OS::InputPresses& presses)
     m_editor.SetInputSuppressed(m_editTool != EditTool::Grid);
     TickStageBuild(presses);
 
-    if (objectMode && Cameras())
+    if (objectMode)
     {
         // 追従カメラの Root を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
         SyncFollowCameraPoses();
@@ -719,7 +709,7 @@ void LevelEditorController::TickEdit(const NS::OS::InputPresses& presses)
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
 
-        const NS::Matrix vp = Cameras()->ViewProjection();
+        const NS::Matrix vp = Cameras().ViewProjection();
         const bool wasDragging = m_gizmoWasDragging;
         m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked, presses);
 
@@ -786,9 +776,9 @@ void LevelEditorController::Render()
         m_editor.Palette().Render(CurrentViewRect());
     }
     // Object モードのギズモは最前面の drawlist に重ねる
-    if (m_gizmo.IsActive() && Cameras())
+    if (m_gizmo.IsActive())
     {
-        m_gizmo.Render(Cameras()->ViewProjection(), CurrentViewRect());
+        m_gizmo.Render(Cameras().ViewProjection(), CurrentViewRect());
     }
 }
 
@@ -820,8 +810,7 @@ void LevelEditorController::SetEditTool(EditTool tool) noexcept
 void LevelEditorController::TickStageBuild(const NS::OS::InputPresses& presses)
 {
     m_stagePlacement.reset();
-    if (m_editTool != EditTool::StageBuild || m_editShortcutsBlocked || !m_gameViewHovered || m_gameViewHidden ||
-        MainCamera() == nullptr)
+    if (m_editTool != EditTool::StageBuild || m_editShortcutsBlocked || !m_gameViewHovered || m_gameViewHidden)
     {
         return;
     }
@@ -851,7 +840,7 @@ void LevelEditorController::TickStageBuild(const NS::OS::InputPresses& presses)
     int localY = 0;
     NS::Editor::ViewRectToLocal(view, mouseX, mouseY, localX, localY);
     const NS::Ray ray =
-        NS::Editor::ScreenToWorldRay(MainCamera()->ViewProjection(), NS::Editor::ViewRectSize(view), localX, localY);
+        NS::Editor::ScreenToWorldRay(MainCamera().ViewProjection(), NS::Editor::ViewRectSize(view), localX, localY);
     m_stagePlacement = m_stageBuilder.Placement(ray, m_scene.Physics());
     if (m_stagePlacement && presses.WasPressed(NS::OS::MouseButton::Left))
     {

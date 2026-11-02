@@ -855,6 +855,33 @@ TEST(EditorActionTimelinePanel, RevertReloadsActorsOfADerivedActorFile)
     EXPECT_EQ(eventCount(), before.front().events.size());
 }
 
+// インスペクターの .actor の保存は、値を読み直しても再生中の動作を止めない
+TEST(EditorActorFileWrite, SavingValuesKeepsTheRunningAction)
+{
+    const ScopedActorFileDirectory directory("EditorActorFileWriteRunning");
+    NS::Scene scene;
+    LevelEditorController editor(scene);
+    PlaceEditedPlayer(directory, scene, editor);
+    NS::SceneActor* actor = scene.Actors().FindByActorId(1);
+    ASSERT_NE(actor, nullptr);
+    const NS::HitSensor* sensor = actor->HitSensorsClassObj()->Find("Body");
+    ASSERT_NE(sensor, nullptr);
+    const std::vector<NS::ActorAction> actions =
+        NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
+    ASSERT_FALSE(actions.empty());
+    NS::ActionTimeline& timeline = *actor->ActionTimelineClassObj();
+    ASSERT_TRUE(timeline.Start(
+        actor->ActionTimelineSelfOf(), actions.front().name, 0, actor->Root().Position(), sensor, sensor));
+
+    NS::HitReactionSet set;
+    set.name = "Hit";
+    editor.WriteActorFileHitReactions("PlayerActor", {set});
+
+    EXPECT_NE(actor->HitReactionClassObj()->FindSet("Hit"), nullptr);
+    EXPECT_TRUE(timeline.IsRunning());
+    EXPECT_EQ(timeline.CurrentName(), actions.front().name);
+}
+
 // インスペクターの .actor の保存は、タイムラインの保存していない動作を書かない。書くと「元に戻す」で動作が戻らない
 TEST(EditorActionTimelinePanel, RevertRestoresActionsAfterTheSameActorFileIsSavedFromTheInspector)
 {
