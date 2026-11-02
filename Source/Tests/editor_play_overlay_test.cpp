@@ -10,6 +10,8 @@
 #include <cstddef>
 #include <vector>
 
+using NS::Editor::LevelEditorController;
+
 // Scene タブを描く時に渡される溜め場へ、エディタが図形を積むことを縛る
 // どのビューにこの口が付くかは ImGui のパネルが決めるので、ここでは見ない
 

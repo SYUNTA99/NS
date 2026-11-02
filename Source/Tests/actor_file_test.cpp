@@ -46,6 +46,8 @@
 #include <utility>
 #include <vector>
 
+using NS::Editor::LevelEditorController;
+
 // 値の 3 段の重なり (コードの既定値 < .actor の値 < シーンのアクターの上書きできる欄) と、差分の保存と、エディタの書く先を縛る
 
 namespace

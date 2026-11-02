@@ -26,6 +26,8 @@
 #include <string>
 #include <vector>
 
+using NS::Editor::LevelEditorController;
+
 namespace
 {
     class EditorAssetPreview : public testing::Test

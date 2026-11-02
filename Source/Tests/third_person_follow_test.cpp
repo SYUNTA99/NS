@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 
+using NS::Editor::LevelEditorController;
+
 // 追従カメラは追う相手を取得して持つ。エディタで「追従対象」を書き換えた後は、書き換えた先の相手を追う
 
 namespace
