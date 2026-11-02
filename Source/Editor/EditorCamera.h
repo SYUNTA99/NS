@@ -23,6 +23,12 @@ namespace NS
             bool flying = false;          // 見回しドラッグ中か。偽なら見回しと移動を捨てる
         };
 
+        //! 正の向きと負の向きのキーから軸の値を作る。両方押すと 0
+        [[nodiscard]] constexpr float KeyAxis(bool positive, bool negative) noexcept
+        {
+            return static_cast<float>(positive) - static_cast<float>(negative);
+        }
+
         //! 編集用の自由視点。実カメラは所有せず、Pose が返す姿勢を呼び手が反映する
         class EditorCamera
         {
