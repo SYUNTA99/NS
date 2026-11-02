@@ -292,9 +292,9 @@ void PlayerActor::DrawChargeRing() const
     {
         color = NS::Color{1.0f, 1.0f, 1.0f, 1.0f};
     }
-    NS::Gfx::DebugDraw::Circle(NS::Vector3{foot.x, foot.y + 0.05f, foot.z},
-                               NS::Vector3{radius, 0.0f, 0.0f},
-                               NS::Vector3{0.0f, 0.0f, radius},
-                               color);
+    NS::Gfx::DrawDebugCircle(NS::Vector3{foot.x, foot.y + 0.05f, foot.z},
+                             NS::Vector3{radius, 0.0f, 0.0f},
+                             NS::Vector3{0.0f, 0.0f, radius},
+                             color);
 }
 #endif

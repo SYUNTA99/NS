@@ -17,7 +17,6 @@ namespace
 {
     using NS::Color;
     using NS::Vector3;
-    namespace DD = NS::Gfx::DebugDraw;
 
     // 面の上限。エディタの面を描くのに使う枚数より十分大きい
     constexpr std::size_t k_MaxFaceTriangles = 12960;
@@ -27,58 +26,59 @@ namespace
     void PushTriangle(int index)
     {
         const float x = static_cast<float>(index);
-        DD::Triangle(Vector3{x, 0.0f, 0.0f}, Vector3{x + 1.0f, 0.0f, 0.0f}, Vector3{x, 1.0f, 0.0f}, k_FaceColor);
+        NS::Gfx::DrawDebugTriangle(
+            Vector3{x, 0.0f, 0.0f}, Vector3{x + 1.0f, 0.0f, 0.0f}, Vector3{x, 1.0f, 0.0f}, k_FaceColor);
     }
 } // namespace
 
 // 面は線と別に積む。線の数は変えない
 TEST(DebugDrawTest, TriangleAddsThreeFaceVerticesApartFromLines)
 {
-    DD::Clear();
+    NS::Gfx::ClearDebugDraw();
     PushTriangle(0);
-    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{3});
-    EXPECT_EQ(DD::VertexCount(), std::size_t{0});
+    EXPECT_EQ(NS::Gfx::DebugDrawFaceVertexCount(), std::size_t{3});
+    EXPECT_EQ(NS::Gfx::DebugDrawVertexCount(), std::size_t{0});
 }
 
 TEST(DebugDrawTest, ClearDropsFacesToo)
 {
-    DD::Clear();
+    NS::Gfx::ClearDebugDraw();
     PushTriangle(0);
-    DD::Clear();
-    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
+    NS::Gfx::ClearDebugDraw();
+    EXPECT_EQ(NS::Gfx::DebugDrawFaceVertexCount(), std::size_t{0});
 }
 
 // 面も線と同じく、前の固定ステップの分を捨てる
-TEST(DebugDrawTest, BeginStepDropsTheFacesOfThePreviousStep)
+TEST(DebugDrawTest, BeginDebugDrawStepDropsTheFacesOfThePreviousStep)
 {
-    DD::Clear();
+    NS::Gfx::ClearDebugDraw();
     PushTriangle(0);
-    DD::BeginStep();
-    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
+    NS::Gfx::BeginDebugDrawStep();
+    EXPECT_EQ(NS::Gfx::DebugDrawFaceVertexCount(), std::size_t{0});
 }
 
 // 上限の枚数までは 1 枚も捨てない
 TEST(DebugDrawTest, FacesHoldUpToTheirCapacity)
 {
-    DD::Clear();
+    NS::Gfx::ClearDebugDraw();
     for (std::size_t i = 0; i < k_MaxFaceTriangles; ++i)
     {
         PushTriangle(static_cast<int>(i));
     }
-    EXPECT_EQ(DD::FaceVertexCount(), k_MaxFaceTriangles * 3);
-    DD::Clear();
+    EXPECT_EQ(NS::Gfx::DebugDrawFaceVertexCount(), k_MaxFaceTriangles * 3);
+    NS::Gfx::ClearDebugDraw();
 }
 
 // 上限を超えたら古い物から 1 枚ずつ捨て、上限の枚数で止まる
 TEST(DebugDrawTest, FaceOverflowDropsTheOldestAndStaysAtTheCapacity)
 {
-    DD::Clear();
+    NS::Gfx::ClearDebugDraw();
     for (std::size_t i = 0; i < k_MaxFaceTriangles + 5; ++i)
     {
         PushTriangle(static_cast<int>(i));
     }
-    EXPECT_EQ(DD::FaceVertexCount(), k_MaxFaceTriangles * 3);
-    DD::Clear();
+    EXPECT_EQ(NS::Gfx::DebugDrawFaceVertexCount(), k_MaxFaceTriangles * 3);
+    NS::Gfx::ClearDebugDraw();
 }
 
 // 図形の入れ物 DebugShapes: ステップの図形 (自由関数の積み先) とは別の溜め場で、互いに数を動かさない
@@ -95,30 +95,30 @@ namespace
 
 TEST(DebugShapesTest, PushingIntoShapesDoesNotChangeTheStepShapes)
 {
-    DD::Clear();
+    NS::Gfx::ClearDebugDraw();
     NS::Gfx::DebugShapes shapes;
     shapes.Line(Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_LineColor);
     shapes.Triangle(Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}, k_FaceColor);
     EXPECT_EQ(shapes.VertexCount(), std::size_t{2});
     EXPECT_EQ(shapes.FaceVertexCount(), std::size_t{3});
-    EXPECT_EQ(DD::VertexCount(), std::size_t{0});
-    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
+    EXPECT_EQ(NS::Gfx::DebugDrawVertexCount(), std::size_t{0});
+    EXPECT_EQ(NS::Gfx::DebugDrawFaceVertexCount(), std::size_t{0});
 }
 
 TEST(DebugShapesTest, StepShapesDoNotLandInAnIndependentShapes)
 {
-    DD::Clear();
+    NS::Gfx::ClearDebugDraw();
     const NS::Gfx::DebugShapes shapes;
-    DD::Line(Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_LineColor);
+    NS::Gfx::DrawDebugLine(Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, k_LineColor);
     EXPECT_EQ(shapes.VertexCount(), std::size_t{0});
-    EXPECT_EQ(DD::VertexCount(), std::size_t{2});
-    DD::Clear();
+    EXPECT_EQ(NS::Gfx::DebugDrawVertexCount(), std::size_t{2});
+    NS::Gfx::ClearDebugDraw();
 }
 
 // 自由関数と同じ頂点の数で積む。移した形の見張り
 TEST(DebugShapesTest, ShapesPushTheSameVertexCountsAsTheFreeFunctions)
 {
-    DD::Clear();
+    NS::Gfx::ClearDebugDraw();
     NS::Gfx::DebugShapes shapes;
 
     shapes.AABB(NS::AABB{}, k_LineColor);
@@ -140,9 +140,9 @@ TEST(DebugShapesTest, ShapesPushTheSameVertexCountsAsTheFreeFunctions)
     shapes.Capsule(Vector3{}, Vector3{0.0f, 1.0f, 0.0f}, 0.5f, k_LineColor);
     EXPECT_EQ(shapes.VertexCount(), k_CircleVertices * 2 + 8);
 
-    DD::AABB(NS::AABB{}, k_LineColor);
-    EXPECT_EQ(DD::VertexCount(), std::size_t{24});
-    DD::Clear();
+    NS::Gfx::DrawDebugAABB(NS::AABB{}, k_LineColor);
+    EXPECT_EQ(NS::Gfx::DebugDrawVertexCount(), std::size_t{24});
+    NS::Gfx::ClearDebugDraw();
 }
 
 TEST(DebugShapesTest, ClearDropsLinesAndFaces)

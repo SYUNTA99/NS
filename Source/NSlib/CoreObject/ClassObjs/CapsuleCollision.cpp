@@ -89,6 +89,6 @@ namespace NS
 
     JPH::BodyID CapsuleCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current, const Matrix& world)
     {
-        return physics.SyncCapsule(current, WorldCapsule(world), Phys::ObjectLayers::Terrain);
+        return physics.SyncCapsule(current, WorldCapsule(world), Phys::k_TerrainObjectLayer);
     }
 } // namespace NS

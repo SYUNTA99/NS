@@ -317,7 +317,7 @@ namespace
         }
         const NS::Quaternion turn = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, NS::k_Pi / 4.0f);
         outWall = NS::MakeOBB(NS::Vector3{0.0f, -1.0f, 3.0f}, turn, NS::Vector3{2.0f, 1.0f, 1.0f});
-        scene.Physics().AddBox(outWall, NS::Phys::ObjectLayers::Terrain);
+        scene.Physics().AddBox(outWall, NS::Phys::k_TerrainObjectLayer);
 
         const NS::Collider& collider = player->Collider();
         const NS::Vector3 faceNormal = -outWall.axisZ;
@@ -346,7 +346,7 @@ TEST(PlayerStateSequence, TiltedSlopeIsNotALedge)
     ASSERT_NE(player, nullptr);
     const NS::Quaternion tilt = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{1.0f, 0.0f, 0.0f}, -NS::k_Pi / 4.0f);
     const NS::OBB slope = NS::MakeOBB(NS::Vector3{0.0f, 0.5f, 5.0f}, tilt, NS::Vector3{3.0f, 0.5f, 5.0f});
-    scene.Physics().AddBox(slope, NS::Phys::ObjectLayers::Terrain);
+    scene.Physics().AddBox(slope, NS::Phys::k_TerrainObjectLayer);
     const float boundingTop = slope.center.y + slope.halfExtentY * std::abs(slope.axisY.y) +
                               slope.halfExtentZ * std::abs(slope.axisZ.y);
 
@@ -391,7 +391,7 @@ namespace
         const NS::Vector3 corner{2.0f, -1.0f, 1.0f};
         const NS::OBB bent =
             NS::MakeOBB(corner + axes.axisX * halfExtents.x + axes.axisZ * halfExtents.z, turn, halfExtents);
-        scene.Physics().AddBox(bent, NS::Phys::ObjectLayers::Terrain);
+        scene.Physics().AddBox(bent, NS::Phys::k_TerrainObjectLayer);
         return bent;
     }
 

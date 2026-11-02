@@ -88,53 +88,35 @@ namespace NS
             uint64 m_layoutBytecodeId = 0;
             bool m_valid = false;
         };
-    } // namespace Gfx
-} // namespace NS
 
-namespace NS
-{
-    namespace Gfx
-    {
-        //! 固定ステップ単位の共有 DebugShapes へ図形を追加する関数群
-        namespace DebugDraw
-        {
-            void Line(const Vector3& a, const Vector3& b, const Color& color) noexcept;
+        // DrawDebug〜 は、固定ステップ単位の共有 DebugShapes へ図形を追加する
+        void DrawDebugLine(const Vector3& a, const Vector3& b, const Color& color) noexcept;
 
-            void AABB(const NS::AABB& box, const Color& color) noexcept;
+        void DrawDebugAABB(const AABB& box, const Color& color) noexcept;
 
-            void OBB(const NS::OBB& obb, const Color& color) noexcept;
+        void DrawDebugOBB(const OBB& obb, const Color& color) noexcept;
 
-            void Sphere(const NS::Sphere& sphere, const Color& color) noexcept;
+        void DrawDebugSphere(const Sphere& sphere, const Color& color) noexcept;
 
-            //! center を中心に、直交する半径ベクトル u, v が張る平面上の円を追加する
-            void Circle(const Vector3& center,
-                        const Vector3& u,
-                        const Vector3& v,
-                        const Color& color) noexcept;
+        //! center を中心に、直交する半径ベクトル u, v が張る平面上の円を追加する
+        void DrawDebugCircle(const Vector3& center, const Vector3& u, const Vector3& v, const Color& color) noexcept;
 
-            //! カプセルの円柱部分の枠線を追加する (両端の半球弧は描かない)。base は中心、axis は中心から半球中心へのベクトル
-            void Capsule(const Vector3& base,
-                         const Vector3& axis,
-                         float radius,
-                         const Color& color) noexcept;
+        //! カプセルの円柱部分の枠線を追加する (両端の半球弧は描かない)。base は中心、axis は中心から半球中心へのベクトル
+        void DrawDebugCapsule(const Vector3& base, const Vector3& axis, float radius, const Color& color) noexcept;
 
-            //! 前の固定ステップで蓄積した図形を消去する。固定ステップの先頭で呼ぶ
-            void BeginStep() noexcept;
+        //! 前の固定ステップで蓄積した図形を消去する。固定ステップの先頭で呼ぶ
+        void BeginDebugDrawStep() noexcept;
 
-            //! 現在の固定ステップで蓄積された図形を返す
-            [[nodiscard]] const DebugShapes& StepShapes() noexcept;
+        //! 現在の固定ステップで蓄積された図形を返す
+        [[nodiscard]] const DebugShapes& DebugDrawStepShapes() noexcept;
 
-            void Clear() noexcept;
+        void ClearDebugDraw() noexcept;
 
-            [[nodiscard]] std::size_t VertexCount() noexcept;
+        [[nodiscard]] std::size_t DebugDrawVertexCount() noexcept;
 
-            //! 線より先に両面・深度テストなしで描画する半透明三角形を追加する
-            void Triangle(const Vector3& a,
-                          const Vector3& b,
-                          const Vector3& c,
-                          const Color& color) noexcept;
+        //! 線より先に両面・深度テストなしで描画する半透明三角形を追加する
+        void DrawDebugTriangle(const Vector3& a, const Vector3& b, const Vector3& c, const Color& color) noexcept;
 
-            [[nodiscard]] std::size_t FaceVertexCount() noexcept;
-        } // namespace DebugDraw
+        [[nodiscard]] std::size_t DebugDrawFaceVertexCount() noexcept;
     } // namespace Gfx
 } // namespace NS

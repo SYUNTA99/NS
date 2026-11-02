@@ -43,6 +43,6 @@ namespace NS
 
     JPH::BodyID SphereCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current, const Matrix& world)
     {
-        return physics.SyncSphere(current, WorldSphere(world), Phys::ObjectLayers::Terrain);
+        return physics.SyncSphere(current, WorldSphere(world), Phys::k_TerrainObjectLayer);
     }
 } // namespace NS

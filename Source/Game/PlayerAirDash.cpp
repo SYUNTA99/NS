@@ -496,11 +496,11 @@ void PlayerActor::DrawTerrainRebound() const
     const float length = m_params->m_reboundLineLength;
     const NS::Vector3& from = hit.point;
     // 白は当たる前の向き、青は面の法線、水色は物理の反射、緑は表の向き、紫はずらした後の返った向き
-    NS::Gfx::DebugDraw::Line(from - hit.incoming * length, from, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
-    NS::Gfx::DebugDraw::Line(from, from + hit.normal * length, NS::Color{0.0f, 0.0f, 1.0f, 1.0f});
-    NS::Gfx::DebugDraw::Line(from, from + hit.reflected * length, NS::Color{0.0f, 1.0f, 1.0f, 1.0f});
-    NS::Gfx::DebugDraw::Line(from, from + hit.assigned * length, NS::Color{0.0f, 1.0f, 0.0f, 1.0f});
-    NS::Gfx::DebugDraw::Line(from, from + hit.shifted * length, NS::Color{1.0f, 0.0f, 1.0f, 1.0f});
+    NS::Gfx::DrawDebugLine(from - hit.incoming * length, from, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
+    NS::Gfx::DrawDebugLine(from, from + hit.normal * length, NS::Color{0.0f, 0.0f, 1.0f, 1.0f});
+    NS::Gfx::DrawDebugLine(from, from + hit.reflected * length, NS::Color{0.0f, 1.0f, 1.0f, 1.0f});
+    NS::Gfx::DrawDebugLine(from, from + hit.assigned * length, NS::Color{0.0f, 1.0f, 0.0f, 1.0f});
+    NS::Gfx::DrawDebugLine(from, from + hit.shifted * length, NS::Color{1.0f, 0.0f, 1.0f, 1.0f});
     if (!IsDashRebounding())
     {
         return;
@@ -509,14 +509,14 @@ void PlayerActor::DrawTerrainRebound() const
     NS::Vector3 now = m_body->Velocity();
     now.Normalize();
     const NS::Vector3 center = Root().Position();
-    NS::Gfx::DebugDraw::Line(center, center + now * length, NS::Color{1.0f, 1.0f, 0.0f, 1.0f});
+    NS::Gfx::DrawDebugLine(center, center + now * length, NS::Color{1.0f, 1.0f, 0.0f, 1.0f});
     NS::Color stage{1.0f, 0.0f, 0.0f, 1.0f};
     if (m_airDash.m_steerStarted)
     {
         stage = NS::Color{1.0f, 1.0f, 0.0f, 1.0f};
     }
     const float radius = m_collider->CapsuleRadius();
-    NS::Gfx::DebugDraw::Circle(center, NS::Vector3{radius, 0.0f, 0.0f}, NS::Vector3{0.0f, 0.0f, radius}, stage);
+    NS::Gfx::DrawDebugCircle(center, NS::Vector3{radius, 0.0f, 0.0f}, NS::Vector3{0.0f, 0.0f, radius}, stage);
 }
 
 std::vector<NS::Vector3> PlayerActor::ReboundTable() const

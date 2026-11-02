@@ -70,7 +70,7 @@ TEST(ColliderBlockNormal, DashingIntoAFortyFiveDegreeSlopeReportsTheSlopeAndKeep
     // +Z へ上る 45° の坂。上の面の法線は (0, √½, −√½)
     const NS::Quaternion tilt = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{1.0f, 0.0f, 0.0f}, -NS::k_Pi / 4.0f);
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, 0.0f, 6.0f}, tilt, NS::Vector3{5.0f, 3.0f, 5.0f}),
-                           NS::Phys::ObjectLayers::Terrain);
+                           NS::Phys::k_TerrainObjectLayer);
     Mover mover{scene};
     mover.root.SetPosition(NS::Vector3{0.0f, 1.0f, 0.0f});
 

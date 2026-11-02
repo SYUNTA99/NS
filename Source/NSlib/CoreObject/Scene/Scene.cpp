@@ -466,7 +466,7 @@ namespace NS
         ClearEffects();
 #if !defined(NS_SHIPPING)
         // 図形は前の世界の姿で、溜め場は静的な 1 つ。残すと、次の歩が来るまで消えた物の線が出る
-        Gfx::DebugDraw::Clear();
+        Gfx::ClearDebugDraw();
 #endif
     }
 
@@ -515,7 +515,7 @@ namespace NS
             m_actors.SnapshotActors();
 #if !defined(NS_SHIPPING)
             // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
-            Gfx::DebugDraw::BeginStep();
+            Gfx::BeginDebugDrawStep();
 #endif
         }
         // 歩の間はアクターを解放しない。後で呼ぶ予定のアクターの生ポインタが破棄済みにならない

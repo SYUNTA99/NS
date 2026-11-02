@@ -404,7 +404,7 @@ namespace NS
         const Gfx::RenderContext ctx = RenderWorld(camera, skyboxPath, view.viewPose, alpha, passes);
 
 #if !defined(NS_SHIPPING)
-        m_debugShapes->Draw(*ctx.device, Gfx::DebugDraw::StepShapes(), ctx.viewProjection);
+        m_debugShapes->Draw(*ctx.device, Gfx::DebugDrawStepShapes(), ctx.viewProjection);
 
         // ビューの図形は、このビューの行列で積んで描いたらすぐ捨てる。次のビューや次のフレームへ持ち越さない
         if (view.drawShapes)
