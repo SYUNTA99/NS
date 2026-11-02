@@ -321,7 +321,6 @@ namespace GL
             plan.active = true;
             plan.freezeStep = NS::GetEffectStep(owner.effect);
             plan.shape = ShapeFor(impact);
-            plan.targetId = impact.targetId;
 
             const Vector3 self = owner.position;
             const float radius = collider->CapsuleRadius();

@@ -238,7 +238,6 @@ namespace GL
                 NS::Vector3 ringNormal;
                 NS::Vector3 floor;       // 相手が置かれていた床の上の点
                 NS::Vector3 awayDir;     // 自機から相手への水平の向き。当たりの粉を自機から離す側
-                NS::uint32 targetId = 0; // 当たった相手のアクターの id
                 NS::uint32 core = 0;
                 NS::uint32 streak = 0;
                 NS::uint32 ring = 0;

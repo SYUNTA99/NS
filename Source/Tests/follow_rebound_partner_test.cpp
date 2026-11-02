@@ -203,3 +203,26 @@ TEST(FollowReboundPartner, PlayerPassesTheLaunchedTargetOnlyForACenterRebound)
         }
     }
 }
+
+// 反動の間も相手を読むので、答えは次の当たりまで相手を持ち、やり直しで空に戻す
+TEST(FollowReboundPartner, AnswerKeepsTheTargetThroughTheReboundAndForgetsItOnRestart)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlacePartnerScene(scene, 0.0f);
+    ASSERT_NE(player, nullptr);
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
+    ASSERT_NE(rock, nullptr);
+    EXPECT_EQ(player->Resolver().Answer().lastTarget, nullptr);
+
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+    for (int frame = 0; frame < 400 && !player->IsRebounding(); ++frame)
+    {
+        player->Update(false);
+        rock->Update();
+    }
+    ASSERT_TRUE(player->IsRebounding());
+    EXPECT_EQ(player->Resolver().Answer().lastTarget, rock);
+
+    player->ResetState();
+    EXPECT_EQ(player->Resolver().Answer().lastTarget, nullptr);
+}

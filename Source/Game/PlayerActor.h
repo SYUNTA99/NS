@@ -429,7 +429,7 @@ private:
     [[nodiscard]] bool IsHeldByTackleHit() const noexcept;
     [[nodiscard]] NS::HitSensor* LastTackleTargetSensor() const noexcept;
     void DecideBeforeContact(const GL::Level::ImpactAnswer& answer) noexcept;
-    [[nodiscard]] bool ContinuesBeforeContact(const GL::Level::ImpactRecord& impact) const noexcept;
+    [[nodiscard]] bool ContinuesBeforeContact(const GL::Level::ImpactAnswer& answer) const noexcept;
     [[nodiscard]] bool AcceptsBodySlamRequest() const noexcept;
     void ChangeCurled(bool curled) noexcept;
     void UncurlWhenSettled() noexcept;

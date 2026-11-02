@@ -480,7 +480,7 @@ namespace GL
             // 止めるフレーム数が決まってから控える
             ImpactRecord& record = m_answer.lastImpact;
             record.sequence += 1;
-            record.targetId = m_pendingTarget->Id();
+            record.targetId = m_answer.lastTarget->Id();
             record.power = power;
             record.charge01 = motion.charge01;
             record.positionFactor = judgement.powerScale;
@@ -563,7 +563,7 @@ namespace GL
             // 明けたフレームの反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る。打ち切るのは Player
             m_answer.cancelBodySlam = true;
 
-            m_pendingTarget = m_observedTarget;
+            m_answer.lastTarget = m_observedTarget;
             // 相手は突進の向きへ飛ばす。中心の並びで飛ばすと、横ずれのある当たりが狙いと別の所へ飛ぶ
             // 突進の水平の速さがほぼ 0 で向きが決まらない時だけ、中心の並びの向きへ飛ばす
             NS::Vector3 launchDir = -away;
@@ -634,7 +634,7 @@ namespace GL
             m_answer.predicted.reset();
             ClearOrders();
             // 相手へは明けを送らない。相手はやり直しの知らせで自分の位置へ戻り、凍結は相手の数えで明ける
-            m_pendingTarget = nullptr;
+            m_answer.lastTarget = nullptr;
         }
 
         ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams* params) noexcept
@@ -670,7 +670,7 @@ namespace GL
         void ImpactResolver::LaunchTarget()
         {
             // やり直しで当たりを捨てた後は知らせる相手が無い
-            if (m_pendingTarget == nullptr)
+            if (m_answer.lastTarget == nullptr)
             {
                 return;
             }
@@ -681,7 +681,7 @@ namespace GL
                                             .power = m_answer.lastImpact.power,
                                             .launchScale = m_answer.lastImpact.launchScale,
                                             .hopSeed = m_answer.lastImpact.sequence};
-            (void)SendMsgTackleRelease(m_pendingTarget, release);
+            (void)SendMsgTackleRelease(m_answer.lastTarget, release);
         }
     } // namespace Level
 } // namespace GL
